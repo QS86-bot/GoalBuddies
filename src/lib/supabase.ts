@@ -3,7 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
+import type { Database } from './database.types';
 import { clientEnv } from './env';
+
+/** De client met het schema erin: elke query is getypeerd tegen de database. */
+export type Db = SupabaseClient<Database>;
 
 /**
  * De gedeelde Supabase-client voor web én native.
@@ -16,15 +20,15 @@ import { clientEnv } from './env';
  *    RLS. Elke autorisatie zit in de database, nooit hier.
  */
 
-let cached: SupabaseClient | undefined;
+let cached: Db | undefined;
 
-export function supabase(): SupabaseClient {
+export function supabase(): Db {
   if (cached) return cached;
 
   const env = clientEnv();
   const isWeb = Platform.OS === 'web';
 
-  cached = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+  cached = createClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
     auth: {
       ...(isWeb ? {} : { storage: AsyncStorage }),
       autoRefreshToken: true,
