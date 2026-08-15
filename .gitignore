@@ -1,0 +1,43 @@
+# lokale Linear-specs voor agents
+.linear/
+
+# dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# secrets — nooit committen
+.env
+.env.*
+!.env.example
+
+# expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# build & cache
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# supabase
+supabase/.branches/
+supabase/.temp/
+*.dump
+backup-*.sql
+
+# tooling
+.firecrawl/
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
