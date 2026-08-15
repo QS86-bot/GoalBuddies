@@ -1,0 +1,48 @@
+{
+  "name": "goalbuddies",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Accountability- en doelen-app: doelen, mijlpalen, weekdoelen met vloer en plafond, buddy-groepen en peer-goedkeuring.",
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "dev:web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build": "expo export --platform web",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "types:db": "supabase gen types typescript --project-id wehgocadxehottiiyvsc > src/lib/database.types.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.112.3",
+    "expo": "^57.0.13",
+    "expo-constants": "~57.0.11",
+    "expo-linking": "~57.0.6",
+    "expo-router": "~57.0.13",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-url-polyfill": "^4.0.0",
+    "react-native-web": "^0.21.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.4",
+    "dotenv": "^17.4.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^57.0.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  }
+}

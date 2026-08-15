@@ -33,6 +33,17 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 
 **Linear:** project GoalBuddies in team `QS86-bot Linear` (prefix `QS8`).
 **Supabase:** project `goalbuddies`, ref `wehgocadxehottiiyvsc`, regio `eu-west-3`.
+**GitHub:** `QS86-bot/GoalBuddies`, hoofdbranch `main`.
+
+### Versiebeheer
+- Eén branch per Linear-issue. Gebruik de naam die Linear zelf voorstelt
+  (`quintenstrijdonk/qs8-98-08-rls-testsuite-met-echte-jwts`) — dan koppelt Linear
+  de branch, de PR en het issue automatisch aan elkaar.
+- Nooit rechtstreeks op `main` committen zodra er code staat.
+- Commit-berichten in het Nederlands: eerste regel wat er verandert, daarna
+  waaróm. Bij een niet-vanzelfsprekende keuze een verwijzing naar
+  `docs/decisions/NNN-*.md`.
+- Een PR gaat pas open na `code-critic`, `security-reviewer` en `critical-user`.
 
 ## ⚠️ Solo-fase — geldt tot de engineer er is
 Er is niemand die jouw werk nakijkt.
