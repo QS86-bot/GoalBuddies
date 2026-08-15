@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | 🟠 Ter review bij Quinten — **er draait geen migratie voordat dit akkoord is** |
-| **Datum** | 15-08-2026 |
+| **Status** | ✅ Vastgesteld 15-08-2026 — migraties kunnen |
+| **Datum** | 15-08-2026, herzien na review dezelfde dag |
 | **Linear** | QS8-19 |
 | **Volgt uit** | `PRD-accountability-app.md` §4.3 · `docs/PRODUCT-PROPOSAL.md` · `CLAUDE.md` domeinregels |
 
@@ -67,6 +67,8 @@ goals
   identity_statement       text                   -- "wie word ik als dit lukt?"
   target_date              date NOT NULL
   available_hours_per_week numeric(4,1)           -- uit het Doelcoach-interview
+  max_points               integer NOT NULL DEFAULT 0
+                             -- ⚠️ afgeleid: SUM(points_ceiling) over de weekdoelen
   status                   text NOT NULL DEFAULT 'active'
                              -- active | completed | archived | missed
   risk_status              text NOT NULL DEFAULT 'on_track'
@@ -136,17 +138,29 @@ weekly_goals                   -- het plan
   goal_id           uuid NOT NULL REFERENCES goals(id) ON DELETE CASCADE
   milestone_id      uuid REFERENCES milestones(id) ON DELETE SET NULL
   title             text NOT NULL
-  floor_text        text NOT NULL   -- ⚠️ verplicht — de vloer is geen extraatje
+  floor_text        text            -- optioneel (review: NEE op verplicht)
   ceiling_text      text
+  points_ceiling    integer NOT NULL DEFAULT 2   -- volle week
+  points_floor      integer NOT NULL DEFAULT 1   -- vloer gehaald
+  points_miss       integer NOT NULL DEFAULT -1  -- ⚠️ minpunt
   cycle_start_date  date NOT NULL   -- uit currentUserCycle(), nooit handmatig
   cycle_index       integer NOT NULL
   status            text NOT NULL DEFAULT 'todo'
-                      -- todo | pending | approved | missed | carried
+                      -- todo | pending | approved | missed | carried | excused
   ai_generated      boolean NOT NULL DEFAULT false
   created_at        timestamptz NOT NULL DEFAULT now()
 
-  CHECK (status IN ('todo','pending','approved','missed','carried'))
+  CHECK (status IN ('todo','pending','approved','missed','carried','excused'))
+  CHECK (points_ceiling >= points_floor)
 ```
+
+`floor_text` is optioneel. Een weekdoel zonder vloer kent maar twee uitkomsten: gehaald
+(`points_ceiling`) of niet (`points_miss`). Met een vloer komt daar de tussenstand bij.
+De UI blijft de vloer wél actief aanmoedigen — het idee is de moeite waard, alleen niet
+als verplicht formulierveld.
+
+`excused` is de status voor een week die onder een adempauze valt: die telt niet mee,
+niet positief en niet negatief.
 
 `status` is **afgeleid** van `completions` + `completion_approvals`, maar wordt hier
 gecachet omdat elk lijstscherm erop filtert. Bijgewerkt in dezelfde transactie als de
@@ -197,11 +211,25 @@ daily_moves                    -- de Dagzet
   user_id        uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE
   weekly_goal_id uuid REFERENCES weekly_goals(id) ON DELETE SET NULL
   body           text NOT NULL
+  visibility     text NOT NULL DEFAULT 'private'   -- private | group
   local_date     date NOT NULL   -- de dag in de tz van de gebruiker
   created_at     timestamptz NOT NULL DEFAULT now()
+
+  CHECK (visibility IN ('private','group'))
 ```
 
 Geen punten, geen status, geen goedkeuring — domeinregel 9. Bewust een kale tabel.
+
+**`visibility` staat standaard op `private`** (review: standaard privé). Delen kan per
+zet, met een voorkeur in instellingen voor wie standaard wil delen.
+
+⚠️ **Eerlijk over wat dit kost.** In het voorstel (§3) noemde ik vier redenen voor de
+Dagzet. Eén daarvan — *"de groepsfeed heeft elke dag inhoud in plaats van één piek per
+week"* — vervalt grotendeels bij een privé-standaard. De andere drie blijven overeind:
+een dagelijkse reden om de app te openen, vraag 1 van de weekafsluiting die zichzelf
+vult, en je eigen doorlopende verslag. De Ketting draait op cyclusafsluitingen en niet op
+Dagzetten, dus die raakt dit niet. De feature blijft dus zinnig, maar hij is nu vooral
+een persoonlijk instrument met een deelknop, en niet meer de sociale hartslag.
 
 ### 2.4 Groepen
 
@@ -292,9 +320,10 @@ points_ledger                  -- append-only, de waarheid
   user_id    uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE
   group_id   uuid REFERENCES groups(id) ON DELETE SET NULL
   goal_id    uuid REFERENCES goals(id) ON DELETE SET NULL
-  delta      integer NOT NULL
+  delta      integer NOT NULL   -- mag negatief zijn
   reason     text NOT NULL      -- completion_approved_floor
                                 -- | completion_approved_ceiling
+                                -- | cycle_missed          ⚠️ minpunt
                                 -- | review_given | milestone_done | goal_done
                                 -- | correction
   ref_type   text
@@ -331,6 +360,50 @@ breathers                      -- Adempauze
 Resterende weekpassen = `SUM(earned+granted) - SUM(spent)`. Geen teller-kolom die uit de
 pas kan lopen.
 
+### 2.6b Het puntenmodel — vastgesteld bij de review
+
+> *"Per week wordt er gekeken of jij jouw doel voor die week gehaald hebt. Zo ja, punt
+> gescoord. Anders minpunt. Per doel is een vooraf bepaald maximaal aantal punten te
+> behalen, tenzij je extra taken toevoegt aan jouw doel."*
+
+**De regels**
+
+| Uitkomst van een cyclus | Punten | Reeks |
+|---|---|---|
+| Plafond gehaald, goedgekeurd | `+points_ceiling` (standaard +2) | loopt door |
+| Vloer gehaald, goedgekeurd | `+points_floor` (standaard +1) | loopt door |
+| Niet gehaald | `points_miss` (standaard −1) | breekt, tenzij een weekpas hem redt |
+| Adempauze | 0 | wacht |
+
+**Het maximum per doel.** `goals.max_points = SUM(points_ceiling)` over alle geplande
+weekdoelen. Voeg je extra taken toe, dan stijgt het plafond mee — precies zoals besloten.
+Herberekend bij elke wijziging aan de weekdoelen van dat doel.
+
+**Drie afgeleide beslissingen die hier logisch uit volgen.** Ik heb ze zo ingevuld; zeg
+het als je een van de drie anders wilt.
+
+1. **Een weekpas beschermt de reeks, niet het punt.** Zou hij allebei beschermen, dan is
+   een week missen gratis en zegt de score niets meer. Zo blijft de weekpas doen waar hij
+   voor is — voorkomen dat één slechte week maanden werk uitwist — zonder de score te
+   vervalsen.
+2. **Adempauze levert geen punt en geen minpunt op.** Je hebt hem vooraf aangekondigd; de
+   week telt gewoon niet mee. Daarom de status `excused` op `weekly_goals`.
+3. **Zelf afgevinkt maar niet goedgekeurd levert nog geen punt op.** Bij het verstrijken
+   van de goedkeuringstermijn krijgt het weekdoel alsnog zijn punten, zodat een trage
+   buddy jou geen minpunt kan bezorgen. In solomodus geldt hetzelfde: geen punten zolang
+   er niemand is om goed te keuren, maar ook geen minpunten.
+
+⚠️ **Score en voortgang zijn twee verschillende dingen en moeten dat in de UI ook
+blijven.** Voortgang naar je doel is mijlpaalgebaseerd en loopt alleen omhoog. De score
+kan dalen. Worden die twee in één balk gepropt, dan lijkt het alsof je doel achteruit
+gaat omdat je één week miste — en dat is precies het gevoel dat mensen deze app laat
+verwijderen.
+
+⚠️ **Het minpunt raakt domeinregel 7.** Een dalende score is zichtbaar bewijs van een
+gemiste week. Daarom: **`points_ledger` en het puntentotaal zijn uitsluitend voor de
+eigenaar leesbaar.** De groep ziet De Ketting (opdagen), behaalde mijlpalen en
+goedkeuringen — nooit iemands puntentotaal of -verloop. Zie §4.3.
+
 ### 2.7 Commitments
 
 ```sql
@@ -361,6 +434,12 @@ commitment_events              -- append-only audit
 
 `confirmed_at NOT NULL` maakt het onmogelijk een commitment aan te maken zonder
 bevestiging. Domeinregel 5 wordt zo een schema-eigenschap, geen afspraak.
+
+**Wanneer wordt een straf verschuldigd** (review: pas bij een verstreken deadline):
+`status` gaat van `set` naar `due` op het moment dat `goals.target_date` gepasseerd is
+terwijl `goals.status <> 'completed'`. Geen enkele gemiste week zet een straf in werking —
+een slechte week kost een minpunt, meer niet. De begunstigde groep krijgt pas op dat
+moment leesrecht op de rij; daarvóór is het commitment alleen zichtbaar voor de eigenaar.
 
 ### 2.8 Chat en AI-jobs
 
@@ -469,14 +548,14 @@ deze twee functies er zijn.
 | `weekly_goals` | als het doel | eigenaar doel | eigenaar doel | eigenaar doel |
 | `completions` | als het doel | eigenaar, eigen rij | ✗ *(append-only)* | ✗ |
 | `completion_approvals` | groepsleden | lid + `approver_id = auth.uid()` + niet eigenaar | ✗ | ✗ |
-| `daily_moves` | eigenaar **OF** groepsgenoot van gekoppeld doel | eigen | eigen | eigen |
+| `daily_moves` | eigenaar; groepsgenoot **alleen** als `visibility = 'group'` | eigen | eigen | eigen |
 | `groups` | `is_group_member(id)` | iedere ingelogde | alleen admin | alleen admin |
 | `group_members` | `is_group_member(group_id)` | zelf joinen via geldige code | admin, of eigen status | zelf, of admin |
 | `goal_group_links` | groepsleden | eigenaar doel **én** lid | ✗ | eigenaar doel |
 | `week_reviews` | groepsleden | eigen rij, lid van groep | eigen rij | eigen rij |
 | `chain_links` | groepsleden | systeem | ✗ | ✗ |
 | `points_ledger` | **alleen eigen rijen** | systeem | ✗ | ✗ |
-| `user_streaks` | eigenaar; groepsgenoten zien beperkte projectie via view | systeem | systeem | ✗ |
+| `user_streaks` | **alleen eigenaar**; groepsgenoten zien alleen `current_streak` via view | systeem | systeem | ✗ |
 | `week_pass_events` | **alleen eigenaar** | systeem | ✗ | ✗ |
 | `breathers` | eigenaar; groepsleden zien alleen dat er een pauze loopt | eigen | eigen | eigen |
 | `commitments` | eigenaar; begunstigde groep pas ná `unlocked`/`due` | eigenaar | eigenaar, vóór trigger | ✗ |
@@ -496,9 +575,14 @@ week gemist heeft, ook niet door slim te bevragen. De ontwerpregel is dus niet a
 UI-afspraak maar een eigenschap van het schema.
 
 `user_streaks` is de uitzondering: het groepsoverzicht toont wél de reeks van anderen. Dat
-is een positief signaal. Groepsgenoten lezen via een view die uitsluitend
-`current_streak` en `total_points` projecteert — nooit `last_cycle_start`, want daaruit
-zou een gemiste week afleidbaar zijn.
+is een positief signaal. Groepsgenoten lezen via een view die **uitsluitend
+`current_streak`** projecteert — niet `total_points`, want punten kunnen dalen en een
+dalend totaal is zichtbaar bewijs van een gemiste week. En niet `last_cycle_start`, want
+daaruit is hetzelfde af te leiden.
+
+Dit is de belangrijkste correctie die het minpunt in het model afdwong: had ik het
+puntentotaal zichtbaar gelaten voor de groep, dan had het puntenmodel domeinregel 7
+stilzwijgend ondermijnd.
 
 ---
 
@@ -515,38 +599,29 @@ zou een gemiste week afleidbaar zijn.
 
 ---
 
-## 6. Zes punten waarop ik je oordeel wil
+## 6. Review — 15-08-2026
 
-1. **`floor_text NOT NULL`.** Ik maak de vloer verplicht bij elk weekdoel. Dat is de
-   scherpste vorm van het idee, maar het is één verplicht veld extra bij de meest
-   gebruikte handeling in de app. Verplicht houden, of `NULL` toestaan en de UI het laten
-   aanmoedigen?
+| # | Vraag | Antwoord | Verwerkt in |
+|---|---|---|---|
+| 1 | `floor_text` verplicht? | **Nee** | §2.3 — kolom is nullable, UI moedigt aan |
+| 2 | Reeks per doel of per gebruiker? | *niet beantwoord* → blijft **per doel** | §2.6 |
+| 3 | Dagzet zichtbaar voor de groep? | **Standaard privé** | §2.3 — `visibility`, §4.2 |
+| 4 | Interview-antwoorden als `jsonb`? | *niet beantwoord* → blijft **`jsonb`** | §2.2 |
+| 5 | Wanneer ziet de groep een straf? | **Pas als de deadline verstreken is** | §2.7, §4.2 |
+| 6 | Twee tijdzones (gebruiker + groep)? | *niet beantwoord* → blijft **twee** | §2.1, §2.4 |
 
-2. **`user_streaks` per doel, niet per gebruiker.** Iemand met drie doelen heeft dan drie
-   reeksen. Dat is eerlijker (je reeks op "afvallen" zegt niets over "bedrijf starten"),
-   maar het dashboard moet dan kiezen welke reeks het groot toont. Akkoord, of één reeks
-   per gebruiker?
+Vraag 2, 4 en 6 zijn niet expliciet beantwoord. Ik voer ze uit zoals voorgesteld en noem
+ze hier zodat ze bij de engineer-review in november terugkomen als bewuste keuze en niet
+als iets dat is doorgeglipt.
 
-3. **`daily_moves` zichtbaar voor groepsgenoten.** De Dagzet vult de groepsfeed — dat was
-   het hele punt. Maar het is ook het meest ruwe, ongefilterde dat iemand schrijft. Zichtbaar
-   voor de groep, of standaard privé met een deelknop?
-
-4. **`goal_interviews.answers` als `jsonb`.** Flexibel, en de vragen zullen nog schuiven.
-   Nadeel: geen typegarantie in de database. Ik vang het af met Zod aan de serverkant.
-   Akkoord, of liever zes echte kolommen?
-
-5. **De begunstigde groep ziet een straf pas ná `due`.** Alternatief is dat de groep vanaf
-   het begin weet wat er op het spel staat — dat maakt het commitment sterker, maar het
-   maakt de inzet ook publiek vanaf dag één. Ik neig naar pas-bij-`due`. Wat vind jij?
-
-6. **`profiles.tz` als IANA-string, met de tijdzone van de groep apart op `groups`.** Twee
-   tijdzones in het systeem betekent dat de seizoensrecap om 08:00 groepstijd komt terwijl
-   jouw nudge op jouw tijd komt. Dat klopt inhoudelijk, maar het is een extra bron van
-   verwarring bij het debuggen. Akkoord?
+**Daarnaast is bij deze review het puntenmodel vastgesteld** — zie §2.6b. Dat was geen
+vraag van mij maar een aanvulling van jouw kant, en het is de grootste wijziging van deze
+ronde: punten kunnen nu negatief zijn, elk doel heeft een puntenplafond, en dat plafond
+stijgt als je taken toevoegt.
 
 ---
 
-## 7. Zodra dit akkoord is
+## 7. Wat er nu gebeurt
 
 1. Migratie `0001_initial.sql` — tabellen, constraints, indexen
 2. Migratie `0002_rls.sql` — hulpfuncties en policies

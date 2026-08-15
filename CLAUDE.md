@@ -118,14 +118,33 @@ Voordat er één feature gebouwd wordt:
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.
 
-8. **De vloer telt.** Elk weekdoel heeft een vloer (de versie die je op je slechtste
-   week nog haalt) en een plafond. Vloer gehaald betekent dat de week telt: de reeks
-   loopt door en goedkeuring verloopt identiek. Alleen de punten verschillen.
+8. **De vloer telt.** Een weekdoel kan een vloer hebben (de versie die je op je
+   slechtste week nog haalt) naast het plafond. De vloer is optioneel, maar de UI
+   moedigt hem actief aan. Vloer gehaald betekent dat de week telt: de reeks loopt
+   door en goedkeuring verloopt identiek. Alleen de punten verschillen.
    De reeks dient de gebruiker, nooit andersom.
 
-9. **De Dagzet levert nooit punten of goedkeuring op.** De week blijft de enige
-   eenheid die telt. De Dagzet is aanwezigheid, geen prestatie — een dagboekregel
-   die je groep toevallig ziet. Een dag overslaan heeft geen enkel gevolg.
+9. **De Dagzet is standaard privé** en levert nooit punten of goedkeuring op. De week
+   blijft de enige eenheid die telt. De Dagzet is aanwezigheid, geen prestatie — een
+   dagboekregel die je desgewenst met je groep deelt. Een dag overslaan heeft geen
+   enkel gevolg.
+
+10. **Het puntenmodel.** Plafond gehaald `+2`, vloer gehaald `+1`, week gemist `−1`,
+    adempauze `0`. Elk doel heeft een puntenplafond: de som van de plafondpunten van
+    zijn weekdoelen. Taken toevoegen verhoogt het plafond.
+
+    Drie regels die daaruit volgen en niet mogen verwateren:
+    - Een **weekpas beschermt de reeks, niet het punt.** Anders is missen gratis en
+      zegt de score niets.
+    - **Punten zijn privé.** `points_ledger` en het puntentotaal zijn alleen voor de
+      eigenaar leesbaar. Een dalend totaal is zichtbaar bewijs van een gemiste week,
+      en dat botst met domeinregel 7. De groep ziet De Ketting en mijlpalen.
+    - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
+      alleen omhoog; de score kan dalen. Nooit in één balk tonen.
+
+11. **Een straf treedt alleen in werking bij een verstreken deadline.** Een gemiste
+    week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
+    commitment op het moment dat het verschuldigd wordt.
 
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.
