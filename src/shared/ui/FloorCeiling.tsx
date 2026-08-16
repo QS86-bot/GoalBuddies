@@ -20,8 +20,10 @@ import { Body, Caption } from './Text';
 
 interface Props {
   readonly title: string;
-  readonly floorText?: string | undefined;
-  readonly ceilingText?: string | undefined;
+  // Uit de database komt hier null en geen undefined; allebei betekenen 'niet
+  // ingevuld', en het scherm hoeft dat verschil niet te kennen.
+  readonly floorText?: string | null | undefined;
+  readonly ceilingText?: string | null | undefined;
   readonly status: WeeklyGoalStatus;
   readonly achieved: Achieved;
   /** Wie kijkt er mee. Bepaalt wat er getoond mág worden (domeinregel 7). */

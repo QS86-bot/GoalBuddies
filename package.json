@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "types:db": "supabase gen types typescript --project-id wehgocadxehottiiyvsc > src/lib/database.types.ts",
     "db:dump": "node scripts/db-dump.mjs",
+    "edge:sync": "node scripts/sync-edge-shared.mjs",
     "db:push": "npm run db:dump && supabase db push"
   },
   "engines": {

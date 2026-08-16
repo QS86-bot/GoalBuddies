@@ -47,7 +47,11 @@ module.exports = [
     //    shared/time. Deze regel is een vangnet, geen bewijs — hij vangt de
     //    voor de hand liggende gevallen, niet alles.
     files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.tsx'],
-    ignores: ['src/shared/time/**'],
+    //    Tests mogen wél een Date bouwen: een suite die een moment vastpint,
+    //    heeft er per definitie een nodig. Zonder deze uitzondering zijn de
+    //    DST-overgang en de coulanceperiode niet te testen — precies de twee
+    //    plekken waar het misgaat.
+    ignores: ['src/shared/time/**', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',

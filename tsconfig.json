@@ -20,5 +20,13 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ],
-  "exclude": ["node_modules", "dist", ".expo"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".expo",
+    // Edge Functions draaien op Deno, niet op React Native: eigen globals
+    // (Deno.serve), imports met .ts-extensie en jsr:-specifiers. Die horen niet
+    // door deze tsc-configuratie gecontroleerd te worden.
+    "supabase/functions"
+  ]
 }

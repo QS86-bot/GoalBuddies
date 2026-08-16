@@ -14,6 +14,18 @@ export {
   type Resultaat,
 } from './api';
 
+export { afsluitbareCyclus, huidigeCyclus, inCoulanceperiode } from './cycles';
+
+export {
+  fetchWeekdoelen,
+  maakWeekdoel,
+  schuifDoor,
+  verwijderWeekdoel,
+  type Weekdoel,
+} from './weekly';
+
+export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly-schemas';
+
 export {
   CATEGORIEEN,
   CATEGORIE_LABELS,

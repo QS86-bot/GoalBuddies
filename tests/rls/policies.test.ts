@@ -474,7 +474,11 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         const mine = await rowCount(f.alice.db.from('points_ledger').select('id').eq('user_id', f.alice.id));
         const theirs = await rowCount(f.bob.db.from('points_ledger').select('id').eq('user_id', f.alice.id));
 
-        expect(mine).toBe(1);
+        // ⚠️ Geen vast aantal. Sinds migratie 0014 boekt de trigger er zelf een
+        //    bij zodra bob goedkeurt, en dat aantal is de eigenschap niet die
+        //    deze test bewijst. Waar het om gaat: alice ziet haar eigen
+        //    boekingen, bob ziet er nul van haar.
+        expect(mine).toBeGreaterThan(0);
         expect(theirs).toBe(0);
       },
       TEST_TIMEOUT,
@@ -520,7 +524,11 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
         expect(error).toBeNull();
         expect(data).toHaveLength(1);
-        expect(data?.[0]?.current_streak).toBe(3);
+        // Het getal komt van herbereken_reeks (migratie 0014) en niet uit de
+        // fixture: user_streaks is cache, geen waarheid. Dát de reeks zichtbaar
+        // is voor een groepsgenoot, is wat deze test bewijst — niet welke stand
+        // hij heeft.
+        expect(typeof data?.[0]?.current_streak).toBe('number');
         // Niet alleen "de waarde staat er niet", maar "de kolom bestaat niet".
         expect(Object.keys(data?.[0] ?? {})).not.toContain('total_points');
         expect(Object.keys(data?.[0] ?? {})).not.toContain('last_cycle_start');
