@@ -16,6 +16,8 @@ export type {
 } from './types';
 export { GRACE_HOURS } from './types';
 
+export { freezeNow, now, unfreezeNow } from './clock';
+
 export {
   closableUserCycle,
   cyclesBetween,
