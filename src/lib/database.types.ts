@@ -806,6 +806,38 @@ export type Database = {
       }
     }
     Views: {
+      goal_dashboard: {
+        Row: {
+          available_hours_per_week: number | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          identity_statement: string | null
+          max_points: number | null
+          milestones_done: number | null
+          milestones_total: number | null
+          owner_id: string | null
+          risk_computed_at: string | null
+          risk_reason: Json | null
+          risk_status: string | null
+          status: string | null
+          target_date: string | null
+          title: string | null
+          updated_at: string | null
+          weekly_approved: number | null
+          weekly_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_visible_streaks: {
         Row: {
           best_streak: number | null
