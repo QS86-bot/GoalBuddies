@@ -19,9 +19,22 @@ export function now(): Date {
  * Zet de klok vast op één moment. Uitsluitend voor tests: een testsuite die van
  * de echte klok afhangt, faalt ooit op een dinsdag om middernacht.
  *
- * Geeft de opruimfunctie terug, zodat `afterEach(freezeNow(t))` niet kan lekken.
+ * Geeft de opruimfunctie terug, zodat je hem kunt doorgeven aan `afterEach`:
+ *
+ * ```ts
+ * let herstel: () => void;
+ * beforeEach(() => { herstel = freezeNow(new Date('2026-08-16T10:00:00Z')); });
+ * afterEach(() => herstel());
+ * ```
+ *
+ * ⚠️ Weigert dienst in productie. Een primitive die de klok van de hele app kan
+ *    bevriezen hoort niet mee te reizen in de bundle, en "hij staat er alleen
+ *    voor tests" is geen bescherming zodra er honderd bestanden zijn.
  */
 export function freezeNow(at: Date): () => void {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('freezeNow() is testgereedschap en werkt niet in productie.');
+  }
   frozen = at;
   return unfreezeNow;
 }

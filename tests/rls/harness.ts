@@ -12,7 +12,7 @@
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '../database.types';
+import type { Database } from '../../src/lib/database.types';
 
 export type TestDb = SupabaseClient<Database>;
 
@@ -27,6 +27,39 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  */
 export const rlsTestsConfigured = Boolean(url && anonKey && serviceRoleKey);
 
+/**
+ * Het enige Supabase-project dat er is, is het echte project. Er is (nog) geen
+ * lokale stack — zie docs/Q-TODO.docx C3.
+ */
+const PRODUCTIE_REF = 'wehgocadxehottiiyvsc';
+
+/**
+ * ⚠️ Deze suite maakt echte accounts aan en ruimt ze daarna op met een key die
+ *    RLS volledig omzeilt. Zolang dat tegen het echte project gebeurt, hoort er
+ *    een slot op — niet omdat het vandaag misgaat, maar omdat het één slordige
+ *    refactor verwijderd is van `delete from groups` zonder filter.
+ *
+ *    Zet `RLS_TEST_ALLOW_PROD=1` in .env als je bewust tegen het echte project
+ *    wilt draaien. Zodra er een lokale stack is, hoort deze regel te verdwijnen.
+ */
+function guardProductie(target: string): void {
+  if (!target.includes(PRODUCTIE_REF)) return;
+  if (process.env.RLS_TEST_ALLOW_PROD === '1') return;
+
+  throw new Error(
+    [
+      'De RLS-tests wijzen naar het productieproject en dat is geblokkeerd.',
+      '',
+      'Ze maken echte accounts aan en verwijderen die daarna met de',
+      'service-role-key. Dat gaat vandaag goed, maar het is geen gewoonte om in',
+      'te bakken.',
+      '',
+      'Draai ze tegen een lokale stack, of zet bewust in .env:',
+      '  RLS_TEST_ALLOW_PROD=1',
+    ].join('\n'),
+  );
+}
+
 function requireEnv(): { url: string; anonKey: string; serviceRoleKey: string } {
   if (!url || !anonKey || !serviceRoleKey) {
     throw new Error(
@@ -34,6 +67,7 @@ function requireEnv(): { url: string; anonKey: string; serviceRoleKey: string } 
         'en SUPABASE_SERVICE_ROLE_KEY nodig. Zie .env.example.',
     );
   }
+  guardProductie(url);
   return { url, anonKey, serviceRoleKey };
 }
 
