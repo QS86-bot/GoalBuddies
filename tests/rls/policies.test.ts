@@ -16,7 +16,7 @@ import {
   adminDb,
   anonDb,
   createTestUser,
-  inviteCode,
+  onbekendeCode,
   removeTestUsers,
   rlsTestsConfigured,
   type TestUser,
@@ -75,8 +75,33 @@ function mustId(
 }
 
 /**
- * Een groep aanmaken loopt via `create_group` (migratie 0009), en dat is geen
- * gemak maar noodzaak.
+ * De uitkomst van `join_group_with_code`, sinds migratie 0017 een resultaat in
+ * plaats van een exception.
+ *
+ * ⚠️ Die wijziging maakt `mustOk` hier onbruikbaar: een geweigerde toetreding
+ *    geeft geen `error` meer, dus `mustOk` zou er stil overheen lopen en de
+ *    opbouw drie stappen verderop laten sneuvelen op iets dat er niets mee te
+ *    maken heeft. Vandaar `mustJoin`.
+ */
+function uitkomst(data: unknown): { ok: boolean; reason?: string; group_id?: string } {
+  return (data ?? {}) as { ok: boolean; reason?: string; group_id?: string };
+}
+
+function mustJoin(
+  result: { data: unknown; error: { message: string } | null },
+  what: string,
+): void {
+  if (result.error) throw new Error(`Opbouw mislukte bij ${what}: ${result.error.message}`);
+
+  const gelukt = uitkomst(result.data);
+  if (!gelukt.ok) {
+    throw new Error(`Opbouw mislukte bij ${what}: toetreden geweigerd (${gelukt.reason})`);
+  }
+}
+
+/**
+ * Een groep aanmaken loopt via `create_group` (migratie 0009, herzien in 0016),
+ * en dat is geen gemak maar noodzaak.
  *
  * ⚠️ Bevinding van deze suite: met losse inserts kán het niet. `groups_select`
  *    eist `is_group_member(id)`, en `group_members_insert_founder` controleert
@@ -86,20 +111,23 @@ function mustId(
  *
  *    Dat deze functie via de gewone client van de eigenaar draait — en niet via
  *    de systeemclient — is dus zelf een test: hij bewijst dat de RPC het gat
- *    dicht.
+ *    dicht. Sinds 0016 is de policy `groups_insert` bovendien `with check
+ *    (false)`, dus dit is nu ook letterlijk de enige route.
+ *
+ * ⚠️ De code komt terug uit de RPC en gaat er niet meer in. Sinds 0016 verzint
+ *    de server hem; een aanroeper die zijn eigen code meegeeft, bestaat niet meer.
  */
 async function createGroup(owner: TestUser, name: string): Promise<{ id: string; code: string }> {
-  const code = inviteCode();
+  const uitkomst = await owner.db.rpc('create_group', { group_name: name });
 
-  const groep = mustId(
-    await owner.db
-      .rpc('create_group', { group_name: name, invite_code: code })
-      .select('id')
-      .single(),
-    `groep ${name}`,
-  );
+  if (uitkomst.error) {
+    throw new Error(`Opbouw mislukte bij groep ${name}: ${uitkomst.error.message}`);
+  }
+  if (!uitkomst.data) {
+    throw new Error(`Opbouw mislukte bij groep ${name}: geen rij teruggekregen`);
+  }
 
-  return { id: groep, code };
+  return { id: uitkomst.data.id, code: uitkomst.data.invite_code };
 }
 
 async function buildFixture(): Promise<Fixture> {
@@ -116,8 +144,8 @@ async function buildFixture(): Promise<Fixture> {
   const group = await createGroup(alice, 'Testgroep');
   const otherGroup = await createGroup(bob, 'Tweede groep');
 
-  mustOk(await bob.db.rpc('join_group_with_code', { code: group.code }), 'bob wordt lid');
-  mustOk(await alice.db.rpc('join_group_with_code', { code: otherGroup.code }), 'alice wordt lid');
+  mustJoin(await bob.db.rpc('join_group_with_code', { code: group.code }), 'bob wordt lid');
+  mustJoin(await alice.db.rpc('join_group_with_code', { code: otherGroup.code }), 'alice wordt lid');
 
   const revoked = await createGroup(alice, 'Ingetrokken groep');
   mustOk(
@@ -631,11 +659,11 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     it(
       'weigert een ingetrokken uitnodigingscode',
       async () => {
-        const { error } = await f.carol.db.rpc('join_group_with_code', {
+        const { data } = await f.carol.db.rpc('join_group_with_code', {
           code: f.revokedCode,
         });
 
-        expect(error).not.toBeNull();
+        expect(uitkomst(data).ok).toBe(false);
       },
       TEST_TIMEOUT,
     );
@@ -643,11 +671,30 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     it(
       'weigert een code die niet bestaat',
       async () => {
-        const { error } = await f.carol.db.rpc('join_group_with_code', {
-          code: 'bestaat-niet',
+        const { data } = await f.carol.db.rpc('join_group_with_code', {
+          code: onbekendeCode(),
         });
 
-        expect(error).not.toBeNull();
+        expect(uitkomst(data).ok).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    // ⚠️ Ingetrokken en nooit-bestaan geven met opzet hetzelfde antwoord. Zou de
+    //    ene "deze link is ingetrokken" zeggen en de andere "onbekende code",
+    //    dan is dit eindpunt een orakel dat vertelt welke codes bestaan.
+    it(
+      'maakt geen verschil tussen een ingetrokken en een onbekende code',
+      async () => {
+        const ingetrokken = await f.carol.db.rpc('join_group_with_code', {
+          code: f.revokedCode,
+        });
+        const onbekend = await f.carol.db.rpc('join_group_with_code', {
+          code: onbekendeCode(),
+        });
+
+        expect(uitkomst(ingetrokken.data).reason).toBe('invalid');
+        expect(uitkomst(onbekend.data).reason).toBe('invalid');
       },
       TEST_TIMEOUT,
     );
@@ -715,7 +762,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
      */
     async function verseGroepMetBob(naam: string): Promise<string> {
       const groep = await createGroup(f.alice, naam);
-      mustOk(await f.bob.db.rpc('join_group_with_code', { code: groep.code }), `bob in ${naam}`);
+      mustJoin(await f.bob.db.rpc('join_group_with_code', { code: groep.code }), `bob in ${naam}`);
       return groep.id;
     }
 
@@ -1110,5 +1157,526 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       },
       TEST_TIMEOUT,
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // EPIC 5 — buddy-groepen (migratie 0016)
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ Eigen gebruikers, en niet die van de hoofdfixture. Alice zit daar al in
+  //    zes groepen en de nieuwe grens ligt op tien; zou dit blok haar erbij
+  //    nemen, dan valt de suite over een limiet in plaats van over een policy —
+  //    en dan zoek je een uur naar het verkeerde.
+
+  describe('buddy-groepen', () => {
+    interface GroepFixture {
+      eigenaar: TestUser;
+      lid: TestUser;
+      buitenstaander: TestUser;
+      groupId: string;
+      code: string;
+      /** Doel van de eigenaar, gekoppeld aan `groupId`. */
+      gekoppeldDoelId: string;
+      /** Doel van de eigenaar, aan geen enkele groep gekoppeld. */
+      losDoelId: string;
+    }
+
+    let g: GroepFixture;
+
+    beforeAll(async () => {
+      if (!rlsTestsConfigured) return;
+
+      const [eigenaar, lid, buitenstaander] = await Promise.all([
+        createTestUser('groep-eigenaar'),
+        createTestUser('groep-lid'),
+        createTestUser('groep-buiten'),
+      ]);
+
+      const groep = await createGroup(eigenaar, 'Buddygroep');
+      mustJoin(await lid.db.rpc('join_group_with_code', { code: groep.code }), 'lid treedt toe');
+
+      const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+      const gekoppeldDoelId = mustId(
+        await eigenaar.db
+          .from('goals')
+          .insert({ owner_id: eigenaar.id, title: 'Gekoppeld doel', target_date: cycle.endDate })
+          .select('id')
+          .single(),
+        'gekoppeld doel',
+      );
+
+      const losDoelId = mustId(
+        await eigenaar.db
+          .from('goals')
+          .insert({ owner_id: eigenaar.id, title: 'Los doel', target_date: cycle.endDate })
+          .select('id')
+          .single(),
+        'los doel',
+      );
+
+      mustOk(
+        await eigenaar.db
+          .from('goal_group_links')
+          .insert({ goal_id: gekoppeldDoelId, group_id: groep.id }),
+        'doel koppelen',
+      );
+
+      g = {
+        eigenaar,
+        lid,
+        buitenstaander,
+        groupId: groep.id,
+        code: groep.code,
+        gekoppeldDoelId,
+        losDoelId,
+      };
+    }, SETUP_TIMEOUT);
+
+    // -----------------------------------------------------------------------
+    // 5.1 — de uitnodigingscode komt van de server
+    // -----------------------------------------------------------------------
+
+    describe('de uitnodigingscode', () => {
+      it(
+        'wordt door de server gemaakt, in het afgesproken formaat',
+        async () => {
+          // Twaalf tekens uit een alfabet van dertig, zonder 0/O, 1/I/L en U.
+          // Dezelfde regel staat in src/modules/buddies/schemas.ts, en daar staat
+          // een unittest op die de twee aan elkaar knoopt.
+          expect(g.code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{12}$/);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'maakt de aanmaker beheerder',
+        async () => {
+          const { data } = await adminDb()
+            .from('group_members')
+            .select('role')
+            .eq('group_id', g.groupId)
+            .eq('user_id', g.eigenaar.id)
+            .single();
+
+          expect(data?.role).toBe('admin');
+        },
+        TEST_TIMEOUT,
+      );
+
+      // ⚠️ Zonder deze policy loopt de client om create_group() heen: eigen
+      //    code, geen dagelimiet, en geen lidmaatschap voor de oprichter.
+      it(
+        'is niet te omzeilen met een directe insert in groups',
+        async () => {
+          const { error } = await g.eigenaar.db.from('groups').insert({
+            name: 'Zelfgemaakt',
+            created_by: g.eigenaar.id,
+            invite_code: 'WELKOMWELKOM',
+          });
+
+          expect(error).not.toBeNull();
+        },
+        TEST_TIMEOUT,
+      );
+
+      // ⚠️ Dit is de derde keer in dit project dat "RLS kan geen kolommen
+      //    beperken" bijt, na 0006 en 0010. `groups_update` laat een beheerder de
+      //    rij aanraken en dus ook `invite_code` — een beheerder kon zijn eigen
+      //    raadbare code zetten. De trigger groups_guard zet hem terug.
+      it(
+        'is ook door een beheerder niet met een UPDATE te overschrijven',
+        async () => {
+          await g.eigenaar.db
+            .from('groups')
+            .update({ invite_code: 'WELKOMWELKOM' })
+            .eq('id', g.groupId);
+
+          const { data } = await adminDb()
+            .from('groups')
+            .select('invite_code')
+            .eq('id', g.groupId)
+            .single();
+
+          expect(data?.invite_code).toBe(g.code);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'laat een gewoon lid de code niet vernieuwen',
+        async () => {
+          const { error } = await g.lid.db.rpc('rotate_invite_code', { p_group_id: g.groupId });
+          expect(error).not.toBeNull();
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'laat een buitenstaander de link niet intrekken',
+        async () => {
+          const { error } = await g.buitenstaander.db.rpc('set_invite_revoked', {
+            p_group_id: g.groupId,
+            p_revoked: true,
+          });
+          expect(error).not.toBeNull();
+        },
+        TEST_TIMEOUT,
+      );
+
+      // De toelating die bij bovenstaande weigeringen hoort: een beheerder kan
+      // het wél, en de oude link werkt daarna niet meer.
+      it(
+        'laat een beheerder de code vernieuwen, waarna de oude link dood is',
+        async () => {
+          const eigen = await createGroup(g.eigenaar, 'Groep om te roteren');
+          const nieuweCode = await g.eigenaar.db.rpc('rotate_invite_code', {
+            p_group_id: eigen.id,
+          });
+
+          expect(nieuweCode.error).toBeNull();
+          expect(nieuweCode.data).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{12}$/);
+          expect(nieuweCode.data).not.toBe(eigen.code);
+
+          const metOude = await g.buitenstaander.db.rpc('join_group_with_code', {
+            code: eigen.code,
+          });
+          expect(uitkomst(metOude.data).ok).toBe(false);
+          expect(uitkomst(metOude.data).reason).toBe('invalid');
+        },
+        TEST_TIMEOUT,
+      );
+    });
+
+    // -----------------------------------------------------------------------
+    // 5.2 — toetreden
+    // -----------------------------------------------------------------------
+
+    describe('toetreden', () => {
+      // ⚠️ Het acceptatiecriterium dat met naam in de issue staat: bij Habit
+      //    Huddle liep hier stil elke uitnodiging dood. Wie al lid is en de link
+      //    nog eens opent, hoort gewoon in de groep te belanden.
+      it(
+        'is voor wie al lid is een succes en geen fout',
+        async () => {
+          const { data, error } = await g.lid.db.rpc('join_group_with_code', { code: g.code });
+
+          expect(error).toBeNull();
+          expect(uitkomst(data).ok).toBe(true);
+          expect(uitkomst(data).group_id).toBe(g.groupId);
+        },
+        TEST_TIMEOUT,
+      );
+
+      // CLAUDE.md beveiligingsregel 5. Twintig pogingen per gebruiker per dag,
+      // waarbij elke póging telt en niet alleen de geslaagde — brute-force
+      // bestaat immers uit mislukte pogingen.
+      //
+      // ⚠️ Deze test vond een echt gat, gedicht in 0017: `raise exception` rolde
+      //    de transactie terug en daarmee de zojuist geschreven `invite_events`-
+      //    rij. Elke mislukte poging liet dus geen spoor na en de teller bleef op
+      //    nul. De limiet gold in de praktijk alleen voor gelúkte toetredingen.
+      //
+      // ⚠️ Eigen weggooigroep, en niet die van de fixture. Zou de eenentwintigste
+      //    poging tóch slagen, dan zit de bruteforcer daarna in de groep en
+      //    telt het overzicht hieronder een lid te veel — een tweede test die
+      //    rood wordt om een reden die er niets mee te maken heeft.
+      it(
+        'weigert na twintig pogingen per dag',
+        async () => {
+          const bruteforcer = await createTestUser('bruteforce');
+          const doelwit = await createGroup(g.eigenaar, 'Groep om op te schieten');
+
+          for (let poging = 0; poging < 20; poging += 1) {
+            await bruteforcer.db.rpc('join_group_with_code', { code: onbekendeCode() });
+          }
+
+          // De eenentwintigste poging gebruikt een geldige code, en juist die
+          // moet stuklopen: de limiet zit op pogingen en niet op mislukkingen.
+          const { data } = await bruteforcer.db.rpc('join_group_with_code', {
+            code: doelwit.code,
+          });
+
+          expect(uitkomst(data).ok).toBe(false);
+          expect(uitkomst(data).reason).toBe('rate_limited');
+
+          const leden = await adminDb()
+            .from('group_members')
+            .select('user_id')
+            .eq('group_id', doelwit.id)
+            .eq('user_id', bruteforcer.id);
+
+          expect(leden.data ?? []).toHaveLength(0);
+        },
+        SETUP_TIMEOUT,
+      );
+    });
+
+    // -----------------------------------------------------------------------
+    // 5.7 — de huddledag
+    // -----------------------------------------------------------------------
+
+    describe('de huddledag', () => {
+      it(
+        'is door een beheerder te wijzigen',
+        async () => {
+          const { error } = await g.eigenaar.db
+            .from('groups')
+            .update({ huddle_day: 4, name: 'Buddygroep' })
+            .eq('id', g.groupId);
+
+          expect(error).toBeNull();
+
+          const { data } = await adminDb()
+            .from('groups')
+            .select('huddle_day')
+            .eq('id', g.groupId)
+            .single();
+
+          expect(data?.huddle_day).toBe(4);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'is door een gewoon lid niet te wijzigen',
+        async () => {
+          await g.lid.db.from('groups').update({ huddle_day: 2 }).eq('id', g.groupId);
+
+          const { data } = await adminDb()
+            .from('groups')
+            .select('huddle_day')
+            .eq('id', g.groupId)
+            .single();
+
+          expect(data?.huddle_day).toBe(4);
+        },
+        TEST_TIMEOUT,
+      );
+    });
+
+    // -----------------------------------------------------------------------
+    // 5.4 — het groepsoverzicht
+    // -----------------------------------------------------------------------
+
+    describe('het groepsoverzicht', () => {
+      /** De periode maakt voor deze tests niet uit; hij moet alleen een datum zijn. */
+      const PERIODE = '2026-08-16';
+
+      it(
+        'geeft een lid alle leden in één aanroep',
+        async () => {
+          const { data, error } = await g.lid.db.rpc('group_overview', {
+            p_group_id: g.groupId,
+            p_period_start: PERIODE,
+          });
+
+          expect(error).toBeNull();
+          expect(data ?? []).toHaveLength(2);
+          expect((data ?? []).map((r) => r.user_id).sort()).toEqual(
+            [g.eigenaar.id, g.lid.id].sort(),
+          );
+        },
+        TEST_TIMEOUT,
+      );
+
+      // ⚠️ De functie is SECURITY INVOKER en voegt dus geen enkel recht toe. Dat
+      //    is geen detail: een definer-versie zou hier stilzwijgend elke groep
+      //    van het hele project openzetten.
+      it(
+        'geeft een buitenstaander niets',
+        async () => {
+          const { data } = await g.buitenstaander.db.rpc('group_overview', {
+            p_group_id: g.groupId,
+            p_period_start: PERIODE,
+          });
+
+          expect(data ?? []).toHaveLength(0);
+        },
+        TEST_TIMEOUT,
+      );
+
+      // ⚠️ Domeinregel 7 en 10, als eigenschap van de projectie. Uit een
+      //    puntentotaal én uit `last_cycle_start` is af te leiden dat iemand een
+      //    week gemist heeft. Ze staan er niet in, en deze test houdt dat zo.
+      it(
+        'bevat geen puntentotaal en geen laatste cyclus',
+        async () => {
+          const { data } = await g.lid.db.rpc('group_overview', {
+            p_group_id: g.groupId,
+            p_period_start: PERIODE,
+          });
+
+          const kolommen = Object.keys((data ?? [])[0] ?? {});
+          expect(kolommen).not.toContain('total_points');
+          expect(kolommen).not.toContain('last_cycle_start');
+          expect(kolommen).toContain('current_streak');
+        },
+        TEST_TIMEOUT,
+      );
+
+      // 5.3: koppelen is de toestemming. Zonder koppeling staat een doel in geen
+      // enkele ledenlijst, ook niet van een groep waar de eigenaar wél in zit.
+      it(
+        'toont alleen het doel dat aan déze groep gekoppeld is',
+        async () => {
+          const { data } = await g.lid.db.rpc('group_overview', {
+            p_group_id: g.groupId,
+            p_period_start: PERIODE,
+          });
+
+          const eigenaarsRij = (data ?? []).find((r) => r.user_id === g.eigenaar.id);
+
+          expect(eigenaarsRij?.goal_id).toBe(g.gekoppeldDoelId);
+          expect(eigenaarsRij?.goal_title).toBe('Gekoppeld doel');
+          expect((data ?? []).map((r) => r.goal_id)).not.toContain(g.losDoelId);
+        },
+        TEST_TIMEOUT,
+      );
+    });
+
+    // -----------------------------------------------------------------------
+    // 5.8 — de gastvrije uitnodigingslink
+    // -----------------------------------------------------------------------
+
+    describe('de uitnodigingspagina zonder account', () => {
+      it(
+        'toont de groep aan iemand die niet ingelogd is',
+        async () => {
+          const { data, error } = await anonDb().rpc('invite_preview', { code: g.code });
+
+          expect(error).toBeNull();
+          expect(data).not.toBeNull();
+
+          const preview = data as unknown as {
+            group_name: string;
+            member_count: number;
+            members: readonly { display_name: string; goal_title: string | null }[];
+          };
+
+          expect(preview.group_name).toBe('Buddygroep');
+          expect(preview.member_count).toBe(2);
+          expect(preview.members.map((m) => m.goal_title)).toContain('Gekoppeld doel');
+        },
+        TEST_TIMEOUT,
+      );
+
+      // ⚠️ Dit is het enige eindpunt van de app dat zonder account bereikbaar is.
+      //    Alles wat "hoe gáát het met je" beantwoordt, hoort binnen de groep te
+      //    blijven — domeinregel 7 en 10.
+      it(
+        'lekt geen reeksen, punten of weekstatus',
+        async () => {
+          const { data } = await anonDb().rpc('invite_preview', { code: g.code });
+          const json = JSON.stringify(data);
+
+          for (const verboden of [
+            'current_streak',
+            'best_streak',
+            'total_points',
+            'points',
+            'status',
+            'invite_code',
+          ]) {
+            expect(json, `preview bevat ${verboden}`).not.toContain(verboden);
+          }
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'geeft niets terug bij een ingetrokken of onbekende code',
+        async () => {
+          const onbekend = await anonDb().rpc('invite_preview', { code: onbekendeCode() });
+          const ingetrokken = await anonDb().rpc('invite_preview', { code: f.revokedCode });
+
+          expect(onbekend.data).toBeNull();
+          expect(ingetrokken.data).toBeNull();
+          expect(onbekend.error).toBeNull();
+          expect(ingetrokken.error).toBeNull();
+        },
+        TEST_TIMEOUT,
+      );
+
+      // Zien is niet meedoen. De preview geeft de groeps-id terug zodat de app
+      // na aanmelden weet waar hij heen moet — maar lidmaatschap loopt nog
+      // steeds uitsluitend via join_group_with_code, en die eist een sessie.
+      it(
+        'geeft geen toegang tot de groep zelf',
+        async () => {
+          const anon = anonDb();
+
+          const leden = await anon.from('group_members').select('*').eq('group_id', g.groupId);
+          const groep = await anon.from('groups').select('*').eq('id', g.groupId);
+
+          expect(leden.data ?? []).toHaveLength(0);
+          expect(groep.data ?? []).toHaveLength(0);
+        },
+        TEST_TIMEOUT,
+      );
+    });
+
+    // -----------------------------------------------------------------------
+    // 5.9 — slapende groepen
+    // -----------------------------------------------------------------------
+
+    describe('slapende groepen', () => {
+      it(
+        'gaat slapen na dertig stille dagen en wordt wakker van één afsluiting',
+        async () => {
+          const admin = adminDb();
+          const stille = await createGroup(g.eigenaar, 'Stille groep');
+
+          // Terug in de tijd. Dit is de enige manier om dertig dagen stilte na te
+          // bootsen zonder dertig dagen te wachten; de systeemclient mag het,
+          // want `last_activity_at` ligt voor de client vast (groups_guard).
+          mustOk(
+            await admin
+              .from('groups')
+              .update({ last_activity_at: '2026-01-01T00:00:00Z' })
+              .eq('id', stille.id),
+            'activiteit terugzetten',
+          );
+
+          mustOk(await admin.rpc('slaap_stille_groepen', { p_dagen: 30 }), 'groepen laten slapen');
+
+          const geslapen = await admin
+            .from('groups')
+            .select('status')
+            .eq('id', stille.id)
+            .single();
+          expect(geslapen.data?.status).toBe('sleeping');
+
+          // Precies één afscheidsbericht, en het noemt niemand bij naam.
+          const berichten = await admin
+            .from('chat_messages')
+            .select('body, type, system_event, sender_id')
+            .eq('group_id', stille.id);
+
+          expect(berichten.data ?? []).toHaveLength(1);
+          expect(berichten.data?.[0]?.system_event).toBe('group_sleeping');
+          expect(berichten.data?.[0]?.sender_id).toBeNull();
+
+          // ⚠️ En het bericht wekt de groep niet. Zou de wek-trigger ook op
+          //    systeemberichten afgaan, dan zou hier `active` staan en sliep er
+          //    nooit iets — een bug die zich voordoet als "werkt niet".
+          expect(geslapen.data?.status).toBe('sleeping');
+
+          // Eén kettingschakel van welk lid dan ook wekt hem.
+          mustOk(
+            await admin.from('chain_links').insert({
+              group_id: stille.id,
+              user_id: g.eigenaar.id,
+              group_period_start: '2026-08-16',
+            }),
+            'kettingschakel leggen',
+          );
+
+          const wakker = await admin.from('groups').select('status').eq('id', stille.id).single();
+          expect(wakker.data?.status).toBe('active');
+        },
+        SETUP_TIMEOUT,
+      );
+    });
   });
 });

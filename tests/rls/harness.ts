@@ -190,9 +190,16 @@ export async function removeTestUsers(): Promise<void> {
 }
 
 /**
- * Een code waarmee je een groep binnenkomt. Willekeurig, zodat parallelle runs
- * elkaar niet in de weg zitten.
+ * Een code die gegarandeerd bij geen enkele groep hoort.
+ *
+ * ⚠️ Tot migratie 0016 gaf deze functie de code waarmee een testgroep werd
+ *    aangemaakt. Dat kan niet meer en dat is de bedoeling: `create_group()`
+ *    verzint de code nu zelf, want een code die de aanroeper kiest, is geen code
+ *    maar een verzoek. Wat ervan over is, is precies wat een negatieve test
+ *    nodig heeft — een code van de juiste vorm die nergens bij hoort.
  */
-export function inviteCode(): string {
-  return `test-${crypto.randomUUID().slice(0, 12)}`;
+export function onbekendeCode(): string {
+  const alfabet = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes, (b) => alfabet[b % alfabet.length]).join('');
 }
