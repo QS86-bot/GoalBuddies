@@ -9,12 +9,24 @@ import { z } from 'zod';
  *    `serverEnv`, dat alleen op de server wordt uitgelezen.
  */
 
+/**
+ * Het publieke adres van de app. Zonder dit kan een uitnodigingslink niet
+ * gedeeld worden, en een uitnodiging die je niet kunt delen is geen uitnodiging.
+ *
+ * ⚠️ Een vaste waarde in de code zou hetzelfde adres in elke omgeving opleveren:
+ *    een link uit een testomgeving zou dan naar productie wijzen. De standaard
+ *    hieronder is het adres uit CLAUDE.md, zodat de app zonder configuratie
+ *    werkt; hij hoort in elke andere omgeving overschreven te worden.
+ */
+const STANDAARD_APP_URL = 'https://goalbuddies.q-projects.tech';
+
 const clientSchema = z.object({
   supabaseUrl: z.url({ error: 'EXPO_PUBLIC_SUPABASE_URL ontbreekt of is geen URL' }),
   supabaseAnonKey: z
     .string()
     .min(1, { error: 'EXPO_PUBLIC_SUPABASE_ANON_KEY ontbreekt' }),
   sentryDsn: z.string().optional(),
+  appUrl: z.url({ error: 'EXPO_PUBLIC_APP_URL is geen URL' }),
 });
 
 export type ClientEnv = z.infer<typeof clientSchema>;
@@ -28,6 +40,7 @@ export function clientEnv(): ClientEnv {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    appUrl: process.env.EXPO_PUBLIC_APP_URL ?? STANDAARD_APP_URL,
   });
 
   if (!parsed.success) {
