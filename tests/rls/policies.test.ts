@@ -11,15 +11,16 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { now, userCycle } from '../../shared/time';
+import { now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
+  anonDb,
   createTestUser,
   inviteCode,
   removeTestUsers,
   rlsTestsConfigured,
   type TestUser,
-} from './rls-harness';
+} from './harness';
 
 /** Een netwerkronde naar Supabase is traag; de opbouw doet er tientallen. */
 const SETUP_TIMEOUT = 120_000;
@@ -44,6 +45,10 @@ interface Fixture {
   privateMoveId: string;
   sharedMoveId: string;
   commitmentId: string;
+  /** Een gewoon chatbericht van bob, in de gedeelde groep. */
+  chatMessageId: string;
+  /** De cyclus waarin de fixture leeft; nodig om ermee te sjoemelen. */
+  cycleStart: string;
 }
 
 let f: Fixture;
@@ -298,10 +303,21 @@ async function buildFixture(): Promise<Fixture> {
     'reeks',
   );
 
+  const chatMessageId = mustId(
+    await bob.db
+      .from('chat_messages')
+      .insert({ group_id: group.id, sender_id: bob.id, body: 'Hoi allemaal' })
+      .select('id')
+      .single(),
+    'chatbericht',
+  );
+
   return {
     alice,
     bob,
     carol,
+    chatMessageId,
+    cycleStart: cycle.startDate,
     groupId: group.id,
     otherGroupId: otherGroup.id,
     revokedCode: revoked.code,
@@ -372,8 +388,18 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
 
+    // ⚠️ Deze test heette eerst "weigert zelfgoedkeuring op de policy", en dat
+    //    was niet waar. Postgres draait `before insert`-triggers vóór de RLS
+    //    `with check`, dus `fill_approval_subject()` gooit als eerste — precies
+    //    zoals in de test hieronder. De clausule `c.user_id <> auth.uid()` in
+    //    `completion_approvals_insert` is vanuit de client niet los te toetsen:
+    //    haal hem weg en deze suite blijft groen.
+    //
+    //    Wat hier wél bewezen wordt is dat de eigenaar er langs geen enkele weg
+    //    doorheen komt. Dat is het gedrag dat telt. Dat de policy ook nog een
+    //    slot is, staat in docs/ENGINEER-REVIEW.md als onbewezen genoteerd.
     it(
-      'weigert zelfgoedkeuring op de policy',
+      'weigert zelfgoedkeuring, hoe de eigenaar het ook probeert',
       async () => {
         const { error } = await f.alice.db.from('completion_approvals').insert({
           completion_id: f.completionId,
@@ -484,7 +510,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     //    De reparatie is migratie 0005 (view op `security_invoker = false`, zodat
     //    de WHERE-regel `shares_group_with_goal()` de autorisatie draagt en de
     //    projectie het lek dichthoudt). Die migratie wacht op akkoord; zie
-    //    docs/Q-TODO.
+    //    docs/Q-TODO.docx.
     //
     //    Zodra 0005 gedraaid is slaat déze regel om: `it.fails` faalt dan zelf,
     //    want de test slaagt. Dat is de bedoeling — het dwingt af dat de
@@ -669,6 +695,417 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           .select('id');
 
         expect(updated.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Rechten binnen een groep — kan een lid meer dan een lid hoort te kunnen?
+  // -------------------------------------------------------------------------
+
+  describe('rechten binnen een groep', () => {
+    /**
+     * Elke test hier krijgt een eigen groep. Zonder dat besmetten ze elkaar:
+     * lukt de rechtenverhoging in de eerste test, dan is de tweede test daarna
+     * geen test meer maar een gevolg.
+     */
+    async function verseGroepMetBob(naam: string): Promise<string> {
+      const groep = await createGroup(f.alice, naam);
+      mustOk(await f.bob.db.rpc('join_group_with_code', { code: groep.code }), `bob in ${naam}`);
+      return groep.id;
+    }
+
+    // ⚠️ BEKEND GAT — `it.fails` betekent: dit hoort te weigeren en doet dat niet.
+    //
+    //    `group_members_update` in 0003_rls.sql heeft geen `with check`. Postgres
+    //    gebruikt dan de `using`-expressie óók als check, en die eist alleen
+    //    `user_id = auth.uid()`. De kolom `role` wordt nergens vastgezet.
+    //
+    //    Gevolg: wie via een geldige uitnodigingscode binnenkomt, maakt zichzelf
+    //    met één update admin. Daarna kan hij via `groups_delete` de hele groep
+    //    met alle geschiedenis wissen, of via `group_members_delete` iedereen
+    //    eruit zetten — de oprichter incluis.
+    //
+    //    Reparatie vraagt een migratie: expliciete `with check` plus een
+    //    `before update`-trigger die `role` en `group_id` terugzet voor
+    //    niet-admins. Zie docs/Q-TODO.docx A4.
+    it.fails(
+      'laat een gewoon lid zichzelf geen admin maken',
+      async () => {
+        const groupId = await verseGroepMetBob('Groep voor rolverhoging');
+
+        await f.bob.db
+          .from('group_members')
+          .update({ role: 'admin' })
+          .eq('group_id', groupId)
+          .eq('user_id', f.bob.id);
+
+        const { data } = await adminDb()
+          .from('group_members')
+          .select('role')
+          .eq('group_id', groupId)
+          .eq('user_id', f.bob.id)
+          .single();
+
+        expect(data?.role).toBe('member');
+      },
+      TEST_TIMEOUT,
+    );
+
+    // Dit pad is wél dicht, en dat is het vermelden waard: dezelfde policy laat
+    // de rol los maar houdt het lidmaatschap vast. Zou dit ook lukken, dan was
+    // `join_group_with_code` — in 0002 beschreven als "enige route naar
+    // lidmaatschap" — omzeild door iedereen die een group-uuid weet.
+    it(
+      'laat een lid zichzelf niet naar een andere groep verplaatsen',
+      async () => {
+        const vanGroep = await verseGroepMetBob('Groep waar bob in zit');
+        const naarGroep = await createGroup(f.alice, 'Groep waar bob niet in hoort');
+
+        await f.bob.db
+          .from('group_members')
+          .update({ group_id: naarGroep.id })
+          .eq('group_id', vanGroep)
+          .eq('user_id', f.bob.id);
+
+        const admin = adminDb();
+
+        const verplaatst = await admin
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', naarGroep.id)
+          .eq('user_id', f.bob.id);
+
+        // ⚠️ Zonder deze tweede controle bewijst de test niets: nul rijen in de
+        //    doelgroep is ook de uitkomst van een update die per ongeluk geen
+        //    enkele rij raakte.
+        const gebleven = await admin
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', vanGroep)
+          .eq('user_id', f.bob.id);
+
+        expect(verplaatst.data ?? []).toHaveLength(0);
+        expect(gebleven.data ?? []).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een gewoon lid de groep niet hernoemen of verwijderen',
+      async () => {
+        const groupId = await verseGroepMetBob('Groep om te hernoemen');
+
+        const hernoemd = await f.bob.db
+          .from('groups')
+          .update({ name: 'Bobs groep' })
+          .eq('id', groupId)
+          .select('id');
+
+        const verwijderd = await f.bob.db
+          .from('groups')
+          .delete()
+          .eq('id', groupId)
+          .select('id');
+
+        expect(hernoemd.data ?? []).toHaveLength(0);
+        expect(verwijderd.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Systeemberichten zijn het vertrouwde kanaal in de groep
+  // -------------------------------------------------------------------------
+
+  describe('chat', () => {
+    // ⚠️ BEKEND GAT — `it.fails`: dit hoort te weigeren en doet dat niet.
+    //
+    //    `chat_messages_insert` blokkeert `type = 'system'`. `chat_messages_update`
+    //    doet dat niet. Een lid plaatst dus een gewoon bericht en werkt het
+    //    daarna bij naar een systeembericht.
+    //
+    //    Dit is de ergste van de zeven. Systeemberichten zijn in dit product het
+    //    kanaal dat mensen vertrouwen, en dit is de directe route om domeinregel
+    //    7 van buitenaf te breken: "Alice heeft haar week gemist", ondertekend
+    //    door de app zelf. Zie docs/Q-TODO.docx A5.
+    it.fails(
+      'laat een lid zijn eigen bericht niet omtoveren tot systeembericht',
+      async () => {
+        await f.bob.db
+          .from('chat_messages')
+          .update({ type: 'system', system_event: 'week_missed' })
+          .eq('id', f.chatMessageId);
+
+        const { data } = await adminDb()
+          .from('chat_messages')
+          .select('type')
+          .eq('id', f.chatMessageId)
+          .single();
+
+        expect(data?.type).toBe('text');
+      },
+      TEST_TIMEOUT,
+    );
+
+    // ⚠️ BEKEND GAT — dezelfde `chat_messages_update`, tweede pad: de `with
+    //    check` mist `is_group_member(group_id)`, dus een bericht is naar een
+    //    willekeurige andere groep te verplaatsen. Zie docs/Q-TODO.docx A5.
+    it.fails(
+      'laat een lid zijn bericht niet naar een andere groep verplaatsen',
+      async () => {
+        await f.bob.db
+          .from('chat_messages')
+          .update({ group_id: f.otherGroupId })
+          .eq('id', f.chatMessageId);
+
+        const { data } = await adminDb()
+          .from('chat_messages')
+          .select('group_id')
+          .eq('id', f.chatMessageId)
+          .single();
+
+        expect(data?.group_id).toBe(f.groupId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt de chat dicht voor wie geen lid is',
+      async () => {
+        const count = await rowCount(
+          f.carol.db.from('chat_messages').select('id').eq('group_id', f.groupId),
+        );
+        expect(count).toBe(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // "Systeem" in de policy-matrix betekent: alleen service_role
+  // -------------------------------------------------------------------------
+
+  describe('systeemtabellen', () => {
+    // ⚠️ Deze tabellen hebben alleen een SELECT-policy. Schrijven wordt
+    //    tegengehouden door default deny — RLS is daar het enige slot, want
+    //    Supabase geeft `authenticated` standaard tabel-grants op `public`.
+    //    Voegt iemand later één `for all`-policy toe (dat is in 0003 al vier
+    //    keer gedaan), dan boekt een gebruiker zichzelf onbeperkt punten.
+    //    Dit is de goedkoopste test in het bestand.
+
+    it(
+      'laat een gebruiker zichzelf geen punten boeken',
+      async () => {
+        const { error } = await f.bob.db.from('points_ledger').insert({
+          user_id: f.bob.id,
+          delta: 9999,
+          reason: 'completion_approved_ceiling',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een gebruiker zijn eigen reeks niet ophogen',
+      async () => {
+        const { error } = await f.bob.db
+          .from('user_streaks')
+          .insert({ user_id: f.bob.id, goal_id: f.sharedGoalId, current_streak: 52 });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een gebruiker zichzelf geen weekpassen geven',
+      async () => {
+        const { error } = await f.bob.db.from('week_pass_events').insert({
+          user_id: f.bob.id,
+          goal_id: f.sharedGoalId,
+          event: 'granted',
+          cycle_start_date: f.cycleStart,
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een gebruiker geen kettingschakel verzinnen',
+      async () => {
+        const { error } = await f.bob.db.from('chain_links').insert({
+          group_id: f.groupId,
+          user_id: f.bob.id,
+          group_period_start: f.cycleStart,
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een gebruiker geen AI-job aanmaken buiten de Edge Function om',
+      async () => {
+        // Anders is de quota- en kostenbewaking (CLAUDE.md, regel 6) een
+        // suggestie: de client schrijft dan zelf de rij die het geld kost.
+        const { error } = await f.bob.db.from('ai_jobs').insert({
+          user_id: f.bob.id,
+          kind: 'milestones',
+          input: {},
+          input_hash: 'verzonnen',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt invite_events volledig dicht — ook voor lezen',
+      async () => {
+        const count = await rowCount(f.bob.db.from('invite_events').select('id'));
+        expect(count).toBe(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // De uitgelogde bezoeker
+  // -------------------------------------------------------------------------
+
+  describe('zonder inloggen', () => {
+    it(
+      'ziet niets, in geen enkele tabel',
+      async () => {
+        const anon = anonDb();
+
+        const tabellen = [
+          'profiles',
+          'goals',
+          'groups',
+          'group_members',
+          'weekly_goals',
+          'completions',
+          'chat_messages',
+          'daily_moves',
+          'points_ledger',
+          'commitments',
+        ] as const;
+
+        for (const tabel of tabellen) {
+          const { data } = await anon.from(tabel).select('*').limit(1);
+          expect(data ?? [], `${tabel} lekt aan anon`).toHaveLength(0);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'kan geen groep binnenkomen met een geldige code',
+      async () => {
+        const { error } = await anonDb().rpc('join_group_with_code', {
+          code: 'maakt-niet-uit',
+        });
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Waarden die de client kiest maar niet mag kiezen
+  // -------------------------------------------------------------------------
+
+  describe('client-gekozen waarden', () => {
+    it(
+      'staat geen tweede stem van dezelfde goedkeurder toe',
+      async () => {
+        // CLAUDE.md, correctheidsregel 9: dubbele goedkeuring is onmogelijk.
+        // Bob heeft al goedgekeurd in het eerste blok van deze suite.
+        const { error } = await f.bob.db.from('completion_approvals').insert({
+          completion_id: f.completionId,
+          approver_id: f.bob.id,
+          subject_id: f.alice.id,
+          group_id: f.groupId,
+          status: 'more_info',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    // ⚠️ BEKEND GAT — `commitments_insert` controleert alleen doeleigenaarschap,
+    //    niet `status` en niet of je lid bent van `beneficiary_group_id`.
+    //    Zie docs/Q-TODO.docx A6.
+    it.fails(
+      'laat een straf niet meteen als verschuldigd aanmaken',
+      async () => {
+        // Domeinregel 11: een straf treedt alleen in werking bij een verstreken
+        // deadline. Kan de client `status` kiezen, dan krijgt een willekeurige
+        // groep direct leesrecht op de tekst van het commitment.
+        const { error } = await f.alice.db.from('commitments').insert({
+          goal_id: f.sharedGoalId,
+          type: 'penalty',
+          body: 'Direct verschuldigd',
+          beneficiary_group_id: f.otherGroupId,
+          status: 'due',
+          confirmed_at: now().toISOString(),
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    // ⚠️ BEKEND GAT — `daily_moves_write` checkt alleen `user_id = auth.uid()`,
+    //    niet van wie `weekly_goal_id` is. Zie docs/Q-TODO.docx A6.
+    it.fails(
+      'laat geen dagzet onder andermans weekdoel hangen',
+      async () => {
+        // Anders kan iemand tekst in de doeldraad van een ander plaatsen — en
+        // met domeinregel 7 in het achterhoofd is dat precies het mechanisme om
+        // een groepsgenoot publiek af te vallen.
+        const { error } = await f.bob.db.from('daily_moves').insert({
+          user_id: f.bob.id,
+          weekly_goal_id: f.weeklyGoalId,
+          body: 'Alice doet niks',
+          visibility: 'group',
+          local_date: f.cycleStart,
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    // ⚠️ BEKEND GAT — `points_ceiling`, `points_floor` en `points_miss` zijn
+    //    volledig client-bestuurd; de enige constraints zijn `ceiling >= floor`
+    //    en `miss <= 0`. Zonder bovengrens is de score betekenisloos.
+    //    Zie docs/Q-TODO.docx A6.
+    it.fails(
+      'laat geen absurd puntenplafond op een weekdoel zetten',
+      async () => {
+        // Domeinregel 10 legt het model vast op +2/+1/−1. Is points_ceiling vrij
+        // te kiezen, dan is de score betekenisloos.
+        const { error } = await f.alice.db.from('weekly_goals').insert({
+          goal_id: f.sharedGoalId,
+          title: 'Gratis punten',
+          points_ceiling: 100_000,
+          cycle_start_date: f.cycleStart,
+          cycle_index: 2,
+        });
+
+        expect(error).not.toBeNull();
       },
       TEST_TIMEOUT,
     );

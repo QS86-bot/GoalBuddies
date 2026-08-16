@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     // Integratietests praten met een echte Supabase-instantie en mogen elkaar
     // niet in de weg zitten; unit-tests zijn puur en mogen parallel.
     sequence: { concurrent: false },
