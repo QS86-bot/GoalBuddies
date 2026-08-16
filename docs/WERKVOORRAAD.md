@@ -93,6 +93,31 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
+#### Wat er van de afgeronde epics nog los ligt
+
+Klein, maar het staat nergens anders opgeschreven:
+
+| Wat | Waar | Waarom blijven liggen |
+|---|---|---|
+| Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
+| Avatar uploaden | QS8-27 | Er is geen Storage-bucket en geen `storage.objects`-policy |
+| Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
+| Een voltooiing corrigeren | QS8-46 | `completions` heeft bewust geen UPDATE-policy; `superseded_by` zetten hoort een Edge Function te doen. De app geeft nu een eerlijke melding |
+| Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
+
+⚠️ **De rollover draait nog niet vanzelf.** `supabase/functions/rollover` is
+gedeployd en werkt, maar er staat geen planning op. Tot die er is, gebeurt er bij
+een cyclusovergang niets: geen minpunten, geen `missed`, geen reeksbreuk. Aanroepen
+kan met:
+
+```bash
+curl -X POST "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/rollover" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+```
+
+Inplannen gaat via Supabase Cron in het dashboard, of via `pg_cron` + `pg_net`.
+Dat laatste vraagt de service-role-key in de database (Vault), en dat is een
+beslissing die niet stilzwijgend genomen moet worden.
+
 ### Milestone: Live op goalbuddies.q-projects.tech
 
 QS8-99 (subdomein) en QS8-100 (deploy). Kan zodra er iets zinnigs te tonen is —
@@ -116,6 +141,16 @@ label `phase:v2` of `phase:v3`.
 | QS8-24 | Sentry | deels: de rand en de PII-scrubbing staan, Sentry zelf niet |
 | QS8-22 | Migratie-workflow | deels: dumpscript en docs staan, lokale stack niet |
 
+⚠️ **Besluit 16-08: de lokale stack komt later.** Docker vraagt WSL2 en
+beheerdersrechten, en die had de sessie niet. Quinten heeft besloten dat elke
+migratie voorlopig direct op het echte project mag, omdat er geen gebruikers
+komen voordat alle fases geprogrammeerd zijn.
+
+**Het moment waarop dat omslaat is scherp:** de eerste echte gebruiker die zich
+aanmeldt. Vanaf dan geen migratie meer zonder repetitie en zonder dump. Tot die
+tijd blijft elke migratie idempotent met een rollback-pad in de kop — dat is de
+enige bescherming die er nu is.
+
 ⚠️ **Wat er nog niet is en waar je last van gaat krijgen.** Er is nog steeds geen
 lokale Supabase-stack: Docker vraagt WSL2 en beheerdersrechten, en die had de
 sessie niet. Alle migraties zijn dus rechtstreeks op het echte project gedraaid.
@@ -132,9 +167,15 @@ Deze dingen kan een sessie niet zelf oplossen.
 | `SUPABASE_SERVICE_ROLE_KEY` | Alleen uit het Supabase-dashboard | ingevuld |
 | `SUPABASE_DB_URL` | Bevat het databasewachtwoord | ingevuld |
 | `ANTHROPIC_API_KEY` | Nodig vanaf EPIC 3 (Doelcoach) | leeg |
-| PostgreSQL client tools | `pg_dump` vóór elke migratie op gevulde data | te controleren |
-| Supabase CLI-login | Voor `npm run types:db` en een lokale stack | niet gedaan |
-| GitHub-connector | Voor PR's vanuit een sessie. `gh` staat niet op de machine | niet gedaan |
+| PostgreSQL client tools | `pg_dump` vóór elke migratie op gevulde data | **niet geïnstalleerd** — vraagt beheerdersrechten |
+| Docker + WSL2 | Voor een lokale Supabase-stack. Bewust uitgesteld, zie §5 | uitgesteld tot vóór de eerste echte gebruiker |
+| Supabase CLI | Voor `db reset`, `db diff` en de lokale stack | ✅ werkt via `npx supabase` (v2.114), installatie niet nodig |
+| GitHub-connector | Voor PR's vanuit een sessie. `gh` staat niet op de machine | niet gedaan — branches worden lokaal naar `main` gemerged |
+| Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan |
+| Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
+| Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
+| Storage-bucket | Voor avatars en later bijlagen. Geen bucket én geen `storage.objects`-policy | niet gedaan |
+| Rollover inplannen | De Edge Function werkt maar wordt door niets aangeroepen. Zie §4 | niet gedaan |
 
 ---
 
@@ -157,8 +198,12 @@ Deze dingen kan een sessie niet zelf oplossen.
    eigenaar. De groep ziet De Ketting en mijlpalen. Een dalend puntentotaal is
    zichtbaar bewijs van een gemiste week.
 
-5. **Migraties.** Nooit op remote draaien zodra er data in staat. `pg_dump`
-   vooraf. De gratis tier heeft geen automatische backups.
+5. **Migraties.** Draaien voorlopig direct op het echte project — besluit van
+   16-08, want er komen geen gebruikers voordat alle fases af zijn. **Zodra er
+   één echte gebruiker is, geldt de oude regel weer:** nooit op remote zonder
+   `pg_dump` vooraf en zonder repetitie op een lokale stack. De gratis tier heeft
+   geen automatische backups. Houd tot die tijd elke migratie idempotent, met een
+   rollback-pad in de kop van het bestand — dat is nu de enige bescherming.
 
 6. **Geen Vercel-specifieke API's.** We draaien op Hostinger als statische host.
 
