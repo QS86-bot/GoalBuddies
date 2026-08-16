@@ -57,9 +57,20 @@ interface OpenWeekdoel {
   goals: { owner_id: string } | null;
 }
 
-/** De rol uit een JWT, zonder de handtekening te controleren — dat deed het platform al. */
+/**
+ * De rol uit een JWT, zonder de handtekening te controleren — dat deed het
+ * platform al.
+ *
+ * ⚠️ `\s` en niet `s`. In de repo stond `/^Bearers+/i`: de backslash was
+ *    weggevallen bij een meerregelige zoek-en-vervang, precies de valkuil die in
+ *    docs/WERKVOORRAAD.md §7 staat. Dat patroon matcht "Bearerssss" en dus nooit
+ *    een echte header, waarna deze functie altijd 403 geeft. Het is nooit
+ *    opgevallen omdat de gedéployde versie wél goed was; de repo en het platform
+ *    waren uit elkaar gelopen. Bij de eerstvolgende deploy vanuit de repo was de
+ *    rollover stilgevallen.
+ */
 function rolUit(authHeader: string): string {
-  const token = authHeader.replace(/^Bearers+/i, '');
+  const token = authHeader.replace(/^Bearer\s+/i, '');
   const stukken = token.split('.');
   if (stukken.length !== 3) return '';
 
@@ -85,7 +96,7 @@ Deno.serve(async (req: Request) => {
 
   const db = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearers+/i, ''),
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
     { auth: { persistSession: false } },
   );
 
@@ -163,8 +174,31 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Slapende groepen — QS8-60.
+  //
+  // ⚠️ Hangt hier en niet in een eigen job, om één reden: dit is de enige
+  //    terugkerende taak die er is. Een tweede job zou een tweede planning
+  //    vragen, en er staat nog geen enkele planning (Q-TODO A11). Zolang de
+  //    rollover niet draait, slaapt er ook niets in.
+  //
+  //    Geen cyclusrekenwerk: dertig dagen sinds de laatste activiteit is een
+  //    leeftijd en geen week, dus dit mag in SQL staan (correctheidsregel 7).
+  const { data: geslapen, error: slaapFout } = await db.rpc('slaap_stille_groepen', {
+    p_dagen: 30,
+  });
+
+  if (slaapFout) {
+    console.error(`slapende groepen bijwerken mislukte: ${slaapFout.message}`);
+  }
+
   return new Response(
-    JSON.stringify({ ok: true, gemist, vrijgesteld, profielen: (profielen ?? []).length }),
+    JSON.stringify({
+      ok: true,
+      gemist,
+      vrijgesteld,
+      profielen: (profielen ?? []).length,
+      geslapen: geslapen ?? 0,
+    }),
     { headers: { 'Content-Type': 'application/json' } },
   );
 });

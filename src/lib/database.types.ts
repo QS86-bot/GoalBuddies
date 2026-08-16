@@ -840,7 +840,6 @@ export type Database = {
       }
       group_visible_streaks: {
         Row: {
-          best_streak: number | null
           current_streak: number | null
           goal_id: string | null
           user_id: string | null
@@ -850,39 +849,50 @@ export type Database = {
     }
     Functions: {
       create_group: {
+        Args: { group_name: string; huddle_day?: number; tz?: string }
+        Returns: Json
+      }
+      generate_invite_code: { Args: never; Returns: string }
+      group_overview: {
         Args: {
-          group_name: string
-          huddle_day?: number
-          invite_code: string
-          tz?: string
+          p_group_id: string
+          p_limit?: number
+          p_offset?: number
+          p_period_start: string
         }
         Returns: {
-          approval_rule: string
-          created_at: string
-          created_by: string
-          evidence_policy: string
-          huddle_day: number
-          icon: string | null
-          id: string
-          invite_code: string
-          invite_revoked: boolean
-          last_activity_at: string
-          name: string
-          season_cadence: string
-          status: string
-          tz: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "groups"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+          avatar_url: string
+          closed_this_period: boolean
+          current_streak: number
+          display_name: string
+          goal_id: string
+          goal_target_date: string
+          goal_title: string
+          joined_at: string
+          member_status: string
+          milestones_done: number
+          milestones_total: number
+          role: string
+          total_members: number
+          user_id: string
+        }[]
       }
+      herbereken_reeks: {
+        Args: { p_goal_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      invite_preview: { Args: { code: string }; Returns: Json }
+      is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
-      join_group_with_code: { Args: { code: string }; Returns: string }
+      join_group_with_code: { Args: { code: string }; Returns: Json }
+      rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
+      set_invite_revoked: {
+        Args: { p_group_id: string; p_revoked: boolean }
+        Returns: Json
+      }
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
+      slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
     }
     Enums: {
       [_ in never]: never

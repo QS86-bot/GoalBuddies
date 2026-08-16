@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 16-08-2026 (late avond)
+**Laatst bijgewerkt:** 16-08-2026 (late avond, na EPIC 5)
 
 ---
 
@@ -29,10 +29,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 23 tabellen, 48 RLS-policies. Migraties
-`0001` t/m `0012` staan in `supabase/migrations/` en zijn toegepast. Het
-datamodel is vastgesteld in `docs/decisions/001-datamodel.md`; dat document is
-leidend, niet de losse SQL.
+**Database — af, en nu ook getest.** 23 tabellen. Migraties `0001` t/m `0020`
+staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
+in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -40,19 +39,42 @@ maken, en elk groepslid kon een vals systeembericht plaatsen. De rode draad: RLS
 kan geen kolommen beperken — overal waar de eis is "deze kolom mag je niet
 veranderen" is een trigger nodig. Zie `docs/ENGINEER-REVIEW.md`.
 
-**Code — de app staat, zonder features.**
-- Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
-- `src/shared/time` — de twee klokken plus `now()`, 25 tests
-- `src/shared/theme` — navy-stelsel, drie themastanden, 27 tests
-- `src/shared/ui` — 15 componenten, met de domeinregels erin gebakken
-- `src/modules/auth` — sessie, profiel, Zod-schema's, 14 tests
-- `tests/rls` — 35 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (134 tests)
-- `npm run build` rendert 16 routes statisch
+⚠️ **De reviewronde van EPIC 5 vond het zwaarste gat tot nu toe.**
+`weekly_goals_select` gaf elke groepsgenoot de héle rij van een gekoppeld doel,
+inclusief de kolom `status` — en die kan letterlijk `'missed'` zijn. Eén `GET`
+op `/rest/v1/weekly_goals` leverde de volledige lijst gemiste weken van een
+ander op, met datum. Het beslisdocument belooft dat dat niet kan "ook niet door
+slim te bevragen"; er was geen slimheid voor nodig. **De schermen deden het
+goed, de database niet** — en EPIC 5 bouwt precies de knop die het bereikbaar
+maakt. Gedicht in 0019 en 0020; `best_streak` ging in dezelfde ronde mee, want
+`best_streak > current_streak` verraadt een verbroken reeks.
 
-**Wat werkt in de app:** aanmelden met e-mail, de onboarding (uitleg, profiel,
-week-startdag, herinneringen, buddy-rol), de vier tabbladen met lege staten, de
-themakeuze, en drie diepe links. Verder nog niets — geen doelen, geen groepen.
+⚠️ **EPIC 5 vond er nog een, en dat is de leerzaamste tot nu toe.** De rate
+limiting op uitnodigingscodes werkte helemaal niet. `join_group_with_code`
+schreef eerst een rij in `invite_events` en zocht daarna pas de code op, juist om
+mislukte pogingen te tellen — maar PostgREST draait elke RPC in zijn eigen
+transactie, en een `raise exception` rolt die terug inclusief de zojuist
+geschreven poging. De teller bleef dus op nul. Gedicht in 0017 door een resultaat
+terug te geven in plaats van te gooien. **De regel die eruit volgt: in een
+SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
+
+**Code — de app staat, met doelen, weekdoelen en groepen.**
+- Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
+- `src/shared/time` — de twee klokken plus `now()`
+- `src/shared/theme` — navy-stelsel, drie themastanden
+- `src/shared/ui` — 15 componenten, met de domeinregels erin gebakken
+- `src/modules/auth` — sessie, profiel, Zod-schema's
+- `src/modules/goals` — doelen, weekdoelen, cyclus
+- `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
+- `tests/rls` — 63 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (210 tests)
+- `npm run build` rendert 20 routes statisch
+
+**Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
+bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
+groepskant — een groep aanmaken met deelbare link, toetreden met een code, het
+groepsoverzicht, je doel aan een groep koppelen, de huddledag instellen en de
+gastvrije uitnodigingspagina die ook zonder account werkt.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
@@ -82,8 +104,8 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth en avatar-upload |
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
-| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | **hier verder** |
-| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | open |
+| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
+| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | **hier verder** |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | open |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | open |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
@@ -104,6 +126,9 @@ Klein, maar het staat nergens anders opgeschreven:
 | Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
 | Een voltooiing corrigeren | QS8-46 | `completions` heeft bewust geen UPDATE-policy; `superseded_by` zetten hoort een Edge Function te doen. De app geeft nu een eerlijke melding |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
+| Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
+| Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
+| Rollover opnieuw deployen | Q-TODO A13 | De functie roept nu ook `slaap_stille_groepen()` aan, en in de repo stond een kapotte regex. Deployen vraagt een access token dat een sessie niet heeft |
 
 ⚠️ **De rollover draait nog niet vanzelf.** `supabase/functions/rollover` is
 gedeployd en werkt, maar er staat geen planning op. Tot die er is, gebeurt er bij
@@ -176,6 +201,8 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
 | Storage-bucket | Voor avatars en later bijlagen. Geen bucket én geen `storage.objects`-policy | niet gedaan |
 | Rollover inplannen | De Edge Function werkt maar wordt door niets aangeroepen. Zie §4 | niet gedaan |
+| Rollover opnieuw deployen | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex. `supabase functions deploy rollover` vraagt een access token | niet gedaan — Q-TODO A13 |
+| `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |
 
 ---
 
@@ -210,6 +237,32 @@ Deze dingen kan een sessie niet zelf oplossen.
 7. **Meer dan 15 bestanden in één keer** is volgens `CLAUDE.md` een moment om te
    overleggen, niet om door te pakken.
 
+8. **In een `SECURITY DEFINER`-RPC overleeft niets een `raise exception`.**
+   PostgREST draait elke RPC in zijn eigen transactie; gooien rolt die terug,
+   inclusief alles wat je net wilde onthouden. Bouw je een rate limiter, een
+   auditregel of een blokkade, zet die dan in de happy path en geef een resultaat
+   terug in plaats van een exception. Dat is precies waar de uitnodigingslimiet
+   op stukliep (migratie 0017), en het is niet te zien zonder een test die het
+   uitprobeert.
+
+9. **Domeinregel 7 is pas afgedwongen als de dátabase hem afdwingt.** De
+   schermen van EPIC 5 waren zorgvuldig: geen gemiste weken, geen puntentotaal,
+   een leeg vakje in plaats van een grijs kruisje. En toch stond de hele lijst
+   gemiste weken van elk groepslid open via één API-verzoek, omdat
+   `weekly_goals_select` de statuskolom meegaf. Bij élke nieuwe policy die
+   groepsgenoten iets laat lezen: welke kolommen zitten er in die rij, en zegt
+   een daarvan iets over falen? RLS kan geen kolommen beperken — dat betekent
+   dat je de rij moet beperken, of een view met een expliciete kolomlijst moet
+   bouwen zoals `group_visible_streaks`.
+
+10. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
+   dag twee keer gevonden, allebei bij toeval: een migratie die wel op het
+   project stond maar niet in de map, en een Edge Function waarvan de repo-versie
+   een kapotte regex had terwijl de gedeployde versie klopte. Zolang migraties
+   via een MCP-tool gaan in plaats van via `supabase db push`, is
+   `supabase/migrations/` een verslag en geen bron. Vergelijk bij twijfel de
+   migratielijst van het project met de bestanden in de map.
+
 ---
 
 ## 8. Openstaande onzekerheden
@@ -218,8 +271,26 @@ Staan in `docs/ENGINEER-REVIEW.md`, met datum, risico en uitleg. Dat bestand is
 de agenda voor de engineer-review in november. **Vul het aan tijdens het bouwen**,
 niet achteraf — een onzekerheid die je nu niet opschrijft, ben je in november kwijt.
 
-De zwaarste twee op dit moment: de RLS-testdekking (§5) en de
-`SECURITY DEFINER`-hulpfuncties die RLS omzeilen.
+De zwaarste op dit moment, alle vier uit de reviewronde van EPIC 5:
+
+1. **`goals.risk_status` en `risk_reason` lekken nog steeds** naar groepsgenoten,
+   op precies dezelfde manier als `weekly_goals.status` dat deed. Vandaag niet
+   misbruikbaar (de Risico-radar bestaat niet en alles staat op `on_track`), maar
+   het moet dicht vóór EPIC 12 begint — en dat vraagt een architectuurwijziging
+   aan `goals_select`, geen reparatie.
+2. **`inactive` ontneemt niets.** Een uitgezet lid leest de groep, de chat en de
+   uitnodigingscode gewoon door, want `is_group_member()` kijkt alleen of de rij
+   bestaat.
+3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
+   groepen, rate limiting of domeinregel 7.
+4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.10).
+
+**Twee productbeslissingen liggen bij Quinten en staan in `docs/Q-TODO.docx`:**
+mag de groep je reeks zien (A15 — een reeks die naar nul valt is net zo goed
+bewijs van een gemiste week als een dalend puntentotaal), en mag een
+uitnodigingslink de doeltitels van je leden tonen aan iedereen die hem heeft
+(A16). Allebei gebouwd zoals de issue het vraagt; allebei een keuze die anders
+kan uitvallen.
 
 ---
 
