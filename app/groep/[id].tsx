@@ -2,14 +2,18 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { clientEnv } from '@/lib/env';
 import { useSession } from '@/modules/auth';
 import {
   fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepsoverzicht,
+  fetchMijnLidmaatschap,
   huddledagLabel,
   huidigeGroepsperiode,
   koppelDoelAanGroep,
+  ontkoppelDoelVanGroep,
+  uitnodigingsLink,
   type Groep,
   type Groepslid,
   type Pagina,
@@ -22,6 +26,7 @@ import {
   Button,
   Caption,
   Card,
+  Deelknop,
   MemberRow,
   MilestoneProgress,
   Screen,
@@ -34,12 +39,13 @@ import {
  * ⚠️ Dit is het scherm waar domeinregel 7 het scherpst geldt: alles wat hier
  *    staat, gaat over iemand ánders. Wat er staat is daarom uitsluitend wat er
  *    wél is: het gekoppelde doel, mijlpaalvoortgang (loopt alleen omhoog), de
- *    reeks (opdagen) en of iemand deze periode al afgesloten heeft.
+ *    reeks en of iemand deze periode al afgesloten heeft.
  *
  *    Wat er níét staat, staat er met opzet niet: geen puntentotaal, geen gemiste
- *    weken, geen "loopt achter", geen geschiedenis van eerdere perioden. De
- *    databasefunctie geeft die kolommen niet eens terug (migratie 0016), en er
- *    staat een test op die dat vasthoudt.
+ *    weken, geen beste reeks (want `best_streak > current_streak` verraadt een
+ *    verbroken reeks), geen "loopt achter", geen geschiedenis van eerdere
+ *    perioden. De databasefunctie geeft die kolommen niet eens terug (migratie
+ *    0016 en 0019), en er staat een test op die dat vasthoudt.
  *
  * ⚠️ Alleen de lópende periode. Binnen een periode betekent "nog niet
  *    afgesloten" precies dat en niets meer; zou dit scherm ook oude perioden
@@ -54,21 +60,19 @@ export default function GroepDetail() {
   const router = useRouter();
   const { userId } = useSession();
 
-  const [groep, setGroep] = useState<Groep | null>(null);
-  const [pagina, setPagina] = useState<Pagina<Groepslid> | null>(null);
+  const [stand, setStand] = useState<Stand | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !userId) return;
     let levend = true;
 
-    laadGroep(id)
+    laadGroep(id, userId)
       .then((uitkomst) => {
         if (!levend) return;
-        setGroep(uitkomst.groep);
-        setPagina(uitkomst.overzicht);
+        setStand(uitkomst);
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -81,34 +85,22 @@ export default function GroepDetail() {
     return () => {
       levend = false;
     };
-  }, [id, ronde]);
+  }, [id, userId, ronde]);
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
-  const ikBenBeheerder =
-    pagina?.rijen.some((lid) => lid.user_id === userId && lid.role === 'admin') ?? false;
-  const ikHebGekoppeld =
-    pagina?.rijen.some((lid) => lid.user_id === userId && lid.goal_id !== null) ?? false;
-
   return (
     <Screen
-      title={groep?.name ?? 'Groep'}
-      eyebrow={groep ? `HUDDLEDAG ${huddledagLabel(groep.huddle_day).toUpperCase()}` : undefined}
+      title={stand?.groep?.name ?? 'Groep'}
+      eyebrow={
+        stand?.groep ? `HUDDLEDAG ${huddledagLabel(stand.groep.huddle_day).toUpperCase()}` : undefined
+      }
     >
-      {groep?.status === 'sleeping' ? (
-        <Card nested>
-          <Body muted>
-            Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn
-            gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.
-          </Body>
-        </Card>
-      ) : null}
-
       <AsyncView
         loading={loading}
         error={error}
-        data={pagina ?? undefined}
-        isEmpty={(p) => p.rijen.length === 0}
+        data={stand ?? undefined}
+        isEmpty={(s) => s.overzicht.rijen.length === 0}
         onRetry={herlaad}
         empty={{
           title: 'Deze groep is er niet, of niet voor jou',
@@ -117,21 +109,30 @@ export default function GroepDetail() {
             'nieuwe uitnodigingslink als je erbij hoort.',
         }}
       >
-        {(p) => (
+        {(s) => (
           <View style={styles.lijst}>
+            {s.groep?.status === 'sleeping' ? (
+              <Card nested>
+                <Body muted>
+                  Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn
+                  gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.
+                </Body>
+              </Card>
+            ) : null}
+
             <Card>
               <Subheading>Wie er meedoen</Subheading>
               {/*
                 ⚠️ "Nog niets deze week" is geen oordeel en de rij zegt dat ook
-                   niet: MemberRow laat gewoon een leeg vak zien in plaats van
-                   een grijs kruisje.
+                   niet: MemberRow laat een leeg vak zien in plaats van een grijs
+                   kruisje.
               */}
               <Caption>
                 Het bolletje betekent: deze week al afgesloten. Geen bolletje betekent nog
                 niet, meer niet.
               </Caption>
 
-              {p.rijen.map((lid) => (
+              {s.overzicht.rijen.map((lid) => (
                 <MemberRow
                   key={lid.user_id}
                   name={lid.display_name}
@@ -140,29 +141,50 @@ export default function GroepDetail() {
                 />
               ))}
 
-              {p.meer ? (
+              {s.overzicht.meer ? (
                 <Caption>
-                  {p.rijen.length} van {p.totaal} leden.
+                  {s.overzicht.rijen.length} van {s.overzicht.totaal} leden.
                 </Caption>
               ) : null}
             </Card>
 
-            {p.rijen
+            {s.groep === null ? null : (
+              <Card>
+                <Subheading>Iemand uitnodigen</Subheading>
+                <Body muted>
+                  Wie deze link opent, ziet de groep en hoeveel mensen erin zitten — ook
+                  zonder account. Deel hem alleen met mensen die je erbij wilt.
+                </Body>
+                <Deelknop
+                  label="Deel de uitnodiging"
+                  titel={`Doe mee met ${s.groep.name}`}
+                  tekst={uitnodigingsLink(clientEnv().appUrl, s.groep.invite_code)}
+                />
+              </Card>
+            )}
+
+            {s.overzicht.rijen
               .filter((lid) => lid.goal_id !== null)
               .map((lid) => (
-                <DoelKaart key={lid.user_id} lid={lid} />
+                <DoelKaart
+                  key={lid.user_id}
+                  lid={lid}
+                  vanMij={lid.user_id === userId}
+                  groupId={id ?? ''}
+                  onGewijzigd={herlaad}
+                />
               ))}
+
+            <KoppelDoel groupId={id ?? ''} onGekoppeld={herlaad} />
+
+            {s.beheerder ? (
+              <Button variant="secundair" block onPress={() => router.push(`/groep/beheer/${id}`)}>
+                Groep beheren
+              </Button>
+            ) : null}
           </View>
         )}
       </AsyncView>
-
-      {!ikHebGekoppeld && id ? <KoppelDoel groupId={id} onGekoppeld={herlaad} /> : null}
-
-      {ikBenBeheerder && id ? (
-        <Button variant="secundair" block onPress={() => router.push(`/groep/beheer/${id}`)}>
-          Groep beheren
-        </Button>
-      ) : null}
 
       <Button variant="stil" block onPress={() => router.replace('/groep')}>
         Naar mijn groepen
@@ -172,7 +194,36 @@ export default function GroepDetail() {
 }
 
 /** Het doel van één lid, zoals de groep het mag zien. */
-function DoelKaart({ lid }: { readonly lid: Groepslid }) {
+function DoelKaart({
+  lid,
+  vanMij,
+  groupId,
+  onGewijzigd,
+}: {
+  readonly lid: Groepslid;
+  readonly vanMij: boolean;
+  readonly groupId: string;
+  readonly onGewijzigd: () => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function ontkoppel() {
+    if (lid.goal_id === null) return;
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await ontkoppelDoelVanGroep(lid.goal_id, groupId);
+    setBezig(false);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    onGewijzigd();
+  }
+
   return (
     <Card nested>
       <Subheading>{lid.display_name}</Subheading>
@@ -189,6 +240,21 @@ function DoelKaart({ lid }: { readonly lid: Groepslid }) {
       {lid.goal_target_date === null ? null : (
         <Caption>Streefdatum {lid.goal_target_date}</Caption>
       )}
+
+      {/*
+        ⚠️ Alleen op je eigen kaart, en hij moet er zijn. De hele module leunt op
+           "koppelen is de toestemming"; een toestemming die je niet kunt
+           intrekken is er geen. Ontkoppelen wist niets — het stopt alleen de
+           zichtbaarheid in déze groep.
+      */}
+      {vanMij ? (
+        <>
+          <Button variant="stil" busy={bezig} onPress={() => void ontkoppel()}>
+            Niet meer delen met deze groep
+          </Button>
+          {fout === null ? null : <Caption danger>{fout}</Caption>}
+        </>
+      ) : null}
     </Card>
   );
 }
@@ -199,6 +265,11 @@ function DoelKaart({ lid }: { readonly lid: Groepslid }) {
  * ⚠️ Koppelen is de toestemming, en daarom een aparte handeling. Tot dit gebeurt
  *    staat je doel in geen enkele ledenlijst, ook niet van een groep waar je wél
  *    in zit. Hetzelfde doel kan in groep A staan en in groep B niet.
+ *
+ * ⚠️ Ook dit blok heeft alle drie de staten. Een eerdere versie slikte een
+ *    laadfout in en gaf dan hetzelfde beeld als "je hebt geen doelen": niets. Dat
+ *    is een stille storing met een zichtbaar gevolg — je kunt je doel niet delen
+ *    en je weet niet waarom.
  */
 function KoppelDoel({
   groupId,
@@ -207,24 +278,30 @@ function KoppelDoel({
   readonly groupId: string;
   readonly onGekoppeld: () => void;
 }) {
+  const router = useRouter();
   const { userId } = useSession();
-  const [doelen, setDoelen] = useState<readonly DoelMetVoortgang[]>([]);
+
+  const [doelen, setDoelen] = useState<readonly DoelMetVoortgang[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || groupId === '') return;
     let levend = true;
 
     Promise.all([fetchDoelen(userId), fetchGekoppeldeDoelIds(groupId)])
       .then(([mijn, gekoppeld]) => {
         if (!levend) return;
         setDoelen(mijn.rijen.filter((doel) => !gekoppeld.includes(doel.id)));
+        setError(null);
       })
-      .catch(() => {
-        // Stil: dit blok is een aanbod en geen kernfunctie. Lukt het laden niet,
-        // dan hoort het overzicht erboven gewoon te blijven staan.
-        if (levend) setDoelen([]);
+      .catch((f: unknown) => {
+        if (levend) setError(f);
+      })
+      .finally(() => {
+        if (levend) setLoading(false);
       });
 
     return () => {
@@ -247,53 +324,86 @@ function KoppelDoel({
     onGekoppeld();
   }
 
-  if (doelen.length === 0) return null;
-
   return (
     <Card>
       <Subheading>Je doel delen met deze groep</Subheading>
       <Body muted>
         Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de
-        titel en je mijlpaalvoortgang — niet je notities en niet je punten.
+        titel en je mijlpaalvoortgang — niet je notities, niet je weken en niet je punten.
+        Je kunt het altijd weer ongedaan maken.
       </Body>
 
-      {doelen.map((doel) => (
-        <Button
-          key={doel.id}
-          variant="secundair"
-          block
-          busy={bezig === doel.id}
-          onPress={() => void koppel(doel.id)}
-        >
-          {doel.title}
+      <AsyncView
+        loading={loading}
+        error={error}
+        data={doelen ?? undefined}
+        isEmpty={(d) => d.length === 0}
+        empty={{
+          title: 'Je hebt nog geen doel om te delen',
+          body:
+            'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep ' +
+            'koppelen.',
+        }}
+      >
+        {(lijst) => (
+          <>
+            {lijst.map((doel) => (
+              <Button
+                key={doel.id}
+                variant="secundair"
+                block
+                busy={bezig === doel.id}
+                onPress={() => void koppel(doel.id)}
+              >
+                {doel.title}
+              </Button>
+            ))}
+          </>
+        )}
+      </AsyncView>
+
+      {doelen !== null && doelen.length === 0 ? (
+        <Button variant="secundair" block onPress={() => router.push('/doel/nieuw')}>
+          Nieuw doel
         </Button>
-      ))}
+      ) : null}
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
 }
 
+interface Stand {
+  readonly groep: Groep | null;
+  readonly overzicht: Pagina<Groepslid>;
+  readonly beheerder: boolean;
+}
+
 /**
- * De groep plus zijn overzicht.
+ * De groep, zijn overzicht en je eigen rol.
  *
  * ⚠️ De groepsperiode wordt hier bepaald met `huidigeGroepsperiode()` uit
  *    `shared/time`, en niet in SQL. De database kent de huddledag en de tijdzone
  *    wel, maar mag er niet mee rekenen (CLAUDE.md, correctheidsregel 7).
+ *
+ * ⚠️ Het beheerderschap komt uit `fetchMijnLidmaatschap()` en niet uit een regel
+ *    van het overzicht. Dat scheelt geen verzoek, maar het koppelt een
+ *    autorisatie-afgeleide niet aan de vraag of je toevallig op pagina één staat.
  */
-async function laadGroep(
-  groupId: string,
-): Promise<{ groep: Groep | null; overzicht: Pagina<Groepslid> }> {
+async function laadGroep(groupId: string, userId: string): Promise<Stand> {
   const groep = await fetchGroep(groupId);
 
   if (groep === null) {
-    return { groep: null, overzicht: { rijen: [], totaal: 0, meer: false } };
+    return { groep: null, overzicht: { rijen: [], totaal: 0, meer: false }, beheerder: false };
   }
 
   const periode = huidigeGroepsperiode(groep);
-  const overzicht = await fetchGroepsoverzicht(groupId, periode);
+  const [overzicht, lidmaatschap] = await Promise.all([
+    fetchGroepsoverzicht(groupId, periode),
+    fetchMijnLidmaatschap(groupId, userId),
+  ]);
 
-  return { groep, overzicht };
+  return { groep, overzicht, beheerder: lidmaatschap?.role === 'admin' };
 }
 
 const styles = StyleSheet.create({

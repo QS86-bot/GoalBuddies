@@ -45,9 +45,10 @@ export default function NieuweGroep() {
       <Card>
         <Field
           label="Hoe heet je groep?"
-          hint="Iets dat jullie herkennen in een WhatsApp-bericht."
+          hint="Twee tot zestig tekens. Iets dat jullie herkennen in een WhatsApp-bericht."
           value={naam}
           onChangeText={setNaam}
+          maxLength={60}
           placeholder="De donderdagclub"
         />
       </Card>

@@ -1,8 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 
+import { clientEnv } from '@/lib/env';
+import { useSession } from '@/modules/auth';
 import {
   fetchGroep,
+  fetchMijnLidmaatschap,
   HUDDLEDAGEN,
   toonCode,
   uitnodigingsLink,
@@ -11,7 +14,6 @@ import {
   zetUitnodigingIngetrokken,
   type Groep,
 } from '@/modules/buddies';
-import { clientEnv } from '@/lib/env';
 import type { Weekday } from '@/shared/time';
 import {
   AsyncView,
@@ -20,6 +22,7 @@ import {
   Caption,
   Card,
   Choice,
+  Deelknop,
   Field,
   Screen,
   Subheading,
@@ -41,8 +44,10 @@ import {
 export default function GroepBeheer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { userId } = useSession();
 
   const [groep, setGroep] = useState<Groep | null>(null);
+  const [beheerder, setBeheerder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -53,13 +58,14 @@ export default function GroepBeheer() {
   const [fout, setFout] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !userId) return;
     let levend = true;
 
-    fetchGroep(id)
-      .then((gevonden) => {
+    Promise.all([fetchGroep(id), fetchMijnLidmaatschap(id, userId)])
+      .then(([gevonden, lidmaatschap]) => {
         if (!levend) return;
         setGroep(gevonden);
+        setBeheerder(lidmaatschap?.role === 'admin');
         setNaam(gevonden?.name ?? '');
         setHuddledag(((gevonden?.huddle_day ?? 0) % 7) as Weekday);
         setError(null);
@@ -74,7 +80,7 @@ export default function GroepBeheer() {
     return () => {
       levend = false;
     };
-  }, [id]);
+  }, [id, userId]);
 
   async function slaOp() {
     if (!id) return;
@@ -142,92 +148,118 @@ export default function GroepBeheer() {
           body: 'Je bent geen lid van deze groep, of hij bestaat niet meer.',
         }}
       >
-        {(g) => (
-          <>
+        {(g) =>
+          /*
+            ⚠️ Een gewoon lid krijgt geen formulier te zien dat de server daarna
+               weigert. De database is en blijft de bescherming — dat is
+               beveiligingsregel 2 — maar een scherm dat je drie keer laat falen
+               voordat het zegt dat je er niets te zoeken hebt, is een slecht
+               scherm.
+          */
+          !beheerder ? (
             <Card>
-              <Field
-                label="Naam van de groep"
-                value={naam}
-                onChangeText={setNaam}
-                placeholder="De donderdagclub"
-              />
-
-              <Choice
-                label="Huddledag"
-                hint={
-                  'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen ' +
-                  'weekdoelen resetten — dat blijft je persoonlijke week-startdag.'
-                }
-                opties={HUDDLEDAGEN.map((d) => ({ waarde: d.waarde, label: d.label }))}
-                waarde={huddledag}
-                onKies={setHuddledag}
-              />
-
-              <Caption>
-                Wijzigen breekt geen lopende ketting: een schakel draagt de week waarin hij
-                gelegd is, en die wordt nooit herberekend.
-              </Caption>
-
-              <Button
-                variant="primair"
-                block
-                busy={bezig === 'opslaan'}
-                onPress={() => void slaOp()}
-              >
-                Opslaan
-              </Button>
-            </Card>
-
-            <Card>
-              <Subheading>Uitnodigingslink</Subheading>
+              <Subheading>Alleen een beheerder kan deze groep instellen</Subheading>
               <Body muted>
-                Wie deze link opent ziet de groep en waar jullie aan werken, ook zonder
-                account. Deel hem alleen met mensen die je erbij wilt.
+                Je bent lid van deze groep, maar geen beheerder. Vraag degene die de groep
+                heeft aangemaakt om de naam, de huddledag of de uitnodigingslink te
+                wijzigen.
               </Body>
-
-              <Field
-                label="Link"
-                value={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
-                editable={false}
-                selectTextOnFocus
-                multiline
-              />
-              <Caption>Of de code alleen: {toonCode(g.invite_code)}</Caption>
-
-              {g.invite_revoked ? (
-                <Caption danger>
-                  De link is gesloten. Niemand kan er op dit moment mee binnenkomen.
-                </Caption>
-              ) : null}
-
-              <Button
-                variant="secundair"
-                block
-                busy={bezig === 'vernieuwen'}
-                onPress={() => void vernieuw()}
-              >
-                Nieuwe link maken
-              </Button>
-              <Button
-                variant="stil"
-                block
-                busy={bezig === 'sluiten'}
-                onPress={() => void zetGesloten(!g.invite_revoked)}
-              >
-                {g.invite_revoked ? 'Link weer openzetten' : 'Link sluiten'}
-              </Button>
-
-              <Caption>
-                Sluiten laat de code bestaan maar weigert iedereen. Een nieuwe link maken
-                vervangt de code, en dan is de oude definitief dood — dat is wat je doet als
-                een link ergens is beland waar hij niet hoorde.
-              </Caption>
             </Card>
+          ) : (
+            <>
+              <Card>
+                <Field
+                  label="Naam van de groep"
+                  value={naam}
+                  onChangeText={setNaam}
+                  maxLength={60}
+                  placeholder="De donderdagclub"
+                />
 
-            {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
-            {fout === null ? null : <Caption danger>{fout}</Caption>}
-          </>
-        )}
+                <Choice
+                  label="Huddledag"
+                  hint={
+                    'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen ' +
+                    'weekdoelen resetten — dat blijft je persoonlijke week-startdag.'
+                  }
+                  opties={HUDDLEDAGEN.map((d) => ({ waarde: d.waarde, label: d.label }))}
+                  waarde={huddledag}
+                  onKies={setHuddledag}
+                />
+
+                <Caption>
+                  Wijzigen breekt geen lopende ketting: een schakel draagt de week waarin hij
+                  gelegd is, en die wordt nooit herberekend.
+                </Caption>
+
+                <Button
+                  variant="primair"
+                  block
+                  busy={bezig === 'opslaan'}
+                  onPress={() => void slaOp()}
+                >
+                  Opslaan
+                </Button>
+              </Card>
+
+              <Card>
+                <Subheading>Uitnodigingslink</Subheading>
+                <Body muted>
+                  Wie deze link opent, ziet de groep en hoeveel mensen erin zitten — ook
+                  zonder account. Wat jullie aan doelen delen, ziet iemand pas na het
+                  meedoen. Deel de link toch alleen met mensen die je erbij wilt.
+                </Body>
+
+                <Deelknop
+                  label="Deel de uitnodiging"
+                  titel={`Doe mee met ${g.name}`}
+                  tekst={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
+                />
+
+                <Field
+                  label="Of kopieer hem met de hand"
+                  value={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
+                  editable={false}
+                  selectTextOnFocus
+                  multiline
+                />
+                <Caption>Voorlezen kan ook: {toonCode(g.invite_code)}</Caption>
+
+                {g.invite_revoked ? (
+                  <Caption danger>
+                    De link is gesloten. Niemand kan er op dit moment mee binnenkomen.
+                  </Caption>
+                ) : null}
+
+                <Button
+                  variant="secundair"
+                  block
+                  busy={bezig === 'vernieuwen'}
+                  onPress={() => void vernieuw()}
+                >
+                  Nieuwe link maken
+                </Button>
+                <Button
+                  variant="stil"
+                  block
+                  busy={bezig === 'sluiten'}
+                  onPress={() => void zetGesloten(!g.invite_revoked)}
+                >
+                  {g.invite_revoked ? 'Link weer openzetten' : 'Link sluiten'}
+                </Button>
+
+                <Caption>
+                  Sluiten laat de code bestaan maar weigert iedereen. Een nieuwe link maken
+                  vervangt de code, en dan is de oude definitief dood — dat is wat je doet als
+                  een link ergens is beland waar hij niet hoorde.
+                </Caption>
+              </Card>
+
+              {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
+              {fout === null ? null : <Caption danger>{fout}</Caption>}
+            </>
+          )
+        }
       </AsyncView>
 
       <Button variant="stil" block onPress={() => router.back()}>

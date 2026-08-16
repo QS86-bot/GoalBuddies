@@ -17,6 +17,7 @@ export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { Choice, type Optie } from './Choice';
+export { Deelknop } from './Deelknop';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
 export { FloorCeiling } from './FloorCeiling';

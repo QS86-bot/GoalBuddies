@@ -1,4 +1,4 @@
-import type { Tables, TablesUpdate } from '../../lib/database.types';
+import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import type { Cycle } from '../../shared/time';
@@ -6,6 +6,7 @@ import type { Cycle } from '../../shared/time';
 import {
   codeSchema,
   groepPatchSchema,
+  groepSchema,
   normaliseerCode,
   type GroepInvoer,
   type GroepPatch,
@@ -14,7 +15,7 @@ import {
 /**
  * Buddy-groepen — EPIC 5.
  *
- * ⚠️ Drie dingen die hier niet gebeuren, en waar de reden bij hoort:
+ * ⚠️ Vier dingen die hier niet gebeuren, en waar de reden bij hoort:
  *
  *    1. **Er wordt nergens een uitnodigingscode bedacht.** Die komt uit
  *       `create_group()` of `rotate_invite_code()`. Een code die de client kiest,
@@ -28,6 +29,12 @@ import {
  *    3. **Er wordt nergens op lidmaatschap gefilterd om iets te verbergen.** Dat
  *       doen de policies. Een `.eq('user_id', ...)` erbij zou suggereren dat de
  *       beveiliging hier zit, en dat is precies het misverstand dat je niet wilt.
+ *
+ *    4. **Er komt nooit servertekst op het scherm.** De RPC's geven sinds 0017 en
+ *       0018 een kort kenmerk terug (`rate_limited`, `not_admin`) en de zin
+ *       hoort thuis in dit bestand. Een eerdere versie liet "leesbare"
+ *       servermeldingen door en dat lekte Postgres-jargon en tabelnamen —
+ *       precies wat `shared/ui/AsyncView.tsx` verbiedt.
  */
 
 export type Groep = Tables<'groups'>;
@@ -45,6 +52,55 @@ export interface Pagina<T> {
 }
 
 // ---------------------------------------------------------------------------
+// Uitkomsten van de RPC's
+// ---------------------------------------------------------------------------
+
+/**
+ * De RPC's geven `{ ok, reason }` terug in plaats van een exception te gooien.
+ *
+ * ⚠️ Dat is geen stijlkeuze. Een `raise exception` in een SECURITY DEFINER-RPC
+ *    rolt de transactie terug, inclusief alles wat je net wilde onthouden — zo
+ *    telde de limiet op uitnodigingspogingen jarenlang niets (migratie 0017).
+ */
+interface RpcUitkomst {
+  readonly ok?: boolean;
+  readonly reason?: string;
+  readonly group?: Groep;
+  readonly group_id?: string;
+  readonly invite_code?: string;
+  readonly invite_revoked?: boolean;
+}
+
+const MELDINGEN: Readonly<Record<string, string>> = {
+  // join_group_with_code
+  rate_limited:
+    'Je hebt vandaag te vaak een uitnodiging geprobeerd. Over 24 uur kan het weer — ' +
+    'vraag je buddy intussen om de link nog eens te sturen.',
+  invalid:
+    'Deze uitnodigingslink werkt niet meer. Hij is ingetrokken of hij klopt niet; ' +
+    'vraag je buddy om een nieuwe.',
+  group_full: 'Deze groep zit vol. Drie tot vijf mensen werkt het best, dus dat is geen ramp.',
+  too_many_groups: 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
+
+  // create_group
+  name_too_short: 'Geef je groep een naam van minstens twee tekens.',
+  name_too_long: 'Die naam is te lang. Maximaal 60 tekens.',
+  bad_huddle_day: 'Kies een dag van de week voor de huddle.',
+  daily_limit: 'Je hebt vandaag al tien groepen aangemaakt. Morgen kan het weer.',
+
+  // rotate_invite_code en set_invite_revoked
+  not_admin: 'Alleen een beheerder van deze groep kan dit doen.',
+};
+
+function melding(reason: string | undefined, terugval: string): string {
+  return MELDINGEN[reason ?? ''] ?? terugval;
+}
+
+function uitkomstVan(data: unknown): RpcUitkomst {
+  return (data ?? {}) as RpcUitkomst;
+}
+
+// ---------------------------------------------------------------------------
 // Lezen
 // ---------------------------------------------------------------------------
 
@@ -53,24 +109,28 @@ export interface Pagina<T> {
  *
  * ⚠️ Geen filter op `user_id` nodig: `groups_select` laat uitsluitend groepen
  *    door waar je lid van bent.
+ *
+ * ⚠️ Een expliciete kolomlijst en geen `select('*')`. Het lijstscherm heeft de
+ *    uitnodigingscode niet nodig, en een code die je niet ophaalt kan niet in een
+ *    cache of een schermafbeelding belanden.
  */
 export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
   const { data, error } = await supabase()
     .from('groups')
-    .select('*')
+    .select('id, name, icon, huddle_day, tz, status, created_at, created_by')
     .order('created_at', { ascending: true })
     .limit(50);
 
   if (error) {
-    reportError(error, 'groups.mine', { code: error.code });
+    reportError(error, 'groups.mine', { pgcode: error.code });
     throw new Error('Je groepen konden niet geladen worden.');
   }
 
-  return data ?? [];
+  return (data ?? []) as unknown as Groep[];
 }
 
 /**
- * Eén groep.
+ * Eén groep, met de uitnodigingscode erbij.
  *
  * ⚠️ Een niet-lid krijgt hier `null`, precies zoals bij een groep die niet
  *    bestaat. Dat onderscheid hoort niet te bestaan: anders is dit een orakel
@@ -84,14 +144,21 @@ export async function fetchGroep(groupId: string): Promise<Groep | null> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'groups.get', { group_id: groupId, code: error.code });
+    reportError(error, 'groups.get', { group_id: groupId, pgcode: error.code });
     throw new Error('Deze groep kon niet geladen worden.');
   }
 
   return data;
 }
 
-/** Eén lid, om te weten of jij beheerder bent zonder de hele lijst op te halen. */
+/**
+ * Het lidmaatschap van één gebruiker in één groep.
+ *
+ * ⚠️ Hiermee en niet met een regel uit het overzicht wordt bepaald of je
+ *    beheerder bent. Dat lijkt omslachtig — de rol staat ook in
+ *    `group_overview` — maar dan hangt een autorisatie-afgeleide aan de vraag of
+ *    je toevallig op pagina één staat.
+ */
 export async function fetchMijnLidmaatschap(
   groupId: string,
   userId: string,
@@ -104,7 +171,7 @@ export async function fetchMijnLidmaatschap(
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'groups.membership', { group_id: groupId, code: error.code });
+    reportError(error, 'groups.membership', { group_id: groupId, pgcode: error.code });
     throw new Error('Je lidmaatschap kon niet geladen worden.');
   }
 
@@ -115,9 +182,10 @@ export async function fetchMijnLidmaatschap(
  * Eén regel van het groepsoverzicht — QS8-55.
  *
  * ⚠️ Wat hier niet in staat, staat er met opzet niet in: geen puntentotaal, geen
- *    gemiste weken, geen weekstatus, geen `last_cycle_start`. Uit alle vier is
- *    af te leiden dat iemand een week gemist heeft, en dat is domeinregel 7. Wat
- *    er wél staat, staat er omdat het een positief signaal is.
+ *    gemiste weken, geen weekstatus, geen `last_cycle_start` en sinds migratie
+ *    0019 ook geen `best_streak` — want `best_streak > current_streak` is
+ *    sluitend bewijs dat iemand een reeks verbroken heeft. Wat er wél staat,
+ *    staat er omdat het een positief signaal is.
  *
  * ⚠️ `closed_this_period` is aanwezigheid en geen prestatie: De Ketting telt
  *    opdagen. Binnen de lopende periode betekent `false` niets anders dan "nog
@@ -135,44 +203,40 @@ export interface Groepslid {
   readonly milestones_total: number;
   readonly milestones_done: number;
   readonly current_streak: number | null;
-  readonly best_streak: number | null;
   readonly closed_this_period: boolean;
 }
 
 /**
- * De rij zoals de RPC hem teruggeeft. Kolommen van een set-returning functie zijn
- * in de gegenereerde types niet nullable, terwijl de left joins ze wel degelijk
- * leeg kunnen laten. Zelfde patroon als `naarDoel()` in de doelenmodule: één
- * omzetfunctie, geen cast, en een melding als een rij niet klopt.
+ * De rij zoals de RPC hem teruggeeft.
+ *
+ * ⚠️ Afgeleid van het gegenereerde type en niet met de hand overgetypt. Dat is
+ *    het hele punt van dit patroon: hernoemt iemand een kolom in
+ *    `group_overview()`, dan breekt de build hier en niet pas op een scherm.
+ *    De nullability klopt in de generator níét — kolommen van een
+ *    set-returning functie komen er nooit als nullable uit, terwijl de left joins
+ *    ze wel degelijk leeg kunnen laten — dus die wordt hier toegevoegd.
  */
-interface OverzichtRij {
-  readonly user_id: string | null;
-  readonly display_name: string | null;
-  readonly avatar_url: string | null;
-  readonly role: string | null;
-  readonly member_status: string | null;
-  readonly goal_id: string | null;
-  readonly goal_title: string | null;
-  readonly goal_target_date: string | null;
-  readonly milestones_total: number | null;
-  readonly milestones_done: number | null;
-  readonly current_streak: number | null;
-  readonly best_streak: number | null;
-  readonly closed_this_period: boolean | null;
-  readonly total_members: number | null;
-}
+type RpcOverzichtRij = Database['public']['Functions']['group_overview']['Returns'][number];
+type OverzichtRij = { readonly [K in keyof RpcOverzichtRij]: RpcOverzichtRij[K] | null };
 
+/**
+ * Zet een rij om, of geeft `null` als hij niet bruikbaar is.
+ *
+ * ⚠️ De controle staat op `user_id`. `display_name` staat er bewust níét bij:
+ *    `profiles.display_name` is NOT NULL en de functie doet een inner join, dus
+ *    die controle zou nooit afgaan — een vangnet onder een plek waar niemand
+ *    valt. Wat wél leeg kan zijn (`goal_id`, `goal_title`, `current_streak`) komt
+ *    uit left joins en is een geldige uitkomst, geen fout.
+ */
 function naarGroepslid(rij: OverzichtRij): Groepslid | null {
-  if (rij.user_id === null || rij.display_name === null) {
-    reportError(new Error('Onvolledige rij uit group_overview'), 'groups.parse', {
-      user_id: rij.user_id ?? 'geen',
-    });
+  if (typeof rij.user_id !== 'string') {
+    reportError(new Error('Rij uit group_overview zonder user_id'), 'groups.parse');
     return null;
   }
 
   return {
     user_id: rij.user_id,
-    display_name: rij.display_name,
+    display_name: rij.display_name ?? 'Onbekend lid',
     avatar_url: rij.avatar_url,
     role: rij.role ?? 'member',
     member_status: rij.member_status ?? 'active',
@@ -182,7 +246,6 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
     milestones_total: rij.milestones_total ?? 0,
     milestones_done: rij.milestones_done ?? 0,
     current_streak: rij.current_streak,
-    best_streak: rij.best_streak,
     closed_this_period: rij.closed_this_period ?? false,
   };
 }
@@ -193,7 +256,8 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
  * ⚠️ De klassieke N+1 van dit project. Eén RPC levert lid, gekoppeld doel,
  *    mijlpaalvoortgang, reeks én of deze periode al afgesloten is. Per lid
  *    opnieuw bevragen is hier de valkuil die het beslisdocument met naam noemt,
- *    en er staat een test op met tien leden.
+ *    en er staat een test op met twaalf leden die telt hoeveel verzoeken het
+ *    kost.
  */
 export async function fetchGroepsoverzicht(
   groupId: string,
@@ -211,15 +275,18 @@ export async function fetchGroepsoverzicht(
   });
 
   if (error) {
-    reportError(error, 'groups.overview', { group_id: groupId, code: error.code });
+    reportError(error, 'groups.overview', { group_id: groupId, pgcode: error.code });
     throw new Error('Het groepsoverzicht kon niet geladen worden.');
   }
 
-  const rijen = ((data ?? []) as unknown as OverzichtRij[])
-    .map(naarGroepslid)
-    .filter((lid): lid is Groepslid => lid !== null);
+  const ruw = (data ?? []) as readonly OverzichtRij[];
+  const rijen = ruw.map(naarGroepslid).filter((lid): lid is Groepslid => lid !== null);
 
-  const totaal = ((data ?? []) as unknown as OverzichtRij[])[0]?.total_members ?? rijen.length;
+  // ⚠️ Onbruikbare rijen gaan óók van het totaal af. Zonder die aftrek blijft
+  //    `meer` op waar staan en toont de UI voor altijd "11 van 12" zonder dat er
+  //    een twaalfde te laden valt.
+  const overgeslagen = ruw.length - rijen.length;
+  const totaal = Math.max(0, (ruw[0]?.total_members ?? rijen.length) - overgeslagen);
 
   return { rijen, totaal, meer: van + rijen.length < totaal };
 }
@@ -237,26 +304,42 @@ export async function fetchGroepsoverzicht(
  *    De policy `groups_insert` staat sinds migratie 0016 dan ook op `false`.
  */
 export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> {
+  // Wél valideren, net als `wijzigGroep`. De server is de waarheid en weigert dit
+  // ook, maar een lege naam hoort niet eerst een netwerkronde te kosten.
+  const gevalideerd = groepSchema.safeParse(invoer);
+  if (!gevalideerd.success) {
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+  }
+
   const { data, error } = await supabase().rpc('create_group', {
-    group_name: invoer.name,
-    huddle_day: invoer.huddle_day,
+    group_name: gevalideerd.data.name,
+    huddle_day: gevalideerd.data.huddle_day,
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 
   if (error) {
-    reportError(error, 'groups.create', { code: error.code });
-    return { ok: false, melding: serverMelding(error.message, 'Je groep kon niet worden aangemaakt.') };
+    reportError(error, 'groups.create', { pgcode: error.code });
+    return { ok: false, melding: 'Je groep kon niet worden aangemaakt. Probeer het opnieuw.' };
   }
 
-  return { ok: true, waarde: data as unknown as Groep };
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true || uitkomst.group === undefined) {
+    return {
+      ok: false,
+      melding: melding(uitkomst.reason, 'Je groep kon niet worden aangemaakt.'),
+    };
+  }
+
+  return { ok: true, waarde: uitkomst.group };
 }
 
 /**
  * Werkt de instellingen van een groep bij — QS8-58 voor de huddledag.
  *
  * ⚠️ Alleen een beheerder komt hier doorheen (`groups_update`), en zelfs een
- *    beheerder raakt de uitnodigingscode niet: de trigger `groups_guard` zet die
- *    terug. Wie de link wil vervangen, gebruikt `vernieuwUitnodiging()`.
+ *    beheerder raakt de uitnodigingscode niet: sinds 0019 heeft `authenticated`
+ *    geen UPDATE-recht op die kolom, en de trigger `groups_guard` zet hem
+ *    bovendien terug. Wie de link wil vervangen, gebruikt `vernieuwUitnodiging()`.
  *
  * ⚠️ De huddledag wijzigen breekt geen lopende ketting: een `chain_links`-rij
  *    draagt de `group_period_start` waarmee hij gelegd is, en niets herberekent
@@ -283,7 +366,7 @@ export async function wijzigGroep(
     .single();
 
   if (error) {
-    reportError(error, 'groups.update', { group_id: groupId, code: error.code });
+    reportError(error, 'groups.update', { group_id: groupId, pgcode: error.code });
     return { ok: false, melding: 'Opslaan lukte niet. Alleen een beheerder kan dit wijzigen.' };
   }
 
@@ -295,11 +378,16 @@ export async function vernieuwUitnodiging(groupId: string): Promise<Resultaat<st
   const { data, error } = await supabase().rpc('rotate_invite_code', { p_group_id: groupId });
 
   if (error) {
-    reportError(error, 'groups.rotate', { group_id: groupId, code: error.code });
-    return { ok: false, melding: serverMelding(error.message, 'De link vernieuwen lukte niet.') };
+    reportError(error, 'groups.rotate', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: 'De link vernieuwen lukte niet. Probeer het opnieuw.' };
   }
 
-  return { ok: true, waarde: data };
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true || typeof uitkomst.invite_code !== 'string') {
+    return { ok: false, melding: melding(uitkomst.reason, 'De link vernieuwen lukte niet.') };
+  }
+
+  return { ok: true, waarde: uitkomst.invite_code };
 }
 
 /** Sluit of heropent de uitnodigingslink zonder de code te vervangen — QS8-52. */
@@ -313,36 +401,16 @@ export async function zetUitnodigingIngetrokken(
   });
 
   if (error) {
-    reportError(error, 'groups.revoke', { group_id: groupId, code: error.code });
-    return { ok: false, melding: serverMelding(error.message, 'Dat lukte niet.') };
+    reportError(error, 'groups.revoke', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: 'Dat lukte niet. Probeer het opnieuw.' };
   }
 
-  return { ok: true, waarde: data };
-}
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, 'Dat lukte niet.') };
+  }
 
-/**
- * De uitkomsten die `join_group_with_code` teruggeeft (migratie 0017).
- *
- * ⚠️ Dit zijn géén exceptions, en dat is de hele reden dat ze bestaan. Een
- *    `raise exception` in een RPC rolt de transactie terug, inclusief de rij in
- *    `invite_events` die de poging moest tellen — en dan telt een mislukte
- *    poging niet mee, precies het geval waarvoor de limiet er is.
- */
-const DEELNAME_MELDING: Readonly<Record<string, string>> = {
-  rate_limited:
-    'Je hebt vandaag te vaak een uitnodiging geprobeerd. Morgen kan het weer — ' +
-    'vraag je buddy intussen om de link nog eens te sturen.',
-  invalid:
-    'Deze uitnodigingslink werkt niet meer. Hij is ingetrokken of hij klopt niet; ' +
-    'vraag je buddy om een nieuwe.',
-  group_full: 'Deze groep zit vol. Drie tot vijf mensen werkt het best, dus dat is geen ramp.',
-  too_many_groups: 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
-};
-
-interface DeelnameUitkomst {
-  readonly ok: boolean;
-  readonly reason?: string;
-  readonly group_id?: string;
+  return { ok: true, waarde: uitkomst.invite_revoked ?? ingetrokken };
 }
 
 /**
@@ -367,21 +435,15 @@ export async function neemDeel(code: string): Promise<Resultaat<string>> {
   });
 
   if (error) {
-    reportError(error, 'groups.join', { code: error.code });
-    return {
-      ok: false,
-      melding: 'Deelnemen lukte niet. Probeer het zo nog eens.',
-    };
+    reportError(error, 'groups.join', { pgcode: error.code });
+    return { ok: false, melding: 'Deelnemen lukte niet. Probeer het zo nog eens.' };
   }
 
-  const uitkomst = data as unknown as DeelnameUitkomst | null;
-
-  if (!uitkomst?.ok || typeof uitkomst.group_id !== 'string') {
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true || typeof uitkomst.group_id !== 'string') {
     return {
       ok: false,
-      melding:
-        DEELNAME_MELDING[uitkomst?.reason ?? ''] ??
-        'Deelnemen lukte niet. Vraag je buddy om een nieuwe link.',
+      melding: melding(uitkomst.reason, 'Deelnemen lukte niet. Vraag je buddy om een nieuwe link.'),
     };
   }
 
@@ -404,6 +466,8 @@ export interface Uitnodiging {
   readonly icon: string | null;
   readonly huddle_day: number;
   readonly member_count: number;
+  /** Ziet deze bezoeker het volledige beeld? Alleen waar als hij ingelogd is. */
+  readonly detailed: boolean;
   readonly members: readonly UitnodigingLid[];
 }
 
@@ -411,9 +475,13 @@ export interface Uitnodiging {
  * De groep achter een uitnodigingslink, zónder account — QS8-59.
  *
  * ⚠️ Dit is het enige eindpunt van de app dat zonder in te loggen bereikbaar is.
- *    Wat eruit komt is precies wat de RPC teruggeeft: naam, aantal leden en de
- *    doelen die expliciet aan déze groep gekoppeld zijn. Geen notities, geen
- *    chat, geen bewijs, geen reeksen, geen punten.
+ *    Wie niet ingelogd is, krijgt sinds migratie 0019 minder te zien: de naam van
+ *    de groep, het aantal leden, de huddledag en voornamen. Volledige namen,
+ *    avatars en doeltitels zijn voor wie een account heeft.
+ *
+ *    De reden: koppelen is toestemming voor de gróép, niet voor iedereen aan wie
+ *    de link ooit wordt doorgestuurd — en een link is nu juist bedoeld om door te
+ *    sturen.
  *
  * ⚠️ `null` betekent: ingetrokken, verlopen of nooit bestaan. Die drie geven met
  *    opzet hetzelfde antwoord.
@@ -425,7 +493,7 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
   const { data, error } = await supabase().rpc('invite_preview', { code: schoon });
 
   if (error) {
-    reportError(error, 'groups.preview', { code: error.code });
+    reportError(error, 'groups.preview', { pgcode: error.code });
     throw new Error('Deze uitnodiging kon niet geladen worden.');
   }
 
@@ -453,7 +521,7 @@ export async function koppelDoelAanGroep(
     .upsert({ goal_id: goalId, group_id: groupId }, { onConflict: 'goal_id,group_id' });
 
   if (error) {
-    reportError(error, 'groups.link', { group_id: groupId, goal_id: goalId, code: error.code });
+    reportError(error, 'groups.link', { group_id: groupId, goal_id: goalId, pgcode: error.code });
     return { ok: false, melding: 'Koppelen lukte niet. Ben je lid van deze groep?' };
   }
 
@@ -465,6 +533,8 @@ export async function koppelDoelAanGroep(
  *
  * ⚠️ Wist geen geschiedenis. Voltooiingen, goedkeuringen, punten en
  *    kettingschakels blijven staan; alleen de zichtbaarheid in déze groep stopt.
+ *    Een toestemming die je niet kunt intrekken is geen toestemming, dus deze
+ *    functie hoort een knop te hebben — en die staat op het groepsscherm.
  */
 export async function ontkoppelDoelVanGroep(
   goalId: string,
@@ -477,14 +547,14 @@ export async function ontkoppelDoelVanGroep(
     .eq('group_id', groupId);
 
   if (error) {
-    reportError(error, 'groups.unlink', { group_id: groupId, goal_id: goalId, code: error.code });
+    reportError(error, 'groups.unlink', { group_id: groupId, goal_id: goalId, pgcode: error.code });
     return { ok: false, melding: 'Ontkoppelen lukte niet.' };
   }
 
   return { ok: true, waarde: true };
 }
 
-/** De doelen die deze gebruiker aan deze groep gekoppeld heeft. */
+/** De doelen die aan deze groep gekoppeld zijn en die jij mag zien. */
 export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly string[]> {
   const { data, error } = await supabase()
     .from('goal_group_links')
@@ -493,26 +563,9 @@ export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly 
     .limit(50);
 
   if (error) {
-    reportError(error, 'groups.links', { group_id: groupId, code: error.code });
+    reportError(error, 'groups.links', { group_id: groupId, pgcode: error.code });
     throw new Error('De gekoppelde doelen konden niet geladen worden.');
   }
 
   return (data ?? []).map((rij) => rij.goal_id);
-}
-
-// ---------------------------------------------------------------------------
-// Hulp
-// ---------------------------------------------------------------------------
-
-/**
- * De meldingen die de RPC's met `raise exception` teruggeven zijn Nederlands en
- * voor een gebruiker geschreven ("Deze groep zit vol", "Te veel pogingen").
- * Die zijn beter dan wat wij eroverheen zouden verzinnen. Alles wat er níét zo
- * uitziet — een Postgres-foutcode, een timeout — wordt vervangen door de
- * meegegeven tekst, zodat er nooit database-jargon op het scherm komt.
- */
-function serverMelding(bericht: string, terugval: string): string {
-  const schoon = bericht.trim();
-  const leesbaar = schoon.length > 0 && schoon.length <= 160 && !/[_{}]|^ERROR/i.test(schoon);
-  return leesbaar ? schoon : terugval;
 }

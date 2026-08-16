@@ -20,6 +20,23 @@ export type Db = SupabaseClient<Database>;
  *    RLS. Elke autorisatie zit in de database, nooit hier.
  */
 
+/**
+ * Elke externe call heeft een timeout (CLAUDE.md, coderegel 14).
+ *
+ * ⚠️ Hier en niet per aanroep. Zonder deze regel hangt een verzoek dat nooit
+ *    terugkomt oneindig, en dan staat er een scherm zonder spinner, zonder fout
+ *    en zonder knop — de ergste van de drie staten, want hij is niet te
+ *    onderscheiden van "het duurt even".
+ *
+ * ⚠️ Vijftien seconden: ruim boven wat een trage mobiele verbinding nodig heeft,
+ *    ruim onder wat iemand accepteert voordat hij de app weggooit.
+ */
+const TIMEOUT_MS = 15_000;
+
+function fetchMetTimeout(invoer: RequestInfo | URL, opties?: RequestInit): Promise<Response> {
+  return fetch(invoer, { ...opties, signal: AbortSignal.timeout(TIMEOUT_MS) });
+}
+
 let cached: Db | undefined;
 
 export function supabase(): Db {
@@ -35,6 +52,7 @@ export function supabase(): Db {
       persistSession: true,
       detectSessionInUrl: isWeb,
     },
+    global: { fetch: fetchMetTimeout },
   });
 
   return cached;

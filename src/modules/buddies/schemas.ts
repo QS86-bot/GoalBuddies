@@ -39,10 +39,15 @@ const CODE_PATROON = new RegExp(`^[${CODE_ALFABET}]{${CODE_LENGTE}}$`);
  * weggooien wat niet in het alfabet zit.
  */
 export function normaliseerCode(invoer: string): string {
-  const staart = invoer.trim().split('/').pop() ?? '';
-  const zonderQuery = staart.split('?')[0] ?? '';
+  // ⚠️ Eerst de afsluitende schuine strepen eraf. Chat-apps en tekstverwerkers
+  //    plakken die er graag achter, en `split('/').pop()` levert dan een lege
+  //    string op — waarna de app de gebruiker een fout aanwrijft voor de link die
+  //    hij letterlijk zo gekregen heeft.
+  const zonderSlot = invoer.trim().replace(/[/\s]+$/, '');
+  const zonderQuery = zonderSlot.split('?')[0] ?? '';
+  const staart = zonderQuery.split('/').pop() ?? '';
 
-  return zonderQuery
+  return staart
     .toUpperCase()
     .split('')
     .filter((teken) => CODE_ALFABET.includes(teken))
@@ -104,26 +109,14 @@ export const codeSchema = z
   .refine(isCodeVorm, { error: 'Deze uitnodigingscode klopt niet. Controleer de link.' });
 
 // ---------------------------------------------------------------------------
-// Grenzen, één keer opgeschreven
+// Weergave
 // ---------------------------------------------------------------------------
-
-/**
- * Spiegelt de limieten uit migratie 0016. De server dwingt ze af; de app
- * gebruikt ze om vooraf uit te leggen wat er gaat gebeuren in plaats van
- * achteraf een exception te vertalen.
- */
-export const GRENZEN = {
-  ledenPerGroep: 12,
-  groepenPerGebruiker: 10,
-  groepenPerDag: 10,
-  toetredingspogingenPerDag: 20,
-} as const;
-
-export const ROLLEN = ['admin', 'member'] as const;
-export type Rol = (typeof ROLLEN)[number];
-
-export const LIDSTATUSSEN = ['active', 'inactive', 'paused'] as const;
-export type Lidstatus = (typeof LIDSTATUSSEN)[number];
+//
+// ⚠️ Hier stond een constante `GRENZEN` met de limieten uit migratie 0016 erin.
+//    Die is weggehaald: geen enkel scherm gebruikte hem, en een derde kopie van
+//    getallen die in SQL staan zonder test ertussen is een tijdbom en geen
+//    documentatie. De limieten komen als kenmerk terug uit de RPC's
+//    (`group_full`, `daily_limit`) en `api.ts` maakt er een zin van.
 
 export const HUDDLEDAGEN: readonly { readonly waarde: Weekday; readonly label: string }[] = [
   { waarde: 1, label: 'Maandag' },

@@ -25,25 +25,26 @@ export {
   type UitnodigingLid,
 } from './api';
 
-export { groepsklok, groepsperiodeVan, huidigeGroepsperiode } from './periods';
+export {
+  bewaarOpenstaandeUitnodiging,
+  openstaandeUitnodiging,
+  vergeetOpenstaandeUitnodiging,
+} from './pending';
+
+export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
 
 export {
   CODE_ALFABET,
   CODE_LENGTE,
   codeSchema,
-  GRENZEN,
   groepPatchSchema,
   groepSchema,
   HUDDLEDAGEN,
   huddledagLabel,
   isCodeVorm,
-  LIDSTATUSSEN,
   normaliseerCode,
-  ROLLEN,
   toonCode,
   uitnodigingsLink,
   type GroepInvoer,
   type GroepPatch,
-  type Lidstatus,
-  type Rol,
 } from './schemas';

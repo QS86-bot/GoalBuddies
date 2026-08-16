@@ -840,7 +840,6 @@ export type Database = {
       }
       group_visible_streaks: {
         Row: {
-          best_streak: number | null
           current_streak: number | null
           goal_id: string | null
           user_id: string | null
@@ -851,28 +850,7 @@ export type Database = {
     Functions: {
       create_group: {
         Args: { group_name: string; huddle_day?: number; tz?: string }
-        Returns: {
-          approval_rule: string
-          created_at: string
-          created_by: string
-          evidence_policy: string
-          huddle_day: number
-          icon: string | null
-          id: string
-          invite_code: string
-          invite_revoked: boolean
-          last_activity_at: string
-          name: string
-          season_cadence: string
-          status: string
-          tz: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "groups"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: Json
       }
       generate_invite_code: { Args: never; Returns: string }
       group_overview: {
@@ -884,7 +862,6 @@ export type Database = {
         }
         Returns: {
           avatar_url: string
-          best_streak: number
           closed_this_period: boolean
           current_streak: number
           display_name: string
@@ -907,11 +884,11 @@ export type Database = {
       invite_preview: { Args: { code: string }; Returns: Json }
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
-      join_group_with_code: { Args: { code: string }; Returns: string }
-      rotate_invite_code: { Args: { p_group_id: string }; Returns: string }
+      join_group_with_code: { Args: { code: string }; Returns: Json }
+      rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
-        Returns: boolean
+        Returns: Json
       }
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }

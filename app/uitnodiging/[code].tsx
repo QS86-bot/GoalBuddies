@@ -4,9 +4,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
 import {
+  bewaarOpenstaandeUitnodiging,
   fetchUitnodiging,
   huddledagLabel,
   neemDeel,
+  vergeetOpenstaandeUitnodiging,
   type Uitnodiging,
 } from '@/modules/buddies';
 import { space } from '@/shared/theme';
@@ -29,17 +31,18 @@ import {
  *    verloren buddy — dat is de goedkoopste retentie-ingreep die er is, en de
  *    reden dat `app/_layout.tsx` deze route bewust buiten de routewacht houdt.
  *
- * ⚠️ Wat hier zichtbaar is, komt uit `invite_preview()` (migratie 0016) en is
- *    precies zoveel als nodig: de groepsnaam, wie er meedoen en waar ze aan
- *    werken. Geen notities, geen chat, geen bewijs, geen reeksen, geen punten.
- *    Een doel staat er alleen in als de eigenaar het expliciet aan déze groep
- *    heeft gekoppeld (5.3) — koppelen is de toestemming, en dit scherm rekt die
- *    niet op.
+ * ⚠️ De code wordt bewaard vóór er ergens heen genavigeerd wordt. Zonder dat
+ *    overleeft hij het aanmelden niet: met e-mailbevestiging aan tikt iemand een
+ *    mailtje aan, komt terug in een verse app-sessie, en dit scherm is dan allang
+ *    weg. Dat is niet het randgeval maar het hoofdpad, en het scherm belooft er
+ *    letterlijk het tegenovergestelde van.
  *
- * ⚠️ Werkt ook bij een verlopen sessie: de pagina hangt niet aan een sessie, dus
- *    zonder geldige sessie zie je gewoon de groep plus een knop om in te loggen.
- *    Verschijnt er daarna een sessie, dan wordt er automatisch toegetreden en
- *    land je in de groep — dat is het "groep al gejoined" uit de issue.
+ * ⚠️ Ingelogd de link openen maakt je níét automatisch lid. Een eerdere versie
+ *    deed dat wel, en dan word je lid door alleen maar te kijken — terwijl er
+ *    (nog) geen knop is om een groep te verlaten. Toetreden is nu altijd een
+ *    druk op de knop, behalve op de ene route waar het de bedoeling is: als de
+ *    sessie verschijnt terwijl dit scherm openstaat, want dan kwam je hier via
+ *    "account maken en meedoen".
  */
 export default function UitnodigingScherm() {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -54,14 +57,19 @@ export default function UitnodigingScherm() {
 
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
-  const [binnen, setBinnen] = useState(false);
+  const [binnen, setBinnen] = useState<string | null>(null);
 
-  /** Eén automatische toetredingspoging per keer dat dit scherm openstaat. */
+  /** Had dit scherm al een sessie toen het openging? Dan kwam je hier niet via aanmelden. */
+  const sessieBijBinnenkomst = useRef<boolean | null>(null);
   const automatischGeprobeerd = useRef(false);
 
   useEffect(() => {
     if (!code) return;
     let levend = true;
+
+    // Onthouden vóór alles. Gaat de bezoeker hierna aanmelden, dan overleeft de
+    // uitnodiging de bevestigingsmail en de onboarding.
+    void bewaarOpenstaandeUitnodiging(code);
 
     fetchUitnodiging(code)
       .then((gevonden) => {
@@ -93,28 +101,26 @@ export default function UitnodigingScherm() {
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
+      // ⚠️ Ook bij een fout vergeten. Blijft de code staan, dan probeert de app
+      //    hem bij elke start opnieuw, en elke poging kost er één van de twintig
+      //    per dag.
+      void vergeetOpenstaandeUitnodiging();
       return;
     }
 
-    setBinnen(true);
+    void vergeetOpenstaandeUitnodiging();
+    setBinnen(uitkomst.waarde);
 
-    // ⚠️ Alleen doorsturen als de onboarding af is. Is dat niet zo, dan pakt de
-    //    routewacht in `app/_layout.tsx` het over en zou een push hier meteen
-    //    weggeduwd worden — met als resultaat dat iemand na de onboarding op het
-    //    beginscherm belandt zonder te weten of hij nu in de groep zit. Het
-    //    lidmaatschap staat er dan al; dat zegt de tekst hieronder ook.
     if (profiel?.onboarded_at) router.replace(`/groep/${uitkomst.waarde}`);
   }, [code, profiel, router]);
 
   /**
-   * Verschijnt er een sessie terwijl dit scherm openstaat — iemand die zich via
-   * deze link net heeft aangemeld — dan is toetreden geen extra stap meer.
+   * Verschijnt er een sessie terwijl dit scherm openstaat, dan kwam die van het
+   * aanmeldscherm hiernaast — en dan is toetreden geen extra stap meer.
    *
-   * ⚠️ Deze route zet geen `bezig` vóór de aanroep, anders wordt dit een
-   *    setState in de body van een effect en dat is een cascade van renders. De
-   *    toestand verandert hier uitsluitend in de callback, wanneer het antwoord
-   *    van de server binnen is. De knop hierboven mag dat wél doen: die reageert
-   *    op een handeling en niet op een effect.
+   * ⚠️ Deze route zet geen `bezig` vóór de aanroep, anders is dat een setState in
+   *    de body van een effect en dus een cascade van renders. De toestand
+   *    verandert hier uitsluitend in de callback.
    *
    * ⚠️ De ref en niet de state als slot. State is pas bij de volgende render
    *    bijgewerkt, en tot dat moment zou een tweede effectronde nog een keer
@@ -122,7 +128,17 @@ export default function UitnodigingScherm() {
    *    limiet van twintig.
    */
   useEffect(() => {
-    if (sessieLaadt || !session || uitnodiging === null || !code) return;
+    if (sessieLaadt) return;
+
+    // De momentopname staat in dezelfde effect-body als de beslissing die hem
+    // gebruikt. Dat is geen elegantie maar noodzaak: een ref uitlezen tijdens de
+    // render mag niet, en twee losse effecten geven geen vaste volgorde.
+    if (sessieBijBinnenkomst.current === null) {
+      sessieBijBinnenkomst.current = session !== null;
+    }
+
+    if (!session || uitnodiging === null || !code) return;
+    if (sessieBijBinnenkomst.current !== false) return;
     if (automatischGeprobeerd.current) return;
 
     automatischGeprobeerd.current = true;
@@ -131,13 +147,14 @@ export default function UitnodigingScherm() {
     neemDeel(code)
       .then((uitkomst) => {
         if (!levend) return;
+        void vergeetOpenstaandeUitnodiging();
 
         if (!uitkomst.ok) {
           setFout(uitkomst.melding);
           return;
         }
 
-        setBinnen(true);
+        setBinnen(uitkomst.waarde);
         if (profiel?.onboarded_at) router.replace(`/groep/${uitkomst.waarde}`);
       })
       .catch(() => {
@@ -150,7 +167,10 @@ export default function UitnodigingScherm() {
   }, [sessieLaadt, session, uitnodiging, code, profiel, router]);
 
   return (
-    <Screen title="Je bent uitgenodigd" eyebrow="BUDDY-GROEP">
+    <Screen
+      title={uitnodiging === null && !loading ? 'Deze link werkt niet meer' : 'Je bent uitgenodigd'}
+      eyebrow="BUDDY-GROEP"
+    >
       <AsyncView
         loading={loading}
         error={error}
@@ -173,19 +193,29 @@ export default function UitnodigingScherm() {
                 {huddledagLabel(u.huddle_day).toLowerCase()}
               </Caption>
 
-              {u.members.map((lid) => (
-                <View key={`${lid.display_name}-${lid.goal_title ?? ''}`} style={styles.lid}>
+              {u.members.map((lid, i) => (
+                <View key={`${lid.display_name}-${i}`} style={styles.lid}>
                   <Avatar name={lid.display_name} url={lid.avatar_url} />
                   <View style={styles.lidTekst}>
                     <Body>{lid.display_name}</Body>
                     {/*
                       Geen doel gekoppeld is geen tekortkoming: het betekent
-                      alleen dat deze persoon niets met de groep deelt.
+                      alleen dat deze persoon niets met de groep deelt. En zonder
+                      account staat er sowieso geen doel — zie migratie 0019.
                     */}
-                    <Caption>{lid.goal_title ?? 'Werkt nog niet aan een gedeeld doel'}</Caption>
+                    {u.detailed ? (
+                      <Caption>{lid.goal_title ?? 'Werkt nog niet aan een gedeeld doel'}</Caption>
+                    ) : null}
                   </View>
                 </View>
               ))}
+
+              {u.detailed ? null : (
+                <Caption>
+                  Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen
+                  hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.
+                </Caption>
+              )}
             </Card>
 
             <Card nested>
@@ -199,14 +229,28 @@ export default function UitnodigingScherm() {
               </Body>
             </Card>
 
-            {binnen ? (
+            {binnen !== null ? (
               <Card>
                 <Subheading>Je zit in de groep</Subheading>
                 <Body muted>
                   {profiel?.onboarded_at
                     ? 'Je wordt doorgestuurd naar de groep.'
-                    : 'Maak eerst je profiel af, dan staat de groep voor je klaar.'}
+                    : 'Maak eerst je profiel af — daarna staat de groep voor je klaar.'}
                 </Body>
+                {/*
+                  ⚠️ Altijd een knop. Een scherm dat zegt "maak eerst je profiel
+                     af" zonder te zeggen waar, is een doodlopend pad — en de
+                     routewacht slaat deze route juist bewust over.
+                */}
+                <Button
+                  variant="primair"
+                  block
+                  onPress={() =>
+                    router.replace(profiel?.onboarded_at ? `/groep/${binnen}` : '/onboarding/uitleg')
+                  }
+                >
+                  {profiel?.onboarded_at ? 'Naar de groep' : 'Profiel afmaken'}
+                </Button>
               </Card>
             ) : session ? (
               <Button variant="primair" block busy={bezig} onPress={() => void deelnemen()}>
@@ -215,10 +259,11 @@ export default function UitnodigingScherm() {
             ) : (
               <>
                 <Button variant="primair" block onPress={() => router.push('/aanmelden')}>
-                  Account maken en meedoen
+                  Inloggen of account maken
                 </Button>
                 <Caption>
-                  Na het aanmelden kom je hier terug en zit je meteen in de groep.
+                  Je uitnodiging blijft op dit apparaat bewaard. Ook als je eerst je e-mail
+                  moet bevestigen, sta je daarna gewoon in de groep.
                 </Caption>
               </>
             )}
@@ -227,6 +272,12 @@ export default function UitnodigingScherm() {
           </View>
         )}
       </AsyncView>
+
+      {uitnodiging === null && !loading ? (
+        <Button variant="secundair" block onPress={() => router.replace('/aanmelden')}>
+          Toch even rondkijken
+        </Button>
+      ) : null}
     </Screen>
   );
 }

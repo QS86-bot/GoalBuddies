@@ -11,6 +11,11 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+// ⚠️ Rechtstreeks uit schemas.ts en niet via modules/buddies/index.ts. Die
+//    laatste re-exporteert ook api.ts en pending.ts, en die trekken de
+//    Supabase-client en AsyncStorage mee — en daarmee React Native, in een test
+//    die in Node draait. Zelfde reden als de losse client in harness.ts.
+import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
 import { now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
@@ -83,8 +88,16 @@ function mustId(
  *    opbouw drie stappen verderop laten sneuvelen op iets dat er niets mee te
  *    maken heeft. Vandaar `mustJoin`.
  */
-function uitkomst(data: unknown): { ok: boolean; reason?: string; group_id?: string } {
-  return (data ?? {}) as { ok: boolean; reason?: string; group_id?: string };
+interface RpcUitkomst {
+  ok?: boolean;
+  reason?: string;
+  group_id?: string;
+  invite_code?: string;
+  invite_revoked?: boolean;
+}
+
+function uitkomst(data: unknown): RpcUitkomst {
+  return (data ?? {}) as RpcUitkomst;
 }
 
 function mustJoin(
@@ -118,16 +131,26 @@ function mustJoin(
  *    de server hem; een aanroeper die zijn eigen code meegeeft, bestaat niet meer.
  */
 async function createGroup(owner: TestUser, name: string): Promise<{ id: string; code: string }> {
-  const uitkomst = await owner.db.rpc('create_group', { group_name: name });
+  const antwoord = await owner.db.rpc('create_group', { group_name: name });
 
-  if (uitkomst.error) {
-    throw new Error(`Opbouw mislukte bij groep ${name}: ${uitkomst.error.message}`);
-  }
-  if (!uitkomst.data) {
-    throw new Error(`Opbouw mislukte bij groep ${name}: geen rij teruggekregen`);
+  if (antwoord.error) {
+    throw new Error(`Opbouw mislukte bij groep ${name}: ${antwoord.error.message}`);
   }
 
-  return { id: uitkomst.data.id, code: uitkomst.data.invite_code };
+  // Sinds 0018 geeft de RPC `{ ok, reason }` of `{ ok, group }` terug in plaats
+  // van een rij, om dezelfde reden als 0017: een exception rolt de transactie
+  // terug en dat is voor een normale uitkomst het verkeerde gereedschap.
+  const uit = (antwoord.data ?? {}) as {
+    ok?: boolean;
+    reason?: string;
+    group?: { id: string; invite_code: string };
+  };
+
+  if (uit.ok !== true || uit.group === undefined) {
+    throw new Error(`Opbouw mislukte bij groep ${name}: ${uit.reason ?? 'geen groep teruggekregen'}`);
+  }
+
+  return { id: uit.group.id, code: uit.group.invite_code };
 }
 
 async function buildFixture(): Promise<Fixture> {
@@ -1249,6 +1272,37 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         TEST_TIMEOUT,
       );
 
+      /**
+       * ⚠️ Deze test is de énige echte koppeling tussen `generate_invite_code()`
+       *    in SQL en `isCodeVorm()` in TypeScript. De unittest in
+       *    `schemas.test.ts` vergelijkt de constante met een kopie van zichzelf
+       *    en merkt een wijziging in de migratie dus niet — dat is een tautologie
+       *    en geen bescherming.
+       *
+       *    Vijf codes en niet één: dat is zestig tekens uit een alfabet van
+       *    dertig, genoeg om een fout in één teken eruit te laten komen.
+       *
+       * ⚠️ Een eigen gebruiker. Zou dit de eigenaar van de fixture gebruiken, dan
+       *    eet deze test zijn dagelijkse groepenlimiet op en vallen vier tests
+       *    verderop om met "daily_limit" — een reden die niets met die tests te
+       *    maken heeft. (Precies dat gebeurde bij de eerste versie.)
+       */
+      it(
+        'levert codes die de app ook echt accepteert',
+        async () => {
+          const codemaker = await createTestUser('codes');
+
+          for (let ronde = 0; ronde < 5; ronde += 1) {
+            const gemaakt = await createGroup(codemaker, `Codegroep ${ronde}`);
+            expect(isCodeVorm(gemaakt.code), `code ${gemaakt.code} valt buiten het alfabet`).toBe(
+              true,
+            );
+            expect(normaliseerCode(gemaakt.code)).toBe(gemaakt.code);
+          }
+        },
+        SETUP_TIMEOUT,
+      );
+
       it(
         'maakt de aanmaker beheerder',
         async () => {
@@ -1283,7 +1337,13 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       // ⚠️ Dit is de derde keer in dit project dat "RLS kan geen kolommen
       //    beperken" bijt, na 0006 en 0010. `groups_update` laat een beheerder de
       //    rij aanraken en dus ook `invite_code` — een beheerder kon zijn eigen
-      //    raadbare code zetten. De trigger groups_guard zet hem terug.
+      //    raadbare code zetten.
+      //
+      //    Er staan nu twee sloten op: sinds 0019 heeft `authenticated` geen
+      //    UPDATE-recht op die kolom (Postgres weigert het verzoek), en de
+      //    trigger `groups_guard` zet hem daarnaast terug. Deze test toetst het
+      //    resultaat en niet welk van de twee het tegenhield — precies zoals het
+      //    hoort, want beide mogen weg zolang de code maar niet verandert.
       it(
         'is ook door een beheerder niet met een UPDATE te overschrijven',
         async () => {
@@ -1306,8 +1366,20 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       it(
         'laat een gewoon lid de code niet vernieuwen',
         async () => {
-          const { error } = await g.lid.db.rpc('rotate_invite_code', { p_group_id: g.groupId });
-          expect(error).not.toBeNull();
+          const { data } = await g.lid.db.rpc('rotate_invite_code', { p_group_id: g.groupId });
+
+          expect(uitkomst(data).ok).toBe(false);
+          expect(uitkomst(data).reason).toBe('not_admin');
+
+          // ⚠️ En de code is ook echt niet veranderd. Zonder deze tweede
+          //    controle bewijst de test alleen dat er "nee" terugkomt, niet dat
+          //    de functie ook niets gedaan heeft.
+          const na = await adminDb()
+            .from('groups')
+            .select('invite_code')
+            .eq('id', g.groupId)
+            .single();
+          expect(na.data?.invite_code).toBe(g.code);
         },
         TEST_TIMEOUT,
       );
@@ -1315,11 +1387,20 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       it(
         'laat een buitenstaander de link niet intrekken',
         async () => {
-          const { error } = await g.buitenstaander.db.rpc('set_invite_revoked', {
+          const { data } = await g.buitenstaander.db.rpc('set_invite_revoked', {
             p_group_id: g.groupId,
             p_revoked: true,
           });
-          expect(error).not.toBeNull();
+
+          expect(uitkomst(data).ok).toBe(false);
+          expect(uitkomst(data).reason).toBe('not_admin');
+
+          const na = await adminDb()
+            .from('groups')
+            .select('invite_revoked')
+            .eq('id', g.groupId)
+            .single();
+          expect(na.data?.invite_revoked).toBe(false);
         },
         TEST_TIMEOUT,
       );
@@ -1330,19 +1411,45 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         'laat een beheerder de code vernieuwen, waarna de oude link dood is',
         async () => {
           const eigen = await createGroup(g.eigenaar, 'Groep om te roteren');
-          const nieuweCode = await g.eigenaar.db.rpc('rotate_invite_code', {
+          const antwoord = await g.eigenaar.db.rpc('rotate_invite_code', {
             p_group_id: eigen.id,
           });
 
-          expect(nieuweCode.error).toBeNull();
-          expect(nieuweCode.data).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{12}$/);
-          expect(nieuweCode.data).not.toBe(eigen.code);
+          const nieuw = uitkomst(antwoord.data);
+          expect(antwoord.error).toBeNull();
+          expect(nieuw.ok).toBe(true);
+          expect(nieuw.invite_code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTVWXYZ]{12}$/);
+          expect(nieuw.invite_code).not.toBe(eigen.code);
 
           const metOude = await g.buitenstaander.db.rpc('join_group_with_code', {
             code: eigen.code,
           });
           expect(uitkomst(metOude.data).ok).toBe(false);
           expect(uitkomst(metOude.data).reason).toBe('invalid');
+        },
+        TEST_TIMEOUT,
+      );
+
+      // ⚠️ Sinds 0019 heeft `authenticated` geen UPDATE-recht meer op de
+      //    gevoelige kolommen van `groups`. Dat is het echte slot; de trigger
+      //    `groups_guard` is het tweede. Deze test bewijst dat Postgres het
+      //    afdwingt en niet een rolnaam in een trigger.
+      // ⚠️ Sinds 0019 heeft `authenticated` geen UPDATE-recht meer op de
+      //    gevoelige kolommen van `groups`. Dat is het echte slot; de trigger
+      //    `groups_guard` is het tweede. Deze test bewijst dat Postgres het
+      //    afdwingt en niet een rolnaam in een trigger.
+      it(
+        'geeft authenticated geen UPDATE-recht op de slaapstand',
+        async () => {
+          const poging = await g.eigenaar.db
+            .from('groups')
+            .update({ status: 'sleeping' })
+            .eq('id', g.groupId);
+
+          expect(poging.error).not.toBeNull();
+
+          const na = await adminDb().from('groups').select('status').eq('id', g.groupId).single();
+          expect(na.data?.status).toBe('active');
         },
         TEST_TIMEOUT,
       );
@@ -1499,8 +1606,13 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       // ⚠️ Domeinregel 7 en 10, als eigenschap van de projectie. Uit een
       //    puntentotaal én uit `last_cycle_start` is af te leiden dat iemand een
       //    week gemist heeft. Ze staan er niet in, en deze test houdt dat zo.
+      //
+      // ⚠️ `best_streak` is er in 0019 bij gekomen, en dat was een echt gat: als
+      //    `best_streak > current_streak`, dan heeft die persoon een reeks
+      //    verbroken en dus een week gemist. De oude versie van deze test
+      //    controleerde alleen de andere twee en liet hem er precies langs.
       it(
-        'bevat geen puntentotaal en geen laatste cyclus',
+        'bevat geen puntentotaal, geen laatste cyclus en geen beste reeks',
         async () => {
           const { data } = await g.lid.db.rpc('group_overview', {
             p_group_id: g.groupId,
@@ -1510,9 +1622,139 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           const kolommen = Object.keys((data ?? [])[0] ?? {});
           expect(kolommen).not.toContain('total_points');
           expect(kolommen).not.toContain('last_cycle_start');
+          expect(kolommen).not.toContain('best_streak');
           expect(kolommen).toContain('current_streak');
         },
         TEST_TIMEOUT,
+      );
+
+      // Zelfde bewering, maar dan op de view eronder: die is definer, dus wie hem
+      // rechtstreeks bevraagt omzeilt de RPC volledig.
+      it(
+        'lekt best_streak ook niet via group_visible_streaks',
+        async () => {
+          const { data } = await g.lid.db.from('group_visible_streaks').select('*').limit(1);
+
+          const kolommen = Object.keys((data ?? [])[0] ?? {});
+          if (kolommen.length > 0) {
+            expect(kolommen).not.toContain('best_streak');
+            expect(kolommen).not.toContain('total_points');
+            expect(kolommen).not.toContain('last_cycle_start');
+          }
+        },
+        TEST_TIMEOUT,
+      );
+
+      /**
+       * ⚠️ Dit is de zwaarste bevinding van de security-review, en hij ging niet
+       *    over EPIC 5 zelf maar over de deur die EPIC 5 opent. `weekly_goals`
+       *    heeft een kolom `status` die letterlijk `'missed'` kan zijn, en
+       *    `weekly_goals_select` gaf elke groepsgenoot de héle rij van een
+       *    gekoppeld doel. Eén GET leverde de volledige lijst gemiste weken van
+       *    een ander op, mét datum.
+       *
+       *    Het beslisdocument §4.3 belooft: "ook niet door slim te bevragen".
+       *    Er was geen slimheid voor nodig. Gedicht in 0019.
+       */
+      it(
+        'laat een groepsgenoot geen gemiste week van een ander zien',
+        async () => {
+          const admin = adminDb();
+          const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+          // Een gemiste week op het gekoppelde doel van de eigenaar. Via de
+          // systeemclient, want dit is wat de rollover-job doet.
+          const gemist = mustId(
+            await admin
+              .from('weekly_goals')
+              .insert({
+                goal_id: g.gekoppeldDoelId,
+                title: 'Week die niet gelukt is',
+                cycle_start_date: cycle.startDate,
+                cycle_index: 9,
+                status: 'missed',
+              })
+              .select('id')
+              .single(),
+            'gemist weekdoel',
+          );
+
+          const alsLid = await g.lid.db
+            .from('weekly_goals')
+            .select('id, status')
+            .eq('goal_id', g.gekoppeldDoelId);
+
+          expect(alsLid.data ?? []).not.toContainEqual(
+            expect.objectContaining({ id: gemist }),
+          );
+          expect((alsLid.data ?? []).map((w) => w.status)).not.toContain('missed');
+
+          // De toelating die erbij hoort: de eigenaar ziet hem gewoon, anders
+          // bewijst deze test alleen dat de rij onvindbaar is voor iedereen.
+          const alsEigenaar = await g.eigenaar.db
+            .from('weekly_goals')
+            .select('id')
+            .eq('id', gemist);
+
+          expect(alsEigenaar.data ?? []).toHaveLength(1);
+        },
+        TEST_TIMEOUT,
+      );
+
+      /**
+       * De N+1-valkuil die het beslisdocument met naam noemt (§3), met een
+       * queryteller ernaast.
+       *
+       * ⚠️ Twaalf leden, want dat is de bovengrens van een groep. Met twee leden
+       *    zou een implementatie die per lid opnieuw bevraagt er net zo goed
+       *    uitzien.
+       */
+      it(
+        'levert twaalf leden in precies één verzoek',
+        async () => {
+          const admin = adminDb();
+          const vol = await createGroup(g.eigenaar, 'Volle groep');
+
+          const nieuwe = await Promise.all(
+            Array.from({ length: 11 }, (_, i) => createTestUser(`vol-${i}`)),
+          );
+          for (const lid of nieuwe) {
+            mustJoin(
+              await lid.db.rpc('join_group_with_code', { code: vol.code }),
+              `lid ${lid.id} in volle groep`,
+            );
+          }
+
+          const leden = await admin
+            .from('group_members')
+            .select('user_id')
+            .eq('group_id', vol.id);
+          expect(leden.data ?? []).toHaveLength(12);
+
+          // ⚠️ De teller. `fetch` wordt hier tijdelijk vervangen, zodat er niet
+          //    geredeneerd hoeft te worden over hoeveel rondes het kost — het
+          //    wordt geteld.
+          const echteFetch = globalThis.fetch;
+          let verzoeken = 0;
+          globalThis.fetch = ((...args: Parameters<typeof fetch>) => {
+            verzoeken += 1;
+            return echteFetch(...args);
+          }) as typeof fetch;
+
+          try {
+            const { data, error } = await g.eigenaar.db.rpc('group_overview', {
+              p_group_id: vol.id,
+              p_period_start: PERIODE,
+            });
+
+            expect(error).toBeNull();
+            expect(data ?? []).toHaveLength(12);
+            expect(verzoeken).toBe(1);
+          } finally {
+            globalThis.fetch = echteFetch;
+          }
+        },
+        SETUP_TIMEOUT,
       );
 
       // 5.3: koppelen is de toestemming. Zonder koppeling staat een doel in geen
@@ -1540,6 +1782,17 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     // -----------------------------------------------------------------------
 
     describe('de uitnodigingspagina zonder account', () => {
+      interface Preview {
+        group_name: string;
+        member_count: number;
+        detailed: boolean;
+        members: readonly {
+          display_name: string;
+          avatar_url: string | null;
+          goal_title: string | null;
+        }[];
+      }
+
       it(
         'toont de groep aan iemand die niet ingelogd is',
         async () => {
@@ -1548,14 +1801,50 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           expect(error).toBeNull();
           expect(data).not.toBeNull();
 
-          const preview = data as unknown as {
-            group_name: string;
-            member_count: number;
-            members: readonly { display_name: string; goal_title: string | null }[];
-          };
+          const preview = data as unknown as Preview;
 
           expect(preview.group_name).toBe('Buddygroep');
           expect(preview.member_count).toBe(2);
+          expect(preview.detailed).toBe(false);
+          expect(preview.members).toHaveLength(2);
+        },
+        TEST_TIMEOUT,
+      );
+
+      /**
+       * ⚠️ Bevinding van de security-review, gedicht in 0019. De redenering in
+       *    0016 klopte binnen zijn eigen kader ("koppelen is de toestemming; deze
+       *    functie rekt die niet op") en was toch verkeerd: koppelen is
+       *    toestemming voor de gróép, en deze functie maakte er toestemming van
+       *    voor iedereen aan wie de link ooit doorgestuurd wordt.
+       */
+      it(
+        'geeft zonder account geen doeltitels, achternamen of avatars',
+        async () => {
+          const { data } = await anonDb().rpc('invite_preview', { code: g.code });
+          const preview = data as unknown as Preview;
+
+          for (const lid of preview.members) {
+            expect(lid.goal_title).toBeNull();
+            expect(lid.avatar_url).toBeNull();
+            // Een voornaam en niet de volledige naam: "Test groep-eigenaar"
+            // wordt "Test".
+            expect(lid.display_name).not.toContain(' ');
+          }
+        },
+        TEST_TIMEOUT,
+      );
+
+      // De toelating die daarbij hoort: wie ingelogd is, ziet wél het volledige
+      // beeld. Zonder deze test zou het dichtzetten van de anonieme kant
+      // ongemerkt ook de feature zelf kunnen slopen.
+      it(
+        'toont een ingelogde bezoeker wél de doeltitels',
+        async () => {
+          const { data } = await g.buitenstaander.db.rpc('invite_preview', { code: g.code });
+          const preview = data as unknown as Preview;
+
+          expect(preview.detailed).toBe(true);
           expect(preview.members.map((m) => m.goal_title)).toContain('Gekoppeld doel');
         },
         TEST_TIMEOUT,
@@ -1564,22 +1853,44 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       // ⚠️ Dit is het enige eindpunt van de app dat zonder account bereikbaar is.
       //    Alles wat "hoe gáát het met je" beantwoordt, hoort binnen de groep te
       //    blijven — domeinregel 7 en 10.
+      // ⚠️ Op de sleutelverzameling en niet op de tekst van de JSON. Een test die
+      //    `toContain('status')` doet op het hele antwoord, wordt rood zodra een
+      //    testgebruiker "Status Tracker" heet — en dan is het een test die je
+      //    leert testen te wantrouwen.
       it(
         'lekt geen reeksen, punten of weekstatus',
         async () => {
           const { data } = await anonDb().rpc('invite_preview', { code: g.code });
-          const json = JSON.stringify(data);
+
+          const sleutels = new Set<string>();
+          const loop = (waarde: unknown): void => {
+            if (Array.isArray(waarde)) {
+              waarde.forEach(loop);
+              return;
+            }
+            if (waarde !== null && typeof waarde === 'object') {
+              for (const [sleutel, inhoud] of Object.entries(waarde)) {
+                sleutels.add(sleutel);
+                loop(inhoud);
+              }
+            }
+          };
+          loop(data);
 
           for (const verboden of [
             'current_streak',
             'best_streak',
             'total_points',
-            'points',
-            'status',
+            'last_cycle_start',
             'invite_code',
+            'weekly_goals',
           ]) {
-            expect(json, `preview bevat ${verboden}`).not.toContain(verboden);
+            expect([...sleutels], `preview bevat ${verboden}`).not.toContain(verboden);
           }
+
+          // En het positieve tegenwicht: wat er wél hoort te staan, staat er.
+          expect([...sleutels]).toContain('group_name');
+          expect([...sleutels]).toContain('member_count');
         },
         TEST_TIMEOUT,
       );
