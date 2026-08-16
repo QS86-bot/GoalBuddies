@@ -1,8 +1,17 @@
 # CLAUDE.md — GoalBuddies
 
 > Grondwet van deze codebase. Claude Code en alle subagents lezen dit bij elke sessie.
-> **Dit is een greenfield-project.** Er is nog geen code. Dat betekent dat elke
-> keuze die je nu maakt, jarenlang meegaat. Neem de tijd voor het datamodel.
+> De eerste beslissingen in dit project zijn de duurste; ze gaan jaren mee.
+
+## 👉 Begin hier
+
+**Nieuwe sessie? Lees `docs/WERKVOORRAAD.md`.** Daar staat waar het project
+staat, wat er nog moet, in welke volgorde, en waar je jezelf pijn doet als je
+het overslaat. Dit bestand zegt hoe je werkt; dat bestand zegt wat er aan de
+beurt is.
+
+Verder bouwen doe je met **`/verder`**. Die pakt zelf het volgende issue uit
+Linear en werkt het af tot een pushbare branch.
 
 ## gstack
 
