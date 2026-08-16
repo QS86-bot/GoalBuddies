@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 16-08-2026
+**Laatst bijgewerkt:** 16-08-2026 (avond, na de bouwsessie)
 
 ---
 
@@ -29,23 +29,30 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af.** 23 tabellen, 48 RLS-policies, geen enkele tabel zonder RLS.
-Migraties `0001` t/m `0004` staan in `supabase/migrations/` en zijn toegepast.
-Het datamodel is vastgesteld in `docs/decisions/001-datamodel.md`; dat document
-is leidend, niet de losse SQL.
+**Database — af, en nu ook getest.** 23 tabellen, 48 RLS-policies. Migraties
+`0001` t/m `0012` staan in `supabase/migrations/` en zijn toegepast. Het
+datamodel is vastgesteld in `docs/decisions/001-datamodel.md`; dat document is
+leidend, niet de losse SQL.
 
-**Code — de fundering staat.**
+⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
+migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
+maken, en elk groepslid kon een vals systeembericht plaatsen. De rode draad: RLS
+kan geen kolommen beperken — overal waar de eis is "deze kolom mag je niet
+veranderen" is een trigger nodig. Zie `docs/ENGINEER-REVIEW.md`.
+
+**Code — de app staat, zonder features.**
 - Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
-- `src/shared/time` — de twee klokken, 25 tests
-- `src/shared/theme` — het Q-Projects navy-stelsel, 15 tests
-- `src/lib` — env-validatie met Zod, getypeerde Supabase-client, databasetypes
-- `npm run typecheck`, `lint` en `test` staan alle drie groen (40 tests)
+- `src/shared/time` — de twee klokken plus `now()`, 25 tests
+- `src/shared/theme` — navy-stelsel, drie themastanden, 27 tests
+- `src/shared/ui` — 15 componenten, met de domeinregels erin gebakken
+- `src/modules/auth` — sessie, profiel, Zod-schema's, 14 tests
+- `tests/rls` — 35 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (134 tests)
+- `npm run build` rendert 16 routes statisch
 
-**Nog niets van de app zelf.** Geen auth, geen schermen, geen features. Het
-placeholderscherm in `app/index.tsx` bestaat alleen om te bewijzen dat het thema
-doorkomt.
-
----
+**Wat werkt in de app:** aanmelden met e-mail, de onboarding (uitleg, profiel,
+week-startdag, herinneringen, buddy-rol), de vier tabbladen met lege staten, de
+themakeuze, en drie diepe links. Verder nog niets — geen doelen, geen groepen.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
@@ -71,9 +78,9 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | # | Epic | Waarom hier | Status |
 |---|---|---|---|
 | 1 | **EPIC 0 — Fundering** (QS8-5) | Blokkeert alles | grotendeels af, zie §5 |
-| 2 | **EPIC 10 — Design system** (QS8-15) | Elk scherm heeft componenten nodig | tokens af, bibliotheek open |
-| 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | open |
-| 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | open |
+| 2 | **EPIC 10 — Design system** (QS8-15) | Elk scherm heeft componenten nodig | ✅ af |
+| 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth en avatar-upload |
+| 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | **hier verder** |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | open |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | open |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | open |
@@ -102,20 +109,18 @@ label `phase:v2` of `phase:v3`.
 
 ## 5. Wat nog open staat in EPIC 0
 
-| Issue | Wat | Blokkeert |
+| Issue | Wat | Stand |
 |---|---|---|
-| QS8-98 | **RLS-testsuite met echte JWT's** | Zou de eerste feature moeten blokkeren |
-| QS8-23 | CI: typecheck, lint, test op elke push | nee |
-| QS8-24 | Sentry | nee |
-| QS8-22 | Lokale Supabase-stack, `pg_dump`-script, env-docs | migratie 0005 |
+| QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
+| QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
+| QS8-24 | Sentry | deels: de rand en de PII-scrubbing staan, Sentry zelf niet |
+| QS8-22 | Migratie-workflow | deels: dumpscript en docs staan, lokale stack niet |
 
-⚠️ **QS8-98 verdient uitleg.** De 48 policies zijn nog nooit uitgevoerd. De
-rooktest van 15-08 draaide als `service_role` en raakte alleen constraints en
-triggers. Quinten heeft besloten eerst te bouwen en daarna te testen; dat is zijn
-keuze. Maar weet waar je aan begint: elke feature erft zijn autorisatie van die
-policies, dus als er een gat in zit, zit het straks overal.
-
----
+⚠️ **Wat er nog niet is en waar je last van gaat krijgen.** Er is nog steeds geen
+lokale Supabase-stack: Docker vraagt WSL2 en beheerdersrechten, en die had de
+sessie niet. Alle migraties zijn dus rechtstreeks op het echte project gedraaid.
+Dat kon nu omdat er geen echte gebruikersdata in stond — dat verandert zodra jij
+of een testgebruiker de app opent. `pg_dump` staat er ook nog niet op.
 
 ## 6. Wat menselijke actie vereist
 
