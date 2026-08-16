@@ -12,14 +12,19 @@
  */
 
 export { AsyncView } from './AsyncView';
+export { Avatar } from './Avatar';
+export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
+export { Choice, type Optie } from './Choice';
 export { EmptyState } from './EmptyState';
+export { Field } from './Field';
 export { FloorCeiling } from './FloorCeiling';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { Screen } from './Screen';
 export { StreakCounter } from './StreakCounter';
+export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
