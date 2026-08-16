@@ -811,6 +811,36 @@ export type Database = {
       }
     }
     Functions: {
+      create_group: {
+        Args: {
+          group_name: string
+          huddle_day?: number
+          invite_code: string
+          tz?: string
+        }
+        Returns: {
+          approval_rule: string
+          created_at: string
+          created_by: string
+          evidence_policy: string
+          huddle_day: number
+          icon: string | null
+          id: string
+          invite_code: string
+          invite_revoked: boolean
+          last_activity_at: string
+          name: string
+          season_cadence: string
+          status: string
+          tz: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "groups"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: string }
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
