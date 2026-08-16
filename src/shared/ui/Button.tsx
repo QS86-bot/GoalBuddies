@@ -32,14 +32,19 @@ function kleuren(theme: Theme, variant: ButtonVariant) {
 
   switch (variant) {
     case 'primair':
-      return {
-        achtergrond: c.accent,
-        rand: c.accent,
-        // ⚠️ Op een goudvlak staat in de lichte modus geen lopende tekst, maar
-        //    een knoplabel is dat niet. De donkere navy-tekst haalt hier ruim
-        //    AA; zie shared/theme/contrast.test.ts.
-        tekst: theme.dark ? '#141e3c' : '#ffffff',
-      };
+      // ⚠️ De twee modi gebruiken bewust een ándere goudtint, en dat is geen
+      //    slordigheid maar de enige combinatie die AA haalt.
+      //
+      //    Wit op het lichte goud (#a87a22) komt op 3,84 — onder de 4,5 die een
+      //    knoplabel nodig heeft. Op het dieper goud (`accentDim`) haalt wit
+      //    5,25. In de donkere modus is het omgekeerd: daar is het goud licht en
+      //    draagt het de donkere navy-tekst op 8,76.
+      //
+      //    Beide kleuren komen uit het Q-Projects-stelsel; er is hier niets
+      //    bijverzonnen. Vastgelegd in shared/theme/themes.test.ts.
+      return theme.dark
+        ? { achtergrond: c.accent, rand: c.accent, tekst: '#141e3c' }
+        : { achtergrond: c.accentDim, rand: c.accentDim, tekst: '#ffffff' };
     case 'secundair':
       return { achtergrond: c.panel, rand: c.border, tekst: c.text };
     case 'stil':
