@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
 
+const here = import.meta.dirname;
+
 export default defineConfig({
   test: {
     globals: true,
@@ -13,7 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': resolve(here, './src'),
     },
   },
 });

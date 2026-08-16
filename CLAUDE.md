@@ -67,7 +67,17 @@ Voordat er één feature gebouwd wordt:
 - Hosting: **Hostinger** (testfase), later Vercel
 - Observability: Sentry
 - Werkvoorraad: Linear
-- Visuele richting: emerald green, geïnspireerd op Habit Huddle
+- Visuele richting: **het Q-Projects navy-stelsel**, gedeeld met de Status Tracker
+  (`tracker.q-projects.tech`), thema's `navy` en `navy-licht`. Navy is de
+  ondergrond, goud het accent. **Gebruik uitsluitend Q-Projects-kleurstellingen** —
+  geen zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
+  *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
+
+### Live-adressen
+| Omgeving | Adres |
+|---|---|
+| GoalBuddies | `goalbuddies.q-projects.tech` (Hostinger, `public_html/goalbuddies`) |
+| Status Tracker | `tracker.q-projects.tech` — referentie voor het design |
 
 ## ⚠️ Supabase gratis tier
 - Projecten pauzeren na inactiviteit.
