@@ -75,36 +75,31 @@ function mustId(
 }
 
 /**
- * ⚠️ Bevinding van deze suite: een groep aanmaken kán niet vanuit de client.
+ * Een groep aanmaken loopt via `create_group` (migratie 0009), en dat is geen
+ * gemak maar noodzaak.
  *
- * Twee policies bijten elkaar. `groups_select` eist `is_group_member(id)`, en
- * `group_members_insert_founder` controleert het oprichterschap met een subquery
- * op `groups` — die subquery draait óók onder RLS. De oprichter moet dus lid
- * zijn om zijn eigen groep te mogen zien, en zijn groep zien om lid te mogen
- * worden. Daar komt niemand doorheen.
+ * ⚠️ Bevinding van deze suite: met losse inserts kán het niet. `groups_select`
+ *    eist `is_group_member(id)`, en `group_members_insert_founder` controleert
+ *    het oprichterschap met een subquery op `groups` die zelf ook onder RLS
+ *    draait. De oprichter moest dus lid zijn om zijn groep te mogen zien, en
+ *    zijn groep zien om lid te mogen worden.
  *
- * De oplossing hoort een RPC te zijn die groep en oprichterslidmaatschap in één
- * transactie zet — dat is toch al nodig, want twee losse inserts kunnen halverwege
- * stranden en laten dan een groep zonder leden achter. Die RPC hoort bij QS8-52.
- * Zolang hij er niet is bouwt deze suite de groep met de systeemclient, precies
- * zoals die RPC dat straks doet.
+ *    Dat deze functie via de gewone client van de eigenaar draait — en niet via
+ *    de systeemclient — is dus zelf een test: hij bewijst dat de RPC het gat
+ *    dicht.
  */
 async function createGroup(owner: TestUser, name: string): Promise<{ id: string; code: string }> {
   const code = inviteCode();
-  const id = crypto.randomUUID();
-  const admin = adminDb();
 
-  mustOk(
-    await admin.from('groups').insert({ id, name, created_by: owner.id, invite_code: code }),
+  const groep = mustId(
+    await owner.db
+      .rpc('create_group', { group_name: name, invite_code: code })
+      .select('id')
+      .single(),
     `groep ${name}`,
   );
 
-  mustOk(
-    await admin.from('group_members').insert({ group_id: id, user_id: owner.id, role: 'admin' }),
-    `oprichter van ${name}`,
-  );
-
-  return { id, code };
+  return { id: groep, code };
 }
 
 async function buildFixture(): Promise<Fixture> {
@@ -515,7 +510,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     //    Zodra 0005 gedraaid is slaat déze regel om: `it.fails` faalt dan zelf,
     //    want de test slaagt. Dat is de bedoeling — het dwingt af dat de
     //    markering verdwijnt in plaats van jarenlang blijft staan.
-    it.fails(
+    it(
       'laat de groep de reeks zien maar nooit het puntentotaal',
       async () => {
         const { data, error } = await f.bob.db
@@ -716,21 +711,15 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       return groep.id;
     }
 
-    // ⚠️ BEKEND GAT — `it.fails` betekent: dit hoort te weigeren en doet dat niet.
+    // ⚠️ Dit was een gat, gedicht in migratie 0006. `group_members_update` had
+    //    geen `with check`; Postgres gebruikt dan de `using`-expressie ook als
+    //    check, en die eist alleen `user_id = auth.uid()`. De kolom `role` stond
+    //    nergens vast, dus elk lid maakte zichzelf met één update admin — en kon
+    //    daarna de hele groep met alle geschiedenis wissen.
     //
-    //    `group_members_update` in 0003_rls.sql heeft geen `with check`. Postgres
-    //    gebruikt dan de `using`-expressie óók als check, en die eist alleen
-    //    `user_id = auth.uid()`. De kolom `role` wordt nergens vastgezet.
-    //
-    //    Gevolg: wie via een geldige uitnodigingscode binnenkomt, maakt zichzelf
-    //    met één update admin. Daarna kan hij via `groups_delete` de hele groep
-    //    met alle geschiedenis wissen, of via `group_members_delete` iedereen
-    //    eruit zetten — de oprichter incluis.
-    //
-    //    Reparatie vraagt een migratie: expliciete `with check` plus een
-    //    `before update`-trigger die `role` en `group_id` terugzet voor
-    //    niet-admins. Zie docs/Q-TODO.docx A4.
-    it.fails(
+    //    De reparatie is een trigger en niet alleen een policy, want RLS kan geen
+    //    kolommen beperken. Die grens komt hieronder nog een paar keer terug.
+    it(
       'laat een gewoon lid zichzelf geen admin maken',
       async () => {
         const groupId = await verseGroepMetBob('Groep voor rolverhoging');
@@ -821,17 +810,15 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
   // -------------------------------------------------------------------------
 
   describe('chat', () => {
-    // ⚠️ BEKEND GAT — `it.fails`: dit hoort te weigeren en doet dat niet.
+    // ⚠️ Dit was het ergste gat van de zeven, gedicht in 0006 en 0010.
+    //    `chat_messages_insert` blokkeerde `type = 'system'`, de UPDATE-policy
+    //    niet. Een lid plaatste dus een gewoon bericht en werkte het bij naar een
+    //    systeembericht.
     //
-    //    `chat_messages_insert` blokkeert `type = 'system'`. `chat_messages_update`
-    //    doet dat niet. Een lid plaatst dus een gewoon bericht en werkt het
-    //    daarna bij naar een systeembericht.
-    //
-    //    Dit is de ergste van de zeven. Systeemberichten zijn in dit product het
-    //    kanaal dat mensen vertrouwen, en dit is de directe route om domeinregel
-    //    7 van buitenaf te breken: "Alice heeft haar week gemist", ondertekend
-    //    door de app zelf. Zie docs/Q-TODO.docx A5.
-    it.fails(
+    //    Systeemberichten zijn in dit product het kanaal dat de groep vertrouwt.
+    //    Dit was de directe route om domeinregel 7 van buitenaf te breken:
+    //    "Alice heeft haar week gemist", ondertekend door de app zelf.
+    it(
       'laat een lid zijn eigen bericht niet omtoveren tot systeembericht',
       async () => {
         await f.bob.db
@@ -850,10 +837,17 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
 
-    // ⚠️ BEKEND GAT — dezelfde `chat_messages_update`, tweede pad: de `with
-    //    check` mist `is_group_member(group_id)`, dus een bericht is naar een
-    //    willekeurige andere groep te verplaatsen. Zie docs/Q-TODO.docx A5.
-    it.fails(
+    // ⚠️ Tweede pad van hetzelfde gat, en het leerzaamste van de reeks.
+    //
+    //    0006 zette `is_group_member(group_id)` in de `with check`. Dat blokkeert
+    //    verplaatsen naar een vréémde groep — maar niet naar een andere groep
+    //    waar je zelf ook in zit, want dan slaagt de check gewoon. De test bleef
+    //    dus falen ná de reparatie, en dat is precies waarom hij bestaat.
+    //
+    //    0010 pint daarom `group_id`, `sender_id`, `type` en `created_at` vast in
+    //    een trigger. Een bericht hoort bij het gesprek waar het geplaatst is;
+    //    je mag je tekst rechtzetten, meer niet.
+    it(
       'laat een lid zijn bericht niet naar een andere groep verplaatsen',
       async () => {
         await f.bob.db
@@ -1044,10 +1038,11 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
 
-    // ⚠️ BEKEND GAT — `commitments_insert` controleert alleen doeleigenaarschap,
-    //    niet `status` en niet of je lid bent van `beneficiary_group_id`.
-    //    Zie docs/Q-TODO.docx A6.
-    it.fails(
+    // ⚠️ Gedicht in 0006. `commitments_insert` controleerde alleen
+    //    doeleigenaarschap — niet de status, en niet of je lid bent van de
+    //    begunstigde groep. Een straf was dus direct als `due` aan te maken,
+    //    waarna een willekeurige groep meteen leesrecht kreeg op de tekst.
+    it(
       'laat een straf niet meteen als verschuldigd aanmaken',
       async () => {
         // Domeinregel 11: een straf treedt alleen in werking bij een verstreken
@@ -1067,9 +1062,9 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
 
-    // ⚠️ BEKEND GAT — `daily_moves_write` checkt alleen `user_id = auth.uid()`,
-    //    niet van wie `weekly_goal_id` is. Zie docs/Q-TODO.docx A6.
-    it.fails(
+    // ⚠️ Gedicht in 0006. `daily_moves_write` checkte alleen
+    //    `user_id = auth.uid()`, niet van wie `weekly_goal_id` was.
+    it(
       'laat geen dagzet onder andermans weekdoel hangen',
       async () => {
         // Anders kan iemand tekst in de doeldraad van een ander plaatsen — en
@@ -1088,11 +1083,9 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
 
-    // ⚠️ BEKEND GAT — `points_ceiling`, `points_floor` en `points_miss` zijn
-    //    volledig client-bestuurd; de enige constraints zijn `ceiling >= floor`
-    //    en `miss <= 0`. Zonder bovengrens is de score betekenisloos.
-    //    Zie docs/Q-TODO.docx A6.
-    it.fails(
+    // ⚠️ Gedicht in 0007. De enige constraints waren `ceiling >= floor` en
+    //    `miss <= 0`, dus een weekdoel met 100.000 punten mocht gewoon.
+    it(
       'laat geen absurd puntenplafond op een weekdoel zetten',
       async () => {
         // Domeinregel 10 legt het model vast op +2/+1/−1. Is points_ceiling vrij

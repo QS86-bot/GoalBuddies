@@ -87,7 +87,12 @@ Uit `CLAUDE.md`, procesregel 20 — elk bestand in `supabase/migrations/`:
 | `0002_functions_triggers.sql` | RLS-hulpfuncties, `join_group_with_code`, triggers | ja |
 | `0003_rls.sql` | 48 policies | ja |
 | `0004_harden_functions.sql` | `search_path` vastgezet op de functies | ja |
-| `0005_fix_group_visible_streaks.sql` | Repareert de gedeelde reeks | **nee — zie Q-TODO A1/A2** |
+| `0005_fix_group_visible_streaks.sql` | Repareert de gedeelde reeks | ja, 16-08 |
+| `0006_close_rls_gaps.sql` | Vijf RLS-gaten uit de security-review | ja, 16-08 |
+| `0007_weekly_goals_points_bounded.sql` | Bovengrens op het puntenmodel | ja, 16-08 |
+| `0008_join_group_rate_limit.sql` | 20 join-pogingen per dag; moderatie-bypass weg | ja, 16-08 |
+| `0009_create_group_rpc.sql` | `create_group` — groep aanmaken kán weer | ja, 16-08 |
+| `0010_chat_message_immutable_fields.sql` | Bericht hoort bij zijn gesprek | ja, 16-08 |
 
 ### 2.5 De RLS-tests
 
