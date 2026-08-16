@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "GoalBuddies",
+    "slug": "goalbuddies",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "goalbuddies",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "nl.qprojects.goalbuddies"
+    },
+    "android": {
+      "package": "nl.qprojects.goalbuddies",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -1,8 +1,17 @@
 # CLAUDE.md — GoalBuddies
 
 > Grondwet van deze codebase. Claude Code en alle subagents lezen dit bij elke sessie.
-> **Dit is een greenfield-project.** Er is nog geen code. Dat betekent dat elke
-> keuze die je nu maakt, jarenlang meegaat. Neem de tijd voor het datamodel.
+> De eerste beslissingen in dit project zijn de duurste; ze gaan jaren mee.
+
+## 👉 Begin hier
+
+**Nieuwe sessie? Lees `docs/WERKVOORRAAD.md`.** Daar staat waar het project
+staat, wat er nog moet, in welke volgorde, en waar je jezelf pijn doet als je
+het overslaat. Dit bestand zegt hoe je werkt; dat bestand zegt wat er aan de
+beurt is.
+
+Verder bouwen doe je met **`/verder`**. Die pakt zelf het volgende issue uit
+Linear en werkt het af tot een pushbare branch.
 
 ## gstack
 
@@ -33,6 +42,17 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 
 **Linear:** project GoalBuddies in team `QS86-bot Linear` (prefix `QS8`).
 **Supabase:** project `goalbuddies`, ref `wehgocadxehottiiyvsc`, regio `eu-west-3`.
+**GitHub:** `QS86-bot/GoalBuddies`, hoofdbranch `main`.
+
+### Versiebeheer
+- Eén branch per Linear-issue. Gebruik de naam die Linear zelf voorstelt
+  (`quintenstrijdonk/qs8-98-08-rls-testsuite-met-echte-jwts`) — dan koppelt Linear
+  de branch, de PR en het issue automatisch aan elkaar.
+- Nooit rechtstreeks op `main` committen zodra er code staat.
+- Commit-berichten in het Nederlands: eerste regel wat er verandert, daarna
+  waaróm. Bij een niet-vanzelfsprekende keuze een verwijzing naar
+  `docs/decisions/NNN-*.md`.
+- Een PR gaat pas open na `code-critic`, `security-reviewer` en `critical-user`.
 
 ## ⚠️ Solo-fase — geldt tot de engineer er is
 Er is niemand die jouw werk nakijkt.
@@ -56,7 +76,17 @@ Voordat er één feature gebouwd wordt:
 - Hosting: **Hostinger** (testfase), later Vercel
 - Observability: Sentry
 - Werkvoorraad: Linear
-- Visuele richting: emerald green, geïnspireerd op Habit Huddle
+- Visuele richting: **het Q-Projects navy-stelsel**, gedeeld met de Status Tracker
+  (`tracker.q-projects.tech`), thema's `navy` en `navy-licht`. Navy is de
+  ondergrond, goud het accent. **Gebruik uitsluitend Q-Projects-kleurstellingen** —
+  geen zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
+  *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
+
+### Live-adressen
+| Omgeving | Adres |
+|---|---|
+| GoalBuddies | `goalbuddies.q-projects.tech` (Hostinger, `public_html/goalbuddies`) |
+| Status Tracker | `tracker.q-projects.tech` — referentie voor het design |
 
 ## ⚠️ Supabase gratis tier
 - Projecten pauzeren na inactiviteit.

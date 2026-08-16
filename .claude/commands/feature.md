@@ -27,7 +27,9 @@ Delegeer aan `code-critic`, `security-reviewer` en `critical-user`.
   met datum, bestand en één regel uitleg.
 
 **Stap 6 — Oplevering**
-Branch `feat/<issue-id>-<korte-naam>`, commit, en een PR-beschrijving:
+Branch met de naam die Linear zelf voorstelt (het veld `gitBranchName` op het
+issue, bijvoorbeeld `quintenstrijdonk/qs8-98-08-rls-testsuite-met-echte-jwts`) —
+dan koppelen branch, PR en issue automatisch. Commit, en een PR-beschrijving:
 
 ```
 ## Wat
