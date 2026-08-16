@@ -1,0 +1,69 @@
+name: CI
+
+# CLAUDE.md, solo-fase: "Tests zijn de enige review die bestaat."
+# Zolang er geen tweede paar ogen is, is dit die ogen.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+# Een nieuwe push op dezelfde branch maakt de vorige run overbodig. Scheelt
+# wachttijd en minuten, en de uitkomst van een verouderde commit zegt niets.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  controle:
+    name: typecheck · lint · test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Gelijk aan de engines-eis in package.json.
+          node-version: '20'
+          cache: npm
+
+      # `npm ci` en niet `npm install`: de lockfile is de waarheid, en een CI die
+      # zelf versies mag kiezen test iets anders dan wat er draait.
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # ⚠️ De RLS-tests (src/lib/testing/rls.test.ts) slaan zichzelf hier over.
+      #    Ze hebben SUPABASE_SERVICE_ROLE_KEY nodig, en die hoort niet in CI:
+      #    een key die RLS omzeilt geef je niet aan een runner die op elke push
+      #    van elke branch draait. Ze horen lokaal te draaien vóór een merge.
+      #    Zie docs/DEPLOY.md.
+      - name: Tests
+        run: npm test
+
+  # Zonder deze job is CI een suggestie. Met branch protection op `main` die
+  # deze check verplicht stelt, is rood blokkerend — zie docs/Q-TODO.md.
+  poort:
+    name: Alles groen
+    runs-on: ubuntu-latest
+    needs: [controle]
+    if: always()
+    steps:
+      - name: Uitslag bepalen
+        run: |
+          if [ "${{ needs.controle.result }}" != "success" ]; then
+            echo "Controle is niet groen: ${{ needs.controle.result }}"
+            exit 1
+          fi
+          echo "Groen."
