@@ -41,3 +41,6 @@ backup-*.sql
 Thumbs.db
 *.log
 npm-debug.log*
+
+# Backups van db-dump.mjs — nooit in de repo, staat vol met gebruikersdata.
+backups/

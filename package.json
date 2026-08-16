@@ -14,7 +14,9 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "types:db": "supabase gen types typescript --project-id wehgocadxehottiiyvsc > src/lib/database.types.ts"
+    "types:db": "supabase gen types typescript --project-id wehgocadxehottiiyvsc > src/lib/database.types.ts",
+    "db:dump": "node scripts/db-dump.mjs",
+    "db:push": "npm run db:dump && supabase db push"
   },
   "engines": {
     "node": ">=20"
