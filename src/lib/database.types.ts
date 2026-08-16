@@ -621,12 +621,14 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          onboarded_at: string | null
           reminder_enabled: boolean
           reminder_time: string | null
           reminder_tone: string
           share_moves_by_default: boolean
           tz: string
           updated_at: string
+          wants_own_goal: boolean
           week_start_day: number
         }
         Insert: {
@@ -634,12 +636,14 @@ export type Database = {
           created_at?: string
           display_name: string
           id: string
+          onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
           share_moves_by_default?: boolean
           tz?: string
           updated_at?: string
+          wants_own_goal?: boolean
           week_start_day?: number
         }
         Update: {
@@ -647,12 +651,14 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
           share_moves_by_default?: boolean
           tz?: string
           updated_at?: string
+          wants_own_goal?: boolean
           week_start_day?: number
         }
         Relationships: []

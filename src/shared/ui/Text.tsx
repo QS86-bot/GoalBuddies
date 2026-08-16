@@ -14,6 +14,8 @@ type Props = Omit<TextProps, 'style'> & {
   readonly children: React.ReactNode;
   /** Zet de kleur naar de zachtere secundaire tekstkleur. */
   readonly muted?: boolean;
+  /** Alleen voor een invoerfout. Zie de opmerking bij `Caption`. */
+  readonly danger?: boolean;
   readonly numberOfLines?: number;
 };
 
@@ -51,11 +53,20 @@ export function Body({ children, muted, ...rest }: Props) {
   );
 }
 
-/** Kleine bijtekst: datums, aantallen, toelichting. */
-export function Caption({ children, muted = true, ...rest }: Props) {
+/**
+ * Kleine bijtekst: datums, aantallen, toelichting.
+ *
+ * ⚠️ `danger` is uitsluitend voor een invoerfout — "dit veld klopt niet". Niet
+ *    voor een gemiste week, niet voor een achterstand, niet voor iets van een
+ *    ander. Rood is in dit stelsel deadline-risico en formulierfout, meer niet
+ *    (domeinregel 7).
+ */
+export function Caption({ children, muted = true, danger = false, ...rest }: Props) {
   const c = useTheme().colors;
+  const kleur = danger ? c.red : muted ? c.textSecondary : c.text;
+
   return (
-    <RNText style={[styles.caption, { color: muted ? c.textSecondary : c.text }]} {...rest}>
+    <RNText style={[styles.caption, { color: kleur }]} {...rest}>
       {children}
     </RNText>
   );

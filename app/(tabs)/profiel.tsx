@@ -1,7 +1,21 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { signOut, updateProfiel, useProfiel, type Profiel as ProfielRij } from '@/modules/auth';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
-import { Body, Button, Caption, Card, Screen, StreakCounter, Subheading } from '@/shared/ui';
+import type { Weekday } from '@/shared/time';
+import {
+  AsyncView,
+  Avatar,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Screen,
+  StreakCounter,
+  Subheading,
+  WeekStartKeuze,
+} from '@/shared/ui';
 
 /**
  * Profiel — reeks, punten, weekpassen en instellingen.
@@ -12,28 +26,104 @@ import { Body, Button, Caption, Card, Screen, StreakCounter, Subheading } from '
  *    met domeinregel 7. De groep ziet De Ketting en mijlpalen, nooit dit scherm.
  */
 export default function Profiel() {
+  const { profiel, loading, error, zetProfiel } = useProfiel();
+
   return (
     <Screen title="Profiel">
-      <Card>
-        <Subheading>Jouw reeks</Subheading>
-        <StreakCounter cycles={0} />
-        <Caption>
-          Zodra je eerste week telt, begint hij hier te lopen. Een weekpas
-          beschermt je reeks als je een week mist — het punt niet, want anders
-          zegt de score niets meer.
-        </Caption>
-      </Card>
+      <AsyncView
+        loading={loading}
+        error={error}
+        data={profiel ?? undefined}
+        isEmpty={() => false}
+        empty={{
+          title: 'Geen profiel gevonden',
+          body: 'Dat hoort niet te kunnen. Log uit en opnieuw in; blijft het misgaan, dan ligt het aan ons.',
+        }}
+      >
+        {(p) => (
+          <View style={styles.blokken}>
+            <Card>
+              <View style={styles.kop}>
+                <Avatar name={p.display_name} url={p.avatar_url} size={44} />
+                <View style={styles.kopTekst}>
+                  <Subheading>{p.display_name}</Subheading>
+                  <Caption>
+                    {p.wants_own_goal ? 'Werkt aan een eigen doel' : 'Doet mee als buddy'}
+                  </Caption>
+                </View>
+              </View>
+            </Card>
 
-      <ThemaKeuze />
+            <Card>
+              <Subheading>Jouw reeks</Subheading>
+              <StreakCounter cycles={0} />
+              <Caption>
+                Zodra je eerste week telt, begint hij hier te lopen. Een weekpas beschermt je
+                reeks als je een week mist — het punt niet, want anders zegt de score niets meer.
+              </Caption>
+            </Card>
 
-      <Card nested>
-        <Subheading>Week-startdag</Subheading>
-        <Body muted>
-          Bepaalt wanneer jouw week begint en wanneer je punten tellen. Losstaand
-          van de huddledag van je groep. Instelbaar zodra je een account hebt.
-        </Body>
-      </Card>
+            <WeekStartInstelling
+              waarde={p.week_start_day as Weekday}
+              userId={p.id}
+              onOpgeslagen={zetProfiel}
+            />
+
+            <ThemaKeuze />
+
+            <Card nested>
+              <Subheading>Uitloggen</Subheading>
+              <Body muted>Je blijft lid van je groepen. Je doelen blijven staan.</Body>
+              <Button onPress={() => void signOut()}>Uitloggen</Button>
+            </Card>
+          </View>
+        )}
+      </AsyncView>
     </Screen>
+  );
+}
+
+/**
+ * De week-startdag, aanpasbaar na de onboarding — QS8-28.
+ *
+ * ⚠️ Wijzigen midden in een cyclus laat punten en reeks met rust. De reeks en het
+ *    grootboek staan vast op `cycle_start_date` van de rijen die er al zijn; die
+ *    worden niet herschreven. In de praktijk betekent dat: de lopende week telt
+ *    uit op de oude dag, de volgende begint op de nieuwe. Dat staat ook in de
+ *    hint, want anders durft niemand het aan te raken.
+ */
+function WeekStartInstelling({
+  waarde,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly waarde: Weekday;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function kies(dag: Weekday) {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, { week_start_day: dag });
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  return (
+    <Card>
+      <WeekStartKeuze waarde={waarde} onKies={(dag) => void kies(dag)} disabled={bezig} />
+      <Caption>
+        Verander je dit halverwege een week, dan telt de lopende week gewoon uit op de oude dag.
+        Je punten en je reeks blijven staan.
+      </Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
   );
 }
 
@@ -50,8 +140,8 @@ function ThemaKeuze() {
     <Card>
       <Subheading>Weergave</Subheading>
       <Body muted>
-        Donker is de standaard van dit stelsel. Kies je Systeem, dan volgt de app
-        de instelling van je toestel — ook als die &apos;s avonds omschakelt.
+        Donker is de standaard van dit stelsel. Kies je Systeem, dan volgt de app de instelling
+        van je toestel — ook als die &apos;s avonds omschakelt.
       </Body>
 
       <View style={styles.keuzes}>
@@ -72,5 +162,8 @@ function ThemaKeuze() {
 }
 
 const styles = StyleSheet.create({
+  blokken: { gap: space.blokGap + 3 },
+  kop: { flexDirection: 'row', gap: space.blokGap, alignItems: 'center' },
+  kopTekst: { gap: 2, flex: 1 },
   keuzes: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
