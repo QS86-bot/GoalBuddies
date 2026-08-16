@@ -29,7 +29,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 23 tabellen. Migraties `0001` t/m `0017`
+**Database — af, en nu ook getest.** 23 tabellen. Migraties `0001` t/m `0020`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 
@@ -38,6 +38,16 @@ migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerde
 maken, en elk groepslid kon een vals systeembericht plaatsen. De rode draad: RLS
 kan geen kolommen beperken — overal waar de eis is "deze kolom mag je niet
 veranderen" is een trigger nodig. Zie `docs/ENGINEER-REVIEW.md`.
+
+⚠️ **De reviewronde van EPIC 5 vond het zwaarste gat tot nu toe.**
+`weekly_goals_select` gaf elke groepsgenoot de héle rij van een gekoppeld doel,
+inclusief de kolom `status` — en die kan letterlijk `'missed'` zijn. Eén `GET`
+op `/rest/v1/weekly_goals` leverde de volledige lijst gemiste weken van een
+ander op, met datum. Het beslisdocument belooft dat dat niet kan "ook niet door
+slim te bevragen"; er was geen slimheid voor nodig. **De schermen deden het
+goed, de database niet** — en EPIC 5 bouwt precies de knop die het bereikbaar
+maakt. Gedicht in 0019 en 0020; `best_streak` ging in dezelfde ronde mee, want
+`best_streak > current_streak` verraadt een verbroken reeks.
 
 ⚠️ **EPIC 5 vond er nog een, en dat is de leerzaamste tot nu toe.** De rate
 limiting op uitnodigingscodes werkte helemaal niet. `join_group_with_code`
@@ -56,8 +66,8 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/auth` — sessie, profiel, Zod-schema's
 - `src/modules/goals` — doelen, weekdoelen, cyclus
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
-- `tests/rls` — 56 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (203 tests)
+- `tests/rls` — 63 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (210 tests)
 - `npm run build` rendert 20 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -235,7 +245,17 @@ Deze dingen kan een sessie niet zelf oplossen.
    op stukliep (migratie 0017), en het is niet te zien zonder een test die het
    uitprobeert.
 
-9. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
+9. **Domeinregel 7 is pas afgedwongen als de dátabase hem afdwingt.** De
+   schermen van EPIC 5 waren zorgvuldig: geen gemiste weken, geen puntentotaal,
+   een leeg vakje in plaats van een grijs kruisje. En toch stond de hele lijst
+   gemiste weken van elk groepslid open via één API-verzoek, omdat
+   `weekly_goals_select` de statuskolom meegaf. Bij élke nieuwe policy die
+   groepsgenoten iets laat lezen: welke kolommen zitten er in die rij, en zegt
+   een daarvan iets over falen? RLS kan geen kolommen beperken — dat betekent
+   dat je de rij moet beperken, of een view met een expliciete kolomlijst moet
+   bouwen zoals `group_visible_streaks`.
+
+10. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
    dag twee keer gevonden, allebei bij toeval: een migratie die wel op het
    project stond maar niet in de map, en een Edge Function waarvan de repo-versie
    een kapotte regex had terwijl de gedeployde versie klopte. Zolang migraties
@@ -251,9 +271,19 @@ Staan in `docs/ENGINEER-REVIEW.md`, met datum, risico en uitleg. Dat bestand is
 de agenda voor de engineer-review in november. **Vul het aan tijdens het bouwen**,
 niet achteraf — een onzekerheid die je nu niet opschrijft, ben je in november kwijt.
 
-De zwaarste op dit moment: de RLS-testdekking (§5), de `SECURITY DEFINER`-
-hulpfuncties die RLS omzeilen, en het feit dat niets bewaakt dat de repo en het
-echte project hetzelfde bevatten (§7.9).
+De zwaarste op dit moment, alle vier uit de reviewronde van EPIC 5:
+
+1. **`goals.risk_status` en `risk_reason` lekken nog steeds** naar groepsgenoten,
+   op precies dezelfde manier als `weekly_goals.status` dat deed. Vandaag niet
+   misbruikbaar (de Risico-radar bestaat niet en alles staat op `on_track`), maar
+   het moet dicht vóór EPIC 12 begint — en dat vraagt een architectuurwijziging
+   aan `goals_select`, geen reparatie.
+2. **`inactive` ontneemt niets.** Een uitgezet lid leest de groep, de chat en de
+   uitnodigingscode gewoon door, want `is_group_member()` kijkt alleen of de rij
+   bestaat.
+3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
+   groepen, rate limiting of domeinregel 7.
+4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.10).
 
 **Twee productbeslissingen liggen bij Quinten en staan in `docs/Q-TODO.docx`:**
 mag de groep je reeks zien (A15 — een reeks die naar nul valt is net zo goed
