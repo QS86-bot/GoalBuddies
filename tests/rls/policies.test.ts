@@ -2008,6 +2008,8 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       vreemde: TestUser;
       /** Lid dat in één test de groep verlaat; daarna niet meer bruikbaar. */
       vertrekker: TestUser;
+      /** Lid dat in één test op inactief wordt gezet; daarna niet meer bruikbaar. */
+      inactieveling: TestUser;
       /** Derde lid, om te zien dat een verzoek verdwijnt als een ander goedkeurt. */
       derde: TestUser;
       groupId: string;
@@ -2034,11 +2036,12 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     beforeAll(async () => {
       if (!rlsTestsConfigured) return;
 
-      const [eigenaar, buddy, vreemde, vertrekker, derde] = await Promise.all([
+      const [eigenaar, buddy, vreemde, vertrekker, inactieveling, derde] = await Promise.all([
         createTestUser('po-eigenaar'),
         createTestUser('po-buddy'),
         createTestUser('po-vreemde'),
         createTestUser('po-vertrekker'),
+        createTestUser('po-inactief'),
         createTestUser('po-derde'),
       ]);
 
@@ -2046,12 +2049,17 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       for (const [lid, naam] of [
         [buddy, 'buddy'],
         [vertrekker, 'vertrekker'],
+        [inactieveling, 'inactieveling'],
         [derde, 'derde'],
       ] as const) {
         mustJoin(await lid.db.rpc('join_group_with_code', { code: groep.code }), `${naam} erbij`);
       }
 
-      vast = { eigenaar, buddy, vreemde, vertrekker, derde, groupId: groep.id };
+      // ⚠️ Vertrekken en op inactief gezet worden zijn twee verschillende routes,
+      //    en ze krijgen daarom elk hun eigen lid. Zouden ze er één delen, dan
+      //    slaagt de tweede test omdat de eerste al iets kapotmaakte — en dan
+      //    bewijst hij niets over het pad dat hij zegt te toetsen.
+      vast = { eigenaar, buddy, vreemde, vertrekker, inactieveling, derde, groupId: groep.id };
     }, SETUP_TIMEOUT);
 
     /**
@@ -2169,6 +2177,108 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         expect(review.data?.[0]?.user_id).toBe(b.buddy.id);
         expect(review.data?.[0]?.delta).toBe(1);
         expect(review.data?.[0]?.goal_id).toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De zwaarste bevinding van de security-review op EPIC 6, en de kern van
+     *    domeinregel 3. Goedkeuren zelf was drievoudig op slot, maar het
+     *    *effect* ervan — `weekly_goals.status = 'approved'` — was met één
+     *    PATCH-verzoek door de eigenaar te zetten. Geen buddy nodig, en de reeks
+     *    die de groep van je ziet daarmee zelf te verzinnen.
+     *
+     *    Gedicht in 0023 met een kolomgrant. Deze test is de reden dat hij niet
+     *    ongemerkt terugkomt.
+     */
+    it(
+      'laat de eigenaar zijn eigen weekdoel niet goedkeuren met een update',
+      async () => {
+        const b = await bouwBeoordeling('achterdeur');
+        const admin = adminDb();
+
+        for (const status of ['approved', 'excused'] as const) {
+          await b.eigenaar.db
+            .from('weekly_goals')
+            .update({ status })
+            .eq('id', b.weeklyGoalId);
+        }
+
+        const week = await admin
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', b.weeklyGoalId)
+          .single();
+        expect(week.data?.status).toBe('pending');
+
+        // De toelating die erbij hoort: de titel mag hij wél bijwerken, anders
+        // is dit geen kolomslot maar een tafelslot.
+        const titel = await b.eigenaar.db
+          .from('weekly_goals')
+          .update({ title: 'Nieuwe titel' })
+          .eq('id', b.weeklyGoalId);
+        expect(titel.error).toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ Ook uit de security-review: goedkeuren mocht op een voltooiing die de
+    //    eigenaar zélf had ingetrokken. Dat gaf punten voor een bewering die niet
+    //    meer bestond. De wachtrij filterde hem wel, de policy niet — precies het
+    //    patroon dat 0006, 0007 en 0019 al drie keer dichtten.
+    it(
+      'laat een buddy geen ingetrokken voltooiing goedkeuren',
+      async () => {
+        const b = await bouwBeoordeling('ingetrokken');
+
+        const opnieuw = await b.eigenaar.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: b.weeklyGoalId,
+          p_achieved_level: 'floor',
+          p_note: 'Toch alleen de vloer',
+        });
+        expect(uitkomst(opnieuw.data).ok).toBe(true);
+
+        const { error } = await b.buddy.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.buddy.id,
+          subject_id: b.buddy.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ De bestaande vertrek-test gebruikt `.delete()`, en dat is zelf-vertrek.
+    //    De route die een beheerder neemt om iemand eruit te zetten, is
+    //    `status = 'inactive'` — en die was niet gedekt. Een groene test die het
+    //    verkeerde pad neemt, is geen bewijs.
+    it(
+      'laat een op inactief gezet lid niet goedkeuren',
+      async () => {
+        const b = await bouwBeoordeling('inactief');
+        const admin = adminDb();
+
+        mustOk(
+          await admin
+            .from('group_members')
+            .update({ status: 'inactive' })
+            .eq('group_id', b.groupId)
+            .eq('user_id', b.inactieveling.id),
+          'lid op inactief zetten',
+        );
+
+        const { error } = await b.inactieveling.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.inactieveling.id,
+          subject_id: b.inactieveling.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
       },
       SETUP_TIMEOUT,
     );

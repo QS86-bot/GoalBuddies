@@ -107,20 +107,37 @@ export async function verwijderWeekdoel(id: string): Promise<Resultaat<true>> {
  * ⚠️ Het oude weekdoel blijft staan met status `carried`, en verdwijnt dus niet
  *    stilletjes. Dat is privé: een doorgeschoven weekdoel komt nooit in de
  *    groepsfeed (domeinregel 7).
+ *
+ * ⚠️ Via een RPC en niet via een update. Sinds migratie 0023 kan de client
+ *    `weekly_goals.status` niet meer schrijven: die kolom was de achterdeur om
+ *    jezelf goed te keuren zonder buddy, en daarmee de hele peer-goedkeuring te
+ *    omzeilen. Doorschuiven is een van de twee statusovergangen die van de
+ *    gebruiker mogen komen, en die loopt nu langs een functie die toetst dat de
+ *    week ook echt van jou is en nog openstaat.
  */
 export async function schuifDoor(
   doel: Weekdoel,
   klok: UserClock,
   eersteCyclusVanDoel: Cycle | null,
 ): Promise<Resultaat<Weekdoel>> {
-  const { error: markeerFout } = await supabase()
-    .from('weekly_goals')
-    .update({ status: 'carried' })
-    .eq('id', doel.id);
+  const { data, error: markeerFout } = await supabase().rpc('markeer_doorgeschoven', {
+    p_weekly_goal_id: doel.id,
+  });
 
   if (markeerFout) {
-    reportError(markeerFout, 'weekly.carry', { code: markeerFout.code });
+    reportError(markeerFout, 'weekly.carry', { pgcode: markeerFout.code });
     return { ok: false, melding: 'Doorschuiven lukte niet.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uitkomst.ok !== true) {
+    return {
+      ok: false,
+      melding:
+        uitkomst.reason === 'not_open'
+          ? 'Deze week staat niet meer open. Doorschuiven kan alleen bij een week die nog loopt.'
+          : 'Doorschuiven lukte niet.',
+    };
   }
 
   return await maakWeekdoel(

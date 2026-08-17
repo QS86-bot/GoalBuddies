@@ -889,6 +889,7 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      markeer_doorgeschoven: { Args: { p_weekly_goal_id: string }; Returns: Json }
       openstaande_beoordelingen: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {

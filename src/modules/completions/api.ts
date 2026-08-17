@@ -85,27 +85,29 @@ export async function rondAf(
   if (error) {
     reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
 
-    // 23514 is de check_violation die `enforce_evidence_policy` gooit. De server
-    // is de waarheid; dit vertaalt hem naar dezelfde zin die de client hierboven
-    // al zou hebben gegeven.
+    // ⚠️ 23514 is de check_violation van `enforce_evidence_policy`, maar hij
+    //    dekt óók `completions_level_valid` en `completions_note_length`. De
+    //    melding noemt daarom de notitie zonder te beweren dat dát het probleem
+    //    was — een verkeerde diagnose is erger dan een vage.
     if (error.code === '23514') {
       return {
         ok: false,
         melding:
-          'Deze groep vraagt om een korte notitie bij het afronden. Eén zin is genoeg.',
+          'Je afronding werd geweigerd. Vraagt je groep om een notitie? Eén zin is genoeg; ' +
+          'maximaal 2000 tekens.',
       };
     }
 
     return { ok: false, melding: 'Afronden lukte niet. Probeer het opnieuw.' };
   }
 
-  const { error: statusFout } = await supabase()
-    .from('weekly_goals')
-    .update({ status: 'pending' })
-    .eq('id', weeklyGoalId);
-
-  if (statusFout) reportError(statusFout, 'completions.status', { code: statusFout.code });
-
+  // ⚠️ Geen tweede verzoek om de status op `pending` te zetten. Sinds migratie
+  //    0023 kan de client `weekly_goals.status` niet meer schrijven — die kolom
+  //    was de achterdeur om jezelf goed te keuren — en doet de trigger
+  //    `completions_mark_pending` het in dezelfde transactie. Dat repareert
+  //    meteen het geval waarin dat tweede verzoek wegviel: dan bereikte de week
+  //    nooit `pending`, stond hij in niemands wachtrij, en boekte de rollover
+  //    een minpunt voor een week die wél af was.
   return { ok: true, waarde: data };
 }
 
