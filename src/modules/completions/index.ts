@@ -21,11 +21,13 @@ export {
   dienOpnieuwIn,
   fetchBeoordelingen,
   fetchBuddyBijdrage,
+  fetchVragen,
   oordeelSchema,
   PER_PAGINA,
   volgBeoordelingen,
   type OordeelInvoer,
   type Resultaat,
   type TeBeoordelen,
+  type Vraag,
   type Wachtrij,
 } from './approvals';

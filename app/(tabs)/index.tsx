@@ -4,10 +4,15 @@ import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import {
+  bewijseisVoorDoel,
+  dienOpnieuwIn,
   fetchDagzetten,
+  fetchVragen,
   rondAf,
   zetDagzet,
+  type Bewijseis,
   type DagZet,
+  type Vraag,
 } from '@/modules/completions';
 import {
   afsluitbareCyclus,
@@ -165,24 +170,68 @@ function WeekdoelKaart({
   const [notitie, setNotitie] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+  const [eis, setEis] = useState<Bewijseis>('note_required');
+  const [vragen, setVragen] = useState<readonly Vraag[]>([]);
 
   const heeftVloer = Boolean(weekdoel.floor_text);
   const afgerond = weekdoel.status !== 'todo';
+  const wachtOpOordeel = weekdoel.status === 'pending';
+
+  // ⚠️ De bewijseis komt uit de groep en niet uit een constante. Hij is hier
+  //    alleen bedoeld om vooraf de juiste zin te tonen; afdwingen doet de
+  //    trigger `enforce_evidence_policy` (migratie 0021).
+  useEffect(() => {
+    let levend = true;
+
+    bewijseisVoorDoel(weekdoel.goal_id)
+      .then((gevonden) => {
+        if (levend) setEis(gevonden);
+      })
+      .catch(() => {
+        if (levend) setEis('note_required');
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [weekdoel.goal_id]);
+
+  // De vragen die buddy's gesteld hebben — zonder dit is "vertel me meer" een
+  // dood spoor en denkt de beoordelaar dat hij iets gedaan heeft.
+  useEffect(() => {
+    if (!wachtOpOordeel) return;
+    let levend = true;
+
+    fetchVragen(weekdoel.id)
+      .then((gevonden) => {
+        if (levend) setVragen(gevonden);
+      })
+      .catch(() => {
+        if (levend) setVragen([]);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [weekdoel.id, wachtOpOordeel]);
 
   async function afronden() {
     setBezig(true);
     setFout(null);
 
-    // De bewijseis komt straks per groep uit `groups.evidence_policy` (6.5).
-    // Tot EPIC 6 er is, geldt de standaard: een notitie is verplicht.
-    const uitkomst = await rondAf(weekdoel.id, userId, {
-      achieved_level: heeftVloer ? niveau : 'ceiling',
-      note: notitie,
-    }, 'note_required');
+    const niveauKeuze = heeftVloer ? niveau : 'ceiling';
+
+    // ⚠️ Opnieuw indienen loopt via een RPC: `completions` is append-only en
+    //    heeft geen UPDATE-policy, dus de client kan `superseded_by` niet zelf
+    //    zetten (domeinregel 6).
+    const uitkomst = wachtOpOordeel
+      ? await dienOpnieuwIn(weekdoel.id, niveauKeuze, notitie)
+      : await rondAf(weekdoel.id, userId, { achieved_level: niveauKeuze, note: notitie }, eis);
 
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setOpen(false);
+      setNotitie('');
       onKlaar();
     }
     setBezig(false);
@@ -199,7 +248,26 @@ function WeekdoelKaart({
         viewer="owner"
       />
 
-      {afgerond || !open ? null : (
+      {/*
+        ⚠️ Een vraag van een buddy is geen afkeuring en de kaart zegt dat ook
+           niet. "Vertel me meer" is een gelijkwaardige actie naast goedkeuren
+           (6.2); de meeste onduidelijkheid is gewoon onduidelijkheid.
+      */}
+      {vragen.length === 0 ? null : (
+        <Card nested>
+          <Subheading>Je buddy heeft een vraag</Subheading>
+          {vragen.map((v) => (
+            <Body key={v.id} muted>
+              &ldquo;{v.comment}&rdquo;
+            </Body>
+          ))}
+          {open ? null : (
+            <Button onPress={() => setOpen(true)}>Antwoorden en opnieuw indienen</Button>
+          )}
+        </Card>
+      )}
+
+      {(afgerond && !wachtOpOordeel) || !open ? null : (
         <View style={styles.afrond}>
           {heeftVloer ? (
             <Choice
@@ -216,7 +284,11 @@ function WeekdoelKaart({
 
           <Field
             label="Wat heb je gedaan?"
-            hint="Je buddy heeft iets nodig om op te reageren. Eén zin is genoeg."
+            hint={
+              eis === 'optional'
+                ? 'Mag leeg blijven in deze groep. Eén zin geeft je buddy wel iets om op te reageren.'
+                : 'Je groep vraagt hierom. Eén zin is genoeg.'
+            }
             value={notitie}
             onChangeText={setNotitie}
             multiline
@@ -227,7 +299,7 @@ function WeekdoelKaart({
 
           <View style={styles.knoppen}>
             <Button variant="primair" busy={bezig} onPress={() => void afronden()}>
-              Indienen
+              {wachtOpOordeel ? 'Opnieuw indienen' : 'Indienen'}
             </Button>
             <Button variant="stil" onPress={() => setOpen(false)}>
               Annuleren

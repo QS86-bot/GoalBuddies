@@ -242,6 +242,50 @@ export async function dienOpnieuwIn(
   return { ok: true, waarde: uitkomst.completion_id };
 }
 
+export interface Vraag {
+  readonly id: string;
+  readonly comment: string;
+  readonly created_at: string;
+}
+
+/**
+ * De vragen die buddy's bij dit weekdoel gesteld hebben — QS8-63.
+ *
+ * ⚠️ Zonder dit is "vertel me meer" een dood spoor: de beoordelaar stelt een
+ *    vraag die de indiener nergens ziet. Dat is erger dan geen knop, want de
+ *    beoordelaar denkt dat hij iets gedaan heeft.
+ *
+ * ⚠️ Alleen de vragen, niet de goedkeuringen. Wie wél goedkeurde is voor de
+ *    indiener niet interessant op dit scherm, en het staat al in De Ketting.
+ */
+export async function fetchVragen(weeklyGoalId: string): Promise<readonly Vraag[]> {
+  const voltooiing = await supabase()
+    .from('completions')
+    .select('id')
+    .eq('weekly_goal_id', weeklyGoalId)
+    .is('superseded_by', null)
+    .maybeSingle();
+
+  if (voltooiing.error || voltooiing.data === null) return [];
+
+  const { data, error } = await supabase()
+    .from('completion_approvals')
+    .select('id, comment, created_at')
+    .eq('completion_id', voltooiing.data.id)
+    .eq('status', 'more_info')
+    .order('created_at', { ascending: true })
+    .limit(10);
+
+  if (error) {
+    reportError(error, 'approvals.questions', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
+    return [];
+  }
+
+  return (data ?? [])
+    .filter((rij): rij is typeof rij & { comment: string } => typeof rij.comment === 'string')
+    .map((rij) => ({ id: rij.id, comment: rij.comment, created_at: rij.created_at }));
+}
+
 /**
  * Je buddy-bijdrage: hoeveel weken van anderen je beoordeeld hebt — QS8-67.
  *
