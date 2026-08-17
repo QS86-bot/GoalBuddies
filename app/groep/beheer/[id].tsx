@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { clientEnv } from '@/lib/env';
 import { useSession } from '@/modules/auth';
 import {
+  BEWIJSEIS_LABELS,
+  BEWIJSEISEN,
   fetchGroep,
   fetchMijnLidmaatschap,
   HUDDLEDAGEN,
+  type Bewijseis,
   toonCode,
   uitnodigingsLink,
   vernieuwUitnodiging,
@@ -53,6 +56,7 @@ export default function GroepBeheer() {
 
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
+  const [bewijseis, setBewijseis] = useState<Bewijseis>('note_required');
   const [bezig, setBezig] = useState<'opslaan' | 'vernieuwen' | 'sluiten' | null>(null);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
@@ -68,6 +72,7 @@ export default function GroepBeheer() {
         setBeheerder(lidmaatschap?.role === 'admin');
         setNaam(gevonden?.name ?? '');
         setHuddledag(((gevonden?.huddle_day ?? 0) % 7) as Weekday);
+        setBewijseis((gevonden?.evidence_policy ?? 'note_required') as Bewijseis);
         setError(null);
       })
       .catch((f: unknown) => {
@@ -88,7 +93,11 @@ export default function GroepBeheer() {
     setFout(null);
     setMelding(null);
 
-    const uitkomst = await wijzigGroep(id, { name: naam, huddle_day: huddledag });
+    const uitkomst = await wijzigGroep(id, {
+      name: naam,
+      huddle_day: huddledag,
+      evidence_policy: bewijseis,
+    });
     setBezig(null);
 
     if (!uitkomst.ok) {
@@ -190,6 +199,28 @@ export default function GroepBeheer() {
                 <Caption>
                   Wijzigen breekt geen lopende ketting: een schakel draagt de week waarin hij
                   gelegd is, en die wordt nooit herberekend.
+                </Caption>
+
+                {/*
+                  ⚠️ De bijlage-optie staat er wel en doet nog niets: er is geen
+                     Storage-bucket (Q-TODO A12), dus die eis zou onhaalbaar zijn.
+                     Tot die tijd gedraagt hij zich als "notitie verplicht", en dat
+                     staat eronder in plaats van dat de knop stilletjes liegt.
+                */}
+                <Choice
+                  label="Hoeveel bewijs vraagt deze groep?"
+                  hint={
+                    'Een duim omhoog op een bewering is een formaliteit. Eén zin kost tien ' +
+                    'seconden en geeft je buddy iets om op te reageren — dat is wat het gesprek ' +
+                    'op gang brengt.'
+                  }
+                  opties={BEWIJSEISEN.map((e) => ({ waarde: e, label: BEWIJSEIS_LABELS[e] }))}
+                  waarde={bewijseis}
+                  onKies={setBewijseis}
+                />
+                <Caption>
+                  Bijlagen kunnen nog niet: er is nog geen opslag. Kies je die stand, dan geldt
+                  voorlopig alleen de notitie. Wijzigen raakt bestaande afrondingen niet.
                 </Caption>
 
                 <Button

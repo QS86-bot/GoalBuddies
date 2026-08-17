@@ -34,6 +34,8 @@ export {
 export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
 
 export {
+  BEWIJSEIS_LABELS,
+  BEWIJSEISEN,
   CODE_ALFABET,
   CODE_LENGTE,
   codeSchema,
@@ -45,6 +47,7 @@ export {
   normaliseerCode,
   toonCode,
   uitnodigingsLink,
+  type Bewijseis,
   type GroepInvoer,
   type GroepPatch,
 } from './schemas';

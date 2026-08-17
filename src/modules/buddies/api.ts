@@ -357,6 +357,9 @@ export async function wijzigGroep(
   const update: TablesUpdate<'groups'> = {};
   if (gevalideerd.data.name !== undefined) update.name = gevalideerd.data.name;
   if (gevalideerd.data.huddle_day !== undefined) update.huddle_day = gevalideerd.data.huddle_day;
+  if (gevalideerd.data.evidence_policy !== undefined) {
+    update.evidence_policy = gevalideerd.data.evidence_policy;
+  }
 
   const { data, error } = await supabase()
     .from('groups')

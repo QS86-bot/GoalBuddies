@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { fetchMijnGroepen, huddledagLabel, type Groep } from '@/modules/buddies';
+import { fetchBeoordelingen, volgBeoordelingen } from '@/modules/completions';
 import { space } from '@/shared/theme';
 import { AsyncView, Body, Button, Caption, Card, Screen, Subheading } from '@/shared/ui';
 
@@ -56,6 +57,8 @@ export default function GroepTab() {
 
   return (
     <Screen title="Groep">
+      <TeBeoordelenKaart />
+
       <AsyncView
         loading={loading}
         error={error}
@@ -90,6 +93,62 @@ export default function GroepTab() {
         Ik heb een uitnodigingscode
       </Button>
     </Screen>
+  );
+}
+
+/**
+ * "Er wacht iets op jou" — QS8-62.
+ *
+ * ⚠️ Alleen zichtbaar als er echt iets is. Een kaart die permanent "0 te
+ *    beoordelen" meldt, leert mensen om er niet meer naar te kijken — en dan is
+ *    hij nutteloos op het moment dat er wél iets staat.
+ *
+ * ⚠️ Een storing hier maakt geen ruzie met de rest van het scherm: mislukt het
+ *    laden, dan verdwijnt de kaart en blijft de groepenlijst gewoon staan. Dat
+ *    is een bewuste uitzondering op regel 16 — dit is een melding en geen
+ *    inhoud, en een foutblok bovenaan het tabblad zou schreeuwen over iets dat
+ *    er misschien niet eens is.
+ */
+function TeBeoordelenKaart() {
+  const router = useRouter();
+  const [aantal, setAantal] = useState(0);
+  const [ronde, setRonde] = useState(0);
+
+  useEffect(() => {
+    let levend = true;
+
+    fetchBeoordelingen()
+      .then((w) => {
+        if (levend) setAantal(w.totaal);
+      })
+      .catch(() => {
+        if (levend) setAantal(0);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [ronde]);
+
+  useEffect(() => {
+    const stop = volgBeoordelingen(() => setRonde((n) => n + 1));
+    return stop;
+  }, []);
+
+  if (aantal === 0) return null;
+
+  return (
+    <Card>
+      <Subheading>
+        {aantal === 1 ? 'Een buddy wacht op je' : `${aantal} buddy's wachten op je`}
+      </Subheading>
+      <Body muted>
+        Ze hebben hun week afgerond. Eén zin terug is genoeg — dat is het hele punt.
+      </Body>
+      <Button variant="primair" block onPress={() => router.push('/beoordelen')}>
+        Beoordelen
+      </Button>
+    </Card>
   );
 }
 

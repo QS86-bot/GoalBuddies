@@ -852,6 +852,10 @@ export type Database = {
         Args: { group_name: string; huddle_day?: number; tz?: string }
         Returns: Json
       }
+      dien_opnieuw_in: {
+        Args: { p_achieved_level: string; p_note?: string; p_weekly_goal_id: string }
+        Returns: Json
+      }
       generate_invite_code: { Args: never; Returns: string }
       group_overview: {
         Args: {
@@ -885,6 +889,25 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      openstaande_beoordelingen: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          achieved_level: string
+          ceiling_text: string
+          completion_id: string
+          floor_text: string
+          goal_title: string
+          group_id: string
+          note: string
+          owner_avatar: string
+          owner_id: string
+          owner_name: string
+          submitted_at: string
+          total_open: number
+          weekly_goal_id: string
+          weekly_title: string
+        }[]
+      }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }

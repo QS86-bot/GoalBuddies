@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { signOut, updateProfiel, useProfiel, type Profiel as ProfielRij } from '@/modules/auth';
+import { fetchBuddyBijdrage } from '@/modules/completions';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
 import {
@@ -62,6 +63,8 @@ export default function Profiel() {
                 reeks als je een week mist — het punt niet, want anders zegt de score niets meer.
               </Caption>
             </Card>
+
+            <BuddyBijdrage userId={p.id} />
 
             <WeekStartInstelling
               waarde={p.week_start_day as Weekday}
@@ -157,6 +160,57 @@ function ThemaKeuze() {
           </Button>
         ))}
       </View>
+    </Card>
+  );
+}
+
+/**
+ * Buddy-bijdrage — QS8-67.
+ *
+ * ⚠️ Los van je eigen doelvoortgang, en dat is een acceptatiecriterium. Het zijn
+ *    punten in hetzelfde grootboek maar zonder `goal_id`, zodat ze niet
+ *    meetellen in de reeks of het totaal van een doel waar ze niets mee te maken
+ *    hebben. Score en voortgang zijn twee dingen (domeinregel 10) en dit is nog
+ *    een derde.
+ *
+ * ⚠️ Alleen van jezelf. `points_ledger` laat uitsluitend je eigen rijen door, dus
+ *    dit getal kan niet per ongeluk dat van een ander zijn.
+ */
+function BuddyBijdrage({ userId }: { readonly userId: string }) {
+  const [aantal, setAantal] = useState<number | null>(null);
+
+  useEffect(() => {
+    let levend = true;
+
+    fetchBuddyBijdrage(userId)
+      .then((n) => {
+        if (levend) setAantal(n);
+      })
+      .catch(() => {
+        if (levend) setAantal(0);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [userId]);
+
+  return (
+    <Card>
+      <Subheading>Buddy-bijdrage</Subheading>
+      <Body>
+        {aantal === null
+          ? '—'
+          : aantal === 0
+            ? 'Je hebt nog geen week van een buddy beoordeeld.'
+            : aantal === 1
+              ? 'Je hebt één week van een buddy beoordeeld.'
+              : `Je hebt ${aantal} weken van buddy's beoordeeld.`}
+      </Body>
+      <Caption>
+        Reviewen telt mee. Doorvragen levert net zoveel op als goedkeuren — het gaat om
+        betrokkenheid, niet om ja zeggen.
+      </Caption>
     </Card>
   );
 }

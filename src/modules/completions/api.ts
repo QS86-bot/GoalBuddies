@@ -41,12 +41,19 @@ export type Bewijseis = 'note_required' | 'note_and_attachment' | 'optional';
  * ⚠️ `cycle_start_date` sturen we niet mee. De trigger `pin_completion_cycle`
  *    (migratie 0006) haalt hem uit het weekdoel. Zou de client hem kiezen, dan
  *    is een gemiste week achteraf alsnog te claimen.
+ *
+ * ⚠️ De bewijseis komt niet meer van de aanroeper. Tot migratie 0021 kreeg deze
+ *    functie hem als parameter mee, en dat is dezelfde fout die 0006 en 0007
+ *    vier keer hebben gedicht: een client die de regel meelevert waaraan hij
+ *    getoetst wordt, is geen regel maar een verzoek. De trigger
+ *    `enforce_evidence_policy` beslist nu, en `eis` is hier alleen nog nodig om
+ *    de melding te kunnen geven vóórdat de server hem geeft.
  */
 export async function rondAf(
   weeklyGoalId: string,
   userId: string,
   invoer: AfrondInvoer,
-  eis: Bewijseis,
+  eis: Bewijseis = 'note_required',
 ): Promise<Resultaat<Voltooiing>> {
   const gevalideerd = afrondSchema.safeParse(invoer);
   if (!gevalideerd.success) {
@@ -76,7 +83,19 @@ export async function rondAf(
     .single();
 
   if (error) {
-    reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId, code: error.code });
+    reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
+
+    // 23514 is de check_violation die `enforce_evidence_policy` gooit. De server
+    // is de waarheid; dit vertaalt hem naar dezelfde zin die de client hierboven
+    // al zou hebben gegeven.
+    if (error.code === '23514') {
+      return {
+        ok: false,
+        melding:
+          'Deze groep vraagt om een korte notitie bij het afronden. Eén zin is genoeg.',
+      };
+    }
+
     return { ok: false, melding: 'Afronden lukte niet. Probeer het opnieuw.' };
   }
 
@@ -91,24 +110,53 @@ export async function rondAf(
 }
 
 /**
- * Corrigeert een eerdere voltooiing — domeinregel 6.
+ * De bewijseis van de strengste groep waar dit doel aan hangt — QS8-66.
  *
- * ⚠️ De oude rij blijft staan en krijgt `superseded_by`. Overschrijven zou de
- *    geschiedenis vervalsen, en juist bij "ik dacht dat ik het plafond had
- *    gehaald maar het was de vloer" wil je later kunnen zien wat er gebeurd is.
- *
- * ⚠️ `completions` heeft geen UPDATE-policy: de client kan `superseded_by` niet
- *    zelf zetten. Dat hoort een Edge Function te doen met de service-role-key.
- *    Zolang die er niet is, geeft deze functie een eerlijke melding in plaats
- *    van een halve correctie. Zie docs/Q-TODO.docx.
+ * ⚠️ Alleen om de gebruiker vooraf te vertellen wat er van hem verwacht wordt.
+ *    De afdwinging staat in de trigger `enforce_evidence_policy` (migratie
+ *    0021), die dezelfde "strengste wint"-regel hanteert. Zou dit de enige
+ *    controle zijn, dan bepaalt een aangepaste client hoeveel bewijs een groep
+ *    krijgt.
  */
-export async function corrigeer(): Promise<Resultaat<never>> {
-  return {
-    ok: false,
-    melding:
-      'Een voltooiing corrigeren kan nog niet. Vraag je buddy om "vertel me meer" te kiezen; ' +
-      'dan kun je hem opnieuw indienen.',
-  };
+export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
+  const koppelingen = await supabase()
+    .from('goal_group_links')
+    .select('group_id')
+    .eq('goal_id', goalId)
+    .limit(20);
+
+  if (koppelingen.error) {
+    reportError(koppelingen.error, 'completions.policy', {
+      goal_id: goalId,
+      pgcode: koppelingen.error.code,
+    });
+    // Bij twijfel de strengste die haalbaar is: liever een notitie te veel
+    // gevraagd dan een afronding die de server alsnog weigert.
+    return 'note_required';
+  }
+
+  const groepIds = (koppelingen.data ?? []).map((rij) => rij.group_id);
+  if (groepIds.length === 0) return 'optional';
+
+  // ⚠️ Twee ronden en geen ingebedde select. Een `groups(evidence_policy)`-join
+  //    is hier niet te typeren — PostgREST kent de relatie wel, de generator
+  //    niet — en dat zou een cast kosten op precies het veld dat bepaalt hoeveel
+  //    bewijs iemand moet leveren.
+  const { data, error } = await supabase()
+    .from('groups')
+    .select('evidence_policy')
+    .in('id', groepIds);
+
+  if (error) {
+    reportError(error, 'completions.policy', { goal_id: goalId, pgcode: error.code });
+    return 'note_required';
+  }
+
+  const eisen = (data ?? []).map((g) => g.evidence_policy);
+
+  if (eisen.includes('note_and_attachment')) return 'note_and_attachment';
+  if (eisen.includes('note_required')) return 'note_required';
+  return 'optional';
 }
 
 export async function fetchVoltooiing(weeklyGoalId: string): Promise<Voltooiing | null> {
