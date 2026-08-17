@@ -3,7 +3,7 @@
 
 export {
   afrondSchema,
-  corrigeer,
+  bewijseisVoorDoel,
   dagzetSchema,
   fetchDagzetten,
   fetchVoltooiing,
@@ -15,3 +15,19 @@ export {
   type DagzetInvoer,
   type Voltooiing,
 } from './api';
+
+export {
+  beoordeel,
+  dienOpnieuwIn,
+  fetchBeoordelingen,
+  fetchBuddyBijdrage,
+  fetchVragen,
+  oordeelSchema,
+  PER_PAGINA,
+  volgBeoordelingen,
+  type OordeelInvoer,
+  type Resultaat,
+  type TeBeoordelen,
+  type Vraag,
+  type Wachtrij,
+} from './approvals';

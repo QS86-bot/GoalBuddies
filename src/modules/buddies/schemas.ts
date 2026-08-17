@@ -100,7 +100,27 @@ export const groepSchema = z.object({
 
 export type GroepInvoer = z.infer<typeof groepSchema>;
 
-export const groepPatchSchema = groepSchema.partial();
+/**
+ * De bewijseis van een groep — QS8-66, beslispunt 3.
+ *
+ * ⚠️ Alleen te wijzigen bij een bestaande groep en niet bij het aanmaken: een
+ *    nieuwe groep begint op de standaard (notitie verplicht), want dat is de
+ *    keuze die de sociale lus op gang brengt. Een duim omhoog op een bewering is
+ *    een formaliteit; één zin geeft de goedkeurder iets om op te reageren.
+ */
+export const BEWIJSEISEN = ['note_required', 'note_and_attachment', 'optional'] as const;
+export type Bewijseis = (typeof BEWIJSEISEN)[number];
+
+export const BEWIJSEIS_LABELS: Readonly<Record<Bewijseis, string>> = {
+  note_required: 'Notitie verplicht',
+  note_and_attachment: 'Notitie én bijlage',
+  optional: 'Alles optioneel',
+};
+
+export const groepPatchSchema = groepSchema
+  .partial()
+  .extend({ evidence_policy: z.enum(BEWIJSEISEN).optional() });
+
 export type GroepPatch = z.infer<typeof groepPatchSchema>;
 
 export const codeSchema = z

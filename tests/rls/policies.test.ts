@@ -1990,4 +1990,641 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       );
     });
   });
+
+  // -------------------------------------------------------------------------
+  // EPIC 6 — peer-goedkeuring (migratie 0021)
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ QS8-68 vraagt vier gevallen met naam: zelfgoedkeuring, goedkeuren door
+  //    een niet-lid, goedkeuren ná vertrek uit de groep, en goedkeuren van een
+  //    ontkoppeld doel. De eerste twee stonden al in dit bestand; de laatste
+  //    twee zijn nieuw, en het zijn precies de twee die je vergeet omdat ze een
+  //    tussenstap nodig hebben.
+
+  describe('peer-goedkeuring', () => {
+    interface Beoordeling {
+      eigenaar: TestUser;
+      buddy: TestUser;
+      vreemde: TestUser;
+      /** Lid dat in één test de groep verlaat; daarna niet meer bruikbaar. */
+      vertrekker: TestUser;
+      /** Lid dat in één test op inactief wordt gezet; daarna niet meer bruikbaar. */
+      inactieveling: TestUser;
+      /** Derde lid, om te zien dat een verzoek verdwijnt als een ander goedkeurt. */
+      derde: TestUser;
+      groupId: string;
+      goalId: string;
+      weeklyGoalId: string;
+      completionId: string;
+    }
+
+    let vast: Omit<Beoordeling, 'goalId' | 'weeklyGoalId' | 'completionId'>;
+
+    /**
+     * ⚠️ Gebruikers en groep één keer, doelen per test.
+     *
+     *    De eerste versie maakte per test drie accounts aan. Dat is dertig
+     *    aanmeldingen in een halve minuut, en Supabase antwoordt dan met
+     *    "Request rate limit reached" — vijf tests vielen om op een limiet die
+     *    niets met de policies te maken had. Bovendien loopt de eigenaar dan
+     *    tegen zijn tien-groepen-per-dag aan.
+     *
+     *    Doelen, weekdoelen en voltooiingen zijn wél per test: goedkeuren is
+     *    onomkeerbaar, dus twee tests die dezelfde voltooiing delen, meten
+     *    elkaar in plaats van de database.
+     */
+    beforeAll(async () => {
+      if (!rlsTestsConfigured) return;
+
+      const [eigenaar, buddy, vreemde, vertrekker, inactieveling, derde] = await Promise.all([
+        createTestUser('po-eigenaar'),
+        createTestUser('po-buddy'),
+        createTestUser('po-vreemde'),
+        createTestUser('po-vertrekker'),
+        createTestUser('po-inactief'),
+        createTestUser('po-derde'),
+      ]);
+
+      const groep = await createGroup(eigenaar, 'Goedkeuringsgroep');
+      for (const [lid, naam] of [
+        [buddy, 'buddy'],
+        [vertrekker, 'vertrekker'],
+        [inactieveling, 'inactieveling'],
+        [derde, 'derde'],
+      ] as const) {
+        mustJoin(await lid.db.rpc('join_group_with_code', { code: groep.code }), `${naam} erbij`);
+      }
+
+      // ⚠️ Vertrekken en op inactief gezet worden zijn twee verschillende routes,
+      //    en ze krijgen daarom elk hun eigen lid. Zouden ze er één delen, dan
+      //    slaagt de tweede test omdat de eerste al iets kapotmaakte — en dan
+      //    bewijst hij niets over het pad dat hij zegt te toetsen.
+      vast = { eigenaar, buddy, vreemde, vertrekker, inactieveling, derde, groupId: groep.id };
+    }, SETUP_TIMEOUT);
+
+    /**
+     * Een vers doel met een weekdoel en een ingediende voltooiing, in de gedeelde
+     * groep. `cycle_index` is willekeurig uniek zodat twee tests elkaar niet in
+     * de weg zitten.
+     */
+    async function bouwBeoordeling(naam: string): Promise<Beoordeling> {
+      const admin = adminDb();
+      const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+      const goalId = mustId(
+        await vast.eigenaar.db
+          .from('goals')
+          .insert({
+            owner_id: vast.eigenaar.id,
+            title: `Doel ${naam}`,
+            target_date: cycle.endDate,
+          })
+          .select('id')
+          .single(),
+        'doel',
+      );
+
+      mustOk(
+        await vast.eigenaar.db
+          .from('goal_group_links')
+          .insert({ goal_id: goalId, group_id: vast.groupId }),
+        'doel koppelen',
+      );
+
+      const weeklyGoalId = mustId(
+        await vast.eigenaar.db
+          .from('weekly_goals')
+          .insert({
+            goal_id: goalId,
+            title: 'Week van de test',
+            cycle_start_date: cycle.startDate,
+            cycle_index: 1,
+          })
+          .select('id')
+          .single(),
+        'weekdoel',
+      );
+
+      const completionId = mustId(
+        await vast.eigenaar.db
+          .from('completions')
+          .insert({
+            weekly_goal_id: weeklyGoalId,
+            user_id: vast.eigenaar.id,
+            achieved_level: 'ceiling',
+            note: 'Gedaan wat ik zei',
+            cycle_start_date: cycle.startDate,
+          })
+          .select('id')
+          .single(),
+        'voltooiing',
+      );
+
+      mustOk(
+        await admin.from('weekly_goals').update({ status: 'pending' }).eq('id', weeklyGoalId),
+        'weekdoel op pending',
+      );
+
+      return { ...vast, goalId, weeklyGoalId, completionId };
+    }
+
+    // -----------------------------------------------------------------------
+    // 6.7 — de autorisatiegrens
+    // -----------------------------------------------------------------------
+
+    it(
+      'laat een buddy goedkeuren, en boekt punten voor allebei',
+      async () => {
+        const b = await bouwBeoordeling('goed');
+        const admin = adminDb();
+
+        const { error } = await b.buddy.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.buddy.id,
+          subject_id: b.buddy.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).toBeNull();
+
+        // De trigger doet alles in dezelfde transactie: status, punten voor de
+        // eigenaar, reviewpunt voor de beoordelaar.
+        const week = await admin
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', b.weeklyGoalId)
+          .single();
+        expect(week.data?.status).toBe('approved');
+
+        const punten = await admin
+          .from('points_ledger')
+          .select('user_id, delta, reason, goal_id')
+          .eq('ref_id', b.weeklyGoalId);
+        expect(punten.data ?? []).toHaveLength(1);
+        expect(punten.data?.[0]?.user_id).toBe(b.eigenaar.id);
+        expect(punten.data?.[0]?.delta).toBe(2);
+
+        // ⚠️ Het reviewpunt hangt aan géén doel. Zou het `goal_id` dragen, dan
+        //    telde het mee in de reeks en het totaal van een doel waar het niets
+        //    mee te maken heeft (6.6).
+        const review = await admin
+          .from('points_ledger')
+          .select('user_id, delta, goal_id')
+          .eq('reason', 'review_given')
+          .eq('ref_id', b.completionId);
+        expect(review.data ?? []).toHaveLength(1);
+        expect(review.data?.[0]?.user_id).toBe(b.buddy.id);
+        expect(review.data?.[0]?.delta).toBe(1);
+        expect(review.data?.[0]?.goal_id).toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De zwaarste bevinding van de security-review op EPIC 6, en de kern van
+     *    domeinregel 3. Goedkeuren zelf was drievoudig op slot, maar het
+     *    *effect* ervan — `weekly_goals.status = 'approved'` — was met één
+     *    PATCH-verzoek door de eigenaar te zetten. Geen buddy nodig, en de reeks
+     *    die de groep van je ziet daarmee zelf te verzinnen.
+     *
+     *    Gedicht in 0023 met een kolomgrant. Deze test is de reden dat hij niet
+     *    ongemerkt terugkomt.
+     */
+    it(
+      'laat de eigenaar zijn eigen weekdoel niet goedkeuren met een update',
+      async () => {
+        const b = await bouwBeoordeling('achterdeur');
+        const admin = adminDb();
+
+        for (const status of ['approved', 'excused'] as const) {
+          await b.eigenaar.db
+            .from('weekly_goals')
+            .update({ status })
+            .eq('id', b.weeklyGoalId);
+        }
+
+        const week = await admin
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', b.weeklyGoalId)
+          .single();
+        expect(week.data?.status).toBe('pending');
+
+        // De toelating die erbij hoort: de titel mag hij wél bijwerken, anders
+        // is dit geen kolomslot maar een tafelslot.
+        const titel = await b.eigenaar.db
+          .from('weekly_goals')
+          .update({ title: 'Nieuwe titel' })
+          .eq('id', b.weeklyGoalId);
+        expect(titel.error).toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ Ook uit de security-review: goedkeuren mocht op een voltooiing die de
+    //    eigenaar zélf had ingetrokken. Dat gaf punten voor een bewering die niet
+    //    meer bestond. De wachtrij filterde hem wel, de policy niet — precies het
+    //    patroon dat 0006, 0007 en 0019 al drie keer dichtten.
+    it(
+      'laat een buddy geen ingetrokken voltooiing goedkeuren',
+      async () => {
+        const b = await bouwBeoordeling('ingetrokken');
+
+        const opnieuw = await b.eigenaar.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: b.weeklyGoalId,
+          p_achieved_level: 'floor',
+          p_note: 'Toch alleen de vloer',
+        });
+        expect(uitkomst(opnieuw.data).ok).toBe(true);
+
+        const { error } = await b.buddy.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.buddy.id,
+          subject_id: b.buddy.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ De bestaande vertrek-test gebruikt `.delete()`, en dat is zelf-vertrek.
+    //    De route die een beheerder neemt om iemand eruit te zetten, is
+    //    `status = 'inactive'` — en die was niet gedekt. Een groene test die het
+    //    verkeerde pad neemt, is geen bewijs.
+    it(
+      'laat een op inactief gezet lid niet goedkeuren',
+      async () => {
+        const b = await bouwBeoordeling('inactief');
+        const admin = adminDb();
+
+        mustOk(
+          await admin
+            .from('group_members')
+            .update({ status: 'inactive' })
+            .eq('group_id', b.groupId)
+            .eq('user_id', b.inactieveling.id),
+          'lid op inactief zetten',
+        );
+
+        const { error } = await b.inactieveling.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.inactieveling.id,
+          subject_id: b.inactieveling.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'laat de eigenaar zichzelf niet goedkeuren',
+      async () => {
+        const b = await bouwBeoordeling('zelf');
+
+        const { error } = await b.eigenaar.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.eigenaar.id,
+          subject_id: b.eigenaar.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+
+        const week = await adminDb()
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', b.weeklyGoalId)
+          .single();
+        expect(week.data?.status).toBe('pending');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'laat een niet-lid niet goedkeuren',
+      async () => {
+        const b = await bouwBeoordeling('vreemd');
+
+        const { error } = await b.vreemde.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.vreemde.id,
+          subject_id: b.vreemde.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ Nieuw geval uit QS8-68, en het is het lastigste van de vier: iemand die
+    //    de groep verlaat, houdt zijn kennis van de id's. Zou lidmaatschap
+    //    alleen bij het openen van het scherm getoetst worden, dan kan hij
+    //    daarna nog goedkeuren met een oude id in de hand.
+    it(
+      'laat iemand niet goedkeuren nadat hij de groep verlaten heeft',
+      async () => {
+        const b = await bouwBeoordeling('vertrek');
+
+        // ⚠️ Een eigen lid dat alléén hier gebruikt wordt. Zou de gewone buddy
+        //    vertrekken, dan is hij daarna geen lid meer en meten alle tests
+        //    hierna iets anders dan ze denken.
+        mustOk(
+          await b.vertrekker.db
+            .from('group_members')
+            .delete()
+            .eq('group_id', b.groupId)
+            .eq('user_id', b.vertrekker.id),
+          'vertrekker verlaat de groep',
+        );
+
+        const { error } = await b.vertrekker.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.vertrekker.id,
+          subject_id: b.vertrekker.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ Vierde geval uit QS8-68. Ontkoppelen is het intrekken van toestemming
+    //    (5.3); daarna hoort niemand er nog iets mee te kunnen. Dit is precies
+    //    het pad dat opengaat doordat EPIC 5 een ontkoppelknop heeft gekregen.
+    it(
+      'laat een buddy niet goedkeuren nadat het doel ontkoppeld is',
+      async () => {
+        const b = await bouwBeoordeling('ontkoppeld');
+
+        mustOk(
+          await b.eigenaar.db
+            .from('goal_group_links')
+            .delete()
+            .eq('goal_id', b.goalId)
+            .eq('group_id', b.groupId),
+          'doel ontkoppelen',
+        );
+
+        const { error } = await b.buddy.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.buddy.id,
+          subject_id: b.buddy.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'staat geen tweede stem van dezelfde beoordelaar toe',
+      async () => {
+        const b = await bouwBeoordeling('dubbel');
+
+        const eerste = await b.buddy.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.buddy.id,
+          subject_id: b.buddy.id,
+          group_id: b.groupId,
+          status: 'more_info',
+          comment: 'Hoe ver ben je gekomen?',
+        });
+        expect(eerste.error).toBeNull();
+
+        const tweede = await b.buddy.db.from('completion_approvals').insert({
+          completion_id: b.completionId,
+          approver_id: b.buddy.id,
+          subject_id: b.buddy.id,
+          group_id: b.groupId,
+          status: 'approved',
+        });
+        expect(tweede.error).not.toBeNull();
+
+        // ⚠️ "Vertel me meer" is geen goedkeuring: de week blijft op pending en
+        //    er zijn geen punten voor de eigenaar geboekt.
+        const admin = adminDb();
+        const week = await admin
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', b.weeklyGoalId)
+          .single();
+        expect(week.data?.status).toBe('pending');
+
+        const punten = await admin
+          .from('points_ledger')
+          .select('id')
+          .eq('ref_id', b.weeklyGoalId);
+        expect(punten.data ?? []).toHaveLength(0);
+
+        // Maar de beoordelaar krijgt zijn punt wél: doorvragen is betrokkenheid
+        // en hoort niet duurder te zijn dan wegkijken (6.6).
+        const review = await admin
+          .from('points_ledger')
+          .select('id')
+          .eq('reason', 'review_given')
+          .eq('ref_id', b.completionId);
+        expect(review.data ?? []).toHaveLength(1);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // -----------------------------------------------------------------------
+    // 6.1 — de wachtrij
+    // -----------------------------------------------------------------------
+
+    it(
+      'zet een afgeronde week in de wachtrij van de buddy en niet in die van de indiener',
+      async () => {
+        const b = await bouwBeoordeling('wachtrij');
+
+        const vanBuddy = await b.buddy.db.rpc('openstaande_beoordelingen', {});
+        const vanEigenaar = await b.eigenaar.db.rpc('openstaande_beoordelingen', {});
+        const vanVreemde = await b.vreemde.db.rpc('openstaande_beoordelingen', {});
+
+        expect((vanBuddy.data ?? []).map((r) => r.completion_id)).toContain(b.completionId);
+        expect((vanEigenaar.data ?? []).map((r) => r.completion_id)).not.toContain(b.completionId);
+        expect((vanVreemde.data ?? []).map((r) => r.completion_id)).not.toContain(b.completionId);
+
+        // Het bewijs zit er meteen bij, zodat beoordelen geen tweede verzoek kost.
+        const rij = (vanBuddy.data ?? []).find((r) => r.completion_id === b.completionId);
+        expect(rij?.note).toBe('Gedaan wat ik zei');
+        expect(rij?.weekly_title).toBe('Week van de test');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'haalt het verzoek uit de wachtrij zodra iemand anders goedkeurt',
+      async () => {
+        const b = await bouwBeoordeling('verdwijnt');
+        const derde = b.derde;
+
+        const voor = await derde.db.rpc('openstaande_beoordelingen', {});
+        expect((voor.data ?? []).map((r) => r.completion_id)).toContain(b.completionId);
+
+        mustOk(
+          await b.buddy.db.from('completion_approvals').insert({
+            completion_id: b.completionId,
+            approver_id: b.buddy.id,
+            subject_id: b.buddy.id,
+            group_id: b.groupId,
+            status: 'approved',
+          }),
+          'buddy keurt goed',
+        );
+
+        const na = await derde.db.rpc('openstaande_beoordelingen', {});
+        expect((na.data ?? []).map((r) => r.completion_id)).not.toContain(b.completionId);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // -----------------------------------------------------------------------
+    // 6.5 — de bewijseis
+    // -----------------------------------------------------------------------
+
+    // ⚠️ Dit was clientlogica: `rondAf()` kreeg de bewijseis als parameter mee.
+    //    Een client die de regel meelevert waaraan hij getoetst wordt, is geen
+    //    regel maar een verzoek — dezelfde fout die 0006 en 0007 vier keer
+    //    hebben gedicht.
+    it(
+      'weigert een afronding zonder notitie als de groep die eist',
+      async () => {
+        const b = await bouwBeoordeling('bewijs');
+        const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+        const tweede = mustId(
+          await b.eigenaar.db
+            .from('weekly_goals')
+            .insert({
+              goal_id: b.goalId,
+              title: 'Week zonder notitie',
+              cycle_start_date: cycle.startDate,
+              cycle_index: 2,
+            })
+            .select('id')
+            .single(),
+          'tweede weekdoel',
+        );
+
+        const zonder = await b.eigenaar.db.from('completions').insert({
+          weekly_goal_id: tweede,
+          user_id: b.eigenaar.id,
+          achieved_level: 'floor',
+          note: null,
+          cycle_start_date: cycle.startDate,
+        });
+        expect(zonder.error).not.toBeNull();
+
+        // De toelating die erbij hoort: mét notitie mag het gewoon.
+        const met = await b.eigenaar.db.from('completions').insert({
+          weekly_goal_id: tweede,
+          user_id: b.eigenaar.id,
+          achieved_level: 'floor',
+          note: 'De vloer gehaald',
+          cycle_start_date: cycle.startDate,
+        });
+        expect(met.error).toBeNull();
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // -----------------------------------------------------------------------
+    // 6.2 — opnieuw indienen
+    // -----------------------------------------------------------------------
+
+    it(
+      'vervangt een voltooiing zonder de oude te wissen',
+      async () => {
+        const b = await bouwBeoordeling('opnieuw');
+        const admin = adminDb();
+
+        const antwoord = await b.eigenaar.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: b.weeklyGoalId,
+          p_achieved_level: 'floor',
+          p_note: 'Toch alleen de vloer, sorry',
+        });
+
+        expect(antwoord.error?.message ?? null).toBeNull();
+
+        const uit = uitkomst(antwoord.data);
+        expect(uit.ok).toBe(true);
+
+        const alles = await admin
+          .from('completions')
+          .select('id, superseded_by, achieved_level')
+          .eq('weekly_goal_id', b.weeklyGoalId);
+
+        // Domeinregel 6: de oude rij staat er nog en wijst naar de nieuwe.
+        expect(alles.data ?? []).toHaveLength(2);
+        const oud = (alles.data ?? []).find((c) => c.id === b.completionId);
+        expect(oud?.superseded_by).not.toBeNull();
+
+        const actief = (alles.data ?? []).filter((c) => c.superseded_by === null);
+        expect(actief).toHaveLength(1);
+        expect(actief[0]?.achieved_level).toBe('floor');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    // ⚠️ Deze test vond een echte fout in mijn eigen functie: een
+    //    exception-blok in PL/pgSQL rolt alleen zijn eigen werk terug. De eerste
+    //    versie zette de oude voltooiing opzij, ving de bewijseis-fout op en
+    //    liet zo een weekdoel achter met nul actieve voltooiingen.
+    it(
+      'laat bij een geweigerde notitie geen weekdoel zonder actieve voltooiing achter',
+      async () => {
+        const b = await bouwBeoordeling('herstel');
+
+        const antwoord = await b.eigenaar.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: b.weeklyGoalId,
+          p_achieved_level: 'floor',
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(false);
+        expect(uitkomst(antwoord.data).reason).toBe('note_required');
+
+        const actief = await adminDb()
+          .from('completions')
+          .select('id')
+          .eq('weekly_goal_id', b.weeklyGoalId)
+          .is('superseded_by', null);
+
+        expect(actief.data ?? []).toHaveLength(1);
+        expect(actief.data?.[0]?.id).toBe(b.completionId);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'laat een ander niet opnieuw indienen namens jou',
+      async () => {
+        const b = await bouwBeoordeling('namens');
+
+        const antwoord = await b.buddy.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: b.weeklyGoalId,
+          p_achieved_level: 'floor',
+          p_note: 'Ik doe het wel even',
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(false);
+        expect(uitkomst(antwoord.data).reason).toBe('not_owner');
+      },
+      SETUP_TIMEOUT,
+    );
+  });
 });

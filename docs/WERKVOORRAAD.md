@@ -29,7 +29,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 23 tabellen. Migraties `0001` t/m `0020`
+**Database — af, en nu ook getest.** 23 tabellen. Migraties `0001` t/m `0022`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 
@@ -66,9 +66,10 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/auth` — sessie, profiel, Zod-schema's
 - `src/modules/goals` — doelen, weekdoelen, cyclus
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
-- `tests/rls` — 63 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (210 tests)
-- `npm run build` rendert 20 routes statisch
+- `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
+- `tests/rls` — 75 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (222 tests)
+- `npm run build` rendert 21 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -105,8 +106,8 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
-| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | **hier verder** |
-| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | open |
+| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
+| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | **hier verder** |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | open |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | open |
@@ -124,7 +125,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
 | Avatar uploaden | QS8-27 | Er is geen Storage-bucket en geen `storage.objects`-policy |
 | Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
-| Een voltooiing corrigeren | QS8-46 | `completions` heeft bewust geen UPDATE-policy; `superseded_by` zetten hoort een Edge Function te doen. De app geeft nu een eerlijke melding |
+| ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
