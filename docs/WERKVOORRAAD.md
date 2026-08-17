@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 16-08-2026 (late avond, na EPIC 5)
+**Laatst bijgewerkt:** 17-08-2026 (na EPIC 5 en EPIC 6)
 
 ---
 
@@ -107,7 +107,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
-| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | **hier verder** |
+| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | **hier verder** — begin bij QS8-69 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | open |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | open |
@@ -204,6 +204,8 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Rollover inplannen | De Edge Function werkt maar wordt door niets aangeroepen. Zie §4 | niet gedaan |
 | Rollover opnieuw deployen | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex. `supabase functions deploy rollover` vraagt een access token | niet gedaan — Q-TODO A13 |
 | `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |
+| Vier productbeslissingen | Mag de groep je reeks zien (A15), mag een uitnodigingslink doeltitels tonen (A16), mag de groep je risicostatus zien (A17), en wat betekent een lid op `inactive` zetten (A18) | wachten op Quinten |
+| Twee beslissingen uit EPIC 6 | Mag een goedkeuring ongedaan gemaakt worden (A19), en de afspraak over `REPLICA IDENTITY FULL` in `CLAUDE.md` zetten (A20) | wachten op Quinten |
 
 ---
 
@@ -256,7 +258,17 @@ Deze dingen kan een sessie niet zelf oplossen.
    dat je de rij moet beperken, of een view met een expliciete kolomlijst moet
    bouwen zoals `group_visible_streaks`.
 
-10. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
+10. **Zet nooit `REPLICA IDENTITY FULL` op `completions` of `weekly_goals`.**
+    Die twee staan sinds EPIC 6 in de realtime-publicatie voor de
+    beoordelingswachtrij. Supabase past RLS toe op INSERT en UPDATE — daar lekt
+    niets — maar **niet op DELETE**. Met de standaard replica identity gaat er
+    bij een verwijdering alleen een uuid over de lijn; met `FULL` gaat de hele
+    oude rij mee, inclusief `status = 'missed'` en de notitie, naar iedereen die
+    zich abonneert. `publish` is een optie van de publicatie en niet per tabel in
+    te stellen, dus dit is een afspraak en geen slot. Staat als A20 in
+    `docs/Q-TODO.docx`, met het voorstel om hem in `CLAUDE.md` te zetten.
+
+11. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
    dag twee keer gevonden, allebei bij toeval: een migratie die wel op het
    project stond maar niet in de map, en een Edge Function waarvan de repo-versie
    een kapotte regex had terwijl de gedeployde versie klopte. Zolang migraties
