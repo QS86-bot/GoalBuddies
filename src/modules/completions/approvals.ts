@@ -183,11 +183,13 @@ export async function beoordeel(
       return { ok: false, melding: 'Je hebt deze week van je buddy al beoordeeld.' };
     }
 
+    // ⚠️ Geen gok tussen twee heel verschillende situaties in één zin. De vorige
+    //    versie zei "of je bent geen lid meer van deze groep", en dat kreeg je
+    //    ook te zien als je sessie net nog aan het laden was — een
+    //    beschuldiging voor iets dat vanzelf overgaat.
     return {
       ok: false,
-      melding:
-        'Beoordelen lukte niet. Misschien heeft iemand anders het net gedaan, of ben je geen ' +
-        'lid meer van deze groep.',
+      melding: 'Beoordelen lukte niet. Ververs de lijst en probeer het opnieuw.',
     };
   }
 
@@ -305,9 +307,13 @@ export async function fetchBuddyBijdrage(userId: string): Promise<number> {
     .eq('user_id', userId)
     .eq('reason', 'review_given');
 
+  // ⚠️ Gooien en geen 0 teruggeven. Nul is hier een échte uitkomst — "je hebt
+  //    nog niets beoordeeld" — en die van een netwerkfout niet te onderscheiden
+  //    maken, betekent dat de app tegen iemand liegt die veertig weken heeft
+  //    beoordeeld. Precies het soort demotivatie waar deze teller tegen is.
   if (error) {
     reportError(error, 'approvals.contribution', { pgcode: error.code });
-    return 0;
+    throw new Error('Je buddy-bijdrage kon niet geladen worden.');
   }
 
   return count ?? 0;

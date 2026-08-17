@@ -178,6 +178,7 @@ function ThemaKeuze() {
  */
 function BuddyBijdrage({ userId }: { readonly userId: string }) {
   const [aantal, setAantal] = useState<number | null>(null);
+  const [mislukt, setMislukt] = useState(false);
 
   useEffect(() => {
     let levend = true;
@@ -186,8 +187,11 @@ function BuddyBijdrage({ userId }: { readonly userId: string }) {
       .then((n) => {
         if (levend) setAantal(n);
       })
+      // ⚠️ Een fout is geen nul. "Je hebt nog geen week beoordeeld" tegen iemand
+      //    die er veertig deed, is precies de demotivatie waar deze teller tegen
+      //    is bedoeld.
       .catch(() => {
-        if (levend) setAantal(0);
+        if (levend) setMislukt(true);
       });
 
     return () => {
@@ -199,13 +203,15 @@ function BuddyBijdrage({ userId }: { readonly userId: string }) {
     <Card>
       <Subheading>Buddy-bijdrage</Subheading>
       <Body>
-        {aantal === null
-          ? '—'
-          : aantal === 0
-            ? 'Je hebt nog geen week van een buddy beoordeeld.'
-            : aantal === 1
-              ? 'Je hebt één week van een buddy beoordeeld.'
-              : `Je hebt ${aantal} weken van buddy's beoordeeld.`}
+        {mislukt
+          ? 'Even niet op te halen. Je bijdrage staat er nog, hij is alleen niet te tellen.'
+          : aantal === null
+            ? '—'
+            : aantal === 0
+              ? 'Je hebt nog geen week van een buddy beoordeeld.'
+              : aantal === 1
+                ? 'Je hebt één week van een buddy beoordeeld.'
+                : `Je hebt ${aantal} weken van buddy's beoordeeld.`}
       </Body>
       <Caption>
         Reviewen telt mee. Doorvragen levert net zoveel op als goedkeuren — het gaat om

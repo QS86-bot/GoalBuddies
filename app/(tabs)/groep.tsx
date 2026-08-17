@@ -99,19 +99,23 @@ export default function GroepTab() {
 /**
  * "Er wacht iets op jou" — QS8-62.
  *
- * ⚠️ Alleen zichtbaar als er echt iets is. Een kaart die permanent "0 te
- *    beoordelen" meldt, leert mensen om er niet meer naar te kijken — en dan is
- *    hij nutteloos op het moment dat er wél iets staat.
+ * ⚠️ Deze kaart was de énige ingang naar het beoordeelscherm, en hij verborg
+ *    zichzelf als het tellen mislukte. In de trein stond er dan "niets te
+ *    beoordelen" terwijl er drie mensen wachtten, zonder enige manier om dat te
+ *    controleren. Dat is dodelijk voor de succesmetriek uit de PRD (≥80% binnen
+ *    48 uur): wie het niet ziet, beoordeelt niet.
  *
- * ⚠️ Een storing hier maakt geen ruzie met de rest van het scherm: mislukt het
- *    laden, dan verdwijnt de kaart en blijft de groepenlijst gewoon staan. Dat
- *    is een bewuste uitzondering op regel 16 — dit is een melding en geen
- *    inhoud, en een foutblok bovenaan het tabblad zou schreeuwen over iets dat
- *    er misschien niet eens is.
+ *    Nu: bij een storing blijft de kaart staan met een eerlijke tekst en de knop
+ *    erin. Beter een keer voor niets kijken dan nooit weten dat er iets was.
+ *
+ * ⚠️ Op nul blijft hij wél weg. Een kaart die permanent "0 te beoordelen" meldt,
+ *    leert mensen om er niet meer naar te kijken — en dan is hij nutteloos op
+ *    het moment dat er wél iets staat.
  */
 function TeBeoordelenKaart() {
   const router = useRouter();
   const [aantal, setAantal] = useState(0);
+  const [mislukt, setMislukt] = useState(false);
   const [ronde, setRonde] = useState(0);
 
   useEffect(() => {
@@ -119,10 +123,12 @@ function TeBeoordelenKaart() {
 
     fetchBeoordelingen()
       .then((w) => {
-        if (levend) setAantal(w.totaal);
+        if (!levend) return;
+        setAantal(w.totaal);
+        setMislukt(false);
       })
       .catch(() => {
-        if (levend) setAantal(0);
+        if (levend) setMislukt(true);
       });
 
     return () => {
@@ -135,15 +141,21 @@ function TeBeoordelenKaart() {
     return stop;
   }, []);
 
-  if (aantal === 0) return null;
+  if (aantal === 0 && !mislukt) return null;
 
   return (
     <Card>
       <Subheading>
-        {aantal === 1 ? 'Een buddy wacht op je' : `${aantal} buddy's wachten op je`}
+        {mislukt
+          ? 'Wachten er buddy’s op je?'
+          : aantal === 1
+            ? 'Een buddy wacht op je'
+            : `${aantal} buddy's wachten op je`}
       </Subheading>
       <Body muted>
-        Ze hebben hun week afgerond. Eén zin terug is genoeg — dat is het hele punt.
+        {mislukt
+          ? 'Dat konden we even niet ophalen. Kijk zelf even — het duurt tien seconden.'
+          : 'Ze hebben hun week afgerond. Eén zin terug is genoeg — dat is het hele punt.'}
       </Body>
       <Button variant="primair" block onPress={() => router.push('/beoordelen')}>
         Beoordelen
