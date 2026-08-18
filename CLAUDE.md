@@ -148,6 +148,37 @@ Voordat er één feature gebouwd wordt:
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.
 
+   **Bij élk nieuw ding dat de groep te zien krijgt, twee vragen:** kan hieruit
+   iemands gemiste week worden afgeleid, én kan iemand dat met één API-verzoek
+   uitlezen buiten de UI om? De les van EPIC 5 is dat de schermen de regel netjes
+   aanhielden terwijl de database hem lekte. **De regel is pas afgedwongen als de
+   dátabase hem afdwingt.** RLS kan geen kolommen beperken: is de eis "deze kolom
+   mag je niet lezen", dan heb je een kolomgrant, een view met expliciete
+   kolomlijst of een rijbeperking nodig — een policy alleen is altijd te weinig.
+
+   De volledige inventarisatie van elk groepsoppervlak staat in
+   `docs/decisions/002-domeinregel7-oppervlakken.md`, inclusief wat er vandaag nog
+   lekt en met welke deadline. **Werk dat document bij bij elk nieuw oppervlak.**
+
+   Drie sloten die je niet mag omzeilen:
+   - **Een nieuw type systeembericht vraagt een migratie.** De CHECK
+     `chat_messages_system_event_bekend` is een allowlist en geldt ook voor
+     `service_role`. De kopie in `src/modules/buddies/chat-schemas.ts` staat onder
+     test — een toevóeging is daar ook een rode test, niet alleen een verkeerde.
+   - **Een systeembericht noemt de persoon en de gebeurtenis, nooit een titel,
+     notitie of niveau.** Een bericht is een onveranderlijke kopie die de
+     autorisatie overleeft waaronder hij gemaakt is; ontkoppelen trekt de
+     toestemming in, maar wist geen chat. Uitleg in beslisdocument 002 §3.
+   - **⚠️ Nooit `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie**
+     (`completions`, `weekly_goals`, `chat_messages`). Supabase past RLS toe op
+     INSERT en UPDATE, maar **niet op DELETE**: met `FULL` gaat bij een
+     verwijdering de volledige oude rij over de lijn — inclusief
+     `status = 'missed'`, de notitie of de tekst van een privégesprek — naar
+     iedereen die zich abonneert, lid of niet. `publish` is een optie van de
+     publicatie en niet per tabel in te stellen, dus er is geen technische rem.
+     `realtime_bewaking()` (migratie 0027) maakt het testbaar; de test staat in
+     `tests/rls/epic7.test.ts`. Abonneer je bovendien nooit op DELETE.
+
 8. **De vloer telt.** Een weekdoel kan een vloer hebben (de versie die je op je
    slechtste week nog haalt) naast het plafond. De vloer is optioneel, maar de UI
    moedigt hem actief aan. Vloer gehaald betekent dat de week telt: de reeks loopt

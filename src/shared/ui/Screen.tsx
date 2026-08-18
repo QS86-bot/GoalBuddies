@@ -26,8 +26,14 @@ export function Screen({ title, eyebrow, children, scroll = true }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
+  // ⚠️ `flex: 1` erbij zodra het scherm níét scrollt, en alleen dan. Dit blok is
+  //    dan de enige hoogtehouder, en een View zonder flex krimpt in React Native
+  //    naar zijn inhoud — waardoor een lijst die zelf scrollt (de groepschat,
+  //    QS8-69) nul hoogte krijgt en er letterlijk niets te zien is. In de
+  //    scroll-variant moet het juist niet flexen: daar bepaalt de inhoud de hoogte
+  //    en doet de ScrollView de rest.
   const inhoud = (
-    <View style={styles.inhoud}>
+    <View style={[styles.inhoud, scroll ? null : styles.vult]}>
       <View style={styles.kop}>
         {eyebrow === undefined ? null : <Eyebrow>{eyebrow}</Eyebrow>}
         <Heading>{title}</Heading>
@@ -60,6 +66,7 @@ export function Screen({ title, eyebrow, children, scroll = true }: Props) {
 
 const styles = StyleSheet.create({
   scherm: { flex: 1 },
+  vult: { flex: 1 },
   inhoud: {
     paddingHorizontal: space.shell,
     gap: space.blokGap + 3,

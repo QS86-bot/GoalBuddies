@@ -720,6 +720,45 @@ export type Database = {
         }
         Relationships: []
       }
+      week_review_replies: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          week_review_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          week_review_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          week_review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "week_review_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "week_review_replies_week_review_id_fkey"
+            columns: ["week_review_id"]
+            isOneToOne: false
+            referencedRelation: "week_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       week_reviews: {
         Row: {
           blocked_text: string | null
@@ -857,6 +896,24 @@ export type Database = {
         Returns: Json
       }
       generate_invite_code: { Args: never; Returns: string }
+      groepschat: {
+        Args: {
+          p_before_at?: string
+          p_before_id?: string
+          p_group_id: string
+          p_limit?: number
+        }
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          sender_avatar: string
+          sender_id: string
+          sender_name: string
+          system_event: string
+          type: string
+        }[]
+      }
       group_overview: {
         Args: {
           p_group_id: string
@@ -909,6 +966,22 @@ export type Database = {
           weekly_title: string
         }[]
       }
+      plaats_systeembericht: {
+        Args: { p_body: string; p_event: string; p_group_id: string }
+        Returns: undefined
+      }
+      plaats_systeembericht_in_doelgroepen: {
+        Args: { p_body: string; p_event: string; p_goal_id: string }
+        Returns: undefined
+      }
+      realtime_bewaking: {
+        Args: never
+        Returns: {
+          in_publicatie: boolean
+          replica_identity: string
+          tabel: string
+        }[]
+      }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
@@ -917,6 +990,38 @@ export type Database = {
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
+      weekafsluiting: {
+        Args: { p_group_id: string; p_period_start: string }
+        Returns: {
+          avatar_url: string
+          blocked_text: string
+          created_at: string
+          did_text: string
+          display_name: string
+          next_text: string
+          review_id: string
+          user_id: string
+        }[]
+      }
+      weekafsluiting_reacties: {
+        Args: {
+          p_group_id: string
+          p_limit?: number
+          p_offset?: number
+          p_period_start: string
+        }
+        Returns: {
+          author_avatar: string
+          author_id: string
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          total_replies: number
+          week_review_id: string
+        }[]
+      }
+      weergavenaam: { Args: { p_user_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

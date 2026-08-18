@@ -34,6 +34,56 @@ export {
 export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
 
 export {
+  bewaarChatCache,
+  chatUitCache,
+  fetchChat,
+  stuurBericht,
+  verwijderBericht,
+  volgChat,
+  type ChatBericht,
+  type ChatCursor,
+  type ChatPagina,
+} from './chat';
+
+export {
+  BERICHT_MAX,
+  BERICHTEN_PER_PAGINA,
+  berichtSchema,
+  cursorVan,
+  isSysteembericht,
+  SYSTEEM_GEBEURTENISSEN,
+  voegSamen,
+  type BerichtInvoer,
+  type SysteemGebeurtenis,
+} from './chat-schemas';
+
+export {
+  bewaarWeekafsluiting,
+  fetchWeekafsluiting,
+  fetchWeekafsluitingReacties,
+  reageerOpAntwoord,
+  REACTIES_PER_PAGINA,
+  verwijderReactie,
+  verwijderWeekafsluiting,
+} from './weekafsluiting';
+
+export {
+  ANTWOORD_MAX,
+  groepeerReacties,
+  heeftInhoud,
+  REACTIE_MAX,
+  reactieSchema,
+  voegReactiesSamen,
+  voorstelUitDagzetten,
+  VRAGEN,
+  weekafsluitingSchema,
+  type Antwoord,
+  type AntwoordVeld,
+  type Reactie,
+  type WeekafsluitingInvoer,
+} from './weekafsluiting-schemas';
+
+export {
   BEWIJSEIS_LABELS,
   BEWIJSEISEN,
   CODE_ALFABET,

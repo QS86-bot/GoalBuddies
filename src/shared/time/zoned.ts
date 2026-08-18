@@ -117,6 +117,31 @@ export function weekdayOf(date: IsoDate): Weekday {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay() as Weekday;
 }
 
+/**
+ * De wandkloktijd van een tijdstempel, als `HH:MM` — bijvoorbeeld `09:05`.
+ *
+ * ⚠️ Deze functie staat hier en niet bij de chat, om precies de reden die
+ *    CLAUDE.md correctheidsregel 7 noemt: het is een tijdberekening. `created_at`
+ *    komt als ISO-string uit Postgres en moet in de tijdzone van de lézer
+ *    weergegeven worden, niet in die van de server. Zou een scherm dit zelf doen
+ *    met `new Date(...).toLocaleTimeString()`, dan staat er op de telefoon van een
+ *    reiziger een andere tijd bij hetzelfde bericht dan in de groepsgeschiedenis.
+ *
+ * ⚠️ `h23` en niet de landsinstelling: `09:05` en nooit `9:05 AM`. De app is
+ *    Nederlands en een 24-uursklok is hier het enige juiste antwoord.
+ *
+ * Geeft een lege string bij een tijdstempel die niet te lezen is. Een chatregel
+ * zonder tijd is beter dan een chatregel met `Invalid Date` erboven.
+ */
+export function klokTijd(timestamp: string, tz: TimeZone): string {
+  const moment = new Date(timestamp);
+  if (Number.isNaN(moment.getTime())) return '';
+
+  const p = partsIn(tz, moment);
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${pad(p.hour)}:${pad(p.minute)}`;
+}
+
 /** Kalenderrekenen, zonder tijdzone: `2026-03-29` plus 1 dag is `2026-03-30`. */
 export function addDays(date: IsoDate, days: number): IsoDate {
   const { year, month, day } = parseIsoDate(date);
