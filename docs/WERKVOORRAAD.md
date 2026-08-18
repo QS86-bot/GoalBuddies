@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 18-08-2026 (na EPIC 7)
+**Laatst bijgewerkt:** 18-08-2026 (na EPIC 7 en de besluitenronde A3/A7/A15/A17/A18/A19)
 
 ---
 
@@ -29,10 +29,11 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 24 tabellen. Migraties `0001` t/m `0027`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0033`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
-De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026).
+De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
+`approval_withdrawals` (0030) en `deadline_requests` (0032) erbij.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -69,8 +70,8 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
 - `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
-- `tests/rls` — 102 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (288 tests)
+- `tests/rls` — 141 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (327 tests)
 - `npm run build` rendert 23 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -219,8 +220,9 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Rollover inplannen | De Edge Function werkt maar wordt door niets aangeroepen. Zie §4 | niet gedaan |
 | Rollover opnieuw deployen | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex. `supabase functions deploy rollover` vraagt een access token | niet gedaan — Q-TODO A13 |
 | `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |
-| Vier productbeslissingen | Mag de groep je reeks zien (A15), mag een uitnodigingslink doeltitels tonen (A16), mag de groep je risicostatus zien (A17), en wat betekent een lid op `inactive` zetten (A18) | wachten op Quinten |
-| Twee beslissingen uit EPIC 6 | Mag een goedkeuring ongedaan gemaakt worden (A19), en de afspraak over `REPLICA IDENTITY FULL` in `CLAUDE.md` zetten (A20) | wachten op Quinten |
+| ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
+| ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
+| Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
 
 ---
 
@@ -333,6 +335,28 @@ Deze dingen kan een sessie niet zelf oplossen.
    `supabase/migrations/` een verslag en geen bron. Vergelijk bij twijfel de
    migratielijst van het project met de bestanden in de map.
 
+16. **Een `on delete set null` sneuvelt stil op een onveranderlijkheidstrigger.**
+   Een referentiële actie is zélf een UPDATE op de kindtabel. Staat daar een
+   BEFORE UPDATE-trigger die de kolom terugzet naar `old` — en die staan hier op
+   `chat_messages` en `groups` — dan draait die de actie in dezelfde bewerking
+   terug. Postgres controleert de sleutel daarna niet opnieuw: **geen fout, geen
+   waarschuwing, wel een verwijzing naar een rij die niet meer bestaat.**
+
+   Zo bleef een verwijderd account in de groepschat staan als afzender, terwijl
+   de constraint keurig `on delete set null` zei en op INSERT gewoon afdwong.
+   Gerepareerd in 0033 door precies één overgang toe te staan (afzender → leeg).
+   `groups.created_by` ontsnapte er per ongeluk aan: `guard_group_update()`
+   begint met een controle op `current_user`, en een referentiële actie draait
+   als tabeleigenaar.
+
+   **Bij elke nieuwe `on delete set null`: staat er een trigger op die kolom?**
+
+17. **Een kolomgrant intrekken breekt de app stil, niet luid.** `revoke update
+   (target_date) on goals` (0032) maakte `wijzigDoel()` kapot voor precies één
+   veld; typecheck en lint bleven groen, want het type klopte nog. Alleen een
+   test die de UPDATE écht uitvoert vangt dat. Trek je een kolomrecht in, zoek dan
+   meteen elke `.update(` op die kolom in `src/` en `app/`.
+
 ---
 
 ## 8. Openstaande onzekerheden
@@ -341,18 +365,21 @@ Staan in `docs/ENGINEER-REVIEW.md`, met datum, risico en uitleg. Dat bestand is
 de agenda voor de engineer-review in november. **Vul het aan tijdens het bouwen**,
 niet achteraf — een onzekerheid die je nu niet opschrijft, ben je in november kwijt.
 
-De zwaarste op dit moment, alle vier uit de reviewronde van EPIC 5:
+De zwaarste op dit moment:
 
-1. **`goals.risk_status` en `risk_reason` lekken nog steeds** naar groepsgenoten,
-   op precies dezelfde manier als `weekly_goals.status` dat deed. Vandaag niet
-   misbruikbaar (de Risico-radar bestaat niet en alles staat op `on_track`), maar
-   het moet dicht vóór EPIC 12 begint — en dat vraagt een architectuurwijziging
-   aan `goals_select`, geen reparatie.
-2. **`inactive` ontneemt niets.** Een uitgezet lid leest de groep, de chat en de
-   uitnodigingscode gewoon door, want `is_group_member()` kijkt alleen of de rij
-   bestaat.
+1. ~~**`goals.risk_status` en `risk_reason` lekken naar groepsgenoten.**~~ **Geen
+   lek meer maar een besluit:** Quinten heeft op 18-08 geantwoord dat de groep je
+   risicostatus mag zien (A17). ⚠️ Wel herbevestigen vóór EPIC 12: de Risico-radar
+   leidt `behind` en `unreachable` zélf af uit gemiste weken, dus vanaf die dag ís
+   die kolom een afgeleide van andermans tegenslag. Schrijven kan de client hem
+   sinds 0032 niet meer.
+2. ~~**`inactive` ontneemt niets.**~~ Opgelost in 0029. Er bleken drie routes terug
+   naar binnen te zijn in plaats van één; de andere twee herstelden het
+   lidmaatschap zelfs (eigen status terugzetten, eigen rij weggooien en opnieuw
+   toetreden).
 3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
-   groepen, rate limiting of domeinregel 7.
+   groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
+   want er staan sinds 18-08 141 RLS-tests die niemand automatisch draait.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5. **Niets schrijft `chain_links`**, terwijl `group_overview()` er wel op leunt voor
    `closed_this_period` en de ketting-mijlpaal van QS8-70 erop wacht. Gevonden
@@ -361,12 +388,24 @@ De zwaarste op dit moment, alle vier uit de reviewronde van EPIC 5:
    bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
    onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.
 
-**Twee productbeslissingen liggen bij Quinten en staan in `docs/Q-TODO.docx`:**
-mag de groep je reeks zien (A15 — een reeks die naar nul valt is net zo goed
-bewijs van een gemiste week als een dalend puntentotaal), en mag een
+7. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
+   referentiële actie is zelf een UPDATE op de kindtabel; staat daar een BEFORE
+   UPDATE-trigger die de kolom terugzet naar `old`, dan draait die de actie in
+   dezelfde bewerking terug. Postgres controleert de sleutel daarna niet opnieuw:
+   geen fout, geen waarschuwing, wél een verwijzing naar een rij die niet meer
+   bestaat. Kostte 0031 zijn AVG-belofte; gerepareerd in 0033. **Bij elke nieuwe
+   `on delete set null`: staat er een trigger op die kolom?**
+
+**Nog één productbeslissing ligt bij Quinten** (`docs/Q-TODO.docx`): mag een
 uitnodigingslink de doeltitels van je leden tonen aan iedereen die hem heeft
-(A16). Allebei gebouwd zoals de issue het vraagt; allebei een keuze die anders
-kan uitvallen.
+(A16). Gebouwd zoals de issue het vraagt, en ingeperkt in 0019, maar het blijft
+een keuze die anders kan uitvallen.
+
+**Vier nieuwe vragen uit de besluitenronde staan als A27 t/m A30 in Q-TODO.** Drie
+daarvan zijn keuzes die ik zelf heb moeten maken omdat het antwoord ze niet
+afdekte: chatberichten anonimiseren in plaats van cascaderen (A28), bij A7 de
+variant zonder puntenstraf (A29), en één ander groepslid als beslisser in plaats
+van unanimiteit (A30). Alle drie zijn goedkoop terug te draaien.
 
 ---
 
