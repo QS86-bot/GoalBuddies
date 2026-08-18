@@ -73,6 +73,7 @@ export {
   heeftInhoud,
   REACTIE_MAX,
   reactieSchema,
+  voegReactiesSamen,
   voorstelUitDagzetten,
   VRAGEN,
   weekafsluitingSchema,

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { voegOplopendSamen } from './merge';
+
 /**
  * De regels van de weekafsluiting, zonder Supabase en zonder React Native —
  * QS8-73.
@@ -130,6 +132,23 @@ export function groepeerReacties(
   }
 
   return per;
+}
+
+/**
+ * Voegt een volgende pagina reacties bij de reacties die er al staan.
+ *
+ * ⚠️ Ontdubbelen op id, want tussen twee pagina's kan er een reactie bijkomen en
+ *    dan schuift de offset. Zonder dit staat dezelfde reactie twee keer op de
+ *    kaart — en dat leest als iemand die zichzelf herhaalt.
+ *
+ * ⚠️ Deze functie stond eerst in `app/groep/weekafsluiting/[id].tsx`, en dat was
+ *    domeinlogica in een scherm. Bevinding van de code-review op EPIC 7.
+ */
+export function voegReactiesSamen(
+  bestaand: readonly Reactie[],
+  nieuw: readonly Reactie[],
+): readonly Reactie[] {
+  return voegOplopendSamen(bestaand, nieuw);
 }
 
 /** Heeft dit antwoord iets om te tonen? */

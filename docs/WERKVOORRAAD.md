@@ -310,13 +310,20 @@ Deze dingen kan een sessie niet zelf oplossen.
     is de MCP-tool `generate_typescript_types` de route.** Zo zijn de types van
     EPIC 7 gemaakt.
 
-14. **Twee testruns kort achter elkaar lopen tegen de aanmeldlimiet van Supabase.**
+14. **⚠️ Draai de RLS-suite niet vaker dan een paar keer per uur.**
     `tests/rls/policies.test.ts` en `tests/rls/epic7.test.ts` maken samen zo'n tien
-    echte accounts per run, en Supabase weigert na ongeveer dertig aanmeldingen in
-    korte tijd met "Request rate limit reached". Dat kwam één keer terug als een
-    opbouwfout in `epic7.test.ts` en zag eruit als een policyfout. Beide suites
-    melden nu de HTTP-fout letterlijk, dus zoek eerst naar "rate limit" in de
-    melding en wacht een minuut voordat je in de policies gaat kijken.
+    echte accounts per volledige run, elk met een `signInWithPassword`. Supabase
+    weigert dat na ongeveer dertig aanmeldingen per uur met "Request rate limit
+    reached", en dan valt de suite om op een plek die niets met de policies te maken
+    heeft. Dat is op één avond twee keer gebeurd, beide keren in een ánder bestand —
+    dus het ziet er elke keer uit als een nieuw defect.
+
+    **Zie je een opbouwfout, zoek dan eerst op "rate limit" in de melding.** Is het
+    dat, dan is de suite niet stuk maar op. Structurele oplossing staat in
+    `docs/ENGINEER-REVIEW.md` (18-08): één set gedeelde testgebruikers over beide
+    bestanden, of de sessie hergebruiken in plaats van per gebruiker opnieuw
+    inloggen. Zolang die er niet is, is dit een harde bovengrens op hoe vaak je kunt
+    verifiëren — en dat is een tweede argument voor de lokale stack (Q-TODO A9).
 
 15. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
    dag twee keer gevonden, allebei bij toeval: een migratie die wel op het

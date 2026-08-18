@@ -15,9 +15,11 @@ import {
   reageerOpAntwoord,
   verwijderReactie,
   verwijderWeekafsluiting,
+  voegReactiesSamen,
   voorstelUitDagzetten,
   VRAGEN,
   type Antwoord,
+  type AntwoordVeld,
   type Groep,
   type Reactie,
 } from '@/modules/buddies';
@@ -69,6 +71,7 @@ export default function Weekafsluiting() {
   const [ronde, setRonde] = useState(0);
   const [reactiePagina, setReactiePagina] = useState(0);
   const [meerBezig, setMeerBezig] = useState(false);
+  const [vuil, setVuil] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -151,14 +154,38 @@ export default function Weekafsluiting() {
             'nieuwe uitnodigingslink als je erbij hoort.',
         }}
       >
-        {(s) => (
+        {(s) => {
+          const mijnAntwoord = s.antwoorden.find((a) => a.user_id === userId) ?? null;
+
+          return (
           <View style={styles.lijst}>
+            {/*
+              ⚠️ De `key` is geen sleutel voor een lijst maar een vers begin.
+                 `MijnAntwoorden` zet zijn invoervelden en zijn open/dicht-stand in
+                 `useState`-initializers, en die lopen één keer. Zonder deze key
+                 blijft die stand staan als het onderliggende antwoord verandert —
+                 dan zie je na "Bijwerken" nog de oude tekst, en overschrijf je met
+                 opslaan stilzwijgend een nieuwere versie. Bevinding van de
+                 code-review op EPIC 7.
+
+                 De key verandert bij een andere groep, een andere periode, en bij de
+                 overgang tussen "nog geen antwoord" en "wel een antwoord" — dus ook
+                 na opslaan en na terugnemen. Hij verandert níet als er alleen een
+                 reactie bijkomt, want dan mag getypte tekst juist blijven staan.
+            */}
             <MijnAntwoorden
+              key={`${id ?? ''}:${s.periode.startDate}:${mijnAntwoord?.review_id ?? 'nieuw'}`}
               groupId={id ?? ''}
               userId={userId ?? null}
               periode={s.periode}
-              mijnAntwoord={s.antwoorden.find((a) => a.user_id === userId) ?? null}
+              mijnAntwoord={mijnAntwoord}
               voorstel={s.voorstel}
+              reactiesOpMij={
+                mijnAntwoord === null
+                  ? 0
+                  : s.reacties.filter((r) => r.week_review_id === mijnAntwoord.review_id).length
+              }
+              onVuil={setVuil}
               onGewijzigd={herlaad}
             />
 
@@ -176,12 +203,29 @@ export default function Weekafsluiting() {
               </Button>
             ) : null}
           </View>
-        )}
+          );
+        }}
       </AsyncView>
 
-      <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
-        Terug naar de groep
-      </Button>
+      {/*
+        ⚠️ Weg navigeren met onopgeslagen tekst vraagt eerst een tweede tik. Dit dekt
+           de uitgang binnen de app; de terugknop en het verversen van de browser
+           blijven onbeschermd — dat staat als bevinding in `docs/ENGINEER-REVIEW.md`.
+      */}
+      {vuil ? (
+        <>
+          <Caption danger>
+            Je hebt tekst staan die nog niet gedeeld is. Weggaan gooit hem weg.
+          </Caption>
+          <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
+            Toch weg, zonder delen
+          </Button>
+        </>
+      ) : (
+        <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
+          Terug naar de groep
+        </Button>
+      )}
     </Screen>
   );
 }
@@ -204,6 +248,8 @@ function MijnAntwoorden({
   periode,
   mijnAntwoord,
   voorstel,
+  reactiesOpMij,
+  onVuil,
   onGewijzigd,
 }: {
   readonly groupId: string;
@@ -211,6 +257,10 @@ function MijnAntwoorden({
   readonly periode: Cycle;
   readonly mijnAntwoord: Antwoord | null;
   readonly voorstel: string;
+  /** Hoeveel reacties er onder je antwoord staan. Nodig voor de waarschuwing. */
+  readonly reactiesOpMij: number;
+  /** Meldt of er onopgeslagen tekst staat, zodat het scherm kan waarschuwen. */
+  readonly onVuil: (vuil: boolean) => void;
   readonly onGewijzigd: () => void;
 }) {
   const [open, setOpen] = useState(mijnAntwoord === null);
@@ -219,8 +269,31 @@ function MijnAntwoorden({
   const [next, setNext] = useState(mijnAntwoord?.next_text ?? '');
   const [bezig, setBezig] = useState<'opslaan' | 'weg' | null>(null);
   const [fout, setFout] = useState<string | null>(null);
+  const [wilWeg, setWilWeg] = useState(false);
 
-  const waarden: Record<string, { readonly waarde: string; readonly zet: (t: string) => void }> = {
+  /**
+   * ⚠️ Staat er tekst die nog niet verstuurd is? Het scherm gebruikt dat om te
+   *    waarschuwen voordat je weg navigeert. Zonder die waarschuwing kost één
+   *    misplaatste tik je hele weekafsluiting — inclusief vraag 2, de enige plek
+   *    waar je je tegenslag mag opschrijven, en precies de tekst die je niet
+   *    nog een keer wil typen. Bevinding van de gebruikersreview op EPIC 7.
+   */
+  const vuil =
+    open &&
+    (did.trim() !== (mijnAntwoord?.did_text ?? '').trim() ||
+      blocked.trim() !== (mijnAntwoord?.blocked_text ?? '').trim() ||
+      next.trim() !== (mijnAntwoord?.next_text ?? '').trim());
+
+  useEffect(() => {
+    onVuil(vuil);
+  }, [vuil, onVuil]);
+
+  // ⚠️ Getypeerd op `AntwoordVeld` en niet op `string`: zo vangt de compiler een
+  //    veld dat in VRAGEN staat maar hier niet, in plaats van het stil over te slaan.
+  const waarden: Record<
+    AntwoordVeld,
+    { readonly waarde: string; readonly zet: (t: string) => void }
+  > = {
     did_text: { waarde: did, zet: setDid },
     blocked_text: { waarde: blocked, zet: setBlocked },
     next_text: { waarde: next, zet: setNext },
@@ -260,16 +333,17 @@ function MijnAntwoorden({
 
     const uitkomst = await verwijderWeekafsluiting(userId, groupId, periode);
     setBezig(null);
+    setWilWeg(false);
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
       return;
     }
 
-    setDid(voorstel);
-    setBlocked('');
-    setNext('');
-    setOpen(true);
+    // ⚠️ Geen handmatige reset van de velden: de `key` op deze component maakt hem
+    //    vers zodra `review_id` van uuid naar 'nieuw' gaat. Twee bronnen van
+    //    waarheid voor dezelfde stand is precies hoe dit soort formulieren scheef
+    //    gaat staan.
     onGewijzigd();
   }
 
@@ -279,16 +353,49 @@ function MijnAntwoorden({
         <Subheading>Je hebt deze week gedeeld</Subheading>
         <Body muted>
           Je antwoorden staan op de kaart hieronder. Je kunt ze bijwerken of helemaal
-          terugnemen — ook nadat er al op gereageerd is.
+          terugnemen.
         </Body>
-        <View style={styles.acties}>
-          <Button variant="secundair" onPress={() => setOpen(true)}>
-            Bijwerken
-          </Button>
-          <Button variant="stil" busy={bezig === 'weg'} onPress={() => void haalWeg()}>
-            Terugnemen
-          </Button>
-        </View>
+
+        {/*
+          ⚠️ Terugnemen ging met één tik, en dat kon niet blijven. `week_reviews`
+             cascadeert naar `week_review_replies`, dus je haalt niet alleen je eigen
+             tekst weg maar ook de aanmoediging die je buddy eronder zette — zonder
+             dat zij dat weet en zonder dat jij het zag aankomen. In een groep van
+             drie is dat precies het soort moment dat vertrouwen kost. Bevinding van
+             de gebruikersreview op EPIC 7.
+
+             Een tweestap en geen `Alert`: die is op react-native-web niet
+             betrouwbaar, en dit werkt op web en native hetzelfde.
+        */}
+        {wilWeg ? (
+          <>
+            <Body>
+              {reactiesOpMij === 0
+                ? 'Je antwoorden verdwijnen van de kaart. Dat kun je daarna niet terughalen.'
+                : reactiesOpMij === 1
+                  ? 'Let op: hiermee verdwijnt ook de reactie die je groep erop gaf.'
+                  : `Let op: hiermee verdwijnen ook de ${reactiesOpMij} reacties die je groep erop gaf.`}
+            </Body>
+            <View style={styles.acties}>
+              <Button variant="secundair" busy={bezig === 'weg'} onPress={() => void haalWeg()}>
+                Ja, terugnemen
+              </Button>
+              <Button variant="stil" onPress={() => setWilWeg(false)}>
+                Toch niet
+              </Button>
+            </View>
+          </>
+        ) : (
+          <View style={styles.acties}>
+            <Button variant="secundair" onPress={() => setOpen(true)}>
+              Bijwerken
+            </Button>
+            <Button variant="stil" onPress={() => setWilWeg(true)}>
+              Terugnemen
+            </Button>
+          </View>
+        )}
+
         {fout === null ? null : <Caption danger>{fout}</Caption>}
       </Card>
     );
@@ -509,26 +616,6 @@ interface Stand {
   readonly reactiesMeer: boolean;
   /** Voorstel voor vraag 1, uit de eigen Dagzetten van deze periode. */
   readonly voorstel: string;
-}
-
-/**
- * Voegt een volgende pagina reacties toe, op tijd en dan op id.
- *
- * ⚠️ Ontdubbelen op id, want tussen twee pagina's kan er een reactie bijkomen en
- *    dan schuift de offset. Zonder dit staat dezelfde reactie twee keer op de
- *    kaart — en dat leest als iemand die zichzelf herhaalt.
- */
-function voegReactiesSamen(
-  bestaand: readonly Reactie[],
-  nieuw: readonly Reactie[],
-): readonly Reactie[] {
-  const perId = new Map<string, Reactie>();
-  for (const r of [...bestaand, ...nieuw]) perId.set(r.id, r);
-
-  return [...perId.values()].sort((a, b) => {
-    if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
-    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-  });
 }
 
 /**

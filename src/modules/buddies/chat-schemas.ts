@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { voegOplopendSamen } from './merge';
+
 /**
  * De regels van de groepschat, zonder Supabase en zonder React Native — QS8-69.
  *
@@ -102,23 +104,7 @@ export function isSysteembericht(bericht: ChatBericht): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * De sorteersleutel: eerst op tijd, dan op id.
- *
- * ⚠️ Het id doet mee, en dat is geen netheid. `stamp_chat_message()` zet
- *    `created_at` op `now()` en dat is de tijd van de transactie, dus twee
- *    berichten uit dezelfde transactie — een systeembericht naast de gebeurtenis
- *    die het aankondigt — dragen exact dezelfde tijd. Zonder het id springen die
- *    twee bij elke sortering van plaats en dan verschuift de chat onder je vinger.
- *    De database sorteert op dezelfde sleutel (migratie 0024).
- */
-function vergelijk(a: ChatBericht, b: ChatBericht): number {
-  if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
-  if (a.id === b.id) return 0;
-  return a.id < b.id ? -1 : 1;
-}
-
-/**
- * Voegt twee lijsten samen tot één oplopende reeks zonder dubbele berichten.
+ * Voegt twee lijsten berichten samen tot één oplopende reeks.
  *
  * ⚠️ Dit is de reden dat het scherm bij een realtime-signaal gewoon de nieuwste
  *    pagina opnieuw ophaalt in plaats van het losse bericht in te voegen. De
@@ -127,18 +113,15 @@ function vergelijk(a: ChatBericht, b: ChatBericht): number {
  *    de volgende verversing. Opnieuw ophalen en samenvoegen kost één verzoek en
  *    is altijd juist.
  *
- * ⚠️ Bij een dubbel id wint de nieuwe versie: die komt van de server en de oude
- *    kan een bewerkte tekst missen.
+ * ⚠️ Het sorteren en ontdubbelen zelf staat in `merge.ts`, want de reacties op de
+ *    weekafsluiting hebben exact hetzelfde nodig. Die kopie stond eerst in het
+ *    scherm — bevinding van de code-review op EPIC 7.
  */
 export function voegSamen(
   bestaand: readonly ChatBericht[],
   nieuw: readonly ChatBericht[],
 ): readonly ChatBericht[] {
-  const perId = new Map<string, ChatBericht>();
-  for (const bericht of bestaand) perId.set(bericht.id, bericht);
-  for (const bericht of nieuw) perId.set(bericht.id, bericht);
-
-  return [...perId.values()].sort(vergelijk);
+  return voegOplopendSamen(bestaand, nieuw);
 }
 
 /** Waar "ouder laden" verder moet zoeken, of `null` als er niets is. */

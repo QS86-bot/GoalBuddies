@@ -205,9 +205,19 @@ export default function GroepChat() {
     }
 
     setWegFout(null);
-    if (periodeStart !== null && id) {
-      void bewaarChatCache(id, periodeStart, (berichten ?? []).filter((b) => b.id !== berichtId));
-    }
+
+    // ⚠️ De cache wordt binnen de state-updater geschreven en niet uit de
+    //    `berichten` van deze render. Die variabele is bevroren op het moment dat
+    //    deze functie gemaakt werd, en er zit een netwerkronde tussen: kwam er
+    //    intussen via `volgChat` een bericht binnen, dan zou de cache met een
+    //    oudere, incomplete lijst overschreven worden — precies op het moment dat
+    //    een slechte verbinding er het meest op leunt. Bevinding van de
+    //    code-review op EPIC 7.
+    setBerichten((oud) => {
+      const zonder = (oud ?? []).filter((b) => b.id !== berichtId);
+      if (periodeStart !== null && id) void bewaarChatCache(id, periodeStart, zonder);
+      return zonder;
+    });
   }
 
   const tz = profiel?.tz ?? groep?.tz ?? 'UTC';
