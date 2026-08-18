@@ -401,7 +401,16 @@ De zwaarste op dit moment:
    bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
    onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.
 
-7. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
+7. **⚠️ Een doel kan niet meer op `completed` komen.** `goals.status` stond open
+   voor de client, en `completed` liet `meld_doel_af()` afgaan — "X heeft een doel
+   afgerond" in elke gekoppelde groep, zonder dat er iets afgerond was. Dicht sinds
+   0035: archiveren loopt via `zet_doelstatus()`, dat alleen `active` en
+   `archived` toestaat. Maar er is nu **geen enkel** pad naar `completed`: geen
+   trigger zet hem, `meld_doel_af()` reageert er alleen op. Wanneer een doel af is,
+   is een productbeslissing (alle mijlpalen? de eigenaar? een buddy die bevestigt?)
+   en staat als **A31** in `docs/Q-TODO.docx`. Hoort bij EPIC 2 of 8.
+
+8. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
    referentiële actie is zelf een UPDATE op de kindtabel; staat daar een BEFORE
    UPDATE-trigger die de kolom terugzet naar `old`, dan draait die de actie in
    dezelfde bewerking terug. Postgres controleert de sleutel daarna niet opnieuw:
