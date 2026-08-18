@@ -408,7 +408,7 @@ De zwaarste op dit moment:
    `archived` toestaat. Maar er is nu **geen enkel** pad naar `completed`: geen
    trigger zet hem, `meld_doel_af()` reageert er alleen op. Wanneer een doel af is,
    is een productbeslissing (alle mijlpalen? de eigenaar? een buddy die bevestigt?)
-   en staat als **A31** in `docs/Q-TODO.docx`. Hoort bij EPIC 2 of 8.
+   en staat als **A31** in `docs/Q-TODO.docx` en als **QS8-102** in Linear.
 
 8. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
    referentiële actie is zelf een UPDATE op de kindtabel; staat daar een BEFORE
