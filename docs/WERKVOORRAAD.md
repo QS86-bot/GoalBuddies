@@ -208,9 +208,9 @@ Deze dingen kan een sessie niet zelf oplossen.
 | `SUPABASE_SERVICE_ROLE_KEY` | Alleen uit het Supabase-dashboard | ingevuld |
 | `SUPABASE_DB_URL` | Bevat het databasewachtwoord | ingevuld |
 | `ANTHROPIC_API_KEY` | Nodig vanaf EPIC 3 (Doelcoach) | leeg |
-| PostgreSQL client tools | `pg_dump` vóór elke migratie op gevulde data | **niet geïnstalleerd** — vraagt beheerdersrechten |
+| PostgreSQL client tools | `pg_dump` vóór elke migratie op gevulde data | ✅ geïnstalleerd 18-08-2026 via scoop (PostgreSQL 18.6, géén beheerdersrechten nodig). `npm run db:dump` getest tegen productie: 0,45 MB |
 | Docker + WSL2 | Voor een lokale Supabase-stack. Bewust uitgesteld, zie §5 | uitgesteld tot vóór de eerste echte gebruiker |
-| Supabase CLI | Voor `db reset`, `db diff` en de lokale stack | ✅ werkt via `npx supabase` (v2.114), installatie niet nodig |
+| Supabase CLI | Voor `db push`, `db diff` en de lokale stack | ✅ geïnstalleerd 18-08-2026 via scoop (v2.115.0), staat op `PATH`. **Nog niet ingelogd en niet gelinkt** (geen `supabase/config.toml`), dus `db push` werkt nog niet — zie Q-TODO C3 |
 | GitHub-connector | Voor PR's vanuit een sessie. `gh` staat niet op de machine | niet gedaan — branches worden lokaal naar `main` gemerged |
 | Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan |
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
