@@ -5,7 +5,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import type { IsoDate } from '../../shared/time';
 
-import { datumLigtInDeToekomst } from './schemas';
+import { datumLigtInDeToekomst, isoDatum } from './schemas';
 
 /**
  * De streefdatum verschuiven met akkoord van de groep — Q-TODO A7.
@@ -58,7 +58,12 @@ export const ARGUMENT_MAX = 1000;
  *    zien in plaats van een zin die uitlegt wat er wordt gevraagd.
  */
 export const deadlineVerzoekSchema = z.object({
-  new_date: z.string().min(1, { error: 'Kies een nieuwe streefdatum.' }),
+  // ⚠️ Hetzelfde schema als het doelformulier. Stond hier eerst `z.string().min(1)`,
+  //    en dat is niet zichtbaar fout: `datumLigtInDeToekomst` vergelijkt strings,
+  //    dus "morgen" gold als een geldige toekomstige datum. Postgres viel er
+  //    daarna over en de gebruiker kreeg een storingsmelding voor een tikfout —
+  //    nadat hij zijn argument al had getypt.
+  new_date: isoDatum,
   reason: z
     .string()
     .trim()
@@ -171,6 +176,39 @@ export async function beslisDeadlineVerzoek(
   return { ok: true, waarde: uitkomst.moved ?? false };
 }
 
+/**
+ * Trekt je eigen openstaande verzoek in — Q-TODO A7.
+ *
+ * ⚠️ Zonder deze route is een verzoek waar niemand op reageert een blokkade
+ *    zonder uitweg: de unieke index weigert een tweede verzoek, en je streefdatum
+ *    staat vast tot iemand toevallig kijkt. `deadline_requests` kende de status
+ *    `withdrawn` vanaf dag één en er was geen enkele manier om hem te bereiken.
+ */
+export async function trekDeadlineVerzoekIn(verzoekId: string): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('trek_deadline_verzoek_in', {
+    p_request_id: verzoekId,
+  });
+
+  if (error) {
+    reportError(error, 'deadline.withdraw', { request_id: verzoekId, code: error.code });
+    return { ok: false, melding: 'Intrekken lukte niet. Probeer het opnieuw.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  if (uitkomst.ok !== true) {
+    return {
+      ok: false,
+      melding:
+        uitkomst.reason === 'already_decided'
+          ? 'Er is intussen al over beslist.'
+          : 'Intrekken lukte niet.',
+    };
+  }
+
+  return { ok: true, waarde: true };
+}
+
 function naarVerzoek(rij: DeadlineVerzoekRij): DeadlineVerzoek {
   return {
     id: rij.id,
@@ -205,6 +243,38 @@ export async function fetchOpenVerzoek(goalId: string): Promise<DeadlineVerzoek 
   if (error) {
     reportError(error, 'deadline.open', { goal_id: goalId, code: error.code });
     throw new Error('Het lopende verzoek kon niet geladen worden.');
+  }
+
+  return data === null ? null : naarVerzoek(data);
+}
+
+/**
+ * Het laatste verzoek van dit doel waar al over beslist is — Q-TODO A7.
+ *
+ * ⚠️ Bestaat omdat een afwijzing anders volledig onzichtbaar is. `fetchOpenVerzoek`
+ *    haalt alleen `open` op, dus zodra een buddy op "Liever niet" drukt verdwijnt
+ *    het verzoek van het scherm en staat er weer een leeg formulier — alsof je
+ *    nooit iets gevraagd had. Dan typ je het een tweede keer, zonder te weten dat
+ *    er al nee gezegd is.
+ *
+ * ⚠️ Alleen op je eigen doelscherm. Dit is géén lijst voor de groep: een
+ *    afgewezen verzoek is precies het soort tegenslagsignaal over een ander dat
+ *    domeinregel 7 verbiedt.
+ */
+export async function fetchLaatsteBesluit(goalId: string): Promise<DeadlineVerzoek | null> {
+  const { data, error } = await supabase()
+    .from('deadline_requests')
+    .select('*')
+    .eq('goal_id', goalId)
+    .in('status', ['approved', 'rejected'])
+    .order('decided_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    reportError(error, 'deadline.last', { goal_id: goalId, code: error.code });
+    // Geen harde fout: dit is een extraatje op het scherm en geen kernfunctie.
+    return null;
   }
 
   return data === null ? null : naarVerzoek(data);

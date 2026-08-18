@@ -309,7 +309,15 @@ async function buildFixture(): Promise<Fixture> {
   );
 
   // Doelen: één afgerond, één gemist. Alleen het eerste hoort een bericht te geven.
-  mustOk(await alice.db.from('goals').update({ status: 'completed' }).eq('id', goalC), 'doel af');
+  //
+  // ⚠️ Allebei via de systeemclient. Sinds migratie 0035 heeft `authenticated`
+  //    geen UPDATE-recht meer op `goals.status`: `completed` liet
+  //    `meld_doel_af()` afgaan en plaatste "X heeft een doel afgerond" in elke
+  //    gekoppelde groep zonder dat er iets was afgerond, en `missed` is via
+  //    `goals_select` leesbaar voor groepsgenoten. Archiveren loopt nu via
+  //    `zet_doelstatus()`; deze twee waarden zijn systeemwerk, en dat is precies
+  //    wat de fixture hier nabootst.
+  mustOk(await admin.from('goals').update({ status: 'completed' }).eq('id', goalC), 'doel af');
   mustOk(await admin.from('goals').update({ status: 'missed' }).eq('id', goalA), 'doel gemist');
 
   // ⚠️ Een gemiste week gaat via de systeemclient, want sinds migratie 0023 heeft
@@ -689,6 +697,30 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
 
           expect(poging.error).not.toBeNull();
         }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de database en de app staan exact dezelfde gebeurtenissen toe',
+      async () => {
+        // ⚠️ Dit is de test die ontbrak, en het kostte een bevinding om dat te
+        //    zien. De twee tests hieronder dekken samen alleen "de app kent niets
+        //    dat de database verbiedt". De andere richting — de database staat
+        //    iets toe dat de app niet kent — was nergens afgedekt, en precies dat
+        //    gebeurde bij migratie 0032: `deadline_requested` kwam op de CHECK en
+        //    `SYSTEEM_GEBEURTENISSEN` bleef op acht staan, zonder één rode test.
+        //
+        //    Een gelijkheidstoets in plaats van twee insluitingen. Zo valt het
+        //    slot ongeacht welke kant er het eerst verandert.
+        const { data, error } = await adminDb().rpc('systeembericht_allowlist');
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+        const inDeApp = [...SYSTEEM_GEBEURTENISSEN].sort();
+
+        expect(inDeDatabase).toEqual(inDeApp);
       },
       TEST_TIMEOUT,
     );

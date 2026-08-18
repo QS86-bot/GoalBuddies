@@ -33,6 +33,7 @@ import {
   Caption,
   Card,
   Deelknop,
+  Field,
   MemberRow,
   MilestoneProgress,
   Screen,
@@ -257,6 +258,8 @@ function DeadlineVerzoeken({
   const [error, setError] = useState<unknown>(null);
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
+  const [afwijzen, setAfwijzen] = useState<string | null>(null);
+  const [reden, setReden] = useState('');
 
   useEffect(() => {
     if (groupId === '' || userId === '') return;
@@ -284,7 +287,11 @@ function DeadlineVerzoeken({
     setBezig(verzoekId);
     setFout(null);
 
-    const uitkomst = await beslisDeadlineVerzoek(verzoekId, akkoord, null);
+    const uitkomst = await beslisDeadlineVerzoek(
+      verzoekId,
+      akkoord,
+      akkoord ? null : reden,
+    );
     setBezig(null);
 
     if (!uitkomst.ok) {
@@ -292,6 +299,8 @@ function DeadlineVerzoeken({
       return;
     }
 
+    setAfwijzen(null);
+    setReden('');
     setVerzoeken((rijen) => (rijen ?? []).filter((r) => r.id !== verzoekId));
     onBeslist();
   }
@@ -330,22 +339,61 @@ function DeadlineVerzoeken({
                      primair/secundair-verhouding, want die maakt van de ene knop
                      het goede antwoord.
                 */}
-                <View style={styles.knoppen}>
-                  <Button
-                    variant="secundair"
-                    busy={bezig === verzoek.id}
-                    onPress={() => void beslis(verzoek.id, true)}
-                  >
-                    Akkoord
-                  </Button>
-                  <Button
-                    variant="secundair"
-                    disabled={bezig !== null}
-                    onPress={() => void beslis(verzoek.id, false)}
-                  >
-                    Liever niet
-                  </Button>
-                </View>
+                {afwijzen === verzoek.id ? (
+                  <>
+                    {/*
+                      ⚠️ Afwijzen zonder één woord uitleg is het soort nee dat een
+                         groep van drie kapotmaakt. De kolom bestond al en werd
+                         nergens gevuld; nu wel, en optioneel — een verplicht veld
+                         levert "nee" op als tekst.
+                    */}
+                    <Field
+                      label="Wil je er iets bij zeggen?"
+                      hint="Mag leeg. Eén zin helpt je buddy meer dan een kale afwijzing."
+                      value={reden}
+                      onChangeText={setReden}
+                      multiline
+                      maxLength={1000}
+                      placeholder="Zullen we eerst kijken of we het samen haalbaar kunnen maken?"
+                    />
+                    <View style={styles.knoppen}>
+                      <Button
+                        variant="secundair"
+                        busy={bezig === verzoek.id}
+                        onPress={() => void beslis(verzoek.id, false)}
+                      >
+                        Versturen
+                      </Button>
+                      <Button
+                        variant="stil"
+                        disabled={bezig !== null}
+                        onPress={() => {
+                          setAfwijzen(null);
+                          setReden('');
+                        }}
+                      >
+                        Toch niet
+                      </Button>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.knoppen}>
+                    <Button
+                      variant="secundair"
+                      busy={bezig === verzoek.id}
+                      onPress={() => void beslis(verzoek.id, true)}
+                    >
+                      Akkoord
+                    </Button>
+                    <Button
+                      variant="secundair"
+                      disabled={bezig !== null}
+                      onPress={() => setAfwijzen(verzoek.id)}
+                    >
+                      Liever niet
+                    </Button>
+                  </View>
+                )}
               </Card>
             ))}
           </>

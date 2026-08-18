@@ -289,22 +289,40 @@ export async function zetArchief(
   goalId: string,
   actorId: string,
   gearchiveerd: boolean,
-): Promise<Resultaat<Doel>> {
-  const { data, error } = await supabase()
-    .from('goals')
-    .update({ status: gearchiveerd ? 'archived' : 'active' })
-    .eq('id', goalId)
-    .select('*')
-    .single();
+): Promise<Resultaat<true>> {
+  // ⚠️ Via een RPC en niet via een UPDATE. `authenticated` heeft sinds migratie
+  //    0035 geen schrijfrecht meer op `goals.status`: van de vier toegestane
+  //    waarden deden er twee iets dat de client niet mag doen. `completed` liet
+  //    `meld_doel_af()` afgaan en plaatste "X heeft een doel afgerond" in elke
+  //    gekoppelde groep zonder dat er iets afgerond was, en `missed` is via
+  //    `goals_select` leesbaar voor groepsgenoten — precies het patroon dat
+  //    `weekly_goals.status` in EPIC 5 tot de zwaarste bevinding maakte.
+  const { data, error } = await supabase().rpc('zet_doelstatus', {
+    p_goal_id: goalId,
+    p_gearchiveerd: gearchiveerd,
+  });
 
   if (error) {
     reportError(error, 'goals.archive', { goal_id: goalId, code: error.code });
     return { ok: false, melding: 'Dat lukte niet. Probeer het opnieuw.' };
   }
 
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  if (uitkomst.ok !== true) {
+    return {
+      ok: false,
+      melding:
+        uitkomst.reason === 'not_owner' ? 'Dit doel is niet van jou.' : 'Dat lukte niet.',
+    };
+  }
+
   if (gearchiveerd) await logGoalEvent(goalId, actorId, 'archived', null, null);
 
-  return { ok: true, waarde: data };
+  // ⚠️ Geeft geen doelrij terug. De RPC levert er geen, en het scherm herlaadt
+  //    toch: een tweede ronde naar de database om iets terug te geven dat
+  //    niemand gebruikt, is verkeer voor niets op een gratis tier.
+  return { ok: true, waarde: true };
 }
 
 /**

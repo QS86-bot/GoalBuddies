@@ -10,7 +10,9 @@ import {
   ARGUMENT_MIN,
   CATEGORIE_LABELS,
   fetchDoel,
+  fetchLaatsteBesluit,
   fetchOpenVerzoek,
+  trekDeadlineVerzoekIn,
   vraagDeadlineVerschuiving,
   zetArchief,
   zetStreefdatum,
@@ -53,6 +55,7 @@ export default function DoelDetail() {
     readonly { readonly group_id: string; readonly name: string }[]
   >([]);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
+  const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
@@ -67,14 +70,16 @@ export default function DoelDetail() {
       fetchMijnGroepen(),
       fetchGroepenVanDoel(id),
       fetchOpenVerzoek(id),
+      fetchLaatsteBesluit(id),
     ])
-      .then(([gevonden, vastgelegd, mijnGroepen, gekoppeld, lopend]) => {
+      .then(([gevonden, vastgelegd, mijnGroepen, gekoppeld, lopend, laatste]) => {
         if (!levend) return;
         setDoel(gevonden);
         setCommitments(vastgelegd);
         setGroepen(mijnGroepen);
         setDoelGroepen(gekoppeld);
         setVerzoek(lopend);
+        setBesluit(laatste);
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -134,6 +139,7 @@ export default function DoelDetail() {
                 vandaag={vandaag}
                 groepen={doelGroepen}
                 verzoek={verzoek}
+                besluit={besluit}
                 onKlaar={herlaad}
               />
             ) : null}
@@ -182,12 +188,14 @@ function DeadlineVerzetten({
   vandaag,
   groepen,
   verzoek,
+  besluit,
   onKlaar,
 }: {
   readonly doel: DoelMetVoortgang;
   readonly vandaag: IsoDate;
   readonly groepen: readonly { readonly group_id: string; readonly name: string }[];
   readonly verzoek: DeadlineVerzoek | null;
+  readonly besluit: DeadlineVerzoek | null;
   readonly onKlaar: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -198,6 +206,22 @@ function DeadlineVerzetten({
 
   const gedeeld = groepen.length > 0;
   const groep = groepen[0];
+
+  async function trekIn() {
+    if (verzoek === null) return;
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await trekDeadlineVerzoekIn(verzoek.id);
+    setBezig(false);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    onKlaar();
+  }
 
   async function bewaar() {
     setBezig(true);
@@ -224,6 +248,10 @@ function DeadlineVerzetten({
   // ⚠️ Een lopend verzoek is geen wachtkamer maar een stand van zaken: je ziet
   //    wat je gevraagd hebt en wat je erbij geschreven hebt. Zonder dit is
   //    "verzonden" het laatste wat je hoort.
+  //
+  // ⚠️ Mét een knop om het in te trekken. Zonder die knop is een buddy die niet
+  //    reageert een blokkade zonder uitweg: er kan geen tweede verzoek open
+  //    staan, dus je streefdatum ligt vast tot iemand toevallig kijkt.
   if (verzoek !== null) {
     return (
       <Card nested>
@@ -238,6 +266,10 @@ function DeadlineVerzetten({
           Een van je buddy&rsquo;s beslist hierover. Zolang dat niet gebeurd is, blijft de
           datum staan zoals hij was.
         </Caption>
+        <Button variant="stil" busy={bezig} onPress={() => void trekIn()}>
+          Verzoek intrekken
+        </Button>
+        {fout === null ? null : <Caption danger>{fout}</Caption>}
       </Card>
     );
   }
@@ -246,6 +278,33 @@ function DeadlineVerzetten({
     return (
       <Card nested>
         <Subheading>Deadline</Subheading>
+
+        {/*
+          ⚠️ Een afgewezen verzoek moet je te zien krijgen. Zonder dit verdwijnt
+             het gewoon van je scherm zodra iemand "Liever niet" kiest, staat er
+             weer een leeg formulier alsof je nooit iets gevraagd hebt, en typ je
+             het een tweede keer zonder te weten dat er al nee gezegd is.
+
+             Dit staat uitsluitend op je eigen doelscherm. Een lijst met
+             afgewezen verzoeken vóór de groep zou precies het tegenslagsignaal
+             over een ander zijn dat domeinregel 7 verbiedt.
+        */}
+        {besluit === null ? null : (
+          <Card nested>
+            <Body>
+              {besluit.status === 'approved'
+                ? `Je buddy ging akkoord: de datum staat nu op ${besluit.new_date}.`
+                : 'Je buddy vond het nog te vroeg om te verzetten. De datum is niet veranderd.'}
+            </Body>
+            {besluit.decision_note === null ? null : (
+              <Body muted>&ldquo;{besluit.decision_note}&rdquo;</Body>
+            )}
+            {besluit.status === 'rejected' ? (
+              <Caption>Je kunt het opnieuw vragen als er iets veranderd is.</Caption>
+            ) : null}
+          </Card>
+        )}
+
         <Body muted>
           {gedeeld
             ? 'Je deelt dit doel met je groep, dus de datum verzet je samen. Schrijf ' +

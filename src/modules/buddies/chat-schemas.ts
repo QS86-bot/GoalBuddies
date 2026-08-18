@@ -52,6 +52,18 @@ export const SYSTEEM_GEBEURTENISSEN = [
   'goal_completed',
   'commitment_unlocked',
   'commitment_due',
+  /**
+   * ⚠️ Een uitzondering op domeinregel 7 die Quinten zelf gemaakt heeft (Q-TODO
+   *    A7, migratie 0032), en de enige gebeurtenis in deze lijst die niet
+   *    onvoorwaardelijk positief is. Toegestaan omdat de gebruiker hem zélf
+   *    verstuurt, met een argument dat hij zelf schrijft — dezelfde route als
+   *    vraag 2 van de weekafsluiting.
+   *
+   *    Het bericht noemt de persoon en de gebeurtenis, nooit de doeltitel, de
+   *    datum of het argument. Alleen het vrágen wordt aangekondigd; een
+   *    afwijzing niet, want dát is wel een tegenslagsignaal over een ander.
+   */
+  'deadline_requested',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];

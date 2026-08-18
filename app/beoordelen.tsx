@@ -55,7 +55,14 @@ export default function Beoordelen() {
   const [pagina, setPagina] = useState(0);
   const [aanHetTypen, setAanHetTypen] = useState(false);
   const [verouderd, setVerouderd] = useState(false);
-  const [laatste, setLaatste] = useState<{ id: string; naam: string } | null>(null);
+  /**
+   * ⚠️ Een lijst en niet één regel. Het scherm moedigt aan om drie buddy's
+   *    achter elkaar te beoordelen, en met één plek werd de strook van de eerste
+   *    stilzwijgend vervangen door die van de tweede — terwijl het venster van
+   *    vijftien minuten op de server gewoon doorliep. Je kon dus niets meer
+   *    terugdraaien wat je nog wél mocht terugdraaien, zonder dat iets dat zei.
+   */
+  const [terug, setTerug] = useState<readonly { id: string; naam: string }[]>([]);
 
   useEffect(() => {
     let levend = true;
@@ -130,17 +137,18 @@ export default function Beoordelen() {
               </Card>
             ) : null}
 
-            {laatste === null ? null : (
+            {terug.map((item) => (
               <Terugdraaien
-                approvalId={laatste.id}
-                naam={laatste.naam}
-                onWeg={() => setLaatste(null)}
+                key={item.id}
+                approvalId={item.id}
+                naam={item.naam}
+                onWeg={() => setTerug((r) => r.filter((x) => x.id !== item.id))}
                 onTeruggedraaid={() => {
-                  setLaatste(null);
+                  setTerug((r) => r.filter((x) => x.id !== item.id));
                   herlaad();
                 }}
               />
-            )}
+            ))}
 
             {w.rijen.map((item) => (
               <BeoordeelKaart
@@ -148,9 +156,9 @@ export default function Beoordelen() {
                 item={item}
                 approverId={userId ?? null}
                 onKlaar={(approvalId, status) => {
-                  setLaatste(
-                    status === 'approved' ? { id: approvalId, naam: item.owner_name } : null,
-                  );
+                  if (status === 'approved') {
+                    setTerug((r) => [...r, { id: approvalId, naam: item.owner_name }]);
+                  }
                   herlaad();
                 }}
                 onTypen={setAanHetTypen}

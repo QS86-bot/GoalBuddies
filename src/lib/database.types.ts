@@ -191,21 +191,21 @@ export type Database = {
           group_id: string
           group_period_start: string
           id: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           group_id: string
           group_period_start: string
           id?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           group_id?: string
           group_period_start?: string
           id?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1212,21 +1212,21 @@ export type Database = {
       }
       week_review_replies: {
         Row: {
-          author_id: string
+          author_id: string | null
           body: string
           created_at: string
           id: string
           week_review_id: string
         }
         Insert: {
-          author_id: string
+          author_id?: string | null
           body: string
           created_at?: string
           id?: string
           week_review_id: string
         }
         Update: {
-          author_id?: string
+          author_id?: string | null
           body?: string
           created_at?: string
           id?: string
@@ -1258,7 +1258,7 @@ export type Database = {
           group_period_start: string
           id: string
           next_text: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           blocked_text?: string | null
@@ -1268,7 +1268,7 @@ export type Database = {
           group_period_start: string
           id?: string
           next_text?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           blocked_text?: string | null
@@ -1278,7 +1278,7 @@ export type Database = {
           group_period_start?: string
           id?: string
           next_text?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1592,6 +1592,11 @@ export type Database = {
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
+      systeembericht_allowlist: { Args: never; Returns: string[] }
+      trek_deadline_verzoek_in: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
       vraag_deadline_verschuiving: {
@@ -1635,6 +1640,10 @@ export type Database = {
         }[]
       }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
+      zet_doelstatus: {
+        Args: { p_gearchiveerd: boolean; p_goal_id: string }
+        Returns: Json
+      }
       zet_streefdatum: {
         Args: { p_date: string; p_goal_id: string }
         Returns: Json

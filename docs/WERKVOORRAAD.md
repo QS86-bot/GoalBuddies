@@ -29,7 +29,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0033`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0035`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -70,8 +70,8 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
 - `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
-- `tests/rls` — 141 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (327 tests)
+- `tests/rls` — 145 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (331 tests)
 - `npm run build` rendert 23 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -355,7 +355,20 @@ Deze dingen kan een sessie niet zelf oplossen.
    (target_date) on goals` (0032) maakte `wijzigDoel()` kapot voor precies één
    veld; typecheck en lint bleven groen, want het type klopte nog. Alleen een
    test die de UPDATE écht uitvoert vangt dat. Trek je een kolomrecht in, zoek dan
-   meteen elke `.update(` op die kolom in `src/` en `app/`.
+   meteen elke `.update(` op die kolom in `src/`, `app/` **én `tests/`** — bij
+   0035 (`goals.status`) was het de fixture van EPIC 7 die omviel, en dat was de
+   enige waarschuwing die er kwam.
+
+18. **Twee insluitingen zijn geen gelijkheid.** De allowlist van systeemberichten
+   werd op twee plekken getoetst: "de app kent niets dat de database verbiedt" en
+   "de lijst in de app is exact deze acht namen". Allebei groen, en tóch liepen
+   database en app uit elkaar — migratie 0032 zette er een negende op de CHECK en
+   de tweede test vergeleek de oude lijst met zichzelf. Er is nu één test die de
+   twee verzamelingen gelijkstelt (`systeembericht_allowlist()`, migratie 0034).
+
+   Dit is het slot dat `CLAUDE.md` met naam noemt en dat één keer geruisloos
+   gefaald heeft. Bouw je een "twee kopieën die gelijk moeten blijven"-slot, toets
+   dan de gelijkheid en niet twee keer een kant.
 
 ---
 

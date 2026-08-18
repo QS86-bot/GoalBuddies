@@ -141,9 +141,16 @@ Vier sloten, van hard naar zacht:
    ook voor `service_role` — de rol die alle policies overslaat. Een nieuw type
    systeembericht kán niet zonder migratie.
 2. **`SYSTEEM_GEBEURTENISSEN`** in `src/modules/buddies/chat-schemas.ts`, met
-   `VERBODEN_GEBEURTENISSEN` ernaast. Twee tests: de lijst is exact acht namen, en
-   geen enkele naam uit de verbodenlijst staat erin. Een toevoeging is dus óók een
-   rode test, niet alleen een verkeerde toevoeging.
+   `VERBODEN_GEBEURTENISSEN` ernaast. Drie tests: de lijst is exact negen namen,
+   geen enkele naam uit de verbodenlijst staat erin, en — sinds 18-08 — de lijst
+   is **gelijk** aan wat de database toestaat, opgehaald met
+   `systeembericht_allowlist()` (migratie 0034).
+
+   ⚠️ **Dat derde slot ontbrak, en daardoor viel het slot één keer niet.** Migratie
+   0032 zette `deadline_requested` op de CHECK; de lijst in de app bleef op acht
+   staan en de test bleef groen, want hij vergeleek de oude lijst met zichzelf.
+   De andere test controleerde alleen dat de app niets kent dat de database
+   verbiedt — nooit de andere richting. Twee insluitingen zijn geen gelijkheid.
 3. **`realtime_bewaking()`** (migratie 0027) plus de test die eist dat geen enkele
    uitgezonden tabel op `full` staat.
 4. **Dit document.** De tabel in §2 hoort bijgewerkt te worden bij elk nieuw

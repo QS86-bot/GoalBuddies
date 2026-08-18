@@ -20,6 +20,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { groepsperiodeVan } from '../../src/modules/buddies/periods';
 import { now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
@@ -55,6 +56,8 @@ interface Fixture {
   daveChatId: string;
   /** Goedkeuring die dave aan alice gaf. */
   daveApprovalId: string;
+  /** Weekafsluiting van dave, met een reactie van bob eronder. */
+  daveReviewId: string;
   cycleStart: string;
   targetDate: string;
 }
@@ -254,11 +257,43 @@ async function buildFixture(): Promise<Fixture> {
     'goedkeuring van dave',
   );
 
+  // ⚠️ De weekafsluiting van dave, met een reactie van bob eronder. Dat tweetal
+  //    is de kern van de zwaarste bevinding: als dave zijn account opzegt, mag
+  //    de reactie van bob niet mee verdwijnen.
+  const periode = groepsperiodeVan(
+    { huddle_day: 0, tz: 'Europe/Amsterdam' },
+    now(),
+  );
+
+  const daveReviewId = mustId(
+    await dave.db
+      .from('week_reviews')
+      .insert({
+        group_id: groep.id,
+        user_id: dave.id,
+        group_period_start: periode.startDate,
+        did_text: 'Ik heb deze week mijn hoofdstuk af.',
+      })
+      .select('id')
+      .single(),
+    'weekafsluiting van dave',
+  );
+
+  mustOk(
+    await bob.db.from('week_review_replies').insert({
+      week_review_id: daveReviewId,
+      author_id: bob.id,
+      body: 'Goed bezig!',
+    }),
+    'reactie van bob',
+  );
+
   return {
     alice,
     bob,
     carol,
     dave,
+    daveReviewId,
     groupId: groep.id,
     daveGroupId: daveGroep.id,
     goalId,
@@ -648,6 +683,186 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
     );
 
     it(
+      'keurden twee buddy’s dezelfde week goed, dan blijft hij goedgekeurd',
+      async () => {
+        // ⚠️ De tak die de code-critic terecht als ongetest aanwees, en het is de
+        //    foutgevoeligste van de functie: hier mag alléén het reviewpunt van
+        //    de intrekker terug, en juist niets aan de week of aan de punten van
+        //    de eigenaar. Een fout hier is een boekhoudfout in het enige "geld"
+        //    dat deze app heeft.
+        const derde = mustId(
+          await f.alice.db
+            .from('weekly_goals')
+            .insert({
+              goal_id: f.goalId,
+              title: 'Week met twee goedkeurders',
+              ceiling_text: 'Plafond',
+              cycle_start_date: f.cycleStart,
+              cycle_index: 3,
+            })
+            .select('id')
+            .single(),
+          'derde weekdoel',
+        );
+
+        const voltooiing = mustId(
+          await f.alice.db
+            .from('completions')
+            .insert({
+              weekly_goal_id: derde,
+              user_id: f.alice.id,
+              achieved_level: 'ceiling',
+              note: 'Klaar.',
+              cycle_start_date: f.cycleStart,
+            })
+            .select('id')
+            .single(),
+          'derde voltooiing',
+        );
+
+        const vanBob = mustId(
+          await f.bob.db
+            .from('completion_approvals')
+            .insert({
+              completion_id: voltooiing,
+              approver_id: f.bob.id,
+              subject_id: f.bob.id,
+              group_id: f.groupId,
+              status: 'approved',
+            })
+            .select('id')
+            .single(),
+          'goedkeuring bob',
+        );
+
+        mustOk(
+          await f.carol.db.from('completion_approvals').insert({
+            completion_id: voltooiing,
+            approver_id: f.carol.id,
+            subject_id: f.carol.id,
+            group_id: f.groupId,
+            status: 'approved',
+          }),
+          'goedkeuring carol',
+        );
+
+        const puntenVoor = await adminDb()
+          .from('points_ledger')
+          .select('id', { count: 'exact', head: true })
+          .eq('ref_id', derde)
+          .eq('reason', 'correction');
+
+        const { data } = await f.bob.db.rpc('trek_goedkeuring_in', { p_approval_id: vanBob });
+
+        expect(uit(data).ok).toBe(true);
+        // Niets teruggedraaid: carol keurde ook goed.
+        expect(uit(data).reverted).toBe(false);
+
+        const week = await adminDb()
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', derde)
+          .single();
+
+        expect(week.data?.status).toBe('approved');
+
+        // En geen tegenboeking op de punten van de eigenaar.
+        const puntenNa = await adminDb()
+          .from('points_ledger')
+          .select('id', { count: 'exact', head: true })
+          .eq('ref_id', derde)
+          .eq('reason', 'correction');
+
+        expect(puntenNa.count ?? 0).toBe(puntenVoor.count ?? 0);
+
+        // Het reviewpunt van bob gaat wél terug, anders is intrekken gratis.
+        const reviewTerug = await adminDb()
+          .from('points_ledger')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', f.bob.id)
+          .eq('reason', 'correction')
+          .eq('ref_id', voltooiing);
+
+        expect(reviewTerug.count ?? 0).toBeGreaterThan(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een uitgezet lid kan zijn goedkeuring niet meer intrekken',
+      async () => {
+        // ⚠️ Bevinding van de security-review: `trek_goedkeuring_in` toetste
+        //    alleen op de beoordelaar, niet op lidmaatschap. Een net uitgezet lid
+        //    kon de week van een ánder terugklappen naar pending en diens punten
+        //    laten terugboeken.
+        const week = mustId(
+          await f.alice.db
+            .from('weekly_goals')
+            .insert({
+              goal_id: f.goalId,
+              title: 'Week voor de uitgezette beoordelaar',
+              ceiling_text: 'Plafond',
+              cycle_start_date: f.cycleStart,
+              cycle_index: 4,
+            })
+            .select('id')
+            .single(),
+          'vierde weekdoel',
+        );
+
+        const voltooiing = mustId(
+          await f.alice.db
+            .from('completions')
+            .insert({
+              weekly_goal_id: week,
+              user_id: f.alice.id,
+              achieved_level: 'ceiling',
+              note: 'Klaar.',
+              cycle_start_date: f.cycleStart,
+            })
+            .select('id')
+            .single(),
+          'vierde voltooiing',
+        );
+
+        const vanCarol = mustId(
+          await f.carol.db
+            .from('completion_approvals')
+            .insert({
+              completion_id: voltooiing,
+              approver_id: f.carol.id,
+              subject_id: f.carol.id,
+              group_id: f.groupId,
+              status: 'approved',
+            })
+            .select('id')
+            .single(),
+          'goedkeuring carol',
+        );
+
+        await zetLidStatus(f.groupId, f.carol.id, 'inactive');
+
+        const { data } = await f.carol.db.rpc('trek_goedkeuring_in', {
+          p_approval_id: vanCarol,
+        });
+
+        expect(uit(data).ok).toBe(false);
+        expect(uit(data).reason).toBe('not_member');
+
+        const status = await adminDb()
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', week)
+          .single();
+
+        expect(status.data?.status).toBe('approved');
+
+        await zetLidStatus(f.groupId, f.carol.id, 'active');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'niemand kan een correctie-record zelf schrijven',
       async () => {
         const { error } = await f.bob.db
@@ -989,6 +1204,35 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
 
         expect(data).not.toBeNull();
         expect(data?.created_by).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zijn weekafsluiting blijft staan — anders verdwijnen de reacties van zijn buddy’s',
+      async () => {
+        // ⚠️ De zwaarste bevinding van de security-review, en het was echt
+        //    dataverlies zonder misbruik: `week_reviews.user_id` cascadeerde, en
+        //    `week_review_replies.week_review_id` cascadeert daar weer op. Wie
+        //    zijn account opzegde, wiste daarmee de reacties die twee buddy's
+        //    onder zijn weekafsluiting hadden geschreven.
+        const { data } = await adminDb()
+          .from('week_reviews')
+          .select('id, user_id, did_text')
+          .eq('id', f.daveReviewId)
+          .maybeSingle();
+
+        expect(data).not.toBeNull();
+        expect(data?.user_id).toBeNull();
+
+        const reacties = await adminDb()
+          .from('week_review_replies')
+          .select('id, author_id, body')
+          .eq('week_review_id', f.daveReviewId);
+
+        expect((reacties.data ?? []).length).toBe(1);
+        // De reactie is van bob en die heeft niets verwijderd.
+        expect((reacties.data ?? [])[0]?.author_id).toBe(f.bob.id);
       },
       TEST_TIMEOUT,
     );
