@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { type IsoDate } from '../../shared/time';
+import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
 
 /**
  * De invoer van de doelschermen.
@@ -20,9 +20,18 @@ export const CATEGORIE_LABELS: Readonly<Record<Categorie, string>> = {
   other: 'Overig',
 };
 
-const isoDatum = z
+/**
+ * ⚠️ Geëxporteerd sinds de deadline-verzoeken van A7. Die hadden hun eigen veld
+ *    zonder formaatcontrole, en dat is niet zichtbaar fout: `datumLigtInDeToekomst`
+ *    vergelijkt strings, en `'morgen' > '2026-08-18'` is gewoon waar. Het
+ *    formulier liet zo'n waarde dus door, waarna Postgres struikelde over de cast
+ *    en de gebruiker een storingsmelding kreeg voor een tikfout — nadat hij zijn
+ *    argument al had getypt. Eén schema voor alle datumvelden.
+ */
+export const isoDatum = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'Gebruik een datum als 2026-12-31.' });
+  .trim()
+  .refine(isGeldigeIsoDatum, { error: 'Gebruik een bestaande datum als 2026-12-31.' });
 
 export const doelSchema = z.object({
   title: z
@@ -52,7 +61,18 @@ export const doelSchema = z.object({
 
 export type DoelInvoer = z.infer<typeof doelSchema>;
 
-export const doelPatchSchema = doelSchema.partial();
+/**
+ * ⚠️ `target_date` staat hier bewust níét in, en op typeniveau niet in plaats van
+ *    stilzwijgend genegeerd. `wijzigDoel()` bouwde zijn UPDATE met de hand en
+ *    liet die kolom eruit, dus een aanroeper die hem meestuurde kreeg `ok: true`
+ *    terug terwijl de datum niet opgeslagen was. Vandaag heeft die functie nog
+ *    geen scherm; de eerste die er een bouwt en het formulier van het
+ *    aanmaakscherm hergebruikt, loopt er zo in.
+ *
+ *    Verschuiven loopt sinds Q-TODO A7 via `zetStreefdatum()` of via een verzoek
+ *    aan de groep. Dat hoort een compilerfout te zijn en geen stille verrassing.
+ */
+export const doelPatchSchema = doelSchema.omit({ target_date: true }).partial();
 export type DoelPatch = z.infer<typeof doelPatchSchema>;
 
 /**

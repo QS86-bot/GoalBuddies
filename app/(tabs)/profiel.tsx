@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { signOut, updateProfiel, useProfiel, type Profiel as ProfielRij } from '@/modules/auth';
+import {
+  signOut,
+  updateProfiel,
+  useProfiel,
+  verwijderMijnAccount,
+  type Profiel as ProfielRij,
+} from '@/modules/auth';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
@@ -12,6 +18,7 @@ import {
   Button,
   Caption,
   Card,
+  Field,
   Screen,
   StreakCounter,
   Subheading,
@@ -79,10 +86,100 @@ export default function Profiel() {
               <Body muted>Je blijft lid van je groepen. Je doelen blijven staan.</Body>
               <Button onPress={() => void signOut()}>Uitloggen</Button>
             </Card>
+
+            <AccountVerwijderen />
           </View>
         )}
       </AsyncView>
     </Screen>
+  );
+}
+
+/**
+ * Je account verwijderen — Q-TODO A3, en een AVG-verplichting.
+ *
+ * ⚠️ Onomkeerbaar, dus met een tussenstap die je moet uittypen. Een knop met
+ *    "weet je het zeker?" ernaast is op een telefoon één duimbeweging van een
+ *    account dat weg is; het woord overtypen kost drie seconden en die drie
+ *    seconden zijn hier het hele punt. Dit is precies het tegenovergestelde van
+ *    de keuze op het beoordeelscherm, en om precies dezelfde reden: dáár is de
+ *    vergissing goedkoop terug te draaien, hier niet.
+ *
+ * ⚠️ Wat er gebeurt staat er letterlijk bij, ook het deel dat blijft staan. Zou
+ *    hier alleen "alles wordt verwijderd" staan, dan is dat niet waar: je
+ *    goedkeuringen en je chatberichten blijven bestaan zonder je naam, want die
+ *    zijn van je buddy's (migratie 0031).
+ */
+function AccountVerwijderen() {
+  const [open, setOpen] = useState(false);
+  const [bevestiging, setBevestiging] = useState('');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const WOORD = 'VERWIJDER';
+
+  async function verwijder() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await verwijderMijnAccount();
+    setBezig(false);
+
+    // Bij succes is de sessie al weg en stuurt de router je naar het inlogscherm;
+    // er valt hier niets meer te tonen.
+    if (!uitkomst.ok) setFout(uitkomst.melding);
+  }
+
+  if (!open) {
+    return (
+      <Card nested>
+        <Subheading>Account verwijderen</Subheading>
+        <Body muted>
+          Je doelen, weken, Dagzetten, punten en lidmaatschappen verdwijnen. Wat blijft
+          staan zijn de goedkeuringen die jij aan je buddy&rsquo;s gaf en je berichten in de
+          groepschat — zonder je naam erbij. Die zijn van hen.
+        </Body>
+        <Button variant="stil" onPress={() => setOpen(true)}>
+          Ik wil mijn account verwijderen
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card nested>
+      <Subheading>Zeker weten?</Subheading>
+      <Body>Dit kan niet ongedaan gemaakt worden. Er is geen back-up en geen hersteltermijn.</Body>
+      <Field
+        label={`Typ ${WOORD} om te bevestigen`}
+        value={bevestiging}
+        onChangeText={setBevestiging}
+        autoCapitalize="characters"
+        placeholder={WOORD}
+      />
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <View style={styles.keuzes}>
+        <Button
+          variant="secundair"
+          busy={bezig}
+          disabled={bevestiging.trim().toUpperCase() !== WOORD}
+          onPress={() => void verwijder()}
+        >
+          Definitief verwijderen
+        </Button>
+        <Button
+          variant="stil"
+          disabled={bezig}
+          onPress={() => {
+            setOpen(false);
+            setBevestiging('');
+            setFout(null);
+          }}
+        >
+          Toch niet
+        </Button>
+      </View>
+    </Card>
   );
 }
 

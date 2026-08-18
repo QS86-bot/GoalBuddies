@@ -4,6 +4,7 @@
 export {
   fetchGekoppeldeDoelIds,
   fetchGroep,
+  fetchGroepenVanDoel,
   fetchGroepsoverzicht,
   fetchMijnGroepen,
   fetchMijnLidmaatschap,

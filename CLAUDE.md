@@ -140,10 +140,17 @@ Voordat er één feature gebouwd wordt:
    aanmoedigingen. **Nooit** een gemiste week, verbroken reeks of achterstand van
    iemand anders. Eigen tegenvallers zijn privé zichtbaar voor jezelf.
 
-   Er zijn precies twee routes waarlangs tegenslag de groep bereikt, en beide lopen
-   via de gebruiker zelf: vraag 2 van de weekafsluiting, en de knop "vraag je groep
-   om hulp" van de Risico-radar. De enige uitzondering is een straf die de gebruiker
-   zelf vooraf heeft ingesteld en bevestigd.
+   Er zijn precies drie routes waarlangs tegenslag de groep bereikt, en alle drie
+   lopen via de gebruiker zelf: vraag 2 van de weekafsluiting, de knop "vraag je
+   groep om hulp" van de Risico-radar, en het verzoek om je streefdatum te
+   verschuiven (A7). De enige uitzondering is een straf die de gebruiker zelf
+   vooraf heeft ingesteld en bevestigd.
+
+   ⚠️ **Drie benoemde verruimingen, besloten door Quinten op 18-08-2026.** De groep
+   mag je reeks zien (A15), je risicostatus zien (A17) en je deadline-verschuiving
+   zien (A7). Die staan met onderbouwing in `docs/decisions/002-...md` §4a. Ze
+   verruimen de regel op drie plekken; ze schaffen hem niet af. Voor élk ander
+   oppervlak geldt hij onverkort, en bij twijfel is het antwoord nee.
 
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.
@@ -202,6 +209,13 @@ Voordat er één feature gebouwd wordt:
       en dat botst met domeinregel 7. De groep ziet De Ketting en mijlpalen.
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
+
+    ⚠️ **Een deadline verschuiven kost geen punten** en dat is een besluit, geen
+    omissie (Q-TODO A7). De rem zit ergens anders: verschuiven kán alleen met
+    akkoord van een buddy, en zonder akkoord blijft de datum staan. Zou er ook een
+    minpunt op staan, dan betaal je twee keer voor één gebeurtenis. Alleen
+    `correction` mag verder negatief boeken, en dat is per definitie het
+    rechtzetten van iets dat al geboekt was.
 
 11. **Een straf treedt alleen in werking bij een verstreken deadline.** Een gemiste
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het

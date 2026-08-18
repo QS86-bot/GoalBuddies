@@ -61,8 +61,12 @@ npm run db:push        # dump eerst, dan supabase db push
 npm run types:db       # databasetypes hergenereren — niet vergeten
 ```
 
-Beide vragen de Supabase CLI. Die staat nog niet op deze machine; zie
-`docs/Q-TODO.docx` C3.
+Beide vragen de Supabase CLI. Die staat sinds 18-08-2026 op deze machine:
+via scoop, v2.115.0, shim in `%USERPROFILE%\scoop\shims`. Installeren gaat met
+`scoop install supabase`; `npm i -g supabase` werkt niet, dat blokkeert Supabase
+zelf. Na een verse installatie moet je een nieuw terminalvenster openen — een
+draaiende shell leest `PATH` niet opnieuw in, en dat is precies de fout die
+eruitziet alsof de installatie mislukt is.
 
 ⚠️ **`CLAUDE.md`: nooit een migratie draaien op iets anders dan lokaal zonder
 overleg.** Zolang er geen lokale stack is, is elke migratie een handeling op de

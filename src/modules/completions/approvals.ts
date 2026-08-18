@@ -148,7 +148,7 @@ export async function beoordeel(
   groupId: string,
   approverId: string,
   invoer: OordeelInvoer,
-): Promise<Resultaat<true>> {
+): Promise<Resultaat<string>> {
   const gevalideerd = oordeelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
     return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
@@ -163,15 +163,23 @@ export async function beoordeel(
     };
   }
 
-  const { error } = await supabase().from('completion_approvals').insert({
-    completion_id: completionId,
-    approver_id: approverId,
-    // De trigger zet de echte eigenaar; deze waarde haalt de NOT NULL.
-    subject_id: approverId,
-    group_id: groupId,
-    status: gevalideerd.data.status,
-    comment: opmerking === '' ? null : opmerking,
-  });
+  // ⚠️ De id komt terug omdat het scherm hem nodig heeft om de goedkeuring
+  //    binnen een kwartier te kunnen intrekken (Q-TODO A19). Dat de RETURNING-rij
+  //    er doorheen komt, hangt aan `completion_approvals_select`: Postgres past
+  //    de SELECT-policy óók toe op de rij die een INSERT teruggeeft.
+  const { data, error } = await supabase()
+    .from('completion_approvals')
+    .insert({
+      completion_id: completionId,
+      approver_id: approverId,
+      // De trigger zet de echte eigenaar; deze waarde haalt de NOT NULL.
+      subject_id: approverId,
+      group_id: groupId,
+      status: gevalideerd.data.status,
+      comment: opmerking === '' ? null : opmerking,
+    })
+    .select('id')
+    .single();
 
   if (error) {
     reportError(error, 'approvals.create', { completion_id: completionId, pgcode: error.code });
@@ -193,7 +201,7 @@ export async function beoordeel(
     };
   }
 
-  return { ok: true, waarde: true };
+  return { ok: true, waarde: data.id };
 }
 
 const OPNIEUW_MELDING: Readonly<Record<string, string>> = {
@@ -242,6 +250,59 @@ export async function dienOpnieuwIn(
   }
 
   return { ok: true, waarde: uitkomst.completion_id };
+}
+
+/** Zolang je een goedkeuring nog kunt intrekken — gelijk aan de RPC. */
+export const INTREKVENSTER_MINUTEN = 15;
+
+const INTREK_MELDING: Readonly<Record<string, string>> = {
+  not_found: 'Deze goedkeuring bestaat niet meer.',
+  not_yours: 'Alleen jij kunt je eigen goedkeuring intrekken.',
+  window_closed:
+    'Het kwartier om dit terug te draaien is voorbij. Vraag je buddy om de week ' +
+    'opnieuw in te dienen als er iets niet klopt.',
+  already_withdrawn: 'Je hebt deze goedkeuring al ingetrokken.',
+};
+
+/**
+ * Trekt je eigen goedkeuring in — Q-TODO A19.
+ *
+ * ⚠️ Append-only (domeinregel 6): de goedkeuring blijft staan en er komt een
+ *    correctie-record naast. De punten worden tegengeboekt met
+ *    `reason = 'correction'`, niet weggehaald — die reden bestond al, dus het
+ *    puntenmodel uit domeinregel 10 verandert niet.
+ *
+ * ⚠️ Vijftien minuten, hetzelfde venster als het bewerken van een chatbericht.
+ *    Gekozen boven een bevestigingsstap vooraf: het beoordeelscherm heeft met
+ *    opzet twee gelijkwaardige knoppen zonder tussenstap (6.1), en een
+ *    bevestiging kost die vlotheid bij élke goedkeuring in plaats van bij de
+ *    zeldzame verkeerde.
+ *
+ * ⚠️ Er gaat geen systeembericht uit. Een intrekking zegt "de week van X is toch
+ *    niet bevestigd" en dat is een tegenslagsignaal over iemand anders
+ *    (domeinregel 7). De aankondiging van de goedkeuring wordt in plaats daarvan
+ *    weggehaald.
+ *
+ * Geeft terug of de week écht terugging naar `pending`. Keurde een tweede buddy
+ * dezelfde week ook goed, dan blijft hij goedgekeurd en is `waarde` `false`.
+ */
+export async function trekGoedkeuringIn(approvalId: string): Promise<Resultaat<boolean>> {
+  const { data, error } = await supabase().rpc('trek_goedkeuring_in', {
+    p_approval_id: approvalId,
+  });
+
+  if (error) {
+    reportError(error, 'approvals.withdraw', { approval_id: approvalId, pgcode: error.code });
+    return { ok: false, melding: 'Intrekken lukte niet. Probeer het zo nog eens.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; reverted?: boolean };
+
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: INTREK_MELDING[uitkomst.reason ?? ''] ?? 'Intrekken lukte niet.' };
+  }
+
+  return { ok: true, waarde: uitkomst.reverted ?? false };
 }
 
 export interface Vraag {

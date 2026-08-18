@@ -88,11 +88,19 @@ describe('domeinregel 7: falen is nooit publiek', () => {
     }
   });
 
-  it('bevat uitsluitend de acht gebeurtenissen van migratie 0025', () => {
+  it('bevat uitsluitend de negen gebeurtenissen van migratie 0025 en 0032', () => {
     // ⚠️ Een exacte lijst en geen `toContain`-reeks. Zo is een tóevoeging óók een
     //    rode test, en niet alleen een verkeerde toevoeging. Wie hier een naam
     //    bijzet, komt eerst langs de vraag: kan hieruit iemands gemiste week
     //    worden afgeleid, en kan iemand dat met één API-verzoek uitlezen?
+    //
+    // ⚠️ En dat werkte deze keer niet. Migratie 0032 zette `deadline_requested`
+    //    op de CHECK in de database en deze lijst bleef op acht staan — waarmee
+    //    de test gewoon groen bleef, want hij toetste de oude toestand tegen
+    //    zichzelf. Het slot viel niet. De test in `tests/rls/epic7.test.ts`
+    //    controleert daarom sinds die bevinding beide richtingen: de app mag
+    //    niets kennen dat de database verbiedt, én de database niets toestaan
+    //    dat de app niet kent.
     expect([...SYSTEEM_GEBEURTENISSEN]).toEqual([
       'group_sleeping',
       'member_joined',
@@ -102,6 +110,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       'goal_completed',
       'commitment_unlocked',
       'commitment_due',
+      'deadline_requested',
     ]);
   });
 

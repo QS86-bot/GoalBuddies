@@ -18,7 +18,13 @@ import {
   type Groepslid,
   type Pagina,
 } from '@/modules/buddies';
-import { fetchDoelen, type DoelMetVoortgang } from '@/modules/goals';
+import {
+  beslisDeadlineVerzoek,
+  fetchDoelen,
+  fetchOpenVerzoekenVoorGroep,
+  type DeadlineVerzoek,
+  type DoelMetVoortgang,
+} from '@/modules/goals';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -27,6 +33,7 @@ import {
   Caption,
   Card,
   Deelknop,
+  Field,
   MemberRow,
   MilestoneProgress,
   Screen,
@@ -188,6 +195,10 @@ export default function GroepDetail() {
               </Card>
             )}
 
+            {userId ? (
+              <DeadlineVerzoeken groupId={id ?? ''} userId={userId} onBeslist={herlaad} />
+            ) : null}
+
             {s.overzicht.rijen
               .filter((lid) => lid.goal_id !== null)
               .map((lid) => (
@@ -215,6 +226,182 @@ export default function GroepDetail() {
         Naar mijn groepen
       </Button>
     </Screen>
+  );
+}
+
+/**
+ * Verzoeken om een streefdatum te verschuiven — Q-TODO A7.
+ *
+ * ⚠️ Dit is een uitzondering op domeinregel 7 die Quinten zelf gemaakt heeft, en
+ *    hij past in het patroon dat de regel beschrijft: de tegenslag komt via de
+ *    persoon zélf. Hij schrijft het argument en drukt op verzenden. Wat hier
+ *    staat is dus zijn mededeling, geen afgeleide van zijn falen.
+ *
+ * ⚠️ Je eigen verzoek staat er niet bij; dat zie je op je eigen doel. En je kunt
+ *    het niet zelf goedkeuren — dat weigert de RPC, niet dit scherm.
+ *
+ * ⚠️ Alleen open verzoeken. Een lijst met afgewezen verzoeken erbij zou van deze
+ *    kaart een register maken van wie het niet gehaald heeft, en dat is precies
+ *    wat er niet mag.
+ */
+function DeadlineVerzoeken({
+  groupId,
+  userId,
+  onBeslist,
+}: {
+  readonly groupId: string;
+  readonly userId: string;
+  readonly onBeslist: () => void;
+}) {
+  const [verzoeken, setVerzoeken] = useState<readonly DeadlineVerzoek[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+  const [afwijzen, setAfwijzen] = useState<string | null>(null);
+  const [reden, setReden] = useState('');
+
+  useEffect(() => {
+    if (groupId === '' || userId === '') return;
+    let levend = true;
+
+    fetchOpenVerzoekenVoorGroep(groupId, userId)
+      .then((rijen) => {
+        if (!levend) return;
+        setVerzoeken(rijen);
+        setError(null);
+      })
+      .catch((f: unknown) => {
+        if (levend) setError(f);
+      })
+      .finally(() => {
+        if (levend) setLoading(false);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [groupId, userId]);
+
+  async function beslis(verzoekId: string, akkoord: boolean) {
+    setBezig(verzoekId);
+    setFout(null);
+
+    const uitkomst = await beslisDeadlineVerzoek(
+      verzoekId,
+      akkoord,
+      akkoord ? null : reden,
+    );
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    setAfwijzen(null);
+    setReden('');
+    setVerzoeken((rijen) => (rijen ?? []).filter((r) => r.id !== verzoekId));
+    onBeslist();
+  }
+
+  // ⚠️ Geen lege kaart als er niets te beslissen valt. Dit blok hoort alleen te
+  //    bestaan als iemand iets gevraagd heeft; anders is het een vaste
+  //    herinnering aan een uitzondering die zelden voorkomt.
+  if (!loading && error === null && (verzoeken === null || verzoeken.length === 0)) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <Subheading>Een buddy vraagt om meer tijd</Subheading>
+
+      <AsyncView
+        loading={loading}
+        error={error}
+        data={verzoeken ?? undefined}
+        isEmpty={(v) => v.length === 0}
+        empty={{
+          title: 'Niets te beslissen',
+          body: 'Zodra iemand om een nieuwe streefdatum vraagt, staat het hier.',
+        }}
+      >
+        {(rijen) => (
+          <>
+            {rijen.map((verzoek) => (
+              <Card key={verzoek.id} nested>
+                <Body>
+                  Van {verzoek.old_date} naar {verzoek.new_date}.
+                </Body>
+                <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
+                {/*
+                  ⚠️ Allebei `secundair`, net als op het beoordeelscherm. Geen
+                     primair/secundair-verhouding, want die maakt van de ene knop
+                     het goede antwoord.
+                */}
+                {afwijzen === verzoek.id ? (
+                  <>
+                    {/*
+                      ⚠️ Afwijzen zonder één woord uitleg is het soort nee dat een
+                         groep van drie kapotmaakt. De kolom bestond al en werd
+                         nergens gevuld; nu wel, en optioneel — een verplicht veld
+                         levert "nee" op als tekst.
+                    */}
+                    <Field
+                      label="Wil je er iets bij zeggen?"
+                      hint="Mag leeg. Eén zin helpt je buddy meer dan een kale afwijzing."
+                      value={reden}
+                      onChangeText={setReden}
+                      multiline
+                      maxLength={1000}
+                      placeholder="Zullen we eerst kijken of we het samen haalbaar kunnen maken?"
+                    />
+                    <View style={styles.knoppen}>
+                      <Button
+                        variant="secundair"
+                        busy={bezig === verzoek.id}
+                        onPress={() => void beslis(verzoek.id, false)}
+                      >
+                        Versturen
+                      </Button>
+                      <Button
+                        variant="stil"
+                        disabled={bezig !== null}
+                        onPress={() => {
+                          setAfwijzen(null);
+                          setReden('');
+                        }}
+                      >
+                        Toch niet
+                      </Button>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.knoppen}>
+                    <Button
+                      variant="secundair"
+                      busy={bezig === verzoek.id}
+                      onPress={() => void beslis(verzoek.id, true)}
+                    >
+                      Akkoord
+                    </Button>
+                    <Button
+                      variant="secundair"
+                      disabled={bezig !== null}
+                      onPress={() => setAfwijzen(verzoek.id)}
+                    >
+                      Liever niet
+                    </Button>
+                  </View>
+                )}
+              </Card>
+            ))}
+          </>
+        )}
+      </AsyncView>
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
   );
 }
 
@@ -433,4 +620,5 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
 
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
+  knoppen: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });
