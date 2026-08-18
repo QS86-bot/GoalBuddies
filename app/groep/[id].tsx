@@ -148,6 +148,31 @@ export default function GroepDetail() {
               ) : null}
             </Card>
 
+            {/*
+              ⚠️ Twee aparte schermen en niet één. De weekafsluiting is één kaart
+                 die als een vergadering hoort te lezen; de chat is een doorlopend
+                 gesprek. Zet je ze op één scherm, dan wordt de kaart een bericht
+                 tussen de berichten — en dat is precies wat het acceptatiecriterium
+                 van 7.5 uitsluit.
+            */}
+            <Card>
+              <Subheading>Het gesprek</Subheading>
+              <Body muted>
+                De weekafsluiting is het vaste moment op de huddledag: drie vragen, en de
+                antwoorden van iedereen op één kaart. De chat is voor de rest van de week.
+              </Body>
+              <Button
+                variant="secundair"
+                block
+                onPress={() => router.push(`/groep/weekafsluiting/${id}`)}
+              >
+                De weekafsluiting
+              </Button>
+              <Button variant="secundair" block onPress={() => router.push(`/groep/chat/${id}`)}>
+                Groepschat
+              </Button>
+            </Card>
+
             {s.groep === null ? null : (
               <Card>
                 <Subheading>Iemand uitnodigen</Subheading>

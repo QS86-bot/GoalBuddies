@@ -16,6 +16,7 @@ export { Avatar } from './Avatar';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
+export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { Deelknop } from './Deelknop';
 export { EmptyState } from './EmptyState';

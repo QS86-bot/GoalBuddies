@@ -1,0 +1,117 @@
+import { StyleSheet, View } from 'react-native';
+
+import { radius, space, useTheme } from '../theme';
+
+import { Avatar } from './Avatar';
+import { Body, Caption } from './Text';
+
+/**
+ * Eén regel in de groepschat — QS8-69 en QS8-70.
+ *
+ * ⚠️ Een systeembericht ziet er anders uit dan een mens, en dat is geen opsmuk.
+ *    Het systeem is het kanaal dat de groep vertrouwt: gaat het eruitzien als
+ *    iemand die iets zegt, dan is "Tim bevestigde de week van Sanne" niet meer te
+ *    onderscheiden van een bericht dat Tim zelf getypt heeft. Andersom net zo
+ *    erg — en dat laatste was gat A5 (een lid dat een vals systeembericht kon
+ *    plaatsen, gedicht in 0006 en 0010).
+ *
+ *    Een systeembericht heeft daarom geen avatar, geen naam en geen bubbel: het
+ *    staat gecentreerd en zacht, als een regel in een logboek.
+ *
+ * ⚠️ Er staat nergens iets grijs of doorgestreept waar tegenslag zou kunnen
+ *    staan. Dat komt niet doordat dit component het verbergt, maar doordat
+ *    `chat_messages_system_event_bekend` (migratie 0025) zulke gebeurtenissen niet
+ *    laat bestaan. Dit component is de weergave, niet het slot.
+ */
+
+interface Props {
+  readonly body: string;
+  /** `undefined` betekent: systeembericht. */
+  readonly senderName?: string | undefined;
+  readonly senderAvatar?: string | null | undefined;
+  /** Van de ingelogde gebruiker zelf: rechts uitgelijnd. */
+  readonly vanMij?: boolean;
+  /** Weergavetijd, al opgemaakt door de aanroeper. Nooit hier berekend. */
+  readonly tijd?: string | undefined;
+}
+
+export function ChatRegel({
+  body,
+  senderName,
+  senderAvatar,
+  vanMij = false,
+  tijd,
+}: Props) {
+  const c = useTheme().colors;
+
+  if (senderName === undefined) {
+    return (
+      <View style={styles.systeem}>
+        <Caption>{body}</Caption>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.regel, vanMij ? styles.regelRechts : null]}>
+      {vanMij ? null : <Avatar name={senderName} url={senderAvatar} size={28} />}
+
+      <View style={styles.kolom}>
+        {/*
+          ⚠️ De naam staat er ook boven je eigen bericht níét, en boven dat van een
+             ander wél. Uitlijning alleen is geen mededeling voor wie de app met een
+             schermlezer gebruikt, dus die krijgt hem via het label van de bubbel.
+        */}
+        {vanMij ? null : <Caption>{senderName}</Caption>}
+
+        <View
+          style={[
+            styles.bubbel,
+            {
+              backgroundColor: vanMij ? c.panelDark : c.panel,
+              borderColor: c.border,
+            },
+            vanMij ? styles.bubbelRechts : styles.bubbelLinks,
+          ]}
+          accessibilityLabel={vanMij ? `Jij: ${body}` : `${senderName}: ${body}`}
+        >
+          <Body>{body}</Body>
+        </View>
+
+        {/* `Caption` neemt met opzet geen `style` aan — de typografie hoort van
+            het stelsel te komen. De uitlijning gaat dus via een omhulsel. */}
+        {tijd === undefined ? null : (
+          <View style={vanMij ? styles.tijdRechts : null}>
+            <Caption>{tijd}</Caption>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  regel: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  regelRechts: { justifyContent: 'flex-end' },
+  kolom: { gap: 3, flexShrink: 1, maxWidth: '86%' },
+  bubbel: {
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  bubbelLinks: {
+    borderRadius: radius.base,
+    borderBottomLeftRadius: 4,
+  },
+  bubbelRechts: {
+    borderRadius: radius.base,
+    borderBottomRightRadius: 4,
+    alignSelf: 'flex-end',
+  },
+  tijdRechts: { alignItems: 'flex-end' },
+  systeem: {
+    alignItems: 'center',
+    paddingVertical: space.blokGap - 8,
+    paddingHorizontal: space.shell,
+  },
+});

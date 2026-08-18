@@ -30,4 +30,4 @@ export {
   userCycle,
 } from './cycle';
 
-export { addDays, daysBetween, localDateIn, toIsoDate, weekdayOf } from './zoned';
+export { addDays, daysBetween, klokTijd, localDateIn, toIsoDate, weekdayOf } from './zoned';
