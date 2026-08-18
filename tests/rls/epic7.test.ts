@@ -14,6 +14,11 @@
  *    na ongeveer dertig aanmeldingen in korte tijd met "Request rate limit
  *    reached", en dan is een rode suite geen bevinding maar een wachttijd.
  *
+ *    Deze suite maakt drie accounts bovenop wat `policies.test.ts` er al maakt.
+ *    Twee volledige runs binnen een minuut is daarmee genoeg om tegen die grens te
+ *    lopen — dat is één keer gebeurd. Zie je een opbouwfout met "rate limit" erin,
+ *    wacht dan een minuut in plaats van in de policies te gaan zoeken.
+ *
  * ⚠️ De hele opbouw staat in `beforeAll` en de tests zijn leesacties. Dat is niet
  *    alleen sneller: het maakt de tests onafhankelijk van elkaar, en dat is hier
  *    nodig omdat de systeemberichten van de één de chat van de ander vullen.
@@ -155,9 +160,18 @@ async function buildFixture(): Promise<Fixture> {
 
   // ⚠️ De oprichter is in dezelfde transactie lid geworden. Er hoort daar géén
   //    "doet mee" te staan; dat toetst een test hieronder.
+  //
+  // ⚠️ De HTTP-fout gaat expliciet mee in de melding. Zonder dat regeltje leest een
+  //    afgebroken opbouw als "bob werd geen lid: undefined" — en dan zoek je in de
+  //    policies terwijl het antwoord "Request rate limit reached" was. Deze suite
+  //    maakt drie accounts per run bovenop de accounts van `policies.test.ts`, en
+  //    Supabase weigert na ongeveer dertig aanmeldingen in korte tijd.
   const meedoen = await bob.db.rpc('join_group_with_code', { code: group.code });
+  if (meedoen.error) {
+    throw new Error(`bob werd geen lid (HTTP): ${meedoen.error.message}`);
+  }
   if (uitkomst(meedoen.data).ok !== true) {
-    throw new Error(`bob werd geen lid: ${uitkomst(meedoen.data).reason}`);
+    throw new Error(`bob werd geen lid: ${uitkomst(meedoen.data).reason ?? 'geen reden'}`);
   }
 
   const groep = await admin.from('groups').select('huddle_day, tz').eq('id', group.id).single();

@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 17-08-2026 (na EPIC 5 en EPIC 6)
+**Laatst bijgewerkt:** 18-08-2026 (na EPIC 7)
 
 ---
 
@@ -29,9 +29,10 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 23 tabellen. Migraties `0001` t/m `0022`
+**Database — af, en nu ook getest.** 24 tabellen. Migraties `0001` t/m `0027`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
+De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026).
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -62,20 +63,32 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
 - `src/shared/time` — de twee klokken plus `now()`
 - `src/shared/theme` — navy-stelsel, drie themastanden
-- `src/shared/ui` — 15 componenten, met de domeinregels erin gebakken
+- `src/shared/ui` — 16 componenten, met de domeinregels erin gebakken
 - `src/modules/auth` — sessie, profiel, Zod-schema's
 - `src/modules/goals` — doelen, weekdoelen, cyclus
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
 - `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
-- `tests/rls` — 75 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (222 tests)
-- `npm run build` rendert 21 routes statisch
+- `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
+- `tests/rls` — 102 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (288 tests)
+- `npm run build` rendert 23 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
 groepskant — een groep aanmaken met deelbare link, toetreden met een code, het
 groepsoverzicht, je doel aan een groep koppelen, de huddledag instellen en de
-gastvrije uitnodigingspagina die ook zonder account werkt.
+gastvrije uitnodigingspagina die ook zonder account werkt. Sinds EPIC 7 ook de
+groepschat (realtime, met een cache voor een slechte verbinding), automatische
+systeemberichten bij positieve gebeurtenissen, en de weekafsluiting: drie vragen
+op de huddledag met alle antwoorden op één kaart en reacties eronder.
+
+⚠️ **EPIC 7 heeft één acceptatiecriterium niet gehaald, en dat is een
+afhankelijkheid en geen omissie.** Het systeembericht bij een ketting-mijlpaal
+(QS8-70) is niet gebouwd: **niets schrijft `chain_links`**. Daardoor staat het
+bolletje "deze week al afgesloten" op het groepsoverzicht ook altijd uit, want
+`group_overview()` leest die tabel. De Ketting is QS8-80 in EPIC 8, en dat is de
+eerstvolgende epic. Zet daar `chain_milestone` op de allowlist in
+`chat_messages_system_event_bekend` (migratie 0025).
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
@@ -107,8 +120,8 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
-| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | **hier verder** — begin bij QS8-69 |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | open |
+| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder** — begin bij QS8-80, De Ketting |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
@@ -127,6 +140,8 @@ Klein, maar het staat nergens anders opgeschreven:
 | Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
+| Systeembericht bij een ketting-mijlpaal | QS8-70 | Niets schrijft `chain_links`. Hoort bij QS8-80 (De Ketting, EPIC 8); dan komt `chain_milestone` op de allowlist in migratie 0025 |
+| Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
 | Rollover opnieuw deployen | Q-TODO A13 | De functie roept nu ook `slaap_stille_groepen()` aan, en in de repo stond een kapotte regex. Deployen vraagt een access token dat een sessie niet heeft |
@@ -268,7 +283,42 @@ Deze dingen kan een sessie niet zelf oplossen.
     te stellen, dus dit is een afspraak en geen slot. Staat als A20 in
     `docs/Q-TODO.docx`, met het voorstel om hem in `CLAUDE.md` te zetten.
 
-11. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
+11. **Een nieuw type systeembericht vraagt een migratie, en dat is opzet.** De CHECK
+    `chat_messages_system_event_bekend` (migratie 0025) is een allowlist van acht
+    namen, en omdat het een CHECK is geldt hij ook voor `service_role` — de rol die
+    alle policies overslaat. De kopie staat in
+    `src/modules/buddies/chat-schemas.ts` als `SYSTEEM_GEBEURTENISSEN`, met
+    `VERBODEN_GEBEURTENISSEN` ernaast en twee tests eromheen: de lijst is exact acht
+    namen, en geen enkele verboden naam staat erin. Een tóevoeging is daar dus ook
+    een rode test, niet alleen een verkeerde toevoeging. Dat is de bedoeling: de
+    drempel dwingt de vraag af of de groep het mag zien.
+
+12. **Een systeembericht noemt geen titels.** Persoon en gebeurtenis, nooit de
+    doeltitel, weektitel, mijlpaaltitel, notitie of het gehaalde niveau. Een bericht
+    is een onveranderlijke kopie die de autorisatie overleeft waaronder hij gemaakt
+    is: ontkoppelen trekt de toestemming in, maar wist geen chat. Onderbouwing in
+    `docs/decisions/002-domeinregel7-oppervlakken.md` §3, met een test die de titels
+    uit de fixture nergens in een systeembericht mag terugvinden.
+
+13. **`npm run types:db` schreef ooit een leeg typesbestand.** De oude regel was
+    `supabase gen types ... > src/lib/database.types.ts`, en de shell kapt het
+    doelbestand af vóórdat het commando draait. Staat `supabase` niet op het PATH —
+    en dat is hier het geval — dan is het resultaat een leeg bestand en een build die
+    overal stukloopt zonder één foutmelding die naar de oorzaak wijst. Nu draait het
+    via `scripts/db-types.mjs`, dat alleen bij een geslaagde generatie schrijft.
+    **Werkt de CLI niet (die vraagt een access token, of Docker bij `--db-url`), dan
+    is de MCP-tool `generate_typescript_types` de route.** Zo zijn de types van
+    EPIC 7 gemaakt.
+
+14. **Twee testruns kort achter elkaar lopen tegen de aanmeldlimiet van Supabase.**
+    `tests/rls/policies.test.ts` en `tests/rls/epic7.test.ts` maken samen zo'n tien
+    echte accounts per run, en Supabase weigert na ongeveer dertig aanmeldingen in
+    korte tijd met "Request rate limit reached". Dat kwam één keer terug als een
+    opbouwfout in `epic7.test.ts` en zag eruit als een policyfout. Beide suites
+    melden nu de HTTP-fout letterlijk, dus zoek eerst naar "rate limit" in de
+    melding en wacht een minuut voordat je in de policies gaat kijken.
+
+15. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
    dag twee keer gevonden, allebei bij toeval: een migratie die wel op het
    project stond maar niet in de map, en een Edge Function waarvan de repo-versie
    een kapotte regex had terwijl de gedeployde versie klopte. Zolang migraties
@@ -296,7 +346,13 @@ De zwaarste op dit moment, alle vier uit de reviewronde van EPIC 5:
    bestaat.
 3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
    groepen, rate limiting of domeinregel 7.
-4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.10).
+4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
+5. **Niets schrijft `chain_links`**, terwijl `group_overview()` er wel op leunt voor
+   `closed_this_period` en de ketting-mijlpaal van QS8-70 erop wacht. Gevonden
+   tijdens EPIC 7; hoort thuis bij QS8-80 in EPIC 8, en dat is de eerstvolgende epic.
+6. **Vraag 1 van de weekafsluiting wordt voorgevuld met privé Dagzetten.** De
+   bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
+   onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.
 
 **Twee productbeslissingen liggen bij Quinten en staan in `docs/Q-TODO.docx`:**
 mag de groep je reeks zien (A15 — een reeks die naar nul valt is net zo goed

@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { radius, space, useTheme } from '../theme';
 
@@ -33,6 +33,15 @@ interface Props {
   readonly vanMij?: boolean;
   /** Weergavetijd, al opgemaakt door de aanroeper. Nooit hier berekend. */
   readonly tijd?: string | undefined;
+  /**
+   * Weghalen van je eigen bericht. Alleen doorgeven bij `vanMij`.
+   *
+   * ⚠️ Bewerken zit er niet, ook al staat de policy het 15 minuten toe. Een
+   *    bewerkte regel in een gesprek van drie mensen is een gesprek waarvan de
+   *    helft achteraf kan veranderen. Weghalen is eerlijker: dan is de regel weg
+   *    en niet stil anders.
+   */
+  readonly onWeghalen?: (() => void) | undefined;
 }
 
 export function ChatRegel({
@@ -41,6 +50,7 @@ export function ChatRegel({
   senderAvatar,
   vanMij = false,
   tijd,
+  onWeghalen,
 }: Props) {
   const c = useTheme().colors;
 
@@ -80,9 +90,14 @@ export function ChatRegel({
 
         {/* `Caption` neemt met opzet geen `style` aan — de typografie hoort van
             het stelsel te komen. De uitlijning gaat dus via een omhulsel. */}
-        {tijd === undefined ? null : (
-          <View style={vanMij ? styles.tijdRechts : null}>
-            <Caption>{tijd}</Caption>
+        {tijd === undefined && onWeghalen === undefined ? null : (
+          <View style={[styles.voet, vanMij ? styles.tijdRechts : null]}>
+            {tijd === undefined ? null : <Caption>{tijd}</Caption>}
+            {onWeghalen === undefined ? null : (
+              <Pressable onPress={onWeghalen} accessibilityRole="button">
+                <Caption>Weghalen</Caption>
+              </Pressable>
+            )}
           </View>
         )}
       </View>
@@ -108,7 +123,8 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
     alignSelf: 'flex-end',
   },
-  tijdRechts: { alignItems: 'flex-end' },
+  voet: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tijdRechts: { justifyContent: 'flex-end' },
   systeem: {
     alignItems: 'center',
     paddingVertical: space.blokGap - 8,

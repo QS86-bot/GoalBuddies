@@ -67,6 +67,8 @@ export default function Weekafsluiting() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
+  const [reactiePagina, setReactiePagina] = useState(0);
+  const [meerBezig, setMeerBezig] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -76,6 +78,9 @@ export default function Weekafsluiting() {
       .then((uitkomst) => {
         if (!levend) return;
         setStand(uitkomst);
+        // ⚠️ Terug naar pagina nul bij een herlading. Blijft de teller staan, dan
+        //    vraagt "meer reacties" na een verversing een pagina die er niet is.
+        setReactiePagina(0);
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -92,6 +97,37 @@ export default function Weekafsluiting() {
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
   const tz = profiel?.tz ?? stand?.groep?.tz ?? 'UTC';
+
+  /**
+   * Meer reacties, als er meer zijn dan er in één ronde passen.
+   *
+   * ⚠️ Dit moest erbij. `weekafsluiting_reacties()` is gepagineerd (CLAUDE.md,
+   *    schaalbaarheidsregel 10) en het scherm laadde alleen de eerste pagina —
+   *    dus voorbij honderd reacties verdween de rest zonder dat er iets stond
+   *    dat zei dat er meer was. Een gepagineerde query zonder knop is geen
+   *    paginering maar een limiet.
+   */
+  async function laadMeerReacties() {
+    if (stand === null || stand.groep === null || !id || meerBezig) return;
+
+    setMeerBezig(true);
+    try {
+      const volgende = await fetchWeekafsluitingReacties(id, stand.periode, {
+        pagina: reactiePagina + 1,
+      });
+
+      setStand((oud) =>
+        oud === null
+          ? oud
+          : { ...oud, reacties: voegReactiesSamen(oud.reacties, volgende.rijen), reactiesMeer: volgende.meer },
+      );
+      setReactiePagina((p) => p + 1);
+    } catch (fout: unknown) {
+      setError(fout);
+    } finally {
+      setMeerBezig(false);
+    }
+  }
 
   return (
     <Screen
@@ -133,6 +169,12 @@ export default function Weekafsluiting() {
               tz={tz}
               onGewijzigd={herlaad}
             />
+
+            {s.reactiesMeer ? (
+              <Button variant="secundair" block busy={meerBezig} onPress={() => void laadMeerReacties()}>
+                Meer reacties laden
+              </Button>
+            ) : null}
           </View>
         )}
       </AsyncView>
@@ -463,8 +505,30 @@ interface Stand {
   readonly periode: Cycle;
   readonly antwoorden: readonly Antwoord[];
   readonly reacties: readonly Reactie[];
+  /** Zijn er meer reacties dan er nu staan? */
+  readonly reactiesMeer: boolean;
   /** Voorstel voor vraag 1, uit de eigen Dagzetten van deze periode. */
   readonly voorstel: string;
+}
+
+/**
+ * Voegt een volgende pagina reacties toe, op tijd en dan op id.
+ *
+ * ⚠️ Ontdubbelen op id, want tussen twee pagina's kan er een reactie bijkomen en
+ *    dan schuift de offset. Zonder dit staat dezelfde reactie twee keer op de
+ *    kaart — en dat leest als iemand die zichzelf herhaalt.
+ */
+function voegReactiesSamen(
+  bestaand: readonly Reactie[],
+  nieuw: readonly Reactie[],
+): readonly Reactie[] {
+  const perId = new Map<string, Reactie>();
+  for (const r of [...bestaand, ...nieuw]) perId.set(r.id, r);
+
+  return [...perId.values()].sort((a, b) => {
+    if (a.created_at !== b.created_at) return a.created_at < b.created_at ? -1 : 1;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
 }
 
 /**
@@ -488,6 +552,7 @@ async function laad(groupId: string, userId: string | null): Promise<Stand> {
       periode: huidigeGroepsperiode({ huddle_day: 0, tz: 'UTC' }),
       antwoorden: [],
       reacties: [],
+      reactiesMeer: false,
       voorstel: '',
     };
   }
@@ -505,6 +570,7 @@ async function laad(groupId: string, userId: string | null): Promise<Stand> {
     periode,
     antwoorden,
     reacties: reacties.rijen,
+    reactiesMeer: reacties.meer,
     voorstel: voorstelUitDagzetten(dagzetten),
   };
 }

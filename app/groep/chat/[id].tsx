@@ -12,6 +12,7 @@ import {
   huidigeGroepsperiode,
   isSysteembericht,
   stuurBericht,
+  verwijderBericht,
   voegSamen,
   volgChat,
   type ChatBericht,
@@ -64,8 +65,18 @@ export default function GroepChat() {
   const [error, setError] = useState<unknown>(null);
   const [uitCache, setUitCache] = useState(false);
   const [ouderBezig, setOuderBezig] = useState(false);
+  const [wegFout, setWegFout] = useState<string | null>(null);
 
   const lijst = useRef<FlatList<ChatBericht> | null>(null);
+
+  /**
+   * Het nieuwste bericht dat we al naar beneden gescrold hebben.
+   *
+   * ⚠️ Zonder dit springt "Ouder laden" je terug naar de onderkant. De lijst
+   *    scrolt op `onContentSizeChange`, en die vuurt ook als er bovenaan iets
+   *    bíjkomt — dus dan lees je precies niet wat je net opvroeg.
+   */
+  const laatstGezien = useRef<string | null>(null);
 
   const periodeStart = groep === null ? null : huidigeGroepsperiode(groep).startDate;
 
@@ -174,6 +185,31 @@ export default function GroepChat() {
     }
   }
 
+  /**
+   * Een eigen bericht weghalen.
+   *
+   * ⚠️ Meteen uit de lijst en niet wachten op de server, want de eigen
+   *    DELETE-gebeurtenis komt hier niet terug: het abonnement staat bewust
+   *    alleen op INSERT. Mislukt het, dan komt de melding en zet de volgende
+   *    verversing hem terug — dat is beter dan een regel die blijft staan zonder
+   *    dat iemand weet waarom.
+   */
+  async function haalWeg(berichtId: string) {
+    setBerichten((oud) => (oud ?? []).filter((b) => b.id !== berichtId));
+
+    const uitkomst = await verwijderBericht(berichtId);
+    if (!uitkomst.ok) {
+      setWegFout(uitkomst.melding);
+      verversNieuwste();
+      return;
+    }
+
+    setWegFout(null);
+    if (periodeStart !== null && id) {
+      void bewaarChatCache(id, periodeStart, (berichten ?? []).filter((b) => b.id !== berichtId));
+    }
+  }
+
   const tz = profiel?.tz ?? groep?.tz ?? 'UTC';
 
   return (
@@ -182,11 +218,22 @@ export default function GroepChat() {
       eyebrow="GROEPSCHAT"
       scroll={false}
     >
+      {/*
+        ⚠️ `data` is de groep plús de berichten, en `isEmpty` kijkt naar de groep.
+           Met alleen de berichtenlijst erin kreeg een niet-lid "Nog geen
+           berichten" te zien plus een invoerveld dat bij elke poging weigert —
+           en dat is precies het orakel dat `fetchGroep()` juist vermijdt: een
+           groep waar je niet in zit hoort er hetzelfde uit te zien als een groep
+           die niet bestaat.
+
+           Een lege lijst in een groep waar je wél in zit is géén leegstaat: dan
+           hoort de invoerbalk er te staan. Vandaar de `ListEmptyComponent`.
+      */}
       <AsyncView
         loading={loading}
         error={berichten === null ? error : null}
-        data={berichten ?? undefined}
-        isEmpty={() => false}
+        data={berichten === null ? undefined : { groep, rijen: berichten }}
+        isEmpty={(s) => s.groep === null}
         onRetry={verversNieuwste}
         empty={{
           title: 'Deze groep is er niet, of niet voor jou',
@@ -195,7 +242,7 @@ export default function GroepChat() {
             'nieuwe uitnodigingslink als je erbij hoort.',
         }}
       >
-        {(rijen) => (
+        {({ rijen }) => (
           <View style={styles.vult}>
             {uitCache ? (
               <Caption>
@@ -204,13 +251,23 @@ export default function GroepChat() {
               </Caption>
             ) : null}
 
+            {wegFout === null ? null : <Caption danger>{wegFout}</Caption>}
+
             <FlatList
               ref={lijst}
               style={styles.vult}
               data={rijen}
               keyExtractor={(bericht) => bericht.id}
               contentContainerStyle={styles.rijen}
-              onContentSizeChange={() => lijst.current?.scrollToEnd({ animated: false })}
+              // ⚠️ Alleen naar beneden als er onderaan iets nieuws is bijgekomen.
+              //    Zonder deze vergelijking springt "Ouder laden" je terug naar de
+              //    onderkant, want dan verandert de inhoudshoogte ook.
+              onContentSizeChange={() => {
+                const nieuwste = rijen.at(-1)?.id ?? null;
+                if (nieuwste === laatstGezien.current) return;
+                laatstGezien.current = nieuwste;
+                lijst.current?.scrollToEnd({ animated: false });
+              }}
               keyboardShouldPersistTaps="handled"
               ListHeaderComponent={
                 meer ? (
@@ -237,6 +294,9 @@ export default function GroepChat() {
                     senderAvatar={item.sender_avatar}
                     vanMij={item.sender_id === userId}
                     tijd={klokTijd(item.created_at, tz)}
+                    {...(item.sender_id === userId
+                      ? { onWeghalen: () => void haalWeg(item.id) }
+                      : {})}
                   />
                 )
               }
