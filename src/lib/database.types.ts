@@ -90,6 +90,52 @@ export type Database = {
           },
         ]
       }
+      approval_withdrawals: {
+        Row: {
+          approval_id: string
+          approver_id: string
+          completion_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          approval_id: string
+          approver_id: string
+          completion_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          approval_id?: string
+          approver_id?: string
+          completion_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_withdrawals_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: true
+            referencedRelation: "completion_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_withdrawals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_withdrawals_completion_id_fkey"
+            columns: ["completion_id"]
+            isOneToOne: false
+            referencedRelation: "completions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       breathers: {
         Row: {
           announced_at: string
@@ -328,7 +374,7 @@ export type Database = {
       }
       completion_approvals: {
         Row: {
-          approver_id: string
+          approver_id: string | null
           comment: string | null
           completion_id: string
           created_at: string
@@ -338,7 +384,7 @@ export type Database = {
           subject_id: string
         }
         Insert: {
-          approver_id: string
+          approver_id?: string | null
           comment?: string | null
           completion_id: string
           created_at?: string
@@ -348,7 +394,7 @@ export type Database = {
           subject_id: string
         }
         Update: {
-          approver_id?: string
+          approver_id?: string | null
           comment?: string | null
           completion_id?: string
           created_at?: string
@@ -487,6 +533,87 @@ export type Database = {
             columns: ["weekly_goal_id"]
             isOneToOne: false
             referencedRelation: "weekly_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deadline_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          goal_id: string
+          group_id: string
+          id: string
+          new_date: string
+          old_date: string
+          reason: string
+          requester_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          goal_id: string
+          group_id: string
+          id?: string
+          new_date: string
+          old_date: string
+          reason: string
+          requester_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          goal_id?: string
+          group_id?: string
+          id?: string
+          new_date?: string
+          old_date?: string
+          reason?: string
+          requester_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deadline_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadline_requests_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goal_dashboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadline_requests_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadline_requests_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadline_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -724,7 +851,7 @@ export type Database = {
         Row: {
           approval_rule: string
           created_at: string
-          created_by: string
+          created_by: string | null
           evidence_policy: string
           huddle_day: number
           icon: string | null
@@ -740,7 +867,7 @@ export type Database = {
         Insert: {
           approval_rule?: string
           created_at?: string
-          created_by: string
+          created_by?: string | null
           evidence_policy?: string
           huddle_day?: number
           icon?: string | null
@@ -756,7 +883,7 @@ export type Database = {
         Update: {
           approval_rule?: string
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           evidence_policy?: string
           huddle_day?: number
           icon?: string | null
@@ -1351,6 +1478,10 @@ export type Database = {
       }
     }
     Functions: {
+      beslis_deadline_verzoek: {
+        Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
+        Returns: Json
+      }
       create_group: {
         Args: { group_name: string; huddle_day?: number; tz?: string }
         Returns: Json
@@ -1461,6 +1592,17 @@ export type Database = {
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
+      trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
+      verwijder_mijn_account: { Args: never; Returns: Json }
+      vraag_deadline_verschuiving: {
+        Args: {
+          p_goal_id: string
+          p_group_id: string
+          p_new_date: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       weekafsluiting: {
         Args: { p_group_id: string; p_period_start: string }
         Returns: {
@@ -1493,6 +1635,10 @@ export type Database = {
         }[]
       }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
+      zet_streefdatum: {
+        Args: { p_date: string; p_goal_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

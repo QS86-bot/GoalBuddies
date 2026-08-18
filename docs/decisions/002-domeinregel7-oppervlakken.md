@@ -67,8 +67,11 @@ vraag 2 hierboven: wat houdt het tegen als iemand de UI overslaat?
 | 13 | De Ketting | `chain_links` | Opdagen per periode | Nog niet gebouwd (QS8-80). Er staat geen rij voor een periode waarin iemand niet opdaagde: afwezigheid, geen kruisje |
 | 14 | Seizoensrecap | — | — | Nog niet gebouwd (EPIC 8) |
 | 15 | Notificaties | — | — | Nog niet gebouwd (EPIC 11) |
+| 16 | **Deadline-verzoeken** | `deadline_requests`, `app/groep/[id].tsx` | Dat iemand om meer tijd vraagt, met zijn eigen argument | Vier policies; schrijven kan alleen via de RPC's (0032). De gebruiker vraagt het zélf aan — route 1, net als vraag 2 van de weekafsluiting. Q-TODO **A7** |
+| 17 | **Ingetrokken goedkeuringen** | `approval_withdrawals` | Niets | `approval_withdrawals_select` laat alleen de intrekker en de eigenaar van de week toe. Er gaat géén systeembericht uit: "de week van X is toch niet bevestigd" is een tegenslagsignaal over een ander (0030). De aankondiging van de goedkeuring wordt juist wéggehaald |
+| 18 | **Verwijderde accounts** | `chat_messages.sender_id`, `completion_approvals.approver_id` | "Verwijderd lid" in plaats van een naam | `on delete set null` (0031), plus `stamp_chat_message()` die die ene overgang doorlaat (0033). De rij blijft, de persoon niet |
 
-Vet gedrukt is wat in EPIC 7 is toegevoegd.
+Vet gedrukt is wat in EPIC 7 en in de besluitenronde van 18-08 is toegevoegd.
 
 ---
 
@@ -107,12 +110,26 @@ Eerlijk opgeschreven, met de deadline erbij.
 
 | Wat | Waar | Vandaag misbruikbaar? | Deadline |
 |---|---|---|---|
-| `goals.risk_status` en `risk_reason` | `goals_select` geeft groepsgenoten de hele rij | Nee — de Risico-radar bestaat niet en alles staat op `on_track` | Vóór EPIC 12. Vraagt een architectuurwijziging, niet een reparatie. Q-TODO **A17** |
-| `goal_events` met `deadline_moved`, `scope_reduced`, `milestone_dropped` | `goal_events_select` | Ja | Productbeslissing. Q-TODO **A7** |
-| `milestones.status = 'dropped'` | `milestones_select` geeft de hele rij | Ja | Hangt aan A7; zelfde keuze |
-| `current_streak` die naar nul valt | `group_visible_streaks` | Ja, maar zwak: een reeks van nul is dubbelzinnig | Productbeslissing. Q-TODO **A15** |
 | Afwezigheid van een weekdoel in een cyclus | `weekly_goals_select` | Zwak: misschien had die persoon niets gepland | Bewust geaccepteerd (0020) |
+| `milestones.status = 'dropped'` | `milestones_select` geeft de hele rij | Ja | Hangt aan A7 en is daarmee dezelfde keuze: de groep mag zien dat je van koers verandert |
 | `REPLICA IDENTITY FULL` op een realtime-tabel | Geen technische rem: `publish` is een optie van de publicatie | Nee, staat op `default` | **Nu getest** — `realtime_bewaking()` en de test in `tests/rls/epic7.test.ts`. Was Q-TODO **A20** |
+
+### 4a. Drie uitzonderingen die Quinten bewust heeft toegestaan (18-08-2026)
+
+Deze stonden hierboven als lek. Ze zijn geen lek meer maar een besluit, en dat
+verschil hoort opgeschreven te staan — anders repareert een volgende sessie ze
+alsnog.
+
+| Wat | Besluit | Waarom het te verdedigen is |
+|---|---|---|
+| `goals.risk_status` en `risk_reason` | **A17 — ja, de groep mag het zien** | Blijft zoals het is; `goals_select` hoeft niet uit elkaar getrokken te worden. Let op: dit is de zwaarste van de drie, want de Risico-radar (EPIC 12) leidt `behind` en `unreachable` zélf af uit gemiste weken. Vanaf de dag dat die radar draait, ís deze kolom een afgeleide van andermans tegenslag — en dan is de vraag of het besluit nog hetzelfde uitvalt. **Herbevestigen vóór EPIC 12.** |
+| `goal_events` met `deadline_moved` | **A7 — ja, en sterker: verschuiven vraagt akkoord** | Dit draait de regel niet om maar zet hem op zijn kop, in de goede richting. De verschuiving is niet iets dat de groep achteraf ziet, maar iets dat de gebruiker zélf aanvraagt met een argument. Dat is dezelfde route als vraag 2 van de weekafsluiting: tegenslag bereikt de groep via de persoon, niet via een afgeleide. Migratie 0032 |
+| `current_streak` die naar nul valt | **A15 — ja** | Blijft in `group_visible_streaks`. Zwak signaal: een reeks van nul is dubbelzinnig (nieuw lid, pauze, of gemist), en `best_streak` — dat het wél sluitend zou maken — is er in 0019 uitgehaald |
+
+⚠️ **Wat deze drie besluiten níét zijn.** Ze verruimen domeinregel 7 op drie
+benoemde plekken; ze schaffen hem niet af. Het puntentotaal, `weekly_goals.status`,
+`last_cycle_start` en `points_ledger` blijven dicht, en de regel in §1 geldt
+onverkort voor élk nieuw oppervlak. Bij twijfel is het antwoord nog steeds nee.
 
 ---
 
@@ -131,6 +148,24 @@ Vier sloten, van hard naar zacht:
    uitgezonden tabel op `full` staat.
 4. **Dit document.** De tabel in §2 hoort bijgewerkt te worden bij elk nieuw
    oppervlak, en §4 bij elke reparatie.
+
+### Een vijfde regel, uit de besluitenronde van 18-08
+
+**Een onveranderlijkheidstrigger en een `on delete set null` op dezelfde kolom
+sluiten elkaar uit, en de database waarschuwt daar niet voor.**
+
+Een referentiële actie is zelf een UPDATE op de kindtabel. Staat daar een BEFORE
+UPDATE-trigger die de kolom terugzet naar `old`, dan draait die de actie in
+dezelfde bewerking terug — en Postgres controleert de sleutel daarna niet
+opnieuw. Geen fout, geen waarschuwing: de ouderrij verdwijnt en het kind houdt
+een verwijzing naar een rij die niet meer bestaat.
+
+Dat is precies wat er gebeurde met `chat_messages.sender_id` (0031 → gerepareerd
+in 0033). `groups.created_by` ontsnapte er per ongeluk aan, omdat
+`guard_group_update()` begint met een controle op `current_user` en een
+referentiële actie als tabeleigenaar draait.
+
+**Bij elke nieuwe `on delete set null`: staat er een trigger op die kolom?**
 
 **Wat er nog niet is:** de RLS-suite draait niet in CI (`docs/WERKVOORRAAD.md` §5).
 Groen in GitHub zegt dus niets over domeinregel 7. Zolang dat zo is, moet deze suite

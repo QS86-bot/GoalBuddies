@@ -3,14 +3,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { fetchMijnGroepen, type Groep } from '@/modules/buddies';
+import { fetchGroepenVanDoel, fetchMijnGroepen, type Groep } from '@/modules/buddies';
 import { fetchCommitments, trekIn, zetBeloning, zetStraf, type Commitment } from '@/modules/commitments';
 import {
+  ARGUMENT_MAX,
+  ARGUMENT_MIN,
   CATEGORIE_LABELS,
   fetchDoel,
-  wijzigDoel,
+  fetchOpenVerzoek,
+  vraagDeadlineVerschuiving,
   zetArchief,
+  zetStreefdatum,
   type Categorie,
+  type DeadlineVerzoek,
   type DoelMetVoortgang,
 } from '@/modules/goals';
 import { space } from '@/shared/theme';
@@ -44,6 +49,10 @@ export default function DoelDetail() {
   const [doel, setDoel] = useState<DoelMetVoortgang | null>(null);
   const [commitments, setCommitments] = useState<readonly Commitment[]>([]);
   const [groepen, setGroepen] = useState<readonly Groep[]>([]);
+  const [doelGroepen, setDoelGroepen] = useState<
+    readonly { readonly group_id: string; readonly name: string }[]
+  >([]);
+  const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
@@ -52,12 +61,20 @@ export default function DoelDetail() {
     if (!id) return;
     let levend = true;
 
-    Promise.all([fetchDoel(id), fetchCommitments(id), fetchMijnGroepen()])
-      .then(([gevonden, vastgelegd, mijnGroepen]) => {
+    Promise.all([
+      fetchDoel(id),
+      fetchCommitments(id),
+      fetchMijnGroepen(),
+      fetchGroepenVanDoel(id),
+      fetchOpenVerzoek(id),
+    ])
+      .then(([gevonden, vastgelegd, mijnGroepen, gekoppeld, lopend]) => {
         if (!levend) return;
         setDoel(gevonden);
         setCommitments(vastgelegd);
         setGroepen(mijnGroepen);
+        setDoelGroepen(gekoppeld);
+        setVerzoek(lopend);
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -111,8 +128,14 @@ export default function DoelDetail() {
               </Caption>
             </Card>
 
-            {userId && vandaag ? (
-              <DeadlineVerzetten doel={d} userId={userId} vandaag={vandaag} onKlaar={herlaad} />
+            {vandaag ? (
+              <DeadlineVerzetten
+                doel={d}
+                vandaag={vandaag}
+                groepen={doelGroepen}
+                verzoek={verzoek}
+                onKlaar={herlaad}
+              />
             ) : null}
 
             <Beloning
@@ -137,47 +160,86 @@ export default function DoelDetail() {
 }
 
 /**
- * De deadline verzetten — QS8-32.
+ * De deadline verzetten — QS8-32, en sinds Q-TODO A7 met twee routes.
  *
- * ⚠️ Een expliciete handeling met een eigen knop, en niet een veldje dat je
- *    tussendoor aanpast. Elke verzetting wordt gelogd in `goal_events`, want
- *    zonder die geschiedenis "loopt op koers" iemand die zijn deadline drie keer
- *    opschuift — en dat is precies wat de Risico-radar moet zien.
+ * ⚠️ Deel je dit doel met een groep, dan verschuif je de datum niet alleen. Je
+ *    dient een verzoek in met een argument, en een ander lid beslist. Deel je
+ *    het met niemand, dan is er niemand om iets aan te vragen en zet je hem
+ *    gewoon.
+ *
+ *    Het onderscheid wordt niet hier gemaakt maar in de database: `target_date`
+ *    is sinds migratie 0032 niet meer client-schrijfbaar, en `zet_streefdatum()`
+ *    weigert zodra het doel aan een groep hangt. Dit scherm kiest alleen welk
+ *    formulier je ziet.
+ *
+ * ⚠️ Loopt er al een verzoek, dan staat dat er en kun je geen tweede indienen.
+ *    Tien verzoeken openzetten tot er eentje langskomt die ja zegt, is het
+ *    tegenovergestelde van een argument indienen; er staat ook een unieke index
+ *    op.
  */
 function DeadlineVerzetten({
   doel,
-  userId,
   vandaag,
+  groepen,
+  verzoek,
   onKlaar,
 }: {
   readonly doel: DoelMetVoortgang;
-  readonly userId: string;
   readonly vandaag: IsoDate;
+  readonly groepen: readonly { readonly group_id: string; readonly name: string }[];
+  readonly verzoek: DeadlineVerzoek | null;
   readonly onKlaar: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [datum, setDatum] = useState(doel.target_date ?? '');
+  const [argument, setArgument] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+
+  const gedeeld = groepen.length > 0;
+  const groep = groepen[0];
 
   async function bewaar() {
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await wijzigDoel(
-      doel.id,
-      doel.target_date,
-      { target_date: datum },
-      userId,
-      vandaag,
-    );
+    const uitkomst = gedeeld
+      ? await vraagDeadlineVerschuiving(
+          doel.id,
+          groep?.group_id ?? '',
+          { new_date: datum, reason: argument },
+          vandaag,
+        )
+      : await zetStreefdatum(doel.id, datum, vandaag);
 
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setOpen(false);
+      setArgument('');
       onKlaar();
     }
     setBezig(false);
+  }
+
+  // ⚠️ Een lopend verzoek is geen wachtkamer maar een stand van zaken: je ziet
+  //    wat je gevraagd hebt en wat je erbij geschreven hebt. Zonder dit is
+  //    "verzonden" het laatste wat je hoort.
+  if (verzoek !== null) {
+    return (
+      <Card nested>
+        <Subheading>Je verzoek loopt</Subheading>
+        <Body>
+          Je vroeg om {verzoek.old_date} te verzetten naar {verzoek.new_date}.
+        </Body>
+        <Card nested>
+          <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
+        </Card>
+        <Caption>
+          Een van je buddy&rsquo;s beslist hierover. Zolang dat niet gebeurd is, blijft de
+          datum staan zoals hij was.
+        </Caption>
+      </Card>
+    );
   }
 
   if (!open) {
@@ -185,9 +247,14 @@ function DeadlineVerzetten({
       <Card nested>
         <Subheading>Deadline</Subheading>
         <Body muted>
-          Verzetten mag. Het wordt wel bijgehouden, zodat je later eerlijk kunt terugkijken.
+          {gedeeld
+            ? 'Je deelt dit doel met je groep, dus de datum verzet je samen. Schrijf ' +
+              'erbij wat er veranderd is; een buddy beslist erover.'
+            : 'Verzetten mag. Het wordt wel bijgehouden, zodat je later eerlijk kunt terugkijken.'}
         </Body>
-        <Button onPress={() => setOpen(true)}>Deadline verzetten</Button>
+        <Button onPress={() => setOpen(true)}>
+          {gedeeld ? 'Vraag om te verzetten' : 'Deadline verzetten'}
+        </Button>
       </Card>
     );
   }
@@ -196,10 +263,35 @@ function DeadlineVerzetten({
     <Card nested>
       <Subheading>Nieuwe streefdatum</Subheading>
       <Field label="Datum" value={datum} onChangeText={setDatum} placeholder="2027-03-01" />
+
+      {gedeeld ? (
+        <>
+          {/*
+            ⚠️ "Wat is er veranderd" en niet "waarom haal je het niet". De vraag
+               gaat over de omstandigheid en niet over de persoon — dezelfde
+               toon als vraag 2 van de weekafsluiting, en om dezelfde reden.
+          */}
+          <Field
+            label="Wat is er veranderd?"
+            hint={`Je buddy's in ${groep?.name ?? 'je groep'} lezen dit en beslissen erop. Eén eerlijke zin is genoeg.`}
+            value={argument}
+            onChangeText={setArgument}
+            multiline
+            maxLength={ARGUMENT_MAX}
+            placeholder="Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op."
+          />
+          <Caption>
+            {argument.trim().length < ARGUMENT_MIN
+              ? `Nog ${ARGUMENT_MIN - argument.trim().length} tekens te gaan.`
+              : 'Lang genoeg.'}
+          </Caption>
+        </>
+      ) : null}
+
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <View style={styles.knoppen}>
         <Button variant="primair" busy={bezig} onPress={() => void bewaar()}>
-          Vastleggen
+          {gedeeld ? 'Verzoek versturen' : 'Vastleggen'}
         </Button>
         <Button variant="stil" onPress={() => setOpen(false)}>
           Annuleren

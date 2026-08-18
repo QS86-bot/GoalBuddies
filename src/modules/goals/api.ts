@@ -176,18 +176,20 @@ export async function maakDoel(
 }
 
 /**
- * Wijzigt een doel.
+ * Wijzigt een doel — alles behalve de streefdatum.
  *
- * ⚠️ Verandert de streefdatum, dan komt daar een `deadline_moved`-event bij, mét
- *    de oude en de nieuwe waarde. Dat is een acceptatiecriterium van QS8-32 en
- *    de voeding van de Risico-radar.
+ * ⚠️ `target_date` staat hier bewust niet meer bij en wordt stilzwijgend
+ *    genegeerd als hij toch in de patch zit. Sinds migratie 0032 heeft
+ *    `authenticated` geen UPDATE-recht meer op die kolom: verschuiven loopt via
+ *    `zetStreefdatum()` (doel zonder groep) of via een verzoek aan de groep
+ *    (`modules/goals/deadline.ts`). Dat is het besluit van Q-TODO A7.
+ *
+ *    Zou dit veld hier blijven staan, dan kreeg de gebruiker een kale
+ *    rechtenfout van Postgres te zien op een scherm dat er niets aan kan doen.
  */
 export async function wijzigDoel(
   doelId: string,
-  huidigeStreefdatum: string,
   patch: DoelPatch,
-  actorId: string,
-  vandaag: IsoDate,
 ): Promise<Resultaat<Doel>> {
   const gevalideerd = doelPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
@@ -196,20 +198,19 @@ export async function wijzigDoel(
 
   const velden = gevalideerd.data;
 
-  if (velden.target_date !== undefined && !datumLigtInDeToekomst(velden.target_date, vandaag)) {
-    return { ok: false, melding: 'Kies een streefdatum die nog moet komen.' };
-  }
-
   const update: TablesUpdate<'goals'> = {};
   if (velden.title !== undefined) update.title = velden.title;
   if (velden.description !== undefined) update.description = velden.description;
   if (velden.category !== undefined) update.category = velden.category;
-  if (velden.target_date !== undefined) update.target_date = velden.target_date;
   if (velden.identity_statement !== undefined) {
     update.identity_statement = velden.identity_statement;
   }
   if (velden.available_hours_per_week !== undefined) {
     update.available_hours_per_week = velden.available_hours_per_week;
+  }
+
+  if (Object.keys(update).length === 0) {
+    return { ok: false, melding: 'Er is niets gewijzigd.' };
   }
 
   const { data, error } = await supabase()
@@ -224,18 +225,57 @@ export async function wijzigDoel(
     return { ok: false, melding: 'Opslaan lukte niet. Probeer het opnieuw.' };
   }
 
-  if (velden.target_date !== undefined && velden.target_date !== huidigeStreefdatum) {
-    await logGoalEvent(
-      doelId,
-      actorId,
-      'deadline_moved',
-      { target_date: huidigeStreefdatum },
-      { target_date: velden.target_date },
-    );
-  }
-
   return { ok: true, waarde: data };
 }
+
+/**
+ * Zet de streefdatum van een doel dat aan géén enkele groep hangt — Q-TODO A7.
+ *
+ * ⚠️ Loopt via een RPC en niet via een UPDATE, want de kolom is sinds 0032 niet
+ *    meer client-schrijfbaar. De RPC weigert zodra het doel wél aan een groep
+ *    gekoppeld is; dan is een verzoek de enige route en dat is precies de
+ *    bedoeling van het besluit.
+ *
+ * ⚠️ De `deadline_moved`-regel in `goal_events` wordt door de RPC geschreven, in
+ *    dezelfde transactie. Deed de client dat (zoals hiervoor), dan kon de datum
+ *    verschuiven zonder dat het ergens vastlag — en dan is de geschiedenis die
+ *    de Risico-radar straks leest een keuze van de client.
+ */
+export async function zetStreefdatum(
+  doelId: string,
+  datum: string,
+  vandaag: IsoDate,
+): Promise<Resultaat<true>> {
+  if (!datumLigtInDeToekomst(datum, vandaag)) {
+    return { ok: false, melding: 'Kies een streefdatum die nog moet komen.' };
+  }
+
+  const { data, error } = await supabase().rpc('zet_streefdatum', {
+    p_goal_id: doelId,
+    p_date: datum,
+  });
+
+  if (error) {
+    reportError(error, 'goals.target_date', { goal_id: doelId, code: error.code });
+    return { ok: false, melding: 'De streefdatum aanpassen lukte niet. Probeer het opnieuw.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: STREEFDATUM_MELDING[uitkomst.reason ?? ''] ?? 'Dat lukte niet.' };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+const STREEFDATUM_MELDING: Readonly<Record<string, string>> = {
+  not_owner: 'Dit doel is niet van jou.',
+  bad_date: 'Kies een geldige streefdatum.',
+  needs_group_approval:
+    'Dit doel deel je met een groep, dus de datum verschuif je niet alleen. ' +
+    'Vraag je buddy’s om akkoord met een korte uitleg erbij.',
+};
 
 /**
  * Archiveert een doel, of haalt het terug.

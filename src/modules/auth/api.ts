@@ -112,6 +112,58 @@ export async function signOut(): Promise<Uitkomst> {
   return { ok: true };
 }
 
+const VERWIJDER_MELDING: Readonly<Record<string, string>> = {
+  not_signed_in: 'Je sessie is verlopen. Log opnieuw in en probeer het dan.',
+  last_admin:
+    'Je bent de enige beheerder van een groep waar nog anderen in zitten. Maak ' +
+    'eerst iemand anders beheerder — anders blijft die groep achter zonder dat ' +
+    'iemand hem kan beheren.',
+};
+
+/**
+ * Verwijdert het eigen account — Q-TODO A3, en een AVG-verplichting.
+ *
+ * ⚠️ Onomkeerbaar. De bevestiging hoort in het scherm, niet hier en niet in de
+ *    database: alleen het scherm weet of de gebruiker begrepen heeft wat hij
+ *    weggooit.
+ *
+ * ⚠️ Wat er gebeurt, volgens het besluit "cascade voor je eigen data, maar
+ *    anonimiseren bij goedkeuringen" (migratie 0031):
+ *
+ *      * weg: je doelen, weekdoelen, voltooiingen, Dagzetten, weekafsluitingen,
+ *        punten, reeksen, kettingschakels en lidmaatschappen;
+ *      * blijft staan zonder je naam: goedkeuringen die jij aan een ander gaf,
+ *        en je chatberichten. Die zijn bewijs en gesprek voor iemand anders, en
+ *        die raakt hij niet kwijt omdat jij vertrekt.
+ *
+ * ⚠️ Na afloop is de sessie waardeloos: het account bestaat niet meer. Uitloggen
+ *    hoort er daarom direct achteraan, anders blijft het scherm hangen op een
+ *    token dat overal een 401 oplevert.
+ */
+export async function verwijderMijnAccount(): Promise<Uitkomst> {
+  const { data, error } = await supabase().rpc('verwijder_mijn_account');
+
+  if (error) {
+    reportError(error, 'auth.deleteAccount', { code: error.code ?? 'onbekend' });
+    return { ok: false, melding: 'Je account verwijderen lukte niet. Probeer het opnieuw.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  if (uitkomst.ok !== true) {
+    return {
+      ok: false,
+      melding: VERWIJDER_MELDING[uitkomst.reason ?? ''] ?? 'Je account verwijderen lukte niet.',
+    };
+  }
+
+  // ⚠️ De fout wordt hier bewust geslikt. Het account ís weg; melden dat
+  //    uitloggen niet lukte, suggereert dat de verwijdering mislukt is.
+  await supabase().auth.signOut();
+
+  return { ok: true };
+}
+
 export type OAuthProvider = 'apple' | 'google';
 
 /**

@@ -6,6 +6,7 @@ export {
   signInWithOAuth,
   signOut,
   signUpWithEmail,
+  verwijderMijnAccount,
   type OAuthProvider,
   type Uitkomst,
 } from './api';

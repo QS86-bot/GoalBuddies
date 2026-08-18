@@ -6,6 +6,8 @@ import { useSession } from '@/modules/auth';
 import {
   beoordeel,
   fetchBeoordelingen,
+  INTREKVENSTER_MINUTEN,
+  trekGoedkeuringIn,
   volgBeoordelingen,
   type TeBeoordelen,
   type Wachtrij,
@@ -53,6 +55,7 @@ export default function Beoordelen() {
   const [pagina, setPagina] = useState(0);
   const [aanHetTypen, setAanHetTypen] = useState(false);
   const [verouderd, setVerouderd] = useState(false);
+  const [laatste, setLaatste] = useState<{ id: string; naam: string } | null>(null);
 
   useEffect(() => {
     let levend = true;
@@ -127,12 +130,29 @@ export default function Beoordelen() {
               </Card>
             ) : null}
 
+            {laatste === null ? null : (
+              <Terugdraaien
+                approvalId={laatste.id}
+                naam={laatste.naam}
+                onWeg={() => setLaatste(null)}
+                onTeruggedraaid={() => {
+                  setLaatste(null);
+                  herlaad();
+                }}
+              />
+            )}
+
             {w.rijen.map((item) => (
               <BeoordeelKaart
                 key={item.completion_id}
                 item={item}
                 approverId={userId ?? null}
-                onKlaar={herlaad}
+                onKlaar={(approvalId, status) => {
+                  setLaatste(
+                    status === 'approved' ? { id: approvalId, naam: item.owner_name } : null,
+                  );
+                  herlaad();
+                }}
                 onTypen={setAanHetTypen}
               />
             ))}
@@ -158,6 +178,71 @@ export default function Beoordelen() {
   );
 }
 
+/**
+ * De strook waarmee je een goedkeuring terugdraait — Q-TODO A19.
+ *
+ * ⚠️ Gekozen boven een bevestigingsstap vóór het boeken. Twee gelijkwaardige
+ *    knoppen zonder tussenstap is een acceptatiecriterium van 6.1; een
+ *    bevestiging kost die vlotheid bij élke goedkeuring, terwijl de vergissing
+ *    zeldzaam is. Deze strook kost niets tot je hem nodig hebt.
+ *
+ * ⚠️ Verdwijnt niet vanzelf na een paar seconden. Een strook die wegtikt terwijl
+ *    je nog leest wat er staat, is precies zo bruikbaar als geen strook — en dit
+ *    is het enige pad terug.
+ */
+function Terugdraaien({
+  approvalId,
+  naam,
+  onWeg,
+  onTeruggedraaid,
+}: {
+  readonly approvalId: string;
+  readonly naam: string;
+  readonly onWeg: () => void;
+  readonly onTeruggedraaid: () => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function draaiTerug() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await trekGoedkeuringIn(approvalId);
+    setBezig(false);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    onTeruggedraaid();
+  }
+
+  return (
+    <Card nested>
+      <Body>Je hebt de week van {naam} bevestigd.</Body>
+      {/*
+        ⚠️ "Verkeerde buddy?" en niet "weet je het zeker?". De vergissing die dit
+           opvangt is een dikke duim op een klein scherm, en die benoem je zonder
+           iemand het gevoel te geven dat hij iets ergs gedaan heeft.
+      */}
+      <Caption>
+        Verkeerde buddy? Je kunt dit nog {INTREKVENSTER_MINUTEN} minuten terugdraaien.
+      </Caption>
+      <View style={styles.acties}>
+        <Button variant="secundair" busy={bezig} onPress={() => void draaiTerug()}>
+          Terugdraaien
+        </Button>
+        <Button variant="stil" disabled={bezig} onPress={onWeg}>
+          Klopt zo
+        </Button>
+      </View>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 function BeoordeelKaart({
   item,
   approverId,
@@ -166,7 +251,7 @@ function BeoordeelKaart({
 }: {
   readonly item: TeBeoordelen;
   readonly approverId: string | null;
-  readonly onKlaar: () => void;
+  readonly onKlaar: (approvalId: string, status: 'approved' | 'more_info') => void;
   readonly onTypen: (bezig: boolean) => void;
 }) {
   const [vraagt, setVraagt] = useState(false);
@@ -205,7 +290,7 @@ function BeoordeelKaart({
     }
 
     onTypen(false);
-    onKlaar();
+    onKlaar(uitkomst.waarde, status);
   }
 
   const gehaald = item.achieved_level === 'ceiling' ? item.ceiling_text : item.floor_text;

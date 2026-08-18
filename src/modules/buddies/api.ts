@@ -557,6 +557,38 @@ export async function ontkoppelDoelVanGroep(
   return { ok: true, waarde: true };
 }
 
+/**
+ * De groepen waar dít doel aan gekoppeld is — Q-TODO A7.
+ *
+ * ⚠️ De omgekeerde vraag van `fetchGekoppeldeDoelIds`, en nodig sinds de
+ *    streefdatum van een gedeeld doel alleen met akkoord van de groep verschuift:
+ *    het doelscherm moet weten óf er een groep is, en zo ja welke het verzoek
+ *    krijgt.
+ *
+ * ⚠️ `goal_group_links_select` eist lidmaatschap van de groep, dus dit levert
+ *    alleen groepen op waar je zelf in zit. Voor de eigenaar van het doel is dat
+ *    hetzelfde antwoord — koppelen kan hij immers alleen bij eigen groepen.
+ */
+export async function fetchGroepenVanDoel(
+  goalId: string,
+): Promise<readonly { readonly group_id: string; readonly name: string }[]> {
+  const { data, error } = await supabase()
+    .from('goal_group_links')
+    .select('group_id, groups(name)')
+    .eq('goal_id', goalId)
+    .limit(20);
+
+  if (error) {
+    reportError(error, 'groups.ofGoal', { goal_id: goalId, pgcode: error.code });
+    throw new Error('De gekoppelde groepen konden niet geladen worden.');
+  }
+
+  return (data ?? []).map((rij) => ({
+    group_id: rij.group_id,
+    name: rij.groups?.name ?? 'Je groep',
+  }));
+}
+
 /** De doelen die aan deze groep gekoppeld zijn en die jij mag zien. */
 export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly string[]> {
   const { data, error } = await supabase()
