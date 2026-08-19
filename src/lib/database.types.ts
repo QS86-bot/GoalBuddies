@@ -188,6 +188,7 @@ export type Database = {
       chain_links: {
         Row: {
           created_at: string
+          earned_cycle_start: string | null
           group_id: string
           group_period_start: string
           id: string
@@ -195,6 +196,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          earned_cycle_start?: string | null
           group_id: string
           group_period_start: string
           id?: string
@@ -202,6 +204,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          earned_cycle_start?: string | null
           group_id?: string
           group_period_start?: string
           id?: string

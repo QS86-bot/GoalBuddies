@@ -293,6 +293,169 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     );
   });
 
+
+  /**
+   * De gaten die de reviewketen op 19-08-2026 vond en die 0037 dicht.
+   *
+   * ⚠️ Deze tests bestaan omdat de eerste suite ernaast mikte. Die toetste de
+   *    buitenkant van het venster (30 dagen vooruit, 200 dagen terug) en niet de
+   *    binnenkant — en de binnenkant was waar alles zat.
+   */
+  describe('de gaten uit de reviewronde', () => {
+    it(
+      'geeft geen tweede schakel voor dezelfde cyclus in een andere periode',
+      async () => {
+        // Vóór 0037 leverde één goedgekeurd weekdoel tot 36 schakels op: de
+        // dedup zat op de periode, en `p_period_start` hoeft niet op een
+        // periodegrens te liggen.
+        // ⚠️ Eén dag terug en niet zeven. Zeven dagen terug ligt verder dan een
+        //    week van `cycleStart`, en dan weigert de functie al op
+        //    `cycle_period_mismatch` — de grens die er vóór staat. Dat is de
+        //    juiste volgorde, maar het maakt die testdatum ongeschikt om
+        //    hergebruik van een cyclus mee aan te tonen.
+        const anderePeriode = addDays(f.periodStart, -1);
+        const { data } = await f.alice.db.rpc('ketting_schakel', {
+          p_group_id: f.groupId,
+          p_period_start: anderePeriode,
+          p_cycle_start: f.cycleStart,
+        });
+
+        expect(uitkomst(data).ok).toBe(false);
+        expect(uitkomst(data).reason).toBe('cycle_already_used');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een periode die niet bij de opgegeven cyclus hoort',
+      async () => {
+        const { data } = await f.alice.db.rpc('ketting_schakel', {
+          p_group_id: f.groupId,
+          p_period_start: f.periodStart,
+          p_cycle_start: addDays(f.cycleStart, -21),
+        });
+
+        expect(uitkomst(data).reason).toBe('cycle_period_mismatch');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat geen weekafsluiting in een willekeurige week toe',
+      async () => {
+        // ⚠️ Dit was de ernstigste vondst: `week_reviews_write` is `for all`, dus
+        //    invoegen met een zelfgekozen datum, de schakel incasseren, je eigen
+        //    rij verwijderen en herhalen gaf een sluitende ketting van twee jaar.
+        //    Sinds 0037 weigert een trigger de rij zelf.
+        const { error } = await f.alice.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: addDays(f.periodStart, -364),
+          did_text: 'verzonnen week',
+        });
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een groepsgenoot geen oude schakels lezen',
+      async () => {
+        // ⚠️ Hét lek. `chain_links_select` gaf elk lid élke rij, met naam en
+        //    periode. Voor een afgesloten periode is een ontbrekende rij geen
+        //    "nog niet" maar het bewijs van een gemiste week — precies wat
+        //    domeinregel 7 verbiedt. Sinds 0037 zie je van een ander alleen de
+        //    lopende periode; je eigen geschiedenis blijft van jou.
+        const oud = addDays(f.periodStart, -60);
+        await adminDb().from('chain_links').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: oud,
+        });
+
+        const doorBob = await f.bob.db
+          .from('chain_links')
+          .select('user_id, group_period_start')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', oud);
+        expect(doorBob.data).toHaveLength(0);
+
+        const doorAliceZelf = await f.alice.db
+          .from('chain_links')
+          .select('user_id')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', oud);
+        expect(doorAliceZelf.data).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft via group_overview geen aanwezigheid van een afgesloten periode',
+      async () => {
+        // Hetzelfde raster, nettere verpakking: `p_period_start` was vrij te
+        // kiezen, dus een lus over vijftig weken gaf het volledige overzicht.
+        const { data, error } = await f.bob.db.rpc('group_overview', {
+          p_group_id: f.groupId,
+          p_period_start: addDays(f.periodStart, -60),
+        });
+
+        expect(error).toBeNull();
+        for (const rij of (data ?? []) as { closed_this_period: boolean }[]) {
+          expect(rij.closed_this_period).toBe(false);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'haalt een lid met adempauze uit de noemer — maar alleen op een doel van deze groep',
+      async () => {
+        // Criterium 4 was voor de helft ongetest, en dat was precies de helft
+        // die stuk was: de toets keek naar élk doel van een lid, ook doelen
+        // buiten deze groep.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const doelId = doel.data?.id;
+        if (doelId === undefined) throw new Error('geen doel voor de adempauze-test');
+
+        const voor = await f.alice.db.rpc('ketting_stand', {
+          p_group_id: f.groupId,
+          p_period_start: f.periodStart,
+        });
+
+        const pauze = await admin
+          .from('breathers')
+          .insert({
+            user_id: f.alice.id,
+            goal_id: doelId,
+            starts_cycle: addDays(f.cycleStart, -1),
+            ends_cycle: addDays(f.cycleStart, 6),
+          })
+          .select('id')
+          .single();
+
+        const na = await f.alice.db.rpc('ketting_stand', {
+          p_group_id: f.groupId,
+          p_period_start: f.periodStart,
+        });
+
+        expect(stand(na.data).in_aanmerking).toBe((stand(voor.data).in_aanmerking ?? 1) - 1);
+
+        const pauzeId = pauze.data?.id;
+        if (pauzeId !== undefined) await admin.from('breathers').delete().eq('id', pauzeId);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('de stand van de ketting', () => {
     it(
       'geeft een buitenstaander niets',
@@ -356,10 +519,19 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           p_period_start: f.periodStart,
         });
 
-        // Bob telt niet meer mee in de noemer; zijn schakel blijft wél staan.
+        // ⚠️ Deze assertie is op 19-08-2026 omgedraaid. Ze stond eerst op
+        //    `schakels: 2, in_aanmerking: 1, voltallig: true` — "2 van de 1" —
+        //    en legde daarmee vast dat teller en noemer verschillende mensen
+        //    mochten tellen. Alle drie de reviewers noemden dat blokkerend, en
+        //    terecht: een test die een tegenstrijdigheid vastlegt, beschermt hem.
+        //
+        //    Sinds 0037 tellen beide dezelfde verzameling. Bobs schakel blijft in
+        //    de tabel staan (criterium 5) maar telt niet mee zolang hij uitgezet
+        //    is, dus de stand kan nooit meer meer schakels dan leden tonen.
         expect(stand(data).in_aanmerking).toBe(1);
-        expect(stand(data).schakels).toBe(2);
+        expect(stand(data).schakels).toBe(1);
         expect(stand(data).voltallig).toBe(true);
+        expect(stand(data).schakels).toBeLessThanOrEqual(stand(data).in_aanmerking ?? 0);
 
         await admin
           .from('group_members')
