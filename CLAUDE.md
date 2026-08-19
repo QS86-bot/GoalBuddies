@@ -7,8 +7,12 @@
 
 **Nieuwe sessie? Lees `docs/WERKVOORRAAD.md`.** Daar staat waar het project
 staat, wat er nog moet, in welke volgorde, en waar je jezelf pijn doet als je
-het overslaat. Dit bestand zegt hoe je werkt; dat bestand zegt wat er aan de
-beurt is.
+het overslaat. Sectie 0 geeft de stand in tien regels. Dit bestand zegt hoe je
+werkt; dat bestand zegt wat er aan de beurt is.
+
+**`docs/VOLGENDE-SESSIE.md`** bevat de startprompt om in een nieuwe chat te
+plakken: de stand, de werkafspraken en de valkuilen die dit project al een keer
+gekost hebben. Werk hem bij aan het eind van elke sessie.
 
 Verder bouwen doe je met **`/verder`**. Die pakt zelf het volgende issue uit
 Linear en werkt het af tot een pushbare branch.
