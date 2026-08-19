@@ -22,7 +22,7 @@ describe('rangeState — wat de groep te zien krijgt', () => {
   // Dit is de belangrijkste test in dit bestand. Domeinregel 7 is niet "we
   // proberen aardig te zijn" maar de reden dat de app in groepen van drie
   // overleeft.
-  const tegenslag: WeeklyGoalStatus[] = ['todo', 'missed', 'carried', 'excused'];
+  const tegenslag: WeeklyGoalStatus[] = ['todo', 'missed', 'carried', 'excused', 'cancelled'];
 
   it.each(tegenslag)('verbergt status %s volledig voor de groep', (status) => {
     const state = rangeState({ status, achieved: 'none', hasFloor: true, ...group });
@@ -62,6 +62,7 @@ describe('rangeState — wat de groep te zien krijgt', () => {
       'missed',
       'carried',
       'excused',
+      'cancelled',
     ];
 
     for (const status of alle) {

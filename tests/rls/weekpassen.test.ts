@@ -37,10 +37,21 @@ const TEST_TIMEOUT = 30_000;
 interface Fixture {
   /** Heeft zes goedgekeurde cycli en dus twee weekpassen. */
   alice: TestUser;
-  /** Heeft niets. Staat voor "een willekeurige andere ingelogde gebruiker". */
+  /**
+   * Lid van dezelfde groep als alice, en haar doel is aan die groep gekoppeld.
+   *
+   * ⚠️ Dat lidmaatschap is geen decor. Bob was eerst "een willekeurige andere
+   *    ingelogde gebruiker" zónder groep, en daardoor bewees de domeinregel-7-test
+   *    hieronder niets: `shares_group_with_goal()` gaf altijd `false`, dus bob zag
+   *    alice' rijen niet omdat hij een vreemde was — niet omdat de policy een
+   *    status uitsluit. Je kon `'cancelled'` uit `weekly_goals_select` slopen en
+   *    de test bleef groen. Gevonden door de security-review op 0045, en het is
+   *    de derde keer in dit project dat een test net naast de bescherming keek.
+   */
   bob: TestUser;
   aliceGoalId: string;
   bobGoalId: string;
+  groupId: string;
   /** De cyclus die alice gemist heeft en die door een pas gered is. */
   gemisteCyclus: IsoDate;
 }
@@ -88,6 +99,33 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     const aliceGoalId = await maakDoel(alice.id, 'Weekpasdoel alice');
     const bobGoalId = await maakDoel(bob.id, 'Weekpasdoel bob');
 
+    // ⚠️ Een échte groep met bob erin, en alice' doel eraan gekoppeld. Zonder
+    //    dit is elke "de groep mag dit niet zien"-test een lege huls: bob ziet
+    //    dan sowieso niets van alice.
+    const groep = await alice.db.rpc('create_group', { group_name: 'Weekpas-test' });
+    if (groep.error) throw new Error(`groep aanmaken: ${groep.error.message}`);
+    const groepData = (groep.data ?? {}) as {
+      ok?: boolean;
+      group?: { id: string; invite_code: string };
+    };
+    if (groepData.ok !== true || !groepData.group) {
+      throw new Error(`groep aanmaken mislukte: ${JSON.stringify(groep.data)}`);
+    }
+    const groupId = groepData.group.id;
+
+    const meedoen = await bob.db.rpc('join_group_with_code', {
+      code: groepData.group.invite_code,
+    });
+    if (meedoen.error) throw new Error(`bob werd geen lid: ${meedoen.error.message}`);
+    if (uitkomst(meedoen.data).ok !== true) {
+      throw new Error(`bob werd geen lid: ${uitkomst(meedoen.data).reason ?? 'geen reden'}`);
+    }
+
+    const koppeling = await admin
+      .from('goal_group_links')
+      .insert({ goal_id: aliceGoalId, group_id: groupId });
+    if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
+
     // Zes voltooide cycli voor alice. De cyclus komt uit `shared/time` en wordt
     // hier niet nagerekend (correctheidsregel 7).
     const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
@@ -130,11 +168,12 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     if (verbruikt.error) throw new Error(`verbruiken: ${verbruikt.error.message}`);
     if (verbruikt.data !== true) throw new Error('opbouw: de pas werd niet verbruikt');
 
-    f = { alice, bob, aliceGoalId, bobGoalId, gemisteCyclus };
+    f = { alice, bob, aliceGoalId, bobGoalId, groupId, gemisteCyclus };
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
     const admin = adminDb();
+    await admin.from('goal_group_links').delete().eq('group_id', f.groupId);
     await admin.from('week_pass_events').delete().in('goal_id', [f.aliceGoalId, f.bobGoalId]);
     await admin.from('weekly_goals').delete().in('goal_id', [f.aliceGoalId, f.bobGoalId]);
     await admin.from('user_streaks').delete().in('goal_id', [f.aliceGoalId, f.bobGoalId]);
@@ -721,34 +760,77 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   );
 
   it(
-    'verbergt een afgesloten week voor groepsgenoten',
+    'verbergt tegenslag voor een échte groepsgenoot, maar laat een goede week wél zien',
     async () => {
       // ⚠️ Domeinregel 7. Een afgesloten weekdoel is een opgegeven week, en dat
       //    is exact het tegenslagsignaal dat 0019 en 0020 voor `missed` en
-      //    `carried` hebben weggehaald. Vergeten we `cancelled`, dan lekt 0045
-      //    precies wat 0020 dichtte.
+      //    `carried` weghaalden. Zonder `cancelled` erbij lekt 0045 precies wat
+      //    0020 dichtte.
+      //
+      // ⚠️ De positieve controle staat er niet voor de volledigheid maar omdat
+      //    zonder haar niets bewezen is. Bob is lid van alice' groep en haar
+      //    doel is eraan gekoppeld; ziet hij de goedgekeurde week ook niet, dan
+      //    zegt "hij ziet de afgesloten week niet" alleen dat er iets anders
+      //    stuk is. Dat was precies de fout in de eerste versie van deze test.
       const admin = adminDb();
-      const rij = await admin
+
+      const verborgen: readonly ('missed' | 'carried' | 'cancelled')[] = [
+        'missed',
+        'carried',
+        'cancelled',
+      ];
+
+      const gemaakt: string[] = [];
+      let index = 915;
+
+      for (const status of verborgen) {
+        const rij = await admin
+          .from('weekly_goals')
+          .insert({
+            goal_id: f.aliceGoalId,
+            title: `${status} week van alice`,
+            cycle_start_date: `2026-06-${String(index - 907).padStart(2, '0')}`,
+            cycle_index: index,
+            status,
+          })
+          .select('id')
+          .single();
+        if (rij.error) throw new Error(`opbouw ${status}: ${rij.error.message}`);
+        gemaakt.push(rij.data.id);
+        index += 1;
+      }
+
+      const zichtbaar = await admin
         .from('weekly_goals')
         .insert({
           goal_id: f.aliceGoalId,
-          title: 'opgegeven week van alice',
-          cycle_start_date: '2026-06-08',
-          cycle_index: 915,
-          status: 'cancelled',
+          title: 'gehaalde week van alice',
+          cycle_start_date: '2026-06-22',
+          cycle_index: index,
+          status: 'approved',
         })
         .select('id')
         .single();
-      if (rij.error) throw new Error(`opbouw: ${rij.error.message}`);
+      if (zichtbaar.error) throw new Error(`opbouw approved: ${zichtbaar.error.message}`);
+      gemaakt.push(zichtbaar.data.id);
 
-      const { data } = await f.bob.db
+      const { data, error } = await f.bob.db
         .from('weekly_goals')
-        .select('id')
-        .eq('id', rij.data.id);
+        .select('id, status')
+        .in('id', gemaakt);
 
-      expect(data).toEqual([]);
+      expect(error).toBeNull();
 
-      await admin.from('weekly_goals').delete().eq('id', rij.data.id);
+      const gezien = (data ?? []).map((r) => r.status);
+
+      // De positieve controle: bob is écht groepsgenoot en ziet de goede week.
+      expect(gezien).toContain('approved');
+      // En geen enkele vorm van tegenslag.
+      expect(gezien).not.toContain('missed');
+      expect(gezien).not.toContain('carried');
+      expect(gezien).not.toContain('cancelled');
+
+      await admin.from('weekly_goals').delete().in('id', gemaakt);
     },
     TEST_TIMEOUT,
   );
