@@ -103,6 +103,50 @@ eerstvolgende epic. Zet daar `chain_milestone` op de allowlist in
 
 ---
 
+## 3b. Het merge-ritueel — vijf stappen, en de vijfde wordt vergeten
+
+Vóór élke merge naar `main`:
+
+```bash
+npm run typecheck && npm run lint && npm test && npm run build
+```
+
+En dan de stap die geen enkele machine voor je doet:
+
+5. **Draai de RLS-suite en lees de uitslag.** `npm test` doet dit lokaal mee,
+   maar alleen omdat `.env` de sleutels heeft. Controleer dat de teller klopt —
+   staat er `skipped` bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en
+   zegt groen niets over autorisatie.
+
+⚠️ **Waarom dit een aparte stap is en niet "CI doet het wel".** De CI-job
+"Alles groen" dekt typecheck, lint en de niet-RLS-tests. De RLS-suite slaat
+zichzelf daar over, en dat is een bewuste en juiste keuze: een sleutel die RLS
+omzeilt geef je niet aan een runner die op elke push van elke branch draait
+(zie `.github/workflows/ci.yml`).
+
+Het gevolg moet je scherp hebben: **groen in GitHub bewijst niets over
+domeinregel 7, groepslidmaatschap, peer-goedkeuring of het puntengrootboek.**
+Elke bevinding die er in dit project toe deed — het lek in `weekly_goals.status`
+(EPIC 5), de drie routes terug in een uitgezette groep (A18), de weekafsluiting
+die andermans reacties meenam bij accountverwijdering (A3), de aanwezigheids-
+matrix in `chain_links` (EPIC 8) — is van een soort die CI per definitie niet
+ziet. Ze kwamen alle vier uit de RLS-suite of uit een reviewagent.
+
+**Wanneer deze stap kan vervallen:** zodra er een lokale of aparte Supabase-stack
+is (Q-TODO **A9**). Nu draaien die tests tegen productie, maken ze echte accounts
+aan en lopen ze tegen de aanmeldlimiet (valkuil 14) — daarom staan ze niet in CI
+en daarom is dit handwerk. Het automatiseren van deze stap is meer waard dan elke
+instelling op GitHub.
+
+⚠️ **Branch protection op `main` staat sinds 18-08 aan**, maar smal: force push
+en verwijderen zijn geblokkeerd, inclusief voor beheerders. Er is bewust géén
+verplichte PR of verplichte status check, want die zouden een poort verplicht
+stellen die de bovenstaande klasse fouten niet vangt — en een directe push naar
+`main` onmogelijk maken. Het volledige pakket hoort bij de engineer-review in
+november, als er een echte tweede lezer is.
+
+---
+
 ## 4. Uitvoeringsvolgorde
 
 Er zijn vier milestones in Linear. Deze volgorde is geen suggestie — de
