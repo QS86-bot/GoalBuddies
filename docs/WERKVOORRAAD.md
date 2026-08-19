@@ -35,15 +35,22 @@ Lees dit eerst; de rest is naslag.
   is nooit een echte AI-call gedaan. Het weekpas-pad in `herbereken_reeks()`
   stond ook in dit rijtje en is er sinds 19-08 uit: het wordt nu gevuld én is
   end-to-end tegen het echte project gedraaid.
-* ✅ **De twee kritieke gaten van 19-08 zijn dicht** (migratie 0043). Een
-  gebruiker kon zijn eigen weekdoel aanmaken mét `status = 'approved'` (A35) en
-  een gemiste week gewoon verwijderen (A36) — samen was de reeks die de groep van
-  je ziet dus te verzinnen én een gemiste week gratis te repareren. Beide waren
-  ouder dan EPIC 8. **De les: 0023 dichtte dit voor wijzigen en niemand keek naar
-  aanmaken en verwijderen — en in dit bestand stond het als opgelost afgevinkt.**
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A38. Niets
-  daarvan blokkeert het bouwen; A37 (telt een week mee zodra één weekdoel af is?)
-  is de zwaarste die nog openstaat.
+* ✅ **A35 is dicht** (migratie 0043): een gebruiker kon zijn eigen weekdoel
+  aanmaken mét `status = 'approved'` en zo een reeks verzinnen die de groep te
+  zien krijgt, plus gratis weekpassen. **A36 is maar half dicht.** De directe
+  route (een gemiste week verwijderen) is weg, maar er zijn twee andere deuren
+  naar dezelfde kamer: `markeer_doorgeschoven()` zet `missed` om naar `carried`
+  en dat breekt de reeks niet (**A39**), en de `todo`-rij verwijderen vóór de
+  rollover betekent dat de week nooit gemist wordt (**A40**). **Zolang die
+  openstaan beschermt de weekpas niets.** Allebei een productbesluit.
+* **De les van deze ronde, en hij is duurder dan de bug.** 0023 dichtte dit voor
+  *wijzigen*, niemand keek naar *aanmaken* en *verwijderen*, en in
+  `ENGINEER-REVIEW.md` stond het als opgelost afgevinkt. Een dichtgestreepte
+  regel is de plek waar niemand meer kijkt — daarom staat A36 daar nu
+  uitdrukkelijk **niet** als opgelost.
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A40. A39 en
+  A40 zijn de dringendste, daarna A37 (telt een week mee zodra één weekdoel af
+  is?). Geen van drieën blokkeert het bouwen van andere issues.
 
 ---
 

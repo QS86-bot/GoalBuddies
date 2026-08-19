@@ -57,10 +57,14 @@
 --        cycle_index — géén status. Blijft werken.
 --      - `verwijderWeekdoel()` bestaat wel maar wordt door geen enkel scherm
 --        aangeroepen. Blijft werken voor een weekdoel dat nog `todo` is.
---      - In `tests/` schrijft alleen `weekpassen.test.ts` als cliënt naar deze
---        tabel, en dat zijn precies de twee tests die dit gat aantoonden.
---        Alle andere tests schrijven met de service-role-client en gaan
---        ongemoeid, want die rol slaat policies én kolomgrants over.
+--      - In `tests/` schrijven ook `policies.test.ts`, `besluiten.test.ts`,
+--        `epic7.test.ts` en `epic8.test.ts` als cliënt naar deze tabel. Alle
+--        client-inserts zijn nagelopen: **geen enkele stuurt `status` mee**, dus
+--        er breekt niets. De rest schrijft met de service-role-client en gaat
+--        sowieso ongemoeid, want die rol slaat policies én kolomgrants over.
+--        (Deze regel stond er eerst verkeerd — hij beweerde dat alleen
+--        `weekpassen.test.ts` als cliënt schrijft. De conclusie klopte, de
+--        controle niet; rechtgezet na de review op deze migratie.)
 --
 -- ⚠️ De punten-kolommen blijven bewust insertable. `points_ceiling`,
 --    `points_floor` en `points_miss` worden begrensd door de CHECK uit 0007, en
@@ -95,6 +99,13 @@ grant insert (
 -- ---------------------------------------------------------------------------
 
 drop policy if exists weekly_goals_write on public.weekly_goals;
+
+-- ⚠️ De drie `drop … if exists` hieronder stonden er eerst niet, waardoor een
+--    tweede run faalde met "policy already exists" — onwrikbare regel 20. Zie
+--    ook 0044, dat ze op het project alsnog idempotent heeft neergezet.
+drop policy if exists weekly_goals_insert on public.weekly_goals;
+drop policy if exists weekly_goals_update on public.weekly_goals;
+drop policy if exists weekly_goals_delete on public.weekly_goals;
 
 create policy weekly_goals_insert on public.weekly_goals
   for insert to authenticated
