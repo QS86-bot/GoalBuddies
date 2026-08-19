@@ -161,11 +161,13 @@ export async function schuifDoor(
     return {
       ok: false,
       melding:
-        uitkomst.reason === 'not_open'
-          ? 'Deze week staat niet meer open. Doorschuiven kan alleen bij een week die nog loopt.'
-          : uitkomst.reason === 'not_missed'
-            ? 'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.'
-            : 'Doorschuiven lukte niet.',
+        // ⚠️ `not_open` bestaat sinds 0045 niet meer als reden — de RPC geeft
+        //    `not_missed` terug. De tak is weg in plaats van dood te blijven
+        //    staan: dode foutafhandeling suggereert dat een geval nog kan
+        //    optreden, en dan gaat de volgende lezer ernaar zoeken.
+        uitkomst.reason === 'not_missed'
+          ? 'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.'
+          : 'Doorschuiven lukte niet.',
     };
   }
 
