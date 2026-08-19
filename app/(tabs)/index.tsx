@@ -16,9 +16,12 @@ import {
 } from '@/modules/completions';
 import {
   afsluitbareCyclus,
+  fetchDoelen,
+  fetchDoelStanden,
   fetchWeekdoelen,
   huidigeCyclus,
   inCoulanceperiode,
+  type DoelStand,
   type Weekdoel,
 } from '@/modules/goals';
 import { space } from '@/shared/theme';
@@ -30,6 +33,7 @@ import {
   Caption,
   Card,
   Choice,
+  DoelStandKaart,
   Field,
   FloorCeiling,
   Screen,
@@ -52,6 +56,8 @@ export default function Vandaag() {
 
   const [weekdoelen, setWeekdoelen] = useState<readonly Weekdoel[]>([]);
   const [dagzetten, setDagzetten] = useState<readonly DagZet[]>([]);
+  const [standen, setStanden] = useState<ReadonlyMap<string, DoelStand>>(new Map());
+  const [doeltitels, setDoeltitels] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
@@ -71,11 +77,21 @@ export default function Vandaag() {
     if (!userId || !afTeSluiten || !cyclus) return;
     let levend = true;
 
-    Promise.all([fetchWeekdoelen(userId, afTeSluiten), fetchDagzetten(userId, cyclus)])
-      .then(([doelen, zetten]) => {
+    // ⚠️ Vier verzoeken naast elkaar en niet achter elkaar, en geen enkele
+    //    per doel: `fetchDoelStanden` haalt reeksen, punten en weekpassen op
+    //    voor álle doelen tegelijk (schaalbaarheidsregel 12).
+    Promise.all([
+      fetchWeekdoelen(userId, afTeSluiten),
+      fetchDagzetten(userId, cyclus),
+      fetchDoelStanden(userId),
+      fetchDoelen(userId),
+    ])
+      .then(([doelen, zetten, gevondenStanden, doelenPagina]) => {
         if (!levend) return;
         setWeekdoelen(doelen);
         setDagzetten(zetten);
+        setStanden(gevondenStanden);
+        setDoeltitels(new Map(doelenPagina.rijen.map((d) => [d.id, d.title])));
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -140,6 +156,13 @@ export default function Vandaag() {
         Weekdoel toevoegen
       </Button>
 
+      <StandBlok
+        standen={standen}
+        titels={doeltitels}
+        afgeslotenCyclus={afTeSluitenStart}
+        loading={loading}
+      />
+
       <DagzetBlok
         userId={userId ?? ''}
         localDate={profiel ? localDateIn(profiel.tz, now()) : null}
@@ -147,6 +170,64 @@ export default function Vandaag() {
         onKlaar={herlaad}
       />
     </Screen>
+  );
+}
+
+/**
+ * Je stand: reeks, punten en weekpassen per doel — QS8-75 en QS8-81.
+ *
+ * ⚠️ **Alles hier is privé en dat is een domeinregel, geen voorkeur.** Punten
+ *    zijn alleen voor de eigenaar (domeinregel 10) omdat een dalend totaal
+ *    zichtbaar bewijs is van een gemiste week, en een verbruikte weekpas is dat
+ *    net zo goed. Dit blok hoort daarom op dít scherm en op geen enkel
+ *    groepsscherm. Kopieer het niet naar `groep/[id]`.
+ *
+ * ⚠️ Rendert niets zolang er geen enkel doel is. Een leeg kader met "0 punten"
+ *    is de eerste indruk van iemand die net begint, en dat is precies de
+ *    verkeerde: er is nog niets gemist, er is nog niets te tellen.
+ */
+function StandBlok({
+  standen,
+  titels,
+  afgeslotenCyclus,
+  loading,
+}: {
+  readonly standen: ReadonlyMap<string, DoelStand>;
+  readonly titels: ReadonlyMap<string, string>;
+  readonly afgeslotenCyclus: string | null;
+  readonly loading: boolean;
+}) {
+  // ⚠️ Alleen doelen waarvan we de titel kennen. Een stand zonder titel is een
+  //    gearchiveerd of net verwijderd doel; die hoort niet op het dashboard van
+  //    vandaag, en "Onbekend doel" is geen tekst die iemand vertrouwen geeft.
+  const rijen = [...standen.values()]
+    .map((stand) => ({ stand, titel: titels.get(stand.goalId) }))
+    .filter((r): r is { stand: DoelStand; titel: string } => r.titel !== undefined)
+    .sort((a, b) => a.titel.localeCompare(b.titel, 'nl'));
+
+  if (loading || rijen.length === 0) return null;
+
+  return (
+    <Card nested>
+      <Subheading>Je stand</Subheading>
+      <Body muted>
+        Je reeks telt weken, geen dagen. Een week telt zodra je vloer gehaald is.
+      </Body>
+
+      <View style={styles.standen}>
+        {rijen.map(({ stand, titel }) => (
+          <DoelStandKaart
+            key={stand.goalId}
+            titel={titel}
+            huidigeReeks={stand.huidigeReeks}
+            besteReeks={stand.besteReeks}
+            punten={stand.punten}
+            weekpas={stand.weekpas}
+            afgeslotenCyclus={afgeslotenCyclus}
+          />
+        ))}
+      </View>
+    </Card>
   );
 }
 
@@ -403,6 +484,7 @@ function DagzetBlok({
 
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
+  standen: { gap: space.blokGap + 3 },
   afrond: { gap: space.blokGap - 3, paddingTop: space.blokGap - 4 },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, alignItems: 'center' },
   zetten: { gap: space.blokGap - 4, paddingTop: space.blokGap - 4 },

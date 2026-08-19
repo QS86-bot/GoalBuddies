@@ -55,6 +55,8 @@ export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly
 
 export { fetchWeekpasStand, fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
 
+export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
+
 export {
   CATEGORIEEN,
   CATEGORIE_LABELS,
