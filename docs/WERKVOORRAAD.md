@@ -212,8 +212,8 @@ Deze dingen kan een sessie niet zelf oplossen.
 | PostgreSQL client tools | `pg_dump` vóór elke migratie op gevulde data | ✅ geïnstalleerd 18-08-2026 via scoop (PostgreSQL 18.6, géén beheerdersrechten nodig). `npm run db:dump` getest tegen productie: 0,45 MB |
 | Docker + WSL2 | Voor een lokale Supabase-stack. Bewust uitgesteld, zie §5 | uitgesteld tot vóór de eerste echte gebruiker |
 | Supabase CLI | Voor `db push`, `db diff` en de lokale stack | ✅ geïnstalleerd 18-08-2026 via scoop (v2.115.0), staat op `PATH`. **Nog niet ingelogd en niet gelinkt** (geen `supabase/config.toml`), dus `db push` werkt nog niet — zie Q-TODO C3 |
-| GitHub-connector | Voor PR's vanuit een sessie. `gh` staat niet op de machine | niet gedaan — branches worden lokaal naar `main` gemerged |
-| Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan |
+| ~~GitHub-connector~~ | Voor PR's vanuit een sessie | ✅ **18-08: `gh` 2.97.0 geïnstalleerd en ingelogd als `QS86-bot`**, scopes `repo`, `workflow`, `read:org`, `gist`. Een sessie kan nu PR's openen; roep hem aan via het volledige pad (zie valkuil 19) |
+| Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan — **kan nu wel**, via `gh api` in plaats van de webinterface |
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
 | Storage-bucket | Voor avatars en later bijlagen. Geen bucket én geen `storage.objects`-policy | niet gedaan |
@@ -369,6 +369,39 @@ Deze dingen kan een sessie niet zelf oplossen.
    Dit is het slot dat `CLAUDE.md` met naam noemt en dat één keer geruisloos
    gefaald heeft. Bouw je een "twee kopieën die gelijk moeten blijven"-slot, toets
    dan de gelijkheid en niet twee keer een kant.
+
+19. **Na een `winget install` is de tool niet zichtbaar, en "open een nieuw
+   venster" lost dat niet betrouwbaar op.** Je krijgt dan
+   `De term 'gh' is niet herkend als de naam van een cmdlet` terwijl het
+   programma er gewoon staat.
+
+   Waarom het gebeurt: een Windows-proces krijgt zijn omgeving mee op het moment
+   dat het start en ververst die daarna nooit meer. De installer zet het pad
+   keurig in de machine-`PATH`, maar elk proces dat ouder is dan de installatie
+   draagt de oude versie. Een nieuw **tabblad** in Windows Terminal of een nieuwe
+   terminal in VS Code erft de omgeving van het al draaiende moederproces — dus
+   ook de oude `PATH`.
+
+   Drie manieren eruit, van snel naar duurzaam:
+
+   ```powershell
+   # 1. Ververs PATH in het huidige venster
+   $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
+               [Environment]::GetEnvironmentVariable('Path','User')
+   ```
+
+   2. Sluit de terminal-applicatie **helemaal** af en start hem opnieuw — niet
+      alleen het tabblad.
+   3. Roep het volledige pad aan. Dat werkt altijd en is wat een sessie hier moet
+      doen, want die shell is meestal ouder dan de installatie:
+      `& "C:\Program Files\GitHub CLI\gh.exe" --version`
+
+   **Controleer eerst óf het echt misging** voordat je opnieuw gaat installeren:
+   `winget list --id GitHub.cli -e` zegt of het pakket er staat, en
+   `[Environment]::GetEnvironmentVariable('Path','Machine')` of het pad
+   geregistreerd is. Stond het er allebei, dan is het dit en niets anders.
+
+   Gebeurd bij `gh` (18-08), en dezelfde avond bij de Supabase CLI en `pg_dump`.
 
 ---
 
