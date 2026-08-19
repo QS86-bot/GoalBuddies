@@ -1545,6 +1545,18 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      ketting_schakel: {
+        Args: {
+          p_cycle_start: string
+          p_group_id: string
+          p_period_start: string
+        }
+        Returns: Json
+      }
+      ketting_stand: {
+        Args: { p_group_id: string; p_period_start: string }
+        Returns: Json
+      }
       markeer_doorgeschoven: {
         Args: { p_weekly_goal_id: string }
         Returns: Json
