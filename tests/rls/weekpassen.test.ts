@@ -590,6 +590,79 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   );
 
   it(
+    'laat een gemiste week nooit gratis een punt kosten van nul',
+    async () => {
+      // ⚠️ `points_miss` had de CHECK `between -5 and 0` en stond in de
+      //    insert-grant van 0043. Nul zit in dat bereik, dus één insert met
+      //    `points_miss: 0` maakte missen gratis — de rollover boekt letterlijk
+      //    deze waarde. Dat is domeinregel 10 en het ondergraaft de weekpas:
+      //    als missen niets kost, zegt de score niets. 0044 haalt de kolom uit
+      //    de grant; de standaardwaarde −1 doet het werk.
+      const { error } = await f.bob.db.from('weekly_goals').insert({
+        goal_id: f.bobGoalId,
+        title: 'gratis missen',
+        cycle_start_date: '2026-04-06',
+        cycle_index: 905,
+        points_miss: 0,
+      });
+
+      expect(error?.code).toBe('42501');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat niemand een weekdoel aanmaken op het doel van een ander',
+    async () => {
+      // ⚠️ De `for all`-policy is in 0043 vervangen door drie losse policies, en
+      //    dan is een vergeten eigenaarstoets de klassieke fout. Deze test staat
+      //    er omdat alle andere tests op het éígen doel draaien en dus niets
+      //    zeggen over de grens.
+      const { error } = await f.bob.db.from('weekly_goals').insert({
+        goal_id: f.aliceGoalId,
+        title: 'op andermans doel',
+        cycle_start_date: '2026-04-13',
+        cycle_index: 906,
+      });
+
+      expect(error).not.toBeNull();
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat niemand het openstaande weekdoel van een ander verwijderen',
+    async () => {
+      const admin = adminDb();
+      const gemaakt = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.aliceGoalId,
+          title: 'open week van alice',
+          cycle_start_date: '2026-04-20',
+          cycle_index: 907,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+
+      if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
+
+      await f.bob.db.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+
+      const { count } = await admin
+        .from('weekly_goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', gemaakt.data.id);
+
+      expect(count).toBe(1);
+
+      await admin.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
     'laat een weekdoel dat nog niets is wél verwijderen',
     async () => {
       // De andere kant van 0043: een weekdoel dat je per ongeluk aanmaakte moet
