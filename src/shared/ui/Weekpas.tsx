@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { radius, useTheme } from '../theme';
 
-import { weekpasLabel, weekpasUitleg, type WeekpasStand } from './metrics';
+import { weekpasLabel, weekpasVoortgang, type WeekpasStand } from './metrics';
 import { Body, Caption, Subheading } from './Text';
 
 /**
@@ -39,7 +39,6 @@ interface Props {
    *    rekent geen cyclus uit (correctheidsregel 7).
    */
   readonly reddeVorigeWeek?: boolean;
-  readonly compact?: boolean;
 }
 
 /**
@@ -49,20 +48,11 @@ interface Props {
  */
 const MAX_BOLLETJES = 6;
 
-export function Weekpas({ stand, reddeVorigeWeek = false, compact = false }: Props) {
+export function Weekpas({ stand, reddeVorigeWeek = false }: Props) {
   const theme = useTheme();
 
   const kleur = stand.voorraad > 0 ? theme.roles.brand : theme.colors.grey;
   const bolletjes = stand.maximum > 0 && stand.maximum <= MAX_BOLLETJES;
-
-  if (compact) {
-    return (
-      <View style={styles.rij} accessibilityLabel={weekpasLabel(stand)}>
-        <View style={[styles.stip, { backgroundColor: kleur }]} />
-        <Caption muted={false}>{weekpasLabel(stand)}</Caption>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.blok} accessibilityLabel={weekpasLabel(stand)}>
@@ -102,14 +92,21 @@ export function Weekpas({ stand, reddeVorigeWeek = false, compact = false }: Pro
       {reddeVorigeWeek ? (
         <View style={[styles.melding, { borderColor: theme.roles.brand }]}>
           <Body>Een weekpas heeft je reeks gered.</Body>
+          {/*
+            ⚠️ "Er is één punt afgegaan" en niet "het punt is vervallen". Dat
+               eerste is wat er gebeurt — de rollover boekt −1 in het
+               grootboek — en het tweede suggereert dat er alleen iets níét
+               bijgekomen is. Wie dat leest en later zijn totaal ziet dalen,
+               denkt dat de app niet kan rekenen.
+          */}
           <Caption>
-            Vorige week is niet afgerond, maar je reeks loopt gewoon door. Het punt voor die
-            week is wel vervallen.
+            Vorige week is niet afgerond, maar je reeks loopt gewoon door. Voor die week is er
+            wel één punt afgegaan.
           </Caption>
         </View>
       ) : null}
 
-      <Caption>{weekpasUitleg(stand)}</Caption>
+      <Caption>{weekpasVoortgang(stand)}</Caption>
     </View>
   );
 }
@@ -117,8 +114,6 @@ export function Weekpas({ stand, reddeVorigeWeek = false, compact = false }: Pro
 const styles = StyleSheet.create({
   blok: { gap: 7 },
   kop: { gap: 2 },
-  rij: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  stip: { width: 9, height: 9, borderRadius: radius.pill },
   passen: { flexDirection: 'row', gap: 6 },
   pas: { width: 26, height: 12, borderRadius: radius.pill, borderWidth: 1 },
   melding: { borderLeftWidth: 3, paddingLeft: 10, gap: 2 },

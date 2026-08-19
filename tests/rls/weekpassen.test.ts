@@ -484,6 +484,80 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     TEST_TIMEOUT,
   );
 
+  // -------------------------------------------------------------------------
+  // De reeks die de weekpas beschermt — twee gaten, gevonden door de
+  // security-review op QS8-81
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ Deze twee staan als `it.fails` en dat is opzet. Ze beschrijven wat er
+  //    hóórt te gelden; zolang het gat er is, klaagt de assertie en telt de test
+  //    als geslaagd. Wordt het gat gedicht, dan slaagt de assertie, faalt
+  //    `it.fails`, en verdwijnt deze markering vanzelf uit de suite in plaats
+  //    van er jaren te blijven staan. Zelfde patroon als bijlage 1 van
+  //    `docs/Q-TODO.docx`.
+  //
+  // ⚠️ Allebei ouder dan QS8-81 en allebei buiten deze issue gerepareerd — een
+  //    reparatie raakt de RLS van `weekly_goals`, en dat is volgens CLAUDE.md
+  //    niets om zonder Quinten aan te komen. Ze staan hier omdat ze de bódem
+  //    onder deze feature zijn: een weekpas is een schaarse munt die een reeks
+  //    beschermt, en als die reeks te verzinnen én gratis te repareren is, is de
+  //    munt niets waard. Zie A35 en A36 in `docs/Q-TODO.docx`.
+
+  it.fails(
+    'zou een zelf aangemaakt weekdoel niet op approved mogen laten zetten',
+    async () => {
+      // Zonder buddy, zonder goedkeuring: één POST. Dat levert niet alleen een
+      // verzonnen reeks op die de groep te zien krijgt (`group_visible_streaks`),
+      // maar ook gratis weekpassen — `verdien_weekpassen()` telt goedgekeurde
+      // cycli.
+      const { error } = await f.bob.db.from('weekly_goals').insert({
+        goal_id: f.bobGoalId,
+        title: 'zelf goedgekeurd',
+        cycle_start_date: '2026-03-02',
+        cycle_index: 900,
+        status: 'approved',
+      });
+
+      expect(error?.code).toBe('42501');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it.fails(
+    'zou een gemiste week niet mogen laten verwijderen',
+    async () => {
+      // `herbereken_reeks()` loopt over de rijen die er zijn. Verdwijnt de
+      // gemiste week, dan bestaat de onderbreking niet meer en loopt de reeks
+      // door — zonder pas, zonder bovengrens, zo vaak als je wilt. Dat is ook
+      // domeinregel 6: corrigeren gebeurt met een correctie-record, niet door
+      // geschiedenis weg te gooien.
+      const admin = adminDb();
+      const gemaakt = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'gemiste week van bob',
+          cycle_start_date: '2026-03-09',
+          cycle_index: 901,
+          status: 'missed',
+        })
+        .select('id')
+        .single();
+
+      if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
+
+      await f.bob.db.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+
+      const { count } = await admin
+        .from('weekly_goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', gemaakt.data.id);
+
+      expect(count).toBe(1);
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'weigert een pas op een week die niet gemist is',
     async () => {

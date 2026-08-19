@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { space, useTheme } from '../theme';
 
-import { streakLabel, weekpasReddeDezeCyclus, type WeekpasStand } from './metrics';
+import { PUNTEN_UITLEG, streakLabel, weekpasReddeDezeCyclus, type WeekpasStand } from './metrics';
 import { StreakCounter } from './StreakCounter';
 import { Caption, Subheading } from './Text';
 import { Weekpas } from './Weekpas';
@@ -51,14 +51,27 @@ export function DoelStandKaart({
 }: Props) {
   const theme = useTheme();
 
+  // ⚠️ `huidigeReeks > 0` staat er om een reden die niet cosmetisch is. Zijn er
+  //    in één rollover twee weken afgesloten en was er maar één pas, dan is er
+  //    wél een pas verbruikt op de zojuist afgesloten week, maar breekt de
+  //    ándere week de reeks alsnog. Zonder deze voorwaarde staat er dan
+  //    "Een weekpas heeft je reeks gered" onder een teller die "Nog geen reeks"
+  //    zegt — het scherm spreekt zichzelf tegen op precies het moment dat
+  //    iemand toch al twijfelt. Bevinding van de code-review op QS8-81.
   const gered =
-    weekpas !== null && weekpasReddeDezeCyclus(weekpas, afgeslotenCyclus);
+    huidigeReeks > 0 && weekpas !== null && weekpasReddeDezeCyclus(weekpas, afgeslotenCyclus);
 
   return (
     <View style={styles.blok}>
       <Subheading>{titel}</Subheading>
 
-      <StreakCounter cycles={huidigeReeks} best={besteReeks} />
+      {/*
+        ⚠️ Zónder `best`. `StreakCounter` zet die er als tweede regel onder, en
+           drie centimeter lager staat "Langste reeks" met exact hetzelfde getal
+           onder een andere naam. Twee namen voor één getal naast elkaar leest
+           als twee verschillende dingen die toevallig gelijk zijn.
+      */}
+      <StreakCounter cycles={huidigeReeks} />
 
       <View style={styles.cijfers}>
         <View style={styles.cijfer}>
@@ -71,15 +84,29 @@ export function DoelStandKaart({
           <Subheading>{punten}</Subheading>
         </View>
 
-        <View style={styles.cijfer}>
-          <Caption>Langste reeks</Caption>
-          {/*
-            ⚠️ Uitgeschreven als weken en niet als kaal getal, om dezelfde reden
-               als de reeksteller: de eenheid is de week.
-          */}
-          <Subheading>{streakLabel(besteReeks)}</Subheading>
-        </View>
+        {/*
+          ⚠️ Weg bij nul. "Langste reeks — Nog geen reeks" leest als een storing,
+             en het is bovendien dezelfde mededeling die er twee regels hoger al
+             staat.
+        */}
+        {besteReeks <= 0 ? null : (
+          <View style={styles.cijfer}>
+            <Caption>Langste reeks</Caption>
+            {/*
+              ⚠️ Uitgeschreven als weken en niet als kaal getal, om dezelfde
+                 reden als de reeksteller: de eenheid is de week.
+            */}
+            <Subheading>{streakLabel(besteReeks)}</Subheading>
+          </View>
+        )}
       </View>
+
+      {/*
+        ⚠️ Het schaaltje onder het getal. Zonder deze regel is "Punten 12" een
+           getal zonder eenheid, en — belangrijker — weet niemand dat een gemiste
+           week een minpunt kost tot het gebeurt.
+      */}
+      <Caption>{PUNTEN_UITLEG}</Caption>
 
       {weekpas === null ? null : (
         <View style={[styles.scheiding, { borderTopColor: theme.colors.border }]}>

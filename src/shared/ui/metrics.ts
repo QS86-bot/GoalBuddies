@@ -241,29 +241,65 @@ export interface WeekpasStand {
  */
 export function weekpasLabel(stand: WeekpasStand): string {
   if (stand.voorraad <= 0) return 'Nog geen weekpas';
-  return stand.voorraad === 1 ? '1 weekpas klaar' : `${stand.voorraad} weekpassen klaar`;
+  const wat = stand.voorraad === 1 ? '1 weekpas' : `${stand.voorraad} weekpassen`;
+  return `${wat} van ${stand.maximum}`;
 }
 
 /**
- * De uitleg onder de teller: wat een pas doet, of wat hij kost.
+ * Het puntenmodel in één regel — domeinregel 10.
  *
- * ⚠️ Zegt met zoveel woorden dat de pas de réeks redt en niet het punt. Dat is
- *    domeinregel 10 en het is precies het soort regel waarvan een gebruiker
- *    denkt dat hij anders werkt — en dan voelt een terecht minpunt als een bug.
+ * ⚠️ Staat onder het puntentotaal omdat een kaal getal daar niets zegt. Zonder
+ *    deze regel weet niemand dat een gemiste week een minpunt kost, en dan komt
+ *    dat minpunt als een verrassing precies op de dag dat het gebeurt.
  */
-export function weekpasUitleg(stand: WeekpasStand): string {
+export const PUNTEN_UITLEG = 'Plafond gehaald +2, vloer gehaald +1, week gemist −1, adempauze 0.';
+
+/**
+ * De uitleg die precies één keer op het scherm hoort.
+ *
+ * ⚠️ Eén constante en geen functie, want hij hangt van niets af. Bij vijf doelen
+ *    stond deze tekst vijf keer onder elkaar; dat is geen uitleg meer maar
+ *    behang, en dan leest niemand hem — ook niet de ene keer dat het uitmaakt.
+ *
+ * ⚠️ Drie dingen staan er met zoveel woorden in, en alle drie omdat een
+ *    gebruiker er anders het verkeerde van maakt:
+ *
+ *    1. **Het minpunt blijft.** Domeinregel 10. Wie dat niet weet, ziet zijn
+ *       puntentotaal dalen terwijl zijn reeks doorloopt en concludeert dat de
+ *       app niet kan rekenen.
+ *    2. **Je hoeft niets te doen.** "1 weekpas klaar" leest als een knop die je
+ *       moet indrukken. Er ís geen knop — inzetten kan alleen de rollover, want
+ *       een pas die je zelf mag inzetten kun je op een lopende week zetten en
+ *       dan beschermt hij niets.
+ *    3. **Per doel.** `week_pass_events` hangt aan (user_id, goal_id), dus bij
+ *       drie doelen zie je drie verschillende standen naast elkaar. Zonder deze
+ *       zin ziet dat eruit als een fout.
+ */
+export const WEEKPAS_UITLEG =
+  'Een weekpas houdt je reeks overeind als je een week mist. Het minpunt voor die week ' +
+  'krijg je wél — een pas beschermt je reeks, niet je punten. Je hoeft niets te doen: ' +
+  'mis je een week, dan zetten we er automatisch een in. Weekpassen spaar je per doel.';
+
+/**
+ * Hoe ver je bent naar de volgende pas. Verschilt per doel en staat dus wél bij
+ * elk doel.
+ *
+ * ⚠️ Bij een volle voorraad staat erbij wat er met een extra pas gebeurt: die
+ *    gaat niet verloren maar komt vrij zodra je er een verbruikt (migratie
+ *    0042). Dat is geen detail — wie zes weken doorwerkt, wil weten of dat werk
+ *    ergens heen gaat.
+ */
+export function weekpasVoortgang(stand: WeekpasStand): string {
   if (stand.voorraad >= stand.maximum) {
-    return 'Je voorraad is vol. Een weekpas vangt een gemiste week op: je reeks loopt door, het punt niet.';
+    return `Je hebt er ${stand.voorraad}, en meer kun je er niet tegelijk hebben. Verdien je er een terwijl je vol zit, dan komt hij vrij zodra je er een gebruikt.`;
   }
 
   const nog =
     stand.totVolgende === 1 ? 'Nog één voltooide week' : `Nog ${stand.totVolgende} voltooide weken`;
 
-  if (stand.voorraad <= 0) {
-    return `${nog} en je eerste weekpas ligt klaar. Die vangt een gemiste week op: je reeks loopt door, het punt niet.`;
-  }
-
-  return `${nog} tot de volgende. Een weekpas redt je reeks, niet je punt.`;
+  return stand.voorraad <= 0
+    ? `${nog} en je eerste weekpas ligt klaar.`
+    : `${nog} tot de volgende.`;
 }
 
 /**

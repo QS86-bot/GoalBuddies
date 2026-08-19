@@ -71,7 +71,22 @@ vraag 2 hierboven: wat houdt het tegen als iemand de UI overslaat?
 | 17 | **Ingetrokken goedkeuringen** | `approval_withdrawals` | Niets | `approval_withdrawals_select` laat alleen de intrekker en de eigenaar van de week toe. Er gaat géén systeembericht uit: "de week van X is toch niet bevestigd" is een tegenslagsignaal over een ander (0030). De aankondiging van de goedkeuring wordt juist wéggehaald |
 | 18 | **Verwijderde accounts** | `chat_messages.sender_id`, `completion_approvals.approver_id` | "Verwijderd lid" in plaats van een naam | `on delete set null` (0031), plus `stamp_chat_message()` die die ene overgang doorlaat (0033). De rij blijft, de persoon niet |
 
-Vet gedrukt is wat in EPIC 7 en in de besluitenronde van 18-08 is toegevoegd.
+| 19 | **Weekpassen** | `week_pass_events`, `weekpas_stand()`, `weekpas_standen()` | **Niets** | ⚠️ **GEBOUWD 19-08-2026 (migraties 0039–0042).** Dit is de derde tabel die van leeg naar gevuld ging, dus de vraag hoort erbij: een ontbrekende rij betekent nu "deze gemiste week is niet gered", en dat is per definitie een tegenslagsignaal. Daarom heeft `week_pass_events` **alleen** een SELECT-policy op `user_id = auth.uid()`, zijn alle schrijvers SECURITY DEFINER en `service_role`-only, en staat de tabel **niet** in de realtime-publicatie. `weekpas_stand()` en `weekpas_standen()` dragen hun eigenaarstoets zélf en leunen niet op RLS — een groepsgenoot mág de rijen van een gekoppeld doel lezen, dus een INVOKER-functie zou de voorraad van een ander teruggeven. In 0039 was die toets stuk (`eigenaar <> auth.uid()` gaat zonder sessie niet af, want `null` is geen `false`); gedicht in 0040. **Er komt géén systeembericht bij een verbruikte pas** — dat zou een gemiste week in de groepschat zetten — dus `chat_messages_system_event_bekend` is bewust niet aangeraakt. De componenten `Weekpas` en `DoelStandKaart` hebben geen `viewer`-prop en staan alleen op het privé-dashboard |
+
+Vet gedrukt is wat in EPIC 7, in de besluitenronde van 18-08 en in EPIC 8 is
+toegevoegd.
+
+⚠️ **Wat oppervlak 19 verandert aan oppervlak 2, en dat is de kant die je zou
+missen.** Vóór de weekpassen was "de reeks van X valt naar nul" sluitend bewijs
+van een gemiste week; §4a hieronder verdedigt A15 met het argument dat een reeks
+dubbelzinnig genoeg is. Een geredde week laat de teller nu **vlak staan** in
+plaats van hem op nul te zetten, en een vlakke reeks is ononderscheidbaar van
+"die week geen weekdoel gepland" en van een adempauze.
+
+**De weekpas maakt A15 dus zwakker in de goede richting: `current_streak`
+verklapt sinds 19-08 mínder dan daarvoor, niet meer.** Dat is bijvangst en geen
+ontwerpdoel — reken er niet op als bescherming, want een gebruiker zonder passen
+heeft hem niet.
 
 ---
 

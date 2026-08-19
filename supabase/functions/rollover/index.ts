@@ -119,22 +119,50 @@ Deno.serve(async (req: Request) => {
   // Hoeveel gemiste weken er door een weekpas gered zijn — QS8-81. Een deelverzameling
   // van `gemist`: het punt is afgeboekt, alleen de reeks bleef staan.
   let gered = 0;
+  // Profielen die overgeslagen zijn omdat hun cyclus niet te bepalen was.
+  let overgeslagen = 0;
 
   for (const profiel of (profielen ?? []) as Profiel[]) {
     // ⚠️ De cyclus die deze gebruiker nog mág afsluiten. Binnen de
     //    coulanceperiode is dat nog de vórige week, en dan is er dus níéts te
     //    rollen — anders kost een late log alsnog een minpunt (QS8-51).
-    const afsluitbaar = closableUserCycle(
-      { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
-      nu,
-    );
+    //
+    // ⚠️ In een try, en dat is geen overdreven voorzichtigheid. `profiles.tz` is
+    //    vrije tekst zonder controle en de eigenaar mag hem zelf zetten;
+    //    `Intl.DateTimeFormat` gooit een RangeError op een onbekende zone. Zonder
+    //    deze try valt de hele handler om op één profiel — elk uur opnieuw, op
+    //    hetzelfde profiel — en sluit er voor niemand meer een week af. Eén
+    //    gebruiker met een typefout legt dan de job voor alle anderen stil.
+    //    Gevonden door de security-review op QS8-81; de echte reparatie is een
+    //    CHECK op `profiles.tz`, zoals 0019 die voor `groups.tz` al zette.
+    let afsluitbaar;
+    try {
+      afsluitbaar = closableUserCycle(
+        { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
+        nu,
+      );
+    } catch (fout) {
+      console.error(
+        `cyclus bepalen mislukte voor een profiel (tz=${profiel.tz}): ${
+          fout instanceof Error ? fout.message : String(fout)
+        }`,
+      );
+      overgeslagen += 1;
+      continue;
+    }
 
+    // ⚠️ `order` staat er om de uitkomst reproduceerbaar te maken. Zonder
+    //    sorteervolgorde bepaalt het queryplan welke gemiste week een weekpas
+    //    krijgt als er meer gemiste weken zijn dan passen — en dan geeft
+    //    dezelfde data twee keer een ander antwoord. Oudste eerst, zodat een
+    //    ingehaalde achterstand chronologisch wordt afgewikkeld.
     const { data: open, error: openFout } = await db
       .from('weekly_goals')
       .select('id, goal_id, cycle_start_date, points_miss, goals!inner(owner_id)')
       .eq('goals.owner_id', profiel.id)
       .eq('status', 'todo')
-      .lt('cycle_start_date', afsluitbaar.startDate);
+      .lt('cycle_start_date', afsluitbaar.startDate)
+      .order('cycle_start_date', { ascending: true });
 
     if (openFout) {
       console.error(`weekdoelen ophalen mislukte voor ${profiel.id}: ${openFout.message}`);
@@ -154,15 +182,37 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (pauze) {
-        await db.from('weekly_goals').update({ status: 'excused' }).eq('id', weekdoel.id);
+        const { error: pauzeFout } = await db
+          .from('weekly_goals')
+          .update({ status: 'excused' })
+          .eq('id', weekdoel.id);
+
+        if (pauzeFout) {
+          console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${pauzeFout.message}`);
+          continue;
+        }
+
         vrijgesteld += 1;
         continue;
       }
 
-      await db.from('weekly_goals').update({ status: 'missed' }).eq('id', weekdoel.id);
+      // ⚠️ Deze drie schrijfacties controleerden hun fout niet, en dat is geen
+      //    theorie: faalt de statuswijziging en gaat de rest wél door, dan is
+      //    het minpunt geboekt terwijl `verbruik_weekpas()` daarna netjes
+      //    weigert — er is immers geen `missed`-rij. Uitkomst: punt kwijt,
+      //    bescherming niet ingezet, geen enkel signaal. Coderegel 14.
+      const { error: gemistFout } = await db
+        .from('weekly_goals')
+        .update({ status: 'missed' })
+        .eq('id', weekdoel.id);
+
+      if (gemistFout) {
+        console.error(`afschrijven mislukte voor ${weekdoel.id}: ${gemistFout.message}`);
+        continue;
+      }
 
       // Het minpunt. De unieke index maakt dit veilig bij een tweede run.
-      await db.from('points_ledger').insert({
+      const { error: puntFout } = await db.from('points_ledger').insert({
         user_id: profiel.id,
         goal_id: weekdoel.goal_id,
         delta: weekdoel.points_miss,
@@ -170,6 +220,10 @@ Deno.serve(async (req: Request) => {
         ref_type: 'weekly_goal',
         ref_id: weekdoel.id,
       });
+
+      if (puntFout) {
+        console.error(`minpunt boeken mislukte voor ${weekdoel.id}: ${puntFout.message}`);
+      }
 
       gemist += 1;
 
@@ -234,6 +288,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       gemist,
       gered,
+      overgeslagen,
       vrijgesteld,
       profielen: (profielen ?? []).length,
       geslapen: geslapen ?? 0,

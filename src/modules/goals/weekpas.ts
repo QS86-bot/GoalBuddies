@@ -24,64 +24,6 @@ import type { WeekpasStand } from '../../shared/ui';
  *    groepsgenoot mag de rijen van een gekoppeld doel wél lezen.
  */
 
-/** De ruwe vorm van `weekpas_stand()`. Wordt hier omgezet naar `WeekpasStand`. */
-interface RpcStand {
-  readonly voorraad?: number;
-  readonly maximum?: number;
-  readonly voltooide_cycli?: number;
-  readonly tot_volgende?: number;
-  readonly laatst_verbruikt?: string | null;
-}
-
-/**
- * De weekpasstand van één doel.
- *
- * Geeft `null` als het doel niet van jou is of niet bestaat. Die twee gevallen
- * geven hetzelfde antwoord, en dat hoort ook zo: het onderscheid zou verklappen
- * welke doel-id's er bestaan.
- */
-export async function fetchWeekpasStand(goalId: string): Promise<WeekpasStand | null> {
-  const { data, error } = await supabase().rpc('weekpas_stand', { p_goal_id: goalId });
-
-  if (error) {
-    reportError(error, 'weekpas.stand', { goal_id: goalId, pgcode: error.code });
-    throw new Error('Je weekpassen konden niet geladen worden.');
-  }
-
-  if (data === null || data === undefined) return null;
-
-  const ruw = data as RpcStand;
-
-  // ⚠️ Met de hand gecontroleerd en niet gecast. De RPC geeft `jsonb` terug, dus
-  //    de gegenereerde types weten hier niets — `Json` is alles. Zonder deze
-  //    controle sneuvelt een ontbrekend veld pas in een component, op
-  //    `undefined`, ver van de oorzaak.
-  //
-  // ⚠️ Gooit, en geeft géén `null` terug. Dat onderscheid is de reden dat deze
-  //    regel bestaat: `null` betekent "niet van jou" en dan hoort er niets op
-  //    het scherm te staan. Een onvolledig antwoord is een storing en die hoort
-  //    zichtbaar te zijn.
-  if (
-    typeof ruw.voorraad !== 'number' ||
-    typeof ruw.maximum !== 'number' ||
-    typeof ruw.voltooide_cycli !== 'number' ||
-    typeof ruw.tot_volgende !== 'number'
-  ) {
-    reportError(new Error('Onvolledig antwoord van weekpas_stand'), 'weekpas.parse', {
-      goal_id: goalId,
-    });
-    throw new Error('Je weekpassen konden niet geladen worden.');
-  }
-
-  return {
-    voorraad: ruw.voorraad,
-    maximum: ruw.maximum,
-    voltooideCycli: ruw.voltooide_cycli,
-    totVolgende: ruw.tot_volgende,
-    laatstVerbruikt: ruw.laatst_verbruikt ?? null,
-  };
-}
-
 /**
  * ⚠️ Het rijtype van `weekpas_standen()` wordt afgeleid uit de gegenereerde
  *    types en niet met de hand overgetypt — dan loopt het bij de volgende
@@ -118,10 +60,25 @@ export async function fetchWeekpasStanden(goalIds?: readonly string[]): Promise<
   const kaart = new Map<string, WeekpasStand>();
 
   for (const rij of (data ?? []) as StandRij[]) {
-    // ⚠️ `laatst_verbruikt` staat in de gegenereerde types als `string`, maar de
-    //    functie geeft er `null` voor terug zolang er niets verbruikt is. De
-    //    generator kent het verschil niet bij een kolom van een set-returning
-    //    functie; hier wel, dus hier wordt het rechtgezet.
+    // ⚠️ Met de hand gecontroleerd en niet blind vertrouwd. De gegenereerde
+    //    types van een set-returning functie zijn een belofte van de generator,
+    //    geen garantie van de server: `laatst_verbruikt` staat er als `string`
+    //    terwijl de functie er `null` voor teruggeeft zolang er niets verbruikt
+    //    is. Waar de types al één keer aantoonbaar liegen, is een controle op de
+    //    getallen geen luxe — zonder deze regel sneuvelt een ontbrekend veld pas
+    //    in een component, op `undefined`, ver van de oorzaak.
+    if (
+      typeof rij.voorraad !== 'number' ||
+      typeof rij.maximum !== 'number' ||
+      typeof rij.voltooide_cycli !== 'number' ||
+      typeof rij.tot_volgende !== 'number'
+    ) {
+      reportError(new Error('Onvolledig antwoord van weekpas_standen'), 'weekpas.parse', {
+        goal_id: rij.goal_id,
+      });
+      throw new Error('Je weekpassen konden niet geladen worden.');
+    }
+
     kaart.set(rij.goal_id, {
       voorraad: rij.voorraad,
       maximum: rij.maximum,

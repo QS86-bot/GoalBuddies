@@ -34,7 +34,16 @@ export interface DoelStand {
   readonly besteReeks: number;
   /** Het puntentotaal van dit doel. Kan dalen. Privé. */
   readonly punten: number;
-  /** `null` zolang er nooit een weekpas verdiend of verbruikt is. */
+  /**
+   * De weekpasstand van dit doel.
+   *
+   * ⚠️ In de praktijk nooit `null` voor een eigen doel: `weekpas_standen()`
+   *    geeft een rij voor élk doel dat je bezit, ook een doel zonder één
+   *    gebeurtenis (dan staat de voorraad op nul). `null` betekent hier dus
+   *    "geen antwoord gekregen" — het doel is intussen verwijderd, of het
+   *    verzoek is mislukt. De schermen mogen daarop dus niet rekenen voor "nog
+   *    geen passen"; daarvoor is `voorraad === 0`.
+   */
   readonly weekpas: WeekpasStand | null;
 }
 

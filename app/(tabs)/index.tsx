@@ -21,6 +21,7 @@ import {
   fetchWeekdoelen,
   huidigeCyclus,
   inCoulanceperiode,
+  zojuistAfgeslotenCyclus,
   type DoelStand,
   type Weekdoel,
 } from '@/modules/goals';
@@ -38,6 +39,7 @@ import {
   FloorCeiling,
   Screen,
   Subheading,
+  WEEKPAS_UITLEG,
   type WeeklyGoalStatus,
 } from '@/shared/ui';
 
@@ -73,25 +75,25 @@ export default function Vandaag() {
   const afTeSluitenStart = afTeSluiten?.startDate ?? null;
   const cyclusStart = cyclus?.startDate ?? null;
 
+  // ⚠️ De week die de rollover zojuist dichtzette, en dus níét `afTeSluiten`.
+  //    Die twee zijn per definitie verschillend — zie `zojuistAfgeslotenCyclus`.
+  const geslotenStart = klok ? zojuistAfgeslotenCyclus(klok).startDate : null;
+
   useEffect(() => {
     if (!userId || !afTeSluiten || !cyclus) return;
     let levend = true;
 
-    // ⚠️ Vier verzoeken naast elkaar en niet achter elkaar, en geen enkele
-    //    per doel: `fetchDoelStanden` haalt reeksen, punten en weekpassen op
-    //    voor álle doelen tegelijk (schaalbaarheidsregel 12).
-    Promise.all([
-      fetchWeekdoelen(userId, afTeSluiten),
-      fetchDagzetten(userId, cyclus),
-      fetchDoelStanden(userId),
-      fetchDoelen(userId),
-    ])
-      .then(([doelen, zetten, gevondenStanden, doelenPagina]) => {
+    // ⚠️ Het stand-blok hangt hier bewust níét in. Het is een blok onderaan het
+    //    scherm, en een storing daarin hoort de weekdoelenlijst erboven niet mee
+    //    te slepen: met alles in één `Promise.all` kreeg iemand met een slechte
+    //    verbinding "Je weekpassen konden niet geladen worden" te zien in plaats
+    //    van zijn week, terwijl die week gewoon binnen was. Bevinding van de
+    //    gebruikersreview op QS8-75.
+    Promise.all([fetchWeekdoelen(userId, afTeSluiten), fetchDagzetten(userId, cyclus)])
+      .then(([doelen, zetten]) => {
         if (!levend) return;
         setWeekdoelen(doelen);
         setDagzetten(zetten);
-        setStanden(gevondenStanden);
-        setDoeltitels(new Map(doelenPagina.rijen.map((d) => [d.id, d.title])));
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -105,7 +107,45 @@ export default function Vandaag() {
       levend = false;
     };
 
-  }, [userId, afTeSluiten, cyclus, afTeSluitenStart, cyclusStart, ronde]);
+    // ⚠️ `afTeSluiten` en `cyclus` staan hier bewust NIET in, en dat is geen
+    //    slordigheid maar de hele reden dat `afTeSluitenStart` en `cyclusStart`
+    //    bestaan. `huidigeCyclus()` en `afsluitbareCyclus()` geven elke render
+    //    een vers object terug, dus als afhankelijkheid zijn ze altijd
+    //    "veranderd": ophalen → `setWeekdoelen` → render → nieuwe objecten →
+    //    ophalen. Een oneindige lus die je aan het scherm niet ziet, want de
+    //    gegevens zijn elke ronde hetzelfde en `loading` staat al uit — je ziet
+    //    het alleen aan je Supabase-verbruik. De comment hierboven zei dit al en
+    //    de lijst deed het tegenovergestelde. Gevonden door de code-review op
+    //    QS8-75.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, afTeSluitenStart, cyclusStart, ronde]);
+
+  // Het stand-blok laadt apart en faalt apart: lukt het niet, dan blijft het
+  // blok gewoon weg en houdt de rest van het scherm zijn gegevens.
+  useEffect(() => {
+    if (!userId) return;
+    let levend = true;
+
+    Promise.all([fetchDoelStanden(userId), fetchDoelen(userId)])
+      .then(([gevondenStanden, doelenPagina]) => {
+        if (!levend) return;
+        setStanden(gevondenStanden);
+        setDoeltitels(new Map(doelenPagina.rijen.map((d) => [d.id, d.title])));
+      })
+      .catch(() => {
+        // Bewust stil op het scherm, maar niet stil in de logboeken: de
+        // datalaag heeft de fout al via `reportError` gemeld. Hier zou een
+        // tweede foutmelding alleen maar over de weekdoelen heen vallen.
+        if (levend) {
+          setStanden(new Map());
+          setDoeltitels(new Map());
+        }
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [userId, ronde]);
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
@@ -159,7 +199,7 @@ export default function Vandaag() {
       <StandBlok
         standen={standen}
         titels={doeltitels}
-        afgeslotenCyclus={afTeSluitenStart}
+        afgeslotenCyclus={geslotenStart}
         loading={loading}
       />
 
@@ -207,12 +247,39 @@ function StandBlok({
 
   if (loading || rijen.length === 0) return null;
 
+  // ⚠️ Dag één is een eigen geval, en het pijnlijke geval is niet "nul doelen"
+  //    maar "het eerste doel". Zonder deze tak krijgt iemand die net begonnen is
+  //    vier keer nul te lezen ("Nog geen reeks", "Punten 0", "Nog geen weekpas")
+  //    plus een uitleg over gemiste weken en minpunten — voordat hij één week
+  //    gedaan heeft. Dat is geen stand maar een waarschuwing vooraf.
+  const nogNietsTeTellen = rijen.every(
+    ({ stand }) =>
+      stand.huidigeReeks === 0 &&
+      stand.besteReeks === 0 &&
+      stand.punten === 0 &&
+      (stand.weekpas?.voltooideCycli ?? 0) === 0,
+  );
+
+  if (nogNietsTeTellen) {
+    return (
+      <Card nested>
+        <Subheading>Je stand</Subheading>
+        <Body muted>
+          Zodra je eerste week is goedgekeurd, staan je reeks en je punten hier.
+        </Body>
+      </Card>
+    );
+  }
+
   return (
     <Card nested>
       <Subheading>Je stand</Subheading>
-      <Body muted>
-        Je reeks telt weken, geen dagen. Een week telt zodra je vloer gehaald is.
-      </Body>
+      {/*
+        ⚠️ Niet meer "een week telt zodra je vloer gehaald is". Dat gebruikt
+           "vloer" als bekend woord, en het klopte bovendien niet voor een
+           weekdoel zónder vloer — daar telt gewoon het plafond.
+      */}
+      <Body muted>Je reeks telt weken, geen dagen.</Body>
 
       <View style={styles.standen}>
         {rijen.map(({ stand, titel }) => (
@@ -227,6 +294,15 @@ function StandBlok({
           />
         ))}
       </View>
+
+      {/*
+        ⚠️ Eén keer onderaan, en niet bij elk doel. Bij vijf doelen stond deze
+           tekst vijf keer onder elkaar en dan leest niemand hem meer — ook niet
+           de ene keer dat het uitmaakt.
+      */}
+      {rijen.some(({ stand }) => stand.weekpas !== null) ? (
+        <Caption>{WEEKPAS_UITLEG}</Caption>
+      ) : null}
     </Card>
   );
 }

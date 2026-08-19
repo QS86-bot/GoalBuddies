@@ -20,7 +20,6 @@ import {
   Card,
   Field,
   Screen,
-  StreakCounter,
   Subheading,
   WeekStartKeuze,
 } from '@/shared/ui';
@@ -62,12 +61,26 @@ export default function Profiel() {
               </View>
             </Card>
 
+            {/*
+              ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
+                 Zolang nergens anders een reeks stond, was dat een plaatshouder.
+                 Sinds QS8-75 toont "Vandaag" de échte reeks per doel, en dan is
+                 dit geen plaatshouder meer maar een tegenspraak: acht weken op
+                 rij op het ene scherm, "Nog geen reeks" op het andere. Een
+                 gebruiker leest dat niet als een halfafgemaakte functie maar als
+                 een rekenfout.
+
+                 Een teller hoort hier ook inhoudelijk niet: een reeks is per
+                 dóél (`user_streaks` heeft de sleutel `(user_id, goal_id)`), dus
+                 één getal op een profielpagina zou moeten kiezen wélk doel — en
+                 die keuze bestaat niet. De uitleg blijft, de tegenspraak gaat weg.
+            */}
             <Card>
               <Subheading>Jouw reeks</Subheading>
-              <StreakCounter cycles={0} />
               <Caption>
-                Zodra je eerste week telt, begint hij hier te lopen. Een weekpas beschermt je
-                reeks als je een week mist — het punt niet, want anders zegt de score niets meer.
+                Je reeks telt weken en staat per doel bij &ldquo;Je stand&rdquo; op Vandaag. Een
+                weekpas beschermt je reeks als je een week mist — het punt niet, want anders zegt
+                de score niets meer.
               </Caption>
             </Card>
 
