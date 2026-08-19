@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 18-08-2026 (na EPIC 7 en de besluitenronde A3/A7/A15/A17/A18/A19)
+**Laatst bijgewerkt:** 19-08-2026 (na De Ketting, QS8-80)
 
 ---
 
@@ -29,7 +29,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0035`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0038`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -64,14 +64,14 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
 - `src/shared/time` — de twee klokken plus `now()`
 - `src/shared/theme` — navy-stelsel, drie themastanden
-- `src/shared/ui` — 16 componenten, met de domeinregels erin gebakken
+- `src/shared/ui` — 17 componenten, met de domeinregels erin gebakken
 - `src/modules/auth` — sessie, profiel, Zod-schema's
 - `src/modules/goals` — doelen, weekdoelen, cyclus
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
 - `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
-- `tests/rls` — 145 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (331 tests)
+- `tests/rls` — 164 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (383 tests)
 - `npm run build` rendert 23 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -81,15 +81,23 @@ groepsoverzicht, je doel aan een groep koppelen, de huddledag instellen en de
 gastvrije uitnodigingspagina die ook zonder account werkt. Sinds EPIC 7 ook de
 groepschat (realtime, met een cache voor een slechte verbinding), automatische
 systeemberichten bij positieve gebeurtenissen, en de weekafsluiting: drie vragen
-op de huddledag met alle antwoorden op één kaart en reacties eronder.
+op de huddledag met alle antwoorden op één kaart en reacties eronder. Sinds
+EPIC 8 staat **De Ketting** bovenaan het groepsscherm: de gedeelde teller van
+hoeveel leden deze periode hun cyclus afsloten.
 
-⚠️ **EPIC 7 heeft één acceptatiecriterium niet gehaald, en dat is een
-afhankelijkheid en geen omissie.** Het systeembericht bij een ketting-mijlpaal
-(QS8-70) is niet gebouwd: **niets schrijft `chain_links`**. Daardoor staat het
-bolletje "deze week al afgesloten" op het groepsoverzicht ook altijd uit, want
-`group_overview()` leest die tabel. De Ketting is QS8-80 in EPIC 8, en dat is de
-eerstvolgende epic. Zet daar `chain_milestone` op de allowlist in
-`chat_messages_system_event_bekend` (migratie 0025).
+✅ **`chain_links` wordt sinds 19-08 gevuld** (QS8-80, migraties 0036 en 0037).
+Twee routes leggen een schakel: een weekafsluiting via de trigger
+`ketting_uit_weekafsluiting()`, en een goedgekeurd weekdoel via
+`ketting_schakel()`. Daarmee gaat ook het bolletje "deze week al afgesloten" op
+het groepsoverzicht eindelijk aan — `group_overview()` las die tabel al.
+
+⚠️ **Wat van QS8-70 nog openstaat is alleen het systeembericht bij een
+ketting-mijlpaal.** Er is nog geen definitie van wat een mijlpaal ín de ketting
+is (drie perioden op rij? voltallig? een rond getal?), dus `chain_milestone`
+staat nog niet op de allowlist in `chat_messages_system_event_bekend`. Zet je
+hem erbij, dan moet `SYSTEEM_GEBEURTENISSEN` in
+`src/modules/buddies/chat-schemas.ts` mee — er staat sinds 18-08 een test op die
+de twee verzamelingen gelijkstelt (valkuil 18).
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
@@ -100,6 +108,50 @@ eerstvolgende epic. Zet daar `chain_milestone` op de allowlist in
 5. Controleer of `.env` bestaat en gevuld is (zie §6).
 6. Draai `npm install && npm run typecheck && npm test` om te zien dat je op een
    werkende basis begint.
+
+---
+
+## 3b. Het merge-ritueel — vijf stappen, en de vijfde wordt vergeten
+
+Vóór élke merge naar `main`:
+
+```bash
+npm run typecheck && npm run lint && npm test && npm run build
+```
+
+En dan de stap die geen enkele machine voor je doet:
+
+5. **Draai de RLS-suite en lees de uitslag.** `npm test` doet dit lokaal mee,
+   maar alleen omdat `.env` de sleutels heeft. Controleer dat de teller klopt —
+   staat er `skipped` bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en
+   zegt groen niets over autorisatie.
+
+⚠️ **Waarom dit een aparte stap is en niet "CI doet het wel".** De CI-job
+"Alles groen" dekt typecheck, lint en de niet-RLS-tests. De RLS-suite slaat
+zichzelf daar over, en dat is een bewuste en juiste keuze: een sleutel die RLS
+omzeilt geef je niet aan een runner die op elke push van elke branch draait
+(zie `.github/workflows/ci.yml`).
+
+Het gevolg moet je scherp hebben: **groen in GitHub bewijst niets over
+domeinregel 7, groepslidmaatschap, peer-goedkeuring of het puntengrootboek.**
+Elke bevinding die er in dit project toe deed — het lek in `weekly_goals.status`
+(EPIC 5), de drie routes terug in een uitgezette groep (A18), de weekafsluiting
+die andermans reacties meenam bij accountverwijdering (A3), de aanwezigheids-
+matrix in `chain_links` (EPIC 8) — is van een soort die CI per definitie niet
+ziet. Ze kwamen alle vier uit de RLS-suite of uit een reviewagent.
+
+**Wanneer deze stap kan vervallen:** zodra er een lokale of aparte Supabase-stack
+is (Q-TODO **A9**). Nu draaien die tests tegen productie, maken ze echte accounts
+aan en lopen ze tegen de aanmeldlimiet (valkuil 14) — daarom staan ze niet in CI
+en daarom is dit handwerk. Het automatiseren van deze stap is meer waard dan elke
+instelling op GitHub.
+
+⚠️ **Branch protection op `main` staat sinds 18-08 aan**, maar smal: force push
+en verwijderen zijn geblokkeerd, inclusief voor beheerders. Er is bewust géén
+verplichte PR of verplichte status check, want die zouden een poort verplicht
+stellen die de bovenstaande klasse fouten niet vangt — en een directe push naar
+`main` onmogelijk maken. Het volledige pakket hoort bij de engineer-review in
+november, als er een echte tweede lezer is.
 
 ---
 
@@ -122,7 +174,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder** — begin bij QS8-80, De Ketting |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder.** QS8-80 (De Ketting) is af; volgende is QS8-75 (reeks en punten op het dashboard) of QS8-81 (weekpassen) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
@@ -141,7 +193,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
-| Systeembericht bij een ketting-mijlpaal | QS8-70 | Niets schrijft `chain_links`. Hoort bij QS8-80 (De Ketting, EPIC 8); dan komt `chain_milestone` op de allowlist in migratie 0025 |
+| Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
@@ -226,8 +278,8 @@ Deze dingen kan een sessie niet zelf oplossen.
 | PostgreSQL client tools | `pg_dump` vóór elke migratie op gevulde data | ✅ geïnstalleerd 18-08-2026 via scoop (PostgreSQL 18.6, géén beheerdersrechten nodig). `npm run db:dump` getest tegen productie: 0,45 MB |
 | Docker + WSL2 | Voor een lokale Supabase-stack. Bewust uitgesteld, zie §5 | uitgesteld tot vóór de eerste echte gebruiker |
 | Supabase CLI | Voor `db push`, `db diff` en de lokale stack | ✅ geïnstalleerd 18-08-2026 via scoop (v2.115.0), staat op `PATH`. **Nog niet ingelogd en niet gelinkt** (geen `supabase/config.toml`), dus `db push` werkt nog niet — zie Q-TODO C3 |
-| GitHub-connector | Voor PR's vanuit een sessie. `gh` staat niet op de machine | niet gedaan — branches worden lokaal naar `main` gemerged |
-| Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan |
+| ~~GitHub-connector~~ | Voor PR's vanuit een sessie | ✅ **18-08: `gh` 2.97.0 geïnstalleerd en ingelogd als `QS86-bot`**, scopes `repo`, `workflow`, `read:org`, `gist`. Een sessie kan nu PR's openen; roep hem aan via het volledige pad (zie valkuil 19) |
+| Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan — **kan nu wel**, via `gh api` in plaats van de webinterface |
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
 | Storage-bucket | Voor avatars en later bijlagen. Geen bucket én geen `storage.objects`-policy | niet gedaan |
@@ -384,6 +436,39 @@ Deze dingen kan een sessie niet zelf oplossen.
    gefaald heeft. Bouw je een "twee kopieën die gelijk moeten blijven"-slot, toets
    dan de gelijkheid en niet twee keer een kant.
 
+19. **Na een `winget install` is de tool niet zichtbaar, en "open een nieuw
+   venster" lost dat niet betrouwbaar op.** Je krijgt dan
+   `De term 'gh' is niet herkend als de naam van een cmdlet` terwijl het
+   programma er gewoon staat.
+
+   Waarom het gebeurt: een Windows-proces krijgt zijn omgeving mee op het moment
+   dat het start en ververst die daarna nooit meer. De installer zet het pad
+   keurig in de machine-`PATH`, maar elk proces dat ouder is dan de installatie
+   draagt de oude versie. Een nieuw **tabblad** in Windows Terminal of een nieuwe
+   terminal in VS Code erft de omgeving van het al draaiende moederproces — dus
+   ook de oude `PATH`.
+
+   Drie manieren eruit, van snel naar duurzaam:
+
+   ```powershell
+   # 1. Ververs PATH in het huidige venster
+   $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
+               [Environment]::GetEnvironmentVariable('Path','User')
+   ```
+
+   2. Sluit de terminal-applicatie **helemaal** af en start hem opnieuw — niet
+      alleen het tabblad.
+   3. Roep het volledige pad aan. Dat werkt altijd en is wat een sessie hier moet
+      doen, want die shell is meestal ouder dan de installatie:
+      `& "C:\Program Files\GitHub CLI\gh.exe" --version`
+
+   **Controleer eerst óf het echt misging** voordat je opnieuw gaat installeren:
+   `winget list --id GitHub.cli -e` zegt of het pakket er staat, en
+   `[Environment]::GetEnvironmentVariable('Path','Machine')` of het pad
+   geregistreerd is. Stond het er allebei, dan is het dit en niets anders.
+
+   Gebeurd bij `gh` (18-08), en dezelfde avond bij de Supabase CLI en `pg_dump`.
+
 ---
 
 ## 8. Openstaande onzekerheden
@@ -408,9 +493,11 @@ De zwaarste op dit moment:
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
    want er staan sinds 18-08 141 RLS-tests die niemand automatisch draait.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
-5. **Niets schrijft `chain_links`**, terwijl `group_overview()` er wel op leunt voor
-   `closed_this_period` en de ketting-mijlpaal van QS8-70 erop wacht. Gevonden
-   tijdens EPIC 7; hoort thuis bij QS8-80 in EPIC 8, en dat is de eerstvolgende epic.
+5. ~~**Niets schrijft `chain_links`**~~ — opgelost 19-08 in QS8-80. Twee routes
+   vullen de tabel, en het lek dat daardoor ontstond (de aanwezigheidsmatrix per
+   persoon per week) is dezelfde dag gedicht in 0037. **Wat de les hiervan is:
+   een redenering die klopt zolang een tabel leeg is, is geen bescherming.**
+   "Afwezigheid, geen kruisje" hield stand tot het moment dat er rijen kwamen.
 6. **Vraag 1 van de weekafsluiting wordt voorgevuld met privé Dagzetten.** De
    bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
    onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.

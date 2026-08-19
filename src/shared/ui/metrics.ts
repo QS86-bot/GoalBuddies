@@ -146,3 +146,60 @@ export function streakLabel(cycles: number): string {
   if (cycles <= 0) return 'Nog geen reeks';
   return cycles === 1 ? '1 week op rij' : `${cycles} weken op rij`;
 }
+
+// ---------------------------------------------------------------------------
+// De Ketting — QS8-80
+// ---------------------------------------------------------------------------
+
+/**
+ * De stand van De Ketting in één groepsperiode, zoals `ketting_stand()` hem
+ * teruggeeft.
+ *
+ * ⚠️ Aantallen, nooit namen. Wie er ontbreekt staat er met opzet niet in en mag
+ *    er ook nooit bij komen: dat zou van deze teller een presentielijst maken,
+ *    en dan is een ontbrekende schakel een publieke gemiste week (domeinregel
+ *    7). De databasefunctie geeft die namen niet eens terug.
+ */
+export interface KettingStand {
+  /** Hoeveel leden deze periode een schakel legden. */
+  readonly schakels: number;
+  /** Hoeveel leden er deze periode meetellen. Zie `kettingLabel`. */
+  readonly inAanmerking: number;
+  /** Heeft iedereen die meetelt zijn schakel gelegd? */
+  readonly voltallig: boolean;
+}
+
+/**
+ * Hoe De Ketting heet in de UI.
+ *
+ * ⚠️ De toon is het hele punt van dit component. "1 van 3" leest als een
+ *    tekortkoming zolang de week loopt; De Ketting telt **opdagen** en is
+ *    onderweg per definitie onaf. Daarom staat er wat er wél is en nooit wat er
+ *    mist — geen "nog 2 te gaan", want dat is dezelfde mededeling met een
+ *    vriendelijk gezicht.
+ *
+ * ⚠️ Nul schakels is niet "niemand deed iets" maar "de week is net begonnen".
+ *    Dat verschil bestaat alleen in de tekst, dus die tekst doet het werk.
+ */
+export function kettingLabel(stand: KettingStand): string {
+  if (stand.inAanmerking <= 0) return 'Nog niemand doet mee';
+  if (stand.schakels <= 0) return 'De week is net begonnen';
+  if (stand.voltallig) {
+    return stand.inAanmerking === 1 ? 'Je schakel ligt er' : 'Voltallig — de ketting is rond';
+  }
+  return stand.schakels === 1
+    ? '1 schakel deze week'
+    : `${stand.schakels} schakels deze week`;
+}
+
+/**
+ * Hoever de ketting gevuld staat, 0…1.
+ *
+ * ⚠️ Loopt alleen omhoog binnen een periode, net als `milestoneProgress`. Een
+ *    lege noemer geeft 0 en niet 1: "voltallig" zonder deelnemers is een
+ *    rekenkundige toevalstreffer, geen prestatie.
+ */
+export function kettingVulling(stand: KettingStand): number {
+  if (stand.inAanmerking <= 0) return 0;
+  return Math.min(1, Math.max(0, stand.schakels / stand.inAanmerking));
+}
