@@ -35,8 +35,15 @@ Lees dit eerst; de rest is naslag.
   is nooit een echte AI-call gedaan. Het weekpas-pad in `herbereken_reeks()`
   stond ook in dit rijtje en is er sinds 19-08 uit: het wordt nu gevuld én is
   end-to-end tegen het echte project gedraaid.
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A34.
-  Niets daarvan blokkeert het bouwen.
+* **⚠️ Twee kritieke gaten wachten op een besluit, en dat is nieuw.** Een
+  gebruiker kan zijn eigen weekdoel aanmaken mét `status = 'approved'` (A35) en
+  een gemiste week gewoon verwijderen (A36). Samen betekent dat: de reeks die de
+  groep van je ziet is te verzinnen, en een gemiste week is gratis te repareren.
+  Beide zijn ouder dan EPIC 8 en beide raken de RLS van `weekly_goals`, dus ze
+  staan open. Er staan `it.fails`-tests op die vanzelf gaan klagen zodra ze dicht
+  zijn. **Doe deze eerst.**
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A38. Alleen
+  A35 en A36 zijn dringend; de rest blokkeert het bouwen niet.
 
 ---
 
