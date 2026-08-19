@@ -1,0 +1,81 @@
+name: Rollover
+
+# De cycle-rollover (QS8-49, Q-TODO A11). De Edge Function is gedeployd en werkt,
+# maar riep zichzelf niet aan — zonder deze planning gebeurt er bij een
+# cyclusovergang niets: geen minpunten, geen `missed`, geen reeks die breekt,
+# geen kettingschakel die uitblijft.
+#
+# ⚠️ Waarom hier en niet via Supabase Cron. Supabase Cron ís pg_cron, en een
+#    Edge Function aanroepen vanuit de database vraagt `pg_net` plus een
+#    Authorization-header met de service-role-key. Die sleutel zou daarmee in de
+#    database komen te staan — precies wat een service-role-key hoort te
+#    vermijden, en in strijd met CLAUDE.md beveiligingsregel 4 ("secrets alleen
+#    via env vars"). Hier staat hij in GitHub Secrets en dus in een env var.
+#    Besluit van Quinten, 19-08-2026.
+
+on:
+  schedule:
+    # ⚠️ Elk uur, en dat is geen willekeurige keuze. Een cyclusgrens valt op
+    #    middernacht in de tijdzone van de gebruiker, en die kan elke zijn — met
+    #    een dagelijkse job zou een deel van je gebruikers tot 23 uur wachten op
+    #    een rollover die al had moeten draaien. De functie is idempotent
+    #    (acceptatiecriterium van QS8-49), dus vaker draaien kost niets behalve
+    #    een paar seconden rekentijd.
+    - cron: '0 * * * *'
+  # Handmatig starten, om te testen en om een gemiste run in te halen.
+  workflow_dispatch:
+
+# ⚠️ Twee rollovers tegelijk is niet gevaarlijk (hij is idempotent) maar wel
+#    zinloos. Bij een trage run schuift de volgende gewoon door.
+concurrency:
+  group: rollover
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollover:
+    name: Cyclus rollen
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Rollover aanroepen
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL (variable) of SUPABASE_SERVICE_ROLE_KEY (secret) ontbreekt."
+            exit 1
+          fi
+
+          # ⚠️ Body en status apart. Zou dit alleen op de exitcode van curl
+          #    letten, dan telt een 500 met een keurige JSON-fout als succes —
+          #    en een stil falende rollover is erger dan geen rollover, want
+          #    niemand merkt het tot de punten niet kloppen.
+          status=$(curl -s -S -o /tmp/rollover.json -w '%{http_code}' \
+            --max-time 120 \
+            -X POST "${SUPABASE_URL}/functions/v1/rollover" \
+            -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+            -H 'Content-Type: application/json')
+
+          echo "HTTP ${status}"
+          cat /tmp/rollover.json
+
+          if [ "${status}" != "200" ]; then
+            echo "::error::Rollover gaf HTTP ${status} in plaats van 200."
+            exit 1
+          fi
+
+          # De functie geeft {"ok":true,...} terug. Alles anders is een storing,
+          # ook als het toevallig met status 200 komt.
+          if ! grep -q '"ok":true' /tmp/rollover.json; then
+            echo "::error::Rollover antwoordde zonder ok:true."
+            exit 1
+          fi
+
+          echo "Rollover gedraaid."
