@@ -53,6 +53,8 @@ export {
 
 export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly-schemas';
 
+export { fetchWeekpasStand, fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
+
 export {
   CATEGORIEEN,
   CATEGORIE_LABELS,

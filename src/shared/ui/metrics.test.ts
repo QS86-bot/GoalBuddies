@@ -7,6 +7,10 @@ import {
   milestoneProgress,
   rangeState,
   streakLabel,
+  weekpasLabel,
+  weekpasReddeDezeCyclus,
+  weekpasUitleg,
+  type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';
 
@@ -185,5 +189,94 @@ describe('kettingVulling', () => {
   it('blijft binnen 0…1 als de database iets raars teruggeeft', () => {
     expect(kettingVulling({ schakels: 9, inAanmerking: 3, voltallig: true })).toBe(1);
     expect(kettingVulling({ schakels: -2, inAanmerking: 3, voltallig: false })).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Weekpassen — QS8-81
+// ---------------------------------------------------------------------------
+
+function stand(over: Partial<WeekpasStand> = {}): WeekpasStand {
+  return {
+    voorraad: 0,
+    maximum: 2,
+    voltooideCycli: 0,
+    totVolgende: 1,
+    laatstVerbruikt: null,
+    ...over,
+  };
+}
+
+describe('weekpasLabel', () => {
+  it('noemt nul geen tekort', () => {
+    // ⚠️ "Geen weekpassen" leest als iets wat je kwijt bent. Je hebt hem nog
+    //    niet verdiend, en dat is een ander gevoel.
+    expect(weekpasLabel(stand({ voorraad: 0 }))).toBe('Nog geen weekpas');
+  });
+
+  it('telt in passen, enkelvoud en meervoud', () => {
+    expect(weekpasLabel(stand({ voorraad: 1 }))).toBe('1 weekpas klaar');
+    expect(weekpasLabel(stand({ voorraad: 2 }))).toBe('2 weekpassen klaar');
+  });
+});
+
+describe('weekpasUitleg', () => {
+  // Dit is de belangrijkste test van dit blok. Domeinregel 10 zegt dat een
+  // weekpas de réeks beschermt en niet het punt; snapt de gebruiker dat niet,
+  // dan leest een terecht minpunt als een storing.
+  it('zegt in elke stand dat de pas de reeks redt en niet het punt', () => {
+    const standen = [
+      stand({ voorraad: 0, totVolgende: 1 }),
+      stand({ voorraad: 1, totVolgende: 3, voltooideCycli: 3 }),
+      stand({ voorraad: 2, totVolgende: 6, voltooideCycli: 6 }),
+    ];
+
+    for (const s of standen) {
+      const tekst = weekpasUitleg(s);
+      expect(tekst).toMatch(/reeks/i);
+      expect(tekst).toMatch(/punt/i);
+    }
+  });
+
+  it('meldt een volle voorraad in plaats van een volgende pas', () => {
+    const tekst = weekpasUitleg(stand({ voorraad: 2, maximum: 2 }));
+
+    expect(tekst).toMatch(/vol/i);
+    expect(tekst).not.toMatch(/Nog \d+ voltooide weken/);
+  });
+
+  it('telt af in hele weken, enkelvoud en meervoud', () => {
+    expect(weekpasUitleg(stand({ voorraad: 1, totVolgende: 1 }))).toMatch(/Nog één voltooide week/);
+    expect(weekpasUitleg(stand({ voorraad: 1, totVolgende: 4 }))).toMatch(/Nog 4 voltooide weken/);
+  });
+
+  it('noemt de eerste pas een eerste, niet een volgende', () => {
+    expect(weekpasUitleg(stand({ voorraad: 0, totVolgende: 1 }))).toMatch(/eerste weekpas/);
+  });
+});
+
+describe('weekpasReddeDezeCyclus', () => {
+  it('herkent de cyclus die zojuist gered is', () => {
+    expect(
+      weekpasReddeDezeCyclus(stand({ laatstVerbruikt: '2026-08-10' }), '2026-08-10'),
+    ).toBe(true);
+  });
+
+  it('meldt niets over een oudere geredde cyclus', () => {
+    // ⚠️ Anders blijft de melding "een weekpas heeft je reeks gered" wekenlang
+    //    staan, en dan is het geen melding maar een verwijt.
+    expect(
+      weekpasReddeDezeCyclus(stand({ laatstVerbruikt: '2026-07-06' }), '2026-08-10'),
+    ).toBe(false);
+  });
+
+  it('meldt niets als er nooit een pas verbruikt is', () => {
+    expect(weekpasReddeDezeCyclus(stand(), '2026-08-10')).toBe(false);
+  });
+
+  it('meldt niets zolang de cyclus onbekend is', () => {
+    // Het profiel is nog niet geladen: dan liever geen melding dan een
+    // verkeerde.
+    expect(weekpasReddeDezeCyclus(stand({ laatstVerbruikt: '2026-08-10' }), null)).toBe(false);
   });
 });

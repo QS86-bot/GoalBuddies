@@ -13,6 +13,11 @@ import type { Weekday } from '../_shared/time/types.ts';
  * Sluit cycli af die voorbij zijn: onvoltooide weekdoelen krijgen `missed` en
  * een minpunt, weekdoelen onder een adempauze krijgen `excused` en niets.
  *
+ * Sinds QS8-81 zet hij daarbij een weekpas in als de gebruiker er een heeft.
+ * Dat verandert niets aan het minpunt — een pas beschermt de reeks, niet het
+ * punt — en is daarmee de enige plek waar `week_pass_events` een `spent`-rij
+ * krijgt.
+ *
  * ⚠️ Waarom een Edge Function en niet een Postgres-functie. Het rekenwerk is
  *    cyclusrekenwerk: per gebruiker de weekgrenzen bepalen uit zijn
  *    week-startdag én tijdzone, inclusief de coulanceperiode. CLAUDE.md
@@ -111,6 +116,9 @@ Deno.serve(async (req: Request) => {
   const nu = new Date();
   let gemist = 0;
   let vrijgesteld = 0;
+  // Hoeveel gemiste weken er door een weekpas gered zijn — QS8-81. Een deelverzameling
+  // van `gemist`: het punt is afgeboekt, alleen de reeks bleef staan.
+  let gered = 0;
 
   for (const profiel of (profielen ?? []) as Profiel[]) {
     // ⚠️ De cyclus die deze gebruiker nog mág afsluiten. Binnen de
@@ -164,6 +172,36 @@ Deno.serve(async (req: Request) => {
       });
 
       gemist += 1;
+
+      // De weekpas — QS8-81.
+      //
+      // ⚠️ Staat ná het minpunt, en dat is de hele regel: een weekpas beschermt
+      //    de reeks, niet het punt (domeinregel 10). Zou hij ook het punt
+      //    terugdraaien, dan is missen gratis en zegt de score niets meer.
+      //
+      // ⚠️ Staat ná de statuswijziging omdat `verbruik_weekpas()` zelf
+      //    controleert dat de cyclus écht gemist is. Die volgorde is dus geen
+      //    smaak: andersom weigert de functie en verdwijnt de bescherming
+      //    zonder dat er iets stukgaat.
+      //
+      // ⚠️ Geen rekenwerk hier. De functie krijgt de cyclusdatum die al in de
+      //    rij staat; er wordt geen week afgeleid (correctheidsregel 7).
+      const { data: geredeWeek, error: pasFout } = await db.rpc('verbruik_weekpas', {
+        p_user_id: profiel.id,
+        p_goal_id: weekdoel.goal_id,
+        p_cycle_start_date: weekdoel.cycle_start_date,
+      });
+
+      if (pasFout) {
+        // Zichtbaar maar zacht. Een pas die niet ingezet kon worden kost een
+        // reeks en hoort niet stil te gebeuren, maar de rollover mag er niet op
+        // stuklopen: de andere profielen moeten nog.
+        console.error(
+          `weekpas verbruiken mislukte voor ${profiel.id}/${weekdoel.goal_id}: ${pasFout.message}`,
+        );
+      } else if (geredeWeek === true) {
+        gered += 1;
+      }
     }
 
     // Reeksen herberekenen voor de doelen die geraakt zijn. Herberekenen en
@@ -195,6 +233,7 @@ Deno.serve(async (req: Request) => {
     JSON.stringify({
       ok: true,
       gemist,
+      gered,
       vrijgesteld,
       profielen: (profielen ?? []).length,
       geslapen: geslapen ?? 0,
