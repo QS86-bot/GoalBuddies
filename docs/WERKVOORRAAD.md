@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 18-08-2026 (na EPIC 7 en de besluitenronde A3/A7/A15/A17/A18/A19)
+**Laatst bijgewerkt:** 19-08-2026 (na De Ketting, QS8-80)
 
 ---
 
@@ -29,7 +29,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0035`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0038`
 staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -64,14 +64,14 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
 - `src/shared/time` — de twee klokken plus `now()`
 - `src/shared/theme` — navy-stelsel, drie themastanden
-- `src/shared/ui` — 16 componenten, met de domeinregels erin gebakken
+- `src/shared/ui` — 17 componenten, met de domeinregels erin gebakken
 - `src/modules/auth` — sessie, profiel, Zod-schema's
 - `src/modules/goals` — doelen, weekdoelen, cyclus
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
 - `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
-- `tests/rls` — 145 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (331 tests)
+- `tests/rls` — 164 tests die de policies écht uitvoeren, met echte JWT's
+- `npm run typecheck`, `lint` en `test` staan groen (383 tests)
 - `npm run build` rendert 23 routes statisch
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -81,15 +81,23 @@ groepsoverzicht, je doel aan een groep koppelen, de huddledag instellen en de
 gastvrije uitnodigingspagina die ook zonder account werkt. Sinds EPIC 7 ook de
 groepschat (realtime, met een cache voor een slechte verbinding), automatische
 systeemberichten bij positieve gebeurtenissen, en de weekafsluiting: drie vragen
-op de huddledag met alle antwoorden op één kaart en reacties eronder.
+op de huddledag met alle antwoorden op één kaart en reacties eronder. Sinds
+EPIC 8 staat **De Ketting** bovenaan het groepsscherm: de gedeelde teller van
+hoeveel leden deze periode hun cyclus afsloten.
 
-⚠️ **EPIC 7 heeft één acceptatiecriterium niet gehaald, en dat is een
-afhankelijkheid en geen omissie.** Het systeembericht bij een ketting-mijlpaal
-(QS8-70) is niet gebouwd: **niets schrijft `chain_links`**. Daardoor staat het
-bolletje "deze week al afgesloten" op het groepsoverzicht ook altijd uit, want
-`group_overview()` leest die tabel. De Ketting is QS8-80 in EPIC 8, en dat is de
-eerstvolgende epic. Zet daar `chain_milestone` op de allowlist in
-`chat_messages_system_event_bekend` (migratie 0025).
+✅ **`chain_links` wordt sinds 19-08 gevuld** (QS8-80, migraties 0036 en 0037).
+Twee routes leggen een schakel: een weekafsluiting via de trigger
+`ketting_uit_weekafsluiting()`, en een goedgekeurd weekdoel via
+`ketting_schakel()`. Daarmee gaat ook het bolletje "deze week al afgesloten" op
+het groepsoverzicht eindelijk aan — `group_overview()` las die tabel al.
+
+⚠️ **Wat van QS8-70 nog openstaat is alleen het systeembericht bij een
+ketting-mijlpaal.** Er is nog geen definitie van wat een mijlpaal ín de ketting
+is (drie perioden op rij? voltallig? een rond getal?), dus `chain_milestone`
+staat nog niet op de allowlist in `chat_messages_system_event_bekend`. Zet je
+hem erbij, dan moet `SYSTEEM_GEBEURTENISSEN` in
+`src/modules/buddies/chat-schemas.ts` mee — er staat sinds 18-08 een test op die
+de twee verzamelingen gelijkstelt (valkuil 18).
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
@@ -166,7 +174,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder** — begin bij QS8-80, De Ketting |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder.** QS8-80 (De Ketting) is af; volgende is QS8-75 (reeks en punten op het dashboard) of QS8-81 (weekpassen) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
@@ -185,7 +193,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
-| Systeembericht bij een ketting-mijlpaal | QS8-70 | Niets schrijft `chain_links`. Hoort bij QS8-80 (De Ketting, EPIC 8); dan komt `chain_milestone` op de allowlist in migratie 0025 |
+| Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
@@ -485,9 +493,11 @@ De zwaarste op dit moment:
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
    want er staan sinds 18-08 141 RLS-tests die niemand automatisch draait.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
-5. **Niets schrijft `chain_links`**, terwijl `group_overview()` er wel op leunt voor
-   `closed_this_period` en de ketting-mijlpaal van QS8-70 erop wacht. Gevonden
-   tijdens EPIC 7; hoort thuis bij QS8-80 in EPIC 8, en dat is de eerstvolgende epic.
+5. ~~**Niets schrijft `chain_links`**~~ — opgelost 19-08 in QS8-80. Twee routes
+   vullen de tabel, en het lek dat daardoor ontstond (de aanwezigheidsmatrix per
+   persoon per week) is dezelfde dag gedicht in 0037. **Wat de les hiervan is:
+   een redenering die klopt zolang een tabel leeg is, is geen bescherming.**
+   "Afwezigheid, geen kruisje" hield stand tot het moment dat er rijen kwamen.
 6. **Vraag 1 van de weekafsluiting wordt voorgevuld met privé Dagzetten.** De
    bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
    onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.

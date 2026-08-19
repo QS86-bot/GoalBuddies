@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   FLOOR_MARK,
+  kettingLabel,
+  kettingVulling,
   milestoneProgress,
   rangeState,
   streakLabel,
@@ -127,5 +129,61 @@ describe('streakLabel', () => {
 
   it('maakt van nul geen "0 weken op rij"', () => {
     expect(streakLabel(0)).toBe('Nog geen reeks');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De Ketting — QS8-80
+// ---------------------------------------------------------------------------
+
+describe('kettingLabel', () => {
+  it('zegt bij nul schakels dat de week begonnen is, niet dat niemand iets deed', () => {
+    // ⚠️ Dit is het verschil tussen een teller en een verwijt. Nul schakels op
+    //    maandagochtend is de normale toestand van elke groep.
+    expect(kettingLabel({ schakels: 0, inAanmerking: 3, voltallig: false })).toBe(
+      'De week is net begonnen',
+    );
+  });
+
+  it('noemt wat er is en nooit wat er mist', () => {
+    const tekst = kettingLabel({ schakels: 1, inAanmerking: 3, voltallig: false });
+
+    expect(tekst).toBe('1 schakel deze week');
+    // Geen "van 3", geen "nog 2 te gaan": dat is dezelfde mededeling over
+    // andermans week met een vriendelijker gezicht (domeinregel 7).
+    expect(tekst).not.toMatch(/van 3|nog \d|te gaan|mist/i);
+  });
+
+  it('viert voltallig, en in een groep van één zonder grootspraak', () => {
+    expect(kettingLabel({ schakels: 3, inAanmerking: 3, voltallig: true })).toBe(
+      'Voltallig — de ketting is rond',
+    );
+    expect(kettingLabel({ schakels: 1, inAanmerking: 1, voltallig: true })).toBe(
+      'Je schakel ligt er',
+    );
+  });
+
+  it('houdt een lege groep uit de teller', () => {
+    expect(kettingLabel({ schakels: 0, inAanmerking: 0, voltallig: true })).toBe(
+      'Nog niemand doet mee',
+    );
+  });
+});
+
+describe('kettingVulling', () => {
+  it('loopt van leeg naar vol', () => {
+    expect(kettingVulling({ schakels: 0, inAanmerking: 4, voltallig: false })).toBe(0);
+    expect(kettingVulling({ schakels: 2, inAanmerking: 4, voltallig: false })).toBe(0.5);
+    expect(kettingVulling({ schakels: 4, inAanmerking: 4, voltallig: true })).toBe(1);
+  });
+
+  it('geeft nul bij een lege noemer in plaats van vol', () => {
+    // ⚠️ "Voltallig" zonder deelnemers is een deling door nul, geen prestatie.
+    expect(kettingVulling({ schakels: 0, inAanmerking: 0, voltallig: true })).toBe(0);
+  });
+
+  it('blijft binnen 0…1 als de database iets raars teruggeeft', () => {
+    expect(kettingVulling({ schakels: 9, inAanmerking: 3, voltallig: true })).toBe(1);
+    expect(kettingVulling({ schakels: -2, inAanmerking: 3, voltallig: false })).toBe(0);
   });
 });

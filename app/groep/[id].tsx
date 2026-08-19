@@ -8,6 +8,7 @@ import {
   fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepsoverzicht,
+  fetchKettingStand,
   fetchMijnLidmaatschap,
   huddledagLabel,
   huidigeGroepsperiode,
@@ -34,10 +35,12 @@ import {
   Card,
   Deelknop,
   Field,
+  Ketting,
   MemberRow,
   MilestoneProgress,
   Screen,
   Subheading,
+  type KettingStand,
 } from '@/shared/ui';
 
 /**
@@ -126,6 +129,19 @@ export default function GroepDetail() {
                 </Body>
               </Card>
             ) : null}
+
+            {/*
+              ⚠️ Bovenaan, vóór de ledenlijst. QS8-80 vraagt De Ketting als "de
+                 belangrijkste gedeelde teller", en dat is een plaatsingskeuze:
+                 het eerste wat je ziet is wat jullie sámen hebben, niet hoe
+                 iedereen er los voor staat. Zou hij onder de ledenlijst staan,
+                 dan lees je eerst de personen en daarna pas de groep.
+            */}
+            {s.ketting === null ? null : (
+              <Card>
+                <Ketting stand={s.ketting} />
+              </Card>
+            )}
 
             <Card>
               <Subheading>Wie er meedoen</Subheading>
@@ -589,6 +605,8 @@ interface Stand {
   readonly groep: Groep | null;
   readonly overzicht: Pagina<Groepslid>;
   readonly beheerder: boolean;
+  /** `null` als je geen lid bent — dan geeft `ketting_stand()` niets terug. */
+  readonly ketting: KettingStand | null;
 }
 
 /**
@@ -606,16 +624,25 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
   const groep = await fetchGroep(groupId);
 
   if (groep === null) {
-    return { groep: null, overzicht: { rijen: [], totaal: 0, meer: false }, beheerder: false };
+    return {
+      groep: null,
+      overzicht: { rijen: [], totaal: 0, meer: false },
+      beheerder: false,
+      ketting: null,
+    };
   }
 
+  // ⚠️ Dezelfde periode voor het overzicht én voor De Ketting. Zou elk zijn
+  //    eigen `huidigeGroepsperiode()` aanroepen, dan kan er een cyclusgrens
+  //    tussen vallen en toont het scherm twee verschillende weken naast elkaar.
   const periode = huidigeGroepsperiode(groep);
-  const [overzicht, lidmaatschap] = await Promise.all([
+  const [overzicht, lidmaatschap, ketting] = await Promise.all([
     fetchGroepsoverzicht(groupId, periode),
     fetchMijnLidmaatschap(groupId, userId),
+    fetchKettingStand(groupId, periode),
   ]);
 
-  return { groep, overzicht, beheerder: lidmaatschap?.role === 'admin' };
+  return { groep, overzicht, beheerder: lidmaatschap?.role === 'admin', ketting };
 }
 
 const styles = StyleSheet.create({

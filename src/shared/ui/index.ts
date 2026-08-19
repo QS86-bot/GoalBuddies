@@ -21,6 +21,7 @@ export { Choice, type Optie } from './Choice';
 export { Deelknop } from './Deelknop';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
+export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
@@ -34,8 +35,11 @@ export {
   FLOOR_MARK,
   milestoneProgress,
   rangeState,
+  kettingLabel,
+  kettingVulling,
   streakLabel,
   type Achieved,
+  type KettingStand,
   type RangeState,
   type Tone,
   type Viewer,

@@ -32,6 +32,8 @@ export {
   vergeetOpenstaandeUitnodiging,
 } from './pending';
 
+export { fetchKettingStand } from './ketting';
+
 export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
 
 export {
