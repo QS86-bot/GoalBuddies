@@ -13,7 +13,14 @@ export type WeeklyGoalStatus =
   | 'approved'
   | 'missed'
   | 'carried'
-  | 'excused';
+  | 'excused'
+  /**
+   * Zelf afgesloten — A40, migratie 0045. Vervangt het verwijderen van een
+   * weekdoel: de rij blijft staan, en de rollover veegt hem bij het verstrijken
+   * van de cyclus mee naar `missed`. Binnen de lopende cyclus dus neutraal,
+   * daarna een gemiste week.
+   */
+  | 'cancelled';
 
 /** Wat er gehaald is, zoals `completions.achieved_level`. */
 export type Achieved = 'none' | 'floor' | 'ceiling';
@@ -100,6 +107,20 @@ export function rangeState(input: {
       tone: 'neutral',
       fill: 0,
       label: 'Meegenomen naar deze week',
+      awaitingApproval: false,
+    };
+  }
+
+  if (status === 'cancelled') {
+    // ⚠️ "Afgesloten" en niet "verwijderd" of "opgegeven". Je hebt zelf besloten
+    //    dat deze week niet doorgaat; dat is een keuze en geen mislukking. Dat
+    //    het als gemiste week gaat tellen zodra de cyclus verstrijkt, hoort in
+    //    het scherm dat de knop aanbiedt te staan — niet als verwijt achteraf.
+    return {
+      hidden: false,
+      tone: 'neutral',
+      fill: 0,
+      label: 'Afgesloten',
       awaitingApproval: false,
     };
   }

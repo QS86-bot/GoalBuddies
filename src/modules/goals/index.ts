@@ -52,7 +52,7 @@ export {
   fetchWeekdoelen,
   maakWeekdoel,
   schuifDoor,
-  verwijderWeekdoel,
+  sluitWeekdoelAf,
   type Weekdoel,
 } from './weekly';
 

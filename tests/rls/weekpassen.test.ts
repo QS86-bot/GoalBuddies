@@ -57,6 +57,11 @@ function stand(data: unknown): Stand {
   return (data ?? {}) as Stand;
 }
 
+/** De vorm die de statusovergang-RPC's teruggeven. */
+function uitkomst(data: unknown): { ok?: boolean; reason?: string } {
+  return (data ?? {}) as { ok?: boolean; reason?: string };
+}
+
 describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   let f: Fixture;
 
@@ -548,6 +553,206 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     TEST_TIMEOUT,
   );
 
+  // -------------------------------------------------------------------------
+  // A39 en A40 — de twee andere deuren naar dezelfde kamer, dicht in 0045
+  // -------------------------------------------------------------------------
+
+  it(
+    'laat doorschuiven de reeks niet repareren',
+    async () => {
+      // ⚠️ Dit is de kern van A39. `markeer_doorgeschoven()` zette een gemiste
+      //    week op `carried`, en `herbereken_reeks()` brak alleen op `missed` —
+      //    dus één aanroep herstelde de reeks gratis, terwijl de rollover de
+      //    weekpas al had verbruikt. Doorschuiven verplaatst sinds 0045 het
+      //    wérk en niet de geschiedenis.
+      const admin = adminDb();
+      const cyclus = '2026-05-04';
+
+      const gemist = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'gemist en doorgeschoven',
+          cycle_start_date: cyclus,
+          cycle_index: 910,
+          status: 'missed',
+        })
+        .select('id')
+        .single();
+      if (gemist.error) throw new Error(`opbouw: ${gemist.error.message}`);
+
+      // Een goedgekeurde week erna, zodat er iets te repareren valt.
+      const goed = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'wel gehaald',
+          cycle_start_date: '2026-05-11',
+          cycle_index: 911,
+          status: 'approved',
+        })
+        .select('id')
+        .single();
+      if (goed.error) throw new Error(`opbouw: ${goed.error.message}`);
+
+      const doorgeschoven = await f.bob.db.rpc('markeer_doorgeschoven', {
+        p_weekly_goal_id: gemist.data.id,
+      });
+      expect(doorgeschoven.error).toBeNull();
+      expect(uitkomst(doorgeschoven.data).ok).toBe(true);
+
+      await admin.rpc('herbereken_reeks', { p_user_id: f.bob.id, p_goal_id: f.bobGoalId });
+
+      const { data } = await f.bob.db
+        .from('user_streaks')
+        .select('current_streak')
+        .eq('goal_id', f.bobGoalId)
+        .single();
+
+      // De week ná de doorgeschoven week telt, de reeks dáárvoor niet: 1 en
+      // niet 2. Vóór 0045 was dit 2.
+      expect(data?.current_streak).toBe(1);
+
+      await admin.from('weekly_goals').delete().in('id', [gemist.data.id, goed.data.id]);
+      await admin.from('user_streaks').delete().eq('goal_id', f.bobGoalId);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een openstaande week niet doorschuiven vóór de rollover erbij was',
+    async () => {
+      // ⚠️ Zonder deze grens kon je het minpunt ontlopen: de rollover raakt
+      //    uitsluitend `todo` en `cancelled`, dus een rij die al `carried` is
+      //    wordt nooit meer `missed` en er wordt nooit iets geboekt.
+      const admin = adminDb();
+      const open = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'nog open',
+          cycle_start_date: '2026-05-18',
+          cycle_index: 912,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+      if (open.error) throw new Error(`opbouw: ${open.error.message}`);
+
+      const poging = await f.bob.db.rpc('markeer_doorgeschoven', {
+        p_weekly_goal_id: open.data.id,
+      });
+
+      expect(poging.error).toBeNull();
+      expect(uitkomst(poging.data).ok).toBe(false);
+      expect(uitkomst(poging.data).reason).toBe('not_missed');
+
+      await admin.from('weekly_goals').delete().eq('id', open.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een weekdoel afsluiten in plaats van verwijderen, en het spoor blijft',
+    async () => {
+      // A40: de rij verdwijnt niet, hij krijgt `cancelled`. De rollover veegt
+      // hem daarna mee naar `missed`, dus afsluiten kost wat het hoort te kosten.
+      const admin = adminDb();
+      const gemaakt = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'toch maar niet',
+          cycle_start_date: '2026-05-25',
+          cycle_index: 913,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+      if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
+
+      const afgesloten = await f.bob.db.rpc('sluit_weekdoel_af', {
+        p_weekly_goal_id: gemaakt.data.id,
+      });
+
+      expect(afgesloten.error).toBeNull();
+      expect(uitkomst(afgesloten.data).ok).toBe(true);
+
+      const { data } = await admin
+        .from('weekly_goals')
+        .select('status')
+        .eq('id', gemaakt.data.id)
+        .single();
+
+      expect(data?.status).toBe('cancelled');
+
+      await admin.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat niemand het weekdoel van een ander afsluiten',
+    async () => {
+      const admin = adminDb();
+      const vanAlice = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.aliceGoalId,
+          title: 'van alice',
+          cycle_start_date: '2026-06-01',
+          cycle_index: 914,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+      if (vanAlice.error) throw new Error(`opbouw: ${vanAlice.error.message}`);
+
+      const poging = await f.bob.db.rpc('sluit_weekdoel_af', {
+        p_weekly_goal_id: vanAlice.data.id,
+      });
+
+      expect(uitkomst(poging.data).ok).toBe(false);
+      expect(uitkomst(poging.data).reason).toBe('not_owner');
+
+      await admin.from('weekly_goals').delete().eq('id', vanAlice.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'verbergt een afgesloten week voor groepsgenoten',
+    async () => {
+      // ⚠️ Domeinregel 7. Een afgesloten weekdoel is een opgegeven week, en dat
+      //    is exact het tegenslagsignaal dat 0019 en 0020 voor `missed` en
+      //    `carried` hebben weggehaald. Vergeten we `cancelled`, dan lekt 0045
+      //    precies wat 0020 dichtte.
+      const admin = adminDb();
+      const rij = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.aliceGoalId,
+          title: 'opgegeven week van alice',
+          cycle_start_date: '2026-06-08',
+          cycle_index: 915,
+          status: 'cancelled',
+        })
+        .select('id')
+        .single();
+      if (rij.error) throw new Error(`opbouw: ${rij.error.message}`);
+
+      const { data } = await f.bob.db
+        .from('weekly_goals')
+        .select('id')
+        .eq('id', rij.data.id);
+
+      expect(data).toEqual([]);
+
+      await admin.from('weekly_goals').delete().eq('id', rij.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'laat een gemiste week niet verwijderen',
     async () => {
@@ -663,10 +868,14 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   );
 
   it(
-    'laat een weekdoel dat nog niets is wél verwijderen',
+    'laat ook een openstaand weekdoel niet meer verwijderen — afsluiten is de weg',
     async () => {
-      // De andere kant van 0043: een weekdoel dat je per ongeluk aanmaakte moet
-      // je gewoon kunnen weggooien. Alleen geschiedenis blijft staan.
+      // ⚠️ Dit was in 0043 nog wél toegestaan, en A40 heeft dat teruggedraaid:
+      //    juist het verwijderen van een `todo`-rij vóór de rollover was de
+      //    manier om een week nooit gemist te laten zijn. Sinds 0045 is het
+      //    DELETE-recht ingetrokken, dus dit weigert lúid met 42501 in plaats
+      //    van stil — precies wat je wilt bij iets dat een gebruiker bewust
+      //    probeert.
       const admin = adminDb();
       const gemaakt = await admin
         .from('weekly_goals')
@@ -682,14 +891,21 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
 
       if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
 
-      await f.bob.db.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+      const { error } = await f.bob.db
+        .from('weekly_goals')
+        .delete()
+        .eq('id', gemaakt.data.id);
+
+      expect(error?.code).toBe('42501');
 
       const { count } = await admin
         .from('weekly_goals')
         .select('*', { count: 'exact', head: true })
         .eq('id', gemaakt.data.id);
 
-      expect(count).toBe(0);
+      expect(count).toBe(1);
+
+      await admin.from('weekly_goals').delete().eq('id', gemaakt.data.id);
     },
     TEST_TIMEOUT,
   );

@@ -38,7 +38,9 @@ import type { Weekday } from '../_shared/time/types.ts';
  *    bovendien het juiste niveau — je controleert wat iemand mág, niet welke
  *    string hij toevallig heeft.
  *
- * ⚠️ Idempotent. De functie raakt uitsluitend weekdoelen met status `todo`, en
+ * ⚠️ Idempotent. De functie raakt uitsluitend weekdoelen met status `todo` of
+ *    `cancelled` — allebei "nog niets gebeurd", en allebei een gemiste week
+ *    zodra de cyclus verstrijkt (A40) — en
  *    de unieke index op `points_ledger` weigert een tweede boeking voor dezelfde
  *    reden en referentie. Twee keer draaien verandert dus niets, en een
  *    overgeslagen dag wordt vanzelf ingehaald: alles wat te oud is, wordt bij de
@@ -160,7 +162,14 @@ Deno.serve(async (req: Request) => {
       .from('weekly_goals')
       .select('id, goal_id, cycle_start_date, points_miss, goals!inner(owner_id)')
       .eq('goals.owner_id', profiel.id)
-      .eq('status', 'todo')
+      // ⚠️ `cancelled` hoort hier net zo goed bij als `todo` — A40, migratie
+      //    0045. Een afgesloten weekdoel is een week die je bewust hebt
+      //    opgegeven, en die telt bij het verstrijken van de cyclus als gemist:
+      //    mét minpunt, en een weekpas kan hem redden zoals elke andere.
+      //    Precies daarom hoeft `herbereken_reeks()` niets van `cancelled` te
+      //    weten: in de lopende cyclus is hij neutraal zoals `todo`, en daarna
+      //    is hij gewoon `missed`.
+      .in('status', ['todo', 'cancelled'])
       .lt('cycle_start_date', afsluitbaar.startDate)
       .order('cycle_start_date', { ascending: true });
 

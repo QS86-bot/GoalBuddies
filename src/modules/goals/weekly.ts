@@ -90,12 +90,39 @@ export async function maakWeekdoel(
   return { ok: true, waarde: data };
 }
 
-export async function verwijderWeekdoel(id: string): Promise<Resultaat<true>> {
-  const { error } = await supabase().from('weekly_goals').delete().eq('id', id);
+/**
+ * Sluit een weekdoel af — A40, migratie 0045.
+ *
+ * ⚠️ Heette `verwijderWeekdoel()` en gooide de rij ook echt weg. Dat was een
+ *    gat: de rollover stempelt een week pas ná afloop als gemist, dus wie zijn
+ *    weekdoel wiste vóórdat de cyclus sloot, had die week nooit gemist — geen
+ *    minpunt, geen onderbreking, en een reeks die stalde in plaats van brak.
+ *
+ * ⚠️ De rij blijft nu staan met status `cancelled`, en de rollover veegt hem bij
+ *    het verstrijken van de cyclus mee naar `missed`. Afsluiten kost dus wat het
+ *    hoort te kosten, en een weekpas kan het opvangen zoals elke gemiste week.
+ *    Verwijderen kán niet meer: het recht is ingetrokken, dus een rechtstreekse
+ *    DELETE geeft 42501.
+ */
+export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('sluit_weekdoel_af', {
+    p_weekly_goal_id: id,
+  });
 
   if (error) {
-    reportError(error, 'weekly.delete', { code: error.code });
-    return { ok: false, melding: 'Verwijderen lukte niet.' };
+    reportError(error, 'weekly.cancel', { code: error.code });
+    return { ok: false, melding: 'Afsluiten lukte niet.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uitkomst.ok !== true) {
+    return {
+      ok: false,
+      melding:
+        uitkomst.reason === 'not_open'
+          ? 'Deze week staat niet meer open. Alleen een weekdoel waar nog niets mee gebeurd is, kun je afsluiten.'
+          : 'Afsluiten lukte niet.',
+    };
   }
 
   return { ok: true, waarde: true };
@@ -136,7 +163,9 @@ export async function schuifDoor(
       melding:
         uitkomst.reason === 'not_open'
           ? 'Deze week staat niet meer open. Doorschuiven kan alleen bij een week die nog loopt.'
-          : 'Doorschuiven lukte niet.',
+          : uitkomst.reason === 'not_missed'
+            ? 'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.'
+            : 'Doorschuiven lukte niet.',
     };
   }
 

@@ -35,22 +35,22 @@ Lees dit eerst; de rest is naslag.
   is nooit een echte AI-call gedaan. Het weekpas-pad in `herbereken_reeks()`
   stond ook in dit rijtje en is er sinds 19-08 uit: het wordt nu gevuld én is
   end-to-end tegen het echte project gedraaid.
-* ✅ **A35 is dicht** (migratie 0043): een gebruiker kon zijn eigen weekdoel
-  aanmaken mét `status = 'approved'` en zo een reeks verzinnen die de groep te
-  zien krijgt, plus gratis weekpassen. **A36 is maar half dicht.** De directe
-  route (een gemiste week verwijderen) is weg, maar er zijn twee andere deuren
-  naar dezelfde kamer: `markeer_doorgeschoven()` zet `missed` om naar `carried`
-  en dat breekt de reeks niet (**A39**), en de `todo`-rij verwijderen vóór de
-  rollover betekent dat de week nooit gemist wordt (**A40**). **Zolang die
-  openstaan beschermt de weekpas niets.** Allebei een productbesluit.
+* ✅ **De reeks is niet meer te verzinnen en een gemiste week niet meer weg te
+  poetsen** (migraties 0043 t/m 0045, A35/A36/A39/A40). Vier routes, alle vier
+  dicht: je eigen weekdoel op `approved` zetten, een gemiste week verwijderen,
+  hem doorschuiven (`carried` breekt de reeks nu, tenzij er een weekpas op
+  staat), en de `todo`-rij wissen vóór de rollover (verwijderen is nu
+  **afsluiten** — de rij blijft als `cancelled` staan en de rollover veegt hem
+  bij het verstrijken van de cyclus mee naar `missed`).
 * **De les van deze ronde, en hij is duurder dan de bug.** 0023 dichtte dit voor
   *wijzigen*, niemand keek naar *aanmaken* en *verwijderen*, en in
-  `ENGINEER-REVIEW.md` stond het als opgelost afgevinkt. Een dichtgestreepte
-  regel is de plek waar niemand meer kijkt — daarom staat A36 daar nu
-  uitdrukkelijk **niet** als opgelost.
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A40. A39 en
-  A40 zijn de dringendste, daarna A37 (telt een week mee zodra één weekdoel af
-  is?). Geen van drieën blokkeert het bouwen van andere issues.
+  `ENGINEER-REVIEW.md` stond het als opgelost afgevinkt. En toen 0043 die twee
+  sloot, bleken er nog twee deuren te zijn. **Vier migraties voor één gat, en
+  elke ronde vond de vorige reparatie te smal.** Bij het volgende slot: zoek eerst
+  álle routes naar het effect, niet de route die je net gevonden hebt.
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A40. De
+  dringendste die nog openstaat is A37 (telt een week mee zodra één weekdoel af
+  is?); die blokkeert het bouwen van andere issues niet.
 
 ---
 
