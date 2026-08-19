@@ -485,31 +485,25 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   );
 
   // -------------------------------------------------------------------------
-  // De reeks die de weekpas beschermt — twee gaten, gevonden door de
-  // security-review op QS8-81
+  // De reeks die de weekpas beschermt — A35 en A36, gedicht in 0043
   // -------------------------------------------------------------------------
   //
-  // ⚠️ Deze twee staan als `it.fails` en dat is opzet. Ze beschrijven wat er
-  //    hóórt te gelden; zolang het gat er is, klaagt de assertie en telt de test
-  //    als geslaagd. Wordt het gat gedicht, dan slaagt de assertie, faalt
-  //    `it.fails`, en verdwijnt deze markering vanzelf uit de suite in plaats
-  //    van er jaren te blijven staan. Zelfde patroon als bijlage 1 van
-  //    `docs/Q-TODO.docx`.
+  // ⚠️ Allebei ouder dan QS8-81, allebei gevonden door de security-review erop,
+  //    en allebei de bódem onder deze feature: een weekpas is een schaarse munt
+  //    die een reeks beschermt, en als die reeks te verzinnen én gratis te
+  //    repareren is, is de munt niets waard.
   //
-  // ⚠️ Allebei ouder dan QS8-81 en allebei buiten deze issue gerepareerd — een
-  //    reparatie raakt de RLS van `weekly_goals`, en dat is volgens CLAUDE.md
-  //    niets om zonder Quinten aan te komen. Ze staan hier omdat ze de bódem
-  //    onder deze feature zijn: een weekpas is een schaarse munt die een reeks
-  //    beschermt, en als die reeks te verzinnen én gratis te repareren is, is de
-  //    munt niets waard. Zie A35 en A36 in `docs/Q-TODO.docx`.
+  // ⚠️ Ze stonden hier eerst als `it.fails`, omdat een reparatie de RLS van
+  //    `weekly_goals` raakt en dat volgens CLAUDE.md eerst een besluit van
+  //    Quinten vraagt. Dat besluit is er (19-08) en 0043 heeft het gat gedicht,
+  //    dus het zijn nu gewone tests.
 
-  it.fails(
-    'zou een zelf aangemaakt weekdoel niet op approved mogen laten zetten',
+  it(
+    'laat een zelf aangemaakt weekdoel niet op approved zetten',
     async () => {
-      // Zonder buddy, zonder goedkeuring: één POST. Dat levert niet alleen een
-      // verzonnen reeks op die de groep te zien krijgt (`group_visible_streaks`),
-      // maar ook gratis weekpassen — `verdien_weekpassen()` telt goedgekeurde
-      // cycli.
+      // Zonder deze grens levert één POST per week een verzonnen reeks op die de
+      // groep via `group_visible_streaks` te zien krijgt, plus gratis
+      // weekpassen — `verdien_weekpassen()` telt goedgekeurde cycli.
       const { error } = await f.bob.db.from('weekly_goals').insert({
         goal_id: f.bobGoalId,
         title: 'zelf goedgekeurd',
@@ -518,13 +512,44 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         status: 'approved',
       });
 
+      // Een kolomgrant weigert luid: 42501. RLS kan geen kolommen beperken, dus
+      // dit kón alleen een grant zijn.
       expect(error?.code).toBe('42501');
     },
     TEST_TIMEOUT,
   );
 
-  it.fails(
-    'zou een gemiste week niet mogen laten verwijderen',
+  it(
+    'laat een weekdoel zonder status gewoon aanmaken',
+    async () => {
+      // ⚠️ De keerzijde van de test hierboven, en de reden dat hij bestaat: een
+      //    ingetrokken kolomrecht breekt de app stil (valkuil 17). Dit is exact
+      //    wat `maakWeekdoel()` invult; gaat dit stuk, dan kan niemand meer een
+      //    weekdoel aanmaken en blijft de typecheck groen.
+      const { data, error } = await f.bob.db
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'gewoon weekdoel',
+          floor_text: 'de slechte week',
+          ceiling_text: 'de goede week',
+          cycle_start_date: '2026-03-16',
+          cycle_index: 902,
+        })
+        .select('id, status')
+        .single();
+
+      expect(error).toBeNull();
+      // En hij begint op `todo`, want de standaardwaarde doet het werk.
+      expect(data?.status).toBe('todo');
+
+      await adminDb().from('weekly_goals').delete().eq('id', data?.id ?? '');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een gemiste week niet verwijderen',
     async () => {
       // `herbereken_reeks()` loopt over de rijen die er zijn. Verdwijnt de
       // gemiste week, dan bestaat de onderbreking niet meer en loopt de reeks
@@ -548,12 +573,50 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
 
       await f.bob.db.from('weekly_goals').delete().eq('id', gemaakt.data.id);
 
+      // ⚠️ Toetst de úítkomst en niet de foutcode. De DELETE-policy weigert door
+      //    de rij weg te filteren, en een DELETE die niets raakt is geen fout —
+      //    je krijgt HTTP 204 en een ongewijzigde tabel. Zelfde reden als bij
+      //    `week_pass_events` hierboven.
       const { count } = await admin
         .from('weekly_goals')
         .select('*', { count: 'exact', head: true })
         .eq('id', gemaakt.data.id);
 
       expect(count).toBe(1);
+
+      await admin.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een weekdoel dat nog niets is wél verwijderen',
+    async () => {
+      // De andere kant van 0043: een weekdoel dat je per ongeluk aanmaakte moet
+      // je gewoon kunnen weggooien. Alleen geschiedenis blijft staan.
+      const admin = adminDb();
+      const gemaakt = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'per ongeluk',
+          cycle_start_date: '2026-03-23',
+          cycle_index: 903,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+
+      if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
+
+      await f.bob.db.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+
+      const { count } = await admin
+        .from('weekly_goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', gemaakt.data.id);
+
+      expect(count).toBe(0);
     },
     TEST_TIMEOUT,
   );
