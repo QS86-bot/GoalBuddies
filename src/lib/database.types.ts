@@ -1608,6 +1608,7 @@ export type Database = {
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
+      sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
       systeembericht_allowlist: { Args: never; Returns: string[] }
       trek_deadline_verzoek_in: {
         Args: { p_request_id: string }
