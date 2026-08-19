@@ -189,20 +189,34 @@ Klein, maar het staat nergens anders opgeschreven:
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
-| Rollover opnieuw deployen | Q-TODO A13 | De functie roept nu ook `slaap_stille_groepen()` aan, en in de repo stond een kapotte regex. Deployen vraagt een access token dat een sessie niet heeft |
+| ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
 
-⚠️ **De rollover draait nog niet vanzelf.** `supabase/functions/rollover` is
-gedeployd en werkt, maar er staat geen planning op. Tot die er is, gebeurt er bij
-een cyclusovergang niets: geen minpunten, geen `missed`, geen reeksbreuk. Aanroepen
-kan met:
+✅ **De rollover draait sinds 19-08 vanzelf**, elk uur via
+`.github/workflows/rollover.yml`. Geverifieerd op GitHub: `HTTP 200` en
+`{"ok":true,"gemist":0,"vrijgesteld":0,"profielen":1,"geslapen":0}`.
+
+Handmatig starten kan met `gh workflow run Rollover`, of rechtstreeks met:
 
 ```bash
 curl -X POST "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/rollover" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
 ```
 
-Inplannen gaat via Supabase Cron in het dashboard, of via `pg_cron` + `pg_net`.
-Dat laatste vraagt de service-role-key in de database (Vault), en dat is een
-beslissing die niet stilzwijgend genomen moet worden.
+⚠️ **Waarom het GitHub Actions werd en geen Supabase Cron.** Supabase Cron *is*
+pg_cron met een schermpje eromheen; een Edge Function aanroepen vanuit Postgres
+vraagt `pg_net` plus een `Authorization`-header met de service-role-key. Die
+sleutel zou daarmee in de database komen te staan — precies wat een
+service-role-key hoort te vermijden, en in strijd met `CLAUDE.md`
+beveiligingsregel 4. In GitHub Secrets staat hij in een env var, zoals de regel
+het vraagt. Besluit van Quinten, 19-08-2026.
+
+⚠️ **Elk uur en niet dagelijks**, omdat een cyclusgrens op middernacht in de
+tijdzone van de gebruiker valt en die kan elke zijn. De functie is idempotent,
+dus vaker draaien kost alleen rekentijd.
+
+⚠️ **Twee dingen om te weten als hij ooit stilvalt.** Een geplande workflow
+draait uitsluitend vanaf de default branch — staat hij op een feature branch,
+dan gebeurt er niets. En GitHub schakelt geplande workflows uit in repo's waar
+zestig dagen geen activiteit is.
 
 ### Milestone: Live op goalbuddies.q-projects.tech
 
@@ -261,8 +275,8 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
 | Storage-bucket | Voor avatars en later bijlagen. Geen bucket én geen `storage.objects`-policy | niet gedaan |
-| Rollover inplannen | De Edge Function werkt maar wordt door niets aangeroepen. Zie §4 | niet gedaan |
-| Rollover opnieuw deployen | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex. `supabase functions deploy rollover` vraagt een access token | niet gedaan — Q-TODO A13 |
+| ~~Rollover inplannen~~ | De Edge Function werd door niets aangeroepen | ✅ **gedaan 19-08.** `.github/workflows/rollover.yml` draait hem elk uur; de sleutel staat in GitHub Secrets en niet in de database. Geverifieerd op GitHub: twee runs geslaagd, log toont `HTTP 200` en `{"ok":true,...}` |
+| ~~Rollover opnieuw deployen~~ | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex | ✅ **gedaan 19-08**, geverifieerd met een echte aanroep. De CLI blijkt ingelogd; het access token stond in de CLI-config en niet in `.env`, en dat is de reden dat dit maanden onterecht als geblokkeerd stond |
 | `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |

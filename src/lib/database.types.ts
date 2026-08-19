@@ -1481,6 +1481,7 @@ export type Database = {
       }
     }
     Functions: {
+      ai_verbruik: { Args: never; Returns: Json }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
         Returns: Json
@@ -1614,6 +1615,10 @@ export type Database = {
       }
       trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
+      vraag_ai_job: {
+        Args: { p_goal_id: string; p_input: Json; p_kind: string }
+        Returns: Json
+      }
       vraag_deadline_verschuiving: {
         Args: {
           p_goal_id: string

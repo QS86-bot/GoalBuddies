@@ -105,6 +105,36 @@ export function toIsoDate(year: number, month: number, day: number): IsoDate {
   return `${year}-${pad(month)}-${pad(day)}` as IsoDate;
 }
 
+/**
+ * Is dit een bestaande kalenderdatum in het formaat `JJJJ-MM-DD`?
+ *
+ * ⚠️ Staat hier en niet in een Zod-schema, om de reden die in `index.ts` staat:
+ *    dit is een datumberekening, en die horen niet buiten deze module. Een
+ *    schema mag hem aanroepen.
+ *
+ * ⚠️ Een regex alleen is te weinig: die laat `2026-13-45` en `2027-02-30` door.
+ *    Dat werd zichtbaar bij de deadline-verzoeken (Q-TODO A7), waar zo'n waarde
+ *    door het formulier kwam en pas in Postgres omviel — de gebruiker kreeg een
+ *    storingsmelding voor een tikfout.
+ */
+export function isGeldigeIsoDatum(waarde: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(waarde.trim());
+  if (!match) return false;
+
+  const [, y, m, d] = match;
+  const jaar = Number(y);
+  const maand = Number(m);
+  const dag = Number(d);
+
+  if (maand < 1 || maand > 12 || dag < 1) return false;
+
+  // Schrikkeljaar volgens de gregoriaanse regel, zonder een Date te bouwen.
+  const schrikkel = (jaar % 4 === 0 && jaar % 100 !== 0) || jaar % 400 === 0;
+  const lengte = [31, schrikkel ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+  return dag <= (lengte[maand - 1] ?? 0);
+}
+
 export function parseIsoDate(date: IsoDate): { year: number; month: number; day: number } {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!match) throw new Error(`Ongeldige datum: ${date}`);
@@ -121,6 +151,31 @@ export function parseIsoDate(date: IsoDate): { year: number; month: number; day:
 export function weekdayOf(date: IsoDate): Weekday {
   const { year, month, day } = parseIsoDate(date);
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay() as Weekday;
+}
+
+/**
+ * De wandkloktijd van een tijdstempel, als `HH:MM` — bijvoorbeeld `09:05`.
+ *
+ * ⚠️ Deze functie staat hier en niet bij de chat, om precies de reden die
+ *    CLAUDE.md correctheidsregel 7 noemt: het is een tijdberekening. `created_at`
+ *    komt als ISO-string uit Postgres en moet in de tijdzone van de lézer
+ *    weergegeven worden, niet in die van de server. Zou een scherm dit zelf doen
+ *    met `new Date(...).toLocaleTimeString()`, dan staat er op de telefoon van een
+ *    reiziger een andere tijd bij hetzelfde bericht dan in de groepsgeschiedenis.
+ *
+ * ⚠️ `h23` en niet de landsinstelling: `09:05` en nooit `9:05 AM`. De app is
+ *    Nederlands en een 24-uursklok is hier het enige juiste antwoord.
+ *
+ * Geeft een lege string bij een tijdstempel die niet te lezen is. Een chatregel
+ * zonder tijd is beter dan een chatregel met `Invalid Date` erboven.
+ */
+export function klokTijd(timestamp: string, tz: TimeZone): string {
+  const moment = new Date(timestamp);
+  if (Number.isNaN(moment.getTime())) return '';
+
+  const p = partsIn(tz, moment);
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${pad(p.hour)}:${pad(p.minute)}`;
 }
 
 /** Kalenderrekenen, zonder tijdzone: `2026-03-29` plus 1 dag is `2026-03-30`. */

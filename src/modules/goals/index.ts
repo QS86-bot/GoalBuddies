@@ -32,6 +32,17 @@ export {
 
 export { afsluitbareCyclus, huidigeCyclus, inCoulanceperiode } from './cycles';
 
+export { bewaarInterview, fetchInterview, type Interview } from './interview';
+
+export {
+  ANTWOORD_MAX,
+  heeftAntwoorden,
+  INTERVIEW_STAPPEN,
+  interviewSchema,
+  LEEG_INTERVIEW,
+  type InterviewInvoer,
+} from './interview-schemas';
+
 export {
   fetchWeekdoelen,
   maakWeekdoel,
