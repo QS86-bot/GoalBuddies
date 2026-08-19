@@ -30,7 +30,12 @@ export {
   type DeadlineVerzoekInvoer,
 } from './deadline';
 
-export { afsluitbareCyclus, huidigeCyclus, inCoulanceperiode } from './cycles';
+export {
+  afsluitbareCyclus,
+  huidigeCyclus,
+  inCoulanceperiode,
+  zojuistAfgeslotenCyclus,
+} from './cycles';
 
 export { bewaarInterview, fetchInterview, type Interview } from './interview';
 
@@ -52,6 +57,10 @@ export {
 } from './weekly';
 
 export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly-schemas';
+
+export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
+
+export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
 
 export {
   CATEGORIEEN,

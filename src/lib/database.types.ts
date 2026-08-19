@@ -1614,6 +1614,18 @@ export type Database = {
         Returns: Json
       }
       trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
+      verbruik_weekpas: {
+        Args: {
+          p_cycle_start_date: string
+          p_goal_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      verdien_weekpassen: {
+        Args: { p_goal_id: string; p_user_id: string }
+        Returns: undefined
+      }
       verwijder_mijn_account: { Args: never; Returns: Json }
       vraag_ai_job: {
         Args: { p_goal_id: string; p_input: Json; p_kind: string }
@@ -1657,6 +1669,19 @@ export type Database = {
           id: string
           total_replies: number
           week_review_id: string
+        }[]
+      }
+      weekpas_maximum: { Args: never; Returns: number }
+      weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
+      weekpas_standen: {
+        Args: { p_goal_ids?: string[] }
+        Returns: {
+          goal_id: string
+          laatst_verbruikt: string
+          maximum: number
+          tot_volgende: number
+          voltooide_cycli: number
+          voorraad: number
         }[]
       }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }

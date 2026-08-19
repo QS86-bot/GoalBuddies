@@ -19,6 +19,7 @@ export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { Deelknop } from './Deelknop';
+export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
 export { Ketting } from './Ketting';
@@ -27,6 +28,7 @@ export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { Screen } from './Screen';
 export { StreakCounter } from './StreakCounter';
+export { Weekpas } from './Weekpas';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
@@ -38,10 +40,16 @@ export {
   kettingLabel,
   kettingVulling,
   streakLabel,
+  PUNTEN_UITLEG,
+  WEEKPAS_UITLEG,
+  weekpasLabel,
+  weekpasReddeDezeCyclus,
+  weekpasVoortgang,
   type Achieved,
   type KettingStand,
   type RangeState,
   type Tone,
   type Viewer,
+  type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';

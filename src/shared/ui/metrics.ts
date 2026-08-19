@@ -203,3 +203,120 @@ export function kettingVulling(stand: KettingStand): number {
   if (stand.inAanmerking <= 0) return 0;
   return Math.min(1, Math.max(0, stand.schakels / stand.inAanmerking));
 }
+
+// ---------------------------------------------------------------------------
+// Weekpassen — QS8-81
+// ---------------------------------------------------------------------------
+
+/**
+ * De weekpasstand van één doel, zoals `weekpas_stand()` hem teruggeeft.
+ *
+ * ⚠️ `maximum` komt uit de database mee en staat hier bewust níét als
+ *    constante. Zou de app een eigen kopie van dat getal houden, dan zijn er
+ *    twee waarheden en gaat er ooit één schuiven zonder dat iets rood wordt.
+ *
+ * ⚠️ Dit is privégegeven. Een verbruikte pas is het bewijs van een gemiste week
+ *    (domeinregel 7), dus deze stand hoort nooit in een groepscomponent. De
+ *    database geeft hem alleen aan de eigenaar van het doel.
+ */
+export interface WeekpasStand {
+  /** Hoeveel passen er nu klaarliggen. */
+  readonly voorraad: number;
+  /** De bovengrens. Boven dit aantal vervalt een verdiende pas. */
+  readonly maximum: number;
+  /** Voltooide cycli op dit doel. */
+  readonly voltooideCycli: number;
+  /** Hoeveel voltooide cycli er nog nodig zijn voor de volgende pas. */
+  readonly totVolgende: number;
+  /** De cyclus die het laatst door een pas gered is, of `null`. */
+  readonly laatstVerbruikt: string | null;
+}
+
+/**
+ * Hoe de voorraad heet in de UI.
+ *
+ * ⚠️ Nul is geen mislukking en klinkt hier ook niet zo. "Geen weekpassen" leest
+ *    als een tekort; het gaat om iets dat je kúnt verdienen en nog niet hebt.
+ *    Dat verschil zit alleen in de tekst, dus die tekst doet het werk.
+ */
+export function weekpasLabel(stand: WeekpasStand): string {
+  if (stand.voorraad <= 0) return 'Nog geen weekpas';
+  const wat = stand.voorraad === 1 ? '1 weekpas' : `${stand.voorraad} weekpassen`;
+  return `${wat} van ${stand.maximum}`;
+}
+
+/**
+ * Het puntenmodel in één regel — domeinregel 10.
+ *
+ * ⚠️ Staat onder het puntentotaal omdat een kaal getal daar niets zegt. Zonder
+ *    deze regel weet niemand dat een gemiste week een minpunt kost, en dan komt
+ *    dat minpunt als een verrassing precies op de dag dat het gebeurt.
+ */
+export const PUNTEN_UITLEG = 'Plafond gehaald +2, vloer gehaald +1, week gemist −1, adempauze 0.';
+
+/**
+ * De uitleg die precies één keer op het scherm hoort.
+ *
+ * ⚠️ Eén constante en geen functie, want hij hangt van niets af. Bij vijf doelen
+ *    stond deze tekst vijf keer onder elkaar; dat is geen uitleg meer maar
+ *    behang, en dan leest niemand hem — ook niet de ene keer dat het uitmaakt.
+ *
+ * ⚠️ Drie dingen staan er met zoveel woorden in, en alle drie omdat een
+ *    gebruiker er anders het verkeerde van maakt:
+ *
+ *    1. **Het minpunt blijft.** Domeinregel 10. Wie dat niet weet, ziet zijn
+ *       puntentotaal dalen terwijl zijn reeks doorloopt en concludeert dat de
+ *       app niet kan rekenen.
+ *    2. **Je hoeft niets te doen.** "1 weekpas klaar" leest als een knop die je
+ *       moet indrukken. Er ís geen knop — inzetten kan alleen de rollover, want
+ *       een pas die je zelf mag inzetten kun je op een lopende week zetten en
+ *       dan beschermt hij niets.
+ *    3. **Per doel.** `week_pass_events` hangt aan (user_id, goal_id), dus bij
+ *       drie doelen zie je drie verschillende standen naast elkaar. Zonder deze
+ *       zin ziet dat eruit als een fout.
+ */
+export const WEEKPAS_UITLEG =
+  'Een weekpas houdt je reeks overeind als je een week mist. Het minpunt voor die week ' +
+  'krijg je wél — een pas beschermt je reeks, niet je punten. Je hoeft niets te doen: ' +
+  'mis je een week, dan zetten we er automatisch een in. Weekpassen spaar je per doel.';
+
+/**
+ * Hoe ver je bent naar de volgende pas. Verschilt per doel en staat dus wél bij
+ * elk doel.
+ *
+ * ⚠️ Bij een volle voorraad staat erbij wat er met een extra pas gebeurt: die
+ *    gaat niet verloren maar komt vrij zodra je er een verbruikt (migratie
+ *    0042). Dat is geen detail — wie zes weken doorwerkt, wil weten of dat werk
+ *    ergens heen gaat.
+ */
+export function weekpasVoortgang(stand: WeekpasStand): string {
+  if (stand.voorraad >= stand.maximum) {
+    return `Je hebt er ${stand.voorraad}, en meer kun je er niet tegelijk hebben. Verdien je er een terwijl je vol zit, dan komt hij vrij zodra je er een gebruikt.`;
+  }
+
+  const nog =
+    stand.totVolgende === 1 ? 'Nog één voltooide week' : `Nog ${stand.totVolgende} voltooide weken`;
+
+  return stand.voorraad <= 0
+    ? `${nog} en je eerste weekpas ligt klaar.`
+    : `${nog} tot de volgende.`;
+}
+
+/**
+ * Is de laatst geredde cyclus dezelfde als de cyclus die net is afgesloten?
+ *
+ * Bepaalt of het scherm de melding achteraf toont ("een weekpas heeft je reeks
+ * gered"). QS8-81 vraagt om die melding, en dit is de enige plek waar hij
+ * hoort: privé, bij de eigenaar.
+ *
+ * ⚠️ Vergelijkt twee kale datumstrings en rekent zelf niets uit. De cyclus komt
+ *    uit `shared/time` (correctheidsregel 7) en `laatstVerbruikt` komt uit de
+ *    database; hier wordt alleen gekeken of ze gelijk zijn.
+ */
+export function weekpasReddeDezeCyclus(
+  stand: WeekpasStand,
+  cyclusStart: string | null,
+): boolean {
+  if (stand.laatstVerbruikt === null || cyclusStart === null) return false;
+  return stand.laatstVerbruikt === cyclusStart;
+}
