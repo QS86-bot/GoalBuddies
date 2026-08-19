@@ -69,6 +69,15 @@ create or replace function public.weekpas_maximum()
   immutable
 as $$ select 2 $$;
 
+-- ⚠️ Nagekomen, en daarom staat het hier en niet in een eigen bestand: op het
+--    project is dit een losse migratie `weekpas_maximum_niet_voor_anon`, want
+--    de eerste versie van 0039 vergat de grants. De functie geeft alleen een
+--    constante terug, dus er lekt niets, maar een uitgelogde bezoeker heeft
+--    niets te zoeken in de RPC-lijst van dit product. `weekpas_stand()` is
+--    SECURITY DEFINER en blijft hem gewoon aanroepen.
+revoke all on function public.weekpas_maximum() from public, anon;
+grant execute on function public.weekpas_maximum() to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- 3. Verdienen
 -- ---------------------------------------------------------------------------

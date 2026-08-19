@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 19-08-2026 (na De Ketting, QS8-80)
+**Laatst bijgewerkt:** 19-08-2026 (na de weekpassen, QS8-81 en QS8-75)
 
 ---
 
@@ -16,8 +16,9 @@
 Lees dit eerst; de rest is naslag.
 
 * **Fase 1 is voor het grootste deel af.** EPIC 0, 1, 2, 4, 5, 6, 7 en 10 staan;
-  EPIC 8 is begonnen (De Ketting af), EPIC 3 is deels gebouwd buiten de volgorde
-  om. Open: EPIC 11, 12, 9 en de rest van 8.
+  van EPIC 8 zijn De Ketting, de weekpassen en het dashboard af, EPIC 3 is deels
+  gebouwd buiten de volgorde om. Open: EPIC 11, 12, 9 en de rest van 8
+  (QS8-76, QS8-77, QS8-82).
 * **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke
   afspraak hieronder. Migraties mogen daarom rechtstreeks op productie. **Dat
   vervalt op de dag dat de eerste gebruiker zich aanmeldt.**
@@ -29,10 +30,12 @@ Lees dit eerst; de rest is naslag.
   puntenkant van EPIC 4 en 8 voor het eerst echt in bedrijf.
 * **De echte poort is de RLS-suite en die draait niet in CI.** Zie §3b. Groen in
   GitHub zegt niets over domeinregel 7.
-* **⚠️ Twee dingen zijn gebouwd en nooit gedraaid:** de Doelcoach-keten van
-  EPIC 3 (poort, Edge Function, datalaag — geen scherm, geen echte call) en het
-  weekpas-pad in `herbereken_reeks()` (niets schrijft `week_pass_events`).
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A31.
+* **⚠️ Eén ding is nog gebouwd en nooit gedraaid:** de Doelcoach-keten van
+  EPIC 3 — poort, Edge Function en datalaag staan, maar er is geen scherm en er
+  is nooit een echte AI-call gedaan. Het weekpas-pad in `herbereken_reeks()`
+  stond ook in dit rijtje en is er sinds 19-08 uit: het wordt nu gevuld én is
+  end-to-end tegen het echte project gedraaid.
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A34.
   Niets daarvan blokkeert het bouwen.
 
 ---
@@ -200,7 +203,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder.** QS8-80 (De Ketting) is af; volgende is QS8-75 (reeks en punten op het dashboard) of QS8-81 (weekpassen) |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder.** QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | **deels gebouwd, buiten de volgorde om.** De poort (`vraag_ai_job`, 0038), de Edge Function `doelcoach` en de datalaag van het interview staan op `main`. **Geen schermen, en niet één keer end-to-end gedraaid** |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
@@ -495,6 +498,35 @@ Deze dingen kan een sessie niet zelf oplossen.
 
    Gebeurd bij `gh` (18-08), en dezelfde avond bij de Supabase CLI en `pg_dump`.
 
+20. **Een vergelijking met een mogelijk lege waarde is in SQL geen controle.**
+   Migratie 0039 zette de eigenaarstoets van `weekpas_stand()` neer als:
+
+   ```sql
+   if eigenaar is null or eigenaar <> auth.uid() then return null; end if;
+   ```
+
+   Dat leest als "geef niets terug tenzij het jouw doel is", en zo werkt het
+   niet. Is `auth.uid()` leeg, dan is `eigenaar <> auth.uid()` niet `false` maar
+   `null`; de voorwaarde wordt `false or null` = `null`, de tak gaat **niet** af,
+   en de functie loopt door naar de gegevens. Een SECURITY DEFINER-functie geeft
+   dan de weekpasvoorraad van elk willekeurig doel terug — en een verbruikte
+   weekpas is het bewijs van een gemiste week.
+
+   `x <> y` is in SQL geen bewering over ongelijkheid zodra één kant leeg kan
+   zijn. Het is een derde antwoord dat zich in een `if` als "niet waar" gedraagt,
+   en dat is precies de verkeerde kant om op te falen.
+
+   **Bij elke autorisatietoets in SQL hoort eerst de vraag of beide kanten wel
+   bestaan.** De vijf oudere RPC's in dit project doen dat al goed en beginnen
+   met een aparte `if auth.uid() is null`-tak; dit was dus geen nieuwe regel maar
+   een bestaande conventie die één migratie niet volgde. Gerepareerd in 0040.
+
+   ⚠️ **Waarom het bijna niet opviel.** `anon` heeft geen EXECUTE op die functie,
+   dus er stond nog een deur voor. "Er staat toevallig nog een slot voor" is in
+   dit project al vaker de redenering geweest die geld kostte. Gevonden door de
+   functie als `service_role` aan te roepen, want daar is `auth.uid()` leeg —
+   **dat is een goedkope test die op elke definer-functie past.**
+
 ---
 
 ## 8. Openstaande onzekerheden
@@ -519,6 +551,16 @@ De zwaarste op dit moment:
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
    want er staan sinds 18-08 141 RLS-tests die niemand automatisch draait.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
+5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het
+   is dezelfde les nog een keer. De tabel is nu gevuld, dus de vraag "wat
+   betekent een ontbrekende rij?" heeft een nieuw antwoord: **"deze gemiste week
+   is niet gered"**. Dat is een gevoelig gegeven, en het is de reden dat de tabel
+   alleen voor de eigenaar leesbaar is en dat `weekpas_stand()` een eigen
+   eigenaarstoets heeft in plaats van op RLS te leunen. Die toets was in 0039
+   fout (`eigenaar <> auth.uid()` gaat zonder sessie niet af, want `null` is niet
+   `false`) en is gerepareerd in 0040. **Van de drie tabellen uit die les is nu
+   alleen `ai_jobs` nog leeg.**
+
 5. ~~**Niets schrijft `chain_links`**~~ — opgelost 19-08 in QS8-80. Twee routes
    vullen de tabel, en het lek dat daardoor ontstond (de aanwezigheidsmatrix per
    persoon per week) is dezelfde dag gedicht in 0037. **Wat de les hiervan is:
