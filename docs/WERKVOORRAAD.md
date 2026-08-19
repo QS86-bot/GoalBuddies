@@ -11,6 +11,32 @@
 
 ---
 
+## 0. De stand in tien regels
+
+Lees dit eerst; de rest is naslag.
+
+* **Fase 1 is voor het grootste deel af.** EPIC 0, 1, 2, 4, 5, 6, 7 en 10 staan;
+  EPIC 8 is begonnen (De Ketting af), EPIC 3 is deels gebouwd buiten de volgorde
+  om. Open: EPIC 11, 12, 9 en de rest van 8.
+* **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke
+  afspraak hieronder. Migraties mogen daarom rechtstreeks op productie. **Dat
+  vervalt op de dag dat de eerste gebruiker zich aanmeldt.**
+* **De database loopt soms vóór op de repo.** Migraties gaan via een MCP-tool en
+  niet via `supabase db push`, dus `supabase/migrations/` is een verslag en geen
+  bron. Vergelijk bij twijfel `list_migrations` met de map — dat is deze week
+  twee keer misgegaan (valkuil 15).
+* **De rollover draait sinds 19-08 elk uur** via GitHub Actions. Daarmee is de
+  puntenkant van EPIC 4 en 8 voor het eerst echt in bedrijf.
+* **De echte poort is de RLS-suite en die draait niet in CI.** Zie §3b. Groen in
+  GitHub zegt niets over domeinregel 7.
+* **⚠️ Twee dingen zijn gebouwd en nooit gedraaid:** de Doelcoach-keten van
+  EPIC 3 (poort, Edge Function, datalaag — geen scherm, geen echte call) en het
+  weekpas-pad in `herbereken_reeks()` (niets schrijft `week_pass_events`).
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A31.
+  Niets daarvan blokkeert het bouwen.
+
+---
+
 ## 1. Waar alles staat
 
 | Wat | Waar |
@@ -176,7 +202,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder.** QS8-80 (De Ketting) is af; volgende is QS8-75 (reeks en punten op het dashboard) of QS8-81 (weekpassen) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
-| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | open |
+| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | **deels gebouwd, buiten de volgorde om.** De poort (`vraag_ai_job`, 0038), de Edge Function `doelcoach` en de datalaag van het interview staan op `main`. **Geen schermen, en niet één keer end-to-end gedraaid** |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | open |
 
