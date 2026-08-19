@@ -60,6 +60,13 @@ export async function fetchKettingStand(
   //    gegenereerde types weten hier niets: `Json` is alles. Eén plek waar dat
   //    tot een echt type wordt, en die plek controleert of de velden er zijn —
   //    anders sneuvelt het pas in een component op `undefined`.
+  //
+  // ⚠️ Gooit, en geeft géén `null` terug. Dat onderscheid is de hele reden dat
+  //    deze regel er staat: `null` betekent "je bent geen lid" en dan hoort er
+  //    niets op het scherm. Een onvolledig antwoord is een storing, en die hoort
+  //    zichtbaar te zijn. Gaven ze allebei `null`, dan zag een lid bij een bug
+  //    exact hetzelfde als een buitenstaander — een leeg scherm zonder uitleg,
+  //    en niemand die weet of dat normaal is.
   if (
     typeof ruw.schakels !== 'number' ||
     typeof ruw.in_aanmerking !== 'number' ||
@@ -68,7 +75,7 @@ export async function fetchKettingStand(
     reportError(new Error('Onvolledig antwoord van ketting_stand'), 'ketting.parse', {
       group_id: groupId,
     });
-    return null;
+    throw new Error('De Ketting kon niet geladen worden.');
   }
 
   return {

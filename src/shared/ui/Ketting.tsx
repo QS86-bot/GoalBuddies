@@ -17,8 +17,19 @@ import { Caption, Subheading } from './Text';
  * ⚠️ Dit component toont **aantallen en nooit namen**, en dat is geen
  *    vormgeving maar domeinregel 7. Zou hier staan wie er nog ontbreekt, dan is
  *    De Ketting een presentielijst en een ontbrekende schakel een publieke
- *    gemiste week. `ketting_stand()` geeft die namen niet eens terug — de
- *    beveiliging zit in de database, dit is alleen de weergave.
+ *    gemiste week. `ketting_stand()` geeft die namen niet eens terug — voor
+ *    déze teller zit de bescherming dus in de database en is dit alleen de
+ *    weergave.
+ *
+ * ⚠️ Dat geldt voor deze teller en niet voor het scherm eromheen. `MemberRow`
+ *    toont eronder per lid mét naam of die zijn week afsloot; dat is een
+ *    afzonderlijke, in QS8-55 bewust genomen beslissing die door
+ *    `group_overview()` wordt begrensd, niet door `ketting_stand()`. In een
+ *    groep van twee of drie maakt die ledenlijst de anonimiteit van deze teller
+ *    dus grotendeels ongedaan. Bekend, opgeschreven in
+ *    `docs/ENGINEER-REVIEW.md` (19-08) en het is een productbeslissing —
+ *    **maar ga er niet vanuit dat dit component in zijn eentje domeinregel 7
+ *    voor dit scherm afdwingt.**
  *
  * ⚠️ De ketting telt **opdagen, geen prestatie**. Vloer en plafond leveren
  *    dezelfde schakel op (acceptatiecriterium van QS8-80, en domeinregel 8).
@@ -101,11 +112,18 @@ export function Ketting({ stand, toonSchakels = true }: Props) {
         ⚠️ Eén zin uitleg, want zonder die zin telt iemand de bolletjes en leest
            er een score in. De ketting gaat over opdagen; dat moet er letterlijk
            staan, anders bedenkt de lezer zijn eigen betekenis.
+
+        ⚠️ Maar níét als de ketting rond is. Dan is er niets meer uit te leggen
+           en leest "het gaat om opdagen, niet om hoeveel je haalde" als een
+           verontschuldiging vooraf — alsof er iemand is die het minder deed en
+           we dat vast willen gladstrijken. Bevinding van de gebruikersreview.
       */}
-      <Caption>
-        Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen,
-        niet om hoeveel je haalde.
-      </Caption>
+      {stand.voltallig ? null : (
+        <Caption>
+          Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen,
+          niet om hoeveel je haalde.
+        </Caption>
+      )}
     </View>
   );
 }
