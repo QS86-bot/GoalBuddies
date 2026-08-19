@@ -188,6 +188,7 @@ export type Database = {
       chain_links: {
         Row: {
           created_at: string
+          earned_cycle_start: string | null
           group_id: string
           group_period_start: string
           id: string
@@ -195,6 +196,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          earned_cycle_start?: string | null
           group_id: string
           group_period_start: string
           id?: string
@@ -202,6 +204,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          earned_cycle_start?: string | null
           group_id?: string
           group_period_start?: string
           id?: string
@@ -1478,6 +1481,7 @@ export type Database = {
       }
     }
     Functions: {
+      ai_verbruik: { Args: never; Returns: Json }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
         Returns: Json
@@ -1545,6 +1549,18 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      ketting_schakel: {
+        Args: {
+          p_cycle_start: string
+          p_group_id: string
+          p_period_start: string
+        }
+        Returns: Json
+      }
+      ketting_stand: {
+        Args: { p_group_id: string; p_period_start: string }
+        Returns: Json
+      }
       markeer_doorgeschoven: {
         Args: { p_weekly_goal_id: string }
         Returns: Json
@@ -1599,6 +1615,10 @@ export type Database = {
       }
       trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
+      vraag_ai_job: {
+        Args: { p_goal_id: string; p_input: Json; p_kind: string }
+        Returns: Json
+      }
       vraag_deadline_verschuiving: {
         Args: {
           p_goal_id: string
