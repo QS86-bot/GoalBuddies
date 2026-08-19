@@ -436,6 +436,21 @@ Deze dingen kan een sessie niet zelf oplossen.
     inloggen. Zolang die er niet is, is dit een harde bovengrens op hoe vaak je kunt
     verifiëren — en dat is een tweede argument voor de lokale stack (Q-TODO A9).
 
+15b. **En dezelfde valkuil werkt óók de andere kant op: de repo kan áchterlopen,
+   en dan lees je een gat dat er niet is.** De security-review op 0045 meldde als
+   zwaarste bevinding dat `dien_opnieuw_in()` elke status op `pending` zet,
+   waarmee een gemiste week alsnog in de wachtrij van een buddy zou belanden. Ze
+   had migratie 0022 gelezen, en daar staat inderdaad alleen een toets op
+   `approved`. De **gedeployde** functie heeft een tweede grens die later is
+   toegevoegd (`if w.status <> 'pending' then return 'week_gesloten'`), dus het
+   aanvalspad bestaat niet — nagegaan met een echte poging op het project.
+
+   **Toets een bewering over de database daarom altijd tegen de database.**
+   `pg_get_functiondef()` is de waarheid, een migratiebestand is een
+   momentopname. Dat geldt voor reviewbevindingen net zo goed als voor je eigen
+   aannames: een uur werk aan een niet-bestaand gat is even duur als een uur
+   niet werken aan een echt gat.
+
 15. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
    dag twee keer gevonden, allebei bij toeval: een migratie die wel op het
    project stond maar niet in de map, en een Edge Function waarvan de repo-versie
