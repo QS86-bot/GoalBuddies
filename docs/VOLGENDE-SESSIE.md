@@ -28,7 +28,8 @@ main, maar er zijn geen schermen en er is nooit een echte AI-call gedaan.
 
 Migraties 0039 t/m 0046 zijn toegepast op het echte project. De rollover is
 opnieuw gedeployd en geverifieerd. **QS8-106 is af** — de vier datalaagfuncties
-zonder scherm hebben er een.
+zonder scherm hebben er een. **448 tests groen over 22 bestanden, geen skips**
+(de RLS-suite heeft dus echt gedraaid).
 
 **Er staan ongeveer 37 commits klaar om te pushen. Ik push zelf.**
 
