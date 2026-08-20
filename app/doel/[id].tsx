@@ -2,27 +2,36 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useProfiel, useSession } from '@/modules/auth';
+import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { fetchGroepenVanDoel, fetchMijnGroepen, type Groep } from '@/modules/buddies';
 import { fetchCommitments, trekIn, zetBeloning, zetStraf, type Commitment } from '@/modules/commitments';
 import {
+  annuleerAdempauze,
   ARGUMENT_MAX,
   ARGUMENT_MIN,
   CATEGORIE_LABELS,
+  eersteCyclusVanDoel,
+  fetchAdempauzes,
   fetchDoel,
   fetchLaatsteBesluit,
+  fetchMijlpalen,
   fetchOpenVerzoek,
+  maakWeekdoel,
+  planAdempauze,
+  planbareCycli,
   trekDeadlineVerzoekIn,
   verwijderDoel,
   vraagDeadlineVerschuiving,
   zetArchief,
   zetStreefdatum,
+  type Adempauze,
   type Categorie,
   type DeadlineVerzoek,
   type DoelMetVoortgang,
+  type Mijlpaal,
 } from '@/modules/goals';
 import { space } from '@/shared/theme';
-import { localDateIn, now, type IsoDate } from '@/shared/time';
+import { localDateIn, nextCycle, now, type IsoDate, type UserClock } from '@/shared/time';
 import {
   AsyncView,
   BEVESTIGING,
@@ -37,6 +46,13 @@ import {
   Screen,
   Subheading,
 } from '@/shared/ui';
+
+/**
+ * ⚠️ De waarde die "geen mijlpaal" betekent in de keuzelijst. Een lege string
+ *    zou hier niet werken: `Choice` gebruikt de waarde als sleutel, en leeg is
+ *    niet te onderscheiden van "nog niets gekozen".
+ */
+const LOS_VAN_MIJLPAAL = 'los';
 
 /**
  * Eén doel: voortgang, deadline verzetten, archiveren, beloning en straf.
@@ -100,6 +116,7 @@ export default function DoelDetail() {
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
+  const klok = profiel ? userClock(profiel) : null;
 
   return (
     <Screen title="Doel">
@@ -147,6 +164,15 @@ export default function DoelDetail() {
                 onKlaar={herlaad}
               />
             ) : null}
+
+            <WeekdoelToevoegen doel={d} klok={klok} onKlaar={herlaad} />
+
+            <Adempauzes
+              doel={d}
+              klok={klok}
+              gedeeld={doelGroepen.length > 0}
+              onKlaar={herlaad}
+            />
 
             <Beloning
               goalId={d.id}
@@ -591,6 +617,365 @@ function Archiveren({
 }
 
 /**
+ * Een weekdoel toevoegen — QS8-43, QS8-44, QS8-112.
+ *
+ * ⚠️ Dit scherm ontbrak, en dat is het soort gat dat een afgevinkt vakje
+ *    verbergt: QS8-43 en QS8-44 stonden allebei op Done omdat de datalaag klaar
+ *    was. `maakWeekdoel()` werd door niets aangeroepen, en daarmee was de
+ *    kernlus van de app niet met de hand te doorlopen.
+ *
+ * ⚠️ De cyclus wordt hier **niet** berekend. `maakWeekdoel()` doet dat uit de
+ *    klok van de gebruiker (correctheidsregel 7); dit formulier levert alleen
+ *    tekst en een keuze aan.
+ */
+function WeekdoelToevoegen({
+  doel,
+  klok,
+  onKlaar,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly klok: UserClock | null;
+  readonly onKlaar: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [titel, setTitel] = useState('');
+  const [vloer, setVloer] = useState('');
+  const [plafond, setPlafond] = useState('');
+  const [mijlpaalId, setMijlpaalId] = useState<string>(LOS_VAN_MIJLPAAL);
+  const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  // De mijlpalen pas ophalen als het formulier open is: dit blok staat op een
+  // scherm dat ook zonder weekdoel bruikbaar moet zijn.
+  useEffect(() => {
+    if (!open) return;
+    let levend = true;
+
+    fetchMijlpalen(doel.id)
+      .then((gevonden) => {
+        if (levend) setMijlpalen(gevonden);
+      })
+      .catch(() => {
+        // Stil: zonder mijlpalen kun je nog steeds een los weekdoel maken, en
+        // dat is de meest voorkomende situatie. De datalaag heeft al gemeld.
+        if (levend) setMijlpalen([]);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [open, doel.id]);
+
+  async function bewaar() {
+    if (!klok) return;
+    setBezig(true);
+    setFout(null);
+
+    // ⚠️ Zonder dit wordt élk weekdoel "week 1" van dit doel en klopt
+    //    `cycle_index` niet meer — daar hangt de weekteller aan.
+    const eerste = await eersteCyclusVanDoel(doel.id, klok);
+
+    const uitkomst = await maakWeekdoel(
+      klok,
+      {
+        goal_id: doel.id,
+        milestone_id: mijlpaalId === LOS_VAN_MIJLPAAL ? null : mijlpaalId,
+        title: titel,
+        // Lege tekst is "niet ingevuld" en hoort als null de database in, niet
+        // als lege string — anders lijkt er een vloer te zijn die er niet is.
+        floor_text: vloer.trim() === '' ? null : vloer,
+        ceiling_text: plafond.trim() === '' ? null : plafond,
+      },
+      eerste,
+    );
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setOpen(false);
+    setTitel('');
+    setVloer('');
+    setPlafond('');
+    setMijlpaalId(LOS_VAN_MIJLPAAL);
+    onKlaar();
+  }
+
+  if (!open) {
+    return (
+      <Button variant="primair" block onPress={() => setOpen(true)}>
+        Weekdoel toevoegen
+      </Button>
+    );
+  }
+
+  return (
+    <Card nested>
+      <Subheading>Wat wil je deze week af hebben?</Subheading>
+
+      <Field
+        label="Weekdoel"
+        hint="Eén ding, deze week. Bijvoorbeeld: drie klantgesprekken voeren."
+        value={titel}
+        onChangeText={setTitel}
+        placeholder="3 klantgesprekken voeren"
+      />
+
+      {/*
+        ⚠️ De vloer staat vóór het plafond en krijgt de uitleg, en dat is geen
+           volgordekwestie. Domeinregel 8: de vloer is de belangrijkste import
+           uit Habit Huddle, en hij is optioneel — dus als de UI hem niet actief
+           aanmoedigt, vult niemand hem in en is een slechte week weer een
+           verloren week.
+      */}
+      <Field
+        label="De vloer (aanbevolen)"
+        hint="Wat haal je ook in een rotweek? Dit halen laat je reeks doorlopen — alleen de punten verschillen."
+        value={vloer}
+        onChangeText={setVloer}
+        placeholder="1 gesprek ingepland"
+      />
+
+      <Field
+        label="Het plafond"
+        hint="Waar ga je voor als de week meezit?"
+        value={plafond}
+        onChangeText={setPlafond}
+        placeholder="3 gesprekken gevoerd"
+      />
+
+      {/*
+        Alleen tonen als er iets te kiezen valt. Eén optie ("los van een
+        mijlpaal") is geen keuze maar een verplicht veld dat niets doet.
+      */}
+      {mijlpalen.length === 0 ? null : (
+        <Choice
+          label="Hoort dit bij een mijlpaal?"
+          hint="Mag ook los onder je doel hangen."
+          opties={[
+            { waarde: LOS_VAN_MIJLPAAL, label: 'Los onder dit doel' },
+            ...mijlpalen.map((m) => ({ waarde: m.id, label: m.title })),
+          ]}
+          waarde={mijlpaalId}
+          onKies={setMijlpaalId}
+        />
+      )}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      <View style={styles.knoppen}>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={titel.trim().length < 3 || klok === null}
+          onPress={() => void bewaar()}
+        >
+          Toevoegen
+        </Button>
+        <Button
+          variant="stil"
+          disabled={bezig}
+          onPress={() => {
+            setOpen(false);
+            setFout(null);
+          }}
+        >
+          Annuleren
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * De adempauze — QS8-82, migratie 0048.
+ *
+ * ⚠️ Vakantie, ziekte, een piek op het werk. Een reis hoort je niet terug naar
+ *    nul te zetten. Tijdens een adempauze krijgt een onvoltooid weekdoel
+ *    `excused` in plaats van `missed`: geen minpunt, en je reeks wacht in plaats
+ *    van te breken.
+ *
+ * ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** `breathers` is
+ *    leesbaar voor groepsgenoten van een gekoppeld doel — dat is het punt van
+ *    "vooraf aangekondigd", en het is domeinregel 7's eigen uitzondering: dit
+ *    loopt via jou. De statuskolom per week is sinds migratie 0047 juist dicht.
+ *    De copy zegt dat met zoveel woorden, want anders moet de gebruiker raden
+ *    hoeveel hij deelt.
+ */
+function Adempauzes({
+  doel,
+  klok,
+  gedeeld,
+  onKlaar,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly klok: UserClock | null;
+  readonly gedeeld: boolean;
+  readonly onKlaar: () => void;
+}) {
+  const [pauzes, setPauzes] = useState<readonly Adempauze[]>([]);
+  const [open, setOpen] = useState(false);
+  const [lengte, setLengte] = useState<'een' | 'twee'>('een');
+  const [startIndex, setStartIndex] = useState<'0' | '1'>('0');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  useEffect(() => {
+    let levend = true;
+
+    fetchAdempauzes(doel.id)
+      .then((gevonden) => {
+        if (levend) setPauzes(gevonden);
+      })
+      .catch(() => {
+        if (levend) setPauzes([]);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [doel.id]);
+
+  if (!klok) return null;
+
+  const kandidaten = planbareCycli(klok, now());
+  const start = kandidaten[startIndex === '0' ? 0 : 1];
+
+  async function plan() {
+    if (!klok || !start) return;
+    setBezig(true);
+    setFout(null);
+
+    // Eén cyclus: begin en eind zijn dezelfde week. Twee: de week erna.
+    const eind = lengte === 'een' ? start : nextCycle(start, klok.weekStartDay);
+    const uitkomst = await planAdempauze(doel.id, start, eind);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setOpen(false);
+    setPauzes(await fetchAdempauzes(doel.id));
+    onKlaar();
+  }
+
+  async function annuleer(id: string) {
+    const uitkomst = await annuleerAdempauze(id);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+    setPauzes(await fetchAdempauzes(doel.id));
+    onKlaar();
+  }
+
+  const vandaag = localDateIn(klok.tz, now());
+
+  return (
+    <Card nested>
+      <Subheading>Adempauze</Subheading>
+      <Body muted>
+        Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet dan een of twee
+        weken stil. Die weken kosten je geen punt en je reeks blijft staan waar hij staat —
+        hij groeit alleen niet mee.
+      </Body>
+
+      {/*
+        ⚠️ Alleen zeggen dat de groep het ziet als er ook echt een groep is. Bij
+           een ongekoppeld doel is er niemand om iets aan te kondigen, en dan is
+           deze zin een waarschuwing over een risico dat niet bestaat.
+      */}
+      {gedeeld ? (
+        <Caption>
+          Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer. Ze zien niet welke
+          weekdoelen je wel of niet gehaald hebt.
+        </Caption>
+      ) : null}
+
+      {pauzes.length === 0 ? null : (
+        <View style={styles.pauzes}>
+          {pauzes.map((p) => {
+            const begonnen = p.starts_cycle <= vandaag;
+            const voorbij = p.ends_cycle < vandaag;
+
+            return (
+              <View key={p.id} style={styles.pauze}>
+                <Body>
+                  Week van {p.starts_cycle}
+                  {p.ends_cycle === p.starts_cycle ? '' : ` tot en met de week van ${p.ends_cycle}`}
+                </Body>
+                <Caption>{voorbij ? 'Voorbij' : begonnen ? 'Loopt nu' : 'Ingepland'}</Caption>
+
+                {/* Annuleren kan alleen zolang hij nog niet begonnen is — de RPC
+                    weigert de rest, en dan is de knop tonen een belofte die de
+                    database niet nakomt. */}
+                {begonnen ? null : (
+                  <Button variant="stil" onPress={() => void annuleer(p.id)}>
+                    Annuleren
+                  </Button>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      {open ? (
+        <View style={styles.pauzeForm}>
+          <Choice
+            label="Vanaf welke week?"
+            hint="Een adempauze kondig je vooraf aan, dus de week die nu loopt kan niet meer."
+            opties={kandidaten.map((c, i) => ({
+              waarde: String(i) as '0' | '1',
+              label: `Week van ${c.startDate}`,
+            }))}
+            waarde={startIndex}
+            onKies={setStartIndex}
+          />
+
+          <Choice
+            label="Hoe lang?"
+            opties={[
+              { waarde: 'een', label: 'Eén week' },
+              { waarde: 'twee', label: 'Twee weken' },
+            ]}
+            waarde={lengte}
+            onKies={setLengte}
+          />
+
+          <View style={styles.knoppen}>
+            <Button variant="primair" busy={bezig} onPress={() => void plan()}>
+              Inplannen
+            </Button>
+            <Button
+              variant="stil"
+              disabled={bezig}
+              onPress={() => {
+                setOpen(false);
+                setFout(null);
+              }}
+            >
+              Annuleren
+            </Button>
+          </View>
+        </View>
+      ) : (
+        <Button onPress={() => setOpen(true)}>Adempauze inplannen</Button>
+      )}
+    </Card>
+  );
+}
+
+/**
  * Weggooien binnen de bedenktijd — QS8-105, migratie 0046.
  *
  * ⚠️ Staat bewust ónder archiveren en in een stille knop. Archiveren is de weg
@@ -658,5 +1043,8 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
 
 const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
+  pauzes: { gap: space.blokGap - 3 },
+  pauze: { gap: 2 },
+  pauzeForm: { gap: space.blokGap - 3 },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, alignItems: 'center' },
 });

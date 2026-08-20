@@ -37,6 +37,14 @@ export {
   zojuistAfgeslotenCyclus,
 } from './cycles';
 
+export {
+  annuleerAdempauze,
+  fetchAdempauzes,
+  planAdempauze,
+  planbareCycli,
+  type Adempauze,
+} from './adempauze';
+
 export { bewaarInterview, fetchInterview, type Interview } from './interview';
 
 export {
@@ -51,11 +59,13 @@ export {
 export {
   eersteCyclusVanDoel,
   fetchDoorschuifbaar,
+  fetchMijlpalen,
   fetchWeekdoelen,
   maakWeekdoel,
   schuifDoor,
   sluitWeekdoelAf,
   verwijderWeekdoel,
+  type Mijlpaal,
   type Weekdoel,
 } from './weekly';
 

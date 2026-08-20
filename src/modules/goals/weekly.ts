@@ -87,6 +87,40 @@ export async function fetchDoorschuifbaar(
   return (data ?? []) as unknown as Weekdoel[];
 }
 
+/** Eén mijlpaal, voor zover een weekdoelformulier hem nodig heeft. */
+export type Mijlpaal = Pick<
+  Tables<'milestones'>,
+  'id' | 'title' | 'status' | 'order_index' | 'target_date'
+>;
+
+/**
+ * De mijlpalen van een doel, op volgorde — QS8-43, QS8-112.
+ *
+ * ⚠️ `dropped` valt af. Een laten vallen mijlpaal is geen keuze meer om een
+ *    weekdoel onder te hangen, en hem tonen zou de lijst vullen met dingen die
+ *    je juist hebt weggestreept.
+ *
+ * ⚠️ Sorteert op `order_index` en niet op datum. De volgorde van mijlpalen is
+ *    de volgorde die de gebruiker (of de Doelcoach) heeft gekozen; `target_date`
+ *    mag leeg zijn en is dus geen betrouwbare sorteersleutel.
+ */
+export async function fetchMijlpalen(goalId: string): Promise<readonly Mijlpaal[]> {
+  const { data, error } = await supabase()
+    .from('milestones')
+    .select('id, title, status, order_index, target_date')
+    .eq('goal_id', goalId)
+    .neq('status', 'dropped')
+    .order('order_index', { ascending: true })
+    .limit(50);
+
+  if (error) {
+    reportError(error, 'goals.milestones', { goal_id: goalId, code: error.code });
+    throw new Error('De mijlpalen konden niet geladen worden.');
+  }
+
+  return data ?? [];
+}
+
 /**
  * De cyclus waarin het eerste weekdoel van dit doel viel — QS8-106.
  *

@@ -1482,6 +1482,7 @@ export type Database = {
     }
     Functions: {
       ai_verbruik: { Args: never; Returns: Json }
+      annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
       bedenktijd: { Args: never; Returns: string }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
@@ -1592,6 +1593,14 @@ export type Database = {
       plaats_systeembericht_in_doelgroepen: {
         Args: { p_body: string; p_event: string; p_goal_id: string }
         Returns: undefined
+      }
+      plan_adempauze: {
+        Args: {
+          p_ends_cycle: string
+          p_goal_id: string
+          p_starts_cycle: string
+        }
+        Returns: Json
       }
       realtime_bewaking: {
         Args: never

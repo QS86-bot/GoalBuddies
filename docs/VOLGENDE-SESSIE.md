@@ -158,14 +158,19 @@ met de onderbouwing in `docs/GROENE-NOTITIES.md`.
   daarom vervangen door `.gitattributes` met `eol=lf`; de bestanden staan nu als
   LF op schijf. **Schrijf je iets nieuws op, vraag dan eerst of het een controle
   kan worden in plaats van een zin.**
-- **Een status die niemand nog schrijft, is een lek dat nog niet afgegaan is.**
-  `weekly_goals_select` schermt `missed`, `carried` en `cancelled` af voor
-  groepsgenoten — `excused` niet. Vandaag lekt dat niets, want geen enkele
-  functie schrijft `excused`. QS8-82 (adempauze) is precies het issue dat hem
-  gaat schrijven. De schermen deden het trouwens wél goed: `rangeState()`
-  verbergt `excused` voor de groep. **Zoek bij elke nieuwe statuswaarde eerst wie
-  hem schrijft en wie hem kan lézen** — een CHECK-constraint die een waarde
-  toestaat is een belofte dat hij ooit voorkomt.
+- **⚠️ `pg_proc` is niet de hele codebase. De rollover is een Edge Function.**
+  Ik zocht naar wie `weekly_goals.status = 'excused'` schrijft, vond in alle
+  databasefuncties niets, en concludeerde dat het lek pas bij QS8-82 scherp zou
+  komen te staan. Fout: `supabase/functions/rollover/index.ts` zette die status
+  al, elk uur. Wat ontbrak was invoer (niets schrijft `breathers`), niet code.
+  Nul rijen betekende "geen munitie", niet "geen schrijver". **Zoek een schrijver
+  altijd in `pg_proc` én in `supabase/functions/`** — die map valt buiten
+  typecheck, lint en CI, en dus ook buiten je zoekopdracht. Gedicht in 0047.
+- **Een CHECK-constraint die een waarde toestaat, is een belofte dat hij ooit
+  voorkomt.** Vraag bij elke statuswaarde twee dingen: wie schrijft hem, en wie
+  kan hem lézen. De schermen deden het hier trouwens wél goed — `rangeState()`
+  verbergt `excused` netjes voor de groep. Dat is de derde keer dat de UI klopte
+  en de database niet.
 
 - **Supabase weigert na ~30 aanmeldingen per uur** met "Request rate limit
   reached". De RLS-suite maakt er tien per run. Zie je een opbouwfout met "rate

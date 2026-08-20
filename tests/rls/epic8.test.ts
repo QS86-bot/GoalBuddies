@@ -565,4 +565,196 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       TEST_TIMEOUT,
     );
   });
+  // -------------------------------------------------------------------------
+  // QS8-82 — de adempauze, migratie 0048
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ De vraag hier is niet "kun je een adempauze plannen" maar "kun je er een
+  //    plannen die je niet zou mogen hebben". Vóór 0048 stond `breathers`
+  //    wagenwijd open: `breathers_write` toetste alleen `user_id = auth.uid()`,
+  //    er was geen CHECK en geen bovengrens. Eén verzoek en je had een adempauze
+  //    van tien jaar over al je doelen — nooit meer een minpunt.
+  describe('de adempauze', () => {
+    /**
+     * De cyclusstart `weken` weken ná de lopende. Testprofielen staan op de
+     * standaard: maandag, Europe/Amsterdam.
+     *
+     * ⚠️ Rekent via `userCycle` en niet met de hand. Een testhelper die zelf een
+     *    weekgrens uitrekent is de tweede kopie van `shared/time`, en dan toetst
+     *    de test uiteindelijk zijn eigen rekenwerk.
+     */
+    function cyclusOverWeken(weken: number): IsoDate {
+      const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+      return addDays(cyclus.startDate, 7 * weken);
+    }
+
+    it(
+      'weigert een adempauze over de week die nu loopt',
+      async () => {
+        // ⚠️ De belangrijkste test van dit blok. Kon dit wél, dan is de
+        //    adempauze op zondagavond een gratis uitweg uit het minpunt: je weet
+        //    dat je je week niet haalt, kondigt hem aan, en de rollover zet je
+        //    weekdoel op `excused` in plaats van `missed`. Dezelfde ontsnapping
+        //    als A39 (doorschuiven vóór de job) en A40 (wissen vóór de job).
+        const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: cyclus.startDate,
+          p_ends_cycle: cyclus.startDate,
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(false);
+        expect(uitkomst(antwoord.data).reason).toBe('niet_vooraf');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert meer dan twee cycli',
+      async () => {
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: cyclusOverWeken(1),
+          p_ends_cycle: cyclusOverWeken(3),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(false);
+        expect(uitkomst(antwoord.data).reason).toBe('te_lang');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een adempauze op het doel van een ander',
+      async () => {
+        const doelVanAlice = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const antwoord = await f.bob.db.rpc('plan_adempauze', {
+          p_goal_id: doelVanAlice.data?.id ?? '',
+          p_starts_cycle: cyclusOverWeken(1),
+          p_ends_cycle: cyclusOverWeken(1),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(false);
+        expect(uitkomst(antwoord.data).reason).toBe('not_owner');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een datum die geen cyclusstart is',
+      async () => {
+        // Zonder deze controle dekt een adempauze twee halve cycli, en dan doet
+        // de rollover iets anders dan het scherm belooft.
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: addDays(cyclusOverWeken(1), 2),
+          p_ends_cycle: addDays(cyclusOverWeken(1), 2),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(false);
+        expect(uitkomst(antwoord.data).reason).toBe('geen_cyclusstart');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'kan de tabel niet meer rechtstreeks beschrijven',
+      async () => {
+        // ⚠️ De grenzen hierboven zijn alleen grenzen als de RPC de énige weg
+        //    naar binnen is. 0048 trekt daarom het tabelrecht in.
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const poging = await f.alice.db.from('breathers').insert({
+          user_id: f.alice.id,
+          goal_id: doel.data?.id ?? '',
+          starts_cycle: cyclusOverWeken(1),
+          ends_cycle: cyclusOverWeken(40),
+        });
+
+        expect(poging.error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De positieve controle. Zonder deze test blijft alles hierboven groen
+     *    als `plan_adempauze()` domweg altijd `false` teruggeeft — en dan is de
+     *    adempauze onbruikbaar in plaats van veilig.
+     */
+    it(
+      'plant een adempauze van twee weken die wél mag, en annuleert hem weer',
+      async () => {
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const start = cyclusOverWeken(6);
+        const eind = cyclusOverWeken(7);
+
+        const gepland = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: start,
+          p_ends_cycle: eind,
+        });
+
+        expect(uitkomst(gepland.data).reason).toBeUndefined();
+        expect(uitkomst(gepland.data).ok).toBe(true);
+
+        const id = (gepland.data as { id?: string } | null)?.id;
+        expect(id).toBeDefined();
+
+        // Overlap moet daarna geweigerd worden — anders is het maximum van twee
+        // cycli te omzeilen door er drie naast elkaar te leggen.
+        const tweede = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: start,
+          p_ends_cycle: start,
+        });
+        expect(uitkomst(tweede.data).reason).toBe('overlapt');
+
+        // En annuleren kan, want hij is nog niet begonnen.
+        const weg = await f.alice.db.rpc('annuleer_adempauze', { p_id: id ?? '' });
+        expect(uitkomst(weg.data).ok).toBe(true);
+
+        const na = await adminDb().from('breathers').select('id').eq('id', id ?? '');
+        expect(na.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
