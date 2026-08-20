@@ -749,6 +749,42 @@ export type Database = {
           },
         ]
       }
+      goal_risk: {
+        Row: {
+          computed_at: string
+          goal_id: string
+          reason: Json | null
+          status: string
+        }
+        Insert: {
+          computed_at?: string
+          goal_id: string
+          reason?: Json | null
+          status?: string
+        }
+        Update: {
+          computed_at?: string
+          goal_id?: string
+          reason?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_risk_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "goal_dashboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_risk_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           available_hours_per_week: number | null
@@ -759,9 +795,6 @@ export type Database = {
           identity_statement: string | null
           max_points: number
           owner_id: string
-          risk_computed_at: string | null
-          risk_reason: Json | null
-          risk_status: string
           status: string
           target_date: string
           title: string
@@ -776,9 +809,6 @@ export type Database = {
           identity_statement?: string | null
           max_points?: number
           owner_id: string
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string
           status?: string
           target_date: string
           title: string
@@ -793,9 +823,6 @@ export type Database = {
           identity_statement?: string | null
           max_points?: number
           owner_id?: string
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string
           status?: string
           target_date?: string
           title?: string
@@ -1387,9 +1414,6 @@ export type Database = {
           milestones_done: number | null
           milestones_total: number | null
           owner_id: string | null
-          risk_computed_at: string | null
-          risk_reason: Json | null
-          risk_status: string | null
           status: string | null
           target_date: string | null
           title: string | null
@@ -1408,9 +1432,6 @@ export type Database = {
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string | null
           status?: string | null
           target_date?: string | null
           title?: string | null
@@ -1429,9 +1450,6 @@ export type Database = {
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string | null
           status?: string | null
           target_date?: string | null
           title?: string | null

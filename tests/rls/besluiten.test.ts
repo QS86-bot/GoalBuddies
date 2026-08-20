@@ -1097,19 +1097,69 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
     );
 
     it(
-      'de client kan risk_status en max_points niet meer schrijven',
+      'de client kan max_points niet schrijven',
       async () => {
-        const risico = await f.alice.db
-          .from('goals')
-          .update({ risk_status: 'behind' })
-          .eq('id', f.goalId);
-        expect(risico.error).not.toBeNull();
-
         const plafond = await f.alice.db
           .from('goals')
           .update({ max_points: 9999 })
           .eq('id', f.goalId);
         expect(plafond.error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ Was: "de client kan risk_status niet meer schrijven", met een update op
+     *    `goals`. Die kolom bestaat sinds migratie 0050 niet meer daar — de
+     *    Risico-radar woont in `goal_risk`, want `goals_select` gaf elke
+     *    groepsgenoot de héle rij en `'behind'` is tegenslag over iemand anders.
+     *
+     *    Dit is de opvolger, en hij toetst allebei de kanten: de eigenaar mag
+     *    hem lezen maar niet schrijven, en een groepsgenoot mag hem niet eens
+     *    zien.
+     */
+    it(
+      'goal_risk is voor de eigenaar leesbaar, voor niemand schrijfbaar, en voor de groep onzichtbaar',
+      async () => {
+        const admin = adminDb();
+
+        await admin
+          .from('goal_risk')
+          .upsert({ goal_id: f.goalId, status: 'behind', reason: { gemist: 2 } });
+
+        // De eigenaar ziet zijn eigen stand — de positieve controle, anders
+        // bewijst de rest alleen dat de rij onvindbaar is voor iedereen.
+        const alsEigenaar = await f.alice.db
+          .from('goal_risk')
+          .select('status')
+          .eq('goal_id', f.goalId);
+        expect(alsEigenaar.data ?? []).toHaveLength(1);
+        expect(alsEigenaar.data?.[0]?.status).toBe('behind');
+
+        // Maar hij mag hem niet zetten: een zelfgekozen risicostand is een
+        // verzonnen stand.
+        const schrijven = await f.alice.db
+          .from('goal_risk')
+          .update({ status: 'on_track' })
+          .eq('goal_id', f.goalId);
+        expect(schrijven.error).not.toBeNull();
+
+        // En de groepsgenoot ziet niets. Dit is waar migratie 0050 om draait.
+        const alsGroepsgenoot = await f.bob.db
+          .from('goal_risk')
+          .select('status')
+          .eq('goal_id', f.goalId);
+        expect(alsGroepsgenoot.data ?? []).toHaveLength(0);
+
+        // ⚠️ En hij ziet het doel zélf nog wél — anders is dit geen afscherming
+        //    van een kolom maar een gebroken groepsoverzicht.
+        const doelVoorGroepsgenoot = await f.bob.db
+          .from('goals')
+          .select('id, title')
+          .eq('id', f.goalId);
+        expect(doelVoorGroepsgenoot.data ?? []).toHaveLength(1);
+
+        await admin.from('goal_risk').delete().eq('goal_id', f.goalId);
       },
       TEST_TIMEOUT,
     );

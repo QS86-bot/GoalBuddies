@@ -45,7 +45,13 @@ export interface DoelMetVoortgang {
   readonly status: string;
   readonly available_hours_per_week: number | null;
   readonly max_points: number;
-  readonly risk_status: string;
+  /**
+   * ⚠️ Geen `risk_status` meer. Die stond tot migratie 0050 als kolom op `goals`,
+   *    en `goals_select` gaf elke groepsgenoot de héle rij — inclusief
+   *    `'behind'` en `'unreachable'`, per definitie tegenslag over iemand
+   *    anders. Hij woont nu in `goal_risk`, eigenaar-only. EPIC 12 leest hem
+   *    daar; voortgang en risico zijn twee dingen en horen niet in één rij.
+   */
   readonly milestones_total: number;
   readonly milestones_done: number;
   readonly weekly_total: number;
@@ -72,7 +78,6 @@ function naarDoel(rij: Tables<'goal_dashboard'>): DoelMetVoortgang | null {
     status: rij.status ?? 'active',
     available_hours_per_week: rij.available_hours_per_week,
     max_points: rij.max_points ?? 0,
-    risk_status: rij.risk_status ?? 'on_track',
     milestones_total: rij.milestones_total ?? 0,
     milestones_done: rij.milestones_done ?? 0,
     weekly_total: rij.weekly_total ?? 0,
