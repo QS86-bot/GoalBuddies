@@ -443,6 +443,12 @@ function Beloning({
     <Card>
       <Subheading>Beloning</Subheading>
       <Body muted>Wat gun je jezelf als dit lukt? Optioneel, maar het werkt.</Body>
+      {/*
+        ⚠️ QS8-85: dit moet er letterlijk staan. Iemand die een bedrag invult,
+           hoort niet te hoeven raden of de app zijn rekening gaat plunderen.
+           Er staat een test op deze zin.
+      */}
+      <Caption>De app rekent niets af. Dit wordt alleen bijgehouden.</Caption>
       <Field
         label="Mijn beloning"
         value={tekst}
@@ -565,6 +571,10 @@ function Straf({
         Wat gebeurt er als je je streefdatum niet haalt? Optioneel, en je kunt hem intrekken zolang
         hij niet in werking is.
       </Body>
+      <Caption>
+        De app rekent niets af en verwerkt geen geld. Je legt hier vast wat je met je groep
+        afspreekt; het uitvoeren doen jullie zelf.
+      </Caption>
 
       <Field
         label="Mijn straf"
