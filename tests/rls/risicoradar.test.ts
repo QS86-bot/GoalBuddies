@@ -292,7 +292,41 @@ describe('QS8-93 — de haalbaarheidsberekening', () => {
     },
     TEST_TIMEOUT,
   );
+  /**
+   * ⚠️ Migratie 0052, en het is nazorg op mijn eigen 0051.
+   *
+   *    `risico_na_goedkeuring()` is een triggerfunctie en stond na 0051 gewoon
+   *    in de API, aanroepbaar door `anon` én `authenticated`. Alle 22 andere
+   *    triggerfuncties waren al ingetrokken (migratie 0011); deze was de enige
+   *    uitzondering. Gevonden door de Supabase-advisor, niet door mij.
+   *
+   *    Dat is de omkering van de valkuil uit CLAUDE.md: daar worden fóuten
+   *    gekopieerd naar de volgende definer-functie. Hier werd de goede gewoonte
+   *    níét gekopieerd. **Een nieuwe SECURITY DEFINER-functie erft niets — het
+   *    intrekken hoort in dezelfde migratie als het aanmaken.**
+   *
+   *    De test dekt álle triggerfuncties en niet alleen degene die deze keer
+   *    misging, want de volgende keer is het een andere.
+   */
+  it(
+    'stelt geen enkele triggerfunctie beschikbaar via de API',
+    async () => {
+      const db = adminDb() as unknown as {
+        rpc: (
+          naam: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: unknown }>;
+      };
+
+      const { data, error } = await db.rpc('triggerfuncties_in_de_api', {});
+
+      expect(error).toBeNull();
+      expect(data ?? []).toEqual([]);
+    },
+    TEST_TIMEOUT,
+  );
 });
+
 
 /** Een datum `dagen` dagen vanaf vandaag, als `YYYY-MM-DD`. */
 function datumOver(dagen: number): string {
