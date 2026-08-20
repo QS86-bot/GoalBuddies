@@ -137,12 +137,16 @@ alsnog.
 
 | Wat | Besluit | Waarom het te verdedigen is |
 |---|---|---|
-| `goals.risk_status` en `risk_reason` | **A17 — ja, de groep mag het zien** | Blijft zoals het is; `goals_select` hoeft niet uit elkaar getrokken te worden. Let op: dit is de zwaarste van de drie, want de Risico-radar (EPIC 12) leidt `behind` en `unreachable` zélf af uit gemiste weken. Vanaf de dag dat die radar draait, ís deze kolom een afgeleide van andermans tegenslag — en dan is de vraag of het besluit nog hetzelfde uitvalt. **Herbevestigen vóór EPIC 12.** |
+| `goals.risk_status` en `risk_reason` | ⚠️ **A17 — herbevestigd op 20-08-2026, en teruggedraaid: de groep ziet het NIET** | Het oorspronkelijke besluit (18-08) was "ja", mét de aantekening "herbevestigen vóór EPIC 12", juist omdat de radar `behind` en `unreachable` afleidt uit gemiste weken. Bij het bouwen van EPIC 12 is die herbevestiging gevraagd en het antwoord was dicht. **Er zijn dus nog twee verruimingen, niet drie.** Uitgevoerd in migratie 0050: de drie kolommen zijn verhuisd naar een eigen tabel `goal_risk` met eigenaar-only RLS, want een kolomgrant geldt per rol (de eigenaar zou zijn eigen stand kwijtraken) en `goals_select` eigenaar-only maken breekt `group_overview()`. Een eigen tabel maakt de bescherming structureel in plaats van een policy die je goed moet onthouden. Het acceptatiecriterium van QS8-94 zei trouwens al hetzelfde: "uitsluitend zichtbaar voor de eigenaar" |
 | `goal_events` met `deadline_moved` | **A7 — ja, en sterker: verschuiven vraagt akkoord** | Dit draait de regel niet om maar zet hem op zijn kop, in de goede richting. De verschuiving is niet iets dat de groep achteraf ziet, maar iets dat de gebruiker zélf aanvraagt met een argument. Dat is dezelfde route als vraag 2 van de weekafsluiting: tegenslag bereikt de groep via de persoon, niet via een afgeleide. Migratie 0032 |
 | `current_streak` die naar nul valt | **A15 — ja** | Blijft in `group_visible_streaks`. Zwak signaal: een reeks van nul is dubbelzinnig (nieuw lid, pauze, of gemist), en `best_streak` — dat het wél sluitend zou maken — is er in 0019 uitgehaald |
 
-⚠️ **Wat deze drie besluiten níét zijn.** Ze verruimen domeinregel 7 op drie
-benoemde plekken; ze schaffen hem niet af. Het puntentotaal, `weekly_goals.status`,
+⚠️ **Het zijn er nu twee, niet drie.** A17 is op 20-08-2026 herbevestigd en
+teruggedraaid — zie de rij hierboven. Wat overblijft is A15 (de groep ziet je
+reeks) en A7 (de groep ziet je deadline-verschuiving, en die vraag je zelf aan).
+
+⚠️ **Wat deze besluiten níét zijn.** Ze verruimen domeinregel 7 op benoemde
+plekken; ze schaffen hem niet af. Het puntentotaal, `weekly_goals.status`,
 `last_cycle_start` en `points_ledger` blijven dicht, en de regel in §1 geldt
 onverkort voor élk nieuw oppervlak. Bij twijfel is het antwoord nog steeds nee.
 

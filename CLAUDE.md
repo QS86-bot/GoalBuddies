@@ -152,11 +152,20 @@ Voordat er één feature gebouwd wordt:
    verschuiven (A7). De enige uitzondering is een straf die de gebruiker zelf
    vooraf heeft ingesteld en bevestigd.
 
-   ⚠️ **Drie benoemde verruimingen, besloten door Quinten op 18-08-2026.** De groep
-   mag je reeks zien (A15), je risicostatus zien (A17) en je deadline-verschuiving
-   zien (A7). Die staan met onderbouwing in `docs/decisions/002-...md` §4a. Ze
-   verruimen de regel op drie plekken; ze schaffen hem niet af. Voor élk ander
-   oppervlak geldt hij onverkort, en bij twijfel is het antwoord nee.
+   ⚠️ **Twee benoemde verruimingen.** De groep mag je reeks zien (A15) en je
+   deadline-verschuiving zien (A7 — die vraag je zelf aan). Ze staan met
+   onderbouwing in `docs/decisions/002-...md` §4a. Ze verruimen de regel op twee
+   plekken; ze schaffen hem niet af. Voor élk ander oppervlak geldt hij
+   onverkort, en bij twijfel is het antwoord nee.
+
+   ⚠️ **A17 was de derde en is op 20-08-2026 teruggedraaid.** De groep zag je
+   risicostatus, en het beslisdocument had zelf al opgeschreven dat dat
+   herbevestigd moest worden vóór EPIC 12 — want vanaf het moment dat de
+   Risico-radar draait, ís `risk_status` een afgeleide van andermans gemiste
+   weken. Bij die herbevestiging is het dichtgezet: migratie 0050 verhuisde de
+   kolommen naar `goal_risk`, eigenaar-only. **Dit is het bewijs dat "herbevestigen
+   vóór X" werkt — schrijf zo'n aantekening op zodra een besluit aan een
+   toekomstige feature hangt.**
 
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.

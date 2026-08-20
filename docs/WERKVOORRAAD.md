@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 20-08-2026 (na de backlogronde: QS8-106, 112, 82, 39, 76, 85 en A45)
+**Laatst bijgewerkt:** 20-08-2026 (na de backlogronde en EPIC 12)
 
 ---
 
@@ -71,12 +71,14 @@ Lees dit eerst; de rest is naslag.
   de groene notities (A41 en A42 vragen een besluit over domeinregel 7 en hangen
   aan elkaar), **A46** (TRUNCATE intrekken) en **A37**. Geen van alle blokkeert
   het bouwen van andere issues.
-* **Wat nu aan de beurt is: EPIC 12 (Risico-radar).** QS8-93 is de
-  haalbaarheidsberekening en de rest van de epic hangt eraan. Let op de rij over
-  `goals.risk_status` in ENGINEER-REVIEW: die kolom is voor groepsgenoten
-  leesbaar en staat vandaag op `on_track` bij iedereen. **Dat verandert op de
-  dag dat EPIC 12 begint** — dus dicht dat vóór of tegelijk met QS8-93, niet
-  erna.
+* ✅ **EPIC 12 (Risico-radar) is af**, en `goals.risk_status` is dichtgezet
+  vóórdat de radar hem ging vullen (migratie 0050). De drie risicokolommen
+  wonen nu in `goal_risk`, eigenaar-only. **A17 is daarmee teruggedraaid**: er
+  zijn nog twee benoemde verruimingen van domeinregel 7, niet drie.
+* **Wat nu aan de beurt is: EPIC 11 (notificaties).** Daarna EPIC 3 afmaken —
+  de Doelcoach heeft nog steeds geen scherm en er is nog nooit een echte AI-call
+  gedaan — en dan EPIC 9. QS8-77 (dagelijkse nudge) hoort bij EPIC 11 en kan
+  daarna meteen mee.
 
 ---
 
@@ -257,7 +259,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ af voor de MVP, m.u.v. QS8-77 (nudge, wacht op EPIC 11) en de twee `phase:v2`-issues QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | **deels gebouwd, buiten de volgorde om.** De poort (`vraag_ai_job`, 0038), de Edge Function `doelcoach` en de datalaag van het interview staan op `main`. **Geen schermen, en niet één keer end-to-end gedraaid** |
-| 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
+| 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | open |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.

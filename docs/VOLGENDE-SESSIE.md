@@ -40,26 +40,31 @@ Deze ronde afgerond: QS8-106 (de vier datalaagfuncties zonder scherm), QS8-112
 beheren), QS8-76 (feestelijk moment) en QS8-85 (commitments informeel, met een
 test die het bewaakt). A45 is gedicht in migratie 0047.
 
-**Volgende aan de beurt: EPIC 12, de Risico-radar.** QS8-93 is de
-haalbaarheidsberekening en 94, 95 en 96 hangen eraan.
+**EPIC 12 is af.** QS8-93 (de haalbaarheidsberekening), QS8-94 (de vier standen
+in de UI), QS8-95 ("vraag je groep om hulp") en QS8-96 (herplannen bij een
+onhaalbare deadline). Migraties 0050 en 0051, en de rollover is opnieuw
+gedeployd zodat hij het risico ook echt herberekent.
 
-⚠️ **Doe vóór of tegelijk met QS8-93 iets aan `goals.risk_status`.** Die kolom is
-via `goals_select` leesbaar voor groepsgenoten, samen met de jsonb-onderbouwing
-in `risk_reason` — en dat zijn per definitie tegenslagsignalen over iemand
-anders. Het is vandaag onschadelijk omdat de Risico-radar niet bestaat en de
-kolom bij iedereen op `on_track` staat. **EPIC 12 is precies wat daar verandering
-in brengt.** Het staat al jaren als "Hoog" in ENGINEER-REVIEW; dit is de sessie
-waarin het scherp komt te staan. Zelfde vorm als A45 met `excused`, en die
-kwam er deze week nét op tijd uit.
+⚠️ **`goals.risk_status` is dichtgezet vóórdat de radar hem ging vullen**
+(migratie 0050). De drie risicokolommen wonen nu in `goal_risk`, eigenaar-only.
+**Daarmee is A17 teruggedraaid**: er zijn nog twee benoemde verruimingen van
+domeinregel 7 (A15 en A7), niet drie. Beslisdocument 002 en CLAUDE.md zijn
+bijgewerkt.
 
-Daarna EPIC 11 (notificaties), EPIC 3 afmaken (de Doelcoach heeft nog steeds
-geen scherm en er is nog nooit een echte AI-call gedaan), en dan EPIC 9.
+**Volgende aan de beurt: EPIC 11, notificaties.** QS8-91 is de kern; QS8-77 (de
+dagelijkse nudge uit EPIC 8) wacht daarop en kan daarna meteen mee. Let op: dit
+raakt waarschijnlijk Expo-pushcredentials, en die heb ik niet — dat kan een
+blokkade worden waar jij iets voor moet doen.
 
-**Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
+Daarna EPIC 3 afmaken. Dat is inmiddels het langst openstaande gat: poort, Edge
+Function en datalaag staan sinds augustus op main, er is geen enkel scherm, en
+er is nog nooit een echte AI-call gedaan. Dan EPIC 9.
+
+**Er wachten vijf besluiten op Quinten**, en twee ervan hangen aan elkaar:
 A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
 groene notities raken domeinregel 7 in de kern. Verder A43 (minpunten bij
-zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?), A46 (TRUNCATE
-intrekken) en A37. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
+zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?) en A46 (TRUNCATE
+intrekken). A37 staat er ook nog. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
 onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
@@ -176,6 +181,14 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   gegarandeerd stuk — met een halfverschoven lijst en geen bruikbare fout.
   Herkenbaar aan: DEFERRABLE in de constraint-definitie.
 
+- **"Herbevestigen vóór X" in een beslisdocument is goud waard — als iemand het
+  leest.** A17 zei "de groep mag je risicostatus zien", met de aantekening dat
+  het opnieuw bekeken moest worden vóór EPIC 12, omdat de radar die status uit
+  gemiste weken afleidt. Bij het bouwen van EPIC 12 is dat gebeurd en het besluit
+  ging om. **Schrijf zo'n aantekening op zodra een besluit aan een toekomstige
+  feature hangt** — en lees het beslisdocument voordat je aan die feature begint,
+  niet erna.
+
 - **⚠️ `pg_proc` is niet de hele codebase. De rollover is een Edge Function.**
   Ik zocht naar wie `weekly_goals.status = 'excused'` schrijft, vond in alle
   databasefuncties niets, en concludeerde dat het lek pas bij QS8-82 scherp zou
@@ -229,6 +242,5 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-Begin met EPIC 12, en dicht `goals.risk_status` vóór of tegelijk met QS8-93.
-Werk daarna door volgens de volgorde hierboven. Vraag alleen als
+Begin met EPIC 11 en werk door volgens de volgorde hierboven. Vraag alleen als
 doorgaan-onder-aanname echt onveilig zou zijn.
