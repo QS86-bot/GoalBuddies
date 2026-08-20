@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 19-08-2026 (na de weekpassen, QS8-81 en QS8-75)
+**Laatst bijgewerkt:** 20-08-2026 (na de groene notities en QS8-106)
 
 ---
 
@@ -48,15 +48,26 @@ Lees dit eerst; de rest is naslag.
   sloot, bleken er nog twee deuren te zijn. **Vier migraties voor één gat, en
   elke ronde vond de vorige reparatie te smal.** Bij het volgende slot: zoek eerst
   álle routes naar het effect, niet de route die je net gevonden hebt.
-* **⚠️ De datalaag loopt vóór op de schermen, en dat is inmiddels het grootste
-  knelpunt.** `schuifDoor()`, `sluitWeekdoelAf()`, `verwijderWeekdoel()` en
-  `verwijderDoel()` zijn gebouwd, getest en hebben nette Nederlandse meldingen —
-  en worden door **geen enkel scherm** aangeroepen. Datzelfde geldt voor de hele
-  Doelcoach-keten van EPIC 3. Overweeg vóór EPIC 11 een ronde langs de doelen- en
-  weekdoelschermen; dat is goedkoper dan er nog een laag bovenop bouwen.
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A40. De
-  dringendste die nog openstaat is A37 (telt een week mee zodra één weekdoel af
-  is?); die blokkeert het bouwen van andere issues niet.
+* ✅ **De vier functies zonder scherm hebben er een** (QS8-106, 20-08).
+  `schuifDoor()`, `sluitWeekdoelAf()`, `verwijderWeekdoel()` en `verwijderDoel()`
+  worden nu aangeroepen: afsluiten en weggooien staan op de weekdoelkaart, het
+  blok "Nog open van eerdere weken" op *Vandaag* neemt een gemiste week mee, en
+  weggooien-binnen-de-bedenktijd staat onder archiveren op het doelscherm. Elk
+  met een bevestiging die zegt wát het kost.
+* **⚠️ Maar er bleek een vijfde te zijn, en die is erger: `maakWeekdoel()` wordt
+  door geen enkel scherm aangeroepen.** "Weekdoel toevoegen" stuurt je naar de
+  doelenlijst, die naar een doel, en op het doelscherm staat geen formulier.
+  **Er is dus geen route om een weekdoel aan te maken** — de kernlus van de app
+  is niet met de hand te doorlopen. Doorschuiven werkt wel, want `schuifDoor()`
+  roept `maakWeekdoel()` intern aan. Dit is geen bedrading maar een scherm: het
+  is de UI van QS8-43/QS8-44. **Dit is nu het grootste knelpunt.**
+* De Doelcoach-keten van EPIC 3 staat er nog steeds zonder scherm bij, en er is
+  nog steeds geen echte AI-call gedaan.
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A45. Twee
+  dringende: **A45** (mag `excused` bij de afgeschermde statussen — zie §2, het
+  zet een lek op scherp zodra QS8-82 gebouwd wordt) en **A41 t/m A44** uit de
+  groene notities, waarvan A41 en A42 een besluit over domeinregel 7 vragen.
+  A37 staat er ook nog. Geen van alle blokkeert het bouwen van andere issues.
 
 ---
 
@@ -250,7 +261,8 @@ Klein, maar het staat nergens anders opgeschreven:
 |---|---|---|
 | Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
 | Avatar uploaden | QS8-27 | Er is geen Storage-bucket en geen `storage.objects`-policy |
-| Doorschuiven van een gemist weekdoel | QS8-47 | `schuifDoor()` staat in `modules/goals/weekly.ts`, er is nog geen scherm dat hem aanroept |
+| ~~Doorschuiven van een gemist weekdoel~~ | QS8-47 | ✅ aangesloten in QS8-106: het blok "Nog open van eerdere weken" op *Vandaag* |
+| **Een weekdoel aanmaken** | QS8-43, QS8-44 | ⚠️ `maakWeekdoel()` wordt door geen enkel scherm aangeroepen. Gevonden tijdens QS8-106. Zonder dit scherm is de kernlus niet met de hand te doorlopen |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |

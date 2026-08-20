@@ -672,7 +672,7 @@ function WeekdoelKaart({
            Ze even zwaar maken zou de uitweg net zo aantrekkelijk maken als de
            week zelf.
       */}
-      {open ? null : (
+      {open || !(acties.afronden || acties.afsluiten || acties.verwijderen) ? null : (
         <View style={styles.knoppen}>
           {/*
             Staat er een vraag van een buddy, dan zit de knop om opnieuw in te
