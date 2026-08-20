@@ -44,8 +44,11 @@ import {
   DoelStandKaart,
   Field,
   FloorCeiling,
+  magVieren,
   Screen,
   Subheading,
+  useVieringenAan,
+  Viering,
   weekdoelActies,
   WEEKPAS_UITLEG,
   type WeeklyGoalStatus,
@@ -493,6 +496,8 @@ function WeekdoelKaart({
   const [eis, setEis] = useState<Bewijseis>('note_required');
   const [vragen, setVragen] = useState<readonly Vraag[]>([]);
   const [vraagt, setVraagt] = useState<'afsluiten' | 'verwijderen' | null>(null);
+  const [gevierd, setGevierd] = useState(false);
+  const { aan: vieringenAan } = useVieringenAan();
 
   const heeftVloer = Boolean(weekdoel.floor_text);
   const afgerond = weekdoel.status !== 'todo';
@@ -615,6 +620,20 @@ function WeekdoelKaart({
 
   return (
     <Card>
+      {/*
+        ⚠️ Het feestje hangt aan `approved` en niet aan het indienen. Zelf
+           afvinken is geen goedkeuring (domeinregel 3), dus vieren op het moment
+           dat jíj op "Indienen" drukt zou de peer-goedkeuring in de UI
+           wegpoetsen — precies de grens die dit product overeind houdt.
+
+        ⚠️ `gevierd` zorgt dat het één keer gebeurt en niet bij elke render van
+           een week die al goedgekeurd is. Het is bewust componentstate en geen
+           opslag: het feestje hoort bij dit bezoek aan het scherm.
+      */}
+      {weekdoel.status === 'approved' && magVieren({ aan: vieringenAan, alGezien: gevierd }) ? (
+        <Viering soort="weekdoel" onKlaar={() => setGevierd(true)} />
+      ) : null}
+
       <FloorCeiling
         title={weekdoel.title}
         floorText={weekdoel.floor_text}

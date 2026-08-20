@@ -30,6 +30,7 @@ export { MilestoneProgress } from './MilestoneProgress';
 export { Screen } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
+export { Viering } from './Viering';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
@@ -39,6 +40,16 @@ export {
   type BevestigingsTekst,
   type WeekdoelActies,
 } from './acties';
+
+export {
+  aantalDeeltjes,
+  magVieren,
+  viering,
+  type Viering as VieringInhoud,
+  type VieringSoort,
+} from './vieringen';
+
+export { useVieringenAan } from './voorkeuren';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
 export {

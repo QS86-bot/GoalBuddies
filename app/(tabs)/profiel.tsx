@@ -21,6 +21,7 @@ import {
   Field,
   Screen,
   Subheading,
+  useVieringenAan,
   WeekStartKeuze,
 } from '@/shared/ui';
 
@@ -93,6 +94,8 @@ export default function Profiel() {
             />
 
             <ThemaKeuze />
+
+            <VieringKeuze />
 
             <Card nested>
               <Subheading>Uitloggen</Subheading>
@@ -270,6 +273,57 @@ function ThemaKeuze() {
           </Button>
         ))}
       </View>
+    </Card>
+  );
+}
+
+/**
+ * Feestelijke momenten aan of uit — QS8-76, acceptatiecriterium 3.
+ *
+ * ⚠️ Deze voorkeur staat op het apparaat en niet in je profiel. Een animatie
+ *    aan- of uitzetten hoort bij het scherm waarop je kijkt, net als
+ *    `prefers-reduced-motion` zelf. Gevolg dat je moet weten: hij reist niet
+ *    mee naar een nieuwe telefoon. Zie `shared/ui/voorkeuren.ts`.
+ *
+ * ⚠️ Los van `prefers-reduced-motion`, en die wint altijd. Deze schakelaar gaat
+ *    over "wil ik dit soort momenten"; die systeemvoorkeur over "kan ik
+ *    beweging aan". Wie om minder beweging vraagt, hoort zijn felicitatie niet
+ *    kwijt te raken — alleen de confetti.
+ */
+function VieringKeuze() {
+  const { aan, geladen, zet } = useVieringenAan();
+
+  return (
+    <Card>
+      <Subheading>Feestelijke momenten</Subheading>
+      <Body muted>
+        Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel
+        af is. Verder blijft de app rustig.
+      </Body>
+
+      <View style={styles.keuzes}>
+        <Button
+          variant={aan ? 'primair' : 'secundair'}
+          disabled={!geladen}
+          onPress={() => zet(true)}
+          accessibilityLabel="Feestelijke momenten aan"
+        >
+          Aan
+        </Button>
+        <Button
+          variant={aan ? 'secundair' : 'primair'}
+          disabled={!geladen}
+          onPress={() => zet(false)}
+          accessibilityLabel="Feestelijke momenten uit"
+        >
+          Uit
+        </Button>
+      </View>
+
+      <Caption>
+        Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst
+        blijft dan gewoon staan.
+      </Caption>
     </Card>
   );
 }
