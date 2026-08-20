@@ -104,6 +104,51 @@ export async function maakWeekdoel(
  *    Verwijderen kán niet meer: het recht is ingetrokken, dus een rechtstreekse
  *    DELETE geeft 42501.
  */
+/**
+ * Verwijdert een weekdoel dat je net per ongeluk hebt aangemaakt — migratie 0046.
+ *
+ * ⚠️ Dit is niet de tegenhanger van `sluitWeekdoelAf()` maar het uitzonderingspad
+ *    ernaast. Afsluiten is een besluit over een week die je niet gaat halen, en
+ *    dat kost een minpunt zodra de cyclus verstrijkt. Verwijderen is voor de
+ *    dubbele invoer en het weekdoel onder het verkeerde doel: het mag alleen
+ *    zolang de rij vers is (`bedenktijd()`, nu 24 uur), nog op `todo` staat en er
+ *    geen voltooiing aan hangt.
+ *
+ * ⚠️ De reden komt terug zodat het scherm hem kan tonen. Een verwijdering die
+ *    stil niets doet is hier het verkeerde faalgedrag — de gebruiker verwacht
+ *    het resultaat te zien.
+ */
+export async function verwijderWeekdoel(id: string): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('verwijder_weekdoel', {
+    p_weekly_goal_id: id,
+  });
+
+  if (error) {
+    reportError(error, 'weekly.delete', { code: error.code });
+    return { ok: false, melding: 'Verwijderen lukte niet.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: verwijderMelding(uitkomst.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+function verwijderMelding(reden: string | undefined): string {
+  switch (reden) {
+    case 'te_oud':
+      return 'Dit weekdoel staat er te lang om nog te verwijderen. Je kunt hem wel afsluiten — dan telt de week als gemist.';
+    case 'not_open':
+      return 'Er is al iets met dit weekdoel gebeurd, dus verwijderen kan niet meer.';
+    case 'heeft_voltooiing':
+      return 'Je hebt hier al iets voor ingediend. Verwijderen kan dan niet meer.';
+    default:
+      return 'Verwijderen lukte niet.';
+  }
+}
+
 export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
   const { data, error } = await supabase().rpc('sluit_weekdoel_af', {
     p_weekly_goal_id: id,

@@ -835,6 +835,218 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     TEST_TIMEOUT,
   );
 
+  // -------------------------------------------------------------------------
+  // De bedenktijd — migratie 0046
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ De regel die "per ongeluk" van "ontsnappen" scheidt is de leeftijd van de
+  //    rij, niet de status. Een vergissing merk je meteen; een ontsnapping
+  //    bedenk je aan het eind van de week. Deze twee tests staan om precies dat
+  //    onderscheid vast te leggen.
+
+  it(
+    'laat een net aangemaakt weekdoel gewoon verwijderen',
+    async () => {
+      const admin = adminDb();
+      const gemaakt = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'dubbel ingevoerd',
+          cycle_start_date: '2026-07-06',
+          cycle_index: 920,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+      if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
+
+      const weg = await f.bob.db.rpc('verwijder_weekdoel', {
+        p_weekly_goal_id: gemaakt.data.id,
+      });
+
+      expect(weg.error).toBeNull();
+      expect(uitkomst(weg.data).ok).toBe(true);
+
+      const { count } = await admin
+        .from('weekly_goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', gemaakt.data.id);
+
+      expect(count).toBe(0);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een weekdoel van vorige week niet meer verwijderen',
+    async () => {
+      // ⚠️ Dit is de route die A40 dichtte, en die moet dicht blijven: wie
+      //    zondagavond weet dat hij zijn week niet haalt, kijkt naar een
+      //    weekdoel dat hij maandag heeft aangemaakt. Buiten de bedenktijd, dus
+      //    afsluiten kan wel en wegpoetsen niet.
+      const admin = adminDb();
+      const gemaakt = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: f.bobGoalId,
+          title: 'staat er al een week',
+          cycle_start_date: '2026-07-13',
+          cycle_index: 921,
+          status: 'todo',
+          // `created_at` is niet client-schrijfbaar; via de admin-client wél, en
+          // dat is precies hoe je "deze rij is oud" nabootst zonder te wachten.
+          created_at: '2026-07-13T08:00:00Z',
+        })
+        .select('id')
+        .single();
+      if (gemaakt.error) throw new Error(`opbouw: ${gemaakt.error.message}`);
+
+      const weg = await f.bob.db.rpc('verwijder_weekdoel', {
+        p_weekly_goal_id: gemaakt.data.id,
+      });
+
+      expect(weg.error).toBeNull();
+      expect(uitkomst(weg.data).ok).toBe(false);
+      expect(uitkomst(weg.data).reason).toBe('te_oud');
+
+      const { count } = await admin
+        .from('weekly_goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', gemaakt.data.id);
+
+      expect(count).toBe(1);
+
+      await admin.from('weekly_goals').delete().eq('id', gemaakt.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een vers en leeg doel verwijderen, maar een doel met geschiedenis niet',
+    async () => {
+      const admin = adminDb();
+
+      // Vers en leeg: mag weg.
+      const vers = await admin
+        .from('goals')
+        .insert({
+          owner_id: f.bob.id,
+          title: 'per ongeluk aangemaakt doel',
+          category: 'other',
+          target_date: '2027-01-01',
+        })
+        .select('id')
+        .single();
+      if (vers.error) throw new Error(`opbouw: ${vers.error.message}`);
+
+      const weg = await f.bob.db.rpc('verwijder_doel', { p_goal_id: vers.data.id });
+      expect(uitkomst(weg.data).ok).toBe(true);
+
+      // Het doel van bob heeft inmiddels weekdoelen uit eerdere tests gehad;
+      // gebruik een eigen doel mét een weekdoel eraan om de weigering te tonen.
+      const metHistorie = await admin
+        .from('goals')
+        .insert({
+          owner_id: f.bob.id,
+          title: 'doel met een week erin',
+          category: 'other',
+          target_date: '2027-01-01',
+        })
+        .select('id')
+        .single();
+      if (metHistorie.error) throw new Error(`opbouw: ${metHistorie.error.message}`);
+
+      const weekdoel = await admin.from('weekly_goals').insert({
+        goal_id: metHistorie.data.id,
+        title: 'er is aan gewerkt',
+        cycle_start_date: '2026-07-20',
+        cycle_index: 922,
+        status: 'todo',
+      });
+      if (weekdoel.error) throw new Error(`opbouw: ${weekdoel.error.message}`);
+
+      const geweigerd = await f.bob.db.rpc('verwijder_doel', {
+        p_goal_id: metHistorie.data.id,
+      });
+
+      expect(uitkomst(geweigerd.data).ok).toBe(false);
+      expect(uitkomst(geweigerd.data).reason).toBe('heeft_weekdoelen');
+
+      await admin.from('weekly_goals').delete().eq('goal_id', metHistorie.data.id);
+      await admin.from('goals').delete().eq('id', metHistorie.data.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat niemand het doel van een ander verwijderen, en niemand rechtstreeks',
+    async () => {
+      // De policy is weg en het recht is ingetrokken: rechtstreeks verwijderen
+      // geeft 42501, en via de RPC stuit je op de eigenaarstoets.
+      const rechtstreeks = await f.bob.db.from('goals').delete().eq('id', f.aliceGoalId);
+      expect(rechtstreeks.error?.code).toBe('42501');
+
+      const viaRpc = await f.bob.db.rpc('verwijder_doel', { p_goal_id: f.aliceGoalId });
+      expect(uitkomst(viaRpc.data).ok).toBe(false);
+      expect(uitkomst(viaRpc.data).reason).toBe('not_owner');
+
+      const { count } = await adminDb()
+        .from('goals')
+        .select('*', { count: 'exact', head: true })
+        .eq('id', f.aliceGoalId);
+
+      expect(count).toBe(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een doel niet aanmaken met een zelfgekozen status',
+    async () => {
+      // ⚠️ Dezelfde vondst als A35, één niveau hoger. 0035 trok het UPDATE-recht
+      //    op `goals.status` in omdat `completed` de melding "X heeft een doel
+      //    afgerond" in elke gekoppelde groep zette — maar INSERT bleef open.
+      const { error } = await f.bob.db.from('goals').insert({
+        owner_id: f.bob.id,
+        title: 'meteen af',
+        category: 'other',
+        target_date: '2027-01-01',
+        status: 'completed',
+      });
+
+      expect(error?.code).toBe('42501');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een doel wél gewoon aanmaken zonder status',
+    async () => {
+      // De keerzijde, want een ingetrokken kolomrecht breekt de app stil
+      // (valkuil 17). Dit is precies wat `maakDoel()` invult.
+      const { data, error } = await f.bob.db
+        .from('goals')
+        .insert({
+          owner_id: f.bob.id,
+          title: 'gewoon een doel',
+          description: null,
+          category: 'other',
+          identity_statement: null,
+          target_date: '2027-01-01',
+          available_hours_per_week: 4,
+        })
+        .select('id, status')
+        .single();
+
+      expect(error).toBeNull();
+      expect(data?.status).toBe('active');
+
+      await adminDb().from('goals').delete().eq('id', data?.id ?? '');
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'laat een gemiste week niet verwijderen',
     async () => {
