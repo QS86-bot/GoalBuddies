@@ -42,7 +42,7 @@ op *Vandaag* stuurt je naar de doelenlijst, die stuurt je naar een doel, en op
 dat doelscherm staat geen formulier. **De kernlus van de app is niet met de hand
 te doorlopen.** Doorschuiven werkt wel, want `schuifDoor()` roept
 `maakWeekdoel()` intern aan — dat maskeert het probleem. Dit is de UI van
-QS8-43/QS8-44 en er is nog geen apart issue voor; maak er een.
+QS8-43/QS8-44 en staat als **QS8-112** in Linear, op Urgent.
 
 Daarna EPIC 8 afmaken: QS8-82 (adempauze) is het enige dat zelfstandig te bouwen
 is — QS8-77 (dagelijkse nudge) hangt aan EPIC 11, want er is nog geen kanaal om

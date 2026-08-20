@@ -60,7 +60,8 @@ Lees dit eerst; de rest is naslag.
   **Er is dus geen route om een weekdoel aan te maken** — de kernlus van de app
   is niet met de hand te doorlopen. Doorschuiven werkt wel, want `schuifDoor()`
   roept `maakWeekdoel()` intern aan. Dit is geen bedrading maar een scherm: het
-  is de UI van QS8-43/QS8-44. **Dit is nu het grootste knelpunt.**
+  is de UI van QS8-43/QS8-44 en staat als **QS8-112** in Linear, op Urgent.
+  **Dit is nu het grootste knelpunt.**
 * De Doelcoach-keten van EPIC 3 staat er nog steeds zonder scherm bij, en er is
   nog steeds geen echte AI-call gedaan.
 * **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A45. Twee
@@ -262,7 +263,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
 | Avatar uploaden | QS8-27 | Er is geen Storage-bucket en geen `storage.objects`-policy |
 | ~~Doorschuiven van een gemist weekdoel~~ | QS8-47 | ✅ aangesloten in QS8-106: het blok "Nog open van eerdere weken" op *Vandaag* |
-| **Een weekdoel aanmaken** | QS8-43, QS8-44 | ⚠️ `maakWeekdoel()` wordt door geen enkel scherm aangeroepen. Gevonden tijdens QS8-106. Zonder dit scherm is de kernlus niet met de hand te doorlopen |
+| **Een weekdoel aanmaken** | QS8-112 (uit QS8-43, QS8-44) | ⚠️ `maakWeekdoel()` wordt door geen enkel scherm aangeroepen. Gevonden tijdens QS8-106. Zonder dit scherm is de kernlus niet met de hand te doorlopen |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |
