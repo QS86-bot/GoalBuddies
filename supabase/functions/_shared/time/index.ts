@@ -34,6 +34,7 @@ export {
   nextCycle,
   previousCycle,
   userCycle,
+  userCycleOn,
 } from './cycle.ts';
 
 export {

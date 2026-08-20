@@ -118,6 +118,8 @@ Deno.serve(async (req: Request) => {
   const nu = new Date();
   let gemist = 0;
   let vrijgesteld = 0;
+  let risicoBijgewerkt = 0;
+
   // Hoeveel gemiste weken er door een weekpas gered zijn — QS8-81. Een deelverzameling
   // van `gemist`: het punt is afgeboekt, alleen de reeks bleef staan.
   let gered = 0;
@@ -272,6 +274,28 @@ Deno.serve(async (req: Request) => {
     const geraakteDoelen = new Set((open ?? []).map((w) => (w as unknown as OpenWeekdoel).goal_id));
     for (const goalId of geraakteDoelen) {
       await db.rpc('herbereken_reeks', { p_user_id: profiel.id, p_goal_id: goalId });
+
+      // De Risico-radar — QS8-93, migratie 0051.
+      //
+      // ⚠️ Hier én in de trigger op `completion_approvals`, en dat zijn samen
+      //    precies de twee momenten waarop de uitkomst kan veranderen: een week
+      //    die verstrijkt en een week die goedgekeurd wordt. Niet bij elke
+      //    schermweergave — dat is acceptatiecriterium 2, en op een gratis tier
+      //    is het ook gewoon zonde.
+      //
+      // ⚠️ De fout wordt gemeld en niet gegooid. Een mislukte risicoberekening
+      //    mag de rollover niet stoppen: het minpunt en de reeks zijn het echte
+      //    werk, het risico is een afgeleide. Zelfde afweging als bij de
+      //    trigger.
+      const { error: risicoFout } = await db.rpc('herbereken_risico', {
+        p_goal_id: goalId,
+      });
+
+      if (risicoFout) {
+        console.error(`risico niet herberekend voor ${goalId}: ${risicoFout.message}`);
+      } else {
+        risicoBijgewerkt += 1;
+      }
     }
   }
 
@@ -301,6 +325,7 @@ Deno.serve(async (req: Request) => {
       vrijgesteld,
       profielen: (profielen ?? []).length,
       geslapen: geslapen ?? 0,
+      risicoBijgewerkt,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );

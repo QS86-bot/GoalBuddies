@@ -9,6 +9,7 @@ import { GRACE_HOURS } from './types.ts';
 import {
   addDays,
   daysBetween,
+  isGeldigeIsoDatum,
   localDateIn,
   parseIsoDate,
   utcFromZoned,
@@ -51,6 +52,32 @@ function cycleContaining(clock: ClockShape, at: Date): Cycle {
 // ---------------------------------------------------------------------------
 // Klok 1 — de persoonlijke cyclus
 // ---------------------------------------------------------------------------
+
+/**
+ * De cyclus van de gebruiker rond een kalenderdatum die je al hebt — QS8-106.
+ *
+ * ⚠️ Bestaat omdat een `cycle_start_date` uit de database een string is en geen
+ *    moment. Wie daar zelf een `Date` van maakt om hem in `userCycle()` te
+ *    stoppen, doet een tijdberekening buiten deze module en dat is precies wat
+ *    correctheidsregel 7 verbiedt — bovendien landt `new Date('2026-08-17')` op
+ *    middernacht UTC, wat in een westelijke tijdzone de dag ervóór is en dus een
+ *    cyclus te vroeg.
+ *
+ * ⚠️ Neemt een gewone `string` en geen `IsoDate`, want dat is wat er uit de
+ *    database komt, en geeft `null` terug als het geen geldige datum is. Zou de
+ *    aanroeper de merking er zelf op casten, dan verplaatst dat het probleem
+ *    naar de plek die er het minst van weet — en dan valt het pas om in
+ *    `parseIsoDate()`, ver van de oorzaak. Dat is dezelfde vorm als Q-TODO A38:
+ *    onzin in een kolom hoort te worden opgevangen waar hij binnenkomt.
+ */
+export function userCycleOn(clock: UserClock, dateInCycle: string): Cycle | null {
+  if (!isGeldigeIsoDatum(dateInCycle)) return null;
+
+  return cycleFromDate(
+    { startDay: clock.weekStartDay, tz: clock.tz },
+    dateInCycle.trim() as IsoDate,
+  );
+}
 
 /** De cyclus waarin de gebruiker zich nu bevindt. */
 export function userCycle(clock: UserClock, at: Date): Cycle {
