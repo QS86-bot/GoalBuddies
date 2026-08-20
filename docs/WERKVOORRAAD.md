@@ -160,7 +160,7 @@ de twee verzamelingen gelijkstelt (valkuil 18).
 
 ---
 
-## 3b. Het merge-ritueel — vijf stappen, en de vijfde wordt vergeten
+## 3b. Het merge-ritueel — zes stappen, en de laatste wordt vergeten
 
 Vóór élke merge naar `main`:
 
@@ -168,9 +168,20 @@ Vóór élke merge naar `main`:
 npm run typecheck && npm run lint && npm test && npm run build
 ```
 
-En dan de stap die geen enkele machine voor je doet:
+En dan de twee stappen die geen enkele machine voor je doet:
 
-5. **Draai de RLS-suite en lees de uitslag.** `npm test` doet dit lokaal mee,
+5. **Draai de reviewagents die bij deze wijziging horen** — naar risico en niet
+   naar schema, sinds 20-08-2026. `security-reviewer` **direct** bij alles wat
+   auth, RLS, punten, goedkeuring, commitments of een nieuw groepszichtbaar
+   oppervlak raakt; `code-critic` en `critical-user` één keer per milestone,
+   samen in één opdracht. Bij een puur UI-issue hoeft er niets te draaien. De
+   onderbouwing staat in `CLAUDE.md` bij onwrikbare regel 19.
+
+   ⚠️ En verifieer elke bevinding zelf. Ze hebben het ook mis: op 20-08 was de
+   zwaarste bevinding onjuist omdat ze een migratiebestand las waar de gedeployde
+   functie strenger was.
+
+6. **Draai de RLS-suite en lees de uitslag.** `npm test` doet dit lokaal mee,
    maar alleen omdat `.env` de sleutels heeft. Controleer dat de teller klopt —
    staat er `skipped` bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en
    zegt groen niets over autorisatie.

@@ -59,12 +59,26 @@ een nudge over te versturen. Dan EPIC 11, EPIC 3 afmaken, 12, 9.
    `npm run build` — **én lees de testteller.** Staat er "skipped" bij
    `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen niets over
    autorisatie. Zie WERKVOORRAAD §3b.
-5. **Reviewagents** (code-critic, security-reviewer, critical-user) aan het eind
-   van elke epic, en meteen bij alles wat auth, RLS, goedkeuring, punten of
-   commitments raakt. Draai ze parallel in de achtergrond. Ze vonden in élke
-   ronde iets blokkerends — sla ze niet over. **Maar verifieer hun bevindingen
-   zelf voordat je ze verwerkt**: in de laatste ronde was de zwaarste bevinding
-   aantoonbaar onjuist, terwijl twee andere kritieke bevindingen wél klopten.
+5. **Reviewagents naar risico, niet naar schema** (herzien 20-08-2026, zie
+   CLAUDE.md regel 19 voor de onderbouwing):
+   - **`security-reviewer` draait direct**, bij elke wijziging die auth, RLS,
+     punten, goedkeuring, commitments of een nieuw groepszichtbaar oppervlak
+     raakt. Nooit uitstellen: die bevindingen stapelen op wat je erbovenop bouwt,
+     fouten worden gekopieerd naar de volgende functie, en de database is nu nog
+     leeg — dat is tijdelijk.
+   - **`code-critic` en `critical-user` één keer per milestone**, samen in één
+     opdracht. Hun vondsten rotten niet: dode code en copy kosten over drie
+     maanden evenveel om te repareren. Samen in één opdracht scheelt ongeveer een
+     derde, want ze lezen anders dezelfde bestanden koud in.
+   - Bij een puur UI-issue hoeft er dus geen enkele agent te draaien.
+   - **Verifieer elke bevinding zelf voordat je hem verwerkt.** In de ronde van
+     20-08 was de zwaarste bevinding aantoonbaar onjuist — ze las een
+     migratiebestand waar de gedeployde functie strenger was — terwijl twee
+     andere kritieke bevindingen wél klopten.
+   - Wat je uitstelt vang je zelf op met een controlepas: dode code, dubbele
+     teksten, ontbrekende loading-/error-/lege staat, een component dat op het
+     verkeerde scherm kan belanden, en copy die een regel uitlegt die de
+     gebruiker anders moet raden.
 6. Werk Linear bij zodra iets af is, niet aan het eind. Gebruik "In Review" niet:
    er is geen reviewer in de solo-fase.
 7. Loop je vast op iets dat mijn beslissing of toegang vraagt: zet het in
