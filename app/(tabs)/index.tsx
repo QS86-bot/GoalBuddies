@@ -16,19 +16,26 @@ import {
 } from '@/modules/completions';
 import {
   afsluitbareCyclus,
+  eersteCyclusVanDoel,
   fetchDoelen,
   fetchDoelStanden,
+  fetchDoorschuifbaar,
   fetchWeekdoelen,
   huidigeCyclus,
   inCoulanceperiode,
+  schuifDoor,
+  sluitWeekdoelAf,
+  verwijderWeekdoel,
   zojuistAfgeslotenCyclus,
   type DoelStand,
   type Weekdoel,
 } from '@/modules/goals';
 import { space } from '@/shared/theme';
-import { localDateIn, now } from '@/shared/time';
+import { localDateIn, now, type UserClock } from '@/shared/time';
 import {
   AsyncView,
+  BEVESTIGING,
+  Bevestiging,
   Body,
   Button,
   Caption,
@@ -39,6 +46,7 @@ import {
   FloorCeiling,
   Screen,
   Subheading,
+  weekdoelActies,
   WEEKPAS_UITLEG,
   type WeeklyGoalStatus,
 } from '@/shared/ui';
@@ -57,6 +65,7 @@ export default function Vandaag() {
   const { profiel } = useProfiel();
 
   const [weekdoelen, setWeekdoelen] = useState<readonly Weekdoel[]>([]);
+  const [openstaand, setOpenstaand] = useState<readonly Weekdoel[]>([]);
   const [dagzetten, setDagzetten] = useState<readonly DagZet[]>([]);
   const [standen, setStanden] = useState<ReadonlyMap<string, DoelStand>>(new Map());
   const [doeltitels, setDoeltitels] = useState<ReadonlyMap<string, string>>(new Map());
@@ -147,6 +156,31 @@ export default function Vandaag() {
     };
   }, [userId, ronde]);
 
+  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
+  // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
+  // storing hier hoort je week van vandaag niet mee te slepen.
+  //
+  // ⚠️ `klok` staat hier niet in de afhankelijkheden en `cyclusStart` wel, om
+  //    dezelfde reden als hierboven: `userClock(profiel)` geeft elke render een
+  //    vers object en zou dus een oneindige lus opleveren.
+  useEffect(() => {
+    if (!userId || !klok) return;
+    let levend = true;
+
+    fetchDoorschuifbaar(userId, klok)
+      .then((gevonden) => {
+        if (levend) setOpenstaand(gevonden);
+      })
+      .catch(() => {
+        if (levend) setOpenstaand([]);
+      });
+
+    return () => {
+      levend = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, cyclusStart, ronde]);
+
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
   return (
@@ -195,6 +229,8 @@ export default function Vandaag() {
       <Button variant="primair" block onPress={() => router.push('/doelen')}>
         Weekdoel toevoegen
       </Button>
+
+      <OpenstaandBlok weekdoelen={openstaand} klok={klok} onKlaar={herlaad} />
 
       <StandBlok
         standen={standen}
@@ -308,6 +344,114 @@ function StandBlok({
 }
 
 /**
+ * Weken die je gemist hebt en nog kunt meenemen — QS8-47, QS8-106.
+ *
+ * ⚠️ **Alleen voor jezelf.** Dit blok is een lijst gemiste weken, en dat is
+ *    precies het gegeven dat migratie 0019 en 0020 voor groepsgenoten hebben
+ *    dichtgezet. Het hoort op dit scherm en op geen enkel groepsscherm — zelfde
+ *    waarschuwing als bij `StandBlok` hierboven.
+ *
+ * ⚠️ Rendert niets als er niets openstaat. Een leeg kader "geen gemiste weken"
+ *    is een herinnering aan een probleem dat je niet hebt, en dat is precies de
+ *    toon die domeinregel 7 uit de app wil houden — ook in je eigen scherm.
+ */
+function OpenstaandBlok({
+  weekdoelen,
+  klok,
+  onKlaar,
+}: {
+  readonly weekdoelen: readonly Weekdoel[];
+  readonly klok: UserClock | null;
+  readonly onKlaar: () => void;
+}) {
+  if (weekdoelen.length === 0 || klok === null) return null;
+
+  return (
+    <Card nested>
+      <Subheading>Nog open van eerdere weken</Subheading>
+      {/*
+        ⚠️ De tekst zegt wat doorschuiven wél en níét doet. Vóór migratie 0045
+           repareerde doorschuiven je reeks, en wie dat nog denkt, komt bedrogen
+           uit op een moment dat hij het niet controleert (Q-TODO A39).
+      */}
+      <Body muted>
+        Je kunt deze meenemen naar de week die nu loopt. De week zelf blijft
+        gemist — meenemen verhuist het werk, het herstelt je reeks niet.
+      </Body>
+
+      <View style={styles.lijst}>
+        {weekdoelen.map((weekdoel) => (
+          <DoorschuifKaart key={weekdoel.id} weekdoel={weekdoel} klok={klok} onKlaar={onKlaar} />
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+function DoorschuifKaart({
+  weekdoel,
+  klok,
+  onKlaar,
+}: {
+  readonly weekdoel: Weekdoel;
+  readonly klok: UserClock;
+  readonly onKlaar: () => void;
+}) {
+  const [vraagt, setVraagt] = useState(false);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function doorschuiven() {
+    setBezig(true);
+    setFout(null);
+
+    // ⚠️ De eerste cyclus van het doel bepaalt `cycle_index` van de nieuwe rij.
+    //    Zonder deze opzoeking wordt elke doorgeschoven week "week 1" van dat
+    //    doel, en dan telt de weekteller in het doeloverzicht niet meer mee.
+    const eerste = await eersteCyclusVanDoel(weekdoel.goal_id, klok);
+    const uitkomst = await schuifDoor(weekdoel, klok, eerste);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setVraagt(false);
+    onKlaar();
+  }
+
+  if (vraagt) {
+    return (
+      <Bevestiging
+        tekst={BEVESTIGING.weekdoelDoorschuiven}
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void doorschuiven()}
+        onAnnuleer={() => {
+          setVraagt(false);
+          setFout(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <Card flat>
+      <View style={styles.kop}>
+        <Body>{weekdoel.title}</Body>
+        <Caption>Week van {weekdoel.cycle_start_date}</Caption>
+      </View>
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      <Button onPress={() => setVraagt(true)}>Meenemen naar deze week</Button>
+    </Card>
+  );
+}
+
+/**
  * Eén weekdoel, met de mogelijkheid het af te ronden — QS8-46.
  *
  * ⚠️ De status wordt `pending`, nooit direct `approved`. Zelf afvinken is geen
@@ -329,10 +473,16 @@ function WeekdoelKaart({
   const [fout, setFout] = useState<string | null>(null);
   const [eis, setEis] = useState<Bewijseis>('note_required');
   const [vragen, setVragen] = useState<readonly Vraag[]>([]);
+  const [vraagt, setVraagt] = useState<'afsluiten' | 'verwijderen' | null>(null);
 
   const heeftVloer = Boolean(weekdoel.floor_text);
   const afgerond = weekdoel.status !== 'todo';
   const wachtOpOordeel = weekdoel.status === 'pending';
+
+  // Wat dit weekdoel op grond van zijn status mag. Staat in `shared/ui/acties`
+  // zodat het niet in elk scherm opnieuw bedacht wordt, en zodat er een test op
+  // kan staan zonder renderer.
+  const acties = weekdoelActies(weekdoel.status as WeeklyGoalStatus);
 
   // ⚠️ De bewijseis komt uit de groep en niet uit een constante. Hij is hier
   //    alleen bedoeld om vooraf de juiste zin te tonen; afdwingen doet de
@@ -392,6 +542,56 @@ function WeekdoelKaart({
       onKlaar();
     }
     setBezig(false);
+  }
+
+  /**
+   * Afsluiten en verwijderen lopen door dezelfde functie, want ze verschillen
+   * alleen in welke RPC eronder zit.
+   *
+   * ⚠️ Bij een mislukking blijft het bevestigingsblok staan met de melding
+   *    erin, en dat is met opzet. De reden `te_oud` zegt letterlijk "sluit hem
+   *    af in plaats van te verwijderen"; die tekst wegklikken zou de gebruiker
+   *    laten raden waarom er niets gebeurde.
+   */
+  async function voerUit(wat: 'afsluiten' | 'verwijderen') {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst =
+      wat === 'afsluiten'
+        ? await sluitWeekdoelAf(weekdoel.id)
+        : await verwijderWeekdoel(weekdoel.id);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setVraagt(null);
+    onKlaar();
+  }
+
+  // Het bevestigingsblok vervangt de kaart zolang het openstaat: twee schermen
+  // met knoppen tegelijk maakt onduidelijk waar de vraag over gaat.
+  if (vraagt !== null) {
+    return (
+      <Bevestiging
+        tekst={
+          vraagt === 'afsluiten'
+            ? BEVESTIGING.weekdoelAfsluiten
+            : BEVESTIGING.weekdoelVerwijderen
+        }
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void voerUit(vraagt)}
+        onAnnuleer={() => {
+          setVraagt(null);
+          setFout(null);
+        }}
+      />
+    );
   }
 
   return (
@@ -465,7 +665,43 @@ function WeekdoelKaart({
         </View>
       )}
 
-      {afgerond || open ? null : <Button onPress={() => setOpen(true)}>Afronden</Button>}
+      {/*
+        ⚠️ Afronden staat als eerste en de rest ernaast in stille knoppen. Deze
+           drie zijn geen gelijkwaardige keuzes: afronden is wat je wilt,
+           afsluiten is wat je soms moet, en weggooien is voor een vergissing.
+           Ze even zwaar maken zou de uitweg net zo aantrekkelijk maken als de
+           week zelf.
+      */}
+      {open ? null : (
+        <View style={styles.knoppen}>
+          {/*
+            Staat er een vraag van een buddy, dan zit de knop om opnieuw in te
+            dienen al in dat blok hierboven en met een beter label. Twee knoppen
+            die hetzelfde doen laten de gebruiker zoeken naar het verschil.
+          */}
+          {acties.afronden && vragen.length === 0 ? (
+            <Button onPress={() => setOpen(true)}>
+              {wachtOpOordeel ? 'Opnieuw indienen' : 'Afronden'}
+            </Button>
+          ) : null}
+
+          {acties.afsluiten ? (
+            <Button variant="stil" onPress={() => setVraagt('afsluiten')}>
+              Deze week afsluiten
+            </Button>
+          ) : null}
+
+          {acties.verwijderen ? (
+            <Button
+              variant="stil"
+              onPress={() => setVraagt('verwijderen')}
+              accessibilityLabel={`Weekdoel ${weekdoel.title} weggooien`}
+            >
+              Weggooien
+            </Button>
+          ) : null}
+        </View>
+      )}
     </Card>
   );
 }
@@ -562,7 +798,15 @@ const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
   standen: { gap: space.blokGap + 3 },
   afrond: { gap: space.blokGap - 3, paddingTop: space.blokGap - 4 },
-  knoppen: { flexDirection: 'row', gap: space.blokGap - 3, alignItems: 'center' },
+  kop: { gap: 2 },
+  // `wrap` omdat er nu drie knoppen naast elkaar kunnen staan; op een smalle
+  // telefoon vallen ze anders buiten beeld in plaats van door te lopen.
+  knoppen: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.blokGap - 3,
+    alignItems: 'center',
+  },
   zetten: { gap: space.blokGap - 4, paddingTop: space.blokGap - 4 },
   zet: { gap: 2 },
 });

@@ -49,6 +49,8 @@ export {
 } from './interview-schemas';
 
 export {
+  eersteCyclusVanDoel,
+  fetchDoorschuifbaar,
   fetchWeekdoelen,
   maakWeekdoel,
   schuifDoor,

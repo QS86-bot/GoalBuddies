@@ -12,6 +12,7 @@
  */
 
 export { AsyncView } from './AsyncView';
+export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
@@ -31,6 +32,13 @@ export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
+
+export {
+  BEVESTIGING,
+  weekdoelActies,
+  type BevestigingsTekst,
+  type WeekdoelActies,
+} from './acties';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
 export {
