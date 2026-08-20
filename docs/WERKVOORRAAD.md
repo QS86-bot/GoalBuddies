@@ -48,6 +48,12 @@ Lees dit eerst; de rest is naslag.
   sloot, bleken er nog twee deuren te zijn. **Vier migraties voor één gat, en
   elke ronde vond de vorige reparatie te smal.** Bij het volgende slot: zoek eerst
   álle routes naar het effect, niet de route die je net gevonden hebt.
+* **⚠️ De datalaag loopt vóór op de schermen, en dat is inmiddels het grootste
+  knelpunt.** `schuifDoor()`, `sluitWeekdoelAf()`, `verwijderWeekdoel()` en
+  `verwijderDoel()` zijn gebouwd, getest en hebben nette Nederlandse meldingen —
+  en worden door **geen enkel scherm** aangeroepen. Datzelfde geldt voor de hele
+  Doelcoach-keten van EPIC 3. Overweeg vóór EPIC 11 een ronde langs de doelen- en
+  weekdoelschermen; dat is goedkoper dan er nog een laag bovenop bouwen.
 * **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A40. De
   dringendste die nog openstaat is A37 (telt een week mee zodra één weekdoel af
   is?); die blokkeert het bouwen van andere issues niet.
