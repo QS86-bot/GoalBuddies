@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    Supabase-client en AsyncStorage mee — en daarmee React Native, in een test
 //    die in Node draait. Zelfde reden als de losse client in harness.ts.
 import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
-import { now, userCycle } from '../../src/shared/time';
+import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
   anonDb,
@@ -1697,6 +1697,173 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             .eq('id', gemist);
 
           expect(alsEigenaar.data ?? []).toHaveLength(1);
+        },
+        TEST_TIMEOUT,
+      );
+
+      /**
+       * ⚠️ Q-TODO A45, migratie 0047 — en dit is de test die de vórige test te
+       *    smal maakte. Die controleert `missed` en niets anders, dus hij bleef
+       *    groen terwijl `excused` er wél doorheen kwam.
+       *
+       *    `weekly_goals_select` schermde drie statussen af en `excused` niet.
+       *    Een adempauze betekent "ik heb deze week niet gedaan", dus dat is een
+       *    niet-voltooide week die de groep te zien kreeg. Vandaag schrijft nog
+       *    niets die status — QS8-82 wordt de eerste — en juist daarom moest het
+       *    dicht vóórdat er een schrijver is.
+       *
+       * ⚠️ Deze test loopt bewust langs **alle zeven** statussen uit
+       *    `weekly_goals_status_valid` in plaats van alleen langs de verboden.
+       *    Twee redenen. De verboden kant alleen zou groen blijven als de policy
+       *    per ongeluk álles verbergt, en de toegestane kant is de positieve
+       *    controle die dat uitsluit. En wie er een achtste status bij zet, komt
+       *    hier langs zodra hij hem aan deze lijst toevoegt.
+       */
+      it(
+        'toont een groepsgenoot precies de statussen die voltooiing betekenen',
+        async () => {
+          const admin = adminDb();
+          const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+          // Wat de groep wél en níét mag zien. `todo` en `pending` mogen: een
+          // week die loopt of op een oordeel wacht is geen tegenslag.
+          const verwacht: readonly { status: string; zichtbaar: boolean }[] = [
+            { status: 'todo', zichtbaar: true },
+            { status: 'pending', zichtbaar: true },
+            { status: 'approved', zichtbaar: true },
+            { status: 'missed', zichtbaar: false },
+            { status: 'carried', zichtbaar: false },
+            { status: 'cancelled', zichtbaar: false },
+            { status: 'excused', zichtbaar: false },
+          ];
+
+          // Eén rij per status, elk in een eigen cyclus zodat ze niet met elkaar
+          // botsen. Via de systeemclient: de client mag `status` niet zetten
+          // (migratie 0023 en 0043) en dat is nu juist het punt.
+          const rijen = new Map<string, string>();
+          for (const [i, { status }] of verwacht.entries()) {
+            rijen.set(
+              status,
+              mustId(
+                await admin
+                  .from('weekly_goals')
+                  .insert({
+                    goal_id: g.gekoppeldDoelId,
+                    title: `Week met status ${status}`,
+                    cycle_start_date: addDays(basis.startDate, -7 * (i + 2)),
+                    cycle_index: 20 + i,
+                    status,
+                  })
+                  .select('id')
+                  .single(),
+                `weekdoel ${status}`,
+              ),
+            );
+          }
+
+          const alsLid = await g.lid.db
+            .from('weekly_goals')
+            .select('id, status')
+            .eq('goal_id', g.gekoppeldDoelId);
+
+          const zichtbareIds = new Set((alsLid.data ?? []).map((w) => w.id));
+
+          for (const { status, zichtbaar } of verwacht) {
+            expect(zichtbareIds.has(rijen.get(status) ?? ''), `${status} voor de groep`).toBe(
+              zichtbaar,
+            );
+          }
+
+          // ⚠️ De tegentest die de hele test pas iets laat bewijzen: de eigenaar
+          //    ziet ze alle zeven. Een adempauze is privé, niet onvindbaar.
+          const alsEigenaar = await g.eigenaar.db
+            .from('weekly_goals')
+            .select('id')
+            .in('id', [...rijen.values()]);
+
+          expect(alsEigenaar.data ?? []).toHaveLength(verwacht.length);
+
+          // Opruimen, want deze rijen zouden de tellingen in andere tests
+          // vervuilen — `goal_dashboard` telt over álle weken van het doel.
+          await admin
+            .from('weekly_goals')
+            .delete()
+            .in('id', [...rijen.values()]);
+        },
+        TEST_TIMEOUT,
+      );
+
+      /**
+       * ⚠️ De tweede route naar dezelfde kamer, en de reden dat migratie 0047
+       *    er maar één hoefde te repareren. `goal_dashboard` staat op
+       *    `security_invoker = true`, dus zijn subquery's tellen onder de RLS van
+       *    wie hem bevraagt. Zou die vlag ooit omgezet worden, dan telt de view
+       *    ineens ook de verborgen weken mee en is het verschil
+       *    `weekly_total - weekly_approved` weer een lek.
+       */
+      it(
+        'telt in goal_dashboard geen weken mee die de groep niet mag zien',
+        async () => {
+          const admin = adminDb();
+          const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+          // ⚠️ Eerst meten, dan pas invoegen. Een eerdere test in dit bestand
+          //    laat een `missed`-week op ditzelfde doel staan, dus een absolute
+          //    verwachting ("het verschil is twee") hangt aan de volgorde waarin
+          //    de tests draaien. Het verschil vóór en ná is dat niet.
+          const voorLid = await g.lid.db
+            .from('goal_dashboard')
+            .select('weekly_total')
+            .eq('id', g.gekoppeldDoelId)
+            .single();
+
+          const voorEigenaar = await g.eigenaar.db
+            .from('goal_dashboard')
+            .select('weekly_total')
+            .eq('id', g.gekoppeldDoelId)
+            .single();
+
+          const verborgen = await Promise.all(
+            (['missed', 'excused'] as const).map(async (status, i) =>
+              mustId(
+                await admin
+                  .from('weekly_goals')
+                  .insert({
+                    goal_id: g.gekoppeldDoelId,
+                    title: `Onzichtbaar ${status}`,
+                    cycle_start_date: addDays(basis.startDate, -7 * (i + 30)),
+                    cycle_index: 40 + i,
+                    status,
+                  })
+                  .select('id')
+                  .single(),
+                `dashboardweek ${status}`,
+              ),
+            ),
+          );
+
+          const naLid = await g.lid.db
+            .from('goal_dashboard')
+            .select('weekly_total')
+            .eq('id', g.gekoppeldDoelId)
+            .single();
+
+          const naEigenaar = await g.eigenaar.db
+            .from('goal_dashboard')
+            .select('weekly_total')
+            .eq('id', g.gekoppeldDoelId)
+            .single();
+
+          // De eigenaar telt er twee bij: zijn eigen `missed` en `excused`.
+          expect(
+            (naEigenaar.data?.weekly_total ?? 0) - (voorEigenaar.data?.weekly_total ?? 0),
+          ).toBe(2);
+
+          // Het lid telt er geen enkele bij. Dát is de bescherming: de twee
+          // weken bestaan wel, maar niet in zijn telling.
+          expect((naLid.data?.weekly_total ?? 0) - (voorLid.data?.weekly_total ?? 0)).toBe(0);
+
+          await admin.from('weekly_goals').delete().in('id', verborgen);
         },
         TEST_TIMEOUT,
       );
