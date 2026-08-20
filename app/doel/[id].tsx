@@ -16,6 +16,7 @@ import {
   fetchLaatsteBesluit,
   fetchMijlpalen,
   fetchOpenVerzoek,
+  fetchRisico,
   herordenMijlpalen,
   maakMijlpaal,
   maakWeekdoel,
@@ -34,6 +35,7 @@ import {
   type DeadlineVerzoek,
   type DoelMetVoortgang,
   type Mijlpaal,
+  type Risico,
 } from '@/modules/goals';
 import { space } from '@/shared/theme';
 import { localDateIn, nextCycle, now, type IsoDate, type UserClock } from '@/shared/time';
@@ -48,6 +50,8 @@ import {
   Choice,
   Field,
   MilestoneProgress,
+  RisicoBadge,
+  risicoUitleg,
   Screen,
   Subheading,
 } from '@/shared/ui';
@@ -169,6 +173,8 @@ export default function DoelDetail() {
                 onKlaar={herlaad}
               />
             ) : null}
+
+            <Risicoradar doel={d} />
 
             <Mijlpalen doel={d} onKlaar={herlaad} />
 
@@ -629,6 +635,73 @@ function Archiveren({
       <Button busy={bezig} onPress={() => void schakel()}>
         {gearchiveerd ? 'Terughalen' : 'Archiveren'}
       </Button>
+    </Card>
+  );
+}
+
+/**
+ * De Risico-radar op het doelscherm — QS8-94.
+ *
+ * ⚠️ **Uitsluitend voor de eigenaar**, en dat is criterium 3 van de issue. De
+ *    afdwinging zit in de database: `goal_risk` is eigenaar-only sinds migratie
+ *    0050. Dit scherm is sowieso van de eigenaar, maar het component staat
+ *    bewust niet in een gedeelde kaart die ooit op een groepsscherm kan belanden
+ *    — dat is de valkuil "een component dat op het verkeerde scherm kan
+ *    belanden" uit de overdracht.
+ *
+ * ⚠️ Rendert niets zonder rij. Een doel dat net is aangemaakt heeft nog geen
+ *    stand: de radar draait bij de rollover en bij elke goedkeuring, niet bij
+ *    het openen van een scherm (criterium 2 van QS8-93).
+ */
+function Risicoradar({ doel }: { readonly doel: DoelMetVoortgang }) {
+  const [risico, setRisico] = useState<Risico | null>(null);
+  const [waarom, setWaarom] = useState(false);
+
+  useEffect(() => {
+    let levend = true;
+
+    fetchRisico(doel.id)
+      .then((gevonden) => {
+        if (levend) setRisico(gevonden);
+      })
+      .catch(() => {
+        if (levend) setRisico(null);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [doel.id]);
+
+  if (risico === null) return null;
+
+  return (
+    <Card nested>
+      <Subheading>Haalbaarheid</Subheading>
+
+      <RisicoBadge
+        stand={risico.stand}
+        uitleg={waarom ? risicoUitleg(risico.stand, risico.reden) : undefined}
+      />
+
+      {waarom ? (
+        <Button variant="stil" onPress={() => setWaarom(false)}>
+          Verbergen
+        </Button>
+      ) : (
+        <Button variant="stil" onPress={() => setWaarom(true)}>
+          Waarom?
+        </Button>
+      )}
+
+      {/*
+        ⚠️ Deze zin staat er omdat de gebruiker anders moet raden hoeveel hij
+           deelt. Een risicostand is een afgeleide van gemiste weken, en dat is
+           precies waar domeinregel 7 over gaat — vandaar dat hij nergens in de
+           groep terechtkomt. Wil je je groep om hulp vragen, dan is dat een
+           knop die jij indrukt (QS8-95).
+      */}
+      <Caption>Alleen jij ziet dit. Je groep krijgt je haalbaarheid nooit te zien.</Caption>
     </Card>
   );
 }

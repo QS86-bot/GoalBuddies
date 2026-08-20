@@ -92,6 +92,8 @@ export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
 
+export { fetchRisico, fetchRisicos, type Risico } from './risico';
+
 export {
   CATEGORIEEN,
   CATEGORIE_LABELS,

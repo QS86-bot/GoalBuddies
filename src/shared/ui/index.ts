@@ -27,6 +27,7 @@ export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
+export { RisicoBadge } from './RisicoBadge';
 export { Screen } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
@@ -48,6 +49,15 @@ export {
   type Viering as VieringInhoud,
   type VieringSoort,
 } from './vieringen';
+
+export {
+  risicoLabel,
+  risicoTeken,
+  risicoToon,
+  risicoUitleg,
+  type RisicoReden,
+  type RisicoStand,
+} from './risico';
 
 export { useVieringenAan } from './voorkeuren';
 
