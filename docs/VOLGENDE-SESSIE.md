@@ -31,18 +31,18 @@ opnieuw gedeployd en geverifieerd. 432 tests groen, geen skips.
 
 **Er staan ongeveer 35 commits klaar om te pushen. Ik push zelf.**
 
-**Volgende aan de beurt:** EPIC 8 afmaken. QS8-82 (adempauze) is het enige dat
-zelfstandig te bouwen is — QS8-77 (dagelijkse nudge) hangt aan EPIC 11, want er
-is nog geen kanaal om een nudge over te versturen. Daarna EPIC 11, EPIC 3
-afmaken, 12, 9.
+**Volgende aan de beurt — en ik zou met QS8-106 beginnen, niet met EPIC 8.**
 
-**⚠️ Het grootste knelpunt is geen issue maar een scheefgroei.** De datalaag
-loopt vóór op de schermen. `schuifDoor()`, `sluitWeekdoelAf()`,
-`verwijderWeekdoel()` en `verwijderDoel()` zijn gebouwd, getest, met nette
-Nederlandse meldingen — en worden door **geen enkel scherm** aangeroepen.
-Datzelfde geldt voor de hele Doelcoach-keten. Overweeg vóór EPIC 11 een ronde
-langs de doelen- en weekdoelschermen om die achterstand in te lopen; dat is
-goedkoper dan er nog een laag bovenop bouwen.
+**QS8-106 — de schermen laten inlopen op de datalaag.** Dit is het grootste
+praktische knelpunt. `schuifDoor()`, `sluitWeekdoelAf()`, `verwijderWeekdoel()`
+en `verwijderDoel()` zijn gebouwd, getest en van nette Nederlandse meldingen
+voorzien — en worden door **geen enkel scherm** aangeroepen. Datzelfde geldt voor
+de hele Doelcoach-keten van EPIC 3. Elke epic die we erbovenop bouwen vergroot
+die kloof.
+
+Daarna EPIC 8 afmaken: QS8-82 (adempauze) is het enige dat zelfstandig te bouwen
+is — QS8-77 (dagelijkse nudge) hangt aan EPIC 11, want er is nog geen kanaal om
+een nudge over te versturen. Dan EPIC 11, EPIC 3 afmaken, 12, 9.
 
 ## WERKAFSPRAKEN — houd deze aan
 
