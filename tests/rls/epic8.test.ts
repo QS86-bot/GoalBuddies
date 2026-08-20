@@ -757,4 +757,75 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       TEST_TIMEOUT,
     );
   });
+  // -------------------------------------------------------------------------
+  // QS8-39 — mijlpalen herordenen, migratie 0049
+  // -------------------------------------------------------------------------
+  describe('mijlpalen herordenen', () => {
+    it(
+      'weigert een lijst die niet precies de bestaande mijlpalen is',
+      async () => {
+        // ⚠️ Met een deelverzameling zijn dubbele posities en gaten te maken, en
+        //    dan is `order_index` geen volgorde meer maar een suggestie. De RPC
+        //    toetst gelijkheid van twee verzamelingen en niet twee keer een kant
+        //    — de valkuil die migratie 0032 een groene test opleverde.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .limit(1)
+          .single();
+
+        const doelId = doel.data?.id ?? '';
+
+        const een = await admin
+          .from('milestones')
+          .insert({ goal_id: doelId, title: 'Mijlpaal een', order_index: 101 })
+          .select('id')
+          .single();
+        const twee = await admin
+          .from('milestones')
+          .insert({ goal_id: doelId, title: 'Mijlpaal twee', order_index: 102 })
+          .select('id')
+          .single();
+
+        const idEen = een.data?.id ?? '';
+        const idTwee = twee.data?.id ?? '';
+
+        // Half: alleen de eerste.
+        const half = await f.alice.db.rpc('herorden_mijlpalen', {
+          p_goal_id: doelId,
+          p_ids: [idEen],
+        });
+        expect(uitkomst(half.data).reason).toBe('lijst_klopt_niet');
+
+        // Een ander mag hem sowieso niet herordenen.
+        const vreemde = await f.bob.db.rpc('herorden_mijlpalen', {
+          p_goal_id: doelId,
+          p_ids: [idTwee, idEen],
+        });
+        expect(uitkomst(vreemde.data).reason).toBe('not_owner');
+
+        // ⚠️ De positieve controle: de volledige lijst omgedraaid moet wél
+        //    lukken, en de volgorde moet daarna echt anders zijn. Zonder dit
+        //    blijven de twee weigeringen groen terwijl herordenen stuk is.
+        const goed = await f.alice.db.rpc('herorden_mijlpalen', {
+          p_goal_id: doelId,
+          p_ids: [idTwee, idEen],
+        });
+        expect(uitkomst(goed.data).ok).toBe(true);
+
+        const na = await admin
+          .from('milestones')
+          .select('id, order_index')
+          .in('id', [idEen, idTwee])
+          .order('order_index', { ascending: true });
+
+        expect((na.data ?? []).map((m) => m.id)).toEqual([idTwee, idEen]);
+
+        await admin.from('milestones').delete().in('id', [idEen, idTwee]);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

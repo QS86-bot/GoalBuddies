@@ -1547,6 +1547,10 @@ export type Database = {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
       }
+      herorden_mijlpalen: {
+        Args: { p_goal_id: string; p_ids: string[] }
+        Returns: Json
+      }
       invite_preview: { Args: { code: string }; Returns: Json }
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }

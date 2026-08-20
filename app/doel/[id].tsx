@@ -16,13 +16,18 @@ import {
   fetchLaatsteBesluit,
   fetchMijlpalen,
   fetchOpenVerzoek,
+  herordenMijlpalen,
+  maakMijlpaal,
   maakWeekdoel,
   planAdempauze,
   planbareCycli,
   trekDeadlineVerzoekIn,
+  verplaats,
   verwijderDoel,
+  verwijderMijlpaal,
   vraagDeadlineVerschuiving,
   zetArchief,
+  zetMijlpaalStatus,
   zetStreefdatum,
   type Adempauze,
   type Categorie,
@@ -164,6 +169,8 @@ export default function DoelDetail() {
                 onKlaar={herlaad}
               />
             ) : null}
+
+            <Mijlpalen doel={d} onKlaar={herlaad} />
 
             <WeekdoelToevoegen doel={d} klok={klok} onKlaar={herlaad} />
 
@@ -617,6 +624,212 @@ function Archiveren({
 }
 
 /**
+ * Mijlpalen beheren — QS8-39, migratie 0049.
+ *
+ * ⚠️ Het handmatige pad moet volledig zijn, ook als er nooit AI gebruikt is
+ *    (acceptatiecriterium 1). De Doelcoach vult mijlpalen in; hij is er geen
+ *    voorwaarde voor. Daarom staat dit blok er altijd, ook bij een doel dat
+ *    nooit door de Doelcoach is gegaan.
+ *
+ * ⚠️ Herordenen gaat via één RPC en niet via losse updates per rij. De unieke
+ *    index `(goal_id, order_index)` is DEFERRABLE: schuiven mag binnen één
+ *    transactie, en PostgREST geeft je er per verzoek precies één.
+ */
+function Mijlpalen({ doel, onKlaar }: { readonly doel: DoelMetVoortgang; readonly onKlaar: () => void }) {
+  const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
+  const [open, setOpen] = useState(false);
+  const [titel, setTitel] = useState('');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+  const [ronde, setRonde] = useState(0);
+
+  useEffect(() => {
+    let levend = true;
+
+    fetchMijlpalen(doel.id)
+      .then((gevonden) => {
+        if (levend) setMijlpalen(gevonden);
+      })
+      .catch(() => {
+        if (levend) setMijlpalen([]);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [doel.id, ronde]);
+
+  const ververs = () => {
+    setRonde((n) => n + 1);
+    onKlaar();
+  };
+
+  async function voegToe() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await maakMijlpaal(doel.id, {
+      title: titel,
+      description: null,
+      target_date: null,
+    });
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setTitel('');
+    setOpen(false);
+    ververs();
+  }
+
+  async function schuif(id: string, richting: 'omhoog' | 'omlaag') {
+    const nieuweVolgorde = verplaats(
+      mijlpalen.map((m) => m.id),
+      id,
+      richting,
+    );
+
+    // ⚠️ De volledige lijst, want de RPC weigert een deelverzameling — daarmee
+    //    zijn dubbele posities en gaten te maken.
+    const uitkomst = await herordenMijlpalen(doel.id, nieuweVolgorde);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    ververs();
+  }
+
+  async function zetStatus(id: string, status: 'todo' | 'done' | 'dropped') {
+    const uitkomst = await zetMijlpaalStatus(id, status);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+    ververs();
+  }
+
+  async function weg(id: string) {
+    const uitkomst = await verwijderMijlpaal(id);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+    ververs();
+  }
+
+  return (
+    <Card nested>
+      <Subheading>Mijlpalen</Subheading>
+
+      {mijlpalen.length === 0 ? (
+        <Body muted>
+          Nog geen mijlpalen. Knip je doel op in tussenresultaten die je kunt aanwijzen — dan
+          weet je elke week waar je aan werkt.
+        </Body>
+      ) : (
+        <View style={styles.mijlpalen}>
+          {mijlpalen.map((m, i) => (
+            <View key={m.id} style={styles.mijlpaal}>
+              <Body>{m.title}</Body>
+              <Caption>
+                {m.status === 'done' ? 'Gehaald' : `Stap ${i + 1} van ${mijlpalen.length}`}
+                {m.target_date === null ? '' : ` · streefdatum ${m.target_date}`}
+              </Caption>
+
+              <View style={styles.knoppen}>
+                {/*
+                  ⚠️ Op "gehaald" zetten plaatst een systeembericht in elke
+                     gekoppelde groep, en een chatbericht is een onveranderlijke
+                     kopie. Terugzetten haalt dat bericht niet weg. De knop zegt
+                     dat, want anders ontdekt iemand het pas in de groepschat.
+                */}
+                {m.status === 'done' ? (
+                  <Button variant="stil" onPress={() => void zetStatus(m.id, 'todo')}>
+                    Toch niet gehaald
+                  </Button>
+                ) : (
+                  <Button onPress={() => void zetStatus(m.id, 'done')}>Gehaald</Button>
+                )}
+
+                {i === 0 ? null : (
+                  <Button
+                    variant="stil"
+                    accessibilityLabel={`${m.title} omhoog`}
+                    onPress={() => void schuif(m.id, 'omhoog')}
+                  >
+                    Omhoog
+                  </Button>
+                )}
+
+                {i === mijlpalen.length - 1 ? null : (
+                  <Button
+                    variant="stil"
+                    accessibilityLabel={`${m.title} omlaag`}
+                    onPress={() => void schuif(m.id, 'omlaag')}
+                  >
+                    Omlaag
+                  </Button>
+                )}
+
+                <Button
+                  variant="stil"
+                  accessibilityLabel={`${m.title} verwijderen`}
+                  onPress={() => void weg(m.id)}
+                >
+                  Verwijderen
+                </Button>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      {open ? (
+        <View style={styles.pauzeForm}>
+          <Field
+            label="Nieuwe mijlpaal"
+            hint="Een tussenresultaat dat je kunt aanwijzen. Bijvoorbeeld: eerste tienduizend woorden."
+            value={titel}
+            onChangeText={setTitel}
+            placeholder="Eerste tienduizend woorden"
+          />
+
+          <View style={styles.knoppen}>
+            <Button
+              variant="primair"
+              busy={bezig}
+              disabled={titel.trim().length < 3}
+              onPress={() => void voegToe()}
+            >
+              Toevoegen
+            </Button>
+            <Button
+              variant="stil"
+              disabled={bezig}
+              onPress={() => {
+                setOpen(false);
+                setFout(null);
+              }}
+            >
+              Annuleren
+            </Button>
+          </View>
+        </View>
+      ) : (
+        <Button onPress={() => setOpen(true)}>Mijlpaal toevoegen</Button>
+      )}
+    </Card>
+  );
+}
+
+/**
  * Een weekdoel toevoegen — QS8-43, QS8-44, QS8-112.
  *
  * ⚠️ Dit scherm ontbrak, en dat is het soort gat dat een afgevinkt vakje
@@ -1043,6 +1256,8 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
 
 const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
+  mijlpalen: { gap: space.blokGap - 2 },
+  mijlpaal: { gap: 3 },
   pauzes: { gap: space.blokGap - 3 },
   pauze: { gap: 2 },
   pauzeForm: { gap: space.blokGap - 3 },

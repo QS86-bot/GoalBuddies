@@ -45,6 +45,22 @@ export {
   type Adempauze,
 } from './adempauze';
 
+export {
+  herordenMijlpalen,
+  maakMijlpaal,
+  verwijderMijlpaal,
+  wijzigMijlpaal,
+  zetMijlpaalStatus,
+} from './mijlpalen';
+
+export {
+  MIJLPAAL_TITEL_MAX,
+  mijlpaalSchema,
+  verplaats,
+  type MijlpaalInvoer,
+  type MijlpaalStatus,
+} from './mijlpaal-schemas';
+
 export { bewaarInterview, fetchInterview, type Interview } from './interview';
 
 export {
