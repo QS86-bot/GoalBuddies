@@ -343,224 +343,207 @@ Deze dingen kan een sessie niet zelf oplossen.
 
 ## 7. Valkuilen — hier gaat het mis
 
-1. **Tijd buiten `shared/time`.** Er staat een lint-regel op die `new Date()` en
-   `Date.now()` blokkeert buiten die map. Kom je hem tegen: los het niet op met
-   een `eslint-disable`, maar breid `shared/time` uit.
+> **Deze lijst is op 20-08-2026 opnieuw ingedeeld.** Hij was 21 losse punten en
+> groeide elke sessie; een lijst die alleen maar groeit wordt op een dag niet
+> meer gelezen, en dan verlies je ook de punten die wél werken.
+>
+> **Wat er is veranderd.** Vier dode punten eruit (de `winget`-PATH, het
+> `gh`-pad, de lege types-generatie en de CRLF-val — allemaal inmiddels opgelost
+> gereedschap). Vier regels die al in `CLAUDE.md` staan naar de voetnoot
+> onderaan. Vier nieuwe lessen uit de ronde van 19–20 augustus erbij. En alles
+> gesorteerd in vier groepen, met de duurste les bovenaan.
+>
+> Netto is hij nauwelijks korter — 223 naar 204 regels — maar wel dichter: er
+> staat minder in dat je niet hoeft te onthouden, en meer dat je wél moet weten.
+>
+> ⚠️ **De sorteerregel die daaruit volgt, en die je bij elke nieuwe vondst moet
+> toepassen.** Een valkuil werkt als hij een **beslissing** raakt die je bewust
+> neemt — "is dit een policyfout of de rate limit?", "wat breek ik met deze
+> revoke?". Dan lees je hem op het moment dat je nadenkt. Een valkuil werkt
+> **niet** als hij een **reflex** moet onderbreken: die lees je niet op het moment
+> dat je het commando intikt. Bewijs daarvoor is de CRLF-regel, die op de lijst
+> stond, gelezen was, en op één dag alsnog drie keer misging.
+>
+> **Reflexvalkuilen horen dus in gereedschap** — een lint-regel, een test, een
+> `.gitattributes` — en niet in deze lijst. Schrijf je iets nieuws op, vraag dan
+> eerst: kan dit een controle worden in plaats van een zin?
 
-2. **Kleuren buiten `shared/theme`.** Het stelsel is van Q-Projects en wordt
-   gedeeld met de Status Tracker. Verzin geen tint bij. Twee vastgelegde grenzen:
-   goud is nergens een kleur voor lopende tekst, en een goudvlak draagt in de
-   lichte modus geen lopende tekst. Staat als test in `contrast.test.ts`.
+### De duurste les tot nu toe
 
-3. **Falen is nooit publiek** (domeinregel 7). Bij élk nieuw ding dat de groep
-   te zien krijgt: kan hier iemands gemiste week uit worden afgeleid? Zo ja, dan
-   is het fout, ook als het technisch werkt.
+**Zoek eerst álle routes naar het effect, dan pas dicht je er één.**
 
-4. **Punten zijn privé.** `points_ledger` en het puntentotaal zijn alleen voor de
-   eigenaar. De groep ziet De Ketting en mijlpalen. Een dalend puntentotaal is
-   zichtbaar bewijs van een gemiste week.
+Eén gat kostte vier migraties (0043 t/m 0046), en elke ronde bleek de vorige
+reparatie te smal. 0023 dichtte `weekly_goals.status` voor *wijzigen* met de
+juiste redenering erboven — *"een autorisatiegrens is pas dicht als ook het
+gevólg ervan op slot zit"* — en niemand keek naar *aanmaken*, *verwijderen*,
+*doorschuiven* en *de rij wissen vóór de rollover*. In `ENGINEER-REVIEW.md` stond
+het al die tijd afgevinkt als opgelost.
 
-5. **Migraties.** Draaien voorlopig direct op het echte project — besluit van
-   16-08, want er komen geen gebruikers voordat alle fases af zijn. **Zodra er
-   één echte gebruiker is, geldt de oude regel weer:** nooit op remote zonder
-   `pg_dump` vooraf en zonder repetitie op een lokale stack. De gratis tier heeft
-   geen automatische backups. Houd tot die tijd elke migratie idempotent, met een
-   rollback-pad in de kop van het bestand — dat is nu de enige bescherming.
+Bij het volgende slot: schrijf eerst op wélk effect je wilt voorkomen (hier: "een
+gemiste week verdwijnt uit de geschiedenis"), en zoek dan élke bewerking die dat
+effect kan bereiken. Dicht ze in één migratie. Een dichtgestreepte regel is de
+plek waar niemand meer kijkt.
 
-6. **Geen Vercel-specifieke API's.** We draaien op Hostinger als statische host.
+### Autorisatie en de database
 
-7. **Meer dan 15 bestanden in één keer** is volgens `CLAUDE.md` een moment om te
-   overleggen, niet om door te pakken.
-
-8. **In een `SECURITY DEFINER`-RPC overleeft niets een `raise exception`.**
+1. **In een `SECURITY DEFINER`-RPC overleeft niets een `raise exception`.**
    PostgREST draait elke RPC in zijn eigen transactie; gooien rolt die terug,
    inclusief alles wat je net wilde onthouden. Bouw je een rate limiter, een
    auditregel of een blokkade, zet die dan in de happy path en geef een resultaat
-   terug in plaats van een exception. Dat is precies waar de uitnodigingslimiet
-   op stukliep (migratie 0017), en het is niet te zien zonder een test die het
-   uitprobeert.
+   terug. Kostte de uitnodigingslimiet zijn werking (0017) — de teller bleef op
+   nul en de limiet gold alleen voor gelúkte toetredingen.
 
-9. **Domeinregel 7 is pas afgedwongen als de dátabase hem afdwingt.** De
-   schermen van EPIC 5 waren zorgvuldig: geen gemiste weken, geen puntentotaal,
-   een leeg vakje in plaats van een grijs kruisje. En toch stond de hele lijst
-   gemiste weken van elk groepslid open via één API-verzoek, omdat
-   `weekly_goals_select` de statuskolom meegaf. Bij élke nieuwe policy die
-   groepsgenoten iets laat lezen: welke kolommen zitten er in die rij, en zegt
-   een daarvan iets over falen? RLS kan geen kolommen beperken — dat betekent
-   dat je de rij moet beperken, of een view met een expliciete kolomlijst moet
-   bouwen zoals `group_visible_streaks`.
+2. **Een vergelijking met een mogelijk lege waarde is geen controle.** `x <> y`
+   is in SQL geen bewering over ongelijkheid zodra één kant leeg kan zijn, maar
+   een derde antwoord dat zich in een `if` als "niet waar" gedraagt — en dat is
+   de verkeerde kant om op te falen. `eigenaar <> auth.uid()` ging zonder sessie
+   dus nooit af, waarna een SECURITY DEFINER-functie de weekpasvoorraad van elk
+   willekeurig doel teruggaf (0039, gedicht in 0040).
 
-10. **Zet nooit `REPLICA IDENTITY FULL` op `completions` of `weekly_goals`.**
-    Die twee staan sinds EPIC 6 in de realtime-publicatie voor de
-    beoordelingswachtrij. Supabase past RLS toe op INSERT en UPDATE — daar lekt
-    niets — maar **niet op DELETE**. Met de standaard replica identity gaat er
-    bij een verwijdering alleen een uuid over de lijn; met `FULL` gaat de hele
-    oude rij mee, inclusief `status = 'missed'` en de notitie, naar iedereen die
-    zich abonneert. `publish` is een optie van de publicatie en niet per tabel in
-    te stellen, dus dit is een afspraak en geen slot. Staat als A20 in
-    `docs/Q-TODO.docx`, met het voorstel om hem in `CLAUDE.md` te zetten.
+   **Goedkope test die op elke definer-functie past:** roep hem aan als
+   `service_role`, want daar is `auth.uid()` leeg. Begin elke definer-functie met
+   een expliciete `if auth.uid() is null`-tak, zoals de andere er zes al doen.
 
-11. **Een nieuw type systeembericht vraagt een migratie, en dat is opzet.** De CHECK
-    `chat_messages_system_event_bekend` (migratie 0025) is een allowlist van acht
-    namen, en omdat het een CHECK is geldt hij ook voor `service_role` — de rol die
-    alle policies overslaat. De kopie staat in
-    `src/modules/buddies/chat-schemas.ts` als `SYSTEEM_GEBEURTENISSEN`, met
-    `VERBODEN_GEBEURTENISSEN` ernaast en twee tests eromheen: de lijst is exact acht
-    namen, en geen enkele verboden naam staat erin. Een tóevoeging is daar dus ook
-    een rode test, niet alleen een verkeerde toevoeging. Dat is de bedoeling: de
-    drempel dwingt de vraag af of de groep het mag zien.
+3. **RLS kan geen kolommen beperken.** Is de eis "deze kolom mag je niet
+   veranderen" of "niet lézen", dan heb je een kolomgrant, een view met een
+   expliciete kolomlijst of een rijbeperking nodig. Zeven keer misgegaan (0006,
+   0010, 0019, 0023, 0029, 0043, 0046).
 
-12. **Een systeembericht noemt geen titels.** Persoon en gebeurtenis, nooit de
-    doeltitel, weektitel, mijlpaaltitel, notitie of het gehaalde niveau. Een bericht
-    is een onveranderlijke kopie die de autorisatie overleeft waaronder hij gemaakt
-    is: ontkoppelen trekt de toestemming in, maar wist geen chat. Onderbouwing in
-    `docs/decisions/002-domeinregel7-oppervlakken.md` §3, met een test die de titels
-    uit de fixture nergens in een systeembericht mag terugvinden.
+4. **Een kolomgrant intrekken breekt de app stil, niet luid.** Typecheck en lint
+   blijven groen, want het type klopt nog. Zoek na een revoke elke `.insert(` en
+   `.update(` op die kolom in `src/`, `app/` **én** `tests/` — en schrijf meteen
+   de tegentest: *"het normale geval werkt nog"*. Zonder die tweede test weet je
+   alleen dat je iets hebt dichtgezet, niet dat de app nog werkt.
 
-13. **`npm run types:db` schreef ooit een leeg typesbestand.** De oude regel was
-    `supabase gen types ... > src/lib/database.types.ts`, en de shell kapt het
-    doelbestand af vóórdat het commando draait. Staat `supabase` niet op het PATH —
-    en dat is hier het geval — dan is het resultaat een leeg bestand en een build die
-    overal stukloopt zonder één foutmelding die naar de oorzaak wijst. Nu draait het
-    via `scripts/db-types.mjs`, dat alleen bij een geslaagde generatie schrijft.
-    **Werkt de CLI niet (die vraagt een access token, of Docker bij `--db-url`), dan
-    is de MCP-tool `generate_typescript_types` de route.** Zo zijn de types van
-    EPIC 7 gemaakt.
+5. **Een ontbrekende policy weigert stil, niet luid.** Bij INSERT krijg je een
+   harde `42501` — er is geen rij om weg te filteren. Bij UPDATE en DELETE niet:
+   RLS filtert de rijen weg, en een DELETE die niets raakt is geen fout. De
+   client krijgt dus HTTP 204 en een ongewijzigde tabel. **Een test die op
+   `42501` rekent wordt daar groen zonder iets te bewijzen.** Toets de úítkomst
+   (staat de rij er nog?), of trek het tabelrecht in als je een luide weigering
+   wilt.
 
-14. **⚠️ Draai de RLS-suite niet vaker dan een paar keer per uur.**
-    `tests/rls/policies.test.ts` en `tests/rls/epic7.test.ts` maken samen zo'n tien
-    echte accounts per volledige run, elk met een `signInWithPassword`. Supabase
-    weigert dat na ongeveer dertig aanmeldingen per uur met "Request rate limit
-    reached", en dan valt de suite om op een plek die niets met de policies te maken
-    heeft. Dat is op één avond twee keer gebeurd, beide keren in een ánder bestand —
-    dus het ziet er elke keer uit als een nieuw defect.
-
-    **Zie je een opbouwfout, zoek dan eerst op "rate limit" in de melding.** Is het
-    dat, dan is de suite niet stuk maar op. Structurele oplossing staat in
-    `docs/ENGINEER-REVIEW.md` (18-08): één set gedeelde testgebruikers over beide
-    bestanden, of de sessie hergebruiken in plaats van per gebruiker opnieuw
-    inloggen. Zolang die er niet is, is dit een harde bovengrens op hoe vaak je kunt
-    verifiëren — en dat is een tweede argument voor de lokale stack (Q-TODO A9).
-
-15b. **En dezelfde valkuil werkt óók de andere kant op: de repo kan áchterlopen,
-   en dan lees je een gat dat er niet is.** De security-review op 0045 meldde als
-   zwaarste bevinding dat `dien_opnieuw_in()` elke status op `pending` zet,
-   waarmee een gemiste week alsnog in de wachtrij van een buddy zou belanden. Ze
-   had migratie 0022 gelezen, en daar staat inderdaad alleen een toets op
-   `approved`. De **gedeployde** functie heeft een tweede grens die later is
-   toegevoegd (`if w.status <> 'pending' then return 'week_gesloten'`), dus het
-   aanvalspad bestaat niet — nagegaan met een echte poging op het project.
-
-   **Toets een bewering over de database daarom altijd tegen de database.**
-   `pg_get_functiondef()` is de waarheid, een migratiebestand is een
-   momentopname. Dat geldt voor reviewbevindingen net zo goed als voor je eigen
-   aannames: een uur werk aan een niet-bestaand gat is even duur als een uur
-   niet werken aan een echt gat.
-
-15. **De repo en het echte project lopen uit elkaar en niets bewaakt dat.** Op één
-   dag twee keer gevonden, allebei bij toeval: een migratie die wel op het
-   project stond maar niet in de map, en een Edge Function waarvan de repo-versie
-   een kapotte regex had terwijl de gedeployde versie klopte. Zolang migraties
-   via een MCP-tool gaan in plaats van via `supabase db push`, is
-   `supabase/migrations/` een verslag en geen bron. Vergelijk bij twijfel de
-   migratielijst van het project met de bestanden in de map.
-
-16. **Een `on delete set null` sneuvelt stil op een onveranderlijkheidstrigger.**
+6. **Een `on delete set null` sneuvelt stil op een onveranderlijkheidstrigger.**
    Een referentiële actie is zélf een UPDATE op de kindtabel. Staat daar een
-   BEFORE UPDATE-trigger die de kolom terugzet naar `old` — en die staan hier op
-   `chat_messages` en `groups` — dan draait die de actie in dezelfde bewerking
-   terug. Postgres controleert de sleutel daarna niet opnieuw: **geen fout, geen
-   waarschuwing, wel een verwijzing naar een rij die niet meer bestaat.**
-
-   Zo bleef een verwijderd account in de groepschat staan als afzender, terwijl
-   de constraint keurig `on delete set null` zei en op INSERT gewoon afdwong.
-   Gerepareerd in 0033 door precies één overgang toe te staan (afzender → leeg).
-   `groups.created_by` ontsnapte er per ongeluk aan: `guard_group_update()`
-   begint met een controle op `current_user`, en een referentiële actie draait
-   als tabeleigenaar.
-
+   BEFORE UPDATE-trigger die de kolom terugzet naar `old`, dan draait die de
+   actie in dezelfde bewerking terug. Postgres controleert de sleutel daarna niet
+   opnieuw: geen fout, geen waarschuwing, wél een verwijzing naar een rij die
+   niet meer bestaat. Kostte 0031 zijn AVG-belofte; gerepareerd in 0033.
    **Bij elke nieuwe `on delete set null`: staat er een trigger op die kolom?**
 
-17. **Een kolomgrant intrekken breekt de app stil, niet luid.** `revoke update
-   (target_date) on goals` (0032) maakte `wijzigDoel()` kapot voor precies één
-   veld; typecheck en lint bleven groen, want het type klopte nog. Alleen een
-   test die de UPDATE écht uitvoert vangt dat. Trek je een kolomrecht in, zoek dan
-   meteen elke `.update(` op die kolom in `src/`, `app/` **én `tests/`** — bij
-   0035 (`goals.status`) was het de fixture van EPIC 7 die omviel, en dat was de
-   enige waarschuwing die er kwam.
+### Domeinregel 7 — falen is nooit publiek
 
-18. **Twee insluitingen zijn geen gelijkheid.** De allowlist van systeemberichten
-   werd op twee plekken getoetst: "de app kent niets dat de database verbiedt" en
-   "de lijst in de app is exact deze acht namen". Allebei groen, en tóch liepen
-   database en app uit elkaar — migratie 0032 zette er een negende op de CHECK en
-   de tweede test vergeleek de oude lijst met zichzelf. Er is nu één test die de
-   twee verzamelingen gelijkstelt (`systeembericht_allowlist()`, migratie 0034).
+7. **De regel is pas afgedwongen als de dátabase hem afdwingt.** De schermen van
+   EPIC 5 waren zorgvuldig — geen gemiste weken, geen puntentotaal, een leeg
+   vakje in plaats van een grijs kruisje — en tóch stond de hele lijst gemiste
+   weken van elk groepslid open via één `GET`, omdat `weekly_goals_select` de
+   statuskolom meegaf. Bij élke nieuwe policy die groepsgenoten iets laat lezen:
+   welke kolommen zitten er in die rij, en zegt een daarvan iets over falen?
 
-   Dit is het slot dat `CLAUDE.md` met naam noemt en dat één keer geruisloos
-   gefaald heeft. Bouw je een "twee kopieën die gelijk moeten blijven"-slot, toets
-   dan de gelijkheid en niet twee keer een kant.
+8. **Een redenering die klopt zolang een tabel leeg is, is geen bescherming.**
+   "Afwezigheid betekent nog niet" hield stand tot `chain_links` gevuld werd, en
+   toen was het een aanwezigheidsmatrix. Vraag bij elke tabel die van leeg naar
+   gevuld gaat: **wat betekent een ontbrekende rij nu?** `chain_links` en
+   `week_pass_events` zijn dit stadium door; **`ai_jobs` is de laatste die nog
+   leeg is.**
 
-19. **Na een `winget install` is de tool niet zichtbaar, en "open een nieuw
-   venster" lost dat niet betrouwbaar op.** Je krijgt dan
-   `De term 'gh' is niet herkend als de naam van een cmdlet` terwijl het
-   programma er gewoon staat.
+9. **Domeinregel 7 per component is niet hetzelfde als per scherm.** De Ketting
+   toont aantallen zonder namen; de ledenlijst twintig pixels lager toont
+   dezelfde weekstatus mét naam. Geen datalek, wel een inconsistentie die geen
+   enkele RLS-test kan vangen — er lekt immers niets uit de database. Staat als
+   productbeslissing in `ENGINEER-REVIEW.md` (19-08).
 
-   Waarom het gebeurt: een Windows-proces krijgt zijn omgeving mee op het moment
-   dat het start en ververst die daarna nooit meer. De installer zet het pad
-   keurig in de machine-`PATH`, maar elk proces dat ouder is dan de installatie
-   draagt de oude versie. Een nieuw **tabblad** in Windows Terminal of een nieuwe
-   terminal in VS Code erft de omgeving van het al draaiende moederproces — dus
-   ook de oude `PATH`.
+10. **Een test kan net naast de bescherming kijken. Drie keer gebeurd.** De
+    domeinregel-7-test op `cancelled` draaide op twee gebruikers die helemaal
+    niet samen in een groep zaten, dus `shares_group_with_goal()` gaf altijd
+    `false`: je kon `'cancelled'` uit de policy slopen en de test bleef groen.
+    Eerder ging het zo bij `best_streak` (de test controleerde `total_points` en
+    `last_cycle_start` en liet hem er precies langs) en bij de allowlist van
+    systeemberichten.
 
-   Drie manieren eruit, van snel naar duurzaam:
+    **Zet bij elke "de groep mag dit niet zien"-test een positieve controle
+    ernaast: de groep móét het toegestane wél zien.** Zonder die tegenhanger
+    bewijst een lege uitkomst alleen dat er iets anders stuk is.
 
-   ```powershell
-   # 1. Ververs PATH in het huidige venster
-   $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
-               [Environment]::GetEnvironmentVariable('Path','User')
-   ```
+11. **Twee insluitingen zijn geen gelijkheid.** De allowlist van systeemberichten
+    werd twee kanten op getoetst — "de app kent niets dat de database verbiedt" en
+    "de lijst in de app is exact deze acht namen" — en liep tóch uit elkaar, want
+    de tweede test vergeleek de oude lijst met zichzelf. Bouw je een "twee kopieën
+    die gelijk moeten blijven"-slot, toets dan de gelíjkheid
+    (`systeembericht_allowlist()`, migratie 0034).
 
-   2. Sluit de terminal-applicatie **helemaal** af en start hem opnieuw — niet
-      alleen het tabblad.
-   3. Roep het volledige pad aan. Dat werkt altijd en is wat een sessie hier moet
-      doen, want die shell is meestal ouder dan de installatie:
-      `& "C:\Program Files\GitHub CLI\gh.exe" --version`
+12. **Nooit `REPLICA IDENTITY FULL`** op `completions`, `weekly_goals` of
+    `chat_messages`. Die staan in de realtime-publicatie, en Supabase past RLS
+    toe op INSERT en UPDATE maar **niet op DELETE**: met `FULL` gaat bij een
+    verwijdering de volledige oude rij over de lijn, inclusief `status =
+    'missed'`. Staat in `CLAUDE.md` en er is een test op (`realtime_bewaking()`,
+    migratie 0027). Abonneer je bovendien nooit op DELETE.
 
-   **Controleer eerst óf het echt misging** voordat je opnieuw gaat installeren:
-   `winget list --id GitHub.cli -e` zegt of het pakket er staat, en
-   `[Environment]::GetEnvironmentVariable('Path','Machine')` of het pad
-   geregistreerd is. Stond het er allebei, dan is het dit en niets anders.
+13. **Een nieuw type systeembericht vraagt een migratie, en dat is opzet.** De
+    CHECK `chat_messages_system_event_bekend` geldt ook voor `service_role`; de
+    kopie in `chat-schemas.ts` staat onder een gelijkheidstest. De drempel dwingt
+    de vraag af of de groep het mag zien. En een systeembericht noemt **persoon
+    en gebeurtenis, nooit een titel, notitie of niveau** — een bericht is een
+    onveranderlijke kopie die de autorisatie overleeft waaronder hij gemaakt is.
 
-   Gebeurd bij `gh` (18-08), en dezelfde avond bij de Supabase CLI en `pg_dump`.
+### Werken met dit project
 
-20. **Een vergelijking met een mogelijk lege waarde is in SQL geen controle.**
-   Migratie 0039 zette de eigenaarstoets van `weekpas_stand()` neer als:
+14. **De repo en het echte project lopen uit elkaar, in béíde richtingen.**
+    Migraties gaan via een MCP-tool en niet via `supabase db push`, dus
+    `supabase/migrations/` is een verslag en geen bron — vergelijk bij twijfel
+    `list_migrations` met de map.
 
-   ```sql
-   if eigenaar is null or eigenaar <> auth.uid() then return null; end if;
-   ```
+    Andersom net zo, en dat is de kant die je niet verwacht: een reviewbevinding
+    las een migratiebestand waar de gedéployde functie strenger was, en meldde
+    een gat dat niet bestond. **`pg_get_functiondef()` is de waarheid; een
+    migratiebestand is een momentopname.** Dat geldt voor reviewbevindingen net
+    zo goed als voor je eigen aannames — een uur werk aan een niet-bestaand gat
+    is even duur als een uur niet werken aan een echt gat.
 
-   Dat leest als "geef niets terug tenzij het jouw doel is", en zo werkt het
-   niet. Is `auth.uid()` leeg, dan is `eigenaar <> auth.uid()` niet `false` maar
-   `null`; de voorwaarde wordt `false or null` = `null`, de tak gaat **niet** af,
-   en de functie loopt door naar de gegevens. Een SECURITY DEFINER-functie geeft
-   dan de weekpasvoorraad van elk willekeurig doel terug — en een verbruikte
-   weekpas is het bewijs van een gemiste week.
+    Hetzelfde geldt voor `supabase/functions/`: die vallen buiten typecheck, lint
+    én CI, en geen enkele workflow deployt ze. Draai `npm run edge:sync` vóór elke
+    deploy en controleer de gedéployde versie, niet de repo-versie.
 
-   `x <> y` is in SQL geen bewering over ongelijkheid zodra één kant leeg kan
-   zijn. Het is een derde antwoord dat zich in een `if` als "niet waar" gedraagt,
-   en dat is precies de verkeerde kant om op te falen.
+15. **⚠️ Draai de RLS-suite niet vaker dan een paar keer per uur.** De suites
+    maken samen zo'n tien echte accounts per volledige run, en Supabase weigert na
+    ongeveer dertig aanmeldingen per uur met **"Request rate limit reached"** —
+    waarna de suite omvalt op een plek die niets met de policies te maken heeft.
+    Een tweede gezicht hiervan is **"JWT issued at future"**: klokverschil, ook
+    geen policyfout.
 
-   **Bij elke autorisatietoets in SQL hoort eerst de vraag of beide kanten wel
-   bestaan.** De vijf oudere RPC's in dit project doen dat al goed en beginnen
-   met een aparte `if auth.uid() is null`-tak; dit was dus geen nieuwe regel maar
-   een bestaande conventie die één migratie niet volgde. Gerepareerd in 0040.
+    **Zie je een opbouwfout, zoek dan eerst op "rate limit" in de melding.** Is
+    het dat, dan is de suite niet stuk maar op. Dit is een harde bovengrens op hoe
+    vaak je kunt verifiëren; de structurele oplossing (gedeelde testgebruikers, of
+    een lokale stack — Q-TODO **A9**) is meer waard dan welke instelling op GitHub
+    ook.
 
-   ⚠️ **Waarom het bijna niet opviel.** `anon` heeft geen EXECUTE op die functie,
-   dus er stond nog een deur voor. "Er staat toevallig nog een slot voor" is in
-   dit project al vaker de redenering geweest die geld kostte. Gevonden door de
-   functie als `service_role` aan te roepen, want daar is `auth.uid()` leeg —
-   **dat is een goedkope test die op elke definer-functie past.**
+16. **Een comment die uitlegt waarom iets zo moet, bewijst niet dat het zo is.**
+    Het scherm "Vandaag" haalde onophoudelijk gegevens op omdat er objecten in een
+    dependency-array stonden die elke render vers gebouwd worden — met de comment
+    erboven die precies uitlegde waarom dat niet mocht, en de lijst eronder die
+    het tegenovergestelde deed. Onzichtbaar in de app, zichtbaar op een gratis
+    tier.
+
+17. **Let op de limieten die je zelf hebt ingebouwd:** 10 groepen per gebruiker
+    per dag, 20 toetredingspogingen per dag, 12 leden per groep, 5
+    deadline-verzoeken per dag, 2 weekpassen tegelijk, 24 uur bedenktijd. Een
+    test die daar overheen gaat lijkt op een policyfout en is het niet.
+
+### Afgedwongen door gereedschap — je hoeft ze niet te onthouden
+
+Deze stonden hier als tekst en zijn nu een controle. Ze staan er alleen nog zodat
+je weet wát je tegenkomt als de controle afgaat.
+
+- **Tijd buiten `shared/time`** → lint-regel op `new Date()` en `Date.now()`.
+  Kom je hem tegen: breid `shared/time` uit, zet er geen `eslint-disable` op.
+- **Kleuren buiten `shared/theme`** → `contrast.test.ts`. Goud is nergens een
+  kleur voor lopende tekst, en een goudvlak draagt in de lichte modus geen
+  lopende tekst.
+- **CRLF en meerregelige zoek-en-vervang** → `.gitattributes` met `eol=lf`. De
+  bestanden staan sinds 20-08 als LF op schijf, dus dit kán niet meer misgaan.
+  Was drie keer misgegaan op één dag terwijl de waarschuwing op deze lijst stond.
+- **Geen Vercel-specifieke API's, geen dependency zonder overleg, niet meer dan
+  15 bestanden per keer** → staan in `CLAUDE.md`, niet hier.
 
 ---
 

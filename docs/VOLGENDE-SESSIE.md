@@ -125,8 +125,12 @@ een nudge over te versturen. Dan EPIC 11, EPIC 3 afmaken, 12, 9.
   Het scherm "Vandaag" haalde onophoudelijk gegevens op omdat er objecten in een
   dependency-array stonden — met de comment erboven die precies uitlegde waarom
   dat niet mocht.
-- **Bestanden hebben CRLF.** Meerregelige zoek-en-vervang met perl/python
-  mislukt stil; gebruik de Edit-tool of match op `\r\n`.
+- **Een reflexvalkuil werkt niet als tekst.** De CRLF-val stond op de lijst, was
+  gelezen, en ging op één dag alsnog drie keer mis — je leest een lijst op het
+  moment dat je nadenkt, niet op het moment dat je een commando intikt. Hij is
+  daarom vervangen door `.gitattributes` met `eol=lf`; de bestanden staan nu als
+  LF op schijf. **Schrijf je iets nieuws op, vraag dan eerst of het een controle
+  kan worden in plaats van een zin.**
 - **Supabase weigert na ~30 aanmeldingen per uur** met "Request rate limit
   reached". De RLS-suite maakt er tien per run. Zie je een opbouwfout met "rate
   limit" erin: wacht een paar minuten, ga niet in de policies zoeken. Een tweede
