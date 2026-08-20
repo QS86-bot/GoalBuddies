@@ -14,17 +14,25 @@
 --    niet. Een adempauze betekent "ik heb deze week niet gedaan"; dat is een
 --    niet-voltooide week, en die hoort de groep niet te zien (domeinregel 7).
 --
--- ⚠️ **Vandaag lekt er niets, en dat is precies waarom dit nú moet.** Geen enkele
---    functie in `public` schrijft `excused`: een weekpas laat de rij op `missed`
---    staan en schrijft alleen in `week_pass_events`. De status stond wél in de
---    CHECK `weekly_goals_status_valid`, en QS8-82 (de adempauze) is het issue dat
---    hem gaat schrijven. Vanaf die dag zou elk groepslid met één
---    `GET /rest/v1/weekly_goals` kunnen uitlezen welke weken jij op adempauze
---    hebt gezet.
+-- ⚠️ **CORRECTIE op de eerste versie van deze kop, en hij maakt het erger.**
+--    Er stond hier "geen enkele functie schrijft `excused`, QS8-82 wordt de
+--    eerste". Dat was gebaseerd op een zoektocht door `pg_proc`, en dat is de
+--    verkeerde plek: **de rollover is een Edge Function**, geen databasefunctie.
+--    `supabase/functions/rollover/index.ts` kijkt of er een adempauze over de
+--    cyclus loopt en zet de rij dan op `excused`. Die job draait elk uur.
 --
---    Dat is dezelfde vorm als de valkuil "een redenering die klopt zolang een
---    tabel leeg is". Hier is het zelfs een stap eerder: een CHECK-constraint die
---    een waarde toestaat, is een belofte dat die waarde ooit voorkomt.
+--    De schrijver bestond dus al. Het enige wat ontbrak was invoer: er is nog
+--    geen enkele manier om een rij in `breathers` te zetten — niet vanuit de app
+--    en niet via een RPC. Dáárom stond er nul `excused` in de tabel, niet omdat
+--    de code er nog niet was.
+--
+--    Dat maakt dit geen sluimerend lek maar een lek dat al scherp stond en
+--    alleen nog geen munitie had. En het is precies de valkuil die in de
+--    overdracht staat: `supabase/functions/` valt buiten typecheck, lint én CI,
+--    dus wie in de database zoekt, ziet die schrijver niet.
+--
+--    Wat blijft kloppen: een CHECK-constraint die een waarde toestaat, is een
+--    belofte dat die waarde ooit voorkomt.
 --
 -- ⚠️ En het is de derde keer dat dit patroon terugkomt: **de schermen deden het
 --    goed, de database niet.** `rangeState()` in `src/shared/ui/metrics.ts`
