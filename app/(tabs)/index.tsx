@@ -209,7 +209,7 @@ export default function Vandaag() {
           body:
             'Een weekdoel is wat je deze week af wilt hebben. Geef het een vloer — de versie ' +
             'die je op je slechtste week nog haalt — en een plafond. De vloer halen telt: je ' +
-            'reeks loopt door.',
+            'reeks loopt door. Je maakt hem aan op het doel waar hij bij hoort.',
         }}
       >
         {(doelen) => (
@@ -226,9 +226,18 @@ export default function Vandaag() {
         )}
       </AsyncView>
 
-      <Button variant="primair" block onPress={() => router.push('/doelen')}>
-        Weekdoel toevoegen
-      </Button>
+      {/*
+        ⚠️ Deze knop stuurde je naar de doelenlijst en daar hield het op: er was
+           geen formulier, dus de route liep dood (QS8-112). Het formulier staat
+           nu op het doelscherm, want een weekdoel hangt altijd aan een doel. De
+           bijschrift zegt dat, anders is twee keer tikken zonder uitleg.
+      */}
+      <View style={styles.toevoegen}>
+        <Button variant="primair" block onPress={() => router.push('/doelen')}>
+          Weekdoel toevoegen
+        </Button>
+        <Caption>Je maakt een weekdoel aan op het doel waar hij bij hoort.</Caption>
+      </View>
 
       <OpenstaandBlok weekdoelen={openstaand} klok={klok} onKlaar={herlaad} />
 
@@ -809,6 +818,7 @@ const styles = StyleSheet.create({
   standen: { gap: space.blokGap + 3 },
   afrond: { gap: space.blokGap - 3, paddingTop: space.blokGap - 4 },
   kop: { gap: 2 },
+  toevoegen: { gap: space.blokGap - 5 },
   // `wrap` omdat er nu drie knoppen naast elkaar kunnen staan; op een smalle
   // telefoon vallen ze anders buiten beeld in plaats van door te lopen.
   knoppen: {

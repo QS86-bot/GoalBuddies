@@ -51,11 +51,13 @@ export {
 export {
   eersteCyclusVanDoel,
   fetchDoorschuifbaar,
+  fetchMijlpalen,
   fetchWeekdoelen,
   maakWeekdoel,
   schuifDoor,
   sluitWeekdoelAf,
   verwijderWeekdoel,
+  type Mijlpaal,
   type Weekdoel,
 } from './weekly';
 
