@@ -409,6 +409,16 @@ function DoorschuifKaart({
     //    Zonder deze opzoeking wordt elke doorgeschoven week "week 1" van dat
     //    doel, en dan telt de weekteller in het doeloverzicht niet meer mee.
     const eerste = await eersteCyclusVanDoel(weekdoel.goal_id, klok);
+
+    // ⚠️ `schuifDoor()` doet twee dingen die niet in één transactie zitten:
+    //    `markeer_doorgeschoven()` zet de oude rij op `carried`, en daarna maakt
+    //    hij de nieuwe week aan. Valt de verbinding daartussen weg, dan staat de
+    //    oude week op `carried` zonder opvolger — en hij verdwijnt uit dit blok,
+    //    want `fetchDoorschuifbaar()` haalt alleen `missed` op. Dat is geen
+    //    verlies (de week telde al als gemist en het punt is geboekt) maar het
+    //    weekdoel is dan wel weg zonder dat iemand het aanmaakte. Samenvoegen tot
+    //    één RPC hoort bij het datamodel en niet bij dit scherm; het staat als
+    //    aandachtspunt in ENGINEER-REVIEW.
     const uitkomst = await schuifDoor(weekdoel, klok, eerste);
 
     if (!uitkomst.ok) {
