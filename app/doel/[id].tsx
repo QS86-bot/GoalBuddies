@@ -6,27 +6,32 @@ import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { fetchGroepenVanDoel, fetchMijnGroepen, type Groep } from '@/modules/buddies';
 import { fetchCommitments, trekIn, zetBeloning, zetStraf, type Commitment } from '@/modules/commitments';
 import {
+  annuleerAdempauze,
   ARGUMENT_MAX,
   ARGUMENT_MIN,
   CATEGORIE_LABELS,
   eersteCyclusVanDoel,
+  fetchAdempauzes,
   fetchDoel,
   fetchLaatsteBesluit,
   fetchMijlpalen,
   fetchOpenVerzoek,
   maakWeekdoel,
+  planAdempauze,
+  planbareCycli,
   trekDeadlineVerzoekIn,
   verwijderDoel,
   vraagDeadlineVerschuiving,
   zetArchief,
   zetStreefdatum,
+  type Adempauze,
   type Categorie,
   type DeadlineVerzoek,
   type DoelMetVoortgang,
   type Mijlpaal,
 } from '@/modules/goals';
 import { space } from '@/shared/theme';
-import { localDateIn, now, type IsoDate, type UserClock } from '@/shared/time';
+import { localDateIn, nextCycle, now, type IsoDate, type UserClock } from '@/shared/time';
 import {
   AsyncView,
   BEVESTIGING,
@@ -161,6 +166,13 @@ export default function DoelDetail() {
             ) : null}
 
             <WeekdoelToevoegen doel={d} klok={klok} onKlaar={herlaad} />
+
+            <Adempauzes
+              doel={d}
+              klok={klok}
+              gedeeld={doelGroepen.length > 0}
+              onKlaar={herlaad}
+            />
 
             <Beloning
               goalId={d.id}
@@ -780,6 +792,190 @@ function WeekdoelToevoegen({
 }
 
 /**
+ * De adempauze — QS8-82, migratie 0048.
+ *
+ * ⚠️ Vakantie, ziekte, een piek op het werk. Een reis hoort je niet terug naar
+ *    nul te zetten. Tijdens een adempauze krijgt een onvoltooid weekdoel
+ *    `excused` in plaats van `missed`: geen minpunt, en je reeks wacht in plaats
+ *    van te breken.
+ *
+ * ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** `breathers` is
+ *    leesbaar voor groepsgenoten van een gekoppeld doel — dat is het punt van
+ *    "vooraf aangekondigd", en het is domeinregel 7's eigen uitzondering: dit
+ *    loopt via jou. De statuskolom per week is sinds migratie 0047 juist dicht.
+ *    De copy zegt dat met zoveel woorden, want anders moet de gebruiker raden
+ *    hoeveel hij deelt.
+ */
+function Adempauzes({
+  doel,
+  klok,
+  gedeeld,
+  onKlaar,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly klok: UserClock | null;
+  readonly gedeeld: boolean;
+  readonly onKlaar: () => void;
+}) {
+  const [pauzes, setPauzes] = useState<readonly Adempauze[]>([]);
+  const [open, setOpen] = useState(false);
+  const [lengte, setLengte] = useState<'een' | 'twee'>('een');
+  const [startIndex, setStartIndex] = useState<'0' | '1'>('0');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  useEffect(() => {
+    let levend = true;
+
+    fetchAdempauzes(doel.id)
+      .then((gevonden) => {
+        if (levend) setPauzes(gevonden);
+      })
+      .catch(() => {
+        if (levend) setPauzes([]);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [doel.id]);
+
+  if (!klok) return null;
+
+  const kandidaten = planbareCycli(klok, now());
+  const start = kandidaten[startIndex === '0' ? 0 : 1];
+
+  async function plan() {
+    if (!klok || !start) return;
+    setBezig(true);
+    setFout(null);
+
+    // Eén cyclus: begin en eind zijn dezelfde week. Twee: de week erna.
+    const eind = lengte === 'een' ? start : nextCycle(start, klok.weekStartDay);
+    const uitkomst = await planAdempauze(doel.id, start, eind);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setOpen(false);
+    setPauzes(await fetchAdempauzes(doel.id));
+    onKlaar();
+  }
+
+  async function annuleer(id: string) {
+    const uitkomst = await annuleerAdempauze(id);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+    setPauzes(await fetchAdempauzes(doel.id));
+    onKlaar();
+  }
+
+  const vandaag = localDateIn(klok.tz, now());
+
+  return (
+    <Card nested>
+      <Subheading>Adempauze</Subheading>
+      <Body muted>
+        Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet dan een of twee
+        weken stil. Die weken kosten je geen punt en je reeks blijft staan waar hij staat —
+        hij groeit alleen niet mee.
+      </Body>
+
+      {/*
+        ⚠️ Alleen zeggen dat de groep het ziet als er ook echt een groep is. Bij
+           een ongekoppeld doel is er niemand om iets aan te kondigen, en dan is
+           deze zin een waarschuwing over een risico dat niet bestaat.
+      */}
+      {gedeeld ? (
+        <Caption>
+          Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer. Ze zien niet welke
+          weekdoelen je wel of niet gehaald hebt.
+        </Caption>
+      ) : null}
+
+      {pauzes.length === 0 ? null : (
+        <View style={styles.pauzes}>
+          {pauzes.map((p) => {
+            const begonnen = p.starts_cycle <= vandaag;
+            const voorbij = p.ends_cycle < vandaag;
+
+            return (
+              <View key={p.id} style={styles.pauze}>
+                <Body>
+                  Week van {p.starts_cycle}
+                  {p.ends_cycle === p.starts_cycle ? '' : ` tot en met de week van ${p.ends_cycle}`}
+                </Body>
+                <Caption>{voorbij ? 'Voorbij' : begonnen ? 'Loopt nu' : 'Ingepland'}</Caption>
+
+                {/* Annuleren kan alleen zolang hij nog niet begonnen is — de RPC
+                    weigert de rest, en dan is de knop tonen een belofte die de
+                    database niet nakomt. */}
+                {begonnen ? null : (
+                  <Button variant="stil" onPress={() => void annuleer(p.id)}>
+                    Annuleren
+                  </Button>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      {open ? (
+        <View style={styles.pauzeForm}>
+          <Choice
+            label="Vanaf welke week?"
+            hint="Een adempauze kondig je vooraf aan, dus de week die nu loopt kan niet meer."
+            opties={kandidaten.map((c, i) => ({
+              waarde: String(i) as '0' | '1',
+              label: `Week van ${c.startDate}`,
+            }))}
+            waarde={startIndex}
+            onKies={setStartIndex}
+          />
+
+          <Choice
+            label="Hoe lang?"
+            opties={[
+              { waarde: 'een', label: 'Eén week' },
+              { waarde: 'twee', label: 'Twee weken' },
+            ]}
+            waarde={lengte}
+            onKies={setLengte}
+          />
+
+          <View style={styles.knoppen}>
+            <Button variant="primair" busy={bezig} onPress={() => void plan()}>
+              Inplannen
+            </Button>
+            <Button
+              variant="stil"
+              disabled={bezig}
+              onPress={() => {
+                setOpen(false);
+                setFout(null);
+              }}
+            >
+              Annuleren
+            </Button>
+          </View>
+        </View>
+      ) : (
+        <Button onPress={() => setOpen(true)}>Adempauze inplannen</Button>
+      )}
+    </Card>
+  );
+}
+
+/**
  * Weggooien binnen de bedenktijd — QS8-105, migratie 0046.
  *
  * ⚠️ Staat bewust ónder archiveren en in een stille knop. Archiveren is de weg
@@ -847,5 +1043,8 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
 
 const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
+  pauzes: { gap: space.blokGap - 3 },
+  pauze: { gap: 2 },
+  pauzeForm: { gap: space.blokGap - 3 },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, alignItems: 'center' },
 });
