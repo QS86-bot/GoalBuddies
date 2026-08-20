@@ -53,11 +53,13 @@ export {
   maakWeekdoel,
   schuifDoor,
   sluitWeekdoelAf,
+  verwijderWeekdoel,
   type Weekdoel,
 } from './weekly';
 
 export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly-schemas';
 
+export { verwijderDoel } from './api';
 export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';

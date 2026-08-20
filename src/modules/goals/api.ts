@@ -349,3 +349,48 @@ async function logGoalEvent(
 
   if (error) reportError(error, 'goals.event', { goal_id: goalId, name: eventType });
 }
+
+/**
+ * Verwijdert een doel dat je net per ongeluk hebt aangemaakt — migratie 0046.
+ *
+ * ⚠️ Strenger dan bij een weekdoel, en met opzet. Een doel verwijderen sleept
+ *    alles mee wat eraan hangt: weekdoelen, mijlpalen, je reeks, je weekpassen,
+ *    de koppeling met een groep. Daarom mag het alleen zolang het doel vers is
+ *    (`bedenktijd()`, nu 24 uur) én er werkelijk niets aan hangt — geen
+ *    weekdoelen, geen punten, niet gedeeld met een groep.
+ *
+ * ⚠️ Voor een doel mét geschiedenis is **archiveren** de weg (`zetArchief`). Dat
+ *    is geen tweederangs alternatief maar het juiste gereedschap: een doel dat
+ *    je een maand hebt bijgehouden en dan loslaat, is geschiedenis en geen
+ *    vergissing (domeinregel 6).
+ */
+export async function verwijderDoel(goalId: string): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('verwijder_doel', { p_goal_id: goalId });
+
+  if (error) {
+    reportError(error, 'goals.delete', { goal_id: goalId, code: error.code });
+    return { ok: false, melding: 'Verwijderen lukte niet.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: doelVerwijderMelding(uitkomst.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+function doelVerwijderMelding(reden: string | undefined): string {
+  switch (reden) {
+    case 'te_oud':
+      return 'Dit doel staat er te lang om nog te verwijderen. Archiveer het — dan blijft je geschiedenis staan en verdwijnt het uit je lijst.';
+    case 'gedeeld_met_groep':
+      return 'Dit doel is aan een groep gekoppeld. Ontkoppel het eerst, of archiveer het.';
+    case 'heeft_weekdoelen':
+      return 'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.';
+    case 'heeft_punten':
+      return 'Er zijn al punten op dit doel geboekt. Archiveer het in plaats van het te verwijderen.';
+    default:
+      return 'Verwijderen lukte niet.';
+  }
+}
