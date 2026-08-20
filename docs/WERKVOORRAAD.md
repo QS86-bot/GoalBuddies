@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 20-08-2026 (na de groene notities en QS8-106)
+**Laatst bijgewerkt:** 20-08-2026 (na de backlogronde: QS8-106, 112, 82, 39, 76, 85 en A45)
 
 ---
 
@@ -54,21 +54,29 @@ Lees dit eerst; de rest is naslag.
   blok "Nog open van eerdere weken" op *Vandaag* neemt een gemiste week mee, en
   weggooien-binnen-de-bedenktijd staat onder archiveren op het doelscherm. Elk
   met een bevestiging die zegt wát het kost.
-* **⚠️ Maar er bleek een vijfde te zijn, en die is erger: `maakWeekdoel()` wordt
-  door geen enkel scherm aangeroepen.** "Weekdoel toevoegen" stuurt je naar de
-  doelenlijst, die naar een doel, en op het doelscherm staat geen formulier.
-  **Er is dus geen route om een weekdoel aan te maken** — de kernlus van de app
-  is niet met de hand te doorlopen. Doorschuiven werkt wel, want `schuifDoor()`
-  roept `maakWeekdoel()` intern aan. Dit is geen bedrading maar een scherm: het
-  is de UI van QS8-43/QS8-44 en staat als **QS8-112** in Linear, op Urgent.
-  **Dit is nu het grootste knelpunt.**
+* ✅ **Een weekdoel aanmaken kan weer** (QS8-112). Het bleek helemaal niet te
+  kunnen: `maakWeekdoel()` werd door geen enkel scherm aangeroepen, terwijl
+  QS8-43 en QS8-44 allebei op Done stonden. Het formulier staat nu op het
+  doelscherm.
+* ✅ **EPIC 8 is af voor de MVP**, op QS8-77 (nudge) na — die wacht op EPIC 11
+  omdat er nog geen kanaal is om een nudge over te versturen. QS8-82
+  (adempauze) en QS8-76 (feestmoment) zijn deze ronde gebouwd.
+* ✅ **Mijlpalen zijn te beheren** (QS8-39) en **commitments zijn aantoonbaar
+  informeel** (QS8-85, met een test die rood wordt zodra er een betaalprovider
+  bij komt).
 * De Doelcoach-keten van EPIC 3 staat er nog steeds zonder scherm bij, en er is
   nog steeds geen echte AI-call gedaan.
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A45. Twee
-  dringende: **A45** (mag `excused` bij de afgeschermde statussen — zie §2, het
-  zet een lek op scherp zodra QS8-82 gebouwd wordt) en **A41 t/m A44** uit de
-  groene notities, waarvan A41 en A42 een besluit over domeinregel 7 vragen.
-  A37 staat er ook nog. Geen van alle blokkeert het bouwen van andere issues.
+* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A46.
+  A45 is gedicht (migratie 0047). Open en de moeite waard: **A41 t/m A44** uit
+  de groene notities (A41 en A42 vragen een besluit over domeinregel 7 en hangen
+  aan elkaar), **A46** (TRUNCATE intrekken) en **A37**. Geen van alle blokkeert
+  het bouwen van andere issues.
+* **Wat nu aan de beurt is: EPIC 12 (Risico-radar).** QS8-93 is de
+  haalbaarheidsberekening en de rest van de epic hangt eraan. Let op de rij over
+  `goals.risk_status` in ENGINEER-REVIEW: die kolom is voor groepsgenoten
+  leesbaar en staat vandaag op `on_track` bij iedereen. **Dat verandert op de
+  dag dat EPIC 12 begint** — dus dicht dat vóór of tegelijk met QS8-93, niet
+  erna.
 
 ---
 
@@ -246,7 +254,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | **hier verder, ná het scherm om een weekdoel aan te maken.** ⚠️ Lees vóór QS8-82 de opmerking erbij in Linear: de adempauze zet een domeinregel-7-lek op scherp (A45). QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ af voor de MVP, m.u.v. QS8-77 (nudge, wacht op EPIC 11) en de twee `phase:v2`-issues QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | open |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | **deels gebouwd, buiten de volgorde om.** De poort (`vraag_ai_job`, 0038), de Edge Function `doelcoach` en de datalaag van het interview staan op `main`. **Geen schermen, en niet één keer end-to-end gedraaid** |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | open |
@@ -263,7 +271,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
 | Avatar uploaden | QS8-27 | Er is geen Storage-bucket en geen `storage.objects`-policy |
 | ~~Doorschuiven van een gemist weekdoel~~ | QS8-47 | ✅ aangesloten in QS8-106: het blok "Nog open van eerdere weken" op *Vandaag* |
-| **Een weekdoel aanmaken** | QS8-112 (uit QS8-43, QS8-44) | ⚠️ `maakWeekdoel()` wordt door geen enkel scherm aangeroepen. Gevonden tijdens QS8-106. Zonder dit scherm is de kernlus niet met de hand te doorlopen |
+| ~~Een weekdoel aanmaken~~ | QS8-112 | ✅ gebouwd op 20-08. QS8-43 en QS8-44 stonden op Done terwijl er geen scherm was — controleer bij een frontend-issue voortaan of een mens er via het scherm bij kan |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |

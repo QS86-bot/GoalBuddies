@@ -3,8 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 20-08-2026 (tweede sessie), na de groene notities uit
-> het spelregels-document en QS8-106.
+> **Laatst bijgewerkt:** 20-08-2026 (tweede sessie), na de groene notities en
+> een backlogronde: QS8-106, 112, 82, 39, 76, 85 en A45.
 
 ---
 
@@ -26,36 +26,41 @@ De Ketting (QS8-80), de weekpassen (QS8-81) en het dashboard (QS8-75) af. EPIC 3
 is deels gebouwd buiten de volgorde om: poort, Edge Function en datalaag staan op
 main, maar er zijn geen schermen en er is nooit een echte AI-call gedaan.
 
-Migraties 0039 t/m 0046 zijn toegepast op het echte project. De rollover is
-opnieuw gedeployd en geverifieerd. **QS8-106 is af** — de vier datalaagfuncties
-zonder scherm hebben er een. **448 tests groen over 22 bestanden, geen skips**
-(de RLS-suite heeft dus echt gedraaid).
+Migraties 0039 t/m 0049 zijn toegepast op het echte project. De rollover draait
+elk uur. **476 tests groen over 25 bestanden, geen skips** (de RLS-suite heeft
+dus echt gedraaid).
 
-**Er staan ongeveer 37 commits klaar om te pushen. Ik push zelf.**
+**Er staan ongeveer 46 commits klaar om te pushen. Ik push zelf.**
 
-**Volgende aan de beurt — en het is niet EPIC 8.**
+**EPIC 8 is af voor de MVP.** Alleen QS8-77 (dagelijkse nudge) staat nog open en
+die wacht op EPIC 11: er is geen kanaal om een nudge over te versturen.
 
-**Een weekdoel aanmaken kan niet. Bouw dat eerst.** Dit is tijdens QS8-106
-gevonden en het is erger dan waar QS8-106 over ging. `maakWeekdoel()` bestaat,
-is getest, en wordt door **geen enkel scherm** aangeroepen: "Weekdoel toevoegen"
-op *Vandaag* stuurt je naar de doelenlijst, die stuurt je naar een doel, en op
-dat doelscherm staat geen formulier. **De kernlus van de app is niet met de hand
-te doorlopen.** Doorschuiven werkt wel, want `schuifDoor()` roept
-`maakWeekdoel()` intern aan — dat maskeert het probleem. Dit is de UI van
-QS8-43/QS8-44 en staat als **QS8-112** in Linear, op Urgent.
+Deze ronde afgerond: QS8-106 (de vier datalaagfuncties zonder scherm), QS8-112
+(een weekdoel aanmaken kon helemaal niet), QS8-82 (adempauze), QS8-39 (mijlpalen
+beheren), QS8-76 (feestelijk moment) en QS8-85 (commitments informeel, met een
+test die het bewaakt). A45 is gedicht in migratie 0047.
 
-Daarna EPIC 8 afmaken: QS8-82 (adempauze) is het enige dat zelfstandig te bouwen
-is — QS8-77 (dagelijkse nudge) hangt aan EPIC 11, want er is nog geen kanaal om
-een nudge over te versturen. **Lees vóór QS8-82 de opmerking die er in Linear bij
-staat**: de adempauze zet een domeinregel-7-lek op scherp (A45). Dan EPIC 11,
-EPIC 3 afmaken, 12, 9.
+**Volgende aan de beurt: EPIC 12, de Risico-radar.** QS8-93 is de
+haalbaarheidsberekening en 94, 95 en 96 hangen eraan.
 
-**Er wachten nu vijf besluiten op Quinten** en twee daarvan hangen samen:
-A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) komen
-uit de groene notities en raken domeinregel 7 in de kern. A43 (minpunten bij
-zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?) en A45 (`excused`
-afschermen) staan er los bij. Alles staat in `docs/Q-TODO.docx` sectie H en I,
-met de onderbouwing in `docs/GROENE-NOTITIES.md`.
+⚠️ **Doe vóór of tegelijk met QS8-93 iets aan `goals.risk_status`.** Die kolom is
+via `goals_select` leesbaar voor groepsgenoten, samen met de jsonb-onderbouwing
+in `risk_reason` — en dat zijn per definitie tegenslagsignalen over iemand
+anders. Het is vandaag onschadelijk omdat de Risico-radar niet bestaat en de
+kolom bij iedereen op `on_track` staat. **EPIC 12 is precies wat daar verandering
+in brengt.** Het staat al jaren als "Hoog" in ENGINEER-REVIEW; dit is de sessie
+waarin het scherp komt te staan. Zelfde vorm als A45 met `excused`, en die
+kwam er deze week nét op tijd uit.
+
+Daarna EPIC 11 (notificaties), EPIC 3 afmaken (de Doelcoach heeft nog steeds
+geen scherm en er is nog nooit een echte AI-call gedaan), en dan EPIC 9.
+
+**Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
+A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
+groene notities raken domeinregel 7 in de kern. Verder A43 (minpunten bij
+zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?), A46 (TRUNCATE
+intrekken) en A37. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
+onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
 
@@ -158,6 +163,19 @@ met de onderbouwing in `docs/GROENE-NOTITIES.md`.
   daarom vervangen door `.gitattributes` met `eol=lf`; de bestanden staan nu als
   LF op schijf. **Schrijf je iets nieuws op, vraag dan eerst of het een controle
   kan worden in plaats van een zin.**
+- **Een issue op Done betekent niet dat een mens erbij kan.** QS8-43 en QS8-44
+  stonden allebei afgevinkt omdat de datalaag klaar was, terwijl er geen scherm
+  was om een weekdoel aan te maken — de kernlus van de app was niet met de hand
+  te doorlopen. Dat is het afgevinkte vakje uit CLAUDE.md, maar omgekeerd: geen
+  gat dat als opgelost gemeld stond, maar een feature die als af gemeld stond.
+  **Vraag bij een frontend-issue: welk scherm roept dit aan?**
+- **Een RPC die je in één transactie nodig hebt, kun je niet uit losse
+  PATCH-verzoeken opbouwen.** `milestones_goal_order_uniq` staat op DEFERRABLE
+  INITIALLY DEFERRED, dus herordenen mag binnen één transactie botsen. PostgREST
+  geeft je er per verzoek precies één, dus drie updates achter elkaar lopen
+  gegarandeerd stuk — met een halfverschoven lijst en geen bruikbare fout.
+  Herkenbaar aan: DEFERRABLE in de constraint-definitie.
+
 - **⚠️ `pg_proc` is niet de hele codebase. De rollover is een Edge Function.**
   Ik zocht naar wie `weekly_goals.status = 'excused'` schrijft, vond in alle
   databasefuncties niets, en concludeerde dat het lek pas bij QS8-82 scherp zou
@@ -211,6 +229,6 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-Begin met het scherm om een weekdoel aan te maken, en werk daarna door volgens
-de volgorde hierboven. Vraag alleen als doorgaan-onder-aanname echt onveilig zou
-zijn.
+Begin met EPIC 12, en dicht `goals.risk_status` vóór of tegelijk met QS8-93.
+Werk daarna door volgens de volgorde hierboven. Vraag alleen als
+doorgaan-onder-aanname echt onveilig zou zijn.
