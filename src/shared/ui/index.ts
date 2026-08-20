@@ -50,6 +50,8 @@ export {
   type VieringSoort,
 } from './vieringen';
 
+export { HULPVRAAG_MAX, hulpvraagVoorstel } from './hulpvraag';
+
 export {
   risicoLabel,
   risicoTeken,
@@ -59,7 +61,7 @@ export {
   type RisicoStand,
 } from './risico';
 
-export { useVieringenAan } from './voorkeuren';
+export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
 export {

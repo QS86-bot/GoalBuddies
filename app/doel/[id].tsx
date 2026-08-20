@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
-import { fetchGroepenVanDoel, fetchMijnGroepen, type Groep } from '@/modules/buddies';
+import { fetchGroepenVanDoel, fetchMijnGroepen, stuurBericht, type Groep } from '@/modules/buddies';
 import { fetchCommitments, trekIn, zetBeloning, zetStraf, type Commitment } from '@/modules/commitments';
 import {
   annuleerAdempauze,
@@ -49,11 +49,14 @@ import {
   Card,
   Choice,
   Field,
+  HULPVRAAG_MAX,
+  hulpvraagVoorstel,
   MilestoneProgress,
   RisicoBadge,
   risicoUitleg,
   Screen,
   Subheading,
+  useHulpvraagVerborgen,
 } from '@/shared/ui';
 
 /**
@@ -83,6 +86,7 @@ export default function DoelDetail() {
   const [doelGroepen, setDoelGroepen] = useState<
     readonly { readonly group_id: string; readonly name: string }[]
   >([]);
+  const [risico, setRisico] = useState<Risico | null>(null);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,6 +120,28 @@ export default function DoelDetail() {
       })
       .finally(() => {
         if (levend) setLoading(false);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [id, ronde]);
+
+  // ⚠️ Apart opgehaald en apart falend: de Risico-radar is een blok op dit
+  //    scherm, en een storing daarin hoort het doel zelf niet mee te slepen.
+  //    Staat hier en niet in het radarblok, omdat de hulpvraag-kaart (QS8-95)
+  //    dezelfde stand nodig heeft — twee keer ophalen zou twee keer hetzelfde
+  //    verzoek zijn.
+  useEffect(() => {
+    if (!id) return;
+    let levend = true;
+
+    fetchRisico(id)
+      .then((gevonden) => {
+        if (levend) setRisico(gevonden);
+      })
+      .catch(() => {
+        if (levend) setRisico(null);
       });
 
     return () => {
@@ -174,7 +200,14 @@ export default function DoelDetail() {
               />
             ) : null}
 
-            <Risicoradar doel={d} />
+            <Risicoradar risico={risico} />
+
+            <Herplannen
+              risico={risico}
+              heeftStraf={commitments.some((c) => c.type === 'penalty' && c.status !== 'cancelled')}
+            />
+
+            <HulpVragen doel={d} risico={risico} groepen={doelGroepen} userId={userId} />
 
             <Mijlpalen doel={d} onKlaar={herlaad} />
 
@@ -640,6 +673,251 @@ function Archiveren({
 }
 
 /**
+ * Herplannen bij een onhaalbare deadline — QS8-96.
+ *
+ * ⚠️ Dit is het moment waarop mensen apps als deze weggooien: het doel is dood,
+ *    de app blijft herinneringen sturen, en de gebruiker verwijdert hem. De
+ *    issue zegt het zo, en dat is de hele reden dat dit blok bestaat — een uitweg
+ *    in plaats van stilte.
+ *
+ * ⚠️ **Toon: nuchter en behulpzaam, geen verwijt** (acceptatiecriterium 6). Er
+ *    staat nergens dat je iets fout hebt gedaan. Een deadline die niet meer
+ *    klopt, is informatie en geen oordeel.
+ *
+ * ⚠️ Bijstellen breekt je reeks niet en wist niets (criterium 3). Dat kán ook
+ *    niet: een deadline verzetten raakt `goals.target_date` en niet
+ *    `weekly_goals`, mijlpalen laten vallen zet ze op `dropped` in plaats van ze
+ *    te verwijderen, en `goal_events` legt elke wijziging append-only vast
+ *    (criterium 4). Deze kaart wijst alleen de weg naar bestaande handelingen;
+ *    hij voert zelf niets uit. Dat scheelt een tweede plek waar dezelfde
+ *    wijziging langs kan.
+ */
+function Herplannen({
+  risico,
+  heeftStraf,
+}: {
+  readonly risico: Risico | null;
+  readonly heeftStraf: boolean;
+}) {
+  if (risico?.stand !== 'unreachable') return null;
+
+  const weken = risico.reden?.weken_over ?? null;
+  const open = risico.reden?.open_mijlpalen ?? null;
+
+  return (
+    <Card nested>
+      <Subheading>Deze datum gaat niet meer lukken</Subheading>
+
+      <Body muted>
+        {open !== null && weken !== null
+          ? `Er staan ${open} mijlpalen open en er ${weken === 1 ? 'is' : 'zijn'} nog ${weken} ${weken === 1 ? 'week' : 'weken'}. `
+          : ''}
+        Dat is geen ramp en het zegt niets over jou — het zegt dat het plan niet
+        meer klopt. Een doel bijstellen werkt beter dan het stilletjes laten
+        doodbloeden.
+      </Body>
+
+      <Body>Drie dingen die je kunt doen:</Body>
+
+      <View style={styles.uitwegen}>
+        <View style={styles.uitweg}>
+          <Body>Verzet je streefdatum</Body>
+          <Caption>
+            Hierboven bij &ldquo;Deadline&rdquo;. Deel je dit doel met een groep, dan vraag je er
+            akkoord voor — dat kost je geen punten.
+          </Caption>
+        </View>
+
+        <View style={styles.uitweg}>
+          <Body>Laat mijlpalen vallen</Body>
+          <Caption>
+            Bij &ldquo;Mijlpalen&rdquo;. Wat je laat vallen telt niet meer mee, en je
+            geschiedenis blijft staan.
+          </Caption>
+        </View>
+
+        <View style={styles.uitweg}>
+          <Body>Maak het doel kleiner</Body>
+          <Caption>
+            Pas de mijlpalen aan naar wat er wél in past. Liever een doel dat je haalt dan een
+            plan dat klopte in maart.
+          </Caption>
+        </View>
+      </View>
+
+      {/*
+        ⚠️ Acceptatiecriterium 5: is er een straf ingesteld, dan hoort de
+           gebruiker vóór het verzetten te weten wat dat daarvoor betekent.
+           Domeinregel 11 zegt dat een straf pas in werking treedt bij een
+           verstreken deadline — dus de datum verzetten is precies de handeling
+           die dat moment verschuift, en dat mag geen verrassing zijn.
+      */}
+      {heeftStraf ? (
+        <Caption danger>
+          Let op: je hebt een straf ingesteld op dit doel. Die treedt in werking als je
+          streefdatum verstrijkt zonder dat het doel af is. Verzet je de datum, dan verschuift
+          dat moment mee.
+        </Caption>
+      ) : null}
+
+      <Caption>Je reeks en je geschiedenis blijven bij alle drie gewoon staan.</Caption>
+    </Card>
+  );
+}
+
+/**
+ * "Vraag je groep om hulp" — QS8-95, het scharnierpunt van EPIC 12.
+ *
+ * ⚠️ **Nooit automatisch** (acceptatiecriterium 1). De kaart verschijnt bij
+ *    stand "achterstand" en verder gebeurt er niets: er gaat pas iets naar de
+ *    groep als de gebruiker de tekst gelezen heeft, hem eventueel aangepast
+ *    heeft, en op verzenden drukt. Dat is wat deze functie tot een geldige
+ *    uitzondering op domeinregel 7 maakt — de route loopt via de persoon.
+ *
+ * ⚠️ Het bericht is een **gewoon chatbericht**, geen systeembericht. Dat scheelt
+ *    een migratie (de allowlist hoeft niet open), reageren werkt vanzelf, en het
+ *    klopt inhoudelijk: een systeembericht is iets dat de app zegt, dit is iets
+ *    dat de gebruiker zegt.
+ *
+ * ⚠️ Wegklikken blijft weg (acceptatiecriterium 5). De keuze staat op het
+ *    apparaat en niet in de database: het is een schermvoorkeur, en een kolom
+ *    toevoegen vraagt eerst toestemming. Gevolg: op een nieuwe telefoon komt de
+ *    kaart één keer terug.
+ */
+function HulpVragen({
+  doel,
+  risico,
+  groepen,
+  userId,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly risico: Risico | null;
+  readonly groepen: readonly { readonly group_id: string; readonly name: string }[];
+  readonly userId: string | null;
+}) {
+  const [tekst, setTekst] = useState('');
+  const [groepId, setGroepId] = useState('');
+  const [open, setOpen] = useState(false);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+  const [verstuurd, setVerstuurd] = useState(false);
+  const { weg, verberg, geladen } = useHulpvraagVerborgen(doel.id);
+
+  // ⚠️ Afgeleid en niet in een effect gezet. De eerste groep is de standaard
+  //    zolang de gebruiker niets gekozen heeft; dat in een effect naar state
+  //    schrijven levert een extra render op zonder dat er iets verandert, en de
+  //    lint-regel vangt het af.
+  const gekozenGroep = groepId === '' ? (groepen[0]?.group_id ?? '') : groepId;
+
+  // Alleen bij achterstand, alleen met een groep om het aan te vragen, en
+  // alleen als hij niet weggeklikt is.
+  if (risico?.stand !== 'behind' || groepen.length === 0 || !geladen || weg || userId === null) {
+    return null;
+  }
+
+  if (verstuurd) {
+    return (
+      <Card nested>
+        <Subheading>Je vraag staat in de groep</Subheading>
+        <Body muted>
+          Je buddy&apos;s kunnen erop reageren in de groepschat. Dat is precies waar ze voor zijn.
+        </Body>
+      </Card>
+    );
+  }
+
+  async function verstuur() {
+    if (userId === null) return;
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await stuurBericht(gekozenGroep, userId, tekst);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setVerstuurd(true);
+  }
+
+  if (!open) {
+    return (
+      <Card nested>
+        <Subheading>Vastgelopen? Vraag je groep</Subheading>
+        <Body muted>
+          Je loopt achter op dit doel. Daar is je groep voor — twee zinnen en iemand denkt met je
+          mee. Je ziet precies wat je verstuurt voordat het weggaat.
+        </Body>
+
+        <View style={styles.knoppen}>
+          <Button
+            variant="primair"
+            onPress={() => {
+              setTekst(
+                hulpvraagVoorstel({
+                  doeltitel: doel.title,
+                  wekenOver: risico?.reden?.weken_over ?? null,
+                }),
+              );
+              setOpen(true);
+            }}
+          >
+            Vraag om hulp
+          </Button>
+          <Button variant="stil" onPress={verberg}>
+            Nu even niet
+          </Button>
+        </View>
+      </Card>
+    );
+  }
+
+  return (
+    <Card nested>
+      <Subheading>Wat wil je vragen?</Subheading>
+
+      <Field
+        label="Je bericht"
+        hint="Pas het gerust aan. Dit gaat als jouw bericht naar de groepschat."
+        value={tekst}
+        onChangeText={setTekst}
+        multiline
+        numberOfLines={4}
+        maxLength={HULPVRAAG_MAX}
+      />
+
+      {groepen.length === 1 ? null : (
+        <Choice
+          label="Naar welke groep?"
+          opties={groepen.map((g) => ({ waarde: g.group_id, label: g.name }))}
+          waarde={gekozenGroep}
+          onKies={setGroepId}
+        />
+      )}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      <View style={styles.knoppen}>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={tekst.trim().length < 3}
+          onPress={() => void verstuur()}
+        >
+          Versturen
+        </Button>
+        <Button variant="stil" disabled={bezig} onPress={() => setOpen(false)}>
+          Annuleren
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+/**
  * De Risico-radar op het doelscherm — QS8-94.
  *
  * ⚠️ **Uitsluitend voor de eigenaar**, en dat is criterium 3 van de issue. De
@@ -653,25 +931,8 @@ function Archiveren({
  *    stand: de radar draait bij de rollover en bij elke goedkeuring, niet bij
  *    het openen van een scherm (criterium 2 van QS8-93).
  */
-function Risicoradar({ doel }: { readonly doel: DoelMetVoortgang }) {
-  const [risico, setRisico] = useState<Risico | null>(null);
+function Risicoradar({ risico }: { readonly risico: Risico | null }) {
   const [waarom, setWaarom] = useState(false);
-
-  useEffect(() => {
-    let levend = true;
-
-    fetchRisico(doel.id)
-      .then((gevonden) => {
-        if (levend) setRisico(gevonden);
-      })
-      .catch(() => {
-        if (levend) setRisico(null);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [doel.id]);
 
   if (risico === null) return null;
 
@@ -1340,6 +1601,8 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
 const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
   mijlpalen: { gap: space.blokGap - 2 },
+  uitwegen: { gap: space.blokGap - 3 },
+  uitweg: { gap: 2 },
   mijlpaal: { gap: 3 },
   pauzes: { gap: space.blokGap - 3 },
   pauze: { gap: 2 },

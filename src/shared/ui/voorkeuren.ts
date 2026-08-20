@@ -73,3 +73,65 @@ export function useVieringenAan(): {
 
   return { aan, geladen, zet };
 }
+
+const SLEUTEL_HULPVRAAG = 'goalbuddies.hulpvraag-weg';
+
+/**
+ * Heeft de gebruiker de hulpvraag-kaart voor dit doel weggeklikt? — QS8-95,
+ * acceptatiecriterium 5: "wegklikken kan, en het signaal komt niet dagelijks
+ * terug zeuren".
+ *
+ * ⚠️ Per doel, niet per gebruiker. Achterlopen op je scriptie zegt niets over je
+ *    hardloopdoel, en één keer wegklikken hoort niet elke andere hulpvraag te
+ *    smoren.
+ *
+ * ⚠️ Ook dit staat op het apparaat en niet in `profiles`. Zie de kop van dit
+ *    bestand: een kolom toevoegen aan een bestaande tabel vraagt eerst
+ *    toestemming, en dit is een schermvoorkeur. Gevolg dat je moet weten: op een
+ *    nieuwe telefoon komt de kaart één keer terug. Dat is mild — de kaart
+ *    verschijnt alleen bij achterstand en doet uit zichzelf niets.
+ */
+export function useHulpvraagVerborgen(goalId: string): {
+  readonly weg: boolean;
+  readonly geladen: boolean;
+  readonly verberg: () => void;
+} {
+  const [weg, setWeg] = useState(false);
+  /**
+   * Het doel waarvoor de voorkeur gelezen is.
+   *
+   * ⚠️ Bewust dít en niet een losse `geladen`-vlag die het effect op `false`
+   *    zet. Synchroon `setState` aanroepen in een effect veroorzaakt een
+   *    cascade van renders en de lint-regel vangt het af; hieruit is `geladen`
+   *    gewoon af te leiden. Het lost meteen het echte probleem op: bij het
+   *    wisselen van doel is de vorige waarde niet meer "geladen".
+   */
+  const [geladenVoor, setGeladenVoor] = useState<string | null>(null);
+
+  useEffect(() => {
+    let levend = true;
+
+    AsyncStorage.getItem(`${SLEUTEL_HULPVRAAG}.${goalId}`)
+      .then((waarde) => {
+        if (!levend) return;
+        setWeg(waarde === 'ja');
+        setGeladenVoor(goalId);
+      })
+      .catch(() => {
+        if (levend) setGeladenVoor(goalId);
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [goalId]);
+
+  const geladen = geladenVoor === goalId;
+
+  const verberg = useCallback(() => {
+    setWeg(true);
+    void AsyncStorage.setItem(`${SLEUTEL_HULPVRAAG}.${goalId}`, 'ja');
+  }, [goalId]);
+
+  return { weg, geladen, verberg };
+}
