@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -13,6 +13,7 @@ import {
   fetchLaatsteBesluit,
   fetchOpenVerzoek,
   trekDeadlineVerzoekIn,
+  verwijderDoel,
   vraagDeadlineVerschuiving,
   zetArchief,
   zetStreefdatum,
@@ -24,6 +25,8 @@ import { space } from '@/shared/theme';
 import { localDateIn, now, type IsoDate } from '@/shared/time';
 import {
   AsyncView,
+  BEVESTIGING,
+  Bevestiging,
   Body,
   Button,
   Caption,
@@ -45,6 +48,7 @@ import {
  */
 export default function DoelDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { userId } = useSession();
   const { profiel } = useProfiel();
 
@@ -158,6 +162,13 @@ export default function DoelDetail() {
             />
 
             {userId ? <Archiveren doel={d} userId={userId} onKlaar={herlaad} /> : null}
+
+            {/*
+              Na het weggooien bestaat dit scherm niet meer — herladen zou een
+              "niet gevonden" opleveren op een doel dat je zelf net hebt
+              weggegooid. Terug naar de lijst is het enige zinnige vervolg.
+            */}
+            <Weggooien doel={d} onWeg={() => router.replace('/doelen')} />
           </View>
         )}
       </AsyncView>
@@ -576,6 +587,72 @@ function Archiveren({
         {gearchiveerd ? 'Terughalen' : 'Archiveren'}
       </Button>
     </Card>
+  );
+}
+
+/**
+ * Weggooien binnen de bedenktijd — QS8-105, migratie 0046.
+ *
+ * ⚠️ Staat bewust ónder archiveren en in een stille knop. Archiveren is de weg
+ *    voor een doel dat je loslaat; weggooien is er alleen voor het doel dat je
+ *    net verkeerd hebt aangemaakt. Zou dit even prominent staan, dan wordt het
+ *    de standaardreflex om geschiedenis weg te gooien — en dat botst met
+ *    domeinregel 6 (append-only: corrigeren doe je met een correctie, niet door
+ *    de geschiedenis te wissen).
+ *
+ * ⚠️ Verdwijnt niet vanzelf als de bedenktijd voorbij is, en dat kan ook niet:
+ *    `bedenktijd()` staat alleen in de database en heeft daar bewust geen kopie
+ *    in TypeScript. De database weigert dan met `te_oud`, en die melding wijst
+ *    naar archiveren. Zie `shared/ui/acties.ts` voor de onderbouwing.
+ */
+function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly onWeg: () => void }) {
+  const [vraagt, setVraagt] = useState(false);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  // Een gearchiveerd doel heeft per definitie een verleden; daar is weggooien
+  // niet voor.
+  if (doel.status === 'archived') return null;
+
+  async function weg() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await verwijderDoel(doel.id);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    onWeg();
+  }
+
+  if (vraagt) {
+    return (
+      <Bevestiging
+        tekst={BEVESTIGING.doelVerwijderen}
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void weg()}
+        onAnnuleer={() => {
+          setVraagt(false);
+          setFout(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <Button
+      variant="stil"
+      onPress={() => setVraagt(true)}
+      accessibilityLabel={`Doel ${doel.title ?? ''} weggooien`}
+    >
+      Per ongeluk aangemaakt? Weggooien
+    </Button>
   );
 }
 

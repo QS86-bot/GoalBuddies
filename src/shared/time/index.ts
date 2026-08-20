@@ -28,6 +28,7 @@ export {
   nextCycle,
   previousCycle,
   userCycle,
+  userCycleOn,
 } from './cycle';
 
 export {

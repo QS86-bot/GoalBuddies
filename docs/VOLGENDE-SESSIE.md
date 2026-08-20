@@ -3,8 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 20-08-2026, na EPIC 8 (weekpassen, dashboard) en vier
-> migraties die de reeks echt beschermd hebben.
+> **Laatst bijgewerkt:** 20-08-2026 (tweede sessie), na de groene notities uit
+> het spelregels-document en QS8-106.
 
 ---
 
@@ -27,22 +27,34 @@ is deels gebouwd buiten de volgorde om: poort, Edge Function en datalaag staan o
 main, maar er zijn geen schermen en er is nooit een echte AI-call gedaan.
 
 Migraties 0039 t/m 0046 zijn toegepast op het echte project. De rollover is
-opnieuw gedeployd en geverifieerd. 432 tests groen, geen skips.
+opnieuw gedeployd en geverifieerd. **QS8-106 is af** — de vier datalaagfuncties
+zonder scherm hebben er een.
 
-**Er staan ongeveer 35 commits klaar om te pushen. Ik push zelf.**
+**Er staan ongeveer 37 commits klaar om te pushen. Ik push zelf.**
 
-**Volgende aan de beurt — en ik zou met QS8-106 beginnen, niet met EPIC 8.**
+**Volgende aan de beurt — en het is niet EPIC 8.**
 
-**QS8-106 — de schermen laten inlopen op de datalaag.** Dit is het grootste
-praktische knelpunt. `schuifDoor()`, `sluitWeekdoelAf()`, `verwijderWeekdoel()`
-en `verwijderDoel()` zijn gebouwd, getest en van nette Nederlandse meldingen
-voorzien — en worden door **geen enkel scherm** aangeroepen. Datzelfde geldt voor
-de hele Doelcoach-keten van EPIC 3. Elke epic die we erbovenop bouwen vergroot
-die kloof.
+**Een weekdoel aanmaken kan niet. Bouw dat eerst.** Dit is tijdens QS8-106
+gevonden en het is erger dan waar QS8-106 over ging. `maakWeekdoel()` bestaat,
+is getest, en wordt door **geen enkel scherm** aangeroepen: "Weekdoel toevoegen"
+op *Vandaag* stuurt je naar de doelenlijst, die stuurt je naar een doel, en op
+dat doelscherm staat geen formulier. **De kernlus van de app is niet met de hand
+te doorlopen.** Doorschuiven werkt wel, want `schuifDoor()` roept
+`maakWeekdoel()` intern aan — dat maskeert het probleem. Dit is de UI van
+QS8-43/QS8-44 en er is nog geen apart issue voor; maak er een.
 
 Daarna EPIC 8 afmaken: QS8-82 (adempauze) is het enige dat zelfstandig te bouwen
 is — QS8-77 (dagelijkse nudge) hangt aan EPIC 11, want er is nog geen kanaal om
-een nudge over te versturen. Dan EPIC 11, EPIC 3 afmaken, 12, 9.
+een nudge over te versturen. **Lees vóór QS8-82 de opmerking die er in Linear bij
+staat**: de adempauze zet een domeinregel-7-lek op scherp (A45). Dan EPIC 11,
+EPIC 3 afmaken, 12, 9.
+
+**Er wachten nu vijf besluiten op Quinten** en twee daarvan hangen samen:
+A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) komen
+uit de groene notities en raken domeinregel 7 in de kern. A43 (minpunten bij
+zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?) en A45 (`excused`
+afschermen) staan er los bij. Alles staat in `docs/Q-TODO.docx` sectie H en I,
+met de onderbouwing in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
 
@@ -145,6 +157,15 @@ een nudge over te versturen. Dan EPIC 11, EPIC 3 afmaken, 12, 9.
   daarom vervangen door `.gitattributes` met `eol=lf`; de bestanden staan nu als
   LF op schijf. **Schrijf je iets nieuws op, vraag dan eerst of het een controle
   kan worden in plaats van een zin.**
+- **Een status die niemand nog schrijft, is een lek dat nog niet afgegaan is.**
+  `weekly_goals_select` schermt `missed`, `carried` en `cancelled` af voor
+  groepsgenoten — `excused` niet. Vandaag lekt dat niets, want geen enkele
+  functie schrijft `excused`. QS8-82 (adempauze) is precies het issue dat hem
+  gaat schrijven. De schermen deden het trouwens wél goed: `rangeState()`
+  verbergt `excused` voor de groep. **Zoek bij elke nieuwe statuswaarde eerst wie
+  hem schrijft en wie hem kan lézen** — een CHECK-constraint die een waarde
+  toestaat is een belofte dat hij ooit voorkomt.
+
 - **Supabase weigert na ~30 aanmeldingen per uur** met "Request rate limit
   reached". De RLS-suite maakt er tien per run. Zie je een opbouwfout met "rate
   limit" erin: wacht een paar minuten, ga niet in de policies zoeken. Een tweede
@@ -184,5 +205,6 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-Begin met EPIC 8 afmaken en werk door. Vraag alleen als doorgaan-onder-aanname
-echt onveilig zou zijn.
+Begin met het scherm om een weekdoel aan te maken, en werk daarna door volgens
+de volgorde hierboven. Vraag alleen als doorgaan-onder-aanname echt onveilig zou
+zijn.

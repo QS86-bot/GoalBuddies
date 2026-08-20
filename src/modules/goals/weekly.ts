@@ -1,7 +1,7 @@
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { cyclesBetween, type Cycle, type UserClock } from '../../shared/time';
+import { cyclesBetween, userCycleOn, type Cycle, type UserClock } from '../../shared/time';
 
 import { huidigeCyclus } from './cycles';
 
@@ -48,6 +48,84 @@ export async function fetchWeekdoelen(
 }
 
 /**
+ * Gemiste weken uit eerdere cycli die je nog kunt meenemen — QS8-47, QS8-106.
+ *
+ * ⚠️ Alleen `missed`, en dat is geen filter maar de hele voorwaarde. Sinds
+ *    migratie 0045 accepteert `markeer_doorgeschoven()` uitsluitend een week die
+ *    de rollover al als gemist heeft afgestempeld; alles daarvoor geeft
+ *    `not_missed` terug. Zou dit ook `todo` of `cancelled` ophalen, dan bood het
+ *    scherm een knop aan die de database gegarandeerd weigert.
+ *
+ * ⚠️ **Dit is privé en het hoort nergens op een groepsscherm.** Een lijst
+ *    gemiste weken is precies wat `weekly_goals_select` in EPIC 5 lekte en wat
+ *    migratie 0019 heeft dichtgezet. De filter op `owner_id` is hier de
+ *    leesbaarheid voor de volgende lezer; de afdwinging zit in RLS.
+ *
+ * ⚠️ De huidige cyclus valt erbuiten. Doorschuiven naar de week waar je al in
+ *    zit is zinloos, en `maakWeekdoel()` zou dan een tweede rij in dezelfde
+ *    cyclus zetten — precies de dubbele-rij-situatie waar Q-TODO A37 nog over
+ *    openstaat.
+ */
+export async function fetchDoorschuifbaar(
+  userId: string,
+  klok: UserClock,
+): Promise<readonly Weekdoel[]> {
+  const { data, error } = await supabase()
+    .from('weekly_goals')
+    .select('*, goals!inner(owner_id)')
+    .eq('goals.owner_id', userId)
+    .eq('status', 'missed')
+    .lt('cycle_start_date', huidigeCyclus(klok).startDate)
+    .order('cycle_start_date', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    reportError(error, 'weekly.carryable', { user_id: userId, code: error.code });
+    throw new Error('Je openstaande weken konden niet geladen worden.');
+  }
+
+  return (data ?? []) as unknown as Weekdoel[];
+}
+
+/**
+ * De cyclus waarin het eerste weekdoel van dit doel viel — QS8-106.
+ *
+ * ⚠️ `maakWeekdoel()` en `schuifDoor()` hebben dit nodig om `cycle_index` te
+ *    bepalen: de hoeveelste week van dít doel is dit? Geef je `null` mee, dan
+ *    wordt elke nieuwe week week 1, en dan telt de teller in het doeloverzicht
+ *    niet meer mee met de werkelijkheid.
+ *
+ * ⚠️ Bewust een aparte query in plaats van rekenen met `cycle_index` van het
+ *    weekdoel dat je al hebt. Dat zou kloppen zolang die kolom klopt, en dan
+ *    vermenigvuldigt een fout in één rij zich stil door in alle volgende. De
+ *    vroegste rij is de bron; dit is een enkele geïndexeerde lookup op een
+ *    handeling die zelden voorkomt.
+ *
+ * Geeft `null` terug als dit doel nog geen enkel weekdoel heeft — dan is de week
+ * die je nu maakt per definitie de eerste.
+ */
+export async function eersteCyclusVanDoel(
+  goalId: string,
+  klok: UserClock,
+): Promise<Cycle | null> {
+  const { data, error } = await supabase()
+    .from('weekly_goals')
+    .select('cycle_start_date')
+    .eq('goal_id', goalId)
+    .order('cycle_start_date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    reportError(error, 'weekly.firstCycle', { goal_id: goalId, code: error.code });
+    return null;
+  }
+
+  const start = data?.cycle_start_date;
+  return start === undefined || start === null ? null : userCycleOn(klok, start);
+}
+
+/**
  * Voegt een weekdoel toe — QS8-43 en QS8-44.
  *
  * ⚠️ `cycle_start_date` en `cycle_index` worden hier berekend uit de klok van de
@@ -90,20 +168,6 @@ export async function maakWeekdoel(
   return { ok: true, waarde: data };
 }
 
-/**
- * Sluit een weekdoel af — A40, migratie 0045.
- *
- * ⚠️ Heette `verwijderWeekdoel()` en gooide de rij ook echt weg. Dat was een
- *    gat: de rollover stempelt een week pas ná afloop als gemist, dus wie zijn
- *    weekdoel wiste vóórdat de cyclus sloot, had die week nooit gemist — geen
- *    minpunt, geen onderbreking, en een reeks die stalde in plaats van brak.
- *
- * ⚠️ De rij blijft nu staan met status `cancelled`, en de rollover veegt hem bij
- *    het verstrijken van de cyclus mee naar `missed`. Afsluiten kost dus wat het
- *    hoort te kosten, en een weekpas kan het opvangen zoals elke gemiste week.
- *    Verwijderen kán niet meer: het recht is ingetrokken, dus een rechtstreekse
- *    DELETE geeft 42501.
- */
 /**
  * Verwijdert een weekdoel dat je net per ongeluk hebt aangemaakt — migratie 0046.
  *
@@ -149,6 +213,20 @@ function verwijderMelding(reden: string | undefined): string {
   }
 }
 
+/**
+ * Sluit een weekdoel af — A40, migratie 0045.
+ *
+ * ⚠️ Heette `verwijderWeekdoel()` en gooide de rij ook echt weg. Dat was een
+ *    gat: de rollover stempelt een week pas ná afloop als gemist, dus wie zijn
+ *    weekdoel wiste vóórdat de cyclus sloot, had die week nooit gemist — geen
+ *    minpunt, geen onderbreking, en een reeks die stalde in plaats van brak.
+ *
+ * ⚠️ De rij blijft nu staan met status `cancelled`, en de rollover veegt hem bij
+ *    het verstrijken van de cyclus mee naar `missed`. Afsluiten kost dus wat het
+ *    hoort te kosten, en een weekpas kan het opvangen zoals elke gemiste week.
+ *    Verwijderen kán niet meer: het recht is ingetrokken, dus een rechtstreekse
+ *    DELETE geeft 42501.
+ */
 export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
   const { data, error } = await supabase().rpc('sluit_weekdoel_af', {
     p_weekly_goal_id: id,
