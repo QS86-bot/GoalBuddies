@@ -3,8 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 20-08-2026 (tweede sessie), na de groene notities en
-> een backlogronde: QS8-106, 112, 82, 39, 76, 85 en A45.
+> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12 en EPIC 11.
 
 ---
 
@@ -51,20 +50,37 @@ gedeployd zodat hij het risico ook echt herberekent.
 domeinregel 7 (A15 en A7), niet drie. Beslisdocument 002 en CLAUDE.md zijn
 bijgewerkt.
 
-**Volgende aan de beurt: EPIC 11, notificaties.** QS8-91 is de kern; QS8-77 (de
-dagelijkse nudge uit EPIC 8) wacht daarop en kan daarna meteen mee. Let op: dit
-raakt waarschijnlijk Expo-pushcredentials, en die heb ik niet — dat kan een
-blokkade worden waar jij iets voor moet doen.
+**EPIC 11 staat klaar, op één dependency na.** De tabellen (`push_tokens`,
+`notifications_sent`), de regels over wie wat krijgt, de Edge Function, de
+GitHub-workflow die hem elk uur aanroept en de rand in de app zijn er allemaal.
+Ik heb de job tegen het echte project gedraaid: 8 profielen, 8 zonder token,
+nul verstuurd, geen fouten.
 
-Daarna EPIC 3 afmaken. Dat is inmiddels het langst openstaande gat: poort, Edge
-Function en datalaag staan sinds augustus op main, er is geen enkel scherm, en
-er is nog nooit een echte AI-call gedaan. Dan EPIC 9.
+⚠️ **Wat ontbreekt is `expo-notifications`** — een dependency, en die vraagt
+eerst toestemming. Zonder die bibliotheek haalt de app geen pushtoken op, dus
+blijft `push_tokens` leeg en stuurt de job niets. Dat is **Q-TODO B4** en het is
+het enige dat EPIC 11 nog tegenhoudt. De rand eromheen is dezelfde vorm als bij
+Sentry: er is een `PushBron`-interface met een lege standaard, en toestemming
+krijgen is één `zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
 
-**Er wachten vijf besluiten op Quinten**, en twee ervan hangen aan elkaar:
+Denk er bij die toestemming aan dat er náást de bibliotheek ook een Expo-project
+met FCM- en APNs-sleutels nodig is voor een echt toestel. Die zitten in de build,
+niet in de server; de Edge Function heeft er niets voor nodig.
+
+**Volgende aan de beurt: EPIC 3 afmaken.** Dat is nu het langst openstaande gat
+in het project. De poort (`vraag_ai_job`), de Edge Function `doelcoach` en de
+datalaag van het interview staan sinds augustus op `main` — en er is geen enkel
+scherm, en er is nog nooit één echte AI-call gedaan. `ANTHROPIC_API_KEY` staat
+ingevuld (C2), dus er is niets dat het tegenhoudt behalve dat het gebouwd moet
+worden. Daarna EPIC 9.
+
+**Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
 A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
 groene notities raken domeinregel 7 in de kern. Verder A43 (minpunten bij
-zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?) en A46 (TRUNCATE
-intrekken). A37 staat er ook nog. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
+zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?), A46 (TRUNCATE
+intrekken) en A47 (de testsuite past niet meer twee keer in een uur). A37 staat
+er ook nog. En **B4** — `expo-notifications` — is geen besluit maar een
+dependency, en hij blokkeert wel een hele epic. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
 onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
@@ -203,10 +219,15 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   verbergt `excused` netjes voor de groep. Dat is de derde keer dat de UI klopte
   en de database niet.
 
-- **Supabase weigert na ~30 aanmeldingen per uur** met "Request rate limit
-  reached". De RLS-suite maakt er tien per run. Zie je een opbouwfout met "rate
-  limit" erin: wacht een paar minuten, ga niet in de policies zoeken. Een tweede
-  gezicht hiervan is "JWT issued at future" — klokverschil, ook geen policyfout.
+- **⚠️ De RLS-suite past niet meer twee keer in een uur.** Hij maakte er tien;
+  inmiddels zijn het er ongeveer veertig (`policies.test.ts` alleen al zestien,
+  plus elf in de twaalf-ledentest), en Supabase weigert na ongeveer dertig met
+  "Request rate limit reached". **Eén schone run per uur lukt, twee niet.** Zie
+  je een opbouwfout met "rate limit" erin: wacht tien minuten, ga niet in de
+  policies zoeken — het ziet er elke keer uit als een kapotte policy. Een tweede
+  gezicht hiervan is "JWT issued at future": klokverschil, ook geen policyfout.
+  Dit is een drempel die net overschreden is en die groeit met elke suite die
+  erbij komt; A47 vraagt om een keuze.
 - **Let op de limieten die je zelf hebt ingebouwd:** 10 groepen per gebruiker per
   dag, 20 toetredingspogingen per dag, 12 leden per groep, 5 deadline-verzoeken
   per dag, 2 weekpassen tegelijk, 24 uur bedenktijd.
