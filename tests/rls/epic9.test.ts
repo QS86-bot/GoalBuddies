@@ -426,6 +426,35 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
     );
 
     it(
+      'laat de eigenaar zijn doel niet rechtstreeks op `completed` zetten',
+      async () => {
+        // ⚠️ QS8-102, acceptatiecriterium 4. Dit is de belangrijkste test van dit
+        //    blok: `rond_doel_af()` eist dat er geen mijlpaal meer openstaat, en
+        //    die eis is de énige rem op het laten vervallen van je eigen straf.
+        //    Zou het kolomrecht op `goals.status` ooit terugkomen, dan is die rem
+        //    weg zonder dat er iets rood wordt — de RPC blijft immers werken.
+        //
+        //    0035 trok UPDATE in, 0046 INSERT (die laatste staat getest in
+        //    `weekpassen.test.ts`). Voor UPDATE bestond nog geen test.
+        const poging = await f.alice.db
+          .from('goals')
+          .update({ status: 'completed' })
+          .eq('id', f.opTijdGoalId)
+          .select('id');
+
+        expect(poging.error?.code).toBe('42501');
+
+        const rij = await adminDb()
+          .from('goals')
+          .select('status')
+          .eq('id', f.opTijdGoalId)
+          .single();
+        expect(rij.data?.status).toBe('active');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'weigert voor iemand die het doel niet bezit',
       async () => {
         const poging = await f.bob.db.rpc('rond_doel_af', { p_goal_id: f.opTijdGoalId });

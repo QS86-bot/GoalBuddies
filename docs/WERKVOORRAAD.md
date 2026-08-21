@@ -683,14 +683,15 @@ De zwaarste op dit moment:
    bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
    onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.
 
-7. **⚠️ Een doel kan niet meer op `completed` komen.** `goals.status` stond open
-   voor de client, en `completed` liet `meld_doel_af()` afgaan — "X heeft een doel
-   afgerond" in elke gekoppelde groep, zonder dat er iets afgerond was. Dicht sinds
-   0035: archiveren loopt via `zet_doelstatus()`, dat alleen `active` en
-   `archived` toestaat. Maar er is nu **geen enkel** pad naar `completed`: geen
-   trigger zet hem, `meld_doel_af()` reageert er alleen op. Wanneer een doel af is,
-   is een productbeslissing (alle mijlpalen? de eigenaar? een buddy die bevestigt?)
-   en staat als **A31** in `docs/Q-TODO.docx` en als **QS8-102** in Linear.
+7. ~~**Een doel kan niet meer op `completed` komen.**~~ **Opgelost 21-08 in
+   EPIC 9** (QS8-102, A31), en het heeft twee epics stilgelegen zonder dat iemand
+   het merkte: `meld_doel_af()` én `meld_commitment()` stonden er allebei
+   maandenlang zonder ooit af te gaan. De keuze is `rond_doel_af()` — de eigenaar
+   verklaart zijn doel af, en de server weigert zolang er een mijlpaal op `todo`
+   staat. Die eis is geen netheid maar de énige rem op het laten vervallen van je
+   eigen straf; onderbouwing in `docs/decisions/003-commitments-afwikkelen.md` §1.
+   Het kolomrecht blijft ingetrokken (0035 voor UPDATE, 0046 voor INSERT) en er
+   staat nu voor allebei een test — die op UPDATE ontbrak nog.
 
 8. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
    referentiële actie is zelf een UPDATE op de kindtabel; staat daar een BEFORE
