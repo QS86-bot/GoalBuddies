@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 21-08-2026 (na EPIC 12 en EPIC 11)
+**Laatst bijgewerkt:** 21-08-2026 (na EPIC 12, EPIC 11 en EPIC 3)
 
 ---
 
@@ -81,10 +81,17 @@ Lees dit eerst; de rest is naslag.
   — zonder die bibliotheek is er geen pushtoken, dus blijft `push_tokens` leeg
   en stuurt de job niets. **Dat is Q-TODO B4 en het is het enige dat EPIC 11 nog
   tegenhoudt.** QS8-77 (de nudge) zit er meteen in.
-* **Wat nu aan de beurt is: EPIC 3 afmaken.** Dat is inmiddels het langst
-  openstaande gat: poort, Edge Function en datalaag staan sinds augustus op
-  `main`, er is geen enkel scherm, en er is nog nooit een echte AI-call gedaan.
-  Daarna EPIC 9.
+* ✅ **EPIC 3 (de Doelcoach) is af voor de MVP, en heeft voor het eerst echt
+  gedraaid.** Drie echte AI-calls tegen het project, samen ongeveer 3,8 cent:
+  twaalf mijlpalen op een gewoon doel, en tegenspraak op een onmogelijk doel.
+  Het interview, het coachscherm, opnieuw genereren en het kostenoverzicht
+  staan. Alleen QS8-41 (weekdoelen per mijlpaal) blijft open en die is
+  `phase:v2`.
+* **Wat nu aan de beurt is: EPIC 9 (commitment device).** QS8-83 (beloning
+  vrijgeven) en QS8-84 (straf verschuldigd bij een gemiste deadline) zijn de
+  twee die nog open staan; QS8-85 is af. Let op domeinregel 11: een straf treedt
+  pas in werking bij een verstreken deadline, en de begunstigde groep krijgt pas
+  dán leesrecht.
 * ⚠️ **De RLS-suite past niet meer twee keer in een uur.** Hij maakt ongeveer
   veertig aanmeldingen en Supabase weigert na ongeveer dertig. Eén schone run per
   uur lukt; twee niet, en dan lijkt het op een kapotte policy. Zie A47 — dit
@@ -268,7 +275,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ af voor de MVP, m.u.v. QS8-77 (nudge, wacht op EPIC 11) en de twee `phase:v2`-issues QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
-| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | **deels gebouwd, buiten de volgorde om.** De poort (`vraag_ai_job`, 0038), de Edge Function `doelcoach` en de datalaag van het interview staan op `main`. **Geen schermen, en niet één keer end-to-end gedraaid** |
+| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | open |
 

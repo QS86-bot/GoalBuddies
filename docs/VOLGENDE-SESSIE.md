@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12 en EPIC 11.
+> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12, EPIC 11 en EPIC 3.
 
 ---
 
@@ -67,12 +67,32 @@ Denk er bij die toestemming aan dat er náást de bibliotheek ook een Expo-proje
 met FCM- en APNs-sleutels nodig is voor een echt toestel. Die zitten in de build,
 niet in de server; de Edge Function heeft er niets voor nodig.
 
-**Volgende aan de beurt: EPIC 3 afmaken.** Dat is nu het langst openstaande gat
-in het project. De poort (`vraag_ai_job`), de Edge Function `doelcoach` en de
-datalaag van het interview staan sinds augustus op `main` — en er is geen enkel
-scherm, en er is nog nooit één echte AI-call gedaan. `ANTHROPIC_API_KEY` staat
-ingevuld (C2), dus er is niets dat het tegenhoudt behalve dat het gebouwd moet
-worden. Daarna EPIC 9.
+**EPIC 3 is af voor de MVP, en de Doelcoach heeft voor het eerst echt gedraaid.**
+Dat stond sinds augustus als "gebouwd en nooit gedraaid" in deze overdracht.
+Drie echte AI-calls tegen het project, samen ongeveer 3,8 cent.
+
+Wat er nu staat: het zes-vragen-interview, een coachscherm dat een job
+klaarzet en tot het antwoord kijkt, mijlpalen overnemen, opnieuw genereren, en
+een kostenoverzicht (`ai_kosten_per_week()`, gedocumenteerd in DEPLOY.md §2.6).
+Alleen QS8-41 (weekdoelen per mijlpaal) blijft open, en die is `phase:v2`.
+
+⚠️ **Twee dingen om te weten over de coach.** Hij spreekt tegen als je deadline
+niet past bij je uren — geverifieerd met een opzettelijk onmogelijk doel. En hij
+rekent níét meer zelf met datums: het aantal weken en de totale uren worden
+server-side uitgerekend en meegegeven. Dat was nodig omdat hij bij de eerste
+proef "ongeveer 14 maanden" zei over een streefdatum die twee weken weg lag.
+**Vraag een taalmodel nooit om rekenwerk dat je zelf kunt doen** — dat geldt
+onverkort voor QS8-41.
+
+**Volgende aan de beurt: EPIC 9, het commitment device.** QS8-85 is af
+(commitments blijven informeel, met een test die het bewaakt). Open zijn QS8-83
+(beloning vrijgeven bij het halen van een doel) en QS8-84 (straf verschuldigd
+bij een gemiste deadline).
+
+⚠️ Lees vóór QS8-84 domeinregel 11 én 5: een straf treedt pas in werking bij een
+verstreken deadline, de begunstigde groep krijgt pas op dát moment leesrecht op
+het commitment, en niets mag stilzwijgend geactiveerd worden. Dat is de plek
+waar dit product vertrouwen kan verliezen, dus daar hoort de strengste lezing.
 
 **Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
 A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
