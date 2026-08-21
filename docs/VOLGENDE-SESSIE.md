@@ -239,15 +239,22 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   verbergt `excused` netjes voor de groep. Dat is de derde keer dat de UI klopte
   en de database niet.
 
-- **⚠️ De RLS-suite past niet meer twee keer in een uur.** Hij maakte er tien;
-  inmiddels zijn het er ongeveer veertig (`policies.test.ts` alleen al zestien,
-  plus elf in de twaalf-ledentest), en Supabase weigert na ongeveer dertig met
-  "Request rate limit reached". **Eén schone run per uur lukt, twee niet.** Zie
-  je een opbouwfout met "rate limit" erin: wacht tien minuten, ga niet in de
-  policies zoeken — het ziet er elke keer uit als een kapotte policy. Een tweede
-  gezicht hiervan is "JWT issued at future": klokverschil, ook geen policyfout.
-  Dit is een drempel die net overschreden is en die groeit met elke suite die
-  erbij komt; A47 vraagt om een keuze.
+- **⚠️ De RLS-suite zit dicht tegen de aanmeldlimiet.** Nagemeten: hij maakte
+  **43** aanmeldingen tegen een limiet van ongeveer dertig per uur, en zat dus
+  structureel over de grens — hij slaagde alleen als het uur ervóór stil was.
+  Teruggebracht naar **31** door elf opvulgebruikers in de twaalf-ledentest niet
+  meer aan te melden (`createTestProfile`). **Dat is nog steeds krap: reken op
+  één schone run per uur, en niet twee.**
+
+  Zie je een opbouwfout met "rate limit" erin: wacht tien minuten, ga niet in de
+  policies zoeken — het ziet er elke keer uit als een kapotte policy, en dat is
+  het vier keer níét geweest. Een tweede gezicht hiervan is "JWT issued at
+  future": klokverschil, ook geen policyfout.
+
+  ⚠️ Wil je verder snoeien, let dan op de val die in `createTestProfile` staat:
+  **een fixture die RLS omzeilt om RLS te testen, bewijst niets.** Aanmeldingen
+  sparen mag alleen waar een gebruiker pure opvulling is. A47 vraagt om de
+  structurele keuze.
 - **Let op de limieten die je zelf hebt ingebouwd:** 10 groepen per gebruiker per
   dag, 20 toetredingspogingen per dag, 12 leden per groep, 5 deadline-verzoeken
   per dag, 2 weekpassen tegelijk, 24 uur bedenktijd.
