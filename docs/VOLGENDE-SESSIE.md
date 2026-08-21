@@ -26,8 +26,9 @@ is deels gebouwd buiten de volgorde om: poort, Edge Function en datalaag staan o
 main, maar er zijn geen schermen en er is nooit een echte AI-call gedaan.
 
 Migraties 0039 t/m 0049 zijn toegepast op het echte project. De rollover draait
-elk uur. **476 tests groen over 25 bestanden, geen skips** (de RLS-suite heeft
-dus echt gedraaid).
+elk uur. **539 tests groen over 31 bestanden, geen skips** (de RLS-suite heeft
+dus echt gedraaid — staat er "skipped" bij `tests/rls/`, dan zegt groen niets
+over autorisatie; zie §3b van de werkvoorraad).
 
 **Er staan ongeveer 46 commits klaar om te pushen. Ik push zelf.**
 
