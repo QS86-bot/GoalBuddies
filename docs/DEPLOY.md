@@ -113,6 +113,46 @@ Draai ze lokaal vóór elke merge die auth, RLS, goedkeuring of commitments raak
 
 ---
 
+## 2.6 Wat kost de Doelcoach?
+
+QS8-42, laatste acceptatiecriterium. Elke AI-call wordt geboekt in `ai_jobs`
+met model, tokens en kosten; dit is de plek waar je het optelt.
+
+```sql
+select * from ai_kosten_per_week(8);
+```
+
+Geeft per week: aantal jobs, aantal unieke gebruikers, in- en uitvoertokens en
+de kosten in centen. Draai hem als `service_role` — in de SQL-editor van
+Supabase, of via de MCP-tool.
+
+⚠️ **Bewust niet aanroepbaar door een ingelogde gebruiker.** Dit gaat over alle
+gebruikers samen, want het is één rekening bij Anthropic. Het totaal zou een
+gebruiker vertellen hoeveel andere mensen de coach gebruiken.
+
+⚠️ Het dagplafond per gebruiker staat in `ai_dag_limiet()` en **alleen daar**.
+`vraag_ai_job()` en `ai_verbruik()` lezen het allebei op. Wil je het verhogen,
+dan is dat één regel SQL en geen release:
+
+```sql
+create or replace function public.ai_dag_limiet()
+returns integer language sql immutable set search_path to 'public', 'pg_temp'
+as $$ select 20; $$;
+```
+
+Tot migratie 0056 stond dat getal op twee plekken — zie de kop van die migratie
+voor waarom dat een probleem was.
+
+### Een indicatie van de kosten
+
+Eén generatie van twaalf mijlpalen kostte op 21-08-2026 ongeveer **1,3 cent**
+(704 invoertokens, 1149 uitvoertokens, `claude-sonnet-5`). Met het plafond van
+tien per gebruiker per dag is de bovengrens dus ruwweg dertien cent per
+gebruiker per dag — maar in de praktijk gebruikt niemand zijn plafond, en de
+cache vangt herhaalde vragen af.
+
+---
+
 ## 3. Build en uitrollen
 
 ```bash

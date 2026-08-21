@@ -119,6 +119,7 @@ export default function Doelcoach() {
             <Genereren
               doel={d}
               antwoorden={antwoorden}
+              heeftAlMijlpalen={(d.milestones_total ?? 0) > 0}
               onKlaar={() => router.replace(`/doel/${d.id}`)}
             />
           </View>
@@ -246,14 +247,26 @@ type Stand =
 function Genereren({
   doel,
   antwoorden,
+  heeftAlMijlpalen,
   onKlaar,
 }: {
   readonly doel: DoelMetVoortgang;
   readonly antwoorden: InterviewInvoer;
+  readonly heeftAlMijlpalen: boolean;
   readonly onKlaar: () => void;
 }) {
   const [stand, setStand] = useState<Stand>({ fase: 'rust' });
   const [overnemen, setOvernemen] = useState(false);
+  /**
+   * Hoe vaak er op "opnieuw" gedrukt is — QS8-40.
+   *
+   * ⚠️ Dit getal gaat mee de invoer in, en dat is geen sierlijkheid. De poort
+   *    hasht de invoer en hergebruikt een geslaagde job met dezelfde hash binnen
+   *    een dag. Zonder variatie levert "opnieuw genereren" dus letterlijk
+   *    hetzelfde antwoord uit de cache — de knop lijkt dan stuk terwijl de cache
+   *    precies doet wat hij moet doen.
+   */
+  const [ronde, setRonde] = useState(0);
 
   // ⚠️ In een ref zodat het opruimen van het effect hem kan stoppen. Zonder dit
   //    blijft een interval doortikken nadat het scherm weg is, en dan schrijft
@@ -303,12 +316,13 @@ function Genereren({
     });
   }, []);
 
-  async function start() {
+  async function start(nieuweRonde = ronde) {
     setStand({ fase: 'rust' });
 
     const aanvraag = await vraagMijlpalen(doel.id, {
       doel: doel.title,
       streefdatum: doel.target_date,
+      ...(nieuweRonde === 0 ? {} : { poging: nieuweRonde }),
       // ⚠️ Alleen ingevulde antwoorden. Een `null` meesturen zegt de coach
       //    niets, en het verandert wél de cachesleutel.
       ...(heeftAntwoorden(antwoorden) ? { interview: schoon(antwoorden) } : {}),
@@ -416,10 +430,41 @@ function Genereren({
           >
             {`Alle ${stand.voorstellen.length} overnemen`}
           </Button>
+          {/*
+            QS8-40. Telt mee in het quotum — dat kan niet anders, want het gaat
+            langs dezelfde poort.
+          */}
+          <Button
+            variant="stil"
+            disabled={overnemen}
+            onPress={() => {
+              const volgende = ronde + 1;
+              setRonde(volgende);
+              void start(volgende);
+            }}
+          >
+            Opnieuw proberen
+          </Button>
           <Button variant="stil" disabled={overnemen} onPress={onKlaar}>
             Toch niet
           </Button>
         </View>
+
+        {/*
+          ⚠️ QS8-40 vraagt een waarschuwing vóór het overschrijven van handmatige
+             bewerkingen. Overnemen overschrijft niets — `maakMijlpaal()` zet ze
+             eronder — dus het eerlijke bericht is niet "je raakt iets kwijt"
+             maar "je krijgt er meer dan je denkt". Dat is de fout die iemand
+             hier echt maakt.
+        */}
+        {heeftAlMijlpalen ? (
+          <Caption danger>
+            Je hebt al mijlpalen bij dit doel. Overnemen zet deze erbij en vervangt ze niet —
+            schrap eerst wat je niet wilt houden.
+          </Caption>
+        ) : null}
+
+        <Caption>Elke poging telt mee in je tien per dag.</Caption>
       </Card>
     );
   }
