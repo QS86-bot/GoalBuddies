@@ -9,6 +9,7 @@ import {
   BERICHTEN_PER_PAGINA,
   beperkVoorCache,
   berichtSchema,
+  CACHE_VERSIE,
   isCacheGeldig,
   type ChatBericht,
   type ChatCache,
@@ -85,6 +86,12 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
     body: rij.body ?? '',
     type: rij.type ?? 'text',
     system_event: rij.system_event,
+    // ⚠️ Namen en geen id's, en ze komen uit een `left join` in `groepschat()`
+    //    (migratie 0059). Daardoor levert een verwijderd account vanzelf `null`
+    //    op en toont het scherm "Een oud-lid" — zonder dat er één rij herschreven
+    //    wordt. Dat is dezelfde afspraak als bij `sender_name` hierboven.
+    subject_name: rij.subject_name ?? null,
+    actor_name: rij.actor_name ?? null,
     created_at: rij.created_at,
   };
 }
@@ -246,7 +253,11 @@ export async function bewaarChatCache(
   periodStart: string,
   berichten: readonly ChatBericht[],
 ): Promise<void> {
-  const inhoud: ChatCache = { periodStart, berichten: beperkVoorCache(berichten) };
+  const inhoud: ChatCache = {
+    periodStart,
+    berichten: beperkVoorCache(berichten),
+    versie: CACHE_VERSIE,
+  };
 
   try {
     await AsyncStorage.setItem(sleutel(groupId), JSON.stringify(inhoud));

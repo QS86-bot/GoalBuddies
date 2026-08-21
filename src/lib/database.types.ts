@@ -229,36 +229,52 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          actor_id: string | null
           attachment_url: string | null
           body: string | null
           created_at: string
           group_id: string
           id: string
+          payload: Json | null
           sender_id: string | null
+          subject_id: string | null
           system_event: string | null
           type: string
         }
         Insert: {
+          actor_id?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
           group_id: string
           id?: string
+          payload?: Json | null
           sender_id?: string | null
+          subject_id?: string | null
           system_event?: string | null
           type?: string
         }
         Update: {
+          actor_id?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
           group_id?: string
           id?: string
+          payload?: Json | null
           sender_id?: string | null
+          subject_id?: string | null
           system_event?: string | null
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_group_id_fkey"
             columns: ["group_id"]
@@ -269,6 +285,13 @@ export type Database = {
           {
             foreignKeyName: "chat_messages_sender_id_fkey"
             columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_subject_id_fkey"
+            columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1612,12 +1635,17 @@ export type Database = {
           p_limit?: number
         }
         Returns: {
+          actor_id: string
+          actor_name: string
           body: string
           created_at: string
           id: string
+          payload: Json
           sender_avatar: string
           sender_id: string
           sender_name: string
+          subject_id: string
+          subject_name: string
           system_event: string
           type: string
         }[]
@@ -1699,11 +1727,25 @@ export type Database = {
         }[]
       }
       plaats_systeembericht: {
-        Args: { p_body: string; p_event: string; p_group_id: string }
+        Args: {
+          p_actor_id?: string
+          p_body: string
+          p_event: string
+          p_group_id: string
+          p_payload?: Json
+          p_subject_id?: string
+        }
         Returns: undefined
       }
       plaats_systeembericht_in_doelgroepen: {
-        Args: { p_body: string; p_event: string; p_goal_id: string }
+        Args: {
+          p_actor_id?: string
+          p_body: string
+          p_event: string
+          p_goal_id: string
+          p_payload?: Json
+          p_subject_id?: string
+        }
         Returns: undefined
       }
       plan_adempauze: {

@@ -104,3 +104,10 @@ export {
   type GroepInvoer,
   type GroepPatch,
 } from './schemas';
+
+export {
+  kentGebeurtenis,
+  OUD_LID,
+  systeemberichtTekst,
+  type SysteembericthInvoer,
+} from './systeemberichten';
