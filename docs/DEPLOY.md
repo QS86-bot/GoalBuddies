@@ -9,7 +9,7 @@
 | | |
 |---|---|
 | Hosting | Hostinger, account `u349450154`, `public_html/goalbuddies` |
-| Doeladres | `goalbuddies.q-projects.tech` (bestaat nog niet — QS8-99) |
+| Doeladres | **`goalbuddies.q-projects.tech` — live sinds 21-08-2026** (QS8-99) |
 | Database | Supabase `goalbuddies`, ref `wehgocadxehottiiyvsc`, `eu-west-3`, **gratis tier** |
 | Build | Expo web-export: statische bestanden, geen Node-server |
 
@@ -155,31 +155,105 @@ cache vangt herhaalde vragen af.
 
 ## 3. Build en uitrollen
 
+**Eén commando** — QS8-100:
+
 ```bash
+npm run deploy
+```
+
+Dat doet, in deze volgorde: env controleren, bouwen, de `.htaccess` schrijven,
+**de bundel op geheimen scannen**, inpakken, uploaden en live zetten op
+`goalbuddies.q-projects.tech`.
+
+Alleen kijken wat er zóu vertrekken, zonder iets live te zetten:
+
+```bash
+npm run deploy:droog
+```
+
+### Wat je eenmalig nodig hebt
+
+`HOSTINGER_API_TOKEN` in `.env`. Maak er een in hpanel → Account → API.
+
+⚠️ **Dit token hoort nóóit in de bundel.** Het begint niet met `EXPO_PUBLIC_`,
+dus de scan hieronder slaat erop aan zodra het er ooit in belandt.
+
+### ⚠️ De secret-scan is de belangrijkste stap, en hij staat vóór de upload
+
+Een statische webbundel is publiek: alles wat erin zit, kan iedereen lezen. Expo
+neemt uitsluitend `EXPO_PUBLIC_*` mee, maar dat is een belofte van de bundler en
+geen controle. Het script leest `.env`, pakt élke variabele die níét met
+`EXPO_PUBLIC_` begint, en zoekt zijn wáárde terug in de gebouwde bestanden — niet
+de naam, want een bundler die iets inlijnt zet de sleutel erin en niet de
+variabelenaam.
+
+Vindt hij er één, dan stopt de deploy en gaat er niets naar buiten.
+
+**Deze controle is aantoonbaar werkend**: er is een keer met opzet een
+service-role-key in `dist/` gezet, en de deploy sloeg af met de melding waar hij
+stond. Een controle die nog nooit rood is geweest, is een aanname.
+
+Gaat hij af, dan is de sleutel **gelekt** zodra hij in een build heeft gezeten —
+ook als je hem een minuut later weghaalt. Ververs hem.
+
+### Diepe links: de `.htaccess` wordt gegenereerd
+
+⚠️ `expo export` met `output: "static"` schrijft een dynamische route weg als een
+bestand mét de haakjes in de naam: `groep/[id].html`. Apache zoekt bij
+`/groep/abc-123` naar een bestand dat zo heet en vindt niets. **Zonder rewrite
+geeft élke uitnodigingslink een 404** (QS8-59).
+
+Het script leidt de regels af uit wat er écht in `dist/` staat en schrijft ze in
+`dist/.htaccess`. Een route erbij betekent dus alleen opnieuw deployen; een
+handgeschreven lijst zou stilletjes achterlopen en dat merk je pas als iemand een
+link deelt die niet werkt.
+
+⚠️ **Bewerk `dist/.htaccess` niet met de hand** — hij wordt bij elke deploy
+overschreven.
+
+⚠️ Er is géén pad-voorvoegsel meer. Het subdomein heeft een eigen documentroot
+(`public_html/goalbuddies`), dus de app staat in de root van dat adres. De oude
+versie van dit document ging uit van `/goalbuddies/` als voorvoegsel; dat klopte
+niet en zou elke absolute asset-verwijzing gebroken hebben.
+
+Geverifieerd na de eerste deploy, alle vier `200`:
+
+| Pad | Wat het bewijst |
+|---|---|
+| `/` | de app zelf |
+| `/aanmelden` | een statische route zonder parameter |
+| `/groep/<uuid>` | een dynamische route — zou zonder rewrite 404 geven |
+| `/uitnodiging/ABC123` | de uitnodigingslink uit QS8-59 |
+
+### Rollback
+
+De vorige versie terugzetten is dezelfde weg met een oudere bundel:
+
+```bash
+git checkout <vorige-commit>
 npm ci
-npm run build          # expo export --platform web
+npm run deploy
 ```
 
-Output: `dist/` — statische bestanden. Uploaden naar
-`public_html/goalbuddies` op Hostinger.
+⚠️ **Er is geen versiegeschiedenis op de host.** `static-deploy` overschrijft de
+map; Hostinger bewaart geen vorige uitrol. De repo ís het rollback-pad, en dat
+werkt alleen als wat je deployt ook gecommit is. Deploy daarom nooit vanuit een
+vuile werkboom.
 
-⚠️ **Expo Router draait client-side.** Een directe aanvraag op bijvoorbeeld
-`/doelen/123` moet daarom door de webserver naar `index.html` gestuurd worden,
-anders krijg je een 404 op elke pagina behalve de startpagina. Op Hostinger
-(Apache) is dat een `.htaccess` in de map:
+### ⚠️ Nog handmatig: Supabase Auth
 
-```apache
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  RewriteBase /goalbuddies/
-  RewriteRule ^index\.html$ - [L]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /goalbuddies/index.html [L]
-</IfModule>
-```
+**Dit staat nog open** (QS8-99, criterium 5) en kan niet via een API of de CLI —
+het is een dashboardhandeling:
 
-De herhaalbare deploy zelf is QS8-100 en staat nog open.
+Supabase → Authentication → URL Configuration:
+
+* **Site URL**: `https://goalbuddies.q-projects.tech`
+* **Redirect URLs**, toevoegen:
+  * `https://goalbuddies.q-projects.tech/**`
+  * `http://localhost:8081/**` (laat deze staan voor lokaal werk)
+
+Zolang dit niet gebeurd is, wijst de bevestigingslink in een aanmeldmail naar het
+oude adres, en breekt OAuth zodra QS8-25 aangezet wordt.
 
 ---
 
@@ -187,10 +261,16 @@ De herhaalbare deploy zelf is QS8-100 en staat nog open.
 
 Alles wat nu Hostinger-specifiek is en straks aangepast moet worden:
 
-- [ ] De `.htaccess` hierboven. Op Vercel vervangt `vercel.json` met een rewrite
-      naar `/index.html` dat, of Next.js doet het zelf.
-- [ ] Het pad-voorvoegsel `/goalbuddies/`. Op een eigen domein staat de app in
-      de root, en dan klopt elke absolute asset-verwijzing niet meer.
+- [ ] De gegenereerde `.htaccess`. Op Vercel vervangt `vercel.json` met rewrites
+      dat — en let op: de regels zijn per dynamische route en niet één
+      SPA-fallback, want `output: "static"` levert een bestand per route.
+      `scripts/deploy-web.mjs` leidt ze af uit `dist/`; die afleiding is
+      herbruikbaar, het formaat niet.
+- [ ] `scripts/deploy-web.mjs` zelf: de TUS-upload en `static-deploy` zijn
+      Hostinger-API's. De secret-scan en de `.htaccess`-generatie zijn dat níét
+      en horen te blijven — de scan hoort dan in de CI-stap vóór `vercel deploy`.
+- [x] ~~Het pad-voorvoegsel `/goalbuddies/`~~ — vervallen. Het subdomein heeft een
+      eigen documentroot, dus de app staat al in de root van zijn adres.
 - [ ] Edge Functions draaien nu bij Supabase (Deno), niet bij Hostinger. Dat
       blijft bij Vercel ongewijzigd — geen blocker, wel goed om te weten.
 
