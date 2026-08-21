@@ -20,6 +20,7 @@ import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
   anonDb,
+  createTestProfile,
   createTestUser,
   onbekendeCode,
   removeTestUsers,
@@ -1882,15 +1883,25 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           const admin = adminDb();
           const vol = await createGroup(g.eigenaar, 'Volle groep');
 
+          // ⚠️ Profielen zónder aanmelding, en lidmaatschap er rechtstreeks in.
+          //    Deze elf zijn opvulling: wat deze test bewíjst is dat het
+          //    groepsoverzicht twaalf leden in één verzoek levert, niet hóé ze
+          //    lid geworden zijn — toetreden met een code wordt elders getest,
+          //    mét echte tokens. Elf aanmeldingen minder, en de suite zat op 43
+          //    tegen een limiet van ongeveer dertig per uur (A47).
           const nieuwe = await Promise.all(
-            Array.from({ length: 11 }, (_, i) => createTestUser(`vol-${i}`)),
+            Array.from({ length: 11 }, (_, i) => createTestProfile(`vol-${i}`)),
           );
-          for (const lid of nieuwe) {
-            mustJoin(
-              await lid.db.rpc('join_group_with_code', { code: vol.code }),
-              `lid ${lid.id} in volle groep`,
-            );
-          }
+
+          const gezet = await admin.from('group_members').insert(
+            nieuwe.map((lid) => ({
+              group_id: vol.id,
+              user_id: lid.id,
+              role: 'member',
+              status: 'active',
+            })),
+          );
+          if (gezet.error) throw new Error(`leden toevoegen mislukte: ${gezet.error.message}`);
 
           const leden = await admin
             .from('group_members')

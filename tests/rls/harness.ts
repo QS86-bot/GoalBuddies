@@ -141,6 +141,43 @@ export async function createTestUser(label: string): Promise<TestUser> {
 }
 
 /**
+ * Maakt een gebruiker **zonder in te loggen** — alleen een rij in `auth.users`
+ * en het profiel dat `handle_new_user` daarbij aanmaakt.
+ *
+ * ⚠️ Bestaat om aanmeldingen te sparen, en dat is inmiddels geen zuinigheid maar
+ *    noodzaak. Supabase weigert na ongeveer dertig aanmeldingen per uur, en de
+ *    volledige suite zat op 43 — waarvan elf in één test, die twaalf groepsleden
+ *    nodig heeft om een N+1 aan te tonen. Die elf hoeven geen JWT: wat de test
+ *    bewíjst is dat het groepsoverzicht twaalf leden in één verzoek levert, niet
+ *    hóé ze lid geworden zijn. Toetreden met een code wordt elders getest, mét
+ *    echte tokens.
+ *
+ * ⚠️ Gebruik dit **alleen** voor opvulling. Zodra een test iets wil aantonen
+ *    over wat déze gebruiker mag, heb je een echt token nodig en dus
+ *    `createTestUser`. Een fixture die RLS omzeilt om RLS te testen, bewijst
+ *    niets.
+ */
+export async function createTestProfile(label: string): Promise<{ id: string; email: string }> {
+  const admin = adminDb();
+
+  const email = `rls-${label}-${crypto.randomUUID()}@example.com`;
+
+  const created = await admin.auth.admin.createUser({
+    email,
+    password: crypto.randomUUID(),
+    email_confirm: true,
+    user_metadata: { full_name: `Test ${label}` },
+  });
+
+  if (created.error || !created.data.user) {
+    throw new Error(`Testprofiel ${label} aanmaken mislukte: ${created.error?.message}`);
+  }
+
+  createdUserIds.push(created.data.user.id);
+  return { id: created.data.user.id, email };
+}
+
+/**
  * Ruimt elke gebruiker op die deze run heeft aangemaakt.
  *
  * ⚠️ Bevinding van QS8-98: `delete auth.users` alléén werkt niet. `profiles`
