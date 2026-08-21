@@ -2,7 +2,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { fetchJob, mijlpalenUit, vraagMijlpalen, werkJobAf, type VoorstelMijlpaal } from '@/modules/ai';
+import {
+  fetchJob,
+  haalbaarheidUit,
+  mijlpalenUit,
+  vraagMijlpalen,
+  werkJobAf,
+  type VoorstelMijlpaal,
+} from '@/modules/ai';
 import { useSession } from '@/modules/auth';
 import {
   ANTWOORD_MAX,
@@ -233,7 +240,7 @@ function Interview({
 type Stand =
   | { fase: 'rust' }
   | { fase: 'bezig'; jobId: string }
-  | { fase: 'klaar'; voorstellen: readonly VoorstelMijlpaal[] }
+  | { fase: 'klaar'; voorstellen: readonly VoorstelMijlpaal[]; haalbaarheid: string | null }
   | { fase: 'mislukt'; melding: string };
 
 /**
@@ -296,7 +303,11 @@ function Genereren({
         setStand(
           voorstellen.length === 0
             ? { fase: 'mislukt', melding: 'De Doelcoach gaf geen bruikbare mijlpalen terug.' }
-            : { fase: 'klaar', voorstellen },
+            : {
+                fase: 'klaar',
+                voorstellen,
+                haalbaarheid: haalbaarheidUit(job.output),
+              },
         );
         return;
       }
@@ -406,6 +417,26 @@ function Genereren({
     return (
       <Card nested>
         <Subheading>{`${stand.voorstellen.length} mijlpalen voorgesteld`}</Subheading>
+
+        {/*
+          ⚠️ De tegenspraak staat bóven de voorstellen en niet eronder — laatste
+             acceptatiecriterium van QS8-38. Een coach die alles haalbaar noemt
+             is geen coach, en een waarschuwing onder twaalf mijlpalen leest
+             niemand meer. De uitwegen die hier genoemd worden (datum verzetten,
+             doel kleiner maken) staan op het doelscherm; dit blok zegt alleen
+             dát er iets niet past.
+        */}
+        {stand.haalbaarheid === null ? null : (
+          <Card>
+            <Subheading>De Doelcoach heeft een bedenking</Subheading>
+            <Body muted>{stand.haalbaarheid}</Body>
+            <Caption>
+              Je kunt de mijlpalen gewoon overnemen. Je streefdatum verzetten of je doel kleiner
+              maken kan daarna op het doelscherm.
+            </Caption>
+          </Card>
+        )}
+
         <Body muted>
           Neem ze over en pas ze daarna aan wat je wilt — schrappen, herschrijven en herordenen
           kan allemaal op het doelscherm.

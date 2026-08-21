@@ -59,3 +59,24 @@ export function mijlpalenUit(output: unknown): readonly VoorstelMijlpaal[] {
     }))
     .filter((m) => m.title.trim() !== '');
 }
+
+/**
+ * De tegenspraak van de coach — QS8-38, laatste acceptatiecriterium.
+ *
+ * Leeg betekent: de deadline past bij de opgegeven uren. Staat er tekst, dan
+ * zegt de coach dát het niet past, waarom, en welke uitweg er is.
+ *
+ * ⚠️ Geeft `null` bij een leeg of ontbrekend veld, en niet een lege string. Het
+ *    scherm moet "geen bezwaar" kunnen onderscheiden van "een bezwaar zonder
+ *    tekst" — dat laatste is een modelfout en hoort niet als lege waarschuwing
+ *    in beeld te komen.
+ */
+export function haalbaarheidUit(output: unknown): string | null {
+  if (typeof output !== 'object' || output === null) return null;
+
+  const waarde = (output as Record<string, unknown>).haalbaarheid;
+  if (typeof waarde !== 'string') return null;
+
+  const schoon = waarde.trim();
+  return schoon === '' ? null : schoon;
+}

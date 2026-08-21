@@ -11,4 +11,4 @@ export {
   type Uitkomst,
 } from './jobs';
 
-export { mijlpalenUit, type VoorstelMijlpaal } from './uitvoer';
+export { haalbaarheidUit, mijlpalenUit, type VoorstelMijlpaal } from './uitvoer';

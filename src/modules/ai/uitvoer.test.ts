@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mijlpalenUit } from './uitvoer';
+import { haalbaarheidUit, mijlpalenUit } from './uitvoer';
 
 /**
  * ⚠️ Dit is modeluitvoer, en dat is de reden dat deze tests bestaan. De Edge
@@ -53,5 +53,34 @@ describe('mijlpalenUit', () => {
 
     expect(uitkomst[0]?.description).toBeNull();
     expect(uitkomst[0]?.target_date).toBeNull();
+  });
+});
+
+describe('haalbaarheidUit', () => {
+  it('geeft de tegenspraak terug als die er is', () => {
+    const tekst = haalbaarheidUit({
+      haalbaarheid: 'Zes uur per week is te weinig voor deze datum. Verzet hem of maak het kleiner.',
+      milestones: [],
+    });
+
+    expect(tekst).toContain('te weinig');
+  });
+
+  /**
+   * ⚠️ "Geen bezwaar" en "een bezwaar zonder tekst" zijn niet hetzelfde. Het
+   *    tweede is een modelfout en hoort niet als lege waarschuwing in beeld te
+   *    komen — een leeg rood kader is enger dan geen kader.
+   */
+  it('geeft null bij leeg, ontbrekend of onzin', () => {
+    for (const onzin of [
+      { haalbaarheid: '' },
+      { haalbaarheid: '   ' },
+      { haalbaarheid: 42 },
+      { milestones: [] },
+      null,
+      'tekst',
+    ]) {
+      expect(haalbaarheidUit(onzin), JSON.stringify(onzin)).toBeNull();
+    }
   });
 });
