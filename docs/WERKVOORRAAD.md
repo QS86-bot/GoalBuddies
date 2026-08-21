@@ -135,6 +135,22 @@ Staat `verschuldigd` er niet in, dan draait de oude versie nog.
 
 ---
 
+* ✅ **QS8-102, QS8-77 en QS8-107 stap 2 zijn af** (21-08). De eerste twee waren
+  in feite al gebouwd maar niet afgevinkt; bij QS8-102 ontbrak nog de test die
+  bewijst dat een eigenaar zijn doel niet zélf op `completed` kan zetten.
+  **Systeemberichten dragen sinds migratie 0059 hun parameters als kolommen** in
+  plaats van een uitgeschreven Nederlandse zin — het deel van de
+  vertaalinfrastructuur dat na de eerste echte gesprekken niet meer kon. De rest
+  van de meertaligheid staat als QS8-113 en wacht op een dependency-besluit.
+* ⚠️ **0059 introduceerde een bug die 0060 dezelfde dag dichtte, en die is het
+  onthouden waard.** `subject_id` kreeg `on delete set null` én een harde
+  terugzetting in `stamp_chat_message()` — precies de val uit §8 punt 8, in een
+  migratie die dat punt in zijn eigen kop citeert. Gevolg: het verwijderen van
+  een account viel om op een foreign key zodra je in één systeembericht genoemd
+  werd. **De RLS-suite zou dit nooit gevangen hebben**, want `removeTestUsers()`
+  gooit eerst de groepen weg en dan zijn de systeemberichten al mee
+  gecascadeerd. Er staat nu een test in `epic7.test.ts` die het profiel weggooit
+  terwijl het bericht blijft staan.
 * ⚠️ **De RLS-suite past niet meer twee keer in een uur.** Hij maakt ongeveer
   veertig aanmeldingen en Supabase weigert na ongeveer dertig. Eén schone run per
   uur lukt; twee niet, en dan lijkt het op een kapotte policy. Zie A47 — dit
@@ -693,7 +709,7 @@ De zwaarste op dit moment:
    Het kolomrecht blijft ingetrokken (0035 voor UPDATE, 0046 voor INSERT) en er
    staat nu voor allebei een test — die op UPDATE ontbrak nog.
 
-8. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
+8. **⚠️ Een onveranderlijkheidstrigger sloopt stil een `on delete set null` — en op 21-08 is het voor de derde keer gebeurd.** Migratie 0059 citeerde dit punt in zijn eigen kop, paste het correct toe op `actor_id`, en greep er één regel lager naast voor `subject_id`. Gedicht in 0060, dezelfde dag. **Lees dit punt niet als geschiedenis maar als checklist: bij elke nieuwe kolom met `on delete set null` hoort de vraag of er een BEFORE UPDATE-trigger op die tabel staat.** Origineel: Een
    referentiële actie is zelf een UPDATE op de kindtabel; staat daar een BEFORE
    UPDATE-trigger die de kolom terugzet naar `old`, dan draait die de actie in
    dezelfde bewerking terug. Postgres controleert de sleutel daarna niet opnieuw:

@@ -34,6 +34,7 @@ import { SYSTEEM_GEBEURTENISSEN } from '../../src/modules/buddies/chat-schemas';
 import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
+  createTestProfile,
   createTestUser,
   removeTestUsers,
   rlsTestsConfigured,
@@ -676,6 +677,59 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
         });
 
         expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een systeembericht zijn onderwerp loslaten als dat account verdwijnt',
+      async () => {
+        // ⚠️ Migratie 0060, nazorg op 0059, en het is de derde keer dat deze
+        //    bugklasse opduikt — WERKVOORRAAD §8 punt 8 beschrijft hem sinds 0033.
+        //    Een referentiële actie is zelf een UPDATE op de kindtabel; zet een
+        //    BEFORE UPDATE-trigger de kolom terug naar `old`, dan draait hij die
+        //    actie in dezelfde bewerking terug. 0059 deed dat voor `subject_id`,
+        //    en toen faalde de hele DELETE op de foreign key: `verwijder_mijn_account()`
+        //    viel om zodra je in één systeembericht genoemd werd.
+        //
+        // ⚠️ **Deze suite zou dat niet gevangen hebben** en dat is de reden dat
+        //    deze test hier staat. `removeTestUsers()` gooit eerst de groepen weg,
+        //    en dan zijn de systeemberichten al mee gecascadeerd voordat het
+        //    profiel aan de beurt is. De opruiming verbergt de bug.
+        const admin = adminDb();
+        const tijdelijk = await createTestProfile('e7-vertrekker');
+
+        const lid = await admin
+          .from('group_members')
+          .insert({ group_id: f.groupId, user_id: tijdelijk.id, role: 'member', status: 'active' });
+        if (lid.error) throw new Error(`lid maken: ${lid.error.message}`);
+
+        // meld_nieuw_lid() heeft nu een member_joined geplaatst met hem als onderwerp.
+        const bericht = await admin
+          .from('chat_messages')
+          .select('id, subject_id')
+          .eq('group_id', f.groupId)
+          .eq('subject_id', tijdelijk.id)
+          .single();
+
+        if (bericht.error || bericht.data === null) {
+          throw new Error(`systeembericht niet gevonden: ${bericht.error?.message}`);
+        }
+
+        // Het account opzeggen. Dit is de handeling die vóór 0060 omviel.
+        const weg = await admin.auth.admin.deleteUser(tijdelijk.id);
+        expect(weg.error, 'account verwijderen mag niet stuklopen op een systeembericht').toBeNull();
+
+        // De regel blijft staan — een gesprek verliest zijn geschiedenis niet —
+        // maar de persoon is losgelaten, en de app toont "Een oud-lid".
+        const na = await admin
+          .from('chat_messages')
+          .select('id, subject_id')
+          .eq('id', bericht.data.id)
+          .single();
+
+        expect(na.data?.subject_id, 'subject_id hoort leeg te lopen, niet teruggezet te worden')
+          .toBeNull();
       },
       TEST_TIMEOUT,
     );

@@ -135,6 +135,42 @@ er ook nog. En **B4** — `expo-notifications` — is geen besluit maar een
 dependency, en hij blokkeert wel een hele epic. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
 onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
+**Daarna afgerond in dezelfde sessie: QS8-102, QS8-77 en QS8-107 stap 2.**
+
+QS8-102 (wanneer is een doel afgerond?) en QS8-77 (dagelijkse nudge) waren in
+feite al gebouwd — in EPIC 9 respectievelijk EPIC 11 — maar niet afgevinkt. Bij
+QS8-102 ontbrak nog wél iets: de test die bewijst dat een eigenaar zijn doel niet
+zélf op `completed` kan zetten. `weekpassen.test.ts` dekte alleen de INSERT-kant;
+voor UPDATE stond niets.
+
+**QS8-107 stap 2 (migratie 0059)** is het deel van de vertaalinfrastructuur dat
+straks niet meer kon: een systeembericht bewaarde een uitgeschreven Nederlandse
+zin in `body`, en een chatbericht is een onveranderlijke kopie. De parameters
+staan nu als kolommen in de rij (`subject_id`, `actor_id`, `payload`) en de app
+maakt de zin in `src/modules/buddies/systeemberichten.ts`. `body` blijft als
+noodterugval, met een test die weigert dat een bekende gebeurtenis daarop landt.
+De rest van de meertaligheid staat als **QS8-113** en wacht op een
+dependency-besluit.
+
+⚠️ **Lees dit voordat je een kolom met `on delete set null` toevoegt.** 0059
+introduceerde een bug die 0060 dezelfde dag moest dichten: `subject_id` kreeg
+`on delete set null` én een harde terugzetting in `stamp_chat_message()`. Dat is
+letterlijk de val uit WERKVOORRAAD §8 punt 8 — in een migratie die dat punt in
+zijn eigen kop citeert, en die hem voor `actor_id` wél goed toepaste. Eén regel
+lager ging het mis.
+
+Het gevolg was niet stil maar hard: Postgres zet de kolom terug naar een id dat
+niet meer bestaat, toetst de foreign key opnieuw, en dan faalt de hele DELETE.
+`verwijder_mijn_account()` viel dus om zodra je in één systeembericht genoemd
+werd — en dat ben je na één keer meedoen aan een groep.
+
+⚠️⚠️ **En de RLS-suite zou dit nooit gevangen hebben.** `removeTestUsers()` gooit
+eerst de groepen weg, waarna de systeemberichten mee cascaderen vóórdat het
+profiel aan de beurt is: de opruiming verbergt de bug. Er staat nu een test in
+`epic7.test.ts` die een profiel weggooit terwijl zijn systeembericht blijft
+staan. **Als een test groen is doordat de opruimvolgorde het probleem wegneemt,
+bewijst hij niets** — dat is dezelfde vorm als de weekpasmelding van 19-08.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Eén branch per epic**, niet per issue. Na groene typecheck/lint/test/build
@@ -144,7 +180,7 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-   **Nummer verder vanaf 0059.** Elke migratie idempotent, met een rollback-pad
+   **Nummer verder vanaf 0061.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller.** Staat er "skipped" bij
