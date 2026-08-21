@@ -209,7 +209,11 @@ export default function DoelDetail() {
 
             <HulpVragen doel={d} risico={risico} groepen={doelGroepen} userId={userId} />
 
-            <Mijlpalen doel={d} onKlaar={herlaad} />
+            <Mijlpalen
+              doel={d}
+              onKlaar={herlaad}
+              onCoach={() => router.push(`/doel/coach/${d.id}`)}
+            />
 
             <WeekdoelToevoegen doel={d} klok={klok} onKlaar={herlaad} />
 
@@ -979,7 +983,15 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
  *    index `(goal_id, order_index)` is DEFERRABLE: schuiven mag binnen één
  *    transactie, en PostgREST geeft je er per verzoek precies één.
  */
-function Mijlpalen({ doel, onKlaar }: { readonly doel: DoelMetVoortgang; readonly onKlaar: () => void }) {
+function Mijlpalen({
+  doel,
+  onKlaar,
+  onCoach,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly onKlaar: () => void;
+  readonly onCoach: () => void;
+}) {
   const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
@@ -1071,10 +1083,21 @@ function Mijlpalen({ doel, onKlaar }: { readonly doel: DoelMetVoortgang; readonl
       <Subheading>Mijlpalen</Subheading>
 
       {mijlpalen.length === 0 ? (
-        <Body muted>
-          Nog geen mijlpalen. Knip je doel op in tussenresultaten die je kunt aanwijzen — dan
-          weet je elke week waar je aan werkt.
-        </Body>
+        <>
+          <Body muted>
+            Nog geen mijlpalen. Knip je doel op in tussenresultaten die je kunt aanwijzen — dan
+            weet je elke week waar je aan werkt.
+          </Body>
+          {/*
+            ⚠️ De Doelcoach staat hier en niet bovenaan het scherm, en alleen bij
+               een doel zónder mijlpalen. Hij is een hulpmiddel bij een leeg doel,
+               geen knop die je elke keer ziet — en het handmatige pad hoort
+               ernaast te blijven bestaan (QS8-39, criterium 1).
+          */}
+          <Button variant="primair" onPress={onCoach}>
+            Laat de Doelcoach ze voorstellen
+          </Button>
+        </>
       ) : (
         <View style={styles.mijlpalen}>
           {mijlpalen.map((m, i) => (

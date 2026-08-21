@@ -1,4 +1,14 @@
 // Publieke rand van de module ai.
 // CLAUDE.md: module-communicatie loopt uitsluitend via dit bestand.
 
-export {};
+export {
+  fetchJob,
+  vraagMijlpalen,
+  werkJobAf,
+  type Job,
+  type JobStatus,
+  type JobVerwijzing,
+  type Uitkomst,
+} from './jobs';
+
+export { mijlpalenUit, type VoorstelMijlpaal } from './uitvoer';
