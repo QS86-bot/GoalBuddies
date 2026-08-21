@@ -1572,6 +1572,18 @@ export type Database = {
       }
     }
     Functions: {
+      ai_dag_limiet: { Args: never; Returns: number }
+      ai_kosten_per_week: {
+        Args: { p_weken?: number }
+        Returns: {
+          gebruikers: number
+          invoertokens: number
+          jobs: number
+          kosten_cent: number
+          uitvoertokens: number
+          week_start: string
+        }[]
+      }
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
       bedenktijd: { Args: never; Returns: string }
@@ -1659,6 +1671,10 @@ export type Database = {
         Args: { p_group_id: string; p_period_start: string }
         Returns: Json
       }
+      maak_straffen_verschuldigd: {
+        Args: { p_owner_id: string; p_vandaag: string }
+        Returns: number
+      }
       markeer_doorgeschoven: {
         Args: { p_weekly_goal_id: string }
         Returns: Json
@@ -1710,6 +1726,7 @@ export type Database = {
         Args: { p_platform: string; p_token: string }
         Returns: Json
       }
+      rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
@@ -1814,6 +1831,7 @@ export type Database = {
         }[]
       }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
+      wikkel_commitments_af: { Args: { p_goal_id: string }; Returns: Json }
       zet_doelstatus: {
         Args: { p_gearchiveerd: boolean; p_goal_id: string }
         Returns: Json

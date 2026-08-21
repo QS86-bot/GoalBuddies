@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12, EPIC 11 en EPIC 3.
+> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12, 11, 3 en 9.
 
 ---
 
@@ -85,15 +85,46 @@ proef "ongeveer 14 maanden" zei over een streefdatum die twee weken weg lag.
 **Vraag een taalmodel nooit om rekenwerk dat je zelf kunt doen** — dat geldt
 onverkort voor QS8-41.
 
-**Volgende aan de beurt: EPIC 9, het commitment device.** QS8-85 is af
-(commitments blijven informeel, met een test die het bewaakt). Open zijn QS8-83
-(beloning vrijgeven bij het halen van een doel) en QS8-84 (straf verschuldigd
-bij een gemiste deadline).
+**EPIC 9 is af.** QS8-83 (beloning vrijgeven) en QS8-84 (straf verschuldigd),
+migraties 0057 en 0058, met 19 tests in `tests/rls/epic9.test.ts` die tegen het
+echte project gedraaid hebben. De beslissingen staan in
+`docs/decisions/003-commitments-afwikkelen.md`; oppervlak 20 is toegevoegd aan
+beslisdocument 002.
 
-⚠️ Lees vóór QS8-84 domeinregel 11 én 5: een straf treedt pas in werking bij een
-verstreken deadline, de begunstigde groep krijgt pas op dát moment leesrecht op
-het commitment, en niets mag stilzwijgend geactiveerd worden. Dat is de plek
-waar dit product vertrouwen kan verliezen, dus daar hoort de strengste lezing.
+⚠️ **Er is precies één ding dat nog moet: de rollover opnieuw deployen.**
+
+```bash
+npx supabase functions deploy rollover --project-ref wehgocadxehottiiyvsc
+```
+
+De functie roept sinds deze ronde `maak_straffen_verschuldigd()` aan; de
+database-kant staat en is getest, de gedeployde versie kent hem nog niet. **Tot
+die deploy wordt geen enkele straf verschuldigd in productie.** Controleer erna
+of het antwoord een veld `verschuldigd` bevat — staat het er niet, dan draait de
+oude versie nog. Zie WERKVOORRAAD §0a.
+
+⚠️ **Wat EPIC 9 onderweg vond is belangrijker dan de feature.** Drie dingen die
+al op Done stonden, werkten niet, en alle drie om dezelfde reden — het onderdeel
+was getest, de keten niet:
+
+* `trekIn()` gaf altijd `42501`. Een UPDATE-policy met een `using` maar zónder
+  `with check` gebruikt die `using` óók als controle op de níeuwe rij, dus
+  `status = 'cancelled'` schrijven was verboden — precies de enige overgang die
+  de client wél moet kunnen maken. **Schrijf een `with check` altijd uit, ook als
+  hij hetzelfde zou zijn.**
+* `commitment_events` weigerde elke insert (RLS aan, alleen een SELECT-policy) en
+  `logCommitmentEvent()` slikte de fout op. Het auditspoor stond op nul rijen.
+  Het schrijven zit nu in een trigger, niet meer in de client.
+* **`goals.status` kon helemaal geen `completed` worden.** `zet_doelstatus()` kan
+  alleen archiveren en `authenticated` verloor in 0035 het schrijfrecht op die
+  kolom. Dus `meld_doel_af()` én `meld_commitment()` stonden er allebei
+  maandenlang zonder ooit af te gaan. Er is nu een RPC `rond_doel_af()` en een
+  knop op het doelscherm.
+
+Dat is de derde keer op rij (QS8-47, QS8-112, nu deze). **Controleer bij elk
+`area:backend`-issue wie de nieuwe functie aanroept, en of een mens daar via een
+scherm bij kan.** Staat als voorstel in ENGINEER-REVIEW: dit is statisch af te
+leiden en had alle drie gevonden.
 
 **Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
 A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
@@ -113,7 +144,7 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-   **Nummer verder vanaf 0047.** Elke migratie idempotent, met een rollback-pad
+   **Nummer verder vanaf 0059.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller.** Staat er "skipped" bij

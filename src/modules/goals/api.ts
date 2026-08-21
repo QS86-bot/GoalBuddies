@@ -331,6 +331,82 @@ export async function zetArchief(
 }
 
 /**
+ * Rondt een doel af — QS8-83, migratie 0057.
+ *
+ * ⚠️ **Dit was het ontbrekende moment.** `goals.status` kende `completed` sinds
+ *    0001 en `meld_doel_af()` stond klaar om er een systeembericht op te
+ *    plaatsen, maar niets in de codebase zette een doel ooit op die status:
+ *    `zet_doelstatus()` kan alleen archiveren en `authenticated` heeft sinds 0035
+ *    geen schrijfrecht meer op de kolom. Er was dus ook geen moment waarop een
+ *    beloning kón vrijkomen. Zelfde patroon als QS8-112.
+ *
+ * ⚠️ **Onomkeerbaar, en het scherm moet dat zeggen vóórdat je klikt.** Afronden
+ *    plaatst "X heeft een doel afgerond" in elke gekoppelde groep, en een
+ *    chatbericht is een onveranderlijke kopie — terugzetten haalt hem niet weg.
+ *    Daarnaast wikkelt het je commitments af: de beloning komt vrij, de straf
+ *    vervalt.
+ *
+ * ⚠️ **Er mag geen mijlpaal meer openstaan.** Afronden is de enige handeling die
+ *    je eigen straf laat vervallen, dus zonder die eis is elk commitment device
+ *    te ontlopen met één druk op de knop. Een mijlpaal laten vallen kan wel, maar
+ *    dat is een aparte, zichtbare handeling. Besluit van Quinten, 21-08-2026.
+ */
+export async function rondDoelAf(goalId: string, actorId: string): Promise<Resultaat<Afronding>> {
+  const { data, error } = await supabase().rpc('rond_doel_af', { p_goal_id: goalId });
+
+  if (error) {
+    reportError(error, 'goals.complete', { goal_id: goalId, code: error.code });
+    return { ok: false, melding: 'Afronden lukte niet. Probeer het opnieuw.' };
+  }
+
+  const uitkomst = (data ?? {}) as {
+    ok?: boolean;
+    reason?: string;
+    aantal?: number;
+    commitments?: Afronding;
+  };
+
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: afrondMelding(uitkomst.reason, uitkomst.aantal) };
+  }
+
+  await logGoalEvent(goalId, actorId, 'completed', null, null);
+
+  return {
+    ok: true,
+    waarde: uitkomst.commitments ?? { vrijgespeeld: 0, verlopen: 0, vervallen: 0 },
+  };
+}
+
+/** Wat het afronden met je commitments deed. Alle drie kunnen nul zijn. */
+export interface Afronding {
+  /** Beloningen die zijn vrijgekomen, en dus in je groepen gemeld zijn. */
+  readonly vrijgespeeld: number;
+  /** Beloningen die vervielen omdat de streefdatum al gepasseerd was. */
+  readonly verlopen: number;
+  /** Straffen die vervielen omdat het doel af is. */
+  readonly vervallen: number;
+}
+
+function afrondMelding(reden: string | undefined, aantal: number | undefined): string {
+  if (reden === 'open_milestones') {
+    const n = aantal ?? 0;
+    return n === 1
+      ? 'Er staat nog één mijlpaal open. Vink hem af, of laat hem vallen als hij niet meer nodig is.'
+      : `Er staan nog ${n} mijlpalen open. Vink ze af, of laat vallen wat niet meer nodig is.`;
+  }
+
+  return (
+    {
+      not_owner: 'Dit doel is niet van jou.',
+      already_completed: 'Dit doel is al afgerond.',
+      not_active: 'Dit doel is gearchiveerd. Haal het eerst terug.',
+      not_signed_in: 'Je bent niet meer ingelogd.',
+    }[reden ?? ''] ?? 'Dat lukte niet.'
+  );
+}
+
+/**
  * Schrijft een regel in de audittrail van een doel.
  *
  * Gooit bewust niet: een mislukte logregel mag de handeling zelf niet
@@ -395,6 +471,11 @@ function doelVerwijderMelding(reden: string | undefined): string {
       return 'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.';
     case 'heeft_punten':
       return 'Er zijn al punten op dit doel geboekt. Archiveer het in plaats van het te verwijderen.';
+    // Migratie 0058. Een beloning die is vrijgekomen of een straf die
+    // verschuldigd is, heeft de groep al gezien; weggooien zou geschiedenis
+    // wissen die niet meer alleen van jou is (domeinregel 6 en 11).
+    case 'commitment_in_werking':
+      return 'Je beloning of straf is al in werking getreden. Archiveer dit doel in plaats van het te verwijderen.';
     default:
       return 'Verwijderen lukte niet.';
   }

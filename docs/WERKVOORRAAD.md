@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 21-08-2026 (na EPIC 12, EPIC 11 en EPIC 3)
+**Laatst bijgewerkt:** 21-08-2026 (na EPIC 12, 11, 3 en 9)
 
 ---
 
@@ -87,11 +87,54 @@ Lees dit eerst; de rest is naslag.
   Het interview, het coachscherm, opnieuw genereren en het kostenoverzicht
   staan. Alleen QS8-41 (weekdoelen per mijlpaal) blijft open en die is
   `phase:v2`.
-* **Wat nu aan de beurt is: EPIC 9 (commitment device).** QS8-83 (beloning
-  vrijgeven) en QS8-84 (straf verschuldigd bij een gemiste deadline) zijn de
-  twee die nog open staan; QS8-85 is af. Let op domeinregel 11: een straf treedt
-  pas in werking bij een verstreken deadline, en de begunstigde groep krijgt pas
-  dán leesrecht.
+* ✅ **EPIC 9 (commitment device) is af** — QS8-83 en QS8-84, migraties 0057 en
+  0058, en voor het eerst écht gedraaid tegen het project (19 tests in
+  `tests/rls/epic9.test.ts`). Beslissingen in `docs/decisions/003-...md`.
+  ⚠️ **Eén ding blijft open: de rollover is niet opnieuw gedeployd.** De
+  functie roept sinds deze ronde `maak_straffen_verschuldigd()` aan, maar de
+  gedeployde versie doet dat nog niet — dus straffen worden in productie nog
+  níet verschuldigd. Zie §0a hieronder.
+* **Wat EPIC 9 onderweg vond, en het is erger dan de feature zelf.** Twee dingen
+  die QS8-85 al opgeleverd leek te hebben, werkten nooit: `trekIn()` gaf altijd
+  `42501` (een `using` zonder `with check` geldt óók voor de nieuwe rij), en
+  `commitment_events` weigerde elke insert, dus het auditspoor stond op nul
+  rijen. Allebei aangetoond tegen de echte database, allebei gedicht in 0057.
+  **En daaronder lag dat `goals.status` helemaal geen `completed` kon worden** —
+  dus `meld_doel_af()` én `meld_commitment()` stonden er allebei maandenlang
+  zonder ooit af te gaan. Dat is de derde keer op rij (QS8-47, QS8-112, nu deze):
+  **het onderdeel is getest, de keten niet.**
+
+---
+
+## 0a. ⚠️ Het enige dat nog open staat van EPIC 9
+
+**De rollover moet opnieuw gedeployd worden.** Eén commando:
+
+```bash
+npx supabase functions deploy rollover --project-ref wehgocadxehottiiyvsc
+```
+
+Waarom het moet: `supabase/functions/rollover/index.ts` roept sinds deze ronde
+`maak_straffen_verschuldigd()` aan met de lokale datum van elke eigenaar. De
+database-kant staat er (0057, getest), de gedeployde functie kent hem nog niet.
+Tot die deploy wordt **geen enkele straf verschuldigd in productie**, terwijl
+alles eromheen wél werkt — precies het faalgeval waar valkuil 15 over gaat: de
+repo en het platform lopen uit elkaar en niets geeft een signaal.
+
+⚠️ Draai `npm run edge:sync` vóór de deploy. Dat is al gebeurd in deze sessie,
+maar doe het opnieuw als er intussen iets in `src/shared/time` veranderd is.
+
+Verifiëren na de deploy — het antwoord hoort nu een veld `verschuldigd` te
+bevatten:
+
+```bash
+curl -X POST "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/rollover" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+```
+
+Staat `verschuldigd` er niet in, dan draait de oude versie nog.
+
+---
+
 * ⚠️ **De RLS-suite past niet meer twee keer in een uur.** Hij maakt ongeveer
   veertig aanmeldingen en Supabase weigert na ongeveer dertig. Eén schone run per
   uur lukt; twee niet, en dan lijkt het op een kapotte policy. Zie A47 — dit
@@ -277,7 +320,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
-| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | open |
+| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ af (21-08, migraties 0057/0058) — op de rollover-deploy na, zie §0a |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
@@ -293,6 +336,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Een weekdoel aanmaken~~ | QS8-112 | ✅ gebouwd op 20-08. QS8-43 en QS8-44 stonden op Done terwijl er geen scherm was — controleer bij een frontend-issue voortaan of een mens er via het scherm bij kan |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
+| ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
 | Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |

@@ -103,6 +103,15 @@ describe('BEVESTIGING', () => {
     expect(BEVESTIGING.weekdoelAfsluiten.uitleg).toContain('weekpas');
   });
 
+  it('zegt bij afronden dat het onomkeerbaar is en wat de groep te zien krijgt', () => {
+    // ⚠️ Afronden is de enige handeling die je eigen straf laat vervallen én een
+    //    bericht in elke gekoppelde groep plaatst. Allebei onomkeerbaar, dus
+    //    allebei benoemd vóór de klik (QS8-83).
+    expect(BEVESTIGING.doelAfronden.uitleg).toContain('groep');
+    expect(BEVESTIGING.doelAfronden.uitleg).toContain('beloning');
+    expect(BEVESTIGING.doelAfronden.uitleg).toContain('Terugzetten kan niet');
+  });
+
   it('zegt bij doorschuiven dat de gemiste week gemist blijft', () => {
     // Dit is precies de verwachting die A39 moest bijstellen: doorschuiven
     // repareerde vroeger je reeks, en nu niet meer.

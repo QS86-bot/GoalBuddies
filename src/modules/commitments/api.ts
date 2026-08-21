@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { Json, Tables } from '../../lib/database.types';
+import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 
@@ -17,9 +17,19 @@ import { supabase } from '../../lib/supabase';
  *    deadline. Een gemiste week kost een minpunt, meer niet. De database dwingt
  *    dat af sinds migratie 0006: de client mag `status` niet kiezen en komt dus
  *    altijd binnen op `set`.
+ *
+ * ⚠️ **Het auditspoor staat hier niet meer.** Tot 0057 schreef dit bestand zelf
+ *    zijn regels in `commitment_events`, en dat werkte nooit: die tabel heeft
+ *    RLS met alleen een SELECT-policy, dus elke insert werd geweigerd met 42501
+ *    en door `reportError` opgeslokt. De tabel stond op nul rijen. Sinds 0057
+ *    schrijft de trigger `commitments_audit` de regels, met `auth.uid()` als
+ *    actor. Dat is ook inhoudelijk beter: een client die zijn eigen audittrail
+ *    bijhoudt, kan hem overslaan — en domeinregel 5 vraagt juist dat je dat niet
+ *    kunt.
  */
 
 export type Commitment = Tables<'commitments'>;
+export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
 export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
@@ -118,8 +128,8 @@ async function maak(
     return { ok: false, melding: 'Vastleggen lukte niet. Probeer het opnieuw.' };
   }
 
-  await logCommitmentEvent(data.id, 'confirmed', { type });
-
+  // Geen logregel hier: de trigger `commitments_audit` heeft er al een
+  // geschreven, met `auth.uid()` erin (migratie 0057).
   return { ok: true, waarde: data };
 }
 
@@ -149,18 +159,30 @@ export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
     };
   }
 
-  await logCommitmentEvent(commitmentId, 'cancelled', null);
+  // Ook hier geen logregel: `commitments_audit` heeft hem al geschreven.
   return { ok: true, waarde: true };
 }
 
-async function logCommitmentEvent(
+/**
+ * Het auditspoor van een commitment — QS8-84, acceptatiecriterium 7.
+ *
+ * Alleen voor de eigenaar leesbaar (`commitment_events_select`). De begunstigde
+ * groep ziet het spoor niet, ook niet nadat een straf verschuldigd is geworden:
+ * die groep krijgt de straf zélf te lezen en verder niets.
+ */
+export async function fetchCommitmentSpoor(
   commitmentId: string,
-  eventType: 'confirmed' | 'cancelled' | 'edited',
-  payload: Json,
-): Promise<void> {
-  const { error } = await supabase()
+): Promise<readonly CommitmentGebeurtenis[]> {
+  const { data, error } = await supabase()
     .from('commitment_events')
-    .insert({ commitment_id: commitmentId, event_type: eventType, payload });
+    .select('*')
+    .eq('commitment_id', commitmentId)
+    .order('created_at', { ascending: true });
 
-  if (error) reportError(error, 'commitments.event', { name: eventType, code: error.code });
+  if (error) {
+    reportError(error, 'commitments.trail', { code: error.code });
+    throw new Error('De geschiedenis kon niet geladen worden.');
+  }
+
+  return data ?? [];
 }

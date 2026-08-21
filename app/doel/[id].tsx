@@ -4,7 +4,15 @@ import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { fetchGroepenVanDoel, fetchMijnGroepen, stuurBericht, type Groep } from '@/modules/buddies';
-import { fetchCommitments, trekIn, zetBeloning, zetStraf, type Commitment } from '@/modules/commitments';
+import {
+  fetchCommitments,
+  isOpenstaand,
+  tekstVoor,
+  trekIn,
+  zetBeloning,
+  zetStraf,
+  type Commitment,
+} from '@/modules/commitments';
 import {
   annuleerAdempauze,
   ARGUMENT_MAX,
@@ -27,6 +35,7 @@ import {
   verwijderDoel,
   verwijderMijlpaal,
   vraagDeadlineVerschuiving,
+  rondDoelAf,
   zetArchief,
   zetMijlpaalStatus,
   zetStreefdatum,
@@ -223,6 +232,8 @@ export default function DoelDetail() {
               gedeeld={doelGroepen.length > 0}
               onKlaar={herlaad}
             />
+
+            {userId ? <Afronden doel={d} userId={userId} onKlaar={herlaad} /> : null}
 
             <Beloning
               goalId={d.id}
@@ -462,13 +473,20 @@ function Beloning({
   const [fout, setFout] = useState<string | null>(null);
 
   if (bestaand) {
+    // ⚠️ De uitleg komt uit `tekstVoor()` en staat niet hier. Dat is geen
+    //    netheid: de toon bij een straf die afgegaan is, is een
+    //    acceptatiecriterium van QS8-84, en teksten die verspreid door schermen
+    //    staan, lopen uit elkaar zodra er een tweede scherm bijkomt.
+    const stand = tekstVoor(bestaand);
+
     return (
       <Card>
         <Subheading>Je beloning</Subheading>
         <Body>{bestaand.body}</Body>
         <Caption>
-          Komt vrij als je dit doel haalt. Vastgelegd op {bestaand.confirmed_at.slice(0, 10)}.
+          {stand.titel} — {stand.uitleg}
         </Caption>
+        <Caption>Vastgelegd op {bestaand.confirmed_at.slice(0, 10)}.</Caption>
       </Card>
     );
   }
@@ -535,22 +553,33 @@ function Straf({
   const [fout, setFout] = useState<string | null>(null);
 
   if (bestaand) {
+    const stand = tekstVoor(bestaand);
+    const magIntrekken = isOpenstaand(bestaand);
+
     return (
       <Card>
         <Subheading>Je straf</Subheading>
         <Body>{bestaand.body}</Body>
         <Caption>
-          Wordt verschuldigd als de streefdatum verstrijkt zonder dat het doel af is. Een gemiste
-          week doet hier niets — die kost een minpunt, meer niet.
+          {stand.titel} — {stand.uitleg}
         </Caption>
-        <Button
-          variant="stil"
-          onPress={() => {
-            void trekIn(bestaand.id).then(onKlaar);
-          }}
-        >
-          Intrekken
-        </Button>
+        {/*
+          ⚠️ De knop verdwijnt zodra de straf verschuldigd is, en dat is geen
+             cosmetiek: `commitments_update` weigert het dan sowieso (0057). Een
+             knop tonen die de server afwijst, leert iemand alleen dat de app
+             onbetrouwbaar is — en hier is het juist de bedoeling dat je merkt
+             dat je er niet meer onderuit komt.
+        */}
+        {magIntrekken ? (
+          <Button
+            variant="stil"
+            onPress={() => {
+              void trekIn(bestaand.id).then(onKlaar);
+            }}
+          >
+            Intrekken
+          </Button>
+        ) : null}
       </Card>
     );
   }
@@ -635,6 +664,112 @@ function Straf({
 
       <Button disabled={tekst.trim().length < 3} onPress={() => setBevestigen(true)}>
         Verder
+      </Button>
+    </Card>
+  );
+}
+
+/**
+ * Een doel afronden — QS8-83.
+ *
+ * ⚠️ **Dit is het moment waar EPIC 9 op wachtte.** Vóór migratie 0057 kon een
+ *    doel nooit `completed` worden, en dus kwam er ook nooit een beloning vrij.
+ *
+ * ⚠️ Onomkeerbaar, met een bevestiging die zegt wát het kost — dezelfde eis als
+ *    bij afsluiten en weggooien (QS8-106). De tekst staat in `BEVESTIGING` en
+ *    staat daar onder test.
+ *
+ * ⚠️ De knop verschijnt niet zolang er een mijlpaal openstaat. De server weigert
+ *    het dan óók (`open_milestones`), en dat is de echte grens; dit is het
+ *    vriendelijke gezicht ervan. Dat er dan een uitleg staat in plaats van niets,
+ *    is met opzet: "de knop is er niet" laat iemand raden waarom.
+ */
+function Afronden({
+  doel,
+  userId,
+  onKlaar,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly userId: string;
+  readonly onKlaar: () => void;
+}) {
+  const [vraagt, setVraagt] = useState(false);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const open = (doel.milestones_total ?? 0) - (doel.milestones_done ?? 0);
+
+  if (doel.status === 'completed') {
+    return (
+      <Card>
+        <Subheading>Afgerond</Subheading>
+        <Body muted>
+          Je hebt dit doel afgerond. Je groepen hebben het gezien en je beloning is vrijgekomen.
+        </Body>
+      </Card>
+    );
+  }
+
+  // Gearchiveerd: eerst terughalen. De server zegt hetzelfde (`not_active`).
+  if (doel.status !== 'active') return null;
+
+  async function rond() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await rondDoelAf(doel.id, userId);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    setBezig(false);
+    setVraagt(false);
+    onKlaar();
+  }
+
+  if (vraagt) {
+    return (
+      <Bevestiging
+        tekst={BEVESTIGING.doelAfronden}
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void rond()}
+        onAnnuleer={() => {
+          setVraagt(false);
+          setFout(null);
+        }}
+      />
+    );
+  }
+
+  if (open > 0) {
+    return (
+      <Card nested>
+        <Subheading>Afronden</Subheading>
+        <Body muted>
+          {open === 1
+            ? 'Er staat nog één mijlpaal open. Vink hem af, of laat hem vallen als hij niet meer nodig is — dan kun je dit doel afronden.'
+            : `Er staan nog ${open} mijlpalen open. Vink ze af, of laat vallen wat niet meer nodig is — dan kun je dit doel afronden.`}
+        </Body>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <Subheading>Afronden</Subheading>
+      <Body muted>
+        Alle mijlpalen staan af. Rond je doel af, dan weet je groep het en komt je beloning vrij.
+      </Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <Button
+        onPress={() => setVraagt(true)}
+        accessibilityLabel={`Doel ${doel.title ?? ''} afronden`}
+      >
+        Dit doel is af
       </Button>
     </Card>
   );

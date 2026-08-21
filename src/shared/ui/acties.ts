@@ -126,4 +126,12 @@ export const BEVESTIGING = {
       'Heeft je doel wél geschiedenis, archiveer het dan — dan blijft alles bewaard.',
     bevestig: 'Weggooien',
   },
+  doelAfronden: {
+    titel: 'Dit doel afronden?',
+    uitleg:
+      'Elke groep waaraan dit doel hangt, krijgt een bericht dat je het afgerond hebt, en een ' +
+      'chatbericht haal je niet meer weg. Je beloning komt vrij en wordt ook gemeld; een straf ' +
+      'die je had ingesteld, vervalt. Terugzetten kan niet.',
+    bevestig: 'Afronden',
+  },
 } as const satisfies Record<string, BevestigingsTekst>;
