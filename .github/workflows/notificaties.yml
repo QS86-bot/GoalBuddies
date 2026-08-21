@@ -1,0 +1,82 @@
+name: Notificaties
+
+# De meldingen-job — EPIC 11 (QS8-91) en de dagelijkse nudge (QS8-77).
+#
+# ⚠️ Een eigen workflow en niet een tweede stap in `rollover.yml`, en dat is een
+#    afweging die de andere kant op viel dan bij de slapende groepen. Die zitten
+#    in de rollover-functie omdat ze dezelfde vraag beantwoorden ("wat is er
+#    sinds gisteren verlopen") en niets kunnen breken. Meldingen zijn iets
+#    anders: als de rollover struikelt, wil je nog steeds dat mensen hun nudge
+#    krijgen, en als de meldingen struikelen mag dat nooit een minpunt of een
+#    reeks in de weg zitten. Twee jobs betekent dat een storing in de een de
+#    ander niet meesleept.
+#
+# ⚠️ Zelfde reden als bij de rollover om dit hier te doen en niet met Supabase
+#    Cron: dat is pg_cron, en een Edge Function aanroepen vanuit de database
+#    vraagt `pg_net` plus de service-role-key in de database. Die hoort in een
+#    env var (CLAUDE.md beveiligingsregel 4). Besluit van Quinten, 19-08-2026.
+
+on:
+  schedule:
+    # ⚠️ Elk uur, op het halve uur. Niet gelijk met de rollover: die draait op
+    #    het hele uur, en twee jobs die tegelijk over dezelfde profielen lopen
+    #    is vragen om een melding die gebaseerd is op een halfverwerkte
+    #    cyclusgrens. Een half uur ertussen is genoeg — de rollover doet er
+    #    seconden over.
+    #
+    # ⚠️ Elk uur en niet dagelijks, want het herinneringstijdstip staat per
+    #    gebruiker in zijn eigen tijdzone. Met een dagelijkse job krijgt de helft
+    #    van je gebruikers zijn nudge op het verkeerde moment.
+    - cron: '30 * * * *'
+  workflow_dispatch:
+
+# Twee runs tegelijk is niet gevaarlijk — de unieke index op
+# `notifications_sent` weigert een dubbele melding — maar wel zinloos.
+concurrency:
+  group: notificaties
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  notificaties:
+    name: Meldingen versturen
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Meldingen aanroepen
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL (variable) of SUPABASE_SERVICE_ROLE_KEY (secret) ontbreekt."
+            exit 1
+          fi
+
+          # Body en status apart, om dezelfde reden als bij de rollover: een 500
+          # met een keurige JSON-fout telt anders als succes.
+          status=$(curl -s -S -o /tmp/notificaties.json -w '%{http_code}' \
+            --max-time 120 \
+            -X POST "${SUPABASE_URL}/functions/v1/notificaties" \
+            -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+            -H 'Content-Type: application/json')
+
+          echo "HTTP ${status}"
+          cat /tmp/notificaties.json
+
+          if [ "${status}" != "200" ]; then
+            echo "::error::Notificaties gaf HTTP ${status} in plaats van 200."
+            exit 1
+          fi
+
+          if ! grep -q '"ok":true' /tmp/notificaties.json; then
+            echo "::error::Notificaties antwoordde zonder ok:true."
+            exit 1
+          fi
+
+          echo "Meldingen gedraaid."

@@ -1026,6 +1026,44 @@ export type Database = {
           },
         ]
       }
+      notifications_sent: {
+        Row: {
+          id: string
+          kind: string
+          local_date: string
+          ref_id: string | null
+          ref_type: string | null
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          local_date: string
+          ref_id?: string | null
+          ref_type?: string | null
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          local_date?: string
+          ref_id?: string | null
+          ref_type?: string | null
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       points_ledger: {
         Row: {
           created_at: string
@@ -1138,6 +1176,41 @@ export type Database = {
           week_start_day?: number
         }
         Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_streaks: {
         Row: {
@@ -1565,6 +1638,7 @@ export type Database = {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
       }
+      herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
       herorden_mijlpalen: {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json
@@ -1632,6 +1706,10 @@ export type Database = {
           tabel: string
         }[]
       }
+      registreer_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: Json
+      }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
@@ -1642,11 +1720,27 @@ export type Database = {
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
       sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
       systeembericht_allowlist: { Args: never; Returns: string[] }
+      te_beoordelen_voor: {
+        Args: { p_user_id: string }
+        Returns: {
+          completion_id: string
+          owner_id: string
+          owner_name: string
+        }[]
+      }
       trek_deadline_verzoek_in: {
         Args: { p_request_id: string }
         Returns: Json
       }
       trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
+      triggerfuncties_in_de_api: {
+        Args: never
+        Returns: {
+          anon: boolean
+          functie: string
+          geauthenticeerd: boolean
+        }[]
+      }
       verbruik_weekpas: {
         Args: {
           p_cycle_start_date: string

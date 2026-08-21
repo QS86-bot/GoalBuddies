@@ -1,8 +1,8 @@
 // ⚠️ GEGENEREERD BESTAND — niet met de hand bewerken.
 //
-// Kopie van src/shared/time, gemaakt door `npm run edge:sync`. Bewerk het
-// origineel en draai het script opnieuw; een wijziging hier gaat verloren en,
-// erger, laat de app en de rollover-job met verschillende weken rekenen.
+// Kopie van src/shared/time, gemaakt door `npm run edge:sync`.
+// Bewerk het origineel en draai het script opnieuw; een wijziging hier gaat
+// verloren en, erger, laat de app en de jobs met verschillende regels werken.
 
 /**
  * Het enige punt in de app waar "nu" vandaan komt.
