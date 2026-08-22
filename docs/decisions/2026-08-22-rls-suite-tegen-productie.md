@@ -136,9 +136,25 @@ beter dan geen". Dat klopt voor het verwijderen van de gebruikers zelf, waar het
 staat. Voor de `wipe`-stappen ervóór is het het tegenovergestelde: daar maakt
 doorgaan-na-een-fout het residu juist onherstelbaar.
 
-**Wat er ook uit bleek.** Er staan 17 auth-accounts op het project en **alle 17
-zijn testadressen**; er is geen enkel echt account. Die zijn blijven staan — er
-was alleen om de groepen gevraagd — maar ze horen bij hetzelfde lek.
+**Wat er ook uit bleek.** Er stonden 17 auth-accounts op het project en **alle 17
+waren testadressen**; er was geen enkel echt account. Op verzoek daarna ook
+verwijderd.
+
+Vóór het verwijderen nagelopen wat eraan hing. Eén ding sprong eruit:
+`approval_withdrawals.approver_id` staat als enige op **NO ACTION** en blokkeert
+dus een verwijdering — dat is precies de "Database error deleting user" uit
+QS8-98, waar `removeTestUsers()` nog steeds omheen werkt. Die tabel was leeg, net
+als alle andere, dus er blokkeerde niets en er ging niets onbedoeld mee.
+
+`auth.identities` en `auth.sessions` cascadeerden mee zoals het hoort. Na afloop
+staat het project op nul: geen accounts, geen profielen, geen doelen, geen
+punten. Schema, functies, triggers en policies zijn ongemoeid.
+
+⚠️ Gevolg: er kan op dit moment niemand inloggen op de live app. Dat was al zo —
+er was geen echt account — maar de eerstvolgende aanmelding is nu ook echt de
+eerste. Let daarbij op dat de Site URL in Supabase Auth nog naar het oude adres
+wijst (`docs/DEPLOY.md` §3, QS8-99), want die bevestigingsmail is dan meteen de
+eerste die verkeerd wijst.
 
 Back-up van het verwijderde staat als JSON in de sessie-uitvoer van 22-08
 (70 groepen, 69 berichten, 64 KB) en is aan Quinten meegegeven.
