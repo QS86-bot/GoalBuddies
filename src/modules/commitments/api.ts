@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -37,9 +39,9 @@ export const commitmentSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(3, { error: 'Schrijf op wat je jezelf oplegt.' })
-    .max(500, { error: 'Maximaal 500 tekens.' }),
-  image_url: z.string().trim().url({ error: 'Dit is geen geldige link.' }).nullable(),
+    .min(3, { error: () => t('validatie.commitment_kort') })
+    .max(500, { error: () => t('validatie.commitment_lang') }),
+  image_url: z.string().trim().url({ error: () => t('validatie.link') }).nullable(),
 });
 
 export type CommitmentInvoer = z.infer<typeof commitmentSchema>;
@@ -53,7 +55,7 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
 
   if (error) {
     reportError(error, 'commitments.list', { goal_id: goalId, code: error.code });
-    throw new Error('De beloning en straf konden niet geladen worden.');
+    throw new Error(t('commitment.fout.laden'));
   }
 
   return data ?? [];
@@ -89,7 +91,7 @@ export async function zetStraf(
   beneficiaryGroupId: string,
 ): Promise<Resultaat<Commitment>> {
   if (!beneficiaryGroupId) {
-    return { ok: false, melding: 'Kies een groep die hiervan profiteert als het niet lukt.' };
+    return { ok: false, melding: t('commitment.fout.geen_groep') };
   }
   return await maak(goalId, 'penalty', invoer, beneficiaryGroupId);
 }
@@ -102,7 +104,7 @@ async function maak(
 ): Promise<Resultaat<Commitment>> {
   const gevalideerd = commitmentSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('commitment.fout.invoer') };
   }
 
   const { data, error } = await supabase()
@@ -125,7 +127,7 @@ async function maak(
 
   if (error) {
     reportError(error, 'commitments.create', { goal_id: goalId, name: type, code: error.code });
-    return { ok: false, melding: 'Vastleggen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('commitment.fout.vastleggen') };
   }
 
   // Geen logregel hier: de trigger `commitments_audit` heeft er al een
@@ -149,13 +151,13 @@ export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
 
   if (error) {
     reportError(error, 'commitments.cancel', { code: error.code });
-    return { ok: false, melding: 'Intrekken lukte niet.' };
+    return { ok: false, melding: t('commitment.fout.intrekken') };
   }
 
   if ((data ?? []).length === 0) {
     return {
       ok: false,
-      melding: 'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
+      melding: t('commitment.fout.al_afgegaan'),
     };
   }
 
@@ -181,7 +183,7 @@ export async function fetchCommitmentSpoor(
 
   if (error) {
     reportError(error, 'commitments.trail', { code: error.code });
-    throw new Error('De geschiedenis kon niet geladen worden.');
+    throw new Error(t('commitment.fout.spoor'));
   }
 
   return data ?? [];

@@ -25,18 +25,77 @@ export const en: Record<Sleutel, string> = {
 
   'algemeen.oud_lid': 'A former member',
 
-  'auth.titel.inloggen': 'Welcome back',
-  'auth.titel.aanmelden': 'Create an account',
-  'auth.veld.email': 'Email address',
-  'auth.veld.wachtwoord': 'Password',
-  'auth.knop.inloggen': 'Log in',
-  'auth.knop.aanmelden': 'Create account',
-  'auth.wissel.naar_aanmelden': 'No account yet? Create one.',
-  'auth.wissel.naar_inloggen': 'Already have an account? Log in.',
+  'auth.fout.ongeldig': 'This email address and password do not match.',
+  'auth.fout.bestaat_al':
+    'An account with this address already exists. Log in or recover your password.',
+  'auth.fout.niet_bevestigd': 'Confirm your email address first. Check your inbox.',
+  'auth.fout.te_vaak': 'Too many attempts. Wait a moment and try again.',
+  'auth.fout.zwak_wachtwoord': 'This password is not accepted. Use a longer phrase.',
+  'auth.fout.geen_verbinding': 'No connection. Check your internet and try again.',
+  'auth.fout.algemeen': 'Something went wrong. Please try again.',
+  'auth.fout.invoer': 'Check what you entered.',
+  'auth.fout.uitloggen': 'Logging out did not work. Please try again.',
 
-  'auth.fout.ongeldig': 'That email address and password don’t match.',
-  'auth.fout.algemeen': 'Logging in didn’t work. Please try again in a moment.',
-  'auth.fout.bestaat_al': 'There’s already an account with this email address.',
+  'auth.verwijder.verlopen': 'Your session has expired. Log in again and then try once more.',
+  'auth.verwijder.enige_beheerder':
+    'You are the only admin of a group that still has other people in it. Make ' +
+    'someone else an admin first — otherwise that group is left behind with ' +
+    'nobody able to manage it.',
+  'auth.verwijder.mislukt': 'Deleting your account did not work. Please try again.',
+  'auth.verwijder.mislukt_kort': 'Deleting your account did not work.',
+
+  'auth.oauth.alleen_browser':
+    'Signing in with Apple or Google only works in the browser for now. Use your email address for the time being.',
+  'auth.oauth.mislukt': 'Signing in with this provider did not work. Try your email address.',
+
+  'profiel.laden_mislukt': 'Your profile could not be loaded.',
+  'profiel.opslaan_mislukt': 'Saving did not work. Please try again.',
+
+  'validatie.wachtwoord_kort': 'Use at least 12 characters. A short phrase works fine.',
+  'validatie.wachtwoord_lang': 'More than 72 characters is not possible — bcrypt cuts off after that.',
+  'validatie.email': 'This does not look like an email address.',
+  'validatie.wachtwoord_leeg': 'Enter your password.',
+  'validatie.weekdag': 'A week starts on a day between Sunday and Saturday.',
+  'validatie.tijdzone': 'Unknown time zone.',
+  'validatie.naam_leeg': 'Enter a name.',
+  'validatie.naam_lang': 'At most 80 characters.',
+  'validatie.tijd': 'Use a time like 20:00.',
+
+  'commitment.reward.set.titel': 'Ready',
+  'commitment.reward.set.uitleg': 'This reward is released as soon as you finish this goal on time.',
+  'commitment.reward.unlocked.titel': 'Unlocked',
+  'commitment.reward.unlocked.uitleg': 'You reached your goal. Your group has seen it.',
+  'commitment.reward.cancelled.titel': 'Expired',
+  'commitment.reward.cancelled.uitleg': 'This reward no longer applies.',
+
+  'commitment.penalty.set.titel': 'Set',
+  'commitment.penalty.set.uitleg':
+    'This comes into effect if your target date passes while the goal is not done. ' +
+    'Missing a week does nothing to it.',
+  'commitment.penalty.due.titel': 'Due',
+  'commitment.penalty.due.uitleg':
+    'Your target date has passed. The group you chose can read this now.',
+  'commitment.penalty.resolved.titel': 'Settled',
+  'commitment.penalty.resolved.uitleg': 'This stake has been paid.',
+  'commitment.penalty.cancelled.titel': 'Expired',
+  'commitment.penalty.cancelled.uitleg':
+    'You finished your goal, so this stake will not come into effect.',
+
+  'commitment.onbekend.titel': 'Unknown',
+  'commitment.onbekend.uitleg': 'The state of this arrangement cannot be determined.',
+
+  'commitment.fout.geen_groep': 'Choose a group that benefits if it does not work out.',
+  'commitment.fout.invoer': 'Check what you entered.',
+  'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
+  'commitment.fout.intrekken': 'Withdrawing did not work.',
+  'commitment.fout.al_afgegaan':
+    'This commitment has already come into effect and can no longer be withdrawn.',
+  'commitment.fout.laden': 'The reward and penalty could not be loaded.',
+  'commitment.fout.spoor': 'The history could not be loaded.',
+
+  'validatie.commitment_kort': 'Write down what you are holding yourself to.',
+  'validatie.commitment_lang': 'At most 500 characters.',
+  'validatie.link': 'This is not a valid link.',
 
   'bevestiging.weekdoel_afsluiten.titel': 'Close this week?',
   'bevestiging.weekdoel_afsluiten.uitleg':

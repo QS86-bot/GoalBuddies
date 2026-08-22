@@ -62,10 +62,10 @@ describe('de catalogi lopen gelijk', () => {
 describe('t()', () => {
   it('geeft de tekst in de ingestelde taal', () => {
     zetTaal('nl');
-    expect(t('auth.knop.inloggen')).toBe('Inloggen');
+    expect(t('validatie.wachtwoord_leeg')).toBe('Vul je wachtwoord in.');
 
     zetTaal('en');
-    expect(t('auth.knop.inloggen')).toBe('Log in');
+    expect(t('validatie.wachtwoord_leeg')).toBe('Enter your password.');
   });
 
   it('vult parameters in', () => {

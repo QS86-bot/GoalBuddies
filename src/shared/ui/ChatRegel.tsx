@@ -1,6 +1,6 @@
-import { t } from '../i18n';
-
 import { Pressable, StyleSheet, View } from 'react-native';
+
+import { t } from '../i18n';
 
 import { radius, space, useTheme } from '../theme';
 

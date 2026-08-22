@@ -1,3 +1,5 @@
+import { t, type Sleutel } from '../../shared/i18n';
+
 import type { Commitment } from './api';
 
 /**
@@ -15,44 +17,60 @@ import type { Commitment } from './api';
  *    gebeurtenis en verder niets (beslisdocument 002 §3).
  */
 
-export const STATUS_TEKST: Readonly<Record<string, { titel: string; uitleg: string }>> = {
-  'reward:set': {
-    titel: 'Staat klaar',
-    uitleg: 'Deze beloning komt vrij zodra je dit doel op tijd afrondt.',
-  },
-  'reward:unlocked': {
-    titel: 'Vrijgespeeld',
-    uitleg: 'Je hebt je doel gehaald. Je groep heeft het gezien.',
-  },
-  'reward:cancelled': {
-    titel: 'Vervallen',
-    uitleg: 'Deze beloning is niet meer van toepassing.',
-  },
-  'penalty:set': {
-    titel: 'Staat vast',
-    uitleg:
-      'Dit gaat in werking als je streefdatum verstrijkt zonder dat het doel af is. ' +
-      'Een week missen doet er niets aan.',
-  },
-  'penalty:due': {
-    titel: 'Verschuldigd',
-    uitleg: 'Je streefdatum is verstreken. De groep die je gekozen hebt, kan dit nu lezen.',
-  },
-  'penalty:resolved': {
-    titel: 'Afgehandeld',
-    uitleg: 'Deze inzet is voldaan.',
-  },
-  'penalty:cancelled': {
-    titel: 'Vervallen',
-    uitleg: 'Je hebt je doel afgerond, dus deze inzet gaat niet meer in werking.',
-  },
-};
+/**
+ * De standen waar een tekst voor is.
+ *
+ * ⚠️ `reward:due` en `reward:resolved` staan er bewust niet bij: een beloning
+ *    wordt nooit verschuldigd. Zou dat ooit veranderen, dan hoort deze lijst mee
+ *    te veranderen — en de test hieronder wordt dan rood.
+ */
+export const COMMITMENT_STANDEN = [
+  'reward:set',
+  'reward:unlocked',
+  'reward:cancelled',
+  'penalty:set',
+  'penalty:due',
+  'penalty:resolved',
+  'penalty:cancelled',
+] as const;
+
+export interface CommitmentTekst {
+  readonly titel: string;
+  readonly uitleg: string;
+}
+
+/**
+ * De teksten per stand, uit de catalogus.
+ *
+ * ⚠️ **Een functie en geen constante** — QS8-115. Een module-constante legt de
+ *    taal vast op het moment van importeren, en dat is vóórdat het profiel
+ *    geladen is. Iemand met Engels ingesteld kreeg dan Nederlandse teksten tot
+ *    hij de app herstartte. Zelfde val als bij `BEVESTIGING` in `shared/ui`.
+ */
+export function statusTeksten(): Readonly<Record<string, CommitmentTekst>> {
+  const uit: Record<string, CommitmentTekst> = {};
+
+  for (const stand of COMMITMENT_STANDEN) {
+    const [type, status] = stand.split(':');
+    uit[stand] = {
+      titel: t(`commitment.${type}.${status}.titel` as Sleutel),
+      uitleg: t(`commitment.${type}.${status}.uitleg` as Sleutel),
+    };
+  }
+
+  return uit;
+}
 
 /** Fallback die nooit een lege kaart oplevert (coderegel 16 in de geest). */
-const ONBEKEND = { titel: 'Onbekend', uitleg: 'De stand van deze afspraak is niet te bepalen.' };
+function onbekend(): CommitmentTekst {
+  return {
+    titel: t('commitment.onbekend.titel'),
+    uitleg: t('commitment.onbekend.uitleg'),
+  };
+}
 
-export function tekstVoor(commitment: Commitment): { titel: string; uitleg: string } {
-  return STATUS_TEKST[`${commitment.type}:${commitment.status}`] ?? ONBEKEND;
+export function tekstVoor(commitment: Commitment): CommitmentTekst {
+  return statusTeksten()[`${commitment.type}:${commitment.status}`] ?? onbekend();
 }
 
 /**

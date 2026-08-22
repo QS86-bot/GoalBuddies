@@ -13,4 +13,11 @@ export {
   type CommitmentInvoer,
 } from './api';
 
-export { STATUS_TEKST, isAfgegaan, isOpenstaand, tekstVoor } from './stand';
+export {
+  COMMITMENT_STANDEN,
+  isAfgegaan,
+  isOpenstaand,
+  statusTeksten,
+  tekstVoor,
+  type CommitmentTekst,
+} from './stand';

@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { STANDAARDTAAL, zetTaal } from '../../shared/i18n';
 
 import type { Commitment } from './api';
-import { isAfgegaan, isOpenstaand, STATUS_TEKST, tekstVoor } from './stand';
+import {
+  COMMITMENT_STANDEN,
+  isAfgegaan,
+  isOpenstaand,
+  statusTeksten,
+  tekstVoor,
+} from './stand';
 
 /**
  * De toon van een commitment is een acceptatiecriterium — QS8-84: "nuchter, niet
@@ -23,46 +31,51 @@ function commitment(type: string, status: string): Commitment {
   } as Commitment;
 }
 
-describe('STATUS_TEKST', () => {
+afterEach(() => {
+  zetTaal(STANDAARDTAAL);
+});
+
+describe('statusTeksten()', () => {
   it('heeft een tekst voor elke stand die een commitment echt kan hebben', () => {
     // `reward:due` en `reward:resolved` staan er bewust niet bij: een beloning
     // wordt nooit verschuldigd. Zou dat ooit veranderen, dan hoort deze lijst
     // mee te veranderen.
-    for (const sleutel of [
-      'reward:set',
-      'reward:unlocked',
-      'reward:cancelled',
-      'penalty:set',
-      'penalty:due',
-      'penalty:resolved',
-      'penalty:cancelled',
-    ]) {
-      expect(STATUS_TEKST[sleutel], sleutel).toBeDefined();
+    for (const sleutel of COMMITMENT_STANDEN) {
+      expect(statusTeksten()[sleutel], sleutel).toBeDefined();
     }
   });
 
   it('verwijt niets en roept niets uit', () => {
     // Geen uitroeptekens, en geen woord dat iemand aankijkt op wat hij niet
     // gehaald heeft. De gebruiker heeft dit zichzelf opgelegd.
-    const verboden = /helaas|jammer|mislukt|gefaald|niet gelukt|sorry|!/i;
+    //
+    // ⚠️ In béíde talen sinds QS8-115. De toon is een acceptatiecriterium van
+    //    QS8-84, en een vertaler die de code niet kent, kent dat criterium ook
+    //    niet — dus het hoort hier bewaakt te worden en niet in een comment.
+    const verboden = /helaas|jammer|mislukt|gefaald|niet gelukt|sorry|unfortunately|failed|sadly|!/i;
 
-    for (const [sleutel, tekst] of Object.entries(STATUS_TEKST)) {
-      expect(tekst.uitleg, sleutel).not.toMatch(verboden);
-      expect(tekst.titel, sleutel).not.toMatch(verboden);
-      expect(tekst.uitleg.length, sleutel).toBeGreaterThan(20);
+    for (const taalcode of ['nl', 'en'] as const) {
+      zetTaal(taalcode);
+
+      for (const [sleutel, tekst] of Object.entries(statusTeksten())) {
+        const waar = `${taalcode}:${sleutel}`;
+        expect(tekst.uitleg, waar).not.toMatch(verboden);
+        expect(tekst.titel, waar).not.toMatch(verboden);
+        expect(tekst.uitleg.length, waar).toBeGreaterThan(20);
+      }
     }
   });
 
   it('zegt bij een ingestelde straf dat een gemiste week er niets aan doet', () => {
     // Domeinregel 11, en de meest waarschijnlijke misvatting die iemand heeft
     // op het moment dat hij een straf instelt.
-    expect(STATUS_TEKST['penalty:set']?.uitleg).toContain('week');
+    expect(statusTeksten()['penalty:set']?.uitleg).toContain('week');
   });
 
   it('zegt bij een verschuldigde straf wie hem nu kan lezen', () => {
     // Dit is het moment waarop de inhoud van privé naar de groep gaat. Dat mag
     // iemand niet hoeven afleiden.
-    expect(STATUS_TEKST['penalty:due']?.uitleg).toContain('groep');
+    expect(statusTeksten()['penalty:due']?.uitleg).toContain('groep');
   });
 
   it('valt terug op iets leesbaars bij een onbekende combinatie', () => {

@@ -42,21 +42,96 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Aanmelden en inloggen — de referentie-implementatie van QS8-113
   // ---------------------------------------------------------------------------
-  'auth.titel.inloggen': 'Welkom terug',
-  'auth.titel.aanmelden': 'Maak een account',
-  'auth.veld.email': 'E-mailadres',
-  'auth.veld.wachtwoord': 'Wachtwoord',
-  'auth.knop.inloggen': 'Inloggen',
-  'auth.knop.aanmelden': 'Account maken',
-  'auth.wissel.naar_aanmelden': 'Nog geen account? Maak er een.',
-  'auth.wissel.naar_inloggen': 'Heb je al een account? Log in.',
+  // ---------------------------------------------------------------------------
+  // Aanmelden, inloggen en het profiel — QS8-115
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Een inlogfout zegt nooit óf het e-mailadres bestaat. Dat is geen vaagheid
+  //    maar bescherming: een scherm dat "dit account bestaat niet" zegt, is een
+  //    gratis manier om te controleren wie er lid is. Houd dat vast in élke
+  //    vertaling.
+  'auth.fout.ongeldig': 'Dit e-mailadres en wachtwoord horen niet bij elkaar.',
+  'auth.fout.bestaat_al': 'Er bestaat al een account met dit adres. Log in of herstel je wachtwoord.',
+  'auth.fout.niet_bevestigd': 'Bevestig eerst je e-mailadres. Check je inbox.',
+  'auth.fout.te_vaak': 'Te veel pogingen. Wacht even en probeer het opnieuw.',
+  'auth.fout.zwak_wachtwoord': 'Dit wachtwoord voldoet niet. Gebruik een langere zin.',
+  'auth.fout.geen_verbinding': 'Geen verbinding. Controleer je internet en probeer opnieuw.',
+  'auth.fout.algemeen': 'Er ging iets mis. Probeer het opnieuw.',
+  'auth.fout.invoer': 'Controleer je invoer.',
+  'auth.fout.uitloggen': 'Uitloggen lukte niet. Probeer het opnieuw.',
 
-  // ⚠️ De foutmeldingen zeggen nooit óf het e-mailadres bestaat. Dat is geen
-  //    vaagheid maar bescherming: een inlogscherm dat "dit account bestaat niet"
-  //    zegt, is een gratis manier om te controleren wie er lid is.
-  'auth.fout.ongeldig': 'Dat e-mailadres en wachtwoord horen niet bij elkaar.',
-  'auth.fout.algemeen': 'Inloggen lukte niet. Probeer het zo nog eens.',
-  'auth.fout.bestaat_al': 'Er is al een account met dit e-mailadres.',
+  'auth.verwijder.verlopen': 'Je sessie is verlopen. Log opnieuw in en probeer het dan.',
+  'auth.verwijder.enige_beheerder':
+    'Je bent de enige beheerder van een groep waar nog anderen in zitten. Maak ' +
+    'eerst iemand anders beheerder — anders blijft die groep achter zonder dat ' +
+    'iemand hem kan beheren.',
+  'auth.verwijder.mislukt': 'Je account verwijderen lukte niet. Probeer het opnieuw.',
+  'auth.verwijder.mislukt_kort': 'Je account verwijderen lukte niet.',
+
+  'auth.oauth.alleen_browser':
+    'Inloggen met Apple of Google werkt nu alleen in de browser. Gebruik voorlopig je e-mailadres.',
+  'auth.oauth.mislukt': 'Inloggen via deze aanbieder lukte niet. Probeer je e-mailadres.',
+
+  'profiel.laden_mislukt': 'Je profiel kon niet geladen worden.',
+  'profiel.opslaan_mislukt': 'Opslaan lukte niet. Probeer het opnieuw.',
+
+  // ⚠️ Zod-meldingen. Deze staan in schema's die op moduleniveau gebouwd worden,
+  //    dus de aanroep moet lui zijn: `{ error: () => t(...) }` en niet
+  //    `{ error: t(...) }`. Zie de kop van `auth/schemas.ts`.
+  'validatie.wachtwoord_kort': 'Gebruik minstens 12 tekens. Een korte zin werkt prima.',
+  'validatie.wachtwoord_lang': 'Meer dan 72 tekens kan niet — bcrypt kapt daarna af.',
+  'validatie.email': 'Dit ziet er niet uit als een e-mailadres.',
+  'validatie.wachtwoord_leeg': 'Vul je wachtwoord in.',
+  'validatie.weekdag': 'Een week begint op een dag tussen zondag en zaterdag.',
+  'validatie.tijdzone': 'Onbekende tijdzone.',
+  'validatie.naam_leeg': 'Vul een naam in.',
+  'validatie.naam_lang': 'Maximaal 80 tekens.',
+  'validatie.tijd': 'Gebruik een tijd als 20:00.',
+
+  // ---------------------------------------------------------------------------
+  // Commitment devices — QS8-83, QS8-84
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De toon is een acceptatiecriterium en geen smaak.** QS8-84 vraagt
+  //    letterlijk om nuchter en niet vernederend: iemand heeft dit zichzelf
+  //    vooraf opgelegd en bevestigd. Er wordt niets uitgeroepen, niets verweten
+  //    en niets aangemoedigd — er wordt verteld wat er is gebeurd. Er staat een
+  //    test op die uitroeptekens en verwijtende woorden weigert, in béíde talen.
+  'commitment.reward.set.titel': 'Staat klaar',
+  'commitment.reward.set.uitleg': 'Deze beloning komt vrij zodra je dit doel op tijd afrondt.',
+  'commitment.reward.unlocked.titel': 'Vrijgespeeld',
+  'commitment.reward.unlocked.uitleg': 'Je hebt je doel gehaald. Je groep heeft het gezien.',
+  'commitment.reward.cancelled.titel': 'Vervallen',
+  'commitment.reward.cancelled.uitleg': 'Deze beloning is niet meer van toepassing.',
+
+  'commitment.penalty.set.titel': 'Staat vast',
+  'commitment.penalty.set.uitleg':
+    'Dit gaat in werking als je streefdatum verstrijkt zonder dat het doel af is. ' +
+    'Een week missen doet er niets aan.',
+  'commitment.penalty.due.titel': 'Verschuldigd',
+  'commitment.penalty.due.uitleg':
+    'Je streefdatum is verstreken. De groep die je gekozen hebt, kan dit nu lezen.',
+  'commitment.penalty.resolved.titel': 'Afgehandeld',
+  'commitment.penalty.resolved.uitleg': 'Deze inzet is voldaan.',
+  'commitment.penalty.cancelled.titel': 'Vervallen',
+  'commitment.penalty.cancelled.uitleg':
+    'Je hebt je doel afgerond, dus deze inzet gaat niet meer in werking.',
+
+  'commitment.onbekend.titel': 'Onbekend',
+  'commitment.onbekend.uitleg': 'De stand van deze afspraak is niet te bepalen.',
+
+  'commitment.fout.geen_groep': 'Kies een groep die hiervan profiteert als het niet lukt.',
+  'commitment.fout.invoer': 'Controleer je invoer.',
+  'commitment.fout.vastleggen': 'Vastleggen lukte niet. Probeer het opnieuw.',
+  'commitment.fout.intrekken': 'Intrekken lukte niet.',
+  'commitment.fout.al_afgegaan':
+    'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
+  'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
+  'commitment.fout.spoor': 'De geschiedenis kon niet geladen worden.',
+
+  'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
+  'validatie.commitment_lang': 'Maximaal 500 tekens.',
+  'validatie.link': 'Dit is geen geldige link.',
 
   // ---------------------------------------------------------------------------
   // Bevestigingen — QS8-106. Elke tekst noemt wát de handeling kost.

@@ -1,7 +1,7 @@
-import { t } from '../i18n';
-
 import { useState } from 'react';
 import { Platform, Share } from 'react-native';
+
+import { t } from '../i18n';
 
 import { Button } from './Button';
 
