@@ -177,6 +177,90 @@ export const nl = {
   'risico.on_track.tempo':
     'Je haalde {gehaald} van je laatste {weken_bekeken}, met {mijlpalen} in {weken} te gaan. Dat gaat lukken.',
   'risico.on_track.kaal': 'Je tempo is genoeg voor wat er nog ligt.',
+
+  // ---------------------------------------------------------------------------
+  // De stand van een weekdoel — QS8-75
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De toon is zakelijk en niet bestraffend. "Niet afgerond" en niet
+  //    "mislukt"; "Afgesloten" en niet "opgegeven". Alleen de eigenaar ziet deze
+  //    labels — `weekly_goals_select` houdt `missed`, `carried` en `cancelled`
+  //    weg bij groepsgenoten — maar domeinregel 7 gaat ook over toon.
+  'weekdoel.adempauze': 'Adempauze',
+  'weekdoel.meegenomen': 'Meegenomen naar deze week',
+  'weekdoel.afgesloten': 'Afgesloten',
+  'weekdoel.niet_afgerond': 'Niet afgerond',
+  'weekdoel.nog_te_doen': 'Nog te doen',
+  'weekdoel.plafond_gehaald': 'Plafond gehaald',
+  'weekdoel.vloer_gehaald': 'Vloer gehaald',
+  'weekdoel.gehaald': 'Gehaald',
+  'weekdoel.wacht_op_buddy': '{wat} — wacht op je buddy',
+
+  // ---------------------------------------------------------------------------
+  // Reeks, Ketting en weekpassen — QS8-75, QS8-80, QS8-81
+  // ---------------------------------------------------------------------------
+  'reeks.geen': 'Nog geen reeks',
+  'reeks.een': '1 week op rij',
+  'reeks.meer': '{n} weken op rij',
+
+  // ⚠️ De Ketting telt **opdagen** en is onderweg per definitie onaf. Er staat
+  //    daarom wat er wél is en nooit wat er mist — geen "nog 2 te gaan", want dat
+  //    is dezelfde mededeling met een vriendelijk gezicht. Er staat een test op
+  //    die "van 3", "nog N", "te gaan" en "mist" weigert.
+  'ketting.niemand': 'Nog niemand doet mee',
+  'ketting.net_begonnen': 'De week is net begonnen',
+  'ketting.jij_alleen': 'Je schakel ligt er',
+  'ketting.voltallig': 'Voltallig — de ketting is rond',
+  'ketting.schakels_een': '1 schakel deze week',
+  'ketting.schakels_meer': '{n} schakels deze week',
+
+  // ⚠️ Nul is geen mislukking en klinkt hier ook niet zo. "Geen weekpassen" leest
+  //    als een tekort; het gaat om iets dat je kúnt verdienen en nog niet hebt.
+  'weekpas.geen': 'Nog geen weekpas',
+  'weekpas.een': '1 weekpas',
+  'weekpas.meer': '{n} weekpassen',
+  'weekpas.van_maximum': '{wat} van {maximum}',
+
+  'punten.uitleg': 'Plafond gehaald +2, vloer gehaald +1, week gemist −1, adempauze 0.',
+
+  'weekpas.uitleg':
+    'Een weekpas houdt je reeks overeind als je een week mist. Het minpunt voor die week ' +
+    'krijg je wél — een pas beschermt je reeks, niet je punten. Je hoeft niets te doen: ' +
+    'mis je een week, dan zetten we er automatisch een in. Weekpassen spaar je per doel.',
+
+  'weekpas.vol':
+    'Je hebt er {voorraad}, en meer kun je er niet tegelijk hebben. Verdien je er een terwijl je vol zit, dan komt hij vrij zodra je er een gebruikt.',
+  'weekpas.nog_een_week': 'Nog één voltooide week',
+  'weekpas.nog_weken': 'Nog {n} voltooide weken',
+  'weekpas.eerste': '{nog} en je eerste weekpas ligt klaar.',
+  'weekpas.volgende': '{nog} tot de volgende.',
+
+  // ---------------------------------------------------------------------------
+  // Gedeelde componenten — QS8-115
+  // ---------------------------------------------------------------------------
+  'chat.van_jou': 'Jij: {tekst}',
+  'chat.van_ander': '{naam}: {tekst}',
+  'chat.weghalen': 'Weghalen',
+
+  // ⚠️ Geen van beide is een foutmelding met een uitroepteken. Delen dat niet
+  //    lukt is een eigenschap van de browser en niet iets dat de gebruiker fout
+  //    deed; de zin wijst hem naar wat wél werkt.
+  'delen.gekopieerd': 'Gekopieerd — plak hem in je chat',
+  'delen.mislukt': 'Delen lukt hier niet — selecteer de link hierboven',
+
+  'stand.punten': 'Punten',
+  'stand.langste_reeks': 'Langste reeks',
+
+  'mijlpalen.geen': 'Nog geen mijlpalen',
+  'mijlpalen.voortgang': '{done} van {total} mijlpalen',
+
+  'weekstart.label': 'Mijn week begint op',
+  'weekstart.hint':
+    'Bepaalt wanneer je weekdoelen opnieuw beginnen en wanneer je punten tellen. ' +
+    'Later aanpasbaar; een lopende week telt gewoon uit.',
+
+  'weekpas.titel': 'Weekpassen',
+  'weekpas.gered': 'Een weekpas heeft je reeks gered.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

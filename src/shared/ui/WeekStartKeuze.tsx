@@ -1,3 +1,5 @@
+import { t, weekdagNaam } from '../i18n';
+
 import type { Weekday } from '../time';
 
 import { Choice, type Optie } from './Choice';
@@ -13,15 +15,29 @@ import { Choice, type Optie } from './Choice';
  * De nummering is die van Postgres en van `shared/time`: 0 = zondag.
  */
 
-const DAGEN: readonly Optie<Weekday>[] = [
-  { waarde: 1, label: 'Maandag' },
-  { waarde: 2, label: 'Dinsdag' },
-  { waarde: 3, label: 'Woensdag' },
-  { waarde: 4, label: 'Donderdag' },
-  { waarde: 5, label: 'Vrijdag' },
-  { waarde: 6, label: 'Zaterdag' },
-  { waarde: 0, label: 'Zondag' },
-];
+/**
+ * De zeven dagen, met maandag voorop en zondag achteraan.
+ *
+ * ⚠️ **De namen komen uit `Intl` en niet uit de catalogus** (QS8-115). Zeven
+ *    sleutels per taal overtypen levert alleen de kans op een tikfout in een taal
+ *    die hier niemand spreekt; `weekdagNaam()` doet het goed voor élke taal die
+ *    er ooit bij komt, inclusief de hoofdletterconventie — het Frans schrijft
+ *    "lundi" met kleine letter en het Duits "Montag" met hoofdletter.
+ *
+ * ⚠️ **De vólgorde blijft wél hier staan**, en dat is bewust. Welke dag bovenaan
+ *    staat is een productkeuze en geen locale-data: maandag eerst omdat dat de
+ *    meest gekozen week-start is, zondag onderaan omdat 0 in `shared/time`
+ *    weliswaar zondag is maar niemand zijn lijstje daarmee begint.
+ *
+ * ⚠️ Een functie en geen constante: de namen hangen van de taal af, en een
+ *    module-constante zou die vastleggen vóórdat het profiel geladen is.
+ */
+function dagen(): readonly Optie<Weekday>[] {
+  return ([1, 2, 3, 4, 5, 6, 0] as const).map((waarde) => ({
+    waarde,
+    label: weekdagNaam(waarde),
+  }));
+}
 
 interface Props {
   readonly waarde: Weekday;
@@ -32,12 +48,9 @@ interface Props {
 export function WeekStartKeuze({ waarde, onKies, disabled = false }: Props) {
   return (
     <Choice
-      label="Mijn week begint op"
-      hint={
-        'Bepaalt wanneer je weekdoelen opnieuw beginnen en wanneer je punten tellen. ' +
-        'Later aanpasbaar; een lopende week telt gewoon uit.'
-      }
-      opties={DAGEN}
+      label={t('weekstart.label')}
+      hint={t('weekstart.hint')}
+      opties={dagen()}
       waarde={waarde}
       onKies={onKies}
       disabled={disabled}

@@ -50,7 +50,7 @@ import {
   useVieringenAan,
   Viering,
   weekdoelActies,
-  WEEKPAS_UITLEG,
+  weekpasUitleg,
   type WeeklyGoalStatus,
 } from '@/shared/ui';
 
@@ -349,7 +349,7 @@ function StandBlok({
            de ene keer dat het uitmaakt.
       */}
       {rijen.some(({ stand }) => stand.weekpas !== null) ? (
-        <Caption>{WEEKPAS_UITLEG}</Caption>
+        <Caption>{weekpasUitleg()}</Caption>
       ) : null}
     </Card>
   );

@@ -4,6 +4,14 @@ import { STANDAARDTAAL, zetTaal } from '../i18n';
 
 import { bevestigingen } from './acties';
 import { hulpvraagVoorstel } from './hulpvraag';
+import {
+  kettingLabel,
+  puntenUitleg,
+  streakLabel,
+  weekpasLabel,
+  weekpasUitleg,
+  weekpasVoortgang,
+} from './metrics';
 import { risicoLabel, risicoUitleg } from './risico';
 import { viering } from './vieringen';
 
@@ -179,5 +187,89 @@ describe('de Risico-radar telt en formatteert per taal', () => {
         expect(tekst.length, `${taalcode}/${stand}`).toBeGreaterThan(20);
       }
     }
+  });
+});
+
+describe('reeks, Ketting en weekpassen volgen de taal', () => {
+  const pas = (over: Partial<Parameters<typeof weekpasLabel>[0]> = {}) => ({
+    voorraad: 1,
+    maximum: 2,
+    voltooideCycli: 3,
+    totVolgende: 3,
+    laatstVerbruikt: null,
+    ...over,
+  });
+
+  it('telt reeksen in enkelvoud en meervoud, in beide talen', () => {
+    zetTaal('nl');
+    expect(streakLabel(1)).toBe('1 week op rij');
+    expect(streakLabel(7)).toBe('7 weken op rij');
+    expect(streakLabel(0)).toBe('Nog geen reeks');
+
+    zetTaal('en');
+    expect(streakLabel(1)).toBe('1 week in a row');
+    expect(streakLabel(7)).toBe('7 weeks in a row');
+    expect(streakLabel(0)).toBe('No streak yet');
+  });
+
+  it('telt weekpassen in enkelvoud en meervoud', () => {
+    zetTaal('nl');
+    expect(weekpasLabel(pas({ voorraad: 1 }))).toBe('1 weekpas van 2');
+    expect(weekpasLabel(pas({ voorraad: 2 }))).toBe('2 weekpassen van 2');
+
+    zetTaal('en');
+    expect(weekpasLabel(pas({ voorraad: 1 }))).toBe('1 week pass of 2');
+    expect(weekpasLabel(pas({ voorraad: 2 }))).toBe('2 week passes of 2');
+  });
+
+  it('houdt De Ketting in beide talen bij wat er wél is', () => {
+    // ⚠️ De Ketting telt opdagen en is onderweg per definitie onaf. "1 van 3"
+    //    leest als een tekortkoming; er staat daarom nooit wat er mist. Deze
+    //    eis geldt ook voor de vertaling — een vertaler die "1 of 3" schrijft,
+    //    haalt de hele bescherming weg.
+    for (const taalcode of ['nl', 'en'] as const) {
+      zetTaal(taalcode);
+      const tekst = kettingLabel({ schakels: 1, inAanmerking: 3, voltallig: false });
+
+      expect(tekst, taalcode).not.toMatch(/van 3|of 3|nog \d|te gaan|mist|missing|left/i);
+    }
+  });
+
+  it('vertaalt de puntenuitleg met dezelfde getallen', () => {
+    // De cijfers zijn domeinregel 10 en geen tekst: +2, +1, −1, 0. Een vertaling
+    // die daaraan tornt, beschrijft een ander product.
+    for (const taalcode of ['nl', 'en'] as const) {
+      zetTaal(taalcode);
+      const tekst = puntenUitleg();
+
+      expect(tekst, taalcode).toContain('+2');
+      expect(tekst, taalcode).toContain('+1');
+      expect(tekst, taalcode).toContain('−1');
+    }
+  });
+
+  it('zegt in beide talen dat het minpunt blijft en dat je niets hoeft te doen', () => {
+    // ⚠️ De drie dingen die in WEEKPAS_UITLEG stonden en die een gebruiker er
+    //    anders verkeerd van maakt: het minpunt blijft, je hoeft niets te doen,
+    //    en het is per doel. In het Nederlands bewaakt `metrics.test.ts` dat al;
+    //    dit is de Engelse kant.
+    zetTaal('en');
+    const tekst = weekpasUitleg();
+
+    expect(tekst).toMatch(/streak/i);
+    expect(tekst).toMatch(/point/i);
+    expect(tekst).toMatch(/automatically|do not have to/i);
+    expect(tekst).toMatch(/per goal/i);
+  });
+
+  it('zegt bij een volle voorraad dat een extra pas vrijkomt en niet vervalt', () => {
+    // Migratie 0042 draaide dat om: een pas die je verdient terwijl je vol zit,
+    // vervalt niet meer. Wie zes weken doorwerkt, wil weten of dat werk ergens
+    // heen gaat.
+    zetTaal('en');
+    const tekst = weekpasVoortgang(pas({ voorraad: 2, maximum: 2 }));
+
+    expect(tekst).toMatch(/free/i);
+    expect(tekst).not.toMatch(/expire|lost/i);
   });
 });

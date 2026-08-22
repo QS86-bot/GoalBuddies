@@ -1,5 +1,7 @@
 import { en } from './en';
 import { nl, type Sleutel } from './nl';
+import { weekdagPeildatum } from '../time';
+
 import { isTaal, STANDAARDTAAL, type Taal } from './types';
 
 /**
@@ -114,6 +116,40 @@ export function getal(waarde: number, decimalen = 1): string {
     // Een omgeving zonder volledige Intl-data. Liever een puntnotatie dan een
     // lege plek in een zin.
     return String(Math.round(waarde * 10 ** decimalen) / 10 ** decimalen);
+  }
+}
+
+/**
+ * De naam van een weekdag, in de ingestelde taal.
+ *
+ * ⚠️ **Bewust geen zeven catalogussleutels per taal.** Weekdagnamen zijn
+ *    locale-data die elk platform al heeft; ze overtypen levert alleen de kans
+ *    op een tikfout in een taal die niemand hier spreekt. `Intl` doet het goed
+ *    voor élke taal die er ooit bij komt, inclusief de hoofdletterconventie —
+ *    het Engels schrijft "Monday" en het Duits "Montag", maar het Frans schrijft
+ *    "lundi" met kleine letter.
+ *
+ * ⚠️ **De datum komt uit `shared/time` en wordt hier niet gemaakt.** Dat is
+ *    correctheidsregel 7, en de lint-regel sloeg er ook op aan toen de
+ *    `Date.UTC`-aanroep nog hier stond. De verdeling is nu schoon:
+ *    `weekdagPeildatum()` weet welke datum op welke weekdag valt, en dit weet
+ *    hoe je die in de taal van de gebruiker opschrijft.
+ */
+export function weekdagNaam(weekdag: number): string {
+  const peil = weekdagPeildatum(weekdag);
+
+  try {
+    const naam = new Intl.DateTimeFormat(huidig, { weekday: 'long', timeZone: 'UTC' }).format(peil);
+
+    // ⚠️ Hoofdletter erop, en dat is een keuze over lijstitems en niet over taal.
+    //    `Intl` geeft in het Nederlands "maandag" met kleine letter — juist in een
+    //    lopende zin, maar niet in een keuzelijst, waar het vóór QS8-115
+    //    "Maandag" was. Hetzelfde geldt voor het Frans ("lundi"), waar menu's ook
+    //    met een hoofdletter beginnen. Talen die zelf al een hoofdletter geven
+    //    (Engels, Duits) veranderen hier niet.
+    return naam.charAt(0).toUpperCase() + naam.slice(1);
+  } catch {
+    return String(weekdag);
   }
 }
 

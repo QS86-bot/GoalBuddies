@@ -118,4 +118,65 @@ export const en: Record<Sleutel, string> = {
   'risico.on_track.tempo':
     'You made {gehaald} of your last {weken_bekeken}, with {mijlpalen} to go in {weken}. That will work out.',
   'risico.on_track.kaal': 'Your pace is enough for what is left.',
+
+  'weekdoel.adempauze': 'Breather',
+  'weekdoel.meegenomen': 'Carried into this week',
+  'weekdoel.afgesloten': 'Closed',
+  'weekdoel.niet_afgerond': 'Not finished',
+  'weekdoel.nog_te_doen': 'Still to do',
+  'weekdoel.plafond_gehaald': 'Ceiling reached',
+  'weekdoel.vloer_gehaald': 'Floor reached',
+  'weekdoel.gehaald': 'Done',
+  'weekdoel.wacht_op_buddy': '{wat} — waiting for your buddy',
+
+  'reeks.geen': 'No streak yet',
+  'reeks.een': '1 week in a row',
+  'reeks.meer': '{n} weeks in a row',
+
+  'ketting.niemand': 'Nobody is in yet',
+  'ketting.net_begonnen': 'The week has just started',
+  'ketting.jij_alleen': 'Your link is in',
+  'ketting.voltallig': 'Everyone is in — the chain is closed',
+  'ketting.schakels_een': '1 link this week',
+  'ketting.schakels_meer': '{n} links this week',
+
+  'weekpas.geen': 'No week pass yet',
+  'weekpas.een': '1 week pass',
+  'weekpas.meer': '{n} week passes',
+  'weekpas.van_maximum': '{wat} of {maximum}',
+
+  'punten.uitleg': 'Ceiling reached +2, floor reached +1, week missed −1, breather 0.',
+
+  'weekpas.uitleg':
+    'A week pass keeps your streak alive when you miss a week. You still get the minus ' +
+    'point for that week — a pass protects your streak, not your points. You do not have ' +
+    'to do anything: miss a week and we spend one automatically. Week passes are saved per goal.',
+
+  'weekpas.vol':
+    'You have {voorraad}, and you cannot hold more at once. Earn one while you are full and it comes free as soon as you use one.',
+  'weekpas.nog_een_week': 'One more completed week',
+  'weekpas.nog_weken': '{n} more completed weeks',
+  'weekpas.eerste': '{nog} and your first week pass is ready.',
+  'weekpas.volgende': '{nog} until the next one.',
+
+  'chat.van_jou': 'You: {tekst}',
+  'chat.van_ander': '{naam}: {tekst}',
+  'chat.weghalen': 'Remove',
+
+  'delen.gekopieerd': 'Copied — paste it into your chat',
+  'delen.mislukt': 'Sharing does not work here — select the link above',
+
+  'stand.punten': 'Points',
+  'stand.langste_reeks': 'Longest streak',
+
+  'mijlpalen.geen': 'No milestones yet',
+  'mijlpalen.voortgang': '{done} of {total} milestones',
+
+  'weekstart.label': 'My week starts on',
+  'weekstart.hint':
+    'Decides when your weekly goals start over and when your points count. ' +
+    'Changeable later; a running week just finishes out.',
+
+  'weekpas.titel': 'Week passes',
+  'weekpas.gered': 'A week pass saved your streak.',
 };

@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 import { StyleSheet, View } from 'react-native';
 
 import { radius, useTheme } from '../theme';
@@ -57,7 +59,7 @@ export function Weekpas({ stand, reddeVorigeWeek = false }: Props) {
   return (
     <View style={styles.blok} accessibilityLabel={weekpasLabel(stand)}>
       <View style={styles.kop}>
-        <Subheading>Weekpassen</Subheading>
+        <Subheading>{t('weekpas.titel')}</Subheading>
         <Caption>{weekpasLabel(stand)}</Caption>
       </View>
 
@@ -91,7 +93,7 @@ export function Weekpas({ stand, reddeVorigeWeek = false }: Props) {
       */}
       {reddeVorigeWeek ? (
         <View style={[styles.melding, { borderColor: theme.roles.brand }]}>
-          <Body>Een weekpas heeft je reeks gered.</Body>
+          <Body>{t('weekpas.gered')}</Body>
           {/*
             ⚠️ "Er is één punt afgegaan" en niet "het punt is vervallen". Dat
                eerste is wat er gebeurt — de rollover boekt −1 in het

@@ -2,7 +2,16 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { en } from './en';
 import { nl } from './nl';
-import { STANDAARDTAAL, t, TALEN, taal, taalUitApparaat, zetTaal } from './index';
+import {
+  getal,
+  STANDAARDTAAL,
+  t,
+  TALEN,
+  taal,
+  taalUitApparaat,
+  weekdagNaam,
+  zetTaal,
+} from './index';
 
 /**
  * QS8-113.
@@ -105,5 +114,48 @@ describe('de taal kiezen', () => {
     // Wordt rood zodra er een taal bij komt — met opzet, want dan moet er ook
     // een catalogus bij, en dan hoort iemand de aanspreekvorm vast te leggen.
     expect([...TALEN]).toEqual(['nl', 'en']);
+  });
+});
+
+describe('opmaak die geen catalogus nodig heeft', () => {
+  it('schrijft getallen met het decimaalteken van de taal', () => {
+    zetTaal('nl');
+    expect(getal(0.5)).toBe('0,5');
+
+    zetTaal('en');
+    expect(getal(0.5)).toBe('0.5');
+  });
+
+  it('rondt af op één decimaal, want meer suggereert precisie die er niet is', () => {
+    zetTaal('nl');
+    expect(getal(0.44)).toBe('0,4');
+    expect(getal(2)).toBe('2');
+  });
+
+  it('noemt de weekdagen in de taal van de gebruiker', () => {
+    // ⚠️ Deze namen komen uit `Intl` en staan bewust niet in de catalogus: zeven
+    //    sleutels per taal overtypen levert alleen de kans op een tikfout in een
+    //    taal die hier niemand spreekt.
+    // ⚠️ Mét hoofdletter. `Intl` geeft in het Nederlands "maandag" — juist in een
+    //    lopende zin, maar dit is een keuzelijst, en daar stond vóór QS8-115
+    //    "Maandag". Die keuze mag de vertaling niet stilletjes ongedaan maken.
+    zetTaal('nl');
+    expect(weekdagNaam(1)).toBe('Maandag');
+    expect(weekdagNaam(0)).toBe('Zondag');
+
+    zetTaal('en');
+    expect(weekdagNaam(1)).toBe('Monday');
+    expect(weekdagNaam(0)).toBe('Sunday');
+  });
+
+  it('geeft zeven verschillende dagnamen, in beide talen', () => {
+    // De nummering is die van Postgres en van `shared/time`: 0 = zondag. Een
+    // verschuiving van één zou hier zeven namen opleveren die stuk voor stuk
+    // net verkeerd zijn — en dat ziet niemand aan een lijstje.
+    for (const taalcode of ['nl', 'en'] as const) {
+      zetTaal(taalcode);
+      const namen = new Set([0, 1, 2, 3, 4, 5, 6].map(weekdagNaam));
+      expect(namen.size, taalcode).toBe(7);
+    }
   });
 });

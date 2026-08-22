@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { radius, space, useTheme } from '../theme';
@@ -83,7 +85,11 @@ export function ChatRegel({
             },
             vanMij ? styles.bubbelRechts : styles.bubbelLinks,
           ]}
-          accessibilityLabel={vanMij ? `Jij: ${body}` : `${senderName}: ${body}`}
+          accessibilityLabel={
+            vanMij
+              ? t('chat.van_jou', { tekst: body })
+              : t('chat.van_ander', { naam: senderName, tekst: body })
+          }
         >
           <Body>{body}</Body>
         </View>
@@ -95,7 +101,7 @@ export function ChatRegel({
             {tijd === undefined ? null : <Caption>{tijd}</Caption>}
             {onWeghalen === undefined ? null : (
               <Pressable onPress={onWeghalen} accessibilityRole="button">
-                <Caption>Weghalen</Caption>
+                <Caption>{t('chat.weghalen')}</Caption>
               </Pressable>
             )}
           </View>
