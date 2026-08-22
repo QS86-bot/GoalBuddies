@@ -238,4 +238,48 @@ export const en: Record<Sleutel, string> = {
 
   'weekpas.titel': 'Week passes',
   'weekpas.gered': 'A week pass saved your streak.',
+
+  'voltooiing.notitie_nodig':
+    'Add a short note about what you did. Your buddy needs something to respond to.',
+  'voltooiing.geweigerd':
+    'Your submission was refused. Does your group ask for a note? One sentence is enough; ' +
+    'at most 2000 characters.',
+  'voltooiing.afronden_mislukt': 'Submitting did not work. Please try again.',
+  'voltooiing.opslaan_mislukt': 'Saving did not work. Please try again.',
+  'voltooiing.dagzet_laden': 'Your daily notes could not be loaded.',
+  'voltooiing.invoer': 'Check what you entered.',
+
+  'beoordeling.laden_mislukt': 'The reviews could not be loaded.',
+  'beoordeling.een_buddy': 'A buddy',
+  'beoordeling.vraag_nodig':
+    'Add your question — without one your buddy does not know what to add.',
+  'beoordeling.al_beoordeeld': 'You have already reviewed this week for your buddy.',
+  'beoordeling.mislukt': 'Reviewing did not work. Refresh the list and try again.',
+  'beoordeling.bijdrage_laden': 'Your buddy contribution could not be loaded.',
+
+  'opnieuw.geen_niveau': 'Choose whether you reached the floor or the ceiling.',
+  'opnieuw.niet_van_jou': 'This weekly goal is not yours.',
+  'opnieuw.al_goedgekeurd': 'This week is already approved. There is nothing left to replace.',
+  'opnieuw.niets_ingediend': 'Nothing has been submitted for this week yet.',
+  'opnieuw.notitie_vereist': 'This group asks for a short note when you submit.',
+  'opnieuw.mislukt': 'Resubmitting did not work. Please try again in a moment.',
+  'opnieuw.mislukt_kort': 'Resubmitting did not work.',
+
+  'intrekken.bestaat_niet': 'This approval no longer exists.',
+  'intrekken.niet_van_jou': 'Only you can withdraw your own approval.',
+  'intrekken.te_laat':
+    'The fifteen minutes to undo this have passed. Ask your buddy to submit the week ' +
+    'again if something is off.',
+  'intrekken.al_gedaan': 'You have already withdrawn this approval.',
+  'intrekken.mislukt': 'Withdrawing did not work. Please try again in a moment.',
+  'intrekken.mislukt_kort': 'Withdrawing did not work.',
+
+  'validatie.notitie_lang': 'At most 2000 characters.',
+  'validatie.dagzet_leeg': 'One line is enough, but it cannot be empty.',
+  'validatie.reactie_lang': 'Keep it short — at most 1000 characters.',
+
+  'coach.starten_mislukt': 'The Goal Coach could not be started.',
+  'coach.niet_jouw_doel': 'This goal is not yours.',
+  'coach.niet_ingelogd': 'You are no longer signed in.',
+  'coach.afronden_mislukt': 'The Goal Coach could not finish the request.',
 };

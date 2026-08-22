@@ -336,6 +336,61 @@ export const nl = {
 
   'weekpas.titel': 'Weekpassen',
   'weekpas.gered': 'Een weekpas heeft je reeks gered.',
+
+  // ---------------------------------------------------------------------------
+  // Voltooiingen en peer-goedkeuring — EPIC 6
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Een afgekeurde week heet hier nooit "afgekeurd". "Vertel me meer" is een
+  //    vraag en geen oordeel, en dat verschil is het hele punt van peer-review in
+  //    dit product: een buddy die om uitleg vraagt, helpt; een buddy die afkeurt,
+  //    beoordeelt. Houd dat vast in élke vertaling.
+  'voltooiing.notitie_nodig':
+    'Schrijf er kort bij wat je gedaan hebt. Je buddy heeft iets nodig om op te reageren.',
+  'voltooiing.geweigerd':
+    'Je afronding werd geweigerd. Vraagt je groep om een notitie? Eén zin is genoeg; ' +
+    'maximaal 2000 tekens.',
+  'voltooiing.afronden_mislukt': 'Afronden lukte niet. Probeer het opnieuw.',
+  'voltooiing.opslaan_mislukt': 'Opslaan lukte niet. Probeer het opnieuw.',
+  'voltooiing.dagzet_laden': 'Je Dagzetten konden niet geladen worden.',
+  'voltooiing.invoer': 'Controleer je invoer.',
+
+  'beoordeling.laden_mislukt': 'De beoordelingen konden niet geladen worden.',
+  'beoordeling.een_buddy': 'Een buddy',
+  'beoordeling.vraag_nodig':
+    'Stel je vraag erbij — zonder vraag weet je buddy niet wat hij moet aanvullen.',
+  'beoordeling.al_beoordeeld': 'Je hebt deze week van je buddy al beoordeeld.',
+  'beoordeling.mislukt': 'Beoordelen lukte niet. Ververs de lijst en probeer het opnieuw.',
+  'beoordeling.bijdrage_laden': 'Je buddy-bijdrage kon niet geladen worden.',
+
+  'opnieuw.geen_niveau': 'Kies of je de vloer of het plafond gehaald hebt.',
+  'opnieuw.niet_van_jou': 'Dit weekdoel is niet van jou.',
+  'opnieuw.al_goedgekeurd': 'Deze week is al goedgekeurd. Er valt niets meer te vervangen.',
+  'opnieuw.niets_ingediend': 'Er staat nog niets ingediend voor deze week.',
+  'opnieuw.notitie_vereist': 'Deze groep vraagt om een korte notitie bij het afronden.',
+  'opnieuw.mislukt': 'Opnieuw indienen lukte niet. Probeer het zo nog eens.',
+  'opnieuw.mislukt_kort': 'Opnieuw indienen lukte niet.',
+
+  'intrekken.bestaat_niet': 'Deze goedkeuring bestaat niet meer.',
+  'intrekken.niet_van_jou': 'Alleen jij kunt je eigen goedkeuring intrekken.',
+  'intrekken.te_laat':
+    'Het kwartier om dit terug te draaien is voorbij. Vraag je buddy om de week ' +
+    'opnieuw in te dienen als er iets niet klopt.',
+  'intrekken.al_gedaan': 'Je hebt deze goedkeuring al ingetrokken.',
+  'intrekken.mislukt': 'Intrekken lukte niet. Probeer het zo nog eens.',
+  'intrekken.mislukt_kort': 'Intrekken lukte niet.',
+
+  'validatie.notitie_lang': 'Maximaal 2000 tekens.',
+  'validatie.dagzet_leeg': 'Eén regel is genoeg, maar leeg kan niet.',
+  'validatie.reactie_lang': 'Hou het kort — maximaal 1000 tekens.',
+
+  // ---------------------------------------------------------------------------
+  // De Doelcoach — EPIC 3
+  // ---------------------------------------------------------------------------
+  'coach.starten_mislukt': 'De Doelcoach kon niet gestart worden.',
+  'coach.niet_jouw_doel': 'Dit doel is niet van jou.',
+  'coach.niet_ingelogd': 'Je bent niet meer ingelogd.',
+  'coach.afronden_mislukt': 'De Doelcoach kon het verzoek niet afronden.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

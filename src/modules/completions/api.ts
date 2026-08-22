@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -21,7 +23,7 @@ export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: strin
 
 export const afrondSchema = z.object({
   achieved_level: z.enum(['floor', 'ceiling']),
-  note: z.string().trim().max(2000, { error: 'Maximaal 2000 tekens.' }).nullable(),
+  note: z.string().trim().max(2000, { error: () => t('validatie.notitie_lang') }).nullable(),
 });
 
 export type AfrondInvoer = z.infer<typeof afrondSchema>;
@@ -57,14 +59,14 @@ export async function rondAf(
 ): Promise<Resultaat<Voltooiing>> {
   const gevalideerd = afrondSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
   }
 
   const notitie = gevalideerd.data.note?.trim() ?? '';
   if (eis !== 'optional' && notitie.length === 0) {
     return {
       ok: false,
-      melding: 'Schrijf er kort bij wat je gedaan hebt. Je buddy heeft iets nodig om op te reageren.',
+      melding: t('voltooiing.notitie_nodig'),
     };
   }
 
@@ -92,13 +94,11 @@ export async function rondAf(
     if (error.code === '23514') {
       return {
         ok: false,
-        melding:
-          'Je afronding werd geweigerd. Vraagt je groep om een notitie? Eén zin is genoeg; ' +
-          'maximaal 2000 tekens.',
+        melding: t('voltooiing.geweigerd'),
       };
     }
 
-    return { ok: false, melding: 'Afronden lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('voltooiing.afronden_mislukt') };
   }
 
   // ⚠️ Geen tweede verzoek om de status op `pending` te zetten. Sinds migratie
@@ -185,8 +185,8 @@ export const dagzetSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: 'Eén regel is genoeg, maar leeg kan niet.' })
-    .max(2000, { error: 'Maximaal 2000 tekens.' }),
+    .min(1, { error: () => t('validatie.dagzet_leeg') })
+    .max(2000, { error: () => t('validatie.notitie_lang') }),
   weekly_goal_id: z.uuid().nullable(),
   visibility: z.enum(['private', 'group']),
 });
@@ -211,7 +211,7 @@ export async function zetDagzet(
 ): Promise<Resultaat<DagZet>> {
   const gevalideerd = dagzetSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
   }
 
   const { data, error } = await supabase()
@@ -228,7 +228,7 @@ export async function zetDagzet(
 
   if (error) {
     reportError(error, 'moves.create', { user_id: userId, code: error.code });
-    return { ok: false, melding: 'Opslaan lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('voltooiing.opslaan_mislukt') };
   }
 
   return { ok: true, waarde: data };
@@ -250,7 +250,7 @@ export async function fetchDagzetten(
 
   if (error) {
     reportError(error, 'moves.list', { user_id: userId, code: error.code });
-    throw new Error('Je Dagzetten konden niet geladen worden.');
+    throw new Error(t('voltooiing.dagzet_laden'));
   }
 
   return data ?? [];
