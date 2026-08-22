@@ -107,7 +107,7 @@ export {
 
 export {
   kentGebeurtenis,
-  OUD_LID,
+  oudLid,
   systeemberichtTekst,
   type SysteembericthInvoer,
 } from './systeemberichten';

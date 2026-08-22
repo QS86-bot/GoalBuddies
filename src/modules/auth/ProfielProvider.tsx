@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { reportError } from '../../lib/observability';
+import { zetTaal } from '../../shared/i18n';
 
 import { fetchProfiel, type Profiel } from './profile';
 import { useSession } from './SessionProvider';
@@ -57,6 +58,16 @@ export function ProfielProvider({ children }: { readonly children: React.ReactNo
       .then((gevonden) => {
         if (!levend) return;
         setProfiel(gevonden);
+
+        // ⚠️ De taal volgt het profiel zodra dat binnen is — QS8-113.
+        //
+        //    Alleen als er écht een keuze staat. `locale` is `null` zolang de
+        //    gebruiker niets gekozen heeft, en dan blijft de taal gelden die
+        //    `_layout` uit het apparaat heeft afgeleid. Zou hier altijd gezet
+        //    worden, dan krijgt iemand met een Engelse telefoon bij elke start
+        //    Nederlands terug — dat is precies waarom `locale` nullable is.
+        if (gevonden?.locale) zetTaal(gevonden.locale);
+
         setError(null);
       })
       .catch((fout: unknown) => {

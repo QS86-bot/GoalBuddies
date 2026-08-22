@@ -11,6 +11,7 @@ import {
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
 import { expoPush, registreerPushToken, zetPushBron } from '@/modules/notifications';
+import { apparaatVoorkeuren, taalUitApparaat, zetTaal } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -82,6 +83,13 @@ function Shell() {
  *    `docs/DEPLOY.md`.
  */
 zetPushBron(expoPush);
+
+// ⚠️ De taal van het apparaat als startwaarde — QS8-113. Zodra het profiel
+//    geladen is en er een keuze in staat, wint die (zie `ProfielProvider`).
+//    Buiten de component en niet in een effect: dit moet vaststaan vóórdat het
+//    eerste scherm rendert, anders flitst er een Nederlandse regel voorbij bij
+//    iemand die Engels heeft ingesteld.
+zetTaal(taalUitApparaat(apparaatVoorkeuren()));
 
 function Pushwacht() {
   const { session } = useSession();

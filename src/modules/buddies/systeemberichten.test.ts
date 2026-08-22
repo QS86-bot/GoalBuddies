@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { SYSTEEM_GEBEURTENISSEN } from './chat-schemas';
-import { kentGebeurtenis, OUD_LID, systeemberichtTekst } from './systeemberichten';
+import { kentGebeurtenis, oudLid, systeemberichtTekst } from './systeemberichten';
 
 /**
  * QS8-107 stap 2.
@@ -83,7 +83,7 @@ describe('de zinnen zelf', () => {
       invoer({ system_event: 'group_sleeping', subject_name: null }),
     );
 
-    expect(tekst).not.toContain(OUD_LID);
+    expect(tekst).not.toContain(oudLid());
     expect(tekst).toContain('groep');
   });
 });
@@ -93,8 +93,8 @@ describe('iemand die er niet meer is', () => {
     // ⚠️ Dit is het gedrag dat `on delete set null` op `subject_id` oplevert
     //    (0059, in de lijn van 0031 en 0033): de rij blijft, de persoon niet.
     //    Een lege naam midden in een zin leest als een storing.
-    expect(systeemberichtTekst(invoer({ subject_name: null }))).toBe(`${OUD_LID} doet mee.`);
-    expect(systeemberichtTekst(invoer({ subject_name: '   ' }))).toBe(`${OUD_LID} doet mee.`);
+    expect(systeemberichtTekst(invoer({ subject_name: null }))).toBe(`${oudLid()} doet mee.`);
+    expect(systeemberichtTekst(invoer({ subject_name: '   ' }))).toBe(`${oudLid()} doet mee.`);
   });
 
   it('doet hetzelfde met de bevestiger', () => {
@@ -102,7 +102,7 @@ describe('iemand die er niet meer is', () => {
       invoer({ system_event: 'completion_approved', actor_name: null }),
     );
 
-    expect(tekst).toBe(`${OUD_LID} bevestigde de week van Sanne.`);
+    expect(tekst).toBe(`${oudLid()} bevestigde de week van Sanne.`);
   });
 });
 

@@ -1,3 +1,5 @@
+import { t, type Sleutel } from '../../shared/i18n';
+
 import { SYSTEEM_GEBEURTENISSEN } from './chat-schemas';
 
 /**
@@ -26,8 +28,16 @@ import { SYSTEEM_GEBEURTENISSEN } from './chat-schemas';
  *    zijn zonder database en zonder renderer.
  */
 
-/** Hoe iemand heet die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
-export const OUD_LID = 'Een oud-lid';
+/**
+ * Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002.
+ *
+ * ⚠️ Sinds QS8-113 komt deze tekst uit de catalogus. Hij blijft hier
+ *    geëxporteerd omdat tests en schermen ernaar verwijzen, maar hij is geen
+ *    constante meer: hij hangt van de ingestelde taal af.
+ */
+export function oudLid(): string {
+  return t('algemeen.oud_lid');
+}
 
 export interface SysteembericthInvoer {
   readonly system_event: string | null;
@@ -49,56 +59,32 @@ export interface SysteembericthInvoer {
 /** Een naam, of de nette vervanging als hij er niet meer is. */
 function naam(waarde: string | null): string {
   const schoon = (waarde ?? '').trim();
-  return schoon === '' ? OUD_LID : schoon;
+  return schoon === '' ? oudLid() : schoon;
 }
 
 /**
  * De zin die in de groepschat komt te staan.
  *
+ * ⚠️ **Sinds QS8-113 loopt dit via de catalogus.** De sleutel is
+ *    `systeembericht.<gebeurtenis>`, wat betekent dat een nieuwe gebeurtenis op
+ *    drie plekken moet: de CHECK in de database, `SYSTEEM_GEBEURTENISSEN`, en
+ *    élke taalcatalogus. Dat is met opzet lastig — een systeembericht is het
+ *    kanaal dat de groep vertrouwt, en er staat een test op alle drie.
+ *
  * Geeft altijd iets terug. Een lege regel in een gesprek leest als een storing,
  * en dat is precies wat een systeembericht niet mag zijn.
  */
 export function systeemberichtTekst(invoer: SysteembericthInvoer): string {
-  const wie = naam(invoer.subject_name);
-
-  switch (invoer.system_event) {
-    case 'member_joined':
-      return `${wie} doet mee.`;
-
-    case 'completion_pending':
-      return `${wie} heeft een week afgerond en wacht op bevestiging.`;
-
-    case 'completion_approved':
-      // De enige met twee personen. `actor` bevestigde de week van `wie`.
-      return `${naam(invoer.actor_name)} bevestigde de week van ${wie}.`;
-
-    case 'milestone_done':
-      return `${wie} heeft een mijlpaal gehaald.`;
-
-    case 'goal_completed':
-      return `${wie} heeft een doel afgerond.`;
-
-    case 'commitment_unlocked':
-      return `${wie} heeft een beloning vrijgespeeld.`;
-
-    case 'commitment_due':
-      // ⚠️ Nuchter, niet vernederend — QS8-84. Deze persoon heeft dit zichzelf
-      //    vooraf opgelegd en bevestigd, en dit is de enige benoemde uitzondering
-      //    op domeinregel 7. De zin zegt wát er gebeurd is en oordeelt niet.
-      return `De inzet die ${wie} zelf heeft ingesteld, is verschuldigd geworden.`;
-
-    case 'deadline_requested':
-      return `${wie} vraagt de groep om een streefdatum te verschuiven.`;
-
-    case 'group_sleeping':
-      // De enige zonder persoon: hij gaat over de groep, niet over iemand.
-      return 'Deze groep is stil geworden. Eén bericht maakt hem weer wakker.';
-
-    default:
-      // Onbekende gebeurtenis: de opgeslagen zin, of niets tonen als die er ook
-      // niet is. Geen "onbekend bericht" — dat is ruis in een gesprek.
-      return invoer.body.trim();
+  if (!kentGebeurtenis(invoer.system_event)) {
+    // Onbekende gebeurtenis: de opgeslagen zin, of niets tonen als die er ook
+    // niet is. Geen "onbekend bericht" — dat is ruis in een gesprek.
+    return invoer.body.trim();
   }
+
+  return t(`systeembericht.${invoer.system_event}` as Sleutel, {
+    naam: naam(invoer.subject_name),
+    actor: naam(invoer.actor_name),
+  });
 }
 
 /**
