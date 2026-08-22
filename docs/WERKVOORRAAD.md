@@ -87,6 +87,19 @@ Lees dit eerst; de rest is naslag.
   Het interview, het coachscherm, opnieuw genereren en het kostenoverzicht
   staan. Alleen QS8-41 (weekdoelen per mijlpaal) blijft open en die is
   `phase:v2`.
+* ✅ **De app is live op `goalbuddies.q-projects.tech`** (QS8-99/QS8-100). Zie
+  §0a — deployen is `npm run deploy`, en de secret-scan daarin is aantoonbaar
+  werkend: er is met opzet een service-role-key in `dist/` gezet en de deploy
+  sloeg af met de vindplaats erbij. **Een controle die nog nooit rood is geweest,
+  is een aanname en geen controle** — dat geldt breder dan hier.
+* ✅ **`expo-notifications` staat erin** (Q-TODO B4). Het was inderdaad één
+  regel, zoals `tokens.ts` beloofde. ⚠️ Maar QS8-91 is **niet** af: de web-kant
+  van push ontbreekt en de app draait alléén op het web, dus er komt vandaag geen
+  enkele melding aan. Zie **QS8-114**.
+* ✅ **Vertaalinfrastructuur zonder bibliotheek** (QS8-113, migratie 0061).
+  `shared/i18n` met `nl` en `en`, `profiles.locale`, en de Doelcoach spreekt de
+  taal van de gebruiker — server-side uit het profiel, niet uit de job-invoer.
+  De ~54 bestanden met schermtekst staan als **QS8-115**.
 * ✅ **EPIC 9 (commitment device) is af** — QS8-83 en QS8-84, migraties 0057 en
   0058, en voor het eerst écht gedraaid tegen het project (19 tests in
   `tests/rls/epic9.test.ts`). Beslissingen in `docs/decisions/003-...md`.
