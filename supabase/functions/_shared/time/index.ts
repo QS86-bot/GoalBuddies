@@ -44,5 +44,6 @@ export {
   klokTijd,
   localDateIn,
   toIsoDate,
+  weekdagPeildatum,
   weekdayOf,
 } from './zoned.ts';

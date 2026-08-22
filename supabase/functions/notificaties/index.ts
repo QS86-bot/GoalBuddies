@@ -11,6 +11,7 @@ import {
   berichtVoor,
   magNudgen,
   nudgeBericht,
+  type Taalcode,
   uurUit,
   type Bericht,
   type Melding,
@@ -50,6 +51,8 @@ interface Profiel {
   reminder_enabled: boolean;
   reminder_time: string | null;
   reminder_tone: string | null;
+  /** De taalkeuze van de ontvanger. `null` = nog niet gekozen (migratie 0061). */
+  locale: string | null;
 }
 
 interface Token {
@@ -71,6 +74,23 @@ function rolUit(authHeader: string): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * De taal van de ontvanger — QS8-115.
+ *
+ * ⚠️ **Per ontvanger en niet per proces.** Deze job loopt over álle profielen;
+ *    een procesbrede taal (zoals `shared/i18n` die voor de app bijhoudt) zou hier
+ *    betekenen dat iedereen de taal krijgt van wie er toevallig als laatste is
+ *    ingesteld. Die fout is onzichtbaar: er komt gewoon een melding aan, alleen
+ *    in de verkeerde taal. Vandaar dat `regels.ts` een parameter neemt.
+ *
+ * ⚠️ `locale` is `null` zolang de gebruiker niets gekozen heeft. Dan wordt het de
+ *    standaardtaal — de apparaattaal is hier niet bekend en hoort dat ook niet te
+ *    zijn: een server weet niet op welk toestel dit geopend wordt.
+ */
+function taalVan(profiel: Profiel): Taalcode | null {
+  return profiel.locale === 'en' ? 'en' : null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -96,7 +116,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: profielen, error: profielFout } = await db
     .from('profiles')
-    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone');
+    .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale');
 
   if (profielFout) {
     return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
@@ -158,7 +178,7 @@ Deno.serve(async (req: Request) => {
         userId: profiel.id,
         adressen,
         soort: 'nudge',
-        bericht: nudgeBericht(toon),
+        bericht: nudgeBericht(toon, taalVan(profiel)),
         lokaleDatum,
         refId: null,
       });
@@ -184,7 +204,7 @@ Deno.serve(async (req: Request) => {
         userId: profiel.id,
         adressen,
         soort: 'approval_request',
-        bericht: berichtVoor('approval_request', { naam: rij.naam }),
+        bericht: berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
         lokaleDatum,
         refId: rij.completionId,
       });
@@ -205,7 +225,7 @@ Deno.serve(async (req: Request) => {
         userId: profiel.id,
         adressen,
         soort: 'approval_received',
-        bericht: berichtVoor('approval_received', { naam: rij.naam }),
+        bericht: berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
         lokaleDatum,
         refId: rij.approvalId,
       });
@@ -238,7 +258,7 @@ Deno.serve(async (req: Request) => {
             userId: profiel.id,
             adressen,
             soort: 'cycle_summary',
-            bericht: berichtVoor('cycle_summary', {}),
+            bericht: berichtVoor('cycle_summary', {}, taalVan(profiel)),
             lokaleDatum,
             refId: null,
           });
