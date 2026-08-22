@@ -1,3 +1,5 @@
+import { t, type Sleutel } from '../i18n';
+
 /**
  * Welke acties een weekdoel of een doel aanbiedt, en wat elke actie kost.
  *
@@ -93,45 +95,38 @@ export interface BevestigingsTekst {
  *    dashboard ontdekt (Q-TODO A33 beschrijft precies dat probleem bij de
  *    weekpas).
  */
-export const BEVESTIGING = {
-  weekdoelAfsluiten: {
-    titel: 'Deze week afsluiten?',
-    uitleg:
-      'Het weekdoel blijft staan en telt als een gemiste week zodra je week voorbij is. ' +
-      'Dat kost één punt en onderbreekt je reeks — tenzij je er een weekpas op zet. ' +
-      'Je kunt hem daarna doorschuiven naar volgende week.',
-    bevestig: 'Afsluiten',
-  },
-  weekdoelVerwijderen: {
-    titel: 'Dit weekdoel weggooien?',
-    uitleg:
-      'Alleen bedoeld voor een vergissing: een dubbele invoer, of een weekdoel onder het ' +
-      'verkeerde doel. De rij verdwijnt en er blijft niets van staan. Kan alleen kort na ' +
-      'het aanmaken en zolang je nog niets hebt ingediend.',
-    bevestig: 'Weggooien',
-  },
-  weekdoelDoorschuiven: {
-    titel: 'Meenemen naar deze week?',
-    uitleg:
-      'Je krijgt hetzelfde weekdoel opnieuw in de week die nu loopt. ' +
-      '⚠️ De gemiste week blijft gemist: het punt is al geboekt en je reeks is al ' +
-      'onderbroken. Doorschuiven verhuist het werk, het repareert je reeks niet.',
-    bevestig: 'Meenemen',
-  },
-  doelVerwijderen: {
-    titel: 'Dit doel weggooien?',
-    uitleg:
-      'Alleen bedoeld voor een doel dat je net per ongeluk hebt aangemaakt. Het kan zolang ' +
-      'er niets aan hangt: geen weekdoelen, geen punten, niet gedeeld met een groep. ' +
-      'Heeft je doel wél geschiedenis, archiveer het dan — dan blijft alles bewaard.',
-    bevestig: 'Weggooien',
-  },
-  doelAfronden: {
-    titel: 'Dit doel afronden?',
-    uitleg:
-      'Elke groep waaraan dit doel hangt, krijgt een bericht dat je het afgerond hebt, en een ' +
-      'chatbericht haal je niet meer weg. Je beloning komt vrij en wordt ook gemeld; een straf ' +
-      'die je had ingesteld, vervalt. Terugzetten kan niet.',
-    bevestig: 'Afronden',
-  },
-} as const satisfies Record<string, BevestigingsTekst>;
+/**
+ * De bevestigingsteksten, uit de catalogus — QS8-113.
+ *
+ * ⚠️ **Een functie en geen constante, en dat is het hele verschil.** De teksten
+ *    hangen sinds QS8-113 van de ingestelde taal af, dus een `const` zou de taal
+ *    vastleggen op het moment dat deze module voor het eerst geïmporteerd wordt —
+ *    en dat is vóórdat het profiel geladen is. Iemand met Engels ingesteld zou
+ *    dan Nederlandse bevestigingen krijgen tot hij de app herstart.
+ *
+ * ⚠️ De sleutels blijven hetzelfde (`weekdoelAfsluiten` en niet
+ *    `bevestiging.weekdoel_afsluiten`), zodat de aanroepers ongemoeid blijven.
+ *    De catalogus is een implementatiedetail van dit bestand.
+ */
+export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
+  const bouw = (sleutel: string): BevestigingsTekst => ({
+    titel: t(`${sleutel}.titel` as Sleutel),
+    uitleg: t(`${sleutel}.uitleg` as Sleutel),
+    bevestig: t(`${sleutel}.knop` as Sleutel),
+  });
+
+  return {
+    weekdoelAfsluiten: bouw('bevestiging.weekdoel_afsluiten'),
+    weekdoelVerwijderen: bouw('bevestiging.weekdoel_verwijderen'),
+    weekdoelDoorschuiven: bouw('bevestiging.weekdoel_doorschuiven'),
+    doelVerwijderen: bouw('bevestiging.doel_verwijderen'),
+    doelAfronden: bouw('bevestiging.doel_afronden'),
+  };
+}
+
+export type BevestigingsNaam =
+  | 'weekdoelAfsluiten'
+  | 'weekdoelVerwijderen'
+  | 'weekdoelDoorschuiven'
+  | 'doelVerwijderen'
+  | 'doelAfronden';

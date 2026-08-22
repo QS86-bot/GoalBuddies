@@ -36,7 +36,8 @@ export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
 export {
-  BEVESTIGING,
+  bevestigingen,
+  type BevestigingsNaam,
   weekdoelActies,
   type BevestigingsTekst,
   type WeekdoelActies,

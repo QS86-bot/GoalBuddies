@@ -50,7 +50,7 @@ import { space } from '@/shared/theme';
 import { localDateIn, nextCycle, now, type IsoDate, type UserClock } from '@/shared/time';
 import {
   AsyncView,
-  BEVESTIGING,
+  bevestigingen,
   Bevestiging,
   Body,
   Button,
@@ -733,7 +733,7 @@ function Afronden({
   if (vraagt) {
     return (
       <Bevestiging
-        tekst={BEVESTIGING.doelAfronden}
+        tekst={bevestigingen().doelAfronden}
         bezig={bezig}
         fout={fout}
         onBevestig={() => void rond()}
@@ -1733,7 +1733,7 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
   if (vraagt) {
     return (
       <Bevestiging
-        tekst={BEVESTIGING.doelVerwijderen}
+        tekst={bevestigingen().doelVerwijderen}
         bezig={bezig}
         fout={fout}
         onBevestig={() => void weg()}

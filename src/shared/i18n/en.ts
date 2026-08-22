@@ -37,4 +37,51 @@ export const en: Record<Sleutel, string> = {
   'auth.fout.ongeldig': 'That email address and password don’t match.',
   'auth.fout.algemeen': 'Logging in didn’t work. Please try again in a moment.',
   'auth.fout.bestaat_al': 'There’s already an account with this email address.',
+
+  'bevestiging.weekdoel_afsluiten.titel': 'Close this week?',
+  'bevestiging.weekdoel_afsluiten.uitleg':
+    'The weekly goal stays, and counts as a missed week once your week is over. ' +
+    'That costs one point and breaks your streak — unless you spend a week pass on it. ' +
+    'You can carry it over to next week afterwards.',
+  'bevestiging.weekdoel_afsluiten.knop': 'Close',
+
+  'bevestiging.weekdoel_verwijderen.titel': 'Delete this weekly goal?',
+  'bevestiging.weekdoel_verwijderen.uitleg':
+    'Only meant for a mistake: a duplicate entry, or a weekly goal under the wrong goal. ' +
+    'The row disappears and nothing is kept. Only possible shortly after creating it, ' +
+    'and as long as you have not submitted anything.',
+  'bevestiging.weekdoel_verwijderen.knop': 'Delete',
+
+  'bevestiging.weekdoel_doorschuiven.titel': 'Carry over to this week?',
+  'bevestiging.weekdoel_doorschuiven.uitleg':
+    'You get the same weekly goal again in the week that is running now. ' +
+    '⚠️ The missed week stays missed: the point is already booked and your streak is ' +
+    'already broken. Carrying over moves the work, it does not repair your streak.',
+  'bevestiging.weekdoel_doorschuiven.knop': 'Carry over',
+
+  'bevestiging.doel_verwijderen.titel': 'Delete this goal?',
+  'bevestiging.doel_verwijderen.uitleg':
+    'Only meant for a goal you just created by accident. It works as long as nothing ' +
+    'hangs off it: no weekly goals, no points, not shared with a group. ' +
+    'Does your goal have history? Archive it instead — then everything is kept.',
+  'bevestiging.doel_verwijderen.knop': 'Delete',
+
+  'bevestiging.doel_afronden.titel': 'Complete this goal?',
+  'bevestiging.doel_afronden.uitleg':
+    'Every group this goal is linked to gets a message that you completed it, and a chat ' +
+    'message cannot be taken back. Your reward is released and announced too; a penalty ' +
+    'you had set expires. This cannot be undone.',
+  'bevestiging.doel_afronden.knop': 'Complete',
+
+  'viering.weekdoel.titel': 'Your week is confirmed',
+  'viering.weekdoel.tekst': 'A buddy approved your week. It counts.',
+  'viering.mijlpaal.titel': 'Milestone reached',
+  'viering.mijlpaal.tekst': 'A piece of your goal is done. This one is worth pausing for.',
+  'viering.doel.titel': 'Your goal is done',
+  'viering.doel.tekst': 'You saw this through from start to finish. Most people do not.',
+
+  'hulpvraag.opening': 'I am behind on "{doel}".',
+  'hulpvraag.tijd_een_week': ' I have 1 week left.',
+  'hulpvraag.tijd_weken': ' I have {weken} weeks left.',
+  'hulpvraag.slot': ' Any ideas?',
 };
