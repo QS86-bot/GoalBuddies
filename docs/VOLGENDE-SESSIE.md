@@ -61,7 +61,8 @@ Twee richtingen:
 * **Een eigen testproject** met een eigen quotum. Schoner, maar het vraagt een
   tweede Supabase-project en dus een besluit van Quinten over kosten.
 
-Overleg de keuze; bouw hem niet zomaar.
+Staat als **QS8-116** in Linear, met beide richtingen uitgeschreven. Overleg de
+keuze; bouw hem niet zomaar.
 
 ---
 

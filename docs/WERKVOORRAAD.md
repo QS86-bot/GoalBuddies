@@ -156,8 +156,9 @@ Lees dit eerst; de rest is naslag.
   opgelost is, is "npm test is groen" geen bewijs meer over domeinregel 7.
 
   Twee richtingen: accounts hergebruiken over suites heen (één set fixtures voor
-  de hele run), of een eigen testproject met een eigen quotum. **Dit hoort vóór
-  de resterende i18n-slice.**
+  de hele run), of een eigen testproject met een eigen quotum. Staat als
+  **QS8-116** in Linear, met de afweging uitgeschreven. **Dit hoort vóór de
+  resterende i18n-slice.**
 * Site URL: `https://goalbuddies.q-projects.tech`
 * Redirect URLs: `https://goalbuddies.q-projects.tech/**` en
   `http://localhost:8081/**`
