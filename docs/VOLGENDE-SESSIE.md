@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12, 11, 3 en 9.
+> **Laatst bijgewerkt:** 22-08-2026, na EPIC 9, de deploy en de i18n-infrastructuur.
 
 ---
 
@@ -171,6 +171,34 @@ profiel aan de beurt is: de opruiming verbergt de bug. Er staat nu een test in
 staan. **Als een test groen is doordat de opruimvolgorde het probleem wegneemt,
 bewijst hij niets** — dat is dezelfde vorm als de weekpasmelding van 19-08.
 
+**De app staat live: `goalbuddies.q-projects.tech`.** Deployen is `npm run deploy`
+(zie WERKVOORRAAD §0a). Je hebt daarvoor eenmalig `HOSTINGER_API_TOKEN` in `.env`
+nodig — de eerste deploy liep via de MCP-koppeling.
+
+**EPIC 9 draait in productie.** De rollover maakt straffen verschuldigd; dat is
+end-to-end bewezen en de testdata is opgeruimd.
+
+⚠️ **Twee dingen wachten op Quinten en op niemand anders:**
+
+1. **Supabase Auth** — Site URL en redirect-URL's staan nog op het oude adres.
+   Dashboardhandeling, exacte waarden in `docs/DEPLOY.md` §3. Tot dan wijst de
+   bevestigingslink in elke aanmeldmail verkeerd.
+2. **Er komt geen enkele melding aan.** `expo-notifications` is ingeplugd, maar
+   web push ontbreekt (VAPID + service worker, **QS8-114**) en de app draait
+   alléén op het web. Dat is de zwaarste openstaande MVP-taak.
+
+**Vertaalinfrastructuur staat** (QS8-113, migratie 0061): `shared/i18n` met een
+eigen catalogus — bewust geen i18next of lingui, want die lossen problemen op die
+dit project niet heeft. `systeemberichten.ts` loopt er volledig doorheen en is de
+referentie voor de rest. De ~54 bestanden met schermtekst staan als **QS8-115**.
+
+⚠️ **De les van deze ronde, en hij is niet nieuw maar wel duurder geworden.**
+Drie issues bleken al gebouwd maar nooit afgevinkt (QS8-102, QS8-77, eerder
+QS8-47 en QS8-112). Steeds dezelfde vorm: **het onderdeel is getest, de keten
+niet.** Er staat nu een voorstel in `ENGINEER-REVIEW.md` voor een controle die
+elke trigger en definer-functie opsomt die door geen enkel pad in `src/` of
+`app/` bereikbaar is. Dat is statisch af te leiden en had alle vier gevonden.
+
 ## WERKAFSPRAKEN — houd deze aan
 
 1. **Eén branch per epic**, niet per issue. Na groene typecheck/lint/test/build
@@ -180,7 +208,7 @@ bewijst hij niets** — dat is dezelfde vorm als de weekpasmelding van 19-08.
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-   **Nummer verder vanaf 0061.** Elke migratie idempotent, met een rollback-pad
+   **Nummer verder vanaf 0062.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller.** Staat er "skipped" bij

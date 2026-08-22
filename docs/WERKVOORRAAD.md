@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 21-08-2026 (na EPIC 12, 11, 3 en 9)
+**Laatst bijgewerkt:** 22-08-2026 (na EPIC 9, de deploy, en de i18n-infrastructuur)
 
 ---
 
@@ -106,55 +106,48 @@ Lees dit eerst; de rest is naslag.
 
 ---
 
-## 0a. ⚠️ Het enige dat nog open staat van EPIC 9
+## 0a. ✅ De app staat live — en wat er nog handmatig moet
 
-**De rollover moet opnieuw gedeployd worden.** Eén commando:
+**`goalbuddies.q-projects.tech` bestaat sinds 21-08-2026.** Subdomein met een
+eigen documentroot (`public_html/goalbuddies`), HTTPS actief, DNS gecontroleerd.
 
-```bash
-npx supabase functions deploy rollover --project-ref wehgocadxehottiiyvsc
-```
-
-Waarom het moet: `supabase/functions/rollover/index.ts` roept sinds deze ronde
-`maak_straffen_verschuldigd()` aan met de lokale datum van elke eigenaar. De
-database-kant staat er (0057, getest), de gedeployde functie kent hem nog niet.
-Tot die deploy wordt **geen enkele straf verschuldigd in productie**, terwijl
-alles eromheen wél werkt — precies het faalgeval waar valkuil 15 over gaat: de
-repo en het platform lopen uit elkaar en niets geeft een signaal.
-
-⚠️ Draai `npm run edge:sync` vóór de deploy. Dat is al gebeurd in deze sessie,
-maar doe het opnieuw als er intussen iets in `src/shared/time` veranderd is.
-
-Verifiëren na de deploy — het antwoord hoort nu een veld `verschuldigd` te
-bevatten:
+Deployen is één commando:
 
 ```bash
-curl -X POST "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/rollover" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"
+npm run deploy
 ```
 
-Staat `verschuldigd` er niet in, dan draait de oude versie nog.
+Dat controleert de env, bouwt, schrijft de `.htaccess`, **scant de bundel op
+geheimen**, pakt in, uploadt en zet live. Alleen kijken wat er zóu vertrekken:
+`npm run deploy:droog`. Volledig beschreven in `docs/DEPLOY.md` §3.
 
----
+⚠️ **Je hebt `HOSTINGER_API_TOKEN` in `.env` nodig.** De eerste deploy is via de
+MCP-koppeling gedaan; het script gebruikt een gewoon API-token. Maak er een in
+hpanel → Account → API.
 
-* ✅ **QS8-102, QS8-77 en QS8-107 stap 2 zijn af** (21-08). De eerste twee waren
-  in feite al gebouwd maar niet afgevinkt; bij QS8-102 ontbrak nog de test die
-  bewijst dat een eigenaar zijn doel niet zélf op `completed` kan zetten.
-  **Systeemberichten dragen sinds migratie 0059 hun parameters als kolommen** in
-  plaats van een uitgeschreven Nederlandse zin — het deel van de
-  vertaalinfrastructuur dat na de eerste echte gesprekken niet meer kon. De rest
-  van de meertaligheid staat als QS8-113 en wacht op een dependency-besluit.
-* ⚠️ **0059 introduceerde een bug die 0060 dezelfde dag dichtte, en die is het
-  onthouden waard.** `subject_id` kreeg `on delete set null` én een harde
-  terugzetting in `stamp_chat_message()` — precies de val uit §8 punt 8, in een
-  migratie die dat punt in zijn eigen kop citeert. Gevolg: het verwijderen van
-  een account viel om op een foreign key zodra je in één systeembericht genoemd
-  werd. **De RLS-suite zou dit nooit gevangen hebben**, want `removeTestUsers()`
-  gooit eerst de groepen weg en dan zijn de systeemberichten al mee
-  gecascadeerd. Er staat nu een test in `epic7.test.ts` die het profiel weggooit
-  terwijl het bericht blijft staan.
-* ⚠️ **De RLS-suite past niet meer twee keer in een uur.** Hij maakt ongeveer
-  veertig aanmeldingen en Supabase weigert na ongeveer dertig. Eén schone run per
-  uur lukt; twee niet, en dan lijkt het op een kapotte policy. Zie A47 — dit
-  vraagt een keuze voordat het de reden wordt dat niemand de suite meer draait.
+✅ **De rollover is opnieuw gedeployd** en maakt straffen verschuldigd. Bewezen
+tegen het echte project: een doel met een verstreken streefdatum gaf
+`verschuldigd: 1`, de straf kwam op `due`, er stonden drie auditregels
+(`confirmed > triggered > posted`) en er ging één systeembericht naar alleen de
+begunstigde groep. Testdata daarna opgeruimd.
+
+### ⚠️ Twee dingen die alleen jij kunt doen
+
+**1. Supabase Auth wijst nog naar het oude adres** (QS8-99, laatste criterium).
+Geen API en geen CLI ondersteunen dit; het is een dashboardhandeling.
+Supabase → Authentication → URL Configuration:
+
+* Site URL: `https://goalbuddies.q-projects.tech`
+* Redirect URLs: `https://goalbuddies.q-projects.tech/**` en
+  `http://localhost:8081/**`
+
+Zolang dit niet gebeurd is, wijst de bevestigingslink in **elke aanmeldmail**
+naar het oude adres.
+
+**2. Er komt nog geen enkele melding aan.** `expo-notifications` staat er en is
+ingeplugd, maar de web-kant ontbreekt (VAPID + service worker, **QS8-114**) en de
+app draait alléén op het web. Native wacht daarnaast op een EAS-project met FCM-
+en APNs-sleutels. Dat is nu de zwaarste openstaande MVP-taak.
 
 ---
 
