@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { now } from '../../shared/time';
@@ -31,7 +33,7 @@ export async function maakMijlpaal(
 ): Promise<Resultaat<Mijlpaal>> {
   const gevalideerd = mijlpaalSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   const { data: laatste, error: leesFout } = await supabase()
@@ -44,7 +46,7 @@ export async function maakMijlpaal(
 
   if (leesFout) {
     reportError(leesFout, 'milestones.next', { goal_id: goalId, code: leesFout.code });
-    return { ok: false, melding: 'De mijlpaal kon niet worden toegevoegd.' };
+    return { ok: false, melding: t('mijlpaal.toevoegen_mislukt') };
   }
 
   const { data, error } = await supabase()
@@ -64,7 +66,7 @@ export async function maakMijlpaal(
 
   if (error) {
     reportError(error, 'milestones.create', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'De mijlpaal kon niet worden toegevoegd.' };
+    return { ok: false, melding: t('mijlpaal.toevoegen_mislukt') };
   }
 
   return { ok: true, waarde: data };
@@ -77,7 +79,7 @@ export async function wijzigMijlpaal(
 ): Promise<Resultaat<true>> {
   const gevalideerd = mijlpaalSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   const { error } = await supabase()
@@ -91,7 +93,7 @@ export async function wijzigMijlpaal(
 
   if (error) {
     reportError(error, 'milestones.update', { code: error.code });
-    return { ok: false, melding: 'De wijziging kon niet worden opgeslagen.' };
+    return { ok: false, melding: t('mijlpaal.wijzigen_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -128,7 +130,7 @@ export async function zetMijlpaalStatus(
 
   if (error) {
     reportError(error, 'milestones.status', { code: error.code, name: status });
-    return { ok: false, melding: 'De status kon niet worden aangepast.' };
+    return { ok: false, melding: t('mijlpaal.status_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -147,7 +149,7 @@ export async function verwijderMijlpaal(id: string): Promise<Resultaat<true>> {
 
   if (error) {
     reportError(error, 'milestones.delete', { code: error.code });
-    return { ok: false, melding: 'Verwijderen lukte niet.' };
+    return { ok: false, melding: t('mijlpaal.verwijderen_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -176,7 +178,7 @@ export async function herordenMijlpalen(
 
   if (error) {
     reportError(error, 'milestones.reorder', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'De volgorde kon niet worden opgeslagen.' };
+    return { ok: false, melding: t('mijlpaal.volgorde_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -185,8 +187,8 @@ export async function herordenMijlpalen(
       ok: false,
       melding:
         uitkomst.reason === 'lijst_klopt_niet'
-          ? 'De lijst is ondertussen veranderd. Ververs het scherm en probeer het opnieuw.'
-          : 'De volgorde kon niet worden opgeslagen.',
+          ? t('mijlpaal.lijst_veranderd')
+          : t('mijlpaal.volgorde_mislukt'),
     };
   }
 

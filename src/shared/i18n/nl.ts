@@ -566,6 +566,70 @@ export const nl = {
   'deadline.intrekken_mislukt_kort': 'Intrekken lukte niet.',
   'deadline.lopend_laden': 'Het lopende verzoek kon niet geladen worden.',
   'deadline.verzoeken_laden': 'De verzoeken konden niet geladen worden.',
+
+  // ---------------------------------------------------------------------------
+  // Adempauze, mijlpalen, weekdoelen en het Doelcoach-interview
+  // ---------------------------------------------------------------------------
+  'adempauze.laden_mislukt': 'Je adempauzes konden niet geladen worden.',
+  'adempauze.inplannen_mislukt': 'De adempauze kon niet ingepland worden.',
+  'adempauze.te_laat':
+    'Een adempauze kondig je vooraf aan. De week die nu loopt kan niet meer — kies de week die komt.',
+  'adempauze.te_lang': 'Een adempauze duurt hoogstens twee weken.',
+  'adempauze.overlap': 'Er ligt al een adempauze over deze weken.',
+  'adempauze.geen_hele_week': 'Kies een hele week, die begint op jouw eigen startdag.',
+  'adempauze.eind_voor_start': 'De einddatum ligt vóór de startdatum.',
+  'adempauze.annuleren_mislukt': 'Annuleren lukte niet.',
+  'adempauze.al_begonnen': 'Deze adempauze is al begonnen en blijft staan.',
+
+  'mijlpaal.toevoegen_mislukt': 'De mijlpaal kon niet worden toegevoegd.',
+  'mijlpaal.wijzigen_mislukt': 'De wijziging kon niet worden opgeslagen.',
+  'mijlpaal.status_mislukt': 'De status kon niet worden aangepast.',
+  'mijlpaal.verwijderen_mislukt': 'Verwijderen lukte niet.',
+  'mijlpaal.volgorde_mislukt': 'De volgorde kon niet worden opgeslagen.',
+  'mijlpaal.lijst_veranderd':
+    'De lijst is ondertussen veranderd. Ververs het scherm en probeer het opnieuw.',
+  'validatie.mijlpaaltitel': 'Geef je mijlpaal een naam.',
+
+  'weekdoel.laden_mislukt': 'Je weekdoelen konden niet geladen worden.',
+  'weekdoel.open_laden': 'Je openstaande weken konden niet geladen worden.',
+  'weekdoel.mijlpalen_laden': 'De mijlpalen konden niet geladen worden.',
+  'weekdoel.opslaan_mislukt': 'Je weekdoel kon niet worden opgeslagen.',
+  'weekdoel.verwijderen_mislukt': 'Verwijderen lukte niet.',
+  'weekdoel.te_oud':
+    'Dit weekdoel staat er te lang om nog te verwijderen. Je kunt hem wel afsluiten — ' +
+    'dan telt de week als gemist.',
+  'weekdoel.al_gebeurd': 'Er is al iets met dit weekdoel gebeurd, dus verwijderen kan niet meer.',
+  'weekdoel.al_ingediend': 'Je hebt hier al iets voor ingediend. Verwijderen kan dan niet meer.',
+  'weekdoel.afsluiten_mislukt': 'Afsluiten lukte niet.',
+  'weekdoel.niet_meer_open':
+    'Deze week staat niet meer open. Alleen een weekdoel waar nog niets mee gebeurd is, kun je afsluiten.',
+  'weekdoel.doorschuiven_mislukt': 'Doorschuiven lukte niet.',
+  'weekdoel.nog_niet_afgesloten':
+    'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.',
+  'validatie.kies_doel': 'Kies een doel.',
+  'validatie.weekdoeltitel': 'Wat wil je deze week af hebben?',
+  'validatie.weekdoeltitel_lang': 'Maximaal 200 tekens.',
+  'validatie.vloer_plafond_kort': 'Hou het kort.',
+
+  'interview.opslaan_mislukt': 'Je antwoorden konden niet worden opgeslagen. Probeer het opnieuw.',
+  'validatie.uren_min': 'Minder dan nul uur bestaat niet.',
+
+  'interview.measurable.vraag': 'Waaraan zie je straks dat het gelukt is?',
+  'interview.measurable.toelichting': 'Iets wat je kunt aanwijzen of tellen werkt beter dan een gevoel.',
+  'interview.identity.vraag': 'Wie word je als dit lukt?',
+  'interview.identity.toelichting':
+    'Bij een doel van maanden is identiteit de brandstof die het langst meegaat.',
+  'interview.deadline_reason.vraag': 'Waarom juist die datum?',
+  'interview.deadline_reason.toelichting': 'Een datum met een reden erachter verschuif je minder makkelijk.',
+  'interview.hours_per_week.vraag': 'Hoeveel uur per week heb je hiervoor?',
+  'interview.hours_per_week.toelichting': 'Eerlijk schatten helpt meer dan hoog inzetten.',
+  'interview.already_done.vraag': 'Wat heb je al gedaan?',
+  'interview.already_done.toelichting': 'Je begint zelden bij nul, en dat scheelt in de planning.',
+  'interview.stuck_before.vraag': 'Waar liep het eerder vast?',
+  // ⚠️ Deze belofte staat er niet voor de sier: dit veld gaat naar de Doelcoach
+  //    en nooit naar de groep. Verwater hem niet in een vertaling.
+  'interview.stuck_before.toelichting':
+    'Alleen voor jou en de Doelcoach zichtbaar — je groep ziet dit nooit.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

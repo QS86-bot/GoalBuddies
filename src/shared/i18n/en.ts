@@ -430,4 +430,62 @@ export const en: Record<Sleutel, string> = {
   'deadline.intrekken_mislukt_kort': 'Withdrawing did not work.',
   'deadline.lopend_laden': 'The open request could not be loaded.',
   'deadline.verzoeken_laden': 'The requests could not be loaded.',
+
+  'adempauze.laden_mislukt': 'Your breathers could not be loaded.',
+  'adempauze.inplannen_mislukt': 'The breather could not be scheduled.',
+  'adempauze.te_laat':
+    'You announce a breather in advance. The week that is running cannot be used — pick the week ahead.',
+  'adempauze.te_lang': 'A breather lasts at most two weeks.',
+  'adempauze.overlap': 'There is already a breather over these weeks.',
+  'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
+  'adempauze.eind_voor_start': 'The end date is before the start date.',
+  'adempauze.annuleren_mislukt': 'Cancelling did not work.',
+  'adempauze.al_begonnen': 'This breather has already started and stays.',
+
+  'mijlpaal.toevoegen_mislukt': 'The milestone could not be added.',
+  'mijlpaal.wijzigen_mislukt': 'The change could not be saved.',
+  'mijlpaal.status_mislukt': 'The status could not be changed.',
+  'mijlpaal.verwijderen_mislukt': 'Deleting did not work.',
+  'mijlpaal.volgorde_mislukt': 'The order could not be saved.',
+  'mijlpaal.lijst_veranderd': 'The list has changed in the meantime. Refresh the screen and try again.',
+  'validatie.mijlpaaltitel': 'Give your milestone a name.',
+
+  'weekdoel.laden_mislukt': 'Your weekly goals could not be loaded.',
+  'weekdoel.open_laden': 'Your open weeks could not be loaded.',
+  'weekdoel.mijlpalen_laden': 'The milestones could not be loaded.',
+  'weekdoel.opslaan_mislukt': 'Your weekly goal could not be saved.',
+  'weekdoel.verwijderen_mislukt': 'Deleting did not work.',
+  'weekdoel.te_oud':
+    'This weekly goal has been around too long to delete. You can close it — ' +
+    'then the week counts as missed.',
+  'weekdoel.al_gebeurd': 'Something has already happened with this weekly goal, so deleting is no longer possible.',
+  'weekdoel.al_ingediend': 'You have already submitted something for this. Deleting is no longer possible.',
+  'weekdoel.afsluiten_mislukt': 'Closing did not work.',
+  'weekdoel.niet_meer_open':
+    'This week is no longer open. You can only close a weekly goal that nothing has happened with yet.',
+  'weekdoel.doorschuiven_mislukt': 'Carrying over did not work.',
+  'weekdoel.nog_niet_afgesloten':
+    'Carrying over is only possible once the week is closed. That happens automatically shortly after your week ends.',
+  'validatie.kies_doel': 'Choose a goal.',
+  'validatie.weekdoeltitel': 'What do you want done this week?',
+  'validatie.weekdoeltitel_lang': 'At most 200 characters.',
+  'validatie.vloer_plafond_kort': 'Keep it short.',
+
+  'interview.opslaan_mislukt': 'Your answers could not be saved. Please try again.',
+  'validatie.uren_min': 'Less than zero hours does not exist.',
+
+  'interview.measurable.vraag': 'How will you see that it worked?',
+  'interview.measurable.toelichting': 'Something you can point at or count works better than a feeling.',
+  'interview.identity.vraag': 'Who do you become if this works?',
+  'interview.identity.toelichting':
+    'For a goal that runs for months, identity is the fuel that lasts longest.',
+  'interview.deadline_reason.vraag': 'Why that date exactly?',
+  'interview.deadline_reason.toelichting': 'A date with a reason behind it is harder to move.',
+  'interview.hours_per_week.vraag': 'How many hours a week do you have for this?',
+  'interview.hours_per_week.toelichting': 'Estimating honestly helps more than aiming high.',
+  'interview.already_done.vraag': 'What have you already done?',
+  'interview.already_done.toelichting': 'You rarely start at zero, and that helps the planning.',
+  'interview.stuck_before.vraag': 'Where did it get stuck before?',
+  'interview.stuck_before.toelichting':
+    'Visible only to you and the Goal Coach — your group never sees this.',
 };

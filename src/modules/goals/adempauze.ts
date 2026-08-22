@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { nextCycle, userCycle, type Cycle, type UserClock } from '../../shared/time';
@@ -48,7 +50,7 @@ export async function fetchAdempauzes(goalId: string): Promise<readonly Adempauz
 
   if (error) {
     reportError(error, 'goals.breathers', { goal_id: goalId, code: error.code });
-    throw new Error('Je adempauzes konden niet geladen worden.');
+    throw new Error(t('adempauze.laden_mislukt'));
   }
 
   return data ?? [];
@@ -93,7 +95,7 @@ export async function planAdempauze(
 
   if (error) {
     reportError(error, 'goals.breather.plan', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'De adempauze kon niet ingepland worden.' };
+    return { ok: false, melding: t('adempauze.inplannen_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; id?: string };
@@ -107,19 +109,19 @@ export async function planAdempauze(
 function planMelding(reden: string | undefined): string {
   switch (reden) {
     case 'niet_vooraf':
-      return 'Een adempauze kondig je vooraf aan. De week die nu loopt kan niet meer — kies de week die komt.';
+      return t('adempauze.te_laat');
     case 'te_lang':
-      return 'Een adempauze duurt hoogstens twee weken.';
+      return t('adempauze.te_lang');
     case 'overlapt':
-      return 'Er ligt al een adempauze over deze weken.';
+      return t('adempauze.overlap');
     case 'geen_cyclusstart':
-      return 'Kies een hele week, die begint op jouw eigen startdag.';
+      return t('adempauze.geen_hele_week');
     case 'omgekeerde_periode':
-      return 'De einddatum ligt vóór de startdatum.';
+      return t('adempauze.eind_voor_start');
     case 'not_owner':
-      return 'Dit doel is niet van jou.';
+      return t('doel.niet_van_jou');
     default:
-      return 'De adempauze kon niet ingepland worden.';
+      return t('adempauze.inplannen_mislukt');
   }
 }
 
@@ -135,7 +137,7 @@ export async function annuleerAdempauze(id: string): Promise<Resultaat<true>> {
 
   if (error) {
     reportError(error, 'goals.breather.cancel', { code: error.code });
-    return { ok: false, melding: 'Annuleren lukte niet.' };
+    return { ok: false, melding: t('adempauze.annuleren_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -144,8 +146,8 @@ export async function annuleerAdempauze(id: string): Promise<Resultaat<true>> {
       ok: false,
       melding:
         uitkomst.reason === 'al_begonnen'
-          ? 'Deze adempauze is al begonnen en blijft staan.'
-          : 'Annuleren lukte niet.',
+          ? t('adempauze.al_begonnen')
+          : t('adempauze.annuleren_mislukt'),
     };
   }
 

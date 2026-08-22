@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t, type Sleutel } from '../../shared/i18n';
+
 /**
  * Het zes-vragen-interview dat aan de Doelcoach voorafgaat — QS8-37.
  *
@@ -40,8 +42,8 @@ export const interviewSchema = z.object({
   /** 4. Hoeveel uur per week heb je? Spiegelt naar `goals.available_hours_per_week`. */
   hours_per_week: z
     .number()
-    .min(0, { error: 'Minder dan nul uur bestaat niet.' })
-    .max(168, { error: 'Een week heeft 168 uur.' })
+    .min(0, { error: () => t('validatie.uren_min') })
+    .max(168, { error: () => t('validatie.uren_max') })
     .nullable(),
   /** 5. Wat is er al gedaan? */
   already_done: antwoord,
@@ -69,43 +71,34 @@ export const LEEG_INTERVIEW: InterviewInvoer = {
   stuck_before: null,
 };
 
-/** De zes stappen in de volgorde waarin het scherm ze stelt. */
-export const INTERVIEW_STAPPEN = [
-  {
-    veld: 'measurable',
-    vraag: 'Waaraan zie je straks dat het gelukt is?',
-    toelichting: 'Iets wat je kunt aanwijzen of tellen werkt beter dan een gevoel.',
-  },
-  {
-    veld: 'identity',
-    vraag: 'Wie word je als dit lukt?',
-    toelichting: 'Bij een doel van maanden is identiteit de brandstof die het langst meegaat.',
-  },
-  {
-    veld: 'deadline_reason',
-    vraag: 'Waarom juist die datum?',
-    toelichting: 'Een datum met een reden erachter verschuif je minder makkelijk.',
-  },
-  {
-    veld: 'hours_per_week',
-    vraag: 'Hoeveel uur per week heb je hiervoor?',
-    toelichting: 'Eerlijk schatten helpt meer dan hoog inzetten.',
-  },
-  {
-    veld: 'already_done',
-    vraag: 'Wat heb je al gedaan?',
-    toelichting: 'Je begint zelden bij nul, en dat scheelt in de planning.',
-  },
-  {
-    veld: 'stuck_before',
-    vraag: 'Waar liep het eerder vast?',
-    toelichting: 'Alleen voor jou en de Doelcoach zichtbaar — je groep ziet dit nooit.',
-  },
-] as const satisfies readonly {
-  veld: keyof InterviewInvoer;
-  vraag: string;
-  toelichting: string;
-}[];
+/**
+ * De zes stappen in de volgorde waarin het scherm ze stelt.
+ *
+ * ⚠️ **Een functie en geen constante** — QS8-115. Een `const` met `t()` erin
+ *    bevriest de taal op importtijd, vóórdat het profiel geladen is. De
+ *    vólgorde blijft hier staan: die is het interview zelf en geen tekst.
+ */
+export function interviewStappen(): readonly {
+  readonly veld: keyof InterviewInvoer;
+  readonly vraag: string;
+  readonly toelichting: string;
+}[] {
+  return STAP_VELDEN.map((veld) => ({
+    veld,
+    vraag: t(`interview.${veld}.vraag` as Sleutel),
+    toelichting: t(`interview.${veld}.toelichting` as Sleutel),
+  }));
+}
+
+const STAP_VELDEN = [
+  'measurable',
+  'identity',
+  'deadline_reason',
+  'hours_per_week',
+  'already_done',
+  'stuck_before',
+] as const satisfies readonly (keyof InterviewInvoer)[];
+
 
 /**
  * Heeft dit interview iets bruikbaars opgeleverd?

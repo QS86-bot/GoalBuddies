@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Json } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -86,7 +88,7 @@ export async function bewaarInterview(
 ): Promise<Resultaat<Interview>> {
   const gevalideerd = interviewSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   const antwoorden = gevalideerd.data;
@@ -99,7 +101,7 @@ export async function bewaarInterview(
 
   if (error) {
     reportError(error, 'goals.interview.save', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'Je antwoorden konden niet worden opgeslagen. Probeer het opnieuw.' };
+    return { ok: false, melding: t('interview.opslaan_mislukt') };
   }
 
   await spiegelNaarDoel(goalId, antwoorden);

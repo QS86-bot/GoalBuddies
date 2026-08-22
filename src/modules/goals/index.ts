@@ -68,7 +68,7 @@ export { bewaarInterview, fetchInterview, type Interview } from './interview';
 export {
   ANTWOORD_MAX,
   heeftAntwoorden,
-  INTERVIEW_STAPPEN,
+  interviewStappen,
   interviewSchema,
   LEEG_INTERVIEW,
   type InterviewInvoer,
