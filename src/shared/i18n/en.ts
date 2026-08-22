@@ -84,4 +84,38 @@ export const en: Record<Sleutel, string> = {
   'hulpvraag.tijd_een_week': ' I have 1 week left.',
   'hulpvraag.tijd_weken': ' I have {weken} weeks left.',
   'hulpvraag.slot': ' Any ideas?',
+
+  'risico.label.on_track': 'On track',
+  'risico.label.at_risk': 'Watch out',
+  'risico.label.behind': 'Behind',
+  'risico.label.unreachable': 'Deadline out of reach',
+
+  'eenheid.mijlpaal_een': '1 milestone',
+  'eenheid.mijlpaal_meer': '{n} milestones',
+  'eenheid.week_een': '1 week',
+  'eenheid.week_meer': '{n} weeks',
+
+  'risico.unreachable.datum_is_er':
+    'Your target date is here, and {mijlpalen} is still open. Move your date or take work out.',
+  'risico.unreachable.te_veel_werk':
+    '{mijlpalen} is still open and there are {weken} left. Even at one milestone a week you would not make it.',
+  'risico.unreachable.kaal': 'There is more work left than there is time until your target date.',
+
+  'risico.behind.niets_afgerond':
+    'You have not finished a week in the last {weken_bekeken}, and there is still work open. This is the moment to make your goal smaller or move your date.',
+  'risico.behind.tempo':
+    'You made {gehaald} of your last {weken_bekeken}. Finishing {mijlpalen} in {weken} needs a higher pace than that.',
+  'risico.behind.kaal': 'You need a higher pace than you managed these last weeks.',
+
+  'risico.at_risk.vloer':
+    'You are making your weeks, but almost always at the floor. That counts in full — it just keeps pushing your ceiling further away.',
+  'risico.at_risk.tempo':
+    'You have {mijlpalen} to go in {weken}. That asks {benodigd} per week; you are at {tempo} now.',
+  'risico.at_risk.kaal': 'You are still inside the lines, but there is little room left.',
+
+  'risico.on_track.geen_geschiedenis':
+    'No history to go on yet — and that is fine. A new goal starts on track.',
+  'risico.on_track.tempo':
+    'You made {gehaald} of your last {weken_bekeken}, with {mijlpalen} to go in {weken}. That will work out.',
+  'risico.on_track.kaal': 'Your pace is enough for what is left.',
 };

@@ -4,10 +4,12 @@ import { STANDAARDTAAL, zetTaal } from '../i18n';
 
 import { bevestigingen } from './acties';
 import { hulpvraagVoorstel } from './hulpvraag';
+import { risicoLabel, risicoUitleg } from './risico';
 import { viering } from './vieringen';
 
 /**
- * QS8-115, eerste slice: de tekstcatalogi van `shared/ui`.
+ * QS8-115: de tekstcatalogi van `shared/ui` — bevestigingen, vieringen, de
+ * hulpvraag en de Risico-radar.
  *
  * ⚠️ **Waarom deze tests bestaan naast de bestaande.** `acties.test.ts` en
  *    `vieringen.test.ts` toetsen de Nederlandse teksten op inhoud — dat een
@@ -92,5 +94,90 @@ describe('de hulpvraag telt goed', () => {
     const tekst = hulpvraagVoorstel({ doeltitel: 'X', wekenOver: 4 });
 
     expect(tekst).not.toMatch(/gemist|reeks|streak|missed/i);
+  });
+});
+
+describe('de Risico-radar telt en formatteert per taal', () => {
+  it('gebruikt de enkelvoudsvorm bij één mijlpaal', () => {
+    // ⚠️ Dit was een bestaande fout, geen fout die de catalogus introduceerde:
+    //    de zin zei onvoorwaardelijk "mijlpalen", dus "1 mijlpalen" stond er
+    //    gewoon. Het overzetten naar de catalogus was het moment om hem te
+    //    repareren.
+    zetTaal('nl');
+    const tekst = risicoUitleg('unreachable', { weken_over: 0, open_mijlpalen: 1 });
+
+    expect(tekst).toContain('1 mijlpaal');
+    expect(tekst).not.toContain('1 mijlpalen');
+  });
+
+  it('gebruikt de meervoudsvorm bij meer dan één', () => {
+    zetTaal('nl');
+    expect(risicoUitleg('unreachable', { weken_over: 0, open_mijlpalen: 4 })).toContain(
+      '4 mijlpalen',
+    );
+  });
+
+  it('telt ook weken in enkelvoud', () => {
+    zetTaal('nl');
+    const tekst = risicoUitleg('unreachable', { weken_over: 1, open_mijlpalen: 3 });
+
+    expect(tekst).toContain('1 week');
+    expect(tekst).not.toMatch(/1 weken/);
+  });
+
+  it('schrijft het decimaalteken van de taal', () => {
+    // ⚠️ Tot QS8-115 stond hier een harde `.replace('.', ',')`. In het Engels
+    //    leest "0,5" als een opsomming of als vijfhonderd — het soort fout dat je
+    //    in een vertaalde app pas ziet als iemand zich meldt.
+    const reden = {
+      weken_over: 10,
+      open_mijlpalen: 5,
+      cycli_bekeken: 4,
+      cycli_gehaald: 2,
+      tempo: 0.5,
+      benodigd_tempo: 0.5,
+      vloeraandeel: 0,
+    };
+
+    zetTaal('nl');
+    expect(risicoUitleg('at_risk', reden)).toContain('0,5');
+
+    zetTaal('en');
+    const engels = risicoUitleg('at_risk', reden);
+    expect(engels).toContain('0.5');
+    expect(engels).not.toContain('0,5');
+  });
+
+  it('vertaalt de vier labels', () => {
+    zetTaal('nl');
+    expect(risicoLabel('unreachable')).toBe('Deadline onhaalbaar');
+
+    zetTaal('en');
+    expect(risicoLabel('unreachable')).toBe('Deadline out of reach');
+  });
+
+  it('houdt in beide talen elke stand een eigen label', () => {
+    // Zelfde eis als in `risico.test.ts`, maar nu ook voor de vertaling: twee
+    // standen die hetzelfde heten, zijn twee standen die je niet uit elkaar houdt.
+    for (const taalcode of ['nl', 'en'] as const) {
+      zetTaal(taalcode);
+      const labels = new Set(
+        (['on_track', 'at_risk', 'behind', 'unreachable'] as const).map(risicoLabel),
+      );
+      expect(labels.size, taalcode).toBe(4);
+    }
+  });
+
+  it('bevat in geen enkele taal een gat bij een lege onderbouwing', () => {
+    // De Engelse kant van de bestaande test in `risico.test.ts`. Een ontbrekende
+    // vertaling zou hier als "undefined" of als de kale sleutel opduiken.
+    for (const taalcode of ['nl', 'en'] as const) {
+      zetTaal(taalcode);
+      for (const stand of ['on_track', 'at_risk', 'behind', 'unreachable'] as const) {
+        const tekst = risicoUitleg(stand, null);
+        expect(tekst, `${taalcode}/${stand}`).not.toMatch(/NaN|null|undefined|^risico\./);
+        expect(tekst.length, `${taalcode}/${stand}`).toBeGreaterThan(20);
+      }
+    }
   });
 });

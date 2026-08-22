@@ -123,6 +123,60 @@ export const nl = {
   'hulpvraag.tijd_een_week': ' Ik heb nog 1 week te gaan.',
   'hulpvraag.tijd_weken': ' Ik heb nog {weken} weken te gaan.',
   'hulpvraag.slot': ' Iemand een idee?',
+
+  // ---------------------------------------------------------------------------
+  // De Risico-radar — QS8-93, QS8-94
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Uitsluitend voor de eigenaar.** `goal_risk` is eigenaar-only (migratie
+  //    0050). Kopieer deze teksten nooit naar een groepsscherm: een risicostand
+  //    is een afgeleide van gemiste weken, en dat is precies waar domeinregel 7
+  //    over gaat.
+  //
+  // ⚠️ **De toon telt wat er wél is.** "Je hebt drie van de vier weken gemist"
+  //    is waar en is precies de zin die iemand de app laat sluiten. "Je haalde
+  //    één van de vier weken" zegt hetzelfde zonder het verwijt. Er staat een
+  //    test op die het woord "gemist" weigert.
+  'risico.label.on_track': 'Op koers',
+  'risico.label.at_risk': 'Oppassen',
+  'risico.label.behind': 'Achterstand',
+  'risico.label.unreachable': 'Deadline onhaalbaar',
+
+  // ⚠️ Aantallen mét hun zelfstandig naamwoord, als eigen sleutel. Zo blijft het
+  //    aantal zinnen hieronder twaalf in plaats van achtenveertig, en staat de
+  //    meervoudsvorm op één plek per woord. Tot QS8-115 stond er onvoorwaardelijk
+  //    "mijlpalen", dus "1 mijlpalen" bestond gewoon.
+  'eenheid.mijlpaal_een': '1 mijlpaal',
+  'eenheid.mijlpaal_meer': '{n} mijlpalen',
+  'eenheid.week_een': '1 week',
+  'eenheid.week_meer': '{n} weken',
+
+  'risico.unreachable.datum_is_er':
+    'Je streefdatum is er, en er staat nog {mijlpalen} open. Verschuif je datum of haal er werk uit.',
+  'risico.unreachable.te_veel_werk':
+    'Er staat nog {mijlpalen} open en er zijn nog {weken}. Zelfs met één mijlpaal per week red je dat niet.',
+  'risico.unreachable.kaal': 'Er is meer werk over dan er tijd is tot je streefdatum.',
+
+  'risico.behind.niets_afgerond':
+    'Je hebt de laatste {weken_bekeken} geen week afgerond, en er staat nog werk open. Dit is het moment om je doel kleiner te maken of je datum te verschuiven.',
+  'risico.behind.tempo':
+    'Je haalde {gehaald} van je laatste {weken_bekeken}. Om {mijlpalen} in {weken} af te ronden heb je een hoger tempo nodig dan dat.',
+  'risico.behind.kaal': 'Je hebt een hoger tempo nodig dan je de laatste weken haalde.',
+
+  // ⚠️ "Telt volledig mee" moet erin blijven staan. De vloer halen betekent dat
+  //    de week telt (domeinregel 8); een waarschuwing die dat weglaat, leert de
+  //    gebruiker dat de vloer niet goed genoeg is. Er staat een test op.
+  'risico.at_risk.vloer':
+    'Je haalt je weken, maar bijna altijd op de vloer. Dat telt volledig mee — alleen schuift je plafond zo wel steeds verder weg.',
+  'risico.at_risk.tempo':
+    'Je hebt {mijlpalen} in {weken} te gaan. Dat vraagt {benodigd} per week; je zit nu op {tempo}.',
+  'risico.at_risk.kaal': 'Je loopt nog binnen de lijnen, maar er is weinig ruimte over.',
+
+  'risico.on_track.geen_geschiedenis':
+    'Nog geen geschiedenis om iets uit af te leiden — en dat is prima. Een nieuw doel begint op koers.',
+  'risico.on_track.tempo':
+    'Je haalde {gehaald} van je laatste {weken_bekeken}, met {mijlpalen} in {weken} te gaan. Dat gaat lukken.',
+  'risico.on_track.kaal': 'Je tempo is genoeg voor wat er nog ligt.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

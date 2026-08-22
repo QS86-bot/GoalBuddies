@@ -96,6 +96,28 @@ export function apparaatVoorkeuren(): readonly string[] {
 }
 
 /**
+ * Een getal in de notatie van de ingestelde taal.
+ *
+ * ⚠️ **Het decimaalteken is taalgebonden en dat werd tot QS8-115 gemist.**
+ *    `risico.ts` deed `.replace('.', ',')` — hard Nederlands. In het Engels leest
+ *    "0,5" als een opsomming of als vijfhonderd, en dat is precies het soort
+ *    fout dat je in een vertaalde app pas ziet als iemand zich erover meldt.
+ *
+ * ⚠️ Standaard maximaal één decimaal, want dat is wat de aanroepers hier nodig
+ *    hebben (een tempo van 0,4 per week). Meer cijfers suggereren een precisie
+ *    die de onderliggende schatting niet heeft.
+ */
+export function getal(waarde: number, decimalen = 1): string {
+  try {
+    return new Intl.NumberFormat(huidig, { maximumFractionDigits: decimalen }).format(waarde);
+  } catch {
+    // Een omgeving zonder volledige Intl-data. Liever een puntnotatie dan een
+    // lege plek in een zin.
+    return String(Math.round(waarde * 10 ** decimalen) / 10 ** decimalen);
+  }
+}
+
+/**
  * De tekst bij een sleutel, met de parameters ingevuld.
  *
  * ⚠️ Valt terug op Nederlands als een vertaling ontbreekt, en op de sleutel zelf
