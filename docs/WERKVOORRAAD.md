@@ -117,6 +117,20 @@ Lees dit eerst; de rest is naslag.
   zonder ooit af te gaan. Dat is de derde keer op rij (QS8-47, QS8-112, nu deze):
   **het onderdeel is getest, de keten niet.**
 
+* ⚠️ **De RLS-suite past niet meer twee keer in een uur, en dat is op 22-08 twee
+  keer in één sessie misgegaan.** Hij maakt ongeveer veertig aanmeldingen en
+  Supabase weigert na ongeveer dertig.
+
+  **Wat je ziet is geen melding over rate limiting** maar een fixture die
+  halverwege omvalt: één bestand rood, de rest "skipped". Dat leest als een
+  kapotte policy. Beide keren bleek datzelfde bestand in isolatie gewoon groen.
+
+  **Het echte risico is niet de vertraging maar het faalbeeld.** Een suite die
+  soms zonder aanwijsbare reden rood is, leert je om rood te negeren — en dan is
+  de dag dat er écht iets stuk is, de dag dat je het mist. Zie **A47**; die
+  keuze (accounts hergebruiken over suites heen, of een eigen testproject) is nu
+  urgenter dan hij op 21-08 leek.
+
 ---
 
 ## 0a. ✅ De app staat live — en wat er nog handmatig moet
