@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hs256 } from './harness';
+import { hs256, isTestEmail } from './harness';
 
 /**
  * De handtekening onder elk testtoken — QS8-116.
@@ -52,5 +52,39 @@ describe('hs256 — de JWT-handtekening', () => {
 
   it('behandelt een tekstsecret als UTF-8, zoals GoTrue doet', () => {
     expect(hs256(ROMP, 'geheim')).toBe(hs256(ROMP, Buffer.from('geheim', 'utf8')));
+  });
+});
+
+/**
+ * De grendel op het opruimen — QS8-119.
+ *
+ * ⚠️ `removeTestUsers()` verwijdert met een key die RLS volledig omzeilt, tegen
+ *    het échte project. Deze controle staat vlak vóór dat verwijderen. Hij hoort
+ *    hier en niet in `token.test.ts`, want hij moet ook draaien als er geen
+ *    credentials zijn — juist de bewaking mag niet meeliften op een suite die
+ *    zichzelf overslaat.
+ */
+describe('isTestEmail — wie mag er opgeruimd worden', () => {
+  const UUID = '3f1a7c9e-1b2d-4e5f-8a9b-0c1d2e3f4a5b';
+
+  it('herkent een adres dat deze suite zelf heeft gemaakt', () => {
+    expect(isTestEmail(`rls-alice-${UUID}@example.com`)).toBe(true);
+    expect(isTestEmail(`rls-e7-bob-${UUID}@example.com`)).toBe(true);
+    expect(isTestEmail(`rls-token-rook-2-${UUID}@example.com`)).toBe(true);
+  });
+
+  /**
+   * ⚠️ Dit is de helft die ertoe doet. Een positieve controle bewijst niets als
+   *    het patroon ook echte adressen doorlaat.
+   */
+  it.each([
+    'quinten.strijdonk@gmail.com',
+    'rls-alice@example.com',
+    `rls-alice-${UUID}@gmail.com`,
+    `rls-alice-${UUID}@example.com.kwaadaardig.nl`,
+    `prefix-rls-alice-${UUID}@example.com`,
+    '',
+  ])('weigert %s', (email) => {
+    expect(isTestEmail(email)).toBe(false);
   });
 });

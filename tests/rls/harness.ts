@@ -121,7 +121,30 @@ export interface TestUser {
   readonly token: string;
 }
 
-const createdUserIds: string[] = [];
+interface AangemaakteGebruiker {
+  readonly id: string;
+  readonly email: string;
+}
+
+const createdUsers: AangemaakteGebruiker[] = [];
+
+/**
+ * Het adrespatroon van een testgebruiker — QS8-119.
+ *
+ * ⚠️ Deze suite verwijdert rijen met een key die RLS volledig omzeilt, tegen het
+ *    échte project. Het slot daarop (`guardProductie`) is een herinnering, geen
+ *    bescherming: het staat aan het begín van de run en zegt niets over wat er
+ *    aan het eind verwijderd wordt.
+ *
+ *    Deze controle staat op de plek die er wél toe doet — vlak vóór het
+ *    verwijderen. Wie ooit een id in de boekhouding stopt dat niet van deze run
+ *    is, krijgt een luide fout in plaats van een verwijderde gebruiker.
+ */
+const TEST_EMAIL = /^rls-[a-z0-9-]+-[0-9a-f-]{36}@example\.com$/;
+
+export function isTestEmail(email: string): boolean {
+  return TEST_EMAIL.test(email);
+}
 
 function base64url(waarde: string): string {
   return Buffer.from(waarde, 'utf8').toString('base64url');
@@ -274,7 +297,7 @@ export async function createTestUser(label: string): Promise<TestUser> {
   if (created.error || !created.data.user) {
     meldAuthFout(created.error, `Testgebruiker ${label} aanmaken`);
   }
-  createdUserIds.push(created.data.user.id);
+  createdUsers.push({ id: created.data.user.id, email });
 
   // Geen `signInWithPassword` meer, en dus ook geen wachtwoord nodig — QS8-116.
   const token = tekenGebruikersToken(created.data.user.id, email);
@@ -312,7 +335,7 @@ export async function echteSessie(
   if (created.error || !created.data.user) {
     meldAuthFout(created.error, `Testgebruiker ${label} aanmaken`);
   }
-  createdUserIds.push(created.data.user.id);
+  createdUsers.push({ id: created.data.user.id, email });
 
   const db = createClient<Database>(env.url, env.anonKey, noSession);
   const sessie = await db.auth.signInWithPassword({ email, password });
@@ -352,9 +375,29 @@ export function claimsVan(jwt: string): Record<string, unknown> {
  *    verwijzende rijen zelf op, in omgekeerde afhankelijkheidsvolgorde.
  */
 export async function removeTestUsers(): Promise<void> {
-  const ids = createdUserIds.splice(0);
-  if (ids.length === 0) return;
+  const gebruikers = createdUsers.splice(0);
+  if (gebruikers.length === 0) return;
 
+  // ⚠️ De grendel uit QS8-119. Alles hieronder verwijdert met een key die RLS
+  //    omzeilt; dit is de laatste plek waar nog te controleren valt dát het om
+  //    testgebruikers gaat. Gooien en niet waarschuwen: bij twijfel hoort er
+  //    niets verwijderd te worden, ook niet de rest van de lijst.
+  const vreemd = gebruikers.filter((g) => !isTestEmail(g.email));
+  if (vreemd.length > 0) {
+    throw new Error(
+      [
+        `Opruimen afgebroken: ${vreemd.length} van de ${gebruikers.length} gebruikers`,
+        'in de boekhouding zijn geen testgebruiker van deze run.',
+        '',
+        `Eerste afwijking: ${vreemd[0]?.email ?? '(geen adres)'}`,
+        '',
+        '⚠️ Er is niets verwijderd. Deze suite draait met de service-role-key',
+        '   tegen het echte project; bij twijfel gaat er niets weg.',
+      ].join('\n'),
+    );
+  }
+
+  const ids = gebruikers.map((g) => g.id);
   const admin = adminDb();
 
   const wipe = async (
