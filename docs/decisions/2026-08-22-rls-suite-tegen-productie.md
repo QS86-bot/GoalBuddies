@@ -106,3 +106,39 @@ weigergevallen naast de drie die moeten slagen — waaronder
 
 Dat neemt de reden voor dit issue niet weg. Het verkleint het venster waarin een
 slordige refactor schade doet van "de hele opruimlus" tot "niets".
+
+
+## Naschrift 22-08: het residu geteld en opgeruimd
+
+Bij het nakijken van de trigger voor QS8-110 stonden er **70 groepen** in het
+productieproject die niemand had aangemaakt. Op verzoek opgeruimd; hieronder wat
+het was en waarom het er stond, want het mechanisme is een bevinding op zich.
+
+**Wat het was.** 69 × "Groep van dave" met `created_by` op `null`, plus één
+oudere "Testgroep" met een `test-`-uitnodigingscode van een achtergebleven
+`rls-…@example.com`-account. Eraan hingen 69 `member_joined`-systeemberichten,
+allemaal met dezelfde tekst en een `sender_id` die al op `null` stond. Nul echte
+gegevens.
+
+⚠️ Die 69 berichten stonden op **CASCADE** en zouden stilzwijgend zijn
+meegegaan. Dat is precies waarom je bij een delete eerst telt wat eraan hangt:
+`groups` heeft tien verwijzende tabellen, waarvan zes op CASCADE.
+
+**Hoe het kon blijven staan — en dit is het punt.** `removeTestUsers()` ruimt
+groepen op met `wipe('groups', 'created_by')`, en `wipe()` logt een fout met
+`console.warn` en **gooit niet**. Mislukt die stap, dan gaat het verwijderen van
+de gebruiker daarna gewoon door. `groups.created_by` staat op `on delete set
+null`, dus de groep houdt geen enkel spoor meer van wie hem maakte — en is
+daarmee voor élke volgende opruimronde onvindbaar.
+
+Het commentaar in de harness verdedigt die zachtheid met "een halve opruiming is
+beter dan geen". Dat klopt voor het verwijderen van de gebruikers zelf, waar het
+staat. Voor de `wipe`-stappen ervóór is het het tegenovergestelde: daar maakt
+doorgaan-na-een-fout het residu juist onherstelbaar.
+
+**Wat er ook uit bleek.** Er staan 17 auth-accounts op het project en **alle 17
+zijn testadressen**; er is geen enkel echt account. Die zijn blijven staan — er
+was alleen om de groepen gevraagd — maar ze horen bij hetzelfde lek.
+
+Back-up van het verwijderde staat als JSON in de sessie-uitvoer van 22-08
+(70 groepen, 69 berichten, 64 KB) en is aan Quinten meegegeven.
