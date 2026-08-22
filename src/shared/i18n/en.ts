@@ -282,4 +282,78 @@ export const en: Record<Sleutel, string> = {
   'coach.niet_jouw_doel': 'This goal is not yours.',
   'coach.niet_ingelogd': 'You are no longer signed in.',
   'coach.afronden_mislukt': 'The Goal Coach could not finish the request.',
+
+  'groep.rate_limited':
+    'You have tried an invitation too often today. In 24 hours it works again — ' +
+    'meanwhile, ask your buddy to send the link once more.',
+  'groep.ongeldige_link':
+    'This invitation link no longer works. It was withdrawn or it is wrong; ' +
+    'ask your buddy for a new one.',
+  'groep.vol': 'This group is full. Three to five people works best, so that is no disaster.',
+  'groep.te_veel_groepen': 'You are already in ten groups. Leave one to make room.',
+  'groep.naam_kort': 'Give your group a name of at least two characters.',
+  'groep.naam_lang': 'That name is too long. At most 60 characters.',
+  'groep.slechte_huddledag': 'Choose a day of the week for the huddle.',
+  'groep.daglimiet': 'You have already created ten groups today. Tomorrow it works again.',
+  'groep.geen_beheerder': 'Only an admin of this group can do this.',
+
+  'groep.aanmaken_mislukt': 'Your group could not be created.',
+  'groep.invoer': 'Check what you entered.',
+  'groep.opslaan_mislukt': 'Saving did not work. Only an admin can change this.',
+  'groep.link_vernieuwen_mislukt': 'Refreshing the link did not work. Please try again.',
+  'groep.link_vernieuwen_mislukt_kort': 'Refreshing the link did not work.',
+  'groep.actie_mislukt': 'That did not work. Please try again.',
+  'groep.actie_mislukt_kort': 'That did not work.',
+  'groep.controleer_link': 'Check the link.',
+  'groep.deelnemen_mislukt': 'Joining did not work. Please try again in a moment.',
+  'groep.deelnemen_mislukt_link': 'Joining did not work. Ask your buddy for a new link.',
+  'groep.uitnodiging_laden': 'This invitation could not be loaded.',
+  'groep.koppelen_mislukt': 'Linking did not work. Are you a member of this group?',
+  'groep.ontkoppelen_mislukt': 'Unlinking did not work.',
+  'groep.gekoppelde_groepen_laden': 'The linked groups could not be loaded.',
+  'groep.gekoppelde_doelen_laden': 'The linked goals could not be loaded.',
+  'groep.naamloos': 'Your group',
+  'groep.groepen_laden': 'Your groups could not be loaded.',
+  'groep.groep_laden': 'This group could not be loaded.',
+  'groep.lidmaatschap_laden': 'Your membership could not be loaded.',
+  'groep.overzicht_laden': 'The group overview could not be loaded.',
+  'groep.aanmaken_mislukt_kort': 'Your group could not be created. Please try again.',
+  'groep.onbekend_lid': 'Unknown member',
+  'validatie.groepsnaam_lang': 'At most 60 characters.',
+  'validatie.weekdag_kort': 'Choose a day of the week.',
+  'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
+
+  'bewijseis.note_required': 'Note required',
+  'bewijseis.note_and_attachment': 'Note and attachment',
+  'bewijseis.optional': 'Everything optional',
+
+  'chat.laden_mislukt': 'The messages could not be loaded.',
+  'chat.controleer': 'Check your message.',
+  'chat.leeg': 'There is nothing in your message yet.',
+  'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
+  'chat.weghalen_mislukt': 'Removing did not work. Please try again.',
+
+  'ketting.laden_mislukt': 'The Chain could not be loaded.',
+
+  'weekafsluiting.v1.label': 'What did you do?',
+  'weekafsluiting.v1.hint': 'Pre-filled from your daily notes this week. Change whatever you like.',
+  'weekafsluiting.v1.voorbeeld': 'Wrote three mornings, about four hours in total.',
+  'weekafsluiting.v2.label': 'What got in the way?',
+  'weekafsluiting.v2.hint':
+    'The only place this belongs. Your group reads along to help, not to judge.',
+  'weekafsluiting.v2.voorbeeld': 'Two evenings of overtime, and after that I could not get back in.',
+  'weekafsluiting.v3.label': 'What is your next week?',
+  'weekafsluiting.v3.hint': 'One concrete sentence is enough.',
+  'weekafsluiting.v3.voorbeeld': 'Finish chapter three, and book an extra hour on Tuesday.',
+
+  'weekafsluiting.leeg':
+    'Fill in at least one question. Skipping all three is fine too — then nothing is saved.',
+  'weekafsluiting.reactie_leeg': 'There is nothing in your reply yet.',
+  'weekafsluiting.laden_mislukt': 'The week review could not be loaded.',
+  'weekafsluiting.reacties_laden': 'The replies could not be loaded.',
+  'weekafsluiting.invoer': 'Check what you entered.',
+  'weekafsluiting.opslaan_mislukt': 'Saving did not work. Are you still a member of this group?',
+  'weekafsluiting.weghalen_mislukt': 'Removing did not work. Please try again.',
+  'weekafsluiting.reactie_controleer': 'Check your reply.',
+  'weekafsluiting.reactie_mislukt': 'Your reply was not sent. Please try again in a moment.',
 };

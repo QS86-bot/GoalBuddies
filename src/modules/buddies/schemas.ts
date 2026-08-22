@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t, weekdagNaam } from '../../shared/i18n';
+
 import type { Weekday } from '../../shared/time';
 
 /**
@@ -89,13 +91,13 @@ export const groepSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(2, { error: 'Geef je groep een naam van minstens twee tekens.' })
-    .max(60, { error: 'Maximaal 60 tekens.' }),
+    .min(2, { error: () => t('groep.naam_kort') })
+    .max(60, { error: () => t('validatie.groepsnaam_lang') }),
   huddle_day: z
     .number()
     .int()
     .min(0)
-    .max(6, { error: 'Kies een dag van de week.' }),
+    .max(6, { error: () => t('validatie.weekdag_kort') }),
 });
 
 export type GroepInvoer = z.infer<typeof groepSchema>;
@@ -111,11 +113,14 @@ export type GroepInvoer = z.infer<typeof groepSchema>;
 export const BEWIJSEISEN = ['note_required', 'note_and_attachment', 'optional'] as const;
 export type Bewijseis = (typeof BEWIJSEISEN)[number];
 
-export const BEWIJSEIS_LABELS: Readonly<Record<Bewijseis, string>> = {
-  note_required: 'Notitie verplicht',
-  note_and_attachment: 'Notitie én bijlage',
-  optional: 'Alles optioneel',
-};
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
+  return {
+    note_required: t('bewijseis.note_required'),
+    note_and_attachment: t('bewijseis.note_and_attachment'),
+    optional: t('bewijseis.optional'),
+  };
+}
 
 export const groepPatchSchema = groepSchema
   .partial()
@@ -126,7 +131,7 @@ export type GroepPatch = z.infer<typeof groepPatchSchema>;
 export const codeSchema = z
   .string()
   .transform(normaliseerCode)
-  .refine(isCodeVorm, { error: 'Deze uitnodigingscode klopt niet. Controleer de link.' });
+  .refine(isCodeVorm, { error: () => t('validatie.uitnodigingscode') });
 
 // ---------------------------------------------------------------------------
 // Weergave
@@ -138,16 +143,28 @@ export const codeSchema = z
 //    documentatie. De limieten komen als kenmerk terug uit de RPC's
 //    (`group_full`, `daily_limit`) en `api.ts` maakt er een zin van.
 
-export const HUDDLEDAGEN: readonly { readonly waarde: Weekday; readonly label: string }[] = [
-  { waarde: 1, label: 'Maandag' },
-  { waarde: 2, label: 'Dinsdag' },
-  { waarde: 3, label: 'Woensdag' },
-  { waarde: 4, label: 'Donderdag' },
-  { waarde: 5, label: 'Vrijdag' },
-  { waarde: 6, label: 'Zaterdag' },
-  { waarde: 0, label: 'Zondag' },
-];
+/**
+ * De zeven huddledagen, met maandag voorop.
+ *
+ * ⚠️ **De namen komen uit `Intl` via `weekdagNaam()`** en staan niet in de
+ *    catalogus — QS8-115. Dit was de twééde hardgecodeerde weekdagenlijst in het
+ *    project; `WeekStartKeuze` had dezelfde. Twee lijstjes met dezelfde zeven
+ *    namen is twee plekken waar een 0 en een 7 verward kunnen raken, en in een
+ *    taal die hier niemand spreekt ziet niemand dat.
+ *
+ * ⚠️ Een functie en geen constante: de namen hangen van de taal af. De vólgorde
+ *    blijft wel hier — welke dag bovenaan staat is een productkeuze.
+ */
+export function huddledagen(): readonly { readonly waarde: Weekday; readonly label: string }[] {
+  return ([1, 2, 3, 4, 5, 6, 0] as const).map((waarde) => ({
+    waarde,
+    label: weekdagNaam(waarde),
+  }));
+}
 
 export function huddledagLabel(dag: number): string {
-  return HUDDLEDAGEN.find((d) => d.waarde === dag)?.label ?? 'Zondag';
+  // ⚠️ De terugval is zondag en niet de dag zelf: `weekdagNaam` rekent modulo,
+  //    dus een 9 zou stilzwijgend dinsdag opleveren. Een waarde buiten 0–6 is een
+  //    fout in de data en hoort niet als een geldige dag te lezen.
+  return dag >= 0 && dag <= 6 ? weekdagNaam(dag) : weekdagNaam(0);
 }

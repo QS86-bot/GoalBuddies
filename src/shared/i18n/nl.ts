@@ -391,6 +391,99 @@ export const nl = {
   'coach.niet_jouw_doel': 'Dit doel is niet van jou.',
   'coach.niet_ingelogd': 'Je bent niet meer ingelogd.',
   'coach.afronden_mislukt': 'De Doelcoach kon het verzoek niet afronden.',
+
+  // ---------------------------------------------------------------------------
+  // Groepen, uitnodigingen en de chat — EPIC 5 en 7
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De uitnodigingsmeldingen zeggen nooit wélke groep of wie erin zit. Een
+  //    onbekende code hoort geen informatie op te leveren over een groep waar je
+  //    niet in zit — dat zou een uitnodigingslink tot een zoekmachine maken.
+  'groep.rate_limited':
+    'Je hebt vandaag te vaak een uitnodiging geprobeerd. Over 24 uur kan het weer — ' +
+    'vraag je buddy intussen om de link nog eens te sturen.',
+  'groep.ongeldige_link':
+    'Deze uitnodigingslink werkt niet meer. Hij is ingetrokken of hij klopt niet; ' +
+    'vraag je buddy om een nieuwe.',
+  'groep.vol': 'Deze groep zit vol. Drie tot vijf mensen werkt het best, dus dat is geen ramp.',
+  'groep.te_veel_groepen': 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
+  'groep.naam_kort': 'Geef je groep een naam van minstens twee tekens.',
+  'groep.naam_lang': 'Die naam is te lang. Maximaal 60 tekens.',
+  'groep.slechte_huddledag': 'Kies een dag van de week voor de huddle.',
+  'groep.daglimiet': 'Je hebt vandaag al tien groepen aangemaakt. Morgen kan het weer.',
+  'groep.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
+
+  'groep.aanmaken_mislukt': 'Je groep kon niet worden aangemaakt.',
+  'groep.invoer': 'Controleer je invoer.',
+  'groep.opslaan_mislukt': 'Opslaan lukte niet. Alleen een beheerder kan dit wijzigen.',
+  'groep.link_vernieuwen_mislukt': 'De link vernieuwen lukte niet. Probeer het opnieuw.',
+  'groep.link_vernieuwen_mislukt_kort': 'De link vernieuwen lukte niet.',
+  'groep.actie_mislukt': 'Dat lukte niet. Probeer het opnieuw.',
+  'groep.actie_mislukt_kort': 'Dat lukte niet.',
+  'groep.controleer_link': 'Controleer de link.',
+  'groep.deelnemen_mislukt': 'Deelnemen lukte niet. Probeer het zo nog eens.',
+  'groep.deelnemen_mislukt_link': 'Deelnemen lukte niet. Vraag je buddy om een nieuwe link.',
+  'groep.uitnodiging_laden': 'Deze uitnodiging kon niet geladen worden.',
+  'groep.koppelen_mislukt': 'Koppelen lukte niet. Ben je lid van deze groep?',
+  'groep.ontkoppelen_mislukt': 'Ontkoppelen lukte niet.',
+  'groep.gekoppelde_groepen_laden': 'De gekoppelde groepen konden niet geladen worden.',
+  'groep.gekoppelde_doelen_laden': 'De gekoppelde doelen konden niet geladen worden.',
+  'groep.naamloos': 'Je groep',
+  'groep.groepen_laden': 'Je groepen konden niet geladen worden.',
+  'groep.groep_laden': 'Deze groep kon niet geladen worden.',
+  'groep.lidmaatschap_laden': 'Je lidmaatschap kon niet geladen worden.',
+  'groep.overzicht_laden': 'Het groepsoverzicht kon niet geladen worden.',
+  'groep.aanmaken_mislukt_kort': 'Je groep kon niet worden aangemaakt. Probeer het opnieuw.',
+  'groep.onbekend_lid': 'Onbekend lid',
+  'validatie.groepsnaam_lang': 'Maximaal 60 tekens.',
+  'validatie.weekdag_kort': 'Kies een dag van de week.',
+  'validatie.uitnodigingscode': 'Deze uitnodigingscode klopt niet. Controleer de link.',
+
+  // ⚠️ De standaard is "notitie verplicht" en dat is beslispunt 3, geen detail:
+  //    een duim omhoog op een bewering is een formaliteit, één zin geeft de
+  //    goedkeurder iets om op te reageren.
+  'bewijseis.note_required': 'Notitie verplicht',
+  'bewijseis.note_and_attachment': 'Notitie én bijlage',
+  'bewijseis.optional': 'Alles optioneel',
+
+  'chat.laden_mislukt': 'De berichten konden niet geladen worden.',
+  'chat.controleer': 'Controleer je bericht.',
+  'chat.leeg': 'Er staat nog niets in je bericht.',
+  'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
+  'chat.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
+
+  'ketting.laden_mislukt': 'De Ketting kon niet geladen worden.',
+
+  // ---------------------------------------------------------------------------
+  // De weekafsluiting — EPIC 7
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Vraag 2 is de enige plek waar tegenslag hoort**, en de hint zegt dat met
+  //    zoveel woorden: de groep leest mee om te helpen, niet om te beoordelen.
+  //    Dit is een van de drie routes waarlangs tegenslag de groep bereikt, en
+  //    alle drie lopen ze via de gebruiker zelf (domeinregel 7). Verwater die zin
+  //    niet in een vertaling.
+  'weekafsluiting.v1.label': 'Wat heb je gedaan?',
+  'weekafsluiting.v1.hint': 'Voorgevuld uit je Dagzetten van deze week. Pas aan wat je wilt.',
+  'weekafsluiting.v1.voorbeeld': 'Drie ochtenden geschreven, samen ongeveer vier uur.',
+  'weekafsluiting.v2.label': 'Wat zat in de weg?',
+  'weekafsluiting.v2.hint':
+    'De enige plek waar dit hoort. Je groep leest mee om te helpen, niet om te beoordelen.',
+  'weekafsluiting.v2.voorbeeld': 'Twee avonden overwerk, en daarna kwam ik er niet meer in.',
+  'weekafsluiting.v3.label': 'Wat is je volgende week?',
+  'weekafsluiting.v3.hint': 'Eén concrete zin is genoeg.',
+  'weekafsluiting.v3.voorbeeld': 'Hoofdstuk drie af, en dinsdag een uur extra inplannen.',
+
+  'weekafsluiting.leeg':
+    'Vul minstens één vraag in. Alle drie overslaan mag ook — dan sla je niets op.',
+  'weekafsluiting.reactie_leeg': 'Er staat nog niets in je reactie.',
+  'weekafsluiting.laden_mislukt': 'De weekafsluiting kon niet geladen worden.',
+  'weekafsluiting.reacties_laden': 'De reacties konden niet geladen worden.',
+  'weekafsluiting.invoer': 'Controleer je invoer.',
+  'weekafsluiting.opslaan_mislukt': 'Opslaan lukte niet. Ben je nog lid van deze groep?',
+  'weekafsluiting.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
+  'weekafsluiting.reactie_controleer': 'Controleer je reactie.',
+  'weekafsluiting.reactie_mislukt': 'Je reactie is niet verstuurd. Probeer het zo nog eens.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

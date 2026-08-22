@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 import { voegOplopendSamen } from './merge';
 
 /**
@@ -25,7 +27,7 @@ export const berichtSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: 'Er staat nog niets in je bericht.' })
+    .min(1, { error: () => t('chat.leeg') })
     .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
 });
 

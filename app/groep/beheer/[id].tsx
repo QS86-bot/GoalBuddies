@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import { clientEnv } from '@/lib/env';
 import { useSession } from '@/modules/auth';
 import {
-  BEWIJSEIS_LABELS,
+  bewijseisLabels,
   BEWIJSEISEN,
   fetchGroep,
   fetchMijnLidmaatschap,
-  HUDDLEDAGEN,
+  huddledagen,
   type Bewijseis,
   toonCode,
   uitnodigingsLink,
@@ -191,7 +191,7 @@ export default function GroepBeheer() {
                     'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen ' +
                     'weekdoelen resetten — dat blijft je persoonlijke week-startdag.'
                   }
-                  opties={HUDDLEDAGEN.map((d) => ({ waarde: d.waarde, label: d.label }))}
+                  opties={huddledagen().map((d) => ({ waarde: d.waarde, label: d.label }))}
                   waarde={huddledag}
                   onKies={setHuddledag}
                 />
@@ -214,7 +214,7 @@ export default function GroepBeheer() {
                     'seconden en geeft je buddy iets om op te reageren — dat is wat het gesprek ' +
                     'op gang brengt.'
                   }
-                  opties={BEWIJSEISEN.map((e) => ({ waarde: e, label: BEWIJSEIS_LABELS[e] }))}
+                  opties={BEWIJSEISEN.map((e) => ({ waarde: e, label: bewijseisLabels()[e] }))}
                   waarde={bewijseis}
                   onKies={setBewijseis}
                 />

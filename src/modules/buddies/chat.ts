@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { t } from '../../shared/i18n';
+
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -15,6 +17,7 @@ import {
   type ChatCache,
   type ChatCursor,
 } from './chat-schemas';
+import { oudLid } from './systeemberichten';
 
 /**
  * De groepschat — QS8-69.
@@ -81,7 +84,7 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
   return {
     id: rij.id,
     sender_id: rij.sender_id,
-    sender_name: rij.sender_name ?? (systeem ? '' : 'Een oud-lid'),
+    sender_name: rij.sender_name ?? (systeem ? '' : oudLid()),
     sender_avatar: rij.sender_avatar,
     body: rij.body ?? '',
     type: rij.type ?? 'text',
@@ -116,7 +119,7 @@ export async function fetchChat(
 
   if (error) {
     reportError(error, 'chat.list', { group_id: groupId, pgcode: error.code });
-    throw new Error('De berichten konden niet geladen worden.');
+    throw new Error(t('chat.laden_mislukt'));
   }
 
   const ruw = (data ?? []) as readonly ChatRij[];
@@ -150,7 +153,7 @@ export async function stuurBericht(
 ): Promise<Resultaat<string>> {
   const gevalideerd = berichtSchema.safeParse({ body });
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je bericht.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('chat.controleer') };
   }
 
   const { data, error } = await supabase()
@@ -168,7 +171,7 @@ export async function stuurBericht(
     reportError(error, 'chat.send', { group_id: groupId, pgcode: error.code });
     return {
       ok: false,
-      melding: 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
+      melding: t('chat.versturen_mislukt'),
     };
   }
 
@@ -187,7 +190,7 @@ export async function verwijderBericht(berichtId: string): Promise<Resultaat<tru
 
   if (error) {
     reportError(error, 'chat.delete', { pgcode: error.code });
-    return { ok: false, melding: 'Weghalen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('chat.weghalen_mislukt') };
   }
 
   return { ok: true, waarde: true };

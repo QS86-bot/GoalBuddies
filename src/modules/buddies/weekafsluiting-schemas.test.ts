@@ -7,7 +7,7 @@ import {
   REACTIE_MAX,
   reactieSchema,
   voorstelUitDagzetten,
-  VRAGEN,
+  vragen,
   weekafsluitingSchema,
   type Antwoord,
   type Reactie,
@@ -48,14 +48,14 @@ function reactie(over: Partial<Reactie> & { id: string; week_review_id: string }
 
 describe('de drie vragen', () => {
   it('staan in de volgorde van het voorstel: gedaan, in de weg, volgende week', () => {
-    expect(VRAGEN.map((v) => v.veld)).toEqual(['did_text', 'blocked_text', 'next_text']);
+    expect(vragen().map((v) => v.veld)).toEqual(['did_text', 'blocked_text', 'next_text']);
   });
 
   it('hebben alle drie een hint, want de toon doet hier het werk', () => {
     // ⚠️ Vraag 2 is de enige plek in de app waar tegenslag benoemd wordt. Zonder
     //    hint is het een leeg veld met een confronterende kop erboven, en dan voelt
     //    het als een bekentenis in plaats van als het derde punt van de agenda.
-    for (const vraag of VRAGEN) {
+    for (const vraag of vragen()) {
       expect(vraag.hint.length).toBeGreaterThan(10);
       expect(vraag.placeholder.length).toBeGreaterThan(10);
     }

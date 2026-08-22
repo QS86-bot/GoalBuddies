@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -11,6 +13,7 @@ import {
   type Reactie,
   type WeekafsluitingInvoer,
 } from './weekafsluiting-schemas';
+import { oudLid } from './systeemberichten';
 
 /**
  * De weekafsluiting — QS8-73.
@@ -49,7 +52,7 @@ function naarAntwoord(rij: AntwoordRij): Antwoord | null {
   return {
     review_id: rij.review_id,
     user_id: rij.user_id,
-    display_name: rij.display_name ?? 'Een buddy',
+    display_name: rij.display_name ?? t('beoordeling.een_buddy'),
     avatar_url: rij.avatar_url,
     did_text: rij.did_text,
     blocked_text: rij.blocked_text,
@@ -76,7 +79,7 @@ export async function fetchWeekafsluiting(
 
   if (error) {
     reportError(error, 'weekreview.list', { group_id: groupId, pgcode: error.code });
-    throw new Error('De weekafsluiting kon niet geladen worden.');
+    throw new Error(t('weekafsluiting.laden_mislukt'));
   }
 
   const ruw = (data ?? []) as readonly AntwoordRij[];
@@ -101,7 +104,7 @@ function naarReactie(rij: ReactieRij): Reactie | null {
     id: rij.id,
     week_review_id: rij.week_review_id,
     author_id: rij.author_id,
-    author_name: rij.author_name ?? 'Een oud-lid',
+    author_name: rij.author_name ?? oudLid(),
     author_avatar: rij.author_avatar,
     body: rij.body ?? '',
     created_at: rij.created_at ?? '',
@@ -132,7 +135,7 @@ export async function fetchWeekafsluitingReacties(
 
   if (error) {
     reportError(error, 'weekreview.replies', { group_id: groupId, pgcode: error.code });
-    throw new Error('De reacties konden niet geladen worden.');
+    throw new Error(t('weekafsluiting.reacties_laden'));
   }
 
   const ruw = (data ?? []) as readonly ReactieRij[];
@@ -171,7 +174,7 @@ export async function bewaarWeekafsluiting(
 ): Promise<Resultaat<true>> {
   const gevalideerd = weekafsluitingSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('weekafsluiting.invoer') };
   }
 
   const leegAlsNull = (tekst: string): string | null => (tekst === '' ? null : tekst);
@@ -194,7 +197,7 @@ export async function bewaarWeekafsluiting(
     reportError(error, 'weekreview.save', { group_id: groupId, pgcode: error.code });
     return {
       ok: false,
-      melding: 'Opslaan lukte niet. Ben je nog lid van deze groep?',
+      melding: t('weekafsluiting.opslaan_mislukt'),
     };
   }
 
@@ -226,7 +229,7 @@ export async function verwijderWeekafsluiting(
 
   if (error) {
     reportError(error, 'weekreview.delete', { group_id: groupId, pgcode: error.code });
-    return { ok: false, melding: 'Weghalen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('weekafsluiting.weghalen_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -247,7 +250,7 @@ export async function reageerOpAntwoord(
 ): Promise<Resultaat<true>> {
   const gevalideerd = reactieSchema.safeParse({ body });
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je reactie.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('weekafsluiting.reactie_controleer') };
   }
 
   const { error } = await supabase().from('week_review_replies').insert({
@@ -258,7 +261,7 @@ export async function reageerOpAntwoord(
 
   if (error) {
     reportError(error, 'weekreview.reply', { pgcode: error.code });
-    return { ok: false, melding: 'Je reactie is niet verstuurd. Probeer het zo nog eens.' };
+    return { ok: false, melding: t('weekafsluiting.reactie_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -276,7 +279,7 @@ export async function verwijderReactie(reactieId: string): Promise<Resultaat<tru
 
   if (error) {
     reportError(error, 'weekreview.reply.delete', { pgcode: error.code });
-    return { ok: false, melding: 'Weghalen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('weekafsluiting.weghalen_mislukt') };
   }
 
   return { ok: true, waarde: true };
