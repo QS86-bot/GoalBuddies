@@ -90,8 +90,13 @@ puntenreden. Wie op de naam zoekt, denkt ten onrechte dat het gedekt is.
 
 ## De keuzes die openstaan — voor Quinten
 
-**1. Wat krijgt iemand zonder buddy voor een gehaalde week?** Dit is de vraag die
-echt beantwoord moet worden; de rest is afronding.
+**1. Wat krijgt iemand zonder buddy voor een gehaalde week?** ✅ **Beantwoord op
+22-08-2026: optie C.** Geen punten zonder goedkeuring, maar dan ook geen minpunt
+zonder beoordelaar. Uitgevoerd in migraties 0064 en 0065; onderbouwing in
+`docs/decisions/2026-08-22-geen-minpunt-zonder-beoordelaar.md`.
+
+⚠️ Dat besluit haalt de straf weg, niet de stilstand: de reeks van een gebruiker
+zonder buddy groeit nog steeds niet. Vraag 1b hieronder blijft dus open.
 
 - *a.* Niets veranderen, maar dan hoort de app solo werken te ontmoedigen in
   plaats van toe te staan — en dan is de nudge-regel fout.
