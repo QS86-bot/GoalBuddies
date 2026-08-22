@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 22-08-2026, na EPIC 9, de deploy en de i18n-infrastructuur.
+> **Laatst bijgewerkt:** 22-08-2026, na EPIC 9, de deploy en de i18n-migratie t/m `src/modules`.
 
 ---
 
@@ -20,184 +20,112 @@ WERKVOORRAAD §4.
 
 ## STAND VAN ZAKEN
 
-Fase 1 is grotendeels af. EPIC 0, 1, 2, 4, 5, 6, 7 en 10 staan. Van EPIC 8 zijn
-De Ketting (QS8-80), de weekpassen (QS8-81) en het dashboard (QS8-75) af. EPIC 3
-is deels gebouwd buiten de volgorde om: poort, Edge Function en datalaag staan op
-main, maar er zijn geen schermen en er is nooit een echte AI-call gedaan.
+**Fase 1 is inhoudelijk af.** Elke epic staat, 0 t/m 12. De app is live op
+`goalbuddies.q-projects.tech` en de twee jobs (rollover, meldingen) draaien tegen
+het echte project. Migraties `0001` t/m `0061` zijn toegepast.
 
-Migraties 0039 t/m 0049 zijn toegepast op het echte project. De rollover draait
-elk uur. **539 tests groen over 31 bestanden, geen skips** (de RLS-suite heeft
-dus echt gedraaid — staat er "skipped" bij `tests/rls/`, dan zegt groen niets
-over autorisatie; zie §3b van de werkvoorraad).
+Deployen is één commando: `npm run deploy`. Daar heb je eenmalig
+`HOSTINGER_API_TOKEN` in `.env` voor nodig — de eerste deploy liep via de
+MCP-koppeling.
 
-**Er staan ongeveer 46 commits klaar om te pushen. Ik push zelf.**
+**De MVP is niet af**, en de drie dingen die dat tegenhouden zijn geen van alle
+gewoon "de volgende issue oppakken". Ze staan hieronder in volgorde van belang.
 
-**EPIC 8 is af voor de MVP.** Alleen QS8-77 (dagelijkse nudge) staat nog open en
-die wacht op EPIC 11: er is geen kanaal om een nudge over te versturen.
+---
 
-Deze ronde afgerond: QS8-106 (de vier datalaagfuncties zonder scherm), QS8-112
-(een weekdoel aanmaken kon helemaal niet), QS8-82 (adempauze), QS8-39 (mijlpalen
-beheren), QS8-76 (feestelijk moment) en QS8-85 (commitments informeel, met een
-test die het bewaakt). A45 is gedicht in migratie 0047.
+### 1. 🔴 A47 — de RLS-suite bewijst niets meer in een volle run
 
-**EPIC 12 is af.** QS8-93 (de haalbaarheidsberekening), QS8-94 (de vier standen
-in de UI), QS8-95 ("vraag je groep om hulp") en QS8-96 (herplannen bij een
-onhaalbare deadline). Migraties 0050 en 0051, en de rollover is opnieuw
-gedeployd zodat hij het risico ook echt herberekent.
+**Begin hier.** Dit is het zwaarste openstaande punt en het is geen feature.
 
-⚠️ **`goals.risk_status` is dichtgezet vóórdat de radar hem ging vullen**
-(migratie 0050). De drie risicokolommen wonen nu in `goal_risk`, eigenaar-only.
-**Daarmee is A17 teruggedraaid**: er zijn nog twee benoemde verruimingen van
-domeinregel 7 (A15 en A7), niet drie. Beslisdocument 002 en CLAUDE.md zijn
-bijgewerkt.
+De suite maakt ongeveer veertig aanmeldingen; Supabase weigert na ongeveer
+dertig. Op 22-08 gaven twee volle runs achter elkaar **1 respectievelijk 5
+falende bestanden, elke keer andere**, en élk betrokken bestand bleek in isolatie
+groen — epic3, epic7, epic8, epic9, policies, weekpassen en besluiten stuk voor
+stuk nagelopen.
 
-**EPIC 11 staat klaar, op één dependency na.** De tabellen (`push_tokens`,
-`notifications_sent`), de regels over wie wat krijgt, de Edge Function, de
-GitHub-workflow die hem elk uur aanroept en de rand in de app zijn er allemaal.
-Ik heb de job tegen het echte project gedraaid: 8 profielen, 8 zonder token,
-nul verstuurd, geen fouten.
+⚠️ **Wat je ziet is géén melding over rate limiting** maar een fixture die
+halverwege omvalt: een paar bestanden rood, de rest "skipped". Dat leest als een
+kapotte policy, en je gaat in de verkeerde richting zoeken.
 
-⚠️ **Wat ontbreekt is `expo-notifications`** — een dependency, en die vraagt
-eerst toestemming. Zonder die bibliotheek haalt de app geen pushtoken op, dus
-blijft `push_tokens` leeg en stuurt de job niets. Dat is **Q-TODO B4** en het is
-het enige dat EPIC 11 nog tegenhoudt. De rand eromheen is dezelfde vorm als bij
-Sentry: er is een `PushBron`-interface met een lege standaard, en toestemming
-krijgen is één `zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
+⚠️ **Het echte risico is het faalbeeld en niet de vertraging.** Een suite die
+soms zonder aanwijsbare reden rood is, leert je om rood te negeren — en dan is de
+dag dat er écht iets stuk is, de dag dat je het mist. Zolang dit staat, zegt
+"npm test is groen" niets meer over domeinregel 7, en dat is precies de garantie
+waar dit project op leunt.
 
-Denk er bij die toestemming aan dat er náást de bibliotheek ook een Expo-project
-met FCM- en APNs-sleutels nodig is voor een echt toestel. Die zitten in de build,
-niet in de server; de Edge Function heeft er niets voor nodig.
+Twee richtingen:
 
-**EPIC 3 is af voor de MVP, en de Doelcoach heeft voor het eerst echt gedraaid.**
-Dat stond sinds augustus als "gebouwd en nooit gedraaid" in deze overdracht.
-Drie echte AI-calls tegen het project, samen ongeveer 3,8 cent.
+* **Eén set fixtures voor de hele run** in plaats van per bestand. Goedkoper,
+  raakt `tests/rls/harness.ts`, maar de suites delen dan state — en dat is
+  precies wat ze nu niet doen. Kijk goed naar `removeTestUsers()`.
+* **Een eigen testproject** met een eigen quotum. Schoner, maar het vraagt een
+  tweede Supabase-project en dus een besluit van Quinten over kosten.
 
-Wat er nu staat: het zes-vragen-interview, een coachscherm dat een job
-klaarzet en tot het antwoord kijkt, mijlpalen overnemen, opnieuw genereren, en
-een kostenoverzicht (`ai_kosten_per_week()`, gedocumenteerd in DEPLOY.md §2.6).
-Alleen QS8-41 (weekdoelen per mijlpaal) blijft open, en die is `phase:v2`.
+Overleg de keuze; bouw hem niet zomaar.
 
-⚠️ **Twee dingen om te weten over de coach.** Hij spreekt tegen als je deadline
-niet past bij je uren — geverifieerd met een opzettelijk onmogelijk doel. En hij
-rekent níét meer zelf met datums: het aantal weken en de totale uren worden
-server-side uitgerekend en meegegeven. Dat was nodig omdat hij bij de eerste
-proef "ongeveer 14 maanden" zei over een streefdatum die twee weken weg lag.
-**Vraag een taalmodel nooit om rekenwerk dat je zelf kunt doen** — dat geldt
-onverkort voor QS8-41.
+---
 
-**EPIC 9 is af.** QS8-83 (beloning vrijgeven) en QS8-84 (straf verschuldigd),
-migraties 0057 en 0058, met 19 tests in `tests/rls/epic9.test.ts` die tegen het
-echte project gedraaid hebben. De beslissingen staan in
-`docs/decisions/003-commitments-afwikkelen.md`; oppervlak 20 is toegevoegd aan
-beslisdocument 002.
+### 2. QS8-114 — web push (er komt vandaag geen enkele melding aan)
 
-⚠️ **Er is precies één ding dat nog moet: de rollover opnieuw deployen.**
+`expo-notifications` staat erin en is ingeplugd; de job draait en selecteert
+`profiles.locale`. Maar **de app draait alléén op het web**, en web push is een
+ánder mechanisme: VAPID-sleutelpaar, een service worker, en een
+`PushSubscription` in plaats van een Expo-token.
 
-```bash
-npx supabase functions deploy rollover --project-ref wehgocadxehottiiyvsc
-```
+⚠️ **Er ligt één besluit vóór het bouwen**: een `PushSubscription` is een
+JSON-object (endpoint plus twee sleutels) en geen string, terwijl
+`push_tokens.token` `text` is met een unieke index. Eigen tabel of die kolom? Dat
+is een wijziging aan een bestaande tabel en vraagt dus toestemming.
 
-De functie roept sinds deze ronde `maak_straffen_verschuldigd()` aan; de
-database-kant staat en is getest, de gedeployde versie kent hem nog niet. **Tot
-die deploy wordt geen enkele straf verschuldigd in productie.** Controleer erna
-of het antwoord een veld `verschuldigd` bevat — staat het er niet, dan draait de
-oude versie nog. Zie WERKVOORRAAD §0a.
+Native wacht daarnaast op een EAS-project met FCM- en APNs-sleutels. Die horen
+bij de build, niet bij de server.
 
-⚠️ **Wat EPIC 9 onderweg vond is belangrijker dan de feature.** Drie dingen die
-al op Done stonden, werkten niet, en alle drie om dezelfde reden — het onderdeel
-was getest, de keten niet:
+---
 
-* `trekIn()` gaf altijd `42501`. Een UPDATE-policy met een `using` maar zónder
-  `with check` gebruikt die `using` óók als controle op de níeuwe rij, dus
-  `status = 'cancelled'` schrijven was verboden — precies de enige overgang die
-  de client wél moet kunnen maken. **Schrijf een `with check` altijd uit, ook als
-  hij hetzelfde zou zijn.**
-* `commitment_events` weigerde elke insert (RLS aan, alleen een SELECT-policy) en
-  `logCommitmentEvent()` slikte de fout op. Het auditspoor stond op nul rijen.
-  Het schrijven zit nu in een trigger, niet meer in de client.
-* **`goals.status` kon helemaal geen `completed` worden.** `zet_doelstatus()` kan
-  alleen archiveren en `authenticated` verloor in 0035 het schrijfrecht op die
-  kolom. Dus `meld_doel_af()` én `meld_commitment()` stonden er allebei
-  maandenlang zonder ooit af te gaan. Er is nu een RPC `rond_doel_af()` en een
-  knop op het doelscherm.
+### 3. Supabase Auth wijst nog naar het oude adres
 
-Dat is de derde keer op rij (QS8-47, QS8-112, nu deze). **Controleer bij elk
-`area:backend`-issue wie de nieuwe functie aanroept, en of een mens daar via een
-scherm bij kan.** Staat als voorstel in ENGINEER-REVIEW: dit is statisch af te
-leiden en had alle drie gevonden.
+Dashboardhandeling van een minuut, en niets kan het via een API. Site URL en
+redirect-URL's staan in `docs/DEPLOY.md` §3. Tot dan wijst de bevestigingslink in
+**elke** aanmeldmail verkeerd.
 
-**Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
-A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
-groene notities raken domeinregel 7 in de kern. Verder A43 (minpunten bij
-zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?), A46 (TRUNCATE
-intrekken) en A47 (de testsuite past niet meer twee keer in een uur). A37 staat
-er ook nog. En **B4** — `expo-notifications` — is geen besluit maar een
-dependency, en hij blokkeert wel een hele epic. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
-onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
+---
 
-**Daarna afgerond in dezelfde sessie: QS8-102, QS8-77 en QS8-107 stap 2.**
+## WAT ER DEZE SESSIE IS GEBEURD
 
-QS8-102 (wanneer is een doel afgerond?) en QS8-77 (dagelijkse nudge) waren in
-feite al gebouwd — in EPIC 9 respectievelijk EPIC 11 — maar niet afgevinkt. Bij
-QS8-102 ontbrak nog wél iets: de test die bewijst dat een eigenaar zijn doel niet
-zélf op `completed` kan zetten. `weekpassen.test.ts` dekte alleen de INSERT-kant;
-voor UPDATE stond niets.
+**EPIC 9 draait in productie.** De rollover maakt straffen verschuldigd —
+end-to-end bewezen tegen het echte project en daarna opgeruimd.
 
-**QS8-107 stap 2 (migratie 0059)** is het deel van de vertaalinfrastructuur dat
-straks niet meer kon: een systeembericht bewaarde een uitgeschreven Nederlandse
-zin in `body`, en een chatbericht is een onveranderlijke kopie. De parameters
-staan nu als kolommen in de rij (`subject_id`, `actor_id`, `payload`) en de app
-maakt de zin in `src/modules/buddies/systeemberichten.ts`. `body` blijft als
-noodterugval, met een test die weigert dat een bekende gebeurtenis daarop landt.
-De rest van de meertaligheid staat als **QS8-113** en wacht op een
-dependency-besluit.
+**De app is live** (QS8-99/QS8-100). `npm run deploy` bouwt, schrijft de
+`.htaccess`, scant de bundel op geheimen, pakt in en zet live. Die secret-scan is
+aantoonbaar werkend: er is met opzet een service-role-key in `dist/` gezet en de
+deploy sloeg af met de vindplaats erbij.
 
-⚠️ **Lees dit voordat je een kolom met `on delete set null` toevoegt.** 0059
-introduceerde een bug die 0060 dezelfde dag moest dichten: `subject_id` kreeg
-`on delete set null` én een harde terugzetting in `stamp_chat_message()`. Dat is
-letterlijk de val uit WERKVOORRAAD §8 punt 8 — in een migratie die dat punt in
-zijn eigen kop citeert, en die hem voor `actor_id` wél goed toepaste. Eén regel
-lager ging het mis.
+**Vertaalinfrastructuur zonder bibliotheek** (QS8-113, migratie 0061), en
+`src/shared/ui` én `src/modules` zijn volledig omgezet (QS8-115). **Alleen `app/`
+ligt er nog.**
 
-Het gevolg was niet stil maar hard: Postgres zet de kolom terug naar een id dat
-niet meer bestaat, toetst de foreign key opnieuw, en dan faalt de hele DELETE.
-`verwijder_mijn_account()` viel dus om zodra je in één systeembericht genoemd
-werd — en dat ben je na één keer meedoen aan een groep.
+⚠️ **Drie dingen die je moet weten vóór je die laatste laag doet.** Alle drie zijn
+ze in deze sessie fout gegaan, twee keer door mijzelf:
 
-⚠️⚠️ **En de RLS-suite zou dit nooit gevangen hebben.** `removeTestUsers()` gooit
-eerst de groepen weg, waarna de systeemberichten mee cascaderen vóórdat het
-profiel aan de beurt is: de opruiming verbergt de bug. Er staat nu een test in
-`epic7.test.ts` die een profiel weggooit terwijl zijn systeembericht blijft
-staan. **Als een test groen is doordat de opruimvolgorde het probleem wegneemt,
-bewijst hij niets** — dat is dezelfde vorm als de weekpasmelding van 19-08.
+1. **Nooit een module-constante met tekst erin.** Die bevriest de taal op
+   importtijd, vóórdat het profiel geladen is. Er waren er tien plus zes
+   meldingentabellen; allemaal functies geworden. Zoek in `app/` naar
+   `const` met tekst erin.
+2. **Zod-schema's vragen `{ error: () => t(...) }`**, niet `{ error: t(...) }`.
+   Een schema wordt op moduleniveau gebouwd. De gretige vorm werkt, valideert
+   correct, en staat in de verkeerde taal — er is niets aan te zien.
+3. **Locale-data hoort niet in de catalogus.** Weekdagnamen komen uit `Intl`
+   (`weekdagNaam()` in `shared/i18n`), niet uit zeven sleutels per taal. Er
+   stonden er twee hardgecodeerd in het project.
 
-**De app staat live: `goalbuddies.q-projects.tech`.** Deployen is `npm run deploy`
-(zie WERKVOORRAAD §0a). Je hebt daarvoor eenmalig `HOSTINGER_API_TOKEN` in `.env`
-nodig — de eerste deploy liep via de MCP-koppeling.
+Het testpatroon staat per laag in `vertaald.test.ts`: die toetst óf de tekst nog
+van de taal afhangt — iets wat de bestaande inhoudstests principieel niet kunnen
+zien, want die blijven groen als je de Nederlandse zin weer hard in de code zet.
 
-**EPIC 9 draait in productie.** De rollover maakt straffen verschuldigd; dat is
-end-to-end bewezen en de testdata is opgeruimd.
-
-⚠️ **Twee dingen wachten op Quinten en op niemand anders:**
-
-1. **Supabase Auth** — Site URL en redirect-URL's staan nog op het oude adres.
-   Dashboardhandeling, exacte waarden in `docs/DEPLOY.md` §3. Tot dan wijst de
-   bevestigingslink in elke aanmeldmail verkeerd.
-2. **Er komt geen enkele melding aan.** `expo-notifications` is ingeplugd, maar
-   web push ontbreekt (VAPID + service worker, **QS8-114**) en de app draait
-   alléén op het web. Dat is de zwaarste openstaande MVP-taak.
-
-**Vertaalinfrastructuur staat** (QS8-113, migratie 0061): `shared/i18n` met een
-eigen catalogus — bewust geen i18next of lingui, want die lossen problemen op die
-dit project niet heeft. `systeemberichten.ts` loopt er volledig doorheen en is de
-referentie voor de rest. De ~54 bestanden met schermtekst staan als **QS8-115**.
-
-⚠️ **De les van deze ronde, en hij is niet nieuw maar wel duurder geworden.**
-Drie issues bleken al gebouwd maar nooit afgevinkt (QS8-102, QS8-77, eerder
-QS8-47 en QS8-112). Steeds dezelfde vorm: **het onderdeel is getest, de keten
-niet.** Er staat nu een voorstel in `ENGINEER-REVIEW.md` voor een controle die
-elke trigger en definer-functie opsomt die door geen enkel pad in `src/` of
-`app/` bereikbaar is. Dat is statisch af te leiden en had alle vier gevonden.
+⚠️ **Bij het overzetten weken vier teksten af** van wat ik in de catalogus zette,
+doordat ik ze uit het geheugen overnam in plaats van uit het bestand. Steeds is
+de catalogus gelijkgetrokken met de code. **De bestaande tekst is de waarheid,
+ook als jouw versie beter klinkt.**
 
 ## WERKAFSPRAKEN — houd deze aan
 
@@ -211,9 +139,17 @@ elke trigger en definer-functie opsomt die door geen enkel pad in `src/` of
    **Nummer verder vanaf 0062.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
-   `npm run build` — **én lees de testteller.** Staat er "skipped" bij
-   `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen niets over
-   autorisatie. Zie WERKVOORRAAD §3b.
+   `npm run build` — **én lees de testteller vóórdat je commit.**
+
+   ⚠️ **Draai de suite en de commit nooit in één commando.** Dat is op 22-08
+   misgegaan: ik las de uitslag pas achteraf en had toen al gecommit. De inhoud
+   bleek in orde, de volgorde niet.
+
+   ⚠️ **Zolang A47 open staat, is een volle run niet te vertrouwen.** Falen er
+   RLS-bestanden, draai ze dan één voor één opnieuw vóór je concludeert dat er
+   iets stuk is — de kans is groot dat het de aanmeldlimiet is. Staat er
+   "skipped" bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen
+   niets over autorisatie. Zie WERKVOORRAAD §3b.
 5. **Reviewagents naar risico, niet naar schema** (herzien 20-08-2026, zie
    CLAUDE.md regel 19 voor de onderbouwing):
    - **`security-reviewer` draait direct**, bij elke wijziging die auth, RLS,
@@ -240,6 +176,19 @@ elke trigger en definer-functie opsomt die door geen enkel pad in `src/` of
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **Een module-constante met vertaalde tekst bevriest de taal op importtijd.**
+  Een `const` die `t()` aanroept, wordt één keer opgebouwd bij het importeren van
+  de module — vóórdat het profiel geladen is. De tekst klópt, hij staat alleen in
+  de verkeerde taal, en er is niets aan te zien. Er waren er zestien in dit
+  project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
+  regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
+  Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **Een hulpscript dat niet idempotent is en tóch twee keer draait.** Bij QS8-115
+  liep een migratiescript opnieuw na een fout halverwege, waardoor het
+  catalogusblok dubbel in `nl.ts` kwam te staan. TypeScript ving het, maar het is
+  dezelfde categorie als een SQL-migratie zonder rollback-pad — en onwrikbare
+  regel 20 bestaat juist omdat "draai hem opnieuw" de standaardreactie is.
 
 - **RLS kan geen kolommen beperken.** Is de eis "deze kolom mag je niet
   veranderen" of "niet lézen", dan heb je een kolomgrant, een view met expliciete

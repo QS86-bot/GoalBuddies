@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 22-08-2026 (na EPIC 9, de deploy, en de i18n-infrastructuur)
+**Laatst bijgewerkt:** 22-08-2026 (na EPIC 9, de deploy, en de i18n-migratie t/m `src/modules`)
 
 ---
 
@@ -15,10 +15,19 @@
 
 Lees dit eerst; de rest is naslag.
 
-* **Fase 1 is voor het grootste deel af.** EPIC 0, 1, 2, 4, 5, 6, 7 en 10 staan;
-  van EPIC 8 zijn De Ketting, de weekpassen en het dashboard af, EPIC 3 is deels
-  gebouwd buiten de volgorde om. Open: EPIC 11, 12, 9 en de rest van 8
-  (QS8-76, QS8-77, QS8-82).
+* **Fase 1 is inhoudelijk af.** Elke epic staat: 0 t/m 12. De app is live op
+  `goalbuddies.q-projects.tech` en de twee jobs (rollover, meldingen) draaien
+  tegen het echte project.
+
+* ⚠️ **Drie dingen houden de MVP nog tegen, en géén ervan is code die ik kan
+  schrijven.** In volgorde van belang:
+
+  1. **De RLS-suite bewijst niets meer in een volle run** — zie de A47-regel
+     hieronder. Dat is nu het zwaarste punt op deze lijst: de belangrijkste
+     poort van dit project is onbetrouwbaar geworden.
+  2. **Er komt geen enkele melding aan.** Web push ontbreekt (QS8-114) en de app
+     draait alléén op het web.
+  3. **Supabase Auth wijst naar het oude adres.** Dashboardhandeling, §0a.
 * **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke
   afspraak hieronder. Migraties mogen daarom rechtstreeks op productie. **Dat
   vervalt op de dag dat de eerste gebruiker zich aanmeldt.**
@@ -96,10 +105,22 @@ Lees dit eerst; de rest is naslag.
   regel, zoals `tokens.ts` beloofde. ⚠️ Maar QS8-91 is **niet** af: de web-kant
   van push ontbreekt en de app draait alléén op het web, dus er komt vandaag geen
   enkele melding aan. Zie **QS8-114**.
-* ✅ **Vertaalinfrastructuur zonder bibliotheek** (QS8-113, migratie 0061).
-  `shared/i18n` met `nl` en `en`, `profiles.locale`, en de Doelcoach spreekt de
-  taal van de gebruiker — server-side uit het profiel, niet uit de job-invoer.
-  De ~54 bestanden met schermtekst staan als **QS8-115**.
+* ✅ **Vertaalinfrastructuur zonder bibliotheek** (QS8-113, migratie 0061), en
+  **`src/shared/ui` én `src/modules` zijn volledig omgezet** (QS8-115). Alleen
+  `app/` ligt er nog. Drie dingen die je moet weten vóór je die laatste laag doet:
+
+  1. ⚠️ **Nooit een module-constante met tekst erin.** Die bevriest de taal op
+     importtijd, vóórdat het profiel geladen is. Er waren er tien, plus zes
+     meldingentabellen — allemaal functies geworden. Zoek in `app/` naar
+     `const` met tekst.
+  2. ⚠️ **Zod-schema's vragen `{ error: () => t(...) }`**, niet
+     `{ error: t(...) }`. Een schema wordt op moduleniveau gebouwd; de gretige
+     vorm bevriest de taal zonder dat er iets aan te zien is.
+  3. ⚠️ **Locale-data hoort niet in de catalogus.** Weekdagnamen komen uit `Intl`
+     (`weekdagNaam()`), niet uit zeven sleutels per taal.
+
+  Het testpatroon staat in `vertaald.test.ts` per laag: die toetst óf de tekst
+  nog van de taal afhangt, iets wat de bestaande inhoudstests niet kunnen zien.
 * ✅ **EPIC 9 (commitment device) is af** — QS8-83 en QS8-84, migraties 0057 en
   0058, en voor het eerst écht gedraaid tegen het project (19 tests in
   `tests/rls/epic9.test.ts`). Beslissingen in `docs/decisions/003-...md`.
@@ -117,53 +138,26 @@ Lees dit eerst; de rest is naslag.
   zonder ooit af te gaan. Dat is de derde keer op rij (QS8-47, QS8-112, nu deze):
   **het onderdeel is getest, de keten niet.**
 
-* ⚠️ **De RLS-suite past niet meer twee keer in een uur, en dat is op 22-08 twee
-  keer in één sessie misgegaan.** Hij maakt ongeveer veertig aanmeldingen en
-  Supabase weigert na ongeveer dertig.
+* 🔴 **A47 is geëscaleerd: de RLS-suite is in een volle run onbruikbaar.** Hij
+  maakt ongeveer veertig aanmeldingen en Supabase weigert na ongeveer dertig.
+
+  Op 22-08 gaven twee volle runs achter elkaar **1 respectievelijk 5 falende
+  bestanden, elke keer andere** — en élk betrokken bestand bleek in isolatie
+  groen (epic3, epic7, epic8, epic9, policies, weekpassen en besluiten stuk voor
+  stuk nagelopen).
 
   **Wat je ziet is geen melding over rate limiting** maar een fixture die
-  halverwege omvalt: één bestand rood, de rest "skipped". Dat leest als een
-  kapotte policy. Beide keren bleek datzelfde bestand in isolatie gewoon groen.
+  halverwege omvalt: bestanden rood, de rest "skipped". Dat leest als een kapotte
+  policy.
 
-  **Het echte risico is niet de vertraging maar het faalbeeld.** Een suite die
+  ⚠️ **Het echte risico is niet de vertraging maar het faalbeeld.** Een suite die
   soms zonder aanwijsbare reden rood is, leert je om rood te negeren — en dan is
-  de dag dat er écht iets stuk is, de dag dat je het mist. Zie **A47**; die
-  keuze (accounts hergebruiken over suites heen, of een eigen testproject) is nu
-  urgenter dan hij op 21-08 leek.
+  de dag dat er écht iets stuk is, de dag dat je het mist. Zolang dit niet
+  opgelost is, is "npm test is groen" geen bewijs meer over domeinregel 7.
 
----
-
-## 0a. ✅ De app staat live — en wat er nog handmatig moet
-
-**`goalbuddies.q-projects.tech` bestaat sinds 21-08-2026.** Subdomein met een
-eigen documentroot (`public_html/goalbuddies`), HTTPS actief, DNS gecontroleerd.
-
-Deployen is één commando:
-
-```bash
-npm run deploy
-```
-
-Dat controleert de env, bouwt, schrijft de `.htaccess`, **scant de bundel op
-geheimen**, pakt in, uploadt en zet live. Alleen kijken wat er zóu vertrekken:
-`npm run deploy:droog`. Volledig beschreven in `docs/DEPLOY.md` §3.
-
-⚠️ **Je hebt `HOSTINGER_API_TOKEN` in `.env` nodig.** De eerste deploy is via de
-MCP-koppeling gedaan; het script gebruikt een gewoon API-token. Maak er een in
-hpanel → Account → API.
-
-✅ **De rollover is opnieuw gedeployd** en maakt straffen verschuldigd. Bewezen
-tegen het echte project: een doel met een verstreken streefdatum gaf
-`verschuldigd: 1`, de straf kwam op `due`, er stonden drie auditregels
-(`confirmed > triggered > posted`) en er ging één systeembericht naar alleen de
-begunstigde groep. Testdata daarna opgeruimd.
-
-### ⚠️ Twee dingen die alleen jij kunt doen
-
-**1. Supabase Auth wijst nog naar het oude adres** (QS8-99, laatste criterium).
-Geen API en geen CLI ondersteunen dit; het is een dashboardhandeling.
-Supabase → Authentication → URL Configuration:
-
+  Twee richtingen: accounts hergebruiken over suites heen (één set fixtures voor
+  de hele run), of een eigen testproject met een eigen quotum. **Dit hoort vóór
+  de resterende i18n-slice.**
 * Site URL: `https://goalbuddies.q-projects.tech`
 * Redirect URLs: `https://goalbuddies.q-projects.tech/**` en
   `http://localhost:8081/**`
@@ -353,12 +347,23 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ af voor de MVP, m.u.v. QS8-77 (nudge, wacht op EPIC 11) en de twee `phase:v2`-issues QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
-| 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
+| 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **bijna af.** `expo-notifications` staat erin (22-08) en de job draait, maar er komt niets aan: web push ontbreekt (**QS8-114**) en de app draait alléén op het web. Native wacht daarnaast op een EAS-project |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
-| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ af (21-08, migraties 0057/0058) — op de rollover-deploy na, zie §0a |
+| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af en in bedrijf** (21/22-08, migraties 0057/0058). De rollover is gedeployd en maakt straffen verschuldigd; end-to-end bewezen tegen het echte project |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
+
+#### Waar het nu op vastzit
+
+De epics zijn af; de MVP is dat niet. Drie dingen, en geen ervan is code die
+een agent alleen kan afmaken:
+
+| # | Wat | Waarom het blokkeert | Wie |
+|---|---|---|---|
+| 1 | **A47 — de RLS-suite** | Een volle run geeft wisselende, valse roodstanden. Daarmee bewijst de belangrijkste poort van dit project niets meer. Zie §0 | besluit + werk |
+| 2 | **QS8-114 — web push** | `expo-notifications` staat erin, maar de app draait alleen op het web en web push is een ánder mechanisme (VAPID, service worker, `PushSubscription`). Vandaag komt er dus geen enkele melding aan | besluit over opslag + werk |
+| 3 | **Supabase Auth-URL's** | Bevestigingsmail wijst naar het oude adres. Dashboardhandeling van een minuut, §0a | Quinten |
 
 #### Wat er van de afgeronde epics nog los ligt
 
