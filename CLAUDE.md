@@ -221,6 +221,29 @@ Voordat er één feature gebouwd wordt:
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
     commitment op het moment dat het verschuldigd wordt.
 
+## Emoji — vastgelegd 22-08-2026 (QS8-111)
+
+**De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,
+systeemberichten, meldingen of UI-componenten. Ze vertalen slecht, ze renderen
+per platform anders, en een schermlezer leest "gezicht met vreugdetranen" midden
+in een zin. Op 20-08 en 22-08 nagemeten: er stond er geen één in `src/` of `app/`.
+Deze regel legt vast wat er al was.
+
+**De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
+gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
+
+⚠️ **Gevolg dat geen zin maar een controle nodig heeft.** Omdat gebruikers ze
+overal mogen typen, mag geen enkele plek gebruikerstekst afkappen of het eerste
+teken pakken met `charAt(0)`, `[0]` of `.slice(0, n)`. JavaScript telt in
+UTF-16-eenheden; een emoji kost er twee en 👨‍👩‍👧‍👦 elf. Snijden op zo'n grens
+levert een halve codepoint op en dat rendert als `�`. Gebruik de gedeelde helpers
+uit `src/shared`, nooit de kale string-methodes. Zie QS8-118.
+
+⚠️ Zod's `.max()` telt UTF-16-eenheden, `char_length` in Postgres telt
+codepoints. Die twee zijn niet dezelfde grens. De database blijft op
+`char_length`; een teller in de UI hoort in grafemen te tellen en een
+foutmelding hoort niet "tekens" te beloven waar de code iets anders telt.
+
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.
 
