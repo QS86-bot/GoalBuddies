@@ -3,10 +3,15 @@
 
 export {
   commitmentSchema,
+  COMMITMENT_MAX,
+  COMMITMENT_MIN,
+  type CommitmentInvoer,
+} from './commitment-schemas';
+
+export {
   fetchCommitments,
   trekIn,
   zetBeloning,
   zetStraf,
   type Commitment,
-  type CommitmentInvoer,
 } from './api';
