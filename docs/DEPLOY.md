@@ -255,6 +255,21 @@ Supabase → Authentication → URL Configuration:
 Zolang dit niet gebeurd is, wijst de bevestigingslink in een aanmeldmail naar het
 oude adres, en breekt OAuth zodra QS8-25 aangezet wordt.
 
+### Push-notificaties: wat waar hoort
+
+`expo-notifications` staat sinds 21-08-2026 in `package.json` en is ingeplugd via
+één `zetPushBron(expoPush)` in `app/_layout.tsx`.
+
+⚠️ **Er wordt vandaag nog niets bezorgd**, en dat heeft twee losse oorzaken:
+
+| Platform | Wat ontbreekt | Waar het hoort |
+|---|---|---|
+| **native** (iOS/Android) | Een EAS-project met FCM- en APNs-sleutels | In de **build**, niet op de server. Zonder `projectId` geeft Expo geen token uit; `expo-bron.ts` stopt daar met een begrijpelijke reden in het logboek |
+| **web** | VAPID-sleutelpaar en een service worker | QS8-114. **Dit is vandaag de belangrijkste**, want de app draait alleen op het web |
+
+De Edge Function zelf heeft hier níéts voor nodig — die praat met de Expo-push-API
+en heeft geen sleutels van Apple of Google.
+
 ---
 
 ## 4. Vercel-blockers

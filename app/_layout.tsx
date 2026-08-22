@@ -10,7 +10,7 @@ import {
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
-import { registreerPushToken } from '@/modules/notifications';
+import { expoPush, registreerPushToken, zetPushBron } from '@/modules/notifications';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -65,12 +65,24 @@ function Shell() {
  *    Op een gedeeld apparaat is dat precies goed: zonder dit blijft de vorige
  *    gebruiker meldingen krijgen op een telefoon waar hij niet meer op zit.
  *
- * ⚠️ **Doet vandaag niets**, en dat is bekend. `expo-notifications` staat nog
- *    niet in `package.json` — een dependency vraagt eerst toestemming
- *    (Q-TODO B4) — dus `geenPush` geeft `null` terug en er wordt niets
- *    weggeschreven. De rest van de keten (tabel, job, workflow) staat wél. Zodra
- *    de bibliotheek er mag komen, is het één `zetPushBron(...)` hier.
+ * ⚠️ **De bron wordt één keer gezet, buiten de component.** `expo-notifications`
+ *    is toegevoegd op 21-08-2026 (Q-TODO B4, toestemming van Quinten), en dat is
+ *    exact de wijziging waar `tokens.ts` op ontworpen was: één `zetPushBron(...)`
+ *    en verder niets — geen scherm, geen datalaag, geen Edge Function.
+ *
+ * ⚠️ Buiten de component en niet in een `useEffect`, want het is een
+ *    registratie en geen neveneffect van renderen. Twee keer zetten zou niets
+ *    stukmaken, maar dit leest als wat het is: de app kiest bij het opstarten
+ *    zijn pushbron.
+ *
+ * ⚠️ Er komt vandaag nog steeds niets binnen op een echt toestel: daarvoor is
+ *    een EAS-project met FCM- en APNs-sleutels nodig, en dat zit in de build en
+ *    niet in de server. `expoPush` geeft dan `null` met een reden in het
+ *    logboek in plaats van een fout die op een netwerkprobleem lijkt. Zie
+ *    `docs/DEPLOY.md`.
  */
+zetPushBron(expoPush);
+
 function Pushwacht() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;

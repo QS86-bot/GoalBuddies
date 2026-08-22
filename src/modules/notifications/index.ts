@@ -21,3 +21,7 @@ export {
   type Platform,
   type PushBron,
 } from './tokens';
+
+// ⚠️ Het enige bestand dat `expo-notifications` importeert. Zie `expo-bron.ts`:
+//    de bibliotheek raakt de datalaag, de schermen en de Edge Function niet aan.
+export { expoPush } from './expo-bron';
