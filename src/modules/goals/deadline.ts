@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { telTekens } from '../../shared/tekst';
 import type { IsoDate } from '../../shared/time';
 
 import { datumLigtInDeToekomst, isoDatum } from './schemas';
@@ -64,15 +65,23 @@ export const deadlineVerzoekSchema = z.object({
   //    daarna over en de gebruiker kreeg een storingsmelding voor een tikfout —
   //    nadat hij zijn argument al had getypt.
   new_date: isoDatum,
+  // ⚠️ `telTekens()` en niet `.min()`/`.max()` — QS8-118. Zod telt
+  //    UTF-16-eenheden, `deadline_requests_reason_len` telt met `char_length`
+  //    codepunten. Bij een ondergrens gaat dat verschil de gevaarlijke kant op:
+  //    tien emoji halen `.length >= 20` maar `char_length` is dan 10, dus Zod
+  //    liet het door en Postgres weigerde het. Precies de storingsmelding die
+  //    dit schema hierboven belooft te voorkomen.
   reason: z
     .string()
     .trim()
-    .min(ARGUMENT_MIN, {
+    .refine((tekst) => telTekens(tekst) >= ARGUMENT_MIN, {
       error:
         'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
         'dus "geen tijd" is te weinig om ja op te zeggen.',
     })
-    .max(ARGUMENT_MAX, { error: 'Hou het kort — maximaal 1000 tekens.' }),
+    .refine((tekst) => telTekens(tekst) <= ARGUMENT_MAX, {
+      error: `Hou het kort — maximaal ${ARGUMENT_MAX} tekens.`,
+    }),
 });
 
 export type DeadlineVerzoekInvoer = z.infer<typeof deadlineVerzoekSchema>;

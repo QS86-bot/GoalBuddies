@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { initiaalVan } from '../tekst';
 import { radius, space, useTheme } from '../theme';
 
 import { StreakCounter } from './StreakCounter';
@@ -34,7 +35,7 @@ export function MemberRow({ name, streak, closedThisPeriod, onBreather = false }
   return (
     <View style={styles.rij}>
       <View style={[styles.avatar, { backgroundColor: theme.colors.panelDark }]}>
-        <Caption muted={false}>{initiaal(name)}</Caption>
+        <Caption muted={false}>{initiaalVan(name)}</Caption>
       </View>
 
       <View style={styles.midden}>
@@ -55,10 +56,7 @@ export function MemberRow({ name, streak, closedThisPeriod, onBreather = false }
   );
 }
 
-function initiaal(naam: string): string {
-  const eerste = naam.trim().charAt(0);
-  return eerste === '' ? '?' : eerste.toUpperCase();
-}
+
 
 const styles = StyleSheet.create({
   rij: {

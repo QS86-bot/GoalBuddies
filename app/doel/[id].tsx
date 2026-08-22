@@ -20,6 +20,7 @@ import {
   type DeadlineVerzoek,
   type DoelMetVoortgang,
 } from '@/modules/goals';
+import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 import { localDateIn, now, type IsoDate } from '@/shared/time';
 import {
@@ -339,9 +340,15 @@ function DeadlineVerzetten({
             maxLength={ARGUMENT_MAX}
             placeholder="Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op."
           />
+          {/*
+            ⚠️ `telTekens()` en niet `.length` — QS8-118. De teller moet in
+               dezelfde eenheid tellen als de grens die hem afdwingt, anders
+               zegt hij "Lang genoeg" op een ander moment dan het schema en de
+               database. Met emoji scheelde dat een factor twee.
+          */}
           <Caption>
-            {argument.trim().length < ARGUMENT_MIN
-              ? `Nog ${ARGUMENT_MIN - argument.trim().length} tekens te gaan.`
+            {telTekens(argument.trim()) < ARGUMENT_MIN
+              ? `Nog ${ARGUMENT_MIN - telTekens(argument.trim())} tekens te gaan.`
               : 'Lang genoeg.'}
           </Caption>
         </>

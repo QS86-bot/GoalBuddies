@@ -239,10 +239,21 @@ UTF-16-eenheden; een emoji kost er twee en 👨‍👩‍👧‍👦 elf. Snijde
 levert een halve codepoint op en dat rendert als `�`. Gebruik de gedeelde helpers
 uit `src/shared`, nooit de kale string-methodes. Zie QS8-118.
 
-⚠️ Zod's `.max()` telt UTF-16-eenheden, `char_length` in Postgres telt
-codepoints. Die twee zijn niet dezelfde grens. De database blijft op
-`char_length`; een teller in de UI hoort in grafemen te tellen en een
-foutmelding hoort niet "tekens" te beloven waar de code iets anders telt.
+⚠️ Zod's `.max()` en `.length` tellen UTF-16-eenheden; `char_length` in
+Postgres telt codepunten. Die twee zijn niet dezelfde grens.
+
+**Eén eenheid overal: codepunten, want dat is wat de database telt.** Gebruik
+`telTekens()` uit `src/shared/tekst`, ook in een teller onder een invoerveld.
+Een teller die in grafemen telt terwijl de grens in codepunten staat, is een
+nieuwe fout en geen reparatie: hij zegt "lang genoeg" op een ander moment dan
+het schema. `telGrafemen()` bestaat voor waar je écht zichtbare tekens bedoelt,
+zoals een preview — nooit voor een grens.
+
+⚠️ Bij een **ondergrens** gaat het verschil de gevaarlijke kant op. `.length` is
+altijd ≥ `char_length`, dus een client die in UTF-16 telt laat door wat Postgres
+weigert. Tien emoji halen `.length >= 20`, maar `char_length` is dan 10 en de
+gebruiker kreeg een storingsmelding nadat het formulier "Lang genoeg" zei. Dat
+stond zo in het deadline-argument tot QS8-118.
 
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.
