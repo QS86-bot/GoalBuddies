@@ -356,4 +356,78 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.weghalen_mislukt': 'Removing did not work. Please try again.',
   'weekafsluiting.reactie_controleer': 'Check your reply.',
   'weekafsluiting.reactie_mislukt': 'Your reply was not sent. Please try again in a moment.',
+
+  'doel.doelen_laden': 'Your goals could not be loaded.',
+  'doel.doel_laden': 'This goal could not be loaded.',
+  'doel.invoer': 'Check what you entered.',
+  'doel.datum_verleden': 'Choose a target date that is still ahead.',
+  'doel.opslaan_mislukt': 'Your goal could not be saved. Please try again.',
+  'doel.niets_gewijzigd': 'Nothing was changed.',
+  'doel.wijzigen_mislukt': 'Saving did not work. Please try again.',
+  'doel.streefdatum_mislukt': 'Changing the target date did not work. Please try again.',
+  'doel.actie_mislukt_kort': 'That did not work.',
+  'doel.actie_mislukt': 'That did not work. Please try again.',
+  'doel.niet_van_jou': 'This goal is not yours.',
+  'doel.datum_ongeldig': 'Choose a valid target date.',
+
+  'doel.groepsakkoord_nodig':
+    'You share this goal with a group, so you do not move the date on your own. ' +
+    'Ask your buddies to agree, with a short explanation.',
+
+  'doel.afronden_mislukt': 'Completing did not work. Please try again.',
+  'doel.al_afgerond': 'This goal is already completed.',
+  'doel.gearchiveerd': 'This goal is archived. Bring it back first.',
+  'doel.niet_ingelogd': 'You are no longer signed in.',
+  'doel.een_mijlpaal_open':
+    'One milestone is still open. Check it off, or drop it if it is no longer needed.',
+  'doel.meer_mijlpalen_open':
+    '{aantal} milestones are still open. Check them off, or drop what is no longer needed.',
+
+  'doel.verwijderen_mislukt': 'Deleting did not work.',
+  'doel.te_oud':
+    'This goal has been around too long to delete. Archive it — then your history ' +
+    'stays and it disappears from your list.',
+  'doel.gedeeld_met_groep': 'This goal is linked to a group. Unlink it first, or archive it.',
+  'doel.heeft_weekdoelen':
+    'Weekly goals already hang off this goal. Archive it instead of deleting it.',
+  'doel.heeft_punten':
+    'Points have already been booked on this goal. Archive it instead of deleting it.',
+  'doel.commitment_in_werking':
+    'Your reward or penalty has already come into effect. Archive this goal instead of deleting it.',
+
+  'doel.reeks_laden': 'Your streak could not be loaded.',
+  'doel.weekpassen_laden': 'Your week passes could not be loaded.',
+
+  'categorie.business': 'Work',
+  'categorie.study': 'Study',
+  'categorie.other': 'Other',
+
+  'validatie.doeltitel_kort': 'Give your goal a name of at least three characters.',
+  'validatie.doeltitel_lang': 'At most 200 characters.',
+  'validatie.omschrijving_lang': 'At most 2000 characters.',
+  'validatie.datum_vorm': 'Use an existing date like 2026-12-31.',
+  'validatie.identiteit_lang': 'Keep it short — one sentence works best.',
+  'validatie.uren_max': 'A week has 168 hours.',
+
+  'deadline.argument_kort':
+    'Write one sentence about what changed. Your buddies decide on this, ' +
+    'so "no time" is too little to say yes to.',
+  'deadline.argument_lang': 'Keep it short — at most 1000 characters.',
+  'deadline.geen_lid': 'You are not a member of this group.',
+  'deadline.niet_gekoppeld': 'This goal is not linked to this group.',
+  'deadline.zelfde_datum': 'Choose a date other than the one that is set now.',
+  'deadline.argument_leeg': 'Write one sentence about what changed.',
+  'deadline.al_open': 'There is already a request for this goal. Wait for that one first.',
+  'deadline.bestaat_niet': 'This request no longer exists.',
+  'deadline.al_beslist': 'This has already been decided.',
+  'deadline.niet_zelf': 'You cannot approve your own request.',
+  'deadline.versturen_mislukt': 'Sending your request did not work. Please try again.',
+  'deadline.versturen_mislukt_kort': 'Sending your request did not work.',
+  'deadline.beslissen_mislukt': 'Deciding did not work. Please try again.',
+  'deadline.beslissen_mislukt_kort': 'Deciding did not work.',
+  'deadline.intrekken_mislukt': 'Withdrawing did not work. Please try again.',
+  'deadline.intussen_beslist': 'It has already been decided in the meantime.',
+  'deadline.intrekken_mislukt_kort': 'Withdrawing did not work.',
+  'deadline.lopend_laden': 'The open request could not be loaded.',
+  'deadline.verzoeken_laden': 'The requests could not be loaded.',
 };

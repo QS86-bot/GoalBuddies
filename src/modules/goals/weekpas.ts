@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -54,7 +56,7 @@ export async function fetchWeekpasStanden(goalIds?: readonly string[]): Promise<
 
   if (error) {
     reportError(error, 'weekpas.standen', { aantal: goalIds?.length ?? 0, pgcode: error.code });
-    throw new Error('Je weekpassen konden niet geladen worden.');
+    throw new Error(t('doel.weekpassen_laden'));
   }
 
   const kaart = new Map<string, WeekpasStand>();
@@ -76,7 +78,7 @@ export async function fetchWeekpasStanden(goalIds?: readonly string[]): Promise<
       reportError(new Error('Onvolledig antwoord van weekpas_standen'), 'weekpas.parse', {
         goal_id: rij.goal_id,
       });
-      throw new Error('Je weekpassen konden niet geladen worden.');
+      throw new Error(t('doel.weekpassen_laden'));
     }
 
     kaart.set(rij.goal_id, {

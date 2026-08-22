@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Json, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -119,7 +121,7 @@ export async function fetchDoelen(
 
   if (error) {
     reportError(error, 'goals.list', { user_id: userId, code: error.code });
-    throw new Error('Je doelen konden niet geladen worden.');
+    throw new Error(t('doel.doelen_laden'));
   }
 
   const rijen = (data ?? []).map(naarDoel).filter((d): d is DoelMetVoortgang => d !== null);
@@ -137,7 +139,7 @@ export async function fetchDoel(goalId: string): Promise<DoelMetVoortgang | null
 
   if (error) {
     reportError(error, 'goals.get', { goal_id: goalId, code: error.code });
-    throw new Error('Dit doel kon niet geladen worden.');
+    throw new Error(t('doel.doel_laden'));
   }
 
   return data === null ? null : naarDoel(data);
@@ -156,11 +158,11 @@ export async function maakDoel(
 ): Promise<Resultaat<Doel>> {
   const gevalideerd = doelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   if (!datumLigtInDeToekomst(gevalideerd.data.target_date, vandaag)) {
-    return { ok: false, melding: 'Kies een streefdatum die nog moet komen.' };
+    return { ok: false, melding: t('doel.datum_verleden') };
   }
 
   const { data, error } = await supabase()
@@ -171,7 +173,7 @@ export async function maakDoel(
 
   if (error) {
     reportError(error, 'goals.create', { user_id: userId, code: error.code });
-    return { ok: false, melding: 'Je doel kon niet worden opgeslagen. Probeer het opnieuw.' };
+    return { ok: false, melding: t('doel.opslaan_mislukt') };
   }
 
   // Het eerste event in de geschiedenis van dit doel.
@@ -198,7 +200,7 @@ export async function wijzigDoel(
 ): Promise<Resultaat<Doel>> {
   const gevalideerd = doelPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   const velden = gevalideerd.data;
@@ -215,7 +217,7 @@ export async function wijzigDoel(
   }
 
   if (Object.keys(update).length === 0) {
-    return { ok: false, melding: 'Er is niets gewijzigd.' };
+    return { ok: false, melding: t('doel.niets_gewijzigd') };
   }
 
   const { data, error } = await supabase()
@@ -227,7 +229,7 @@ export async function wijzigDoel(
 
   if (error) {
     reportError(error, 'goals.update', { goal_id: doelId, code: error.code });
-    return { ok: false, melding: 'Opslaan lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('doel.wijzigen_mislukt') };
   }
 
   return { ok: true, waarde: data };
@@ -252,7 +254,7 @@ export async function zetStreefdatum(
   vandaag: IsoDate,
 ): Promise<Resultaat<true>> {
   if (!datumLigtInDeToekomst(datum, vandaag)) {
-    return { ok: false, melding: 'Kies een streefdatum die nog moet komen.' };
+    return { ok: false, melding: t('doel.datum_verleden') };
   }
 
   const { data, error } = await supabase().rpc('zet_streefdatum', {
@@ -262,25 +264,28 @@ export async function zetStreefdatum(
 
   if (error) {
     reportError(error, 'goals.target_date', { goal_id: doelId, code: error.code });
-    return { ok: false, melding: 'De streefdatum aanpassen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('doel.streefdatum_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
 
   if (uitkomst.ok !== true) {
-    return { ok: false, melding: STREEFDATUM_MELDING[uitkomst.reason ?? ''] ?? 'Dat lukte niet.' };
+    return { ok: false, melding: streefdatumMelding(uitkomst.reason) };
   }
 
   return { ok: true, waarde: true };
 }
 
-const STREEFDATUM_MELDING: Readonly<Record<string, string>> = {
-  not_owner: 'Dit doel is niet van jou.',
-  bad_date: 'Kies een geldige streefdatum.',
-  needs_group_approval:
-    'Dit doel deel je met een groep, dus de datum verschuif je niet alleen. ' +
-    'Vraag je buddy’s om akkoord met een korte uitleg erbij.',
-};
+/** Zie `meldingen()` in `buddies/api.ts`: een functie, om dezelfde reden. */
+function streefdatumMelding(reden: string | undefined): string {
+  const tabel: Readonly<Record<string, string>> = {
+    not_owner: t('doel.niet_van_jou'),
+    bad_date: t('doel.datum_ongeldig'),
+    needs_group_approval: t('doel.groepsakkoord_nodig'),
+  };
+
+  return tabel[reden ?? ''] ?? t('doel.actie_mislukt_kort');
+}
 
 /**
  * Archiveert een doel, of haalt het terug.
@@ -309,7 +314,7 @@ export async function zetArchief(
 
   if (error) {
     reportError(error, 'goals.archive', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'Dat lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('doel.actie_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -318,7 +323,7 @@ export async function zetArchief(
     return {
       ok: false,
       melding:
-        uitkomst.reason === 'not_owner' ? 'Dit doel is niet van jou.' : 'Dat lukte niet.',
+        uitkomst.reason === 'not_owner' ? t('doel.niet_van_jou') : t('doel.actie_mislukt_kort'),
     };
   }
 
@@ -356,7 +361,7 @@ export async function rondDoelAf(goalId: string, actorId: string): Promise<Resul
 
   if (error) {
     reportError(error, 'goals.complete', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'Afronden lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('doel.afronden_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as {
@@ -392,17 +397,17 @@ function afrondMelding(reden: string | undefined, aantal: number | undefined): s
   if (reden === 'open_milestones') {
     const n = aantal ?? 0;
     return n === 1
-      ? 'Er staat nog één mijlpaal open. Vink hem af, of laat hem vallen als hij niet meer nodig is.'
-      : `Er staan nog ${n} mijlpalen open. Vink ze af, of laat vallen wat niet meer nodig is.`;
+      ? t('doel.een_mijlpaal_open')
+      : t('doel.meer_mijlpalen_open', { aantal: n });
   }
 
   return (
     {
-      not_owner: 'Dit doel is niet van jou.',
-      already_completed: 'Dit doel is al afgerond.',
-      not_active: 'Dit doel is gearchiveerd. Haal het eerst terug.',
-      not_signed_in: 'Je bent niet meer ingelogd.',
-    }[reden ?? ''] ?? 'Dat lukte niet.'
+      not_owner: t('doel.niet_van_jou'),
+      already_completed: t('doel.al_afgerond'),
+      not_active: t('doel.gearchiveerd'),
+      not_signed_in: t('doel.niet_ingelogd'),
+    }[reden ?? ''] ?? t('doel.actie_mislukt_kort')
   );
 }
 
@@ -450,7 +455,7 @@ export async function verwijderDoel(goalId: string): Promise<Resultaat<true>> {
 
   if (error) {
     reportError(error, 'goals.delete', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'Verwijderen lukte niet.' };
+    return { ok: false, melding: t('doel.verwijderen_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -464,19 +469,19 @@ export async function verwijderDoel(goalId: string): Promise<Resultaat<true>> {
 function doelVerwijderMelding(reden: string | undefined): string {
   switch (reden) {
     case 'te_oud':
-      return 'Dit doel staat er te lang om nog te verwijderen. Archiveer het — dan blijft je geschiedenis staan en verdwijnt het uit je lijst.';
+      return t('doel.te_oud');
     case 'gedeeld_met_groep':
-      return 'Dit doel is aan een groep gekoppeld. Ontkoppel het eerst, of archiveer het.';
+      return t('doel.gedeeld_met_groep');
     case 'heeft_weekdoelen':
-      return 'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.';
+      return t('doel.heeft_weekdoelen');
     case 'heeft_punten':
-      return 'Er zijn al punten op dit doel geboekt. Archiveer het in plaats van het te verwijderen.';
+      return t('doel.heeft_punten');
     // Migratie 0058. Een beloning die is vrijgekomen of een straf die
     // verschuldigd is, heeft de groep al gezien; weggooien zou geschiedenis
     // wissen die niet meer alleen van jou is (domeinregel 6 en 11).
     case 'commitment_in_werking':
-      return 'Je beloning of straf is al in werking getreden. Archiveer dit doel in plaats van het te verwijderen.';
+      return t('doel.commitment_in_werking');
     default:
-      return 'Verwijderen lukte niet.';
+      return t('doel.verwijderen_mislukt');
   }
 }

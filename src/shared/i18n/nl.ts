@@ -484,6 +484,88 @@ export const nl = {
   'weekafsluiting.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
   'weekafsluiting.reactie_controleer': 'Controleer je reactie.',
   'weekafsluiting.reactie_mislukt': 'Je reactie is niet verstuurd. Probeer het zo nog eens.',
+
+  // ---------------------------------------------------------------------------
+  // Doelen — EPIC 2
+  // ---------------------------------------------------------------------------
+  'doel.doelen_laden': 'Je doelen konden niet geladen worden.',
+  'doel.doel_laden': 'Dit doel kon niet geladen worden.',
+  'doel.invoer': 'Controleer je invoer.',
+  'doel.datum_verleden': 'Kies een streefdatum die nog moet komen.',
+  'doel.opslaan_mislukt': 'Je doel kon niet worden opgeslagen. Probeer het opnieuw.',
+  'doel.niets_gewijzigd': 'Er is niets gewijzigd.',
+  'doel.wijzigen_mislukt': 'Opslaan lukte niet. Probeer het opnieuw.',
+  'doel.streefdatum_mislukt': 'De streefdatum aanpassen lukte niet. Probeer het opnieuw.',
+  'doel.actie_mislukt_kort': 'Dat lukte niet.',
+  'doel.actie_mislukt': 'Dat lukte niet. Probeer het opnieuw.',
+  'doel.niet_van_jou': 'Dit doel is niet van jou.',
+  'doel.datum_ongeldig': 'Kies een geldige streefdatum.',
+
+  // ⚠️ Deze zin is A7 in één regel: verschuiven kán, maar niet alleen. Hij legt
+  //    uit wát er moet gebeuren in plaats van alleen te weigeren.
+  'doel.groepsakkoord_nodig':
+    'Dit doel deel je met een groep, dus de datum verschuif je niet alleen. ' +
+    'Vraag je buddy’s om akkoord met een korte uitleg erbij.',
+
+  'doel.afronden_mislukt': 'Afronden lukte niet. Probeer het opnieuw.',
+  'doel.al_afgerond': 'Dit doel is al afgerond.',
+  'doel.gearchiveerd': 'Dit doel is gearchiveerd. Haal het eerst terug.',
+  'doel.niet_ingelogd': 'Je bent niet meer ingelogd.',
+  'doel.een_mijlpaal_open':
+    'Er staat nog één mijlpaal open. Vink hem af, of laat hem vallen als hij niet meer nodig is.',
+  'doel.meer_mijlpalen_open':
+    'Er staan nog {aantal} mijlpalen open. Vink ze af, of laat vallen wat niet meer nodig is.',
+
+  'doel.verwijderen_mislukt': 'Verwijderen lukte niet.',
+  'doel.te_oud':
+    'Dit doel staat er te lang om nog te verwijderen. Archiveer het — dan blijft je ' +
+    'geschiedenis staan en verdwijnt het uit je lijst.',
+  'doel.gedeeld_met_groep': 'Dit doel is aan een groep gekoppeld. Ontkoppel het eerst, of archiveer het.',
+  'doel.heeft_weekdoelen':
+    'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.',
+  'doel.heeft_punten':
+    'Er zijn al punten op dit doel geboekt. Archiveer het in plaats van het te verwijderen.',
+  'doel.commitment_in_werking':
+    'Je beloning of straf is al in werking getreden. Archiveer dit doel in plaats van het te verwijderen.',
+
+  'doel.reeks_laden': 'Je reeks kon niet geladen worden.',
+  'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
+
+  'categorie.business': 'Werk',
+  'categorie.study': 'Studie',
+  'categorie.other': 'Overig',
+
+  'validatie.doeltitel_kort': 'Geef je doel een naam van minstens drie tekens.',
+  'validatie.doeltitel_lang': 'Maximaal 200 tekens.',
+  'validatie.omschrijving_lang': 'Maximaal 2000 tekens.',
+  'validatie.datum_vorm': 'Gebruik een bestaande datum als 2026-12-31.',
+  'validatie.identiteit_lang': 'Hou het kort — één zin werkt het best.',
+  'validatie.uren_max': 'Een week heeft 168 uur.',
+
+  // ---------------------------------------------------------------------------
+  // Deadline verschuiven met akkoord — A7
+  // ---------------------------------------------------------------------------
+  'deadline.argument_kort':
+    'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
+    'dus "geen tijd" is te weinig om ja op te zeggen.',
+  'deadline.argument_lang': 'Hou het kort — maximaal 1000 tekens.',
+  'deadline.geen_lid': 'Je bent geen lid van deze groep.',
+  'deadline.niet_gekoppeld': 'Dit doel is niet aan deze groep gekoppeld.',
+  'deadline.zelfde_datum': 'Kies een andere datum dan de datum die er nu staat.',
+  'deadline.argument_leeg': 'Schrijf één zin over wat er veranderd is.',
+  'deadline.al_open': 'Er loopt al een verzoek voor dit doel. Wacht daar eerst op.',
+  'deadline.bestaat_niet': 'Dit verzoek bestaat niet meer.',
+  'deadline.al_beslist': 'Hier is al over beslist.',
+  'deadline.niet_zelf': 'Je eigen verzoek kun je niet zelf goedkeuren.',
+  'deadline.versturen_mislukt': 'Je verzoek versturen lukte niet. Probeer het opnieuw.',
+  'deadline.versturen_mislukt_kort': 'Je verzoek versturen lukte niet.',
+  'deadline.beslissen_mislukt': 'Beslissen lukte niet. Probeer het opnieuw.',
+  'deadline.beslissen_mislukt_kort': 'Beslissen lukte niet.',
+  'deadline.intrekken_mislukt': 'Intrekken lukte niet. Probeer het opnieuw.',
+  'deadline.intussen_beslist': 'Er is intussen al over beslist.',
+  'deadline.intrekken_mislukt_kort': 'Intrekken lukte niet.',
+  'deadline.lopend_laden': 'Het lopende verzoek kon niet geladen worden.',
+  'deadline.verzoeken_laden': 'De verzoeken konden niet geladen worden.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

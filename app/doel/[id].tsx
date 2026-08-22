@@ -17,7 +17,7 @@ import {
   annuleerAdempauze,
   ARGUMENT_MAX,
   ARGUMENT_MIN,
-  CATEGORIE_LABELS,
+  categorieLabels,
   eersteCyclusVanDoel,
   fetchAdempauzes,
   fetchDoel,
@@ -180,7 +180,7 @@ export default function DoelDetail() {
             <Card>
               <Subheading>{d.title}</Subheading>
               <Caption>
-                {CATEGORIE_LABELS[(d.category ?? 'other') as Categorie]} · streefdatum{' '}
+                {categorieLabels()[(d.category ?? 'other') as Categorie]} · streefdatum{' '}
                 {d.target_date}
               </Caption>
 

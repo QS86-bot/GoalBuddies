@@ -98,7 +98,7 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,
-  CATEGORIE_LABELS,
+  categorieLabels,
   datumLigtInDeToekomst,
   doelPatchSchema,
   doelSchema,
