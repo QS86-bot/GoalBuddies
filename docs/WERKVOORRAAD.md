@@ -28,7 +28,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    credentials op `main` (`bbbd1be`): 412 geslaagd, 257 overgeslagen; typecheck en
    lint groen. **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
 5. **⚠️ Web push is gebouwd en doet niets:** `public/sw.js` wordt nergens
-   geregistreerd (**QS8-114**, en QS8-117 wacht erop). Native wacht op
+   geregistreerd (**QS8-124**, en QS8-117 wacht erop). Native wacht op
    `expo-notifications` (**Q-TODO B4**). Dat is samen de laatste schakel van EPIC 11.
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
@@ -70,6 +70,8 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0068`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
+De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
+`approval_withdrawals` (0030) en `deadline_requests` (0032) erbij.
 
 ⚠️ **`supabase/migrations/` is een verslag en geen bron, in béíde richtingen.**
 De geschiedenis kent twee onverenigbare nummeringen: 38 genummerd
@@ -84,8 +86,6 @@ cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
 Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
 RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
 productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
-De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
-`approval_withdrawals` (0030) en `deadline_requests` (0032) erbij.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
