@@ -77,7 +77,8 @@ nul verstuurd, geen fouten.
 ⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform.**
 
 * **Web** — de bibliotheek is niet nodig; web push is op 23-08 van nul gebouwd.
-  Wat ontbreekt is de registratie van `public/sw.js` (**QS8-124**).
+  De registratie is er sinds **QS8-124**; wat ontbreekt is het bewijs dat er
+  een melding aankomt.
 * **Native** — `expo-notifications` ontbreekt, en dat is een dependency die
   eerst toestemming vraagt (**Q-TODO B4**). Denk daarbij aan een Expo-project
   met FCM- en APNs-sleutels voor een echt toestel.
@@ -130,12 +131,12 @@ de eigenaar blokkeert. Uitleg in
 
 ⚠️ **Twee dingen uit die ronde zijn níét af:**
 
-* **`public/sw.js` wordt nergens geregistreerd.** Er staat geen
-  `navigator.serviceWorker.register` in `src/` of `app/`. De crypto (RFC
-  8291/8188/8292), de kolommen op `push_tokens` en de worker staan er; de schakel
-  die ze aanzet niet. Web push is dus gemerged maar doet nog niets. Dat is
-  **QS8-124**, op 23-08 afgesplitst van QS8-114 — dat laatste issue staat op Done
-  en dekte het transport en het datamodel. QS8-117 (iOS) wacht op QS8-124.
+* **Web push is aangezet, maar nog nooit aangekomen.** QS8-124 heeft de
+  registratie gebouwd: `webpush-registratie.ts`, een knop op het profielscherm en
+  de `PushBron` voor web. ⚠️ **Niemand heeft nog een echte melding ontvangen** —
+  dat vraagt een browser plus de VAPID-sleutels in `.env`, en dat kan een sessie
+  in de cloud niet. Zolang dat bewijs er niet is, is EPIC 11 niet af. QS8-117
+  (iOS) wacht hierop.
 * **De migratiebestanden kunnen het schema niet opbouwen.** Zie de valkuilen —
   dit is nu QS8-122 en het blokkeert QS8-119.
 
@@ -489,10 +490,12 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-1. **QS8-124** — de service worker registreren. Het is één schakel, en zonder
-   die schakel doet alle gebouwde web-push-code niets. Er ligt al een naad om hem
-   in te hangen: `PushBron` in `src/modules/notifications/tokens.ts` heeft de
-   juiste vorm en `app/_layout.tsx` beschrijft de plek al in zijn commentaar.
+1. **QS8-124 bewijzen.** De code staat (In Review). Zet
+   `EXPO_PUBLIC_VAPID_PUBLIC_KEY` en `VAPID_PRIVATE_KEY` in `.env`, draai de app,
+   klik op Profiel → Meldingen aanzetten, en controleer of er een rij in
+   `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
+   `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette
+   `{ok:false, reason}`.
 2. **QS8-122** — de migratiebron repareerbaar maken. Alles wat een tweede
    omgeving nodig heeft (lokale stack, CI met echte RLS, staging) hangt hierachter.
 3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.

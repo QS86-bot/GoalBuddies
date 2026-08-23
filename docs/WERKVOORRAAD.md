@@ -27,9 +27,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
    credentials op `main` (`bbbd1be`): 412 geslaagd, 257 overgeslagen; typecheck en
    lint groen. **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
-5. **⚠️ Web push is gebouwd en doet niets:** `public/sw.js` wordt nergens
-   geregistreerd (**QS8-124**, en QS8-117 wacht erop). Native wacht op
-   `expo-notifications` (**Q-TODO B4**). Dat is samen de laatste schakel van EPIC 11.
+5. **⚠️ Web push is aangezet maar nog niet bewezen.** De registratie staat er
+   sinds **QS8-124** (In Review): knop op het profielscherm, abonnement, token.
+   **Niemand heeft nog een echte melding ontvangen** — dat vraagt een browser en
+   de VAPID-sleutels. Native wacht nog op `expo-notifications` (**Q-TODO B4**).
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
    gratis, gegrendeld in 0066. Zie §2.
