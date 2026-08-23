@@ -74,16 +74,21 @@ GitHub-workflow die hem elk uur aanroept en de rand in de app zijn er allemaal.
 Ik heb de job tegen het echte project gedraaid: 8 profielen, 8 zonder token,
 nul verstuurd, geen fouten.
 
-⚠️ **Wat ontbreekt is `expo-notifications`** — een dependency, en die vraagt
-eerst toestemming. Zonder die bibliotheek haalt de app geen pushtoken op, dus
-blijft `push_tokens` leeg en stuurt de job niets. Dat is **Q-TODO B4** en het is
-het enige dat EPIC 11 nog tegenhoudt. De rand eromheen is dezelfde vorm als bij
-Sentry: er is een `PushBron`-interface met een lege standaard, en toestemming
-krijgen is één `zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
+⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform.**
 
-Denk er bij die toestemming aan dat er náást de bibliotheek ook een Expo-project
-met FCM- en APNs-sleutels nodig is voor een echt toestel. Die zitten in de build,
-niet in de server; de Edge Function heeft er niets voor nodig.
+* **Web** — de bibliotheek is niet nodig; web push is op 23-08 van nul gebouwd.
+  Wat ontbreekt is de registratie van `public/sw.js` (**QS8-124**).
+* **Native** — `expo-notifications` ontbreekt, en dat is een dependency die
+  eerst toestemming vraagt (**Q-TODO B4**). Denk daarbij aan een Expo-project
+  met FCM- en APNs-sleutels voor een echt toestel.
+
+Zolang geen van beide rond is, blijft `push_tokens` leeg en stuurt de job niets.
+De rand eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
+`PushBron`-interface met een lege standaard, en aanzetten is één
+`zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
+
+Die sleutels zitten in de build, niet in de server; de Edge Function heeft er
+niets voor nodig.
 
 **EPIC 3 is af voor de MVP, en de Doelcoach heeft voor het eerst echt gedraaid.**
 Dat stond sinds augustus als "gebouwd en nooit gedraaid" in deze overdracht.
@@ -129,7 +134,8 @@ de eigenaar blokkeert. Uitleg in
   `navigator.serviceWorker.register` in `src/` of `app/`. De crypto (RFC
   8291/8188/8292), de kolommen op `push_tokens` en de worker staan er; de schakel
   die ze aanzet niet. Web push is dus gemerged maar doet nog niets. Dat is
-  QS8-114, en QS8-117 (iOS) wacht erop.
+  **QS8-124**, op 23-08 afgesplitst van QS8-114 — dat laatste issue staat op Done
+  en dekte het transport en het datamodel. QS8-117 (iOS) wacht op QS8-124.
 * **De migratiebestanden kunnen het schema niet opbouwen.** Zie de valkuilen —
   dit is nu QS8-122 en het blokkeert QS8-119.
 
@@ -453,8 +459,10 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-1. **QS8-114 afmaken** — de service worker registreren. Het is één schakel en
-   zonder die schakel doet alle gebouwde web-push-code niets.
+1. **QS8-124** — de service worker registreren. Het is één schakel, en zonder
+   die schakel doet alle gebouwde web-push-code niets. Er ligt al een naad om hem
+   in te hangen: `PushBron` in `src/modules/notifications/tokens.ts` heeft de
+   juiste vorm en `app/_layout.tsx` beschrijft de plek al in zijn commentaar.
 2. **QS8-122** — de migratiebron repareerbaar maken. Alles wat een tweede
    omgeving nodig heeft (lokale stack, CI met echte RLS, staging) hangt hierachter.
 3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.
