@@ -1,11 +1,13 @@
-import { z } from 'zod';
-
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import type { IsoDate } from '../../shared/time';
 
-import { datumLigtInDeToekomst, isoDatum } from './schemas';
+import {
+  deadlineVerzoekSchema,
+  type DeadlineVerzoekInvoer,
+} from './deadline-schemas';
+import { datumLigtInDeToekomst } from './schemas';
 
 /**
  * De streefdatum verschuiven met akkoord van de groep — Q-TODO A7.
@@ -48,34 +50,6 @@ export interface DeadlineVerzoek {
   readonly created_at: string;
 }
 
-/** Ondergrens uit de CHECK `deadline_requests_reason_len`. */
-export const ARGUMENT_MIN = 20;
-export const ARGUMENT_MAX = 1000;
-
-/**
- * ⚠️ Dezelfde grenzen als de database, en dat is geen dubbel werk: zonder dit
- *    schema krijgt iemand die drie woorden typt een CHECK-fout uit Postgres te
- *    zien in plaats van een zin die uitlegt wat er wordt gevraagd.
- */
-export const deadlineVerzoekSchema = z.object({
-  // ⚠️ Hetzelfde schema als het doelformulier. Stond hier eerst `z.string().min(1)`,
-  //    en dat is niet zichtbaar fout: `datumLigtInDeToekomst` vergelijkt strings,
-  //    dus "morgen" gold als een geldige toekomstige datum. Postgres viel er
-  //    daarna over en de gebruiker kreeg een storingsmelding voor een tikfout —
-  //    nadat hij zijn argument al had getypt.
-  new_date: isoDatum,
-  reason: z
-    .string()
-    .trim()
-    .min(ARGUMENT_MIN, {
-      error:
-        'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
-        'dus "geen tijd" is te weinig om ja op te zeggen.',
-    })
-    .max(ARGUMENT_MAX, { error: 'Hou het kort — maximaal 1000 tekens.' }),
-});
-
-export type DeadlineVerzoekInvoer = z.infer<typeof deadlineVerzoekSchema>;
 
 const VRAAG_MELDING: Readonly<Record<string, string>> = {
   not_owner: 'Dit doel is niet van jou.',

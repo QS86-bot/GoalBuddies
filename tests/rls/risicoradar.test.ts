@@ -135,7 +135,14 @@ async function herbereken(goalId: string): Promise<{ data: string | null; error:
   return db.rpc('herbereken_risico', { p_goal_id: goalId });
 }
 
-describe('QS8-93 — de haalbaarheidsberekening', () => {
+/**
+ * ⚠️ `skipIf` op de describe, zoals de andere RLS-bestanden — QS8-116.
+ *    Hiervóór stond de bewaking alleen in `beforeAll`: zonder credentials
+ *    werd de opbouw overgeslagen en faalde elke `it` daarna alsnog, op een
+ *    ontbrekende fixture. Dan is `npm test` rood om een reden die niets met
+ *    de code te maken heeft — precies het faalbeeld dat QS8-116 opruimde.
+ */
+describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', () => {
   beforeAll(async () => {
     if (!rlsTestsConfigured) return;
     const admin = adminDb();

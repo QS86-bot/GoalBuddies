@@ -63,7 +63,7 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 ## ⚠️ Solo-fase — geldt tot de engineer er is
 Er is niemand die jouw werk nakijkt.
 1. **Tests zijn de enige review die bestaat.** Niet optioneel.
-2. Bij twijfel over een architectuurkeuze: stop en vraag het.
+2. Bij twijfel over een architectuurkeuze: kies en bouw door — zie *Beslisbevoegdheid*.
 3. Documenteer elke niet-vanzelfsprekende keuze in `docs/decisions/NNN-titel.md`.
 4. Houd `docs/ENGINEER-REVIEW.md` bij als agenda voor november.
 
@@ -236,6 +236,40 @@ Voordat er één feature gebouwd wordt:
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
     commitment op het moment dat het verschuldigd wordt.
 
+## Emoji — vastgelegd 22-08-2026 (QS8-111)
+
+**De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,
+systeemberichten, meldingen of UI-componenten. Ze vertalen slecht, ze renderen
+per platform anders, en een schermlezer leest "gezicht met vreugdetranen" midden
+in een zin. Op 20-08 en 22-08 nagemeten: er stond er geen één in `src/` of `app/`.
+Deze regel legt vast wat er al was.
+
+**De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
+gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
+
+⚠️ **Gevolg dat geen zin maar een controle nodig heeft.** Omdat gebruikers ze
+overal mogen typen, mag geen enkele plek gebruikerstekst afkappen of het eerste
+teken pakken met `charAt(0)`, `[0]` of `.slice(0, n)`. JavaScript telt in
+UTF-16-eenheden; een emoji kost er twee en 👨‍👩‍👧‍👦 elf. Snijden op zo'n grens
+levert een halve codepoint op en dat rendert als `�`. Gebruik de gedeelde helpers
+uit `src/shared`, nooit de kale string-methodes. Zie QS8-118.
+
+⚠️ Zod's `.max()` en `.length` tellen UTF-16-eenheden; `char_length` in
+Postgres telt codepunten. Die twee zijn niet dezelfde grens.
+
+**Eén eenheid overal: codepunten, want dat is wat de database telt.** Gebruik
+`telTekens()` uit `src/shared/tekst`, ook in een teller onder een invoerveld.
+Een teller die in grafemen telt terwijl de grens in codepunten staat, is een
+nieuwe fout en geen reparatie: hij zegt "lang genoeg" op een ander moment dan
+het schema. `telGrafemen()` bestaat voor waar je écht zichtbare tekens bedoelt,
+zoals een preview — nooit voor een grens.
+
+⚠️ Bij een **ondergrens** gaat het verschil de gevaarlijke kant op. `.length` is
+altijd ≥ `char_length`, dus een client die in UTF-16 telt laat door wat Postgres
+weigert. Tien emoji halen `.length >= 20`, maar `char_length` is dan 10 en de
+gebruiker kreeg een storingsmelding nadat het formulier "Lang genoeg" zei. Dat
+stond zo in het deadline-argument tot QS8-118.
+
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.
 
@@ -336,11 +370,57 @@ npm run test
 npm run build
 ```
 
-## Wat je NOOIT doet zonder te vragen
-- Een dependency toevoegen
-- Het datamodel van een bestaande tabel wijzigen
-- Auth-, RLS-, goedkeurings- of commitment-logica aanpassen
-- Een tijd-/weekberekening schrijven buiten `shared/time`
-- Een migratie draaien op iets anders dan lokaal
-- Een Vercel-specifieke API of package gebruiken
-- Meer dan 15 bestanden in één keer aanraken
+## Beslisbevoegdheid — vastgelegd 22-08-2026
+
+> Vervangt de lijst "Wat je NOOIT doet zonder te vragen". Quinten heeft die op
+> 22-08-2026 ingeruild voor één grens, omdat de lijst hem vaker ophield dan
+> beschermde.
+
+**Claude beslist zelf en werkt af.** Er zijn precies twee redenen om te stoppen
+en te vragen:
+
+1. **De keuze bepaalt wat er tegen een mens beloofd of in rekening gebracht
+   wordt.**
+2. **De handeling is onomkeerbaar vernietigend.**
+
+In élk ander geval: kies de conservatiefste optie die het werk áf maakt, bouw
+door, en zet de aanname zichtbaar in het issue én in het beslisdocument.
+Niet wachten, niet vragen, niet halverwege stoppen.
+
+### Wat die twee hier betekenen
+
+GoalBuddies heeft nog geen betalende klanten. Zonder vertaling is grens 1 leeg
+en staat er in de praktijk "vraag nooit iets". Dit is de vertaling:
+
+**Grens 1 — beloofd of in rekening gebracht.**
+- Een **commitment device**: alles wat een gebruiker te horen krijgt als een
+  consequentie die hij draagt — inzet, verlies, een straf die verschuldigd
+  wordt. Dat is hier het contract. Domeinregel 5 staat er niet voor niets.
+- Iets dat **Quinten geld kost** of hem extern vastlegt: een betaalde tier, een
+  tweede Supabase-project, een betaalde API, een domein, een developer-account.
+- Een **eerste uitgaande stroom naar echte mensen** die niet meer terug te nemen
+  is: een e-mail of pushmelding naar de hele gebruikersgroep.
+
+**Grens 2 — onomkeerbaar vernietigend.**
+- Gegevens of geschiedenis weggooien die niet terug te halen is: `drop`,
+  `truncate`, een `delete` zonder filter, een migratie zonder rollback-pad op
+  een **gevulde** tabel, gebruikers in bulk verwijderen.
+- `git push --force` over werk dat niet van jou is.
+- Een sleutel roteren of intrekken waarmee je jezelf of Quinten buitensluit.
+
+Een migratie die kolommen **toevoegt** aan een lege tabel valt hier niet onder.
+Rollback in de kop, doorgaan.
+
+### Wat gewoon verboden blijft — dat is iets anders dan vragen
+
+Deze stonden in de oude lijst maar waren nooit vragen; het zijn harde regels en
+ze blijven staan:
+- Geen tijd- of weekberekening buiten `shared/time` (correctheidsregel 7).
+- Geen Vercel-specifieke API of package.
+- Geen `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie.
+- Geen nieuw type systeembericht zonder migratie.
+
+En deze zijn van gate naar afweging gegaan — je beslist ze zelf, maar je
+verantwoordt ze in het beslisdocument: een dependency toevoegen, het datamodel
+van een bestaande tabel wijzigen, auth-/RLS-/goedkeuringslogica aanpassen, een
+migratie op het echte project draaien, meer dan 15 bestanden aanraken.

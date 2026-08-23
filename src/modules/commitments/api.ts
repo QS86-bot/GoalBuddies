@@ -1,8 +1,8 @@
-import { z } from 'zod';
-
 import type { Json, Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+
+import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
 
 /**
  * Commitment devices: een beloning die vrijkomt als je je doel haalt, en een
@@ -22,17 +22,6 @@ import { supabase } from '../../lib/supabase';
 export type Commitment = Tables<'commitments'>;
 
 export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
-
-export const commitmentSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(3, { error: 'Schrijf op wat je jezelf oplegt.' })
-    .max(500, { error: 'Maximaal 500 tekens.' }),
-  image_url: z.string().trim().url({ error: 'Dit is geen geldige link.' }).nullable(),
-});
-
-export type CommitmentInvoer = z.infer<typeof commitmentSchema>;
 
 export async function fetchCommitments(goalId: string): Promise<readonly Commitment[]> {
   const { data, error } = await supabase()
