@@ -1,0 +1,42 @@
+-- 0069_grendelfuncties_niet_via_de_api.sql — nazorg op 0066 (QS8-110)
+--
+-- ROLLBACK-PAD:
+--   grant execute on function public.zet_beoordeelbaar_bij_insert() to anon, authenticated;
+--   grant execute on function public.beoordeelbaar_blijft_staan() to anon, authenticated;
+--   grant execute on function public.koppeling_zet_beoordeelbaar_om() to anon, authenticated;
+--   (Doe dit niet. Er is geen aanroeper die het nodig heeft.)
+--
+-- ⚠️ 0066 maakt vijf functies aan en trekt er twee in:
+--
+--      kan_beoordeeld_worden            revoke ✓  (regel 98-100)
+--      geen_minpunt_zonder_beoordelaar  revoke ✓  (regel 247-249)
+--      zet_beoordeelbaar_bij_insert     ontbrak
+--      beoordeelbaar_blijft_staan       ontbrak
+--      koppeling_zet_beoordeelbaar_om   ontbrak
+--
+--    Alle drie zijn SECURITY DEFINER en stonden als `/rest/v1/rpc/<naam>` in de
+--    API, aanroepbaar door `anon` én `authenticated`. Nagemeten op het echte
+--    project, niet aangenomen.
+--
+-- ⚠️ **Dit is de valkuil uit `CLAUDE.md` in zijn zuiverste vorm.** Op regel 57
+--    van 0066 staat een comment over precies deze gewoonte — *"revoke op de
+--    triggerfunctie, wat 0065 niet deed en 0064 wel"*. Het patroon was bekend,
+--    is op twee functies toegepast en op drie vergeten. *Een comment die
+--    uitlegt waarom iets zo moet, bewijst niet dat het zo is.*
+--
+--    Zelfde klasse als 0052, en de reden dat `triggerfuncties_in_de_api()` uit
+--    0052a bestaat: die controle vond dit binnen een dag. Dat is het verschil
+--    tussen een afspraak en een controle.
+--
+-- ⚠️ Wat het praktisch waard was: waarschijnlijk weinig. Postgres weigert een
+--    triggerfunctie die buiten een trigger wordt aangeroepen, dus er valt langs
+--    deze weg niets te zetten of te lezen. Dezelfde afweging als bij 0052 —
+--    en daar is hij ook toen niet als reden gebruikt om het te laten staan.
+--    Deze drie bewaken de grendel op het minpunt (domeinregel 10); dat is niet
+--    het oppervlak om "waarschijnlijk onschadelijk" op te stapelen.
+--
+-- Idempotent: `revoke` is herhaalbaar. Geen tabel wordt geraakt.
+
+revoke all on function public.zet_beoordeelbaar_bij_insert() from public, anon, authenticated;
+revoke all on function public.beoordeelbaar_blijft_staan() from public, anon, authenticated;
+revoke all on function public.koppeling_zet_beoordeelbaar_om() from public, anon, authenticated;
