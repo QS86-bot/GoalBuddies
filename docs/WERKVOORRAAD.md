@@ -22,11 +22,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
 3. **⚠️ De migratiebestanden kunnen het schema niet opbouwen** — twee nummeringen
-   naast elkaar, en `0057` t/m `0061` ontbreken. Toegepast is `0001` t/m `0068`.
-   **QS8-122**, blokkeert QS8-119 en elke tweede omgeving. Uitleg in §2.
+   naast elkaar. Toegepast is `0001` t/m `0069`; `0057` t/m `0061` staan op een
+   branch en nog niet op `main`. **QS8-122**, blokkeert QS8-119. Uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials op `main` (`bbbd1be`): 412 geslaagd, 257 overgeslagen; typecheck en
-   lint groen. **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
+   credentials: **427 geslaagd, 257 overgeslagen**; typecheck en lint groen.
+   **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
 5. **⚠️ Web push is aangezet maar nog niet bewezen.** De registratie staat er
    sinds **QS8-124** (In Review): knop op het profielscherm, abonnement, token.
    **Niemand heeft nog een echte melding ontvangen** — dat vraagt een browser en
@@ -68,7 +68,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0068`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0069`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -126,7 +126,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **412 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
+  **427 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -305,7 +305,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ af voor de MVP, m.u.v. QS8-77 (nudge, wacht op EPIC 11) en de twee `phase:v2`-issues QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |

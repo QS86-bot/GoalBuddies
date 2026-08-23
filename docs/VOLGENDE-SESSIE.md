@@ -26,20 +26,12 @@ zijn De Ketting (QS8-80), de weekpassen (QS8-81) en het dashboard (QS8-75) af.
 EPIC 11 staat op één schakel na (zie hieronder). Open is vooral **EPIC 9**, het
 commitment device.
 
-Migraties **0001 t/m 0068** zijn toegepast op het echte project. De rollover
-draait elk uur.
+De rollover draait elk uur.
 
-**Gemeten op `main` (`bbbd1be`) op 23-08, zónder credentials:**
-
-```
-Test Files  31 passed | 10 skipped (41)
-     Tests  412 passed | 257 skipped (669)
-```
-
-`npm run typecheck` en `npm run lint` allebei groen. Die 257 overgeslagen zijn
-de RLS-suite, die een `.env` nodig heeft; mét credentials horen het er 669 te
-zijn. **Dat laatste getal is rekenwerk en geen meting** — draai het één keer
-met je `.env` en zet het echte getal hier neer.
+⚠️ **Het migratiebereik en de testteller staan in `docs/WERKVOORRAAD.md` §0 en
+§2, en bewust alleen daar.** Tot 23-08 stonden ze ook hier, en toen liepen ze
+uiteen — vijf keer op één dag. `npm run docs:controle` wordt rood zodra ze weer
+op twee plekken staan. Zie QS8-125.
 
 ⚠️ **Lees de testteller.** Staat er "skipped" bij `tests/rls/`, dan heb je géén
 RLS-dekking gedraaid en zegt groen niets over autorisatie. Zie §3b van de
@@ -49,8 +41,11 @@ werkvoorraad.
 `bbbd1be`. Dat was de eerste PR van dit project; zie werkafspraak 1, want dat
 verandert de werkwijze.
 
-**EPIC 8 is af voor de MVP.** Alleen QS8-77 (dagelijkse nudge) staat nog open en
-die wacht op EPIC 11: er is geen kanaal om een nudge over te versturen.
+**EPIC 8 is af voor de MVP**, op de twee `phase:v2`-issues na. QS8-77 (de
+dagelijkse nudge) is op 21-08 mee afgerond met EPIC 11 en staat op Done; tot
+23-08 zeiden beide overdrachtsdocumenten dat hij nog open stond. De nudge-regel
+is compleet en getest — wat ontbreekt is nog steeds een bezorgd bericht, en dat
+is QS8-124.
 
 In de ronde van 21-08 afgerond: QS8-106 (de vier datalaagfuncties zonder scherm), QS8-112
 (een weekdoel aanmaken kon helemaal niet), QS8-82 (adempauze), QS8-39 (mijlpalen
@@ -64,9 +59,9 @@ gedeployd zodat hij het risico ook echt herberekent.
 
 ⚠️ **`goals.risk_status` is dichtgezet vóórdat de radar hem ging vullen**
 (migratie 0050). De drie risicokolommen wonen nu in `goal_risk`, eigenaar-only.
-**Daarmee is A17 teruggedraaid**: er zijn nog twee benoemde verruimingen van
-domeinregel 7 (A15 en A7), niet drie. Beslisdocument 002 en CLAUDE.md zijn
-bijgewerkt.
+**Daarmee is A17 teruggedraaid.** Hoeveel verruimingen van domeinregel 7 er nog
+zijn en welke, staat in `CLAUDE.md` — daar en nergens anders. Beslisdocument 002
+is bijgewerkt.
 
 **EPIC 11 staat klaar, op één dependency na.** De tabellen (`push_tokens`,
 `notifications_sent`), de regels over wie wat krijgt, de Edge Function, de
@@ -432,16 +427,11 @@ nieuw ding dat de groep te zien krijgt, drie vragen: kan hieruit iemands gemiste
 week worden afgeleid, kan iemand dat met één API-verzoek uitlezen buiten de UI
 om, en doet een ander component op hetzelfde scherm dat alsnog?
 
-Er zijn **twee** benoemde verruimingen, door mij besloten: de groep mag je reeks
-zien (A15) en je deadline-verschuiving zien (A7 — die vraag je zelf aan).
-Onderbouwing in `docs/decisions/002-domeinregel7-oppervlakken.md` §4a. Ze
-verruimen de regel op twee plekken; ze schaffen hem niet af.
-
-⚠️ **A17 was de derde en is op 20-08 teruggedraaid** (migratie 0050 verhuisde de
-risicokolommen naar `goal_risk`, eigenaar-only). Tot 23-08 stond hier nog "drie
-verruimingen" terwijl de stand-van-zaken hierboven het tegenovergestelde zei —
-dat is precies de soort tegenspraak die een volgende sessie de verkeerde kant op
-stuurt. `CLAUDE.md` is de bron: daar staan er twee.
+⚠️ **Hoeveel verruimingen er zijn en welke, staat in `CLAUDE.md` bij
+domeinregel 7 — en bewust alleen daar.** Tot 23-08 stond het ook hier, met een
+ander getal dan tien regels verderop in ditzelfde bestand. Onderbouwing in
+`docs/decisions/002-domeinregel7-oppervlakken.md` §4a. `npm run docs:controle`
+wordt rood zodra het getal hier terugkeert.
 
 **Het puntenmodel:** plafond +2, vloer +1, gemiste week −1, adempauze 0, een
 buddy beoordelen +1. Een weekpas beschermt de reeks, niet het punt. Punten zijn

@@ -25,5 +25,15 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 7. **ENGINEER-REVIEW.md** — is dit bestand bijgewerkt met wat er deze week
    is blijven liggen? Zo niet, vul het aan.
 
+8. **Overdrachtsdocumenten** — draai `npm run docs:controle`. Die toetst of
+   `CLAUDE.md`, `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md` elkaar niet
+   tegenspreken: getallen die uiteenlopen, en feiten die in twee documenten
+   tegelijk staan. Rood betekent dat een volgende sessie verouderde informatie
+   krijgt. Zie QS8-125 en "Wie bezit welk feit" in `CLAUDE.md`.
+
+   ⚠️ Het script vangt alleen wat een patroon heeft. Controleer met de hand of
+   issues die in Linear op Done staan, in de documenten ook als af beschreven
+   worden — dat is vijf keer misgegaan en geen script ziet het.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

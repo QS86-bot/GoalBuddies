@@ -34,6 +34,30 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 - **Team:** Quinten (product owner, architect én enige developer).
   Claude Code is de primaire implementer. Engineer-review vanaf eind okt/nov 2026.
 
+### Wie bezit welk feit — vastgelegd 23-08-2026 (QS8-125)
+
+Drie documenten beschreven dezelfde stand en liepen op één dag **vijf keer**
+uiteen. Twee van die vijf ontstonden tijdens het bijwerken van diezelfde
+documenten: één plek bijgewerkt, de andere vergeten. Wie kopieën met de hand
+onderhoudt, maakt het probleem groter.
+
+| Document | Bezit | Bezit níét |
+|---|---|---|
+| `CLAUDE.md` | de regels en conventies — domeinregels, verruimingen, werkwijze | de stand |
+| `docs/WERKVOORRAAD.md` | de stand en de volgorde — testteller, migratiebereik, wat af is | de regels |
+| `docs/VOLGENDE-SESSIE.md` | de startprompt en de valkuilen | allebei de andere |
+
+**Staat een feit in het ene document, dan verwijst het andere ernaar — het
+herhaalt het niet.** `npm run docs:controle` wordt rood zodra dat wel gebeurt en
+draait mee in `/audit`.
+
+⚠️ **Een script vangt alleen wat een patroon heeft.** "EPIC 3 is nooit gedraaid"
+twintig regels boven "EPIC 3 heeft gedraaid" is geen getal, en QS8-77 die op
+Done staat terwijl twee documenten hem open noemen al helemaal niet. Daarvoor
+geldt de handmatige regel: **werk je iets bij, grep dan op dat feit in alle drie
+de bestanden voordat je klaar bent**, en loop bij het afsluiten van een issue na
+of de status in Linear en in de documenten hetzelfde zeggen.
+
 ### Documenten
 | Bestand | Wat erin staat |
 |---|---|
