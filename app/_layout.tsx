@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { isOnboarded, ProfielProvider, SessionProvider, useProfiel, useSession } from '@/modules/auth';
@@ -10,7 +10,7 @@ import {
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
-import { registreerPushToken } from '@/modules/notifications';
+import { maakWebPushBron, registreerPushToken, zetPushBron } from '@/modules/notifications';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -65,15 +65,28 @@ function Shell() {
  *    Op een gedeeld apparaat is dat precies goed: zonder dit blijft de vorige
  *    gebruiker meldingen krijgen op een telefoon waar hij niet meer op zit.
  *
- * ⚠️ **Doet vandaag niets**, en dat is bekend. `expo-notifications` staat nog
- *    niet in `package.json` — een dependency vraagt eerst toestemming
- *    (Q-TODO B4) — dus `geenPush` geeft `null` terug en er wordt niets
- *    weggeschreven. De rest van de keten (tabel, job, workflow) staat wél. Zodra
- *    de bibliotheek er mag komen, is het één `zetPushBron(...)` hier.
+ * ⚠️ **Op web doet dit sinds QS8-124 wél iets**: `maakWebPushBron()` leest het
+ *    bestaande pushabonnement en registreert het. Hij vraagt niets en maakt
+ *    niets aan — aanzetten gebeurt achter een klik op het profielscherm. Bij het
+ *    opstarten toestemming vragen kost je het kanaal permanent, want een
+ *    weggeklikte prompt zet `Notification.permission` op `denied`.
+ *
+ * ⚠️ **Op native doet dit nog steeds niets**, en dat is bekend.
+ *    `expo-notifications` staat niet in `package.json` — een dependency vraagt
+ *    eerst toestemming (Q-TODO B4) — dus `geenPush` geeft daar `null` terug. De
+ *    rest van de keten (tabel, job, workflow) staat wél; zodra de bibliotheek er
+ *    mag komen is het één `zetPushBron(...)` erbij.
  */
 function Pushwacht() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
+
+  useEffect(() => {
+    // ⚠️ Eén keer, en vóór het registreren. `zetPushBron` is een zetter op
+    //    moduleniveau; hem bij elke sessiewissel opnieuw aanroepen zou werken,
+    //    maar het verbergt dat dit een eenmalige bedrading is.
+    if (Platform.OS === 'web') zetPushBron(maakWebPushBron());
+  }, []);
 
   useEffect(() => {
     if (userId === null) return;

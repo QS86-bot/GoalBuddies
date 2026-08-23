@@ -21,3 +21,17 @@ export {
   type Platform,
   type PushBron,
 } from './tokens';
+
+export {
+  abonnementNaarToken,
+  huidigeMeldingenstand,
+  maakWebPushBron,
+  meldingenstand,
+  SERVICE_WORKER_PAD,
+  zetMeldingenAan,
+  type Aanzetresultaat,
+  type Meldingenstand,
+  type Pushomgeving,
+  type Webabonnement,
+  type Webpushtoken,
+} from './webpush-registratie';
