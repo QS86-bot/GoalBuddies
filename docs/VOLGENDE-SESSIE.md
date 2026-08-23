@@ -3,7 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 21-08-2026, na EPIC 12, EPIC 11 en EPIC 3.
+> **Laatst bijgewerkt:** 23-08-2026, na de merge van PR #1 (RLS-suite met eigen
+> JWT's, web push, de grendel op het minpunt).
 
 ---
 
@@ -20,22 +21,38 @@ WERKVOORRAAD §4.
 
 ## STAND VAN ZAKEN
 
-Fase 1 is grotendeels af. EPIC 0, 1, 2, 4, 5, 6, 7 en 10 staan. Van EPIC 8 zijn
-De Ketting (QS8-80), de weekpassen (QS8-81) en het dashboard (QS8-75) af. EPIC 3
-is deels gebouwd buiten de volgorde om: poort, Edge Function en datalaag staan op
-main, maar er zijn geen schermen en er is nooit een echte AI-call gedaan.
+Fase 1 is grotendeels af. EPIC 0, 1, 2, 3, 4, 5, 6, 7, 10 en 12 staan. Van EPIC 8
+zijn De Ketting (QS8-80), de weekpassen (QS8-81) en het dashboard (QS8-75) af.
+EPIC 11 staat op één schakel na (zie hieronder). Open is vooral **EPIC 9**, het
+commitment device.
 
-Migraties 0039 t/m 0049 zijn toegepast op het echte project. De rollover draait
-elk uur. **539 tests groen over 31 bestanden, geen skips** (de RLS-suite heeft
-dus echt gedraaid — staat er "skipped" bij `tests/rls/`, dan zegt groen niets
-over autorisatie; zie §3b van de werkvoorraad).
+Migraties **0001 t/m 0068** zijn toegepast op het echte project. De rollover
+draait elk uur.
 
-**Er staan ongeveer 46 commits klaar om te pushen. Ik push zelf.**
+**Gemeten op `main` (`bbbd1be`) op 23-08, zónder credentials:**
+
+```
+Test Files  31 passed | 10 skipped (41)
+     Tests  412 passed | 257 skipped (669)
+```
+
+`npm run typecheck` en `npm run lint` allebei groen. Die 257 overgeslagen zijn
+de RLS-suite, die een `.env` nodig heeft; mét credentials horen het er 669 te
+zijn. **Dat laatste getal is rekenwerk en geen meting** — draai het één keer
+met je `.env` en zet het echte getal hier neer.
+
+⚠️ **Lees de testteller.** Staat er "skipped" bij `tests/rls/`, dan heb je géén
+RLS-dekking gedraaid en zegt groen niets over autorisatie. Zie §3b van de
+werkvoorraad.
+
+**Alles staat op `main` en is gepusht.** PR #1 is op 23-08 gemerged als
+`bbbd1be`. Dat was de eerste PR van dit project; zie werkafspraak 1, want dat
+verandert de werkwijze.
 
 **EPIC 8 is af voor de MVP.** Alleen QS8-77 (dagelijkse nudge) staat nog open en
 die wacht op EPIC 11: er is geen kanaal om een nudge over te versturen.
 
-Deze ronde afgerond: QS8-106 (de vier datalaagfuncties zonder scherm), QS8-112
+In de ronde van 21-08 afgerond: QS8-106 (de vier datalaagfuncties zonder scherm), QS8-112
 (een weekdoel aanmaken kon helemaal niet), QS8-82 (adempauze), QS8-39 (mijlpalen
 beheren), QS8-76 (feestelijk moment) en QS8-85 (commitments informeel, met een
 test die het bewaakt). A45 is gedicht in migratie 0047.
@@ -85,6 +102,37 @@ proef "ongeveer 14 maanden" zei over een streefdatum die twee weken weg lag.
 **Vraag een taalmodel nooit om rekenwerk dat je zelf kunt doen** — dat geldt
 onverkort voor QS8-41.
 
+**De ronde van 22–23-08: de RLS-suite bewijst weer iets.** De suite logde per
+gebruiker in en liep daarbij tegen een limiet aan; hij sloeg zichzelf dan over
+en was groen zonder iets te bewijzen. De harnas **tekent de gebruikerstokens nu
+zelf** (HS256, `SUPABASE_JWT_SECRET`) en logt helemaal niet meer in. Winst:
+`tests/rls/jwt.test.ts` draait zonder credentials en dus mee in CI.
+
+Afgerond: QS8-116, QS8-118 (`src/shared/tekst`, codepunten als eenheid),
+QS8-120 en QS8-121 (Zod-schema's los van de Supabase-client; daarbij bleken de
+CHECK op `commitments.body` te ontbreken en `image_url` server-side ongevalideerd).
+
+⚠️ **De zwaarste vondst: ontkoppelen maakte missen gratis.**
+`kan_beoordeeld_worden()` uit 0064 keek of het doel op het moment van boeken aan
+een groep hing — en de eigenaar mag `goal_group_links` onvoorwaardelijk
+verwijderen én terugzetten, allebei een knop in de app. Ontkoppel op vrijdag,
+laat de rollover langsgaan, koppel maandag terug: geen minpunt, elke slechte
+week. De score kon alleen nog omhoog, precies wat domeinregel 10 verbiedt.
+Migratie **0066** legt het antwoord vast op `weekly_goals.beoordeelbaar` als
+grendel die maar één kant op beweegt, plus een tweede trigger die verlagen door
+de eigenaar blokkeert. Uitleg in
+`docs/decisions/2026-08-23-de-grendel-op-het-minpunt.md`.
+
+⚠️ **Twee dingen uit die ronde zijn níét af:**
+
+* **`public/sw.js` wordt nergens geregistreerd.** Er staat geen
+  `navigator.serviceWorker.register` in `src/` of `app/`. De crypto (RFC
+  8291/8188/8292), de kolommen op `push_tokens` en de worker staan er; de schakel
+  die ze aanzet niet. Web push is dus gemerged maar doet nog niets. Dat is
+  QS8-114, en QS8-117 (iOS) wacht erop.
+* **De migratiebestanden kunnen het schema niet opbouwen.** Zie de valkuilen —
+  dit is nu QS8-122 en het blokkeert QS8-119.
+
 **Volgende aan de beurt: EPIC 9, het commitment device.** QS8-85 is af
 (commitments blijven informeel, met een test die het bewaakt). Open zijn QS8-83
 (beloning vrijgeven bij het halen van een doel) en QS8-84 (straf verschuldigd
@@ -95,26 +143,47 @@ verstreken deadline, de begunstigde groep krijgt pas op dát moment leesrecht op
 het commitment, en niets mag stilzwijgend geactiveerd worden. Dat is de plek
 waar dit product vertrouwen kan verliezen, dus daar hoort de strengste lezing.
 
-**Er wachten zes besluiten op Quinten**, en twee ervan hangen aan elkaar:
+**Er wachten vijf besluiten op Quinten**, en twee ervan hangen aan elkaar:
 A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
 groene notities raken domeinregel 7 in de kern. Verder A43 (minpunten bij
-zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?), A46 (TRUNCATE
-intrekken) en A47 (de testsuite past niet meer twee keer in een uur). A37 staat
-er ook nog. En **B4** — `expo-notifications` — is geen besluit maar een
-dependency, en hij blokkeert wel een hele epic. Alles staat in `docs/Q-TODO.docx`, secties H, I en J, met de
-onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
+zelfstandig verschuiven), A44 (is "zakelijke doelen" de koers?) en A46 (TRUNCATE
+intrekken). A37 staat er ook nog.
+
+**A47 is af** — dat was "de testsuite past niet meer twee keer in een uur", en
+dat probleem bestaat niet meer sinds de suite niet meer inlogt (QS8-116).
+
+En **B4** — `expo-notifications` — is geen besluit maar een dependency. Hij
+blokkeert nu alleen nog **native** push; de web-kant is gebouwd en heeft die
+bibliotheek niet nodig. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
+met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
 
-1. **Eén branch per epic**, niet per issue. Na groene typecheck/lint/test/build
-   lokaal met `--no-ff` naar main mergen.
+1. **Werk landt sinds 23-08 via een PR op GitHub**, niet meer met een lokale
+   `--no-ff` merge. PR #1 is de eerste; hij is via de GitHub-UI gemerged met een
+   merge-commit, zodat de losse commits leesbaar blijven (squashen slaat de
+   Nederlandse berichten plat). Voorwaarde blijft dezelfde: groene
+   typecheck/lint/test/build vóór de PR opengaat.
+
+   ⚠️ **Over de branchindeling spreken twee documenten elkaar tegen.** `CLAUDE.md`
+   zegt *één branch per Linear-issue, met de naam die Linear voorstelt* (dan
+   koppelt Linear branch, PR en issue vanzelf). Dit bestand zei tot nu toe *één
+   branch per epic*. PR #1 was in de praktijk geen van beide — één branch voor
+   acht issues, met een naam die Linear niet herkent, dus niets is automatisch
+   gekoppeld. **Kies er één en haal de andere weg.** Zolang dat niet gebeurd is,
+   wint `CLAUDE.md`.
 2. `gh` werkt (ingelogd als QS86-bot, scopes repo, workflow, read:org, gist).
    Roep hem aan via het volledige pad: `"C:\Program Files\GitHub CLI\gh.exe"` —
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-   **Nummer verder vanaf 0047.** Elke migratie idempotent, met een rollback-pad
+   **Nummer verder vanaf 0069.** Elke migratie idempotent, met een rollback-pad
    in de kop.
+
+   ⚠️ **`0057` t/m `0061` bestaan niet als bestand** — ze zijn wel toegepast en
+   staan op de werkmachine. `main` springt van `0056` naar `0062`. Zet ze erin
+   voordat iemand op het idee komt die nummers opnieuw te gebruiken. Zie QS8-122
+   en de valkuil hieronder.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller.** Staat er "skipped" bij
    `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen niets over
@@ -139,8 +208,15 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
      teksten, ontbrekende loading-/error-/lege staat, een component dat op het
      verkeerde scherm kan belanden, en copy die een regel uitlegt die de
      gebruiker anders moet raden.
-6. Werk Linear bij zodra iets af is, niet aan het eind. Gebruik "In Review" niet:
-   er is geen reviewer in de solo-fase.
+6. Werk Linear bij zodra iets af is, niet aan het eind.
+
+   ⚠️ **"In Review" heeft sinds 23-08 wél een betekenis** en de oude regel
+   ("gebruik hem niet, er is geen reviewer") is achterhaald door werkafspraak 1.
+   Hij betekent nu: *het werk is af en gemeten, maar het zit in een PR die nog
+   niet gemerged is.* Dat is precies wat er tussen het openen en het mergen van
+   PR #1 gebeurde met QS8-116, 118, 120 en 121; bij de merge zijn ze op Done
+   gezet. **Zet niets op Done zolang de code alleen in een open PR staat** — dan
+   liegt het bord zodra die PR alsnog dichtgaat.
 7. Loop je vast op iets dat mijn beslissing of toegang vraagt: zet het in
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
 
@@ -240,22 +316,68 @@ onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   verbergt `excused` netjes voor de groep. Dat is de derde keer dat de UI klopte
   en de database niet.
 
-- **⚠️ De RLS-suite zit dicht tegen de aanmeldlimiet.** Nagemeten: hij maakte
-  **43** aanmeldingen tegen een limiet van ongeveer dertig per uur, en zat dus
-  structureel over de grens — hij slaagde alleen als het uur ervóór stil was.
-  Teruggebracht naar **31** door elf opvulgebruikers in de twaalf-ledentest niet
-  meer aan te melden (`createTestProfile`). **Dat is nog steeds krap: reken op
-  één schone run per uur, en niet twee.**
+- **⚠️ Een aannemelijke diagnose is geen meting — de aanmeldlimiet was iets
+  anders dan hier stond.** In dit bestand stond tot 23-08 dat de suite tegen een
+  limiet van *ongeveer dertig aanmeldingen per uur* aanliep. Dat klopte niet. De
+  auth-logs zeggen: alle 429's op `/auth/v1/token` en **geen enkele** op
+  `/auth/v1/admin/users`; 370 accounts aangemaakt in één uur zonder één
+  weigering; 262 geslaagde aanmeldingen in het uur dat er 13 weigeringen had; 39
+  in één minuut. Het is een **burstlimiet per IP**, geen uurquotum en niets per
+  project.
 
-  Zie je een opbouwfout met "rate limit" erin: wacht tien minuten, ga niet in de
-  policies zoeken — het ziet er elke keer uit als een kapotte policy, en dat is
-  het vier keer níét geweest. Een tweede gezicht hiervan is "JWT issued at
-  future": klokverschil, ook geen policyfout.
+  Dat verschil was niet academisch: op de verkeerde diagnose was "een tweede
+  Supabase-project" de logische oplossing, en die verplaatst een IP-limiet niet.
+  De echte oplossing was de limiet helemaal niet meer raken — de harnas tekent
+  zijn tokens nu zelf en logt niet meer in.
 
-  ⚠️ Wil je verder snoeien, let dan op de val die in `createTestProfile` staat:
-  **een fixture die RLS omzeilt om RLS te testen, bewijst niets.** Aanmeldingen
-  sparen mag alleen waar een gebruiker pure opvulling is. A47 vraagt om de
-  structurele keuze.
+  **Het probleem is weg, de les niet:** het faalbeeld van een uitgeputte limiet
+  ziet eruit als een kapotte policy (een paar bestanden rood, de rest "skipped"),
+  en dat is het vier keer níét geweest. Een tweede gezicht hiervan is "JWT issued
+  at future": klokverschil, ook geen policyfout. En let bij het snoeien van
+  fixtures op de val in `createTestProfile`: **een fixture die RLS omzeilt om RLS
+  te testen, bewijst niets.**
+
+- **⚠️ De migratiebestanden kunnen het schema niet opbouwen.** De geschiedenis
+  kent twee onverenigbare nummeringen: 38 genummerd (`0001`–`0038`) en 28 met een
+  tijdstempel — alles wat sinds 19-08 via de MCP-tool is toegepast, want die
+  kiest zelf een versie ongeacht hoe het bestand heet. Een bestandsnaam
+  `0039_….sql` komt dus nooit overeen met een versie in `schema_migrations`.
+  Daarbovenop ontbreken `0057` t/m `0061` als bestand.
+
+  **Waarom dat meer is dan slordig:** zowel een lokale stack als een tweede
+  cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
+  Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
+  RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan
+  tegen productie draaien. Dit blokkeert QS8-119 en staat als **QS8-122**.
+
+- **Een CHECK toevoegen zonder de functie mee te wijzigen breekt stil.** Migratie
+  0062 zette een CHECK op `push_tokens` die websleutels verplicht stelt, maar
+  liet `registreer_push_token()` ongemoeid. Elke aanroep met `platform = 'web'`
+  liep op een ongevangen 23514 stuk — een ruwe Postgres-fout in plaats van
+  `{ok:false, reason}`. De tabel was leeg, dus de migratie slaagde en er ging
+  niets zichtbaar stuk; web push was dood zodra hij aangezet werd. Gerepareerd in
+  0067. **Zoek bij elke nieuwe CHECK de functies op die in die tabel schrijven.**
+
+- **`z.string().url()` is in zod 4 geen schema-allowlist.** Nagemeten met 4.4.3:
+  `javascript:alert(1)`, `data:text/html,…` en `file:///etc/passwd` zijn alle
+  drie geldig. `commitments.image_url` had daardoor server-side nul validatie, en
+  een commitment is per domeinregel 11 leesbaar voor de begunstigde groep zodra
+  de straf verschuldigd wordt. Nu een CHECK én een `.refine()` op `https://`
+  (0068). De test die de te ruime regel als correct vastlegde is vervangen — **een
+  test die een gat bekrachtigt is erger dan geen test.**
+
+- **⚠️ Een bevinding die je terecht als "Laag" wegzet, kan zwaarder worden door
+  wat je er later op bouwt.** Op 17-08 stond in `ENGINEER-REVIEW.md` de rij
+  "Bewijseis te omzeilen met ontkoppelen", bewust laag omdat het zelfbedrog was
+  en geen autorisatiegrens. Dat oordeel klopte. Vier dagen later maakte dezelfde
+  handeling — eigenaar ontkoppelt en koppelt terug — er via 0064 een scoregat
+  van, en kostte het migratie 0066 om te dichten.
+
+  Het project heeft dit één keer wél goed gedaan: de A17-aantekening
+  ("herbevestigen vóór EPIC 12") werkte precies zo. Bij die rij stond er geen.
+  **Vraag bij elke nieuwe beslissing die op een bestaande primitieve handeling
+  leunt: staat daar een weggelegde bevinding over?** De werkwijze eromheen is
+  **QS8-123**.
 - **Let op de limieten die je zelf hebt ingebouwd:** 10 groepen per gebruiker per
   dag, 20 toetredingspogingen per dag, 12 leden per groep, 5 deadline-verzoeken
   per dag, 2 weekpassen tegelijk, 24 uur bedenktijd.
@@ -270,10 +392,16 @@ nieuw ding dat de groep te zien krijgt, drie vragen: kan hieruit iemands gemiste
 week worden afgeleid, kan iemand dat met één API-verzoek uitlezen buiten de UI
 om, en doet een ander component op hetzelfde scherm dat alsnog?
 
-Er zijn drie benoemde verruimingen, door mij besloten: de groep mag je reeks zien
-(A15), je risicostatus zien (A17) en je deadline-verschuiving zien (A7).
+Er zijn **twee** benoemde verruimingen, door mij besloten: de groep mag je reeks
+zien (A15) en je deadline-verschuiving zien (A7 — die vraag je zelf aan).
 Onderbouwing in `docs/decisions/002-domeinregel7-oppervlakken.md` §4a. Ze
-verruimen de regel op drie plekken; ze schaffen hem niet af.
+verruimen de regel op twee plekken; ze schaffen hem niet af.
+
+⚠️ **A17 was de derde en is op 20-08 teruggedraaid** (migratie 0050 verhuisde de
+risicokolommen naar `goal_risk`, eigenaar-only). Tot 23-08 stond hier nog "drie
+verruimingen" terwijl de stand-van-zaken hierboven het tegenovergestelde zei —
+dat is precies de soort tegenspraak die een volgende sessie de verkeerde kant op
+stuurt. `CLAUDE.md` is de bron: daar staan er twee.
 
 **Het puntenmodel:** plafond +2, vloer +1, gemiste week −1, adempauze 0, een
 buddy beoordelen +1. Een weekpas beschermt de reeks, niet het punt. Punten zijn
@@ -291,5 +419,41 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-Begin met EPIC 11 en werk door volgens de volgorde hierboven. Vraag alleen als
-doorgaan-onder-aanname echt onveilig zou zijn.
+## STAND VAN DE REPO (23-08)
+
+`main` staat op `bbbd1be`. Er staan drie branches op de remote en twee daarvan
+mogen weg:
+
+| branch | commit | |
+|---|---|---|
+| `main` | `bbbd1be` | de hoofdbranch |
+| `fundering-16-08` | `8640f3c` | **archief, laten staan** |
+| `quintenstrijdonk/qs8-21-04-repo-scaffold-...` | `8640f3c` | mag weg |
+| `claude/goalbuddies-rls-suite-b6mi31` | `e64a6f5` | mag weg, zit in `main` |
+
+```bash
+git push origin --delete quintenstrijdonk/qs8-21-04-repo-scaffold-expo-typescript-strict
+git push origin --delete claude/goalbuddies-rls-suite-b6mi31
+```
+
+⚠️ **`fundering-16-08` heeft géén gemeenschappelijke voorouder met `main`.** Het
+zijn twee losse wortelhistories; `main` is rond 16-08 opnieuw geworteld. Die
+branch bewaart de zeven oorspronkelijke fundering-commits, die nergens anders
+meer bereikbaar zijn (de inhoud leeft wél door — `0001` t/m `0004` zijn
+byte-identiek). **Zet hem nooit in een PR**: een merge zou twee historieën aan
+elkaar knopen en 25 bestanden terugdraaien naar de stand van 16 augustus. Beter
+nog: maak er een tag van en gooi de branch weg.
+
+⚠️ Een sessie in de cloud kan **geen tags aanmaken en geen branches verwijderen** —
+dat geeft HTTP 403 op `git-receive-pack`. Gewone pushes naar een eigen branch
+werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
+
+## Waar te beginnen
+
+1. **QS8-114 afmaken** — de service worker registreren. Het is één schakel en
+   zonder die schakel doet alle gebouwde web-push-code niets.
+2. **QS8-122** — de migratiebron repareerbaar maken. Alles wat een tweede
+   omgeving nodig heeft (lokale stack, CI met echte RLS, staging) hangt hierachter.
+3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.
+
+Vraag alleen als doorgaan-onder-aanname echt onveilig zou zijn.
