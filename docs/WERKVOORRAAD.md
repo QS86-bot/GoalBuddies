@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 21-08-2026 (na EPIC 12, EPIC 11 en EPIC 3)
+**Laatst bijgewerkt:** 23-08-2026 (na de merge van PR #1)
 
 ---
 
@@ -15,26 +15,36 @@
 
 Lees dit eerst; de rest is naslag.
 
-* **Fase 1 is voor het grootste deel af.** EPIC 0, 1, 2, 4, 5, 6, 7 en 10 staan;
-  van EPIC 8 zijn De Ketting, de weekpassen en het dashboard af, EPIC 3 is deels
-  gebouwd buiten de volgorde om. Open: EPIC 11, 12, 9 en de rest van 8
-  (QS8-76, QS8-77, QS8-82).
+* **Fase 1 is voor het grootste deel af.** EPIC 0, 1, 2, 3, 4, 5, 6, 7, 10 en 12
+  staan; EPIC 8 is af op QS8-77 (nudge) na. Open: **EPIC 9** (commitment device)
+  en de laatste schakel van EPIC 11.
 * **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke
   afspraak hieronder. Migraties mogen daarom rechtstreeks op productie. **Dat
   vervalt op de dag dat de eerste gebruiker zich aanmeldt.**
-* **De database loopt soms vóór op de repo.** Migraties gaan via een MCP-tool en
-  niet via `supabase db push`, dus `supabase/migrations/` is een verslag en geen
-  bron. Vergelijk bij twijfel `list_migrations` met de map — dat is deze week
-  twee keer misgegaan (valkuil 15).
+* **⚠️ De migratiebestanden kunnen het schema niet opbouwen — dit is nu geteld.**
+  De geschiedenis kent twee onverenigbare nummeringen: 38 genummerd
+  (`0001`–`0038`) en 28 met een tijdstempel (alles wat sinds 19-08 via de MCP-tool
+  is toegepast; die kiest zelf een versie ongeacht de bestandsnaam). Daarbovenop
+  ontbreken **`0057` t/m `0061`** als bestand: `main` springt van `0056` naar
+  `0062`. Toegepast zijn `0001` t/m `0068`. `supabase/migrations/` is dus een
+  verslag en geen bron, in béíde richtingen. Vastgelegd als **QS8-122**, en het
+  blokkeert QS8-119 en alles wat een tweede omgeving nodig heeft.
 * **De rollover draait sinds 19-08 elk uur** via GitHub Actions. Daarmee is de
   puntenkant van EPIC 4 en 8 voor het eerst echt in bedrijf.
-* **De echte poort is de RLS-suite en die draait niet in CI.** Zie §3b. Groen in
-  GitHub zegt niets over domeinregel 7.
-* **⚠️ Eén ding is nog gebouwd en nooit gedraaid:** de Doelcoach-keten van
-  EPIC 3 — poort, Edge Function en datalaag staan, maar er is geen scherm en er
-  is nooit een echte AI-call gedaan. Het weekpas-pad in `herbereken_reeks()`
-  stond ook in dit rijtje en is er sinds 19-08 uit: het wordt nu gevuld én is
-  end-to-end tegen het echte project gedraaid.
+* **De echte poort is de RLS-suite en die draait nog steeds niet volledig in CI.**
+  Gemeten op `main` (`bbbd1be`) zónder credentials: **412 geslaagd, 257
+  overgeslagen** over 31 geslaagde en 10 overgeslagen bestanden; typecheck en lint
+  groen. Die 257 zijn de RLS-suite, die een `.env` nodig heeft. **Groen in GitHub
+  zegt dus nog altijd niets over domeinregel 7** — zie §3b.
+
+  Wat er sinds 23-08 wél in CI draait: `tests/rls/jwt.test.ts`, want de harnas
+  tekent zijn tokens nu zelf en heeft daarvoor geen credentials meer nodig.
+* **⚠️ Eén ding is gebouwd en doet nog niets: web push.** De versleuteling (RFC
+  8291/8188/8292), de kolommen op `push_tokens` en `public/sw.js` staan er, maar
+  **er is nergens een `navigator.serviceWorker.register`** in `src/` of `app/`.
+  Zonder die ene schakel gebeurt er in een browser niets. Dat is QS8-114, en
+  QS8-117 (iOS) wacht erop. De Doelcoach-keten stond hier eerder ook; die is er
+  sinds 21-08 uit en heeft echt gedraaid.
 * ✅ **De reeks is niet meer te verzinnen en een gemiste week niet meer weg te
   poetsen** (migraties 0043 t/m 0045, A35/A36/A39/A40). Vier routes, alle vier
   dicht: je eigen weekdoel op `approved` zetten, een gemiste week verwijderen,
@@ -64,23 +74,27 @@ Lees dit eerst; de rest is naslag.
 * ✅ **Mijlpalen zijn te beheren** (QS8-39) en **commitments zijn aantoonbaar
   informeel** (QS8-85, met een test die rood wordt zodra er een betaalprovider
   bij komt).
-* De Doelcoach-keten van EPIC 3 staat er nog steeds zonder scherm bij, en er is
-  nog steeds geen echte AI-call gedaan.
 * **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A46.
-  A45 is gedicht (migratie 0047). Open en de moeite waard: **A41 t/m A44** uit
-  de groene notities (A41 en A42 vragen een besluit over domeinregel 7 en hangen
-  aan elkaar), **A46** (TRUNCATE intrekken) en **A37**. Geen van alle blokkeert
-  het bouwen van andere issues.
+  A45 is gedicht (migratie 0047) en **A47 is af** — dat vroeg om een structurele
+  keuze voor de testsuite, en dat probleem bestaat niet meer. Open en de moeite
+  waard: **A41 t/m A44** uit de groene notities (A41 en A42 vragen een besluit
+  over domeinregel 7 en hangen aan elkaar), **A46** (TRUNCATE intrekken) en
+  **A37**. Geen van alle blokkeert het bouwen van andere issues.
 * ✅ **EPIC 12 (Risico-radar) is af**, en `goals.risk_status` is dichtgezet
   vóórdat de radar hem ging vullen (migratie 0050). De drie risicokolommen
   wonen nu in `goal_risk`, eigenaar-only. **A17 is daarmee teruggedraaid**: er
   zijn nog twee benoemde verruimingen van domeinregel 7, niet drie.
 * ✅ **EPIC 11 (notificaties) staat volledig klaar, op één dependency na.**
   Tabellen, regels, Edge Function, workflow en de rand in de app zijn er en de
-  job is tegen het echte project gedraaid. Wat ontbreekt is `expo-notifications`
-  — zonder die bibliotheek is er geen pushtoken, dus blijft `push_tokens` leeg
-  en stuurt de job niets. **Dat is Q-TODO B4 en het is het enige dat EPIC 11 nog
-  tegenhoudt.** QS8-77 (de nudge) zit er meteen in.
+  job is tegen het echte project gedraaid. Er zijn nu **twee** dingen die hem
+  tegenhouden, één per platform:
+  * **native** — `expo-notifications` ontbreekt, en dat is een dependency die
+    toestemming vraagt (**Q-TODO B4**);
+  * **web** — de bibliotheek is niet nodig (dat is sinds 23-08 van nul gebouwd),
+    maar `public/sw.js` wordt nergens geregistreerd (**QS8-114**).
+
+  Zolang geen van beide rond is, blijft `push_tokens` leeg en stuurt de job
+  niets. QS8-77 (de nudge) zit er meteen in.
 * ✅ **EPIC 3 (de Doelcoach) is af voor de MVP, en heeft voor het eerst echt
   gedraaid.** Drie echte AI-calls tegen het project, samen ongeveer 3,8 cent:
   twaalf mijlpalen op een gewoon doel, en tegenspraak op een onmogelijk doel.
@@ -92,10 +106,39 @@ Lees dit eerst; de rest is naslag.
   twee die nog open staan; QS8-85 is af. Let op domeinregel 11: een straf treedt
   pas in werking bij een verstreken deadline, en de begunstigde groep krijgt pas
   dán leesrecht.
-* ⚠️ **De RLS-suite past niet meer twee keer in een uur.** Hij maakt ongeveer
-  veertig aanmeldingen en Supabase weigert na ongeveer dertig. Eén schone run per
-  uur lukt; twee niet, en dan lijkt het op een kapotte policy. Zie A47 — dit
-  vraagt een keuze voordat het de reden wordt dat niemand de suite meer draait.
+* ✅ **De RLS-suite bewijst weer iets** (QS8-116, 23-08). Hij logde per gebruiker
+  in en liep daarbij tegen een limiet aan; hij sloeg zichzelf dan over en was
+  groen zonder iets te bewijzen. De harnas **tekent de gebruikerstokens nu zelf**
+  (HS256) en logt helemaal niet meer in, dus die limiet wordt niet meer geraakt.
+
+  ⚠️ **De diagnose die hier tot 23-08 stond klopte niet.** Er stond "ongeveer
+  dertig aanmeldingen per uur". Uit de auth-logs blijkt het een **burstlimiet per
+  IP**: alle 429's op `/auth/v1/token` en géén op `/auth/v1/admin/users`, 370
+  accounts in één uur zonder weigering, 39 aanmeldingen in één minuut. Op de
+  verkeerde diagnose was "een tweede Supabase-project" de logische oplossing, en
+  die verplaatst een IP-limiet niet. **Meet voor je een omgeving verbouwt.**
+* ✅ **Ontkoppelen maakt missen niet meer gratis** (migratie 0066, 23-08). Dit is
+  de zwaarste vondst van de ronde. `kan_beoordeeld_worden()` uit 0064 keek of het
+  doel op het moment van boeken aan een groep hing — en de eigenaar mag
+  `goal_group_links` onvoorwaardelijk verwijderen én terugzetten, allebei een
+  knop in de app. Ontkoppel op vrijdag, laat de rollover langsgaan, koppel
+  maandag terug: geen minpunt, elke slechte week, en de score kon alleen nog
+  omhoog. 0066 legt het antwoord vast op `weekly_goals.beoordeelbaar` als grendel
+  die maar één kant op beweegt, plus een tweede trigger die verlagen door de
+  eigenaar blokkeert.
+
+  **Herkomst:** dezelfde handeling stond sinds 17-08 in `ENGINEER-REVIEW.md`,
+  terecht als *Laag* weggelegd. Vier dagen later stond er een feature bovenop die
+  er wél een scoregat van maakte. Hoe je dat voortaan ziet aankomen is **QS8-123**.
+* ✅ **Verder afgerond op 22–23-08:** QS8-118 (`src/shared/tekst`, codepunten als
+  eenheid overal — dat is wat `char_length` telt), QS8-120 en QS8-121 (Zod-schema's
+  los van de Supabase-client). Daarbij bleken de CHECK op `commitments.body`
+  volledig te ontbreken (0063) en `commitments.image_url` server-side ongevalideerd
+  (0068 — `z.string().url()` laat in zod 4 `javascript:` en `file:` gewoon door).
+* **Werk landt sinds 23-08 via een PR**, niet meer met een lokale `--no-ff` merge.
+  PR #1 is als merge-commit `bbbd1be` geland. ⚠️ Over de branchindeling spreken
+  `CLAUDE.md` (één branch per Linear-issue) en `VOLGENDE-SESSIE.md` (één branch
+  per epic) elkaar tegen; PR #1 was geen van beide. Kies er één.
 
 ---
 
@@ -240,10 +283,18 @@ matrix in `chain_links` (EPIC 8) — is van een soort die CI per definitie niet
 ziet. Ze kwamen alle vier uit de RLS-suite of uit een reviewagent.
 
 **Wanneer deze stap kan vervallen:** zodra er een lokale of aparte Supabase-stack
-is (Q-TODO **A9**). Nu draaien die tests tegen productie, maken ze echte accounts
-aan en lopen ze tegen de aanmeldlimiet (valkuil 14) — daarom staan ze niet in CI
-en daarom is dit handwerk. Het automatiseren van deze stap is meer waard dan elke
-instelling op GitHub.
+is (Q-TODO **A9**, Linear **QS8-119**). Nu draaien die tests tegen productie en
+maken ze echte accounts aan met een sleutel die RLS omzeilt — daarom staan ze
+niet in CI en daarom is dit handwerk. Het automatiseren van deze stap is meer
+waard dan elke instelling op GitHub.
+
+⚠️ Twee dingen zijn hier sinds 23-08 veranderd. **De aanmeldlimiet is geen reden
+meer**: de harnas logt niet meer in maar tekent zijn eigen tokens (QS8-116), dus
+dat argument is vervallen. En **de weg naar die aparte stack is langer dan hij
+leek**: de migratiebestanden kunnen het schema niet opbouwen (**QS8-122**), en
+zonder die reparatie levert een lokale stack een schema op dat niet op productie
+lijkt. Dan toetst de suite een verzinsel — groen zonder iets te bewijzen, wat
+erger is dan tegen productie draaien.
 
 ⚠️ **Branch protection op `main` staat sinds 18-08 aan**, maar smal: force push
 en verwijderen zijn geblokkeerd, inclusief voor beheerders. Er is bewust géén
@@ -555,18 +606,26 @@ plek waar niemand meer kijkt.
     én CI, en geen enkele workflow deployt ze. Draai `npm run edge:sync` vóór elke
     deploy en controleer de gedéployde versie, niet de repo-versie.
 
-15. **⚠️ Draai de RLS-suite niet vaker dan een paar keer per uur.** De suites
-    maken samen zo'n tien echte accounts per volledige run, en Supabase weigert na
-    ongeveer dertig aanmeldingen per uur met **"Request rate limit reached"** —
-    waarna de suite omvalt op een plek die niets met de policies te maken heeft.
-    Een tweede gezicht hiervan is **"JWT issued at future"**: klokverschil, ook
-    geen policyfout.
+15. **⚠️ Een aannemelijke diagnose is geen meting.** Hier stond tot 23-08 dat
+    Supabase weigert na *ongeveer dertig aanmeldingen per uur*, en dat je de
+    RLS-suite daarom niet vaker dan een paar keer per uur kon draaien. **Dat
+    klopte niet.** De auth-logs zeggen: alle 429's op `/auth/v1/token` en géén
+    enkele op `/auth/v1/admin/users`; 370 accounts aangemaakt in één uur zonder
+    één weigering; 262 geslaagde aanmeldingen in het uur dat er 13 weigeringen
+    had; 39 in één minuut. Het is een **burstlimiet per IP**, geen uurquotum en
+    niets per project.
 
-    **Zie je een opbouwfout, zoek dan eerst op "rate limit" in de melding.** Is
-    het dat, dan is de suite niet stuk maar op. Dit is een harde bovengrens op hoe
-    vaak je kunt verifiëren; de structurele oplossing (gedeelde testgebruikers, of
-    een lokale stack — Q-TODO **A9**) is meer waard dan welke instelling op GitHub
-    ook.
+    Dat verschil was duur: op de verkeerde diagnose is "een tweede
+    Supabase-project" de logische oplossing, en die verplaatst een IP-limiet niet.
+    De echte oplossing was de limiet helemaal niet meer raken — de harnas tekent
+    sinds QS8-116 zijn eigen tokens en logt niet meer in. **De bovengrens op hoe
+    vaak je kunt verifiëren bestaat niet meer.**
+
+    **Wat wél blijft staan is het faalbeeld.** Een uitgeputte limiet ziet eruit
+    als een kapotte policy — een paar bestanden rood, de rest "skipped" — en dat
+    is het vier keer níét geweest. Een tweede gezicht hiervan is **"JWT issued at
+    future"**: klokverschil, ook geen policyfout. Zoek bij een opbouwfout dus
+    eerst in de melding, niet in de policies.
 
 16. **Een comment die uitlegt waarom iets zo moet, bewijst niet dat het zo is.**
     Het scherm "Vandaag" haalde onophoudelijk gegevens op omdat er objecten in een
