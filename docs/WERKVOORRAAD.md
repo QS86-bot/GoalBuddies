@@ -13,132 +13,39 @@
 
 ## 0. De stand in tien regels
 
-Lees dit eerst; de rest is naslag.
+Lees dit eerst; de rest is naslag. **Tien regels, en dat is de bedoeling** —
+staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of §7.
 
-* **Fase 1 is voor het grootste deel af.** EPIC 0, 1, 2, 3, 4, 5, 6, 7, 10 en 12
-  staan; EPIC 8 is af op QS8-77 (nudge) na. Open: **EPIC 9** (commitment device)
-  en de laatste schakel van EPIC 11.
-* **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke
-  afspraak hieronder. Migraties mogen daarom rechtstreeks op productie. **Dat
-  vervalt op de dag dat de eerste gebruiker zich aanmeldt.**
-* **⚠️ De migratiebestanden kunnen het schema niet opbouwen — dit is nu geteld.**
-  De geschiedenis kent twee onverenigbare nummeringen: 38 genummerd
-  (`0001`–`0038`) en 28 met een tijdstempel (alles wat sinds 19-08 via de MCP-tool
-  is toegepast; die kiest zelf een versie ongeacht de bestandsnaam). Daarbovenop
-  ontbreken **`0057` t/m `0061`** als bestand: `main` springt van `0056` naar
-  `0062`. Toegepast zijn `0001` t/m `0068`. `supabase/migrations/` is dus een
-  verslag en geen bron, in béíde richtingen. Vastgelegd als **QS8-122**, en het
-  blokkeert QS8-119 en alles wat een tweede omgeving nodig heeft.
-* **De rollover draait sinds 19-08 elk uur** via GitHub Actions. Daarmee is de
-  puntenkant van EPIC 4 en 8 voor het eerst echt in bedrijf.
-* **De echte poort is de RLS-suite en die draait nog steeds niet volledig in CI.**
-  Gemeten op `main` (`bbbd1be`) zónder credentials: **412 geslaagd, 257
-  overgeslagen** over 31 geslaagde en 10 overgeslagen bestanden; typecheck en lint
-  groen. Die 257 zijn de RLS-suite, die een `.env` nodig heeft. **Groen in GitHub
-  zegt dus nog altijd niets over domeinregel 7** — zie §3b.
-
-  Wat er sinds 23-08 wél in CI draait: `tests/rls/jwt.test.ts`, want de harnas
-  tekent zijn tokens nu zelf en heeft daarvoor geen credentials meer nodig.
-* **⚠️ Eén ding is gebouwd en doet nog niets: web push.** De versleuteling (RFC
-  8291/8188/8292), de kolommen op `push_tokens` en `public/sw.js` staan er, maar
-  **er is nergens een `navigator.serviceWorker.register`** in `src/` of `app/`.
-  Zonder die ene schakel gebeurt er in een browser niets. Dat is QS8-114, en
-  QS8-117 (iOS) wacht erop. De Doelcoach-keten stond hier eerder ook; die is er
-  sinds 21-08 uit en heeft echt gedraaid.
-* ✅ **De reeks is niet meer te verzinnen en een gemiste week niet meer weg te
-  poetsen** (migraties 0043 t/m 0045, A35/A36/A39/A40). Vier routes, alle vier
-  dicht: je eigen weekdoel op `approved` zetten, een gemiste week verwijderen,
-  hem doorschuiven (`carried` breekt de reeks nu, tenzij er een weekpas op
-  staat), en de `todo`-rij wissen vóór de rollover (verwijderen is nu
-  **afsluiten** — de rij blijft als `cancelled` staan en de rollover veegt hem
-  bij het verstrijken van de cyclus mee naar `missed`).
-* **De les van deze ronde, en hij is duurder dan de bug.** 0023 dichtte dit voor
-  *wijzigen*, niemand keek naar *aanmaken* en *verwijderen*, en in
-  `ENGINEER-REVIEW.md` stond het als opgelost afgevinkt. En toen 0043 die twee
-  sloot, bleken er nog twee deuren te zijn. **Vier migraties voor één gat, en
-  elke ronde vond de vorige reparatie te smal.** Bij het volgende slot: zoek eerst
-  álle routes naar het effect, niet de route die je net gevonden hebt.
-* ✅ **De vier functies zonder scherm hebben er een** (QS8-106, 20-08).
-  `schuifDoor()`, `sluitWeekdoelAf()`, `verwijderWeekdoel()` en `verwijderDoel()`
-  worden nu aangeroepen: afsluiten en weggooien staan op de weekdoelkaart, het
-  blok "Nog open van eerdere weken" op *Vandaag* neemt een gemiste week mee, en
-  weggooien-binnen-de-bedenktijd staat onder archiveren op het doelscherm. Elk
-  met een bevestiging die zegt wát het kost.
-* ✅ **Een weekdoel aanmaken kan weer** (QS8-112). Het bleek helemaal niet te
-  kunnen: `maakWeekdoel()` werd door geen enkel scherm aangeroepen, terwijl
-  QS8-43 en QS8-44 allebei op Done stonden. Het formulier staat nu op het
-  doelscherm.
-* ✅ **EPIC 8 is af voor de MVP**, op QS8-77 (nudge) na — die wacht op EPIC 11
-  omdat er nog geen kanaal is om een nudge over te versturen. QS8-82
-  (adempauze) en QS8-76 (feestmoment) zijn deze ronde gebouwd.
-* ✅ **Mijlpalen zijn te beheren** (QS8-39) en **commitments zijn aantoonbaar
-  informeel** (QS8-85, met een test die rood wordt zodra er een betaalprovider
-  bij komt).
-* **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: A16, A22 t/m A46.
-  A45 is gedicht (migratie 0047) en **A47 is af** — dat vroeg om een structurele
-  keuze voor de testsuite, en dat probleem bestaat niet meer. Open en de moeite
-  waard: **A41 t/m A44** uit de groene notities (A41 en A42 vragen een besluit
-  over domeinregel 7 en hangen aan elkaar), **A46** (TRUNCATE intrekken) en
-  **A37**. Geen van alle blokkeert het bouwen van andere issues.
-* ✅ **EPIC 12 (Risico-radar) is af**, en `goals.risk_status` is dichtgezet
-  vóórdat de radar hem ging vullen (migratie 0050). De drie risicokolommen
-  wonen nu in `goal_risk`, eigenaar-only. **A17 is daarmee teruggedraaid**: er
-  zijn nog twee benoemde verruimingen van domeinregel 7, niet drie.
-* ✅ **EPIC 11 (notificaties) staat volledig klaar, op één dependency na.**
-  Tabellen, regels, Edge Function, workflow en de rand in de app zijn er en de
-  job is tegen het echte project gedraaid. Er zijn nu **twee** dingen die hem
-  tegenhouden, één per platform:
-  * **native** — `expo-notifications` ontbreekt, en dat is een dependency die
-    toestemming vraagt (**Q-TODO B4**);
-  * **web** — de bibliotheek is niet nodig (dat is sinds 23-08 van nul gebouwd),
-    maar `public/sw.js` wordt nergens geregistreerd (**QS8-114**).
-
-  Zolang geen van beide rond is, blijft `push_tokens` leeg en stuurt de job
-  niets. QS8-77 (de nudge) zit er meteen in.
-* ✅ **EPIC 3 (de Doelcoach) is af voor de MVP, en heeft voor het eerst echt
-  gedraaid.** Drie echte AI-calls tegen het project, samen ongeveer 3,8 cent:
-  twaalf mijlpalen op een gewoon doel, en tegenspraak op een onmogelijk doel.
-  Het interview, het coachscherm, opnieuw genereren en het kostenoverzicht
-  staan. Alleen QS8-41 (weekdoelen per mijlpaal) blijft open en die is
-  `phase:v2`.
-* **Wat nu aan de beurt is: EPIC 9 (commitment device).** QS8-83 (beloning
-  vrijgeven) en QS8-84 (straf verschuldigd bij een gemiste deadline) zijn de
-  twee die nog open staan; QS8-85 is af. Let op domeinregel 11: een straf treedt
-  pas in werking bij een verstreken deadline, en de begunstigde groep krijgt pas
-  dán leesrecht.
-* ✅ **De RLS-suite bewijst weer iets** (QS8-116, 23-08). Hij logde per gebruiker
-  in en liep daarbij tegen een limiet aan; hij sloeg zichzelf dan over en was
-  groen zonder iets te bewijzen. De harnas **tekent de gebruikerstokens nu zelf**
-  (HS256) en logt helemaal niet meer in, dus die limiet wordt niet meer geraakt.
-
-  ⚠️ **De diagnose die hier tot 23-08 stond klopte niet.** Er stond "ongeveer
-  dertig aanmeldingen per uur". Uit de auth-logs blijkt het een **burstlimiet per
-  IP**: alle 429's op `/auth/v1/token` en géén op `/auth/v1/admin/users`, 370
-  accounts in één uur zonder weigering, 39 aanmeldingen in één minuut. Op de
-  verkeerde diagnose was "een tweede Supabase-project" de logische oplossing, en
-  die verplaatst een IP-limiet niet. **Meet voor je een omgeving verbouwt.**
-* ✅ **Ontkoppelen maakt missen niet meer gratis** (migratie 0066, 23-08). Dit is
-  de zwaarste vondst van de ronde. `kan_beoordeeld_worden()` uit 0064 keek of het
-  doel op het moment van boeken aan een groep hing — en de eigenaar mag
-  `goal_group_links` onvoorwaardelijk verwijderen én terugzetten, allebei een
-  knop in de app. Ontkoppel op vrijdag, laat de rollover langsgaan, koppel
-  maandag terug: geen minpunt, elke slechte week, en de score kon alleen nog
-  omhoog. 0066 legt het antwoord vast op `weekly_goals.beoordeelbaar` als grendel
-  die maar één kant op beweegt, plus een tweede trigger die verlagen door de
-  eigenaar blokkeert.
-
-  **Herkomst:** dezelfde handeling stond sinds 17-08 in `ENGINEER-REVIEW.md`,
-  terecht als *Laag* weggelegd. Vier dagen later stond er een feature bovenop die
-  er wél een scoregat van maakte. Hoe je dat voortaan ziet aankomen is **QS8-123**.
-* ✅ **Verder afgerond op 22–23-08:** QS8-118 (`src/shared/tekst`, codepunten als
-  eenheid overal — dat is wat `char_length` telt), QS8-120 en QS8-121 (Zod-schema's
-  los van de Supabase-client). Daarbij bleken de CHECK op `commitments.body`
-  volledig te ontbreken (0063) en `commitments.image_url` server-side ongevalideerd
-  (0068 — `z.string().url()` laat in zod 4 `javascript:` en `file:` gewoon door).
-* **Werk landt sinds 23-08 via een PR**, niet meer met een lokale `--no-ff` merge.
-  PR #1 is als merge-commit `bbbd1be` geland. ⚠️ Over de branchindeling spreken
-  `CLAUDE.md` (één branch per Linear-issue) en `VOLGENDE-SESSIE.md` (één branch
-  per epic) elkaar tegen; PR #1 was geen van beide. Kies er één.
+1. **Fase 1 is voor het grootste deel af.** Open: **EPIC 9** (commitment device)
+   en de laatste schakel van EPIC 11. Volgorde in §4, wat er staat in §2.
+2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
+   hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
+   dat de eerste gebruiker zich aanmeldt.**
+3. **⚠️ De migratiebestanden kunnen het schema niet opbouwen** — twee nummeringen
+   naast elkaar, en `0057` t/m `0061` ontbreken. Toegepast is `0001` t/m `0068`.
+   **QS8-122**, blokkeert QS8-119 en elke tweede omgeving. Uitleg in §2.
+4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
+   credentials op `main` (`bbbd1be`): 412 geslaagd, 257 overgeslagen; typecheck en
+   lint groen. **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
+5. **⚠️ Web push is gebouwd en doet niets:** `public/sw.js` wordt nergens
+   geregistreerd (**QS8-114**, en QS8-117 wacht erop). Native wacht op
+   `expo-notifications` (**Q-TODO B4**). Dat is samen de laatste schakel van EPIC 11.
+6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
+   week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
+   gratis, gegrendeld in 0066. Zie §2.
+7. **De duurste les, en hij geldt nog steeds:** zoek álle routes naar een effect,
+   niet de route die je net gevonden hebt. Eén gat kostte vier migraties, en 0066
+   was dezelfde vorm nog een keer. Zie §7.
+8. **Werk landt sinds 23-08 via een PR** (PR #1 = merge-commit `bbbd1be`), niet
+   meer met een lokale `--no-ff` merge. ⚠️ Over de branchindeling spreken
+   `CLAUDE.md` en `VOLGENDE-SESSIE.md` elkaar tegen — kies er één. Zie §3b.
+9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
+   A42 hangen aan elkaar en raken domeinregel 7), **A46**, **A37** en **B4**.
+   A45 en A47 zijn af. Geen van alle blokkeert het bouwen van andere issues.
+10. **Nu aan de beurt: EPIC 9.** QS8-83 (beloning vrijgeven) en QS8-84 (straf bij
+    een verstreken deadline). Lees eerst domeinregel 11 én 5: een straf treedt pas
+    in werking bij een verstreken deadline en niets mag stilzwijgend geactiveerd
+    worden.
 
 ---
 
@@ -160,9 +67,23 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0038`
-staan in `supabase/migrations/` en zijn toegepast. Het datamodel is vastgesteld
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0068`
+zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
+
+⚠️ **`supabase/migrations/` is een verslag en geen bron, in béíde richtingen.**
+De geschiedenis kent twee onverenigbare nummeringen: 38 genummerd
+(`0001`–`0038`) en 28 met een tijdstempel — alles wat sinds 19-08 via de MCP-tool
+is toegepast, want die kiest zelf een versie ongeacht hoe het bestand heet. Een
+bestandsnaam `0039_….sql` komt dus nooit overeen met een versie in
+`schema_migrations`. Daarbovenop ontbreken **`0057` t/m `0061`** als bestand:
+`main` springt van `0056` naar `0062`.
+
+Waarom dat meer is dan slordig: zowel een lokale stack als een tweede
+cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
+Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
+RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
+productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
 `approval_withdrawals` (0030) en `deadline_requests` (0032) erbij.
 
@@ -201,9 +122,10 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/buddies` — groepen, uitnodigingen, groepsklok, overzicht
 - `src/modules/completions` — afronden, de Dagzet, peer-goedkeuring
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
-- `tests/rls` — 164 tests die de policies écht uitvoeren, met echte JWT's
-- `npm run typecheck`, `lint` en `test` staan groen (383 tests)
-- `npm run build` rendert 23 routes statisch
+- `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
+  harnas tekent ze sinds 23-08 zelf en logt niet meer in
+- `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
+  **412 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -229,6 +151,59 @@ staat nog niet op de allowlist in `chat_messages_system_event_bekend`. Zet je
 hem erbij, dan moet `SYSTEEM_GEBEURTENISSEN` in
 `src/modules/buddies/chat-schemas.ts` mee — er staat sinds 18-08 een test op die
 de twee verzamelingen gelijkstelt (valkuil 18).
+
+### Wat er in de rondes van 20 t/m 23 augustus bij is gekomen
+
+Stond eerder allemaal in §0; verplaatst omdat §0 tien regels hoort te zijn.
+
+✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste week
+zijn dicht (0043–0046, A35/A36/A39/A40): je eigen weekdoel op `approved` zetten,
+een gemiste week verwijderen, hem doorschuiven (`carried` breekt de reeks nu,
+tenzij er een weekpas op staat), en de `todo`-rij wissen vóór de rollover —
+verwijderen is nu **afsluiten**, de rij blijft als `cancelled` staan en de
+rollover veegt hem bij het verstrijken van de cyclus mee naar `missed`.
+
+✅ **En op 23-08 de vijfde: ontkoppelen maakte missen gratis** (migratie 0066).
+`kan_beoordeeld_worden()` uit 0064 keek of het doel op het moment van boeken aan
+een groep hing — en de eigenaar mag `goal_group_links` onvoorwaardelijk
+verwijderen én terugzetten, allebei een knop in de app. Ontkoppel op vrijdag,
+laat de rollover langsgaan, koppel maandag terug: geen minpunt, elke slechte
+week, en de score kon alleen nog omhoog. 0066 legt het antwoord vast op
+`weekly_goals.beoordeelbaar` als grendel die maar één kant op beweegt, plus een
+tweede trigger die verlagen door de eigenaar blokkeert — zonder die tweede is de
+reparatie een decoratie, want de kolom is voor de eigenaar bij te werken.
+
+**Herkomst, en dat is het leerzame deel:** dezelfde handeling stond sinds 17-08
+in `ENGINEER-REVIEW.md`, terecht als *Laag* weggelegd omdat het zelfbedrog was en
+geen autorisatiegrens. Vier dagen later stond er een feature bovenop die er wél
+een scoregat van maakte. Hoe je dat voortaan ziet aankomen is **QS8-123**.
+
+✅ **De RLS-suite bewijst weer iets** (QS8-116). Hij logde per gebruiker in, liep
+tegen een limiet aan, sloeg zichzelf over en was groen zonder iets te bewijzen.
+De harnas tekent de tokens nu zelf (HS256) en logt niet meer in. Dat mag omdat de
+migraties `auth.uid()` 264 keer gebruiken en `auth.jwt()`, `auth.role()`,
+`auth.email()` en `request.jwt.claims` nul keer — nagemeten, niet aangenomen.
+`tests/rls/jwt.test.ts` draait daardoor zonder credentials mee in CI.
+
+✅ **Verder afgerond:** QS8-106 (de vier datalaagfuncties zonder scherm),
+QS8-112 (een weekdoel aanmaken kon helemaal niet — `maakWeekdoel()` werd door
+geen enkel scherm aangeroepen terwijl QS8-43 en QS8-44 op Done stonden), QS8-82
+(adempauze), QS8-39 (mijlpalen beheren), QS8-76 (feestelijk moment), QS8-85
+(commitments aantoonbaar informeel), QS8-118 (`src/shared/tekst`, codepunten als
+eenheid overal — dat is wat `char_length` telt), en QS8-120 en QS8-121
+(Zod-schema's los van de Supabase-client).
+
+Bij die laatste twee bleken de CHECK op `commitments.body` volledig te ontbreken
+(0063) en `commitments.image_url` server-side ongevalideerd (0068): `z.string()
+.url()` laat in zod 4 `javascript:`, `data:` en `file:` gewoon door — nagemeten
+met 4.4.3. Een commitment is per domeinregel 11 leesbaar voor de begunstigde
+groep zodra de straf verschuldigd wordt.
+
+⚠️ **En 0067 repareerde dat 0062 webregistratie onmogelijk had gemaakt.** 0062
+zette een CHECK op `push_tokens` die websleutels verplicht stelt en wijzigde
+`registreer_push_token()` niet mee; elke aanroep met `platform = 'web'` liep op
+een ongevangen 23514 stuk. De tabel was leeg, dus de migratie slaagde en er ging
+niets zichtbaar stuk — web push was dood zodra hij aangezet werd.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
@@ -486,6 +461,18 @@ gemiste week verdwijnt uit de geschiedenis"), en zoek dan élke bewerking die da
 effect kan bereiken. Dicht ze in één migratie. Een dichtgestreepte regel is de
 plek waar niemand meer kijkt.
 
+⚠️ **Op 23-08 is dezelfde vorm nog een keer langsgekomen, en dat is het bewijs
+dat deze les nog niet zit.** 0064 introduceerde "geen minpunt als niemand je week
+kon beoordelen" en beantwoordde die vraag op het moment van boeken. Het effect
+dat voorkomen moest worden was hetzelfde als hierboven — een gemiste week die
+niets kost — en de route was een handeling die al bekend was: de eigenaar mag
+`goal_group_links` verwijderen en terugzetten. Gedicht in 0066.
+
+Het verschil met 0043–0046: daar werd de reparatie elke ronde te smal, hier werd
+bij het bouwen van een níéuwe regel niet gekeken welke bestaande handelingen hem
+konden omzeilen. **Vraag bij elke nieuwe beslissing die op de stand van de
+database leunt: wie kan die stand veranderen, en wanneer?**
+
 ### Autorisatie en de database
 
 1. **In een `SECURITY DEFINER`-RPC overleeft niets een `raise exception`.**
@@ -665,19 +652,30 @@ niet achteraf — een onzekerheid die je nu niet opschrijft, ben je in november 
 
 De zwaarste op dit moment:
 
-1. ~~**`goals.risk_status` en `risk_reason` lekken naar groepsgenoten.**~~ **Geen
-   lek meer maar een besluit:** Quinten heeft op 18-08 geantwoord dat de groep je
-   risicostatus mag zien (A17). ⚠️ Wel herbevestigen vóór EPIC 12: de Risico-radar
-   leidt `behind` en `unreachable` zélf af uit gemiste weken, dus vanaf die dag ís
-   die kolom een afgeleide van andermans tegenslag. Schrijven kan de client hem
-   sinds 0032 niet meer.
+1. ~~**`goals.risk_status` en `risk_reason` lekken naar groepsgenoten.**~~
+   **Afgehandeld, en de aantekening heeft zijn werk gedaan.** Quinten antwoordde
+   op 18-08 dat de groep je risicostatus mocht zien (A17), mét de aantekening
+   *herbevestigen vóór EPIC 12* — want de Risico-radar leidt `behind` en
+   `unreachable` zélf af uit gemiste weken, en daarmee wordt die kolom een
+   afgeleide van andermans tegenslag.
+
+   Bij die herbevestiging is het besluit **teruggedraaid**: migratie **0050**
+   verhuisde de drie risicokolommen naar `goal_risk`, eigenaar-only. **A17 geldt
+   dus niet meer.** Er zijn nog **twee** benoemde verruimingen van domeinregel 7
+   — A15 (de groep mag je reeks zien) en A7 (je deadline-verschuiving, die je
+   zelf aanvraagt) — niet drie. `CLAUDE.md` en beslisdocument 002 §4a zijn de bron.
+
+   ⚠️ Dit is het gedocumenteerde bewijs dát zo'n aantekening werkt. De keerzijde
+   staat in QS8-123: bij een bevinding zónder aantekening ging het op 23-08 wél
+   mis.
 2. ~~**`inactive` ontneemt niets.**~~ Opgelost in 0029. Er bleken drie routes terug
    naar binnen te zijn in plaats van één; de andere twee herstelden het
    lidmaatschap zelfs (eigen status terugzetten, eigen rij weggooien en opnieuw
    toetreden).
 3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
-   want er staan sinds 18-08 141 RLS-tests die niemand automatisch draait.
+   want er staan 257 RLS-tests die niemand automatisch draait — dat is precies
+   het aantal dat `npm test` zonder credentials overslaat.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het
    is dezelfde les nog een keer. De tabel is nu gevuld, dus de vraag "wat
