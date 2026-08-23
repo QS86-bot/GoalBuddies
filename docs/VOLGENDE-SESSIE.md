@@ -165,13 +165,16 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    Nederlandse berichten plat). Voorwaarde blijft dezelfde: groene
    typecheck/lint/test/build vóór de PR opengaat.
 
-   ⚠️ **Over de branchindeling spreken twee documenten elkaar tegen.** `CLAUDE.md`
-   zegt *één branch per Linear-issue, met de naam die Linear voorstelt* (dan
-   koppelt Linear branch, PR en issue vanzelf). Dit bestand zei tot nu toe *één
-   branch per epic*. PR #1 was in de praktijk geen van beide — één branch voor
-   acht issues, met een naam die Linear niet herkent, dus niets is automatisch
-   gekoppeld. **Kies er één en haal de andere weg.** Zolang dat niet gebeurd is,
-   wint `CLAUDE.md`.
+   **Eén branch per Linear-issue**, met de naam die Linear zelf voorstelt — dan
+   koppelt Linear de branch, de PR en het issue vanzelf aan elkaar. Vastgelegd in
+   `CLAUDE.md` op 23-08-2026; dit bestand zei tot dan "één branch per epic" en
+   dat geldt niet meer.
+
+   ⚠️ Raakt je werk meerdere issues, dan zijn het **meerdere branches en meerdere
+   PR's**. PR #1 deed het anders — acht issues op één branch met een zelfbedachte
+   naam — en toen koppelde Linear niets, dus zijn alle acht statussen met de hand
+   bijgewerkt. Leunt een issue op een ander, gebruik dan de blokkeerrelatie in
+   Linear en land ze in volgorde.
 2. `gh` werkt (ingelogd als QS86-bot, scopes repo, workflow, read:org, gist).
    Roep hem aan via het volledige pad: `"C:\Program Files\GitHub CLI\gh.exe"` —
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we

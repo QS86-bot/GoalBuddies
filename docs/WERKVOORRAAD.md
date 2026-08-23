@@ -36,9 +36,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 7. **De duurste les, en hij geldt nog steeds:** zoek álle routes naar een effect,
    niet de route die je net gevonden hebt. Eén gat kostte vier migraties, en 0066
    was dezelfde vorm nog een keer. Zie §7.
-8. **Werk landt sinds 23-08 via een PR** (PR #1 = merge-commit `bbbd1be`), niet
-   meer met een lokale `--no-ff` merge. ⚠️ Over de branchindeling spreken
-   `CLAUDE.md` en `VOLGENDE-SESSIE.md` elkaar tegen — kies er één. Zie §3b.
+8. **Werk landt sinds 23-08 via een PR**, met een merge-commit en niet met een
+   squash, en met **één branch per Linear-issue** — de naam die Linear voorstelt,
+   anders koppelt hij niets. Vastgelegd in `CLAUDE.md`. Zie §3b.
 9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
    A42 hangen aan elkaar en raken domeinregel 7), **A46**, **A37** en **B4**.
    A45 en A47 zijn af. Geen van alle blokkeert het bouwen van andere issues.
@@ -218,6 +218,11 @@ niets zichtbaar stuk — web push was dood zodra hij aangezet werd.
 ---
 
 ## 3b. Het merge-ritueel — zes stappen, en de laatste wordt vergeten
+
+**De eenheid is één Linear-issue.** Eén branch per issue, met de naam die Linear
+voorstelt, en werk dat meerdere issues raakt wordt meerdere branches en meerdere
+PR's. Vastgelegd in `CLAUDE.md` op 23-08-2026; landen gebeurt via een PR met een
+merge-commit, niet met een squash.
 
 Vóór élke merge naar `main`:
 

@@ -49,10 +49,26 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 **GitHub:** `QS86-bot/GoalBuddies`, hoofdbranch `main`.
 
 ### Versiebeheer
-- Eén branch per Linear-issue. Gebruik de naam die Linear zelf voorstelt
+- **Eén branch per Linear-issue, en dat is vastgelegd op 23-08-2026.** Gebruik de
+  naam die Linear zelf voorstelt
   (`quintenstrijdonk/qs8-98-08-rls-testsuite-met-echte-jwts`) — dan koppelt Linear
   de branch, de PR en het issue automatisch aan elkaar.
+
+  Dit wint van "één branch per epic", dat tot 23-08 in `docs/VOLGENDE-SESSIE.md`
+  stond. Twee documenten die elkaar tegenspraken leverden in de praktijk geen van
+  beide op: PR #1 was één branch voor acht issues met een zelfbedachte naam, en
+  dus koppelde Linear niets — alle acht statussen zijn met de hand bijgewerkt, en
+  bij een gemiste zou het bord hebben gelogen.
+
+  ⚠️ **Raakt je werk meerdere issues, dan zijn het meerdere branches en meerdere
+  PR's.** Kan een issue niet los landen omdat het op een ander leunt, gebruik dan
+  de blokkeerrelatie in Linear en land ze in volgorde. Bundelen mag alleen als de
+  issues één ondeelbare wijziging zijn — en dan hoort er één issue te zijn, geen
+  acht.
 - Nooit rechtstreeks op `main` committen zodra er code staat.
+- **Werk landt via een PR op GitHub**, met een merge-commit en niet met een
+  squash: de commit-berichten in dit project dragen het waaróm, en squashen slaat
+  dat plat.
 - Commit-berichten in het Nederlands: eerste regel wat er verandert, daarna
   waaróm. Bij een niet-vanzelfsprekende keuze een verwijzing naar
   `docs/decisions/NNN-*.md`.
