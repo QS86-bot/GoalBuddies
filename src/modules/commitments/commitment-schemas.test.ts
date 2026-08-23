@@ -67,4 +67,18 @@ describe('commitmentSchema — de afbeelding', () => {
   it.each(['zomaar tekst', 'example.com/foto.jpg', ''])('weigert %s als link', (link) => {
     expect(parse({ image_url: link }).success).toBe(false);
   });
+
+  // ⚠️ Deze drie kwamen er tot 23-08-2026 gewoon doorheen, en de vorige versie
+  //    van dit testblok legde dat vast als correct gedrag. `z.string().url()` in
+  //    zod 4 controleert de vorm, niet het schema. Een commitment is per
+  //    domeinregel 11 leesbaar voor de begunstigde groep zodra de straf
+  //    verschuldigd wordt — dus dit is de opslagkant van een XSS.
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'file:///etc/passwd',
+    'http://example.com/foto.jpg',
+  ])('weigert %s, want alleen https telt', (link) => {
+    expect(parse({ image_url: link }).success).toBe(false);
+  });
 });

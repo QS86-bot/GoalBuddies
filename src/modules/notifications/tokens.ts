@@ -30,9 +30,26 @@ export type Platform = 'ios' | 'android' | 'web';
  * Expo-pushtoken op. Zolang die er niet is, geeft `geenPush` netjes `null` —
  * dan slaat `registreerPushToken()` over en gaat er verder niets stuk.
  */
+/**
+ * Wat een bron over dit apparaat weet.
+ *
+ * ⚠️ `p256dh` en `auth` horen bij web en alléén bij web. Ze komen uit
+ *    `PushSubscription.getKey()` en zijn nodig om een bericht te versleutelen
+ *    (RFC 8291) — zonder die twee kun je een browser niets sturen. De database
+ *    dwingt dat sinds migratie 0062 af met een CHECK, en sinds 0067 weigert
+ *    `registreer_push_token()` een webregistratie zonder sleutels netjes in
+ *    plaats van met een ruwe Postgres-fout.
+ */
 export interface PushBron {
   /** Het token van dit apparaat, of `null` als er geen te krijgen is. */
-  haalToken(): Promise<{ token: string; platform: Platform } | null>;
+  haalToken(): Promise<{
+    token: string;
+    platform: Platform;
+    /** Alleen bij `platform === 'web'`. */
+    p256dh?: string;
+    /** Alleen bij `platform === 'web'`. */
+    auth?: string;
+  } | null>;
 }
 
 /**
@@ -82,6 +99,12 @@ export async function registreerPushToken(userId: string): Promise<void> {
   const { data, error } = await supabase().rpc('registreer_push_token', {
     p_token: gevonden.token,
     p_platform: gevonden.platform,
+    // ⚠️ `?? null` en niet weglaten: de RPC heeft `default null`, maar
+    //    PostgREST stuurt alleen de sleutels die in het object staan, en een
+    //    `undefined` in JSON is een ontbrekend veld. Expliciet is hier
+    //    goedkoper dan uitzoeken hoe de serializer zich gedraagt.
+    p_p256dh: gevonden.p256dh ?? null,
+    p_auth: gevonden.auth ?? null,
   });
 
   if (error) {

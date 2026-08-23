@@ -448,6 +448,22 @@ export async function removeTestUsers(): Promise<void> {
     if (error) console.warn(`Opruimen van ${table}.${column} mislukte: ${error.message}`);
   };
 
+  // ⚠️ Eérst opschrijven in welke groepen deze gebruikers zaten, want zo meteen
+  //    zijn hun lidmaatschappen weg en is die vraag niet meer te stellen.
+  //
+  //    Dit is de reparatie van een lek dat elke run één groep achterliet, en op
+  //    22-08 tot zeventig wezen was opgelopen. Het mechanisme: `besluiten.test.ts`
+  //    verwijdert `dave` als onderdeel van A3, en dat zet `groups.created_by` via
+  //    ON DELETE SET NULL op NULL. Daarna vindt `wipe('groups', 'created_by')`
+  //    die groep niet meer terug — er staat immers geen id meer in. De groep
+  //    blijft staan, met zijn systeemberichten eraan.
+  const { data: lidmaatschappen } = await admin
+    .from('group_members')
+    .select('group_id')
+    .in('user_id', ids);
+
+  const groepen = [...new Set((lidmaatschappen ?? []).map((r) => r.group_id as string))];
+
   await wipe('completion_approvals', 'approver_id');
   await wipe('completion_approvals', 'subject_id');
   await wipe('completions', 'user_id');
@@ -456,6 +472,23 @@ export async function removeTestUsers(): Promise<void> {
   await wipe('goals', 'owner_id');
   await wipe('group_members', 'user_id');
   await wipe('groups', 'created_by');
+
+  // ⚠️ Alleen groepen waar ná het opruimen niemand meer in zit. Die grens doet
+  //    het werk: een groep waar nog een lid in zit is geen wees van deze run,
+  //    en dan blijft hij staan. Zonder die controle zou dit een testharnas zijn
+  //    die groepen van derden opruimt, en dat is precies de klasse fout waar de
+  //    grendel hierboven tegen beschermt.
+  for (const groupId of groepen) {
+    const { count } = await admin
+      .from('group_members')
+      .select('group_id', { count: 'exact', head: true })
+      .eq('group_id', groupId);
+
+    if ((count ?? 0) > 0) continue;
+
+    const { error } = await admin.from('groups').delete().eq('id', groupId);
+    if (error) console.warn(`Wezen-groep ${groupId} opruimen mislukte: ${error.message}`);
+  }
 
   for (const id of ids) {
     const { error } = await admin.auth.admin.deleteUser(id);

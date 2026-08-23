@@ -76,7 +76,14 @@ self.addEventListener('notificationclick', (event) => {
  *    eigen sessie en een eigen realtime-abonnement.
  */
 async function openPad(pad) {
-  const doel = typeof pad === 'string' && pad.startsWith('/') ? pad : '/';
+  // ⚠️ `startsWith('/')` alléén is niet genoeg, en dat is een echte route naar
+  //    buiten: `//evil.com` begint met een schuine streep en is voor de browser
+  //    een protocol-relatieve URL. `clients.openWindow('//evil.com')` opent dan
+  //    gewoon `https://evil.com` — een melding van GoalBuddies die op een
+  //    vreemde site uitkomt. `venster.navigate()` is per spec al tot dezelfde
+  //    origin beperkt, maar `openWindow()` is dat niet.
+  const veilig = typeof pad === 'string' && pad.startsWith('/') && !pad.startsWith('//');
+  const doel = veilig ? pad : '/';
   const vensters = await clients.matchAll({ type: 'window', includeUncontrolled: true });
 
   for (const venster of vensters) {

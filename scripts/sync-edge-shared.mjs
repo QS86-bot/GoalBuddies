@@ -30,9 +30,16 @@ const SETS = [
   {
     bron: join('src', 'modules', 'notifications'),
     doel: join('supabase', 'functions', '_shared', 'notificaties'),
-    // ⚠️ Alleen de pure regels. `tokens.ts` en `index.ts` trekken de
+    // ⚠️ Alleen de pure bestanden. `tokens.ts` en `index.ts` trekken de
     //    Supabase-client mee, en die maakt de Edge Function zelf al aan.
-    alleen: ['regels.ts'],
+    //
+    // ⚠️ `webpush-crypto.ts` staat hier sinds 23-08-2026. De kop van dat bestand
+    //    beweerde dat `edge:sync` hem meenam terwijl deze lijst hem niet kende —
+    //    en juist die belofte is de hele motivering om hem in `src/` te zetten in
+    //    plaats van in `supabase/functions/`. Hij heeft nul imports en gebruikt
+    //    alleen WebCrypto, dus hij kán mee; dit maakt de belofte waar in plaats
+    //    van hem te schrappen. Gevonden in de security-review van 23-08.
+    alleen: ['regels.ts', 'webpush-crypto.ts'],
   },
 ];
 

@@ -37,7 +37,25 @@ export const commitmentSchema = z.object({
     .refine((tekst) => telTekens(tekst) <= COMMITMENT_MAX, {
       error: `Maximaal ${COMMITMENT_MAX} tekens.`,
     }),
-  image_url: z.string().trim().url({ error: 'Dit is geen geldige link.' }).nullable(),
+  // ⚠️ `.url()` alléén is hier niet genoeg, en dat is geen theorie. In zod 4 is
+  //    `z.string().url()` geen schema-allowlist: `javascript:alert(1)`,
+  //    `data:text/html,<script>x</script>` en `file:///etc/passwd` komen er alle
+  //    drie doorheen (nagemeten met 4.4.3). Een commitment wordt per
+  //    domeinregel 11 leesbaar voor de begunstigde groep zodra de straf
+  //    verschuldigd wordt, dus zodra iets dit veld als link of `<img>` rendert,
+  //    is dat opgeslagen XSS richting je groepsgenoten.
+  //
+  //    De database controleert het sinds migratie 0068 ook zelf. Dat is geen
+  //    dubbelop: dit schema geeft de nette melding, de CHECK geldt ook voor
+  //    `service_role` en voor een aanroep die dit schema overslaat.
+  image_url: z
+    .string()
+    .trim()
+    .url({ error: 'Dit is geen geldige link.' })
+    .refine((link) => link.startsWith('https://'), {
+      error: 'Een afbeeldingslink moet met https:// beginnen.',
+    })
+    .nullable(),
 });
 
 export type CommitmentInvoer = z.infer<typeof commitmentSchema>;
