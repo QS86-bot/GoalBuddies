@@ -6,9 +6,11 @@ import { useProfiel, useSession } from '@/modules/auth';
 import {
   CATEGORIE_LABELS,
   fetchDoelen,
+  fetchRisicos,
   type Categorie,
   type DoelMetVoortgang,
   type Pagina,
+  type Risico,
 } from '@/modules/goals';
 import { space, useTheme } from '@/shared/theme';
 import { localDateIn, now } from '@/shared/time';
@@ -19,6 +21,7 @@ import {
   Caption,
   Card,
   MilestoneProgress,
+  RisicoBadge,
   Screen,
   Subheading,
 } from '@/shared/ui';
@@ -39,6 +42,7 @@ export default function Doelen() {
   const { profiel } = useProfiel();
 
   const [pagina, setPagina] = useState<Pagina<DoelMetVoortgang> | null>(null);
+  const [risicos, setRisicos] = useState<ReadonlyMap<string, Risico>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
@@ -64,6 +68,30 @@ export default function Doelen() {
       levend = false;
     };
   }, [userId, ronde]);
+
+  // De risicostanden in één verzoek voor de hele pagina — niet één per doel
+  // (regel 12). Faalt apart: een lijst zonder standen is bruikbaar, een lijst
+  // die helemaal niet laadt niet.
+  //
+  // ⚠️ Alleen van jezelf. `goal_risk` is eigenaar-only sinds migratie 0050, dus
+  //    dit levert per definitie niets op voor het doel van een ander.
+  useEffect(() => {
+    const ids = pagina?.rijen.map((d) => d.id) ?? [];
+    if (ids.length === 0) return;
+    let levend = true;
+
+    fetchRisicos(ids)
+      .then((gevonden) => {
+        if (levend) setRisicos(gevonden);
+      })
+      .catch(() => {
+        if (levend) setRisicos(new Map());
+      });
+
+    return () => {
+      levend = false;
+    };
+  }, [pagina]);
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
@@ -91,6 +119,7 @@ export default function Doelen() {
                 key={doel.id}
                 doel={doel}
                 vandaag={vandaag}
+                risico={risicos.get(doel.id) ?? null}
                 onOpen={() => router.push(`/doel/${doel.id}`)}
               />
             ))}
@@ -115,10 +144,13 @@ export default function Doelen() {
 function DoelKaart({
   doel,
   vandaag,
+  risico,
   onOpen,
 }: {
   readonly doel: DoelMetVoortgang;
   readonly vandaag: string | null;
+  /** `null` betekent "nog niet berekend" en niet "op koers". */
+  readonly risico: Risico | null;
   readonly onOpen: () => void;
 }) {
   const theme = useTheme();
@@ -141,6 +173,14 @@ function DoelKaart({
         ) : null}
 
         <MilestoneProgress done={doel.milestones_done ?? 0} total={doel.milestones_total ?? 0} />
+
+        {/*
+          ⚠️ Zonder rij tonen we niets. Een doel dat vanmorgen is aangemaakt
+             heeft nog geen stand — de radar draait bij de rollover en bij een
+             goedkeuring — en een groen vinkje dat niets gemeten heeft is erger
+             dan geen vinkje.
+        */}
+        {risico === null ? null : <RisicoBadge stand={risico.stand} />}
 
         <View style={styles.voet}>
           <Caption>Streefdatum {doel.target_date}</Caption>

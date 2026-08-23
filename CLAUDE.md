@@ -7,8 +7,12 @@
 
 **Nieuwe sessie? Lees `docs/WERKVOORRAAD.md`.** Daar staat waar het project
 staat, wat er nog moet, in welke volgorde, en waar je jezelf pijn doet als je
-het overslaat. Dit bestand zegt hoe je werkt; dat bestand zegt wat er aan de
-beurt is.
+het overslaat. Sectie 0 geeft de stand in tien regels. Dit bestand zegt hoe je
+werkt; dat bestand zegt wat er aan de beurt is.
+
+**`docs/VOLGENDE-SESSIE.md`** bevat de startprompt om in een nieuwe chat te
+plakken: de stand, de werkafspraken en de valkuilen die dit project al een keer
+gekost hebben. Werk hem bij aan het eind van elke sessie.
 
 Verder bouwen doe je met **`/verder`**. Die pakt zelf het volgende issue uit
 Linear en werkt het af tot een pushbare branch.
@@ -52,7 +56,9 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 - Commit-berichten in het Nederlands: eerste regel wat er verandert, daarna
   waaróm. Bij een niet-vanzelfsprekende keuze een verwijzing naar
   `docs/decisions/NNN-*.md`.
-- Een PR gaat pas open na `code-critic`, `security-reviewer` en `critical-user`.
+- Een PR gaat pas open nadat de reviewagents gedraaid hebben die bij die
+  wijziging horen — zie onwrikbare regel 19, die sinds 20-08-2026 naar risico
+  indeelt in plaats van alle drie op elke epic.
 
 ## ⚠️ Solo-fase — geldt tot de engineer er is
 Er is niemand die jouw werk nakijkt.
@@ -146,11 +152,20 @@ Voordat er één feature gebouwd wordt:
    verschuiven (A7). De enige uitzondering is een straf die de gebruiker zelf
    vooraf heeft ingesteld en bevestigd.
 
-   ⚠️ **Drie benoemde verruimingen, besloten door Quinten op 18-08-2026.** De groep
-   mag je reeks zien (A15), je risicostatus zien (A17) en je deadline-verschuiving
-   zien (A7). Die staan met onderbouwing in `docs/decisions/002-...md` §4a. Ze
-   verruimen de regel op drie plekken; ze schaffen hem niet af. Voor élk ander
-   oppervlak geldt hij onverkort, en bij twijfel is het antwoord nee.
+   ⚠️ **Twee benoemde verruimingen.** De groep mag je reeks zien (A15) en je
+   deadline-verschuiving zien (A7 — die vraag je zelf aan). Ze staan met
+   onderbouwing in `docs/decisions/002-...md` §4a. Ze verruimen de regel op twee
+   plekken; ze schaffen hem niet af. Voor élk ander oppervlak geldt hij
+   onverkort, en bij twijfel is het antwoord nee.
+
+   ⚠️ **A17 was de derde en is op 20-08-2026 teruggedraaid.** De groep zag je
+   risicostatus, en het beslisdocument had zelf al opgeschreven dat dat
+   herbevestigd moest worden vóór EPIC 12 — want vanaf het moment dat de
+   Risico-radar draait, ís `risk_status` een afgeleide van andermans gemiste
+   weken. Bij die herbevestiging is het dichtgezet: migratie 0050 verhuisde de
+   kolommen naar `goal_risk`, eigenaar-only. **Dit is het bewijs dat "herbevestigen
+   vóór X" werkt — schrijf zo'n aantekening op zodra een besluit aan een
+   toekomstige feature hangt.**
 
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.
@@ -303,8 +318,48 @@ docs/decisions/
 ### Proces
 17. Elke feature begint met `spec-planner`.
 18. Elke feature eindigt met tests die de acceptatiecriteria dekken.
-19. Geen merge zonder code-critic, security-reviewer en critical-user.
+19. **Reviewagents naar risico, niet naar schema** — zie hieronder.
 20. Migraties zijn idempotent, met rollback-pad en dump vooraf.
+
+#### Regel 19 uitgeschreven (herzien 20-08-2026)
+
+Stond eerst als "geen merge zonder code-critic, security-reviewer en
+critical-user", op elke epic. Dat was te grof: het draaide drie agents koud over
+dezelfde bestanden, ook bij een wijziging waar twee van de drie niets te zoeken
+hadden.
+
+**De maatstaf is of een bevinding rot als je hem laat liggen.**
+
+| Agent | Wanneer | Waarom |
+|---|---|---|
+| `security-reviewer` | **Direct**, bij elke wijziging die auth, RLS, punten, goedkeuring, commitments of een nieuw groepszichtbaar oppervlak raakt | Bevindingen stapelen. Zie hieronder. |
+| `code-critic` | Eén keer per **milestone** | Dode code, laagscheiding en complexiteit kosten over drie maanden evenveel om te repareren als vandaag |
+| `critical-user` | Eén keer per **milestone**, samen met code-critic in één opdracht | Idem voor tekst, toon en randgevallen |
+
+⚠️ **Waarom de security-reviewer nooit wacht.** Drie redenen, alle drie op
+19–20 augustus in de praktijk gezien:
+
+1. **Wat je uitstelt groeit mee met wat je erop bouwt.** De vier routes naar een
+   weggepoetste week (0043 t/m 0046) zijn gevonden doordat er direct gereviewd
+   werd. Waren ze blijven liggen, dan stond EPIC 11, 12 en 9 bovenop een reeks
+   die te verzinnen was — en dan is het niet één migratie maar alles wat erop
+   leunt opnieuw nakijken.
+2. **Fouten worden gekopieerd.** De `auth.uid()`-NULL-val kostte veertig regels
+   omdat er precies één functie was die hem had. Elke definer-functie daarna is
+   een kopie van de vorige.
+3. **De database is nu leeg, en dat is tijdelijk.** Vandaag kun je testrijen
+   aanmaken, verifiëren en weggooien. Zodra er één echte gebruiker is, is een
+   vervalste reeks échte data die gemigreerd of gecorrigeerd moet worden.
+
+⚠️ **Verifieer elke bevinding zelf voordat je hem verwerkt.** Ze hebben het ook
+mis: in de ronde van 20-08 was de zwaarste bevinding aantoonbaar onjuist (ze las
+een migratiebestand waar de gedéployde functie strenger was), terwijl twee andere
+kritieke bevindingen wél klopten. `pg_get_functiondef()` is de waarheid.
+
+**Wat je uitstelt, vang je zelf op** met een controlepas langs wat die twee
+agents historisch vinden: dode code, dubbele teksten, ontbrekende loading-,
+error- of lege staat, een component dat op het verkeerde scherm kan belanden, en
+copy die een regel uitlegt die de gebruiker anders zelf moet raden.
 
 ## Commando's
 ```bash

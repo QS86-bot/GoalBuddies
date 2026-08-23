@@ -20,8 +20,8 @@ import {
   Card,
   Field,
   Screen,
-  StreakCounter,
   Subheading,
+  useVieringenAan,
   WeekStartKeuze,
 } from '@/shared/ui';
 
@@ -62,12 +62,26 @@ export default function Profiel() {
               </View>
             </Card>
 
+            {/*
+              ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
+                 Zolang nergens anders een reeks stond, was dat een plaatshouder.
+                 Sinds QS8-75 toont "Vandaag" de échte reeks per doel, en dan is
+                 dit geen plaatshouder meer maar een tegenspraak: acht weken op
+                 rij op het ene scherm, "Nog geen reeks" op het andere. Een
+                 gebruiker leest dat niet als een halfafgemaakte functie maar als
+                 een rekenfout.
+
+                 Een teller hoort hier ook inhoudelijk niet: een reeks is per
+                 dóél (`user_streaks` heeft de sleutel `(user_id, goal_id)`), dus
+                 één getal op een profielpagina zou moeten kiezen wélk doel — en
+                 die keuze bestaat niet. De uitleg blijft, de tegenspraak gaat weg.
+            */}
             <Card>
               <Subheading>Jouw reeks</Subheading>
-              <StreakCounter cycles={0} />
               <Caption>
-                Zodra je eerste week telt, begint hij hier te lopen. Een weekpas beschermt je
-                reeks als je een week mist — het punt niet, want anders zegt de score niets meer.
+                Je reeks telt weken en staat per doel bij &ldquo;Je stand&rdquo; op Vandaag. Een
+                weekpas beschermt je reeks als je een week mist — het punt niet, want anders zegt
+                de score niets meer.
               </Caption>
             </Card>
 
@@ -80,6 +94,8 @@ export default function Profiel() {
             />
 
             <ThemaKeuze />
+
+            <VieringKeuze />
 
             <Card nested>
               <Subheading>Uitloggen</Subheading>
@@ -257,6 +273,57 @@ function ThemaKeuze() {
           </Button>
         ))}
       </View>
+    </Card>
+  );
+}
+
+/**
+ * Feestelijke momenten aan of uit — QS8-76, acceptatiecriterium 3.
+ *
+ * ⚠️ Deze voorkeur staat op het apparaat en niet in je profiel. Een animatie
+ *    aan- of uitzetten hoort bij het scherm waarop je kijkt, net als
+ *    `prefers-reduced-motion` zelf. Gevolg dat je moet weten: hij reist niet
+ *    mee naar een nieuwe telefoon. Zie `shared/ui/voorkeuren.ts`.
+ *
+ * ⚠️ Los van `prefers-reduced-motion`, en die wint altijd. Deze schakelaar gaat
+ *    over "wil ik dit soort momenten"; die systeemvoorkeur over "kan ik
+ *    beweging aan". Wie om minder beweging vraagt, hoort zijn felicitatie niet
+ *    kwijt te raken — alleen de confetti.
+ */
+function VieringKeuze() {
+  const { aan, geladen, zet } = useVieringenAan();
+
+  return (
+    <Card>
+      <Subheading>Feestelijke momenten</Subheading>
+      <Body muted>
+        Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel
+        af is. Verder blijft de app rustig.
+      </Body>
+
+      <View style={styles.keuzes}>
+        <Button
+          variant={aan ? 'primair' : 'secundair'}
+          disabled={!geladen}
+          onPress={() => zet(true)}
+          accessibilityLabel="Feestelijke momenten aan"
+        >
+          Aan
+        </Button>
+        <Button
+          variant={aan ? 'secundair' : 'primair'}
+          disabled={!geladen}
+          onPress={() => zet(false)}
+          accessibilityLabel="Feestelijke momenten uit"
+        >
+          Uit
+        </Button>
+      </View>
+
+      <Caption>
+        Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst
+        blijft dan gewoon staan.
+      </Caption>
     </Card>
   );
 }

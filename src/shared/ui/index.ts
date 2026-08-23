@@ -12,6 +12,7 @@
  */
 
 export { AsyncView } from './AsyncView';
+export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
@@ -19,25 +20,67 @@ export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { Deelknop } from './Deelknop';
+export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
+export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
+export { RisicoBadge } from './RisicoBadge';
 export { Screen } from './Screen';
 export { StreakCounter } from './StreakCounter';
+export { Weekpas } from './Weekpas';
+export { Viering } from './Viering';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
+
+export {
+  BEVESTIGING,
+  weekdoelActies,
+  type BevestigingsTekst,
+  type WeekdoelActies,
+} from './acties';
+
+export {
+  aantalDeeltjes,
+  magVieren,
+  viering,
+  type Viering as VieringInhoud,
+  type VieringSoort,
+} from './vieringen';
+
+export { HULPVRAAG_MAX, hulpvraagVoorstel } from './hulpvraag';
+
+export {
+  risicoLabel,
+  risicoTeken,
+  risicoToon,
+  risicoUitleg,
+  type RisicoReden,
+  type RisicoStand,
+} from './risico';
+
+export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
 export {
   FLOOR_MARK,
   milestoneProgress,
   rangeState,
+  kettingLabel,
+  kettingVulling,
   streakLabel,
+  PUNTEN_UITLEG,
+  WEEKPAS_UITLEG,
+  weekpasLabel,
+  weekpasReddeDezeCyclus,
+  weekpasVoortgang,
   type Achieved,
+  type KettingStand,
   type RangeState,
   type Tone,
   type Viewer,
+  type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';

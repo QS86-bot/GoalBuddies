@@ -10,6 +10,7 @@ import {
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
+import { registreerPushToken } from '@/modules/notifications';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -45,6 +46,7 @@ function Shell() {
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <Routewacht />
       <Uitnodigingswacht />
+      <Pushwacht />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -53,6 +55,35 @@ function Shell() {
       />
     </View>
   );
+}
+
+/**
+ * Registreert het pushtoken van dit apparaat zodra er een sessie is — QS8-91.
+ *
+ * ⚠️ Bij elke start opnieuw, en dat is geen verspilling. `push_tokens.token` is
+ *    uniek, dus wie zich het laatst registreert krijgt het token op zijn naam.
+ *    Op een gedeeld apparaat is dat precies goed: zonder dit blijft de vorige
+ *    gebruiker meldingen krijgen op een telefoon waar hij niet meer op zit.
+ *
+ * ⚠️ **Doet vandaag niets**, en dat is bekend. `expo-notifications` staat nog
+ *    niet in `package.json` — een dependency vraagt eerst toestemming
+ *    (Q-TODO B4) — dus `geenPush` geeft `null` terug en er wordt niets
+ *    weggeschreven. De rest van de keten (tabel, job, workflow) staat wél. Zodra
+ *    de bibliotheek er mag komen, is het één `zetPushBron(...)` hier.
+ */
+function Pushwacht() {
+  const { session } = useSession();
+  const userId = session?.user.id ?? null;
+
+  useEffect(() => {
+    if (userId === null) return;
+
+    // Bewust niet awaiten en bewust stil: geen enkel scherm hangt hiervan af,
+    // en de datalaag meldt een fout al via `reportError`.
+    void registreerPushToken(userId);
+  }, [userId]);
+
+  return null;
 }
 
 /**

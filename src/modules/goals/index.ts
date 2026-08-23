@@ -33,7 +33,36 @@ export {
   type DeadlineVerzoek,
 } from './deadline';
 
-export { afsluitbareCyclus, huidigeCyclus, inCoulanceperiode } from './cycles';
+export {
+  afsluitbareCyclus,
+  huidigeCyclus,
+  inCoulanceperiode,
+  zojuistAfgeslotenCyclus,
+} from './cycles';
+
+export {
+  annuleerAdempauze,
+  fetchAdempauzes,
+  planAdempauze,
+  planbareCycli,
+  type Adempauze,
+} from './adempauze';
+
+export {
+  herordenMijlpalen,
+  maakMijlpaal,
+  verwijderMijlpaal,
+  wijzigMijlpaal,
+  zetMijlpaalStatus,
+} from './mijlpalen';
+
+export {
+  MIJLPAAL_TITEL_MAX,
+  mijlpaalSchema,
+  verplaats,
+  type MijlpaalInvoer,
+  type MijlpaalStatus,
+} from './mijlpaal-schemas';
 
 export { bewaarInterview, fetchInterview, type Interview } from './interview';
 
@@ -47,14 +76,26 @@ export {
 } from './interview-schemas';
 
 export {
+  eersteCyclusVanDoel,
+  fetchDoorschuifbaar,
+  fetchMijlpalen,
   fetchWeekdoelen,
   maakWeekdoel,
   schuifDoor,
+  sluitWeekdoelAf,
   verwijderWeekdoel,
+  type Mijlpaal,
   type Weekdoel,
 } from './weekly';
 
 export { weekdoelSchema, type AfrondInvoer, type WeekdoelInvoer } from './weekly-schemas';
+
+export { verwijderDoel } from './api';
+export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
+
+export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
+
+export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,

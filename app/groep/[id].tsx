@@ -8,6 +8,7 @@ import {
   fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepsoverzicht,
+  fetchKettingStand,
   fetchMijnLidmaatschap,
   huddledagLabel,
   huidigeGroepsperiode,
@@ -34,10 +35,12 @@ import {
   Card,
   Deelknop,
   Field,
+  Ketting,
   MemberRow,
   MilestoneProgress,
   Screen,
   Subheading,
+  type KettingStand,
 } from '@/shared/ui';
 
 /**
@@ -124,6 +127,33 @@ export default function GroepDetail() {
                   Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn
                   gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.
                 </Body>
+              </Card>
+            ) : null}
+
+            {/*
+              ⚠️ Bovenaan, vóór de ledenlijst. QS8-80 vraagt De Ketting als "de
+                 belangrijkste gedeelde teller", en dat is een plaatsingskeuze:
+                 het eerste wat je ziet is wat jullie sámen hebben, niet hoe
+                 iedereen er los voor staat. Zou hij onder de ledenlijst staan,
+                 dan lees je eerst de personen en daarna pas de groep.
+            */}
+            {s.ketting.staat === 'ok' ? (
+              <Card>
+                <Ketting stand={s.ketting.stand} />
+              </Card>
+            ) : null}
+
+            {/*
+              ⚠️ Een storing zegt dat hij een storing is. Hiervóór verdween De
+                 Ketting bij een fout net zo geruisloos als bij "je bent geen
+                 lid", en dan weet een lid niet of hij iets kapot ziet of niet.
+            */}
+            {s.ketting.staat === 'fout' ? (
+              <Card nested>
+                <Body muted>De Ketting kon niet geladen worden.</Body>
+                <Button variant="stil" onPress={herlaad}>
+                  Opnieuw proberen
+                </Button>
               </Card>
             ) : null}
 
@@ -585,10 +615,23 @@ function KoppelDoel({
   );
 }
 
+/**
+ * De uitkomst van De Ketting, met drie standen in plaats van twee.
+ *
+ * ⚠️ `geen-lid` en `fout` zagen er eerst hetzelfde uit — allebei een leeg
+ *    scherm zonder uitleg. Een lid dat door een storing niets zag, kon niet
+ *    weten of dat normaal was. Bevinding van de gebruikersreview.
+ */
+type KettingUitkomst =
+  | { readonly staat: 'ok'; readonly stand: KettingStand }
+  | { readonly staat: 'geen-lid' }
+  | { readonly staat: 'fout' };
+
 interface Stand {
   readonly groep: Groep | null;
   readonly overzicht: Pagina<Groepslid>;
   readonly beheerder: boolean;
+  readonly ketting: KettingUitkomst;
 }
 
 /**
@@ -606,16 +649,34 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
   const groep = await fetchGroep(groupId);
 
   if (groep === null) {
-    return { groep: null, overzicht: { rijen: [], totaal: 0, meer: false }, beheerder: false };
+    return {
+      groep: null,
+      overzicht: { rijen: [], totaal: 0, meer: false },
+      beheerder: false,
+      ketting: { staat: 'geen-lid' },
+    };
   }
 
+  // ⚠️ Dezelfde periode voor het overzicht én voor De Ketting. Zou elk zijn
+  //    eigen `huidigeGroepsperiode()` aanroepen, dan kan er een cyclusgrens
+  //    tussen vallen en toont het scherm twee verschillende weken naast elkaar.
   const periode = huidigeGroepsperiode(groep);
-  const [overzicht, lidmaatschap] = await Promise.all([
+
+  // ⚠️ De Ketting draagt zijn eigen fout en trekt het scherm niet mee. Zat hij
+  //    kaal in deze `Promise.all`, dan zette één hik in `ketting_stand()` het
+  //    hele groepsoverzicht in de foutstand — ledenlijst, chat en al. Bevinding
+  //    van de security- en de gebruikersreview, allebei.
+  const [overzicht, lidmaatschap, ketting] = await Promise.all([
     fetchGroepsoverzicht(groupId, periode),
     fetchMijnLidmaatschap(groupId, userId),
+    fetchKettingStand(groupId, periode)
+      .then((stand): KettingUitkomst =>
+        stand === null ? { staat: 'geen-lid' } : { staat: 'ok', stand },
+      )
+      .catch((): KettingUitkomst => ({ staat: 'fout' })),
   ]);
 
-  return { groep, overzicht, beheerder: lidmaatschap?.role === 'admin' };
+  return { groep, overzicht, beheerder: lidmaatschap?.role === 'admin', ketting };
 }
 
 const styles = StyleSheet.create({

@@ -45,7 +45,13 @@ export interface DoelMetVoortgang {
   readonly status: string;
   readonly available_hours_per_week: number | null;
   readonly max_points: number;
-  readonly risk_status: string;
+  /**
+   * ⚠️ Geen `risk_status` meer. Die stond tot migratie 0050 als kolom op `goals`,
+   *    en `goals_select` gaf elke groepsgenoot de héle rij — inclusief
+   *    `'behind'` en `'unreachable'`, per definitie tegenslag over iemand
+   *    anders. Hij woont nu in `goal_risk`, eigenaar-only. EPIC 12 leest hem
+   *    daar; voortgang en risico zijn twee dingen en horen niet in één rij.
+   */
   readonly milestones_total: number;
   readonly milestones_done: number;
   readonly weekly_total: number;
@@ -72,7 +78,6 @@ function naarDoel(rij: Tables<'goal_dashboard'>): DoelMetVoortgang | null {
     status: rij.status ?? 'active',
     available_hours_per_week: rij.available_hours_per_week,
     max_points: rij.max_points ?? 0,
-    risk_status: rij.risk_status ?? 'on_track',
     milestones_total: rij.milestones_total ?? 0,
     milestones_done: rij.milestones_done ?? 0,
     weekly_total: rij.weekly_total ?? 0,
@@ -348,4 +353,49 @@ async function logGoalEvent(
   });
 
   if (error) reportError(error, 'goals.event', { goal_id: goalId, name: eventType });
+}
+
+/**
+ * Verwijdert een doel dat je net per ongeluk hebt aangemaakt — migratie 0046.
+ *
+ * ⚠️ Strenger dan bij een weekdoel, en met opzet. Een doel verwijderen sleept
+ *    alles mee wat eraan hangt: weekdoelen, mijlpalen, je reeks, je weekpassen,
+ *    de koppeling met een groep. Daarom mag het alleen zolang het doel vers is
+ *    (`bedenktijd()`, nu 24 uur) én er werkelijk niets aan hangt — geen
+ *    weekdoelen, geen punten, niet gedeeld met een groep.
+ *
+ * ⚠️ Voor een doel mét geschiedenis is **archiveren** de weg (`zetArchief`). Dat
+ *    is geen tweederangs alternatief maar het juiste gereedschap: een doel dat
+ *    je een maand hebt bijgehouden en dan loslaat, is geschiedenis en geen
+ *    vergissing (domeinregel 6).
+ */
+export async function verwijderDoel(goalId: string): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('verwijder_doel', { p_goal_id: goalId });
+
+  if (error) {
+    reportError(error, 'goals.delete', { goal_id: goalId, code: error.code });
+    return { ok: false, melding: 'Verwijderen lukte niet.' };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: doelVerwijderMelding(uitkomst.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+function doelVerwijderMelding(reden: string | undefined): string {
+  switch (reden) {
+    case 'te_oud':
+      return 'Dit doel staat er te lang om nog te verwijderen. Archiveer het — dan blijft je geschiedenis staan en verdwijnt het uit je lijst.';
+    case 'gedeeld_met_groep':
+      return 'Dit doel is aan een groep gekoppeld. Ontkoppel het eerst, of archiveer het.';
+    case 'heeft_weekdoelen':
+      return 'Er hangen al weekdoelen aan dit doel. Archiveer het in plaats van het te verwijderen.';
+    case 'heeft_punten':
+      return 'Er zijn al punten op dit doel geboekt. Archiveer het in plaats van het te verwijderen.';
+    default:
+      return 'Verwijderen lukte niet.';
+  }
 }

@@ -749,6 +749,42 @@ export type Database = {
           },
         ]
       }
+      goal_risk: {
+        Row: {
+          computed_at: string
+          goal_id: string
+          reason: Json | null
+          status: string
+        }
+        Insert: {
+          computed_at?: string
+          goal_id: string
+          reason?: Json | null
+          status?: string
+        }
+        Update: {
+          computed_at?: string
+          goal_id?: string
+          reason?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_risk_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "goal_dashboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_risk_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: true
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           available_hours_per_week: number | null
@@ -759,9 +795,6 @@ export type Database = {
           identity_statement: string | null
           max_points: number
           owner_id: string
-          risk_computed_at: string | null
-          risk_reason: Json | null
-          risk_status: string
           status: string
           target_date: string
           title: string
@@ -776,9 +809,6 @@ export type Database = {
           identity_statement?: string | null
           max_points?: number
           owner_id: string
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string
           status?: string
           target_date: string
           title: string
@@ -793,9 +823,6 @@ export type Database = {
           identity_statement?: string | null
           max_points?: number
           owner_id?: string
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string
           status?: string
           target_date?: string
           title?: string
@@ -999,6 +1026,44 @@ export type Database = {
           },
         ]
       }
+      notifications_sent: {
+        Row: {
+          id: string
+          kind: string
+          local_date: string
+          ref_id: string | null
+          ref_type: string | null
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          local_date: string
+          ref_id?: string | null
+          ref_type?: string | null
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          local_date?: string
+          ref_id?: string | null
+          ref_type?: string | null
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       points_ledger: {
         Row: {
           created_at: string
@@ -1111,6 +1176,41 @@ export type Database = {
           week_start_day?: number
         }
         Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_streaks: {
         Row: {
@@ -1387,9 +1487,6 @@ export type Database = {
           milestones_done: number | null
           milestones_total: number | null
           owner_id: string | null
-          risk_computed_at: string | null
-          risk_reason: Json | null
-          risk_status: string | null
           status: string | null
           target_date: string | null
           title: string | null
@@ -1408,9 +1505,6 @@ export type Database = {
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string | null
           status?: string | null
           target_date?: string | null
           title?: string | null
@@ -1429,9 +1523,6 @@ export type Database = {
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
-          risk_computed_at?: string | null
-          risk_reason?: Json | null
-          risk_status?: string | null
           status?: string | null
           target_date?: string | null
           title?: string | null
@@ -1482,6 +1573,8 @@ export type Database = {
     }
     Functions: {
       ai_verbruik: { Args: never; Returns: Json }
+      annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
+      bedenktijd: { Args: never; Returns: string }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
         Returns: Json
@@ -1545,6 +1638,11 @@ export type Database = {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
       }
+      herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
+      herorden_mijlpalen: {
+        Args: { p_goal_id: string; p_ids: string[] }
+        Returns: Json
+      }
       invite_preview: { Args: { code: string }; Returns: Json }
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
@@ -1592,6 +1690,14 @@ export type Database = {
         Args: { p_body: string; p_event: string; p_goal_id: string }
         Returns: undefined
       }
+      plan_adempauze: {
+        Args: {
+          p_ends_cycle: string
+          p_goal_id: string
+          p_starts_cycle: string
+        }
+        Returns: Json
+      }
       realtime_bewaking: {
         Args: never
         Returns: {
@@ -1599,6 +1705,10 @@ export type Database = {
           replica_identity: string
           tabel: string
         }[]
+      }
+      registreer_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: Json
       }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
@@ -1608,13 +1718,44 @@ export type Database = {
       shares_group_with_goal: { Args: { g: string }; Returns: boolean }
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
+      sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
       systeembericht_allowlist: { Args: never; Returns: string[] }
+      te_beoordelen_voor: {
+        Args: { p_user_id: string }
+        Returns: {
+          completion_id: string
+          owner_id: string
+          owner_name: string
+        }[]
+      }
       trek_deadline_verzoek_in: {
         Args: { p_request_id: string }
         Returns: Json
       }
       trek_goedkeuring_in: { Args: { p_approval_id: string }; Returns: Json }
+      triggerfuncties_in_de_api: {
+        Args: never
+        Returns: {
+          anon: boolean
+          functie: string
+          geauthenticeerd: boolean
+        }[]
+      }
+      verbruik_weekpas: {
+        Args: {
+          p_cycle_start_date: string
+          p_goal_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      verdien_weekpassen: {
+        Args: { p_goal_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
+      verwijder_weekdoel: { Args: { p_weekly_goal_id: string }; Returns: Json }
       vraag_ai_job: {
         Args: { p_goal_id: string; p_input: Json; p_kind: string }
         Returns: Json
@@ -1657,6 +1798,19 @@ export type Database = {
           id: string
           total_replies: number
           week_review_id: string
+        }[]
+      }
+      weekpas_maximum: { Args: never; Returns: number }
+      weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
+      weekpas_standen: {
+        Args: { p_goal_ids?: string[] }
+        Returns: {
+          goal_id: string
+          laatst_verbruikt: string
+          maximum: number
+          tot_volgende: number
+          voltooide_cycli: number
+          voorraad: number
         }[]
       }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }

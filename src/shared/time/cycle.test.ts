@@ -10,6 +10,7 @@ import {
   nextCycle,
   previousCycle,
   userCycle,
+  userCycleOn,
 } from './cycle';
 import type { GroupClock, UserClock } from './types';
 import { localDateIn, toIsoDate, weekdayOf } from './zoned';
@@ -280,5 +281,57 @@ describe('navigeren tussen cycli', () => {
       expect(cyclesBetween(cycle, volgende)).toBe(1);
       cycle = volgende;
     }
+  });
+});
+
+/**
+ * ⚠️ `userCycleOn` bestaat omdat `cycle_start_date` uit de database een string
+ *    is. De verleiding is om die string met `as IsoDate` de merking op te
+ *    plakken en door te geven; deze tests leggen vast dat de module hem in
+ *    plaats daarvan zelf controleert.
+ */
+describe('userCycleOn — een cyclus rond een datum die je al hebt', () => {
+  it('geeft de cyclus waarin die kalenderdatum valt', () => {
+    // Donderdag 13 augustus 2026.
+    expect(userCycleOn(maandag, '2026-08-13')?.startDate).toBe('2026-08-10');
+    expect(userCycleOn(zaterdag, '2026-08-13')?.startDate).toBe('2026-08-08');
+    expect(userCycleOn(woensdag, '2026-08-13')?.startDate).toBe('2026-08-12');
+  });
+
+  it('geeft dezelfde cyclus terug als hij een startdatum krijgt', () => {
+    // Het gebruik waar hij voor gemaakt is: een `cycle_start_date` uit de
+    // database terugvertalen naar de cyclus die erbij hoort. Die moet een vast
+    // punt zijn, anders schuift een doorgeschoven weekdoel een week op.
+    const cyclus = userCycleOn(maandag, '2026-08-10');
+    expect(cyclus?.startDate).toBe('2026-08-10');
+    expect(userCycleOn(maandag, cyclus?.startDate ?? '')?.startDate).toBe('2026-08-10');
+  });
+
+  it('komt overeen met userCycle op hetzelfde moment', () => {
+    // De positieve controle naast de weigeringen hieronder: de twee wegen naar
+    // een cyclus horen op hetzelfde uit te komen.
+    const at = new Date('2026-08-13T08:00:00Z');
+    for (const klok of [maandag, zaterdag, woensdag]) {
+      const viaMoment = userCycle(klok, at);
+      expect(userCycleOn(klok, localDateIn(klok.tz, at))?.startDate).toBe(viaMoment.startDate);
+    }
+  });
+
+  it('weigert onzin in plaats van een cyclus te verzinnen', () => {
+    // Dezelfde soort bescherming als Q-TODO A38 voor de tijdzone vraagt: een
+    // kolom met vrije tekst hoort te worden opgevangen waar hij binnenkomt.
+    for (const onzin of ['', 'gisteren', '2026-13-01', '2027-02-30', '2026-08-1']) {
+      expect(userCycleOn(maandag, onzin), onzin).toBeNull();
+    }
+  });
+
+  it('houdt rekening met de tijdzone van de klok', () => {
+    const tokio: UserClock = { weekStartDay: 1, tz: TOK };
+    const cyclus = userCycleOn(tokio, '2026-08-13');
+
+    expect(cyclus?.startDate).toBe('2026-08-10');
+    expect(cyclus?.tz).toBe(TOK);
+    // Maandag 00:00 in Tokio is zondag 15:00 UTC.
+    expect(cyclus?.startsAt.toISOString()).toBe('2026-08-09T15:00:00.000Z');
   });
 });

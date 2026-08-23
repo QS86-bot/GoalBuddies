@@ -54,7 +54,7 @@ vraag 2 hierboven: wat houdt het tegen als iemand de UI overslaat?
 |---|---|---|---|---|
 | 1 | Groepsoverzicht | `group_overview()`, `app/groep/[id].tsx` | Naam, gekoppeld doel, mijlpaalvoortgang, reeks, of deze periode is afgesloten | De functie geeft de gevaarlijke kolommen niet terug (0016, 0019). Geen puntentotaal, geen `best_streak`, geen `last_cycle_start`, geen weekstatus |
 | 2 | Reeksen | `group_visible_streaks` | `current_streak` | View met expliciete kolomlijst, `security_invoker = false` (0005, 0019). `best_streak` eruit: groter dan `current_streak` is sluitend bewijs van een verbroken reeks |
-| 3 | Weekdoelen van een gekoppeld doel | `weekly_goals_select` | Het plan en wat gelukt is | Policy sluit `status in ('missed','carried')` uit voor niet-eigenaars (0019, 0020) |
+| 3 | Weekdoelen van een gekoppeld doel | `weekly_goals_select` | Het plan en wat gelukt is | Policy sluit `status in ('missed','carried','cancelled')` uit voor niet-eigenaars (0019, 0020, en `cancelled` sinds 0045). ⚠️ Elke nieuwe status die "niet gelukt" betekent, hoort hier meteen bij: `cancelled` (zelf afgesloten) is er in 0045 bij gekomen en zonder die regel had die migratie gelekt wat 0020 net had gedicht |
 | 4 | Voltooiingen | `completions_select` | Alleen wat ingediend is | Er bestaat geen rij voor een week die níet is afgerond |
 | 5 | Beoordelingswachtrij | `openstaande_beoordelingen()` | Wat op jouw oordeel wacht | Alleen ingediende voltooiingen; niemand komt erin voor wat hij niet gedaan heeft (0021) |
 | 6 | Punten | `points_ledger` | Niets | `user_id = auth.uid()` als enige SELECT-regel. Een dalend totaal is zichtbaar bewijs van een gemiste week (domeinregel 10) |
@@ -64,14 +64,29 @@ vraag 2 hierboven: wat houdt het tegen als iemand de UI overslaat?
 | 10 | **Weekafsluiting** | `week_reviews`, `weekafsluiting()` | Wat leden zelf schrijven, incl. vraag 2 | De gebruiker schrijft en verstuurt zelf (route 1). Wie niets invult heeft geen rij en staat er niet op |
 | 11 | **Reacties op de weekafsluiting** | `week_review_replies` | Wat leden zelf schrijven | Policies via de groep van het ántwoord, niet van de schrijver (0026). Geen UPDATE |
 | 12 | Realtime-abonnementen | `supabase_realtime` | `completions`, `weekly_goals`, `chat_messages` | RLS op INSERT en UPDATE. **Op DELETE níet** — zie §4 |
-| 13 | De Ketting | `chain_links` | Opdagen per periode | Nog niet gebouwd (QS8-80). Er staat geen rij voor een periode waarin iemand niet opdaagde: afwezigheid, geen kruisje |
+| 13 | De Ketting | `chain_links` | Opdagen per periode | ⚠️ **GEBOUWD 19-08-2026 (migratie 0036) en daarmee LEKKEND.** De redenering "afwezigheid, geen kruisje" hield zolang de tabel leeg was en houdt niet meer. `chain_links_select` geeft elk lid élke rij, met `user_id` en `group_period_start`; voor een **afgesloten** periode betekent een ontbrekende rij niet "nog niet" maar "die week niets gedaan" — geen weekafsluiting én geen goedgekeurd weekdoel. Eén `GET /rest/v1/chain_links?group_id=eq.X&select=user_id,group_period_start` levert de volledige aanwezigheidsmatrix per persoon per week. Dezelfde klasse als `weekly_goals_select` in EPIC 5. `ketting_stand()` (0036/0037) is wél veilig: aantallen zonder namen, en sinds 0037 voor elk lid hetzelfde getal. Het lek zit in de tabelpolicy en in `group_overview()`, niet in de teller. **GEDICHT dezelfde dag in 0037.** `chain_links_select` is nu `user_id = auth.uid() or (is_group_member(group_id) and group_period_start >= current_date - 8)`: je eigen geschiedenis blijft van jou, van een ander zie je alleen de lopende periode — waarin een ontbrekende schakel "nog niet" betekent en niet "gemist". `group_overview()` geeft `closed_this_period` alleen binnen datzelfde venster en daarbuiten `false`. Historische schakels blijven in de tabel staan (domeinregel 6) maar verlaten de database niet meer per persoon; een historische ketting kan alleen als aantal, via `ketting_stand()`. Vastgelegd in `tests/rls/epic8.test.ts`. **Het scherm** (`app/groep/[id].tsx`, component `Ketting.tsx`) toont hiervan uitsluitend aantallen via `ketting_stand()` — nooit namen, ook niet in het toegankelijkheidslabel. ⚠️ Maar de ledenlijst eronder (`MemberRow`) toont dezelfde weekstatus wél per persoon met naam; in een kleine groep maakt dat de anonimiteit van de teller grotendeels ongedaan. Geen datalek — het is oppervlak 1, bewust genomen in QS8-55 — wel een ontwerpinconsistentie op één scherm, en een productbeslissing. Zie `docs/ENGINEER-REVIEW.md`, 19-08 |
 | 14 | Seizoensrecap | — | — | Nog niet gebouwd (EPIC 8) |
 | 15 | Notificaties | — | — | Nog niet gebouwd (EPIC 11) |
 | 16 | **Deadline-verzoeken** | `deadline_requests`, `app/groep/[id].tsx` | Dat iemand om meer tijd vraagt, met zijn eigen argument | Vier policies; schrijven kan alleen via de RPC's (0032). De gebruiker vraagt het zélf aan — route 1, net als vraag 2 van de weekafsluiting. Q-TODO **A7** |
 | 17 | **Ingetrokken goedkeuringen** | `approval_withdrawals` | Niets | `approval_withdrawals_select` laat alleen de intrekker en de eigenaar van de week toe. Er gaat géén systeembericht uit: "de week van X is toch niet bevestigd" is een tegenslagsignaal over een ander (0030). De aankondiging van de goedkeuring wordt juist wéggehaald |
 | 18 | **Verwijderde accounts** | `chat_messages.sender_id`, `completion_approvals.approver_id` | "Verwijderd lid" in plaats van een naam | `on delete set null` (0031), plus `stamp_chat_message()` die die ene overgang doorlaat (0033). De rij blijft, de persoon niet |
 
-Vet gedrukt is wat in EPIC 7 en in de besluitenronde van 18-08 is toegevoegd.
+| 19 | **Weekpassen** | `week_pass_events`, `weekpas_stand()`, `weekpas_standen()` | **Niets** | ⚠️ **GEBOUWD 19-08-2026 (migraties 0039–0042).** Dit is de derde tabel die van leeg naar gevuld ging, dus de vraag hoort erbij: een ontbrekende rij betekent nu "deze gemiste week is niet gered", en dat is per definitie een tegenslagsignaal. Daarom heeft `week_pass_events` **alleen** een SELECT-policy op `user_id = auth.uid()`, zijn alle schrijvers SECURITY DEFINER en `service_role`-only, en staat de tabel **niet** in de realtime-publicatie. `weekpas_stand()` en `weekpas_standen()` dragen hun eigenaarstoets zélf en leunen niet op RLS — een groepsgenoot mág de rijen van een gekoppeld doel lezen, dus een INVOKER-functie zou de voorraad van een ander teruggeven. In 0039 was die toets stuk (`eigenaar <> auth.uid()` gaat zonder sessie niet af, want `null` is geen `false`); gedicht in 0040. **Er komt géén systeembericht bij een verbruikte pas** — dat zou een gemiste week in de groepschat zetten — dus `chat_messages_system_event_bekend` is bewust niet aangeraakt. De componenten `Weekpas` en `DoelStandKaart` hebben geen `viewer`-prop en staan alleen op het privé-dashboard |
+
+Vet gedrukt is wat in EPIC 7, in de besluitenronde van 18-08 en in EPIC 8 is
+toegevoegd.
+
+⚠️ **Wat oppervlak 19 verandert aan oppervlak 2, en dat is de kant die je zou
+missen.** Vóór de weekpassen was "de reeks van X valt naar nul" sluitend bewijs
+van een gemiste week; §4a hieronder verdedigt A15 met het argument dat een reeks
+dubbelzinnig genoeg is. Een geredde week laat de teller nu **vlak staan** in
+plaats van hem op nul te zetten, en een vlakke reeks is ononderscheidbaar van
+"die week geen weekdoel gepland" en van een adempauze.
+
+**De weekpas maakt A15 dus zwakker in de goede richting: `current_streak`
+verklapt sinds 19-08 mínder dan daarvoor, niet meer.** Dat is bijvangst en geen
+ontwerpdoel — reken er niet op als bescherming, want een gebruiker zonder passen
+heeft hem niet.
 
 ---
 
@@ -122,12 +137,16 @@ alsnog.
 
 | Wat | Besluit | Waarom het te verdedigen is |
 |---|---|---|
-| `goals.risk_status` en `risk_reason` | **A17 — ja, de groep mag het zien** | Blijft zoals het is; `goals_select` hoeft niet uit elkaar getrokken te worden. Let op: dit is de zwaarste van de drie, want de Risico-radar (EPIC 12) leidt `behind` en `unreachable` zélf af uit gemiste weken. Vanaf de dag dat die radar draait, ís deze kolom een afgeleide van andermans tegenslag — en dan is de vraag of het besluit nog hetzelfde uitvalt. **Herbevestigen vóór EPIC 12.** |
+| `goals.risk_status` en `risk_reason` | ⚠️ **A17 — herbevestigd op 20-08-2026, en teruggedraaid: de groep ziet het NIET** | Het oorspronkelijke besluit (18-08) was "ja", mét de aantekening "herbevestigen vóór EPIC 12", juist omdat de radar `behind` en `unreachable` afleidt uit gemiste weken. Bij het bouwen van EPIC 12 is die herbevestiging gevraagd en het antwoord was dicht. **Er zijn dus nog twee verruimingen, niet drie.** Uitgevoerd in migratie 0050: de drie kolommen zijn verhuisd naar een eigen tabel `goal_risk` met eigenaar-only RLS, want een kolomgrant geldt per rol (de eigenaar zou zijn eigen stand kwijtraken) en `goals_select` eigenaar-only maken breekt `group_overview()`. Een eigen tabel maakt de bescherming structureel in plaats van een policy die je goed moet onthouden. Het acceptatiecriterium van QS8-94 zei trouwens al hetzelfde: "uitsluitend zichtbaar voor de eigenaar" |
 | `goal_events` met `deadline_moved` | **A7 — ja, en sterker: verschuiven vraagt akkoord** | Dit draait de regel niet om maar zet hem op zijn kop, in de goede richting. De verschuiving is niet iets dat de groep achteraf ziet, maar iets dat de gebruiker zélf aanvraagt met een argument. Dat is dezelfde route als vraag 2 van de weekafsluiting: tegenslag bereikt de groep via de persoon, niet via een afgeleide. Migratie 0032 |
 | `current_streak` die naar nul valt | **A15 — ja** | Blijft in `group_visible_streaks`. Zwak signaal: een reeks van nul is dubbelzinnig (nieuw lid, pauze, of gemist), en `best_streak` — dat het wél sluitend zou maken — is er in 0019 uitgehaald |
 
-⚠️ **Wat deze drie besluiten níét zijn.** Ze verruimen domeinregel 7 op drie
-benoemde plekken; ze schaffen hem niet af. Het puntentotaal, `weekly_goals.status`,
+⚠️ **Het zijn er nu twee, niet drie.** A17 is op 20-08-2026 herbevestigd en
+teruggedraaid — zie de rij hierboven. Wat overblijft is A15 (de groep ziet je
+reeks) en A7 (de groep ziet je deadline-verschuiving, en die vraag je zelf aan).
+
+⚠️ **Wat deze besluiten níét zijn.** Ze verruimen domeinregel 7 op benoemde
+plekken; ze schaffen hem niet af. Het puntentotaal, `weekly_goals.status`,
 `last_cycle_start` en `points_ledger` blijven dicht, en de regel in §1 geldt
 onverkort voor élk nieuw oppervlak. Bij twijfel is het antwoord nog steeds nee.
 
