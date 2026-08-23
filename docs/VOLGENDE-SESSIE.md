@@ -231,6 +231,36 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️ Deze drie documenten beschrijven dezelfde stand en lopen uiteen — QS8-125.**
+  `CLAUDE.md`, `docs/WERKVOORRAAD.md` §0 en dit bestand zijn drie handgeschreven
+  kopieën van hetzelfde. Werk je er één bij, dan liegen de andere twee. Op 23-08
+  zijn er **vier** uiteengelopen paren gevonden, en drie daarvan alleen doordat
+  iemand het hele bestand las:
+
+  1. hier stond bovenin "A17 teruggedraaid, twee verruimingen" en onderin "drie
+     benoemde verruimingen", terwijl `WERKVOORRAAD.md` §9 A17 nog als goedgekeurd
+     opvoerde **met een openstaande herbevestiging die allang gedaan was**;
+  2. "EPIC 3 is gebouwd en nooit gedraaid", twintig regels boven "de Doelcoach
+     heeft voor het eerst echt gedraaid";
+  3. `WERKVOORRAAD.md` noemde twee blokkades voor EPIC 11, hier stond dat
+     `expo-notifications` "het enige" was;
+  4. `CLAUDE.md` zei één branch per issue, hier stond één branch per epic.
+
+  Plus zes achtergelopen tellers (539/164/383/141 tests, "migraties t/m 0038",
+  "nummer vanaf 0047").
+
+  ⚠️ **Geval 1 is het gevaarlijke.** Hier stond, in het bestand dat een nieuwe
+  sessie als eerste leest, dat de groep je risicostatus mag zien — precies het
+  besluit dat op 20-08 is teruggedraaid omdat `risk_status` een afgeleide van
+  andermans gemiste weken werd. Er is niets misgegaan omdat er toevallig niemand
+  op verder heeft gebouwd, en dat is geen bescherming.
+
+  ⚠️ **En de fout is besmettelijk:** geval 2 en 3 zijn diezelfde dag ontstaan
+  tijdens het bijwerken van deze documenten — één plek bijgewerkt, de andere
+  vergeten. **Werk je hier iets bij, grep dan op het feit in alle drie de
+  bestanden voordat je klaar bent.** Dat is de handmatige versie; de controle die
+  hem overbodig maakt is QS8-125.
+
 - **RLS kan geen kolommen beperken.** Is de eis "deze kolom mag je niet
   veranderen" of "niet lézen", dan heb je een kolomgrant, een view met expliciete
   kolomlijst of een rijbeperking nodig. Zeven keer misgegaan.
@@ -466,5 +496,12 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 2. **QS8-122** — de migratiebron repareerbaar maken. Alles wat een tweede
    omgeving nodig heeft (lokale stack, CI met echte RLS, staging) hangt hierachter.
 3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.
+
+**Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,
+want dan komt er een tweede lezer: **QS8-123** (hoe merk je dat een als *Laag*
+weggelegde bevinding zwaarder wordt door wat je erop bouwt) en **QS8-125** (deze
+drie documenten die dezelfde stand beschrijven en uiteenlopen). Het is dezelfde
+familie — niet *"wat is waar"* maar *"wie merkt het wanneer het niet meer waar
+is"* — dus behandel ze in één ronde.
 
 Vraag alleen als doorgaan-onder-aanname echt onveilig zou zijn.
