@@ -16,8 +16,8 @@
 Lees dit eerst; de rest is naslag. **Tien regels, en dat is de bedoeling** —
 staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of §7.
 
-1. **Fase 1 is voor het grootste deel af.** Open: **EPIC 9** (commitment device)
-   en de laatste schakel van EPIC 11. Volgorde in §4, wat er staat in §2.
+1. **Fase 1 is af op de laatste schakel van EPIC 11 na.** Alle epics staan;
+   EPIC 9 sinds 21-08. Volgorde in §4, wat er staat in §2.
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
