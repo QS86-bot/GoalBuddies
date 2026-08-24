@@ -238,7 +238,7 @@ oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
 | 10 | Weekafsluiting | Niets. Route 1 — de gebruiker schrijft en verstuurt zelf | ✅ n.v.t. |
 | 11 | Reacties op de weekafsluiting | Niets. Idem | ✅ n.v.t. |
 | 12 | Realtime | **Niets, en het verbod op `REPLICA IDENTITY FULL` blijft onverkort staan.** ⚠️ De reden is hier een ándere dan bij een beschermde groep: met `full` gaat bij een DELETE de volledige oude rij naar iedereen die zich abonneert, **lid of niet**. "Open" is een keuze over wat de gróép ziet; dit lek gaat naar buiten de groep, en dat heeft niemand gekozen. Getoetst in `tests/rls/epic13.test.ts` | ⛔ **Bewust dicht** |
-| 13 | De Ketting | Het venster van acht dagen op `chain_links_select` zou kunnen vervallen, en `closed_this_period` buiten dat venster. ⚠️ Dit is de aanwezigheidsmatrix per persoon per week — het zwaarste oppervlak na 3 | **Nog niet** |
+| 13 | De Ketting | Het venster van acht dagen vervalt in een open groep, op `chain_links_select` **en** op `closed_this_period` in `group_overview()`. ⚠️ Die twee dragen hetzelfde venster op twee plekken; één van de twee omzetten zou een lid de schakels in de tabel laten zien maar niet in het overzicht dat het scherm leest. `ketting_stand()` en `chain_milestone` zijn niet aangeraakt: aantallen zonder namen, in beide standen hetzelfde | ✅ **0079** |
 | 14 | Seizoensrecap | Nog niet gebouwd (EPIC 8) — beoordeel bij het bouwen | **Nog niet gebouwd** |
 | 15 | Notificaties | Nog niet gebouwd (EPIC 11) — beoordeel bij het bouwen | **Nog niet gebouwd** |
 | 16 | Deadline-verzoeken | Niets. De gebruiker vraagt het zélf aan (A7) | ✅ n.v.t. |
@@ -252,16 +252,18 @@ halfheid maar de kern van het besluit: "open" betekent dat de groep jouw
 tegenslag mag zien, niet dat alles open is. Wie ooit een van die zeven wil
 verruimen, komt langs deze tabel en langs de reden.
 
-### 6c. Wat er nog niet af is
+### 6c. Wat er af is, en waar de grens ligt
 
-Alleen oppervlak 13 varieert nog niet op de kolom (QS8-135). Een lid van een
-**open** groep ziet dus de gemiste weken van een gekoppeld doel, de beste reeks
-en de laatste getelde cyclus — maar niet de historische ketting: `chain_links`
-houdt zijn venster van acht dagen, en `group_overview().closed_this_period`
-daarmee ook.
+**Alle twintig oppervlakken zijn beoordeeld en alles wat om moest, is om**
+(migraties 0076 t/m 0079). Een lid van een **open** groep ziet van een gekoppeld
+doel de gemiste, doorgeschoven, afgesloten en vrijgestelde weken, de beste reeks,
+de laatste getelde cyclus en de historische aanwezigheid in De Ketting.
 
-Dat is de veilige kant van inconsistent: de kolom opent nergens méér dan hier
-beschreven staat.
+**Zeven oppervlakken staan bewust dicht, ook daar** — en dat is de grens van het
+besluit, geen restpost: punten (A42), systeemberichten over tegenslag, realtime,
+ingetrokken goedkeuringen, de weekpassen, de teller van De Ketting en de
+mijlpaalaankondiging. Wie er ooit een wil verruimen, komt eerst langs de rij in
+§6b en langs de reden die daar staat.
 
 ⚠️ **Eén ding dat bij het bouwen boven kwam en dat geen "nog niet" is.** Oppervlak
 1 noemde ook "de weekstatus". Die is er bewust niet bij gekomen: welke week van

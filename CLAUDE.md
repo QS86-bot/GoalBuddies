@@ -223,20 +223,23 @@ Voordat er één feature gebouwd wordt:
      zichtbaar wordt — dus dat is een handeling met dezelfde zorgvuldigheid als
      een commitment device (domeinregel 5).
 
-   ⚠️ **In uitvoering sinds 24-08-2026 (QS8-132, migraties 0076 en 0077).** De
-   kolom `groups.zichtbaarheid` bestaat, het omzetten loopt via
-   `zet_groepszichtbaarheid()` — actieve beheerder, expliciet bevestigd, een rij
-   in `group_events`, een systeembericht — en het eerste oppervlak is om:
-   `weekly_goals_select`. **Zeven oppervlakken staan bewust dicht, ook in een
-   open groep**: punten (A42), systeemberichten over tegenslag, realtime,
-   ingetrokken goedkeuringen en de weekpassen. Drie zijn nog niet om
-   (groepsoverzicht, `best_streak`, De Ketting). De volledige beoordeling per
-   oppervlak staat in `docs/decisions/002-domeinregel7-oppervlakken.md` §6.
+   ⚠️ **Gebouwd op 24-08-2026 (QS8-132, migraties 0076 t/m 0079).** De kolom
+   `groups.zichtbaarheid` bestaat en is voor geen enkele client schrijfbaar; het
+   omzetten loopt via `zet_groepszichtbaarheid()` — actieve beheerder, expliciet
+   bevestigd, een rij in `group_events`, een systeembericht. Alle twintig
+   oppervlakken zijn beoordeeld en alles wat om moest is om: weekdoelen (0077),
+   de beste reeks en de laatste cyclus (0078), De Ketting (0079).
 
-   ⚠️ **Voor élk oppervlak dat nog niet om is, geldt deze regel onverkort.** Bouw
-   niets "vast open" vooruitlopend op de keuze; dat is precies hoe een standaard
-   verschuift zonder dat iemand het besloten heeft. En "open" betekent nooit
-   "alles open" — dat is wat die zeven bewijzen.
+   ⚠️ **"Open" betekent nooit "alles open", en zeven oppervlakken bewijzen dat.**
+   Punten (A42), systeemberichten over tegenslag, realtime, ingetrokken
+   goedkeuringen, de weekpassen, de teller van De Ketting en de
+   mijlpaalaankondiging blijven dicht, óók in een open groep. Wie er ooit een wil
+   verruimen, leest eerst de rij en de reden in
+   `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
+
+   ⚠️ **Voor élk níeuw oppervlak is beschermd het antwoord tot iemand het
+   tegendeel besluit.** Bouw niets "vast open"; dat is precies hoe een standaard
+   verschuift zonder dat iemand het besloten heeft.
 
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.

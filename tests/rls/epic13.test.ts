@@ -26,7 +26,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { now, userCycle, type IsoDate } from '../../src/shared/time';
+import { addDays, now, userCycle, type IsoDate } from '../../src/shared/time';
 import {
   adminDb,
   createTestUser,
@@ -68,6 +68,8 @@ interface Fixture {
   doelSchakel: string;
 
   cycleStart: IsoDate;
+  /** Een groepsperiode ver buiten het venster van acht dagen (migratie 0037). */
+  oudePeriode: IsoDate;
 }
 
 function uitkomst(data: unknown): { ok?: boolean; reason?: string; van?: string; naar?: string } {
@@ -241,6 +243,10 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       doelGemengd: '',
       doelSchakel: '',
       cycleStart: cycle.startDate,
+      // ⚠️ Ver buiten het venster van acht dagen uit migratie 0037. Dát is het
+      //    geval waar dit oppervlak om draait: binnen het venster betekent een
+      //    ontbrekende schakel "nog niet", daarbuiten "die week niets gedaan".
+      oudePeriode: addDays(cycle.startDate, -30),
     };
 
     f.groepBeschermd = await maakGroep(alice, 'Zicht-beschermd');
@@ -288,6 +294,18 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         })),
       );
     if (reeksen.error) throw new Error(`reeksen: ${reeksen.error.message}`);
+
+    // ⚠️ Via de admin-client, want `chain_links` heeft geen INSERT-policy: alle
+    //    schrijvers zijn SECURITY DEFINER (migratie 0036). Een schakel in een
+    //    afgesloten periode is niet met de gewone route te maken zonder de klok
+    //    te verzetten, en dat is precies wat deze opzet vermijdt.
+    const schakels = await adminDb()
+      .from('chain_links')
+      .insert([
+        { group_id: f.groepBeschermd.id, user_id: alice.id, group_period_start: f.oudePeriode },
+        { group_id: f.groepOpen.id, user_id: alice.id, group_period_start: f.oudePeriode },
+      ]);
+    if (schakels.error) throw new Error(`schakels: ${schakels.error.message}`);
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -731,6 +749,109 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
           .eq('user_id', f.alice.id);
 
         expect(poging.error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('De Ketting — oppervlak 13, in beide standen', () => {
+    async function historischeSchakels(kijker: TestUser, groep: Groep): Promise<number> {
+      const { data, error } = await kijker.db
+        .from('chain_links')
+        .select('user_id')
+        .eq('group_id', groep.id)
+        .eq('group_period_start', f.oudePeriode);
+
+      if (error) throw new Error(`schakels lezen: ${error.message}`);
+      return (data ?? []).length;
+    }
+
+    async function afgeslotenInOudePeriode(kijker: TestUser, groep: Groep): Promise<boolean> {
+      const { data, error } = await kijker.db.rpc('group_overview', {
+        p_group_id: groep.id,
+        p_period_start: f.oudePeriode,
+      });
+
+      if (error) throw new Error(`overzicht lezen: ${error.message}`);
+      return (data ?? []).find((r) => r.user_id === f.alice.id)?.closed_this_period ?? false;
+    }
+
+    it(
+      'houdt de historische aanwezigheid van een ander dicht in een beschermde groep',
+      async () => {
+        // ⚠️ De belofte van migratie 0037, en de reden dat hij dezelfde dag als
+        //    0036 kwam: zonder venster is één GET de volledige
+        //    aanwezigheidsmatrix per persoon per week.
+        expect(await historischeSchakels(f.bob, f.groepBeschermd)).toBe(0);
+        expect(await afgeslotenInOudePeriode(f.bob, f.groepBeschermd)).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat hem zien in een open groep',
+      async () => {
+        expect(await historischeSchakels(f.bob, f.groepOpen)).toBe(1);
+        expect(await afgeslotenInOudePeriode(f.bob, f.groepOpen)).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt de tabel en het overzicht bij elkaar',
+      async () => {
+        // ⚠️ **De naad van dit oppervlak.** `chain_links_select` en de
+        //    `closed_this_period`-berekening in `group_overview()` dragen
+        //    hetzelfde venster op twee plekken. Zou er één van de twee zijn
+        //    omgezet, dan zag een lid van een open groep de schakels wél in de
+        //    tabel maar niet in het overzicht dat het scherm leest — twee
+        //    correcte onderdelen die samen iets anders beloven.
+        //
+        //    Deze test toetst niet elk van beide maar hun gelijkheid, in beide
+        //    standen. Dat is de belofte; de twee tests hierboven zijn de waarden.
+        for (const groep of [f.groepBeschermd, f.groepOpen]) {
+          const uitDeTabel = (await historischeSchakels(f.bob, groep)) > 0;
+          const uitHetOverzicht = await afgeslotenInOudePeriode(f.bob, groep);
+
+          expect(uitHetOverzicht, groep.id).toBe(uitDeTabel);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de eigenaar zijn eigen geschiedenis in beide standen zien',
+      async () => {
+        // `user_id = auth.uid()` is de eerste tak van de policy en die verandert
+        // hier niet: je eigen ketting is van jou, ongeacht de zichtbaarheid.
+        expect(await historischeSchakels(f.alice, f.groepBeschermd)).toBe(1);
+        expect(await historischeSchakels(f.alice, f.groepOpen)).toBe(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft een buitenstaander niets, ook niet bij een open groep',
+      async () => {
+        expect(await historischeSchakels(f.carol, f.groepOpen)).toBe(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt de teller in beide standen een getal zonder namen',
+      async () => {
+        // ⚠️ `ketting_stand()` is bewust niet aangeraakt: aantallen zonder namen,
+        //    voor elk lid hetzelfde getal (0036/0037). Er valt niets te openen wat
+        //    niet al open is. Deze test staat er zodat dat zo blijft.
+        const { data, error } = await f.bob.db.rpc('ketting_stand', {
+          p_group_id: f.groepOpen.id,
+          p_period_start: f.oudePeriode,
+        });
+
+        expect(error).toBeNull();
+        expect(JSON.stringify(data ?? {})).not.toContain(f.alice.id);
       },
       TEST_TIMEOUT,
     );
