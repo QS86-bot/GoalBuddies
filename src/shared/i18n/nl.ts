@@ -469,8 +469,6 @@ export const nl = {
   'onboarding.naam_hint': 'Dit zien je buddy’s. Een voornaam is genoeg.',
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'Geen avatar? Dan tonen we je initialen. Een foto uploaden kan zodra we opslag hebben.',
-  'onboarding.tijdzone': 'Tijdzone',
-  'onboarding.tijdzone_hint': 'Overgenomen van je toestel. Klopt hij niet, pas hem dan aan — hij bepaalt wanneer jouw dag en week omslaan.',
   'onboarding.herinnering': 'Herinnering',
   'onboarding.aan': 'Aan',
   'onboarding.uit': 'Uit',
@@ -1424,6 +1422,22 @@ export const nl = {
   'beoordelen.bevestigd': 'Je hebt de week van {naam} bevestigd.',
   'beoordelen.sessie_laadt': 'Je sessie is nog aan het laden. Probeer het over een tel opnieuw.',
   'dashboard.week_van': 'Week van {datum}',
+
+
+  // ---------------------------------------------------------------------------
+  // De tijdzone met de hand zetten — QS8-27, criterium 1
+  // ---------------------------------------------------------------------------
+  'tijdzone.label': 'Tijdzone',
+  'tijdzone.hint':
+    'Hierin worden "vandaag" en "deze week" berekend. Standaard die van je telefoon; zoek op een plaatsnaam om hem te wijzigen.',
+  'tijdzone.zoek_voorbeeld': 'Amsterdam',
+  'tijdzone.nu': 'Nu ingesteld: {zone}',
+  'tijdzone.gebruik_getypt': 'Gebruik {zone}',
+  'tijdzone.van_apparaat': 'De tijdzone van dit apparaat ({zone})',
+  'tijdzone.niets_gevonden': 'Geen tijdzone gevonden. Zoek op een grote stad in de buurt.',
+  'tijdzone.uitleg':
+    'Wijzigen laat je punten en je reeks met rust: die staan vast op de weken die er al zijn. Wat verandert is wanneer de volgende week omslaat.',
+  'tijdzone.opgeslagen': 'Tijdzone opgeslagen.',
 
 } as const;
 

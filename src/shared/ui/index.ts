@@ -33,6 +33,8 @@ export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Viering } from './Viering';
 export { TaalKeuze } from './TaalKeuze';
+export { TijdzoneKeuze } from './TijdzoneKeuze';
+export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 

@@ -351,8 +351,6 @@ export const en: Record<Sleutel, string> = {
   'onboarding.naam_hint': 'This is what your buddies see. A first name is enough.',
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'No avatar? Then we show your initials. Uploading a photo will be possible once we have storage.',
-  'onboarding.tijdzone': 'Time zone',
-  'onboarding.tijdzone_hint': 'Taken from your device. If it is wrong, change it — it decides when your day and week roll over.',
   'onboarding.herinnering': 'Reminder',
   'onboarding.aan': 'On',
   'onboarding.uit': 'Off',
@@ -1189,5 +1187,18 @@ export const en: Record<Sleutel, string> = {
   'beoordelen.bevestigd': 'You confirmed {naam}’s week.',
   'beoordelen.sessie_laadt': 'Your session is still loading. Try again in a second.',
   'dashboard.week_van': 'Week of {datum}',
+
+
+  'tijdzone.label': 'Time zone',
+  'tijdzone.hint':
+    'This is where “today” and “this week” are calculated. Your phone’s zone by default; search for a city to change it.',
+  'tijdzone.zoek_voorbeeld': 'Amsterdam',
+  'tijdzone.nu': 'Currently set to: {zone}',
+  'tijdzone.gebruik_getypt': 'Use {zone}',
+  'tijdzone.van_apparaat': 'This device’s time zone ({zone})',
+  'tijdzone.niets_gevonden': 'No time zone found. Search for a large city nearby.',
+  'tijdzone.uitleg':
+    'Changing this leaves your points and your streak alone: those are fixed to the weeks already there. What changes is when the next week rolls over.',
+  'tijdzone.opgeslagen': 'Time zone saved.',
 
 };

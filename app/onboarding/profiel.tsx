@@ -22,6 +22,7 @@ import {
   Field,
   Screen,
   Subheading,
+  TijdzoneKeuze,
   WeekStartKeuze,
 } from '@/shared/ui';
 
@@ -113,16 +114,17 @@ export default function OnboardingProfiel() {
         <WeekStartKeuze waarde={weekStart} onKies={setWeekStart} />
       </Card>
 
+      {/*
+        ⚠️ **Hetzelfde component als op het profielscherm, en dat is geen
+           luiheid** — precies het argument dat `WeekStartKeuze` al maakt. Hier
+           stond een kaal invoerveld, en dat vraagt van iemand die net begint dat
+           hij de IANA-naam van zijn zone uit zijn hoofd kent. `TijdzoneKeuze`
+           zoekt op plaatsnaam en heeft de knop "de tijdzone van dit apparaat"
+           erbij; twee schermen die dezelfde keuze anders aanbieden, is twee
+           plekken waar een onbekende zone binnen kan komen.
+      */}
       <Card>
-        <Field
-          label={t('onboarding.tijdzone')}
-          hint={t('onboarding.tijdzone_hint')}
-          value={tz}
-          onChangeText={setTz}
-          autoCapitalize="none"
-          // Blijft onvertaald: dit is een IANA-naam en geen tekst.
-          placeholder="Europe/Amsterdam"
-        />
+        <TijdzoneKeuze waarde={tz} onKies={setTz} />
       </Card>
 
       <Card>

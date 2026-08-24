@@ -19,7 +19,7 @@ import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
 import { t, taal, zetTaal, type Taal } from '@/shared/i18n';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
-import type { Weekday } from '@/shared/time';
+import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
@@ -31,6 +31,7 @@ import {
   Screen,
   Subheading,
   TaalKeuze,
+  TijdzoneKeuze,
   useVieringenAan,
   WeekStartKeuze,
 } from '@/shared/ui';
@@ -104,6 +105,8 @@ export default function Profiel() {
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
+
+            <TijdzoneInstelling waarde={p.tz} userId={p.id} onOpgeslagen={zetProfiel} />
 
             <Meldingen userId={p.id} />
 
@@ -266,6 +269,71 @@ function TaalInstelling({
         disabled={bezig}
       />
       <Caption>{t('taal.uitleg')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+/**
+ * De tijdzone, met de hand te overschrijven — QS8-27, criterium 1.
+ *
+ * ⚠️ **Waarom dit criterium er is en niet weggelaten kon worden.** De tijdzone
+ *    komt uit het apparaat, en dat is meestal goed. Twee gevallen waarin het dat
+ *    niet is: wie in Lissabon woont met een telefoon die op Amsterdam blijft
+ *    staan, en wie reist. Voor de tweede is dit veld juist een *rem*: zonder
+ *    handmatige zone verspringt je week omdat je twee weken in Bangkok zat, en
+ *    dan breekt je reeks op een moment dat niets met je gedrag te maken heeft.
+ *
+ * ⚠️ **Dit raakt `currentUserCycle()` en dus domeinregel 1.** De zone bepaalt
+ *    wanneer "vandaag" omslaat en dus wanneer een weekdoel gemist heet. Daarom
+ *    gaat de waarde door `updateProfiel()` en dus door `tijdzoneSchema`, en niet
+ *    rechtstreeks naar de kolom: een onbekende zone laat `Intl` gooien en dan
+ *    hangt élk scherm dat een week uitrekent.
+ *
+ * ⚠️ Zelfde volgorde als bij de week-startdag: opslaan, en pas bij `ok` het
+ *    profiel in de provider zetten. Er is hier géén procesbrede tegenhanger van
+ *    `zetTaal()` — `shared/time` leest de zone per aanroep uit het profiel — dus
+ *    één stap volstaat.
+ */
+function TijdzoneInstelling({
+  waarde,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly waarde: string;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [melding, setMelding] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function kies(zone: string) {
+    setBezig(true);
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await updateProfiel(userId, { tz: zone });
+
+    if (uitkomst.ok) {
+      onOpgeslagen(uitkomst.profiel);
+      setMelding(t('tijdzone.opgeslagen'));
+    } else {
+      setFout(uitkomst.melding);
+    }
+
+    setBezig(false);
+  }
+
+  return (
+    <Card>
+      <TijdzoneKeuze
+        waarde={waarde === '' ? apparaatTijdzone() : waarde}
+        onKies={(zone) => void kies(zone)}
+        disabled={bezig}
+      />
+      <Caption>{t('tijdzone.uitleg')}</Caption>
+      {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
