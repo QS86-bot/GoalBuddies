@@ -1034,6 +1034,32 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
     );
 
     it(
+      'draagt de drempel in payload en niet alleen in de zin',
+      async () => {
+        // ⚠️ **De naad van dit oppervlak** (onwrikbare regel 18). `body` is sinds
+        //    migratie 0059 noodterugval; de app maakt de zin zelf uit
+        //    `system_event` plus de kolommen. Stond het getal alleen in `body`,
+        //    dan toonde de groepschat "systeembericht.chain_milestone" — en dat
+        //    deed hij ook, tot migratie 0075.
+        //
+        //    De tests hierboven toetsen `body` en bleven daar allemaal groen bij.
+        //    Dit is de enige die de weg náár het scherm bewaakt.
+        const { data, error } = await adminDb()
+          .from('chat_messages')
+          .select('payload')
+          .eq('group_id', mijlpaalGroup)
+          .eq('system_event', 'chain_milestone')
+          .eq('type', 'system')
+          .is('sender_id', null);
+
+        expect(error).toBeNull();
+        expect(data ?? []).toHaveLength(1);
+        expect((data ?? [])[0]?.payload).toEqual({ drempel: 10 });
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'herhaalt een gemelde drempel niet bij de volgende schakel',
       async () => {
         await zetSchakels(5, 10);

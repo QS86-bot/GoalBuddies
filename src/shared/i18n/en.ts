@@ -22,6 +22,7 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.commitment_due': 'The stake {naam} set for themselves has come due.',
   'systeembericht.deadline_requested': '{naam} is asking the group to move a target date.',
   'systeembericht.group_sleeping': 'This group has gone quiet. One message wakes it up again.',
+  'systeembericht.chain_milestone': 'The Chain of this group now counts {aantal} links.',
 
   'algemeen.oud_lid': 'A former member',
 

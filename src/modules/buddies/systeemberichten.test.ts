@@ -19,6 +19,7 @@ function invoer(over: Partial<Parameters<typeof systeemberichtTekst>[0]> = {}) {
     subject_name: 'Sanne',
     actor_name: null,
     body: 'OPGESLAGEN ZIN',
+    aantal: 25,
     ...over,
   };
 }
@@ -38,6 +39,33 @@ describe('elke toegestane gebeurtenis heeft een zin', () => {
       const tekst = systeemberichtTekst(invoer({ system_event: event }));
       expect(tekst, event).not.toBe('OPGESLAGEN ZIN');
       expect(tekst.length, event).toBeGreaterThan(0);
+    }
+  });
+
+  it('toont nooit de kale catalogussleutel', () => {
+    // ⚠️ **Deze test bestond niet en daardoor viel het slot niet.** `t()` valt bij
+    //    een onbekende sleutel terug op de sleutel zelf. Dat is een string die
+    //    niet leeg is en niet gelijk aan `body`, dus de twee tests hierboven
+    //    bleven groen terwijl `chain_milestone` (migratie 0070) in beide catalogi
+    //    ontbrak — de groepschat toonde letterlijk
+    //    "systeembericht.chain_milestone".
+    //
+    //    Precies de vorm uit onwrikbare regel 18: de tests toetsten een
+    //    eigenschap van de zin ("niet leeg", "niet de terugval") terwijl de
+    //    belofte "er ís een vertaling" was. Handmatig gebroken door de sleutel
+    //    uit `nl.ts` te halen: dan wordt deze test rood en de andere twee niet.
+    for (const event of SYSTEEM_GEBEURTENISSEN) {
+      expect(systeemberichtTekst(invoer({ system_event: event })), event).not.toBe(
+        `systeembericht.${event}`,
+      );
+    }
+  });
+
+  it('houdt geen enkele parameter onvervuld', () => {
+    // Een `{naam}` of `{aantal}` die in de zin blijft staan, is een storing die
+    // je in de catalogus niet ziet en op het scherm wel.
+    for (const event of SYSTEEM_GEBEURTENISSEN) {
+      expect(systeemberichtTekst(invoer({ system_event: event })), event).not.toMatch(/\{\w+\}/);
     }
   });
 });
@@ -65,8 +93,35 @@ describe('de zinnen zelf', () => {
     //    De invoer bevat bewust geen doeltitel — er ís geen parameter voor, en
     //    dat is de bescherming. Deze test legt vast dat dat zo blijft: komt er
     //    ooit een veld bij, dan moet iemand deze lijst uitbreiden en dus nadenken.
+    //    ⚠️ `aantal` is er in QS8-132 als vijfde bij gekomen, en de afweging hoort
+    //       hier: het is een groepsbreed getal zonder eenheid van tijd of persoon
+    //       (het aantal schakels van De Ketting), dus het valt buiten "titel,
+    //       notitie of niveau". Een zesde veld vraagt dezelfde afweging opnieuw.
     const velden = Object.keys(invoer());
-    expect(velden.sort()).toEqual(['actor_name', 'body', 'subject_name', 'system_event']);
+    expect(velden.sort()).toEqual([
+      'aantal',
+      'actor_name',
+      'body',
+      'subject_name',
+      'system_event',
+    ]);
+  });
+
+  it('noemt bij een ketting-mijlpaal het aantal en geen persoon', () => {
+    const tekst = systeemberichtTekst(
+      invoer({ system_event: 'chain_milestone', subject_name: 'Sanne', aantal: 25 }),
+    );
+
+    expect(tekst).toBe('De Ketting van deze groep telt 25 schakels.');
+    expect(tekst).not.toContain('Sanne');
+  });
+
+  it('valt bij een ketting-mijlpaal zonder aantal terug op de opgeslagen zin', () => {
+    // Een rij van vóór migratie 0075. Liever de Nederlandse zin uit de database
+    // dan "telt {aantal} schakels" in het gesprek.
+    const tekst = systeemberichtTekst(invoer({ system_event: 'chain_milestone', aantal: null }));
+
+    expect(tekst).toBe('OPGESLAGEN ZIN');
   });
 
   it('zegt bij een verschuldigde inzet wat er gebeurd is en oordeelt niet', () => {

@@ -21,10 +21,18 @@ export const nl = {
   // Systeemberichten in de groepschat — de zinnen uit migratie 0059
   // ---------------------------------------------------------------------------
   //
-  // ⚠️ Deze acht zijn de eerste die écht vertaald moeten worden. Een chatbericht
-  //    is een onveranderlijke kopie; sinds 0059 wordt de zin bij het tónen
-  //    gemaakt en niet bij het schrijven, dus vanaf hier is meertaligheid in de
-  //    chat een kwestie van dit bestand.
+  // ⚠️ Er hoort er hier precies één te staan voor elke naam in
+  //    `SYSTEEM_GEBEURTENISSEN`. Een chatbericht is een onveranderlijke kopie;
+  //    sinds 0059 wordt de zin bij het tónen gemaakt en niet bij het schrijven,
+  //    dus vanaf hier is meertaligheid in de chat een kwestie van dit bestand.
+  //
+  // ⚠️ **Tel ze niet in een zin.** Hier stond "deze acht" terwijl het er negen
+  //    waren, en de tiende (`chain_milestone`, migratie 0070) ontbrak helemaal —
+  //    zes uur lang toonde de groepschat de letterlijke sleutel. `t()` valt bij
+  //    een onbekende sleutel terug op de sleutel zelf, en dat is een string die
+  //    niet leeg is; de test die "elke gebeurtenis heeft een zin" heette, kwam
+  //    daar dus doorheen. De telling staat nu in
+  //    `systeemberichten.test.ts` en niet in dit commentaar.
   'systeembericht.member_joined': '{naam} doet mee.',
   'systeembericht.completion_pending': '{naam} heeft een week afgerond en wacht op bevestiging.',
   'systeembericht.completion_approved': '{actor} bevestigde de week van {naam}.',
@@ -35,6 +43,13 @@ export const nl = {
     'De inzet die {naam} zelf heeft ingesteld, is verschuldigd geworden.',
   'systeembericht.deadline_requested': '{naam} vraagt de groep om een streefdatum te verschuiven.',
   'systeembericht.group_sleeping': 'Deze groep is stil geworden. Eén bericht maakt hem weer wakker.',
+
+  /**
+   * ⚠️ Het enige systeembericht zonder persoonsnaam, en het enige met een getal.
+   *    Het getal is de drempel die gehaald is (10, 25, 50, …) en komt uit
+   *    `chat_messages.payload`, niet uit een berekening — zie migratie 0075.
+   */
+  'systeembericht.chain_milestone': 'De Ketting van deze groep telt {aantal} schakels.',
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',

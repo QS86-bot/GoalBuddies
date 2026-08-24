@@ -128,6 +128,20 @@ export interface ChatBericht {
   readonly subject_name: string | null;
   /** Wie het veroorzaakte, als dat iemand anders is. Alleen bij `completion_approved`. */
   readonly actor_name: string | null;
+  /**
+   * Het enige getal dat een systeembericht mag dragen: de bereikte drempel van
+   * De Ketting. `null` bij elk ander bericht.
+   *
+   * ⚠️ Komt uit `chat_messages.payload` en niet uit een telling in de app — het
+   *    is de stand op het moment van de mijlpaal, en die is later niet meer te
+   *    reconstrueren (migratie 0070 herstelt een gemiste melding met de drempel,
+   *    niet met de stand van vandaag).
+   *
+   * ⚠️ `payload` is bewust de plek voor alles wat géén persoon is (migratie
+   *    0059). Een persoon hoort er nóóit in: een uuid in jsonb heeft geen foreign
+   *    key en overleeft dus een accountverwijdering.
+   */
+  readonly aantal: number | null;
   readonly created_at: string;
 }
 

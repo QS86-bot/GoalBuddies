@@ -35,6 +35,7 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     system_event: null,
     subject_name: null,
     actor_name: null,
+    aantal: null,
     ...over,
   };
 }
