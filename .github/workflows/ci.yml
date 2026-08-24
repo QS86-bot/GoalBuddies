@@ -30,7 +30,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           # Gelijk aan de engines-eis in package.json.
-          node-version: '20'
+          #
+          # ⚠️ **22 en niet 20, en dat was een belofte die de code niet hield.**
+          #    `engines` zei `>=20`, maar de realtime-client van supabase-js
+          #    vraagt een native `WebSocket` en die bestaat pas vanaf Node 22.
+          #    Op 20 valt élke `createClient()` om met "native WebSocket not
+          #    found" — geen policyfout, maar wel 29 rode tests.
+          #
+          #    Lokaal draaide alles op 22, dus dit was hier niet te zien. De
+          #    RLS-job in CI vond het meteen.
+          node-version: '22'
           cache: npm
 
       # `npm ci` en niet `npm install`: de lockfile is de waarheid, en een CI die
@@ -105,7 +114,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Zie de opmerking bij de job hierboven: 22 is een eis van
+          # supabase-js en niet een voorkeur.
+          node-version: '22'
           cache: npm
 
       - name: Afhankelijkheden installeren
