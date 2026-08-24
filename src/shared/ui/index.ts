@@ -74,6 +74,7 @@ export {
   rangeState,
   kettingLabel,
   kettingVulling,
+  besteReeksLabel,
   streakLabel,
   puntenUitleg,
   weekpasUitleg,

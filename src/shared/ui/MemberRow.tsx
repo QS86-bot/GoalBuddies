@@ -1,9 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 
-import { getal, t } from '../i18n';
+import { t } from '../i18n';
 import { initiaalVan } from '../tekst';
 import { radius, space, useTheme } from '../theme';
 
+import { besteReeksLabel } from './metrics';
 import { StreakCounter } from './StreakCounter';
 import { Body, Caption } from './Text';
 
@@ -64,7 +65,7 @@ export function MemberRow({
              data en is zwijgen beter dan een tegenstrijdig getal.
         */}
         {bestStreak !== null && bestStreak > streak ? (
-          <Caption>{t('reeks.beste', { aantal: getal(bestStreak, 0) })}</Caption>
+          <Caption>{besteReeksLabel(bestStreak)}</Caption>
         ) : null}
       </View>
 

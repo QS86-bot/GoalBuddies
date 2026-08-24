@@ -1170,7 +1170,8 @@ export const en: Record<Sleutel, string> = {
 
   'algemeen.laden': 'Loading',
   'algemeen.streefdatum': 'Target date {datum}',
-  'reeks.beste': 'Best streak: {aantal}',
+  'reeks.beste_een': 'Best so far: 1 week',
+  'reeks.beste_meer': 'Best so far: {aantal} weeks',
   'weekdoel.vloer_regel': 'Floor · {tekst}',
   'weekdoel.plafond_regel': 'Ceiling · {tekst}',
   'ketting.a11y': 'The Chain: {stand}',

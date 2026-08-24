@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { getal, t } from '../i18n';
 
 /**
  * De rekenregels achter de visuele componenten.
@@ -179,6 +179,17 @@ export function milestoneProgress(done: number, total: number): number {
 export function streakLabel(cycles: number): string {
   if (cycles <= 0) return t('reeks.geen');
   return cycles === 1 ? t('reeks.een') : t('reeks.meer', { n: cycles });
+}
+
+/**
+ * De beste reeks, met eenheid.
+ *
+ * ⚠️ Naast `streakLabel()` — "3 weken op rij" — las "Beste reeks: 7" als zeven
+ *    wat. En de meervoudsvorm is een eigen sleutel en geen ternary in de zin:
+ *    `t()` kent geen meervoudsregels, en dat is bewust (zie `shared/i18n`).
+ */
+export function besteReeksLabel(cycles: number): string {
+  return cycles === 1 ? t('reeks.beste_een') : t('reeks.beste_meer', { aantal: getal(cycles, 0) });
 }
 
 // ---------------------------------------------------------------------------

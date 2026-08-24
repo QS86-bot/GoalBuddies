@@ -1428,7 +1428,10 @@ export const nl = {
   //    `setMelding(...)`. Zie de kop van dat script.
   'algemeen.laden': 'Laden',
   'algemeen.streefdatum': 'Streefdatum {datum}',
-  'reeks.beste': 'Beste reeks: {aantal}',
+  // ⚠️ Mét eenheid. Naast "3 weken op rij" van de reeksteller las "Beste
+  //    reeks: 7" als zeven wat — critical-user-ronde 24-08.
+  'reeks.beste_een': 'Beste tot nu toe: 1 week',
+  'reeks.beste_meer': 'Beste tot nu toe: {aantal} weken',
   'weekdoel.vloer_regel': 'Vloer · {tekst}',
   'weekdoel.plafond_regel': 'Plafond · {tekst}',
   'ketting.a11y': 'De Ketting: {stand}',
