@@ -834,4 +834,284 @@ export const en: Record<Sleutel, string> = {
   'interview.stuck_before.vraag': 'Where did it get stuck before?',
   'interview.stuck_before.toelichting':
     'Visible only to you and the Goal Coach — your group never sees this.',
+
+  // ---------------------------------------------------------------------------
+  // Creating a goal — QS8-31
+  // ---------------------------------------------------------------------------
+  'nieuwdoel.titel': 'New goal',
+  'nieuwdoel.eyebrow': 'ONE GOAL AT A TIME',
+  'nieuwdoel.wat': 'What do you want to achieve?',
+  'nieuwdoel.wat_hint': 'Concrete enough that someone else can tell whether it worked.',
+  'nieuwdoel.wat_voorbeeld': 'Finish my book',
+  'nieuwdoel.identiteit': 'Who do you become if this works?',
+  'nieuwdoel.identiteit_hint':
+    'Optional, but this is the question that will still carry you four months from now.',
+  'nieuwdoel.identiteit_voorbeeld': 'Someone who writes, not someone who wants to write',
+  'nieuwdoel.streefdatum': 'Target date',
+  'nieuwdoel.streefdatum_hint':
+    'Must be in the future. You can move it later, but that gets recorded.',
+  'nieuwdoel.categorie': 'Category',
+  'nieuwdoel.meer_details': 'More details',
+  'nieuwdoel.meer_details_uitleg':
+    'Both optional. The Goal Coach uses them later to break things down better.',
+  'nieuwdoel.beschrijving': 'Description',
+  'nieuwdoel.beschrijving_voorbeeld': 'What is it about, and what have you done already?',
+  'nieuwdoel.uren': 'Hours per week',
+  'nieuwdoel.uren_hint':
+    'How much time do you realistically have for this? Feeds the Risk radar later.',
+  'nieuwdoel.aanmaken': 'Create goal',
+  'nieuwdoel.annuleren': 'Cancel',
+
+  // ---------------------------------------------------------------------------
+  // The goal screen — QS8-32 and onwards
+  // ---------------------------------------------------------------------------
+  'doelscherm.titel': 'Goal',
+  'doelscherm.leeg_titel': 'This goal does not exist',
+  'doelscherm.leeg_body': 'Either it was deleted, or it is not yours. Check the link.',
+  'doelscherm.categorie_streefdatum': '{categorie} · target date {datum}',
+  'doelscherm.weekdoelen_afgerond': '{gedaan} of {totaal} weekly goals completed',
+
+  'deadline.verzoek_loopt': 'Your request is pending',
+  'deadline.verzoek_uitleg': 'You asked to move {oud} to {nieuw}.',
+  'deadline.buddy_beslist':
+    'One of your buddies decides on this. Until that happens, the date stays as it was.',
+  'deadline.verzoek_intrekken': 'Withdraw request',
+  'deadline.kop': 'Deadline',
+  'deadline.akkoord': 'Your buddy agreed: the date is now {datum}.',
+  'deadline.afgewezen': 'Your buddy felt it was too early to move it. The date has not changed.',
+  'deadline.opnieuw_vragen': 'You can ask again if something has changed.',
+  'deadline.gedeeld_uitleg':
+    'You share this goal with your group, so you move the date together. Write down what ' +
+    'has changed; a buddy decides on it.',
+  'deadline.alleen_uitleg':
+    'Moving it is fine. It does get recorded, so you can look back honestly later.',
+  'deadline.vraag_knop': 'Ask to move it',
+  'deadline.verzet_knop': 'Move deadline',
+  'deadline.nieuwe_datum': 'New target date',
+  'deadline.datum_label': 'Date',
+  'deadline.wat_veranderd': 'What has changed?',
+  'deadline.wat_veranderd_hint':
+    'Your buddies in {groep} read this and decide on it. One honest sentence is enough.',
+  'deadline.jouw_groep': 'your group',
+  'deadline.argument_voorbeeld':
+    'The project at work has run six weeks over and it is eating my evenings.',
+  'deadline.nog_tekens': '{aantal} characters to go.',
+  'deadline.lang_genoeg': 'Long enough.',
+  'deadline.versturen': 'Send request',
+  'deadline.vastleggen': 'Save',
+  'deadline.annuleren': 'Cancel',
+
+  // ---------------------------------------------------------------------------
+  // Reward and penalty on the goal screen — QS8-34, QS8-35 and QS8-85
+  // ---------------------------------------------------------------------------
+  'commitment.stand': '{titel} — {uitleg}',
+  'commitment.geen_afrekening': 'The app settles nothing. This is only kept on record.',
+
+  'beloning.jouw': 'Your reward',
+  'beloning.vastgelegd_op': 'Recorded on {datum}.',
+  'beloning.kop': 'Reward',
+  'beloning.uitleg': 'What will you treat yourself to if this works? Optional, but it helps.',
+  'beloning.veld': 'My reward',
+  'beloning.voorbeeld': 'A weekend away without a laptop',
+  'beloning.vastleggen': 'Save',
+
+  'straf.jouw': 'Your penalty',
+  'straf.intrekken': 'Withdraw',
+  'straf.kop': 'Penalty',
+  'straf.geen_groep':
+    'A penalty goes to one of your groups. You are not in one yet, so this is only possible ' +
+    'once you have a buddy group.',
+  'straf.zeker': 'Are you sure?',
+  'straf.bevestig_uitleg':
+    'If {groep} gets to see this, it is because your target date passed without your goal ' +
+    'being done.',
+  'straf.dan_geldt': 'Then this applies: {tekst}',
+  'straf.tot_dan':
+    'Until that moment nobody sees this — not even your group. You can withdraw it as long ' +
+    'as it has not taken effect.',
+  'straf.ja_vastleggen': 'Yes, record this',
+  'straf.terug': 'Back',
+  'straf.uitleg':
+    'What happens if you do not make your target date? Optional, and you can withdraw it as ' +
+    'long as it has not taken effect.',
+  'straf.geen_geld':
+    'The app settles nothing and handles no money. You record here what you agree with your ' +
+    'group; carrying it out is up to you.',
+  'straf.veld': 'My penalty',
+  'straf.voorbeeld': 'I treat the group to dinner',
+  'straf.welke_groep': 'Which group benefits?',
+  'straf.verder': 'Continue',
+  'straf.jouw_groep': 'your group',
+
+  // ---------------------------------------------------------------------------
+  // Completing, archiving and replanning — QS8-83, QS8-32 and QS8-96
+  // ---------------------------------------------------------------------------
+  'afronden.afgerond': 'Completed',
+  'afronden.afgerond_uitleg':
+    'You completed this goal. Your groups have seen it and your reward has been released.',
+  'afronden.kop': 'Complete',
+  'afronden.een_open':
+    'One milestone is still open. Tick it off, or drop it if you no longer need it — then ' +
+    'you can complete this goal.',
+  'afronden.meer_open':
+    '{aantal} milestones are still open. Tick them off, or drop what you no longer need — ' +
+    'then you can complete this goal.',
+  'afronden.alles_af':
+    'All milestones are done. Complete your goal, and your group will know and your reward ' +
+    'comes free.',
+  'afronden.knop_label': 'Complete goal {titel}',
+  'afronden.knop': 'This goal is done',
+
+  'archief.terughalen_kop': 'Take out of the archive',
+  'archief.kop': 'Archive',
+  'archief.terughalen_uitleg': 'The goal returns to your dashboard and to your group overview.',
+  'archief.uitleg':
+    'The goal disappears from your dashboard and from group overviews. Your history stays ' +
+    'completely intact: completions, approvals and points. You can always undo this.',
+  'archief.terughalen': 'Restore',
+  'archief.archiveren': 'Archive',
+
+  'herplannen.kop': 'This date is no longer going to work',
+  'herplannen.stand_1_1': 'One milestone is still open and there is one week left. ',
+  'herplannen.stand_1_n': 'One milestone is still open and there are {weken} weeks left. ',
+  'herplannen.stand_n_1': '{open} milestones are still open and there is one week left. ',
+  'herplannen.stand_n_n': '{open} milestones are still open and there are {weken} weeks left. ',
+  'herplannen.geen_ramp':
+    'That is not a disaster and it says nothing about you — it says the plan no longer fits. ' +
+    'Adjusting a goal works better than letting it quietly bleed out.',
+  'herplannen.drie_dingen': 'Three things you can do:',
+  'herplannen.datum_kop': 'Move your target date',
+  'herplannen.datum_uitleg':
+    'Above under “Deadline”. If you share this goal with a group, you ask them to agree — ' +
+    'that costs you no points.',
+  'herplannen.mijlpalen_kop': 'Drop milestones',
+  'herplannen.mijlpalen_uitleg':
+    'Under “Milestones”. What you drop no longer counts, and your history stays intact.',
+  'herplannen.kleiner_kop': 'Make the goal smaller',
+  'herplannen.kleiner_uitleg':
+    'Adjust the milestones to what does fit. Better a goal you reach than a plan that made ' +
+    'sense in March.',
+  'herplannen.let_op_straf':
+    'Note: you have set a penalty on this goal. It takes effect if your target date passes ' +
+    'without the goal being done. If you move the date, that moment moves along with it.',
+  'herplannen.reeks_blijft': 'Your streak and your history stay intact in all three cases.',
+
+  // ---------------------------------------------------------------------------
+  // The help request and the Risk radar on the goal screen — QS8-94 and QS8-95
+  // ---------------------------------------------------------------------------
+  'hulpvraag.verstuurd_kop': 'Your question is in the group',
+  'hulpvraag.verstuurd_uitleg':
+    'Your buddies can respond to it in the group chat. That is exactly what they are for.',
+  'hulpvraag.kop': 'Stuck? Ask your group',
+  'hulpvraag.uitleg':
+    'You are falling behind on this goal. That is what your group is for — two sentences and ' +
+    'someone thinks along with you. You see exactly what you send before it goes out.',
+  'hulpvraag.vraag_knop': 'Ask for help',
+  'hulpvraag.niet_nu': 'Not right now',
+  'hulpvraag.wat_vragen': 'What do you want to ask?',
+  'hulpvraag.bericht': 'Your message',
+  'hulpvraag.bericht_hint': 'Feel free to adjust it. This goes to the group chat as your message.',
+  'hulpvraag.welke_groep': 'To which group?',
+  'hulpvraag.versturen': 'Send',
+  'hulpvraag.annuleren': 'Cancel',
+
+  'radar.kop': 'Feasibility',
+  'radar.verbergen': 'Hide',
+  'radar.waarom': 'Why?',
+  'radar.alleen_jij': 'Only you see this. Your group never gets to see your feasibility.',
+
+  // ---------------------------------------------------------------------------
+  // The milestones block on the goal screen — QS8-39
+  // ---------------------------------------------------------------------------
+  'mijlpalenblok.kop': 'Milestones',
+  'mijlpalenblok.leeg':
+    'No milestones yet. Cut your goal into intermediate results you can point at — then you ' +
+    'know every week what you are working on.',
+  'mijlpalenblok.coach': 'Let the Goal Coach suggest them',
+  'mijlpalenblok.gehaald': 'Done',
+  'mijlpalenblok.stap': 'Step {nummer} of {totaal}',
+  'mijlpalenblok.streefdatum': ' · target date {datum}',
+  'mijlpalenblok.toch_niet': 'Not done after all',
+  'mijlpalenblok.zet_gehaald': 'Done',
+  'mijlpalenblok.omhoog': 'Up',
+  'mijlpalenblok.omlaag': 'Down',
+  'mijlpalenblok.verwijderen': 'Delete',
+  'mijlpalenblok.omhoog_label': 'Move {titel} up',
+  'mijlpalenblok.omlaag_label': 'Move {titel} down',
+  'mijlpalenblok.verwijderen_label': 'Delete {titel}',
+  'mijlpalenblok.nieuwe': 'New milestone',
+  'mijlpalenblok.nieuwe_hint':
+    'An intermediate result you can point at. For example: first ten thousand words.',
+  'mijlpalenblok.nieuwe_voorbeeld': 'First ten thousand words',
+  'mijlpalenblok.toevoegen': 'Add',
+  'mijlpalenblok.annuleren': 'Cancel',
+  'mijlpalenblok.toevoegen_knop': 'Add milestone',
+
+  // ---------------------------------------------------------------------------
+  // Adding a weekly goal, breather and deleting — QS8-43, QS8-82 and QS8-105
+  // ---------------------------------------------------------------------------
+  'weekdoelform.knop': 'Add weekly goal',
+  'weekdoelform.kop': 'What do you want done this week?',
+  'weekdoelform.titel': 'Weekly goal',
+  'weekdoelform.titel_hint': 'One thing, this week. For example: have three customer calls.',
+  'weekdoelform.titel_voorbeeld': '3 customer calls',
+  'weekdoelform.vloer': 'The floor (recommended)',
+  'weekdoelform.vloer_hint':
+    'What do you manage even in a bad week? Reaching this keeps your streak running — only ' +
+    'the points differ.',
+  'weekdoelform.vloer_voorbeeld': '1 call scheduled',
+  'weekdoelform.plafond': 'The ceiling',
+  'weekdoelform.plafond_hint': 'What are you going for if the week goes well?',
+  'weekdoelform.plafond_voorbeeld': '3 calls held',
+  'weekdoelform.mijlpaal': 'Does this belong to a milestone?',
+  'weekdoelform.mijlpaal_hint': 'It can also hang loose under your goal.',
+  'weekdoelform.los': 'Loose under this goal',
+  'weekdoelform.toevoegen': 'Add',
+  'weekdoelform.annuleren': 'Cancel',
+
+  'adempauze.kop': 'Breather',
+  'adempauze.uitleg':
+    'Going on holiday, ill, or just a strange month? Then pause one or two weeks. Those weeks ' +
+    'cost you no point and your streak stays where it is — it just does not grow.',
+  'adempauze.groep_ziet':
+    'Your group sees that you have a breather and from when to when. They do not see which ' +
+    'weekly goals you did or did not reach.',
+  'adempauze.week_van': 'Week of {datum}',
+  'adempauze.tot_en_met': ' up to and including the week of {datum}',
+  'adempauze.voorbij': 'Over',
+  'adempauze.loopt': 'Running now',
+  'adempauze.ingepland': 'Scheduled',
+  'adempauze.annuleren': 'Cancel',
+  'adempauze.vanaf': 'From which week?',
+  'adempauze.vanaf_hint':
+    'You announce a breather in advance, so the week that is running now is no longer possible.',
+  'adempauze.hoe_lang': 'How long?',
+  'adempauze.een_week': 'One week',
+  'adempauze.twee_weken': 'Two weeks',
+  'adempauze.inplannen': 'Schedule',
+  'adempauze.inplannen_knop': 'Schedule a breather',
+
+  'weggooien.label': 'Delete goal {titel}',
+  'weggooien.knop': 'Created by accident? Delete it',
+
+  // ---------------------------------------------------------------------------
+  // Leftovers found by the extended text check — QS8-115
+  // ---------------------------------------------------------------------------
+  'laden.kop_mislukt': 'That did not work',
+  'ketting.kop': 'The Chain',
+  'lid.adempauze': 'Breather',
+  'vandaag.reeks_telt_weken': 'Your streak counts weeks, not days.',
+  'vandaag.meenemen_knop': 'Carry over to this week',
+  'vandaag.buddy_vraag': 'Your buddy has a question',
+  'profiel.uitloggen_kop': 'Sign out',
+  'profiel.uitloggen_uitleg': 'You stay a member of your groups. Your goals stay put.',
+  'profiel.uitloggen_knop': 'Sign out',
+  'beoordelen.verouderd': 'Something has changed in the list in the meantime.',
+  'beoordelen.verversen': 'Refresh list',
+  'beoordelen.vorige': 'Previous',
+  'beoordelen.meer_laden': 'Load more',
+  'groepscherm.wie_meedoen': 'Who is taking part',
+  'groepscherm.meer_tijd': 'A buddy is asking for more time',
+  'coach.poging_telt': 'Every attempt counts towards your ten per day.',
+  'weekafsluiting.wat_gedeeld': 'What the group shared',
 };

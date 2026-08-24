@@ -67,5 +67,20 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     échte project. Dat vraagt een service-role-key en die hoort niet in een
     controle die overal draait. Dat is de tweede helft van QS8-122.
 
+12. **Hardgecodeerde UI-tekst** — draai `npm run tekst:controle`. Die toetst
+    criterium 1 van QS8-115: er staat nergens in `src/` of `app/` nog Nederlandse
+    schermtekst hard in de code. Alles loopt via `t()` en de catalogus.
+
+    ⚠️ Hij heeft de hele omzetting rood gestaan, met opzet — een controle die je
+    aanzet terwijl hij rood staat, leert je om rood te negeren. Sinds 24-08 is
+    hij groen en draait hij hier mee.
+
+    ⚠️ **Hij is vier keer geijkt en de laatste keer pas nadat hij groen stond.**
+    Die vierde ronde vond zeventien zinnen in mappen die al "af" heetten: ze
+    stonden achter een openingstag op dezelfde regel, en dát patroon zag hij nog
+    niet. Wordt er een nieuwe vorm zichtbaar, scherp hem dan aan in plaats van
+    de treffer weg te schrijven. Een controle die nul meldt terwijl er tekst
+    staat, geeft toestemming om te stoppen met kijken.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

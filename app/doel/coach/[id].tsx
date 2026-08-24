@@ -477,7 +477,7 @@ function Genereren({
           <Caption danger>{t('coach.al_mijlpalen')}</Caption>
         ) : null}
 
-        <Caption>Elke poging telt mee in je tien per dag.</Caption>
+        <Caption>{t('coach.poging_telt')}</Caption>
       </Card>
     );
   }

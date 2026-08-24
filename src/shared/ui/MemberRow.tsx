@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
 import { initiaalVan } from '../tekst';
 import { radius, space, useTheme } from '../theme';
 
@@ -44,7 +45,7 @@ export function MemberRow({ name, streak, closedThisPeriod, onBreather = false }
       </View>
 
       {onBreather ? (
-        <Caption>Adempauze</Caption>
+        <Caption>{t('lid.adempauze')}</Caption>
       ) : closedThisPeriod ? (
         <View style={[styles.vinkje, { backgroundColor: theme.roles.progress }]} />
       ) : (

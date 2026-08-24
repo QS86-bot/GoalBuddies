@@ -46,6 +46,7 @@ import {
   type Mijlpaal,
   type Risico,
 } from '@/modules/goals';
+import { t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 import { localDateIn, nextCycle, now, type IsoDate, type UserClock } from '@/shared/time';
@@ -164,7 +165,7 @@ export default function DoelDetail() {
   const klok = profiel ? userClock(profiel) : null;
 
   return (
-    <Screen title="Doel">
+    <Screen title={t('doelscherm.titel')}>
       <AsyncView
         loading={loading}
         error={error}
@@ -172,8 +173,8 @@ export default function DoelDetail() {
         isEmpty={() => false}
         onRetry={herlaad}
         empty={{
-          title: 'Dit doel bestaat niet',
-          body: 'Of het is verwijderd, of het is niet van jou. Controleer de link.',
+          title: t('doelscherm.leeg_titel'),
+          body: t('doelscherm.leeg_body'),
         }}
       >
         {(d) => (
@@ -181,8 +182,10 @@ export default function DoelDetail() {
             <Card>
               <Subheading>{d.title}</Subheading>
               <Caption>
-                {categorieLabels()[(d.category ?? 'other') as Categorie]} · streefdatum{' '}
-                {d.target_date}
+                {t('doelscherm.categorie_streefdatum', {
+                  categorie: categorieLabels()[(d.category ?? 'other') as Categorie],
+                  datum: d.target_date ?? '',
+                })}
               </Caption>
 
               {d.identity_statement ? (
@@ -195,7 +198,10 @@ export default function DoelDetail() {
                 total={d.milestones_total ?? 0}
               />
               <Caption>
-                {d.weekly_approved ?? 0} van {d.weekly_total ?? 0} weekdoelen afgerond
+                {t('doelscherm.weekdoelen_afgerond', {
+                  gedaan: d.weekly_approved ?? 0,
+                  totaal: d.weekly_total ?? 0,
+                })}
               </Caption>
             </Card>
 
@@ -354,19 +360,16 @@ function DeadlineVerzetten({
   if (verzoek !== null) {
     return (
       <Card nested>
-        <Subheading>Je verzoek loopt</Subheading>
+        <Subheading>{t('deadline.verzoek_loopt')}</Subheading>
         <Body>
-          Je vroeg om {verzoek.old_date} te verzetten naar {verzoek.new_date}.
+          {t('deadline.verzoek_uitleg', { oud: verzoek.old_date, nieuw: verzoek.new_date })}
         </Body>
         <Card nested>
           <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
         </Card>
-        <Caption>
-          Een van je buddy&rsquo;s beslist hierover. Zolang dat niet gebeurd is, blijft de
-          datum staan zoals hij was.
-        </Caption>
+        <Caption>{t('deadline.buddy_beslist')}</Caption>
         <Button variant="stil" busy={bezig} onPress={() => void trekIn()}>
-          Verzoek intrekken
+          {t('deadline.verzoek_intrekken')}
         </Button>
         {fout === null ? null : <Caption danger>{fout}</Caption>}
       </Card>
@@ -376,7 +379,7 @@ function DeadlineVerzetten({
   if (!open) {
     return (
       <Card nested>
-        <Subheading>Deadline</Subheading>
+        <Subheading>{t('deadline.kop')}</Subheading>
 
         {/*
           ⚠️ Een afgewezen verzoek moet je te zien krijgen. Zonder dit verdwijnt
@@ -392,26 +395,23 @@ function DeadlineVerzetten({
           <Card nested>
             <Body>
               {besluit.status === 'approved'
-                ? `Je buddy ging akkoord: de datum staat nu op ${besluit.new_date}.`
-                : 'Je buddy vond het nog te vroeg om te verzetten. De datum is niet veranderd.'}
+                ? t('deadline.akkoord', { datum: besluit.new_date })
+                : t('deadline.afgewezen')}
             </Body>
             {besluit.decision_note === null ? null : (
               <Body muted>&ldquo;{besluit.decision_note}&rdquo;</Body>
             )}
             {besluit.status === 'rejected' ? (
-              <Caption>Je kunt het opnieuw vragen als er iets veranderd is.</Caption>
+              <Caption>{t('deadline.opnieuw_vragen')}</Caption>
             ) : null}
           </Card>
         )}
 
         <Body muted>
-          {gedeeld
-            ? 'Je deelt dit doel met je groep, dus de datum verzet je samen. Schrijf ' +
-              'erbij wat er veranderd is; een buddy beslist erover.'
-            : 'Verzetten mag. Het wordt wel bijgehouden, zodat je later eerlijk kunt terugkijken.'}
+          {gedeeld ? t('deadline.gedeeld_uitleg') : t('deadline.alleen_uitleg')}
         </Body>
         <Button onPress={() => setOpen(true)}>
-          {gedeeld ? 'Vraag om te verzetten' : 'Deadline verzetten'}
+          {gedeeld ? t('deadline.vraag_knop') : t('deadline.verzet_knop')}
         </Button>
       </Card>
     );
@@ -419,8 +419,13 @@ function DeadlineVerzetten({
 
   return (
     <Card nested>
-      <Subheading>Nieuwe streefdatum</Subheading>
-      <Field label="Datum" value={datum} onChangeText={setDatum} placeholder="2027-03-01" />
+      <Subheading>{t('deadline.nieuwe_datum')}</Subheading>
+      <Field
+        label={t('deadline.datum_label')}
+        value={datum}
+        onChangeText={setDatum}
+        placeholder="2027-03-01"
+      />
 
       {gedeeld ? (
         <>
@@ -430,13 +435,15 @@ function DeadlineVerzetten({
                toon als vraag 2 van de weekafsluiting, en om dezelfde reden.
           */}
           <Field
-            label="Wat is er veranderd?"
-            hint={`Je buddy's in ${groep?.name ?? 'je groep'} lezen dit en beslissen erop. Eén eerlijke zin is genoeg.`}
+            label={t('deadline.wat_veranderd')}
+            hint={t('deadline.wat_veranderd_hint', {
+              groep: groep?.name ?? t('deadline.jouw_groep'),
+            })}
             value={argument}
             onChangeText={setArgument}
             multiline
             maxLength={ARGUMENT_MAX}
-            placeholder="Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op."
+            placeholder={t('deadline.argument_voorbeeld')}
           />
           {/*
             ⚠️ `telTekens()` en niet `.length` — QS8-118. De teller moet in
@@ -446,8 +453,8 @@ function DeadlineVerzetten({
           */}
           <Caption>
             {telTekens(argument.trim()) < ARGUMENT_MIN
-              ? `Nog ${ARGUMENT_MIN - telTekens(argument.trim())} tekens te gaan.`
-              : 'Lang genoeg.'}
+              ? t('deadline.nog_tekens', { aantal: ARGUMENT_MIN - telTekens(argument.trim()) })
+              : t('deadline.lang_genoeg')}
           </Caption>
         </>
       ) : null}
@@ -455,10 +462,10 @@ function DeadlineVerzetten({
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <View style={styles.knoppen}>
         <Button variant="primair" busy={bezig} onPress={() => void bewaar()}>
-          {gedeeld ? 'Verzoek versturen' : 'Vastleggen'}
+          {gedeeld ? t('deadline.versturen') : t('deadline.vastleggen')}
         </Button>
         <Button variant="stil" onPress={() => setOpen(false)}>
-          Annuleren
+          {t('deadline.annuleren')}
         </Button>
       </View>
     </Card>
@@ -488,12 +495,12 @@ function Beloning({
 
     return (
       <Card>
-        <Subheading>Je beloning</Subheading>
+        <Subheading>{t('beloning.jouw')}</Subheading>
         <Body>{bestaand.body}</Body>
+        <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
         <Caption>
-          {stand.titel} — {stand.uitleg}
+          {t('beloning.vastgelegd_op', { datum: bestaand.confirmed_at.slice(0, 10) })}
         </Caption>
-        <Caption>Vastgelegd op {bestaand.confirmed_at.slice(0, 10)}.</Caption>
       </Card>
     );
   }
@@ -509,23 +516,23 @@ function Beloning({
 
   return (
     <Card>
-      <Subheading>Beloning</Subheading>
-      <Body muted>Wat gun je jezelf als dit lukt? Optioneel, maar het werkt.</Body>
+      <Subheading>{t('beloning.kop')}</Subheading>
+      <Body muted>{t('beloning.uitleg')}</Body>
       {/*
         ⚠️ QS8-85: dit moet er letterlijk staan. Iemand die een bedrag invult,
            hoort niet te hoeven raden of de app zijn rekening gaat plunderen.
            Er staat een test op deze zin.
       */}
-      <Caption>De app rekent niets af. Dit wordt alleen bijgehouden.</Caption>
+      <Caption>{t('commitment.geen_afrekening')}</Caption>
       <Field
-        label="Mijn beloning"
+        label={t('beloning.veld')}
         value={tekst}
         onChangeText={setTekst}
-        placeholder="Een weekend weg zonder laptop"
+        placeholder={t('beloning.voorbeeld')}
       />
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <Button busy={bezig} onPress={() => void bewaar()}>
-        Vastleggen
+        {t('beloning.vastleggen')}
       </Button>
     </Card>
   );
@@ -565,11 +572,9 @@ function Straf({
 
     return (
       <Card>
-        <Subheading>Je straf</Subheading>
+        <Subheading>{t('straf.jouw')}</Subheading>
         <Body>{bestaand.body}</Body>
-        <Caption>
-          {stand.titel} — {stand.uitleg}
-        </Caption>
+        <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
         {/*
           ⚠️ De knop verdwijnt zodra de straf verschuldigd is, en dat is geen
              cosmetiek: `commitments_update` weigert het dan sowieso (0057). Een
@@ -584,7 +589,7 @@ function Straf({
               void trekIn(bestaand.id).then(onKlaar);
             }}
           >
-            Intrekken
+            {t('straf.intrekken')}
           </Button>
         ) : null}
       </Card>
@@ -594,11 +599,8 @@ function Straf({
   if (groepen.length === 0) {
     return (
       <Card nested>
-        <Subheading>Straf</Subheading>
-        <Body muted>
-          Een straf gaat naar een van je groepen. Je zit nog nergens in, dus dit kan pas als je een
-          buddy-groep hebt.
-        </Body>
+        <Subheading>{t('straf.kop')}</Subheading>
+        <Body muted>{t('straf.geen_groep')}</Body>
       </Card>
     );
   }
@@ -620,23 +622,21 @@ function Straf({
   if (bevestigen) {
     return (
       <Card>
-        <Subheading>Weet je het zeker?</Subheading>
+        <Subheading>{t('straf.zeker')}</Subheading>
         <Body>
-          Als <Body>{gekozenGroep?.name ?? 'je groep'}</Body> dit te zien krijgt, is dat omdat je
-          streefdatum verstreken is zonder dat je doel af was.
+          {t('straf.bevestig_uitleg', {
+            groep: gekozenGroep?.name ?? t('straf.jouw_groep'),
+          })}
         </Body>
-        <Body muted>Dan geldt: {tekst}</Body>
-        <Caption>
-          Tot dat moment ziet niemand dit — ook je groep niet. Intrekken kan zolang het niet in
-          werking is getreden.
-        </Caption>
+        <Body muted>{t('straf.dan_geldt', { tekst })}</Body>
+        <Caption>{t('straf.tot_dan')}</Caption>
         {fout === null ? null : <Caption danger>{fout}</Caption>}
         <View style={styles.knoppen}>
           <Button variant="primair" busy={bezig} onPress={() => void bewaar()}>
-            Ja, leg dit vast
+            {t('straf.ja_vastleggen')}
           </Button>
           <Button variant="stil" onPress={() => setBevestigen(false)}>
-            Terug
+            {t('straf.terug')}
           </Button>
         </View>
       </Card>
@@ -645,32 +645,26 @@ function Straf({
 
   return (
     <Card>
-      <Subheading>Straf</Subheading>
-      <Body muted>
-        Wat gebeurt er als je je streefdatum niet haalt? Optioneel, en je kunt hem intrekken zolang
-        hij niet in werking is.
-      </Body>
-      <Caption>
-        De app rekent niets af en verwerkt geen geld. Je legt hier vast wat je met je groep
-        afspreekt; het uitvoeren doen jullie zelf.
-      </Caption>
+      <Subheading>{t('straf.kop')}</Subheading>
+      <Body muted>{t('straf.uitleg')}</Body>
+      <Caption>{t('straf.geen_geld')}</Caption>
 
       <Field
-        label="Mijn straf"
+        label={t('straf.veld')}
         value={tekst}
         onChangeText={setTekst}
-        placeholder="Ik trakteer de groep op een etentje"
+        placeholder={t('straf.voorbeeld')}
       />
 
       <Choice
-        label="Welke groep profiteert?"
+        label={t('straf.welke_groep')}
         opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
         waarde={groepId}
         onKies={setGroepId}
       />
 
       <Button disabled={tekst.trim().length < 3} onPress={() => setBevestigen(true)}>
-        Verder
+        {t('straf.verder')}
       </Button>
     </Card>
   );
@@ -709,10 +703,8 @@ function Afronden({
   if (doel.status === 'completed') {
     return (
       <Card>
-        <Subheading>Afgerond</Subheading>
-        <Body muted>
-          Je hebt dit doel afgerond. Je groepen hebben het gezien en je beloning is vrijgekomen.
-        </Body>
+        <Subheading>{t('afronden.afgerond')}</Subheading>
+        <Body muted>{t('afronden.afgerond_uitleg')}</Body>
       </Card>
     );
   }
@@ -755,11 +747,9 @@ function Afronden({
   if (open > 0) {
     return (
       <Card nested>
-        <Subheading>Afronden</Subheading>
+        <Subheading>{t('afronden.kop')}</Subheading>
         <Body muted>
-          {open === 1
-            ? 'Er staat nog één mijlpaal open. Vink hem af, of laat hem vallen als hij niet meer nodig is — dan kun je dit doel afronden.'
-            : `Er staan nog ${open} mijlpalen open. Vink ze af, of laat vallen wat niet meer nodig is — dan kun je dit doel afronden.`}
+          {open === 1 ? t('afronden.een_open') : t('afronden.meer_open', { aantal: open })}
         </Body>
       </Card>
     );
@@ -767,16 +757,14 @@ function Afronden({
 
   return (
     <Card>
-      <Subheading>Afronden</Subheading>
-      <Body muted>
-        Alle mijlpalen staan af. Rond je doel af, dan weet je groep het en komt je beloning vrij.
-      </Body>
+      <Subheading>{t('afronden.kop')}</Subheading>
+      <Body muted>{t('afronden.alles_af')}</Body>
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <Button
         onPress={() => setVraagt(true)}
-        accessibilityLabel={`Doel ${doel.title ?? ''} afronden`}
+        accessibilityLabel={t('afronden.knop_label', { titel: doel.title ?? '' })}
       >
-        Dit doel is af
+        {t('afronden.knop')}
       </Button>
     </Card>
   );
@@ -804,15 +792,10 @@ function Archiveren({
 
   return (
     <Card nested>
-      <Subheading>{gearchiveerd ? 'Uit het archief halen' : 'Archiveren'}</Subheading>
-      <Body muted>
-        {gearchiveerd
-          ? 'Het doel komt weer op je dashboard en in je groepsoverzicht.'
-          : 'Het doel verdwijnt van je dashboard en uit groepsoverzichten. Je geschiedenis blijft ' +
-            'volledig staan: voltooiingen, goedkeuringen en punten. Je kunt dit altijd terugdraaien.'}
-      </Body>
+      <Subheading>{gearchiveerd ? t('archief.terughalen_kop') : t('archief.kop')}</Subheading>
+      <Body muted>{gearchiveerd ? t('archief.terughalen_uitleg') : t('archief.uitleg')}</Body>
       <Button busy={bezig} onPress={() => void schakel()}>
-        {gearchiveerd ? 'Terughalen' : 'Archiveren'}
+        {gearchiveerd ? t('archief.terughalen') : t('archief.archiveren')}
       </Button>
     </Card>
   );
@@ -850,44 +833,49 @@ function Herplannen({
   const weken = risico.reden?.weken_over ?? null;
   const open = risico.reden?.open_mijlpalen ?? null;
 
+  /**
+   * ⚠️ Vier sleutels en geen ternair middenin de zin. Er stonden er twee —
+   *    `is`/`zijn` en `week`/`weken` — en die vorm werkt alleen in een taal met
+   *    precies twee meervoudsvormen. Bovendien las hij "Er staan 1 mijlpalen
+   *    open" zodra er nog één over was: het meervoud van de mijlpalen was
+   *    helemaal niet meegenomen.
+   */
+  const stand =
+    open === null || weken === null
+      ? ''
+      : open === 1
+        ? weken === 1
+          ? t('herplannen.stand_1_1')
+          : t('herplannen.stand_1_n', { weken })
+        : weken === 1
+          ? t('herplannen.stand_n_1', { open })
+          : t('herplannen.stand_n_n', { open, weken });
+
   return (
     <Card nested>
-      <Subheading>Deze datum gaat niet meer lukken</Subheading>
+      <Subheading>{t('herplannen.kop')}</Subheading>
 
       <Body muted>
-        {open !== null && weken !== null
-          ? `Er staan ${open} mijlpalen open en er ${weken === 1 ? 'is' : 'zijn'} nog ${weken} ${weken === 1 ? 'week' : 'weken'}. `
-          : ''}
-        Dat is geen ramp en het zegt niets over jou — het zegt dat het plan niet
-        meer klopt. Een doel bijstellen werkt beter dan het stilletjes laten
-        doodbloeden.
+        {stand}
+        {t('herplannen.geen_ramp')}
       </Body>
 
-      <Body>Drie dingen die je kunt doen:</Body>
+      <Body>{t('herplannen.drie_dingen')}</Body>
 
       <View style={styles.uitwegen}>
         <View style={styles.uitweg}>
-          <Body>Verzet je streefdatum</Body>
-          <Caption>
-            Hierboven bij &ldquo;Deadline&rdquo;. Deel je dit doel met een groep, dan vraag je er
-            akkoord voor — dat kost je geen punten.
-          </Caption>
+          <Body>{t('herplannen.datum_kop')}</Body>
+          <Caption>{t('herplannen.datum_uitleg')}</Caption>
         </View>
 
         <View style={styles.uitweg}>
-          <Body>Laat mijlpalen vallen</Body>
-          <Caption>
-            Bij &ldquo;Mijlpalen&rdquo;. Wat je laat vallen telt niet meer mee, en je
-            geschiedenis blijft staan.
-          </Caption>
+          <Body>{t('herplannen.mijlpalen_kop')}</Body>
+          <Caption>{t('herplannen.mijlpalen_uitleg')}</Caption>
         </View>
 
         <View style={styles.uitweg}>
-          <Body>Maak het doel kleiner</Body>
-          <Caption>
-            Pas de mijlpalen aan naar wat er wél in past. Liever een doel dat je haalt dan een
-            plan dat klopte in maart.
-          </Caption>
+          <Body>{t('herplannen.kleiner_kop')}</Body>
+          <Caption>{t('herplannen.kleiner_uitleg')}</Caption>
         </View>
       </View>
 
@@ -899,14 +887,10 @@ function Herplannen({
            die dat moment verschuift, en dat mag geen verrassing zijn.
       */}
       {heeftStraf ? (
-        <Caption danger>
-          Let op: je hebt een straf ingesteld op dit doel. Die treedt in werking als je
-          streefdatum verstrijkt zonder dat het doel af is. Verzet je de datum, dan verschuift
-          dat moment mee.
-        </Caption>
+        <Caption danger>{t('herplannen.let_op_straf')}</Caption>
       ) : null}
 
-      <Caption>Je reeks en je geschiedenis blijven bij alle drie gewoon staan.</Caption>
+      <Caption>{t('herplannen.reeks_blijft')}</Caption>
     </Card>
   );
 }
@@ -964,10 +948,8 @@ function HulpVragen({
   if (verstuurd) {
     return (
       <Card nested>
-        <Subheading>Je vraag staat in de groep</Subheading>
-        <Body muted>
-          Je buddy&apos;s kunnen erop reageren in de groepschat. Dat is precies waar ze voor zijn.
-        </Body>
+        <Subheading>{t('hulpvraag.verstuurd_kop')}</Subheading>
+        <Body muted>{t('hulpvraag.verstuurd_uitleg')}</Body>
       </Card>
     );
   }
@@ -992,11 +974,8 @@ function HulpVragen({
   if (!open) {
     return (
       <Card nested>
-        <Subheading>Vastgelopen? Vraag je groep</Subheading>
-        <Body muted>
-          Je loopt achter op dit doel. Daar is je groep voor — twee zinnen en iemand denkt met je
-          mee. Je ziet precies wat je verstuurt voordat het weggaat.
-        </Body>
+        <Subheading>{t('hulpvraag.kop')}</Subheading>
+        <Body muted>{t('hulpvraag.uitleg')}</Body>
 
         <View style={styles.knoppen}>
           <Button
@@ -1011,10 +990,10 @@ function HulpVragen({
               setOpen(true);
             }}
           >
-            Vraag om hulp
+            {t('hulpvraag.vraag_knop')}
           </Button>
           <Button variant="stil" onPress={verberg}>
-            Nu even niet
+            {t('hulpvraag.niet_nu')}
           </Button>
         </View>
       </Card>
@@ -1023,11 +1002,11 @@ function HulpVragen({
 
   return (
     <Card nested>
-      <Subheading>Wat wil je vragen?</Subheading>
+      <Subheading>{t('hulpvraag.wat_vragen')}</Subheading>
 
       <Field
-        label="Je bericht"
-        hint="Pas het gerust aan. Dit gaat als jouw bericht naar de groepschat."
+        label={t('hulpvraag.bericht')}
+        hint={t('hulpvraag.bericht_hint')}
         value={tekst}
         onChangeText={setTekst}
         multiline
@@ -1037,7 +1016,7 @@ function HulpVragen({
 
       {groepen.length === 1 ? null : (
         <Choice
-          label="Naar welke groep?"
+          label={t('hulpvraag.welke_groep')}
           opties={groepen.map((g) => ({ waarde: g.group_id, label: g.name }))}
           waarde={gekozenGroep}
           onKies={setGroepId}
@@ -1053,10 +1032,10 @@ function HulpVragen({
           disabled={tekst.trim().length < 3}
           onPress={() => void verstuur()}
         >
-          Versturen
+          {t('hulpvraag.versturen')}
         </Button>
         <Button variant="stil" disabled={bezig} onPress={() => setOpen(false)}>
-          Annuleren
+          {t('hulpvraag.annuleren')}
         </Button>
       </View>
     </Card>
@@ -1084,7 +1063,7 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
 
   return (
     <Card nested>
-      <Subheading>Haalbaarheid</Subheading>
+      <Subheading>{t('radar.kop')}</Subheading>
 
       <RisicoBadge
         stand={risico.stand}
@@ -1093,11 +1072,11 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
 
       {waarom ? (
         <Button variant="stil" onPress={() => setWaarom(false)}>
-          Verbergen
+          {t('radar.verbergen')}
         </Button>
       ) : (
         <Button variant="stil" onPress={() => setWaarom(true)}>
-          Waarom?
+          {t('radar.waarom')}
         </Button>
       )}
 
@@ -1108,7 +1087,7 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
            groep terechtkomt. Wil je je groep om hulp vragen, dan is dat een
            knop die jij indrukt (QS8-95).
       */}
-      <Caption>Alleen jij ziet dit. Je groep krijgt je haalbaarheid nooit te zien.</Caption>
+      <Caption>{t('radar.alleen_jij')}</Caption>
     </Card>
   );
 }
@@ -1222,14 +1201,11 @@ function Mijlpalen({
 
   return (
     <Card nested>
-      <Subheading>Mijlpalen</Subheading>
+      <Subheading>{t('mijlpalenblok.kop')}</Subheading>
 
       {mijlpalen.length === 0 ? (
         <>
-          <Body muted>
-            Nog geen mijlpalen. Knip je doel op in tussenresultaten die je kunt aanwijzen — dan
-            weet je elke week waar je aan werkt.
-          </Body>
+          <Body muted>{t('mijlpalenblok.leeg')}</Body>
           {/*
             ⚠️ De Doelcoach staat hier en niet bovenaan het scherm, en alleen bij
                een doel zónder mijlpalen. Hij is een hulpmiddel bij een leeg doel,
@@ -1237,7 +1213,7 @@ function Mijlpalen({
                ernaast te blijven bestaan (QS8-39, criterium 1).
           */}
           <Button variant="primair" onPress={onCoach}>
-            Laat de Doelcoach ze voorstellen
+            {t('mijlpalenblok.coach')}
           </Button>
         </>
       ) : (
@@ -1246,8 +1222,12 @@ function Mijlpalen({
             <View key={m.id} style={styles.mijlpaal}>
               <Body>{m.title}</Body>
               <Caption>
-                {m.status === 'done' ? 'Gehaald' : `Stap ${i + 1} van ${mijlpalen.length}`}
-                {m.target_date === null ? '' : ` · streefdatum ${m.target_date}`}
+                {m.status === 'done'
+                  ? t('mijlpalenblok.gehaald')
+                  : t('mijlpalenblok.stap', { nummer: i + 1, totaal: mijlpalen.length })}
+                {m.target_date === null
+                  ? ''
+                  : t('mijlpalenblok.streefdatum', { datum: m.target_date })}
               </Caption>
 
               <View style={styles.knoppen}>
@@ -1259,38 +1239,40 @@ function Mijlpalen({
                 */}
                 {m.status === 'done' ? (
                   <Button variant="stil" onPress={() => void zetStatus(m.id, 'todo')}>
-                    Toch niet gehaald
+                    {t('mijlpalenblok.toch_niet')}
                   </Button>
                 ) : (
-                  <Button onPress={() => void zetStatus(m.id, 'done')}>Gehaald</Button>
+                  <Button onPress={() => void zetStatus(m.id, 'done')}>
+                    {t('mijlpalenblok.zet_gehaald')}
+                  </Button>
                 )}
 
                 {i === 0 ? null : (
                   <Button
                     variant="stil"
-                    accessibilityLabel={`${m.title} omhoog`}
+                    accessibilityLabel={t('mijlpalenblok.omhoog_label', { titel: m.title })}
                     onPress={() => void schuif(m.id, 'omhoog')}
                   >
-                    Omhoog
+                    {t('mijlpalenblok.omhoog')}
                   </Button>
                 )}
 
                 {i === mijlpalen.length - 1 ? null : (
                   <Button
                     variant="stil"
-                    accessibilityLabel={`${m.title} omlaag`}
+                    accessibilityLabel={t('mijlpalenblok.omlaag_label', { titel: m.title })}
                     onPress={() => void schuif(m.id, 'omlaag')}
                   >
-                    Omlaag
+                    {t('mijlpalenblok.omlaag')}
                   </Button>
                 )}
 
                 <Button
                   variant="stil"
-                  accessibilityLabel={`${m.title} verwijderen`}
+                  accessibilityLabel={t('mijlpalenblok.verwijderen_label', { titel: m.title })}
                   onPress={() => void weg(m.id)}
                 >
-                  Verwijderen
+                  {t('mijlpalenblok.verwijderen')}
                 </Button>
               </View>
             </View>
@@ -1303,11 +1285,11 @@ function Mijlpalen({
       {open ? (
         <View style={styles.pauzeForm}>
           <Field
-            label="Nieuwe mijlpaal"
-            hint="Een tussenresultaat dat je kunt aanwijzen. Bijvoorbeeld: eerste tienduizend woorden."
+            label={t('mijlpalenblok.nieuwe')}
+            hint={t('mijlpalenblok.nieuwe_hint')}
             value={titel}
             onChangeText={setTitel}
-            placeholder="Eerste tienduizend woorden"
+            placeholder={t('mijlpalenblok.nieuwe_voorbeeld')}
           />
 
           <View style={styles.knoppen}>
@@ -1317,7 +1299,7 @@ function Mijlpalen({
               disabled={titel.trim().length < 3}
               onPress={() => void voegToe()}
             >
-              Toevoegen
+              {t('mijlpalenblok.toevoegen')}
             </Button>
             <Button
               variant="stil"
@@ -1327,12 +1309,12 @@ function Mijlpalen({
                 setFout(null);
               }}
             >
-              Annuleren
+              {t('mijlpalenblok.annuleren')}
             </Button>
           </View>
         </View>
       ) : (
-        <Button onPress={() => setOpen(true)}>Mijlpaal toevoegen</Button>
+        <Button onPress={() => setOpen(true)}>{t('mijlpalenblok.toevoegen_knop')}</Button>
       )}
     </Card>
   );
@@ -1430,21 +1412,21 @@ function WeekdoelToevoegen({
   if (!open) {
     return (
       <Button variant="primair" block onPress={() => setOpen(true)}>
-        Weekdoel toevoegen
+        {t('weekdoelform.knop')}
       </Button>
     );
   }
 
   return (
     <Card nested>
-      <Subheading>Wat wil je deze week af hebben?</Subheading>
+      <Subheading>{t('weekdoelform.kop')}</Subheading>
 
       <Field
-        label="Weekdoel"
-        hint="Eén ding, deze week. Bijvoorbeeld: drie klantgesprekken voeren."
+        label={t('weekdoelform.titel')}
+        hint={t('weekdoelform.titel_hint')}
         value={titel}
         onChangeText={setTitel}
-        placeholder="3 klantgesprekken voeren"
+        placeholder={t('weekdoelform.titel_voorbeeld')}
       />
 
       {/*
@@ -1455,19 +1437,19 @@ function WeekdoelToevoegen({
            verloren week.
       */}
       <Field
-        label="De vloer (aanbevolen)"
-        hint="Wat haal je ook in een rotweek? Dit halen laat je reeks doorlopen — alleen de punten verschillen."
+        label={t('weekdoelform.vloer')}
+        hint={t('weekdoelform.vloer_hint')}
         value={vloer}
         onChangeText={setVloer}
-        placeholder="1 gesprek ingepland"
+        placeholder={t('weekdoelform.vloer_voorbeeld')}
       />
 
       <Field
-        label="Het plafond"
-        hint="Waar ga je voor als de week meezit?"
+        label={t('weekdoelform.plafond')}
+        hint={t('weekdoelform.plafond_hint')}
         value={plafond}
         onChangeText={setPlafond}
-        placeholder="3 gesprekken gevoerd"
+        placeholder={t('weekdoelform.plafond_voorbeeld')}
       />
 
       {/*
@@ -1476,10 +1458,10 @@ function WeekdoelToevoegen({
       */}
       {mijlpalen.length === 0 ? null : (
         <Choice
-          label="Hoort dit bij een mijlpaal?"
-          hint="Mag ook los onder je doel hangen."
+          label={t('weekdoelform.mijlpaal')}
+          hint={t('weekdoelform.mijlpaal_hint')}
           opties={[
-            { waarde: LOS_VAN_MIJLPAAL, label: 'Los onder dit doel' },
+            { waarde: LOS_VAN_MIJLPAAL, label: t('weekdoelform.los') },
             ...mijlpalen.map((m) => ({ waarde: m.id, label: m.title })),
           ]}
           waarde={mijlpaalId}
@@ -1496,7 +1478,7 @@ function WeekdoelToevoegen({
           disabled={titel.trim().length < 3 || klok === null}
           onPress={() => void bewaar()}
         >
-          Toevoegen
+          {t('weekdoelform.toevoegen')}
         </Button>
         <Button
           variant="stil"
@@ -1506,7 +1488,7 @@ function WeekdoelToevoegen({
             setFout(null);
           }}
         >
-          Annuleren
+          {t('weekdoelform.annuleren')}
         </Button>
       </View>
     </Card>
@@ -1602,12 +1584,8 @@ function Adempauzes({
 
   return (
     <Card nested>
-      <Subheading>Adempauze</Subheading>
-      <Body muted>
-        Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet dan een of twee
-        weken stil. Die weken kosten je geen punt en je reeks blijft staan waar hij staat —
-        hij groeit alleen niet mee.
-      </Body>
+      <Subheading>{t('adempauze.kop')}</Subheading>
+      <Body muted>{t('adempauze.uitleg')}</Body>
 
       {/*
         ⚠️ Alleen zeggen dat de groep het ziet als er ook echt een groep is. Bij
@@ -1615,10 +1593,7 @@ function Adempauzes({
            deze zin een waarschuwing over een risico dat niet bestaat.
       */}
       {gedeeld ? (
-        <Caption>
-          Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer. Ze zien niet welke
-          weekdoelen je wel of niet gehaald hebt.
-        </Caption>
+        <Caption>{t('adempauze.groep_ziet')}</Caption>
       ) : null}
 
       {pauzes.length === 0 ? null : (
@@ -1630,17 +1605,25 @@ function Adempauzes({
             return (
               <View key={p.id} style={styles.pauze}>
                 <Body>
-                  Week van {p.starts_cycle}
-                  {p.ends_cycle === p.starts_cycle ? '' : ` tot en met de week van ${p.ends_cycle}`}
+                  {t('adempauze.week_van', { datum: p.starts_cycle })}
+                  {p.ends_cycle === p.starts_cycle
+                    ? ''
+                    : t('adempauze.tot_en_met', { datum: p.ends_cycle })}
                 </Body>
-                <Caption>{voorbij ? 'Voorbij' : begonnen ? 'Loopt nu' : 'Ingepland'}</Caption>
+                <Caption>
+                  {voorbij
+                    ? t('adempauze.voorbij')
+                    : begonnen
+                      ? t('adempauze.loopt')
+                      : t('adempauze.ingepland')}
+                </Caption>
 
                 {/* Annuleren kan alleen zolang hij nog niet begonnen is — de RPC
                     weigert de rest, en dan is de knop tonen een belofte die de
                     database niet nakomt. */}
                 {begonnen ? null : (
                   <Button variant="stil" onPress={() => void annuleer(p.id)}>
-                    Annuleren
+                    {t('adempauze.annuleren')}
                   </Button>
                 )}
               </View>
@@ -1654,21 +1637,21 @@ function Adempauzes({
       {open ? (
         <View style={styles.pauzeForm}>
           <Choice
-            label="Vanaf welke week?"
-            hint="Een adempauze kondig je vooraf aan, dus de week die nu loopt kan niet meer."
+            label={t('adempauze.vanaf')}
+            hint={t('adempauze.vanaf_hint')}
             opties={kandidaten.map((c, i) => ({
               waarde: String(i) as '0' | '1',
-              label: `Week van ${c.startDate}`,
+              label: t('adempauze.week_van', { datum: c.startDate }),
             }))}
             waarde={startIndex}
             onKies={setStartIndex}
           />
 
           <Choice
-            label="Hoe lang?"
+            label={t('adempauze.hoe_lang')}
             opties={[
-              { waarde: 'een', label: 'Eén week' },
-              { waarde: 'twee', label: 'Twee weken' },
+              { waarde: 'een', label: t('adempauze.een_week') },
+              { waarde: 'twee', label: t('adempauze.twee_weken') },
             ]}
             waarde={lengte}
             onKies={setLengte}
@@ -1676,7 +1659,7 @@ function Adempauzes({
 
           <View style={styles.knoppen}>
             <Button variant="primair" busy={bezig} onPress={() => void plan()}>
-              Inplannen
+              {t('adempauze.inplannen')}
             </Button>
             <Button
               variant="stil"
@@ -1686,12 +1669,12 @@ function Adempauzes({
                 setFout(null);
               }}
             >
-              Annuleren
+              {t('adempauze.annuleren')}
             </Button>
           </View>
         </View>
       ) : (
-        <Button onPress={() => setOpen(true)}>Adempauze inplannen</Button>
+        <Button onPress={() => setOpen(true)}>{t('adempauze.inplannen_knop')}</Button>
       )}
     </Card>
   );
@@ -1756,9 +1739,9 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
     <Button
       variant="stil"
       onPress={() => setVraagt(true)}
-      accessibilityLabel={`Doel ${doel.title ?? ''} weggooien`}
+      accessibilityLabel={t('weggooien.label', { titel: doel.title ?? '' })}
     >
-      Per ongeluk aangemaakt? Weggooien
+      {t('weggooien.knop')}
     </Button>
   );
 }

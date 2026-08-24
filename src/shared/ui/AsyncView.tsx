@@ -49,7 +49,7 @@ export function AsyncView<T>({
   if (error !== undefined && error !== null) {
     return (
       <View style={styles.blok}>
-        <Subheading>Dat lukte niet</Subheading>
+        <Subheading>{t('laden.kop_mislukt')}</Subheading>
         {/*
           ⚠️ Nooit de rauwe foutmelding tonen. Die kan de waarde bevatten die een
              constraint brak — bij Postgres staat die letterlijk in de tekst — en

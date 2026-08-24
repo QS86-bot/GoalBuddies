@@ -462,7 +462,7 @@ function DeKaart({
 
   return (
     <Card>
-      <Subheading>Wat de groep deelde</Subheading>
+      <Subheading>{t('weekafsluiting.wat_gedeeld')}</Subheading>
 
       {zichtbaar.length === 0 ? (
         <Body muted>{t('weekafsluiting.nog_niemand')}</Body>

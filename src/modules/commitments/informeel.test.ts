@@ -3,6 +3,9 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { en } from '../../shared/i18n/en';
+import { nl } from '../../shared/i18n/nl';
+
 /**
  * QS8-85 — commitments blijven informeel in de MVP.
  *
@@ -89,9 +92,32 @@ describe('commitments blijven informeel', () => {
    * Acceptatiecriterium 2: de UI is expliciet dat dit bijgehouden wordt en niet
    * afgerekend. Een gebruiker die "ik trakteer op een etentje" invult, hoort
    * niet te hoeven raden of de app zijn rekening gaat plunderen.
+   *
+   * ⚠️ **Deze test greep tot QS8-115 in het schermbestand naar de letterlijke
+   *    zin, en dat is precies de fout die regel 18 beschrijft.** Toen de tekst
+   *    naar de catalogus verhuisde, bewaakte hij nog steeds iets — alleen niet
+   *    meer de belofte. Hij kijkt nu naar de náád: het scherm moet de sleutel
+   *    gebruiken, én de sleutel moet in béide talen de belofte doen. Eén van de
+   *    twee losschroeven maakt hem rood.
+   *
+   * ⚠️ De Engelse kant wordt op betekenis getoetst en niet op een letterlijke
+   *    zin. Een vertaling mag anders lopen; hij mag alleen niet stiekem iets
+   *    anders beloven dan de Nederlandse.
    */
   it('zegt in het scherm dat de app niets afrekent', () => {
     const scherm = lees('app/doel/[id].tsx');
-    expect(scherm).toContain('De app rekent niets af');
+    expect(scherm).toContain("t('commitment.geen_afrekening')");
+
+    expect(nl['commitment.geen_afrekening']).toContain('rekent niets af');
+    expect(en['commitment.geen_afrekening'].toLowerCase()).toContain('settles nothing');
+  });
+
+  /**
+   * Dezelfde belofte in het strafformulier, waar hij nog een stap verder gaat:
+   * daar staat er ook "verwerkt geen geld" bij.
+   */
+  it('zegt bij de straf dat er geen geld verwerkt wordt', () => {
+    expect(nl['straf.geen_geld']).toContain('verwerkt geen geld');
+    expect(en['straf.geen_geld'].toLowerCase()).toContain('no money');
   });
 });

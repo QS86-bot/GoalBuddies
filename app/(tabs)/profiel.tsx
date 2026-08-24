@@ -105,9 +105,9 @@ export default function Profiel() {
             <VieringKeuze />
 
             <Card nested>
-              <Subheading>Uitloggen</Subheading>
-              <Body muted>Je blijft lid van je groepen. Je doelen blijven staan.</Body>
-              <Button onPress={() => void signOut()}>Uitloggen</Button>
+              <Subheading>{t('profiel.uitloggen_kop')}</Subheading>
+              <Body muted>{t('profiel.uitloggen_uitleg')}</Body>
+              <Button onPress={() => void signOut()}>{t('profiel.uitloggen_knop')}</Button>
             </Card>
 
             <AccountVerwijderen />

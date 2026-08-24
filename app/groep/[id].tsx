@@ -158,7 +158,7 @@ export default function GroepDetail() {
             ) : null}
 
             <Card>
-              <Subheading>Wie er meedoen</Subheading>
+              <Subheading>{t('groepscherm.wie_meedoen')}</Subheading>
               {/*
                 ⚠️ "Nog niets deze week" is geen oordeel en de rij zegt dat ook
                    niet: MemberRow laat een leeg vak zien in plaats van een grijs
@@ -335,7 +335,7 @@ function DeadlineVerzoeken({
 
   return (
     <Card>
-      <Subheading>Een buddy vraagt om meer tijd</Subheading>
+      <Subheading>{t('groepscherm.meer_tijd')}</Subheading>
 
       <AsyncView
         loading={loading}

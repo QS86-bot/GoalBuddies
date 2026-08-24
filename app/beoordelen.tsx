@@ -131,8 +131,8 @@ export default function Beoordelen() {
             */}
             {verouderd ? (
               <Card nested>
-                <Body muted>Er is intussen iets veranderd in de lijst.</Body>
-                <Button onPress={herlaad}>Lijst verversen</Button>
+                <Body muted>{t('beoordelen.verouderd')}</Body>
+                <Button onPress={herlaad}>{t('beoordelen.verversen')}</Button>
               </Card>
             ) : null}
 
@@ -167,10 +167,14 @@ export default function Beoordelen() {
             {w.meer || pagina > 0 ? (
               <View style={styles.acties}>
                 {pagina > 0 ? (
-                  <Button onPress={() => setPagina((p) => Math.max(0, p - 1))}>Vorige</Button>
+                  <Button onPress={() => setPagina((p) => Math.max(0, p - 1))}>
+                    {t('beoordelen.vorige')}
+                  </Button>
                 ) : null}
                 {w.meer ? (
-                  <Button onPress={() => setPagina((p) => p + 1)}>Meer laden</Button>
+                  <Button onPress={() => setPagina((p) => p + 1)}>
+                    {t('beoordelen.meer_laden')}
+                  </Button>
                 ) : null}
               </View>
             ) : null}

@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { useProfiel, useSession } from '@/modules/auth';
 import { CATEGORIEEN, categorieLabels, maakDoel, type Categorie } from '@/modules/goals';
+import { t } from '@/shared/i18n';
 import { localDateIn, now } from '@/shared/time';
 import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
 
@@ -61,29 +62,29 @@ export default function NieuwDoel() {
   }
 
   return (
-    <Screen title="Nieuw doel" eyebrow="ÉÉN DOEL TEGELIJK">
+    <Screen title={t('nieuwdoel.titel')} eyebrow={t('nieuwdoel.eyebrow')}>
       <Card>
         <Field
-          label="Wat wil je bereiken?"
-          hint="Zo concreet dat een ander kan zien of het gelukt is."
+          label={t('nieuwdoel.wat')}
+          hint={t('nieuwdoel.wat_hint')}
           value={titel}
           onChangeText={setTitel}
-          placeholder="Mijn boek afmaken"
+          placeholder={t('nieuwdoel.wat_voorbeeld')}
         />
 
         <Field
-          label="Wie word je als dit lukt?"
-          hint="Optioneel, maar dit is de vraag die je er over vier maanden nog doorheen sleept."
+          label={t('nieuwdoel.identiteit')}
+          hint={t('nieuwdoel.identiteit_hint')}
           value={identiteit}
           onChangeText={setIdentiteit}
-          placeholder="Iemand die schrijft, en niet iemand die wil schrijven"
+          placeholder={t('nieuwdoel.identiteit_voorbeeld')}
         />
       </Card>
 
       <Card>
         <Field
-          label="Streefdatum"
-          hint="Moet in de toekomst liggen. Je kunt hem later verzetten, maar dat wordt bijgehouden."
+          label={t('nieuwdoel.streefdatum')}
+          hint={t('nieuwdoel.streefdatum_hint')}
           value={datum}
           onChangeText={setDatum}
           placeholder="2026-12-31"
@@ -92,7 +93,7 @@ export default function NieuwDoel() {
         />
 
         <Choice
-          label="Categorie"
+          label={t('nieuwdoel.categorie')}
           opties={CATEGORIEEN.map((c) => ({ waarde: c, label: categorieLabels()[c] }))}
           waarde={categorie}
           onKies={setCategorie}
@@ -100,21 +101,21 @@ export default function NieuwDoel() {
       </Card>
 
       <Card nested>
-        <Subheading>Meer details</Subheading>
-        <Body muted>Allebei optioneel. De Doelcoach gebruikt ze straks om beter te splitsen.</Body>
+        <Subheading>{t('nieuwdoel.meer_details')}</Subheading>
+        <Body muted>{t('nieuwdoel.meer_details_uitleg')}</Body>
 
         <Field
-          label="Beschrijving"
+          label={t('nieuwdoel.beschrijving')}
           value={beschrijving}
           onChangeText={setBeschrijving}
           multiline
           numberOfLines={4}
-          placeholder="Waar gaat het over, en wat heb je al gedaan?"
+          placeholder={t('nieuwdoel.beschrijving_voorbeeld')}
         />
 
         <Field
-          label="Uren per week"
-          hint="Hoeveel tijd heb je hier realistisch voor? Voedt straks de Risico-radar."
+          label={t('nieuwdoel.uren')}
+          hint={t('nieuwdoel.uren_hint')}
           value={uren}
           onChangeText={setUren}
           inputMode="numeric"
@@ -125,10 +126,10 @@ export default function NieuwDoel() {
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
       <Button variant="primair" block busy={bezig} onPress={() => void bewaar()}>
-        Doel aanmaken
+        {t('nieuwdoel.aanmaken')}
       </Button>
       <Button variant="stil" block onPress={() => router.back()}>
-        Annuleren
+        {t('nieuwdoel.annuleren')}
       </Button>
     </Screen>
   );

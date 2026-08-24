@@ -49,6 +49,20 @@ const TEKSTPROPS = [
   'accessibilityHint',
 ];
 
+/**
+ * Namen die van iemand anders zijn.
+ *
+ * ⚠️ **Een merknaam hóórt niet in de catalogus, en dat is geen uitzondering uit
+ *    gemak.** Een sleutel in `nl.ts` en `en.ts` is een uitnodiging om er iets
+ *    anders van te maken, en "Apple" is in élke taal Apple. Zou hij er wel in
+ *    staan, dan is de eerste vertaler die hem netjes lokaliseert een bug in een
+ *    inlogknop.
+ *
+ * ⚠️ Deze lijst hoort kort te blijven. Groeit hij, dan is dat een teken dat er
+ *    gewone app-tekst in weggemoffeld wordt.
+ */
+const MERKNAMEN = new Set(['Apple', 'Google']);
+
 /** Twee woorden achter elkaar, met minstens één kleine letter — dus een zin. */
 const ZIN = /[A-Za-zÀ-ÿ]{2,}[ ,][a-zà-ÿ]{2,}/;
 
@@ -121,8 +135,35 @@ function kandidaten(regel) {
     if (m?.[1]) uit.push({ tekst: m[1], losseWoordenTellen: false });
   }
 
-  // 2. Kale JSX-tekst: een regel die met een hoofdletter begint en niet met een
-  //    haakje, accolade of punt-komma eindigt.
+  // 3. JSX-tekst tussen twee tags op dezelfde regel: `<Subheading>Kop</Subheading>`.
+  //
+  // ⚠️ **Dit is de vierde ijking, en hij kwam pas bovendrijven toen de controle
+  //    groen stond.** De variant hieronder eist dat de regel met een hoofdletter
+  //    begint, en dus zag hij niets van een zin die achter een openingstag staat.
+  //    In `app/doel/[id].tsx` waren dat er tientallen — "Je verzoek loopt",
+  //    "Deadline", "Nieuwe streefdatum" — allemaal onzichtbaar voor de meting.
+  //
+  //    Een controle die nul meldt terwijl er tekst staat, is erger dan geen
+  //    controle: hij geeft toestemming om te stoppen met kijken. Vandaar de
+  //    regel dat je een nieuw meetinstrument één keer naast een handmatige
+  //    telling legt — en dat opnieuw doet zodra hij groen wordt.
+  //
+  // ⚠️ De sluittag (`</`) staat niet voor niets in het patroon. Zonder die eis
+  //    meldde deze variant bij de eerste meting negen coderegels: `Promise<T>`
+  //    gevolgd door een `<`, een vergelijking `maand > 12 || dag < 1`, en de pijl
+  //    van elke `(x) => f(x) <= n`. Alleen tekst die eindigt op een sluittag is
+  //    tekst tussen twee JSX-tags.
+  for (const m of regel.matchAll(/>([^<>{}=]{3,})<\//g)) {
+    const inhoud = m[1]?.trim();
+    // Drie letters achter elkaar, anders is het opmaak, een streepje of een
+    // HTML-entiteit.
+    if (inhoud && /[A-Za-zÀ-ÿ]{3,}/.test(inhoud) && !/^&\w+;$/.test(inhoud)) {
+      uit.push({ tekst: inhoud, losseWoordenTellen: true });
+    }
+  }
+
+  // 2. Kale JSX-tekst op een eigen regel: een regel die met een hoofdletter
+  //    begint en niet met een haakje, accolade of punt-komma eindigt.
   //
   // ⚠️ **Hier geldt de tweewoordeneis niet, en dat is een correctie op de eerste
   //    versie.** Die miste "Terug", "Goedkeuren" en "Versturen" — losse woorden
@@ -169,6 +210,7 @@ for (const map of MAPPEN) {
         if (/\bt\(/.test(regel)) return;
 
         for (const { tekst, losseWoordenTellen } of kandidaten(regel)) {
+          if (MERKNAMEN.has(tekst)) continue;
           if (!losseWoordenTellen && !ZIN.test(tekst)) continue;
           if (losseWoordenTellen && !/[A-Za-zÀ-ÿ]{3,}/.test(tekst)) continue;
           treffers.push(`${pad.replace(WORTEL, '')}:${i + 1}  ${tekst.slice(0, 70)}`);

@@ -326,7 +326,7 @@ function StandBlok({
            "vloer" als bekend woord, en het klopte bovendien niet voor een
            weekdoel zónder vloer — daar telt gewoon het plafond.
       */}
-      <Body muted>Je reeks telt weken, geen dagen.</Body>
+      <Body muted>{t('vandaag.reeks_telt_weken')}</Body>
 
       <View style={styles.standen}>
         {rijen.map(({ stand, titel }) => (
@@ -464,7 +464,7 @@ function DoorschuifKaart({
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
-      <Button onPress={() => setVraagt(true)}>Meenemen naar deze week</Button>
+      <Button onPress={() => setVraagt(true)}>{t('vandaag.meenemen_knop')}</Button>
     </Card>
   );
 }
@@ -646,7 +646,7 @@ function WeekdoelKaart({
       */}
       {vragen.length === 0 ? null : (
         <Card nested>
-          <Subheading>Je buddy heeft een vraag</Subheading>
+          <Subheading>{t('vandaag.buddy_vraag')}</Subheading>
           {vragen.map((v) => (
             <Body key={v.id} muted>
               &ldquo;{v.comment}&rdquo;

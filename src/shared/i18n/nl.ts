@@ -976,6 +976,340 @@ export const nl = {
   //    en nooit naar de groep. Verwater hem niet in een vertaling.
   'interview.stuck_before.toelichting':
     'Alleen voor jou en de Doelcoach zichtbaar — je groep ziet dit nooit.',
+
+  // ---------------------------------------------------------------------------
+  // Een doel aanmaken — QS8-31
+  // ---------------------------------------------------------------------------
+  'nieuwdoel.titel': 'Nieuw doel',
+  'nieuwdoel.eyebrow': 'ÉÉN DOEL TEGELIJK',
+  'nieuwdoel.wat': 'Wat wil je bereiken?',
+  'nieuwdoel.wat_hint': 'Zo concreet dat een ander kan zien of het gelukt is.',
+  'nieuwdoel.wat_voorbeeld': 'Mijn boek afmaken',
+  // ⚠️ De identiteitsvraag staat bóven de beschrijving en niet bij de optionele
+  //    velden onderaan. Dat is de vondst uit de Habit Huddle-analyse (voorstel
+  //    §1.5); verplaats hem niet naar beneden omdat hij optioneel is.
+  'nieuwdoel.identiteit': 'Wie word je als dit lukt?',
+  'nieuwdoel.identiteit_hint':
+    'Optioneel, maar dit is de vraag die je er over vier maanden nog doorheen sleept.',
+  'nieuwdoel.identiteit_voorbeeld': 'Iemand die schrijft, en niet iemand die wil schrijven',
+  'nieuwdoel.streefdatum': 'Streefdatum',
+  'nieuwdoel.streefdatum_hint':
+    'Moet in de toekomst liggen. Je kunt hem later verzetten, maar dat wordt bijgehouden.',
+  'nieuwdoel.categorie': 'Categorie',
+  'nieuwdoel.meer_details': 'Meer details',
+  'nieuwdoel.meer_details_uitleg':
+    'Allebei optioneel. De Doelcoach gebruikt ze straks om beter te splitsen.',
+  'nieuwdoel.beschrijving': 'Beschrijving',
+  'nieuwdoel.beschrijving_voorbeeld': 'Waar gaat het over, en wat heb je al gedaan?',
+  'nieuwdoel.uren': 'Uren per week',
+  'nieuwdoel.uren_hint':
+    'Hoeveel tijd heb je hier realistisch voor? Voedt straks de Risico-radar.',
+  'nieuwdoel.aanmaken': 'Doel aanmaken',
+  'nieuwdoel.annuleren': 'Annuleren',
+
+  // ---------------------------------------------------------------------------
+  // Het doelscherm — QS8-32 en verder
+  // ---------------------------------------------------------------------------
+  'doelscherm.titel': 'Doel',
+  // ⚠️ "Bestaat niet" en niet "geen toegang", en dat is geen slordige tekst maar
+  //    het scherm dat doet wat de database doet: RLS geeft nul rijen terug of je
+  //    nu naar een verwijderd doel kijkt of naar dat van iemand anders. Zou hier
+  //    "je mag dit niet zien" staan, dan verraadt de melding dát het bestaat.
+  'doelscherm.leeg_titel': 'Dit doel bestaat niet',
+  'doelscherm.leeg_body': 'Of het is verwijderd, of het is niet van jou. Controleer de link.',
+  'doelscherm.categorie_streefdatum': '{categorie} · streefdatum {datum}',
+  'doelscherm.weekdoelen_afgerond': '{gedaan} van {totaal} weekdoelen afgerond',
+
+  'deadline.verzoek_loopt': 'Je verzoek loopt',
+  'deadline.verzoek_uitleg': 'Je vroeg om {oud} te verzetten naar {nieuw}.',
+  'deadline.buddy_beslist':
+    'Een van je buddy’s beslist hierover. Zolang dat niet gebeurd is, blijft de datum ' +
+    'staan zoals hij was.',
+  'deadline.verzoek_intrekken': 'Verzoek intrekken',
+  'deadline.kop': 'Deadline',
+  'deadline.akkoord': 'Je buddy ging akkoord: de datum staat nu op {datum}.',
+  'deadline.afgewezen': 'Je buddy vond het nog te vroeg om te verzetten. De datum is niet veranderd.',
+  'deadline.opnieuw_vragen': 'Je kunt het opnieuw vragen als er iets veranderd is.',
+  'deadline.gedeeld_uitleg':
+    'Je deelt dit doel met je groep, dus de datum verzet je samen. Schrijf erbij wat er ' +
+    'veranderd is; een buddy beslist erover.',
+  'deadline.alleen_uitleg':
+    'Verzetten mag. Het wordt wel bijgehouden, zodat je later eerlijk kunt terugkijken.',
+  'deadline.vraag_knop': 'Vraag om te verzetten',
+  'deadline.verzet_knop': 'Deadline verzetten',
+  'deadline.nieuwe_datum': 'Nieuwe streefdatum',
+  'deadline.datum_label': 'Datum',
+  // ⚠️ "Wat is er veranderd" en niet "waarom haal je het niet". De vraag gaat over
+  //    de omstandigheid en niet over de persoon — dezelfde toon als vraag 2 van de
+  //    weekafsluiting, en om dezelfde reden. Houd dat vast in élke vertaling.
+  'deadline.wat_veranderd': 'Wat is er veranderd?',
+  'deadline.wat_veranderd_hint':
+    'Je buddy’s in {groep} lezen dit en beslissen erop. Eén eerlijke zin is genoeg.',
+  'deadline.jouw_groep': 'je groep',
+  'deadline.argument_voorbeeld':
+    'Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op.',
+  'deadline.nog_tekens': 'Nog {aantal} tekens te gaan.',
+  'deadline.lang_genoeg': 'Lang genoeg.',
+  'deadline.versturen': 'Verzoek versturen',
+  'deadline.vastleggen': 'Vastleggen',
+  'deadline.annuleren': 'Annuleren',
+
+  // ---------------------------------------------------------------------------
+  // Beloning en straf op het doelscherm — QS8-34, QS8-35 en QS8-85
+  // ---------------------------------------------------------------------------
+  'commitment.stand': '{titel} — {uitleg}',
+  // ⚠️ QS8-85, acceptatiecriterium 2: deze belofte moet er letterlijk staan.
+  //    Iemand die "ik trakteer op een etentje" invult, hoort niet te hoeven raden
+  //    of de app zijn rekening gaat plunderen. Er staat een test op deze sleutel
+  //    die hem in béide talen nakijkt — verwater hem niet in een vertaling.
+  'commitment.geen_afrekening': 'De app rekent niets af. Dit wordt alleen bijgehouden.',
+
+  'beloning.jouw': 'Je beloning',
+  'beloning.vastgelegd_op': 'Vastgelegd op {datum}.',
+  'beloning.kop': 'Beloning',
+  'beloning.uitleg': 'Wat gun je jezelf als dit lukt? Optioneel, maar het werkt.',
+  'beloning.veld': 'Mijn beloning',
+  'beloning.voorbeeld': 'Een weekend weg zonder laptop',
+  'beloning.vastleggen': 'Vastleggen',
+
+  'straf.jouw': 'Je straf',
+  'straf.intrekken': 'Intrekken',
+  'straf.kop': 'Straf',
+  'straf.geen_groep':
+    'Een straf gaat naar een van je groepen. Je zit nog nergens in, dus dit kan pas als je ' +
+    'een buddy-groep hebt.',
+  'straf.zeker': 'Weet je het zeker?',
+  'straf.bevestig_uitleg':
+    'Als {groep} dit te zien krijgt, is dat omdat je streefdatum verstreken is zonder dat ' +
+    'je doel af was.',
+  'straf.dan_geldt': 'Dan geldt: {tekst}',
+  // ⚠️ Domeinregel 11 in één zin: de groep krijgt pas leesrecht op het moment dat
+  //    de straf verschuldigd wordt. Tot dan is dit van jou alleen.
+  'straf.tot_dan':
+    'Tot dat moment ziet niemand dit — ook je groep niet. Intrekken kan zolang het niet in ' +
+    'werking is getreden.',
+  'straf.ja_vastleggen': 'Ja, leg dit vast',
+  'straf.terug': 'Terug',
+  'straf.uitleg':
+    'Wat gebeurt er als je je streefdatum niet haalt? Optioneel, en je kunt hem intrekken ' +
+    'zolang hij niet in werking is.',
+  'straf.geen_geld':
+    'De app rekent niets af en verwerkt geen geld. Je legt hier vast wat je met je groep ' +
+    'afspreekt; het uitvoeren doen jullie zelf.',
+  'straf.veld': 'Mijn straf',
+  'straf.voorbeeld': 'Ik trakteer de groep op een etentje',
+  'straf.welke_groep': 'Welke groep profiteert?',
+  'straf.verder': 'Verder',
+  'straf.jouw_groep': 'je groep',
+
+  // ---------------------------------------------------------------------------
+  // Afronden, archiveren en herplannen — QS8-83, QS8-32 en QS8-96
+  // ---------------------------------------------------------------------------
+  'afronden.afgerond': 'Afgerond',
+  'afronden.afgerond_uitleg':
+    'Je hebt dit doel afgerond. Je groepen hebben het gezien en je beloning is vrijgekomen.',
+  'afronden.kop': 'Afronden',
+  // ⚠️ Twee sleutels en geen ternair in de zin. Zie de meervoudsafspraak boven in
+  //    dit bestand: een taal met drie meervoudsvormen kan met een ternair niets.
+  'afronden.een_open':
+    'Er staat nog één mijlpaal open. Vink hem af, of laat hem vallen als hij niet meer nodig ' +
+    'is — dan kun je dit doel afronden.',
+  'afronden.meer_open':
+    'Er staan nog {aantal} mijlpalen open. Vink ze af, of laat vallen wat niet meer nodig ' +
+    'is — dan kun je dit doel afronden.',
+  'afronden.alles_af':
+    'Alle mijlpalen staan af. Rond je doel af, dan weet je groep het en komt je beloning vrij.',
+  'afronden.knop_label': 'Doel {titel} afronden',
+  'afronden.knop': 'Dit doel is af',
+
+  'archief.terughalen_kop': 'Uit het archief halen',
+  'archief.kop': 'Archiveren',
+  'archief.terughalen_uitleg': 'Het doel komt weer op je dashboard en in je groepsoverzicht.',
+  'archief.uitleg':
+    'Het doel verdwijnt van je dashboard en uit groepsoverzichten. Je geschiedenis blijft ' +
+    'volledig staan: voltooiingen, goedkeuringen en punten. Je kunt dit altijd terugdraaien.',
+  'archief.terughalen': 'Terughalen',
+  'archief.archiveren': 'Archiveren',
+
+  // ⚠️ **Toon: nuchter en behulpzaam, geen verwijt** — acceptatiecriterium 6 van
+  //    QS8-96. Er staat nergens dat je iets fout hebt gedaan. Een deadline die
+  //    niet meer klopt is informatie en geen oordeel; dit is het blok dat mensen
+  //    de app laat houden in plaats van weggooien. Vertaal het niet strenger.
+  'herplannen.kop': 'Deze datum gaat niet meer lukken',
+  'herplannen.stand_1_1': 'Er staat nog één mijlpaal open en er is nog één week. ',
+  'herplannen.stand_1_n': 'Er staat nog één mijlpaal open en er zijn nog {weken} weken. ',
+  'herplannen.stand_n_1': 'Er staan nog {open} mijlpalen open en er is nog één week. ',
+  'herplannen.stand_n_n': 'Er staan nog {open} mijlpalen open en er zijn nog {weken} weken. ',
+  'herplannen.geen_ramp':
+    'Dat is geen ramp en het zegt niets over jou — het zegt dat het plan niet meer klopt. ' +
+    'Een doel bijstellen werkt beter dan het stilletjes laten doodbloeden.',
+  'herplannen.drie_dingen': 'Drie dingen die je kunt doen:',
+  'herplannen.datum_kop': 'Verzet je streefdatum',
+  'herplannen.datum_uitleg':
+    'Hierboven bij “Deadline”. Deel je dit doel met een groep, dan vraag je er akkoord ' +
+    'voor — dat kost je geen punten.',
+  'herplannen.mijlpalen_kop': 'Laat mijlpalen vallen',
+  'herplannen.mijlpalen_uitleg':
+    'Bij “Mijlpalen”. Wat je laat vallen telt niet meer mee, en je geschiedenis blijft staan.',
+  'herplannen.kleiner_kop': 'Maak het doel kleiner',
+  'herplannen.kleiner_uitleg':
+    'Pas de mijlpalen aan naar wat er wél in past. Liever een doel dat je haalt dan een plan ' +
+    'dat klopte in maart.',
+  // ⚠️ Acceptatiecriterium 5 van QS8-96, en het hangt aan domeinregel 11: een
+  //    straf treedt in werking bij een verstreken deadline, dus de datum verzetten
+  //    is precies de handeling die dat moment verschuift. Dat mag geen verrassing
+  //    zijn.
+  'herplannen.let_op_straf':
+    'Let op: je hebt een straf ingesteld op dit doel. Die treedt in werking als je ' +
+    'streefdatum verstrijkt zonder dat het doel af is. Verzet je de datum, dan verschuift ' +
+    'dat moment mee.',
+  'herplannen.reeks_blijft': 'Je reeks en je geschiedenis blijven bij alle drie gewoon staan.',
+
+  // ---------------------------------------------------------------------------
+  // De hulpvraag en de Risico-radar op het doelscherm — QS8-94 en QS8-95
+  // ---------------------------------------------------------------------------
+  // ⚠️ Dit is een van de drie routes waarlangs tegenslag de groep bereikt, en
+  //    hij loopt via de gebruiker zelf (domeinregel 7). De teksten zeggen daarom
+  //    op elke stap wat er gebeurt en wanneer: "je ziet precies wat je verstuurt
+  //    voordat het weggaat". Verwater dat niet — zonder die zin is het een knop
+  //    die iets over je naar de groep stuurt.
+  'hulpvraag.verstuurd_kop': 'Je vraag staat in de groep',
+  'hulpvraag.verstuurd_uitleg':
+    'Je buddy’s kunnen erop reageren in de groepschat. Dat is precies waar ze voor zijn.',
+  'hulpvraag.kop': 'Vastgelopen? Vraag je groep',
+  'hulpvraag.uitleg':
+    'Je loopt achter op dit doel. Daar is je groep voor — twee zinnen en iemand denkt met je ' +
+    'mee. Je ziet precies wat je verstuurt voordat het weggaat.',
+  'hulpvraag.vraag_knop': 'Vraag om hulp',
+  'hulpvraag.niet_nu': 'Nu even niet',
+  'hulpvraag.wat_vragen': 'Wat wil je vragen?',
+  'hulpvraag.bericht': 'Je bericht',
+  'hulpvraag.bericht_hint': 'Pas het gerust aan. Dit gaat als jouw bericht naar de groepschat.',
+  'hulpvraag.welke_groep': 'Naar welke groep?',
+  'hulpvraag.versturen': 'Versturen',
+  'hulpvraag.annuleren': 'Annuleren',
+
+  'radar.kop': 'Haalbaarheid',
+  'radar.verbergen': 'Verbergen',
+  'radar.waarom': 'Waarom?',
+  // ⚠️ Deze zin staat er omdat de gebruiker anders moet raden hoeveel hij deelt.
+  //    Een risicostand is een afgeleide van gemiste weken — precies waar
+  //    domeinregel 7 over gaat, en de reden dat migratie 0050 `goal_risk`
+  //    eigenaar-only maakte. De belofte moet in élke taal even hard staan.
+  'radar.alleen_jij': 'Alleen jij ziet dit. Je groep krijgt je haalbaarheid nooit te zien.',
+
+  // ---------------------------------------------------------------------------
+  // Het mijlpalenblok op het doelscherm — QS8-39
+  // ---------------------------------------------------------------------------
+  'mijlpalenblok.kop': 'Mijlpalen',
+  'mijlpalenblok.leeg':
+    'Nog geen mijlpalen. Knip je doel op in tussenresultaten die je kunt aanwijzen — dan weet ' +
+    'je elke week waar je aan werkt.',
+  'mijlpalenblok.coach': 'Laat de Doelcoach ze voorstellen',
+  'mijlpalenblok.gehaald': 'Gehaald',
+  'mijlpalenblok.stap': 'Stap {nummer} van {totaal}',
+  'mijlpalenblok.streefdatum': ' · streefdatum {datum}',
+  // ⚠️ "Toch niet gehaald" en niet "ongedaan maken": op gehaald zetten plaatst een
+  //    systeembericht in elke gekoppelde groep, en een chatbericht is een
+  //    onveranderlijke kopie. Terugzetten haalt dat bericht niet weg. De knop zegt
+  //    wat de handeling is, niet dat hij de vorige uitwist.
+  'mijlpalenblok.toch_niet': 'Toch niet gehaald',
+  'mijlpalenblok.zet_gehaald': 'Gehaald',
+  'mijlpalenblok.omhoog': 'Omhoog',
+  'mijlpalenblok.omlaag': 'Omlaag',
+  'mijlpalenblok.verwijderen': 'Verwijderen',
+  'mijlpalenblok.omhoog_label': '{titel} omhoog',
+  'mijlpalenblok.omlaag_label': '{titel} omlaag',
+  'mijlpalenblok.verwijderen_label': '{titel} verwijderen',
+  'mijlpalenblok.nieuwe': 'Nieuwe mijlpaal',
+  'mijlpalenblok.nieuwe_hint':
+    'Een tussenresultaat dat je kunt aanwijzen. Bijvoorbeeld: eerste tienduizend woorden.',
+  'mijlpalenblok.nieuwe_voorbeeld': 'Eerste tienduizend woorden',
+  'mijlpalenblok.toevoegen': 'Toevoegen',
+  'mijlpalenblok.annuleren': 'Annuleren',
+  'mijlpalenblok.toevoegen_knop': 'Mijlpaal toevoegen',
+
+  // ---------------------------------------------------------------------------
+  // Weekdoel toevoegen, adempauze en weggooien — QS8-43, QS8-82 en QS8-105
+  // ---------------------------------------------------------------------------
+  'weekdoelform.knop': 'Weekdoel toevoegen',
+  'weekdoelform.kop': 'Wat wil je deze week af hebben?',
+  'weekdoelform.titel': 'Weekdoel',
+  'weekdoelform.titel_hint': 'Eén ding, deze week. Bijvoorbeeld: drie klantgesprekken voeren.',
+  'weekdoelform.titel_voorbeeld': '3 klantgesprekken voeren',
+  // ⚠️ De vloer staat vóór het plafond en krijgt de uitleg — domeinregel 8. Hij is
+  //    optioneel, dus moedigt de UI hem actief aan; doet ze dat niet, dan vult
+  //    niemand hem in en is een slechte week weer een verloren week. Houd die
+  //    aanmoediging in élke vertaling.
+  'weekdoelform.vloer': 'De vloer (aanbevolen)',
+  'weekdoelform.vloer_hint':
+    'Wat haal je ook in een rotweek? Dit halen laat je reeks doorlopen — alleen de punten ' +
+    'verschillen.',
+  'weekdoelform.vloer_voorbeeld': '1 gesprek ingepland',
+  'weekdoelform.plafond': 'Het plafond',
+  'weekdoelform.plafond_hint': 'Waar ga je voor als de week meezit?',
+  'weekdoelform.plafond_voorbeeld': '3 gesprekken gevoerd',
+  'weekdoelform.mijlpaal': 'Hoort dit bij een mijlpaal?',
+  'weekdoelform.mijlpaal_hint': 'Mag ook los onder je doel hangen.',
+  'weekdoelform.los': 'Los onder dit doel',
+  'weekdoelform.toevoegen': 'Toevoegen',
+  'weekdoelform.annuleren': 'Annuleren',
+
+  'adempauze.kop': 'Adempauze',
+  'adempauze.uitleg':
+    'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet dan een of twee ' +
+    'weken stil. Die weken kosten je geen punt en je reeks blijft staan waar hij staat — hij ' +
+    'groeit alleen niet mee.',
+  // ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** Dit is domeinregel
+  //    7's eigen uitzondering: de route loopt via jou, want je kondigt hem zelf
+  //    aan. De statuskolom per week is sinds migratie 0047 dicht. Deze zin zegt
+  //    precies waar die grens ligt; laat de tweede helft er nooit af.
+  'adempauze.groep_ziet':
+    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer. Ze zien niet welke ' +
+    'weekdoelen je wel of niet gehaald hebt.',
+  'adempauze.week_van': 'Week van {datum}',
+  'adempauze.tot_en_met': ' tot en met de week van {datum}',
+  'adempauze.voorbij': 'Voorbij',
+  'adempauze.loopt': 'Loopt nu',
+  'adempauze.ingepland': 'Ingepland',
+  'adempauze.annuleren': 'Annuleren',
+  'adempauze.vanaf': 'Vanaf welke week?',
+  'adempauze.vanaf_hint':
+    'Een adempauze kondig je vooraf aan, dus de week die nu loopt kan niet meer.',
+  'adempauze.hoe_lang': 'Hoe lang?',
+  'adempauze.een_week': 'Eén week',
+  'adempauze.twee_weken': 'Twee weken',
+  'adempauze.inplannen': 'Inplannen',
+  'adempauze.inplannen_knop': 'Adempauze inplannen',
+
+  'weggooien.label': 'Doel {titel} weggooien',
+  'weggooien.knop': 'Per ongeluk aangemaakt? Weggooien',
+
+  // ---------------------------------------------------------------------------
+  // Resten die de uitgebreide tekstcontrole vond — QS8-115
+  // ---------------------------------------------------------------------------
+  // ⚠️ Deze zeventien zinnen stonden in mappen die al "af" heetten. Ze zaten
+  //    achter een openingstag op dezelfde regel, en die vorm zag de controle in
+  //    zijn eerste drie versies niet. Ze staan hier bij elkaar omdat ze één ding
+  //    gemeen hebben: ze zijn gevonden door de meter scherper te zetten nadat hij
+  //    groen stond, niet door beter te kijken.
+  'laden.kop_mislukt': 'Dat lukte niet',
+  'ketting.kop': 'De Ketting',
+  'lid.adempauze': 'Adempauze',
+  'vandaag.reeks_telt_weken': 'Je reeks telt weken, geen dagen.',
+  'vandaag.meenemen_knop': 'Meenemen naar deze week',
+  'vandaag.buddy_vraag': 'Je buddy heeft een vraag',
+  'profiel.uitloggen_kop': 'Uitloggen',
+  'profiel.uitloggen_uitleg': 'Je blijft lid van je groepen. Je doelen blijven staan.',
+  'profiel.uitloggen_knop': 'Uitloggen',
+  'beoordelen.verouderd': 'Er is intussen iets veranderd in de lijst.',
+  'beoordelen.verversen': 'Lijst verversen',
+  'beoordelen.vorige': 'Vorige',
+  'beoordelen.meer_laden': 'Meer laden',
+  'groepscherm.wie_meedoen': 'Wie er meedoen',
+  'groepscherm.meer_tijd': 'Een buddy vraagt om meer tijd',
+  'coach.poging_telt': 'Elke poging telt mee in je tien per dag.',
+  'weekafsluiting.wat_gedeeld': 'Wat de groep deelde',
 } as const;
 
 export type Sleutel = keyof typeof nl;
