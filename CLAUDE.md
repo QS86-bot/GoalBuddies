@@ -207,8 +207,33 @@ Voordat er één feature gebouwd wordt:
    vóór X" werkt — schrijf zo'n aantekening op zodra een besluit aan een
    toekomstige feature hangt.**
 
+   ⚠️ **Besluit A41, 24-08-2026: er komt een keuze per groep — en de standaard
+   blijft beschermd.** Bij het aanmaken kiest een groep tussen **beschermd**
+   (zoals nu, en de standaard) en **open** (de groep ziet ook tegenslag). Dat is
+   variant 2 van QS8-128; variant 3, de regel afschaffen, is afgewezen.
+
+   Wat dat besluit **niet** is:
+
+   - Geen verruiming van bestaande groepen. Alles wat vandaag dicht zit, blijft
+     dicht tot de epic gebouwd is, en bestaande groepen zijn **beschermd**.
+   - Geen tweede pad naast RLS. De keuze wordt een kolom op `groups` waar de
+     policies op variëren; hij mag nooit alleen in de UI bestaan.
+   - Geen keuze die je later stilzwijgend omzet. Een groep die van beschermd naar
+     open gaat, verandert met terugwerkende kracht wat er over ándere leden
+     zichtbaar wordt — dus dat is een handeling met dezelfde zorgvuldigheid als
+     een commitment device (domeinregel 5).
+
+   ⚠️ **Tot die epic gebouwd is, geldt deze regel onverkort.** Bouw niets "vast
+   open" vooruitlopend op de keuze; dat is precies hoe een standaard verschuift
+   zonder dat iemand het besloten heeft.
+
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.
+
+   ⚠️ **En juist bij zakelijk gebruik weegt dat zwaarder, niet lichter.** Zit er
+   een leidinggevende in een buddy-groep, dan beschermt deze regel niet meer tegen
+   schaamte maar tegen een beoordelingsgesprek. Dat is een zwaardere reden om hem
+   te houden dan de reden waarom hij er staat.
 
    **Bij élk nieuw ding dat de groep te zien krijgt, twee vragen:** kan hieruit
    iemands gemiste week worden afgeleid, én kan iemand dat met één API-verzoek
@@ -262,11 +287,21 @@ Voordat er één feature gebouwd wordt:
     - **Punten zijn privé.** `points_ledger` en het puntentotaal zijn alleen voor de
       eigenaar leesbaar. Een dalend totaal is zichtbaar bewijs van een gemiste week,
       en dat botst met domeinregel 7. De groep ziet De Ketting en mijlpalen.
+
+      ⚠️ **Besluit A42, 24-08-2026: zo houden.** De vraag was of een gedeeld
+      puntentotaal niet competitiever is. Dat is het, en het lekt: wie het totaal
+      deelt, deelt het missen via een omweg. Wat wél mag is een teller die **alleen
+      optelt** — "deze groep heeft samen 47 weken afgerond". Die gaat nooit omlaag
+      en verraadt niemand. Dat is dezelfde vorm als De Ketting en zijn mijlpalen
+      (migratie 0070), dus het is een bestaand patroon en geen idee.
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
 
     ⚠️ **Een deadline verschuiven kost geen punten** en dat is een besluit, geen
-    omissie (Q-TODO A7). De rem zit ergens anders: verschuiven kán alleen met
+    omissie (Q-TODO A7). **Herbevestigd op 24-08-2026 als besluit A43** (QS8-129):
+    er komt géén minpunt op verschuiven zonder akkoord. Dat zou de enige plek in
+    het model zijn waar je je uit een afspraak kunt kópen, en een punt is
+    goedkoper dan een gesprek. De rem zit ergens anders: verschuiven kán alleen met
     akkoord van een buddy, en zonder akkoord blijft de datum staan. Zou er ook een
     minpunt op staan, dan betaal je twee keer voor één gebeurtenis. Alleen
     `correction` mag verder negatief boeken, en dat is per definitie het
