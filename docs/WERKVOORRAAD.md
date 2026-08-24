@@ -28,9 +28,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    spelen op een lege database precies het schema van productie af — negen
    vingerafdrukken, alle negen gelijk. Uitleg in §2 en in
    `docs/decisions/004-migratieregister.md`.
-4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **544 geslaagd, 290 overgeslagen**; typecheck en lint groen.
-   **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
+4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
+   en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
+   `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
+   **304 geslaagd, 1 overgeslagen.** Zonder credentials geeft `npm test`
+   **553 geslaagd en 293 overgeslagen**; typecheck en lint groen.
+   ⚠️ In CI staat de suite nog niet — zie §3b.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
    **QS8-124**, en de PWA eromheen is getoetst (**QS8-117**). **Niemand heeft nog
@@ -305,11 +308,16 @@ die andermans reacties meenam bij accountverwijdering (A3), de aanwezigheids-
 matrix in `chain_links` (EPIC 8) — is van een soort die CI per definitie niet
 ziet. Ze kwamen alle vier uit de RLS-suite of uit een reviewagent.
 
-**Wanneer deze stap kan vervallen:** zodra er een lokale of aparte Supabase-stack
-is (Q-TODO **A9**, Linear **QS8-119**). Nu draaien die tests tegen productie en
-maken ze echte accounts aan met een sleutel die RLS omzeilt — daarom staan ze
-niet in CI en daarom is dit handwerk. Het automatiseren van deze stap is meer
-waard dan elke instelling op GitHub.
+**Wanneer deze stap kan vervallen:** de helft ervan is op 24-08 vervallen.
+QS8-119 is af: `npm run rls:stack && npm run rls:lokaal` draait de volle suite
+zonder credentials en zonder het echte project aan te raken. Dat is handwerk van
+tien seconden in plaats van een run tegen productie.
+
+⚠️ **Wat er nog handwerk blijft:** de suite staat nog niet in CI. Dat kan nu wél
+zonder secrets — het vraagt een Postgres-service en de PostgREST-binary in de
+runner — en het is bewust buiten QS8-119 gehouden, want het is een wijziging aan
+de pijplijn. Zolang dat niet gebeurd is, blijft gelden: **groen in GitHub bewijst
+niets over domeinregel 7.**
 
 ⚠️ Twee dingen zijn hier sinds 23-08 veranderd. **De aanmeldlimiet is geen reden
 meer**: de harnas logt niet meer in maar tekent zijn eigen tokens (QS8-116), dus
@@ -364,7 +372,7 @@ een agent alleen kan afmaken:
 
 | # | Wat | Waarom het blokkeert | Wie |
 |---|---|---|---|
-| 1 | **A47 — de RLS-suite** | Een volle run geeft wisselende, valse roodstanden. Daarmee bewijst de belangrijkste poort van dit project niets meer. Zie §0 | besluit + werk |
+| 1 | ✅ **A47 — de RLS-suite** | Opgelost op 24-08 met QS8-119. Er zat één aanwijsbare oorzaak onder: twee aankondigingen uit dezelfde transactie dragen dezelfde `created_at`, en de test sorteerde daarop. 10 van de 10 rondes schoon, elk met een verse database | af |
 | 2 | **QS8-114 — web push** | `expo-notifications` staat erin, maar de app draait alleen op het web en web push is een ánder mechanisme (VAPID, service worker, `PushSubscription`). Vandaag komt er dus geen enkele melding aan | besluit over opslag + werk |
 | 3 | **Supabase Auth-URL's** | Bevestigingsmail wijst naar het oude adres. Dashboardhandeling van een minuut, §0a | Quinten |
 

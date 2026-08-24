@@ -141,9 +141,12 @@ de eigenaar blokkeert. Uitleg in
   dat vraagt een browser plus de VAPID-sleutels in `.env`, en dat kan een sessie
   in de cloud niet. Zolang dat bewijs er niet is, is EPIC 11 niet af. QS8-117
   (iOS) wacht hierop.
-* ✅ **De migratiebestanden bouwen het schema wél op** — QS8-122 is op 24-08 af
-  en QS8-119 is daarmee vrij. `npm run schema:opbouwen` speelt ze af op een lege
-  database; de negen vingerafdrukken waren alle negen gelijk aan productie.
+* ✅ **De migratiebestanden bouwen het schema wél op** — QS8-122 is op 24-08 af.
+  `npm run schema:opbouwen` speelt ze af op een lege database; de negen
+  vingerafdrukken waren alle negen gelijk aan productie.
+* ✅ **De RLS-suite draait lokaal** — QS8-119, ook 24-08. `npm run rls:stack` en
+  `npm run rls:lokaal`: een echte PostgREST op dat schema, geen credentials, vijf
+  seconden voor 304 tests. Het echte project wordt niet meer aangeraakt.
 
 **Volgende aan de beurt: EPIC 9, het commitment device.** QS8-85 is af
 (commitments blijven informeel, met een test die het bewaakt). Open zijn QS8-83
@@ -206,11 +209,15 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    misgegaan: ik las de uitslag pas achteraf en had toen al gecommit. De inhoud
    bleek in orde, de volgorde niet.
 
-   ⚠️ **Zolang A47 open staat, is een volle run niet te vertrouwen.** Falen er
-   RLS-bestanden, draai ze dan één voor één opnieuw vóór je concludeert dat er
-   iets stuk is — de kans is groot dat het de aanmeldlimiet is. Staat er
-   "skipped" bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen
-   niets over autorisatie. Zie WERKVOORRAAD §3b.
+   ✅ **A47 is op 24-08 opgelost** (QS8-119). Er zat één aanwijsbare oorzaak
+   onder: het inhalen van een gemiste ketting-mijlpaal plaatst beide berichten in
+   één transactie, dus met dezelfde `created_at`, en de test sorteerde daarop.
+   10 van de 10 rondes schoon met een verse database.
+
+   ⚠️ Staat er "skipped" bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid
+   en zegt groen niets over autorisatie. Draai `npm run rls:stack` en
+   `npm run rls:lokaal` — dat kost tien seconden en vraagt geen credentials.
+   Zie WERKVOORRAAD §3b.
 5. **Reviewagents naar risico, niet naar schema** (herzien 20-08-2026, zie
    CLAUDE.md regel 19 voor de onderbouwing):
    - **`security-reviewer` draait direct**, bij elke wijziging die auth, RLS,
@@ -282,6 +289,14 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
   regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
   Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **Een opruimstap die stil mislukt, en een suite die daarna groen is op oude
+  data.** Bij QS8-119 stopte het stackscript PostgREST pas ná het herbouwen van
+  de database. `drop database` weigert op open verbindingen, dus de herbouw sloeg
+  over — en de RLS-suite draaide zeventien keer tegen dezelfde database zonder
+  dat er iets rood werd. **Zeventien schone runs bewezen niets.** Een mislukte
+  opruiming hoort hard te zijn, niet een regel die langsglijdt; en als je
+  "opnieuw opgebouwd" beweert, laat er dan een merkteken achter en zoek het daarna.
+
 - **Een meetinstrument dat groen wordt en dus niet meer geijkt wordt.** De
   tekstcontrole van QS8-115 stond op nul en miste toen nog een hele vorm: tekst
   achter een openingstag op dezelfde regel (`<Subheading>Kop</Subheading>`), want
@@ -532,10 +547,12 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
    `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
    `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette
    `{ok:false, reason}`.
-2. **QS8-119** — de RLS-suite tegen een eigen omgeving. QS8-122 lag hiervóór en
-   is op 24-08 af, dus dit kan nu: `scripts/schema-opbouwen.sh` levert een
-   database met exact het schema van productie.
-3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.
+2. **De RLS-suite in CI.** Kan nu zonder secrets: een Postgres-service en de
+   PostgREST-binary in de runner. Bewust buiten QS8-119 gehouden — het is een
+   wijziging aan de pijplijn en verdient een eigen ronde. Zolang het niet gebeurd
+   is, bewijst groen in GitHub niets over domeinregel 7.
+3. **De resterende stukken van EPIC 0, 1 en 11** — de drie epics die nog open
+   staan. Zie het projectoverzicht in Linear.
 
 **Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,
 want dan komt er een tweede lezer: **QS8-123** (hoe merk je dat een als *Laag*
