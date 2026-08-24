@@ -47,6 +47,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
    A42 hangen aan elkaar en raken domeinregel 7), **A46**, **A37** en **B4**.
    A45 en A47 zijn af. Geen van alle blokkeert het bouwen van andere issues.
+   Daar komt sinds 24-08 **QS8-126** bij: de repository staat publiek. Bewust
+   uitgesteld tot de software af is — geen blokkade voor het bouwen, wél vóór de
+   eerste echte gebruiker. Er is niets gelekt; de details staan in dat issue en
+   in `docs/ENGINEER-REVIEW.md`.
 10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
     21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
     (QS8-124), een iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een
