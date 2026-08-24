@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { huddledagen, maakGroep } from '@/modules/buddies';
+import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
 
@@ -41,56 +42,42 @@ export default function NieuweGroep() {
   }
 
   return (
-    <Screen title="Nieuwe groep" eyebrow="DRIE IS DE BESTE MAAT">
+    <Screen title={t('groepnieuw.titel')} eyebrow={t('groepnieuw.eyebrow')}>
       <Card>
         <Field
-          label="Hoe heet je groep?"
-          hint="Twee tot zestig tekens. Iets dat jullie herkennen in een WhatsApp-bericht."
+          label={t('groepnieuw.naam')}
+          hint={t('groepnieuw.naam_hint')}
           value={naam}
           onChangeText={setNaam}
           maxLength={60}
-          placeholder="De donderdagclub"
+          placeholder={t('groepnieuw.naam_voorbeeld')}
         />
       </Card>
 
       <Card>
         <Choice
-          label="Huddledag"
-          hint={
-            'De dag waarop jullie samenkomen. Bepaalt de weekafsluiting, De Ketting en ' +
-            'het groepsoverzicht — niet wanneer jouw eigen weekdoelen resetten, want dat ' +
-            'blijft je persoonlijke week-startdag.'
-          }
+          label={t('groepnieuw.huddledag')}
+          hint={t('groepnieuw.huddledag_hint')}
           opties={huddledagen().map((d) => ({ waarde: d.waarde, label: d.label }))}
           waarde={huddledag}
           onKies={setHuddledag}
         />
-        <Caption>
-          Later te wijzigen. Een lopende ketting breekt daar niet van: schakels blijven staan
-          in de week waarin ze gelegd zijn.
-        </Caption>
+        <Caption>{t('groepnieuw.later_wijzigen')}</Caption>
       </Card>
 
       <Card nested>
-        <Subheading>Wat er daarna gebeurt</Subheading>
-        <Body muted>
-          Je krijgt een uitnodigingslink die je kunt delen. Wie hem opent ziet de groep en
-          waar jullie aan werken, ook zonder account. Je kunt de link altijd vernieuwen of
-          sluiten.
-        </Body>
-        <Body muted>
-          Je wordt beheerder. Er kunnen twaalf mensen in een groep, maar drie tot vijf werkt
-          in de praktijk het best.
-        </Body>
+        <Subheading>{t('groepnieuw.wat_daarna')}</Subheading>
+        <Body muted>{t('groepnieuw.wat_daarna_a')}</Body>
+        <Body muted>{t('groepnieuw.wat_daarna_b')}</Body>
       </Card>
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
       <Button variant="primair" block busy={bezig} onPress={() => void bewaar()}>
-        Groep aanmaken
+        {t('groepnieuw.aanmaken')}
       </Button>
       <Button variant="stil" block onPress={() => router.back()}>
-        Annuleren
+        {t('groepnieuw.annuleren')}
       </Button>
     </Screen>
   );
