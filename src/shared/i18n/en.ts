@@ -247,6 +247,7 @@ export const en: Record<Sleutel, string> = {
   'laden.mislukt': 'Something went wrong while loading. Try again; if it keeps failing, it is on us.',
   'laden.opnieuw': 'Try again',
   'mijlpaal.voortgang_label': '{gehaald} of {totaal} milestones reached',
+  'uitnodiging.open_waarschuwing': 'If you join, this group also sees your missed weeks.',
   'uitnodiging.titel': 'You have been invited',
   'uitnodiging.titel_verlopen': 'This link no longer works',
   'uitnodiging.eyebrow': 'BUDDY GROUP',

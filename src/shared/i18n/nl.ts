@@ -365,6 +365,7 @@ export const nl = {
   'laden.mislukt': 'Er ging iets mis bij het ophalen. Probeer het opnieuw; blijft het misgaan, dan ligt het aan ons.',
   'laden.opnieuw': 'Opnieuw proberen',
   'mijlpaal.voortgang_label': '{gehaald} van {totaal} mijlpalen gehaald',
+  'uitnodiging.open_waarschuwing': 'Doe je mee, dan ziet deze groep ook jouw gemiste weken.',
   'uitnodiging.titel': 'Je bent uitgenodigd',
   'uitnodiging.titel_verlopen': 'Deze link werkt niet meer',
   'uitnodiging.eyebrow': 'BUDDY-GROEP',

@@ -9,6 +9,8 @@ import {
   huddledagLabel,
   neemDeel,
   vergeetOpenstaandeUitnodiging,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
   type Uitnodiging,
 } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
@@ -218,6 +220,25 @@ export default function UitnodigingScherm() {
               {u.detailed ? null : (
                 <Caption>{t('uitnodiging.pas_bij_meedoen')}</Caption>
               )}
+            </Card>
+
+            {/*
+              ⚠️ **Dit blok staat vóór "wat je doet" en niet erna, en dat is geen
+                 opmaak.** Meedoen met een open groep maakt de gemiste weken van
+                 déze bezoeker zichtbaar voor de anderen — dezelfde overgang als
+                 wanneer een groep wordt opengezet, maar zonder systeembericht,
+                 want er verandert niets aan de groep. Dit scherm is de enige plek
+                 waar dat feit kan staan, en dan hoort het boven de knop.
+
+                 Besluit A41; migratie 0080 zet `zichtbaarheid` daarom ook in het
+                 antwoord voor wie nog geen account heeft.
+            */}
+            <Card nested>
+              <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
+              <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
+              {u.zichtbaarheid === 'open' ? (
+                <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
+              ) : null}
             </Card>
 
             <Card nested>

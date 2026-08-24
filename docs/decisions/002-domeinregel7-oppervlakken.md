@@ -232,7 +232,7 @@ oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
 | 4 | Voltooiingen | Niets. Er bestaat geen rij voor een week die niet is afgerond, dus er valt niets te openen | ✅ n.v.t. |
 | 5 | Beoordelingswachtrij | Niets. Alleen ingediende voltooiingen | ✅ n.v.t. |
 | 6 | Punten | **Niets, en dat is een apart besluit** — A42, 24-08-2026. Ook in een open groep blijft `points_ledger` eigenaar-only; wie het totaal deelt, deelt het missen via een omweg. De vorm voor competitie is een teller die alleen optelt | ⛔ **Bewust dicht** |
-| 7 | Uitnodigingspagina | Niets. Vaste projectie zonder persoonsgegevens over voortgang | ✅ n.v.t. |
+| 7 | Uitnodigingspagina | `invite_preview()` noemt de zichtbaarheid, óók zonder account. ⚠️ **Dit was de naad die 0076 niet dekte**: wie meedoet met een groep die al open staat, maakt dezelfde overgang mee als een lid van een groep die wordt opengezet — zijn gemiste weken worden zichtbaar — maar er is geen systeembericht, want er verándert niets aan de groep. Een bericht kan dat ook niet opvangen: wie nieuw is heeft het niet gelezen. Dit scherm is de enige plek waar het feit kan staan, en dus staat het er vóór de knop | ✅ **0080** |
 | 8 | Groepschat | Niets. Wat mensen zelf typen, is altijd hun eigen keuze geweest | ✅ n.v.t. |
 | 9 | Systeemberichten | Niets aan de bestaande tien. Er kwamen er twee bij (6a) die over de gróép gaan. ⚠️ Een open groep krijgt géén nieuw type "X heeft een week gemist": dat zou van een keuze een aankondiging maken, en de allowlist is bewust een migratie waard | ⛔ **Bewust dicht** |
 | 10 | Weekafsluiting | Niets. Route 1 — de gebruiker schrijft en verstuurt zelf | ✅ n.v.t. |
@@ -258,6 +258,15 @@ verruimen, komt langs deze tabel en langs de reden.
 (migraties 0076 t/m 0079). Een lid van een **open** groep ziet van een gekoppeld
 doel de gemiste, doorgeschoven, afgesloten en vrijgestelde weken, de beste reeks,
 de laatste getelde cyclus en de historische aanwezigheid in De Ketting.
+
+⚠️ **Er zijn twee routes naar zichtbaarheid en niet één.** Grens 3 van het
+besluit beschrijft er één — de groep wordt omgezet — en dekt hem met een
+bevestiging, een auditrij en een systeembericht (0076). De tweede is **meedoen**:
+een groep die al open staat verandert niet, dus er is niets aan te kondigen. Daar
+is een *feit vooraf* het antwoord en geen bevestigingsstap (0080), om dezelfde
+reden waarom `create_group()` er geen heeft: in beide gevallen beslist de persoon
+uitsluitend over zijn eigen weken. Bevestigen doe je waar je over een ánder
+beslist.
 
 **Zeven oppervlakken staan bewust dicht, ook daar** — en dat is de grens van het
 besluit, geen restpost: punten (A42), systeemberichten over tegenslag, realtime,

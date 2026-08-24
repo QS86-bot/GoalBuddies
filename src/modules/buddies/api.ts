@@ -565,6 +565,19 @@ export interface Uitnodiging {
   readonly group_name: string;
   readonly icon: string | null;
   readonly huddle_day: number;
+  /**
+   * Staat deze groep open of beschermd? Besluit A41, migratie 0080.
+   *
+   * ⚠️ **Dit is het enige feit op dit scherm dat over de weken van de bezoeker
+   *    zélf gaat.** Meedoen met een open groep maakt zijn gemiste weken zichtbaar
+   *    voor de anderen — dezelfde overgang als wanneer een groep wordt opengezet,
+   *    maar zonder systeembericht, want er verandert niets aan de groep. Dit veld
+   *    is de enige plek waar dat kan staan.
+   *
+   * ⚠️ Ontbreekt hij (een oudere server), dan `beschermd`. Onbekend is beschermd
+   *    — overal in dit besluit dezelfde kant op.
+   */
+  readonly zichtbaarheid: Zichtbaarheid;
   readonly member_count: number;
   /** Ziet deze bezoeker het volledige beeld? Alleen waar als hij ingelogd is. */
   readonly detailed: boolean;
@@ -597,7 +610,18 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
     throw new Error(t('groep.uitnodiging_laden'));
   }
 
-  return data === null ? null : (data as unknown as Uitnodiging);
+  if (data === null) return null;
+
+  const gelezen = data as unknown as Uitnodiging & { zichtbaarheid?: unknown };
+
+  // ⚠️ **Onbekend is beschermd**, en dat is geen defensieve reflex maar de kant
+  //    waar dit hele besluit op leunt. Een oudere server die dit veld nog niet
+  //    stuurt, hoort geen "open" te suggereren: dan zou een bezoeker denken dat
+  //    hij iets deelt wat hij niet deelt, of erger, andersom.
+  const zichtbaarheid: Zichtbaarheid =
+    gelezen.zichtbaarheid === 'open' ? 'open' : 'beschermd';
+
+  return { ...gelezen, zichtbaarheid };
 }
 
 // ---------------------------------------------------------------------------

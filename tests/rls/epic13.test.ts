@@ -29,6 +29,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { addDays, now, userCycle, type IsoDate } from '../../src/shared/time';
 import {
   adminDb,
+  anonDb,
   createTestUser,
   removeTestUsers,
   rlsTestsConfigured,
@@ -852,6 +853,59 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
         expect(error).toBeNull();
         expect(JSON.stringify(data ?? {})).not.toContain(f.alice.id);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('meedoen is de tweede route, en die had geen bericht', () => {
+    /**
+     * ⚠️ **De naad die 0076 niet dekte.** Grens 3 van het besluit gaat over het
+     *    ómzetten van een groep: bevestigen, vastleggen, aankondigen. Wie een
+     *    uitnodigingslink volgt naar een groep die al op `open` staat, maakt
+     *    exact dezelfde overgang mee — zijn gemiste weken worden zichtbaar voor
+     *    anderen — maar er is geen bericht, want er verándert niets aan de groep.
+     *
+     *    Het systeembericht kan dat niet opvangen: dat gaat over het verleden, en
+     *    wie nieuw is heeft het niet gelezen. De enige plek waar dit kan staan is
+     *    het scherm waarop iemand besluit mee te doen, en dus in `invite_preview()`.
+     */
+    it(
+      'noemt de zichtbaarheid van de groep, in beide standen',
+      async () => {
+        const beschermd = await f.carol.db.rpc('invite_preview', {
+          code: f.groepBeschermd.code,
+        });
+        const open = await f.carol.db.rpc('invite_preview', { code: f.groepOpen.code });
+
+        expect(beschermd.error).toBeNull();
+        expect(open.error).toBeNull();
+        expect((beschermd.data as { zichtbaarheid?: string } | null)?.zichtbaarheid).toBe(
+          'beschermd',
+        );
+        expect((open.data as { zichtbaarheid?: string } | null)?.zichtbaarheid).toBe('open');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'noemt hem ook zonder account',
+      async () => {
+        // ⚠️ Buiten de `detailed`-beperking van 0019, en dat is een besluit: het
+        //    is geen persoonsgegeven, en het is precies het feit dat iemand nodig
+        //    heeft om te besluiten of hij een account áánmaakt. Achterhouden tot
+        //    na het inloggen zou de belangrijkste eigenschap van de groep pas
+        //    noemen als je al binnen bent.
+        const { data, error } = await anonDb().rpc('invite_preview', {
+          code: f.groepOpen.code,
+        });
+
+        expect(error).toBeNull();
+
+        const gelezen = data as { zichtbaarheid?: string; detailed?: boolean } | null;
+        expect(gelezen?.detailed).toBe(false);
+        expect(gelezen?.zichtbaarheid).toBe('open');
       },
       TEST_TIMEOUT,
     );
