@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import type { Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { apparaatTijdzone, type UserClock, type Weekday } from '../../shared/time';
+import { type UserClock, type Weekday } from '../../shared/time';
 
 import { profielPatchSchema, type ProfielPatch } from './schemas';
 
@@ -125,13 +125,3 @@ export function userClock(profiel: Pick<Profiel, 'week_start_day' | 'tz'>): User
   };
 }
 
-/**
- * De tijdzone van het toestel, als voorstel bij de onboarding.
- *
- * Een voorstel en geen automatisme: iemand die in Lissabon woont maar zijn
- * telefoon op Amsterdam heeft staan, moet dat kunnen rechtzetten. En wie reist,
- * wil niet dat zijn week verspringt omdat hij een week in Bangkok zat.
- */
-export function voorgesteldeTijdzone(): string {
-  return apparaatTijdzone();
-}

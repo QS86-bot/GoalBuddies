@@ -34,6 +34,7 @@ export {
 export {
   addDays,
   apparaatTijdzone,
+  normaliseerZone,
   tijdzones,
   daysBetween,
   isGeldigeIsoDatum,

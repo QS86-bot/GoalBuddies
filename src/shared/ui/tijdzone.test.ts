@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { normaliseerZone } from '../time';
 import { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
 
 /**
@@ -73,5 +74,27 @@ describe('een ingetypte zone', () => {
     // week" niet meer voor deze gebruiker.
     expect(isBruikbareZone('Europa/Amsterdam')).toBe(false);
     expect(isBruikbareZone('')).toBe(false);
+  });
+});
+
+describe('de opgeslagen vorm', () => {
+  it('maakt van een kleine letters getypte zone de kanonieke schrijfwijze', () => {
+    // ⚠️ `Intl` accepteert `europe/amsterdam` gewoon, dus zonder deze stap komt
+    //    die vorm in de database. Gevolg: het voorstel `Europe/Amsterdam` staat
+    //    naast een knop "Gebruik europe/amsterdam" die hetzelfde doet, en de knop
+    //    "de tijdzone van dit apparaat" verdwijnt daarna nooit meer — want die
+    //    vergelijking is op tekst.
+    expect(normaliseerZone('europe/amsterdam')).toBe('Europe/Amsterdam');
+    expect(normaliseerZone('  ASIA/BANGKOK  ')).toBe('Asia/Bangkok');
+  });
+
+  it('laat een zone die al goed staat met rust', () => {
+    expect(normaliseerZone('Europe/Lisbon')).toBe('Europe/Lisbon');
+  });
+
+  it('gooit niet op iets dat geen zone is', () => {
+    // Onbereikbaar via het scherm — `isBruikbareZone()` staat ervoor — maar een
+    // helper die gooit op rommel is een storing die je pas in productie ziet.
+    expect(normaliseerZone('Europa/Amsterdam')).toBe('Europa/Amsterdam');
   });
 });

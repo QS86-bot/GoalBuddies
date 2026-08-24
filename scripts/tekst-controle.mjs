@@ -190,6 +190,42 @@ function binnenTekstProp(regels) {
 }
 
 /**
+ * Ziet deze regel eruit als JSX?
+ *
+ * ⚠️ **Zonder deze grens is de accoladepas onbruikbaar**, en dat is gemeten: hij
+ *    meldde 39 regels waarvan de meeste gewone code waren. `crypto.subtle.sign({
+ *    name: 'ECDSA', hash: 'SHA-256' }, …)` is een accoladegroep met hoofdletters
+ *    erin, en `{ error: 'Onbekend' }` in een datalaag ook. Die teksten zijn geen
+ *    schermtekst; ze horen bij een algoritme of bij een logboek.
+ *
+ *    De grens is smal gehouden: een componenttag op deze regel (`<Body`), of een
+ *    regel die zélf met een accolade of een tag begint. Dat dekt de drie vormen
+ *    waar het om gaat en laat objectliteralen in gewone code met rust.
+ */
+function ziterUitAlsJsx(regel, isTsx) {
+  // ⚠️ **Alleen in een `.tsx`.** Een regel die met een accolade begint is in een
+  //    `.ts` doodgewoon een objectliteraal: `{ name: 'ECDSA', hash: 'SHA-256' }`
+  //    in de webpush-crypto, `{ onConflict: 'group_id,user_id' }` in een upsert.
+  //    Vijf van die meldingen kwamen bij de eerste meting terug, en het zijn geen
+  //    van alle schermtekst. JSX bestaat in dit project uitsluitend in `.tsx`.
+  if (!isTsx) return false;
+
+  const kaal = regel.trim();
+  return /<[A-Z]/.test(regel) || kaal.startsWith('{') || kaal.startsWith('<');
+}
+
+/**
+ * De regel met de sleutels van `t(...)` eruit.
+ *
+ * ⚠️ Een vertaalde regel mag nooit op zijn eigen catalogussleutel afgaan.
+ *    `{t('reeks.beste', { aantal })}` bevat een stringliteral, en zonder deze
+ *    stap is dat een treffer op precies de regel die goed is.
+ */
+function zonderSleutels(regel) {
+  return regel.replaceAll(/\bt\(\s*['"`][^'"`]*['"`]/g, 't(_');
+}
+
+/**
  * Knipt alle `{…}`-waarden uit JSX-tekst, ook geneste.
  *
  * ⚠️ **Eén ronde is niet genoeg, en dat was de zevende ijking.** `{t('sleutel',
@@ -215,7 +251,7 @@ function zonderWaarden(tekst) {
 }
 
 /** De stukken van een regel die tekst zouden kunnen zijn. */
-function kandidaten(regel, inTekstProp = false) {
+function kandidaten(regel, inTekstProp = false, isTsx = true) {
   const uit = [];
 
   // 1. Een prop met een letterlijke string: title="..." of title={'...'}
@@ -231,6 +267,57 @@ function kandidaten(regel, inTekstProp = false) {
     if (m?.[1]) {
       uit.push({ tekst: m[1], losseWoordenTellen: /^[A-ZÀ-Ý]/.test(m[1].trim()) });
     }
+  }
+
+  // 1c-bis. Een stringliteral bínnen een JSX-accolade.
+  //
+  // ⚠️ **Dit gat is op 24-08 door de controle van diezelfde dag veroorzaakt.**
+  //    `zonderWaarden()` knipt herhaald elke `{…}` weg om achttien valse
+  //    meldingen te doden — en knipt daarmee ook de tékst weg die er letterlijk
+  //    in staat. Drie doodgewone React-vormen werden onzichtbaar:
+  //
+  //      <Body>{'Twee woorden hier'}</Body>
+  //      {bewaard ? 'Bewaard' : 'Antwoorden bewaren'}
+  //      <Subheading>{`${n} mijlpalen voorgesteld`}</Subheading>
+  //
+  //    Het bewijs stond in dezelfde ronde: de derde vorm is met de hand uit
+  //    `app/doel/coach/[id].tsx` gehaald, en de tweede stond er nog steeds —
+  //    twee Nederlandse knoplabels, terwijl de controle "nul" meldde.
+  //
+  //    Een controle die een klasse vormen niet ziet, is erger dan een controle
+  //    met ruis: hij geeft toestemming om te stoppen met kijken. Vandaar dat de
+  //    literals er hier úit gehaald worden vóórdat `zonderWaarden()` de rest
+  //    wegknipt.
+  //
+  // ⚠️ **Sleutels van `t()` gaan er eerst uit**, anders is elke vertaalde regel
+  //    een treffer op zijn eigen sleutel.
+  //
+  // ⚠️ **Een hoofdletter of een echte zin, anders telt het niet.** Zonder die eis
+  //    meldt `style={{ color: 'red' }}` een treffer, en `'center'`, en `'none'`.
+  //    Dat is dezelfde grens als bij een prop: een hoofdletter scheidt een zin van
+  //    een stijlwaarde.
+  for (const groep of ziterUitAlsJsx(regel, isTsx) ? zonderSleutels(regel).matchAll(/\{[^{}]*\}/g) : []) {
+    for (const m of groep[0].matchAll(/['"`]([^'"`]{3,})['"`]/g)) {
+      const inhoud = m[1]?.replaceAll(/\$\{[^{}]*\}/g, ' ').trim();
+      if (!inhoud) continue;
+      if (!/^[A-ZÀ-Ý]/.test(inhoud) && !ZIN.test(inhoud)) continue;
+
+      uit.push({ tekst: inhoud, losseWoordenTellen: true });
+    }
+  }
+
+  // 1c-ter. Een template-literal met tekst erin.
+  //
+  // ⚠️ Aparte pas, want een template draagt zijn eigen accolades: `${n} mijlpalen`
+  //    valt buiten `\{[^{}]*\}` hierboven. De waarden gaan eruit, de tekst blijft.
+  //    Dit was de vorm op `app/doel/coach/[id].tsx:410`, met de hand gevonden
+  //    omdat de controle hem niet zag.
+  for (const m of ziterUitAlsJsx(regel, isTsx) ? zonderSleutels(regel).matchAll(/`([^`]{3,})`/g) : []) {
+    const inhoud = m[1]?.replaceAll(/\$\{[^{}]*\}/g, ' ').trim();
+    if (!inhoud) continue;
+    if (!/^[A-ZÀ-Ý]/.test(inhoud) && !ZIN.test(inhoud)) continue;
+
+    uit.push({ tekst: inhoud, losseWoordenTellen: true });
   }
 
   // 1d. Een kale string binnen een meerregelige tekstprop. Zie `binnenTekstProp`.
@@ -354,9 +441,10 @@ function kandidaten(regel, inTekstProp = false) {
  *    (CLAUDE.md, regel 18).
  *
  * @param {string[]} regels de regels van één bestand
+ * @param {boolean} [isTsx] staat er JSX in dit bestand? Alleen `.tsx` telt.
  * @returns {{ regel: number, tekst: string }[]}
  */
-export function treffersIn(regels) {
+export function treffersIn(regels, isTsx = true) {
   const commentaar = commentaarregels(regels);
   const inProp = binnenTekstProp(regels);
   const uit = [];
@@ -364,7 +452,7 @@ export function treffersIn(regels) {
   regels.forEach((regel, i) => {
     if (commentaar[i]) return;
 
-    for (const { tekst, losseWoordenTellen } of kandidaten(regel, inProp[i])) {
+    for (const { tekst, losseWoordenTellen } of kandidaten(regel, inProp[i], isTsx)) {
       if (MERKNAMEN.has(tekst)) continue;
       if (isGeenTaal(tekst)) continue;
       if (!losseWoordenTellen && !ZIN.test(tekst)) continue;
@@ -395,7 +483,7 @@ function main() {
 
       const regels = readFileSync(pad, 'utf8').split('\n');
 
-      for (const { regel, tekst } of treffersIn(regels)) {
+      for (const { regel, tekst } of treffersIn(regels, pad.endsWith('.tsx'))) {
         treffers.push(`${pad.replace(WORTEL, '')}:${regel}  ${tekst.slice(0, 70)}`);
       }
     }

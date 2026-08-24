@@ -82,7 +82,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0080`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0081`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -147,9 +147,11 @@ totaal 23 door de hele app, waaronder twee `accessibilityLabel`s die een
 schermlezer voorleest. Het probleem was niet de heuristiek maar dat er geen
 manier was om te zien wat de controle wél vindt; sinds
 `tests/scripts/tekst-controle.test.ts` staat elke vorm apart onder test — acht
-die hij moet vinden, zes die hij met rust moet laten. De taalkeuze op het profielscherm bestaat sinds vandaag —
-tot dan kon niemand `profiles.locale` vullen en volgde de app alleen je telefoon.
-Eén criterium blijft open en dat vraagt een mens: de app in het Engels doorlopen.
+die hij moet vinden, zes die hij met rust moet laten.
+
+De taalkeuze op het profielscherm bestaat sinds vandaag — tot dan kon niemand
+`profiles.locale` vullen en volgde de app alleen je telefoon. Eén criterium
+blijft open en dat vraagt een mens: de app in het Engels doorlopen.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder

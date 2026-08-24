@@ -1784,6 +1784,16 @@ export type Database = {
         Args: { p_group_id: string; p_period_start: string }
         Returns: Json
       }
+      lid_van_open_groep: { Args: { gid: string }; Returns: boolean }
+      lijn_migratieregister_uit: {
+        Args: { p_paren: Json }
+        Returns: {
+          naam: string
+          naar: string
+          uitkomst: string
+          van: string
+        }[]
+      }
       maak_straffen_verschuldigd: {
         Args: { p_owner_id: string; p_vandaag: string }
         Returns: number

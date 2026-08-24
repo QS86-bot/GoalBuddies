@@ -63,7 +63,7 @@ export function MemberRow({
              dan voegt hij niets toe; staat hij lager, dan is er iets mis met de
              data en is zwijgen beter dan een tegenstrijdig getal.
         */}
-        {bestStreak !== null && bestStreak !== undefined && bestStreak > streak ? (
+        {bestStreak !== null && bestStreak > streak ? (
           <Caption>{t('reeks.beste', { aantal: getal(bestStreak, 0) })}</Caption>
         ) : null}
       </View>

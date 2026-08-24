@@ -15,8 +15,10 @@ import {
   koppelDoelAanGroep,
   ontkoppelDoelVanGroep,
   uitnodigingsLink,
+  zichtbaarheidLabels,
   type Groep,
   type Groepslid,
+  type Zichtbaarheid,
   type Pagina,
 } from '@/modules/buddies';
 import {
@@ -53,10 +55,26 @@ import {
  *    reeks en of iemand deze periode al afgesloten heeft.
  *
  *    Wat er níét staat, staat er met opzet niet: geen puntentotaal, geen gemiste
- *    weken, geen beste reeks (want `best_streak > current_streak` verraadt een
- *    verbroken reeks), geen "loopt achter", geen geschiedenis van eerdere
- *    perioden. De databasefunctie geeft die kolommen niet eens terug (migratie
- *    0016 en 0019), en er staat een test op die dat vasthoudt.
+ *    weken, geen "loopt achter". `points_ledger` blijft eigenaar-only in élke
+ *    stand — besluit A42, en dat is apart genomen.
+ *
+ * ⚠️ **Dit stond hier tot 24-08 anders, en het klopte niet meer.** Er stond dat
+ *    de databasefunctie de beste reeks "niet eens teruggeeft" (migratie 0016 en
+ *    0019). Sinds besluit A41 en migratie 0078 geeft `group_overview()` hem wél
+ *    terug — en dit scherm tóónt hem, via `MemberRow`. De bescherming is
+ *    verhuisd van "de kolom bestaat niet" naar "de kolom is leeg": een `case` in
+ *    `group_visible_streaks` vult `best_streak` en `last_cycle_start` alleen
+ *    voor de eigenaar zelf en voor een lid van een ópen groep, en levert
+ *    daarbuiten `null`.
+ *
+ *    Dat is aantoonbaar zwakker dan wat er stond — een kolom die er niet is, kan
+ *    niet lekken; een `case` kan verkeerd geschreven worden. De afweging tegen
+ *    een tweede view en tegen een functie staat in de kop van 0078. Wat het
+ *    vasthoudt zijn `tests/rls/epic13.test.ts` (beide standen, plus de view
+ *    rechtstreeks) en `tests/rls/policies.test.ts` (de beschermde stand).
+ *
+ *    ⚠️ Wie hier een veld bij wil zetten, gaat dus niet meer af op "de functie
+ *    geeft het toch niet terug". Die garantie bestaat niet meer.
  *
  * ⚠️ Alleen de lópende periode. Binnen een periode betekent "nog niet
  *    afgesloten" precies dat en niets meer; zou dit scherm ook oude perioden
@@ -124,6 +142,28 @@ export default function GroepDetail() {
       >
         {(s) => (
           <View style={styles.lijst}>
+            {/*
+              ⚠️ **De stand hoort hier te staan en niet alleen op het beheerscherm.**
+                 Tot 24-08 kon een gewoon lid nergens zien of zijn groep open of
+                 beschermd was: de keuze stond op `groep/nieuw`, op het
+                 beheerscherm (alleen beheerders) en op de uitnodigingspagina
+                 (alleen vóór het meedoen). Het enige signaal daarna was één
+                 chatregel — zonder pushmelding, want `0053_notificaties.sql` kent
+                 dat soort niet. Wie drie dagen niet in de chat keek, wist het
+                 niet.
+                 Grens 3 van besluit A41 legt het omzetten naast een commitment
+                 device, en dat is bij uitstek iets wat continu zichtbaar hoort te
+                 zijn en niet één keer aangekondigd. Gevonden door beide
+                 reviewrondes van 24-08.
+            */}
+            {s.groep === null ? null : (
+              <Caption>
+                {t('groepdetail.zichtbaarheid', {
+                  stand: zichtbaarheidLabels()[s.groep.zichtbaarheid as Zichtbaarheid],
+                })}
+              </Caption>
+            )}
+
             {s.groep?.status === 'sleeping' ? (
               <Card nested>
                 <Body muted>{t('groepdetail.slaapt')}</Body>
@@ -233,7 +273,11 @@ export default function GroepDetail() {
                 />
               ))}
 
-            <KoppelDoel groupId={id ?? ''} onGekoppeld={herlaad} />
+            <KoppelDoel
+              groupId={id ?? ''}
+              zichtbaarheid={(s.groep?.zichtbaarheid ?? 'beschermd') as Zichtbaarheid}
+              onGekoppeld={herlaad}
+            />
 
             {s.beheerder ? (
               <Button variant="secundair" block onPress={() => router.push(`/groep/beheer/${id}`)}>
@@ -510,9 +554,20 @@ function DoelKaart({
  */
 function KoppelDoel({
   groupId,
+  zichtbaarheid,
   onGekoppeld,
 }: {
   readonly groupId: string;
+  /**
+   * ⚠️ **Deze prop bestaat omdat de uitleg erboven anders liegt.** Tot 24-08 stond
+   *    er onvoorwaardelijk "niet je weken"; sinds migratie 0077 deelt koppelen in
+   *    een open groep élke weekdoelrij, inclusief de gemiste. De zin staat boven
+   *    de knop, dus de app deed die belofte precies op het moment van toestemming.
+   *
+   *    Onbekend valt terug op `beschermd` — dan is de zin hooguit te
+   *    voorzichtig, en dat is de goede kant om fout te zitten.
+   */
+  readonly zichtbaarheid: Zichtbaarheid;
   readonly onGekoppeld: () => void;
 }) {
   const router = useRouter();
@@ -565,7 +620,7 @@ function KoppelDoel({
     <Card>
       <Subheading>{t('koppel.titel')}</Subheading>
       <Body muted>
-        {t('koppel.uitleg')}
+        {zichtbaarheid === 'open' ? t('koppel.uitleg_open') : t('koppel.uitleg_beschermd')}
       </Body>
 
       <AsyncView

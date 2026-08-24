@@ -157,8 +157,22 @@ export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
   };
 }
 
+/**
+ * ⚠️ **`zichtbaarheid` gaat er expliciet uit, en dat is geen opruimwerk.** Zonder
+ *    deze `omit` erft het patch-schema het veld van `groepSchema`, en dan
+ *    typecheckt `wijzigGroep(id, { zichtbaarheid: 'open' })`, valideert hij,
+ *    geeft `ok: true` terug — en doet niets, want `wijzigGroep()` bouwt zijn
+ *    update uit een handmatige lijst van drie kolommen.
+ *
+ *    Geen lek: de kolomgrant en `guard_group_update()` staan er ook nog
+ *    (migratie 0076 §2). Wel een val voor de volgende schrijver, want het type
+ *    belooft een schrijfpad dat beslisdocument 002 §6a juist uitsluit —
+ *    `zet_groepszichtbaarheid()` is de enige route. Gevonden door de
+ *    code-critic-ronde van 24-08.
+ */
 export const groepPatchSchema = groepSchema
   .partial()
+  .omit({ zichtbaarheid: true })
   .extend({ evidence_policy: z.enum(BEWIJSEISEN).optional() });
 
 export type GroepPatch = z.infer<typeof groepPatchSchema>;

@@ -29,6 +29,11 @@ function gevonden(...regels: readonly string[]): readonly string[] {
   return (treffersIn([...regels]) as { regel: number; tekst: string }[]).map((t) => t.tekst);
 }
 
+/** Hetzelfde, maar voor een bestand zonder JSX. */
+function gevondenInTs(...regels: readonly string[]): readonly string[] {
+  return (treffersIn([...regels], false) as { regel: number; tekst: string }[]).map((t) => t.tekst);
+}
+
 describe('wat de controle moet vinden', () => {
   it('een tekstprop met een zin erin', () => {
     expect(gevonden('<Field label="Naam van de groep" />')).toEqual(['Naam van de groep']);
@@ -88,6 +93,28 @@ describe('wat de controle moet vinden', () => {
   it('een toegankelijkheidslabel, want een schermlezer leest dat voor', () => {
     expect(gevonden('<View accessibilityLabel="Laden" />')).toEqual(['Laden']);
   });
+
+  it('een stringliteral binnen een JSX-accolade', () => {
+    // ⚠️ **Dit gat is door de reparatie van 24-08 zélf veroorzaakt.** Om achttien
+    //    valse meldingen te doden knipt de controle elke `{…}` weg — en daarmee
+    //    ook de tekst die er letterlijk in staat. Gevonden door de
+    //    code-critic-ronde, met een levend geval: twee Nederlandse knoplabels in
+    //    `app/doel/coach/[id].tsx` terwijl de controle "nul" meldde.
+    expect(gevonden("<Body>{'Twee woorden hier'}</Body>")).toEqual(['Twee woorden hier']);
+  });
+
+  it('een knoplabel in een ternary', () => {
+    // Precies de vorm die er stond: `{bewaard ? 'Bewaard' : 'Antwoorden bewaren'}`.
+    expect(gevonden("        {bewaard ? 'Bewaard' : 'Antwoorden bewaren'}")).toContain('Bewaard');
+  });
+
+  it('een template-literal met tekst erin', () => {
+    // Aparte pas, want een template draagt zijn eigen accolades. Dit was de vorm
+    // op regel 410 van datzelfde bestand — met de hand gevonden, niet gemeten.
+    expect(gevonden('<Subheading>{`${n} mijlpalen voorgesteld`}</Subheading>')).toEqual([
+      'mijlpalen voorgesteld',
+    ]);
+  });
 });
 
 describe('wat de controle met rust moet laten', () => {
@@ -127,6 +154,26 @@ describe('wat de controle met rust moet laten', () => {
     // `variant="stil"` en `mode="date"` beginnen met een kleine letter, en dat is
     // precies het verschil met een label.
     expect(gevonden('<Button variant="stil" mode="date" testID="knop-opslaan" />')).toEqual([]);
+  });
+
+  it('een objectliteraal in gewone code, ook met hoofdletters erin', () => {
+    // ⚠️ Vijf valse meldingen bij de eerste meting van de accoladepas:
+    //    `{ name: 'ECDSA', hash: 'SHA-256' }` in de webpush-crypto en
+    //    `{ onConflict: 'group_id,user_id' }` in een upsert. Dat is geen
+    //    schermtekst, en JSX bestaat in dit project alleen in een `.tsx`.
+    expect(gevondenInTs("    { name: 'ECDSA', hash: 'SHA-256' },")).toEqual([]);
+    expect(gevondenInTs("      { onConflict: 'group_id,user_id,group_period_start' },")).toEqual([]);
+  });
+
+  it('een stijlwaarde in een JSX-prop', () => {
+    // Een hoofdletter scheidt een zin van een stijlwaarde; `'red'` en `'center'`
+    // hebben er geen.
+    expect(gevonden("<View style={{ color: 'red', textAlign: 'center' }} />")).toEqual([]);
+  });
+
+  it('een accolade met alleen variabelen erin', () => {
+    expect(gevonden('        {open ? eenTekst : andereTekst}')).toEqual([]);
+    expect(gevonden('        const pad = `/groep/${id}`;')).toEqual([]);
   });
 
   it('gewone code die toevallig op een JSX-tag lijkt', () => {

@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { t } from '../i18n';
 import { space } from '../theme';
-import { apparaatTijdzone } from '../time';
+import { apparaatTijdzone, normaliseerZone } from '../time';
 
 import { Button } from './Button';
 import { Field } from './Field';
@@ -52,14 +52,17 @@ export function TijdzoneKeuze({ waarde, onKies, disabled = false }: Props) {
   // ⚠️ Alleen aanbieden als de ingetypte tekst zélf een zone is én er geen
   //    voorstel bij staat dat hetzelfde doet. Anders staat dezelfde zone twee
   //    keer onder elkaar.
+  // ⚠️ Vergelijken op de kanonieke vorm, niet op wat er getypt is. Anders staat
+  //    "Gebruik europe/amsterdam" naast het voorstel `Europe/Amsterdam` en doen
+  //    twee knoppen hetzelfde.
   const zelfGetypt =
-    isBruikbareZone(zoekterm) && !voorstellen.includes(zoekterm.trim())
-      ? zoekterm.trim()
+    isBruikbareZone(zoekterm) && !voorstellen.includes(normaliseerZone(zoekterm))
+      ? normaliseerZone(zoekterm)
       : null;
 
   function kies(zone: string) {
     setZoekterm('');
-    onKies(zone);
+    onKies(normaliseerZone(zone));
   }
 
   return (

@@ -237,7 +237,7 @@ oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
 | 9 | Systeemberichten | Niets aan de bestaande tien. Er kwamen er twee bij (6a) die over de gróép gaan. ⚠️ Een open groep krijgt géén nieuw type "X heeft een week gemist": dat zou van een keuze een aankondiging maken, en de allowlist is bewust een migratie waard | ⛔ **Bewust dicht** |
 | 10 | Weekafsluiting | Niets. Route 1 — de gebruiker schrijft en verstuurt zelf | ✅ n.v.t. |
 | 11 | Reacties op de weekafsluiting | Niets. Idem | ✅ n.v.t. |
-| 12 | Realtime | **Niets, en het verbod op `REPLICA IDENTITY FULL` blijft onverkort staan.** ⚠️ De reden is hier een ándere dan bij een beschermde groep: met `full` gaat bij een DELETE de volledige oude rij naar iedereen die zich abonneert, **lid of niet**. "Open" is een keuze over wat de gróép ziet; dit lek gaat naar buiten de groep, en dat heeft niemand gekozen. Getoetst in `tests/rls/epic13.test.ts` | ⛔ **Bewust dicht** |
+| 12 | Realtime | **Het transportverbod verandert niet; de ínhoud volgt de policy.** ⚠️ "Niets" stond hier tot de code-review van 24-08, en dat misleidt: realtime past de SELECT-policy per abonnee toe, en `weekly_goals_select` is in 0077 verruimd. Een lid van een open groep ontvangt vanaf nu dus wél het UPDATE-event van andermans weekdoel dat op `missed` komt te staan — correct gedrag, maar niet "onaangeraakt door A41". Wat wél onveranderd blijft is het verbod op `REPLICA IDENTITY FULL`. ⚠️ De reden is hier een ándere dan bij een beschermde groep: met `full` gaat bij een DELETE de volledige oude rij naar iedereen die zich abonneert, **lid of niet**. "Open" is een keuze over wat de gróép ziet; dit lek gaat naar buiten de groep, en dat heeft niemand gekozen. Getoetst in `tests/rls/epic13.test.ts` | ⛔ **Bewust dicht** |
 | 13 | De Ketting | Het venster van acht dagen vervalt in een open groep, op `chain_links_select` **en** op `closed_this_period` in `group_overview()`. ⚠️ Die twee dragen hetzelfde venster op twee plekken; één van de twee omzetten zou een lid de schakels in de tabel laten zien maar niet in het overzicht dat het scherm leest. `ketting_stand()` en `chain_milestone` zijn niet aangeraakt: aantallen zonder namen, in beide standen hetzelfde | ✅ **0079** |
 | 14 | Seizoensrecap | Nog niet gebouwd (EPIC 8) — beoordeel bij het bouwen | **Nog niet gebouwd** |
 | 15 | Notificaties | Nog niet gebouwd (EPIC 11) — beoordeel bij het bouwen | **Nog niet gebouwd** |
@@ -258,6 +258,24 @@ verruimen, komt langs deze tabel en langs de reden.
 (migraties 0076 t/m 0079). Een lid van een **open** groep ziet van een gekoppeld
 doel de gemiste, doorgeschoven, afgesloten en vrijgestelde weken, de beste reeks,
 de laatste getelde cyclus en de historische aanwezigheid in De Ketting.
+
+⚠️ **De vier oppervlakken beantwoorden "staat deze groep open?" met twee
+verschillende vragen, en dat is zichtbaar op één scherm.** Oppervlak 2 en 3
+vragen `deelt_open_groep_met_doel()` — per **doel**, via `goal_group_links`.
+Oppervlak 13 en `closed_this_period` vragen `lid_van_open_groep()` — per
+**groep**, via `group_members`. Dat de twee helpers naast elkaar bestaan is
+verdedigd in de kop van 0079 (een doel heeft groepen, een schakel heeft er één),
+maar het gevólg stond nergens:
+
+> Een lid dat in béíde helften van een gemengde koppeling zit, ziet in het
+> overzicht van de bescherméde helft wél de beste reeks van een ander (hij deelt
+> via de open helft een open groep mét dat doel) en níét de historische schakel
+> (déze groep is beschermd).
+
+Dat is geen lek — die reeks mag hij al via de open groep, en die schakel hoort
+bij de beschermde. Het is wel twee antwoorden op één scherm, en dat hoort iemand
+te wéten in plaats van tegen te komen. Vastgelegd in `tests/rls/epic13.test.ts`,
+"twee helpers, twee antwoorden". Gevonden door de code-review van 24-08.
 
 ⚠️ **Er zijn twee routes naar zichtbaarheid en niet één.** Grens 3 van het
 besluit beschrijft er één — de groep wordt omgezet — en dekt hem met een

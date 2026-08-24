@@ -1648,7 +1648,22 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           expect(kolommen).not.toContain('total_points');
           expect(kolommen).toContain('current_streak');
 
-          for (const rij of data ?? []) {
+          // ⚠️ **Alleen de rijen van een ánder, en dat is een gerepareerde test.**
+          //    Hier stond `for (const rij of data ?? [])` — dus inclusief de rij
+          //    van de aanroeper zelf. Migratie 0078 vult die kolommen juist wél
+          //    voor de eigenaar (`g.owner_id = auth.uid() or …`), en
+          //    `epic13.test.ts` legt dat vast als belofte: je ziet je eigen beste
+          //    reeks in beide standen.
+          //
+          //    De test was groen omdat deze fixture geen `user_streaks`-rij voor
+          //    `g.lid` heeft. Wie die fixture ooit uitbreidt, zou een correcte
+          //    implementatie rood zien worden — een test die faalt op het goede
+          //    gedrag is erger dan geen test. Gevonden door de code-critic-ronde
+          //    van 24-08.
+          const vanAnderen = (data ?? []).filter((rij) => rij.user_id !== g.lid.id);
+          expect(vanAnderen.length).toBeGreaterThan(0);
+
+          for (const rij of vanAnderen) {
             expect(rij.last_cycle_start).toBeNull();
             expect(rij.best_streak).toBeNull();
           }

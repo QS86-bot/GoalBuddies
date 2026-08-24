@@ -20,7 +20,6 @@ export {
   rondOnboardingAf,
   updateProfiel,
   userClock,
-  voorgesteldeTijdzone,
   type Profiel,
   type ProfielUitkomst,
 } from './profile';

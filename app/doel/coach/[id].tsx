@@ -222,7 +222,7 @@ function Interview({
 
       <View style={styles.knoppen}>
         <Button busy={bezig} disabled={userId === null} onPress={() => void bewaar()}>
-          {bewaard ? 'Bewaard' : 'Antwoorden bewaren'}
+          {bewaard ? t('coach.bewaard') : t('coach.bewaren')}
         </Button>
       </View>
 
@@ -444,7 +444,7 @@ function Genereren({
             busy={overnemen}
             onPress={() => void neemOver(stand.voorstellen)}
           >
-            {`Alle ${stand.voorstellen.length} overnemen`}
+            {t('coach.alle_overnemen', { aantal: stand.voorstellen.length })}
           </Button>
           {/*
             QS8-40. Telt mee in het quotum — dat kan niet anders, want het gaat

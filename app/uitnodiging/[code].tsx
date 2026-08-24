@@ -244,7 +244,19 @@ export default function UitnodigingScherm() {
             <Card nested>
               <Subheading>{t('uitnodiging.wat_je_doet')}</Subheading>
               <Body muted>{t('uitnodiging.uitleg_kern')}</Body>
-              <Body muted>{t('uitnodiging.uitleg_missen')}</Body>
+              {/*
+                ⚠️ Voorwaardelijk sinds besluit A41. Hier stond onvoorwaardelijk
+                   "Niemand in de groep ziet het", drie kaarten onder de
+                   waarschuwing hierboven dat een open groep je gemiste weken wél
+                   ziet. Twee kaarten die elkaar tegenspreken op het scherm waar
+                   je besluit of je meedoet — en de geruststellende was de laatste
+                   die je las.
+              */}
+              <Body muted>
+                {u.zichtbaarheid === 'open'
+                  ? t('uitnodiging.uitleg_missen_open')
+                  : t('uitnodiging.uitleg_missen_beschermd')}
+              </Body>
             </Card>
 
             {binnen !== null ? (

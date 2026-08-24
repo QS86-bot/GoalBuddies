@@ -259,7 +259,8 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.pas_bij_meedoen': 'You will see what they are working on once you join. That is deliberate: what people share here, they share with their group and not with everyone who gets the link.',
   'uitnodiging.wat_je_doet': 'What you will be doing here',
   'uitnodiging.uitleg_kern': 'You pick one goal with a date on it. Each week you decide what you want to finish, and one of your buddies approves that you did. That is all.',
-  'uitnodiging.uitleg_missen': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
+  'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
+  'uitnodiging.uitleg_missen_open': 'Missing a week costs one point and nothing else. In this group the others do see it — that is what “open” above means.',
   'uitnodiging.al_lid': 'You are in the group',
   'uitnodiging.doorsturen': 'You are being taken to the group.',
   'uitnodiging.eerst_profiel': 'Finish your profile first — the group will be waiting for you.',
@@ -336,7 +337,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.stap3.c': 'This is the idea the app is built around. Your streak should serve you, not the other way around.',
   'onboarding.stap4.kop': 'A buddy approves it',
   'onboarding.stap4.a': 'Someone from your group confirms that you did it. Approving yourself is not possible.',
-  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. Nobody in your group sees it.',
+  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group — the default — nobody sees it. If a group deliberately chooses to be open, you are told before you join.',
   'onboarding.stap_van': 'STEP {nu} OF {totaal}',
   'onboarding.zo_ziet_eruit': 'Here is what that looks like',
   'onboarding.voorbeeld_titel': 'Run three times',
@@ -364,6 +365,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.zelf_doel': 'I want a goal of my own',
   'onboarding.kom_helpen': 'I came to help',
   'onboarding.klaar': 'Done',
+  'groepdetail.zichtbaarheid': 'This group’s visibility: {stand}',
   'groepdetail.titel': 'Group',
   'groepdetail.eyebrow': 'HUDDLE DAY {dag}',
   'groepdetail.geen_lid_titel': 'This group is not here, or not for you',
@@ -394,7 +396,8 @@ export const en: Record<Sleutel, string> = {
   'deadlineverzoek.liever_niet': 'Rather not',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
-  'koppel.uitleg': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress — not your notes, not your weeks and not your points. You can always undo it.',
+  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress — not your notes, not your weeks and not your points. You can always undo it.',
+  'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks — including the weeks you did not make. Your notes and your points stay yours. You can always undo it.',
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
   'koppel.nieuw_doel': 'New goal',
@@ -570,6 +573,9 @@ export const en: Record<Sleutel, string> = {
   'validatie.dagzet_leeg': 'One line is enough, but it cannot be empty.',
   'validatie.reactie_lang': 'Keep it short — at most 1000 characters.',
 
+  'coach.bewaard': 'Saved',
+  'coach.bewaren': 'Save answers',
+  'coach.alle_overnemen': 'Take all {aantal}',
   'coach.titel': 'The Goal Coach',
   'coach.eyebrow': 'SIX QUESTIONS',
   'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you — but skipping works fine.',
@@ -1127,7 +1133,6 @@ export const en: Record<Sleutel, string> = {
   'taal.uitleg':
     'Your choice also applies to the notifications you receive, because those are ' +
     'composed on the server and not on your phone.',
-  'taal.opslaan_mislukt': 'The language could not be saved. Please try again.',
   'validatie.taal': 'Choose a language from the list.',
 
   'zichtbaarheid.beschermd': 'Protected',
@@ -1147,7 +1152,7 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'zichtbaarheid.onbekend': 'That setting does not exist.',
   'zichtbaarheid.ongewijzigd': 'It was already set that way.',
-  'zichtbaarheid.te_snel': 'You already opened this group up today. Tomorrow it can change again.',
+  'zichtbaarheid.te_snel': 'This group was already opened up once in the past 24 hours. It stays protected in the meantime; you can try again in a day.',
 
   'groepnieuw.zichtbaarheid': 'What does the group see of each other?',
   'groepnieuw.zichtbaarheid_hint':

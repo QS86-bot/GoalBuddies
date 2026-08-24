@@ -377,7 +377,8 @@ export const nl = {
   'uitnodiging.pas_bij_meedoen': 'Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.',
   'uitnodiging.wat_je_doet': 'Wat je hier gaat doen',
   'uitnodiging.uitleg_kern': 'Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt hebben, en één van je buddy’s keurt goed dat het gelukt is. Meer niet.',
-  'uitnodiging.uitleg_missen': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_open': 'Een week missen kost een punt en verder niets. In deze groep zien de anderen het wel — dat is wat "open" hierboven betekent.',
   'uitnodiging.al_lid': 'Je zit in de groep',
   'uitnodiging.doorsturen': 'Je wordt doorgestuurd naar de groep.',
   'uitnodiging.eerst_profiel': 'Maak eerst je profiel af — daarna staat de groep voor je klaar.',
@@ -454,7 +455,12 @@ export const nl = {
   'onboarding.stap3.c': 'Dit is het idee waar de app om draait. Je reeks hoort jou te dienen, niet andersom.',
   'onboarding.stap4.kop': 'Een buddy keurt het goed',
   'onboarding.stap4.a': 'Iemand uit je groep bevestigt dat het gelukt is. Jezelf goedkeuren kan niet.',
-  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. Niemand in je groep ziet het.',
+  /**
+   * ⚠️ Hier is nog geen groep, dus deze zin kan niet weten of hij open of
+   *    beschermd is. Vandaar de vorm "standaard niet, en je ziet het staan" in
+   *    plaats van een belofte die de app later moet breken (besluit A41).
+   */
+  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep — de standaard — ziet niemand het. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
   'onboarding.stap_van': 'STAP {nu} VAN {totaal}',
   'onboarding.zo_ziet_eruit': 'Zo ziet dat eruit',
   'onboarding.voorbeeld_titel': 'Drie keer hardlopen',
@@ -482,6 +488,7 @@ export const nl = {
   'onboarding.zelf_doel': 'Ik wil zelf een doel',
   'onboarding.kom_helpen': 'Ik kom helpen',
   'onboarding.klaar': 'Klaar',
+  'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
   'groepdetail.titel': 'Groep',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
@@ -512,7 +519,22 @@ export const nl = {
   'deadlineverzoek.liever_niet': 'Liever niet',
   'koppel.ontkoppel': 'Niet meer delen met deze groep',
   'koppel.titel': 'Je doel delen met deze groep',
-  'koppel.uitleg': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel en je mijlpaalvoortgang — niet je notities, niet je weken en niet je punten. Je kunt het altijd weer ongedaan maken.',
+  /**
+   * ⚠️ **Twee zinnen en niet één, sinds besluit A41.** Hier stond onvoorwaardelijk
+   *    "niet je weken", en dat was vanaf migratie 0077 onwaar in een open groep:
+   *    koppelen deelt daar élke weekdoelrij, inclusief `missed` en `carried`.
+   *
+   *    De zin stond boven de koppelknop, dus de app deed een privacybelofte op
+   *    exact het moment dat de gebruiker toestemming gaf. Gevonden door de
+   *    critical-user-ronde van 24-08; de kop van 0077 beweerde intussen dat "een
+   *    eigenaar die zijn doel aan een open groep koppelt, weet wat hij deelt".
+   *
+   * ⚠️ Wie hier een derde oppervlak opent, splitst deze zin niet nóg een keer maar
+   *    kijkt eerst of hij nog klopt. `beloftes.test.ts` wordt rood bij een nieuwe
+   *    onvoorwaardelijke onzichtbaarheidsbelofte.
+   */
+  'koppel.uitleg_beschermd': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel en je mijlpaalvoortgang — niet je notities, niet je weken en niet je punten. Je kunt het altijd weer ongedaan maken.',
+  'koppel.uitleg_open': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Deze groep staat open: koppelen deelt de titel, je mijlpaalvoortgang én je weken — ook de weken die je niet gehaald hebt. Je notities en je punten blijven van jou. Je kunt het altijd weer ongedaan maken.',
   'koppel.geen_doel_titel': 'Je hebt nog geen doel om te delen',
   'koppel.geen_doel_tekst': 'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep koppelen.',
   'koppel.nieuw_doel': 'Nieuw doel',
@@ -556,7 +578,11 @@ export const nl = {
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
   'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
   'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
-  'zichtbaarheid.te_snel': 'Je hebt deze groep vandaag al opengezet. Morgen kan het weer.',
+  // ⚠️ Een rollend etmaal en geen kalenderdag — `created_at > now() - interval
+  //    '1 day'` in migratie 0076. "Morgen kan het weer" was daarom onwaar voor
+  //    wie 's avonds omzet. En de zin noemt nu de huidige stand, want hij
+  //    verschijnt terwijl er "Nu ingesteld: Beschermd" boven staat.
+  'zichtbaarheid.te_snel': 'Deze groep is in de afgelopen 24 uur al een keer opengezet. Beschermd blijft hij intussen gewoon; over een dag kun je het opnieuw proberen.',
 
   'groepnieuw.zichtbaarheid': 'Wat ziet de groep van elkaar?',
   'groepnieuw.zichtbaarheid_hint':
@@ -739,6 +765,9 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // De Doelcoach — EPIC 3
   // ---------------------------------------------------------------------------
+  'coach.bewaard': 'Bewaard',
+  'coach.bewaren': 'Antwoorden bewaren',
+  'coach.alle_overnemen': 'Alle {aantal} overnemen',
   'coach.titel': 'De Doelcoach',
   'coach.eyebrow': 'ZES VRAGEN',
   'coach.zes_vragen': 'Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de mijlpalen bij jou passen — maar overslaan werkt gewoon.',
@@ -1386,7 +1415,6 @@ export const nl = {
   'taal.uitleg':
     'Je keuze geldt ook voor de meldingen die je krijgt, want die worden op de ' +
     'server opgesteld en niet op je telefoon.',
-  'taal.opslaan_mislukt': 'De taal kon niet worden opgeslagen. Probeer het opnieuw.',
   'validatie.taal': 'Kies een taal uit de lijst.',
 
   // ---------------------------------------------------------------------------

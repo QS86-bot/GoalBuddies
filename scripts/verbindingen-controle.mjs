@@ -58,7 +58,6 @@ const DIRECTE_CLIENTS = [
   'sequelize',
   '@prisma/client',
   'slonik',
-  'porsager-postgres',
 ];
 
 /** Een verbindingsstring naar Postgres, in welke vorm dan ook. */

@@ -86,6 +86,36 @@ export function apparaatTijdzone(): TimeZone {
  * ⚠️ De lijst wordt éénmalig opgebouwd en daarna hergebruikt. Hij verandert
  *    binnen een sessie niet, en hij is een paar honderd strings groot.
  */
+/**
+ * De kanonieke schrijfwijze van een tijdzone.
+ *
+ * ⚠️ **Hier en niet in `shared/ui`, en de lint-regel van dit project heeft me
+ *    daarop gewezen.** De eerste versie stond bij het scherm, en dat is precies
+ *    de tweede afleiding waar correctheidsregel 7 over gaat: wie de tijdzone
+ *    bepaalt, doet dat in `shared/time`.
+ *
+ * ⚠️ **`Intl` accepteert `europe/amsterdam` en dat is het probleem.** De zone
+ *    wérkt — `currentUserCycle()` rekent er goed mee — maar hij wordt opgeslagen
+ *    zoals je hem typte. Gevolg, gemeten in de critical-user-ronde van 24-08: het
+ *    voorstel `Europe/Amsterdam` staat dan naast een knop "Gebruik
+ *    europe/amsterdam" die hetzelfde doet, en na het opslaan verdwijnt de knop
+ *    "de tijdzone van dit apparaat" nooit meer — want die vergelijking is op
+ *    tekst. Eén vorm in de database houdt élke plek overeind die zo vergelijkt.
+ *
+ * ⚠️ Gooit niet op rommel. Een ongeldige zone komt niet langs
+ *    `isGeldigeTijdzone()`, maar een helper die gooit is een storing die je pas
+ *    in productie ziet.
+ */
+export function normaliseerZone(waarde: string): TimeZone {
+  const schoon = waarde.trim();
+
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: schoon }).resolvedOptions().timeZone;
+  } catch {
+    return schoon;
+  }
+}
+
 let zonesCache: readonly TimeZone[] | null = null;
 
 export function tijdzones(): readonly TimeZone[] {

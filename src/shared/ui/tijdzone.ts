@@ -72,3 +72,4 @@ export function zoekTijdzones(
 export function isBruikbareZone(waarde: string): boolean {
   return isGeldigeTijdzone(waarde.trim());
 }
+

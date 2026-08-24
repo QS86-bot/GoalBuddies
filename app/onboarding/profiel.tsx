@@ -7,11 +7,10 @@ import {
   updateProfiel,
   useProfiel,
   useSession,
-  voorgesteldeTijdzone,
 } from '@/modules/auth';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import type { Weekday } from '@/shared/time';
+import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   Avatar,
   Body,
@@ -39,7 +38,7 @@ export default function OnboardingProfiel() {
   const { profiel, zetProfiel } = useProfiel();
 
   const [naam, setNaam] = useState(profiel?.display_name ?? '');
-  const [tz, setTz] = useState(profiel?.tz ?? voorgesteldeTijdzone());
+  const [tz, setTz] = useState(profiel?.tz ?? apparaatTijdzone());
   const [weekStart, setWeekStart] = useState<Weekday>((profiel?.week_start_day ?? 1) as Weekday);
   const [herinneringAan, setHerinneringAan] = useState(profiel?.reminder_enabled ?? true);
   const [tijd, setTijd] = useState(profiel?.reminder_time?.slice(0, 5) ?? '20:00');
