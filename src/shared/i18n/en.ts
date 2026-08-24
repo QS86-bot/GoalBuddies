@@ -1105,7 +1105,6 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   'laden.kop_mislukt': 'That did not work',
   'ketting.kop': 'The Chain',
-  'lid.beste_reeks': 'Best so far: {aantal}',
   'lid.adempauze': 'Breather',
   'vandaag.reeks_telt_weken': 'Your streak counts weeks, not days.',
   'vandaag.meenemen_knop': 'Carry over to this week',
@@ -1164,5 +1163,31 @@ export const en: Record<Sleutel, string> = {
   'beheer.naar_beschermd': 'Protect this group again',
   'beheer.melding_open_gezet': 'The group is open. Everyone has been told.',
   'beheer.melding_beschermd_gezet': 'The group is protected again.',
+
+
+  'algemeen.laden': 'Loading',
+  'algemeen.streefdatum': 'Target date {datum}',
+  'reeks.beste': 'Best streak: {aantal}',
+  'weekdoel.vloer_regel': 'Floor · {tekst}',
+  'weekdoel.plafond_regel': 'Ceiling · {tekst}',
+  'ketting.a11y': 'The Chain: {stand}',
+  'risico.a11y': 'Status: {label}',
+  'coach.leeg_titel': 'This goal does not exist',
+  'coach.leeg_tekst': 'Either it was deleted, or it is not yours.',
+  'coach.geen_mijlpalen': 'The Goal Coach did not return any usable milestones.',
+  'coach.te_lang':
+    'That took too long. Try again in a moment, or add your milestones yourself.',
+  'coach.n_voorgesteld': '{aantal} milestones suggested',
+  'beheer.melding_opgeslagen': 'Saved. Chain links already earned stay exactly where they are.',
+  'beheer.melding_nieuwe_link': 'New link. The old one stops working from now on.',
+  'beheer.leeg_titel': 'This group is not here, or not for you',
+  'beheer.leeg_tekst': 'You are not a member of this group, or it no longer exists.',
+  'beheer.huddledag_label': 'Huddle day',
+  'beheer.huddledag_hint':
+    'The group’s shared day. It changes nothing about when your own weekly goals reset — that stays your personal week start day.',
+  'beheer.voorlezen': 'You can also read it out: {code}',
+  'beoordelen.bevestigd': 'You confirmed {naam}’s week.',
+  'beoordelen.sessie_laadt': 'Your session is still loading. Try again in a second.',
+  'dashboard.week_van': 'Week of {datum}',
 
 };

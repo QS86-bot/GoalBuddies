@@ -1,0 +1,138 @@
+import { describe, expect, it } from 'vitest';
+
+// ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als
+//    `migratieregister.test.ts`. TypeScript leest de JSDoc ernaast.
+import { treffersIn } from '../../scripts/tekst-controle.mjs';
+
+/**
+ * QS8-115 — de controle die hardgecodeerde UI-tekst moet vinden.
+ *
+ * ⚠️ **Deze tests bestaan omdat de controle maandenlang groen stond terwijl er
+ *    onvertaalde tekst in de app zat.** In `app/groep/beheer/[id].tsx` alleen al
+ *    zeven zinnen: een prop met één woord, een prop die over meerdere regels
+ *    loopt, twee tekstsleutels in een objectliteraal, een zin in `setMelding()`
+ *    en JSX-tekst met een accolade erin.
+ *
+ *    Het probleem was niet dat de heuristieken slecht waren. Het was dat ze
+ *    nooit tegen een bekend geval gelegd zijn — er wás geen manier om te zien
+ *    wat de controle wél vindt zonder de hele codebase te wijzigen. Dat is
+ *    precies wat `CLAUDE.md` bij de secret-scan opschrijft: **een controle die
+ *    nog nooit rood is geweest, is een aanname.**
+ *
+ * ⚠️ De tweede helft is even belangrijk als de eerste. Een controle die álles
+ *    meldt, leert je hem te negeren; elke vorm die hij met rust moet laten,
+ *    staat hier ook.
+ */
+
+/** De teksten die de controle in dit fragment vindt. */
+function gevonden(...regels: readonly string[]): readonly string[] {
+  return (treffersIn([...regels]) as { regel: number; tekst: string }[]).map((t) => t.tekst);
+}
+
+describe('wat de controle moet vinden', () => {
+  it('een tekstprop met een zin erin', () => {
+    expect(gevonden('<Field label="Naam van de groep" />')).toEqual(['Naam van de groep']);
+  });
+
+  it('een tekstprop met één woord dat met een hoofdletter begint', () => {
+    // ⚠️ Dit gat liet `label="Huddledag"` er precies langs. Eén woord op een
+    //    knop is nog steeds een woord dat vertaald moet worden.
+    expect(gevonden('<Choice label="Huddledag" />')).toEqual(['Huddledag']);
+  });
+
+  it('een tekstsleutel in een objectliteraal', () => {
+    // `empty={{ title: '…', body: '…' }}` — de propvariant zoekt `title=`, en
+    // hier staat `title:`.
+    expect(gevonden("  empty={{ title: 'Deze groep is er niet', body: 'x' }}")).toEqual([
+      'Deze groep is er niet',
+    ]);
+  });
+
+  it('een zin in setMelding()', () => {
+    expect(gevonden("    setMelding('Opgeslagen. Alles staat er nog.');")).toEqual([
+      'Opgeslagen. Alles staat er nog.',
+    ]);
+  });
+
+  it('JSX-tekst met een waarde erin', () => {
+    // ⚠️ De vorm die je vergeet, want hij ziet eruit als code.
+    expect(gevonden('<Caption>Voorlezen kan ook: {toonCode(code)}</Caption>')).toEqual([
+      'Voorlezen kan ook:',
+    ]);
+  });
+
+  it('JSX-tekst naast een vertaalde waarde op dezelfde regel', () => {
+    // ⚠️ De oude versie sloeg een regel volledig over zodra er érgens een `t(`
+    //    op stond. Dan is één vertaalde sleutel genoeg om de rest te verbergen.
+    expect(gevonden("<Body>{t('kop')} en de rest in het Nederlands</Body>")).toEqual([
+      'en de rest in het Nederlands',
+    ]);
+  });
+
+  it('een tekstprop die over meerdere regels loopt', () => {
+    // ⚠️ De propregex eist de sluitquote op dezelfde regel en ziet hier dus
+    //    niets. Alleen de tóestand — "we staan binnen hint={ … }" — vindt dit.
+    expect(
+      gevonden(
+        '                  hint={',
+        "                    'De gedeelde dag van de groep. Verandert niets aan ' +",
+        "                    'wanneer jouw eigen weekdoelen resetten.'",
+        '                  }',
+      ),
+    ).toEqual([
+      'De gedeelde dag van de groep. Verandert niets aan ',
+      'wanneer jouw eigen weekdoelen resetten.',
+    ]);
+  });
+
+  it('een toegankelijkheidslabel, want een schermlezer leest dat voor', () => {
+    expect(gevonden('<View accessibilityLabel="Laden" />')).toEqual(['Laden']);
+  });
+});
+
+describe('wat de controle met rust moet laten', () => {
+  it('een sleutel die door t() gaat', () => {
+    expect(gevonden("<Caption>{t('reeks.beste', { aantal: 3 })}</Caption>")).toEqual([]);
+  });
+
+  it('commentaar, ook over meerdere regels', () => {
+    expect(
+      gevonden(
+        '  /*',
+        '    Dit is uitleg voor de bouwer en geen tekst voor de gebruiker.',
+        '  */',
+        '  // En dit ook niet.',
+      ),
+    ).toEqual([]);
+  });
+
+  it('aanhalingstekens als entiteit om een waarde heen', () => {
+    // ⚠️ Zes valse meldingen bij de eerste meting. Na het knippen van de waarde
+    //    blijft `&ldquo;  &rdquo;` over, en dat zijn drie letters achter elkaar.
+    expect(gevonden('<Body>&ldquo;{titel}&rdquo;</Body>')).toEqual([]);
+  });
+
+  it('een tijdzone en een voorbeeldcode, want dat is geen taal', () => {
+    // Een sleutel in de catalogus is een uitnodiging om er iets anders van te
+    // maken, en dat breekt hier het voorbeeld. Zelfde reden als bij een merknaam.
+    expect(gevonden('<Field placeholder="Europe/Amsterdam" />')).toEqual([]);
+    expect(gevonden('<Field placeholder="VYHC-2X9G-SRVH" />')).toEqual([]);
+  });
+
+  it('een merknaam', () => {
+    expect(gevonden('<Button label="Apple" />')).toEqual([]);
+  });
+
+  it('een propwaarde die geen zin is', () => {
+    // `variant="stil"` en `mode="date"` beginnen met een kleine letter, en dat is
+    // precies het verschil met een label.
+    expect(gevonden('<Button variant="stil" mode="date" testID="knop-opslaan" />')).toEqual([]);
+  });
+
+  it('gewone code die toevallig op een JSX-tag lijkt', () => {
+    // ⚠️ Zonder de eis van een sluittag meldde deze variant `Promise<T>`, een
+    //    vergelijking en de pijl van een lambda. Die ijking blijft gelden.
+    expect(gevonden('  const klaar = (n: number) => n <= grens;')).toEqual([]);
+    expect(gevonden('  async function laad(): Promise<Resultaat> {')).toEqual([]);
+  });
+});

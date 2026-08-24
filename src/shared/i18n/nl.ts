@@ -1361,7 +1361,6 @@ export const nl = {
   //    groen stond, niet door beter te kijken.
   'laden.kop_mislukt': 'Dat lukte niet',
   'ketting.kop': 'De Ketting',
-  'lid.beste_reeks': 'Beste tot nu toe: {aantal}',
   'lid.adempauze': 'Adempauze',
   'vandaag.reeks_telt_weken': 'Je reeks telt weken, geen dagen.',
   'vandaag.meenemen_knop': 'Meenemen naar deze week',
@@ -1391,6 +1390,41 @@ export const nl = {
     'server opgesteld en niet op je telefoon.',
   'taal.opslaan_mislukt': 'De taal kon niet worden opgeslagen. Probeer het opnieuw.',
   'validatie.taal': 'Kies een taal uit de lijst.',
+
+  // ---------------------------------------------------------------------------
+  // Wat de controle miste — QS8-115, ronde 24-08-2026
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Deze sleutels komen niet uit een nieuwe feature maar uit een blinde vlek
+  //    in `npm run tekst:controle`. Vijf vormen kwamen er niet doorheen: een prop
+  //    met één woord, een prop die over meerdere regels loopt, een tekstsleutel
+  //    in een objectliteraal, JSX-tekst met een accolade erin, en een kale zin in
+  //    `setMelding(...)`. Zie de kop van dat script.
+  'algemeen.laden': 'Laden',
+  'algemeen.streefdatum': 'Streefdatum {datum}',
+  'reeks.beste': 'Beste reeks: {aantal}',
+  'weekdoel.vloer_regel': 'Vloer · {tekst}',
+  'weekdoel.plafond_regel': 'Plafond · {tekst}',
+  'ketting.a11y': 'De Ketting: {stand}',
+  'risico.a11y': 'Status: {label}',
+  'coach.leeg_titel': 'Dit doel bestaat niet',
+  'coach.leeg_tekst': 'Of het is verwijderd, of het is niet van jou.',
+  'coach.geen_mijlpalen': 'De Doelcoach gaf geen bruikbare mijlpalen terug.',
+  'coach.te_lang':
+    'Het duurde te lang. Probeer het zo nog eens, of voeg je mijlpalen zelf toe.',
+  'coach.n_voorgesteld': '{aantal} mijlpalen voorgesteld',
+  'beheer.melding_opgeslagen': 'Opgeslagen. Lopende kettingschakels blijven staan waar ze staan.',
+  'beheer.melding_nieuwe_link': 'Nieuwe link. De oude werkt vanaf nu niet meer.',
+  'beheer.leeg_titel': 'Deze groep is er niet, of niet voor jou',
+  'beheer.leeg_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer.',
+  'beheer.huddledag_label': 'Huddledag',
+  'beheer.huddledag_hint':
+    'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen weekdoelen resetten — dat blijft je persoonlijke week-startdag.',
+  'beheer.voorlezen': 'Voorlezen kan ook: {code}',
+  'beoordelen.bevestigd': 'Je hebt de week van {naam} bevestigd.',
+  'beoordelen.sessie_laadt': 'Je sessie is nog aan het laden. Probeer het over een tel opnieuw.',
+  'dashboard.week_van': 'Week van {datum}',
+
 } as const;
 
 export type Sleutel = keyof typeof nl;

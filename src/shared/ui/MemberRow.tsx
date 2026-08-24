@@ -64,7 +64,7 @@ export function MemberRow({
              data en is zwijgen beter dan een tegenstrijdig getal.
         */}
         {bestStreak !== null && bestStreak !== undefined && bestStreak > streak ? (
-          <Caption>{t('lid.beste_reeks', { aantal: getal(bestStreak, 0) })}</Caption>
+          <Caption>{t('reeks.beste', { aantal: getal(bestStreak, 0) })}</Caption>
         ) : null}
       </View>
 

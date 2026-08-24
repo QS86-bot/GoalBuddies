@@ -471,6 +471,7 @@ was er een uitgebreide, groene testsuite die er niets van zag.
 | QS8-24 | `scrubMessage()` en `scrubContext()`, allebei uitgebreid getest | `reportError()` nam de geschoonde melding en zette de **ruwe stack** ernaast. De eerste regel van een stack ís de melding, dus alles ging er alsnog uit |
 | QS8-85 / QS8-115 | De test greep in `app/doel/[id].tsx` naar de letterlijke zin "De app rekent niets af" | De zin verhuisde naar de catalogus. De test bewaakte daarna nog steeds íets — een bestand — maar niet meer de belofte, en bleef groen tot hij per ongeluk rood werd |
 | QS8-113 / QS8-115 | Kolom, CHECK, kolomgrant, leeskant en catalogus: elk stuk af en getest | Er was geen schrijfpad naar `profiles.locale`. De héle keten was dood hout en geen enkele test kon dat zien, want er was niets kapot |
+| QS8-115 / `tekst:controle` | Zeven heuristieken, elk met een uitgeschreven ijking in het commentaar | De controle zelf stond nooit onder test. Zeven vormen kwamen er niet doorheen — één woord op een prop, een prop over meerdere regels, een sleutel in een objectliteraal, een zin in `setMelding()`, JSX-tekst met een accolade. 23 zinnen door de app, en `npm run tekst:controle` meldde nul |
 
 **De vorm is elke keer dezelfde:** de test toetst een eigenschap van een
 ónderdeel, terwijl de belofte een eigenschap van het gehéél is. Onderdelen zijn
@@ -503,6 +504,20 @@ met de hand te breken en te kijken of hij rood wordt.** Dat is in dit project de
 standaard voor élke nieuwe controle en elke test die een regel bewaakt — en het
 is dezelfde gedachte als bij de secret-scan in de deploy: eentje die nog nooit
 rood is geweest, is een aanname.
+
+⚠️ **En dat geldt óók voor de controlescripts zelf, wat op 24-08 pijnlijk bleek.**
+`npm run tekst:controle` bewaakt de belofte "er staat nergens meer UI-tekst hard
+in de code" en meldde maandenlang nul, terwijl er in één scherm zeven
+onvertaalde zinnen stonden. De heuristieken waren niet slecht; ze zijn nooit
+tegen een bekend geval gelegd, want er wás geen manier om te zien wat het script
+wél vindt zonder de hele codebase te wijzigen.
+
+**Een controle die je niet kunt voeden, kun je niet ijken.** Sinds QS8-115 heeft
+elk script dat een regel bewaakt daarom een geëxporteerde functie en een test die
+hem élke vorm los aanbiedt — de vormen die hij moet vinden én de vormen die hij
+met rust moet laten. Die tweede helft is even belangrijk: een controle die alles
+meldt, leert je hem te negeren. Zie `tests/scripts/tekst-controle.test.ts` en
+`tests/scripts/migratieregister.test.ts`.
 
 ⚠️ Twee van de drie gevallen hierboven kwamen boven bij een **verhuizing** —
 code die naar een ander bestand ging. Dat is de gevaarlijkste beweging die er

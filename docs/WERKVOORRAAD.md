@@ -137,7 +137,17 @@ Kijk bij het beginnen van een sessie naar de branchtabel in
 
 ✅ **QS8-115 is daarmee ook af** (In Review, 24-08). Er staat geen Nederlandse
 UI-tekst meer hard in `src/` en `app/`; `npm run tekst:controle` meldt nul en
-draait mee in `/audit`. De taalkeuze op het profielscherm bestaat sinds vandaag —
+draait mee in `/audit`.
+
+⚠️ **Die nul was op 24-08 een halve waarheid, en dat is dezelfde dag rechtgezet.**
+De controle stond groen terwijl er in één scherm zeven onvertaalde zinnen zaten:
+een prop met één woord, een prop over meerdere regels, twee tekstsleutels in een
+objectliteraal, een zin in `setMelding()` en JSX-tekst met een accolade erin. In
+totaal 23 door de hele app, waaronder twee `accessibilityLabel`s die een
+schermlezer voorleest. Het probleem was niet de heuristiek maar dat er geen
+manier was om te zien wat de controle wél vindt; sinds
+`tests/scripts/tekst-controle.test.ts` staat elke vorm apart onder test — acht
+die hij moet vinden, zes die hij met rust moet laten. De taalkeuze op het profielscherm bestaat sinds vandaag —
 tot dan kon niemand `profiles.locale` vullen en volgde de app alleen je telefoon.
 Eén criterium blijft open en dat vraagt een mens: de app in het Engels doorlopen.
 

@@ -16,7 +16,7 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
-import { apparaatVoorkeuren, taalUitApparaat, zetTaal } from '@/shared/i18n';
+import { apparaatVoorkeuren, t, taalUitApparaat, zetTaal } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -231,7 +231,7 @@ export function Bezig() {
     <View
       style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
       accessibilityRole="progressbar"
-      accessibilityLabel="Laden"
+      accessibilityLabel={t('algemeen.laden')}
     >
       <ActivityIndicator color={theme.colors.accent} />
     </View>

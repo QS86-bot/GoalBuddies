@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { t } from '../i18n';
 import { radius, space, useTheme, type Theme } from '../theme';
 
 import { risicoLabel, risicoTeken, risicoToon, type RisicoStand } from './risico';
@@ -53,7 +54,7 @@ export function RisicoBadge({ stand, uitleg }: Props) {
         accessibilityRole="text"
         // Het teken is decoratief zodra het label er staat; een schermlezer die
         // "zwarte driehoek deadline onhaalbaar" voorleest, helpt niemand.
-        accessibilityLabel={`Status: ${label}`}
+        accessibilityLabel={t('risico.a11y', { label })}
       >
         <Text style={[styles.teken, { color: kleur }]} accessibilityElementsHidden>
           {risicoTeken(stand)}

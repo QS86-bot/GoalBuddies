@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
 import { radius, space, useTheme, type Theme } from '../theme';
 
 import { useReducedMotion } from './a11y';
@@ -97,8 +98,10 @@ export function FloorCeiling({
       </View>
 
       <View style={styles.regels}>
-        {floorText ? <Caption>Vloer · {floorText}</Caption> : null}
-        {ceilingText ? <Caption>Plafond · {ceilingText}</Caption> : null}
+        {floorText ? <Caption>{t('weekdoel.vloer_regel', { tekst: floorText })}</Caption> : null}
+        {ceilingText ? (
+          <Caption>{t('weekdoel.plafond_regel', { tekst: ceilingText })}</Caption>
+        ) : null}
       </View>
 
       <Caption muted={state.tone === 'neutral'}>{state.label}</Caption>

@@ -459,7 +459,7 @@ function DoorschuifKaart({
     <Card flat>
       <View style={styles.kop}>
         <Body>{weekdoel.title}</Body>
-        <Caption>Week van {weekdoel.cycle_start_date}</Caption>
+        <Caption>{t('dashboard.week_van', { datum: weekdoel.cycle_start_date })}</Caption>
       </View>
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}

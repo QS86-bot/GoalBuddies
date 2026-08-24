@@ -475,7 +475,7 @@ function DoelKaart({
       <MilestoneProgress done={lid.milestones_done} total={lid.milestones_total} />
 
       {lid.goal_target_date === null ? null : (
-        <Caption>Streefdatum {lid.goal_target_date}</Caption>
+        <Caption>{t('algemeen.streefdatum', { datum: lid.goal_target_date })}</Caption>
       )}
 
       {/*

@@ -121,7 +121,7 @@ export default function GroepBeheer() {
     }
 
     setGroep(uitkomst.waarde);
-    setMelding('Opgeslagen. Lopende kettingschakels blijven staan waar ze staan.');
+    setMelding(t('beheer.melding_opgeslagen'));
   }
 
   async function vernieuw() {
@@ -139,7 +139,7 @@ export default function GroepBeheer() {
     }
 
     setGroep((huidig) => (huidig === null ? huidig : { ...huidig, invite_code: uitkomst.waarde }));
-    setMelding('Nieuwe link. De oude werkt vanaf nu niet meer.');
+    setMelding(t('beheer.melding_nieuwe_link'));
   }
 
   async function zetZichtbaarheid(naar: Zichtbaarheid) {
@@ -189,8 +189,8 @@ export default function GroepBeheer() {
         data={groep ?? undefined}
         isEmpty={() => false}
         empty={{
-          title: 'Deze groep is er niet, of niet voor jou',
-          body: 'Je bent geen lid van deze groep, of hij bestaat niet meer.',
+          title: t('beheer.leeg_titel'),
+          body: t('beheer.leeg_tekst'),
         }}
       >
         {(g) =>
@@ -218,11 +218,8 @@ export default function GroepBeheer() {
                 />
 
                 <Choice
-                  label="Huddledag"
-                  hint={
-                    'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen ' +
-                    'weekdoelen resetten — dat blijft je persoonlijke week-startdag.'
-                  }
+                  label={t('beheer.huddledag_label')}
+                  hint={t('beheer.huddledag_hint')}
                   opties={huddledagen().map((d) => ({ waarde: d.waarde, label: d.label }))}
                   waarde={huddledag}
                   onKies={setHuddledag}
@@ -313,7 +310,7 @@ export default function GroepBeheer() {
                   selectTextOnFocus
                   multiline
                 />
-                <Caption>Voorlezen kan ook: {toonCode(g.invite_code)}</Caption>
+                <Caption>{t('beheer.voorlezen', { code: toonCode(g.invite_code) })}</Caption>
 
                 {g.invite_revoked ? (
                   <Caption danger>{t('beheer.link_gesloten')}</Caption>
