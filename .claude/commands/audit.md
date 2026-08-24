@@ -35,5 +35,9 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
    issues die in Linear op Done staan, in de documenten ook als af beschreven
    worden — dat is vijf keer misgegaan en geen script ziet het.
 
+9. **Emoji** — draai `npm run emoji:controle`. De app gebruikt zelf geen emoji
+   in tekst die de gebruiker leest (CLAUDE.md, QS8-111). Commentaar en
+   testbestanden tellen niet mee; die gebruiken ze juist met opzet.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

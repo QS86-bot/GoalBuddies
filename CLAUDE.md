@@ -287,6 +287,11 @@ Deze regel legt vast wat er al was.
 **De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
 gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
 
+⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
+draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.
+Commentaar en testbestanden tellen niet mee — de ⚠️ hierboven is huisstijl, en
+de tests vóéden juist 😀 en 👨‍👩‍👧‍👦 aan `telTekens()`.
+
 ⚠️ **Gevolg dat geen zin maar een controle nodig heeft.** Omdat gebruikers ze
 overal mogen typen, mag geen enkele plek gebruikerstekst afkappen of het eerste
 teken pakken met `charAt(0)`, `[0]` of `.slice(0, n)`. JavaScript telt in
