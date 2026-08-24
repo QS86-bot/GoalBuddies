@@ -142,6 +142,7 @@ export const nl = {
   //    `acties.test.ts` eist dat elke uitleg een gevolg benoemt en dat elke titel
   //    op een vraagteken eindigt — die test toetst de catalogus en niet meer het
   //    oude object.
+  'bevestiging.annuleren': 'Annuleren',
   'bevestiging.weekdoel_afsluiten.titel': 'Deze week afsluiten?',
   'bevestiging.weekdoel_afsluiten.uitleg':
     'Het weekdoel blijft staan en telt als een gemiste week zodra je week voorbij is. ' +
@@ -339,6 +340,28 @@ export const nl = {
   'laden.mislukt': 'Er ging iets mis bij het ophalen. Probeer het opnieuw; blijft het misgaan, dan ligt het aan ons.',
   'laden.opnieuw': 'Opnieuw proberen',
   'mijlpaal.voortgang_label': '{gehaald} van {totaal} mijlpalen gehaald',
+  'uitnodiging.titel': 'Je bent uitgenodigd',
+  'uitnodiging.titel_verlopen': 'Deze link werkt niet meer',
+  'uitnodiging.eyebrow': 'BUDDY-GROEP',
+  'uitnodiging.leeg_titel': 'Deze uitnodiging werkt niet meer',
+  'uitnodiging.leeg_tekst': 'De link is ingetrokken of vervangen door een nieuwe. Vraag degene die je uitnodigde om hem nog eens te sturen — dan krijg je meteen de geldige.',
+  'uitnodiging.leden_een': '{n} lid · huddledag {dag}',
+  'uitnodiging.leden_meer': '{n} leden · huddledag {dag}',
+  'uitnodiging.geen_gedeeld_doel': 'Werkt nog niet aan een gedeeld doel',
+  'uitnodiging.pas_bij_meedoen': 'Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.',
+  'uitnodiging.wat_je_doet': 'Wat je hier gaat doen',
+  'uitnodiging.uitleg_kern': 'Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt hebben, en één van je buddy’s keurt goed dat het gelukt is. Meer niet.',
+  'uitnodiging.uitleg_missen': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.al_lid': 'Je zit in de groep',
+  'uitnodiging.doorsturen': 'Je wordt doorgestuurd naar de groep.',
+  'uitnodiging.eerst_profiel': 'Maak eerst je profiel af — daarna staat de groep voor je klaar.',
+  'uitnodiging.naar_groep': 'Naar de groep',
+  'uitnodiging.profiel_afmaken': 'Profiel afmaken',
+  'uitnodiging.deelnemen': 'Deelnemen aan deze groep',
+  'uitnodiging.inloggen': 'Inloggen of account maken',
+  'uitnodiging.blijft_bewaard': 'Je uitnodiging blijft op dit apparaat bewaard. Ook als je eerst je e-mail moet bevestigen, sta je daarna gewoon in de groep.',
+  'uitnodiging.rondkijken': 'Toch even rondkijken',
+  'uitnodiging.deelnemen_mislukt': 'Deelnemen lukte niet. Probeer het zo nog eens.',
   'weekpas.titel': 'Weekpassen',
   'weekpas.gered': 'Een weekpas heeft je reeks gered.',
 

@@ -118,14 +118,33 @@ function kandidaten(regel) {
   // 1. Een prop met een letterlijke string: title="..." of title={'...'}
   for (const prop of TEKSTPROPS) {
     const m = new RegExp(`\\b${prop}=(?:\\{)?['"\`]([^'"\`]{4,})['"\`]`).exec(regel);
-    if (m?.[1]) uit.push(m[1]);
+    if (m?.[1]) uit.push({ tekst: m[1], losseWoordenTellen: false });
   }
 
   // 2. Kale JSX-tekst: een regel die met een hoofdletter begint en niet met een
   //    haakje, accolade of punt-komma eindigt.
+  //
+  // ⚠️ **Hier geldt de tweewoordeneis niet, en dat is een correctie op de eerste
+  //    versie.** Die miste "Terug", "Goedkeuren" en "Versturen" — losse woorden
+  //    op een knop, en juist die moeten vertaald worden. Bij een prop is één
+  //    woord vaker een sleutel of een stijlwaarde dan een zin, dus daar blijft de
+  //    eis staan; kale tekst tussen JSX-tags is per definitie voor de lezer.
+  //
+  //    Gevonden door de controle één keer naast een handmatige telling te
+  //    leggen. Een nieuw meetinstrument dat je niet ijkt, meet wat het toevallig
+  //    ziet.
   const kaal = regel.trim();
-  if (/^[A-ZÀ-Ý][^<>{}=]*$/.test(kaal) && !kaal.endsWith(';') && !kaal.endsWith(',')) {
-    uit.push(kaal);
+  //    ⚠️ Geen haakjes: `AccessibilityInfo.isReduceMotionEnabled()` begint óók
+  //    met een hoofdletter en staat óók alleen op een regel. Drie van die
+  //    coderegels waren de eerste valse meldingen van deze variant. JSX-tekst mét
+  //    een haakje bestaat, maar die wordt door de propregel hierboven gedekt.
+  if (
+    /^[A-ZÀ-Ý][^<>{}=()]*$/.test(kaal) &&
+    !kaal.endsWith(';') &&
+    !kaal.endsWith(',') &&
+    !kaal.endsWith('.tsx')
+  ) {
+    return [...uit, { tekst: kaal, losseWoordenTellen: true }];
   }
 
   return uit;
@@ -144,9 +163,10 @@ for (const map of MAPPEN) {
         if (commentaar[i]) return;
         if (/\bt\(/.test(regel)) return;
 
-        for (const stuk of kandidaten(regel)) {
-          if (!ZIN.test(stuk)) continue;
-          treffers.push(`${pad.replace(WORTEL, '')}:${i + 1}  ${stuk.slice(0, 70)}`);
+        for (const { tekst, losseWoordenTellen } of kandidaten(regel)) {
+          if (!losseWoordenTellen && !ZIN.test(tekst)) continue;
+          if (losseWoordenTellen && !/[A-Za-zÀ-ÿ]{3,}/.test(tekst)) continue;
+          treffers.push(`${pad.replace(WORTEL, '')}:${i + 1}  ${tekst.slice(0, 70)}`);
           return;
         }
     });
