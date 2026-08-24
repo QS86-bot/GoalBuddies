@@ -17,6 +17,7 @@ import {
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
+import { t } from '@/shared/i18n';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
 import {
@@ -45,15 +46,15 @@ export default function Profiel() {
   const { profiel, loading, error, zetProfiel } = useProfiel();
 
   return (
-    <Screen title="Profiel">
+    <Screen title={t('profiel.titel')}>
       <AsyncView
         loading={loading}
         error={error}
         data={profiel ?? undefined}
         isEmpty={() => false}
         empty={{
-          title: 'Geen profiel gevonden',
-          body: 'Dat hoort niet te kunnen. Log uit en opnieuw in; blijft het misgaan, dan ligt het aan ons.',
+          title: t('profiel.leeg_titel'),
+          body: t('profiel.leeg_tekst'),
         }}
       >
         {(p) => (
@@ -64,7 +65,7 @@ export default function Profiel() {
                 <View style={styles.kopTekst}>
                   <Subheading>{p.display_name}</Subheading>
                   <Caption>
-                    {p.wants_own_goal ? 'Werkt aan een eigen doel' : 'Doet mee als buddy'}
+                    {p.wants_own_goal ? t('profiel.eigen_doel') : t('profiel.als_buddy')}
                   </Caption>
                 </View>
               </View>
@@ -85,12 +86,8 @@ export default function Profiel() {
                  die keuze bestaat niet. De uitleg blijft, de tegenspraak gaat weg.
             */}
             <Card>
-              <Subheading>Jouw reeks</Subheading>
-              <Caption>
-                Je reeks telt weken en staat per doel bij &ldquo;Je stand&rdquo; op Vandaag. Een
-                weekpas beschermt je reeks als je een week mist — het punt niet, want anders zegt
-                de score niets meer.
-              </Caption>
+              <Subheading>{t('profiel.reeks_titel')}</Subheading>
+              <Caption>{t('profiel.reeks_uitleg')}</Caption>
             </Card>
 
             <BuddyBijdrage userId={p.id} />
@@ -159,14 +156,10 @@ function AccountVerwijderen() {
   if (!open) {
     return (
       <Card nested>
-        <Subheading>Account verwijderen</Subheading>
-        <Body muted>
-          Je doelen, weken, Dagzetten, punten en lidmaatschappen verdwijnen. Wat blijft
-          staan zijn de goedkeuringen die jij aan je buddy&rsquo;s gaf en je berichten in de
-          groepschat — zonder je naam erbij. Die zijn van hen.
-        </Body>
+        <Subheading>{t('profiel.verwijder_titel')}</Subheading>
+        <Body muted>{t('profiel.verwijder_uitleg')}</Body>
         <Button variant="stil" onPress={() => setOpen(true)}>
-          Ik wil mijn account verwijderen
+          {t('profiel.verwijder_knop')}
         </Button>
       </Card>
     );
@@ -174,10 +167,10 @@ function AccountVerwijderen() {
 
   return (
     <Card nested>
-      <Subheading>Zeker weten?</Subheading>
-      <Body>Dit kan niet ongedaan gemaakt worden. Er is geen back-up en geen hersteltermijn.</Body>
+      <Subheading>{t('profiel.zeker_weten')}</Subheading>
+      <Body>{t('profiel.geen_backup')}</Body>
       <Field
-        label={`Typ ${WOORD} om te bevestigen`}
+        label={t('profiel.typ_woord', { woord: WOORD })}
         value={bevestiging}
         onChangeText={setBevestiging}
         autoCapitalize="characters"
@@ -191,7 +184,7 @@ function AccountVerwijderen() {
           disabled={bevestiging.trim().toUpperCase() !== WOORD}
           onPress={() => void verwijder()}
         >
-          Definitief verwijderen
+          {t('profiel.definitief')}
         </Button>
         <Button
           variant="stil"
@@ -202,7 +195,7 @@ function AccountVerwijderen() {
             setFout(null);
           }}
         >
-          Toch niet
+          {t('profiel.toch_niet')}
         </Button>
       </View>
     </Card>
@@ -244,40 +237,40 @@ function WeekStartInstelling({
   return (
     <Card>
       <WeekStartKeuze waarde={waarde} onKies={(dag) => void kies(dag)} disabled={bezig} />
-      <Caption>
-        Verander je dit halverwege een week, dan telt de lopende week gewoon uit op de oude dag.
-        Je punten en je reeks blijven staan.
-      </Caption>
+      <Caption>{t('profiel.weekstart_uitleg')}</Caption>
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
 }
 
-const OPTIES: readonly { readonly waarde: ThemePreference; readonly label: string }[] = [
-  { waarde: 'systeem', label: 'Systeem' },
-  { waarde: 'navy', label: 'Donker' },
-  { waarde: 'navy-licht', label: 'Licht' },
-];
+/**
+ * ⚠️ Een functie en geen constante: een module-constante met `t()` erin bevriest
+ *    de taal op importtijd, vóórdat het profiel geladen is. Zie QS8-115.
+ */
+function themaOpties(): readonly { readonly waarde: ThemePreference; readonly label: string }[] {
+  return [
+    { waarde: 'systeem', label: t('profiel.thema_systeem') },
+    { waarde: 'navy', label: t('profiel.thema_donker') },
+    { waarde: 'navy-licht', label: t('profiel.thema_licht') },
+  ];
+}
 
 function ThemaKeuze() {
   const { preference, setPreference, ready } = useThemePreference();
 
   return (
     <Card>
-      <Subheading>Weergave</Subheading>
-      <Body muted>
-        Donker is de standaard van dit stelsel. Kies je Systeem, dan volgt de app de instelling
-        van je toestel — ook als die &apos;s avonds omschakelt.
-      </Body>
+      <Subheading>{t('profiel.weergave')}</Subheading>
+      <Body muted>{t('profiel.weergave_uitleg')}</Body>
 
       <View style={styles.keuzes}>
-        {OPTIES.map(({ waarde, label }) => (
+        {themaOpties().map(({ waarde, label }) => (
           <Button
             key={waarde}
             variant={preference === waarde ? 'primair' : 'secundair'}
             disabled={!ready}
             onPress={() => setPreference(waarde)}
-            accessibilityLabel={`Weergave: ${label}`}
+            accessibilityLabel={t('profiel.weergave_label', { stand: label })}
           >
             {label}
           </Button>
@@ -305,35 +298,29 @@ function VieringKeuze() {
 
   return (
     <Card>
-      <Subheading>Feestelijke momenten</Subheading>
-      <Body muted>
-        Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel
-        af is. Verder blijft de app rustig.
-      </Body>
+      <Subheading>{t('profiel.viering_titel')}</Subheading>
+      <Body muted>{t('profiel.viering_uitleg')}</Body>
 
       <View style={styles.keuzes}>
         <Button
           variant={aan ? 'primair' : 'secundair'}
           disabled={!geladen}
           onPress={() => zet(true)}
-          accessibilityLabel="Feestelijke momenten aan"
+          accessibilityLabel={t('profiel.viering_aan_label')}
         >
-          Aan
+          {t('profiel.aan')}
         </Button>
         <Button
           variant={aan ? 'secundair' : 'primair'}
           disabled={!geladen}
           onPress={() => zet(false)}
-          accessibilityLabel="Feestelijke momenten uit"
+          accessibilityLabel={t('profiel.viering_uit_label')}
         >
-          Uit
+          {t('profiel.uit')}
         </Button>
       </View>
 
-      <Caption>
-        Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst
-        blijft dan gewoon staan.
-      </Caption>
+      <Caption>{t('profiel.viering_beweging')}</Caption>
     </Card>
   );
 }
@@ -375,22 +362,19 @@ function BuddyBijdrage({ userId }: { readonly userId: string }) {
 
   return (
     <Card>
-      <Subheading>Buddy-bijdrage</Subheading>
+      <Subheading>{t('profiel.bijdrage_titel')}</Subheading>
       <Body>
         {mislukt
-          ? 'Even niet op te halen. Je bijdrage staat er nog, hij is alleen niet te tellen.'
+          ? t('profiel.bijdrage_mislukt')
           : aantal === null
             ? '—'
             : aantal === 0
-              ? 'Je hebt nog geen week van een buddy beoordeeld.'
+              ? t('profiel.bijdrage_geen')
               : aantal === 1
-                ? 'Je hebt één week van een buddy beoordeeld.'
-                : `Je hebt ${aantal} weken van buddy's beoordeeld.`}
+                ? t('profiel.bijdrage_een')
+                : t('profiel.bijdrage_meer', { n: aantal })}
       </Body>
-      <Caption>
-        Reviewen telt mee. Doorvragen levert net zoveel op als goedkeuren — het gaat om
-        betrokkenheid, niet om ja zeggen.
-      </Caption>
+      <Caption>{t('profiel.bijdrage_uitleg')}</Caption>
     </Card>
   );
 }
@@ -426,7 +410,7 @@ function Meldingen({ userId }: { readonly userId: string }) {
       await registreerPushToken(userId);
       setStand('aan');
     } else if (uitkomst.reden === 'mislukt') {
-      setFout('Aanzetten lukte niet. Probeer het zo nog eens.');
+      setFout(t('profiel.meldingen_mislukt'));
     } else {
       setStand(uitkomst.reden);
     }
@@ -436,11 +420,11 @@ function Meldingen({ userId }: { readonly userId: string }) {
 
   return (
     <Card>
-      <Subheading>Meldingen</Subheading>
+      <Subheading>{t('profiel.meldingen')}</Subheading>
       <Body muted>{uitlegBij(stand)}</Body>
       {stand === 'uit' ? (
         <Button busy={bezig} onPress={() => void zetAan()}>
-          Meldingen aanzetten
+          {t('profiel.meldingen_aanzetten')}
         </Button>
       ) : null}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
@@ -452,15 +436,15 @@ function Meldingen({ userId }: { readonly userId: string }) {
 function uitlegBij(stand: Meldingenstand): string {
   switch (stand) {
     case 'aan':
-      return 'Meldingen staan aan. Je krijgt bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat.';
+      return t('profiel.meldingen_aan');
     case 'uit':
-      return 'Krijg bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat. We vragen je browser eenmalig om toestemming.';
+      return t('profiel.meldingen_uit');
     case 'geweigerd':
-      return 'Je hebt meldingen eerder geweigerd. Dat kan alleen in de instellingen van je browser terug — wij kunnen er niet opnieuw om vragen.';
+      return t('profiel.meldingen_geweigerd');
     case 'niet-ondersteund':
-      return 'Deze browser kan geen meldingen ontvangen.';
+      return t('profiel.meldingen_niet_ondersteund');
     case 'geen-sleutel':
-      return 'Meldingen staan in deze omgeving nog niet klaar. Dit ligt niet aan jou.';
+      return t('profiel.meldingen_geen_sleutel');
   }
 }
 
@@ -480,8 +464,8 @@ function Beginschermuitleg() {
   return (
     <Caption>
       {advies === 'toon-beginscherm-uitleg'
-        ? 'Op iPhone en iPad werken meldingen alleen als de app op je beginscherm staat. Tik op Deel en kies Zet op beginscherm; open hem daarna vanaf je beginscherm.'
-        : 'Op iPhone en iPad werken meldingen alleen vanuit Safari. Open goalbuddies.q-projects.tech in Safari en zet hem daar op je beginscherm.'}
+        ? t('profiel.beginscherm_ios')
+        : t('profiel.beginscherm_safari')}
     </Caption>
   );
 }

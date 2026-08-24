@@ -30,6 +30,7 @@ import {
   type DoelStand,
   type Weekdoel,
 } from '@/modules/goals';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { localDateIn, now, type UserClock } from '@/shared/time';
 import {
@@ -188,15 +189,18 @@ export default function Vandaag() {
 
   return (
     <Screen
-      title="Vandaag"
-      eyebrow={afTeSluiten ? `WEEK VAN ${afTeSluiten.startDate}` : 'DEZE WEEK'}
+      title={t('vandaag.titel')}
+      eyebrow={
+        afTeSluiten
+          ? t('vandaag.eyebrow_week', { datum: afTeSluiten.startDate })
+          : t('vandaag.eyebrow_deze')
+      }
     >
       {coulance && afTeSluiten ? (
         <Card nested>
-          <Subheading>Je vorige week loopt nog even door</Subheading>
+          <Subheading>{t('vandaag.coulance_titel')}</Subheading>
           <Body muted>
-            Je nieuwe week is begonnen, maar je kunt de week van {afTeSluiten.startDate} nog
-            afsluiten. Dat venster duurt twaalf uur — zondagavond klaar, maandagochtend gelogd.
+            {t('vandaag.coulance_tekst', { datum: afTeSluiten.startDate })}
           </Body>
         </Card>
       ) : null}
@@ -208,11 +212,8 @@ export default function Vandaag() {
         isEmpty={(d) => d.length === 0}
         onRetry={herlaad}
         empty={{
-          title: 'Nog geen weekdoelen',
-          body:
-            'Een weekdoel is wat je deze week af wilt hebben. Geef het een vloer — de versie ' +
-            'die je op je slechtste week nog haalt — en een plafond. De vloer halen telt: je ' +
-            'reeks loopt door. Je maakt hem aan op het doel waar hij bij hoort.',
+          title: t('vandaag.leeg_titel'),
+          body: t('vandaag.leeg_tekst'),
         }}
       >
         {(doelen) => (
@@ -237,9 +238,9 @@ export default function Vandaag() {
       */}
       <View style={styles.toevoegen}>
         <Button variant="primair" block onPress={() => router.push('/doelen')}>
-          Weekdoel toevoegen
+          {t('vandaag.weekdoel_toevoegen')}
         </Button>
-        <Caption>Je maakt een weekdoel aan op het doel waar hij bij hoort.</Caption>
+        <Caption>{t('vandaag.toevoegen_uitleg')}</Caption>
       </View>
 
       <OpenstaandBlok weekdoelen={openstaand} klok={klok} onKlaar={herlaad} />
@@ -311,17 +312,15 @@ function StandBlok({
   if (nogNietsTeTellen) {
     return (
       <Card nested>
-        <Subheading>Je stand</Subheading>
-        <Body muted>
-          Zodra je eerste week is goedgekeurd, staan je reeks en je punten hier.
-        </Body>
+        <Subheading>{t('vandaag.stand')}</Subheading>
+        <Body muted>{t('vandaag.stand_leeg')}</Body>
       </Card>
     );
   }
 
   return (
     <Card nested>
-      <Subheading>Je stand</Subheading>
+      <Subheading>{t('vandaag.stand')}</Subheading>
       {/*
         ⚠️ Niet meer "een week telt zodra je vloer gehaald is". Dat gebruikt
            "vloer" als bekend woord, en het klopte bovendien niet voor een
@@ -380,16 +379,13 @@ function OpenstaandBlok({
 
   return (
     <Card nested>
-      <Subheading>Nog open van eerdere weken</Subheading>
+      <Subheading>{t('vandaag.openstaand')}</Subheading>
       {/*
         ⚠️ De tekst zegt wat doorschuiven wél en níét doet. Vóór migratie 0045
            repareerde doorschuiven je reeks, en wie dat nog denkt, komt bedrogen
            uit op een moment dat hij het niet controleert (Q-TODO A39).
       */}
-      <Body muted>
-        Je kunt deze meenemen naar de week die nu loopt. De week zelf blijft
-        gemist — meenemen verhuist het werk, het herstelt je reeks niet.
-      </Body>
+      <Body muted>{t('vandaag.meenemen_uitleg')}</Body>
 
       <View style={styles.lijst}>
         {weekdoelen.map((weekdoel) => (
@@ -657,7 +653,7 @@ function WeekdoelKaart({
             </Body>
           ))}
           {open ? null : (
-            <Button onPress={() => setOpen(true)}>Antwoorden en opnieuw indienen</Button>
+            <Button onPress={() => setOpen(true)}>{t('vandaag.antwoord_opnieuw')}</Button>
           )}
         </Card>
       )}
@@ -666,11 +662,11 @@ function WeekdoelKaart({
         <View style={styles.afrond}>
           {heeftVloer ? (
             <Choice
-              label="Wat heb je gehaald?"
-              hint="De vloer halen telt. Je reeks loopt door; alleen de punten verschillen."
+              label={t('vandaag.niveau_label')}
+              hint={t('vandaag.niveau_hint')}
               opties={[
-                { waarde: 'floor', label: 'De vloer' },
-                { waarde: 'ceiling', label: 'Het plafond' },
+                { waarde: 'floor', label: t('vandaag.vloer') },
+                { waarde: 'ceiling', label: t('vandaag.plafond') },
               ]}
               waarde={niveau}
               onKies={setNiveau}
@@ -678,11 +674,11 @@ function WeekdoelKaart({
           ) : null}
 
           <Field
-            label="Wat heb je gedaan?"
+            label={t('vandaag.notitie_label')}
             hint={
               eis === 'optional'
-                ? 'Mag leeg blijven in deze groep. Eén zin geeft je buddy wel iets om op te reageren.'
-                : 'Je groep vraagt hierom. Eén zin is genoeg.'
+                ? t('vandaag.notitie_optioneel')
+                : t('vandaag.notitie_verplicht')
             }
             value={notitie}
             onChangeText={setNotitie}
@@ -694,10 +690,10 @@ function WeekdoelKaart({
 
           <View style={styles.knoppen}>
             <Button variant="primair" busy={bezig} onPress={() => void afronden()}>
-              {wachtOpOordeel ? 'Opnieuw indienen' : 'Indienen'}
+              {wachtOpOordeel ? t('vandaag.opnieuw_indienen') : t('vandaag.indienen')}
             </Button>
             <Button variant="stil" onPress={() => setOpen(false)}>
-              Annuleren
+              {t('vandaag.annuleren')}
             </Button>
           </View>
         </View>
@@ -719,13 +715,13 @@ function WeekdoelKaart({
           */}
           {acties.afronden && vragen.length === 0 ? (
             <Button onPress={() => setOpen(true)}>
-              {wachtOpOordeel ? 'Opnieuw indienen' : 'Afronden'}
+              {wachtOpOordeel ? t('vandaag.opnieuw_indienen') : t('vandaag.afronden')}
             </Button>
           ) : null}
 
           {acties.afsluiten ? (
             <Button variant="stil" onPress={() => setVraagt('afsluiten')}>
-              Deze week afsluiten
+              {t('vandaag.week_afsluiten')}
             </Button>
           ) : null}
 
@@ -733,9 +729,9 @@ function WeekdoelKaart({
             <Button
               variant="stil"
               onPress={() => setVraagt('verwijderen')}
-              accessibilityLabel={`Weekdoel ${weekdoel.title} weggooien`}
+              accessibilityLabel={t('vandaag.weggooien_label', { titel: weekdoel.title })}
             >
-              Weggooien
+              {t('vandaag.weggooien')}
             </Button>
           ) : null}
         </View>
@@ -788,25 +784,22 @@ function DagzetBlok({
 
   return (
     <Card nested>
-      <Subheading>De Dagzet</Subheading>
-      <Body muted>
-        Eén regel over wat je vandaag gedaan hebt. Tien seconden, geen punten, niemand hoeft hem
-        goed te keuren.
-      </Body>
+      <Subheading>{t('dagzet.titel')}</Subheading>
+      <Body muted>{t('dagzet.uitleg')}</Body>
 
       <Field
-        label="Vandaag"
+        label={t('dagzet.vandaag')}
         value={tekst}
         onChangeText={setTekst}
-        placeholder="Twee uur aan hoofdstuk 3 gewerkt"
+        placeholder={t('dagzet.voorbeeld')}
       />
 
       <Choice
-        label="Zichtbaarheid"
-        hint="Standaard alleen voor jezelf."
+        label={t('dagzet.zichtbaarheid')}
+        hint={t('dagzet.zichtbaarheid_hint')}
         opties={[
-          { waarde: 'prive', label: 'Alleen ik' },
-          { waarde: 'groep', label: 'Deel met mijn groep' },
+          { waarde: 'prive', label: t('dagzet.alleen_ik') },
+          { waarde: 'groep', label: t('dagzet.deel_groep') },
         ]}
         waarde={delen ? 'groep' : 'prive'}
         onKies={(v) => setDelen(v === 'groep')}
@@ -815,7 +808,7 @@ function DagzetBlok({
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
       <Button disabled={tekst.trim() === ''} busy={bezig} onPress={() => void bewaar()}>
-        Vastleggen
+        {t('dagzet.vastleggen')}
       </Button>
 
       {zetten.length === 0 ? null : (
