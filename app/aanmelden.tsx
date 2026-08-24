@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { signInWithEmail, signInWithOAuth, signUpWithEmail } from '@/modules/auth';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared/ui';
 
@@ -51,10 +52,13 @@ export default function Aanmelden() {
   }
 
   return (
-    <Screen title={nieuw ? 'Account maken' : 'Welkom terug'} eyebrow="GOALBUDDIES">
+    <Screen
+      title={nieuw ? t('aanmelden.titel_nieuw') : t('aanmelden.titel_terug')}
+      eyebrow={t('aanmelden.eyebrow')}
+    >
       <Card>
         <Field
-          label="E-mailadres"
+          label={t('aanmelden.email')}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -62,13 +66,13 @@ export default function Aanmelden() {
           keyboardType="email-address"
           inputMode="email"
           textContentType="emailAddress"
-          placeholder="jij@voorbeeld.nl"
+          placeholder={t('aanmelden.email_hint')}
           {...(fout?.veld === 'email' ? { error: fout.melding } : {})}
         />
 
         <Field
-          label="Wachtwoord"
-          {...(nieuw ? { hint: 'Minstens 12 tekens. Een korte zin werkt prima en onthoud je beter.' } : {})}
+          label={t('aanmelden.wachtwoord')}
+          {...(nieuw ? { hint: t('aanmelden.wachtwoord_hint') } : {})}
           value={wachtwoord}
           onChangeText={setWachtwoord}
           secureTextEntry
@@ -82,7 +86,7 @@ export default function Aanmelden() {
         {gelukt === null ? null : <Caption muted={false}>{gelukt}</Caption>}
 
         <Button variant="primair" block busy={bezig} onPress={() => void verzend()}>
-          {nieuw ? 'Account maken' : 'Inloggen'}
+          {nieuw ? t('aanmelden.knop_nieuw') : t('aanmelden.knop_inloggen')}
         </Button>
 
         <Button
@@ -94,12 +98,12 @@ export default function Aanmelden() {
             setGelukt(null);
           }}
         >
-          {nieuw ? 'Ik heb al een account' : 'Ik ben nieuw hier'}
+          {nieuw ? t('aanmelden.heb_al_account') : t('aanmelden.ben_nieuw')}
         </Button>
       </Card>
 
       <Card nested>
-        <Subheading>Of gebruik een bestaand account</Subheading>
+        <Subheading>{t('aanmelden.bestaand_account')}</Subheading>
         {Platform.OS === 'web' ? (
           <View style={styles.providers}>
             <Button onPress={() => void metProvider('apple')}>Apple</Button>
@@ -109,9 +113,7 @@ export default function Aanmelden() {
           // Eerlijk zijn is hier beter dan een knop die niets doet: op native
           // heeft dit expo-web-browser nodig, en dat is een dependency die nog
           // niet gekozen is. Zie docs/Q-TODO.docx.
-          <Body muted>
-            Inloggen met Apple of Google werkt op dit moment alleen in de browser.
-          </Body>
+          <Body muted>{t('aanmelden.alleen_browser')}</Body>
         )}
       </Card>
     </Screen>

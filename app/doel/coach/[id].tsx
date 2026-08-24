@@ -23,6 +23,7 @@ import {
   type DoelMetVoortgang,
   type InterviewInvoer,
 } from '@/modules/goals';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -91,7 +92,7 @@ export default function Doelcoach() {
   }, [id]);
 
   return (
-    <Screen title="De Doelcoach" eyebrow="ZES VRAGEN">
+    <Screen title={t('coach.titel')} eyebrow={t('coach.eyebrow')}>
       <AsyncView
         loading={loading}
         error={error}
@@ -107,13 +108,8 @@ export default function Doelcoach() {
           <View style={styles.blokken}>
             <Card nested>
               <Subheading>{d.title}</Subheading>
-              <Body muted>
-                Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de
-                mijlpalen bij jou passen — maar overslaan werkt gewoon.
-              </Body>
-              <Caption>
-                Je antwoorden zijn alleen voor jou en de Doelcoach. Je groep ziet ze nooit.
-              </Caption>
+              <Body muted>{t('coach.zes_vragen')}</Body>
+              <Caption>{t('coach.alleen_voor_jou')}</Caption>
             </Card>
 
             <Interview
@@ -230,9 +226,7 @@ function Interview({
         </Button>
       </View>
 
-      <Caption>
-        Bewaren is niet nodig om verder te gaan — de Doelcoach gebruikt wat hier staat.
-      </Caption>
+      <Caption>{t('coach.bewaren_niet_nodig')}</Caption>
     </Card>
   );
 }
@@ -381,11 +375,8 @@ function Genereren({
   if (stand.fase === 'bezig') {
     return (
       <Card nested>
-        <Subheading>De Doelcoach denkt na</Subheading>
-        <Body muted>
-          Dit duurt ongeveer twintig seconden. Je kunt dit scherm openhouden; het resultaat komt
-          vanzelf.
-        </Body>
+        <Subheading>{t('coach.denkt_na')}</Subheading>
+        <Body muted>{t('coach.duurt_even')}</Body>
       </Card>
     );
   }
@@ -393,7 +384,7 @@ function Genereren({
   if (stand.fase === 'mislukt') {
     return (
       <Card nested>
-        <Subheading>Dat lukte niet</Subheading>
+        <Subheading>{t('coach.lukte_niet')}</Subheading>
         <Body muted>{stand.melding}</Body>
 
         {/*
@@ -403,10 +394,10 @@ function Genereren({
         */}
         <View style={styles.knoppen}>
           <Button variant="primair" onPress={onKlaar}>
-            Zelf mijlpalen toevoegen
+            {t('coach.zelf_toevoegen')}
           </Button>
           <Button variant="stil" onPress={() => void start()}>
-            Opnieuw proberen
+            {t('coach.opnieuw')}
           </Button>
         </View>
       </Card>
@@ -428,19 +419,13 @@ function Genereren({
         */}
         {stand.haalbaarheid === null ? null : (
           <Card>
-            <Subheading>De Doelcoach heeft een bedenking</Subheading>
+            <Subheading>{t('coach.bedenking')}</Subheading>
             <Body muted>{stand.haalbaarheid}</Body>
-            <Caption>
-              Je kunt de mijlpalen gewoon overnemen. Je streefdatum verzetten of je doel kleiner
-              maken kan daarna op het doelscherm.
-            </Caption>
+            <Caption>{t('coach.bedenking_uitleg')}</Caption>
           </Card>
         )}
 
-        <Body muted>
-          Neem ze over en pas ze daarna aan wat je wilt — schrappen, herschrijven en herordenen
-          kan allemaal op het doelscherm.
-        </Body>
+        <Body muted>{t('coach.neem_over')}</Body>
 
         <View style={styles.voorstellen}>
           {stand.voorstellen.map((voorstel, i) => (
@@ -474,10 +459,10 @@ function Genereren({
               void start(volgende);
             }}
           >
-            Opnieuw proberen
+            {t('coach.opnieuw')}
           </Button>
           <Button variant="stil" disabled={overnemen} onPress={onKlaar}>
-            Toch niet
+            {t('coach.toch_niet')}
           </Button>
         </View>
 
@@ -489,10 +474,7 @@ function Genereren({
              hier echt maakt.
         */}
         {heeftAlMijlpalen ? (
-          <Caption danger>
-            Je hebt al mijlpalen bij dit doel. Overnemen zet deze erbij en vervangt ze niet —
-            schrap eerst wat je niet wilt houden.
-          </Caption>
+          <Caption danger>{t('coach.al_mijlpalen')}</Caption>
         ) : null}
 
         <Caption>Elke poging telt mee in je tien per dag.</Caption>
@@ -502,17 +484,12 @@ function Genereren({
 
   return (
     <Card nested>
-      <Subheading>Mijlpalen laten voorstellen</Subheading>
-      <Body muted>
-        De Doelcoach knipt je doel op in mijlpalen met streefdata, op basis van wat je hierboven
-        hebt ingevuld. Je kunt daarna alles aanpassen.
-      </Body>
-      <Caption>
-        Je kunt dit tien keer per dag doen. Dezelfde vraag binnen een dag kost geen nieuwe beurt.
-      </Caption>
+      <Subheading>{t('coach.laten_voorstellen')}</Subheading>
+      <Body muted>{t('coach.wat_hij_doet')}</Body>
+      <Caption>{t('coach.tien_per_dag')}</Caption>
 
       <Button variant="primair" onPress={() => void start()}>
-        Genereer mijlpalen
+        {t('coach.genereer')}
       </Button>
     </Card>
   );

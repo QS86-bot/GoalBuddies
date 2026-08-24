@@ -139,7 +139,12 @@ function kandidaten(regel) {
   //    coderegels waren de eerste valse meldingen van deze variant. JSX-tekst mét
   //    een haakje bestaat, maar die wordt door de propregel hierboven gedekt.
   if (
-    /^[A-ZÀ-Ý][^<>{}=()]*$/.test(kaal) &&
+    // ⚠️ Accolades mogen erin, en dat is de derde correctie op deze heuristiek.
+    //    JSX-tekst met een waarde erin — "Je kunt dit nog {MINUTEN} minuten
+    //    terugdraaien" — is doodgewone zinstekst, en juist het soort dat je
+    //    vergeet omdat het eruitziet als code. De eis van drie letters achter
+    //    elkaar hieronder houdt `{foo} {bar}` er weer buiten.
+    /^[A-ZÀ-Ý][^<>=()]*$/.test(kaal) &&
     !kaal.endsWith(';') &&
     !kaal.endsWith(',') &&
     !kaal.endsWith('.tsx')
