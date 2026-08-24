@@ -139,6 +139,16 @@ Voordat er één feature gebouwd wordt:
 - Beperkte opslag, bandbreedte en actieve gebruikers.
 - **Geen automatische backups.** `pg_dump` vóór elke migratie.
 - Geen read replicas; connection pooling vanaf dag één.
+
+  ⚠️ **Sinds 24-08 een controle en geen zin meer.** `npm run verbindingen:controle`
+  draait mee in `/audit` en wordt rood zodra er een Postgres-driver in
+  `package.json` staat of een verbindingsstring in `src/`, `app/` of
+  `supabase/functions/`. Vandaag klopt de regel omdat álles via PostgREST loopt
+  en er niets is dat een socket kan openen — dat is geen instelling maar de
+  afwezigheid van iets, en die is stil kwijt te raken. `max_connections` is **60**
+  voor de héle database. Wat er moet gebeuren zodra er een langdraaiende
+  Node-server bijkomt, staat in `docs/DEPLOY.md` §2.7: transactiepooler op 6543,
+  `prepare: false`, kleine pool.
 - Markeer alles wat een betaalde tier vereist met `// TODO(paid-tier)`.
 
 ## ⚠️ Hostinger + Expo

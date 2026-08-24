@@ -238,7 +238,53 @@ noemt.
 
 ---
 
-## 2.7 Wat kost de Doelcoach?
+## 2.7 Verbindingen en pooling
+
+**`max_connections` staat op 60**, nagemeten op 24-08-2026. Dat is voor de héle
+database: PostgREST, de Auth-server, de realtime-server, `pg_dump` en alles wat
+Supabase zelf draait, delen dat budget. Het is geen instelling van de gratis tier
+die je kunt ophogen zonder te betalen.
+
+### Wie er vandaag verbindingen opent
+
+| Wie | Hoe | Verbindingen |
+|---|---|---|
+| De app (web en native) | `supabase-js` → PostgREST over HTTPS | **geen** — PostgREST houdt zijn eigen pool |
+| De Edge Functions | idem, met de service-role-key | **geen** |
+| `npm run db:dump` | `pg_dump` op `SUPABASE_DB_URL` | één, kortdurend |
+| `scripts/lokale-stack.sh` | een lokale database die het script zelf maakt | raakt productie niet |
+
+⚠️ **Er zit geen Postgres-driver in `package.json`**, en dat is de eigenlijke
+reden dat "connection pooling vanaf dag één" (CLAUDE.md, gratis tier) vandaag
+klopt. Niet een instelling, maar de afwezigheid van iets dat een socket kan
+openen. `npm run verbindingen:controle` houdt dat vast en draait mee in `/audit`.
+
+### De dag dat dit verandert
+
+`CLAUDE.md` schrijft die dag zelf voor: *"Server-side code als gewone
+langdraaiende Node-server"* op Hostinger. Zodra zo'n proces er is en het praat
+rechtstreeks met Postgres, gelden drie dingen:
+
+1. **De transactiepooler, poort 6543** — niet de directe poort 5432. De directe
+   poort is voor `pg_dump` en voor migraties; een langdraaiend proces dat daar
+   een pool van tien op zet, gebruikt een zesde van het hele budget.
+2. **`prepare: false`** (of `statement_cache_size: 0`, afhankelijk van de
+   driver). Supavisor draait in transactiemodus, en daarin overleeft een
+   prepared statement de transactie niet — de tweede aanroep faalt dan met
+   *"prepared statement already exists"*. Dat is een fout die pas onder belasting
+   verschijnt.
+3. **Een kleine pool.** Twee tot vijf verbindingen per proces. Meer helpt niet:
+   de pooler multiplext ze toch, en het budget is gedeeld.
+
+⚠️ **De pooler is géén oplossing voor de app zelf.** Die praat met PostgREST en
+hoort dat te blijven doen — dat is waar RLS wordt toegepast. Een Node-server die
+rechtstreeks op de database zit, draait als de databasegebruiker en heeft dus
+geen RLS boven zich; alles wat daar binnenkomt, moet zijn eigen autorisatie
+dragen. Dat is een andere afweging dan pooling en hij weegt zwaarder.
+
+---
+
+## 2.8 Wat kost de Doelcoach?
 
 QS8-42, laatste acceptatiecriterium. Elke AI-call wordt geboekt in `ai_jobs`
 met model, tokens en kosten; dit is de plek waar je het optelt.

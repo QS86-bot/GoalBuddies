@@ -101,5 +101,18 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     wél na een reeks migraties of vóór je iets doet dat een tweede omgeving
     vraagt. Zie `docs/decisions/004-migratieregister.md`.
 
+15. **Verbindingen en pooling** — draai `npm run verbindingen:controle`. Die
+    toetst dat niemand zelf een verbinding met Postgres opent: geen
+    Postgres-driver in `package.json`, geen verbindingsstring in `src/`, `app/`
+    of `supabase/functions/`. Alles loopt via PostgREST.
+
+    ⚠️ **Deze staat groen zonder dat iemand iets heeft ingesteld, en dat is
+    precies waarom hij bestaat.** Het klopt vandaag bij toeval van de
+    architectuur. `max_connections` is 60 voor de héle database; één
+    langdraaiend Node-proces met een pool van tien op de directe poort neemt daar
+    een zesde van. Wordt hij rood, lees dan `docs/DEPLOY.md` §2.7 vóór je iets
+    verandert — het antwoord is de transactiepooler op 6543 met `prepare: false`,
+    en niet "de controle uitzetten".
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.
