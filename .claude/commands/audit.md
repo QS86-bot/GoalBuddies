@@ -39,5 +39,14 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
    in tekst die de gebruiker leest (CLAUDE.md, QS8-111). Commentaar en
    testbestanden tellen niet mee; die gebruiken ze juist met opzet.
 
+10. **Laag-bevindingen** — draai `npm run review:controle`. Elke open
+    Laag-rij in `ENGINEER-REVIEW.md` hoort te zeggen wanneer hij zwaarder wordt
+    (QS8-123).
+
+    ⚠️ En lees die voorwaarden deze week één keer door tegen wat er gebouwd is.
+    Dát is de eigenlijke controle; het script bewaakt alleen dat ze er staan.
+    Een rij waarvan de aanname inmiddels vervallen is, is geen Laag meer en
+    hoort deze week op tafel.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

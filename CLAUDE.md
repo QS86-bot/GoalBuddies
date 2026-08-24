@@ -401,6 +401,25 @@ mis: in de ronde van 20-08 was de zwaarste bevinding aantoonbaar onjuist (ze las
 een migratiebestand waar de gedéployde functie strenger was), terwijl twee andere
 kritieke bevindingen wél klopten. `pg_get_functiondef()` is de waarheid.
 
+#### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
+
+Elke rij in `docs/ENGINEER-REVIEW.md` met risico **Laag** draagt de zin
+`**Wordt zwaarder als:** …` — de aanname die hem laag houdt. `npm run
+review:controle` wordt rood zodra er een Laag-rij zonder staat, en draait mee in
+`/audit`.
+
+⚠️ **De voorwaarde, niet de datum.** De A17-aantekening ("herbevestigen vóór
+EPIC 12") werkte, maar noemde een feature die al gepland was. Dat kon niet bij de
+rij van 17-08 over het ontkoppelen: QS8-110/optie C bestond toen nog niet als
+plan. Wat je wél altijd kunt opschrijven is waaróm iets nú laag is. Vervalt die
+aanname, dan is het geen Laag meer.
+
+⚠️ **Waarom dit ertoe doet.** Die rij van 17-08 was terecht Laag — zelfbedrog,
+geen autorisatiegrens. Vier dagen later liet 0064 het minpunt van precies die
+handeling afhangen, en werd het een scoregat dat 0066 moest dichten. **Vraag bij
+elke nieuwe beslissing die op een bestaande primitieve handeling leunt: staat
+daar een weggelegde bevinding over?**
+
 **Wat je uitstelt, vang je zelf op** met een controlepas langs wat die twee
 agents historisch vinden: dode code, dubbele teksten, ontbrekende loading-,
 error- of lege staat, een component dat op het verkeerde scherm kan belanden, en
