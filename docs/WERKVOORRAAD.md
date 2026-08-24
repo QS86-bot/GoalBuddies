@@ -29,12 +29,15 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Lees §2a voordat je iets bouwt dat hierop leunt.** Dit is ook de bron van
    **QS8-122** (blokkeert QS8-119); uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **428 geslaagd, 266 overgeslagen**; typecheck en lint groen.
+   credentials: **439 geslaagd, 266 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
 5. **⚠️ Web push is aangezet maar nog niet bewezen.** De registratie staat er
    sinds **QS8-124** (In Review): knop op het profielscherm, abonnement, token.
+   De PWA eromheen is sinds 24-08 compleet én getoetst (**QS8-117**): manifest,
+   iconen, koptags en service worker staan in élke geëxporteerde route.
    **Niemand heeft nog een echte melding ontvangen** — dat vraagt een browser en
-   de VAPID-sleutels. Native wacht nog op `expo-notifications` (**Q-TODO B4**).
+   de VAPID-sleutels, en op iOS een fysiek toestel. Native wacht op
+   `expo-notifications`, dat al op de branch van QS8-131 staat.
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
    gratis, gegrendeld in 0066. Zie §2.
@@ -178,7 +181,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **428 geslaagd en 266 overgeslagen** (die 266 zijn de RLS-suite, zie §3b)
+  **439 geslaagd en 266 overgeslagen** (die 266 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
