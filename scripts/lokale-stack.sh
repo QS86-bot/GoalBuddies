@@ -93,12 +93,46 @@ server-port = ${POORT}
 db-pool = 10
 EOF
 
+# ⚠️ **Is de poort vrij?** Deze controle staat hier en niet verderop, en dat is
+#    een gerepareerde valse groene. `stop_vorige` kent alleen zijn eigen
+#    pidbestand; draait er een PostgREST uit een ronde met een ander werkpad, dan
+#    valt de nieuwe om met "Address in use" — en antwoordt de óude keurig met 200
+#    op de gereedheidscontrole hieronder. De suite praat dan tegen een instantie
+#    die naar een net weggegooide database wijst, en meldt tientallen fouten die
+#    geen policyfout zijn.
+#
+#    Meten of er íéts antwoordt is dus niet genoeg; de vraag is of de poort vrij
+#    is voordat we starten. Dat is deterministisch en heeft geen race.
+if curl -s --noproxy '*' --max-time 2 "http://127.0.0.1:${POORT}/" >/dev/null 2>&1; then
+  echo "✗ Er luistert al iets op poort ${POORT}, en dat is deze opstelling niet." >&2
+  echo "  Stop het, of kies een andere poort met RLS_POORT." >&2
+  exit 1
+fi
+
 nohup "$PGRST" "$WERKMAP/pgrst.conf" > "$WERKMAP/pgrst.log" 2>&1 &
 echo $! > "$PIDFILE"
 
 # Wachten tot hij luistert. Een vaste sleep is een gok die op een trage machine
 # de eerste test laat omvallen op iets dat geen policyfout is.
+#
+# ⚠️ **Eerst kijken of ónze instantie nog leeft, en dan pas of er iets antwoordt.**
+#    Zonder die volgorde is dit een valse groene: staat er al een PostgREST op
+#    deze poort, dan valt de nieuwe om met "Address in use" terwijl `curl` een
+#    keurige 200 krijgt van de oude — die naar een database wijst die net
+#    weggegooid is. De suite praat dan tegen een schaduw en meldt 29 fouten die
+#    geen policyfout zijn. Eén keer echt gebeurd op 24-08.
+PID="$(cat "$PIDFILE")"
+
 for _ in $(seq 1 40); do
+  if ! kill -0 "$PID" 2>/dev/null; then
+    echo "✗ PostgREST is gestopt vlak na het starten. Log:" >&2
+    tail -20 "$WERKMAP/pgrst.log" >&2
+    echo >&2
+    echo "  Staat er al iets op poort ${POORT}? Dan is dit 'Address in use'." >&2
+    rm -f "$PIDFILE"
+    exit 1
+  fi
+
   if curl -s --noproxy '*' --max-time 2 "http://127.0.0.1:${POORT}/" >/dev/null 2>&1; then
     echo "✓ PostgREST luistert op http://127.0.0.1:${POORT}"
     echo

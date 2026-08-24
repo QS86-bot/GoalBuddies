@@ -33,7 +33,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **311 geslaagd, 1 overgeslagen.** Zonder credentials geeft `npm test`
    **553 geslaagd en 300 overgeslagen**; typecheck en lint groen.
-   ⚠️ In CI staat de suite nog niet — zie §3b.
+   ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
    **QS8-124**, en de PWA eromheen is getoetst (**QS8-117**). **Niemand heeft nog
@@ -313,11 +313,15 @@ QS8-119 is af: `npm run rls:stack && npm run rls:lokaal` draait de volle suite
 zonder credentials en zonder het echte project aan te raken. Dat is handwerk van
 tien seconden in plaats van een run tegen productie.
 
-⚠️ **Wat er nog handwerk blijft:** de suite staat nog niet in CI. Dat kan nu wél
-zonder secrets — het vraagt een Postgres-service en de PostgREST-binary in de
-runner — en het is bewust buiten QS8-119 gehouden, want het is een wijziging aan
-de pijplijn. Zolang dat niet gebeurd is, blijft gelden: **groen in GitHub bewijst
-niets over domeinregel 7.**
+✅ **En sinds 24-08 draait de suite in CI**, in een eigen job met een
+`postgres:16`-service en de vastgepinde PostgREST-binary. Geen secrets. Daarmee
+vervalt de zin die hier stond: **groen in GitHub zegt nu wél iets over
+domeinregel 7.**
+
+⚠️ Wat het níét zegt: of het platform zich gedraagt zoals verwacht. Er draait geen
+GoTrue in CI, en het verschil tussen twee eigenaren van standaardrechten
+(besluit A46) was lokaal onzichtbaar. Een groene CI vervangt de ronde tegen
+productie niet; hij maakt hem alleen zeldzamer.
 
 ⚠️ Twee dingen zijn hier sinds 23-08 veranderd. **De aanmeldlimiet is geen reden
 meer**: de harnas logt niet meer in maar tekent zijn eigen tokens (QS8-116), dus

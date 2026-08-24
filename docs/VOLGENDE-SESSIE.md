@@ -289,6 +289,14 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
   regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
   Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **Een gereedheidscontrole die niet vraagt of het jóuw proces is.**
+  `lokale-stack.sh` wachtte tot er íéts antwoordde op poort 3010. Draaide er nog
+  een PostgREST uit een vorige ronde, dan viel de nieuwe om met "Address in use"
+  en antwoordde de oude keurig met 200 — naar een database die net weggegooid was.
+  De suite meldde daarna **29 fouten die geen policyfout waren**. Meten of er iets
+  antwoordt is niet hetzelfde als meten of het klopt; hij vraagt nu vóór het
+  starten of de poort vrij is, want dat is deterministisch.
+
 - **Een opruimstap die stil mislukt, en een suite die daarna groen is op oude
   data.** Bij QS8-119 stopte het stackscript PostgREST pas ná het herbouwen van
   de database. `drop database` weigert op open verbindingen, dus de herbouw sloeg
@@ -547,10 +555,11 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
    `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
    `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette
    `{ok:false, reason}`.
-2. **De RLS-suite in CI.** Kan nu zonder secrets: een Postgres-service en de
-   PostgREST-binary in de runner. Bewust buiten QS8-119 gehouden — het is een
-   wijziging aan de pijplijn en verdient een eigen ronde. Zolang het niet gebeurd
-   is, bewijst groen in GitHub niets over domeinregel 7.
+2. ✅ **De RLS-suite draait in CI** sinds 24-08, zonder secrets. Groen in GitHub
+   zegt nu wél iets over domeinregel 7 — maar niet over het platform: er draait
+   geen GoTrue in CI, en het verschil tussen twee eigenaren van standaardrechten
+   was lokaal onzichtbaar. **EPIC 13** (QS8-132) is nu het grootste stuk werk dat
+   openstaat.
 3. **De resterende stukken van EPIC 0, 1 en 11** — de drie epics die nog open
    staan. Zie het projectoverzicht in Linear.
 

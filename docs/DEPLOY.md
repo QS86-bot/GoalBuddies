@@ -196,10 +196,18 @@ service-role-key. Daar staat een slot op (`RLS_TEST_ALLOW_PROD=1` in `.env`) en
 dat blijft staan: er is nog één goede reden om er te draaien, en zolang die
 bestaat kan de héle suite er per ongeluk heen.
 
-Ze draaien **niet** in CI: `SUPABASE_SERVICE_ROLE_KEY` omzeilt RLS en hoort niet
-in een runner die op elke push van elke branch draait. ⚠️ De lokale variant zou
-daar wél kunnen — dat vraagt een Postgres-service en de PostgREST-binary, en het
-staat nog open.
+#### In CI
+
+**Ze draaien sinds 24-08 in CI**, in een eigen job (`rls` in `.github/workflows/ci.yml`)
+met een `postgres:16`-service en de PostgREST-binary. **Geen secrets**, en dat hoort
+zo te blijven: komt er ooit een `secrets.` in die job, dan draait CI weer tegen
+iets echts en is de reden daarvoor het opschrijven waard.
+
+De binary is vastgepind op versie én sha256. Een binary die in CI draait haal je
+niet blind uit een release.
+
+⚠️ Wat er **niet** in CI draait is de variant tegen productie. `SUPABASE_SERVICE_ROLE_KEY`
+omzeilt RLS en hoort niet in een runner die op elke push van elke branch draait.
 
 ### 2.6 De lokale opstelling — wat er precies draait
 

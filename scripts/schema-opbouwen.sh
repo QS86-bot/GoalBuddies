@@ -36,9 +36,24 @@ echo "→ ${DB} opnieuw aanmaken"
 #    Groen op een schema van gisteren is erger dan rood.
 #
 #    Vandaar dat de mislukking hier hard is en niet als waarschuwing langsglijdt.
+# ⚠️ Eerst de verbindingen op déze database afsluiten. Dat mag, en het is geen
+#    grofheid: dit script gooit `${DB}` een regel verderop weg, dus alles wat
+#    eraan hangt is per definitie iets dat zo meteen toch niets meer heeft. Het
+#    alternatief — netjes vragen en falen — laat het script stranden zodra er een
+#    PostgREST uit een vorige ronde blijft hangen met een ander werkpad, en dan
+#    is de foutmelding "stop wat eraan hangt" niet eens uitvoerbaar.
+#
+#    De grens blijft die uit de kop: wijs dit nooit naar een database met data.
+"${PSQL[@]}" -d postgres -c \
+  "select pg_terminate_backend(pid) from pg_stat_activity where datname = '${DB}' and pid <> pg_backend_pid();" \
+  >/dev/null 2>&1 || true
+
 if ! "${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" >/dev/null 2>&1; then
-  echo "✗ ${DB} kon niet weg — er staan nog verbindingen op." >&2
-  echo "  Stop wat eraan hangt (PostgREST: scripts/lokale-stack.sh --stop) en probeer opnieuw." >&2
+  echo "✗ ${DB} kon niet weg." >&2
+  "${PSQL[@]}" -d postgres -At -c \
+    "select '  nog verbonden: ' || count(*) || ' sessie(s), o.a. ' ||
+            coalesce(string_agg(distinct application_name, ', '), '(onbekend)')
+     from pg_stat_activity where datname = '${DB}';" >&2 2>/dev/null || true
   exit 1
 fi
 

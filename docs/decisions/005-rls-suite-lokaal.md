@@ -144,9 +144,18 @@ mysterie.
 
 ## Wat er nog niet is
 
-* **CI draait de suite nog niet.** Dat kan nu wél zonder secrets — het vraagt een
-  Postgres-service en de PostgREST-binary in de runner. Bewust niet in dit issue
-  meegenomen: dat is een wijziging aan de pijplijn en verdient een eigen ronde.
+* ✅ **CI draait de suite sinds 24-08**, in een eigen job met een
+  `postgres:16`-service en de vastgepinde PostgREST-binary. Geen secrets.
+
+  ⚠️ Het opzetten ervan legde twee fouten in deze scripts bloot, allebei van de
+  soort "vals groen". `schema-opbouwen.sh` liet zich stranden op verbindingen van
+  een PostgREST uit een vorige ronde; die worden nu afgesloten, wat mag omdat de
+  database een regel later toch weggegooid wordt. En de gereedheidscontrole van
+  `lokale-stack.sh` mat of er *iets* antwoordde op de poort — dus antwoordde een
+  óude instantie met 200 terwijl de nieuwe omviel met "Address in use", en praatte
+  de suite tegen een database die net weggegooid was. **29 fouten die geen
+  policyfout waren.** De controle vraagt nu vóór het starten of de poort vrij is;
+  dat is deterministisch en heeft geen race.
 * **Realtime en Storage** draaien niet lokaal. Geen enkele RLS-test gebruikt ze;
   `realtime_bewaking()` (migratie 0027) toetst de publicatie in SQL en werkt dus
   gewoon.
