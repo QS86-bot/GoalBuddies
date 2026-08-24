@@ -335,6 +335,10 @@ export const nl = {
     'Bepaalt wanneer je weekdoelen opnieuw beginnen en wanneer je punten tellen. ' +
     'Later aanpasbaar; een lopende week telt gewoon uit.',
 
+  'weekpas.punt_toch_af': 'Vorige week is niet afgerond, maar je reeks loopt gewoon door. Voor die week is er wel één punt afgegaan.',
+  'laden.mislukt': 'Er ging iets mis bij het ophalen. Probeer het opnieuw; blijft het misgaan, dan ligt het aan ons.',
+  'laden.opnieuw': 'Opnieuw proberen',
+  'mijlpaal.voortgang_label': '{gehaald} van {totaal} mijlpalen gehaald',
   'weekpas.titel': 'Weekpassen',
   'weekpas.gered': 'Een weekpas heeft je reeks gered.',
 
@@ -447,6 +451,17 @@ export const nl = {
   'bewijseis.note_and_attachment': 'Notitie én bijlage',
   'bewijseis.optional': 'Alles optioneel',
 
+  'chat.titel': 'Groepschat',
+  'chat.eyebrow': 'GROEPSCHAT',
+  'chat.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
+  'chat.geen_lid_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een nieuwe uitnodigingslink als je erbij hoort.',
+  'chat.ouder_laden': 'Ouder laden',
+  'chat.nog_niets': 'Nog geen berichten. Eén zin is genoeg — “wat ga je deze week doen?” werkt beter dan een lange inleiding.',
+  'chat.terug': 'Terug naar de groep',
+  'chat.sessie_laadt': 'Je sessie is nog aan het laden. Probeer het over een tel opnieuw.',
+  'chat.invoer_label': 'Nieuw bericht',
+  'chat.invoer_hint': 'Zeg iets tegen je groep',
+  'chat.versturen': 'Versturen',
   'chat.laden_mislukt': 'De berichten konden niet geladen worden.',
   'chat.controleer': 'Controleer je bericht.',
   'chat.leeg': 'Er staat nog niets in je bericht.',

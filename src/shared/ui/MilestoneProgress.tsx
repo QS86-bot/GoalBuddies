@@ -39,7 +39,7 @@ export function MilestoneProgress({ done, total, showCount = true }: Props) {
     <View
       style={styles.blok}
       accessibilityRole="progressbar"
-      accessibilityLabel={`${done} van ${total} mijlpalen gehaald`}
+      accessibilityLabel={t('mijlpaal.voortgang_label', { gehaald: done, totaal: total })}
       accessibilityValue={{ min: 0, max: 100, now: percentage }}
     >
       <View style={[styles.spoor, { backgroundColor: theme.colors.panelDark }]}>

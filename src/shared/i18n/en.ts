@@ -237,6 +237,10 @@ export const en: Record<Sleutel, string> = {
     'Decides when your weekly goals start over and when your points count. ' +
     'Changeable later; a running week just finishes out.',
 
+  'weekpas.punt_toch_af': 'Last week was not completed, but your streak continues. One point did come off for that week.',
+  'laden.mislukt': 'Something went wrong while loading. Try again; if it keeps failing, it is on us.',
+  'laden.opnieuw': 'Try again',
+  'mijlpaal.voortgang_label': '{gehaald} of {totaal} milestones reached',
   'weekpas.titel': 'Week passes',
   'weekpas.gered': 'A week pass saved your streak.',
 
@@ -328,6 +332,17 @@ export const en: Record<Sleutel, string> = {
   'bewijseis.note_and_attachment': 'Note and attachment',
   'bewijseis.optional': 'Everything optional',
 
+  'chat.titel': 'Group chat',
+  'chat.eyebrow': 'GROUP CHAT',
+  'chat.geen_lid_titel': 'This group is not here, or not for you',
+  'chat.geen_lid_tekst': 'You are not a member of this group, or it no longer exists. Ask for a new invite link if you belong here.',
+  'chat.ouder_laden': 'Load older',
+  'chat.nog_niets': 'No messages yet. One line is enough — “what are you doing this week?” works better than a long introduction.',
+  'chat.terug': 'Back to the group',
+  'chat.sessie_laadt': 'Your session is still loading. Try again in a second.',
+  'chat.invoer_label': 'New message',
+  'chat.invoer_hint': 'Say something to your group',
+  'chat.versturen': 'Send',
   'chat.laden_mislukt': 'The messages could not be loaded.',
   'chat.controleer': 'Check your message.',
   'chat.leeg': 'There is nothing in your message yet.',

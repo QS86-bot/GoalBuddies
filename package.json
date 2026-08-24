@@ -23,7 +23,8 @@
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
-    "migraties:controle": "node scripts/migraties-controle.mjs"
+    "migraties:controle": "node scripts/migraties-controle.mjs",
+    "tekst:controle": "node scripts/tekst-controle.mjs"
   },
   "engines": {
     "node": ">=20"
