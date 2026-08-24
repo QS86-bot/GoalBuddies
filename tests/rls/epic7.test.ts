@@ -38,6 +38,7 @@ import {
   createTestUser,
   removeTestUsers,
   rlsTestsConfigured,
+  verwijderAuthGebruiker,
   type TestUser,
 } from './harness';
 
@@ -717,8 +718,14 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
         }
 
         // Het account opzeggen. Dit is de handeling die vóór 0060 omviel.
-        const weg = await admin.auth.admin.deleteUser(tijdelijk.id);
-        expect(weg.error, 'account verwijderen mag niet stuklopen op een systeembericht').toBeNull();
+        //
+        // ⚠️ Via de harnas en niet via `admin.auth.admin` — QS8-119. Dit is de
+        //    enige handeling in deze test die op productie door GoTrue wordt
+        //    gedaan en op de lokale stack niet; wat de test bewíjst — dat 0060
+        //    het systeembericht zijn onderwerp laat loslaten — gebeurt in de
+        //    database en is op beide doelen hetzelfde.
+        const weg = await verwijderAuthGebruiker(tijdelijk.id);
+        expect(weg, 'account verwijderen mag niet stuklopen op een systeembericht').toBeNull();
 
         // De regel blijft staan — een gesprek verliest zijn geschiedenis niet —
         // maar de persoon is losgelaten, en de app toont "Een oud-lid".
@@ -946,6 +953,18 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
     }
 
     /**
+     * Mijlpaalberichten op hun drempel gesorteerd.
+     *
+     * ⚠️ Bestaat voor het ene geval waarin twee aankondigingen uit dezelfde
+     *    transactie komen en dus dezelfde `created_at` dragen. Sorteren op het
+     *    getal in de tekst is daar de enige stabiele volgorde die er is.
+     */
+    function opDrempel(berichten: readonly (string | null)[]): readonly (string | null)[] {
+      const getal = (b: string | null): number => Number(/(\d+) schakels/.exec(b ?? '')?.[1] ?? 0);
+      return [...berichten].sort((a, b) => getal(a) - getal(b));
+    }
+
+    /**
      * De échte mijlpaalaankondigingen van de groep.
      *
      * ⚠️ `type` en `sender_id` staan er bewust bij, en dat is dezelfde filter als
@@ -1060,7 +1079,21 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
 
         await zetSchakels(1, 25);
 
-        expect(await mijlpaalberichten()).toEqual([
+        // ⚠️ **Op drempel gesorteerd en niet op tijd, en dat is een gerepareerde
+        //    flakiness.** Het inhalen gebeurt in één trigger-aanroep, dus beide
+        //    berichten komen uit dezelfde transactie — en `now()` staat binnen een
+        //    transactie stil. Ze dragen daarmee exact dezelfde `created_at`, en
+        //    dan is de volgorde die `order('created_at')` teruggeeft een gok.
+        //
+        //    De belofte van deze test is dat de twee gemiste drempels alsnog
+        //    gemeld worden, niet in welke volgorde de database ze binnen één
+        //    transactie wegschrijft. Dat laatste belooft hij nergens. De tests
+        //    hierboven toetsen de volgorde wél, en daar mag dat: die plaatsen de
+        //    schakels één voor één, dus in aparte transacties.
+        //
+        //    Gevonden op 24-08 door de suite tegen de lokale stack te draaien —
+        //    twee van de vijf rondes rood, elke keer deze. Zie QS8-119.
+        expect(await opDrempel(await mijlpaalberichten())).toEqual([
           'De Ketting van deze groep telt 10 schakels.',
           'De Ketting van deze groep telt 25 schakels.',
         ]);

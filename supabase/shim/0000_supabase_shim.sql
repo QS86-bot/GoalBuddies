@@ -37,6 +37,24 @@ begin
   end if;
 end $$;
 
+/*
+ * ⚠️ `authenticator` is de rol waarmee PostgREST verbindt, en die daarna naar
+ *    `anon`, `authenticated` of `service_role` schakelt op grond van het JWT.
+ *    Zonder deze rol kan er wel een schema staan, maar praat er niets mee.
+ *
+ *    Hij heeft bewust `nobypassrls` en geen enkel recht van zichzelf: alles wat
+ *    een verzoek mag, komt uit de rol waar hij naartoe schakelt. Zou hij zelf
+ *    rechten hebben, dan lekken die naar élk verzoek.
+ */
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'authenticator') then
+    create role authenticator login noinherit nobypassrls password 'postgrest';
+  end if;
+end $$;
+
+grant anon, authenticated, service_role to authenticator;
+
 grant usage on schema public to anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
@@ -132,6 +150,56 @@ begin
     create publication supabase_realtime;
   end if;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Wat GoTrue zou doen — QS8-119
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Deze twee functies horen nooit op productie te staan, en dat is een
+--    eigenschap van waar ze staan.** Ze zitten in `supabase/shim/` en niet in
+--    `supabase/migrations/`, dus `supabase db push` neemt ze niet mee en
+--    `register:controle` kent ze niet. Er staat bovendien een test op die rood
+--    wordt zodra een migratiebestand `shim_` bevat.
+--
+-- ⚠️ **Waarom ze bestaan.** De lokale opstelling heeft PostgREST maar geen
+--    GoTrue: dat is een tweede Docker-image en de RLS-suite heeft er niets aan.
+--    Wat de suite wél nodig heeft is een rij in `auth.users`, zodat de trigger
+--    `handle_new_user` een profiel aanmaakt — precies wat `admin.createUser()`
+--    op productie doet.
+--
+--    Wat de suite daarmee opgeeft is het bewijs dat GoTrue zélf correcte claims
+--    uitgeeft. Dat was nooit de vraag van een RLS-suite, en het gat wordt op
+--    dezelfde manier gedicht als bij QS8-116: één controletest tegen het echte
+--    project.
+create or replace function public.shim_maak_gebruiker(p_email text, p_naam text)
+returns uuid
+language plpgsql
+security definer
+set search_path to 'public', 'auth', 'pg_temp'
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, email, raw_user_meta_data)
+  values (v_id, p_email, jsonb_build_object('full_name', p_naam));
+
+  return v_id;
+end;
+$$;
+
+create or replace function public.shim_verwijder_gebruiker(p_id uuid)
+returns void
+language sql
+security definer
+set search_path to 'public', 'auth', 'pg_temp'
+as $$
+  delete from auth.users where id = p_id;
+$$;
+
+revoke all on function public.shim_maak_gebruiker(text, text) from public, anon, authenticated;
+revoke all on function public.shim_verwijder_gebruiker(uuid) from public, anon, authenticated;
+grant execute on function public.shim_maak_gebruiker(text, text) to service_role;
+grant execute on function public.shim_verwijder_gebruiker(uuid) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- Het migratieregister

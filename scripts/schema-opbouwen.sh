@@ -29,7 +29,19 @@ if [[ -n "${PGHOST:-}" ]]; then PSQL+=(-h "$PGHOST"); fi
 PSQL+=(-p "${PGPORT:-5433}" -U "${PGUSER:-postgres}")
 
 echo "→ ${DB} opnieuw aanmaken"
-"${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" >/dev/null
+
+# ⚠️ **`drop database` weigert zolang er nog een sessie op staat**, en dat is geen
+#    theorie: op 24-08 hield PostgREST er elf open, de drop mislukte, en de
+#    RLS-suite draaide zeventien keer tegen een database die niet herbouwd was.
+#    Groen op een schema van gisteren is erger dan rood.
+#
+#    Vandaar dat de mislukking hier hard is en niet als waarschuwing langsglijdt.
+if ! "${PSQL[@]}" -d postgres -c "drop database if exists ${DB};" >/dev/null 2>&1; then
+  echo "✗ ${DB} kon niet weg — er staan nog verbindingen op." >&2
+  echo "  Stop wat eraan hangt (PostgREST: scripts/lokale-stack.sh --stop) en probeer opnieuw." >&2
+  exit 1
+fi
+
 "${PSQL[@]}" -d postgres -c "create database ${DB};" >/dev/null
 
 echo "→ de steiger (supabase/shim)"

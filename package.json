@@ -26,7 +26,10 @@
     "migraties:controle": "node scripts/migraties-controle.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
-    "schema:opbouwen": "bash scripts/schema-opbouwen.sh"
+    "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
+    "rls:stack": "bash scripts/lokale-stack.sh",
+    "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
+    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls"
   },
   "engines": {
     "node": ">=20"

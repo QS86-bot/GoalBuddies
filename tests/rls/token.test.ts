@@ -6,6 +6,7 @@ import {
   gebruikerDb,
   echteSessie,
   removeTestUsers,
+  echteSessieBeschikbaar,
   rlsTestsConfigured,
   tekenGebruikersToken,
   type TestUser,
@@ -99,7 +100,13 @@ describe.skipIf(!rlsTestsConfigured)('QS8-116 — zelfgetekende tokens', () => {
    *    hier wordt dat één keer per run alsnog gecontroleerd. Voeg hier geen
    *    tweede `echteSessie()` aan toe — dan is de limiet terug.
    */
-  describe('de controle tegen een echt token', () => {
+  //
+  // ⚠️ Overgeslagen op de lokale stack, en dat is geen gemak maar de enige
+  //    eerlijke uitkomst: daar draait geen GoTrue, dus er is geen echt token om
+  //    mee te vergelijken. Groen worden op een vergelijking die niet gemaakt is,
+  //    zou van deze controletest precies het tegenovergestelde maken van wat hij
+  //    moet zijn. Draai hem tegen het echte project — QS8-119.
+  describe.skipIf(!echteSessieBeschikbaar)('de controle tegen een echt token', () => {
     it(
       'draagt dezelfde autorisatieclaims als een token van GoTrue',
       async () => {

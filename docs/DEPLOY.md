@@ -164,20 +164,73 @@ Uit `CLAUDE.md`, procesregel 20 — elk bestand in `supabase/migrations/`:
 
 ### 2.5 De RLS-tests
 
+**Draai ze lokaal. Dat is sinds QS8-119 de standaard.**
+
 ```bash
-npm test                        # slaat ze over zonder .env
-npx vitest run src/lib/testing  # alleen de RLS-suite
+npm run rls:stack      # schema opbouwen + PostgREST starten
+npm run rls:lokaal     # de suite ertegenaan — ongeveer vijf seconden
+npm run rls:stack:stop
 ```
 
-Ze maken drie echte gebruikers aan in het project, doen hun werk en ruimen
-zichzelf op. Ze draaien **niet** in CI: `SUPABASE_SERVICE_ROLE_KEY` omzeilt RLS
-en hoort niet in een runner die op elke push van elke branch draait.
+Geen credentials, geen netwerk, en het echte project wordt niet aangeraakt. De
+suite praat tegen een **echte PostgREST** op een database die uit
+`supabase/migrations/` is opgebouwd — aantoonbaar hetzelfde schema als productie
+(§2.2a).
 
-Draai ze lokaal vóór elke merge die auth, RLS, goedkeuring of commitments raakt.
+#### Wat je lokaal niet toetst
+
+Het platform. Er draait geen GoTrue, dus er is geen bewijs dat een echte sessie de
+claims draagt die de policies verwachten. Eén test in `token.test.ts` doet die
+vergelijking en slaat zichzelf lokaal over.
+
+⚠️ **Draai vóór een merge die auth, RLS, goedkeuring of commitments raakt dus
+beide** — lokaal voor het snelle bewijs, productie voor de bevestiging:
+
+```bash
+npm test                        # slaat de RLS-suite over zonder .env
+npx vitest run tests/rls        # tegen productie, mét .env
+```
+
+Tegen productie maakt de suite echte gebruikers aan en ruimt ze op met de
+service-role-key. Daar staat een slot op (`RLS_TEST_ALLOW_PROD=1` in `.env`) en
+dat blijft staan: er is nog één goede reden om er te draaien, en zolang die
+bestaat kan de héle suite er per ongeluk heen.
+
+Ze draaien **niet** in CI: `SUPABASE_SERVICE_ROLE_KEY` omzeilt RLS en hoort niet
+in een runner die op elke push van elke branch draait. ⚠️ De lokale variant zou
+daar wél kunnen — dat vraagt een Postgres-service en de PostgREST-binary, en het
+staat nog open.
+
+### 2.6 De lokale opstelling — wat er precies draait
+
+Twee processen, allebei de échte software:
+
+1. **Postgres 16**, met het schema uit `scripts/schema-opbouwen.sh`.
+2. **PostgREST**, de binary van
+   [github.com/PostgREST/postgrest/releases](https://github.com/PostgREST/postgrest/releases).
+   Zet hem in `$TMPDIR/goalbuddies-lokale-stack/` of wijs hem aan met
+   `POSTGREST_BIN`.
+
+⚠️ **Geen** `supabase start`**, en dat is een omstandigheid en geen principe.**
+Die haalt de volledige stack binnen (Postgres, PostgREST, GoTrue, Realtime,
+Storage, Studio, een mailserver) en is de betere keus als hij het doet — meer
+platform voor minder eigen gedoe. Op de machine waar dit gebouwd is, kon het niet:
+Docker Hub was achter de proxy niet bereikbaar. Werkt `supabase start` bij jou wel,
+gebruik dat dan en wijs `RLS_LOKAAL_URL` naar de API van die stack.
+
+⚠️ `supabase/shim/0000_supabase_shim.sql` vult aan wat het platform normaal
+meebrengt: de rollen, `auth.uid()`, `auth.users`, de realtime-publicatie, de
+standaardrechten, en twee functies die de rol van GoTrue overnemen bij het
+aanmaken en verwijderen van een testgebruiker.
+
+**Die twee functies horen nooit op productie.** `supabase/shim/` zit niet in
+`supabase/migrations/`, dus `db push` neemt ze niet mee — en
+`tests/scripts/steiger.test.ts` wordt rood zodra een migratiebestand `shim_`
+noemt.
 
 ---
 
-## 2.6 Wat kost de Doelcoach?
+## 2.7 Wat kost de Doelcoach?
 
 QS8-42, laatste acceptatiecriterium. Elke AI-call wordt geboekt in `ai_jobs`
 met model, tokens en kosten; dit is de plek waar je het optelt.

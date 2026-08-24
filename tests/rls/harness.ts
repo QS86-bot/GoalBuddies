@@ -18,30 +18,93 @@ import type { Database } from '../../src/lib/database.types';
 
 export type TestDb = SupabaseClient<Database>;
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+/**
+ * Waar draait deze suite tegenaan? — QS8-119.
+ *
+ * ⚠️ **`lokaal` is de bedoelde stand en `productie` de uitzondering.** Tot
+ *    24-08-2026 was er maar één doel: het echte project. Deze suite maakt echte
+ *    accounts aan en ruimt ze op met een key die RLS volledig omzeilt, en dat is
+ *    één slordige refactor verwijderd van een `delete` zonder filter op
+ *    gebruikersgegevens.
+ *
+ *    Met `RLS_DOEL=lokaal` praat hij tegen een PostgREST op een lege database
+ *    die uit `supabase/migrations/` is opgebouwd — aantoonbaar hetzelfde schema
+ *    als productie (QS8-122). Er valt daar niets te verliezen, er zijn geen
+ *    credentials voor nodig, en het draait offline.
+ *
+ * ⚠️ **Wat je lokaal niet toetst: het platform.** Geen GoTrue, dus geen bewijs
+ *    dat een echte sessie de claims draagt die de policies verwachten. Dat is
+ *    dezelfde grens als bij QS8-116, en hij wordt op dezelfde manier bewaakt:
+ *    `token.test.ts` draait tegen het échte project en vergelijkt de claims.
+ *
+ *    Draai vóór een merge die auth, RLS, goedkeuring of commitments raakt dus
+ *    beide: lokaal voor het snelle bewijs, productie voor de bevestiging.
+ */
+export type Doelsoort = 'productie' | 'lokaal';
+
+export const doelsoort: Doelsoort =
+  process.env.RLS_DOEL === 'lokaal' ? 'lokaal' : 'productie';
+
+/**
+ * ⚠️ Het secret staat hier als platte tekst en dat mag, want het hoort bij een
+ *    database die deze suite zelf net heeft opgebouwd en zo weer weggooit. Zet
+ *    `RLS_LOKAAL_JWT_SECRET` als je opstelling een ander secret gebruikt;
+ *    `scripts/lokale-stack.sh` gebruikt deze.
+ */
+const LOKAAL_SECRET = 'super-geheim-lokaal-jwt-secret-voor-de-rls-suite';
+const LOKAAL_URL = 'http://127.0.0.1:3010';
+
+const url = doelsoort === 'lokaal'
+  ? (process.env.RLS_LOKAAL_URL ?? LOKAAL_URL)
+  : process.env.EXPO_PUBLIC_SUPABASE_URL;
+
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 /**
- * Het JWT-secret van het project — dashboard, Settings → API → JWT Settings.
+ * Het JWT-secret — op productie dat van het project (dashboard, Settings → API),
+ * lokaal het secret waarmee PostgREST gestart is.
  *
  * ⚠️ Sinds QS8-116 tekent deze harness de gebruikerstokens zelf en logt hij niet
  *    meer in. Zie `tekenGebruikersToken()` voor waarom dat mag en wat het kost.
- *    Net als de service-role-key hoort dit secret niet in CI.
+ *    Net als de service-role-key hoort het projectsecret niet in CI.
  */
-const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+const jwtSecret = doelsoort === 'lokaal'
+  ? (process.env.RLS_LOKAAL_JWT_SECRET ?? LOKAAL_SECRET)
+  : process.env.SUPABASE_JWT_SECRET;
 
 /**
- * Draaien deze tests? Ze hebben een echte Supabase-instantie nodig, inclusief de
- * service-role-key. Die staat niet in CI (en hoort daar ook niet), dus daar
- * slaan ze zichzelf over in plaats van rood te worden.
+ * Draaien deze tests?
  *
- * ⚠️ Het JWT-secret staat hier bewust in. Zonder die voorwaarde slaan de tests
- *    zichzelf niet netjes over maar vallen ze om op een ontbrekend secret — en
- *    een suite die omvalt in plaats van overslaat is precies het faalbeeld dat
- *    QS8-116 kwam opruimen.
+ * ⚠️ **Lokaal is de voorwaarde alleen dat PostgREST er staat**, en dat is de
+ *    hele winst van QS8-119: geen credentials, dus draaibaar in CI en op een
+ *    machine die het project nooit gezien heeft. De sleutels worden hier zelf
+ *    getekend — een anon-key ís niet meer dan een JWT met `role: anon`, en dat
+ *    geldt op Supabase net zo goed.
+ *
+ * ⚠️ Tegen productie blijft de oude voorwaarde staan. Zonder de sleutels slaan
+ *    de tests zichzelf over in plaats van om te vallen; een suite die omvalt in
+ *    plaats van overslaat is precies het faalbeeld dat QS8-116 kwam opruimen.
  */
-export const rlsTestsConfigured = Boolean(url && anonKey && serviceRoleKey && jwtSecret);
+export const rlsTestsConfigured =
+  doelsoort === 'lokaal'
+    ? Boolean(url && jwtSecret)
+    : Boolean(url && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY && serviceRoleKey && jwtSecret);
+
+/**
+ * Een sleutel voor een rol, getekend met hetzelfde secret dat PostgREST kent.
+ *
+ * ⚠️ Alleen lokaal. Op productie zijn de sleutels uitgegeven door Supabase en
+ *    hebben ze claims (`ref`, `iss`) die hier niet na te maken zijn — en dat is
+ *    maar goed ook.
+ */
+function tekenRolSleutel(rol: 'anon' | 'service_role'): string {
+  const nu = Math.floor(Date.now() / 1000) - 5;
+  const kop = { alg: 'HS256', typ: 'JWT' };
+  const claims = { role: rol, iss: 'supabase-lokaal', iat: nu, exp: nu + 60 * 60 * 4 };
+  const romp = `${base64url(JSON.stringify(kop))}.${base64url(JSON.stringify(claims))}`;
+
+  return `${romp}.${hs256(romp, jwtSecret ?? LOKAAL_SECRET)}`;
+}
 
 /**
  * Het enige Supabase-project dat er is, is het echte project. Er is (nog) geen
@@ -56,7 +119,18 @@ const PRODUCTIE_REF = 'wehgocadxehottiiyvsc';
  *    refactor verwijderd is van `delete from groups` zonder filter.
  *
  *    Zet `RLS_TEST_ALLOW_PROD=1` in .env als je bewust tegen het echte project
- *    wilt draaien. Zodra er een lokale stack is, hoort deze regel te verdwijnen.
+ *    wilt draaien.
+ *
+ * ⚠️ **Hier stond: "zodra er een lokale stack is, hoort deze regel te
+ *    verdwijnen". Die stack is er sinds 24-08 (QS8-119) en de regel blijft
+ *    staan.** Dat is geen vergeetachtigheid maar een herziening: er is nog
+ *    precies één goede reden om tegen productie te draaien — de controletest die
+ *    een echt GoTrue-token vergelijkt met een zelfgetekend token. Zolang die
+ *    reden bestaat, bestaat de mogelijkheid om per ongeluk de héle suite tegen
+ *    productie te draaien, en dan hoort er een slot op.
+ *
+ *    Wat wél veranderd is: dit is niet langer de enige weg. `RLS_DOEL=lokaal`
+ *    raakt het echte project niet en heeft geen credentials nodig.
  */
 function guardProductie(target: string): void {
   if (!target.includes(PRODUCTIE_REF)) return;
@@ -70,7 +144,11 @@ function guardProductie(target: string): void {
       'service-role-key. Dat gaat vandaag goed, maar het is geen gewoonte om in',
       'te bakken.',
       '',
-      'Draai ze tegen een lokale stack, of zet bewust in .env:',
+      'Sinds QS8-119 hoeft dat niet meer. Draai ze lokaal:',
+      '  npm run rls:stack   &&   npm run rls:lokaal',
+      '',
+      'Wil je tóch tegen het echte project — en daar is één goede reden voor,',
+      'namelijk de controletest op een echt GoTrue-token — zet dan bewust in .env:',
       '  RLS_TEST_ALLOW_PROD=1',
     ].join('\n'),
   );
@@ -82,10 +160,28 @@ function requireEnv(): {
   serviceRoleKey: string;
   jwtSecret: string;
 } {
+  if (doelsoort === 'lokaal') {
+    if (!url || !jwtSecret) {
+      throw new Error(
+        'RLS_DOEL=lokaal vraagt een draaiende PostgREST. Start hem met ' +
+          'scripts/lokale-stack.sh, of zet RLS_LOKAAL_URL.',
+      );
+    }
+    return {
+      url,
+      anonKey: tekenRolSleutel('anon'),
+      serviceRoleKey: tekenRolSleutel('service_role'),
+      jwtSecret,
+    };
+  }
+
+  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
   if (!url || !anonKey || !serviceRoleKey || !jwtSecret) {
     throw new Error(
       'RLS-tests hebben EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_ANON_KEY, ' +
-        'SUPABASE_SERVICE_ROLE_KEY en SUPABASE_JWT_SECRET nodig. Zie .env.example.',
+        'SUPABASE_SERVICE_ROLE_KEY en SUPABASE_JWT_SECRET nodig. Zie .env.example. ' +
+        'Of draai zonder credentials met RLS_DOEL=lokaal.',
     );
   }
   guardProductie(url);
@@ -97,19 +193,48 @@ const noSession = {
 } as const;
 
 /**
+ * Lokaal staat PostgREST op de wortel en supabase-js praat tegen `/rest/v1`.
+ *
+ * ⚠️ **Dit knipt precies één voorvoegsel weg en verder niets.** Op Supabase zit
+ *    er een gateway (Kong) vóór PostgREST die op `/rest/v1` luistert; een kale
+ *    PostgREST kent dat pad niet. Zonder deze regel krijgt élk verzoek een 404
+ *    die supabase-js als een leeg antwoord doorgeeft — `data: null, error: null`,
+ *    en dan zoek je in de policies naar iets wat een pad was. Dat is precies het
+ *    faalbeeld dat QS8-116 kwam opruimen, dus het staat hier met naam en toenaam.
+ *
+ * ⚠️ Een eigen `fetch` en geen reverse proxy ernaast. Een tweede proces is een
+ *    tweede ding dat kan blijven hangen, en de hele winst van deze opstelling is
+ *    dat er zo weinig mogelijk beweegt.
+ */
+function lokaleFetch(basis: string): typeof fetch {
+  return (invoer, init) => {
+    const adres = typeof invoer === 'string' ? invoer : invoer instanceof URL ? invoer.href : invoer.url;
+    const gekort = adres.replace(`${basis}/rest/v1`, basis);
+
+    return fetch(gekort, init);
+  };
+}
+
+/**
  * De systeemclient. Omzeilt RLS en staat daarmee voor alles wat in productie een
  * Edge Function doet: punten boeken, kettingschakels zetten, jobs bijwerken.
  * In tests gebruiken we hem óók om te bouwen wat de client niet mag bouwen.
  */
 export function adminDb(): TestDb {
   const env = requireEnv();
-  return createClient<Database>(env.url, env.serviceRoleKey, noSession);
+  return createClient<Database>(env.url, env.serviceRoleKey, opties(env.url));
+}
+
+/** De clientopties, met lokaal de padcorrectie erbij. */
+function opties(basis: string): Parameters<typeof createClient>[2] {
+  if (doelsoort === 'productie') return noSession;
+  return { ...noSession, global: { fetch: lokaleFetch(basis) } };
 }
 
 /** Een client zonder sessie: precies wat een uitgelogde bezoeker heeft. */
 export function anonDb(): TestDb {
   const env = requireEnv();
-  return createClient<Database>(env.url, env.anonKey, noSession);
+  return createClient<Database>(env.url, env.anonKey, opties(env.url));
 }
 
 export interface TestUser {
@@ -231,9 +356,11 @@ export function tekenGebruikersToken(userId: string, email: string): string {
  */
 export function gebruikerDb(token: string): TestDb {
   const env = requireEnv();
+  const basis = opties(env.url);
+
   return createClient<Database>(env.url, env.anonKey, {
-    ...noSession,
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    ...basis,
+    global: { ...basis?.global, headers: { Authorization: `Bearer ${token}` } },
   });
 }
 
@@ -284,25 +411,102 @@ function meldAuthFout(
  *    is er een die niet gelimiteerd is.
  */
 export async function createTestUser(label: string): Promise<TestUser> {
+  const email = `rls-${label}-${crypto.randomUUID()}@example.com`;
+  const id = await maakAuthGebruiker(email, `Test ${label}`);
+
+  createdUsers.push({ id, email });
+
+  // Geen `signInWithPassword` meer, en dus ook geen wachtwoord nodig — QS8-116.
+  const token = tekenGebruikersToken(id, email);
+
+  return { id, email, db: gebruikerDb(token), token };
+}
+
+/**
+ * Eén rij in `auth.users`, met het profiel dat `handle_new_user` erbij maakt.
+ *
+ * ⚠️ **Het verschil tussen de twee doelen zit hier en nergens anders**, en dat
+ *    is met opzet. Op productie doet GoTrue dit; lokaal is er geen GoTrue en
+ *    doet `shim_maak_gebruiker()` precies hetzelfde — dezelfde rij, dezelfde
+ *    trigger, hetzelfde profiel. Alles wat daarna gebeurt, gebeurt in beide
+ *    gevallen via PostgREST met een echt JWT.
+ *
+ *    Zou dit verschil verder de suite in lekken, dan zouden de testbestanden
+ *    moeten weten waar ze tegenaan praten. Dat is precies wat je niet wilt: dan
+ *    toets je twee dingen in plaats van hetzelfde ding op twee plekken.
+ */
+/**
+ * De RPC-kant van de steiger, apart getypeerd.
+ *
+ * ⚠️ **`shim_maak_gebruiker` en `shim_verwijder_gebruiker` staan bewust niet in
+ *    `database.types.ts`.** Dat bestand is een afschrift van het échte schema,
+ *    gegenereerd uit productie — en deze twee functies horen daar niet in en
+ *    komen er nooit in. Ze in de typing opnemen zou betekenen dat de app ze kan
+ *    aanroepen, en dat is precies wat niet mag.
+ *
+ *    Vandaar deze smalle cast op de plek waar hij nodig is, in plaats van `any`
+ *    of een verruiming van `Database`.
+ */
+interface ShimRpc {
+  rpc(
+    fn: 'shim_maak_gebruiker' | 'shim_verwijder_gebruiker',
+    args: Record<string, string>,
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+}
+
+function shimVan(db: TestDb): ShimRpc {
+  return db as unknown as ShimRpc;
+}
+
+async function maakAuthGebruiker(email: string, naam: string): Promise<string> {
   const admin = adminDb();
 
-  const email = `rls-${label}-${crypto.randomUUID()}@example.com`;
+  if (doelsoort === 'lokaal') {
+    const { data, error } = await shimVan(admin).rpc('shim_maak_gebruiker', {
+      p_email: email,
+      p_naam: naam,
+    });
+
+    if (error || typeof data !== 'string') {
+      throw new Error(
+        `Testgebruiker aanmaken op de lokale stack mislukte: ${error?.message ?? 'geen id'}. ` +
+          'Draait scripts/lokale-stack.sh, en is de steiger toegepast?',
+      );
+    }
+    return data;
+  }
 
   const created = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
-    user_metadata: { full_name: `Test ${label}` },
+    user_metadata: { full_name: naam },
   });
 
   if (created.error || !created.data.user) {
-    meldAuthFout(created.error, `Testgebruiker ${label} aanmaken`);
+    meldAuthFout(created.error, `Testgebruiker ${naam} aanmaken`);
   }
-  createdUsers.push({ id: created.data.user.id, email });
+  return created.data.user.id;
+}
 
-  // Geen `signInWithPassword` meer, en dus ook geen wachtwoord nodig — QS8-116.
-  const token = tekenGebruikersToken(created.data.user.id, email);
+/**
+ * Eén rij uit `auth.users` weghalen — QS8-119.
+ *
+ * ⚠️ Bestaat om dezelfde reden als `maakAuthGebruiker()`: het is de énige
+ *    handeling in deze suite die op productie door GoTrue gedaan wordt en lokaal
+ *    niet. Een test die `admin.auth.admin.deleteUser()` rechtstreeks aanroept,
+ *    werkt daarom maar op één van de twee doelen — en dat is precies het soort
+ *    verschil dat je niet in de testbestanden wilt hebben.
+ */
+export async function verwijderAuthGebruiker(id: string): Promise<{ message: string } | null> {
+  const admin = adminDb();
 
-  return { id: created.data.user.id, email, db: gebruikerDb(token), token };
+  if (doelsoort === 'lokaal') {
+    const { error } = await shimVan(admin).rpc('shim_verwijder_gebruiker', { p_id: id });
+    return error;
+  }
+
+  const { error } = await admin.auth.admin.deleteUser(id);
+  return error ? { message: error.message } : null;
 }
 
 /**
@@ -319,6 +523,14 @@ export async function createTestUser(label: string): Promise<TestUser> {
 export async function echteSessie(
   label: string,
 ): Promise<{ userId: string; email: string; accessToken: string }> {
+  if (doelsoort === 'lokaal') {
+    throw new Error(
+      'echteSessie() vraagt GoTrue en die draait niet op de lokale stack. Deze ' +
+        'test hoort tegen het echte project te draaien — dat is precies waarvoor ' +
+        'hij bestaat. Gebruik `echteSessieBeschikbaar` om hem over te slaan.',
+    );
+  }
+
   const env = requireEnv();
   const admin = adminDb();
 
@@ -351,6 +563,17 @@ export async function echteSessie(
   };
 }
 
+/**
+ * Kan `echteSessie()` hier? Alleen tegen het echte project — QS8-119.
+ *
+ * ⚠️ Dit is de enige plek waar een testbestand het doel mág kennen, en de reden
+ *    is inhoudelijk: die ene test bestáát om te bewijzen dat een zelfgetekend
+ *    token dezelfde claims draagt als een token van GoTrue. Lokaal is er geen
+ *    GoTrue, dus daar valt niets te vergelijken en is overslaan het eerlijke
+ *    antwoord — niet groen worden op een vergelijking die niet gemaakt is.
+ */
+export const echteSessieBeschikbaar = doelsoort === 'productie';
+
 /** De payload-claims van een JWT, zonder de handtekening te controleren. */
 export function claimsVan(jwt: string): Record<string, unknown> {
   const payload = jwt.split('.')[1];
@@ -376,26 +599,14 @@ export function claimsVan(jwt: string): Record<string, unknown> {
  *    niets.
  */
 export async function createTestProfile(label: string): Promise<{ id: string; email: string }> {
-  const admin = adminDb();
-
   const email = `rls-${label}-${crypto.randomUUID()}@example.com`;
-
-  const created = await admin.auth.admin.createUser({
-    email,
-    password: crypto.randomUUID(),
-    email_confirm: true,
-    user_metadata: { full_name: `Test ${label}` },
-  });
-
-  if (created.error || !created.data.user) {
-    throw new Error(`Testprofiel ${label} aanmaken mislukte: ${created.error?.message}`);
-  }
+  const id = await maakAuthGebruiker(email, `Test ${label}`);
 
   // ⚠️ Óók in de boekhouding met adres (QS8-119). Deze profielen zijn opvulling
   //    en loggen nooit in, maar ze worden wél opgeruimd — en dan moeten ze door
   //    dezelfde grendel als de rest.
-  createdUsers.push({ id: created.data.user.id, email });
-  return { id: created.data.user.id, email };
+  createdUsers.push({ id, email });
+  return { id, email };
 }
 
 /**
@@ -491,7 +702,8 @@ export async function removeTestUsers(): Promise<void> {
   }
 
   for (const id of ids) {
-    const { error } = await admin.auth.admin.deleteUser(id);
+    const error = await verwijderAuthGebruiker(id);
+
     if (error) {
       // Niet gooien: een halve opruiming is beter dan geen, en de volgende
       // gebruiker verdient nog een poging.
