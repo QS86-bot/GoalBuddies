@@ -186,7 +186,7 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-**Nummer verder vanaf 0069.** Elke migratie idempotent, met een rollback-pad
+   **Nummer verder vanaf 0072.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 
    ⚠️ **`0057` t/m `0061` bestaan niet als bestand** — ze zijn wel toegepast en
@@ -474,30 +474,29 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (23-08)
+## STAND VAN DE REPO (24-08, na PR #9)
 
-`main` staat op `bbbd1be`. Er staan drie branches op de remote en twee daarvan
-mogen weg:
+`main` staat op `f1c4859`. Drie branches ernaast:
 
 | branch | commit | |
 |---|---|---|
-| `main` | `bbbd1be` | de hoofdbranch |
+| `main` | `f1c4859` | de hoofdbranch |
+| `quintenstrijdonk/qs8-122-…` | `243365c` | de teruggehaalde migraties — ⚠️ **inhoudelijk overbodig**, PR #9 heeft dezelfde bestanden geland. Nalopen en weggooien |
+| `claude/linear-bijwerken-docs-t7cko6` | de lopende cloudsessie |
 | `fundering-16-08` | `8640f3c` | **archief, laten staan** |
-| `quintenstrijdonk/qs8-21-04-repo-scaffold-...` | `8640f3c` | mag weg |
-| `claude/goalbuddies-rls-suite-b6mi31` | `e64a6f5` | mag weg, zit in `main` |
 
-```bash
-git push origin --delete quintenstrijdonk/qs8-21-04-repo-scaffold-expo-typescript-strict
-git push origin --delete claude/goalbuddies-rls-suite-b6mi31
-```
+✅ De verdwaalde branch met 21 commits is op 24-08 geland als PR #9. Wat ervan
+geleerd is, staat in WERKVOORRAAD §2a — en de kern daarvan geldt nog steeds:
+**werk dat niet landt, bestaat voor de volgende sessie niet**, en dat is niet
+zichtbaar in een document, want het document staat op diezelfde tak. **Kijk bij
+het beginnen van een sessie naar deze tabel en niet alleen naar `main`.**
 
 ⚠️ **`fundering-16-08` heeft géén gemeenschappelijke voorouder met `main`.** Het
 zijn twee losse wortelhistories; `main` is rond 16-08 opnieuw geworteld. Die
 branch bewaart de zeven oorspronkelijke fundering-commits, die nergens anders
 meer bereikbaar zijn (de inhoud leeft wél door — `0001` t/m `0004` zijn
 byte-identiek). **Zet hem nooit in een PR**: een merge zou twee historieën aan
-elkaar knopen en 25 bestanden terugdraaien naar de stand van 16 augustus. Beter
-nog: maak er een tag van en gooi de branch weg.
+elkaar knopen en 25 bestanden terugdraaien naar de stand van 16 augustus.
 
 ⚠️ Een sessie in de cloud kan **geen tags aanmaken en geen branches verwijderen** —
 dat geeft HTTP 403 op `git-receive-pack`. Gewone pushes naar een eigen branch

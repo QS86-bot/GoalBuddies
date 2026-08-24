@@ -33,8 +33,10 @@ export {
 
 export {
   addDays,
+  apparaatTijdzone,
   daysBetween,
   isGeldigeIsoDatum,
+  isGeldigeTijdzone,
   klokTijd,
   localDateIn,
   toIsoDate,

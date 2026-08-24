@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { REDACTED, scrubContext, scrubMessage } from './scrub';
+import { REDACTED, scrubContext, scrubMessage, scrubStack } from './scrub';
 
 describe('scrubMessage', () => {
   it('haalt e-mailadressen eruit', () => {
@@ -82,5 +82,66 @@ describe('scrubContext', () => {
 
   it('is standaard dicht: een onbekend veld gaat niet mee', () => {
     expect(scrubContext({ ietsNieuws: 'wat dan ook' })).toEqual({ ietsNieuws: REDACTED });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De stack — gerepareerd lek, 24-08-2026
+// ---------------------------------------------------------------------------
+
+describe('scrubStack', () => {
+  it('zet de geschoonde melding boven de stack in plaats van de ruwe', () => {
+    // ⚠️ Dit is het lek zelf. `error.stack` begint met `Naam: melding`, dus
+    //    alles wat `scrubMessage()` eruit haalde ging er via de stack alsnog uit.
+    const ruw = [
+      "Error: Key (invite_code)=('zomer-2026') already exists, mail sanne@voorbeeld.nl",
+      '    at maakGroep (api.ts:41:11)',
+      '    at async handler (index.ts:7:3)',
+    ].join('\n');
+
+    const uit = scrubStack(ruw, 'Error', scrubMessage(ruw.split('\n')[0] ?? '')) ?? '';
+
+    expect(uit).not.toContain('zomer-2026');
+    expect(uit).not.toContain('sanne@voorbeeld.nl');
+    expect(uit).toContain('maakGroep (api.ts:41:11)');
+  });
+
+  it('houdt alleen frameregels over', () => {
+    // Een melding over meerdere regels — Postgres doet dat met DETAIL en HINT —
+    // hoort niet als losse regels in de stack te blijven staan.
+    const ruw = [
+      'Error: iets ging mis',
+      'DETAIL: Key (email)=(sanne@voorbeeld.nl) bestaat al',
+      'HINT: gebruik een ander adres',
+      '    at ergens (bestand.ts:1:1)',
+    ].join('\n');
+
+    const uit = scrubStack(ruw, 'Error', 'iets ging mis') ?? '';
+
+    expect(uit).not.toContain('DETAIL');
+    expect(uit).not.toContain('HINT');
+    expect(uit).not.toContain('voorbeeld.nl');
+    expect(uit.split('\n')).toHaveLength(2);
+  });
+
+  it('haalt een e-mailadres en een token ook uit een frameregel', () => {
+    // Een bestandspad draagt op een ontwikkelmachine een gebruikersnaam, en een
+    // `at`-regel kan een query-string bevatten.
+    const ruw = [
+      'Error: x',
+      '    at fetch (https://api.example/v1?token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc-123)',
+    ].join('\n');
+
+    expect(scrubStack(ruw, 'Error', 'x') ?? '').toContain('[token]');
+  });
+
+  it('laat een ontbrekende stack ontbrekend', () => {
+    expect(scrubStack(undefined, 'Error', 'x')).toBeUndefined();
+  });
+
+  it('kapt een absurd lange stack af', () => {
+    const ruw = ['Error: x', ...Array.from({ length: 500 }, (_, i) => `    at f${i} (b.ts:${i}:1)`)];
+
+    expect((scrubStack(ruw.join('\n'), 'Error', 'x') ?? '').length).toBeLessThanOrEqual(4000);
   });
 });

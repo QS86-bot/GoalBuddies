@@ -362,9 +362,18 @@ docs/decisions/
 
 ### Proces
 17. Elke feature begint met `spec-planner`.
-18. Elke feature eindigt met tests die de acceptatiecriteria dekken.
+18. Elke feature eindigt met tests die de acceptatiecriteria dekken — en
+    minstens één daarvan staat op de náád. Zie hieronder.
 19. **Reviewagents naar risico, niet naar schema** — zie hieronder.
 20. Migraties zijn idempotent, met rollback-pad en dump vooraf.
+
+    ⚠️ **Sinds 24-08 een controle en geen zin meer.** `npm run migraties:controle`
+    draait mee in `/audit` en wordt rood bij een gat in de nummering, twee
+    migraties met hetzelfde nummer, of een migratie zonder rollback-pad in zijn
+    kop. Het gat is de belangrijkste van de drie: de bestanden zijn de enige
+    manier om dit schema ergens anders op te bouwen, en ontbreekt er één, dan
+    toetst de RLS-suite daar een ánder schema dan productie — groen zonder iets
+    te bewijzen. Twee keer met de hand gevonden, beide keren bij toeval.
 
 #### Regel 19 uitgeschreven (herzien 20-08-2026)
 
@@ -400,6 +409,46 @@ hadden.
 mis: in de ronde van 20-08 was de zwaarste bevinding aantoonbaar onjuist (ze las
 een migratiebestand waar de gedéployde functie strenger was), terwijl twee andere
 kritieke bevindingen wél klopten. `pg_get_functiondef()` is de waarheid.
+
+#### Regel 18 uitgeschreven: elk onderdeel klopt en het geheel lekt (24-08-2026)
+
+Drie keer in één week was de duurste fout dezelfde fout, en alle drie de keren
+was er een uitgebreide, groene testsuite die er niets van zag.
+
+| Wanneer | Wat er klopte | Wat er lekte |
+|---|---|---|
+| Migratie 0032/0034 | `SYSTEEM_GEBEURTENISSEN` en de CHECK, elk voor zich | De test vergeleek de app-lijst met **zichzelf**. 0032 zette `deadline_requested` op de CHECK, de app bleef op acht staan, en er werd niets rood |
+| QS8-115 / PR #9 | `deadlineVerzoekSchema` c.s. waren netjes vertaald | Ze verhuisden naar een eigen bestand (QS8-120/121) en de Nederlandse zinnen kwamen terug. De schematests toetsen de **inhoud** van de melding, niet de **herkomst** |
+| QS8-24 | `scrubMessage()` en `scrubContext()`, allebei uitgebreid getest | `reportError()` nam de geschoonde melding en zette de **ruwe stack** ernaast. De eerste regel van een stack ís de melding, dus alles ging er alsnog uit |
+
+**De vorm is elke keer dezelfde:** de test toetst een eigenschap van een
+ónderdeel, terwijl de belofte een eigenschap van het gehéél is. Onderdelen zijn
+makkelijk te testen en naden niet, dus de naad blijft onbewaakt — en dat is
+precies waar een refactor, een migratie of een tweede schrijver langskomt.
+
+**Drie vragen bij elke feature die af is:**
+
+1. **Waar knopen twee correcte onderdelen aan elkaar?** Daar hoort een test, en
+   niet alleen op weerszijden ervan. Bij QS8-24 werd dat `rapport.test.ts`: die
+   toetst wat `reportError()` daadwerkelijk aan een sink geeft.
+2. **Toetst deze test de belofte, of een eigenschap van het onderdeel?** "De
+   melding is duidelijk" is het onderdeel. "Er gaat geen gebruikerstekst de deur
+   uit" is de belofte. Alleen de tweede blijft kloppen als iemand de code
+   verplaatst.
+3. **Kan deze test groen blijven terwijl de belofte breekt?** Als het antwoord ja
+   is, bewaakt hij niets.
+
+⚠️ **Vraag 3 beantwoord je niet door erover na te denken, maar door de belofte
+met de hand te breken en te kijken of hij rood wordt.** Dat is in dit project de
+standaard voor élke nieuwe controle en elke test die een regel bewaakt — en het
+is dezelfde gedachte als bij de secret-scan in de deploy: eentje die nog nooit
+rood is geweest, is een aanname.
+
+⚠️ Twee van de drie gevallen hierboven kwamen boven bij een **verhuizing** —
+code die naar een ander bestand ging. Dat is de gevaarlijkste beweging die er
+is: de tests verhuizen mee en blijven groen, want ze toetsen wat er in het
+bestand staat en niet wat het bestand belóófde. **Loop bij elke verhuizing na
+welke belofte eraan hing en of die nog ergens getoetst wordt.**
 
 #### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
 

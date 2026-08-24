@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
+import { isGeldigeTijdzone } from '../../shared/time';
 
 /**
  * De invoer van de authenticatie- en profielschermen.
@@ -60,17 +61,11 @@ export const weekdagSchema = z
  * Een IANA-tijdzone. Niet tegen een lijst gecontroleerd maar tegen `Intl` zelf —
  * die lijst verandert een paar keer per jaar en een eigen kopie loopt achter.
  */
-export const tijdzoneSchema = z.string().refine(
-  (waarde) => {
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: waarde });
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  { error: () => t('validatie.tijdzone') },
-);
+// ⚠️ Beide kanten van de merge van 24-08: de toets komt uit `shared/time`
+//    (QS8-27, correctheidsregel 7) en de melding uit de catalogus (QS8-115).
+export const tijdzoneSchema = z
+  .string()
+  .refine(isGeldigeTijdzone, { error: () => t('validatie.tijdzone') });
 
 export const profielSchema = z.object({
   display_name: z

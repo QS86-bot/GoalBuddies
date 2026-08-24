@@ -31,7 +31,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    die in Node draait.
 import { groepsperiodeVan } from '../../src/modules/buddies/periods';
 import { SYSTEEM_GEBEURTENISSEN } from '../../src/modules/buddies/chat-schemas';
-import { addDays, now, userCycle } from '../../src/shared/time';
+import { addDays, now, userCycle, type Cycle } from '../../src/shared/time';
 import {
   adminDb,
   createTestProfile,
@@ -894,6 +894,277 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
             await adminDb().from('chat_messages').delete().eq('id', poging.data.id);
           }
         }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // QS8-70 — de ketting-mijlpaal (migratie 0070)
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ Een eigen groep en niet de fixture. De mijlpaal telt álle schakels van een
+  //    groep, dus een test die de fixture vult verandert stilzwijgend het antwoord
+  //    van elke andere test die daarna schakels bijzet. Een eigen groep is hier
+  //    goedkoper dan zorgvuldig opruimen — en hij kost geen extra account, want
+  //    alice bestaat al. Het account is de schaarse hulpbron in deze suite, niet
+  //    de groep.
+  //
+  // ⚠️ Deze tests bouwen op elkaar voort, en dat is de enige plek in dit bestand
+  //    waar dat gebeurt. Het onderwerp is een drempel die je passeert, dus het
+  //    interessante gedrag zit juist in de overgang van 9 naar 10 en van 24 naar
+  //    25. Elke test die zijn eigen groep opbouwt zou daar dertig inserts voor
+  //    doen en steeds hetzelfde bewijzen. Vitest draait binnen één bestand op
+  //    volgorde, dus dit is bepaald — maar herschik ze niet zonder de aantallen
+  //    mee te nemen.
+
+  describe('de ketting-mijlpaal', () => {
+    let mijlpaalGroup: string;
+    /**
+     * De lopende groepsperiode van díé groep.
+     *
+     * ⚠️ Uitgerekend met `groepsperiodeVan()` en niet met de hand, ook al kan de
+     *    trigger niets met deze datum. Correctheidsregel 7 kent geen uitzondering
+     *    voor testcode, en een testbestand dat zelf gaat rekenen is precies waar
+     *    de volgende `new Date()` in de app vandaan komt.
+     */
+    let mijlpaalPeriode: Cycle;
+
+    /** Schakels van alice, één per periode terug in de tijd. */
+    async function zetSchakels(aantal: number, vanaf: number): Promise<void> {
+      for (let i = vanaf; i < vanaf + aantal; i += 1) {
+        const { error } = await adminDb()
+          .from('chain_links')
+          .insert({
+            group_id: mijlpaalGroup,
+            user_id: f.alice.id,
+            group_period_start: addDays(mijlpaalPeriode.startDate, -7 * i),
+          });
+
+        if (error) throw new Error(`Schakel ${i} mislukte: ${error.message}`);
+      }
+    }
+
+    /**
+     * De échte mijlpaalaankondigingen van de groep.
+     *
+     * ⚠️ `type` en `sender_id` staan er bewust bij, en dat is dezelfde filter als
+     *    in `meld_ketting_mijlpaal()` sinds 0071: alleen wat
+     *    `plaats_systeembericht()` geschreven kan hebben. Zonder die twee zou de
+     *    test op een vervalst bericht zichzelf voor de gek houden — dat bericht
+     *    draagt dezelfde tekst.
+     */
+    async function mijlpaalberichten(): Promise<readonly (string | null)[]> {
+      const { data, error } = await adminDb()
+        .from('chat_messages')
+        .select('body, created_at')
+        .eq('group_id', mijlpaalGroup)
+        .eq('system_event', 'chain_milestone')
+        .eq('type', 'system')
+        .is('sender_id', null)
+        .order('created_at', { ascending: true });
+
+      if (error) throw new Error(`Mijlpaalberichten lezen mislukte: ${error.message}`);
+      return (data ?? []).map((b) => b.body);
+    }
+
+    beforeAll(async () => {
+      const groep = await createGroup(f.alice, 'Ketting-mijlpaal');
+      mijlpaalGroup = groep.id;
+
+      const rij = await adminDb()
+        .from('groups')
+        .select('huddle_day, tz')
+        .eq('id', mijlpaalGroup)
+        .single();
+
+      if (rij.error || rij.data === null) {
+        throw new Error(`Groep uitlezen mislukte: ${rij.error?.message}`);
+      }
+
+      mijlpaalPeriode = groepsperiodeVan(rij.data, now());
+    }, SETUP_TIMEOUT);
+
+    afterAll(async () => {
+      // Cascade ruimt de schakels en de chat op.
+      await adminDb().from('groups').delete().eq('id', mijlpaalGroup);
+    }, TEST_TIMEOUT);
+
+    it(
+      'zwijgt onder de eerste drempel',
+      async () => {
+        await zetSchakels(9, 0);
+
+        expect(await mijlpaalberichten()).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'meldt de eerste drempel precies één keer, en noemt niemand',
+      async () => {
+        await zetSchakels(1, 9);
+
+        // ⚠️ Een exacte tekst en geen `toContain`. Dít is de domeinregel-7-toets
+        //    van dit oppervlak: het bericht mag geen naam dragen, en een
+        //    gelijkheidstoets bewijst dat sluitend waar "bevat geen alice" dat
+        //    niet doet — die zou een tweede naam gewoon doorlaten.
+        expect(await mijlpaalberichten()).toEqual(['De Ketting van deze groep telt 10 schakels.']);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'herhaalt een gemelde drempel niet bij de volgende schakel',
+      async () => {
+        await zetSchakels(5, 10);
+
+        expect(await mijlpaalberichten()).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'meldt de volgende drempel als hij bereikt wordt',
+      async () => {
+        await zetSchakels(10, 15);
+
+        expect(await mijlpaalberichten()).toEqual([
+          'De Ketting van deze groep telt 10 schakels.',
+          'De Ketting van deze groep telt 25 schakels.',
+        ]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'haalt een verdwenen aankondiging in bij de volgende schakel',
+      async () => {
+        // ⚠️ Dit is de reden dat de trigger gemelde mijlpalen telt in plaats van
+        //    te toetsen of het aantal schakels exact op een drempel staat.
+        //    `plaats_systeembericht()` slikt een fout bewust in — een bericht mag
+        //    de handeling die het aankondigt nooit laten mislukken — en bij een
+        //    exacte toets was de mijlpaal daarmee voorgoed weg.
+        //
+        //    Dezelfde eigenschap dekt het geval van twee gelijktijdige schakels,
+        //    dat onder READ COMMITTED een drempel kan overslaan. Dat is niet
+        //    deterministisch te maken; dit is de toetsbare helft ervan.
+        const { error } = await adminDb()
+          .from('chat_messages')
+          .delete()
+          .eq('group_id', mijlpaalGroup)
+          .eq('system_event', 'chain_milestone');
+
+        expect(error).toBeNull();
+        expect(await mijlpaalberichten()).toEqual([]);
+
+        await zetSchakels(1, 25);
+
+        expect(await mijlpaalberichten()).toEqual([
+          'De Ketting van deze groep telt 10 schakels.',
+          'De Ketting van deze groep telt 25 schakels.',
+        ]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'heeft een oplopende drempelreeks die bij 10 begint',
+      async () => {
+        // ⚠️ Leesbaar gemaakt door `ketting_drempels()`, dezelfde vorm als
+        //    `systeembericht_allowlist()`. Een dalende of dubbele drempel zou de
+        //    "gemeld versus bereikt"-telling stilletjes scheeftrekken: die leunt
+        //    erop dat de index in deze lijst gelijk is aan het aantal gemelde
+        //    mijlpalen.
+        const { data, error } = await adminDb().rpc('ketting_drempels');
+
+        expect(error).toBeNull();
+
+        const drempels = (data ?? []) as readonly number[];
+
+        expect(drempels[0]).toBe(10);
+        expect(drempels).toEqual([...drempels].sort((a, b) => a - b));
+        expect(new Set(drempels).size).toBe(drempels.length);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een lid geen eigen bericht met een systeemgebeurtenis plaatsen',
+      async () => {
+        // ⚠️ Migratie 0071, en de bevinding kwam uit de veiligheidspas op 0070.
+        //    `chat_messages_insert` verbood `type = 'system'` (gat A5, 0006 en
+        //    0010) maar zei niets over `system_event`. Tot 0070 was dat
+        //    onschadelijk — de weergave kijkt naar `sender_id is null` en niet
+        //    naar `system_event`. Sinds 0070 kon je er élke echte
+        //    mijlpaalaankondiging van een groep mee wegdrukken, want de trigger
+        //    telt hoeveel er al gemeld zijn.
+        const poging = await f.alice.db.from('chat_messages').insert({
+          group_id: mijlpaalGroup,
+          sender_id: f.alice.id,
+          body: 'Niet van het systeem.',
+          type: 'text',
+          system_event: 'chain_milestone',
+        });
+
+        expect(poging.error).not.toBeNull();
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'telt een vervalst bericht niet mee als gemelde mijlpaal',
+      async () => {
+        // ⚠️ Het tweede slot van 0071, en het slot dat ook werkt voor rijen die
+        //    er vóór die migratie al stonden. De policy hierboven haalt de
+        //    handeling weg; deze toets maakt de functie juist ongeacht wat er in
+        //    de tabel staat. Eén van de twee zou hier volstaan — samen zijn ze
+        //    sluitend, en dat is de bedoeling bij een telling waar gedrag aan hangt.
+        //
+        //    Geplaatst met de systeemclient, want een lid kan dit sinds 0071 niet
+        //    meer. Dat is precies het geval dat de policy niet dekt: een rij die
+        //    er al was.
+        const vervalst = await adminDb()
+          .from('chat_messages')
+          .insert({
+            group_id: mijlpaalGroup,
+            sender_id: f.alice.id,
+            body: 'De Ketting van deze groep telt 50 schakels.',
+            type: 'text',
+            system_event: 'chain_milestone',
+          })
+          .select('id')
+          .single();
+
+        expect(vervalst.error).toBeNull();
+
+        const voor = await mijlpaalberichten();
+        await zetSchakels(24, 26);
+        const na = await mijlpaalberichten();
+
+        // 50 schakels bereikt: er hoort er precies één bij te komen, en het
+        // vervalste bericht mag die niet hebben weggedrukt.
+        expect(na.length).toBe(voor.length + 1);
+        expect(na).toContain('De Ketting van deze groep telt 50 schakels.');
+
+        if (vervalst.data !== null) {
+          await adminDb().from('chat_messages').delete().eq('id', vervalst.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de triggerfunctie niet als RPC in de API staan',
+      async () => {
+        // ⚠️ De les van 0052a en 0069: een nieuwe SECURITY DEFINER-functie erft
+        //    de intrekking niet. Deze test hoort bij élke migratie die er een
+        //    toevoegt, niet alleen bij de migratie die het gat dichtte.
+        const { data, error } = await adminDb().rpc('triggerfuncties_in_de_api');
+
+        expect(error).toBeNull();
+        expect(data ?? []).toEqual([]);
       },
       TEST_TIMEOUT,
     );

@@ -8,6 +8,11 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
    Delegeer aan `code-critic` en `security-reviewer` voor een overzichtsreview
    van wat er nieuw bij is gekomen.
 
+   ⚠️ Kijk daarbij apart naar **verhuizingen**: code die deze week naar een ander
+   bestand ging. Tests verhuizen mee en blijven groen, want ze toetsen wat er in
+   het bestand staat en niet wat het bestand beloofde. Twee van de drie lekken
+   van de week van 24-08 kwamen zo. Zie `CLAUDE.md`, regel 18 uitgeschreven.
+
 2. **RLS-dekking** — controleer of elke tabel in `supabase/migrations/` een
    RLS-policy heeft voor SELECT, INSERT, UPDATE én DELETE. Lijst ontbrekende op.
    Dit is de belangrijkste check van de week.
@@ -47,6 +52,20 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     Dát is de eigenlijke controle; het script bewaakt alleen dat ze er staan.
     Een rij waarvan de aanname inmiddels vervallen is, is geen Laag meer en
     hoort deze week op tafel.
+
+11. **De migratiemap** — draai `npm run migraties:controle`. Die toetst dat de
+    nummering aaneengesloten is, dat er geen twee migraties hetzelfde nummer
+    dragen, en dat elke migratie een rollback-pad in zijn kop heeft (onwrikbare
+    regel 20).
+
+    ⚠️ Hij is één dag rood geweest en dat was de bedoeling: `0057` t/m `0061`
+    stonden op een branch die niet geland was. PR #9 heeft dat op 24-08 gedicht
+    en hij meldt nu 74 migraties, aaneengesloten. Wordt hij weer rood, dan
+    ontbreekt er echt iets — zet hem niet uit.
+
+    ⚠️ Wat hij niet ziet: of de repo gelijkloopt met `schema_migrations` op het
+    échte project. Dat vraagt een service-role-key en die hoort niet in een
+    controle die overal draait. Dat is de tweede helft van QS8-122.
 
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

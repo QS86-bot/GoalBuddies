@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { Cycle } from '../../shared/time';
+import { apparaatTijdzone, type Cycle } from '../../shared/time';
 
 import {
   codeSchema,
@@ -327,7 +327,12 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
   const { data, error } = await supabase().rpc('create_group', {
     group_name: gevalideerd.data.name,
     huddle_day: gevalideerd.data.huddle_day,
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    // ⚠️ Uit `shared/time` en niet rechtstreeks uit `Intl`. Dit is de groepsklok
+    //    van domeinregel 1: `groups.tz` bepaalt de huddledag, de weekafsluiting
+    //    en De Ketting voor iedereen in deze groep. Een lege of onbekende waarde
+    //    is hier geen persoonlijk ongemak maar een groep waarvan de week op het
+    //    verkeerde moment omslaat. Zie `apparaatTijdzone()`.
+    tz: apparaatTijdzone(),
   });
 
   if (error) {

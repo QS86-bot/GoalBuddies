@@ -29,7 +29,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    schema nog altijd niet elders opbouwen. **QS8-122**, blokkeert QS8-119.
    Uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **509 geslaagd, 281 overgeslagen**; typecheck en lint groen.
+   credentials: **535 geslaagd, 290 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -45,16 +45,19 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 8. **Werk landt sinds 23-08 via een PR**, met een merge-commit en niet met een
    squash, en met **één branch per Linear-issue** — de naam die Linear voorstelt,
    anders koppelt hij niets. Vastgelegd in `CLAUDE.md`. Zie §3b.
-9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
-   A42 hangen aan elkaar en raken domeinregel 7), **A46** en **A37**. A45, A47 en
-   **B4** zijn af. Geen van alle blokkeert het bouwen van andere issues.
-10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens**, op één laag na:
-    de schermteksten in `app/` moeten nog naar de catalogus (**QS8-115**;
-    `shared/ui` en alle zeven modules zijn wél om). Wat verder overblijft vraagt
-    jouw hand: een browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117),
-    het Supabase-dashboard (QS8-25, A10) en een lokale stack (QS8-22, A9).
-    **Het bord klopt beter dan deze documenten** — kijk dus eerst in Linear en
-    dan pas hier.
+9. **Wat op Quinten wacht staat sinds 24-08 op het bord, niet meer alleen in
+   `docs/Q-TODO.docx`.** Alles met status **Todo** in Linear is van hem:
+   QS8-126 (de repo staat publiek), QS8-131 (21 commits buiten `main`, urgent),
+   QS8-127 (A37), QS8-128 (A41+A42+A44), QS8-129 (A43), QS8-130 (A46) en
+   QS8-122. ⚠️ **B4 staat niet meer in die lijst** — `expo-notifications` is
+   al toegevoegd op de branch van QS8-131; dat besluit wacht op een merge en
+   niet op een antwoord. Q-TODO blijft de onderbouwing dragen; de status staat
+   in Linear.
+10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
+    21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
+    (QS8-124), een iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een
+    lokale stack (QS8-22, A9). **Het bord klopt beter dan deze documenten** — kijk
+    dus eerst in Linear en dan pas hier.
 
 ---
 
@@ -76,7 +79,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0069`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0071`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -95,6 +98,25 @@ cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
 Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
 RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
 productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
+
+### 2a. Wat er van de verdwaalde branch geleerd is — 24-08-2026
+
+Bij het oppakken van de laatste map van QS8-115 bleek `src/shared/i18n/` niet te
+bestaan, terwijl dat issue drie afgeronde slices beschrijft. Ze bestonden wel, op
+een branch die 21 commits vóór en 44 achter `main` liep en waar geen PR voor open
+stond: de hele i18n-infrastructuur, de deploy naar het echte adres,
+`expo-notifications` en de migraties `0057` t/m `0061`.
+
+✅ **Geland op 24-08 als PR #9** (QS8-131). Het gat in de migratienummering is
+daarmee dicht en `npm run migraties:controle` is groen.
+
+⚠️ **Wat ervan blijft staan is de les.** Dit was QS8-125 een niveau hoger: dat
+issue gaat over documenten die uiteenlopen, hier zei het bord Done, had de
+database de migraties, en stond de code op een tak. Drie bronnen, drie
+antwoorden. **Werk dat niet landt, bestaat voor de volgende sessie niet** — en
+het is niet zichtbaar in een document, want het document staat op diezelfde tak.
+Kijk bij het beginnen van een sessie naar de branchtabel in
+`docs/VOLGENDE-SESSIE.md` en niet alleen naar `main`.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -134,7 +156,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **427 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
+  **535 geslaagd en 290 overgeslagen** (die 290 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -153,13 +175,13 @@ Twee routes leggen een schakel: een weekafsluiting via de trigger
 `ketting_schakel()`. Daarmee gaat ook het bolletje "deze week al afgesloten" op
 het groepsoverzicht eindelijk aan — `group_overview()` las die tabel al.
 
-⚠️ **Wat van QS8-70 nog openstaat is alleen het systeembericht bij een
-ketting-mijlpaal.** Er is nog geen definitie van wat een mijlpaal ín de ketting
-is (drie perioden op rij? voltallig? een rond getal?), dus `chain_milestone`
-staat nog niet op de allowlist in `chat_messages_system_event_bekend`. Zet je
-hem erbij, dan moet `SYSTEEM_GEBEURTENISSEN` in
-`src/modules/buddies/chat-schemas.ts` mee — er staat sinds 18-08 een test op die
-de twee verzamelingen gelijkstelt (valkuil 18).
+✅ **Het systeembericht bij een ketting-mijlpaal staat er sinds 24-08**
+(migratie 0070), en daarmee is QS8-70 compleet: acht van de acht gebeurtenissen.
+Een mijlpaal is een **rond cumulatief aantal schakels van de groep** — 10, 25,
+50, 100, 250, 500, 1000. Waarom die vorm en niet "voltallig deze week" of "N
+weken op rij": die twee zijn conditioneel, dus het uitblijven van het bericht
+vertelt de groep dat iemand ontbrak. De onderbouwing staat in de kop van 0070 en
+in beslisdocument 002 §2, oppervlak 9.
 
 ### Wat er in de rondes van 20 t/m 23 augustus bij is gekomen
 
@@ -312,7 +334,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
-| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
+| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
@@ -345,7 +367,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
-| Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |
+| ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
@@ -700,7 +722,7 @@ De zwaarste op dit moment:
    toetreden).
 3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
-   want er staan 257 RLS-tests die niemand automatisch draait — dat is precies
+   want er staan 290 RLS-tests die niemand automatisch draait — dat is precies
    het aantal dat `npm test` zonder credentials overslaat.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het

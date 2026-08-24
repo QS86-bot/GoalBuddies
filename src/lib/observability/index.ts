@@ -12,7 +12,7 @@
  */
 import { clientEnv } from '../env';
 
-import { scrubContext, scrubMessage } from './scrub';
+import { scrubContext, scrubMessage, scrubStack } from './scrub';
 
 /** Wat er daadwerkelijk verstuurd wordt. Nooit iets anders dan dit. */
 export interface ErrorEvent {
@@ -47,11 +47,15 @@ function describe(
   error: unknown,
 ): { name: string; message: string; stack?: string | undefined } {
   if (error instanceof Error) {
+    const message = scrubMessage(error.message);
+
     return {
       name: error.name,
-      message: scrubMessage(error.message),
-      // De stack draagt bestandsnamen en regelnummers, geen gebruikersdata.
-      stack: error.stack,
+      message,
+      // ⚠️ Niet `error.stack` zelf. De eerste regel daarvan ís de ruwe melding,
+      //    dus dat gaf alles terug wat `scrubMessage()` er net uit had gehaald.
+      //    Zie de kop van `scrubStack()`.
+      stack: scrubStack(error.stack, error.name, message),
     };
   }
   return { name: 'NonError', message: scrubMessage(String(error)) };
@@ -85,4 +89,4 @@ export function reportError(
   }
 }
 
-export { REDACTED, scrubContext, scrubMessage } from './scrub';
+export { REDACTED, scrubContext, scrubMessage, scrubStack } from './scrub';

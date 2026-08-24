@@ -22,7 +22,8 @@
     "deploy:droog": "node scripts/deploy-web.mjs --droog",
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
-    "review:controle": "node scripts/review-controle.mjs"
+    "review:controle": "node scripts/review-controle.mjs",
+    "migraties:controle": "node scripts/migraties-controle.mjs"
   },
   "engines": {
     "node": ">=20"

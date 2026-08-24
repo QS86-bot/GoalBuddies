@@ -6,6 +6,69 @@ import type { IsoDate, TimeZone, Weekday } from './types';
  * kern van het product.
  */
 
+/**
+ * De terugval als het toestel niets bruikbaars zegt.
+ *
+ * ⚠️ Een echte zone en niet `UTC`. Wie hier belandt is bijna zeker in
+ *    Nederland — en een gebruiker die stilzwijgend op UTC staat, ziet zijn week
+ *    in de zomer twee uur te vroeg omslaan zonder dat er iets fout lijkt.
+ */
+const TERUGVAL: TimeZone = 'Europe/Amsterdam';
+
+/**
+ * Kent `Intl` deze tijdzone?
+ *
+ * ⚠️ Getoetst tegen `Intl` zelf en niet tegen een eigen lijst: de IANA-database
+ *    verandert een paar keer per jaar en een kopie in deze repo loopt achter.
+ */
+export function isGeldigeTijdzone(waarde: string): boolean {
+  if (waarde.trim() === '') return false;
+
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: waarde });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * De tijdzone van het toestel — de énige plek waar die vraag gesteld wordt.
+ *
+ * ⚠️ **Waarom dit hier staat en niet bij de aanroeper.** Correctheidsregel 7, en
+ *    het is een acceptatiecriterium van QS8-27: *"tijdzone wordt gebruikt door
+ *    `shared/time`, nergens anders opnieuw bepaald"*. Tot 24-08-2026 stond deze
+ *    vraag op twee plekken, en ze verschilden:
+ *
+ *      * `voorgesteldeTijdzone()` in `modules/auth` had een `try`/`catch` en een
+ *        terugval;
+ *      * het aanmaken van een groep in `modules/buddies` had geen van beide en
+ *        gaf door wat `Intl` toevallig teruggaf.
+ *
+ *    Dat tweede geval is het gevaarlijke. `groups.tz` bepaalt de huddledag, de
+ *    weekafsluiting en De Ketting voor **iedereen in die groep** — het is de
+ *    groepsklok van domeinregel 1. Een lege of onbekende waarde daar is geen
+ *    persoonlijk ongemak maar een groep waarvan de week op het verkeerde moment
+ *    omslaat. De database weigert hem (CHECK sinds migratie 0019), dus wat de
+ *    gebruiker in de praktijk kreeg was een storingsmelding bij het aanmaken van
+ *    zijn eerste groep.
+ *
+ * ⚠️ Geeft een **voorstel** terug en geen vaststaand feit. Wie in Lissabon woont
+ *    met zijn telefoon op Amsterdam moet dat kunnen rechtzetten, en wie reist
+ *    wil niet dat zijn week verspringt omdat hij een week in Bangkok zat.
+ */
+export function apparaatTijdzone(): TimeZone {
+  try {
+    const gemeld = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // ⚠️ `resolvedOptions().timeZone` is in de typing een `string`, maar oudere
+    //    JavaScriptCore-versies geven er `undefined` terug. Vandaar de toets en
+    //    niet alleen een lege-string-controle.
+    return typeof gemeld === 'string' && isGeldigeTijdzone(gemeld) ? gemeld : TERUGVAL;
+  } catch {
+    return TERUGVAL;
+  }
+}
+
 const formatters = new Map<TimeZone, Intl.DateTimeFormat>();
 
 function formatterFor(tz: TimeZone): Intl.DateTimeFormat {
