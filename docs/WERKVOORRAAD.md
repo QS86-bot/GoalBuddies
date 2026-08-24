@@ -43,10 +43,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
    A42 hangen aan elkaar en raken domeinregel 7), **A46**, **A37** en **B4**.
    A45 en A47 zijn af. Geen van alle blokkeert het bouwen van andere issues.
-10. **Nu aan de beurt: EPIC 9.** QS8-83 (beloning vrijgeven) en QS8-84 (straf bij
-    een verstreken deadline). Lees eerst domeinregel 11 én 5: een straf treedt pas
-    in werking bij een verstreken deadline en niets mag stilzwijgend geactiveerd
-    worden.
+10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
+    21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
+    (QS8-124), een iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een
+    lokale stack (QS8-22, A9). **Het bord klopt beter dan deze documenten** — kijk
+    dus eerst in Linear en dan pas hier.
 
 ---
 
@@ -309,7 +310,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
-| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | open |
+| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
