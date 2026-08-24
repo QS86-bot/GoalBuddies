@@ -21,9 +21,13 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
-3. **⚠️ De migratiebestanden kunnen het schema niet opbouwen** — twee nummeringen
-   naast elkaar. Toegepast is `0001` t/m `0071`; `0057` t/m `0061` staan op een
-   branch en nog niet op `main`. **QS8-122**, blokkeert QS8-119. Uitleg in §2.
+3. **⚠️ Er staat een sessie werk buiten `main`, en het is meer dan vijf
+   migraties.** De branch `quintenstrijdonk/qs8-83-91-…` draagt **21 commits** die
+   nergens anders staan: de hele i18n-infrastructuur (QS8-113), de afgeronde
+   slices van QS8-115, `expo-notifications` (Q-TODO B4), de live-deploy en de
+   migraties `0057` t/m `0061`. Hij loopt 44 commits achter op `main`.
+   **Lees §2a voordat je iets bouwt dat hierop leunt.** Dit is ook de bron van
+   **QS8-122** (blokkeert QS8-119); uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
    credentials: **428 geslaagd, 266 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
@@ -88,6 +92,48 @@ cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
 Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
 RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
 productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
+
+### 2a. ⚠️ Eenentwintig commits staan buiten `main` — gevonden 24-08-2026
+
+Bij het oppakken van QS8-115 bleek de map `src/shared/i18n/` niet te bestaan,
+terwijl het issue drie afgeronde slices beschrijft. Ze bestaan wel — op
+`origin/quintenstrijdonk/qs8-83-91-beloning-vrijgeven-bij-het-halen-van-een-doel`,
+en nergens anders.
+
+| | |
+|---|---|
+| Vóór op `main` | 21 commits |
+| Achter op `main` | 44 commits |
+| Bestanden gewijzigd | 100 |
+| Bestanden die **beide** kanten aanraken | 17 |
+| Laatste commit | 22-08-2026 |
+| Open PR | geen |
+
+**Wat er op die branch staat en niet op `main`:** `src/shared/i18n/` met `nl` en
+`en` (QS8-113), alle afgeronde slices van QS8-115 (`shared/ui` plus alle zeven
+modules), `expo-notifications` (**Q-TODO B4** — die staat in dit document nog als
+openstaande dependency), de deploy naar het echte adres (QS8-99, QS8-100), de
+afwikkeling van EPIC 9, en de migraties `0057` t/m `0061`.
+
+⚠️ **Die vijf migratiebestanden zijn byte-identiek aan wat de backfill op de
+QS8-122-branch heeft teruggezet.** Nagemeten op 24-08. De backfill was dus goed;
+hij haalde alleen terug wat hier al stond.
+
+⚠️ **Waarom dit erger is dan een achterstallige branch.** QS8-125 gaat over
+documenten die uiteenlopen. Dit is dezelfde fout een niveau hoger: het bord zegt
+Done, de database heeft de migraties, en de code staat op een tak. Wie op `main`
+begint aan iets dat hierop leunt — en QS8-115 is precies dat — bouwt het dak op
+een huis waarvan de muren elders staan.
+
+**Wat er moet gebeuren, en in deze volgorde:**
+
+1. `main` in die branch mergen (44 commits achterstand), de suite draaien.
+2. Landen via een PR, met een merge-commit.
+3. Pas daarna verder aan QS8-115 (`app/`, de laatste map) en aan alles wat de
+   catalogus gebruikt.
+
+Zolang stap 2 niet gedaan is, is elke nieuwe regel die `shared/i18n` aanroept
+een merge-conflict in wording.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder

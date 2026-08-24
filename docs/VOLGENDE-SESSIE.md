@@ -449,30 +449,31 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (23-08)
+## STAND VAN DE REPO (24-08)
 
-`main` staat op `bbbd1be`. Er staan drie branches op de remote en twee daarvan
-mogen weg:
+`main` staat op `f39c082`. Er staan vier branches naast, en **twee daarvan
+dragen werk dat nergens anders bestaat**:
 
 | branch | commit | |
 |---|---|---|
-| `main` | `bbbd1be` | de hoofdbranch |
+| `main` | `f39c082` | de hoofdbranch |
+| `quintenstrijdonk/qs8-83-91-…` | `ae07f86` | ⚠️ **21 commits die niet op `main` staan** — zie WERKVOORRAAD §2a |
+| `quintenstrijdonk/qs8-122-…` | `243365c` | de teruggehaalde migraties `0057`–`0061`, wacht op de suite mét credentials |
+| `claude/linear-bijwerken-docs-t7cko6` | `3a20dc3` | de lopende cloudsessie |
 | `fundering-16-08` | `8640f3c` | **archief, laten staan** |
-| `quintenstrijdonk/qs8-21-04-repo-scaffold-...` | `8640f3c` | mag weg |
-| `claude/goalbuddies-rls-suite-b6mi31` | `e64a6f5` | mag weg, zit in `main` |
 
-```bash
-git push origin --delete quintenstrijdonk/qs8-21-04-repo-scaffold-expo-typescript-strict
-git push origin --delete claude/goalbuddies-rls-suite-b6mi31
-```
+⚠️ **Kijk éérst in WERKVOORRAAD §2a voordat je iets bouwt.** De i18n-catalogus,
+de afgeronde slices van QS8-115, `expo-notifications` en de deploy staan op die
+eerste branch en niet op `main`. Wie op `main` begint aan iets dat de catalogus
+gebruikt, bouwt het dak op een huis waarvan de muren elders staan. Dat is op
+24-08 bijna gebeurd bij QS8-115.
 
 ⚠️ **`fundering-16-08` heeft géén gemeenschappelijke voorouder met `main`.** Het
 zijn twee losse wortelhistories; `main` is rond 16-08 opnieuw geworteld. Die
 branch bewaart de zeven oorspronkelijke fundering-commits, die nergens anders
 meer bereikbaar zijn (de inhoud leeft wél door — `0001` t/m `0004` zijn
 byte-identiek). **Zet hem nooit in een PR**: een merge zou twee historieën aan
-elkaar knopen en 25 bestanden terugdraaien naar de stand van 16 augustus. Beter
-nog: maak er een tag van en gooi de branch weg.
+elkaar knopen en 25 bestanden terugdraaien naar de stand van 16 augustus.
 
 ⚠️ Een sessie in de cloud kan **geen tags aanmaken en geen branches verwijderen** —
 dat geeft HTTP 403 op `git-receive-pack`. Gewone pushes naar een eigen branch
