@@ -16,20 +16,21 @@
 Lees dit eerst; de rest is naslag. **Tien regels, en dat is de bedoeling** —
 staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of §7.
 
-1. **Fase 1 is voor het grootste deel af.** Open: **EPIC 9** (commitment device)
-   en de laatste schakel van EPIC 11. Volgorde in §4, wat er staat in §2.
+1. **Fase 1 is af op de laatste schakel van EPIC 11 na.** Alle epics staan;
+   EPIC 9 sinds 21-08. Volgorde in §4, wat er staat in §2.
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
 3. **⚠️ De migratiebestanden kunnen het schema niet opbouwen** — twee nummeringen
-   naast elkaar, en `0057` t/m `0061` ontbreken. Toegepast is `0001` t/m `0068`.
-   **QS8-122**, blokkeert QS8-119 en elke tweede omgeving. Uitleg in §2.
+   naast elkaar. Toegepast is `0001` t/m `0069`; `0057` t/m `0061` staan op een
+   branch en nog niet op `main`. **QS8-122**, blokkeert QS8-119. Uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials op `main` (`bbbd1be`): 412 geslaagd, 257 overgeslagen; typecheck en
-   lint groen. **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
-5. **⚠️ Web push is gebouwd en doet niets:** `public/sw.js` wordt nergens
-   geregistreerd (**QS8-124**, en QS8-117 wacht erop). Native wacht op
-   `expo-notifications` (**Q-TODO B4**). Dat is samen de laatste schakel van EPIC 11.
+   credentials: **427 geslaagd, 257 overgeslagen**; typecheck en lint groen.
+   **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
+5. **⚠️ Web push is aangezet maar nog niet bewezen.** De registratie staat er
+   sinds **QS8-124** (In Review): knop op het profielscherm, abonnement, token.
+   **Niemand heeft nog een echte melding ontvangen** — dat vraagt een browser en
+   de VAPID-sleutels. Native wacht nog op `expo-notifications` (**Q-TODO B4**).
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
    gratis, gegrendeld in 0066. Zie §2.
@@ -42,10 +43,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
    A42 hangen aan elkaar en raken domeinregel 7), **A46**, **A37** en **B4**.
    A45 en A47 zijn af. Geen van alle blokkeert het bouwen van andere issues.
-10. **Nu aan de beurt: EPIC 9.** QS8-83 (beloning vrijgeven) en QS8-84 (straf bij
-    een verstreken deadline). Lees eerst domeinregel 11 én 5: een straf treedt pas
-    in werking bij een verstreken deadline en niets mag stilzwijgend geactiveerd
-    worden.
+10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
+    21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
+    (QS8-124), een iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een
+    lokale stack (QS8-22, A9). **Het bord klopt beter dan deze documenten** — kijk
+    dus eerst in Linear en dan pas hier.
 
 ---
 
@@ -67,7 +69,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0068`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0069`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -125,7 +127,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **412 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
+  **427 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -304,11 +306,11 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ af voor de MVP, m.u.v. QS8-77 (nudge, wacht op EPIC 11) en de twee `phase:v2`-issues QS8-80 (De Ketting), QS8-81 (weekpassen) en QS8-75 (dashboard) zijn af; open zijn QS8-77 (nudge, hoog), QS8-82 (adempauze) en QS8-76 (feestmoment) |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
-| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | open |
+| 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 

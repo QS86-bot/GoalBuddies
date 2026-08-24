@@ -25,5 +25,28 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 7. **ENGINEER-REVIEW.md** — is dit bestand bijgewerkt met wat er deze week
    is blijven liggen? Zo niet, vul het aan.
 
+8. **Overdrachtsdocumenten** — draai `npm run docs:controle`. Die toetst of
+   `CLAUDE.md`, `docs/WERKVOORRAAD.md` en `docs/VOLGENDE-SESSIE.md` elkaar niet
+   tegenspreken: getallen die uiteenlopen, en feiten die in twee documenten
+   tegelijk staan. Rood betekent dat een volgende sessie verouderde informatie
+   krijgt. Zie QS8-125 en "Wie bezit welk feit" in `CLAUDE.md`.
+
+   ⚠️ Het script vangt alleen wat een patroon heeft. Controleer met de hand of
+   issues die in Linear op Done staan, in de documenten ook als af beschreven
+   worden — dat is vijf keer misgegaan en geen script ziet het.
+
+9. **Emoji** — draai `npm run emoji:controle`. De app gebruikt zelf geen emoji
+   in tekst die de gebruiker leest (CLAUDE.md, QS8-111). Commentaar en
+   testbestanden tellen niet mee; die gebruiken ze juist met opzet.
+
+10. **Laag-bevindingen** — draai `npm run review:controle`. Elke open
+    Laag-rij in `ENGINEER-REVIEW.md` hoort te zeggen wanneer hij zwaarder wordt
+    (QS8-123).
+
+    ⚠️ En lees die voorwaarden deze week één keer door tegen wat er gebouwd is.
+    Dát is de eigenlijke controle; het script bewaakt alleen dat ze er staan.
+    Een rij waarvan de aanname inmiddels vervallen is, is geen Laag meer en
+    hoort deze week op tafel.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

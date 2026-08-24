@@ -17,7 +17,10 @@
     "types:db": "node scripts/db-types.mjs",
     "db:dump": "node scripts/db-dump.mjs",
     "edge:sync": "node scripts/sync-edge-shared.mjs",
-    "db:push": "npm run db:dump && supabase db push"
+    "db:push": "npm run db:dump && supabase db push",
+    "docs:controle": "node scripts/docs-controle.mjs",
+    "emoji:controle": "node scripts/emoji-controle.mjs",
+    "review:controle": "node scripts/review-controle.mjs"
   },
   "engines": {
     "node": ">=20"

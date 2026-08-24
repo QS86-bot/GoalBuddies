@@ -27,6 +27,16 @@ const clientSchema = z.object({
     .min(1, { error: 'EXPO_PUBLIC_SUPABASE_ANON_KEY ontbreekt' }),
   sentryDsn: z.string().optional(),
   appUrl: z.url({ error: 'EXPO_PUBLIC_APP_URL is geen URL' }),
+  /**
+   * De publieke VAPID-sleutel voor web push (QS8-114, aangezet in QS8-124).
+   *
+   * ⚠️ Bewust optioneel. Hij hoort publiek te zijn — daar is het een publieke
+   *    sleutel voor — maar zonder hem moet de app gewoon draaien: web push is
+   *    dan alleen niet aan te zetten, en het scherm zegt dat ook. Verplicht
+   *    maken zou elke omgeving zonder sleutel bij het opstarten laten omvallen,
+   *    en dat is een zware straf voor een ontbrekende melding.
+   */
+  vapidPublicKey: z.string().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientSchema>;
@@ -41,6 +51,7 @@ export function clientEnv(): ClientEnv {
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     appUrl: process.env.EXPO_PUBLIC_APP_URL ?? STANDAARD_APP_URL,
+    vapidPublicKey: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY,
   });
 
   if (!parsed.success) {

@@ -34,6 +34,30 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 - **Team:** Quinten (product owner, architect én enige developer).
   Claude Code is de primaire implementer. Engineer-review vanaf eind okt/nov 2026.
 
+### Wie bezit welk feit — vastgelegd 23-08-2026 (QS8-125)
+
+Drie documenten beschreven dezelfde stand en liepen op één dag **vijf keer**
+uiteen. Twee van die vijf ontstonden tijdens het bijwerken van diezelfde
+documenten: één plek bijgewerkt, de andere vergeten. Wie kopieën met de hand
+onderhoudt, maakt het probleem groter.
+
+| Document | Bezit | Bezit níét |
+|---|---|---|
+| `CLAUDE.md` | de regels en conventies — domeinregels, verruimingen, werkwijze | de stand |
+| `docs/WERKVOORRAAD.md` | de stand en de volgorde — testteller, migratiebereik, wat af is | de regels |
+| `docs/VOLGENDE-SESSIE.md` | de startprompt en de valkuilen | allebei de andere |
+
+**Staat een feit in het ene document, dan verwijst het andere ernaar — het
+herhaalt het niet.** `npm run docs:controle` wordt rood zodra dat wel gebeurt en
+draait mee in `/audit`.
+
+⚠️ **Een script vangt alleen wat een patroon heeft.** "EPIC 3 is nooit gedraaid"
+twintig regels boven "EPIC 3 heeft gedraaid" is geen getal, en QS8-77 die op
+Done staat terwijl twee documenten hem open noemen al helemaal niet. Daarvoor
+geldt de handmatige regel: **werk je iets bij, grep dan op dat feit in alle drie
+de bestanden voordat je klaar bent**, en loop bij het afsluiten van een issue na
+of de status in Linear en in de documenten hetzelfde zeggen.
+
 ### Documenten
 | Bestand | Wat erin staat |
 |---|---|
@@ -263,6 +287,11 @@ Deze regel legt vast wat er al was.
 **De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
 gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
 
+⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
+draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.
+Commentaar en testbestanden tellen niet mee — de ⚠️ hierboven is huisstijl, en
+de tests vóéden juist 😀 en 👨‍👩‍👧‍👦 aan `telTekens()`.
+
 ⚠️ **Gevolg dat geen zin maar een controle nodig heeft.** Omdat gebruikers ze
 overal mogen typen, mag geen enkele plek gebruikerstekst afkappen of het eerste
 teken pakken met `charAt(0)`, `[0]` of `.slice(0, n)`. JavaScript telt in
@@ -371,6 +400,25 @@ hadden.
 mis: in de ronde van 20-08 was de zwaarste bevinding aantoonbaar onjuist (ze las
 een migratiebestand waar de gedéployde functie strenger was), terwijl twee andere
 kritieke bevindingen wél klopten. `pg_get_functiondef()` is de waarheid.
+
+#### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
+
+Elke rij in `docs/ENGINEER-REVIEW.md` met risico **Laag** draagt de zin
+`**Wordt zwaarder als:** …` — de aanname die hem laag houdt. `npm run
+review:controle` wordt rood zodra er een Laag-rij zonder staat, en draait mee in
+`/audit`.
+
+⚠️ **De voorwaarde, niet de datum.** De A17-aantekening ("herbevestigen vóór
+EPIC 12") werkte, maar noemde een feature die al gepland was. Dat kon niet bij de
+rij van 17-08 over het ontkoppelen: QS8-110/optie C bestond toen nog niet als
+plan. Wat je wél altijd kunt opschrijven is waaróm iets nú laag is. Vervalt die
+aanname, dan is het geen Laag meer.
+
+⚠️ **Waarom dit ertoe doet.** Die rij van 17-08 was terecht Laag — zelfbedrog,
+geen autorisatiegrens. Vier dagen later liet 0064 het minpunt van precies die
+handeling afhangen, en werd het een scoregat dat 0066 moest dichten. **Vraag bij
+elke nieuwe beslissing die op een bestaande primitieve handeling leunt: staat
+daar een weggelegde bevinding over?**
 
 **Wat je uitstelt, vang je zelf op** met een controlepas langs wat die twee
 agents historisch vinden: dode code, dubbele teksten, ontbrekende loading-,
