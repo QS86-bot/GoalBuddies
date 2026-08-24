@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 /**
  * De rekenregels achter de visuele componenten.
  *
@@ -85,7 +87,7 @@ export function rangeState(input: {
       hidden: false,
       tone: 'neutral',
       fill: 0,
-      label: 'Adempauze',
+      label: t('weekdoel.adempauze'),
       awaitingApproval: false,
     };
   }
@@ -106,7 +108,7 @@ export function rangeState(input: {
       hidden: false,
       tone: 'neutral',
       fill: 0,
-      label: 'Meegenomen naar deze week',
+      label: t('weekdoel.meegenomen'),
       awaitingApproval: false,
     };
   }
@@ -120,7 +122,7 @@ export function rangeState(input: {
       hidden: false,
       tone: 'neutral',
       fill: 0,
-      label: 'Afgesloten',
+      label: t('weekdoel.afgesloten'),
       awaitingApproval: false,
     };
   }
@@ -131,17 +133,28 @@ export function rangeState(input: {
       hidden: false,
       tone: 'neutral',
       fill: 0,
-      label: 'Niet afgerond',
+      label: t('weekdoel.niet_afgerond'),
       awaitingApproval: false,
     };
   }
 
-  return { hidden: false, tone: 'neutral', fill: 0, label: 'Nog te doen', awaitingApproval: false };
+  return {
+    hidden: false,
+    tone: 'neutral',
+    fill: 0,
+    label: t('weekdoel.nog_te_doen'),
+    awaitingApproval: false,
+  };
 }
 
 function labelFor(ceiling: boolean, hasFloor: boolean, pending: boolean): string {
-  const wat = ceiling ? 'Plafond gehaald' : hasFloor ? 'Vloer gehaald' : 'Gehaald';
-  return pending ? `${wat} — wacht op je buddy` : wat;
+  const wat = ceiling
+    ? t('weekdoel.plafond_gehaald')
+    : hasFloor
+      ? t('weekdoel.vloer_gehaald')
+      : t('weekdoel.gehaald');
+
+  return pending ? t('weekdoel.wacht_op_buddy', { wat }) : wat;
 }
 
 /**
@@ -164,8 +177,8 @@ export function milestoneProgress(done: number, total: number): number {
  * die telt (domeinregel 9).
  */
 export function streakLabel(cycles: number): string {
-  if (cycles <= 0) return 'Nog geen reeks';
-  return cycles === 1 ? '1 week op rij' : `${cycles} weken op rij`;
+  if (cycles <= 0) return t('reeks.geen');
+  return cycles === 1 ? t('reeks.een') : t('reeks.meer', { n: cycles });
 }
 
 // ---------------------------------------------------------------------------
@@ -203,14 +216,14 @@ export interface KettingStand {
  *    Dat verschil bestaat alleen in de tekst, dus die tekst doet het werk.
  */
 export function kettingLabel(stand: KettingStand): string {
-  if (stand.inAanmerking <= 0) return 'Nog niemand doet mee';
-  if (stand.schakels <= 0) return 'De week is net begonnen';
+  if (stand.inAanmerking <= 0) return t('ketting.niemand');
+  if (stand.schakels <= 0) return t('ketting.net_begonnen');
   if (stand.voltallig) {
-    return stand.inAanmerking === 1 ? 'Je schakel ligt er' : 'Voltallig — de ketting is rond';
+    return stand.inAanmerking === 1 ? t('ketting.jij_alleen') : t('ketting.voltallig');
   }
   return stand.schakels === 1
-    ? '1 schakel deze week'
-    : `${stand.schakels} schakels deze week`;
+    ? t('ketting.schakels_een')
+    : t('ketting.schakels_meer', { n: stand.schakels });
 }
 
 /**
@@ -261,9 +274,12 @@ export interface WeekpasStand {
  *    Dat verschil zit alleen in de tekst, dus die tekst doet het werk.
  */
 export function weekpasLabel(stand: WeekpasStand): string {
-  if (stand.voorraad <= 0) return 'Nog geen weekpas';
-  const wat = stand.voorraad === 1 ? '1 weekpas' : `${stand.voorraad} weekpassen`;
-  return `${wat} van ${stand.maximum}`;
+  if (stand.voorraad <= 0) return t('weekpas.geen');
+
+  const wat =
+    stand.voorraad === 1 ? t('weekpas.een') : t('weekpas.meer', { n: stand.voorraad });
+
+  return t('weekpas.van_maximum', { wat, maximum: stand.maximum });
 }
 
 /**
@@ -273,7 +289,9 @@ export function weekpasLabel(stand: WeekpasStand): string {
  *    deze regel weet niemand dat een gemiste week een minpunt kost, en dan komt
  *    dat minpunt als een verrassing precies op de dag dat het gebeurt.
  */
-export const PUNTEN_UITLEG = 'Plafond gehaald +2, vloer gehaald +1, week gemist −1, adempauze 0.';
+export function puntenUitleg(): string {
+  return t('punten.uitleg');
+}
 
 /**
  * De uitleg die precies één keer op het scherm hoort.
@@ -296,10 +314,9 @@ export const PUNTEN_UITLEG = 'Plafond gehaald +2, vloer gehaald +1, week gemist 
  *       drie doelen zie je drie verschillende standen naast elkaar. Zonder deze
  *       zin ziet dat eruit als een fout.
  */
-export const WEEKPAS_UITLEG =
-  'Een weekpas houdt je reeks overeind als je een week mist. Het minpunt voor die week ' +
-  'krijg je wél — een pas beschermt je reeks, niet je punten. Je hoeft niets te doen: ' +
-  'mis je een week, dan zetten we er automatisch een in. Weekpassen spaar je per doel.';
+export function weekpasUitleg(): string {
+  return t('weekpas.uitleg');
+}
 
 /**
  * Hoe ver je bent naar de volgende pas. Verschilt per doel en staat dus wél bij
@@ -312,15 +329,15 @@ export const WEEKPAS_UITLEG =
  */
 export function weekpasVoortgang(stand: WeekpasStand): string {
   if (stand.voorraad >= stand.maximum) {
-    return `Je hebt er ${stand.voorraad}, en meer kun je er niet tegelijk hebben. Verdien je er een terwijl je vol zit, dan komt hij vrij zodra je er een gebruikt.`;
+    return t('weekpas.vol', { voorraad: stand.voorraad });
   }
 
   const nog =
-    stand.totVolgende === 1 ? 'Nog één voltooide week' : `Nog ${stand.totVolgende} voltooide weken`;
+    stand.totVolgende === 1
+      ? t('weekpas.nog_een_week')
+      : t('weekpas.nog_weken', { n: stand.totVolgende });
 
-  return stand.voorraad <= 0
-    ? `${nog} en je eerste weekpas ligt klaar.`
-    : `${nog} tot de volgende.`;
+  return stand.voorraad <= 0 ? t('weekpas.eerste', { nog }) : t('weekpas.volgende', { nog });
 }
 
 /**

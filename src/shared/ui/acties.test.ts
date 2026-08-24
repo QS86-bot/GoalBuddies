@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BEVESTIGING, weekdoelActies } from './acties';
+import { bevestigingen, weekdoelActies } from './acties';
 import type { WeeklyGoalStatus } from './metrics';
 
 const ALLE_STATUSSEN: readonly WeeklyGoalStatus[] = [
@@ -86,7 +86,7 @@ describe('BEVESTIGING', () => {
   it('noemt in elke tekst wat de actie kost of hoe ver hij reikt', () => {
     // "Weet je het zeker?" is geen bevestiging maar een drempel. Elke tekst
     // hier hoort een gevolg te benoemen, niet alleen een vraag te stellen.
-    for (const [naam, tekst] of Object.entries(BEVESTIGING)) {
+    for (const [naam, tekst] of Object.entries(bevestigingen())) {
       expect(tekst.uitleg.length, naam).toBeGreaterThan(80);
       expect(tekst.titel, naam).toMatch(/\?$/);
       expect(tekst.bevestig.length, naam).toBeGreaterThan(0);
@@ -98,19 +98,28 @@ describe('BEVESTIGING', () => {
    *    onder test in plaats van alleen in een comment.
    */
   it('zegt bij afsluiten dat het een punt kost en de reeks onderbreekt', () => {
-    expect(BEVESTIGING.weekdoelAfsluiten.uitleg).toContain('punt');
-    expect(BEVESTIGING.weekdoelAfsluiten.uitleg).toContain('reeks');
-    expect(BEVESTIGING.weekdoelAfsluiten.uitleg).toContain('weekpas');
+    expect(bevestigingen().weekdoelAfsluiten.uitleg).toContain('punt');
+    expect(bevestigingen().weekdoelAfsluiten.uitleg).toContain('reeks');
+    expect(bevestigingen().weekdoelAfsluiten.uitleg).toContain('weekpas');
+  });
+
+  it('zegt bij afronden dat het onomkeerbaar is en wat de groep te zien krijgt', () => {
+    // ⚠️ Afronden is de enige handeling die je eigen straf laat vervallen én een
+    //    bericht in elke gekoppelde groep plaatst. Allebei onomkeerbaar, dus
+    //    allebei benoemd vóór de klik (QS8-83).
+    expect(bevestigingen().doelAfronden.uitleg).toContain('groep');
+    expect(bevestigingen().doelAfronden.uitleg).toContain('beloning');
+    expect(bevestigingen().doelAfronden.uitleg).toContain('Terugzetten kan niet');
   });
 
   it('zegt bij doorschuiven dat de gemiste week gemist blijft', () => {
     // Dit is precies de verwachting die A39 moest bijstellen: doorschuiven
     // repareerde vroeger je reeks, en nu niet meer.
-    expect(BEVESTIGING.weekdoelDoorschuiven.uitleg).toContain('gemist');
-    expect(BEVESTIGING.weekdoelDoorschuiven.uitleg).toContain('repareert');
+    expect(bevestigingen().weekdoelDoorschuiven.uitleg).toContain('gemist');
+    expect(bevestigingen().weekdoelDoorschuiven.uitleg).toContain('repareert');
   });
 
   it('wijst bij een doel met geschiedenis naar archiveren', () => {
-    expect(BEVESTIGING.doelVerwijderen.uitleg).toContain('rchiveer');
+    expect(bevestigingen().doelVerwijderen.uitleg).toContain('rchiveer');
   });
 });

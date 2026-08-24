@@ -7,6 +7,7 @@ import {
   beperkVoorCache,
   CACHE_MAX,
   cursorVan,
+  CACHE_VERSIE,
   isCacheGeldig,
   isSysteembericht,
   SYSTEEM_GEBEURTENISSEN,
@@ -32,6 +33,8 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     body: 'iets',
     type: 'text',
     system_event: null,
+    subject_name: null,
+    actor_name: null,
     ...over,
   };
 }
@@ -211,10 +214,23 @@ describe('de cache van de lopende periode', () => {
   it('is ongeldig zodra de groepsperiode gerold is', () => {
     // ⚠️ Een chat van vorige week tonen als "de groep nu" is erger dan een leeg
     //    scherm: dan denk je dat er niets gebeurd is.
-    const cache = { periodStart: '2026-08-09', berichten: [] };
+    const cache = { periodStart: '2026-08-09', berichten: [], versie: CACHE_VERSIE };
     expect(isCacheGeldig(cache, '2026-08-09')).toBe(true);
     expect(isCacheGeldig(cache, '2026-08-16')).toBe(false);
     expect(isCacheGeldig(null, '2026-08-16')).toBe(false);
+  });
+
+  it('gooit een cache weg die van vóór een vormwijziging komt', () => {
+    // ⚠️ De cache bewaart `ChatBericht` als kale JSON en leest hem terug met een
+    //    cast — er is geen schema dat hem controleert. Sinds migratie 0059 rendert
+    //    het scherm een systeembericht uit `subject_name` in plaats van uit
+    //    `body`, en een bericht dat vóór die upgrade bewaard is, heeft dat veld
+    //    niet. Zonder deze controle staat er een paar seconden "Een oud-lid doet
+    //    mee" waar een naam hoort — geen storing, wel onwaar.
+    expect(isCacheGeldig({ periodStart: '2026-08-09', berichten: [] }, '2026-08-09')).toBe(false);
+    expect(
+      isCacheGeldig({ periodStart: '2026-08-09', berichten: [], versie: 1 }, '2026-08-09'),
+    ).toBe(false);
   });
 
   it('bewaart de níeuwste berichten en niet de oudste', () => {

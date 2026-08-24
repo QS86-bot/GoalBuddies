@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
 import { isGeldigeTijdzone } from '../../shared/time';
 
 /**
@@ -25,14 +26,14 @@ import { isGeldigeTijdzone } from '../../shared/time';
  */
 export const wachtwoordSchema = z
   .string()
-  .min(12, { error: 'Gebruik minstens 12 tekens. Een korte zin werkt prima.' })
-  .max(72, { error: 'Meer dan 72 tekens kan niet — bcrypt kapt daarna af.' });
+  .min(12, { error: () => t('validatie.wachtwoord_kort') })
+  .max(72, { error: () => t('validatie.wachtwoord_lang') });
 
 export const emailSchema = z
   .string()
   .trim()
   .toLowerCase()
-  .pipe(z.email({ error: 'Dit ziet er niet uit als een e-mailadres.' }));
+  .pipe(z.email({ error: () => t('validatie.email') }));
 
 export const aanmeldenSchema = z.object({
   email: emailSchema,
@@ -44,7 +45,7 @@ export type AanmeldenInvoer = z.infer<typeof aanmeldenSchema>;
 /** Inloggen stelt geen eisen aan het wachtwoord: dat is al ooit geaccepteerd. */
 export const inloggenSchema = z.object({
   email: emailSchema,
-  wachtwoord: z.string().min(1, { error: 'Vul je wachtwoord in.' }),
+  wachtwoord: z.string().min(1, { error: () => t('validatie.wachtwoord_leeg') }),
 });
 
 export type InloggenInvoer = z.infer<typeof inloggenSchema>;
@@ -54,28 +55,30 @@ export const weekdagSchema = z
   .number()
   .int()
   .min(0)
-  .max(6, { error: 'Een week begint op een dag tussen zondag en zaterdag.' });
+  .max(6, { error: () => t('validatie.weekdag') });
 
 /**
  * Een IANA-tijdzone. Niet tegen een lijst gecontroleerd maar tegen `Intl` zelf —
  * die lijst verandert een paar keer per jaar en een eigen kopie loopt achter.
  */
+// ⚠️ Beide kanten van de merge van 24-08: de toets komt uit `shared/time`
+//    (QS8-27, correctheidsregel 7) en de melding uit de catalogus (QS8-115).
 export const tijdzoneSchema = z
   .string()
-  .refine(isGeldigeTijdzone, { error: 'Onbekende tijdzone.' });
+  .refine(isGeldigeTijdzone, { error: () => t('validatie.tijdzone') });
 
 export const profielSchema = z.object({
   display_name: z
     .string()
     .trim()
-    .min(1, { error: 'Vul een naam in.' })
-    .max(80, { error: 'Maximaal 80 tekens.' }),
+    .min(1, { error: () => t('validatie.naam_leeg') })
+    .max(80, { error: () => t('validatie.naam_lang') }),
   week_start_day: weekdagSchema,
   tz: tijdzoneSchema,
   // `HH:MM` of `HH:MM:SS`; Postgres `time` slikt allebei.
   reminder_time: z
     .string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, { error: 'Gebruik een tijd als 20:00.' })
+    .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, { error: () => t('validatie.tijd') })
     .nullable(),
   reminder_enabled: z.boolean(),
   reminder_tone: z.enum(['gentle', 'firm']),

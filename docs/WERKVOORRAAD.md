@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 23-08-2026 (na de merge van PR #1)
+**Laatst bijgewerkt:** 24-08-2026 (na de merge van `main` in de QS8-83/91-branch)
 
 ---
 
@@ -16,28 +16,26 @@
 Lees dit eerst; de rest is naslag. **Tien regels, en dat is de bedoeling** —
 staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of §7.
 
-1. **Fase 1 is af op de laatste schakel van EPIC 11 na.** Alle epics staan;
-   EPIC 9 sinds 21-08. Volgorde in §4, wat er staat in §2.
+1. **Fase 1 is af op de laatste schakel van EPIC 11 na, en de app is live.**
+   Alle epics staan; EPIC 9 sinds 21-08. `goalbuddies.q-projects.tech` draait
+   (QS8-99/QS8-100) en deployen is `npm run deploy`. Volgorde in §4, wat er staat
+   in §2. ⚠️ Supabase Auth wijst nog naar het oude adres — zie §0a.
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
-3. **⚠️ Er staat een sessie werk buiten `main`, en het is meer dan vijf
-   migraties.** De branch `quintenstrijdonk/qs8-83-91-…` draagt **21 commits** die
-   nergens anders staan: de hele i18n-infrastructuur (QS8-113), de afgeronde
-   slices van QS8-115, `expo-notifications` (Q-TODO B4), de live-deploy en de
-   migraties `0057` t/m `0061`. Hij loopt 44 commits achter op `main`.
-   **Lees §2a voordat je iets bouwt dat hierop leunt.** Dit is ook de bron van
-   **QS8-122** (blokkeert QS8-119); uitleg in §2.
+3. **⚠️ Het migratieregister kent twee nummeringen.** `0057` t/m `0061` staan
+   sinds deze merge wél in de repo — het gat is dicht — maar bestandsnaam en de
+   versie in `schema_migrations` zeggen nog niet hetzelfde, dus de map kan het
+   schema nog altijd niet elders opbouwen. **QS8-122**, blokkeert QS8-119.
+   Uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **453 geslaagd, 266 overgeslagen**; typecheck en lint groen.
+   credentials: **535 geslaagd, 290 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
-5. **⚠️ Web push is aangezet maar nog niet bewezen.** De registratie staat er
-   sinds **QS8-124** (In Review): knop op het profielscherm, abonnement, token.
-   De PWA eromheen is sinds 24-08 compleet én getoetst (**QS8-117**): manifest,
-   iconen, koptags en service worker staan in élke geëxporteerde route.
-   **Niemand heeft nog een echte melding ontvangen** — dat vraagt een browser en
-   de VAPID-sleutels, en op iOS een fysiek toestel. Native wacht op
-   `expo-notifications`, dat al op de branch van QS8-131 staat.
+5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
+   `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
+   **QS8-124**, en de PWA eromheen is getoetst (**QS8-117**). **Niemand heeft nog
+   een echte melding ontvangen** — dat vraagt een VAPID-sleutelpaar in `.env`, en
+   op iOS een fysiek toestel.
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
    gratis, gegrendeld in 0066. Zie §2.
@@ -101,47 +99,24 @@ Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
 RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
 productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
 
-### 2a. ⚠️ Eenentwintig commits staan buiten `main` — gevonden 24-08-2026
+### 2a. Wat er van de verdwaalde branch geleerd is — 24-08-2026
 
-Bij het oppakken van QS8-115 bleek de map `src/shared/i18n/` niet te bestaan,
-terwijl het issue drie afgeronde slices beschrijft. Ze bestaan wel — op
-`origin/quintenstrijdonk/qs8-83-91-beloning-vrijgeven-bij-het-halen-van-een-doel`,
-en nergens anders.
+Bij het oppakken van de laatste map van QS8-115 bleek `src/shared/i18n/` niet te
+bestaan, terwijl dat issue drie afgeronde slices beschrijft. Ze bestonden wel, op
+een branch die 21 commits vóór en 44 achter `main` liep en waar geen PR voor open
+stond: de hele i18n-infrastructuur, de deploy naar het echte adres,
+`expo-notifications` en de migraties `0057` t/m `0061`.
 
-| | |
-|---|---|
-| Vóór op `main` | 21 commits |
-| Achter op `main` | 44 commits |
-| Bestanden gewijzigd | 100 |
-| Bestanden die **beide** kanten aanraken | 17 |
-| Laatste commit | 22-08-2026 |
-| Open PR | geen |
+✅ **Geland op 24-08 als PR #9** (QS8-131). Het gat in de migratienummering is
+daarmee dicht en `npm run migraties:controle` is groen.
 
-**Wat er op die branch staat en niet op `main`:** `src/shared/i18n/` met `nl` en
-`en` (QS8-113), alle afgeronde slices van QS8-115 (`shared/ui` plus alle zeven
-modules), `expo-notifications` (**Q-TODO B4** — die staat in dit document nog als
-openstaande dependency), de deploy naar het echte adres (QS8-99, QS8-100), de
-afwikkeling van EPIC 9, en de migraties `0057` t/m `0061`.
-
-⚠️ **Die vijf migratiebestanden zijn byte-identiek aan wat de backfill op de
-QS8-122-branch heeft teruggezet.** Nagemeten op 24-08. De backfill was dus goed;
-hij haalde alleen terug wat hier al stond.
-
-⚠️ **Waarom dit erger is dan een achterstallige branch.** QS8-125 gaat over
-documenten die uiteenlopen. Dit is dezelfde fout een niveau hoger: het bord zegt
-Done, de database heeft de migraties, en de code staat op een tak. Wie op `main`
-begint aan iets dat hierop leunt — en QS8-115 is precies dat — bouwt het dak op
-een huis waarvan de muren elders staan.
-
-**Wat er moet gebeuren, en in deze volgorde:**
-
-1. `main` in die branch mergen (44 commits achterstand), de suite draaien.
-2. Landen via een PR, met een merge-commit.
-3. Pas daarna verder aan QS8-115 (`app/`, de laatste map) en aan alles wat de
-   catalogus gebruikt.
-
-Zolang stap 2 niet gedaan is, is elke nieuwe regel die `shared/i18n` aanroept
-een merge-conflict in wording.
+⚠️ **Wat ervan blijft staan is de les.** Dit was QS8-125 een niveau hoger: dat
+issue gaat over documenten die uiteenlopen, hier zei het bord Done, had de
+database de migraties, en stond de code op een tak. Drie bronnen, drie
+antwoorden. **Werk dat niet landt, bestaat voor de volgende sessie niet** — en
+het is niet zichtbaar in een document, want het document staat op diezelfde tak.
+Kijk bij het beginnen van een sessie naar de branchtabel in
+`docs/VOLGENDE-SESSIE.md` en niet alleen naar `main`.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -181,7 +156,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **453 geslaagd en 266 overgeslagen** (die 266 zijn de RLS-suite, zie §3b)
+  **535 geslaagd en 290 overgeslagen** (die 290 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -361,12 +336,23 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
-| 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
+| 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
+
+#### Waar het nu op vastzit
+
+De epics zijn af; de MVP is dat niet. Drie dingen, en geen ervan is code die
+een agent alleen kan afmaken:
+
+| # | Wat | Waarom het blokkeert | Wie |
+|---|---|---|---|
+| 1 | **A47 — de RLS-suite** | Een volle run geeft wisselende, valse roodstanden. Daarmee bewijst de belangrijkste poort van dit project niets meer. Zie §0 | besluit + werk |
+| 2 | **QS8-114 — web push** | `expo-notifications` staat erin, maar de app draait alleen op het web en web push is een ánder mechanisme (VAPID, service worker, `PushSubscription`). Vandaag komt er dus geen enkele melding aan | besluit over opslag + werk |
+| 3 | **Supabase Auth-URL's** | Bevestigingsmail wijst naar het oude adres. Dashboardhandeling van een minuut, §0a | Quinten |
 
 #### Wat er van de afgeronde epics nog los ligt
 
@@ -380,6 +366,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Een weekdoel aanmaken~~ | QS8-112 | ✅ gebouwd op 20-08. QS8-43 en QS8-44 stonden op Done terwijl er geen scherm was — controleer bij een frontend-issue voortaan of een mens er via het scherm bij kan |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
+| ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
@@ -735,7 +722,7 @@ De zwaarste op dit moment:
    toetreden).
 3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
-   want er staan 266 RLS-tests die niemand automatisch draait — dat is precies
+   want er staan 290 RLS-tests die niemand automatisch draait — dat is precies
    het aantal dat `npm test` zonder credentials overslaat.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het
@@ -757,16 +744,17 @@ De zwaarste op dit moment:
    bescherming dat je dat merkt vóór je op "Delen met mijn groep" drukt, is één hint
    onder het veld. Zie `docs/ENGINEER-REVIEW.md`, 18-08.
 
-7. **⚠️ Een doel kan niet meer op `completed` komen.** `goals.status` stond open
-   voor de client, en `completed` liet `meld_doel_af()` afgaan — "X heeft een doel
-   afgerond" in elke gekoppelde groep, zonder dat er iets afgerond was. Dicht sinds
-   0035: archiveren loopt via `zet_doelstatus()`, dat alleen `active` en
-   `archived` toestaat. Maar er is nu **geen enkel** pad naar `completed`: geen
-   trigger zet hem, `meld_doel_af()` reageert er alleen op. Wanneer een doel af is,
-   is een productbeslissing (alle mijlpalen? de eigenaar? een buddy die bevestigt?)
-   en staat als **A31** in `docs/Q-TODO.docx` en als **QS8-102** in Linear.
+7. ~~**Een doel kan niet meer op `completed` komen.**~~ **Opgelost 21-08 in
+   EPIC 9** (QS8-102, A31), en het heeft twee epics stilgelegen zonder dat iemand
+   het merkte: `meld_doel_af()` én `meld_commitment()` stonden er allebei
+   maandenlang zonder ooit af te gaan. De keuze is `rond_doel_af()` — de eigenaar
+   verklaart zijn doel af, en de server weigert zolang er een mijlpaal op `todo`
+   staat. Die eis is geen netheid maar de énige rem op het laten vervallen van je
+   eigen straf; onderbouwing in `docs/decisions/003-commitments-afwikkelen.md` §1.
+   Het kolomrecht blijft ingetrokken (0035 voor UPDATE, 0046 voor INSERT) en er
+   staat nu voor allebei een test — die op UPDATE ontbrak nog.
 
-8. **Een onveranderlijkheidstrigger sloopt stil een `on delete set null`.** Een
+8. **⚠️ Een onveranderlijkheidstrigger sloopt stil een `on delete set null` — en op 21-08 is het voor de derde keer gebeurd.** Migratie 0059 citeerde dit punt in zijn eigen kop, paste het correct toe op `actor_id`, en greep er één regel lager naast voor `subject_id`. Gedicht in 0060, dezelfde dag. **Lees dit punt niet als geschiedenis maar als checklist: bij elke nieuwe kolom met `on delete set null` hoort de vraag of er een BEFORE UPDATE-trigger op die tabel staat.** Origineel: Een
    referentiële actie is zelf een UPDATE op de kindtabel; staat daar een BEFORE
    UPDATE-trigger die de kolom terugzet naar `old`, dan draait die de actie in
    dezelfde bewerking terug. Postgres controleert de sleutel daarna niet opnieuw:

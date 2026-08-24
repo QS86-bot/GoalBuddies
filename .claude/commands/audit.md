@@ -58,11 +58,10 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     dragen, en dat elke migratie een rollback-pad in zijn kop heeft (onwrikbare
     regel 20).
 
-    ⚠️ **Deze stap is op dit moment rood en dat hoort zo.** `0057` t/m `0061`
-    staan op de branch van QS8-131 en niet op `main`. Zet de controle niet uit
-    en pas hem niet aan om hem groen te krijgen — dat gat is precies waar hij
-    voor bestaat, en hij is geverifieerd groen zodra die branch landt. Meld hem
-    als openstaand punt, niet als bevinding van deze week.
+    ⚠️ Hij is één dag rood geweest en dat was de bedoeling: `0057` t/m `0061`
+    stonden op een branch die niet geland was. PR #9 heeft dat op 24-08 gedicht
+    en hij meldt nu 74 migraties, aaneengesloten. Wordt hij weer rood, dan
+    ontbreekt er echt iets — zet hem niet uit.
 
     ⚠️ Wat hij niet ziet: of de repo gelijkloopt met `schema_migrations` op het
     échte project. Dat vraagt een service-role-key en die hoort niet in een

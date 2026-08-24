@@ -11,6 +11,7 @@ import {
   fetchGroep,
   huidigeGroepsperiode,
   isSysteembericht,
+  systeemberichtTekst,
   stuurBericht,
   verwijderBericht,
   voegSamen,
@@ -296,7 +297,12 @@ export default function GroepChat() {
               }
               renderItem={({ item }) =>
                 isSysteembericht(item) ? (
-                  <ChatRegel body={item.body} />
+                  // ⚠️ De zin wordt hier gemaakt en komt niet uit `item.body` —
+                  //    migratie 0059, QS8-107 stap 2. `body` is nog wél gevuld,
+                  //    maar alleen als terugval; het rechtstreeks tonen zou de
+                  //    Nederlandse zin uit de database vastzetten in het scherm,
+                  //    en dat is precies wat vertalen straks onmogelijk maakt.
+                  <ChatRegel body={systeemberichtTekst(item)} />
                 ) : (
                   <ChatRegel
                     body={item.body}

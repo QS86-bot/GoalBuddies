@@ -1,5 +1,7 @@
 import { Platform, StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
+
 import { radius, useTheme } from '../theme';
 
 import { useReducedMotion } from './a11y';
@@ -55,7 +57,7 @@ export function MilestoneProgress({ done, total, showCount = true }: Props) {
 
       {showCount ? (
         <Caption>
-          {total === 0 ? 'Nog geen mijlpalen' : `${done} van ${total} mijlpalen`}
+          {total === 0 ? t('mijlpalen.geen') : t('mijlpalen.voortgang', { done, total })}
         </Caption>
       ) : null}
     </View>

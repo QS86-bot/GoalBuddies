@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { t, type Sleutel } from '../../shared/i18n';
 import { kapAf } from '../../shared/tekst';
 
 import { voegOplopendSamen } from './merge';
@@ -32,28 +33,28 @@ export const REACTIE_MAX = 1000;
  *    op de kaart. Er is nergens een "X heeft niet gereageerd", en de database kan
  *    het niet eens: zonder rij is er niets om te tonen.
  */
-export const VRAGEN = [
-  {
-    veld: 'did_text',
-    label: 'Wat heb je gedaan?',
-    hint: 'Voorgevuld uit je Dagzetten van deze week. Pas aan wat je wilt.',
-    placeholder: 'Drie ochtenden geschreven, samen ongeveer vier uur.',
-  },
-  {
-    veld: 'blocked_text',
-    label: 'Wat zat in de weg?',
-    hint: 'De enige plek waar dit hoort. Je groep leest mee om te helpen, niet om te beoordelen.',
-    placeholder: 'Twee avonden overwerk, en daarna kwam ik er niet meer in.',
-  },
-  {
-    veld: 'next_text',
-    label: 'Wat is je volgende week?',
-    hint: 'Eén concrete zin is genoeg.',
-    placeholder: 'Hoofdstuk drie af, en dinsdag een uur extra inplannen.',
-  },
-] as const;
+/**
+ * ⚠️ **Een functie en geen constante** — QS8-115. Een `const` met `t()` erin
+ *    wordt één keer bij het importeren opgebouwd, en dat is vóórdat het profiel
+ *    geladen is; de taal staat dan vast op de apparaattaal. Zelfde val als bij
+ *    `BEVESTIGING` in `shared/ui` en de meldingentabellen in de andere modules.
+ *
+ * ⚠️ `AntwoordVeld` blijft wél een type over de constante veldnamen. Die zijn
+ *    kolomnamen en geen tekst; die veranderen niet met de taal.
+ */
+export function vragen() {
+  return VELDEN.map((veld, i) => ({
+    veld,
+    label: t(`weekafsluiting.v${i + 1}.label` as Sleutel),
+    hint: t(`weekafsluiting.v${i + 1}.hint` as Sleutel),
+    placeholder: t(`weekafsluiting.v${i + 1}.voorbeeld` as Sleutel),
+  }));
+}
 
-export type AntwoordVeld = (typeof VRAGEN)[number]['veld'];
+const VELDEN = ['did_text', 'blocked_text', 'next_text'] as const;
+
+
+export type AntwoordVeld = (typeof VELDEN)[number];
 
 const antwoordTekst = z
   .string()
@@ -76,7 +77,7 @@ export const weekafsluitingSchema = z
   .refine(
     (a) =>
       a.did_text.length > 0 || a.blocked_text.length > 0 || a.next_text.length > 0,
-    { error: 'Vul minstens één vraag in. Alle drie overslaan mag ook — dan sla je niets op.' },
+    { error: () => t('weekafsluiting.leeg') },
   );
 
 export type WeekafsluitingInvoer = z.infer<typeof weekafsluitingSchema>;
@@ -85,7 +86,7 @@ export const reactieSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: 'Er staat nog niets in je reactie.' })
+    .min(1, { error: () => t('weekafsluiting.reactie_leeg') })
     .max(REACTIE_MAX, { error: `Maximaal ${REACTIE_MAX} tekens.` }),
 });
 

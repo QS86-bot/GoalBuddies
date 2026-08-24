@@ -211,6 +211,27 @@ export function weekdayOf(date: IsoDate): Weekday {
 }
 
 /**
+ * Een datum die gegarandeerd op de gevraagde weekdag valt — QS8-115.
+ *
+ * ⚠️ **Waarom dit hier staat en niet bij de vertaling.** Het is datumconstructie,
+ *    en die hoort volgens correctheidsregel 7 in deze module. De lint-regel
+ *    `no-restricted-syntax` sloeg er ook op aan toen hij eerst in `shared/i18n`
+ *    stond — terecht, en dat is precies waarvoor die regel bestaat.
+ *
+ *    De vertaalkant doet alleen de ópmaak: `weekdagNaam()` in `shared/i18n`
+ *    voert deze datum aan `Intl` om er "Maandag" of "Monday" van te maken. Zo
+ *    blijft de datumkennis hier en de taalkennis daar.
+ *
+ * ⚠️ De nummering is die van Postgres en van deze module: 0 = zondag. De
+ *    peildatum is bewust een vaste week zonder betekenis — er wordt niets over
+ *    "vandaag" of "deze week" afgeleid, alleen een dag benoemd.
+ */
+export function weekdagPeildatum(weekdag: number): Date {
+  // 2024-01-07 was een zondag; de modulo vangt een waarde buiten 0–6 op.
+  return new Date(Date.UTC(2024, 0, 7 + (((weekdag % 7) + 7) % 7)));
+}
+
+/**
  * De wandkloktijd van een tijdstempel, als `HH:MM` — bijvoorbeeld `09:05`.
  *
  * ⚠️ Deze functie staat hier en niet bij de chat, om precies de reden die

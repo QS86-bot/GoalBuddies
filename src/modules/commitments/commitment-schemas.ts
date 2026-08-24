@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { telTekens } from '../../shared/tekst';
+import { t } from '../../shared/i18n';
 
 /**
  * De invoerregels van een commitment device — QS8-121.
@@ -32,10 +33,10 @@ export const commitmentSchema = z.object({
     .string()
     .trim()
     .refine((tekst) => telTekens(tekst) >= COMMITMENT_MIN, {
-      error: 'Schrijf op wat je jezelf oplegt.',
+      error: () => t('validatie.commitment_kort'),
     })
     .refine((tekst) => telTekens(tekst) <= COMMITMENT_MAX, {
-      error: `Maximaal ${COMMITMENT_MAX} tekens.`,
+      error: () => t('validatie.commitment_lang'),
     }),
   // ⚠️ `.url()` alléén is hier niet genoeg, en dat is geen theorie. In zod 4 is
   //    `z.string().url()` geen schema-allowlist: `javascript:alert(1)`,
@@ -51,9 +52,9 @@ export const commitmentSchema = z.object({
   image_url: z
     .string()
     .trim()
-    .url({ error: 'Dit is geen geldige link.' })
+    .url({ error: () => t('validatie.link') })
     .refine((link) => link.startsWith('https://'), {
-      error: 'Een afbeeldingslink moet met https:// beginnen.',
+      error: () => t('validatie.link_https'),
     })
     .nullable(),
 });

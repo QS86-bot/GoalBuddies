@@ -1,8 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
+
 import { space, useTheme } from '../theme';
 
-import { PUNTEN_UITLEG, streakLabel, weekpasReddeDezeCyclus, type WeekpasStand } from './metrics';
+import { puntenUitleg, streakLabel, weekpasReddeDezeCyclus, type WeekpasStand } from './metrics';
 import { StreakCounter } from './StreakCounter';
 import { Caption, Subheading } from './Text';
 import { Weekpas } from './Weekpas';
@@ -80,7 +82,7 @@ export function DoelStandKaart({
                er is niets om mee te vergelijken: het puntentotaal van een ander
                is onzichtbaar en dat blijft zo.
           */}
-          <Caption>Punten</Caption>
+          <Caption>{t('stand.punten')}</Caption>
           <Subheading>{punten}</Subheading>
         </View>
 
@@ -91,7 +93,7 @@ export function DoelStandKaart({
         */}
         {besteReeks <= 0 ? null : (
           <View style={styles.cijfer}>
-            <Caption>Langste reeks</Caption>
+            <Caption>{t('stand.langste_reeks')}</Caption>
             {/*
               ⚠️ Uitgeschreven als weken en niet als kaal getal, om dezelfde
                  reden als de reeksteller: de eenheid is de week.
@@ -106,7 +108,7 @@ export function DoelStandKaart({
            getal zonder eenheid, en — belangrijker — weet niemand dat een gemiste
            week een minpunt kost tot het gebeurt.
       */}
-      <Caption>{PUNTEN_UITLEG}</Caption>
+      <Caption>{puntenUitleg()}</Caption>
 
       {weekpas === null ? null : (
         <View style={[styles.scheiding, { borderTopColor: theme.colors.border }]}>

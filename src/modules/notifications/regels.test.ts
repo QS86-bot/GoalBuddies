@@ -182,3 +182,64 @@ describe('uurUit', () => {
     }
   });
 });
+
+describe('de taal van de ontvanger', () => {
+  /**
+   * ⚠️ **De taal is hier een parameter en geen globale stand, en dat is de hele
+   *    reden dat deze module `shared/i18n` niet gebruikt.** De meldingenjob loopt
+   *    over álle profielen. Met een procesbrede taal krijgt iedereen de taal van
+   *    wie er toevallig als laatste is ingesteld — en dat merk je niet, want er
+   *    kómt gewoon een melding aan.
+   *
+   *    Deze tests wisselen daarom bínnen één test van taal, zonder ergens iets in
+   *    te stellen. Lukt dat niet meer, dan is er een globale stand ingeslopen.
+   */
+  it('geeft twee ontvangers hun eigen taal, in dezelfde ronde', () => {
+    const nederlands = nudgeBericht('gentle', 'nl');
+    const engels = nudgeBericht('gentle', 'en');
+
+    expect(nederlands.titel).not.toBe(engels.titel);
+    expect(nederlands.titel).toBe('Hoe gaat het met je week?');
+    expect(engels.titel).toBe('How is your week going?');
+  });
+
+  it('valt terug op Nederlands bij een onbekende of ontbrekende taal', () => {
+    // `profiles.locale` is `null` zolang er niets gekozen is. Een server weet
+    // niet op welk toestel dit geopend wordt, dus de apparaattaal bestaat hier
+    // niet — het wordt de standaardtaal.
+    const standaard = nudgeBericht('gentle', 'nl').titel;
+
+    expect(nudgeBericht('gentle', null).titel).toBe(standaard);
+    expect(nudgeBericht('gentle', undefined).titel).toBe(standaard);
+    expect(nudgeBericht('gentle').titel).toBe(standaard);
+  });
+
+  it('vertaalt alle drie de andere soorten, met en zonder naam', () => {
+    for (const soort of ['approval_request', 'approval_received', 'cycle_summary'] as const) {
+      const nl = berichtVoor(soort, { naam: 'Sanne' }, 'nl');
+      const en = berichtVoor(soort, { naam: 'Sanne' }, 'en');
+
+      expect(nl.titel, soort).not.toBe(en.titel);
+
+      // Het pad is navigatie en geen tekst: dat hoort in beide talen gelijk.
+      expect(en.pad, soort).toBe(nl.pad);
+
+      // Zonder naam moet er nog steeds een zin staan — het profiel kan
+      // verwijderd zijn.
+      expect(berichtVoor(soort, {}, 'en').body.length, soort).toBeGreaterThan(10);
+    }
+  });
+
+  it('beschuldigt in geen van beide talen', () => {
+    // Zelfde eis als de Nederlandse toon-test hierboven. Een vertaler die de
+    // code niet kent, kent dat criterium niet.
+    for (const taal of ['nl', 'en'] as const) {
+      for (const toon of ['gentle', 'firm'] as const) {
+        const bericht = nudgeBericht(toon, taal);
+        const heel = `${bericht.titel} ${bericht.body}`;
+
+        expect(heel, `${taal}/${toon}`).not.toMatch(/gefaald|mislukt|failed|behind|achter/i);
+      }
+    }
+  });
+});

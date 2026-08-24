@@ -1,3 +1,5 @@
+import { t, type Sleutel } from '../i18n';
+
 /**
  * Het feestelijke moment — QS8-76.
  *
@@ -30,40 +32,41 @@ export interface Viering {
   readonly duurMs: number;
 }
 
-const VIERINGEN: Record<VieringSoort, Viering> = {
+/**
+ * Wat er per soort vastligt buiten de tekst om.
+ *
+ * ⚠️ Niveau en duur zijn geen tekst en horen dus niet in de catalogus — een
+ *    vertaler heeft niets te zeggen over hoe lang een animatie duurt. Alleen
+ *    `titel` en `tekst` komen uit `shared/i18n` (QS8-113).
+ */
+const VORM: Record<VieringSoort, { niveau: 1 | 2 | 3; duurMs: number }> = {
   /**
    * Het vaakst voorkomende moment, dus het zuinigst. Iemand die vijf doelen
    * bijhoudt, ziet dit vijf keer per week.
    */
-  weekdoel: {
-    soort: 'weekdoel',
-    niveau: 1,
-    titel: 'Je week is bevestigd',
-    tekst: 'Een buddy heeft je week goedgekeurd. Die telt.',
-    duurMs: 2200,
-  },
-  mijlpaal: {
-    soort: 'mijlpaal',
-    niveau: 2,
-    titel: 'Mijlpaal gehaald',
-    tekst: 'Een stuk van je doel staat. Dit is er een om even bij stil te staan.',
-    duurMs: 3200,
-  },
+  weekdoel: { niveau: 1, duurMs: 2200 },
+  mijlpaal: { niveau: 2, duurMs: 3200 },
   /**
    * ⚠️ Het grootste moment dat de app kent, en voor de meeste gebruikers een
    *    handvol keer per jaar. Hier mag het.
    */
-  doel: {
-    soort: 'doel',
-    niveau: 3,
-    titel: 'Je doel is af',
-    tekst: 'Je hebt dit van begin tot eind volgehouden. Dat doen de meeste mensen niet.',
-    duurMs: 4500,
-  },
+  doel: { niveau: 3, duurMs: 4500 },
 };
 
+/**
+ * ⚠️ Een functie die elke keer opnieuw bouwt, en geen tabel die één keer gevuld
+ *    wordt. De teksten hangen van de ingestelde taal af; een module-constante
+ *    zou de taal vastleggen op het moment van importeren — en dat is vóórdat het
+ *    profiel geladen is.
+ */
 export function viering(soort: VieringSoort): Viering {
-  return VIERINGEN[soort];
+  return {
+    soort,
+    niveau: VORM[soort].niveau,
+    duurMs: VORM[soort].duurMs,
+    titel: t(`viering.${soort}.titel` as Sleutel),
+    tekst: t(`viering.${soort}.tekst` as Sleutel),
+  };
 }
 
 /**

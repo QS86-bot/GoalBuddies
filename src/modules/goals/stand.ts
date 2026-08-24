@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -101,7 +103,7 @@ async function fetchReeksen(userId: string): Promise<readonly Reeks[]> {
 
   if (error) {
     reportError(error, 'stand.reeksen', { user_id: userId, pgcode: error.code });
-    throw new Error('Je reeks kon niet geladen worden.');
+    throw new Error(t('doel.reeks_laden'));
   }
 
   return data ?? [];

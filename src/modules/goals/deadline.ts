@@ -1,6 +1,7 @@
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../shared/i18n';
 import type { IsoDate } from '../../shared/time';
 
 import {
@@ -51,23 +52,40 @@ export interface DeadlineVerzoek {
 }
 
 
-const VRAAG_MELDING: Readonly<Record<string, string>> = {
-  not_owner: 'Dit doel is niet van jou.',
-  not_member: 'Je bent geen lid van deze groep.',
-  not_linked: 'Dit doel is niet aan deze groep gekoppeld.',
-  bad_date: 'Kies een andere datum dan de datum die er nu staat.',
-  reason_too_short: 'Schrijf één zin over wat er veranderd is.',
-  reason_too_long: 'Hou het kort — maximaal 1000 tekens.',
-  already_open: 'Er loopt al een verzoek voor dit doel. Wacht daar eerst op.',
-};
+/**
+ * De redenen van `vraag_deadline_verschuiving()`, in gewone taal.
+ *
+ * ⚠️ **Functies en geen constanten** — QS8-115. Een `const` met `t()` erin wordt
+ *    één keer bij het importeren opgebouwd, en dat is vóórdat het profiel geladen
+ *    is; de taal staat dan vast op de apparaattaal. Dit waren de laatste twee van
+ *    de zes meldingentabellen in dit project.
+ */
+function vraagMelding(reden: string | undefined): string {
+  const tabel: Readonly<Record<string, string>> = {
+    not_owner: t('doel.niet_van_jou'),
+    not_member: t('deadline.geen_lid'),
+    not_linked: t('deadline.niet_gekoppeld'),
+    same_date: t('deadline.zelfde_datum'),
+    reason_too_short: t('deadline.argument_leeg'),
+    reason_too_long: t('deadline.argument_lang'),
+    already_open: t('deadline.al_open'),
+  };
 
-const BESLIS_MELDING: Readonly<Record<string, string>> = {
-  not_found: 'Dit verzoek bestaat niet meer.',
-  already_decided: 'Hier is al over beslist.',
-  not_yourself: 'Je eigen verzoek kun je niet zelf goedkeuren.',
-  not_member: 'Je bent geen lid van deze groep.',
-  note_too_long: 'Hou het kort — maximaal 1000 tekens.',
-};
+  return tabel[reden ?? ''] ?? t('deadline.versturen_mislukt_kort');
+}
+
+/** Zie `vraagMelding()`. */
+function beslisMelding(reden: string | undefined): string {
+  const tabel: Readonly<Record<string, string>> = {
+    not_found: t('deadline.bestaat_niet'),
+    already_decided: t('deadline.al_beslist'),
+    own_request: t('deadline.niet_zelf'),
+    not_member: t('deadline.geen_lid'),
+    note_too_long: t('deadline.argument_lang'),
+  };
+
+  return tabel[reden ?? ''] ?? t('deadline.beslissen_mislukt_kort');
+}
 
 /**
  * Dient een verzoek in — Q-TODO A7.
@@ -84,11 +102,11 @@ export async function vraagDeadlineVerschuiving(
 ): Promise<Resultaat<string>> {
   const gevalideerd = deadlineVerzoekSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   if (!datumLigtInDeToekomst(gevalideerd.data.new_date, vandaag)) {
-    return { ok: false, melding: 'Kies een streefdatum die nog moet komen.' };
+    return { ok: false, melding: t('doel.datum_verleden') };
   }
 
   const { data, error } = await supabase().rpc('vraag_deadline_verschuiving', {
@@ -100,7 +118,7 @@ export async function vraagDeadlineVerschuiving(
 
   if (error) {
     reportError(error, 'deadline.request', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'Je verzoek versturen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('deadline.versturen_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; request_id?: string };
@@ -108,7 +126,7 @@ export async function vraagDeadlineVerschuiving(
   if (uitkomst.ok !== true || typeof uitkomst.request_id !== 'string') {
     return {
       ok: false,
-      melding: VRAAG_MELDING[uitkomst.reason ?? ''] ?? 'Je verzoek versturen lukte niet.',
+      melding: vraagMelding(uitkomst.reason),
     };
   }
 
@@ -138,13 +156,13 @@ export async function beslisDeadlineVerzoek(
 
   if (error) {
     reportError(error, 'deadline.decide', { request_id: verzoekId, code: error.code });
-    return { ok: false, melding: 'Beslissen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('deadline.beslissen_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; moved?: boolean };
 
   if (uitkomst.ok !== true) {
-    return { ok: false, melding: BESLIS_MELDING[uitkomst.reason ?? ''] ?? 'Beslissen lukte niet.' };
+    return { ok: false, melding: beslisMelding(uitkomst.reason) };
   }
 
   return { ok: true, waarde: uitkomst.moved ?? false };
@@ -165,7 +183,7 @@ export async function trekDeadlineVerzoekIn(verzoekId: string): Promise<Resultaa
 
   if (error) {
     reportError(error, 'deadline.withdraw', { request_id: verzoekId, code: error.code });
-    return { ok: false, melding: 'Intrekken lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('deadline.intrekken_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -175,8 +193,8 @@ export async function trekDeadlineVerzoekIn(verzoekId: string): Promise<Resultaa
       ok: false,
       melding:
         uitkomst.reason === 'already_decided'
-          ? 'Er is intussen al over beslist.'
-          : 'Intrekken lukte niet.',
+          ? t('deadline.intussen_beslist')
+          : t('deadline.intrekken_mislukt_kort'),
     };
   }
 
@@ -216,7 +234,7 @@ export async function fetchOpenVerzoek(goalId: string): Promise<DeadlineVerzoek 
 
   if (error) {
     reportError(error, 'deadline.open', { goal_id: goalId, code: error.code });
-    throw new Error('Het lopende verzoek kon niet geladen worden.');
+    throw new Error(t('deadline.lopend_laden'));
   }
 
   return data === null ? null : naarVerzoek(data);
@@ -279,7 +297,7 @@ export async function fetchOpenVerzoekenVoorGroep(
 
   if (error) {
     reportError(error, 'deadline.queue', { group_id: groupId, code: error.code });
-    throw new Error('De verzoeken konden niet geladen worden.');
+    throw new Error(t('deadline.verzoeken_laden'));
   }
 
   return (data ?? []).map(naarVerzoek);

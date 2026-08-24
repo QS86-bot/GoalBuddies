@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 import { voegOplopendSamen } from './merge';
 
 /**
@@ -25,7 +27,7 @@ export const berichtSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: 'Er staat nog niets in je bericht.' })
+    .min(1, { error: () => t('chat.leeg') })
     .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
 });
 
@@ -110,9 +112,22 @@ export interface ChatBericht {
   readonly sender_id: string | null;
   readonly sender_name: string;
   readonly sender_avatar: string | null;
+  /**
+   * De opgeslagen tekst.
+   *
+   * ⚠️ Bij een systeembericht is dit sinds migratie 0059 **niet** meer wat het
+   *    scherm toont. De zin wordt gemaakt door `systeemberichtTekst()` uit
+   *    `system_event` plus de namen hieronder; `body` is alleen nog de terugval
+   *    voor rijen van vóór 0059 en voor een gebeurtenis die deze app niet kent.
+   *    Gebruik voor een systeembericht dus nooit dit veld rechtstreeks.
+   */
   readonly body: string;
   readonly type: string;
   readonly system_event: string | null;
+  /** Over wie het systeembericht gaat. `null` bij een mensbericht. */
+  readonly subject_name: string | null;
+  /** Wie het veroorzaakte, als dat iemand anders is. Alleen bij `completion_approved`. */
+  readonly actor_name: string | null;
   readonly created_at: string;
 }
 
@@ -173,13 +188,31 @@ export function cursorVan(berichten: readonly ChatBericht[]): ChatCursor | null 
 export interface ChatCache {
   readonly periodStart: string;
   readonly berichten: readonly ChatBericht[];
+  /** Zie `CACHE_VERSIE`. Ontbreekt in caches van vóór migratie 0059. */
+  readonly versie?: number;
 }
+
+/**
+ * De vorm van een bewaard bericht. Hoog dit op zodra `ChatBericht` velden krijgt
+ * waar het scherm op rekent.
+ *
+ * ⚠️ Waarom dit nodig is. De cache bewaart `ChatBericht` als kale JSON en leest
+ *    hem terug met een cast — er is geen schema dat hem controleert. Sinds
+ *    migratie 0059 rendert het scherm een systeembericht uit `subject_name` in
+ *    plaats van uit `body`, en een bericht dat vóór die upgrade bewaard is, heeft
+ *    dat veld niet. Zonder deze versie leest zo'n regel als "Een oud-lid doet
+ *    mee" tot de eerste verversing: geen storing, wel een naam die een paar
+ *    seconden onwaar is.
+ */
+export const CACHE_VERSIE = 2;
 
 /** Hoeveel berichten er bewaard worden. Eén pagina is genoeg om iets te zien. */
 export const CACHE_MAX = BERICHTEN_PER_PAGINA;
 
 export function isCacheGeldig(cache: ChatCache | null, periodStart: string): boolean {
-  return cache !== null && cache.periodStart === periodStart;
+  return (
+    cache !== null && cache.periodStart === periodStart && cache.versie === CACHE_VERSIE
+  );
 }
 
 /**

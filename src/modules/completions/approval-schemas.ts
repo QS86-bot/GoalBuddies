@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 /**
  * De invoerregels van een peer-oordeel — QS8-121.
  *
@@ -22,7 +24,7 @@ export const oordeelSchema = z.object({
   comment: z
     .string()
     .trim()
-    .max(1000, { error: 'Hou het kort — maximaal 1000 tekens.' })
+    .max(1000, { error: () => t('validatie.reactie_lang') })
     .nullable(),
 });
 

@@ -4,7 +4,7 @@ import {
   ANTWOORD_MAX,
   heeftAntwoorden,
   interviewSchema,
-  INTERVIEW_STAPPEN,
+  interviewStappen,
   LEEG_INTERVIEW,
 } from './interview-schemas';
 
@@ -72,20 +72,20 @@ describe('interviewSchema', () => {
   });
 });
 
-describe('INTERVIEW_STAPPEN', () => {
+describe('interviewStappen()', () => {
   it('stelt precies zes vragen', () => {
-    expect(INTERVIEW_STAPPEN).toHaveLength(6);
+    expect(interviewStappen()).toHaveLength(6);
   });
 
   it('dekt elk veld van het schema precies één keer', () => {
     // Anders bestaat er een antwoord dat nergens gevraagd wordt, of een vraag
     // waarvan het antwoord nergens landt.
-    const velden = INTERVIEW_STAPPEN.map((s) => s.veld).sort();
+    const velden = interviewStappen().map((s) => s.veld).sort();
     expect(velden).toEqual(Object.keys(LEEG_INTERVIEW).sort());
   });
 
   it('geeft elke vraag een toelichting', () => {
-    for (const stap of INTERVIEW_STAPPEN) {
+    for (const stap of interviewStappen()) {
       expect(stap.toelichting.length).toBeGreaterThan(0);
     }
   });
@@ -94,7 +94,7 @@ describe('INTERVIEW_STAPPEN', () => {
     // ⚠️ "Waar liep het eerder vast" gaat per definitie over een eerdere
     //    mislukking. Domeinregel 7 houdt eigen tegenslag privé, en de gebruiker
     //    hoort dat te lezen vóór hij typt — niet erna.
-    const laatste = INTERVIEW_STAPPEN[INTERVIEW_STAPPEN.length - 1];
+    const laatste = interviewStappen()[interviewStappen().length - 1];
     expect(laatste?.veld).toBe('stuck_before');
     expect(laatste?.toelichting).toContain('groep');
   });

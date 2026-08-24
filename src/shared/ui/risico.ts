@@ -1,3 +1,5 @@
+import { getal, t, type Sleutel } from '../i18n';
+
 /**
  * De Risico-radar in gewone taal — QS8-93, QS8-94.
  *
@@ -41,16 +43,7 @@ export interface RisicoReden {
 
 /** Het label op de kaart. Kort — de uitleg staat achter "waarom?". */
 export function risicoLabel(stand: RisicoStand): string {
-  switch (stand) {
-    case 'on_track':
-      return 'Op koers';
-    case 'at_risk':
-      return 'Oppassen';
-    case 'behind':
-      return 'Achterstand';
-    case 'unreachable':
-      return 'Deadline onhaalbaar';
-  }
+  return t(`risico.label.${stand}` as Sleutel);
 }
 
 /**
@@ -92,8 +85,22 @@ export function risicoTeken(stand: RisicoStand): string {
   }
 }
 
-function afgerond(getal: number): string {
-  return (Math.round(getal * 10) / 10).toString().replace('.', ',');
+/**
+ * Een aantal mét zijn zelfstandig naamwoord: "1 mijlpaal" of "9 mijlpalen".
+ *
+ * ⚠️ **Tot QS8-115 stond er onvoorwaardelijk "mijlpalen"**, dus "1 mijlpalen"
+ *    bestond gewoon. Dat is geen fout die de catalogus introduceert — hij stond
+ *    er al — maar het overzetten was het moment om hem te repareren.
+ *
+ * ⚠️ Twee vormen en niet meer, want dat is wat het Nederlands en het Engels
+ *    nodig hebben. Komt er een taal bij met drie (Pools), dan is dit de functie
+ *    die stukgaat, en dat is expres: `t()` kent geen meervoudsregels en dat hoort
+ *    zichtbaar te zijn. Zie de kop van `shared/i18n`.
+ */
+function aantal(woord: 'mijlpaal' | 'week', n: number): string {
+  return n === 1
+    ? t(`eenheid.${woord}_een` as Sleutel)
+    : t(`eenheid.${woord}_meer` as Sleutel, { n });
 }
 
 /**
@@ -106,7 +113,9 @@ function afgerond(getal: number): string {
  *
  * ⚠️ Elke tak controleert of de getallen er zijn. Een doel zonder geschiedenis
  *    heeft geen tempo, en dan hoort er een zin te staan die dát uitlegt in
- *    plaats van een berekening met gaten erin.
+ *    plaats van een berekening met gaten erin. Er staat een test op die voor
+ *    élke stand met een lege onderbouwing eist dat er geen "NaN", "null" of
+ *    "undefined" in de tekst staat.
  */
 export function risicoUitleg(stand: RisicoStand, reden: RisicoReden | null): string {
   const r = reden ?? {};
@@ -117,41 +126,59 @@ export function risicoUitleg(stand: RisicoStand, reden: RisicoReden | null): str
 
   if (stand === 'unreachable') {
     if (weken === 0 && open !== null && open > 0) {
-      return `Je streefdatum is er, en er staan nog ${open} mijlpalen open. Verschuif je datum of haal er werk uit.`;
+      return t('risico.unreachable.datum_is_er', { mijlpalen: aantal('mijlpaal', open) });
     }
     if (open !== null && weken !== null) {
-      return `Er staan ${open} mijlpalen open en er zijn nog ${weken} weken. Zelfs met één mijlpaal per week red je dat niet.`;
+      return t('risico.unreachable.te_veel_werk', {
+        mijlpalen: aantal('mijlpaal', open),
+        weken: aantal('week', weken),
+      });
     }
-    return 'Er is meer werk over dan er tijd is tot je streefdatum.';
+    return t('risico.unreachable.kaal');
   }
 
   if (stand === 'behind') {
     if (bekeken !== null && gehaald !== null && gehaald === 0) {
-      return `Je hebt de laatste ${bekeken} weken geen week afgerond, en er staat nog werk open. Dit is het moment om je doel kleiner te maken of je datum te verschuiven.`;
+      return t('risico.behind.niets_afgerond', { weken_bekeken: aantal('week', bekeken) });
     }
     if (bekeken !== null && gehaald !== null && open !== null && weken !== null) {
-      return `Je haalde ${gehaald} van je laatste ${bekeken} weken. Om ${open} mijlpalen in ${weken} weken af te ronden heb je een hoger tempo nodig dan dat.`;
+      return t('risico.behind.tempo', {
+        gehaald,
+        weken_bekeken: aantal('week', bekeken),
+        mijlpalen: aantal('mijlpaal', open),
+        weken: aantal('week', weken),
+      });
     }
-    return 'Je hebt een hoger tempo nodig dan je de laatste weken haalde.';
+    return t('risico.behind.kaal');
   }
 
   if (stand === 'at_risk') {
     const vloer = r.vloeraandeel ?? null;
     if (vloer !== null && vloer >= 0.75) {
-      return 'Je haalt je weken, maar bijna altijd op de vloer. Dat telt volledig mee — alleen schuift je plafond zo wel steeds verder weg.';
+      return t('risico.at_risk.vloer');
     }
     if (open !== null && weken !== null && r.benodigd_tempo != null && r.tempo != null) {
-      return `Je hebt ${open} mijlpalen in ${weken} weken te gaan. Dat vraagt ${afgerond(r.benodigd_tempo)} per week; je zit nu op ${afgerond(r.tempo)}.`;
+      return t('risico.at_risk.tempo', {
+        mijlpalen: aantal('mijlpaal', open),
+        weken: aantal('week', weken),
+        benodigd: getal(r.benodigd_tempo),
+        tempo: getal(r.tempo),
+      });
     }
-    return 'Je loopt nog binnen de lijnen, maar er is weinig ruimte over.';
+    return t('risico.at_risk.kaal');
   }
 
   // on_track
   if (bekeken === null || bekeken === 0) {
-    return 'Nog geen geschiedenis om iets uit af te leiden — en dat is prima. Een nieuw doel begint op koers.';
+    return t('risico.on_track.geen_geschiedenis');
   }
   if (gehaald !== null && open !== null && weken !== null) {
-    return `Je haalde ${gehaald} van je laatste ${bekeken} weken, met ${open} mijlpalen in ${weken} weken te gaan. Dat gaat lukken.`;
+    return t('risico.on_track.tempo', {
+      gehaald,
+      weken_bekeken: aantal('week', bekeken),
+      mijlpalen: aantal('mijlpaal', open),
+      weken: aantal('week', weken),
+    });
   }
-  return 'Je tempo is genoeg voor wat er nog ligt.';
+  return t('risico.on_track.kaal');
 }

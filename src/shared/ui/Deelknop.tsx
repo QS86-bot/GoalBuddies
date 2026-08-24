@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Platform, Share } from 'react-native';
 
+import { t } from '../i18n';
+
 import { Button } from './Button';
 
 /**
@@ -52,9 +54,9 @@ export function Deelknop({ tekst, titel, label, variant = 'primair' }: Props) {
   return (
     <Button variant={variant} block onPress={() => void deel()}>
       {stand === 'gekopieerd'
-        ? 'Gekopieerd — plak hem in je chat'
+        ? t('delen.gekopieerd')
         : stand === 'mislukt'
-          ? 'Delen lukt hier niet — selecteer de link hierboven'
+          ? t('delen.mislukt')
           : label}
     </Button>
   );

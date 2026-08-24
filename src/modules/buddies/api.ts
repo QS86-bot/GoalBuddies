@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -71,29 +73,40 @@ interface RpcUitkomst {
   readonly invite_revoked?: boolean;
 }
 
-const MELDINGEN: Readonly<Record<string, string>> = {
-  // join_group_with_code
-  rate_limited:
-    'Je hebt vandaag te vaak een uitnodiging geprobeerd. Over 24 uur kan het weer — ' +
-    'vraag je buddy intussen om de link nog eens te sturen.',
-  invalid:
-    'Deze uitnodigingslink werkt niet meer. Hij is ingetrokken of hij klopt niet; ' +
-    'vraag je buddy om een nieuwe.',
-  group_full: 'Deze groep zit vol. Drie tot vijf mensen werkt het best, dus dat is geen ramp.',
-  too_many_groups: 'Je zit al in tien groepen. Verlaat er een om ruimte te maken.',
+/**
+ * De redenen die de RPC's teruggeven, in gewone taal.
+ *
+ * ⚠️ **Een functie en geen constante** — QS8-115. Een `const` met `t()` erin
+ *    wordt één keer bij het importeren opgebouwd, en dat is vóórdat het profiel
+ *    geladen is; de taal staat dan vast op de apparaattaal. Zelfde val als bij
+ *    `BEVESTIGING` in `shared/ui`, `verwijderMelding()` in `auth` en de twee
+ *    tabellen in `completions/approvals.ts`.
+ *
+ * ⚠️ Geen van deze zinnen noemt wélke groep of wie erin zit. Een onbekende code
+ *    hoort geen informatie op te leveren over een groep waar je niet in zit —
+ *    anders is een uitnodigingslink een zoekmachine.
+ */
+function meldingen(): Readonly<Record<string, string>> {
+  return {
+    // join_group_with_code
+    rate_limited: t('groep.rate_limited'),
+    invalid: t('groep.ongeldige_link'),
+    group_full: t('groep.vol'),
+    too_many_groups: t('groep.te_veel_groepen'),
 
-  // create_group
-  name_too_short: 'Geef je groep een naam van minstens twee tekens.',
-  name_too_long: 'Die naam is te lang. Maximaal 60 tekens.',
-  bad_huddle_day: 'Kies een dag van de week voor de huddle.',
-  daily_limit: 'Je hebt vandaag al tien groepen aangemaakt. Morgen kan het weer.',
+    // create_group
+    name_too_short: t('groep.naam_kort'),
+    name_too_long: t('groep.naam_lang'),
+    bad_huddle_day: t('groep.slechte_huddledag'),
+    daily_limit: t('groep.daglimiet'),
 
-  // rotate_invite_code en set_invite_revoked
-  not_admin: 'Alleen een beheerder van deze groep kan dit doen.',
-};
+    // rotate_invite_code en set_invite_revoked
+    not_admin: t('groep.geen_beheerder'),
+  };
+}
 
 function melding(reason: string | undefined, terugval: string): string {
-  return MELDINGEN[reason ?? ''] ?? terugval;
+  return meldingen()[reason ?? ''] ?? terugval;
 }
 
 function uitkomstVan(data: unknown): RpcUitkomst {
@@ -123,7 +136,7 @@ export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
 
   if (error) {
     reportError(error, 'groups.mine', { pgcode: error.code });
-    throw new Error('Je groepen konden niet geladen worden.');
+    throw new Error(t('groep.groepen_laden'));
   }
 
   return (data ?? []) as unknown as Groep[];
@@ -145,7 +158,7 @@ export async function fetchGroep(groupId: string): Promise<Groep | null> {
 
   if (error) {
     reportError(error, 'groups.get', { group_id: groupId, pgcode: error.code });
-    throw new Error('Deze groep kon niet geladen worden.');
+    throw new Error(t('groep.groep_laden'));
   }
 
   return data;
@@ -172,7 +185,7 @@ export async function fetchMijnLidmaatschap(
 
   if (error) {
     reportError(error, 'groups.membership', { group_id: groupId, pgcode: error.code });
-    throw new Error('Je lidmaatschap kon niet geladen worden.');
+    throw new Error(t('groep.lidmaatschap_laden'));
   }
 
   return data;
@@ -236,7 +249,7 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
 
   return {
     user_id: rij.user_id,
-    display_name: rij.display_name ?? 'Onbekend lid',
+    display_name: rij.display_name ?? t('groep.onbekend_lid'),
     avatar_url: rij.avatar_url,
     role: rij.role ?? 'member',
     member_status: rij.member_status ?? 'active',
@@ -276,7 +289,7 @@ export async function fetchGroepsoverzicht(
 
   if (error) {
     reportError(error, 'groups.overview', { group_id: groupId, pgcode: error.code });
-    throw new Error('Het groepsoverzicht kon niet geladen worden.');
+    throw new Error(t('groep.overzicht_laden'));
   }
 
   const ruw = (data ?? []) as readonly OverzichtRij[];
@@ -308,7 +321,7 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
   // ook, maar een lege naam hoort niet eerst een netwerkronde te kosten.
   const gevalideerd = groepSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.invoer') };
   }
 
   const { data, error } = await supabase().rpc('create_group', {
@@ -324,14 +337,14 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
 
   if (error) {
     reportError(error, 'groups.create', { pgcode: error.code });
-    return { ok: false, melding: 'Je groep kon niet worden aangemaakt. Probeer het opnieuw.' };
+    return { ok: false, melding: t('groep.aanmaken_mislukt_kort') };
   }
 
   const uitkomst = uitkomstVan(data);
   if (uitkomst.ok !== true || uitkomst.group === undefined) {
     return {
       ok: false,
-      melding: melding(uitkomst.reason, 'Je groep kon niet worden aangemaakt.'),
+      melding: melding(uitkomst.reason, t('groep.aanmaken_mislukt')),
     };
   }
 
@@ -356,7 +369,7 @@ export async function wijzigGroep(
 ): Promise<Resultaat<Groep>> {
   const gevalideerd = groepPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.invoer') };
   }
 
   const update: TablesUpdate<'groups'> = {};
@@ -375,7 +388,7 @@ export async function wijzigGroep(
 
   if (error) {
     reportError(error, 'groups.update', { group_id: groupId, pgcode: error.code });
-    return { ok: false, melding: 'Opslaan lukte niet. Alleen een beheerder kan dit wijzigen.' };
+    return { ok: false, melding: t('groep.opslaan_mislukt') };
   }
 
   return { ok: true, waarde: data };
@@ -387,12 +400,12 @@ export async function vernieuwUitnodiging(groupId: string): Promise<Resultaat<st
 
   if (error) {
     reportError(error, 'groups.rotate', { group_id: groupId, pgcode: error.code });
-    return { ok: false, melding: 'De link vernieuwen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('groep.link_vernieuwen_mislukt') };
   }
 
   const uitkomst = uitkomstVan(data);
   if (uitkomst.ok !== true || typeof uitkomst.invite_code !== 'string') {
-    return { ok: false, melding: melding(uitkomst.reason, 'De link vernieuwen lukte niet.') };
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.link_vernieuwen_mislukt_kort')) };
   }
 
   return { ok: true, waarde: uitkomst.invite_code };
@@ -410,12 +423,12 @@ export async function zetUitnodigingIngetrokken(
 
   if (error) {
     reportError(error, 'groups.revoke', { group_id: groupId, pgcode: error.code });
-    return { ok: false, melding: 'Dat lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
   const uitkomst = uitkomstVan(data);
   if (uitkomst.ok !== true) {
-    return { ok: false, melding: melding(uitkomst.reason, 'Dat lukte niet.') };
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
   }
 
   return { ok: true, waarde: uitkomst.invite_revoked ?? ingetrokken };
@@ -435,7 +448,7 @@ export async function zetUitnodigingIngetrokken(
 export async function neemDeel(code: string): Promise<Resultaat<string>> {
   const gevalideerd = codeSchema.safeParse(code);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer de link.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.controleer_link') };
   }
 
   const { data, error } = await supabase().rpc('join_group_with_code', {
@@ -444,14 +457,14 @@ export async function neemDeel(code: string): Promise<Resultaat<string>> {
 
   if (error) {
     reportError(error, 'groups.join', { pgcode: error.code });
-    return { ok: false, melding: 'Deelnemen lukte niet. Probeer het zo nog eens.' };
+    return { ok: false, melding: t('groep.deelnemen_mislukt') };
   }
 
   const uitkomst = uitkomstVan(data);
   if (uitkomst.ok !== true || typeof uitkomst.group_id !== 'string') {
     return {
       ok: false,
-      melding: melding(uitkomst.reason, 'Deelnemen lukte niet. Vraag je buddy om een nieuwe link.'),
+      melding: melding(uitkomst.reason, t('groep.deelnemen_mislukt_link')),
     };
   }
 
@@ -502,7 +515,7 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
 
   if (error) {
     reportError(error, 'groups.preview', { pgcode: error.code });
-    throw new Error('Deze uitnodiging kon niet geladen worden.');
+    throw new Error(t('groep.uitnodiging_laden'));
   }
 
   return data === null ? null : (data as unknown as Uitnodiging);
@@ -530,7 +543,7 @@ export async function koppelDoelAanGroep(
 
   if (error) {
     reportError(error, 'groups.link', { group_id: groupId, goal_id: goalId, pgcode: error.code });
-    return { ok: false, melding: 'Koppelen lukte niet. Ben je lid van deze groep?' };
+    return { ok: false, melding: t('groep.koppelen_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -556,7 +569,7 @@ export async function ontkoppelDoelVanGroep(
 
   if (error) {
     reportError(error, 'groups.unlink', { group_id: groupId, goal_id: goalId, pgcode: error.code });
-    return { ok: false, melding: 'Ontkoppelen lukte niet.' };
+    return { ok: false, melding: t('groep.ontkoppelen_mislukt') };
   }
 
   return { ok: true, waarde: true };
@@ -585,12 +598,12 @@ export async function fetchGroepenVanDoel(
 
   if (error) {
     reportError(error, 'groups.ofGoal', { goal_id: goalId, pgcode: error.code });
-    throw new Error('De gekoppelde groepen konden niet geladen worden.');
+    throw new Error(t('groep.gekoppelde_groepen_laden'));
   }
 
   return (data ?? []).map((rij) => ({
     group_id: rij.group_id,
-    name: rij.groups?.name ?? 'Je groep',
+    name: rij.groups?.name ?? t('groep.naamloos'),
   }));
 }
 
@@ -604,7 +617,7 @@ export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly 
 
   if (error) {
     reportError(error, 'groups.links', { group_id: groupId, pgcode: error.code });
-    throw new Error('De gekoppelde doelen konden niet geladen worden.');
+    throw new Error(t('groep.gekoppelde_doelen_laden'));
   }
 
   return (data ?? []).map((rij) => rij.goal_id);

@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import type { Cycle } from '../../shared/time';
@@ -49,7 +51,7 @@ export async function fetchKettingStand(
 
   if (error) {
     reportError(error, 'ketting.stand', { group_id: groupId, pgcode: error.code });
-    throw new Error('De Ketting kon niet geladen worden.');
+    throw new Error(t('ketting.laden_mislukt'));
   }
 
   if (data === null || data === undefined) return null;
@@ -75,7 +77,7 @@ export async function fetchKettingStand(
     reportError(new Error('Onvolledig antwoord van ketting_stand'), 'ketting.parse', {
       group_id: groupId,
     });
-    throw new Error('De Ketting kon niet geladen worden.');
+    throw new Error(t('ketting.laden_mislukt'));
   }
 
   return {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { telTekens } from '../../shared/tekst';
+import { t } from '../../shared/i18n';
 
 import { isoDatum } from './schemas';
 
@@ -45,12 +46,10 @@ export const deadlineVerzoekSchema = z.object({
     .string()
     .trim()
     .refine((tekst) => telTekens(tekst) >= ARGUMENT_MIN, {
-      error:
-        'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
-        'dus "geen tijd" is te weinig om ja op te zeggen.',
+      error: () => t('deadline.argument_kort'),
     })
     .refine((tekst) => telTekens(tekst) <= ARGUMENT_MAX, {
-      error: `Hou het kort — maximaal ${ARGUMENT_MAX} tekens.`,
+      error: () => t('deadline.argument_lang'),
     }),
 });
 

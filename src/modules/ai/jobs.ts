@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 
@@ -51,7 +53,7 @@ export async function vraagMijlpalen(
 
   if (error) {
     reportError(error, 'ai.vraag', { goal_id: goalId, code: error.code });
-    return { ok: false, melding: 'De Doelcoach kon niet gestart worden.' };
+    return { ok: false, melding: t('coach.starten_mislukt') };
   }
 
   const uit = (data ?? {}) as {
@@ -76,11 +78,11 @@ function aanvraagMelding(reden: string | undefined, limiet: number | undefined):
       //    plek wordt waar de limiet staat.
       return `Je hebt vandaag al ${limiet ?? 10} keer de Doelcoach gebruikt. Morgen kan het weer — je kunt intussen zelf mijlpalen toevoegen.`;
     case 'not_your_goal':
-      return 'Dit doel is niet van jou.';
+      return t('coach.niet_jouw_doel');
     case 'not_signed_in':
-      return 'Je bent niet meer ingelogd.';
+      return t('coach.niet_ingelogd');
     default:
-      return 'De Doelcoach kon niet gestart worden.';
+      return t('coach.starten_mislukt');
   }
 }
 
@@ -99,7 +101,7 @@ export async function werkJobAf(jobId: string): Promise<Uitkomst<true>> {
 
   if (error) {
     reportError(error, 'ai.afwerken', { job_id: jobId });
-    return { ok: false, melding: 'De Doelcoach kon het verzoek niet afronden.' };
+    return { ok: false, melding: t('coach.afronden_mislukt') };
   }
 
   return { ok: true, waarde: true };

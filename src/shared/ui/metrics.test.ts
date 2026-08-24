@@ -10,7 +10,7 @@ import {
   weekpasLabel,
   weekpasReddeDezeCyclus,
   weekpasVoortgang,
-  WEEKPAS_UITLEG,
+  weekpasUitleg,
   type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';
@@ -224,25 +224,25 @@ describe('weekpasLabel', () => {
   });
 });
 
-describe('WEEKPAS_UITLEG', () => {
+describe('weekpasUitleg()', () => {
   // Dit is de belangrijkste test van dit blok. Domeinregel 10 zegt dat een
   // weekpas de réeks beschermt en niet het punt; snapt de gebruiker dat niet,
   // dan leest een terecht minpunt als een storing.
   it('zegt dat de pas de reeks redt en niet het punt', () => {
-    expect(WEEKPAS_UITLEG).toMatch(/reeks/i);
-    expect(WEEKPAS_UITLEG).toMatch(/punt/i);
+    expect(weekpasUitleg()).toMatch(/reeks/i);
+    expect(weekpasUitleg()).toMatch(/punt/i);
   });
 
   it('zegt dat je zelf niets hoeft te doen', () => {
     // Zonder deze zin gaat de gebruiker zoeken naar een knop "pas inzetten",
     // en die bestaat niet — inzetten kan alleen de rollover.
-    expect(WEEKPAS_UITLEG).toMatch(/niets te doen|automatisch/i);
+    expect(weekpasUitleg()).toMatch(/niets te doen|automatisch/i);
   });
 
   it('zegt dat passen per doel gelden', () => {
     // Bij drie doelen staan er drie verschillende standen naast elkaar, en
     // zonder deze zin ziet dat eruit als een fout.
-    expect(WEEKPAS_UITLEG).toMatch(/per doel/i);
+    expect(weekpasUitleg()).toMatch(/per doel/i);
   });
 });
 
