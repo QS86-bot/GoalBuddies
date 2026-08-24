@@ -65,6 +65,16 @@ module.exports = [
           message:
             'Geen Date.now() buiten src/shared/time. Gebruik de klok uit shared/time.',
         },
+        {
+          // ⚠️ Toegevoegd 24-08-2026 (QS8-27, criterium 3). De tijdzone van het
+          //    toestel werd op twee plekken zelf bepaald, en ze verschilden: de
+          //    ene had een terugval, de andere niet. Die tweede zette `groups.tz`
+          //    — de groepsklok van domeinregel 1, die voor iedereen in de groep
+          //    de huddledag bepaalt.
+          selector: "CallExpression[callee.property.name='resolvedOptions']",
+          message:
+            'Bepaal de tijdzone niet zelf. Gebruik apparaatTijdzone() uit shared/time — daar zit de terugval en de geldigheidstoets.',
+        },
       ],
     },
   },

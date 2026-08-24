@@ -1,7 +1,7 @@
 import type { Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { UserClock, Weekday } from '../../shared/time';
+import { apparaatTijdzone, type UserClock, type Weekday } from '../../shared/time';
 
 import { profielPatchSchema, type ProfielPatch } from './schemas';
 
@@ -130,9 +130,5 @@ export function userClock(profiel: Pick<Profiel, 'week_start_day' | 'tz'>): User
  * wil niet dat zijn week verspringt omdat hij een week in Bangkok zat.
  */
 export function voorgesteldeTijdzone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Amsterdam';
-  } catch {
-    return 'Europe/Amsterdam';
-  }
+  return apparaatTijdzone();
 }

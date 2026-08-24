@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isGeldigeTijdzone } from '../../shared/time';
+
 /**
  * De invoer van de authenticatie- en profielschermen.
  *
@@ -58,17 +60,9 @@ export const weekdagSchema = z
  * Een IANA-tijdzone. Niet tegen een lijst gecontroleerd maar tegen `Intl` zelf —
  * die lijst verandert een paar keer per jaar en een eigen kopie loopt achter.
  */
-export const tijdzoneSchema = z.string().refine(
-  (waarde) => {
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: waarde });
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  { error: 'Onbekende tijdzone.' },
-);
+export const tijdzoneSchema = z
+  .string()
+  .refine(isGeldigeTijdzone, { error: 'Onbekende tijdzone.' });
 
 export const profielSchema = z.object({
   display_name: z
