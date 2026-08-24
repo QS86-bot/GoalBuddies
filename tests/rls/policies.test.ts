@@ -2805,4 +2805,62 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       SETUP_TIMEOUT,
     );
   });
+
+  // -------------------------------------------------------------------------
+  // QS8-122 — het migratieregister
+  // -------------------------------------------------------------------------
+
+  describe('het migratieregister', () => {
+    /**
+     * ⚠️ `migratieregister()` is SECURITY DEFINER en leest een systeemtabel.
+     *    Zonder de revoke in migratie 0072 staat hij als RPC in de API en kan
+     *    élke ingelogde gebruiker de volledige migratiegeschiedenis van dit
+     *    project uitlezen — inclusief de namen van elke grendel die er ooit op
+     *    gezet is.
+     *
+     *    Dat is de klasse fout die 0011, 0052 en 0069 kwamen dichten, en de reden
+     *    dat CLAUDE.md regel 19 zegt: **een nieuwe SECURITY DEFINER-functie erft
+     *    niets.**
+     */
+    it(
+      'staat niet open voor een ingelogde gebruiker',
+      async () => {
+        const { error } = await f.alice.db.rpc('migratieregister');
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'staat niet open zonder sessie',
+      async () => {
+        const { error } = await anonDb().rpc('migratieregister');
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De toelating bij de twee weigeringen hierboven. Zonder deze test wordt
+     *    dit blok groen zodra de functie helemaal niet meer bestaat — en dan
+     *    bewaakt hij niets meer, terwijl `register:controle` stilletjes omvalt.
+     */
+    it(
+      'is wél leesbaar met de service-role-key en levert genummerde versies',
+      async () => {
+        const { data, error } = await adminDb().rpc('migratieregister');
+
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBeGreaterThan(70);
+
+        // Eén nummering: vier cijfers, eventueel met een letter (`0052a`).
+        for (const rij of data ?? []) {
+          expect(rij.versie, `versie ${rij.versie} (${rij.naam})`).toMatch(/^\d{4}[a-z]?$/);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

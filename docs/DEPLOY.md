@@ -54,7 +54,71 @@ Het script weigert door te gaan bij een ontbrekende `SUPABASE_DB_URL`, een
 ontbrekende `pg_dump`, of een dump die verdacht klein is. Een half bestand is
 gevaarlijker dan geen bestand, want daar vertrouw je op.
 
-### 2.2 Een migratie draaien
+### 2.2 Een migratie toepassen — QS8-122
+
+**Er is één nummering en die staat in de bestandsnaam.** `0072_naam.sql` in de
+repo hoort één op één bij versie `0072` in `supabase_migrations.schema_migrations`
+op het project. Loopt dat uiteen, dan kan de map het schema nergens anders
+opbouwen — en dan toetst een RLS-suite daar een ánder schema dan productie.
+
+⚠️ **De MCP-tool kiest zelf een tijdstempel als versie, ongeacht hoe je het
+bestand noemt.** Dat is de bron van de drift die dit issue kwam opruimen, en het
+is geen instelling die je uit kunt zetten. Vandaar de derde stap hieronder.
+
+Een migratie toepassen gaat zo:
+
+1. **Schrijf het bestand** als `NNNN_korte_naam.sql`, met het volgende vrije
+   nummer. `npm run migraties:controle` zegt of de nummering klopt.
+2. **Speel hem eerst lokaal af** op een lege database. Dat kost een minuut en
+   het is de enige manier om te merken dat een migratie niet op zichzelf staat:
+
+   ```bash
+   scripts/schema-opbouwen.sh
+   ```
+
+3. **Pas hem toe** (MCP `apply_migration`, of `npm run db:push`), en **lijn
+   daarna de versie uit** als er een tijdstempel is neergezet:
+
+   ```sql
+   update supabase_migrations.schema_migrations
+      set version = '0072', name = 'korte_naam'
+    where name = 'korte_naam' and version <> '0072';
+   ```
+
+4. **Controleer**:
+
+   ```bash
+   npm run register:controle   # repo en project zeggen hetzelfde
+   npm run types:db            # databasetypes hergenereren — niet vergeten
+   ```
+
+Stap 3 vergeten is niet erg zolang stap 4 draait: de controle wordt rood op een
+tijdstempel en zegt precies wat er moet gebeuren.
+
+### 2.2a Het schema elders opbouwen
+
+Dit is de proef onder alles hierboven: bouwen de bestanden hetzelfde schema als
+productie?
+
+```bash
+scripts/schema-opbouwen.sh                       # lege database, alle migraties
+psql -d goalbuddies_opbouw -f scripts/schema-vingerafdruk.sql
+```
+
+Draai diezelfde vingerafdrukquery op het echte project en vergelijk de negen
+regels. Op 24-08-2026 waren ze alle negen gelijk: 255 kolommen, 155 constraints,
+86 indexen, 65 policies, 87 functies, 31 triggers, 3395 rechten, 3
+publicatieleden en 29 tabellen met RLS.
+
+⚠️ Het vraagt een Postgres 16 waarop je superuser bent, en **niet** de Supabase
+CLI of Docker. `supabase/shim/0000_supabase_shim.sql` zet neer wat een
+Supabase-project vóór de eerste migratie al heeft: de rollen, `auth.uid()`,
+`auth.users`, de realtime-publicatie — en de standaardrechten op `public`, die
+de belangrijkste regel van dat bestand zijn. Zonder die laatste bouwt een lege
+database een schema op dat *strenger* is dan productie, en dan bevestigt een
+RLS-test iets wat daar niet waar is.
+
+### 2.2b Met de Supabase CLI
 
 ```bash
 npm run db:push        # dump eerst, dan supabase db push

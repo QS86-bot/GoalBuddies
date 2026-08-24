@@ -23,11 +23,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
-3. **⚠️ Het migratieregister kent twee nummeringen.** `0057` t/m `0061` staan
-   sinds deze merge wél in de repo — het gat is dicht — maar bestandsnaam en de
-   versie in `schema_migrations` zeggen nog niet hetzelfde, dus de map kan het
-   schema nog altijd niet elders opbouwen. **QS8-122**, blokkeert QS8-119.
-   Uitleg in §2.
+3. ✅ **Het migratieregister kent nog één nummering** en de map bouwt het schema
+   aantoonbaar op. **QS8-122 is af** en QS8-119 is daarmee vrij. De bestanden
+   spelen op een lege database precies het schema van productie af — negen
+   vingerafdrukken, alle negen gelijk. Uitleg in §2 en in
+   `docs/decisions/004-migratieregister.md`.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
    credentials: **544 geslaagd, 290 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
@@ -79,7 +79,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0071`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0072`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -97,7 +97,13 @@ Waarom dat meer is dan slordig: zowel een lokale stack als een tweede
 cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
 Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
 RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
-productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
+productie draaien.
+
+✅ **Opgelost op 24-08 (QS8-122).** Het register draagt nu één nummering, en
+`npm run schema:opbouwen` speelt de map af op een lege database tot exact het
+schema van productie. `npm run register:controle` bewaakt dat repo en project
+gelijk blijven lopen. Onderbouwing en de twee valkuilen die daarbij boven kwamen
+staan in `docs/decisions/004-migratieregister.md`.
 
 ### 2a. Wat er van de verdwaalde branch geleerd is — 24-08-2026
 
@@ -307,11 +313,13 @@ waard dan elke instelling op GitHub.
 
 ⚠️ Twee dingen zijn hier sinds 23-08 veranderd. **De aanmeldlimiet is geen reden
 meer**: de harnas logt niet meer in maar tekent zijn eigen tokens (QS8-116), dus
-dat argument is vervallen. En **de weg naar die aparte stack is langer dan hij
-leek**: de migratiebestanden kunnen het schema niet opbouwen (**QS8-122**), en
-zonder die reparatie levert een lokale stack een schema op dat niet op productie
-lijkt. Dan toetst de suite een verzinsel — groen zonder iets te bewijzen, wat
-erger is dan tegen productie draaien.
+dat argument is vervallen. En **de weg naar die aparte stack is sinds 24-08 vrij**:
+QS8-122 is af, dus de migratiebestanden bouwen het schema van productie op —
+nagemeten en niet aangenomen. Wat die reparatie nog opleverde staat in
+`docs/decisions/004-migratieregister.md`, en één ding daaruit hoort hier: zonder
+de standaardrechten van Supabase in de steiger bouwt een lege database een schema
+op dat *strenger* is dan productie. Een RLS-test bevestigt daar dan iets wat op
+het echte project niet waar is.
 
 ⚠️ **Branch protection op `main` staat sinds 18-08 aan**, maar smal: force push
 en verwijderen zijn geblokkeerd, inclusief voor beheerders. Er is bewust géén

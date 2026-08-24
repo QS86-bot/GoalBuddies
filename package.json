@@ -24,7 +24,9 @@
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
-    "tekst:controle": "node scripts/tekst-controle.mjs"
+    "tekst:controle": "node scripts/tekst-controle.mjs",
+    "register:controle": "node scripts/migratieregister-controle.mjs",
+    "schema:opbouwen": "bash scripts/schema-opbouwen.sh"
   },
   "engines": {
     "node": ">=20"

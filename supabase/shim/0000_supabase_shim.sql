@@ -1,0 +1,145 @@
+-- 0000_supabase_shim.sql — QS8-122
+--
+-- ROLLBACK-PAD: dit bestand hoort niet op productie thuis en wordt daar nooit
+--   toegepast. Weggooien is de rollback.
+--
+-- ⚠️ **Dit is geen migratie en het staat daarom niet in `supabase/migrations/`.**
+--    Het is de steiger eromheen: alles wat een Supabase-project meebrengt vóór
+--    de eerste migratie draait. Zou het wél in de migratiemap staan, dan zou het
+--    op productie langskomen en daar bestaande rollen en schema's overschrijven.
+--
+-- ⚠️ **Bewust minimaal.** Dit is geen namaak-Supabase maar precies de
+--    oppervlakte die de 74 migraties aanraken, geteld en niet geraden:
+--
+--      * `auth.uid()`        — 293 keer
+--      * `auth.users`        —   8 keer (foreign key, trigger, verwijderen)
+--      * `extensions.gen_random_bytes()` — 2 keer
+--      * de rollen `anon`, `authenticated`, `service_role`
+--      * de publicatie `supabase_realtime`
+--
+--    Komt er iets bij in een migratie, dan valt de opbouw hier om met een
+--    duidelijke fout. Dat is de bedoeling: de steiger hoort achter de migraties
+--    aan te lopen en niet vooruit.
+
+-- ---------------------------------------------------------------------------
+-- Rollen
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin noinherit;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin noinherit;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then
+    create role service_role nologin noinherit bypassrls;
+  end if;
+end $$;
+
+grant usage on schema public to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Standaardrechten op `public`
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Dit is de belangrijkste regel van dit bestand en hij is bijna vergeten.**
+--    Supabase zet `alter default privileges in schema public grant all` voor
+--    `anon`, `authenticated` en `service_role`. Elke tabel die een migratie
+--    aanmaakt, krijgt daar dus meteen álle rechten voor alle drie de rollen; het
+--    enige dat tussen een gebruiker en de data staat is RLS.
+--
+--    Zonder deze regels bouwt een lege database een schema op met 69 rechten
+--    waar productie er 3395 heeft — nagemeten op 24-08-2026. En dat verschil
+--    gaat de gevaarlijke kant op: lokaal is dan *strenger* dan productie, dus
+--    een RLS-test die "dit mag je niet lezen" bevestigt, bewijst hier iets wat
+--    op productie niet waar is. Groen zonder iets te bewijzen, precies het
+--    faalbeeld dat QS8-122 komt opruimen.
+--
+-- ⚠️ Hetzelfde geldt voor functies. `execute` gaat standaard naar alle drie, en
+--    dat is de reden dat de migraties zoveel `revoke all on function … from
+--    public, anon, authenticated` bevatten. Zonder de standaardrechten zijn die
+--    revokes hier lege handelingen en ziet de opbouw er onterecht netjes uit.
+alter default privileges in schema public
+  grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant execute on functions to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Het auth-schema
+-- ---------------------------------------------------------------------------
+create schema if not exists auth;
+grant usage on schema auth to anon, authenticated, service_role;
+
+/*
+ * ⚠️ Alleen de kolommen die de migraties aanraken. `auth.users` heeft er in
+ *    Supabase tientallen; overtypen zou een kopie zijn die stilletjes achterloopt
+ *    en niets extra's bewijst.
+ */
+create table if not exists auth.users (
+  id uuid primary key default gen_random_uuid(),
+  email text,
+  raw_user_meta_data jsonb default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+/*
+ * ⚠️ **`auth.uid()` leest hier hetzelfde als op Supabase: een claim uit de
+ *    request-context, en NULL als die er niet is.** Dat NULL-gedrag is geen
+ *    detail — het is de val uit CLAUDE.md regel 19 die veertig regels kostte.
+ *    Een steiger die hier een vaste gebruiker teruggaf, zou elke policy laten
+ *    slagen en de opbouw groen maken zonder iets te bewijzen.
+ */
+create or replace function auth.uid() returns uuid
+language sql stable
+as $$
+  select nullif(
+    coalesce(
+      current_setting('request.jwt.claim.sub', true),
+      (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
+    ),
+    ''
+  )::uuid;
+$$;
+
+create or replace function auth.role() returns text
+language sql stable
+as $$
+  select coalesce(
+    current_setting('request.jwt.claim.role', true),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'),
+    'anon'
+  );
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Het extensions-schema
+-- ---------------------------------------------------------------------------
+create schema if not exists extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
+
+-- `gen_random_bytes` komt uit pgcrypto; op Supabase staat die in `extensions`.
+create extension if not exists pgcrypto with schema extensions;
+
+-- ---------------------------------------------------------------------------
+-- De realtime-publicatie
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    create publication supabase_realtime;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Het migratieregister
+-- ---------------------------------------------------------------------------
+create schema if not exists supabase_migrations;
+
+create table if not exists supabase_migrations.schema_migrations (
+  version text primary key,
+  statements text[],
+  name text
+);

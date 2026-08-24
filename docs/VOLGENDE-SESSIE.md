@@ -141,8 +141,9 @@ de eigenaar blokkeert. Uitleg in
   dat vraagt een browser plus de VAPID-sleutels in `.env`, en dat kan een sessie
   in de cloud niet. Zolang dat bewijs er niet is, is EPIC 11 niet af. QS8-117
   (iOS) wacht hierop.
-* **De migratiebestanden kunnen het schema niet opbouwen.** Zie de valkuilen —
-  dit is nu QS8-122 en het blokkeert QS8-119.
+* ✅ **De migratiebestanden bouwen het schema wél op** — QS8-122 is op 24-08 af
+  en QS8-119 is daarmee vrij. `npm run schema:opbouwen` speelt ze af op een lege
+  database; de negen vingerafdrukken waren alle negen gelijk aan productie.
 
 **Volgende aan de beurt: EPIC 9, het commitment device.** QS8-85 is af
 (commitments blijven informeel, met een test die het bewaakt). Open zijn QS8-83
@@ -194,10 +195,10 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    **Nummer verder vanaf 0072.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 
-   ⚠️ **`0057` t/m `0061` bestaan niet als bestand** — ze zijn wel toegepast en
-   staan op de werkmachine. `main` springt van `0056` naar `0062`. Zet ze erin
-   voordat iemand op het idee komt die nummers opnieuw te gebruiken. Zie QS8-122
-   en de valkuil hieronder.
+   ⚠️ **Sinds QS8-122 hoort er een stap bij:** de MCP-tool zet een tijdstempel
+   als versie neer, ongeacht hoe je het bestand noemt. Lijn hem daarna uit — één
+   UPDATE, beschreven in `docs/DEPLOY.md` §2.2 — en draai
+   `npm run register:controle`. Die wordt rood als je het vergeet.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller vóórdat je commit.**
 
@@ -421,7 +422,15 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
   Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
   RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan
-  tegen productie draaien. Dit blokkeert QS8-119 en staat als **QS8-122**.
+  tegen productie draaien.
+
+  ✅ Opgelost op 24-08 (QS8-122). ⚠️ **Wat ervan blijft staan als valkuil:** de
+  steiger waarmee je zo'n lege database opbouwt, miste eerst de standaardrechten
+  die Supabase op `public` zet (`grant all` voor `anon`, `authenticated` en
+  `service_role`). Daardoor bouwde hij 69 rechten waar productie er 3395 heeft —
+  *strenger* dan productie, dus een RLS-test die daar bevestigt dat iets níét
+  gelezen kan worden, bewijst iets wat op het echte project niet waar is. Dat is
+  hetzelfde faalbeeld, met een groen vinkje eronder.
 
 - **Een CHECK toevoegen zonder de functie mee te wijzigen breekt stil.** Migratie
   0062 zette een CHECK op `push_tokens` die websleutels verplicht stelt, maar
@@ -523,8 +532,9 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
    `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
    `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette
    `{ok:false, reason}`.
-2. **QS8-122** — de migratiebron repareerbaar maken. Alles wat een tweede
-   omgeving nodig heeft (lokale stack, CI met echte RLS, staging) hangt hierachter.
+2. **QS8-119** — de RLS-suite tegen een eigen omgeving. QS8-122 lag hiervóór en
+   is op 24-08 af, dus dit kan nu: `scripts/schema-opbouwen.sh` levert een
+   database met exact het schema van productie.
 3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.
 
 **Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,

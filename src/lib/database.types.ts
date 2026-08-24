@@ -1714,6 +1714,13 @@ export type Database = {
         Args: { p_weekly_goal_id: string }
         Returns: Json
       }
+      migratieregister: {
+        Args: never
+        Returns: {
+          naam: string
+          versie: string
+        }[]
+      }
       openstaande_beoordelingen: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
