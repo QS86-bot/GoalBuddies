@@ -1429,6 +1429,7 @@ export type Database = {
       weekly_goals: {
         Row: {
           ai_generated: boolean
+          beoordeelbaar: boolean
           ceiling_text: string | null
           created_at: string
           cycle_index: number
@@ -1445,6 +1446,7 @@ export type Database = {
         }
         Insert: {
           ai_generated?: boolean
+          beoordeelbaar?: boolean
           ceiling_text?: string | null
           created_at?: string
           cycle_index: number
@@ -1461,6 +1463,7 @@ export type Database = {
         }
         Update: {
           ai_generated?: boolean
+          beoordeelbaar?: boolean
           ceiling_text?: string | null
           created_at?: string
           cycle_index?: number
@@ -1768,7 +1771,12 @@ export type Database = {
         }[]
       }
       registreer_push_token: {
-        Args: { p_platform: string; p_token: string }
+        Args: {
+          p_auth?: string | null
+          p_p256dh?: string | null
+          p_platform: string
+          p_token: string
+        }
         Returns: Json
       }
       rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }

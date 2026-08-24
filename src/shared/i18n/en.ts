@@ -96,6 +96,7 @@ export const en: Record<Sleutel, string> = {
   'validatie.commitment_kort': 'Write down what you are holding yourself to.',
   'validatie.commitment_lang': 'At most 500 characters.',
   'validatie.link': 'This is not a valid link.',
+  'validatie.link_https': 'An image link has to start with https://.',
 
   'bevestiging.weekdoel_afsluiten.titel': 'Close this week?',
   'bevestiging.weekdoel_afsluiten.uitleg':

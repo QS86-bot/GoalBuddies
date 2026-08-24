@@ -1,11 +1,15 @@
-import { z } from 'zod';
-
-import { t } from '../../shared/i18n';
-
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../shared/i18n';
 import type { Cycle } from '../../shared/time';
+
+import {
+  afrondSchema,
+  dagzetSchema,
+  type AfrondInvoer,
+  type DagzetInvoer,
+} from './completion-schemas';
 
 /**
  * Voltooiingen: een weekdoel afronden, met bewijs — QS8-46.
@@ -20,13 +24,6 @@ export type Voltooiing = Tables<'completions'>;
 export type DagZet = Tables<'daily_moves'>;
 
 export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
-
-export const afrondSchema = z.object({
-  achieved_level: z.enum(['floor', 'ceiling']),
-  note: z.string().trim().max(2000, { error: () => t('validatie.notitie_lang') }).nullable(),
-});
-
-export type AfrondInvoer = z.infer<typeof afrondSchema>;
 
 /** Wat een groep aan bewijs eist, uit `groups.evidence_policy` (6.5). */
 export type Bewijseis = 'note_required' | 'note_and_attachment' | 'optional';
@@ -180,18 +177,6 @@ export async function fetchVoltooiing(weeklyGoalId: string): Promise<Voltooiing 
 // ---------------------------------------------------------------------------
 // De Dagzet — QS8-50
 // ---------------------------------------------------------------------------
-
-export const dagzetSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1, { error: () => t('validatie.dagzet_leeg') })
-    .max(2000, { error: () => t('validatie.notitie_lang') }),
-  weekly_goal_id: z.uuid().nullable(),
-  visibility: z.enum(['private', 'group']),
-});
-
-export type DagzetInvoer = z.infer<typeof dagzetSchema>;
 
 /**
  * Legt een Dagzet vast.

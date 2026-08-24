@@ -34,6 +34,30 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 - **Team:** Quinten (product owner, architect én enige developer).
   Claude Code is de primaire implementer. Engineer-review vanaf eind okt/nov 2026.
 
+### Wie bezit welk feit — vastgelegd 23-08-2026 (QS8-125)
+
+Drie documenten beschreven dezelfde stand en liepen op één dag **vijf keer**
+uiteen. Twee van die vijf ontstonden tijdens het bijwerken van diezelfde
+documenten: één plek bijgewerkt, de andere vergeten. Wie kopieën met de hand
+onderhoudt, maakt het probleem groter.
+
+| Document | Bezit | Bezit níét |
+|---|---|---|
+| `CLAUDE.md` | de regels en conventies — domeinregels, verruimingen, werkwijze | de stand |
+| `docs/WERKVOORRAAD.md` | de stand en de volgorde — testteller, migratiebereik, wat af is | de regels |
+| `docs/VOLGENDE-SESSIE.md` | de startprompt en de valkuilen | allebei de andere |
+
+**Staat een feit in het ene document, dan verwijst het andere ernaar — het
+herhaalt het niet.** `npm run docs:controle` wordt rood zodra dat wel gebeurt en
+draait mee in `/audit`.
+
+⚠️ **Een script vangt alleen wat een patroon heeft.** "EPIC 3 is nooit gedraaid"
+twintig regels boven "EPIC 3 heeft gedraaid" is geen getal, en QS8-77 die op
+Done staat terwijl twee documenten hem open noemen al helemaal niet. Daarvoor
+geldt de handmatige regel: **werk je iets bij, grep dan op dat feit in alle drie
+de bestanden voordat je klaar bent**, en loop bij het afsluiten van een issue na
+of de status in Linear en in de documenten hetzelfde zeggen.
+
 ### Documenten
 | Bestand | Wat erin staat |
 |---|---|
@@ -49,10 +73,26 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 **GitHub:** `QS86-bot/GoalBuddies`, hoofdbranch `main`.
 
 ### Versiebeheer
-- Eén branch per Linear-issue. Gebruik de naam die Linear zelf voorstelt
+- **Eén branch per Linear-issue, en dat is vastgelegd op 23-08-2026.** Gebruik de
+  naam die Linear zelf voorstelt
   (`quintenstrijdonk/qs8-98-08-rls-testsuite-met-echte-jwts`) — dan koppelt Linear
   de branch, de PR en het issue automatisch aan elkaar.
+
+  Dit wint van "één branch per epic", dat tot 23-08 in `docs/VOLGENDE-SESSIE.md`
+  stond. Twee documenten die elkaar tegenspraken leverden in de praktijk geen van
+  beide op: PR #1 was één branch voor acht issues met een zelfbedachte naam, en
+  dus koppelde Linear niets — alle acht statussen zijn met de hand bijgewerkt, en
+  bij een gemiste zou het bord hebben gelogen.
+
+  ⚠️ **Raakt je werk meerdere issues, dan zijn het meerdere branches en meerdere
+  PR's.** Kan een issue niet los landen omdat het op een ander leunt, gebruik dan
+  de blokkeerrelatie in Linear en land ze in volgorde. Bundelen mag alleen als de
+  issues één ondeelbare wijziging zijn — en dan hoort er één issue te zijn, geen
+  acht.
 - Nooit rechtstreeks op `main` committen zodra er code staat.
+- **Werk landt via een PR op GitHub**, met een merge-commit en niet met een
+  squash: de commit-berichten in dit project dragen het waaróm, en squashen slaat
+  dat plat.
 - Commit-berichten in het Nederlands: eerste regel wat er verandert, daarna
   waaróm. Bij een niet-vanzelfsprekende keuze een verwijzing naar
   `docs/decisions/NNN-*.md`.
@@ -63,7 +103,7 @@ Note: teammates also need gstack installed locally — clone `https://github.com
 ## ⚠️ Solo-fase — geldt tot de engineer er is
 Er is niemand die jouw werk nakijkt.
 1. **Tests zijn de enige review die bestaat.** Niet optioneel.
-2. Bij twijfel over een architectuurkeuze: stop en vraag het.
+2. Bij twijfel over een architectuurkeuze: kies en bouw door — zie *Beslisbevoegdheid*.
 3. Documenteer elke niet-vanzelfsprekende keuze in `docs/decisions/NNN-titel.md`.
 4. Houd `docs/ENGINEER-REVIEW.md` bij als agenda voor november.
 
@@ -236,6 +276,45 @@ Voordat er één feature gebouwd wordt:
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
     commitment op het moment dat het verschuldigd wordt.
 
+## Emoji — vastgelegd 22-08-2026 (QS8-111)
+
+**De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,
+systeemberichten, meldingen of UI-componenten. Ze vertalen slecht, ze renderen
+per platform anders, en een schermlezer leest "gezicht met vreugdetranen" midden
+in een zin. Op 20-08 en 22-08 nagemeten: er stond er geen één in `src/` of `app/`.
+Deze regel legt vast wat er al was.
+
+**De gebruiker mag ze overal typen.** Eén uitzondering waar de app ze zelf wél
+gebruikt: reacties op een bericht (A24). Daar ís de emoji de boodschap.
+
+⚠️ **Dit is sinds 23-08 een controle en geen zin meer:** `npm run emoji:controle`
+draait mee in `/audit` en wordt rood zodra er emoji in app-tekst staat.
+Commentaar en testbestanden tellen niet mee — de ⚠️ hierboven is huisstijl, en
+de tests vóéden juist 😀 en 👨‍👩‍👧‍👦 aan `telTekens()`.
+
+⚠️ **Gevolg dat geen zin maar een controle nodig heeft.** Omdat gebruikers ze
+overal mogen typen, mag geen enkele plek gebruikerstekst afkappen of het eerste
+teken pakken met `charAt(0)`, `[0]` of `.slice(0, n)`. JavaScript telt in
+UTF-16-eenheden; een emoji kost er twee en 👨‍👩‍👧‍👦 elf. Snijden op zo'n grens
+levert een halve codepoint op en dat rendert als `�`. Gebruik de gedeelde helpers
+uit `src/shared`, nooit de kale string-methodes. Zie QS8-118.
+
+⚠️ Zod's `.max()` en `.length` tellen UTF-16-eenheden; `char_length` in
+Postgres telt codepunten. Die twee zijn niet dezelfde grens.
+
+**Eén eenheid overal: codepunten, want dat is wat de database telt.** Gebruik
+`telTekens()` uit `src/shared/tekst`, ook in een teller onder een invoerveld.
+Een teller die in grafemen telt terwijl de grens in codepunten staat, is een
+nieuwe fout en geen reparatie: hij zegt "lang genoeg" op een ander moment dan
+het schema. `telGrafemen()` bestaat voor waar je écht zichtbare tekens bedoelt,
+zoals een preview — nooit voor een grens.
+
+⚠️ Bij een **ondergrens** gaat het verschil de gevaarlijke kant op. `.length` is
+altijd ≥ `char_length`, dus een client die in UTF-16 telt laat door wat Postgres
+weigert. Tien emoji halen `.length >= 20`, maar `char_length` is dan 10 en de
+gebruiker kreeg een storingsmelding nadat het formulier "Lang genoeg" zei. Dat
+stond zo in het deadline-argument tot QS8-118.
+
 ## Architectuur
 Modulaire monoliet. Module-communicatie alleen via `modules/<naam>/index.ts`.
 
@@ -322,6 +401,25 @@ mis: in de ronde van 20-08 was de zwaarste bevinding aantoonbaar onjuist (ze las
 een migratiebestand waar de gedéployde functie strenger was), terwijl twee andere
 kritieke bevindingen wél klopten. `pg_get_functiondef()` is de waarheid.
 
+#### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
+
+Elke rij in `docs/ENGINEER-REVIEW.md` met risico **Laag** draagt de zin
+`**Wordt zwaarder als:** …` — de aanname die hem laag houdt. `npm run
+review:controle` wordt rood zodra er een Laag-rij zonder staat, en draait mee in
+`/audit`.
+
+⚠️ **De voorwaarde, niet de datum.** De A17-aantekening ("herbevestigen vóór
+EPIC 12") werkte, maar noemde een feature die al gepland was. Dat kon niet bij de
+rij van 17-08 over het ontkoppelen: QS8-110/optie C bestond toen nog niet als
+plan. Wat je wél altijd kunt opschrijven is waaróm iets nú laag is. Vervalt die
+aanname, dan is het geen Laag meer.
+
+⚠️ **Waarom dit ertoe doet.** Die rij van 17-08 was terecht Laag — zelfbedrog,
+geen autorisatiegrens. Vier dagen later liet 0064 het minpunt van precies die
+handeling afhangen, en werd het een scoregat dat 0066 moest dichten. **Vraag bij
+elke nieuwe beslissing die op een bestaande primitieve handeling leunt: staat
+daar een weggelegde bevinding over?**
+
 **Wat je uitstelt, vang je zelf op** met een controlepas langs wat die twee
 agents historisch vinden: dode code, dubbele teksten, ontbrekende loading-,
 error- of lege staat, een component dat op het verkeerde scherm kan belanden, en
@@ -336,11 +434,57 @@ npm run test
 npm run build
 ```
 
-## Wat je NOOIT doet zonder te vragen
-- Een dependency toevoegen
-- Het datamodel van een bestaande tabel wijzigen
-- Auth-, RLS-, goedkeurings- of commitment-logica aanpassen
-- Een tijd-/weekberekening schrijven buiten `shared/time`
-- Een migratie draaien op iets anders dan lokaal
-- Een Vercel-specifieke API of package gebruiken
-- Meer dan 15 bestanden in één keer aanraken
+## Beslisbevoegdheid — vastgelegd 22-08-2026
+
+> Vervangt de lijst "Wat je NOOIT doet zonder te vragen". Quinten heeft die op
+> 22-08-2026 ingeruild voor één grens, omdat de lijst hem vaker ophield dan
+> beschermde.
+
+**Claude beslist zelf en werkt af.** Er zijn precies twee redenen om te stoppen
+en te vragen:
+
+1. **De keuze bepaalt wat er tegen een mens beloofd of in rekening gebracht
+   wordt.**
+2. **De handeling is onomkeerbaar vernietigend.**
+
+In élk ander geval: kies de conservatiefste optie die het werk áf maakt, bouw
+door, en zet de aanname zichtbaar in het issue én in het beslisdocument.
+Niet wachten, niet vragen, niet halverwege stoppen.
+
+### Wat die twee hier betekenen
+
+GoalBuddies heeft nog geen betalende klanten. Zonder vertaling is grens 1 leeg
+en staat er in de praktijk "vraag nooit iets". Dit is de vertaling:
+
+**Grens 1 — beloofd of in rekening gebracht.**
+- Een **commitment device**: alles wat een gebruiker te horen krijgt als een
+  consequentie die hij draagt — inzet, verlies, een straf die verschuldigd
+  wordt. Dat is hier het contract. Domeinregel 5 staat er niet voor niets.
+- Iets dat **Quinten geld kost** of hem extern vastlegt: een betaalde tier, een
+  tweede Supabase-project, een betaalde API, een domein, een developer-account.
+- Een **eerste uitgaande stroom naar echte mensen** die niet meer terug te nemen
+  is: een e-mail of pushmelding naar de hele gebruikersgroep.
+
+**Grens 2 — onomkeerbaar vernietigend.**
+- Gegevens of geschiedenis weggooien die niet terug te halen is: `drop`,
+  `truncate`, een `delete` zonder filter, een migratie zonder rollback-pad op
+  een **gevulde** tabel, gebruikers in bulk verwijderen.
+- `git push --force` over werk dat niet van jou is.
+- Een sleutel roteren of intrekken waarmee je jezelf of Quinten buitensluit.
+
+Een migratie die kolommen **toevoegt** aan een lege tabel valt hier niet onder.
+Rollback in de kop, doorgaan.
+
+### Wat gewoon verboden blijft — dat is iets anders dan vragen
+
+Deze stonden in de oude lijst maar waren nooit vragen; het zijn harde regels en
+ze blijven staan:
+- Geen tijd- of weekberekening buiten `shared/time` (correctheidsregel 7).
+- Geen Vercel-specifieke API of package.
+- Geen `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie.
+- Geen nieuw type systeembericht zonder migratie.
+
+En deze zijn van gate naar afweging gegaan — je beslist ze zelf, maar je
+verantwoordt ze in het beslisdocument: een dependency toevoegen, het datamodel
+van een bestaande tabel wijzigen, auth-/RLS-/goedkeuringslogica aanpassen, een
+migratie op het echte project draaien, meer dan 15 bestanden aanraken.

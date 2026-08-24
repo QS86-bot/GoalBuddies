@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import {
   signOut,
@@ -9,6 +9,14 @@ import {
   type Profiel as ProfielRij,
 } from '@/modules/auth';
 import { fetchBuddyBijdrage } from '@/modules/completions';
+import {
+  huidigeMeldingenstand,
+  registreerPushToken,
+  zetMeldingenAan,
+  type Meldingenstand,
+} from '@/modules/notifications';
+import { clientEnv } from '@/lib/env';
+import { huidigInstallatieadvies } from '@/shared/pwa';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
 import {
@@ -92,6 +100,8 @@ export default function Profiel() {
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
+
+            <Meldingen userId={p.id} />
 
             <ThemaKeuze />
 
@@ -382,6 +392,97 @@ function BuddyBijdrage({ userId }: { readonly userId: string }) {
         betrokkenheid, niet om ja zeggen.
       </Caption>
     </Card>
+  );
+}
+
+/**
+ * Meldingen aanzetten — QS8-124.
+ *
+ * ⚠️ **De knop is het hele punt.** `Notification.requestPermission()` mag alleen
+ *    uit een echte gebruikersklik komen. Vraag je het bij het opstarten, dan
+ *    klikt de gebruiker het weg zonder te weten waarvoor, en dan staat het recht
+ *    op `denied` — alleen nog terug te draaien in de browserinstellingen. Eén
+ *    ongevraagde prompt kost je het kanaal permanent.
+ *
+ * ⚠️ **Alleen op web.** Native wacht op `expo-notifications` (Q-TODO B4); een
+ *    knop tonen die daar niets doet is erger dan geen knop.
+ */
+function Meldingen({ userId }: { readonly userId: string }) {
+  const sleutel = clientEnv().vapidPublicKey;
+  const [stand, setStand] = useState<Meldingenstand>(() => huidigeMeldingenstand(sleutel));
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  if (Platform.OS !== 'web') return null;
+
+  async function zetAan() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await zetMeldingenAan(sleutel);
+    if (uitkomst.ok) {
+      // Pas hierna registreren: nu bestaat het abonnement en heeft
+      // `haalToken()` iets te lezen.
+      await registreerPushToken(userId);
+      setStand('aan');
+    } else if (uitkomst.reden === 'mislukt') {
+      setFout('Aanzetten lukte niet. Probeer het zo nog eens.');
+    } else {
+      setStand(uitkomst.reden);
+    }
+
+    setBezig(false);
+  }
+
+  return (
+    <Card>
+      <Subheading>Meldingen</Subheading>
+      <Body muted>{uitlegBij(stand)}</Body>
+      {stand === 'uit' ? (
+        <Button busy={bezig} onPress={() => void zetAan()}>
+          Meldingen aanzetten
+        </Button>
+      ) : null}
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <Beginschermuitleg />
+    </Card>
+  );
+}
+
+function uitlegBij(stand: Meldingenstand): string {
+  switch (stand) {
+    case 'aan':
+      return 'Meldingen staan aan. Je krijgt bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat.';
+    case 'uit':
+      return 'Krijg bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat. We vragen je browser eenmalig om toestemming.';
+    case 'geweigerd':
+      return 'Je hebt meldingen eerder geweigerd. Dat kan alleen in de instellingen van je browser terug — wij kunnen er niet opnieuw om vragen.';
+    case 'niet-ondersteund':
+      return 'Deze browser kan geen meldingen ontvangen.';
+    case 'geen-sleutel':
+      return 'Meldingen staan in deze omgeving nog niet klaar. Dit ligt niet aan jou.';
+  }
+}
+
+/**
+ * De uitleg over "Zet op je beginscherm" — QS8-117, hier ingehangen.
+ *
+ * ⚠️ Op iOS levert Safari géén meldingen aan een gewoon tabblad. Zonder deze
+ *    uitleg krijgt een iPhone-gebruiker een knop die het nooit gaat doen, en
+ *    hoort hij nergens waarom. De drie voorwaarden (alleen iOS, alleen buiten
+ *    standalone, alleen hier) zitten in `installatieadvies()` en staan daar
+ *    onder test.
+ */
+function Beginschermuitleg() {
+  const advies = Platform.OS === 'web' ? huidigInstallatieadvies() : 'verbergen';
+  if (advies === 'verbergen') return null;
+
+  return (
+    <Caption>
+      {advies === 'toon-beginscherm-uitleg'
+        ? 'Op iPhone en iPad werken meldingen alleen als de app op je beginscherm staat. Tik op Deel en kies Zet op beginscherm; open hem daarna vanaf je beginscherm.'
+        : 'Op iPhone en iPad werken meldingen alleen vanuit Safari. Open goalbuddies.q-projects.tech in Safari en zet hem daar op je beginscherm.'}
+    </Caption>
   );
 }
 

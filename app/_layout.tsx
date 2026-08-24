@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { isOnboarded, ProfielProvider, SessionProvider, useProfiel, useSession } from '@/modules/auth';
@@ -10,7 +10,12 @@ import {
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
-import { expoPush, registreerPushToken, zetPushBron } from '@/modules/notifications';
+import {
+  expoPush,
+  maakWebPushBron,
+  registreerPushToken,
+  zetPushBron,
+} from '@/modules/notifications';
 import { apparaatVoorkeuren, taalUitApparaat, zetTaal } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
@@ -66,23 +71,29 @@ function Shell() {
  *    Op een gedeeld apparaat is dat precies goed: zonder dit blijft de vorige
  *    gebruiker meldingen krijgen op een telefoon waar hij niet meer op zit.
  *
- * ⚠️ **De bron wordt één keer gezet, buiten de component.** `expo-notifications`
- *    is toegevoegd op 21-08-2026 (Q-TODO B4, toestemming van Quinten), en dat is
- *    exact de wijziging waar `tokens.ts` op ontworpen was: één `zetPushBron(...)`
- *    en verder niets — geen scherm, geen datalaag, geen Edge Function.
+ * ⚠️ **De bron wordt één keer gezet, buiten de component.** Niet in een
+ *    `useEffect`, want het is een registratie en geen neveneffect van renderen.
+ *    Dit leest als wat het is: de app kiest bij het opstarten zijn pushbron.
  *
- * ⚠️ Buiten de component en niet in een `useEffect`, want het is een
- *    registratie en geen neveneffect van renderen. Twee keer zetten zou niets
- *    stukmaken, maar dit leest als wat het is: de app kiest bij het opstarten
- *    zijn pushbron.
+ * ⚠️ **Twee bronnen, één interface — precies waar `tokens.ts` op ontworpen was.**
+ *    Op web `maakWebPushBron()` (QS8-124), op native `expoPush` (Q-TODO B4,
+ *    toestemming van Quinten op 21-08-2026). Eén regel, en verder niets: geen
+ *    scherm, geen datalaag, geen Edge Function.
  *
- * ⚠️ Er komt vandaag nog steeds niets binnen op een echt toestel: daarvoor is
- *    een EAS-project met FCM- en APNs-sleutels nodig, en dat zit in de build en
- *    niet in de server. `expoPush` geeft dan `null` met een reden in het
- *    logboek in plaats van een fout die op een netwerkprobleem lijkt. Zie
- *    `docs/DEPLOY.md`.
+ * ⚠️ `maakWebPushBron()` **vraagt niets en maakt niets aan** — hij leest een
+ *    bestaand abonnement. Aanzetten gebeurt achter een klik op het
+ *    profielscherm. Bij het opstarten toestemming vragen kost je het kanaal
+ *    permanent, want een weggeklikte prompt zet `Notification.permission` op
+ *    `denied`. Hij raakt hier bovendien niets aan en geeft alleen een object met
+ *    een async functie terug, dus dit is ook veilig tijdens de statische export,
+ *    waar geen `navigator` bestaat.
+ *
+ * ⚠️ Op een echt toestel komt er nog steeds niets binnen: daarvoor is een
+ *    EAS-project met FCM- en APNs-sleutels nodig, en dat zit in de build en niet
+ *    in de server. `expoPush` geeft dan `null` met een reden in het logboek in
+ *    plaats van een fout die op een netwerkprobleem lijkt. Zie `docs/DEPLOY.md`.
  */
-zetPushBron(expoPush);
+zetPushBron(Platform.OS === 'web' ? maakWebPushBron() : expoPush);
 
 // ⚠️ De taal van het apparaat als startwaarde — QS8-113. Zodra het profiel
 //    geladen is en er een keuze in staat, wint die (zie `ProfielProvider`).

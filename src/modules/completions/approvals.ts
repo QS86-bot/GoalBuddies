@@ -1,10 +1,9 @@
-import { z } from 'zod';
-
-import { t } from '../../shared/i18n';
-
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../shared/i18n';
+
+import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
 
 /**
  * Peer-goedkeuring — EPIC 6.
@@ -118,17 +117,6 @@ export async function fetchBeoordelingen(
 
   return { rijen, totaal, meer: van + rijen.length < totaal };
 }
-
-export const oordeelSchema = z.object({
-  status: z.enum(['approved', 'more_info']),
-  comment: z
-    .string()
-    .trim()
-    .max(1000, { error: () => t('validatie.reactie_lang') })
-    .nullable(),
-});
-
-export type OordeelInvoer = z.infer<typeof oordeelSchema>;
 
 /**
  * Beoordeelt een voltooiing — QS8-63 en QS8-64.

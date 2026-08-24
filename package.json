@@ -19,7 +19,10 @@
     "edge:sync": "node scripts/sync-edge-shared.mjs",
     "db:push": "npm run db:dump && supabase db push",
     "deploy": "node scripts/deploy-web.mjs",
-    "deploy:droog": "node scripts/deploy-web.mjs --droog"
+    "deploy:droog": "node scripts/deploy-web.mjs --droog",
+    "docs:controle": "node scripts/docs-controle.mjs",
+    "emoji:controle": "node scripts/emoji-controle.mjs",
+    "review:controle": "node scripts/review-controle.mjs"
   },
   "engines": {
     "node": ">=20"

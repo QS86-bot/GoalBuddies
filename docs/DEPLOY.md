@@ -265,10 +265,51 @@ oude adres, en breekt OAuth zodra QS8-25 aangezet wordt.
 | Platform | Wat ontbreekt | Waar het hoort |
 |---|---|---|
 | **native** (iOS/Android) | Een EAS-project met FCM- en APNs-sleutels | In de **build**, niet op de server. Zonder `projectId` geeft Expo geen token uit; `expo-bron.ts` stopt daar met een begrijpelijke reden in het logboek |
-| **web** | VAPID-sleutelpaar en een service worker | QS8-114. **Dit is vandaag de belangrijkste**, want de app draait alleen op het web |
+| **web** | Een VAPID-sleutelpaar in `.env` | QS8-114/QS8-124. De service worker en het manifest stáán (zie hieronder); wat ontbreekt is de sleutel. **Dit is vandaag de belangrijkste**, want de app draait alleen op het web |
 
 De Edge Function zelf heeft hier níéts voor nodig — die praat met de Expo-push-API
 en heeft geen sleutels van Apple of Google.
+
+### De service worker en het manifest — QS8-124
+
+⚠️ **De SPA-rewrite hierboven is níét het probleem, en dat is een correctie op
+wat QS8-114 en QS8-124 vermoedden.** `RewriteCond %{REQUEST_FILENAME} !-f` laat
+elk bestaand bestand ongemoeid, dus `/sw.js`, `/manifest.json` en de iconen
+komen gewoon door. Nagelopen op de regels zoals ze er staan.
+
+Wat er wél moet, en waarom:
+
+```apache
+# De service worker mag nooit uit de cache komen: een browser die een oude
+# sw.js vasthoudt, blijft die draaien tot hij vanzelf verloopt. Dan levert een
+# nieuwe versie van de app meldingen af via code van vorige week.
+<Files "sw.js">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>
+
+# Sommige Apache-installaties kennen .webmanifest/manifest.json niet en sturen
+# text/plain. Safari negeert het manifest dan stil, en dan is er op iOS geen
+# "zet op beginscherm" en dus geen push.
+<Files "manifest.json">
+  Header set Content-Type "application/manifest+json"
+</Files>
+```
+
+⚠️ **De scope van een service worker is zijn eigen map.** `public/sw.js` komt
+als `/sw.js` in de root te staan en bedient daarmee de hele app — dat is wat
+`src/modules/notifications/webpush-registratie.ts` registreert, en het klopt met
+`start_url: "/"` en `scope: "/"` in `public/manifest.json`.
+
+⚠️ **Dat staat op gespannen voet met de `RewriteBase /goalbuddies/` hierboven.**
+Draait de app onder een pad in plaats van op een eigen domein, dan komt de worker
+op `/goalbuddies/sw.js` te staan, kan hij alleen `/goalbuddies/` bedienen, en
+klopt geen van de absolute paden in `manifest.json` en `+html.tsx` meer. Op
+`goalbuddies.q-projects.tech` als eigen (sub)domein is de root het goede
+uitgangspunt en is er niets aan de hand. **Controleer bij de eerste echte deploy
+welke van de twee het is** — dit is precies het soort verschil dat niets
+zichtbaars stukmaakt behalve meldingen. Hoort bij QS8-99/QS8-100.
+
+De herhaalbare deploy zelf is QS8-100 en staat nog open.
 
 ---
 

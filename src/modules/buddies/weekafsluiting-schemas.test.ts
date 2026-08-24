@@ -175,3 +175,52 @@ describe('vraag 1 voorvullen uit de Dagzetten', () => {
     expect(voorstelUitDagzetten(lang).length).toBeLessThanOrEqual(ANTWOORD_MAX);
   });
 });
+
+/**
+ * Acceptatiecriterium 2 van QS8-118 — het voorstel mag nooit op een halve
+ * codepoint eindigen. `slice(0, ANTWOORD_MAX)` deed dat wel.
+ */
+describe('voorstelUitDagzetten met emoji', () => {
+  const EMOJI = '\u{1F600}';
+  const GEZIN = '\u{1F468}‍\u{1F469}‍\u{1F467}‍\u{1F466}';
+
+  function heeftLosseSurrogate(tekst: string): boolean {
+    return Array.from(tekst).some((teken) => {
+      const punt = teken.codePointAt(0) ?? 0;
+      return punt >= 0xd800 && punt <= 0xdfff;
+    });
+  }
+
+  it('eindigt nooit op een halve codepoint bij afkappen', () => {
+    // Ruim over de grens, met een emoji precies op elke mogelijke snijplek.
+    const dagzetten = Array.from({ length: 40 }, (_, i) => ({
+      body: `${'x'.repeat(60)}${EMOJI}${i}`,
+      local_date: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`,
+    }));
+
+    const uit = voorstelUitDagzetten(dagzetten);
+
+    expect(heeftLosseSurrogate(uit)).toBe(false);
+  });
+
+  it('blijft binnen de grens die de database telt', () => {
+    const dagzetten = Array.from({ length: 40 }, (_, i) => ({
+      body: `${GEZIN.repeat(20)}-${i}`,
+      local_date: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`,
+    }));
+
+    const uit = voorstelUitDagzetten(dagzetten);
+
+    // char_length telt codepunten, niet UTF-16-eenheden.
+    expect(Array.from(uit).length).toBeLessThanOrEqual(ANTWOORD_MAX);
+    expect(heeftLosseSurrogate(uit)).toBe(false);
+  });
+
+  it('laat een kort voorstel met emoji ongemoeid', () => {
+    const uit = voorstelUitDagzetten([
+      { body: `Vandaag gelopen ${EMOJI}`, local_date: '2026-08-20' },
+    ]);
+
+    expect(uit).toBe(`Vandaag gelopen ${EMOJI}`);
+  });
+});

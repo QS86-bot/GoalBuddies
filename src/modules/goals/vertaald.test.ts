@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { STANDAARDTAAL, zetTaal } from '../../shared/i18n';
 
+import { deadlineVerzoekSchema } from './deadline-schemas';
 import { interviewStappen } from './interview-schemas';
 import { categorieLabels, doelSchema } from './schemas';
 
@@ -95,5 +96,25 @@ describe('Zod-meldingen van een doel', () => {
     expect(doelSchema.safeParse(kort).error?.issues[0]?.message).toBe(
       'Give your goal a name of at least three characters.',
     );
+  });
+});
+
+describe('het deadline-verzoek', () => {
+  it('vertaalt de melding bij een te kort argument', () => {
+    // ⚠️ Dit schema stond op 22-08 al in de catalogus, verhuisde daarna naar
+    //    `deadline-schemas.ts` (QS8-120) en verloor bij die verhuizing zijn
+    //    `t()`-aanroep zonder dat één test rood werd. Zie de kop van
+    //    `../completions/vertaald.test.ts`.
+    const invoer = { new_date: '2099-01-01', reason: 'te kort' };
+
+    zetTaal('nl');
+    const nl = deadlineVerzoekSchema.safeParse(invoer).error?.issues[0]?.message;
+
+    zetTaal('en');
+    const en = deadlineVerzoekSchema.safeParse(invoer).error?.issues[0]?.message;
+
+    expect(nl).toBeDefined();
+    expect(en).toBeDefined();
+    expect(nl).not.toBe(en);
   });
 });

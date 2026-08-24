@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { t, type Sleutel } from '../../shared/i18n';
+import { kapAf } from '../../shared/tekst';
 
 import { voegOplopendSamen } from './merge';
 
@@ -196,6 +197,9 @@ export function voorstelUitDagzetten(
   // Twee keer dezelfde regel op twee dagen is één regel in een samenvatting.
   const uniek = [...new Set(regels)];
 
-  const voorstel = uniek.join('\n');
-  return voorstel.length <= ANTWOORD_MAX ? voorstel : voorstel.slice(0, ANTWOORD_MAX).trimEnd();
+  // ⚠️ `kapAf()` en niet `slice()` — QS8-118. `slice()` snijdt op een
+  //    UTF-16-grens en houdt bij een emoji een halve codepoint over, die als `�`
+  //    in de samenvatting van de gebruiker belandt. `kapAf()` telt bovendien in
+  //    codepunten, en dat is de eenheid waarin `week_reviews_tekstlengte` telt.
+  return kapAf(uniek.join('\n'), ANTWOORD_MAX).trimEnd();
 }

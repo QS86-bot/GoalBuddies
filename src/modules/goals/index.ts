@@ -20,8 +20,12 @@ export {
 export {
   ARGUMENT_MAX,
   ARGUMENT_MIN,
-  beslisDeadlineVerzoek,
   deadlineVerzoekSchema,
+  type DeadlineVerzoekInvoer,
+} from './deadline-schemas';
+
+export {
+  beslisDeadlineVerzoek,
   fetchLaatsteBesluit,
   fetchOpenVerzoek,
   fetchOpenVerzoekenVoorGroep,
@@ -29,7 +33,6 @@ export {
   VERZOEKEN_PER_PAGINA,
   vraagDeadlineVerschuiving,
   type DeadlineVerzoek,
-  type DeadlineVerzoekInvoer,
 } from './deadline';
 
 export {

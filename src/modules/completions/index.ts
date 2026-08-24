@@ -3,18 +3,23 @@
 
 export {
   afrondSchema,
-  bewijseisVoorDoel,
   dagzetSchema,
+  type AfrondInvoer,
+  type DagzetInvoer,
+} from './completion-schemas';
+
+export {
+  bewijseisVoorDoel,
   fetchDagzetten,
   fetchVoltooiing,
   rondAf,
   zetDagzet,
-  type AfrondInvoer,
   type Bewijseis,
   type DagZet,
-  type DagzetInvoer,
   type Voltooiing,
 } from './api';
+
+export { oordeelSchema, type OordeelInvoer } from './approval-schemas';
 
 export {
   beoordeel,
@@ -23,11 +28,9 @@ export {
   fetchBuddyBijdrage,
   fetchVragen,
   INTREKVENSTER_MINUTEN,
-  oordeelSchema,
   PER_PAGINA,
   trekGoedkeuringIn,
   volgBeoordelingen,
-  type OordeelInvoer,
   type Resultaat,
   type TeBeoordelen,
   type Vraag,

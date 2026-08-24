@@ -132,6 +132,7 @@ export const nl = {
   'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
   'validatie.commitment_lang': 'Maximaal 500 tekens.',
   'validatie.link': 'Dit is geen geldige link.',
+  'validatie.link_https': 'Een afbeeldingslink moet met https:// beginnen.',
 
   // ---------------------------------------------------------------------------
   // Bevestigingen — QS8-106. Elke tekst noemt wát de handeling kost.
