@@ -223,9 +223,20 @@ Voordat er één feature gebouwd wordt:
      zichtbaar wordt — dus dat is een handeling met dezelfde zorgvuldigheid als
      een commitment device (domeinregel 5).
 
-   ⚠️ **Tot die epic gebouwd is, geldt deze regel onverkort.** Bouw niets "vast
-   open" vooruitlopend op de keuze; dat is precies hoe een standaard verschuift
-   zonder dat iemand het besloten heeft.
+   ⚠️ **In uitvoering sinds 24-08-2026 (QS8-132, migraties 0076 en 0077).** De
+   kolom `groups.zichtbaarheid` bestaat, het omzetten loopt via
+   `zet_groepszichtbaarheid()` — actieve beheerder, expliciet bevestigd, een rij
+   in `group_events`, een systeembericht — en het eerste oppervlak is om:
+   `weekly_goals_select`. **Zeven oppervlakken staan bewust dicht, ook in een
+   open groep**: punten (A42), systeemberichten over tegenslag, realtime,
+   ingetrokken goedkeuringen en de weekpassen. Drie zijn nog niet om
+   (groepsoverzicht, `best_streak`, De Ketting). De volledige beoordeling per
+   oppervlak staat in `docs/decisions/002-domeinregel7-oppervlakken.md` §6.
+
+   ⚠️ **Voor élk oppervlak dat nog niet om is, geldt deze regel onverkort.** Bouw
+   niets "vast open" vooruitlopend op de keuze; dat is precies hoe een standaard
+   verschuift zonder dat iemand het besloten heeft. En "open" betekent nooit
+   "alles open" — dat is wat die zeven bewijzen.
 
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.

@@ -1,7 +1,14 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
-import { huddledagen, maakGroep } from '@/modules/buddies';
+import {
+  huddledagen,
+  maakGroep,
+  ZICHTBAARHEDEN,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
+  type Zichtbaarheid,
+} from '@/modules/buddies';
 import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
@@ -23,6 +30,10 @@ export default function NieuweGroep() {
 
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
+  // ⚠️ Begint op `beschermd`, en niet op "nog niets gekozen". Grens 1 van besluit
+  //    A41: dat is de standaard, en een scherm dat je eerst laat kiezen zou de
+  //    standaard tot een vraag maken.
+  const [zichtbaarheid, setZichtbaarheid] = useState<Zichtbaarheid>('beschermd');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -30,7 +41,7 @@ export default function NieuweGroep() {
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await maakGroep({ name: naam, huddle_day: huddledag });
+    const uitkomst = await maakGroep({ name: naam, huddle_day: huddledag, zichtbaarheid });
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
@@ -63,6 +74,24 @@ export default function NieuweGroep() {
           onKies={setHuddledag}
         />
         <Caption>{t('groepnieuw.later_wijzigen')}</Caption>
+      </Card>
+
+      {/*
+        ⚠️ Deze keuze staat op het aanmaakscherm en niet weggestopt onder
+           instellingen, om dezelfde reden als de huddledag: hij is fundamenteel.
+           Besluit A41 zegt bovendien dat hij bij het aanmáken gemaakt wordt.
+           De uitleg staat eronder en niet in een hulpicoon — wie hier "open"
+           kiest, kiest iets over de weken van zijn buddy's.
+      */}
+      <Card>
+        <Choice
+          label={t('groepnieuw.zichtbaarheid')}
+          hint={t('groepnieuw.zichtbaarheid_hint')}
+          opties={ZICHTBAARHEDEN.map((z) => ({ waarde: z, label: zichtbaarheidLabels()[z] }))}
+          waarde={zichtbaarheid}
+          onKies={setZichtbaarheid}
+        />
+        <Caption>{zichtbaarheidUitleg()[zichtbaarheid]}</Caption>
       </Card>
 
       <Card nested>

@@ -116,6 +116,12 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       'commitment_due',
       'deadline_requested',
       'chain_milestone',
+      // ⚠️ Besluit A41 (migratie 0076). Ze gaan over de gróép — de
+      //    zichtbaarheidskeuze is omgezet — en niet over een persoon die iets
+      //    niet gehaald heeft. Zónder deze twee zou het omzetten stilzwijgend
+      //    zijn, en dat is precies wat grens 3 van het besluit verbiedt.
+      'group_opened',
+      'group_protected',
     ]);
   });
 

@@ -81,6 +81,22 @@ export const SYSTEEM_GEBEURTENISSEN = [
    *    oppervlak 9.
    */
   'chain_milestone',
+  /**
+   * ⚠️ De elfde en twaalfde, toegevoegd in migratie 0076 (QS8-132, besluit A41).
+   *    Ze gaan over de gróép en niet over een persoon: de zichtbaarheidskeuze is
+   *    omgezet, van beschermd naar open of terug.
+   *
+   *    ⚠️ **Zonder deze twee zou het omzetten stilzwijgend zijn**, en dat is
+   *       precies wat grens 3 van het besluit verbiedt. Een groep die opengaat,
+   *       verandert met terugwerkende kracht wat er over de ándere leden
+   *       zichtbaar wordt; het bericht is het moment waarop een lid kan besluiten
+   *       zijn doel te ontkoppelen. Dit is dus geen aankondiging voor de vorm.
+   *
+   *    De zinnen noemen de beheerder en de nieuwe stand — geen doel, geen week,
+   *    geen status.
+   */
+  'group_opened',
+  'group_protected',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];

@@ -14,13 +14,19 @@ import {
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
   type Groep,
+  type Zichtbaarheid,
 } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import {
   AsyncView,
+  bevestigingen,
+  Bevestiging,
   Body,
   Button,
   Caption,
@@ -58,7 +64,15 @@ export default function GroepBeheer() {
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
   const [bewijseis, setBewijseis] = useState<Bewijseis>('note_required');
-  const [bezig, setBezig] = useState<'opslaan' | 'vernieuwen' | 'sluiten' | null>(null);
+  const [bezig, setBezig] = useState<'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | null>(null);
+  /**
+   * ⚠️ Openklappen en niet meteen doen. Besluit A41 grens 3: omzetten raakt
+   *    ánderen, dus het krijgt dezelfde zwaarte als een commitment device — en
+   *    dat is in dit project een `Bevestiging` met de prijs erin, geen "weet je
+   *    het zeker?". De database weigert bovendien zonder `p_bevestigd`, dus dit
+   *    scherm is de tweede rem en niet de enige.
+   */
+  const [zichtVraag, setZichtVraag] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -126,6 +140,27 @@ export default function GroepBeheer() {
 
     setGroep((huidig) => (huidig === null ? huidig : { ...huidig, invite_code: uitkomst.waarde }));
     setMelding('Nieuwe link. De oude werkt vanaf nu niet meer.');
+  }
+
+  async function zetZichtbaarheid(naar: Zichtbaarheid) {
+    if (!id) return;
+    setBezig('zicht');
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await zetGroepszichtbaarheid(id, naar, true);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    setZichtVraag(false);
+    setGroep((huidig) => (huidig === null ? huidig : { ...huidig, zichtbaarheid: naar }));
+    setMelding(
+      naar === 'open' ? t('beheer.melding_open_gezet') : t('beheer.melding_beschermd_gezet'),
+    );
   }
 
   async function zetGesloten(gesloten: boolean) {
@@ -218,6 +253,47 @@ export default function GroepBeheer() {
                 >
                   {t('beheer.opslaan')}
                 </Button>
+              </Card>
+
+              {/*
+                ⚠️ Een eigen kaart en niet een derde `Choice` in het formulier
+                   hierboven. Dat formulier heeft één opslaanknop, en deze keuze
+                   hoort nooit mee te liften op een knop die ook de groepsnaam
+                   opslaat: dan zet je per ongeluk de weken van je buddy's open
+                   terwijl je een typefout herstelde.
+              */}
+              <Card>
+                <Subheading>{t('beheer.zichtbaarheid_titel')}</Subheading>
+                <Body muted>
+                  {t('beheer.zichtbaarheid_nu', {
+                    stand: zichtbaarheidLabels()[(g.zichtbaarheid ?? 'beschermd') as Zichtbaarheid],
+                  })}
+                </Body>
+                <Body muted>
+                  {zichtbaarheidUitleg()[(g.zichtbaarheid ?? 'beschermd') as Zichtbaarheid]}
+                </Body>
+                <Caption>{t('beheer.zichtbaarheid_waarschuwing')}</Caption>
+
+                {zichtVraag ? (
+                  <Bevestiging
+                    tekst={
+                      g.zichtbaarheid === 'open'
+                        ? bevestigingen().groepBeschermen
+                        : bevestigingen().groepOpenzetten
+                    }
+                    bezig={bezig === 'zicht'}
+                    onBevestig={() =>
+                      void zetZichtbaarheid(g.zichtbaarheid === 'open' ? 'beschermd' : 'open')
+                    }
+                    onAnnuleer={() => setZichtVraag(false)}
+                  />
+                ) : (
+                  <Button variant="secundair" block onPress={() => setZichtVraag(true)}>
+                    {g.zichtbaarheid === 'open'
+                      ? t('beheer.naar_beschermd')
+                      : t('beheer.naar_open')}
+                  </Button>
+                )}
               </Card>
 
               <Card>

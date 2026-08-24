@@ -23,6 +23,10 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.deadline_requested': '{naam} is asking the group to move a target date.',
   'systeembericht.group_sleeping': 'This group has gone quiet. One message wakes it up again.',
   'systeembericht.chain_milestone': 'The Chain of this group now counts {aantal} links.',
+  'systeembericht.group_opened':
+    '{naam} opened up this group. From now on members also see each other’s setbacks.',
+  'systeembericht.group_protected':
+    '{naam} made this group protected again. Other people’s setbacks are no longer visible.',
 
   'algemeen.oud_lid': 'A former member',
 
@@ -1126,4 +1130,37 @@ export const en: Record<Sleutel, string> = {
     'composed on the server and not on your phone.',
   'taal.opslaan_mislukt': 'The language could not be saved. Please try again.',
   'validatie.taal': 'Choose a language from the list.',
+
+  'zichtbaarheid.beschermd': 'Protected',
+  'zichtbaarheid.open': 'Open',
+  'zichtbaarheid.beschermd_uitleg':
+    'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
+  'zichtbaarheid.open_uitleg':
+    'The group also sees what does not work out: each other’s missed and carried weeks. Only pick this if everyone wants it.',
+  'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
+  'bevestiging.groep_openzetten.titel': 'Open up this group?',
+  'bevestiging.groep_openzetten.uitleg':
+    'From now on everyone in this group also sees each other’s missed and carried weeks — including the ones already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+  'bevestiging.groep_openzetten.knop': 'Yes, open it up',
+  'bevestiging.groep_beschermen.titel': 'Protect this group again?',
+  'bevestiging.groep_beschermen.uitleg':
+    'From now on the group only sees what works out. Missed weeks become private again, retroactively too. Everyone gets a message about it.',
+  'bevestiging.groep_beschermen.knop': 'Yes, protect it',
+  'zichtbaarheid.onbekend': 'That setting does not exist.',
+  'zichtbaarheid.ongewijzigd': 'It was already set that way.',
+  'zichtbaarheid.te_snel': 'You already opened this group up today. Tomorrow it can change again.',
+
+  'groepnieuw.zichtbaarheid': 'What does the group see of each other?',
+  'groepnieuw.zichtbaarheid_hint':
+    'This is the most important choice on this screen. It can be changed later, but never quietly: everyone gets told.',
+
+  'beheer.zichtbaarheid_titel': 'What the group sees of each other',
+  'beheer.zichtbaarheid_nu': 'Currently set to: {stand}',
+  'beheer.zichtbaarheid_waarschuwing':
+    'Opening up works retroactively: from that moment the group also sees the missed weeks that are already there. Everyone gets a message about it, so anyone who would rather not can unlink their goal.',
+  'beheer.naar_open': 'Open up this group',
+  'beheer.naar_beschermd': 'Protect this group again',
+  'beheer.melding_open_gezet': 'The group is open. Everyone has been told.',
+  'beheer.melding_beschermd_gezet': 'The group is protected again.',
+
 };

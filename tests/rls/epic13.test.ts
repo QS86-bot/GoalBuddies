@@ -1,0 +1,612 @@
+/**
+ * EPIC 13 — Open of beschermde groepen, uitgevoerd in plaats van gelezen.
+ *
+ * Besluit **A41** (24-08-2026, QS8-128 variant 2, uitgewerkt in QS8-132):
+ * een groep kiest bij het aanmaken tussen **beschermd** (zoals nu, en de
+ * standaard) en **open** (de groep ziet ook tegenslag).
+ *
+ * ⚠️ **Waarom deze suite twee fixtures heeft en niet één.** Een policy die per
+ *    groep varieert, kan op twee manieren stuk: hij opent te weinig, en dan is
+ *    de feature er niet — of hij opent te véél, en dan lekt domeinregel 7 in
+ *    élke groep. Alleen de tweede fout is gevaarlijk, en die vind je uitsluitend
+ *    door de beschermde stand net zo hard te toetsen als de open stand. Elke
+ *    toets hieronder komt daarom in twee smaken.
+ *
+ * ⚠️ **De derde fixture is de belangrijkste.** `deelt_open_groep_met_doel()`
+ *    moet de zichtbaarheid toetsen van de groep die de kíjker met dit doel
+ *    deelt, en niet van "een" groep waar het doel aan hangt. Een doel dat aan
+ *    één open en één beschermde groep hangt, is het geval waarin een simpele
+ *    implementatie ("hangt dit doel aan een open groep?") de gemiste weken van
+ *    de eigenaar aan de beschermde groep uitdeelt. Dat is `groepGemengd`.
+ *
+ * ⚠️ Alle accounts worden één keer in `beforeAll` gemaakt. Supabase weigert na
+ *    ongeveer dertig aanmeldingen in korte tijd met "Request rate limit
+ *    reached"; zie je dat in de opbouw, wacht dan een minuut in plaats van in de
+ *    policies te zoeken.
+ */
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { now, userCycle, type IsoDate } from '../../src/shared/time';
+import {
+  adminDb,
+  createTestUser,
+  removeTestUsers,
+  rlsTestsConfigured,
+  type TestUser,
+} from './harness';
+
+const SETUP_TIMEOUT = 180_000;
+const TEST_TIMEOUT = 30_000;
+
+interface Groep {
+  id: string;
+  code: string;
+}
+
+interface Fixture {
+  /** Oprichter en beheerder van alle groepen; eigenaar van alle doelen. */
+  alice: TestUser;
+  /** Lid van de beschermde, de open en de gemengde groep. */
+  bob: TestUser;
+  /** Lid van uitsluitend de beschermde kant van de gemengde koppeling. */
+  carol: TestUser;
+
+  groepBeschermd: Groep;
+  groepOpen: Groep;
+  /** Blijft beschermd tot de omzet-tests hem oppakken. */
+  groepSchakel: Groep;
+
+  /** Gekoppeld aan `groepBeschermd`. */
+  doelBeschermd: string;
+  /** Gekoppeld aan `groepOpen`. */
+  doelOpen: string;
+  /** Gekoppeld aan `groepGemengdOpen` én `groepGemengdDicht`. */
+  doelGemengd: string;
+  groepGemengdOpen: Groep;
+  groepGemengdDicht: Groep;
+  /** Gekoppeld aan `groepSchakel`. */
+  doelSchakel: string;
+
+  cycleStart: IsoDate;
+}
+
+function uitkomst(data: unknown): { ok?: boolean; reason?: string; van?: string; naar?: string } {
+  return (data ?? {}) as { ok?: boolean; reason?: string; van?: string; naar?: string };
+}
+
+describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', () => {
+  let f: Fixture;
+
+  async function maakGroep(
+    eigenaar: TestUser,
+    naam: string,
+    zichtbaarheid?: 'beschermd' | 'open',
+  ): Promise<Groep> {
+    const argumenten =
+      zichtbaarheid === undefined
+        ? { group_name: naam }
+        : { group_name: naam, zichtbaarheid };
+
+    const { data, error } = await eigenaar.db.rpc('create_group', argumenten);
+    if (error) throw new Error(`groep ${naam} (HTTP): ${error.message}`);
+
+    const gelezen = (data ?? {}) as {
+      ok?: boolean;
+      group?: { id: string; invite_code: string };
+    };
+    if (gelezen.ok !== true || !gelezen.group) {
+      throw new Error(`groep ${naam} mislukte: ${JSON.stringify(data)}`);
+    }
+
+    return { id: gelezen.group.id, code: gelezen.group.invite_code };
+  }
+
+  async function laatMeedoen(gebruiker: TestUser, groep: Groep): Promise<void> {
+    const { data, error } = await gebruiker.db.rpc('join_group_with_code', { code: groep.code });
+    if (error) throw new Error(`meedoen (HTTP): ${error.message}`);
+    if (uitkomst(data).ok !== true) {
+      throw new Error(`meedoen mislukte: ${uitkomst(data).reason ?? 'geen reden'}`);
+    }
+  }
+
+  /**
+   * Een doel met twee weekdoelen: één `todo` en één `missed`.
+   *
+   * ⚠️ `missed` is de status waar het hele oppervlak om draait. `status` staat
+   *    sinds 0023 op slot voor de eigenaar zelf, dus dat zetten gaat via de
+   *    admin-client — een omweg in de ópbouw, niet in wat getest wordt.
+   */
+  async function maakDoelMetGemisteWeek(
+    titel: string,
+    groepen: readonly Groep[],
+    cycleStart: IsoDate,
+  ): Promise<string> {
+    const admin = adminDb();
+
+    const doel = await f.alice.db
+      .from('goals')
+      .insert({ owner_id: f.alice.id, title: titel, target_date: cycleStart })
+      .select('id')
+      .single();
+    if (doel.error || doel.data === null) throw new Error(`doel ${titel}: ${doel.error?.message}`);
+
+    for (const groep of groepen) {
+      const koppeling = await f.alice.db
+        .from('goal_group_links')
+        .insert({ goal_id: doel.data.id, group_id: groep.id });
+      if (koppeling.error) throw new Error(`koppeling ${titel}: ${koppeling.error.message}`);
+    }
+
+    const gepland = await f.alice.db.from('weekly_goals').insert({
+      goal_id: doel.data.id,
+      title: `${titel}-GEPLAND`,
+      cycle_start_date: cycleStart,
+      cycle_index: 1,
+    });
+    if (gepland.error) throw new Error(`gepland weekdoel ${titel}: ${gepland.error.message}`);
+
+    const gemist = await f.alice.db
+      .from('weekly_goals')
+      .insert({
+        goal_id: doel.data.id,
+        title: `${titel}-GEMIST`,
+        cycle_start_date: cycleStart,
+        cycle_index: 2,
+      })
+      .select('id')
+      .single();
+    if (gemist.error || gemist.data === null) {
+      throw new Error(`gemist weekdoel ${titel}: ${gemist.error?.message}`);
+    }
+
+    const zetten = await admin
+      .from('weekly_goals')
+      .update({ status: 'missed' })
+      .eq('id', gemist.data.id);
+    if (zetten.error) throw new Error(`missed zetten ${titel}: ${zetten.error.message}`);
+
+    return doel.data.id;
+  }
+
+  /** De titels van de weekdoelen die deze gebruiker van dit doel te zien krijgt. */
+  async function zichtbareWeekdoelen(
+    gebruiker: TestUser,
+    doelId: string,
+  ): Promise<readonly string[]> {
+    const { data, error } = await gebruiker.db
+      .from('weekly_goals')
+      .select('title')
+      .eq('goal_id', doelId)
+      .order('cycle_index', { ascending: true });
+
+    if (error) throw new Error(`weekdoelen lezen: ${error.message}`);
+    return (data ?? []).map((r) => r.title);
+  }
+
+  async function zichtbaarheidVan(groep: Groep): Promise<string | null> {
+    const { data, error } = await adminDb()
+      .from('groups')
+      .select('zichtbaarheid')
+      .eq('id', groep.id)
+      .single();
+
+    if (error) throw new Error(`zichtbaarheid lezen: ${error.message}`);
+    return data?.zichtbaarheid ?? null;
+  }
+
+  beforeAll(async () => {
+    const alice = await createTestUser('zicht-alice');
+    const bob = await createTestUser('zicht-bob');
+    const carol = await createTestUser('zicht-carol');
+
+    const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+    f = {
+      alice,
+      bob,
+      carol,
+      groepBeschermd: { id: '', code: '' },
+      groepOpen: { id: '', code: '' },
+      groepSchakel: { id: '', code: '' },
+      groepGemengdOpen: { id: '', code: '' },
+      groepGemengdDicht: { id: '', code: '' },
+      doelBeschermd: '',
+      doelOpen: '',
+      doelGemengd: '',
+      doelSchakel: '',
+      cycleStart: cycle.startDate,
+    };
+
+    f.groepBeschermd = await maakGroep(alice, 'Zicht-beschermd');
+    f.groepOpen = await maakGroep(alice, 'Zicht-open', 'open');
+    f.groepSchakel = await maakGroep(alice, 'Zicht-schakel');
+    f.groepGemengdOpen = await maakGroep(alice, 'Zicht-gemengd-open', 'open');
+    f.groepGemengdDicht = await maakGroep(alice, 'Zicht-gemengd-dicht');
+
+    await laatMeedoen(bob, f.groepBeschermd);
+    await laatMeedoen(bob, f.groepOpen);
+    await laatMeedoen(bob, f.groepSchakel);
+    await laatMeedoen(bob, f.groepGemengdOpen);
+    // ⚠️ Carol zit uitsluitend in de bescherméde helft van de gemengde
+    //    koppeling. Zij is het bewijs dat de derde tak per groep beslist.
+    await laatMeedoen(carol, f.groepGemengdDicht);
+
+    f.doelBeschermd = await maakDoelMetGemisteWeek(
+      'BESCHERMD',
+      [f.groepBeschermd],
+      cycle.startDate,
+    );
+    f.doelOpen = await maakDoelMetGemisteWeek('OPEN', [f.groepOpen], cycle.startDate);
+    f.doelGemengd = await maakDoelMetGemisteWeek(
+      'GEMENGD',
+      [f.groepGemengdOpen, f.groepGemengdDicht],
+      cycle.startDate,
+    );
+    f.doelSchakel = await maakDoelMetGemisteWeek('SCHAKEL', [f.groepSchakel], cycle.startDate);
+  }, SETUP_TIMEOUT);
+
+  afterAll(async () => {
+    await removeTestUsers();
+  }, SETUP_TIMEOUT);
+
+  // -------------------------------------------------------------------------
+  describe('de kolom zelf', () => {
+    it(
+      'geeft een nieuwe groep zonder keuze de beschermde stand',
+      async () => {
+        // Grens 1 van het besluit, als schema-eigenschap: bestaande groepen en
+        // groepen die niets kiezen, zijn beschermd.
+        expect(await zichtbaarheidVan(f.groepBeschermd)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'neemt een expliciete keuze over',
+      async () => {
+        expect(await zichtbaarheidVan(f.groepOpen)).toBe('open');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'valt bij een onbekende waarde terug op beschermd en weigert niet',
+      async () => {
+        // ⚠️ Terugvallen op de veilige kant en niet gooien. Een groep die per
+        //    ongeluk beschermd is, kan alsnog open; een groep die per ongeluk
+        //    open is, heeft de gemiste weken van zijn leden al laten zien.
+        const groep = await maakGroep(f.alice, 'Zicht-rommel', 'ROMMEL' as 'open');
+        expect(await zichtbaarheidVan(groep)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een beheerder de kolom niet rechtstreeks schrijven',
+      async () => {
+        // ⚠️ Twee sloten, en deze test slaagt bij allebei: de kolomgrant weigert
+        //    met 42501, en de trigger zet de waarde terug. Wat de test bewaakt is
+        //    de uitkomst — de kolom staat er na afloop nog hetzelfde.
+        await f.alice.db
+          .from('groups')
+          .update({ zichtbaarheid: 'open' })
+          .eq('id', f.groepBeschermd.id);
+
+        expect(await zichtbaarheidVan(f.groepBeschermd)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('weekdoelen — oppervlak 3, in beide standen', () => {
+    it(
+      'verbergt een gemiste week in een beschermde groep',
+      async () => {
+        // ⚠️ Dit is de bestaande belofte van 0019/0020/0045/0047 en hij moet
+        //    ongewijzigd overeind blijven. Wordt deze rood, dan heeft besluit
+        //    A41 domeinregel 7 niet verruimd maar afgeschaft.
+        expect(await zichtbareWeekdoelen(f.bob, f.doelBeschermd)).toEqual(['BESCHERMD-GEPLAND']);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'toont een gemiste week in een open groep',
+      async () => {
+        expect(await zichtbareWeekdoelen(f.bob, f.doelOpen)).toEqual([
+          'OPEN-GEPLAND',
+          'OPEN-GEMIST',
+        ]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de eigenaar in beide standen alles zien',
+      async () => {
+        expect(await zichtbareWeekdoelen(f.alice, f.doelBeschermd)).toEqual([
+          'BESCHERMD-GEPLAND',
+          'BESCHERMD-GEMIST',
+        ]);
+        expect(await zichtbareWeekdoelen(f.alice, f.doelOpen)).toEqual([
+          'OPEN-GEPLAND',
+          'OPEN-GEMIST',
+        ]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft een buitenstaander niets, ook niet bij een open groep',
+      async () => {
+        // "Open" is open bínnen de groep. Wie er niet in zit, ziet niets — anders
+        // was het geen zichtbaarheidskeuze maar een publicatie.
+        expect(await zichtbareWeekdoelen(f.carol, f.doelOpen)).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'beslist per groep en niet per doel',
+      async () => {
+        // ⚠️ **De test die een plausibele implementatie afkeurt.** Het doel hangt
+        //    aan één open en één beschermde groep. Bob zit in de open helft en
+        //    ziet alles; carol zit in de beschermde helft en ziet de gemiste week
+        //    níét. Zou de policy "hangt dit doel aan een open groep?" vragen, dan
+        //    kregen ze allebei alles — en dan lekt de beschermde groep.
+        expect(await zichtbareWeekdoelen(f.bob, f.doelGemengd)).toEqual([
+          'GEMENGD-GEPLAND',
+          'GEMENGD-GEMIST',
+        ]);
+        expect(await zichtbareWeekdoelen(f.carol, f.doelGemengd)).toEqual(['GEMENGD-GEPLAND']);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt de punten dicht, ook in een open groep',
+      async () => {
+        // ⚠️ Besluit A42, apart genomen op dezelfde dag: punten blijven privé,
+        //    óók in een open groep. Wie het totaal deelt, deelt het missen via een
+        //    omweg. Deze test staat hier zodat "open" niet gaandeweg "alles open"
+        //    wordt.
+        const { data, error } = await f.bob.db
+          .from('points_ledger')
+          .select('id')
+          .eq('user_id', f.alice.id);
+
+        expect(error).toBeNull();
+        expect(data ?? []).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('omzetten — grens 3 van het besluit', () => {
+    async function zet(
+      gebruiker: TestUser,
+      groep: Groep,
+      naar: string,
+      bevestigd?: boolean,
+    ): Promise<{ ok?: boolean; reason?: string; van?: string; naar?: string }> {
+      const argumenten =
+        bevestigd === undefined
+          ? { p_group_id: groep.id, p_naar: naar }
+          : { p_group_id: groep.id, p_naar: naar, p_bevestigd: bevestigd };
+
+      const { data, error } = await gebruiker.db.rpc(
+        'zet_groepszichtbaarheid',
+        argumenten as { p_group_id: string; p_naar: string; p_bevestigd?: boolean },
+      );
+      if (error) throw new Error(`omzetten (HTTP): ${error.message}`);
+      return uitkomst(data);
+    }
+
+    it(
+      'weigert zonder bevestiging, en verandert dan niets',
+      async () => {
+        // ⚠️ De default is `false`, dus een aanroep die het argument vergeet doet
+        //    niets. Dat is wat "nooit stilzwijgend" hier betekent.
+        expect((await zet(f.alice, f.groepSchakel, 'open')).reason).toBe('not_confirmed');
+        expect(await zichtbaarheidVan(f.groepSchakel)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een gewoon lid',
+      async () => {
+        expect((await zet(f.bob, f.groepSchakel, 'open', true)).reason).toBe('not_admin');
+        expect(await zichtbaarheidVan(f.groepSchakel)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een waarde die niet bestaat',
+      async () => {
+        expect((await zet(f.alice, f.groepSchakel, 'halfopen', true)).reason).toBe(
+          'unknown_visibility',
+        );
+        expect(await zichtbaarheidVan(f.groepSchakel)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zet om, legt het vast en kondigt het aan',
+      async () => {
+        const antwoord = await zet(f.alice, f.groepSchakel, 'open', true);
+
+        expect(antwoord.ok).toBe(true);
+        expect(antwoord.van).toBe('beschermd');
+        expect(antwoord.naar).toBe('open');
+        expect(await zichtbaarheidVan(f.groepSchakel)).toBe('open');
+
+        const spoor = await adminDb()
+          .from('group_events')
+          .select('actor_id, event_type, old_value, new_value')
+          .eq('group_id', f.groepSchakel.id);
+
+        expect(spoor.error).toBeNull();
+        expect(spoor.data ?? []).toHaveLength(1);
+        expect((spoor.data ?? [])[0]).toMatchObject({
+          actor_id: f.alice.id,
+          event_type: 'visibility_changed',
+          old_value: { zichtbaarheid: 'beschermd' },
+          new_value: { zichtbaarheid: 'open' },
+        });
+
+        const bericht = await adminDb()
+          .from('chat_messages')
+          .select('system_event, subject_id, type, sender_id, body')
+          .eq('group_id', f.groepSchakel.id)
+          .eq('system_event', 'group_opened');
+
+        expect(bericht.error).toBeNull();
+        expect(bericht.data ?? []).toHaveLength(1);
+        expect((bericht.data ?? [])[0]).toMatchObject({
+          system_event: 'group_opened',
+          subject_id: f.alice.id,
+          type: 'system',
+          sender_id: null,
+        });
+
+        // ⚠️ Beslisdocument 002 §3: een systeembericht noemt de persoon en de
+        //    gebeurtenis, nooit een titel. De doeltitels van deze fixture mogen
+        //    er dus niet in staan.
+        expect((bericht.data ?? [])[0]?.body ?? '').not.toMatch(/SCHAKEL|GEMENGD|BESCHERMD/);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'werkt onmiddellijk door in de policy',
+      async () => {
+        // De hele reden dat de kolom bestaat. Bob zag de gemiste week van dit
+        // doel niet, en ziet hem nu wel — zonder dat er één rij herschreven is.
+        expect(await zichtbareWeekdoelen(f.bob, f.doelSchakel)).toEqual([
+          'SCHAKEL-GEPLAND',
+          'SCHAKEL-GEMIST',
+        ]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'plaatst geen tweede bericht als er niets verandert',
+      async () => {
+        expect((await zet(f.alice, f.groepSchakel, 'open', true)).reason).toBe('unchanged');
+
+        const bericht = await adminDb()
+          .from('chat_messages')
+          .select('id')
+          .eq('group_id', f.groepSchakel.id)
+          .eq('system_event', 'group_opened');
+
+        expect(bericht.data ?? []).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de veilige richting nooit wachten',
+      async () => {
+        // ⚠️ Terug naar beschermd kan meteen. Een wachttijd op déze richting zou
+        //    de gemiste weken van de leden een dag lang zichtbaar houden als
+        //    straf voor de vergissing van hun beheerder.
+        const antwoord = await zet(f.alice, f.groepSchakel, 'beschermd', true);
+
+        expect(antwoord.ok).toBe(true);
+        expect(await zichtbaarheidVan(f.groepSchakel)).toBe('beschermd');
+        expect(await zichtbareWeekdoelen(f.bob, f.doelSchakel)).toEqual(['SCHAKEL-GEPLAND']);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'remt heen-en-weer schakelen naar open af',
+      async () => {
+        expect((await zet(f.alice, f.groepSchakel, 'open', true)).reason).toBe('too_soon');
+        expect(await zichtbaarheidVan(f.groepSchakel)).toBe('beschermd');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('het auditspoor', () => {
+    it(
+      'is leesbaar voor een lid van de groep',
+      async () => {
+        // Wie zichtbaar gemaakt wordt, hoort te kunnen nazien wanneer dat gebeurd
+        // is en door wie.
+        const { data, error } = await f.bob.db
+          .from('group_events')
+          .select('event_type')
+          .eq('group_id', f.groepSchakel.id);
+
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBeGreaterThan(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'is onzichtbaar voor een buitenstaander',
+      async () => {
+        const { data, error } = await f.carol.db
+          .from('group_events')
+          .select('event_type')
+          .eq('group_id', f.groepSchakel.id);
+
+        expect(error).toBeNull();
+        expect(data ?? []).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'is door geen enkele client te schrijven',
+      async () => {
+        // Er is geen INSERT-policy, dus RLS weigert categorisch — zelfde vorm als
+        // `commitment_events`. Een auditspoor dat de aanroeper zelf kan vullen,
+        // bewijst niets.
+        const poging = await f.alice.db.from('group_events').insert({
+          group_id: f.groepSchakel.id,
+          actor_id: f.alice.id,
+          event_type: 'visibility_changed',
+          old_value: { zichtbaarheid: 'open' },
+          new_value: { zichtbaarheid: 'beschermd' },
+        });
+
+        expect(poging.error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('wat "open" niet is', () => {
+    it(
+      'zet geen enkele uitgezonden tabel op REPLICA IDENTITY FULL',
+      async () => {
+        // ⚠️ **Dit verbod geldt onverkort voor een open groep, en de reden is een
+        //    ándere dan bij een beschermde.** Supabase past RLS toe op INSERT en
+        //    UPDATE maar niet op DELETE: met `full` gaat bij een verwijdering de
+        //    volledige oude rij over de lijn naar iedereen die zich abonneert,
+        //    lid of niet. "Open" is een keuze over wat de gróép ziet; dit lek gaat
+        //    naar buiten de groep, en dat heeft niemand gekozen.
+        const { data, error } = await adminDb().rpc('realtime_bewaking');
+
+        expect(error).toBeNull();
+        for (const rij of data ?? []) {
+          expect(rij.replica_identity, rij.tabel).not.toBe('full');
+        }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+});

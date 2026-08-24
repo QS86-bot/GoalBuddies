@@ -12,6 +12,7 @@ import {
   normaliseerCode,
   type GroepInvoer,
   type GroepPatch,
+  type Zichtbaarheid,
 } from './schemas';
 
 /**
@@ -102,6 +103,12 @@ function meldingen(): Readonly<Record<string, string>> {
 
     // rotate_invite_code en set_invite_revoked
     not_admin: t('groep.geen_beheerder'),
+
+    // zet_groepszichtbaarheid (besluit A41, migratie 0076)
+    not_confirmed: t('zichtbaarheid.niet_bevestigd'),
+    unknown_visibility: t('zichtbaarheid.onbekend'),
+    unchanged: t('zichtbaarheid.ongewijzigd'),
+    too_soon: t('zichtbaarheid.te_snel'),
   };
 }
 
@@ -333,6 +340,12 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
     //    is hier geen persoonlijk ongemak maar een groep waarvan de week op het
     //    verkeerde moment omslaat. Zie `apparaatTijdzone()`.
     tz: apparaatTijdzone(),
+    // ⚠️ Besluit A41 (migratie 0076). De server valt bij een onbekende waarde
+    //    terug op `beschermd` en weigert niet — dat is dezelfde keuze als bij
+    //    `tz`: een groep die per ongeluk beschermd is, kan alsnog open; een groep
+    //    die per ongeluk open is, heeft de gemiste weken van zijn leden al laten
+    //    zien.
+    zichtbaarheid: gevalideerd.data.zichtbaarheid,
   });
 
   if (error) {
@@ -432,6 +445,47 @@ export async function zetUitnodigingIngetrokken(
   }
 
   return { ok: true, waarde: uitkomst.invite_revoked ?? ingetrokken };
+}
+
+/**
+ * Zet de zichtbaarheid van een groep om — besluit A41, grens 3 (QS8-132).
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit en hoort daarom een parameter te zijn.**
+ *    De RPC weigert zonder, en de default in de database is `false`. Een groep
+ *    die van beschermd naar open gaat, verandert met terugwerkende kracht wat er
+ *    over de ándere leden zichtbaar wordt — dat is dezelfde zwaarte als een
+ *    commitment device (domeinregel 5), en dus nooit één klik.
+ *
+ * ⚠️ De kolom is voor geen enkele client schrijfbaar (migratie 0076 §2), dus dit
+ *    is de énige route. Een `update` op `groups` zou stil niets doen: de trigger
+ *    zet de waarde terug.
+ *
+ * ⚠️ Terug naar `beschermd` kan altijd; naar `open` hooguit één keer per etmaal.
+ *    De rem staat alleen op de onveilige richting, want een beheerder die zich
+ *    vergist heeft, moet dat onmiddellijk kunnen terugdraaien.
+ */
+export async function zetGroepszichtbaarheid(
+  groupId: string,
+  naar: Zichtbaarheid,
+  bevestigd: boolean,
+): Promise<Resultaat<Zichtbaarheid>> {
+  const { data, error } = await supabase().rpc('zet_groepszichtbaarheid', {
+    p_group_id: groupId,
+    p_naar: naar,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.visibility', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return { ok: true, waarde: naar };
 }
 
 /**

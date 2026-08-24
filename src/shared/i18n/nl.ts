@@ -51,6 +51,16 @@ export const nl = {
    */
   'systeembericht.chain_milestone': 'De Ketting van deze groep telt {aantal} schakels.',
 
+  /**
+   * ⚠️ Besluit A41 (QS8-132). De zin zegt wat er verandert en niet wat iemand
+   *    ervan moet vinden: een lid dat het niet wil, moet er iets mee kunnen doen
+   *    (zijn doel ontkoppelen), en daar heeft hij een feit voor nodig.
+   */
+  'systeembericht.group_opened':
+    '{naam} heeft deze groep opengezet. Leden zien vanaf nu ook elkaars tegenslag.',
+  'systeembericht.group_protected':
+    '{naam} heeft deze groep weer beschermd. Tegenslag van een ander is niet meer zichtbaar.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
 
@@ -529,6 +539,46 @@ export const nl = {
   'groepnieuw.wat_daarna_b': 'Je wordt beheerder. Er kunnen twaalf mensen in een groep, maar drie tot vijf werkt in de praktijk het best.',
   'groepnieuw.aanmaken': 'Groep aanmaken',
   'groepnieuw.annuleren': 'Annuleren',
+
+  // ---------------------------------------------------------------------------
+  // Zichtbaarheid van een groep — besluit A41 (QS8-132)
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De teksten zeggen wat er verandert en niet wat je ervan moet vinden. Een
+  //    open groep is geen slechtere groep; hij past bij andere mensen. Maar wie
+  //    hem openzet, verandert wat er over ánderen zichtbaar is, en dat mag hier
+  //    nergens weggeschreven worden.
+  'zichtbaarheid.beschermd': 'Beschermd',
+  'zichtbaarheid.open': 'Open',
+  'zichtbaarheid.beschermd_uitleg':
+    'De groep ziet wat er lukt: afgeronde weken, mijlpalen, aanmoedigingen. Een gemiste week blijft van jou, tenzij je hem zelf deelt.',
+  'zichtbaarheid.open_uitleg':
+    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken van elkaar. Kies dit alleen als iedereen dat wil.',
+  'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
+  'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
+  'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
+  'zichtbaarheid.te_snel': 'Je hebt deze groep vandaag al opengezet. Morgen kan het weer.',
+
+  'groepnieuw.zichtbaarheid': 'Wat ziet de groep van elkaar?',
+  'groepnieuw.zichtbaarheid_hint':
+    'Dit is de belangrijkste keuze op dit scherm. Hij is later te wijzigen, maar niet ongemerkt: iedereen krijgt het te zien.',
+
+  'beheer.zichtbaarheid_titel': 'Wat de groep van elkaar ziet',
+  'beheer.zichtbaarheid_nu': 'Nu ingesteld: {stand}',
+  'beheer.zichtbaarheid_waarschuwing':
+    'Openzetten werkt met terugwerkende kracht: de groep ziet vanaf dat moment ook de gemiste weken die er al staan. Iedereen krijgt er een bericht van, zodat wie dat niet wil zijn doel kan ontkoppelen.',
+  'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
+  'bevestiging.groep_openzetten.uitleg':
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
+  'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
+  'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
+  'bevestiging.groep_beschermen.uitleg':
+    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht. Iedereen krijgt er een bericht van.',
+  'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
+  'beheer.naar_open': 'Deze groep openzetten',
+  'beheer.naar_beschermd': 'Deze groep weer beschermen',
+  'beheer.melding_open_gezet': 'De groep staat open. Iedereen heeft er een bericht van gekregen.',
+  'beheer.melding_beschermd_gezet': 'De groep is weer beschermd.',
   'tab.vandaag': 'Vandaag',
   'tab.doelen': 'Doelen',
   'tab.groep': 'Groep',

@@ -16,6 +16,7 @@ export {
   ontkoppelDoelVanGroep,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   type Groep,
   type Groepslid,
@@ -100,9 +101,13 @@ export {
   normaliseerCode,
   toonCode,
   uitnodigingsLink,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
+  ZICHTBAARHEDEN,
   type Bewijseis,
   type GroepInvoer,
   type GroepPatch,
+  type Zichtbaarheid,
 } from './schemas';
 
 export {

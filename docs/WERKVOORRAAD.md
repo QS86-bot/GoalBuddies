@@ -82,11 +82,19 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0075`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0077`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
-`approval_withdrawals` (0030) en `deadline_requests` (0032) erbij.
+`approval_withdrawals` (0030), `deadline_requests` (0032), `week_pass_events`
+(0039), `goal_risk` (0050), `push_tokens` en `notifications_sent` (0053) en
+`group_events` (0076) erbij.
+
+⚠️ Hier stond tot 24-08-2026 "26 tabellen", en dat klopte al vier migraties niet
+meer — geteld toen `week_review_replies` de laatste was en daarna nooit meer
+nagemeten. Een getal in lopende tekst dat niemand hertelt, is dezelfde soort
+aanname als een test die nooit rood is geweest. Het echte aantal komt uit
+`select count(*) from pg_tables where schemaname = 'public'`.
 
 ⚠️ **`supabase/migrations/` is een verslag en geen bron, in béíde richtingen.**
 De geschiedenis kent twee onverenigbare nummeringen: 38 genummerd

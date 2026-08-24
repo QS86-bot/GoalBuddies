@@ -194,6 +194,73 @@ referentiële actie als tabeleigenaar draait.
 
 **Bij elke nieuwe `on delete set null`: staat er een trigger op die kolom?**
 
-**Wat er nog niet is:** de RLS-suite draait niet in CI (`docs/WERKVOORRAAD.md` §5).
-Groen in GitHub zegt dus niets over domeinregel 7. Zolang dat zo is, moet deze suite
-met de hand gedraaid worden vóór een merge.
+---
+
+## 6. Besluit A41 — open of beschermde groepen (24-08-2026, EPIC 13)
+
+Vanaf migratie 0076 is domeinregel 7 een eigenschap **per groep** in plaats van
+een eigenschap van het product. `groups.zichtbaarheid` staat op `beschermd` of
+`open`; beschermd is de standaard en bestaande groepen zijn beschermd.
+
+⚠️ **Dit document blijft de waarheid over de beschérmde stand.** Alles in §2 t/m
+§5 beschrijft wat een groep ziet zolang hij op `beschermd` staat, en dat is
+onveranderd. Deze paragraaf zegt er per oppervlak bij wat "open" betekent — en
+bij verreweg de meeste oppervlakken is het antwoord "niets".
+
+### 6a. De fundering
+
+| Wat | Waar | Wat het doet |
+|---|---|---|
+| `groups.zichtbaarheid` | 0076 | `not null default 'beschermd'`, CHECK op twee waarden. Geen derde toestand: "nog niet gekozen" zou betekenen dat elke policy moet weten wat dat betekent, en het antwoord is altijd "beschermd" |
+| Twee schrijfsloten | 0076 §2 | De kolom valt buiten de zeven kolommen die 0019 aan `authenticated` teruggaf, dus hij was vanaf het eerste moment niet client-schrijfbaar. `guard_group_update()` zet hem daarnaast terug. ⚠️ **Dat eerste slot kreeg de kolom gratis, en dat is precies waarom 0019 het zo heeft opgezet** — een slot dat werkt zonder dat iemand eraan denkt |
+| `group_events` | 0076 §3 | Auditspoor van de groep als geheel. Leesbaar voor élk lid (wie zichtbaar gemaakt wordt, hoort te kunnen nazien wanneer en door wie), schrijfbaar voor niemand: er is geen INSERT-policy, dezelfde vorm als `commitment_events`. Geen doel, geen week, geen status in de rij |
+| `zet_groepszichtbaarheid()` | 0076 §6 | De enige route. Actieve beheerder, `p_bevestigd` verplicht, `group_events`-rij vóór het bericht, systeembericht erna. ⚠️ **De rem staat alleen op de onveilige richting**: naar `open` hooguit één keer per etmaal, naar `beschermd` altijd — een beheerder die zich vergist heeft, mag de gemiste weken van zijn leden niet een dag lang zichtbaar moeten houden als straf voor zijn fout |
+| `group_opened` / `group_protected` | 0076 §5, oppervlak 9 | Elfde en twaalfde systeemgebeurtenis. Zónder deze twee zou het omzetten stilzwijgend zijn, en dat is precies wat grens 3 verbiedt: het bericht is het moment waarop een lid kan besluiten zijn doel te ontkoppelen |
+
+### 6b. Wat "open" per oppervlak betekent
+
+⚠️ **Niet in één keer opengooien** — dat staat letterlijk in QS8-132. De kolom
+bestaat sinds 0076 en varieerde toen nog nergens op; 0077 is het eerste
+oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
+24-08-2026.
+
+| # | Oppervlak | Wat "open" hier betekent | Stand |
+|---|---|---|---|
+| 1 | Groepsoverzicht | `group_overview()` mag de weekstatus en `last_cycle_start` teruggeven. ⚠️ Een functie met vaste projectie, dus dit is geen policy maar een tweede projectie — en die moet apart getest | **Nog niet** |
+| 2 | Reeksen | `best_streak` erbij in `group_visible_streaks`. ⚠️ Een view met `security_invoker = false`: de kolomlijst is de bescherming, dus dit vraagt een tweede view of een kolom die conditioneel leeg is. Niet triviaal | **Nog niet** |
+| 3 | **Weekdoelen van een gekoppeld doel** | De statusfilter `missed/carried/cancelled/excused` vervalt voor een lid van een open groep | ✅ **0077** |
+| 4 | Voltooiingen | Niets. Er bestaat geen rij voor een week die niet is afgerond, dus er valt niets te openen | ✅ n.v.t. |
+| 5 | Beoordelingswachtrij | Niets. Alleen ingediende voltooiingen | ✅ n.v.t. |
+| 6 | Punten | **Niets, en dat is een apart besluit** — A42, 24-08-2026. Ook in een open groep blijft `points_ledger` eigenaar-only; wie het totaal deelt, deelt het missen via een omweg. De vorm voor competitie is een teller die alleen optelt | ⛔ **Bewust dicht** |
+| 7 | Uitnodigingspagina | Niets. Vaste projectie zonder persoonsgegevens over voortgang | ✅ n.v.t. |
+| 8 | Groepschat | Niets. Wat mensen zelf typen, is altijd hun eigen keuze geweest | ✅ n.v.t. |
+| 9 | Systeemberichten | Niets aan de bestaande tien. Er kwamen er twee bij (6a) die over de gróép gaan. ⚠️ Een open groep krijgt géén nieuw type "X heeft een week gemist": dat zou van een keuze een aankondiging maken, en de allowlist is bewust een migratie waard | ⛔ **Bewust dicht** |
+| 10 | Weekafsluiting | Niets. Route 1 — de gebruiker schrijft en verstuurt zelf | ✅ n.v.t. |
+| 11 | Reacties op de weekafsluiting | Niets. Idem | ✅ n.v.t. |
+| 12 | Realtime | **Niets, en het verbod op `REPLICA IDENTITY FULL` blijft onverkort staan.** ⚠️ De reden is hier een ándere dan bij een beschermde groep: met `full` gaat bij een DELETE de volledige oude rij naar iedereen die zich abonneert, **lid of niet**. "Open" is een keuze over wat de gróép ziet; dit lek gaat naar buiten de groep, en dat heeft niemand gekozen. Getoetst in `tests/rls/epic13.test.ts` | ⛔ **Bewust dicht** |
+| 13 | De Ketting | Het venster van acht dagen op `chain_links_select` zou kunnen vervallen, en `closed_this_period` buiten dat venster. ⚠️ Dit is de aanwezigheidsmatrix per persoon per week — het zwaarste oppervlak na 3 | **Nog niet** |
+| 14 | Seizoensrecap | Nog niet gebouwd (EPIC 8) — beoordeel bij het bouwen | **Nog niet gebouwd** |
+| 15 | Notificaties | Nog niet gebouwd (EPIC 11) — beoordeel bij het bouwen | **Nog niet gebouwd** |
+| 16 | Deadline-verzoeken | Niets. De gebruiker vraagt het zélf aan (A7) | ✅ n.v.t. |
+| 17 | Ingetrokken goedkeuringen | ⚠️ **Bewust dicht, ook in een open groep.** "De week van X is toch niet bevestigd" is niet iemands eigen tegenslag maar het oordeel van een ánder lid over hem. Openzetten is een keuze over eigen zichtbaarheid, geen mandaat om andermans intrekking rond te sturen | ⛔ **Bewust dicht** |
+| 18 | Verwijderde accounts | Niets. `on delete set null` is geen zichtbaarheidskeuze | ✅ n.v.t. |
+| 19 | Weekpassen | ⚠️ **Bewust dicht.** Een verbruikte pas is een gemiste week plus de handeling om hem te redden; dat is een privé-voorraad, geen groepsgegeven. Bovendien staan de schrijvers op `service_role` en dragen `weekpas_stand()` en `weekpas_standen()` hun eigenaarstoets zélf — dit oppervlak leunt niet op RLS en zou dus een tweede, eigen verruiming vragen | ⛔ **Bewust dicht** |
+| 20 | Commitments | Niets. De beloning en de verschuldigde straf zijn al zichtbaar; het auditspoor blijft eigenaar-only | ✅ n.v.t. |
+
+**Zeven oppervlakken staan bewust dicht, ook in een open groep.** Dat is geen
+halfheid maar de kern van het besluit: "open" betekent dat de groep jouw
+tegenslag mag zien, niet dat alles open is. Wie ooit een van die zeven wil
+verruimen, komt langs deze tabel en langs de reden.
+
+### 6c. Wat er nog niet af is
+
+Oppervlak 1, 2 en 13 varieren nog niet op de kolom. Zolang dat zo is, ziet een
+lid van een **open** groep de gemiste weken van een gekoppeld doel (oppervlak 3)
+maar niet de weekstatus in het groepsoverzicht, niet `best_streak` en niet de
+historische ketting. Dat is inconsistent en het is de veilige kant van
+inconsistent: de kolom opent nergens méér dan hier beschreven staat.
+
+⚠️ **Achterhaald sinds QS8-119 (24-08-2026):** hier stond dat de RLS-suite niet
+in CI draaide en dat groen in GitHub dus niets zei over domeinregel 7. Dat is
+gerepareerd — de suite draait tegen een lokaal opgebouwd schema, in CI, zonder
+secrets. Zie `docs/decisions/005-rls-suite-lokaal.md`.

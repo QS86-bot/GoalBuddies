@@ -861,6 +861,51 @@ export type Database = {
           },
         ]
       }
+      group_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event_type: string
+          group_id: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event_type: string
+          group_id: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event_type?: string
+          group_id?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           group_id: string
@@ -916,6 +961,7 @@ export type Database = {
           season_cadence: string
           status: string
           tz: string
+          zichtbaarheid: string
         }
         Insert: {
           approval_rule?: string
@@ -932,6 +978,7 @@ export type Database = {
           season_cadence?: string
           status?: string
           tz?: string
+          zichtbaarheid?: string
         }
         Update: {
           approval_rule?: string
@@ -948,6 +995,7 @@ export type Database = {
           season_cadence?: string
           status?: string
           tz?: string
+          zichtbaarheid?: string
         }
         Relationships: [
           {
@@ -1205,25 +1253,31 @@ export type Database = {
       }
       push_tokens: {
         Row: {
+          auth: string | null
           created_at: string
           id: string
           last_seen_at: string
+          p256dh: string | null
           platform: string
           token: string
           user_id: string
         }
         Insert: {
+          auth?: string | null
           created_at?: string
           id?: string
           last_seen_at?: string
+          p256dh?: string | null
           platform: string
           token: string
           user_id: string
         }
         Update: {
+          auth?: string | null
           created_at?: string
           id?: string
           last_seen_at?: string
+          p256dh?: string | null
           platform?: string
           token?: string
           user_id?: string
@@ -1621,7 +1675,12 @@ export type Database = {
         Returns: Json
       }
       create_group: {
-        Args: { group_name: string; huddle_day?: number; tz?: string }
+        Args: {
+          group_name: string
+          huddle_day?: number
+          tz?: string
+          zichtbaarheid?: string
+        }
         Returns: Json
       }
       ddl_rechten_in_de_api: {
@@ -1634,6 +1693,7 @@ export type Database = {
         }[]
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
+      deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
       dien_opnieuw_in: {
         Args: {
           p_achieved_level: string
@@ -1703,6 +1763,10 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      kan_beoordeeld_worden: {
+        Args: { p_goal_id: string; p_owner_id: string }
+        Returns: boolean
+      }
       ketting_drempels: { Args: never; Returns: number[] }
       ketting_schakel: {
         Args: {
@@ -1790,8 +1854,8 @@ export type Database = {
       }
       registreer_push_token: {
         Args: {
-          p_auth?: string | null
-          p_p256dh?: string | null
+          p_auth?: string
+          p_p256dh?: string
           p_platform: string
           p_token: string
         }
@@ -1905,6 +1969,10 @@ export type Database = {
       wikkel_commitments_af: { Args: { p_goal_id: string }; Returns: Json }
       zet_doelstatus: {
         Args: { p_gearchiveerd: boolean; p_goal_id: string }
+        Returns: Json
+      }
+      zet_groepszichtbaarheid: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_naar: string }
         Returns: Json
       }
       zet_streefdatum: {
