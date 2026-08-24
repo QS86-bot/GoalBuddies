@@ -289,6 +289,14 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
   regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
   Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **`engines` dat iets belooft wat de code niet houdt.** `package.json` zei
+  `node >=20`; de realtime-client van supabase-js vraagt een native `WebSocket`
+  en die bestaat pas vanaf Node 22. Op 20 valt élke `createClient()` om. Lokaal
+  draaide alles op 22, dus dit was hier nooit te zien — **de eerste run van de
+  RLS-job op een schone runner vond het binnen een minuut.** Dat is precies waar
+  een tweede omgeving voor is: niet om hetzelfde nog eens te bevestigen, maar om
+  te laten zien wat je machine stilzwijgend voor je oploste.
+
 - **Een gereedheidscontrole die niet vraagt of het jóuw proces is.**
   `lokale-stack.sh` wachtte tot er íéts antwoordde op poort 3010. Draaide er nog
   een PostgREST uit een vorige ronde, dan viel de nieuwe om met "Address in use"
