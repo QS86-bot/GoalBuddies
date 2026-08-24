@@ -6,6 +6,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    de job 's nachts stilvalt.
 import { closableUserCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
+import { localDateIn } from '../_shared/time/zoned.ts';
 
 /**
  * De cycle-rollover — QS8-49, en daarmee ook QS8-47 en QS8-51.
@@ -120,6 +121,9 @@ Deno.serve(async (req: Request) => {
   let vrijgesteld = 0;
   let risicoBijgewerkt = 0;
 
+  // Straffen die verschuldigd zijn geworden — QS8-84.
+  let verschuldigd = 0;
+
   // Hoeveel gemiste weken er door een weekpas gered zijn — QS8-81. Een deelverzameling
   // van `gemist`: het punt is afgeboekt, alleen de reeks bleef staan.
   let gered = 0;
@@ -153,6 +157,43 @@ Deno.serve(async (req: Request) => {
       );
       overgeslagen += 1;
       continue;
+    }
+
+    // -----------------------------------------------------------------------
+    // Straffen die verschuldigd worden — QS8-84, migratie 0057
+    // -----------------------------------------------------------------------
+    //
+    // ⚠️ **Hier, en niet in SQL, omdat de datum van de gebruiker is.** Een straf
+    //    treedt in werking zodra zijn streefdatum verstreken is, en "verstreken"
+    //    is een uitspraak in de tijdzone van de eigenaar (domeinregel 2). De
+    //    functie in de database vergelijkt alleen; de datum komt uit
+    //    `shared/time` (correctheidsregel 7). Zou `maak_straffen_verschuldigd()`
+    //    zelf `current_date` gebruiken, dan gaat de straf voor iemand in Auckland
+    //    een dag te vroeg af — en te vroeg is precies het enige dat hier niet mag.
+    //
+    // ⚠️ **Staat vóór het weekdoelenwerk en is er volledig los van.** Domeinregel
+    //    11 en QS8-84 criterium 2: geen enkele gemiste week zet een straf in
+    //    werking. Deze aanroep kijkt niet naar `weekly_goals` en hoort daarom ook
+    //    niet in de lus die de gemiste weken afhandelt.
+    //
+    // ⚠️ **Na de tz-controle hierboven.** Faalt `closableUserCycle`, dan is de
+    //    tijdzone onbruikbaar en slaan we het profiel over — een straf op een
+    //    gegokte datum is erger dan een straf die een uur later komt.
+    //
+    // ⚠️ Idempotent: de functie raakt alleen commitments met status `set`, dus een
+    //    tweede run op hetzelfde uur vindt niets meer.
+    const { data: straffen, error: strafFout } = await db.rpc('maak_straffen_verschuldigd', {
+      p_owner_id: profiel.id,
+      p_vandaag: localDateIn(profiel.tz, nu),
+    });
+
+    if (strafFout) {
+      // Zacht, zoals de andere afgeleide stappen: de rest van de rollover moet
+      // door. Wel zichtbaar — een straf die niet afgaat, ondermijnt het hele
+      // commitment device (domeinregel 5).
+      console.error(`straffen afwikkelen mislukte voor ${profiel.id}: ${strafFout.message}`);
+    } else {
+      verschuldigd += typeof straffen === 'number' ? straffen : 0;
     }
 
     // ⚠️ `order` staat er om de uitkomst reproduceerbaar te maken. Zonder
@@ -323,6 +364,7 @@ Deno.serve(async (req: Request) => {
       gered,
       overgeslagen,
       vrijgesteld,
+      verschuldigd,
       profielen: (profielen ?? []).length,
       geslapen: geslapen ?? 0,
       risicoBijgewerkt,

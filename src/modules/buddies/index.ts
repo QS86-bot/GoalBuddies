@@ -78,7 +78,7 @@ export {
   reactieSchema,
   voegReactiesSamen,
   voorstelUitDagzetten,
-  VRAGEN,
+  vragen,
   weekafsluitingSchema,
   type Antwoord,
   type AntwoordVeld,
@@ -87,14 +87,14 @@ export {
 } from './weekafsluiting-schemas';
 
 export {
-  BEWIJSEIS_LABELS,
+  bewijseisLabels,
   BEWIJSEISEN,
   CODE_ALFABET,
   CODE_LENGTE,
   codeSchema,
   groepPatchSchema,
   groepSchema,
-  HUDDLEDAGEN,
+  huddledagen,
   huddledagLabel,
   isCodeVorm,
   normaliseerCode,
@@ -104,3 +104,10 @@ export {
   type GroepInvoer,
   type GroepPatch,
 } from './schemas';
+
+export {
+  kentGebeurtenis,
+  oudLid,
+  systeemberichtTekst,
+  type SysteembericthInvoer,
+} from './systeemberichten';

@@ -34,6 +34,7 @@ import { SYSTEEM_GEBEURTENISSEN } from '../../src/modules/buddies/chat-schemas';
 import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
+  createTestProfile,
   createTestUser,
   removeTestUsers,
   rlsTestsConfigured,
@@ -586,6 +587,149 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 7 — chat, systeemberichten, weekafs
         // Eén voor doel A (spoor "vertel me meer"), één voor doel B (spoor
         // "goedkeuren"). Het opnieuw indienen op doel A voegt er níets aan toe.
         expect(regels).toHaveLength(2);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'legt de personen als kolommen vast en niet alleen in de zin — QS8-107, 0059',
+      async () => {
+        // ⚠️ Dit is de reparatie die niet meer kon zodra `chat_messages` gevuld
+        //    raakt met echte gesprekken. Een chatbericht is een onveranderlijke
+        //    kopie (beslisdocument 002 §3), dus een Nederlandse zin in `body` is
+        //    er later niet meer uit te krijgen. Sinds 0059 staat de persoon in
+        //    `subject_id` en maakt de app de zin zelf.
+        const rijen = await adminDb()
+          .from('chat_messages')
+          .select('system_event, subject_id, actor_id, body')
+          .eq('group_id', f.groupId)
+          .eq('type', 'system');
+
+        if (rijen.error) throw new Error(`berichten lezen: ${rijen.error.message}`);
+
+        const perGebeurtenis = new Map(
+          (rijen.data ?? []).map((r) => [r.system_event, r] as const),
+        );
+
+        // Elke gebeurtenis die over een persoon gaat, heeft die persoon als kolom.
+        for (const gebeurtenis of ['member_joined', 'completion_pending', 'completion_approved']) {
+          const rij = perGebeurtenis.get(gebeurtenis);
+          expect(rij, gebeurtenis).toBeDefined();
+          expect(rij?.subject_id, gebeurtenis).not.toBeNull();
+        }
+
+        // En de enige met twee personen heeft ze allebei, in de juiste rol.
+        const goedkeuring = perGebeurtenis.get('completion_approved');
+        expect(goedkeuring?.subject_id).toBe(f.alice.id);
+        expect(goedkeuring?.actor_id).toBe(f.bob.id);
+
+        // `body` blijft gevuld als noodterugval voor rijen van vóór 0059 en voor
+        // een gebeurtenis die de app niet kent.
+        expect((goedkeuring?.body ?? '').length).toBeGreaterThan(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft de namen mee via groepschat(), zodat de app ze niet hoeft op te zoeken',
+      async () => {
+        const { data, error } = await f.bob.db.rpc('groepschat', {
+          p_group_id: f.groupId,
+          p_limit: 50,
+        });
+
+        if (error) throw new Error(`groepschat: ${error.message}`);
+
+        const rijen = (data ?? []) as readonly {
+          system_event: string | null;
+          subject_name: string | null;
+          actor_name: string | null;
+        }[];
+
+        const goedkeuring = rijen.find((r) => r.system_event === 'completion_approved');
+        expect(goedkeuring).toBeDefined();
+        expect(goedkeuring?.subject_name).toBeTruthy();
+        expect(goedkeuring?.actor_name).toBeTruthy();
+
+        // Een mensbericht heeft geen onderwerp — die kolommen zijn er alleen voor
+        // systeemberichten.
+        const mens = rijen.find((r) => r.system_event === null);
+        expect(mens).toBeDefined();
+        expect(mens?.subject_name).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een lid geen subject_id op zijn eigen bericht zetten',
+      async () => {
+        // ⚠️ Een kolomgrant en geen policy: RLS kan geen kolommen beperken. Dit
+        //    plaatst geen systeembericht — de policy verbiedt `type = 'system'` —
+        //    maar het zou wél een verwijzing naar iemand anders zetten in een rij
+        //    die je zelf beheert, en dat is het soort halve deur dat later een
+        //    hele blijkt.
+        const poging = await f.bob.db.from('chat_messages').insert({
+          group_id: f.groupId,
+          sender_id: f.bob.id,
+          body: 'gewoon een bericht',
+          type: 'text',
+          subject_id: f.alice.id,
+        });
+
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een systeembericht zijn onderwerp loslaten als dat account verdwijnt',
+      async () => {
+        // ⚠️ Migratie 0060, nazorg op 0059, en het is de derde keer dat deze
+        //    bugklasse opduikt — WERKVOORRAAD §8 punt 8 beschrijft hem sinds 0033.
+        //    Een referentiële actie is zelf een UPDATE op de kindtabel; zet een
+        //    BEFORE UPDATE-trigger de kolom terug naar `old`, dan draait hij die
+        //    actie in dezelfde bewerking terug. 0059 deed dat voor `subject_id`,
+        //    en toen faalde de hele DELETE op de foreign key: `verwijder_mijn_account()`
+        //    viel om zodra je in één systeembericht genoemd werd.
+        //
+        // ⚠️ **Deze suite zou dat niet gevangen hebben** en dat is de reden dat
+        //    deze test hier staat. `removeTestUsers()` gooit eerst de groepen weg,
+        //    en dan zijn de systeemberichten al mee gecascadeerd voordat het
+        //    profiel aan de beurt is. De opruiming verbergt de bug.
+        const admin = adminDb();
+        const tijdelijk = await createTestProfile('e7-vertrekker');
+
+        const lid = await admin
+          .from('group_members')
+          .insert({ group_id: f.groupId, user_id: tijdelijk.id, role: 'member', status: 'active' });
+        if (lid.error) throw new Error(`lid maken: ${lid.error.message}`);
+
+        // meld_nieuw_lid() heeft nu een member_joined geplaatst met hem als onderwerp.
+        const bericht = await admin
+          .from('chat_messages')
+          .select('id, subject_id')
+          .eq('group_id', f.groupId)
+          .eq('subject_id', tijdelijk.id)
+          .single();
+
+        if (bericht.error || bericht.data === null) {
+          throw new Error(`systeembericht niet gevonden: ${bericht.error?.message}`);
+        }
+
+        // Het account opzeggen. Dit is de handeling die vóór 0060 omviel.
+        const weg = await admin.auth.admin.deleteUser(tijdelijk.id);
+        expect(weg.error, 'account verwijderen mag niet stuklopen op een systeembericht').toBeNull();
+
+        // De regel blijft staan — een gesprek verliest zijn geschiedenis niet —
+        // maar de persoon is losgelaten, en de app toont "Een oud-lid".
+        const na = await admin
+          .from('chat_messages')
+          .select('id, subject_id')
+          .eq('id', bericht.data.id)
+          .single();
+
+        expect(na.data?.subject_id, 'subject_id hoort leeg te lopen, niet teruggezet te worden')
+          .toBeNull();
       },
       TEST_TIMEOUT,
     );

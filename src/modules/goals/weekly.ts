@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -41,7 +43,7 @@ export async function fetchWeekdoelen(
 
   if (error) {
     reportError(error, 'weekly.list', { user_id: userId, code: error.code });
-    throw new Error('Je weekdoelen konden niet geladen worden.');
+    throw new Error(t('weekdoel.laden_mislukt'));
   }
 
   return (data ?? []) as unknown as Weekdoel[];
@@ -81,7 +83,7 @@ export async function fetchDoorschuifbaar(
 
   if (error) {
     reportError(error, 'weekly.carryable', { user_id: userId, code: error.code });
-    throw new Error('Je openstaande weken konden niet geladen worden.');
+    throw new Error(t('weekdoel.open_laden'));
   }
 
   return (data ?? []) as unknown as Weekdoel[];
@@ -115,7 +117,7 @@ export async function fetchMijlpalen(goalId: string): Promise<readonly Mijlpaal[
 
   if (error) {
     reportError(error, 'goals.milestones', { goal_id: goalId, code: error.code });
-    throw new Error('De mijlpalen konden niet geladen worden.');
+    throw new Error(t('weekdoel.mijlpalen_laden'));
   }
 
   return data ?? [];
@@ -174,7 +176,7 @@ export async function maakWeekdoel(
 ): Promise<Resultaat<Weekdoel>> {
   const gevalideerd = weekdoelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
   }
 
   const cyclus = huidigeCyclus(klok);
@@ -196,7 +198,7 @@ export async function maakWeekdoel(
 
   if (error) {
     reportError(error, 'weekly.create', { goal_id: gevalideerd.data.goal_id, code: error.code });
-    return { ok: false, melding: 'Je weekdoel kon niet worden opgeslagen.' };
+    return { ok: false, melding: t('weekdoel.opslaan_mislukt') };
   }
 
   return { ok: true, waarde: data };
@@ -223,7 +225,7 @@ export async function verwijderWeekdoel(id: string): Promise<Resultaat<true>> {
 
   if (error) {
     reportError(error, 'weekly.delete', { code: error.code });
-    return { ok: false, melding: 'Verwijderen lukte niet.' };
+    return { ok: false, melding: t('weekdoel.verwijderen_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -237,13 +239,13 @@ export async function verwijderWeekdoel(id: string): Promise<Resultaat<true>> {
 function verwijderMelding(reden: string | undefined): string {
   switch (reden) {
     case 'te_oud':
-      return 'Dit weekdoel staat er te lang om nog te verwijderen. Je kunt hem wel afsluiten — dan telt de week als gemist.';
+      return t('weekdoel.te_oud');
     case 'not_open':
-      return 'Er is al iets met dit weekdoel gebeurd, dus verwijderen kan niet meer.';
+      return t('weekdoel.al_gebeurd');
     case 'heeft_voltooiing':
-      return 'Je hebt hier al iets voor ingediend. Verwijderen kan dan niet meer.';
+      return t('weekdoel.al_ingediend');
     default:
-      return 'Verwijderen lukte niet.';
+      return t('weekdoel.verwijderen_mislukt');
   }
 }
 
@@ -268,7 +270,7 @@ export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
 
   if (error) {
     reportError(error, 'weekly.cancel', { code: error.code });
-    return { ok: false, melding: 'Afsluiten lukte niet.' };
+    return { ok: false, melding: t('weekdoel.afsluiten_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -277,8 +279,8 @@ export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
       ok: false,
       melding:
         uitkomst.reason === 'not_open'
-          ? 'Deze week staat niet meer open. Alleen een weekdoel waar nog niets mee gebeurd is, kun je afsluiten.'
-          : 'Afsluiten lukte niet.',
+          ? t('weekdoel.niet_meer_open')
+          : t('weekdoel.afsluiten_mislukt'),
     };
   }
 
@@ -310,7 +312,7 @@ export async function schuifDoor(
 
   if (markeerFout) {
     reportError(markeerFout, 'weekly.carry', { pgcode: markeerFout.code });
-    return { ok: false, melding: 'Doorschuiven lukte niet.' };
+    return { ok: false, melding: t('weekdoel.doorschuiven_mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -323,8 +325,8 @@ export async function schuifDoor(
         //    staan: dode foutafhandeling suggereert dat een geval nog kan
         //    optreden, en dan gaat de volgende lezer ernaar zoeken.
         uitkomst.reason === 'not_missed'
-          ? 'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.'
-          : 'Doorschuiven lukte niet.',
+          ? t('weekdoel.nog_niet_afgesloten')
+          : t('weekdoel.doorschuiven_mislukt'),
     };
   }
 

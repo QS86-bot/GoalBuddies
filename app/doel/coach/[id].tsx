@@ -17,7 +17,7 @@ import {
   fetchDoel,
   fetchInterview,
   heeftAntwoorden,
-  INTERVIEW_STAPPEN,
+  interviewStappen,
   LEEG_INTERVIEW,
   maakMijlpaal,
   type DoelMetVoortgang,
@@ -178,7 +178,7 @@ function Interview({
 
   return (
     <Card>
-      {INTERVIEW_STAPPEN.map((stap) => {
+      {interviewStappen().map((stap) => {
         const waarde = antwoorden[stap.veld];
 
         // ⚠️ Vraag 4 is een getal en de rest tekst. Dat verschil is er niet voor

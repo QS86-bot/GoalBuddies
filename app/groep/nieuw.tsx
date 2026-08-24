@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
-import { HUDDLEDAGEN, maakGroep } from '@/modules/buddies';
+import { huddledagen, maakGroep } from '@/modules/buddies';
 import type { Weekday } from '@/shared/time';
 import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
 
@@ -61,7 +61,7 @@ export default function NieuweGroep() {
             'het groepsoverzicht — niet wanneer jouw eigen weekdoelen resetten, want dat ' +
             'blijft je persoonlijke week-startdag.'
           }
-          opties={HUDDLEDAGEN.map((d) => ({ waarde: d.waarde, label: d.label }))}
+          opties={huddledagen().map((d) => ({ waarde: d.waarde, label: d.label }))}
           waarde={huddledag}
           onKies={setHuddledag}
         />

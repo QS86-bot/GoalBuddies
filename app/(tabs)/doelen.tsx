@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
 import {
-  CATEGORIE_LABELS,
+  categorieLabels,
   fetchDoelen,
   fetchRisicos,
   type Categorie,
@@ -155,7 +155,7 @@ function DoelKaart({
 }) {
   const theme = useTheme();
 
-  const categorie = CATEGORIE_LABELS[(doel.category ?? 'other') as Categorie];
+  const categorie = categorieLabels()[(doel.category ?? 'other') as Categorie];
   const verstreken = vandaag !== null && doel.target_date !== null && doel.target_date < vandaag;
 
   return (

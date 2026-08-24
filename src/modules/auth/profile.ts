@@ -1,3 +1,5 @@
+import { t } from '../../shared/i18n';
+
 import type { Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -25,7 +27,7 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
 
   if (error) {
     reportError(error, 'profile.fetch', { user_id: userId, code: error.code });
-    throw new Error('Je profiel kon niet geladen worden.');
+    throw new Error(t('profiel.laden_mislukt'));
   }
 
   return data;
@@ -39,7 +41,7 @@ export async function updateProfiel(
 ): Promise<ProfielUitkomst> {
   const gevalideerd = profielPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('auth.fout.invoer') };
   }
 
   // ⚠️ Veld voor veld, en niet `update(gevalideerd.data)`. Zod maakt van een
@@ -67,7 +69,7 @@ export async function updateProfiel(
 
   if (error) {
     reportError(error, 'profile.update', { user_id: userId, code: error.code });
-    return { ok: false, melding: 'Opslaan lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
   return { ok: true, profiel: data };
@@ -97,7 +99,7 @@ export async function rondOnboardingAf(
 
   if (error) {
     reportError(error, 'profile.onboarded', { user_id: userId, code: error.code });
-    return { ok: false, melding: 'Opslaan lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
   return { ok: true, profiel: data };

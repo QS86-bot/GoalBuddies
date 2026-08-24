@@ -229,36 +229,52 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          actor_id: string | null
           attachment_url: string | null
           body: string | null
           created_at: string
           group_id: string
           id: string
+          payload: Json | null
           sender_id: string | null
+          subject_id: string | null
           system_event: string | null
           type: string
         }
         Insert: {
+          actor_id?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
           group_id: string
           id?: string
+          payload?: Json | null
           sender_id?: string | null
+          subject_id?: string | null
           system_event?: string | null
           type?: string
         }
         Update: {
+          actor_id?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
           group_id?: string
           id?: string
+          payload?: Json | null
           sender_id?: string | null
+          subject_id?: string | null
           system_event?: string | null
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_group_id_fkey"
             columns: ["group_id"]
@@ -269,6 +285,13 @@ export type Database = {
           {
             foreignKeyName: "chat_messages_sender_id_fkey"
             columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_subject_id_fkey"
+            columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1135,6 +1158,7 @@ export type Database = {
           created_at: string
           display_name: string
           id: string
+          locale: string | null
           onboarded_at: string | null
           reminder_enabled: boolean
           reminder_time: string | null
@@ -1150,6 +1174,7 @@ export type Database = {
           created_at?: string
           display_name: string
           id: string
+          locale?: string | null
           onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
@@ -1165,6 +1190,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           id?: string
+          locale?: string | null
           onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
@@ -1575,6 +1601,18 @@ export type Database = {
       }
     }
     Functions: {
+      ai_dag_limiet: { Args: never; Returns: number }
+      ai_kosten_per_week: {
+        Args: { p_weken?: number }
+        Returns: {
+          gebruikers: number
+          invoertokens: number
+          jobs: number
+          kosten_cent: number
+          uitvoertokens: number
+          week_start: string
+        }[]
+      }
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
       bedenktijd: { Args: never; Returns: string }
@@ -1603,12 +1641,17 @@ export type Database = {
           p_limit?: number
         }
         Returns: {
+          actor_id: string
+          actor_name: string
           body: string
           created_at: string
           id: string
+          payload: Json
           sender_avatar: string
           sender_id: string
           sender_name: string
+          subject_id: string
+          subject_name: string
           system_event: string
           type: string
         }[]
@@ -1662,6 +1705,10 @@ export type Database = {
         Args: { p_group_id: string; p_period_start: string }
         Returns: Json
       }
+      maak_straffen_verschuldigd: {
+        Args: { p_owner_id: string; p_vandaag: string }
+        Returns: number
+      }
       markeer_doorgeschoven: {
         Args: { p_weekly_goal_id: string }
         Returns: Json
@@ -1686,11 +1733,25 @@ export type Database = {
         }[]
       }
       plaats_systeembericht: {
-        Args: { p_body: string; p_event: string; p_group_id: string }
+        Args: {
+          p_actor_id?: string
+          p_body: string
+          p_event: string
+          p_group_id: string
+          p_payload?: Json
+          p_subject_id?: string
+        }
         Returns: undefined
       }
       plaats_systeembericht_in_doelgroepen: {
-        Args: { p_body: string; p_event: string; p_goal_id: string }
+        Args: {
+          p_actor_id?: string
+          p_body: string
+          p_event: string
+          p_goal_id: string
+          p_payload?: Json
+          p_subject_id?: string
+        }
         Returns: undefined
       }
       plan_adempauze: {
@@ -1718,6 +1779,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
@@ -1822,6 +1884,7 @@ export type Database = {
         }[]
       }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
+      wikkel_commitments_af: { Args: { p_goal_id: string }; Returns: Json }
       zet_doelstatus: {
         Args: { p_gearchiveerd: boolean; p_goal_id: string }
         Returns: Json

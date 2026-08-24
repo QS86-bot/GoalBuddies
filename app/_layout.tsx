@@ -10,7 +10,13 @@ import {
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
-import { maakWebPushBron, registreerPushToken, zetPushBron } from '@/modules/notifications';
+import {
+  expoPush,
+  maakWebPushBron,
+  registreerPushToken,
+  zetPushBron,
+} from '@/modules/notifications';
+import { apparaatVoorkeuren, taalUitApparaat, zetTaal } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -65,28 +71,40 @@ function Shell() {
  *    Op een gedeeld apparaat is dat precies goed: zonder dit blijft de vorige
  *    gebruiker meldingen krijgen op een telefoon waar hij niet meer op zit.
  *
- * ⚠️ **Op web doet dit sinds QS8-124 wél iets**: `maakWebPushBron()` leest het
- *    bestaande pushabonnement en registreert het. Hij vraagt niets en maakt
- *    niets aan — aanzetten gebeurt achter een klik op het profielscherm. Bij het
- *    opstarten toestemming vragen kost je het kanaal permanent, want een
- *    weggeklikte prompt zet `Notification.permission` op `denied`.
+ * ⚠️ **De bron wordt één keer gezet, buiten de component.** Niet in een
+ *    `useEffect`, want het is een registratie en geen neveneffect van renderen.
+ *    Dit leest als wat het is: de app kiest bij het opstarten zijn pushbron.
  *
- * ⚠️ **Op native doet dit nog steeds niets**, en dat is bekend.
- *    `expo-notifications` staat niet in `package.json` — een dependency vraagt
- *    eerst toestemming (Q-TODO B4) — dus `geenPush` geeft daar `null` terug. De
- *    rest van de keten (tabel, job, workflow) staat wél; zodra de bibliotheek er
- *    mag komen is het één `zetPushBron(...)` erbij.
+ * ⚠️ **Twee bronnen, één interface — precies waar `tokens.ts` op ontworpen was.**
+ *    Op web `maakWebPushBron()` (QS8-124), op native `expoPush` (Q-TODO B4,
+ *    toestemming van Quinten op 21-08-2026). Eén regel, en verder niets: geen
+ *    scherm, geen datalaag, geen Edge Function.
+ *
+ * ⚠️ `maakWebPushBron()` **vraagt niets en maakt niets aan** — hij leest een
+ *    bestaand abonnement. Aanzetten gebeurt achter een klik op het
+ *    profielscherm. Bij het opstarten toestemming vragen kost je het kanaal
+ *    permanent, want een weggeklikte prompt zet `Notification.permission` op
+ *    `denied`. Hij raakt hier bovendien niets aan en geeft alleen een object met
+ *    een async functie terug, dus dit is ook veilig tijdens de statische export,
+ *    waar geen `navigator` bestaat.
+ *
+ * ⚠️ Op een echt toestel komt er nog steeds niets binnen: daarvoor is een
+ *    EAS-project met FCM- en APNs-sleutels nodig, en dat zit in de build en niet
+ *    in de server. `expoPush` geeft dan `null` met een reden in het logboek in
+ *    plaats van een fout die op een netwerkprobleem lijkt. Zie `docs/DEPLOY.md`.
  */
+zetPushBron(Platform.OS === 'web' ? maakWebPushBron() : expoPush);
+
+// ⚠️ De taal van het apparaat als startwaarde — QS8-113. Zodra het profiel
+//    geladen is en er een keuze in staat, wint die (zie `ProfielProvider`).
+//    Buiten de component en niet in een effect: dit moet vaststaan vóórdat het
+//    eerste scherm rendert, anders flitst er een Nederlandse regel voorbij bij
+//    iemand die Engels heeft ingesteld.
+zetTaal(taalUitApparaat(apparaatVoorkeuren()));
+
 function Pushwacht() {
   const { session } = useSession();
   const userId = session?.user.id ?? null;
-
-  useEffect(() => {
-    // ⚠️ Eén keer, en vóór het registreren. `zetPushBron` is een zetter op
-    //    moduleniveau; hem bij elke sessiewissel opnieuw aanroepen zou werken,
-    //    maar het verbergt dat dit een eenmalige bedrading is.
-    if (Platform.OS === 'web') zetPushBron(maakWebPushBron());
-  }, []);
 
   useEffect(() => {
     if (userId === null) return;

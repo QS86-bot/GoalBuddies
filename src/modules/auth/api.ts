@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { t } from '../../shared/i18n';
+
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 
@@ -35,24 +37,24 @@ function vertaal(melding: string): { melding: string; veld?: 'email' | 'wachtwoo
   if (m.includes('invalid login credentials')) {
     // ⚠️ Eén melding voor "onbekend adres" én "verkeerd wachtwoord". Twee aparte
     //    meldingen vertellen een aanvaller welke adressen een account hebben.
-    return { melding: 'Dit e-mailadres en wachtwoord horen niet bij elkaar.' };
+    return { melding: t('auth.fout.ongeldig') };
   }
   if (m.includes('already registered') || m.includes('already been registered')) {
-    return { melding: 'Er bestaat al een account met dit adres. Log in of herstel je wachtwoord.', veld: 'email' };
+    return { melding: t('auth.fout.bestaat_al'), veld: 'email' };
   }
   if (m.includes('email not confirmed')) {
-    return { melding: 'Bevestig eerst je e-mailadres. Check je inbox.', veld: 'email' };
+    return { melding: t('auth.fout.niet_bevestigd'), veld: 'email' };
   }
   if (m.includes('rate limit') || m.includes('too many')) {
-    return { melding: 'Te veel pogingen. Wacht even en probeer het opnieuw.' };
+    return { melding: t('auth.fout.te_vaak') };
   }
   if (m.includes('password')) {
-    return { melding: 'Dit wachtwoord voldoet niet. Gebruik een langere zin.', veld: 'wachtwoord' };
+    return { melding: t('auth.fout.zwak_wachtwoord'), veld: 'wachtwoord' };
   }
   if (m.includes('network') || m.includes('fetch')) {
-    return { melding: 'Geen verbinding. Controleer je internet en probeer opnieuw.' };
+    return { melding: t('auth.fout.geen_verbinding') };
   }
-  return { melding: 'Er ging iets mis. Probeer het opnieuw.' };
+  return { melding: t('auth.fout.algemeen') };
 }
 
 export async function signUpWithEmail(invoer: AanmeldenInvoer): Promise<Uitkomst> {
@@ -61,7 +63,7 @@ export async function signUpWithEmail(invoer: AanmeldenInvoer): Promise<Uitkomst
     const eerste = gevalideerd.error.issues[0];
     return {
       ok: false,
-      melding: eerste?.message ?? 'Controleer je invoer.',
+      melding: eerste?.message ?? t('auth.fout.invoer'),
       ...(eerste?.path[0] === 'email' ? { veld: 'email' as const } : {}),
       ...(eerste?.path[0] === 'wachtwoord' ? { veld: 'wachtwoord' as const } : {}),
     };
@@ -87,7 +89,7 @@ export async function signUpWithEmail(invoer: AanmeldenInvoer): Promise<Uitkomst
 export async function signInWithEmail(invoer: InloggenInvoer): Promise<Uitkomst> {
   const gevalideerd = inloggenSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('auth.fout.invoer') };
   }
 
   const { error } = await supabase().auth.signInWithPassword({
@@ -107,18 +109,27 @@ export async function signOut(): Promise<Uitkomst> {
   const { error } = await supabase().auth.signOut();
   if (error) {
     reportError(error, 'auth.signOut', { code: error.code ?? 'onbekend' });
-    return { ok: false, melding: 'Uitloggen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('auth.fout.uitloggen') };
   }
   return { ok: true };
 }
 
-const VERWIJDER_MELDING: Readonly<Record<string, string>> = {
-  not_signed_in: 'Je sessie is verlopen. Log opnieuw in en probeer het dan.',
-  last_admin:
-    'Je bent de enige beheerder van een groep waar nog anderen in zitten. Maak ' +
-    'eerst iemand anders beheerder — anders blijft die groep achter zonder dat ' +
-    'iemand hem kan beheren.',
-};
+/**
+ * ⚠️ **Een functie en geen constante** — QS8-115. Een `const` met `t()` erin
+ *    wordt één keer bij het importeren opgebouwd, en dat is vóórdat het profiel
+ *    geladen is. De taal staat dan vast op de apparaattaal, ook nadat de
+ *    gebruiker een andere heeft gekozen. Zelfde val als bij `BEVESTIGING` in
+ *    `shared/ui`, en de reden dat elke meldingentabel in dit project een functie
+ *    hoort te zijn.
+ */
+function verwijderMelding(reden: string | undefined): string {
+  const tabel: Readonly<Record<string, string>> = {
+    not_signed_in: t('auth.verwijder.verlopen'),
+    last_admin: t('auth.verwijder.enige_beheerder'),
+  };
+
+  return tabel[reden ?? ''] ?? t('auth.verwijder.mislukt_kort');
+}
 
 /**
  * Verwijdert het eigen account — Q-TODO A3, en een AVG-verplichting.
@@ -145,7 +156,7 @@ export async function verwijderMijnAccount(): Promise<Uitkomst> {
 
   if (error) {
     reportError(error, 'auth.deleteAccount', { code: error.code ?? 'onbekend' });
-    return { ok: false, melding: 'Je account verwijderen lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('auth.verwijder.mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -153,7 +164,7 @@ export async function verwijderMijnAccount(): Promise<Uitkomst> {
   if (uitkomst.ok !== true) {
     return {
       ok: false,
-      melding: VERWIJDER_MELDING[uitkomst.reason ?? ''] ?? 'Je account verwijderen lukte niet.',
+      melding: verwijderMelding(uitkomst.reason),
     };
   }
 
@@ -181,7 +192,7 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<Uitkomst
   if (Platform.OS !== 'web') {
     return {
       ok: false,
-      melding: 'Inloggen met Apple of Google werkt nu alleen in de browser. Gebruik voorlopig je e-mailadres.',
+      melding: t('auth.oauth.alleen_browser'),
     };
   }
 
@@ -189,7 +200,7 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<Uitkomst
 
   if (error) {
     reportError(error, 'auth.oauth', { name: provider, code: error.code ?? 'onbekend' });
-    return { ok: false, melding: 'Inloggen via deze aanbieder lukte niet. Probeer je e-mailadres.' };
+    return { ok: false, melding: t('auth.oauth.mislukt') };
   }
 
   return { ok: true };

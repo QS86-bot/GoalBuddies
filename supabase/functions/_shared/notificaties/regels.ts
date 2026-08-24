@@ -99,6 +99,35 @@ export function nudgeReden(s: NudgeSituatie): string | null {
   return null;
 }
 
+/**
+ * De taal waarin een melding geschreven wordt.
+ *
+ * ⚠️ **Deze module gebruikt bewust níét `shared/i18n`,** en dat is geen
+ *    inconsistentie maar de enige juiste vorm hier. Twee redenen:
+ *
+ *    1. **Dit bestand wordt naar de Edge Function gekopieerd** (`npm run
+ *       edge:sync`). Een import uit `shared/i18n` zou daar niet oplossen — de
+ *       sync zet alleen extensies op imports binnen dezelfde map.
+ *
+ *    2. **Belangrijker: de taal is hier per óntvanger en niet per proces.**
+ *       `shared/i18n` houdt één taal vast voor de hele app, en dat klopt op een
+ *       telefoon met één gebruiker. De meldingenjob loopt over álle profielen;
+ *       een procesbrede taal zou daar betekenen dat iedereen de taal krijgt van
+ *       degene die toevallig als laatste is ingesteld. Die fout is bovendien
+ *       onzichtbaar: er staat gewoon een melding, alleen in de verkeerde taal.
+ *
+ *    Vandaar een parameter en geen globale stand. De aanroeper geeft
+ *    `profiles.locale` mee.
+ */
+export type Taalcode = 'nl' | 'en';
+
+/** Wat er in een taal staat die deze module niet kent. */
+const STANDAARDTAALCODE: Taalcode = 'nl';
+
+function kies<T>(tabel: Readonly<Record<Taalcode, T>>, taal: Taalcode | null | undefined): T {
+  return taal === 'en' ? tabel.en : tabel[STANDAARDTAALCODE];
+}
+
 export interface Bericht {
   readonly titel: string;
   /** De tekst onder de titel. */
@@ -122,20 +151,32 @@ export interface Bericht {
  *    Dat is een tegenslagsignaal, en ook in een privémelding is het de toon die
  *    bepaalt of iemand de app openmaakt of wegdrukt.
  */
-export function nudgeBericht(toon: Toon): Bericht {
-  if (toon === 'firm') {
-    return {
+const NUDGE: Readonly<Record<Taalcode, Readonly<Record<Toon, { titel: string; body: string }>>>> = {
+  nl: {
+    firm: {
       titel: 'Nog even je week',
       body: 'Er staat nog een weekdoel open. Eén kleine zet telt ook.',
-      pad: '/',
-    };
-  }
+    },
+    gentle: {
+      titel: 'Hoe gaat het met je week?',
+      body: 'Je weekdoel staat nog open. De vloer halen telt volledig mee.',
+    },
+  },
+  en: {
+    firm: {
+      titel: 'About your week',
+      body: 'A weekly goal is still open. One small move counts too.',
+    },
+    gentle: {
+      titel: 'How is your week going?',
+      body: 'Your weekly goal is still open. Reaching the floor counts in full.',
+    },
+  },
+};
 
-  return {
-    titel: 'Hoe gaat het met je week?',
-    body: 'Je weekdoel staat nog open. De vloer halen telt volledig mee.',
-    pad: '/',
-  };
+export function nudgeBericht(toon: Toon, taal?: Taalcode | null): Bericht {
+  const tekst = kies(NUDGE, taal)[toon];
+  return { titel: tekst.titel, body: tekst.body, pad: '/' };
 }
 
 /**
@@ -147,36 +188,72 @@ export function nudgeBericht(toon: Toon): Bericht {
  *    en een pushmelding staat bovendien op een vergrendeld scherm dat iemand
  *    anders kan meelezen. De doeltitel hoort daar niet.
  */
+interface SoortTekst {
+  readonly titel: string;
+  /** Met de naam van de ander erin. */
+  readonly metNaam: (naam: string) => string;
+  /** Zonder naam — het profiel was niet leesbaar of is verwijderd. */
+  readonly zonderNaam: string;
+  readonly pad: string;
+}
+
+const SOORTEN: Readonly<
+  Record<Taalcode, Readonly<Record<Exclude<Melding, 'nudge'>, SoortTekst>>>
+> = {
+  nl: {
+    approval_request: {
+      titel: 'Een buddy wacht op je',
+      metNaam: (naam) => `${naam} heeft een week ingediend en wacht op jouw oordeel.`,
+      zonderNaam: 'Er wacht een week op jouw oordeel.',
+      pad: '/beoordelen',
+    },
+    approval_received: {
+      titel: 'Je week is bevestigd',
+      metNaam: (naam) => `${naam} heeft je week goedgekeurd. Die telt.`,
+      zonderNaam: 'Een buddy heeft je week goedgekeurd. Die telt.',
+      pad: '/',
+    },
+    cycle_summary: {
+      titel: 'Je week is afgelopen',
+      metNaam: () => 'Kijk terug op wat er gelukt is en zet je doelen voor de nieuwe week.',
+      zonderNaam: 'Kijk terug op wat er gelukt is en zet je doelen voor de nieuwe week.',
+      pad: '/',
+    },
+  },
+  en: {
+    approval_request: {
+      titel: 'A buddy is waiting on you',
+      metNaam: (naam) => `${naam} submitted a week and is waiting for your call.`,
+      zonderNaam: 'A week is waiting for your call.',
+      pad: '/beoordelen',
+    },
+    approval_received: {
+      titel: 'Your week is confirmed',
+      metNaam: (naam) => `${naam} approved your week. It counts.`,
+      zonderNaam: 'A buddy approved your week. It counts.',
+      pad: '/',
+    },
+    cycle_summary: {
+      titel: 'Your week has ended',
+      metNaam: () => 'Look back at what worked and set your goals for the new week.',
+      zonderNaam: 'Look back at what worked and set your goals for the new week.',
+      pad: '/',
+    },
+  },
+};
+
 export function berichtVoor(
   soort: Exclude<Melding, 'nudge'>,
   input: { readonly naam?: string; readonly groepId?: string },
+  taal?: Taalcode | null,
 ): Bericht {
-  switch (soort) {
-    case 'approval_request':
-      return {
-        titel: 'Een buddy wacht op je',
-        body: input.naam
-          ? `${input.naam} heeft een week ingediend en wacht op jouw oordeel.`
-          : 'Er wacht een week op jouw oordeel.',
-        pad: '/beoordelen',
-      };
+  const tekst = kies(SOORTEN, taal)[soort];
 
-    case 'approval_received':
-      return {
-        titel: 'Je week is bevestigd',
-        body: input.naam
-          ? `${input.naam} heeft je week goedgekeurd. Die telt.`
-          : 'Een buddy heeft je week goedgekeurd. Die telt.',
-        pad: '/',
-      };
-
-    case 'cycle_summary':
-      return {
-        titel: 'Je week is afgelopen',
-        body: 'Kijk terug op wat er gelukt is en zet je doelen voor de nieuwe week.',
-        pad: '/',
-      };
-  }
+  return {
+    titel: tekst.titel,
+    body: input.naam ? tekst.metNaam(input.naam) : tekst.zonderNaam,
+    pad: tekst.pad,
+  };
 }
 
 /**

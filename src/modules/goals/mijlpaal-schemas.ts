@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 /**
  * De regels van een mijlpaal, zonder Supabase en zonder React Native — QS8-39.
  *
@@ -17,9 +19,9 @@ export const mijlpaalSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(3, { error: 'Geef je mijlpaal een naam.' })
+    .min(3, { error: () => t('validatie.mijlpaaltitel') })
     .max(MIJLPAAL_TITEL_MAX, { error: `Maximaal ${MIJLPAAL_TITEL_MAX} tekens.` }),
-  description: z.string().trim().max(2000, { error: 'Maximaal 2000 tekens.' }).nullable(),
+  description: z.string().trim().max(2000, { error: () => t('validatie.omschrijving_lang') }).nullable(),
   target_date: z.string().nullable(),
 });
 

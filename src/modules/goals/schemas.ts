@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
 
 /**
@@ -14,11 +16,14 @@ import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
 export const CATEGORIEEN = ['business', 'study', 'other'] as const;
 export type Categorie = (typeof CATEGORIEEN)[number];
 
-export const CATEGORIE_LABELS: Readonly<Record<Categorie, string>> = {
-  business: 'Werk',
-  study: 'Studie',
-  other: 'Overig',
-};
+/** Zie de andere meldingentabellen: een functie, want de taal ligt niet vast op importtijd. */
+export function categorieLabels(): Readonly<Record<Categorie, string>> {
+  return {
+    business: t('categorie.business'),
+    study: t('categorie.study'),
+    other: t('categorie.other'),
+  };
+}
 
 /**
  * ⚠️ Geëxporteerd sinds de deadline-verzoeken van A7. Die hadden hun eigen veld
@@ -31,15 +36,15 @@ export const CATEGORIE_LABELS: Readonly<Record<Categorie, string>> = {
 export const isoDatum = z
   .string()
   .trim()
-  .refine(isGeldigeIsoDatum, { error: 'Gebruik een bestaande datum als 2026-12-31.' });
+  .refine(isGeldigeIsoDatum, { error: () => t('validatie.datum_vorm') });
 
 export const doelSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(3, { error: 'Geef je doel een naam van minstens drie tekens.' })
-    .max(200, { error: 'Maximaal 200 tekens.' }),
-  description: z.string().trim().max(2000, { error: 'Maximaal 2000 tekens.' }).nullable(),
+    .min(3, { error: () => t('validatie.doeltitel_kort') })
+    .max(200, { error: () => t('validatie.doeltitel_lang') }),
+  description: z.string().trim().max(2000, { error: () => t('validatie.omschrijving_lang') }).nullable(),
   category: z.enum(CATEGORIEEN),
   target_date: isoDatum,
   /**
@@ -50,12 +55,12 @@ export const doelSchema = z.object({
   identity_statement: z
     .string()
     .trim()
-    .max(200, { error: 'Hou het kort — één zin werkt het best.' })
+    .max(200, { error: () => t('validatie.identiteit_lang') })
     .nullable(),
   available_hours_per_week: z
     .number()
     .min(0)
-    .max(168, { error: 'Een week heeft 168 uur.' })
+    .max(168, { error: () => t('validatie.uren_max') })
     .nullable(),
 });
 

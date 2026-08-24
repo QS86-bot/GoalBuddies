@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { t } from '../../shared/i18n';
+
 /**
  * De invoer van een weekdoel.
  *
@@ -11,14 +13,14 @@ import { z } from 'zod';
  */
 
 export const weekdoelSchema = z.object({
-  goal_id: z.uuid({ error: 'Kies een doel.' }),
+  goal_id: z.uuid({ error: () => t('validatie.kies_doel') }),
   /** Hangt het weekdoel onder een mijlpaal, of los onder het hoofddoel? */
   milestone_id: z.uuid().nullable(),
   title: z
     .string()
     .trim()
-    .min(3, { error: 'Wat wil je deze week af hebben?' })
-    .max(200, { error: 'Maximaal 200 tekens.' }),
+    .min(3, { error: () => t('validatie.weekdoeltitel') })
+    .max(200, { error: () => t('validatie.weekdoeltitel_lang') }),
   /**
    * De vloer — QS8-44, de belangrijkste import uit Habit Huddle.
    *
@@ -26,8 +28,8 @@ export const weekdoelSchema = z.object({
    *    ingevulde onzin op, en dan is de vloer een formulierveld in plaats van
    *    een vangnet. De UI moedigt hem wél actief aan.
    */
-  floor_text: z.string().trim().max(200, { error: 'Hou het kort.' }).nullable(),
-  ceiling_text: z.string().trim().max(200, { error: 'Hou het kort.' }).nullable(),
+  floor_text: z.string().trim().max(200, { error: () => t('validatie.vloer_plafond_kort') }).nullable(),
+  ceiling_text: z.string().trim().max(200, { error: () => t('validatie.vloer_plafond_kort') }).nullable(),
 });
 
 export type WeekdoelInvoer = z.infer<typeof weekdoelSchema>;
@@ -40,7 +42,7 @@ export type WeekdoelInvoer = z.infer<typeof weekdoelSchema>;
  */
 export const afrondSchema = z.object({
   achieved_level: z.enum(['floor', 'ceiling']),
-  note: z.string().trim().max(2000, { error: 'Maximaal 2000 tekens.' }).nullable(),
+  note: z.string().trim().max(2000, { error: () => t('validatie.omschrijving_lang') }).nullable(),
 });
 
 export type AfrondInvoer = z.infer<typeof afrondSchema>;

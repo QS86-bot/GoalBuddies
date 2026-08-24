@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { t } from '../../shared/i18n';
 
 /**
  * De invoerregels van een afronding en van de Dagzet — QS8-121.
@@ -17,7 +18,7 @@ import { z } from 'zod';
 
 export const afrondSchema = z.object({
   achieved_level: z.enum(['floor', 'ceiling']),
-  note: z.string().trim().max(2000, { error: 'Maximaal 2000 tekens.' }).nullable(),
+  note: z.string().trim().max(2000, { error: () => t('validatie.notitie_lang') }).nullable(),
 });
 
 export type AfrondInvoer = z.infer<typeof afrondSchema>;
@@ -26,8 +27,8 @@ export const dagzetSchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, { error: 'Eén regel is genoeg, maar leeg kan niet.' })
-    .max(2000, { error: 'Maximaal 2000 tekens.' }),
+    .min(1, { error: () => t('validatie.dagzet_leeg') })
+    .max(2000, { error: () => t('validatie.notitie_lang') }),
   weekly_goal_id: z.uuid().nullable(),
   visibility: z.enum(['private', 'group']),
 });

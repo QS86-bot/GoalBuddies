@@ -3,8 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 23-08-2026, na de merge van PR #1 (RLS-suite met eigen
-> JWT's, web push, de grendel op het minpunt).
+> **Laatst bijgewerkt:** 24-08-2026, na de merge van `main` in de
+> QS8-83/91-branch: de deploy, EPIC 9 en de i18n-infrastructuur komen erbij.
 
 ---
 
@@ -21,12 +21,27 @@ WERKVOORRAAD §4.
 
 ## STAND VAN ZAKEN
 
-Fase 1 is grotendeels af. EPIC 0, 1, 2, 3, 4, 5, 6, 7, 10 en 12 staan. Van EPIC 8
-zijn De Ketting (QS8-80), de weekpassen (QS8-81) en het dashboard (QS8-75) af.
-EPIC 11 staat op één schakel na (zie hieronder). Open is vooral **EPIC 9**, het
-commitment device.
+Fase 1 is inhoudelijk af: elke epic staat, 0 t/m 12. EPIC 9 (het commitment
+device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
 
-De rollover draait elk uur.
+**De app is live op `goalbuddies.q-projects.tech`** (QS8-99/QS8-100). Deployen is
+één commando:
+
+```bash
+npm run deploy      # bouwen, .htaccess schrijven, scannen op geheimen, uploaden
+npm run deploy:droog  # alleen tonen wat er zóu vertrekken
+```
+
+Daarvoor heb je eenmalig `HOSTINGER_API_TOKEN` in `.env` nodig.
+
+⚠️ De secret-scan in die deploy is aantoonbaar werkend: er is met opzet een
+service-role-key in `dist/` gezet en de deploy sloeg af met de vindplaats erbij.
+**Een controle die nog nooit rood is geweest, is een aanname en geen controle.**
+
+De rollover en de meldingenjob draaien elk uur tegen het echte project.
+
+**De laatste laag van QS8-115 ligt er nog:** de schermteksten in `app/` moeten
+naar de berichtencatalogus. `src/shared/ui` en alle zeven modules zijn wél om.
 
 ⚠️ **Het migratiebereik en de testteller staan in `docs/WERKVOORRAAD.md` §0 en
 §2, en bewust alleen daar.** Tot 23-08 stonden ze ook hier, en toen liepen ze
@@ -52,10 +67,7 @@ In de ronde van 21-08 afgerond: QS8-106 (de vier datalaagfuncties zonder scherm)
 beheren), QS8-76 (feestelijk moment) en QS8-85 (commitments informeel, met een
 test die het bewaakt). A45 is gedicht in migratie 0047.
 
-**EPIC 12 is af.** QS8-93 (de haalbaarheidsberekening), QS8-94 (de vier standen
-in de UI), QS8-95 ("vraag je groep om hulp") en QS8-96 (herplannen bij een
-onhaalbare deadline). Migraties 0050 en 0051, en de rollover is opnieuw
-gedeployd zodat hij het risico ook echt herberekent.
+**Begin hier.** Dit is het zwaarste openstaande punt en het is geen feature.
 
 ⚠️ **`goals.risk_status` is dichtgezet vóórdat de radar hem ging vullen**
 (migratie 0050). De drie risicokolommen wonen nu in `goal_risk`, eigenaar-only.
@@ -63,11 +75,9 @@ gedeployd zodat hij het risico ook echt herberekent.
 zijn en welke, staat in `CLAUDE.md` — daar en nergens anders. Beslisdocument 002
 is bijgewerkt.
 
-**EPIC 11 staat klaar, op één dependency na.** De tabellen (`push_tokens`,
-`notifications_sent`), de regels over wie wat krijgt, de Edge Function, de
-GitHub-workflow die hem elk uur aanroept en de rand in de app zijn er allemaal.
-Ik heb de job tegen het echte project gedraaid: 8 profielen, 8 zonder token,
-nul verstuurd, geen fouten.
+⚠️ **Wat je ziet is géén melding over rate limiting** maar een fixture die
+halverwege omvalt: een paar bestanden rood, de rest "skipped". Dat leest als een
+kapotte policy, en je gaat in de verkeerde richting zoeken.
 
 ⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform.**
 
@@ -86,22 +96,16 @@ De rand eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
 Die sleutels zitten in de build, niet in de server; de Edge Function heeft er
 niets voor nodig.
 
-**EPIC 3 is af voor de MVP, en de Doelcoach heeft voor het eerst echt gedraaid.**
-Dat stond sinds augustus als "gebouwd en nooit gedraaid" in deze overdracht.
-Drie echte AI-calls tegen het project, samen ongeveer 3,8 cent.
+* **Eén set fixtures voor de hele run** in plaats van per bestand. Goedkoper,
+  raakt `tests/rls/harness.ts`, maar de suites delen dan state — en dat is
+  precies wat ze nu niet doen. Kijk goed naar `removeTestUsers()`.
+* **Een eigen testproject** met een eigen quotum. Schoner, maar het vraagt een
+  tweede Supabase-project en dus een besluit van Quinten over kosten.
 
-Wat er nu staat: het zes-vragen-interview, een coachscherm dat een job
-klaarzet en tot het antwoord kijkt, mijlpalen overnemen, opnieuw genereren, en
-een kostenoverzicht (`ai_kosten_per_week()`, gedocumenteerd in DEPLOY.md §2.6).
-Alleen QS8-41 (weekdoelen per mijlpaal) blijft open, en die is `phase:v2`.
+Staat als **QS8-116** in Linear, met beide richtingen uitgeschreven. Overleg de
+keuze; bouw hem niet zomaar.
 
-⚠️ **Twee dingen om te weten over de coach.** Hij spreekt tegen als je deadline
-niet past bij je uren — geverifieerd met een opzettelijk onmogelijk doel. En hij
-rekent níét meer zelf met datums: het aantal weken en de totale uren worden
-server-side uitgerekend en meegegeven. Dat was nodig omdat hij bij de eerste
-proef "ongeveer 14 maanden" zei over een streefdatum die twee weken weg lag.
-**Vraag een taalmodel nooit om rekenwerk dat je zelf kunt doen** — dat geldt
-onverkort voor QS8-41.
+---
 
 **De ronde van 22–23-08: de RLS-suite bewijst weer iets.** De suite logde per
 gebruiker in en liep daarbij tegen een limiet aan; hij sloeg zichzelf dan over
@@ -140,10 +144,10 @@ de eigenaar blokkeert. Uitleg in
 (beloning vrijgeven bij het halen van een doel) en QS8-84 (straf verschuldigd
 bij een gemiste deadline).
 
-⚠️ Lees vóór QS8-84 domeinregel 11 én 5: een straf treedt pas in werking bij een
-verstreken deadline, de begunstigde groep krijgt pas op dát moment leesrecht op
-het commitment, en niets mag stilzwijgend geactiveerd worden. Dat is de plek
-waar dit product vertrouwen kan verliezen, dus daar hoort de strengste lezing.
+`expo-notifications` staat erin en is ingeplugd; de job draait en selecteert
+`profiles.locale`. Maar **de app draait alléén op het web**, en web push is een
+ánder mechanisme: VAPID-sleutelpaar, een service worker, en een
+`PushSubscription` in plaats van een Expo-token.
 
 **Er wachten vijf besluiten op Quinten**, en twee ervan hangen aan elkaar:
 A41 (mag de groep zien wat er fout gaat?) en A42 (blijven punten privé?) uit de
@@ -182,7 +186,7 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-   **Nummer verder vanaf 0069.** Elke migratie idempotent, met een rollback-pad
+**Nummer verder vanaf 0069.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 
    ⚠️ **`0057` t/m `0061` bestaan niet als bestand** — ze zijn wel toegepast en
@@ -190,9 +194,17 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    voordat iemand op het idee komt die nummers opnieuw te gebruiken. Zie QS8-122
    en de valkuil hieronder.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
-   `npm run build` — **én lees de testteller.** Staat er "skipped" bij
-   `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen niets over
-   autorisatie. Zie WERKVOORRAAD §3b.
+   `npm run build` — **én lees de testteller vóórdat je commit.**
+
+   ⚠️ **Draai de suite en de commit nooit in één commando.** Dat is op 22-08
+   misgegaan: ik las de uitslag pas achteraf en had toen al gecommit. De inhoud
+   bleek in orde, de volgorde niet.
+
+   ⚠️ **Zolang A47 open staat, is een volle run niet te vertrouwen.** Falen er
+   RLS-bestanden, draai ze dan één voor één opnieuw vóór je concludeert dat er
+   iets stuk is — de kans is groot dat het de aanmeldlimiet is. Staat er
+   "skipped" bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen
+   niets over autorisatie. Zie WERKVOORRAAD §3b.
 5. **Reviewagents naar risico, niet naar schema** (herzien 20-08-2026, zie
    CLAUDE.md regel 19 voor de onderbouwing):
    - **`security-reviewer` draait direct**, bij elke wijziging die auth, RLS,
@@ -256,6 +268,19 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   vergeten. **Werk je hier iets bij, grep dan op het feit in alle drie de
   bestanden voordat je klaar bent.** Dat is de handmatige versie; de controle die
   hem overbodig maakt is QS8-125.
+
+- **Een module-constante met vertaalde tekst bevriest de taal op importtijd.**
+  Een `const` die `t()` aanroept, wordt één keer opgebouwd bij het importeren van
+  de module — vóórdat het profiel geladen is. De tekst klópt, hij staat alleen in
+  de verkeerde taal, en er is niets aan te zien. Er waren er zestien in dit
+  project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
+  regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
+  Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **Een hulpscript dat niet idempotent is en tóch twee keer draait.** Bij QS8-115
+  liep een migratiescript opnieuw na een fout halverwege, waardoor het
+  catalogusblok dubbel in `nl.ts` kwam te staan. TypeScript ving het, maar het is
+  dezelfde categorie als een SQL-migratie zonder rollback-pad — en onwrikbare
+  regel 20 bestaat juist omdat "draai hem opnieuw" de standaardreactie is.
 
 - **RLS kan geen kolommen beperken.** Is de eis "deze kolom mag je niet
   veranderen" of "niet lézen", dan heb je een kolomgrant, een view met expliciete

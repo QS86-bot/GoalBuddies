@@ -34,7 +34,7 @@ import { space } from '@/shared/theme';
 import { localDateIn, now, type UserClock } from '@/shared/time';
 import {
   AsyncView,
-  BEVESTIGING,
+  bevestigingen,
   Bevestiging,
   Body,
   Button,
@@ -50,7 +50,7 @@ import {
   useVieringenAan,
   Viering,
   weekdoelActies,
-  WEEKPAS_UITLEG,
+  weekpasUitleg,
   type WeeklyGoalStatus,
 } from '@/shared/ui';
 
@@ -349,7 +349,7 @@ function StandBlok({
            de ene keer dat het uitmaakt.
       */}
       {rijen.some(({ stand }) => stand.weekpas !== null) ? (
-        <Caption>{WEEKPAS_UITLEG}</Caption>
+        <Caption>{weekpasUitleg()}</Caption>
       ) : null}
     </Card>
   );
@@ -447,7 +447,7 @@ function DoorschuifKaart({
   if (vraagt) {
     return (
       <Bevestiging
-        tekst={BEVESTIGING.weekdoelDoorschuiven}
+        tekst={bevestigingen().weekdoelDoorschuiven}
         bezig={bezig}
         fout={fout}
         onBevestig={() => void doorschuiven()}
@@ -604,8 +604,8 @@ function WeekdoelKaart({
       <Bevestiging
         tekst={
           vraagt === 'afsluiten'
-            ? BEVESTIGING.weekdoelAfsluiten
-            : BEVESTIGING.weekdoelVerwijderen
+            ? bevestigingen().weekdoelAfsluiten
+            : bevestigingen().weekdoelVerwijderen
         }
         bezig={bezig}
         fout={fout}

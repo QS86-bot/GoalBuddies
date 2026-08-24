@@ -181,7 +181,24 @@ function tijdsbestek(input: Record<string, unknown>): string[] {
  *    uitvoer wordt gevalideerd en er ontstaan alleen mijlpalen bij je eigen doel
  *    — maar het is het verschil tussen een grens die er is en een die er niet is.
  */
-function bouwPrompt(input: Record<string, unknown>): string {
+/**
+ * De taalinstructie voor het model — QS8-113.
+ *
+ * ⚠️ **Server-side uit `profiles.locale` en niet uit de job-invoer.** De invoer
+ *    van een job is door de client geschreven; de taal waarin een gebruiker
+ *    aangesproken wordt, hoort geen veld te zijn dat de client kan kiezen. Het is
+ *    dezelfde afweging als bij de streefdatum in `rond_doel_af()`.
+ *
+ * ⚠️ De aanspreekvorm hoort bij de taal en niet bij de gebruiker: `du`/`Sie` en
+ *    `tu`/`vous` bestaan in het Nederlands en Engels niet als keuze. Zie
+ *    `src/shared/i18n/types.ts`, waar `AANSPREEKVORM` per taal vastligt.
+ */
+function taalinstructie(locale: string | null): string {
+  if (locale === 'en') return 'Write in English, using informal "you".';
+  return 'Schrijf in het Nederlands, in de je-vorm.';
+}
+
+function bouwPrompt(input: Record<string, unknown>, locale: string | null): string {
   // ⚠️ **Het rekenwerk gebeurt hier en niet in het model.** Bij de eerste proef
   //    op 21-08-2026 gaf de coach een correcte conclusie ("dit past niet") met
   //    een verkeerde onderbouwing: hij noemde "ongeveer 14 maanden" voor een
@@ -207,7 +224,7 @@ function bouwPrompt(input: Record<string, unknown>): string {
     'Elke mijlpaal is een tussenresultaat dat je kunt aanwijzen, met een',
     'streefdatum die vóór de streefdatum van het doel ligt en die realistisch is',
     'gegeven het aantal uren per week dat de gebruiker heeft. Zet ze in',
-    'chronologische volgorde. Schrijf in het Nederlands, in de je-vorm.',
+    `chronologische volgorde. ${taalinstructie(locale)}`,
     '',
     // ⚠️ De tegenspraak. Een coach die alles haalbaar noemt, is geen coach —
     //    en het is precies het moment waarop iemand later vastloopt zonder dat
@@ -351,7 +368,19 @@ Deno.serve(async (verzoek: Request) => {
   if (!geclaimd || geclaimd.length === 0) return json({ error: 'job_al_geclaimd' }, 409);
 
   try {
-    const { tekst, verbruik } = await vraagClaude(apiKey, bouwPrompt(job.input));
+    // ⚠️ De taal van de eigenaar, uit zijn profiel. Mislukt dit, dan is het
+    //    Nederlands — een coach die antwoordt is meer waard dan een coach die
+    //    wacht op een taalveld.
+    const { data: profiel } = await db
+      .from('profiles')
+      .select('locale')
+      .eq('id', job.user_id)
+      .maybeSingle();
+
+    const { tekst, verbruik } = await vraagClaude(
+      apiKey,
+      bouwPrompt(job.input, (profiel as { locale?: string | null } | null)?.locale ?? null),
+    );
 
     // ⚠️ Nog steeds parsen en niet vertrouwen. Gestructureerde uitvoer maakt
     //    geldige JSON waarschijnlijk; hier wordt hij zeker. De vormcontrole met

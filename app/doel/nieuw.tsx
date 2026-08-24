@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { CATEGORIEEN, CATEGORIE_LABELS, maakDoel, type Categorie } from '@/modules/goals';
+import { CATEGORIEEN, categorieLabels, maakDoel, type Categorie } from '@/modules/goals';
 import { localDateIn, now } from '@/shared/time';
 import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
 
@@ -93,7 +93,7 @@ export default function NieuwDoel() {
 
         <Choice
           label="Categorie"
-          opties={CATEGORIEEN.map((c) => ({ waarde: c, label: CATEGORIE_LABELS[c] }))}
+          opties={CATEGORIEEN.map((c) => ({ waarde: c, label: categorieLabels()[c] }))}
           waarde={categorie}
           onKies={setCategorie}
         />

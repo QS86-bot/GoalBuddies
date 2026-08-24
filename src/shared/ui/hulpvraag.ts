@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 /**
  * "Vraag je groep om hulp" — QS8-95, het scharnierpunt van EPIC 12.
  *
@@ -36,16 +38,23 @@ export function hulpvraagVoorstel(input: {
 }): string {
   const { doeltitel, wekenOver } = input;
 
-  const opening = `Ik loop achter op "${doeltitel}".`;
+  const opening = t('hulpvraag.opening', { doel: doeltitel });
 
   // ⚠️ Alleen de tijd die nog rest, want dat is een feit over de toekomst. Geen
   //    "ik heb drie weken gemist" — dat is een feit over het verleden en het is
   //    precies wat domeinregel 7 uit de groep houdt, tenzij de gebruiker het er
   //    zelf bij typt. Dat mag; de app zet het er niet vast in.
+  //
+  // ⚠️ De enkelvoudsvorm is een eigen sleutel en geen ternary in de zin. `t()`
+  //    kent geen meervoudsregels, en dat is bewust: zodra er een taal bij komt
+  //    met meer dan twee vormen (Pools heeft er drie), is dit de plek waar dat
+  //    zichtbaar wordt in plaats van stilletjes verkeerd te gaan.
   const tijd =
     wekenOver === null || wekenOver <= 0
       ? ''
-      : ` Ik heb nog ${wekenOver} ${wekenOver === 1 ? 'week' : 'weken'} te gaan.`;
+      : wekenOver === 1
+        ? t('hulpvraag.tijd_een_week')
+        : t('hulpvraag.tijd_weken', { weken: wekenOver });
 
-  return `${opening}${tijd} Iemand een idee?`;
+  return `${opening}${tijd}${t('hulpvraag.slot')}`;
 }

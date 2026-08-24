@@ -6,9 +6,11 @@ export {
   fetchDoelen,
   maakDoel,
   PER_PAGINA,
+  rondDoelAf,
   wijzigDoel,
   zetArchief,
   zetStreefdatum,
+  type Afronding,
   type Doel,
   type DoelMetVoortgang,
   type Pagina,
@@ -69,7 +71,7 @@ export { bewaarInterview, fetchInterview, type Interview } from './interview';
 export {
   ANTWOORD_MAX,
   heeftAntwoorden,
-  INTERVIEW_STAPPEN,
+  interviewStappen,
   interviewSchema,
   LEEG_INTERVIEW,
   type InterviewInvoer,
@@ -99,7 +101,7 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,
-  CATEGORIE_LABELS,
+  categorieLabels,
   datumLigtInDeToekomst,
   doelPatchSchema,
   doelSchema,

@@ -17,7 +17,7 @@ import {
   verwijderWeekafsluiting,
   voegReactiesSamen,
   voorstelUitDagzetten,
-  VRAGEN,
+  vragen,
   type Antwoord,
   type AntwoordVeld,
   type Groep,
@@ -289,7 +289,7 @@ function MijnAntwoorden({
   }, [vuil, onVuil]);
 
   // ⚠️ Getypeerd op `AntwoordVeld` en niet op `string`: zo vangt de compiler een
-  //    veld dat in VRAGEN staat maar hier niet, in plaats van het stil over te slaan.
+  //    veld dat in vragen() staat maar hier niet, in plaats van het stil over te slaan.
   const waarden: Record<
     AntwoordVeld,
     { readonly waarde: string; readonly zet: (t: string) => void }
@@ -409,7 +409,7 @@ function MijnAntwoorden({
         nergens te staan dat je overgeslagen hebt.
       </Body>
 
-      {VRAGEN.map((vraag) => {
+      {vragen().map((vraag) => {
         const veld = waarden[vraag.veld];
         if (veld === undefined) return null;
 
@@ -546,7 +546,7 @@ function AntwoordBlok({
         <Subheading>{antwoord.display_name}</Subheading>
       </View>
 
-      {VRAGEN.map((vraag) => {
+      {vragen().map((vraag) => {
         const tekst = antwoord[vraag.veld];
         if (tekst === null || tekst.trim() === '') return null;
 

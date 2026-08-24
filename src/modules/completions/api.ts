@@ -1,6 +1,7 @@
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../shared/i18n';
 import type { Cycle } from '../../shared/time';
 
 import {
@@ -55,14 +56,14 @@ export async function rondAf(
 ): Promise<Resultaat<Voltooiing>> {
   const gevalideerd = afrondSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
   }
 
   const notitie = gevalideerd.data.note?.trim() ?? '';
   if (eis !== 'optional' && notitie.length === 0) {
     return {
       ok: false,
-      melding: 'Schrijf er kort bij wat je gedaan hebt. Je buddy heeft iets nodig om op te reageren.',
+      melding: t('voltooiing.notitie_nodig'),
     };
   }
 
@@ -90,13 +91,11 @@ export async function rondAf(
     if (error.code === '23514') {
       return {
         ok: false,
-        melding:
-          'Je afronding werd geweigerd. Vraagt je groep om een notitie? Eén zin is genoeg; ' +
-          'maximaal 2000 tekens.',
+        melding: t('voltooiing.geweigerd'),
       };
     }
 
-    return { ok: false, melding: 'Afronden lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('voltooiing.afronden_mislukt') };
   }
 
   // ⚠️ Geen tweede verzoek om de status op `pending` te zetten. Sinds migratie
@@ -197,7 +196,7 @@ export async function zetDagzet(
 ): Promise<Resultaat<DagZet>> {
   const gevalideerd = dagzetSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
   }
 
   const { data, error } = await supabase()
@@ -214,7 +213,7 @@ export async function zetDagzet(
 
   if (error) {
     reportError(error, 'moves.create', { user_id: userId, code: error.code });
-    return { ok: false, melding: 'Opslaan lukte niet. Probeer het opnieuw.' };
+    return { ok: false, melding: t('voltooiing.opslaan_mislukt') };
   }
 
   return { ok: true, waarde: data };
@@ -236,7 +235,7 @@ export async function fetchDagzetten(
 
   if (error) {
     reportError(error, 'moves.list', { user_id: userId, code: error.code });
-    throw new Error('Je Dagzetten konden niet geladen worden.');
+    throw new Error(t('voltooiing.dagzet_laden'));
   }
 
   return data ?? [];

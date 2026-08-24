@@ -1,6 +1,7 @@
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { t } from '../../shared/i18n';
 
 import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
 
@@ -70,7 +71,7 @@ function naarTeBeoordelen(rij: WachtrijRij): TeBeoordelen | null {
     weekly_goal_id: rij.weekly_goal_id,
     group_id: rij.group_id,
     owner_id: rij.owner_id,
-    owner_name: rij.owner_name ?? 'Een buddy',
+    owner_name: rij.owner_name ?? t('beoordeling.een_buddy'),
     owner_avatar: rij.owner_avatar,
     goal_title: rij.goal_title ?? '',
     weekly_title: rij.weekly_title ?? '',
@@ -106,7 +107,7 @@ export async function fetchBeoordelingen(
 
   if (error) {
     reportError(error, 'approvals.queue', { pgcode: error.code });
-    throw new Error('De beoordelingen konden niet geladen worden.');
+    throw new Error(t('beoordeling.laden_mislukt'));
   }
 
   const ruw = (data ?? []) as readonly WachtrijRij[];
@@ -140,7 +141,7 @@ export async function beoordeel(
 ): Promise<Resultaat<string>> {
   const gevalideerd = oordeelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? 'Controleer je invoer.' };
+    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
   }
 
   const opmerking = gevalideerd.data.comment?.trim() ?? '';
@@ -148,7 +149,7 @@ export async function beoordeel(
   if (gevalideerd.data.status === 'more_info' && opmerking.length === 0) {
     return {
       ok: false,
-      melding: 'Stel je vraag erbij — zonder vraag weet je buddy niet wat hij moet aanvullen.',
+      melding: t('beoordeling.vraag_nodig'),
     };
   }
 
@@ -177,7 +178,7 @@ export async function beoordeel(
     //    afloop als iemand twee keer op de knop drukt of het scherm oud is. Dat
     //    is geen storing en verdient geen storingsmelding.
     if (error.code === '23505') {
-      return { ok: false, melding: 'Je hebt deze week van je buddy al beoordeeld.' };
+      return { ok: false, melding: t('beoordeling.al_beoordeeld') };
     }
 
     // ⚠️ Geen gok tussen twee heel verschillende situaties in één zin. De vorige
@@ -186,20 +187,30 @@ export async function beoordeel(
     //    beschuldiging voor iets dat vanzelf overgaat.
     return {
       ok: false,
-      melding: 'Beoordelen lukte niet. Ververs de lijst en probeer het opnieuw.',
+      melding: t('beoordeling.mislukt'),
     };
   }
 
   return { ok: true, waarde: data.id };
 }
 
-const OPNIEUW_MELDING: Readonly<Record<string, string>> = {
-  bad_level: 'Kies of je de vloer of het plafond gehaald hebt.',
-  not_owner: 'Dit weekdoel is niet van jou.',
-  already_approved: 'Deze week is al goedgekeurd. Er valt niets meer te vervangen.',
-  nothing_to_replace: 'Er staat nog niets ingediend voor deze week.',
-  note_required: 'Deze groep vraagt om een korte notitie bij het afronden.',
-};
+/**
+ * ⚠️ **Een functie en geen constante** — QS8-115. Een `const` met `t()` erin
+ *    wordt één keer bij het importeren opgebouwd, en dat is vóórdat het profiel
+ *    geladen is; de taal staat dan vast op de apparaattaal. Zelfde val als bij
+ *    `BEVESTIGING` in `shared/ui` en `verwijderMelding()` in `auth`.
+ */
+function opnieuwMelding(reden: string | undefined): string {
+  const tabel: Readonly<Record<string, string>> = {
+    bad_level: t('opnieuw.geen_niveau'),
+    not_owner: t('opnieuw.niet_van_jou'),
+    already_approved: t('opnieuw.al_goedgekeurd'),
+    nothing_to_replace: t('opnieuw.niets_ingediend'),
+    note_required: t('opnieuw.notitie_vereist'),
+  };
+
+  return tabel[reden ?? ''] ?? t('opnieuw.mislukt_kort');
+}
 
 /**
  * Dient een week opnieuw in na "vertel me meer" — QS8-63, en het losse eindje
@@ -226,7 +237,7 @@ export async function dienOpnieuwIn(
 
   if (error) {
     reportError(error, 'approvals.resubmit', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
-    return { ok: false, melding: 'Opnieuw indienen lukte niet. Probeer het zo nog eens.' };
+    return { ok: false, melding: t('opnieuw.mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; completion_id?: string };
@@ -234,7 +245,7 @@ export async function dienOpnieuwIn(
   if (uitkomst.ok !== true || typeof uitkomst.completion_id !== 'string') {
     return {
       ok: false,
-      melding: OPNIEUW_MELDING[uitkomst.reason ?? ''] ?? 'Opnieuw indienen lukte niet.',
+      melding: opnieuwMelding(uitkomst.reason),
     };
   }
 
@@ -244,14 +255,17 @@ export async function dienOpnieuwIn(
 /** Zolang je een goedkeuring nog kunt intrekken — gelijk aan de RPC. */
 export const INTREKVENSTER_MINUTEN = 15;
 
-const INTREK_MELDING: Readonly<Record<string, string>> = {
-  not_found: 'Deze goedkeuring bestaat niet meer.',
-  not_yours: 'Alleen jij kunt je eigen goedkeuring intrekken.',
-  window_closed:
-    'Het kwartier om dit terug te draaien is voorbij. Vraag je buddy om de week ' +
-    'opnieuw in te dienen als er iets niet klopt.',
-  already_withdrawn: 'Je hebt deze goedkeuring al ingetrokken.',
-};
+/** Zie `opnieuwMelding()`: een functie, om dezelfde reden. */
+function intrekMelding(reden: string | undefined): string {
+  const tabel: Readonly<Record<string, string>> = {
+    not_found: t('intrekken.bestaat_niet'),
+    not_yours: t('intrekken.niet_van_jou'),
+    window_closed: t('intrekken.te_laat'),
+    already_withdrawn: t('intrekken.al_gedaan'),
+  };
+
+  return tabel[reden ?? ''] ?? t('intrekken.mislukt_kort');
+}
 
 /**
  * Trekt je eigen goedkeuring in — Q-TODO A19.
@@ -282,13 +296,13 @@ export async function trekGoedkeuringIn(approvalId: string): Promise<Resultaat<b
 
   if (error) {
     reportError(error, 'approvals.withdraw', { approval_id: approvalId, pgcode: error.code });
-    return { ok: false, melding: 'Intrekken lukte niet. Probeer het zo nog eens.' };
+    return { ok: false, melding: t('intrekken.mislukt') };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; reverted?: boolean };
 
   if (uitkomst.ok !== true) {
-    return { ok: false, melding: INTREK_MELDING[uitkomst.reason ?? ''] ?? 'Intrekken lukte niet.' };
+    return { ok: false, melding: intrekMelding(uitkomst.reason) };
   }
 
   return { ok: true, waarde: uitkomst.reverted ?? false };
@@ -363,7 +377,7 @@ export async function fetchBuddyBijdrage(userId: string): Promise<number> {
   //    beoordeeld. Precies het soort demotivatie waar deze teller tegen is.
   if (error) {
     reportError(error, 'approvals.contribution', { pgcode: error.code });
-    throw new Error('Je buddy-bijdrage kon niet geladen worden.');
+    throw new Error(t('beoordeling.bijdrage_laden'));
   }
 
   return count ?? 0;
