@@ -51,6 +51,15 @@ Alle drie moeten groen zijn vóór je commit:
 npm run typecheck && npm run lint && npm test
 ```
 
+⚠️ **En één vraag erbij, want groen is niet hetzelfde als bewaakt.** Waar knopen
+in wat je net bouwde twee correcte onderdelen aan elkaar, en staat daar een test
+op? Drie keer in de week van 24-08 lekte het geheel terwijl elk onderdeel klopte
+en de suite groen bleef. De uitgeschreven versie staat in `CLAUDE.md` bij
+onwrikbare regel 18.
+
+Breek daarna je eigen belofte één keer met de hand en kijk of de test rood
+wordt. Een test die je niet rood hebt gezien, bewaakt niets.
+
 Vink daarna de acceptatiecriteria in het Linear-issue af. Alleen wat je echt
 gedaan hebt — een afgevinkt vakje dat niet klopt is erger dan een leeg vakje.
 

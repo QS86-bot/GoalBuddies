@@ -8,6 +8,11 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
    Delegeer aan `code-critic` en `security-reviewer` voor een overzichtsreview
    van wat er nieuw bij is gekomen.
 
+   ⚠️ Kijk daarbij apart naar **verhuizingen**: code die deze week naar een ander
+   bestand ging. Tests verhuizen mee en blijven groen, want ze toetsen wat er in
+   het bestand staat en niet wat het bestand beloofde. Twee van de drie lekken
+   van de week van 24-08 kwamen zo. Zie `CLAUDE.md`, regel 18 uitgeschreven.
+
 2. **RLS-dekking** — controleer of elke tabel in `supabase/migrations/` een
    RLS-policy heeft voor SELECT, INSERT, UPDATE én DELETE. Lijst ontbrekende op.
    Dit is de belangrijkste check van de week.
