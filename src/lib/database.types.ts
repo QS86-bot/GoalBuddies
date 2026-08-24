@@ -1625,8 +1625,10 @@ export type Database = {
       }
       group_visible_streaks: {
         Row: {
+          best_streak: number | null
           current_streak: number | null
           goal_id: string | null
+          last_cycle_start: string | null
           user_id: string | null
         }
         Relationships: [
@@ -1735,6 +1737,7 @@ export type Database = {
         }
         Returns: {
           avatar_url: string
+          best_streak: number
           closed_this_period: boolean
           current_streak: number
           display_name: string
@@ -1742,6 +1745,7 @@ export type Database = {
           goal_target_date: string
           goal_title: string
           joined_at: string
+          last_cycle_start: string
           member_status: string
           milestones_done: number
           milestones_total: number

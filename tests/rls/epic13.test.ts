@@ -183,6 +183,32 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     return (data ?? []).map((r) => r.title);
   }
 
+  /**
+   * Wat één kijker via `group_overview()` van één lid ziet.
+   *
+   * ⚠️ Via de RPC en niet via de view, en dat is het punt van deze toets. De
+   *    bescherming zit in `group_visible_streaks`, maar het scherm leest
+   *    `group_overview()` — en dat is een SECURITY INVOKER-functie die de view
+   *    joint. Alleen de rij die het schérm krijgt, bewijst dat de keten klopt.
+   */
+  async function overzichtsrij(
+    kijker: TestUser,
+    groep: Groep,
+    over: TestUser,
+  ): Promise<{ current_streak: number | null; best_streak: number | null } | null> {
+    const { data, error } = await kijker.db.rpc('group_overview', {
+      p_group_id: groep.id,
+      p_period_start: f.cycleStart,
+    });
+
+    if (error) throw new Error(`groepsoverzicht lezen: ${error.message}`);
+
+    const rij = (data ?? []).find((r) => r.user_id === over.id);
+    return rij === undefined
+      ? null
+      : { current_streak: rij.current_streak, best_streak: rij.best_streak };
+  }
+
   async function zichtbaarheidVan(groep: Groep): Promise<string | null> {
     const { data, error } = await adminDb()
       .from('groups')
@@ -243,6 +269,25 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       cycle.startDate,
     );
     f.doelSchakel = await maakDoelMetGemisteWeek('SCHAKEL', [f.groepSchakel], cycle.startDate);
+
+    // ⚠️ `best_streak` hoger dan `current_streak`: dát is de combinatie die een
+    //    verbroken reeks verraadt, en de enige die iets bewijst. Zou `best`
+    //    gelijk zijn aan `current`, dan zou een lek er onschuldig uitzien.
+    //
+    //    Via de admin-client: `user_streaks` is een cache die de database zelf
+    //    bijhoudt, en de policy erop is eigenaar-only.
+    const reeksen = await adminDb()
+      .from('user_streaks')
+      .upsert(
+        [f.doelBeschermd, f.doelOpen].map((goalId) => ({
+          user_id: alice.id,
+          goal_id: goalId,
+          current_streak: 2,
+          best_streak: 7,
+          last_cycle_start: cycle.startDate,
+        })),
+      );
+    if (reeksen.error) throw new Error(`reeksen: ${reeksen.error.message}`);
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -581,6 +626,109 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
           old_value: { zichtbaarheid: 'open' },
           new_value: { zichtbaarheid: 'beschermd' },
         });
+
+        expect(poging.error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('de reeks — oppervlak 1 en 2, in beide standen', () => {
+    it(
+      'geeft in een beschermde groep wel de lopende reeks en niet de beste',
+      async () => {
+        // ⚠️ De belofte van migratie 0019, en hij moet ongewijzigd overeind
+        //    blijven: `best > current` is sluitend bewijs van een verbroken
+        //    reeks. `null` en niet `0` — nul zou een bewering zijn die de
+        //    database niet doet.
+        const rij = await overzichtsrij(f.bob, f.groepBeschermd, f.alice);
+
+        expect(rij?.current_streak).toBe(2);
+        expect(rij?.best_streak).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft in een open groep ook de beste reeks',
+      async () => {
+        const rij = await overzichtsrij(f.bob, f.groepOpen, f.alice);
+
+        expect(rij?.current_streak).toBe(2);
+        expect(rij?.best_streak).toBe(7);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de eigenaar zijn eigen beste reeks in beide standen zien',
+      async () => {
+        // ⚠️ Zonder de eigenaarstak in de `case` zou iemand die zijn doel aan een
+        //    beschermde groep koppelt, zijn éígen beste reeks kwijtraken zodra
+        //    een scherm hem via deze view leest. Dezelfde klasse fout als in
+        //    0050, waar een kolomgrant de eigenaar zijn eigen risicostand zou
+        //    hebben afgenomen.
+        expect((await overzichtsrij(f.alice, f.groepBeschermd, f.alice))?.best_streak).toBe(7);
+        expect((await overzichtsrij(f.alice, f.groepOpen, f.alice))?.best_streak).toBe(7);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft een buitenstaander geen rij, ook niet bij een open groep',
+      async () => {
+        expect(await overzichtsrij(f.carol, f.groepOpen, f.alice)).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt de view zelf net zo dicht als het overzicht',
+      async () => {
+        // ⚠️ **De naad.** De tests hierboven lezen `group_overview()`, en die is
+        //    SECURITY INVOKER — de bescherming zit een laag dieper, in
+        //    `group_visible_streaks`. Wie de view rechtstreeks bevraagt, slaat de
+        //    functie over; dat is één GET en precies de route die EPIC 5
+        //    ontglipte. Deze test loopt hem.
+        const beschermd = await f.bob.db
+          .from('group_visible_streaks')
+          .select('best_streak, last_cycle_start')
+          .eq('user_id', f.alice.id)
+          .eq('goal_id', f.doelBeschermd);
+
+        expect(beschermd.error).toBeNull();
+        expect(beschermd.data ?? []).toHaveLength(1);
+        expect((beschermd.data ?? [])[0]?.best_streak).toBeNull();
+        expect((beschermd.data ?? [])[0]?.last_cycle_start).toBeNull();
+
+        const open = await f.bob.db
+          .from('group_visible_streaks')
+          .select('best_streak, last_cycle_start')
+          .eq('user_id', f.alice.id)
+          .eq('goal_id', f.doelOpen);
+
+        expect(open.error).toBeNull();
+        expect((open.data ?? [])[0]?.best_streak).toBe(7);
+        expect((open.data ?? [])[0]?.last_cycle_start).toBe(f.cycleStart);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'geeft het puntentotaal in geen enkele stand door',
+      async () => {
+        // ⚠️ Besluit A42. `total_points` staat op `user_streaks` en heeft nooit
+        //    in deze view gestaan. Deze test is er zodat dat zo blijft als iemand
+        //    de view ooit uitbreidt: hij vraagt de kolom op en verwacht een fout.
+        const poging = await f.bob.db
+          .from('group_visible_streaks')
+          // ⚠️ Bewust een kolomnaam als kale string en geen typefout: het
+          //    gegenereerde type controleert een `select`-string hier niet, dus
+          //    dit moet op gedrag getoetst worden en niet op types. PostgREST
+          //    antwoordt met 42703 zolang de kolom niet in de view zit.
+          .select('total_points')
+          .eq('user_id', f.alice.id);
 
         expect(poging.error).not.toBeNull();
       },

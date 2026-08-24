@@ -172,6 +172,7 @@ export default function GroepDetail() {
                   name={lid.display_name}
                   streak={lid.current_streak ?? 0}
                   closedThisPeriod={lid.closed_this_period}
+                  bestStreak={lid.best_streak}
                 />
               ))}
 

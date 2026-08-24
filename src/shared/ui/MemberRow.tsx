@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { t } from '../i18n';
+import { getal, t } from '../i18n';
 import { initiaalVan } from '../tekst';
 import { radius, space, useTheme } from '../theme';
 
@@ -28,9 +28,25 @@ interface Props {
   readonly closedThisPeriod: boolean;
   /** Loopt er een aangekondigde adempauze? Neutraal, geen tegenslag. */
   readonly onBreather?: boolean;
+  /**
+   * De beste reeks ooit. **Alleen gevuld in een open groep** (besluit A41).
+   *
+   * ⚠️ Dit is het enige veld op deze rij dat tegenslag van een ander kan
+   *    verraden — `best > current` betekent dat er een reeks gebroken is, en dat
+   *    is precies waarom migratie 0019 de kolom uit `group_visible_streaks`
+   *    haalde. Hij hoort hier dus nooit met een `?? 0` binnen te komen: `null`
+   *    betekent "niet voor jou", en dat is niet hetzelfde als nul.
+   */
+  readonly bestStreak?: number | null;
 }
 
-export function MemberRow({ name, streak, closedThisPeriod, onBreather = false }: Props) {
+export function MemberRow({
+  name,
+  streak,
+  closedThisPeriod,
+  onBreather = false,
+  bestStreak = null,
+}: Props) {
   const theme = useTheme();
 
   return (
@@ -42,6 +58,14 @@ export function MemberRow({ name, streak, closedThisPeriod, onBreather = false }
       <View style={styles.midden}>
         <Body>{name}</Body>
         <StreakCounter cycles={streak} compact />
+        {/*
+          ⚠️ Alleen tonen als hij hóger is dan de lopende reeks. Staat hij gelijk,
+             dan voegt hij niets toe; staat hij lager, dan is er iets mis met de
+             data en is zwijgen beter dan een tegenstrijdig getal.
+        */}
+        {bestStreak !== null && bestStreak !== undefined && bestStreak > streak ? (
+          <Caption>{t('lid.beste_reeks', { aantal: getal(bestStreak, 0) })}</Caption>
+        ) : null}
       </View>
 
       {onBreather ? (

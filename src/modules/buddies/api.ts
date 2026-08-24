@@ -223,6 +223,26 @@ export interface Groepslid {
   readonly milestones_total: number;
   readonly milestones_done: number;
   readonly current_streak: number | null;
+  /**
+   * De beste reeks ooit — **alleen gevuld in een open groep** (besluit A41,
+   * migratie 0078) en voor de eigenaar zelf.
+   *
+   * ⚠️ `null` betekent hier "niet voor jou" en niet "geen waarde":
+   *    `user_streaks.best_streak` is `not null default 0`. In een beschermde
+   *    groep is dit veld dus altijd `null`, en dát is de bescherming — `best >
+   *    current` is sluitend bewijs van een verbroken reeks.
+   */
+  readonly best_streak: number | null;
+  /**
+   * De laatste cyclus die in de reeks meetelde — zelfde regel als
+   * `best_streak`.
+   *
+   * ⚠️ Hier is `null` wél dubbelzinnig (de kolom is nullable: niemand heeft nog
+   *    een cyclus afgerond), en dat valt de goede kant op. Wie hem niet mag
+   *    zien, leert niets uit een `null` die twee dingen kan betekenen; wie hem
+   *    wél mag zien, krijgt altijd de echte waarde.
+   */
+  readonly last_cycle_start: string | null;
   readonly closed_this_period: boolean;
 }
 
@@ -266,6 +286,11 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
     milestones_total: rij.milestones_total ?? 0,
     milestones_done: rij.milestones_done ?? 0,
     current_streak: rij.current_streak,
+    // ⚠️ Geen `?? 0` op deze twee. Dat zou van "niet voor jou" een `0` maken, en
+    //    dan toont een beschermde groep "beste reeks: 0" — een getal dat een
+    //    bewering doet waar de database er geen deed. Zie besluit A41.
+    best_streak: rij.best_streak,
+    last_cycle_start: rij.last_cycle_start,
     closed_this_period: rij.closed_this_period ?? false,
   };
 }

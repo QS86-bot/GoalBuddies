@@ -1104,6 +1104,7 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   'laden.kop_mislukt': 'That did not work',
   'ketting.kop': 'The Chain',
+  'lid.beste_reeks': 'Best so far: {aantal}',
   'lid.adempauze': 'Breather',
   'vandaag.reeks_telt_weken': 'Your streak counts weeks, not days.',
   'vandaag.meenemen_knop': 'Carry over to this week',

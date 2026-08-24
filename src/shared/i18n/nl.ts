@@ -1360,6 +1360,7 @@ export const nl = {
   //    groen stond, niet door beter te kijken.
   'laden.kop_mislukt': 'Dat lukte niet',
   'ketting.kop': 'De Ketting',
+  'lid.beste_reeks': 'Beste tot nu toe: {aantal}',
   'lid.adempauze': 'Adempauze',
   'vandaag.reeks_telt_weken': 'Je reeks telt weken, geen dagen.',
   'vandaag.meenemen_knop': 'Meenemen naar deze week',

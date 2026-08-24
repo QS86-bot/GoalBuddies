@@ -226,8 +226,8 @@ oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
 
 | # | Oppervlak | Wat "open" hier betekent | Stand |
 |---|---|---|---|
-| 1 | Groepsoverzicht | `group_overview()` mag de weekstatus en `last_cycle_start` teruggeven. ⚠️ Een functie met vaste projectie, dus dit is geen policy maar een tweede projectie — en die moet apart getest | **Nog niet** |
-| 2 | Reeksen | `best_streak` erbij in `group_visible_streaks`. ⚠️ Een view met `security_invoker = false`: de kolomlijst is de bescherming, dus dit vraagt een tweede view of een kolom die conditioneel leeg is. Niet triviaal | **Nog niet** |
+| 1 | Groepsoverzicht | `group_overview()` geeft ook `last_cycle_start` en `best_streak` door. ⚠️ **De weekstatus is er bewust níét bij gekomen**: die is per lid per cyclus, en een lid kan sinds 0074 meerdere weekdoelen in één cyclus hebben — dat is een berekening en die hoort niet in SQL (correctheidsregel 7). `closed_this_period` houdt zijn venster van acht dagen; dat hoort bij De Ketting en gaat mee met QS8-135 | ✅ **0078** |
+| 2 | Reeksen | `best_streak` en `last_cycle_start` in `group_visible_streaks`, als `case`-expressie: gevuld voor de eigenaar zelf en voor een lid van een open groep, `null` daarbuiten. ⚠️ **De belofte is van vorm veranderd en dat is een verzwakking die je moet weten**: hier stond "de kolom bestáát niet", en een kolom die er niet is kan niet lekken. Nu staat er "de kolom is leeg", en dat hangt van een `case` af. De afweging tegen een tweede view en tegen een functie staat in de kop van 0078. ⚠️ `total_points` staat op dezelfde tabel en blijft eruit (A42) | ✅ **0078** |
 | 3 | **Weekdoelen van een gekoppeld doel** | De statusfilter `missed/carried/cancelled/excused` vervalt voor een lid van een open groep | ✅ **0077** |
 | 4 | Voltooiingen | Niets. Er bestaat geen rij voor een week die niet is afgerond, dus er valt niets te openen | ✅ n.v.t. |
 | 5 | Beoordelingswachtrij | Niets. Alleen ingediende voltooiingen | ✅ n.v.t. |
@@ -254,11 +254,21 @@ verruimen, komt langs deze tabel en langs de reden.
 
 ### 6c. Wat er nog niet af is
 
-Oppervlak 1, 2 en 13 varieren nog niet op de kolom. Zolang dat zo is, ziet een
-lid van een **open** groep de gemiste weken van een gekoppeld doel (oppervlak 3)
-maar niet de weekstatus in het groepsoverzicht, niet `best_streak` en niet de
-historische ketting. Dat is inconsistent en het is de veilige kant van
-inconsistent: de kolom opent nergens méér dan hier beschreven staat.
+Alleen oppervlak 13 varieert nog niet op de kolom (QS8-135). Een lid van een
+**open** groep ziet dus de gemiste weken van een gekoppeld doel, de beste reeks
+en de laatste getelde cyclus — maar niet de historische ketting: `chain_links`
+houdt zijn venster van acht dagen, en `group_overview().closed_this_period`
+daarmee ook.
+
+Dat is de veilige kant van inconsistent: de kolom opent nergens méér dan hier
+beschreven staat.
+
+⚠️ **Eén ding dat bij het bouwen boven kwam en dat geen "nog niet" is.** Oppervlak
+1 noemde ook "de weekstatus". Die is er bewust niet bij gekomen: welke week van
+welk lid telt, hangt af van de persoonlijke cyclus van dat lid — en sinds
+migratie 0074 kan één cyclus meerdere weekdoelen dragen. Dat uitrekenen in SQL is
+correctheidsregel 7 breken. Wie het toch wil, bouwt het op `weekly_goals` (dat is
+oppervlak 3 en dat is al om) en niet op een nieuwe kolom in het overzicht.
 
 ⚠️ **Achterhaald sinds QS8-119 (24-08-2026):** hier stond dat de RLS-suite niet
 in CI draaide en dat groen in GitHub dus niets zei over domeinregel 7. Dat is
