@@ -76,14 +76,16 @@ Een migratie toepassen gaat zo:
    scripts/schema-opbouwen.sh
    ```
 
-3. **Pas hem toe** (MCP `apply_migration`, of `npm run db:push`), en **lijn
-   daarna de versie uit** als er een tijdstempel is neergezet:
+3. **Pas hem toe** (MCP `apply_migration`, of `npm run db:push`) en **trek het
+   register meteen daarna gelijk**:
 
-   ```sql
-   update supabase_migrations.schema_migrations
-      set version = '0072', name = 'korte_naam'
-    where name = 'korte_naam' and version <> '0072';
+   ```bash
+   npm run register:uitlijnen
    ```
+
+   Dat zoekt elke registerrij met een tijdstempel op, koppelt hem op **naam** aan
+   het bestand in de repo, en zet de versie op het nummer van dat bestand. Daarna
+   meet hij zelf na; blijft er iets staan, dan eindigt hij rood.
 
 4. **Controleer**:
 
@@ -92,8 +94,27 @@ Een migratie toepassen gaat zo:
    npm run types:db            # databasetypes hergenereren — niet vergeten
    ```
 
-Stap 3 vergeten is niet erg zolang stap 4 draait: de controle wordt rood op een
-tijdstempel en zegt precies wat er moet gebeuren.
+⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
+geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
+diezelfde dag zijn er zes migraties toegepast zonder die UPDATE, terwijl deze
+alinea er al stond. De controle wérd rood — alleen wordt de reparatie die een
+rode controle voorschrijft net zo goed vergeten als de stap zelf.
+
+**Een handeling die je bij élke migratie moet onthouden en die niets zichtbaars
+kapotmaakt als je hem overslaat, hoort een commando te zijn en geen zin.**
+Dezelfde les als bij regel 20 en de emoji-regel.
+
+⚠️ **Uitlijnen repareert nooit een ontbrekend bestand.** Staat er iets op het
+project waar geen `.sql` van bestaat — dat waren `0036`/`0037` en later `0057`
+t/m `0061` — dan waarschuwt het script en laat het de rij met rust. Een nummer
+verzinnen zou het register netjes maken en het gat onzichtbaar, en dat is precies
+de verkeerde kant op: het bestand moet terug.
+
+⚠️ **Een rij die al een nummer draagt wordt nooit aangeraakt**, ook niet als het
+bestand inmiddels anders heet. Dat is geschiedenis die klopt; die herschrijven op
+grond van een hernoemd bestand maakt het register onbetrouwbaar zonder dat het
+opvalt. Migratie 0081 weigert het, en `tests/scripts/migratieregister-plan.test.ts`
+breekt dat slot met de hand om te bewijzen dat het er is.
 
 ### 2.2a Het schema elders opbouwen
 

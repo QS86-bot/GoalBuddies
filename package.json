@@ -26,6 +26,7 @@
     "migraties:controle": "node scripts/migraties-controle.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
+    "register:uitlijnen": "node scripts/migratieregister-uitlijnen.mjs",
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",
     "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
