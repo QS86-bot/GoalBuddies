@@ -59,6 +59,7 @@ export async function updateProfiel(
   if (velden.share_moves_by_default !== undefined) {
     update.share_moves_by_default = velden.share_moves_by_default;
   }
+  if (velden.locale !== undefined) update.locale = velden.locale;
 
   const { data, error } = await supabase()
     .from('profiles')

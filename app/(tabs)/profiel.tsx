@@ -17,7 +17,7 @@ import {
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
-import { t } from '@/shared/i18n';
+import { t, taal, zetTaal, type Taal } from '@/shared/i18n';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
 import {
@@ -30,6 +30,7 @@ import {
   Field,
   Screen,
   Subheading,
+  TaalKeuze,
   useVieringenAan,
   WeekStartKeuze,
 } from '@/shared/ui';
@@ -91,6 +92,12 @@ export default function Profiel() {
             </Card>
 
             <BuddyBijdrage userId={p.id} />
+
+            <TaalInstelling
+              waarde={p.locale}
+              userId={p.id}
+              onOpgeslagen={zetProfiel}
+            />
 
             <WeekStartInstelling
               waarde={p.week_start_day as Weekday}
@@ -198,6 +205,68 @@ function AccountVerwijderen() {
           {t('profiel.toch_niet')}
         </Button>
       </View>
+    </Card>
+  );
+}
+
+/**
+ * De taalkeuze — QS8-115, criterium 4.
+ *
+ * ⚠️ **Twee dingen moeten gebeuren en in deze volgorde.** Eerst de kolom, dan
+ *    `zetTaal()`. De catalogus is procesbreed en geen React-context, dus zonder
+ *    die tweede aanroep verandert er niets op het scherm tot de app herstart —
+ *    de gebruiker klikt op Engels, het blijft Nederlands, en hij concludeert dat
+ *    de knop stuk is. Zetten we hem eerst en faalt de opslag daarna, dan staat
+ *    de app in een taal die het profiel niet kent en is hij na een herstart weer
+ *    terug. Vandaar: opslaan, en pas bij `ok` schakelen.
+ *
+ * ⚠️ `zetTaal()` alleen ververst het scherm niet — het is geen state. De
+ *    `onOpgeslagen` hierna zet het profiel in de provider, en dát is de render
+ *    die de nieuwe taal zichtbaar maakt. De twee horen dus bij elkaar; laat er
+ *    geen van beide weg.
+ *
+ * ⚠️ `locale` is `null` zolang er geen keuze staat (migratie 0061). De lijst
+ *    toont dan de taal die de app nú spreekt — afgeleid van het apparaat — zodat
+ *    er altijd iets aanstaat. Dat is geen stille keuze: de kolom blijft leeg tot
+ *    de gebruiker zelf iets aanwijst.
+ */
+function TaalInstelling({
+  waarde,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly waarde: string | null;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function kies(nieuw: Taal) {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, { locale: nieuw });
+
+    if (uitkomst.ok) {
+      zetTaal(nieuw);
+      onOpgeslagen(uitkomst.profiel);
+    } else {
+      setFout(uitkomst.melding);
+    }
+
+    setBezig(false);
+  }
+
+  return (
+    <Card>
+      <TaalKeuze
+        waarde={waarde === null ? taal() : (waarde as Taal)}
+        onKies={(nieuw) => void kies(nieuw)}
+        disabled={bezig}
+      />
+      <Caption>{t('taal.uitleg')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
 }

@@ -1310,6 +1310,20 @@ export const nl = {
   'groepscherm.meer_tijd': 'Een buddy vraagt om meer tijd',
   'coach.poging_telt': 'Elke poging telt mee in je tien per dag.',
   'weekafsluiting.wat_gedeeld': 'Wat de groep deelde',
+
+  // ---------------------------------------------------------------------------
+  // De taalkeuze — QS8-115
+  // ---------------------------------------------------------------------------
+  'taal.label': 'Taal',
+  'taal.hint': 'De app én je meldingen. Je kunt dit altijd omzetten.',
+  // ⚠️ Deze zin is er omdat de meldingen server-side worden opgesteld, in een
+  //    Edge Function zonder apparaat in de buurt (migratie 0061). Zonder de
+  //    keuze hier is iemand Engels in de app en Nederlands in elke nudge.
+  'taal.uitleg':
+    'Je keuze geldt ook voor de meldingen die je krijgt, want die worden op de ' +
+    'server opgesteld en niet op je telefoon.',
+  'taal.opslaan_mislukt': 'De taal kon niet worden opgeslagen. Probeer het opnieuw.',
+  'validatie.taal': 'Kies een taal uit de lijst.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

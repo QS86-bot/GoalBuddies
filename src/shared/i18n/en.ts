@@ -1114,4 +1114,15 @@ export const en: Record<Sleutel, string> = {
   'groepscherm.meer_tijd': 'A buddy is asking for more time',
   'coach.poging_telt': 'Every attempt counts towards your ten per day.',
   'weekafsluiting.wat_gedeeld': 'What the group shared',
+
+  // ---------------------------------------------------------------------------
+  // The language choice — QS8-115
+  // ---------------------------------------------------------------------------
+  'taal.label': 'Language',
+  'taal.hint': 'The app and your notifications. You can always change this.',
+  'taal.uitleg':
+    'Your choice also applies to the notifications you receive, because those are ' +
+    'composed on the server and not on your phone.',
+  'taal.opslaan_mislukt': 'The language could not be saved. Please try again.',
+  'validatie.taal': 'Choose a language from the list.',
 };

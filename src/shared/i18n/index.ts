@@ -154,6 +154,35 @@ export function weekdagNaam(weekdag: number): string {
 }
 
 /**
+ * De naam van een taal, geschreven in díé taal — QS8-115.
+ *
+ * ⚠️ **In de taal zelf en niet in de huidige taal**, en dat is de hele reden dat
+ *    deze functie bestaat. Zet iemand de app per ongeluk op een taal die hij
+ *    niet leest, dan is de keuzelijst zijn enige uitweg — en die vindt hij
+ *    alleen terug als "Nederlands" er staat als Nederlands en niet als "Dutch".
+ *    Vandaar `of(code)` en niet `of(huidig)`.
+ *
+ * ⚠️ Uit `Intl.DisplayNames` en niet uit de catalogus: het is locale-data, net
+ *    als de weekdagnamen. Elke taal die er ooit bij komt, staat er dan meteen
+ *    goed in.
+ *
+ * Valt terug op de code zelf als `Intl.DisplayNames` ontbreekt. "nl" in een
+ * keuzelijst is lelijk maar bruikbaar; een lege regel is dat niet.
+ */
+export function taalNaam(code: Taal): string {
+  try {
+    const naam = new Intl.DisplayNames([code], { type: 'language' }).of(code);
+    if (naam === undefined) return code;
+
+    // Hoofdletter erop, om dezelfde reden als bij de weekdagen: `Intl` geeft in
+    // het Nederlands "Nederlands" mét, maar in het Frans "français" zónder.
+    return naam.charAt(0).toUpperCase() + naam.slice(1);
+  } catch {
+    return code;
+  }
+}
+
+/**
  * De tekst bij een sleutel, met de parameters ingevuld.
  *
  * ⚠️ Valt terug op Nederlands als een vertaling ontbreekt, en op de sleutel zelf
