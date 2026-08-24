@@ -22,10 +22,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
 3. **⚠️ De migratiebestanden kunnen het schema niet opbouwen** — twee nummeringen
-   naast elkaar. Toegepast is `0001` t/m `0069`; `0057` t/m `0061` staan op een
+   naast elkaar. Toegepast is `0001` t/m `0071`; `0057` t/m `0061` staan op een
    branch en nog niet op `main`. **QS8-122**, blokkeert QS8-119. Uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **427 geslaagd, 257 overgeslagen**; typecheck en lint groen.
+   credentials: **428 geslaagd, 266 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
 5. **⚠️ Web push is aangezet maar nog niet bewezen.** De registratie staat er
    sinds **QS8-124** (In Review): knop op het profielscherm, abonnement, token.
@@ -69,7 +69,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0069`
+**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0071`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -127,7 +127,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **427 geslaagd en 257 overgeslagen** (die 257 zijn de RLS-suite, zie §3b)
+  **428 geslaagd en 266 overgeslagen** (die 266 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -146,13 +146,13 @@ Twee routes leggen een schakel: een weekafsluiting via de trigger
 `ketting_schakel()`. Daarmee gaat ook het bolletje "deze week al afgesloten" op
 het groepsoverzicht eindelijk aan — `group_overview()` las die tabel al.
 
-⚠️ **Wat van QS8-70 nog openstaat is alleen het systeembericht bij een
-ketting-mijlpaal.** Er is nog geen definitie van wat een mijlpaal ín de ketting
-is (drie perioden op rij? voltallig? een rond getal?), dus `chain_milestone`
-staat nog niet op de allowlist in `chat_messages_system_event_bekend`. Zet je
-hem erbij, dan moet `SYSTEEM_GEBEURTENISSEN` in
-`src/modules/buddies/chat-schemas.ts` mee — er staat sinds 18-08 een test op die
-de twee verzamelingen gelijkstelt (valkuil 18).
+✅ **Het systeembericht bij een ketting-mijlpaal staat er sinds 24-08**
+(migratie 0070), en daarmee is QS8-70 compleet: acht van de acht gebeurtenissen.
+Een mijlpaal is een **rond cumulatief aantal schakels van de groep** — 10, 25,
+50, 100, 250, 500, 1000. Waarom die vorm en niet "voltallig deze week" of "N
+weken op rij": die twee zijn conditioneel, dus het uitblijven van het bericht
+vertelt de groep dat iemand ontbrak. De onderbouwing staat in de kop van 0070 en
+in beslisdocument 002 §2, oppervlak 9.
 
 ### Wat er in de rondes van 20 t/m 23 augustus bij is gekomen
 
@@ -305,7 +305,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
-| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ af, m.u.v. de twee `phase:v2`-issues en de ketting-mijlpaal (zie §2) |
+| 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | gebouwd en gedeployd, wacht op `expo-notifications` (Q-TODO B4) |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
@@ -326,7 +326,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Een weekdoel aanmaken~~ | QS8-112 | ✅ gebouwd op 20-08. QS8-43 en QS8-44 stonden op Done terwijl er geen scherm was — controleer bij een frontend-issue voortaan of een mens er via het scherm bij kan |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
-| Systeembericht bij een ketting-mijlpaal | QS8-70 | `chain_links` wordt sinds 19-08 gevuld (QS8-80), dus de blokkade is weg. Wat ontbreekt is de definítie: wanneer is iets een mijlpaal in de ketting? Daarna `chain_milestone` op de allowlist, én in `SYSTEEM_GEBEURTENISSEN` — de test eist gelijkheid |
+| ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
 | Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
@@ -681,7 +681,7 @@ De zwaarste op dit moment:
    toetreden).
 3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
    groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
-   want er staan 257 RLS-tests die niemand automatisch draait — dat is precies
+   want er staan 266 RLS-tests die niemand automatisch draait — dat is precies
    het aantal dat `npm test` zonder credentials overslaat.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het

@@ -88,7 +88,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
     }
   });
 
-  it('bevat uitsluitend de negen gebeurtenissen van migratie 0025 en 0032', () => {
+  it('bevat uitsluitend de tien gebeurtenissen van migratie 0025, 0032 en 0070', () => {
     // ⚠️ Een exacte lijst en geen `toContain`-reeks. Zo is een tóevoeging óók een
     //    rode test, en niet alleen een verkeerde toevoeging. Wie hier een naam
     //    bijzet, komt eerst langs de vraag: kan hieruit iemands gemiste week
@@ -111,7 +111,25 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       'commitment_unlocked',
       'commitment_due',
       'deadline_requested',
+      'chain_milestone',
     ]);
+  });
+
+  it('kondigt een ketting-mijlpaal aan zonder een reeks of een voltallige week', () => {
+    // ⚠️ De vorm van de mijlpaal is zelf een domeinregel-7-beslissing, en die
+    //    hoort niet alleen in een SQL-commentaar te staan.
+    //
+    //    "Voltallig deze week" en "N weken op rij" zijn conditionele signalen:
+    //    blijft het bericht uit, dan weet de groep dat iemand ontbrak. Een
+    //    cumulatieve teller kent die toestand niet — hij stijgt of hij staat
+    //    stil, en stilstaan heeft te veel oorzaken om iets te bewijzen.
+    //
+    //    Deze test houdt de keuze vast door de twee namen te verbieden die de
+    //    conditionele variant zouden dragen. Wie ze ooit toevoegt, komt eerst
+    //    langs de redenering in migratie 0070.
+    expect(SYSTEEM_GEBEURTENISSEN as readonly string[]).toContain('chain_milestone');
+    expect(SYSTEEM_GEBEURTENISSEN as readonly string[]).not.toContain('chain_complete');
+    expect(SYSTEEM_GEBEURTENISSEN as readonly string[]).not.toContain('chain_streak');
   });
 
   it('kent geen gebeurtenis voor "vertel me meer"', () => {

@@ -1650,6 +1650,7 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      ketting_drempels: { Args: never; Returns: number[] }
       ketting_schakel: {
         Args: {
           p_cycle_start: string

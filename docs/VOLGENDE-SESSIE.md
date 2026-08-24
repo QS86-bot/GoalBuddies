@@ -182,7 +182,7 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    de PATH van een sessie is ouder dan de installatie. PR's kunnen dus, maar we
    mergen nog steeds lokaal; overleg als je dat wilt veranderen.
 3. Migraties mogen direct op het echte project (ref `wehgocadxehottiiyvsc`).
-   **Nummer verder vanaf 0069.** Elke migratie idempotent, met een rollback-pad
+   **Nummer verder vanaf 0072.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 
    ⚠️ **`0057` t/m `0061` bestaan niet als bestand** — ze zijn wel toegepast en

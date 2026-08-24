@@ -64,6 +64,21 @@ export const SYSTEEM_GEBEURTENISSEN = [
    *    afwijzing niet, want dát is wel een tegenslagsignaal over een ander.
    */
   'deadline_requested',
+  /**
+   * ⚠️ De achtste en laatste gebeurtenis van 7.2, toegevoegd in migratie 0070
+   *    (QS8-70). Het enige systeembericht **zonder persoonsnaam**: een
+   *    ketting-mijlpaal is van de groep, en wie de schakel toevallig als laatste
+   *    plaatste is geen gegeven dat iemand nodig heeft.
+   *
+   *    De mijlpaal is een rond cumulatief aantal schakels (10, 25, 50, …) en
+   *    bewust geen "voltallig deze week" of "N weken op rij". Die twee zijn
+   *    conditioneel: komt het bericht niet, dan weet de groep dát er iemand
+   *    ontbrak. Een cumulatieve teller kan alleen stijgen, dus er bestaat geen
+   *    uitblijvende mijlpaal om iets uit af te leiden. Onderbouwing in de kop van
+   *    migratie 0070 en in `docs/decisions/002-domeinregel7-oppervlakken.md` §2,
+   *    oppervlak 9.
+   */
+  'chain_milestone',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];
