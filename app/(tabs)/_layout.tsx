@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 
+import { t } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
 
 /**
@@ -28,10 +29,10 @@ export default function TabsLayout() {
         sceneStyle: { backgroundColor: theme.colors.bg },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Vandaag' }} />
-      <Tabs.Screen name="doelen" options={{ title: 'Doelen' }} />
-      <Tabs.Screen name="groep" options={{ title: 'Groep' }} />
-      <Tabs.Screen name="profiel" options={{ title: 'Profiel' }} />
+      <Tabs.Screen name="index" options={{ title: t('tab.vandaag') }} />
+      <Tabs.Screen name="doelen" options={{ title: t('tab.doelen') }} />
+      <Tabs.Screen name="groep" options={{ title: t('tab.groep') }} />
+      <Tabs.Screen name="profiel" options={{ title: t('tab.profiel') }} />
     </Tabs>
   );
 }

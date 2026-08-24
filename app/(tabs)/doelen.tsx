@@ -12,6 +12,7 @@ import {
   type Pagina,
   type Risico,
 } from '@/modules/goals';
+import { t } from '@/shared/i18n';
 import { space, useTheme } from '@/shared/theme';
 import { localDateIn, now } from '@/shared/time';
 import {
@@ -98,7 +99,7 @@ export default function Doelen() {
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
 
   return (
-    <Screen title="Doelen">
+    <Screen title={t('doelen.titel')}>
       <AsyncView
         loading={loading}
         error={error}
@@ -106,10 +107,8 @@ export default function Doelen() {
         isEmpty={(p) => p.rijen.length === 0}
         onRetry={herlaad}
         empty={{
-          title: 'Nog geen doel',
-          body:
-            'Begin met één doel met een datum erop. De Doelcoach hakt het daarna in mijlpalen, ' +
-            'en die mijlpalen worden je weekdoelen.',
+          title: t('doelen.leeg_titel'),
+          body: t('doelen.leeg_tekst'),
         }}
       >
         {(p) => (
@@ -126,8 +125,7 @@ export default function Doelen() {
 
             {p.meer ? (
               <Caption>
-                {p.rijen.length} van {p.totaal} doelen. Meer laden komt zodra er meer dan twintig
-                zijn.
+                {t('doelen.van_totaal', { aantal: p.rijen.length, totaal: p.totaal })}
               </Caption>
             ) : null}
           </View>
@@ -135,7 +133,7 @@ export default function Doelen() {
       </AsyncView>
 
       <Button variant="primair" block onPress={() => router.push('/doel/nieuw')}>
-        Nieuw doel
+        {t('doelen.nieuw')}
       </Button>
     </Screen>
   );
@@ -159,7 +157,7 @@ function DoelKaart({
   const verstreken = vandaag !== null && doel.target_date !== null && doel.target_date < vandaag;
 
   return (
-    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={doel.title ?? 'Doel'}>
+    <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={doel.title ?? t('doelen.doel')}>
       <Card>
         <View style={styles.kop}>
           <Subheading>{doel.title}</Subheading>
@@ -183,15 +181,15 @@ function DoelKaart({
         {risico === null ? null : <RisicoBadge stand={risico.stand} />}
 
         <View style={styles.voet}>
-          <Caption>Streefdatum {doel.target_date}</Caption>
+          <Caption>{t('doelen.streefdatum', { datum: doel.target_date ?? '' })}</Caption>
           {verstreken ? (
             // Rood mag hier: dit is deadline-risico, het enige waar die kleur
             // voor is. Niet voor een gemiste week (domeinregel 7).
             <Caption muted={false} danger>
-              Datum verstreken
+              {t('doelen.datum_verstreken')}
             </Caption>
           ) : (
-            <Caption>{doel.weekly_approved ?? 0} weken afgerond</Caption>
+            <Caption>{t('doelen.weken_afgerond', { n: doel.weekly_approved ?? 0 })}</Caption>
           )}
         </View>
 
