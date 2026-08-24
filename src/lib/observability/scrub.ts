@@ -53,6 +53,60 @@ export function scrubMessage(message: string): string {
     .slice(0, 500);
 }
 
+/**
+ * De frameregels van een stack: `    at fn (bestand.ts:12:3)`.
+ *
+ * ⚠️ De kop erboven is de melding, en die is precies wat `scrubMessage()`
+ *    schoonmaakt. V8 zet `Naam: melding` als eerste regel van `error.stack`.
+ */
+const STACKFRAME = /^\s*at\s/;
+
+/**
+ * ⚠️ Ruim genoeg voor elke echte stack en klein genoeg om geen verrassing te
+ *    zijn. Zonder grens kan één fout in een lus een rapport van megabytes
+ *    opleveren.
+ */
+const STACK_MAX = 4000;
+
+/**
+ * Een stack zonder de melding die erboven staat.
+ *
+ * ⚠️ **Waarom dit bestaat, en het is een gerepareerd lek en geen voorzorg.**
+ *    Tot 24-08-2026 haalde `reportError()` de melding door `scrubMessage()` en
+ *    gaf hij `error.stack` ongewijzigd door. Maar de eerste regel van een stack
+ *    ís die melding, letterlijk:
+ *
+ *      Error: Key (invite_code)=('zomer-2026') already exists, mail sanne@...
+ *          at maakGroep (api.ts:41:11)
+ *
+ *    Elk e-mailadres, elke geciteerde Postgres-waarde en elke token die
+ *    `scrubMessage()` eruit haalde, ging er via `stack` alsnog uit. Nagemeten,
+ *    niet vermoed.
+ *
+ * ⚠️ De kop wordt daarom niet opnieuw geschoond maar **opnieuw opgebouwd** uit
+ *    de naam en de al geschoonde melding. Twee keer hetzelfde schoonmaken is
+ *    twee plekken die uit elkaar kunnen lopen; dit kán niet uit elkaar lopen.
+ *
+ * ⚠️ De frameregels gaan wél door de e-mail- en tokenfilter. Een bestandspad
+ *    draagt op een ontwikkelmachine de gebruikersnaam, en een `at`-regel kan een
+ *    query-string bevatten. De `QUOTED`-regel blijft eraf: die zou een
+ *    aanhalingsteken in een pad opeten en de stack onleesbaar maken.
+ */
+export function scrubStack(
+  stack: string | undefined,
+  name: string,
+  geschoondeMelding: string,
+): string | undefined {
+  if (stack === undefined) return undefined;
+
+  const frames = stack
+    .split('\n')
+    .filter((regel) => STACKFRAME.test(regel))
+    .map((regel) => regel.replace(EMAIL, '[e-mail]').replace(TOKEN, '[token]'));
+
+  return [`${name}: ${geschoondeMelding}`, ...frames].join('\n').slice(0, STACK_MAX);
+}
+
 function scrubValue(value: unknown): string | number | boolean {
   if (typeof value === 'number' || typeof value === 'boolean') return value;
   if (typeof value === 'string') return scrubMessage(value);
