@@ -29,7 +29,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    schema nog altijd niet elders opbouwen. **QS8-122**, blokkeert QS8-119.
    Uitleg in §2.
 4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **535 geslaagd, 290 overgeslagen**; typecheck en lint groen.
+   credentials: **544 geslaagd, 290 overgeslagen**; typecheck en lint groen.
    **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -118,6 +118,12 @@ het is niet zichtbaar in een document, want het document staat op diezelfde tak.
 Kijk bij het beginnen van een sessie naar de branchtabel in
 `docs/VOLGENDE-SESSIE.md` en niet alleen naar `main`.
 
+✅ **QS8-115 is daarmee ook af** (In Review, 24-08). Er staat geen Nederlandse
+UI-tekst meer hard in `src/` en `app/`; `npm run tekst:controle` meldt nul en
+draait mee in `/audit`. De taalkeuze op het profielscherm bestaat sinds vandaag —
+tot dan kon niemand `profiles.locale` vullen en volgde de app alleen je telefoon.
+Eén criterium blijft open en dat vraagt een mens: de app in het Engels doorlopen.
+
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
 maken, en elk groepslid kon een vals systeembericht plaatsen. De rode draad: RLS
@@ -156,7 +162,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **535 geslaagd en 290 overgeslagen** (die 290 zijn de RLS-suite, zie §3b)
+  **544 geslaagd en 290 overgeslagen** (die 290 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele

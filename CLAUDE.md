@@ -420,6 +420,8 @@ was er een uitgebreide, groene testsuite die er niets van zag.
 | Migratie 0032/0034 | `SYSTEEM_GEBEURTENISSEN` en de CHECK, elk voor zich | De test vergeleek de app-lijst met **zichzelf**. 0032 zette `deadline_requested` op de CHECK, de app bleef op acht staan, en er werd niets rood |
 | QS8-115 / PR #9 | `deadlineVerzoekSchema` c.s. waren netjes vertaald | Ze verhuisden naar een eigen bestand (QS8-120/121) en de Nederlandse zinnen kwamen terug. De schematests toetsen de **inhoud** van de melding, niet de **herkomst** |
 | QS8-24 | `scrubMessage()` en `scrubContext()`, allebei uitgebreid getest | `reportError()` nam de geschoonde melding en zette de **ruwe stack** ernaast. De eerste regel van een stack ís de melding, dus alles ging er alsnog uit |
+| QS8-85 / QS8-115 | De test greep in `app/doel/[id].tsx` naar de letterlijke zin "De app rekent niets af" | De zin verhuisde naar de catalogus. De test bewaakte daarna nog steeds íets — een bestand — maar niet meer de belofte, en bleef groen tot hij per ongeluk rood werd |
+| QS8-113 / QS8-115 | Kolom, CHECK, kolomgrant, leeskant en catalogus: elk stuk af en getest | Er was geen schrijfpad naar `profiles.locale`. De héle keten was dood hout en geen enkele test kon dat zien, want er was niets kapot |
 
 **De vorm is elke keer dezelfde:** de test toetst een eigenschap van een
 ónderdeel, terwijl de belofte een eigenschap van het gehéél is. Onderdelen zijn
@@ -437,6 +439,15 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    verplaatst.
 3. **Kan deze test groen blijven terwijl de belofte breekt?** Als het antwoord ja
    is, bewaakt hij niets.
+4. **Grijpt deze test naar een plek in plaats van naar de belofte?** Een test die
+   een letterlijke zin in een schérmbestand zoekt, verhuist niet mee als die zin
+   verhuist. Hij wordt dan niet rood — hij bewaakt gewoon iets anders. Toets de
+   sleutel én de catalogus, niet het bestand waar de zin vandaag toevallig staat.
+5. **Is de keten ergens onderbroken terwijl elk schakeltje af is?** Dat is de
+   variant zonder kapot onderdeel, en dus de variant die geen enkele test vindt.
+   Vraag bij een feature die "klaar" heet: kan een gebruiker hier daadwerkelijk
+   bij, en langs welke knop? Bij QS8-113 lag er een kolom met een grant en een
+   policy die niemand ooit kon vullen.
 
 ⚠️ **Vraag 3 beantwoord je niet door erover na te denken, maar door de belofte
 met de hand te breken en te kijken of hij rood wordt.** Dat is in dit project de

@@ -40,8 +40,13 @@ service-role-key in `dist/` gezet en de deploy sloeg af met de vindplaats erbij.
 
 De rollover en de meldingenjob draaien elk uur tegen het echte project.
 
-**De laatste laag van QS8-115 ligt er nog:** de schermteksten in `app/` moeten
-naar de berichtencatalogus. `src/shared/ui` en alle zeven modules zijn wél om.
+**QS8-115 is af** (In Review, 24-08): `src/shared/ui`, alle zeven modules én
+alle schermen in `app/` lopen via de berichtencatalogus. `npm run tekst:controle`
+meldt nul en draait mee in `/audit`. Eén criterium blijft open en dat vraagt een
+mens: de app in het Engels doorlopen.
+
+⚠️ **De valkuil die dat opleverde staat in de lijst hieronder** — een
+meetinstrument dat groen wordt, is niet klaar met ijken.
 
 ⚠️ **Het migratiebereik en de testteller staan in `docs/WERKVOORRAAD.md` §0 en
 §2, en bewust alleen daar.** Tot 23-08 stonden ze ook hier, en toen liepen ze
@@ -276,6 +281,14 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
   regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
   Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **Een meetinstrument dat groen wordt en dus niet meer geijkt wordt.** De
+  tekstcontrole van QS8-115 stond op nul en miste toen nog een hele vorm: tekst
+  achter een openingstag op dezelfde regel (`<Subheading>Kop</Subheading>`), want
+  zijn heuristiek eiste dat de régel met een hoofdletter begon. Eén extra ijking
+  ná groen vond zeventien zinnen in mappen die al "af" heetten. **Een controle
+  die nul meldt terwijl er tekst staat, geeft toestemming om te stoppen met
+  kijken** — ijk hem dus juist op het moment dat hij groen wordt.
+
 - **Een hulpscript dat niet idempotent is en tóch twee keer draait.** Bij QS8-115
   liep een migratiescript opnieuw na een fout halverwege, waardoor het
   catalogusblok dubbel in `nl.ts` kwam te staan. TypeScript ving het, maar het is
