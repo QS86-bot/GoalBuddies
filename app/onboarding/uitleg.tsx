@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { t } from '@/shared/i18n';
 import { space, useTheme } from '@/shared/theme';
 import { Body, Button, Card, FloorCeiling, Screen, Subheading } from '@/shared/ui';
 
@@ -22,45 +23,46 @@ interface Stap {
   readonly tekst: readonly string[];
 }
 
-const STAPPEN: readonly Stap[] = [
-  {
-    kop: 'Eén doel, met een datum erop',
-    tekst: [
-      'Je begint met één doel dat af moet zijn op een dag die jij kiest. Niet vijf doelen — één.',
-      'De Doelcoach hakt het daarna in mijlpalen, en die mijlpalen worden je weekdoelen.',
-    ],
-  },
-  {
-    kop: 'De week is de eenheid',
-    tekst: [
-      'Elke week bepaal je wat je af wilt hebben. Aan het eind van je week vink je af wat gelukt is.',
-      'Jouw week begint op de dag die jij kiest. Niet iedereen leeft van maandag tot zondag.',
-    ],
-  },
-  {
-    kop: 'Een vloer en een plafond',
-    tekst: [
-      'Het plafond is wat je wilt halen. De vloer is de versie die je op je slechtste week nóg haalt.',
-      'De vloer halen telt: je reeks loopt door en je buddy keurt hem net zo goed. Alleen de punten verschillen.',
-      'Dit is het idee waar de app om draait. Je reeks hoort jou te dienen, niet andersom.',
-    ],
-  },
-  {
-    kop: 'Een buddy keurt het goed',
-    tekst: [
-      'Iemand uit je groep bevestigt dat het gelukt is. Jezelf goedkeuren kan niet.',
-      'Een week missen kost je één punt en verder niets. Niemand in je groep ziet het.',
-    ],
-  },
-];
+/**
+ * De vier stappen.
+ *
+ * ⚠️ **Een functie en geen constante**, en dat is de eerste valkuil van QS8-115.
+ *    Een module-constante met `t()` erin wordt één keer opgebouwd bij het
+ *    ímporteren van deze module — vóórdat het profiel geladen is en dus vóórdat
+ *    de taal bekend is. Iemand met Engels ingesteld kreeg dan een Nederlandse
+ *    onboarding tot hij de app herstartte, zonder dat er iets aan te zien is.
+ */
+function stappen(): readonly Stap[] {
+  return [
+    {
+      kop: t('onboarding.stap1.kop'),
+      tekst: [t('onboarding.stap1.a'), t('onboarding.stap1.b')],
+    },
+    {
+      kop: t('onboarding.stap2.kop'),
+      tekst: [t('onboarding.stap2.a'), t('onboarding.stap2.b')],
+    },
+    {
+      kop: t('onboarding.stap3.kop'),
+      tekst: [t('onboarding.stap3.a'), t('onboarding.stap3.b'), t('onboarding.stap3.c')],
+    },
+    {
+      kop: t('onboarding.stap4.kop'),
+      tekst: [t('onboarding.stap4.a'), t('onboarding.stap4.b')],
+    },
+  ];
+}
 
 export default function Uitleg() {
   const router = useRouter();
   const theme = useTheme();
   const [stap, setStap] = useState(0);
 
-  const huidig = STAPPEN[stap];
-  const laatste = stap === STAPPEN.length - 1;
+  // ⚠️ Bij elke render opnieuw opgebouwd, en dat is geen verspilling maar de
+  //    hele reden dat `stappen()` een functie is: zo volgt de tekst de taal.
+  const alle = stappen();
+  const huidig = alle[stap];
+  const laatste = stap === alle.length - 1;
 
   function verder() {
     if (laatste) router.replace('/onboarding/profiel');
@@ -68,9 +70,12 @@ export default function Uitleg() {
   }
 
   return (
-    <Screen title={huidig?.kop ?? ''} eyebrow={`STAP ${stap + 1} VAN ${STAPPEN.length}`}>
+    <Screen
+      title={huidig?.kop ?? ''}
+      eyebrow={t('onboarding.stap_van', { nu: stap + 1, totaal: alle.length })}
+    >
       <View style={styles.balk} accessibilityRole="progressbar">
-        {STAPPEN.map((_, i) => (
+        {alle.map((_, i) => (
           <View
             key={i}
             style={[
@@ -90,11 +95,11 @@ export default function Uitleg() {
 
         {stap === 2 ? (
           <View style={styles.voorbeeld}>
-            <Subheading>Zo ziet dat eruit</Subheading>
+            <Subheading>{t('onboarding.zo_ziet_eruit')}</Subheading>
             <FloorCeiling
-              title="Drie keer hardlopen"
-              floorText="Eén keer, al is het twintig minuten"
-              ceilingText="Drie keer, minstens vijf kilometer"
+              title={t('onboarding.voorbeeld_titel')}
+              floorText={t('onboarding.voorbeeld_vloer')}
+              ceilingText={t('onboarding.voorbeeld_plafond')}
               status="approved"
               achieved="floor"
               viewer="owner"
@@ -105,10 +110,10 @@ export default function Uitleg() {
 
       <View style={styles.knoppen}>
         <Button variant="primair" onPress={verder}>
-          {laatste ? 'Aan de slag' : 'Verder'}
+          {laatste ? t('onboarding.aan_de_slag') : t('onboarding.verder')}
         </Button>
         <Button variant="stil" onPress={() => router.replace('/onboarding/profiel')}>
-          Overslaan
+          {t('onboarding.overslaan')}
         </Button>
       </View>
     </Screen>

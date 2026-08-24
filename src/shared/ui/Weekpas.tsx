@@ -101,10 +101,7 @@ export function Weekpas({ stand, reddeVorigeWeek = false }: Props) {
                bijgekomen is. Wie dat leest en later zijn totaal ziet dalen,
                denkt dat de app niet kan rekenen.
           */}
-          <Caption>
-            Vorige week is niet afgerond, maar je reeks loopt gewoon door. Voor die week is er
-            wel één punt afgegaan.
-          </Caption>
+          <Caption>{t('weekpas.punt_toch_af')}</Caption>
         </View>
       ) : null}
 

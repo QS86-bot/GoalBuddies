@@ -60,7 +60,7 @@ vraag 2 hierboven: wat houdt het tegen als iemand de UI overslaat?
 | 6 | Punten | `points_ledger` | Niets | `user_id = auth.uid()` als enige SELECT-regel. Een dalend totaal is zichtbaar bewijs van een gemiste week (domeinregel 10) |
 | 7 | Uitnodigingspagina (zonder account) | `invite_preview()` | Groepsnaam, aantal leden, huddledag, voornamen | Functie met vaste projectie (0019). Met account het volledige beeld |
 | 8 | **Groepschat** | `chat_messages`, `groepschat()` | Wat mensen zelf typen | `chat_messages_select` eist lidmaatschap. `chat_messages_insert` verbiedt `type = 'system'`; `stamp_chat_message()` zet groep, afzender, type en tijd vast (0006, 0010) |
-| 9 | **Systeemberichten** | `chat_messages.system_event`, `subject_id`, `actor_id`, `payload` | Tien positieve gebeurtenissen | **CHECK `chat_messages_system_event_bekend`** (0025, uitgebreid in 0032, 0070 en 0071). Een nieuw type vraagt een migratie. Geen titels, notities of niveaus in de tekst. ⚠️ **Gewijzigd 21-08-2026 (migratie 0059, QS8-107).** De zin stond uitgeschreven in `body` en werd zo getoond; nu dragen de rijen hun parameters als kolommen en maakt de app de zin, in `src/modules/buddies/systeemberichten.ts`. `body` blijft als noodterugval. **Voor deze regel verandert er niets aan wát de groep ziet** — de zinnen zijn woordelijk gelijk gebleven — maar de regel woont nu op één plek in plaats van verspreid over zeven SQL-functies, mét een test die weigert dat een bekende gebeurtenis op de terugval landt. De persoonskolommen zijn `on delete set null`, zodat een verwijderd account "Een oud-lid" wordt zonder dat er een rij herschreven wordt (oppervlak 18). ⚠️ Een persoon hoort **nooit** in `payload`: een uuid in jsonb heeft geen foreign key en overleeft dus een accountverwijdering ⚠️ **`chain_milestone` is er in 0070 bij gekomen (24-08) en is het enige systeembericht zonder persoonsnaam** — een ketting-mijlpaal is van de groep. De mijlpaal is een rond **cumulatief** aantal schakels (10, 25, 50, …) en bewust geen "voltallig deze periode" of "N perioden op rij": die twee zijn conditioneel, dus het uitblijven van het bericht vertelt de groep dat iemand ontbrak — de afwezigheid wordt dan zelf het signaal. Een cumulatieve teller is monotoon, kent die toestand niet, en rekent bovendien niets uit (correctheidsregel 7). ⚠️ **0071 sloot een gat dat 0070 gevaarlijk maakte:** `chat_messages_insert` verbood wel `type = 'system'` maar zei niets over `system_event`, dus een lid kon een eigen bericht met een systeemgebeurtenis plaatsen. Onschadelijk tot 0070 — de weergave kijkt naar `sender_id` en `type` — maar daarna kon je er elke echte mijlpaalaankondiging mee wegdrukken. Nu twee sloten: de policy laat het niet meer toe, en de telling accepteert alleen rijen die `plaats_systeembericht()` geschreven kan hebben |
+| 9 | **Systeemberichten** | `chat_messages.system_event`, `subject_id`, `actor_id`, `payload` | Tien positieve gebeurtenissen | **CHECK `chat_messages_system_event_bekend`** (0025, uitgebreid in 0032, 0070 en 0071). Een nieuw type vraagt een migratie. Geen titels, notities of niveaus in de tekst. ⚠️ **Gewijzigd 21-08-2026 (migratie 0059, QS8-107).** De zin stond uitgeschreven in `body` en werd zo getoond; nu dragen de rijen hun parameters als kolommen en maakt de app de zin, in `src/modules/buddies/systeemberichten.ts`. `body` blijft als noodterugval. **Voor deze regel verandert er niets aan wát de groep ziet** — de zinnen zijn woordelijk gelijk gebleven — maar de regel woont nu op één plek in plaats van verspreid over zeven SQL-functies, mét een test die weigert dat een bekende gebeurtenis op de terugval landt. De persoonskolommen zijn `on delete set null`, zodat een verwijderd account "Een oud-lid" wordt zonder dat er een rij herschreven wordt (oppervlak 18). ⚠️ Een persoon hoort **nooit** in `payload`: een uuid in jsonb heeft geen foreign key en overleeft dus een accountverwijdering ⚠️ **`chain_milestone` is er in 0070 bij gekomen (24-08) en is het enige systeembericht zonder persoonsnaam** — een ketting-mijlpaal is van de groep. De mijlpaal is een rond **cumulatief** aantal schakels (10, 25, 50, …) en bewust geen "voltallig deze periode" of "N perioden op rij": die twee zijn conditioneel, dus het uitblijven van het bericht vertelt de groep dat iemand ontbrak — de afwezigheid wordt dan zelf het signaal. Een cumulatieve teller is monotoon, kent die toestand niet, en rekent bovendien niets uit (correctheidsregel 7). ⚠️ **0075 repareerde een onderbroken keten:** de drempel stond alleen in `body`, en dat is sinds 0059 noodterugval — de app maakt de zin zelf uit `system_event` plus de kolommen. Er was geen catalogussleutel en geen parameter voor een getal, dus de groepschat toonde letterlijk `systeembericht.chain_milestone`. Elk schakeltje was af (`payload` bestond, `groepschat()` gaf hem terug, de CHECK stond goed) en de keten liep nergens door — de variant zonder kapot onderdeel uit onwrikbare regel 18, vraag 5. Het getal gaat nu mee in `payload`; een persoon hoort daar nóóit in. ⚠️ **0071 sloot een gat dat 0070 gevaarlijk maakte:** `chat_messages_insert` verbood wel `type = 'system'` maar zei niets over `system_event`, dus een lid kon een eigen bericht met een systeemgebeurtenis plaatsen. Onschadelijk tot 0070 — de weergave kijkt naar `sender_id` en `type` — maar daarna kon je er elke echte mijlpaalaankondiging mee wegdrukken. Nu twee sloten: de policy laat het niet meer toe, en de telling accepteert alleen rijen die `plaats_systeembericht()` geschreven kan hebben |
 | 10 | **Weekafsluiting** | `week_reviews`, `weekafsluiting()` | Wat leden zelf schrijven, incl. vraag 2 | De gebruiker schrijft en verstuurt zelf (route 1). Wie niets invult heeft geen rij en staat er niet op |
 | 11 | **Reacties op de weekafsluiting** | `week_review_replies` | Wat leden zelf schrijven | Policies via de groep van het ántwoord, niet van de schrijver (0026). Geen UPDATE |
 | 12 | Realtime-abonnementen | `supabase_realtime` | `completions`, `weekly_goals`, `chat_messages` | RLS op INSERT en UPDATE. **Op DELETE níet** — zie §4 |
@@ -194,6 +194,94 @@ referentiële actie als tabeleigenaar draait.
 
 **Bij elke nieuwe `on delete set null`: staat er een trigger op die kolom?**
 
-**Wat er nog niet is:** de RLS-suite draait niet in CI (`docs/WERKVOORRAAD.md` §5).
-Groen in GitHub zegt dus niets over domeinregel 7. Zolang dat zo is, moet deze suite
-met de hand gedraaid worden vóór een merge.
+---
+
+## 6. Besluit A41 — open of beschermde groepen (24-08-2026, EPIC 13)
+
+Vanaf migratie 0076 is domeinregel 7 een eigenschap **per groep** in plaats van
+een eigenschap van het product. `groups.zichtbaarheid` staat op `beschermd` of
+`open`; beschermd is de standaard en bestaande groepen zijn beschermd.
+
+⚠️ **Dit document blijft de waarheid over de beschérmde stand.** Alles in §2 t/m
+§5 beschrijft wat een groep ziet zolang hij op `beschermd` staat, en dat is
+onveranderd. Deze paragraaf zegt er per oppervlak bij wat "open" betekent — en
+bij verreweg de meeste oppervlakken is het antwoord "niets".
+
+### 6a. De fundering
+
+| Wat | Waar | Wat het doet |
+|---|---|---|
+| `groups.zichtbaarheid` | 0076 | `not null default 'beschermd'`, CHECK op twee waarden. Geen derde toestand: "nog niet gekozen" zou betekenen dat elke policy moet weten wat dat betekent, en het antwoord is altijd "beschermd" |
+| Twee schrijfsloten | 0076 §2 | De kolom valt buiten de zeven kolommen die 0019 aan `authenticated` teruggaf, dus hij was vanaf het eerste moment niet client-schrijfbaar. `guard_group_update()` zet hem daarnaast terug. ⚠️ **Dat eerste slot kreeg de kolom gratis, en dat is precies waarom 0019 het zo heeft opgezet** — een slot dat werkt zonder dat iemand eraan denkt |
+| `group_events` | 0076 §3 | Auditspoor van de groep als geheel. Leesbaar voor élk lid (wie zichtbaar gemaakt wordt, hoort te kunnen nazien wanneer en door wie), schrijfbaar voor niemand: er is geen INSERT-policy, dezelfde vorm als `commitment_events`. Geen doel, geen week, geen status in de rij |
+| `zet_groepszichtbaarheid()` | 0076 §6 | De enige route. Actieve beheerder, `p_bevestigd` verplicht, `group_events`-rij vóór het bericht, systeembericht erna. ⚠️ **De rem staat alleen op de onveilige richting**: naar `open` hooguit één keer per etmaal, naar `beschermd` altijd — een beheerder die zich vergist heeft, mag de gemiste weken van zijn leden niet een dag lang zichtbaar moeten houden als straf voor zijn fout |
+| `group_opened` / `group_protected` | 0076 §5, oppervlak 9 | Elfde en twaalfde systeemgebeurtenis. Zónder deze twee zou het omzetten stilzwijgend zijn, en dat is precies wat grens 3 verbiedt: het bericht is het moment waarop een lid kan besluiten zijn doel te ontkoppelen |
+
+### 6b. Wat "open" per oppervlak betekent
+
+⚠️ **Niet in één keer opengooien** — dat staat letterlijk in QS8-132. De kolom
+bestaat sinds 0076 en varieerde toen nog nergens op; 0077 is het eerste
+oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
+24-08-2026.
+
+| # | Oppervlak | Wat "open" hier betekent | Stand |
+|---|---|---|---|
+| 1 | Groepsoverzicht | `group_overview()` geeft ook `last_cycle_start` en `best_streak` door. ⚠️ **De weekstatus is er bewust níét bij gekomen**: die is per lid per cyclus, en een lid kan sinds 0074 meerdere weekdoelen in één cyclus hebben — dat is een berekening en die hoort niet in SQL (correctheidsregel 7). `closed_this_period` houdt zijn venster van acht dagen; dat hoort bij De Ketting en gaat mee met QS8-135 | ✅ **0078** |
+| 2 | Reeksen | `best_streak` en `last_cycle_start` in `group_visible_streaks`, als `case`-expressie: gevuld voor de eigenaar zelf en voor een lid van een open groep, `null` daarbuiten. ⚠️ **De belofte is van vorm veranderd en dat is een verzwakking die je moet weten**: hier stond "de kolom bestáát niet", en een kolom die er niet is kan niet lekken. Nu staat er "de kolom is leeg", en dat hangt van een `case` af. De afweging tegen een tweede view en tegen een functie staat in de kop van 0078. ⚠️ `total_points` staat op dezelfde tabel en blijft eruit (A42) | ✅ **0078** |
+| 3 | **Weekdoelen van een gekoppeld doel** | De statusfilter `missed/carried/cancelled/excused` vervalt voor een lid van een open groep | ✅ **0077** |
+| 4 | Voltooiingen | Niets. Er bestaat geen rij voor een week die niet is afgerond, dus er valt niets te openen | ✅ n.v.t. |
+| 5 | Beoordelingswachtrij | Niets. Alleen ingediende voltooiingen | ✅ n.v.t. |
+| 6 | Punten | **Niets, en dat is een apart besluit** — A42, 24-08-2026. Ook in een open groep blijft `points_ledger` eigenaar-only; wie het totaal deelt, deelt het missen via een omweg. De vorm voor competitie is een teller die alleen optelt | ⛔ **Bewust dicht** |
+| 7 | Uitnodigingspagina | `invite_preview()` noemt de zichtbaarheid, óók zonder account. ⚠️ **Dit was de naad die 0076 niet dekte**: wie meedoet met een groep die al open staat, maakt dezelfde overgang mee als een lid van een groep die wordt opengezet — zijn gemiste weken worden zichtbaar — maar er is geen systeembericht, want er verándert niets aan de groep. Een bericht kan dat ook niet opvangen: wie nieuw is heeft het niet gelezen. Dit scherm is de enige plek waar het feit kan staan, en dus staat het er vóór de knop | ✅ **0080** |
+| 8 | Groepschat | Niets. Wat mensen zelf typen, is altijd hun eigen keuze geweest | ✅ n.v.t. |
+| 9 | Systeemberichten | Niets aan de bestaande tien. Er kwamen er twee bij (6a) die over de gróép gaan. ⚠️ Een open groep krijgt géén nieuw type "X heeft een week gemist": dat zou van een keuze een aankondiging maken, en de allowlist is bewust een migratie waard | ⛔ **Bewust dicht** |
+| 10 | Weekafsluiting | Niets. Route 1 — de gebruiker schrijft en verstuurt zelf | ✅ n.v.t. |
+| 11 | Reacties op de weekafsluiting | Niets. Idem | ✅ n.v.t. |
+| 12 | Realtime | **Niets, en het verbod op `REPLICA IDENTITY FULL` blijft onverkort staan.** ⚠️ De reden is hier een ándere dan bij een beschermde groep: met `full` gaat bij een DELETE de volledige oude rij naar iedereen die zich abonneert, **lid of niet**. "Open" is een keuze over wat de gróép ziet; dit lek gaat naar buiten de groep, en dat heeft niemand gekozen. Getoetst in `tests/rls/epic13.test.ts` | ⛔ **Bewust dicht** |
+| 13 | De Ketting | Het venster van acht dagen vervalt in een open groep, op `chain_links_select` **en** op `closed_this_period` in `group_overview()`. ⚠️ Die twee dragen hetzelfde venster op twee plekken; één van de twee omzetten zou een lid de schakels in de tabel laten zien maar niet in het overzicht dat het scherm leest. `ketting_stand()` en `chain_milestone` zijn niet aangeraakt: aantallen zonder namen, in beide standen hetzelfde | ✅ **0079** |
+| 14 | Seizoensrecap | Nog niet gebouwd (EPIC 8) — beoordeel bij het bouwen | **Nog niet gebouwd** |
+| 15 | Notificaties | Nog niet gebouwd (EPIC 11) — beoordeel bij het bouwen | **Nog niet gebouwd** |
+| 16 | Deadline-verzoeken | Niets. De gebruiker vraagt het zélf aan (A7) | ✅ n.v.t. |
+| 17 | Ingetrokken goedkeuringen | ⚠️ **Bewust dicht, ook in een open groep.** "De week van X is toch niet bevestigd" is niet iemands eigen tegenslag maar het oordeel van een ánder lid over hem. Openzetten is een keuze over eigen zichtbaarheid, geen mandaat om andermans intrekking rond te sturen | ⛔ **Bewust dicht** |
+| 18 | Verwijderde accounts | Niets. `on delete set null` is geen zichtbaarheidskeuze | ✅ n.v.t. |
+| 19 | Weekpassen | ⚠️ **Bewust dicht.** Een verbruikte pas is een gemiste week plus de handeling om hem te redden; dat is een privé-voorraad, geen groepsgegeven. Bovendien staan de schrijvers op `service_role` en dragen `weekpas_stand()` en `weekpas_standen()` hun eigenaarstoets zélf — dit oppervlak leunt niet op RLS en zou dus een tweede, eigen verruiming vragen | ⛔ **Bewust dicht** |
+| 20 | Commitments | Niets. De beloning en de verschuldigde straf zijn al zichtbaar; het auditspoor blijft eigenaar-only | ✅ n.v.t. |
+
+**Zeven oppervlakken staan bewust dicht, ook in een open groep.** Dat is geen
+halfheid maar de kern van het besluit: "open" betekent dat de groep jouw
+tegenslag mag zien, niet dat alles open is. Wie ooit een van die zeven wil
+verruimen, komt langs deze tabel en langs de reden.
+
+### 6c. Wat er af is, en waar de grens ligt
+
+**Alle twintig oppervlakken zijn beoordeeld en alles wat om moest, is om**
+(migraties 0076 t/m 0079). Een lid van een **open** groep ziet van een gekoppeld
+doel de gemiste, doorgeschoven, afgesloten en vrijgestelde weken, de beste reeks,
+de laatste getelde cyclus en de historische aanwezigheid in De Ketting.
+
+⚠️ **Er zijn twee routes naar zichtbaarheid en niet één.** Grens 3 van het
+besluit beschrijft er één — de groep wordt omgezet — en dekt hem met een
+bevestiging, een auditrij en een systeembericht (0076). De tweede is **meedoen**:
+een groep die al open staat verandert niet, dus er is niets aan te kondigen. Daar
+is een *feit vooraf* het antwoord en geen bevestigingsstap (0080), om dezelfde
+reden waarom `create_group()` er geen heeft: in beide gevallen beslist de persoon
+uitsluitend over zijn eigen weken. Bevestigen doe je waar je over een ánder
+beslist.
+
+**Zeven oppervlakken staan bewust dicht, ook daar** — en dat is de grens van het
+besluit, geen restpost: punten (A42), systeemberichten over tegenslag, realtime,
+ingetrokken goedkeuringen, de weekpassen, de teller van De Ketting en de
+mijlpaalaankondiging. Wie er ooit een wil verruimen, komt eerst langs de rij in
+§6b en langs de reden die daar staat.
+
+⚠️ **Eén ding dat bij het bouwen boven kwam en dat geen "nog niet" is.** Oppervlak
+1 noemde ook "de weekstatus". Die is er bewust niet bij gekomen: welke week van
+welk lid telt, hangt af van de persoonlijke cyclus van dat lid — en sinds
+migratie 0074 kan één cyclus meerdere weekdoelen dragen. Dat uitrekenen in SQL is
+correctheidsregel 7 breken. Wie het toch wil, bouwt het op `weekly_goals` (dat is
+oppervlak 3 en dat is al om) en niet op een nieuwe kolom in het overzicht.
+
+⚠️ **Achterhaald sinds QS8-119 (24-08-2026):** hier stond dat de RLS-suite niet
+in CI draaide en dat groen in GitHub dus niets zei over domeinregel 7. Dat is
+gerepareerd — de suite draait tegen een lokaal opgebouwd schema, in CI, zonder
+secrets. Zie `docs/decisions/005-rls-suite-lokaal.md`.

@@ -54,7 +54,92 @@ Het script weigert door te gaan bij een ontbrekende `SUPABASE_DB_URL`, een
 ontbrekende `pg_dump`, of een dump die verdacht klein is. Een half bestand is
 gevaarlijker dan geen bestand, want daar vertrouw je op.
 
-### 2.2 Een migratie draaien
+### 2.2 Een migratie toepassen — QS8-122
+
+**Er is één nummering en die staat in de bestandsnaam.** `0072_naam.sql` in de
+repo hoort één op één bij versie `0072` in `supabase_migrations.schema_migrations`
+op het project. Loopt dat uiteen, dan kan de map het schema nergens anders
+opbouwen — en dan toetst een RLS-suite daar een ánder schema dan productie.
+
+⚠️ **De MCP-tool kiest zelf een tijdstempel als versie, ongeacht hoe je het
+bestand noemt.** Dat is de bron van de drift die dit issue kwam opruimen, en het
+is geen instelling die je uit kunt zetten. Vandaar de derde stap hieronder.
+
+Een migratie toepassen gaat zo:
+
+1. **Schrijf het bestand** als `NNNN_korte_naam.sql`, met het volgende vrije
+   nummer. `npm run migraties:controle` zegt of de nummering klopt.
+2. **Speel hem eerst lokaal af** op een lege database. Dat kost een minuut en
+   het is de enige manier om te merken dat een migratie niet op zichzelf staat:
+
+   ```bash
+   scripts/schema-opbouwen.sh
+   ```
+
+3. **Pas hem toe** (MCP `apply_migration`, of `npm run db:push`) en **trek het
+   register meteen daarna gelijk**:
+
+   ```bash
+   npm run register:uitlijnen
+   ```
+
+   Dat zoekt elke registerrij met een tijdstempel op, koppelt hem op **naam** aan
+   het bestand in de repo, en zet de versie op het nummer van dat bestand. Daarna
+   meet hij zelf na; blijft er iets staan, dan eindigt hij rood.
+
+4. **Controleer**:
+
+   ```bash
+   npm run register:controle   # repo en project zeggen hetzelfde
+   npm run types:db            # databasetypes hergenereren — niet vergeten
+   ```
+
+⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
+geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
+diezelfde dag zijn er zes migraties toegepast zonder die UPDATE, terwijl deze
+alinea er al stond. De controle wérd rood — alleen wordt de reparatie die een
+rode controle voorschrijft net zo goed vergeten als de stap zelf.
+
+**Een handeling die je bij élke migratie moet onthouden en die niets zichtbaars
+kapotmaakt als je hem overslaat, hoort een commando te zijn en geen zin.**
+Dezelfde les als bij regel 20 en de emoji-regel.
+
+⚠️ **Uitlijnen repareert nooit een ontbrekend bestand.** Staat er iets op het
+project waar geen `.sql` van bestaat — dat waren `0036`/`0037` en later `0057`
+t/m `0061` — dan waarschuwt het script en laat het de rij met rust. Een nummer
+verzinnen zou het register netjes maken en het gat onzichtbaar, en dat is precies
+de verkeerde kant op: het bestand moet terug.
+
+⚠️ **Een rij die al een nummer draagt wordt nooit aangeraakt**, ook niet als het
+bestand inmiddels anders heet. Dat is geschiedenis die klopt; die herschrijven op
+grond van een hernoemd bestand maakt het register onbetrouwbaar zonder dat het
+opvalt. Migratie 0081 weigert het, en `tests/scripts/migratieregister-plan.test.ts`
+breekt dat slot met de hand om te bewijzen dat het er is.
+
+### 2.2a Het schema elders opbouwen
+
+Dit is de proef onder alles hierboven: bouwen de bestanden hetzelfde schema als
+productie?
+
+```bash
+scripts/schema-opbouwen.sh                       # lege database, alle migraties
+psql -d goalbuddies_opbouw -f scripts/schema-vingerafdruk.sql
+```
+
+Draai diezelfde vingerafdrukquery op het echte project en vergelijk de negen
+regels. Op 24-08-2026 waren ze alle negen gelijk: 255 kolommen, 155 constraints,
+86 indexen, 65 policies, 87 functies, 31 triggers, 3395 rechten, 3
+publicatieleden en 29 tabellen met RLS.
+
+⚠️ Het vraagt een Postgres 16 waarop je superuser bent, en **niet** de Supabase
+CLI of Docker. `supabase/shim/0000_supabase_shim.sql` zet neer wat een
+Supabase-project vóór de eerste migratie al heeft: de rollen, `auth.uid()`,
+`auth.users`, de realtime-publicatie — en de standaardrechten op `public`, die
+de belangrijkste regel van dat bestand zijn. Zonder die laatste bouwt een lege
+database een schema op dat *strenger* is dan productie, en dan bevestigt een
+RLS-test iets wat daar niet waar is.
+
+### 2.2b Met de Supabase CLI
 
 ```bash
 npm run db:push        # dump eerst, dan supabase db push
@@ -100,20 +185,81 @@ Uit `CLAUDE.md`, procesregel 20 — elk bestand in `supabase/migrations/`:
 
 ### 2.5 De RLS-tests
 
+**Draai ze lokaal. Dat is sinds QS8-119 de standaard.**
+
 ```bash
-npm test                        # slaat ze over zonder .env
-npx vitest run src/lib/testing  # alleen de RLS-suite
+npm run rls:stack      # schema opbouwen + PostgREST starten
+npm run rls:lokaal     # de suite ertegenaan — ongeveer vijf seconden
+npm run rls:stack:stop
 ```
 
-Ze maken drie echte gebruikers aan in het project, doen hun werk en ruimen
-zichzelf op. Ze draaien **niet** in CI: `SUPABASE_SERVICE_ROLE_KEY` omzeilt RLS
-en hoort niet in een runner die op elke push van elke branch draait.
+Geen credentials, geen netwerk, en het echte project wordt niet aangeraakt. De
+suite praat tegen een **echte PostgREST** op een database die uit
+`supabase/migrations/` is opgebouwd — aantoonbaar hetzelfde schema als productie
+(§2.2a).
 
-Draai ze lokaal vóór elke merge die auth, RLS, goedkeuring of commitments raakt.
+#### Wat je lokaal niet toetst
+
+Het platform. Er draait geen GoTrue, dus er is geen bewijs dat een echte sessie de
+claims draagt die de policies verwachten. Eén test in `token.test.ts` doet die
+vergelijking en slaat zichzelf lokaal over.
+
+⚠️ **Draai vóór een merge die auth, RLS, goedkeuring of commitments raakt dus
+beide** — lokaal voor het snelle bewijs, productie voor de bevestiging:
+
+```bash
+npm test                        # slaat de RLS-suite over zonder .env
+npx vitest run tests/rls        # tegen productie, mét .env
+```
+
+Tegen productie maakt de suite echte gebruikers aan en ruimt ze op met de
+service-role-key. Daar staat een slot op (`RLS_TEST_ALLOW_PROD=1` in `.env`) en
+dat blijft staan: er is nog één goede reden om er te draaien, en zolang die
+bestaat kan de héle suite er per ongeluk heen.
+
+#### In CI
+
+**Ze draaien sinds 24-08 in CI**, in een eigen job (`rls` in `.github/workflows/ci.yml`)
+met een `postgres:16`-service en de PostgREST-binary. **Geen secrets**, en dat hoort
+zo te blijven: komt er ooit een `secrets.` in die job, dan draait CI weer tegen
+iets echts en is de reden daarvoor het opschrijven waard.
+
+De binary is vastgepind op versie én sha256. Een binary die in CI draait haal je
+niet blind uit een release.
+
+⚠️ Wat er **niet** in CI draait is de variant tegen productie. `SUPABASE_SERVICE_ROLE_KEY`
+omzeilt RLS en hoort niet in een runner die op elke push van elke branch draait.
+
+### 2.6 De lokale opstelling — wat er precies draait
+
+Twee processen, allebei de échte software:
+
+1. **Postgres 16**, met het schema uit `scripts/schema-opbouwen.sh`.
+2. **PostgREST**, de binary van
+   [github.com/PostgREST/postgrest/releases](https://github.com/PostgREST/postgrest/releases).
+   Zet hem in `$TMPDIR/goalbuddies-lokale-stack/` of wijs hem aan met
+   `POSTGREST_BIN`.
+
+⚠️ **Geen** `supabase start`**, en dat is een omstandigheid en geen principe.**
+Die haalt de volledige stack binnen (Postgres, PostgREST, GoTrue, Realtime,
+Storage, Studio, een mailserver) en is de betere keus als hij het doet — meer
+platform voor minder eigen gedoe. Op de machine waar dit gebouwd is, kon het niet:
+Docker Hub was achter de proxy niet bereikbaar. Werkt `supabase start` bij jou wel,
+gebruik dat dan en wijs `RLS_LOKAAL_URL` naar de API van die stack.
+
+⚠️ `supabase/shim/0000_supabase_shim.sql` vult aan wat het platform normaal
+meebrengt: de rollen, `auth.uid()`, `auth.users`, de realtime-publicatie, de
+standaardrechten, en twee functies die de rol van GoTrue overnemen bij het
+aanmaken en verwijderen van een testgebruiker.
+
+**Die twee functies horen nooit op productie.** `supabase/shim/` zit niet in
+`supabase/migrations/`, dus `db push` neemt ze niet mee — en
+`tests/scripts/steiger.test.ts` wordt rood zodra een migratiebestand `shim_`
+noemt.
 
 ---
 
-## 2.6 Wat kost de Doelcoach?
+## 2.7 Wat kost de Doelcoach?
 
 QS8-42, laatste acceptatiecriterium. Elke AI-call wordt geboekt in `ai_jobs`
 met model, tokens en kosten; dit is de plek waar je het optelt.

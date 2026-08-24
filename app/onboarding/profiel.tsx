@@ -9,6 +9,7 @@ import {
   useSession,
   voorgesteldeTijdzone,
 } from '@/modules/auth';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
 import {
@@ -89,26 +90,23 @@ export default function OnboardingProfiel() {
   }
 
   return (
-    <Screen title="Even over jou" eyebrow="NOG ÉÉN SCHERM">
+    <Screen title={t('onboarding.profiel_titel')} eyebrow={t('onboarding.eyebrow')}>
       <Card>
         <View style={styles.naamrij}>
-          <Avatar name={naam || 'Naamloos'} url={profiel?.avatar_url} size={44} />
+          <Avatar name={naam || t('onboarding.naamloos')} url={profiel?.avatar_url} size={44} />
           <View style={styles.naamveld}>
             <Field
-              label="Hoe heet je?"
-              hint="Dit zien je buddy's. Een voornaam is genoeg."
+              label={t('onboarding.naam')}
+              hint={t('onboarding.naam_hint')}
               value={naam}
               onChangeText={setNaam}
               autoCapitalize="words"
               autoComplete="name"
-              placeholder="Quinten"
+              placeholder={t('onboarding.naam_plaatshouder')}
             />
           </View>
         </View>
-        <Caption>
-          Geen avatar? Dan tonen we je initialen. Een foto uploaden kan zodra we opslag hebben
-          ingericht.
-        </Caption>
+        <Caption>{t('onboarding.geen_avatar')}</Caption>
       </Card>
 
       <Card>
@@ -117,22 +115,23 @@ export default function OnboardingProfiel() {
 
       <Card>
         <Field
-          label="Tijdzone"
-          hint="Overgenomen van je toestel. Klopt hij niet, pas hem dan aan — hij bepaalt wanneer jouw dag omslaat."
+          label={t('onboarding.tijdzone')}
+          hint={t('onboarding.tijdzone_hint')}
           value={tz}
           onChangeText={setTz}
           autoCapitalize="none"
+          // Blijft onvertaald: dit is een IANA-naam en geen tekst.
           placeholder="Europe/Amsterdam"
         />
       </Card>
 
       <Card>
-        <Subheading>Dagelijkse herinnering</Subheading>
+        <Subheading>{t('onboarding.dagelijkse_herinnering')}</Subheading>
         <Choice
-          label="Herinnering"
+          label={t('onboarding.herinnering')}
           opties={[
-            { waarde: 'aan', label: 'Aan' },
-            { waarde: 'uit', label: 'Uit' },
+            { waarde: 'aan', label: t('onboarding.aan') },
+            { waarde: 'uit', label: t('onboarding.uit') },
           ]}
           waarde={herinneringAan ? 'aan' : 'uit'}
           onKies={(v) => setHerinneringAan(v === 'aan')}
@@ -141,35 +140,35 @@ export default function OnboardingProfiel() {
         {herinneringAan ? (
           <>
             <Field
-              label="Hoe laat?"
+              label={t('onboarding.hoe_laat')}
               value={tijd}
               onChangeText={setTijd}
               placeholder="20:00"
               inputMode="numeric"
             />
             <Choice
-              label="Toon"
-              hint="Bepaalt hoe de tekst klinkt, niet hoe vaak je hem krijgt."
+              label={t('onboarding.toon')}
+              hint={t('onboarding.toon_hint')}
               opties={[
-                { waarde: 'gentle', label: 'Zacht' },
-                { waarde: 'firm', label: 'Streng' },
+                { waarde: 'gentle', label: t('onboarding.zacht') },
+                { waarde: 'firm', label: t('onboarding.streng') },
               ]}
               waarde={toon}
               onKies={setToon}
             />
           </>
         ) : (
-          <Body muted>Uit blijft uit. We sturen je niets.</Body>
+          <Body muted>{t('onboarding.uit_blijft_uit')}</Body>
         )}
       </Card>
 
       <Card nested>
         <Choice
-          label="Waarvoor kom je?"
-          hint="Kwam je binnen om een vriend te helpen? Dan hoef je zelf geen doel. Je kunt er altijd later een starten."
+          label={t('onboarding.waarvoor')}
+          hint={t('onboarding.waarvoor_hint')}
           opties={[
-            { waarde: 'eigen', label: 'Ik wil zelf een doel' },
-            { waarde: 'buddy', label: 'Ik kom helpen' },
+            { waarde: 'eigen', label: t('onboarding.zelf_doel') },
+            { waarde: 'buddy', label: t('onboarding.kom_helpen') },
           ]}
           waarde={eigenDoel ? 'eigen' : 'buddy'}
           onKies={(v) => setEigenDoel(v === 'eigen')}
@@ -179,7 +178,7 @@ export default function OnboardingProfiel() {
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
       <Button variant="primair" block busy={bezig} onPress={() => void bewaar()}>
-        Klaar
+        {t('onboarding.klaar')}
       </Button>
     </Screen>
   );

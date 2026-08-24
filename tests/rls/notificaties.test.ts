@@ -24,6 +24,7 @@ async function registreer(
   gebruiker: TestUser,
   token: string,
   platform: string,
+  sleutels?: { p256dh: string; auth: string },
 ): Promise<{ ok?: boolean; reason?: string }> {
   const db = gebruiker.db as unknown as {
     rpc: (
@@ -35,10 +36,29 @@ async function registreer(
   const { data } = await db.rpc('registreer_push_token', {
     p_token: token,
     p_platform: platform,
+    p_p256dh: sleutels?.p256dh ?? null,
+    p_auth: sleutels?.auth ?? null,
   });
 
   return (data ?? {}) as { ok?: boolean; reason?: string };
 }
+
+/**
+ * Websleutels van de juiste vorm — QS8-119.
+ *
+ * ⚠️ **Web is het enige platform dat ze verplicht draagt**, sinds de CHECK van
+ *    migratie 0062 en de functie van 0067. Deze helper bestaat omdat de test
+ *    hieronder ze eerder niet meestuurde: hij verwachtte `ok` op een
+ *    web-registratie zonder sleutels, en dat weigert de database terecht.
+ *
+ *    Dat stond rood en niemand zag het, want de RLS-suite slaat zichzelf over
+ *    zonder credentials. Gevonden op 24-08 door hem tegen de lokale stack te
+ *    draaien — precies waarvoor QS8-119 bestaat.
+ */
+const WEBSLEUTELS = {
+  p256dh: 'BJ' + 'x'.repeat(85),
+  auth: 'y'.repeat(22),
+};
 
 interface Fixture {
   alice: TestUser;
@@ -144,9 +164,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 11 — meldingen', () => {
         //    waarom deze test bestaat: de nieuwe gebruiker kón de rij van de
         //    vorige niet overnemen, dus bleven diens meldingen binnenkomen op
         //    een telefoon die nu bij iemand anders lag.
-        expect((await registreer(f.alice, token, 'web')).ok).toBe(true);
+        expect((await registreer(f.alice, token, 'web', WEBSLEUTELS)).ok).toBe(true);
 
-        const tweede = await registreer(f.bob, token, 'web');
+        const tweede = await registreer(f.bob, token, 'web', WEBSLEUTELS);
         expect(tweede.ok).toBe(true);
 
         const rijen = await admin.from('push_tokens').select('user_id').eq('token', token);

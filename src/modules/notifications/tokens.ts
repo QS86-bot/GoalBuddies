@@ -96,15 +96,27 @@ export async function registreerPushToken(userId: string): Promise<void> {
   //    meldingen krijgen op een telefoon die nu bij iemand anders lag, en de
   //    nieuwe kreeg niets, zonder enig signaal. `registreer_push_token()`
   //    (migratie 0055) doet de overname in één begrensde handeling.
+  // ⚠️ **De twee websleutels gaan samen mee of allebei niet.** Dat is geen
+  //    stijlkeuze: `push_tokens_websleutels` (migratie 0062) is een CHECK op het
+  //    páár — `(platform = 'web') = (p256dh is not null and auth is not null)` —
+  //    en `registreer_push_token()` weigert sinds 0067 een webregistratie met
+  //    maar één van de twee. Een object bouwen waarin er precies één kan
+  //    ontbreken, zou die regel op deze plek opnieuw uitvinden.
+  //
+  // ⚠️ Hier stond `?? null` bij allebei, met als reden dat een ontbrekende
+  //    sleutel afhangt van hoe de serializer met `undefined` omgaat. Dat argument
+  //    klopt nog steeds, en deze vorm heeft het niet meer nodig: de sleutels
+  //    staan er wél of ze staan er niet, en in het tweede geval doet de
+  //    `default null` van de functie precies wat er bedoeld is.
+  const websleutels =
+    gevonden.p256dh !== undefined && gevonden.auth !== undefined
+      ? { p_p256dh: gevonden.p256dh, p_auth: gevonden.auth }
+      : {};
+
   const { data, error } = await supabase().rpc('registreer_push_token', {
     p_token: gevonden.token,
     p_platform: gevonden.platform,
-    // ⚠️ `?? null` en niet weglaten: de RPC heeft `default null`, maar
-    //    PostgREST stuurt alleen de sleutels die in het object staan, en een
-    //    `undefined` in JSON is een ontbrekend veld. Expliciet is hier
-    //    goedkoper dan uitzoeken hoe de serializer zich gedraagt.
-    p_p256dh: gevonden.p256dh ?? null,
-    p_auth: gevonden.auth ?? null,
+    ...websleutels,
   });
 
   if (error) {

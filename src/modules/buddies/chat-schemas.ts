@@ -81,6 +81,22 @@ export const SYSTEEM_GEBEURTENISSEN = [
    *    oppervlak 9.
    */
   'chain_milestone',
+  /**
+   * ⚠️ De elfde en twaalfde, toegevoegd in migratie 0076 (QS8-132, besluit A41).
+   *    Ze gaan over de gróép en niet over een persoon: de zichtbaarheidskeuze is
+   *    omgezet, van beschermd naar open of terug.
+   *
+   *    ⚠️ **Zonder deze twee zou het omzetten stilzwijgend zijn**, en dat is
+   *       precies wat grens 3 van het besluit verbiedt. Een groep die opengaat,
+   *       verandert met terugwerkende kracht wat er over de ándere leden
+   *       zichtbaar wordt; het bericht is het moment waarop een lid kan besluiten
+   *       zijn doel te ontkoppelen. Dit is dus geen aankondiging voor de vorm.
+   *
+   *    De zinnen noemen de beheerder en de nieuwe stand — geen doel, geen week,
+   *    geen status.
+   */
+  'group_opened',
+  'group_protected',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];
@@ -128,6 +144,20 @@ export interface ChatBericht {
   readonly subject_name: string | null;
   /** Wie het veroorzaakte, als dat iemand anders is. Alleen bij `completion_approved`. */
   readonly actor_name: string | null;
+  /**
+   * Het enige getal dat een systeembericht mag dragen: de bereikte drempel van
+   * De Ketting. `null` bij elk ander bericht.
+   *
+   * ⚠️ Komt uit `chat_messages.payload` en niet uit een telling in de app — het
+   *    is de stand op het moment van de mijlpaal, en die is later niet meer te
+   *    reconstrueren (migratie 0070 herstelt een gemiste melding met de drempel,
+   *    niet met de stand van vandaag).
+   *
+   * ⚠️ `payload` is bewust de plek voor alles wat géén persoon is (migratie
+   *    0059). Een persoon hoort er nóóit in: een uuid in jsonb heeft geen foreign
+   *    key en overleeft dus een accountverwijdering.
+   */
+  readonly aantal: number | null;
   readonly created_at: string;
 }
 

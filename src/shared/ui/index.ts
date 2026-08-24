@@ -32,6 +32,7 @@ export { Screen } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Viering } from './Viering';
+export { TaalKeuze } from './TaalKeuze';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 

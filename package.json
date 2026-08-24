@@ -23,10 +23,17 @@
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
-    "migraties:controle": "node scripts/migraties-controle.mjs"
+    "migraties:controle": "node scripts/migraties-controle.mjs",
+    "tekst:controle": "node scripts/tekst-controle.mjs",
+    "register:controle": "node scripts/migratieregister-controle.mjs",
+    "register:uitlijnen": "node scripts/migratieregister-uitlijnen.mjs",
+    "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
+    "rls:stack": "bash scripts/lokale-stack.sh",
+    "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
+    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

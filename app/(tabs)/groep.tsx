@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { fetchMijnGroepen, huddledagLabel, type Groep } from '@/modules/buddies';
 import { fetchBeoordelingen, volgBeoordelingen } from '@/modules/completions';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { AsyncView, Body, Button, Caption, Card, Screen, Subheading } from '@/shared/ui';
 
@@ -56,7 +57,7 @@ export default function GroepTab() {
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
   return (
-    <Screen title="Groep">
+    <Screen title={t('groepen.titel')}>
       <TeBeoordelenKaart />
 
       <AsyncView
@@ -66,11 +67,8 @@ export default function GroepTab() {
         isEmpty={(g) => g.length === 0}
         onRetry={herlaad}
         empty={{
-          title: 'Nog geen buddy-groep',
-          body:
-            'Drie mensen is de beste maat: groot genoeg dat er altijd iemand reageert, ' +
-            'klein genoeg dat je je niet kunt verstoppen. Maak een groep aan of gebruik ' +
-            'de uitnodigingslink die je hebt gekregen.',
+          title: t('groepen.leeg_titel'),
+          body: t('groepen.leeg_tekst'),
         }}
       >
         {(lijst) => (
@@ -87,10 +85,10 @@ export default function GroepTab() {
       </AsyncView>
 
       <Button variant="primair" block onPress={() => router.push('/groep/nieuw')}>
-        Groep aanmaken
+        {t('groepen.aanmaken')}
       </Button>
       <Button variant="secundair" block onPress={() => router.push('/groep/deelnemen')}>
-        Ik heb een uitnodigingscode
+        {t('groepen.heb_code')}
       </Button>
     </Screen>
   );
@@ -147,18 +145,16 @@ function TeBeoordelenKaart() {
     <Card>
       <Subheading>
         {mislukt
-          ? 'Wachten er buddy’s op je?'
+          ? t('groepen.wachten_onbekend')
           : aantal === 1
-            ? 'Een buddy wacht op je'
-            : `${aantal} buddy's wachten op je`}
+            ? t('groepen.wacht_een')
+            : t('groepen.wachten_meer', { n: aantal })}
       </Subheading>
       <Body muted>
-        {mislukt
-          ? 'Dat konden we even niet ophalen. Kijk zelf even — het duurt tien seconden.'
-          : 'Ze hebben hun week afgerond. Eén zin terug is genoeg — dat is het hele punt.'}
+        {mislukt ? t('groepen.ophalen_mislukt') : t('groepen.week_afgerond')}
       </Body>
       <Button variant="primair" block onPress={() => router.push('/beoordelen')}>
-        Beoordelen
+        {t('groepen.beoordelen')}
       </Button>
     </Card>
   );
@@ -176,12 +172,10 @@ function GroepKaart({ groep, onOpen }: { readonly groep: Groep; readonly onOpen:
              de herinneringen gestopt zijn (5.9).
         */}
         {groep.status === 'sleeping' ? (
-          <Body muted>
-            Deze groep slaapt. Sluit iemand een week af, dan is hij meteen weer wakker.
-          </Body>
+          <Body muted>{t('groepen.slaapt')}</Body>
         ) : null}
 
-        <Caption>Huddledag: {huddledagLabel(groep.huddle_day)}</Caption>
+        <Caption>{t('groepen.huddledag', { dag: huddledagLabel(groep.huddle_day) })}</Caption>
       </Card>
     </Pressable>
   );

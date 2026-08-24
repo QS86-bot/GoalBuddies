@@ -87,6 +87,34 @@ export function uitnodigingsLink(basis: string, code: string): string {
  *    waarheid — dit schema is er om iemand niet met een foutmelding uit de
  *    database op te zadelen voor iets dat de app zelf kon zien.
  */
+/**
+ * De zichtbaarheidskeuze van een groep — besluit A41 (QS8-132).
+ *
+ * ⚠️ **`beschermd` staat vooraan en dat is de standaard, niet de eerste optie
+ *    die toevallig bovenaan viel.** Grens 1 van het besluit: bestaande groepen
+ *    zijn beschermd, en een groep die niets kiest ook. De database dwingt dat af
+ *    met `default 'beschermd'` (migratie 0076); deze lijst mag daar nooit van
+ *    afwijken.
+ */
+export const ZICHTBAARHEDEN = ['beschermd', 'open'] as const;
+export type Zichtbaarheid = (typeof ZICHTBAARHEDEN)[number];
+
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function zichtbaarheidLabels(): Readonly<Record<Zichtbaarheid, string>> {
+  return {
+    beschermd: t('zichtbaarheid.beschermd'),
+    open: t('zichtbaarheid.open'),
+  };
+}
+
+/** De uitleg onder de keuze. Twee zinnen die zeggen wat er ánders wordt. */
+export function zichtbaarheidUitleg(): Readonly<Record<Zichtbaarheid, string>> {
+  return {
+    beschermd: t('zichtbaarheid.beschermd_uitleg'),
+    open: t('zichtbaarheid.open_uitleg'),
+  };
+}
+
 export const groepSchema = z.object({
   name: z
     .string()
@@ -98,6 +126,13 @@ export const groepSchema = z.object({
     .int()
     .min(0)
     .max(6, { error: () => t('validatie.weekdag_kort') }),
+  /**
+   * ⚠️ Optioneel met een default, en de default is de veilige kant. Een
+   *    aanroeper die dit veld niet kent — een oudere schermversie, een test —
+   *    maakt daarmee een beschermde groep en geen open. Dat is grens 4 van het
+   *    besluit: nooit iets vooruitlopend "vast open".
+   */
+  zichtbaarheid: z.enum(ZICHTBAARHEDEN).default('beschermd'),
 });
 
 export type GroepInvoer = z.infer<typeof groepSchema>;

@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
 import { radius, useTheme } from '../theme';
 
 import { useReducedMotion } from './a11y';
@@ -74,7 +75,7 @@ export function Ketting({ stand, toonSchakels = true }: Props) {
       accessibilityValue={{ min: 0, max: 100, now: percentage }}
     >
       <View style={styles.kop}>
-        <Subheading>De Ketting</Subheading>
+        <Subheading>{t('ketting.kop')}</Subheading>
         <Caption>{kettingLabel(stand)}</Caption>
       </View>
 

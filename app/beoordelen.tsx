@@ -12,6 +12,7 @@ import {
   type TeBeoordelen,
   type Wachtrij,
 } from '@/modules/completions';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -109,7 +110,7 @@ export default function Beoordelen() {
   }, [herlaad, aanHetTypen]);
 
   return (
-    <Screen title="Beoordelen">
+    <Screen title={t('beoordeling.titel')}>
       <AsyncView
         loading={loading}
         error={error}
@@ -117,10 +118,8 @@ export default function Beoordelen() {
         isEmpty={(w) => w.rijen.length === 0}
         onRetry={herlaad}
         empty={{
-          title: 'Niets te beoordelen',
-          body:
-            'Zodra een buddy een week afrondt, staat hij hier. Eén zin terug is genoeg — ' +
-            'daar gaat het om.',
+          title: t('beoordeling.leeg_titel'),
+          body: t('beoordeling.leeg_tekst'),
         }}
       >
         {(w) => (
@@ -132,8 +131,8 @@ export default function Beoordelen() {
             */}
             {verouderd ? (
               <Card nested>
-                <Body muted>Er is intussen iets veranderd in de lijst.</Body>
-                <Button onPress={herlaad}>Lijst verversen</Button>
+                <Body muted>{t('beoordelen.verouderd')}</Body>
+                <Button onPress={herlaad}>{t('beoordelen.verversen')}</Button>
               </Card>
             ) : null}
 
@@ -168,10 +167,14 @@ export default function Beoordelen() {
             {w.meer || pagina > 0 ? (
               <View style={styles.acties}>
                 {pagina > 0 ? (
-                  <Button onPress={() => setPagina((p) => Math.max(0, p - 1))}>Vorige</Button>
+                  <Button onPress={() => setPagina((p) => Math.max(0, p - 1))}>
+                    {t('beoordelen.vorige')}
+                  </Button>
                 ) : null}
                 {w.meer ? (
-                  <Button onPress={() => setPagina((p) => p + 1)}>Meer laden</Button>
+                  <Button onPress={() => setPagina((p) => p + 1)}>
+                    {t('beoordelen.meer_laden')}
+                  </Button>
                 ) : null}
               </View>
             ) : null}
@@ -180,7 +183,7 @@ export default function Beoordelen() {
       </AsyncView>
 
       <Button variant="stil" block onPress={() => router.back()}>
-        Terug
+        {t('beoordeling.terug')}
       </Button>
     </Screen>
   );
@@ -235,15 +238,13 @@ function Terugdraaien({
            opvangt is een dikke duim op een klein scherm, en die benoem je zonder
            iemand het gevoel te geven dat hij iets ergs gedaan heeft.
       */}
-      <Caption>
-        Verkeerde buddy? Je kunt dit nog {INTREKVENSTER_MINUTEN} minuten terugdraaien.
-      </Caption>
+      <Caption>{t('beoordeling.terugdraai_venster', { minuten: INTREKVENSTER_MINUTEN })}</Caption>
       <View style={styles.acties}>
         <Button variant="secundair" busy={bezig} onPress={() => void draaiTerug()}>
-          Terugdraaien
+          {t('beoordeling.terugdraaien')}
         </Button>
         <Button variant="stil" disabled={bezig} onPress={onWeg}>
-          Klopt zo
+          {t('beoordeling.klopt_zo')}
         </Button>
       </View>
       {fout === null ? null : <Caption danger>{fout}</Caption>}
@@ -340,13 +341,13 @@ function BeoordeelKaart({
       {vraagt ? (
         <>
           <Field
-            label="Wat wil je weten?"
-            hint="Een vraag, geen oordeel. De meeste onduidelijkheid is gewoon onduidelijkheid."
+            label={t('beoordeling.vraag_titel')}
+            hint={t('beoordeling.vraag_uitleg')}
             value={vraag}
             onChangeText={setVraag}
             multiline
             maxLength={1000}
-            placeholder="Hoe ver ben je gekomen met het tweede hoofdstuk?"
+            placeholder={t('beoordeling.vraag_hint')}
           />
           <Button
             variant="primair"
@@ -354,10 +355,10 @@ function BeoordeelKaart({
             busy={bezig === 'meer'}
             onPress={() => void verstuur('more_info')}
           >
-            Vraag versturen
+            {t('beoordeling.vraag_versturen')}
           </Button>
           <Button variant="stil" block onPress={() => zetVraagt(false)}>
-            Toch niet
+            {t('beoordeling.toch_niet')}
           </Button>
         </>
       ) : (
@@ -368,12 +369,12 @@ function BeoordeelKaart({
         */
         <View style={styles.acties}>
           <Button variant="secundair" busy={bezig === 'goed'} onPress={() => void verstuur('approved')}>
-            Goedkeuren
+            {t('beoordeling.goedkeuren')}
           </Button>
           {/* Niet aanklikbaar terwijl de goedkeuring onderweg is: anders klapt
               het formulier open bovenop een verzoek dat al loopt. */}
           <Button variant="secundair" disabled={bezig !== null} onPress={() => zetVraagt(true)}>
-            Vertel me meer
+            {t('beoordeling.vertel_meer')}
           </Button>
         </View>
       )}

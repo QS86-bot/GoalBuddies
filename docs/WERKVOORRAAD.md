@@ -23,14 +23,17 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
-3. **⚠️ Het migratieregister kent twee nummeringen.** `0057` t/m `0061` staan
-   sinds deze merge wél in de repo — het gat is dicht — maar bestandsnaam en de
-   versie in `schema_migrations` zeggen nog niet hetzelfde, dus de map kan het
-   schema nog altijd niet elders opbouwen. **QS8-122**, blokkeert QS8-119.
-   Uitleg in §2.
-4. **De echte poort is de RLS-suite en die draait niet volledig in CI.** Zonder
-   credentials: **535 geslaagd, 290 overgeslagen**; typecheck en lint groen.
-   **Groen in GitHub zegt niets over domeinregel 7** — zie §3b.
+3. ✅ **Het migratieregister kent nog één nummering** en de map bouwt het schema
+   aantoonbaar op. **QS8-122 is af** en QS8-119 is daarmee vrij. De bestanden
+   spelen op een lege database precies het schema van productie af — negen
+   vingerafdrukken, alle negen gelijk. Uitleg in §2 en in
+   `docs/decisions/004-migratieregister.md`.
+4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
+   en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
+   `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
+   **311 geslaagd, 1 overgeslagen.** Zonder credentials geeft `npm test`
+   **553 geslaagd en 300 overgeslagen**; typecheck en lint groen.
+   ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
    **QS8-124**, en de PWA eromheen is getoetst (**QS8-117**). **Niemand heeft nog
@@ -79,11 +82,19 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 26 tabellen. Migraties `0001` t/m `0071`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0080`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
-`approval_withdrawals` (0030) en `deadline_requests` (0032) erbij.
+`approval_withdrawals` (0030), `deadline_requests` (0032), `week_pass_events`
+(0039), `goal_risk` (0050), `push_tokens` en `notifications_sent` (0053) en
+`group_events` (0076) erbij.
+
+⚠️ Hier stond tot 24-08-2026 "26 tabellen", en dat klopte al vier migraties niet
+meer — geteld toen `week_review_replies` de laatste was en daarna nooit meer
+nagemeten. Een getal in lopende tekst dat niemand hertelt, is dezelfde soort
+aanname als een test die nooit rood is geweest. Het echte aantal komt uit
+`select count(*) from pg_tables where schemaname = 'public'`.
 
 ⚠️ **`supabase/migrations/` is een verslag en geen bron, in béíde richtingen.**
 De geschiedenis kent twee onverenigbare nummeringen: 38 genummerd
@@ -97,7 +108,13 @@ Waarom dat meer is dan slordig: zowel een lokale stack als een tweede
 cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
 Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
 RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan tegen
-productie draaien. Vastgelegd als **QS8-122**; het blokkeert QS8-119.
+productie draaien.
+
+✅ **Opgelost op 24-08 (QS8-122).** Het register draagt nu één nummering, en
+`npm run schema:opbouwen` speelt de map af op een lege database tot exact het
+schema van productie. `npm run register:controle` bewaakt dat repo en project
+gelijk blijven lopen. Onderbouwing en de twee valkuilen die daarbij boven kwamen
+staan in `docs/decisions/004-migratieregister.md`.
 
 ### 2a. Wat er van de verdwaalde branch geleerd is — 24-08-2026
 
@@ -117,6 +134,12 @@ antwoorden. **Werk dat niet landt, bestaat voor de volgende sessie niet** — en
 het is niet zichtbaar in een document, want het document staat op diezelfde tak.
 Kijk bij het beginnen van een sessie naar de branchtabel in
 `docs/VOLGENDE-SESSIE.md` en niet alleen naar `main`.
+
+✅ **QS8-115 is daarmee ook af** (In Review, 24-08). Er staat geen Nederlandse
+UI-tekst meer hard in `src/` en `app/`; `npm run tekst:controle` meldt nul en
+draait mee in `/audit`. De taalkeuze op het profielscherm bestaat sinds vandaag —
+tot dan kon niemand `profiles.locale` vullen en volgde de app alleen je telefoon.
+Eén criterium blijft open en dat vraagt een mens: de app in het Engels doorlopen.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -156,7 +179,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **535 geslaagd en 290 overgeslagen** (die 290 zijn de RLS-suite, zie §3b)
+  **553 geslaagd en 300 overgeslagen** (die 300 zijn de RLS-suite, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -293,19 +316,30 @@ die andermans reacties meenam bij accountverwijdering (A3), de aanwezigheids-
 matrix in `chain_links` (EPIC 8) — is van een soort die CI per definitie niet
 ziet. Ze kwamen alle vier uit de RLS-suite of uit een reviewagent.
 
-**Wanneer deze stap kan vervallen:** zodra er een lokale of aparte Supabase-stack
-is (Q-TODO **A9**, Linear **QS8-119**). Nu draaien die tests tegen productie en
-maken ze echte accounts aan met een sleutel die RLS omzeilt — daarom staan ze
-niet in CI en daarom is dit handwerk. Het automatiseren van deze stap is meer
-waard dan elke instelling op GitHub.
+**Wanneer deze stap kan vervallen:** de helft ervan is op 24-08 vervallen.
+QS8-119 is af: `npm run rls:stack && npm run rls:lokaal` draait de volle suite
+zonder credentials en zonder het echte project aan te raken. Dat is handwerk van
+tien seconden in plaats van een run tegen productie.
+
+✅ **En sinds 24-08 draait de suite in CI**, in een eigen job met een
+`postgres:16`-service en de vastgepinde PostgREST-binary. Geen secrets. Daarmee
+vervalt de zin die hier stond: **groen in GitHub zegt nu wél iets over
+domeinregel 7.**
+
+⚠️ Wat het níét zegt: of het platform zich gedraagt zoals verwacht. Er draait geen
+GoTrue in CI, en het verschil tussen twee eigenaren van standaardrechten
+(besluit A46) was lokaal onzichtbaar. Een groene CI vervangt de ronde tegen
+productie niet; hij maakt hem alleen zeldzamer.
 
 ⚠️ Twee dingen zijn hier sinds 23-08 veranderd. **De aanmeldlimiet is geen reden
 meer**: de harnas logt niet meer in maar tekent zijn eigen tokens (QS8-116), dus
-dat argument is vervallen. En **de weg naar die aparte stack is langer dan hij
-leek**: de migratiebestanden kunnen het schema niet opbouwen (**QS8-122**), en
-zonder die reparatie levert een lokale stack een schema op dat niet op productie
-lijkt. Dan toetst de suite een verzinsel — groen zonder iets te bewijzen, wat
-erger is dan tegen productie draaien.
+dat argument is vervallen. En **de weg naar die aparte stack is sinds 24-08 vrij**:
+QS8-122 is af, dus de migratiebestanden bouwen het schema van productie op —
+nagemeten en niet aangenomen. Wat die reparatie nog opleverde staat in
+`docs/decisions/004-migratieregister.md`, en één ding daaruit hoort hier: zonder
+de standaardrechten van Supabase in de steiger bouwt een lege database een schema
+op dat *strenger* is dan productie. Een RLS-test bevestigt daar dan iets wat op
+het echte project niet waar is.
 
 ⚠️ **Branch protection op `main` staat sinds 18-08 aan**, maar smal: force push
 en verwijderen zijn geblokkeerd, inclusief voor beheerders. Er is bewust géén
@@ -340,6 +374,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel; alleen QS8-41 (`phase:v2`) blijft open |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
+| 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
@@ -350,7 +385,7 @@ een agent alleen kan afmaken:
 
 | # | Wat | Waarom het blokkeert | Wie |
 |---|---|---|---|
-| 1 | **A47 — de RLS-suite** | Een volle run geeft wisselende, valse roodstanden. Daarmee bewijst de belangrijkste poort van dit project niets meer. Zie §0 | besluit + werk |
+| 1 | ✅ **A47 — de RLS-suite** | Opgelost op 24-08 met QS8-119. Er zat één aanwijsbare oorzaak onder: twee aankondigingen uit dezelfde transactie dragen dezelfde `created_at`, en de test sorteerde daarop. 10 van de 10 rondes schoon, elk met een verse database | af |
 | 2 | **QS8-114 — web push** | `expo-notifications` staat erin, maar de app draait alleen op het web en web push is een ánder mechanisme (VAPID, service worker, `PushSubscription`). Vandaag komt er dus geen enkele melding aan | besluit over opslag + werk |
 | 3 | **Supabase Auth-URL's** | Bevestigingsmail wijst naar het oude adres. Dashboardhandeling van een minuut, §0a | Quinten |
 

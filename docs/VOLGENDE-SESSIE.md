@@ -40,8 +40,13 @@ service-role-key in `dist/` gezet en de deploy sloeg af met de vindplaats erbij.
 
 De rollover en de meldingenjob draaien elk uur tegen het echte project.
 
-**De laatste laag van QS8-115 ligt er nog:** de schermteksten in `app/` moeten
-naar de berichtencatalogus. `src/shared/ui` en alle zeven modules zijn wél om.
+**QS8-115 is af** (In Review, 24-08): `src/shared/ui`, alle zeven modules én
+alle schermen in `app/` lopen via de berichtencatalogus. `npm run tekst:controle`
+meldt nul en draait mee in `/audit`. Eén criterium blijft open en dat vraagt een
+mens: de app in het Engels doorlopen.
+
+⚠️ **De valkuil die dat opleverde staat in de lijst hieronder** — een
+meetinstrument dat groen wordt, is niet klaar met ijken.
 
 ⚠️ **Het migratiebereik en de testteller staan in `docs/WERKVOORRAAD.md` §0 en
 §2, en bewust alleen daar.** Tot 23-08 stonden ze ook hier, en toen liepen ze
@@ -136,8 +141,12 @@ de eigenaar blokkeert. Uitleg in
   dat vraagt een browser plus de VAPID-sleutels in `.env`, en dat kan een sessie
   in de cloud niet. Zolang dat bewijs er niet is, is EPIC 11 niet af. QS8-117
   (iOS) wacht hierop.
-* **De migratiebestanden kunnen het schema niet opbouwen.** Zie de valkuilen —
-  dit is nu QS8-122 en het blokkeert QS8-119.
+* ✅ **De migratiebestanden bouwen het schema wél op** — QS8-122 is op 24-08 af.
+  `npm run schema:opbouwen` speelt ze af op een lege database; de negen
+  vingerafdrukken waren alle negen gelijk aan productie.
+* ✅ **De RLS-suite draait lokaal** — QS8-119, ook 24-08. `npm run rls:stack` en
+  `npm run rls:lokaal`: een echte PostgREST op dat schema, geen credentials, vijf
+  seconden voor 304 tests. Het echte project wordt niet meer aangeraakt.
 
 **Volgende aan de beurt: EPIC 9, het commitment device.** QS8-85 is af
 (commitments blijven informeel, met een test die het bewaakt). Open zijn QS8-83
@@ -189,10 +198,10 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    **Nummer verder vanaf 0072.** Elke migratie idempotent, met een rollback-pad
    in de kop.
 
-   ⚠️ **`0057` t/m `0061` bestaan niet als bestand** — ze zijn wel toegepast en
-   staan op de werkmachine. `main` springt van `0056` naar `0062`. Zet ze erin
-   voordat iemand op het idee komt die nummers opnieuw te gebruiken. Zie QS8-122
-   en de valkuil hieronder.
+   ⚠️ **Sinds QS8-122 hoort er een stap bij:** de MCP-tool zet een tijdstempel
+   als versie neer, ongeacht hoe je het bestand noemt. Lijn hem daarna uit — één
+   UPDATE, beschreven in `docs/DEPLOY.md` §2.2 — en draai
+   `npm run register:controle`. Die wordt rood als je het vergeet.
 4. Vóór elke merge: `npm run typecheck`, `npm run lint`, `npm test`,
    `npm run build` — **én lees de testteller vóórdat je commit.**
 
@@ -200,11 +209,15 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    misgegaan: ik las de uitslag pas achteraf en had toen al gecommit. De inhoud
    bleek in orde, de volgorde niet.
 
-   ⚠️ **Zolang A47 open staat, is een volle run niet te vertrouwen.** Falen er
-   RLS-bestanden, draai ze dan één voor één opnieuw vóór je concludeert dat er
-   iets stuk is — de kans is groot dat het de aanmeldlimiet is. Staat er
-   "skipped" bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en zegt groen
-   niets over autorisatie. Zie WERKVOORRAAD §3b.
+   ✅ **A47 is op 24-08 opgelost** (QS8-119). Er zat één aanwijsbare oorzaak
+   onder: het inhalen van een gemiste ketting-mijlpaal plaatst beide berichten in
+   één transactie, dus met dezelfde `created_at`, en de test sorteerde daarop.
+   10 van de 10 rondes schoon met een verse database.
+
+   ⚠️ Staat er "skipped" bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid
+   en zegt groen niets over autorisatie. Draai `npm run rls:stack` en
+   `npm run rls:lokaal` — dat kost tien seconden en vraagt geen credentials.
+   Zie WERKVOORRAAD §3b.
 5. **Reviewagents naar risico, niet naar schema** (herzien 20-08-2026, zie
    CLAUDE.md regel 19 voor de onderbouwing):
    - **`security-reviewer` draait direct**, bij elke wijziging die auth, RLS,
@@ -276,6 +289,38 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   project. ⚠️ Ik heb er zélf twee geïntroduceerd in dezelfde sessie waarin ik de
   regel opschreef; dit is dus geen kwestie van opletten maar van een lint-regel.
   Zelfde vorm bij Zod: `{ error: t(...) }` moet `{ error: () => t(...) }` zijn.
+- **`engines` dat iets belooft wat de code niet houdt.** `package.json` zei
+  `node >=20`; de realtime-client van supabase-js vraagt een native `WebSocket`
+  en die bestaat pas vanaf Node 22. Op 20 valt élke `createClient()` om. Lokaal
+  draaide alles op 22, dus dit was hier nooit te zien — **de eerste run van de
+  RLS-job op een schone runner vond het binnen een minuut.** Dat is precies waar
+  een tweede omgeving voor is: niet om hetzelfde nog eens te bevestigen, maar om
+  te laten zien wat je machine stilzwijgend voor je oploste.
+
+- **Een gereedheidscontrole die niet vraagt of het jóuw proces is.**
+  `lokale-stack.sh` wachtte tot er íéts antwoordde op poort 3010. Draaide er nog
+  een PostgREST uit een vorige ronde, dan viel de nieuwe om met "Address in use"
+  en antwoordde de oude keurig met 200 — naar een database die net weggegooid was.
+  De suite meldde daarna **29 fouten die geen policyfout waren**. Meten of er iets
+  antwoordt is niet hetzelfde als meten of het klopt; hij vraagt nu vóór het
+  starten of de poort vrij is, want dat is deterministisch.
+
+- **Een opruimstap die stil mislukt, en een suite die daarna groen is op oude
+  data.** Bij QS8-119 stopte het stackscript PostgREST pas ná het herbouwen van
+  de database. `drop database` weigert op open verbindingen, dus de herbouw sloeg
+  over — en de RLS-suite draaide zeventien keer tegen dezelfde database zonder
+  dat er iets rood werd. **Zeventien schone runs bewezen niets.** Een mislukte
+  opruiming hoort hard te zijn, niet een regel die langsglijdt; en als je
+  "opnieuw opgebouwd" beweert, laat er dan een merkteken achter en zoek het daarna.
+
+- **Een meetinstrument dat groen wordt en dus niet meer geijkt wordt.** De
+  tekstcontrole van QS8-115 stond op nul en miste toen nog een hele vorm: tekst
+  achter een openingstag op dezelfde regel (`<Subheading>Kop</Subheading>`), want
+  zijn heuristiek eiste dat de régel met een hoofdletter begon. Eén extra ijking
+  ná groen vond zeventien zinnen in mappen die al "af" heetten. **Een controle
+  die nul meldt terwijl er tekst staat, geeft toestemming om te stoppen met
+  kijken** — ijk hem dus juist op het moment dat hij groen wordt.
+
 - **Een hulpscript dat niet idempotent is en tóch twee keer draait.** Bij QS8-115
   liep een migratiescript opnieuw na een fout halverwege, waardoor het
   catalogusblok dubbel in `nl.ts` kwam te staan. TypeScript ving het, maar het is
@@ -408,7 +453,15 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   cloudproject werkt door de migraties opnieuw af te spelen op een lege database.
   Een schema dat daaruit komt is niet gelijk aan productie, en dan toetst de
   RLS-suite een verzinsel — groen zonder iets te bewijzen, wat erger is dan
-  tegen productie draaien. Dit blokkeert QS8-119 en staat als **QS8-122**.
+  tegen productie draaien.
+
+  ✅ Opgelost op 24-08 (QS8-122). ⚠️ **Wat ervan blijft staan als valkuil:** de
+  steiger waarmee je zo'n lege database opbouwt, miste eerst de standaardrechten
+  die Supabase op `public` zet (`grant all` voor `anon`, `authenticated` en
+  `service_role`). Daardoor bouwde hij 69 rechten waar productie er 3395 heeft —
+  *strenger* dan productie, dus een RLS-test die daar bevestigt dat iets níét
+  gelezen kan worden, bewijst iets wat op het echte project niet waar is. Dat is
+  hetzelfde faalbeeld, met een groen vinkje eronder.
 
 - **Een CHECK toevoegen zonder de functie mee te wijzigen breekt stil.** Migratie
   0062 zette een CHECK op `push_tokens` die websleutels verplicht stelt, maar
@@ -510,9 +563,13 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
    `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
    `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette
    `{ok:false, reason}`.
-2. **QS8-122** — de migratiebron repareerbaar maken. Alles wat een tweede
-   omgeving nodig heeft (lokale stack, CI met echte RLS, staging) hangt hierachter.
-3. **EPIC 9** — het commitment device, volgens de volgorde hierboven.
+2. ✅ **De RLS-suite draait in CI** sinds 24-08, zonder secrets. Groen in GitHub
+   zegt nu wél iets over domeinregel 7 — maar niet over het platform: er draait
+   geen GoTrue in CI, en het verschil tussen twee eigenaren van standaardrechten
+   was lokaal onzichtbaar. **EPIC 13** (QS8-132) is nu het grootste stuk werk dat
+   openstaat.
+3. **De resterende stukken van EPIC 0, 1 en 11** — de drie epics die nog open
+   staan. Zie het projectoverzicht in Linear.
 
 **Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,
 want dan komt er een tweede lezer: **QS8-123** (hoe merk je dat een als *Laag*

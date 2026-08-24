@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { neemDeel, toonCode } from '@/modules/buddies';
+import { t } from '@/shared/i18n';
 import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared/ui';
 
 /**
@@ -38,11 +39,11 @@ export default function Deelnemen() {
   }
 
   return (
-    <Screen title="Deelnemen" eyebrow="MET EEN CODE">
+    <Screen title={t('deelnemen.titel')} eyebrow={t('deelnemen.eyebrow')}>
       <Card>
         <Field
-          label="Uitnodigingscode of -link"
-          hint="Twaalf tekens. Streepjes, spaties en de hele link mogen; die halen we er zelf af."
+          label={t('deelnemen.code_label')}
+          hint={t('deelnemen.code_hint')}
           value={invoer}
           onChangeText={setInvoer}
           autoCapitalize="characters"
@@ -51,23 +52,22 @@ export default function Deelnemen() {
           {...(fout === null ? {} : { error: fout })}
         />
 
-        {invoer.trim() === '' ? null : <Caption>Herkend als: {toonCode(invoer) || '—'}</Caption>}
+        {invoer.trim() === '' ? null : (
+          <Caption>{t('deelnemen.herkend', { code: toonCode(invoer) || '—' })}</Caption>
+        )}
 
         <Button variant="primair" block busy={bezig} onPress={() => void verzend()}>
-          Deelnemen aan deze groep
+          {t('deelnemen.knop')}
         </Button>
       </Card>
 
       <Card nested>
-        <Subheading>Werkt de code niet?</Subheading>
-        <Body muted>
-          Een link kan ingetrokken zijn, of vervangen door een nieuwe. Vraag degene die je
-          uitnodigde om de link nog eens te sturen — die is dan meteen de geldige.
-        </Body>
+        <Subheading>{t('deelnemen.werkt_niet')}</Subheading>
+        <Body muted>{t('deelnemen.werkt_niet_uitleg')}</Body>
       </Card>
 
       <Button variant="stil" block onPress={() => router.back()}>
-        Terug
+        {t('deelnemen.terug')}
       </Button>
     </Screen>
   );

@@ -26,6 +26,7 @@ import {
   type DeadlineVerzoek,
   type DoelMetVoortgang,
 } from '@/modules/goals';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -101,9 +102,13 @@ export default function GroepDetail() {
 
   return (
     <Screen
-      title={stand?.groep?.name ?? 'Groep'}
+      title={stand?.groep?.name ?? t('groepdetail.titel')}
       eyebrow={
-        stand?.groep ? `HUDDLEDAG ${huddledagLabel(stand.groep.huddle_day).toUpperCase()}` : undefined
+        stand?.groep
+          ? t('groepdetail.eyebrow', {
+              dag: huddledagLabel(stand.groep.huddle_day).toUpperCase(),
+            })
+          : undefined
       }
     >
       <AsyncView
@@ -113,20 +118,15 @@ export default function GroepDetail() {
         isEmpty={(s) => s.overzicht.rijen.length === 0}
         onRetry={herlaad}
         empty={{
-          title: 'Deze groep is er niet, of niet voor jou',
-          body:
-            'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een ' +
-            'nieuwe uitnodigingslink als je erbij hoort.',
+          title: t('groepdetail.geen_lid_titel'),
+          body: t('groepdetail.geen_lid_tekst'),
         }}
       >
         {(s) => (
           <View style={styles.lijst}>
             {s.groep?.status === 'sleeping' ? (
               <Card nested>
-                <Body muted>
-                  Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn
-                  gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.
-                </Body>
+                <Body muted>{t('groepdetail.slaapt')}</Body>
               </Card>
             ) : null}
 
@@ -150,24 +150,21 @@ export default function GroepDetail() {
             */}
             {s.ketting.staat === 'fout' ? (
               <Card nested>
-                <Body muted>De Ketting kon niet geladen worden.</Body>
+                <Body muted>{t('groepdetail.ketting_mislukt')}</Body>
                 <Button variant="stil" onPress={herlaad}>
-                  Opnieuw proberen
+                  {t('groepdetail.opnieuw')}
                 </Button>
               </Card>
             ) : null}
 
             <Card>
-              <Subheading>Wie er meedoen</Subheading>
+              <Subheading>{t('groepscherm.wie_meedoen')}</Subheading>
               {/*
                 ⚠️ "Nog niets deze week" is geen oordeel en de rij zegt dat ook
                    niet: MemberRow laat een leeg vak zien in plaats van een grijs
                    kruisje.
               */}
-              <Caption>
-                Het bolletje betekent: deze week al afgesloten. Geen bolletje betekent nog
-                niet, meer niet.
-              </Caption>
+              <Caption>{t('groepdetail.bolletje_uitleg')}</Caption>
 
               {s.overzicht.rijen.map((lid) => (
                 <MemberRow
@@ -175,6 +172,7 @@ export default function GroepDetail() {
                   name={lid.display_name}
                   streak={lid.current_streak ?? 0}
                   closedThisPeriod={lid.closed_this_period}
+                  bestStreak={lid.best_streak}
                 />
               ))}
 
@@ -193,33 +191,27 @@ export default function GroepDetail() {
                  van 7.5 uitsluit.
             */}
             <Card>
-              <Subheading>Het gesprek</Subheading>
-              <Body muted>
-                De weekafsluiting is het vaste moment op de huddledag: drie vragen, en de
-                antwoorden van iedereen op één kaart. De chat is voor de rest van de week.
-              </Body>
+              <Subheading>{t('groepdetail.gesprek')}</Subheading>
+              <Body muted>{t('groepdetail.gesprek_uitleg')}</Body>
               <Button
                 variant="secundair"
                 block
                 onPress={() => router.push(`/groep/weekafsluiting/${id}`)}
               >
-                De weekafsluiting
+                {t('groepdetail.naar_weekafsluiting')}
               </Button>
               <Button variant="secundair" block onPress={() => router.push(`/groep/chat/${id}`)}>
-                Groepschat
+                {t('groepdetail.naar_chat')}
               </Button>
             </Card>
 
             {s.groep === null ? null : (
               <Card>
-                <Subheading>Iemand uitnodigen</Subheading>
-                <Body muted>
-                  Wie deze link opent, ziet de groep en hoeveel mensen erin zitten — ook
-                  zonder account. Deel hem alleen met mensen die je erbij wilt.
-                </Body>
+                <Subheading>{t('groepdetail.uitnodigen')}</Subheading>
+                <Body muted>{t('groepdetail.link_uitleg')}</Body>
                 <Deelknop
-                  label="Deel de uitnodiging"
-                  titel={`Doe mee met ${s.groep.name}`}
+                  label={t('groepdetail.deel')}
+                  titel={t('groepdetail.deel_titel', { groep: s.groep.name })}
                   tekst={uitnodigingsLink(clientEnv().appUrl, s.groep.invite_code)}
                 />
               </Card>
@@ -245,7 +237,7 @@ export default function GroepDetail() {
 
             {s.beheerder ? (
               <Button variant="secundair" block onPress={() => router.push(`/groep/beheer/${id}`)}>
-                Groep beheren
+                {t('groepdetail.beheren')}
               </Button>
             ) : null}
           </View>
@@ -253,7 +245,7 @@ export default function GroepDetail() {
       </AsyncView>
 
       <Button variant="stil" block onPress={() => router.replace('/groep')}>
-        Naar mijn groepen
+        {t('groepdetail.naar_groepen')}
       </Button>
     </Screen>
   );
@@ -344,7 +336,7 @@ function DeadlineVerzoeken({
 
   return (
     <Card>
-      <Subheading>Een buddy vraagt om meer tijd</Subheading>
+      <Subheading>{t('groepscherm.meer_tijd')}</Subheading>
 
       <AsyncView
         loading={loading}
@@ -352,8 +344,8 @@ function DeadlineVerzoeken({
         data={verzoeken ?? undefined}
         isEmpty={(v) => v.length === 0}
         empty={{
-          title: 'Niets te beslissen',
-          body: 'Zodra iemand om een nieuwe streefdatum vraagt, staat het hier.',
+          title: t('deadlineverzoek.leeg_titel'),
+          body: t('deadlineverzoek.leeg_tekst'),
         }}
       >
         {(rijen) => (
@@ -361,7 +353,10 @@ function DeadlineVerzoeken({
             {rijen.map((verzoek) => (
               <Card key={verzoek.id} nested>
                 <Body>
-                  Van {verzoek.old_date} naar {verzoek.new_date}.
+                  {t('deadlineverzoek.van_naar', {
+                    oud: verzoek.old_date,
+                    nieuw: verzoek.new_date,
+                  })}
                 </Body>
                 <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
                 {/*
@@ -378,13 +373,13 @@ function DeadlineVerzoeken({
                          levert "nee" op als tekst.
                     */}
                     <Field
-                      label="Wil je er iets bij zeggen?"
-                      hint="Mag leeg. Eén zin helpt je buddy meer dan een kale afwijzing."
+                      label={t('deadlineverzoek.reden_label')}
+                      hint={t('deadlineverzoek.reden_hint')}
                       value={reden}
                       onChangeText={setReden}
                       multiline
                       maxLength={1000}
-                      placeholder="Zullen we eerst kijken of we het samen haalbaar kunnen maken?"
+                      placeholder={t('deadlineverzoek.reden_voorbeeld')}
                     />
                     <View style={styles.knoppen}>
                       <Button
@@ -392,7 +387,7 @@ function DeadlineVerzoeken({
                         busy={bezig === verzoek.id}
                         onPress={() => void beslis(verzoek.id, false)}
                       >
-                        Versturen
+                        {t('deadlineverzoek.versturen')}
                       </Button>
                       <Button
                         variant="stil"
@@ -402,7 +397,7 @@ function DeadlineVerzoeken({
                           setReden('');
                         }}
                       >
-                        Toch niet
+                        {t('deadlineverzoek.toch_niet')}
                       </Button>
                     </View>
                   </>
@@ -413,14 +408,14 @@ function DeadlineVerzoeken({
                       busy={bezig === verzoek.id}
                       onPress={() => void beslis(verzoek.id, true)}
                     >
-                      Akkoord
+                      {t('deadlineverzoek.akkoord')}
                     </Button>
                     <Button
                       variant="secundair"
                       disabled={bezig !== null}
                       onPress={() => setAfwijzen(verzoek.id)}
                     >
-                      Liever niet
+                      {t('deadlineverzoek.liever_niet')}
                     </Button>
                   </View>
                 )}
@@ -492,7 +487,7 @@ function DoelKaart({
       {vanMij ? (
         <>
           <Button variant="stil" busy={bezig} onPress={() => void ontkoppel()}>
-            Niet meer delen met deze groep
+            {t('koppel.ontkoppel')}
           </Button>
           {fout === null ? null : <Caption danger>{fout}</Caption>}
         </>
@@ -568,11 +563,9 @@ function KoppelDoel({
 
   return (
     <Card>
-      <Subheading>Je doel delen met deze groep</Subheading>
+      <Subheading>{t('koppel.titel')}</Subheading>
       <Body muted>
-        Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de
-        titel en je mijlpaalvoortgang — niet je notities, niet je weken en niet je punten.
-        Je kunt het altijd weer ongedaan maken.
+        {t('koppel.uitleg')}
       </Body>
 
       <AsyncView
@@ -581,10 +574,8 @@ function KoppelDoel({
         data={doelen ?? undefined}
         isEmpty={(d) => d.length === 0}
         empty={{
-          title: 'Je hebt nog geen doel om te delen',
-          body:
-            'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep ' +
-            'koppelen.',
+          title: t('koppel.geen_doel_titel'),
+          body: t('koppel.geen_doel_tekst'),
         }}
       >
         {(lijst) => (
@@ -606,7 +597,7 @@ function KoppelDoel({
 
       {doelen !== null && doelen.length === 0 ? (
         <Button variant="secundair" block onPress={() => router.push('/doel/nieuw')}>
-          Nieuw doel
+          {t('koppel.nieuw_doel')}
         </Button>
       ) : null}
 

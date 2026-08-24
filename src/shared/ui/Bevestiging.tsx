@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
 import { space } from '../theme';
 
 import type { BevestigingsTekst } from './acties';
@@ -48,7 +49,7 @@ export function Bevestiging({ tekst, onBevestig, onAnnuleer, bezig = false, fout
           {tekst.bevestig}
         </Button>
         <Button variant="stil" disabled={bezig} onPress={onAnnuleer}>
-          Annuleren
+          {t('bevestiging.annuleren')}
         </Button>
       </View>
     </Card>

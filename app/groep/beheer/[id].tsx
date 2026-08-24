@@ -14,12 +14,19 @@ import {
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
   type Groep,
+  type Zichtbaarheid,
 } from '@/modules/buddies';
+import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import {
   AsyncView,
+  bevestigingen,
+  Bevestiging,
   Body,
   Button,
   Caption,
@@ -57,7 +64,15 @@ export default function GroepBeheer() {
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
   const [bewijseis, setBewijseis] = useState<Bewijseis>('note_required');
-  const [bezig, setBezig] = useState<'opslaan' | 'vernieuwen' | 'sluiten' | null>(null);
+  const [bezig, setBezig] = useState<'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | null>(null);
+  /**
+   * ⚠️ Openklappen en niet meteen doen. Besluit A41 grens 3: omzetten raakt
+   *    ánderen, dus het krijgt dezelfde zwaarte als een commitment device — en
+   *    dat is in dit project een `Bevestiging` met de prijs erin, geen "weet je
+   *    het zeker?". De database weigert bovendien zonder `p_bevestigd`, dus dit
+   *    scherm is de tweede rem en niet de enige.
+   */
+  const [zichtVraag, setZichtVraag] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -127,6 +142,27 @@ export default function GroepBeheer() {
     setMelding('Nieuwe link. De oude werkt vanaf nu niet meer.');
   }
 
+  async function zetZichtbaarheid(naar: Zichtbaarheid) {
+    if (!id) return;
+    setBezig('zicht');
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await zetGroepszichtbaarheid(id, naar, true);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    setZichtVraag(false);
+    setGroep((huidig) => (huidig === null ? huidig : { ...huidig, zichtbaarheid: naar }));
+    setMelding(
+      naar === 'open' ? t('beheer.melding_open_gezet') : t('beheer.melding_beschermd_gezet'),
+    );
+  }
+
   async function zetGesloten(gesloten: boolean) {
     if (!id) return;
     setBezig('sluiten');
@@ -142,11 +178,11 @@ export default function GroepBeheer() {
     }
 
     setGroep((huidig) => (huidig === null ? huidig : { ...huidig, invite_revoked: gesloten }));
-    setMelding(gesloten ? 'De link is gesloten.' : 'De link staat weer open.');
+    setMelding(gesloten ? t('beheer.melding_gesloten') : t('beheer.melding_open'));
   }
 
   return (
-    <Screen title="Groep beheren" eyebrow="ALLEEN VOOR BEHEERDERS">
+    <Screen title={t('beheer.titel')} eyebrow={t('beheer.eyebrow')}>
       <AsyncView
         loading={loading}
         error={error}
@@ -167,22 +203,18 @@ export default function GroepBeheer() {
           */
           !beheerder ? (
             <Card>
-              <Subheading>Alleen een beheerder kan deze groep instellen</Subheading>
-              <Body muted>
-                Je bent lid van deze groep, maar geen beheerder. Vraag degene die de groep
-                heeft aangemaakt om de naam, de huddledag of de uitnodigingslink te
-                wijzigen.
-              </Body>
+              <Subheading>{t('beheer.geen_beheerder_titel')}</Subheading>
+              <Body muted>{t('beheer.geen_beheerder_tekst')}</Body>
             </Card>
           ) : (
             <>
               <Card>
                 <Field
-                  label="Naam van de groep"
+                  label={t('beheer.naam')}
                   value={naam}
                   onChangeText={setNaam}
                   maxLength={60}
-                  placeholder="De donderdagclub"
+                  placeholder={t('beheer.naam_hint')}
                 />
 
                 <Choice
@@ -196,10 +228,7 @@ export default function GroepBeheer() {
                   onKies={setHuddledag}
                 />
 
-                <Caption>
-                  Wijzigen breekt geen lopende ketting: een schakel draagt de week waarin hij
-                  gelegd is, en die wordt nooit herberekend.
-                </Caption>
+                <Caption>{t('beheer.huddledag_uitleg')}</Caption>
 
                 {/*
                   ⚠️ De bijlage-optie staat er wel en doet nog niets: er is geen
@@ -208,20 +237,13 @@ export default function GroepBeheer() {
                      staat eronder in plaats van dat de knop stilletjes liegt.
                 */}
                 <Choice
-                  label="Hoeveel bewijs vraagt deze groep?"
-                  hint={
-                    'Een duim omhoog op een bewering is een formaliteit. Eén zin kost tien ' +
-                    'seconden en geeft je buddy iets om op te reageren — dat is wat het gesprek ' +
-                    'op gang brengt.'
-                  }
+                  label={t('beheer.bewijs_label')}
+                  hint={t('beheer.bewijs_hint')}
                   opties={BEWIJSEISEN.map((e) => ({ waarde: e, label: bewijseisLabels()[e] }))}
                   waarde={bewijseis}
                   onKies={setBewijseis}
                 />
-                <Caption>
-                  Bijlagen kunnen nog niet: er is nog geen opslag. Kies je die stand, dan geldt
-                  voorlopig alleen de notitie. Wijzigen raakt bestaande afrondingen niet.
-                </Caption>
+                <Caption>{t('beheer.bijlagen_nog_niet')}</Caption>
 
                 <Button
                   variant="primair"
@@ -229,26 +251,63 @@ export default function GroepBeheer() {
                   busy={bezig === 'opslaan'}
                   onPress={() => void slaOp()}
                 >
-                  Opslaan
+                  {t('beheer.opslaan')}
                 </Button>
               </Card>
 
+              {/*
+                ⚠️ Een eigen kaart en niet een derde `Choice` in het formulier
+                   hierboven. Dat formulier heeft één opslaanknop, en deze keuze
+                   hoort nooit mee te liften op een knop die ook de groepsnaam
+                   opslaat: dan zet je per ongeluk de weken van je buddy's open
+                   terwijl je een typefout herstelde.
+              */}
               <Card>
-                <Subheading>Uitnodigingslink</Subheading>
+                <Subheading>{t('beheer.zichtbaarheid_titel')}</Subheading>
                 <Body muted>
-                  Wie deze link opent, ziet de groep en hoeveel mensen erin zitten — ook
-                  zonder account. Wat jullie aan doelen delen, ziet iemand pas na het
-                  meedoen. Deel de link toch alleen met mensen die je erbij wilt.
+                  {t('beheer.zichtbaarheid_nu', {
+                    stand: zichtbaarheidLabels()[(g.zichtbaarheid ?? 'beschermd') as Zichtbaarheid],
+                  })}
                 </Body>
+                <Body muted>
+                  {zichtbaarheidUitleg()[(g.zichtbaarheid ?? 'beschermd') as Zichtbaarheid]}
+                </Body>
+                <Caption>{t('beheer.zichtbaarheid_waarschuwing')}</Caption>
+
+                {zichtVraag ? (
+                  <Bevestiging
+                    tekst={
+                      g.zichtbaarheid === 'open'
+                        ? bevestigingen().groepBeschermen
+                        : bevestigingen().groepOpenzetten
+                    }
+                    bezig={bezig === 'zicht'}
+                    onBevestig={() =>
+                      void zetZichtbaarheid(g.zichtbaarheid === 'open' ? 'beschermd' : 'open')
+                    }
+                    onAnnuleer={() => setZichtVraag(false)}
+                  />
+                ) : (
+                  <Button variant="secundair" block onPress={() => setZichtVraag(true)}>
+                    {g.zichtbaarheid === 'open'
+                      ? t('beheer.naar_beschermd')
+                      : t('beheer.naar_open')}
+                  </Button>
+                )}
+              </Card>
+
+              <Card>
+                <Subheading>{t('beheer.link_titel')}</Subheading>
+                <Body muted>{t('beheer.link_uitleg')}</Body>
 
                 <Deelknop
-                  label="Deel de uitnodiging"
-                  titel={`Doe mee met ${g.name}`}
+                  label={t('beheer.deel')}
+                  titel={t('beheer.deel_titel', { groep: g.name })}
                   tekst={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
                 />
 
                 <Field
-                  label="Of kopieer hem met de hand"
+                  label={t('beheer.kopieer')}
                   value={uitnodigingsLink(clientEnv().appUrl, g.invite_code)}
                   editable={false}
                   selectTextOnFocus
@@ -257,9 +316,7 @@ export default function GroepBeheer() {
                 <Caption>Voorlezen kan ook: {toonCode(g.invite_code)}</Caption>
 
                 {g.invite_revoked ? (
-                  <Caption danger>
-                    De link is gesloten. Niemand kan er op dit moment mee binnenkomen.
-                  </Caption>
+                  <Caption danger>{t('beheer.link_gesloten')}</Caption>
                 ) : null}
 
                 <Button
@@ -268,7 +325,7 @@ export default function GroepBeheer() {
                   busy={bezig === 'vernieuwen'}
                   onPress={() => void vernieuw()}
                 >
-                  Nieuwe link maken
+                  {t('beheer.nieuwe_link')}
                 </Button>
                 <Button
                   variant="stil"
@@ -276,14 +333,10 @@ export default function GroepBeheer() {
                   busy={bezig === 'sluiten'}
                   onPress={() => void zetGesloten(!g.invite_revoked)}
                 >
-                  {g.invite_revoked ? 'Link weer openzetten' : 'Link sluiten'}
+                  {g.invite_revoked ? t('beheer.link_openzetten') : t('beheer.link_sluiten')}
                 </Button>
 
-                <Caption>
-                  Sluiten laat de code bestaan maar weigert iedereen. Een nieuwe link maken
-                  vervangt de code, en dan is de oude definitief dood — dat is wat je doet als
-                  een link ergens is beland waar hij niet hoorde.
-                </Caption>
+                <Caption>{t('beheer.sluiten_uitleg')}</Caption>
               </Card>
 
               {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
@@ -294,7 +347,7 @@ export default function GroepBeheer() {
       </AsyncView>
 
       <Button variant="stil" block onPress={() => router.back()}>
-        Terug naar de groep
+        {t('beheer.terug')}
       </Button>
     </Screen>
   );

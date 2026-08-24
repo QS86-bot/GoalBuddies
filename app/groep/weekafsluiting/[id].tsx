@@ -24,6 +24,7 @@ import {
   type Reactie,
 } from '@/modules/buddies';
 import { fetchDagzetten } from '@/modules/completions';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { klokTijd, type Cycle } from '@/shared/time';
 import {
@@ -134,10 +135,12 @@ export default function Weekafsluiting() {
 
   return (
     <Screen
-      title="De weekafsluiting"
+      title={t('weekafsluiting.titel')}
       eyebrow={
         stand?.groep
-          ? `HUDDLEDAG ${huddledagLabel(stand.groep.huddle_day).toUpperCase()}`
+          ? t('weekafsluiting.eyebrow', {
+              dag: huddledagLabel(stand.groep.huddle_day).toUpperCase(),
+            })
           : undefined
       }
     >
@@ -148,10 +151,8 @@ export default function Weekafsluiting() {
         isEmpty={(s) => s.groep === null}
         onRetry={herlaad}
         empty={{
-          title: 'Deze groep is er niet, of niet voor jou',
-          body:
-            'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een ' +
-            'nieuwe uitnodigingslink als je erbij hoort.',
+          title: t('weekafsluiting.geen_lid_titel'),
+          body: t('weekafsluiting.geen_lid_tekst'),
         }}
       >
         {(s) => {
@@ -199,7 +200,7 @@ export default function Weekafsluiting() {
 
             {s.reactiesMeer ? (
               <Button variant="secundair" block busy={meerBezig} onPress={() => void laadMeerReacties()}>
-                Meer reacties laden
+                {t('weekafsluiting.meer_reacties')}
               </Button>
             ) : null}
           </View>
@@ -214,16 +215,14 @@ export default function Weekafsluiting() {
       */}
       {vuil ? (
         <>
-          <Caption danger>
-            Je hebt tekst staan die nog niet gedeeld is. Weggaan gooit hem weg.
-          </Caption>
+          <Caption danger>{t('weekafsluiting.niet_gedeeld')}</Caption>
           <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
-            Toch weg, zonder delen
+            {t('weekafsluiting.toch_weg')}
           </Button>
         </>
       ) : (
         <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
-          Terug naar de groep
+          {t('weekafsluiting.terug')}
         </Button>
       )}
     </Screen>
@@ -301,7 +300,7 @@ function MijnAntwoorden({
 
   async function bewaar() {
     if (userId === null || userId === '' || groupId === '') {
-      setFout('Je sessie is nog aan het laden. Probeer het over een tel opnieuw.');
+      setFout(t('weekafsluiting.sessie_laadt'));
       return;
     }
 
@@ -350,11 +349,8 @@ function MijnAntwoorden({
   if (!open) {
     return (
       <Card>
-        <Subheading>Je hebt deze week gedeeld</Subheading>
-        <Body muted>
-          Je antwoorden staan op de kaart hieronder. Je kunt ze bijwerken of helemaal
-          terugnemen.
-        </Body>
+        <Subheading>{t('weekafsluiting.je_hebt_gedeeld')}</Subheading>
+        <Body muted>{t('weekafsluiting.staat_op_kaart')}</Body>
 
         {/*
           ⚠️ Terugnemen ging met één tik, en dat kon niet blijven. `week_reviews`
@@ -371,27 +367,27 @@ function MijnAntwoorden({
           <>
             <Body>
               {reactiesOpMij === 0
-                ? 'Je antwoorden verdwijnen van de kaart. Dat kun je daarna niet terughalen.'
+                ? t('weekafsluiting.terugnemen_uitleg')
                 : reactiesOpMij === 1
-                  ? 'Let op: hiermee verdwijnt ook de reactie die je groep erop gaf.'
-                  : `Let op: hiermee verdwijnen ook de ${reactiesOpMij} reacties die je groep erop gaf.`}
+                  ? t('weekafsluiting.terugnemen_een_reactie')
+                  : t('weekafsluiting.terugnemen_reacties', { n: reactiesOpMij })}
             </Body>
             <View style={styles.acties}>
               <Button variant="secundair" busy={bezig === 'weg'} onPress={() => void haalWeg()}>
-                Ja, terugnemen
+                {t('weekafsluiting.ja_terugnemen')}
               </Button>
               <Button variant="stil" onPress={() => setWilWeg(false)}>
-                Toch niet
+                {t('weekafsluiting.toch_niet')}
               </Button>
             </View>
           </>
         ) : (
           <View style={styles.acties}>
             <Button variant="secundair" onPress={() => setOpen(true)}>
-              Bijwerken
+              {t('weekafsluiting.bijwerken')}
             </Button>
             <Button variant="stil" onPress={() => setWilWeg(true)}>
-              Terugnemen
+              {t('weekafsluiting.terugnemen')}
             </Button>
           </View>
         )}
@@ -403,11 +399,8 @@ function MijnAntwoorden({
 
   return (
     <Card>
-      <Subheading>Drie vragen</Subheading>
-      <Body muted>
-        Alle drie mogen leeg blijven. Wie niets invult, staat niet op de kaart — er komt
-        nergens te staan dat je overgeslagen hebt.
-      </Body>
+      <Subheading>{t('weekafsluiting.drie_vragen')}</Subheading>
+      <Body muted>{t('weekafsluiting.mogen_leeg')}</Body>
 
       {vragen().map((vraag) => {
         const veld = waarden[vraag.veld];
@@ -428,12 +421,12 @@ function MijnAntwoorden({
       })}
 
       <Button variant="primair" block busy={bezig === 'opslaan'} onPress={() => void bewaar()}>
-        Delen met mijn groep
+        {t('weekafsluiting.delen')}
       </Button>
 
       {mijnAntwoord === null ? null : (
         <Button variant="stil" block onPress={() => setOpen(false)}>
-          Toch niet bijwerken
+          {t('weekafsluiting.toch_niet_bijwerken')}
         </Button>
       )}
 
@@ -469,13 +462,10 @@ function DeKaart({
 
   return (
     <Card>
-      <Subheading>Wat de groep deelde</Subheading>
+      <Subheading>{t('weekafsluiting.wat_gedeeld')}</Subheading>
 
       {zichtbaar.length === 0 ? (
-        <Body muted>
-          Nog niemand heeft deze week iets gedeeld. Wie begint, maakt het voor de rest
-          makkelijker.
-        </Body>
+        <Body muted>{t('weekafsluiting.nog_niemand')}</Body>
       ) : (
         zichtbaar.map((antwoord) => (
           <AntwoordBlok
@@ -511,7 +501,7 @@ function AntwoordBlok({
 
   async function stuur() {
     if (userId === null || userId === '') {
-      setFout('Je sessie is nog aan het laden. Probeer het over een tel opnieuw.');
+      setFout(t('weekafsluiting.sessie_laadt'));
       return;
     }
 
@@ -573,20 +563,20 @@ function AntwoordBlok({
           <Body>{r.body}</Body>
           {r.author_id === userId ? (
             <Button variant="stil" onPress={() => void weg(r.id)}>
-              Weghalen
+              {t('weekafsluiting.weghalen')}
             </Button>
           ) : null}
         </View>
       ))}
 
       <Field
-        label={`Reageren op ${antwoord.display_name}`}
-        hint="Een reactie is niet te bewerken. Weghalen kan wel."
+        label={t('weekafsluiting.reageren_op', { naam: antwoord.display_name })}
+        hint={t('weekafsluiting.reactie_hint')}
         value={reactie}
         onChangeText={setReactie}
         multiline
         maxLength={1000}
-        placeholder="Mooi dat je bent doorgegaan. Wat helpt je dinsdag?"
+        placeholder={t('weekafsluiting.reactie_voorbeeld')}
       />
       <Button
         variant="secundair"
@@ -595,7 +585,7 @@ function AntwoordBlok({
         disabled={reactie.trim() === ''}
         onPress={() => void stuur()}
       >
-        Reactie versturen
+        {t('weekafsluiting.reactie_versturen')}
       </Button>
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}

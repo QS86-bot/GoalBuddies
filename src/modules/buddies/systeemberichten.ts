@@ -1,6 +1,6 @@
-import { t, type Sleutel } from '../../shared/i18n';
+import { getal, t, type Sleutel } from '../../shared/i18n';
 
-import { SYSTEEM_GEBEURTENISSEN } from './chat-schemas';
+import { SYSTEEM_GEBEURTENISSEN, type SysteemGebeurtenis } from './chat-schemas';
 
 /**
  * De tekst van een systeembericht — QS8-107 stap 2.
@@ -54,7 +54,28 @@ export interface SysteembericthInvoer {
    *    verkeerde taal dan een lege regel in het gesprek.
    */
   readonly body: string;
+  /**
+   * Het enige getal dat een systeembericht draagt: de bereikte drempel van De
+   * Ketting. `null` bij elke andere gebeurtenis.
+   *
+   * ⚠️ **Dit is het vijfde veld en dat is met opzet lastig.** De test hieronder
+   *    legt de veldnamen vast, dus er komt er nooit een bij zonder dat iemand
+   *    zich afvraagt of het een titel, een notitie of een niveau is —
+   *    beslisdocument 002 §3. Een getal zonder eenheid is dat niet: het zegt
+   *    hoeveel schakels de groep samen heeft, en niet wie welke week deed.
+   */
+  readonly aantal: number | null;
 }
+
+/**
+ * Gebeurtenissen waarvan de zin een getal nodig heeft.
+ *
+ * ⚠️ Bestaat zodat een rij zónder dat getal terugvalt op de opgeslagen zin in
+ *    plaats van "telt {aantal} schakels" te tonen. Dat kan alleen bij een rij van
+ *    vóór migratie 0075; er zijn er nul, maar een half ingevulde zin in de
+ *    groepschat is precies het soort storing dat het kanaal onbetrouwbaar maakt.
+ */
+const GEBEURTENISSEN_MET_AANTAL: ReadonlySet<string> = new Set(['chain_milestone']);
 
 /** Een naam, of de nette vervanging als hij er niet meer is. */
 function naam(waarde: string | null): string {
@@ -81,9 +102,16 @@ export function systeemberichtTekst(invoer: SysteembericthInvoer): string {
     return invoer.body.trim();
   }
 
+  if (GEBEURTENISSEN_MET_AANTAL.has(invoer.system_event) && invoer.aantal === null) {
+    return invoer.body.trim();
+  }
+
   return t(`systeembericht.${invoer.system_event}` as Sleutel, {
     naam: naam(invoer.subject_name),
     actor: naam(invoer.actor_name),
+    // ⚠️ Door `getal()` en niet als kale `String()`: 1000 schakels leest in het
+    //    Nederlands als "1.000" en in het Engels als "1,000".
+    aantal: invoer.aantal === null ? '' : getal(invoer.aantal, 0),
   });
 }
 
@@ -95,6 +123,6 @@ export function systeemberichtTekst(invoer: SysteembericthInvoer): string {
  *    kopie van de CHECK in de database; komt daar iets bij, dan wordt die test
  *    rood in plaats van dat er stilletjes een `body` doorheen valt.
  */
-export function kentGebeurtenis(event: string | null): boolean {
+export function kentGebeurtenis(event: string | null): event is SysteemGebeurtenis {
   return event !== null && (SYSTEEM_GEBEURTENISSEN as readonly string[]).includes(event);
 }

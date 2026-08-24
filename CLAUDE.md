@@ -207,8 +207,47 @@ Voordat er één feature gebouwd wordt:
    vóór X" werkt — schrijf zo'n aantekening op zodra een besluit aan een
    toekomstige feature hangt.**
 
+   ⚠️ **Besluit A41, 24-08-2026: er komt een keuze per groep — en de standaard
+   blijft beschermd.** Bij het aanmaken kiest een groep tussen **beschermd**
+   (zoals nu, en de standaard) en **open** (de groep ziet ook tegenslag). Dat is
+   variant 2 van QS8-128; variant 3, de regel afschaffen, is afgewezen.
+
+   Wat dat besluit **niet** is:
+
+   - Geen verruiming van bestaande groepen. Alles wat vandaag dicht zit, blijft
+     dicht tot de epic gebouwd is, en bestaande groepen zijn **beschermd**.
+   - Geen tweede pad naast RLS. De keuze wordt een kolom op `groups` waar de
+     policies op variëren; hij mag nooit alleen in de UI bestaan.
+   - Geen keuze die je later stilzwijgend omzet. Een groep die van beschermd naar
+     open gaat, verandert met terugwerkende kracht wat er over ándere leden
+     zichtbaar wordt — dus dat is een handeling met dezelfde zorgvuldigheid als
+     een commitment device (domeinregel 5).
+
+   ⚠️ **Gebouwd op 24-08-2026 (QS8-132, migraties 0076 t/m 0079).** De kolom
+   `groups.zichtbaarheid` bestaat en is voor geen enkele client schrijfbaar; het
+   omzetten loopt via `zet_groepszichtbaarheid()` — actieve beheerder, expliciet
+   bevestigd, een rij in `group_events`, een systeembericht. Alle twintig
+   oppervlakken zijn beoordeeld en alles wat om moest is om: weekdoelen (0077),
+   de beste reeks en de laatste cyclus (0078), De Ketting (0079).
+
+   ⚠️ **"Open" betekent nooit "alles open", en zeven oppervlakken bewijzen dat.**
+   Punten (A42), systeemberichten over tegenslag, realtime, ingetrokken
+   goedkeuringen, de weekpassen, de teller van De Ketting en de
+   mijlpaalaankondiging blijven dicht, óók in een open groep. Wie er ooit een wil
+   verruimen, leest eerst de rij en de reden in
+   `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
+
+   ⚠️ **Voor élk níeuw oppervlak is beschermd het antwoord tot iemand het
+   tegendeel besluit.** Bouw niets "vast open"; dat is precies hoe een standaard
+   verschuift zonder dat iemand het besloten heeft.
+
    *Waarom:* in een groep van drie vrienden doodt één schaamtemoment de hele groep.
    Dit is de belangrijkste vondst uit de Habit Huddle-analyse.
+
+   ⚠️ **En juist bij zakelijk gebruik weegt dat zwaarder, niet lichter.** Zit er
+   een leidinggevende in een buddy-groep, dan beschermt deze regel niet meer tegen
+   schaamte maar tegen een beoordelingsgesprek. Dat is een zwaardere reden om hem
+   te houden dan de reden waarom hij er staat.
 
    **Bij élk nieuw ding dat de groep te zien krijgt, twee vragen:** kan hieruit
    iemands gemiste week worden afgeleid, én kan iemand dat met één API-verzoek
@@ -262,11 +301,21 @@ Voordat er één feature gebouwd wordt:
     - **Punten zijn privé.** `points_ledger` en het puntentotaal zijn alleen voor de
       eigenaar leesbaar. Een dalend totaal is zichtbaar bewijs van een gemiste week,
       en dat botst met domeinregel 7. De groep ziet De Ketting en mijlpalen.
+
+      ⚠️ **Besluit A42, 24-08-2026: zo houden.** De vraag was of een gedeeld
+      puntentotaal niet competitiever is. Dat is het, en het lekt: wie het totaal
+      deelt, deelt het missen via een omweg. Wat wél mag is een teller die **alleen
+      optelt** — "deze groep heeft samen 47 weken afgerond". Die gaat nooit omlaag
+      en verraadt niemand. Dat is dezelfde vorm als De Ketting en zijn mijlpalen
+      (migratie 0070), dus het is een bestaand patroon en geen idee.
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
 
     ⚠️ **Een deadline verschuiven kost geen punten** en dat is een besluit, geen
-    omissie (Q-TODO A7). De rem zit ergens anders: verschuiven kán alleen met
+    omissie (Q-TODO A7). **Herbevestigd op 24-08-2026 als besluit A43** (QS8-129):
+    er komt géén minpunt op verschuiven zonder akkoord. Dat zou de enige plek in
+    het model zijn waar je je uit een afspraak kunt kópen, en een punt is
+    goedkoper dan een gesprek. De rem zit ergens anders: verschuiven kán alleen met
     akkoord van een buddy, en zonder akkoord blijft de datum staan. Zou er ook een
     minpunt op staan, dan betaal je twee keer voor één gebeurtenis. Alleen
     `correction` mag verder negatief boeken, en dat is per definitie het
@@ -420,6 +469,8 @@ was er een uitgebreide, groene testsuite die er niets van zag.
 | Migratie 0032/0034 | `SYSTEEM_GEBEURTENISSEN` en de CHECK, elk voor zich | De test vergeleek de app-lijst met **zichzelf**. 0032 zette `deadline_requested` op de CHECK, de app bleef op acht staan, en er werd niets rood |
 | QS8-115 / PR #9 | `deadlineVerzoekSchema` c.s. waren netjes vertaald | Ze verhuisden naar een eigen bestand (QS8-120/121) en de Nederlandse zinnen kwamen terug. De schematests toetsen de **inhoud** van de melding, niet de **herkomst** |
 | QS8-24 | `scrubMessage()` en `scrubContext()`, allebei uitgebreid getest | `reportError()` nam de geschoonde melding en zette de **ruwe stack** ernaast. De eerste regel van een stack ís de melding, dus alles ging er alsnog uit |
+| QS8-85 / QS8-115 | De test greep in `app/doel/[id].tsx` naar de letterlijke zin "De app rekent niets af" | De zin verhuisde naar de catalogus. De test bewaakte daarna nog steeds íets — een bestand — maar niet meer de belofte, en bleef groen tot hij per ongeluk rood werd |
+| QS8-113 / QS8-115 | Kolom, CHECK, kolomgrant, leeskant en catalogus: elk stuk af en getest | Er was geen schrijfpad naar `profiles.locale`. De héle keten was dood hout en geen enkele test kon dat zien, want er was niets kapot |
 
 **De vorm is elke keer dezelfde:** de test toetst een eigenschap van een
 ónderdeel, terwijl de belofte een eigenschap van het gehéél is. Onderdelen zijn
@@ -437,6 +488,15 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    verplaatst.
 3. **Kan deze test groen blijven terwijl de belofte breekt?** Als het antwoord ja
    is, bewaakt hij niets.
+4. **Grijpt deze test naar een plek in plaats van naar de belofte?** Een test die
+   een letterlijke zin in een schérmbestand zoekt, verhuist niet mee als die zin
+   verhuist. Hij wordt dan niet rood — hij bewaakt gewoon iets anders. Toets de
+   sleutel én de catalogus, niet het bestand waar de zin vandaag toevallig staat.
+5. **Is de keten ergens onderbroken terwijl elk schakeltje af is?** Dat is de
+   variant zonder kapot onderdeel, en dus de variant die geen enkele test vindt.
+   Vraag bij een feature die "klaar" heet: kan een gebruiker hier daadwerkelijk
+   bij, en langs welke knop? Bij QS8-113 lag er een kolom met een grant en een
+   policy die niemand ooit kon vullen.
 
 ⚠️ **Vraag 3 beantwoord je niet door erover na te denken, maar door de belofte
 met de hand te breken en te kijken of hij rood wordt.** Dat is in dit project de

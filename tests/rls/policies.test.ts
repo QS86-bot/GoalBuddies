@@ -581,9 +581,26 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         // is voor een groepsgenoot, is wat deze test bewijst — niet welke stand
         // hij heeft.
         expect(typeof data?.[0]?.current_streak).toBe('number');
-        // Niet alleen "de waarde staat er niet", maar "de kolom bestaat niet".
+
+        // ⚠️ **De belofte is op 24-08-2026 van vorm veranderd en niet van
+        //    inhoud** (besluit A41, migratie 0078). Hier stond: "niet alleen de
+        //    waarde staat er niet, maar de kolom bestáát niet". Sinds de
+        //    zichtbaarheidskeuze per groep bestaan `best_streak` en
+        //    `last_cycle_start` wél als kolom, en zijn ze `null` buiten een open
+        //    groep.
+        //
+        //    Dat is aantoonbaar zwakker: een kolom die er niet is, kan niet
+        //    lekken; een `case`-expressie die verkeerd geschreven wordt wel. De
+        //    afweging staat in de kop van 0078 — een tweede view of een functie
+        //    zou die eigenschap ook niet gehaald hebben, en zou de definitie op
+        //    twee plekken zetten. Wat blijft, is dat déze toets nu op de wáárde
+        //    moet en niet meer op het bestaan.
+        //
+        //    `total_points` heeft die verandering níét meegemaakt: die kolom
+        //    staat er nog steeds niet in en komt er ook niet in (besluit A42).
         expect(Object.keys(data?.[0] ?? {})).not.toContain('total_points');
-        expect(Object.keys(data?.[0] ?? {})).not.toContain('last_cycle_start');
+        expect(data?.[0]?.last_cycle_start).toBeNull();
+        expect(data?.[0]?.best_streak).toBeNull();
 
         // En de tabel eronder blijft dicht.
         const raw = await rowCount(f.bob.db.from('user_streaks').select('user_id').eq('user_id', f.alice.id));
@@ -1606,14 +1623,21 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
       // ⚠️ Domeinregel 7 en 10, als eigenschap van de projectie. Uit een
       //    puntentotaal én uit `last_cycle_start` is af te leiden dat iemand een
-      //    week gemist heeft. Ze staan er niet in, en deze test houdt dat zo.
+      //    week gemist heeft.
       //
       // ⚠️ `best_streak` is er in 0019 bij gekomen, en dat was een echt gat: als
       //    `best_streak > current_streak`, dan heeft die persoon een reeks
       //    verbroken en dus een week gemist. De oude versie van deze test
       //    controleerde alleen de andere twee en liet hem er precies langs.
+      //
+      // ⚠️ **Deze groep is beschermd, en dat staat hier expliciet.** Sinds
+      //    besluit A41 (migratie 0078) hangt het antwoord van
+      //    `groups.zichtbaarheid` af; de fixture van deze suite kiest niets, en
+      //    de default is `beschermd`. Dat is precies de stand die deze test moet
+      //    bewaken: **alles wat vóór A41 dicht zat, zit in een beschermde groep
+      //    nog steeds dicht.** De open stand staat in `tests/rls/epic13.test.ts`.
       it(
-        'bevat geen puntentotaal, geen laatste cyclus en geen beste reeks',
+        'houdt in een beschermde groep de laatste cyclus en de beste reeks leeg',
         async () => {
           const { data } = await g.lid.db.rpc('group_overview', {
             p_group_id: g.groupId,
@@ -1622,9 +1646,12 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
           const kolommen = Object.keys((data ?? [])[0] ?? {});
           expect(kolommen).not.toContain('total_points');
-          expect(kolommen).not.toContain('last_cycle_start');
-          expect(kolommen).not.toContain('best_streak');
           expect(kolommen).toContain('current_streak');
+
+          for (const rij of data ?? []) {
+            expect(rij.last_cycle_start).toBeNull();
+            expect(rij.best_streak).toBeNull();
+          }
         },
         TEST_TIMEOUT,
       );
@@ -1638,9 +1665,11 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
           const kolommen = Object.keys((data ?? [])[0] ?? {});
           if (kolommen.length > 0) {
-            expect(kolommen).not.toContain('best_streak');
             expect(kolommen).not.toContain('total_points');
-            expect(kolommen).not.toContain('last_cycle_start');
+            // Sinds 0078 bestaan deze twee als kolom en zijn ze leeg buiten een
+            // open groep. Zie de uitleg bij de vorige test.
+            expect((data ?? [])[0]?.best_streak).toBeNull();
+            expect((data ?? [])[0]?.last_cycle_start).toBeNull();
           }
         },
         TEST_TIMEOUT,
@@ -2803,6 +2832,116 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         expect(uitkomst(antwoord.data).reason).toBe('not_owner');
       },
       SETUP_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // QS8-130 — TRUNCATE en TRIGGER
+  // -------------------------------------------------------------------------
+
+  describe('DDL-rechten', () => {
+    /**
+     * ⚠️ **TRUNCATE is niet onderworpen aan RLS.** Een rol die het heeft, leegt de
+     *    tabel ongeacht welke policy erop staat — ook `points_ledger`,
+     *    `completions` en `chat_messages`. `authenticated` had het tot 24-08 op
+     *    alle 29 tabellen, als erfenis van de standaardrechten van het platform.
+     *
+     *    Migratie 0073 trekt het in, én past de standaardrechten aan zodat de
+     *    volgende tabel het niet opnieuw krijgt. Die tweede helft is de reden dat
+     *    dit een test verdient: zonder haar is de reparatie tijdelijk.
+     */
+    it(
+      'geeft anon en authenticated geen TRUNCATE of TRIGGER',
+      async () => {
+        const { data, error } = await adminDb().rpc('ddl_rechten_in_de_api');
+
+        expect(error).toBeNull();
+        expect(data ?? []).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De toelating naast de weigering. Zonder deze test wordt het blok
+     *    hierboven groen zodra de functie helemaal niet meer bestaat.
+     */
+    it(
+      'laat service_role de rechten wél houden',
+      async () => {
+        const { data, error } = await adminDb().rpc('ddl_rechten_van_service_role');
+
+        expect(error).toBeNull();
+        expect(data).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'staat niet open voor een ingelogde gebruiker',
+      async () => {
+        const { error } = await f.alice.db.rpc('ddl_rechten_in_de_api');
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // QS8-122 — het migratieregister
+  // -------------------------------------------------------------------------
+
+  describe('het migratieregister', () => {
+    /**
+     * ⚠️ `migratieregister()` is SECURITY DEFINER en leest een systeemtabel.
+     *    Zonder de revoke in migratie 0072 staat hij als RPC in de API en kan
+     *    élke ingelogde gebruiker de volledige migratiegeschiedenis van dit
+     *    project uitlezen — inclusief de namen van elke grendel die er ooit op
+     *    gezet is.
+     *
+     *    Dat is de klasse fout die 0011, 0052 en 0069 kwamen dichten, en de reden
+     *    dat CLAUDE.md regel 19 zegt: **een nieuwe SECURITY DEFINER-functie erft
+     *    niets.**
+     */
+    it(
+      'staat niet open voor een ingelogde gebruiker',
+      async () => {
+        const { error } = await f.alice.db.rpc('migratieregister');
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'staat niet open zonder sessie',
+      async () => {
+        const { error } = await anonDb().rpc('migratieregister');
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De toelating bij de twee weigeringen hierboven. Zonder deze test wordt
+     *    dit blok groen zodra de functie helemaal niet meer bestaat — en dan
+     *    bewaakt hij niets meer, terwijl `register:controle` stilletjes omvalt.
+     */
+    it(
+      'is wél leesbaar met de service-role-key en levert genummerde versies',
+      async () => {
+        const { data, error } = await adminDb().rpc('migratieregister');
+
+        expect(error).toBeNull();
+        expect((data ?? []).length).toBeGreaterThan(70);
+
+        // Eén nummering: vier cijfers, eventueel met een letter (`0052a`).
+        for (const rij of data ?? []) {
+          expect(rij.versie, `versie ${rij.versie} (${rij.naam})`).toMatch(/^\d{4}[a-z]?$/);
+        }
+      },
+      TEST_TIMEOUT,
     );
   });
 });

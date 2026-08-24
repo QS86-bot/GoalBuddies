@@ -1,7 +1,15 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
-import { huddledagen, maakGroep } from '@/modules/buddies';
+import {
+  huddledagen,
+  maakGroep,
+  ZICHTBAARHEDEN,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
+  type Zichtbaarheid,
+} from '@/modules/buddies';
+import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
 
@@ -22,6 +30,10 @@ export default function NieuweGroep() {
 
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
+  // ⚠️ Begint op `beschermd`, en niet op "nog niets gekozen". Grens 1 van besluit
+  //    A41: dat is de standaard, en een scherm dat je eerst laat kiezen zou de
+  //    standaard tot een vraag maken.
+  const [zichtbaarheid, setZichtbaarheid] = useState<Zichtbaarheid>('beschermd');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -29,7 +41,7 @@ export default function NieuweGroep() {
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await maakGroep({ name: naam, huddle_day: huddledag });
+    const uitkomst = await maakGroep({ name: naam, huddle_day: huddledag, zichtbaarheid });
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
@@ -41,56 +53,60 @@ export default function NieuweGroep() {
   }
 
   return (
-    <Screen title="Nieuwe groep" eyebrow="DRIE IS DE BESTE MAAT">
+    <Screen title={t('groepnieuw.titel')} eyebrow={t('groepnieuw.eyebrow')}>
       <Card>
         <Field
-          label="Hoe heet je groep?"
-          hint="Twee tot zestig tekens. Iets dat jullie herkennen in een WhatsApp-bericht."
+          label={t('groepnieuw.naam')}
+          hint={t('groepnieuw.naam_hint')}
           value={naam}
           onChangeText={setNaam}
           maxLength={60}
-          placeholder="De donderdagclub"
+          placeholder={t('groepnieuw.naam_voorbeeld')}
         />
       </Card>
 
       <Card>
         <Choice
-          label="Huddledag"
-          hint={
-            'De dag waarop jullie samenkomen. Bepaalt de weekafsluiting, De Ketting en ' +
-            'het groepsoverzicht — niet wanneer jouw eigen weekdoelen resetten, want dat ' +
-            'blijft je persoonlijke week-startdag.'
-          }
+          label={t('groepnieuw.huddledag')}
+          hint={t('groepnieuw.huddledag_hint')}
           opties={huddledagen().map((d) => ({ waarde: d.waarde, label: d.label }))}
           waarde={huddledag}
           onKies={setHuddledag}
         />
-        <Caption>
-          Later te wijzigen. Een lopende ketting breekt daar niet van: schakels blijven staan
-          in de week waarin ze gelegd zijn.
-        </Caption>
+        <Caption>{t('groepnieuw.later_wijzigen')}</Caption>
+      </Card>
+
+      {/*
+        ⚠️ Deze keuze staat op het aanmaakscherm en niet weggestopt onder
+           instellingen, om dezelfde reden als de huddledag: hij is fundamenteel.
+           Besluit A41 zegt bovendien dat hij bij het aanmáken gemaakt wordt.
+           De uitleg staat eronder en niet in een hulpicoon — wie hier "open"
+           kiest, kiest iets over de weken van zijn buddy's.
+      */}
+      <Card>
+        <Choice
+          label={t('groepnieuw.zichtbaarheid')}
+          hint={t('groepnieuw.zichtbaarheid_hint')}
+          opties={ZICHTBAARHEDEN.map((z) => ({ waarde: z, label: zichtbaarheidLabels()[z] }))}
+          waarde={zichtbaarheid}
+          onKies={setZichtbaarheid}
+        />
+        <Caption>{zichtbaarheidUitleg()[zichtbaarheid]}</Caption>
       </Card>
 
       <Card nested>
-        <Subheading>Wat er daarna gebeurt</Subheading>
-        <Body muted>
-          Je krijgt een uitnodigingslink die je kunt delen. Wie hem opent ziet de groep en
-          waar jullie aan werken, ook zonder account. Je kunt de link altijd vernieuwen of
-          sluiten.
-        </Body>
-        <Body muted>
-          Je wordt beheerder. Er kunnen twaalf mensen in een groep, maar drie tot vijf werkt
-          in de praktijk het best.
-        </Body>
+        <Subheading>{t('groepnieuw.wat_daarna')}</Subheading>
+        <Body muted>{t('groepnieuw.wat_daarna_a')}</Body>
+        <Body muted>{t('groepnieuw.wat_daarna_b')}</Body>
       </Card>
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
       <Button variant="primair" block busy={bezig} onPress={() => void bewaar()}>
-        Groep aanmaken
+        {t('groepnieuw.aanmaken')}
       </Button>
       <Button variant="stil" block onPress={() => router.back()}>
-        Annuleren
+        {t('groepnieuw.annuleren')}
       </Button>
     </Screen>
   );

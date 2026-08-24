@@ -12,6 +12,7 @@ import {
   normaliseerCode,
   type GroepInvoer,
   type GroepPatch,
+  type Zichtbaarheid,
 } from './schemas';
 
 /**
@@ -102,6 +103,12 @@ function meldingen(): Readonly<Record<string, string>> {
 
     // rotate_invite_code en set_invite_revoked
     not_admin: t('groep.geen_beheerder'),
+
+    // zet_groepszichtbaarheid (besluit A41, migratie 0076)
+    not_confirmed: t('zichtbaarheid.niet_bevestigd'),
+    unknown_visibility: t('zichtbaarheid.onbekend'),
+    unchanged: t('zichtbaarheid.ongewijzigd'),
+    too_soon: t('zichtbaarheid.te_snel'),
   };
 }
 
@@ -216,6 +223,26 @@ export interface Groepslid {
   readonly milestones_total: number;
   readonly milestones_done: number;
   readonly current_streak: number | null;
+  /**
+   * De beste reeks ooit — **alleen gevuld in een open groep** (besluit A41,
+   * migratie 0078) en voor de eigenaar zelf.
+   *
+   * ⚠️ `null` betekent hier "niet voor jou" en niet "geen waarde":
+   *    `user_streaks.best_streak` is `not null default 0`. In een beschermde
+   *    groep is dit veld dus altijd `null`, en dát is de bescherming — `best >
+   *    current` is sluitend bewijs van een verbroken reeks.
+   */
+  readonly best_streak: number | null;
+  /**
+   * De laatste cyclus die in de reeks meetelde — zelfde regel als
+   * `best_streak`.
+   *
+   * ⚠️ Hier is `null` wél dubbelzinnig (de kolom is nullable: niemand heeft nog
+   *    een cyclus afgerond), en dat valt de goede kant op. Wie hem niet mag
+   *    zien, leert niets uit een `null` die twee dingen kan betekenen; wie hem
+   *    wél mag zien, krijgt altijd de echte waarde.
+   */
+  readonly last_cycle_start: string | null;
   readonly closed_this_period: boolean;
 }
 
@@ -259,6 +286,11 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
     milestones_total: rij.milestones_total ?? 0,
     milestones_done: rij.milestones_done ?? 0,
     current_streak: rij.current_streak,
+    // ⚠️ Geen `?? 0` op deze twee. Dat zou van "niet voor jou" een `0` maken, en
+    //    dan toont een beschermde groep "beste reeks: 0" — een getal dat een
+    //    bewering doet waar de database er geen deed. Zie besluit A41.
+    best_streak: rij.best_streak,
+    last_cycle_start: rij.last_cycle_start,
     closed_this_period: rij.closed_this_period ?? false,
   };
 }
@@ -333,6 +365,12 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
     //    is hier geen persoonlijk ongemak maar een groep waarvan de week op het
     //    verkeerde moment omslaat. Zie `apparaatTijdzone()`.
     tz: apparaatTijdzone(),
+    // ⚠️ Besluit A41 (migratie 0076). De server valt bij een onbekende waarde
+    //    terug op `beschermd` en weigert niet — dat is dezelfde keuze als bij
+    //    `tz`: een groep die per ongeluk beschermd is, kan alsnog open; een groep
+    //    die per ongeluk open is, heeft de gemiste weken van zijn leden al laten
+    //    zien.
+    zichtbaarheid: gevalideerd.data.zichtbaarheid,
   });
 
   if (error) {
@@ -435,6 +473,47 @@ export async function zetUitnodigingIngetrokken(
 }
 
 /**
+ * Zet de zichtbaarheid van een groep om — besluit A41, grens 3 (QS8-132).
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit en hoort daarom een parameter te zijn.**
+ *    De RPC weigert zonder, en de default in de database is `false`. Een groep
+ *    die van beschermd naar open gaat, verandert met terugwerkende kracht wat er
+ *    over de ándere leden zichtbaar wordt — dat is dezelfde zwaarte als een
+ *    commitment device (domeinregel 5), en dus nooit één klik.
+ *
+ * ⚠️ De kolom is voor geen enkele client schrijfbaar (migratie 0076 §2), dus dit
+ *    is de énige route. Een `update` op `groups` zou stil niets doen: de trigger
+ *    zet de waarde terug.
+ *
+ * ⚠️ Terug naar `beschermd` kan altijd; naar `open` hooguit één keer per etmaal.
+ *    De rem staat alleen op de onveilige richting, want een beheerder die zich
+ *    vergist heeft, moet dat onmiddellijk kunnen terugdraaien.
+ */
+export async function zetGroepszichtbaarheid(
+  groupId: string,
+  naar: Zichtbaarheid,
+  bevestigd: boolean,
+): Promise<Resultaat<Zichtbaarheid>> {
+  const { data, error } = await supabase().rpc('zet_groepszichtbaarheid', {
+    p_group_id: groupId,
+    p_naar: naar,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.visibility', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return { ok: true, waarde: naar };
+}
+
+/**
  * Toetreden met een code — QS8-53.
  *
  * ⚠️ Al lid zijn is hier geen fout maar een succes: de RPC geeft dan gewoon de
@@ -486,6 +565,19 @@ export interface Uitnodiging {
   readonly group_name: string;
   readonly icon: string | null;
   readonly huddle_day: number;
+  /**
+   * Staat deze groep open of beschermd? Besluit A41, migratie 0080.
+   *
+   * ⚠️ **Dit is het enige feit op dit scherm dat over de weken van de bezoeker
+   *    zélf gaat.** Meedoen met een open groep maakt zijn gemiste weken zichtbaar
+   *    voor de anderen — dezelfde overgang als wanneer een groep wordt opengezet,
+   *    maar zonder systeembericht, want er verandert niets aan de groep. Dit veld
+   *    is de enige plek waar dat kan staan.
+   *
+   * ⚠️ Ontbreekt hij (een oudere server), dan `beschermd`. Onbekend is beschermd
+   *    — overal in dit besluit dezelfde kant op.
+   */
+  readonly zichtbaarheid: Zichtbaarheid;
   readonly member_count: number;
   /** Ziet deze bezoeker het volledige beeld? Alleen waar als hij ingelogd is. */
   readonly detailed: boolean;
@@ -518,7 +610,18 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
     throw new Error(t('groep.uitnodiging_laden'));
   }
 
-  return data === null ? null : (data as unknown as Uitnodiging);
+  if (data === null) return null;
+
+  const gelezen = data as unknown as Uitnodiging & { zichtbaarheid?: unknown };
+
+  // ⚠️ **Onbekend is beschermd**, en dat is geen defensieve reflex maar de kant
+  //    waar dit hele besluit op leunt. Een oudere server die dit veld nog niet
+  //    stuurt, hoort geen "open" te suggereren: dan zou een bezoeker denken dat
+  //    hij iets deelt wat hij niet deelt, of erger, andersom.
+  const zichtbaarheid: Zichtbaarheid =
+    gelezen.zichtbaarheid === 'open' ? 'open' : 'beschermd';
+
+  return { ...gelezen, zichtbaarheid };
 }
 
 // ---------------------------------------------------------------------------

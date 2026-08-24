@@ -64,8 +64,42 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     ontbreekt er echt iets — zet hem niet uit.
 
     ⚠️ Wat hij niet ziet: of de repo gelijkloopt met `schema_migrations` op het
-    échte project. Dat vraagt een service-role-key en die hoort niet in een
-    controle die overal draait. Dat is de tweede helft van QS8-122.
+    échte project. Dat is stap 13.
+
+12. **Hardgecodeerde UI-tekst** — draai `npm run tekst:controle`. Die toetst
+    criterium 1 van QS8-115: er staat nergens in `src/` of `app/` nog Nederlandse
+    schermtekst hard in de code. Alles loopt via `t()` en de catalogus.
+
+    ⚠️ Hij heeft de hele omzetting rood gestaan, met opzet — een controle die je
+    aanzet terwijl hij rood staat, leert je om rood te negeren. Sinds 24-08 is
+    hij groen en draait hij hier mee.
+
+    ⚠️ **Hij is vier keer geijkt en de laatste keer pas nadat hij groen stond.**
+    Die vierde ronde vond zeventien zinnen in mappen die al "af" heetten: ze
+    stonden achter een openingstag op dezelfde regel, en dát patroon zag hij nog
+    niet. Wordt er een nieuwe vorm zichtbaar, scherp hem dan aan in plaats van
+    de treffer weg te schrijven. Een controle die nul meldt terwijl er tekst
+    staat, geeft toestemming om te stoppen met kijken.
+
+13. **Repo naast project** — draai `npm run register:controle`. Die legt
+    `supabase/migrations/` naast `schema_migrations` op het echte project en
+    wordt rood bij een migratie die maar aan één kant bestaat, bij twee namen op
+    hetzelfde nummer, en bij een tijdstempel in plaats van een nummer.
+
+    ⚠️ **Zonder credentials slaat hij zichzelf over en dat is geen probleem** —
+    zelfde afspraak als de RLS-suite. Maar draai hem dan wél een keer met `.env`
+    erbij vóór je de audit afsluit: dit is de enige controle die het gat ziet dat
+    twee keer bij toeval gevonden is (`0036`/`0037` en `0057` t/m `0061` stonden
+    op het project zonder bestand in de repo).
+
+    ⚠️ Een tijdstempel betekent dat er een migratie is toegepast buiten de
+    werkwijze uit `docs/DEPLOY.md` §2.2 om. De MCP-tool doet dat uit zichzelf;
+    uitlijnen is één UPDATE en staat daar beschreven.
+
+14. **Bouwt de map het schema nog op?** — `npm run schema:opbouwen`, en daarna
+    `scripts/schema-vingerafdruk.sql` op beide databases. Niet elke week nodig,
+    wél na een reeks migraties of vóór je iets doet dat een tweede omgeving
+    vraagt. Zie `docs/decisions/004-migratieregister.md`.
 
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

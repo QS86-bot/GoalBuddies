@@ -30,7 +30,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           # Gelijk aan de engines-eis in package.json.
-          node-version: '20'
+          #
+          # ⚠️ **22 en niet 20, en dat was een belofte die de code niet hield.**
+          #    `engines` zei `>=20`, maar de realtime-client van supabase-js
+          #    vraagt een native `WebSocket` en die bestaat pas vanaf Node 22.
+          #    Op 20 valt élke `createClient()` om met "native WebSocket not
+          #    found" — geen policyfout, maar wel 29 rode tests.
+          #
+          #    Lokaal draaide alles op 22, dus dit was hier niet te zien. De
+          #    RLS-job in CI vond het meteen.
+          node-version: '22'
           cache: npm
 
       # `npm ci` en niet `npm install`: de lockfile is de waarheid, en een CI die
@@ -44,26 +53,133 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # ⚠️ De RLS-tests (src/lib/testing/rls.test.ts) slaan zichzelf hier over.
-      #    Ze hebben SUPABASE_SERVICE_ROLE_KEY nodig, en die hoort niet in CI:
-      #    een key die RLS omzeilt geef je niet aan een runner die op elke push
-      #    van elke branch draait. Ze horen lokaal te draaien vóór een merge.
-      #    Zie docs/DEPLOY.md.
+      # ⚠️ De RLS-tests slaan zichzelf hier over — die draaien in de job
+      #    hieronder, tegen een eigen database. Zie `rls`.
       - name: Tests
         run: npm test
+
+  # ---------------------------------------------------------------------------
+  # De RLS-suite — QS8-119
+  # ---------------------------------------------------------------------------
+  #
+  # ⚠️ **Hier stond jarenlang niets, en dat was de grootste blinde vlek van deze
+  #    pijplijn.** De RLS-suite is de enige plek waar domeinregel 7,
+  #    groepslidmaatschap, peer-goedkeuring en het puntengrootboek écht worden
+  #    uitgevoerd in plaats van gelezen. Zonder deze job bewees een groen vinkje
+  #    op een PR niets over precies die dingen.
+  #
+  #    Ze konden hier niet draaien omdat ze tegen het echte project praatten en
+  #    daar de service-role-key voor nodig hadden — een key die RLS omzeilt geef
+  #    je niet aan een runner die op elke push van elke branch draait. Sinds
+  #    QS8-119 hoeft dat niet meer: de suite draait tegen een eigen Postgres met
+  #    een echte PostgREST ervoor, opgebouwd uit `supabase/migrations/`.
+  #
+  # ⚠️ **Er zijn hier geen secrets, en dat hoort zo te blijven.** Komt er ooit een
+  #    `secrets.` in deze job, dan is de reden daarvoor het opschrijven waard —
+  #    want dan draait CI weer tegen iets echts.
+  rls:
+    name: RLS-policies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      # Postgres 16, gelijk aan waar het schema tegen gebouwd en vergeleken is.
+      # Een andere hoofdversie kan andere `pg_get_functiondef`-uitvoer geven en
+      # daarmee een vergelijking die verschil meldt zonder dat er verschil is.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      POSTGREST_VERSIE: v12.2.12
+      # ⚠️ Vastgepind én op checksum gecontroleerd. Dit is een binary die in CI
+      #    draait; hem blind uit een release trekken is een supply-chain-gat dat
+      #    je niet ziet tot het misgaat.
+      POSTGREST_SHA256: 5de4092f1719da3353c40bf96c8dec6913f2254a7cd0b61cc05f233153b557d5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Zie de opmerking bij de job hierboven: 22 is een eis van
+          # supabase-js en niet een voorkeur.
+          node-version: '22'
+          cache: npm
+
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      - name: PostgreSQL-client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: PostgREST uit de cache
+        id: pgrst-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/postgrest
+          key: postgrest-${{ env.POSTGREST_VERSIE }}-${{ env.POSTGREST_SHA256 }}
+
+      - name: PostgREST ophalen
+        if: steps.pgrst-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p ~/postgrest
+          naam="postgrest-${POSTGREST_VERSIE}-linux-static-x86-64.tar.xz"
+          curl -sSL --fail -o "$naam" \
+            "https://github.com/PostgREST/postgrest/releases/download/${POSTGREST_VERSIE}/${naam}"
+
+          echo "${POSTGREST_SHA256}  ${naam}" | sha256sum --check --strict
+
+          tar xf "$naam" -C ~/postgrest
+          ~/postgrest/postgrest --version
+
+      - name: Het schema opbouwen en PostgREST starten
+        env:
+          POSTGREST_BIN: /home/runner/postgrest/postgrest
+        run: scripts/lokale-stack.sh
+
+      # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
+      #    is bewezen; wat hier niet staat, is niet bewezen.
+      - name: RLS-policies
+        run: npm run rls:lokaal
+
+      # Zonder dit is een storing in de opstelling niet te onderscheiden van een
+      # policyfout, en dan zoek je in de policies naar iets wat een verbinding was.
+      - name: PostgREST-log bij een mislukking
+        if: failure()
+        run: tail -50 "${TMPDIR:-/tmp}/goalbuddies-lokale-stack/pgrst.log" || true
 
   # Zonder deze job is CI een suggestie. Met branch protection op `main` die
   # deze check verplicht stelt, is rood blokkerend — zie docs/Q-TODO.md.
   poort:
     name: Alles groen
     runs-on: ubuntu-latest
-    needs: [controle]
+    needs: [controle, rls]
     if: always()
     steps:
       - name: Uitslag bepalen
         run: |
           if [ "${{ needs.controle.result }}" != "success" ]; then
             echo "Controle is niet groen: ${{ needs.controle.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.rls.result }}" != "success" ]; then
+            echo "De RLS-suite is niet groen: ${{ needs.rls.result }}"
             exit 1
           fi
           echo "Groen."

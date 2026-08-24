@@ -19,6 +19,7 @@ import {
   type ChatBericht,
   type Groep,
 } from '@/modules/buddies';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { klokTijd } from '@/shared/time';
 import {
@@ -225,8 +226,8 @@ export default function GroepChat() {
 
   return (
     <Screen
-      title={groep?.name ?? 'Groepschat'}
-      eyebrow="GROEPSCHAT"
+      title={groep?.name ?? t('chat.titel')}
+      eyebrow={t('chat.eyebrow')}
       scroll={false}
     >
       {/*
@@ -247,10 +248,9 @@ export default function GroepChat() {
         isEmpty={(s) => s.groep === null}
         onRetry={verversNieuwste}
         empty={{
-          title: 'Deze groep is er niet, of niet voor jou',
+          title: t('chat.geen_lid_titel'),
           body:
-            'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een ' +
-            'nieuwe uitnodigingslink als je erbij hoort.',
+            t('chat.geen_lid_tekst'),
         }}
       >
         {({ rijen }) => (
@@ -283,15 +283,14 @@ export default function GroepChat() {
               ListHeaderComponent={
                 meer ? (
                   <Button variant="stil" block busy={ouderBezig} onPress={() => void laadOuder()}>
-                    Ouder laden
+                    {t('chat.ouder_laden')}
                   </Button>
                 ) : null
               }
               ListEmptyComponent={
                 <Card nested>
                   <Body muted>
-                    Nog geen berichten. Eén zin is genoeg — &ldquo;wat ga je deze week
-                    doen?&rdquo; werkt beter dan een lange inleiding.
+                    {t('chat.nog_niets')}
                   </Body>
                 </Card>
               }
@@ -328,7 +327,7 @@ export default function GroepChat() {
       </AsyncView>
 
       <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
-        Terug naar de groep
+        {t('chat.terug')}
       </Button>
     </Screen>
   );
@@ -360,7 +359,7 @@ function Invoer({
     //    misschien geen lid meer was van de groep — een beschuldiging voor iets
     //    dat gewoon een sessie is die nog laadt. Zelfde les als in EPIC 6.
     if (senderId === null || senderId === '' || groupId === '') {
-      setFout('Je sessie is nog aan het laden. Probeer het over een tel opnieuw.');
+      setFout(t('chat.sessie_laadt'));
       return;
     }
 
@@ -382,12 +381,12 @@ function Invoer({
   return (
     <View style={styles.invoer}>
       <Field
-        label="Nieuw bericht"
+        label={t('chat.invoer_label')}
         value={tekst}
         onChangeText={setTekst}
         multiline
         maxLength={4000}
-        placeholder="Zeg iets tegen je groep"
+        placeholder={t('chat.invoer_hint')}
         {...(fout === null ? {} : { error: fout })}
       />
       <Button
@@ -397,7 +396,7 @@ function Invoer({
         disabled={tekst.trim() === ''}
         onPress={() => void verstuur()}
       >
-        Versturen
+        {t('chat.versturen')}
       </Button>
     </View>
   );

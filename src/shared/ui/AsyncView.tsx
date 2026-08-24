@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { t } from '../i18n';
 import { space, useTheme } from '../theme';
 
 import { Button } from './Button';
@@ -48,19 +49,16 @@ export function AsyncView<T>({
   if (error !== undefined && error !== null) {
     return (
       <View style={styles.blok}>
-        <Subheading>Dat lukte niet</Subheading>
+        <Subheading>{t('laden.kop_mislukt')}</Subheading>
         {/*
           ⚠️ Nooit de rauwe foutmelding tonen. Die kan de waarde bevatten die een
              constraint brak — bij Postgres staat die letterlijk in de tekst — en
              dat is precies wat er niet op het scherm hoort.
         */}
-        <Body muted>
-          Er ging iets mis bij het ophalen. Probeer het opnieuw; blijft het
-          misgaan, dan ligt het aan ons.
-        </Body>
+        <Body muted>{t('laden.mislukt')}</Body>
         {onRetry ? (
           <Button variant="secundair" onPress={onRetry}>
-            Opnieuw proberen
+            {t('laden.opnieuw')}
           </Button>
         ) : null}
       </View>

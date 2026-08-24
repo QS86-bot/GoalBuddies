@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { t } from '../../shared/i18n';
+import { t, TALEN } from '../../shared/i18n';
 import { isGeldigeTijdzone } from '../../shared/time';
 
 /**
@@ -83,6 +83,20 @@ export const profielSchema = z.object({
   reminder_enabled: z.boolean(),
   reminder_tone: z.enum(['gentle', 'firm']),
   share_moves_by_default: z.boolean(),
+  /**
+   * De taalkeuze — QS8-115, criterium 4.
+   *
+   * ⚠️ **NULL betekent "nog niet gekozen" en niet "Nederlands".** Dat verschil
+   *    staat in migratie 0061 en het is er een met gevolgen: bij NULL volgt de
+   *    app het apparaat, en zodra er een waarde staat overstemt die keuze het
+   *    apparaat. Zou hier `.default('nl')` staan, dan krijgt iemand met een
+   *    Engelse telefoon bij zijn eerste start Nederlands.
+   *
+   * ⚠️ `TALEN` is hier de bron en de CHECK `profiles_locale_bekend` is een
+   *    kopie ervan. Een taal erbij is dus altijd een migratie erbij — net als bij
+   *    een nieuw type systeembericht. De comment op de kolom zegt dat ook.
+   */
+  locale: z.enum(TALEN, { error: () => t('validatie.taal') }).nullable(),
 });
 
 export type ProfielInvoer = z.infer<typeof profielSchema>;

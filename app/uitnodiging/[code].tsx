@@ -9,8 +9,11 @@ import {
   huddledagLabel,
   neemDeel,
   vergeetOpenstaandeUitnodiging,
+  zichtbaarheidLabels,
+  zichtbaarheidUitleg,
   type Uitnodiging,
 } from '@/modules/buddies';
+import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -158,7 +161,7 @@ export default function UitnodigingScherm() {
         if (profiel?.onboarded_at) router.replace(`/groep/${uitkomst.waarde}`);
       })
       .catch(() => {
-        if (levend) setFout('Deelnemen lukte niet. Probeer het zo nog eens.');
+        if (levend) setFout(t('uitnodiging.deelnemen_mislukt'));
       });
 
     return () => {
@@ -168,8 +171,12 @@ export default function UitnodigingScherm() {
 
   return (
     <Screen
-      title={uitnodiging === null && !loading ? 'Deze link werkt niet meer' : 'Je bent uitgenodigd'}
-      eyebrow="BUDDY-GROEP"
+      title={
+        uitnodiging === null && !loading
+          ? t('uitnodiging.titel_verlopen')
+          : t('uitnodiging.titel')
+      }
+      eyebrow={t('uitnodiging.eyebrow')}
     >
       <AsyncView
         loading={loading}
@@ -178,10 +185,8 @@ export default function UitnodigingScherm() {
         isEmpty={() => false}
         onRetry={herlaad}
         empty={{
-          title: 'Deze uitnodiging werkt niet meer',
-          body:
-            'De link is ingetrokken of vervangen door een nieuwe. Vraag degene die je ' +
-            'uitnodigde om hem nog eens te sturen — dan krijg je meteen de geldige.',
+          title: t('uitnodiging.leeg_titel'),
+          body: t('uitnodiging.leeg_tekst'),
         }}
       >
         {(u) => (
@@ -189,8 +194,10 @@ export default function UitnodigingScherm() {
             <Card>
               <Subheading>{u.group_name}</Subheading>
               <Caption>
-                {u.member_count} {u.member_count === 1 ? 'lid' : 'leden'} · huddledag{' '}
-                {huddledagLabel(u.huddle_day).toLowerCase()}
+                {t(u.member_count === 1 ? 'uitnodiging.leden_een' : 'uitnodiging.leden_meer', {
+                  n: u.member_count,
+                  dag: huddledagLabel(u.huddle_day).toLowerCase(),
+                })}
               </Caption>
 
               {u.members.map((lid, i) => (
@@ -204,38 +211,49 @@ export default function UitnodigingScherm() {
                       account staat er sowieso geen doel — zie migratie 0019.
                     */}
                     {u.detailed ? (
-                      <Caption>{lid.goal_title ?? 'Werkt nog niet aan een gedeeld doel'}</Caption>
+                      <Caption>{lid.goal_title ?? t('uitnodiging.geen_gedeeld_doel')}</Caption>
                     ) : null}
                   </View>
                 </View>
               ))}
 
               {u.detailed ? null : (
-                <Caption>
-                  Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen
-                  hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.
-                </Caption>
+                <Caption>{t('uitnodiging.pas_bij_meedoen')}</Caption>
               )}
             </Card>
 
+            {/*
+              ⚠️ **Dit blok staat vóór "wat je doet" en niet erna, en dat is geen
+                 opmaak.** Meedoen met een open groep maakt de gemiste weken van
+                 déze bezoeker zichtbaar voor de anderen — dezelfde overgang als
+                 wanneer een groep wordt opengezet, maar zonder systeembericht,
+                 want er verandert niets aan de groep. Dit scherm is de enige plek
+                 waar dat feit kan staan, en dan hoort het boven de knop.
+
+                 Besluit A41; migratie 0080 zet `zichtbaarheid` daarom ook in het
+                 antwoord voor wie nog geen account heeft.
+            */}
             <Card nested>
-              <Subheading>Wat je hier gaat doen</Subheading>
-              <Body muted>
-                Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt
-                hebben, en één van je buddy&apos;s keurt goed dat het gelukt is. Meer niet.
-              </Body>
-              <Body muted>
-                Een week missen kost een punt en verder niets. Niemand in de groep ziet het.
-              </Body>
+              <Subheading>{zichtbaarheidLabels()[u.zichtbaarheid]}</Subheading>
+              <Body muted>{zichtbaarheidUitleg()[u.zichtbaarheid]}</Body>
+              {u.zichtbaarheid === 'open' ? (
+                <Caption danger>{t('uitnodiging.open_waarschuwing')}</Caption>
+              ) : null}
+            </Card>
+
+            <Card nested>
+              <Subheading>{t('uitnodiging.wat_je_doet')}</Subheading>
+              <Body muted>{t('uitnodiging.uitleg_kern')}</Body>
+              <Body muted>{t('uitnodiging.uitleg_missen')}</Body>
             </Card>
 
             {binnen !== null ? (
               <Card>
-                <Subheading>Je zit in de groep</Subheading>
+                <Subheading>{t('uitnodiging.al_lid')}</Subheading>
                 <Body muted>
                   {profiel?.onboarded_at
-                    ? 'Je wordt doorgestuurd naar de groep.'
-                    : 'Maak eerst je profiel af — daarna staat de groep voor je klaar.'}
+                    ? t('uitnodiging.doorsturen')
+                    : t('uitnodiging.eerst_profiel')}
                 </Body>
                 {/*
                   ⚠️ Altijd een knop. Een scherm dat zegt "maak eerst je profiel
@@ -249,22 +267,19 @@ export default function UitnodigingScherm() {
                     router.replace(profiel?.onboarded_at ? `/groep/${binnen}` : '/onboarding/uitleg')
                   }
                 >
-                  {profiel?.onboarded_at ? 'Naar de groep' : 'Profiel afmaken'}
+                  {profiel?.onboarded_at ? t('uitnodiging.naar_groep') : t('uitnodiging.profiel_afmaken')}
                 </Button>
               </Card>
             ) : session ? (
               <Button variant="primair" block busy={bezig} onPress={() => void deelnemen()}>
-                Deelnemen aan deze groep
+                {t('uitnodiging.deelnemen')}
               </Button>
             ) : (
               <>
                 <Button variant="primair" block onPress={() => router.push('/aanmelden')}>
-                  Inloggen of account maken
+                  {t('uitnodiging.inloggen')}
                 </Button>
-                <Caption>
-                  Je uitnodiging blijft op dit apparaat bewaard. Ook als je eerst je e-mail
-                  moet bevestigen, sta je daarna gewoon in de groep.
-                </Caption>
+                <Caption>{t('uitnodiging.blijft_bewaard')}</Caption>
               </>
             )}
 
@@ -275,7 +290,7 @@ export default function UitnodigingScherm() {
 
       {uitnodiging === null && !loading ? (
         <Button variant="secundair" block onPress={() => router.replace('/aanmelden')}>
-          Toch even rondkijken
+          {t('uitnodiging.rondkijken')}
         </Button>
       ) : null}
     </Screen>

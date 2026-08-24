@@ -73,6 +73,21 @@ type ChatRij = { readonly [K in keyof RpcChatRij]: RpcChatRij[K] | null };
  *    `profiles_select` niet meer van toepassing, terwijl zijn bericht in het
  *    gesprek hoort te blijven staan.
  */
+/**
+ * De drempel uit `payload`, of `null`.
+ *
+ * ⚠️ `payload` is `Json` en dus letterlijk alles wat er in de kolom past. Deze
+ *    functie vertrouwt er niets van: geen object is `null`, geen getal is `null`,
+ *    en een getal dat geen eindig geheel is ook. Een systeembericht mag nooit een
+ *    storing worden — dat is het kanaal dat de groep vertrouwt.
+ */
+function drempelUit(payload: unknown): number | null {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
+
+  const waarde = (payload as Record<string, unknown>).drempel;
+  return typeof waarde === 'number' && Number.isSafeInteger(waarde) && waarde > 0 ? waarde : null;
+}
+
 function naarBericht(rij: ChatRij): ChatBericht | null {
   if (typeof rij.id !== 'string' || typeof rij.created_at !== 'string') {
     reportError(new Error('Rij uit groepschat zonder id of tijd'), 'chat.parse');
@@ -95,6 +110,7 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
     //    wordt. Dat is dezelfde afspraak als bij `sender_name` hierboven.
     subject_name: rij.subject_name ?? null,
     actor_name: rij.actor_name ?? null,
+    aantal: drempelUit(rij.payload),
     created_at: rij.created_at,
   };
 }
