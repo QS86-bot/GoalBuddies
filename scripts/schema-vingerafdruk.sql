@@ -37,7 +37,16 @@ with kolommen as (
          || p.prosecdef || '|' || coalesce(array_to_string(p.proconfig, ','), '-') || '|'
          || md5(regexp_replace(regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g'),
                                '\s', '', 'g')) as regel
-  from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    -- ⚠️ De steiger telt niet mee. `shim_maak_gebruiker()` en
+    --    `shim_verwijder_gebruiker()` bestaan alléén lokaal — ze nemen over wat
+    --    GoTrue op productie doet (QS8-119). Zonder deze regel meldt de
+    --    vergelijking voortaan altijd twee functies verschil, en een
+    --    vergelijking die altijd verschil meldt leert je hem te negeren.
+    --
+    --    Dát ze niet in een migratie staan, bewaakt `tests/scripts/steiger.test.ts`.
+    and p.proname not like 'shim\_%'
 ), triggers as (
   select 'trigger|' || c.relname || '|' || t.tgname || '|' || pg_get_triggerdef(t.oid) as regel
   from pg_trigger t join pg_class c on c.oid = t.tgrelid

@@ -1624,6 +1624,16 @@ export type Database = {
         Args: { group_name: string; huddle_day?: number; tz?: string }
         Returns: Json
       }
+      ddl_rechten_in_de_api: {
+        Args: never
+        Returns: {
+          eigenaar: string
+          recht: string
+          rol: string
+          waar: string
+        }[]
+      }
+      ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       dien_opnieuw_in: {
         Args: {
           p_achieved_level: string

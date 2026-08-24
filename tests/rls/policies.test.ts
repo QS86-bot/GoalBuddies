@@ -2807,6 +2807,58 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
   });
 
   // -------------------------------------------------------------------------
+  // QS8-130 — TRUNCATE en TRIGGER
+  // -------------------------------------------------------------------------
+
+  describe('DDL-rechten', () => {
+    /**
+     * ⚠️ **TRUNCATE is niet onderworpen aan RLS.** Een rol die het heeft, leegt de
+     *    tabel ongeacht welke policy erop staat — ook `points_ledger`,
+     *    `completions` en `chat_messages`. `authenticated` had het tot 24-08 op
+     *    alle 29 tabellen, als erfenis van de standaardrechten van het platform.
+     *
+     *    Migratie 0073 trekt het in, én past de standaardrechten aan zodat de
+     *    volgende tabel het niet opnieuw krijgt. Die tweede helft is de reden dat
+     *    dit een test verdient: zonder haar is de reparatie tijdelijk.
+     */
+    it(
+      'geeft anon en authenticated geen TRUNCATE of TRIGGER',
+      async () => {
+        const { data, error } = await adminDb().rpc('ddl_rechten_in_de_api');
+
+        expect(error).toBeNull();
+        expect(data ?? []).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ De toelating naast de weigering. Zonder deze test wordt het blok
+     *    hierboven groen zodra de functie helemaal niet meer bestaat.
+     */
+    it(
+      'laat service_role de rechten wél houden',
+      async () => {
+        const { data, error } = await adminDb().rpc('ddl_rechten_van_service_role');
+
+        expect(error).toBeNull();
+        expect(data).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'staat niet open voor een ingelogde gebruiker',
+      async () => {
+        const { error } = await f.alice.db.rpc('ddl_rechten_in_de_api');
+
+        expect(error).not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
   // QS8-122 — het migratieregister
   // -------------------------------------------------------------------------
 
