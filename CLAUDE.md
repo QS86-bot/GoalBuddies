@@ -366,6 +366,14 @@ docs/decisions/
 19. **Reviewagents naar risico, niet naar schema** — zie hieronder.
 20. Migraties zijn idempotent, met rollback-pad en dump vooraf.
 
+    ⚠️ **Sinds 24-08 een controle en geen zin meer.** `npm run migraties:controle`
+    draait mee in `/audit` en wordt rood bij een gat in de nummering, twee
+    migraties met hetzelfde nummer, of een migratie zonder rollback-pad in zijn
+    kop. Het gat is de belangrijkste van de drie: de bestanden zijn de enige
+    manier om dit schema ergens anders op te bouwen, en ontbreekt er één, dan
+    toetst de RLS-suite daar een ánder schema dan productie — groen zonder iets
+    te bewijzen. Twee keer met de hand gevonden, beide keren bij toeval.
+
 #### Regel 19 uitgeschreven (herzien 20-08-2026)
 
 Stond eerst als "geen merge zonder code-critic, security-reviewer en

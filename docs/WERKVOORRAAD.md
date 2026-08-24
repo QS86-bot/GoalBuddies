@@ -44,13 +44,14 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 8. **Werk landt sinds 23-08 via een PR**, met een merge-commit en niet met een
    squash, en met **één branch per Linear-issue** — de naam die Linear voorstelt,
    anders koppelt hij niets. Vastgelegd in `CLAUDE.md`. Zie §3b.
-9. **Wat op Quinten wacht** staat in `docs/Q-TODO.docx`: **A41 t/m A44** (A41 en
-   A42 hangen aan elkaar en raken domeinregel 7), **A46**, **A37** en **B4**.
-   A45 en A47 zijn af. Geen van alle blokkeert het bouwen van andere issues.
-   Daar komt sinds 24-08 **QS8-126** bij: de repository staat publiek. Bewust
-   uitgesteld tot de software af is — geen blokkade voor het bouwen, wél vóór de
-   eerste echte gebruiker. Er is niets gelekt; de details staan in dat issue en
-   in `docs/ENGINEER-REVIEW.md`.
+9. **Wat op Quinten wacht staat sinds 24-08 op het bord, niet meer alleen in
+   `docs/Q-TODO.docx`.** Alles met status **Todo** in Linear is van hem:
+   QS8-126 (de repo staat publiek), QS8-131 (21 commits buiten `main`, urgent),
+   QS8-127 (A37), QS8-128 (A41+A42+A44), QS8-129 (A43), QS8-130 (A46) en
+   QS8-122. ⚠️ **B4 staat niet meer in die lijst** — `expo-notifications` is
+   al toegevoegd op de branch van QS8-131; dat besluit wacht op een merge en
+   niet op een antwoord. Q-TODO blijft de onderbouwing dragen; de status staat
+   in Linear.
 10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
     21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
     (QS8-124), een iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een

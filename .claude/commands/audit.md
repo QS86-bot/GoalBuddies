@@ -48,5 +48,20 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     Een rij waarvan de aanname inmiddels vervallen is, is geen Laag meer en
     hoort deze week op tafel.
 
+11. **De migratiemap** — draai `npm run migraties:controle`. Die toetst dat de
+    nummering aaneengesloten is, dat er geen twee migraties hetzelfde nummer
+    dragen, en dat elke migratie een rollback-pad in zijn kop heeft (onwrikbare
+    regel 20).
+
+    ⚠️ **Deze stap is op dit moment rood en dat hoort zo.** `0057` t/m `0061`
+    staan op de branch van QS8-131 en niet op `main`. Zet de controle niet uit
+    en pas hem niet aan om hem groen te krijgen — dat gat is precies waar hij
+    voor bestaat, en hij is geverifieerd groen zodra die branch landt. Meld hem
+    als openstaand punt, niet als bevinding van deze week.
+
+    ⚠️ Wat hij niet ziet: of de repo gelijkloopt met `schema_migrations` op het
+    échte project. Dat vraagt een service-role-key en die hoort niet in een
+    controle die overal draait. Dat is de tweede helft van QS8-122.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.
