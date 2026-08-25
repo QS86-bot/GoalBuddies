@@ -212,8 +212,43 @@ function Uitnodigingswacht() {
 
       const uitkomst = await neemDeel(code);
       await vergeetOpenstaandeUitnodiging();
+      if (!levend) return;
 
-      if (levend && uitkomst.ok) router.replace(`/groep/${uitkomst.waarde}`);
+      if (uitkomst.ok) {
+        router.replace(`/groep/${uitkomst.waarde}`);
+        return;
+      }
+
+      // ⚠️ **Zwijgen is hier het ergste antwoord, en dat deed deze functie tot
+      //    24-08.** Bij een mislukking gebeurde er níéts: geen melding, geen
+      //    scherm, en de bewaarde code was intussen weggegooid. Het
+      //    uitnodigingsscherm belooft "ook als je eerst je e-mail moet
+      //    bevestigen, sta je daarna gewoon in de groep" — dus wie zijn mail
+      //    bevestigde en terugkwam, stond op een leeg dashboard zonder groep en
+      //    zonder uitleg, en kon alleen zijn vriend om een nieuwe link vragen.
+      //    Als hij al doorhad dát er iets misging.
+      //
+      //    Sturen naar het uitnodigingsscherm en niet zelf een melding tonen:
+      //    dát scherm laadt de groep opnieuw, zegt wat er aan de hand is (vol,
+      //    ingetrokken, of gewoon weg) en heeft een knop om het opnieuw te
+      //    proberen. Deze component rendert `null` en heeft nergens plek voor
+      //    een melding — een `Alert` zou bovendien op web en native anders
+      //    uitpakken, en dat houdt dit project uit de gedeelde laag.
+      //
+      //    Gevonden door de critical-user-ronde van 24-08. Wat er niét mee
+      //    opgelost is: dat toetreden geen tweede vraag stelt en de code nooit
+      //    verloopt. Dat is een productbeslissing en staat in
+      //    `docs/ENGINEER-REVIEW.md`.
+      //    ⚠️ Bewust géén `reportError` erbij. `neemDeel()` meldt een échte fout
+      //    (HTTP, policy) al zelf; wat hier overblijft is een uitkomst — de link
+      //    is ingetrokken, de groep is vol — en dat is geen storing maar een
+      //    antwoord. Zou het hier alsnog een foutrapport worden, dan staat het
+      //    logboek straks vol met normale gebeurtenissen.
+      //
+      //    (De eerste versie van deze regel riep `reportError` aan zónder import,
+      //    en dat viel stil terug op de gelijknamige DOM-API met één argument.
+      //    De typecheck ving het; het is een naamsbotsing om te onthouden.)
+      router.replace(`/uitnodiging/${code}`);
     });
 
     return () => {
