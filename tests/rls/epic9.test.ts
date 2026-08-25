@@ -21,6 +21,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { isAfgegaan } from '../../src/modules/commitments/stand';
 import { addDays, now, toIsoDate, userCycle, type IsoDate } from '../../src/shared/time';
 import {
   adminDb,
@@ -614,6 +615,49 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         });
 
         expect(await statusVan(f.strafOpTijdId)).toBe('cancelled');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * De naad tussen drie kopieën van één lijst — migratie 0084.
+   *
+   * ⚠️ 0058 schreef zelf op dat dit een probleem was: `commitments_select`,
+   *    `verwijder_doel()` en `isAfgegaan()` droegen elk hun eigen exemplaar van
+   *    `('unlocked', 'due', 'resolved')`. 0084 maakte van de eerste twee één
+   *    bron; de derde staat in de client en kan geen SQL aanroepen, dus die
+   *    blijft een kopie — maar wordt hier tegen de bron getoetst in plaats van
+   *    tegen zichzelf. Dat laatste is precies wat 0032/0034 groen liet blijven.
+   *
+   * ⚠️ **Loopt `isAfgegaan()` achter, dan is dat geen schoonheidsfoutje.** De
+   *    functie beslist niet alleen hoe een badge kleurt: hij is de UI-kant van de
+   *    grens waarop de begunstigde groep meeleest. Zegt hij "nog privé" terwijl
+   *    de policy al meeleest, dan vertelt het scherm iets dat niet waar is over
+   *    wie het kan zien — en dat is domeinregel 5.
+   */
+  describe('de zichtbare commitmentstanden', () => {
+    it(
+      'zijn in de client dezelfde als in de database',
+      async () => {
+        const { data, error } = await adminDb().rpc('commitment_zichtbaar_voor_groep');
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+
+        // ⚠️ Eerst vastpinnen wát de bron zegt. Een lege uitkomst zou anders met
+        //    een lege client-lijst overeenkomen, en dan is groen betekenisloos.
+        expect(inDeDatabase).toEqual(['due', 'resolved', 'unlocked']);
+
+        // Elke stand uit `commitments_status_valid` langs `isAfgegaan()`, niet
+        // alleen de drie die er nu doorheen komen: zo valt deze test ook om als
+        // de client er een stand bíj neemt die de database niet deelt.
+        const alleStanden = ['set', 'unlocked', 'due', 'resolved', 'cancelled'];
+        const inDeClient = alleStanden
+          .filter((status) => isAfgegaan({ status }))
+          .sort();
+
+        expect(inDeClient).toEqual(inDeDatabase);
       },
       TEST_TIMEOUT,
     );

@@ -3016,4 +3016,123 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
   });
+  /**
+   * De dagelijkse bovengrens op weekdoelen — migratie 0083.
+   *
+   * ⚠️ Bevinding van 19-08-2026: `weekly_goals_insert` toetste alleen
+   *    eigenaarschap, en `cycle_start_date` is vrij te kiezen. Eén ingelogd
+   *    account kon in een lus tienduizenden rijen invoegen op een tier van
+   *    500 MB zonder automatische backups. Beveiligingsregel 5 eist een limiet
+   *    per gebruiker per dag; die stond er voor uitnodigingen (0008) en hier niet.
+   *
+   * ⚠️ **De voorraad wordt via de systeemclient gezet en niet via alice.** Zou de
+   *    test tweehonderd keer als `authenticated` invoegen, dan toetst hij vooral
+   *    zijn eigen doorlooptijd — en hij zou de grens raken tijdens het vullen, en
+   *    dan is niet meer te zien of de laatste weigering de grens is of iets
+   *    anders.
+   */
+  describe('de bovengrens op weekdoelen', () => {
+    it(
+      'laat een gewone dag ongemoeid en weigert de lus',
+      async () => {
+        const admin = adminDb();
+        const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+        const doel = await admin
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'GRENS weekdoelen',
+            target_date: addDays(basis.startDate, 30),
+          })
+          .select('id')
+          .single();
+        if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+        try {
+          // Eerst de positieve kant: onder de grens gaat het gewoon door. Zonder
+          // deze helft zou de test ook groen zijn als de policy álles weigert.
+          const mag = await f.alice.db.from('weekly_goals').insert({
+            goal_id: doel.data.id,
+            title: 'GRENS ruim onder de grens',
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          });
+          expect(mag.error).toBeNull();
+
+          // De voorraad tot aan de grens, via de systeemclient: die valt buiten
+          // `weekly_goals_insert`, want die policy geldt alleen voor
+          // `authenticated`. Dat is precies waarom de rollover er langs kan.
+          const voorraad = Array.from({ length: 200 }, (_, i) => ({
+            goal_id: doel.data.id,
+            title: `GRENS voorraad ${i}`,
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          }));
+          const gevuld = await admin.from('weekly_goals').insert(voorraad);
+          expect(gevuld.error).toBeNull();
+
+          const teveel = await f.alice.db.from('weekly_goals').insert({
+            goal_id: doel.data.id,
+            title: 'GRENS over de grens',
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          });
+          expect(teveel.error).not.toBeNull();
+
+          // ⚠️ En een andere week helpt niet. Dat is de hele reden dat de grens
+          //    per dag telt en niet per cyclus: `cycle_start_date` is vrij te
+          //    kiezen, dus een grens per week telt de datum op en gaat door.
+          const andereWeek = await f.alice.db.from('weekly_goals').insert({
+            goal_id: doel.data.id,
+            title: 'GRENS andere week',
+            cycle_start_date: addDays(basis.startDate, 7),
+            cycle_index: 2,
+          });
+          expect(andereWeek.error).not.toBeNull();
+        } finally {
+          // ⚠️ Opruimen is hier geen netheid maar noodzaak: de grens telt per
+          //    gebruiker, dus blijft de voorraad staan, dan kan alice in élke
+          //    latere test geen weekdoel meer aanmaken.
+          await admin.from('weekly_goals').delete().eq('goal_id', doel.data.id);
+          await admin.from('goals').delete().eq('id', doel.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de systeemclient er wél langs, want de rollover moet door',
+      async () => {
+        const admin = adminDb();
+        const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+        const doel = await admin
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'GRENS rollover',
+            target_date: addDays(basis.startDate, 30),
+          })
+          .select('id')
+          .single();
+        if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+        try {
+          const voorraad = Array.from({ length: 250 }, (_, i) => ({
+            goal_id: doel.data.id,
+            title: `GRENS rollover ${i}`,
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          }));
+
+          expect((await admin.from('weekly_goals').insert(voorraad)).error).toBeNull();
+        } finally {
+          await admin.from('weekly_goals').delete().eq('goal_id', doel.data.id);
+          await admin.from('goals').delete().eq('id', doel.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });

@@ -79,8 +79,19 @@ export function tekstVoor(commitment: Commitment): CommitmentTekst {
  * ⚠️ Dit is óók de grens waar de begunstigde groep meeleest
  *    (`commitments_select`). Gebruik hem dus niet alleen om een badge te kleuren:
  *    zodra dit `true` is, is de inhoud niet meer privé.
+ *
+ * ⚠️ **Deze lijst is een kopie van `commitment_zichtbaar_voor_groep()`** (migratie
+ *    0084), die in de database de enige bron is voor `commitments_select` én
+ *    `verwijder_doel()`. Hij staat hier los omdat de client geen SQL kan
+ *    aanroepen — niet omdat hij zijn eigen waarheid mag hebben.
+ *    `tests/rls/epic9.test.ts` legt de twee naast elkaar en wordt rood zodra ze
+ *    uiteenlopen.
+ *
+ * ⚠️ Neemt een losse `status` en niet een hele `Commitment`, zodat die test elke
+ *    stand uit `commitments_status_valid` erlangs kan halen zonder een rij te
+ *    verzinnen — en dus zonder een cast die de toets zou uithollen.
  */
-export function isAfgegaan(commitment: Commitment): boolean {
+export function isAfgegaan(commitment: { readonly status: string }): boolean {
   return commitment.status === 'unlocked' || commitment.status === 'due' ||
     commitment.status === 'resolved';
 }

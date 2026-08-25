@@ -1680,6 +1680,7 @@ export type Database = {
         Args: { p_constraint: string; p_tabel: string }
         Returns: string[]
       }
+      commitment_zichtbaar_voor_groep: { Args: never; Returns: string[] }
       create_group: {
         Args: {
           group_name: string
@@ -1970,6 +1971,7 @@ export type Database = {
           week_review_id: string
         }[]
       }
+      weekdoelen_vandaag: { Args: never; Returns: number }
       weekpas_maximum: { Args: never; Returns: number }
       weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
       weekpas_standen: {
