@@ -1407,6 +1407,7 @@ export const nl = {
   'laden.kop_mislukt': 'Dat lukte niet',
   'ketting.kop': 'De Ketting',
   'lid.adempauze': 'Adempauze',
+  'lid.afgerond': 'heeft deze periode afgerond',
   'vandaag.reeks_telt_weken': 'Je reeks telt weken, geen dagen.',
   'vandaag.meenemen_knop': 'Meenemen naar deze week',
   'vandaag.buddy_vraag': 'Je buddy heeft een vraag',

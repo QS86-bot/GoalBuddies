@@ -1,4 +1,4 @@
-# 007 — Besluitenronde 25-08-2026: A48, A49, A50, A51
+# 007 — Besluitenronde 25-08-2026: A48, A49, A50, A51, A52
 
 **Datum:** 25-08-2026
 **Issues:** QS8-110 (A48), QS8-136 (A49), en A50 uit de bevindingenronde
@@ -284,3 +284,74 @@ onmogelijk. **De index en de CHECK zijn samen het slot, niet apart.**
 gebruiker is dit een migratie op een gevuld grootboek dat append-only is
 (domeinregel 6), en dan moet dezelfde wijziging met correctie-records in plaats
 van een herdefinitie.
+
+---
+
+## A52 — het vinkje per lid blijft, en het is geen vierde verruiming ✅ vastgelegd
+
+**De vraag stond sinds 19-08 open in `docs/ENGINEER-REVIEW.md` en heette daar de
+scherpste bevinding van die reviewronde.** `Ketting.tsx` toont met opzet
+aantallen en nooit namen — dat is domeinregel 7 in een component. Twintig pixels
+lager toont `MemberRow` per lid, mét naam, of die zijn periode heeft afgesloten.
+In een groep van drie is "1 schakel deze week" daarmee geen anonimiteit maar een
+rekensom die het scherm zelf al voor je heeft opgelost.
+
+De rij noemde drie richtingen: het vinkje weghalen, de teller accepteren als
+samenvatting van iets dat toch al per persoon zichtbaar is, of de per-persoon-
+weergave vastleggen als **vierde verruiming** naast A15 en A7.
+
+**Besluit: de tweede. Het vinkje blijft, en het is uitdrukkelijk géén verruiming.**
+
+### Waarom het geen verruiming is
+
+Een verruiming is een plek waar de groep tégenslag ziet. A15 (de reeks) en A7
+(het verschoven deadline) zijn dat allebei: een reeks die op 1 staat verraadt een
+gebroken reeks, en een verschoven streefdatum is een niet-gehaalde afspraak.
+
+Dit oppervlak is dat niet. Domeinregel 7 somt op wat de groep wél mag zien en
+begint de opsomming met *"afgeronde weekdoelen"*. Een gevuld vinkje ís dat
+signaal. En het lege vinkje is geen tegenhanger, omdat het scherm nooit iets
+anders vraagt dan de lópende periode — waarin "leeg" alleen "nog niet" kan
+betekenen.
+
+### Wat de constructie binnen de regel houdt
+
+⚠️ **Niet de discretie van het scherm, maar het venster in de database.** Buiten
+de lopende periode geeft `group_overview()` `closed_this_period = false` en geeft
+`chain_links_select` geen rijen van een ander (migratie 0037). Zou dat venster
+wegvallen, dan is exact dezelfde ledenlijst wél een presentielijst over een
+afgesloten week — en dan is een ontbrekend vinkje een publieke gemiste week.
+
+Dat venster is getest in `tests/rls/epic8.test.ts`, en de test is onderscheidend:
+er stáát een schakel op de oude periode, dus hij wordt ook rood als het venster
+wegvalt in plaats van alleen als er niets te zien is.
+
+### Wat hier níét uit volgt
+
+⚠️ **Dit is geen argument om De Ketting namen te laten tonen**, en geen argument
+om het venster van acht dagen op te rekken. *"De ledenlijst laat het toch al
+zien"* is precies de redenering waarmee een standaard verschuift zonder dat
+iemand hem verschoven heeft — dezelfde vorm als bij A17, dat om die reden op
+20-08 is teruggedraaid.
+
+In een **open** groep vervalt het venster wél. Dat is A41 en niet dit besluit.
+
+### ⚠️ Bij het sluiten bleek het signaal alleen in kleur te bestaan
+
+Het vinkje was een `View` van tien bij tien pixels met een achtergrondkleur en
+zonder label. Voor wie een schermlezer gebruikt bestond het positieve signaal dus
+niet, terwijl naam en reeks eronder wél werden voorgelezen; voor wie kleuren niet
+onderscheidt was het een grijs bolletje naast een gekleurd bolletje.
+
+Dat is niet alleen een toegankelijkheidsgat. Domeinregel 7 draait erom dat de
+groep ziet wat er áf is — en dat deel van de app werkte voor een deel van de
+gebruikers niet. De rij spreekt sinds 25-08 met één stem, uit `ledenrijLabel()`
+in `src/shared/ui/metrics.ts`.
+
+De belofte die daar getoetst wordt is niet "de rij is voorleesbaar" maar **"de
+afwezigheid blijft stil"**: het label van een lid dat nog niet afrondde is exact
+het label van een lid dat dat wél deed, minus die mededeling — er komt niets voor
+in de plaats. De test kijkt daarbij naar wat dit label *toevoegt* en niet naar het
+label als geheel, want "Nog geen reeks" mag er wél in staan (dat is A15).
+Met de hand gebroken door een "nog niet afgerond" toe te voegen; dan vallen er
+twee tests om.

@@ -4,8 +4,10 @@ import {
   FLOOR_MARK,
   kettingLabel,
   kettingVulling,
+  ledenrijLabel,
   milestoneProgress,
   rangeState,
+  besteReeksLabel,
   streakLabel,
   weekpasLabel,
   weekpasReddeDezeCyclus,
@@ -294,5 +296,86 @@ describe('weekpasReddeDezeCyclus', () => {
     // Het profiel is nog niet geladen: dan liever geen melding dan een
     // verkeerde.
     expect(weekpasReddeDezeCyclus(stand({ laatstVerbruikt: '2026-08-10' }), null)).toBe(false);
+  });
+});
+
+describe('ledenrijLabel — de rij die over iemand anders gaat', () => {
+  const basis = { name: 'Jamie', streak: 3, closedThisPeriod: false } as const;
+
+  /**
+   * ⚠️ **De belangrijkste test in dit bestand na `rangeState`.** De vraag is niet
+   *    of de zin klopt maar of de áfwezigheid stil blijft. Wie hier ooit een
+   *    "nog niet" of een "0 van 1" toevoegt om de zin completer te maken, maakt
+   *    van het groepsoverzicht een presentielijst — en dan is een ontbrekend
+   *    vinkje een publieke gemiste week.
+   */
+  it('zegt niets extra over een lid dat nog niet afgerond heeft', () => {
+    const zonder = ledenrijLabel(basis);
+    const met = ledenrijLabel({ ...basis, closedThisPeriod: true });
+
+    // Het label van "nog niet" is exact het label van "wel", minus de mededeling
+    // dat er iets áf is. Er komt niets voor in de plaats.
+    expect(met.startsWith(zonder)).toBe(true);
+    expect(met.length).toBeGreaterThan(zonder.length);
+  });
+
+  it('voegt geen woord toe dat tegenslag kan betekenen', () => {
+    // ⚠️ Op wat dit label *toevoegt* en niet op het label als geheel, en dat
+    //    onderscheid is de kern van deze rij. De reeks zelf mag de groep zien —
+    //    dat is verruiming A15, met "Nog geen reeks" als eerlijke weergave van
+    //    nul. Wat er niet bij mag is een oordeel over déze periode. Deze test
+    //    bewaakt dus precies de dimensie die dit label eraan hangt.
+    //
+    // Bewust breed en op beide talen: een patroon dat te veel vangt kost één
+    // regel hier, een patroon dat te weinig vangt kost het vertrouwen van een
+    // gebruiker die dacht dat zijn gemiste week privé was.
+    const verdacht = /niet|mist|gemist|achter|onaf|not|yet|miss|behind|pending|incomplete/i;
+
+    for (const streak of [0, 1, 7]) {
+      const kaal = ledenrijLabel({ ...basis, streak });
+      for (const closed of [false, true]) {
+        for (const breather of [false, true]) {
+          const label = ledenrijLabel({
+            ...basis,
+            streak,
+            closedThisPeriod: closed,
+            onBreather: breather,
+          });
+
+          expect(label.startsWith(kaal), label).toBe(true);
+          expect(label.slice(kaal.length), label).not.toMatch(verdacht);
+        }
+      }
+    }
+  });
+
+  it('noemt wat er wél is: naam, reeks en dat er iets af is', () => {
+    const label = ledenrijLabel({ ...basis, closedThisPeriod: true });
+
+    expect(label).toContain('Jamie');
+    expect(label).toContain(streakLabel(3));
+    expect(label.length).toBeGreaterThan(streakLabel(3).length + 'Jamie'.length);
+  });
+
+  it('laat de adempauze voorgaan op het vinkje, net als de rij zelf', () => {
+    // Anders leest een schermlezer twee toestanden voor waar het scherm er één
+    // toont, en dan is het label geen weergave meer van wat er staat.
+    const label = ledenrijLabel({ ...basis, closedThisPeriod: true, onBreather: true });
+    const alleenPauze = ledenrijLabel({ ...basis, onBreather: true });
+
+    expect(label).toBe(alleenPauze);
+  });
+
+  it('noemt de beste reeks alleen als hij hoger is dan de lopende', () => {
+    // ⚠️ `best > current` betekent dat er een reeks gebroken is. Dat veld komt
+    //    alleen in een open groep binnen (besluit A41), en `null` betekent "niet
+    //    voor jou" — niet nul.
+    const gelijk = ledenrijLabel({ ...basis, bestStreak: 3 });
+    const hoger = ledenrijLabel({ ...basis, bestStreak: 9 });
+    const leeg = ledenrijLabel({ ...basis, bestStreak: null });
+
+    expect(gelijk).toBe(leeg);
+    expect(hoger).not.toBe(leeg);
+    expect(hoger).toContain(besteReeksLabel(9));
   });
 });
