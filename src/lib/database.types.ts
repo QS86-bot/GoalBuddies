@@ -2162,6 +2162,7 @@ export type Database = {
         }
         Returns: Json
       }
+      reviewpunten_over: { Args: { p_user_id: string }; Returns: number }
       rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       schuif_weekdoel_door: {
