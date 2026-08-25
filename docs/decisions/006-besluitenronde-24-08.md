@@ -30,7 +30,7 @@ reeks: de reeks zegt "je was er die week", de score zegt hoeveel je afmaakte.
 
 ---
 
-## A41 — een keuze per groep: beschermd of open ⏳ nog te bouwen
+## A41 — een keuze per groep: beschermd of open ✅ gebouwd
 
 **Besluit: variant 2.** Bij het aanmaken kiest een groep tussen **beschermd**
 (zoals nu, en de standaard) en **open** (de groep ziet ook tegenslag). Variant 3
@@ -66,6 +66,15 @@ er zijn.
 ⚠️ **Juist bij zakelijk gebruik weegt domeinregel 7 zwaarder, niet lichter.** Zit
 er een leidinggevende in een buddy-groep, dan beschermt de regel niet tegen
 schaamte maar tegen een beoordelingsgesprek.
+
+### ✅ Gebouwd op 24-08-2026 — QS8-132, migraties 0076 t/m 0080
+
+De kolom `groups.zichtbaarheid` bestaat en is voor geen enkele client
+schrijfbaar; omzetten loopt via `zet_groepszichtbaarheid()`. Alle twintig
+oppervlakken zijn beoordeeld; wat om moest is om, en zeven blijven ook in een
+open groep dicht. De rijen en de redenen staan in
+`docs/decisions/002-domeinregel7-oppervlakken.md` §6b — dát document is de
+inventaris, dit document alleen het besluit.
 
 ---
 

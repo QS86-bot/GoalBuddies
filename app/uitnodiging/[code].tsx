@@ -11,7 +11,6 @@ import {
   vergeetOpenstaandeUitnodiging,
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
-  type Uitnodiging,
 } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
@@ -24,6 +23,7 @@ import {
   Card,
   Screen,
   Subheading,
+  useAsync,
 } from '@/shared/ui';
 
 /**
@@ -53,11 +53,6 @@ export default function UitnodigingScherm() {
   const { session, loading: sessieLaadt } = useSession();
   const { profiel } = useProfiel();
 
-  const [uitnodiging, setUitnodiging] = useState<Uitnodiging | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-  const [ronde, setRonde] = useState(0);
-
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
   const [binnen, setBinnen] = useState<string | null>(null);
@@ -66,33 +61,19 @@ export default function UitnodigingScherm() {
   const sessieBijBinnenkomst = useRef<boolean | null>(null);
   const automatischGeprobeerd = useRef(false);
 
+  // ⚠️ Onthouden vóór alles, en apart van het laden. Gaat de bezoeker hierna
+  //    aanmelden, dan overleeft de uitnodiging de bevestigingsmail en de
+  //    onboarding — ook als het ophalen mislukt.
   useEffect(() => {
-    if (!code) return;
-    let levend = true;
+    if (code) void bewaarOpenstaandeUitnodiging(code);
+  }, [code]);
 
-    // Onthouden vóór alles. Gaat de bezoeker hierna aanmelden, dan overleeft de
-    // uitnodiging de bevestigingsmail en de onboarding.
-    void bewaarOpenstaandeUitnodiging(code);
-
-    fetchUitnodiging(code)
-      .then((gevonden) => {
-        if (!levend) return;
-        setUitnodiging(gevonden);
-        setError(null);
-      })
-      .catch((f: unknown) => {
-        if (levend) setError(f);
-      })
-      .finally(() => {
-        if (levend) setLoading(false);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [code, ronde]);
-
-  const herlaad = useCallback(() => setRonde((n) => n + 1), []);
+  const {
+    data: uitnodiging,
+    loading,
+    error,
+    herlaad,
+  } = useAsync(code ? () => fetchUitnodiging(code) : null, [code]);
 
   const deelnemen = useCallback(async () => {
     if (!code) return;
@@ -244,7 +225,19 @@ export default function UitnodigingScherm() {
             <Card nested>
               <Subheading>{t('uitnodiging.wat_je_doet')}</Subheading>
               <Body muted>{t('uitnodiging.uitleg_kern')}</Body>
-              <Body muted>{t('uitnodiging.uitleg_missen')}</Body>
+              {/*
+                ⚠️ Voorwaardelijk sinds besluit A41. Hier stond onvoorwaardelijk
+                   "Niemand in de groep ziet het", drie kaarten onder de
+                   waarschuwing hierboven dat een open groep je gemiste weken wél
+                   ziet. Twee kaarten die elkaar tegenspreken op het scherm waar
+                   je besluit of je meedoet — en de geruststellende was de laatste
+                   die je las.
+              */}
+              <Body muted>
+                {u.zichtbaarheid === 'open'
+                  ? t('uitnodiging.uitleg_missen_open')
+                  : t('uitnodiging.uitleg_missen_beschermd')}
+              </Body>
             </Card>
 
             {binnen !== null ? (

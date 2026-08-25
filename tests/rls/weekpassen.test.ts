@@ -26,6 +26,7 @@ import {
   adminDb,
   anonDb,
   createTestUser,
+  magNietLanden,
   removeTestUsers,
   rlsTestsConfigured,
   type TestUser,
@@ -275,23 +276,25 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       //    Daarom toetst deze test de úítkomst en niet de foutcode: de rij moet
       //    er daarna nog staan. Dat is de eigenschap die telt, en hij blijft
       //    kloppen of de grants nu ooit ingetrokken worden of niet.
-      const { error } = await f.alice.db
-        .from('week_pass_events')
-        .delete()
-        .eq('goal_id', f.aliceGoalId)
-        .eq('event', 'spent');
-
-      // Geen fout, of een rechtenfout: allebei goed. Niet goed is een fout van
-      // een andere soort, want dan is er iets anders stuk.
-      if (error !== null) expect(error.code).toBe('42501');
-
-      const { count } = await adminDb()
-        .from('week_pass_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('goal_id', f.aliceGoalId)
-        .eq('event', 'spent');
-
-      expect(count).toBe(1);
+      //    Sinds 25-08 via `magNietLanden()`, die precies dit uitdrukt: de
+      //    poging doen, en toetsen dat de rij achteraf onveranderd is — of hij
+      //    nu luid of stil geweigerd wordt. Een fout van een andere soort is
+      //    daar een rode test en geen groene.
+      await magNietLanden(
+        () =>
+          f.alice.db
+            .from('week_pass_events')
+            .delete()
+            .eq('goal_id', f.aliceGoalId)
+            .eq('event', 'spent'),
+        () =>
+          adminDb()
+            .from('week_pass_events')
+            .select('id, event')
+            .eq('goal_id', f.aliceGoalId)
+            .eq('event', 'spent')
+            .order('id'),
+      );
     },
     TEST_TIMEOUT,
   );
@@ -301,21 +304,20 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     async () => {
       // Zou dit lukken, dan verandert een gemiste week in een tegoed: de reeks
       // blijft gered én de pas is terug.
-      const { error } = await f.alice.db
-        .from('week_pass_events')
-        .update({ event: 'earned' })
-        .eq('goal_id', f.aliceGoalId)
-        .eq('event', 'spent');
-
-      if (error !== null) expect(error.code).toBe('42501');
-
-      const { data } = await adminDb()
-        .from('week_pass_events')
-        .select('event')
-        .eq('goal_id', f.aliceGoalId)
-        .eq('event', 'spent');
-
-      expect(data).toHaveLength(1);
+      await magNietLanden(
+        () =>
+          f.alice.db
+            .from('week_pass_events')
+            .update({ event: 'earned' })
+            .eq('goal_id', f.aliceGoalId)
+            .eq('event', 'spent'),
+        () =>
+          adminDb()
+            .from('week_pass_events')
+            .select('id, event')
+            .eq('goal_id', f.aliceGoalId)
+            .order('id'),
+      );
     },
     TEST_TIMEOUT,
   );
@@ -634,8 +636,13 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         .single();
       if (goed.error) throw new Error(`opbouw: ${goed.error.message}`);
 
-      const doorgeschoven = await f.bob.db.rpc('markeer_doorgeschoven', {
+      // ⚠️ Sinds 0091 doet één RPC het zetten op `carried` én de opvolger, in
+      //    één transactie. De cyclus komt van de aanroeper — de database rekent
+      //    geen weken uit (correctheidsregel 7).
+      const doorgeschoven = await f.bob.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: gemist.data.id,
+        p_cycle_start_date: '2026-05-18',
+        p_cycle_index: 913,
       });
       expect(doorgeschoven.error).toBeNull();
       expect(uitkomst(doorgeschoven.data).ok).toBe(true);
@@ -678,8 +685,10 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         .single();
       if (open.error) throw new Error(`opbouw: ${open.error.message}`);
 
-      const poging = await f.bob.db.rpc('markeer_doorgeschoven', {
+      const poging = await f.bob.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: open.data.id,
+        p_cycle_start_date: '2026-05-25',
+        p_cycle_index: 914,
       });
 
       expect(poging.error).toBeNull();

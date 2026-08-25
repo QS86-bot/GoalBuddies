@@ -36,6 +36,7 @@ export const en: Record<Sleutel, string> = {
   'auth.fout.niet_bevestigd': 'Confirm your email address first. Check your inbox.',
   'auth.fout.te_vaak': 'Too many attempts. Wait a moment and try again.',
   'auth.fout.zwak_wachtwoord': 'This password is not accepted. Use a longer phrase.',
+  'auth.bevestig_inbox': 'That worked. If email confirmation is on, have a look in your inbox.',
   'auth.fout.geen_verbinding': 'No connection. Check your internet and try again.',
   'auth.fout.algemeen': 'Something went wrong. Please try again.',
   'auth.fout.invoer': 'Check what you entered.',
@@ -259,7 +260,8 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.pas_bij_meedoen': 'You will see what they are working on once you join. That is deliberate: what people share here, they share with their group and not with everyone who gets the link.',
   'uitnodiging.wat_je_doet': 'What you will be doing here',
   'uitnodiging.uitleg_kern': 'You pick one goal with a date on it. Each week you decide what you want to finish, and one of your buddies approves that you did. That is all.',
-  'uitnodiging.uitleg_missen': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
+  'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
+  'uitnodiging.uitleg_missen_open': 'Missing a week costs one point and nothing else. In this group the others do see it — that is what “open” above means.',
   'uitnodiging.al_lid': 'You are in the group',
   'uitnodiging.doorsturen': 'You are being taken to the group.',
   'uitnodiging.eerst_profiel': 'Finish your profile first — the group will be waiting for you.',
@@ -336,7 +338,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.stap3.c': 'This is the idea the app is built around. Your streak should serve you, not the other way around.',
   'onboarding.stap4.kop': 'A buddy approves it',
   'onboarding.stap4.a': 'Someone from your group confirms that you did it. Approving yourself is not possible.',
-  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. Nobody in your group sees it.',
+  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group — the default — nobody sees it. If a group deliberately chooses to be open, you are told before you join.',
   'onboarding.stap_van': 'STEP {nu} OF {totaal}',
   'onboarding.zo_ziet_eruit': 'Here is what that looks like',
   'onboarding.voorbeeld_titel': 'Run three times',
@@ -351,8 +353,6 @@ export const en: Record<Sleutel, string> = {
   'onboarding.naam_hint': 'This is what your buddies see. A first name is enough.',
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'No avatar? Then we show your initials. Uploading a photo will be possible once we have storage.',
-  'onboarding.tijdzone': 'Time zone',
-  'onboarding.tijdzone_hint': 'Taken from your device. If it is wrong, change it — it decides when your day and week roll over.',
   'onboarding.herinnering': 'Reminder',
   'onboarding.aan': 'On',
   'onboarding.uit': 'Off',
@@ -366,6 +366,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.zelf_doel': 'I want a goal of my own',
   'onboarding.kom_helpen': 'I came to help',
   'onboarding.klaar': 'Done',
+  'groepdetail.zichtbaarheid': 'This group’s visibility: {stand}',
   'groepdetail.titel': 'Group',
   'groepdetail.eyebrow': 'HUDDLE DAY {dag}',
   'groepdetail.geen_lid_titel': 'This group is not here, or not for you',
@@ -396,7 +397,8 @@ export const en: Record<Sleutel, string> = {
   'deadlineverzoek.liever_niet': 'Rather not',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
-  'koppel.uitleg': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress — not your notes, not your weeks and not your points. You can always undo it.',
+  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress — not your notes, not your weeks and not your points. You can always undo it.',
+  'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks — including the weeks you did not make. Your notes and your points stay yours. You can always undo it.',
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
   'koppel.nieuw_doel': 'New goal',
@@ -572,7 +574,12 @@ export const en: Record<Sleutel, string> = {
   'validatie.dagzet_leeg': 'One line is enough, but it cannot be empty.',
   'validatie.reactie_lang': 'Keep it short — at most 1000 characters.',
 
+  'coach.bewaard': 'Saved',
+  'coach.bewaren': 'Save answers',
+  'coach.alle_overnemen': 'Take all {aantal}',
   'coach.titel': 'The Goal Coach',
+  'coach.vastgelopen': 'The Goal Coach got stuck.',
+  'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow — in the meantime you can add milestones yourself.',
   'coach.eyebrow': 'SIX QUESTIONS',
   'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you — but skipping works fine.',
   'coach.alleen_voor_jou': 'Your answers are only for you and the Goal Coach. Your group never sees them.',
@@ -655,6 +662,8 @@ export const en: Record<Sleutel, string> = {
   'chat.controleer': 'Check your message.',
   'chat.leeg': 'There is nothing in your message yet.',
   'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
+  'chat.rem_bereikt':
+    'You have posted the maximum number of messages for today. You can continue again later.',
   'chat.weghalen_mislukt': 'Removing did not work. Please try again.',
 
   'ketting.laden_mislukt': 'The Chain could not be loaded.',
@@ -708,6 +717,8 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.weghalen_mislukt': 'Removing did not work. Please try again.',
   'weekafsluiting.reactie_controleer': 'Check your reply.',
   'weekafsluiting.reactie_mislukt': 'Your reply was not sent. Please try again in a moment.',
+  'weekafsluiting.reactie_rem_bereikt':
+    'You have posted the maximum number of replies for today. You can continue again later.',
 
   'doel.doelen_laden': 'Your goals could not be loaded.',
   'doel.doel_laden': 'This goal could not be loaded.',
@@ -816,6 +827,8 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.niet_meer_open':
     'This week is no longer open. You can only close a weekly goal that nothing has happened with yet.',
   'weekdoel.doorschuiven_mislukt': 'Carrying over did not work.',
+  'weekdoel.te_veel_deze_dag':
+    'You have created the maximum number of weekly goals for today. You can continue again later.',
   'weekdoel.nog_niet_afgesloten':
     'Carrying over is only possible once the week is closed. That happens automatically shortly after your week ends.',
   'validatie.kies_doel': 'Choose a goal.',
@@ -1105,8 +1118,8 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   'laden.kop_mislukt': 'That did not work',
   'ketting.kop': 'The Chain',
-  'lid.beste_reeks': 'Best so far: {aantal}',
   'lid.adempauze': 'Breather',
+  'lid.afgerond': 'closed this period',
   'vandaag.reeks_telt_weken': 'Your streak counts weeks, not days.',
   'vandaag.meenemen_knop': 'Carry over to this week',
   'vandaag.buddy_vraag': 'Your buddy has a question',
@@ -1130,7 +1143,6 @@ export const en: Record<Sleutel, string> = {
   'taal.uitleg':
     'Your choice also applies to the notifications you receive, because those are ' +
     'composed on the server and not on your phone.',
-  'taal.opslaan_mislukt': 'The language could not be saved. Please try again.',
   'validatie.taal': 'Choose a language from the list.',
 
   'zichtbaarheid.beschermd': 'Protected',
@@ -1138,19 +1150,31 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd_uitleg':
     'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
   'zichtbaarheid.open_uitleg':
-    'The group also sees what does not work out: each other’s missed and carried weeks. Only pick this if everyone wants it.',
+    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, and who took part in which week. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks — including the ones already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, and who took part in each week — including the ones already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
     'From now on the group only sees what works out. Missed weeks become private again, retroactively too. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
+  'bevestiging.groep_archiveren.titel': 'Archive this group?',
+  'bevestiging.groep_archiveren.uitleg':
+    'The group then disappears for everyone: the chat, the week reviews and The Chain can no longer be opened, not even by you. Nothing in it is deleted — it stays stored, and your buddies\u2019 streaks remain correct. But this cannot be undone from the app.',
+  'bevestiging.groep_archiveren.knop': 'Yes, archive this group',
+  'beheer.archief_titel': 'Archive group',
+  'beheer.archief_uitleg':
+    'If this group is finished, this is how you close it. It disappears for all members and nobody can do anything in it any more.',
+  'beheer.archief_waarschuwing':
+    'Nothing is deleted, but you will not be able to open the group afterwards.',
+  'beheer.archiveren': 'Archive this group',
+  'groep.gearchiveerd': 'This group has been archived and can no longer be opened.',
+  'beheer.melding_gearchiveerd': 'The group has been archived.',
   'zichtbaarheid.onbekend': 'That setting does not exist.',
   'zichtbaarheid.ongewijzigd': 'It was already set that way.',
-  'zichtbaarheid.te_snel': 'You already opened this group up today. Tomorrow it can change again.',
+  'zichtbaarheid.te_snel': 'This group was already opened up once in the past 24 hours. It stays protected in the meantime; you can try again in a day.',
 
   'groepnieuw.zichtbaarheid': 'What does the group see of each other?',
   'groepnieuw.zichtbaarheid_hint':
@@ -1164,5 +1188,62 @@ export const en: Record<Sleutel, string> = {
   'beheer.naar_beschermd': 'Protect this group again',
   'beheer.melding_open_gezet': 'The group is open. Everyone has been told.',
   'beheer.melding_beschermd_gezet': 'The group is protected again.',
+
+
+  'algemeen.laden': 'Loading',
+  'algemeen.streefdatum': 'Target date {datum}',
+  'reeks.beste_een': 'Best so far: 1 week',
+  'reeks.beste_meer': 'Best so far: {aantal} weeks',
+  'weekdoel.vloer_regel': 'Floor · {tekst}',
+  'weekdoel.plafond_regel': 'Ceiling · {tekst}',
+  'ketting.a11y': 'The Chain: {stand}',
+  'risico.a11y': 'Status: {label}',
+  'coach.leeg_titel': 'This goal does not exist',
+  'coach.leeg_tekst': 'Either it was deleted, or it is not yours.',
+  'coach.geen_mijlpalen': 'The Goal Coach did not return any usable milestones.',
+  'coach.te_lang':
+    'That took too long. Try again in a moment, or add your milestones yourself.',
+  'coach.n_voorgesteld': '{aantal} milestones suggested',
+  'beheer.melding_opgeslagen': 'Saved. Chain links already earned stay exactly where they are.',
+  'beheer.melding_nieuwe_link': 'New link. The old one stops working from now on.',
+  'beheer.leeg_titel': 'This group is not here, or not for you',
+  'beheer.leeg_tekst': 'You are not a member of this group, or it no longer exists.',
+  'beheer.huddledag_label': 'Huddle day',
+  'beheer.huddledag_hint':
+    'The group’s shared day. It changes nothing about when your own weekly goals reset — that stays your personal week start day.',
+  'beheer.voorlezen': 'You can also read it out: {code}',
+  'beoordelen.bevestigd': 'You confirmed {naam}’s week.',
+  'beoordelen.sessie_laadt': 'Your session is still loading. Try again in a second.',
+  'dashboard.week_van': 'Week of {datum}',
+
+
+  'tijdzone.label': 'Time zone',
+  'tijdzone.hint':
+    'This is where “today” and “this week” are calculated. Your phone’s zone by default; search for a city to change it.',
+  'tijdzone.zoek_voorbeeld': 'Amsterdam',
+  'tijdzone.nu': 'Currently set to: {zone}',
+  'tijdzone.gebruik_getypt': 'Use {zone}',
+  'tijdzone.van_apparaat': 'This device’s time zone ({zone})',
+  'tijdzone.niets_gevonden': 'No time zone found. Search for a large city nearby.',
+  'tijdzone.uitleg':
+    'Changing this leaves your points and your streak alone: those are fixed to the weeks already there. What changes is when the next week rolls over.',
+  'tijdzone.opgeslagen': 'Time zone saved.',
+
+
+  'weektip.business.1': 'One finished week is a week someone else spent planning.',
+  'weektip.business.2': 'What you finished this week does not need thinking about next week.',
+  'weektip.business.3': 'Write down what worked this week. That is your own manual for the busy ones.',
+  'weektip.business.4': 'Small and done beats big and half. This week proved it.',
+  'weektip.business.5': 'The next step is usually smaller than it looks. Pick it while you are going.',
+  'weektip.study.1': 'A week kept up counts for more than one hard day. This was the week.',
+  'weektip.study.2': 'What you understood this week, you never have to learn for the first time again.',
+  'weektip.study.3': 'Go over this week briefly tomorrow. Twenty minutes now saves an evening later.',
+  'weektip.study.4': 'Fixed times beat long sessions. This week is the proof.',
+  'weektip.study.5': 'Decide now when you start next week. Then you do not have to decide again.',
+  'weektip.other.1': 'Showing up is the whole trick. This week it worked.',
+  'weektip.other.2': 'What you did this week counts even if nobody saw it.',
+  'weektip.other.3': 'One week is no longer chance. Two is a habit starting.',
+  'weektip.other.4': 'Make next week as easy as this one: put out what you need beforehand.',
+  'weektip.other.5': 'The weeks that count rarely look special. This one counted.',
 
 };

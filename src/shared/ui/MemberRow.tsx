@@ -1,9 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 
-import { getal, t } from '../i18n';
+import { t } from '../i18n';
 import { initiaalVan } from '../tekst';
 import { radius, space, useTheme } from '../theme';
 
+import { besteReeksLabel, ledenrijLabel } from './metrics';
 import { StreakCounter } from './StreakCounter';
 import { Body, Caption } from './Text';
 
@@ -18,6 +19,18 @@ import { Body, Caption } from './Text';
  *
  *    Een rij zonder vinkje betekent hier "nog niets binnen deze periode" en niet
  *    "deze persoon faalt" — en de tekst moet dat ook zeggen.
+ *
+ * ⚠️ **De rij spreekt met één stem, en die stem staat in `ledenrijLabel()`.**
+ *    Tot 25-08-2026 was het "afgerond"-signaal een gekleurd bolletje zonder
+ *    label: onhoorbaar voor een schermlezer en onzichtbaar voor wie kleuren niet
+ *    onderscheidt, terwijl naam en reeks eronder wél werden voorgelezen. Het
+ *    positieve signaal was daarmee de helft van de gebruikers niet gegeven, en
+ *    dat is niet alleen een toegankelijkheidsgat: domeinregel 7 laat de groep
+ *    juist wél zien wat er áf is.
+ *
+ *    De afwezigheid blijft stil. Er is geen label voor "nog niet", en er mag er
+ *    ook nooit een bij komen — dat zou van dit overzicht de presentielijst maken
+ *    die De Ketting met opzet niet is.
  */
 
 interface Props {
@@ -50,7 +63,12 @@ export function MemberRow({
   const theme = useTheme();
 
   return (
-    <View style={styles.rij}>
+    <View
+      style={styles.rij}
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={ledenrijLabel({ name, streak, closedThisPeriod, onBreather, bestStreak })}
+    >
       <View style={[styles.avatar, { backgroundColor: theme.colors.panelDark }]}>
         <Caption muted={false}>{initiaalVan(name)}</Caption>
       </View>
@@ -63,8 +81,8 @@ export function MemberRow({
              dan voegt hij niets toe; staat hij lager, dan is er iets mis met de
              data en is zwijgen beter dan een tegenstrijdig getal.
         */}
-        {bestStreak !== null && bestStreak !== undefined && bestStreak > streak ? (
-          <Caption>{t('lid.beste_reeks', { aantal: getal(bestStreak, 0) })}</Caption>
+        {bestStreak !== null && bestStreak > streak ? (
+          <Caption>{besteReeksLabel(bestStreak)}</Caption>
         ) : null}
       </View>
 

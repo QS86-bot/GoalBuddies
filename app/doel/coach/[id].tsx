@@ -100,8 +100,8 @@ export default function Doelcoach() {
         isEmpty={() => false}
         onRetry={() => router.replace(`/doel/${id}`)}
         empty={{
-          title: 'Dit doel bestaat niet',
-          body: 'Of het is verwijderd, of het is niet van jou.',
+          title: t('coach.leeg_titel'),
+          body: t('coach.leeg_tekst'),
         }}
       >
         {(d) => (
@@ -222,7 +222,7 @@ function Interview({
 
       <View style={styles.knoppen}>
         <Button busy={bezig} disabled={userId === null} onPress={() => void bewaar()}>
-          {bewaard ? 'Bewaard' : 'Antwoorden bewaren'}
+          {bewaard ? t('coach.bewaard') : t('coach.bewaren')}
         </Button>
       </View>
 
@@ -296,7 +296,7 @@ function Genereren({
         const voorstellen = mijlpalenUit(job.output);
         setStand(
           voorstellen.length === 0
-            ? { fase: 'mislukt', melding: 'De Doelcoach gaf geen bruikbare mijlpalen terug.' }
+            ? { fase: 'mislukt', melding: t('coach.geen_mijlpalen') }
             : {
                 fase: 'klaar',
                 voorstellen,
@@ -309,7 +309,7 @@ function Genereren({
       if (job.status === 'error') {
         setStand({
           fase: 'mislukt',
-          melding: job.error ?? 'De Doelcoach liep vast.',
+          melding: job.error ?? t('coach.vastgelopen'),
         });
         return;
       }
@@ -317,7 +317,7 @@ function Genereren({
 
     setStand({
       fase: 'mislukt',
-      melding: 'Het duurde te lang. Probeer het zo nog eens, of voeg je mijlpalen zelf toe.',
+      melding: t('coach.te_lang'),
     });
   }, []);
 
@@ -407,7 +407,7 @@ function Genereren({
   if (stand.fase === 'klaar') {
     return (
       <Card nested>
-        <Subheading>{`${stand.voorstellen.length} mijlpalen voorgesteld`}</Subheading>
+        <Subheading>{t('coach.n_voorgesteld', { aantal: stand.voorstellen.length })}</Subheading>
 
         {/*
           ⚠️ De tegenspraak staat bóven de voorstellen en niet eronder — laatste
@@ -432,7 +432,7 @@ function Genereren({
             <View key={`${voorstel.title}-${i}`} style={styles.voorstel}>
               <Body>{voorstel.title}</Body>
               {voorstel.target_date === null ? null : (
-                <Caption>Streefdatum {voorstel.target_date}</Caption>
+                <Caption>{t('algemeen.streefdatum', { datum: voorstel.target_date })}</Caption>
               )}
             </View>
           ))}
@@ -444,7 +444,7 @@ function Genereren({
             busy={overnemen}
             onPress={() => void neemOver(stand.voorstellen)}
           >
-            {`Alle ${stand.voorstellen.length} overnemen`}
+            {t('coach.alle_overnemen', { aantal: stand.voorstellen.length })}
           </Button>
           {/*
             QS8-40. Telt mee in het quotum — dat kan niet anders, want het gaat

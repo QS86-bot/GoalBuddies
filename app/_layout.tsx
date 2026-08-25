@@ -6,8 +6,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { isOnboarded, ProfielProvider, SessionProvider, useProfiel, useSession } from '@/modules/auth';
 import {
+  fetchUitnodiging,
   neemDeel,
   openstaandeUitnodiging,
+  routeVoorUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
 import {
@@ -16,7 +18,7 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
-import { apparaatVoorkeuren, taalUitApparaat, zetTaal } from '@/shared/i18n';
+import { apparaatVoorkeuren, t, taalUitApparaat, zetTaal } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -207,14 +209,86 @@ function Uitnodigingswacht() {
     geprobeerd.current = true;
     let levend = true;
 
-    void openstaandeUitnodiging().then(async (code) => {
-      if (!levend || code === null) return;
+    void (async () => {
+      const wachtend = await openstaandeUitnodiging();
+      if (!levend || wachtend === null) return;
 
-      const uitkomst = await neemDeel(code);
+      // ⚠️ **Besluit A49 (QS8-136), eerste helft: een bewaarde code verloopt.**
+      //    Deze opslag bestaat voor één pad — je tikt een uitnodigingslink aan,
+      //    maakt een account, bevestigt je mail en komt terug in een verse
+      //    sessie. Dat pad duurt minuten. Wie de link twee weken geleden opende
+      //    en toen besloot niet mee te doen, hoorde niet alsnog in die groep te
+      //    belanden zodra hij zich aanmeldde.
+      //
+      //    Niet weggooien maar tónen: de gebruiker landt op het
+      //    uitnodigingsscherm en drukt zelf. Weggooien zou de uitnodiging
+      //    doodmaken, en dat is precies wat deze opslag moest voorkomen.
+      // ⚠️ **Tweede helft: een open groep gaat nooit vanzelf.** Toetreden tot een
+      //    open groep maakt je gemiste weken, je beste reeks en je historische
+      //    aanwezigheid zichtbaar voor de anderen — dezelfde overgang als het
+      //    ópenzetten van een groep, waar een beheerder een volledig
+      //    bevestigingsblok voor doorloopt (migratie 0076, grens 3). Dan hoort
+      //    hier ook een handeling van de gebruiker zelf te staan.
+      //
+      //    `invite_preview()` draagt de zichtbaarheid sinds migratie 0080, dus
+      //    dit kost geen extra rondje: het scherm haalt hem toch al op.
+      //
+      // ⚠️ Kan de uitnodiging niet opgehaald worden (netwerk, ingetrokken link),
+      //    dan ook naar het scherm. Onbekend is hier de kant waar niets
+      //    stilzwijgend gebeurt — dezelfde keuze als bij de vervaltermijn.
+      //
+      // ⚠️ **De beslissing zelf staat in `routeVoorUitnodiging()` en niet hier**,
+      //    en dat is sinds 25-08-2026 zo. Ze stond volledig in dit bestand, en
+      //    dit bestand is niet te testen: er is geen `.test.tsx` in dit project
+      //    en vitest draait in node. De zwaarste helft van A49 was daarmee
+      //    structureel onbewaakt. Hier staat nu alleen nog wát er gebeurt, niet
+      //    wanneer.
+      //
+      // ⚠️ Alleen ophalen als het ertoe doet. Is de code verlopen, dan is de
+      //    zichtbaarheid niet meer van belang en kost een rondje naar de server
+      //    niets dan tijd.
+      const uitnodiging = wachtend.automatisch
+        ? await fetchUitnodiging(wachtend.code).catch(() => null)
+        : null;
+      if (!levend) return;
+
+      const route = routeVoorUitnodiging({
+        automatisch: wachtend.automatisch,
+        zichtbaarheid: uitnodiging?.zichtbaarheid ?? null,
+      });
+
+      if (route.soort === 'toon-scherm') {
+        router.replace(`/uitnodiging/${wachtend.code}`);
+        return;
+      }
+
+      const uitkomst = await neemDeel(wachtend.code);
       await vergeetOpenstaandeUitnodiging();
+      if (!levend) return;
 
-      if (levend && uitkomst.ok) router.replace(`/groep/${uitkomst.waarde}`);
-    });
+      if (uitkomst.ok) {
+        router.replace(`/groep/${uitkomst.waarde}`);
+        return;
+      }
+
+      // ⚠️ **Zwijgen is hier het ergste antwoord, en dat deed deze functie tot
+      //    24-08.** Bij een mislukking gebeurde er níéts: geen melding, geen
+      //    scherm, en de bewaarde code was intussen weggegooid. Het
+      //    uitnodigingsscherm belooft "ook als je eerst je e-mail moet
+      //    bevestigen, sta je daarna gewoon in de groep" — dus wie zijn mail
+      //    bevestigde en terugkwam, stond op een leeg dashboard zonder groep en
+      //    zonder uitleg.
+      //
+      //    Sturen naar het uitnodigingsscherm en niet zelf een melding tonen:
+      //    dát scherm laadt de groep opnieuw, zegt wat er aan de hand is en heeft
+      //    een knop om het opnieuw te proberen. Deze component rendert `null` en
+      //    heeft nergens plek voor een melding.
+      //
+      //    ⚠️ Bewust géén `reportError` erbij. `neemDeel()` meldt een échte fout
+      //    al zelf; wat hier overblijft is een uitkomst — de link is ingetrokken,
+      //    de groep is vol — en dat is geen storing maar een antwoord.
+      router.replace(`/uitnodiging/${wachtend.code}`);
+    })();
 
     return () => {
       levend = false;
@@ -231,7 +305,7 @@ export function Bezig() {
     <View
       style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
       accessibilityRole="progressbar"
-      accessibilityLabel="Laden"
+      accessibilityLabel={t('algemeen.laden')}
     >
       <ActivityIndicator color={theme.colors.accent} />
     </View>

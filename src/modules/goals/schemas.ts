@@ -92,5 +92,56 @@ export function datumLigtInDeToekomst(datum: string, vandaag: IsoDate): boolean 
   return datum > vandaag;
 }
 
-export const STATUSSEN = ['active', 'completed', 'archived', 'missed'] as const;
+/**
+ * De levensloop van een doel. Spiegelt de CHECK `goals_status_valid`.
+ *
+ * ⚠️ **`missed` stond hier tot 25-08-2026 en is er met een migratie uit gehaald**
+ *    (0082), niet omdat hij hinderde maar omdat hij een lek wás zodra iemand hem
+ *    zou vullen: groepsgenoten lezen deze kolom via `goals_select`, en RLS kan
+ *    geen kolommen beperken. Een tegenslagwaarde hier is domeinregel 7 die de
+ *    database uit loopt.
+ *
+ * ⚠️ **Deze lijst is een kopie en geen bron.** `tests/rls/policies.test.ts`
+ *    vergelijkt hem met de CHECK zelf, in beide richtingen — want de vorige keer
+ *    dat twee zulke lijsten uit elkaar liepen (0032/0034), vergeleek de test de
+ *    app-lijst met zichzelf en bleef groen.
+ */
+/**
+ * De gebeurtenissen in de audittrail van een doel. Spiegelt de CHECK
+ * `goal_events_type_valid`.
+ *
+ * ⚠️ **`scope_reduced` en `milestone_dropped` stonden hier tot 25-08-2026 en zijn
+ *    er met een migratie uit gehaald** (0087). Groepsgenoten lezen deze tabel via
+ *    `goal_events_select`, en dat zijn tegenslagsignalen over iemand anders —
+ *    domeinregel 7. `milestone_dropped` stond bovendien al op
+ *    `VERBODEN_GEBEURTENISSEN` in `chat-schemas.ts`: de ene kant van de app zei
+ *    "de groep hoort dit nooit te zien" terwijl de andere het via een SELECT
+ *    uitgaf.
+ *
+ * ⚠️ **`deadline_moved` blijft, en dat is geen inconsequentie:** die vraag je
+ *    zelf aan en een buddy keurt hem goed (A7, verruiming §4a).
+ *
+ * ⚠️ **Deze lijst is een kopie en geen bron.** `tests/rls/policies.test.ts`
+ *    vergelijkt hem met de CHECK zelf, in beide richtingen.
+ */
+export const DOELGEBEURTENISSEN = [
+  'created',
+  'deadline_moved',
+  'archived',
+  'completed',
+] as const;
+export type Doelgebeurtenis = (typeof DOELGEBEURTENISSEN)[number];
+
+/**
+ * Wat een client zelf mag wegschrijven.
+ *
+ * ⚠️ `deadline_moved` staat er bewust niet bij: die schrijft
+ *    `beslis_deadline_verzoek()`, en hij is de enige gebeurtenis die een uitspraak
+ *    over een ánder mens draagt ("een buddy ging akkoord"). De policy
+ *    `goal_events_insert` dwingt dezelfde grens af — dit is de kopie, niet de bron.
+ */
+export const DOELGEBEURTENISSEN_CLIENT = ['created', 'archived', 'completed'] as const;
+export type DoelgebeurtenisClient = (typeof DOELGEBEURTENISSEN_CLIENT)[number];
+
+export const STATUSSEN = ['active', 'completed', 'archived'] as const;
 export type DoelStatus = (typeof STATUSSEN)[number];

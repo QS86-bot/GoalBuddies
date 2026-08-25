@@ -557,12 +557,24 @@ deze twee functies er zijn.
 | `points_ledger` | **alleen eigen rijen** | systeem | ✗ | ✗ |
 | `user_streaks` | **alleen eigenaar**; groepsgenoten zien alleen `current_streak` via view | systeem | systeem | ✗ |
 | `week_pass_events` | **alleen eigenaar** | systeem | ✗ | ✗ |
-| `breathers` | eigenaar; groepsleden zien alleen dat er een pauze loopt | eigen | eigen | eigen |
+| `breathers` | eigenaar; **groepsleden zien de hele aankondiging, incl. begin en eind** (besluit A50, 25-08-2026) | eigen | eigen | eigen |
 | `commitments` | eigenaar; begunstigde groep pas ná `unlocked`/`due` | eigenaar | eigenaar, vóór trigger | ✗ |
 | `commitment_events` | als het commitment | systeem | ✗ | ✗ |
 | `chat_messages` | `is_group_member(group_id)` | lid, `sender_id = auth.uid()` | eigen, 15 min | eigen |
 | `ai_jobs` | **alleen eigenaar** | systeem | systeem | ✗ |
 | `invite_events` | ✗ | systeem | ✗ | ✗ |
+
+⚠️ **De `breathers`-rij zei tot 25-08-2026 "groepsleden zien alleen dát er een
+pauze loopt", en dat was nooit waar.** `breathers_select` gaf altijd de hele rij,
+inclusief `starts_cycle` en `ends_cycle`, en `adempauze.ts` beschrijft dat óók zo:
+de groep hoort *"Sanne heeft een adempauze van week X tot Y"* te zien, want dat is
+het acceptatiecriterium "vooraf aangekondigd" van QS8-82.
+
+Twee documenten zeiden dus iets anders, en op 25-08 heeft Quinten beslist welk
+document wijkt: **deze matrix.** Aankondigen is de eigen handeling van de
+gebruiker, en dat is precies de uitzondering die domeinregel 7 zelf maakt —
+tegenslag mag de groep bereiken via de gebruiker zelf. Zie
+`docs/decisions/002-domeinregel7-oppervlakken.md` oppervlak 21.
 
 *"systeem"* betekent: alleen via een Edge Function met `service_role`, nooit vanuit de
 client. De `service_role`-key komt nooit client-side (`CLAUDE.md`, beveiligingsregel 4).

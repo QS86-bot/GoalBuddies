@@ -58,6 +58,42 @@ jobs:
       - name: Tests
         run: npm test
 
+      # ⚠️ De Edge-kopie van `shared/time` mag niet uit de pas lopen met die in
+      #    `src/`. Twee runtimes betekent twee exemplaren, en dan geldt
+      #    correctheidsregel 7 twee keer terwijl niets ze gelijk houdt. Deze
+      #    controle draait in Node en heeft geen Deno nodig.
+      - name: Edge-tijdmodule gelijk aan die van de app
+        run: npm run edge:controle
+
+      # ⚠️ Dode ketens: een functie die niemand aanroept, of een CHECK-waarde die
+      #    niemand ooit schrijft. Dat is de vorm die dit project vijf keer duur
+      #    betaald heeft — er is niets kapot, dus geen enkele test wordt er rood
+      #    van. Zie de kop van het script voor wat hij wél en niet vindt.
+      - name: Dode ketens
+        run: npm run keten:controle
+
+      # ⚠️ Storage. Vandaag zijn er nul buckets en nul uploads, dus deze stap is
+      #    groen omdat er niets ís — precies het groen waar dit project voor
+      #    waarschuwt. Hij bestaat voor de dag dat de eerste upload gebouwd wordt:
+      #    dán is het een open emmer tenzij iemand eraan denkt, en vanaf nu denkt
+      #    de build mee.
+      - name: Storage-buckets en hun policies
+        run: npm run storage:controle
+
+      # ⚠️ Het manifest tegen `EXPO_PUBLIC_APP_URL`. Verhuist de app ooit van een
+      #    eigen subdomein naar een pad, dan moeten `start_url`, `scope`, `id` en
+      #    de absolute iconen mee — anders werkt alles behalve de meldingen, en
+      #    dat merk je pas als iemand klaagt dat hij niets krijgt.
+      - name: Manifest en servicewormer-scope
+        run: npm run pwa:controle
+
+      # ⚠️ Een ratel en geen verbod: 27 hand-geschreven `levend`-vlaggen mogen
+      #    blijven, er mag er geen bij, en zakt het aantal dan moet het plafond
+      #    mee. Die tweede tak is de belangrijkste — een ratel die niet meezakt,
+      #    houdt ruimte open voor een kopie die niemand ziet terugkomen.
+      - name: Geen nieuwe handmatige levend-vlaggen
+        run: npm run levend:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------
@@ -153,6 +189,31 @@ jobs:
           POSTGREST_BIN: /home/runner/postgrest/postgrest
         run: scripts/lokale-stack.sh
 
+      # ⚠️ Het register van elke `current_date` in het schema. Hoort hier en niet
+      #    in de job hierboven: `pg_get_functiondef()` is de waarheid en een
+      #    migratiebestand niet, dus deze controle heeft een opgebouwde database
+      #    nodig. Een dertiende `current_date` erbij is geen rode test — er is
+      #    niets kapot, er staat alleen een aanname in een grens waar niemand
+      #    hem zoekt. Zie de kop van het script.
+      - name: Klokgrenzen met een reden
+        run: npm run klokgrens:controle
+
+      # ⚠️ Vraagt de app kolommen terug die hij niet mag lezen? Migratie 0089
+      #    versmalde de SELECT-grant op `profiles` — terecht — en brak daarmee
+      #    stil élke profielopslag, want `updateProfiel()` vroeg zijn rij terug
+      #    met `select('*')` en dat is 42501. De policy klopte, de grant klopte,
+      #    de app klopte; alleen de combinatie niet. Deze stap legt elke
+      #    `select()` in `src/` en `app/` naast de échte grants.
+      - name: Kolomrechten tegen wat de app terugvraagt
+        run: npm run kolomrechten:controle
+
+      # ⚠️ `guard_group_update()` stapt opzij voor elke rol die geen client is, en
+      #    een SECURITY DEFINER-functie draait als zijn eigenaar. Vijf functies
+      #    gebruiken die uitzondering met opzet; de zesde erft hem zonder dat
+      #    iemand het merkt. Deze stap houdt de lijst opgesomd.
+      - name: Wie mag er langs de pin op groups
+        run: npm run pin:controle
+
       # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
       #    is bewezen; wat hier niet staat, is niet bewezen.
       - name: RLS-policies
@@ -164,12 +225,78 @@ jobs:
         if: failure()
         run: tail -50 "${TMPDIR:-/tmp}/goalbuddies-lokale-stack/pgrst.log" || true
 
-  # Zonder deze job is CI een suggestie. Met branch protection op `main` die
+  # ---------------------------------------------------------------------------
+  # De Edge Functions — ze draaien op Deno en vielen tot 25-08-2026 buiten alles
+  # ---------------------------------------------------------------------------
+  #
+  # ⚠️ `tsconfig.json` sluit `supabase/functions` uit en `eslint.config.js`
+  #    negeert `supabase/*`, want die code is Deno en geen Node. Gevolg: de
+  #    rollover en de notificatiejob werden nergens getypecheckt of gelint.
+  #
+  #    Dat is niet theoretisch gebleven. De `excused`-bevinding van 20-08 bleef
+  #    staan omdat de schrijver een Edge Function was en er in `pg_proc` gezocht
+  #    werd — wie in de database zoekt, ziet die schrijver niet.
+  edge:
+    name: Edge Functions (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # ⚠️ `deno check` haalt `jsr:@supabase/supabase-js` op, en `jsr.io` en
+      #    `npm.jsr.io` geven 403 op een agent-werkplek. Dat is géén reden om
+      #    hier blind te pushen: `registry.npmjs.org` is wél bereikbaar, en het
+      #    jsr-pakket is dezelfde broncode als het npm-pakket. Een kopie van deze
+      #    map waarin de specifier `npm:@supabase/supabase-js@<zelfde versie>`
+      #    wordt, typecheckt daarom volledig op een werkplek — het versienummer
+      #    staat in de eerste CI-uitslag. Doe dat vóór je pusht.
+      #
+      #    Deze stap kostte bij de eerste twee rondes vier fouten, en alle vier
+      #    waren ze onzichtbaar in het groen:
+      #
+      #    1. Er stond hier `supabase/functions/**/*.ts`. De standaardshell van
+      #       Actions is bash zónder `globstar`, en dan is `**` gewoon `*`: het
+      #       patroon viel uiteen in de drie `*/index.ts`-bestanden en de zeven
+      #       modules onder `_shared/` werden nooit gecontroleerd. Een map is
+      #       hier het juiste argument — `deno check` loopt er zelf recursief
+      #       doorheen, en er valt niets stil weg.
+      #    2. Deno vindt de `package.json` van de app als het van hier omhoog
+      #       loopt en gaat daarna npm-pakketten in `node_modules` zoeken. Die
+      #       staat er in deze job niet, en `npm:@supabase/realtime-js` — een
+      #       transitieve afhankelijkheid van de jsr-client — staat er sowieso
+      #       niet in. `DENO_NO_PACKAGE_JSON` zet die zoektocht uit: deze map is
+      #       een Deno-project en heeft met de Node-afhankelijkheden van de app
+      #       niets te maken. Zonder de vlag installeert Deno hier de hele
+      #       dependency-boom van de app om drie Edge Functions te typechecken.
+      #    3. Achttien typefouten in `notificaties/index.ts`, allemaal uit één
+      #       `type Db = ReturnType<typeof createClient>`.
+      #    4. Een `db` die in `doelcoach/index.ts` niet bestond — de client heet
+      #       daar `alsSysteem`. Dat is geen typefout maar een `ReferenceError`
+      #       in de gedéployde functie: élke doelcoach-job liep erop stuk, werd
+      #       netjes als `failed` weggeschreven en gaf HTTP 200 terug.
+      #
+      #    ⚠️ Fout 4 kwam pas boven toen fout 3 weg was — Deno stopt bij de
+      #       eerste module die faalt. Eén rode CI-uitslag is dus niet
+      #       hetzelfde als één fout.
+      - name: Typecheck
+        env:
+          DENO_NO_PACKAGE_JSON: '1'
+        run: deno check supabase/functions/
+
+      - name: Lint
+        env:
+          DENO_NO_PACKAGE_JSON: '1'
+        run: deno lint supabase/functions/
+
+    # Zonder deze job is CI een suggestie. Met branch protection op `main` die
   # deze check verplicht stelt, is rood blokkerend — zie docs/Q-TODO.md.
   poort:
     name: Alles groen
     runs-on: ubuntu-latest
-    needs: [controle, rls]
+    needs: [controle, rls, edge]
     if: always()
     steps:
       - name: Uitslag bepalen
@@ -180,6 +307,13 @@ jobs:
           fi
           if [ "${{ needs.rls.result }}" != "success" ]; then
             echo "De RLS-suite is niet groen: ${{ needs.rls.result }}"
+            exit 1
+          fi
+          # ⚠️ Deze tak hoort bij elke job in `needs`. Zonder hem is een rode job
+          #    hierboven decoratief: de poort wacht er wel op maar kijkt niet naar
+          #    de uitslag, en dan is CI weer een suggestie.
+          if [ "${{ needs.edge.result }}" != "success" ]; then
+            echo "De Edge Functions zijn niet groen: ${{ needs.edge.result }}"
             exit 1
           fi
           echo "Groen."

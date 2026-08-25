@@ -31,8 +31,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **311 geslaagd, 1 overgeslagen.** Zonder credentials geeft `npm test`
-   **553 geslaagd en 300 overgeslagen**; typecheck en lint groen.
+   **405 geslaagd, 1 overgeslagen.** Zonder credentials geeft `npm test`
+   **723 geslaagd en 385 overgeslagen**; typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -82,7 +82,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0080`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0095`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -137,9 +137,21 @@ Kijk bij het beginnen van een sessie naar de branchtabel in
 
 ✅ **QS8-115 is daarmee ook af** (In Review, 24-08). Er staat geen Nederlandse
 UI-tekst meer hard in `src/` en `app/`; `npm run tekst:controle` meldt nul en
-draait mee in `/audit`. De taalkeuze op het profielscherm bestaat sinds vandaag —
-tot dan kon niemand `profiles.locale` vullen en volgde de app alleen je telefoon.
-Eén criterium blijft open en dat vraagt een mens: de app in het Engels doorlopen.
+draait mee in `/audit`.
+
+⚠️ **Die nul was op 24-08 een halve waarheid, en dat is dezelfde dag rechtgezet.**
+De controle stond groen terwijl er in één scherm zeven onvertaalde zinnen zaten:
+een prop met één woord, een prop over meerdere regels, twee tekstsleutels in een
+objectliteraal, een zin in `setMelding()` en JSX-tekst met een accolade erin. In
+totaal 23 door de hele app, waaronder twee `accessibilityLabel`s die een
+schermlezer voorleest. Het probleem was niet de heuristiek maar dat er geen
+manier was om te zien wat de controle wél vindt; sinds
+`tests/scripts/tekst-controle.test.ts` staat elke vorm apart onder test — acht
+die hij moet vinden, zes die hij met rust moet laten.
+
+De taalkeuze op het profielscherm bestaat sinds vandaag — tot dan kon niemand
+`profiles.locale` vullen en volgde de app alleen je telefoon. Eén criterium
+blijft open en dat vraagt een mens: de app in het Engels doorlopen.
 
 ⚠️ **De RLS-suite (QS8-98) vond zeven gaten en die zijn alle zeven gedicht** in
 migraties 0005 t/m 0011. Twee waren ernstig: elk groepslid kon zichzelf beheerder
@@ -179,7 +191,8 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **553 geslaagd en 300 overgeslagen** (die 300 zijn de RLS-suite, zie §3b)
+  **790 geslaagd en 400 overgeslagen** (dat zijn achttien van de
+  twintig bestanden in `tests/rls`, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -755,10 +768,10 @@ De zwaarste op dit moment:
    naar binnen te zijn in plaats van één; de andere twee herstelden het
    lidmaatschap zelfs (eigen status terugzetten, eigen rij weggooien en opnieuw
    toetreden).
-3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
-   groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
-   want er staan 290 RLS-tests die niemand automatisch draait — dat is precies
-   het aantal dat `npm test` zonder credentials overslaat.
+3. ~~**De RLS-suite draait niet in CI**~~ — opgelost met QS8-119. CI bouwt het
+   schema uit `supabase/migrations/` op een eigen Postgres met een echte
+   PostgREST ervoor, en draait de suite daartegen zonder één secret. Groen in
+   GitHub zegt sindsdien wél iets over groepen, rate limiting en domeinregel 7.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het
    is dezelfde les nog een keer. De tabel is nu gevuld, dus de vraag "wat

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { reportError } from '../../lib/observability';
+import { now, ouderDan } from '../../shared/time';
 
 import { isCodeVorm, normaliseerCode } from './schemas';
 
@@ -28,13 +29,65 @@ import { isCodeVorm, normaliseerCode } from './schemas';
 
 const SLEUTEL = 'goalbuddies.openstaande-uitnodiging';
 
-/** Onthoud de code tot hij verzilverd is. */
+/**
+ * Hoe lang een bewaarde code vanzelf verzilverd mag worden — besluit A49.
+ *
+ * ⚠️ **Waarom hier een termijn op staat.** Deze opslag is gebouwd toen meedoen
+ *    aan een groep geen privacygevolgen had. Sinds besluit A41 heeft het die wel:
+ *    toetreden tot een **open** groep maakt je gemiste weken zichtbaar voor de
+ *    anderen — dezelfde overgang als het ópenzetten, waar een beheerder een
+ *    volledig bevestigingsblok voor doorloopt.
+ *
+ *    Zonder termijn kon iemand die de link twee weken geleden opende en toen
+ *    besloot niet mee te doen, alsnog in die groep belanden zodra hij een account
+ *    aanmaakte. Vierentwintig uur dekt het hoofdpad waar deze opslag voor bestaat
+ *    — een bevestigingsmail aantikken — en laat de rest niet meer stilzwijgend
+ *    doorlopen.
+ */
+export const UITNODIGING_GELDIG_UREN = 24;
+
+/** Wat er in de opslag staat. */
+interface Bewaard {
+  readonly code: string;
+  /** ISO-tijdstip. Ontbreekt in de vorm van vóór besluit A49. */
+  readonly op?: string;
+}
+
+export interface OpenstaandeUitnodiging {
+  readonly code: string;
+  /**
+   * Mag deze code nog vanzelf verzilverd worden?
+   *
+   * ⚠️ `false` betekent níét "gooi hem weg": de gebruiker landt dan op het
+   *    uitnodigingsscherm en kan zelf drukken. Weggooien zou de uitnodiging
+   *    doodmaken, en dat is precies wat deze opslag moest voorkomen.
+   */
+  readonly automatisch: boolean;
+}
+
+/**
+ * Onthoud de code tot hij verzilverd is.
+ *
+ * ⚠️ **Dezelfde code opnieuw openen zet de klok niet terug**, en dat is de hele
+ *    reparatie. Het uitnodigingsscherm bewaart bij elke mount, en de app stuurt
+ *    een vérlopen code juist naar dát scherm — dus met een onvoorwaardelijke
+ *    schrijfactie was de code daarna weer vers. Wie de link op dag 0 opende en
+ *    afhaakte, kwam op dag 14 langs het scherm, sloot de app, en stond bij de
+ *    volgende start stilzwijgend in de groep. De vervaltermijn van A49 hield
+ *    precies één app-start stand.
+ *
+ * ⚠️ Een ándere code overschrijft wél, met een vers tijdstip: dat is een nieuwe
+ *    uitnodiging en die begint aan zijn eigen 24 uur.
+ */
 export async function bewaarOpenstaandeUitnodiging(code: string): Promise<void> {
   const schoon = normaliseerCode(code);
   if (!isCodeVorm(schoon)) return;
 
   try {
-    await AsyncStorage.setItem(SLEUTEL, schoon);
+    if (await alBewaard(schoon)) return;
+
+    const inhoud: Bewaard = { code: schoon, op: now().toISOString() };
+    await AsyncStorage.setItem(SLEUTEL, JSON.stringify(inhoud));
   } catch (fout) {
     // Niet gooien: de uitnodiging kwijtraken is vervelend, maar het mag het
     // aanmelden zelf niet blokkeren.
@@ -42,11 +95,49 @@ export async function bewaarOpenstaandeUitnodiging(code: string): Promise<void> 
   }
 }
 
-/** De code die nog wacht, of `null`. */
-export async function openstaandeUitnodiging(): Promise<string | null> {
+/**
+ * Staat déze code er al, in welke vorm dan ook?
+ *
+ * ⚠️ Ook de kale vorm van vóór A49 telt mee. Die geldt als verlopen, en dat moet
+ *    hij blijven — hem hier overschrijven met een vers tijdstip zou de oude
+ *    opslag juist weer levend maken.
+ */
+async function alBewaard(code: string): Promise<boolean> {
+  const bewaard = await AsyncStorage.getItem(SLEUTEL);
+  if (bewaard === null) return false;
+  if (isCodeVorm(bewaard)) return bewaard === code;
+
+  try {
+    return (JSON.parse(bewaard) as Bewaard).code === code;
+  } catch {
+    // Onleesbare opslag: overschrijven is hier de veilige kant.
+    return false;
+  }
+}
+
+/**
+ * De uitnodiging die nog wacht, of `null`.
+ *
+ * ⚠️ **De oude opslagvorm was een kale code zonder tijdstip**, en die telt als
+ *    verlopen: zonder tijdstip is de leeftijd onbekend, en onbekend is hier de
+ *    kant waar niets vanzelf gebeurt. De code gaat wél mee terug, zodat de
+ *    gebruiker op het uitnodigingsscherm landt in plaats van met lege handen.
+ */
+export async function openstaandeUitnodiging(): Promise<OpenstaandeUitnodiging | null> {
   try {
     const bewaard = await AsyncStorage.getItem(SLEUTEL);
-    return bewaard !== null && isCodeVorm(bewaard) ? bewaard : null;
+    if (bewaard === null) return null;
+
+    // De vorm van vóór A49: een kale code.
+    if (isCodeVorm(bewaard)) return { code: bewaard, automatisch: false };
+
+    const gelezen = JSON.parse(bewaard) as Bewaard;
+    if (!isCodeVorm(gelezen.code)) return null;
+
+    return {
+      code: gelezen.code,
+      automatisch: !ouderDan(UITNODIGING_GELDIG_UREN, gelezen.op ?? null),
+    };
   } catch (fout) {
     reportError(fout, 'invite.recall');
     return null;
@@ -66,4 +157,49 @@ export async function vergeetOpenstaandeUitnodiging(): Promise<void> {
   } catch (fout) {
     reportError(fout, 'invite.forget');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Waar een bewaarde uitnodiging naartoe leidt — besluit A49
+// ---------------------------------------------------------------------------
+
+/** Wat er met een bewaarde uitnodiging moet gebeuren zodra iemand binnenkomt. */
+export type UitnodigingsRoute =
+  | { readonly soort: 'toetreden' }
+  | { readonly soort: 'toon-scherm'; readonly reden: 'verlopen' | 'onbekend' | 'open-groep' };
+
+/**
+ * De beslissing van besluit A49, los van het scherm dat hem uitvoert.
+ *
+ * ⚠️ **Deze functie bestaat omdat de belofte eronder nergens getest werd.** De
+ *    twee helften van A49 — een code verloopt na 24 uur, en een open groep gaat
+ *    nooit vanzelf — stonden allebei in `app/_layout.tsx`. De eerste helft had
+ *    tests via `openstaandeUitnodiging()`; de tweede had er geen enkele, en kón
+ *    ze niet hebben: er is geen `.test.tsx` in dit project en vitest draait in
+ *    node. De belofte die het zwaarst weegt van de twee was daarmee structureel
+ *    onbewaakt (onwrikbare regel 18). Gevonden bij het nameten van QS8-136 op
+ *    25-08-2026.
+ *
+ * ⚠️ **De volgorde is de regel en niet een detail.** Verlopen wint van alles: dan
+ *    is er geen verse toestemming, en of de groep open is doet er niet meer toe.
+ *    Daarna wint onbekend: kan de uitnodiging niet opgehaald worden, dan is dat
+ *    de kant waar niets stilzwijgend gebeurt. Pas daarna komt de zichtbaarheid.
+ *
+ * ⚠️ `toon-scherm` is nooit "weggooien". De gebruiker landt op het
+ *    uitnodigingsscherm en drukt zelf; de code blijft bestaan. Weggooien zou de
+ *    uitnodiging doodmaken, en dat is precies wat deze opslag moest voorkomen.
+ */
+export function routeVoorUitnodiging(invoer: {
+  /** Is de bewaarde code nog vers genoeg om zonder handeling te verzilveren? */
+  readonly automatisch: boolean;
+  /**
+   * De zichtbaarheid van de groep, of `null` als hij niet op te halen was — of
+   * niet opgehaald ís, omdat `automatisch` al `false` was.
+   */
+  readonly zichtbaarheid: 'beschermd' | 'open' | null;
+}): UitnodigingsRoute {
+  if (!invoer.automatisch) return { soort: 'toon-scherm', reden: 'verlopen' };
+  if (invoer.zichtbaarheid === null) return { soort: 'toon-scherm', reden: 'onbekend' };
+  if (invoer.zichtbaarheid === 'open') return { soort: 'toon-scherm', reden: 'open-groep' };
+  return { soort: 'toetreden' };
 }

@@ -13,7 +13,9 @@ import {
   type Reactie,
   type WeekafsluitingInvoer,
 } from './weekafsluiting-schemas';
+import { budgetOp } from './rem';
 import { oudLid } from './systeemberichten';
+import { invoerfout, type RpcRij } from '../../shared/api';
 
 /**
  * De weekafsluiting — QS8-73.
@@ -41,7 +43,7 @@ export const REACTIES_PER_PAGINA = 100;
  *    kolom in `weekafsluiting()`, dan breekt de build hier en niet op het scherm.
  */
 type RpcAntwoordRij = Database['public']['Functions']['weekafsluiting']['Returns'][number];
-type AntwoordRij = { readonly [K in keyof RpcAntwoordRij]: RpcAntwoordRij[K] | null };
+type AntwoordRij = RpcRij<RpcAntwoordRij>;
 
 function naarAntwoord(rij: AntwoordRij): Antwoord | null {
   if (typeof rij.review_id !== 'string' || typeof rij.user_id !== 'string') {
@@ -88,7 +90,7 @@ export async function fetchWeekafsluiting(
 
 type RpcReactieRij =
   Database['public']['Functions']['weekafsluiting_reacties']['Returns'][number];
-type ReactieRij = { readonly [K in keyof RpcReactieRij]: RpcReactieRij[K] | null };
+type ReactieRij = RpcRij<RpcReactieRij>;
 
 function naarReactie(rij: ReactieRij): Reactie | null {
   if (
@@ -174,7 +176,7 @@ export async function bewaarWeekafsluiting(
 ): Promise<Resultaat<true>> {
   const gevalideerd = weekafsluitingSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('weekafsluiting.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('weekafsluiting.invoer')) };
   }
 
   const leegAlsNull = (tekst: string): string | null => (tekst === '' ? null : tekst);
@@ -250,7 +252,7 @@ export async function reageerOpAntwoord(
 ): Promise<Resultaat<true>> {
   const gevalideerd = reactieSchema.safeParse({ body });
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('weekafsluiting.reactie_controleer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('weekafsluiting.reactie_controleer')) };
   }
 
   const { error } = await supabase().from('week_review_replies').insert({
@@ -261,6 +263,12 @@ export async function reageerOpAntwoord(
 
   if (error) {
     reportError(error, 'weekreview.reply', { pgcode: error.code });
+
+    // ⚠️ Zelfde reden als bij een chatbericht: 42501 zegt niet waaróm.
+    if (await budgetOp('weekreacties_over')) {
+      return { ok: false, melding: t('weekafsluiting.reactie_rem_bereikt') };
+    }
+
     return { ok: false, melding: t('weekafsluiting.reactie_mislukt') };
   }
 

@@ -69,6 +69,71 @@ export function apparaatTijdzone(): TimeZone {
   }
 }
 
+/**
+ * Alle tijdzones die dit platform kent, of een lege lijst.
+ *
+ * ⚠️ **Hier en niet bij het scherm, om dezelfde reden als `apparaatTijdzone()`**:
+ *    correctheidsregel 7 zegt dat de vraag "welke tijdzones bestaan er" één keer
+ *    gesteld wordt, en dit is die plek. Een scherm dat zelf `Intl` bevraagt, is
+ *    de tweede afleiding waar 24-08 al een keer op misging.
+ *
+ * ⚠️ **`Intl.supportedValuesOf` is niet overal aanwezig**, en dat is geen
+ *    theoretisch geval: Hermes heeft het pas sinds kort en oudere
+ *    JavaScriptCore-versies missen het. Vandaar een lege lijst als terugval en
+ *    geen exception — het scherm hoort dan een invoerveld te tonen in plaats van
+ *    een keuzelijst, niet om te vallen.
+ *
+ * ⚠️ De lijst wordt éénmalig opgebouwd en daarna hergebruikt. Hij verandert
+ *    binnen een sessie niet, en hij is een paar honderd strings groot.
+ */
+/**
+ * De kanonieke schrijfwijze van een tijdzone.
+ *
+ * ⚠️ **Hier en niet in `shared/ui`, en de lint-regel van dit project heeft me
+ *    daarop gewezen.** De eerste versie stond bij het scherm, en dat is precies
+ *    de tweede afleiding waar correctheidsregel 7 over gaat: wie de tijdzone
+ *    bepaalt, doet dat in `shared/time`.
+ *
+ * ⚠️ **`Intl` accepteert `europe/amsterdam` en dat is het probleem.** De zone
+ *    wérkt — `currentUserCycle()` rekent er goed mee — maar hij wordt opgeslagen
+ *    zoals je hem typte. Gevolg, gemeten in de critical-user-ronde van 24-08: het
+ *    voorstel `Europe/Amsterdam` staat dan naast een knop "Gebruik
+ *    europe/amsterdam" die hetzelfde doet, en na het opslaan verdwijnt de knop
+ *    "de tijdzone van dit apparaat" nooit meer — want die vergelijking is op
+ *    tekst. Eén vorm in de database houdt élke plek overeind die zo vergelijkt.
+ *
+ * ⚠️ Gooit niet op rommel. Een ongeldige zone komt niet langs
+ *    `isGeldigeTijdzone()`, maar een helper die gooit is een storing die je pas
+ *    in productie ziet.
+ */
+export function normaliseerZone(waarde: string): TimeZone {
+  const schoon = waarde.trim();
+
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: schoon }).resolvedOptions().timeZone;
+  } catch {
+    return schoon;
+  }
+}
+
+let zonesCache: readonly TimeZone[] | null = null;
+
+export function tijdzones(): readonly TimeZone[] {
+  if (zonesCache !== null) return zonesCache;
+
+  try {
+    const gemeld = (
+      Intl as unknown as { supportedValuesOf?: (soort: string) => string[] }
+    ).supportedValuesOf?.('timeZone');
+
+    zonesCache = Array.isArray(gemeld) ? gemeld : [];
+  } catch {
+    zonesCache = [];
+  }
+
+  return zonesCache;
+}
+
 const formatters = new Map<TimeZone, Intl.DateTimeFormat>();
 
 function formatterFor(tz: TimeZone): Intl.DateTimeFormat {

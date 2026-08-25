@@ -101,6 +101,8 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,
+  DOELGEBEURTENISSEN,
+  DOELGEBEURTENISSEN_CLIENT,
   categorieLabels,
   datumLigtInDeToekomst,
   doelPatchSchema,

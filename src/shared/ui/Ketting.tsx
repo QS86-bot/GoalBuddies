@@ -71,7 +71,7 @@ export function Ketting({ stand, toonSchakels = true }: Props) {
       // ⚠️ Ook voor een schermlezer geen namen en geen "ontbreekt": dezelfde
       //    zin als op het scherm, want een toegankelijkheidslabel is óók een
       //    oppervlak dat de groep ziet.
-      accessibilityLabel={`De Ketting: ${kettingLabel(stand)}`}
+      accessibilityLabel={t('ketting.a11y', { stand: kettingLabel(stand) })}
       accessibilityValue={{ min: 0, max: 100, now: percentage }}
     >
       <View style={styles.kop}>

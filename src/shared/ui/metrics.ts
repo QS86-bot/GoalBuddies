@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { getal, t } from '../i18n';
 
 /**
  * De rekenregels achter de visuele componenten.
@@ -179,6 +179,59 @@ export function milestoneProgress(done: number, total: number): number {
 export function streakLabel(cycles: number): string {
   if (cycles <= 0) return t('reeks.geen');
   return cycles === 1 ? t('reeks.een') : t('reeks.meer', { n: cycles });
+}
+
+/**
+ * De beste reeks, met eenheid.
+ *
+ * ⚠️ Naast `streakLabel()` — "3 weken op rij" — las "Beste reeks: 7" als zeven
+ *    wat. En de meervoudsvorm is een eigen sleutel en geen ternary in de zin:
+ *    `t()` kent geen meervoudsregels, en dat is bewust (zie `shared/i18n`).
+ */
+export function besteReeksLabel(cycles: number): string {
+  return cycles === 1 ? t('reeks.beste_een') : t('reeks.beste_meer', { aantal: getal(cycles, 0) });
+}
+
+/**
+ * Wat een schermlezer van één ledenrij hoort — QS8-80, gesloten 25-08-2026.
+ *
+ * ⚠️ **Dit is de gevaarlijkste zin in de app, en tot vandaag bestond hij niet.**
+ *    `MemberRow` toonde het "afgerond"-signaal als een gekleurd bolletje van tien
+ *    bij tien pixels zónder label. Voor wie kleuren niet onderscheidt of een
+ *    schermlezer gebruikt was het positieve signaal daarmee onhoorbaar, terwijl
+ *    de rij eromheen (naam, reeks) wél voorgelezen werd. De zorgvuldigheid zat in
+ *    de kleur en die is de helft van de gebruikers niet gegeven.
+ *
+ * ⚠️ **De belofte is niet "de rij is voorleesbaar" maar "de afwezigheid blijft
+ *    stil".** Alles wat hier bij komt gaat over iemand ánders (domeinregel 7),
+ *    dus deze functie voegt uitsluitend toe wat er wél is: de reeks, een
+ *    aangekondigde adempauze, en dát iemand deze periode afrondde. Er is geen tak
+ *    die iets zegt over niet-afgerond, en die mag er ook nooit bij komen — "nog
+ *    niet" per persoon voorgelezen is precies de presentielijst die De Ketting
+ *    niet wil zijn.
+ *
+ * ⚠️ Hij staat hier en niet in het component omdat een zin die een domeinregel
+ *    draagt te toetsen moet zijn zonder renderer. Zie `metrics.test.ts`.
+ */
+export function ledenrijLabel(input: {
+  readonly name: string;
+  readonly streak: number;
+  readonly closedThisPeriod: boolean;
+  readonly onBreather?: boolean;
+  readonly bestStreak?: number | null;
+}): string {
+  const delen = [input.name, streakLabel(input.streak)];
+
+  // Zelfde regel als in de rij zelf: gelijk voegt niets toe, lager is data die
+  // niet klopt, en dan is zwijgen beter dan een tegenstrijdig getal.
+  if (input.bestStreak !== null && input.bestStreak !== undefined && input.bestStreak > input.streak) {
+    delen.push(besteReeksLabel(input.bestStreak));
+  }
+
+  if (input.onBreather === true) delen.push(t('lid.adempauze'));
+  else if (input.closedThisPeriod) delen.push(t('lid.afgerond'));
+
+  return delen.join(', ');
 }
 
 // ---------------------------------------------------------------------------

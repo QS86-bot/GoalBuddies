@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
@@ -9,7 +9,6 @@ import {
   fetchRisicos,
   type Categorie,
   type DoelMetVoortgang,
-  type Pagina,
   type Risico,
 } from '@/modules/goals';
 import { t } from '@/shared/i18n';
@@ -17,6 +16,7 @@ import { space, useTheme } from '@/shared/theme';
 import { localDateIn, now } from '@/shared/time';
 import {
   AsyncView,
+  useAsync,
   Body,
   Button,
   Caption,
@@ -42,33 +42,14 @@ export default function Doelen() {
   const { userId } = useSession();
   const { profiel } = useProfiel();
 
-  const [pagina, setPagina] = useState<Pagina<DoelMetVoortgang> | null>(null);
   const [risicos, setRisicos] = useState<ReadonlyMap<string, Risico>>(new Map());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-  const [ronde, setRonde] = useState(0);
 
-  useEffect(() => {
-    if (!userId) return;
-    let levend = true;
-
-    fetchDoelen(userId)
-      .then((uitkomst) => {
-        if (!levend) return;
-        setPagina(uitkomst);
-        setError(null);
-      })
-      .catch((fout: unknown) => {
-        if (levend) setError(fout);
-      })
-      .finally(() => {
-        if (levend) setLoading(false);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [userId, ronde]);
+  const {
+    data: pagina,
+    loading,
+    error,
+    herlaad,
+  } = useAsync(userId ? () => fetchDoelen(userId) : null, [userId]);
 
   // De risicostanden in één verzoek voor de hele pagina — niet één per doel
   // (regel 12). Faalt apart: een lijst zonder standen is bruikbaar, een lijst
@@ -94,8 +75,6 @@ export default function Doelen() {
     };
   }, [pagina]);
 
-  const herlaad = useCallback(() => setRonde((n) => n + 1), []);
-
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
 
   return (
@@ -103,7 +82,7 @@ export default function Doelen() {
       <AsyncView
         loading={loading}
         error={error}
-        data={pagina ?? undefined}
+        data={pagina}
         isEmpty={(p) => p.rijen.length === 0}
         onRetry={herlaad}
         empty={{

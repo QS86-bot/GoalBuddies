@@ -726,3 +726,85 @@ export function onbekendeCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
   return Array.from(bytes, (b) => alfabet[b % alfabet.length]).join('');
 }
+
+/**
+ * Foutcodes waarmee een schrijfpoging correct geweigerd mag worden.
+ *
+ * ⚠️ `42501` is de RLS- en kolomgrant-weigering, `23514` een CHECK, `P0001` een
+ *    `raise exception` uit een trigger. Alles daarbuiten — een onbekende kolom,
+ *    een kapotte relatie — geeft óók een fout en géén wijziging, en zou een
+ *    naïeve "er is niets veranderd"-toets dus laten slagen op iets dat stuk is.
+ */
+export const WEIGERCODES = ['42501', '23514', 'P0001'] as const;
+
+interface Schrijfuitkomst {
+  readonly error: { readonly code?: string; readonly message?: string } | null;
+}
+
+/**
+ * "Deze schrijfpoging mag niet landen" — zonder dat de schrijver hoeft te weten
+ * op welke helft van de policy hij afketst.
+ *
+ * ⚠️ **Dit is de bevinding van 21-08-2026, uitgevoerd in plaats van opgeschreven.**
+ *    Alleen een schending van de `with check` geeft `42501`. Ketst de rij af op
+ *    de `using`, dan filtert RLS hem wég: de UPDATE raakt nul rijen en PostgREST
+ *    antwoordt met 204 en zonder fout. **Dezelfde policy weigert dus luid of
+ *    stil, afhankelijk van welke helft afgaat** — en een test die op `42501`
+ *    let, ziet het tweede geval aan voor succes. De eerste proef op 0057
+ *    concludeerde daaruit letterlijk "gelukt (fout!)" waar de policy juist
+ *    correct weigerde.
+ *
+ * ⚠️ **De uitkomst is de enige eigenschap die in béide gevallen klopt**: de rij
+ *    is achteraf onveranderd. Daarom leest deze helper vóór en ná, en niet met
+ *    de client die de poging deed maar met `adminDb()` — die de rij hoe dan ook
+ *    ziet. Een client die de rij door de `using` niet meer mag lezen, zou anders
+ *    twee keer `null` teruggeven, en dat is "onveranderd" dat niets bewijst.
+ *
+ * ⚠️ **Een fout van een andere soort is een rode test en geen groene.** Een typo
+ *    in een kolomnaam geeft ook een fout en verandert ook niets; zonder deze
+ *    toets zou zo'n test blijven staan als bewijs voor een policy die hij nooit
+ *    heeft aangeraakt.
+ *
+ * @param schrijf de poging, met de client van de gebruiker die hem niet mag doen
+ * @param lees de rij zoals `adminDb()` hem ziet — vóór en ná
+ */
+export async function magNietLanden(
+  schrijf: () => PromiseLike<Schrijfuitkomst>,
+  lees: () => PromiseLike<{ data: unknown }>,
+): Promise<void> {
+  const voorData = (await lees()).data ?? null;
+
+  // ⚠️ **Eerst bewijzen dat er iets te veranderen vált.** Zonder deze toets is
+  //    "onveranderd" gratis: een filter die niets raakt, laat elke schrijfpoging
+  //    slagen zonder één policy aan te raken, en de test staat er daarna als
+  //    bewijs voor een slot dat hij nooit heeft geprobeerd. Dat is dezelfde val
+  //    als een controle die nul meldt omdat hij nergens keek.
+  if (voorData === null || (Array.isArray(voorData) && voorData.length === 0)) {
+    throw new Error(
+      'magNietLanden: `lees()` geeft niets terug, dus er is niets dat kan ' +
+        'veranderen. Zo bewijst deze test geen slot maar een lege selectie.',
+    );
+  }
+
+  const voor = JSON.stringify(voorData);
+
+  const { error } = await schrijf();
+
+  if (error !== null && !WEIGERCODES.includes(error.code as never)) {
+    throw new Error(
+      `Geweigerd met een onverwachte code ${error.code}: ${error.message}. ` +
+        'Dat is geen policy-weigering maar iets dat stuk is.',
+    );
+  }
+
+  const na = JSON.stringify((await lees()).data ?? null);
+
+  if (na !== voor) {
+    throw new Error(
+      `De schrijfpoging is wél geland.\n  vóór: ${voor}\n  ná:   ${na}\n` +
+        (error === null
+          ? 'Er kwam geen fout, dus dit was een stille doorlaat.'
+          : `Er kwam ${error.code}, maar de rij veranderde alsnog.`),
+    );
+  }
+}

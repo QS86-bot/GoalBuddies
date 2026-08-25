@@ -40,7 +40,7 @@ export function AsyncView<T>({
 
   if (loading && data === undefined) {
     return (
-      <View style={styles.midden} accessibilityRole="progressbar" accessibilityLabel="Laden">
+      <View style={styles.midden} accessibilityRole="progressbar" accessibilityLabel={t('algemeen.laden')}>
         <ActivityIndicator color={theme.colors.accent} />
       </View>
     );

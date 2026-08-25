@@ -39,7 +39,10 @@ const SETS = [
     //    plaats van in `supabase/functions/`. Hij heeft nul imports en gebruikt
     //    alleen WebCrypto, dus hij kán mee; dit maakt de belofte waar in plaats
     //    van hem te schrappen. Gevonden in de security-review van 23-08.
-    alleen: ['regels.ts', 'webpush-crypto.ts'],
+    // ⚠️ `webpush-verzenden.ts` staat hier sinds 25-08-2026 — het verzendpad dat
+    //    er nooit was. Zelfde reden als hierboven: hij hoort in `src/` te staan
+    //    omdat daar vitest draait, en hier omdat de Edge Function hem aanroept.
+    alleen: ['regels.ts', 'webpush-crypto.ts', 'webpush-verzenden.ts'],
   },
 ];
 

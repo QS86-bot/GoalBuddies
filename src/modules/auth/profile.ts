@@ -3,9 +3,10 @@ import { t } from '../../shared/i18n';
 import type { Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { apparaatTijdzone, type UserClock, type Weekday } from '../../shared/time';
+import { type UserClock, type Weekday } from '../../shared/time';
 
 import { profielPatchSchema, type ProfielPatch } from './schemas';
+import { invoerfout } from '../../shared/api';
 
 /**
  * Het profiel: naam, avatar, tijdzone, week-startdag en herinneringen.
@@ -18,9 +19,34 @@ import { profielPatchSchema, type ProfielPatch } from './schemas';
 
 export type Profiel = Tables<'profiles'>;
 
+/**
+ * Je eigen profiel.
+ *
+ * ⚠️ **Leest `mijn_profiel` en niet `profiles`, en dat is geen smaak.** Migratie
+ *    0089 trok `reminder_time`, `reminder_enabled` en `reminder_tone` in voor de
+ *    rol `authenticated`: `profiles_select` geeft groepsgenoten de héle rij en
+ *    RLS kan geen kolommen beperken, dus elke buddy kon je dagritme uitlezen. Een
+ *    grant kent geen rijen, dus die intrekking trof ook jou — vandaar de view,
+ *    die met de rechten van zijn eigenaar draait en precies jouw rij teruggeeft.
+ *
+ * ⚠️ `userId` blijft in de handtekening staan omdat de aanroeper hem toch heeft en
+ *    het de bedoeling expliciet maakt. De view filtert zelf op `auth.uid()`, dus
+ *    een andere id meegeven levert niets op in plaats van andermans profiel.
+ *
+ * ⚠️ **De cast, en waarom hij hier mag.** De gegenereerde typen maken elke kolom
+ *    van een view nullable: Postgres draagt `not null` niet door een view heen, dus
+ *    dat is een artefact van de typegeneratie en niet van de gegevens. De view is
+ *    letterlijk `select p.* from profiles p where p.id = auth.uid()`, dus wat er
+ *    uitkomt is één rij van `profiles` met precies dezelfde garanties.
+ *
+ *    Blijft dat zo? Ja, want het staat onder test: `policies.test.ts` toetst dat
+ *    de view precies één rij geeft en die van de aanroeper is. Wordt de view ooit
+ *    een projectie in plaats van `p.*`, dan is deze cast fout — en dan hoort
+ *    `Profiel` mee te veranderen. Zet dat in de kop van die migratie.
+ */
 export async function fetchProfiel(userId: string): Promise<Profiel | null> {
   const { data, error } = await supabase()
-    .from('profiles')
+    .from('mijn_profiel')
     .select('*')
     .eq('id', userId)
     .maybeSingle();
@@ -30,7 +56,7 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
     throw new Error(t('profiel.laden_mislukt'));
   }
 
-  return data;
+  return data === null ? null : (data as Profiel);
 }
 
 export type ProfielUitkomst = { ok: true; profiel: Profiel } | { ok: false; melding: string };
@@ -41,7 +67,7 @@ export async function updateProfiel(
 ): Promise<ProfielUitkomst> {
   const gevalideerd = profielPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('auth.fout.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('auth.fout.invoer')) };
   }
 
   // ⚠️ Veld voor veld, en niet `update(gevalideerd.data)`. Zod maakt van een
@@ -61,11 +87,20 @@ export async function updateProfiel(
   }
   if (velden.locale !== undefined) update.locale = velden.locale;
 
+  // ⚠️ **`select('id')` en niet `select('*')`, en dat is geen zuinigheid.**
+  //    Migratie 0089 trok de tabelbrede SELECT op `profiles` in: `authenticated`
+  //    mag nog maar `id`, `display_name` en `avatar_url` lezen. Een `returning *`
+  //    vraagt leesrecht op élke kolom, dus deze schrijfactie viel om met 42501 —
+  //    "permission denied for table profiles" — en daarmee élke profielinstelling:
+  //    tijdzone, week-startdag, herinneringen, taal.
+  //
+  //    Het opnieuw lezen gaat via `fetchProfiel()`, dat `mijn_profiel` gebruikt.
+  //    Die view draait met de rechten van zijn eigenaar en geeft precies jouw rij.
   const { data, error } = await supabase()
     .from('profiles')
     .update(update)
     .eq('id', userId)
-    .select('*')
+    .select('id')
     .single();
 
   if (error) {
@@ -73,7 +108,26 @@ export async function updateProfiel(
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
-  return { ok: true, profiel: data };
+  const profiel = await teruglezen(data.id);
+  if (profiel === null) return { ok: false, melding: t('profiel.opslaan_mislukt') };
+
+  return { ok: true, profiel };
+}
+
+/**
+ * Leest het zojuist geschreven profiel terug.
+ *
+ * ⚠️ Een tweede rondje, en dat is de prijs van de kolomgrant uit 0089. Faalt het
+ *    lezen, dan is er wél geschreven — vandaar dat de melding hetzelfde is en de
+ *    fout gerapporteerd wordt, in plaats van dat er een half profiel teruggaat.
+ */
+async function teruglezen(userId: string): Promise<Profiel | null> {
+  try {
+    return await fetchProfiel(userId);
+  } catch (fout) {
+    reportError(fout, 'profile.reread', { user_id: userId });
+    return null;
+  }
 }
 
 /**
@@ -91,11 +145,13 @@ export async function rondOnboardingAf(
   userId: string,
   wantsOwnGoal: boolean,
 ): Promise<ProfielUitkomst> {
+  // ⚠️ Zelfde reden als in `updateProfiel()`: `select('*')` viel om op de
+  //    kolomgrant van 0089, en dan kon niemand de onboarding afronden.
   const { data, error } = await supabase()
     .from('profiles')
     .update({ onboarded_at: 'now', wants_own_goal: wantsOwnGoal })
     .eq('id', userId)
-    .select('*')
+    .select('id')
     .single();
 
   if (error) {
@@ -103,7 +159,10 @@ export async function rondOnboardingAf(
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
-  return { ok: true, profiel: data };
+  const profiel = await teruglezen(data.id);
+  if (profiel === null) return { ok: false, melding: t('profiel.opslaan_mislukt') };
+
+  return { ok: true, profiel };
 }
 
 /** Heeft deze gebruiker de onboarding gehad? */
@@ -125,13 +184,3 @@ export function userClock(profiel: Pick<Profiel, 'week_start_day' | 'tz'>): User
   };
 }
 
-/**
- * De tijdzone van het toestel, als voorstel bij de onboarding.
- *
- * Een voorstel en geen automatisme: iemand die in Lissabon woont maar zijn
- * telefoon op Amsterdam heeft staan, moet dat kunnen rechtzetten. En wie reist,
- * wil niet dat zijn week verspringt omdat hij een week in Bangkok zat.
- */
-export function voorgesteldeTijdzone(): string {
-  return apparaatTijdzone();
-}

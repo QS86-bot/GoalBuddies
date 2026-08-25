@@ -232,7 +232,7 @@ function Terugdraaien({
 
   return (
     <Card nested>
-      <Body>Je hebt de week van {naam} bevestigd.</Body>
+      <Body>{t('beoordelen.bevestigd', { naam })}</Body>
       {/*
         ⚠️ "Verkeerde buddy?" en niet "weet je het zeker?". De vergissing die dit
            opvangt is een dikke duim op een klein scherm, en die benoem je zonder
@@ -279,7 +279,7 @@ function BeoordeelKaart({
     //    zei dat je misschien geen lid meer was van de groep. Dat is een
     //    beschuldiging voor iets dat gewoon een sessie is die nog laadt.
     if (approverId === null || approverId === '') {
-      setFout('Je sessie is nog aan het laden. Probeer het over een tel opnieuw.');
+      setFout(t('beoordelen.sessie_laadt'));
       return;
     }
 

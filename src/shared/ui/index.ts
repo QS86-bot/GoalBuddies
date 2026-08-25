@@ -12,6 +12,7 @@
  */
 
 export { AsyncView } from './AsyncView';
+export { useAsync, laad } from './useAsync';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
 export { initialen } from './naming';
@@ -33,6 +34,9 @@ export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Viering } from './Viering';
 export { TaalKeuze } from './TaalKeuze';
+export { TIP_CATEGORIEEN, TIPS_PER_CATEGORIE, weektip, type TipCategorie } from './tips';
+export { TijdzoneKeuze } from './TijdzoneKeuze';
+export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
 export { WeekStartKeuze } from './WeekStartKeuze';
 export { Body, Caption, Eyebrow, Heading, Subheading } from './Text';
 
@@ -72,6 +76,7 @@ export {
   rangeState,
   kettingLabel,
   kettingVulling,
+  besteReeksLabel,
   streakLabel,
   puntenUitleg,
   weekpasUitleg,

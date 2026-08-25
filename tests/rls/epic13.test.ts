@@ -198,7 +198,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     kijker: TestUser,
     groep: Groep,
     over: TestUser,
-  ): Promise<{ current_streak: number | null; best_streak: number | null } | null> {
+  ): Promise<{
+    current_streak: number | null;
+    best_streak: number | null;
+    last_cycle_start: string | null;
+  } | null> {
     const { data, error } = await kijker.db.rpc('group_overview', {
       p_group_id: groep.id,
       p_period_start: f.cycleStart,
@@ -207,9 +211,18 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     if (error) throw new Error(`groepsoverzicht lezen: ${error.message}`);
 
     const rij = (data ?? []).find((r) => r.user_id === over.id);
+    // ⚠️ `last_cycle_start` staat hier sinds 25-08-2026. Hij varieert op dezelfde
+    //    `case` als `best_streak` (0078), maar werd in de open stand alleen op de
+    //    view zelf getoetst en niet via deze RPC — en de RPC is wat het scherm
+    //    leest. Wie hem ooit uit de projectie van `group_overview()` haalt, brak
+    //    daarmee een acceptatiecriterium zonder dat één test rood werd.
     return rij === undefined
       ? null
-      : { current_streak: rij.current_streak, best_streak: rij.best_streak };
+      : {
+          current_streak: rij.current_streak,
+          best_streak: rij.best_streak,
+          last_cycle_start: rij.last_cycle_start,
+        };
   }
 
   async function zichtbaarheidVan(groep: Groep): Promise<string | null> {
@@ -260,6 +273,10 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     await laatMeedoen(bob, f.groepOpen);
     await laatMeedoen(bob, f.groepSchakel);
     await laatMeedoen(bob, f.groepGemengdOpen);
+    // ⚠️ Bob zit in béíde helften van de gemengde koppeling, en dat is met opzet:
+    //    alleen zo is de asymmetrie tussen de twee helpers zichtbaar op één
+    //    scherm. Zie de test "twee helpers, twee antwoorden".
+    await laatMeedoen(bob, f.groepGemengdDicht);
     // ⚠️ Carol zit uitsluitend in de bescherméde helft van de gemengde
     //    koppeling. Zij is het bewijs dat de derde tak per groep beslist.
     await laatMeedoen(carol, f.groepGemengdDicht);
@@ -286,7 +303,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     const reeksen = await adminDb()
       .from('user_streaks')
       .upsert(
-        [f.doelBeschermd, f.doelOpen].map((goalId) => ({
+        // ⚠️ `doelGemengd` staat er sinds 24-08 bij. De suite-kop noemt die
+        //    fixture "de belangrijkste", en hij werd maar op één van de vier
+        //    oppervlakken uitgeoefend — de reeks had geen rij, dus de gemengde
+        //    koppeling zei daar niets. Gevonden door de code-critic-ronde.
+        [f.doelBeschermd, f.doelOpen, f.doelGemengd].map((goalId) => ({
           user_id: alice.id,
           goal_id: goalId,
           current_streak: 2,
@@ -305,6 +326,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       .insert([
         { group_id: f.groepBeschermd.id, user_id: alice.id, group_period_start: f.oudePeriode },
         { group_id: f.groepOpen.id, user_id: alice.id, group_period_start: f.oudePeriode },
+        { group_id: f.groepGemengdDicht.id, user_id: alice.id, group_period_start: f.oudePeriode },
       ]);
     if (schakels.error) throw new Error(`schakels: ${schakels.error.message}`);
   }, SETUP_TIMEOUT);
@@ -665,6 +687,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
         expect(rij?.current_streak).toBe(2);
         expect(rij?.best_streak).toBeNull();
+        expect(rij?.last_cycle_start).toBeNull();
       },
       TEST_TIMEOUT,
     );
@@ -676,6 +699,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
         expect(rij?.current_streak).toBe(2);
         expect(rij?.best_streak).toBe(7);
+        // Zelfde `case`, zelfde belofte — en hij komt langs de RPC die het scherm
+        // gebruikt, niet alleen langs de view eronder.
+        expect(rij?.last_cycle_start).not.toBeNull();
       },
       TEST_TIMEOUT,
     );
@@ -822,6 +848,32 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     );
 
     it(
+      'wijkt voor de eigenaar zelf, en alleen naar de strenge kant',
+      async () => {
+        // ⚠️ **De belofte hierboven geldt niet algemeen, en dat is geen fout maar
+        //    een asymmetrie die opgeschreven hoort te staan.** Nagemeten op
+        //    25-08-2026: de test erboven kijkt uitsluitend door de ogen van bob,
+        //    en voor een kijker die níét de eigenaar is klopt de gelijkheid. Voor
+        //    de eigenaar niet.
+        //
+        //    `chain_links_select` heeft `user_id = auth.uid()` als eerste tak,
+        //    zónder venster — je eigen ketting is van jou, ongeacht hoe oud.
+        //    `group_overview()` heeft die tak niet: daar geldt het venster van
+        //    acht dagen voor iedereen, ook voor jezelf.
+        //
+        //    Alice ziet haar eigen oude schakel dus wél in de tabel en krijgt
+        //    tegelijk `closed_this_period = false` uit het overzicht. Dat is
+        //    strenger en niet losser, en het scherm vraagt toch alleen de lopende
+        //    periode op — maar zonder deze test zou iemand die de gelijkheid
+        //    algemeen maakt (bijvoorbeeld door dezelfde eigenaarstak aan
+        //    `group_overview()` toe te voegen) denken dat hij een bug repareert.
+        expect(await historischeSchakels(f.alice, f.groepBeschermd)).toBe(1);
+        expect(await afgeslotenInOudePeriode(f.alice, f.groepBeschermd)).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'laat de eigenaar zijn eigen geschiedenis in beide standen zien',
       async () => {
         // `user_id = auth.uid()` is de eerste tak van de policy en die verandert
@@ -857,6 +909,42 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       TEST_TIMEOUT,
     );
   });
+
+  it(
+    'twee helpers, twee antwoorden — en dat staat op één scherm',
+    async () => {
+      // ⚠️ **De asymmetrie die de code-review van 24-08 vond, hier vastgelegd in
+      //    plaats van opnieuw ontdekt.** De vier oppervlakken beantwoorden
+      //    "staat deze groep open?" met twee verschillende vragen:
+      //
+      //      * oppervlak 2 en 3 vragen `deelt_open_groep_met_doel()` — per **doel**;
+      //      * oppervlak 13 vraagt `lid_van_open_groep()` — per **groep**.
+      //
+      //    Bob zit in béíde helften van de gemengde koppeling. Vraagt hij het
+      //    overzicht van de bescherméde helft op, dan krijgt hij de beste reeks
+      //    van alice wél (hij deelt via de open helft een open groep mét dat
+      //    doel) maar de historische schakel níét (déze groep is beschermd).
+      //
+      //    Dat is geen lek — bob mag die reeks al via de open groep, en de
+      //    schakel hoort bij de beschermde. Het is wel twee antwoorden op één
+      //    scherm, en dat hoort iemand te wéten in plaats van tegen te komen.
+      //    De onderbouwing van twee losse helpers staat in 0079 §1.
+      expect((await overzichtsrij(f.bob, f.groepGemengdDicht, f.alice))?.best_streak).toBe(7);
+
+      const schakels = await f.bob.db
+        .from('chain_links')
+        .select('user_id')
+        .eq('group_id', f.groepGemengdDicht.id)
+        .eq('group_period_start', f.oudePeriode);
+
+      expect(schakels.error).toBeNull();
+      expect(schakels.data ?? []).toEqual([]);
+
+      // En carol, die alleen de beschermde helft deelt, ziet geen van beide.
+      expect((await overzichtsrij(f.carol, f.groepGemengdDicht, f.alice))?.best_streak).toBeNull();
+    },
+    TEST_TIMEOUT,
+  );
 
   // -------------------------------------------------------------------------
   describe('meedoen is de tweede route, en die had geen bericht', () => {
@@ -913,6 +1001,32 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
   // -------------------------------------------------------------------------
   describe('wat "open" niet is', () => {
+    it(
+      'houdt de weekpassen van een ander dicht, ook in een open groep',
+      async () => {
+        // ⚠️ Oppervlak 19 staat bewust dicht in béíde standen (beslisdocument 002
+        //    §6b): een verbruikte pas is een gemiste week plus de handeling om
+        //    hem te redden, en dat is een privévoorraad. `weekpas_stand()` draagt
+        //    zijn eigenaarstoets zélf en leunt niet op RLS — een groepsgenoot mág
+        //    de rijen van een gekoppeld doel lezen, dus een INVOKER-functie zou de
+        //    voorraad van een ander teruggeven. Die toets was in 0039 stuk en is
+        //    in 0040 gedicht; deze test staat er zodat A41 hem niet alsnog opent.
+        const rijen = await f.bob.db
+          .from('week_pass_events')
+          .select('id')
+          .eq('user_id', f.alice.id);
+
+        expect(rijen.error).toBeNull();
+        expect(rijen.data ?? []).toEqual([]);
+
+        const stand = await f.bob.db.rpc('weekpas_stand', { p_goal_id: f.doelOpen });
+
+        expect(stand.error).toBeNull();
+        expect(JSON.stringify(stand.data ?? {})).not.toContain(f.alice.id);
+      },
+      TEST_TIMEOUT,
+    );
+
     it(
       'zet geen enkele uitgezonden tabel op REPLICA IDENTITY FULL',
       async () => {

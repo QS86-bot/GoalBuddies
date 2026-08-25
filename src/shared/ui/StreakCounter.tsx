@@ -1,8 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
+
 import { radius, useTheme } from '../theme';
 
-import { streakLabel } from './metrics';
+import { besteReeksLabel, streakLabel } from './metrics';
 import { Caption, Subheading } from './Text';
 
 /**
@@ -36,7 +37,9 @@ export function StreakCounter({ cycles, best, compact = false }: Props) {
       ) : (
         <View style={styles.tekst}>
           <Subheading>{streakLabel(cycles)}</Subheading>
-          {best !== undefined && best > cycles ? <Caption>Beste reeks: {best}</Caption> : null}
+          {best !== undefined && best > cycles ? (
+            <Caption>{besteReeksLabel(best)}</Caption>
+          ) : null}
         </View>
       )}
     </View>

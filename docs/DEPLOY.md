@@ -259,7 +259,53 @@ noemt.
 
 ---
 
-## 2.7 Wat kost de Doelcoach?
+## 2.7 Verbindingen en pooling
+
+**`max_connections` staat op 60**, nagemeten op 24-08-2026. Dat is voor de héle
+database: PostgREST, de Auth-server, de realtime-server, `pg_dump` en alles wat
+Supabase zelf draait, delen dat budget. Het is geen instelling van de gratis tier
+die je kunt ophogen zonder te betalen.
+
+### Wie er vandaag verbindingen opent
+
+| Wie | Hoe | Verbindingen |
+|---|---|---|
+| De app (web en native) | `supabase-js` → PostgREST over HTTPS | **geen** — PostgREST houdt zijn eigen pool |
+| De Edge Functions | idem, met de service-role-key | **geen** |
+| `npm run db:dump` | `pg_dump` op `SUPABASE_DB_URL` | één, kortdurend |
+| `scripts/lokale-stack.sh` | een lokale database die het script zelf maakt | raakt productie niet |
+
+⚠️ **Er zit geen Postgres-driver in `package.json`**, en dat is de eigenlijke
+reden dat "connection pooling vanaf dag één" (CLAUDE.md, gratis tier) vandaag
+klopt. Niet een instelling, maar de afwezigheid van iets dat een socket kan
+openen. `npm run verbindingen:controle` houdt dat vast en draait mee in `/audit`.
+
+### De dag dat dit verandert
+
+`CLAUDE.md` schrijft die dag zelf voor: *"Server-side code als gewone
+langdraaiende Node-server"* op Hostinger. Zodra zo'n proces er is en het praat
+rechtstreeks met Postgres, gelden drie dingen:
+
+1. **De transactiepooler, poort 6543** — niet de directe poort 5432. De directe
+   poort is voor `pg_dump` en voor migraties; een langdraaiend proces dat daar
+   een pool van tien op zet, gebruikt een zesde van het hele budget.
+2. **`prepare: false`** (of `statement_cache_size: 0`, afhankelijk van de
+   driver). Supavisor draait in transactiemodus, en daarin overleeft een
+   prepared statement de transactie niet — de tweede aanroep faalt dan met
+   *"prepared statement already exists"*. Dat is een fout die pas onder belasting
+   verschijnt.
+3. **Een kleine pool.** Twee tot vijf verbindingen per proces. Meer helpt niet:
+   de pooler multiplext ze toch, en het budget is gedeeld.
+
+⚠️ **De pooler is géén oplossing voor de app zelf.** Die praat met PostgREST en
+hoort dat te blijven doen — dat is waar RLS wordt toegepast. Een Node-server die
+rechtstreeks op de database zit, draait als de databasegebruiker en heeft dus
+geen RLS boven zich; alles wat daar binnenkomt, moet zijn eigen autorisatie
+dragen. Dat is een andere afweging dan pooling en hij weegt zwaarder.
+
+---
+
+## 2.8 Wat kost de Doelcoach?
 
 QS8-42, laatste acceptatiecriterium. Elke AI-call wordt geboekt in `ai_jobs`
 met model, tokens en kosten; dit is de plek waar je het optelt.
@@ -413,8 +459,30 @@ oude adres, en breekt OAuth zodra QS8-25 aangezet wordt.
 | **native** (iOS/Android) | Een EAS-project met FCM- en APNs-sleutels | In de **build**, niet op de server. Zonder `projectId` geeft Expo geen token uit; `expo-bron.ts` stopt daar met een begrijpelijke reden in het logboek |
 | **web** | Een VAPID-sleutelpaar in `.env` | QS8-114/QS8-124. De service worker en het manifest stáán (zie hieronder); wat ontbreekt is de sleutel. **Dit is vandaag de belangrijkste**, want de app draait alleen op het web |
 
-De Edge Function zelf heeft hier níéts voor nodig — die praat met de Expo-push-API
-en heeft geen sleutels van Apple of Google.
+⚠️ **Tot 25-08-2026 stond hier dat de Edge Function hier níéts voor nodig heeft.
+Dat klopte alleen omdat het verzendpad voor web nooit gebouwd was.** De functie
+kende één bestemming — de Expo-push-API — en een webabonnement is een
+endpoint-URL van de browserleverancier; daar kan Expo niets mee. `webpush-crypto.ts`
+stond compleet en getoetst in `_shared/notificaties/` en werd door geen enkel
+bestand geïmporteerd.
+
+Sinds 25-08 splitst `stuur()` op platform. Voor **native** verandert er niets: het
+token ís het adres en Apple- en Google-sleutels zitten in de build. Voor **web**
+heeft de Edge Function het VAPID-sleutelpaar in zijn eigen omgeving nodig:
+
+| Variabele | Waar |
+|---|---|
+| `EXPO_PUBLIC_VAPID_PUBLIC_KEY` | in de bundel **en** in de Edge Function-omgeving |
+| `VAPID_PRIVATE_KEY` | **alleen** in de Edge Function-omgeving — nooit in `.env` van de webbuild |
+| `VAPID_SUBJECT` | idem; een `mailto:`- of `https:`-adres |
+
+Zet ze met `npx supabase secrets set` op het project, niet in de repo. Ontbreken
+ze, dan gaan native meldingen gewoon door en worden web-abonnementen overgeslagen
+met een regel in het log — geen storing, wel stilte.
+
+⚠️ Een abonnement dat 404 of 410 geeft, wordt uit `push_tokens` verwijderd (RFC
+8030 §7: de gebruiker heeft de toestemming ingetrokken). Elke andere fout laat de
+rij staan; een storing van dit moment mag geen dataverlies worden.
 
 ### De service worker en het manifest — QS8-124
 
@@ -446,14 +514,23 @@ als `/sw.js` in de root te staan en bedient daarmee de hele app — dat is wat
 `src/modules/notifications/webpush-registratie.ts` registreert, en het klopt met
 `start_url: "/"` en `scope: "/"` in `public/manifest.json`.
 
-⚠️ **Dat staat op gespannen voet met de `RewriteBase /goalbuddies/` hierboven.**
-Draait de app onder een pad in plaats van op een eigen domein, dan komt de worker
-op `/goalbuddies/sw.js` te staan, kan hij alleen `/goalbuddies/` bedienen, en
-klopt geen van de absolute paden in `manifest.json` en `+html.tsx` meer. Op
-`goalbuddies.q-projects.tech` als eigen (sub)domein is de root het goede
-uitgangspunt en is er niets aan de hand. **Controleer bij de eerste echte deploy
-welke van de twee het is** — dit is precies het soort verschil dat niets
-zichtbaars stukmaakt behalve meldingen. Hoort bij QS8-99/QS8-100.
+✅ **Uitgezocht op 25-08-2026: er is geen spanning.** Deze alinea waarschuwde
+voor een `RewriteBase /goalbuddies/` "hierboven", en die staat er niet meer —
+`scripts/deploy-web.mjs` schrijft alleen `RewriteEngine On`, zonder voorvoegsel.
+`goalbuddies.q-projects.tech` is een subdomein met een eigen documentroot, dus de
+app staat in de root van dat adres en `scope: "/"` klopt. Zie ook de alinea over
+het pad-voorvoegsel in §3.
+
+⚠️ **`public_html/goalbuddies` is het pad op de schíjf, niet in de URL.** Dat
+onderscheid heeft één meting in `docs/ENGINEER-REVIEW.md` al fout gelezen; het
+staat daar rechtgezet.
+
+⚠️ **Verhuist de app ooit tóch naar een pad**, dan verhuizen het manifest, de
+iconen en de servicewormer mee — anders werkt alles behalve de meldingen. Dat is
+sinds 25-08 geen oplettendheid meer maar `npm run pwa:controle`, die het manifest
+tegen `EXPO_PUBLIC_APP_URL` legt en meedraait in CI. En de deploy zelf trekt na
+het live zetten `/manifest.json` en `/sw.js` na op status én content-type — een
+200 met `application/octet-stream` laat een browser de wormer weigeren, stil.
 
 De herhaalbare deploy zelf is QS8-100 en staat nog open.
 

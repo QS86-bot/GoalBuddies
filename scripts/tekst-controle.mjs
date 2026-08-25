@@ -30,6 +30,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const WORTEL = new URL('..', import.meta.url).pathname;
 const MAPPEN = ['src', 'app'];
@@ -62,6 +63,27 @@ const TEKSTPROPS = [
  *    gewone app-tekst in weggemoffeld wordt.
  */
 const MERKNAMEN = new Set(['Apple', 'Google']);
+
+/**
+ * Waarden die eruitzien als tekst maar geen táál zijn.
+ *
+ * ⚠️ Zelfde gedachte als `MERKNAMEN`: een sleutel in de catalogus is een
+ *    uitnodiging om er iets anders van te maken, en dat is hier fout. Een
+ *    tijdzone-identificatie is een IANA-naam die Postgres moet herkennen, en een
+ *    voorbeeldcode is opgebouwd uit het alfabet van `generate_invite_code()` —
+ *    wie die vertaalt, breekt het voorbeeld.
+ *
+ * ⚠️ Ook deze lijst hoort niet te groeien met gewone app-tekst. Beide regels zijn
+ *    daarom smal: een identificatie heeft een schuine streep en geen spaties, en
+ *    een voorbeeldcode is hoofdletters mét minstens één cijfer. "ALLEEN VOOR
+ *    BEHEERDERS" valt op beide af.
+ */
+function isGeenTaal(tekst) {
+  return (
+    (/^[A-Za-z][A-Za-z_]*\/[A-Za-z_+-]+$/.test(tekst) && !/\s/.test(tekst)) ||
+    (/^[A-Z0-9-]+$/.test(tekst) && /[0-9]/.test(tekst))
+  );
+}
 
 /** Twee woorden achter elkaar, met minstens één kleine letter — dus een zin. */
 const ZIN = /[A-Za-zÀ-ÿ]{2,}[ ,][a-zà-ÿ]{2,}/;
@@ -125,14 +147,265 @@ function commentaarregels(regels) {
   return uit;
 }
 
+/**
+ * Zegt per regel of hij bínnen een meerregelige tekstprop valt.
+ *
+ * ⚠️ **De heuristiek per regel kan dit principieel niet zien**, en dat was het
+ *    laatste gat van deze controle. Een prop met een lange zin loopt door:
+ *
+ *      hint={
+ *        'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen ' +
+ *        'weekdoelen resetten — dat blijft je persoonlijke week-startdag.'
+ *      }
+ *
+ *    De propregex eist de sluitquote op dezelfde regel, dus hij ziet niets. En
+ *    een losse regel met alleen een string als kandidaat behandelen kan niet: dan
+ *    meldt de controle elke `throw new Error('...')` en elke SQL-string, en een
+ *    controle met tientallen valse meldingen leert je hem te negeren.
+ *
+ *    De uitweg is de tóestand. Binnen `hint={ … }` is een kale string per
+ *    definitie schermtekst; erbuiten is dat maar de vraag.
+ */
+function binnenTekstProp(regels) {
+  const uit = new Array(regels.length).fill(false);
+  let binnen = false;
+
+  const opent = new RegExp(`\\b(?:${TEKSTPROPS.join('|')})=\\{\\s*$`);
+
+  regels.forEach((regel, i) => {
+    if (binnen) {
+      // De accolade die de prop sluit, staat op zijn eigen regel of vooraan.
+      if (/^\s*\}/.test(regel)) {
+        binnen = false;
+        return;
+      }
+      uit[i] = true;
+      return;
+    }
+
+    if (opent.test(regel)) binnen = true;
+  });
+
+  return uit;
+}
+
+/**
+ * Ziet deze regel eruit als JSX?
+ *
+ * ⚠️ **Zonder deze grens is de accoladepas onbruikbaar**, en dat is gemeten: hij
+ *    meldde 39 regels waarvan de meeste gewone code waren. `crypto.subtle.sign({
+ *    name: 'ECDSA', hash: 'SHA-256' }, …)` is een accoladegroep met hoofdletters
+ *    erin, en `{ error: 'Onbekend' }` in een datalaag ook. Die teksten zijn geen
+ *    schermtekst; ze horen bij een algoritme of bij een logboek.
+ *
+ *    De grens is smal gehouden: een componenttag op deze regel (`<Body`), of een
+ *    regel die zélf met een accolade of een tag begint. Dat dekt de drie vormen
+ *    waar het om gaat en laat objectliteralen in gewone code met rust.
+ */
+function ziterUitAlsJsx(regel, isTsx) {
+  // ⚠️ **Alleen in een `.tsx`.** Een regel die met een accolade begint is in een
+  //    `.ts` doodgewoon een objectliteraal: `{ name: 'ECDSA', hash: 'SHA-256' }`
+  //    in de webpush-crypto, `{ onConflict: 'group_id,user_id' }` in een upsert.
+  //    Vijf van die meldingen kwamen bij de eerste meting terug, en het zijn geen
+  //    van alle schermtekst. JSX bestaat in dit project uitsluitend in `.tsx`.
+  if (!isTsx) return false;
+
+  const kaal = regel.trim();
+  return /<[A-Z]/.test(regel) || kaal.startsWith('{') || kaal.startsWith('<');
+}
+
+/**
+ * De regel met de sleutels van `t(...)` eruit.
+ *
+ * ⚠️ Een vertaalde regel mag nooit op zijn eigen catalogussleutel afgaan.
+ *    `{t('reeks.beste', { aantal })}` bevat een stringliteral, en zonder deze
+ *    stap is dat een treffer op precies de regel die goed is.
+ */
+function zonderSleutels(regel) {
+  return regel.replaceAll(/\bt\(\s*['"`][^'"`]*['"`]/g, 't(_');
+}
+
+/**
+ * Knipt alle `{…}`-waarden uit JSX-tekst, ook geneste.
+ *
+ * ⚠️ **Eén ronde is niet genoeg, en dat was de zevende ijking.** `{t('sleutel',
+ *    { naam })}` heeft een accolade in een accolade: één vervanging haalt de
+ *    binnenste weg en laat `{t('sleutel',  )}` staan — drie letters achter
+ *    elkaar, dus een treffer. Achttien valse meldingen bij de eerste meting,
+ *    allemaal regels die juist wél vertaald zijn.
+ *
+ *    Dit verving de oude ontsnapping `if (/\bt\(/.test(regel)) return`, die een
+ *    hele regel oversloeg zodra er érgens een `t(` op stond. Dat is te grof:
+ *    `<Body>{t('kop')} en de rest in het Nederlands</Body>` kwam er zo langs.
+ */
+function zonderWaarden(tekst) {
+  let vorig;
+  let nu = tekst;
+
+  do {
+    vorig = nu;
+    nu = nu.replaceAll(/\{[^{}]*\}/g, ' ');
+  } while (nu !== vorig);
+
+  return nu;
+}
+
 /** De stukken van een regel die tekst zouden kunnen zijn. */
-function kandidaten(regel) {
+function kandidaten(regel, inTekstProp = false, isTsx = true) {
   const uit = [];
 
   // 1. Een prop met een letterlijke string: title="..." of title={'...'}
+  //
+  // ⚠️ **Losse woorden tellen hier sinds 24-08-2026 wél mee, mits ze met een
+  //    hoofdletter beginnen.** De oude regel ("bij een prop is één woord vaker
+  //    een sleutel dan een zin") liet `label="Huddledag"` er precies langs — en
+  //    dat is een knoplabel dat vertaald moet worden. De hoofdletter is wat een
+  //    zin scheidt van een testid, een stijlwaarde of een enum: `variant="stil"`,
+  //    `mode="date"` en `testID="knop"` beginnen klein.
   for (const prop of TEKSTPROPS) {
     const m = new RegExp(`\\b${prop}=(?:\\{)?['"\`]([^'"\`]{4,})['"\`]`).exec(regel);
-    if (m?.[1]) uit.push({ tekst: m[1], losseWoordenTellen: false });
+    if (m?.[1]) {
+      uit.push({ tekst: m[1], losseWoordenTellen: /^[A-ZÀ-Ý]/.test(m[1].trim()) });
+    }
+  }
+
+  // 1c-bis. Een stringliteral bínnen een JSX-accolade.
+  //
+  // ⚠️ **Dit gat is op 24-08 door de controle van diezelfde dag veroorzaakt.**
+  //    `zonderWaarden()` knipt herhaald elke `{…}` weg om achttien valse
+  //    meldingen te doden — en knipt daarmee ook de tékst weg die er letterlijk
+  //    in staat. Drie doodgewone React-vormen werden onzichtbaar:
+  //
+  //      <Body>{'Twee woorden hier'}</Body>
+  //      {bewaard ? 'Bewaard' : 'Antwoorden bewaren'}
+  //      <Subheading>{`${n} mijlpalen voorgesteld`}</Subheading>
+  //
+  //    Het bewijs stond in dezelfde ronde: de derde vorm is met de hand uit
+  //    `app/doel/coach/[id].tsx` gehaald, en de tweede stond er nog steeds —
+  //    twee Nederlandse knoplabels, terwijl de controle "nul" meldde.
+  //
+  //    Een controle die een klasse vormen niet ziet, is erger dan een controle
+  //    met ruis: hij geeft toestemming om te stoppen met kijken. Vandaar dat de
+  //    literals er hier úit gehaald worden vóórdat `zonderWaarden()` de rest
+  //    wegknipt.
+  //
+  // ⚠️ **Sleutels van `t()` gaan er eerst uit**, anders is elke vertaalde regel
+  //    een treffer op zijn eigen sleutel.
+  //
+  // ⚠️ **Een hoofdletter of een echte zin, anders telt het niet.** Zonder die eis
+  //    meldt `style={{ color: 'red' }}` een treffer, en `'center'`, en `'none'`.
+  //    Dat is dezelfde grens als bij een prop: een hoofdletter scheidt een zin van
+  //    een stijlwaarde.
+  for (const groep of ziterUitAlsJsx(regel, isTsx) ? zonderSleutels(regel).matchAll(/\{[^{}]*\}/g) : []) {
+    for (const m of groep[0].matchAll(/['"`]([^'"`]{3,})['"`]/g)) {
+      const inhoud = m[1]?.replaceAll(/\$\{[^{}]*\}/g, ' ').trim();
+      if (!inhoud) continue;
+      if (!/^[A-ZÀ-Ý]/.test(inhoud) && !ZIN.test(inhoud)) continue;
+
+      uit.push({ tekst: inhoud, losseWoordenTellen: true });
+    }
+  }
+
+  // 1c-ter. Een template-literal met tekst erin.
+  //
+  // ⚠️ Aparte pas, want een template draagt zijn eigen accolades: `${n} mijlpalen`
+  //    valt buiten `\{[^{}]*\}` hierboven. De waarden gaan eruit, de tekst blijft.
+  //    Dit was de vorm op `app/doel/coach/[id].tsx:410`, met de hand gevonden
+  //    omdat de controle hem niet zag.
+  for (const m of ziterUitAlsJsx(regel, isTsx) ? zonderSleutels(regel).matchAll(/`([^`]{3,})`/g) : []) {
+    const inhoud = m[1]?.replaceAll(/\$\{[^{}]*\}/g, ' ').trim();
+    if (!inhoud) continue;
+    if (!/^[A-ZÀ-Ý]/.test(inhoud) && !ZIN.test(inhoud)) continue;
+
+    uit.push({ tekst: inhoud, losseWoordenTellen: true });
+  }
+
+  // 1d. Een kale string binnen een meerregelige tekstprop. Zie `binnenTekstProp`.
+  if (inTekstProp) {
+    const m = /^\s*['"`]([^'"`]{4,})['"`]/.exec(regel);
+    if (m?.[1]) uit.push({ tekst: m[1], losseWoordenTellen: true });
+  }
+
+  // 1b. Dezelfde namen, maar als sleutel in een objectliteraal:
+  //     `empty={{ title: '...', body: '...' }}`.
+  //
+  // ⚠️ **Dit gat kostte vijf zinnen in één bestand.** De propvariant hierboven
+  //    zoekt naar `title=`, en in een object staat er `title:`. `AsyncView` neemt
+  //    zijn lege staat zo aan, en dat is de plek waar de gebruiker leest dat er
+  //    niets is — de laatste plek waar je een onvertaalde zin wilt hebben.
+  //
+  // ⚠️ **De terugval ervóór mag er sinds 25-08-2026 tussen staan.** In
+  //    `app/doel/coach/[id].tsx` stond `melding: job.error ?? 'De Doelcoach liep
+  //    vast.'`, en het patroon eiste de string direct achter de dubbele punt. Dat
+  //    is uitgerekend de gevaarlijkste vorm van de twee: de zin ís hier de
+  //    terugval, dus hij verschijnt precies wanneer er iets misgaat en de
+  //    gebruiker het meest op een begrijpelijke tekst zit te wachten.
+  for (const prop of TEKSTPROPS) {
+    const m = new RegExp(
+      `\\b${prop}:\\s*(?:[^'"\`,{}]*\\?\\?\\s*)?['"\`]([^'"\`]{4,})['"\`]`,
+    ).exec(regel);
+    if (m?.[1]) {
+      uit.push({ tekst: m[1], losseWoordenTellen: /^[A-ZÀ-Ý]/.test(m[1].trim()) });
+    }
+  }
+
+  // 1c. Een kale zin als argument van een setter die op het scherm belandt.
+  //
+  // ⚠️ `setMelding('Opgeslagen. Lopende kettingschakels blijven staan waar ze
+  //    staan.')` was geen prop en geen JSX-tekst, en viel dus door élke
+  //    heuristiek heen.
+  //
+  // ⚠️ **Hier stond tot 25-08-2026 een lijst van drie namen** — `setMelding`,
+  //    `setFout`, `setStatus` — met de onderbouwing dat hij kort hoorde te
+  //    blijven. Dat was precies de fout die dit script bij ánderen opspoort: hij
+  //    bewaakte een lijst namen in plaats van een vorm. `app/aanmelden.tsx`
+  //    gebruikt `setGelukt(...)`, en die zin — op de laatste stap van de enige
+  //    werkende aanmeldroute — stond maandenlang onvertaald in de app terwijl
+  //    deze controle nul meldde. Nu is de vorm de maat: élke `setX(` met een
+  //    hoofdletter erachter. Een naam erbij verzinnen kan niet meer.
+  //
+  // ⚠️ Dat dit weinig valse meldingen geeft, komt niet door deze regex maar door
+  //    `ZIN`: een setter met een sleutel of een statuswoord (`setFase('mislukt')`)
+  //    heeft geen twee woorden achter elkaar en valt af.
+  //
+  // ⚠️ De drie oorspronkelijke namen blijven staan mét hun strengere gedrag:
+  //    die dragen in dit project uitsluitend schermtekst, dus daar telt élke
+  //    waarde — ook een los woord zonder hoofdletter. De generieke variant
+  //    eronder is de vangnet, geen vervanging.
+  for (const zetter of ['setMelding', 'setFout', 'setStatus']) {
+    const m = new RegExp(`\\b${zetter}\\(\\s*['"\`]([^'"\`]{4,})['"\`]`).exec(regel);
+    if (m?.[1]) uit.push({ tekst: m[1], losseWoordenTellen: true });
+  }
+
+  {
+    const m = /\bset[A-Z]\w*\(\s*['"\`]([^'"\`]{4,})['"\`]/.exec(regel);
+    // ⚠️ Zelfde twee eisen. Een wíllekeurige setter draagt net zo goed een
+    //    toestand — `setFase('rust')`, `setStand('pending')` — en zonder hen
+    //    meldde deze variant er drieëntwintig, allemaal onzin.
+    if (m?.[1] && /^[A-ZÀ-Ý]/.test(m[1].trim())) {
+      uit.push({ tekst: m[1], losseWoordenTellen: false });
+    }
+  }
+
+  // 1d. Een zin die een functie teruggéeft.
+  //
+  // ⚠️ `src/modules/ai/jobs.ts` vertaalde elke foutcode netjes met `t(...)` op
+  //    één na, en die ene stond als `return \`Je hebt vandaag al ...\`;`. Een
+  //    `return` is geen prop, geen JSX en geen setter, dus geen enkele
+  //    heuristiek keek ernaar — terwijl een functie die een zin teruggeeft per
+  //    definitie schermtekst levert. Gevonden op 25-08-2026, vijf regels naast
+  //    een `t()`-aanroep.
+  {
+    const m = /\breturn\s+['"\`]([^'"\`]{4,})['"\`]/.exec(regel);
+    // ⚠️ Hoofdletter én een echte zin, en zonder die twee eisen meldde deze
+    //    variant elke `return 'note_required'`, `return 'android'` en elke
+    //    redencode uit `regels.ts` — zesentwintig stuks. Een teruggegeven
+    //    redencode is in dit project kleingeschreven en een zin voor de
+    //    gebruiker begint met een hoofdletter; dat is het enige onderscheid dat
+    //    een regex hier kán maken, en het is genoeg.
+    if (m?.[1] && /^[A-ZÀ-Ý]/.test(m[1].trim())) {
+      uit.push({ tekst: m[1], losseWoordenTellen: false });
+    }
   }
 
   // 3. JSX-tekst tussen twee tags op dezelfde regel: `<Subheading>Kop</Subheading>`.
@@ -153,11 +426,26 @@ function kandidaten(regel) {
   //    gevolgd door een `<`, een vergelijking `maand > 12 || dag < 1`, en de pijl
   //    van elke `(x) => f(x) <= n`. Alleen tekst die eindigt op een sluittag is
   //    tekst tussen twee JSX-tags.
-  for (const m of regel.matchAll(/>([^<>{}=]{3,})<\//g)) {
-    const inhoud = m[1]?.trim();
-    // Drie letters achter elkaar, anders is het opmaak, een streepje of een
-    // HTML-entiteit.
-    if (inhoud && /[A-Za-zÀ-ÿ]{3,}/.test(inhoud) && !/^&\w+;$/.test(inhoud)) {
+  //
+  // ⚠️ **Accolades mogen er sinds 24-08-2026 in staan, en dat was de vijfde
+  //    ijking.** `<Caption>Voorlezen kan ook: {toonCode(g.invite_code)}</Caption>`
+  //    viel buiten het patroon omdat er een `{` in stond — terwijl juist dít de
+  //    vorm is die je vergeet, want hij ziet eruit als code. De waarden worden
+  //    eruit geknipt vóór de meting, zodat `{a} {b}` niets oplevert en
+  //    "Voorlezen kan ook:" wel.
+  for (const m of regel.matchAll(/>([^<>=]{3,})<\//g)) {
+    //
+    // ⚠️ **Entiteiten gaan er eerst uit, en dat is de zesde ijking.** Sinds de
+    //    accolades erin mogen, houdt `<Body>&ldquo;{titel}&rdquo;</Body>` na het
+    //    knippen `&ldquo;  &rdquo;` over — drie letters achter elkaar, dus een
+    //    treffer. Zes valse meldingen bij de eerste meting, allemaal
+    //    aanhalingstekens om een waarde. De oude toets keek of de héle inhoud
+    //    één entiteit was, en dat is te weinig zodra er meer dan één in staat.
+    const inhoud = zonderWaarden(m[1] ?? '')
+      .replaceAll(/&\w+;/g, ' ')
+      .trim();
+    // Drie letters achter elkaar, anders is het opmaak of een streepje.
+    if (inhoud && /[A-Za-zÀ-ÿ]{3,}/.test(inhoud)) {
       uit.push({ tekst: inhoud, losseWoordenTellen: true });
     }
   }
@@ -196,46 +484,89 @@ function kandidaten(regel) {
   return uit;
 }
 
-const treffers = [];
+/**
+ * De treffers in één bestand, als `{ regelnummer, tekst }`.
+ *
+ * ⚠️ **Geëxporteerd, en dat is de reparatie van 24-08-2026.** Deze controle stond
+ *    maandenlang groen terwijl er in één scherm vijf onvertaalde zinnen zaten. De
+ *    reden was niet dat de heuristieken slecht waren maar dat ze nóóit tegen een
+ *    bekend geval gelegd zijn: er was geen manier om te zien wat hij *wél* vindt
+ *    zonder de hele codebase te wijzigen. `tests/scripts/tekst-controle.test.ts`
+ *    voedt hem nu elk van de zeven vormen los, plus de vier die hij met rust moet
+ *    laten. Een controle die je nooit rood ziet worden is een aanname
+ *    (CLAUDE.md, regel 18).
+ *
+ * @param {string[]} regels de regels van één bestand
+ * @param {boolean} [isTsx] staat er JSX in dit bestand? Alleen `.tsx` telt.
+ * @returns {{ regel: number, tekst: string }[]}
+ */
+export function treffersIn(regels, isTsx = true) {
+  const commentaar = commentaarregels(regels);
+  const inProp = binnenTekstProp(regels);
+  const uit = [];
 
-for (const map of MAPPEN) {
-  for (const pad of bestanden(map)) {
-    if (OVERSLAAN.some((r) => r.test(pad))) continue;
+  regels.forEach((regel, i) => {
+    if (commentaar[i]) return;
 
-    const regels = readFileSync(pad, 'utf8').split('\n');
-    const commentaar = commentaarregels(regels);
+    for (const { tekst, losseWoordenTellen } of kandidaten(regel, inProp[i], isTsx)) {
+      if (MERKNAMEN.has(tekst)) continue;
+      if (isGeenTaal(tekst)) continue;
+      if (!losseWoordenTellen && !ZIN.test(tekst)) continue;
+      if (losseWoordenTellen && !/[A-Za-zÀ-ÿ]{3,}/.test(tekst)) continue;
+      uit.push({ regel: i + 1, tekst });
+      return;
+    }
+  });
 
-    regels.forEach((regel, i) => {
-        if (commentaar[i]) return;
-        if (/\bt\(/.test(regel)) return;
+  return uit;
+}
 
-        for (const { tekst, losseWoordenTellen } of kandidaten(regel)) {
-          if (MERKNAMEN.has(tekst)) continue;
-          if (!losseWoordenTellen && !ZIN.test(tekst)) continue;
-          if (losseWoordenTellen && !/[A-Za-zÀ-ÿ]{3,}/.test(tekst)) continue;
-          treffers.push(`${pad.replace(WORTEL, '')}:${i + 1}  ${tekst.slice(0, 70)}`);
-          return;
-        }
-    });
+/**
+ * De controle zelf.
+ *
+ * ⚠️ **Achter een `main()` en een aanroepwacht, en dat is geen netheid.** Dit
+ *    bestand exporteert sinds 24-08-2026 `treffersIn()` zodat er tests op kunnen
+ *    staan. Zonder deze scheiding draait bij élke import de hele scan én de
+ *    `process.exit()` eronder — en dan valt de testsuite om op een geslaagde
+ *    controle.
+ */
+function main() {
+  const treffers = [];
+
+  for (const map of MAPPEN) {
+    for (const pad of bestanden(map)) {
+      if (OVERSLAAN.some((r) => r.test(pad))) continue;
+
+      const regels = readFileSync(pad, 'utf8').split('\n');
+
+      for (const { regel, tekst } of treffersIn(regels, pad.endsWith('.tsx'))) {
+        treffers.push(`${pad.replace(WORTEL, '')}:${regel}  ${tekst.slice(0, 70)}`);
+      }
+    }
   }
+
+  if (treffers.length === 0) {
+    console.log('tekst-controle: geen hardgecodeerde UI-tekst meer in src/ en app/.');
+    process.exit(0);
+  }
+
+  /** Per map, want QS8-115 wordt map voor map afgewerkt. */
+  const perMap = new Map();
+  for (const t of treffers) {
+    const map = t.slice(0, t.lastIndexOf('/'));
+    perMap.set(map, [...(perMap.get(map) ?? []), t]);
+  }
+
+  console.error(`tekst-controle: ${treffers.length} regels hardgecodeerde UI-tekst.\n`);
+  for (const [map, regels] of [...perMap].sort((a, b) => b[1].length - a[1].length)) {
+    console.error(`  ${map}  (${regels.length})`);
+    if (process.argv.includes('--alles')) for (const r of regels) console.error(`      ${r}`);
+  }
+  console.error('\nZie QS8-115. Draai met --alles voor de regels zelf.');
+  process.exit(1);
 }
 
-if (treffers.length === 0) {
-  console.log('tekst-controle: geen hardgecodeerde UI-tekst meer in src/ en app/.');
-  process.exit(0);
+// Alleen draaien als dit bestand zelf is aangeroepen, niet bij een import.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
 }
-
-/** Per map, want QS8-115 wordt map voor map afgewerkt. */
-const perMap = new Map();
-for (const t of treffers) {
-  const map = t.slice(0, t.lastIndexOf('/'));
-  perMap.set(map, [...(perMap.get(map) ?? []), t]);
-}
-
-console.error(`tekst-controle: ${treffers.length} regels hardgecodeerde UI-tekst.\n`);
-for (const [map, regels] of [...perMap].sort((a, b) => b[1].length - a[1].length)) {
-  console.error(`  ${map}  (${regels.length})`);
-  if (process.argv.includes('--alles')) for (const r of regels) console.error(`      ${r}`);
-}
-console.error('\nZie QS8-115. Draai met --alles voor de regels zelf.');
-process.exit(1);

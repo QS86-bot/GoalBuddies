@@ -4,6 +4,7 @@ import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { apparaatTijdzone, type Cycle } from '../../shared/time';
+import { invoerfout, type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 
 import {
   codeSchema,
@@ -14,6 +15,11 @@ import {
   type GroepPatch,
   type Zichtbaarheid,
 } from './schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Pagina, Resultaat };
 
 /**
  * Buddy-groepen — EPIC 5.
@@ -43,16 +49,9 @@ import {
 export type Groep = Tables<'groups'>;
 export type Lidmaatschap = Tables<'group_members'>;
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
-/** Standaard 20 per pagina. Ongepagineerd bestaat niet (CLAUDE.md, regel 10). */
 export const LEDEN_PER_PAGINA = 20;
 
-export interface Pagina<T> {
-  readonly rijen: readonly T[];
-  readonly totaal: number;
-  readonly meer: boolean;
-}
 
 // ---------------------------------------------------------------------------
 // Uitkomsten van de RPC's
@@ -94,6 +93,9 @@ function meldingen(): Readonly<Record<string, string>> {
     invalid: t('groep.ongeldige_link'),
     group_full: t('groep.vol'),
     too_many_groups: t('groep.te_veel_groepen'),
+    // ⚠️ Migratie 0092: een uitnodigingslink naar een gearchiveerde groep. De
+    //    code blijft geldig, de groep niet meer.
+    archived: t('groep.gearchiveerd'),
 
     // create_group
     name_too_short: t('groep.naam_kort'),
@@ -257,7 +259,7 @@ export interface Groepslid {
  *    ze wel degelijk leeg kunnen laten — dus die wordt hier toegevoegd.
  */
 type RpcOverzichtRij = Database['public']['Functions']['group_overview']['Returns'][number];
-type OverzichtRij = { readonly [K in keyof RpcOverzichtRij]: RpcOverzichtRij[K] | null };
+type OverzichtRij = RpcRij<RpcOverzichtRij>;
 
 /**
  * Zet een rij om, of geeft `null` als hij niet bruikbaar is.
@@ -302,7 +304,13 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
  *    mijlpaalvoortgang, reeks én of deze periode al afgesloten is. Per lid
  *    opnieuw bevragen is hier de valkuil die het beslisdocument met naam noemt,
  *    en er staat een test op met twaalf leden die telt hoeveel verzoeken het
- *    kost.
+ *    kost: `overzicht-rondes.test.ts`.
+ *
+ * ⚠️ **Die zin stond hier vanaf het begin, en de test bestond niet** — nergens.
+ *    Sinds 25-08-2026 klopt hij. Dat is de duurste vorm die dit project kent, in
+ *    zijn zuiverste gedaante: een bewéring over een controle in plaats van de
+ *    controle, waardoor iedereen die het commentaar leest de vraag overslaat.
+ *    Verplaats deze verwijzing niet zonder de test mee te nemen.
  */
 export async function fetchGroepsoverzicht(
   groupId: string,
@@ -353,7 +361,7 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
   // ook, maar een lege naam hoort niet eerst een netwerkronde te kosten.
   const gevalideerd = groepSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.invoer')) };
   }
 
   const { data, error } = await supabase().rpc('create_group', {
@@ -407,7 +415,7 @@ export async function wijzigGroep(
 ): Promise<Resultaat<Groep>> {
   const gevalideerd = groepPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.invoer')) };
   }
 
   const update: TablesUpdate<'groups'> = {};
@@ -514,6 +522,46 @@ export async function zetGroepszichtbaarheid(
 }
 
 /**
+ * Archiveert een groep — migratie 0092.
+ *
+ * ⚠️ **Dit is de vervanger van het verwijderen van een groep, en niet een extra
+ *    knop ernaast.** Tot 0092 kon elke beheerder de rij weggooien, en dat
+ *    cascadeerde naar zes tabellen — onomkeerbaar, zonder audit, en op de gratis
+ *    tier zonder backups. `groups_delete` staat nu op `false`; dit is de enige
+ *    manier om een groep af te sluiten.
+ *
+ * ⚠️ `bevestigd` is om dezelfde reden een parameter als bij
+ *    `zetGroepszichtbaarheid()`: de handeling neemt iets weg bij álle leden, en
+ *    domeinregel 5 zegt dat zoiets expliciet bevestigd moet zijn. De database
+ *    weigert zonder.
+ *
+ * ⚠️ Ná deze aanroep is de groep voor jou ook niet meer leesbaar —
+ *    `is_group_member()` is onwaar voor een gearchiveerde groep. Het scherm moet
+ *    dus wegnavigeren en niet proberen te herladen.
+ */
+export async function archiveerGroep(
+  groupId: string,
+  bevestigd: boolean,
+): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('archiveer_groep', {
+    p_group_id: groupId,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.archive', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/**
  * Toetreden met een code — QS8-53.
  *
  * ⚠️ Al lid zijn is hier geen fout maar een succes: de RPC geeft dan gewoon de
@@ -527,7 +575,7 @@ export async function zetGroepszichtbaarheid(
 export async function neemDeel(code: string): Promise<Resultaat<string>> {
   const gevalideerd = codeSchema.safeParse(code);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.controleer_link') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.controleer_link')) };
   }
 
   const { data, error } = await supabase().rpc('join_group_with_code', {

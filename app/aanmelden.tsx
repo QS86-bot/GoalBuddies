@@ -39,7 +39,7 @@ export default function Aanmelden() {
     } else if (nieuw) {
       // Staat e-mailbevestiging aan, dan is er nog geen sessie en gebeurt er
       // zichtbaar niets. Dat moet je zeggen, anders lijkt de knop stuk.
-      setGelukt('Gelukt. Staat e-mailbevestiging aan, kijk dan even in je inbox.');
+      setGelukt(t('auth.bevestig_inbox'));
     }
 
     setBezig(false);

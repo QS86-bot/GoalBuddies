@@ -85,6 +85,13 @@ export type Database = {
             foreignKeyName: "ai_jobs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -118,6 +125,13 @@ export type Database = {
             columns: ["approval_id"]
             isOneToOne: true
             referencedRelation: "completion_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "approval_withdrawals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -180,6 +194,13 @@ export type Database = {
             foreignKeyName: "breathers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "breathers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -216,6 +237,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chain_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -272,6 +300,13 @@ export type Database = {
             foreignKeyName: "chat_messages_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -286,7 +321,21 @@ export type Database = {
             foreignKeyName: "chat_messages_sender_id_fkey"
             columns: ["sender_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -324,6 +373,13 @@ export type Database = {
           payload?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "commitment_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "commitment_events_actor_id_fkey"
             columns: ["actor_id"]
@@ -434,6 +490,13 @@ export type Database = {
             foreignKeyName: "completion_approvals_approver_id_fkey"
             columns: ["approver_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completion_approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -449,6 +512,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completion_approvals_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -506,6 +576,13 @@ export type Database = {
             foreignKeyName: "completions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -547,6 +624,13 @@ export type Database = {
           weekly_goal_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "daily_moves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "daily_moves_user_id_fkey"
             columns: ["user_id"]
@@ -611,6 +695,13 @@ export type Database = {
             foreignKeyName: "deadline_requests_decided_by_fkey"
             columns: ["decided_by"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadline_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -639,6 +730,13 @@ export type Database = {
             foreignKeyName: "deadline_requests_requester_id_fkey"
             columns: ["requester_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadline_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -647,6 +745,7 @@ export type Database = {
       goal_events: {
         Row: {
           actor_id: string
+          approved_by_id: string | null
           created_at: string
           event_type: string
           goal_id: string
@@ -656,6 +755,7 @@ export type Database = {
         }
         Insert: {
           actor_id: string
+          approved_by_id?: string | null
           created_at?: string
           event_type: string
           goal_id: string
@@ -665,6 +765,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string
+          approved_by_id?: string | null
           created_at?: string
           event_type?: string
           goal_id?: string
@@ -676,6 +777,27 @@ export type Database = {
           {
             foreignKeyName: "goal_events_actor_id_fkey"
             columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_events_approved_by_id_fkey"
+            columns: ["approved_by_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_events_approved_by_id_fkey"
+            columns: ["approved_by_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -856,6 +978,13 @@ export type Database = {
             foreignKeyName: "goals_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -890,6 +1019,13 @@ export type Database = {
           old_value?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "group_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "group_events_actor_id_fkey"
             columns: ["actor_id"]
@@ -934,6 +1070,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -1002,6 +1145,13 @@ export type Database = {
             foreignKeyName: "groups_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1032,6 +1182,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invite_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -1130,6 +1287,13 @@ export type Database = {
             foreignKeyName: "notifications_sent_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1138,6 +1302,7 @@ export type Database = {
       points_ledger: {
         Row: {
           created_at: string
+          cycle_start_date: string | null
           delta: number
           goal_id: string | null
           group_id: string | null
@@ -1149,6 +1314,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cycle_start_date?: string | null
           delta: number
           goal_id?: string | null
           group_id?: string | null
@@ -1160,6 +1326,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cycle_start_date?: string | null
           delta?: number
           goal_id?: string | null
           group_id?: string | null
@@ -1189,6 +1356,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "points_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -1287,6 +1461,13 @@ export type Database = {
             foreignKeyName: "push_tokens_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1333,6 +1514,13 @@ export type Database = {
             columns: ["goal_id"]
             isOneToOne: false
             referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_streaks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -1388,6 +1576,13 @@ export type Database = {
             foreignKeyName: "week_pass_events_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "week_pass_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1416,6 +1611,13 @@ export type Database = {
           week_review_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "week_review_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "week_review_replies_author_id_fkey"
             columns: ["author_id"]
@@ -1469,6 +1671,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "week_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
             referencedColumns: ["id"]
           },
           {
@@ -1618,6 +1827,13 @@ export type Database = {
             foreignKeyName: "goals_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1650,10 +1866,68 @@ export type Database = {
             foreignKeyName: "user_streaks_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_streaks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
+      }
+      mijn_profiel: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          locale: string | null
+          onboarded_at: string | null
+          reminder_enabled: boolean | null
+          reminder_time: string | null
+          reminder_tone: string | null
+          share_moves_by_default: boolean | null
+          tz: string | null
+          updated_at: string | null
+          wants_own_goal: boolean | null
+          week_start_day: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          locale?: string | null
+          onboarded_at?: string | null
+          reminder_enabled?: boolean | null
+          reminder_time?: string | null
+          reminder_tone?: string | null
+          share_moves_by_default?: boolean | null
+          tz?: string | null
+          updated_at?: string | null
+          wants_own_goal?: boolean | null
+          week_start_day?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          locale?: string | null
+          onboarded_at?: string | null
+          reminder_enabled?: boolean | null
+          reminder_time?: string | null
+          reminder_tone?: string | null
+          share_moves_by_default?: boolean | null
+          tz?: string | null
+          updated_at?: string | null
+          wants_own_goal?: boolean | null
+          week_start_day?: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -1671,11 +1945,21 @@ export type Database = {
       }
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
+      archiveer_groep: {
+        Args: { p_bevestigd?: boolean; p_group_id: string }
+        Returns: Json
+      }
       bedenktijd: { Args: never; Returns: string }
+      berichten_over: { Args: never; Returns: number }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
         Returns: Json
       }
+      check_waarden: {
+        Args: { p_constraint: string; p_tabel: string }
+        Returns: string[]
+      }
+      commitment_zichtbaar_voor_groep: { Args: never; Returns: string[] }
       create_group: {
         Args: {
           group_name: string
@@ -1784,19 +2068,35 @@ export type Database = {
         Args: { p_group_id: string; p_period_start: string }
         Returns: Json
       }
+      lid_van_open_groep: { Args: { gid: string }; Returns: boolean }
+      lijn_migratieregister_uit: {
+        Args: { p_paren: Json }
+        Returns: {
+          naam: string
+          naar: string
+          uitkomst: string
+          van: string
+        }[]
+      }
       maak_straffen_verschuldigd: {
         Args: { p_owner_id: string; p_vandaag: string }
         Returns: number
-      }
-      markeer_doorgeschoven: {
-        Args: { p_weekly_goal_id: string }
-        Returns: Json
       }
       migratieregister: {
         Args: never
         Returns: {
           naam: string
           versie: string
+        }[]
+      }
+      onveranderlijkheid_bewaking: {
+        Args: never
+        Returns: {
+          functie: string
+          heeft_grendel: boolean
+          kolom: string
+          tabel: string
+          trigger_naam: string
         }[]
       }
       openstaande_beoordelingen: {
@@ -1867,6 +2167,10 @@ export type Database = {
       }
       rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
+      schuif_weekdoel_door: {
+        Args: { p_cycle_index: number; p_cycle_start_date: string; p_weekly_goal_id: string }
+        Returns: Json
+      }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
         Returns: Json
@@ -1897,6 +2201,15 @@ export type Database = {
           geauthenticeerd: boolean
         }[]
       }
+      uitnodigingscode_bewaking: {
+        Args: never
+        Returns: {
+          alfabet_lengte: number
+          code_lengte: number
+          drempel: number
+          gebruikt_csprng: boolean
+        }[]
+      }
       verbruik_weekpas: {
         Args: {
           p_cycle_start_date: string
@@ -1912,6 +2225,14 @@ export type Database = {
       verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
       verwijder_weekdoel: { Args: { p_weekly_goal_id: string }; Returns: Json }
+      viewrechten_bewaking: {
+        Args: never
+        Returns: {
+          recht: string
+          rol: string
+          view_naam: string
+        }[]
+      }
       vraag_ai_job: {
         Args: { p_goal_id: string; p_input: Json; p_kind: string }
         Returns: Json
@@ -1956,6 +2277,7 @@ export type Database = {
           week_review_id: string
         }[]
       }
+      weekdoelen_over: { Args: never; Returns: number }
       weekpas_maximum: { Args: never; Returns: number }
       weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
       weekpas_standen: {
@@ -1969,6 +2291,7 @@ export type Database = {
           voorraad: number
         }[]
       }
+      weekreacties_over: { Args: never; Returns: number }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
       wikkel_commitments_af: { Args: { p_goal_id: string }; Returns: Json }
       zet_doelstatus: {

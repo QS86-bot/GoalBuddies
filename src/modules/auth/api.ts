@@ -4,6 +4,7 @@ import { t } from '../../shared/i18n';
 
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { invoerfout } from '../../shared/api';
 
 import {
   aanmeldenSchema,
@@ -89,7 +90,7 @@ export async function signUpWithEmail(invoer: AanmeldenInvoer): Promise<Uitkomst
 export async function signInWithEmail(invoer: InloggenInvoer): Promise<Uitkomst> {
   const gevalideerd = inloggenSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('auth.fout.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('auth.fout.invoer')) };
   }
 
   const { error } = await supabase().auth.signInWithPassword({

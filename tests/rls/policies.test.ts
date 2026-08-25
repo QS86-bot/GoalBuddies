@@ -16,6 +16,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    Supabase-client en AsyncStorage mee — en daarmee React Native, in een test
 //    die in Node draait. Zelfde reden als de losse client in harness.ts.
 import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
+import {
+  DOELGEBEURTENISSEN,
+  STATUSSEN,
+} from '../../src/modules/goals/schemas';
 import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
@@ -25,6 +29,7 @@ import {
   onbekendeCode,
   removeTestUsers,
   rlsTestsConfigured,
+  verwijderAuthGebruiker,
   type TestUser,
 } from './harness';
 
@@ -1648,7 +1653,22 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           expect(kolommen).not.toContain('total_points');
           expect(kolommen).toContain('current_streak');
 
-          for (const rij of data ?? []) {
+          // ⚠️ **Alleen de rijen van een ánder, en dat is een gerepareerde test.**
+          //    Hier stond `for (const rij of data ?? [])` — dus inclusief de rij
+          //    van de aanroeper zelf. Migratie 0078 vult die kolommen juist wél
+          //    voor de eigenaar (`g.owner_id = auth.uid() or …`), en
+          //    `epic13.test.ts` legt dat vast als belofte: je ziet je eigen beste
+          //    reeks in beide standen.
+          //
+          //    De test was groen omdat deze fixture geen `user_streaks`-rij voor
+          //    `g.lid` heeft. Wie die fixture ooit uitbreidt, zou een correcte
+          //    implementatie rood zien worden — een test die faalt op het goede
+          //    gedrag is erger dan geen test. Gevonden door de code-critic-ronde
+          //    van 24-08.
+          const vanAnderen = (data ?? []).filter((rij) => rij.user_id !== g.lid.id);
+          expect(vanAnderen.length).toBeGreaterThan(0);
+
+          for (const rij of vanAnderen) {
             expect(rij.last_cycle_start).toBeNull();
             expect(rij.best_streak).toBeNull();
           }
@@ -2375,11 +2395,18 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         // ⚠️ Het reviewpunt hangt aan géén doel. Zou het `goal_id` dragen, dan
         //    telde het mee in de reeks en het totaal van een doel waar het niets
         //    mee te maken heeft (6.6).
+        //
+        // ⚠️ Gezocht op de beoordelaar en niet op `ref_id`. Tot besluit A51 stond
+        //    daar de voltooiing in; sinds 0094 staat er de buddy. Deze test greep
+        //    dus naar een plek in plaats van naar de belofte — precies vraag 4 van
+        //    onwrikbare regel 18 — en werd rood toen die plek verhuisde. Wat hij
+        //    bewaakt is dat de beoordelaar precies één punt krijgt zonder doel,
+        //    en dat blijft kloppen waar de sleutel ook heen gaat.
         const review = await admin
           .from('points_ledger')
           .select('user_id, delta, goal_id')
           .eq('reason', 'review_given')
-          .eq('ref_id', b.completionId);
+          .eq('user_id', b.buddy.id);
         expect(review.data ?? []).toHaveLength(1);
         expect(review.data?.[0]?.user_id).toBe(b.buddy.id);
         expect(review.data?.[0]?.delta).toBe(1);
@@ -2639,11 +2666,12 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
         // Maar de beoordelaar krijgt zijn punt wél: doorvragen is betrokkenheid
         // en hoort niet duurder te zijn dan wegkijken (6.6).
+        // ⚠️ Op de beoordelaar en niet op `ref_id`, om dezelfde reden als hierboven.
         const review = await admin
           .from('points_ledger')
           .select('id')
           .eq('reason', 'review_given')
-          .eq('ref_id', b.completionId);
+          .eq('user_id', b.buddy.id);
         expect(review.data ?? []).toHaveLength(1);
       },
       SETUP_TIMEOUT,
@@ -2940,6 +2968,484 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         for (const rij of data ?? []) {
           expect(rij.versie, `versie ${rij.versie} (${rij.naam})`).toMatch(/^\d{4}[a-z]?$/);
         }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * De doelstatussen — bevinding van 21-08-2026, gesloten door migratie 0082.
+   *
+   * ⚠️ `goals_select` is `owner_id = auth.uid() or shares_group_with_goal(id)`,
+   *    dus een groepsgenoot leest de héle rij van een gekoppeld doel — de
+   *    statuskolom incluis. RLS kan geen kolommen beperken. Een tegenslagwaarde
+   *    in die kolom is dus domeinregel 7 die de database uit loopt, en `missed`
+   *    stond er tot 0082 in terwijl niets hem zette.
+   *
+   * ⚠️ **Een gelijkheidstoets en geen insluiting**, om dezelfde reden als bij de
+   *    systeembericht-allowlist: twee insluitingen laten allebei één richting
+   *    open, en de vorige keer dat twee zulke lijsten uit elkaar liepen
+   *    (0032/0034) vergeleek de test de app-lijst met **zichzelf** en bleef
+   *    groen.
+   */
+  describe('de doelstatussen', () => {
+    it(
+      'staat in de database exact toe wat de app kent',
+      async () => {
+        const { data, error } = await adminDb().rpc('check_waarden', {
+          p_tabel: 'goals',
+          p_constraint: 'goals_status_valid',
+        });
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+        const inDeApp = [...STATUSSEN].sort();
+
+        // ⚠️ Eerst de inhoud vastpinnen. Een lege uitkomst betekent óók "geen
+        //    constraint met die naam", en dan zou een kale vergelijking van twee
+        //    lege lijsten groen zijn terwijl het slot weg is.
+        expect(inDeDatabase).toEqual(['active', 'archived', 'completed']);
+        expect(inDeDatabase).toEqual(inDeApp);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert missed, ook via de systeemclient',
+      async () => {
+        // ⚠️ Via `adminDb()` en niet via een gebruiker: `authenticated` mag deze
+        //    kolom sinds 0035 sowieso niet schrijven, dus een geweigerde poging
+        //    daar bewijst alleen de kolomgrant. De CHECK is de laag die ook een
+        //    definer-functie tegenhoudt, en dát is wat hier getoetst wordt.
+        const { error } = await adminDb()
+          .from('goals')
+          .update({ status: 'missed' })
+          .eq('id', f.privateGoalId);
+
+        expect(error).not.toBeNull();
+        expect(error?.message ?? '').toContain('goals_status_valid');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * De dagelijkse bovengrens op weekdoelen — migratie 0083.
+   *
+   * ⚠️ Bevinding van 19-08-2026: `weekly_goals_insert` toetste alleen
+   *    eigenaarschap, en `cycle_start_date` is vrij te kiezen. Eén ingelogd
+   *    account kon in een lus tienduizenden rijen invoegen op een tier van
+   *    500 MB zonder automatische backups. Beveiligingsregel 5 eist een limiet
+   *    per gebruiker per dag; die stond er voor uitnodigingen (0008) en hier niet.
+   *
+   * ⚠️ **De voorraad wordt via de systeemclient gezet en niet via alice.** Zou de
+   *    test tweehonderd keer als `authenticated` invoegen, dan toetst hij vooral
+   *    zijn eigen doorlooptijd — en hij zou de grens raken tijdens het vullen, en
+   *    dan is niet meer te zien of de laatste weigering de grens is of iets
+   *    anders.
+   */
+  describe('de bovengrens op weekdoelen', () => {
+    it(
+      'laat een gewone dag ongemoeid en weigert de lus',
+      async () => {
+        const admin = adminDb();
+        const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+        const doel = await admin
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'GRENS weekdoelen',
+            target_date: addDays(basis.startDate, 30),
+          })
+          .select('id')
+          .single();
+        if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+        try {
+          // Eerst de positieve kant: onder de grens gaat het gewoon door. Zonder
+          // deze helft zou de test ook groen zijn als de policy álles weigert.
+          const mag = await f.alice.db.from('weekly_goals').insert({
+            goal_id: doel.data.id,
+            title: 'GRENS ruim onder de grens',
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          });
+          expect(mag.error).toBeNull();
+
+          // De voorraad tot aan de grens, via de systeemclient: die valt buiten
+          // `weekly_goals_insert`, want die policy geldt alleen voor
+          // `authenticated`. Dat is precies waarom de rollover er langs kan.
+          const voorraad = Array.from({ length: 200 }, (_, i) => ({
+            goal_id: doel.data.id,
+            title: `GRENS voorraad ${i}`,
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          }));
+          const gevuld = await admin.from('weekly_goals').insert(voorraad);
+          expect(gevuld.error).toBeNull();
+
+          const teveel = await f.alice.db.from('weekly_goals').insert({
+            goal_id: doel.data.id,
+            title: 'GRENS over de grens',
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          });
+          expect(teveel.error).not.toBeNull();
+
+          // ⚠️ En een andere week helpt niet. Dat is de hele reden dat de grens
+          //    per dag telt en niet per cyclus: `cycle_start_date` is vrij te
+          //    kiezen, dus een grens per week telt de datum op en gaat door.
+          const andereWeek = await f.alice.db.from('weekly_goals').insert({
+            goal_id: doel.data.id,
+            title: 'GRENS andere week',
+            cycle_start_date: addDays(basis.startDate, 7),
+            cycle_index: 2,
+          });
+          expect(andereWeek.error).not.toBeNull();
+        } finally {
+          // ⚠️ Opruimen is hier geen netheid maar noodzaak: de grens telt per
+          //    gebruiker, dus blijft de voorraad staan, dan kan alice in élke
+          //    latere test geen weekdoel meer aanmaken.
+          await admin.from('weekly_goals').delete().eq('goal_id', doel.data.id);
+          await admin.from('goals').delete().eq('id', doel.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat de systeemclient er wél langs, want de rollover moet door',
+      async () => {
+        const admin = adminDb();
+        const basis = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+
+        const doel = await admin
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'GRENS rollover',
+            target_date: addDays(basis.startDate, 30),
+          })
+          .select('id')
+          .single();
+        if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+        try {
+          const voorraad = Array.from({ length: 250 }, (_, i) => ({
+            goal_id: doel.data.id,
+            title: `GRENS rollover ${i}`,
+            cycle_start_date: basis.startDate,
+            cycle_index: 1,
+          }));
+
+          expect((await admin.from('weekly_goals').insert(voorraad)).error).toBeNull();
+        } finally {
+          await admin.from('weekly_goals').delete().eq('goal_id', doel.data.id);
+          await admin.from('goals').delete().eq('id', doel.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * De val die drie keer toesloeg — migratie 0086.
+   *
+   * ⚠️ Een BEFORE UPDATE-trigger die een kolom hard terugzet (`new.x := old.x`)
+   *    sloopt `on delete set null` op diezelfde kolom: Postgres voert die actie
+   *    uit als een gewone UPDATE, de trigger zet de oude waarde terug, en de
+   *    foreign key weigert hem omdat het profiel net weg is. De hele DELETE valt
+   *    om — en dat is precies wat `verwijder_mijn_account()` doet.
+   *
+   * ⚠️ **Dit is de vierde poging om dit te stoppen, en de eerste die geen
+   *    aantekening is.** 0031, 0033 en 0059 liepen er alle drie in;
+   *    WERKVOORRAAD §8 beschrijft de val sinds 0033, en 0059 citeert hem in zijn
+   *    eigen kop, past hem correct toe op `actor_id` en vergeet hem één regel
+   *    lager voor `subject_id`. Wat je leest en overschrijft, kun je alsnog
+   *    missen; wat rood wordt niet.
+   */
+  describe('onveranderlijkheid tegenover on delete set null', () => {
+    it(
+      'heeft op elke set-null-kolom de grendel en niet de kale toewijzing',
+      async () => {
+        const { data, error } = await adminDb().rpc('onveranderlijkheid_bewaking');
+
+        expect(error).toBeNull();
+
+        const rijen = data ?? [];
+
+        // ⚠️ Eerst bewijzen dát hij iets vindt. Een lege uitkomst betekent hier
+        //    óók "de functie kijkt nergens meer", en dan is groen betekenisloos —
+        //    dezelfde val als een controlescript dat nul meldt omdat het niets
+        //    inleest.
+        expect(rijen.length).toBeGreaterThan(0);
+
+        const kaal = rijen
+          .filter((r) => !r.heeft_grendel)
+          .map((r) => `${r.tabel}.${r.kolom} (${r.functie})`);
+
+        expect(kaal).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een account met een eigen groep gewoon verdwijnen',
+      async () => {
+        // ⚠️ De uitkomst en niet de vorm. De test hierboven leest de
+        //    functiebron; deze doet wat een gebruiker doet.
+        //
+        // ⚠️ **En deze helft wordt níét rood als de grendel eruit gaat — met de
+        //    hand nagemeten op 25-08.** `guard_group_update()` stapt er bij
+        //    `current_user not in ('authenticated','anon')` al uit, en de cascade
+        //    van `on delete set null` draait niet als `authenticated`. Vandaag is
+        //    de kale toewijzing dus onschadelijk.
+        //
+        //    Dat is precies waarom de structurele toets hierboven bestaat en
+        //    waarom hij de eerste van de twee is: het gedrag kan deze fout niet
+        //    zien. Verdwijnt die vroege uitstap ooit — hij staat als "faalt open"
+        //    op de review-agenda — dan is dít de test die omvalt.
+        const admin = adminDb();
+        const weg = await createTestUser('setnull');
+
+        const groep = await weg.db.rpc('create_group', {
+          group_name: 'SETNULL proefgroep',
+          huddle_day: 1,
+          tz: 'Europe/Amsterdam',
+          zichtbaarheid: 'beschermd',
+        });
+        expect(groep.error).toBeNull();
+
+        const verwijderd = await verwijderAuthGebruiker(weg.id);
+        expect(verwijderd).toBeNull();
+
+        // De groep staat er nog, zonder oprichter — dat is wat set null belooft.
+        const na = await admin
+          .from('groups')
+          .select('id, created_by')
+          .eq('name', 'SETNULL proefgroep');
+
+        expect(na.error).toBeNull();
+        expect(na.data ?? []).toHaveLength(1);
+        expect((na.data ?? [])[0]?.created_by).toBeNull();
+
+        await admin.from('groups').delete().eq('name', 'SETNULL proefgroep');
+      },
+      SETUP_TIMEOUT,
+    );
+  });
+  /**
+   * De audittrail van een doel — migratie 0087.
+   *
+   * ⚠️ De bevinding van 16-08 noemde zichzelf "productbeslissing, geen
+   *    technische": `001-datamodel.md` §4.2 staat groepsgenoten toe
+   *    `scope_reduced` en `milestone_dropped` te lezen, domeinregel 7 verbiedt
+   *    het, en één van de twee moest wijken. Het project had die vraag elders al
+   *    tegengesteld beantwoord — `milestone_dropped` staat met naam op
+   *    `VERBODEN_GEBEURTENISSEN` — dus het was een tegenspraak en geen open
+   *    vraag.
+   *
+   * ⚠️ `deadline_moved` blijft groepszichtbaar, en dat is de benoemde verruiming
+   *    A7: je vraagt hem zelf aan en een buddy keurt hem goed.
+   */
+  describe('de audittrail van een doel', () => {
+    it(
+      'staat in de database exact de gebeurtenissen toe die de app kent',
+      async () => {
+        const { data, error } = await adminDb().rpc('check_waarden', {
+          p_tabel: 'goal_events',
+          p_constraint: 'goal_events_type_valid',
+        });
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+
+        // Eerst de inhoud vastpinnen: een lege uitkomst betekent óók "geen
+        // constraint met die naam", en dan is een vergelijking van twee lege
+        // lijsten groen terwijl het slot weg is.
+        expect(inDeDatabase).toEqual(['archived', 'completed', 'created', 'deadline_moved']);
+        expect(inDeDatabase).toEqual([...DOELGEBEURTENISSEN].sort());
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een eigenaar geen deadline_moved verzinnen',
+      async () => {
+        // ⚠️ De enige gebeurtenis die een uitspraak over een ánder mens draagt
+        //    ("een buddy ging akkoord"), en de enige die de groep leest. Zonder
+        //    deze grens kan de eigenaar zelf neerzetten dat zijn verschuiving
+        //    goedgekeurd was.
+        const poging = await f.alice.db.from('goal_events').insert({
+          goal_id: f.sharedGoalId,
+          actor_id: f.alice.id,
+          event_type: 'deadline_moved',
+          old_value: { target_date: '2026-01-01' },
+          new_value: { target_date: '2027-01-01' },
+        });
+
+        expect(poging.error).not.toBeNull();
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een eigenaar wél zijn eigen created, archived en completed schrijven',
+      async () => {
+        // ⚠️ De positieve kant. Zonder deze helft blijft de test hierboven groen
+        //    als de policy per ongeluk álles weigert — en dan is `logGoalEvent()`
+        //    stil kapot, wat niemand merkt want die functie gooit bewust niet.
+        const admin = adminDb();
+
+        for (const type of ['created', 'archived', 'completed'] as const) {
+          const poging = await f.alice.db
+            .from('goal_events')
+            .insert({
+              goal_id: f.sharedGoalId,
+              actor_id: f.alice.id,
+              event_type: type,
+              old_value: null,
+              new_value: null,
+            })
+            .select('id')
+            .single();
+
+          expect(poging.error, type).toBeNull();
+
+          if (poging.data !== null) {
+            await admin.from('goal_events').delete().eq('id', poging.data.id);
+          }
+        }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * Wat de uitnodigingscode zijn sterkte geeft — migratie 0088.
+   *
+   * ⚠️ De vorm stond al onder test ("twaalf tekens uit het alfabet"), en die
+   *    test knoopt de SQL aan `isCodeVorm()`. Maar twee wijzigingen halen hem
+   *    moeiteloos en slopen de sterkte: `gen_random_bytes` vervangen door
+   *    `random()`, of het alfabet veranderen zonder de verwerpingsdrempel mee te
+   *    nemen. In beide gevallen blijven de codes er precies hetzelfde uitzien.
+   *
+   * ⚠️ **De entropie zelf is nagemeten en ruim voldoende** (25-08-2026): 30^12 is
+   *    ~58,9 bits, en zelfs bij een miljoen groepen kost één treffer zeventien
+   *    jaar hameren op duizend verzoeken per seconde. Deze test bewaakt niet dát
+   *    getal maar de drie eigenschappen waar het uit volgt.
+   */
+  describe('de sterkte van de uitnodigingscode', () => {
+    it(
+      'houdt een CSPRNG en een drempel die de modulo-bias uitsluit',
+      async () => {
+        const { data, error } = await adminDb().rpc('uitnodigingscode_bewaking');
+
+        expect(error).toBeNull();
+
+        const stand = (data ?? [])[0];
+        expect(stand, 'uitnodigingscode_bewaking gaf niets terug').toBeDefined();
+        if (stand === undefined) return;
+
+        // ⚠️ De bron moet een CSPRNG zijn. `random()` is gezaaid en voorspelbaar:
+        //    wie één code ziet, kan de volgende afleiden.
+        expect(stand.gebruikt_csprng, 'generate_invite_code gebruikt geen CSPRNG').toBe(true);
+
+        // ⚠️ **De kern van deze test.** De drempel verwerpt elke byte die de
+        //    verdeling scheef zou trekken, en dat werkt alleen als hij een exact
+        //    veelvoud van de alfabetlengte is. Wordt het alfabet 32 en blijft de
+        //    drempel 240, dan zijn de eerste zestien letters stelselmatig
+        //    waarschijnlijker — en dat zie je aan geen enkele code af.
+        expect(stand.drempel % stand.alfabet_lengte, 'de drempel is geen veelvoud van het alfabet').toBe(0);
+
+        // En de ruimte blijft groot genoeg om raden zinloos te houden.
+        const bits = stand.code_lengte * Math.log2(stand.alfabet_lengte);
+        expect(bits, `de code is nog maar ${bits.toFixed(1)} bits`).toBeGreaterThanOrEqual(50);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * Je dagritme is niet van de groep — migratie 0089.
+   *
+   * ⚠️ `profiles_select` is `id = auth.uid() or shares_group_with_user(id)`, en
+   *    RLS kan geen kolommen beperken. Elke buddy kon dus lezen hoe laat jouw
+   *    herinnering afgaat en of hij aanstaat. Dat is geen tegenslagsignaal maar
+   *    iets persoonlijkers, en niemand heeft het ooit besloten — het volgde uit
+   *    het feit dat die kolommen toevallig in dezelfde tabel staan.
+   */
+  describe('de herinneringsinstellingen', () => {
+    it(
+      'zijn voor een groepsgenoot niet te lezen',
+      async () => {
+        // ⚠️ Expliciet die drie kolommen vragen, niet `*`. PostgREST laat `*`
+        //    stilletjes de kolommen weg waar je geen recht op hebt, en dan zou
+        //    deze test groen zijn zonder iets te bewijzen.
+        const poging = await f.bob.db
+          .from('profiles')
+          .select('id, reminder_time, reminder_enabled, reminder_tone')
+          .eq('id', f.alice.id);
+
+        expect(poging.error).not.toBeNull();
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zijn ook voor jezelf niet meer via `profiles` te lezen',
+      async () => {
+        // ⚠️ De prijs van een kolomgrant: hij kent geen rijen, dus de intrekking
+        //    treft de eigenaar net zo goed. Dát is de reden dat `mijn_profiel`
+        //    bestaat, en deze test legt vast dat de omweg nodig is en niet
+        //    toevallig.
+        const poging = await f.alice.db
+          .from('profiles')
+          .select('id, reminder_time')
+          .eq('id', f.alice.id);
+
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zijn via `mijn_profiel` wél leesbaar, en alleen je eigen rij',
+      async () => {
+        const eigen = await f.alice.db
+          .from('mijn_profiel')
+          .select('id, reminder_time, reminder_enabled, reminder_tone');
+
+        expect(eigen.error).toBeNull();
+        expect(eigen.data ?? []).toHaveLength(1);
+        expect((eigen.data ?? [])[0]?.id).toBe(f.alice.id);
+
+        // ⚠️ En de view geeft niet andermans rij, ook niet als je erom vraagt.
+        //    Zonder deze helft zou een view zonder where-clausule groen zijn.
+        const andermans = await f.alice.db
+          .from('mijn_profiel')
+          .select('id')
+          .eq('id', f.bob.id);
+
+        expect(andermans.error).toBeNull();
+        expect(andermans.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een groepsgenoot nog wél de naam en avatar zien',
+      async () => {
+        // De positieve controle: zonder deze helft zou de intrekking ook groen
+        // zijn als `profiles` helemaal dicht was gegaan, en dan is het
+        // groepsoverzicht stuk.
+        const zicht = await f.bob.db
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .eq('id', f.alice.id);
+
+        expect(zicht.error).toBeNull();
+        expect(zicht.data ?? []).toHaveLength(1);
       },
       TEST_TIMEOUT,
     );

@@ -49,3 +49,28 @@ export function freezeNow(at: Date): () => void {
 export function unfreezeNow(): void {
   frozen = undefined;
 }
+
+/**
+ * Is dit tijdstip langer dan `uren` geleden?
+ *
+ * ⚠️ **Hier en niet bij de aanroeper, en dat is correctheidsregel 7.** "Is dit
+ *    ouder dan een dag" is een tijdberekening, en die hoort in `shared/time` —
+ *    ook als het maar één aftrekking is. De aanleiding is besluit A49 (QS8-136):
+ *    een bewaarde uitnodigingscode verloopt na 24 uur.
+ *
+ * ⚠️ Leest de klok via `now()` en niet via `Date.now()`, zodat `freezeNow()` hem
+ *    in tests kan stilzetten. Zonder dat is dit alleen te toetsen met een
+ *    wachtende test, en die bestaat niet in dit project.
+ *
+ * ⚠️ Een onbruikbaar tijdstip — `NaN`, een lege string, een datum uit een oudere
+ *    opslagvorm — telt als **verlopen**. Onbekend is hier de kant waar niets
+ *    stilzwijgend gebeurt; zie de aanroeper in `modules/buddies/pending.ts`.
+ */
+export function ouderDan(uren: number, tijdstip: Date | string | null): boolean {
+  if (tijdstip === null) return true;
+
+  const moment = typeof tijdstip === 'string' ? new Date(tijdstip) : tijdstip;
+  if (Number.isNaN(moment.getTime())) return true;
+
+  return now().getTime() - moment.getTime() > uren * 60 * 60 * 1000;
+}

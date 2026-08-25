@@ -2,8 +2,14 @@ import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+import { invoerfout, type Resultaat, type RpcRij } from '../../shared/api';
 
 import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Resultaat };
 
 /**
  * Peer-goedkeuring — EPIC 6.
@@ -21,7 +27,6 @@ import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
  *    hetzelfde op (6.6), want anders is doorvragen duurder dan wegkijken.
  */
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
 /** Een voltooiing die op jouw oordeel wacht, uit `openstaande_beoordelingen()`. */
 export interface TeBeoordelen {
@@ -52,8 +57,8 @@ export interface Wachtrij {
  *    left joins en de nullable kolommen ze wel degelijk leeg kunnen laten.
  *    Hernoemt iemand een kolom in SQL, dan breekt de build hier.
  */
-type RpcRij = Database['public']['Functions']['openstaande_beoordelingen']['Returns'][number];
-type WachtrijRij = { readonly [K in keyof RpcRij]: RpcRij[K] | null };
+type RpcWachtrijRij = Database['public']['Functions']['openstaande_beoordelingen']['Returns'][number];
+type WachtrijRij = RpcRij<RpcWachtrijRij>;
 
 function naarTeBeoordelen(rij: WachtrijRij): TeBeoordelen | null {
   if (
@@ -141,7 +146,7 @@ export async function beoordeel(
 ): Promise<Resultaat<string>> {
   const gevalideerd = oordeelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('voltooiing.invoer')) };
   }
 
   const opmerking = gevalideerd.data.comment?.trim() ?? '';

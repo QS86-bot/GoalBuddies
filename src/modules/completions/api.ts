@@ -3,6 +3,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import type { Cycle } from '../../shared/time';
+import { invoerfout, type Resultaat } from '../../shared/api';
 
 import {
   afrondSchema,
@@ -10,6 +11,11 @@ import {
   type AfrondInvoer,
   type DagzetInvoer,
 } from './completion-schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Resultaat };
 
 /**
  * Voltooiingen: een weekdoel afronden, met bewijs — QS8-46.
@@ -23,7 +29,6 @@ import {
 export type Voltooiing = Tables<'completions'>;
 export type DagZet = Tables<'daily_moves'>;
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
 /** Wat een groep aan bewijs eist, uit `groups.evidence_policy` (6.5). */
 export type Bewijseis = 'note_required' | 'note_and_attachment' | 'optional';
@@ -56,7 +61,7 @@ export async function rondAf(
 ): Promise<Resultaat<Voltooiing>> {
   const gevalideerd = afrondSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('voltooiing.invoer')) };
   }
 
   const notitie = gevalideerd.data.note?.trim() ?? '';
@@ -196,7 +201,7 @@ export async function zetDagzet(
 ): Promise<Resultaat<DagZet>> {
   const gevalideerd = dagzetSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('voltooiing.invoer')) };
   }
 
   const { data, error } = await supabase()

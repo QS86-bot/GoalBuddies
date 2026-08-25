@@ -76,7 +76,11 @@ function aanvraagMelding(reden: string | undefined, limiet: number | undefined):
     case 'quota_reached':
       // ⚠️ Het getal komt uit de database mee, zodat deze tekst niet de tweede
       //    plek wordt waar de limiet staat.
-      return `Je hebt vandaag al ${limiet ?? 10} keer de Doelcoach gebruikt. Morgen kan het weer — je kunt intussen zelf mijlpalen toevoegen.`;
+      //
+      // ⚠️ Stond tot 25-08-2026 als kale zin in dit bestand, vijf regels naast de
+      //    `t()`-aanroepen eronder — en `tekst:controle` zag hem niet, want een
+      //    `return` van een zin viel buiten élke heuristiek. Zie QS8-115.
+      return t('coach.daglimiet', { limiet: limiet ?? 10 });
     case 'not_your_goal':
       return t('coach.niet_jouw_doel');
     case 'not_signed_in':

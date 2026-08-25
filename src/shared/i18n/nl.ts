@@ -80,6 +80,7 @@ export const nl = {
   'auth.fout.niet_bevestigd': 'Bevestig eerst je e-mailadres. Check je inbox.',
   'auth.fout.te_vaak': 'Te veel pogingen. Wacht even en probeer het opnieuw.',
   'auth.fout.zwak_wachtwoord': 'Dit wachtwoord voldoet niet. Gebruik een langere zin.',
+  'auth.bevestig_inbox': 'Gelukt. Staat e-mailbevestiging aan, kijk dan even in je inbox.',
   'auth.fout.geen_verbinding': 'Geen verbinding. Controleer je internet en probeer opnieuw.',
   'auth.fout.algemeen': 'Er ging iets mis. Probeer het opnieuw.',
   'auth.fout.invoer': 'Controleer je invoer.',
@@ -377,7 +378,8 @@ export const nl = {
   'uitnodiging.pas_bij_meedoen': 'Waar ze aan werken zie je zodra je meedoet. Dat is met opzet: wat mensen hier delen, delen ze met hun groep en niet met iedereen die de link krijgt.',
   'uitnodiging.wat_je_doet': 'Wat je hier gaat doen',
   'uitnodiging.uitleg_kern': 'Je kiest één doel met een datum erop. Elke week bepaal je wat je af wilt hebben, en één van je buddy’s keurt goed dat het gelukt is. Meer niet.',
-  'uitnodiging.uitleg_missen': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_beschermd': 'Een week missen kost een punt en verder niets. Niemand in de groep ziet het.',
+  'uitnodiging.uitleg_missen_open': 'Een week missen kost een punt en verder niets. In deze groep zien de anderen het wel — dat is wat "open" hierboven betekent.',
   'uitnodiging.al_lid': 'Je zit in de groep',
   'uitnodiging.doorsturen': 'Je wordt doorgestuurd naar de groep.',
   'uitnodiging.eerst_profiel': 'Maak eerst je profiel af — daarna staat de groep voor je klaar.',
@@ -454,7 +456,12 @@ export const nl = {
   'onboarding.stap3.c': 'Dit is het idee waar de app om draait. Je reeks hoort jou te dienen, niet andersom.',
   'onboarding.stap4.kop': 'Een buddy keurt het goed',
   'onboarding.stap4.a': 'Iemand uit je groep bevestigt dat het gelukt is. Jezelf goedkeuren kan niet.',
-  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. Niemand in je groep ziet het.',
+  /**
+   * ⚠️ Hier is nog geen groep, dus deze zin kan niet weten of hij open of
+   *    beschermd is. Vandaar de vorm "standaard niet, en je ziet het staan" in
+   *    plaats van een belofte die de app later moet breken (besluit A41).
+   */
+  'onboarding.stap4.b': 'Een week missen kost je één punt en verder niets. In een beschermde groep — de standaard — ziet niemand het. Kiest een groep bewust voor open, dan staat dat erbij vóór je meedoet.',
   'onboarding.stap_van': 'STAP {nu} VAN {totaal}',
   'onboarding.zo_ziet_eruit': 'Zo ziet dat eruit',
   'onboarding.voorbeeld_titel': 'Drie keer hardlopen',
@@ -469,8 +476,6 @@ export const nl = {
   'onboarding.naam_hint': 'Dit zien je buddy’s. Een voornaam is genoeg.',
   'onboarding.naam_plaatshouder': 'Quinten',
   'onboarding.geen_avatar': 'Geen avatar? Dan tonen we je initialen. Een foto uploaden kan zodra we opslag hebben.',
-  'onboarding.tijdzone': 'Tijdzone',
-  'onboarding.tijdzone_hint': 'Overgenomen van je toestel. Klopt hij niet, pas hem dan aan — hij bepaalt wanneer jouw dag en week omslaan.',
   'onboarding.herinnering': 'Herinnering',
   'onboarding.aan': 'Aan',
   'onboarding.uit': 'Uit',
@@ -484,6 +489,7 @@ export const nl = {
   'onboarding.zelf_doel': 'Ik wil zelf een doel',
   'onboarding.kom_helpen': 'Ik kom helpen',
   'onboarding.klaar': 'Klaar',
+  'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
   'groepdetail.titel': 'Groep',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
@@ -514,7 +520,22 @@ export const nl = {
   'deadlineverzoek.liever_niet': 'Liever niet',
   'koppel.ontkoppel': 'Niet meer delen met deze groep',
   'koppel.titel': 'Je doel delen met deze groep',
-  'koppel.uitleg': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel en je mijlpaalvoortgang — niet je notities, niet je weken en niet je punten. Je kunt het altijd weer ongedaan maken.',
+  /**
+   * ⚠️ **Twee zinnen en niet één, sinds besluit A41.** Hier stond onvoorwaardelijk
+   *    "niet je weken", en dat was vanaf migratie 0077 onwaar in een open groep:
+   *    koppelen deelt daar élke weekdoelrij, inclusief `missed` en `carried`.
+   *
+   *    De zin stond boven de koppelknop, dus de app deed een privacybelofte op
+   *    exact het moment dat de gebruiker toestemming gaf. Gevonden door de
+   *    critical-user-ronde van 24-08; de kop van 0077 beweerde intussen dat "een
+   *    eigenaar die zijn doel aan een open groep koppelt, weet wat hij deelt".
+   *
+   * ⚠️ Wie hier een derde oppervlak opent, splitst deze zin niet nóg een keer maar
+   *    kijkt eerst of hij nog klopt. `beloftes.test.ts` wordt rood bij een nieuwe
+   *    onvoorwaardelijke onzichtbaarheidsbelofte.
+   */
+  'koppel.uitleg_beschermd': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Koppelen deelt de titel en je mijlpaalvoortgang — niet je notities, niet je weken en niet je punten. Je kunt het altijd weer ongedaan maken.',
+  'koppel.uitleg_open': 'Zolang je niets koppelt, ziet niemand hier waar je aan werkt. Deze groep staat open: koppelen deelt de titel, je mijlpaalvoortgang én je weken — ook de weken die je niet gehaald hebt. Je notities en je punten blijven van jou. Je kunt het altijd weer ongedaan maken.',
   'koppel.geen_doel_titel': 'Je hebt nog geen doel om te delen',
   'koppel.geen_doel_tekst': 'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep koppelen.',
   'koppel.nieuw_doel': 'Nieuw doel',
@@ -554,11 +575,15 @@ export const nl = {
   'zichtbaarheid.beschermd_uitleg':
     'De groep ziet wat er lukt: afgeronde weken, mijlpalen, aanmoedigingen. Een gemiste week blijft van jou, tenzij je hem zelf deelt.',
   'zichtbaarheid.open_uitleg':
-    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken van elkaar. Kies dit alleen als iedereen dat wil.',
+    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, en wie er in welke week meedeed. Kies dit alleen als iedereen dat wil.',
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
   'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
   'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
-  'zichtbaarheid.te_snel': 'Je hebt deze groep vandaag al opengezet. Morgen kan het weer.',
+  // ⚠️ Een rollend etmaal en geen kalenderdag — `created_at > now() - interval
+  //    '1 day'` in migratie 0076. "Morgen kan het weer" was daarom onwaar voor
+  //    wie 's avonds omzet. En de zin noemt nu de huidige stand, want hij
+  //    verschijnt terwijl er "Nu ingesteld: Beschermd" boven staat.
+  'zichtbaarheid.te_snel': 'Deze groep is in de afgelopen 24 uur al een keer opengezet. Beschermd blijft hij intussen gewoon; over een dag kun je het opnieuw proberen.',
 
   'groepnieuw.zichtbaarheid': 'Wat ziet de groep van elkaar?',
   'groepnieuw.zichtbaarheid_hint':
@@ -570,12 +595,24 @@ export const nl = {
     'Openzetten werkt met terugwerkende kracht: de groep ziet vanaf dat moment ook de gemiste weken die er al staan. Iedereen krijgt er een bericht van, zodat wie dat niet wil zijn doel kan ontkoppelen.',
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, en van elke week wie er meedeed — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
     'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
+  'bevestiging.groep_archiveren.titel': 'Deze groep archiveren?',
+  'bevestiging.groep_archiveren.uitleg':
+    'De groep verdwijnt daarna voor iedereen: de chat, de weekafsluitingen en De Ketting zijn niet meer te openen, ook niet voor jou. Wat erin staat wordt niet gewist — het blijft bewaard, en de reeksen van je buddies blijven kloppen. Maar dit is niet terug te draaien vanuit de app.',
+  'bevestiging.groep_archiveren.knop': 'Ja, archiveer deze groep',
+  'beheer.archief_titel': 'Groep archiveren',
+  'beheer.archief_uitleg':
+    'Is deze groep klaar, dan sluit je hem hiermee af. Hij verdwijnt bij alle leden en niemand kan er nog iets in doen.',
+  'beheer.archief_waarschuwing':
+    'Er wordt niets gewist, maar je kunt de groep hierna niet meer openen.',
+  'beheer.archiveren': 'Deze groep archiveren',
+  'beheer.melding_gearchiveerd': 'De groep is gearchiveerd.',
+  'groep.gearchiveerd': 'Deze groep is gearchiveerd en niet meer te openen.',
   'beheer.naar_open': 'Deze groep openzetten',
   'beheer.naar_beschermd': 'Deze groep weer beschermen',
   'beheer.melding_open_gezet': 'De groep staat open. Iedereen heeft er een bericht van gekregen.',
@@ -741,7 +778,12 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // De Doelcoach — EPIC 3
   // ---------------------------------------------------------------------------
+  'coach.bewaard': 'Bewaard',
+  'coach.bewaren': 'Antwoorden bewaren',
+  'coach.alle_overnemen': 'Alle {aantal} overnemen',
   'coach.titel': 'De Doelcoach',
+  'coach.vastgelopen': 'De Doelcoach liep vast.',
+  'coach.daglimiet': 'Je hebt vandaag al {limiet} keer de Doelcoach gebruikt. Morgen kan het weer — je kunt intussen zelf mijlpalen toevoegen.',
   'coach.eyebrow': 'ZES VRAGEN',
   'coach.zes_vragen': 'Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de mijlpalen bij jou passen — maar overslaan werkt gewoon.',
   'coach.alleen_voor_jou': 'Je antwoorden zijn alleen voor jou en de Doelcoach. Je groep ziet ze nooit.',
@@ -834,6 +876,8 @@ export const nl = {
   'chat.controleer': 'Controleer je bericht.',
   'chat.leeg': 'Er staat nog niets in je bericht.',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
+  'chat.rem_bereikt':
+    'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',
   'chat.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
 
   'ketting.laden_mislukt': 'De Ketting kon niet geladen worden.',
@@ -896,6 +940,8 @@ export const nl = {
   'weekafsluiting.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
   'weekafsluiting.reactie_controleer': 'Controleer je reactie.',
   'weekafsluiting.reactie_mislukt': 'Je reactie is niet verstuurd. Probeer het zo nog eens.',
+  'weekafsluiting.reactie_rem_bereikt':
+    'Je hebt vandaag het maximum aantal reacties geplaatst. Straks kun je weer verder.',
 
   // ---------------------------------------------------------------------------
   // Doelen — EPIC 2
@@ -1016,6 +1062,8 @@ export const nl = {
   'weekdoel.niet_meer_open':
     'Deze week staat niet meer open. Alleen een weekdoel waar nog niets mee gebeurd is, kun je afsluiten.',
   'weekdoel.doorschuiven_mislukt': 'Doorschuiven lukte niet.',
+  'weekdoel.te_veel_deze_dag':
+    'Je hebt vandaag het maximum aantal weekdoelen aangemaakt. Straks kun je weer verder.',
   'weekdoel.nog_niet_afgesloten':
     'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.',
   'validatie.kies_doel': 'Kies een doel.',
@@ -1361,8 +1409,8 @@ export const nl = {
   //    groen stond, niet door beter te kijken.
   'laden.kop_mislukt': 'Dat lukte niet',
   'ketting.kop': 'De Ketting',
-  'lid.beste_reeks': 'Beste tot nu toe: {aantal}',
   'lid.adempauze': 'Adempauze',
+  'lid.afgerond': 'heeft deze periode afgerond',
   'vandaag.reeks_telt_weken': 'Je reeks telt weken, geen dagen.',
   'vandaag.meenemen_knop': 'Meenemen naar deze week',
   'vandaag.buddy_vraag': 'Je buddy heeft een vraag',
@@ -1389,8 +1437,85 @@ export const nl = {
   'taal.uitleg':
     'Je keuze geldt ook voor de meldingen die je krijgt, want die worden op de ' +
     'server opgesteld en niet op je telefoon.',
-  'taal.opslaan_mislukt': 'De taal kon niet worden opgeslagen. Probeer het opnieuw.',
   'validatie.taal': 'Kies een taal uit de lijst.',
+
+  // ---------------------------------------------------------------------------
+  // Wat de controle miste — QS8-115, ronde 24-08-2026
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Deze sleutels komen niet uit een nieuwe feature maar uit een blinde vlek
+  //    in `npm run tekst:controle`. Vijf vormen kwamen er niet doorheen: een prop
+  //    met één woord, een prop die over meerdere regels loopt, een tekstsleutel
+  //    in een objectliteraal, JSX-tekst met een accolade erin, en een kale zin in
+  //    `setMelding(...)`. Zie de kop van dat script.
+  'algemeen.laden': 'Laden',
+  'algemeen.streefdatum': 'Streefdatum {datum}',
+  // ⚠️ Mét eenheid. Naast "3 weken op rij" van de reeksteller las "Beste
+  //    reeks: 7" als zeven wat — critical-user-ronde 24-08.
+  'reeks.beste_een': 'Beste tot nu toe: 1 week',
+  'reeks.beste_meer': 'Beste tot nu toe: {aantal} weken',
+  'weekdoel.vloer_regel': 'Vloer · {tekst}',
+  'weekdoel.plafond_regel': 'Plafond · {tekst}',
+  'ketting.a11y': 'De Ketting: {stand}',
+  'risico.a11y': 'Status: {label}',
+  'coach.leeg_titel': 'Dit doel bestaat niet',
+  'coach.leeg_tekst': 'Of het is verwijderd, of het is niet van jou.',
+  'coach.geen_mijlpalen': 'De Doelcoach gaf geen bruikbare mijlpalen terug.',
+  'coach.te_lang':
+    'Het duurde te lang. Probeer het zo nog eens, of voeg je mijlpalen zelf toe.',
+  'coach.n_voorgesteld': '{aantal} mijlpalen voorgesteld',
+  'beheer.melding_opgeslagen': 'Opgeslagen. Lopende kettingschakels blijven staan waar ze staan.',
+  'beheer.melding_nieuwe_link': 'Nieuwe link. De oude werkt vanaf nu niet meer.',
+  'beheer.leeg_titel': 'Deze groep is er niet, of niet voor jou',
+  'beheer.leeg_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer.',
+  'beheer.huddledag_label': 'Huddledag',
+  'beheer.huddledag_hint':
+    'De gedeelde dag van de groep. Verandert niets aan wanneer jouw eigen weekdoelen resetten — dat blijft je persoonlijke week-startdag.',
+  'beheer.voorlezen': 'Voorlezen kan ook: {code}',
+  'beoordelen.bevestigd': 'Je hebt de week van {naam} bevestigd.',
+  'beoordelen.sessie_laadt': 'Je sessie is nog aan het laden. Probeer het over een tel opnieuw.',
+  'dashboard.week_van': 'Week van {datum}',
+
+
+  // ---------------------------------------------------------------------------
+  // De tijdzone met de hand zetten — QS8-27, criterium 1
+  // ---------------------------------------------------------------------------
+  'tijdzone.label': 'Tijdzone',
+  'tijdzone.hint':
+    'Hierin worden "vandaag" en "deze week" berekend. Standaard die van je telefoon; zoek op een plaatsnaam om hem te wijzigen.',
+  'tijdzone.zoek_voorbeeld': 'Amsterdam',
+  'tijdzone.nu': 'Nu ingesteld: {zone}',
+  'tijdzone.gebruik_getypt': 'Gebruik {zone}',
+  'tijdzone.van_apparaat': 'De tijdzone van dit apparaat ({zone})',
+  'tijdzone.niets_gevonden': 'Geen tijdzone gevonden. Zoek op een grote stad in de buurt.',
+  'tijdzone.uitleg':
+    'Wijzigen laat je punten en je reeks met rust: die staan vast op de weken die er al zijn. Wat verandert is wanneer de volgende week omslaat.',
+  'tijdzone.opgeslagen': 'Tijdzone opgeslagen.',
+
+
+  // ---------------------------------------------------------------------------
+  // De weektip — besluit A48, variant 3 (QS8-110)
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Vijf per categorie. Ze gaan over de wéék die je net gehaald hebt, niet over
+  //    het leven in het algemeen — dat was het bezwaar tegen de wijze quotes. En
+  //    geen enkele noemt een tegenvaller; er staat een test op.
+  'weektip.business.1': 'Eén afgeronde week is een week waarin iemand anders nog aan het plannen was.',
+  'weektip.business.2': 'Wat je deze week af kreeg, hoeft volgende week niet meer bedacht te worden.',
+  'weektip.business.3': 'Schrijf op wat deze week wérkte. Dat is je eigen handleiding voor de drukke weken.',
+  'weektip.business.4': 'Klein en af verslaat groot en half. Dat is deze week bewezen.',
+  'weektip.business.5': 'De volgende stap is meestal kleiner dan hij eruitziet. Kies hem nu je op dreef bent.',
+  'weektip.study.1': 'Een week doorgezet telt zwaarder dan een dag hard werken. Dit was de week.',
+  'weektip.study.2': 'Wat je deze week begreep, hoef je nooit meer voor het eerst te leren.',
+  'weektip.study.3': 'Herhaal morgen kort wat je deze week deed. Twintig minuten scheelt straks een avond.',
+  'weektip.study.4': 'Vaste tijden verslaan lange sessies. Deze week is daar het bewijs van.',
+  'weektip.study.5': 'Zet nu vast wanneer je volgende week begint. Dan hoef je het niet meer te besluiten.',
+  'weektip.other.1': 'Opdagen is het hele kunstje. Deze week is dat gelukt.',
+  'weektip.other.2': 'Wat je deze week deed, telt ook als niemand het gezien heeft.',
+  'weektip.other.3': 'Eén week is geen toeval meer. Twee is een gewoonte die begint.',
+  'weektip.other.4': 'Maak volgende week net zo makkelijk als deze: leg klaar wat je nodig hebt.',
+  'weektip.other.5': 'De weken die tellen zien er zelden bijzonder uit. Deze telde.',
+
 } as const;
 
 export type Sleutel = keyof typeof nl;

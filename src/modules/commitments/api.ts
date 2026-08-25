@@ -2,8 +2,14 @@ import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+import { invoerfout, type Resultaat } from '../../shared/api';
 
 import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Resultaat };
 
 /**
  * Commitment devices: een beloning die vrijkomt als je je doel haalt, en een
@@ -32,7 +38,6 @@ import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
 export type Commitment = Tables<'commitments'>;
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
 export async function fetchCommitments(goalId: string): Promise<readonly Commitment[]> {
   const { data, error } = await supabase()
@@ -92,7 +97,7 @@ async function maak(
 ): Promise<Resultaat<Commitment>> {
   const gevalideerd = commitmentSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('commitment.fout.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('commitment.fout.invoer')) };
   }
 
   const { data, error } = await supabase()

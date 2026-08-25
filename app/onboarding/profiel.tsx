@@ -7,11 +7,10 @@ import {
   updateProfiel,
   useProfiel,
   useSession,
-  voorgesteldeTijdzone,
 } from '@/modules/auth';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import type { Weekday } from '@/shared/time';
+import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   Avatar,
   Body,
@@ -22,6 +21,7 @@ import {
   Field,
   Screen,
   Subheading,
+  TijdzoneKeuze,
   WeekStartKeuze,
 } from '@/shared/ui';
 
@@ -38,7 +38,7 @@ export default function OnboardingProfiel() {
   const { profiel, zetProfiel } = useProfiel();
 
   const [naam, setNaam] = useState(profiel?.display_name ?? '');
-  const [tz, setTz] = useState(profiel?.tz ?? voorgesteldeTijdzone());
+  const [tz, setTz] = useState(profiel?.tz ?? apparaatTijdzone());
   const [weekStart, setWeekStart] = useState<Weekday>((profiel?.week_start_day ?? 1) as Weekday);
   const [herinneringAan, setHerinneringAan] = useState(profiel?.reminder_enabled ?? true);
   const [tijd, setTijd] = useState(profiel?.reminder_time?.slice(0, 5) ?? '20:00');
@@ -113,16 +113,17 @@ export default function OnboardingProfiel() {
         <WeekStartKeuze waarde={weekStart} onKies={setWeekStart} />
       </Card>
 
+      {/*
+        ⚠️ **Hetzelfde component als op het profielscherm, en dat is geen
+           luiheid** — precies het argument dat `WeekStartKeuze` al maakt. Hier
+           stond een kaal invoerveld, en dat vraagt van iemand die net begint dat
+           hij de IANA-naam van zijn zone uit zijn hoofd kent. `TijdzoneKeuze`
+           zoekt op plaatsnaam en heeft de knop "de tijdzone van dit apparaat"
+           erbij; twee schermen die dezelfde keuze anders aanbieden, is twee
+           plekken waar een onbekende zone binnen kan komen.
+      */}
       <Card>
-        <Field
-          label={t('onboarding.tijdzone')}
-          hint={t('onboarding.tijdzone_hint')}
-          value={tz}
-          onChangeText={setTz}
-          autoCapitalize="none"
-          // Blijft onvertaald: dit is een IANA-naam en geen tekst.
-          placeholder="Europe/Amsterdam"
-        />
+        <TijdzoneKeuze waarde={tz} onKies={setTz} />
       </Card>
 
       <Card>

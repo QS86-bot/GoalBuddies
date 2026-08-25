@@ -3,12 +3,18 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import type { IsoDate } from '../../shared/time';
+import { invoerfout, type Resultaat } from '../../shared/api';
 
 import {
   deadlineVerzoekSchema,
   type DeadlineVerzoekInvoer,
 } from './deadline-schemas';
 import { datumLigtInDeToekomst } from './schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Resultaat };
 
 /**
  * De streefdatum verschuiven met akkoord van de groep — Q-TODO A7.
@@ -33,7 +39,6 @@ import { datumLigtInDeToekomst } from './schemas';
  *    niet de aanvrager is. Dit bestand is de knop.
  */
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
 export type DeadlineVerzoekRij = Tables<'deadline_requests'>;
 
@@ -102,7 +107,7 @@ export async function vraagDeadlineVerschuiving(
 ): Promise<Resultaat<string>> {
   const gevalideerd = deadlineVerzoekSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
   }
 
   if (!datumLigtInDeToekomst(gevalideerd.data.new_date, vandaag)) {
@@ -272,7 +277,6 @@ export async function fetchLaatsteBesluit(goalId: string): Promise<DeadlineVerzo
   return data === null ? null : naarVerzoek(data);
 }
 
-/** Standaard 20 per pagina. Ongepagineerd bestaat niet (CLAUDE.md, regel 10). */
 export const VERZOEKEN_PER_PAGINA = 20;
 
 /**
