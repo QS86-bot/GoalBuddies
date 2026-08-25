@@ -4,6 +4,7 @@ import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { apparaatTijdzone, type Cycle } from '../../shared/time';
+import type { Pagina, Resultaat } from '../../shared/api';
 
 import {
   codeSchema,
@@ -14,6 +15,11 @@ import {
   type GroepPatch,
   type Zichtbaarheid,
 } from './schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Pagina, Resultaat };
 
 /**
  * Buddy-groepen — EPIC 5.
@@ -43,16 +49,9 @@ import {
 export type Groep = Tables<'groups'>;
 export type Lidmaatschap = Tables<'group_members'>;
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
-/** Standaard 20 per pagina. Ongepagineerd bestaat niet (CLAUDE.md, regel 10). */
 export const LEDEN_PER_PAGINA = 20;
 
-export interface Pagina<T> {
-  readonly rijen: readonly T[];
-  readonly totaal: number;
-  readonly meer: boolean;
-}
 
 // ---------------------------------------------------------------------------
 // Uitkomsten van de RPC's

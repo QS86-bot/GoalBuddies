@@ -2,8 +2,14 @@ import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+import type { Resultaat } from '../../shared/api';
 
 import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Resultaat };
 
 /**
  * Peer-goedkeuring — EPIC 6.
@@ -21,7 +27,6 @@ import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
  *    hetzelfde op (6.6), want anders is doorvragen duurder dan wegkijken.
  */
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
 /** Een voltooiing die op jouw oordeel wacht, uit `openstaande_beoordelingen()`. */
 export interface TeBeoordelen {

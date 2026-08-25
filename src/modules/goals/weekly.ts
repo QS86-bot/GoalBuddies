@@ -4,10 +4,16 @@ import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { cyclesBetween, userCycleOn, type Cycle, type UserClock } from '../../shared/time';
+import type { Resultaat } from '../../shared/api';
 
 import { huidigeCyclus } from './cycles';
 
 import { weekdoelSchema, type WeekdoelInvoer } from './weekly-schemas';
+
+// ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
+//    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
+//    hij stond hiervoor zeven keer woordelijk in deze codebase.
+export type { Resultaat };
 
 /**
  * Weekdoelen: het hart van het model.
@@ -21,7 +27,6 @@ import { weekdoelSchema, type WeekdoelInvoer } from './weekly-schemas';
 
 export type Weekdoel = Tables<'weekly_goals'>;
 
-export type Resultaat<T> = { ok: true; waarde: T } | { ok: false; melding: string };
 
 /**
  * De weekdoelen van één cyclus, over alle doelen van de gebruiker heen.

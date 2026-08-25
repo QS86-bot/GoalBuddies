@@ -30,6 +30,7 @@
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
     "keten:controle": "node scripts/dode-keten-controle.mjs",
+    "storage:controle": "node scripts/storage-controle.mjs",
     "register:uitlijnen": "node scripts/migratieregister-uitlijnen.mjs",
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",

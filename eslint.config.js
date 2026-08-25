@@ -51,7 +51,7 @@ module.exports = [
     //    heeft er per definitie een nodig. Zonder deze uitzondering zijn de
     //    DST-overgang en de coulanceperiode niet te testen — precies de twee
     //    plekken waar het misgaat.
-    ignores: ['src/shared/time/**', '**/*.test.ts', '**/*.test.tsx'],
+    ignores: ['src/shared/time/**', 'src/shared/api/**', '**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -80,6 +80,24 @@ module.exports = [
             "MemberExpression[property.name='timeZone'][object.callee.property.name='resolvedOptions']",
           message:
             'Bepaal de tijdzone niet zelf. Gebruik apparaatTijdzone() uit shared/time — daar zit de terugval en de geldigheidstoets.',
+        },
+        {
+          // ⚠️ Toegevoegd 25-08-2026, bij het opruimen van de bevinding van
+          //    16-08. `Resultaat<T>` stond op dat moment zéven keer woordelijk
+          //    in de codebase en `Pagina<T>` twee keer — de bevinding had er
+          //    vier voorspeld. Omdat modules elkaars binnenkant niet mogen
+          //    importeren, worden dat evenzoveel verschillende nominale types
+          //    met dezelfde naam; ze vergelijken structureel, dus het wérkt, en
+          //    daarom groeide het aan zonder dat iets rood werd.
+          //
+          //    ⚠️ Deze regel bewaakt de belofte "er is één definitie" en niet de
+          //    plek waar hij toevallig staat. Wie hier kopie acht neerzet, krijgt
+          //    de lintfout — ook in een module die vandaag nog niet bestaat.
+          //    `shared/api` zelf is uitgezonderd; zie de `ignores` hieronder.
+          selector:
+            "TSTypeAliasDeclaration[id.name=/^(Resultaat|Pagina)$/], TSInterfaceDeclaration[id.name=/^(Resultaat|Pagina)$/]",
+          message:
+            'Resultaat<T> en Pagina<T> staan in src/shared/api. Importeer ze daar, definieer ze niet opnieuw — zo ontstonden er zeven kopieën.',
         },
       ],
     },

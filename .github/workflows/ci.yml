@@ -72,6 +72,14 @@ jobs:
       - name: Dode ketens
         run: npm run keten:controle
 
+      # ⚠️ Storage. Vandaag zijn er nul buckets en nul uploads, dus deze stap is
+      #    groen omdat er niets ís — precies het groen waar dit project voor
+      #    waarschuwt. Hij bestaat voor de dag dat de eerste upload gebouwd wordt:
+      #    dán is het een open emmer tenzij iemand eraan denkt, en vanaf nu denkt
+      #    de build mee.
+      - name: Storage-buckets en hun policies
+        run: npm run storage:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------

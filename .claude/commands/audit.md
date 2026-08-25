@@ -173,5 +173,19 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     dezelfde vorm als `Wordt zwaarder als:` in `docs/ENGINEER-REVIEW.md`. Een
     uitzondering zonder die tweede helft verloopt zonder dat iemand het merkt.
 
+19. **Storage** — draai `npm run storage:controle`. Twee vragen: heeft elke
+    bucket die een migratie aanmaakt ook een policy op `storage.objects`, en
+    bestaat elke bucket waar productiecode naar schrijft in een migratie?
+
+    ⚠️ **Deze staat vandaag groen omdat er niets is** — nul buckets, nul uploads.
+    Dat is het soort groen dat niets bewijst; hij is er voor de dag dat de eerste
+    upload gebouwd wordt. Wordt hij rood, lees dan eerst de bevinding van 16-08
+    in `docs/ENGINEER-REVIEW.md`: `public = true` op een bucket zet RLS voor het
+    lezen volledig buitenspel, en dat botst met domeinregel 7.
+
+    ⚠️ Wat hij niet ziet: een bucket die met de hand in het dashboard is gemaakt
+    en waar nog geen code naar verwijst. Kijk daarvoor één keer per ronde in het
+    Supabase-dashboard onder Storage.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.
