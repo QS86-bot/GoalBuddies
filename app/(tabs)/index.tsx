@@ -50,6 +50,7 @@ import {
   Subheading,
   useVieringenAan,
   Viering,
+  weektip,
   weekdoelActies,
   weekpasUitleg,
   type WeeklyGoalStatus,
@@ -73,6 +74,14 @@ export default function Vandaag() {
   const [dagzetten, setDagzetten] = useState<readonly DagZet[]>([]);
   const [standen, setStanden] = useState<ReadonlyMap<string, DoelStand>>(new Map());
   const [doeltitels, setDoeltitels] = useState<ReadonlyMap<string, string>>(new Map());
+  /**
+   * De categorie per doel — besluit A48, voor de weektip.
+   *
+   * ⚠️ Uit dezelfde `fetchDoelen()` als de titels hierboven, en dus zonder één
+   *    extra verzoek. Een aparte query per kaart zou hier de N+1 zijn die
+   *    onwrikbare regel 12 met naam noemt, en dat voor een regel tekst.
+   */
+  const [doelcategorieen, setDoelcategorieen] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
@@ -144,6 +153,7 @@ export default function Vandaag() {
         if (!levend) return;
         setStanden(gevondenStanden);
         setDoeltitels(new Map(doelenPagina.rijen.map((d) => [d.id, d.title])));
+        setDoelcategorieen(new Map(doelenPagina.rijen.map((d) => [d.id, d.category])));
       })
       .catch(() => {
         // Bewust stil op het scherm, maar niet stil in de logboeken: de
@@ -152,6 +162,7 @@ export default function Vandaag() {
         if (levend) {
           setStanden(new Map());
           setDoeltitels(new Map());
+          setDoelcategorieen(new Map());
         }
       });
 
@@ -222,6 +233,7 @@ export default function Vandaag() {
               <WeekdoelKaart
                 key={weekdoel.id}
                 weekdoel={weekdoel}
+                categorie={doelcategorieen.get(weekdoel.goal_id) ?? ''}
                 userId={userId ?? ''}
                 onKlaar={herlaad}
               />
@@ -477,10 +489,21 @@ function DoorschuifKaart({
  */
 function WeekdoelKaart({
   weekdoel,
+  categorie,
   userId,
   onKlaar,
 }: {
   readonly weekdoel: Weekdoel;
+  /**
+   * De categorie van het bovenliggende doel — besluit A48, voor de weektip.
+   *
+   * ⚠️ Een `string` en geen `Categorie`, want dat is wat `Doel.category` is: de
+   *    database kan er een waarde in hebben staan die deze build niet kent.
+   *    `weektip()` zeeft dat zelf en valt terug op `other` — die set is met opzet
+   *    de algemene, hij past overal en belooft niets over je vakgebied. Ook een
+   *    doel dat nog niet geladen is komt daar terecht.
+   */
+  readonly categorie: string;
   readonly userId: string;
   readonly onKlaar: () => void;
 }) {
@@ -638,6 +661,23 @@ function WeekdoelKaart({
         achieved="none"
         viewer="owner"
       />
+
+      {/*
+        ⚠️ **De weektip — besluit A48, variant 3.** Tot nu toe kreeg je tussen je
+           eerste weekpas en de volgende vijf keer niets, en dat zijn precies de
+           weken waarin iemand afhaakt.
+
+        ⚠️ Hij blijft stáán en verdwijnt niet met het feestje. Het feestmoment
+           duurt 2,2 seconden — te kort om een zin te lezen die de moeite waard
+           is. En hij hangt niet aan `vieringenAan`: wie de confetti uitzette,
+           zette geen tekst uit.
+
+        ⚠️ Aan `approved` en niet aan het indienen, om dezelfde reden als het
+           feestje hierboven: zelf afvinken is geen goedkeuring (domeinregel 3).
+      */}
+      {weekdoel.status === 'approved' ? (
+        <Caption>{weektip(categorie, weekdoel.cycle_start_date)}</Caption>
+      ) : null}
 
       {/*
         ⚠️ Een vraag van een buddy is geen afkeuring en de kaart zegt dat ook

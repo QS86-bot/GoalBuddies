@@ -1207,4 +1207,21 @@ export const en: Record<Sleutel, string> = {
     'Changing this leaves your points and your streak alone: those are fixed to the weeks already there. What changes is when the next week rolls over.',
   'tijdzone.opgeslagen': 'Time zone saved.',
 
+
+  'weektip.business.1': 'One finished week is a week someone else spent planning.',
+  'weektip.business.2': 'What you finished this week does not need thinking about next week.',
+  'weektip.business.3': 'Write down what worked this week. That is your own manual for the busy ones.',
+  'weektip.business.4': 'Small and done beats big and half. This week proved it.',
+  'weektip.business.5': 'The next step is usually smaller than it looks. Pick it while you are going.',
+  'weektip.study.1': 'A week kept up counts for more than one hard day. This was the week.',
+  'weektip.study.2': 'What you understood this week, you never have to learn for the first time again.',
+  'weektip.study.3': 'Go over this week briefly tomorrow. Twenty minutes now saves an evening later.',
+  'weektip.study.4': 'Fixed times beat long sessions. This week is the proof.',
+  'weektip.study.5': 'Decide now when you start next week. Then you do not have to decide again.',
+  'weektip.other.1': 'Showing up is the whole trick. This week it worked.',
+  'weektip.other.2': 'What you did this week counts even if nobody saw it.',
+  'weektip.other.3': 'One week is no longer chance. Two is a habit starting.',
+  'weektip.other.4': 'Make next week as easy as this one: put out what you need beforehand.',
+  'weektip.other.5': 'The weeks that count rarely look special. This one counted.',
+
 };

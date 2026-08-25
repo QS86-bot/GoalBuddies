@@ -33,6 +33,7 @@ export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Viering } from './Viering';
 export { TaalKeuze } from './TaalKeuze';
+export { TIP_CATEGORIEEN, TIPS_PER_CATEGORIE, weektip, type TipCategorie } from './tips';
 export { TijdzoneKeuze } from './TijdzoneKeuze';
 export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
 export { WeekStartKeuze } from './WeekStartKeuze';

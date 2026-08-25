@@ -1470,6 +1470,30 @@ export const nl = {
     'Wijzigen laat je punten en je reeks met rust: die staan vast op de weken die er al zijn. Wat verandert is wanneer de volgende week omslaat.',
   'tijdzone.opgeslagen': 'Tijdzone opgeslagen.',
 
+
+  // ---------------------------------------------------------------------------
+  // De weektip — besluit A48, variant 3 (QS8-110)
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Vijf per categorie. Ze gaan over de wéék die je net gehaald hebt, niet over
+  //    het leven in het algemeen — dat was het bezwaar tegen de wijze quotes. En
+  //    geen enkele noemt een tegenvaller; er staat een test op.
+  'weektip.business.1': 'Eén afgeronde week is een week waarin iemand anders nog aan het plannen was.',
+  'weektip.business.2': 'Wat je deze week af kreeg, hoeft volgende week niet meer bedacht te worden.',
+  'weektip.business.3': 'Schrijf op wat deze week wérkte. Dat is je eigen handleiding voor de drukke weken.',
+  'weektip.business.4': 'Klein en af verslaat groot en half. Dat is deze week bewezen.',
+  'weektip.business.5': 'De volgende stap is meestal kleiner dan hij eruitziet. Kies hem nu je op dreef bent.',
+  'weektip.study.1': 'Een week doorgezet telt zwaarder dan een dag hard werken. Dit was de week.',
+  'weektip.study.2': 'Wat je deze week begreep, hoef je nooit meer voor het eerst te leren.',
+  'weektip.study.3': 'Herhaal morgen kort wat je deze week deed. Twintig minuten scheelt straks een avond.',
+  'weektip.study.4': 'Vaste tijden verslaan lange sessies. Deze week is daar het bewijs van.',
+  'weektip.study.5': 'Zet nu vast wanneer je volgende week begint. Dan hoef je het niet meer te besluiten.',
+  'weektip.other.1': 'Opdagen is het hele kunstje. Deze week is dat gelukt.',
+  'weektip.other.2': 'Wat je deze week deed, telt ook als niemand het gezien heeft.',
+  'weektip.other.3': 'Eén week is geen toeval meer. Twee is een gewoonte die begint.',
+  'weektip.other.4': 'Maak volgende week net zo makkelijk als deze: leg klaar wat je nodig hebt.',
+  'weektip.other.5': 'De weken die tellen zien er zelden bijzonder uit. Deze telde.',
+
 } as const;
 
 export type Sleutel = keyof typeof nl;
