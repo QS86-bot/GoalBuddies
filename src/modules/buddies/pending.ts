@@ -158,3 +158,48 @@ export async function vergeetOpenstaandeUitnodiging(): Promise<void> {
     reportError(fout, 'invite.forget');
   }
 }
+
+// ---------------------------------------------------------------------------
+// Waar een bewaarde uitnodiging naartoe leidt — besluit A49
+// ---------------------------------------------------------------------------
+
+/** Wat er met een bewaarde uitnodiging moet gebeuren zodra iemand binnenkomt. */
+export type UitnodigingsRoute =
+  | { readonly soort: 'toetreden' }
+  | { readonly soort: 'toon-scherm'; readonly reden: 'verlopen' | 'onbekend' | 'open-groep' };
+
+/**
+ * De beslissing van besluit A49, los van het scherm dat hem uitvoert.
+ *
+ * ⚠️ **Deze functie bestaat omdat de belofte eronder nergens getest werd.** De
+ *    twee helften van A49 — een code verloopt na 24 uur, en een open groep gaat
+ *    nooit vanzelf — stonden allebei in `app/_layout.tsx`. De eerste helft had
+ *    tests via `openstaandeUitnodiging()`; de tweede had er geen enkele, en kón
+ *    ze niet hebben: er is geen `.test.tsx` in dit project en vitest draait in
+ *    node. De belofte die het zwaarst weegt van de twee was daarmee structureel
+ *    onbewaakt (onwrikbare regel 18). Gevonden bij het nameten van QS8-136 op
+ *    25-08-2026.
+ *
+ * ⚠️ **De volgorde is de regel en niet een detail.** Verlopen wint van alles: dan
+ *    is er geen verse toestemming, en of de groep open is doet er niet meer toe.
+ *    Daarna wint onbekend: kan de uitnodiging niet opgehaald worden, dan is dat
+ *    de kant waar niets stilzwijgend gebeurt. Pas daarna komt de zichtbaarheid.
+ *
+ * ⚠️ `toon-scherm` is nooit "weggooien". De gebruiker landt op het
+ *    uitnodigingsscherm en drukt zelf; de code blijft bestaan. Weggooien zou de
+ *    uitnodiging doodmaken, en dat is precies wat deze opslag moest voorkomen.
+ */
+export function routeVoorUitnodiging(invoer: {
+  /** Is de bewaarde code nog vers genoeg om zonder handeling te verzilveren? */
+  readonly automatisch: boolean;
+  /**
+   * De zichtbaarheid van de groep, of `null` als hij niet op te halen was — of
+   * niet opgehaald ís, omdat `automatisch` al `false` was.
+   */
+  readonly zichtbaarheid: 'beschermd' | 'open' | null;
+}): UitnodigingsRoute {
+  if (!invoer.automatisch) return { soort: 'toon-scherm', reden: 'verlopen' };
+  if (invoer.zichtbaarheid === null) return { soort: 'toon-scherm', reden: 'onbekend' };
+  if (invoer.zichtbaarheid === 'open') return { soort: 'toon-scherm', reden: 'open-groep' };
+  return { soort: 'toetreden' };
+}

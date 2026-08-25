@@ -31,9 +31,11 @@ export {
 export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
+  routeVoorUitnodiging,
   UITNODIGING_GELDIG_UREN,
   vergeetOpenstaandeUitnodiging,
   type OpenstaandeUitnodiging,
+  type UitnodigingsRoute,
 } from './pending';
 
 export { fetchKettingStand } from './ketting';

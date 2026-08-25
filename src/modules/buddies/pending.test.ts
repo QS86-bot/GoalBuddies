@@ -5,6 +5,7 @@ import { freezeNow, unfreezeNow } from '../../shared/time';
 import {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
+  routeVoorUitnodiging,
   UITNODIGING_GELDIG_UREN,
   vergeetOpenstaandeUitnodiging,
 } from './pending';
@@ -167,6 +168,67 @@ describe('de klok loopt door als je dezelfde link nog eens opent', () => {
     await bewaarOpenstaandeUitnodiging(CODE);
 
     expect((await openstaandeUitnodiging())?.automatisch).toBe(false);
+  });
+});
+
+describe('waar een bewaarde uitnodiging naartoe leidt', () => {
+  /**
+   * ⚠️ **De zwaarste helft van A49 stond tot 25-08-2026 volledig in
+   *    `app/_layout.tsx` en had geen enkele test.** Dat kon ook niet: er is geen
+   *    `.test.tsx` in dit project en vitest draait in node. De belofte "een open
+   *    groep gaat nooit vanzelf" was daarmee structureel onbewaakt — precies de
+   *    vorm uit onwrikbare regel 18, en op de plek waar hij het meest kost: een
+   *    stilzwijgende toetreding tot een open groep maakt je gemiste weken, je
+   *    beste reeks en je hele aanwezigheidsgeschiedenis zichtbaar voor mensen die
+   *    je misschien niet kent.
+   *
+   * ⚠️ De beslissing staat nu in `routeVoorUitnodiging()`; het scherm voert hem
+   *    alleen nog uit.
+   */
+  it('treedt toe bij een verse code en een beschermde groep', () => {
+    // De enige combinatie waarin er iets vanzelf gebeurt.
+    expect(routeVoorUitnodiging({ automatisch: true, zichtbaarheid: 'beschermd' })).toEqual({
+      soort: 'toetreden',
+    });
+  });
+
+  it('toont het scherm bij een open groep, ook met een verse code', () => {
+    expect(routeVoorUitnodiging({ automatisch: true, zichtbaarheid: 'open' })).toEqual({
+      soort: 'toon-scherm',
+      reden: 'open-groep',
+    });
+  });
+
+  it('toont het scherm als de uitnodiging niet op te halen was', () => {
+    // Netwerk weg, link ingetrokken — onbekend is de kant waar niets
+    // stilzwijgend gebeurt.
+    expect(routeVoorUitnodiging({ automatisch: true, zichtbaarheid: null })).toEqual({
+      soort: 'toon-scherm',
+      reden: 'onbekend',
+    });
+  });
+
+  it('laat verlopen van alles winnen', () => {
+    // ⚠️ De volgorde is de regel en geen detail. Is er geen verse toestemming,
+    //    dan doet de zichtbaarheid er niet meer toe — ook niet als de groep
+    //    beschermd is. Zou beschermd hier winnen, dan was de vervaltermijn weg.
+    for (const zichtbaarheid of ['beschermd', 'open', null] as const) {
+      expect(routeVoorUitnodiging({ automatisch: false, zichtbaarheid })).toEqual({
+        soort: 'toon-scherm',
+        reden: 'verlopen',
+      });
+    }
+  });
+
+  it('treedt in geen enkele andere combinatie vanzelf toe', () => {
+    // De sluitende vorm: precies één van de zes combinaties mag `toetreden` zijn.
+    const alle = ([true, false] as const).flatMap((automatisch) =>
+      (['beschermd', 'open', null] as const).map((zichtbaarheid) =>
+        routeVoorUitnodiging({ automatisch, zichtbaarheid }),
+      ),
+    );
+
+    expect(alle.filter((r) => r.soort === 'toetreden')).toHaveLength(1);
   });
 });
 

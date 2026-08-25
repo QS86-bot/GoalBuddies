@@ -9,6 +9,7 @@ import {
   fetchUitnodiging,
   neemDeel,
   openstaandeUitnodiging,
+  routeVoorUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
 import {
@@ -222,11 +223,6 @@ function Uitnodigingswacht() {
       //    Niet weggooien maar tónen: de gebruiker landt op het
       //    uitnodigingsscherm en drukt zelf. Weggooien zou de uitnodiging
       //    doodmaken, en dat is precies wat deze opslag moest voorkomen.
-      if (!wachtend.automatisch) {
-        router.replace(`/uitnodiging/${wachtend.code}`);
-        return;
-      }
-
       // ⚠️ **Tweede helft: een open groep gaat nooit vanzelf.** Toetreden tot een
       //    open groep maakt je gemiste weken, je beste reeks en je historische
       //    aanwezigheid zichtbaar voor de anderen — dezelfde overgang als het
@@ -240,10 +236,28 @@ function Uitnodigingswacht() {
       // ⚠️ Kan de uitnodiging niet opgehaald worden (netwerk, ingetrokken link),
       //    dan ook naar het scherm. Onbekend is hier de kant waar niets
       //    stilzwijgend gebeurt — dezelfde keuze als bij de vervaltermijn.
-      const uitnodiging = await fetchUitnodiging(wachtend.code).catch(() => null);
+      //
+      // ⚠️ **De beslissing zelf staat in `routeVoorUitnodiging()` en niet hier**,
+      //    en dat is sinds 25-08-2026 zo. Ze stond volledig in dit bestand, en
+      //    dit bestand is niet te testen: er is geen `.test.tsx` in dit project
+      //    en vitest draait in node. De zwaarste helft van A49 was daarmee
+      //    structureel onbewaakt. Hier staat nu alleen nog wát er gebeurt, niet
+      //    wanneer.
+      //
+      // ⚠️ Alleen ophalen als het ertoe doet. Is de code verlopen, dan is de
+      //    zichtbaarheid niet meer van belang en kost een rondje naar de server
+      //    niets dan tijd.
+      const uitnodiging = wachtend.automatisch
+        ? await fetchUitnodiging(wachtend.code).catch(() => null)
+        : null;
       if (!levend) return;
 
-      if (uitnodiging === null || uitnodiging.zichtbaarheid === 'open') {
+      const route = routeVoorUitnodiging({
+        automatisch: wachtend.automatisch,
+        zichtbaarheid: uitnodiging?.zichtbaarheid ?? null,
+      });
+
+      if (route.soort === 'toon-scherm') {
         router.replace(`/uitnodiging/${wachtend.code}`);
         return;
       }
