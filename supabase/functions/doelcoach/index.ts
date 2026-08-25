@@ -371,6 +371,11 @@ Deno.serve(async (verzoek: Request) => {
     // ⚠️ De taal van de eigenaar, uit zijn profiel. Mislukt dit, dan is het
     //    Nederlands — een coach die antwoordt is meer waard dan een coach die
     //    wacht op een taalveld.
+    //
+    // ⚠️ `alsSysteem` en niet `alsGebruiker`, en dat is sinds migratie 0089 geen
+    //    stijlkeuze meer: de tabel-brede SELECT op `profiles` is daar ingetrokken
+    //    en `authenticated` heeft alleen nog kolomrechten op id, display_name en
+    //    avatar_url. `locale` is voor een client niet leesbaar.
     const { data: profiel } = await alsSysteem
       .from('profiles')
       .select('locale')
