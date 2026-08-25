@@ -548,9 +548,9 @@ migratie 0027).
 
 | branch | commit | |
 |---|---|---|
-| `main` | `f1c4859` | de hoofdbranch |
+| `main` | `84e07d0` | de hoofdbranch — draagt sinds 25-08 PR #12 |
 | `quintenstrijdonk/qs8-122-…` | `243365c` | de teruggehaalde migraties — ⚠️ **inhoudelijk overbodig**, PR #9 heeft dezelfde bestanden geland. Nalopen en weggooien |
-| `claude/linear-bijwerken-docs-t7cko6` | de lopende cloudsessie |
+| `claude/linear-bijwerken-docs-t7cko6` | ✅ geland als PR #12 op 25-08, met een merge-commit. Staat sindsdien gelijk aan `main` |
 | `fundering-16-08` | `8640f3c` | **archief, laten staan** |
 
 ✅ De verdwaalde branch met 21 commits is op 24-08 geland als PR #9. Wat ervan

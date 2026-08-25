@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 24-08-2026 (na de merge van `main` in de QS8-83/91-branch)
+**Laatst bijgewerkt:** 25-08-2026 (na de merge van PR #12)
 
 ---
 
@@ -52,9 +52,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    `docs/Q-TODO.docx`.** Alles met status **Todo** in Linear is van hem:
    QS8-126 (de repo staat publiek), QS8-131 (21 commits buiten `main`, urgent),
    QS8-127 (A37), QS8-128 (A41+A42+A44), QS8-129 (A43), QS8-130 (A46) en
-   QS8-122. ⚠️ **B4 staat niet meer in die lijst** — `expo-notifications` is
-   al toegevoegd op de branch van QS8-131; dat besluit wacht op een merge en
-   niet op een antwoord. Q-TODO blijft de onderbouwing dragen; de status staat
+   QS8-122. ⚠️ **B4 staat niet meer in die lijst** — `expo-notifications` staat
+   sinds PR #9 op `main`; dat besluit wachtte op een merge en niet op een
+   antwoord, en die merge is er. Q-TODO blijft de onderbouwing dragen; de status staat
    in Linear.
 10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
     21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
@@ -82,7 +82,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0095`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0096`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -191,7 +191,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **790 geslaagd en 400 overgeslagen** (dat zijn achttien van de
+  **790 geslaagd en 406 overgeslagen** (dat zijn achttien van de
   twintig bestanden in `tests/rls`, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
