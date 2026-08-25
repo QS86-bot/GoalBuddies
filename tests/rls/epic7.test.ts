@@ -310,17 +310,30 @@ async function buildFixture(): Promise<Fixture> {
     'mijlpaal op dropped',
   );
 
-  // Doelen: één afgerond, één gemist. Alleen het eerste hoort een bericht te geven.
+  // Doelen: één afgerond, één gearchiveerd. Alleen het eerste hoort een bericht
+  // te geven.
   //
-  // ⚠️ Allebei via de systeemclient. Sinds migratie 0035 heeft `authenticated`
-  //    geen UPDATE-recht meer op `goals.status`: `completed` liet
+  // ⚠️ `completed` via de systeemclient. Sinds migratie 0035 heeft
+  //    `authenticated` geen UPDATE-recht meer op `goals.status`: die waarde liet
   //    `meld_doel_af()` afgaan en plaatste "X heeft een doel afgerond" in elke
-  //    gekoppelde groep zonder dat er iets was afgerond, en `missed` is via
-  //    `goals_select` leesbaar voor groepsgenoten. Archiveren loopt nu via
-  //    `zet_doelstatus()`; deze twee waarden zijn systeemwerk, en dat is precies
-  //    wat de fixture hier nabootst.
+  //    gekoppelde groep zonder dat er iets was afgerond. Dat is systeemwerk, en
+  //    dat is wat de fixture hier nabootst.
+  //
+  // ⚠️ **Hier stond `missed` tot migratie 0082, en die waarde bestaat niet meer.**
+  //    Ze is uit `goals_status_valid` gehaald omdat een groepsgenoot de
+  //    statuskolom via `goals_select` leest en RLS geen kolommen kan beperken —
+  //    een tegenslagwaarde daar is domeinregel 7 die de database uit loopt.
+  //
+  //    `archived` is de betere negatieve helft, en niet alleen een vervanger: het
+  //    is de enige statusovergang naast `completed` die een gebruiker écht kan
+  //    bereiken (`zet_doelstatus()`). Deze fixture bewees eerst dat een waarde
+  //    die niemand kon zetten geen bericht gaf; nu bewijst hij het van de knop
+  //    die er wel is.
   mustOk(await admin.from('goals').update({ status: 'completed' }).eq('id', goalC), 'doel af');
-  mustOk(await admin.from('goals').update({ status: 'missed' }).eq('id', goalA), 'doel gemist');
+  mustOk(
+    await admin.from('goals').update({ status: 'archived' }).eq('id', goalA),
+    'doel gearchiveerd',
+  );
 
   // ⚠️ Een gemiste week gaat via de systeemclient, want sinds migratie 0023 heeft
   //    `authenticated` geen UPDATE-recht meer op `weekly_goals.status`. Precies

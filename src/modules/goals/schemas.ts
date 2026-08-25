@@ -92,5 +92,19 @@ export function datumLigtInDeToekomst(datum: string, vandaag: IsoDate): boolean 
   return datum > vandaag;
 }
 
-export const STATUSSEN = ['active', 'completed', 'archived', 'missed'] as const;
+/**
+ * De levensloop van een doel. Spiegelt de CHECK `goals_status_valid`.
+ *
+ * ⚠️ **`missed` stond hier tot 25-08-2026 en is er met een migratie uit gehaald**
+ *    (0082), niet omdat hij hinderde maar omdat hij een lek wás zodra iemand hem
+ *    zou vullen: groepsgenoten lezen deze kolom via `goals_select`, en RLS kan
+ *    geen kolommen beperken. Een tegenslagwaarde hier is domeinregel 7 die de
+ *    database uit loopt.
+ *
+ * ⚠️ **Deze lijst is een kopie en geen bron.** `tests/rls/policies.test.ts`
+ *    vergelijkt hem met de CHECK zelf, in beide richtingen — want de vorige keer
+ *    dat twee zulke lijsten uit elkaar liepen (0032/0034), vergeleek de test de
+ *    app-lijst met zichzelf en bleef groen.
+ */
+export const STATUSSEN = ['active', 'completed', 'archived'] as const;
 export type DoelStatus = (typeof STATUSSEN)[number];

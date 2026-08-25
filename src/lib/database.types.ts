@@ -1676,6 +1676,10 @@ export type Database = {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
         Returns: Json
       }
+      check_waarden: {
+        Args: { p_constraint: string; p_tabel: string }
+        Returns: string[]
+      }
       create_group: {
         Args: {
           group_name: string

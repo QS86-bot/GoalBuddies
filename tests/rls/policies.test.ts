@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    Supabase-client en AsyncStorage mee — en daarmee React Native, in een test
 //    die in Node draait. Zelfde reden als de losse client in harness.ts.
 import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
+import { STATUSSEN } from '../../src/modules/goals/schemas';
 import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
@@ -2955,6 +2956,62 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         for (const rij of data ?? []) {
           expect(rij.versie, `versie ${rij.versie} (${rij.naam})`).toMatch(/^\d{4}[a-z]?$/);
         }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  /**
+   * De doelstatussen — bevinding van 21-08-2026, gesloten door migratie 0082.
+   *
+   * ⚠️ `goals_select` is `owner_id = auth.uid() or shares_group_with_goal(id)`,
+   *    dus een groepsgenoot leest de héle rij van een gekoppeld doel — de
+   *    statuskolom incluis. RLS kan geen kolommen beperken. Een tegenslagwaarde
+   *    in die kolom is dus domeinregel 7 die de database uit loopt, en `missed`
+   *    stond er tot 0082 in terwijl niets hem zette.
+   *
+   * ⚠️ **Een gelijkheidstoets en geen insluiting**, om dezelfde reden als bij de
+   *    systeembericht-allowlist: twee insluitingen laten allebei één richting
+   *    open, en de vorige keer dat twee zulke lijsten uit elkaar liepen
+   *    (0032/0034) vergeleek de test de app-lijst met **zichzelf** en bleef
+   *    groen.
+   */
+  describe('de doelstatussen', () => {
+    it(
+      'staat in de database exact toe wat de app kent',
+      async () => {
+        const { data, error } = await adminDb().rpc('check_waarden', {
+          p_tabel: 'goals',
+          p_constraint: 'goals_status_valid',
+        });
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+        const inDeApp = [...STATUSSEN].sort();
+
+        // ⚠️ Eerst de inhoud vastpinnen. Een lege uitkomst betekent óók "geen
+        //    constraint met die naam", en dan zou een kale vergelijking van twee
+        //    lege lijsten groen zijn terwijl het slot weg is.
+        expect(inDeDatabase).toEqual(['active', 'archived', 'completed']);
+        expect(inDeDatabase).toEqual(inDeApp);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert missed, ook via de systeemclient',
+      async () => {
+        // ⚠️ Via `adminDb()` en niet via een gebruiker: `authenticated` mag deze
+        //    kolom sinds 0035 sowieso niet schrijven, dus een geweigerde poging
+        //    daar bewijst alleen de kolomgrant. De CHECK is de laag die ook een
+        //    definer-functie tegenhoudt, en dát is wat hier getoetst wordt.
+        const { error } = await adminDb()
+          .from('goals')
+          .update({ status: 'missed' })
+          .eq('id', f.privateGoalId);
+
+        expect(error).not.toBeNull();
+        expect(error?.message ?? '').toContain('goals_status_valid');
       },
       TEST_TIMEOUT,
     );
