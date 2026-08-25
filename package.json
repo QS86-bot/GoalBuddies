@@ -24,6 +24,7 @@
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
+    "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",

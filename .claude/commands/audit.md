@@ -114,5 +114,21 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     verandert — het antwoord is de transactiepooler op 6543 met `prepare: false`,
     en niet "de controle uitzetten".
 
+16. **Personen in jsonb** — draai `npm run persoon:controle`. Die toetst dat er
+    geen verwijzing naar een persoon in een jsonb-veld wordt weggeschreven: een
+    uuid in jsonb heeft geen foreign key, dus `on delete set null` raakt hem niet
+    en de naam van een verwijderd account blijft afleidbaar uit een rij die
+    geanonimiseerd hoort te zijn.
+
+    ⚠️ **De regel stond sinds 21-08 in `docs/ENGINEER-REVIEW.md` en werd vier
+    dagen later alsnog een tweede keer overtreden** — in `goal_events.new_value`,
+    waar de goedkeurder van een deadline-verschuiving belandde omdat `actor_id`
+    al door de aanvrager bezet was. Niemand zag het, want de regel stond in een
+    document en niet in een script. 0085 haalde hem eruit.
+
+    ⚠️ Wordt hij rood, maak er dan een echte kolom van zoals 0059 en 0085 deden.
+    De lijst `RECHTGEZET` in het script is **geen** uitweg: een regel daarin moet
+    de migratie noemen die de vondst rechtzette, en daar staat een test op.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

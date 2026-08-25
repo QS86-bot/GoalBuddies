@@ -647,6 +647,7 @@ export type Database = {
       goal_events: {
         Row: {
           actor_id: string
+          approved_by_id: string | null
           created_at: string
           event_type: string
           goal_id: string
@@ -656,6 +657,7 @@ export type Database = {
         }
         Insert: {
           actor_id: string
+          approved_by_id?: string | null
           created_at?: string
           event_type: string
           goal_id: string
@@ -665,6 +667,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string
+          approved_by_id?: string | null
           created_at?: string
           event_type?: string
           goal_id?: string
@@ -676,6 +679,13 @@ export type Database = {
           {
             foreignKeyName: "goal_events_actor_id_fkey"
             columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_events_approved_by_id_fkey"
+            columns: ["approved_by_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
