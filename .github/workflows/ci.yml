@@ -58,6 +58,13 @@ jobs:
       - name: Tests
         run: npm test
 
+      # ⚠️ De Edge-kopie van `shared/time` mag niet uit de pas lopen met die in
+      #    `src/`. Twee runtimes betekent twee exemplaren, en dan geldt
+      #    correctheidsregel 7 twee keer terwijl niets ze gelijk houdt. Deze
+      #    controle draait in Node en heeft geen Deno nodig.
+      - name: Edge-tijdmodule gelijk aan die van de app
+        run: npm run edge:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------
@@ -164,12 +171,42 @@ jobs:
         if: failure()
         run: tail -50 "${TMPDIR:-/tmp}/goalbuddies-lokale-stack/pgrst.log" || true
 
-  # Zonder deze job is CI een suggestie. Met branch protection op `main` die
+  # ---------------------------------------------------------------------------
+  # De Edge Functions — ze draaien op Deno en vielen tot 25-08-2026 buiten alles
+  # ---------------------------------------------------------------------------
+  #
+  # ⚠️ `tsconfig.json` sluit `supabase/functions` uit en `eslint.config.js`
+  #    negeert `supabase/*`, want die code is Deno en geen Node. Gevolg: de
+  #    rollover en de notificatiejob werden nergens getypecheckt of gelint.
+  #
+  #    Dat is niet theoretisch gebleven. De `excused`-bevinding van 20-08 bleef
+  #    staan omdat de schrijver een Edge Function was en er in `pg_proc` gezocht
+  #    werd — wie in de database zoekt, ziet die schrijver niet.
+  edge:
+    name: Edge Functions (Deno)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # ⚠️ `deno check` haalt `jsr:@supabase/supabase-js` op. Lokaal lukt dat niet
+      #    achter de agent-proxy (403 op jsr.io), dus deze stap is hier voor het
+      #    eerst in CI bewezen en niet op een werkplek.
+      - name: Typecheck
+        run: deno check supabase/functions/**/*.ts
+
+      - name: Lint
+        run: deno lint supabase/functions/
+
+    # Zonder deze job is CI een suggestie. Met branch protection op `main` die
   # deze check verplicht stelt, is rood blokkerend — zie docs/Q-TODO.md.
   poort:
     name: Alles groen
     runs-on: ubuntu-latest
-    needs: [controle, rls]
+    needs: [controle, rls, edge]
     if: always()
     steps:
       - name: Uitslag bepalen
@@ -180,6 +217,13 @@ jobs:
           fi
           if [ "${{ needs.rls.result }}" != "success" ]; then
             echo "De RLS-suite is niet groen: ${{ needs.rls.result }}"
+            exit 1
+          fi
+          # ⚠️ Deze tak hoort bij elke job in `needs`. Zonder hem is een rode job
+          #    hierboven decoratief: de poort wacht er wel op maar kijkt niet naar
+          #    de uitslag, en dan is CI weer een suggestie.
+          if [ "${{ needs.edge.result }}" != "success" ]; then
+            echo "De Edge Functions zijn niet groen: ${{ needs.edge.result }}"
             exit 1
           fi
           echo "Groen."

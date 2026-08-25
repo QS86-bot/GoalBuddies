@@ -141,5 +141,20 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     De lijst `RECHTGEZET` in het script is **geen** uitweg: een regel daarin moet
     de migratie noemen die de vondst rechtzette, en daar staat een test op.
 
+17. **De Edge-tijdmodule** — draai `npm run edge:controle`. Die legt de twee
+    exemplaren van `shared/time` naast elkaar: één in `src/` voor de app, één in
+    `supabase/functions/_shared/` voor de rollover en de notificatiejob. Elke
+    functie die in béide staat, moet er hetzelfde uitzien.
+
+    ⚠️ **Weglaten mag, afwijken niet.** De Edge-kopie laat bewust de helpers weg
+    die `Intl` en de browser nodig hebben. Wordt hij rood, dan rekenen de app en
+    de nachtjob verschillende weekgrenzen uit — en correctheidsregel 7 noemt
+    precies dat als de fout die je een gebruiker kost.
+
+    ⚠️ Sinds 25-08 draaien `deno check` en `deno lint` bovendien in CI over
+    `supabase/functions/`. Die map viel daarvoor buiten typecheck, lint én CI, en
+    dat heeft één keer een lek verborgen: de `excused`-bevinding van 20-08 werd
+    gemist omdat de schrijver een Edge Function was.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

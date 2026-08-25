@@ -1,0 +1,26 @@
+{
+  "//": [
+    "Deze map draait op Deno en niet op Node, en viel daardoor tot 25-08-2026",
+    "buiten typecheck, lint en CI: tsconfig.json sluit supabase/functions uit en",
+    "eslint.config.js negeert supabase/*. Dat is een bevinding die zichzelf al",
+    "bewezen heeft — de `excused`-lek van 20-08 bleef staan omdat de schrijver een",
+    "Edge Function was en er in pg_proc gezocht werd.",
+    "",
+    "Dit bestand is wat Deno nodig heeft om de map als één project te zien.",
+    "`deno check` en `deno lint` draaien er sinds die datum overheen in CI."
+  ],
+  "lint": {
+    "rules": {
+      "exclude": ["no-import-prefix"]
+    }
+  },
+  "//no-import-prefix": [
+    "Uitgezet, en met reden: Supabase Edge Functions importeren hun client",
+    "juist met een inline `jsr:`-specifier. Dat is de vorm die hun eigen",
+    "documentatie voorschrijft en die de runtime verwacht. De regel is goed",
+    "advies voor een gewoon Deno-project en fout advies hier.",
+    "",
+    "Zet hem niet aan zonder de imports mee te verhuizen naar een importmap —",
+    "en controleer dan of de deploy die map meeneemt."
+  ]
+}
