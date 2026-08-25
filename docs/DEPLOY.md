@@ -432,20 +432,52 @@ map; Hostinger bewaart geen vorige uitrol. De repo ís het rollback-pad, en dat
 werkt alleen als wat je deployt ook gecommit is. Deploy daarom nooit vanuit een
 vuile werkboom.
 
-### ⚠️ Nog handmatig: Supabase Auth
+### Supabase Auth: de URL's — QS8-99
 
-**Dit staat nog open** (QS8-99, criterium 5) en kan niet via een API of de CLI —
-het is een dashboardhandeling:
+✅ **Gezet op 25-08-2026.** Dit hoeft niet met de hand:
 
-Supabase → Authentication → URL Configuration:
+```bash
+npm run auth:urls       # laat zien wat er nu staat, wijzigt niets
+npm run auth:urls:zet   # zet het goed en leest het terug
+```
 
-* **Site URL**: `https://goalbuddies.q-projects.tech`
-* **Redirect URLs**, toevoegen:
-  * `https://goalbuddies.q-projects.tech/**`
-  * `http://localhost:8081/**` (laat deze staan voor lokaal werk)
+Wat er staat:
 
-Zolang dit niet gebeurd is, wijst de bevestigingslink in een aanmeldmail naar het
-oude adres, en breekt OAuth zodra QS8-25 aangezet wordt.
+| | |
+|---|---|
+| **Site URL** | `https://goalbuddies.q-projects.tech` |
+| **Redirect URLs** | `https://goalbuddies.q-projects.tech/**`, `http://localhost:8081/**`, `goalbuddies://**` |
+
+⚠️ **Hier stond tot 25-08-2026 dat dit niet via een API of de CLI kon en een
+dashboardhandeling was.** Dat gold toen het opgeschreven werd en niet meer sinds
+`scripts/auth-urls.mjs` bestaat — en dat is precies de vorm die dit project vaker
+gekost heeft: een document dat je naar de handmatige weg stuurt terwijl er een
+vastgelegde is. De Site URL bepaalt waar de bevestigingslink in élke aanmeldmail
+heen wijst; die hoort niet van een muisklik af te hangen die niemand kan nalezen.
+
+⚠️ **Dit vraagt een personal access token en niet de service-role-key.** De
+Management API is een ander systeem dan je project. Maak er een op
+<https://supabase.com/dashboard/account/tokens> en zet hem in `.env` als
+`SUPABASE_ACCESS_TOKEN`. Die token geeft toegang tot je hele Supabase-account:
+nooit in de client, nooit in een commit. `.gitignore` vangt `.env` en `.env.*` af,
+en `scanOpGeheimen()` in `scripts/deploy-web.mjs` slaat aan als hij ooit in de
+bundel belandt.
+
+⚠️ **Een vierde adres hoort in het script en niet in het dashboard.** Het script
+doet een PATCH met de héle `uri_allow_list`, dus wat je in het dashboard toevoegt
+is weg zodra `--zet` opnieuw draait — en je ziet dat niet gebeuren, want het
+script vergelijkt de uitkomst met zíjn eigen lijst en die klopt dan gewoon. Zet
+een nieuw adres dus bij `REDIRECTS` in `scripts/auth-urls.mjs`, met de reden
+erbij.
+
+⚠️ **Wat er kapot was zolang dit niet stond:** de bevestigingslink in een
+aanmeldmail wees naar het oude adres. De app gebruikt `signUp` met
+e-mailbevestiging, dus dat raakte élke nieuwe gebruiker. OAuth breekt er ook op,
+maar dat staat sowieso stil op QS8-25.
+
+⚠️ Het script leest terug na het schrijven en vergelijkt, in plaats van op HTTP
+200 te vertrouwen: de API accepteert een veld dat hij niet kent zonder te klagen.
+Je bent klaar als er "Goed gezet en teruggelezen" staat.
 
 ### Push-notificaties: wat waar hoort
 
