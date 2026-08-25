@@ -22,7 +22,7 @@ export type {
 } from './types.ts';
 export { GRACE_HOURS } from './types.ts';
 
-export { freezeNow, now, unfreezeNow } from './clock.ts';
+export { freezeNow, now, ouderDan, unfreezeNow } from './clock.ts';
 
 export {
   closableUserCycle,
@@ -39,8 +39,12 @@ export {
 
 export {
   addDays,
+  apparaatTijdzone,
+  normaliseerZone,
+  tijdzones,
   daysBetween,
   isGeldigeIsoDatum,
+  isGeldigeTijdzone,
   klokTijd,
   localDateIn,
   toIsoDate,

@@ -94,9 +94,25 @@ export function normaliseer(code) {
 }
 
 /**
- * De functies die in beide staan en niet hetzelfde zijn.
+ * Waar de twee kopieën uiteenlopen.
  *
- * @returns {{ bestand: string, functie: string }[]}
+ * ⚠️ **Twee soorten klacht, en de tweede is er op 25-08-2026 bij gekomen na een
+ *    gat dat deze controle zelf had.** Hij vergeleek alleen de functies die in
+ *    béide bestanden stonden — `if (!inApp.has(naam)) continue` — en meldde
+ *    daarna "de twee kopieën rekenen hetzelfde". Een functie die alleen in `src/`
+ *    bestond was per definitie niet gedeeld, dus zijn afwezigheid was
+ *    onzichtbaar. Bij het bouwen van het web-push-verzendpad bleek de Edge-kopie
+ *    van `zoned.ts` vier exports te missen en `clock.ts` de hele `ouderDan()`,
+ *    terwijl deze controle groen stond.
+ *
+ *    Dat is de vorm uit onwrikbare regel 18: hij bewaakte een eigenschap van de
+ *    ónderdelen (wat er in beide staat, staat er gelijk in) terwijl de belofte
+ *    over het gehéél gaat (de Edge-kant ís de module). En het gevaarlijke geval
+ *    is niet een ontbrekende functie — `deno check` valt daarover — maar een
+ *    kopie die achterloopt op een gerepareerde weekberekening, met een groene
+ *    controle erboven.
+ *
+ * @returns {{ bestand: string, functie: string, soort: 'anders' | 'ontbreekt' }[]}
  */
 export function vergelijk(paren) {
   const klachten = [];
@@ -107,7 +123,11 @@ export function vergelijk(paren) {
 
     for (const [naam, code] of inEdge) {
       if (!inApp.has(naam)) continue;
-      if (inApp.get(naam) !== code) klachten.push({ bestand, functie: naam });
+      if (inApp.get(naam) !== code) klachten.push({ bestand, functie: naam, soort: 'anders' });
+    }
+
+    for (const naam of inApp.keys()) {
+      if (!inEdge.has(naam)) klachten.push({ bestand, functie: naam, soort: 'ontbreekt' });
     }
   }
 
@@ -146,11 +166,14 @@ function main() {
   }
 
   console.error(`edge-tijd-controle: ${klachten.length} functie(s) uit de pas.\n`);
-  for (const k of klachten) console.error(`  ${k.bestand}: ${k.functie}`);
+  for (const k of klachten) {
+    const wat = k.soort === 'ontbreekt' ? 'staat niet in de Edge-kopie' : 'rekent anders';
+    console.error(`  ${k.bestand}: ${k.functie} — ${wat}`);
+  }
   console.error(
     '\nDe rollover en de app rekenen hiermee verschillende weekgrenzen uit.\n' +
-      'Correctheidsregel 7 geldt twee keer zolang er twee exemplaren zijn:\n' +
-      'pas ze allebei aan, of laat de functie aan de Edge-kant helemaal weg.',
+      'Correctheidsregel 7 geldt twee keer zolang er twee exemplaren zijn.\n' +
+      'Draai `npm run edge:sync`; die kopieert de bestanden opnieuw.',
   );
   process.exit(1);
 }

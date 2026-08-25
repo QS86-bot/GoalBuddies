@@ -459,8 +459,30 @@ oude adres, en breekt OAuth zodra QS8-25 aangezet wordt.
 | **native** (iOS/Android) | Een EAS-project met FCM- en APNs-sleutels | In de **build**, niet op de server. Zonder `projectId` geeft Expo geen token uit; `expo-bron.ts` stopt daar met een begrijpelijke reden in het logboek |
 | **web** | Een VAPID-sleutelpaar in `.env` | QS8-114/QS8-124. De service worker en het manifest stáán (zie hieronder); wat ontbreekt is de sleutel. **Dit is vandaag de belangrijkste**, want de app draait alleen op het web |
 
-De Edge Function zelf heeft hier níéts voor nodig — die praat met de Expo-push-API
-en heeft geen sleutels van Apple of Google.
+⚠️ **Tot 25-08-2026 stond hier dat de Edge Function hier níéts voor nodig heeft.
+Dat klopte alleen omdat het verzendpad voor web nooit gebouwd was.** De functie
+kende één bestemming — de Expo-push-API — en een webabonnement is een
+endpoint-URL van de browserleverancier; daar kan Expo niets mee. `webpush-crypto.ts`
+stond compleet en getoetst in `_shared/notificaties/` en werd door geen enkel
+bestand geïmporteerd.
+
+Sinds 25-08 splitst `stuur()` op platform. Voor **native** verandert er niets: het
+token ís het adres en Apple- en Google-sleutels zitten in de build. Voor **web**
+heeft de Edge Function het VAPID-sleutelpaar in zijn eigen omgeving nodig:
+
+| Variabele | Waar |
+|---|---|
+| `EXPO_PUBLIC_VAPID_PUBLIC_KEY` | in de bundel **en** in de Edge Function-omgeving |
+| `VAPID_PRIVATE_KEY` | **alleen** in de Edge Function-omgeving — nooit in `.env` van de webbuild |
+| `VAPID_SUBJECT` | idem; een `mailto:`- of `https:`-adres |
+
+Zet ze met `npx supabase secrets set` op het project, niet in de repo. Ontbreken
+ze, dan gaan native meldingen gewoon door en worden web-abonnementen overgeslagen
+met een regel in het log — geen storing, wel stilte.
+
+⚠️ Een abonnement dat 404 of 410 geeft, wordt uit `push_tokens` verwijderd (RFC
+8030 §7: de gebruiker heeft de toestemming ingetrokken). Elke andere fout laat de
+rij staan; een storing van dit moment mag geen dataverlies worden.
 
 ### De service worker en het manifest — QS8-124
 

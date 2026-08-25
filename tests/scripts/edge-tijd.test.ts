@@ -23,7 +23,7 @@ describe('wat de controle moet vinden', () => {
     const app = 'export function addDays(d: string) {\n  return d + 1;\n}';
     const edge = 'export function addDays(d: string) {\n  return d + 2;\n}';
 
-    expect(vergelijk(paar(app, edge))).toEqual([{ bestand: 'zoned.ts', functie: 'addDays' }]);
+    expect(vergelijk(paar(app, edge))).toEqual([{ bestand: 'zoned.ts', functie: 'addDays', soort: 'anders' }]);
   });
 
   it('een verschil diep in het lichaam, voorbij de eerste regel', () => {
@@ -38,13 +38,17 @@ describe('wat de controle moet vinden', () => {
 });
 
 describe('wat de controle met rust moet laten', () => {
-  it('een functie die alleen aan de app-kant bestaat', () => {
-    // De Edge-kopie is een subset, en dat is de bedoeling.
-    const app = 'export function tijdzones() {\n  return [];\n}\nexport function f() {\n  return 1;\n}';
-    const edge = 'export function f() {\n  return 1;\n}';
-
-    expect(vergelijk(paar(app, edge))).toEqual([]);
-  });
+  // ⚠️ **Hier stond tot 25-08-2026 het omgekeerde**: "de Edge-kopie is een subset,
+  //    en dat is de bedoeling", met een test die een ontbrekende functie
+  //    goedkeurde. Die aanname is achterhaald sinds `scripts/sync-edge-shared.mjs`
+  //    bestaat: dat script kopieert héle bestanden en zet er
+  //    "GEGENEREERD BESTAND — niet met de hand bewerken" boven. Een functie die
+  //    wel in `src/` staat en niet in de kopie, is dus geen keuze maar drift.
+  //
+  //    En die drift was er: op 25-08 miste de Edge-kopie van `zoned.ts` vier
+  //    exports en `clock.ts` de hele `ouderDan()`, terwijl deze controle groen
+  //    stond en meldde dat de twee kopieën hetzelfde rekenen. De test die dat
+  //    goedkeurde is nu de test die het afkeurt; zie de `ontbreekt`-tak hieronder.
 
   it('verschillend commentaar bij dezelfde code', () => {
     // ⚠️ De Edge-kopie legt terecht andere dingen uit — bijvoorbeeld waarom hij
@@ -85,3 +89,69 @@ describe('de ontleding zelf', () => {
     );
   });
 });
+
+describe('een kopie die achterloopt', () => {
+  /**
+   * ⚠️ **Het gat dat deze controle zelf had, gevonden op 25-08-2026.** Hij liep
+   *    over de functies van de Edge-kopie en sloeg alles over wat daar niet in
+   *    stond — `if (!inApp.has(naam)) continue` — en meldde vervolgens dat de
+   *    twee kopieën hetzelfde rekenen. Een functie die alleen in `src/` bestond,
+   *    was per definitie niet gedeeld en dus onzichtbaar. In de praktijk miste de
+   *    Edge-kopie van `zoned.ts` vier exports en `clock.ts` de hele `ouderDan()`,
+   *    met een groene controle erboven.
+   *
+   *    Het gevaarlijke geval is niet de ontbrekende functie zelf — `deno check`
+   *    valt daarover zodra iemand hem gebruikt — maar een kopie die achterloopt
+   *    op een gerepareerde weekberekening. Dan rekent de rollover met de oude
+   *    versie en zegt de controle dat alles gelijk is.
+   */
+  it('meldt een functie die wel in `src/` staat en niet in de Edge-kopie', () => {
+    const klachten = vergelijk([
+      {
+        bestand: 'clock.ts',
+        app: 'export function now() { return new Date(); }\nexport function ouderDan() { return true; }',
+        edge: 'export function now() { return new Date(); }',
+      },
+    ]);
+
+    expect(klachten).toEqual([{ bestand: 'clock.ts', functie: 'ouderDan', soort: 'ontbreekt' }]);
+  });
+
+  it('blijft stil als de Edge-kopie compleet is', () => {
+    const bron = 'export function now() { return new Date(); }\nexport function ouderDan() { return true; }';
+
+    expect(vergelijk([{ bestand: 'clock.ts', app: bron, edge: bron }])).toEqual([]);
+  });
+
+  it('meldt een functie die alleen aan de Edge-kant bestaat níét', () => {
+    // ⚠️ Die kant is een andere zaak: `edge:sync` kopieert hele bestanden, dus
+    //    een extra functie aan de Edge-kant komt van een mens en niet van drift.
+    //    Hem hier melden zou de controle laten klagen over iets wat hij niet kan
+    //    repareren, en dat is hoe je hem leert negeren.
+    const klachten = vergelijk([
+      {
+        bestand: 'clock.ts',
+        app: 'export function now() { return new Date(); }',
+        edge: 'export function now() { return new Date(); }\nexport function extra() { return 1; }',
+      },
+    ]);
+
+    expect(klachten).toEqual([]);
+  });
+
+  it('houdt "rekent anders" en "ontbreekt" uit elkaar', () => {
+    const klachten = vergelijk([
+      {
+        bestand: 'zoned.ts',
+        app: 'export function a() { return 1; }\nexport function b() { return 2; }',
+        edge: 'export function a() { return 99; }',
+      },
+    ]);
+
+    expect(klachten).toEqual([
+      { bestand: 'zoned.ts', functie: 'a', soort: 'anders' },
+      { bestand: 'zoned.ts', functie: 'b', soort: 'ontbreekt' },
+    ]);
+  });
+});
+
