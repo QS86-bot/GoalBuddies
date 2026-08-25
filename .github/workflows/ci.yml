@@ -194,11 +194,31 @@ jobs:
 
       # ⚠️ `deno check` haalt `jsr:@supabase/supabase-js` op. Lokaal lukt dat niet
       #    achter de agent-proxy (403 op jsr.io), dus deze stap is hier voor het
-      #    eerst in CI bewezen en niet op een werkplek.
+      #    eerst in CI bewezen en niet op een werkplek. Dat kostte meteen twee
+      #    fouten, en allebei waren ze onzichtbaar in het groen:
+      #
+      #    1. Er stond hier `supabase/functions/**/*.ts`. De standaardshell van
+      #       Actions is bash zónder `globstar`, en dan is `**` gewoon `*`: het
+      #       patroon viel uiteen in de drie `*/index.ts`-bestanden en de zeven
+      #       modules onder `_shared/` werden nooit gecontroleerd. Een map is
+      #       hier het juiste argument — `deno check` loopt er zelf recursief
+      #       doorheen, en er valt niets stil weg.
+      #    2. Deno vindt de `package.json` van de app als het van hier omhoog
+      #       loopt en gaat daarna npm-pakketten in `node_modules` zoeken. Die
+      #       staat er in deze job niet, en `npm:@supabase/realtime-js` — een
+      #       transitieve afhankelijkheid van de jsr-client — staat er sowieso
+      #       niet in. `DENO_NO_PACKAGE_JSON` zet die zoektocht uit: deze map is
+      #       een Deno-project en heeft met de Node-afhankelijkheden van de app
+      #       niets te maken. Zonder de vlag installeert Deno hier de hele
+      #       dependency-boom van de app om drie Edge Functions te typechecken.
       - name: Typecheck
-        run: deno check supabase/functions/**/*.ts
+        env:
+          DENO_NO_PACKAGE_JSON: '1'
+        run: deno check supabase/functions/
 
       - name: Lint
+        env:
+          DENO_NO_PACKAGE_JSON: '1'
         run: deno lint supabase/functions/
 
     # Zonder deze job is CI een suggestie. Met branch protection op `main` die
