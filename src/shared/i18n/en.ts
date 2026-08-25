@@ -659,6 +659,8 @@ export const en: Record<Sleutel, string> = {
   'chat.controleer': 'Check your message.',
   'chat.leeg': 'There is nothing in your message yet.',
   'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
+  'chat.rem_bereikt':
+    'You have posted the maximum number of messages for today. You can continue again later.',
   'chat.weghalen_mislukt': 'Removing did not work. Please try again.',
 
   'ketting.laden_mislukt': 'The Chain could not be loaded.',
@@ -712,6 +714,8 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.weghalen_mislukt': 'Removing did not work. Please try again.',
   'weekafsluiting.reactie_controleer': 'Check your reply.',
   'weekafsluiting.reactie_mislukt': 'Your reply was not sent. Please try again in a moment.',
+  'weekafsluiting.reactie_rem_bereikt':
+    'You have posted the maximum number of replies for today. You can continue again later.',
 
   'doel.doelen_laden': 'Your goals could not be loaded.',
   'doel.doel_laden': 'This goal could not be loaded.',

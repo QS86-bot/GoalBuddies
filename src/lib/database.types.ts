@@ -1943,6 +1943,7 @@ export type Database = {
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
       bedenktijd: { Args: never; Returns: string }
+      berichten_over: { Args: never; Returns: number }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }
         Returns: Json
@@ -2275,6 +2276,7 @@ export type Database = {
           voorraad: number
         }[]
       }
+      weekreacties_over: { Args: never; Returns: number }
       weergavenaam: { Args: { p_user_id: string }; Returns: string }
       wikkel_commitments_af: { Args: { p_goal_id: string }; Returns: Json }
       zet_doelstatus: {

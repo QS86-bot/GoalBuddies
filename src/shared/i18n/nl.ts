@@ -861,6 +861,8 @@ export const nl = {
   'chat.controleer': 'Controleer je bericht.',
   'chat.leeg': 'Er staat nog niets in je bericht.',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
+  'chat.rem_bereikt':
+    'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',
   'chat.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
 
   'ketting.laden_mislukt': 'De Ketting kon niet geladen worden.',
@@ -923,6 +925,8 @@ export const nl = {
   'weekafsluiting.weghalen_mislukt': 'Weghalen lukte niet. Probeer het opnieuw.',
   'weekafsluiting.reactie_controleer': 'Controleer je reactie.',
   'weekafsluiting.reactie_mislukt': 'Je reactie is niet verstuurd. Probeer het zo nog eens.',
+  'weekafsluiting.reactie_rem_bereikt':
+    'Je hebt vandaag het maximum aantal reacties geplaatst. Straks kun je weer verder.',
 
   // ---------------------------------------------------------------------------
   // Doelen — EPIC 2

@@ -57,19 +57,21 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const BEWUST_ONGESCHREVEN = {
   'groups.approval_rule=majority':
     'De peer-goedkeuring kent vandaag alleen `any`. `majority` is ontwerp uit ' +
-    'PRD 0001 en de kolom wordt door niets gelezen — ook niet door `any`. ' +
+    'PRD 0001 en staat als QS8-65 in de backlog (Fase 2). De kolom wordt door ' +
+    'niets gelezen — ook niet door `any`. ' +
     'Wordt een defect zodra iets de kolom gaat lézen: dan belooft een groep een ' +
     'regel die de goedkeuring niet uitvoert, en dat raakt domeinregel 3.',
   'groups.season_cadence=monthly':
-    'Seizoenen zijn niet gebouwd; de kolom wordt door niets gelezen of ' +
-    'geschreven. Wordt een defect zodra het seizoenoverzicht er is.',
+    'Seizoenen zijn niet gebouwd (QS8-79, Fase 2); de kolom wordt door niets ' +
+    'gelezen of geschreven. Wordt een defect zodra het seizoenoverzicht er is.',
   'chat_messages.type=photo':
-    'Wacht op Storage-buckets, die er nog niet zijn. ⚠️ De waarde is vandaag ' +
+    'Wacht op Storage-buckets, die er nog niet zijn (QS8-71, Fase 2). ⚠️ De ' +
+    'waarde is vandaag ' +
     'wél door een client te schrijven — kolomrecht en policy staan open — dus ' +
     'een bericht kan `photo` heten met een gewone tekst erin. Wordt een defect ' +
     'zodra de chat op `type` gaat renderen.',
   'chat_messages.type=doc':
-    'Idem als `photo`, en met dezelfde open schrijfkant.',
+    'Idem als `photo` (QS8-72, Fase 2), en met dezelfde open schrijfkant.',
   'points_ledger.reason=goal_done':
     '⚠️ De enige van deze vijf die een besluit vraagt in plaats van een epic. ' +
     'Domeinregel 10 zegt dat het puntenplafond van een doel de som is van de ' +

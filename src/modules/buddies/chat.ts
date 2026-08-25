@@ -17,6 +17,7 @@ import {
   type ChatCache,
   type ChatCursor,
 } from './chat-schemas';
+import { budgetOp } from './rem';
 import { oudLid } from './systeemberichten';
 
 /**
@@ -185,6 +186,15 @@ export async function stuurBericht(
 
   if (error) {
     reportError(error, 'chat.send', { group_id: groupId, pgcode: error.code });
+
+    // ⚠️ Een policyweigering is voor élke reden dezelfde 42501, dus zonder deze
+    //    vraag krijgt iemand die tegen de rem van 0090 aanloopt "versturen
+    //    mislukt" en mag hij raden. De database blijft de grens; dit is alleen
+    //    de uitleg achteraf.
+    if (await budgetOp('berichten_over')) {
+      return { ok: false, melding: t('chat.rem_bereikt') };
+    }
+
     return {
       ok: false,
       melding: t('chat.versturen_mislukt'),

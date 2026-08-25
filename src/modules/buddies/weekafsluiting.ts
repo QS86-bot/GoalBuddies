@@ -13,6 +13,7 @@ import {
   type Reactie,
   type WeekafsluitingInvoer,
 } from './weekafsluiting-schemas';
+import { budgetOp } from './rem';
 import { oudLid } from './systeemberichten';
 
 /**
@@ -261,6 +262,12 @@ export async function reageerOpAntwoord(
 
   if (error) {
     reportError(error, 'weekreview.reply', { pgcode: error.code });
+
+    // ⚠️ Zelfde reden als bij een chatbericht: 42501 zegt niet waaróm.
+    if (await budgetOp('weekreacties_over')) {
+      return { ok: false, melding: t('weekafsluiting.reactie_rem_bereikt') };
+    }
+
     return { ok: false, melding: t('weekafsluiting.reactie_mislukt') };
   }
 
