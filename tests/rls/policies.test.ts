@@ -3357,4 +3357,89 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
   });
+  /**
+   * Je dagritme is niet van de groep — migratie 0089.
+   *
+   * ⚠️ `profiles_select` is `id = auth.uid() or shares_group_with_user(id)`, en
+   *    RLS kan geen kolommen beperken. Elke buddy kon dus lezen hoe laat jouw
+   *    herinnering afgaat en of hij aanstaat. Dat is geen tegenslagsignaal maar
+   *    iets persoonlijkers, en niemand heeft het ooit besloten — het volgde uit
+   *    het feit dat die kolommen toevallig in dezelfde tabel staan.
+   */
+  describe('de herinneringsinstellingen', () => {
+    it(
+      'zijn voor een groepsgenoot niet te lezen',
+      async () => {
+        // ⚠️ Expliciet die drie kolommen vragen, niet `*`. PostgREST laat `*`
+        //    stilletjes de kolommen weg waar je geen recht op hebt, en dan zou
+        //    deze test groen zijn zonder iets te bewijzen.
+        const poging = await f.bob.db
+          .from('profiles')
+          .select('id, reminder_time, reminder_enabled, reminder_tone')
+          .eq('id', f.alice.id);
+
+        expect(poging.error).not.toBeNull();
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zijn ook voor jezelf niet meer via `profiles` te lezen',
+      async () => {
+        // ⚠️ De prijs van een kolomgrant: hij kent geen rijen, dus de intrekking
+        //    treft de eigenaar net zo goed. Dát is de reden dat `mijn_profiel`
+        //    bestaat, en deze test legt vast dat de omweg nodig is en niet
+        //    toevallig.
+        const poging = await f.alice.db
+          .from('profiles')
+          .select('id, reminder_time')
+          .eq('id', f.alice.id);
+
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zijn via `mijn_profiel` wél leesbaar, en alleen je eigen rij',
+      async () => {
+        const eigen = await f.alice.db
+          .from('mijn_profiel')
+          .select('id, reminder_time, reminder_enabled, reminder_tone');
+
+        expect(eigen.error).toBeNull();
+        expect(eigen.data ?? []).toHaveLength(1);
+        expect((eigen.data ?? [])[0]?.id).toBe(f.alice.id);
+
+        // ⚠️ En de view geeft niet andermans rij, ook niet als je erom vraagt.
+        //    Zonder deze helft zou een view zonder where-clausule groen zijn.
+        const andermans = await f.alice.db
+          .from('mijn_profiel')
+          .select('id')
+          .eq('id', f.bob.id);
+
+        expect(andermans.error).toBeNull();
+        expect(andermans.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een groepsgenoot nog wél de naam en avatar zien',
+      async () => {
+        // De positieve controle: zonder deze helft zou de intrekking ook groen
+        // zijn als `profiles` helemaal dicht was gegaan, en dan is het
+        // groepsoverzicht stuk.
+        const zicht = await f.bob.db
+          .from('profiles')
+          .select('id, display_name, avatar_url')
+          .eq('id', f.alice.id);
+
+        expect(zicht.error).toBeNull();
+        expect(zicht.data ?? []).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
