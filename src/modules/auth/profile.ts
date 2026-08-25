@@ -86,11 +86,20 @@ export async function updateProfiel(
   }
   if (velden.locale !== undefined) update.locale = velden.locale;
 
+  // ⚠️ **`select('id')` en niet `select('*')`, en dat is geen zuinigheid.**
+  //    Migratie 0089 trok de tabelbrede SELECT op `profiles` in: `authenticated`
+  //    mag nog maar `id`, `display_name` en `avatar_url` lezen. Een `returning *`
+  //    vraagt leesrecht op élke kolom, dus deze schrijfactie viel om met 42501 —
+  //    "permission denied for table profiles" — en daarmee élke profielinstelling:
+  //    tijdzone, week-startdag, herinneringen, taal.
+  //
+  //    Het opnieuw lezen gaat via `fetchProfiel()`, dat `mijn_profiel` gebruikt.
+  //    Die view draait met de rechten van zijn eigenaar en geeft precies jouw rij.
   const { data, error } = await supabase()
     .from('profiles')
     .update(update)
     .eq('id', userId)
-    .select('*')
+    .select('id')
     .single();
 
   if (error) {
@@ -98,7 +107,26 @@ export async function updateProfiel(
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
-  return { ok: true, profiel: data };
+  const profiel = await teruglezen(data.id);
+  if (profiel === null) return { ok: false, melding: t('profiel.opslaan_mislukt') };
+
+  return { ok: true, profiel };
+}
+
+/**
+ * Leest het zojuist geschreven profiel terug.
+ *
+ * ⚠️ Een tweede rondje, en dat is de prijs van de kolomgrant uit 0089. Faalt het
+ *    lezen, dan is er wél geschreven — vandaar dat de melding hetzelfde is en de
+ *    fout gerapporteerd wordt, in plaats van dat er een half profiel teruggaat.
+ */
+async function teruglezen(userId: string): Promise<Profiel | null> {
+  try {
+    return await fetchProfiel(userId);
+  } catch (fout) {
+    reportError(fout, 'profile.reread', { user_id: userId });
+    return null;
+  }
 }
 
 /**
@@ -116,11 +144,13 @@ export async function rondOnboardingAf(
   userId: string,
   wantsOwnGoal: boolean,
 ): Promise<ProfielUitkomst> {
+  // ⚠️ Zelfde reden als in `updateProfiel()`: `select('*')` viel om op de
+  //    kolomgrant van 0089, en dan kon niemand de onboarding afronden.
   const { data, error } = await supabase()
     .from('profiles')
     .update({ onboarded_at: 'now', wants_own_goal: wantsOwnGoal })
     .eq('id', userId)
-    .select('*')
+    .select('id')
     .single();
 
   if (error) {
@@ -128,7 +158,10 @@ export async function rondOnboardingAf(
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
-  return { ok: true, profiel: data };
+  const profiel = await teruglezen(data.id);
+  if (profiel === null) return { ok: false, melding: t('profiel.opslaan_mislukt') };
+
+  return { ok: true, profiel };
 }
 
 /** Heeft deze gebruiker de onboarding gehad? */

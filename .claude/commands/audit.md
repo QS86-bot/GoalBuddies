@@ -242,5 +242,22 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     `tests/rls/klokgrens.test.ts` en draait mee in `npm run rls:lokaal`. Deze stap
     is de vorm, die suite is de werking; je hebt ze allebei nodig.
 
+22. **Kolomrechten** — draai `npm run kolomrechten:controle` tegen de lokale
+    stack. Hij legt elke `.from(…).select(…)` in `src/` en `app/` naast de échte
+    SELECT-grants van `authenticated`, en meldt elke kolom die de app terugvraagt
+    maar niet mag lezen.
+
+    ⚠️ **Waarom dit geen luxe is.** Migratie 0089 versmalde de grant op `profiles`
+    om een lek te dichten — correct, en de leeskant is uitgebreid getest. Maar
+    `updateProfiel()` vroeg zijn rij terug met `select('*')`, en dat is 42501.
+    Vanaf die migratie faalde élke profielopslag én de onboarding, vier maanden
+    lang, zonder één rode test. De policy klopte, de grant klopte, de app klopte;
+    alleen de combinatie was van niemand.
+
+    ⚠️ **Let bij een migratie die rechten intrekt altijd op de schrijfkant.** Een
+    `returning *` na een `update` vraagt leesrecht op élke kolom. PostgREST laat
+    die kolommen niet stilzwijgend weg — die aanname stond in een test en was
+    fout.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

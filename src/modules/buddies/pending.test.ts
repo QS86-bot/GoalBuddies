@@ -113,3 +113,60 @@ describe('een bewaarde uitnodiging', () => {
     expect(await openstaandeUitnodiging()).toBeNull();
   });
 });
+
+describe('de klok loopt door als je dezelfde link nog eens opent', () => {
+  /**
+   * ⚠️ **Het gat dat A49 in de praktijk ongedaan maakte, gevonden op 25-08-2026.**
+   *    `app/uitnodiging/[code].tsx` bewaart de code bij elke mount — nodig, want
+   *    de uitnodiging moet de bevestigingsmail en de onboarding overleven. En
+   *    `app/_layout.tsx` stuurt een vérlopen code juist naar dát scherm, want
+   *    weggooien zou de uitnodiging doodmaken.
+   *
+   *    Allebei goed, samen fout: het scherm schreef een vers tijdstip, dus na één
+   *    passage was de code weer jong. Wie op dag 0 afhaakte, langs het scherm
+   *    kwam op dag 14 en de app sloot zonder te drukken, stond bij de volgende
+   *    start stilzwijgend in de groep. De vervaltermijn hield één app-start
+   *    stand. Twee correcte onderdelen, een naad die van niemand was.
+   */
+  it('houdt het oorspronkelijke tijdstip aan bij dezelfde code', async () => {
+    freezeNow(new Date('2026-08-01T12:00:00Z'));
+    await bewaarOpenstaandeUitnodiging(CODE);
+
+    // Twee weken later: verlopen, gebruiker landt op het uitnodigingsscherm, en
+    // dát scherm bewaart opnieuw.
+    freezeNow(new Date('2026-08-15T12:00:00Z'));
+    await bewaarOpenstaandeUitnodiging(CODE);
+
+    const wachtend = await openstaandeUitnodiging();
+
+    expect(wachtend?.code).toBe(CODE);
+    expect(wachtend?.automatisch).toBe(false);
+  });
+
+  it('geeft een ándere code wél een verse termijn', async () => {
+    // Een nieuwe uitnodiging is een nieuwe toestemming en begint aan zijn eigen
+    // 24 uur. Zou dit niet werken, dan was de reparatie hierboven te grof.
+    freezeNow(new Date('2026-08-01T12:00:00Z'));
+    await bewaarOpenstaandeUitnodiging(CODE);
+
+    freezeNow(new Date('2026-08-15T12:00:00Z'));
+    await bewaarOpenstaandeUitnodiging('ZZZZ22223333');
+
+    const wachtend = await openstaandeUitnodiging();
+
+    expect(wachtend?.code).toBe('ZZZZ22223333');
+    expect(wachtend?.automatisch).toBe(true);
+  });
+
+  it('maakt de kale vorm van vóór A49 niet alsnog levend', async () => {
+    // Die vorm telt als verlopen. Hem hier overschrijven met een vers tijdstip
+    // zou precies de oude opslag weer laten toetreden.
+    OPSLAG.set(SLEUTEL, CODE);
+
+    freezeNow(new Date('2026-08-15T12:00:00Z'));
+    await bewaarOpenstaandeUitnodiging(CODE);
+
+    expect((await openstaandeUitnodiging())?.automatisch).toBe(false);
+  });
+});
+

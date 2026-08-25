@@ -198,6 +198,15 @@ jobs:
       - name: Klokgrenzen met een reden
         run: npm run klokgrens:controle
 
+      # ⚠️ Vraagt de app kolommen terug die hij niet mag lezen? Migratie 0089
+      #    versmalde de SELECT-grant op `profiles` — terecht — en brak daarmee
+      #    stil élke profielopslag, want `updateProfiel()` vroeg zijn rij terug
+      #    met `select('*')` en dat is 42501. De policy klopte, de grant klopte,
+      #    de app klopte; alleen de combinatie niet. Deze stap legt elke
+      #    `select()` in `src/` en `app/` naast de échte grants.
+      - name: Kolomrechten tegen wat de app terugvraagt
+        run: npm run kolomrechten:controle
+
       # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
       #    is bewezen; wat hier niet staat, is niet bewezen.
       - name: RLS-policies

@@ -181,6 +181,22 @@ function schrijfHtaccess() {
     .map((pad) => relative(DIST, pad).split(sep).join('/'))
     .filter((pad) => /\[[^/]+\]\.html$/.test(pad));
 
+  const inhoud = htaccessInhoud(dynamisch);
+  writeFileSync(join(DIST, '.htaccess'), inhoud, 'utf8');
+  console.log(`    .htaccess geschreven, met ${dynamisch.length} regels voor dynamische routes.`);
+}
+
+/**
+ * De inhoud van `dist/.htaccess`.
+ *
+ * ⚠️ Apart en geëxporteerd omdat dit bestand eisen draagt die nergens anders
+ *    afgedwongen worden: de service worker mag niet gecachet worden en het
+ *    manifest heeft een eigen content-type. Die eisen stonden tot 25-08-2026
+ *    alleen in `docs/DEPLOY.md`, terwijl dat document zélf verbiedt om
+ *    `dist/.htaccess` met de hand bij te werken — deze generator overschrijft
+ *    hem bij elke deploy. Zie `tests/scripts/deploy-htaccess.test.ts`.
+ */
+export function htaccessInhoud(dynamisch) {
   const regels = dynamisch.map((pad) => {
     const map = pad.replace(/\/[^/]+$/, '');
     // Eén segment achter de map, geen schuine streep erin: dat is de parameter.
@@ -221,11 +237,34 @@ ${regels.join('\n')}
   <FilesMatch "\\.(js|css|woff2|png|jpg|svg)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
+
+  # ⚠️ De service worker is de uitzondering op de regel hierboven, en sw.js
+  #    eindigt op .js — dus zonder dit blok werd hij een jaar onveranderlijk
+  #    gecachet. Een browser die een oude sw.js vasthoudt, blijft die draaien
+  #    tot hij vanzelf verloopt, en levert meldingen af via code van vorige week.
+  #    <Files> staat hier na <FilesMatch>: de laatste Header set wint.
+  #
+  #    Dit stond als eis in docs/DEPLOY.md en niet in dit script, terwijl datzelfde
+  #    document verbiedt om dist/.htaccess met de hand te repareren — die wordt
+  #    bij elke deploy opnieuw geschreven. Een eis in een document dat door een
+  #    generator wordt overschreven, is geen eis maar een wens.
+  <Files "sw.js">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </Files>
 </IfModule>
+
+# ⚠️ Sommige Apache-installaties kennen manifest.json niet en sturen
+#    text/plain. Safari negeert het manifest dan stil, en dan is er op iOS geen
+#    "zet op beginscherm" — en zonder beginscherm geen push (QS8-117).
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+<Files "manifest.json">
+  ForceType application/manifest+json
+</Files>
 `;
 
-  writeFileSync(join(DIST, '.htaccess'), inhoud, 'utf8');
-  console.log(`    .htaccess geschreven, met ${regels.length} regels voor dynamische routes.`);
+  return inhoud;
 }
 
 // ---------------------------------------------------------------------------
@@ -433,4 +472,7 @@ async function controleerPwa() {
   process.exit(1);
 }
 
-await main();
+// ⚠️ Alleen draaien als dit script zélf aangeroepen wordt. Zonder deze grens
+//    start een `import` van dit bestand de hele deploy — en dan kan geen enkele
+//    test een van zijn functies voeden. Zie `tests/scripts/deploy-htaccess.test.ts`.
+if (import.meta.url === `file://${process.argv[1]}`) await main();

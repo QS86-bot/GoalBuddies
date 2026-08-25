@@ -65,18 +65,53 @@ export interface OpenstaandeUitnodiging {
   readonly automatisch: boolean;
 }
 
-/** Onthoud de code tot hij verzilverd is. */
+/**
+ * Onthoud de code tot hij verzilverd is.
+ *
+ * ⚠️ **Dezelfde code opnieuw openen zet de klok niet terug**, en dat is de hele
+ *    reparatie. Het uitnodigingsscherm bewaart bij elke mount, en de app stuurt
+ *    een vérlopen code juist naar dát scherm — dus met een onvoorwaardelijke
+ *    schrijfactie was de code daarna weer vers. Wie de link op dag 0 opende en
+ *    afhaakte, kwam op dag 14 langs het scherm, sloot de app, en stond bij de
+ *    volgende start stilzwijgend in de groep. De vervaltermijn van A49 hield
+ *    precies één app-start stand.
+ *
+ * ⚠️ Een ándere code overschrijft wél, met een vers tijdstip: dat is een nieuwe
+ *    uitnodiging en die begint aan zijn eigen 24 uur.
+ */
 export async function bewaarOpenstaandeUitnodiging(code: string): Promise<void> {
   const schoon = normaliseerCode(code);
   if (!isCodeVorm(schoon)) return;
 
   try {
+    if (await alBewaard(schoon)) return;
+
     const inhoud: Bewaard = { code: schoon, op: now().toISOString() };
     await AsyncStorage.setItem(SLEUTEL, JSON.stringify(inhoud));
   } catch (fout) {
     // Niet gooien: de uitnodiging kwijtraken is vervelend, maar het mag het
     // aanmelden zelf niet blokkeren.
     reportError(fout, 'invite.remember');
+  }
+}
+
+/**
+ * Staat déze code er al, in welke vorm dan ook?
+ *
+ * ⚠️ Ook de kale vorm van vóór A49 telt mee. Die geldt als verlopen, en dat moet
+ *    hij blijven — hem hier overschrijven met een vers tijdstip zou de oude
+ *    opslag juist weer levend maken.
+ */
+async function alBewaard(code: string): Promise<boolean> {
+  const bewaard = await AsyncStorage.getItem(SLEUTEL);
+  if (bewaard === null) return false;
+  if (isCodeVorm(bewaard)) return bewaard === code;
+
+  try {
+    return (JSON.parse(bewaard) as Bewaard).code === code;
+  } catch {
+    // Onleesbare opslag: overschrijven is hier de veilige kant.
+    return false;
   }
 }
 
