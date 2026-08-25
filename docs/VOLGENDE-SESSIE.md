@@ -491,6 +491,21 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   **Vraag bij elke nieuwe beslissing die op een bestaande primitieve handeling
   leunt: staat daar een weggelegde bevinding over?** De werkwijze eromheen is
   **QS8-123**.
+- **⚠️ Een lokale datum ligt altijd in `[current_date - 1, current_date + 1]`.**
+  `current_date` is de serverdatum in UTC; geen enkele tijdzone loopt meer dan een
+  dag voor of achter. Een bovengrens op een datum die de client aanlevert moet die
+  dag dus meenemen — dat is de `+ 1` uit 0037 — en een ondergrens met weken
+  speling niet. Dit is het middernachtprobleem uit domeinregel 2 in een
+  grénscontrole in plaats van in een berekening, en dat is precies waar niemand
+  het zoekt. `npm run klokgrens:controle` houdt sinds 25-08 een register bij van
+  elk voorkomen van `current_date` in het schema met de reden waarom het daar mag
+  staan; `tests/rls/klokgrens.test.ts` toetst het gedrag.
+
+  ⚠️ **En de meting van 25-08 zei twee keer iets anders dan de code deed.** Ze
+  greep op `current_date` en zag de `+ 1` er niet naast staan, en concludeerde dat
+  de reparatie ontbrak. Een grep is geen meting: `pg_get_functiondef()` is de
+  waarheid, en je moet de héle regel lezen.
+
 - **Let op de limieten die je zelf hebt ingebouwd:** 10 groepen per gebruiker per
   dag, 20 toetredingspogingen per dag, 12 leden per groep, 5 deadline-verzoeken
   per dag, 2 weekpassen tegelijk, 24 uur bedenktijd.

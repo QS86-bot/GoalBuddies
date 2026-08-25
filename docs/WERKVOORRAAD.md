@@ -191,7 +191,8 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **723 geslaagd en 385 overgeslagen** (die 384 zijn de RLS-suite, zie §3b)
+  **730 geslaagd en 391 overgeslagen** (dat zijn achttien van de
+  twintig bestanden in `tests/rls`, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -767,10 +768,10 @@ De zwaarste op dit moment:
    naar binnen te zijn in plaats van één; de andere twee herstelden het
    lidmaatschap zelfs (eigen status terugzetten, eigen rij weggooien en opnieuw
    toetreden).
-3. **De RLS-suite draait niet in CI** (§5). Groen in GitHub zegt niets over
-   groepen, rate limiting of domeinregel 7. **Dit is nu de zwaarste van de lijst**,
-   want er staan 290 RLS-tests die niemand automatisch draait — dat is precies
-   het aantal dat `npm test` zonder credentials overslaat.
+3. ~~**De RLS-suite draait niet in CI**~~ — opgelost met QS8-119. CI bouwt het
+   schema uit `supabase/migrations/` op een eigen Postgres met een echte
+   PostgREST ervoor, en draait de suite daartegen zonder één secret. Groen in
+   GitHub zegt sindsdien wél iets over groepen, rate limiting en domeinregel 7.
 4. **Niets bewaakt dat de repo en het echte project hetzelfde bevatten** (§7.15).
 5b. ~~**Niets schrijft `week_pass_events`**~~ — opgelost 19-08 in QS8-81, en het
    is dezelfde les nog een keer. De tabel is nu gevuld, dus de vraag "wat

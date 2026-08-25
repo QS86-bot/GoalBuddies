@@ -189,6 +189,15 @@ jobs:
           POSTGREST_BIN: /home/runner/postgrest/postgrest
         run: scripts/lokale-stack.sh
 
+      # ⚠️ Het register van elke `current_date` in het schema. Hoort hier en niet
+      #    in de job hierboven: `pg_get_functiondef()` is de waarheid en een
+      #    migratiebestand niet, dus deze controle heeft een opgebouwde database
+      #    nodig. Een dertiende `current_date` erbij is geen rode test — er is
+      #    niets kapot, er staat alleen een aanname in een grens waar niemand
+      #    hem zoekt. Zie de kop van het script.
+      - name: Klokgrenzen met een reden
+        run: npm run klokgrens:controle
+
       # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
       #    is bewezen; wat hier niet staat, is niet bewezen.
       - name: RLS-policies

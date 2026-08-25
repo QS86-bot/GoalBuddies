@@ -225,5 +225,22 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     `apply_migration` toepast met een ingekorte body, en dat is op 25-08 drie keer
     gebeurd. Zie de rij daarover in `docs/ENGINEER-REVIEW.md`.
 
+21. **Klokgrenzen** — draai `npm run klokgrens:controle` tegen de lokale stack
+    (of tegen productie met `DB=postgres` en de juiste `PG*`). Hij legt elk
+    voorkomen van `current_date` in `pg_get_functiondef()` naast een register met
+    de reden waarom het daar mag staan, en is tweezijdig: een voorkomen zonder
+    reden is rood, en een reden zonder voorkomen ook.
+
+    ⚠️ **De maat is niet "staat er `+ 1`" maar "welke kant valt de fout op".** Een
+    lokale datum ligt altijd in `[current_date - 1, current_date + 1]` — geen zone
+    loopt meer dan een dag voor of achter op UTC. Een bovengrens op een datum die
+    de client aanlevert heeft die dag dus nodig; een ondergrens met vijf weken
+    speling niet. Dat onderscheid maakt het script niet voor je: het dwingt alleen
+    af dat iemand het opgeschreven heeft.
+
+    ⚠️ Het gedrág van de drie van buitenaf bereikbare grenzen staat in
+    `tests/rls/klokgrens.test.ts` en draait mee in `npm run rls:lokaal`. Deze stap
+    is de vorm, die suite is de werking; je hebt ze allebei nodig.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

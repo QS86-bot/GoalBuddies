@@ -33,6 +33,7 @@
     "storage:controle": "node scripts/storage-controle.mjs",
     "pwa:controle": "node scripts/pwa-controle.mjs",
     "levend:controle": "node scripts/levend-controle.mjs",
+    "klokgrens:controle": "node scripts/klokgrens-controle.mjs",
     "register:uitlijnen": "node scripts/migratieregister-uitlijnen.mjs",
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",
