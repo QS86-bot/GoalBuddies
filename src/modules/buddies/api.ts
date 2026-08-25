@@ -94,6 +94,9 @@ function meldingen(): Readonly<Record<string, string>> {
     invalid: t('groep.ongeldige_link'),
     group_full: t('groep.vol'),
     too_many_groups: t('groep.te_veel_groepen'),
+    // ⚠️ Migratie 0092: een uitnodigingslink naar een gearchiveerde groep. De
+    //    code blijft geldig, de groep niet meer.
+    archived: t('groep.gearchiveerd'),
 
     // create_group
     name_too_short: t('groep.naam_kort'),
@@ -511,6 +514,46 @@ export async function zetGroepszichtbaarheid(
   }
 
   return { ok: true, waarde: naar };
+}
+
+/**
+ * Archiveert een groep — migratie 0092.
+ *
+ * ⚠️ **Dit is de vervanger van het verwijderen van een groep, en niet een extra
+ *    knop ernaast.** Tot 0092 kon elke beheerder de rij weggooien, en dat
+ *    cascadeerde naar zes tabellen — onomkeerbaar, zonder audit, en op de gratis
+ *    tier zonder backups. `groups_delete` staat nu op `false`; dit is de enige
+ *    manier om een groep af te sluiten.
+ *
+ * ⚠️ `bevestigd` is om dezelfde reden een parameter als bij
+ *    `zetGroepszichtbaarheid()`: de handeling neemt iets weg bij álle leden, en
+ *    domeinregel 5 zegt dat zoiets expliciet bevestigd moet zijn. De database
+ *    weigert zonder.
+ *
+ * ⚠️ Ná deze aanroep is de groep voor jou ook niet meer leesbaar —
+ *    `is_group_member()` is onwaar voor een gearchiveerde groep. Het scherm moet
+ *    dus wegnavigeren en niet proberen te herladen.
+ */
+export async function archiveerGroep(
+  groupId: string,
+  bevestigd: boolean,
+): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('archiveer_groep', {
+    p_group_id: groupId,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.archive', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return { ok: true, waarde: true };
 }
 
 /**

@@ -600,6 +600,18 @@ export const nl = {
   'bevestiging.groep_beschermen.uitleg':
     'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
+  'bevestiging.groep_archiveren.titel': 'Deze groep archiveren?',
+  'bevestiging.groep_archiveren.uitleg':
+    'De groep verdwijnt daarna voor iedereen: de chat, de weekafsluitingen en De Ketting zijn niet meer te openen, ook niet voor jou. Wat erin staat wordt niet gewist — het blijft bewaard, en de reeksen van je buddies blijven kloppen. Maar dit is niet terug te draaien vanuit de app.',
+  'bevestiging.groep_archiveren.knop': 'Ja, archiveer deze groep',
+  'beheer.archief_titel': 'Groep archiveren',
+  'beheer.archief_uitleg':
+    'Is deze groep klaar, dan sluit je hem hiermee af. Hij verdwijnt bij alle leden en niemand kan er nog iets in doen.',
+  'beheer.archief_waarschuwing':
+    'Er wordt niets gewist, maar je kunt de groep hierna niet meer openen.',
+  'beheer.archiveren': 'Deze groep archiveren',
+  'beheer.melding_gearchiveerd': 'De groep is gearchiveerd.',
+  'groep.gearchiveerd': 'Deze groep is gearchiveerd en niet meer te openen.',
   'beheer.naar_open': 'Deze groep openzetten',
   'beheer.naar_beschermd': 'Deze groep weer beschermen',
   'beheer.melding_open_gezet': 'De groep staat open. Iedereen heeft er een bericht van gekregen.',

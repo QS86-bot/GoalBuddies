@@ -1942,6 +1942,10 @@ export type Database = {
       }
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
+      archiveer_groep: {
+        Args: { p_bevestigd?: boolean; p_group_id: string }
+        Returns: Json
+      }
       bedenktijd: { Args: never; Returns: string }
       berichten_over: { Args: never; Returns: number }
       beslis_deadline_verzoek: {

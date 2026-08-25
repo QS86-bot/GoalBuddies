@@ -14,6 +14,7 @@ import {
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
+  archiveerGroep,
   zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   zichtbaarheidLabels,
@@ -64,7 +65,9 @@ export default function GroepBeheer() {
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
   const [bewijseis, setBewijseis] = useState<Bewijseis>('note_required');
-  const [bezig, setBezig] = useState<'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | null>(null);
+  const [bezig, setBezig] = useState<
+    'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | 'archief' | null
+  >(null);
   /**
    * ⚠️ Openklappen en niet meteen doen. Besluit A41 grens 3: omzetten raakt
    *    ánderen, dus het krijgt dezelfde zwaarte als een commitment device — en
@@ -73,6 +76,12 @@ export default function GroepBeheer() {
    *    scherm is de tweede rem en niet de enige.
    */
   const [zichtVraag, setZichtVraag] = useState(false);
+  /**
+   * ⚠️ Zelfde vorm als `zichtVraag`, en met meer reden. Archiveren vervangt sinds
+   *    0092 het verwijderen van een groep — het neemt de groep weg bij álle leden
+   *    en is vanuit de app niet terug te draaien.
+   */
+  const [archiefVraag, setArchiefVraag] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -161,6 +170,28 @@ export default function GroepBeheer() {
     setMelding(
       naar === 'open' ? t('beheer.melding_open_gezet') : t('beheer.melding_beschermd_gezet'),
     );
+  }
+
+  async function archiveer() {
+    if (!id) return;
+    setBezig('archief');
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await archiveerGroep(id, true);
+
+    if (!uitkomst.ok) {
+      setBezig(null);
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    // ⚠️ **Niet herladen maar weglopen.** `is_group_member()` is sinds 0092
+    //    onwaar voor een gearchiveerde groep, dus elke query op dit scherm geeft
+    //    vanaf nu leeg terug. Zou dit scherm blijven staan, dan zag de beheerder
+    //    een lege-staat of een foutmelding voor een handeling die juist geslaagd
+    //    is. `setBezig` blijft daarom staan tot we weg zijn.
+    router.replace('/groep');
   }
 
   async function zetGesloten(gesloten: boolean) {
@@ -334,6 +365,30 @@ export default function GroepBeheer() {
                 </Button>
 
                 <Caption>{t('beheer.sluiten_uitleg')}</Caption>
+              </Card>
+
+              {/*
+                ⚠️ Onderaan en met opzet. Dit is de zwaarste knop in dit scherm:
+                   hij vervangt sinds 0092 het verwijderen van een groep, en dat
+                   is niet terug te draaien vanuit de app.
+              */}
+              <Card>
+                <Subheading>{t('beheer.archief_titel')}</Subheading>
+                <Body muted>{t('beheer.archief_uitleg')}</Body>
+                <Caption>{t('beheer.archief_waarschuwing')}</Caption>
+
+                {archiefVraag ? (
+                  <Bevestiging
+                    tekst={bevestigingen().groepArchiveren}
+                    bezig={bezig === 'archief'}
+                    onBevestig={() => void archiveer()}
+                    onAnnuleer={() => setArchiefVraag(false)}
+                  />
+                ) : (
+                  <Button variant="secundair" block onPress={() => setArchiefVraag(true)}>
+                    {t('beheer.archiveren')}
+                  </Button>
+                )}
               </Card>
 
               {melding === null ? null : <Caption muted={false}>{melding}</Caption>}

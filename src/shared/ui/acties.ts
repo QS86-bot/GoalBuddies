@@ -127,6 +127,10 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    prijs, en de prijs wordt hier door iemand anders betaald.
     groepOpenzetten: bouw('bevestiging.groep_openzetten'),
     groepBeschermen: bouw('bevestiging.groep_beschermen'),
+    // ⚠️ Migratie 0092. Archiveren vervangt het verwijderen van een groep, dat
+    //    naar zes tabellen cascadeerde. Het is de zwaarste knop in dit scherm:
+    //    hij neemt de groep weg bij álle leden, en er is geen weg terug.
+    groepArchiveren: bouw('bevestiging.groep_archiveren'),
   };
 }
 
@@ -136,5 +140,6 @@ export type BevestigingsNaam =
   | 'weekdoelDoorschuiven'
   | 'groepOpenzetten'
   | 'groepBeschermen'
+  | 'groepArchiveren'
   | 'doelVerwijderen'
   | 'doelAfronden';

@@ -2,6 +2,7 @@
 // CLAUDE.md: module-communicatie loopt uitsluitend via dit bestand.
 
 export {
+  archiveerGroep,
   fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepenVanDoel,

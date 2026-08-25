@@ -1156,6 +1156,18 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_beschermen.uitleg':
     'From now on the group only sees what works out. Missed weeks become private again, retroactively too. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
+  'bevestiging.groep_archiveren.titel': 'Archive this group?',
+  'bevestiging.groep_archiveren.uitleg':
+    'The group then disappears for everyone: the chat, the week reviews and The Chain can no longer be opened, not even by you. Nothing in it is deleted — it stays stored, and your buddies\u2019 streaks remain correct. But this cannot be undone from the app.',
+  'bevestiging.groep_archiveren.knop': 'Yes, archive this group',
+  'beheer.archief_titel': 'Archive group',
+  'beheer.archief_uitleg':
+    'If this group is finished, this is how you close it. It disappears for all members and nobody can do anything in it any more.',
+  'beheer.archief_waarschuwing':
+    'Nothing is deleted, but you will not be able to open the group afterwards.',
+  'beheer.archiveren': 'Archive this group',
+  'groep.gearchiveerd': 'This group has been archived and can no longer be opened.',
+  'beheer.melding_gearchiveerd': 'The group has been archived.',
   'zichtbaarheid.onbekend': 'That setting does not exist.',
   'zichtbaarheid.ongewijzigd': 'It was already set that way.',
   'zichtbaarheid.te_snel': 'This group was already opened up once in the past 24 hours. It stays protected in the meantime; you can try again in a day.',
