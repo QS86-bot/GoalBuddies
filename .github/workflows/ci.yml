@@ -192,10 +192,16 @@ jobs:
         with:
           deno-version: v2.x
 
-      # ⚠️ `deno check` haalt `jsr:@supabase/supabase-js` op. Lokaal lukt dat niet
-      #    achter de agent-proxy (403 op jsr.io), dus deze stap is hier voor het
-      #    eerst in CI bewezen en niet op een werkplek. Dat kostte meteen twee
-      #    fouten, en allebei waren ze onzichtbaar in het groen:
+      # ⚠️ `deno check` haalt `jsr:@supabase/supabase-js` op, en `jsr.io` en
+      #    `npm.jsr.io` geven 403 op een agent-werkplek. Dat is géén reden om
+      #    hier blind te pushen: `registry.npmjs.org` is wél bereikbaar, en het
+      #    jsr-pakket is dezelfde broncode als het npm-pakket. Een kopie van deze
+      #    map waarin de specifier `npm:@supabase/supabase-js@<zelfde versie>`
+      #    wordt, typecheckt daarom volledig op een werkplek — het versienummer
+      #    staat in de eerste CI-uitslag. Doe dat vóór je pusht.
+      #
+      #    Deze stap kostte bij de eerste twee rondes vier fouten, en alle vier
+      #    waren ze onzichtbaar in het groen:
       #
       #    1. Er stond hier `supabase/functions/**/*.ts`. De standaardshell van
       #       Actions is bash zónder `globstar`, en dan is `**` gewoon `*`: het
@@ -211,6 +217,16 @@ jobs:
       #       een Deno-project en heeft met de Node-afhankelijkheden van de app
       #       niets te maken. Zonder de vlag installeert Deno hier de hele
       #       dependency-boom van de app om drie Edge Functions te typechecken.
+      #    3. Achttien typefouten in `notificaties/index.ts`, allemaal uit één
+      #       `type Db = ReturnType<typeof createClient>`.
+      #    4. Een `db` die in `doelcoach/index.ts` niet bestond — de client heet
+      #       daar `alsSysteem`. Dat is geen typefout maar een `ReferenceError`
+      #       in de gedéployde functie: élke doelcoach-job liep erop stuk, werd
+      #       netjes als `failed` weggeschreven en gaf HTTP 200 terug.
+      #
+      #    ⚠️ Fout 4 kwam pas boven toen fout 3 weg was — Deno stopt bij de
+      #       eerste module die faalt. Eén rode CI-uitslag is dus niet
+      #       hetzelfde als één fout.
       - name: Typecheck
         env:
           DENO_NO_PACKAGE_JSON: '1'

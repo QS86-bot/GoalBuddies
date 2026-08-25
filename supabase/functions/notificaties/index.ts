@@ -103,10 +103,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const db = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
+  const db = maakClient(
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
-    { auth: { persistSession: false } },
   );
 
   const nu = new Date();
@@ -290,7 +288,23 @@ Deno.serve(async (req: Request) => {
 // De vragen die de regels stellen
 // ---------------------------------------------------------------------------
 
-type Db = ReturnType<typeof createClient>;
+// ⚠️ `Db` moet van een échte aanroep komen en niet van `createClient` zelf.
+//    `ReturnType<typeof createClient>` vult de generieke parameters met hun
+//    *constraint* in plaats van met hun default, en dat levert
+//    `SupabaseClient<unknown, …, never, never>` op. Elke helper hieronder kreeg
+//    daarmee een `db` die niets accepteert wat `createClient(url, key)` teruggeeft,
+//    en `.rpc()` en `.insert()` kregen argumenttypes `undefined` en `never[]`.
+//    Achttien fouten, en geen ervan was zichtbaar zolang deze map buiten
+//    typecheck stond. Door de client via een gewone functie te bouwen, is `Db`
+//    precies het type dat hier daadwerkelijk rondgaat — en blijft het dat ook
+//    als de opties ooit veranderen.
+function maakClient(sleutel: string) {
+  return createClient(Deno.env.get('SUPABASE_URL') ?? '', sleutel, {
+    auth: { persistSession: false },
+  });
+}
+
+type Db = ReturnType<typeof maakClient>;
 
 async function heeftDagzetVandaag(db: Db, userId: string, datum: string): Promise<boolean> {
   const { count } = await db
