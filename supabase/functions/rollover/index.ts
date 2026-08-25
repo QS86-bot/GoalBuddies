@@ -7,6 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { closableUserCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { localDateIn } from '../_shared/time/zoned.ts';
+import { meld } from '../_shared/melden.ts';
 
 /**
  * De cycle-rollover — QS8-49, en daarmee ook QS8-47 en QS8-51.
@@ -155,6 +156,10 @@ Deno.serve(async (req: Request) => {
           fout instanceof Error ? fout.message : String(fout)
         }`,
       );
+      // ⚠️ Een console-regel in de Supabase-logs leest niemand uit zichzelf.
+      //    `profiel.tz` gaat niet mee: een tijdzone is dicht genoeg bij een
+      //    woonplaats om hem niet in een foutdashboard te willen hebben.
+      await meld(fout, 'rollover.cyclus', { code: 'cyclus_onbepaalbaar' });
       overgeslagen += 1;
       continue;
     }

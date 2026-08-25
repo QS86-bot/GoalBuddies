@@ -28,6 +28,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | ⚠️ Omzeilt RLS. Edge Functions en de RLS-testsuite | **server** | nu |
 | `SUPABASE_DB_URL` | Directe verbinding, voor `pg_dump` | **server** | elke migratie |
 | `ANTHROPIC_API_KEY` | De Doelcoach | **server** | EPIC 3 |
+| `SENTRY_DSN` | Foutrapportage vanuit de Edge Functions | **server** | QS8-24 |
 
 ⚠️ **Alles met `EXPO_PUBLIC_` ervoor zit in de bundle die de browser downloadt.**
 Dat is geen instelling maar een eigenschap van Expo. Een secret dat daar per
@@ -483,6 +484,44 @@ met een regel in het log — geen storing, wel stilte.
 ⚠️ Een abonnement dat 404 of 410 geeft, wordt uit `push_tokens` verwijderd (RFC
 8030 §7: de gebruiker heeft de toestemming ingetrokken). Elke andere fout laat de
 rij staan; een storing van dit moment mag geen dataverlies worden.
+
+### Foutrapportage vanuit de Edge Functions — QS8-24
+
+De drie functies vangen hun fouten af en geven daarna een 200 terug. Dat is
+bewust: een mislukte job is geen kapotte functie. Het gevolg is dat **niemand het
+merkt** — de Doelcoach schrijft de reden in `ai_jobs.error`, de rollover en de
+notificatiejob roepen `console.error`, en beide plekken leest niemand uit
+zichzelf.
+
+⚠️ Dat is geen theorie. In de reviewronde van 25-08 bleek de Doelcoach bij élke
+aanroep om te vallen met een `ReferenceError`, met HTTP 200 erop. Hoe lang dat al
+zo was, is niet meer vast te stellen.
+
+Zet één variabele en dat is voorbij:
+
+```bash
+npx supabase secrets set SENTRY_DSN='https://<sleutel>@<host>/<project-id>'
+npm run edge:sync && npx supabase functions deploy rollover notificaties doelcoach
+```
+
+**Zonder `SENTRY_DSN` gebeurt er niets.** `meldEdgeFout()` doet dan geen enkele
+netwerkaanroep en geeft `'geen-dsn'` terug; dat is vandaag de toestand en er is
+niets stuk. Een onbruikbare DSN levert één regel in het log op en verder niets —
+stilletjes niet werken zou erger zijn dan geen DSN, want dan denk je dat je
+bewaakt wordt.
+
+⚠️ **Het is dezelfde schoonmaak als in de app, met dezelfde code.** `scrub.ts`
+gaat via `npm run edge:sync` mee naar `_shared/observability/`. Een tweede versie
+zou betekenen dat de app en de jobs een verschillende opvatting krijgen van wat
+een persoonsgegeven is. De naadtest die bewijst dat er niets persoonlijks over de
+lijn gaat, staat in `src/lib/observability/edge-rapport.test.ts` — en die toetst
+wat de sink daadwerkelijk krijgt, niet wat een onderdeel belooft.
+
+⚠️ **Nooit geverifieerd tegen een echte ingest.** Er is geen Sentry-account, dus
+er is nooit een envelope aangekomen. De vorm volgt de envelope-specificatie en
+staat regel voor regel onder test; dat is iets anders dan een 200 van Sentry.
+Controleer bij het zetten van de eerste DSN of er daadwerkelijk een gebeurtenis
+binnenkomt — zie `docs/ENGINEER-REVIEW.md`.
 
 ### De service worker en het manifest — QS8-124
 
