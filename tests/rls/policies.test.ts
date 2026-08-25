@@ -26,6 +26,7 @@ import {
   onbekendeCode,
   removeTestUsers,
   rlsTestsConfigured,
+  verwijderAuthGebruiker,
   type TestUser,
 } from './harness';
 
@@ -3133,6 +3134,92 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         }
       },
       TEST_TIMEOUT,
+    );
+  });
+  /**
+   * De val die drie keer toesloeg — migratie 0086.
+   *
+   * ⚠️ Een BEFORE UPDATE-trigger die een kolom hard terugzet (`new.x := old.x`)
+   *    sloopt `on delete set null` op diezelfde kolom: Postgres voert die actie
+   *    uit als een gewone UPDATE, de trigger zet de oude waarde terug, en de
+   *    foreign key weigert hem omdat het profiel net weg is. De hele DELETE valt
+   *    om — en dat is precies wat `verwijder_mijn_account()` doet.
+   *
+   * ⚠️ **Dit is de vierde poging om dit te stoppen, en de eerste die geen
+   *    aantekening is.** 0031, 0033 en 0059 liepen er alle drie in;
+   *    WERKVOORRAAD §8 beschrijft de val sinds 0033, en 0059 citeert hem in zijn
+   *    eigen kop, past hem correct toe op `actor_id` en vergeet hem één regel
+   *    lager voor `subject_id`. Wat je leest en overschrijft, kun je alsnog
+   *    missen; wat rood wordt niet.
+   */
+  describe('onveranderlijkheid tegenover on delete set null', () => {
+    it(
+      'heeft op elke set-null-kolom de grendel en niet de kale toewijzing',
+      async () => {
+        const { data, error } = await adminDb().rpc('onveranderlijkheid_bewaking');
+
+        expect(error).toBeNull();
+
+        const rijen = data ?? [];
+
+        // ⚠️ Eerst bewijzen dát hij iets vindt. Een lege uitkomst betekent hier
+        //    óók "de functie kijkt nergens meer", en dan is groen betekenisloos —
+        //    dezelfde val als een controlescript dat nul meldt omdat het niets
+        //    inleest.
+        expect(rijen.length).toBeGreaterThan(0);
+
+        const kaal = rijen
+          .filter((r) => !r.heeft_grendel)
+          .map((r) => `${r.tabel}.${r.kolom} (${r.functie})`);
+
+        expect(kaal).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een account met een eigen groep gewoon verdwijnen',
+      async () => {
+        // ⚠️ De uitkomst en niet de vorm. De test hierboven leest de
+        //    functiebron; deze doet wat een gebruiker doet.
+        //
+        // ⚠️ **En deze helft wordt níét rood als de grendel eruit gaat — met de
+        //    hand nagemeten op 25-08.** `guard_group_update()` stapt er bij
+        //    `current_user not in ('authenticated','anon')` al uit, en de cascade
+        //    van `on delete set null` draait niet als `authenticated`. Vandaag is
+        //    de kale toewijzing dus onschadelijk.
+        //
+        //    Dat is precies waarom de structurele toets hierboven bestaat en
+        //    waarom hij de eerste van de twee is: het gedrag kan deze fout niet
+        //    zien. Verdwijnt die vroege uitstap ooit — hij staat als "faalt open"
+        //    op de review-agenda — dan is dít de test die omvalt.
+        const admin = adminDb();
+        const weg = await createTestUser('setnull');
+
+        const groep = await weg.db.rpc('create_group', {
+          group_name: 'SETNULL proefgroep',
+          huddle_day: 1,
+          tz: 'Europe/Amsterdam',
+          zichtbaarheid: 'beschermd',
+        });
+        expect(groep.error).toBeNull();
+
+        const verwijderd = await verwijderAuthGebruiker(weg.id);
+        expect(verwijderd).toBeNull();
+
+        // De groep staat er nog, zonder oprichter — dat is wat set null belooft.
+        const na = await admin
+          .from('groups')
+          .select('id, created_by')
+          .eq('name', 'SETNULL proefgroep');
+
+        expect(na.error).toBeNull();
+        expect(na.data ?? []).toHaveLength(1);
+        expect((na.data ?? [])[0]?.created_by).toBeNull();
+
+        await admin.from('groups').delete().eq('name', 'SETNULL proefgroep');
+      },
+      SETUP_TIMEOUT,
     );
   });
 });

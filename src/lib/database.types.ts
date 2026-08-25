@@ -1824,6 +1824,16 @@ export type Database = {
           versie: string
         }[]
       }
+      onveranderlijkheid_bewaking: {
+        Args: never
+        Returns: {
+          functie: string
+          heeft_grendel: boolean
+          kolom: string
+          tabel: string
+          trigger_naam: string
+        }[]
+      }
       openstaande_beoordelingen: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
