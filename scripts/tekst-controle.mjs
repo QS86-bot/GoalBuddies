@@ -333,8 +333,17 @@ function kandidaten(regel, inTekstProp = false, isTsx = true) {
   //    zoekt naar `title=`, en in een object staat er `title:`. `AsyncView` neemt
   //    zijn lege staat zo aan, en dat is de plek waar de gebruiker leest dat er
   //    niets is — de laatste plek waar je een onvertaalde zin wilt hebben.
+  //
+  // ⚠️ **De terugval ervóór mag er sinds 25-08-2026 tussen staan.** In
+  //    `app/doel/coach/[id].tsx` stond `melding: job.error ?? 'De Doelcoach liep
+  //    vast.'`, en het patroon eiste de string direct achter de dubbele punt. Dat
+  //    is uitgerekend de gevaarlijkste vorm van de twee: de zin ís hier de
+  //    terugval, dus hij verschijnt precies wanneer er iets misgaat en de
+  //    gebruiker het meest op een begrijpelijke tekst zit te wachten.
   for (const prop of TEKSTPROPS) {
-    const m = new RegExp(`\\b${prop}:\\s*['"\`]([^'"\`]{4,})['"\`]`).exec(regel);
+    const m = new RegExp(
+      `\\b${prop}:\\s*(?:[^'"\`,{}]*\\?\\?\\s*)?['"\`]([^'"\`]{4,})['"\`]`,
+    ).exec(regel);
     if (m?.[1]) {
       uit.push({ tekst: m[1], losseWoordenTellen: /^[A-ZÀ-Ý]/.test(m[1].trim()) });
     }
@@ -344,12 +353,59 @@ function kandidaten(regel, inTekstProp = false, isTsx = true) {
   //
   // ⚠️ `setMelding('Opgeslagen. Lopende kettingschakels blijven staan waar ze
   //    staan.')` was geen prop en geen JSX-tekst, en viel dus door élke
-  //    heuristiek heen. De lijst is met opzet kort en bestaat uit namen die in
-  //    dit project alleen schermtekst dragen; hij hoort niet te groeien zonder
-  //    dat iemand nagaat of die setter ook echt naar een `<Caption>` gaat.
+  //    heuristiek heen.
+  //
+  // ⚠️ **Hier stond tot 25-08-2026 een lijst van drie namen** — `setMelding`,
+  //    `setFout`, `setStatus` — met de onderbouwing dat hij kort hoorde te
+  //    blijven. Dat was precies de fout die dit script bij ánderen opspoort: hij
+  //    bewaakte een lijst namen in plaats van een vorm. `app/aanmelden.tsx`
+  //    gebruikt `setGelukt(...)`, en die zin — op de laatste stap van de enige
+  //    werkende aanmeldroute — stond maandenlang onvertaald in de app terwijl
+  //    deze controle nul meldde. Nu is de vorm de maat: élke `setX(` met een
+  //    hoofdletter erachter. Een naam erbij verzinnen kan niet meer.
+  //
+  // ⚠️ Dat dit weinig valse meldingen geeft, komt niet door deze regex maar door
+  //    `ZIN`: een setter met een sleutel of een statuswoord (`setFase('mislukt')`)
+  //    heeft geen twee woorden achter elkaar en valt af.
+  //
+  // ⚠️ De drie oorspronkelijke namen blijven staan mét hun strengere gedrag:
+  //    die dragen in dit project uitsluitend schermtekst, dus daar telt élke
+  //    waarde — ook een los woord zonder hoofdletter. De generieke variant
+  //    eronder is de vangnet, geen vervanging.
   for (const zetter of ['setMelding', 'setFout', 'setStatus']) {
     const m = new RegExp(`\\b${zetter}\\(\\s*['"\`]([^'"\`]{4,})['"\`]`).exec(regel);
     if (m?.[1]) uit.push({ tekst: m[1], losseWoordenTellen: true });
+  }
+
+  {
+    const m = /\bset[A-Z]\w*\(\s*['"\`]([^'"\`]{4,})['"\`]/.exec(regel);
+    // ⚠️ Zelfde twee eisen. Een wíllekeurige setter draagt net zo goed een
+    //    toestand — `setFase('rust')`, `setStand('pending')` — en zonder hen
+    //    meldde deze variant er drieëntwintig, allemaal onzin.
+    if (m?.[1] && /^[A-ZÀ-Ý]/.test(m[1].trim())) {
+      uit.push({ tekst: m[1], losseWoordenTellen: false });
+    }
+  }
+
+  // 1d. Een zin die een functie teruggéeft.
+  //
+  // ⚠️ `src/modules/ai/jobs.ts` vertaalde elke foutcode netjes met `t(...)` op
+  //    één na, en die ene stond als `return \`Je hebt vandaag al ...\`;`. Een
+  //    `return` is geen prop, geen JSX en geen setter, dus geen enkele
+  //    heuristiek keek ernaar — terwijl een functie die een zin teruggeeft per
+  //    definitie schermtekst levert. Gevonden op 25-08-2026, vijf regels naast
+  //    een `t()`-aanroep.
+  {
+    const m = /\breturn\s+['"\`]([^'"\`]{4,})['"\`]/.exec(regel);
+    // ⚠️ Hoofdletter én een echte zin, en zonder die twee eisen meldde deze
+    //    variant elke `return 'note_required'`, `return 'android'` en elke
+    //    redencode uit `regels.ts` — zesentwintig stuks. Een teruggegeven
+    //    redencode is in dit project kleingeschreven en een zin voor de
+    //    gebruiker begint met een hoofdletter; dat is het enige onderscheid dat
+    //    een regex hier kán maken, en het is genoeg.
+    if (m?.[1] && /^[A-ZÀ-Ý]/.test(m[1].trim())) {
+      uit.push({ tekst: m[1], losseWoordenTellen: false });
+    }
   }
 
   // 3. JSX-tekst tussen twee tags op dezelfde regel: `<Subheading>Kop</Subheading>`.

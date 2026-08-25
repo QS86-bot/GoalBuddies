@@ -183,3 +183,77 @@ describe('wat de controle met rust moet laten', () => {
     expect(gevonden('  async function laad(): Promise<Resultaat> {')).toEqual([]);
   });
 });
+
+/**
+ * De drie vormen die op 25-08-2026 door de meting heen kwamen — de zesde ijking.
+ *
+ * ⚠️ **Alle drie hetzelfde patroon: de heuristiek zocht een náám in plaats van
+ *    een vorm.** De zetterlijst kende `setMelding`, `setFout` en `setStatus`, en
+ *    `app/aanmelden.tsx` gebruikt `setGelukt`. De propvariant eiste de string
+ *    direct achter de dubbele punt, en er stond een terugval tussen. En een
+ *    `return` van een zin keek niemand naar, terwijl een functie die een zin
+ *    teruggeeft per definitie schermtekst levert.
+ *
+ *    Gevonden doordat een reviewronde de app met de hand naast de controle legde
+ *    — niet doordat de controle iets meldde. Dat is de derde keer dat dit script
+ *    op die manier bijgesteld wordt, en de reden dat deze tests bestaan.
+ */
+describe('de zesde ijking — wat er op 25-08 doorheen kwam', () => {
+  it('vindt een zin in een willekeurige setter, niet alleen in de drie bekende', () => {
+    expect(
+      gevonden("      setGelukt('Gelukt. Staat e-mailbevestiging aan, kijk dan even in je inbox.');"),
+    ).toEqual(['Gelukt. Staat e-mailbevestiging aan, kijk dan even in je inbox.']);
+  });
+
+  it('vindt een zin die een functie teruggeeft', () => {
+    // Stond vijf regels naast een `t()`-aanroep in hetzelfde bestand.
+    expect(
+      gevonden('      return `Je hebt vandaag al 10 keer de Doelcoach gebruikt.`;'),
+    ).toEqual(['Je hebt vandaag al 10 keer de Doelcoach gebruikt.']);
+  });
+
+  it('vindt een tekstprop met een terugval ervoor', () => {
+    // ⚠️ De gevaarlijkste van de drie: de zin ís hier de terugval, dus hij
+    //    verschijnt precies wanneer er iets misgaat.
+    expect(gevonden("          melding: job.error ?? 'De Doelcoach liep vast.',")).toEqual([
+      'De Doelcoach liep vast.',
+    ]);
+  });
+});
+
+describe('wat de drie nieuwe vormen met rust moeten laten', () => {
+  /**
+   * ⚠️ **Dit is de helft die het verschil maakt tussen een controle en ruis.** De
+   *    eerste versie van deze drie heuristieken meldde negenenveertig regels
+   *    terwijl er drie fout waren: elke `return 'note_required'`, elke
+   *    `setFase('rust')` en elke redencode uit `regels.ts`. Het onderscheid dat
+   *    dat oploste is de hoofdletter — in dit project is een redencode
+   *    kleingeschreven en begint een zin voor de gebruiker met een hoofdletter.
+   */
+  it('een setter die een toestand zet', () => {
+    expect(gevonden("    setFase('rust');", "    setStand('pending');")).toEqual([]);
+  });
+
+  it('een teruggegeven redencode', () => {
+    expect(
+      gevonden("      return 'note_required';", "      return 'android';"),
+    ).toEqual([]);
+  });
+
+  it('een teruggegeven reden van meerdere woorden, kleingeschreven', () => {
+    // `magNudgen()` geeft zulke redenen terug voor het logboek. Ze lezen als
+    // tekst en zijn het niet — en een regex kan dat alleen aan de hoofdletter zien.
+    expect(gevonden("      return 'herinnering staat uit';")).toEqual([]);
+  });
+
+  it('een setter of return die al vertaald is', () => {
+    expect(
+      gevonden("      setGelukt(t('auth.gelukt'));", "      return t('coach.niet_jouw_doel');"),
+    ).toEqual([]);
+  });
+
+  it('een tekstprop waarvan de terugval al vertaald is', () => {
+    expect(gevonden("          melding: job.error ?? t('coach.vastgelopen'),")).toEqual([]);
+  });
+});
+

@@ -309,7 +309,7 @@ function Genereren({
       if (job.status === 'error') {
         setStand({
           fase: 'mislukt',
-          melding: job.error ?? 'De Doelcoach liep vast.',
+          melding: job.error ?? t('coach.vastgelopen'),
         });
         return;
       }
