@@ -35,6 +35,7 @@
     "levend:controle": "node scripts/levend-controle.mjs",
     "klokgrens:controle": "node scripts/klokgrens-controle.mjs",
     "kolomrechten:controle": "node scripts/kolomrechten-controle.mjs",
+    "pin:controle": "node scripts/pinuitzonderingen-controle.mjs",
     "register:uitlijnen": "node scripts/migratieregister-uitlijnen.mjs",
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",

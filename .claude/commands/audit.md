@@ -259,5 +259,16 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     die kolommen niet stilzwijgend weg — die aanname stond in een test en was
     fout.
 
+23. **De uitzondering op de pin** — draai `npm run pin:controle` tegen de lokale
+    stack. `guard_group_update()` pint vijf kolommen van `groups` vast en stapt
+    opzij zodra `current_user` geen clientrol is. Een `SECURITY DEFINER`-functie
+    draait als zijn eigenaar, dus die komt daar langs. Vijf functies gebruiken dat
+    met opzet; deze controle houdt de lijst opgesomd, met per functie de reden.
+
+    ⚠️ **Er gaat niets kapot als er een zesde bij komt**, en dat is het hele punt.
+    Geen test wordt rood, geen policy weigert iets — de nieuwe functie erft
+    gewoon het recht om de uitnodigingscode, de oprichter, de status, de
+    slaapstand en de zichtbaarheid te wijzigen.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

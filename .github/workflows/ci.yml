@@ -207,6 +207,13 @@ jobs:
       - name: Kolomrechten tegen wat de app terugvraagt
         run: npm run kolomrechten:controle
 
+      # ⚠️ `guard_group_update()` stapt opzij voor elke rol die geen client is, en
+      #    een SECURITY DEFINER-functie draait als zijn eigenaar. Vijf functies
+      #    gebruiken die uitzondering met opzet; de zesde erft hem zonder dat
+      #    iemand het merkt. Deze stap houdt de lijst opgesomd.
+      - name: Wie mag er langs de pin op groups
+        run: npm run pin:controle
+
       # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
       #    is bewezen; wat hier niet staat, is niet bewezen.
       - name: RLS-policies
