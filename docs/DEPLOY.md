@@ -492,14 +492,23 @@ als `/sw.js` in de root te staan en bedient daarmee de hele app — dat is wat
 `src/modules/notifications/webpush-registratie.ts` registreert, en het klopt met
 `start_url: "/"` en `scope: "/"` in `public/manifest.json`.
 
-⚠️ **Dat staat op gespannen voet met de `RewriteBase /goalbuddies/` hierboven.**
-Draait de app onder een pad in plaats van op een eigen domein, dan komt de worker
-op `/goalbuddies/sw.js` te staan, kan hij alleen `/goalbuddies/` bedienen, en
-klopt geen van de absolute paden in `manifest.json` en `+html.tsx` meer. Op
-`goalbuddies.q-projects.tech` als eigen (sub)domein is de root het goede
-uitgangspunt en is er niets aan de hand. **Controleer bij de eerste echte deploy
-welke van de twee het is** — dit is precies het soort verschil dat niets
-zichtbaars stukmaakt behalve meldingen. Hoort bij QS8-99/QS8-100.
+✅ **Uitgezocht op 25-08-2026: er is geen spanning.** Deze alinea waarschuwde
+voor een `RewriteBase /goalbuddies/` "hierboven", en die staat er niet meer —
+`scripts/deploy-web.mjs` schrijft alleen `RewriteEngine On`, zonder voorvoegsel.
+`goalbuddies.q-projects.tech` is een subdomein met een eigen documentroot, dus de
+app staat in de root van dat adres en `scope: "/"` klopt. Zie ook de alinea over
+het pad-voorvoegsel in §3.
+
+⚠️ **`public_html/goalbuddies` is het pad op de schíjf, niet in de URL.** Dat
+onderscheid heeft één meting in `docs/ENGINEER-REVIEW.md` al fout gelezen; het
+staat daar rechtgezet.
+
+⚠️ **Verhuist de app ooit tóch naar een pad**, dan verhuizen het manifest, de
+iconen en de servicewormer mee — anders werkt alles behalve de meldingen. Dat is
+sinds 25-08 geen oplettendheid meer maar `npm run pwa:controle`, die het manifest
+tegen `EXPO_PUBLIC_APP_URL` legt en meedraait in CI. En de deploy zelf trekt na
+het live zetten `/manifest.json` en `/sw.js` na op status én content-type — een
+200 met `application/octet-stream` laat een browser de wormer weigeren, stil.
 
 De herhaalbare deploy zelf is QS8-100 en staat nog open.
 

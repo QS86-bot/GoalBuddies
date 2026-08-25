@@ -136,6 +136,77 @@ async function herbereken(goalId: string): Promise<{ data: string | null; error:
 }
 
 /**
+ * Bouwt één scenario op: het doel, zijn open mijlpalen en zijn cyclusgeschiedenis.
+ *
+ * ⚠️ Uit `beforeAll` gehaald op 25-08-2026, zodat de eigenschapstest hieronder
+ *    zijn eigen doelen kan bouwen zonder deze vijftig regels te kopiëren. De
+ *    zeven scenario's gebruiken hem ongewijzigd.
+ */
+async function bouwScenario(s: Scenario): Promise<void> {
+  const admin = adminDb();
+
+    await admin.from('goals').delete().eq('id', s.goalId);
+
+    await admin.from('goals').insert({
+      id: s.goalId,
+      owner_id: eigenaarId,
+      title: s.naam,
+      target_date: datumOver(s.deadlineOverDagen),
+      status: 'active',
+    });
+
+    if (s.openMijlpalen > 0) {
+      await admin.from('milestones').insert(
+        Array.from({ length: s.openMijlpalen }, (_, i) => ({
+          goal_id: s.goalId,
+          title: `Mijlpaal ${i + 1}`,
+          order_index: i + 1,
+          status: 'todo',
+        })),
+      );
+    }
+
+    for (const [i, status] of s.cycli.entries()) {
+      // Oudste eerst: de laatste in de lijst is de meest recente cyclus.
+      const wekenTerug = s.cycli.length - i;
+
+      // ⚠️ De volgorde is hier het hele punt. Een voltooiing invoegen zet het
+      //    weekdoel via `mark_weekly_goal_pending()` op `pending`. Zou de rij
+      //    meteen op `approved` staan, dan draait die trigger hem terug en
+      //    meet de test iets anders dan hij denkt. Dus: eerst `todo`, dan de
+      //    voltooiing, dan de eindstatus.
+      const week = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: s.goalId,
+          title: `Week ${i + 1}`,
+          cycle_start_date: datumOver(-7 * wekenTerug),
+          cycle_index: i + 1,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+
+      const weekId = week.data?.id;
+      const vloerNodig = (s.opDeVloer ?? 0) > 0 && status === 'approved';
+
+      if (weekId !== undefined && status === 'approved') {
+        await admin.from('completions').insert({
+          weekly_goal_id: weekId,
+          user_id: eigenaarId,
+          achieved_level: vloerNodig ? 'floor' : 'ceiling',
+          note: 'Fixture voor de risicoradar',
+          cycle_start_date: datumOver(-7 * wekenTerug),
+        });
+      }
+
+      if (weekId !== undefined) {
+        await admin.from('weekly_goals').update({ status }).eq('id', weekId);
+      }
+    }
+}
+
+/**
  * ⚠️ `skipIf` op de describe, zoals de andere RLS-bestanden — QS8-116.
  *    Hiervóór stond de bewaking alleen in `beforeAll`: zonder credentials
  *    werd de opbouw overgeslagen en faalde elke `it` daarna alsnog, op een
@@ -145,71 +216,12 @@ async function herbereken(goalId: string): Promise<{ data: string | null; error:
 describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', () => {
   beforeAll(async () => {
     if (!rlsTestsConfigured) return;
-    const admin = adminDb();
 
     const eigenaar = await createTestUser('radar-eigenaar');
     eigenaarId = eigenaar.id;
 
     for (const s of SCENARIOS) {
-      await admin.from('goals').delete().eq('id', s.goalId);
-
-      await admin.from('goals').insert({
-        id: s.goalId,
-        owner_id: eigenaarId,
-        title: s.naam,
-        target_date: datumOver(s.deadlineOverDagen),
-        status: 'active',
-      });
-
-      if (s.openMijlpalen > 0) {
-        await admin.from('milestones').insert(
-          Array.from({ length: s.openMijlpalen }, (_, i) => ({
-            goal_id: s.goalId,
-            title: `Mijlpaal ${i + 1}`,
-            order_index: i + 1,
-            status: 'todo',
-          })),
-        );
-      }
-
-      for (const [i, status] of s.cycli.entries()) {
-        // Oudste eerst: de laatste in de lijst is de meest recente cyclus.
-        const wekenTerug = s.cycli.length - i;
-
-        // ⚠️ De volgorde is hier het hele punt. Een voltooiing invoegen zet het
-        //    weekdoel via `mark_weekly_goal_pending()` op `pending`. Zou de rij
-        //    meteen op `approved` staan, dan draait die trigger hem terug en
-        //    meet de test iets anders dan hij denkt. Dus: eerst `todo`, dan de
-        //    voltooiing, dan de eindstatus.
-        const week = await admin
-          .from('weekly_goals')
-          .insert({
-            goal_id: s.goalId,
-            title: `Week ${i + 1}`,
-            cycle_start_date: datumOver(-7 * wekenTerug),
-            cycle_index: i + 1,
-            status: 'todo',
-          })
-          .select('id')
-          .single();
-
-        const weekId = week.data?.id;
-        const vloerNodig = (s.opDeVloer ?? 0) > 0 && status === 'approved';
-
-        if (weekId !== undefined && status === 'approved') {
-          await admin.from('completions').insert({
-            weekly_goal_id: weekId,
-            user_id: eigenaarId,
-            achieved_level: vloerNodig ? 'floor' : 'ceiling',
-            note: 'Fixture voor de risicoradar',
-            cycle_start_date: datumOver(-7 * wekenTerug),
-          });
-        }
-
-        if (weekId !== undefined) {
-          await admin.from('weekly_goals').update({ status }).eq('id', weekId);
-        }
-      }
+      await bouwScenario(s);
     }
   }, 180_000);
 
@@ -234,6 +246,89 @@ describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', ()
       TEST_TIMEOUT,
     );
   }
+
+  /**
+   * ⚠️ **De veiligheidsclaim van deze feature, en tot 25-08-2026 bewaakte niets
+   *    hem.** `docs/ENGINEER-REVIEW.md` zegt over de zwaarste stand: "hij treedt
+   *    alleen op bij een feit (de datum is er, of er zijn meer mijlpalen dan
+   *    weken) en nooit op grond van tempo." Dát is het argument waarom een
+   *    zelfbedachte heuristiek hier acceptabel is — de heuristiek mag zich
+   *    vergissen in `at_risk` en `behind`, maar niet in de stand die rood kleurt
+   *    op het moment dat iemand toch al twijfelt.
+   *
+   * ⚠️ De zeven scenario's toetsen gedrág: elk één invoer, één verwachte stand.
+   *    Twee ervan komen op `unreachable` uit en één op `behind` bij tempo nul.
+   *    Geen van die zeven zegt dat `unreachable` *niet bereikbaar is via tempo* —
+   *    dat is een eigenschap over de hele invoerruimte, en die valt niet uit
+   *    losse gevallen af te leiden. Een herschikking van de takken kan die
+   *    eigenschap breken terwijl alle zeven groen blijven.
+   *
+   *    Deze test loopt daarom de tempodimensie helemaal af — van nul op vier
+   *    gehaald tot vier op vier, met en zonder vloerzwaarte — terwijl de feiten
+   *    ruim goed staan. Geen enkele combinatie mag `unreachable` opleveren.
+   */
+  it(
+    'komt nooit op unreachable uit door tempo alleen',
+    async () => {
+      const admin = adminDb();
+      const uitkomsten: { naam: string; stand: string | null }[] = [];
+
+      // ⚠️ Ruim binnen de feiten: 300 dagen is ~42 weken en er staan hooguit
+      //    twee open mijlpalen. `open_mijlpalen > weken_over` kan dus niet, en
+      //    `weken_over = 0` evenmin. Wat er overblijft is puur tempo.
+      const varianten: readonly { naam: string; cycli: readonly ('approved' | 'missed')[]; opDeVloer?: number }[] = [
+        { naam: 'nul van vier', cycli: ['missed', 'missed', 'missed', 'missed'] },
+        { naam: 'een van vier', cycli: ['missed', 'missed', 'missed', 'approved'] },
+        { naam: 'twee van vier', cycli: ['missed', 'approved', 'missed', 'approved'] },
+        { naam: 'drie van vier', cycli: ['approved', 'approved', 'missed', 'approved'] },
+        { naam: 'vier van vier', cycli: ['approved', 'approved', 'approved', 'approved'] },
+        {
+          naam: 'vier van vier, alles op de vloer',
+          cycli: ['approved', 'approved', 'approved', 'approved'],
+          opDeVloer: 4,
+        },
+        { naam: 'een van vier op de vloer', cycli: ['missed', 'missed', 'missed', 'approved'], opDeVloer: 1 },
+      ];
+
+      const gebouwd: string[] = [];
+
+      try {
+        for (const [i, variant] of varianten.entries()) {
+          const goalId = `00000000-0000-0000-0000-0000000000e${i}`;
+          gebouwd.push(goalId);
+
+          await bouwScenario({
+            naam: `tempo — ${variant.naam}`,
+            goalId,
+            deadlineOverDagen: 300,
+            openMijlpalen: 2,
+            cycli: variant.cycli,
+            // ⚠️ `exactOptionalPropertyTypes` staat aan: een optionele sleutel
+            //    mag ontbreken, maar niet expliciet `undefined` zijn.
+            ...(variant.opDeVloer === undefined ? {} : { opDeVloer: variant.opDeVloer }),
+            verwacht: 'on_track',
+          });
+
+          const { data, error } = await herbereken(goalId);
+          expect(error).toBeNull();
+          uitkomsten.push({ naam: variant.naam, stand: data });
+        }
+
+        // ⚠️ Alles in één keer toetsen en niet per variant afbreken: bij een
+        //    regressie wil je zien wélke standen eruit komen, niet alleen de
+        //    eerste die misgaat.
+        expect(uitkomsten.filter((u) => u.stand === 'unreachable')).toEqual([]);
+
+        // ⚠️ En de tegenproef: deze zeven mogen niet allemaal `on_track` zijn,
+        //    want dan bewijst de test hierboven niets. Slecht tempo hóórt een
+        //    lichtere waarschuwing op te leveren; alleen niet de zwaarste.
+        expect(uitkomsten.some((u) => u.stand !== 'on_track')).toBe(true);
+      } finally {
+        for (const id of gebouwd) await admin.from('goals').delete().eq('id', id);
+      }
+    },
+    TEST_TIMEOUT,
+  );
 
   it(
     'geeft bij dezelfde invoer twee keer hetzelfde antwoord',

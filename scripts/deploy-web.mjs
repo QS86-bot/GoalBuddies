@@ -28,6 +28,8 @@ import process from 'node:process';
 
 import { config } from 'dotenv';
 
+import { beoordeelAntwoorden, VERPLICHTE_PADEN } from './pwa-controle.mjs';
+
 config({ path: '.env', quiet: true });
 
 const DOMEIN = 'goalbuddies.q-projects.tech';
@@ -377,7 +379,58 @@ async function main() {
   stap('Live zetten');
   await zetLive(token);
 
+  stap('De PWA-paden natrekken');
+  await controleerPwa();
+
   console.log(`\n  ✓ https://${DOMEIN} is bijgewerkt.\n`);
+}
+
+/**
+ * Vraagt `/manifest.json` en `/sw.js` op en toetst status én content-type.
+ *
+ * ⚠️ **Dit is het antwoord op de vraag uit de bevinding van 23-08**: hoort een
+ *    deploy die twee paden op te vragen? Ja. Een servicewormer die 404 geeft of
+ *    met het verkeerde content-type komt, maakt niets zichtbaars stuk — behalve
+ *    de meldingen, en dat merk je pas als iemand klaagt dat hij niets krijgt.
+ *
+ * ⚠️ **Na het live zetten en niet ervoor**, en met een eigen exitcode. De bundel
+ *    staat er dan al; falen betekent hier "ga kijken", niet "de upload is
+ *    mislukt". Een netwerkhapering hoort een goede deploy niet ongedaan te
+ *    maken, maar hij hoort ook niet stil voorbij te gaan.
+ *
+ * ⚠️ Het oordeel zelf staat in `pwa-controle.mjs` en is daar geijkt met
+ *    verzonnen antwoorden — inclusief de 200-met-het-verkeerde-type. Deze
+ *    functie doet alleen het ophalen.
+ */
+async function controleerPwa() {
+  const antwoorden = [];
+
+  for (const { pad } of VERPLICHTE_PADEN) {
+    try {
+      const antwoord = await fetch(`https://${DOMEIN}${pad}`, { redirect: 'follow' });
+      antwoorden.push({
+        pad,
+        status: antwoord.status,
+        contentType: antwoord.headers.get('content-type'),
+      });
+    } catch (fout) {
+      antwoorden.push({ pad, status: 0, contentType: null, fout: String(fout) });
+    }
+  }
+
+  const fouten = beoordeelAntwoorden(antwoorden);
+  if (fouten.length === 0) {
+    console.log('    /manifest.json en /sw.js geven 200 met het juiste content-type.');
+    return;
+  }
+
+  console.error('\n  ✗ De bundel staat live, maar de PWA-paden kloppen niet:');
+  for (const fout of fouten) console.error(`      ${fout}`);
+  console.error(
+    '\n    Zie docs/DEPLOY.md §3. Er gaat hierdoor niets zichtbaars stuk —\n' +
+      '    alleen de meldingen werken niet, en dat merk je pas als iemand klaagt.\n',
+  );
+  process.exit(1);
 }
 
 await main();

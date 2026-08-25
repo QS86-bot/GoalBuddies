@@ -80,6 +80,13 @@ jobs:
       - name: Storage-buckets en hun policies
         run: npm run storage:controle
 
+      # ⚠️ Het manifest tegen `EXPO_PUBLIC_APP_URL`. Verhuist de app ooit van een
+      #    eigen subdomein naar een pad, dan moeten `start_url`, `scope`, `id` en
+      #    de absolute iconen mee — anders werkt alles behalve de meldingen, en
+      #    dat merk je pas als iemand klaagt dat hij niets krijgt.
+      - name: Manifest en servicewormer-scope
+        run: npm run pwa:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------

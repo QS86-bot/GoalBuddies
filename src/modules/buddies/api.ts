@@ -304,7 +304,13 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
  *    mijlpaalvoortgang, reeks én of deze periode al afgesloten is. Per lid
  *    opnieuw bevragen is hier de valkuil die het beslisdocument met naam noemt,
  *    en er staat een test op met twaalf leden die telt hoeveel verzoeken het
- *    kost.
+ *    kost: `overzicht-rondes.test.ts`.
+ *
+ * ⚠️ **Die zin stond hier vanaf het begin, en de test bestond niet** — nergens.
+ *    Sinds 25-08-2026 klopt hij. Dat is de duurste vorm die dit project kent, in
+ *    zijn zuiverste gedaante: een bewéring over een controle in plaats van de
+ *    controle, waardoor iedereen die het commentaar leest de vraag overslaat.
+ *    Verplaats deze verwijzing niet zonder de test mee te nemen.
  */
 export async function fetchGroepsoverzicht(
   groupId: string,
