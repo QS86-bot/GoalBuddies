@@ -2225,6 +2225,14 @@ export type Database = {
       verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
       verwijder_weekdoel: { Args: { p_weekly_goal_id: string }; Returns: Json }
+      viewrechten_bewaking: {
+        Args: never
+        Returns: {
+          recht: string
+          rol: string
+          view_naam: string
+        }[]
+      }
       vraag_ai_job: {
         Args: { p_goal_id: string; p_input: Json; p_kind: string }
         Returns: Json
