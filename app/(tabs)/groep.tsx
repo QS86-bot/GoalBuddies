@@ -1,12 +1,12 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { fetchMijnGroepen, huddledagLabel, type Groep } from '@/modules/buddies';
 import { fetchBeoordelingen, volgBeoordelingen } from '@/modules/completions';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { AsyncView, Body, Button, Caption, Card, Screen, Subheading } from '@/shared/ui';
+import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } from '@/shared/ui';
 
 /**
  * Groep — de ingang naar je buddy-groepen.
@@ -28,33 +28,7 @@ import { AsyncView, Body, Button, Caption, Card, Screen, Subheading } from '@/sh
 export default function GroepTab() {
   const router = useRouter();
 
-  const [groepen, setGroepen] = useState<readonly Groep[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-  const [ronde, setRonde] = useState(0);
-
-  useEffect(() => {
-    let levend = true;
-
-    fetchMijnGroepen()
-      .then((gevonden) => {
-        if (!levend) return;
-        setGroepen(gevonden);
-        setError(null);
-      })
-      .catch((fout: unknown) => {
-        if (levend) setError(fout);
-      })
-      .finally(() => {
-        if (levend) setLoading(false);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [ronde]);
-
-  const herlaad = useCallback(() => setRonde((n) => n + 1), []);
+  const { data: groepen, loading, error, herlaad } = useAsync(() => fetchMijnGroepen(), []);
 
   return (
     <Screen title={t('groepen.titel')}>

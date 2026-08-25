@@ -87,6 +87,13 @@ jobs:
       - name: Manifest en servicewormer-scope
         run: npm run pwa:controle
 
+      # ⚠️ Een ratel en geen verbod: 27 hand-geschreven `levend`-vlaggen mogen
+      #    blijven, er mag er geen bij, en zakt het aantal dan moet het plafond
+      #    mee. Die tweede tak is de belangrijkste — een ratel die niet meezakt,
+      #    houdt ruimte open voor een kopie die niemand ziet terugkomen.
+      - name: Geen nieuwe handmatige levend-vlaggen
+        run: npm run levend:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------

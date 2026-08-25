@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { clientEnv } from '@/lib/env';
@@ -26,12 +26,12 @@ import {
   fetchDoelen,
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
-  type DoelMetVoortgang,
 } from '@/modules/goals';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
+  useAsync,
   Body,
   Button,
   Caption,
@@ -89,34 +89,12 @@ export default function GroepDetail() {
   const router = useRouter();
   const { userId } = useSession();
 
-  const [stand, setStand] = useState<Stand | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-  const [ronde, setRonde] = useState(0);
-
-  useEffect(() => {
-    if (!id || !userId) return;
-    let levend = true;
-
-    laadGroep(id, userId)
-      .then((uitkomst) => {
-        if (!levend) return;
-        setStand(uitkomst);
-        setError(null);
-      })
-      .catch((fout: unknown) => {
-        if (levend) setError(fout);
-      })
-      .finally(() => {
-        if (levend) setLoading(false);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [id, userId, ronde]);
-
-  const herlaad = useCallback(() => setRonde((n) => n + 1), []);
+  const {
+    data: stand,
+    loading,
+    error,
+    herlaad,
+  } = useAsync(id && userId ? () => laadGroep(id, userId) : null, [id, userId]);
 
   return (
     <Screen
@@ -573,33 +551,21 @@ function KoppelDoel({
   const router = useRouter();
   const { userId } = useSession();
 
-  const [doelen, setDoelen] = useState<readonly DoelMetVoortgang[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!userId || groupId === '') return;
-    let levend = true;
-
-    Promise.all([fetchDoelen(userId), fetchGekoppeldeDoelIds(groupId)])
-      .then(([mijn, gekoppeld]) => {
-        if (!levend) return;
-        setDoelen(mijn.rijen.filter((doel) => !gekoppeld.includes(doel.id)));
-        setError(null);
-      })
-      .catch((f: unknown) => {
-        if (levend) setError(f);
-      })
-      .finally(() => {
-        if (levend) setLoading(false);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [userId, groupId]);
+  const { data: doelen, loading, error } = useAsync(
+    userId && groupId !== ''
+      ? async () => {
+          const [mijn, gekoppeld] = await Promise.all([
+            fetchDoelen(userId),
+            fetchGekoppeldeDoelIds(groupId),
+          ]);
+          return mijn.rijen.filter((doel) => !gekoppeld.includes(doel.id));
+        }
+      : null,
+    [userId, groupId],
+  );
 
   async function koppel(goalId: string) {
     setBezig(goalId);
@@ -650,7 +616,7 @@ function KoppelDoel({
         )}
       </AsyncView>
 
-      {doelen !== null && doelen.length === 0 ? (
+      {doelen !== undefined && doelen.length === 0 ? (
         <Button variant="secundair" block onPress={() => router.push('/doel/nieuw')}>
           {t('koppel.nieuw_doel')}
         </Button>

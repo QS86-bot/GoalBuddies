@@ -12,6 +12,7 @@
  */
 
 export { AsyncView } from './AsyncView';
+export { useAsync, laad } from './useAsync';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
 export { initialen } from './naming';
