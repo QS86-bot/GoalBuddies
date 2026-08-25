@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { isOnboarded, ProfielProvider, SessionProvider, useProfiel, useSession } from '@/modules/auth';
 import {
+  fetchUitnodiging,
   neemDeel,
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
@@ -207,10 +208,47 @@ function Uitnodigingswacht() {
     geprobeerd.current = true;
     let levend = true;
 
-    void openstaandeUitnodiging().then(async (code) => {
-      if (!levend || code === null) return;
+    void (async () => {
+      const wachtend = await openstaandeUitnodiging();
+      if (!levend || wachtend === null) return;
 
-      const uitkomst = await neemDeel(code);
+      // ⚠️ **Besluit A49 (QS8-136), eerste helft: een bewaarde code verloopt.**
+      //    Deze opslag bestaat voor één pad — je tikt een uitnodigingslink aan,
+      //    maakt een account, bevestigt je mail en komt terug in een verse
+      //    sessie. Dat pad duurt minuten. Wie de link twee weken geleden opende
+      //    en toen besloot niet mee te doen, hoorde niet alsnog in die groep te
+      //    belanden zodra hij zich aanmeldde.
+      //
+      //    Niet weggooien maar tónen: de gebruiker landt op het
+      //    uitnodigingsscherm en drukt zelf. Weggooien zou de uitnodiging
+      //    doodmaken, en dat is precies wat deze opslag moest voorkomen.
+      if (!wachtend.automatisch) {
+        router.replace(`/uitnodiging/${wachtend.code}`);
+        return;
+      }
+
+      // ⚠️ **Tweede helft: een open groep gaat nooit vanzelf.** Toetreden tot een
+      //    open groep maakt je gemiste weken, je beste reeks en je historische
+      //    aanwezigheid zichtbaar voor de anderen — dezelfde overgang als het
+      //    ópenzetten van een groep, waar een beheerder een volledig
+      //    bevestigingsblok voor doorloopt (migratie 0076, grens 3). Dan hoort
+      //    hier ook een handeling van de gebruiker zelf te staan.
+      //
+      //    `invite_preview()` draagt de zichtbaarheid sinds migratie 0080, dus
+      //    dit kost geen extra rondje: het scherm haalt hem toch al op.
+      //
+      // ⚠️ Kan de uitnodiging niet opgehaald worden (netwerk, ingetrokken link),
+      //    dan ook naar het scherm. Onbekend is hier de kant waar niets
+      //    stilzwijgend gebeurt — dezelfde keuze als bij de vervaltermijn.
+      const uitnodiging = await fetchUitnodiging(wachtend.code).catch(() => null);
+      if (!levend) return;
+
+      if (uitnodiging === null || uitnodiging.zichtbaarheid === 'open') {
+        router.replace(`/uitnodiging/${wachtend.code}`);
+        return;
+      }
+
+      const uitkomst = await neemDeel(wachtend.code);
       await vergeetOpenstaandeUitnodiging();
       if (!levend) return;
 
@@ -225,31 +263,18 @@ function Uitnodigingswacht() {
       //    uitnodigingsscherm belooft "ook als je eerst je e-mail moet
       //    bevestigen, sta je daarna gewoon in de groep" — dus wie zijn mail
       //    bevestigde en terugkwam, stond op een leeg dashboard zonder groep en
-      //    zonder uitleg, en kon alleen zijn vriend om een nieuwe link vragen.
-      //    Als hij al doorhad dát er iets misging.
+      //    zonder uitleg.
       //
       //    Sturen naar het uitnodigingsscherm en niet zelf een melding tonen:
-      //    dát scherm laadt de groep opnieuw, zegt wat er aan de hand is (vol,
-      //    ingetrokken, of gewoon weg) en heeft een knop om het opnieuw te
-      //    proberen. Deze component rendert `null` en heeft nergens plek voor
-      //    een melding — een `Alert` zou bovendien op web en native anders
-      //    uitpakken, en dat houdt dit project uit de gedeelde laag.
+      //    dát scherm laadt de groep opnieuw, zegt wat er aan de hand is en heeft
+      //    een knop om het opnieuw te proberen. Deze component rendert `null` en
+      //    heeft nergens plek voor een melding.
       //
-      //    Gevonden door de critical-user-ronde van 24-08. Wat er niét mee
-      //    opgelost is: dat toetreden geen tweede vraag stelt en de code nooit
-      //    verloopt. Dat is een productbeslissing en staat in
-      //    `docs/ENGINEER-REVIEW.md`.
       //    ⚠️ Bewust géén `reportError` erbij. `neemDeel()` meldt een échte fout
-      //    (HTTP, policy) al zelf; wat hier overblijft is een uitkomst — de link
-      //    is ingetrokken, de groep is vol — en dat is geen storing maar een
-      //    antwoord. Zou het hier alsnog een foutrapport worden, dan staat het
-      //    logboek straks vol met normale gebeurtenissen.
-      //
-      //    (De eerste versie van deze regel riep `reportError` aan zónder import,
-      //    en dat viel stil terug op de gelijknamige DOM-API met één argument.
-      //    De typecheck ving het; het is een naamsbotsing om te onthouden.)
-      router.replace(`/uitnodiging/${code}`);
-    });
+      //    al zelf; wat hier overblijft is een uitkomst — de link is ingetrokken,
+      //    de groep is vol — en dat is geen storing maar een antwoord.
+      router.replace(`/uitnodiging/${wachtend.code}`);
+    })();
 
     return () => {
       levend = false;

@@ -30,7 +30,9 @@ export {
 export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
+  UITNODIGING_GELDIG_UREN,
   vergeetOpenstaandeUitnodiging,
+  type OpenstaandeUitnodiging,
 } from './pending';
 
 export { fetchKettingStand } from './ketting';
