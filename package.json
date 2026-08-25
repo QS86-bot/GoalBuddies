@@ -20,6 +20,8 @@
     "db:push": "npm run db:dump && supabase db push",
     "deploy": "node scripts/deploy-web.mjs",
     "deploy:droog": "node scripts/deploy-web.mjs --droog",
+    "auth:urls": "node scripts/auth-urls.mjs",
+    "auth:urls:zet": "node scripts/auth-urls.mjs --zet",
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",

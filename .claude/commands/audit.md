@@ -270,5 +270,33 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     gewoon het recht om de uitnodigingscode, de oprichter, de status, de
     slaapstand en de zichtbaarheid te wijzigen.
 
+24. **De statuscache** — draai tegen productie:
+
+    ```sql
+    select * from weekdoelstatus_afwijkingen();
+    ```
+
+    `weekly_goals.status` is een bewuste denormalisatie van `completions` plus
+    `completion_approvals` (migratie 0096). Deze lijst hoort leeg te zijn. Staat
+    er iets in, dan toont een scherm iets anders dan er gebeurd is — en dat
+    weigert geen policy en maakt geen test rood. `select herstel_weekdoelstatus();`
+    zet ze terug en geeft het aantal.
+
+    ⚠️ **Alleen `todo`, `pending` en `approved` worden beoordeeld.** De andere
+    vier statussen komen van de rollover, een weekpas, doorschuiven of de
+    gebruiker zelf en zijn nergens uit te herleiden. Meld je die ook, dan is
+    elke gemiste week drift.
+
+    ⚠️ **Deze stap staat hier en niet in de RLS-suite**, en dat is met opzet: de
+    functie leest de héle database, en meerdere testsuites zetten
+    `weekly_goals.status` rechtstreeks met de admin-client zonder voltooiing. Een
+    globale assertie in een test hangt daarmee af van de volgorde waarin vitest
+    draait. `tests/rls/statuscache.test.ts` toetst dus zijn eigen weekdoel; de
+    globale nul is een auditvraag.
+
+    ⚠️ `herstel_weekdoelstatus()` boekt géén punten. Wie na een herstel punten
+    mist, heeft een tweede probleem dat een correctie-record verdient
+    (domeinregel 6) en geen stille bijboeking.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

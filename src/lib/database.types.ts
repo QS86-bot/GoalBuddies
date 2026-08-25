@@ -2051,6 +2051,10 @@ export type Database = {
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      herstel_weekdoelstatus: {
+        Args: never
+        Returns: number
+      }
       kan_beoordeeld_worden: {
         Args: { p_goal_id: string; p_owner_id: string }
         Returns: boolean
@@ -2225,6 +2229,10 @@ export type Database = {
       verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
       verwijder_weekdoel: { Args: { p_weekly_goal_id: string }; Returns: Json }
+      verwachte_weekdoelstatus: {
+        Args: { p_weekly_goal_id: string }
+        Returns: string
+      }
       viewrechten_bewaking: {
         Args: never
         Returns: {
@@ -2280,6 +2288,14 @@ export type Database = {
       weekdoelen_over: { Args: never; Returns: number }
       weekpas_maximum: { Args: never; Returns: number }
       weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
+      weekdoelstatus_afwijkingen: {
+        Args: never
+        Returns: {
+          opgeslagen: string
+          verwacht: string
+          weekly_goal_id: string
+        }[]
+      }
       weekpas_standen: {
         Args: { p_goal_ids?: string[] }
         Returns: {
