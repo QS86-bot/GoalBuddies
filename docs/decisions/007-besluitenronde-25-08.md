@@ -1,4 +1,4 @@
-# 007 — Besluitenronde 25-08-2026: A48, A49, A50
+# 007 — Besluitenronde 25-08-2026: A48, A49, A50, A51
 
 **Datum:** 25-08-2026
 **Issues:** QS8-110 (A48), QS8-136 (A49), en A50 uit de bevindingenronde
@@ -195,3 +195,92 @@ Het staat er nu als **oppervlak 21**, in beide tabellen — ook in de A41-tabel 
 §6b, waar het niet varieert op `groups.zichtbaarheid`: de eigen handeling van de
 gebruiker staat in béide standen open, net als de weekafsluiting (10) en het
 deadline-verzoek (16).
+
+
+---
+
+## A51 — één reviewpunt per buddy per cyclus ✅ gebouwd (migratie 0094)
+
+**De vraag.** `award_points_on_approval()` boekte sinds 0021 één punt
+`review_given` per beoordeelde voltooiing. Migratie 0093 zette daar diezelfde dag
+een bovengrens van vijftig per etmaal op; dit besluit gaat over de open helft:
+blijft het per voltooiing, of wordt het per buddy per cyclus?
+
+**Besloten: per buddy per cyclus.** Twee weekdoelen van dezelfde buddy in
+dezelfde week leveren samen één punt op; een andere buddy of een andere week
+levert er wél een tweede op.
+
+### Waarom — en waarom niet vanwege het misbruik
+
+De bevinding van 17-08 ging over misbruik: twee accounts die elkaars weken
+blijven indienen en beoordelen konden elkaars buddy-bijdrage opblazen. Dat is
+**niet** de doorslaggevende reden geweest, en dat is het opschrijven waard.
+
+Punten zijn privé (domeinregel 10, herbevestigd als A42). Wie zijn eigen
+reviewpunten opblaast, bedriegt alleen zichzelf — precies de categorie die de rij
+van 17-08 in `docs/ENGINEER-REVIEW.md` zelf "zelfbedrog, geen autorisatiegrens"
+noemde. Was dat het enige argument geweest, dan had de rem van 0093 volstaan tot
+er een ranglijst kwam.
+
+De reden is een **modelleerfout die los staat van misbruik**: met een punt per
+voltooiing hangt je buddy-score af van het gedrag van iemand ánders. Wie een
+productieve buddy heeft die drie weekdoelen per week indient, verdient drie keer
+zoveel als wie een bescheiden buddy heeft — bij precies evenveel aandacht. Dat
+meet niet wat het zegt te meten.
+
+Het was ook structureel af te lezen: `review_given` was de énige reden in
+`points_ledger` met `goal_id = null`. Elke andere boeking hangt aan een doel van
+jou; deze hing aan de voortgang van een ander. Dat was geen toeval maar het
+symptoom.
+
+En het sluit aan bij wat dit project elders al gekozen heeft. De Ketting en de
+reeks tellen óf je er was, niet hoe vaak. Reviewpunten waren de enige plek waar
+volume telde.
+
+### Wat er níét gekozen is
+
+**Variant 3 — `review_given` helemaal uit het grootboek halen** en vervangen door
+een optellende teller in de A42-vorm ("je hebt 47 weken van je buddies
+bekeken"). Dat is schoner gemodelleerd: bijdragen aan een ander en je eigen
+weekresultaat zijn twee dingen, en één score die ze optelt zegt geen van beide
+scherp. Afgewezen omdat het een tweede oppervlak oplevert en een breder
+productgesprek vraagt dan deze bevinding rechtvaardigt. ⚠️ Blijft een geldige
+vraag zodra het puntentotaal ergens zichtbaar gaat worden.
+
+### Gevolgen die je moet kennen
+
+- **"Vertel me meer" claimt het punt voor die cyclus**, en de goedkeuring die er
+  later op volgt levert niets extra's op. Dat is bedoeld: een echte vraag stellen
+  ís de aandacht die dit punt beloont, en het haalt de prikkel weg om snel af te
+  stempelen om het punt binnen te halen.
+- **De dagrem van 0093 is weer verwijderd.** Dat is geen terugdraaien maar het
+  afmaken: die vijftig per etmaal was de interim-maatregel voor precies dit
+  probleem. Nu de oorzaak weg is, is de rem schadelijk — het natuurlijke maximum
+  is het aantal buddies (tien groepen maal elf is honderdtien per cyclus), en
+  vijftig zou een legitieme uitschieter afknijpen.
+- **Er is een kolom bijgekomen**, `points_ledger.cycle_start_date`, vandaag
+  uitsluitend gevuld voor `review_given`. Het alternatief was een afgeleide
+  `ref_id` (`md5(buddy || cyclusstart)::uuid`) en dat is bewust niet gedaan: zo'n
+  waarde is deterministisch maar ondoorzichtig, en over een jaar staat er een
+  uuid in het grootboek waarvan niemand meer weet hoe hij gemaakt is.
+
+### De naad die dit besluit zelf opleverde
+
+⚠️ `points_ledger_dedupe_idx` dekte álle redenen. Zou hij zo zijn blijven staan,
+dan had hij op de nieuwe vorm uniciteit afgedwongen op (beoordelaar, buddy) — dus
+één punt per buddy vóór áltijd in plaats van per cyclus. De tweede cyclus zou
+stil zijn weggevallen op `on conflict do nothing`, en geen enkele test zou daar
+rood van zijn geworden. De index is daarom versmald tot alles behalve
+`review_given`, en die reden kreeg een eigen index mét de cyclus erin.
+
+⚠️ En een unieke index bijt niet op NULL: een `review_given`-rij zonder buddy of
+zonder cyclus zou onbeperkt dupliceerbaar zijn, en dan is de index er wel maar
+doet hij niets. De CHECK `points_ledger_review_volledig` maakt die situatie
+onmogelijk. **De index en de CHECK zijn samen het slot, niet apart.**
+
+### Waarom nu
+
+`points_ledger` stond op nul rijen — nagemeten, niet aangenomen. Na de eerste
+gebruiker is dit een migratie op een gevuld grootboek dat append-only is
+(domeinregel 6), en dan moet dezelfde wijziging met correctie-records in plaats
+van een herdefinitie.

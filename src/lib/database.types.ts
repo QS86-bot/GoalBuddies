@@ -1302,6 +1302,7 @@ export type Database = {
       points_ledger: {
         Row: {
           created_at: string
+          cycle_start_date: string | null
           delta: number
           goal_id: string | null
           group_id: string | null
@@ -1313,6 +1314,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cycle_start_date?: string | null
           delta: number
           goal_id?: string | null
           group_id?: string | null
@@ -1324,6 +1326,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cycle_start_date?: string | null
           delta?: number
           goal_id?: string | null
           group_id?: string | null
@@ -2162,7 +2165,6 @@ export type Database = {
         }
         Returns: Json
       }
-      reviewpunten_over: { Args: { p_user_id: string }; Returns: number }
       rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
       schuif_weekdoel_door: {

@@ -2395,11 +2395,18 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         // ⚠️ Het reviewpunt hangt aan géén doel. Zou het `goal_id` dragen, dan
         //    telde het mee in de reeks en het totaal van een doel waar het niets
         //    mee te maken heeft (6.6).
+        //
+        // ⚠️ Gezocht op de beoordelaar en niet op `ref_id`. Tot besluit A51 stond
+        //    daar de voltooiing in; sinds 0094 staat er de buddy. Deze test greep
+        //    dus naar een plek in plaats van naar de belofte — precies vraag 4 van
+        //    onwrikbare regel 18 — en werd rood toen die plek verhuisde. Wat hij
+        //    bewaakt is dat de beoordelaar precies één punt krijgt zonder doel,
+        //    en dat blijft kloppen waar de sleutel ook heen gaat.
         const review = await admin
           .from('points_ledger')
           .select('user_id, delta, goal_id')
           .eq('reason', 'review_given')
-          .eq('ref_id', b.completionId);
+          .eq('user_id', b.buddy.id);
         expect(review.data ?? []).toHaveLength(1);
         expect(review.data?.[0]?.user_id).toBe(b.buddy.id);
         expect(review.data?.[0]?.delta).toBe(1);
@@ -2659,11 +2666,12 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
         // Maar de beoordelaar krijgt zijn punt wél: doorvragen is betrokkenheid
         // en hoort niet duurder te zijn dan wegkijken (6.6).
+        // ⚠️ Op de beoordelaar en niet op `ref_id`, om dezelfde reden als hierboven.
         const review = await admin
           .from('points_ledger')
           .select('id')
           .eq('reason', 'review_given')
-          .eq('ref_id', b.completionId);
+          .eq('user_id', b.buddy.id);
         expect(review.data ?? []).toHaveLength(1);
       },
       SETUP_TIMEOUT,
