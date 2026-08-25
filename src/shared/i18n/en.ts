@@ -824,6 +824,8 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.niet_meer_open':
     'This week is no longer open. You can only close a weekly goal that nothing has happened with yet.',
   'weekdoel.doorschuiven_mislukt': 'Carrying over did not work.',
+  'weekdoel.te_veel_deze_dag':
+    'You have created the maximum number of weekly goals for today. You can continue again later.',
   'weekdoel.nog_niet_afgesloten':
     'Carrying over is only possible once the week is closed. That happens automatically shortly after your week ends.',
   'validatie.kies_doel': 'Choose a goal.',

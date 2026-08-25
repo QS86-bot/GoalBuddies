@@ -1047,6 +1047,8 @@ export const nl = {
   'weekdoel.niet_meer_open':
     'Deze week staat niet meer open. Alleen een weekdoel waar nog niets mee gebeurd is, kun je afsluiten.',
   'weekdoel.doorschuiven_mislukt': 'Doorschuiven lukte niet.',
+  'weekdoel.te_veel_deze_dag':
+    'Je hebt vandaag het maximum aantal weekdoelen aangemaakt. Straks kun je weer verder.',
   'weekdoel.nog_niet_afgesloten':
     'Doorschuiven kan pas als de week is afgesloten. Dat gebeurt automatisch kort na het einde van je week.',
   'validatie.kies_doel': 'Kies een doel.',

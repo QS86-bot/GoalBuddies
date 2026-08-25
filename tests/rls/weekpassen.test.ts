@@ -636,8 +636,13 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         .single();
       if (goed.error) throw new Error(`opbouw: ${goed.error.message}`);
 
-      const doorgeschoven = await f.bob.db.rpc('markeer_doorgeschoven', {
+      // ⚠️ Sinds 0091 doet één RPC het zetten op `carried` én de opvolger, in
+      //    één transactie. De cyclus komt van de aanroeper — de database rekent
+      //    geen weken uit (correctheidsregel 7).
+      const doorgeschoven = await f.bob.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: gemist.data.id,
+        p_cycle_start_date: '2026-05-18',
+        p_cycle_index: 913,
       });
       expect(doorgeschoven.error).toBeNull();
       expect(uitkomst(doorgeschoven.data).ok).toBe(true);
@@ -680,8 +685,10 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         .single();
       if (open.error) throw new Error(`opbouw: ${open.error.message}`);
 
-      const poging = await f.bob.db.rpc('markeer_doorgeschoven', {
+      const poging = await f.bob.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: open.data.id,
+        p_cycle_start_date: '2026-05-25',
+        p_cycle_index: 914,
       });
 
       expect(poging.error).toBeNull();

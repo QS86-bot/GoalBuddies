@@ -306,39 +306,48 @@ export async function schuifDoor(
   klok: UserClock,
   eersteCyclusVanDoel: Cycle | null,
 ): Promise<Resultaat<Weekdoel>> {
-  const { data, error: markeerFout } = await supabase().rpc('markeer_doorgeschoven', {
+  const cyclus = huidigeCyclus(klok);
+  const index = eersteCyclusVanDoel === null ? 1 : cyclesBetween(eersteCyclusVanDoel, cyclus) + 1;
+
+  const { data, error } = await supabase().rpc('schuif_weekdoel_door', {
     p_weekly_goal_id: doel.id,
+    p_cycle_start_date: cyclus.startDate,
+    p_cycle_index: index,
   });
 
-  if (markeerFout) {
-    reportError(markeerFout, 'weekly.carry', { pgcode: markeerFout.code });
+  if (error) {
+    reportError(error, 'weekly.carry', { pgcode: error.code });
     return { ok: false, melding: t('weekdoel.doorschuiven_mislukt') };
   }
 
-  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string; weekdoel?: Weekdoel };
   if (uitkomst.ok !== true) {
-    return {
-      ok: false,
-      melding:
-        // ⚠️ `not_open` bestaat sinds 0045 niet meer als reden — de RPC geeft
-        //    `not_missed` terug. De tak is weg in plaats van dood te blijven
-        //    staan: dode foutafhandeling suggereert dat een geval nog kan
-        //    optreden, en dan gaat de volgende lezer ernaar zoeken.
-        uitkomst.reason === 'not_missed'
-          ? t('weekdoel.nog_niet_afgesloten')
-          : t('weekdoel.doorschuiven_mislukt'),
-    };
+    return { ok: false, melding: doorschuifMelding(uitkomst.reason) };
   }
 
-  return await maakWeekdoel(
-    klok,
-    {
-      goal_id: doel.goal_id,
-      milestone_id: doel.milestone_id,
-      title: doel.title,
-      floor_text: doel.floor_text,
-      ceiling_text: doel.ceiling_text,
-    },
-    eersteCyclusVanDoel,
-  );
+  // ⚠️ De RPC geeft de nieuwe rij terug, dus er is geen tweede rondgang meer.
+  //    Ontbreekt hij toch, dan is dat een fout van de functie en geen geval dat
+  //    de gebruiker moet oplossen — een lege `waarde` teruggeven zou het scherm
+  //    laten denken dat er niets gebeurd is terwijl de week wél doorgeschoven is.
+  if (!uitkomst.weekdoel) {
+    reportError(new Error('schuif_weekdoel_door gaf ok zonder weekdoel'), 'weekly.carry');
+    return { ok: false, melding: t('weekdoel.doorschuiven_mislukt') };
+  }
+
+  return { ok: true, waarde: uitkomst.weekdoel };
+}
+
+function doorschuifMelding(reden: string | undefined): string {
+  switch (reden) {
+    // ⚠️ `not_open` bestaat sinds 0045 niet meer als reden — de RPC geeft
+    //    `not_missed` terug. De tak is weg in plaats van dood te blijven staan:
+    //    dode foutafhandeling suggereert dat een geval nog kan optreden, en dan
+    //    gaat de volgende lezer ernaar zoeken.
+    case 'not_missed':
+      return t('weekdoel.nog_niet_afgesloten');
+    case 'te_veel_deze_dag':
+      return t('weekdoel.te_veel_deze_dag');
+    default:
+      return t('weekdoel.doorschuiven_mislukt');
+  }
 }

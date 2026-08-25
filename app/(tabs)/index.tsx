@@ -430,15 +430,12 @@ function DoorschuifKaart({
     //    doel, en dan telt de weekteller in het doeloverzicht niet meer mee.
     const eerste = await eersteCyclusVanDoel(weekdoel.goal_id, klok);
 
-    // ⚠️ `schuifDoor()` doet twee dingen die niet in één transactie zitten:
-    //    `markeer_doorgeschoven()` zet de oude rij op `carried`, en daarna maakt
-    //    hij de nieuwe week aan. Valt de verbinding daartussen weg, dan staat de
-    //    oude week op `carried` zonder opvolger — en hij verdwijnt uit dit blok,
-    //    want `fetchDoorschuifbaar()` haalt alleen `missed` op. Dat is geen
-    //    verlies (de week telde al als gemist en het punt is geboekt) maar het
-    //    weekdoel is dan wel weg zonder dat iemand het aanmaakte. Samenvoegen tot
-    //    één RPC hoort bij het datamodel en niet bij dit scherm; het staat als
-    //    aandachtspunt in ENGINEER-REVIEW.
+    // ⚠️ `schuifDoor()` was tot 0091 twee aanroepen zonder transactie eromheen,
+    //    en viel de verbinding daartussen weg dan stond de oude week op `carried`
+    //    zonder opvolger — weg uit dit blok, want `fetchDoorschuifbaar()` haalt
+    //    alleen `missed` op. Sinds 0091 doet één RPC beide, dus dat gat is dicht.
+    //    De cyclus wordt nog steeds hier uitgerekend en meegegeven: de database
+    //    kent de week-startdag van deze gebruiker niet (correctheidsregel 7).
     const uitkomst = await schuifDoor(weekdoel, klok, eerste);
 
     if (!uitkomst.ok) {

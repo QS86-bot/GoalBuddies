@@ -2075,10 +2075,6 @@ export type Database = {
         Args: { p_owner_id: string; p_vandaag: string }
         Returns: number
       }
-      markeer_doorgeschoven: {
-        Args: { p_weekly_goal_id: string }
-        Returns: Json
-      }
       migratieregister: {
         Args: never
         Returns: {
@@ -2164,6 +2160,10 @@ export type Database = {
       }
       rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
+      schuif_weekdoel_door: {
+        Args: { p_cycle_index: number; p_cycle_start_date: string; p_weekly_goal_id: string }
+        Returns: Json
+      }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }
         Returns: Json
@@ -2262,7 +2262,7 @@ export type Database = {
           week_review_id: string
         }[]
       }
-      weekdoelen_vandaag: { Args: never; Returns: number }
+      weekdoelen_over: { Args: never; Returns: number }
       weekpas_maximum: { Args: never; Returns: number }
       weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
       weekpas_standen: {
