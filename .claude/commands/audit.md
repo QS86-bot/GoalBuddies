@@ -153,8 +153,25 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
     ⚠️ Sinds 25-08 draaien `deno check` en `deno lint` bovendien in CI over
     `supabase/functions/`. Die map viel daarvoor buiten typecheck, lint én CI, en
-    dat heeft één keer een lek verborgen: de `excused`-bevinding van 20-08 werd
-    gemist omdat de schrijver een Edge Function was.
+    dat heeft twee keer iets verborgen: de `excused`-bevinding van 20-08 werd
+    gemist omdat de schrijver een Edge Function was, en de Doelcoach draaide
+    maandenlang op een `db` die daar niet bestaat — élke job mislukte, met HTTP
+    200 terug.
+
+18. **Dode ketens** — draai `npm run keten:controle`. Die zoekt twee dingen: een
+    functie of trigger die door niets wordt aangeroepen, en een CHECK-waarde die
+    door niets ooit geschreven wordt. Tests en scripts tellen daarbij níét als
+    aanroeper — dat is de hele truc, want bij EPIC 9 stonden er tests omheen die
+    het losse gedrag bewezen terwijl geen enkele knop erheen liep.
+
+    ⚠️ **Dit is de variant zonder kapot onderdeel.** Er is niets stuk, dus geen
+    enkele test wordt er rood van, en de vijf gevallen die dit project al gehad
+    heeft zijn alle vijf met de hand of bij toeval gevonden.
+
+    ⚠️ De lijst `BEWUST_ONGESCHREVEN` in het script is **geen** uitweg. Een regel
+    daarin noemt de reden én de voorwaarde die de waarde weer interessant maakt —
+    dezelfde vorm als `Wordt zwaarder als:` in `docs/ENGINEER-REVIEW.md`. Een
+    uitzondering zonder die tweede helft verloopt zonder dat iemand het merkt.
 
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

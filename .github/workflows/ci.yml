@@ -65,6 +65,13 @@ jobs:
       - name: Edge-tijdmodule gelijk aan die van de app
         run: npm run edge:controle
 
+      # ⚠️ Dode ketens: een functie die niemand aanroept, of een CHECK-waarde die
+      #    niemand ooit schrijft. Dat is de vorm die dit project vijf keer duur
+      #    betaald heeft — er is niets kapot, dus geen enkele test wordt er rood
+      #    van. Zie de kop van het script voor wat hij wél en niet vindt.
+      - name: Dode ketens
+        run: npm run keten:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------
