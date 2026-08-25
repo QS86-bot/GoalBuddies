@@ -1932,6 +1932,15 @@ export type Database = {
           geauthenticeerd: boolean
         }[]
       }
+      uitnodigingscode_bewaking: {
+        Args: never
+        Returns: {
+          alfabet_lengte: number
+          code_lengte: number
+          drempel: number
+          gebruikt_csprng: boolean
+        }[]
+      }
       verbruik_weekpas: {
         Args: {
           p_cycle_start_date: string

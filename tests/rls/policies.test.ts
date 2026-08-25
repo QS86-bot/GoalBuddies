@@ -3313,4 +3313,48 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
   });
+  /**
+   * Wat de uitnodigingscode zijn sterkte geeft — migratie 0088.
+   *
+   * ⚠️ De vorm stond al onder test ("twaalf tekens uit het alfabet"), en die
+   *    test knoopt de SQL aan `isCodeVorm()`. Maar twee wijzigingen halen hem
+   *    moeiteloos en slopen de sterkte: `gen_random_bytes` vervangen door
+   *    `random()`, of het alfabet veranderen zonder de verwerpingsdrempel mee te
+   *    nemen. In beide gevallen blijven de codes er precies hetzelfde uitzien.
+   *
+   * ⚠️ **De entropie zelf is nagemeten en ruim voldoende** (25-08-2026): 30^12 is
+   *    ~58,9 bits, en zelfs bij een miljoen groepen kost één treffer zeventien
+   *    jaar hameren op duizend verzoeken per seconde. Deze test bewaakt niet dát
+   *    getal maar de drie eigenschappen waar het uit volgt.
+   */
+  describe('de sterkte van de uitnodigingscode', () => {
+    it(
+      'houdt een CSPRNG en een drempel die de modulo-bias uitsluit',
+      async () => {
+        const { data, error } = await adminDb().rpc('uitnodigingscode_bewaking');
+
+        expect(error).toBeNull();
+
+        const stand = (data ?? [])[0];
+        expect(stand, 'uitnodigingscode_bewaking gaf niets terug').toBeDefined();
+        if (stand === undefined) return;
+
+        // ⚠️ De bron moet een CSPRNG zijn. `random()` is gezaaid en voorspelbaar:
+        //    wie één code ziet, kan de volgende afleiden.
+        expect(stand.gebruikt_csprng, 'generate_invite_code gebruikt geen CSPRNG').toBe(true);
+
+        // ⚠️ **De kern van deze test.** De drempel verwerpt elke byte die de
+        //    verdeling scheef zou trekken, en dat werkt alleen als hij een exact
+        //    veelvoud van de alfabetlengte is. Wordt het alfabet 32 en blijft de
+        //    drempel 240, dan zijn de eerste zestien letters stelselmatig
+        //    waarschijnlijker — en dat zie je aan geen enkele code af.
+        expect(stand.drempel % stand.alfabet_lengte, 'de drempel is geen veelvoud van het alfabet').toBe(0);
+
+        // En de ruimte blijft groot genoeg om raden zinloos te houden.
+        const bits = stand.code_lengte * Math.log2(stand.alfabet_lengte);
+        expect(bits, `de code is nog maar ${bits.toFixed(1)} bits`).toBeGreaterThanOrEqual(50);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
