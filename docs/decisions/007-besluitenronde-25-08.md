@@ -1,7 +1,7 @@
-# 007 — Besluitenronde 25-08-2026: A48, A49
+# 007 — Besluitenronde 25-08-2026: A48, A49, A50
 
 **Datum:** 25-08-2026
-**Issues:** QS8-110 (A48), QS8-136 (A49)
+**Issues:** QS8-110 (A48), QS8-136 (A49), en A50 uit de bevindingenronde
 **Besluitnemer:** Quinten
 
 Twee besluiten die allebei uit de review-ronde op EPIC 13 kwamen, en die
@@ -147,3 +147,51 @@ alsnog in die groep belanden zodra hij een account aanmaakte.
 
 ⚠️ **De aftrekking staat in `shared/time`** (`ouderDan()`), niet in de module.
 Correctheidsregel 7 kent geen uitzondering voor "het is maar één aftrekking".
+
+---
+
+## A50 — de groep mag de adempauze zien ✅ vastgelegd
+
+**Besluit: de matrix wijkt, niet de code.**
+
+`docs/decisions/001-datamodel.md` zei bij `breathers`: *"groepsleden zien alleen
+dat er een pauze loopt"*. `breathers_select` gaf altijd de héle rij, inclusief
+`starts_cycle` en `ends_cycle`, en `src/modules/goals/adempauze.ts` beschrijft dat
+óók zo — de groep hoort *"Sanne heeft een adempauze van week X tot Y"* te zien,
+want dat is het acceptatiecriterium "vooraf aangekondigd" van QS8-82.
+
+Twee documenten zeiden dus iets anders. Quinten heeft op 25-08 beslist welk
+document wijkt: de matrix.
+
+### Waarom dat de juiste kant is
+
+⚠️ **Aankondigen is de eigen handeling van de gebruiker, en dat is precies de
+uitzondering die domeinregel 7 zelf maakt.** De regel zegt dat tegenslag de groep
+alleen bereikt via de gebruiker zelf, en noemt daar drie routes bij: vraag 2 van
+de weekafsluiting, "vraag je groep om hulp", en het deadline-verzoek. Een
+adempauze vooraf aankondigen is dezelfde vorm — je kiest zelf om het te delen,
+vóórdat de week voorbij is.
+
+⚠️ **En een aankondiging vooraf is iets anders dan een gemiste week achteraf.**
+Dat onderscheid is de hele reden dat de regel bestaat. "Ik neem twee weken pauze"
+is een plan; "hij heeft die twee weken niet gehaald" is een oordeel.
+
+### Wat hierdoor níét opengaat
+
+**Welke weken er in die periode gemist zijn.** Dat staat in
+`weekly_goals.status`, en dat is sinds migratie 0047 afgeschermd voor
+groepsgenoten — `excused` incluis, en juist die waarde hoort bij een adempauze.
+De groep ziet dus de pauze en niet de weken.
+
+### ⚠️ De eigenlijke bevinding was een andere
+
+Dit oppervlak stond **helemaal niet** in `002-domeinregel7-oppervlakken.md`,
+terwijl het sinds QS8-82 bestaat en de groep het leest. `CLAUDE.md` zegt
+letterlijk: *"Werk dat document bij bij elk nieuw oppervlak."* Dat is hier niet
+gebeurd, en daardoor kon de tegenspraak tussen twee documenten maanden blijven
+staan zonder dat iemand hem tegenkwam.
+
+Het staat er nu als **oppervlak 21**, in beide tabellen — ook in de A41-tabel van
+§6b, waar het niet varieert op `groups.zichtbaarheid`: de eigen handeling van de
+gebruiker staat in béide standen open, net als de weekafsluiting (10) en het
+deadline-verzoek (16).

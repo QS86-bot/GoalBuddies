@@ -756,6 +756,117 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       },
       TEST_TIMEOUT,
     );
+
+    /**
+     * Oppervlak 21 — besluit A50, 25-08-2026.
+     *
+     * ⚠️ **Dit is een positieve controle op een besloten oppervlak, en dat is
+     *    zeldzaam in deze suite.** Bijna alles hier bewijst dat de groep iets
+     *    níét ziet; dit bewijst dat ze iets wél ziet, met opzet.
+     *
+     *    `docs/decisions/001-datamodel.md` zei tot 25-08 dat groepsleden "alleen
+     *    dát er een pauze loopt" zagen, terwijl `breathers_select` altijd de hele
+     *    rij gaf en `adempauze.ts` dat óók zo beschreef. Quinten heeft beslist
+     *    welk document wijkt: de matrix. Aankondigen is de eigen handeling van de
+     *    gebruiker, en dat is de uitzondering die domeinregel 7 zelf maakt.
+     *
+     * ⚠️ Zonder deze test zou een latere ronde de "afscherming" alsnog bouwen —
+     *    hij ziet er immers uit als een lek. Nu wordt zo'n poging rood, en dan
+     *    komt iemand langs dit commentaar.
+     *
+     * ⚠️ **Wat de groep hierdoor níét ziet, staat in de test daaronder:** welke
+     *    weken in die periode gemist zijn blijft dicht (`weekly_goals.status`,
+     *    sinds 0047, `excused` incluis). De pauze is zichtbaar, de weken niet.
+     */
+    it(
+      'is voor een groepsgenoot zichtbaar, begin en eind incluis',
+      async () => {
+        // ⚠️ **Een eigen doel met een eigen koppeling, en niet die van de
+        //    fixture.** De eerste versie pakte alice' gekoppelde doel en slaagde
+        //    los, maar viel om in de volle run: eerdere tests in dit bestand
+        //    veranderen de koppelingen, en dan meet je hun opruiming in plaats
+        //    van deze policy.
+        const doel = await adminDb()
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'A50 adempauzedoel',
+            target_date: addDays(cyclusOverWeken(0), 120),
+          })
+          .select('id')
+          .single();
+        expect(doel.error).toBeNull();
+
+        const doelId = doel.data?.id ?? '';
+        expect(
+          (await adminDb().from('goal_group_links').insert({ goal_id: doelId, group_id: f.groupId }))
+            .error,
+        ).toBeNull();
+
+        // ⚠️ **De kijker wordt hier expliciet lid gemaakt en niet aangenomen.**
+        //    Een eerdere test in dit bestand verwijdert bobs lidmaatschapsrij, en
+        //    dan meet deze test die opruiming in plaats van de policy: hij slaagde
+        //    los en viel om in de volle run, met `bob: null` als enige spoor. Een
+        //    test die zijn eigen voorwaarde stelt, is niet afhankelijk van de
+        //    volgorde waarin vitest hem draait.
+        expect(
+          (
+            await adminDb()
+              .from('group_members')
+              .upsert(
+                { group_id: f.groupId, user_id: f.bob.id, role: 'member', status: 'active' },
+                { onConflict: 'group_id,user_id' },
+              )
+          ).error,
+        ).toBeNull();
+
+        const start = cyclusOverWeken(9);
+
+        const gezet = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: start,
+          p_ends_cycle: start,
+        });
+        const id = (gezet.data as { id?: string } | null)?.id;
+        expect(id, `de adempauze is niet aangemaakt: ${JSON.stringify(gezet.data)}`).toBeDefined();
+
+        try {
+          const gezien = await f.bob.db
+            .from('breathers')
+            .select('id, goal_id, starts_cycle, ends_cycle, announced_at')
+            .eq('id', id ?? '');
+
+          expect(gezien.error).toBeNull();
+
+          // ⚠️ De diagnose in de melding: valt deze test ooit om, dan wil je in
+          //    één oogopslag zien of het de policy is of de fixture.
+          const lid = await adminDb()
+            .from('group_members')
+            .select('status')
+            .eq('group_id', f.groupId)
+            .eq('user_id', f.bob.id)
+            .maybeSingle();
+          const links = await adminDb()
+            .from('goal_group_links')
+            .select('group_id')
+            .eq('goal_id', doelId);
+
+          expect(
+            gezien.data ?? [],
+            `de groepsgenoot ziet de adempauze niet — bob: ${JSON.stringify(lid.data)}, ` +
+              `koppelingen: ${JSON.stringify(links.data)}, groep: ${f.groupId}`,
+          ).toHaveLength(1);
+
+          const rij = (gezien.data ?? [])[0];
+          expect(rij?.starts_cycle, 'het begin is afgeschermd').toBe(start);
+          expect(rij?.ends_cycle, 'het eind is afgeschermd').toBe(start);
+        } finally {
+          await adminDb().from('breathers').delete().eq('id', id ?? '');
+          await adminDb().from('goals').delete().eq('id', doelId);
+        }
+      },
+      TEST_TIMEOUT,
+    );
   });
   // -------------------------------------------------------------------------
   // QS8-39 — mijlpalen herordenen, migratie 0049
