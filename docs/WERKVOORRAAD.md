@@ -191,7 +191,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **787 geslaagd en 400 overgeslagen** (dat zijn achttien van de
+  **790 geslaagd en 400 overgeslagen** (dat zijn achttien van de
   twintig bestanden in `tests/rls`, zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en

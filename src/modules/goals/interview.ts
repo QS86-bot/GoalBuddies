@@ -5,6 +5,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 
 import type { Resultaat } from './api';
+import { invoerfout } from '../../shared/api';
 import {
   interviewSchema,
   LEEG_INTERVIEW,
@@ -88,7 +89,7 @@ export async function bewaarInterview(
 ): Promise<Resultaat<Interview>> {
   const gevalideerd = interviewSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
   }
 
   const antwoorden = gevalideerd.data;

@@ -2,7 +2,7 @@ import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
-import type { Resultaat } from '../../shared/api';
+import { invoerfout, type Resultaat, type RpcRij } from '../../shared/api';
 
 import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
 
@@ -57,8 +57,8 @@ export interface Wachtrij {
  *    left joins en de nullable kolommen ze wel degelijk leeg kunnen laten.
  *    Hernoemt iemand een kolom in SQL, dan breekt de build hier.
  */
-type RpcRij = Database['public']['Functions']['openstaande_beoordelingen']['Returns'][number];
-type WachtrijRij = { readonly [K in keyof RpcRij]: RpcRij[K] | null };
+type RpcWachtrijRij = Database['public']['Functions']['openstaande_beoordelingen']['Returns'][number];
+type WachtrijRij = RpcRij<RpcWachtrijRij>;
 
 function naarTeBeoordelen(rij: WachtrijRij): TeBeoordelen | null {
   if (
@@ -146,7 +146,7 @@ export async function beoordeel(
 ): Promise<Resultaat<string>> {
   const gevalideerd = oordeelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('voltooiing.invoer')) };
   }
 
   const opmerking = gevalideerd.data.comment?.trim() ?? '';

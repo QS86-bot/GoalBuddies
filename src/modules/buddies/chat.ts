@@ -19,6 +19,7 @@ import {
 } from './chat-schemas';
 import { budgetOp } from './rem';
 import { oudLid } from './systeemberichten';
+import { invoerfout, type RpcRij } from '../../shared/api';
 
 /**
  * De groepschat — QS8-69.
@@ -63,7 +64,7 @@ export interface ChatPagina {
  *    toegevoegd.
  */
 type RpcChatRij = Database['public']['Functions']['groepschat']['Returns'][number];
-type ChatRij = { readonly [K in keyof RpcChatRij]: RpcChatRij[K] | null };
+type ChatRij = RpcRij<RpcChatRij>;
 
 /**
  * Zet een rij om, of geeft `null` als hij onbruikbaar is.
@@ -170,7 +171,7 @@ export async function stuurBericht(
 ): Promise<Resultaat<string>> {
   const gevalideerd = berichtSchema.safeParse({ body });
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('chat.controleer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('chat.controleer')) };
   }
 
   const { data, error } = await supabase()

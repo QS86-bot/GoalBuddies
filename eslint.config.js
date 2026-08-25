@@ -94,10 +94,18 @@ module.exports = [
           //    plek waar hij toevallig staat. Wie hier kopie acht neerzet, krijgt
           //    de lintfout — ook in een module die vandaag nog niet bestaat.
           //    `shared/api` zelf is uitgezonderd; zie de `ignores` hieronder.
+          //
+          //    ⚠️ `RpcRij<T>` staat er sinds 25-08-2026 bij. Die stond vijf keer
+          //    woordelijk als `{ readonly [K in keyof RpcX]: RpcX[K] | null }`
+          //    — `ChatRij`, `AntwoordRij`, `ReactieRij`, `OverzichtRij` en
+          //    `WachtrijRij`. Dat de regel op de náám selecteert en niet op de
+          //    vorm is een bewuste beperking: een zesde kopie onder een andere
+          //    naam glipt erdoor. Wat hij wél doet is de plek vastzetten waar
+          //    iemand hem zóékt, en dat is waar deze vijf uiteen zouden lopen.
           selector:
-            "TSTypeAliasDeclaration[id.name=/^(Resultaat|Pagina)$/], TSInterfaceDeclaration[id.name=/^(Resultaat|Pagina)$/]",
+            "TSTypeAliasDeclaration[id.name=/^(Resultaat|Pagina|RpcRij)$/], TSInterfaceDeclaration[id.name=/^(Resultaat|Pagina|RpcRij)$/]",
           message:
-            'Resultaat<T> en Pagina<T> staan in src/shared/api. Importeer ze daar, definieer ze niet opnieuw — zo ontstonden er zeven kopieën.',
+            'Resultaat<T>, Pagina<T> en RpcRij<T> staan in src/shared/api. Importeer ze daar, definieer ze niet opnieuw — zo ontstonden er zeven kopieën.',
         },
       ],
     },

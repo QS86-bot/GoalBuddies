@@ -52,3 +52,67 @@ export interface Pagina<T> {
   readonly totaal: number;
   readonly meer: boolean;
 }
+
+/**
+ * Een rij zoals PostgREST hem teruggeeft: elke kolom kan er níét in zitten.
+ *
+ * ⚠️ **Dit patroon stond vijf keer woordelijk in de codebase** — `ChatRij`,
+ *    `AntwoordRij`, `ReactieRij`, `OverzichtRij` en `WachtrijRij`, telkens als
+ *    `{ readonly [K in keyof RpcX]: RpcX[K] | null }`. Het is de bevinding van
+ *    18-08 uit `docs/ENGINEER-REVIEW.md`, en het is dezelfde klasse als
+ *    `Resultaat<T>` hierboven: vijf nominale types met dezelfde vorm, die
+ *    structureel vergelijken en dus wérken, tot iemand er één aanpast.
+ *
+ * ⚠️ **Waarom die nullability er überhaupt staat.** De gegenereerde typen in
+ *    `database.types.ts` beschrijven wat de fúnctie belooft, niet wat er over de
+ *    lijn komt. Een RPC die van vorm verandert terwijl `database.types.ts` nog
+ *    niet opnieuw gegenereerd is, levert rijen op waar een kolom ontbreekt — en
+ *    dan is `rij.titel` `undefined` terwijl het type `string` zegt. Deze vorm
+ *    dwingt de aanroeper die mogelijkheid af te handelen, meestal met een
+ *    `?? ''` of een expliciete controle vlak erna.
+ *
+ * ⚠️ Hij zegt `| null` en niet `| undefined`, en dat is bewust conservatief:
+ *    `exactOptionalPropertyTypes` staat aan, dus een optionele sleutel zou een
+ *    ander gedrag geven dan een sleutel die `null` mag zijn. Wat er in de
+ *    praktijk gebeurt bij een ontbrekende kolom is `undefined`, maar elke
+ *    aanroeper controleert met `??` of een nulcheck, en die vangen allebei.
+ */
+export type RpcRij<T> = { readonly [K in keyof T]: T[K] | null };
+
+/**
+ * De eerste validatiefout als tekst voor de gebruiker, of een terugval.
+ *
+ * ⚠️ **Deze uitdrukking stond negenentwintig keer woordelijk in de codebase** als
+ *    `gevalideerd.error.issues[0]?.message ?? t('…')` — de derde helft van de
+ *    bevinding van 18-08. Op zichzelf onschuldig, maar het is een besluit dat
+ *    negenentwintig keer opnieuw genomen wordt: *welke* fout laat je zien als er
+ *    meerdere zijn, en wat doe je als er geen bruikbare tekst is.
+ *
+ * ⚠️ **De eerste en niet alle, en dat is de keuze die hier vastligt.** Zod geeft
+ *    één issue per veld; ze allemaal tonen levert een muur op waarin de
+ *    gebruiker de eerste actie niet meer ziet. Het formulier springt naar het
+ *    eerste kapotte veld, dus de eerste melding is de melding die bij die plek
+ *    hoort.
+ *
+ * ⚠️ De terugval is verplicht en geen `?? ''`. Een lege melding is erger dan een
+ *    algemene: het scherm toont dan een lege foutbalk en de gebruiker weet niet
+ *    wat er mis is. Elke aanroeper geeft een zin uit de catalogus mee (QS8-115).
+ *
+ * ⚠️ Het argument is structureel getypeerd en niet als `ZodError`. Zo hoeft
+ *    `shared/api` geen Zod te kennen — deze module draagt de vórm van een
+ *    module-API en niet zijn validatiebibliotheek.
+ */
+export function invoerfout(
+  fout: { readonly issues: readonly { readonly message: string }[] },
+  terugval: string,
+): string {
+  // ⚠️ **`??` is hier te weinig, en dat bleek pas toen deze keuze één plek kreeg.**
+  //    Alle negenentwintig kopieën schreven `issues[0]?.message ?? t('…')`, en
+  //    een lege melding is geen `undefined` — die glipt door de `??` heen en
+  //    levert een lege foutbalk op. Zeldzaam (het vraagt een `error: () => ''`
+  //    of een `refine` zonder tekst), maar het is precies de situatie waarin de
+  //    gebruiker het hardst een zin nodig heeft. Geen regressie van de kopieën
+  //    maar een fout die ze allemaal deelden.
+  const eerste = fout.issues[0]?.message?.trim();
+  return eerste === undefined || eerste === '' ? terugval : eerste;
+}

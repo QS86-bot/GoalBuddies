@@ -4,7 +4,7 @@ import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { apparaatTijdzone, type Cycle } from '../../shared/time';
-import type { Pagina, Resultaat } from '../../shared/api';
+import { invoerfout, type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 
 import {
   codeSchema,
@@ -259,7 +259,7 @@ export interface Groepslid {
  *    ze wel degelijk leeg kunnen laten — dus die wordt hier toegevoegd.
  */
 type RpcOverzichtRij = Database['public']['Functions']['group_overview']['Returns'][number];
-type OverzichtRij = { readonly [K in keyof RpcOverzichtRij]: RpcOverzichtRij[K] | null };
+type OverzichtRij = RpcRij<RpcOverzichtRij>;
 
 /**
  * Zet een rij om, of geeft `null` als hij niet bruikbaar is.
@@ -361,7 +361,7 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
   // ook, maar een lege naam hoort niet eerst een netwerkronde te kosten.
   const gevalideerd = groepSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.invoer')) };
   }
 
   const { data, error } = await supabase().rpc('create_group', {
@@ -415,7 +415,7 @@ export async function wijzigGroep(
 ): Promise<Resultaat<Groep>> {
   const gevalideerd = groepPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.invoer')) };
   }
 
   const update: TablesUpdate<'groups'> = {};
@@ -575,7 +575,7 @@ export async function archiveerGroep(
 export async function neemDeel(code: string): Promise<Resultaat<string>> {
   const gevalideerd = codeSchema.safeParse(code);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('groep.controleer_link') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.controleer_link')) };
   }
 
   const { data, error } = await supabase().rpc('join_group_with_code', {

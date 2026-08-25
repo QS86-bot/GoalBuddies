@@ -6,6 +6,7 @@ import { now } from '../../shared/time';
 
 import { mijlpaalSchema, type MijlpaalInvoer, type MijlpaalStatus } from './mijlpaal-schemas';
 import type { Mijlpaal, Resultaat } from './weekly';
+import { invoerfout } from '../../shared/api';
 
 /**
  * Mijlpalen met de hand beheren — QS8-39, migratie 0049.
@@ -33,7 +34,7 @@ export async function maakMijlpaal(
 ): Promise<Resultaat<Mijlpaal>> {
   const gevalideerd = mijlpaalSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
   }
 
   const { data: laatste, error: leesFout } = await supabase()
@@ -79,7 +80,7 @@ export async function wijzigMijlpaal(
 ): Promise<Resultaat<true>> {
   const gevalideerd = mijlpaalSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
   }
 
   const { error } = await supabase()

@@ -3,7 +3,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import type { IsoDate } from '../../shared/time';
-import type { Resultaat } from '../../shared/api';
+import { invoerfout, type Resultaat } from '../../shared/api';
 
 import {
   deadlineVerzoekSchema,
@@ -107,7 +107,7 @@ export async function vraagDeadlineVerschuiving(
 ): Promise<Resultaat<string>> {
   const gevalideerd = deadlineVerzoekSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('doel.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
   }
 
   if (!datumLigtInDeToekomst(gevalideerd.data.new_date, vandaag)) {

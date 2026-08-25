@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { type UserClock, type Weekday } from '../../shared/time';
 
 import { profielPatchSchema, type ProfielPatch } from './schemas';
+import { invoerfout } from '../../shared/api';
 
 /**
  * Het profiel: naam, avatar, tijdzone, week-startdag en herinneringen.
@@ -66,7 +67,7 @@ export async function updateProfiel(
 ): Promise<ProfielUitkomst> {
   const gevalideerd = profielPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('auth.fout.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('auth.fout.invoer')) };
   }
 
   // ⚠️ Veld voor veld, en niet `update(gevalideerd.data)`. Zod maakt van een

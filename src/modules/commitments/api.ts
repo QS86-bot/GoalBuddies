@@ -2,7 +2,7 @@ import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
-import type { Resultaat } from '../../shared/api';
+import { invoerfout, type Resultaat } from '../../shared/api';
 
 import { commitmentSchema, type CommitmentInvoer } from './commitment-schemas';
 
@@ -97,7 +97,7 @@ async function maak(
 ): Promise<Resultaat<Commitment>> {
   const gevalideerd = commitmentSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('commitment.fout.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('commitment.fout.invoer')) };
   }
 
   const { data, error } = await supabase()

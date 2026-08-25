@@ -3,7 +3,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import type { Cycle } from '../../shared/time';
-import type { Resultaat } from '../../shared/api';
+import { invoerfout, type Resultaat } from '../../shared/api';
 
 import {
   afrondSchema,
@@ -61,7 +61,7 @@ export async function rondAf(
 ): Promise<Resultaat<Voltooiing>> {
   const gevalideerd = afrondSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('voltooiing.invoer')) };
   }
 
   const notitie = gevalideerd.data.note?.trim() ?? '';
@@ -201,7 +201,7 @@ export async function zetDagzet(
 ): Promise<Resultaat<DagZet>> {
   const gevalideerd = dagzetSchema.safeParse(invoer);
   if (!gevalideerd.success) {
-    return { ok: false, melding: gevalideerd.error.issues[0]?.message ?? t('voltooiing.invoer') };
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('voltooiing.invoer')) };
   }
 
   const { data, error } = await supabase()
