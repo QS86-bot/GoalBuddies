@@ -9,6 +9,7 @@ import {
   datumLigtInDeToekomst,
   doelPatchSchema,
   doelSchema,
+  type DoelgebeurtenisClient,
   type DoelInvoer,
   type DoelPatch,
 } from './schemas';
@@ -421,7 +422,7 @@ function afrondMelding(reden: string | undefined, aantal: number | undefined): s
 async function logGoalEvent(
   goalId: string,
   actorId: string,
-  eventType: 'created' | 'deadline_moved' | 'archived' | 'completed' | 'scope_reduced',
+  eventType: DoelgebeurtenisClient,
   oud: Json,
   nieuw: Json,
 ): Promise<void> {

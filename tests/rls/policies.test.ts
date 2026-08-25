@@ -16,7 +16,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    Supabase-client en AsyncStorage mee — en daarmee React Native, in een test
 //    die in Node draait. Zelfde reden als de losse client in harness.ts.
 import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
-import { STATUSSEN } from '../../src/modules/goals/schemas';
+import {
+  DOELGEBEURTENISSEN,
+  STATUSSEN,
+} from '../../src/modules/goals/schemas';
 import { addDays, now, userCycle } from '../../src/shared/time';
 import {
   adminDb,
@@ -3220,6 +3223,94 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         await admin.from('groups').delete().eq('name', 'SETNULL proefgroep');
       },
       SETUP_TIMEOUT,
+    );
+  });
+  /**
+   * De audittrail van een doel — migratie 0087.
+   *
+   * ⚠️ De bevinding van 16-08 noemde zichzelf "productbeslissing, geen
+   *    technische": `001-datamodel.md` §4.2 staat groepsgenoten toe
+   *    `scope_reduced` en `milestone_dropped` te lezen, domeinregel 7 verbiedt
+   *    het, en één van de twee moest wijken. Het project had die vraag elders al
+   *    tegengesteld beantwoord — `milestone_dropped` staat met naam op
+   *    `VERBODEN_GEBEURTENISSEN` — dus het was een tegenspraak en geen open
+   *    vraag.
+   *
+   * ⚠️ `deadline_moved` blijft groepszichtbaar, en dat is de benoemde verruiming
+   *    A7: je vraagt hem zelf aan en een buddy keurt hem goed.
+   */
+  describe('de audittrail van een doel', () => {
+    it(
+      'staat in de database exact de gebeurtenissen toe die de app kent',
+      async () => {
+        const { data, error } = await adminDb().rpc('check_waarden', {
+          p_tabel: 'goal_events',
+          p_constraint: 'goal_events_type_valid',
+        });
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+
+        // Eerst de inhoud vastpinnen: een lege uitkomst betekent óók "geen
+        // constraint met die naam", en dan is een vergelijking van twee lege
+        // lijsten groen terwijl het slot weg is.
+        expect(inDeDatabase).toEqual(['archived', 'completed', 'created', 'deadline_moved']);
+        expect(inDeDatabase).toEqual([...DOELGEBEURTENISSEN].sort());
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een eigenaar geen deadline_moved verzinnen',
+      async () => {
+        // ⚠️ De enige gebeurtenis die een uitspraak over een ánder mens draagt
+        //    ("een buddy ging akkoord"), en de enige die de groep leest. Zonder
+        //    deze grens kan de eigenaar zelf neerzetten dat zijn verschuiving
+        //    goedgekeurd was.
+        const poging = await f.alice.db.from('goal_events').insert({
+          goal_id: f.sharedGoalId,
+          actor_id: f.alice.id,
+          event_type: 'deadline_moved',
+          old_value: { target_date: '2026-01-01' },
+          new_value: { target_date: '2027-01-01' },
+        });
+
+        expect(poging.error).not.toBeNull();
+        expect(poging.error?.code).toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een eigenaar wél zijn eigen created, archived en completed schrijven',
+      async () => {
+        // ⚠️ De positieve kant. Zonder deze helft blijft de test hierboven groen
+        //    als de policy per ongeluk álles weigert — en dan is `logGoalEvent()`
+        //    stil kapot, wat niemand merkt want die functie gooit bewust niet.
+        const admin = adminDb();
+
+        for (const type of ['created', 'archived', 'completed'] as const) {
+          const poging = await f.alice.db
+            .from('goal_events')
+            .insert({
+              goal_id: f.sharedGoalId,
+              actor_id: f.alice.id,
+              event_type: type,
+              old_value: null,
+              new_value: null,
+            })
+            .select('id')
+            .single();
+
+          expect(poging.error, type).toBeNull();
+
+          if (poging.data !== null) {
+            await admin.from('goal_events').delete().eq('id', poging.data.id);
+          }
+        }
+      },
+      TEST_TIMEOUT,
     );
   });
 });
