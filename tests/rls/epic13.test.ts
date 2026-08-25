@@ -198,7 +198,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     kijker: TestUser,
     groep: Groep,
     over: TestUser,
-  ): Promise<{ current_streak: number | null; best_streak: number | null } | null> {
+  ): Promise<{
+    current_streak: number | null;
+    best_streak: number | null;
+    last_cycle_start: string | null;
+  } | null> {
     const { data, error } = await kijker.db.rpc('group_overview', {
       p_group_id: groep.id,
       p_period_start: f.cycleStart,
@@ -207,9 +211,18 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     if (error) throw new Error(`groepsoverzicht lezen: ${error.message}`);
 
     const rij = (data ?? []).find((r) => r.user_id === over.id);
+    // ⚠️ `last_cycle_start` staat hier sinds 25-08-2026. Hij varieert op dezelfde
+    //    `case` als `best_streak` (0078), maar werd in de open stand alleen op de
+    //    view zelf getoetst en niet via deze RPC — en de RPC is wat het scherm
+    //    leest. Wie hem ooit uit de projectie van `group_overview()` haalt, brak
+    //    daarmee een acceptatiecriterium zonder dat één test rood werd.
     return rij === undefined
       ? null
-      : { current_streak: rij.current_streak, best_streak: rij.best_streak };
+      : {
+          current_streak: rij.current_streak,
+          best_streak: rij.best_streak,
+          last_cycle_start: rij.last_cycle_start,
+        };
   }
 
   async function zichtbaarheidVan(groep: Groep): Promise<string | null> {
@@ -674,6 +687,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
         expect(rij?.current_streak).toBe(2);
         expect(rij?.best_streak).toBeNull();
+        expect(rij?.last_cycle_start).toBeNull();
       },
       TEST_TIMEOUT,
     );
@@ -685,6 +699,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
         expect(rij?.current_streak).toBe(2);
         expect(rij?.best_streak).toBe(7);
+        // Zelfde `case`, zelfde belofte — en hij komt langs de RPC die het scherm
+        // gebruikt, niet alleen langs de view eronder.
+        expect(rij?.last_cycle_start).not.toBeNull();
       },
       TEST_TIMEOUT,
     );
@@ -826,6 +843,32 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
           expect(uitHetOverzicht, groep.id).toBe(uitDeTabel);
         }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'wijkt voor de eigenaar zelf, en alleen naar de strenge kant',
+      async () => {
+        // ⚠️ **De belofte hierboven geldt niet algemeen, en dat is geen fout maar
+        //    een asymmetrie die opgeschreven hoort te staan.** Nagemeten op
+        //    25-08-2026: de test erboven kijkt uitsluitend door de ogen van bob,
+        //    en voor een kijker die níét de eigenaar is klopt de gelijkheid. Voor
+        //    de eigenaar niet.
+        //
+        //    `chain_links_select` heeft `user_id = auth.uid()` als eerste tak,
+        //    zónder venster — je eigen ketting is van jou, ongeacht hoe oud.
+        //    `group_overview()` heeft die tak niet: daar geldt het venster van
+        //    acht dagen voor iedereen, ook voor jezelf.
+        //
+        //    Alice ziet haar eigen oude schakel dus wél in de tabel en krijgt
+        //    tegelijk `closed_this_period = false` uit het overzicht. Dat is
+        //    strenger en niet losser, en het scherm vraagt toch alleen de lopende
+        //    periode op — maar zonder deze test zou iemand die de gelijkheid
+        //    algemeen maakt (bijvoorbeeld door dezelfde eigenaarstak aan
+        //    `group_overview()` toe te voegen) denken dat hij een bug repareert.
+        expect(await historischeSchakels(f.alice, f.groepBeschermd)).toBe(1);
+        expect(await afgeslotenInOudePeriode(f.alice, f.groepBeschermd)).toBe(false);
       },
       TEST_TIMEOUT,
     );
