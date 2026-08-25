@@ -53,6 +53,17 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     Een rij waarvan de aanname inmiddels vervallen is, is geen Laag meer en
     hoort deze week op tafel.
 
+    ⚠️ **Sinds 25-08 toetst hij er twee dingen bij**, en allebei omdat het document
+    ze nodig had gehad. Een rij waarvan de beschrijving zegt dat hij gerepareerd
+    is terwijl de risicokolom openstaat, is nu rood — er stonden er zes, waarvan
+    twee als **Hoog**. En een risiconiveau dat geen bekend woord is (er stond
+    twee keer letterlijk `Gedicht`) ook, want zo'n waarde glipt langs elk filter.
+
+    ⚠️ **Wat de controle níét ziet: een rij die inhoudelijk achterhaald is.**
+    `join_group_with_code` noemde drie dingen "nog open" die alle drie gebouwd
+    waren. Kom je zo'n rij tegen, meet dan de gedeployde stand
+    (`pg_get_functiondef()`, `pg_policy`) en niet het migratiebestand.
+
 11. **De migratiemap** — draai `npm run migraties:controle`. Die toetst dat de
     nummering aaneengesloten is, dat er geen twee migraties hetzelfde nummer
     dragen, en dat elke migratie een rollback-pad in zijn kop heeft (onwrikbare
