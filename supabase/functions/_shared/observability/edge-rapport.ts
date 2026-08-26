@@ -34,20 +34,21 @@
  *    lintregel `no-restricted-syntax` slaat aan op `Date.now()`. Zelfde vorm als
  *    `webpush-crypto.ts`. Het maakt de envelope bovendien toetsbaar.
  *
- * ⚠️ **Wat er op 26-08-2026 wél en niet geverifieerd is.** Er is sinds die dag
- *    een DSN, en de envelope is met de échte sleutel gebouwd en verstuurd.
+ * ✅ **Op 26-08-2026 end-to-end gemeten**, met een echte DSN en een echte ingest.
  *
  *    | Wat | Stand |
  *    |---|---|
  *    | De DSN wordt goed ontleed, ook een EU-project (`ingest.de.sentry.io`) | ✅ |
  *    | De drie regels, de itemkop en de octetlengte | ✅ op de echte bytes |
  *    | Er gaat niets persoonlijks over de lijn | ✅ op de echte bytes |
- *    | De ingest **accepteert** de envelope | ❌ nog steeds niet bewezen |
+ *    | De ingest **accepteert** de envelope | ✅ HTTP 200, event `4dff8230…` |
  *
- *    Die laatste kon niet: de omgeving waarin dit gebouwd wordt laat het
- *    ingest-adres niet door en gaf 403. Dat is een grens van de werkplek en
- *    niet van Sentry. `npm run sentry:proef` doet precies deze controle vanaf
- *    een machine die er wél bij kan.
+ *    Die laatste rij stond tot die dag op ❌, en het kostte drie pogingen: de
+ *    bouwomgeving liet het ingest-adres niet door (403 — en dát legde bloot dat
+ *    deze laag toen `'verstuurd'` meldde), daarna startte het proefscript niet
+ *    op Windows, en pas de derde gaf 200. Geen van die drie is door een test
+ *    gevonden. `npm run sentry:proef` doet de controle opnieuw wanneer je hem
+ *    nodig hebt.
  *
  * ⚠️ En juist die 403 legde een gat bloot dat de tests niet konden zien: deze
  *    laag meldde `'verstuurd'`. Zie de kop van `Vervoer` hieronder.

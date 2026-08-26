@@ -19,10 +19,14 @@ import {
  *    Dat geval staat in CLAUDE.md bij regel 18. De les: toets wat de sink
  *    daadwerkelijk krijgt, niet wat een onderdeel belooft.
  *
- * ⚠️ **Wat deze tests níét bewijzen:** dat Sentry de envelope accepteert. Er is
- *    geen account en er is dus nooit een envelope aangekomen. De vorm volgt de
- *    envelope-specificatie en wordt hieronder regel voor regel getoetst; dat is
- *    iets anders dan een 200 van de ingest. Zie docs/ENGINEER-REVIEW.md.
+ * ⚠️ **Wat deze tests níét bewijzen:** dat Sentry de envelope accepteert. Ze
+ *    toetsen de vorm regel voor regel, en dat is iets anders dan een 200 van de
+ *    ingest — een test kan alleen bevestigen wat de schrijver al dacht.
+ *
+ *    Dat gat is op 26-08-2026 gesloten, maar níét hier: `npm run sentry:proef`
+ *    stuurde een echte envelope en kreeg HTTP 200 (event `4dff8230…`). Deze
+ *    tests bewaken de vorm tussen die runs door; het proefscript bewaakt of er
+ *    daadwerkelijk iets aankomt. Haal ze niet door elkaar.
  */
 
 const DSN = 'https://abc123def456@o4507.ingest.sentry.io/6789';

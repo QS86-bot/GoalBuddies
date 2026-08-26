@@ -95,22 +95,34 @@ die drie kunnen niet in `src/` staan.
 
 ### 6. Wat er bewezen is, en wat niet
 
-Op 26-08 is er met een tijdelijke `sentry-selftest`-functie aangetoond dat de
-ingest een envelope van de **andere** implementatie accepteerde. Die functie is
-daarna weer verwijderd.
+✅ **Gesloten op 26-08-2026.** `npm run sentry:proef` kreeg **HTTP 200** van
+`o4511976142274560.ingest.de.sentry.io`, met event-id `4dff823071264594bafc6f4222b40565`. De vorm die we
+houden is daarmee gemeten en niet meer beredeneerd.
 
-⚠️ **Dat bewijst de vorm op `main` niet.** De twee envelopes verschillen in de
-itemkop:
+Dezelfde run bewees de helft die er het meest toe doet: de proeffout droeg met
+opzet een e-mailadres, een token, een geciteerde Postgres-waarde en een notitie,
+en geen ervan staat in de bytes die de deur uit gingen. Dat is domeinregel 7 op
+de draad en niet op een test-vervoer.
 
-| | Itemkop |
+⚠️ **Het duurde drie pogingen, en elke mislukking was een andere fout.** Dat is
+het opschrijven waard, want ze zijn geen van drieën door een test gevonden:
+
+| Poging | Wat er gebeurde |
 |---|---|
-| de andere | `{"type":"event"}` |
-| `main` | `{"type":"event","length":N,"content_type":"application/json"}` |
+| 1 | De bouwomgeving liet het ingest-adres niet door: HTTP 403 — en de code meldde `'verstuurd'`. Dát gat is toen gerepareerd |
+| 2 | Het script startte niet op Windows: `await import()` op een kaal pad, `Received protocol 'c:'` |
+| 3 | HTTP 200 |
 
-Allebei geldig volgens de specificatie, maar alleen de eerste is langs een echte
-ingest geweest. `npm run sentry:proef` sluit dat gat voor de vorm die we houden —
-en dát is de controle die gedraaid moet zijn voordat iemand zegt dat de bewaking
-staat.
+Eerder die dag accepteerde de ingest al een envelope van de **andere**
+implementatie, via een tijdelijke `sentry-selftest`-functie die daarna verwijderd
+is. Dat bewees deze vorm niet: de itemkoppen verschillen
+(`{"type":"event"}` tegen `{"type":"event","length":N,"content_type":"application/json"}`),
+allebei geldig volgens de specificatie. Pas poging 3 sloot het gat voor de vorm
+die blijft staan.
+
+⚠️ **De controle blijft nodig.** Draai hem opnieuw na elke wijziging aan de
+envelope, de DSN of het project. Hij is de enige stap die het verschil ziet
+tussen "de code lijkt te kloppen" en "er is iets aangekomen".
 
 ## Wat dit niet doet
 
