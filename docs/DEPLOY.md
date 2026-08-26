@@ -549,6 +549,42 @@ parser die zelf onder test zou moeten staan. Hij vindt een andere bóóm, niet e
 andere regel. Wil je dat laatste ook, dan is een herkomststempel in de deploy —
 het commit-id dat `edge:sync` erin schrijft — de volgende stap.
 
+### Foutrapportage vanuit de app — QS8-24, criterium 1
+
+De app meldt zijn fouten sinds 26-08-2026 aan Sentry. Eén variabele zet hem aan:
+
+```bash
+# .env — de client-DSN, niet dezelfde als die van de Edge Functions
+EXPO_PUBLIC_SENTRY_DSN='https://<sleutel>@<host>/<project-id>'
+npm run deploy
+```
+
+⚠️ **`EXPO_PUBLIC_SENTRY_DSN` en `SENTRY_DSN` zijn twee losse variabelen**, met
+opzet: de eerste zit in de webbundel die je publiceert, de tweede is een secret
+op het Supabase-project. Verwar ze niet, en zet de tweede nooit in `.env` van de
+webbuild.
+
+⚠️ **Deze DSN is niet geheim** — hij staat in elke clientbundel, zoals bij elke
+frontend-foutrapportage. Wel iets om te weten: wie hem heeft, kan gebeurtenissen
+in je project schrijven.
+
+Zonder DSN gebeurt er niets: `maakSentrySink()` geeft `undefined` en
+`reportError()` valt terug op `console.error`. Dat is in ontwikkeling precies wat
+je wilt zien.
+
+**Wat er gemeld wordt:** elke expliciete `reportError()` (34 plekken), en op web
+bovendien elke onafgevangen fout en elke afgewezen `Promise` zonder `.catch()`.
+
+⚠️ **Wat er níét gemeld wordt, en dat is een grens en geen omissie:** native
+crashes, en op native de onafgevangen fouten. Er is geen `eas.json` en geen
+native build, dus die code zou nooit uitgevoerd zijn. De afweging staat in
+`docs/decisions/2026-08-26-sentry-in-de-app.md`.
+
+⚠️ **Source maps zijn er nog niet** (criterium 2). Een stack uit de
+productiebundel wijst dus naar `bundle.js:1:284213`. Dat vraagt een
+`SENTRY_AUTH_TOKEN` en een stap in de webbuild — de melding komt wél aan, hij is
+alleen lastig te lezen.
+
 ### Foutrapportage vanuit de Edge Functions — QS8-24
 
 De drie functies vangen hun fouten af en geven daarna een 200 terug. Dat is
