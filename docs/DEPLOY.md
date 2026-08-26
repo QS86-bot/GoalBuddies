@@ -512,31 +512,32 @@ Zet ze met `npx supabase secrets set` op het project, niet in de repo. Ontbreken
 ze, dan gaan native meldingen gewoon door en worden web-abonnementen overgeslagen
 met een regel in het log — geen storing, wel stilte.
 
-**Het paar maak je met `npm run vapid:genereer`.** Dat commando roept de échte
-`genereerVapidSleutelpaar()` aan uit `src/modules/notifications/webpush-crypto.ts`
-— geen tweede implementatie — en drukt de drie `supabase secrets set`-regels erbij
-af. De privésleutel wordt getóónd en nergens weggeschreven.
+**Het paar maak je met `npm run vapid:genereer`** (`scripts/vapid-genereer.mjs`).
 
 ⚠️ **Tot 26-08-2026 stond hier een instructie die je niet kon uitvoeren:** "eenmalig
-genereren met `genereerVapidSleutelpaar()`". Die functie stond er, was getest, en
-had geen enkele ingang — geen script, geen commando. Dat is de vorm van QS8-113,
-alleen zat de breuk in de handleiding en niet in de code, en daarom vond geen enkele
-test hem: er was niets kapot.
+genereren met `genereerVapidSleutelpaar()` uit `webpush-crypto.ts`". Die functie
+stond er, was getest, en had geen enkele ingang — geen script, geen commando. Dat is
+de vorm van QS8-113, alleen zat de breuk in de handleiding en niet in de code, en
+daarom vond geen enkele test hem: er was niets kapot.
+
+⚠️ **Het script is een eigen implementatie van dezelfde sleutelgeneratie** en niet
+een aanroep van `genereerVapidSleutelpaar()`. Bewuste keuze van 26-08-2026; de
+afweging staat in de rij van die datum in `docs/ENGINEER-REVIEW.md`. Wijzig je aan
+één kant het curve- of exportformaat, dan legitimeert de server zich met een ander
+schema dan waarmee de sleutel gemaakt is — en dat komt terug als een 403 van de
+pushdienst, niet als een rode test.
 
 ⚠️ **Opnieuw genereren is geen herstelactie maar een breuk.** Een browser bindt een
 abonnement aan de publieke sleutel waarmee het is aangemaakt; een nieuw paar maakt
 élk bestaand abonnement ongeldig en dat merk je niet — de pushdienst geeft een 403
-en de meldingen houden op. Staat er al een sleutel in de omgeving, dan weigert het
-script zonder `--opnieuw`.
+en de meldingen houden op. Genereren is niet toepassen: het script schrijft niets.
 
-**Nakijken doe je met `npm run vapid:controle`**, op de machine waar alle drie de
-waarden staan. Hij ondertekent één keer met het paar en meldt het als ze niet bij
-elkaar horen. Dat is een naad en geen onderdeel: de publieke sleutel staat in de
-webbundel, de privésleutel in de omgeving van de Edge Function, het subject weer
-ergens anders. Elk van de drie kan op zichzelf perfect zijn terwijl ze gekruist
-staan — en dan weigert WebCrypto pas bij het ondertekenen, in een job die eens per
-uur draait. Geijkt in `tests/scripts/vapid.test.ts`, in beide richtingen en met de
-hand rood gemaakt.
+⚠️ **Er is géén controle die zegt of de drie waarden bij elkaar horen**, en dat is
+de open kant. De publieke sleutel staat in de webbundel, de privésleutel in de
+omgeving van de Edge Function, het subject weer ergens anders. Elk van de drie kan
+op zichzelf perfect zijn terwijl ze gekruist staan — en dan weigert WebCrypto pas
+bij het ondertekenen, in een job die eens per uur draait, en de gebruiker merkt
+alleen dat er geen melding komt. Zie de rij van 26-08 in `docs/ENGINEER-REVIEW.md`.
 
 ⚠️ Een abonnement dat 404 of 410 geeft, wordt uit `push_tokens` verwijderd (RFC
 8030 §7: de gebruiker heeft de toestemming ingetrokken). Elke andere fout laat de

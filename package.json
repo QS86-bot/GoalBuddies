@@ -22,8 +22,6 @@
     "deploy:droog": "node scripts/deploy-web.mjs --droog",
     "auth:urls": "node scripts/auth-urls.mjs",
     "auth:urls:zet": "node scripts/auth-urls.mjs --zet",
-    "vapid:genereer": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/vapid.mjs",
-    "vapid:controle": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/vapid.mjs --controle",
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
@@ -47,7 +45,7 @@
     "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls"
   },
   "engines": {
-    "node": ">=22.6"
+    "node": ">=22"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
