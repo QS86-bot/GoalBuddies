@@ -38,6 +38,7 @@
  *   npm run edge:gedeployd
  */
 import { Buffer } from 'node:buffer';
+import { execFileSync } from 'node:child_process';
 import { gunzipSync, brotliDecompressSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
@@ -56,15 +57,94 @@ export const FUNCTIES = ['rollover', 'notificaties', 'doelcoach'];
 // ---------------------------------------------------------------------------
 
 /**
- * Alle modules die één functie nodig heeft, transitief.
+ * Haalt commentaar weg vóór er naar imports gezocht wordt.
+ *
+ * ⚠️ Alleen blokcommentaar en regels die volledig commentaar zijn. Een `//`
+ *    midden op een regel blijft staan, want dat zit ook in `https://` — en een
+ *    URL doormidden knippen zou nieuwe rommel opleveren in plaats van minder.
+ *
+ * ⚠️ Dit bestaat omdat de bestanden in dit project veel commentaar dragen waarin
+ *    het woord `import` gewoon voorkomt. Zonder deze stap telt een zin over een
+ *    import mee als een import.
+ */
+export function zonderCommentaar(inhoud) {
+  return inhoud
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((regel) => !/^\s*\/\//.test(regel))
+    .join('\n');
+}
+
+/** Is dit een import die bij het bundelen helemaal verdwijnt? */
+function isTypeOnly(clausule) {
+  const c = clausule.trim();
+
+  // `import type { X } from …` en `export type { X } from …`
+  if (/^type\b/.test(c)) return true;
+
+  // `import { type A, type B } from …` — alle specifiers type-only, dus ook weg.
+  const accolades = /^\{([\s\S]*)\}$/.exec(c);
+  if (!accolades) return false;
+
+  const specifiers = accolades[1]
+    .split(',')
+    .map((stuk) => stuk.trim())
+    .filter((stuk) => stuk !== '');
+
+  return specifiers.length > 0 && specifiers.every((stuk) => /^type\s/.test(stuk));
+}
+
+/**
+ * De relatieve modules die een bestand **in de bundel** trekt.
+ *
+ * ⚠️ **`import type` telt niet mee, en dat was een fout in de eerste versie.**
+ *    Een type-only import wordt bij het bundelen volledig geëlimineerd; er
+ *    blijft geen runtime-module van over. De eerste versie van deze controle
+ *    matchte hem wél, en meldde daardoor dat `doelcoach` `_shared/time/types.ts`
+ *    miste — terwijl die deploy gewoon klopte.
+ *
+ *    Waarom `rollover` en `notificaties` daar niet op stukliepen: die bereiken
+ *    `types.ts` óók via `cycle.ts`, en dat bestand doet
+ *    `import { GRACE_HOURS } from './types.ts'`. Eén waarde-import is genoeg om
+ *    de module in de bundel te houden.
+ *
+ *    Dat verschil is precies waarom deze functie de hele graaf op wáárde-imports
+ *    moet lopen en niet op tekstuele treffers. Gevonden op 26-08-2026, bij de
+ *    eerste echte run van deze controle.
+ *
+ * ⚠️ Een side-effect-import (`import './x.ts';`) telt wél mee: die heeft geen
+ *    specifiers maar blijft in de bundel staan. Vandaag komt hij in deze boom
+ *    niet voor; hem overslaan zou later een module opleveren die de bundel wél
+ *    draagt en de repo niet lijkt te kennen — een alarm zonder oorzaak.
+ *
+ * ⚠️ Kale specifiers (`jsr:@supabase/supabase-js`) blijven buiten beeld. De
+ *    vraag die deze controle stelt is of ónze bestanden kloppen.
+ */
+export function waardeImports(inhoud) {
+  const schoon = zonderCommentaar(inhoud);
+  const uit = [];
+
+  // `import … from '…'` en `export … from '…'`, ook over meerdere regels. De
+  // clausule ertussen bevat nooit een quote of puntkomma.
+  for (const treffer of schoon.matchAll(/\b(?:import|export)\b([^'";]*?)\bfrom\s*'(\.[^']+)'/g)) {
+    if (!isTypeOnly(treffer[1])) uit.push(treffer[2]);
+  }
+
+  // `import '…';` — alleen voor het effect, geen specifiers.
+  for (const treffer of schoon.matchAll(/\bimport\s*'(\.[^']+)'/g)) {
+    uit.push(treffer[1]);
+  }
+
+  return uit;
+}
+
+/**
+ * Alle modules die één functie nodig heeft, transitief — en alleen de modules
+ * die het bundelen overleven.
  *
  * ⚠️ Neemt een `lees`-functie in plaats van zelf de schijf op te gaan, zodat de
  *    test hem elke vorm kan voeren zonder bestanden aan te maken. Dat is
  *    dezelfde reden als bij `migratieregister-plan.mjs`.
- *
- * ⚠️ Alleen relatieve imports. `jsr:@supabase/supabase-js` en andere kale
- *    specifiers komen uit het netwerk en horen niet in deze vergelijking thuis:
- *    de vraag is of ónze bestanden kloppen.
  */
 export function modulesVoor(lees, start) {
   const gezien = new Set();
@@ -74,18 +154,17 @@ export function modulesVoor(lees, start) {
     const pad = wachtrij.shift();
     if (gezien.has(pad)) continue;
 
+    gezien.add(pad);
+
     const inhoud = lees(pad);
     if (inhoud === null) {
       // Een import die nergens heen wijst. Hier niet stilzwijgend overslaan:
       // dat is precies het soort gat dat deze controle moet vinden.
-      gezien.add(pad);
       continue;
     }
 
-    gezien.add(pad);
-
-    for (const treffer of inhoud.matchAll(/from\s+'(\.[^']+)'/g)) {
-      wachtrij.push(normalize(join(dirname(pad), treffer[1])).replace(/\\/g, '/'));
+    for (const specifier of waardeImports(inhoud)) {
+      wachtrij.push(normalize(join(dirname(pad), specifier)).replace(/\\/g, '/'));
     }
   }
 
@@ -138,6 +217,39 @@ export function vergelijk(verwacht, gevonden) {
  */
 export function leesbaar(gevonden) {
   return gevonden.length > 0;
+}
+
+/**
+ * Wat er te zeggen valt over een werkboom die niet schoon is.
+ *
+ * ⚠️ **Dit is de belangrijkste waarschuwing van het hele script, en hij ontbrak
+ *    in de eerste versie.** De controle vergelijkt de deploy met de bestanden
+ *    zoals ze op schijf liggen — niet met een commit. Ligt er ongecommit werk
+ *    onder `supabase/functions/`, dan betekent groen alleen "gelijk aan wat er
+ *    bij mij op schijf staat" en niet "gelijk aan wat er in de repo staat".
+ *
+ *    Dat is geen theoretisch geval. De drift van 26-08-2026 ontstond doordat er
+ *    vanuit een werkboom gedeployd werd, en bij de eerste echte run van deze
+ *    controle was diezelfde werkboom nog steeds niet schoon — dus stond er
+ *    groen bij twee functies die code draaiden die op `main` niet bestond.
+ *    Groen zonder deze regel eronder is precies het verkeerde antwoord.
+ *
+ * Geeft `null` als er niets aan de hand is.
+ */
+export function werkboomWaarschuwing(gitStatus) {
+  const regels = gitStatus
+    .split('\n')
+    .map((regel) => regel.trim())
+    .filter((regel) => regel !== '');
+
+  if (regels.length === 0) return null;
+
+  return [
+    `⚠️ ${regels.length} ongecommitte wijziging(en) onder supabase/functions/.`,
+    '   Groen betekent hieronder alleen: gelijk aan wat er bij jou op schijf',
+    '   staat. Niet: gelijk aan wat er in de repo staat. Commit eerst, en',
+    '   deploy nooit vanaf een werkboom — dat was de fout van 26-08-2026.',
+  ].join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -201,6 +313,25 @@ async function haalBundel(ref, token, slug) {
   return naarTekst(Buffer.from(await antwoord.arrayBuffer()));
 }
 
+/**
+ * De ongecommitte wijzigingen onder `supabase/functions/`, of een lege string.
+ *
+ * ⚠️ Geeft leeg terug als git er niet is of dit geen repo is. Dat is de
+ *    conservatieve kant op: liever geen waarschuwing dan een script dat omvalt
+ *    op een machine zonder git.
+ */
+function gitStatusVanFuncties() {
+  try {
+    return execFileSync('git', ['status', '--porcelain', '--', 'supabase/functions'], {
+      cwd: WORTEL,
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+  } catch {
+    return '';
+  }
+}
+
 function leesUitRepo(pad) {
   try {
     return readFileSync(join(WORTEL, 'supabase', pad), 'utf8');
@@ -228,7 +359,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`  · project    ${ref}\n`);
+  console.log(`  · project    ${ref}`);
+
+  // ⚠️ Vóór de vergelijking en niet erna. Wie de uitkomst leest zonder deze
+  //    regel gezien te hebben, leest hem verkeerd.
+  const waarschuwing = werkboomWaarschuwing(gitStatusVanFuncties());
+  console.log(waarschuwing === null ? '  · werkboom   schoon\n' : `\n${waarschuwing}\n`);
 
   let rood = 0;
   let onleesbaar = 0;

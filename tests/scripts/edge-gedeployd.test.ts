@@ -7,6 +7,9 @@ import {
   modulesInBundel,
   modulesVoor,
   vergelijk,
+  waardeImports,
+  werkboomWaarschuwing,
+  zonderCommentaar,
 } from '../../scripts/edge-gedeployd.mjs';
 
 /**
@@ -33,6 +36,106 @@ import {
 function uitMap(map: Readonly<Record<string, string>>): (pad: string) => string | null {
   return (pad) => map[pad] ?? null;
 }
+
+describe('waardeImports — wat het bundelen overleeft', () => {
+  /**
+   * ⚠️ **Dit is de false positive van de eerste run, 26-08-2026.** De controle
+   *    meldde dat `doelcoach` `_shared/time/types.ts` miste. Dat klopte niet:
+   *    doelcoach bereikt die module alleen via `zoned.ts`, en die doet
+   *    `import type { … } from './types.ts'`. Een type-only import wordt bij het
+   *    bundelen volledig geëlimineerd, dus de deploy was correct en de controle
+   *    zat ernaast.
+   *
+   *    `rollover` en `notificaties` liepen er niet op stuk omdat zij `types.ts`
+   *    óók via `cycle.ts` bereiken, en dát bestand doet
+   *    `import { GRACE_HOURS } from './types.ts'`.
+   */
+  it('laat een type-only import vallen', () => {
+    expect(waardeImports("import type { IsoDate } from './types.ts';")).toEqual([]);
+  });
+
+  it('houdt een gewone waarde-import', () => {
+    expect(waardeImports("import { GRACE_HOURS } from './types.ts';")).toEqual(['./types.ts']);
+  });
+
+  /** Eén waarde-specifier is genoeg om de module in de bundel te houden. */
+  it('houdt een import met een type-specifier ernaast', () => {
+    expect(waardeImports("import { meld, type Uitkomst } from './melden.ts';")).toEqual([
+      './melden.ts',
+    ]);
+  });
+
+  it('laat een import vallen waarvan élke specifier type-only is', () => {
+    expect(waardeImports("import { type A, type B } from './x.ts';")).toEqual([]);
+  });
+
+  /**
+   * ⚠️ Een side-effect-import heeft geen specifiers maar blijft wél in de
+   *    bundel. Hem overslaan zou een module opleveren die de bundel draagt en de
+   *    repo niet lijkt te kennen — een alarm zonder oorzaak.
+   */
+  it('houdt een side-effect-import', () => {
+    expect(waardeImports("import './registreer.ts';")).toEqual(['./registreer.ts']);
+  });
+
+  it('houdt een re-export en laat een type-re-export vallen', () => {
+    expect(waardeImports("export { GRACE_HOURS } from './types.ts';")).toEqual(['./types.ts']);
+    expect(waardeImports("export type { Cycle } from './types.ts';")).toEqual([]);
+  });
+
+  it('laat kale specifiers met rust', () => {
+    expect(waardeImports("import { createClient } from 'jsr:@supabase/supabase-js@2';")).toEqual([]);
+  });
+
+  it('leest over meerdere regels', () => {
+    const bron = ['import {', '  berichtVoor,', '  magNudgen,', "} from './regels.ts';'"].join('\n');
+    expect(waardeImports(bron)).toEqual(['./regels.ts']);
+  });
+});
+
+describe('zonderCommentaar', () => {
+  /**
+   * ⚠️ De bestanden in dit project dragen veel commentaar waarin het woord
+   *    `import` gewoon voorkomt. Zonder deze stap telt een zín over een import
+   *    mee als import.
+   */
+  it('telt een import in commentaar niet mee', () => {
+    expect(waardeImports("// import { x } from './nep.ts';")).toEqual([]);
+    expect(waardeImports("/* import { x } from './nep.ts'; */")).toEqual([]);
+  });
+
+  /** ⚠️ `//` zit ook in `https://`. Een regel doormidden knippen mag niet. */
+  it('laat een URL midden op een regel heel', () => {
+    const bron = "const u = 'https://voorbeeld.nl/pad';";
+    expect(zonderCommentaar(bron)).toContain('https://voorbeeld.nl/pad');
+  });
+});
+
+describe('werkboomWaarschuwing', () => {
+  it('zegt niets over een schone werkboom', () => {
+    expect(werkboomWaarschuwing('')).toBeNull();
+    expect(werkboomWaarschuwing('\n  \n')).toBeNull();
+  });
+
+  /**
+   * ⚠️ **De belangrijkste waarschuwing van het script.** De controle vergelijkt
+   *    de deploy met de bestanden op schijf, niet met een commit. Ligt er
+   *    ongecommit werk, dan betekent groen alleen "gelijk aan wat er bij mij op
+   *    schijf staat" — en dat is precies hoe de drift van 26-08 kon ontstaan én
+   *    hoe hij bij de eerste run groen leek.
+   */
+  it('waarschuwt bij ongecommit werk en noemt het aantal', () => {
+    const uit = werkboomWaarschuwing(
+      [' M supabase/functions/doelcoach/index.ts', '?? supabase/functions/_shared/sentry/index.ts'].join(
+        '\n',
+      ),
+    );
+
+    expect(uit).not.toBeNull();
+    expect(uit).toContain('2 ongecommitte');
+    expect(uit).toContain('deploy nooit vanaf een werkboom');
+  });
+});
 
 describe('modulesVoor — wat de repo in een functie zou stoppen', () => {
   it('volgt relatieve imports transitief', () => {
@@ -87,6 +190,41 @@ describe('modulesVoor — wat de repo in een functie zou stoppen', () => {
       1,
     );
     expect(uit).toHaveLength(4);
+  });
+
+  /**
+   * ⚠️ **De echte vorm van 26-08-2026, in het klein.** `doelcoach` bereikt
+   *    `types.ts` alleen via `zoned.ts`, en die importeert hem type-only — dus
+   *    hij hoort er níét bij. `rollover` bereikt hem óók via `cycle.ts`, die
+   *    `GRACE_HOURS` als waarde haalt — dus daar hoort hij er wél bij.
+   *
+   *    Eén graaf, twee antwoorden, en dat is precies waarom deze functie op
+   *    waarde-imports moet lopen en niet op tekstuele treffers.
+   */
+  it('scheidt de twee routes naar dezelfde module', () => {
+    const bestanden = {
+      'functions/doelcoach/index.ts': "import { daysBetween } from '../_shared/time/zoned.ts';",
+      'functions/rollover/index.ts': [
+        "import { userCycle } from '../_shared/time/cycle.ts';",
+        "import type { Weekday } from '../_shared/time/types.ts';",
+      ].join('\n'),
+      'functions/_shared/time/zoned.ts': "import type { IsoDate } from './types.ts';",
+      'functions/_shared/time/cycle.ts': [
+        "import type { Cycle } from './types.ts';",
+        "import { GRACE_HOURS } from './types.ts';",
+        "import { addDays } from './zoned.ts';",
+      ].join('\n'),
+      'functions/_shared/time/types.ts': 'export const GRACE_HOURS = 12;',
+    };
+
+    expect(modulesVoor(uitMap(bestanden), 'functions/doelcoach/index.ts')).toEqual([
+      'functions/_shared/time/zoned.ts',
+      'functions/doelcoach/index.ts',
+    ]);
+
+    expect(modulesVoor(uitMap(bestanden), 'functions/rollover/index.ts')).toContain(
+      'functions/_shared/time/types.ts',
+    );
   });
 
   /** ⚠️ Zonder de `gezien`-set draait dit voor altijd door. */

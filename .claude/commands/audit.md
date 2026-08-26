@@ -187,6 +187,13 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     "alles wijkt af". Dat onderscheid is met opzet: een controle die bij het
     eerste onbekende formaat alles rood maakt, staat binnen een maand uit.
 
+    ⚠️ **Lees de regel over de werkboom vóór je de uitkomst gelooft.** Hij
+    vergelijkt de deploy met de bestanden op schijf, niet met een commit. Is de
+    werkboom niet schoon, dan zegt hij dat, en betekent groen alleen "gelijk aan
+    wat er bij jou op schijf staat". Bij de eerste echte run op 26-08 stond er
+    groen bij twee functies die code draaiden die op `main` niet bestond — de
+    werkboom was toen nog niet gecommit.
+
 18. **Dode ketens** — draai `npm run keten:controle`. Die zoekt twee dingen: een
     functie of trigger die door niets wordt aangeroepen, en een CHECK-waarde die
     door niets ooit geschreven wordt. Tests en scripts tellen daarbij níét als
