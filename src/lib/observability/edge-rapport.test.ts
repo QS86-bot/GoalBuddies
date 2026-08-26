@@ -131,6 +131,41 @@ describe('maakVerzending', () => {
     expect(gebeurtenis.tags).toEqual({ waar: 'doelcoach', runtime: 'deno' });
   });
 
+  /**
+   * ⚠️ **Weglaten en niet verzinnen.** Zonder `SENTRY_ENVIRONMENT` hoort er geen
+   *    `environment` in de gebeurtenis te staan — ook niet `'production'`. Een
+   *    verzonnen waarde maakt een fout uit een proefdeploy niet te onderscheiden
+   *    van een echte, precies op het moment dat je erop vertrouwt.
+   */
+  it('zet de omgeving erin als hij bekend is', () => {
+    const v = maakVerzending(
+      dsn,
+      {
+        id: 'd'.repeat(32),
+        waar: 'rollover',
+        naam: 'Error',
+        melding: 'stuk',
+        context: {},
+        omgeving: 'staging',
+      },
+      NU,
+    );
+
+    const gebeurtenis = JSON.parse(v.body.split('\n')[2] ?? '') as { environment?: string };
+    expect(gebeurtenis.environment).toBe('staging');
+  });
+
+  it('laat het veld weg als de omgeving onbekend is', () => {
+    const v = maakVerzending(
+      dsn,
+      { id: 'e'.repeat(32), waar: 'rollover', naam: 'Error', melding: 'stuk', context: {} },
+      NU,
+    );
+
+    const gebeurtenis = JSON.parse(v.body.split('\n')[2] ?? '') as Record<string, unknown>;
+    expect('environment' in gebeurtenis).toBe(false);
+  });
+
   it('telt de lengte in octetten en niet in tekens', () => {
     const v = maakVerzending(
       dsn,

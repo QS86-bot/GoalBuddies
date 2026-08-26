@@ -39,6 +39,10 @@ export function meld(
 ): Promise<Uitkomst> {
   return meldEdgeFout(fout, waar, {
     dsn: Deno.env.get('SENTRY_DSN'),
+    // ⚠️ Optioneel. Staat hij niet gezet, dan laat `maakVerzending()` het veld
+    //    weg in plaats van 'production' te verzinnen — want dat zou een fout uit
+    //    een proefdeploy niet van een echte te onderscheiden maken.
+    omgeving: Deno.env.get('SENTRY_ENVIRONMENT'),
     nu: new Date(),
     id: crypto.randomUUID(),
     extra,

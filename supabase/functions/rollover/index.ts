@@ -102,6 +102,28 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  // ⚠️ **De hele run in een vangnet, en dat was een gat.** De zachte fouten per
+  //    profiel loggen en melden zoals ze deden — die zijn verwacht en
+  //    afgehandeld. Wat hier gevangen wordt is het ónverwachte: een afgewezen
+  //    rpc, een platformhapering. Dat werd tot 26-08-2026 geruisloos een 500
+  //    zonder enig spoor, en dat is precies het geval waar QS8-24 voor bestaat.
+  //
+  // ⚠️ `await` en niet los laten lopen. Supabase kan een Edge Function bevriezen
+  //    zodra het antwoord verstuurd is; een niet-afgewachte `fetch` wordt dan
+  //    afgekapt en de melding komt nooit aan. Eerst melden, dan antwoorden.
+  try {
+    return await draaiRollover(auth);
+  } catch (fout) {
+    await meld(fout, 'rollover', { code: 'rollover_onverwacht_gestopt' });
+    return new Response(JSON.stringify({ error: 'rollover_onverwacht_gestopt' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function draaiRollover(auth: string): Promise<Response> {
+
 
   const db = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -114,6 +136,11 @@ Deno.serve(async (req: Request) => {
     .select('id, week_start_day, tz');
 
   if (profielFout) {
+    // ⚠️ De melding van Postgres gaat door `scrubMessage()` heen voordat er iets
+    //    verstuurd wordt; een geciteerde waarde uit een constraint blijft hier.
+    await meld(new Error(`profielen ophalen mislukte: ${profielFout.message}`), 'rollover.profielen', {
+      code: 'profielen_ophalen_mislukt',
+    });
     return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
   }
 
@@ -376,4 +403,4 @@ Deno.serve(async (req: Request) => {
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
-});
+}

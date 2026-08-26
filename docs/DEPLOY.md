@@ -599,8 +599,11 @@ in Sentry op te zoeken.
 laat het ingest-adres niet door en geeft 403 — een grens van de werkplek, niet
 van Sentry.
 
-⚠️ **De ingest heeft de envelope nog steeds nooit geaccepteerd**, en dat blijft
-zo tot iemand dit script draait waar het wél kan. Wat op 26-08 met de echte
+⚠️ **De ingest heeft déze envelope nog steeds nooit geaccepteerd**, en dat blijft
+zo tot iemand dit script draait waar het wél kan. Op 26-08 accepteerde hij er
+wél één — maar van de tweede, ongeschoonde implementatie die die dag naast deze
+bleek te bestaan, en die heeft een andere itemkop. Zie
+`docs/decisions/2026-08-26-sentry-in-de-edge-functions.md` §6. Wat op 26-08 met de echte
 sleutel wél is vastgesteld: de DSN wordt goed ontleed (ook een EU-project op
 `ingest.de.sentry.io`) en er gaat niets persoonlijks over de lijn.
 
