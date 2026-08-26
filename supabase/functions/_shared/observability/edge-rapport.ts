@@ -34,11 +34,23 @@
  *    lintregel `no-restricted-syntax` slaat aan op `Date.now()`. Zelfde vorm als
  *    `webpush-crypto.ts`. Het maakt de envelope bovendien toetsbaar.
  *
- * ⚠️ **Wat hier níét geverifieerd is:** de exacte draadvorm tegen een échte
- *    Sentry-ingest. Er is geen account, dus er is nooit een envelope aangekomen.
- *    De vorm volgt de gepubliceerde envelope-specificatie en de tests toetsen
- *    hem regel voor regel — maar dat is iets anders dan een 200 van Sentry.
- *    Staat als zodanig in `docs/ENGINEER-REVIEW.md`.
+ * ⚠️ **Wat er op 26-08-2026 wél en niet geverifieerd is.** Er is sinds die dag
+ *    een DSN, en de envelope is met de échte sleutel gebouwd en verstuurd.
+ *
+ *    | Wat | Stand |
+ *    |---|---|
+ *    | De DSN wordt goed ontleed, ook een EU-project (`ingest.de.sentry.io`) | ✅ |
+ *    | De drie regels, de itemkop en de octetlengte | ✅ op de echte bytes |
+ *    | Er gaat niets persoonlijks over de lijn | ✅ op de echte bytes |
+ *    | De ingest **accepteert** de envelope | ❌ nog steeds niet bewezen |
+ *
+ *    Die laatste kon niet: de omgeving waarin dit gebouwd wordt laat het
+ *    ingest-adres niet door en gaf 403. Dat is een grens van de werkplek en
+ *    niet van Sentry. `npm run sentry:proef` doet precies deze controle vanaf
+ *    een machine die er wél bij kan.
+ *
+ * ⚠️ En juist die 403 legde een gat bloot dat de tests niet konden zien: deze
+ *    laag meldde `'verstuurd'`. Zie de kop van `Vervoer` hieronder.
  */
 import { scrubContext, scrubMessage, scrubStack } from './scrub.ts';
 
@@ -56,7 +68,19 @@ export interface Verzending {
   readonly body: string;
 }
 
-export type Uitkomst = 'verstuurd' | 'geen-dsn' | 'onbruikbare-dsn' | 'mislukt';
+export type Uitkomst =
+  | 'verstuurd'
+  | 'geen-dsn'
+  | 'onbruikbare-dsn'
+  /**
+   * De ingest antwoordde, maar met een foutcode. Een eigen uitkomst en niet
+   * `'mislukt'`, want er is een verschil dat ertoe doet: `'mislukt'` is het
+   * netwerk of onze eigen code, `'geweigerd'` is Sentry die zegt dat er iets
+   * aan het verzoek niet deugt — een verkeerde sleutel, een verkeerd project,
+   * een envelope die hij niet leest.
+   */
+  | 'geweigerd'
+  | 'mislukt';
 
 /** De naam waaronder deze code zich bij Sentry meldt. */
 const CLIENT = 'goalbuddies-edge/1.0.0';
@@ -180,9 +204,19 @@ export function beschrijf(
   return { naam: 'NonError', melding: scrubMessage(String(fout)), context };
 }
 
-/** Waar de verzending heen gaat. Losgetrokken zodat de test hem kan vervangen. */
+/**
+ * Waar de verzending heen gaat. Losgetrokken zodat de test hem kan vervangen.
+ *
+ * ⚠️ **Geeft de HTTP-status terug en niet `void`, en dat was een gat.** `fetch()`
+ *    verwerpt alleen bij een netwerkfout; een 400 of 403 van de ingest is een
+ *    geslaagde belofte. Deze laag meldde daardoor `'verstuurd'` terwijl er niets
+ *    was aangekomen — precies het "stilletjes niet werken" dat de kop hierboven
+ *    erger noemt dan geen DSN. Gevonden op 26-08-2026 door de envelope naar de
+ *    échte ingest te sturen: de proxy van deze omgeving gaf 403, en deze code
+ *    zei tevreden `'verstuurd'`.
+ */
 export interface Vervoer {
-  (verzending: Verzending): Promise<void>;
+  (verzending: Verzending): Promise<number>;
 }
 
 /**
@@ -221,7 +255,16 @@ export async function meldEdgeFout(
     );
 
     const vervoer = opties.vervoer ?? standaardVervoer;
-    await vervoer(verzending);
+    const status = await vervoer(verzending);
+
+    if (status < 200 || status >= 300) {
+      // ⚠️ Wel een spoor achterlaten, om dezelfde reden als bij een onbruikbare
+      //    DSN: een melding die geweigerd wordt en niets zegt, laat je denken
+      //    dat je bewaakt wordt.
+      console.error(`Sentry weigerde de melding: HTTP ${status}.`);
+      return 'geweigerd';
+    }
+
     return 'verstuurd';
   } catch (eigen) {
     // ⚠️ Een kapotte foutrapportage mag geen tweede fout veroorzaken bovenop de
@@ -235,10 +278,15 @@ export async function meldEdgeFout(
 
 /** ⚠️ Elke externe call heeft een timeout — CLAUDE.md, coderegel 14. */
 const standaardVervoer: Vervoer = async (verzending) => {
-  await fetch(verzending.url, {
+  const antwoord = await fetch(verzending.url, {
     method: 'POST',
     headers: verzending.headers,
     body: verzending.body,
     signal: AbortSignal.timeout(5_000),
   });
+
+  // ⚠️ Het antwoord wordt niet gelezen, alleen de status. De ingest geeft een
+  //    `event_id` terug en daar doet deze laag niets mee; de body laten liggen
+  //    scheelt een lezing die toch weggegooid wordt.
+  return antwoord.status;
 };

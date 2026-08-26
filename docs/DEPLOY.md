@@ -549,11 +549,34 @@ een persoonsgegeven is. De naadtest die bewijst dat er niets persoonlijks over d
 lijn gaat, staat in `src/lib/observability/edge-rapport.test.ts` — en die toetst
 wat de sink daadwerkelijk krijgt, niet wat een onderdeel belooft.
 
-⚠️ **Nooit geverifieerd tegen een echte ingest.** Er is geen Sentry-account, dus
-er is nooit een envelope aangekomen. De vorm volgt de envelope-specificatie en
-staat regel voor regel onder test; dat is iets anders dan een 200 van Sentry.
-Controleer bij het zetten van de eerste DSN of er daadwerkelijk een gebeurtenis
-binnenkomt — zie `docs/ENGINEER-REVIEW.md`.
+#### Controleer dat er daadwerkelijk iets aankomt
+
+```bash
+npm run sentry:proef            # bouwt de envelope en verstuurt hem
+npm run sentry:proef -- --droog # alleen bouwen en afdrukken
+```
+
+Het script leest `SENTRY_DSN` uit `.env` of uit de omgeving, bouwt de envelope
+met **de code die de Edge Function zelf draait** (`_shared/observability/`), en
+drukt af wat er over de lijn gaat. De proeffout draagt met opzet een e-mailadres,
+een token, een geciteerde Postgres-waarde en een notitie, dus de run is meteen een
+lekcontrole op de échte bytes. Komt er een 2xx uit, dan noemt hij het event-id om
+in Sentry op te zoeken.
+
+⚠️ **Draai hem vanaf je eigen machine.** De omgeving waarin dit gebouwd wordt
+laat het ingest-adres niet door en geeft 403 — een grens van de werkplek, niet
+van Sentry.
+
+⚠️ **De ingest heeft de envelope nog steeds nooit geaccepteerd**, en dat blijft
+zo tot iemand dit script draait waar het wél kan. Wat op 26-08 met de echte
+sleutel wél is vastgesteld: de DSN wordt goed ontleed (ook een EU-project op
+`ingest.de.sentry.io`) en er gaat niets persoonlijks over de lijn.
+
+⚠️ **En dat ene echte verzoek vond meteen een gat.** `fetch()` verwerpt alleen
+bij een netwerkfout, dus een 403 was een geslaagde belofte en `meldEdgeFout()`
+meldde `'verstuurd'` terwijl er niets aankwam. Sinds 26-08 geeft het vervoer de
+HTTP-status terug en is een niet-2xx een eigen uitkomst `'geweigerd'` met een
+regel in het log. Achttien groene tests zagen dat niet; één echt verzoek wel.
 
 ### De service worker en het manifest — QS8-124
 
