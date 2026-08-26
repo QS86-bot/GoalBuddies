@@ -517,6 +517,38 @@ met een regel in het log — geen storing, wel stilte.
 8030 §7: de gebruiker heeft de toestemming ingetrokken). Elke andere fout laat de
 rij staan; een storing van dit moment mag geen dataverlies worden.
 
+### ⚠️ Controleer dat er draait wat je denkt — QS8-24, 26-08-2026
+
+```bash
+npm run edge:gedeployd
+```
+
+Haalt de gedeployde bundel van elke Edge Function op en legt de modulelijst
+naast wat de repo er transitief in zou stoppen. Vraagt `SUPABASE_ACCESS_TOKEN`
+in `.env` — de personal access token van de Management API, niet de
+service-role-key.
+
+**Waarom dit er is.** Op 26-08-2026 bleek dat alle drie de functies gedeployd
+waren vanuit een lokale werkmap. De gedeployde `notificaties` importeerde
+`_shared/sentry/index.ts`, een module die op `main` niet bestond en op geen
+enkele remote branch stond. Er draaide dus productiecode die niemand kon
+uitchecken — en die de schoonmaaklaag miste waar QS8-24 criterium 3 om draait:
+`fout.message` en `fout.stack` gingen ongeschoond naar Sentry, met in het
+commentaar precies de aanname die op 24-08 al onjuist bleek.
+
+Datzelfde deployde bovendien een `notificaties` van vóór het web-push-werk van
+25-08: één bestemming, en `p256dh` en `auth` werden niet uitgelezen. Een
+VAPID-sleutelpaar kan daar niets mee.
+
+⚠️ **Deployen doe je vanaf een gecommitte tak, nooit vanaf een werkboom.** Dat
+was hier de eigenlijke fout, en hij is niet zichtbaar zolang er niets misgaat.
+
+⚠️ **Wat de controle níét ziet:** dezelfde bestandsnamen met andere inhoud. De
+bundel is een ESZip en de inhoud is er niet betrouwbaar uit te lezen zonder een
+parser die zelf onder test zou moeten staan. Hij vindt een andere bóóm, niet een
+andere regel. Wil je dat laatste ook, dan is een herkomststempel in de deploy —
+het commit-id dat `edge:sync` erin schrijft — de volgende stap.
+
 ### Foutrapportage vanuit de Edge Functions — QS8-24
 
 De drie functies vangen hun fouten af en geven daarna een 200 terug. Dat is
