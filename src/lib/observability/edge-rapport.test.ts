@@ -29,14 +29,23 @@ const DSN = 'https://abc123def456@o4507.ingest.sentry.io/6789';
 const NU = new Date('2026-08-25T16:30:00.000Z');
 const ID = '0f9a1b2c-3d4e-5f60-8a9b-0c1d2e3f4a5b';
 
-/** Vangt op wat er verstuurd zou worden, in plaats van het te versturen. */
-function vanger(): { opgevangen: Verzending[]; vervoer: (v: Verzending) => Promise<void> } {
+/**
+ * Vangt op wat er verstuurd zou worden, in plaats van het te versturen.
+ *
+ * ⚠️ Geeft standaard 200 terug. Sinds 26-08 kijkt `meldEdgeFout()` naar de
+ *    HTTP-status, dus een vervoer dat niets teruggeeft is geen geldig vervoer
+ *    meer — en dat is precies de bedoeling.
+ */
+function vanger(status = 200): {
+  opgevangen: Verzending[];
+  vervoer: (v: Verzending) => Promise<number>;
+} {
   const opgevangen: Verzending[] = [];
   return {
     opgevangen,
     vervoer: (v) => {
       opgevangen.push(v);
-      return Promise.resolve();
+      return Promise.resolve(status);
     },
   };
 }
@@ -225,6 +234,55 @@ describe('meldEdgeFout — de naad', () => {
     expect(lijn).not.toContain('iemand@voorbeeld.nl');
     // De stack gaat wél mee, alleen geschoond.
     expect(lijn).toContain('file:///a.ts');
+  });
+
+  /**
+   * ⚠️ **Dit is het gat dat de tests niet konden zien tot er een echte DSN was.**
+   *    `fetch()` verwerpt alleen bij een netwerkfout; een 400 of 403 van de
+   *    ingest is een geslaagde belofte. Deze laag zei daardoor `'verstuurd'`
+   *    terwijl er niets aankwam — en dat is precies het "stilletjes niet
+   *    werken" dat de kop van het bestand erger noemt dan geen DSN.
+   *
+   *    Gevonden op 26-08-2026 door de envelope met de echte sleutel naar de
+   *    echte ingest te sturen. De proxy van de bouwomgeving gaf 403 en de code
+   *    meldde tevreden dat het gelukt was.
+   */
+  it.each([
+    ['400 — de envelope deugt niet', 400],
+    ['401 — verkeerde sleutel', 401],
+    ['403 — geblokkeerd onderweg', 403],
+    ['429 — over de limiet', 429],
+    ['500 — de ingest is stuk', 500],
+  ])('meldt %s als geweigerd en niet als verstuurd', async (_naam, status) => {
+    const { opgevangen, vervoer } = vanger(status);
+
+    const uitkomst = await meldEdgeFout(new Error('stuk'), 'rollover', {
+      dsn: DSN,
+      nu: NU,
+      id: ID,
+      vervoer,
+    });
+
+    expect(uitkomst).toBe('geweigerd');
+    // Het is wél de deur uit gegaan; hij kwam alleen niet aan.
+    expect(opgevangen).toHaveLength(1);
+  });
+
+  it.each([
+    ['200', 200],
+    ['202 — wat de ingest in de praktijk geeft', 202],
+    ['204', 204],
+  ])('rekent %s als verstuurd', async (_naam, status) => {
+    const { vervoer } = vanger(status);
+
+    const uitkomst = await meldEdgeFout(new Error('stuk'), 'rollover', {
+      dsn: DSN,
+      nu: NU,
+      id: ID,
+      vervoer,
+    });
+
+    expect(uitkomst).toBe('verstuurd');
   });
 
   it('gooit niet als het vervoer omvalt', async () => {
