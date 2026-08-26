@@ -7,6 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { partsIn } from '../_shared/time/zoned.ts';
 import { previousCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
+import { meld } from '../_shared/melden.ts';
 import {
   berichtVoor,
   magNudgen,
@@ -160,6 +161,9 @@ Deno.serve(async (req: Request) => {
           fout instanceof Error ? fout.message : String(fout)
         }`,
       );
+      // ⚠️ De tijdzone gaat niet mee naar buiten: dicht genoeg bij een
+      //    woonplaats om hem niet in een foutdashboard te willen hebben.
+      await meld(fout, 'notificaties.tijdzone', { code: 'tz_onbruikbaar' });
       overgeslagen += 1;
       continue;
     }
@@ -314,6 +318,7 @@ Deno.serve(async (req: Request) => {
           fout instanceof Error ? fout.message : String(fout)
         }`,
       );
+      await meld(fout, 'notificaties.cyclus', { code: 'cyclus_onbepaalbaar', userId: profiel.id });
     }
   }
 
@@ -597,6 +602,9 @@ async function stuurExpo(
     console.error(
       `versturen mislukte voor ${userId}: ${fout instanceof Error ? fout.message : String(fout)}`,
     );
+    // ⚠️ Dit is de stap die de keten van EPIC 11 afmaakt. Valt hij om, dan komt
+    //    er geen enkele melding aan en is er verder geen enkel signaal.
+    await meld(fout, 'notificaties.versturen', { code: 'versturen_mislukt', userId });
     return 0;
   }
 }

@@ -1,14 +1,25 @@
 /**
  * De rand waar fouten de app verlaten.
  *
- * ⚠️ Sentry zelf zit hier nog niet in. `@sentry/react-native` toevoegen is een
- *    nieuwe dependency, en die keuze ligt bij Quinten (CLAUDE.md); bovendien is
- *    `EXPO_PUBLIC_SENTRY_DSN` nog leeg. Zie docs/Q-TODO.md.
+ * ⚠️ Sentry zelf zit hier nog niet in, en waar dat op wacht is veranderd.
+ *    Hier stond dat `@sentry/react-native` toevoegen "een keuze van Quinten" is;
+ *    dat was de oude regel. Sinds 22-08-2026 is een dependency toevoegen een
+ *    afweging die ik zelf maak en in het beslisdocument verantwoord — zie
+ *    CLAUDE.md, *Beslisbevoegdheid*.
+ *
+ *    Wat er wél op Quinten wacht is de DSN: `EXPO_PUBLIC_SENTRY_DSN` is leeg, en
+ *    een Sentry-account is een externe vastlegging (grens 1). Een SDK aansluiten
+ *    op een bestemming die niet bestaat, levert alleen ongetoetste code op.
  *
  *    Wat er wél staat is het deel dat er hoe dan ook moet zijn en dat het
  *    moeilijkst achteraf goed te krijgen is: één aanroeppunt voor de hele app,
  *    en de garantie dat er geen persoonsgegevens uitgaan. Sentry aansluiten is
  *    daarna één implementatie van `ErrorSink` — geen wijziging in schermen.
+ *
+ * ⚠️ **De Edge Functions melden sinds 25-08 wél**, via `edge-rapport.ts` hier
+ *    ernaast. Die heeft geen SDK nodig — hij bouwt de envelope zelf — en gebruikt
+ *    dezelfde `scrub.ts`, zodat de app en de jobs niet uit elkaar kunnen lopen
+ *    over wat een persoonsgegeven is. Zie QS8-24 criterium 4.
  */
 import { clientEnv } from '../env';
 

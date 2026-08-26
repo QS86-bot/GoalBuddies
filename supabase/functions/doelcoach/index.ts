@@ -3,6 +3,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 // ⚠️ Uit de gegenereerde kopie van `shared/time` (`npm run edge:sync`), niet met
 //    de hand gerekend. Correctheidsregel 7 geldt ook hier.
 import { daysBetween, localDateIn } from '../_shared/time/zoned.ts';
+import { meld } from '../_shared/melden.ts';
 
 /**
  * De Doelcoach — QS8-38, met de poort van QS8-42 ervoor.
@@ -408,6 +409,13 @@ Deno.serve(async (verzoek: Request) => {
     return json({ ok: true, job_id: job.id }, 200);
   } catch (fout) {
     const melding = fout instanceof Error ? fout.message : 'onbekende fout';
+
+    // ⚠️ Melden vóór het wegschrijven. `ai_jobs.error` houdt de reden vast voor
+    //    wie ernaar zoekt; dit is de kant die iemand vertélt dat er iets is.
+    //    Op 25-08 viel deze functie bij elke aanroep om met een ReferenceError
+    //    en gaf daarna netjes een 200 — precies het geval dat hier hoort te
+    //    piepen. `job.id` is een uuid en geen gebruikerstekst.
+    await meld(fout, 'doelcoach.job', { code: 'job_failed', jobId: job.id });
 
     // ⚠️ Ook bij een mislukking de kosten boeken als we ze kennen — een call die
     //    halverwege afbreekt is al betaald. Hier weten we ze niet (de fout kwam

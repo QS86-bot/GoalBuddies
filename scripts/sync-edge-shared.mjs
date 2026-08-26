@@ -44,6 +44,18 @@ const SETS = [
     //    omdat daar vitest draait, en hier omdat de Edge Function hem aanroept.
     alleen: ['regels.ts', 'webpush-crypto.ts', 'webpush-verzenden.ts'],
   },
+  {
+    bron: join('src', 'lib', 'observability'),
+    doel: join('supabase', 'functions', '_shared', 'observability'),
+    // ⚠️ `index.ts` blijft hier bewust buiten: die trekt `../env` mee, en dat is
+    //    de clientomgeving. De Edge Function leest zijn DSN uit `Deno.env`.
+    //
+    // ⚠️ `scrub.ts` gaat mee en wordt niet overgeschreven. Een tweede versie van
+    //    de schoonmaakregels is precies de kopie die in dit project al een keer
+    //    geruisloos uit elkaar liep — en hier zou dat betekenen dat de app en de
+    //    jobs een verschillende opvatting hebben van wat een persoonsgegeven is.
+    alleen: ['scrub.ts', 'edge-rapport.ts'],
+  },
 ];
 
 function kop(bron) {
