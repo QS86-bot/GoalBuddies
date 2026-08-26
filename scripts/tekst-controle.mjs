@@ -29,8 +29,10 @@
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, sep } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAPPEN = ['src', 'app'];
@@ -93,31 +95,6 @@ export const OVERSLAAN = [
   /\.test\.tsx?$/,
   /\/database\.types\.ts$/,
 ];
-
-/**
- * Een pad met schuine strepen, ongeacht het platform.
- *
- * ⚠️ **Zonder dit klopt `OVERSLAAN` op Windows niet, en dat is op 26-08-2026
- *    bewezen door de nieuwe `scripts_windows`-job.** `join()` levert daar
- *    `src\\lib\\database.types.ts`, en de uitzonderingen hieronder zijn
- *    geschreven met `/`. Ze matchten dus nóóit: de catalogus in `shared/i18n`
- *    en de gegenereerde `database.types.ts` werden gewoon meegescand, en de
- *    controle meldde tientallen typedeclaraties als onvertaalde UI-tekst.
- *
- *    Op Linux viel dat niet op, want daar klopt `/` toevallig. Twaalf groene
- *    CI-runs hebben deze fout niet gezien; de eerste Windows-run wél.
- *
- * ⚠️ Dezelfde vorm die `deploy-web.mjs` al gebruikt (`.split(sep).join('/')`)
- *    vóórdat hij zijn paden aan een regex met `/` voert. Het huispatroon stond
- *    er dus; dit bestand volgde het niet.
- */
-export function metSchuineStrepen(pad) {
-  // ⚠️ Béide, en niet alleen `sep`. Met alleen `sep` is deze functie op Linux
-  //    een no-op voor een Windows-pad, en dan is elke test die het geval wil
-  //    nabootsen groen zonder iets te bewijzen — hij normaliseert dan een pad
-  //    dat al genormaliseerd is. Precies vraag 3 uit regel 18.
-  return pad.split(sep).join('/').replace(/\\/g, '/');
-}
 
 function bestanden(map) {
   const gevonden = [];

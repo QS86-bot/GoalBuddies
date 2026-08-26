@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als
 //    `migratieregister.test.ts`. TypeScript leest de JSDoc ernaast.
-import { metSchuineStrepen, OVERSLAAN, treffersIn } from '../../scripts/tekst-controle.mjs';
+import { metSchuineStrepen } from '../../scripts/paden.mjs';
+import { OVERSLAAN, treffersIn } from '../../scripts/tekst-controle.mjs';
 
 /**
  * QS8-115 — de controle die hardgecodeerde UI-tekst moet vinden.
