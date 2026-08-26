@@ -38,7 +38,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
    **QS8-124**, en de PWA eromheen is getoetst (**QS8-117**). **Niemand heeft nog
    een echte melding ontvangen** — dat vraagt een VAPID-sleutelpaar in `.env`, en
-   op iOS een fysiek toestel.
+   op iOS een fysiek toestel. Maken doe je het met `npm run vapid:genereer`,
+   nakijken met `npm run vapid:controle` (zie `docs/DEPLOY.md` §6).
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
    gratis, gegrendeld in 0066. Zie §2.
