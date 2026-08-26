@@ -407,6 +407,12 @@ jobs:
       #    eindigde `npm run deploy` op Windows stil met exit 0, en dat is een
       #    deploy die zegt dat hij gelukt is terwijl er niets gebeurd is.
       - name: De deploy komt aan het woord
+        # ⚠️ `always()`, want anders verbergt één fout de andere. In de eerste
+        #    echte run viel de stap hierboven om op `tekst-controle` en werd deze
+        #    overgeslagen — en dan weet je na een rode job nog steeds niet of de
+        #    deploy op Windows aan het woord komt. Bij een controle die juist de
+        #    stille gevallen moet vinden, is dat het verkeerde gedrag.
+        if: always()
         run: |
           set +e
           uitvoer="$(node scripts/deploy-web.mjs --droog 2>&1)"
