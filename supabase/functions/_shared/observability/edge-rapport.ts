@@ -136,6 +136,14 @@ export function maakVerzending(
     readonly melding: string;
     readonly stack?: string | undefined;
     readonly context: Readonly<Record<string, unknown>>;
+    /**
+     * ⚠️ De omgeving waarin dit draait, als hij gezet is. Zonder dit veld gooit
+     *    Sentry alles op één hoop en is een fout uit een proefdeploy niet van
+     *    een echte te onderscheiden — precies op het moment dat je erop
+     *    vertrouwt. Komt uit `SENTRY_ENVIRONMENT`; ontbreekt hij, dan laat deze
+     *    laag het veld weg in plaats van iets te verzinnen.
+     */
+    readonly omgeving?: string | undefined;
   },
   nu: Date,
 ): Verzending {
@@ -148,6 +156,7 @@ export function maakVerzending(
     level: 'error',
     logger: gegevens.waar,
     server_name: 'edge',
+    ...(gegevens.omgeving === undefined ? {} : { environment: gegevens.omgeving }),
     exception: {
       values: [{ type: gegevens.naam, value: gegevens.melding }],
     },
@@ -222,8 +231,16 @@ export interface Vervoer {
 /**
  * Meldt een fout vanuit een Edge Function. Gooit zelf nooit.
  *
- * ⚠️ Geen `await` op de aanroepkant nodig, maar wel mogelijk. De rollover draait
- *    per uur en heeft de tijd; een verzoekpad dat op een gebruiker wacht niet.
+ * ⚠️ **De aanroepkant hoort te `await`-en, en dat is geen stijlkeuze.** Supabase
+ *    kan een Edge Function bevriezen zodra het antwoord verstuurd is; een
+ *    `fetch` die dan nog loopt, wordt afgekapt en de melding komt nooit aan.
+ *    Eerst melden, dan antwoorden.
+ *
+ *    Hier stond tot 26-08-2026 het tegenovergestelde — "geen `await` nodig" —
+ *    terwijl alle vijf de aanroepen het wél deden. De code klopte dus, maar het
+ *    commentaar nodigde uit tot de fout. Gevonden in de tweede
+ *    Sentry-implementatie die dezelfde dag naast deze bleek te bestaan; dat is
+ *    het enige goede dat een dubbele implementatie oplevert.
  */
 export async function meldEdgeFout(
   fout: unknown,
@@ -233,6 +250,7 @@ export async function meldEdgeFout(
     readonly nu: Date;
     readonly id: string;
     readonly extra?: Readonly<Record<string, unknown>>;
+    readonly omgeving?: string | undefined;
     readonly vervoer?: Vervoer;
   },
 ): Promise<Uitkomst> {
@@ -250,7 +268,7 @@ export async function meldEdgeFout(
     const beschrijving = beschrijf(fout, opties.extra ?? {});
     const verzending = maakVerzending(
       ontleed,
-      { id: gebeurtenisId(opties.id), waar, ...beschrijving },
+      { id: gebeurtenisId(opties.id), waar, omgeving: opties.omgeving, ...beschrijving },
       opties.nu,
     );
 
