@@ -27,6 +27,19 @@ const clientSchema = z.object({
     .min(1, { error: 'EXPO_PUBLIC_SUPABASE_ANON_KEY ontbreekt' }),
   sentryDsn: z.string().optional(),
   appUrl: z.url({ error: 'EXPO_PUBLIC_APP_URL is geen URL' }),
+  /**
+   * De publieke VAPID-sleutel, `applicationServerKey` voor web-push (QS8-114).
+   *
+   * ⚠️ Optioneel en met opzet. Ontbreekt hij, dan zet de web-pushbron zichzelf
+   *    uit en gaat er verder niets stuk — dezelfde gedegradeerde route als
+   *    `geenPush`. Een app die bij het opstarten omvalt omdat er geen meldingen
+   *    zijn, is erger dan een app zonder meldingen. Op native is hij sowieso
+   *    niet nodig.
+   *
+   * ⚠️ Deze regel is ook de reden dat Expo de variabele in de bundel bakt: alleen
+   *    een `EXPO_PUBLIC_`-var die letterlijk in de code voorkomt, wordt ingelezen.
+   */
+  vapidPublicKey: z.string().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientSchema>;
@@ -41,6 +54,7 @@ export function clientEnv(): ClientEnv {
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     appUrl: process.env.EXPO_PUBLIC_APP_URL ?? STANDAARD_APP_URL,
+    vapidPublicKey: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY,
   });
 
   if (!parsed.success) {

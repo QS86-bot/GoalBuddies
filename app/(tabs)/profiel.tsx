@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import {
   signOut,
@@ -9,6 +9,13 @@ import {
   type Profiel as ProfielRij,
 } from '@/modules/auth';
 import { fetchBuddyBijdrage } from '@/modules/completions';
+import {
+  huidigeWebPushStand,
+  zetWebPushAan,
+  zetWebPushUit,
+  type WebPushStand,
+} from '@/modules/notifications';
+import { huidigInstallatieadvies } from '@/shared/pwa';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import type { Weekday } from '@/shared/time';
 import {
@@ -96,6 +103,8 @@ export default function Profiel() {
             <ThemaKeuze />
 
             <VieringKeuze />
+
+            <MeldingenKeuze userId={p.id} />
 
             <Card nested>
               <Subheading>Uitloggen</Subheading>
@@ -324,6 +333,101 @@ function VieringKeuze() {
         Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst
         blijft dan gewoon staan.
       </Caption>
+    </Card>
+  );
+}
+
+/**
+ * Meldingen aan- of uitzetten — QS8-114, de client-kant van web-push.
+ *
+ * ⚠️ Alleen web. Op native regelt straks `expo-notifications` de toestemming; tot
+ *    die er is, toont deze kaart niets buiten de browser.
+ *
+ * ⚠️ De prompt zit hier en niet bij het opstarten, met opzet. Een browser straft
+ *    een permissieverzoek zonder gebruikersgebaar af, en een verzoek zonder
+ *    context wordt sowieso weggeklikt. Hier weet de gebruiker waar hij ja tegen
+ *    zegt. Zie docs/decisions/2026-08-26-web-push-toestemming.md.
+ *
+ * ⚠️ Op de iPhone levert Safari web-push alléén aan een geïnstalleerde PWA. Zolang
+ *    de app in een gewoon tabblad draait, is "aanzetten" zinloos — dan komt eerst
+ *    de uitleg om hem op het beginscherm te zetten (QS8-117). Precies de plek waar
+ *    dat advies volgens `installatie.ts` thuishoort.
+ */
+function MeldingenKeuze({ userId }: { readonly userId: string }) {
+  // Synchroon te lezen, dus meteen als beginwaarde en niet via een effect. Deze
+  // kaart hangt binnen `AsyncView` en verschijnt pas ná de client-fetch van het
+  // profiel, dus er is geen server-render om mee te botsen. Op native leest hij
+  // niets en blijft `null`; de Platform-poort hieronder toont dan sowieso niets.
+  const [stand, setStand] = useState<WebPushStand | null>(() =>
+    Platform.OS === 'web' ? huidigeWebPushStand() : null,
+  );
+  const [bezig, setBezig] = useState<'aan' | 'uit' | null>(null);
+
+  if (Platform.OS !== 'web' || stand === null) return null;
+
+  const advies = huidigInstallatieadvies();
+  if (advies !== 'verbergen') {
+    return (
+      <Card>
+        <Subheading>Meldingen</Subheading>
+        <Body muted>
+          {advies === 'toon-beginscherm-uitleg'
+            ? 'Zet GoalBuddies eerst op je beginscherm — tik op Deel en kies “Zet op beginscherm”. Daarna kun je hier meldingen aanzetten. Op de iPhone werkt dit alleen vanaf het beginscherm.'
+            : 'Open GoalBuddies in Safari om meldingen te kunnen aanzetten. Andere browsers op de iPhone kunnen geen meldingen ontvangen.'}
+        </Body>
+      </Card>
+    );
+  }
+
+  async function aan() {
+    setBezig('aan');
+    setStand(await zetWebPushAan(userId));
+    setBezig(null);
+  }
+
+  async function uit() {
+    setBezig('uit');
+    setStand(await zetWebPushUit());
+    setBezig(null);
+  }
+
+  return (
+    <Card>
+      <Subheading>Meldingen</Subheading>
+      <Body muted>
+        Een melding als een buddy je week bevestigt of je ergens op wacht. Nooit over een
+        gemiste week van iemand anders.
+      </Body>
+
+      {stand === 'niet-ondersteund' ? (
+        <Caption>Deze browser ondersteunt geen meldingen.</Caption>
+      ) : stand === 'geblokkeerd' ? (
+        <Caption>
+          Je hebt meldingen geblokkeerd. Zet ze weer aan in de instellingen van je browser,
+          dan kun je ze hier inschakelen.
+        </Caption>
+      ) : (
+        <View style={styles.keuzes}>
+          <Button
+            variant={stand === 'aan' ? 'primair' : 'secundair'}
+            busy={bezig === 'aan'}
+            disabled={bezig !== null || stand === 'aan'}
+            onPress={() => void aan()}
+            accessibilityLabel="Meldingen aanzetten"
+          >
+            Aan
+          </Button>
+          <Button
+            variant={stand === 'aan' ? 'secundair' : 'primair'}
+            busy={bezig === 'uit'}
+            disabled={bezig !== null || stand === 'uit'}
+            onPress={() => void uit()}
+            accessibilityLabel="Meldingen uitzetten"
+          >
+            Uit
+          </Button>
+        </View>
+      )}
     </Card>
   );
 }

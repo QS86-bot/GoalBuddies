@@ -24,6 +24,14 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync, statSync } from 'n
 import { join } from 'node:path';
 import process from 'node:process';
 
+// ⚠️ `--check` (via `npm run edge:controle`) schrijft niets: het rekent uit wat
+//    `edge:sync` zóu wegschrijven en vergelijkt dat met wat er nu op schijf
+//    staat. Zo kan de controle per definitie niet uit de pas lopen met de sync —
+//    het is dezelfde generatorcode. Groen = de gedeployde kopieën kloppen met
+//    `src/`; rood = draai `npm run edge:sync` en commit het verschil vóór je
+//    deployt. Dit is de "moet groen zijn vóór je deployt"-stap uit de runbook.
+const CONTROLE = process.argv.includes('--check');
+
 /** Wat er gekopieerd wordt, en waarheen. */
 const SETS = [
   { bron: join('src', 'shared', 'time'), doel: join('supabase', 'functions', '_shared', 'time') },
@@ -56,6 +64,7 @@ function kop(bron) {
 }
 
 let totaal = 0;
+const afwijkingen = [];
 
 for (const set of SETS) {
   if (!bestaat(set.bron)) {
@@ -63,7 +72,7 @@ for (const set of SETS) {
     process.exit(1);
   }
 
-  mkdirSync(set.doel, { recursive: true });
+  if (!CONTROLE) mkdirSync(set.doel, { recursive: true });
 
   const bestanden = readdirSync(set.bron).filter((naam) => {
     if (!naam.endsWith('.ts') || naam.endsWith('.test.ts')) return false;
@@ -88,11 +97,31 @@ for (const set of SETS) {
       (_treffer, module) => `from './${module}.ts'`,
     );
 
-    writeFileSync(join(set.doel, naam), kop(set.bron) + metExtensies);
+    const doelpad = join(set.doel, naam);
+    const verwacht = kop(set.bron) + metExtensies;
+
+    if (CONTROLE) {
+      const huidig = lees(doelpad);
+      if (huidig === null) afwijkingen.push(`${doelpad} ontbreekt — draai edge:sync`);
+      else if (huidig !== verwacht) afwijkingen.push(`${doelpad} loopt achter op ${join(set.bron, naam)}`);
+    } else {
+      writeFileSync(doelpad, verwacht);
+    }
     totaal += 1;
   }
 
-  console.log(`  ✓ ${bestanden.length} bestanden gekopieerd naar ${set.doel}`);
+  if (!CONTROLE) console.log(`  ✓ ${bestanden.length} bestanden gekopieerd naar ${set.doel}`);
+}
+
+if (CONTROLE) {
+  if (afwijkingen.length > 0) {
+    console.error(`  ✗ ${afwijkingen.length} kopie(ën) niet in sync met src/:`);
+    for (const regel of afwijkingen) console.error(`    - ${regel}`);
+    console.error('  → Draai `npm run edge:sync` en commit het verschil vóór je deployt.');
+    process.exit(1);
+  }
+  console.log(`  ✓ Alle ${totaal} gedeelde kopieën in sync met src/`);
+  process.exit(0);
 }
 
 function bestaat(pad) {
@@ -100,6 +129,14 @@ function bestaat(pad) {
     return statSync(pad).isDirectory();
   } catch {
     return false;
+  }
+}
+
+function lees(pad) {
+  try {
+    return readFileSync(pad, 'utf8');
+  } catch {
+    return null;
   }
 }
 

@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { isOnboarded, ProfielProvider, SessionProvider, useProfiel, useSession } from '@/modules/auth';
@@ -10,7 +10,7 @@ import {
   openstaandeUitnodiging,
   vergeetOpenstaandeUitnodiging,
 } from '@/modules/buddies';
-import { registreerPushToken } from '@/modules/notifications';
+import { registreerPushToken, webPushBron, zetPushBron } from '@/modules/notifications';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -65,11 +65,16 @@ function Shell() {
  *    Op een gedeeld apparaat is dat precies goed: zonder dit blijft de vorige
  *    gebruiker meldingen krijgen op een telefoon waar hij niet meer op zit.
  *
- * ⚠️ **Doet vandaag niets**, en dat is bekend. `expo-notifications` staat nog
- *    niet in `package.json` — een dependency vraagt eerst toestemming
- *    (Q-TODO B4) — dus `geenPush` geeft `null` terug en er wordt niets
- *    weggeschreven. De rest van de keten (tabel, job, workflow) staat wél. Zodra
- *    de bibliotheek er mag komen, is het één `zetPushBron(...)` hier.
+ * ⚠️ **Op web werkt dit sinds QS8-114**, via `webPushBron`. Die abonneert alleen
+ *    als de gebruiker eerder toestemming gaf; deed hij dat niet, dan geeft de bron
+ *    `null` en gebeurt er hier niets — geen prompt bij het opstarten. De prompt
+ *    zit op het profielscherm, achter een knop.
+ *
+ * ⚠️ **Op native doet dit nog niets**, en dat is bekend. `expo-notifications`
+ *    staat nog niet in `package.json` — een dependency vraagt eerst toestemming
+ *    (Q-TODO B4) — dus daar geeft `geenPush` `null` terug. De rest van de keten
+ *    (tabel, job, workflow) staat wél. Zodra de bibliotheek er mag komen, is het
+ *    één `zetPushBron(...)` erbij, net als hier voor web.
  */
 function Pushwacht() {
   const { session } = useSession();
@@ -77,6 +82,11 @@ function Pushwacht() {
 
   useEffect(() => {
     if (userId === null) return;
+
+    // Op web is de browser-pushbron de juiste; op native blijft het `geenPush`
+    // tot `expo-notifications` er is. Idempotent, dus bij elke sessiewissel opnieuw
+    // zetten kan geen kwaad.
+    if (Platform.OS === 'web') zetPushBron(webPushBron);
 
     // Bewust niet awaiten en bewust stil: geen enkel scherm hangt hiervan af,
     // en de datalaag meldt een fout al via `reportError`.
