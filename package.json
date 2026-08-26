@@ -19,7 +19,8 @@
     "edge:sync": "node scripts/sync-edge-shared.mjs",
     "edge:controle": "node scripts/sync-edge-shared.mjs --check",
     "db:push": "npm run db:dump && supabase db push",
-    "sentry:proef": "node scripts/sentry-proef.mjs"
+    "sentry:proef": "node scripts/sentry-proef.mjs",
+    "vapid:genereer": "node scripts/vapid-genereer.mjs"
   },
   "engines": {
     "node": ">=20"
