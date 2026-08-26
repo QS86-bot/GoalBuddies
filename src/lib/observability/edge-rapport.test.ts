@@ -93,7 +93,7 @@ describe('maakVerzending', () => {
   it('richt zich op het envelope-eindpunt van het project', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'a'.repeat(32), waar: 'rollover', naam: 'Error', melding: 'stuk', context: {} },
+      { id: 'a'.repeat(32), waar: 'rollover', runtime: 'deno', server: 'edge', naam: 'Error', melding: 'stuk', context: {} },
       NU,
     );
 
@@ -106,7 +106,7 @@ describe('maakVerzending', () => {
   it('bouwt drie regels: kop, itemkop en de gebeurtenis', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'b'.repeat(32), waar: 'doelcoach', naam: 'TypeError', melding: 'db is niet gedefinieerd', context: { code: '42501' } },
+      { id: 'b'.repeat(32), waar: 'doelcoach', runtime: 'deno', server: 'edge', naam: 'TypeError', melding: 'db is niet gedefinieerd', context: { code: '42501' } },
       NU,
     );
 
@@ -147,6 +147,8 @@ describe('maakVerzending', () => {
       {
         id: 'd'.repeat(32),
         waar: 'rollover',
+        runtime: 'deno',
+        server: 'edge',
         naam: 'Error',
         melding: 'stuk',
         context: {},
@@ -162,7 +164,7 @@ describe('maakVerzending', () => {
   it('laat het veld weg als de omgeving onbekend is', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'e'.repeat(32), waar: 'rollover', naam: 'Error', melding: 'stuk', context: {} },
+      { id: 'e'.repeat(32), waar: 'rollover', runtime: 'deno', server: 'edge', naam: 'Error', melding: 'stuk', context: {} },
       NU,
     );
 
@@ -173,7 +175,7 @@ describe('maakVerzending', () => {
   it('telt de lengte in octetten en niet in tekens', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'c'.repeat(32), waar: 'x', naam: 'Error', melding: 'één café — 😀', context: {} },
+      { id: 'c'.repeat(32), waar: 'x', runtime: 'deno', server: 'edge', naam: 'Error', melding: 'één café — 😀', context: {} },
       NU,
     );
 

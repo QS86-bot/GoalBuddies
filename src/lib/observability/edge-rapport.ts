@@ -139,6 +139,26 @@ export function maakVerzending(
      *    laag het veld weg in plaats van iets te verzinnen.
      */
     readonly omgeving?: string | undefined;
+    /**
+     * Waar deze code draait: `deno` voor een Edge Function, `web` of `ios` of
+     * `android` voor de app. Wordt een tag in Sentry.
+     *
+     * ⚠️ **Verplicht en zonder standaardwaarde, met opzet.** Stond hier tot
+     *    26-08-2026 hard op `'deno'`, want er was maar één aanroeper. Zodra de
+     *    app dezelfde envelope ging gebruiken, zou een standaard betekenen dat
+     *    een fout uit de browser zich als Edge Function voordoet — en dat merk
+     *    je pas als je in Sentry naar de verkeerde logs zit te kijken.
+     */
+    readonly runtime: string;
+    /** `server_name` in Sentry: `edge` voor de jobs, `app` voor de client. */
+    readonly server: string;
+    /**
+     * De versie van wat er draait, als hij bekend is. Nodig zodra er source maps
+     * geüpload worden: Sentry koppelt die aan een release.
+     *
+     * ⚠️ Weglaten en niet verzinnen, om dezelfde reden als bij `omgeving`.
+     */
+    readonly release?: string | undefined;
   },
   nu: Date,
 ): Verzending {
@@ -150,12 +170,13 @@ export function maakVerzending(
     platform: 'javascript',
     level: 'error',
     logger: gegevens.waar,
-    server_name: 'edge',
+    server_name: gegevens.server,
     ...(gegevens.omgeving === undefined ? {} : { environment: gegevens.omgeving }),
+    ...(gegevens.release === undefined ? {} : { release: gegevens.release }),
     exception: {
       values: [{ type: gegevens.naam, value: gegevens.melding }],
     },
-    tags: { waar: gegevens.waar, runtime: 'deno' },
+    tags: { waar: gegevens.waar, runtime: gegevens.runtime },
     extra: gegevens.stack === undefined
       ? gegevens.context
       : { ...gegevens.context, stack: gegevens.stack },
@@ -263,7 +284,14 @@ export async function meldEdgeFout(
     const beschrijving = beschrijf(fout, opties.extra ?? {});
     const verzending = maakVerzending(
       ontleed,
-      { id: gebeurtenisId(opties.id), waar, omgeving: opties.omgeving, ...beschrijving },
+      {
+        id: gebeurtenisId(opties.id),
+        waar,
+        omgeving: opties.omgeving,
+        runtime: 'deno',
+        server: 'edge',
+        ...beschrijving,
+      },
       opties.nu,
     );
 

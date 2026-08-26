@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
@@ -18,6 +19,13 @@ import {
   registreerPushToken,
   zetPushBron,
 } from '@/modules/notifications';
+import { clientEnv } from '@/lib/env';
+import {
+  koppelGlobaleFouten,
+  maakSentrySink,
+  reportError,
+  setErrorSink,
+} from '@/lib/observability';
 import { apparaatVoorkeuren, t, taalUitApparaat, zetTaal } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
@@ -95,6 +103,58 @@ function Shell() {
  *    in de server. `expoPush` geeft dan `null` met een reden in het logboek in
  *    plaats van een fout die op een netwerkprobleem lijkt. Zie `docs/DEPLOY.md`.
  */
+/**
+ * De bestemming voor foutmeldingen — QS8-24, criterium 1.
+ *
+ * ⚠️ **Dit ontbrak, en het is de reden dat het criterium openstond.**
+ *    `reportError()` bestond, 34 bestanden riepen hem aan, en `setErrorSink()`
+ *    werd door niets in de productiecode aangeroepen. Elke gemelde fout eindigde
+ *    in `console.error`, op een apparaat dat niemand leest. Elk schakeltje af,
+ *    de keten nergens aangesloten — CLAUDE.md regel 18, vraag 5.
+ *
+ * ⚠️ **Buiten de component, net als `zetPushBron`.** Dit moet vaststaan vóórdat
+ *    het eerste scherm rendert, anders is een fout tijdens die eerste render
+ *    precies de fout die je niet te zien krijgt.
+ *
+ * ⚠️ Zonder DSN blijft de sink `undefined` en valt `reportError()` terug op
+ *    `console.error`. Dat is in ontwikkeling precies wat je wilt zien.
+ */
+setErrorSink(
+  maakSentrySink({
+    dsn: clientEnv().sentryDsn,
+    runtime: Platform.OS,
+    // ⚠️ De versie uit `app.json`, en weglaten als hij er niet is in plaats van
+    //    er iets van te maken. Sentry koppelt source maps aan een release; een
+    //    verzonnen versie koppelt ze aan de verkeerde.
+    release: versieVanDeApp(),
+  }),
+);
+
+/** `goalbuddies@0.1.0`, of `undefined` als de versie onbekend is. */
+function versieVanDeApp(): string | undefined {
+  const versie = Constants.expoConfig?.version;
+  return typeof versie === 'string' && versie !== '' ? `goalbuddies@${versie}` : undefined;
+}
+
+/**
+ * De fouten die niemand opving.
+ *
+ * ⚠️ Zonder dit meldt de app alleen de fouten waarvan iemand al had bedacht dat
+ *    ze konden optreden. Een `TypeError` in een render of een afgewezen `Promise`
+ *    zonder `.catch()` komt nergens terecht — en dat zijn nu juist de gevallen
+ *    waarin je niet weet dat je iets stuk hebt gemaakt.
+ *
+ * ⚠️ Alleen op web, en alleen als er een `window` is. Bij de statische export
+ *    draait deze module in Node, waar `addEventListener` niet bestaat. Op native
+ *    zou dit via `ErrorUtils` gaan; die code is hier niet te toetsen en staat er
+ *    daarom niet — zie de kop van `globale-fouten.ts`.
+ */
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  koppelGlobaleFouten(window, (fout, waar) => {
+    reportError(fout, waar);
+  });
+}
+
 zetPushBron(Platform.OS === 'web' ? maakWebPushBron() : expoPush);
 
 // ⚠️ De taal van het apparaat als startwaarde — QS8-113. Zodra het profiel
