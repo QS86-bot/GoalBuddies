@@ -17,6 +17,7 @@
     "types:db": "node scripts/db-types.mjs",
     "db:dump": "node scripts/db-dump.mjs",
     "edge:sync": "node scripts/sync-edge-shared.mjs",
+    "edge:sync:controle": "node scripts/sync-edge-shared.mjs --check",
     "db:push": "npm run db:dump && supabase db push",
     "deploy": "node scripts/deploy-web.mjs",
     "deploy:droog": "node scripts/deploy-web.mjs --droog",

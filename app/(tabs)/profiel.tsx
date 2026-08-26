@@ -12,7 +12,9 @@ import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
   huidigeMeldingenstand,
   registreerPushToken,
+  verwijderPushToken,
   zetMeldingenAan,
+  zetMeldingenUit,
   type Meldingenstand,
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
@@ -533,6 +535,7 @@ function Meldingen({ userId }: { readonly userId: string }) {
   const [stand, setStand] = useState<Meldingenstand>(() => huidigeMeldingenstand(sleutel));
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+  const [melding, setMelding] = useState<string | null>(null);
 
   if (Platform.OS !== 'web') return null;
 
@@ -555,6 +558,29 @@ function Meldingen({ userId }: { readonly userId: string }) {
     setBezig(false);
   }
 
+  /**
+   * ⚠️ **`stand` wordt hierna met de hand op `uit` gezet en niet opnieuw uit de
+   *    browser gelezen.** De toestemming blijft namelijk `granted` — die kan
+   *    alleen de gebruiker zelf intrekken in zijn browserinstellingen — dus
+   *    `huidigeMeldingenstand()` zou hier `aan` blijven zeggen terwijl er geen
+   *    abonnement meer is. Het scherm zou dan liegen over wat de knop net deed.
+   */
+  async function zetUit() {
+    setBezig(true);
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await zetMeldingenUit(verwijderPushToken);
+    if (uitkomst.ok) {
+      setStand('uit');
+      setMelding(t('profiel.meldingen_uit_gelukt'));
+    } else {
+      setFout(t('profiel.meldingen_uit_mislukt'));
+    }
+
+    setBezig(false);
+  }
+
   return (
     <Card>
       <Subheading>{t('profiel.meldingen')}</Subheading>
@@ -564,6 +590,12 @@ function Meldingen({ userId }: { readonly userId: string }) {
           {t('profiel.meldingen_aanzetten')}
         </Button>
       ) : null}
+      {stand === 'aan' ? (
+        <Button busy={bezig} onPress={() => void zetUit()}>
+          {t('profiel.meldingen_uitzetten')}
+        </Button>
+      ) : null}
+      {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <Beginschermuitleg />
     </Card>

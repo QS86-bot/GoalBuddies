@@ -35,6 +35,7 @@ export {
   meldingenstand,
   SERVICE_WORKER_PAD,
   zetMeldingenAan,
+  zetMeldingenUit,
   type Aanzetresultaat,
   type Meldingenstand,
   type Pushomgeving,

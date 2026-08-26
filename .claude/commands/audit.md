@@ -158,6 +158,21 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     maandenlang op een `db` die daar niet bestaat — élke job mislukte, met HTTP
     200 terug.
 
+17b. **Lopen de gedeelde kopieën gelijk?** — draai `npm run edge:sync:controle`.
+    Die rekent uit wat `edge:sync` zóu wegschrijven en vergelijkt dat met wat er
+    in `supabase/functions/_shared/` staat. Dezelfde generatorcode, dus de
+    controle kan per definitie niet uit de pas lopen met de sync.
+
+    ⚠️ **Dit is de andere helft van 17a.** Die vergelijkt de gedéployde bundel
+    met de repo; deze vergelijkt de gegenereerde kopie met zijn origineel in
+    `src/`. Een kopie die achterloopt is groen bij 17a en rood bij deze — en dat
+    is precies het gat waardoor de app en de jobs met verschillende regels gaan
+    werken.
+
+    ⚠️ Hij heet niet `edge:controle`; die naam is van de tijdmodule-vergelijking
+    hierboven. Het oorspronkelijke voorstel gebruikte hem wél, en dat zou stap 17
+    stilzwijgend hebben vervangen.
+
 17a. **Draait er wat er in de repo staat?** — draai `npm run edge:gedeployd`.
     Die haalt de gedeployde bundel van elke Edge Function op en legt de
     modulelijst naast wat de repo er transitief in zou stoppen. Twee soorten
