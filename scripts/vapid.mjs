@@ -11,8 +11,10 @@
  *    de handleiding. Wie het toch wilde, moest zelf een script schrijven of naar
  *    een pakket van iemand anders grijpen.
  *
- * ⚠️ **Roept de échte functie aan en maakt geen tweede.** Node 22 leest
- *    TypeScript rechtstreeks (`--experimental-strip-types`), dus deze wrapper
+ * ⚠️ **Roept de échte functie aan en maakt geen tweede.** Node leest TypeScript
+ *    rechtstreeks sinds 22.6 (`--experimental-strip-types`) — vandaar dat
+ *    `engines.node` op `>=22.6` staat en niet meer op `>=22`; die ondergrens is
+ *    sinds dit script een eis en geen wens. Deze wrapper
  *    importeert `webpush-crypto.ts` zoals de app hem gebruikt. Een tweede
  *    implementatie van sleutelgeneratie in gewoon JavaScript zou precies de fout
  *    zijn die `supabase/functions/_shared/time/` ons al een keer heeft geleerd:

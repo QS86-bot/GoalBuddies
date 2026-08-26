@@ -47,7 +47,7 @@
     "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.6"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
