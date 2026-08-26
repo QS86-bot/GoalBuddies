@@ -24,8 +24,9 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const WORTEL = new URL('..', import.meta.url).pathname;
+const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
 const DOCUMENTEN = {
   'CLAUDE.md': 'CLAUDE.md',
