@@ -158,6 +158,57 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     maandenlang op een `db` die daar niet bestaat — élke job mislukte, met HTTP
     200 terug.
 
+17b. **Lopen de gedeelde kopieën gelijk?** — draai `npm run edge:sync:controle`.
+    Die rekent uit wat `edge:sync` zóu wegschrijven en vergelijkt dat met wat er
+    in `supabase/functions/_shared/` staat. Dezelfde generatorcode, dus de
+    controle kan per definitie niet uit de pas lopen met de sync.
+
+    ⚠️ **Dit is de andere helft van 17a.** Die vergelijkt de gedéployde bundel
+    met de repo; deze vergelijkt de gegenereerde kopie met zijn origineel in
+    `src/`. Een kopie die achterloopt is groen bij 17a en rood bij deze — en dat
+    is precies het gat waardoor de app en de jobs met verschillende regels gaan
+    werken.
+
+    ⚠️ Hij heet niet `edge:controle`; die naam is van de tijdmodule-vergelijking
+    hierboven. Het oorspronkelijke voorstel gebruikte hem wél, en dat zou stap 17
+    stilzwijgend hebben vervangen.
+
+17a. **Draait er wat er in de repo staat?** — draai `npm run edge:gedeployd`.
+    Die haalt de gedeployde bundel van elke Edge Function op en legt de
+    modulelijst naast wat de repo er transitief in zou stoppen. Twee soorten
+    rood: een module die de deploy mist, en een module die de repo niet kent.
+
+    ⚠️ **Die tweede is waarom deze controle bestaat.** Op 26-08-2026 draaiden
+    alle drie de functies vanuit een lokale werkmap, en de gedeployde
+    `notificaties` importeerde `_shared/sentry/index.ts` — een module die op
+    `main` niet bestond en op geen enkele remote branch stond. Er draaide dus
+    productiecode die niemand kon uitchecken, en die bovendien de schoonmaaklaag
+    miste waar QS8-24 criterium 3 om draait: `fout.message` en `fout.stack`
+    gingen ongeschoond de deur uit. Gevonden door de bundel met de hand op te
+    vragen; niets werd rood.
+
+    ⚠️ **Vraagt `SUPABASE_ACCESS_TOKEN` in `.env`** — de personal access token
+    van de Management API, niet de service-role-key. Zelfde als `auth:urls`.
+    Zonder token stopt hij met uitleg en meldt hij niets; noteer dat dan in de
+    audit in plaats van het over te slaan.
+
+    ⚠️ **Wat hij níét ziet: dezelfde bestandsnamen met andere inhoud.** De
+    bundel is een ESZip en de inhoud is er niet betrouwbaar uit te lezen zonder
+    een parser die zelf onder test zou moeten staan. Deze controle vindt een
+    andere bóóm, niet een andere regel. Wil je dat laatste ook, dan is een
+    herkomststempel in de deploy de volgende stap.
+
+    ⚠️ Kan hij geen enkele bundel lezen, dan zegt hij "formaat onbekend" en niet
+    "alles wijkt af". Dat onderscheid is met opzet: een controle die bij het
+    eerste onbekende formaat alles rood maakt, staat binnen een maand uit.
+
+    ⚠️ **Lees de regel over de werkboom vóór je de uitkomst gelooft.** Hij
+    vergelijkt de deploy met de bestanden op schijf, niet met een commit. Is de
+    werkboom niet schoon, dan zegt hij dat, en betekent groen alleen "gelijk aan
+    wat er bij jou op schijf staat". Bij de eerste echte run op 26-08 stond er
+    groen bij twee functies die code draaiden die op `main` niet bestond — de
+    werkboom was toen nog niet gecommit.
+
 18. **Dode ketens** — draai `npm run keten:controle`. Die zoekt twee dingen: een
     functie of trigger die door niets wordt aangeroepen, en een CHECK-waarde die
     door niets ooit geschreven wordt. Tests en scripts tellen daarbij níét als

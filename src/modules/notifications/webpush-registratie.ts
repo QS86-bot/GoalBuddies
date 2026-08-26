@@ -179,6 +179,55 @@ export async function zetMeldingenAan(sleutel: string | undefined): Promise<Aanz
   }
 }
 
+export type Uitzetresultaat =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reden: 'niet-ondersteund' | 'mislukt' };
+
+/**
+ * Zet meldingen uit: eerst de rij weg, dán het abonnement opzeggen.
+ *
+ * ⚠️ **De volgorde is niet vrij, en andersom lekt hij.** `verwijderPushToken()`
+ *    vraagt de bron om het token, en op web is dat het endpoint van het lévende
+ *    abonnement. Zeg je dat eerst op, dan geeft `haalToken()` `null`, slaat het
+ *    verwijderen over en blijft de rij in `push_tokens` staan. Het gevolg is een
+ *    apparaat dat meldingen blijft krijgen nadat de gebruiker ze uitzette — en
+ *    die meldingen kunnen over zijn week gaan, op een vergrendeld scherm dat
+ *    iemand anders kan meelezen.
+ *
+ * ⚠️ **De toestemming zelf kan de app niet intrekken**, dat kan alleen de
+ *    gebruiker in zijn browser. `uit` betekent hier dus "niet meer geabonneerd"
+ *    en niet "toestemming weg". Daarom blijft aanzetten daarna werken zonder
+ *    nieuwe prompt, en daarom geeft `huidigeMeldingenstand()` na afloop nog
+ *    steeds `aan` — de stand die het scherm toont, komt uit de teruggave van
+ *    deze functie en niet uit de browser.
+ *
+ * ⚠️ **Waarom dit bestond en toch niet werkte.** `verwijderPushToken()` staat er
+ *    sinds EPIC 11 met in zijn eigen kop "hoort bij uitloggen", en werd tot
+ *    26-08-2026 door niets aangeroepen. Elk onderdeel was af en de keten was
+ *    nergens aangesloten — de variant uit CLAUDE.md regel 18, vraag 5, die geen
+ *    enkele test kan vinden omdat er niets kapot is.
+ */
+export async function zetMeldingenUit(
+  verwijderRij: () => Promise<void>,
+): Promise<Uitzetresultaat> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return { ok: false, reden: 'niet-ondersteund' };
+  }
+
+  try {
+    // Eerst de rij, zolang het endpoint nog te lezen is.
+    await verwijderRij();
+
+    const registratie = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_PAD);
+    const abonnement = await registratie?.pushManager.getSubscription();
+    if (abonnement !== undefined && abonnement !== null) await abonnement.unsubscribe();
+
+    return { ok: true };
+  } catch {
+    return { ok: false, reden: 'mislukt' };
+  }
+}
+
 /**
  * De `PushBron` voor het web.
  *

@@ -7,6 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { partsIn } from '../_shared/time/zoned.ts';
 import { previousCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
+import { meld } from '../_shared/melden.ts';
 import {
   berichtVoor,
   magNudgen,
@@ -126,6 +127,27 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ⚠️ **De hele run in een vangnet, en dat was een gat.** De zachte fouten per
+  //    profiel melden zoals ze deden — die zijn verwacht en afgehandeld. Wat
+  //    hier gevangen wordt is het ónverwachte: een afgewezen rpc, een
+  //    platformhapering. Dat werd tot 26-08-2026 geruisloos een 500 zonder enig
+  //    spoor, en dat is precies het geval waar QS8-24 voor bestaat.
+  //
+  // ⚠️ `await` en niet los laten lopen. Supabase kan een Edge Function bevriezen
+  //    zodra het antwoord verstuurd is; een niet-afgewachte `fetch` wordt dan
+  //    afgekapt en de melding komt nooit aan. Eerst melden, dan antwoorden.
+  try {
+    return await draaiNotificaties(auth);
+  } catch (fout) {
+    await meld(fout, 'notificaties', { code: 'notificaties_onverwacht_gestopt' });
+    return new Response(JSON.stringify({ error: 'notificaties_onverwacht_gestopt' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function draaiNotificaties(auth: string): Promise<Response> {
   const db = maakClient(
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
   );
@@ -140,6 +162,12 @@ Deno.serve(async (req: Request) => {
     .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale');
 
   if (profielFout) {
+    // ⚠️ Zie de rollover: de melding van Postgres wordt geschoond voor verzending.
+    await meld(
+      new Error(`profielen ophalen mislukte: ${profielFout.message}`),
+      'notificaties.profielen',
+      { code: 'profielen_ophalen_mislukt' },
+    );
     return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
   }
 
@@ -160,6 +188,9 @@ Deno.serve(async (req: Request) => {
           fout instanceof Error ? fout.message : String(fout)
         }`,
       );
+      // ⚠️ De tijdzone gaat niet mee naar buiten: dicht genoeg bij een
+      //    woonplaats om hem niet in een foutdashboard te willen hebben.
+      await meld(fout, 'notificaties.tijdzone', { code: 'tz_onbruikbaar' });
       overgeslagen += 1;
       continue;
     }
@@ -314,6 +345,7 @@ Deno.serve(async (req: Request) => {
           fout instanceof Error ? fout.message : String(fout)
         }`,
       );
+      await meld(fout, 'notificaties.cyclus', { code: 'cyclus_onbepaalbaar', userId: profiel.id });
     }
   }
 
@@ -327,7 +359,7 @@ Deno.serve(async (req: Request) => {
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
-});
+}
 
 // ---------------------------------------------------------------------------
 // De vragen die de regels stellen
@@ -597,6 +629,9 @@ async function stuurExpo(
     console.error(
       `versturen mislukte voor ${userId}: ${fout instanceof Error ? fout.message : String(fout)}`,
     );
+    // ⚠️ Dit is de stap die de keten van EPIC 11 afmaakt. Valt hij om, dan komt
+    //    er geen enkele melding aan en is er verder geen enkel signaal.
+    await meld(fout, 'notificaties.versturen', { code: 'versturen_mislukt', userId });
     return 0;
   }
 }

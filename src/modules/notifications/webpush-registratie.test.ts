@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   abonnementNaarToken,
   meldingenstand,
+  zetMeldingenUit,
   type Pushomgeving,
   type Webabonnement,
 } from './webpush-registratie';
@@ -126,5 +127,99 @@ describe('abonnementNaarToken', () => {
     ['zonder beide', null, null],
   ])('geeft %s null terug', (_naam, p, a) => {
     expect(abonnementNaarToken(abonnement(p, a))).toBeNull();
+  });
+});
+
+/**
+ * Uitzetten — 26-08-2026.
+ *
+ * ⚠️ **De volgorde ís de test.** `verwijderPushToken()` vraagt de bron om het
+ *    token, en op web is dat het endpoint van het lévende abonnement. Zeg je dat
+ *    eerst op, dan is er niets meer om de rij mee te vinden en blijft hij staan —
+ *    een apparaat dat meldingen blijft krijgen nadat de gebruiker ze uitzette.
+ *    Een test die alleen "beide zijn aangeroepen" toetst, ziet dat niet.
+ *
+ * ⚠️ Deze functie bestond in de app in het geheel niet. `verwijderPushToken()`
+ *    stond er sinds EPIC 11 met "hoort bij uitloggen" in zijn eigen kop en werd
+ *    door niets aangeroepen: elk onderdeel af, de keten nergens aangesloten.
+ */
+describe('zetMeldingenUit', () => {
+  /** Een nep-browser die opschrijft in welke volgorde er iets gebeurde. */
+  function nepBrowser(): { volgorde: string[]; navigator: unknown } {
+    const volgorde: string[] = [];
+
+    return {
+      volgorde,
+      navigator: {
+        serviceWorker: {
+          getRegistration: () =>
+            Promise.resolve({
+              pushManager: {
+                getSubscription: () =>
+                  Promise.resolve({
+                    unsubscribe: () => {
+                      volgorde.push('opgezegd');
+                      return Promise.resolve(true);
+                    },
+                  }),
+              },
+            }),
+        },
+      },
+    };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('verwijdert de rij vóórdat het abonnement opgezegd wordt', async () => {
+    const { volgorde, navigator } = nepBrowser();
+    vi.stubGlobal('navigator', navigator);
+
+    const uitkomst = await zetMeldingenUit(() => {
+      volgorde.push('rij weg');
+      return Promise.resolve();
+    });
+
+    expect(uitkomst).toEqual({ ok: true });
+    expect(volgorde).toEqual(['rij weg', 'opgezegd']);
+  });
+
+  it('zegt niet-ondersteund als de browser geen service worker heeft', async () => {
+    vi.stubGlobal('navigator', {});
+
+    const uitkomst = await zetMeldingenUit(() => Promise.resolve());
+
+    expect(uitkomst).toEqual({ ok: false, reden: 'niet-ondersteund' });
+  });
+
+  /**
+   * ⚠️ Gooien mag niet. Een mislukte opzegging is vervelend, maar een profiel-
+   *    scherm dat omvalt terwijl je een knop indrukt is erger — en de rij is dan
+   *    al weg, dus er komen hoe dan ook geen meldingen meer aan.
+   */
+  it('gooit niet als het opzeggen mislukt', async () => {
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        getRegistration: () => Promise.reject(new Error('geen registratie')),
+      },
+    });
+
+    const uitkomst = await zetMeldingenUit(() => Promise.resolve());
+
+    expect(uitkomst).toEqual({ ok: false, reden: 'mislukt' });
+  });
+
+  /** Geen abonnement meer is geen fout: het doel was dat er geen is. */
+  it('is tevreden als er niets meer op te zeggen valt', async () => {
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        getRegistration: () =>
+          Promise.resolve({ pushManager: { getSubscription: () => Promise.resolve(null) } }),
+      },
+    });
+
+    expect(await zetMeldingenUit(() => Promise.resolve())).toEqual({ ok: true });
   });
 });

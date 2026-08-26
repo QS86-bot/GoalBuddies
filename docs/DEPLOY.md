@@ -28,6 +28,7 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | ⚠️ Omzeilt RLS. Edge Functions en de RLS-testsuite | **server** | nu |
 | `SUPABASE_DB_URL` | Directe verbinding, voor `pg_dump` | **server** | elke migratie |
 | `ANTHROPIC_API_KEY` | De Doelcoach | **server** | EPIC 3 |
+| `SENTRY_DSN` | Foutrapportage vanuit de Edge Functions | **server** | QS8-24 |
 
 ⚠️ **Alles met `EXPO_PUBLIC_` ervoor zit in de bundle die de browser downloadt.**
 Dat is geen instelling maar een eigenschap van Expo. Een secret dat daar per
@@ -542,6 +543,102 @@ alleen dat er geen melding komt. Zie de rij van 26-08 in `docs/ENGINEER-REVIEW.m
 ⚠️ Een abonnement dat 404 of 410 geeft, wordt uit `push_tokens` verwijderd (RFC
 8030 §7: de gebruiker heeft de toestemming ingetrokken). Elke andere fout laat de
 rij staan; een storing van dit moment mag geen dataverlies worden.
+
+### ⚠️ Controleer dat er draait wat je denkt — QS8-24, 26-08-2026
+
+```bash
+npm run edge:gedeployd
+```
+
+Haalt de gedeployde bundel van elke Edge Function op en legt de modulelijst
+naast wat de repo er transitief in zou stoppen. Vraagt `SUPABASE_ACCESS_TOKEN`
+in `.env` — de personal access token van de Management API, niet de
+service-role-key.
+
+**Waarom dit er is.** Op 26-08-2026 bleek dat alle drie de functies gedeployd
+waren vanuit een lokale werkmap. De gedeployde `notificaties` importeerde
+`_shared/sentry/index.ts`, een module die op `main` niet bestond en op geen
+enkele remote branch stond. Er draaide dus productiecode die niemand kon
+uitchecken — en die de schoonmaaklaag miste waar QS8-24 criterium 3 om draait:
+`fout.message` en `fout.stack` gingen ongeschoond naar Sentry, met in het
+commentaar precies de aanname die op 24-08 al onjuist bleek.
+
+Datzelfde deployde bovendien een `notificaties` van vóór het web-push-werk van
+25-08: één bestemming, en `p256dh` en `auth` werden niet uitgelezen. Een
+VAPID-sleutelpaar kan daar niets mee.
+
+⚠️ **Deployen doe je vanaf een gecommitte tak, nooit vanaf een werkboom.** Dat
+was hier de eigenlijke fout, en hij is niet zichtbaar zolang er niets misgaat.
+
+⚠️ **Wat de controle níét ziet:** dezelfde bestandsnamen met andere inhoud. De
+bundel is een ESZip en de inhoud is er niet betrouwbaar uit te lezen zonder een
+parser die zelf onder test zou moeten staan. Hij vindt een andere bóóm, niet een
+andere regel. Wil je dat laatste ook, dan is een herkomststempel in de deploy —
+het commit-id dat `edge:sync` erin schrijft — de volgende stap.
+
+### Foutrapportage vanuit de Edge Functions — QS8-24
+
+De drie functies vangen hun fouten af en geven daarna een 200 terug. Dat is
+bewust: een mislukte job is geen kapotte functie. Het gevolg is dat **niemand het
+merkt** — de Doelcoach schrijft de reden in `ai_jobs.error`, de rollover en de
+notificatiejob roepen `console.error`, en beide plekken leest niemand uit
+zichzelf.
+
+⚠️ Dat is geen theorie. In de reviewronde van 25-08 bleek de Doelcoach bij élke
+aanroep om te vallen met een `ReferenceError`, met HTTP 200 erop. Hoe lang dat al
+zo was, is niet meer vast te stellen.
+
+Zet één variabele en dat is voorbij:
+
+```bash
+npx supabase secrets set SENTRY_DSN='https://<sleutel>@<host>/<project-id>'
+npm run edge:sync && npx supabase functions deploy rollover notificaties doelcoach
+```
+
+**Zonder `SENTRY_DSN` gebeurt er niets.** `meldEdgeFout()` doet dan geen enkele
+netwerkaanroep en geeft `'geen-dsn'` terug; dat is vandaag de toestand en er is
+niets stuk. Een onbruikbare DSN levert één regel in het log op en verder niets —
+stilletjes niet werken zou erger zijn dan geen DSN, want dan denk je dat je
+bewaakt wordt.
+
+⚠️ **Het is dezelfde schoonmaak als in de app, met dezelfde code.** `scrub.ts`
+gaat via `npm run edge:sync` mee naar `_shared/observability/`. Een tweede versie
+zou betekenen dat de app en de jobs een verschillende opvatting krijgen van wat
+een persoonsgegeven is. De naadtest die bewijst dat er niets persoonlijks over de
+lijn gaat, staat in `src/lib/observability/edge-rapport.test.ts` — en die toetst
+wat de sink daadwerkelijk krijgt, niet wat een onderdeel belooft.
+
+#### Controleer dat er daadwerkelijk iets aankomt
+
+```bash
+npm run sentry:proef            # bouwt de envelope en verstuurt hem
+npm run sentry:proef -- --droog # alleen bouwen en afdrukken
+```
+
+Het script leest `SENTRY_DSN` uit `.env` of uit de omgeving, bouwt de envelope
+met **de code die de Edge Function zelf draait** (`_shared/observability/`), en
+drukt af wat er over de lijn gaat. De proeffout draagt met opzet een e-mailadres,
+een token, een geciteerde Postgres-waarde en een notitie, dus de run is meteen een
+lekcontrole op de échte bytes. Komt er een 2xx uit, dan noemt hij het event-id om
+in Sentry op te zoeken.
+
+⚠️ **Draai hem vanaf je eigen machine.** De omgeving waarin dit gebouwd wordt
+laat het ingest-adres niet door en geeft 403 — een grens van de werkplek, niet
+van Sentry.
+
+⚠️ **De ingest heeft déze envelope nog steeds nooit geaccepteerd**, en dat blijft
+zo tot iemand dit script draait waar het wél kan. Op 26-08 accepteerde hij er
+wél één — maar van de tweede, ongeschoonde implementatie die die dag naast deze
+bleek te bestaan, en die heeft een andere itemkop. Zie
+`docs/decisions/2026-08-26-sentry-in-de-edge-functions.md` §6. Wat op 26-08 met de echte
+sleutel wél is vastgesteld: de DSN wordt goed ontleed (ook een EU-project op
+`ingest.de.sentry.io`) en er gaat niets persoonlijks over de lijn.
+
+⚠️ **En dat ene echte verzoek vond meteen een gat.** `fetch()` verwerpt alleen
+bij een netwerkfout, dus een 403 was een geslaagde belofte en `meldEdgeFout()`
+meldde `'verstuurd'` terwijl er niets aankwam. Sinds 26-08 geeft het vervoer de
+HTTP-status terug en is een niet-2xx een eigen uitkomst `'geweigerd'` met een
+regel in het log. Achttien groene tests zagen dat niet; één echt verzoek wel.
 
 ### De service worker en het manifest — QS8-124
 
