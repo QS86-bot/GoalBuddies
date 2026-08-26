@@ -42,7 +42,7 @@ import { execFileSync } from 'node:child_process';
 import { gunzipSync, brotliDecompressSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import process from 'node:process';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -424,7 +424,11 @@ async function main() {
 
 // ⚠️ Alleen draaien als dit bestand het startpunt is. Wordt hij geïmporteerd —
 //    door de test — dan mag er geen netwerkaanroep gebeuren.
-if (process.argv[1] && process.argv[1].endsWith('edge-gedeployd.mjs')) {
+//
+// ⚠️ Via `pathToFileURL` en niet met `endsWith`, want dat is het huispatroon in
+//    vijf andere controlescripts. Een naamvergelijking zou bovendien ook aanslaan
+//    op een bestand dat toevallig zo eindigt.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((fout) => {
     console.error(`  ✗ ${fout instanceof Error ? fout.message : 'onbekende fout'}`);
     process.exit(1);

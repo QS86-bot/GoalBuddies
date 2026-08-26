@@ -31,7 +31,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import process from 'node:process';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -69,7 +69,17 @@ if (dsn === '') {
 
 let rapport;
 try {
-  rapport = await import(KOPIE);
+  // ⚠️ **Een `file://`-URL en niet het kale pad.** Op Windows begint dat pad met
+  //    een stationsletter, en Node's ESM-lader leest `C:` dan als een protocol:
+  //    "Only URLs with a scheme in: file, data, and node are supported. Received
+  //    protocol 'c:'". Op Linux werkt het kale pad wél, dus CI en deze
+  //    ontwikkelomgeving zagen er niets van — het brak pas op de machine waar
+  //    het script juist gedraaid moest worden, op 26-08-2026, bij de allereerste
+  //    echte run.
+  //
+  //    Vijf andere scripts in deze map gebruiken `pathToFileURL` al voor hun
+  //    entrypoint-controle. Het huispatroon was er; dit script volgde het niet.
+  rapport = await import(pathToFileURL(KOPIE).href);
 } catch (fout) {
   console.error(`  ✗ Kon ${KOPIE} niet laden: ${fout instanceof Error ? fout.message : 'onbekend'}`);
   console.error('    Draai `npm run edge:sync` — de kopie voor de Edge Functions ontbreekt of is stuk.');
