@@ -16,6 +16,7 @@ import {
   type Melding,
   type Toon,
 } from '../_shared/notificaties/regels.ts';
+import { meldFout } from '../_shared/sentry/index.ts';
 
 /**
  * De meldingen-job — EPIC 11 (QS8-91) en de dagelijkse nudge (QS8-77).
@@ -83,6 +84,21 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ⚠️ De hele run in een vangnet. De zachte per-profiel fouten (onbruikbare tz,
+  //    mislukte deelquery's) loggen zoals ze deden; wat hier gevangen wordt is
+  //    het onverwachte dat anders geruisloos een 500 werd. Zie de rollover.
+  try {
+    return await draaiNotificaties(auth);
+  } catch (fout) {
+    await meldFout(fout, 'notificaties');
+    return new Response(JSON.stringify({ error: 'notificaties_onverwacht_gestopt' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function draaiNotificaties(auth: string): Promise<Response> {
   const db = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
@@ -99,6 +115,7 @@ Deno.serve(async (req: Request) => {
     .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone');
 
   if (profielFout) {
+    await meldFout(new Error(`profielen ophalen mislukte: ${profielFout.message}`), 'notificaties.profielen');
     return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
   }
 
@@ -264,7 +281,7 @@ Deno.serve(async (req: Request) => {
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
-});
+}
 
 // ---------------------------------------------------------------------------
 // De vragen die de regels stellen

@@ -17,7 +17,8 @@
     "types:db": "node scripts/db-types.mjs",
     "db:dump": "node scripts/db-dump.mjs",
     "edge:sync": "node scripts/sync-edge-shared.mjs",
-    "db:push": "npm run db:dump && supabase db push"
+    "db:push": "npm run db:dump && supabase db push",
+    "sentry:proef": "node scripts/sentry-proef.mjs"
   },
   "engines": {
     "node": ">=20"

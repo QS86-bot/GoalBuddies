@@ -3,6 +3,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 // ⚠️ Uit de gegenereerde kopie van `shared/time` (`npm run edge:sync`), niet met
 //    de hand gerekend. Correctheidsregel 7 geldt ook hier.
 import { daysBetween, localDateIn } from '../_shared/time/zoned.ts';
+import { meldFout } from '../_shared/sentry/index.ts';
 
 /**
  * De Doelcoach — QS8-38, met de poort van QS8-42 ervoor.
@@ -300,11 +301,15 @@ Deno.serve(async (verzoek: Request) => {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
 
   if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+    // Een misconfiguratie van de beheerder — precies wat je in Sentry wilt zien,
+    // want de gebruiker krijgt een 500 zonder dat er een fout ís gegooid.
+    await meldFout(new Error('omgeving_incompleet'), 'doelcoach.config');
     return json({ error: 'omgeving_incompleet' }, 500);
   }
   if (!apiKey) {
     // ⚠️ Expliciet en apart: zonder sleutel is dit een configuratiefout van de
     //    beheerder en geen fout van de gebruiker. Zie docs/DEPLOY.md §1.
+    await meldFout(new Error('anthropic_key_ontbreekt'), 'doelcoach.config');
     return json({ error: 'anthropic_key_ontbreekt' }, 500);
   }
 
@@ -374,6 +379,11 @@ Deno.serve(async (verzoek: Request) => {
     return json({ ok: true, job_id: job.id }, 200);
   } catch (fout) {
     const melding = fout instanceof Error ? fout.message : 'onbekende fout';
+
+    // ⚠️ Naar Sentry vóór we antwoorden, niet erna: de functie wordt daarna
+    //    mogelijk bevroren. Alleen het job-id als context — een UUID, geen
+    //    gebruikerstekst; `job.input` blijft binnen (domeinregel 7).
+    await meldFout(fout, 'doelcoach', { job_id: job.id });
 
     // ⚠️ Ook bij een mislukking de kosten boeken als we ze kennen — een call die
     //    halverwege afbreekt is al betaald. Hier weten we ze niet (de fout kwam

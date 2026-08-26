@@ -6,6 +6,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    de job 's nachts stilvalt.
 import { closableUserCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
+import { meldFout } from '../_shared/sentry/index.ts';
 
 /**
  * De cycle-rollover — QS8-49, en daarmee ook QS8-47 en QS8-51.
@@ -101,6 +102,22 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // ⚠️ De hele run in een vangnet. De zachte fouten per profiel loggen zoals ze
+  //    deden — die zijn verwacht en afgehandeld. Wat hier gevangen wordt is het
+  //    onverwachte: een afgewezen rpc, een platformhapering. Dat werd tot nu toe
+  //    geruisloos een 500 zonder spoor; nu gaat het naar Sentry.
+  try {
+    return await draaiRollover(auth);
+  } catch (fout) {
+    await meldFout(fout, 'rollover');
+    return new Response(JSON.stringify({ error: 'rollover_onverwacht_gestopt' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function draaiRollover(auth: string): Promise<Response> {
   const db = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
@@ -112,6 +129,7 @@ Deno.serve(async (req: Request) => {
     .select('id, week_start_day, tz');
 
   if (profielFout) {
+    await meldFout(new Error(`profielen ophalen mislukte: ${profielFout.message}`), 'rollover.profielen');
     return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
   }
 
@@ -329,4 +347,4 @@ Deno.serve(async (req: Request) => {
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
-});
+}
