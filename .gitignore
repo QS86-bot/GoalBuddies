@@ -37,6 +37,7 @@ backup-*.sql
 
 # tooling
 .firecrawl/
+.gstack/
 .DS_Store
 Thumbs.db
 *.log
