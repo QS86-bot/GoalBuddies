@@ -599,13 +599,15 @@ in Sentry op te zoeken.
 laat het ingest-adres niet door en geeft 403 — een grens van de werkplek, niet
 van Sentry.
 
-⚠️ **De ingest heeft déze envelope nog steeds nooit geaccepteerd**, en dat blijft
-zo tot iemand dit script draait waar het wél kan. Op 26-08 accepteerde hij er
-wél één — maar van de tweede, ongeschoonde implementatie die die dag naast deze
-bleek te bestaan, en die heeft een andere itemkop. Zie
-`docs/decisions/2026-08-26-sentry-in-de-edge-functions.md` §6. Wat op 26-08 met de echte
-sleutel wél is vastgesteld: de DSN wordt goed ontleed (ook een EU-project op
-`ingest.de.sentry.io`) en er gaat niets persoonlijks over de lijn.
+✅ **De ingest heeft déze envelope geaccepteerd — 26-08-2026, HTTP 200**, met
+event-id `4dff823071264594bafc6f4222b40565`. Daarmee is de laatste aanname van dit issue dicht: de
+draadvorm is niet meer beredeneerd maar gemeten, en in dezelfde run is op de
+échte bytes vastgesteld dat er geen e-mailadres, token, geciteerde waarde of
+notitie in zit.
+
+⚠️ **Dat maakt de controle niet overbodig.** Draai hem opnieuw na elke wijziging
+aan de envelope, de DSN of het project — het is de enige stap die het verschil
+ziet tussen "de code lijkt te kloppen" en "er is iets aangekomen".
 
 ⚠️ **En dat ene echte verzoek vond meteen een gat.** `fetch()` verwerpt alleen
 bij een netwerkfout, dus een 403 was een geslaagde belofte en `meldEdgeFout()`
