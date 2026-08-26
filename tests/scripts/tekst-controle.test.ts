@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als
 //    `migratieregister.test.ts`. TypeScript leest de JSDoc ernaast.
-import { treffersIn } from '../../scripts/tekst-controle.mjs';
+import { metSchuineStrepen, OVERSLAAN, treffersIn } from '../../scripts/tekst-controle.mjs';
 
 /**
  * QS8-115 — de controle die hardgecodeerde UI-tekst moet vinden.
@@ -257,3 +257,41 @@ describe('wat de drie nieuwe vormen met rust moeten laten', () => {
   });
 });
 
+/**
+ * De uitzonderingen werken ook op Windows — gevonden op 26-08-2026.
+ *
+ * ⚠️ **Deze bug heeft twaalf groene CI-runs overleefd en is gevonden door de
+ *    eerste run van de `scripts_windows`-job.** `bestanden()` bouwt zijn paden
+ *    met `join()`, dat op Windows `src\lib\database.types.ts` geeft, terwijl
+ *    `OVERSLAAN` met schuine strepen geschreven is. De uitzonderingen matchten
+ *    daar dus nóóit: de catalogus in `shared/i18n` en de gegenereerde
+ *    `database.types.ts` werden meegescand, en de controle meldde tientallen
+ *    typedeclaraties als onvertaalde UI-tekst.
+ *
+ * ⚠️ Dit is de tweede laag van dezelfde les. `tests/scripts/padvormen.test.ts`
+ *    leest of een script kán starten; deze test leest of het het júiste doet
+ *    met een pad dat het op Windows krijgt. Geen van beide had de ander
+ *    gevonden — en alleen de echte runner vond hem in de eerste plaats.
+ */
+describe('paduitzonderingen zijn platformonafhankelijk', () => {
+  it.each([
+    ['de gegenereerde types', 'src\\lib\\database.types.ts'],
+    ['de catalogus', 'src\\shared\\i18n\\nl.ts'],
+    ['een testbestand', 'src\\modules\\goals\\regels.test.ts'],
+  ])('slaat %s over, ook met Windows-scheidingstekens', (_naam, pad) => {
+    // ⚠️ Letterlijke backslashes, en níét omgezet naar `sep`. Op een
+    //    Linux-runner ís `sep` al `/`, dus dan zou deze test een pad voeren dat
+    //    al goed stond en niets bewijzen. Daarom normaliseert
+    //    `metSchuineStrepen()` beide scheidingstekens.
+    expect(OVERSLAAN.some((r: RegExp) => r.test(metSchuineStrepen(pad)))).toBe(true);
+  });
+
+  it.each([
+    ['een gewoon scherm', 'app/(tabs)/profiel.tsx'],
+    ['een module', 'src/modules/goals/regels.ts'],
+  ])('laat %s wél scannen', (_naam, pad) => {
+    // ⚠️ De andere richting. Een uitzonderingenlijst die alles overslaat, is
+    //    een controle die nooit meer iets vindt.
+    expect(OVERSLAAN.some((r: RegExp) => r.test(metSchuineStrepen(pad)))).toBe(false);
+  });
+});
