@@ -1,5 +1,5 @@
 /**
- * QS8-137 / migratie 0101 — de Doelcoach-tip per mijlpaal.
+ * QS8-137 / migratie 0103 — de Doelcoach-tip per mijlpaal.
  *
  * ⚠️ **De naad zit onderaan, en hij is de reden dat deze suite bestaat.** De
  *    zeef op een gegenereerde tip bestaat twee keer: als CHECK-trigger in de
@@ -39,7 +39,7 @@ function uitkomst(data: unknown): { ok?: boolean; reason?: string; hergebruikt?:
   return (data ?? {}) as ReturnType<typeof uitkomst>;
 }
 
-describe.skipIf(!rlsTestsConfigured)('0101 — de Doelcoach-tip per mijlpaal', () => {
+describe.skipIf(!rlsTestsConfigured)('0103 — de Doelcoach-tip per mijlpaal', () => {
   const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
 
   interface Opstelling {

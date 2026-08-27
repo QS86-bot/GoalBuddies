@@ -31,8 +31,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **476 geslaagd, 1 overgeslagen** (27-08, na QS8-57 en QS8-137). Zonder
-   credentials geeft `npm test` **998 geslaagd en 456 overgeslagen**; typecheck
+   **497 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41 en QS8-137).
+   Zonder credentials geeft `npm test` **998 geslaagd en 477 overgeslagen**; typecheck
    en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -87,13 +87,13 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0101`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0103`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
 `approval_withdrawals` (0030), `deadline_requests` (0032), `week_pass_events`
 (0039), `goal_risk` (0050), `push_tokens` en `notifications_sent` (0053),
-`group_events` (0076) en `milestone_tips` (0101) erbij.
+`group_events` (0076) en `milestone_tips` (0103) erbij.
 
 ⚠️ Hier stond tot 24-08-2026 "26 tabellen", en dat klopte al vier migraties niet
 meer — geteld toen `week_review_replies` de laatste was en daarna nooit meer
@@ -195,9 +195,10 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
-- `npm run typecheck` en `lint` staan groen; de tellers staan in §0, regel 4 —
-  hier stonden ze tot 27-08 een tweede keer en liepen ze twee ronden achter, en
-  dat is precies de fout die QS8-125 beschrijft (zie §3b voor de RLS-kant)
+- `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
+  niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
+  bestaat. `tests/rls` telt 30 bestanden; 28 daarvan slaan zonder credentials
+  over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -220,7 +221,7 @@ hoeveel leden deze periode hun cyclus afsloten.
   `ai_jobs.kind` (`weekly_goals`) waarmee de Doelcoach per mijlpaal weekdoelen
   mét vloer en plafond voorstelt. De zeef weigert een voorstel zonder vloer of
   met vloer gelijk aan plafond, want dan is domeinregel 8 een lege huls.
-- **Een Doelcoach-tip per mijlpaal** (QS8-137, migratie `0101`) — één tip per
+- **Een Doelcoach-tip per mijlpaal** (QS8-137, migratie `0103`) — één tip per
   mijlpaal in `milestone_tips`, alleen leesbaar voor de eigenaar, met vier
   vaste terugvallen als er geen gegenereerde tip is. Een trigger weigert een tip
   die tegenslag benoemt; die woordenlijst staat in
@@ -406,7 +407,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
-| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel. **QS8-41 (weekstappen per mijlpaal) is op 27-08 gebouwd**; daarbij bleek `doelcoach` nooit op `job.kind` te vertakken en kende de app `'error'` waar de database `'failed'` schrijft — elke mislukte generatie liep sinds QS8-38 dood in een timeout. **QS8-137 (A48 variant 2, de Doelcoach-tip per mijlpaal) dezelfde dag**, migratie `0101`: een eigenaar-only tabel `milestone_tips`, een derde `ai_jobs.kind`, en een zeef die aan beide kanten dezelfde woordenlijst gebruikt |
+| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel. **QS8-41 (weekstappen per mijlpaal) is op 27-08 gebouwd**; daarbij bleek `doelcoach` nooit op `job.kind` te vertakken en kende de app `'error'` waar de database `'failed'` schrijft — elke mislukte generatie liep sinds QS8-38 dood in een timeout. **QS8-137 (A48 variant 2, de Doelcoach-tip per mijlpaal) dezelfde dag**, migratie `0103`: een eigenaar-only tabel `milestone_tips`, een derde `ai_jobs.kind`, en een zeef die aan beide kanten dezelfde woordenlijst gebruikt |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
@@ -440,7 +441,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
-| ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0100. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0100 |
+| ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0102. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0102 |
 | ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
 
 ✅ **De rollover draait sinds 19-08 vanzelf**, elk uur via

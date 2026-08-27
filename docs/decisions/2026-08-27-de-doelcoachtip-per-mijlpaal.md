@@ -42,7 +42,7 @@ Voor een tip is dat niet nodig: hij levert een `milestone_id` en verder niets, e
 de Edge Function haalt de titel, de omschrijving en de streefdatum zélf op onder
 `service_role`.
 
-`vraag_ai_job()` weigert sinds 0101 elke andere invoer voor dit soort job — niet
+`vraag_ai_job()` weigert sinds 0103 elke andere invoer voor dit soort job — niet
 "onbekende sleutels negeren" maar `ongeldige_invoer` teruggeven. Dat staat onder
 test met een injectiepoging als testgeval.
 

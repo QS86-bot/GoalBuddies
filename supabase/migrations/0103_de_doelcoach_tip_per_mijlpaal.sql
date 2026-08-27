@@ -1,19 +1,19 @@
--- 0101 — De Doelcoach-tip per mijlpaal (QS8-137, besluit A48 variant 2)
+-- 0103 — De Doelcoach-tip per mijlpaal (QS8-137, besluit A48 variant 2)
 --
--- ⚠️ **DIT IS 0101 EN NIET 0100, EN DAT IS EEN KEUZE.** `0100` is van PR #36
---    (QS8-57, een groep verlaten). Die stond er eerder en houdt het nummer; deze
---    migratie is op verzoek doorgeschoven.
+-- ⚠️ **DIT BESTAND HEEFT DRIE NUMMERS GEHAD, EN DAT IS DE LES.** Het begon als
+--    `0100`, werd op verzoek `0103`, en is bij het landen `0103` geworden omdat
+--    de parallelle sessie ondertussen `0100` (PR #42) en `0103` (PR #43) op
+--    `main` zette.
 --
---    **Gevolg zolang #36 niet gemerged is: op déze branch ontbreekt 0100 en ziet
---    `npm run migraties:controle` een gat.** Dat is de ernstigste van de drie
---    dingen die dat script vangt, en hier is het geen fout maar een
---    momentopname: het gat sluit zichzelf zodra #36 op `main` staat en deze
---    branch die merge binnenhaalt.
+--    **Een migratienummer is niet van je branch maar van `main`.** Wie er als
+--    tweede landt, schuift op — en dat is geen ongemak maar de enige manier om
+--    het gat te vermijden waar `npm run migraties:controle` op let. Dat gat is
+--    de ernstigste van de drie dingen die dat script vangt: de bestanden zijn de
+--    enige manier om dit schema ergens anders op te bouwen, en ontbreekt er een,
+--    dan toetst de RLS-suite daar een ánder schema dan productie.
 --
---    ⚠️ **Land #36 dus vóór #41.** Landt #36 om welke reden dan ook níet, dan
---    hoort deze migratie alsnog 0100 te worden — een gat laten staan is erger
---    dan een nummer opschuiven, want de bestanden zijn de enige manier om dit
---    schema ergens anders op te bouwen.
+--    Reserveer een nummer dus nooit vooruit. Kies het pas als je merget, en
+--    haal `main` op vlak vóór je dat doet.
 --
 -- ---------------------------------------------------------------------------
 -- ROLLBACK-PAD
@@ -298,7 +298,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
   end if;
 
-  -- ⚠️ `milestone_tip` erbij sinds 0101 (QS8-137). Deze lijst en
+  -- ⚠️ `milestone_tip` erbij sinds 0103 (QS8-137). Deze lijst en
   --    `ai_jobs_kind_valid` moeten gelijk blijven; ze staan daarom in dezelfde
   --    migratie en er is geen enkele reden om ze ooit los te wijzigen.
   if p_kind not in ('milestones', 'weekly_goals', 'milestone_tip') then
@@ -430,6 +430,6 @@ $$;
 
 comment on function public.vraag_ai_job(text, uuid, jsonb) is
   'De poort voor élke AI-job: eigendomstoets, cache, dedup en het dagquotum. '
-  'Sinds 0101 met een derde soort, `milestone_tip` (QS8-137) — dat quotum is '
+  'Sinds 0103 met een derde soort, `milestone_tip` (QS8-137) — dat quotum is '
   'gedeeld met de mijlpalen en de weekstappen, en dat is met opzet: het is één '
   'rekening.';

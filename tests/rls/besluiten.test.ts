@@ -1300,4 +1300,160 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
       TEST_TIMEOUT,
     );
   });
+  // -------------------------------------------------------------------------
+  // Domeinregel 7 — een vraag is van de vrager en de gevraagde, niet van de groep
+  // -------------------------------------------------------------------------
+
+  /**
+   * ⚠️ **De vierde route die niemand gekozen had.** `completion_approvals_select`
+   *    stond tot migratie 0100 op `is_group_member(group_id)`, dus élk groepslid
+   *    las élke `more_info`-opmerking over élk ander lid — met de tekst erbij.
+   *    "Anna is doorgevraagd" is een licht negatief signaal over iemand anders
+   *    dat niet via Anna zelf loopt, en domeinregel 7 kent precies drie routes
+   *    waarlangs tegenslag de groep bereikt; dit was er geen van.
+   *
+   * ⚠️ **De schermen toonden het nergens, en dat is juist het punt.** Dit is
+   *    dezelfde vorm als de les van EPIC 5: de UI hield de regel netjes aan
+   *    terwijl de database hem lekte. De vraag die CLAUDE.md daarvoor stelt is
+   *    "kan iemand dat met één API-verzoek uitlezen buiten de UI om" — en het
+   *    antwoord was ja.
+   *
+   * ⚠️ **Deze test bestaat omdat de hele suite groen bleef bij het inperken.**
+   *    Op 27-08-2026 gemeten: 27 bestanden, 438 tests, groen vóór en ná 0100.
+   *    Een policy die je zonder één rode test kunt verruimen, is niet bewaakt —
+   *    regel 18, vraag 3.
+   */
+  describe('een doorvraag is niet van de groep', () => {
+    let vraagId: string;
+    let voltooiingId: string;
+
+    beforeAll(async () => {
+      const weekdoel = mustId(
+        await f.alice.db
+          .from('weekly_goals')
+          .insert({
+            goal_id: f.goalId,
+            title: 'Weekdoel met een vraag eronder',
+            cycle_start_date: f.cycleStart,
+            cycle_index: 9,
+          })
+          .select('id')
+          .single(),
+        'weekdoel voor de doorvraag',
+      );
+
+      voltooiingId = mustId(
+        await f.alice.db
+          .from('completions')
+          .insert({
+            weekly_goal_id: weekdoel,
+            user_id: f.alice.id,
+            achieved_level: 'floor',
+            note: 'Half gehaald.',
+            cycle_start_date: f.cycleStart,
+          })
+          .select('id')
+          .single(),
+        'voltooiing voor de doorvraag',
+      );
+
+      // ⚠️ Carol vraagt door, niet bob: bob heeft in dit bestand al
+      //    goedkeuringen staan, en dan is hij geen schone derde meer.
+      vraagId = mustId(
+        await f.carol.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: voltooiingId,
+            approver_id: f.carol.id,
+            subject_id: f.carol.id,
+            group_id: f.groupId,
+            status: 'more_info',
+            comment: 'Hoe ver ben je precies gekomen?',
+          })
+          .select('id')
+          .single(),
+        'doorvraag van carol',
+      );
+    }, SETUP_TIMEOUT);
+
+    it(
+      'de vrager ziet zijn eigen vraag',
+      async () => {
+        // ⚠️ De toelatingen staan vóór de weigering. Zonder dit bewijs kan de
+        //    test hieronder groen zijn omdat er helemaal niets leesbaar is.
+        const { data } = await f.carol.db
+          .from('completion_approvals')
+          .select('id')
+          .eq('id', vraagId);
+
+        expect(data ?? []).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de gevraagde ziet de vraag over haar eigen week',
+      async () => {
+        const { data } = await f.alice.db
+          .from('completion_approvals')
+          .select('id, comment')
+          .eq('id', vraagId);
+
+        expect(data ?? []).toHaveLength(1);
+        expect((data ?? [])[0]?.comment).toBe('Hoe ver ben je precies gekomen?');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een derde in dezelfde groep ziet er niets van',
+      async () => {
+        // Bob is lid van dezelfde groep en ziet alice haar weekdoelen. Hij is
+        // hier niet de vrager en niet de gevraagde, en dan gaat deze rij hem
+        // niets aan — ook niet het bestáán ervan.
+        const { data, error } = await f.bob.db
+          .from('completion_approvals')
+          .select('id, comment')
+          .eq('id', vraagId);
+
+        // ⚠️ Geen fout maar nul rijen: RLS filtert, hij weigert niet. Een test
+        //    die op een foutcode wacht zou hier voor altijd groen blijven.
+        expect(error).toBeNull();
+        expect(data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'en ook niet als hij op de voltooiing zoekt in plaats van op de vraag',
+      async () => {
+        // Dezelfde rij langs een andere ingang. `fetchVragen()` doet het zo, en
+        // een policy die de ene weg dichtzet en de andere niet is geen policy.
+        const { data } = await f.bob.db
+          .from('completion_approvals')
+          .select('id')
+          .eq('completion_id', voltooiingId)
+          .eq('status', 'more_info');
+
+        expect(data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de rij bestaat wel degelijk — anders bewijst het bovenstaande niets',
+      async () => {
+        const { data } = await adminDb()
+          .from('completion_approvals')
+          .select('id, status, subject_id')
+          .eq('id', vraagId)
+          .single();
+
+        expect(data?.status).toBe('more_info');
+        // De trigger heeft de gelogen subject_id teruggezet op de eigenaar.
+        expect(data?.subject_id).toBe(f.alice.id);
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
