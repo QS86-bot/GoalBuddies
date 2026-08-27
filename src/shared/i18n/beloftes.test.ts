@@ -62,6 +62,10 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
   'koppel.uitleg_open':
     'De belofte gaat hier over níét koppelen, en die geldt in beide standen. De zin zegt ' +
     'daarna expliciet dat koppelen je weken wél deelt.',
+  'deling.uitleg_beschermd':
+    'Staat op het doelscherm bij één specifieke groep en wordt alleen gekozen als die groep ' +
+    'beschermd is; app/doel/[id].tsx kiest per groep, niet één keer boven de lijst. Een doel ' +
+    'kan in een open én een beschermde groep tegelijk staan.',
   'uitnodiging.uitleg_missen_beschermd':
     'Wordt alleen getoond als de uitnodiging een beschermde groep betreft; ' +
     'app/uitnodiging/[code].tsx kiest op invite_preview().zichtbaarheid.',

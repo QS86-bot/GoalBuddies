@@ -30,6 +30,8 @@ export {
   type Vertrek,
 } from './api';
 
+export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
+
 export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
@@ -107,6 +109,7 @@ export {
   huddledagen,
   huddledagLabel,
   isCodeVorm,
+  leesZichtbaarheid,
   normaliseerCode,
   toonCode,
   uitnodigingsLink,
