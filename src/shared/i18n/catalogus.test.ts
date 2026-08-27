@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { en } from './en';
@@ -9,6 +11,7 @@ import {
   TALEN,
   taal,
   taalUitApparaat,
+  vergelijkTekst,
   weekdagNaam,
   zetTaal,
 } from './index';
@@ -157,5 +160,69 @@ describe('opmaak die geen catalogus nodig heeft', () => {
       const namen = new Set([0, 1, 2, 3, 4, 5, 6].map(weekdagNaam));
       expect(namen.size, taalcode).toBe(7);
     }
+  });
+});
+
+describe('vergelijkTekst() — sorteren volgt de taal', () => {
+  /**
+   * ⚠️ **De belofte is niet "de lijst staat op alfabet" maar "op wélk alfabet".**
+   *    `app/(tabs)/index.tsx` sorteerde doeltitels tot 27-08-2026 met
+   *    `localeCompare(titel, 'nl')` — hard Nederlands in een lijst die de taal
+   *    van de gebruiker hoort te volgen. Dezelfde soort fout als het
+   *    decimaalteken van QS8-115, en net zo onzichtbaar zolang je zelf
+   *    Nederlands leest.
+   *
+   * ⚠️ **En die belofte is vandaag níét aan de uitvoer te zien.** Op 27-08-2026
+   *    gemeten met tien randgevallen (`än`/`zon`, `ij`/`ik`, `æ`/`ae`, `ß`/`ss`,
+   *    hoofdletters, accenten): **`nl` en `en` sorteren in ICU exact gelijk, in
+   *    alle tien.** Er is dus geen invoer waarmee een gedragstest het verschil
+   *    tussen "volgt de taal" en "staat hard op `nl`" kan aantonen — de eerste
+   *    versie van deze test dacht van wel en bleef groen toen de fout werd
+   *    teruggezet.
+   *
+   *    Zweeds zou het wél laten zien (`ä` staat daar áchter `z`), maar `TALEN`
+   *    kent alleen `nl` en `en`, dus `zetTaal('sv')` bestaat niet. **Zodra er een
+   *    derde taal bij komt die anders sorteert, hoort hier een gedragstest te
+   *    staan en mag de structuurtest hieronder weg.**
+   *
+   * ⚠️ Daarom een structuurtest, met dezelfde redenering als
+   *    `tests/scripts/padvormen.test.ts`: deze omgeving kan het verschil niet
+   *    uitvoeren, maar hij kan het wél lézen.
+   */
+  it('haalt de taal uit de ingestelde waarde en niet uit een letterlijke code', () => {
+    const bron = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+    const lichaam = bron.slice(bron.indexOf('export function vergelijkTekst'));
+    const eerste = lichaam.slice(0, lichaam.indexOf('\n}'));
+
+    expect(eerste).toContain('localeCompare(b, huidig)');
+    // ⚠️ Tweezijdig: niet alleen "de goede vorm staat er", maar ook "een vaste
+    //    taalcode staat er niet". Zonder deze regel blijft de test groen als
+    //    iemand er een tweede, hardgecodeerde aanroep naast zet.
+    expect(eerste).not.toMatch(/localeCompare\([^)]*['"][a-z]{2}(-[A-Z]{2})?['"]/);
+  });
+
+  it('geeft nul voor gelijke tekst', () => {
+    zetTaal('nl');
+    expect(vergelijkTekst('Hardlopen', 'Hardlopen')).toBe(0);
+  });
+
+  it('houdt de gewone volgorde aan binnen één taal', () => {
+    zetTaal('en');
+    expect(vergelijkTekst('appel', 'banaan')).toBeLessThan(0);
+    expect(vergelijkTekst('banaan', 'appel')).toBeGreaterThan(0);
+  });
+
+  it('sorteert een lijst stabiel in beide talen', () => {
+    // Zolang nl en en gelijk sorteren, is dít wat er te toetsen valt: de lijst
+    // is in beide talen dezelfde en verspringt niet.
+    const titels = ['Zwemmen', 'appel', 'Boek lezen', 'école'];
+
+    zetTaal('nl');
+    const inNederlands = [...titels].sort(vergelijkTekst);
+    zetTaal('en');
+    const inEngels = [...titels].sort(vergelijkTekst);
+
+    expect(inEngels).toEqual(inNederlands);
+    expect(inNederlands).toEqual(['appel', 'Boek lezen', 'école', 'Zwemmen']);
   });
 });

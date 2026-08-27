@@ -120,6 +120,35 @@ export function getal(waarde: number, decimalen = 1): string {
 }
 
 /**
+ * Twee stukken tekst vergelijken in de sorteervolgorde van de ingestelde taal.
+ *
+ * ⚠️ **Sorteren is taalgebonden, en dat werd tot 27-08-2026 gemist.**
+ *    `app/(tabs)/index.tsx` sorteerde doeltitels met `localeCompare(titel, 'nl')`
+ *    — hard Nederlands, in een lijst die de taal van de gebruiker hoort te
+ *    volgen. Dezelfde soort fout als het decimaalteken hierboven: onzichtbaar
+ *    zolang je zelf Nederlands leest.
+ *
+ * ⚠️ **Het is geen theoretisch verschil.** Het Zweeds zet `å`, `ä` en `ö` áchter
+ *    `z`; het Duits sorteert `ä` als `a`; het Nederlands behandelt de `ij` niet
+ *    als één letter maar het Afrikaans wel. Elke taal die er ooit bij komt,
+ *    krijgt hier automatisch zijn eigen volgorde — `Intl` weet het, wij niet.
+ *
+ * ⚠️ **Bewust géén `sensitivity` of `numeric` erbij.** Dat zou de volgorde ook
+ *    veranderen voor wie de app vandaag in het Nederlands gebruikt, en dat is een
+ *    ander besluit dan "volg de taal". Wat hier verandert is uitsluitend wélke
+ *    taal de regels levert.
+ */
+export function vergelijkTekst(a: string, b: string): number {
+  try {
+    return a.localeCompare(b, huidig);
+  } catch {
+    // Een omgeving zonder volledige Intl-data. Een vaste volgorde is beter dan
+    // een lijst die per render van plek verspringt.
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+}
+
+/**
  * De naam van een weekdag, in de ingestelde taal.
  *
  * ⚠️ **Bewust geen zeven catalogussleutels per taal.** Weekdagnamen zijn
