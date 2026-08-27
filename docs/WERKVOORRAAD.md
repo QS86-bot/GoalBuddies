@@ -107,6 +107,13 @@ herhaald te worden voordat iemand erop handelt.** `npm run register:controle`
 zegt dit met credentials in één regel; dat is goedkoper dan het document
 geloven.
 
+⚠️ **En de tweede helft van die les: geen enkele controle in CI kón dit zien.**
+`migraties:controle` leest alleen de map, en `register:controle` — de énige die
+de repo naast het échte project legt — heeft credentials nodig die niet bij een
+runner horen. Het kwam boven doordat een PR op een dubbel migratienummer
+struikelde, en dat is toeval. **Draai `register:controle` na élke migratie**;
+sinds 27-08 doet `npm run db:push` dat zelf, streng.
+
 Het datamodel is vastgesteld in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
 `approval_withdrawals` (0030), `deadline_requests` (0032), `week_pass_events`
