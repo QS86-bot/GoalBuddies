@@ -85,6 +85,8 @@ export {
   REACTIE_MAX,
   reactieSchema,
   voegReactiesSamen,
+  beginwaardeVraag1,
+  magOvernemenUitDagzetten,
   voorstelUitDagzetten,
   vragen,
   weekafsluitingSchema,

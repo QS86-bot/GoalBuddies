@@ -713,7 +713,10 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.je_hebt_gedeeld': 'You shared this week',
   'weekafsluiting.drie_vragen': 'Three questions',
   'weekafsluiting.v1.label': 'What did you do?',
-  'weekafsluiting.v1.hint': 'Pre-filled from your daily notes this week. Change whatever you like.',
+  'weekafsluiting.v1.hint':
+    'Whatever you put here, your group sees.',
+  'weekafsluiting.v1.uit_dagzetten': 'Copy from my daily notes',
+  'weekafsluiting.v1.uit_dagzetten_uitleg': 'Your daily notes for this week are ready. Copying puts them in the field above; you can edit them or remove them again after that.',
   'weekafsluiting.v1.voorbeeld': 'Wrote three mornings, about four hours in total.',
   'weekafsluiting.v2.label': 'What got in the way?',
   'weekafsluiting.v2.hint':

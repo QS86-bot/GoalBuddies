@@ -16,6 +16,8 @@ import {
   verwijderReactie,
   verwijderWeekafsluiting,
   voegReactiesSamen,
+  beginwaardeVraag1,
+  magOvernemenUitDagzetten,
   voorstelUitDagzetten,
   vragen,
   type Antwoord,
@@ -234,12 +236,25 @@ export default function Weekafsluiting() {
 // ---------------------------------------------------------------------------
 
 /**
- * ⚠️ Vraag 1 komt voorgevuld uit je eigen Dagzetten van deze periode, en het
- *    blijft een vóórstel in een veld dat jij moet bevestigen. De Dagzet is
- *    standaard privé (domeinregel 9) en de weekafsluiting is dat niet; zou dit
- *    ergens automatisch meegaan, dan had de app een privé dagboek stilzwijgend tot
- *    groepsbericht gemaakt. De hint onder het veld zegt daarom waar de tekst
- *    vandaan komt.
+ * ⚠️ **Vraag 1 begint leeg, en dat is sinds 27-08-2026 zo.** Hij stond
+ *    voorgevuld met je eigen Dagzetten van deze periode, met een hint eronder
+ *    die zei waar die tekst vandaan kwam. Dat was de énige plek in de app waar
+ *    privé tekst zonder tweede handeling in een niet-privé veld terechtkwam.
+ *
+ *    De Dagzet is standaard privé (domeinregel 9); de weekafsluiting is dat
+ *    niet. Met een voorinvulling is de standaard dus "delen" en moet de
+ *    gebruiker actief wegkijken en wissen om dat níét te doen. Dat is de
+ *    omgekeerde volgorde van wat dit project overal elders aanhoudt: een
+ *    commitment device wordt nooit stilzwijgend geactiveerd (domeinregel 5), en
+ *    voor elk nieuw groepszichtbaar oppervlak is beschermd het antwoord tot
+ *    iemand het tegendeel besluit (A41).
+ *
+ *    Een hint repareert dat niet. Hij beschermt alleen wie hem leest vóór hij op
+ *    "Delen met mijn groep" drukt, en hij stond er bovendien óók als er
+ *    helemaal geen Dagzetten waren — dan beweerde hij iets dat niet klopte.
+ *
+ * ⚠️ Het gemak blijft: staan er Dagzetten, dan verschijnt er een knop die ze
+ *    overneemt. Eén tik in plaats van nul, en de standaard is weer privé.
  */
 function MijnAntwoorden({
   groupId,
@@ -263,7 +278,7 @@ function MijnAntwoorden({
   readonly onGewijzigd: () => void;
 }) {
   const [open, setOpen] = useState(mijnAntwoord === null);
-  const [did, setDid] = useState(mijnAntwoord?.did_text ?? voorstel);
+  const [did, setDid] = useState(beginwaardeVraag1(mijnAntwoord?.did_text));
   const [blocked, setBlocked] = useState(mijnAntwoord?.blocked_text ?? '');
   const [next, setNext] = useState(mijnAntwoord?.next_text ?? '');
   const [bezig, setBezig] = useState<'opslaan' | 'weg' | null>(null);
@@ -407,16 +422,33 @@ function MijnAntwoorden({
         if (veld === undefined) return null;
 
         return (
-          <Field
-            key={vraag.veld}
-            label={vraag.label}
-            hint={vraag.hint}
-            value={veld.waarde}
-            onChangeText={veld.zet}
-            multiline
-            maxLength={2000}
-            placeholder={vraag.placeholder}
-          />
+          <View key={vraag.veld} style={styles.antwoord}>
+            <Field
+              label={vraag.label}
+              hint={vraag.hint}
+              value={veld.waarde}
+              onChangeText={veld.zet}
+              multiline
+              maxLength={2000}
+              placeholder={vraag.placeholder}
+            />
+
+            {/*
+              ⚠️ Alleen bij vraag 1, alleen als er Dagzetten zijn, en alleen
+                 zolang het veld leeg is. Die derde voorwaarde is er om te
+                 voorkomen dat één tik getypte tekst overschrijft — overnemen is
+                 een gemak en mag nooit iets weggooien.
+            */}
+            {vraag.veld === 'did_text' &&
+            magOvernemenUitDagzetten({ voorstel, huidig: did }) ? (
+              <>
+                <Button variant="secundair" onPress={() => setDid(voorstel)}>
+                  {t('weekafsluiting.v1.uit_dagzetten')}
+                </Button>
+                <Caption>{t('weekafsluiting.v1.uit_dagzetten_uitleg')}</Caption>
+              </>
+            ) : null}
+          </View>
         );
       })}
 

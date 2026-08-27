@@ -106,7 +106,7 @@ function meldingen(): Readonly<Record<string, string>> {
     // rotate_invite_code en set_invite_revoked
     not_admin: t('groep.geen_beheerder'),
 
-    // verlaat_groep (QS8-57, migratie 0098)
+    // verlaat_groep (QS8-57, migratie 0100)
     not_member: t('verlaten.geen_lid'),
     last_admin: t('verlaten.laatste_beheerder'),
     unknown_successor: t('verlaten.geen_geldige_opvolger'),
@@ -585,7 +585,7 @@ export interface Vertrek {
 /**
  * Een groep verlaten — QS8-57, PRD 5.6.
  *
- * ⚠️ **Één RPC en geen DELETE.** Sinds migratie 0098 staat
+ * ⚠️ **Één RPC en geen DELETE.** Sinds migratie 0100 staat
  *    `group_members_delete` op `using (false)`: de eis "de laatste beheerder kan
  *    niet zomaar weg" is een uitspraak over de rijen die óverblijven, en dat kan
  *    een RLS-policy per definitie niet zien.

@@ -1,5 +1,5 @@
 /**
- * QS8-57 / migratie 0098 — een groep verlaten zonder andere groepen te raken.
+ * QS8-57 / migratie 0100 — een groep verlaten zonder andere groepen te raken.
  *
  * ⚠️ **De belofte is niet "er is een RPC die een rij verwijdert".** Die zou
  *    zichzelf testen. De belofte van PRD 5.6 is een uitspraak over het gehéél:
@@ -52,7 +52,7 @@ function uitkomst(data: unknown): {
   return (data ?? {}) as ReturnType<typeof uitkomst>;
 }
 
-describe.skipIf(!rlsTestsConfigured)('0098 — een groep verlaten', () => {
+describe.skipIf(!rlsTestsConfigured)('0100 — een groep verlaten', () => {
   const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
   /** Een streefdatum die verder weg ligt dan de huidige — anders is er niets te verschuiven. */
   const laterDanDeCyclus = addDays(cycle.endDate, 30);
@@ -495,7 +495,7 @@ describe.skipIf(!rlsTestsConfigured)('0098 — een groep verlaten', () => {
       await koppel(o.lid, doel, o.groep.id);
       expect(await ziet(o.beheerder, doel)).toBe(true);
 
-      // ⚠️ Route (b) uit de kop van 0098: 0029 zette de `inactive`-toets op de
+      // ⚠️ Route (b) uit de kop van 0100: 0029 zette de `inactive`-toets op de
       //    kijker en vergat de eigenaar.
       await adminDb()
         .from('group_members')
@@ -710,7 +710,7 @@ describe.skipIf(!rlsTestsConfigured)('0098 — een groep verlaten', () => {
       const { data } = await solo.db.rpc('verwijder_mijn_account');
       expect(uitkomst(data).ok).toBe(true);
 
-      // ⚠️ Tweede route naar hetzelfde effect als §6b van 0098. Zonder deze stap
+      // ⚠️ Tweede route naar hetzelfde effect als §6b van 0100. Zonder deze stap
       //    bleef er een `active` groep staan met nul leden en een werkende
       //    uitnodigingscode, en liep een wildvreemde er als enig, niet-beherend
       //    lid binnen.

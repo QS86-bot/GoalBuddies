@@ -29,3 +29,24 @@ export const oordeelSchema = z.object({
 });
 
 export type OordeelInvoer = z.infer<typeof oordeelSchema>;
+
+/**
+ * Zolang je een goedkeuring nog kunt intrekken, in minuten.
+ *
+ * ⚠️ **De database is de bron; dit is de kopie voor de schermtekst.** Het getal
+ *    staat in `intrekvenster_minuten()` (migratie 0099) en `trek_goedkeuring_in()`
+ *    rekent daarmee. Deze constante bestaat alleen om
+ *    `beoordeling.terugdraai_venster` te kunnen invullen zonder een netwerkronde
+ *    voor één bijschrift.
+ *
+ * ⚠️ **Dat is een kopie, en dus een naad.** Tot 27-08-2026 stond de gelijkheid
+ *    alleen in een comment ("gelijk aan de RPC") en toetste niets hem. Loopt hij
+ *    uit de pas, dan belooft het scherm een venster dat de database niet geeft —
+ *    en dat merkt de gebruiker precies op het moment dat hij een vergissing wil
+ *    herstellen. `tests/rls/intrekvenster.test.ts` legt de twee nu naast elkaar.
+ *
+ * ⚠️ Staat hier en niet in `approvals.ts`, want dat bestand trekt de
+ *    Supabase-client mee en is daardoor niet te importeren vanuit de RLS-suite.
+ *    Een getal hoort geen runtime nodig te hebben.
+ */
+export const INTREKVENSTER_MINUTEN = 15;
