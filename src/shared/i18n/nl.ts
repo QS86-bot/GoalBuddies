@@ -936,7 +936,10 @@ export const nl = {
   'weekafsluiting.je_hebt_gedeeld': 'Je hebt deze week gedeeld',
   'weekafsluiting.drie_vragen': 'Drie vragen',
   'weekafsluiting.v1.label': 'Wat heb je gedaan?',
-  'weekafsluiting.v1.hint': 'Voorgevuld uit je Dagzetten van deze week. Pas aan wat je wilt.',
+  'weekafsluiting.v1.hint':
+    'Wat je hier zet, ziet je groep.',
+  'weekafsluiting.v1.uit_dagzetten': 'Overnemen uit mijn Dagzetten',
+  'weekafsluiting.v1.uit_dagzetten_uitleg': 'Je Dagzetten van deze week staan klaar. Overnemen zet ze in het veld hierboven; daarna kun je ze aanpassen of weer weghalen.',
   'weekafsluiting.v1.voorbeeld': 'Drie ochtenden geschreven, samen ongeveer vier uur.',
   'weekafsluiting.v2.label': 'Wat zat in de weg?',
   'weekafsluiting.v2.hint':
