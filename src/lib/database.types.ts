@@ -1988,6 +1988,13 @@ export type Database = {
         }
         Returns: Json
       }
+      domeinregel3_bewaking: {
+        Args: never
+        Returns: {
+          ontbreekt: string
+          slot: string
+        }[]
+      }
       generate_invite_code: { Args: never; Returns: string }
       groepschat: {
         Args: {
