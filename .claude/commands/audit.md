@@ -368,5 +368,20 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     ⚠️ De duurste plek is een cascade, geen query: dertien tabellen hangen met
     `on delete cascade` aan `profiles`.
 
+26. **De twee sloten van domeinregel 3** — draai tegen productie:
+
+    ```sql
+    select * from domeinregel3_bewaking();
+    ```
+
+    Hoort leeg te zijn. Peer-goedkeuring moet in RLS **én** met een
+    database-constraint dicht zitten (domeinregel 3), en de RLS-helft is vanuit
+    een client niet los te toetsen: `before insert`-triggers draaien vóór de
+    `with check`, dus de trigger en de CHECK gooien altijd als eerste.
+
+    ⚠️ Op 27-08 gemeten: met die clausule uit de policy bleven alle 428
+    RLS-tests groen. Het gedrag klopte nog — de constraint vangt de gebruiker —
+    maar de dubbele beveiliging was een enkele geworden. Zie migratie 0098.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.
