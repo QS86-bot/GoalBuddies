@@ -597,12 +597,21 @@ git rev-list --left-right --count origin/main...origin/<branch>   # achter / voo
 Wat de tabel wél bewaart is het enige dat een commando níet kan zeggen: **waarom
 een branch er nog is en wat je ermee moet.**
 
-⚠️ **En dat is geen theorie: deze tabel is op één ochtend drie keer achterhaald.**
+⚠️ **En dat is geen theorie: deze tabel is op één ochtend vier keer achterhaald.**
 Eerst noemde hij `main` op twee verschillende commits. Toen landde PR #26
 terwijl de correctie in review stond. Toen landde PR #23 en verdween de rij
-`chore/gitignore-gstack` tussen het mergen en het lezen. **Elke rij hier is een
-aanname over iets dat buiten dit bestand verandert** — draai de commando's
-hierboven voordat je erop vertrouwt.
+`chore/gitignore-gstack` tussen het mergen en het lezen. En binnen een minuut na
+die merge was er weer een sessiebranch bij. **Elke rij hier is een aanname over
+iets dat buiten dit bestand verandert** — draai de commando's hierboven voordat
+je erop vertrouwt.
+
+⚠️ **Daarom noemt de tabel alleen langlevende branches, en met opzet geen
+sessiebranches.** Een `claude/…`-branch bestaat zolang een sessie eraan werkt en
+is daarna weg; die in een handgeschreven tabel zetten is een rij die per definitie
+veroudert, en dat is vanochtend twee keer gebeurd. Wélke er nu zijn, zegt het
+`git branch -r` hierboven — dat antwoord is altijd goed. Wat hieronder staat is
+het tegenovergestelde geval: branches die er al dagen liggen zonder dat iemand
+nog weet waaróm, en dat is precies wat geen enkel commando kan vertellen.
 
 | branch | wat het is |
 |---|---|
