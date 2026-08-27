@@ -3,9 +3,10 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na PR #25. De hele Sentry-keten (QS8-24)
-> staat, de scripts draaien op Windows, en er is een controle op deploy-drift in
-> de Edge Functions.
+> **Laatst bijgewerkt:** 27-08-2026, na PR #26. De hele Sentry-keten (QS8-24)
+> staat, de scripts draaien op Windows, elke foreign key heeft een index
+> (migratie 0097), de dagelijkse herinnering is na de onboarding weer in te
+> stellen, en er is een controle op deploy-drift in de Edge Functions.
 
 ---
 
@@ -581,18 +582,36 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #25)
+## STAND VAN DE REPO
 
-`main` staat op `fb08be1`. Vijf branches ernaast, en van geen enkele is werk
-kwijt:
+⚠️ **Hier stond een vastgezette commit-hash en een tabel met vijf branches, en
+allebei waren ze binnen een halve dag onwaar.** De hash wees naar `fb08be1`
+terwijl `main` vier merges verder stond; van de vijf branches waren er drie
+gemerged en opgeruimd. Dat is geen slordigheid maar de aard van het ding: een
+stand die je met de hand bijhoudt, verloopt sneller dan je hem bijwerkt. Zie
+QS8-125 en de sectie "Wie bezit welk feit" in `CLAUDE.md`.
 
-| branch | voor/achter `main` | |
-|---|---|---|
-| `claude/linear-bijwerken-docs-t7cko6` | 1 voor | ⚠️ **een andere sessie werkt hier nu in.** Niet aankomen zonder te kijken wat er staat |
-| `chore/gitignore-gstack` | 1 voor | `.gstack/` negeren. Kleine, losse wijziging — landen of weggooien |
-| `wip/werkboom-26-08` | 4 voor | het vangnet van 26-08. Alles erin is inmiddels via PR #18 t/m #24 op `main` geland; nalopen en weggooien |
-| `quintenstrijdonk/qs8-122-…` | 1 voor | ⚠️ **verwijdert alleen.** Ten opzichte van `main` is het 29 bestanden en 5213 regels **minder** — de migraties die hij terughaalde, staan al sinds PR #9 op `main`. Weggooien |
-| `fundering-16-08` | 0 voor | **archief, laten staan** |
+**Waar `main` staat, vraag je aan git en niet aan dit document:**
+
+```bash
+git fetch origin main && git log --oneline -3 origin/main
+git branch -r --format='%(refname:short)'     # wat er nog naast staat
+```
+
+Wat hieronder staat is alleen wat je van `git branch -r` níét afleest: waarom
+een branch er nog is en wat je ermee moet. Drie stuks, en van geen enkele is
+werk kwijt.
+
+| branch | wat het is |
+|---|---|
+| `fundering-16-08` | **archief, laten staan.** Zie de waarschuwing hieronder |
+| `wip/werkboom-26-08` | het vangnet van 26-08. Bestand voor bestand tegen `main` gelegd op 27-08: van de 23 bestanden waren er 21 superseded, en de laatste twee — `scripts/vapid-genereer.mjs` en het beslisdocument over de pushtoestemming — zijn met PR #26 geland. **Nu leeg te verklaren en weg te gooien** |
+| `quintenstrijdonk/qs8-122-…` | ⚠️ **verwijdert alleen.** De hele diff is vijf migratiebestanden, en alle vijf zijn byte-identiek aan `main`. De branch voegt dus niets toe. Weggooien |
+
+⚠️ **De claim "alles uit `wip/werkboom-26-08` staat al op `main`" klopte op
+27-08 om 06:58 níét**, terwijl hij hier wel zo stond. `vapid-genereer.mjs` stond
+alleen daar, en vijf documenten verwezen er al naar. Een branch "leeg" noemen op
+gevoel is hoe je werk kwijtraakt; leg hem bestand voor bestand naast `main`.
 
 ⚠️ **`fundering-16-08` heeft géén gemeenschappelijke voorouder met `main`.** Het
 zijn twee losse wortelhistories; `main` is rond 16-08 opnieuw geworteld. Die
