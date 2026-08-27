@@ -31,8 +31,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **446 geslaagd, 1 overgeslagen** (27-08, na QS8-57). Zonder credentials geeft
-   `npm test` **932 geslaagd en 426 overgeslagen**; typecheck en lint groen.
+   **453 geslaagd, 1 overgeslagen** (27-08, na QS8-57). Zonder credentials geeft
+   `npm test` **932 geslaagd en 433 overgeslagen**; typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds

@@ -81,8 +81,15 @@ describe.skipIf(!rlsTestsConfigured)('0098 — een groep verlaten', () => {
     readonly groep: Groep;
   }
 
-  async function maakGroep(eigenaar: TestUser, naam: string): Promise<Groep> {
-    const { data, error } = await eigenaar.db.rpc('create_group', { group_name: naam });
+  async function maakGroep(
+    eigenaar: TestUser,
+    naam: string,
+    zichtbaarheid?: 'beschermd' | 'open',
+  ): Promise<Groep> {
+    const { data, error } = await eigenaar.db.rpc(
+      'create_group',
+      zichtbaarheid === undefined ? { group_name: naam } : { group_name: naam, zichtbaarheid },
+    );
     if (error) throw new Error(`groep ${naam} (HTTP): ${error.message}`);
     const g = (data ?? {}) as { ok?: boolean; group?: { id: string; invite_code: string } };
     if (g.ok !== true || !g.group) throw new Error(`groep ${naam}: ${JSON.stringify(data)}`);
@@ -95,12 +102,47 @@ describe.skipIf(!rlsTestsConfigured)('0098 — een groep verlaten', () => {
     if (uitkomst(data).ok !== true) throw new Error(`meedoen: ${JSON.stringify(data)}`);
   }
 
-  async function opstelling(naam: string): Promise<Opstelling> {
+  async function opstelling(
+    naam: string,
+    zichtbaarheid?: 'beschermd' | 'open',
+  ): Promise<Opstelling> {
     const beheerder = await createTestUser(`vertrek-beheerder-${naam}`);
     const lid = await createTestUser(`vertrek-lid-${naam}`);
-    const groep = await maakGroep(beheerder, naam);
+    const groep = await maakGroep(beheerder, naam, zichtbaarheid);
     await doeMee(lid, groep);
     return { beheerder, lid, groep };
+  }
+
+  /**
+   * Een gemiste week op een gekoppeld doel van `eigenaar`.
+   *
+   * ⚠️ `status` staat sinds 0023 op slot voor de eigenaar zelf, dus het zetten
+   *    gaat via `adminDb()`. Dat is een omweg in de ópbouw en niet in wat
+   *    getoetst wordt — precies zoals `epic13.test.ts` het doet.
+   */
+  async function gemisteWeek(eigenaar: TestUser, groupId: string): Promise<string> {
+    const doel = await maakDoel(eigenaar, 'Doel met een gemiste week');
+    await koppel(eigenaar, doel, groupId);
+
+    const { data: week, error } = await adminDb()
+      .from('weekly_goals')
+      .insert({
+        goal_id: doel,
+        title: 'Deze week ging niet door',
+        cycle_start_date: cycle.startDate,
+        cycle_index: 1,
+        status: 'missed',
+      })
+      .select('id')
+      .single();
+    if (error) throw new Error(`gemiste week: ${error.message}`);
+    return week.id;
+  }
+
+  /** Hoeveel weekdoelen van dit doel ziet deze kijker? */
+  async function zietWeken(kijker: TestUser, weekId: string): Promise<number> {
+    const { data } = await kijker.db.from('weekly_goals').select('id').eq('id', weekId);
+    return (data ?? []).length;
   }
 
   async function maakDoel(eigenaar: TestUser, titel: string): Promise<string> {
@@ -484,6 +526,204 @@ describe.skipIf(!rlsTestsConfigured)('0098 — een groep verlaten', () => {
       });
 
       expect(await ziet(o.beheerder, doel)).toBe(false);
+    },
+    TEST_TIMEOUT,
+  );
+
+  // -------------------------------------------------------------------------
+  // De open groep — waar de gevoeligste kolom van allemaal doorheen komt
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ **Deze drie tests bestaan omdat de eerste versie ze niet had, en dat was
+  //    precies de fout uit regel 18, vraag 3.** `ziet()` hierboven leest `goals`,
+  //    en `opstelling()` maakte via `create_group(group_name)` altijd een
+  //    **beschermde** groep. `weekly_goals_select` heeft sinds 0077 een dérde
+  //    tak — `deelt_open_groep_met_doel()` — die alleen in een open groep afgaat
+  //    en die de gemiste weken doorlaat. Die tak kon per constructie nooit rood
+  //    worden, en de reparatie in `shares_group_with_goal()` liep er dus
+  //    volledig omheen: 446 tests groen, en een uitgezet lid deelde nog steeds
+  //    zijn gemiste weken met de groep.
+  //
+  //    Gevonden door de security-review van 27-08, niet door deze suite.
+
+  it(
+    'laat een open groep de gemiste week van een actief lid gewoon zien',
+    async () => {
+      const o = await opstelling('open-tegentest', 'open');
+      const week = await gemisteWeek(o.lid, o.groep.id);
+
+      // ⚠️ De positieve tegenhanger van de twee tests hieronder. Zonder deze zou
+      //    een reparatie die de open-groepstak volledig dichttimmert er even
+      //    groen uitzien als een reparatie die klopt — en dan is besluit A41
+      //    stilletjes teruggedraaid.
+      expect(await zietWeken(o.beheerder, week)).toBe(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'verbergt de gemiste week zodra de eigenaar uit de open groep gezet is',
+    async () => {
+      const o = await opstelling('open-uitgezet', 'open');
+      const week = await gemisteWeek(o.lid, o.groep.id);
+      expect(await zietWeken(o.beheerder, week)).toBe(1);
+
+      await adminDb()
+        .from('group_members')
+        .update({ status: 'inactive' })
+        .eq('group_id', o.groep.id)
+        .eq('user_id', o.lid.id);
+
+      expect(await zietWeken(o.beheerder, week)).toBe(0);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'verbergt de gemiste week zodra de open groep gearchiveerd is',
+    async () => {
+      const o = await opstelling('open-archief', 'open');
+      const week = await gemisteWeek(o.lid, o.groep.id);
+      expect(await zietWeken(o.beheerder, week)).toBe(1);
+
+      await o.beheerder.db.rpc('archiveer_groep', {
+        p_group_id: o.groep.id,
+        p_bevestigd: true,
+      });
+
+      expect(await zietWeken(o.beheerder, week)).toBe(0);
+    },
+    TEST_TIMEOUT,
+  );
+
+  // -------------------------------------------------------------------------
+  // De deuren náást de knop
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️ **De belofte is niet "de RPC weigert netjes" maar "er blijft geen groep
+  //    achter die niemand kan beheren".** Een test op de RPC alleen bewijst het
+  //    eerste. Deze drie toetsen de andere bewerkingen die hetzelfde effect
+  //    bereiken — en alle drie werkten ze tot de review van 27-08.
+
+  it(
+    'laat de enige beheerder zichzelf niet op inactief zetten — en weigert luid',
+    async () => {
+      const o = await opstelling('deur-inactief');
+
+      const poging = await o.beheerder.db
+        .from('group_members')
+        .update({ status: 'inactive' })
+        .eq('group_id', o.groep.id)
+        .eq('user_id', o.beheerder.id);
+
+      // ⚠️ Hier mág op de foutcode getoetst worden, en dat is het verschil met de
+      //    DELETE hierboven: dit is een `raise` uit een trigger (P0001) en geen
+      //    rij die RLS wegfiltert. Een stille weigering zou hier het verkeerde
+      //    faalgedrag zijn — de beheerder denkt dan dat hij weg is.
+      expect(poging.error).not.toBeNull();
+      expect(poging.error?.message).toContain('last_admin');
+
+      const { data: na } = await adminDb()
+        .from('group_members')
+        .select('status')
+        .eq('group_id', o.groep.id)
+        .eq('user_id', o.beheerder.id)
+        .single();
+      expect(na?.status).toBe('active');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een beheerder wél een ánder lid uitzetten',
+    async () => {
+      const o = await opstelling('deur-ander-uitzetten');
+
+      // ⚠️ De tegenhanger. De grendel hierboven mag alleen de eigen rij raken;
+      //    zou hij breder zijn, dan is uitzetten kapot en merkt niemand het tot
+      //    er iemand uitgezet moet worden.
+      const poging = await o.beheerder.db
+        .from('group_members')
+        .update({ status: 'inactive' })
+        .eq('group_id', o.groep.id)
+        .eq('user_id', o.lid.id);
+      expect(poging.error).toBeNull();
+
+      const { data: na } = await adminDb()
+        .from('group_members')
+        .select('status')
+        .eq('group_id', o.groep.id)
+        .eq('user_id', o.lid.id)
+        .single();
+      expect(na?.status).toBe('inactive');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een gewoon lid geen overdracht verzinnen in de groepsgeschiedenis',
+    async () => {
+      const o = await opstelling('deur-valse-audit');
+      const derde = await createTestUser('vertrek-derde');
+      await doeMee(derde, o.groep);
+
+      const { data } = await o.lid.db.rpc('verlaat_groep', {
+        p_group_id: o.groep.id,
+        p_bevestigd: true,
+        p_nieuwe_beheerder: derde.id,
+      });
+
+      // ⚠️ De `update` werd al tegengehouden door `guard_group_member_update()`,
+      //    maar de `group_events`-rij ernaast werd wél geschreven en de RPC gaf
+      //    `ok: true` met `overgedragen_aan` erin. Een vertrekker kon zo een
+      //    bewering over iemand anders in de onveranderlijke geschiedenis zetten
+      //    die hij daarna niet meer kon toelichten — hij is weg, en élk lid leest
+      //    `group_events`.
+      expect(uitkomst(data).ok).toBe(false);
+      expect(uitkomst(data).reason).toBe('not_admin');
+
+      const { data: gebeurtenissen } = await adminDb()
+        .from('group_events')
+        .select('event_type')
+        .eq('group_id', o.groep.id)
+        .eq('event_type', 'admin_transferred');
+      expect(gebeurtenissen).toHaveLength(0);
+
+      const { data: rol } = await adminDb()
+        .from('group_members')
+        .select('role')
+        .eq('group_id', o.groep.id)
+        .eq('user_id', derde.id)
+        .single();
+      expect(rol?.role).toBe('member');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'archiveert de solo-groep van iemand die zijn account verwijdert',
+    async () => {
+      const solo = await createTestUser('vertrek-solo');
+      const groep = await maakGroep(solo, 'Solo-groep');
+      const vreemde = await createTestUser('vertrek-vreemde-na-solo');
+
+      const { data } = await solo.db.rpc('verwijder_mijn_account');
+      expect(uitkomst(data).ok).toBe(true);
+
+      // ⚠️ Tweede route naar hetzelfde effect als §6b van 0098. Zonder deze stap
+      //    bleef er een `active` groep staan met nul leden en een werkende
+      //    uitnodigingscode, en liep een wildvreemde er als enig, niet-beherend
+      //    lid binnen.
+      const { data: g } = await adminDb()
+        .from('groups')
+        .select('status')
+        .eq('id', groep.id)
+        .single();
+      expect(g?.status).toBe('archived');
+
+      const { data: mee } = await vreemde.db.rpc('join_group_with_code', { code: groep.code });
+      expect(uitkomst(mee).ok).toBe(false);
+      expect(uitkomst(mee).reason).toBe('archived');
     },
     TEST_TIMEOUT,
   );

@@ -169,6 +169,107 @@ comment on function public.shares_group_with_goal(uuid) is
   'voltooiingen aan een groep uitdelen die hij verlaten had. Zie QS8-57.';
 
 -- ---------------------------------------------------------------------------
+-- 3b. Dezelfde twee sloten op de open-groepstakken
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Dit is de bevinding die de security-review van 27-08 blokkerend noemde,
+--    en hij had gelijk.** §3 repareerde `shares_group_with_goal()` en de kop van
+--    deze migratie beweerde daarmee dat de drie routes "alle drie dicht" gingen.
+--    Dat klopte voor `goals_select`. Het klopte **niet** voor
+--    `weekly_goals_select`, en dat is precies de policy waar het om gaat.
+--
+--    Die policy heeft sinds 0077 een dérde tak die dezelfde vraag zélf
+--    beantwoordt, met het oude predicaat:
+--
+--      (owner_id = auth.uid())
+--      or (shares_group_with_goal(goal_id) and status <> all (…))   ← gerepareerd
+--      or deelt_open_groep_met_doel(goal_id)                        ← niet
+--
+--    Nagemeten in een open groep met een weekdoel op `status = 'missed'`:
+--
+--      tegentest, alles normaal, kijker ziet de gemiste week:  1
+--      route b — eigenaar op `inactive`, kijker ziet hem nog:  1
+--      route c — groep gearchiveerd, kijker ziet hem nog:      1
+--
+--    Een beheerder van een open groep kon dus iemand uitzetten en daarna
+--    onbeperkt diens **gemiste weken** blijven lezen. Dat is domeinregel 7 op de
+--    zwaarste kolom die er is, en de uitgezette persoon ziet er niets van.
+--
+-- ⚠️ **De les eronder is die van §2, en hij is duur betaald.** Ik repareerde één
+--    functie en schreef in de kop dat het effect dicht was. Er waren twee
+--    functies die dezelfde vraag beantwoorden. Een dichtgestreepte regel is de
+--    plek waar niemand meer kijkt — dat staat in WERKVOORRAAD §7 en het is hier
+--    binnen één migratie nóg een keer gebeurd. **Zoek bij een predicaat niet
+--    alleen de aanroepers, maar ook de functies die het overschríjven.**
+--
+-- ⚠️ Waarom de testsuite dit niet zag, en dat is regel 18 vraag 3 in het echt:
+--    `tests/rls/vertrek.test.ts` las `goals` en al zijn fixtures waren
+--    **beschermde** groepen. De open-groepstak kon per constructie nooit rood
+--    worden. Er staat nu een fixture met `zichtbaarheid = 'open'` die
+--    `weekly_goals` leest, met een positieve tegentest ernaast.
+
+create or replace function public.deelt_open_groep_met_doel(g uuid)
+  returns boolean
+  language sql
+  stable
+  security definer
+  set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1
+    from goal_group_links l
+    join goals         d  on d.id       = l.goal_id
+    join groups        gr on gr.id      = l.group_id
+    join group_members m  on m.group_id = l.group_id
+                         and m.user_id  = auth.uid()
+                         and m.status  <> 'inactive'
+    join group_members o  on o.group_id = l.group_id
+                         and o.user_id  = d.owner_id
+                         and o.status  <> 'inactive'
+    where l.goal_id        = g
+      and gr.zichtbaarheid = 'open'
+      and gr.status       <> 'archived'
+  );
+$$;
+
+comment on function public.deelt_open_groep_met_doel(uuid) is
+  'Deelt de kijker een lévende open groep met dit doel, waar de eigenaar óók '
+  'nog actief lid van is? ⚠️ De eigenaarshelft en de archieftoets zijn er in '
+  '0098 bij gekomen, tegelijk met dezelfde reparatie in '
+  'shares_group_with_goal(). Deze functie draagt de gevoeligste tak die er is: '
+  'in een open groep laat hij `weekly_goals.status = ''missed''` door.';
+
+-- ⚠️ Dezelfde vorm, en daarom in dezelfde migratie. `chain_links_select` heeft
+--    naast `is_group_member(group_id) and group_period_start >= …` een
+--    open-groepstak die geen van beide draagt: geen archieftoets en geen venster
+--    van acht dagen. De Ketting telt alleen op, dus er lekt vandaag geen
+--    tegenslag — maar het is structureel hetzelfde gat, en het los laten liggen
+--    is hoe 0043 t/m 0046 er vier werden.
+create or replace function public.lid_van_open_groep(gid uuid)
+  returns boolean
+  language sql
+  stable
+  security definer
+  set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1
+    from group_members m
+    join groups g on g.id = m.group_id
+    where m.group_id      = gid
+      and m.user_id       = auth.uid()
+      and m.status       <> 'inactive'
+      and g.zichtbaarheid = 'open'
+      and g.status       <> 'archived'
+  );
+$$;
+
+comment on function public.lid_van_open_groep(uuid) is
+  'Actief lid van een lévende open groep. ⚠️ De archieftoets is er in 0098 bij '
+  'gekomen: zonder die toets bleef een gearchiveerde open groep zijn schakels '
+  'uitdelen.';
+
+-- ---------------------------------------------------------------------------
 -- 4. Vertrekken loopt niet meer via een DELETE uit de client
 -- ---------------------------------------------------------------------------
 --
@@ -329,13 +430,28 @@ begin
     raise exception 'Niet ingelogd';
   end if;
 
-  -- ⚠️ `for update` op de eigen rij, zodat twee gelijktijdige vertrekken van de
-  --    laatste twee beheerders niet allebei langs de telling hieronder glippen.
+  -- ⚠️ **Vergrendel de gróep en niet je eigen rij, en dat is een gerepareerde
+  --    fout.** Hier stond `for update` op de eigen `group_members`-rij met het
+  --    commentaar dat dat twee gelijktijdige vertrekken zou serialiseren. Dat
+  --    doet het niet: de telling die de beslissing draagt gaat over de rijen van
+  --    ánderen, en die worden dan nergens vergrendeld. In READ COMMITTED ziet
+  --    elke sessie de nog niet gecommitte delete van de ander niet.
+  --
+  --    De security-review van 27-08 heeft het met twee gelijktijdige sessies
+  --    afgedwongen: beide kregen `ok: true`, en er bleven nul beheerders over in
+  --    een groep met een levende uitnodigingscode. Twee tabbladen zijn genoeg;
+  --    er hoeft niemand iets kwaads te willen.
+  --
+  --    Een lock op de `groups`-rij serialiseert élk vertrek binnen één groep, en
+  --    dat is precies de reikwijdte van de beslissing. `archiveer_groep()`
+  --    vergrendelt dezelfde rij verderop nog een keer; binnen één transactie is
+  --    dat een no-op.
+  perform 1 from groups where id = p_group_id for update;
+
   select m.role, m.status into v_rol, v_status
   from group_members m
   where m.group_id = p_group_id
-    and m.user_id  = auth.uid()
-  for update;
+    and m.user_id  = auth.uid();
 
   select g.status = 'archived' into v_gearchiveerd_al
   from groups g where g.id = p_group_id;
@@ -374,6 +490,25 @@ begin
   --    is gelukt en het vertrek niet, of andersom — en het tweede geval is de
   --    beheerderloze groep waar dit hele stuk over gaat.
   if p_nieuwe_beheerder is not null then
+    -- ⚠️ **Deze toets ontbrak, en de review van 27-08 vond hem.** De `update`
+    --    hieronder wordt voor een gewoon lid stil geneutraliseerd door
+    --    `guard_group_member_update()`, maar de `group_events`-rij ernaast werd
+    --    wél geschreven en de functie gaf `ok: true` met `overgedragen_aan`
+    --    erin. Nagemeten: rol van de "opvolger" bleef `member`, en er stond een
+    --    `admin_transferred`-regel in de onveranderlijke groepsgeschiedenis.
+    --
+    --    Dat is twee dingen tegelijk: een vertrekker kan een bewering over
+    --    iemand ánders in de audit zetten die hij niet meer kan toelichten (hij
+    --    is weg, en élk lid leest `group_events`), en de eigen app liegt tegen
+    --    de gebruiker over wat er gebeurd is.
+    --
+    -- ⚠️ Nooit vertrouwen op het feit dat een trigger de UPDATE toevallig
+    --    tegenhoudt. Dat is een deur die alleen dichtzit omdat er verderop een
+    --    `if` staat — dezelfde formulering als bij de `revoke` onderaan.
+    if v_rol <> 'admin' then
+      return jsonb_build_object('ok', false, 'reason', 'not_admin');
+    end if;
+
     if p_nieuwe_beheerder = auth.uid() then
       return jsonb_build_object('ok', false, 'reason', 'successor_is_self');
     end if;
@@ -533,5 +668,224 @@ comment on function public.verlaat_groep(uuid, boolean, uuid) is
 --    is een deur die alleen dichtzit omdat er toevallig een `if` in staat.
 revoke all on function public.verlaat_groep(uuid, boolean, uuid) from public, anon;
 grant execute on function public.verlaat_groep(uuid, boolean, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 7. De twee deuren náást de knop
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Dit is de duurste les van dit project, en hij is bij het schrijven van
+--    déze migratie opnieuw misgegaan.** §6 zet een nette route naar buiten neer
+--    met een laatste-beheerder-eis, en de security-review van 27-08 liep er twee
+--    keer omheen zonder die functie aan te raken. Het effect dat voorkomen moet
+--    worden is niet "iemand roept `verlaat_groep()` verkeerd aan" maar **"er
+--    blijft een groep achter die niemand kan beheren en waarvan de
+--    uitnodigingscode werkt"**. Zoek élke bewerking die dát bereikt.
+
+-- ---------------------------------------------------------------------------
+-- 7a. Een beheerder kon zichzelf op `inactive` zetten
+-- ---------------------------------------------------------------------------
+--
+-- `guard_group_member_update()` (0029) pint `role` en `status` voor een
+-- niet-beheerder, en laat een beheerder élke kolom van élke rij zetten — ook
+-- zijn eigen. Gemeten:
+--
+--     select verlaat_groep(g, true, null);
+--     -- {"ok": false, "reason": "last_admin"}          ← de RPC weigert netjes
+--     update group_members set status = 'inactive'
+--      where group_id = g and user_id = <zelf>;
+--     -- UPDATE 1                                       ← en dit lukt gewoon
+--
+--     actieve leden: 1 / actieve admins: 0
+--     bob kan archiveren?      {"ok": false, "reason": "not_admin"}
+--     bob kan code intrekken?  {"ok": false, "reason": "not_admin"}
+--     wildvreemde met code:    {"ok": true, ...}
+--     alice kan terug?         {"ok": false, "reason": "removed"}
+--
+-- Eén PATCH op `/rest/v1/group_members` en de groep is onherstelbaar — precies
+-- het wrak dat §1 van deze migratie als reden opvoert.
+--
+-- ⚠️ **Waarom een `raise` en geen pin op `old`.** Pinnen weigert stil (valkuil
+--    5): de client krijgt 204 en denkt dat het gelukt is. Hier valt bovendien
+--    niets te bewaren — dit is een trigger en geen SECURITY DEFINER-RPC, dus de
+--    les van 0017 speelt niet.
+--
+-- ⚠️ **Waarom niet `role` en `status` van de eigen rij onvoorwaardelijk pinnen.**
+--    Dat brak het terugkomen: `join_group_with_code()` doet een upsert die je
+--    eigen `status` van `paused` naar `active` zet. Nagelezen in
+--    `pg_get_functiondef()`, niet aangenomen. De regel moet dus de *specifieke
+--    overgang* raken en niet de kolom.
+--
+-- ⚠️ **Alleen de eigen rij, en dat is voldoende.** Nul beheerders is alleen te
+--    bereiken door zelf je adminschap op te geven: wie een ánder degradeert,
+--    moet zelf beheerder zijn en blijft dat.
+
+create or replace function public.guard_group_member_update()
+  returns trigger
+  language plpgsql
+  security definer
+  set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is null then
+    return new;
+  end if;
+
+  -- ⚠️ De nieuwe grendel, vóór de bestaande takken. Geeft je eigen rij het
+  --    beheerderschap op terwijl jij de enige actieve beheerder bent? Dan is dit
+  --    een vertrek in vermomming, en vertrekken loopt via `verlaat_groep()` —
+  --    daar zit de overdracht in, en daar wordt een lege groep gearchiveerd.
+  if old.user_id = auth.uid()
+     and old.role = 'admin'
+     and old.status <> 'inactive'
+     and (new.role <> 'admin' or new.status = 'inactive')
+     and not exists (
+       select 1 from group_members mede
+       where mede.group_id = old.group_id
+         and mede.user_id <> auth.uid()
+         and mede.role     = 'admin'
+         and mede.status  <> 'inactive'
+     )
+  then
+    raise exception 'last_admin'
+      using hint = 'Draag het beheer over via verlaat_groep() of promoveer eerst een ander lid.';
+  end if;
+
+  -- ⚠️ Rechtstreeks op de tabel en niet via `is_group_admin()`: die geeft sinds
+  --    migratie 0029 `false` voor een uitgezette beheerder, en dat is hier ook
+  --    precies wat we willen — maar de bedoeling moet leesbaar blijven, dus de
+  --    voorwaarde staat er uitgeschreven bij.
+  if exists (
+    select 1 from group_members m
+    where m.group_id = old.group_id
+      and m.user_id  = auth.uid()
+      and m.role     = 'admin'
+      and m.status  <> 'inactive'
+  ) then
+    new.group_id := old.group_id;
+    new.user_id  := old.user_id;
+    return new;
+  end if;
+
+  new.role      := old.role;
+  new.status    := old.status;
+  new.group_id  := old.group_id;
+  new.user_id   := old.user_id;
+  new.joined_at := old.joined_at;
+
+  return new;
+end;
+$$;
+
+comment on function public.guard_group_member_update() is
+  'Pint `role` en `status` voor een niet-beheerder (0029), en weigert sinds 0098 '
+  'dat de énige actieve beheerder zijn eigen adminschap opgeeft — dat is een '
+  'vertrek in vermomming en het loopt via verlaat_groep().';
+
+-- ---------------------------------------------------------------------------
+-- 7b. Een verwijderd account liet een lege groep achter
+-- ---------------------------------------------------------------------------
+--
+-- `verwijder_mijn_account()` (0031) heeft een eigen laatste-beheerder-toets en
+-- die klopt — maar alleen voor groepen mét andere leden. Bij een sólo-groep
+-- cascadeert het lidmaatschap weg (`on delete cascade`) terwijl de groep blijft
+-- staan (`created_by` is `on delete set null`). Gemeten:
+--
+--     account verwijderen: {"ok": true}
+--     groep na afloop: status=active  invite_revoked=false  leden=0
+--     wildvreemde treedt toe met de oude code: {"ok": true, ...}
+--
+-- Woordelijk het scenario dat §6b in `verlaat_groep()` afvangt door te
+-- archiveren. Twee routes naar buiten, één ervan gerepareerd — en dat is de
+-- vorm waar dit project 0043 t/m 0046 voor betaald heeft.
+--
+-- ⚠️ Archiveren en niet verwijderen, om de reden van 0092: weggooien cascadeert
+--    naar zes tabellen en raakt daarmee de geschiedenis van niemand anders —
+--    maar bij een solo-groep is dat de eigen geschiedenis, en die gaat met het
+--    account toch mee. Archiveren is hier het goedkopere en het consistente
+--    antwoord.
+
+create or replace function public.verwijder_mijn_account()
+  returns jsonb
+  language plpgsql
+  security definer
+  set search_path = public, pg_temp
+as $$
+declare
+  mij  uuid := auth.uid();
+  solo record;
+begin
+  if mij is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+
+  -- ⚠️ Laatste beheerder van een groep met andere leden? Dan eerst het
+  --    beheerderschap overdragen. Zonder deze regel blijft er een groep achter
+  --    die niemand meer kan beheren: de code niet roteren, geen lid uitzetten,
+  --    de groep niet opheffen. Dat is geen verwijdering maar een wrak.
+  if exists (
+    select 1
+    from group_members mijn
+    where mijn.user_id = mij
+      and mijn.role    = 'admin'
+      and mijn.status <> 'inactive'
+      and exists (
+        select 1 from group_members ander
+        where ander.group_id = mijn.group_id
+          and ander.user_id <> mij
+          and ander.status <> 'inactive'
+      )
+      and not exists (
+        select 1 from group_members mede
+        where mede.group_id = mijn.group_id
+          and mede.user_id <> mij
+          and mede.role     = 'admin'
+          and mede.status  <> 'inactive'
+      )
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'last_admin');
+  end if;
+
+  -- ⚠️ Sinds 0098: de groepen waarvan ik het énige actieve lid ben, gaan mee het
+  --    archief in. Anders blijft er een `active` groep staan met nul leden en een
+  --    werkende uitnodigingscode, en loopt een wildvreemde er als enig,
+  --    niet-beherend lid binnen.
+  --
+  -- ⚠️ **Via `archiveer_groep()` en niet met een eigen schrijfopdracht op de
+  --    groepstabel**, om dezelfde reden als in `verlaat_groep()` §6b:
+  --    `groups.status` is een gepinde kolom, en `npm run pin:controle` maakte de
+  --    eerste versie hiervan terecht rood. Het register in dat script kent vijf
+  --    uitzonderingen; de juiste reparatie is hergebruik en geen zesde.
+  --
+  -- ⚠️ Dit werkt alleen vóór de delete: `archiveer_groep()` eist een actieve
+  --    beheerder, en dat ben ik in mijn eigen solo-groep nog. De bevestiging is
+  --    hier `true` omdat de gebruiker het verwijderen van zijn account al
+  --    bevestigd heeft — dit is er een gevolg van en geen losse handeling.
+  for solo in
+    select g.id
+    from groups g
+    where g.status <> 'archived'
+      and exists (
+        select 1 from group_members m
+        where m.group_id = g.id and m.user_id = mij and m.status <> 'inactive'
+      )
+      and not exists (
+        select 1 from group_members m
+        where m.group_id = g.id and m.user_id <> mij and m.status <> 'inactive'
+      )
+  loop
+    perform archiveer_groep(solo.id, true);
+  end loop;
+
+  delete from auth.users where id = mij;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+comment on function public.verwijder_mijn_account() is
+  'Verwijdert het eigen account. Weigert bij een laatste beheerderschap in een '
+  'groep met andere leden (0031), en archiveert sinds 0098 de groepen waarvan ik '
+  'het enige actieve lid was — anders blijft er een lege groep met een werkende '
+  'uitnodigingscode achter.';
 
 commit;
