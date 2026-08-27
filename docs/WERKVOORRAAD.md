@@ -32,7 +32,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **405 geslaagd, 1 overgeslagen.** Zonder credentials geeft `npm test`
-   **723 geslaagd en 385 overgeslagen**; typecheck en lint groen.
+   **964 geslaagd en 416 overgeslagen** (gemeten 27-08-2026); typecheck en lint
+   groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -191,9 +192,10 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
 - `src/modules/buddies/chat*` en `weekafsluiting*` — de chat en het huddleritueel
 - `tests/rls` — de tests die de policies écht uitvoeren, met echte JWT's; de
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
-- `npm run typecheck` en `lint` staan groen; `npm test` geeft zónder credentials
-  **790 geslaagd en 406 overgeslagen** (dat zijn achttien van de
-  twintig bestanden in `tests/rls`, zie §3b)
+- `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
+  niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
+  bestaat. `tests/rls` telt 27 bestanden; 25 daarvan slaan zonder credentials
+  over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
