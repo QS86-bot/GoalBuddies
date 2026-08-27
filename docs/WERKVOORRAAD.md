@@ -31,8 +31,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **436 geslaagd, 1 overgeslagen** (27-08, na QS8-41). Zonder credentials geeft
-   `npm test` **979 geslaagd en 416 overgeslagen**; typecheck en lint groen.
+   **484 geslaagd, 1 overgeslagen** (27-08, na QS8-57 en QS8-41). Zonder
+   credentials geeft `npm test` **991 geslaagd en 464 overgeslagen**; typecheck
+   en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -83,7 +84,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0099`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0102`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -193,7 +194,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 27 bestanden; 25 daarvan slaan zonder credentials
+  bestaat. `tests/rls` telt 29 bestanden; 27 daarvan slaan zonder credentials
   over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -420,7 +421,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
 | Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
-| Een groep verlaten | QS8-57 | `phase:v2`. De policy staat het toe (`group_members_delete`), maar de overdracht van het laatste beheerderschap is niet geregeld en dat is geen detail |
+| ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0102. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0102 |
 | ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
 
 ✅ **De rollover draait sinds 19-08 vanzelf**, elk uur via

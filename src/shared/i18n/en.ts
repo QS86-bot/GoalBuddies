@@ -1214,6 +1214,25 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_beschermen.uitleg':
     'From now on the group only sees what works out. Missed weeks become private again, retroactively too. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
+  'bevestiging.groep_verlaten.titel': 'Leave this group?',
+  'bevestiging.groep_verlaten.uitleg':
+    'Your goal leaves this group and you will no longer be able to open the chat, the week reviews or The Chain here. What you have built up stays: your points, your streak, your completions and the approvals you gave. If your goal is also linked to another group, nothing changes there. You can only come back with a valid invite link.',
+  'bevestiging.groep_verlaten.knop': 'Yes, leave this group',
+  'verlaten.titel': 'Leave this group',
+  'verlaten.uitleg':
+    'You step out of this group. Your goal is unlinked from this group and from no other.',
+  'verlaten.blijft':
+    'Your points, your streak and your history stay. Nothing changes for what your buddies have built up either.',
+  'verlaten.knop': 'Leave group',
+  'verlaten.geen_lid': 'You are not a member of this group.',
+  'verlaten.laatste_beheerder':
+    'You are the only admin. Pick someone to take over first.',
+  'verlaten.geen_geldige_opvolger': 'Pick an active member of this group.',
+  'verlaten.opvolger_titel': 'Who takes over as admin?',
+  'verlaten.opvolger_uitleg':
+    'You are the only admin. Without a successor nobody can manage this group, so pick one before you leave.',
+  'verlaten.laatste_lid':
+    'You are the last member. The group is archived when you leave, so no group is left without an admin.',
   'bevestiging.groep_archiveren.titel': 'Archive this group?',
   'bevestiging.groep_archiveren.uitleg':
     'The group then disappears for everyone: the chat, the week reviews and The Chain can no longer be opened, not even by you. Nothing in it is deleted — it stays stored, and your buddies\u2019 streaks remain correct. But this cannot be undone from the app.',

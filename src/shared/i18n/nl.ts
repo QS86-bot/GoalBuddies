@@ -601,6 +601,25 @@ export const nl = {
   'bevestiging.groep_beschermen.uitleg':
     'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
+  'bevestiging.groep_verlaten.titel': 'Deze groep verlaten?',
+  'bevestiging.groep_verlaten.uitleg':
+    'Je doel gaat uit deze groep en je kunt de chat, de weekafsluitingen en De Ketting hier niet meer openen. Wat je hebt opgebouwd blijft staan: je punten, je reeks, je voltooiingen en de goedkeuringen die je hebt gegeven. Hangt je doel ook aan een andere groep, dan verandert daar niets. Terugkomen kan alleen met een geldige uitnodigingslink.',
+  'bevestiging.groep_verlaten.knop': 'Ja, verlaat deze groep',
+  'verlaten.titel': 'Deze groep verlaten',
+  'verlaten.uitleg':
+    'Je stapt uit deze groep. Je doel wordt losgekoppeld van deze groep en van geen enkele andere.',
+  'verlaten.blijft':
+    'Je punten, je reeks en je geschiedenis blijven staan. Ook voor je buddies verandert er niets aan wat zij hebben opgebouwd.',
+  'verlaten.knop': 'Groep verlaten',
+  'verlaten.geen_lid': 'Je bent geen lid van deze groep.',
+  'verlaten.laatste_beheerder':
+    'Je bent de enige beheerder. Kies eerst iemand die het overneemt.',
+  'verlaten.geen_geldige_opvolger': 'Kies een actief lid van deze groep.',
+  'verlaten.opvolger_titel': 'Wie neemt het beheer over?',
+  'verlaten.opvolger_uitleg':
+    'Jij bent de enige beheerder. Zonder opvolger kan niemand deze groep nog beheren, dus kies er een voordat je vertrekt.',
+  'verlaten.laatste_lid':
+    'Je bent het laatste lid. De groep wordt bij je vertrek gearchiveerd, zodat er geen groep zonder beheerder achterblijft.',
   'bevestiging.groep_archiveren.titel': 'Deze groep archiveren?',
   'bevestiging.groep_archiveren.uitleg':
     'De groep verdwijnt daarna voor iedereen: de chat, de weekafsluitingen en De Ketting zijn niet meer te openen, ook niet voor jou. Wat erin staat wordt niet gewist — het blijft bewaard, en de reeksen van je buddies blijven kloppen. Maar dit is niet terug te draaien vanuit de app.',

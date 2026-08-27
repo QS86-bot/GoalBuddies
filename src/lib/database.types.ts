@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -999,6 +999,7 @@ export type Database = {
           id: string
           new_value: Json | null
           old_value: Json | null
+          subject_id: string | null
         }
         Insert: {
           actor_id?: string | null
@@ -1008,6 +1009,7 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
+          subject_id?: string | null
         }
         Update: {
           actor_id?: string | null
@@ -1017,6 +1019,7 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
+          subject_id?: string | null
         }
         Relationships: [
           {
@@ -1024,6 +1027,20 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2054,21 +2071,7 @@ export type Database = {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json
       }
-      invite_preview: { Args: { code: string }; Returns: Json }
-      is_group_admin: { Args: { gid: string }; Returns: boolean }
-      intrekvenster_bewaking: {
-        Args: never
-        Returns: {
-          bevinding: string
-        }[]
-      }
-      intrekvenster_minuten: { Args: never; Returns: number }
-      is_group_member: { Args: { gid: string }; Returns: boolean }
-      join_group_with_code: { Args: { code: string }; Returns: Json }
-      herstel_weekdoelstatus: {
-        Args: never
-        Returns: number
-      }
+      herstel_weekdoelstatus: { Args: never; Returns: number }
       indexdekking_bewaking: {
         Args: never
         Returns: {
@@ -2077,6 +2080,17 @@ export type Database = {
           tabel: string
         }[]
       }
+      intrekvenster_bewaking: {
+        Args: never
+        Returns: {
+          bevinding: string
+        }[]
+      }
+      intrekvenster_minuten: { Args: never; Returns: number }
+      invite_preview: { Args: { code: string }; Returns: Json }
+      is_group_admin: { Args: { gid: string }; Returns: boolean }
+      is_group_member: { Args: { gid: string }; Returns: boolean }
+      join_group_with_code: { Args: { code: string }; Returns: Json }
       kan_beoordeeld_worden: {
         Args: { p_goal_id: string; p_owner_id: string }
         Returns: boolean
@@ -2193,8 +2207,20 @@ export type Database = {
       }
       rond_doel_af: { Args: { p_goal_id: string }; Returns: Json }
       rotate_invite_code: { Args: { p_group_id: string }; Returns: Json }
+      schrijfrechten_bewaking: {
+        Args: never
+        Returns: {
+          recht: string
+          rol: string
+          tabel: string
+        }[]
+      }
       schuif_weekdoel_door: {
-        Args: { p_cycle_index: number; p_cycle_start_date: string; p_weekly_goal_id: string }
+        Args: {
+          p_cycle_index: number
+          p_cycle_start_date: string
+          p_weekly_goal_id: string
+        }
         Returns: Json
       }
       set_invite_revoked: {
@@ -2248,13 +2274,17 @@ export type Database = {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
       }
-      verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
-      verwijder_mijn_account: { Args: never; Returns: Json }
-      verwijder_weekdoel: { Args: { p_weekly_goal_id: string }; Returns: Json }
+      verlaat_groep: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_nieuwe_beheerder?: string }
+        Returns: Json
+      }
       verwachte_weekdoelstatus: {
         Args: { p_weekly_goal_id: string }
         Returns: string
       }
+      verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
+      verwijder_mijn_account: { Args: never; Returns: Json }
+      verwijder_weekdoel: { Args: { p_weekly_goal_id: string }; Returns: Json }
       viewrechten_bewaking: {
         Args: never
         Returns: {
@@ -2308,8 +2338,6 @@ export type Database = {
         }[]
       }
       weekdoelen_over: { Args: never; Returns: number }
-      weekpas_maximum: { Args: never; Returns: number }
-      weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
       weekdoelstatus_afwijkingen: {
         Args: never
         Returns: {
@@ -2318,6 +2346,8 @@ export type Database = {
           weekly_goal_id: string
         }[]
       }
+      weekpas_maximum: { Args: never; Returns: number }
+      weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
       weekpas_standen: {
         Args: { p_goal_ids?: string[] }
         Returns: {

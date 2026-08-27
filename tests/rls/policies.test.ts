@@ -2572,14 +2572,34 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         // ⚠️ Een eigen lid dat alléén hier gebruikt wordt. Zou de gewone buddy
         //    vertrekken, dan is hij daarna geen lid meer en meten alle tests
         //    hierna iets anders dan ze denken.
-        mustOk(
-          await b.vertrekker.db
-            .from('group_members')
-            .delete()
-            .eq('group_id', b.groupId)
-            .eq('user_id', b.vertrekker.id),
-          'vertrekker verlaat de groep',
-        );
+        //
+        // ⚠️ **Sinds migratie 0102 via `verlaat_groep()` en niet via een DELETE.**
+        //    Dat is geen stijlkeuze maar een gerepareerde valse groene: 0102 zet
+        //    `group_members_delete` op `using (false)`, en RLS wéígert een DELETE
+        //    niet — hij filtert de rij weg. De client krijgt dus 204 zonder fout
+        //    (valkuil 5), `mustOk` was tevreden, en de vertrekker was daarna nog
+        //    gewoon lid. Deze test bewees toen niets meer over wat hij belooft.
+        //
+        //    De les eronder is die van onwrikbare regel 18, vraag 4: de belofte
+        //    is "wie de groep verlaten heeft, kan niet meer goedkeuren". Het
+        //    mechanisme waarmee je vertrekt is geen onderdeel van die belofte,
+        //    en een test die het mechanisme vastlegt, verhuist niet mee.
+        const vertrek = await b.vertrekker.db.rpc('verlaat_groep', {
+          p_group_id: b.groupId,
+          p_bevestigd: true,
+        });
+        mustOk(vertrek, 'vertrekker verlaat de groep');
+        expect((vertrek.data as { ok?: boolean } | null)?.ok).toBe(true);
+
+        // Zonder deze regel zou een `verlaat_groep()` die stilletjes niets doet
+        // deze test opnieuw groen maken zonder iets te bewijzen.
+        const nog = await adminDb()
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', b.groupId)
+          .eq('user_id', b.vertrekker.id)
+          .maybeSingle();
+        expect(nog.data).toBeNull();
 
         const { error } = await b.vertrekker.db.from('completion_approvals').insert({
           completion_id: b.completionId,
