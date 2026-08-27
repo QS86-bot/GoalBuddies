@@ -690,6 +690,8 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.geen_lid_tekst': 'You are not a member of this group, or it no longer exists. Ask for a new invite link if you belong here.',
   'weekafsluiting.meer_reacties': 'Load more replies',
   'weekafsluiting.niet_gedeeld': 'You have text that has not been shared yet. Leaving throws it away.',
+  'weekafsluiting.terugknop_tegengehouden':
+    'Your text is still here, so the back button does nothing for now. Share it, or use the button below.',
   'weekafsluiting.toch_weg': 'Leave anyway, without sharing',
   'weekafsluiting.terug': 'Back to the group',
   'weekafsluiting.sessie_laadt': 'Your session is still loading. Try again in a second.',
