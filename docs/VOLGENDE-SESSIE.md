@@ -3,10 +3,11 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38 en #41 en na
-> het opnieuw deployen van alle drie de Edge Functions.
-> **Fase 2 is begonnen** — die drie `phase:v2`-issues staan op `main`. Er is
-> één ding dat direct moet gebeuren; zie "Waar te beginnen", punt 0.
+> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38 en #41, na het
+> opnieuw deployen van alle drie de Edge Functions, en na de engineering-review
+> van alles wat die dag geland is (#33 t/m #46).
+> **Fase 2 is begonnen** — die drie `phase:v2`-issues staan op `main`. Er zijn
+> twee dingen die op jou wachten; zie "Waar te beginnen", punt 0 en 0a.
 
 ---
 
@@ -509,6 +510,45 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   **Vraag bij elke nieuwe beslissing die op een bestaande primitieve handeling
   leunt: staat daar een weggelegde bevinding over?** De werkwijze eromheen is
   **QS8-123**.
+
+  ⚠️ **En op 27-08 is die machinerie voor het eerst in de andere richting
+  afgegaan, op een rij van mijzelf.** De rij over de wisselende reeks stond op
+  **Laag** met de voorwaarde "wordt zwaarder als hij nog één keer omvalt". Dat
+  gebeurde dezelfde dag vier keer, dus ging hij naar **Middel**. Dat is geen
+  formaliteit: laat je hem staan terwijl zijn eigen aanname vervallen is, dan is
+  die voorwaarde decoratie en leert de volgende dat hij hem mag negeren.
+
+- **⚠️ Een reparatie die in het dossier stáát, is geen gemeten reparatie.** Dit
+  is de duurste les van de reviewronde van 27-08, en hij ging over mijn eigen
+  aantekening. Bij de rij over de wisselende reeks schreef ik als oplossing
+  "fixtures per bestand een eigen naamruimte". Bij het bouwen bleek dat het
+  verkeerde doel: het opruimen was al id-gescoped en de e-mailadressen waren al
+  uniek per bestand. **Een naamruimte zou niets hebben toegevoegd — hij zou het
+  probleem hebben hernoemd.**
+
+  Wie die rij had gelezen en meteen was gaan bouwen, had een dag besteed aan
+  isolatie die er al was. **Lees een voorgestelde reparatie als een hypothese van
+  degene die hem opschreef, en meet hem voordat je hem bouwt** — ook (juist) als
+  hij van jezelf is.
+
+- **⚠️ Zonder reproductie kun je geen reparatie verifiëren, en dan bouw je
+  bewijsmateriaal in plaats van een fix.** Dezelfde ronde: het faalbeeld was na
+  de herstructurering van PR #54 niet meer terug te krijgen, tientallen runs
+  lang, ook met het parallellisme bewust weer aan. Daarmee vervalt de enige
+  manier om een fix goed te verklaren — regel 18 zegt dat je een controle pas
+  vertrouwt als je hem met de hand rood hebt gekregen.
+
+  Wat er dan wél kan: de vólgende waarneming bruikbaar maken. `reeks.test.ts`
+  zegt sinds PR #55 "de fixture is onder de test uit verdwenen: 0 van de 3
+  schone weken over" in plaats van een onverklaarbaar rijtje getallen. **Dat
+  lost niets op en dat hoort het ook niet te doen** — het verkort de volgende
+  diagnose van een halve dag naar één regel. Een onreproduceerbaar probleem
+  verdient een betere meting, geen gegokte reparatie.
+
+  ⚠️ En let op de vorm van het invariant dat zo'n vangrail bewaakt. Mijn eerste
+  versie controleerde álle vijf de weekdoelen van de fixture en brak daarmee de
+  test die er met opzet één van maakt. **Bewaak wat geen enkele test aanraakt**,
+  niet wat de fixture bij het opzetten toevallig had.
 - **⚠️ Een lokale datum ligt altijd in `[current_date - 1, current_date + 1]`.**
   `current_date` is de serverdatum in UTC; geen enkele tijdzone loopt meer dan een
   dag voor of achter. Een bovengrens op een datum die de client aanlevert moet die
@@ -658,6 +698,13 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   naar de database wijst terwijl de vérbinding fout staat. `PGPORT` en `PGUSER`
   zetten lost het op; ze zijn niet in het script gehardcodeerd omdat ze per
   machine verschillen.
+
+  ⚠️ **En draai de suite nooit met `--no-isolate`.** Op 27-08 als proef
+  gebruikt om te zien of testbestanden moduletoestand delen: 28 van de 30
+  RLS-bestanden vielen om én de Postgres-server ging eronder onderuit, waarna
+  de volgende run 438 tests overslaat omdat de stack er niet meer is. Het
+  faalbeeld daarvan lijkt op een kapotte suite en is er geen. Herstellen is
+  `pg_ctlcluster 16 main start` gevolgd door `npm run rls:stack`.
 
 - **⚠️ Linear kan geen nieuwe issues meer aanmaken.** "You've exceeded the free
   issue limit for this workspace." Dat raakt de werkwijze: een bevinding die je
@@ -832,6 +879,37 @@ QS8-41 (`'error'` in de app tegenover `'failed'` in de database) hoorde een eige
 issue te zijn. **Linear weigert nieuwe issues op de gratis tier van deze
 workspace** — "You've exceeded the free issue limit" — dus hij is in die PR
 meegegaan. Maak hem alsnog aan zodra dat kan.
+
+### 0a. Wat de engineering-review van 27-08 heeft achtergelaten
+
+Alles wat die dag landde (#33 t/m #46) is nagemeten tegen de **gedeployde**
+stand — `pg_get_functiondef()`, `pg_policy` en de grants, niet de
+migratiebestanden. De bevindingen staan als comments op
+[#42](https://github.com/QS86-bot/GoalBuddies/pull/42),
+[#43](https://github.com/QS86-bot/GoalBuddies/pull/43) en
+[#44](https://github.com/QS86-bot/GoalBuddies/pull/44); de twee die bleven
+liggen staan als rij in `docs/ENGINEER-REVIEW.md`. Hier alleen wat er nog te
+dóén is.
+
+**Drie migraties zijn aantoonbaar bewaakt** — 0100, 0101 en 0104 zijn met de
+hand teruggedraaid op de lokale stack en gaven respectievelijk 2, 4 en 2 rode
+tests, op de juiste plekken. Daar hoeft niets meer aan.
+
+⚠️ **Eén stuk werk ligt er nog en is klein:** de helper op regel ~804 van
+`tests/rls/epic13.test.ts` doet `?? false` en plet daarmee drie toestanden tot
+één — *rij ontbreekt*, *null* (buiten het venster) en *false*. Gemeten: met een
+`group_overview()` die nul rijen teruggeeft blijven twee tests groen. Geen lek
+en geen regressie (0104 zelf is langs twee ándere tests wél bewaakt), maar het
+zijn twee tests die minder bewijzen dan hun naam belooft. De vorm van de
+reparatie staat in de rij; het is een half uur.
+
+⚠️ **Eén ding blijft onopgelost en is bewust niet gerepareerd:** de wisselende
+reeks in `tests/rls/reeks.test.ts`. De suite draait sinds PR #54 sequentieel
+over `tests/rls/`, wat de kans erop wegneemt maar niet de oorzaak, en PR #55
+zorgt dat een volgende waarneming meteen zegt wát er verdween. Waaróm het
+gebeurt is niet aangewezen — en het is sinds die herstructurering niet meer te
+reproduceren. **Ga hier niet op gokken; zie de twee valkuilen over reproductie
+en over reparaties-uit-het-dossier verderop.**
 
 ### En daarna: de metingen die er al lagen
 
