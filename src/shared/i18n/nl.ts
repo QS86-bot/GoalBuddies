@@ -1348,6 +1348,8 @@ export const nl = {
   //    wat de handeling is, niet dat hij de vorige uitwist.
   'mijlpalenblok.toch_niet': 'Toch niet gehaald',
   'mijlpalenblok.zet_gehaald': 'Gehaald',
+  'mijlpalenblok.weekstappen': 'Weekstappen',
+  'mijlpalenblok.weekstappen_label': 'Laat de coach weekstappen bedenken voor {titel}',
   'mijlpalenblok.omhoog': 'Omhoog',
   'mijlpalenblok.omlaag': 'Omlaag',
   'mijlpalenblok.verwijderen': 'Verwijderen',
@@ -1365,6 +1367,37 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Weekdoel toevoegen, adempauze en weggooien — QS8-43, QS8-82 en QS8-105
   // ---------------------------------------------------------------------------
+  'weekcoach.titel': 'Weekstappen',
+  'weekcoach.eyebrow': 'DE DOELCOACH',
+  'weekcoach.uitleg':
+    'De coach kent je doel "{doel}" en deze mijlpaal, en stelt weekstappen voor die er samen naartoe leiden. Elke stap komt met een vloer en een plafond.',
+  'weekcoach.zelfde_tien':
+    'Dit telt mee in dezelfde tien AI-aanvragen per dag als het opsplitsen van een doel.',
+  'weekcoach.terug': 'Terug naar het doel',
+  'weekcoach.leeg_titel': 'Geen mijlpaal gekozen',
+  'weekcoach.leeg_tekst':
+    'Open dit scherm vanaf een mijlpaal op je doel, dan weet de coach waar hij stappen voor moet bedenken.',
+  'weekcoach.wat_gebeurt_er':
+    'De coach kijkt naar deze mijlpaal, naar hoeveel weken je nog hebt en naar wat je bij het interview hebt ingevuld.',
+  'weekcoach.genereer': 'Genereer weekstappen',
+  'weekcoach.denkt_na': 'De coach denkt na',
+  'weekcoach.duurt_even': 'Dit duurt ongeveer twintig seconden. Blijf even op dit scherm.',
+  'weekcoach.lukte_niet': 'Dat lukte niet',
+  'weekcoach.geen_weekdoelen':
+    'De coach kwam niet met bruikbare stappen. Elke stap moet een vloer én een plafond hebben, en die waren er niet.',
+  'weekcoach.vastgelopen': 'De coach liep vast. Probeer het zo nog eens.',
+  'weekcoach.te_lang': 'Dit duurt langer dan verwacht. Probeer het zo nog eens.',
+  'weekcoach.zelf_toevoegen': 'Zelf een weekdoel maken',
+  'weekcoach.opnieuw': 'Opnieuw proberen',
+  'weekcoach.klaar': 'Klaar',
+  'weekcoach.voorstellen': '{aantal} weekstappen',
+  'weekcoach.een_per_week':
+    'Deze stappen zijn bedoeld voor opeenvolgende weken. Voeg nu de stap toe waar je deze week aan werkt; volgende week kom je terug voor de volgende.',
+  'weekcoach.vloer': 'Vloer: {tekst}',
+  'weekcoach.plafond': 'Plafond: {tekst}',
+  'weekcoach.voeg_toe': 'Voeg toe als weekdoel',
+  'weekcoach.toegevoegd': 'Toegevoegd aan deze week.',
+  'weekdoelform.coach': 'Laat de coach weekstappen bedenken',
   'weekdoelform.knop': 'Weekdoel toevoegen',
   'weekdoelform.kop': 'Wat wil je deze week af hebben?',
   'weekdoelform.titel': 'Weekdoel',

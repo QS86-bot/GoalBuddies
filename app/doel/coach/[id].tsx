@@ -306,7 +306,14 @@ function Genereren({
         return;
       }
 
-      if (job.status === 'error') {
+      // ⚠️ **`failed` en niet `error`.** Dit stond tot 27-08-2026 op `'error'` en
+      //    die tak was onbereikbaar: de CHECK `ai_jobs_status_valid` kent
+      //    `'failed'` en `doelcoach` schrijft dat ook. Een mislukte generatie
+      //    liep daardoor de volle zestig rondes uit en toonde "dit duurt te
+      //    lang" terwijl de échte reden in `ai_jobs.error` stond. Gevonden bij
+      //    het plannen van QS8-41; de typecheck wees hem meteen aan zodra
+      //    `JobStatus` uit de vier echte waarden werd opgebouwd.
+      if (job.status === 'failed') {
         setStand({
           fase: 'mislukt',
           melding: job.error ?? t('coach.vastgelopen'),

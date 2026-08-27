@@ -1071,6 +1071,8 @@ export const en: Record<Sleutel, string> = {
   'mijlpalenblok.streefdatum': ' · target date {datum}',
   'mijlpalenblok.toch_niet': 'Not done after all',
   'mijlpalenblok.zet_gehaald': 'Done',
+  'mijlpalenblok.weekstappen': 'Weekly steps',
+  'mijlpalenblok.weekstappen_label': 'Let the coach think up weekly steps for {titel}',
   'mijlpalenblok.omhoog': 'Up',
   'mijlpalenblok.omlaag': 'Down',
   'mijlpalenblok.verwijderen': 'Delete',
@@ -1088,6 +1090,37 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   // Adding a weekly goal, breather and deleting — QS8-43, QS8-82 and QS8-105
   // ---------------------------------------------------------------------------
+  'weekcoach.titel': 'Weekly steps',
+  'weekcoach.eyebrow': 'THE GOAL COACH',
+  'weekcoach.uitleg':
+    'The coach knows your goal "{doel}" and this milestone, and suggests weekly steps that lead there together. Every step comes with a floor and a ceiling.',
+  'weekcoach.zelfde_tien':
+    'This counts towards the same ten AI requests per day as breaking down a goal.',
+  'weekcoach.terug': 'Back to the goal',
+  'weekcoach.leeg_titel': 'No milestone chosen',
+  'weekcoach.leeg_tekst':
+    'Open this screen from a milestone on your goal, so the coach knows what to think up steps for.',
+  'weekcoach.wat_gebeurt_er':
+    'The coach looks at this milestone, at how many weeks you have left, and at what you filled in during the interview.',
+  'weekcoach.genereer': 'Generate weekly steps',
+  'weekcoach.denkt_na': 'The coach is thinking',
+  'weekcoach.duurt_even': 'This takes about twenty seconds. Stay on this screen for a moment.',
+  'weekcoach.lukte_niet': 'That did not work',
+  'weekcoach.geen_weekdoelen':
+    'The coach did not come up with usable steps. Every step needs a floor and a ceiling, and those were missing.',
+  'weekcoach.vastgelopen': 'The coach got stuck. Try again in a moment.',
+  'weekcoach.te_lang': 'This is taking longer than expected. Try again in a moment.',
+  'weekcoach.zelf_toevoegen': 'Make a weekly goal yourself',
+  'weekcoach.opnieuw': 'Try again',
+  'weekcoach.klaar': 'Done',
+  'weekcoach.voorstellen': '{aantal} weekly steps',
+  'weekcoach.een_per_week':
+    'These steps are meant for consecutive weeks. Add the step you are working on this week now; next week you come back for the next one.',
+  'weekcoach.vloer': 'Floor: {tekst}',
+  'weekcoach.plafond': 'Ceiling: {tekst}',
+  'weekcoach.voeg_toe': 'Add as weekly goal',
+  'weekcoach.toegevoegd': 'Added to this week.',
+  'weekdoelform.coach': 'Let the coach think up weekly steps',
   'weekdoelform.knop': 'Add weekly goal',
   'weekdoelform.kop': 'What do you want done this week?',
   'weekdoelform.titel': 'Weekly goal',

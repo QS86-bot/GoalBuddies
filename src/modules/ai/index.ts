@@ -4,11 +4,19 @@
 export {
   fetchJob,
   vraagMijlpalen,
+  vraagWeekdoelen,
   werkJobAf,
   type Job,
-  type JobStatus,
   type JobVerwijzing,
   type Uitkomst,
 } from './jobs';
 
-export { haalbaarheidUit, mijlpalenUit, type VoorstelMijlpaal } from './uitvoer';
+export { JOB_STATUSSEN, type JobStatus } from './job-schemas';
+
+export {
+  haalbaarheidUit,
+  mijlpalenUit,
+  weekdoelenUit,
+  type VoorstelMijlpaal,
+  type VoorstelWeekdoel,
+} from './uitvoer';
