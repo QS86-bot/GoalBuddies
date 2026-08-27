@@ -338,6 +338,18 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     gewoon het recht om de uitnodigingscode, de oprichter, de status, de
     slaapstand en de zichtbaarheid te wijzigen.
 
+23a. **Wat gaat er in een open groep open?** — draai
+    `npm run zichtbaarheid:controle` tegen de lokale stack. Vier oppervlakken
+    variëren op `groups.zichtbaarheid`, en zes plekken noemen die kolom zonder er
+    een te zijn (de twee hulpfuncties, de setter, de pin, het aanmaken en de
+    uitnodigingspreview). Alle tien staan met hun reden in het register.
+
+    ⚠️ **De zin die de gebruiker leest sómt die vier op.** Komt er een vijfde
+    bij, dan wordt deze controle rood — en dán is de vraag of
+    `zichtbaarheid.open_uitleg` en `bevestiging.groep_openzetten.uitleg` nog
+    kloppen, niet nadat iemand toestemming heeft gegeven voor iets anders dan hij
+    dacht.
+
 23b. **Horen de drie VAPID-waarden bij elkaar?** — draai `npm run vapid:controle`
     op de machine waar `.env` staat. De publieke sleutel zit in de webbundel, de
     privésleutel in de omgeving van de Edge Function en het subject in beide;
