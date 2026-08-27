@@ -33,6 +33,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 import { config } from 'dotenv';
 
@@ -715,4 +716,4 @@ async function controleerPwa() {
 // ⚠️ Alleen draaien als dit script zélf aangeroepen wordt. Zonder deze grens
 //    start een `import` van dit bestand de hele deploy — en dan kan geen enkele
 //    test een van zijn functies voeden. Zie `tests/scripts/deploy-htaccess.test.ts`.
-if (import.meta.url === `file://${process.argv[1]}`) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

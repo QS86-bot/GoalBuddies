@@ -33,9 +33,9 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const WORTEL = new URL('..', import.meta.url).pathname;
+const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
 /** Waar de app en de serverfuncties staan. */
 const MAPPEN = ['src', 'app', 'supabase/functions'];

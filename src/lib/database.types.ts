@@ -2055,6 +2055,14 @@ export type Database = {
         Args: never
         Returns: number
       }
+      indexdekking_bewaking: {
+        Args: never
+        Returns: {
+          constraint_naam: string
+          kolommen: string
+          tabel: string
+        }[]
+      }
       kan_beoordeeld_worden: {
         Args: { p_goal_id: string; p_owner_id: string }
         Returns: boolean

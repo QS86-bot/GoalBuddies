@@ -257,6 +257,67 @@ export function berichtVoor(
 }
 
 /**
+ * De drie herinneringsvelden zoals ze naar `profiles` gaan.
+ *
+ * ⚠️ **"Uit is uit" is een belofte en geen implementatiedetail, en daarom staat
+ *    hij hier en niet in een scherm.** Zet de gebruiker de herinnering uit, dan
+ *    wordt `reminder_time` léég gemaakt en niet bewaard "voor als je hem weer
+ *    aanzet". Dat is het leerpunt uit de Habit Huddle-analyse: een herinnering
+ *    die terugkomt nadat je hem uitzette, is de snelste manier om een app van
+ *    iemands telefoon te krijgen.
+ *
+ * ⚠️ **Waarom gedeeld.** Tot 26-08-2026 stond deze regel als één ternary in
+ *    `app/onboarding/profiel.tsx`, en toen was hij nergens anders nodig. Zodra
+ *    het profieltabblad hetzelfde kan, staat dezelfde belofte op twee plekken —
+ *    en dan is het precies de naad die CLAUDE.md regel 18 beschrijft: beide
+ *    schermen kloppen op zichzelf, en het gehéél lekt zodra iemand er één
+ *    verplaatst of aanpast. Eén functie, en een test op de belofte in plaats van
+ *    op het scherm.
+ *
+ * ⚠️ De toon blijft wél staan als je uitzet. Die is geen herinnering maar een
+ *    voorkeur over hoe je aangesproken wilt worden, en die hoort niet te
+ *    verdampen omdat je een kanaal dichtzet.
+ */
+export function herinneringVelden(keuze: {
+  readonly aan: boolean;
+  readonly tijd: string;
+  readonly toon: Toon;
+}): {
+  readonly reminder_enabled: boolean;
+  readonly reminder_time: string | null;
+  readonly reminder_tone: Toon;
+} {
+  return {
+    reminder_enabled: keuze.aan,
+    reminder_time: keuze.aan ? keuze.tijd.trim() : null,
+    reminder_tone: keuze.toon,
+  };
+}
+
+/**
+ * Een `time`-waarde uit de database als `HH:MM`, klaar voor een invoerveld.
+ *
+ * ⚠️ Postgres geeft `20:00:00` terug en een invoerveld toont `20:00`. Bewust
+ *    hier en niet in `shared/time`, om dezelfde reden als `uurUit()` hieronder:
+ *    dit is het lezen van een `time`-kolom en geen datumberekening. Er komt geen
+ *    tijdzone aan te pas.
+ *
+ * ⚠️ Geeft de terugval bij `null` — dat is "nog niets ingesteld" en niet
+ *    "middernacht". Zonder die terugval staat er een leeg veld waar de gebruiker
+ *    zelf een formaat moet raden.
+ */
+export function tijdVoorInvoer(tijd: string | null, terugval = '20:00'): string {
+  if (tijd === null) return terugval;
+
+  const match = /^(\d{1,2}):(\d{2})/.exec(tijd.trim());
+  const uur = match?.[1];
+  const minuut = match?.[2];
+  if (uur === undefined || minuut === undefined) return terugval;
+
+  return `${uur.padStart(2, '0')}:${minuut}`;
+}
+
+/**
  * Het uur uit een `HH:MM(:SS)`-tijd, of `null` als er niets bruikbaars staat.
  *
  * ⚠️ Bewust hier en niet in `shared/time`: dit is geen datumberekening maar het

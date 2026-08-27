@@ -37,6 +37,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Elke `current_date` in het schema, met de reden waarom hij daar mag staan.
@@ -194,4 +195,4 @@ function hoofd() {
   return 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(hoofd());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());

@@ -25,10 +25,11 @@
 
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { vergelijk } from './migratieregister-vergelijk.mjs';
 
-const WORTEL = new URL('..', import.meta.url).pathname;
+const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

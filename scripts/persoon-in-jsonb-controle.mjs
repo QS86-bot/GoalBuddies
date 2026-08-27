@@ -30,9 +30,9 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const WORTEL = new URL('..', import.meta.url).pathname;
+const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 
 /**
  * Velden die een mens aanwijzen.
