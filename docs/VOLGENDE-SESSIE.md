@@ -3,7 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38 en #41.
+> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38 en #41 en na
+> het opnieuw deployen van alle drie de Edge Functions.
 > **Fase 2 is begonnen** — die drie `phase:v2`-issues staan op `main`. Er is
 > één ding dat direct moet gebeuren; zie "Waar te beginnen", punt 0.
 
@@ -547,6 +548,24 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   **Deploy nooit vanuit een werkboom met ongecommitte wijzigingen.** `edge:gedeployd`
   waarschuwt daar ook expliciet voor.
 
+  ⚠️ **Zonder `SUPABASE_ACCESS_TOKEN` kan een sessie niet fatsoenlijk deployen,
+  en dat is op 27-08 duur gebleken.** De Supabase-CLI is ingelogd op Quintens
+  eigen machine (token in de CLI-config), maar niet in een verse omgeving. Dan
+  blijft alleen de Supabase-MCP over, en die neemt de bestandsinhoud **inline**
+  mee — de hele bundel moet met de hand overgetikt worden, tot 100 kB per
+  functie.
+
+  Dat ging bij `notificaties` de eerste keer mis: vijf tekens verkeerd, allemaal
+  hetzelfde soort fout (het tweede accent weggevallen in `jóú`, `níét`, `híér`).
+  Alleen commentaar, geen code — maar `edge:gedeployd` was er rood op gegaan, en
+  dan zoekt iemand een half uur naar vijf accenten.
+
+  **Zet die variabele dus in de omgeving vóór je aan een deploy begint**, en
+  gebruik `supabase functions deploy <naam>`: die leest van schijf en kan per
+  definitie niet verkeerd overtikken. Kan het niet anders, **haal de bundel dan
+  ná de deploy op en leg hem byte-voor-byte tegen de repo** — de deploy zelf
+  valideert alleen dat hij kán bundelen, niet dat je goed hebt overgeschreven.
+
 - **⚠️ `fetch()` verwerpt alleen bij een netwerkfout — een 403 is een geslaagde
   belofte.** Dat kostte op 26-08 een halve dag: de Sentry-melding rapporteerde
   netjes `'verstuurd'` terwijl de ingest de envelope wéigerde, want de `Response`
@@ -774,21 +793,42 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-### 0. `doelcoach` moet opnieuw gedeployd worden, en dat is het eerste
+### 0. De stand van de deploy — alle drie de functies lopen gelijk met `main`
 
 De drie PR's van 27-08 zijn geland in de volgorde #36 → #38 → #41 (QS8-57,
 QS8-41, QS8-137). De migraties heten op `main` **`0102`** en **`0103`** — niet
 `0100`/`0101`, zie de valkuil over migratienummers verderop.
 
-⚠️ **Twee van die drie wijzigden `supabase/functions/doelcoach/index.ts`, en de
-gedeployde functie loopt daar nu achter.** Zolang dat zo is krijgt élke nieuwe
-job de mijlpaalprompt terug, ook een `weekly_goals`- of `milestone_tip`-job, en
-gaat `npm run edge:gedeployd` rood. Draai `npm run edge:sync` en deploy daarna:
+**Alle drie de Edge Functions zijn dezelfde dag opnieuw gedeployd**, en van alle
+drie is de gedéployde bundel byte-voor-byte tegen de repo gelegd:
 
-```bash
-npm run edge:sync
-supabase functions deploy doelcoach
-```
+| Functie | Versie | Modules | Wat er veranderde |
+|---|---|---|---|
+| `doelcoach` | 14 | 5 | de `job.kind`-dispatch (QS8-41) en de tip-tak (QS8-137) |
+| `rollover` | 17 | 7 | alleen `edge-rapport.ts` |
+| `notificaties` | 12 | 10 | `edge-rapport.ts` plus twee toevoegingen in `regels.ts` |
+
+`verify_jwt` staat overal aan. Van `rollover` week er één van de zeven modules
+af en van `notificaties` twee van de tien — de versienummers zeggen meer dan er
+werkelijk veranderde.
+
+⚠️ **De `edge-rapport.ts`-wijziging doet vandaag niets, en dat hoor je te weten
+voor je hem gaat controleren.** De envelope draagt nu `runtime`, `server` en
+`release` in plaats van hardgecodeerde waarden — maar zonder `SENTRY_DSN` in de
+Edge-omgeving geeft `meldEdgeFout()` meteen `'geen-dsn'` terug en gaat er geen
+enkele netwerkaanroep uit. Het telt pas op de dag dat die variabele gezet wordt.
+
+⚠️ **Wat er níét gemeten is: er is geen enkele echte aanroep gedaan.** De proxy
+van de bouwomgeving weigert `supabase.co/functions/v1/*` met een 403 op de
+CONNECT-tunnel — dezelfde grens die de kop van `edge-rapport.ts` voor de
+Sentry-ingest beschrijft. Alle drie staan op `ACTIVE` met aantoonbaar de juiste
+bron; **dát een echte job er goed doorheen komt, moet vanaf jouw machine.**
+
+⚠️ **Draai `npm run edge:gedeployd` een keer zelf.** Dat script vraagt
+`SUPABASE_ACCESS_TOKEN` uit `.env` en kon in de bouwomgeving niet draaien; de
+byte-vergelijking hierboven is met de hand gedaan langs dezelfde bundels. Dat is
+hetzelfde werk, maar niet dezelfde weg — en de weg die in `/audit` zit, is die
+van het script.
 
 ⚠️ **Meet bij de eerste echte proef hoeveel van de zes weekstapvoorstellen de
 zeef overleven.** Blijft dat structureel onder de helft, dan is de prompt het
