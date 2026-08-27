@@ -799,24 +799,10 @@ De drie PR's van 27-08 zijn geland in de volgorde #36 → #38 → #41 (QS8-57,
 QS8-41, QS8-137). De migraties heten op `main` **`0102`** en **`0103`** — niet
 `0100`/`0101`, zie de valkuil over migratienummers verderop.
 
-**Alle drie de Edge Functions zijn dezelfde dag opnieuw gedeployd**, en van alle
-drie is de gedéployde bundel byte-voor-byte tegen de repo gelegd:
-
-| Functie | Versie | Modules | Wat er veranderde |
-|---|---|---|---|
-| `doelcoach` | 14 | 5 | de `job.kind`-dispatch (QS8-41) en de tip-tak (QS8-137) |
-| `rollover` | 17 | 7 | alleen `edge-rapport.ts` |
-| `notificaties` | 12 | 10 | `edge-rapport.ts` plus twee toevoegingen in `regels.ts` |
-
-`verify_jwt` staat overal aan. Van `rollover` week er één van de zeven modules
-af en van `notificaties` twee van de tien — de versienummers zeggen meer dan er
-werkelijk veranderde.
-
-⚠️ **De `edge-rapport.ts`-wijziging doet vandaag niets, en dat hoor je te weten
-voor je hem gaat controleren.** De envelope draagt nu `runtime`, `server` en
-`release` in plaats van hardgecodeerde waarden — maar zonder `SENTRY_DSN` in de
-Edge-omgeving geeft `meldEdgeFout()` meteen `'geen-dsn'` terug en gaat er geen
-enkele netwerkaanroep uit. Het telt pas op de dag dat die variabele gezet wordt.
+**Alle drie de Edge Functions zijn dezelfde dag opnieuw gedeployd** en lopen
+gelijk met `main`, byte-voor-byte nagemeten. De versies en wat er per functie
+veranderde staan in `docs/WERKVOORRAAD.md` §2; hieronder alleen wat je moet weten
+vóór je erop gaat handelen.
 
 ⚠️ **Wat er níét gemeten is: er is geen enkele echte aanroep gedaan.** De proxy
 van de bouwomgeving weigert `supabase.co/functions/v1/*` met een 403 op de
