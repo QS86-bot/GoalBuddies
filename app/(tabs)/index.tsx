@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
  * ⚠️ **De aanvraag is stilzwijgend en kost uit het gedeelde dagquotum van tien**,
  *    hetzelfde quotum als het opsplitsen van een doel en de weekstappen. Dat is
  *    aanvaardbaar omdat het per mijlpaal één keer gebeurt en niet per week — de
- *    grendel daarvoor staat in `vraag_ai_job()` (migratie 0100) en niet hier.
+ *    grendel daarvoor staat in `vraag_ai_job()` (migratie 0101) en niet hier.
  *    Is het quotum op, dan komt er `quota_reached` terug, doet deze functie
  *    niets, en ziet de gebruiker de vaste regel. Met opzet geen foutmelding: hij
  *    heeft niets gevraagd.

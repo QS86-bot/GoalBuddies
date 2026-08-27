@@ -81,7 +81,7 @@ describe('de weektip', () => {
     //    vijftien zinnen.
     // ⚠️ Uit `TEGENVALLER_WOORDEN` en niet meer als losse regex hier. Sinds
     //    QS8-137 is diezelfde lijst een échte zeef in de database
-    //    (`tegenvaller_woorden()`, migratie 0100), en twee handgeschreven
+    //    (`tegenvaller_woorden()`, migratie 0101), en twee handgeschreven
     //    kopieën van dezelfde regel lopen uit elkaar zodra niemand ze
     //    vergelijkt.
 

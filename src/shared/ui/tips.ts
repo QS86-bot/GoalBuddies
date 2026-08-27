@@ -49,7 +49,7 @@ import { telTekens } from '../tekst';
  *    worden, en wel in de dátabase, want de tip komt binnen via `service_role`
  *    vanuit een Edge Function en die omzeilt RLS volledig.
  *
- * ⚠️ **Deze lijst is dus een kopie van `tegenvaller_woorden()` (migratie 0100),
+ * ⚠️ **Deze lijst is dus een kopie van `tegenvaller_woorden()` (migratie 0101),
  *    en dat is precies de vorm waar 0032/0034 op stukliep.** Hij staat hier voor
  *    de vaste regels en dáár voor de gegenereerde; `tests/rls/mijlpaaltip.test.ts`
  *    legt de twee naast elkaar op **gelijkheid**. Twee insluitingen zijn geen

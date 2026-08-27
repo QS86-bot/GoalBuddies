@@ -59,7 +59,7 @@ export async function vraagMijlpaalTip(
   milestoneId: string,
 ): Promise<Uitkomst<JobVerwijzing>> {
   // ⚠️ **Precies één sleutel, en dat is geen zuinigheid.** `vraag_ai_job()`
-  //    weigert sinds migratie 0100 elke andere invoer voor dit soort job: zou de
+  //    weigert sinds migratie 0101 elke andere invoer voor dit soort job: zou de
   //    client de doeltitel en de mijlpaaltekst meesturen, dan stuurt hij
   //    feitelijk de prompt, en dan is het dagquotum een formaliteit. De Edge
   //    Function haalt die teksten zelf op.
