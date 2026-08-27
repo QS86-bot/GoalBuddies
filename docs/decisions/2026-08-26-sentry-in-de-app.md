@@ -103,11 +103,46 @@ plaats van dat er iets van gemaakt wordt. Een verzonnen versie koppelt source
 maps aan de verkeerde release, en dat merk je pas als je een stack probeert te
 lezen.
 
-## Wat dit niet doet
+### 7. Source maps — criterium 2
 
-- **Source maps uploaden** (criterium 2). Dat vraagt een `SENTRY_AUTH_TOKEN` en
-  een stap in de webbuild. De token is een externe vastlegging en dus grens 1.
-  Zonder source maps is een stack uit de productiebundel onleesbaar — de melding
-  komt aan, maar wijst naar `bundle.js:1:284213`.
+`npm run deploy` bouwt sinds 26-08 mét externe source maps, stuurt ze naar Sentry
+en **haalt ze daarna zonder uitzondering uit de bundel**.
+
+⚠️ **Die laatste stap is de veiligheidskant van deze feature en is niet
+   overslaanbaar.** Een `.map` naast een publieke bundel geeft iedereen je
+   volledige broncode, inclusief commentaar. Hij hoort naar Sentry en nooit naar
+   de webserver. Daarom controleert het script achteraf dat er geen enkele
+   achterblijft, en breekt het de deploy af als dat wel zo is: liever niet live
+   dan met je bron erbij.
+
+**Wél `@sentry/cli`, en dat spreekt beslissing 1 niet tegen.** Die ging over de
+*runtime*-SDK in de bundel die naar gebruikers gaat. Dit is bouwgereedschap: er
+komt geen byte van bij een gebruiker terecht. En wat we hier zouden hand-rollen
+is niet een transport — dat is gemeten — maar de **koppelconventie** tussen
+bundel en map (debug-id's). Precies het soort logica dat stil verkeerd kan zijn
+en die ik hier niet kan verifiëren.
+
+⚠️ **Vastgepind via `npx` en bewust géén devDependency.** Het gereedschap wordt
+   door één script gebruikt, op één machine, af en toe. In `package.json` zetten
+   zou elke `npm ci` — ook elke CI-run die niets deployt — een platformbinary
+   laten downloaden.
+
+⚠️ **`inject` vóór `upload`.** `inject` schrijft debug-id's in de bundel én in de
+   map; daarop koppelt Sentry ze. Upload je zonder inject, dan komt alles aan en
+   matcht er niets.
+
+**Zonder token slaat de stap zichzelf over**, met in het log wélke van de drie
+variabelen ontbreekt. Een deploy laten falen omdat de foutrapportage niet
+compleet is, zou de app onbereikbaar maken om een leesbaarheidsprobleem. De maps
+worden dan gewoon verwijderd; de bundel gaat schoon de deur uit.
+
+⚠️ **De release-naam staat op twee plekken en dat is een naad.** De app stuurt
+   hem mee bij elke gebeurtenis, het deployscript hangt de maps eraan. Ze kunnen
+   de functie niet delen — de ene kant is TypeScript, de andere een `.mjs`. Wat
+   ze wél delen is `tests/scripts/release-naam.test.ts`, die beide aanroept en de
+   uitkomst vergelijkt, inclusief de versie die vandaag écht in `app.json` staat.
+   Lopen ze uiteen, dan matcht er niets terwijl alles lijkt te werken.
+
+## Wat dit niet doet
 - **Native crashes.** Zie beslissing 1.
 - **Breadcrumbs en automatische instrumentatie.** Zie beslissing 1.

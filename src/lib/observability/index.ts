@@ -105,3 +105,5 @@ export { REDACTED, scrubContext, scrubMessage, scrubStack } from './scrub';
 export { maakSentrySink, type SinkOpties } from './sentry-sink';
 
 export { koppelGlobaleFouten, type Luisteraar } from './globale-fouten';
+
+export { releaseVoor } from './release';
