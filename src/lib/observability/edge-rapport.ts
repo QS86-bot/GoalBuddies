@@ -28,20 +28,21 @@
  *    lintregel `no-restricted-syntax` slaat aan op `Date.now()`. Zelfde vorm als
  *    `webpush-crypto.ts`. Het maakt de envelope bovendien toetsbaar.
  *
- * ⚠️ **Wat er op 26-08-2026 wél en niet geverifieerd is.** Er is sinds die dag
- *    een DSN, en de envelope is met de échte sleutel gebouwd en verstuurd.
+ * ✅ **Op 26-08-2026 end-to-end gemeten**, met een echte DSN en een echte ingest.
  *
  *    | Wat | Stand |
  *    |---|---|
  *    | De DSN wordt goed ontleed, ook een EU-project (`ingest.de.sentry.io`) | ✅ |
  *    | De drie regels, de itemkop en de octetlengte | ✅ op de echte bytes |
  *    | Er gaat niets persoonlijks over de lijn | ✅ op de echte bytes |
- *    | De ingest **accepteert** de envelope | ❌ nog steeds niet bewezen |
+ *    | De ingest **accepteert** de envelope | ✅ HTTP 200, event `4dff8230…` |
  *
- *    Die laatste kon niet: de omgeving waarin dit gebouwd wordt laat het
- *    ingest-adres niet door en gaf 403. Dat is een grens van de werkplek en
- *    niet van Sentry. `npm run sentry:proef` doet precies deze controle vanaf
- *    een machine die er wél bij kan.
+ *    Die laatste rij stond tot die dag op ❌, en het kostte drie pogingen: de
+ *    bouwomgeving liet het ingest-adres niet door (403 — en dát legde bloot dat
+ *    deze laag toen `'verstuurd'` meldde), daarna startte het proefscript niet
+ *    op Windows, en pas de derde gaf 200. Geen van die drie is door een test
+ *    gevonden. `npm run sentry:proef` doet de controle opnieuw wanneer je hem
+ *    nodig hebt.
  *
  * ⚠️ En juist die 403 legde een gat bloot dat de tests niet konden zien: deze
  *    laag meldde `'verstuurd'`. Zie de kop van `Vervoer` hieronder.
@@ -138,6 +139,26 @@ export function maakVerzending(
      *    laag het veld weg in plaats van iets te verzinnen.
      */
     readonly omgeving?: string | undefined;
+    /**
+     * Waar deze code draait: `deno` voor een Edge Function, `web` of `ios` of
+     * `android` voor de app. Wordt een tag in Sentry.
+     *
+     * ⚠️ **Verplicht en zonder standaardwaarde, met opzet.** Stond hier tot
+     *    26-08-2026 hard op `'deno'`, want er was maar één aanroeper. Zodra de
+     *    app dezelfde envelope ging gebruiken, zou een standaard betekenen dat
+     *    een fout uit de browser zich als Edge Function voordoet — en dat merk
+     *    je pas als je in Sentry naar de verkeerde logs zit te kijken.
+     */
+    readonly runtime: string;
+    /** `server_name` in Sentry: `edge` voor de jobs, `app` voor de client. */
+    readonly server: string;
+    /**
+     * De versie van wat er draait, als hij bekend is. Nodig zodra er source maps
+     * geüpload worden: Sentry koppelt die aan een release.
+     *
+     * ⚠️ Weglaten en niet verzinnen, om dezelfde reden als bij `omgeving`.
+     */
+    readonly release?: string | undefined;
   },
   nu: Date,
 ): Verzending {
@@ -149,12 +170,13 @@ export function maakVerzending(
     platform: 'javascript',
     level: 'error',
     logger: gegevens.waar,
-    server_name: 'edge',
+    server_name: gegevens.server,
     ...(gegevens.omgeving === undefined ? {} : { environment: gegevens.omgeving }),
+    ...(gegevens.release === undefined ? {} : { release: gegevens.release }),
     exception: {
       values: [{ type: gegevens.naam, value: gegevens.melding }],
     },
-    tags: { waar: gegevens.waar, runtime: 'deno' },
+    tags: { waar: gegevens.waar, runtime: gegevens.runtime },
     extra: gegevens.stack === undefined
       ? gegevens.context
       : { ...gegevens.context, stack: gegevens.stack },
@@ -262,7 +284,14 @@ export async function meldEdgeFout(
     const beschrijving = beschrijf(fout, opties.extra ?? {});
     const verzending = maakVerzending(
       ontleed,
-      { id: gebeurtenisId(opties.id), waar, omgeving: opties.omgeving, ...beschrijving },
+      {
+        id: gebeurtenisId(opties.id),
+        waar,
+        omgeving: opties.omgeving,
+        runtime: 'deno',
+        server: 'edge',
+        ...beschrijving,
+      },
       opties.nu,
     );
 

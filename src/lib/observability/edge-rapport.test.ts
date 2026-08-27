@@ -19,10 +19,14 @@ import {
  *    Dat geval staat in CLAUDE.md bij regel 18. De les: toets wat de sink
  *    daadwerkelijk krijgt, niet wat een onderdeel belooft.
  *
- * ⚠️ **Wat deze tests níét bewijzen:** dat Sentry de envelope accepteert. Er is
- *    geen account en er is dus nooit een envelope aangekomen. De vorm volgt de
- *    envelope-specificatie en wordt hieronder regel voor regel getoetst; dat is
- *    iets anders dan een 200 van de ingest. Zie docs/ENGINEER-REVIEW.md.
+ * ⚠️ **Wat deze tests níét bewijzen:** dat Sentry de envelope accepteert. Ze
+ *    toetsen de vorm regel voor regel, en dat is iets anders dan een 200 van de
+ *    ingest — een test kan alleen bevestigen wat de schrijver al dacht.
+ *
+ *    Dat gat is op 26-08-2026 gesloten, maar níét hier: `npm run sentry:proef`
+ *    stuurde een echte envelope en kreeg HTTP 200 (event `4dff8230…`). Deze
+ *    tests bewaken de vorm tussen die runs door; het proefscript bewaakt of er
+ *    daadwerkelijk iets aankomt. Haal ze niet door elkaar.
  */
 
 const DSN = 'https://abc123def456@o4507.ingest.sentry.io/6789';
@@ -89,7 +93,7 @@ describe('maakVerzending', () => {
   it('richt zich op het envelope-eindpunt van het project', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'a'.repeat(32), waar: 'rollover', naam: 'Error', melding: 'stuk', context: {} },
+      { id: 'a'.repeat(32), waar: 'rollover', runtime: 'deno', server: 'edge', naam: 'Error', melding: 'stuk', context: {} },
       NU,
     );
 
@@ -102,7 +106,7 @@ describe('maakVerzending', () => {
   it('bouwt drie regels: kop, itemkop en de gebeurtenis', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'b'.repeat(32), waar: 'doelcoach', naam: 'TypeError', melding: 'db is niet gedefinieerd', context: { code: '42501' } },
+      { id: 'b'.repeat(32), waar: 'doelcoach', runtime: 'deno', server: 'edge', naam: 'TypeError', melding: 'db is niet gedefinieerd', context: { code: '42501' } },
       NU,
     );
 
@@ -143,6 +147,8 @@ describe('maakVerzending', () => {
       {
         id: 'd'.repeat(32),
         waar: 'rollover',
+        runtime: 'deno',
+        server: 'edge',
         naam: 'Error',
         melding: 'stuk',
         context: {},
@@ -158,7 +164,7 @@ describe('maakVerzending', () => {
   it('laat het veld weg als de omgeving onbekend is', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'e'.repeat(32), waar: 'rollover', naam: 'Error', melding: 'stuk', context: {} },
+      { id: 'e'.repeat(32), waar: 'rollover', runtime: 'deno', server: 'edge', naam: 'Error', melding: 'stuk', context: {} },
       NU,
     );
 
@@ -169,7 +175,7 @@ describe('maakVerzending', () => {
   it('telt de lengte in octetten en niet in tekens', () => {
     const v = maakVerzending(
       dsn,
-      { id: 'c'.repeat(32), waar: 'x', naam: 'Error', melding: 'één café — 😀', context: {} },
+      { id: 'c'.repeat(32), waar: 'x', runtime: 'deno', server: 'edge', naam: 'Error', melding: 'één café — 😀', context: {} },
       NU,
     );
 
