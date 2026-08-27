@@ -402,8 +402,16 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         });
 
         expect(error).toBeNull();
-        for (const rij of (data ?? []) as { closed_this_period: boolean }[]) {
-          expect(rij.closed_this_period).toBe(false);
+        for (const rij of (data ?? []) as { closed_this_period: boolean | null }[]) {
+          // ⚠️ De belofte eerst: over een periode van zestig dagen terug mag hier
+          //    van niemand een aanwezigheid uit komen.
+          expect(rij.closed_this_period).not.toBe(true);
+
+          // ⚠️ En sinds 0104 is het antwoord `null` — "daar zeg ik niets over" —
+          //    en niet `false`, wat "niets afgerond" betekent. Deze test stond
+          //    tot dan op `toBe(false)` en legde daarmee vast dat een weigering
+          //    eruitziet als een gemiste week. Zie migratie 0104.
+          expect(rij.closed_this_period).toBeNull();
         }
       },
       TEST_TIMEOUT,

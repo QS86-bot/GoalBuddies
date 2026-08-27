@@ -108,3 +108,55 @@ describe('fetchGroepsoverzicht — het aantal rondes', () => {
     expect(argumenten.p_offset).toBe(0);
   });
 });
+
+/**
+ * De derde stand overleeft de datalaag — migratie 0104.
+ *
+ * ⚠️ **De naad, en hij zat precies één regel naast de regel die hem verbiedt.**
+ *    `toRij()` schreef `closed_this_period: rij.closed_this_period ?? false`,
+ *    twee regels onder een commentaar dat bij `best_streak` uitlegt waarom daar
+ *    géén `?? 0` mag staan: *"dat zou van 'niet voor jou' een `0` maken, en dan
+ *    doet een getal een bewering waar de database er geen deed."* Exact dezelfde
+ *    fout, exact dezelfde functie.
+ *
+ * ⚠️ **Waarom dit niet met een RLS-test te vangen is.** De database gaf al het
+ *    goede antwoord zodra 0104 draaide; het platslaan gebeurde daarná, in
+ *    TypeScript. Een test tegen de database blijft dus groen. Dit is een test op
+ *    de vertaalslag, en die hoort hier.
+ */
+describe('fetchGroepsoverzicht — "geen antwoord" blijft geen antwoord', () => {
+  beforeEach(() => {
+    rpc.mockReset();
+    from.mockClear();
+  });
+
+  const PERIODE = { startDate: '2026-08-24', endDate: '2026-08-30' } as never;
+
+  it('geeft null door en maakt er geen false van', async () => {
+    rpc.mockResolvedValue({
+      data: [{ ...TWAALF[0], closed_this_period: null }],
+      error: null,
+    });
+
+    const uit = await fetchGroepsoverzicht('groep-1', PERIODE);
+
+    // ⚠️ `toBeNull()` en niet `toBeFalsy()`. Dat tweede is groen bij `false`, en
+    //    dan bewaakt deze test precies niets.
+    expect(uit.rijen[0]?.closed_this_period).toBeNull();
+  });
+
+  it('laat false false en true true — anders bewijst het bovenstaande niets', async () => {
+    rpc.mockResolvedValue({
+      data: [
+        { ...TWAALF[0], closed_this_period: false },
+        { ...TWAALF[1], closed_this_period: true },
+      ],
+      error: null,
+    });
+
+    const uit = await fetchGroepsoverzicht('groep-1', PERIODE);
+
+    expect(uit.rijen[0]?.closed_this_period).toBe(false);
+    expect(uit.rijen[1]?.closed_this_period).toBe(true);
+  });
+});

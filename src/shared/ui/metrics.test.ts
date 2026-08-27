@@ -333,7 +333,7 @@ describe('ledenrijLabel — de rij die over iemand anders gaat', () => {
 
     for (const streak of [0, 1, 7]) {
       const kaal = ledenrijLabel({ ...basis, streak });
-      for (const closed of [false, true]) {
+      for (const closed of [false, true, null]) {
         for (const breather of [false, true]) {
           const label = ledenrijLabel({
             ...basis,
@@ -355,6 +355,35 @@ describe('ledenrijLabel — de rij die over iemand anders gaat', () => {
     expect(label).toContain('Jamie');
     expect(label).toContain(streakLabel(3));
     expect(label.length).toBeGreaterThan(streakLabel(3).length + 'Jamie'.length);
+  });
+
+  /**
+   * ⚠️ **De derde stand, sinds migratie 0104.** `null` betekent "geen antwoord
+   *    over deze periode" en niet "nog niet afgerond". Op déze rij hoort dat er
+   *    hetzelfde uit te zien als `false` — een rij mag nooit beschuldigen — maar
+   *    dat is een keuze en geen toeval, dus hij staat vast.
+   *
+   * ⚠️ Waar het verschil wél toe doet is een niveau hoger: een hele lijst zonder
+   *    vinkjes leest als "iedereen heeft die week gemist", terwijl de database
+   *    juist weigerde iets te zeggen. Dat is de reden dat `null` niet in de
+   *    datalaag op `false` wordt platgeslagen — zie `modules/buddies/api.ts`.
+   */
+  it('behandelt "geen antwoord" precies als "nog niet" — op deze rij', () => {
+    const geenAntwoord = ledenrijLabel({ ...basis, closedThisPeriod: null });
+    const nogNiet = ledenrijLabel({ ...basis, closedThisPeriod: false });
+    const wel = ledenrijLabel({ ...basis, closedThisPeriod: true });
+
+    expect(geenAntwoord).toBe(nogNiet);
+    // ⚠️ En expliciet níét als "wel". Zonder deze regel zou een implementatie
+    //    die `null` als afgerond leest hier groen blijven, en dan verzint het
+    //    label een vinkje dat de database niet gaf.
+    expect(geenAntwoord).not.toBe(wel);
+  });
+
+  it('laat de adempauze ook bij "geen antwoord" voorgaan', () => {
+    const label = ledenrijLabel({ ...basis, closedThisPeriod: null, onBreather: true });
+
+    expect(label).toBe(ledenrijLabel({ ...basis, onBreather: true }));
   });
 
   it('laat de adempauze voorgaan op het vinkje, net als de rij zelf', () => {

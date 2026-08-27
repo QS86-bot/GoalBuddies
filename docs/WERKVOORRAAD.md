@@ -87,9 +87,20 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0103`
-zijn toegepast op het project. Het datamodel is vastgesteld
-in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0104`
+staan in de map.
+
+⚠️ **En op 27-08-2026 zijn dat er twee méér dan er op het project staan.**
+`0102_een_vertrek_is_een_handeling` en `0103_de_doelcoach_tip_per_mijlpaal` zijn
+wél gemerged maar níét toegepast: `verlaat_groep()` en `milestone_tips` bestaan
+daar niet, en ze staan ook niet in het register. Gemeten met een objectprobe en
+niet alleen aan het register afgelezen. Zolang dat zo is, bouwt de lokale stack
+een schema dat productie niet heeft — precies waar de kop van
+`migraties-controle` voor waarschuwt — en toetst de RLS-suite dus deels iets
+anders dan er draait. `npm run register:controle` zegt dit met credentials in
+één regel.
+
+Het datamodel is vastgesteld in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
 `approval_withdrawals` (0030), `deadline_requests` (0032), `week_pass_events`
 (0039), `goal_risk` (0050), `push_tokens` en `notifications_sent` (0053),

@@ -216,7 +216,13 @@ export function besteReeksLabel(cycles: number): string {
 export function ledenrijLabel(input: {
   readonly name: string;
   readonly streak: number;
-  readonly closedThisPeriod: boolean;
+  /**
+   * ⚠️ `null` = geen antwoord over deze periode (migratie 0104). Hier telt dat
+   *    hetzelfde als `false`: er komt niets bij. Dat is geen versimpeling maar
+   *    dezelfde regel als hierboven — deze functie voegt uitsluitend toe wat er
+   *    wél is, en "de database zei niets" is geen mededeling over een persoon.
+   */
+  readonly closedThisPeriod: boolean | null;
   readonly onBreather?: boolean;
   readonly bestStreak?: number | null;
 }): string {
@@ -229,7 +235,7 @@ export function ledenrijLabel(input: {
   }
 
   if (input.onBreather === true) delen.push(t('lid.adempauze'));
-  else if (input.closedThisPeriod) delen.push(t('lid.afgerond'));
+  else if (input.closedThisPeriod === true) delen.push(t('lid.afgerond'));
 
   return delen.join(', ');
 }
