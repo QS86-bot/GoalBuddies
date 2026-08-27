@@ -51,11 +51,16 @@ export default defineConfig({
      * worden betaald door ~110 unit-testbestanden die nooit een database
      * aanraken. De grens loopt precies om `tests/rls/`, dus daar leggen we hem.
      *
-     * ⚠️ **Dit is de indamming en niet de genezing.** De echte reparatie is dat
-     * het opruimen van bestand A de fixtures van bestand B niet kán raken — een
-     * eigen naamruimte per bestand. Zolang die er niet is, houdt deze regel de
-     * uitslag betrouwbaar; hij maakt de suite niet robuust. Zie de rij van
-     * 27-08 in `docs/ENGINEER-REVIEW.md`.
+     * ⚠️ **Dit is de indamming en niet de genezing.** Hier stond dat de echte
+     * reparatie "een eigen naamruimte per bestand" is. **Dat is later op 27-08
+     * nagemeten en het is het verkeerde doel**, en die tegenspraak hoort niet in
+     * twee documenten te blijven staan: het opruimen is al id-gescoped
+     * (`removeTestUsers()` doet `.in(column, ids)` met uitsluitend de gebruikers
+     * van dát bestand) en de identiteiten zijn al uniek per bestand. Een
+     * naamruimte voegt geen isolatie toe die er niet al is — wie hem bouwt,
+     * hernoemt het probleem. De rij van 27-08 in `docs/ENGINEER-REVIEW.md` is de
+     * bron; deze regel houdt de uitslag betrouwbaar en maakt de suite niet
+     * robuust.
      *
      * ⚠️ `sequence.concurrent` doet dit **niet**. Dat gaat over `test.concurrent`
      * bínnen één bestand; hier stond het al op `false` met een commentaarregel

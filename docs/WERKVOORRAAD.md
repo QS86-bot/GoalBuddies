@@ -88,7 +88,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0105`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0106`
 staan in de map.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder

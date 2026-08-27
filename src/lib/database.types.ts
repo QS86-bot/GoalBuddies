@@ -2051,6 +2051,13 @@ export type Database = {
         }
         Returns: Json
       }
+      definer_bewaking: {
+        Args: never
+        Returns: {
+          bezwaar: string
+          naam: string
+        }[]
+      }
       domeinregel3_bewaking: {
         Args: never
         Returns: {
