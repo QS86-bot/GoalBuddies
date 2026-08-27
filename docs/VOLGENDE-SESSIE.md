@@ -3,9 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na PR #36, #38 en #41. **Fase 2 is
-> begonnen** — drie `phase:v2`-issues staan In Review en wachten op een merge, in
-> een vaste volgorde. Zie "Waar te beginnen", punt 0.
+> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38 en #41.
+> **Fase 2 is begonnen** — die drie `phase:v2`-issues staan op `main`. Er is
+> één ding dat direct moet gebeuren; zie "Waar te beginnen", punt 0.
 
 ---
 
@@ -592,16 +592,22 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   Die eerste groep wordt niet rood; hij bewijst alleen iets anders dan zijn naam
   zegt.
 
-- **⚠️ Twee sessies naast elkaar botsen op migratienummers, en dat kost elke keer
-  hetzelfde half uur.** Op 27-08 drie keer: een `0098` werd `0100` omdat de
-  andere sessie er eerder mee landde, en een tweede `0100` werd `0101`. Het
-  hernummeren zelf is triviaal — het bestand plus elke verwijzing erin, in de
-  tests en in de documenten — maar het móét gebeuren: `migraties:controle` gaat
-  rood op een gat, en dat is de ernstigste van de drie dingen die dat script
-  vangt.
+- **⚠️ Een migratienummer is niet van je branch maar van `main`, en dat heeft op
+  27-08 vijf keer gecorrigeerd moeten worden.** Eén bestand kreeg er drie:
+  `0098` → `0100` → `0101` → `0103`, elke keer omdat de parallelle sessie er
+  eerder mee landde. Het hernummeren zelf is triviaal — het bestand plus elke
+  verwijzing erin, in de tests en in de documenten — maar het móét gebeuren:
+  `migraties:controle` gaat rood op een gat, en dat is de ernstigste van de drie
+  dingen die dat script vangt.
+
+  **De les is niet "hernummer sneller" maar: reserveer nooit een nummer
+  vooruit.** Kies het pas op het moment dat je merget, en haal `main` op vlak
+  vóór dat moment. Elke kop die opschrijft *waarom* dit bestand nummer N heeft
+  in plaats van N−1, veroudert bij de volgende merge — de kop van `0103` zegt
+  daarom alleen nog de regel.
 
   ⚠️ **En een hernummering naar bóven maakt tijdelijk zelf een gat.** Schuif je
-  op naar `0101` terwijl `0100` op een andere branch staat, dan is jouw branch
+  op naar `0103` terwijl `0102` op een andere branch staat, dan is jouw branch
   rood tot die ander landt — ook in CI. Dat is te accepteren (met de volgorde in
   de PR) of op te lossen door die branch erin te mergen; allebei is goed, maar
   kies bewust en schrijf op wat je koos.
@@ -617,6 +623,22 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   niet weg.` **Lees die regel voordat je de tests leest.** Zie ook WERKVOORRAAD
   valkuil 15: een uitgeputte limiet, een klokverschil en dit geval zien er alle
   drie uit als een kapotte policy.
+
+  ⚠️ **En grijp dan niet naar `pkill -f postgrest`.** Dat is precies wat de kop
+  van `scripts/lokale-stack.sh` afraadt, en op 27-08 nam het in één keer de
+  Postgres-server mee: exit 144, waarna niets meer verbond en het faalbeeld
+  verschoof van "de drop lukt niet" naar "er is geen database". Terug met
+  `pg_ctlcluster 16 main start`. De nette weg is `npm run rls:stack -- --stop`,
+  en als de drop dan nog weigert: `psql -c "drop database if exists
+  goalbuddies_rls;"` met de hand.
+
+  ⚠️ **`schema-opbouwen.sh` gaat uit van Postgres op poort 5433 en gebruiker
+  `postgres`.** Draait jouw cluster op 5432, of ben je als een andere gebruiker
+  ingelogd, dan falen zowel `rls:stack` als de drie controlescripts die
+  `pg_proc` lezen (`pin`, `klokgrens`, `kolomrechten`) — met een psql-fout die
+  naar de database wijst terwijl de vérbinding fout staat. `PGPORT` en `PGUSER`
+  zetten lost het op; ze zijn niet in het script gehardcodeerd omdat ze per
+  machine verschillen.
 
 - **⚠️ Linear kan geen nieuwe issues meer aanmaken.** "You've exceeded the free
   issue limit for this workspace." Dat raakt de werkwijze: een bevinding die je
@@ -752,21 +774,26 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-### 0. Drie PR's staan klaar, en de volgorde is niet vrij
+### 0. `doelcoach` moet opnieuw gedeployd worden, en dat is het eerste
 
-**Land ze in deze volgorde: #36 → #38 → #41.** Ze zijn op elkaar gestapeld, en
-dat is met opzet — er zat geen andere weg omheen.
+De drie PR's van 27-08 zijn geland in de volgorde #36 → #38 → #41 (QS8-57,
+QS8-41, QS8-137). De migraties heten op `main` **`0102`** en **`0103`** — niet
+`0100`/`0101`, zie de valkuil over migratienummers verderop.
 
-| PR | Issue | Wat het is | Waarom deze plek |
-|---|---|---|---|
-| [#36](https://github.com/QS86-bot/GoalBuddies/pull/36) | QS8-57 | Een groep verlaten (migratie `0100`) | Los te landen. Draagt `0100` en dat nummer is de reden dat de andere twee wachten |
-| [#38](https://github.com/QS86-bot/GoalBuddies/pull/38) | QS8-41 | Weekstappen per mijlpaal | Voegt de `job.kind`-dispatch toe aan `doelcoach`, en #41 leunt daarop |
-| [#41](https://github.com/QS86-bot/GoalBuddies/pull/41) | QS8-137 | De Doelcoach-tip per mijlpaal (migratie `0101`) | Staat op de branches van #36 én #38. Zodra die landen, verdwijnen hun commits uit zijn diff |
+⚠️ **Twee van die drie wijzigden `supabase/functions/doelcoach/index.ts`, en de
+gedeployde functie loopt daar nu achter.** Zolang dat zo is krijgt élke nieuwe
+job de mijlpaalprompt terug, ook een `weekly_goals`- of `milestone_tip`-job, en
+gaat `npm run edge:gedeployd` rood. Draai `npm run edge:sync` en deploy daarna:
 
-⚠️ **Ná het landen van #38 of #41 moet `doelcoach` opnieuw gedeployd worden.**
-Anders wordt `npm run edge:gedeployd` rood en krijgt élke nieuwe job de
-mijlpaalprompt terug — de dispatch op `job.kind` zit in de repo en niet in de
-gedeployde functie. Draai `npm run edge:sync` ervóór.
+```bash
+npm run edge:sync
+supabase functions deploy doelcoach
+```
+
+⚠️ **Meet bij de eerste echte proef hoeveel van de zes weekstapvoorstellen de
+zeef overleven.** Blijft dat structureel onder de helft, dan is de prompt het
+probleem en niet de zeef — en dan voelt dit voor de gebruiker als "de coach doet
+niets".
 
 ⚠️ **Er staat één vraag open die geld raakt** (grens 1). De tip-generatie put uit
 hetzelfde dagquotum van tien als het opsplitsen van een doel en de weekstappen.
