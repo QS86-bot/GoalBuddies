@@ -1001,6 +1001,182 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
 
   // -------------------------------------------------------------------------
   describe('wat "open" niet is', () => {
+    /**
+     * Oppervlak 17 — `approval_withdrawals` — blijft dicht, óók in een open groep.
+     *
+     * ⚠️ **Dit was de laatste van de zeven "bewust dicht"-oppervlakken zonder
+     *    test**, en de rij in `docs/ENGINEER-REVIEW.md` zei waaróm: een zinnige
+     *    toets vraagt een volledige keten voltooiing → goedkeuring → intrekking,
+     *    en een test die op een lege tabel nul rijen telt bewijst niets. Die
+     *    keten staat hieronder, dus die reden is weg.
+     *
+     * ⚠️ **Wat er beschermd wordt.** Een ingetrokken goedkeuring is een
+     *    goedkeuring die iemand terugnam. Voor de betrokkenen is dat gewoon
+     *    informatie; voor een derde is het een gebeurtenis over de week van een
+     *    ander die níét via die persoon loopt — en dat is domeinregel 7,
+     *    onafhankelijk van de zichtbaarheid van de groep. Beslisdocument 002 §6b
+     *    zet hem daarom in beide standen dicht.
+     *
+     * ⚠️ **Een vierde account, en dat is de prijs van deze test.** Alice is de
+     *    eigenaar en bob de beoordelaar, dus de derde móet iemand anders zijn.
+     *    Carol kan het niet zijn: vier tests hierboven leunen erop dat zij
+     *    buiten `groepOpen` staat — zij is daar de buitenstaander. Dave zit
+     *    uitsluitend in `groepOpen` en is dus precies wat hier ontbrak: een
+     *    volwaardig lid van een ópen groep dat toch niets te maken heeft met deze
+     *    goedkeuring.
+     *
+     * ⚠️ Met de hand rood gemaakt door `approval_withdrawals_select` op de lokale
+     *    stack te verruimen met `or lid_van_open_groep(...)`: dan ziet dave de
+     *    rij en vallen beide weigeringen om, terwijl de drie toelatingen groen
+     *    blijven. Tweezijdig, want een policy die iedereen buitensluit is even
+     *    fout als een die niemand buitensluit.
+     *
+     * ⚠️ **De eerste poging tot die breuk vuurde niet, en dat is het opschrijven
+     *    waard.** Die liep via `completion_approvals`, en migratie 0100 heeft
+     *    diezelfde ochtend die tabel dichtgezet op beoordelaar-of-eigenaar — dus
+     *    dave kon de goedkeuring niet eens zien en de verruiming kwam nooit aan
+     *    bod. De suite bleef groen en dat zag eruit als bewijs. **Een breuk die
+     *    door een ándere policy geblokkeerd wordt, bewijst niets over deze.** De
+     *    tweede poging loopt via `completions → weekly_goals → goal_group_links`,
+     *    en dat pad staat wél open voor een groepsgenoot.
+     */
+    describe('een ingetrokken goedkeuring — oppervlak 17', () => {
+      let dave: TestUser;
+      let goedkeuringId: string;
+
+      beforeAll(async () => {
+        dave = await createTestUser('zicht-dave');
+        await laatMeedoen(dave, f.groepOpen);
+
+        const weekdoel = await adminDb()
+          .from('weekly_goals')
+          .select('id')
+          .eq('goal_id', f.doelOpen)
+          .eq('title', 'OPEN-GEPLAND')
+          .single();
+        if (weekdoel.error || weekdoel.data === null) {
+          throw new Error(`weekdoel zoeken: ${weekdoel.error?.message}`);
+        }
+
+        const voltooiing = await f.alice.db
+          .from('completions')
+          .insert({
+            weekly_goal_id: weekdoel.data.id,
+            user_id: f.alice.id,
+            achieved_level: 'ceiling',
+            // De groep staat op `evidence_policy = 'optional'` en vraagt dan om
+            // een korte notitie.
+            note: 'Gedaan.',
+            cycle_start_date: f.cycleStart,
+          })
+          .select('id')
+          .single();
+        if (voltooiing.error || voltooiing.data === null) {
+          throw new Error(`voltooiing: ${voltooiing.error?.message}`);
+        }
+
+        const goedkeuring = await f.bob.db
+          .from('completion_approvals')
+          .insert({
+            completion_id: voltooiing.data.id,
+            approver_id: f.bob.id,
+            subject_id: f.bob.id,
+            group_id: f.groepOpen.id,
+            status: 'approved',
+          })
+          .select('id')
+          .single();
+        if (goedkeuring.error || goedkeuring.data === null) {
+          throw new Error(`goedkeuring: ${goedkeuring.error?.message}`);
+        }
+        goedkeuringId = goedkeuring.data.id;
+
+        // ⚠️ Via de RPC en niet met een INSERT: `approval_withdrawals` heeft
+        //    `with check (false)` op INSERT, dus dit ís het enige echte pad. Een
+        //    fixture die de rij zelf zou zetten, zou een keten toetsen die niet
+        //    bestaat.
+        const intrekken = await f.bob.db.rpc('trek_goedkeuring_in', {
+          p_approval_id: goedkeuringId,
+        });
+        if (intrekken.error) throw new Error(`intrekken (HTTP): ${intrekken.error.message}`);
+        if (uitkomst(intrekken.data).ok !== true) {
+          throw new Error(`intrekken mislukte: ${uitkomst(intrekken.data).reason ?? 'geen reden'}`);
+        }
+      }, SETUP_TIMEOUT);
+
+      it(
+        'staat er echt — anders bewijst de weigering hieronder niets',
+        async () => {
+          const { data } = await adminDb()
+            .from('approval_withdrawals')
+            .select('id')
+            .eq('approval_id', goedkeuringId);
+
+          expect(data ?? []).toHaveLength(1);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'de beoordelaar ziet zijn eigen intrekking',
+        async () => {
+          const { data, error } = await f.bob.db
+            .from('approval_withdrawals')
+            .select('id')
+            .eq('approval_id', goedkeuringId);
+
+          expect(error).toBeNull();
+          expect(data ?? []).toHaveLength(1);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'de eigenaar van de voltooiing ziet hem ook',
+        async () => {
+          const { data, error } = await f.alice.db
+            .from('approval_withdrawals')
+            .select('id')
+            .eq('approval_id', goedkeuringId);
+
+          expect(error).toBeNull();
+          expect(data ?? []).toHaveLength(1);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'een derde in dezelfde open groep ziet er niets van',
+        async () => {
+          // ⚠️ Dave is volwaardig lid van een groep die op `open` staat. Precies
+          //    daarom telt deze test: als A41 dit oppervlak ooit meeneemt in de
+          //    verruiming, wordt hij hier rood.
+          const { data, error } = await dave.db
+            .from('approval_withdrawals')
+            .select('id')
+            .eq('approval_id', goedkeuringId);
+
+          // Geen fout maar nul rijen: RLS filtert, hij weigert niet.
+          expect(error).toBeNull();
+          expect(data ?? []).toHaveLength(0);
+        },
+        TEST_TIMEOUT,
+      );
+
+      it(
+        'en ook niet als hij de hele tabel opvraagt',
+        async () => {
+          // Dezelfde rij langs een andere ingang. Een policy die één filter
+          // dichtzet en een kale select niet, is geen policy.
+          const { data, error } = await dave.db.from('approval_withdrawals').select('id');
+
+          expect(error).toBeNull();
+          expect(data ?? []).toHaveLength(0);
+        },
+        TEST_TIMEOUT,
+      );
+    });
+
     it(
       'houdt de weekpassen van een ander dicht, ook in een open groep',
       async () => {
