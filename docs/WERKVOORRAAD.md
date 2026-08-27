@@ -32,9 +32,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **511 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41, QS8-137 en QS8-56).
-   Zonder credentials geeft `npm test` **1038 geslaagd en 491 overgeslagen**; typecheck
-   en lint groen.
+   **516 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41, QS8-137, QS8-56 en
+   `definer_bewaking`). Zonder credentials geeft `npm test` **1038 geslaagd en 496
+   overgeslagen**; typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -245,7 +245,7 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 31 bestanden; 29 daarvan slaan zonder credentials
+  bestaat. `tests/rls` telt 32 bestanden; 30 daarvan slaan zonder credentials
   over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en

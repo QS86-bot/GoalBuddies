@@ -4,7 +4,7 @@
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
 > **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38, #41, #54, #55,
-> #58 en #59, na het opnieuw deployen van alle drie de Edge Functions, na de
+> #58, #59 en #60, na het opnieuw deployen van alle drie de Edge Functions, na de
 > engineering-review van alles wat die dag geland is (#33 t/m #46), en na QS8-56.
 > **Fase 2 is begonnen** — de `phase:v2`-issues van EPIC 5 staan op `main` of in
 > review. Er zijn twee dingen die op jou wachten; zie "Waar te beginnen", punt 0
@@ -772,10 +772,10 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #59 en QS8-56)
+## STAND VAN DE REPO (27-08, na PR #60 en QS8-56)
 
 ⚠️ **De drie gestapelde PR's van 27-08 zijn geland** in de volgorde #36 → #38 →
-#41, en #54, #55, #58 en #59 daarna. Wat er nu open kan staan is de PR van
+#41, en #54, #55, #58, #59 en #60 daarna. Wat er nu open kan staan is de PR van
 QS8-56 (het blok "Gedeeld met" op het doelscherm); die staat niet in de tabel
 hieronder, want die noemt alleen langlevende branches.
 
@@ -932,8 +932,10 @@ rijen teruggeeft gaf eerst `6 failed | 38 passed` met deze twee groen, nu
 ⚠️ **Eén ding blijft onopgelost en is bewust niet gerepareerd:** de wisselende
 reeks in `tests/rls/reeks.test.ts`. De suite draait sinds PR #54 sequentieel
 over `tests/rls/`, wat de kans erop wegneemt maar niet de oorzaak, en PR #55
-zorgt dat een volgende waarneming meteen zegt wát er verdween. Waaróm het
-gebeurt is niet aangewezen — en het is sinds die herstructurering niet meer te
+zorgt dat een volgende waarneming meteen zegt wát er verdween. PR #60 heeft er
+twee plausibele verklaringen áfgehaald — gedeelde module-state en een globale
+veegfunctie, allebei gemeten en allebei uitgesloten — maar wélk bestand het doet,
+is nog steeds niet aangewezen, en het is sinds de herstructurering niet meer te
 reproduceren. **Ga hier niet op gokken; zie de twee valkuilen over reproductie
 en over reparaties-uit-het-dossier verderop.**
 
