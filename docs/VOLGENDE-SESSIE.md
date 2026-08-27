@@ -743,6 +743,19 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   broncode naar een letterlijke regel te grijpen, en dat tweede is precies de
   testvorm die bij QS8-85 stilletjes ophield iets te bewaken.
 
+- **⚠️ Een nieuwe migratie op een dráaiende lokale stack vraagt een schema-reload.**
+  PostgREST cachet de functielijst bij het starten. Voer je een migratie met een
+  nieuwe RPC uit tegen een stack die al loopt, dan geeft die RPC `PGRST202` —
+  *"Could not find the function … in the schema cache"* — en valt de bijbehorende
+  test om alsof de migratie stuk is. Dat is hij niet:
+
+  ```bash
+  psql -d goalbuddies_rls -c "notify pgrst, 'reload schema';"
+  ```
+
+  Gebeurde op 27-08 met `definer_bewaking()` uit 0106. `npm run rls:stack` bouwt
+  alles opnieuw op en heeft het probleem niet; dit treft alleen de snelle weg.
+
 ## TE ONTHOUDEN OVER HET PRODUCT
 
 **Domeinregel 7 (falen is nooit publiek) is de belangrijkste regel.** Bij elk
