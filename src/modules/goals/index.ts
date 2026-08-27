@@ -51,11 +51,15 @@ export {
 } from './adempauze';
 
 export {
+  fetchMijlpaalTips,
+  fetchVolgendeMijlpalen,
   herordenMijlpalen,
   maakMijlpaal,
+  volgendeMijlpaal,
   verwijderMijlpaal,
   wijzigMijlpaal,
   zetMijlpaalStatus,
+  type Mijlpaaltip,
 } from './mijlpalen';
 
 export {

@@ -1200,6 +1200,52 @@ export type Database = {
           },
         ]
       }
+      milestone_tips: {
+        Row: {
+          body: string
+          created_at: string
+          locale: string
+          milestone_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          locale: string
+          milestone_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          locale?: string
+          milestone_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestone_tips_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: true
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestone_tips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestone_tips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       milestones: {
         Row: {
           ai_generated: boolean
@@ -2244,6 +2290,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      tegenvaller_woorden: { Args: never; Returns: string[] }
+      tip_bevat_emoji: { Args: { p_tekst: string }; Returns: boolean }
+      tip_noemt_tegenvaller: { Args: { p_tekst: string }; Returns: boolean }
       verdien_weekpassen: {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined

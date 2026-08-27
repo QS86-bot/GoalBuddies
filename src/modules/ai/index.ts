@@ -3,6 +3,7 @@
 
 export {
   fetchJob,
+  vraagMijlpaalTip,
   vraagMijlpalen,
   vraagWeekdoelen,
   werkJobAf,
