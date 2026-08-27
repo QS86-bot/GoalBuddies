@@ -19,11 +19,17 @@
  *    er in stoppen. Dat vindt een verdwenen module, een module die de repo niet
  *    kent, en een functie die vanaf een andere boom is gedeployd.
  *
- *    Het vergelijkt **niet** de inhoud regel voor regel. Een bundel die dezelfde
- *    bestandsnamen draagt met andere inhoud komt hier groen doorheen. Dat is een
- *    bewuste grens: de bundel is een ESZip en de inhoud is er niet betrouwbaar
- *    uit te lezen zonder een parser die zelf onder test zou moeten staan.
- *    Zie `docs/DEPLOY.md` voor wat er dan wél nodig is.
+ *    ⚠️ **Sinds 27-08-2026 vergelijkt hij ook de inhoud.** Hier stond dat dat
+ *       een bewuste grens was en dat een bundel met dezelfde namen maar andere
+ *       inhoud er groen doorheen zou komen. Diezelfde dag bleek dat geen
+ *       hypothese: alle drie de functies droegen een `edge-rapport.ts` van
+ *       commit `a7beec5` terwijl de repo twee commits verder stond, en dit
+ *       script meldde "gelijk aan de repo". Zie `inhoudsafwijkingen()`.
+ *
+ *       Er is géén ESZip-parser voor nodig: de bundel draagt zijn bronnen als
+ *       tekst, dus de vraag is of de repo-inhoud er letterlijk in voorkomt.
+ *       Draagt hij ze niet leesbaar, dan zegt het script dát en meldt het niets
+ *       afwijkends — falen doet hij dicht, niet open.
  *
  * ⚠️ **Kan de bundel niet gelezen worden, dan zegt hij dat** — en meldt hij
  *    níét dat alles afwijkt. Een controle die bij een onbekend formaat "alles
@@ -188,6 +194,54 @@ export function modulesInBundel(tekst) {
   }
 
   return [...gevonden].sort();
+}
+
+/**
+ * Draagt de bundel dezelfde inhoud als de repo, of alleen dezelfde namen?
+ *
+ * ⚠️ **Waarom dit erbij moest, en waarom "bewuste grens" niet meer opging.** De
+ *    kop hierboven zei dat alleen de modulelijst vergeleken wordt en dat een
+ *    bundel met dezelfde namen maar andere inhoud er groen doorheen komt. Op
+ *    27-08-2026 is dat geen hypothese meer: alle drie de functies droegen een
+ *    `_shared/observability/edge-rapport.ts` van commit `a7beec5` (26-08 11:33)
+ *    terwijl de repo twee commits verder stond, en `notificaties` bovendien een
+ *    `notificaties/regels.ts` van `0fd2add`. De modulelijsten klopten exact, dus
+ *    dit script meldde **"gelijk aan de repo"** over code die dat niet was.
+ *
+ * ⚠️ **Dat is precies de vorm uit regel 18:** de controle toetste een eigenschap
+ *    van de ónderdelen (welke bestanden) terwijl de belofte over het gehéél gaat
+ *    (welke code draait). En de melding was sterker dan wat er gemeten werd —
+ *    dat is erger dan geen melding, want je gelooft hem.
+ *
+ * ⚠️ **Faalt dicht bij een onbekend formaat, niet open.** Vindt hij van géén
+ *    enkele module de inhoud terug, dan is dat geen bundel die overal van
+ *    afwijkt maar een bundel waar de bronnen niet leesbaar in staan — een ESZip
+ *    kan zijn bronnen comprimeren. Dan geeft hij `onleesbaar` en meldt hij niets
+ *    afwijkends. Zelfde reden als bij `leesbaar()`: een controle die bij een
+ *    onbekend formaat "alles stuk" roept, leer je binnen een week te negeren.
+ *
+ * @param bundel de tekst van de gedeployde bundel
+ * @param bronnen `[{ pad, inhoud }]` — wat de repo voor deze functie meestuurt
+ */
+export function inhoudsafwijkingen(bundel, bronnen) {
+  if (bronnen.length === 0) return { gelijk: [], afwijkend: [], onleesbaar: false };
+
+  const gelijk = [];
+  const afwijkend = [];
+
+  for (const bron of bronnen) {
+    // ⚠️ Verbatim en niet genormaliseerd. Een ESZip draagt de bron zoals hij op
+    //    schijf stond; gaan we hier witruimte of regeleindes gladstrijken, dan
+    //    verbergen we precies het soort verschil dat een hand-bewerkte deploy
+    //    oplevert.
+    if (bundel.includes(bron.inhoud.trim())) gelijk.push(bron.pad);
+    else afwijkend.push(bron.pad);
+  }
+
+  // Geen énkele treffer: de bronnen staan niet leesbaar in deze bundel.
+  if (gelijk.length === 0) return { gelijk: [], afwijkend: [], onleesbaar: true };
+
+  return { gelijk, afwijkend, onleesbaar: false };
 }
 
 /**
@@ -382,8 +436,26 @@ async function main() {
 
     const { ontbreekt, onbekend } = vergelijk(verwacht, gevonden);
 
-    if (ontbreekt.length === 0 && onbekend.length === 0) {
-      console.log(`  ✓ ${slug} — ${verwacht.length} modules, gelijk aan de repo`);
+    // ⚠️ De inhoud erbij, en niet alleen de namen. Tot 27-08-2026 stopte de
+    //    vergelijking hier en meldde dit script "gelijk aan de repo" over een
+    //    bundel waarvan twee modules van een oudere commit waren. Zie
+    //    `inhoudsafwijkingen()`.
+    const bronnen = verwacht
+      .map((pad) => ({ pad, inhoud: leesUitRepo(pad) }))
+      .filter((b) => b.inhoud !== null);
+
+    const inhoud = inhoudsafwijkingen(tekst, bronnen);
+
+    if (ontbreekt.length === 0 && onbekend.length === 0 && inhoud.afwijkend.length === 0) {
+      // ⚠️ De melding zegt precies wat er gemeten is en niet meer. Kon de inhoud
+      //    niet gelezen worden, dan is "gelijk aan de repo" een bewering die dit
+      //    script niet waar kan maken — en een melding die sterker is dan de
+      //    meting is erger dan geen melding, want je gelooft hem.
+      console.log(
+        inhoud.onleesbaar
+          ? `  ✓ ${slug} — ${verwacht.length} modules; namen gelijk, inhoud niet leesbaar in deze bundel`
+          : `  ✓ ${slug} — ${verwacht.length} modules, naam én inhoud gelijk aan de repo`,
+      );
       continue;
     }
 
@@ -391,6 +463,7 @@ async function main() {
     console.log(`  ✗ ${slug}`);
     for (const p of ontbreekt) console.log(`      ontbreekt in de deploy : ${p}`);
     for (const p of onbekend) console.log(`      kent de repo niet      : ${p}`);
+    for (const p of inhoud.afwijkend) console.log(`      andere inhoud dan repo : ${p}`);
   }
 
   console.log('');

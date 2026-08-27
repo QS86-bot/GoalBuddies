@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings; TypeScript leest de JSDoc ernaast. Zelfde
 //    vorm als `migratieregister-plan.test.ts`, met opzet.
 import {
+  inhoudsafwijkingen,
   leesbaar,
   modulesInBundel,
   modulesVoor,
@@ -343,5 +344,77 @@ describe('leesbaar', () => {
 
   it('zegt ja zodra er één pad in zit', () => {
     expect(leesbaar(['functions/a/index.ts'])).toBe(true);
+  });
+});
+
+/**
+ * De inhoud, niet alleen de namen — 27-08-2026.
+ *
+ * ⚠️ **Deze tests bestaan omdat de vorige versie een bewering deed die ze niet
+ *    kon waarmaken.** `edge-gedeployd` vergeleek alleen de modulelijst en
+ *    meldde daarna "gelijk aan de repo". Op 27-08 droegen alle drie de
+ *    gedeployde functies een `_shared/observability/edge-rapport.ts` van commit
+ *    `a7beec5` terwijl de repo twee commits verder stond, en `notificaties`
+ *    bovendien een `notificaties/regels.ts` van `0fd2add`. De modulelijsten
+ *    klopten exact — dus het script stond op groen over code die niet meer in
+ *    de repo stond.
+ *
+ *    Dat is de vorm uit regel 18: de controle toetste een eigenschap van de
+ *    ónderdelen terwijl de belofte over het gehéél gaat. En een melding die
+ *    sterker is dan de meting is erger dan geen melding, want je gelooft hem.
+ *
+ * ⚠️ De belangrijkste test is de laatste: bij een bundel zonder leesbare bronnen
+ *    hoort hij `onleesbaar` te geven en níéts afwijkends te melden. Een controle
+ *    die bij een onbekend formaat "alles stuk" roept, leer je binnen een week te
+ *    negeren — zelfde reden als bij `leesbaar()`.
+ */
+describe('inhoudsafwijkingen', () => {
+  const A = { pad: 'functions/a.ts', inhoud: 'export const a = 1;\n' };
+  const B = { pad: 'functions/b.ts', inhoud: 'export const b = 2;\n' };
+
+  it('ziet een bundel die beide bronnen letterlijk draagt als gelijk', () => {
+    const bundel = `voorloop ${A.inhoud} tussenin ${B.inhoud} staart`;
+
+    const uit = inhoudsafwijkingen(bundel, [A, B]);
+
+    expect(uit.afwijkend).toEqual([]);
+    expect(uit.gelijk).toEqual([A.pad, B.pad]);
+    expect(uit.onleesbaar).toBe(false);
+  });
+
+  it('vindt de module waarvan de inhoud verouderd is', () => {
+    // Precies het geval van 27-08: dezelfde naam, oudere inhoud.
+    const bundel = `voorloop ${A.inhoud} tussenin export const b = 1; staart`;
+
+    const uit = inhoudsafwijkingen(bundel, [A, B]);
+
+    expect(uit.afwijkend).toEqual([B.pad]);
+    expect(uit.gelijk).toEqual([A.pad]);
+    expect(uit.onleesbaar).toBe(false);
+  });
+
+  it('trekt omringende witruimte niet mee', () => {
+    // De repo-inhoud eindigt op een newline; de bundel hoeft dat niet te doen.
+    const uit = inhoudsafwijkingen(`x ${A.inhoud.trim()} y`, [A]);
+
+    expect(uit.afwijkend).toEqual([]);
+  });
+
+  it('meldt niets afwijkends als de bundel géén enkele bron leesbaar draagt', () => {
+    // ⚠️ Faalt dicht en niet open. Een ESZip mag zijn bronnen comprimeren; dan
+    //    is dit een bundel die we niet lezen kunnen en niet een bundel waarin
+    //    alles kapot is.
+    const uit = inhoudsafwijkingen('\u0000\u0001 gecomprimeerde onzin \u0002', [A, B]);
+
+    expect(uit.onleesbaar).toBe(true);
+    expect(uit.afwijkend).toEqual([]);
+    expect(uit.gelijk).toEqual([]);
+  });
+
+  it('doet niets bij een lege bronnenlijst', () => {
+    const uit = inhoudsafwijkingen('wat dan ook', []);
+
+    expect(uit.onleesbaar).toBe(false);
+    expect(uit.afwijkend).toEqual([]);
   });
 });
