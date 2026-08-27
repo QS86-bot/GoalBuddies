@@ -39,6 +39,7 @@ import {
   Field,
   Screen,
   Subheading,
+  useVertrekwacht,
 } from '@/shared/ui';
 
 /**
@@ -75,6 +76,16 @@ export default function Weekafsluiting() {
   const [reactiePagina, setReactiePagina] = useState(0);
   const [meerBezig, setMeerBezig] = useState(false);
   const [vuil, setVuil] = useState(false);
+  const [tegengehouden, setTegengehouden] = useState(false);
+
+  /**
+   * ⚠️ **De uitgangen die niet van de app zijn** — verversen, het tabblad
+   *    sluiten, de hardwareknop op Android. De knop hieronder was sinds EPIC 7
+   *    gedekt, deze niet, en juist vraag 2 is de enige plek in de app waar
+   *    iemand zijn eigen tegenslag opschrijft. Zie
+   *    `docs/decisions/2026-08-27-de-uitgangen-van-de-weekafsluiting.md`.
+   */
+  useVertrekwacht(vuil, () => setTegengehouden(true));
 
   useEffect(() => {
     if (!id) return;
@@ -188,7 +199,13 @@ export default function Weekafsluiting() {
                   ? 0
                   : s.reacties.filter((r) => r.week_review_id === mijnAntwoord.review_id).length
               }
-              onVuil={setVuil}
+              // ⚠️ Is de tekst gedeeld, dan is er niets meer tegen te houden en
+              //    hoort de uitleg ook weg te zijn. Hier en niet in een effect:
+              //    dit ís de gebeurtenis waar het van afhangt.
+              onVuil={(nu: boolean) => {
+                setVuil(nu);
+                if (!nu) setTegengehouden(false);
+              }}
               onGewijzigd={herlaad}
             />
 
@@ -211,13 +228,17 @@ export default function Weekafsluiting() {
       </AsyncView>
 
       {/*
-        ⚠️ Weg navigeren met onopgeslagen tekst vraagt eerst een tweede tik. Dit dekt
-           de uitgang binnen de app; de terugknop en het verversen van de browser
-           blijven onbeschermd — dat staat als bevinding in `docs/ENGINEER-REVIEW.md`.
+        ⚠️ Weg navigeren met onopgeslagen tekst vraagt eerst een tweede tik. Deze knop
+           dekt de uitgang binnen de app; `useVertrekwacht` hierboven dekt sinds
+           27-08-2026 het verversen, het sluiten van het tabblad en de hardwareknop
+           op Android. De terugknop van de browser blijft over — expo-router 57
+           exporteert geen manier om die tegen te houden, en dat staat als bevinding
+           in `docs/ENGINEER-REVIEW.md`.
       */}
       {vuil ? (
         <>
           <Caption danger>{t('weekafsluiting.niet_gedeeld')}</Caption>
+          {tegengehouden ? <Caption>{t('weekafsluiting.terugknop_tegengehouden')}</Caption> : null}
           <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
             {t('weekafsluiting.toch_weg')}
           </Button>
