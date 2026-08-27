@@ -3,9 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na PR #27. De hele Sentry-keten (QS8-24)
-> staat, de scripts draaien op Windows, en er is een controle op deploy-drift in
-> de Edge Functions.
+> **Laatst bijgewerkt:** 27-08-2026, na PR #36, #38 en #41. **Fase 2 is
+> begonnen** — drie `phase:v2`-issues staan In Review en wachten op een merge, in
+> een vaste volgorde. Zie "Waar te beginnen", punt 0.
 
 ---
 
@@ -24,6 +24,11 @@ WERKVOORRAAD §4.
 
 Fase 1 is inhoudelijk af: elke epic staat, 0 t/m 12. EPIC 9 (het commitment
 device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
+
+⚠️ **En sinds 27-08 is Fase 2 begonnen, met Quintens goedkeuring, terwijl Fase 1
+nog openstaat.** Dat mag omdat wat er van Fase 1 rest zíjn hand vraagt en geen
+code. Drie `phase:v2`-issues zijn af en staan In Review; ze moeten in een vaste
+volgorde landen. **Lees "Waar te beginnen" punt 0 vóór je iets doet met `main`.**
 
 **De app is live op `goalbuddies.q-projects.tech`** (QS8-99/QS8-100). Deployen is
 één commando:
@@ -552,6 +557,77 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   (`npm run sentry:proef`). Een test die je eigen aanname over het protocol
   bevestigt, bewijst niets over het protocol.
 
+- **⚠️ Een gerepareerd predicaat kan door een tweede functie overschreven worden,
+  en dan repareer je niets.** Op 27-08 kreeg `shares_group_with_goal()` de
+  ontbrekende eigenaarstoets, en de migratiekop verklaarde daarmee drie routes
+  dicht. Dat klopte voor `goals_select` en **niet** voor `weekly_goals_select`:
+  die heeft sinds 0077 een dérde tak, `deelt_open_groep_met_doel()`, die dezelfde
+  vraag zélf beantwoordt met het oude predicaat. In een open groep bleef een
+  uitgezet lid daardoor zijn `status = 'missed'` uitdelen — de gevoeligste kolom
+  die er is.
+
+  **Zoek bij een predicaat niet alleen de aanroepers maar ook de functies die het
+  overschrijven.** `grep` op de tabelnaam, niet op de functienaam. Gevonden door
+  de security-reviewer, niet door de suite — zie de valkuil hieronder waaróm.
+
+- **⚠️ Een fixture kan een hele tak per constructie ongetest laten.** Diezelfde
+  ronde: de vertreksuite las `goals` en al haar groepen kwamen uit
+  `create_group(group_name)`, en dat maakt een **beschermde** groep. De
+  open-groepstak kon dus nooit rood worden, hoe grondig de rest ook was. Groen
+  betekende hier "de helft is getoetst", en niets in de uitslag zei dat.
+
+  **Bij elke policy die per stand varieert: heeft de suite van élke stand een
+  fixture?** Dat is regel 18 vraag 3 in zijn goedkoopste vorm — kan deze test
+  groen blijven terwijl de belofte breekt, ja, want hij komt er niet eens langs.
+
+- **⚠️ Een DELETE-policy op `using (false)` breekt bestaande tests stil.** Toen
+  `group_members_delete` dichtging, bleef een test in `policies.test.ts` groen
+  terwijl zijn premisse verdampt was: hij liet iemand "de groep verlaten" met een
+  kale DELETE, die weigert sindsdien zonder fout (valkuil: RLS filtert de rij weg
+  bij DELETE, dus 204 en geen `42501`), en de vertrekker was daarna gewoon nog
+  lid. `mustOk` was tevreden.
+
+  **Zoek na het dichtzetten van een werkwoord elke test die dat werkwoord
+  gebruikte als ópbouw** — niet alleen de tests die het als bewering gebruikten.
+  Die eerste groep wordt niet rood; hij bewijst alleen iets anders dan zijn naam
+  zegt.
+
+- **⚠️ Twee sessies naast elkaar botsen op migratienummers, en dat kost elke keer
+  hetzelfde half uur.** Op 27-08 drie keer: een `0098` werd `0100` omdat de
+  andere sessie er eerder mee landde, en een tweede `0100` werd `0101`. Het
+  hernummeren zelf is triviaal — het bestand plus elke verwijzing erin, in de
+  tests en in de documenten — maar het móét gebeuren: `migraties:controle` gaat
+  rood op een gat, en dat is de ernstigste van de drie dingen die dat script
+  vangt.
+
+  ⚠️ **En een hernummering naar bóven maakt tijdelijk zelf een gat.** Schuif je
+  op naar `0101` terwijl `0100` op een andere branch staat, dan is jouw branch
+  rood tot die ander landt — ook in CI. Dat is te accepteren (met de volgorde in
+  de PR) of op te lossen door die branch erin te mergen; allebei is goed, maar
+  kies bewust en schrijf op wat je koos.
+
+- **⚠️ Stop PostgREST vóór je de lokale stack herbouwt, of je test tegen de vorige
+  database.** `scripts/lokale-stack.sh` doet dat zelf via zijn pidbestand, maar
+  dat kent alleen zijn eigen instantie: draait er een uit een andere ronde, dan
+  weigert `drop database` en **gaat het script door op de oude database**. Wat je
+  dan ziet is een uitslag die niets betekent — op 27-08 negentien rode tests die
+  binnen een minuut allemaal groen waren na een schone herbouw.
+
+  Het faalbeeld is één regel die makkelijk voorbijglijdt: `✗ goalbuddies_rls kon
+  niet weg.` **Lees die regel voordat je de tests leest.** Zie ook WERKVOORRAAD
+  valkuil 15: een uitgeputte limiet, een klokverschil en dit geval zien er alle
+  drie uit als een kapotte policy.
+
+- **⚠️ Linear kan geen nieuwe issues meer aanmaken.** "You've exceeded the free
+  issue limit for this workspace." Dat raakt de werkwijze: een bevinding die je
+  onderweg doet en die een eigen issue verdient, kán er geen krijgen. Op 27-08
+  gebeurde dat met de `'error'`/`'failed'`-statusbug; die is toen meegegaan in de
+  PR die erop stuitte, met de reden in het beslisdocument.
+
+  **Bundel in dat geval, maar schrijf op dat je gebundeld hebt en waarom** — één
+  branch per issue is de regel, en een stilzwijgende uitzondering is hoe die
+  regel verwatert.
+
 ## TE ONTHOUDEN OVER HET PRODUCT
 
 **Domeinregel 7 (falen is nooit publiek) is de belangrijkste regel.** Bij elk
@@ -581,7 +657,13 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #27)
+## STAND VAN DE REPO (27-08, na PR #41)
+
+⚠️ **Er staan drie PR's open die op elkaar gestapeld zijn**, en die staan niet in
+de tabel hieronder — die noemt alleen langlevende branches, en deze drie zijn
+weg zodra ze gemerged zijn. Wat ze zijn en in welke volgorde ze moeten landen,
+staat in "Waar te beginnen" punt 0. **Merge er geen op gevoel: #41 draagt de
+migratie die op #36 wacht.**
 
 ⚠️ **In deze tabel staat met opzet geen commit-hash van `main` meer.** In de
 vorige versie stond hij er twee keer en op twee verschillende waarden, en tijdens
@@ -670,6 +752,37 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
+### 0. Drie PR's staan klaar, en de volgorde is niet vrij
+
+**Land ze in deze volgorde: #36 → #38 → #41.** Ze zijn op elkaar gestapeld, en
+dat is met opzet — er zat geen andere weg omheen.
+
+| PR | Issue | Wat het is | Waarom deze plek |
+|---|---|---|---|
+| [#36](https://github.com/QS86-bot/GoalBuddies/pull/36) | QS8-57 | Een groep verlaten (migratie `0100`) | Los te landen. Draagt `0100` en dat nummer is de reden dat de andere twee wachten |
+| [#38](https://github.com/QS86-bot/GoalBuddies/pull/38) | QS8-41 | Weekstappen per mijlpaal | Voegt de `job.kind`-dispatch toe aan `doelcoach`, en #41 leunt daarop |
+| [#41](https://github.com/QS86-bot/GoalBuddies/pull/41) | QS8-137 | De Doelcoach-tip per mijlpaal (migratie `0101`) | Staat op de branches van #36 én #38. Zodra die landen, verdwijnen hun commits uit zijn diff |
+
+⚠️ **Ná het landen van #38 of #41 moet `doelcoach` opnieuw gedeployd worden.**
+Anders wordt `npm run edge:gedeployd` rood en krijgt élke nieuwe job de
+mijlpaalprompt terug — de dispatch op `job.kind` zit in de repo en niet in de
+gedeployde functie. Draai `npm run edge:sync` ervóór.
+
+⚠️ **Er staat één vraag open die geld raakt** (grens 1). De tip-generatie put uit
+hetzelfde dagquotum van tien als het opsplitsen van een doel en de weekstappen.
+Twee gescheiden potten zouden beter zijn voor de gebruiker, maar brengen het
+plafond naar dertien calls per dag — dus niet gedaan. Onderbouwing in
+`docs/decisions/2026-08-27-de-doelcoachtip-per-mijlpaal.md` §5.
+
+⚠️ **En één die niets kost maar wel opgeschreven moet worden:** de statusbug uit
+QS8-41 (`'error'` in de app tegenover `'failed'` in de database) hoorde een eigen
+issue te zijn. **Linear weigert nieuwe issues op de gratis tier van deze
+workspace** — "You've exceeded the free issue limit" — dus hij is in die PR
+meegegaan. Maak hem alsnog aan zodra dat kan.
+
+### En daarna: de metingen die er al lagen
+
+
 ⚠️ **Twee dingen staan In Review en wachten alleen op een meting op jouw eigen
 machine.** Ze zijn allebei code-compleet en gemerged; wat ontbreekt is het bewijs
 dat het in het echt werkt. Dat is precies het soort openstaande punt dat stil
@@ -713,14 +826,28 @@ leest — vier issues stáán op In Progress, maar geen ervan wacht op code:
 | QS8-91 | ⚠️ **niets meer.** Het enige open criterium was "web push ontbreekt"; dat is sinds QS8-124 onwaar — `notificaties/index.ts` leest `p256dh`/`auth` en roept `verstuurWebPush()` aan | het bord loopt achter |
 | QS8-25 | OAuth-providers aanzetten (Apple Developer-account, Google Cloud-project) en twee dashboardvinkjes | jij — grens 1 |
 
-En de backlog is uitsluitend `phase:v2` en `phase:v3`, wat pas begint als Fase 1
-zijn exit haalt: **een groep van drie draait ≥4 opeenvolgende cycli**
-(WERKVOORRAAD §4). Dat is zelf geen bouwwerk maar gebruik.
+En de backlog is uitsluitend `phase:v2` en `phase:v3`. De regel was dat die pas
+begint als Fase 1 zijn exit haalt — **een groep van drie draait ≥4 opeenvolgende
+cycli** (WERKVOORRAAD §4) — en dat is zelf geen bouwwerk maar gebruik. Op 27-08
+heeft Quinten daar een benoemde uitzondering op gemaakt; zie hieronder.
 
-⚠️ **Dus is "wat bouwen we nu" de verkeerde vraag geworden.** Wie een sessie
-begint met "ga verder met de volgende epic" bouwt iets dat niemand gevraagd
-heeft, of bouwt v2 vóór de MVP één keer echt gedraaid heeft. De juiste vraag is
-welke van de vijf metingen hierboven als eerste gedaan wordt.
+⚠️ **Dus was "wat bouwen we nu" de verkeerde vraag geworden** — en op 27-08 is
+daar een antwoord op gekomen dat je moet kennen voordat je deze alinea leest als
+een verbod.
+
+**Quinten heeft Fase 2 bewust vrijgegeven terwijl Fase 1 nog openstaat.** Dat is
+geen verwatering van de exit-eis: wat er van Fase 1 rest, vraagt zijn hand en
+geen code — de vijf metingen hierboven. Er lag dus werk stil dat niet op code
+wachtte, en werk dat wél op code wachtte lag ernaast te wachten op iets waar geen
+enkele sessie iets aan kan doen.
+
+⚠️ **Wat dat níét is: een sein om de v2-backlog af te gaan.** Er zijn drie issues
+vrijgegeven, met naam, en die staan nu In Review (punt 0). De exit-eis staat
+onverkort — **een groep van drie draait ≥4 opeenvolgende cycli** — en die haal je
+niet met meer features. Wie een sessie begint met "ga verder met de volgende
+epic" doet nog steeds precies wat deze alinea verbiedt.
+
+**De juiste vraag blijft welke van de vijf metingen als eerste gedaan wordt.**
 
 **Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,
 want dan komt er een tweede lezer: **QS8-123** (hoe merk je dat een als *Laag*
