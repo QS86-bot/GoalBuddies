@@ -7,7 +7,8 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 27-08-2026 (na QS8-57, QS8-41 en QS8-137)
+**Laatst bijgewerkt:** 27-08-2026 (na QS8-57, QS8-41 en QS8-137, en na het
+opnieuw deployen van alle drie de Edge Functions)
 
 ---
 
@@ -90,15 +91,21 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0104`
 staan in de map.
 
-⚠️ **En op 27-08-2026 zijn dat er twee méér dan er op het project staan.**
-`0102_een_vertrek_is_een_handeling` en `0103_de_doelcoach_tip_per_mijlpaal` zijn
-wél gemerged maar níét toegepast: `verlaat_groep()` en `milestone_tips` bestaan
-daar niet, en ze staan ook niet in het register. Gemeten met een objectprobe en
-niet alleen aan het register afgelezen. Zolang dat zo is, bouwt de lokale stack
-een schema dat productie niet heeft — precies waar de kop van
-`migraties-controle` voor waarschuwt — en toetst de RLS-suite dus deels iets
-anders dan er draait. `npm run register:controle` zegt dit met credentials in
-één regel.
+✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
+die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
+dat klopte op het moment van schrijven en klopt niet meer. Opnieuw gemeten met
+een objectprobe én tegen het register: `milestone_tips`, `verlaat_groep()` en
+`tegenvaller_woorden()` bestaan, `ai_jobs_kind_valid` draagt `milestone_tip`,
+`pg_tables` telt 31, en `schema_migrations` kent `0102`, `0103` én `0104`.
+
+⚠️ **Laat zo'n regel niet staan als hij verlopen is.** Wie hem las, ging op zoek
+naar een gat dat dicht is — en erger: hij zegt dat de lokale stack een schema
+bouwt dat productie niet heeft, en dus dat de RLS-suite iets anders toetst dan er
+draait. Dat is precies het soort waarschuwing dat je niet negeert. **Een
+tijdelijke afwijking hoort een datum en een meting te dragen, en die meting hoort
+herhaald te worden voordat iemand erop handelt.** `npm run register:controle`
+zegt dit met credentials in één regel; dat is goedkoper dan het document
+geloven.
 
 Het datamodel is vastgesteld in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
@@ -193,6 +200,29 @@ transactie, en een `raise exception` rolt die terug inclusief de zojuist
 geschreven poging. De teller bleef dus op nul. Gedicht in 0017 door een resultaat
 terug te geven in plaats van te gooien. **De regel die eruit volgt: in een
 SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
+
+**Edge Functions — alle drie gelijk aan `main`, nagemeten op 27-08-2026.**
+
+| Functie | Versie | Modules | Laatst gewijzigd door |
+|---|---|---|---|
+| `doelcoach` | 14 | 5 | de `job.kind`-dispatch (QS8-41) en de tip-tak (QS8-137) |
+| `rollover` | 17 | 7 | `edge-rapport.ts` |
+| `notificaties` | 12 | 10 | `edge-rapport.ts` en twee toevoegingen in `regels.ts` |
+
+`verify_jwt` staat op alle drie aan. De gedéployde bundels zijn byte-voor-byte
+tegen de repo gelegd, bestand voor bestand — niet alleen op modulenaam, want dat
+is precies de vergelijking die op 27-08 een afwijking van twee commits miste.
+
+⚠️ **Van `rollover` week één van de zeven modules af en van `notificaties` twee
+van de tien.** De versienummers zeggen dus meer dan er werkelijk veranderde. Wat
+er in beide gevallen bij kwam is de nieuwe `edge-rapport.ts` — en **die doet
+vandaag niets**: zonder `SENTRY_DSN` in de Edge-omgeving geeft `meldEdgeFout()`
+meteen `'geen-dsn'` terug en gaat er geen enkele netwerkaanroep uit. Het telt pas
+op de dag dat die variabele gezet wordt.
+
+⚠️ **Geen van de drie is met een echte aanroep geproefd.** `ACTIVE` met de juiste
+bron is iets anders dan een werkende job. Wat daarvoor nodig is en waarom het
+niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
 
 **Code — de app staat, met doelen, weekdoelen en groepen.**
 - Expo SDK 57, React 19.2, RN 0.86, TypeScript 6 strict (plus extra strengheid)
