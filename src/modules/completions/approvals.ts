@@ -4,7 +4,9 @@ import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import { invoerfout, type Resultaat, type RpcRij } from '../../shared/api';
 
-import { oordeelSchema, type OordeelInvoer } from './approval-schemas';
+import { INTREKVENSTER_MINUTEN, oordeelSchema, type OordeelInvoer } from './approval-schemas';
+
+export { INTREKVENSTER_MINUTEN };
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
 //    ongemoeid blijven. De definitie staat sinds 25-08-2026 in `shared/api`;
@@ -256,9 +258,6 @@ export async function dienOpnieuwIn(
 
   return { ok: true, waarde: uitkomst.completion_id };
 }
-
-/** Zolang je een goedkeuring nog kunt intrekken — gelijk aan de RPC. */
-export const INTREKVENSTER_MINUTEN = 15;
 
 /** Zie `opnieuwMelding()`: een functie, om dezelfde reden. */
 function intrekMelding(reden: string | undefined): string {
