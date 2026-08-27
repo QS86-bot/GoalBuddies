@@ -359,7 +359,7 @@ function bouwWeekdoelPrompt(input: Record<string, unknown>, locale: string | nul
  *
  * ⚠️ **Server-side opgehaald en niet uit `ai_jobs.input` gelezen.** De invoer van
  *    een tip-job is precies één sleutel (`milestone_id`), afgedwongen door
- *    `vraag_ai_job()` sinds migratie 0101. Zou de client de titels meesturen, dan
+ *    `vraag_ai_job()` sinds migratie 0103. Zou de client de titels meesturen, dan
  *    stuurt hij feitelijk de prompt — en dan is het dagquotum een formaliteit en
  *    betaalt Quinten voor andermans tekst. Dat staat met zoveel woorden in de kop
  *    van dit bestand; voor de mijlpalen en de weekstappen is de invoer een
@@ -426,7 +426,7 @@ async function laadTipGegevens(
  *    het slechtst denkbare moment om te horen dat hij ergens achterloopt.
  *
  *    Dat staat hier uitgeschreven én er staat een zeef in de database op
- *    (`tip_noemt_tegenvaller()`, migratie 0101). De prompt maakt het
+ *    (`tip_noemt_tegenvaller()`, migratie 0103). De prompt maakt het
  *    onwaarschijnlijk, de zeef maakt het onmogelijk — en een geweigerde tip valt
  *    terug op de vaste set, wat een volwaardig antwoord is.
  *
