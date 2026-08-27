@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   berichtVoor,
+  herinneringVelden,
   magNudgen,
   nudgeBericht,
   nudgeReden,
+  tijdVoorInvoer,
   uurUit,
   type Melding,
   type NudgeSituatie,
@@ -241,5 +243,75 @@ describe('de taal van de ontvanger', () => {
         expect(heel, `${taal}/${toon}`).not.toMatch(/gefaald|mislukt|failed|behind|achter/i);
       }
     }
+  });
+});
+
+/**
+ * De herinneringsvelden — QS8-77, bereikbaar gemaakt op 26-08-2026.
+ *
+ * ⚠️ **De belofte hier is "uit is uit"**, en niet "deze functie geeft drie
+ *    velden terug". Ze staat sinds vandaag op twee schermen — het onboarding-
+ *    scherm en het profieltabblad — en dat is precies de naad die CLAUDE.md
+ *    regel 18 beschrijft: beide schermen kloppen op zichzelf, en het geheel
+ *    lekt zodra iemand er één aanpast. Vandaar één functie en een test op de
+ *    belofte, plus `tests/beloftes/herinnering.test.ts` dat bewaakt dat geen
+ *    scherm eromheen schrijft.
+ */
+describe('herinneringVelden', () => {
+  it('maakt de tijd leeg zodra de herinnering uit gaat', () => {
+    // ⚠️ Dit is het leerpunt uit de Habit Huddle-analyse: een herinnering die
+    //    terugkomt nadat je hem uitzette, is de snelste manier om een app van
+    //    iemands telefoon te krijgen. Bewaren "voor als je hem weer aanzet" is
+    //    dus geen service maar precies het verkeerde.
+    const velden = herinneringVelden({ aan: false, tijd: '20:00', toon: 'firm' });
+
+    expect(velden.reminder_enabled).toBe(false);
+    expect(velden.reminder_time).toBeNull();
+  });
+
+  it('houdt de toon vast als je uitzet', () => {
+    // De toon is geen herinnering maar een voorkeur over hoe je aangesproken
+    // wilt worden, en die hoort niet te verdampen omdat je een kanaal dichtzet.
+    expect(herinneringVelden({ aan: false, tijd: '20:00', toon: 'firm' }).reminder_tone).toBe(
+      'firm',
+    );
+  });
+
+  it('bewaart de tijd als hij aan staat, zonder omringende spaties', () => {
+    const velden = herinneringVelden({ aan: true, tijd: '  07:30 ', toon: 'gentle' });
+
+    expect(velden.reminder_enabled).toBe(true);
+    expect(velden.reminder_time).toBe('07:30');
+  });
+});
+
+describe('tijdVoorInvoer', () => {
+  it('kort een Postgres-tijd in tot HH:MM', () => {
+    expect(tijdVoorInvoer('20:00:00')).toBe('20:00');
+  });
+
+  it('vult een enkelcijferig uur aan', () => {
+    // `9:05` zou het schema weigeren; het veld hoort meteen een geldige waarde
+    // te tonen en niet een die pas bij het bewaren omvalt.
+    expect(tijdVoorInvoer('9:05')).toBe('09:05');
+  });
+
+  it('geeft de terugval bij null — dat is "nog niets ingesteld"', () => {
+    // ⚠️ En niet middernacht. Precies dit stond op productie: één profiel met
+    //    reminder_time NULL, waardoor `nudgeReden()` altijd "geen tijdstip
+    //    ingesteld" antwoordde en er nooit een nudge kon vuren.
+    expect(tijdVoorInvoer(null)).toBe('20:00');
+    expect(tijdVoorInvoer(null, '08:00')).toBe('08:00');
+  });
+
+  it('geeft de terugval bij iets onleesbaars', () => {
+    expect(tijdVoorInvoer('geen tijd')).toBe('20:00');
+    expect(tijdVoorInvoer('')).toBe('20:00');
+  });
+
+  it('sluit aan op wat de nudge ervan maakt', () => {
+    // ⚠️ De naad tussen het invoerveld en de meldingenjob. `tijdVoorInvoer()`
+    //    toont, `uurUit()` beslist — en die twee horen hetzelfde uur te zien.
+    expect(uurUit(tijdVoorInvoer('7:05'))).toBe(7);
   });
 });

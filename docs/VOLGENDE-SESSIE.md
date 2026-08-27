@@ -572,8 +572,10 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-1. **QS8-124 bewijzen.** De code staat (In Review). Zet
-   `EXPO_PUBLIC_VAPID_PUBLIC_KEY` en `VAPID_PRIVATE_KEY` in `.env`, draai de app,
+1. **QS8-124 bewijzen.** De code staat (In Review). Draai
+   `npm run vapid:genereer`, zet `EXPO_PUBLIC_VAPID_PUBLIC_KEY` in `.env` en alle
+   drie de waarden met `npx supabase secrets set` (de privésleutel hoort níét in
+   `.env` van de webbuild), draai de app,
    klik op Profiel → Meldingen aanzetten, en controleer of er een rij in
    `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
    `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette

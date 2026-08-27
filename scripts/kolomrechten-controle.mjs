@@ -34,7 +34,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -211,4 +211,4 @@ function hoofd() {
   return 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(hoofd());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());

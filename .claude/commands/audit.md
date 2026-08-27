@@ -349,5 +349,24 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     mist, heeft een tweede probleem dat een correctie-record verdient
     (domeinregel 6) en geen stille bijboeking.
 
+25. **Indexdekking op foreign keys** — `RLS_DOEL=lokaal npx vitest run
+    tests/rls/indexdekking.test.ts`, of tegen productie:
+
+    ```sql
+    select * from indexdekking_bewaking();
+    ```
+
+    Hoort leeg te zijn — onwrikbare regel 11. Postgres indexeert de kindkant van
+    een foreign key nooit vanzelf, en een ontbrekende index breekt niets: geen
+    fout, geen trage query zolang de tabel leeg is. Op 25-08 stonden er vijftien
+    open terwijl ENGINEER-REVIEW er één noemde (migratie 0097).
+
+    ⚠️ Toetst op de vóórste kolommen van een index. Een kolom die wél in een
+    samengestelde index zit maar niet vooraan, telt niet mee — een btree kan daar
+    niets mee. Drie van die vijftien zagen er zo gedekt uit.
+
+    ⚠️ De duurste plek is een cascade, geen query: dertien tabellen hangen met
+    `on delete cascade` aan `profiles`.
+
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.

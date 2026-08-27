@@ -32,7 +32,9 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -70,7 +72,7 @@ export function tel(bronnen) {
   let totaal = 0;
 
   for (const { pad, inhoud } of bronnen) {
-    if (UITGEZONDERD.includes(pad)) continue;
+    if (UITGEZONDERD.includes(metSchuineStrepen(pad))) continue;
     const aantal = (inhoud.match(PATROON) ?? []).length;
     if (aantal > 0) {
       perBestand.push({ pad, aantal });
@@ -124,4 +126,4 @@ function hoofd() {
   return 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(hoofd());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());

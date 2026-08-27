@@ -30,9 +30,11 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const WORTEL = new URL('..', import.meta.url).pathname;
+import { metSchuineStrepen } from './paden.mjs';
+
+const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAPPEN = ['src', 'app'];
 
 /** Props waarvan de waarde op het scherm belandt. */
@@ -88,7 +90,7 @@ function isGeenTaal(tekst) {
 /** Twee woorden achter elkaar, met minstens één kleine letter — dus een zin. */
 const ZIN = /[A-Za-zÀ-ÿ]{2,}[ ,][a-zà-ÿ]{2,}/;
 
-const OVERSLAAN = [
+export const OVERSLAAN = [
   /\/shared\/i18n\//,
   /\.test\.tsx?$/,
   /\/database\.types\.ts$/,
@@ -535,7 +537,7 @@ function main() {
 
   for (const map of MAPPEN) {
     for (const pad of bestanden(map)) {
-      if (OVERSLAAN.some((r) => r.test(pad))) continue;
+      if (OVERSLAAN.some((r) => r.test(metSchuineStrepen(pad)))) continue;
 
       const regels = readFileSync(pad, 'utf8').split('\n');
 

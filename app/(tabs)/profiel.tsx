@@ -10,12 +10,15 @@ import {
 } from '@/modules/auth';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
+  herinneringVelden,
   huidigeMeldingenstand,
   registreerPushToken,
+  tijdVoorInvoer,
   verwijderPushToken,
   zetMeldingenAan,
   zetMeldingenUit,
   type Meldingenstand,
+  type Toon,
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
@@ -29,6 +32,7 @@ import {
   Button,
   Caption,
   Card,
+  Choice,
   Field,
   Screen,
   Subheading,
@@ -111,6 +115,14 @@ export default function Profiel() {
             <TijdzoneInstelling waarde={p.tz} userId={p.id} onOpgeslagen={zetProfiel} />
 
             <Meldingen userId={p.id} />
+
+            <HerinneringInstelling
+              aan={p.reminder_enabled}
+              tijd={p.reminder_time}
+              toon={(p.reminder_tone === 'firm' ? 'firm' : 'gentle') as Toon}
+              userId={p.id}
+              onOpgeslagen={zetProfiel}
+            />
 
             <ThemaKeuze />
 
@@ -514,6 +526,130 @@ function BuddyBijdrage({ userId }: { readonly userId: string }) {
                 : t('profiel.bijdrage_meer', { n: aantal })}
       </Body>
       <Caption>{t('profiel.bijdrage_uitleg')}</Caption>
+    </Card>
+  );
+}
+
+/**
+ * De dagelijkse herinnering — QS8-77, alsnog bereikbaar op 26-08-2026.
+ *
+ * ⚠️ **Waarom dit er niet was, en waarom dat erger was dan het leek.**
+ *    `reminder_time`, `reminder_enabled` en `reminder_tone` waren alleen in
+ *    `app/onboarding/profiel.tsx` te zetten, en dat scherm zie je één keer.
+ *    Daarna kon je ze nergens meer wijzigen. Elk schakeltje was af — de kolom,
+ *    het schema, `updateProfiel()`, de policy, de meldingenjob — maar er was na
+ *    de eerste dag geen knop meer die erbij kwam. Dat is de vorm van QS8-113 en
+ *    van regel 18, vraag 5: de keten onderbroken terwijl er niets kapot is.
+ *
+ *    Het viel op omdat het enige profiel op productie `reminder_time = NULL`
+ *    had. `nudgeReden()` antwoordt daar "geen tijdstip ingesteld" en er gaat
+ *    dus nóóit een nudge — de best geteste meldingssoort van de app kon voor
+ *    die gebruiker niet één keer vuren.
+ *
+ * ⚠️ **Eén bewaarknop en geen opslaan-per-toets.** De tijd is vrije tekst, en
+ *    tussen `2` en `20:00` staan vier ongeldige waarden. De andere kaarten op
+ *    dit scherm bewaren wél direct, maar die hebben allemaal een gesloten
+ *    keuzelijst. Zie `validatie.tijd` voor wat er terugkomt als het toch niet
+ *    klopt: `updateProfiel()` valideert serverzijdig met hetzelfde schema.
+ *
+ * ⚠️ **"Uit is uit" staat in `herinneringVelden()` en niet hier.** Dezelfde
+ *    belofte geldt in het onboardingscherm, en twee kopieën van één belofte is
+ *    precies de naad die regel 18 beschrijft.
+ */
+function HerinneringInstelling({
+  aan,
+  tijd,
+  toon,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly aan: boolean;
+  readonly tijd: string | null;
+  readonly toon: Toon;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [wilAan, setWilAan] = useState(aan);
+  const [wilTijd, setWilTijd] = useState(() => tijdVoorInvoer(tijd));
+  const [wilToon, setWilToon] = useState<Toon>(toon);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+  const [bewaard, setBewaard] = useState(false);
+
+  async function bewaar() {
+    setBezig(true);
+    setFout(null);
+    setBewaard(false);
+
+    const uitkomst = await updateProfiel(
+      userId,
+      herinneringVelden({ aan: wilAan, tijd: wilTijd, toon: wilToon }),
+    );
+
+    if (uitkomst.ok) {
+      onOpgeslagen(uitkomst.profiel);
+      setBewaard(true);
+    } else {
+      setFout(uitkomst.melding);
+    }
+
+    setBezig(false);
+  }
+
+  function wijzig(verander: () => void) {
+    verander();
+    setBewaard(false);
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('profiel.herinnering_titel')}</Subheading>
+      <Body muted>{t('profiel.herinnering_uitleg')}</Body>
+
+      <Choice
+        label={t('profiel.herinnering_label')}
+        opties={[
+          { waarde: 'aan', label: t('profiel.aan') },
+          { waarde: 'uit', label: t('profiel.uit') },
+        ]}
+        waarde={wilAan ? 'aan' : 'uit'}
+        onKies={(v) => wijzig(() => setWilAan(v === 'aan'))}
+        disabled={bezig}
+      />
+
+      {wilAan ? (
+        <>
+          <Field
+            label={t('profiel.herinnering_hoe_laat')}
+            hint={t('profiel.herinnering_hoe_laat_hint')}
+            value={wilTijd}
+            onChangeText={(v) => wijzig(() => setWilTijd(v))}
+            placeholder="20:00"
+            inputMode="numeric"
+          />
+          <Choice
+            label={t('profiel.herinnering_toon')}
+            hint={t('profiel.herinnering_toon_hint')}
+            opties={[
+              { waarde: 'gentle', label: t('profiel.herinnering_zacht') },
+              { waarde: 'firm', label: t('profiel.herinnering_streng') },
+            ]}
+            waarde={wilToon}
+            onKies={(v) => wijzig(() => setWilToon(v))}
+            disabled={bezig}
+          />
+        </>
+      ) : (
+        <Body muted>{t('profiel.herinnering_uit_blijft_uit')}</Body>
+      )}
+
+      <Button busy={bezig} onPress={() => void bewaar()}>
+        {t('profiel.herinnering_bewaren')}
+      </Button>
+
+      {bewaard ? <Caption muted={false}>{t('profiel.herinnering_bewaard')}</Caption> : null}
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <Caption>{t('profiel.herinnering_geen_meldingen')}</Caption>
     </Card>
   );
 }

@@ -8,6 +8,7 @@ import {
   useProfiel,
   useSession,
 } from '@/modules/auth';
+import { herinneringVelden } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { apparaatTijdzone, type Weekday } from '@/shared/time';
@@ -59,13 +60,10 @@ export default function OnboardingProfiel() {
       display_name: naam,
       tz,
       week_start_day: weekStart,
-      reminder_enabled: herinneringAan,
-      // ⚠️ Uit is uit. Staat de schakelaar uit, dan wordt de tijd leeggemaakt en
-      //    niet bewaard "voor als je hem weer aanzet". Leerpunt uit de Habit
-      //    Huddle-analyse: een herinnering die terugkomt nadat je hem uitzette,
-      //    is de snelste manier om een app van iemands telefoon te krijgen.
-      reminder_time: herinneringAan ? tijd : null,
-      reminder_tone: toon,
+      // ⚠️ "Uit is uit" zit in `herinneringVelden()` en niet hier: sinds
+      //    26-08-2026 kan het profieltabblad hetzelfde, en dezelfde belofte op
+      //    twee schermen is de naad uit regel 18.
+      ...herinneringVelden({ aan: herinneringAan, tijd, toon }),
       share_moves_by_default: false,
     });
 

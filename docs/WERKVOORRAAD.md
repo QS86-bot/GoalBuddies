@@ -38,7 +38,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
    **QS8-124**, en de PWA eromheen is getoetst (**QS8-117**). **Niemand heeft nog
    een echte melding ontvangen** — dat vraagt een VAPID-sleutelpaar in `.env`, en
-   op iOS een fysiek toestel.
+   op iOS een fysiek toestel. Maken doe je het met `npm run vapid:genereer`
+   (zie `docs/DEPLOY.md` §6).
 6. ✅ **De score is niet meer te verzinnen.** Vier routes naar een weggepoetste
    week dicht (0043–0046) en sinds 23-08 ook de vijfde: ontkoppelen maakte missen
    gratis, gegrendeld in 0066. Zie §2.
@@ -82,7 +83,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0096`
+**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0097`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen

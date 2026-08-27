@@ -34,8 +34,9 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const MAP = new URL('../supabase/migrations/', import.meta.url).pathname;
+const MAP = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
 
 /**
  * ⚠️ Een letter achter het nummer is een deelmigratie en telt mee onder dat

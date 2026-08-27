@@ -293,10 +293,139 @@ jobs:
 
     # Zonder deze job is CI een suggestie. Met branch protection op `main` die
   # deze check verplicht stelt, is rood blokkerend — zie docs/Q-TODO.md.
+  # ---------------------------------------------------------------------------
+  # De scripts op Windows
+  # ---------------------------------------------------------------------------
+  #
+  # ⚠️ **Waarom deze job bestaat.** Alles onder `scripts/` draait op de machine
+  #    van de ontwikkelaar en niet in CI, en die machine is Windows. Groene CI
+  #    bewees voor die bestanden dus alleen dat ze op Linux werken.
+  #
+  #    Op 26-08-2026 kostte dat achttien bestanden. Acht gebruikten
+  #    ``import.meta.url === `file://${process.argv[1]}` `` als main-guard; op
+  #    Windows is `import.meta.url` gelijk aan `file:///C:/Users/…` en
+  #    `process.argv[1]` aan `C:\Users\…`, dus die vergelijking is nóóit waar
+  #    en `main()` draaide niet. Exit 0, geen uitvoer — en een controle die
+  #    niets zegt, leest als een controle die niets gevonden heeft. Tien andere
+  #    bouwden hun wortelpad met `new URL(...).pathname`, dat op Windows
+  #    `/C:/Users/…` geeft en op élk platform de URL-codering vasthoudt.
+  #
+  # ⚠️ **`tests/scripts/padvormen.test.ts` leest de vorm; deze job draait hem.**
+  #    Dat onderscheid is het hele punt. De test vindt de twee bekende vormen
+  #    terug in de broncode en kan op Linux draaien, maar hij kan niet zien of
+  #    een script daadwerkelijk start — en de volgende platformval heeft een
+  #    andere vorm dan deze twee. Alleen een echte Windows-runner bewijst het
+  #    gedrag.
+  #
+  # ⚠️ **Geen uitvoer is hier de fout, niet alleen een rode exitcode.** Precies
+  #    dat was de faalvorm: het script deed niets en meldde succes. Vandaar dat
+  #    de lus hieronder op een lege uitvoer valt en niet alleen op `$?`.
+  #
+  # ⚠️ Rechtstreeks met `node` en niet via `npm run`, want `npm` drukt zelf al
+  #    een bannerregel af. Via `npm run` is de uitvoer nooit leeg en toetst deze
+  #    stap niets.
+  #
+  # ⚠️ Alleen de controles die zonder database en zonder credentials draaien.
+  #    `klokgrens`, `kolomrechten` en `pin` vragen de lokale stack — die staat in
+  #    de `rls`-job en die is Linux. Dit is dus geen volledige dekking en dat
+  #    hoort hier te staan: het bewijst dat een script stárt op Windows, niet dat
+  #    élk script dat doet.
+  #
+  # ⚠️ **Wat dit kost.** Een Windows-runner telt bij GitHub voor **2×** de
+  #    minuten van een Linux-runner. Zolang deze repo openbaar is, is dat gratis.
+  #    Gaat hij dicht (QS8-126), dan is dit de duurste job van de vier terwijl
+  #    het de kortste is — geen build, geen database, alleen `npm ci` en dertien
+  #    scripts. Wordt dat ooit een probleem, dan is de goedkope versnelling deze
+  #    job beperken tot pushes op `main` en tot PR's die `scripts/` raken; niet
+  #    hem weghalen, want dan is de blinde vlek terug.
+  scripts_windows:
+    name: Scripts op Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        # Git Bash staat op elke Windows-runner. Node blijft een Windows-binary,
+        # dus `process.argv[1]` is nog steeds een pad met een stationsletter —
+        # de val die deze job moet vangen, blijft er dus in zitten.
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Afhankelijkheden installeren
+        run: npm ci
+
+      - name: De vormcontrole zelf
+        run: npx vitest run tests/scripts/padvormen.test.ts
+
+      - name: Elke controle start en zegt iets
+        run: |
+          # ⚠️ Actions draait `shell: bash` met `-eo pipefail`. Zonder `set +e`
+          #    breekt het eerste script dat niet-nul teruggeeft de hele stap af,
+          #    en dan is de lege-uitvoercontrole hieronder nooit aan de beurt —
+          #    precies het geval dat deze job moet vangen.
+          set +e
+          mislukt=0
+          for script in \
+            docs-controle \
+            dode-keten-controle \
+            edge-tijd-controle \
+            emoji-controle \
+            levend-controle \
+            migratieregister-controle \
+            migraties-controle \
+            persoon-in-jsonb-controle \
+            pwa-controle \
+            review-controle \
+            storage-controle \
+            tekst-controle \
+            verbindingen-controle
+          do
+            uitvoer="$(node "scripts/$script.mjs" 2>&1)"
+            code=$?
+            if [ -z "$uitvoer" ]; then
+              echo "✗ $script gaf geen uitvoer (exit $code) — main() is niet gedraaid."
+              mislukt=1
+            elif [ "$code" -ne 0 ]; then
+              echo "✗ $script gaf exit $code:"
+              echo "$uitvoer"
+              mislukt=1
+            else
+              echo "✓ $script"
+            fi
+          done
+          exit $mislukt
+
+      # ⚠️ Apart, want zonder `.env` hoort deze juist te klágen. De vraag is niet
+      #    of hij slaagt maar of hij überhaupt aan het woord komt: vóór 26-08
+      #    eindigde `npm run deploy` op Windows stil met exit 0, en dat is een
+      #    deploy die zegt dat hij gelukt is terwijl er niets gebeurd is.
+      - name: De deploy komt aan het woord
+        # ⚠️ `always()`, want anders verbergt één fout de andere. In de eerste
+        #    echte run viel de stap hierboven om op `tekst-controle` en werd deze
+        #    overgeslagen — en dan weet je na een rode job nog steeds niet of de
+        #    deploy op Windows aan het woord komt. Bij een controle die juist de
+        #    stille gevallen moet vinden, is dat het verkeerde gedrag.
+        if: always()
+        run: |
+          set +e
+          uitvoer="$(node scripts/deploy-web.mjs --droog 2>&1)"
+          if [ -z "$uitvoer" ]; then
+            echo "✗ deploy-web gaf geen uitvoer — main() is niet gedraaid."
+            exit 1
+          fi
+          echo "$uitvoer"
+
   poort:
     name: Alles groen
     runs-on: ubuntu-latest
-    needs: [controle, rls, edge]
+    needs: [controle, rls, edge, scripts_windows]
     if: always()
     steps:
       - name: Uitslag bepalen
@@ -314,6 +443,10 @@ jobs:
           #    de uitslag, en dan is CI weer een suggestie.
           if [ "${{ needs.edge.result }}" != "success" ]; then
             echo "De Edge Functions zijn niet groen: ${{ needs.edge.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.scripts_windows.result }}" != "success" ]; then
+            echo "De scripts draaien niet op Windows: ${{ needs.scripts_windows.result }}"
             exit 1
           fi
           echo "Groen."

@@ -34,6 +34,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
 /**
  * De functies die met opzet langs `guard_group_update()` mogen, met de reden.
@@ -170,4 +171,4 @@ function hoofd() {
   return 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(hoofd());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());
