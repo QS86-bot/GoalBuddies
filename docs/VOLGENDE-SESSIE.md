@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na PR #26. De hele Sentry-keten (QS8-24)
+> **Laatst bijgewerkt:** 27-08-2026, na PR #27. De hele Sentry-keten (QS8-24)
 > staat, de scripts draaien op Windows, en er is een controle op deploy-drift in
 > de Edge Functions.
 
@@ -581,7 +581,7 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #26)
+## STAND VAN DE REPO (27-08, na PR #27)
 
 ⚠️ **In deze tabel staat met opzet geen commit-hash van `main` meer.** In de
 vorige versie stond hij er twee keer en op twee verschillende waarden, en tijdens
@@ -597,9 +597,15 @@ git rev-list --left-right --count origin/main...origin/<branch>   # achter / voo
 Wat de tabel wél bewaart is het enige dat een commando níet kan zeggen: **waarom
 een branch er nog is en wat je ermee moet.**
 
+⚠️ **En dat is geen theorie: deze tabel is op één ochtend drie keer achterhaald.**
+Eerst noemde hij `main` op twee verschillende commits. Toen landde PR #26
+terwijl de correctie in review stond. Toen landde PR #23 en verdween de rij
+`chore/gitignore-gstack` tussen het mergen en het lezen. **Elke rij hier is een
+aanname over iets dat buiten dit bestand verandert** — draai de commando's
+hierboven voordat je erop vertrouwt.
+
 | branch | wat het is |
 |---|---|
-| `chore/gitignore-gstack` | `.gstack/` negeren, één commit. Landen of weggooien |
 | `wip/werkboom-26-08` | het vangnet van 26-08. ⚠️ **Lees de alinea hieronder vóór je hem weggooit** |
 | `quintenstrijdonk/qs8-122-…` | ⚠️ **verwijdert alleen.** Ten opzichte van `main` 29 bestanden en 5213 regels mínder; de migraties die hij terughaalde staan sinds PR #9 op `main`. Weggooien |
 | `fundering-16-08` | **archief, laten staan** — zie de waarschuwing hieronder |
