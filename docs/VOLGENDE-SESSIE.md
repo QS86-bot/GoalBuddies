@@ -696,14 +696,31 @@ maanden blijft liggen, dus het staat bovenaan.
    lees dan de `reason` uit `registreer_push_token()` — sinds 0067 is dat een
    nette `{ok:false, reason}`.
 
-3. **EPIC 13** (QS8-132) is het grootste stuk werk dat openstaat. ✅ De RLS-suite
-   draait sinds 24-08 in CI zonder secrets, dus groen in GitHub zegt nu wél iets
-   over domeinregel 7 — maar niet over het platform: er draait geen GoTrue in CI,
-   en het verschil tussen twee eigenaren van standaardrechten was lokaal
-   onzichtbaar.
+3. **De schermen van EPIC 13 zijn nooit door een mens gelopen.** De epic zelf is
+   af (QS8-132, Done sinds 25-08, migraties 0076 t/m 0080), maar er bestáát geen
+   open groep: wat een lid daarvan te zien krijgt, is uitsluitend door de
+   RLS-suite bewezen. Maak er één aan en loop hem door.
 
-4. **De resterende stukken van EPIC 0, 1 en 11** — de drie epics die nog open
-   staan. Zie het projectoverzicht in Linear.
+⚠️ **En dan houdt het op: in Fase 1 staat geen bouwwerk meer open.** Op 27-08
+nagemeten in Linear en in de code, en dat is een stand die je makkelijk verkeerd
+leest — vier issues stáán op In Progress, maar geen ervan wacht op code:
+
+| Issue | Wat er nog ontbreekt | Van wie |
+|---|---|---|
+| QS8-24 | een echte gebeurtenis uit de app in Sentry | jij, punt 1 |
+| QS8-124 | een rij in `push_tokens` met `p256dh` en `auth` | jij, punt 2 |
+| QS8-117 | één melding op een échte iPhone met de app op het beginscherm | jij — manifest, iconen, content-type en de iOS-uitleg staan er allemaal |
+| QS8-91 | ⚠️ **niets meer.** Het enige open criterium was "web push ontbreekt"; dat is sinds QS8-124 onwaar — `notificaties/index.ts` leest `p256dh`/`auth` en roept `verstuurWebPush()` aan | het bord loopt achter |
+| QS8-25 | OAuth-providers aanzetten (Apple Developer-account, Google Cloud-project) en twee dashboardvinkjes | jij — grens 1 |
+
+En de backlog is uitsluitend `phase:v2` en `phase:v3`, wat pas begint als Fase 1
+zijn exit haalt: **een groep van drie draait ≥4 opeenvolgende cycli**
+(WERKVOORRAAD §4). Dat is zelf geen bouwwerk maar gebruik.
+
+⚠️ **Dus is "wat bouwen we nu" de verkeerde vraag geworden.** Wie een sessie
+begint met "ga verder met de volgende epic" bouwt iets dat niemand gevraagd
+heeft, of bouwt v2 vóór de MVP één keer echt gedraaid heeft. De juiste vraag is
+welke van de vijf metingen hierboven als eerste gedaan wordt.
 
 **Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,
 want dan komt er een tweede lezer: **QS8-123** (hoe merk je dat een als *Laag*
