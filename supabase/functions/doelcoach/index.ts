@@ -1,5 +1,27 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+/**
+ * De systeemclient, met het type dat de aanroep zélf oplevert.
+ *
+ * ⚠️ **Hier ging `deno check` op om, en het is een val die er goed uitziet.**
+ *    `laadTipGegevens()` typeerde zijn parameter als `ReturnType<typeof
+ *    createClient>`. Dat leest als "wat createClient teruggeeft", maar het is
+ *    iets anders: het instantieert de generieken met hun **defaults**, en die
+ *    zijn `unknown` en `never`. De echte aanroep hieronder leidt uit de
+ *    argumenten `any` en `'public'` af, en die twee zijn niet toewijsbaar.
+ *
+ * ⚠️ **Waarom een functie en niet de generieken uitschrijven.** Het aantal en de
+ *    volgorde van die typeparameters is een intern detail van `supabase-js` en
+ *    is tussen versies al een keer veranderd. Deze vorm leidt het type af uit de
+ *    áánroep, dus hij blijft kloppen zonder dat iemand hem bijhoudt — en dat is
+ *    precies wat er hier misging.
+ */
+function maakSysteemclient(url: string, sleutel: string) {
+  return createClient(url, sleutel);
+}
+
+type Systeemclient = ReturnType<typeof maakSysteemclient>;
+
 // ⚠️ Uit de gegenereerde kopie van `shared/time` (`npm run edge:sync`), niet met
 //    de hand gerekend. Correctheidsregel 7 geldt ook hier.
 import { daysBetween, localDateIn } from '../_shared/time/zoned.ts';
@@ -384,7 +406,7 @@ interface TipGegevens {
  *    `failed`.
  */
 async function laadTipGegevens(
-  alsSysteem: ReturnType<typeof createClient>,
+  alsSysteem: Systeemclient,
   job: AiJob,
 ): Promise<TipGegevens | null> {
   const mijlpaalId = (job.input as { milestone_id?: unknown }).milestone_id;
@@ -572,7 +594,7 @@ Deno.serve(async (verzoek: Request) => {
   const { data: gebruiker } = await alsGebruiker.auth.getUser();
   if (!gebruiker?.user) return json({ error: 'niet_ingelogd' }, 401);
 
-  const alsSysteem = createClient(supabaseUrl, serviceRoleKey);
+  const alsSysteem = maakSysteemclient(supabaseUrl, serviceRoleKey);
 
   const { data: job, error: leesfout } = await alsSysteem
     .from('ai_jobs')
