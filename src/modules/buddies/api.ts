@@ -218,6 +218,11 @@ export async function fetchMijnLidmaatschap(
  * ⚠️ `closed_this_period` is aanwezigheid en geen prestatie: De Ketting telt
  *    opdagen. Binnen de lopende periode betekent `false` niets anders dan "nog
  *    niet" — en daarom vraagt deze module uitsluitend de lopende periode op.
+ *
+ * ⚠️ **Buiten die periode betekent het sinds 0104 `null` en niet `false`.** Wie
+ *    hier ooit een periodekiezer of een terugblik bovenop bouwt, krijgt van
+ *    TypeScript een fout in plaats van een lijst zonder vinkjes die leest als
+ *    "iedereen heeft die week gemist".
  */
 export interface Groepslid {
   readonly user_id: string;
@@ -251,7 +256,25 @@ export interface Groepslid {
    *    wél mag zien, krijgt altijd de echte waarde.
    */
   readonly last_cycle_start: string | null;
-  readonly closed_this_period: boolean;
+  /**
+   * Heeft dit lid deze groepsperiode iets afgerond?
+   *
+   * ⚠️ **Drie standen sinds migratie 0104, en de derde is de belangrijkste.**
+   *    `true` = afgerond, `false` = nog niet, **`null` = geen antwoord**: de
+   *    gevraagde periode valt buiten het venster van acht dagen dat een
+   *    beschermde groep teruggeeft.
+   *
+   *    Tot 0104 was `null` en `false` hetzelfde, en dat is een liegend geheel
+   *    (onwrikbare regel 18): de bescherming ís een `false` en een lijst zónder
+   *    vinkjes leest als "iedereen heeft die week gemist". Dat er vandaag maar
+   *    één aanroeper is die de lópende periode doorgeeft, maakt het geen
+   *    non-probleem — het maakt het een landmijn met een lange lont.
+   *
+   * ⚠️ Zelfde regel als bij `best_streak` hierboven: geen `?? false`. Dat zou
+   *    van "daar zeg ik niets over" een bewering maken waar de database er geen
+   *    deed.
+   */
+  readonly closed_this_period: boolean | null;
 }
 
 /**
@@ -299,7 +322,9 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
     //    bewering doet waar de database er geen deed. Zie besluit A41.
     best_streak: rij.best_streak,
     last_cycle_start: rij.last_cycle_start,
-    closed_this_period: rij.closed_this_period ?? false,
+    // ⚠️ Geen `?? false`. `null` is hier een stand en geen ontbrekende waarde —
+    //    zie de uitleg bij het veld, en migratie 0104.
+    closed_this_period: rij.closed_this_period,
   };
 }
 

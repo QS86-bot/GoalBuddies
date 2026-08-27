@@ -196,14 +196,20 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
       if (error) throw new Error(`schakels zetten: ${error.message}`);
     }, SETUP_TIMEOUT);
 
-    async function geslotenVoor(periode: IsoDate): Promise<boolean | undefined> {
+    /**
+     * ⚠️ `null` zit sinds 0104 in het antwoord en betekent "geen antwoord over
+     *    deze periode". `undefined` betekent iets anders: bob staat niet in de
+     *    uitslag. Die twee worden hier niet samengevoegd — dan zou een test die
+     *    op `null` toetst ook groen worden als de rij helemaal verdwijnt.
+     */
+    async function geslotenVoor(periode: IsoDate): Promise<boolean | null | undefined> {
       const { data, error } = await f.alice.db.rpc('group_overview', {
         p_group_id: f.groupId,
         p_period_start: periode,
       });
       if (error) throw new Error(`group_overview: ${error.message}`);
 
-      const rijen = (data ?? []) as { user_id: string; closed_this_period: boolean }[];
+      const rijen = (data ?? []) as { user_id: string; closed_this_period: boolean | null }[];
       return rijen.find((r) => r.user_id === f.bob.id)?.closed_this_period;
     }
 
@@ -218,7 +224,19 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     it(
       'toont die van overmorgen niet, ook al staat hij in de tabel',
       async () => {
-        expect(await geslotenVoor(addDays(serverdatum(), 2))).toBe(false);
+        const uitkomst = await geslotenVoor(addDays(serverdatum(), 2));
+
+        // ⚠️ De belofte is "onthult geen aanwezigheid", en die staat voorop:
+        //    wat er ook uitkomt, `true` mag het niet zijn.
+        expect(uitkomst).not.toBe(true);
+
+        // ⚠️ En sinds 0104 is het `null` en niet `false`. Dat verschil is het
+        //    hele punt van die migratie: `false` zou hier "bob heeft die periode
+        //    niets afgerond" betekenen, terwijl de database weigert antwoord te
+        //    geven over een periode buiten het venster. Stond hier `toBe(false)`,
+        //    dan legde deze test die verwarring vast als correct gedrag — en een
+        //    test die een gat bekrachtigt is erger dan geen test.
+        expect(uitkomst).toBeNull();
       },
       TEST_TIMEOUT,
     );

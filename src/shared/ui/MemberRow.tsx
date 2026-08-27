@@ -37,8 +37,18 @@ interface Props {
   readonly name: string;
   /** Cycli op rij. Komt uit `group_visible_streaks`, nooit uit `user_streaks`. */
   readonly streak: number;
-  /** Heeft dit lid deze groepsperiode iets afgerond? */
-  readonly closedThisPeriod: boolean;
+  /**
+   * Heeft dit lid deze groepsperiode iets afgerond?
+   *
+   * ⚠️ **`null` is een derde stand en niet "nee"** (migratie 0104): de database
+   *    weigerde antwoord te geven over deze periode. Op déze rij ziet dat er
+   *    hetzelfde uit als `false` — een leeg vak, want een rij mag nooit
+   *    beschuldigen — maar het verschil hoort niet in de rij te worden
+   *    weggegooid. Wie een periodekiezer of terugblik bouwt, moet het bóven deze
+   *    rij afhandelen: een hele lijst met lege vakken leest als "iedereen heeft
+   *    die week gemist", en dat is precies wat de weigering níét zei.
+   */
+  readonly closedThisPeriod: boolean | null;
   /** Loopt er een aangekondigde adempauze? Neutraal, geen tegenslag. */
   readonly onBreather?: boolean;
   /**
@@ -88,11 +98,13 @@ export function MemberRow({
 
       {onBreather ? (
         <Caption>{t('lid.adempauze')}</Caption>
-      ) : closedThisPeriod ? (
+      ) : closedThisPeriod === true ? (
         <View style={[styles.vinkje, { backgroundColor: theme.roles.progress }]} />
       ) : (
-        // Bewust niets. Geen grijs kruisje, geen "nog niet": een leeg vak zegt
-        // al genoeg en beschuldigt niemand.
+        // Bewust niets, en voor `false` én `null` hetzelfde. Geen grijs kruisje,
+        // geen "nog niet": een leeg vak zegt al genoeg en beschuldigt niemand.
+        // Het onderscheid tussen "nog niet" en "geen antwoord" hoort een niveau
+        // hoger thuis — zie de uitleg bij de prop.
         <View style={styles.vinkje} />
       )}
     </View>
