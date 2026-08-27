@@ -15,6 +15,7 @@ export {
   maakGroep,
   neemDeel,
   ontkoppelDoelVanGroep,
+  verlaatGroep,
   vernieuwUitnodiging,
   wijzigGroep,
   zetGroepszichtbaarheid,
@@ -26,6 +27,7 @@ export {
   type Resultaat,
   type Uitnodiging,
   type UitnodigingLid,
+  type Vertrek,
 } from './api';
 
 export {

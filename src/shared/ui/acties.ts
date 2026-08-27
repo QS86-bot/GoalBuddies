@@ -131,6 +131,12 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    naar zes tabellen cascadeerde. Het is de zwaarste knop in dit scherm:
     //    hij neemt de groep weg bij álle leden, en er is geen weg terug.
     groepArchiveren: bouw('bevestiging.groep_archiveren'),
+    // ⚠️ QS8-57, migratie 0098. Vertrekken is niet terug te draaien vanuit de
+    //    app — terugkomen vraagt een geldige uitnodigingslink, en die heeft de
+    //    vertrekker misschien niet meer. De uitleg noemt daarom niet alleen wat
+    //    er weggaat maar ook wat er blijft: dat is hier de helft die iemand
+    //    tegenhoudt om uit voorzorg te blijven zitten.
+    groepVerlaten: bouw('bevestiging.groep_verlaten'),
   };
 }
 
@@ -141,5 +147,6 @@ export type BevestigingsNaam =
   | 'groepOpenzetten'
   | 'groepBeschermen'
   | 'groepArchiveren'
+  | 'groepVerlaten'
   | 'doelVerwijderen'
   | 'doelAfronden';

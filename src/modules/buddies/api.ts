@@ -106,6 +106,12 @@ function meldingen(): Readonly<Record<string, string>> {
     // rotate_invite_code en set_invite_revoked
     not_admin: t('groep.geen_beheerder'),
 
+    // verlaat_groep (QS8-57, migratie 0100)
+    not_member: t('verlaten.geen_lid'),
+    last_admin: t('verlaten.laatste_beheerder'),
+    unknown_successor: t('verlaten.geen_geldige_opvolger'),
+    successor_is_self: t('verlaten.geen_geldige_opvolger'),
+
     // zet_groepszichtbaarheid (besluit A41, migratie 0076)
     not_confirmed: t('zichtbaarheid.niet_bevestigd'),
     unknown_visibility: t('zichtbaarheid.onbekend'),
@@ -559,6 +565,78 @@ export async function archiveerGroep(
   }
 
   return { ok: true, waarde: true };
+}
+
+/**
+ * Wat een geslaagd vertrek heeft opgeleverd — QS8-57.
+ *
+ * ⚠️ Alle drie de velden zijn er voor de gebruiker en niet voor de logica. Het
+ *    scherm loopt na een geslaagd vertrek weg naar het groepsoverzicht, en dan
+ *    is dit het enige moment waarop je kunt vertellen wát er gebeurd is: hoeveel
+ *    doelen deze groep uit gingen, of het beheer is overgedragen, en of de groep
+ *    achter je is dichtgetrokken omdat je het laatste lid was.
+ */
+export interface Vertrek {
+  readonly ontkoppeldeDoelen: number;
+  readonly overgedragenAan: string | null;
+  readonly gearchiveerd: boolean;
+}
+
+/**
+ * Een groep verlaten — QS8-57, PRD 5.6.
+ *
+ * ⚠️ **Één RPC en geen DELETE.** Sinds migratie 0100 staat
+ *    `group_members_delete` op `using (false)`: de eis "de laatste beheerder kan
+ *    niet zomaar weg" is een uitspraak over de rijen die óverblijven, en dat kan
+ *    een RLS-policy per definitie niet zien.
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit.** Vertrekken is vanuit de app niet terug
+ *    te draaien — terugkomen vraagt een geldige uitnodigingscode, en die heeft de
+ *    vertrekker misschien niet meer. De database weigert zonder, net als bij
+ *    `archiveerGroep()` en `zetGroepszichtbaarheid()`.
+ *
+ * ⚠️ **`nieuweBeheerder` is de overdracht, en die hoort in dezelfde aanroep.**
+ *    Twee losse stappen betekent dat er een moment bestaat waarop de overdracht
+ *    lukte en het vertrek niet, of andersom — en het tweede geval is precies de
+ *    beheerderloze groep die dit issue moet voorkomen.
+ */
+export async function verlaatGroep(
+  groupId: string,
+  bevestigd: boolean,
+  nieuweBeheerder?: string,
+): Promise<Resultaat<Vertrek>> {
+  // ⚠️ De opvolger wordt weggelaten en niet op `undefined` gezet:
+  //    `exactOptionalPropertyTypes` staat aan, en de RPC heeft een default van
+  //    `null` die je alleen krijgt door de sleutel niet mee te sturen.
+  const { data, error } = await supabase().rpc('verlaat_groep', {
+    p_group_id: groupId,
+    p_bevestigd: bevestigd,
+    ...(nieuweBeheerder === undefined ? {} : { p_nieuwe_beheerder: nieuweBeheerder }),
+  });
+
+  if (error) {
+    reportError(error, 'groups.leave', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data) as RpcUitkomst & {
+    readonly ontkoppelde_doelen?: number;
+    readonly overgedragen_aan?: string | null;
+    readonly gearchiveerd?: boolean;
+  };
+
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return {
+    ok: true,
+    waarde: {
+      ontkoppeldeDoelen: uitkomst.ontkoppelde_doelen ?? 0,
+      overgedragenAan: uitkomst.overgedragen_aan ?? null,
+      gearchiveerd: uitkomst.gearchiveerd === true,
+    },
+  };
 }
 
 /**
