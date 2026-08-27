@@ -34,7 +34,7 @@ import {
   type Mijlpaaltip,
   type Weekdoel,
 } from '@/modules/goals';
-import { t, taal } from '@/shared/i18n';
+import { t, taal, vergelijkTekst } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { localDateIn, now, type UserClock } from '@/shared/time';
 import {
@@ -356,7 +356,7 @@ function StandBlok({
   const rijen = [...standen.values()]
     .map((stand) => ({ stand, titel: titels.get(stand.goalId) }))
     .filter((r): r is { stand: DoelStand; titel: string } => r.titel !== undefined)
-    .sort((a, b) => a.titel.localeCompare(b.titel, 'nl'));
+    .sort((a, b) => vergelijkTekst(a.titel, b.titel));
 
   if (loading || rijen.length === 0) return null;
 
