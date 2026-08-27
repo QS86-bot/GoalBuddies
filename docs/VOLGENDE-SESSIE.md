@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na PR #25. De hele Sentry-keten (QS8-24)
+> **Laatst bijgewerkt:** 27-08-2026, na PR #26. De hele Sentry-keten (QS8-24)
 > staat, de scripts draaien op Windows, en er is een controle op deploy-drift in
 > de Edge Functions.
 
@@ -581,18 +581,55 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #25)
+## STAND VAN DE REPO (27-08, na PR #26)
 
-`main` staat op `fb08be1`. Vijf branches ernaast, en van geen enkele is werk
-kwijt:
+⚠️ **In deze tabel staat met opzet geen commit-hash van `main` meer.** In de
+vorige versie stond hij er twee keer en op twee verschillende waarden, en tijdens
+het schrijven van déze versie liep hij binnen het uur alweer achter. Een
+handgeschreven hash rot; de vraag "wat staat er nu" hoort een commando te zijn:
 
-| branch | voor/achter `main` | |
-|---|---|---|
-| `claude/linear-bijwerken-docs-t7cko6` | 1 voor | ⚠️ **een andere sessie werkt hier nu in.** Niet aankomen zonder te kijken wat er staat |
-| `chore/gitignore-gstack` | 1 voor | `.gstack/` negeren. Kleine, losse wijziging — landen of weggooien |
-| `wip/werkboom-26-08` | 4 voor | het vangnet van 26-08. Alles erin is inmiddels via PR #18 t/m #24 op `main` geland; nalopen en weggooien |
-| `quintenstrijdonk/qs8-122-…` | 1 voor | ⚠️ **verwijdert alleen.** Ten opzichte van `main` is het 29 bestanden en 5213 regels **minder** — de migraties die hij terughaalde, staan al sinds PR #9 op `main`. Weggooien |
-| `fundering-16-08` | 0 voor | **archief, laten staan** |
+```bash
+git fetch --prune origin
+git branch -r --format='%(refname:short)'
+git rev-list --left-right --count origin/main...origin/<branch>   # achter / voor
+```
+
+Wat de tabel wél bewaart is het enige dat een commando níet kan zeggen: **waarom
+een branch er nog is en wat je ermee moet.**
+
+| branch | wat het is |
+|---|---|
+| `chore/gitignore-gstack` | `.gstack/` negeren, één commit. Landen of weggooien |
+| `wip/werkboom-26-08` | het vangnet van 26-08. ⚠️ **Lees de alinea hieronder vóór je hem weggooit** |
+| `quintenstrijdonk/qs8-122-…` | ⚠️ **verwijdert alleen.** Ten opzichte van `main` 29 bestanden en 5213 regels mínder; de migraties die hij terughaalde staan sinds PR #9 op `main`. Weggooien |
+| `fundering-16-08` | **archief, laten staan** — zie de waarschuwing hieronder |
+
+⚠️ **`wip/werkboom-26-08` draagt zes bestanden die op `main` niet bestaan, en
+tóch mag hij weg.** Ze zijn allemaal vervángen, niet vergeten — onder een andere
+naam, want ze zijn op 26-08 twee keer gebouwd door twee sessies tegelijk:
+
+| alleen op `wip` | wat het op `main` geworden is |
+|---|---|
+| `_shared/sentry/index.ts` | `_shared/melden.ts` + `_shared/observability/` |
+| `webpush-bron.ts`, `webpush-stand.ts` | `webpush-registratie.ts` |
+| `2026-08-26-sentry-in-edge-functions.md` | `…-sentry-in-de-edge-functions.md` |
+| `2026-08-26-web-push-toestemming.md` | `…-toestemming-achter-een-gebaar.md` |
+
+**Controleer dit zelf voordat je hem verwijdert**, want dit is de enige plek waar
+het staat:
+
+```bash
+comm -13 <(git ls-tree -r --name-only origin/main | sort) \
+         <(git ls-tree -r --name-only origin/wip/werkboom-26-08 | sort)
+```
+
+⚠️ **Vier dingen zijn op 26-08 twee keer gebouwd** — Sentry in de Edge Functions,
+de web-push-client, een beslisdocument en dezelfde Windows-fix — doordat twee
+sessies tegelijk begonnen zonder eerst `main` op te halen. **Haal `main` op vóór
+je begint, niet vóór je pusht.** Kijk ook naar de tabel hierboven en niet alleen
+naar `main`: werk dat niet landt, bestaat voor de volgende sessie niet, en dat is
+niet zichtbaar in een document — want het document staat op diezelfde tak. Zie
+WERKVOORRAAD §2a.
 
 ⚠️ **`fundering-16-08` heeft géén gemeenschappelijke voorouder met `main`.** Het
 zijn twee losse wortelhistories; `main` is rond 16-08 opnieuw geworteld. Die
