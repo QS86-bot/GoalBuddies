@@ -794,14 +794,46 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       return (data ?? []).length;
     }
 
-    async function afgeslotenInOudePeriode(kijker: TestUser, groep: Groep): Promise<boolean> {
+    /**
+     * ⚠️ **Geeft `null` terug en plet dat niet tot `false` — dat was een
+     *    bevinding van 27-08-2026.**
+     *
+     *    Hier stond `?? false`, en dat maakte van drie toestanden één: *de rij
+     *    ontbreekt*, *`null`* (buiten het venster, sinds 0104) en *`false`*
+     *    (binnen het venster, niet afgesloten). Gemeten gevolg: met een
+     *    `group_overview()` die onvoorwaardelijk **nul rijen** teruggeeft bleven
+     *    twee tests in dit blok gewoon groen. Een functie die letterlijk niets
+     *    doet, haalde ze.
+     *
+     *    Dat is onwrikbare regel 18, vraag 3: ze bewaakten de lek-richting wél,
+     *    maar konden "dicht" niet onderscheiden van "kapot".
+     *
+     * ⚠️ **De ontbrekende rij is nu een fout en geen waarde.** Alice is lid van
+     *    beide groepen, dus haar rij hóórt in het overzicht te staan; staat hij
+     *    er niet, dan is er iets stuk en niet iets dicht. Dat gooien is het hele
+     *    punt — het is precies de toestand die hiervoor als `false` doorging.
+     */
+    async function afgeslotenInOudePeriode(
+      kijker: TestUser,
+      groep: Groep,
+    ): Promise<boolean | null> {
       const { data, error } = await kijker.db.rpc('group_overview', {
         p_group_id: groep.id,
         p_period_start: f.oudePeriode,
       });
 
       if (error) throw new Error(`overzicht lezen: ${error.message}`);
-      return (data ?? []).find((r) => r.user_id === f.alice.id)?.closed_this_period ?? false;
+
+      const rij = (data ?? []).find((r) => r.user_id === f.alice.id);
+      if (rij === undefined) {
+        throw new Error(
+          `group_overview gaf geen rij voor alice in groep ${groep.id} — ` +
+            `${(data ?? []).length} rijen terug. Zij is lid, dus dit is geen ` +
+            'afgeschermde waarde maar een ontbrekend antwoord.',
+        );
+      }
+
+      return rij.closed_this_period;
     }
 
     it(
@@ -811,7 +843,12 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         //    0036 kwam: zonder venster is één GET de volledige
         //    aanwezigheidsmatrix per persoon per week.
         expect(await historischeSchakels(f.bob, f.groepBeschermd)).toBe(0);
-        expect(await afgeslotenInOudePeriode(f.bob, f.groepBeschermd)).toBe(false);
+
+        // ⚠️ `null` en niet `false`: sinds 0104 zegt `group_overview()` buiten
+        //    het venster "hier krijg je geen antwoord over", en dat is iets
+        //    anders dan "zij heeft niet afgesloten". Tot 27-08 stond hier
+        //    `toBe(false)`, en dat haalde je ook met een functie die niets deed.
+        expect(await afgeslotenInOudePeriode(f.bob, f.groepBeschermd)).toBeNull();
       },
       TEST_TIMEOUT,
     );
@@ -837,11 +874,20 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         //
         //    Deze test toetst niet elk van beide maar hun gelijkheid, in beide
         //    standen. Dat is de belofte; de twee tests hierboven zijn de waarden.
+        //    ⚠️ Sinds 0104 heeft het overzicht drie antwoorden en de tabel twee,
+        //       dus de gelijkheid loopt in twee stappen. Ze pletten tot één
+        //       booleaan is precies wat deze test tot 27-08 zwak maakte.
         for (const groep of [f.groepBeschermd, f.groepOpen]) {
           const uitDeTabel = (await historischeSchakels(f.bob, groep)) > 0;
           const uitHetOverzicht = await afgeslotenInOudePeriode(f.bob, groep);
 
-          expect(uitHetOverzicht, groep.id).toBe(uitDeTabel);
+          if (uitHetOverzicht === null) {
+            // Buiten het venster geeft het overzicht geen antwoord — dan hoort
+            // de tabel er ook geen te geven.
+            expect(uitDeTabel, `${groep.id}: overzicht zwijgt, tabel niet`).toBe(false);
+          } else {
+            expect(uitHetOverzicht, groep.id).toBe(uitDeTabel);
+          }
         }
       },
       TEST_TIMEOUT,
@@ -868,7 +914,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         //    algemeen maakt (bijvoorbeeld door dezelfde eigenaarstak aan
         //    `group_overview()` toe te voegen) denken dat hij een bug repareert.
         expect(await historischeSchakels(f.alice, f.groepBeschermd)).toBe(1);
-        expect(await afgeslotenInOudePeriode(f.alice, f.groepBeschermd)).toBe(false);
+
+        // ⚠️ Ook voor haarzelf `null`: `group_overview()` kent de
+        //    eigenaarstak niet die `chain_links_select` wél heeft. Dát is de
+        //    asymmetrie die deze test vastlegt.
+        expect(await afgeslotenInOudePeriode(f.alice, f.groepBeschermd)).toBeNull();
       },
       TEST_TIMEOUT,
     );
