@@ -94,8 +94,75 @@ describe.skipIf(!rlsTestsConfigured)('QS8-127 — één gehaald weekdoel redt de
     await removeTestUsers();
   }, SETUP_TIMEOUT);
 
+  /**
+   * De drie schone weken uit `beforeAll`.
+   *
+   * ⚠️ **Bewust niet "alle vijf weekdoelen".** De tests hieronder herschrijven
+   *    de gemengde week met opzet — één laat er zelfs maar één `missed` van
+   *    over en verwacht dan reeks 0. Een controle op het totaal zou die test
+   *    kapotmaken; dat is bij het bouwen van deze vangrail ook precies gebeurd,
+   *    en de suite ving het. Wat géén enkele test aanraakt zijn de drie schone
+   *    weken, en juist die verdwijnen bij het faalbeeld dat we zoeken.
+   */
+  const SCHONE_WEKEN = 3;
+
+  /**
+   * ⚠️ **Een vangrail en geen assertie — hij repareert niets.**
+   *
+   * Op 27-08-2026 viel dit bestand vier keer om in een volle parallelle run,
+   * terwijl het los gedraaid altijd groen was. De faalmelding was
+   * `wisselende uitkomsten: 4, 4, 4, 4, 4, 4, 0, 0, 0, 0` — en die zegt niet
+   * wát er gebeurde, alleen dat het getal veranderde.
+   *
+   * Dat kostte de diagnose een halve dag, terwijl er één meting nodig was:
+   * `herbereken_reeks()` is aantoonbaar deterministisch (`group by` plus
+   * `bool_or`, geen afhankelijkheid van rijvolgorde), dus **een reeks van nul
+   * kán maar één ding betekenen: de weekdoelen van dit doel zijn er niet meer.**
+   * Niet gewijzigd — weg. Dat is een cascade, en dus is het doel of de eigenaar
+   * onder de lopende test uit verwijderd.
+   *
+   * Deze controle zegt dat meteen, in plaats van het achter een getal te
+   * verstoppen. Hij verandert niets aan de uitkomst zolang de fixture heel is.
+   *
+   * ⚠️ **De bevinding zelf staat nog open** — zie de rij van 27-08 in
+   * `docs/ENGINEER-REVIEW.md`. `vitest.config.mts` draait `tests/rls/` sinds
+   * diezelfde dag sequentieel, wat de kans erop wegneemt maar niet de oorzaak.
+   * Valt hij ooit tóch weer om, dan is dít de melding die je wilt zien.
+   */
+  async function fixtureGaaf(): Promise<string | null> {
+    const admin = adminDb();
+
+    const { count: schoon, error } = await admin
+      .from('weekly_goals')
+      .select('id', { count: 'exact', head: true })
+      .eq('goal_id', f.goalId)
+      .neq('cycle_start_date', f.gemengd);
+
+    if (error) return `de weekdoelen zijn niet leesbaar: ${error.message}`;
+    if ((schoon ?? 0) === SCHONE_WEKEN) return null;
+
+    const { count: doelen } = await admin
+      .from('goals')
+      .select('id', { count: 'exact', head: true })
+      .eq('id', f.goalId);
+
+    return [
+      `de fixture is onder de test uit verdwenen: ${schoon ?? 0} van de`,
+      `${SCHONE_WEKEN} schone weken over, en het doel zelf bestaat`,
+      `${(doelen ?? 0) > 0 ? 'nog wél' : 'NIET meer'}.`,
+      'Die drie weken worden door geen enkele test aangeraakt, dus dit is',
+      'geen rekenfout maar ontbrekende data — zie de rij van 27-08-2026 in',
+      'docs/ENGINEER-REVIEW.md.',
+    ].join(' ');
+  }
+
   async function reeks(): Promise<number> {
     const admin = adminDb();
+
+    // ⚠️ Vóór het herberekenen, zodat de gemelde toestand ook de toestand is
+    //    die het getal hieronder heeft opgeleverd.
+    const stuk = await fixtureGaaf();
+    if (stuk !== null) throw new Error(stuk);
 
     const herberekend = await admin.rpc('herbereken_reeks', {
       p_user_id: f.alice.id,
