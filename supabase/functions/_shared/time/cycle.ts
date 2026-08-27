@@ -101,7 +101,7 @@ export function closableUserCycle(
   const current = userCycle(clock, at);
   const graceEndsAt = current.startsAt.getTime() + graceHours * 3_600_000;
 
-  return at.getTime() < graceEndsAt ? previousCycle(current, clock.weekStartDay) : current;
+  return at.getTime() < graceEndsAt ? previousCycle(current) : current;
 }
 
 /** Zit het moment `at` nog binnen de coulanceperiode van de huidige cyclus? */
@@ -131,12 +131,40 @@ export function groupPeriod(clock: GroupClock, at: Date): Cycle {
 // Navigeren en vergelijken
 // ---------------------------------------------------------------------------
 
-export function previousCycle(cycle: Cycle, startDay: Weekday): Cycle {
-  return cycleFromDate({ startDay, tz: cycle.tz }, addDays(cycle.startDate, -7));
+/**
+ * De startdag die deze cyclus zélf heeft.
+ *
+ * ⚠️ Per constructie: `cycleFromDate()` legt `startDate` altijd op de startdag
+ *    van de klok die hem maakte, dus dit is diezelfde dag en niet een gok.
+ */
+function startDagVan(cycle: Cycle): Weekday {
+  return weekdayOf(cycle.startDate);
 }
 
-export function nextCycle(cycle: Cycle, startDay: Weekday): Cycle {
-  return cycleFromDate({ startDay, tz: cycle.tz }, addDays(cycle.startDate, 7));
+/**
+ * De cyclus vóór deze, op dezelfde klok.
+ *
+ * ⚠️ **Nam tot 27-08-2026 een losse `startDay`, en die kon alleen maar overbodig
+ *    of fout zijn.** Overbodig omdat elke juiste aanroeper precies de startdag
+ *    doorgaf die de cyclus al had; fout omdat een ándere dag hier geen fout geeft
+ *    maar een stil hérgelijnde week — `cycleFromDate()` legt hem gewoon op die
+ *    andere dag. Dat is exact de vorm die de bevinding over `shared/time` vreest:
+ *    de ene klok sijpelt de andere in, en niets wordt er rood van. Nu is het niet
+ *    meer op te schrijven.
+ */
+export function previousCycle(cycle: Cycle): Cycle {
+  return cycleFromDate(
+    { startDay: startDagVan(cycle), tz: cycle.tz },
+    addDays(cycle.startDate, -7),
+  );
+}
+
+/** De cyclus ná deze, op dezelfde klok. Zie `previousCycle` voor het waarom. */
+export function nextCycle(cycle: Cycle): Cycle {
+  return cycleFromDate(
+    { startDay: startDagVan(cycle), tz: cycle.tz },
+    addDays(cycle.startDate, 7),
+  );
 }
 
 /** Valt het moment `at` binnen deze cyclus? Half-open: `endsAt` telt niet mee. */

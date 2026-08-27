@@ -1577,7 +1577,7 @@ function Adempauzes({
     setFout(null);
 
     // Eén cyclus: begin en eind zijn dezelfde week. Twee: de week erna.
-    const eind = lengte === 'een' ? start : nextCycle(start, klok.weekStartDay);
+    const eind = lengte === 'een' ? start : nextCycle(start);
     const uitkomst = await planAdempauze(doel.id, start, eind);
 
     if (!uitkomst.ok) {

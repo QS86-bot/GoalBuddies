@@ -323,7 +323,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       //    een extra query per profiel per ronde voor een bericht dat hoogstens
       //    één keer per week valt (onwrikbare regel 12).
       if (cyclus.startDate === lokaleDatum && lokaalUur === overzichtsUur) {
-        const afgelopen = previousCycle(cyclus, profiel.week_start_day as Weekday);
+        const afgelopen = previousCycle(cyclus);
         const wasAdempauze = await inAdempauze(db, profiel.id, afgelopen.startDate);
 
         if (!wasAdempauze && !(await alVerstuurd(db, profiel.id, 'cycle_summary', lokaleDatum, null))) {

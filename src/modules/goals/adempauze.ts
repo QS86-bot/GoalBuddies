@@ -69,8 +69,8 @@ export async function fetchAdempauzes(goalId: string): Promise<readonly Adempauz
  *    (correctheidsregel 7).
  */
 export function planbareCycli(klok: UserClock, nu: Date): readonly Cycle[] {
-  const eerste = nextCycle(userCycle(klok, nu), klok.weekStartDay);
-  return [eerste, nextCycle(eerste, klok.weekStartDay)];
+  const eerste = nextCycle(userCycle(klok, nu));
+  return [eerste, nextCycle(eerste)];
 }
 
 /**
