@@ -2056,6 +2056,13 @@ export type Database = {
       }
       invite_preview: { Args: { code: string }; Returns: Json }
       is_group_admin: { Args: { gid: string }; Returns: boolean }
+      intrekvenster_bewaking: {
+        Args: never
+        Returns: {
+          bevinding: string
+        }[]
+      }
+      intrekvenster_minuten: { Args: never; Returns: number }
       is_group_member: { Args: { gid: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
       herstel_weekdoelstatus: {
