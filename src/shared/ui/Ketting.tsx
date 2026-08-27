@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { radius, useTheme } from '../theme';
 
 import { useReducedMotion } from './a11y';
+import { bewegingsStijl } from './beweging';
 import { kettingLabel, kettingVulling, type KettingStand } from './metrics';
 import { Caption, Subheading } from './Text';
 
@@ -88,7 +89,7 @@ export function Ketting({ stand, toonSchakels = true }: Props) {
                 styles.schakel,
                 {
                   backgroundColor: i < stand.schakels ? kleur : theme.colors.panelDark,
-                  ...(reduced || Platform.OS !== 'web' ? {} : { transitionDuration: '260ms' }),
+                  ...bewegingsStijl(reduced, Platform.OS === 'web', 260),
                 },
               ]}
             />
@@ -102,7 +103,7 @@ export function Ketting({ stand, toonSchakels = true }: Props) {
               {
                 backgroundColor: kleur,
                 width: `${percentage}%`,
-                ...(reduced || Platform.OS !== 'web' ? {} : { transitionDuration: '260ms' }),
+                ...bewegingsStijl(reduced, Platform.OS === 'web', 260),
               },
             ]}
           />

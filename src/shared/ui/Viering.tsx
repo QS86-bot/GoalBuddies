@@ -4,6 +4,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { radius, space, useTheme } from '../theme';
 
 import { useReducedMotion } from './a11y';
+import { bewegingsDuur } from './beweging';
 import { Body, Subheading } from './Text';
 import { aantalDeeltjes, viering, type VieringSoort } from './vieringen';
 
@@ -54,7 +55,7 @@ export function Viering({ soort, onKlaar }: Props) {
   }, [onKlaar]);
 
   useEffect(() => {
-    const duur = reduced ? 0 : 260;
+    const duur = bewegingsDuur(reduced, 260);
 
     Animated.timing(vervaging, {
       toValue: 1,

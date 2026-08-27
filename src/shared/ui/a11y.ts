@@ -3,6 +3,8 @@ import { AccessibilityInfo, type ViewStyle } from 'react-native';
 
 import type { Theme } from '../theme';
 
+import { bewegingsDuur } from './beweging';
+
 /**
  * Toegankelijkheid die op web én native hetzelfde moet werken.
  *
@@ -66,7 +68,11 @@ export function focusRing(theme: Theme, hasFocus: boolean): ViewStyle {
   };
 }
 
-/** Animatieduur in ms, of 0 als de gebruiker om minder beweging heeft gevraagd. */
-export function motionDuration(reduced: boolean, ms: number): number {
-  return reduced ? 0 : ms;
-}
+/**
+ * Animatieduur in ms, of 0 als de gebruiker om minder beweging heeft gevraagd.
+ *
+ * ⚠️ Het rekenwerk staat sinds 27-08-2026 in `beweging.ts`, want dít bestand
+ *    importeert `react-native` en is daarmee niet te testen. Deze naam blijft
+ *    staan omdat hij de publieke rand van `shared/ui` is.
+ */
+export const motionDuration = bewegingsDuur;
