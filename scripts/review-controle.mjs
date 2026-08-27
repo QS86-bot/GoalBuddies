@@ -77,6 +77,35 @@ function meldtReparatie(romp) {
   return /✅/.test(romp) || /\bgedicht in \d{4}\b/i.test(romp);
 }
 
+/**
+ * Zegt de beschrijving dat dit géén openstaand werk (meer) is?
+ *
+ * ⚠️ **Dit is een ándere klasse dan `meldtReparatie()` en dat is de hele reden
+ *    dat hij bestaat.** Die vraagt of er iets gerepareerd is. Dit vraagt of de
+ *    rij zichzelf uit de agenda schrijft zónder reparatie: historische context,
+ *    of een afweging die ooit bewust zo gemaakt is. Twee rijen deden dat op
+ *    27-08-2026 terwijl ze **Middel** droegen — "blijft staan als context, niet
+ *    als openstaand werk" (migratie op remote) en "geen bevinding maar een
+ *    afweging die je opnieuw kunt maken" (systeemberichten zonder titels).
+ *
+ * ⚠️ **Waarom dat ertoe doet:** de rijen boven Laag zíjn de agenda voor de
+ *    review in november. Staat daar iets tussen dat zelf zegt niet te hoeven,
+ *    dan kost dat de lezer tijd bij precies het document dat zijn tijd moet
+ *    besparen — dezelfde reden die bij `stale` staat.
+ *
+ * ⚠️ De zinnen staan er voluit in en niet als losse woorden. "Afweging" en
+ *    "context" komen in dit document tientallen keren voor in een gewone zin;
+ *    een controle die daarop aanslaat, leer je te negeren. Geijkt in
+ *    `tests/scripts/review-controle.test.ts`, met de vormen die hij moet vinden
+ *    én de vormen die hij met rust moet laten.
+ */
+function schrijftZichUitDeAgenda(romp) {
+  return (
+    /niet als openstaand werk/i.test(romp) ||
+    /geen (openstaand werk|bevinding maar)/i.test(romp)
+  );
+}
+
 /** Is dit risiconiveau als afgehandeld gemarkeerd? */
 function isAfgehandeld(risico) {
   return risico.includes('~~');
@@ -119,7 +148,14 @@ export function controleer(regels) {
       continue;
     }
 
-    // 3 — elke open Laag-rij zegt wanneer hij zwaarder wordt.
+    // 3 — een rij die zegt geen openstaand werk te zijn, hoort niet op de
+    //     agenda te blijven staan.
+    if (!isAfgehandeld(risico) && schrijftZichUitDeAgenda(kop)) {
+      klachten.push({ soort: 'geen-agendapunt', titel, risico });
+      continue;
+    }
+
+    // 4 — elke open Laag-rij zegt wanneer hij zwaarder wordt.
     if (kaal === 'laag' && !isAfgehandeld(risico) && !kop.includes(MARKERING)) {
       klachten.push({ soort: 'geen-voorwaarde', titel, risico });
     }
@@ -137,6 +173,11 @@ const UITLEG = {
     'De beschrijving zegt dat het opgelost is, de risicokolom niet. Streep het\n' +
     '  niveau door (`~~Hoog~~ opgelost`). Een lijst waarvan een deel al klaar is,\n' +
     '  kost de lezer het vertrouwen in de rest.',
+  'geen-agendapunt':
+    'De beschrijving zegt dat dit geen openstaand werk is, de risicokolom houdt\n' +
+    '  hem op de agenda. Streep het niveau door met de reden erachter\n' +
+    '  (`~~Middel~~ context`, `~~Middel~~ afweging`). De rijen boven Laag zijn de\n' +
+    '  agenda voor november; wat daar staat en niet hoeft, kost de lezer tijd.',
   'geen-voorwaarde':
     `Zet er "${MARKERING} …" bij: welke aanname houdt hem laag? Zodra die\n` +
     '  vervalt, is het geen Laag meer. Zie QS8-123 en onwrikbare regel 19.',
@@ -152,14 +193,15 @@ function main() {
   if (klachten.length === 0) {
     console.log(
       `review-controle: ${laag} open Laag-bevindingen zeggen wanneer ze zwaarder ` +
-        'worden, en geen enkele rij spreekt zijn eigen risicokolom tegen.',
+        'worden, en geen enkele rij meldt een reparatie of schrijft zichzelf uit ' +
+        'de agenda terwijl de risicokolom hem open houdt.',
     );
     process.exit(0);
   }
 
   console.error(`review-controle: ${klachten.length} bevinding(en).\n`);
 
-  for (const soort of ['onbekend-niveau', 'stale', 'geen-voorwaarde']) {
+  for (const soort of ['onbekend-niveau', 'stale', 'geen-agendapunt', 'geen-voorwaarde']) {
     const groep = klachten.filter((k) => k.soort === soort);
     if (groep.length === 0) continue;
 
