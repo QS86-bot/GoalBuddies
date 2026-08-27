@@ -95,6 +95,14 @@ Een migratie toepassen gaat zo:
    npm run types:db            # databasetypes hergenereren — niet vergeten
    ```
 
+   ⚠️ **`register:controle` zwijgt zonder credentials, en dat is met opzet** —
+   de service-role-key hoort niet bij een CI-runner. Sinds 27-08-2026 gaat die
+   melding wél naar stderr met `OVERGESLAGEN` erin, want op stdout stond hij
+   tussen de geslaagde controles en las hij als "gelukt". Wil je dat een
+   ontbrekende sleutel een fout is — en dat wil je overal waar hij er wél hoort
+   te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
+   `npm run db:push` doet dat zelf.
+
 ⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
 geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
 diezelfde dag zijn er zes migraties toegepast zonder die UPDATE, terwijl deze
@@ -143,9 +151,16 @@ RLS-test iets wat daar niet waar is.
 ### 2.2b Met de Supabase CLI
 
 ```bash
-npm run db:push        # dump eerst, dan supabase db push
+npm run db:push        # dump, supabase db push, en daarna register:controle --streng
 npm run types:db       # databasetypes hergenereren — niet vergeten
 ```
+
+⚠️ **`db:push` eindigt sinds 27-08-2026 op `register:controle --streng`.** Dit is
+het pad waarlangs een migratie op productie landt, dus hier zijn de credentials
+per definitie aanwezig — en dan is overslaan geen afspraak maar een gemiste
+controle. Dat was precies het gevaar in `docs/ENGINEER-REVIEW.md`: een migratie
+toegepast zonder dat er ooit iets naast legt. Vergeet je stap 3
+(`register:uitlijnen`), dan eindigt `db:push` nu rood in plaats van stil.
 
 Beide vragen de Supabase CLI. Die staat sinds 18-08-2026 op deze machine:
 via scoop, v2.115.0, shim in `%USERPROFILE%\scoop\shims`. Installeren gaat met

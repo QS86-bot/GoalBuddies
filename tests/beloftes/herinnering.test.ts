@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
@@ -30,7 +31,10 @@ import { describe, expect, it } from 'vitest';
  *    roepen. Dan noemt hij dat bestand met naam.
  */
 
-const WORTEL = new URL('../..', import.meta.url).pathname;
+// ⚠️ `fileURLToPath` en niet `.pathname`: die tweede geeft op Windows `/C:/…`
+//    en houdt op élk platform de URL-codering vast. Zelfde vorm B als in
+//    `tests/scripts/padvormen.test.ts`.
+const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
 
 /** De enige plek die deze drie velden zelf mag samenstellen. */
 const SCHRIJVER = 'src/modules/notifications/regels.ts';

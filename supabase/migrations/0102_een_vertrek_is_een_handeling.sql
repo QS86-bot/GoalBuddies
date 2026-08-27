@@ -1,4 +1,4 @@
--- 0100 — Een vertrek is een handeling en geen DELETE (QS8-57, PRD 5.6)
+-- 0102 — Een vertrek is een handeling en geen DELETE (QS8-57, PRD 5.6)
 --
 -- *Als gebruiker kan ik een groep verlaten zonder dat mijn doel uit andere
 -- groepen verdwijnt.*
@@ -164,7 +164,7 @@ $$;
 
 comment on function public.shares_group_with_goal(uuid) is
   'Deelt de kijker een levende groep met dit doel, waar de eigenaar óók nog '
-  'actief lid van is? ⚠️ De eigenaarshelft en de archieftoets zijn er in 0100 '
+  'actief lid van is? ⚠️ De eigenaarshelft en de archieftoets zijn er in 0102 '
   'bij gekomen: zonder die twee bleef een oud-lid zijn doel, weekdoelen en '
   'voltooiingen aan een groep uitdelen die hij verlaten had. Zie QS8-57.';
 
@@ -235,7 +235,7 @@ $$;
 comment on function public.deelt_open_groep_met_doel(uuid) is
   'Deelt de kijker een lévende open groep met dit doel, waar de eigenaar óók '
   'nog actief lid van is? ⚠️ De eigenaarshelft en de archieftoets zijn er in '
-  '0100 bij gekomen, tegelijk met dezelfde reparatie in '
+  '0102 bij gekomen, tegelijk met dezelfde reparatie in '
   'shares_group_with_goal(). Deze functie draagt de gevoeligste tak die er is: '
   'in een open groep laat hij `weekly_goals.status = ''missed''` door.';
 
@@ -265,7 +265,7 @@ as $$
 $$;
 
 comment on function public.lid_van_open_groep(uuid) is
-  'Actief lid van een lévende open groep. ⚠️ De archieftoets is er in 0100 bij '
+  'Actief lid van een lévende open groep. ⚠️ De archieftoets is er in 0102 bij '
   'gekomen: zonder die toets bleef een gearchiveerde open groep zijn schakels '
   'uitdelen.';
 
@@ -359,7 +359,7 @@ create index if not exists group_events_subject_idx
 
 comment on column public.group_events.subject_id is
   'De persoon over wie de gebeurtenis gaat, als dat iemand anders is dan de '
-  'actor — vandaag alleen de nieuwe beheerder bij admin_transferred (0100). '
+  'actor — vandaag alleen de nieuwe beheerder bij admin_transferred (0102). '
   '⚠️ Een echte kolom en geen jsonb-veld: alleen zo wist het verwijderen van '
   'een account de verwijzing mee. Zie 0059 en 0085.';
 
@@ -777,7 +777,7 @@ end;
 $$;
 
 comment on function public.guard_group_member_update() is
-  'Pint `role` en `status` voor een niet-beheerder (0029), en weigert sinds 0100 '
+  'Pint `role` en `status` voor een niet-beheerder (0029), en weigert sinds 0102 '
   'dat de énige actieve beheerder zijn eigen adminschap opgeeft — dat is een '
   'vertrek in vermomming en het loopt via verlaat_groep().';
 
@@ -845,7 +845,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'last_admin');
   end if;
 
-  -- ⚠️ Sinds 0100: de groepen waarvan ik het énige actieve lid ben, gaan mee het
+  -- ⚠️ Sinds 0102: de groepen waarvan ik het énige actieve lid ben, gaan mee het
   --    archief in. Anders blijft er een `active` groep staan met nul leden en een
   --    werkende uitnodigingscode, en loopt een wildvreemde er als enig,
   --    niet-beherend lid binnen.
@@ -884,7 +884,7 @@ $$;
 
 comment on function public.verwijder_mijn_account() is
   'Verwijdert het eigen account. Weigert bij een laatste beheerderschap in een '
-  'groep met andere leden (0031), en archiveert sinds 0100 de groepen waarvan ik '
+  'groep met andere leden (0031), en archiveert sinds 0102 de groepen waarvan ik '
   'het enige actieve lid was — anders blijft er een lege groep met een werkende '
   'uitnodigingscode achter.';
 

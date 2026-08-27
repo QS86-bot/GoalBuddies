@@ -932,6 +932,8 @@ export const nl = {
   'weekafsluiting.geen_lid_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een nieuwe uitnodigingslink als je erbij hoort.',
   'weekafsluiting.meer_reacties': 'Meer reacties laden',
   'weekafsluiting.niet_gedeeld': 'Je hebt tekst staan die nog niet gedeeld is. Weggaan gooit hem weg.',
+  'weekafsluiting.terugknop_tegengehouden':
+    'Je tekst staat er nog, dus de terugknop doet even niets. Deel hem, of gebruik de knop hieronder.',
   'weekafsluiting.toch_weg': 'Toch weg, zonder delen',
   'weekafsluiting.terug': 'Terug naar de groep',
   'weekafsluiting.sessie_laadt': 'Je sessie is nog aan het laden. Probeer het over een tel opnieuw.',

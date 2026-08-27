@@ -2573,8 +2573,8 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         //    vertrekken, dan is hij daarna geen lid meer en meten alle tests
         //    hierna iets anders dan ze denken.
         //
-        // ⚠️ **Sinds migratie 0100 via `verlaat_groep()` en niet via een DELETE.**
-        //    Dat is geen stijlkeuze maar een gerepareerde valse groene: 0100 zet
+        // ⚠️ **Sinds migratie 0102 via `verlaat_groep()` en niet via een DELETE.**
+        //    Dat is geen stijlkeuze maar een gerepareerde valse groene: 0102 zet
         //    `group_members_delete` op `using (false)`, en RLS wéígert een DELETE
         //    niet — hij filtert de rij weg. De client krijgt dus 204 zonder fout
         //    (valkuil 5), `mustOk` was tevreden, en de vertrekker was daarna nog

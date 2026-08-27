@@ -18,7 +18,7 @@
     "db:dump": "node scripts/db-dump.mjs",
     "edge:sync": "node scripts/sync-edge-shared.mjs",
     "edge:sync:controle": "node scripts/sync-edge-shared.mjs --check",
-    "db:push": "npm run db:dump && supabase db push",
+    "db:push": "npm run db:dump && supabase db push && npm run register:controle -- --streng",
     "deploy": "node scripts/deploy-web.mjs",
     "deploy:droog": "node scripts/deploy-web.mjs --droog",
     "auth:urls": "node scripts/auth-urls.mjs",
