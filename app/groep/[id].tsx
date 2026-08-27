@@ -15,6 +15,7 @@ import {
   koppelDoelAanGroep,
   ontkoppelDoelVanGroep,
   uitnodigingsLink,
+  verlaatGroep,
   zichtbaarheidLabels,
   type Groep,
   type Groepslid,
@@ -34,8 +35,11 @@ import {
   useAsync,
   Body,
   Button,
+  bevestigingen,
+  Bevestiging,
   Caption,
   Card,
+  Choice,
   Deelknop,
   Field,
   Ketting,
@@ -262,6 +266,15 @@ export default function GroepDetail() {
                 {t('groepdetail.beheren')}
               </Button>
             ) : null}
+
+            {/*
+              ⚠️ **Hier en niet op het beheerscherm.** Dat scherm is alleen voor
+                 beheerders, en juist een gewoon lid moet kunnen vertrekken.
+                 Onderaan, onder "Groep beheren", om dezelfde reden als de
+                 archiefkaart daar onderaan staat: dit is de zwaarste knop op dit
+                 scherm.
+            */}
+            <VerlaatGroep groupId={id ?? ''} userId={userId ?? ''} leden={s.overzicht.rijen} />
           </View>
         )}
       </AsyncView>
@@ -270,6 +283,122 @@ export default function GroepDetail() {
         {t('groepdetail.naar_groepen')}
       </Button>
     </Screen>
+  );
+}
+
+/**
+ * Een groep verlaten — QS8-57, PRD 5.6.
+ *
+ * ⚠️ **De uitleg noemt wat er blíjft en niet alleen wat er weggaat.** Dat is de
+ *    helft die iemand nodig heeft: wie niet weet of zijn reeks en zijn punten
+ *    het vertrek overleven, blijft uit voorzorg in een groep zitten waar hij
+ *    niet meer wil zijn. Domeinregel 10 zegt dat de reeks de gebruiker dient.
+ *
+ * ⚠️ **"Ben ik de laatste beheerder" is hier een UI-hint en geen autorisatie.**
+ *    De afleiding uit de al geladen ledenlijst bepaalt alleen óf de
+ *    opvolgerkeuze getoond wordt. Heeft dit scherm het mis — een verouderde
+ *    lijst, een tweede tabblad dat net iemand promoveerde — dan weigert de RPC
+ *    met `last_admin` en staat die melding eronder. De grens ligt in de
+ *    database, zoals altijd.
+ *
+ * ⚠️ **Geen tweede query voor de opvolgerkeuze.** De ledenlijst is al geladen en
+ *    een groep is op twaalf leden gemaximeerd, dus pagina 0 bevat ze altijd. Een
+ *    eigen `fetch` hier zou een N+1 zijn op het drukste scherm van de app
+ *    (schaalbaarheidsregel 12).
+ */
+function VerlaatGroep({
+  groupId,
+  userId,
+  leden,
+}: {
+  readonly groupId: string;
+  readonly userId: string;
+  readonly leden: readonly Groepslid[];
+}) {
+  const router = useRouter();
+  const [vraag, setVraag] = useState(false);
+  const [opvolger, setOpvolger] = useState<string | null>(null);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  // ⚠️ `!== 'inactive'` en niet `=== 'active'`. Dat is de definitie die migratie
+  //    0066 (M1) als de enige juiste heeft vastgelegd, en het is dezelfde die
+  //    `verlaat_groep()` gebruikt. Zouden deze twee uiteenlopen, dan toont dit
+  //    scherm een keuze die de database weigert, of andersom.
+  const anderen = leden.filter((l) => l.user_id !== userId && l.member_status !== 'inactive');
+  const ikBenBeheerder = leden.some((l) => l.user_id === userId && l.role === 'admin');
+  const andereBeheerders = anderen.filter((l) => l.role === 'admin').length;
+  const laatsteBeheerder = ikBenBeheerder && andereBeheerders === 0 && anderen.length > 0;
+  const laatsteLid = anderen.length === 0;
+
+  async function verlaat() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await verlaatGroep(groupId, true, opvolger ?? undefined);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    // ⚠️ Weglopen en niet herladen, dezelfde reden als bij `archiveerGroep()`:
+    //    `is_group_member()` is direct hierna onwaar, dus elke query op dit
+    //    scherm geeft leeg terug en de gebruiker zou een lege staat zien als
+    //    antwoord op een geslaagde handeling. `bezig` blijft staan tot de
+    //    navigatie voorbij is.
+    router.replace('/groep');
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('verlaten.titel')}</Subheading>
+      <Body muted>{t('verlaten.uitleg')}</Body>
+      <Caption>{t('verlaten.blijft')}</Caption>
+
+      {laatsteLid ? <Caption>{t('verlaten.laatste_lid')}</Caption> : null}
+
+      {vraag ? (
+        <>
+          {laatsteBeheerder ? (
+            <Choice
+              label={t('verlaten.opvolger_titel')}
+              hint={t('verlaten.opvolger_uitleg')}
+              opties={anderen.map((l) => ({ waarde: l.user_id, label: l.display_name }))}
+              waarde={opvolger ?? ''}
+              onKies={(waarde) => setOpvolger(waarde)}
+              disabled={bezig}
+            />
+          ) : null}
+
+          <Bevestiging
+            tekst={bevestigingen().groepVerlaten}
+            bezig={bezig}
+            fout={fout}
+            // ⚠️ Bevestigen kan pas als er een opvolger gekozen is. De RPC
+            //    weigert het anders alsnog met `last_admin`, maar een knop die
+            //    je mag indrukken en dan een fout geeft, is een slechtere knop
+            //    dan een knop die wacht.
+            onBevestig={() => {
+              if (laatsteBeheerder && opvolger === null) {
+                setFout(t('verlaten.laatste_beheerder'));
+                return;
+              }
+              void verlaat();
+            }}
+            onAnnuleer={() => {
+              setVraag(false);
+              setFout(null);
+            }}
+          />
+        </>
+      ) : (
+        <Button variant="secundair" block onPress={() => setVraag(true)}>
+          {t('verlaten.knop')}
+        </Button>
+      )}
+    </Card>
   );
 }
 

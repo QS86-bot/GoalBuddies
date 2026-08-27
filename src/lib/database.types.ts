@@ -999,6 +999,7 @@ export type Database = {
           id: string
           new_value: Json | null
           old_value: Json | null
+          subject_id: string | null
         }
         Insert: {
           actor_id?: string | null
@@ -1008,6 +1009,7 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
+          subject_id?: string | null
         }
         Update: {
           actor_id?: string | null
@@ -1017,6 +1019,7 @@ export type Database = {
           id?: string
           new_value?: Json | null
           old_value?: Json | null
+          subject_id?: string | null
         }
         Relationships: [
           {
@@ -1024,6 +1027,20 @@ export type Database = {
             columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2233,6 +2250,10 @@ export type Database = {
       verdien_weekpassen: {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
+      }
+      verlaat_groep: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_nieuwe_beheerder?: string }
+        Returns: Json
       }
       verwijder_doel: { Args: { p_goal_id: string }; Returns: Json }
       verwijder_mijn_account: { Args: never; Returns: Json }
