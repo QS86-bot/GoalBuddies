@@ -555,23 +555,42 @@ beslisbevoegdheid in `CLAUDE.md`.
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
 | QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged — open: er is nooit een echte gebeurtenis uít de app aangekomen |
-| QS8-22 | Migratie-workflow | deels: dumpscript en docs staan, lokale stack niet |
+| QS8-22 | Migratie-workflow | ✅ af sinds QS8-119 — dumpscript, docs én een lokale stack. Zie de correctie hieronder |
 
-⚠️ **Besluit 16-08: de lokale stack komt later.** Docker vraagt WSL2 en
-beheerdersrechten, en die had de sessie niet. Quinten heeft besloten dat elke
-migratie voorlopig direct op het echte project mag, omdat er geen gebruikers
-komen voordat alle fases geprogrammeerd zijn.
+⚠️ **Achterhaald sinds QS8-119 (24-08-2026), en dat stond hier tot 27-08 nog
+fout.** Hier stond drie alinea's lang dat er géén lokale stack was, dat elke
+migratie dus rechtstreeks op het echte project ging, en dat `pg_dump` er niet op
+stond. Alle drie zijn onjuist:
 
-**Het moment waarop dat omslaat is scherp:** de eerste echte gebruiker die zich
-aanmeldt. Vanaf dan geen migratie meer zonder repetitie en zonder dump. Tot die
-tijd blijft elke migratie idempotent met een rollback-pad in de kop — dat is de
-enige bescherming die er nu is.
+| Wat | Waar |
+|---|---|
+| Een lokale stack | `npm run rls:stack` (`scripts/lokale-stack.sh`) — Postgres plus PostgREST, schema opgebouwd uit `supabase/migrations/` |
+| De suite ertegenaan | `npm run rls:lokaal` — geen credentials, geen productie, draait mee in CI |
+| Een dump vooraf | `npm run db:dump` (`scripts/db-dump.mjs`), en `npm run db:push` doet dump → push → registercontrole in één commando |
 
-⚠️ **Wat er nog niet is en waar je last van gaat krijgen.** Er is nog steeds geen
-lokale Supabase-stack: Docker vraagt WSL2 en beheerdersrechten, en die had de
-sessie niet. Alle migraties zijn dus rechtstreeks op het echte project gedraaid.
-Dat kon nu omdat er geen echte gebruikersdata in stond — dat verandert zodra jij
-of een testgebruiker de app opent. `pg_dump` staat er ook nog niet op.
+⚠️ **Wat de lokale stack níét is, en dat hoort erbij te staan.** Het is geen
+volledige Supabase: geen GoTrue, geen Storage, geen Edge-runtime. De RLS-suite
+tekent zijn tokens daarom zelf (QS8-116). Wat je lokaal bewijst is het **schema**
+en de **policies**; dat een echte sessie de claims draagt die die policies
+verwachten, blijft een meting tegen het echte project — `tests/rls/token.test.ts`.
+
+⚠️ **Het besluit van 16-08 staat daarmee niet meer op zichzelf.** Dat zei: elke
+migratie mag voorlopig direct op het echte project, omdat er geen gebruikers zijn
+tot alle fases geprogrammeerd zijn. Dat mág nog steeds — de database bevat op
+27-08 één account, nul doelen en nul groepen — maar het is sinds QS8-119 geen
+noodzaak meer, en er is nu een goedkopere volgorde: **eerst lokaal draaien, dan
+pushen.** Zo werkt `db:push` ook.
+
+**Het moment waarop het besluit omslaat is nog steeds scherp:** de eerste echte
+gebruiker die zich aanmeldt. Vanaf dan geen migratie meer zonder repetitie en
+zonder dump. Tot die tijd blijft elke migratie idempotent met een rollback-pad in
+de kop.
+
+⚠️ **Waarom deze correctie hier staat en niet stilletjes weggehaald is.** Dit is
+QS8-125 in zijn gevaarlijkste vorm: een document dat een sessie als eerste leest,
+dat zegt dat gereedschap ontbreekt dat er al drie dagen staat. Een sessie die dit
+gelooft, draait zijn migratie rechtstreeks op productie omdat het document zegt
+dat er geen alternatief is.
 
 ## 6. Wat menselijke actie vereist
 
