@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 25-08-2026 (na de merge van PR #12)
+**Laatst bijgewerkt:** 27-08-2026 (na QS8-57, QS8-41 en QS8-137)
 
 ---
 
@@ -31,8 +31,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **484 geslaagd, 1 overgeslagen** (27-08, na QS8-57 en QS8-41). Zonder
-   credentials geeft `npm test` **991 geslaagd en 464 overgeslagen**; typecheck
+   **497 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41 en QS8-137).
+   Zonder credentials geeft `npm test` **998 geslaagd en 477 overgeslagen**; typecheck
    en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -58,11 +58,14 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    sinds PR #9 op `main`; dat besluit wachtte op een merge en niet op een
    antwoord, en die merge is er. Q-TODO blijft de onderbouwing dragen; de status staat
    in Linear.
-10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens.** EPIC 9 is sinds
-    21-08 af. Wat overblijft vraagt jouw hand: een browser met VAPID-sleutels
-    (QS8-124), een iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een
-    lokale stack (QS8-22, A9). **Het bord klopt beter dan deze documenten** — kijk
-    dus eerst in Linear en dan pas hier.
+10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens, en daarom is Fase 2
+    op 27-08 begonnen.** EPIC 9 is sinds 21-08 af. Wat van Fase 1 overblijft
+    vraagt jouw hand en geen code: een browser met VAPID-sleutels (QS8-124), een
+    iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een lokale stack
+    (QS8-22, A9). Quinten heeft daarop drie `phase:v2`-issues met naam
+    vrijgegeven terwijl het exit-criterium van Fase 1 nog staat — welke, en wat
+    dat níet betekent, staat bij *Milestone: Fase 2 en Fase 3* in §4. **Het bord
+    klopt beter dan deze documenten** — kijk dus eerst in Linear en dan pas hier.
 
 ---
 
@@ -74,7 +77,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 | Werkvoorraad | Linear, project **GoalBuddies**, team `QS86-bot Linear`, prefix `QS8` |
 | Database | Supabase `goalbuddies`, ref `wehgocadxehottiiyvsc`, regio `eu-west-3`, gratis tier |
 | Hosting | Hostinger, account `u349450154`, domein `q-projects.tech` |
-| Doeladres | `goalbuddies.q-projects.tech` (bestaat nog niet — QS8-99) |
+| Doeladres | `goalbuddies.q-projects.tech` — live sinds 24-08 (QS8-99/QS8-100), deployen met `npm run deploy` |
 | Design-referentie | `tracker.q-projects.tech` — de Status Tracker, zelfde stelsel |
 
 **Linear is de bron van waarheid voor wát er gebouwd moet worden.** Dit bestand
@@ -84,13 +87,13 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 30 tabellen. Migraties `0001` t/m `0102`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0103`
 zijn toegepast op het project. Het datamodel is vastgesteld
 in `docs/decisions/001-datamodel.md`; dat document is leidend, niet de losse SQL.
 De 24e tabel is `week_review_replies` (EPIC 7, migratie 0026); daarna kwamen
 `approval_withdrawals` (0030), `deadline_requests` (0032), `week_pass_events`
-(0039), `goal_risk` (0050), `push_tokens` en `notifications_sent` (0053) en
-`group_events` (0076) erbij.
+(0039), `goal_risk` (0050), `push_tokens` en `notifications_sent` (0053),
+`group_events` (0076) en `milestone_tips` (0103) erbij.
 
 ⚠️ Hier stond tot 24-08-2026 "26 tabellen", en dat klopte al vier migraties niet
 meer — geteld toen `week_review_replies` de laatste was en daarna nooit meer
@@ -194,7 +197,7 @@ SECURITY DEFINER-RPC overleeft niets een `raise exception`.**
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 29 bestanden; 27 daarvan slaan zonder credentials
+  bestaat. `tests/rls` telt 30 bestanden; 28 daarvan slaan zonder credentials
   over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -207,6 +210,23 @@ systeemberichten bij positieve gebeurtenissen, en de weekafsluiting: drie vragen
 op de huddledag met alle antwoorden op één kaart en reacties eronder. Sinds
 EPIC 8 staat **De Ketting** bovenaan het groepsscherm: de gedeelde teller van
 hoeveel leden deze periode hun cyclus afsloten.
+
+**Sinds 27-08 daar bovenop, uit de eerste drie Fase 2-issues:**
+- **Een groep verlaten** (QS8-57, migratie `0100`) — via `verlaat_groep()` en
+  niet via een DELETE, want de laatste-beheerder-eis gaat over de rijen die
+  óverblijven en dat kan RLS niet zien. `group_members_delete` staat daarom op
+  `using (false)`. Vertrek raakt precies één groep: doelen, weekdoelen en
+  voltooiingen in je ándere groepen blijven staan.
+- **Weekstappen per mijlpaal laten genereren** (QS8-41) — een tweede
+  `ai_jobs.kind` (`weekly_goals`) waarmee de Doelcoach per mijlpaal weekdoelen
+  mét vloer en plafond voorstelt. De zeef weigert een voorstel zonder vloer of
+  met vloer gelijk aan plafond, want dan is domeinregel 8 een lege huls.
+- **Een Doelcoach-tip per mijlpaal** (QS8-137, migratie `0103`) — één tip per
+  mijlpaal in `milestone_tips`, alleen leesbaar voor de eigenaar, met vier
+  vaste terugvallen als er geen gegenereerde tip is. Een trigger weigert een tip
+  die tegenslag benoemt; die woordenlijst staat in
+  `tegenvaller_woorden()` én in `src/shared/ui/tips.ts` en wordt door één
+  gedeeld ijkcorpus door beide kanten heen getoetst.
 
 ✅ **`chain_links` wordt sinds 19-08 gevuld** (QS8-80, migraties 0036 en 0037).
 Twee routes leggen een schakel: een weekafsluiting via de trigger
@@ -382,12 +402,12 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth en avatar-upload |
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
-| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, m.u.v. de twee `phase:v2`-issues |
+| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af. Van de twee `phase:v2`-issues is QS8-57 (een groep verlaten) op 27-08 gebouwd; alleen QS8-56 staat nog open |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
-| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel. **QS8-41 (weekstappen per mijlpaal) is op 27-08 gebouwd**; daarbij bleek `doelcoach` nooit op `job.kind` te vertakken en kende de app `'error'` waar de database `'failed'` schrijft — elke mislukte generatie liep sinds QS8-38 dood in een timeout |
+| 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel. **QS8-41 (weekstappen per mijlpaal) is op 27-08 gebouwd**; daarbij bleek `doelcoach` nooit op `job.kind` te vertakken en kende de app `'error'` waar de database `'failed'` schrijft — elke mislukte generatie liep sinds QS8-38 dood in een timeout. **QS8-137 (A48 variant 2, de Doelcoach-tip per mijlpaal) dezelfde dag**, migratie `0103`: een eigenaar-only tabel `milestone_tips`, een derde `ai_jobs.kind`, en een zeef die aan beide kanten dezelfde woordenlijst gebruikt |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
@@ -462,6 +482,21 @@ gebruiker testen.
 
 Pas beginnen als Fase 1 zijn exit-criterium haalt. Alles staat al in Linear met
 label `phase:v2` of `phase:v3`.
+
+⚠️ **Drie issues zijn op 27-08 met naam vrijgegeven, en dat is een uitzondering
+en geen verschuiving van de grens.** Het exit-criterium van Fase 1 (een groep van
+drie, ≥4 opeenvolgende cycli) staat onaangeroerd; wat eraan ontbreekt is geen
+code maar Quintens hand, en daar kan een sessie niet op wachten. Vrijgegeven
+zijn **QS8-57** (een groep verlaten), **QS8-41** (weekstappen per mijlpaal) en
+**QS8-137** (A48 variant 2, de Doelcoach-tip per mijlpaal). Alle drie zijn ze
+gebouwd; zie de EPIC-tabel hierboven en §2.
+
+**Wat dit niet is:** geen vrijbrief voor de rest van het label. Wie een ander
+`phase:v2`-issue wil oppakken, vraagt dat opnieuw. Drie ervan staan sowieso op
+slot en dat is ouder dan dit besluit: **QS8-71** en **QS8-72** vragen Supabase
+Storage (buckets, een betaalde tier, een nieuw groepszichtbaar oppervlak) en
+**QS8-86** vraagt een betaalprovider — dat laatste is grens 1 uit de
+beslisbevoegdheid in `CLAUDE.md`.
 
 ---
 

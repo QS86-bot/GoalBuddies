@@ -7,7 +7,14 @@ import { CATEGORIEEN } from '@/modules/goals/schemas';
 
 import { STANDAARDTAAL, zetTaal } from '../i18n';
 
-import { TIP_CATEGORIEEN, TIPS_PER_CATEGORIE, weektip } from './tips';
+import {
+  noemtTegenvaller,
+  TIP_CATEGORIEEN,
+  TIPS_PER_CATEGORIE,
+  tipVoorWeek,
+  weektip,
+  ZEEF_IJKING,
+} from './tips';
 
 /**
  * Besluit A48, variant 3 (QS8-110) — de weektip.
@@ -72,8 +79,11 @@ describe('de weektip', () => {
     // ⚠️ Elke regel van elke categorie, in beide talen — niet alleen de regel die
     //    deze week toevallig gekozen wordt. Anders bewaakt deze test één op de
     //    vijftien zinnen.
-    const verboden =
-      /achter|gemist|mislukt|helaas|jammer|volgende keer beter|niet gehaald|behind|missed|failed|unfortunately|better luck/i;
+    // ⚠️ Uit `TEGENVALLER_WOORDEN` en niet meer als losse regex hier. Sinds
+    //    QS8-137 is diezelfde lijst een échte zeef in de database
+    //    (`tegenvaller_woorden()`, migratie 0103), en twee handgeschreven
+    //    kopieën van dezelfde regel lopen uit elkaar zodra niemand ze
+    //    vergelijkt.
 
     const weken = Array.from({ length: TIPS_PER_CATEGORIE * 3 }, (_, i) =>
       `2026-01-${String(i + 1).padStart(2, '0')}`,
@@ -83,7 +93,10 @@ describe('de weektip', () => {
       zetTaal(taal);
       for (const categorie of TIP_CATEGORIEEN) {
         for (const week of weken) {
-          expect(weektip(categorie, week), `${categorie}/${taal}/${week}`).not.toMatch(verboden);
+          expect(
+            noemtTegenvaller(weektip(categorie, week)),
+            `${categorie}/${taal}/${week}: ${weektip(categorie, week)}`,
+          ).toBe(false);
         }
       }
     }
@@ -112,5 +125,97 @@ describe('de weektip', () => {
 
     expect(tip).not.toMatch(/^weektip\./);
     expect(tip).toBe(weektip('other', '2026-08-24'));
+  });
+});
+
+/**
+ * De zeef op de gegenereerde tip — QS8-137.
+ *
+ * ⚠️ Dit is de TypeScript-helft. De SQL-helft staat onder test in
+ *    `tests/rls/mijlpaaltip.test.ts`, met hetzelfde corpus, en die test is de
+ *    naad: twee correcte zeven en het gehéél lekt zodra ze uit elkaar lopen.
+ */
+describe('de zeef op een gegenereerde tip', () => {
+  it('weigert elke zin uit de weiger-helft van het ijkcorpus', () => {
+    for (const zin of ZEEF_IJKING.weigeren) {
+      expect(noemtTegenvaller(zin), zin).toBe(true);
+    }
+  });
+
+  it('laat elke zin uit de doorlaat-helft met rust', () => {
+    // ⚠️ Deze helft is even belangrijk als de andere: een zeef die alles
+    //    weigert, laat de feature stil doodbloeden en niemand die dat merkt.
+    for (const zin of ZEEF_IJKING.doorlaten) {
+      expect(noemtTegenvaller(zin), zin).toBe(false);
+    }
+  });
+});
+
+describe('tipVoorWeek', () => {
+  const vast = () => weektip('other', '2026-08-24');
+
+  const goed = {
+    body: 'Begin met het stuk dat het meeste uitzoekwerk vraagt; de rest volgt sneller.',
+    locale: 'nl',
+  };
+
+  it('toont de gegenereerde tip als alles klopt', () => {
+    zetTaal('nl');
+    expect(
+      tipVoorWeek({ gegenereerd: goed, taal: 'nl', categorie: 'other', cycleStart: '2026-08-24' }),
+    ).toBe(goed.body);
+  });
+
+  /**
+   * ⚠️ **Vier routes terug naar de vaste set, elk apart.** Dat is
+   *    acceptatiecriterium 2 van QS8-137, en het is de reden dat de gefaseerde
+   *    volgorde uit besluit A48 klopt: wie geen mijlpaal heeft krijgt bij
+   *    variant 2 alleen niets, en dat is élke nieuwe gebruiker in zijn eerste
+   *    week.
+   */
+  it('valt terug op de vaste set zonder gegenereerde tip', () => {
+    zetTaal('nl');
+    expect(
+      tipVoorWeek({ gegenereerd: null, taal: 'nl', categorie: 'other', cycleStart: '2026-08-24' }),
+    ).toBe(vast());
+  });
+
+  it('valt terug als de tip in een andere taal bedacht is', () => {
+    zetTaal('nl');
+    expect(
+      tipVoorWeek({
+        gegenereerd: { ...goed, locale: 'en' },
+        taal: 'nl',
+        categorie: 'other',
+        cycleStart: '2026-08-24',
+      }),
+    ).toBe(vast());
+  });
+
+  it('valt terug als de tip alsnog een tegenvaller noemt', () => {
+    zetTaal('nl');
+    expect(
+      tipVoorWeek({
+        gegenereerd: { body: 'Je bent achter op schema, pak het groter aan.', locale: 'nl' },
+        taal: 'nl',
+        categorie: 'other',
+        cycleStart: '2026-08-24',
+      }),
+    ).toBe(vast());
+  });
+
+  it('valt terug bij een tip buiten de lengtegrenzen van de database', () => {
+    zetTaal('nl');
+    for (const body of ['Kort.', 'x'.repeat(301)]) {
+      expect(
+        tipVoorWeek({
+          gegenereerd: { body, locale: 'nl' },
+          taal: 'nl',
+          categorie: 'other',
+          cycleStart: '2026-08-24',
+        }),
+        body.slice(0, 20),
+      ).toBe(vast());
+    }
   });
 });

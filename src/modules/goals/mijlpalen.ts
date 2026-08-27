@@ -195,3 +195,109 @@ export async function herordenMijlpalen(
 
   return { ok: true, waarde: true };
 }
+
+/**
+ * Een gegenereerde tip, met de taal waarin hij bedacht is.
+ *
+ * ⚠️ `locale` is geen sierlijkheid: `weektip()` volgt de ingestelde taal vanzelf
+ *    omdat hij uit de catalogus komt, en een gegenereerde zin doet dat niet. Wie
+ *    op Engels overschakelt zou anders een Nederlandse zin onder zijn kaart
+ *    houden, en dat is erger dan de vaste terugval.
+ */
+export interface Mijlpaaltip {
+  readonly body: string;
+  readonly locale: string;
+}
+
+/**
+ * De gegenereerde Doelcoach-tips, voor een handvol mijlpalen tegelijk — QS8-137.
+ *
+ * ⚠️ **Eén verzoek voor alle mijlpalen samen, en niet één per weekdoelkaart.**
+ *    Dat laatste is de N+1 die onwrikbare regel 12 met naam noemt, en dan voor
+ *    één regel tekst — precies de reden die ook boven `doelcategorieen` in
+ *    `app/(tabs)/index.tsx` staat.
+ *
+ * ⚠️ **Een ontbrekende tip is een normale uitkomst en geen storing.** Het scherm
+ *    valt terug op `weektip()`, de vaste set uit variant 3 — die blijft het
+ *    antwoord voor iedereen zonder gegenereerde tip, en dat is élke nieuwe
+ *    gebruiker in zijn eerste week. Daarom een lege Map bij een fout en geen
+ *    `throw`: een tip is een extraatje onder een kaart en hoort die kaart niet
+ *    mee te slepen.
+ *
+ * ⚠️ Geen filter op `user_id`: `milestone_tips_select` laat uitsluitend je eigen
+ *    rijen door. Een `.eq()` erbij zou suggereren dat de beveiliging hier zit.
+ */
+export async function fetchMijlpaalTips(
+  milestoneIds: readonly string[],
+): Promise<ReadonlyMap<string, Mijlpaaltip>> {
+  if (milestoneIds.length === 0) return new Map();
+
+  const { data, error } = await supabase()
+    .from('milestone_tips')
+    .select('milestone_id, body, locale')
+    .in('milestone_id', [...milestoneIds]);
+
+  if (error) {
+    reportError(error, 'goals.milestoneTips', { code: error.code });
+    return new Map();
+  }
+
+  return new Map((data ?? []).map((rij) => [rij.milestone_id, { body: rij.body, locale: rij.locale }]));
+}
+
+/**
+ * De mijlpaal waar de gebruiker nu naartoe werkt, per doel — QS8-137.
+ *
+ * ⚠️ Eén verzoek voor alle doelen samen, om dezelfde reden als hierboven.
+ *    `dropped` valt weg en de sortering op `order_index` is wat "volgende"
+ *    betekent; de keuze zelf staat in `volgendeMijlpaal()`, zodat hij zonder
+ *    database te testen is.
+ */
+export async function fetchVolgendeMijlpalen(
+  goalIds: readonly string[],
+): Promise<ReadonlyMap<string, Mijlpaal>> {
+  if (goalIds.length === 0) return new Map();
+
+  const { data, error } = await supabase()
+    .from('milestones')
+    .select('id, title, status, order_index, target_date, goal_id')
+    .in('goal_id', [...goalIds])
+    .neq('status', 'dropped')
+    .order('order_index', { ascending: true })
+    .limit(200);
+
+  if (error) {
+    reportError(error, 'goals.volgendeMijlpalen', { code: error.code });
+    return new Map();
+  }
+
+  const perDoel = new Map<string, Mijlpaal[]>();
+  for (const rij of data ?? []) {
+    const lijst = perDoel.get(rij.goal_id) ?? [];
+    lijst.push(rij);
+    perDoel.set(rij.goal_id, lijst);
+  }
+
+  const uit = new Map<string, Mijlpaal>();
+  for (const [goalId, lijst] of perDoel) {
+    const volgende = volgendeMijlpaal(lijst);
+    if (volgende !== null) uit.set(goalId, volgende);
+  }
+
+  return uit;
+}
+
+/**
+ * De mijlpaal waar de gebruiker nu naartoe werkt.
+ *
+ * ⚠️ **De eerste die nog niet af is, op `order_index`.** De aanroepers leveren
+ *    een lijst die daar al op gesorteerd is en waar `dropped` uit weg is. Is
+ *    alles `done`, dan is er geen volgende — en dan is de vaste tip het juiste
+ *    antwoord, want er valt niets meer vooruit te kijken.
+ *
+ * ⚠️ Puur, zodat hij zonder database te testen is. Dat is hier geen luxe: "wat
+ *    is de volgende mijlpaal" is de vraag waar de hele feature op hangt.
+ */
+export function volgendeMijlpaal(mijlpalen: readonly Mijlpaal[]): Mijlpaal | null {
+  return mijlpalen.find((m) => m.status !== 'done') ?? null;
+}

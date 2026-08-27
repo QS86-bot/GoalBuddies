@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { vraagMijlpaalTip, werkJobAf } from '@/modules/ai';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import {
   bewijseisVoorDoel,
@@ -20,6 +21,8 @@ import {
   fetchDoelen,
   fetchDoelStanden,
   fetchDoorschuifbaar,
+  fetchMijlpaalTips,
+  fetchVolgendeMijlpalen,
   fetchWeekdoelen,
   huidigeCyclus,
   inCoulanceperiode,
@@ -28,9 +31,10 @@ import {
   verwijderWeekdoel,
   zojuistAfgeslotenCyclus,
   type DoelStand,
+  type Mijlpaaltip,
   type Weekdoel,
 } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { t, taal } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { localDateIn, now, type UserClock } from '@/shared/time';
 import {
@@ -48,9 +52,10 @@ import {
   magVieren,
   Screen,
   Subheading,
+  useAsync,
   useVieringenAan,
   Viering,
-  weektip,
+  tipVoorWeek,
   weekdoelActies,
   weekpasUitleg,
   type WeeklyGoalStatus,
@@ -82,6 +87,15 @@ export default function Vandaag() {
    *    onwrikbare regel 12 met naam noemt, en dat voor een regel tekst.
    */
   const [doelcategorieen, setDoelcategorieen] = useState<ReadonlyMap<string, string>>(new Map());
+  /**
+   * De mijlpalen waarvoor deze sessie al een tip is aangevraagd.
+   *
+   * ⚠️ In een ref en niet in state: het mag geen render uitlokken, en het moet
+   *    de herlaadrondes overleven. Zonder deze rem vraagt elke ronde opnieuw —
+   *    en dan is "één keer per mijlpaal" een belofte die alleen de database nog
+   *    waarmaakt.
+   */
+  const gevraagd = useRef<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
@@ -171,7 +185,44 @@ export default function Vandaag() {
     };
   }, [userId, ronde]);
 
-  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
+  /**
+   * De sleutel van de doelen met een gehaalde week — QS8-137.
+   *
+   * ⚠️ Een string en geen array, want een verse array is elke render een andere
+   *    waarde en dus als afhankelijkheid waardeloos. Precies dezelfde val als bij
+   *    `afTeSluitenStart` en `cyclusStart` hierboven, en die heeft dit scherm al
+   *    een keer een oneindige laadlus gekost (bevinding QS8-75).
+   */
+  const gehaaldeDoelen = [
+    ...new Set(weekdoelen.filter((w) => w.status === 'approved').map((w) => w.goal_id)),
+  ]
+    .sort()
+    .join(',');
+
+  /**
+   * De Doelcoach-tip bij de volgende mijlpaal — QS8-137, besluit A48 variant 2.
+   *
+   * ⚠️ **`useAsync` en geen eigen `levend`-vlag.** Die vlag stond op 25-08 nog 32
+   *    keer woordelijk in deze codebase; `npm run levend:controle` telt af en gaf
+   *    hier terecht rood toen ik er een 28e bij zette. De hook doet precies wat
+   *    die vlag deed, en beter — hij dekt ook het geval dat `deps` wisselt terwijl
+   *    het verzoek nog loopt.
+   *
+   * ⚠️ **Twee verzoeken voor alle kaarten samen, niet twee per kaart.** Dat is
+   *    onwrikbare regel 12, en het is dezelfde reden waarom `doelcategorieen`
+   *    hierboven uit één `fetchDoelen()` komt.
+   *
+   * ⚠️ **Falen is stil en dat is hier het goede gedrag.** Elke route die geen tip
+   *    oplevert — geen mijlpaal, nog niets gegenereerd, quotum op, een storing —
+   *    komt als een lege Map binnen, en dan toont de kaart de vaste regel uit
+   *    variant 3. De gebruiker heeft niets gevraagd en hoort dus niets te missen.
+   */
+  const { data: mijlpaaltips } = useAsync(
+    userId && gehaaldeDoelen !== '' ? () => laadTips(gehaaldeDoelen.split(','), gevraagd) : null,
+    [userId, gehaaldeDoelen, ronde],
+  );
+
+  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
   // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
   // storing hier hoort je week van vandaag niet mee te slepen.
   //
@@ -234,6 +285,7 @@ export default function Vandaag() {
                 key={weekdoel.id}
                 weekdoel={weekdoel}
                 categorie={doelcategorieen.get(weekdoel.goal_id) ?? ''}
+                mijlpaaltip={mijlpaaltips?.get(weekdoel.goal_id) ?? null}
                 userId={userId ?? ''}
                 onKlaar={herlaad}
               />
@@ -487,6 +539,7 @@ function DoorschuifKaart({
 function WeekdoelKaart({
   weekdoel,
   categorie,
+  mijlpaaltip,
   userId,
   onKlaar,
 }: {
@@ -501,6 +554,15 @@ function WeekdoelKaart({
    *    doel dat nog niet geladen is komt daar terecht.
    */
   readonly categorie: string;
+  /**
+   * De gegenereerde Doelcoach-tip bij de volgende mijlpaal — QS8-137.
+   *
+   * ⚠️ `null` is de normale stand en geen storing: geen mijlpaal, nog geen tip,
+   *    een mislukte generatie of een uitgeput dagquotum komen hier alle vier als
+   *    `null` binnen. De kaart valt dan terug op `weektip()`, en die terugval is
+   *    het hele punt van de gefaseerde volgorde in besluit A48.
+   */
+  readonly mijlpaaltip: Mijlpaaltip | null;
   readonly userId: string;
   readonly onKlaar: () => void;
 }) {
@@ -673,7 +735,14 @@ function WeekdoelKaart({
            feestje hierboven: zelf afvinken is geen goedkeuring (domeinregel 3).
       */}
       {weekdoel.status === 'approved' ? (
-        <Caption>{weektip(categorie, weekdoel.cycle_start_date)}</Caption>
+        <Caption>
+          {tipVoorWeek({
+            gegenereerd: mijlpaaltip,
+            taal: taal(),
+            categorie,
+            cycleStart: weekdoel.cycle_start_date,
+          })}
+        </Caption>
       ) : null}
 
       {/*
@@ -879,3 +948,51 @@ const styles = StyleSheet.create({
   zetten: { gap: space.blokGap - 4, paddingTop: space.blokGap - 4 },
   zet: { gap: 2 },
 });
+
+/**
+ * De tips bij de volgende mijlpaal van elk opgegeven doel — QS8-137.
+ *
+ * ⚠️ **Het aanvragen gebeurt hier en niet in een eigen effect**, en dat is een
+ *    afweging. Een tweede effect zou een tweede `levend`-vlag vragen voor iets
+ *    dat geen state schrijft; dit doet dat niet en heeft die bewaking dus niet
+ *    nodig. De prijs is dat een laadfunctie een neveneffect heeft, en die staat
+ *    hier opgeschreven zodat de volgende lezer hem niet per ongeluk weghaalt.
+ *
+ * ⚠️ **De aanvraag is stilzwijgend en kost uit het gedeelde dagquotum van tien**,
+ *    hetzelfde quotum als het opsplitsen van een doel en de weekstappen. Dat is
+ *    aanvaardbaar omdat het per mijlpaal één keer gebeurt en niet per week — de
+ *    grendel daarvoor staat in `vraag_ai_job()` (migratie 0103) en niet hier.
+ *    Is het quotum op, dan komt er `quota_reached` terug, doet deze functie
+ *    niets, en ziet de gebruiker de vaste regel. Met opzet geen foutmelding: hij
+ *    heeft niets gevraagd.
+ *
+ * ⚠️ `gevraagd` is de rem binnen één sessie. De échte grendel is de primaire
+ *    sleutel op `milestone_tips`, maar een aanvraag die tóch elke ronde vertrekt
+ *    kost wél een plek in het quotum.
+ */
+async function laadTips(
+  goalIds: readonly string[],
+  gevraagd: { current: Set<string> },
+): Promise<ReadonlyMap<string, Mijlpaaltip>> {
+  const volgende = await fetchVolgendeMijlpalen(goalIds);
+  if (volgende.size === 0) return new Map();
+
+  const tips = await fetchMijlpaalTips([...volgende.values()].map((m) => m.id));
+
+  for (const [doelId, mijlpaal] of volgende) {
+    if (tips.has(mijlpaal.id) || gevraagd.current.has(mijlpaal.id)) continue;
+    gevraagd.current.add(mijlpaal.id);
+
+    const aanvraag = await vraagMijlpaalTip(doelId, mijlpaal.id);
+    if (aanvraag.ok && !aanvraag.waarde.hergebruikt) {
+      await werkJobAf(aanvraag.waarde.jobId);
+    }
+  }
+
+  return new Map(
+    [...volgende].flatMap(([doelId, mijlpaal]) => {
+      const tip = tips.get(mijlpaal.id);
+      return tip === undefined ? [] : [[doelId, tip] as const];
+    }),
+  );
+}

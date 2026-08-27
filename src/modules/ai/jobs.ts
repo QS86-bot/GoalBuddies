@@ -44,6 +44,28 @@ export type Uitkomst<T> = { ok: true; waarde: T } | { ok: false; melding: string
  *    "opnieuw genereren" met identieke invoer hetzelfde antwoord teruggeeft.
  *    Voor QS8-40 hoort daar iets in de invoer te variëren.
  */
+/**
+ * Vraagt de coach om één tip bij een mijlpaal — QS8-137.
+ *
+ * ⚠️ **Eén keer per mijlpaal en niet één keer per week.** Dat is een harde
+ *    randvoorwaarde van het issue (onwrikbare regel 6: bij 100k gebruikers is
+ *    "per gebruiker per week" 100k calls per week). Het slot zit niet hier maar
+ *    in de database: `milestone_tips` heeft `milestone_id` als primaire sleutel
+ *    en de Edge Function schrijft met `on conflict do nothing`. Deze functie
+ *    hoort alleen aangeroepen te worden als er nog geen tip is.
+ */
+export async function vraagMijlpaalTip(
+  goalId: string,
+  milestoneId: string,
+): Promise<Uitkomst<JobVerwijzing>> {
+  // ⚠️ **Precies één sleutel, en dat is geen zuinigheid.** `vraag_ai_job()`
+  //    weigert sinds migratie 0103 elke andere invoer voor dit soort job: zou de
+  //    client de doeltitel en de mijlpaaltekst meesturen, dan stuurt hij
+  //    feitelijk de prompt, en dan is het dagquotum een formaliteit. De Edge
+  //    Function haalt die teksten zelf op.
+  return vraagJob('milestone_tip', goalId, { milestone_id: milestoneId });
+}
+
 export async function vraagWeekdoelen(
   goalId: string,
   invoer: Record<string, unknown>,
@@ -71,7 +93,7 @@ export async function vraagMijlpalen(
  *    één brede naar binnen.
  */
 async function vraagJob(
-  kind: 'milestones' | 'weekly_goals',
+  kind: 'milestones' | 'weekly_goals' | 'milestone_tip',
   goalId: string,
   invoer: Record<string, unknown>,
 ): Promise<Uitkomst<JobVerwijzing>> {
