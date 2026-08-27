@@ -12,7 +12,7 @@ import {
   userCycle,
   userCycleOn,
 } from './cycle';
-import type { GroupClock, UserClock } from './types';
+import type { GroupClock, UserClock, Weekday } from './types';
 import { localDateIn, toIsoDate, weekdayOf } from './zoned';
 
 const AMS = 'Europe/Amsterdam';
@@ -125,7 +125,7 @@ describe('zomertijd', () => {
     expect(cycle.startDate).toBe('2026-03-30');
     expect(cycle.endDate).toBe('2026-04-05');
     // Die week is 7 × 24 uur, maar de wéék ervoor duurde een uur korter.
-    const vorige = previousCycle(cycle, 1);
+    const vorige = previousCycle(cycle);
     expect(vorige.startDate).toBe('2026-03-23');
     expect(vorige.endsAt.getTime() - vorige.startsAt.getTime()).toBe(
       7 * 86_400_000 - 3_600_000,
@@ -146,7 +146,7 @@ describe('zomertijd', () => {
 
   it('laat cycli naadloos op elkaar aansluiten over een DST-grens heen', () => {
     const cycle = userCycle(maandag, new Date('2026-10-21T10:00:00Z'));
-    const volgende = nextCycle(cycle, 1);
+    const volgende = nextCycle(cycle);
 
     expect(volgende.startsAt.getTime()).toBe(cycle.endsAt.getTime());
     expect(volgende.startDate).toBe('2026-10-26');
@@ -266,17 +266,49 @@ describe('cyclesUntil — voedt de Risico-radar', () => {
 describe('navigeren tussen cycli', () => {
   it('is omkeerbaar', () => {
     const cycle = userCycle(zaterdag, new Date('2026-08-13T08:00:00Z'));
-    const heenEnWeer = previousCycle(nextCycle(cycle, 6), 6);
+    const heenEnWeer = previousCycle(nextCycle(cycle));
 
     expect(heenEnWeer.startDate).toBe(cycle.startDate);
     expect(heenEnWeer.startsAt.getTime()).toBe(cycle.startsAt.getTime());
+  });
+
+  /**
+   * ⚠️ **De belofte, niet het onderdeel.** `previousCycle`/`nextCycle` namen tot
+   *    27-08-2026 een losse `startDay` naast de cyclus. Die kon alleen overbodig
+   *    zijn (elke juiste aanroeper gaf de dag door die de cyclus al had) of fout
+   *    — en fout gaf geen foutmelding maar een stil hérgelijnde week op een
+   *    ándere startdag. Dit toetst dat navigeren de klok nooit verlaat, voor
+   *    beide klokken en voor alle zeven startdagen.
+   *
+   * ⚠️ Met de hand rood gemaakt door `startDagVan()` een vaste dag te laten
+   *    teruggeven: dan kantelt hij op zes van de zeven dagen.
+   */
+  it('blijft bij beide klokken op de eigen startdag, alle zeven dagen', () => {
+    const at = new Date('2026-08-25T09:00:00Z');
+
+    for (let dag = 0; dag < 7; dag += 1) {
+      const startDay = dag as Weekday;
+
+      const persoonlijk = userCycle({ weekStartDay: startDay, tz: AMS }, at);
+      const groep = groupPeriod({ huddleDay: startDay, tz: AMS }, at);
+
+      for (const cyclus of [persoonlijk, groep]) {
+        expect(weekdayOf(cyclus.startDate)).toBe(startDay);
+        expect(weekdayOf(nextCycle(cyclus).startDate)).toBe(startDay);
+        expect(weekdayOf(previousCycle(cyclus).startDate)).toBe(startDay);
+
+        // En de weken sluiten aan: navigeren verschuift precies één cyclus.
+        expect(cyclesBetween(cyclus, nextCycle(cyclus))).toBe(1);
+        expect(cyclesBetween(cyclus, previousCycle(cyclus))).toBe(-1);
+      }
+    }
   });
 
   it('laat opeenvolgende cycli exact op elkaar aansluiten', () => {
     let cycle = userCycle(woensdag, new Date('2026-01-07T12:00:00Z'));
 
     for (let i = 0; i < 60; i += 1) {
-      const volgende = nextCycle(cycle, 3);
+      const volgende = nextCycle(cycle);
       expect(volgende.startsAt.getTime()).toBe(cycle.endsAt.getTime());
       expect(cyclesBetween(cycle, volgende)).toBe(1);
       cycle = volgende;

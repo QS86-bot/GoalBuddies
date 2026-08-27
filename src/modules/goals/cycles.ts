@@ -62,5 +62,5 @@ export function inCoulanceperiode(klok: UserClock): boolean {
  * cyclus de lopende week en sloot hij de vorige af.
  */
 export function zojuistAfgeslotenCyclus(klok: UserClock): Cycle {
-  return previousCycle(afsluitbareCyclus(klok), klok.weekStartDay);
+  return previousCycle(afsluitbareCyclus(klok));
 }
