@@ -71,16 +71,65 @@ export const REGISTER = new Map([
   ],
 ]);
 
+/**
+ * ⚠️ **De SQL kiest niet meer wie er schrijft; die vraag is naar JavaScript
+ *    verhuisd.** Hier stond één regex over `pg_get_functiondef()`, en die leest
+ *    de definitie inclusief commentaar. Op 27-08-2026 sloeg hij aan op een zin
+ *    die uitlegde wat een functie juist **niet** doet, en de reparatie was toen
+ *    de zin herschrijven in plaats van de code.
+ *
+ *    De valse positief was daarbij het kleine probleem. Het grote was dat
+ *    niemand wist hoeveel valse negatieven eronder zaten: een `with`-clausule,
+ *    een `execute`, `update only groups` of een aanhalingsteken kwam er ongezien
+ *    langs — en dit script bewaakt de pin op de gevoeligste tabel die er is.
+ *
+ *    Een heuristiek in SQL kun je niet voeden. `schrijftNaarGroups()` hieronder
+ *    wél, en `tests/scripts/pinuitzonderingen-controle.test.ts` biedt hem elke
+ *    vorm los aan — de vormen die hij moet vinden én de vormen die hij met rust
+ *    moet laten. Dezelfde reparatie als bij `tekst:controle` na QS8-115.
+ *
+ * ⚠️ Het scheidingsteken is `\x02`, en geen `|` of tab: een functiedefinitie
+ *    bevat allebei. Het is een stuurteken dat in geen enkele definitie voorkomt.
+ */
 const VRAAG = `
-select p.proname
+select p.proname || chr(2) || replace(pg_get_functiondef(p.oid), chr(10), chr(1))
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.prosecdef
   and has_function_privilege('authenticated', p.oid, 'EXECUTE')
-  and pg_get_functiondef(p.oid) ~* 'update\\s+(public\\.)?groups\\M'
-order by 1;
+order by p.proname;
 `;
+
+/**
+ * Haalt commentaar uit een functiedefinitie.
+ *
+ * ⚠️ Alleen commentaar, en met opzet géén stringliteralen. Een functie die
+ *    `execute 'update groups set ...'` doet, schrijft écht naar `groups`; die
+ *    string wegpoetsen zou juist de gevaarlijkste vorm onzichtbaar maken. Een
+ *    foutmelding waarin toevallig "update groups" staat, levert dan een valse
+ *    positief op — en die kant is bij een beveiligingscontrole de goede kant om
+ *    op te leunen.
+ */
+export function zonderCommentaar(definitie) {
+  return definitie
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/--[^\n]*/g, ' ');
+}
+
+/**
+ * Schrijft deze functiedefinitie naar `groups`?
+ *
+ * ⚠️ De vormen die meetellen staan in de test, niet hier in een zin. Wat de
+ *    regex doet: `update`, dan optioneel `only`, dan optioneel een schema, dan
+ *    `groups` — met of zonder aanhalingstekens, en met willekeurige witruimte
+ *    ertussen. `\b` sluit `groups_backup` en `group_members` uit.
+ */
+export function schrijftNaarGroups(definitie) {
+  return /\bupdate\s+(only\s+)?("?public"?\s*\.\s*)?"?groups"?\b/i.test(
+    zonderCommentaar(definitie),
+  );
+}
 
 /** De trigger die de uitzondering maakt. Verdwijnt hij, dan klopt dit script niet meer. */
 const VRAAG_TRIGGER = `
@@ -91,6 +140,28 @@ where n.nspname = 'public' and p.proname = 'guard_group_update';
 
 export function ontleed(uitvoer) {
   return uitvoer.split('\n').map((r) => r.trim()).filter((r) => r.length > 0);
+}
+
+/**
+ * Uit de ruwe psql-uitvoer: de namen van de functies die naar `groups` schrijven.
+ *
+ * ⚠️ De nieuwe regels zijn door de SQL op `\x01` gezet zodat één functie één
+ *    regel blijft; hier gaan ze terug, want `--`-commentaar loopt tot het einde
+ *    van een regel en zonder die nieuwe regels slokt het de rest van de functie op.
+ */
+export function schrijvers(uitvoer) {
+  const gevonden = [];
+
+  for (const regel of ontleed(uitvoer)) {
+    const grens = regel.indexOf('\u0002');
+    if (grens === -1) continue;
+
+    const naam = regel.slice(0, grens);
+    const definitie = regel.slice(grens + 1).replaceAll('\u0001', '\n');
+    if (schrijftNaarGroups(definitie)) gevonden.push(naam);
+  }
+
+  return gevonden;
 }
 
 /**
@@ -114,10 +185,10 @@ function psql(vraag) {
 }
 
 function hoofd() {
-  let schrijvers;
+  let gevonden;
   let leuntOpRol;
   try {
-    schrijvers = ontleed(psql(VRAAG));
+    gevonden = schrijvers(psql(VRAAG));
     leuntOpRol = ontleed(psql(VRAAG_TRIGGER))[0];
   } catch (fout) {
     console.error(
@@ -138,7 +209,7 @@ function hoofd() {
     return 0;
   }
 
-  const { onbekend, verdwenen } = beoordeel(schrijvers);
+  const { onbekend, verdwenen } = beoordeel(gevonden);
 
   if (onbekend.length > 0) {
     console.error(
@@ -165,7 +236,7 @@ function hoofd() {
   }
 
   console.log(
-    `pinuitzonderingen-controle: ${schrijvers.length} functies mogen langs de pin op \`groups\`, ` +
+    `pinuitzonderingen-controle: ${gevonden.length} functies mogen langs de pin op \`groups\`, ` +
       'allemaal met een reden.',
   );
   return 0;
