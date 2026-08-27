@@ -168,6 +168,38 @@ export function heeftInhoud(antwoord: Antwoord): boolean {
 // ---------------------------------------------------------------------------
 
 /**
+ * De beginwaarde van vraag 1 — QS8, de rij van 18-08 in ENGINEER-REVIEW.
+ *
+ * ⚠️ **Neemt het voorstel bewust niet aan, en dat is de hele functie.** Vraag 1
+ *    stond tot 27-08-2026 voorgevuld met je eigen Dagzetten. De Dagzet is
+ *    standaard privé (domeinregel 9); de weekafsluiting is dat niet. Met een
+ *    voorinvulling is de standaard dus "delen", en moet je actief wegkijken en
+ *    wissen om dat níét te doen — de omgekeerde volgorde van wat dit project
+ *    overal elders aanhoudt.
+ *
+ *    De signatuur ís de bescherming: er is geen parameter waar het voorstel in
+ *    kan. Wie het er tóch in wil, moet deze functie veranderen, en dan valt
+ *    `tests/beloftes/dagzet-privacy.test.ts` om.
+ */
+export function beginwaardeVraag1(opgeslagen: string | null | undefined): string {
+  return opgeslagen ?? '';
+}
+
+/**
+ * Mag de knop "overnemen uit mijn Dagzetten" nu getoond worden?
+ *
+ * ⚠️ De derde voorwaarde — het veld moet leeg zijn — voorkomt dat één tik
+ *    getypte tekst overschrijft. Overnemen is een gemak en mag nooit iets
+ *    weggooien.
+ */
+export function magOvernemenUitDagzetten(invoer: {
+  readonly voorstel: string;
+  readonly huidig: string;
+}): boolean {
+  return invoer.voorstel.trim() !== '' && invoer.huidig.trim() === '';
+}
+
+/**
  * Maakt van de Dagzetten van deze periode een voorstel voor vraag 1.
  *
  * ⚠️ Een vóórstel, en niets meer. Het staat in een veld dat de gebruiker moet
