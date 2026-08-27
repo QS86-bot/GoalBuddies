@@ -469,7 +469,7 @@ label `phase:v2` of `phase:v3`.
 |---|---|---|
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
-| QS8-24 | Sentry | deels: de rand en de PII-scrubbing staan, Sentry zelf niet |
+| QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged — open: er is nooit een echte gebeurtenis uít de app aangekomen |
 | QS8-22 | Migratie-workflow | deels: dumpscript en docs staan, lokale stack niet |
 
 ⚠️ **Besluit 16-08: de lokale stack komt later.** Docker vraagt WSL2 en

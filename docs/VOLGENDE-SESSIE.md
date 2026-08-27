@@ -3,8 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 24-08-2026, na de merge van `main` in de
-> QS8-83/91-branch: de deploy, EPIC 9 en de i18n-infrastructuur komen erbij.
+> **Laatst bijgewerkt:** 27-08-2026, na PR #25. De hele Sentry-keten (QS8-24)
+> staat, de scripts draaien op Windows, en er is een controle op deploy-drift in
+> de Edge Functions.
 
 ---
 
@@ -28,7 +29,7 @@ device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
 één commando:
 
 ```bash
-npm run deploy      # bouwen, .htaccess schrijven, scannen op geheimen, uploaden
+npm run deploy      # bouwen, .htaccess, secret-scan, source maps naar Sentry, uploaden
 npm run deploy:droog  # alleen tonen wat er zóu vertrekken
 ```
 
@@ -37,6 +38,17 @@ Daarvoor heb je eenmalig `HOSTINGER_API_TOKEN` in `.env` nodig.
 ⚠️ De secret-scan in die deploy is aantoonbaar werkend: er is met opzet een
 service-role-key in `dist/` gezet en de deploy sloeg af met de vindplaats erbij.
 **Een controle die nog nooit rood is geweest, is een aanname en geen controle.**
+
+⚠️ **De source maps gaan naar Sentry en nooit naar Hostinger.** Het script haalt
+ze na het uploaden uit de bundel en controleert dat er geen enkele achterblijft;
+blijft er toch één staan, dan stópt de deploy. Een `.map` naast een publieke
+bundel geeft iedereen je volledige broncode. Zonder `SENTRY_AUTH_TOKEN` slaat de
+upload zichzelf over en gebeurt er niets ergs — de maps verdwijnen alsnog.
+
+**De hele Sentry-keten staat sinds 26/27-08** (QS8-24, PR #16 t/m #25): de app,
+de drie Edge Functions, de PII-schoonmaak en de source maps. ⚠️ **Wat er nog
+ontbreekt is de meting** — er is nooit een gebeurtenis uít de app aangekomen.
+Zie "Waar te beginnen", punt 1.
 
 De rollover en de meldingenjob draaien elk uur tegen het echte project.
 
@@ -513,6 +525,33 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   deployt ze. Wie een migratie toepast maar de deploy vergeet, heeft een half
   werkende feature zonder één signaal. Draai `npm run edge:sync` vóór elke deploy.
 
+  ⚠️ **En op 26-08 bleek dat niet theoretisch: er draaide in productie code die
+  op géén enkele branch stond.** Een functie was ooit gedeployd vanuit een
+  ongecommitte werkboom, en die versie stuurde `fout.message` en `fout.stack`
+  ongeschoond naar buiten. Niets in de repo kon dat zien — de repo is niet de
+  waarheid over wat er draait.
+
+  Twee commando's dekken dat sinds PR #17 en #19 af, en allebei draaien ze mee in
+  `/audit`:
+
+  ```bash
+  npm run edge:gedeployd     # haalt de gedéployde bundel op en vergelijkt de modules
+  npm run edge:sync:controle # de gedeelde kopieën in _shared/ tegen het origineel
+  ```
+
+  **Deploy nooit vanuit een werkboom met ongecommitte wijzigingen.** `edge:gedeployd`
+  waarschuwt daar ook expliciet voor.
+
+- **⚠️ `fetch()` verwerpt alleen bij een netwerkfout — een 403 is een geslaagde
+  belofte.** Dat kostte op 26-08 een halve dag: de Sentry-melding rapporteerde
+  netjes `'verstuurd'` terwijl de ingest de envelope wéigerde, want de `Response`
+  werd weggegooid zonder naar `status` te kijken. Elke transportlaag in dit
+  project geeft daarom de statuscode terug en niet alleen "het is gelukt".
+
+  ⚠️ En dat is alleen gevonden door er één echte envelope doorheen te sturen
+  (`npm run sentry:proef`). Een test die je eigen aanname over het protocol
+  bevestigt, bewijst niets over het protocol.
+
 ## TE ONTHOUDEN OVER HET PRODUCT
 
 **Domeinregel 7 (falen is nooit publiek) is de belangrijkste regel.** Bij elk
@@ -542,22 +581,18 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (24-08, na PR #9)
+## STAND VAN DE REPO (27-08, na PR #25)
 
-`main` staat op `f1c4859`. Drie branches ernaast:
+`main` staat op `fb08be1`. Vijf branches ernaast, en van geen enkele is werk
+kwijt:
 
-| branch | commit | |
+| branch | voor/achter `main` | |
 |---|---|---|
-| `main` | `84e07d0` | de hoofdbranch — draagt sinds 25-08 PR #12 |
-| `quintenstrijdonk/qs8-122-…` | `243365c` | de teruggehaalde migraties — ⚠️ **inhoudelijk overbodig**, PR #9 heeft dezelfde bestanden geland. Nalopen en weggooien |
-| `claude/linear-bijwerken-docs-t7cko6` | ✅ geland als PR #12 op 25-08, met een merge-commit. Staat sindsdien gelijk aan `main` |
-| `fundering-16-08` | `8640f3c` | **archief, laten staan** |
-
-✅ De verdwaalde branch met 21 commits is op 24-08 geland als PR #9. Wat ervan
-geleerd is, staat in WERKVOORRAAD §2a — en de kern daarvan geldt nog steeds:
-**werk dat niet landt, bestaat voor de volgende sessie niet**, en dat is niet
-zichtbaar in een document, want het document staat op diezelfde tak. **Kijk bij
-het beginnen van een sessie naar deze tabel en niet alleen naar `main`.**
+| `claude/linear-bijwerken-docs-t7cko6` | 1 voor | ⚠️ **een andere sessie werkt hier nu in.** Niet aankomen zonder te kijken wat er staat |
+| `chore/gitignore-gstack` | 1 voor | `.gstack/` negeren. Kleine, losse wijziging — landen of weggooien |
+| `wip/werkboom-26-08` | 4 voor | het vangnet van 26-08. Alles erin is inmiddels via PR #18 t/m #24 op `main` geland; nalopen en weggooien |
+| `quintenstrijdonk/qs8-122-…` | 1 voor | ⚠️ **verwijdert alleen.** Ten opzichte van `main` is het 29 bestanden en 5213 regels **minder** — de migraties die hij terughaalde, staan al sinds PR #9 op `main`. Weggooien |
+| `fundering-16-08` | 0 voor | **archief, laten staan** |
 
 ⚠️ **`fundering-16-08` heeft géén gemeenschappelijke voorouder met `main`.** Het
 zijn twee losse wortelhistories; `main` is rond 16-08 opnieuw geworteld. Die
@@ -566,26 +601,56 @@ meer bereikbaar zijn (de inhoud leeft wél door — `0001` t/m `0004` zijn
 byte-identiek). **Zet hem nooit in een PR**: een merge zou twee historieën aan
 elkaar knopen en 25 bestanden terugdraaien naar de stand van 16 augustus.
 
+⚠️ **Kijk bij het beginnen van een sessie naar deze tabel en niet alleen naar
+`main`.** Werk dat niet landt, bestaat voor de volgende sessie niet — en dat is
+niet zichtbaar in een document, want het document staat op diezelfde tak. Wat
+daarvan geleerd is, staat in WERKVOORRAAD §2a.
+
+⚠️ **En dat is op 26-08 in de andere richting misgegaan ook.** Vier dingen zijn
+die dag twee keer gebouwd — Sentry in de Edge Functions, de web-push-client, een
+beslisdocument en dezelfde Windows-fix — doordat twee sessies tegelijk begonnen
+zonder eerst `main` op te halen. **Haal `main` op vóór je begint, niet vóór je
+pusht.**
+
 ⚠️ Een sessie in de cloud kan **geen tags aanmaken en geen branches verwijderen** —
 dat geeft HTTP 403 op `git-receive-pack`. Gewone pushes naar een eigen branch
 werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-1. **QS8-124 bewijzen.** De code staat (In Review). Draai
-   `npm run vapid:genereer`, zet `EXPO_PUBLIC_VAPID_PUBLIC_KEY` in `.env` en alle
-   drie de waarden met `npx supabase secrets set` (de privésleutel hoort níét in
-   `.env` van de webbuild), draai de app,
-   klik op Profiel → Meldingen aanzetten, en controleer of er een rij in
-   `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet, lees dan de
-   `reason` uit `registreer_push_token()` — sinds 0067 is dat een nette
-   `{ok:false, reason}`.
-2. ✅ **De RLS-suite draait in CI** sinds 24-08, zonder secrets. Groen in GitHub
-   zegt nu wél iets over domeinregel 7 — maar niet over het platform: er draait
-   geen GoTrue in CI, en het verschil tussen twee eigenaren van standaardrechten
-   was lokaal onzichtbaar. **EPIC 13** (QS8-132) is nu het grootste stuk werk dat
-   openstaat.
-3. **De resterende stukken van EPIC 0, 1 en 11** — de drie epics die nog open
+⚠️ **Twee dingen staan In Review en wachten alleen op een meting op jouw eigen
+machine.** Ze zijn allebei code-compleet en gemerged; wat ontbreekt is het bewijs
+dat het in het echt werkt. Dat is precies het soort openstaande punt dat stil
+maanden blijft liggen, dus het staat bovenaan.
+
+1. **QS8-24 bewijzen — er is nog nooit een gebeurtenis uít de app in Sentry
+   aangekomen.** Uit een Edge Function wél (HTTP 200, gemeten op 26-08), en het is
+   dezelfde envelope-bouwer — maar dat is een afgeleide en geen meting. Zet
+   `EXPO_PUBLIC_SENTRY_DSN` in `.env`, draai `npm run deploy`, forceer een fout op
+   `goalbuddies.q-projects.tech`, en kijk of hij in Sentry staat met
+   `server_name: app` en `runtime: web`.
+
+   Optioneel in dezelfde ronde: een token met scopes `project:releases` en
+   `org:read` plus `SENTRY_ORG`/`SENTRY_PROJECT` in `.env`, dan zijn de stacks
+   leesbaar in plaats van `bundle.js:1:284213`. Zonder die drie slaat de stap
+   zichzelf over en gebeurt er niets ergs. ⚠️ Dat token is **wél geheim**, anders
+   dan de DSN — die staat in elke clientbundel en hoort daar.
+
+2. **QS8-124 bewijzen.** Draai `npm run vapid:genereer`, zet
+   `EXPO_PUBLIC_VAPID_PUBLIC_KEY` in `.env` en alle drie de waarden met
+   `npx supabase secrets set` (de privésleutel hoort níét in `.env` van de
+   webbuild), draai de app, klik op Profiel → Meldingen aanzetten, en controleer
+   of er een rij in `push_tokens` staat mét `p256dh` en `auth`. Lukt dat niet,
+   lees dan de `reason` uit `registreer_push_token()` — sinds 0067 is dat een
+   nette `{ok:false, reason}`.
+
+3. **EPIC 13** (QS8-132) is het grootste stuk werk dat openstaat. ✅ De RLS-suite
+   draait sinds 24-08 in CI zonder secrets, dus groen in GitHub zegt nu wél iets
+   over domeinregel 7 — maar niet over het platform: er draait geen GoTrue in CI,
+   en het verschil tussen twee eigenaren van standaardrechten was lokaal
+   onzichtbaar.
+
+4. **De resterende stukken van EPIC 0, 1 en 11** — de drie epics die nog open
    staan. Zie het projectoverzicht in Linear.
 
 **Twee procesvragen die niets blokkeren maar wel af horen te zijn vóór november**,
