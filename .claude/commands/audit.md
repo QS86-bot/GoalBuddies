@@ -240,8 +240,25 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
 20. **Bouwen de migraties nog wat er draait?** Dit is de enige controle die
     productie en `supabase/migrations/` naast elkaar legt, en hij kan niet in CI
-    — daar is geen productieverbinding. Bouw de lokale stack op
-    (`npm run rls:stack`) en draai op **beide** databases dezelfde query:
+    — daar is geen productieverbinding.
+
+    ```bash
+    npm run rls:stack        # de tweede database, zonder die valt er niets te vergelijken
+    npm run functies:controle
+    ```
+
+    ⚠️ **Sinds 27-08-2026 een commando in plaats van twee met de hand ingetypte
+    queries.** Hij meldt een logicaverschil als fout en een commentaarverschil
+    als melding — die tweede stond er vandaag 36 keer, en als dat de deploy zou
+    tegenhouden leer je de controle binnen een week te negeren.
+
+    ⚠️ **De ruwe vergelijking gaat over `prosrc` en niet over
+    `pg_get_functiondef()`.** De lokale stack draait Postgres 16 en productie 17,
+    en die formatteren een definitie anders — de eerste versie meldde daardoor 17
+    van de 23 letterbuckets als drift. De body wordt letterlijk opgeslagen en is
+    wél versie-onafhankelijk.
+
+    De query eronder staat er nog voor het geval je met de hand wilt kijken:
 
     ```sql
     with genormaliseerd as (
