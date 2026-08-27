@@ -21,7 +21,15 @@
  *    veranderen als het ooit Vercel wordt.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import process from 'node:process';
@@ -269,6 +277,216 @@ ${regels.join('\n')}
 }
 
 // ---------------------------------------------------------------------------
+// 3b. Source maps — QS8-24, criterium 2
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️ **Vastgepind, en bewust géén devDependency.** Dit gereedschap wordt door
+ *    precies één script gebruikt, op één machine, af en toe. In `package.json`
+ *    zetten zou betekenen dat élke `npm ci` — ook elke CI-run die niets
+ *    deployt — een platformbinary downloadt. `npx` met een exacte versie is
+ *    reproduceerbaar en kost de rest van het project niets.
+ */
+const SENTRY_CLI = '@sentry/cli@3.6.2';
+
+/**
+ * De naam waaronder deze build zich bij Sentry meldt.
+ *
+ * ⚠️ **Moet letterlijk gelijk zijn aan wat de app meestuurt.** Die bouwt hem in
+ *    `src/lib/observability/release.ts`; hier staat de tweede helft, want een
+ *    `.mjs`-script kan die TypeScript niet importeren. Lopen ze uiteen, dan
+ *    hangen de maps aan een release die geen enkele gebeurtenis draagt: alles
+ *    lijkt te werken en geen stack wordt leesbaar.
+ *
+ *    `tests/scripts/release-naam.test.ts` roept beide aan en vergelijkt de
+ *    uitkomst. Dat is de naadtest die deze duplicatie draaglijk maakt.
+ */
+export function releaseVoor(versie) {
+  if (typeof versie !== 'string') return undefined;
+
+  const schoon = versie.trim();
+  return schoon === '' ? undefined : `goalbuddies@${schoon}`;
+}
+
+/** Leest de versie uit `app.json` en maakt er de releasenaam van. */
+function releaseNaam() {
+  let versie;
+  try {
+    versie = JSON.parse(readFileSync('app.json', 'utf8'))?.expo?.version;
+  } catch {
+    versie = undefined;
+  }
+
+  const naam = releaseVoor(versie);
+  if (naam === undefined) {
+    fail(
+      'app.json heeft geen bruikbare `expo.version`.',
+      'De source maps hebben een release nodig om aan te hangen, en de app stuurt dezelfde naam mee.',
+    );
+  }
+
+  return naam;
+}
+
+/** Wat er nodig is om te uploaden. Zonder deze drie slaat de stap zichzelf over. */
+export const SENTRY_VARS = ['SENTRY_AUTH_TOKEN', 'SENTRY_ORG', 'SENTRY_PROJECT'];
+
+/**
+ * Welke van de drie ontbreken. Leeg betekent: uploaden kan.
+ *
+ * ⚠️ Puur, zodat de test hem elke combinatie kan voeren. De overslaan-stap moet
+ *    namelijk precies zeggen wát er mist — "Sentry niet geconfigureerd" laat je
+ *    zoeken naar welke van de drie het was.
+ */
+export function ontbrekendeSentryVars(omgeving) {
+  return SENTRY_VARS.filter((naam) => (omgeving[naam] ?? '').trim() === '');
+}
+
+/**
+ * Haalt de verwijzing naar de source map uit een gebouwd bestand.
+ *
+ * ⚠️ **De map zelf gaat weg, dus de verwijzing ook.** Blijft hij staan, dan
+ *    vraagt elke browser met de devtools open een bestand op dat er niet is —
+ *    een 404 per paginabezoek, en een lezer die denkt dat de deploy stuk is.
+ *
+ * ⚠️ Alleen de `//# sourceMappingURL=`-regel aan het eind, en niets anders.
+ *    Verder in een geminificeerde bundel snijden is vragen om moeilijkheden.
+ */
+export function stripSourceMapVerwijzing(inhoud) {
+  return inhoud.replace(/\n?\/\/[#@]\s*sourceMappingURL=[^\n]*/g, '');
+}
+
+/**
+ * Stuurt de source maps naar Sentry, of slaat zichzelf over met uitleg.
+ *
+ * ⚠️ **Overslaan is een uitkomst en geen fout.** Zonder token kan niemand
+ *    uploaden, en een deploy laten falen omdat de foutrapportage niet compleet
+ *    is, zou de app onbereikbaar maken om een leesbaarheidsprobleem. Zelfde
+ *    keuze als `meldEdgeFout()` zonder DSN.
+ *
+ * ⚠️ **`inject` vóór `upload`, en dat is geen volgorde die je mag omdraaien.**
+ *    `inject` schrijft debug-id's in de bundel én in de map; daarop koppelt
+ *    Sentry ze aan elkaar. Upload je zonder inject, dan komen de maps aan en
+ *    matcht er niets — het stille geval waar dit project vandaag genoeg van
+ *    gezien heeft.
+ */
+function stuurSourceMapsNaarSentry(release) {
+  const ontbreekt = ontbrekendeSentryVars(process.env);
+
+  if (ontbreekt.length > 0) {
+    console.log(`    Overgeslagen: ${ontbreekt.join(', ')} ${ontbreekt.length === 1 ? 'ontbreekt' : 'ontbreken'}.`);
+    console.log('    De maps worden hierna gewoon verwijderd; de bundel gaat schoon de deur uit.');
+    console.log('    Zie docs/DEPLOY.md voor het aanzetten.');
+    return false;
+  }
+
+  for (const argumenten of [
+    ['sourcemaps', 'inject', DIST],
+    ['sourcemaps', 'upload', DIST, '--release', release],
+  ]) {
+    const uit = spawnSync('npx', ['--yes', SENTRY_CLI, ...argumenten], {
+      stdio: 'inherit',
+      shell: true,
+    });
+
+    if (uit.status !== 0) {
+      // ⚠️ Niet fataal. Zie de kop: de app moet live kunnen, ook als Sentry
+      //    hapert. Wel luid, want stil mislukken is hier het ergste.
+      console.error(`\n  ! sentry-cli ${argumenten.join(' ')} faalde. De deploy gaat door.`);
+      console.error('    De maps zijn niet geüpload; stacks blijven onleesbaar tot dit lukt.\n');
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Haalt elke source map uit de bundel en controleert dat er geen achterblijft.
+ *
+ * ⚠️ **Dit is de veiligheidsstap van deze hele feature, en hij is niet
+ *    overslaanbaar.** Een `.map` naast een publieke bundel geeft iedereen je
+ *    volledige broncode — inclusief commentaar. Hij hoort naar Sentry en nooit
+ *    naar de webserver.
+ *
+ * ⚠️ De controle achteraf staat er omdat verwijderen kán mislukken (een
+ *    vergrendeld bestand, een pad dat de glob niet zag). Bij twijfel stopt de
+ *    deploy: liever niet live dan met je bron erbij.
+ */
+export function verwijderSourceMaps(map) {
+  const bestanden = alleBestanden(map);
+  let verwijderd = 0;
+
+  for (const pad of bestanden) {
+    if (pad.endsWith('.map')) {
+      // ⚠️ In een `try`: een verwijdering die mislukt mag de deploy niet laten
+      //    crashen maar moet door de controle hieronder gevonden worden. Anders
+      //    is de foutmelding een stacktrace in plaats van "je bron staat er nog".
+      try {
+        rmSync(pad, { force: true });
+        verwijderd += 1;
+      } catch {
+        // Blijft staan; `achtergeblevenMaps()` ziet hem zo meteen.
+      }
+      continue;
+    }
+
+    if (!pad.endsWith('.js') && !pad.endsWith('.css')) continue;
+
+    try {
+      const inhoud = readFileSync(pad, 'utf8');
+      const schoon = stripSourceMapVerwijzing(inhoud);
+      if (schoon !== inhoud) writeFileSync(pad, schoon);
+    } catch {
+      continue; // Binair of onleesbaar; dan staat er geen verwijzing in.
+    }
+  }
+
+  // ⚠️ Opnieuw kijken en niet aannemen dat het verwijderen lukte. Een
+  //    vergrendeld bestand of een pad dat de eerste ronde niet zag, is precies
+  //    het geval waarin je je bron publiceert terwijl het script zegt dat het
+  //    goed ging.
+  return { verwijderd, achtergebleven: achtergeblevenMaps(alleBestanden(map)) };
+}
+
+/**
+ * Welke source maps er nog in een bundel staan.
+ *
+ * ⚠️ **Losgetrokken omdat de rest niet te voeden is.** Een verwijdering laten
+ *    mislukken vraagt een bestandssysteem dat weigert, en dat is in een
+ *    testomgeving die als root draait niet na te bootsen. Deze functie is wél te
+ *    voeden, en hij draagt de beslissing die telt: staat hier iets in, dan gaat
+ *    de bundel niet de deur uit.
+ */
+export function achtergeblevenMaps(bestanden) {
+  return bestanden.filter((pad) => pad.endsWith('.map'));
+}
+
+/**
+ * Voert het verwijderen uit en breekt de deploy af als er iets achterblijft.
+ *
+ * ⚠️ Losgetrokken van `verwijderSourceMaps()` zodat die laatste getoetst kan
+ *    worden. Een functie die `process.exit()` aanroept is niet te voeden, en een
+ *    veiligheidsstap die je niet kunt ijken is er geen — dat is dezelfde regel
+ *    die dit project vandaag twee keer heeft moeten leren.
+ */
+function eisEenSchoneBundel() {
+  const { verwijderd, achtergebleven } = verwijderSourceMaps(DIST);
+
+  if (achtergebleven.length > 0) {
+    console.error('\n  ✗ ER STAAN NOG SOURCE MAPS IN DE BUNDEL — er is niets geüpload.\n');
+    for (const pad of achtergebleven) console.error(`    ${pad}`);
+    console.error(
+      '\n    Een source map naast een publieke bundel geeft iedereen je volledige\n' +
+        '    broncode. Los dit op voordat je opnieuw deployt.\n',
+    );
+    process.exit(1);
+  }
+
+  console.log(`    ${verwijderd} source maps uit de bundel gehaald; er staat er geen meer in.`);
+}
+
+// ---------------------------------------------------------------------------
 // 4. Inpakken en uploaden
 // ---------------------------------------------------------------------------
 
@@ -391,8 +609,17 @@ async function main() {
   if (process.argv.includes('--geen-build')) {
     stap('Bouwen overgeslagen (--geen-build)');
   } else {
-    stap('Bouwen');
-    const bouw = spawnSync('npm', ['run', 'build'], { stdio: 'inherit', shell: true });
+    // ⚠️ **Mét source maps, altijd — ook zonder Sentry-token.** `expo export`
+    //    maakt ze standaard niet; `npm run build` doet dat dus ook niet, en dat
+    //    blijft zo voor gewone builds. Hier zijn ze nodig, en hierna worden ze
+    //    zonder uitzondering uit de bundel gehaald. Altijd hetzelfde bouwen
+    //    scheelt een deploy die zich anders gedraagt naargelang je `.env`.
+    stap('Bouwen (met source maps)');
+    const bouw = spawnSync(
+      'npx',
+      ['expo', 'export', '--platform', 'web', '--source-maps', 'external'],
+      { stdio: 'inherit', shell: true },
+    );
     if (bouw.status !== 0) fail('De build faalde. Er is niets geüpload.');
   }
 
@@ -403,6 +630,19 @@ async function main() {
 
   stap('Bundel controleren op geheimen');
   scanOpGeheimen(alleBestanden(DIST));
+
+  // ⚠️ **Ná de secret-scan, met opzet.** `SENTRY_AUTH_TOKEN` begint niet met
+  //    `EXPO_PUBLIC_`, dus de scan slaat erop aan als hij ooit in de bundel
+  //    belandt. Die volgorde omdraaien zou betekenen dat we uploaden vóórdat we
+  //    weten of de bundel schoon is.
+  stap('Source maps naar Sentry');
+  stuurSourceMapsNaarSentry(releaseNaam());
+
+  // ⚠️ **Onvoorwaardelijk, ook als het uploaden overgeslagen of mislukt is.**
+  //    Een `.map` naast een publieke bundel geeft iedereen je volledige
+  //    broncode. Dit is de enige stap hier die de deploy afbreekt.
+  stap('Source maps uit de bundel halen');
+  eisEenSchoneBundel();
 
   stap('Inpakken');
   const archief = pakIn();

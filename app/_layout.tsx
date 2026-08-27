@@ -23,6 +23,7 @@ import { clientEnv } from '@/lib/env';
 import {
   koppelGlobaleFouten,
   maakSentrySink,
+  releaseVoor,
   reportError,
   setErrorSink,
 } from '@/lib/observability';
@@ -130,10 +131,16 @@ setErrorSink(
   }),
 );
 
-/** `goalbuddies@0.1.0`, of `undefined` als de versie onbekend is. */
+/**
+ * `goalbuddies@0.1.0`, of `undefined` als de versie onbekend is.
+ *
+ * ⚠️ De vorm komt uit `releaseVoor()` en wordt hier niet nog eens opgeschreven.
+ *    `scripts/deploy-web.mjs` hangt de source maps aan deze naam; lopen de twee
+ *    uiteen, dan matcht er niets. Een test vergelijkt ze — zie de kop van
+ *    `release.ts`.
+ */
 function versieVanDeApp(): string | undefined {
-  const versie = Constants.expoConfig?.version;
-  return typeof versie === 'string' && versie !== '' ? `goalbuddies@${versie}` : undefined;
+  return releaseVoor(Constants.expoConfig?.version);
 }
 
 /**

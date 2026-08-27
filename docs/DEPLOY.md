@@ -607,10 +607,39 @@ crashes, en op native de onafgevangen fouten. Er is geen `eas.json` en geen
 native build, dus die code zou nooit uitgevoerd zijn. De afweging staat in
 `docs/decisions/2026-08-26-sentry-in-de-app.md`.
 
-⚠️ **Source maps zijn er nog niet** (criterium 2). Een stack uit de
-productiebundel wijst dus naar `bundle.js:1:284213`. Dat vraagt een
-`SENTRY_AUTH_TOKEN` en een stap in de webbuild — de melding komt wél aan, hij is
-alleen lastig te lezen.
+#### Source maps — QS8-24, criterium 2
+
+`npm run deploy` bouwt met externe source maps, stuurt ze naar Sentry en haalt ze
+daarna uit de bundel. Drie variabelen zetten het aan:
+
+```bash
+# .env — alle drie nodig; ontbreekt er één, dan slaat de stap zichzelf over
+SENTRY_AUTH_TOKEN='<token met scope project:releases en org:read>'
+SENTRY_ORG='<je organisatie-slug>'
+SENTRY_PROJECT='<je project-slug>'
+```
+
+Het token maak je op `https://sentry.io/settings/auth-tokens/`.
+
+⚠️ **`SENTRY_AUTH_TOKEN` is wél geheim**, anders dan de twee DSN's. Hij geeft
+schrijftoegang tot je Sentry-organisatie. Hij begint niet met `EXPO_PUBLIC_`, dus
+de secret-scan slaat erop aan als hij ooit in de bundel belandt — en die scan
+draait vóór de upload naar Sentry, met opzet.
+
+⚠️ **De maps gaan nooit mee naar Hostinger.** Het script verwijdert ze na het
+uploaden en controleert daarna dat er geen enkele achterblijft; blijft er toch
+één staan, dan stopt de deploy. Een `.map` naast een publieke bundel geeft
+iedereen je volledige broncode.
+
+⚠️ **Zonder token gebeurt er niets ergs.** De stap zegt welke variabele ontbreekt,
+de maps worden gewoon verwijderd, en de deploy gaat door. Stacks blijven dan
+wijzen naar `bundle.js:1:284213` — de melding komt aan, hij is alleen lastig te
+lezen.
+
+⚠️ De source maps hangen aan een **release** (`goalbuddies@<versie>` uit
+`app.json`), en de app stuurt precies diezelfde naam mee bij elke gebeurtenis.
+Verander je die vorm op één van beide plekken, dan matcht er niets terwijl alles
+lijkt te werken. `tests/scripts/release-naam.test.ts` bewaakt dat.
 
 ### Foutrapportage vanuit de Edge Functions — QS8-24
 
