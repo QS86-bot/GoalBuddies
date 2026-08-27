@@ -158,6 +158,63 @@ export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
 }
 
 /**
+ * De goedkeuringsregel van een groep — QS8-65, PRD 6.4.
+ *
+ * ⚠️ **`any` is de standaard en blijft dat.** De PRD noemt het risico van
+ *    één-buddy-goedkeuring — snel, maar manipuleerbaar als een groep samenspant —
+ *    en schrijft er meteen bij: *monitoren vóór verharden*. Een groep die
+ *    strenger wil, kiest dat zelf.
+ *
+ * ⚠️ Deze lijst is een kopie van de CHECK `groups_approval_rule_valid` (migratie
+ *    0107). Loopt hij uiteen, dan accepteert het scherm een waarde die de
+ *    database weigert — en dat is een storingsmelding op het moment dat iemand
+ *    zijn groep instelt. `goedkeuringsregels.test.ts` legt de twee naast elkaar.
+ */
+export const GOEDKEURINGSREGELS = ['any', 'majority', 'quorum'] as const;
+export type Goedkeuringsregel = (typeof GOEDKEURINGSREGELS)[number];
+
+/**
+ * De onder- en bovengrens van een quorum, gelijk aan `groups_approval_quorum_bereik`.
+ *
+ * ⚠️ Onder 2 is het geen quorum maar `any`, en boven 12 is het onhaalbaar — een
+ *    groep is bij twaalf actieve leden vol (migratie 0016).
+ */
+export const QUORUM_MIN = 2;
+export const QUORUM_MAX = 12;
+
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function goedkeuringsregelLabels(): Readonly<Record<Goedkeuringsregel, string>> {
+  return {
+    any: t('goedkeuringsregel.any'),
+    majority: t('goedkeuringsregel.majority'),
+    quorum: t('goedkeuringsregel.quorum'),
+  };
+}
+
+/** De uitleg onder de keuze: wat wordt er ánders voor de leden. */
+export function goedkeuringsregelUitleg(): Readonly<Record<Goedkeuringsregel, string>> {
+  return {
+    any: t('goedkeuringsregel.any_uitleg'),
+    majority: t('goedkeuringsregel.majority_uitleg'),
+    quorum: t('goedkeuringsregel.quorum_uitleg'),
+  };
+}
+
+/**
+ * Leest een goedkeuringsregel uit iets waarvan je de vorm niet kent.
+ *
+ * ⚠️ **Onbekend is `any`, en dat is hier de kant die niets kapotmaakt.** Anders
+ *    dan bij `leesZichtbaarheid()` gaat het hier niet om een privacybelofte maar
+ *    om hoeveel mensen moeten bevestigen. Een onbekende waarde als `majority`
+ *    lezen zou een week laten hangen die de database allang bevestigd heeft; als
+ *    `any` lezen laat het scherm hooguit te weinig zien terwijl de database de
+ *    échte regel gewoon toepast. De database beslist, dit scherm vertelt het na.
+ */
+export function leesGoedkeuringsregel(waarde: unknown): Goedkeuringsregel {
+  return waarde === 'majority' || waarde === 'quorum' ? waarde : 'any';
+}
+
+/**
  * ⚠️ **`zichtbaarheid` gaat er expliciet uit, en dat is geen opruimwerk.** Zonder
  *    deze `omit` erft het patch-schema het veld van `groepSchema`, en dan
  *    typecheckt `wijzigGroep(id, { zichtbaarheid: 'open' })`, valideert hij,
@@ -173,7 +230,42 @@ export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
 export const groepPatchSchema = groepSchema
   .partial()
   .omit({ zichtbaarheid: true })
-  .extend({ evidence_policy: z.enum(BEWIJSEISEN).optional() });
+  .extend({
+    evidence_policy: z.enum(BEWIJSEISEN).optional(),
+    approval_rule: z.enum(GOEDKEURINGSREGELS).optional(),
+    /**
+     * ⚠️ `null` betekent hier "haal het quorum weg", en dat is een andere
+     *    handeling dan "laat ongemoeid" (`undefined`). De CHECK
+     *    `groups_quorum_bij_regel` eist dat het getal er precies is bij
+     *    `approval_rule = 'quorum'`, dus wie terugschakelt naar `any` móet het
+     *    kunnen legen — anders weigert de database de hele update.
+     */
+    approval_quorum: z
+      .number()
+      .int()
+      .min(QUORUM_MIN, { error: () => t('validatie.quorum_bereik') })
+      .max(QUORUM_MAX, { error: () => t('validatie.quorum_bereik') })
+      .nullable()
+      .optional(),
+  })
+  /**
+   * ⚠️ **De twee velden horen bij elkaar en dat wordt hier al geweigerd.** De
+   *    database heeft dezelfde eis (`groups_quorum_bij_regel`), maar die geeft
+   *    een Postgres-foutmelding en geen zin die een mens leest — en `api.ts`
+   *    laat servertekst nooit door tot het scherm.
+   */
+  .refine(
+    (p) => p.approval_rule !== 'quorum' || typeof p.approval_quorum === 'number',
+    { error: () => t('validatie.quorum_ontbreekt'), path: ['approval_quorum'] },
+  )
+  .refine(
+    (p) =>
+      p.approval_rule === undefined ||
+      p.approval_rule === 'quorum' ||
+      p.approval_quorum === undefined ||
+      p.approval_quorum === null,
+    { error: () => t('validatie.quorum_overbodig'), path: ['approval_quorum'] },
+  );
 
 export type GroepPatch = z.infer<typeof groepPatchSchema>;
 

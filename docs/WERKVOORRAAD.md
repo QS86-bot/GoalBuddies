@@ -32,8 +32,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **497 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41 en QS8-137).
-   Zonder credentials geeft `npm test` **998 geslaagd en 477 overgeslagen**; typecheck
+   **516 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41, QS8-137 en QS8-65).
+   Zonder credentials geeft `npm test` **1079 geslaagd en 496 overgeslagen**; typecheck
    en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -88,7 +88,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0106`
+**Database — af, en nu ook getest.** 32 tabellen. Migraties `0001` t/m `0107`
 staan in de map.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
@@ -245,7 +245,7 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 30 bestanden; 28 daarvan slaan zonder credentials
+  bestaat. `tests/rls` telt 32 bestanden; 30 daarvan slaan zonder credentials
   over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -451,7 +451,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af. Van de twee `phase:v2`-issues is QS8-57 (een groep verlaten) op 27-08 gebouwd; alleen QS8-56 staat nog open |
-| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ af, m.u.v. QS8-65 (`phase:v2`) |
+| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ **af**, inclusief QS8-65 (`phase:v2`, gebouwd 27-08, migratie `0107`). Een groep kiest tussen één buddy, een meerderheid en een vast aantal. ⚠️ De drempel wordt als **getal** bevroren bij het indienen, niet als regel gelezen bij het goedkeuren — anders tilt een beheerder (of een nieuw lid) de lat op onder een week die al loopt. Zie `docs/decisions/2026-08-27-de-goedkeuringsdrempel.md` |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |

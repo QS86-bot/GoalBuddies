@@ -896,6 +896,41 @@ export const nl = {
   'bewijseis.note_and_attachment': 'Notitie én bijlage',
   'bewijseis.optional': 'Alles optioneel',
 
+  // ---------------------------------------------------------------------------
+  // De goedkeuringsregel van een groep — QS8-65 (PRD 6.4), migratie 0107
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De uitleg noemt steeds een áántal en niet een gevoel. "Strenger" zegt de
+  //    gebruiker niets; "twee van je buddy's" wel, en dat is ook precies wat de
+  //    database telt.
+  'goedkeuringsregel.any': 'Eén buddy',
+  'goedkeuringsregel.majority': 'Een meerderheid',
+  'goedkeuringsregel.quorum': 'Een vast aantal',
+  'goedkeuringsregel.any_uitleg':
+    'Zodra één buddy je week bevestigt, telt hij. Snel, en genoeg voor een groep ' +
+    'die elkaar vertrouwt.',
+  'goedkeuringsregel.majority_uitleg':
+    'Meer dan de helft van je buddy\u2019s moet je week bevestigen. Het aantal ' +
+    'schuift mee als de groep groeit of krimpt.',
+  'goedkeuringsregel.quorum_uitleg':
+    'Je kiest zelf hoeveel buddy\u2019s een week moeten bevestigen. Zijn er even ' +
+    'minder mensen dan dat, dan telt iedereen die er is.',
+  'goedkeuringsregel.kop': 'Wanneer telt een week?',
+  'goedkeuringsregel.quorum_veld': 'Hoeveel bevestigingen?',
+  'goedkeuringsregel.quorum_hint': 'Tussen {min} en {max}.',
+  // ⚠️ Staat onder de keuze en niet in een bevestigingsstap: de regel verandert
+  //    niets aan weken die al lopen, dus er valt niets te bevestigen. Dát is de
+  //    geruststelling die hier hoort.
+  'goedkeuringsregel.niet_terugwerkend':
+    'Wat je hier kiest geldt vanaf de volgende week die iemand indient. Weken die ' +
+    'al op een bevestiging wachten, houden de regel van toen.',
+  'goedkeuringsregel.stand': '{gedaan} van de {nodig} bevestigingen',
+  'goedkeuringsregel.nog_een': 'Er is nog één bevestiging nodig.',
+  'goedkeuringsregel.nog_meer': 'Er zijn nog {aantal} bevestigingen nodig.',
+  'validatie.quorum_bereik': 'Kies een aantal tussen {min} en {max}.',
+  'validatie.quorum_ontbreekt': 'Kies hoeveel bevestigingen er nodig zijn.',
+  'validatie.quorum_overbodig': 'Een aantal hoort alleen bij een vast aantal bevestigingen.',
+
   'chat.titel': 'Groepschat',
   'chat.eyebrow': 'GROEPSCHAT',
   'chat.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',

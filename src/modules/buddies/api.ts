@@ -449,11 +449,29 @@ export async function wijzigGroep(
     return { ok: false, melding: invoerfout(gevalideerd.error, t('groep.invoer')) };
   }
 
+  // ⚠️ **Deze lijst is met de hand en dat is een bekende val.** Staat een veld
+  //    wél in `groepPatchSchema` en niet hier, dan typecheckt de aanroep,
+  //    valideert hij, geeft `ok: true` terug — en verandert er niets. De
+  //    code-critic-ronde van 24-08 vond dat bij `zichtbaarheid`; de reden staat
+  //    boven het schema. `wijzigen.test.ts` legt de twee lijsten sinds QS8-65
+  //    naast elkaar, zodat een volgend veld niet stilletjes doodvalt.
   const update: TablesUpdate<'groups'> = {};
   if (gevalideerd.data.name !== undefined) update.name = gevalideerd.data.name;
   if (gevalideerd.data.huddle_day !== undefined) update.huddle_day = gevalideerd.data.huddle_day;
   if (gevalideerd.data.evidence_policy !== undefined) {
     update.evidence_policy = gevalideerd.data.evidence_policy;
+  }
+  if (gevalideerd.data.approval_rule !== undefined) {
+    update.approval_rule = gevalideerd.data.approval_rule;
+
+    // ⚠️ Terug naar `any` of `majority` léégt het quorum, ook als de aanroeper er
+    //    niets over zei. Anders blijft het getal staan en weigert de database de
+    //    hele update op `groups_quorum_bij_regel` — een storingsmelding op een
+    //    handeling die de gebruiker correct deed.
+    if (gevalideerd.data.approval_rule !== 'quorum') update.approval_quorum = null;
+  }
+  if (gevalideerd.data.approval_quorum !== undefined) {
+    update.approval_quorum = gevalideerd.data.approval_quorum;
   }
 
   const { data, error } = await supabase()

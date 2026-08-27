@@ -338,6 +338,29 @@ function BeoordeelKaart({
         </Card>
       )}
 
+      {/*
+        ⚠️ **Alleen bij een drempel boven één** — QS8-65. In een groep die op
+           "één buddy" staat is "0 van de 1" ruis: jouw bevestiging is de week,
+           en dat wist je al.
+
+           Staat er wél een meerderheid of een quorum, dan is dit het enige dat
+           vertelt waarom het weekdoel na jouw bevestiging nog niet groen wordt.
+           Zonder deze regel lijkt bevestigen kapot, en dat is de vorm uit
+           onwrikbare regel 18 vraag 5: de keten is compleet en er is geen scherm
+           waarlangs een mens het kan zien.
+
+           ⚠️ Géén namen. Wie er al bevestigd heeft is niet van de groep — dat is
+           dezelfde grens als bij De Ketting, die aantallen toont en geen namen.
+      */}
+      {item.approvals_required > 1 ? (
+        <Caption>
+          {t('goedkeuringsregel.stand', {
+            gedaan: item.approvals_done,
+            nodig: item.approvals_required,
+          })}
+        </Caption>
+      ) : null}
+
       {vraagt ? (
         <>
           <Field

@@ -454,6 +454,42 @@ export type Database = {
           },
         ]
       }
+      completion_approval_rules: {
+        Row: {
+          approvals_required: number
+          completion_id: string
+          created_at: string
+          group_id: string
+        }
+        Insert: {
+          approvals_required: number
+          completion_id: string
+          created_at?: string
+          group_id: string
+        }
+        Update: {
+          approvals_required?: number
+          completion_id?: string
+          created_at?: string
+          group_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completion_approval_rules_completion_id_fkey"
+            columns: ["completion_id"]
+            isOneToOne: false
+            referencedRelation: "completions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completion_approval_rules_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       completion_approvals: {
         Row: {
           approver_id: string | null
@@ -1030,20 +1066,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "group_events_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "mijn_profiel"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "group_events_subject_id_fkey"
-            columns: ["subject_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "group_events_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
@@ -1055,6 +1077,20 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1107,6 +1143,7 @@ export type Database = {
       }
       groups: {
         Row: {
+          approval_quorum: number | null
           approval_rule: string
           created_at: string
           created_by: string | null
@@ -1124,6 +1161,7 @@ export type Database = {
           zichtbaarheid: string
         }
         Insert: {
+          approval_quorum?: number | null
           approval_rule?: string
           created_at?: string
           created_by?: string | null
@@ -1141,6 +1179,7 @@ export type Database = {
           zichtbaarheid?: string
         }
         Update: {
+          approval_quorum?: number | null
           approval_rule?: string
           created_at?: string
           created_by?: string | null
@@ -2043,6 +2082,13 @@ export type Database = {
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
+      definer_bewaking: {
+        Args: never
+        Returns: {
+          bezwaar: string
+          naam: string
+        }[]
+      }
       dien_opnieuw_in: {
         Args: {
           p_achieved_level: string
@@ -2051,13 +2097,6 @@ export type Database = {
         }
         Returns: Json
       }
-      definer_bewaking: {
-        Args: never
-        Returns: {
-          bezwaar: string
-          naam: string
-        }[]
-      }
       domeinregel3_bewaking: {
         Args: never
         Returns: {
@@ -2065,7 +2104,19 @@ export type Database = {
           slot: string
         }[]
       }
+      functie_vingerafdrukken: {
+        Args: never
+        Returns: {
+          kaal: string
+          naam: string
+          ruw: string
+        }[]
+      }
       generate_invite_code: { Args: never; Returns: string }
+      goedkeuringsdrempel_gehaald: {
+        Args: { p_completion_id: string }
+        Returns: boolean
+      }
       groepschat: {
         Args: {
           p_before_at?: string
@@ -2196,6 +2247,8 @@ export type Database = {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
           achieved_level: string
+          approvals_done: number
+          approvals_required: number
           ceiling_text: string
           completion_id: string
           floor_text: string
@@ -2293,6 +2346,9 @@ export type Database = {
           owner_name: string
         }[]
       }
+      tegenvaller_woorden: { Args: never; Returns: string[] }
+      tip_bevat_emoji: { Args: { p_tekst: string }; Returns: boolean }
+      tip_noemt_tegenvaller: { Args: { p_tekst: string }; Returns: boolean }
       trek_deadline_verzoek_in: {
         Args: { p_request_id: string }
         Returns: Json
@@ -2323,15 +2379,20 @@ export type Database = {
         }
         Returns: boolean
       }
-      tegenvaller_woorden: { Args: never; Returns: string[] }
-      tip_bevat_emoji: { Args: { p_tekst: string }; Returns: boolean }
-      tip_noemt_tegenvaller: { Args: { p_tekst: string }; Returns: boolean }
       verdien_weekpassen: {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
       }
+      vereiste_goedkeuringen: {
+        Args: { p_group_id: string; p_owner: string }
+        Returns: number
+      }
       verlaat_groep: {
-        Args: { p_bevestigd?: boolean; p_group_id: string; p_nieuwe_beheerder?: string }
+        Args: {
+          p_bevestigd?: boolean
+          p_group_id: string
+          p_nieuwe_beheerder?: string
+        }
         Returns: Json
       }
       verwachte_weekdoelstatus: {
