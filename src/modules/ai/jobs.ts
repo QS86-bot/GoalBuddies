@@ -23,7 +23,10 @@ import { supabase } from '../../lib/supabase';
  *    is een suggestie.
  */
 
-export type JobStatus = 'queued' | 'running' | 'done' | 'error';
+// ⚠️ De statuslijst woont in een bestand dat de client niet importeert, zodat
+//    een test hem kan lezen zonder React Native mee te trekken. Zie
+//    `job-schemas.ts`.
+import type { JobStatus } from './job-schemas';
 
 export interface JobVerwijzing {
   readonly jobId: string;
@@ -41,18 +44,45 @@ export type Uitkomst<T> = { ok: true; waarde: T } | { ok: false; melding: string
  *    "opnieuw genereren" met identieke invoer hetzelfde antwoord teruggeeft.
  *    Voor QS8-40 hoort daar iets in de invoer te variëren.
  */
+export async function vraagWeekdoelen(
+  goalId: string,
+  invoer: Record<string, unknown>,
+): Promise<Uitkomst<JobVerwijzing>> {
+  return vraagJob('weekly_goals', goalId, invoer);
+}
+
+/**
+ * Vraagt de coach om mijlpalen voor een heel doel — QS8-38.
+ */
 export async function vraagMijlpalen(
   goalId: string,
   invoer: Record<string, unknown>,
 ): Promise<Uitkomst<JobVerwijzing>> {
+  return vraagJob('milestones', goalId, invoer);
+}
+
+/**
+ * De gedeelde helft van `vraagMijlpalen()` en `vraagWeekdoelen()`.
+ *
+ * ⚠️ **`kind` is geen parameter van de publieke rand, en dat is met opzet.** Zou
+ *    een aanroeper het kind mogen kiezen, dan is het iets dat een scherm bepaalt
+ *    in plaats van iets dat bij de vraag hoort — en dan is er ook geen plek meer
+ *    om per soort een andere melding te geven. Twee smalle functies naar buiten,
+ *    één brede naar binnen.
+ */
+async function vraagJob(
+  kind: 'milestones' | 'weekly_goals',
+  goalId: string,
+  invoer: Record<string, unknown>,
+): Promise<Uitkomst<JobVerwijzing>> {
   const { data, error } = await supabase().rpc('vraag_ai_job', {
-    p_kind: 'milestones',
+    p_kind: kind,
     p_goal_id: goalId,
     p_input: invoer as never,
   });
 
   if (error) {
-    reportError(error, 'ai.vraag', { goal_id: goalId, code: error.code });
+    reportError(error, 'ai.vraag', { goal_id: goalId, kind, code: error.code });
     return { ok: false, melding: t('coach.starten_mislukt') };
   }
 

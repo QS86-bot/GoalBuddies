@@ -1113,6 +1113,7 @@ function Mijlpalen({
   readonly onKlaar: () => void;
   readonly onCoach: () => void;
 }) {
+  const router = useRouter();
   const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
@@ -1244,6 +1245,27 @@ function Mijlpalen({
                 ) : (
                   <Button onPress={() => void zetStatus(m.id, 'done')}>
                     {t('mijlpalenblok.zet_gehaald')}
+                  </Button>
+                )}
+
+                {/*
+                  ⚠️ **QS8-41, en dit is de knop die de keten levend maakt.** Een
+                     datalaag met een RPC en een grant waar geen scherm bij kan,
+                     is dood hout dat geen enkele test ziet — dat is de les van
+                     QS8-113 en van QS8-112, waar `maakWeekdoel()` door niets
+                     werd aangeroepen terwijl twee issues op Done stonden.
+
+                  ⚠️ Niet bij een gehaalde mijlpaal. Weekstappen laten bedenken
+                     voor iets wat al af is, is een AI-call weggooien — en elke
+                     call telt mee in dezelfde tien per dag.
+                */}
+                {m.status === 'done' ? null : (
+                  <Button
+                    variant="stil"
+                    accessibilityLabel={t('mijlpalenblok.weekstappen_label', { titel: m.title })}
+                    onPress={() => router.push(`/doel/weekdoelen/${doel.id}?mijlpaal=${m.id}`)}
+                  >
+                    {t('mijlpalenblok.weekstappen')}
                   </Button>
                 )}
 
