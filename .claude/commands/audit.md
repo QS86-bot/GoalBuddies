@@ -338,6 +338,18 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     gewoon het recht om de uitnodigingscode, de oprichter, de status, de
     slaapstand en de zichtbaarheid te wijzigen.
 
+23b. **Horen de drie VAPID-waarden bij elkaar?** — draai `npm run vapid:controle`
+    op de machine waar `.env` staat. De publieke sleutel zit in de webbundel, de
+    privésleutel in de omgeving van de Edge Function en het subject in beide;
+    gekruist ziet elk van de drie er perfect uit.
+
+    ⚠️ **Zonder deze controle merkt WebCrypto het pas bij het ondertekenen**, in
+    de meldingenjob die eens per uur draait, en dan komt het terug als een 403
+    van de pushdienst en niet als een rode test.
+
+    ⚠️ Hij hoort **niet** in CI: `VAPID_PRIVATE_KEY` is een privésleutel. Zonder
+    de drie waarden slaat hij zichtbaar over; met `--streng` valt hij om.
+
 24. **De statuscache** — draai tegen productie:
 
     ```sql
