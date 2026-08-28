@@ -88,8 +88,15 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0106`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0107`
 staan in de map.
+
+⚠️ **`0107` is nog niet op productie gedraaid.** Hij is op 28-08-2026 gemerged
+en tegen een van nul af opgebouwde lokale stack getoetst, maar de sessie die hem
+schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en `register:controle` sloeg
+zichzelf daarom over. Tot `npm run db:push` gedraaid heeft, telt De Ketting op
+productie een lid dat op zijn eigen kalender in zijn adempauze zit nog steeds
+mee in de noemer — zie de rij van 25-08 in `docs/ENGINEER-REVIEW.md`.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;

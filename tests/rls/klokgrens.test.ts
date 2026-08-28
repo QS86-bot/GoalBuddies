@@ -242,3 +242,143 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     );
   });
 });
+
+/**
+ * `ketting_stand()` — de énige péiling tussen twaalf voorkomens van `current_date`.
+ *
+ * ⚠️ **De belofte is "de adempauze wordt afgelezen op de kalender van het lid
+ *    zelf", en niet "de peiling staat een dag ruimer".** Dat verschil is de hele
+ *    reden dat deze twee tests er twee zijn: een `± 1`-verruiming, die de
+ *    bevinding van 25-08 als goedkope reparatie overwoog, komt door de eerste
+ *    test heen en zakt op de tweede. Ruimer is niet hetzelfde als juist.
+ *
+ * ⚠️ **De richting van de oude fout is waarom dit ertoe doet.** `starts_cycle` en
+ *    `ends_cycle` staan al in de persoonlijke cyclus van dát lid; alleen het punt
+ *    waarmee ze vergeleken werden stond op de serverklok. Een lid dat op zijn
+ *    eigen kalender in zijn adempauze zat, bleef in de noemer staan — en dan
+ *    krijgt de groep zijn voltallige week niet te zien. Gemeten in de lokale
+ *    stack op 28-08-2026: `{schakels: 1, in_aanmerking: 2, voltallig: false}`
+ *    waar het `{schakels: 1, in_aanmerking: 1, voltallig: true}` moest zijn. De
+ *    Ketting draagt alleen positieve signalen (domeinregel 7), dus dit is een
+ *    aanmoediging die niemand mist omdat hij er nooit stond.
+ *
+ * ⚠️ **De zone wordt per run gekozen en niet vastgezet.** Pacific/Kiritimati
+ *    (UTC+14) en Pacific/Niue (UTC−11) spannen samen 25 uur, dus op élk moment
+ *    wijkt er minstens één van de serverdatum af. Een vaste zone zou deze suite
+ *    het grootste deel van de dag groen maken zonder iets te toetsen — precies
+ *    het groen waar dit project voor waarschuwt.
+ */
+describe.skipIf(!rlsTestsConfigured)('ketting_stand peilt de adempauze per lid', () => {
+  let f: Fixture;
+  let zone: TimeZone;
+  let doelId: string;
+
+  /** Een zone waarvan de datum nú van de serverdatum verschilt. */
+  function afwijkendeZone(): TimeZone {
+    const vandaagUtc = serverdatum();
+    for (const kandidaat of ['Pacific/Kiritimati', 'Pacific/Niue'] as const) {
+      if (localDateIn(kandidaat as TimeZone, now()) !== vandaagUtc) return kandidaat as TimeZone;
+    }
+    throw new Error('UTC+14 en UTC−11 spannen 25 uur; dit kan niet voorkomen.');
+  }
+
+  /** De stand zoals een lid hem ziet. */
+  async function stand(): Promise<{ in_aanmerking?: number }> {
+    const { data, error } = await f.alice.db.rpc('ketting_stand', {
+      p_group_id: f.groupId,
+      p_period_start: serverdatum(),
+    });
+    if (error) throw new Error(`ketting_stand: ${error.message}`);
+    return (data ?? {}) as { in_aanmerking?: number };
+  }
+
+  /** Legt één adempauze op `dag` en ruimt hem na afloop weer op. */
+  async function metAdempauzeOp(dag: string, doen: () => Promise<void>): Promise<void> {
+    const admin = adminDb();
+    const pauze = await admin
+      .from('breathers')
+      .insert({ user_id: f.bob.id, goal_id: doelId, starts_cycle: dag, ends_cycle: dag })
+      .select('id')
+      .single();
+    if (pauze.error || pauze.data === null) throw new Error(`adempauze: ${pauze.error?.message}`);
+
+    try {
+      await doen();
+    } finally {
+      await admin.from('breathers').delete().eq('id', pauze.data.id);
+    }
+  }
+
+  beforeAll(async () => {
+    const alice = await createTestUser('peiling-alice');
+    const bob = await createTestUser('peiling-bob');
+
+    const groep = await alice.db.rpc('create_group', { group_name: 'Peiling-test' });
+    const groepData = groep.data as unknown as {
+      ok?: boolean;
+      group?: { id: string; invite_code: string };
+    };
+    if (groepData.ok !== true || !groepData.group) {
+      throw new Error(`groep aanmaken mislukte: ${JSON.stringify(groep.data)}`);
+    }
+
+    const meedoen = await bob.db.rpc('join_group_with_code', { code: groepData.group.invite_code });
+    if (uitkomst(meedoen.data).ok !== true) {
+      throw new Error(`bob werd geen lid: ${uitkomst(meedoen.data).reason ?? 'geen reden'}`);
+    }
+
+    f = { alice, bob, groupId: groepData.group.id };
+    zone = afwijkendeZone();
+
+    // ⚠️ Alleen `tz` wijkt af. Zou `week_start_day` meeveranderen, dan toetst
+    //    deze suite twee dingen tegelijk en zegt een rode test niet meer welke.
+    const profiel = await adminDb().from('profiles').update({ tz: zone }).eq('id', bob.id);
+    if (profiel.error) throw new Error(`tz zetten: ${profiel.error.message}`);
+
+    const doel = await bob.db
+      .from('goals')
+      .insert({ owner_id: bob.id, title: 'PEILDOEL', target_date: addDays(serverdatum(), 90) })
+      .select('id')
+      .single();
+    if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+    doelId = doel.data.id;
+
+    const koppeling = await bob.db
+      .from('goal_group_links')
+      .insert({ goal_id: doelId, group_id: f.groupId });
+    if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
+  }, SETUP_TIMEOUT);
+
+  afterAll(async () => {
+    await removeTestUsers();
+  }, SETUP_TIMEOUT);
+
+  it(
+    'haalt een lid uit de noemer op de dag die hij zélf vandaag noemt',
+    async () => {
+      const voor = (await stand()).in_aanmerking ?? 0;
+
+      await metAdempauzeOp(localDateIn(zone, now()), async () => {
+        expect((await stand()).in_aanmerking).toBe(voor - 1);
+      });
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat hem staan op de dag die alleen de sérver vandaag noemt',
+    async () => {
+      // ⚠️ **Dit is de test die de belofte draagt.** De vorige zou ook groen
+      //    zijn met een peiling die simpelweg een dag ruimer is; deze zakt daar
+      //    op, want dan valt de serverdatum er alsnog binnen. Juist en ruim zijn
+      //    niet hetzelfde, en dat onderscheid was de reden dat de bevinding de
+      //    goedkope reparatie afwees.
+      const voor = (await stand()).in_aanmerking ?? 0;
+
+      await metAdempauzeOp(serverdatum(), async () => {
+        expect((await stand()).in_aanmerking).toBe(voor);
+      });
+    },
+    TEST_TIMEOUT,
+  );
+});
