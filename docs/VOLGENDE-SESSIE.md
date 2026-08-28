@@ -994,13 +994,13 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    eigenaar. Bij vertrek maakt dat niets uit, maar een beheerder die een lid op
    `paused` zet ontkoppelt niets. Zie de rij in het dossier en
    `docs/decisions/2026-08-28-de-grens-in-de-functie.md`.
-3. ✅ **De 49 policies staan sinds 0119 in de InitPlan-vorm**, ook op productie,
+3. ✅ **De 49 policies staan sinds 0121 in de InitPlan-vorm**, ook op productie,
    met een `md5()`-vergelijking over alle 73 policies als bewijs dat er niets
    anders veranderde. ⚠️ **Lees wel de nuance in de dossierrij:** het verschil is
    633 tegenover 41 ms bij een *sequentiële* scan en 2,3 tegenover 2,0 ms mét
    index. Nooit langzamer, soms vijftien keer sneller — geen brand. Zie
    `docs/decisions/2026-08-28-auth-uid-een-keer-per-query.md`.
-4. ✅ **Gedicht in 0120, ook op productie — en het waren er veertien, niet zes.**
+4. ✅ **Gedicht in 0122, ook op productie — en het waren er veertien, niet zes.**
    Elke tekstkolom die `authenticated` mag schrijven heeft nu een lengtegrens, en
    de AI-invoer is begrensd op 8.000 codepunten (twee keer wat het formulier
    maximaal kan produceren). ⚠️ **Eén ding is er níét mee opgelost en staat als

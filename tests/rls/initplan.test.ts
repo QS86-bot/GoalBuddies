@@ -6,7 +6,7 @@ const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
 
 /**
- * `auth.uid()` staat in geen enkele policy meer kaal — migratie 0119.
+ * `auth.uid()` staat in geen enkele policy meer kaal — migratie 0121.
  *
  * ⚠️ **Wat er mis was.** `auth.uid()` is geen goedkope functie: hij is
  *    `coalesce(current_setting('request.jwt.claim.sub'), (current_setting('request.jwt.claims')::jsonb ->> 'sub'))::uuid`.
@@ -30,7 +30,7 @@ const TEST_TIMEOUT = 30_000;
  *    migratie hoort (59 uitdrukkingen veranderd, nul semantische verschillen na
  *    het wegnormaliseren van de subselect).
  */
-describe.skipIf(!rlsTestsConfigured)('0119 — auth.uid() draait één keer per query', () => {
+describe.skipIf(!rlsTestsConfigured)('0121 — auth.uid() draait één keer per query', () => {
   let gebruiker: TestUser;
 
   beforeAll(async () => {
