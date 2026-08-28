@@ -18,6 +18,8 @@ function groep(id: string, extra: Partial<Tables<'groups'>> = {}): Tables<'group
     id,
     name: `Groep ${id}`,
     approval_rule: 'any',
+    // Sinds migratie 0111 hoort een drempel bij de regel; `any` heeft er geen.
+    approval_quorum: null,
     created_at: '2026-01-01T00:00:00Z',
     created_by: null,
     evidence_policy: 'none',
