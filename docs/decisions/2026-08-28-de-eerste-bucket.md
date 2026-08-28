@@ -1,6 +1,6 @@
 # De eerste bucket van dit project — avatars, privé, met het pad als grens
 
-*28-08-2026 — QS8-27. Migraties `0124` en `0125`.*
+*28-08-2026 — QS8-27. Migraties `0126` en `0127`.*
 
 ## Wat er vooraf stond, en waarom het geen bug was
 
@@ -92,9 +92,9 @@ gemiste week worden afgeleid" — is met nee te beantwoorden. Dát is de reden d
 lezen op groepslidmaatschap mag staan en niet strenger hoeft; niet dat het
 onbelangrijk leek.
 
-## 2a. Wat er in `avatar_url` mag staan — `0125`, en waarom `0124` niet genoeg was
+## 2a. Wat er in `avatar_url` mag staan — `0127`, en waarom `0126` niet genoeg was
 
-📏 Direct na `0124` gemeten in `information_schema.column_privileges`:
+📏 Direct na `0126` gemeten in `information_schema.column_privileges`:
 `authenticated` heeft UPDATE op **veertien** kolommen van `profiles`, en
 `avatar_url` is er één van. Wat er in die kolom staat, is dus niet
 noodzakelijkerwijs door de app geschreven — één PostgREST-verzoek zet er iets
@@ -118,7 +118,7 @@ wel iemand anders' gezicht onder jouw berichten.
 
 ⚠️ **De reparatie hoort in de database en niet in de datalaag.** Dat de
 ondertekening het eerste geval al ving, is een eigenschap van één laag; één
-ophaalpad dat de kolom rechtstreeks doorgeeft en de bescherming is weg. `0125`
+ophaalpad dat de kolom rechtstreeks doorgeeft en de bescherming is weg. `0127`
 zet er een CHECK op: `avatar_url is null or avatar_url like id::text || '/%'` —
 dezelfde grens als de vier policies, nu ook op de kolom. Een CHECK en geen policy,
 want RLS bepaalt wélke rij je mag schrijven en niet wat er in een kolom mag staan.
@@ -153,7 +153,7 @@ groot en het verkeerde type vóór er iets de deur uit gaat, zodat de gebruiker 
 zin leest in plaats van een serverfout. **De bucket is de grendel** — 2 MB en
 drie beeldtypes, servergevalideerd, onwrikbare regel 3.
 
-⚠️ De lijst in de app is een kopie van `allowed_mime_types` in `0124`, en dat is
+⚠️ De lijst in de app is een kopie van `allowed_mime_types` in `0126`, en dat is
 bewust. Een test legt ze naast elkaar. Twee lijsten die uiteenlopen geven een
 upload die het formulier doorlaat en de server weigert — precies de vorm van
 migratie 0032/0034, waar de test de app-lijst met **zichzelf** vergeleek.

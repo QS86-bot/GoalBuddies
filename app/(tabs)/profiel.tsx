@@ -824,7 +824,7 @@ function Beginschermuitleg() {
 }
 
 /**
- * De profielfoto kiezen — migratie 0124.
+ * De profielfoto kiezen — migratie 0126.
  *
  * ⚠️ **Hij staat op het scherm en niet in `modules/auth`, en dat is een regel.**
  *    De datalaag mag uit `shared/ui` alleen een type lenen, geen component —

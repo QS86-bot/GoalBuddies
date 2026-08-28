@@ -37,10 +37,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **595 geslaagd, 1 overgeslagen** (28-08, na 0123). De hele suite geeft met de
-   stack **1857 geslaagd en 1 overgeslagen**; zonder credentials **1283 geslaagd
-   en 575 overgeslagen**.
-   Typecheck, lint en alle 22 controlescripts groen.
+   **601 geslaagd, 1 overgeslagen** (28-08, na 0125). De hele suite geeft met de
+   stack **1889 geslaagd en 1 overgeslagen**; zonder credentials **1309 geslaagd
+   en 581 overgeslagen**.
+   Typecheck, lint en alle 25 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -97,7 +97,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0125` staan in de map: **128 bestanden**,
+Migraties `0001` t/m `0127` staan in de map: **130 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -107,18 +107,24 @@ De nummering is aaneengesloten.
 regel — twee keer met een verkeerd getal als uitkomst. Draai `npm run stand`;
 `stand:controle` wordt rood zodra het achterloopt en draait mee in de poort.
 
-Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
-komen, zie hieronder.
+✅ **De map en productie lopen weer gelijk, nagemeten op 28-08.** Het register
+telt 128 rijen van `0001` tot `0125`, gelijk aan de 128 bestanden, met nul
+tijdstempels en geen dubbele versies. `0119` t/m `0121` van de parallelle sessie
+zijn die dag alsnog toegepast, in die volgorde, en daarna is de
+`chain_links_select` uit `0122` opnieuw afgespeeld — want `0120` schrijft diezelfde
+policy met een kale `auth.uid()`. Tussen die twee stappen stond
+`initplan_bewaking()` rood op precies één rij; dat is de bewaking die zijn werk
+deed.
 
-⚠️ **`0119`, `0120` en `0121` staan nog níet op productie; `0122` en `0123` wél.**
-Dat klinkt als een fout en is het niet — het is het gevolg van twee sessies die op
-dezelfde dag nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone
-is, `0120` laat het kettingvenster op de klok van de groep tellen in plaats van in
-UTC, en `0121` pagineert de reacties met een cursor in plaats van met `offset`.
+⚠️ **Wat die volgorde ons leerde staat in
+`docs/decisions/2026-08-28-auth-uid-een-keer-per-query.md`:** twee sessies die op
+één dag nummers uitdelen, leveren niet alleen een botsend nummer op maar ook een
+migratie die het werk van de ander stil terugzet. Een migratienummer behoort aan
+`main` en niet aan je branch — óók, of juist, als je hem al hebt toegepast.
 
-⚠️ **`0121` verandert een handtekening**, en dat vraagt bij het toepassen één
-extra blik: de offsetversie moet daarna wég zijn en niet ernáást staan. Meet het
-met `pg_get_function_identity_arguments()` en niet op naam.
+✅ **`0121` verandert een handtekening en dat is nagemeten**: `weekafsluiting_reacties`
+staat er één keer, met de cursorvorm (`…, integer, timestamptz, uuid`). De
+offsetversie is weg en staat er niet naast.
 
 ⚠️ **En hier zit de valkuil van vandaag in.** `0122` (de InitPlan-vorm) en `0123`
 (de lengtegrenzen) stonden eerst als `0119` en `0120` in de map en waren onder
@@ -147,14 +153,29 @@ met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen
 en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
 functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
 
-⚠️ **De volgorde waarin `0120` en `0122` op productie moeten komen, is niet
-vrij.** `0122` bevat één policy die `0120` óók schrijft —
-`chain_links_select`. In de map staat de goede versie: de klok van de groep
-(`groepsdatum()`) én de InitPlan-vorm. Op productie staat vandaag de versie van
-vóór `0120`, want `groepsdatum()` bestaat daar nog niet. **Draai dus `0119`, dan
-`0120`, en speel daarna de `chain_links_select` uit `0122` opnieuw af.** Tussen
-stap twee en drie staat `initplan_bewaking()` rood — dat is geen storing maar
-precies de bedoeling.
+✅ **De volgorde waarin `0120` en `0122` moesten landen was niet vrij, en is
+aangehouden.** `0122` bevat één policy die `0120` óók schrijft —
+`chain_links_select` — en de gegenereerde versie zou de klok van de groep hebben
+teruggezet naar `current_date`. Toegepast als `0119`, `0120`, `0121`, en daarna de
+`chain_links_select` uit `0122` opnieuw. Nagemeten: die policy draagt nu
+`groepsdatum(group_id) - 6` én `( SELECT auth.uid() )`.
+
+⚠️ **Bewaar dit als vorm en niet als geval.** Een migratie die policies
+hérschrijft, is gegenereerd uit een moment — en elke migratie die ná dat moment op
+`main` landt en dezelfde policy raakt, wordt er stil door teruggezet. De bewaking
+ziet dat niet: die kijkt naar de vórm en niet naar de betekenis.
+
+⚠️ **`0125` vervangt `offset` door een cursor in `openstaande_beoordelingen()`.**
+Goedkeuren haalde de rij uit de lijst en schoof daarmee de volgende pagina onder
+je handen door — gemeten: één van vier beoordelingen werd overgeslagen. De
+handtekening is veranderd, dus de gedeployde bundel roept hem tot de volgende
+`npm run deploy` verkeerd aan. Zie de rij in `docs/ENGINEER-REVIEW.md`.
+
+⚠️ **`0124` haalt één dode functie weg.** `weekpas_stand(uuid)` was sinds 0041 een
+wrapper zonder eigen logica, bewaard voor een aanroeper die niet meer bestaat. De
+vier tests eromheen zijn verhuisd naar `weekpas_standen()` — de weg die de app
+écht neemt. Zie
+`docs/decisions/2026-08-28-de-ketencontrole-ziet-commentaar-en-drops.md`.
 
 ⚠️ **`0123` begrenst veertien tekstkolommen en de AI-invoer** en staat ook op
 productie. Vóór het toepassen geteld of een bestaande rij zou omvallen: nul, voor
@@ -560,7 +581,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 |---|---|---|---|
 | 1 | **EPIC 0 — Fundering** (QS8-5) | Blokkeert alles | grotendeels af, zie §5 |
 | 2 | **EPIC 10 — Design system** (QS8-15) | Elk scherm heeft componenten nodig | ✅ af |
-| 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth. Avatar-upload is op 28-08 gebouwd (QS8-27, migratie `0124`) |
+| 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth. Avatar-upload is op 28-08 gebouwd (QS8-27, migratie `0126`) |
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, inclusief de twee `phase:v2`-issues: QS8-57 (een groep verlaten) en QS8-56 (hetzelfde doel in meer dan één groep) zijn allebei op 27-08 gebouwd |
@@ -594,7 +615,7 @@ kan een sessie **niet** zelf oppakken:
 
 | Issue | Waarom niet |
 |---|---|
-| QS8-71, QS8-72 | Vragen een betaalde tier en een nieuw groepszichtbaar oppervlak. ⚠️ Sinds `0124` is de bucket-helft er wél (voor avatars), maar dat maakt deze twee niet vrij: bijlagen bij voltooiingen en chatberichten zijn iets anders dan een profielfoto. Overleg met Quinten |
+| QS8-71, QS8-72 | Vragen een betaalde tier en een nieuw groepszichtbaar oppervlak. ⚠️ Sinds `0126` is de bucket-helft er wél (voor avatars), maar dat maakt deze twee niet vrij: bijlagen bij voltooiingen en chatberichten zijn iets anders dan een profielfoto. Overleg met Quinten |
 | QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
@@ -623,11 +644,12 @@ bevindingen zijn gerepareerd (PR #85 t/m #90), de rest staat als rij in
   (`group_members.status`) heeft geen knop, en `ai_kosten_per_week()` draait
   nergens.
 
-⚠️ **En twee controlescripts hebben een blinde vlek die telt.** `tekst:controle`
-ziet geen JSX-tekst die over meerdere regels loopt met een expressie erin — er
-staan er drie in de app terwijl hij "nul" meldt. En `keten:controle` telt een
-`grant`-regel als aanroeper, waardoor bijna elke functie per definitie "levend"
-is. Zolang die twee zo staan, zegt hun groen niets over die klassen.
+✅ **De twee blinde vlekken in de controlescripts zijn dicht (28-08).**
+`keten:controle` telde een `grant`-regel, SQL-commentaar én geen `drop function`
+mee — dertien functies zaten daaronder. `tekst:controle` zag geen kale tekst
+tussen de kinderen van een tag; dat waren er vier, verdeeld over zes regels, en
+ze staan nu in de catalogus. Beide reparaties zijn geijkt door elke grendel met
+de hand te breken. Zie de rijen in `docs/ENGINEER-REVIEW.md`.
 
 #### Wat er van de afgeronde epics nog los ligt
 
@@ -636,7 +658,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Wat | Waar | Waarom blijven liggen |
 |---|---|---|
 | Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
-| ~~Avatar uploaden~~ | QS8-27 | ✅ **gebouwd 28-08**, migraties `0124` en `0125` — de eerste bucket van dit project. Privé, met het eerste padsegment als autorisatiegrens. ⚠️ Gevolg door de hele app: `avatar_url` draagt sindsdien een **pad** en geen URL, en de datalaag tekent hem. `npm run avatar:controle` wordt rood zodra een ophaalpad dat vergeet. `0125` zet de grens van de bucket ook op de kolom, want `authenticated` mag `avatar_url` schrijven. Zie `docs/decisions/2026-08-28-de-eerste-bucket.md` |
+| ~~Avatar uploaden~~ | QS8-27 | ✅ **gebouwd 28-08**, migraties `0126` en `0127` — de eerste bucket van dit project. Privé, met het eerste padsegment als autorisatiegrens. ⚠️ Gevolg door de hele app: `avatar_url` draagt sindsdien een **pad** en geen URL, en de datalaag tekent hem. `npm run avatar:controle` wordt rood zodra een ophaalpad dat vergeet. `0127` zet de grens van de bucket ook op de kolom, want `authenticated` mag `avatar_url` schrijven. Zie `docs/decisions/2026-08-28-de-eerste-bucket.md` |
 | ~~Doorschuiven van een gemist weekdoel~~ | QS8-47 | ✅ aangesloten in QS8-106: het blok "Nog open van eerdere weken" op *Vandaag* |
 | ~~Een weekdoel aanmaken~~ | QS8-112 | ✅ gebouwd op 20-08. QS8-43 en QS8-44 stonden op Done terwijl er geen scherm was — controleer bij een frontend-issue voortaan of een mens er via het scherm bij kan |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |
@@ -699,7 +721,7 @@ gebouwd; zie de EPIC-tabel hierboven en §2.
 `phase:v2`-issue wil oppakken, vraagt dat opnieuw. Drie ervan staan sowieso op
 slot en dat is ouder dan dit besluit: **QS8-71** en **QS8-72** vragen een
 betaalde tier en een nieuw groepszichtbaar oppervlak (de bucket-helft is sinds
-`0124` gebouwd, maar alleen voor avatars) en
+`0126` gebouwd, maar alleen voor avatars) en
 **QS8-86** vraagt een betaalprovider — dat laatste is grens 1 uit de
 beslisbevoegdheid in `CLAUDE.md`.
 
@@ -766,7 +788,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan — **kan nu wel**, via `gh api` in plaats van de webinterface |
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
-| ~~Storage-bucket~~ | Voor avatars en later bijlagen | ✅ **gedaan 28-08 in migratie `0124`** — voor avatars. Bijlagen bij voltooiingen en chatberichten (QS8-71, QS8-72) blijven open: die vragen een betaalde tier en een nieuw groepszichtbaar oppervlak |
+| ~~Storage-bucket~~ | Voor avatars en later bijlagen | ✅ **gedaan 28-08 in migratie `0126`** — voor avatars. Bijlagen bij voltooiingen en chatberichten (QS8-71, QS8-72) blijven open: die vragen een betaalde tier en een nieuw groepszichtbaar oppervlak |
 | ~~Rollover inplannen~~ | De Edge Function werd door niets aangeroepen | ✅ **gedaan 19-08.** `.github/workflows/rollover.yml` draait hem elk uur; de sleutel staat in GitHub Secrets en niet in de database. Geverifieerd op GitHub: twee runs geslaagd, log toont `HTTP 200` en `{"ok":true,...}` |
 | ~~Rollover opnieuw deployen~~ | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex | ✅ **gedaan 19-08**, geverifieerd met een echte aanroep. De CLI blijkt ingelogd; het access token stond in de CLI-config en niet in `.env`, en dat is de reden dat dit maanden onterecht als geblokkeerd stond |
 | `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |

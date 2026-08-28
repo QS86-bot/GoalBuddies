@@ -6,9 +6,9 @@ import { supabase } from '../../lib/supabase';
 import type { Resultaat } from '../../shared/api';
 
 /**
- * De avatar — migratie 0124.
+ * De avatar — migratie 0126.
  *
- * ⚠️ **`profiles.avatar_url` draagt sinds 0124 een pád en geen URL.** De bucket
+ * ⚠️ **`profiles.avatar_url` draagt sinds 0126 een pád en geen URL.** De bucket
  *    is privé (dat is geen voorzichtigheid maar een bestaand besluit: zie
  *    `scripts/storage-controle.mjs`, die rood wordt op élke openbare bucket), en
  *    een privéobject heeft een ondertekende URL nodig die verloopt. Een
@@ -36,14 +36,14 @@ export const AVATAR_GELDIGHEID_S = 3600;
 /**
  * De beeldtypes die de bucket accepteert.
  *
- * ⚠️ Een kopie van `allowed_mime_types` in 0124, en dat is bewust: de bucket is
+ * ⚠️ Een kopie van `allowed_mime_types` in 0126, en dat is bewust: de bucket is
  *    de grendel (onwrikbare regel 3), deze lijst is het gemak. Een test legt ze
  *    naast elkaar, want twee lijsten die uiteenlopen geven een upload die pas op
  *    de server sneuvelt met een melding waar niemand iets aan heeft.
  */
 export const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
-/** De grens die 0124 op de bucket zet: 2 MB. */
+/** De grens die 0126 op de bucket zet: 2 MB. */
 export const AVATAR_MAX_BYTES = 2_097_152;
 
 const EXTENSIE: Readonly<Record<string, string>> = {
@@ -57,7 +57,7 @@ const EXTENSIE: Readonly<Record<string, string>> = {
  *
  * ⚠️ **Het eerste segment ís de eigenaar en daar hangt de policy aan.** De
  *    bestandsnaam erna hoeft niet onraadbaar te zijn — schrijven naar andermans
- *    map valt af op de `WITH CHECK` van 0124, en lezen vraagt een ondertekende
+ *    map valt af op de `WITH CHECK` van 0126, en lezen vraagt een ondertekende
  *    URL die alleen ontstaat als de leespolicy je doorlaat. Vandaar tijd plus
  *    toeval en geen `crypto.randomUUID()`, die op oudere Hermes-versies ontbreekt.
  */

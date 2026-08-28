@@ -4,7 +4,7 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
-> ⚠️ **Sinds 27-08-2026 draaien negentien van de tweeëntwintig controles in CI, bij
+> ⚠️ **Sinds 27-08-2026 draaien tweeëntwintig van de vijfentwintig controles in CI, bij
 > elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
 > uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
 > draaien omdat ze een productieverbinding of een privésleutel vragen:
@@ -409,6 +409,23 @@ en geen ontbrekende grendel.
     ⚠️ Het gedrág van de drie van buitenaf bereikbare grenzen staat in
     `tests/rls/klokgrens.test.ts` en draait mee in `npm run rls:lokaal`. Deze stap
     is de vorm, die suite is de werking; je hebt ze allebei nodig.
+
+21b. **RPC-argumenten** — draai `npm run rpc:controle`. Die legt elke
+    `.rpc('naam', { … })` naast de parameterlijst uit `supabase/migrations/` en
+    `supabase/shim/`.
+
+    ⚠️ **Hij bestaat omdat typecheck hier een gat heeft dat eruitziet als
+       dekking.** Een verkeerd type, een weggelaten verplichte parameter en een
+       onbekende functienaam worden alle drie gevangen; een parameter die
+       **niet bestaat** komt erdoor — ook als letterlijk object, want het
+       `Args`-type van de generator maakt alle sleutels optioneel. Dat is
+       precies wat een hernoeming oplevert, en het is op 28-08 twee keer
+       gebeurd.
+
+    ⚠️ **Let op het tweede getal in de slotregel.** Aanroepen die hun argumenten
+       via een variabele doorgeven zijn met een regex niet te lezen en worden
+       apart geteld. Groeit dat getal, dan dekt deze controle een steeds kleiner
+       deel — en dan is het getal zelf de bevinding.
 
 22. **Kolomrechten** — draai `npm run kolomrechten:controle` tegen de lokale
     stack. Hij legt elke `.from(…).select(…)` in `src/` en `app/` naast de échte

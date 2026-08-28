@@ -59,7 +59,7 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
 
   if (data === null) return null;
 
-  // ⚠️ **Het pad wordt hier getekend en niet in het scherm.** Sinds migratie 0124
+  // ⚠️ **Het pad wordt hier getekend en niet in het scherm.** Sinds migratie 0126
   //    is de avatar-bucket privé en draagt `avatar_url` een pád; een `<Image>` kan
   //    daar niets mee. Dat tekenen hoort in de datalaag, precies zoals bij de
   //    chat, het groepsoverzicht en de beoordelingswachtrij — anders is er één

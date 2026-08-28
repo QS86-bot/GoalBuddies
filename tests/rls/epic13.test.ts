@@ -1245,10 +1245,13 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         expect(rijen.error).toBeNull();
         expect(rijen.data ?? []).toEqual([]);
 
-        const stand = await f.bob.db.rpc('weekpas_stand', { p_goal_id: f.doelOpen });
+        // ⚠️ Sinds 0124 via `weekpas_standen()` (meervoud). Het enkelvoud was een
+        //    wrapper zonder eigen logica en had geen enkele aanroeper meer; de
+        //    eigenaarstoets zat altijd al in het meervoud.
+        const stand = await f.bob.db.rpc('weekpas_standen', { p_goal_ids: [f.doelOpen] });
 
         expect(stand.error).toBeNull();
-        expect(JSON.stringify(stand.data ?? {})).not.toContain(f.alice.id);
+        expect(JSON.stringify(stand.data ?? [])).not.toContain(f.alice.id);
       },
       TEST_TIMEOUT,
     );

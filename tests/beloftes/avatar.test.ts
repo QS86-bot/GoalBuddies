@@ -1,5 +1,5 @@
 /**
- * De avatar-keten — migratie 0124.
+ * De avatar-keten — migratie 0126.
  *
  * ⚠️ **De belofte is niet "uploaden werkt".** Die is: *`profiles.avatar_url` is
  *    geen dood hout meer, en wat er in een `<Image>` belandt is nooit een pad*.
@@ -40,7 +40,7 @@ const tekentNiets = {
 
 vi.mock('../../src/lib/supabase', () => ({ supabase: () => tekentNiets }));
 
-const MIGRATIE = readFileSync('supabase/migrations/0124_avatars_in_een_eigen_emmer.sql', 'utf8');
+const MIGRATIE = readFileSync('supabase/migrations/0126_avatars_in_een_eigen_emmer.sql', 'utf8');
 
 // ---------------------------------------------------------------------------
 
@@ -50,18 +50,18 @@ describe('de grenzen staan op de bucket én in de app, en ze zijn gelijk', () =>
   //    dan is de uitkomst een upload die het formulier doorlaat en de server
   //    weigert — met een melding waar niemand iets aan heeft. Precies de vorm van
   //    migratie 0032/0034, waar de test de app-lijst met zichzelf vergeleek.
-  it('de toegestane types komen letterlijk uit migratie 0124', () => {
+  it('de toegestane types komen letterlijk uit migratie 0126', () => {
     const uitMigratie = /allowed_mime_types[\s\S]*?array\[([^\]]+)\]/i.exec(MIGRATIE);
-    expect(uitMigratie, 'geen allowed_mime_types in 0124').not.toBeNull();
+    expect(uitMigratie, 'geen allowed_mime_types in 0126').not.toBeNull();
 
     const types = [...(uitMigratie?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1]);
     expect([...types].sort()).toEqual([...AVATAR_TYPES].sort());
   });
 
-  it('de bovengrens komt letterlijk uit migratie 0124', () => {
+  it('de bovengrens komt letterlijk uit migratie 0126', () => {
     // De insert is `values ('avatars', 'avatars', false, 2097152, array[...])`.
     const getal = /'avatars',\s*'avatars',\s*false,\s*(\d+)\s*,/.exec(MIGRATIE);
-    expect(getal, 'geen grootte in de insert van 0124').not.toBeNull();
+    expect(getal, 'geen grootte in de insert van 0126').not.toBeNull();
     expect(Number(getal?.[1])).toBe(AVATAR_MAX_BYTES);
   });
 
@@ -105,7 +105,7 @@ describe('avatarPad', () => {
   const ID = '11111111-1111-1111-1111-111111111111';
 
   // ⚠️ **Het eerste padsegment ís de autorisatie.** Alle vier de policies van
-  //    0124 hangen aan `(storage.foldername(name))[1]`. Een pad dat níét met de
+  //    0126 hangen aan `(storage.foldername(name))[1]`. Een pad dat níét met de
   //    user-id begint, is een upload die afketst op de WITH CHECK — en die fout
   //    zou pas op de server zichtbaar worden.
   it('zet de eigenaar vooraan, want daar hangt de policy aan', () => {

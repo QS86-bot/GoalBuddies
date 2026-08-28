@@ -174,7 +174,7 @@ export async function fetchChat(
   const nieuwsteEerst = ruw.map(naarBericht).filter((b): b is ChatBericht => b !== null);
 
   // ⚠️ Eén ronde tekenen voor de hele pagina, niet per bericht. De avatar-bucket
-  //    is privé sinds 0124, dus `sender_avatar` draagt een pad; een verzoek per
+  //    is privé sinds 0126, dus `sender_avatar` draagt een pad; een verzoek per
   //    regel is exact de N+1 uit schaalbaarheidsregel 12, en dertig regels is
   //    precies de schaal waarop dat pijn doet.
   const getekend = await metGetekendeAvatars(nieuwsteEerst, 'sender_avatar');

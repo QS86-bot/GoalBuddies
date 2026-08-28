@@ -17,7 +17,7 @@
 --      * de rollen `anon`, `authenticated`, `service_role`
 --      * de publicatie `supabase_realtime`
 --      * `storage.buckets`, `storage.objects` en `storage.foldername()` — sinds
---        0124, de eerste migratie die een bucket aanmaakt
+--        0126, de eerste migratie die een bucket aanmaakt
 --
 --    Komt er iets bij in een migratie, dan valt de opbouw hier om met een
 --    duidelijke fout. Dat is de bedoeling: de steiger hoort achter de migraties
@@ -218,13 +218,13 @@ create table if not exists supabase_migrations.schema_migrations (
 -- Storage
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ **Toegevoegd voor 0124 en niet vooruitlopend.** Dit project had tot 28-08
+-- ⚠️ **Toegevoegd voor 0126 en niet vooruitlopend.** Dit project had tot 28-08
 --    geen enkele bucket; de steiger hoort achter de migraties aan te lopen, dus
 --    dit staat er pas nu.
 --
 -- ⚠️ **Wat er níet in zit: de storage-API.** Uploaden gaat op het echte project
 --    via een HTTP-dienst die de rij in `storage.objects` schrijft. Hier is alleen
---    de tabel met zijn RLS, want dát is wat de policies van 0124 aanraken. Een
+--    de tabel met zijn RLS, want dát is wat de policies van 0126 aanraken. Een
 --    test die een upload nábootst schrijft dus rechtstreeks in de tabel — precies
 --    zoals de storage-dienst het zou doen, en dus onder dezelfde policies.
 create schema if not exists storage;

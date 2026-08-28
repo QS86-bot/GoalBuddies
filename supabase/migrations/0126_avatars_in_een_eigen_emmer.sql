@@ -1,4 +1,4 @@
--- 0124_avatars_in_een_eigen_emmer.sql — de eerste bucket van dit project
+-- 0126_avatars_in_een_eigen_emmer.sql — de eerste bucket van dit project
 --
 -- ROLLBACK-PAD:
 --   drop policy if exists avatars_insert on storage.objects;

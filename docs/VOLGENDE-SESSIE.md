@@ -1020,12 +1020,40 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    doorlopen** — zie de openstaande metingen hieronder. En de algemene detector
    voor dode exports vraagt een echte parser; staat als rij in het dossier.
 
-⚠️ **Twee controlescripts hebben een blinde vlek, en hun groen zegt daarom niets
-over die klasse.** `tekst:controle` ziet geen JSX-tekst die over meerdere regels
-loopt met een expressie erin — er staan er drie in de app terwijl hij "nul" meldt.
-En `keten:controle` telt een `grant`-regel als aanroeper (`revoke all on function
-f(...)` matcht zijn patroon), waardoor bijna elke functie per definitie "levend"
-is. Repareer die twee vóór je op hun uitkomst vertrouwt.
+✅ **`keten:controle` is gerepareerd — drie blinde vlekken, niet één.** Naast de
+`grant`-regels telde ook SQL-commentaar als aanroeper, en `drop function` telde
+níét mee. Alle dertien functies die daaronder zaten hebben nu een verdict; zie de
+rij in het dossier.
+
+✅ **`tekst:controle` is ook dicht.** Hij zag geen kale tekst tussen de kinderen
+van een tag: een zin die over twee regels loopt breekt op allebei zijn eisen
+tegelijk — de eerste helft eindigt op een komma, de tweede begint klein. Het
+waren er **vier en niet drie**; de twee erbij kwamen pas boven toen de reparatie
+er lag. Dezelfde volgorde als bij `keten:controle`, alleen kleiner. Uitleg in
+`docs/decisions/2026-08-28-een-zin-over-twee-regels.md`.
+
+⚠️ **De les die overblijft is de telling, niet het script.** Beide aantekeningen
+noemden een aantal dat met de hand geteld was, en beide keren was het te laag —
+één tegen dertien bij `keten:controle`, drie tegen vier hier. Schrijf bij een
+blinde vlek een gemeten aantal op, of geen aantal.
+
+✅ **De tweede van de drie `offset`-lijsten is om (0125).**
+`openstaande_beoordelingen()` sloeg een beoordeling over zodra je er een
+goedkeurde — en goedkeuren is de knop van dat scherm. Eén blijft er over,
+`group_overview()`, met een lagere kans en een eigen dossierrij.
+
+⚠️ **Twee valkuilen uit die ronde, allebei bij het bewijzen en niet bij het
+bouwen.** Ze zijn hier het opschrijven waard omdat ze allebei groen waren.
+
+- **Bouw een bug na met het origineel, niet met een schets ervan.** Ik schreef
+  eerst een "offset-emulatie" in de nieuwe functie om de overgeslagen rij te
+  laten zien. Die telde over de verkeerde verzameling, gaf nul overgeslagen
+  rijen, en zag eruit als bewijs dat er niets aan de hand was. Pas met de échte
+  oude functie en de échte fixture kwam het getal.
+- **Controleer dat je mutatie de grendel raakt die hij noemt.** Bij het ijken
+  brak ik de eerste clausule van een OR-keten terwijl de grendel in de tweede
+  zat; de test bleef groen. Dezelfde vorm als bij `tekst:controle` een dag
+  eerder, en inmiddels een regel in `CLAUDE.md`.
 
 ⚠️ **Wat de controleronde níét kon vaststellen** en wat dus jouw machine vraagt:
 of `verify_jwt` echt aanstaat op `rollover` en `notificaties` (er is geen
@@ -1037,7 +1065,23 @@ Anthropic-sleutel staat. Dat laatste is vandaag de enige bodem onder punt 4.
 Supabase-dashboard, en Supabase' eigen adviseur noemt hem.
 
 
-### 0b. Eén ding dat je zelf moet deployen, en het merkt zichzelf niet
+### 0b. Wat je zelf moet deployen, en het merkt zichzelf niet
+
+⚠️ **Twee dingen wachten op `npm run deploy` van de webbundel.** Allebei zijn het
+migraties die op productie staan terwijl de gedeployde bundel de oude vorm nog
+aanroept, en allebei geven ze een foutmelding in plaats van stilte:
+
+1. `goal_group_links` — de bundel doet nog de oude `upsert`, die een UPDATE-recht
+   eist dat 0118 heeft ingetrokken. Koppelen geeft `42501`.
+2. `openstaande_beoordelingen()` — 0125 gaf de functie een cursor in plaats van
+   een `offset`, dus de oude aanroep met `p_offset` bestaat niet meer. Het scherm
+   *Beoordelen* en de kaart "er wachten er N op jou" geven `PGRST202`.
+
+**Nagemeten vóór het toepassen van 0125: één gebruiker op productie, nul
+voltooiingen, nul wachtende beoordelingen.** Er is dus geen lijst die stukgaat —
+dat is waarom de migratie is toegepast in plaats van tot de deploy te wachten. Zou
+er wél data staan, dan was de volgorde andersom geweest.
+
 
 ⚠️ **De `rollover`-functie op productie kent `maak_seizoensrecaps()` niet.**
 Gemeten op 28-08 tegen de gedeployde bron: `verbruik_weekpas`,

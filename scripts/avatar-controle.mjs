@@ -2,7 +2,7 @@
 /**
  * avatar-controle — één ondertekening per ophaalpad, en geen pad dat het vergeet.
  *
- * ⚠️ **Waar dit vandaan komt.** Migratie 0124 maakt de avatar-bucket **privé**,
+ * ⚠️ **Waar dit vandaan komt.** Migratie 0126 maakt de avatar-bucket **privé**,
  *    want een openbare bucket omzeilt RLS volledig (zie `storage-controle.mjs`).
  *    Gevolg: `avatar_url` en zijn broertjes dragen sindsdien een **pad** en geen
  *    URL. Een pad in een `<Image>` is geen foutmelding maar een leeg vlak, en
@@ -134,7 +134,7 @@ function hoofd() {
   for (const { pad, regels } of gemist) {
     console.error(
       `✗ ${pad} (regel ${regels.join(', ')}) mapt een avatar-kolom uit een rij, maar tekent hem ` +
-        'niet. Sinds migratie 0124 is de bucket privé en draagt die kolom een pad — een pad in ' +
+        'niet. Sinds migratie 0126 is de bucket privé en draagt die kolom een pad — een pad in ' +
         'een <Image> is een leeg vlak zonder foutmelding.',
     );
   }
@@ -142,7 +142,7 @@ function hoofd() {
   console.error(
     '\nRoep `metGetekendeAvatars(rijen, veld)` aan op het ophaalpad zelf (één ronde voor de hele ' +
       'lijst — schaalbaarheidsregel 12), of `tekenAvatars` voor één rij. Zie ' +
-      'src/modules/auth/avatar.ts en de kop van migratie 0124.',
+      'src/modules/auth/avatar.ts en de kop van migratie 0126.',
   );
   return 1;
 }

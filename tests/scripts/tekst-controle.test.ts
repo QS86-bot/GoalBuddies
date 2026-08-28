@@ -296,3 +296,156 @@ describe('paduitzonderingen zijn platformonafhankelijk', () => {
     expect(OVERSLAAN.some((r: RegExp) => r.test(metSchuineStrepen(pad)))).toBe(false);
   });
 });
+
+/**
+ * De achtste ijking — kale tekst tussen de kinderen van een tag (28-08-2026).
+ *
+ * ⚠️ **Twee terechte eisen die samen een hele alinea niet zien.** De
+ *    kale-JSX-heuristiek eist een hoofdletter aan het begin (anders is elke
+ *    coderegel een treffer) en verbiedt een komma aan het eind (anders is
+ *    `Subheading,` uit een importlijst een treffer). Een zin die over twee
+ *    regels loopt, breekt op allebei tegelijk: de eerste helft eindigt op een
+ *    komma, de tweede begint klein.
+ *
+ *    Er stonden er vier in de app terwijl de controle "nul" meldde — twee
+ *    afgebroken zinnen en twee losse regels. Zelfde vorm als bij
+ *    `binnenTekstProp()` één laag hoger, en dezelfde uitweg: de tóestand.
+ *
+ * ⚠️ De helft eronder is waar deze pas aan kapot kon gaan. In zijn eerste versie
+ *    meldde hij achttien regels, allemaal de bínnenkant van een ternary of een
+ *    `t()`-aanroep die over meerdere regels loopt. Die regels dragen geen
+ *    tagteken en zagen er dus uit als kindertekst.
+ */
+describe('kale tekst tussen de kinderen van een tag', () => {
+  it('vindt een zin die over twee regels loopt', () => {
+    // De vorm uit `src/shared/ui/Ketting.tsx`. De eerste regel eindigt op een
+    // komma, de tweede begint klein — allebei onzichtbaar zonder de toestand.
+    expect(
+      gevonden(
+        '        <Caption>',
+        '          Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen,',
+        '          niet om hoeveel je haalde.',
+        '        </Caption>',
+      ),
+    ).toEqual([
+      'Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen,',
+      'niet om hoeveel je haalde.',
+    ]);
+  });
+
+  it('vindt kindertekst van een genest element', () => {
+    // ⚠️ De vorm uit `app/groep/chat/[id].tsx`, en de reden dat een tagteken de
+    //    toestand beëindigt zónder de regel over te slaan. Stond hier een
+    //    `return`, dan is `<Caption>` het einde van álle kindertekst in plaats
+    //    van het begin van de zijne — en dan blijft precies deze zin onzichtbaar.
+    expect(
+      gevonden(
+        '          <View style={styles.vult}>',
+        '            {uitCache ? (',
+        '              <Caption>',
+        '                Je leest de bewaarde berichten van deze week. Zodra er weer verbinding is,',
+        '                vult de rest zich aan.',
+        '              </Caption>',
+        '            ) : null}',
+      ),
+    ).toEqual([
+      'Je leest de bewaarde berichten van deze week. Zodra er weer verbinding is,',
+      'vult de rest zich aan.',
+    ]);
+  });
+
+  it('vindt een losse regel kindertekst met een waarde erachter', () => {
+    // De vorm uit `app/beoordelen.tsx`. Eén regel, maar met een accolade erin
+    // en dus onzichtbaar voor de heuristiek die geen `{` verdraagt.
+    expect(
+      gevonden(
+        '      <Caption muted={false}>',
+        "        Week afgerond{gehaald === null ? '' : ` — ${gehaald}`}",
+        '      </Caption>',
+      ),
+    ).toEqual(['Week afgerond']);
+  });
+
+  it('vindt een regel die met een waarde begint', () => {
+    // De vorm uit `app/groep/[id].tsx`. Hij begint met een accolade, dus de
+    // hoofdlettereis van de gewone heuristiek sluit hem uit.
+    expect(
+      gevonden(
+        '                <Caption>',
+        '                  {rijen.length} van {totaal} leden.',
+        '                </Caption>',
+      ),
+    ).toEqual(['van   leden.']);
+  });
+});
+
+describe('wat de kindertekstpas met rust moet laten', () => {
+  it('een ternary die over meerdere regels loopt', () => {
+    // ⚠️ Vijf van de achttien valse meldingen bij de eerste meting stonden zo.
+    //    Geen tagteken, dus het zág eruit als kindertekst — terwijl het de
+    //    binnenkant van één accolade is.
+    expect(
+      gevonden(
+        '        <Knop>',
+        "          {stand === 'gekopieerd'",
+        "            ? t('delen.gekopieerd')",
+        '            : label}',
+        '        </Knop>',
+      ),
+    ).toEqual([]);
+  });
+
+  it('een t()-aanroep met een objectargument over meerdere regels', () => {
+    expect(
+      gevonden(
+        '        <Caption>',
+        "          {t('goedkeuringsregel.stand', {",
+        '            gedaan: item.approvals_done,',
+        '            nodig: item.approvals_required,',
+        '          })}',
+        '        </Caption>',
+      ),
+    ).toEqual([]);
+  });
+
+  it('een regel met alleen een waarde erop', () => {
+    expect(gevonden('        <Caption>', '          {aantal}', '        </Caption>')).toEqual([]);
+  });
+
+  it('commentaar tussen de kinderen', () => {
+    // ⚠️ De klasse waar deze pas het makkelijkst aan kapot gaat: uitleg voor de
+    //    bouwer staat vol Nederlandse zinnen en draagt geen tagteken.
+    expect(
+      gevonden(
+        '        <Caption>',
+        '          {/*',
+        '            Dit is uitleg voor de bouwer en geen tekst voor de gebruiker.',
+        '          */}',
+        '        </Caption>',
+      ),
+    ).toEqual([]);
+  });
+
+  it('een generic die op een regel eindigt met een punthaak', () => {
+    // ⚠️ **In een `.tsx`, en dat is de hele test.** Een generic eindigt óók op een
+    //    `>` en draagt óók een hoofdletter; alleen de ankering vooraan scheidt hem
+    //    van een openingstag. Sloeg deze test `gevondenInTs()` aan, dan zou de
+    //    `.ts`-grens hem al groen houden en bewees hij niets over de ankering —
+    //    precies vraag 3 uit regel 18: kan deze test groen blijven terwijl de
+    //    belofte breekt?
+    //
+    //    Met de hand geijkt: haal het `^`-anker weg en deze regel wordt rood.
+    expect(
+      gevonden(
+        '      const laden = bron as Promise<Resultaat>',
+        '      const tekst = zonderWaarden(regel)',
+      ),
+    ).toEqual([]);
+  });
+
+  it('kindertekst in een bestand zonder JSX', () => {
+    // Dezelfde grens als bij `ziterUitAlsJsx()`: JSX bestaat hier alleen in een
+    // `.tsx`, en in een `.ts` is dit een objectliteraal of een generic.
+    expect(gevondenInTs('<Caption>', '  twee woorden hier', '</Caption>')).toEqual([]);
+  });
+});

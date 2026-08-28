@@ -200,7 +200,10 @@ export default function GroepDetail() {
 
               {s.overzicht.meer ? (
                 <Caption>
-                  {s.overzicht.rijen.length} van {s.overzicht.totaal} leden.
+                  {t('groepscherm.leden_van_totaal', {
+                    getoond: s.overzicht.rijen.length,
+                    totaal: s.overzicht.totaal,
+                  })}
                 </Caption>
               ) : null}
             </Card>

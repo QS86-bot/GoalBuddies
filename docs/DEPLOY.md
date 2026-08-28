@@ -285,7 +285,7 @@ noemt.
 
 ## 2.6a Storage — vier regels bij de eerste bucket
 
-Sinds migratie `0124` heeft dit project één bucket: **`avatars`**, privé, 2 MB,
+Sinds migratie `0126` heeft dit project één bucket: **`avatars`**, privé, 2 MB,
 `image/jpeg|png|webp`. Wat daar geldt, geldt bij elke volgende bucket.
 
 1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
@@ -306,7 +306,7 @@ Sinds migratie `0124` heeft dit project één bucket: **`avatars`**, privé, 2 M
    `npm run avatar:controle` wordt rood zodra een ophaalpad een avatar-kolom mapt
    zonder hem te tekenen.
 
-⚠️ **Bij het toepassen van 0124 op productie:** de insert in `storage.buckets`
+⚠️ **Bij het toepassen van 0126 op productie:** de insert in `storage.buckets`
 staat op `on conflict (id) do update`, dus een bucket die er per ongeluk al is
 wordt op de juiste stand gezet in plaats van te botsen. De vier policies staan
 elk achter een `drop policy if exists`. Controleer na afloop:

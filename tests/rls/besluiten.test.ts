@@ -625,9 +625,10 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
     it(
       'de week staat weer in de wachtrij van de intrekker',
       async () => {
+        // Zonder cursor: de eerste pagina, en 50 is boven het aantal in deze
+        // fixture. Was `p_offset: 0` tot 0125.
         const { data, error } = await f.bob.db.rpc('openstaande_beoordelingen', {
           p_limit: 50,
-          p_offset: 0,
         });
 
         expect(error).toBeNull();

@@ -1,5 +1,5 @@
 /**
- * De vier policies op `storage.objects` — migratie 0124.
+ * De vier policies op `storage.objects` — migratie 0126.
  *
  * ⚠️ **De belofte is niet "de policy staat er".** Die is: *een pad in andermans
  *    map is niet te schrijven, en een avatar van een vreemde is niet te lezen* —
@@ -39,7 +39,7 @@ function psql(sql: string): string {
   }).trim();
 }
 
-/** Draait de stack, en kent hij de bucket van 0124? */
+/** Draait de stack, en kent hij de bucket van 0126? */
 function stackBeschikbaar(): boolean {
   try {
     return psql("select count(*) from storage.buckets where id = 'avatars'") === '1';
@@ -85,7 +85,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de avatar-bucket (0124)', () => {
+describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
   const alice = randomUUID();
   const bob = randomUUID();
   const vreemde = randomUUID();
@@ -173,7 +173,7 @@ describe.runIf(beschikbaar)('de avatar-bucket (0124)', () => {
   });
 
   /**
-   * ⚠️ **De kern van 0124.** `owner` wordt door de storage-API gezet en is dus
+   * ⚠️ **De kern van 0126.** `owner` wordt door de storage-API gezet en is dus
    *    niet de grens; het eerste padsegment is het enige dat de cliënt niet kan
    *    vervalsen zonder de WITH CHECK te breken. Deze test zet `owner` expliciet
    *    op de schrijver zelf — precies wat de API zou doen — en tóch moet hij eraf
@@ -226,10 +226,10 @@ describe.runIf(beschikbaar)('de avatar-bucket (0124)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Wat er in `profiles.avatar_url` mag staan — migratie 0125
+  // Wat er in `profiles.avatar_url` mag staan — migratie 0127
   // -------------------------------------------------------------------------
   //
-  // ⚠️ **Dit is de naad tussen de bucket en de kolom.** 0124 zegt in vier
+  // ⚠️ **Dit is de naad tussen de bucket en de kolom.** 0126 zegt in vier
   //    policies dat het eerste padsegment de eigenaar is; de kolom zei daar niets
   //    over. `authenticated` heeft UPDATE op `avatar_url` (gemeten in
   //    `information_schema.column_privileges`, veertien kolommen), dus wat er in

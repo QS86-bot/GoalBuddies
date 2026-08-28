@@ -256,10 +256,7 @@ export default function GroepChat() {
         {({ rijen }) => (
           <View style={styles.vult}>
             {uitCache ? (
-              <Caption>
-                Je leest de bewaarde berichten van deze week. Zodra er weer verbinding is,
-                vult de rest zich aan.
-              </Caption>
+              <Caption>{t('chat.uit_cache')}</Caption>
             ) : null}
 
             {wegFout === null ? null : <Caption danger>{wegFout}</Caption>}

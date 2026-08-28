@@ -271,7 +271,7 @@ describe('de cache van de lopende periode', () => {
     expect(beperkVoorCache(drie)).toHaveLength(3);
   });
 
-  // ⚠️ **De naad tussen de privébucket en de cache** — migratie 0124. Sinds de
+  // ⚠️ **De naad tussen de privébucket en de cache** — migratie 0126. Sinds de
   //    avatar-bucket privé is, draagt `sender_avatar` in een geladen bericht een
   //    signed URL die na een uur verloopt; deze cache leeft tot het einde van de
   //    groepsperiode. Bewaren we hem, dan toont het scherm na een uur geen avatar

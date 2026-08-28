@@ -271,10 +271,10 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
 }
 
 /**
- * Haalt de avatar uit een bericht dat de cache in gaat — migratie 0124.
+ * Haalt de avatar uit een bericht dat de cache in gaat — migratie 0126.
  *
  * ⚠️ **Een ondertekende URL verloopt na een uur; de cache leeft een week.** Sinds
- *    0124 is de avatar-bucket privé, dus `sender_avatar` draagt in een geladen
+ *    0126 is de avatar-bucket privé, dus `sender_avatar` draagt in een geladen
  *    bericht een signed URL. Bewaren we die, dan toont het scherm na een uur geen
  *    avatar maar een *kapotte* avatar — `Avatar` valt alleen terug op initialen
  *    bij `null`, niet bij een URL die 400 teruggeeft.

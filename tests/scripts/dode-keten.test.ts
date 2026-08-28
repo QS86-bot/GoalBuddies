@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   checksIn,
   controleer,
+  functiesIn,
   functiesZonderAanroeper,
   genoemdIn,
   waardenZonderSchrijver,
@@ -60,6 +61,24 @@ describe('functies zonder aanroeper — wat de controle moet vinden', () => {
    *    nooit rood is geweest, is een aanname. `wijzigDoel()`, `wijzigMijlpaal()`
    *    en `fetchCommitmentSpoor()` hadden nul aanroepers en dit script zei niets.
    */
+  /**
+   * ⚠️ **Dezelfde familie als de grant-regels, en op 28-08 in het echt
+   *    tegengekomen.** Een migratiekop legt uit wat een functie doet en noemt hem
+   *    daarbij mét haakjes — en dan telde de uitleg als de aanroeper. Het
+   *    overkwam deze sessie zelf: een ⚠️-regel noemde `initplan_bewaking()`,
+   *    waarna de controle die functie levend noemde. Met commentaar eruit meldde
+   *    het script dertien functies in plaats van nul.
+   */
+  it('een functie die alleen in commentaar wordt genoemd', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      '-- ⚠️ Hier legt de kop uit dat spookfunctie() nul rijen hoort te geven.',
+      'revoke all on function public.spookfunctie() from public, anon, authenticated;',
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['spookfunctie']);
+  });
+
   it('een functie die alleen in zijn eigen grant- en revoke-regels voorkomt', () => {
     const sql = [
       'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
@@ -540,5 +559,113 @@ describe('genoemdIn — het bewijs bij een lijstnaam', () => {
 
   it('en zegt nee als de naam er niet staat', () => {
     expect(genoemdIn('niets bijzonders hier', 'proef_bewaking')).toBe(false);
+  });
+});
+
+/**
+ * `drop function` telt mee — het tweede gat van 28-08.
+ *
+ * ⚠️ **Een functie die niet bestáát, kan geen dode functie zijn.**
+ *    `functiesIn()` verzamelde élke `create ... function`, ook van functies die
+ *    een latere migratie had weggegooid. `markeer_doorgeschoven()` is in 0091
+ *    verwijderd en werd zo gemeld — vals alarm, en precies het soort melding
+ *    waardoor je een script uitzet. `checksIn()` honoreerde `drop constraint`
+ *    al; hier stond het patroon niet.
+ */
+describe('functiesIn — drop function telt mee', () => {
+  it('laat een functie staan die alleen aangemaakt wordt', () => {
+    const sql = 'create or replace function public.f() returns void as $$ begin end $$;';
+    expect([...functiesIn(sql)]).toEqual(['f']);
+  });
+
+  it('haalt een functie weg die daarna gedropt wordt', () => {
+    const sql = [
+      'create or replace function public.f() returns void as $$ begin end $$;',
+      'drop function if exists public.f();',
+    ].join('\n');
+
+    expect([...functiesIn(sql)]).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De volgorde telt, en dit is de vorm die dit project overal gebruikt:**
+   *    `drop function ... ; create or replace function ...` is de normale kop van
+   *    een idempotente migratie — 71 van de 99 functies staan zo in het bestand.
+   *    Een `drop` betekent dus níét dat de functie weg is.
+   */
+  it('houdt hem als de drop vóór de create staat', () => {
+    const sql = [
+      'drop function if exists public.f(uuid);',
+      'create or replace function public.f(a uuid) returns void as $$ begin end $$;',
+    ].join('\n');
+
+    expect([...functiesIn(sql)]).toEqual(['f']);
+  });
+
+  it('en houdt hem als een latere migratie hem opnieuw maakt', () => {
+    const sql = [
+      'create or replace function public.f() returns void as $$ begin end $$;',
+      'drop function if exists public.f();',
+      'create or replace function public.f(a uuid) returns void as $$ begin end $$;',
+    ].join('\n');
+
+    expect([...functiesIn(sql)]).toEqual(['f']);
+  });
+});
+
+/**
+ * De derde categorie: geen aanroeper, en het verdict is een productvraag.
+ *
+ * ⚠️ **Hij hoort niet bij `BEWAAKT_BUITEN_DE_APP`, en dat verschil is de kern.**
+ *    Die lijst zegt *"deze functie hóórt geen pad te hebben"* en bewijst dat met
+ *    een aanroeper in `tests/` of `scripts/`. Deze zegt het tegenovergestelde:
+ *    een functie die een pad zóu moeten hebben en er geen heeft, waarbij de vraag
+ *    of hij er een krijgt of moet verdwijnen niet aan een opruimronde is.
+ */
+describe('WACHT_OP_EEN_BESLUIT — een agenda en geen parkeerplaats', () => {
+  const migratie = (naam: string) =>
+    `create or replace function public.${naam}() returns void as $$ begin end $$;`;
+
+  it('houdt een functie stil zolang de vraag open staat', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('proeffunctie') }],
+      prodBron: '',
+      testBron: '',
+      bewust: {},
+      bewaakt: {},
+      wacht: { proeffunctie: 'Moet hier een knop bij, of hoort hij weg?' },
+    });
+
+    expect(uit.functies).toEqual([]);
+    expect(uit.beslistVerouderd).toEqual([]);
+  });
+
+  it('meldt hem zodra hij wél een aanroeper heeft — de vraag is dan beantwoord', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('proeffunctie') }],
+      prodBron: "await supabase().rpc('proeffunctie');",
+      testBron: '',
+      bewust: {},
+      bewaakt: {},
+      wacht: { proeffunctie: 'Moet hier een knop bij, of hoort hij weg?' },
+    });
+
+    expect(uit.beslistVerouderd).toEqual(['proeffunctie']);
+  });
+
+  it('en een aanroep uit een test telt hier niet — dat is de EPIC 9-regel', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('proeffunctie') }],
+      prodBron: '',
+      testBron: "await adminDb().rpc('proeffunctie');",
+      bewust: {},
+      bewaakt: {},
+      wacht: { proeffunctie: 'Moet hier een knop bij, of hoort hij weg?' },
+    });
+
+    // Nog steeds stil (hij staat op de lijst), maar níét als "beantwoord"
+    // gemeld: een test is geen pad door de app.
+    expect(uit.functies).toEqual([]);
+    expect(uit.beslistVerouderd).toEqual([]);
   });
 });
