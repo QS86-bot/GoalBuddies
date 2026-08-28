@@ -455,6 +455,8 @@ export const nl = {
   'beheer.terug': 'Terug naar de groep',
   'beheer.melding_gesloten': 'De link is gesloten.',
   'beheer.melding_open': 'De link staat weer open.',
+  'onboarding.profiel_leeg_titel': 'We kunnen je gegevens even niet ophalen.',
+  'onboarding.profiel_leeg_tekst': 'Probeer het zo nog eens. Er gaat niets verloren.',
   'onboarding.eyebrow': 'NOG ÉÉN SCHERM',
   'onboarding.dagelijkse_herinnering': 'Dagelijkse herinnering',
   'onboarding.uit_blijft_uit': 'Uit blijft uit. We sturen je niets.',
@@ -655,6 +657,10 @@ export const nl = {
   'bevestiging.groep_verlaten.uitleg':
     'Je doel gaat uit deze groep en je kunt de chat, de weekafsluitingen en De Ketting hier niet meer openen. Wat je hebt opgebouwd blijft staan: je punten, je reeks, je voltooiingen en de goedkeuringen die je hebt gegeven. Hangt je doel ook aan een andere groep, dan verandert daar niets. Terugkomen kan alleen met een geldige uitnodigingslink.',
   'bevestiging.groep_verlaten.knop': 'Ja, verlaat deze groep',
+  'bevestiging.weekstart_verzetten.titel': 'Je week op een andere dag laten beginnen?',
+  'bevestiging.weekstart_verzetten.uitleg':
+    'Vanaf je volgende week begint alles op de nieuwe dag. ⚠️ Weekdoelen die nu op je lopende week staan, verhuizen níét mee: die raak je uit beeld en ze tellen daarna als gemist — dat kost een punt en breekt je reeks. Rond ze eerst af, of wacht tot deze week voorbij is. Je punten, je reeks en je afgeronde weken blijven verder gewoon staan.',
+  'bevestiging.weekstart_verzetten.knop': 'Ja, verzet mijn weekstart',
   'verlaten.titel': 'Deze groep verlaten',
   'verlaten.uitleg':
     'Je stapt uit deze groep. Je doel wordt losgekoppeld van deze groep en van geen enkele andere.',
@@ -727,7 +733,7 @@ export const nl = {
   'profiel.typ_woord': 'Typ {woord} om te bevestigen',
   'profiel.definitief': 'Definitief verwijderen',
   'profiel.toch_niet': 'Toch niet',
-  'profiel.weekstart_uitleg': 'Verander je dit halverwege een week, dan telt de lopende week gewoon uit op de oude dag. Je punten en je reeks blijven staan.',
+  'profiel.weekstart_uitleg': 'De nieuwe dag geldt vanaf je volgende week. Weekdoelen die nu op je lopende week staan verhuizen niet mee — rond die eerst af. Je punten, je reeks en je afgeronde weken blijven staan.',
   'profiel.thema_systeem': 'Systeem',
   'profiel.thema_donker': 'Donker',
   'profiel.thema_licht': 'Licht',

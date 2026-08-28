@@ -38,3 +38,5 @@ export {
   type ProfielInvoer,
   type ProfielPatch,
 } from './schemas';
+
+export { bestemmingVoor, type Bestemming, type Routestand } from './routewacht';

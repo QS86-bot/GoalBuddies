@@ -137,6 +137,15 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    er weggaat maar ook wat er blijft: dat is hier de helft die iemand
     //    tegenhoudt om uit voorzorg te blijven zitten.
     groepVerlaten: bouw('bevestiging.groep_verlaten'),
+    // ⚠️ 28-08. Dit stond er niet, en de hint onder de keuze beloofde het
+    //    tegenovergestelde van wat er gebeurt: je weekdoelen van de lópende week
+    //    staan op de oude uitlijning en `fetchWeekdoelen()` matcht exact op
+    //    `cycle_start_date`, dus ze verdwijnen uit beeld en de rollover
+    //    stempelt ze daarna als gemist — een minpunt en een gebroken reeks.
+    //    Zolang die weekdoelen niet meeverhuizen (rij van 28-08 in
+    //    ENGINEER-REVIEW), is één tik zonder bevestiging te goedkoop voor wat
+    //    het kost.
+    weekStartVerzetten: bouw('bevestiging.weekstart_verzetten'),
   };
 }
 
@@ -149,4 +158,5 @@ export type BevestigingsNaam =
   | 'groepArchiveren'
   | 'groepVerlaten'
   | 'doelVerwijderen'
-  | 'doelAfronden';
+  | 'doelAfronden'
+  | 'weekStartVerzetten';

@@ -13,6 +13,7 @@ import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
+  AsyncView,
   Avatar,
   Body,
   Button,
@@ -33,7 +34,45 @@ import {
  * standaard, en vier keer "Verder" tikken is precies de trechter waar mensen op
  * afhaken.
  */
+/**
+ * Wacht tot het profiel bekend is, en laat het formulier daarna pas monteren.
+ *
+ * ⚠️ **Zonder deze wacht kon dit scherm de week-startdag terugzetten.** De zeven
+ *    `useState`-initialisatoren hieronder draaien één keer, bij de eerste
+ *    render, en er is geen effect dat ze bijstelt. Rendert het formulier terwijl
+ *    het profiel nog onbekend is, dan staan ze op hun standaardwaarden — en
+ *    schrijft "Bewaren" `week_start_day = 1`, `tz = apparaatTijdzone()` en de
+ *    herinneringsinstellingen over wat er stond. `display_name: ''` werd nog
+ *    door `profielSchema` tegengehouden, de andere zes niet.
+ *
+ * ⚠️ Dat is klok 1 van domeinregel 1, stilzwijgend verzet. Het pad ernaartoe is
+ *    niet exotisch: `Routewacht` stuurde bij een mislukte profielophaling naar
+ *    de onboarding (gedicht in dezelfde wijziging), en op web is elke diepe
+ *    route rechtstreeks op te vragen — `scripts/deploy-web.mjs` schrijft daar
+ *    juist een `.htaccess` voor.
+ *
+ * ⚠️ Een buitenste component en geen `if` in het formulier: alleen zo mónteren
+ *    de initialisatoren pas als het profiel er is. Een vroege `return` in
+ *    hetzelfde component zou de hooks-volgorde breken.
+ */
 export default function OnboardingProfiel() {
+  const { profiel, loading, error, herlaad } = useProfiel();
+
+  return (
+    <AsyncView
+      loading={loading}
+      error={error}
+      data={profiel ?? undefined}
+      isEmpty={() => false}
+      onRetry={herlaad}
+      empty={{ title: t('onboarding.profiel_leeg_titel'), body: t('onboarding.profiel_leeg_tekst') }}
+    >
+      {() => <OnboardingProfielFormulier />}
+    </AsyncView>
+  );
+}
+
+function OnboardingProfielFormulier() {
   const router = useRouter();
   const { userId } = useSession();
   const { profiel, zetProfiel } = useProfiel();
