@@ -9,6 +9,7 @@ import {
   INTREKVENSTER_MINUTEN,
   trekGoedkeuringIn,
   volgBeoordelingen,
+  type Cursor,
   type TeBeoordelen,
   type Wachtrij,
 } from '@/modules/completions';
@@ -53,7 +54,22 @@ export default function Beoordelen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
-  const [pagina, setPagina] = useState(0);
+  /**
+   * De cursors van de pagina's die je gezien hebt — 0125.
+   *
+   * ⚠️ **Een stapel en geen paginanummer, want een cursor is vooruit-alleen.**
+   *    `null` op plek 0 is de eerste pagina; elke keer dat je verder bladert
+   *    komt de cursor van de láátste rij erbij. "Vorige" pakt er een af. Dat is
+   *    de prijs van keyset-paginering, en hij is klein: de stapel is precies zo
+   *    lang als het aantal keren dat je hebt doorgeklikt.
+   *
+   * ⚠️ **Herladen na een oordeel haalt dezelfde pagina opnieuw op, en dat is nu
+   *    stabiel.** Met `offset` schoof de lijst onder de plek door zodra je
+   *    goedkeurde — precies de knop van dit scherm. Een cursor is een waarde: de
+   *    rij waar hij naar wijst mag verdwijnen zonder dat er iets overslaat.
+   */
+  const [cursors, setCursors] = useState<readonly (Cursor | null)[]>([null]);
+  const pagina = cursors.length - 1;
   const [aanHetTypen, setAanHetTypen] = useState(false);
   const [verouderd, setVerouderd] = useState(false);
   /**
@@ -68,7 +84,7 @@ export default function Beoordelen() {
   useEffect(() => {
     let levend = true;
 
-    fetchBeoordelingen({ pagina })
+    fetchBeoordelingen({ na: cursors[pagina] ?? null })
       .then((uitkomst) => {
         if (!levend) return;
         setWachtrij(uitkomst);
@@ -85,7 +101,7 @@ export default function Beoordelen() {
     return () => {
       levend = false;
     };
-  }, [ronde, pagina]);
+  }, [ronde, cursors, pagina]);
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
@@ -167,12 +183,19 @@ export default function Beoordelen() {
             {w.meer || pagina > 0 ? (
               <View style={styles.acties}>
                 {pagina > 0 ? (
-                  <Button onPress={() => setPagina((p) => Math.max(0, p - 1))}>
+                  <Button onPress={() => setCursors((c) => c.slice(0, -1))}>
                     {t('beoordelen.vorige')}
                   </Button>
                 ) : null}
-                {w.meer ? (
-                  <Button onPress={() => setPagina((p) => p + 1)}>
+                {/*
+                  ⚠️ Alleen doorbladeren als er een cursor ís. Een volle pagina
+                     zónder bruikbare cursor kan niet bestaan zolang
+                     `submitted_at` en `completion_id` gevuld zijn, maar de knop
+                     hangt aan een waarde die de server stuurt — en een knop die
+                     `null` als grens doorgeeft, laadt de eerste pagina opnieuw.
+                */}
+                {w.meer && w.cursor !== null ? (
+                  <Button onPress={() => setCursors((c) => [...c, w.cursor])}>
                     {t('beoordelen.meer_laden')}
                   </Button>
                 ) : null}

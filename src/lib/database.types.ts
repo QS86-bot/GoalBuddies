@@ -2315,7 +2315,7 @@ export type Database = {
         }[]
       }
       openstaande_beoordelingen: {
-        Args: { p_limit?: number; p_offset?: number }
+        Args: { p_limit?: number; p_na_at?: string; p_na_id?: string }
         Returns: {
           achieved_level: string
           approvals_done: number
