@@ -4,6 +4,18 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
+> ⚠️ **Sinds 27-08-2026 draaien zeventien van de twintig controles in CI, bij
+> elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
+> uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
+> draaien omdat ze een productieverbinding of een privésleutel vragen:
+> `functies:controle` (stap 20), `register:controle` (stap 13) en
+> `vapid:controle` (stap 23b).
+>
+> Waarom ze eerst alleen hier stonden: acht van die zeventien lezen niets dan de
+> repo en hadden nooit een reden om te wachten op een wekelijkse handeling. CI
+> toetste met de ijkingstests wél dát ze werkten, en liet ze vervolgens niets
+> bewaken.
+
 1. **Nieuwe code deze week** — bekijk de commits sinds vorige week.
    Delegeer aan `code-critic` en `security-reviewer` voor een overzichtsreview
    van wat er nieuw bij is gekomen.
@@ -337,6 +349,30 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     Geen test wordt rood, geen policy weigert iets — de nieuwe functie erft
     gewoon het recht om de uitnodigingscode, de oprichter, de status, de
     slaapstand en de zichtbaarheid te wijzigen.
+
+23a. **Wat gaat er in een open groep open?** — draai
+    `npm run zichtbaarheid:controle` tegen de lokale stack. Vier oppervlakken
+    variëren op `groups.zichtbaarheid`, en zes plekken noemen die kolom zonder er
+    een te zijn (de twee hulpfuncties, de setter, de pin, het aanmaken en de
+    uitnodigingspreview). Alle tien staan met hun reden in het register.
+
+    ⚠️ **De zin die de gebruiker leest sómt die vier op.** Komt er een vijfde
+    bij, dan wordt deze controle rood — en dán is de vraag of
+    `zichtbaarheid.open_uitleg` en `bevestiging.groep_openzetten.uitleg` nog
+    kloppen, niet nadat iemand toestemming heeft gegeven voor iets anders dan hij
+    dacht.
+
+23b. **Horen de drie VAPID-waarden bij elkaar?** — draai `npm run vapid:controle`
+    op de machine waar `.env` staat. De publieke sleutel zit in de webbundel, de
+    privésleutel in de omgeving van de Edge Function en het subject in beide;
+    gekruist ziet elk van de drie er perfect uit.
+
+    ⚠️ **Zonder deze controle merkt WebCrypto het pas bij het ondertekenen**, in
+    de meldingenjob die eens per uur draait, en dan komt het terug als een 403
+    van de pushdienst en niet als een rode test.
+
+    ⚠️ Hij hoort **niet** in CI: `VAPID_PRIVATE_KEY` is een privésleutel. Zonder
+    de drie waarden slaat hij zichtbaar over; met `--streng` valt hij om.
 
 24. **De statuscache** — draai tegen productie:
 

@@ -778,6 +778,38 @@ database leunt: wie kan die stand veranderen, en wanneer?**
 
 ### Werken met dit project
 
+13b. **49 rode RLS-tests betekent bijna altijd dat de Postgres gestopt is, niet
+    dat er iets kapot is.** Op 27-08-2026 gebeurde dat **vier keer** in één
+    sessie: de suite gaf `49 failed | 21 passed`, en `pg_isready` gaf
+    `no response`. De container zet zijn database uit; dat is omgeving en geen
+    code.
+
+    **Meet het vóór je gaat zoeken** — één regel is genoeg, en anders ga je een
+    uur in tests kijken die niets mankeren:
+
+    ```bash
+    pg_isready -h 127.0.0.1 -p 5432
+    ```
+
+    Staat hij uit, dan is dit de weg terug:
+
+    ```bash
+    pg_ctlcluster 16 main start
+    su postgres -c "psql -Atc \"alter role postgres password 'postgres'\""
+    PGHOST=127.0.0.1 PGPORT=5432 PGPASSWORD=postgres bash scripts/lokale-stack.sh
+    ```
+
+    ⚠️ **De stack opnieuw opbouwen en niet één migratie afspelen.** Dat laatste
+    lijkt sneller maar draait een oudere versie van een functie terug over een
+    nieuwere — op 27-08 zette het afspelen van 0030 de wijzigingen van 0099 in
+    `trek_goedkeuring_in()` weer weg, en dat kostte twee rode tests die niets met
+    de wijziging te maken hadden.
+
+    ⚠️ **En het blijft een meting.** Een rode suite is niet vanzelf de
+    omgeving: kijk eerst of `pg_isready` antwoordt, en pas als dat "no response"
+    zegt is het dit. Anders is het je code, en dan is "gewoon opnieuw draaien"
+    precies de gewoonte waarmee je een echte regressie wegwuift.
+
 14. **De repo en het echte project lopen uit elkaar, in béíde richtingen.**
     Migraties gaan via een MCP-tool en niet via `supabase db push`, dus
     `supabase/migrations/` is een verslag en geen bron — vergelijk bij twijfel
