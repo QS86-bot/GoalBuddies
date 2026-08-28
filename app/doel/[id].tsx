@@ -18,7 +18,9 @@ import {
 } from '@/modules/buddies';
 import {
   fetchCommitments,
+  fetchCommitmentSpoor,
   isOpenstaand,
+  spoorLabels,
   tekstVoor,
   trekIn,
   zetBeloning,
@@ -49,6 +51,7 @@ import {
   vraagDeadlineVerschuiving,
   rondDoelAf,
   zetArchief,
+  wijzigMijlpaal,
   zetMijlpaalStatus,
   zetStreefdatum,
   type Adempauze,
@@ -80,6 +83,7 @@ import {
   Screen,
   Subheading,
   useHulpvraagVerborgen,
+  useAsync,
 } from '@/shared/ui';
 
 /**
@@ -213,6 +217,16 @@ export default function DoelDetail() {
                   totaal: d.weekly_total ?? 0,
                 })}
               </Caption>
+
+              {/*
+                ⚠️ De knop bij `wijzigDoel()`, die tot 28-08 ontbrak. De functie
+                   stond er sinds QS8-106 met nul aanroepers, dus een typefout in
+                   een doeltitel was permanent. De streefdatum zit er bewust niet
+                   in — die verschuif je hieronder via `DeadlineVerzetten` (A7).
+              */}
+              <Button variant="stil" onPress={() => router.push(`/doel/bewerk/${d.id}`)}>
+                {t('doelbewerken.knop')}
+              </Button>
             </Card>
 
             <GedeeldMet
@@ -562,6 +576,7 @@ function Beloning({
         <Caption>
           {t('beloning.vastgelegd_op', { datum: bestaand.confirmed_at.slice(0, 10) })}
         </Caption>
+        <Spoor commitmentId={bestaand.id} />
       </Card>
     );
   }
@@ -780,6 +795,7 @@ function Straf({
             {t('straf.intrekken')}
           </Button>
         ) : null}
+        <Spoor commitmentId={bestaand.id} />
       </Card>
     );
   }
@@ -1281,6 +1297,74 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
 }
 
 /**
+ * Het auditspoor van één commitment — de knop die bij `fetchCommitmentSpoor()` ontbrak.
+ *
+ * ⚠️ **Domeinregel 5 eist dit met zoveel woorden:** alles wat een consequentie
+ *    oplegt moet expliciet bevestigd zijn, **auditeerbaar**, en nooit
+ *    stilzwijgend geactiveerd. De tabel `commitment_events` bestaat sinds EPIC 9
+ *    en `fetchCommitmentSpoor()` sinds QS8-106 — met nul aanroepers. Het spoor
+ *    was er dus wel en niemand kon het zien, en dat is precies zo goed als geen
+ *    spoor.
+ *
+ * ⚠️ **Alleen de eigenaar leest dit, en dat komt van RLS en niet van dit
+ *    scherm.** `commitment_events_select` eist dat het commitment aan een doel
+ *    van `auth.uid()` hangt. Dat is ook de goede kant op voor domeinregel 7: het
+ *    spoor van een straf vertelt wanneer iemand hem verschuldigd werd.
+ *
+ * ⚠️ **Dichtgeklapt tot je erom vraagt.** Een commitment is een afspraak, geen
+ *    logboek; wie er elke keer een lijst gebeurtenissen naast krijgt, leest de
+ *    afspraak niet meer. De knop staat er wél altijd, want een spoor dat je moet
+ *    zoeken is geen spoor.
+ */
+function Spoor({ commitmentId }: { readonly commitmentId: string }) {
+  const [open, setOpen] = useState(false);
+
+  const { data, loading, error, herlaad } = useAsync(
+    open ? () => fetchCommitmentSpoor(commitmentId) : null,
+    [open, commitmentId],
+  );
+
+  if (!open) {
+    return (
+      <Button variant="stil" onPress={() => setOpen(true)}>
+        {t('commitmentspoor.toon')}
+      </Button>
+    );
+  }
+
+  return (
+    <View style={styles.blokken}>
+      <AsyncView
+        loading={loading}
+        error={error}
+        data={data}
+        isEmpty={(rijen) => rijen.length === 0}
+        onRetry={herlaad}
+        empty={{
+          title: t('commitmentspoor.leeg_titel'),
+          body: t('commitmentspoor.leeg_tekst'),
+        }}
+      >
+        {(rijen) => (
+          <View style={styles.mijlpalen}>
+            {rijen.map((rij) => (
+              <View key={rij.id} style={styles.mijlpaal}>
+                <Body>{spoorLabels()[rij.event_type] ?? rij.event_type}</Body>
+                <Caption>{rij.created_at.slice(0, 16).replace('T', ' ')}</Caption>
+              </View>
+            ))}
+          </View>
+        )}
+      </AsyncView>
+
+      <Button variant="stil" onPress={() => setOpen(false)}>
+        {t('commitmentspoor.verberg')}
+      </Button>
+    </View>
+  );
+}
+
+/**
  * Mijlpalen beheren — QS8-39, migratie 0049.
  *
  * ⚠️ Het handmatige pad moet volledig zijn, ook als er nooit AI gebruikt is
@@ -1305,6 +1389,8 @@ function Mijlpalen({
   const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
+  /** De mijlpaal die op dit moment bewerkt wordt, of `null`. */
+  const [bewerkt, setBewerkt] = useState<Mijlpaal | null>(null);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
   const [ronde, setRonde] = useState(0);
@@ -1477,6 +1563,24 @@ function Mijlpalen({
                   </Button>
                 )}
 
+                {/*
+                  ⚠️ **De knop bij `wijzigMijlpaal()`, die tot 28-08 ontbrak.**
+                     Aanmaken, verwijderen, herordenen en op gehaald zetten konden
+                     allemaal; alleen de tekst zelf was permanent. Dezelfde klasse
+                     als `wijzigDoel()` en als QS8-113: elk schakeltje af, de keten
+                     nergens verbonden, en geen enkele test die dat kón zien.
+                */}
+                <Button
+                  variant="stil"
+                  accessibilityLabel={t('mijlpalenblok.bewerken_label', { titel: m.title })}
+                  onPress={() => {
+                    setFout(null);
+                    setBewerkt(bewerkt?.id === m.id ? null : m);
+                  }}
+                >
+                  {t('mijlpalenblok.bewerken')}
+                </Button>
+
                 <Button
                   variant="stil"
                   accessibilityLabel={t('mijlpalenblok.verwijderen_label', { titel: m.title })}
@@ -1485,6 +1589,17 @@ function Mijlpalen({
                   {t('mijlpalenblok.verwijderen')}
                 </Button>
               </View>
+
+              {bewerkt?.id === m.id ? (
+                <MijlpaalBewerken
+                  mijlpaal={bewerkt}
+                  onKlaar={() => {
+                    setBewerkt(null);
+                    ververs();
+                  }}
+                  onAnnuleer={() => setBewerkt(null)}
+                />
+              ) : null}
             </View>
           ))}
         </View>
@@ -1527,6 +1642,101 @@ function Mijlpalen({
         <Button onPress={() => setOpen(true)}>{t('mijlpalenblok.toevoegen_knop')}</Button>
       )}
     </Card>
+  );
+}
+
+/**
+ * Eén mijlpaal bewerken — de knop die bij `wijzigMijlpaal()` ontbrak.
+ *
+ * ⚠️ **Alle drie de velden gaan mee, en dat is geen netheid maar een grendel.**
+ *    `wijzigMijlpaal()` stuurt titel, omschrijving én streefdatum in één UPDATE,
+ *    zoals `mijlpaalSchema` voorschrijft. Zou dit formulier de omschrijving niet
+ *    kennen, dan wiste elke titelcorrectie hem stilzwijgend. Daarom draagt
+ *    `Mijlpaal` sinds 28-08 `description` — het type dwingt de juiste waarde af
+ *    in plaats van hem te laten raden.
+ *
+ * ⚠️ **De streefdatum mág hier wél, anders dan bij een doel.** A7 gaat over de
+ *    streefdatum van het dóél: die staat in een afspraak met een buddy en
+ *    verschuift alleen met akkoord. Een mijlpaal is een eigen tussenstap zonder
+ *    afspraak eromheen; hem verzetten raakt niemand anders.
+ */
+function MijlpaalBewerken({
+  mijlpaal,
+  onKlaar,
+  onAnnuleer,
+}: {
+  readonly mijlpaal: Mijlpaal;
+  readonly onKlaar: () => void;
+  readonly onAnnuleer: () => void;
+}) {
+  const [titel, setTitel] = useState(mijlpaal.title);
+  const [omschrijving, setOmschrijving] = useState(mijlpaal.description ?? '');
+  const [datum, setDatum] = useState(mijlpaal.target_date ?? '');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function bewaar() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await wijzigMijlpaal(mijlpaal.id, {
+      title: titel,
+      description: omschrijving.trim() === '' ? null : omschrijving,
+      target_date: datum.trim() === '' ? null : datum,
+    });
+
+    setBezig(false);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    onKlaar();
+  }
+
+  return (
+    <View style={styles.pauzeForm}>
+      <Field
+        label={t('mijlpaalbewerken.titel')}
+        value={titel}
+        onChangeText={setTitel}
+        placeholder={t('mijlpalenblok.nieuwe_voorbeeld')}
+      />
+
+      <Field
+        label={t('mijlpaalbewerken.omschrijving')}
+        value={omschrijving}
+        onChangeText={setOmschrijving}
+        multiline
+        numberOfLines={3}
+      />
+
+      <Field
+        label={t('mijlpaalbewerken.streefdatum')}
+        hint={t('mijlpaalbewerken.streefdatum_hint')}
+        value={datum}
+        onChangeText={setDatum}
+        placeholder="2027-03-31"
+        autoCapitalize="none"
+        inputMode="numeric"
+      />
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+
+      <View style={styles.knoppen}>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={titel.trim().length < 3}
+          onPress={() => void bewaar()}
+        >
+          {t('mijlpaalbewerken.bewaren')}
+        </Button>
+        <Button variant="stil" disabled={bezig} onPress={onAnnuleer}>
+          {t('mijlpaalbewerken.annuleren')}
+        </Button>
+      </View>
+    </View>
   );
 }
 

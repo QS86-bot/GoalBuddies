@@ -1293,6 +1293,38 @@ export const nl = {
   'nieuwdoel.uren': 'Uren per week',
   'nieuwdoel.uren_hint':
     'Hoeveel tijd heb je hier realistisch voor? Voedt straks de Risico-radar.',
+  'mijlpaalbewerken.titel': 'Titel',
+  'mijlpaalbewerken.omschrijving': 'Omschrijving',
+  'mijlpaalbewerken.streefdatum': 'Streefdatum',
+  'mijlpaalbewerken.streefdatum_hint':
+    'Optioneel, als jjjj-mm-dd. Leeg laten mag; deze datum is van jou en verschuift zonder overleg.',
+  'mijlpaalbewerken.bewaren': 'Bewaren',
+  'mijlpaalbewerken.annuleren': 'Annuleren',
+  'mijlpalenblok.bewerken': 'Bewerken',
+  'mijlpalenblok.bewerken_label': 'Mijlpaal {titel} bewerken',
+  'commitmentspoor.toon': 'Toon het spoor',
+  'commitmentspoor.verberg': 'Verberg het spoor',
+  'commitmentspoor.leeg_titel': 'Nog geen gebeurtenissen',
+  'commitmentspoor.leeg_tekst':
+    'Zodra er iets met deze afspraak gebeurt, staat het hier. Alleen jij ziet dit.',
+  'commitmentspoor.created': 'Aangemaakt',
+  'commitmentspoor.confirmed': 'Door jou bevestigd',
+  'commitmentspoor.edited': 'Aangepast',
+  'commitmentspoor.triggered': 'Verschuldigd geworden',
+  'commitmentspoor.posted': 'Gedeeld met de groep',
+  'commitmentspoor.resolved': 'Afgehandeld',
+  'commitmentspoor.cancelled': 'Ingetrokken',
+  'doelbewerken.titel': 'Doel bewerken',
+  'doelbewerken.eyebrow': 'Jouw doel',
+  'doelbewerken.bewaren': 'Wijzigingen bewaren',
+  'doelbewerken.annuleren': 'Terug zonder bewaren',
+  'doelbewerken.leeg_titel': 'Dit doel bestaat niet meer',
+  'doelbewerken.leeg_tekst':
+    'Misschien is het verwijderd, of hoort het bij iemand anders. Ga terug naar je doelen.',
+  'doelbewerken.streefdatum_kop': 'Streefdatum',
+  'doelbewerken.streefdatum_uitleg':
+    'Je streefdatum staat op {datum} en verandert hier niet. Een datum verschuiven vraag je aan een buddy — anders is een afspraak eenzijdig op te rekken. Dat doe je op het doel zelf.',
+  'doelbewerken.knop': 'Doel bewerken',
   'nieuwdoel.aanmaken': 'Doel aanmaken',
   'nieuwdoel.annuleren': 'Annuleren',
 

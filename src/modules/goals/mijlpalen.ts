@@ -62,7 +62,7 @@ export async function maakMijlpaal(
       //    kolomstandaard gebruiken, en die staat buiten dit bestand.
       ai_generated: false,
     })
-    .select('id, title, status, order_index, target_date')
+    .select('id, title, status, order_index, target_date, description')
     .single();
 
   if (error) {
@@ -260,7 +260,7 @@ export async function fetchVolgendeMijlpalen(
 
   const { data, error } = await supabase()
     .from('milestones')
-    .select('id, title, status, order_index, target_date, goal_id')
+    .select('id, title, status, order_index, target_date, description, goal_id')
     .in('goal_id', [...goalIds])
     .neq('status', 'dropped')
     .order('order_index', { ascending: true })

@@ -1012,13 +1012,13 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    telden als aanroeper, dus élke functie was "levend". Gerepareerd, geijkt, en
    met open ogen vond hij meteen twaalf functies; elf zijn bewakingen en staan nu
    met reden op een lijst die zichzelf moet bewijzen.
-   ⚠️ **Wat er openblijft is schermwerk:** `wijzigDoel()`, `wijzigMijlpaal()` en
-   `fetchCommitmentSpoor()` hebben nul schermen — een doel is na aanmaken niet te
-   wijzigen, een mijlpaaltitel met een typefout is permanent, en het auditspoor
-   dat domeinregel 5 eist is nergens te zien. **Dat is een feature met een spec en
-   geen opruimwerk**, mede omdat een doelbewerkscherm de streefdatum raakt en die
-   via A7 akkoord van een buddy vraagt. Staat als rij in het dossier, met de
-   tweede controle die er nog bij hoort.
+   ✅ **En het schermwerk is er ook**: `app/doel/bewerk/[id].tsx`, een bewerkknop
+   per mijlpaal, en het commitment-spoor onder de beloning- en strafkaart. De
+   streefdatum van een dóél zit er bewust niet in (A7) en het scherm zegt dat.
+   `tests/beloftes/bereikbaar.test.ts` bewaakt voortaan per functie dát er een
+   scherm is. ⚠️ **Wat nog moet: die drie schermen één keer met de hand
+   doorlopen** — zie de openstaande metingen hieronder. En de algemene detector
+   voor dode exports vraagt een echte parser; staat als rij in het dossier.
 
 ⚠️ **Twee controlescripts hebben een blinde vlek, en hun groen zegt daarom niets
 over die klasse.** `tekst:controle` ziet geen JSX-tekst die over meerdere regels
@@ -1124,7 +1124,15 @@ maanden blijft liggen, dus het staat bovenaan.
    lees dan de `reason` uit `registreer_push_token()` — sinds 0067 is dat een
    nette `{ok:false, reason}`.
 
-3. **De schermen van EPIC 13 zijn nooit door een mens gelopen.** De epic zelf is
+3. **De drie nieuwe schermen van 28-08 zijn nooit door een mens gelopen.** Een
+   doel bewerken (`/doel/bewerk/<id>`), een mijlpaal bewerken (knop in de
+   mijlpalenlijst) en het commitment-spoor (onder de beloning- en strafkaart).
+   Bewezen is dat de keten verbonden is en dat een test dat ziet; de
+   bouwomgeving heeft geen `.env` en kan de app niet draaien. ⚠️ Let bij de
+   mijlpaal specifiek op dat een titelcorrectie de omschrijving láát staan — dat
+   was de val die tijdens het bouwen boven kwam.
+
+4. **De schermen van EPIC 13 zijn nooit door een mens gelopen.** De epic zelf is
    af (QS8-132, Done sinds 25-08, migraties 0076 t/m 0080), maar er bestáát geen
    open groep: wat een lid daarvan te zien krijgt, is uitsluitend door de
    RLS-suite bewezen. Maak er één aan en loop hem door.

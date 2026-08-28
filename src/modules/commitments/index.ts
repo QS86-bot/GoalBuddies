@@ -22,6 +22,8 @@ export {
   COMMITMENT_STANDEN,
   isAfgegaan,
   isOpenstaand,
+  SPOORGEBEURTENISSEN,
+  spoorLabels,
   statusTeksten,
   tekstVoor,
   type CommitmentTekst,
