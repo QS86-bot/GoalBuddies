@@ -1,4 +1,4 @@
--- 0113_zeef_pint_zijn_pad.sql — drie functies zonder search_path, en de zeef die daardoor niets zeeft
+-- 0114_zeef_pint_zijn_pad.sql — drie functies zonder search_path, en de zeef die daardoor niets zeeft
 --
 -- ROLLBACK-PAD:
 --   Herstel de drie functies uit 0103 zonder `set search_path` en met de
@@ -123,7 +123,7 @@ security definer
 set search_path to 'public', 'pg_temp'
 as $$
   -- ⚠️ **Geen `prosecdef`-filter meer op deze tak, en dat is de wijziging van
-  --    0113.** Een functie zonder gepind pad hoeft geen rechten te verhogen om
+  --    0114.** Een functie zonder gepind pad hoeft geen rechten te verhogen om
   --    schade te doen: `tip_noemt_tegenvaller()` was niet definer en gaf met een
   --    gekaapt pad toch het verkeerde antwoord. De bewaking van 0106 keek daar
   --    langs omdat hij alleen definer-functies telde.

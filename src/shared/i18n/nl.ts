@@ -968,6 +968,36 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Seizoenen — QS8-79 (PRD 8.5), migratie 0112
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Badges — QS8-78 (PRD 8.4), migratie 0113
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Badges zijn privé.** Deze teksten staan nooit op een groepsscherm; de
+  //    badge die er níét staat, zou daar het signaal zijn. Zie het beslisdocument
+  //    `2026-08-27-badges-zijn-prive.md`.
+  //
+  // ⚠️ De uitleg staat in de **verleden tijd en over jou** — "je rondde je eerste
+  //    doel af", niet "rond een doel af". Een badge die je al hebt, is geen
+  //    opdracht meer.
+  'badge.kop': 'Wat je tot nu toe gedaan hebt',
+  'badge.nog_geen': 'Hier komen je eerste mijlpalen te staan. De eerste komt sneller dan je denkt.',
+  'badge.laden_mislukt': 'Je badges konden niet geladen worden.',
+  'badge.first_goal': 'Eerste doel af',
+  'badge.first_goal_uitleg': 'Je rondde je eerste doel helemaal af.',
+  'badge.first_milestone': 'Eerste mijlpaal',
+  'badge.first_milestone_uitleg': 'Je haalde je eerste mijlpaal binnen een doel.',
+  'badge.first_review': 'Eerste bevestiging',
+  // ⚠️ Deze is de enige die niet over je eigen prestatie gaat, en dat is opzet:
+  //    zonder beoordelaars bestaat peer-goedkeuring niet.
+  'badge.first_review_uitleg': 'Je bevestigde voor het eerst de week van een buddy.',
+  'badge.streak_4': 'Vier weken op rij',
+  'badge.streak_4_uitleg': 'Je hield vier cycli achter elkaar vol.',
+  'badge.streak_12': 'Twaalf weken op rij',
+  'badge.streak_12_uitleg': 'Je hield twaalf cycli achter elkaar vol — een heel kwartaal.',
+  // ⚠️ Staat onder de lijst en is geen loze geruststelling: hij legt uit waaróm
+  //    een badge blijft staan als je reeks breekt, en dat is precies het moment
+  //    waarop iemand anders zou denken dat hij hem kwijt is.
+  'badge.blijven_staan': 'Wat je verdiend hebt, blijft staan. Ook als een reeks een keer breekt.',
   'seizoen.kop': 'Hoe lang duurt een seizoen?',
   'seizoen.monthly': 'Een maand',
   'seizoen.quarterly': 'Een kwartaal',
