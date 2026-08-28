@@ -402,6 +402,27 @@ export const en: Record<Sleutel, string> = {
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
   'koppel.nieuw_doel': 'New goal',
+  'deling.kop': 'Shared with',
+  'deling.uitleg':
+    'One goal may sit in more than one group. Each group is a separate permission: you ' +
+    'link and unlink them independently.',
+  'deling.nergens': 'You are not sharing this goal with anyone yet. It is only on your screen.',
+  'deling.geen_groepen':
+    'You are not in a group yet. As soon as you have one, you can link this goal to it here.',
+  'deling.overal': 'This goal is in all of your groups.',
+  'deling.koppel_kop': 'Also share with',
+  'deling.koppel': 'Share with {naam}',
+  'deling.uitleg_beschermd':
+    'Protected. This group sees the title and your milestone progress — not your notes, ' +
+    'not your weeks and not your points.',
+  'deling.uitleg_open':
+    'Open. This group sees the title, your milestone progress and your weeks — including the ' +
+    'weeks you did not make. Your notes and your points stay yours.',
+  'deling.welke_groep': 'Which group decides?',
+  'deling.welke_groep_hint':
+    'This goal sits in more than one group. Only the group you pick here reads your ' +
+    'explanation and decides on the new date.',
+  'deling.kies_eerst': 'First pick which group decides.',
   'deelnemen.titel': 'Join',
   'deelnemen.eyebrow': 'WITH A CODE',
   'deelnemen.code_label': 'Invite code or link',

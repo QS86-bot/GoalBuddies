@@ -938,6 +938,89 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
       TEST_TIMEOUT,
     );
 
+    /**
+     * ⚠️ **De belofte is niet "een gekoppeld doel weigert" maar "de datum
+     *    verschuift niet zonder dat een buddy het gezien heeft".** Die twee zijn
+     *    niet hetzelfde, en het verschil kostte deze regel bijna zijn hele
+     *    werking: de test hierboven toetst de weigering op het móment dat het
+     *    doel gekoppeld is, en tot 0110 was de koppelstand met drie verzoeken om
+     *    te draaien.
+     *
+     * ⚠️ **Waarom dat zwaarder weegt dan het lijkt.** Besluit A43 (24-08) wees
+     *    een minpunt op verschuiven bewust áf, met als onderbouwing: "de rem zit
+     *    ergens anders — verschuiven kán alleen met akkoord van een buddy". Deze
+     *    omweg haalde dus niet een extra slot weg maar het enige.
+     */
+    it(
+      'ontkoppelen, verzetten en terugkoppelen verschuift de datum niet',
+      async () => {
+        const admin = adminDb();
+        const voor = await admin
+          .from('goals')
+          .select('target_date')
+          .eq('id', f.goalId)
+          .single();
+
+        // Stap 1 — de koppeling weg. Dit mag de eigenaar gewoon.
+        const weg = await f.alice.db
+          .from('goal_group_links')
+          .delete()
+          .eq('goal_id', f.goalId)
+          .eq('group_id', f.groupId);
+        expect(weg.error).toBeNull();
+
+        // ⚠️ **De koppeling gaat in een `finally` terug.** Zonder dat laat een
+        //    rode assertie hieronder het doel ontkoppeld achter, en dan vallen
+        //    de negen A7-tests eronder óók om — met een oorzaak die niets met
+        //    hun eigen belofte te maken heeft. Bij het breken van deze test met
+        //    de hand gebeurde precies dat.
+        try {
+          // Stap 2 — nu zou de route zonder groep openstaan.
+          const { data } = await f.alice.db.rpc('zet_streefdatum', {
+            p_goal_id: f.goalId,
+            p_date: '2028-04-04',
+          });
+          expect(uit(data).ok).toBe(false);
+          expect(uit(data).reason).toBe('recent_ontkoppeld');
+        } finally {
+          // Stap 3 — de koppeling terug, hoe dit ook afliep.
+          await f.alice.db
+            .from('goal_group_links')
+            .insert({ goal_id: f.goalId, group_id: f.groupId });
+        }
+
+        const na = await admin.from('goals').select('target_date').eq('id', f.goalId).single();
+        expect(na.data?.target_date).toBe(voor.data?.target_date);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een doel dat lang geleden losgekoppeld is, mag de eigenaar weer zelf zetten',
+      async () => {
+        // ⚠️ **De tegenhanger, en zonder haar is 0110 te streng zonder dat iets
+        //    het merkt.** `vraag_deadline_verschuiving()` weigert met
+        //    `not_linked` zodra de koppeling weg is, dus een permanent verbod
+        //    zou een doel dat een groep verlaten heeft zónder enige weg naar een
+        //    nieuwe datum achterlaten — de dode keten uit QS8-113.
+        const admin = adminDb();
+
+        const los = await admin
+          .from('goals')
+          .update({ losgekoppeld_op: new Date(Date.now() - 8 * 864e5).toISOString() })
+          .eq('id', f.soloGoalId);
+        expect(los.error).toBeNull();
+
+        const { data } = await f.alice.db.rpc('zet_streefdatum', {
+          p_goal_id: f.soloGoalId,
+          p_date: '2028-05-05',
+        });
+
+        expect(uit(data).ok).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
     it(
       'een verzoek zonder behoorlijk argument wordt geweigerd',
       async () => {

@@ -32,9 +32,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **516 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41, QS8-137 en QS8-65).
-   Zonder credentials geeft `npm test` **1090 geslaagd en 496 overgeslagen**; typecheck
-   en lint groen.
+   **537 geslaagd, 1 overgeslagen** (28-08, na QS8-56 en QS8-65). De hele suite
+   geeft met de stack **1679 geslaagd en 1 overgeslagen**; zonder credentials
+   **1163 geslaagd en 517 overgeslagen**. Typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -91,7 +91,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 32 tabellen. Migraties `0001` t/m `0110`
 staan in de map.
 
-⚠️ **`0107`, `0108` en `0109` zijn nog niet op productie gedraaid.** Alle drie zijn op
+⚠️ **`0107` t/m `0110` zijn nog niet op productie gedraaid.** Alle vier zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
 `register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
@@ -106,12 +106,15 @@ dan geldt op productie:
   clientkant; zie de rij van 18-08.
 - `0109` — `vastgelopen_goedkeuringen()` bestaat daar niet, dus er is geen
   manier om te tellen hoeveel wachtende weken hun beoordelaars kwijt zijn.
+- `0110` — de rem van A7 is met drie verzoeken weg te nemen: ontkoppelen,
+  `zet_streefdatum()`, terugkoppelen. Gemeten: de datum schoof tien maanden op
+  en er ging **geen enkel verzoek** naar een buddy. Zie de rij van 17-08.
 
 ⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
 `src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
 gehaald, en daar bestaat de functie nog niet. Het blok
-`vastgelopen_goedkeuringen` is daarom met de hand toegevoegd, in exact de vorm
-die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
+`vastgelopen_goedkeuringen` en de kolom `goals.losgekoppeld_op` zijn daarom met
+de hand toegevoegd, in exact de vorm die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
 verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
 volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
 
@@ -474,7 +477,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth en avatar-upload |
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
-| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af. Van de twee `phase:v2`-issues is QS8-57 (een groep verlaten) op 27-08 gebouwd; alleen QS8-56 staat nog open |
+| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, inclusief de twee `phase:v2`-issues: QS8-57 (een groep verlaten) en QS8-56 (hetzelfde doel in meer dan één groep) zijn allebei op 27-08 gebouwd |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ **af**, inclusief QS8-65 (`phase:v2`, gebouwd 27-08, migratie `0107`). Een groep kiest tussen één buddy, een meerderheid en een vast aantal. ⚠️ De drempel wordt als **getal** bevroren bij het indienen, niet als regel gelezen bij het goedkeuren — anders tilt een beheerder (of een nieuw lid) de lat op onder een week die al loopt. Zie `docs/decisions/2026-08-27-de-goedkeuringsdrempel.md` |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
@@ -512,7 +515,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
-| Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
+| ~~Hetzelfde doel aan meerdere groepen koppelen~~ | QS8-56 | ✅ **gebouwd 27-08**, zónder migratie. `goal_group_links` kon dit vanaf dag één en het gróépsscherm kon het ook — `KoppelDoel` filtert alleen tegen de koppelingen van díé groep, dus wie in twee groepen achter elkaar hetzelfde doel koos, hád het al. Wat ontbrak was het overzicht vanaf het doel, en dat is nu het blok **Gedeeld met** op `app/doel/[id].tsx`. ⚠️ **Onderweg bleek het deadlineverzoek stuk te staan wachten:** het scherm nam `groepen[0]` als de groep die erover besliste, en die lijst had geen `order by`. Elk slot eromheen was dicht en gemeten; de gebruiker had de groep alleen nooit aangewezen. Zie `docs/decisions/2026-08-27-een-doel-in-meer-dan-een-groep.md` §2 |
 | ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0102. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0102 |
 | ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
 

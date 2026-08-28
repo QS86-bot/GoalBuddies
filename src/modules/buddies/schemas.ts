@@ -99,6 +99,25 @@ export function uitnodigingsLink(basis: string, code: string): string {
 export const ZICHTBAARHEDEN = ['beschermd', 'open'] as const;
 export type Zichtbaarheid = (typeof ZICHTBAARHEDEN)[number];
 
+/**
+ * Leest een zichtbaarheid uit iets waarvan je de vorm niet kent.
+ *
+ * ⚠️ **Onbekend is beschermd, en dat is de hele functie.** De gegenereerde types
+ *    geven `groups.zichtbaarheid` als `string` terug, dus élke lezer moet
+ *    versmallen — en elke lezer die dat met de hand doet, kan het één keer
+ *    andersom opschrijven. Eén keer `=== 'beschermd' ? 'beschermd' : 'open'` is
+ *    genoeg om een oudere server, een lege kolom of een tikfout als "open" te
+ *    laten lezen, en dan dénkt de gebruiker dat hij iets deelt wat hij niet
+ *    deelt — of erger, andersom.
+ *
+ *    Daarom staat de versmalling hier één keer en niet bij elke lezer. Zie
+ *    besluit A41 in CLAUDE.md: voor élk oppervlak is beschermd het antwoord tot
+ *    iemand het tegendeel besluit.
+ */
+export function leesZichtbaarheid(waarde: unknown): Zichtbaarheid {
+  return waarde === 'open' ? 'open' : 'beschermd';
+}
+
 /** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
 export function zichtbaarheidLabels(): Readonly<Record<Zichtbaarheid, string>> {
   return {
