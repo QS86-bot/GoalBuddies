@@ -283,6 +283,46 @@ noemt.
 
 ---
 
+## 2.6a Storage — vier regels bij de eerste bucket
+
+Sinds migratie `0124` heeft dit project één bucket: **`avatars`**, privé, 2 MB,
+`image/jpeg|png|webp`. Wat daar geldt, geldt bij elke volgende bucket.
+
+1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
+   die met de hand gemaakt is, staat nergens in deze repository — en dan kan
+   `supabase/migrations/` het schema van productie niet meer opbouwen en toetst
+   de RLS-suite een ánder schema dan er draait. `npm run storage:controle` gaat
+   af zodra er code naar een bucket schrijft die geen migratie aanmaakt.
+2. **`public = false`, en dat is geen voorzichtigheid.** Een openbare bucket
+   omzeilt RLS volledig: elk bestand is met de URL alleen te lezen, buiten elke
+   policy om. `storage:controle` wordt rood op élke openbare bucket.
+3. **De bucketnaam is een constante, geen berekening.** `AVATAR_BUCKET` in
+   `src/modules/auth/avatar.ts`. Een naam die uit een variabele komt, ontsnapt
+   aan de controle hierboven.
+4. **Tekenen gaat in één ronde per lijst.** Een privébucket vraagt een
+   ondertekende URL per bestand; per rij tekenen is de N+1 uit
+   schaalbaarheidsregel 12, en het groepsoverzicht is precies de plek waar dat
+   pijn doet. Gebruik `metGetekendeAvatars(rijen, veld)` op het ophaalpad zelf.
+   `npm run avatar:controle` wordt rood zodra een ophaalpad een avatar-kolom mapt
+   zonder hem te tekenen.
+
+⚠️ **Bij het toepassen van 0124 op productie:** de insert in `storage.buckets`
+staat op `on conflict (id) do update`, dus een bucket die er per ongeluk al is
+wordt op de juiste stand gezet in plaats van te botsen. De vier policies staan
+elk achter een `drop policy if exists`. Controleer na afloop:
+
+```sql
+select id, public, file_size_limit, allowed_mime_types from storage.buckets;
+select polname from pg_policy p
+  join pg_class c on c.oid = p.polrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'storage' and c.relname = 'objects';
+```
+
+Verwacht: één rij `avatars | f | 2097152 | {image/jpeg,image/png,image/webp}` en
+vier policies `avatars_select`, `avatars_insert`, `avatars_update`,
+`avatars_delete`.
+
 ## 2.7 Verbindingen en pooling
 
 **`max_connections` staat op 60**, nagemeten op 24-08-2026. Dat is voor de héle

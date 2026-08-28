@@ -16,6 +16,8 @@
 --      * `extensions.gen_random_bytes()` — 2 keer
 --      * de rollen `anon`, `authenticated`, `service_role`
 --      * de publicatie `supabase_realtime`
+--      * `storage.buckets`, `storage.objects` en `storage.foldername()` — sinds
+--        0124, de eerste migratie die een bucket aanmaakt
 --
 --    Komt er iets bij in een migratie, dan valt de opbouw hier om met een
 --    duidelijke fout. Dat is de bedoeling: de steiger hoort achter de migraties
@@ -211,3 +213,52 @@ create table if not exists supabase_migrations.schema_migrations (
   statements text[],
   name text
 );
+
+-- ---------------------------------------------------------------------------
+-- Storage
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Toegevoegd voor 0124 en niet vooruitlopend.** Dit project had tot 28-08
+--    geen enkele bucket; de steiger hoort achter de migraties aan te lopen, dus
+--    dit staat er pas nu.
+--
+-- ⚠️ **Wat er níet in zit: de storage-API.** Uploaden gaat op het echte project
+--    via een HTTP-dienst die de rij in `storage.objects` schrijft. Hier is alleen
+--    de tabel met zijn RLS, want dát is wat de policies van 0124 aanraken. Een
+--    test die een upload nábootst schrijft dus rechtstreeks in de tabel — precies
+--    zoals de storage-dienst het zou doen, en dus onder dezelfde policies.
+create schema if not exists storage;
+
+create table if not exists storage.buckets (
+  id                 text primary key,
+  name               text not null,
+  public             boolean not null default false,
+  file_size_limit    bigint,
+  allowed_mime_types text[],
+  created_at         timestamptz not null default now()
+);
+
+create table if not exists storage.objects (
+  id         uuid primary key default gen_random_uuid(),
+  bucket_id  text references storage.buckets (id),
+  name       text not null,
+  owner      uuid,
+  created_at timestamptz not null default now()
+);
+
+alter table storage.objects enable row level security;
+
+grant usage on schema storage to anon, authenticated, service_role;
+grant select, insert, update, delete on storage.objects to authenticated, service_role;
+grant select on storage.buckets to authenticated, service_role;
+
+-- Supabase' eigen `foldername()`: de padsegmenten zónder de bestandsnaam.
+-- `avatars/<uuid>/foto.png` geeft `{<uuid>}` als je hem op `name` toepast, want
+-- `name` is daar het pad bínnen de bucket.
+create or replace function storage.foldername(name text)
+returns text[]
+language sql
+immutable
+as $$
+  select (string_to_array(name, '/'))[1:greatest(array_length(string_to_array(name, '/'), 1) - 1, 0)];
+$$;

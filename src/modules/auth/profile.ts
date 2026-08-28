@@ -5,6 +5,7 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { type UserClock, type Weekday } from '../../shared/time';
 
+import { tekenAvatars } from './avatar';
 import { profielPatchSchema, type ProfielPatch } from './schemas';
 import { invoerfout } from '../../shared/api';
 
@@ -56,7 +57,22 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
     throw new Error(t('profiel.laden_mislukt'));
   }
 
-  return data === null ? null : (data as Profiel);
+  if (data === null) return null;
+
+  // ⚠️ **Het pad wordt hier getekend en niet in het scherm.** Sinds migratie 0124
+  //    is de avatar-bucket privé en draagt `avatar_url` een pád; een `<Image>` kan
+  //    daar niets mee. Dat tekenen hoort in de datalaag, precies zoals bij de
+  //    chat, het groepsoverzicht en de beoordelingswachtrij — anders is er één
+  //    scherm dat het vergeet en dan is het een leeg vlak zonder foutmelding.
+  //
+  //    Wat hier terugkomt is dus een URL die na een uur verloopt. Wie het pád
+  //    nodig heeft om iets te verwijderen, leest het opnieuw uit `profiles`
+  //    (`verwijderAvatar` doet dat) en niet uit dit object.
+  const profiel = data as Profiel;
+  if (profiel.avatar_url === null) return profiel;
+
+  const getekend = await tekenAvatars([profiel.avatar_url]);
+  return { ...profiel, avatar_url: getekend.get(profiel.avatar_url) ?? null };
 }
 
 export type ProfielUitkomst = { ok: true; profiel: Profiel } | { ok: false; melding: string };

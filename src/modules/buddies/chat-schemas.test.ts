@@ -270,4 +270,45 @@ describe('de cache van de lopende periode', () => {
 
     expect(beperkVoorCache(drie)).toHaveLength(3);
   });
+
+  // ⚠️ **De naad tussen de privébucket en de cache** — migratie 0124. Sinds de
+  //    avatar-bucket privé is, draagt `sender_avatar` in een geladen bericht een
+  //    signed URL die na een uur verloopt; deze cache leeft tot het einde van de
+  //    groepsperiode. Bewaren we hem, dan toont het scherm na een uur geen avatar
+  //    maar een *kápotte* avatar.
+  //
+  //    Elk onderdeel klopt hier op zichzelf: het tekenen is goed, de cache is
+  //    goed. Het is de combinatie die lekt, en dat is precies de vorm uit
+  //    CLAUDE.md regel 18.
+  it('bewaart geen avatar — een ondertekende URL overleeft de cache niet', () => {
+    const met = [
+      bericht({
+        id: 'a',
+        created_at: '2026-08-18T09:00:00Z',
+        sender_avatar: 'https://project.supabase.co/storage/v1/object/sign/avatars/u1/x.jpg?token=…',
+      }),
+    ];
+
+    expect(beperkVoorCache(met)[0]?.sender_avatar).toBeNull();
+  });
+
+  it('laat de rest van het bericht ongemoeid bij het weghalen van de avatar', () => {
+    const met = [
+      bericht({ id: 'a', created_at: '2026-08-18T09:00:00Z', sender_avatar: 'https://x/y.jpg' }),
+    ];
+
+    expect(beperkVoorCache(met)[0]).toEqual({ ...met[0], sender_avatar: null });
+  });
+
+  it('haalt de avatar ook weg uit de berichten die de afkapping overleven', () => {
+    const veel = Array.from({ length: CACHE_MAX + 5 }, (_, i) =>
+      bericht({
+        id: `b${i}`,
+        created_at: `2026-08-18T10:${String(i).padStart(2, '0')}:00Z`,
+        sender_avatar: 'https://x/y.jpg',
+      }),
+    );
+
+    expect(beperkVoorCache(veel).every((b) => b.sender_avatar === null)).toBe(true);
+  });
 });

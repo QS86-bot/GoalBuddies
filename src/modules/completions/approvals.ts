@@ -2,6 +2,13 @@ import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
+//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
+//    React en React Native mee — in een test die in Node draait is dat een
+//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
+//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+import { metGetekendeAvatars } from '../auth/avatar';
 import { invoerfout, type Resultaat, type RpcRij } from '../../shared/api';
 
 import { INTREKVENSTER_MINUTEN, oordeelSchema, type OordeelInvoer } from './approval-schemas';
@@ -133,7 +140,10 @@ export async function fetchBeoordelingen(
   }
 
   const ruw = (data ?? []) as readonly WachtrijRij[];
-  const rijen = ruw.map(naarTeBeoordelen).filter((r): r is TeBeoordelen => r !== null);
+  const rijen = await metGetekendeAvatars(
+    ruw.map(naarTeBeoordelen).filter((r): r is TeBeoordelen => r !== null),
+    'owner_avatar',
+  );
   const overgeslagen = ruw.length - rijen.length;
   const totaal = Math.max(0, (ruw[0]?.total_open ?? rijen.length) - overgeslagen);
 

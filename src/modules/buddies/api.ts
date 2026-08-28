@@ -1,5 +1,12 @@
 import { t } from '../../shared/i18n';
 
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
+//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
+//    React en React Native mee — in een test die in Node draait is dat een
+//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
+//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+import { metGetekendeAvatars } from '../auth/avatar';
+
 import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -366,7 +373,10 @@ export async function fetchGroepsoverzicht(
   }
 
   const ruw = (data ?? []) as readonly OverzichtRij[];
-  const rijen = ruw.map(naarGroepslid).filter((lid): lid is Groepslid => lid !== null);
+  const rijen = await metGetekendeAvatars(
+    ruw.map(naarGroepslid).filter((lid): lid is Groepslid => lid !== null),
+    'avatar_url',
+  );
 
   // ⚠️ Onbruikbare rijen gaan óók van het totaal af. Zonder die aftrek blijft
   //    `meer` op waar staan en toont de UI voor altijd "11 van 12" zonder dat er
