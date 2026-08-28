@@ -94,15 +94,15 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0119`
-staan in de map: 122 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0120`
+staan in de map: 123 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 Daarvan staan `0001` t/m `0118` op productie — 121 registerrijen, nul
 tijdstempels.
 
-⚠️ **`0119` staat nog níet op productie.** Hij weigert een `tz`-waarde die geen
-tijdzone is, op `profiles` en `groups`; wat er zonder hem misging staat in het
-reviewdossier. Hij is de enige die nog niet is toegepast; de rest van de map
-staat er wel op.
+⚠️ **`0119` en `0120` staan nog níet op productie.** `0119` weigert een
+`tz`-waarde die geen tijdzone is; `0120` laat het kettingvenster op de klok van
+de groep tellen in plaats van in UTC. Wat ze dichten staat in het reviewdossier.
+Zij zijn de enige twee uit de map die nog niet zijn toegepast.
 
 ⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
@@ -139,9 +139,16 @@ overeen met de lokale stack.
 
 ⚠️ **De twee toevoegingen in `src/lib/database.types.ts` zijn geen
 hand-toevoegingen meer.** `goals.losgekoppeld_op` en
-`vastgelopen_goedkeuringen()` bestaan nu op het project, dus `npm run db:types`
+`vastgelopen_goedkeuringen()` bestaan nu op het project, dus `npm run types:db`
 levert ze voortaan zelf op. De volgorde-waarschuwing die hier stond, is
 vervallen.
+
+⚠️ **Er staat er wél weer één, en dit keer met een bekende houdbaarheid.**
+`groepsdatum()` uit 0120 is met de hand in `src/lib/database.types.ts` gezet,
+want `types:db` leest het echte project en daar staat 0120 nog niet op. Zodra
+hij is toegepast, levert de generator hem zelf en is de regel geen toevoeging
+meer. **Draai `npm run types:db` na het toepassen** — anders staat er een
+handmatige regel die niemand meer als handmatig herkent.
 
 ⚠️ **Wat nog wél moet: de Edge Functions opnieuw deployen.** De
 `scrubMessage()`-reparatie van 28-08 zit in `supabase/functions/_shared/`, maar
