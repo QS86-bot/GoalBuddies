@@ -598,7 +598,7 @@ kan een sessie **niet** zelf oppakken:
 | QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
-| QS8-109 | Vraagt een illustrator |
+| QS8-109 | Vraagt een illustrator — **én Quinten onderzoekt zelf wat hij wil (28-08). Pak dit niet op in een `/verder`-ronde; het is bewust een van de laatste.** Het uitgewerkte voorstel staat in het issue zelf |
 
 **Wat er wél ligt is de controleronde van 28-08**, en die heeft meer werk
 opgeleverd dan de backlog. Zeven agents over ~99.500 regels; de vijf blokkerende
