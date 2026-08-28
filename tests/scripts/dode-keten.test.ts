@@ -6,6 +6,7 @@ import {
   controleer,
   functiesZonderAanroeper,
   waardenZonderSchrijver,
+  BEWUST_ONGESCHREVEN,
   TREFFER_HOORT_ELDERS,
 } from '../../scripts/dode-keten-controle.mjs';
 
@@ -320,6 +321,100 @@ describe('een treffer die bij een andere tabel hoort', () => {
       TREFFER_HOORT_ELDERS as Record<string, string>,
     )) {
       expect(reden.length, `${sleutel} heeft geen reden`).toBeGreaterThan(60);
+    }
+  });
+});
+
+/**
+ * Een uitzondering die niet meer nodig is — de andere kant van het register.
+ *
+ * ⚠️ **Dit gat werd op 27-08 gevonden en op 28-08 twee keer waar.** De rij zei:
+ *    de uitzondering voor `groups.approval_rule=majority` is achterhaald, want
+ *    QS8-65 heeft de kolom gebouwd. Bij het repareren bleek er een tweede te
+ *    zijn: `groups.season_cadence=monthly` was een paar uur later verlopen door
+ *    QS8-79.
+ *
+ * ⚠️ **Waarom dat stil misgaat.** `controleer()` filtert alles uit `bewust`
+ *    weg, dus een uitzondering die niet meer nodig is verdwijnt uit beeld in
+ *    plaats van op te vallen. De controle blijft groen en de réden blijft
+ *    staan — en die reden zegt dat de feature niet gebouwd is.
+ *
+ * ⚠️ **Dezelfde vorm als `verdwenen` in `zichtbaarheid-controle` en
+ *    `klokgrens-controle`.** Een register hoort twee kanten te hebben: wat er
+ *    bij komt en wat eruit mag. Dit had er één.
+ */
+describe('een uitzondering die niet meer nodig is', () => {
+  const BESTANDEN = [
+    {
+      naam: '0001_x.sql',
+      sql: `create table groups (
+              approval_rule text not null default 'any'
+                constraint groups_approval_rule_valid check (approval_rule in ('any', 'majority'))
+            );`,
+    },
+  ];
+
+  it('meldt hem zodra de waarde wél geschreven wordt', () => {
+    const uit = controleer({
+      bestanden: BESTANDEN,
+      prodBron: "const REGELS = ['any', 'majority'] as const;",
+      bewust: { 'groups.approval_rule=majority': 'ooit terecht, nu niet meer' },
+    });
+
+    expect(uit.verouderd).toEqual(['groups.approval_rule=majority']);
+  });
+
+  it('laat hem met rust zolang niemand de waarde schrijft', () => {
+    // ⚠️ De tegenhanger. Zonder deze zou een controle die élke registerregel
+    //    meldt er ook doorheen komen — en die leert je hem te negeren.
+    const uit = controleer({
+      bestanden: BESTANDEN,
+      prodBron: "const REGELS = ['any'] as const;",
+      bewust: { 'groups.approval_rule=majority': 'nog steeds niet gebouwd' },
+    });
+
+    expect(uit.verouderd).toEqual([]);
+    expect(uit.waarden).toEqual([]);
+  });
+
+  it('houdt de twee kanten uit elkaar', () => {
+    // Een waarde die dood is én niet in het register staat, hoort bij `waarden`;
+    // een registerregel die niet meer nodig is, bij `verouderd`. Nooit allebei.
+    const uit = controleer({
+      bestanden: [
+        {
+          naam: '0002_y.sql',
+          sql: `create table groups (
+                  approval_rule text
+                    constraint c1 check (approval_rule in ('any', 'majority')),
+                  season_cadence text
+                    constraint c2 check (season_cadence in ('quarterly', 'monthly'))
+                );`,
+        },
+      ],
+      prodBron: "const A = ['any', 'majority'];",
+      bewust: { 'groups.approval_rule=majority': 'verlopen' },
+    });
+
+    expect(uit.verouderd).toEqual(['groups.approval_rule=majority']);
+    expect(uit.waarden.map((w) => w.waarde).sort()).toEqual(['monthly', 'quarterly']);
+  });
+
+  it('elke regel in het echte register heeft een reden en de juiste vorm', () => {
+    // ⚠️ **Deze toetst de vórm en niet de verlopenheid, en dat staat er met
+    //    opzet bij.** Of een regel verlopen is, hangt af van de échte migraties
+    //    en de échte bron; dat meet `npm run keten:controle` zelf, en die draait
+    //    sinds 27-08 in CI bij elke push. Een fixture die dat nabouwt, zou een
+    //    kopie van de werkelijkheid toetsen in plaats van de werkelijkheid.
+    //
+    //    De naam noemt daarom wat hij doet. Een test die "geen verlopen regels"
+    //    heet terwijl hij alleen naar de vorm kijkt, is precies de test die
+    //    groen blijft terwijl de belofte breekt.
+    for (const [sleutel, reden] of Object.entries(
+      BEWUST_ONGESCHREVEN as Record<string, string>,
+    )) {
+      expect(reden.length, `${sleutel} heeft geen reden`).toBeGreaterThan(60);
+      expect(sleutel, `${sleutel} mist een tabel.kolom=waarde-vorm`).toMatch(/^[a-z_]+\.[a-z_]+=/);
     }
   });
 });

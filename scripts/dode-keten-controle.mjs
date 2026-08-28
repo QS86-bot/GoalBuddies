@@ -87,15 +87,6 @@ export const TREFFER_HOORT_ELDERS = {
  * @type {Record<string, string>}
  */
 export const BEWUST_ONGESCHREVEN = {
-  'groups.approval_rule=majority':
-    'De peer-goedkeuring kent vandaag alleen `any`. `majority` is ontwerp uit ' +
-    'PRD 0001 en staat als QS8-65 in de backlog (Fase 2). De kolom wordt door ' +
-    'niets gelezen — ook niet door `any`. ' +
-    'Wordt een defect zodra iets de kolom gaat lézen: dan belooft een groep een ' +
-    'regel die de goedkeuring niet uitvoert, en dat raakt domeinregel 3.',
-  'groups.season_cadence=monthly':
-    'Seizoenen zijn niet gebouwd (QS8-79, Fase 2); de kolom wordt door niets ' +
-    'gelezen of geschreven. Wordt een defect zodra het seizoenoverzicht er is.',
   'chat_messages.type=photo':
     'Wacht op Storage-buckets, die er nog niet zijn (QS8-71, Fase 2). ⚠️ De ' +
     'waarde is vandaag ' +
@@ -335,10 +326,25 @@ export function sleutelVan({ tabel, kolom, waarde }) {
 export function controleer({ bestanden, prodBron, bewust = BEWUST_ONGESCHREVEN }) {
   const sql = bestanden.map((b) => b.sql).join('\n');
   const functies = functiesZonderAanroeper({ sql, prodBron });
-  const waarden = waardenZonderSchrijver({ bestanden, prodBron }).filter(
-    (w) => !(sleutelVan(w) in bewust),
-  );
-  return { functies, waarden };
+  const alleDood = waardenZonderSchrijver({ bestanden, prodBron });
+  const dood = new Set(alleDood.map(sleutelVan));
+
+  return {
+    functies,
+    waarden: alleDood.filter((w) => !(sleutelVan(w) in bewust)),
+    // ⚠️ **De andere kant van het register, en die ontbrak.** Een uitzondering
+    //    die niet meer nodig is, valt stil buiten beeld: de filter hierboven
+    //    haalt hem weg, dus de controle blijft groen en de réden blijft staan.
+    //    Op 28-08 waren er twee zo — `approval_rule=majority` (QS8-65 bouwde
+    //    hem) en `season_cadence=monthly` (QS8-79, een paar uur later). Beide
+    //    beweerden dat de feature niet bestond terwijl hij er stond.
+    //
+    // ⚠️ Dezelfde vorm als `verdwenen` in `zichtbaarheid-controle` en
+    //    `klokgrens-controle`: een register dat achterloopt geeft redenen voor
+    //    een toestand die er niet meer is, en dat is erger dan geen register —
+    //    want wie het leest, leest de stand van zaken verkeerd.
+    verouderd: Object.keys(bewust).filter((sleutel) => !dood.has(sleutel)),
+  };
 }
 
 function hoofd() {
@@ -352,9 +358,9 @@ function hoofd() {
     .map((p) => readFileSync(p, 'utf8'))
     .join('\n');
 
-  const { functies, waarden } = controleer({ bestanden, prodBron });
+  const { functies, waarden, verouderd } = controleer({ bestanden, prodBron });
 
-  if (functies.length === 0 && waarden.length === 0) {
+  if (functies.length === 0 && waarden.length === 0 && verouderd.length === 0) {
     const aantal = functiesIn(bestanden.map((b) => b.sql).join('\n')).size;
     console.log(
       `dode-keten-controle: ${aantal} functies hebben allemaal een aanroeper, en ` +
@@ -375,11 +381,27 @@ function hoofd() {
         `maar niets schrijft die waarde ooit.`,
     );
   }
-  console.error(
-    '\nOfwel er ontbreekt een schrijfpad, ofwel de waarde hoort weg zoals in 0082 en ' +
-      '0087. Is het bewust en tijdelijk: zet hem in BEWUST_ONGESCHREVEN mét de ' +
-      'voorwaarde die hem weer interessant maakt.',
-  );
+  for (const sleutel of verouderd) {
+    console.error(
+      `✗ BEWUST_ONGESCHREVEN noemt '${sleutel}' een uitzondering, maar die waarde ` +
+        `wordt inmiddels wél geschreven. Haal hem eruit.`,
+    );
+  }
+
+  if (waarden.length > 0 || functies.length > 0) {
+    console.error(
+      '\nOfwel er ontbreekt een schrijfpad, ofwel de waarde hoort weg zoals in 0082 en ' +
+        '0087. Is het bewust en tijdelijk: zet hem in BEWUST_ONGESCHREVEN mét de ' +
+        'voorwaarde die hem weer interessant maakt.',
+    );
+  }
+  if (verouderd.length > 0) {
+    console.error(
+      '\nEen verlopen uitzondering is geen kleinigheid: zolang hij blijft staan, zegt ' +
+        'zijn reden dat de feature niet gebouwd is. Wie het register leest als de ' +
+        'stand van zaken, leest dan iets dat niet meer klopt.',
+    );
+  }
   return 1;
 }
 
