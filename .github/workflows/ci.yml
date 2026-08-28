@@ -72,6 +72,14 @@ jobs:
       - name: Dode ketens
         run: npm run keten:controle
 
+      # ⚠️ Argumentnamen van `.rpc()`. Typecheck vangt een verkeerd type en een
+      #    ontbrekende verplichte parameter, maar een parameter die niet bestáát
+      #    komt erdoor — los gemeten op 28-08. Dat is precies wat een hernoeming
+      #    oplevert, en het is die dag twee keer gebeurd. De fout verschijnt pas
+      #    als iemand de knop indrukt, als `PGRST202`.
+      - name: RPC-argumenten bestaan echt
+        run: npm run rpc:controle
+
       # ⚠️ Storage. Vandaag zijn er nul buckets en nul uploads, dus deze stap is
       #    groen omdat er niets ís — precies het groen waar dit project voor
       #    waarschuwt. Hij bestaat voor de dag dat de eerste upload gebouwd wordt:
