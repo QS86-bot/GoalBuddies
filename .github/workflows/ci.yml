@@ -132,6 +132,13 @@ jobs:
       - name: Geen dubbele sleutels in JSON
         run: npm run json:controle
 
+      # ⚠️ De duurste klasse van dit project: elk onderdeel af en getoetst, de
+      #    keten nergens verbonden. Er is niets kapot, dus geen enkele test wordt
+      #    er rood van — de vier gevallen van 26-08 stonden tussen de vijf dagen
+      #    en drie maanden onopgemerkt en zijn alle vier bij toeval gevonden.
+      - name: Elk injectiepunt is ergens aangesloten
+        run: npm run aansluiting:controle
+
       # ⚠️ Het gat in de nummering is de belangrijkste van de drie toetsen: de
       #    bestanden zijn de enige manier om dit schema ergens anders op te
       #    bouwen, en ontbreekt er één, dan toetst de RLS-suite daar een ánder
