@@ -43,6 +43,15 @@ import { pathToFileURL } from 'node:url';
  * Elke `current_date` in het schema, met de reden waarom hij daar mag staan.
  *
  * De sleutel is `functie :: de regel waar hij in staat`, witruimte genormaliseerd.
+ *
+ * ⚠️ **Twee regels van `group_overview()` stonden hier tot 0120 en zijn weg.**
+ *    Ze rekenden het kettingvenster in UTC terwijl een groep zijn eigen klok
+ *    heeft; 0120 verving ze door `groepsdatum(gid)`. Dit register kijkt naar
+ *    `current_date`, dus een grens op `groepsdatum()` valt er per definitie
+ *    buiten — en dát is een blinde vlek die 0120 zelf gemaakt heeft. Wat hem
+ *    vandaag afdekt is geen register maar een gedragstest:
+ *    `tests/rls/kettingklok.test.ts` legt de grens op zes dagen vast in twee
+ *    tijdzones, en wordt rood bij zeven net zo goed als bij acht.
  */
 export const REGISTER = new Map([
   [
@@ -53,19 +62,6 @@ export const REGISTER = new Map([
   [
     'bewaak_week_review_periode :: or new.group_period_start < current_date - 35 then',
     'Ondergrens met vijf weken speling; een dag verschuiving valt daar ruim binnen.',
-  ],
-  [
-    'group_overview :: p_period_start <= current_date + 1',
-    'Zelfde bovengrens, zelfde reden. Bepaalt of `closed_this_period` überhaupt ' +
-      'berekend wordt.',
-  ],
-  [
-    'group_overview :: p_period_start >= current_date - 6',
-    'Ondergrens van zes dagen: een huddleperiode duurt er zeven en begint op de ' +
-      'huddledag, dus een lópende periode is hoogstens zes dagen oud. ⚠️ Hier ' +
-      'stond tot 0116 acht, met als reden "één periode plus een dag speling" — ' +
-      'en die speling liet de afgesloten periode twee dagen per week open. ' +
-      'Dit is een beveiligingsgrens en geen marge; zie 0116.',
   ],
   [
     'herbereken_risico :: and w.cycle_start_date < current_date;',
