@@ -227,6 +227,20 @@ create table if not exists supabase_migrations.schema_migrations (
 --    de tabel met zijn RLS, want dát is wat de policies van 0126 aanraken. Een
 --    test die een upload nábootst schrijft dus rechtstreeks in de tabel — precies
 --    zoals de storage-dienst het zou doen, en dus onder dezelfde policies.
+--
+-- ⚠️ **Drie dingen die de schil níet nabootst, en die dus in deze repository
+--    ongemeten zijn** — opgeschreven omdat een lege plek anders voor een groene
+--    plek doorgaat:
+--
+--      1. `file_size_limit` en `allowed_mime_types` worden door de storage-diénst
+--         afgedwongen en niet door de tabel. De kop van 0126 noemt de bucket "de
+--         grendel" voor onwrikbare regel 3; niets hier bewijst dat die dicht zit.
+--         Eén upload van 3 MB en één van `application/pdf` tegen het echte
+--         project is de meting die eronder hoort.
+--      2. Upstream geeft de tabelrechten óók aan `anon`; hier niet. Een policy die
+--         per ongeluk `to anon` krijgt, oogt hier dus milder dan in productie.
+--      3. Normalisatie van `..` in een objectnaam gebeurt in de dienst. Zie de kop
+--         van migratie 0129.
 create schema if not exists storage;
 
 create table if not exists storage.buckets (
@@ -243,7 +257,12 @@ create table if not exists storage.objects (
   bucket_id  text references storage.buckets (id),
   name       text not null,
   owner      uuid,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- ⚠️ Upstream heet deze `bucketid_objname`. Zonder hem modelleert de schil
+  --    `upsert: false` niet en kan een test twee objecten met dezelfde naam
+  --    maken — een toestand die op productie niet bestaat, en dus een test die
+  --    iets anders bewijst dan er draait.
+  unique (bucket_id, name)
 );
 
 alter table storage.objects enable row level security;
@@ -255,6 +274,20 @@ grant select on storage.buckets to authenticated, service_role;
 -- Supabase' eigen `foldername()`: de padsegmenten zónder de bestandsnaam.
 -- `avatars/<uuid>/foto.png` geeft `{<uuid>}` als je hem op `name` toepast, want
 -- `name` is daar het pad bínnen de bucket.
+--
+-- ⚠️ **Nagemeten tegen productie op 28-08-2026, en dat hoort hier want anders
+--    toetst `tests/rls/avatarbucket.test.ts` een ándere functie dan de policies
+--    daar uitvoeren.** De echte is plpgsql en luidt
+--    `_parts[1 : array_length(_parts,1) - 1]` na een `string_to_array(name, '/')`.
+--    Beide zijn over tien padvormen naast elkaar gelegd — één en twee mappen
+--    diep, geen map, een leidende slash, dubbele slashes, een lege staart.
+--
+--    **Negen van de tien geven letterlijk hetzelfde.** Het tiende is de lege
+--    string: productie geeft `NULL`, deze geeft `{}`. Dat verschil raakt de
+--    policies niet — `[1]` is in beide gevallen `NULL`, en `NULL = auth.uid()`
+--    is niet waar, dus geweigerd — en `storage.objects.name` is bovendien
+--    `not null` en langs de storage-API niet leeg te krijgen. Het staat er omdat
+--    "functioneel gelijk" een conclusie is en dit de meting eronder.
 create or replace function storage.foldername(name text)
 returns text[]
 language sql

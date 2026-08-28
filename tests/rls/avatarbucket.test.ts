@@ -33,7 +33,7 @@ const OMGEVING = {
 const DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
 
 function psql(sql: string): string {
-  return execFileSync('psql', ['-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-tAc', sql], {
+  return execFileSync('psql', ['-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-tAc', sql], {
     env: OMGEVING,
     encoding: 'utf8',
   }).trim();
@@ -74,14 +74,22 @@ function als(userId: string, sql: string): string {
   return uitvoer.split('\n').slice(1).join('\n').trim();
 }
 
-/** Zoals `als`, maar de transactie mag omvallen — dan komt de SQLSTATE terug. */
+/**
+ * Zoals `als`, maar de transactie mag omvallen — dan komt de SQLSTATE terug.
+ *
+ * ⚠️ **De code komt uit psql en niet uit de mélding**, want `VERBOSITY=verbose`
+ *    zet hem er letterlijk bij (`ERROR:  23514: …`). Een eerdere versie herkende
+ *    de fout aan woorden als "violates check constraint", en die zag de
+ *    `raise exception` van de triggerfunctie in 0130 níét — die schrijft zijn
+ *    eigen zin. De test was dan rood terwijl de grendel werkte.
+ */
 function alsMetFout(userId: string, sql: string): string {
   try {
     return `ok:${als(userId, sql)}`;
   } catch (fout) {
     const tekst = fout instanceof Error ? `${fout.message}` : String(fout);
-    if (/violates check constraint|23514/i.test(tekst)) return '23514';
-    return /row-level security|permission denied|42501/i.test(tekst) ? '42501' : tekst;
+    const code = /ERROR:\s+([0-9A-Z]{5}):/.exec(tekst);
+    return code === null ? tekst : (code[1] ?? tekst);
   }
 }
 
@@ -272,5 +280,106 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
         `update public.profiles set avatar_url = '${alice}/foto.jpg' where id = '${bob}'`,
       ),
     ).toBe('23514');
+  });
+
+  /**
+   * ⚠️ **De drie vormen die de CHECK van 0127 doorliet — migratie 0129.** Die
+   *    toetste `like id || '/%'`, en dat kijkt naar het begin en verder niet.
+   *    `<mij>/../<ander>/a.png` kwam er dus door: precies de impersonatie die
+   *    0127 in zijn eigen kop zegt te sluiten. Dat het misschien niet
+   *    exploiteerbaar is — dat hangt ervan af of de Storage-API `..` normaliseert,
+   *    en dat is hier niet te meten — is geen reden om het open te laten.
+   */
+  it.each([
+    ['een bovenliggende map', `/../`],
+    ['een regeleinde met een URL erachter', `/\nhttps://volgmij.example/x.gif`],
+    ['een dieper subpad', `/map/dieper.png`],
+  ])('weigert %s in het pad', (_naam, staart) => {
+    expect(
+      alsMetFout(
+        alice,
+        `update public.profiles set avatar_url = '${alice}' || E'${staart.replace(/\\n/g, '\\n')}' where id = '${alice}'`,
+      ),
+    ).toBe('23514');
+  });
+
+  // -------------------------------------------------------------------------
+  // Migratie 0130 — de bucket valt niet om en loopt niet vol
+  // -------------------------------------------------------------------------
+
+  /**
+   * ⚠️ **Eén vreemde map legde het lezen van de hele bucket plat.** De kale cast
+   *    `((storage.foldername(name))[1])::uuid` gooit op élke rij waarvan het
+   *    eerste segment geen uuid is, en een fout in een policy-expressie sloopt de
+   *    hele query — niet alleen die rij. `authenticated` kan zo'n object niet
+   *    maken, maar het dashboard zet bij "nieuwe map" een
+   *    `<map>/.emptyFolderPlaceholder` neer.
+   */
+  it('valt niet om op een map die geen uuid is', () => {
+    psql(
+      `insert into storage.objects (bucket_id, name)
+       values ('avatars', 'tmp/.emptyFolderPlaceholder') on conflict do nothing`,
+    );
+
+    expect(als(alice, `select count(*) from storage.objects where bucket_id = 'avatars'`)).toBe(
+      '1',
+    );
+
+    psql(`delete from storage.objects where name = 'tmp/.emptyFolderPlaceholder'`);
+  });
+
+  /**
+   * ⚠️ **Zonder grens legt één account de opslag van iedereen plat.** De gratis
+   *    tier is 1 GB en de bucket laat 2 MB per bestand toe: 512 uploads. Dat
+   *    `uploadAvatar` de vorige opruimt helpt niet — dat is applicatielogica, en
+   *    wie dit doet praat rechtstreeks met de storage-API.
+   */
+  it('laat niet meer dan tien avatars per map toe', () => {
+    expect(
+      alsMetFout(
+        alice,
+        `insert into storage.objects (bucket_id, name)
+         select 'avatars', '${alice}/n' || g || '.png' from generate_series(1, 20) g`,
+      ),
+    ).toBe('23514');
+  });
+
+  // ⚠️ De must-allow-helft: de grens mag de gewone vervanging niet raken.
+  it('laat een gewone tweede upload gewoon toe', () => {
+    expect(
+      als(
+        alice,
+        `insert into storage.objects (bucket_id, name) values ('avatars', '${alice}/tweede.png')`,
+      ),
+    ).toBe('');
+  });
+
+  // -------------------------------------------------------------------------
+  // Migratie 0128 — de uitnodiging noemt geen avatarpad
+  // -------------------------------------------------------------------------
+
+  /**
+   * ⚠️ **Een uitnodigingscode verloopt nooit en wordt doorgestuurd.** Tot 0126 was
+   *    `profiles.avatar_url` altijd leeg, dus dat `invite_preview` hem aan elke
+   *    ingelogde aanroeper gaf, was inert. Sinds 0126 is het eerste padsegment de
+   *    `auth.uid()` van dat lid — en ondertekenen helpt niet, want het pad zit in
+   *    de signed URL. Alleen wegláten helpt.
+   */
+  it('geeft geen avatarpad meer mee met een uitnodiging', () => {
+    psql(
+      `update public.profiles set avatar_url = '${alice}/foto.jpg' where id = '${alice}'`,
+    );
+
+    const uit = als(
+      vreemde,
+      `select jsonb_path_query_array(invite_preview('AVTST1'), '$.members[*].avatar_url')::text`,
+    );
+
+    // Twee leden in deze groep, dus twee posities — en beide leeg.
+    expect(JSON.parse(uit)).toEqual([null, null]);
+    // ⚠️ En niet alleen "geen pad": geen enkel gebruikers-id, in welke vorm dan ook.
+    expect(uit).not.toContain(alice);
+
+    psql(`update public.profiles set avatar_url = null where id = '${alice}'`);
   });
 });

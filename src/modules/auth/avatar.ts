@@ -106,7 +106,18 @@ export async function uploadAvatar(
     return { ok: false, melding: t('avatar.uploaden_mislukt') };
   }
 
-  const bijgewerkt = await db.from('profiles').update({ avatar_url: pad }).eq('id', userId);
+  // ⚠️ **`.select('id').single()` en niet een kale update.** PostgREST geeft bij
+  //    nul geraakte rijen géén fout, dus zonder dit meldt een weigering van RLS —
+  //    of een profielrij die nog niet bestaat — vrolijk `{ ok: true }` terwijl het
+  //    bestand in de bucket staat en niets ernaar wijst. `.single()` maakt van
+  //    "nul rijen" een fout. Zelfde patroon en zelfde reden als `updateProfiel()`;
+  //    `select('id')` en niet `*` vanwege de kolomgrant van 0089.
+  const bijgewerkt = await db
+    .from('profiles')
+    .update({ avatar_url: pad })
+    .eq('id', userId)
+    .select('id')
+    .single();
   if (bijgewerkt.error) {
     // ⚠️ Het bestand staat er nu wel en het profiel wijst er niet naar. Opruimen,
     //    anders groeit de bucket met bestanden die niemand ooit opvraagt.
@@ -129,7 +140,14 @@ export async function verwijderAvatar(userId: string): Promise<Resultaat<true>> 
   const huidig = await db.from('profiles').select('avatar_url').eq('id', userId).maybeSingle();
   const pad = huidig.data?.avatar_url ?? null;
 
-  const losgekoppeld = await db.from('profiles').update({ avatar_url: null }).eq('id', userId);
+  // ⚠️ Zie `uploadAvatar`: zonder `.single()` is nul geraakte rijen geen fout, en
+  //    dan meldt de app "weggehaald" terwijl er niets veranderd is.
+  const losgekoppeld = await db
+    .from('profiles')
+    .update({ avatar_url: null })
+    .eq('id', userId)
+    .select('id')
+    .single();
   if (losgekoppeld.error) {
     reportError(losgekoppeld.error, 'avatar.loskoppelen', { user_id: userId });
     return { ok: false, melding: t('avatar.verwijderen_mislukt') };

@@ -97,7 +97,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0127` staan in de map: **130 bestanden**,
+Migraties `0001` t/m `0130` staan in de map: **133 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -658,7 +658,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Wat | Waar | Waarom blijven liggen |
 |---|---|---|
 | Apple- en Google-login | QS8-25 | Provider moet aan in het Supabase-dashboard; op native vraagt het `expo-web-browser` — een dependency |
-| ~~Avatar uploaden~~ | QS8-27 | ✅ **gebouwd 28-08**, migraties `0126` en `0127` — de eerste bucket van dit project. Privé, met het eerste padsegment als autorisatiegrens. ⚠️ Gevolg door de hele app: `avatar_url` draagt sindsdien een **pad** en geen URL, en de datalaag tekent hem. `npm run avatar:controle` wordt rood zodra een ophaalpad dat vergeet. `0127` zet de grens van de bucket ook op de kolom, want `authenticated` mag `avatar_url` schrijven. Zie `docs/decisions/2026-08-28-de-eerste-bucket.md` |
+| ~~Avatar uploaden~~ | QS8-27 | ✅ **gebouwd 28-08**, migraties `0126` t/m `0130`, alle vijf **toegepast op productie** — de eerste bucket van dit project. Privé, met het eerste padsegment als autorisatiegrens. ⚠️ Gevolg door de hele app: `avatar_url` draagt sindsdien een **pad** en geen URL, en de datalaag tekent hem. `npm run avatar:controle` wordt rood zodra een ophaalpad dat vergeet. `0127` zet de grens van de bucket ook op de kolom, want `authenticated` mag `avatar_url` schrijven. ⚠️ **`0128` t/m `0130` komen uit de reviewronde en horen erbij:** een uitnodigingslink gaf sinds `0126` gebruikers-id's weg aan wie hem doorgestuurd kreeg, de CHECK van `0127` toetste alleen het begin van het pad, en één gebruiker kon de opslag van het hele project vullen. Zie beslisdocument §7. Zie `docs/decisions/2026-08-28-de-eerste-bucket.md` |
 | ~~Doorschuiven van een gemist weekdoel~~ | QS8-47 | ✅ aangesloten in QS8-106: het blok "Nog open van eerdere weken" op *Vandaag* |
 | ~~Een weekdoel aanmaken~~ | QS8-112 | ✅ gebouwd op 20-08. QS8-43 en QS8-44 stonden op Done terwijl er geen scherm was — controleer bij een frontend-issue voortaan of een mens er via het scherm bij kan |
 | ~~Een voltooiing corrigeren~~ | QS8-46 | ✅ opgelost in EPIC 6: de RPC `dien_opnieuw_in` doet het append-only en in één transactie |

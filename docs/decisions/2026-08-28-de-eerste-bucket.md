@@ -1,6 +1,6 @@
 # De eerste bucket van dit project — avatars, privé, met het pad als grens
 
-*28-08-2026 — QS8-27. Migraties `0126` en `0127`.*
+*28-08-2026 — QS8-27. Migraties `0126` t/m `0130`.*
 
 ## Wat er vooraf stond, en waarom het geen bug was
 
@@ -178,3 +178,79 @@ iedereen in je groepen. Een wees kost opslag, een kapot pad kost vertrouwen.
 - **Geen moderatie.** Een avatar is zichtbaar voor je groepsgenoten, en een groep
   is drie tot acht mensen die elkaar kennen. Meldknop en moderatie horen bij een
   publiek profiel, en dat bestaat hier niet.
+
+
+## 7. De reviewronde, en wat er nog vier migraties bij kwam
+
+Onwrikbare regel 19 vraagt de `security-reviewer` bij alles wat uploads, auth of
+RLS raakt. Hij is gedraaid en gaf **blokkerend**. Vier bevindingen zijn hier
+nagemeten en gerepareerd; alle vier zijn met de hand rood gemaakt vóór en groen
+ná de reparatie.
+
+⚠️ **De vier sloten op de bucket zelf hielden.** In andermans map schrijven,
+andermans foto lezen, verwijderen, hernoemen naar je eigen map, `owner` op jezelf
+zetten — zes aanvallen, alle zes vastgelopen. De keuze voor het padsegment boven
+`owner` is de juiste. **De problemen zaten allemaal in de laag eromheen**, en dat
+is precies waar regel 18 zegt dat ze zitten.
+
+### 7a. Er was een zesde ophaalpad, en de controle kon het niet zien — `0128`
+
+`fetchUitnodiging` geeft het resultaat van `invite_preview` door met een spread;
+`app/uitnodiging/[code].tsx` rendert daaruit `<Avatar url={lid.avatar_url} />`.
+
+Twee gaten tegelijk, allebei gemeten:
+
+1. **`avatar:controle` deed `TEKENT.test(inhoud)` — één regex over het hele
+   bestand.** `buddies/api.ts` telde als "tekent" omdat `fetchGroepsoverzicht` op
+   regel 376 tekent, terwijl `fetchUitnodiging` op regel 786 het niet deed. **Eén
+   tekenende functie immuniseerde negenhonderd regels.** De controle kijkt nu per
+   blok plus zijn aanroepers — niet per bestand (dat pleit te veel vrij) en niet
+   per blok alleen (dat maakt alle vier de goede ophaalpaden rood, want de vorm
+   hier is een kleine `naarX(rij)` die mapt naast een `fetchX()` die tekent).
+2. **En de eigenlijke bevinding is geen kapotte avatar maar een identiteitslek.**
+   `invite_preview` is `SECURITY DEFINER` en gaf `avatar_url` aan elke *ingelogde*
+   aanroeper. Tot `0126` was die kolom altijd leeg, dus dat kanaal was inert;
+   sindsdien is het eerste padsegment de `auth.uid()` van dat lid. Een
+   uitnodigingscode verloopt nooit en is bedoeld om doorgestuurd te worden — dus
+   iedereen met een account die de link krijgt, heeft met één RPC-aanroep de
+   interne id's van acht mensen.
+
+⚠️ **Ondertekenen lost punt 2 níet op**, en dat bepaalt waar de reparatie hoort:
+een signed URL draagt het pad in zich. `0128` laat de functie `null` teruggeven.
+De uitnodigingspagina toont voortaan initialen.
+
+⚠️ **Dit is dezelfde verruiming die `0019` heeft dichtgezet, langs een andere
+weg.** Die inperking gold voor de niet-ingelogde tak; de ingelogde tak is nooit
+heroverwogen, en `0126` vulde de kolom die eronder hing. **Niemand heeft dit
+besloten; het was bijvangst** — en dat is precies de vorm waarvoor CLAUDE.md zegt
+dat beschermd het antwoord is tot iemand het tegendeel besluit.
+
+### 7b. De CHECK toetste alleen het begin — `0129`
+
+`0127` zegt in zijn eigen kop twee gevallen te sluiten. Het eerste was dicht. Het
+tweede — "het pad van een groepsgenoot", uitdrukkelijk het geval dat de
+ondertekening níét dekt — niet: `like '<mij>/%'` laat `<mij>/../<ander>/a.png`
+door, en ook een regeleinde met een externe URL erachter. Nu een vormtoets.
+
+⚠️ Of dat werkelijk exploiteerbaar was, hangt ervan af of de Storage-API `..`
+normaliseert — niet te meten zonder die dienst. **Dat is de reden om het te
+sluiten en niet om het af te wachten.**
+
+### 7c. Twee gaten in de bucket zelf — `0130`
+
+- **Eén object met een niet-uuid mapnaam legde het lezen van de hele bucket
+  plat.** De kale cast gooit op elke rij die niet past, en een fout in een
+  policy-expressie sloopt de héle query. `authenticated` kan zo'n object niet
+  maken; de Storage-browser van het dashboard zet er bij "nieuwe map" één neer.
+- **Geen enkele grens op het aantal uploads.** 500 objecten in één statement,
+  zonder weerstand. 1 GB gratis tier ÷ 2 MB = 512 uploads en niemand kan er meer
+  bij. Dat `uploadAvatar` de vorige opruimt helpt niet — wie dit doet gebruikt de
+  app niet. Nu een trigger op tien per map.
+
+### 7d. Een geslaagde update die niets deed
+
+`.update(...).eq('id', userId)` zonder `.select()`: PostgREST geeft bij nul
+geraakte rijen géén fout, dus een weigering meldde `{ ok: true }` terwijl het
+bestand in de bucket stond en niets ernaar wees. Nu `.select('id').single()` —
+hetzelfde patroon dat `updateProfiel()` twintig regels verderop om precies deze
+reden al gebruikte.

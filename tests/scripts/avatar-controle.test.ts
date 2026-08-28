@@ -16,7 +16,7 @@
 import { describe, expect, it } from 'vitest';
 
 // Een .mjs zonder typen, net als de andere controlescripts.
-import { beoordeelBestand, controleer, isBron } from '../../scripts/avatar-controle.mjs';
+import { beoordeelBestand, blokkenVan, controleer, isBron, naamVan } from '../../scripts/avatar-controle.mjs';
 
 function mappingsVan(bron: string): readonly number[] {
   const uitkomst = beoordeelBestand(bron) as { mappings: number[] } | null;
@@ -82,6 +82,82 @@ describe('welke bestanden meetellen', () => {
     expect(isBron('src/modules/buddies/api.test.ts')).toBe(false);
     expect(isBron('src/lib/database.types.d.ts')).toBe(false);
     expect(isBron('scripts/paden.mjs')).toBe(false);
+  });
+});
+
+describe('de grens is het blok plus zijn aanroepers, niet het bestand', () => {
+  /**
+   * ⚠️ **De tweede fout van dit script, gevonden door de security-reviewer.** De
+   *    eerste versie deed één regex over het hele bestand. `buddies/api.ts` telde
+   *    daardoor als "tekent" omdat `fetchGroepsoverzicht` op regel 376 tekent —
+   *    terwijl `fetchUitnodiging` op regel 786 het niet deed. Eén tekenende
+   *    functie immuniseerde negenhonderd regels.
+   *
+   * ⚠️ **En de reparatie mocht niet doorslaan naar "het mappende blok moet zélf
+   *    tekenen".** De vorm in dit project is een kleine `naarX(rij)` die mapt en
+   *    een `fetchX()` die tekent; die eis maakt alle vier de goede ophaalpaden
+   *    rood. Vandaar één hop door de aanroepgraaf — en vandaar deze twee tests,
+   *    die precies dat onderscheid vastleggen.
+   */
+  const MAPPER = `
+function naarLid(rij) {
+  return { id: rij.id, avatar_url: rij.avatar_url };
+}
+`;
+
+  it('laat een mapper met rust die door een tekenende fetch gebruikt wordt', () => {
+    const bron = `${MAPPER}
+export async function fetchLeden(id) {
+  return metGetekendeAvatars((data ?? []).map(naarLid), 'avatar_url');
+}
+`;
+    expect(beoordeelBestand(bron)?.tekent).toBe(true);
+  });
+
+  it('meldt een mapper die alleen door een níet-tekenende fetch gebruikt wordt', () => {
+    const bron = `${MAPPER}
+export async function fetchIets() {
+  return (data ?? []).map(naarLid);
+}
+
+export async function fetchAnders() {
+  return metGetekendeAvatars(await iets(), 'foto');
+}
+`;
+    const uit = beoordeelBestand(bron);
+    expect(uit?.tekent).toBe(false);
+    expect(uit?.kaal).toEqual([3]);
+  });
+
+  it('laat een functie met rust die zelf mapt én tekent', () => {
+    const bron = `
+export async function fetchAlles() {
+  const rijen = ruw.map((rij) => ({ avatar_url: rij.avatar_url }));
+  return metGetekendeAvatars(rijen, 'avatar_url');
+}
+`;
+    expect(beoordeelBestand(bron)?.tekent).toBe(true);
+  });
+});
+
+describe('blokkenVan en naamVan', () => {
+  it('knipt op functies van het hoogste niveau', () => {
+    const bron = 'const a = 1;\nfunction een() {\n  return 1;\n}\nexport async function twee() {\n  return 2;\n}';
+    expect(blokkenVan(bron).map((b: { van: number }) => b.van)).toEqual([1, 2, 5]);
+  });
+
+  // ⚠️ Een ingesprongen functie hoort bij het pad eromheen en start geen blok —
+  //    anders valt een hulpfunctie binnen een ophaalpad los en meldt hij zichzelf.
+  it('knipt niet op een geneste functie', () => {
+    const bron = 'export function buiten() {\n  function binnen() {\n    return 1;\n  }\n}';
+    expect(blokkenVan(bron)).toHaveLength(1);
+  });
+
+  it('leest de naam uit elke declaratievorm', () => {
+    expect(naamVan('export async function fetchChat(groupId) {')).toBe('fetchChat');
+    expect(naamVan('function naarBericht(rij) {')).toBe('naarBericht');
+    expect(naamVan('export const tekenAvatars = async (paden) => {')).toBe('tekenAvatars');
+    expect(naamVan('  const binnen = 1;')).toBeNull();
   });
 });
 
