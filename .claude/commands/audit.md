@@ -4,7 +4,7 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
-> ⚠️ **Sinds 27-08-2026 draaien achttien van de eenentwintig controles in CI, bij
+> ⚠️ **Sinds 27-08-2026 draaien negentien van de tweeëntwintig controles in CI, bij
 > elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
 > uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
 > draaien omdat ze een productieverbinding of een privésleutel vragen:
@@ -103,6 +103,24 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
     `start_url` in `public/manifest.json` beoordeelt hij de tweede en meldt
     groen; met de hand gebroken op 28-08. Draait deze stap rood, kijk dan of een
     ándere controle over hetzelfde bestand ten onrechte groen staat.
+
+11c. **Injectiepunten die nergens aangesloten zijn** — draai
+    `npm run aansluiting:controle`. Hij zoekt synchrone `zet*`/`set*`-exports en
+    eist dat elk ervan buiten zijn eigen bestand én buiten `tests/` wordt
+    aangeroepen.
+
+    ⚠️ **Dit is de klasse waar niets van rood wordt.** De vier gevallen van
+    26-08 — `profiles.locale`, `verwijderPushToken()`, `setErrorSink()` en de
+    deploy vanuit een werkmap — hadden allemaal groene tests. Wat ontbrak was
+    een aanroep.
+
+    ⚠️ **Waarom smal en niet algemeen.** De algemene vorm ("elke export uit een
+    module-barrel wordt buiten die module gebruikt") meldt er **174 van de
+    493** — vrijwel allemaal types en schema's. Gemeten op 28-08; een controle
+    die 174 dingen meldt bewaakt niets.
+
+    ⚠️ De synchroon-eis is nodig: zonder haar meldt hij dertien namen waarvan er
+    tien gewone schrijfacties zijn (`zetStreefdatum`, `zetDagzet`, …).
 
 12. **Hardgecodeerde UI-tekst** — draai `npm run tekst:controle`. Die toetst
     criterium 1 van QS8-115: er staat nergens in `src/` of `app/` nog Nederlandse
