@@ -329,7 +329,9 @@ function BeoordeelKaart({
            weten waar hij ja tegen zegt — maar zonder waardeoordeel ervoor.
       */}
       <Caption muted={false}>
-        Week afgerond{gehaald === null ? '' : ` — ${gehaald}`}
+        {gehaald === null
+          ? t('beoordelen.week_afgerond')
+          : t('beoordelen.week_afgerond_met', { gehaald })}
       </Caption>
 
       {item.note === null ? null : (

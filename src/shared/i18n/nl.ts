@@ -1771,6 +1771,28 @@ export const nl = {
   'weektip.other.4': 'Maak volgende week net zo makkelijk als deze: leg klaar wat je nodig hebt.',
   'weektip.other.5': 'De weken die tellen zien er zelden bijzonder uit. Deze telde.',
 
+  // ---------------------------------------------------------------------------
+  // Wat de controle miste — QS8-115, ronde 28-08-2026
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Vier plekken, en alle vier dezelfde vorm: kale tekst tussen de kinderen
+  //    van een tag. Twee ervan liepen over twee regels, en dan brak de
+  //    heuristiek op allebei zijn eisen tegelijk — de eerste helft eindigt op
+  //    een komma, de tweede begint klein. Zie `binnenJsxTekst()` in
+  //    `scripts/tekst-controle.mjs`.
+  'ketting.opdagen_uitleg':
+    'Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen, ' +
+    'niet om hoeveel je haalde.',
+  'chat.uit_cache':
+    'Je leest de bewaarde berichten van deze week. Zodra er weer verbinding is, ' +
+    'vult de rest zich aan.',
+  // ⚠️ Twee sleutels en geen samenstelling met een streepje in de code. Het
+  //    scheidingsteken is leesteken en dus taal: een vertaler die er een
+  //    dubbele punt van wil maken, moet dat kunnen.
+  'beoordelen.week_afgerond': 'Week afgerond',
+  'beoordelen.week_afgerond_met': 'Week afgerond — {gehaald}',
+  'groepscherm.leden_van_totaal': '{getoond} van {totaal} leden.',
+
 } as const;
 
 export type Sleutel = keyof typeof nl;

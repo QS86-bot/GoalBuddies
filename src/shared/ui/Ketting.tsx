@@ -121,10 +121,7 @@ export function Ketting({ stand, toonSchakels = true }: Props) {
            we dat vast willen gladstrijken. Bevinding van de gebruikersreview.
       */}
       {stand.voltallig ? null : (
-        <Caption>
-          Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen,
-          niet om hoeveel je haalde.
-        </Caption>
+        <Caption>{t('ketting.opdagen_uitleg')}</Caption>
       )}
     </View>
   );

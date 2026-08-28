@@ -572,6 +572,16 @@ standaard voor élke nieuwe controle en elke test die een regel bewaakt — en h
 is dezelfde gedachte als bij de secret-scan in de deploy: eentje die nog nooit
 rood is geweest, is een aanname.
 
+⚠️ **Breek de grendel die de ijking noemt, niet zomaar iets — anders is de ijking
+zelf de aanname.** Een controle heeft meestal meer dan één grendel achter elkaar,
+en een ijking die zijn geval door een pad voert dat een éérdere grendel al
+tegenhoudt, blijft groen als je de grendel uit zijn eigen naam weghaalt. Op 28-08
+stond er zo een in `tekst:controle`: de ijking heette "een generic die op een regel
+eindigt met een punthaak" en voerde zijn fragment aan als `.ts`, waar de
+JSX-grens hem al afvangt. Hij bewaakte niets van wat hij beloofde, en dat bleek
+niet uit lezen maar uit de mutatie. **Mutatie per grendel, en niet één mutatie
+voor de hele controle.**
+
 ⚠️ **En dat geldt óók voor de controlescripts zelf, wat op 24-08 pijnlijk bleek.**
 `npm run tekst:controle` bewaakt de belofte "er staat nergens meer UI-tekst hard
 in de code" en meldde maandenlang nul, terwijl er in één scherm zeven

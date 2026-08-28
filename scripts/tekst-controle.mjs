@@ -192,6 +192,110 @@ function binnenTekstProp(regels) {
 }
 
 /**
+ * Zegt per regel of hij bínnen de kinderen van een JSX-tag valt.
+ *
+ * ⚠️ **Een zin die over twee regels loopt, was onzichtbaar** — en dat is
+ *    dezelfde blinde vlek als bij `binnenTekstProp()`, één laag verderop. De
+ *    kale-JSX-tekstheuristiek onderaan `kandidaten()` eist een hoofdletter aan
+ *    het begin en verbiedt een komma aan het eind, en allebei die eisen breken
+ *    op een afgebroken zin:
+ *
+ *      <Caption>
+ *        Eén schakel per lid dat deze week zijn cyclus afsloot. Het gaat om opdagen,
+ *        niet om hoeveel je haalde.
+ *      </Caption>
+ *
+ *    De eerste regel eindigt op een komma (die eis houdt `Subheading,` uit een
+ *    importlijst buiten de deur) en de tweede begint klein (die eis houdt
+ *    doodgewone code buiten de deur). Twee terechte eisen, en samen zien ze een
+ *    hele alinea niet. Er stonden er twee in de app terwijl de controle "nul"
+ *    meldde.
+ *
+ *    De uitweg is dezelfde als bij een meerregelige prop: de tóestand. Staat een
+ *    openingstag alleen op zijn regel, dan is alles tot de eerstvolgende tag per
+ *    definitie kindertekst, en dan hoeven hoofdletter noch komma iets te
+ *    bewijzen.
+ *
+ * ⚠️ **De toestand is met opzet kortlevend**, want een toestandspas die te lang
+ *    aan blijft staan meldt hele bestanden. Hij begint alleen op een regel die
+ *    hélemaal uit één openingstag bestaat, en hij stopt bij het eerste teken dat
+ *    een tag kan zijn — dus ook bij een genest element. Kindertekst van dat
+ *    geneste element wordt door zijn eigen openingstag opnieuw opgepakt.
+ *
+ * ⚠️ De eis "begint met `<`" is wat een generic buiten de deur houdt. `Array<Item>`
+ *    eindigt óók op een `>` en heeft óók een hoofdletter, maar staat nooit vooraan.
+ */
+function binnenJsxTekst(regels, isTsx) {
+  const uit = new Array(regels.length).fill(false);
+  if (!isTsx) return uit;
+
+  let binnen = false;
+  let diep = 0;
+
+  regels.forEach((regel, i) => {
+    const kaal = regel.trim();
+
+    // Elk teken dat een tag kan openen of sluiten beëindigt de kindertekst.
+    //
+    // ⚠️ **Beëindigen is niet hetzelfde als overslaan, en dat was de derde
+    //    ijking.** Deze tak stond eerst met een `return` erin, en dan is een
+    //    genest element het einde van álle kindertekst in plaats van het begin
+    //    van de zijne:
+    //
+    //      <View style={styles.vult}>      ← opent
+    //        {uitCache ? (
+    //          <Caption>                   ← sloot af, opende niet opnieuw
+    //            Je leest de bewaarde berichten van deze week.
+    //
+    //    Precies dat verborg een van de twee zinnen waarvoor deze pas gebouwd is.
+    //    De regel valt nu door naar de openingstoets eronder.
+    if (binnen && (kaal.includes('<') || kaal.includes('>'))) {
+      binnen = false;
+      diep = 0;
+    }
+
+    if (binnen) {
+      const na = diep + balans(kaal);
+      // ⚠️ **Alleen een regel die zelf in evenwicht is, is tekst** — en dat is de
+      //    tweede ijking van deze pas. Zonder deze eis meldde hij achttien
+      //    regels, allemaal een ternary of een `t()`-aanroep die over meerdere
+      //    regels loopt:
+      //
+      //      <Body>
+      //        {stand === 'gekopieerd'
+      //          ? t('delen.gekopieerd')
+      //          : label}
+      //      </Body>
+      //
+      //    Zulke regels dragen geen tagteken en zagen er dus uit als kindertekst,
+      //    terwijl het de bínnenkant van één accolade is — en die is per definitie
+      //    code. `zonderWaarden()` kan er niets mee, want de accolade sluit pas
+      //    drie regels verderop.
+      uit[i] = diep === 0 && na === 0;
+      diep = na;
+      return;
+    }
+
+    if (/^<[A-Z][A-Za-z0-9_.]*(?:\s[^]*)?>$/.test(kaal) && !kaal.endsWith('/>') && !kaal.includes('</')) {
+      binnen = true;
+      diep = 0;
+    }
+  });
+
+  return uit;
+}
+
+/** Hoeveel accolades en haakjes deze regel openlaat. Negatief als hij er sluit. */
+function balans(regel) {
+  let n = 0;
+  for (const teken of regel) {
+    if (teken === '{' || teken === '(') n += 1;
+    else if (teken === '}' || teken === ')') n -= 1;
+  }
+  return n;
+}
+
+/**
  * Ziet deze regel eruit als JSX?
  *
  * ⚠️ **Zonder deze grens is de accoladepas onbruikbaar**, en dat is gemeten: hij
@@ -253,7 +357,7 @@ function zonderWaarden(tekst) {
 }
 
 /** De stukken van een regel die tekst zouden kunnen zijn. */
-function kandidaten(regel, inTekstProp = false, isTsx = true) {
+function kandidaten(regel, inTekstProp = false, isTsx = true, inJsxTekst = false) {
   const uit = [];
 
   // 1. Een prop met een letterlijke string: title="..." of title={'...'}
@@ -483,6 +587,27 @@ function kandidaten(regel, inTekstProp = false, isTsx = true) {
     return [...uit, { tekst: kaal, losseWoordenTellen: true }];
   }
 
+  // 2b. Dezelfde kale tekst, maar bínnen de kinderen van een tag. Zie
+  //     `binnenJsxTekst`.
+  //
+  // ⚠️ **Hier vervallen de hoofdletter én de komma-eis, en dat mág hier omdat de
+  //    toestand het al bewezen heeft.** Buiten een tag zijn die twee eisen het
+  //    enige dat een zin van een importregel scheidt; erbinnen is élke regel
+  //    zonder tagteken kindertekst. Precies dat verschil maakte een zin die over
+  //    twee regels liep onzichtbaar: de eerste helft eindigt op een komma, de
+  //    tweede begint klein.
+  //
+  // ⚠️ De waarden gaan er eerst uit, net als bij de tak hierboven, zodat een
+  //    regel met alleen `{aantal}` erop niets oplevert.
+  if (inJsxTekst) {
+    const inhoud = zonderWaarden(kaal)
+      .replaceAll(/&\w+;/g, ' ')
+      .trim();
+    if (inhoud && !inhoud.endsWith(';') && /[A-Za-zÀ-ÿ]{3,}/.test(inhoud)) {
+      return [...uit, { tekst: inhoud, losseWoordenTellen: true }];
+    }
+  }
+
   return uit;
 }
 
@@ -505,12 +630,13 @@ function kandidaten(regel, inTekstProp = false, isTsx = true) {
 export function treffersIn(regels, isTsx = true) {
   const commentaar = commentaarregels(regels);
   const inProp = binnenTekstProp(regels);
+  const inJsx = binnenJsxTekst(regels, isTsx);
   const uit = [];
 
   regels.forEach((regel, i) => {
     if (commentaar[i]) return;
 
-    for (const { tekst, losseWoordenTellen } of kandidaten(regel, inProp[i], isTsx)) {
+    for (const { tekst, losseWoordenTellen } of kandidaten(regel, inProp[i], isTsx, inJsx[i])) {
       if (MERKNAMEN.has(tekst)) continue;
       if (isGeenTaal(tekst)) continue;
       if (!losseWoordenTellen && !ZIN.test(tekst)) continue;
