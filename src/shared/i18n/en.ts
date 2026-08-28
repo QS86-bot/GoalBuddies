@@ -326,6 +326,8 @@ export const en: Record<Sleutel, string> = {
   'beheer.terug': 'Back to the group',
   'beheer.melding_gesloten': 'The link is closed.',
   'beheer.melding_open': 'The link is open again.',
+  'onboarding.profiel_leeg_titel': 'We can\'t load your details right now.',
+  'onboarding.profiel_leeg_tekst': 'Try again in a moment. Nothing is lost.',
   'onboarding.eyebrow': 'ONE MORE SCREEN',
   'onboarding.dagelijkse_herinnering': 'Daily reminder',
   'onboarding.uit_blijft_uit': 'Off stays off. We will not send you anything.',
@@ -489,7 +491,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.typ_woord': 'Type {woord} to confirm',
   'profiel.definitief': 'Delete permanently',
   'profiel.toch_niet': 'Never mind',
-  'profiel.weekstart_uitleg': 'If you change this halfway through a week, the running week still counts out on the old day. Your points and your streak stay.',
+  'profiel.weekstart_uitleg': 'The new day applies from your next week. Weekly goals in your current week do not move with it — finish those first. Your points, your streak and your completed weeks stay as they are.',
   'profiel.thema_systeem': 'System',
   'profiel.thema_donker': 'Dark',
   'profiel.thema_licht': 'Light',
@@ -1287,6 +1289,10 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_verlaten.uitleg':
     'Your goal leaves this group and you will no longer be able to open the chat, the week reviews or The Chain here. What you have built up stays: your points, your streak, your completions and the approvals you gave. If your goal is also linked to another group, nothing changes there. You can only come back with a valid invite link.',
   'bevestiging.groep_verlaten.knop': 'Yes, leave this group',
+  'bevestiging.weekstart_verzetten.titel': 'Start your week on a different day?',
+  'bevestiging.weekstart_verzetten.uitleg':
+    'From your next week onwards everything starts on the new day. ⚠️ Weekly goals in your current week do not move with it: they drop out of view and then count as missed — that costs a point and breaks your streak. Finish them first, or wait until this week is over. Your points, your streak and your completed weeks all stay as they are.',
+  'bevestiging.weekstart_verzetten.knop': 'Yes, move my week start',
   'verlaten.titel': 'Leave this group',
   'verlaten.uitleg':
     'You step out of this group. Your goal is unlinked from this group and from no other.',

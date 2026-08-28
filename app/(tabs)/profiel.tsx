@@ -28,6 +28,8 @@ import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
+  Bevestiging,
+  bevestigingen,
   Body,
   Button,
   Caption,
@@ -51,15 +53,21 @@ import {
  *    met domeinregel 7. De groep ziet De Ketting en mijlpalen, nooit dit scherm.
  */
 export default function Profiel() {
-  const { profiel, loading, error, zetProfiel } = useProfiel();
+  const { profiel, loading, error, zetProfiel, herlaad } = useProfiel();
 
   return (
     <Screen title={t('profiel.titel')}>
+      {/*
+        ⚠️ `onRetry` stond hier niet, en dat maakte dit scherm bij een laadfout
+           volledig dood: álle inhoud staat binnen deze AsyncView, inclusief de
+           uitlogknop. Er was geen enkele uitweg behalve de app herstarten.
+      */}
       <AsyncView
         loading={loading}
         error={error}
         data={profiel ?? undefined}
         isEmpty={() => false}
+        onRetry={herlaad}
         empty={{
           title: t('profiel.leeg_titel'),
           body: t('profiel.leeg_tekst'),
@@ -373,21 +381,53 @@ function WeekStartInstelling({
 }) {
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+  const [gevraagd, setGevraagd] = useState<Weekday | null>(null);
 
   async function kies(dag: Weekday) {
     setBezig(true);
     setFout(null);
 
     const uitkomst = await updateProfiel(userId, { week_start_day: dag });
-    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
-    else setFout(uitkomst.melding);
+    if (uitkomst.ok) {
+      onOpgeslagen(uitkomst.profiel);
+      setGevraagd(null);
+    } else setFout(uitkomst.melding);
 
     setBezig(false);
   }
 
+  // ⚠️ **Eén tik was te goedkoop voor wat dit kost.** Tot 28-08 sloeg deze
+  //    keuze meteen op, met een hint eronder die beloofde dat je punten en je
+  //    reeks bleven staan. Dat is niet waar zolang weekdoelen van de lopende
+  //    week niet meeverhuizen: `fetchWeekdoelen()` matcht exact op
+  //    `cycle_start_date`, dus ze raken uit beeld en de rollover stempelt ze
+  //    daarna als gemist. De hint zegt nu wat er echt gebeurt en de bevestiging
+  //    zorgt dat je het gelezen hebt. Zie de rij van 28-08 in
+  //    `docs/ENGINEER-REVIEW.md` voor de reparatie die hier onder ligt.
+  if (gevraagd !== null) {
+    return (
+      <Bevestiging
+        tekst={bevestigingen().weekStartVerzetten}
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void kies(gevraagd)}
+        onAnnuleer={() => {
+          setGevraagd(null);
+          setFout(null);
+        }}
+      />
+    );
+  }
+
   return (
     <Card>
-      <WeekStartKeuze waarde={waarde} onKies={(dag) => void kies(dag)} disabled={bezig} />
+      <WeekStartKeuze
+        waarde={waarde}
+        onKies={(dag) => {
+          if (dag !== waarde) setGevraagd(dag);
+        }}
+        disabled={bezig}
+      />
       <Caption>{t('profiel.weekstart_uitleg')}</Caption>
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
