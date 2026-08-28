@@ -60,8 +60,12 @@ export const REGISTER = new Map([
       'berekend wordt.',
   ],
   [
-    'group_overview :: p_period_start >= current_date - 8',
-    'Ondergrens van acht dagen — één periode plus een dag. De dag ís hier de speling.',
+    'group_overview :: p_period_start >= current_date - 6',
+    'Ondergrens van zes dagen: een huddleperiode duurt er zeven en begint op de ' +
+      'huddledag, dus een lópende periode is hoogstens zes dagen oud. ⚠️ Hier ' +
+      'stond tot 0116 acht, met als reden "één periode plus een dag speling" — ' +
+      'en die speling liet de afgesloten periode twee dagen per week open. ' +
+      'Dit is een beveiligingsgrens en geen marge; zie 0116.',
   ],
   [
     'herbereken_risico :: and w.cycle_start_date < current_date;',
