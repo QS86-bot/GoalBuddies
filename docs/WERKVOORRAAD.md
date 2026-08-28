@@ -32,9 +32,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **537 geslaagd, 1 overgeslagen** (28-08, na QS8-56 en QS8-65). De hele suite
-   geeft met de stack **1679 geslaagd en 1 overgeslagen**; zonder credentials
-   **1163 geslaagd en 517 overgeslagen**. Typecheck en lint groen.
+   **547 geslaagd, 1 overgeslagen** (28-08, na QS8-56, QS8-65 en QS8-79). De hele
+   suite geeft met de stack **1698 geslaagd en 1 overgeslagen**; zonder
+   credentials **1172 geslaagd en 527 overgeslagen**. Typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -88,10 +88,10 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 32 tabellen. Migraties `0001` t/m `0112`
+**Database — af, en nu ook getest.** 33 tabellen. Migraties `0001` t/m `0113`
 staan in de map.
 
-⚠️ **`0107` t/m `0112` zijn nog niet op productie gedraaid.** Alle zes zijn op
+⚠️ **`0107` t/m `0113` zijn nog niet op productie gedraaid.** Alle zeven zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
 `register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
@@ -109,7 +109,7 @@ dan geldt op productie:
 - `0110` — de rem van A7 is met drie verzoeken weg te nemen: ontkoppelen,
   `zet_streefdatum()`, terugkoppelen. Gemeten: de datum schoof tien maanden op
   en er ging **geen enkel verzoek** naar een buddy. Zie de rij van 17-08.
-- `0112` — drie functies pinnen hun `search_path` niet, waardoor de zeef die
+- `0113` — drie functies pinnen hun `search_path` niet, waardoor de zeef die
   tegenvallertaal uit een doelcoach-tip weert met een gekaapt pad niets zeeft.
   `definer_bewaking()` keek daar langs omdat die drie geen definer zijn.
 
@@ -275,7 +275,7 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 32 bestanden; 30 daarvan slaan zonder credentials
+  bestaat. `tests/rls` telt 33 bestanden; 31 daarvan slaan zonder credentials
   over (zie §3b)
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
@@ -483,7 +483,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, inclusief de twee `phase:v2`-issues: QS8-57 (een groep verlaten) en QS8-56 (hetzelfde doel in meer dan één groep) zijn allebei op 27-08 gebouwd |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ **af**, inclusief QS8-65 (`phase:v2`, gebouwd 27-08, migratie `0107`). Een groep kiest tussen één buddy, een meerderheid en een vast aantal. ⚠️ De drempel wordt als **getal** bevroren bij het indienen, niet als regel gelezen bij het goedkeuren — anders tilt een beheerder (of een nieuw lid) de lat op onder een week die al loopt. Zie `docs/decisions/2026-08-27-de-goedkeuringsdrempel.md` |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**, op de twee `phase:v2`-issues na. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**. Van de twee `phase:v2`-issues is QS8-79 (seizoenen met een recap) op 27-08 gebouwd, migratie `0112`; alleen QS8-78 (badges) staat nog open — dat issue heeft géén acceptatiecriteria en vraagt eerst een productbesluit over wélke badges. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel. **QS8-41 (weekstappen per mijlpaal) is op 27-08 gebouwd**; daarbij bleek `doelcoach` nooit op `job.kind` te vertakken en kende de app `'error'` waar de database `'failed'` schrijft — elke mislukte generatie liep sinds QS8-38 dood in een timeout. **QS8-137 (A48 variant 2, de Doelcoach-tip per mijlpaal) dezelfde dag**, migratie `0103`: een eigenaar-only tabel `milestone_tips`, een derde `ai_jobs.kind`, en een zeef die aan beide kanten dezelfde woordenlijst gebruikt |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
