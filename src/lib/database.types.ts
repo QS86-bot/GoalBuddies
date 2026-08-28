@@ -2571,7 +2571,6 @@ export type Database = {
         }[]
       }
       weekpas_maximum: { Args: never; Returns: number }
-      weekpas_stand: { Args: { p_goal_id: string }; Returns: Json }
       weekpas_standen: {
         Args: { p_goal_ids?: string[] }
         Returns: {

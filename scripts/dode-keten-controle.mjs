@@ -158,6 +158,33 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'Domeinregel 6 — voltooiingen en reeksen zijn append-only.',
   tekstgrenzen_bewaking:
     'De grendel onder 0120: elke schrijfbare tekstkolom heeft een lengtegrens.',
+  ai_kosten_per_week:
+    'Wat de Doelcoach kost, over álle gebruikers samen — één rekening bij ' +
+    'Anthropic. Bewust niet voor `authenticated`: het totaal verraadt hoeveel ' +
+    'anderen de coach gebruiken.',
+  ai_verbruik:
+    'Het dagverbruik van één gebruiker, voor de meldingen en de tests.',
+  check_waarden:
+    'Leest de CHECK-waarden uit het schema, zodat de app-lijsten ernaast gelegd ' +
+    'kunnen worden (0082). Zonder deze functie vergelijkt zo\'n test zichzelf.',
+  definer_bewaking:
+    'SECURITY DEFINER-functies zonder `set search_path` of open voor `anon` (0106).',
+  schrijfrechten_bewaking:
+    'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
+    '(0101, generiek sinds 0118).',
+  domeinregel3_bewaking:
+    'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+  migratieregister:
+    'Het register van het échte project, voor `register:controle`.',
+  triggerfuncties_in_de_api:
+    'Triggerfuncties die per ongeluk via PostgREST aanroepbaar zijn (0052a).',
+  viewrechten_bewaking:
+    'Kolomrechten op de views, want RLS kan geen kolommen beperken.',
+  herstel_weekdoelstatus:
+    '⚠️ Geen bewaking maar de herstelweg ernaast: `weekdoelstatus_afwijkingen()` ' +
+    'meldt drift in de statuscache en deze zet hem terug (0096). Met de hand ' +
+    'aan te roepen wanneer die eerste iets meldt; `tests/rls/statuscache.test.ts` ' +
+    'is de aanroeper die bewijst dat hij werkt.',
   uitnodigingscode_bewaking:
     'De sterkte van `generate_invite_code()` — alfabet, lengte en de drempel ' +
     'tegen modulo-bias — uitleesbaar, zodat `policies.test.ts` hem kan bewaken.',
@@ -172,6 +199,39 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'productbeslissing die het puntenmodel raakt. Tot die keuze gemaakt is, is ' +
     'de toestand telbaar en verder niets. **Hoort van deze lijst af zodra die ' +
     'termijn er is** — dan is dit een scherm of een job.',
+};
+
+/**
+ * Functies zonder aanroeper waarvan het verdict een productvraag is.
+ *
+ * ⚠️ **Een derde categorie, en er is een scherpe reden dat hij niet bij de vorige
+ *    hoort.** `BEWAAKT_BUITEN_DE_APP` zegt *"deze functie hóórt geen pad door de
+ *    app te hebben"*, en het script bewijst dat met een aanroeper in `tests/` of
+ *    `scripts/`. Wat hier staat is het tegenovergestelde: een functie die een pad
+ *    zou moeten hébben en er geen heeft, waarbij de vraag *of hij dat pad moet
+ *    krijgen of moet verdwijnen* niet aan een opruimronde is.
+ *
+ * ⚠️ **Dit is dus geen parkeerplaats maar een agenda**, en elke regel draagt de
+ *    vráág en niet alleen de constatering — zelfde vorm als
+ *    `Wordt zwaarder als:` in `docs/ENGINEER-REVIEW.md`. Wie hier iets neerzet
+ *    zonder de vraag op te schrijven, heeft de controle uitgezet.
+ *
+ * @type {Record<string, string>}
+ */
+export const WACHT_OP_EEN_BESLUIT = {
+  ketting_schakel:
+    '⚠️ **Een correcte, volledig bewaakte RPC die niemand aanroept.** QS8-80 ' +
+    'bouwde hem als de weg waarlangs je een kettingschakel verdient: ingelogd, ' +
+    'lid van de groep, de periode binnen bereik, een goedgekeurd weekdoel in ' +
+    'die cyclus, en hoogstens één schakel per cyclus. Maar de app roept hem ' +
+    'nooit aan — `ketting_uit_weekafsluiting()` is een trigger en doet het ' +
+    'vanzelf zodra je je week afsluit. ' +
+    '**De vraag: is een schakel iets dat je zelf claimt, of iets dat de ' +
+    'weekafsluiting voor je doet?** Is het het tweede, dan hoort deze functie ' +
+    'weg — hij staat open voor `authenticated` en schrijft in een tabel die de ' +
+    'groep leest. Is het het eerste, dan hoort er een knop bij. ' +
+    'Vandaag is hij geen gat (elke toets erin klopt), maar wel oppervlak dat ' +
+    'niemand gebruikt.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
@@ -195,12 +255,42 @@ function bronbestanden(dir, uit = [], vorm = /\.(ts|tsx)$/) {
  *    bestand. Een `drop` betekent dus niet dat de functie weg is.
  */
 export function functiesIn(sql) {
+  // ⚠️ **In volgorde verwerken en `drop function` honoreren.** Zonder dat telt
+  //    élke `create ... function` mee, ook van een functie die een latere
+  //    migratie heeft weggegooid — en die verschijnt dan als "dood" terwijl hij
+  //    niet bestáát. `markeer_doorgeschoven()` is in 0091 verwijderd en werd zo
+  //    gemeld. Vals alarm, en precies het soort melding waardoor je een script
+  //    uitzet. `checksIn()` deed dit voor constraints al goed; hier stond het
+  //    patroon niet.
+  //
+  // ⚠️ **De regel is "het laatste woord telt", en dat is met opzet grover dan
+  //    de handtekening.** `drop function f(a) ; create function f(a, b)` is in
+  //    dit project de normale vorm van een migratie die de vorm van een functie
+  //    wijzigt — 71 van de 99 functies staan zo in het bestand. Voor de vraag
+  //    die hier gesteld wordt (*bestaat deze náám nog en roept iemand hem aan*)
+  //    is de naam het juiste niveau: blijft er één overload over, dan is er iets
+  //    om aan te roepen. Voor de vraag of een dróp de goede overload raakt, is
+  //    de handtekening wél nodig — die staat in `tests/migraties/idempotentie.ts`.
   const namen = new Set();
+  const gebeurtenissen = [];
+
   for (const m of sql.matchAll(
     /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?([a-z0-9_]+)\s*\(/gi,
   )) {
-    namen.add(m[1].toLowerCase());
+    gebeurtenissen.push({ index: m.index ?? 0, naam: m[1].toLowerCase(), maakt: true });
   }
+  for (const m of sql.matchAll(
+    /drop\s+function\s+(?:if\s+exists\s+)?(?:public\.)?([a-z0-9_]+)\s*\(/gi,
+  )) {
+    gebeurtenissen.push({ index: m.index ?? 0, naam: m[1].toLowerCase(), maakt: false });
+  }
+
+  gebeurtenissen.sort((a, b) => a.index - b.index);
+  for (const g of gebeurtenissen) {
+    if (g.maakt) namen.add(g.naam);
+    else namen.delete(g.naam);
+  }
+
   return namen;
 }
 
@@ -228,6 +318,19 @@ export function functiesIn(sql) {
  */
 export function zonderDefinities(sql) {
   return sql
+    // ⚠️ **Commentaar eerst, en dat is op 28-08 gemeten.** Een migratiekop legt
+    //    uit wát een functie doet en noemt hem daarbij mét haakjes — en dan
+    //    telde de uitleg als de aanroeper. Het overkwam deze sessie zelf: een
+    //    ⚠️-regel in 0122 noemde `initplan_bewaking()`, waarna de controle die
+    //    functie levend noemde. Dezelfde klasse als de grant-regels hieronder:
+    //    de tekst óver een functie is geen gebruik ervan.
+    //
+    //    Met commentaar eruit meldde het script dertien functies in plaats van
+    //    nul. Elf daarvan zijn bewakingen en ops-functies en staan nu op
+    //    `BEWAAKT_BUITEN_DE_APP`; één was een echte vondst (`weekpas_stand`,
+    //    verwijderd in 0124) en één bestond helemaal niet meer — zie
+    //    `functiesIn()` hieronder.
+    .replace(/--[^\n]*/g, ' ')
     .replace(/\bpublic\./gi, '')
     .replace(/create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_]+)\s*\(/gi, ' ')
     .replace(/drop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+[^;]*;/gi, ' ')
@@ -414,6 +517,7 @@ export function sleutelVan({ tabel, kolom, waarde }) {
  *   testBron?: string,
  *   bewust?: Record<string, string>,
  *   bewaakt?: Record<string, string>,
+ *   wacht?: Record<string, string>,
  * }} invoer
  */
 export function controleer({
@@ -422,6 +526,7 @@ export function controleer({
   testBron = '',
   bewust = BEWUST_ONGESCHREVEN,
   bewaakt = BEWAAKT_BUITEN_DE_APP,
+  wacht = WACHT_OP_EEN_BESLUIT,
 }) {
   const sql = bestanden.map((b) => b.sql).join('\n');
   const alleZonder = functiesZonderAanroeper({ sql, prodBron });
@@ -439,7 +544,11 @@ export function controleer({
   //    `migratieregister-uitlijnen.mjs` heeft een eigen `rpc()`-hulpje. Een
   //    strenge vorm meldde die twee als ongetest terwijl ze allebei in `/audit`
   //    draaien — vals alarm, en dat is precies wat je leert negeren.
-  const functies = alleZonder.filter((naam) => !(naam in bewaakt));
+  const functies = alleZonder.filter((naam) => !(naam in bewaakt) && !(naam in wacht));
+
+  // ⚠️ Ook deze lijst loopt achter zodra de vraag beantwoord is: een naam die
+  //    inmiddels een aanroeper heeft, hoort eraf. Zelfde vorm als `verouderd`.
+  const beslistVerouderd = Object.keys(wacht).filter((naam) => !alleZonder.includes(naam));
   const beloofdMaarOngetest = alleZonder.filter(
     (naam) => naam in bewaakt && !genoemdIn(testBron, naam),
   );
@@ -454,6 +563,7 @@ export function controleer({
     functies,
     beloofdMaarOngetest,
     bewaaktVerouderd,
+    beslistVerouderd,
     waarden: alleDood.filter((w) => !(sleutelVan(w) in bewust)),
     // ⚠️ **De andere kant van het register, en die ontbrak.** Een uitzondering
     //    die niet meer nodig is, valt stil buiten beeld: de filter hierboven
@@ -489,7 +599,14 @@ function hoofd() {
     .map((p) => readFileSync(p, 'utf8'))
     .join('\n');
 
-  const { functies, beloofdMaarOngetest, bewaaktVerouderd, waarden, verouderd } = controleer({
+  const {
+    functies,
+    beloofdMaarOngetest,
+    bewaaktVerouderd,
+    beslistVerouderd,
+    waarden,
+    verouderd,
+  } = controleer({
     bestanden,
     prodBron,
     testBron,
@@ -499,15 +616,21 @@ function hoofd() {
     functies.length === 0 &&
     beloofdMaarOngetest.length === 0 &&
     bewaaktVerouderd.length === 0 &&
+    beslistVerouderd.length === 0 &&
     waarden.length === 0 &&
     verouderd.length === 0
   ) {
     const aantal = functiesIn(bestanden.map((b) => b.sql).join('\n')).size;
     const buiten = Object.keys(BEWAAKT_BUITEN_DE_APP).length;
+    const wachtend = Object.keys(WACHT_OP_EEN_BESLUIT).length;
+    // ⚠️ Drie getallen en geen één. Eén totaal maakt de tweede en derde groep
+    //    onzichtbaar, en zo is de blinde vlek van 28-08 ontstaan: alles telde
+    //    als "levend" en niemand kon zien waaróm.
     console.log(
-      `dode-keten-controle: ${aantal} functies hebben allemaal een aanroeper — ` +
-        `${aantal - buiten} met een pad door de app, ${buiten} bewakingen en ` +
-        `ops-functies met een aanroeper in tests/ of scripts/. Elke CHECK-waarde ` +
+      `dode-keten-controle: ${aantal} functies hebben allemaal een verdict — ` +
+        `${aantal - buiten - wachtend} met een pad door de app, ${buiten} bewakingen ` +
+        `en ops-functies met een aanroeper in tests/ of scripts/, en ${wachtend} ` +
+        `zonder pad waar het verdict een productvraag is. Elke CHECK-waarde ` +
         `wordt ergens geschreven of staat met reden op de lijst.`,
     );
     return 0;
@@ -525,6 +648,12 @@ function hoofd() {
         `aanroeper"), maar er staat nergens in tests/ of scripts/ een aanroep. Een ` +
         `bewaking zonder aanroeper is een aanname — zet er een test op of haal hem ` +
         `van de lijst.`,
+    );
+  }
+  for (const naam of beslistVerouderd) {
+    console.error(
+      `✗ ${naam}() staat op WACHT_OP_EEN_BESLUIT maar heeft inmiddels een ` +
+        `aanroeper. De vraag is dus beantwoord — haal hem van de lijst.`,
     );
   }
   for (const naam of bewaaktVerouderd) {
