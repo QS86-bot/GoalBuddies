@@ -1007,11 +1007,18 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    rij in het dossier:** `groups.tz` heeft dezelfde vorm als A38 — hij wordt
    alleen in `create_group()` gevalideerd terwijl een beheerder hem via
    `grant update (…, tz, …)` rechtstreeks mag zetten.
-5. **Vijf onbereikbare features.** `wijzigDoel()`, `wijzigMijlpaal()` en
-   `fetchCommitmentSpoor()` hebben nul aanroepers; `group_members.status` heeft
-   elf leesplekken en geen enkele knop; `ai_kosten_per_week()` draait nergens.
-   Een doel is dus na aanmaken niet meer te wijzigen, en het auditspoor dat
-   domeinregel 5 eist is nergens te zien.
+5. **Half af, en de helft die telt is de controle.** ✅ `keten:controle` meldde
+   maandenlang nul omdat hij niets kón vinden — `grant`- en `revoke`-regels
+   telden als aanroeper, dus élke functie was "levend". Gerepareerd, geijkt, en
+   met open ogen vond hij meteen twaalf functies; elf zijn bewakingen en staan nu
+   met reden op een lijst die zichzelf moet bewijzen.
+   ⚠️ **Wat er openblijft is schermwerk:** `wijzigDoel()`, `wijzigMijlpaal()` en
+   `fetchCommitmentSpoor()` hebben nul schermen — een doel is na aanmaken niet te
+   wijzigen, een mijlpaaltitel met een typefout is permanent, en het auditspoor
+   dat domeinregel 5 eist is nergens te zien. **Dat is een feature met een spec en
+   geen opruimwerk**, mede omdat een doelbewerkscherm de streefdatum raakt en die
+   via A7 akkoord van een buddy vraagt. Staat als rij in het dossier, met de
+   tweede controle die er nog bij hoort.
 
 ⚠️ **Twee controlescripts hebben een blinde vlek, en hun groen zegt daarom niets
 over die klasse.** `tekst:controle` ziet geen JSX-tekst die over meerdere regels

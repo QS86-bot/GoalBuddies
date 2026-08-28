@@ -112,15 +112,77 @@ export const BEWUST_ONGESCHREVEN = {
     'uit `chat_messages` als schrijver las — zie `TREFFER_HOORT_ELDERS`.',
 };
 
+/**
+ * Functies die per ontwerp geen pad door de app hebben — bewakingen en ops.
+ *
+ * ⚠️ **Dit is de enige categorie waar de EPIC 9-regel niet geldt, en er is een
+ *    scherpe reden voor.** Die regel — tests en scripts tellen niet als
+ *    aanroeper — bestaat omdat een feature met alleen tests eromheen een feature
+ *    is waar geen knop heen loopt. Een bewaking ís geen feature: hij bestaat om
+ *    in `/audit` en in de RLS-suite nul rijen terug te geven. Er hóórt geen knop
+ *    naartoe, en er komt er ook nooit een.
+ *
+ * ⚠️ **Maar een naam op deze lijst zet de controle níét uit.** Het script
+ *    verifieert dat er in `tests/` of `scripts/` daadwerkelijk een aanroep staat.
+ *    Staat die er niet, dan wordt de functie alsnog gemeld — met een andere
+ *    reden. Anders is dit een lijst waarop je een dode functie kunt parkeren, en
+ *    dat is precies wat deze controle moet vinden.
+ *
+ *    Dat is meteen gebleken: `functie_vingerafdrukken()` stond er met de reden
+ *    "de test is de aanroeper", en er was geen test — zijn aanroeper is
+ *    `scripts/functies-controle.mjs`. De lijst corrigeerde zijn eigen reden.
+ *
+ * ⚠️ Ook hier: een lijst met redenen en geen lijst met namen. Zelfde vorm als
+ *    `BEWUST_ONGESCHREVEN`.
+ *
+ * @type {Record<string, string>}
+ */
+export const BEWAAKT_BUITEN_DE_APP = {
+  ddl_rechten_in_de_api:
+    'Bewaking op DDL-rechten via de API. Draait in `/audit` en in de RLS-suite.',
+  ddl_rechten_van_service_role:
+    'Idem, voor `service_role`.',
+  functie_vingerafdrukken:
+    'Vergelijkt de gedeployde functies met de migraties. Aanroeper is ' +
+    '`scripts/functies-controle.mjs`, die in `/audit` draait.',
+  functies_voor_authenticated:
+    'De grendel onder 0115: welke functies `authenticated` mag uitvoeren. Zonder ' +
+    'test is die grant een aanname.',
+  indexdekking_bewaking:
+    'Onwrikbare regel 11 — index op elke FK en elke WHERE/ORDER BY-kolom.',
+  initplan_bewaking:
+    'De grendel onder 0119: geen enkele policy met een kale `auth.uid()`.',
+  intrekvenster_bewaking:
+    'Het intrekvenster staat op één plek; deze bewaking maakt dat leesbaar.',
+  onveranderlijkheid_bewaking:
+    'Domeinregel 6 — voltooiingen en reeksen zijn append-only.',
+  tekstgrenzen_bewaking:
+    'De grendel onder 0120: elke schrijfbare tekstkolom heeft een lengtegrens.',
+  uitnodigingscode_bewaking:
+    'De sterkte van `generate_invite_code()` — alfabet, lengte en de drempel ' +
+    'tegen modulo-bias — uitleesbaar, zodat `policies.test.ts` hem kan bewaken.',
+  lijn_migratieregister_uit:
+    'Lijnt het migratieregister uit na een MCP-apply (DEPLOY.md §2.2). ' +
+    'Aanroeper is `scripts/migratieregister-uitlijnen.mjs`; een knop hiervoor ' +
+    'in de app zou een ontwikkelhandeling in productie zetten.',
+  vastgelopen_goedkeuringen:
+    '⚠️ Geen bewaking maar een telling, en 0109 schrijft met zoveel woorden op ' +
+    'waarom er geen scherm bij hoort: de échte reparatie is de ' +
+    'goedkeuringstermijn uit beslisdocument 001 §2.6b.3, en dát is een ' +
+    'productbeslissing die het puntenmodel raakt. Tot die keuze gemaakt is, is ' +
+    'de toestand telbaar en verder niets. **Hoort van deze lijst af zodra die ' +
+    'termijn er is** — dan is dit een scherm of een job.',
+};
+
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
 const PRODUCTIEMAPPEN = ['src', 'app', 'supabase/functions'];
 
-function bronbestanden(dir, uit = []) {
+function bronbestanden(dir, uit = [], vorm = /\.(ts|tsx)$/) {
   for (const naam of readdirSync(dir)) {
     if (naam === 'node_modules' || naam === '.git') continue;
     const pad = join(dir, naam);
-    if (statSync(pad).isDirectory()) bronbestanden(pad, uit);
-    else if (/\.(ts|tsx)$/.test(naam)) uit.push(pad);
+    if (statSync(pad).isDirectory()) bronbestanden(pad, uit, vorm);
+    else if (vorm.test(naam)) uit.push(pad);
   }
   return uit;
 }
@@ -143,19 +205,38 @@ export function functiesIn(sql) {
 }
 
 /**
- * De SQL zonder de koppen van de functiedefinities zelf, zodat een functie niet
+ * De SQL zonder alles wat een functie *over* zichzelf zegt, zodat een functie niet
  * zijn eigen aanroeper wordt.
  *
  * ⚠️ `public.` gaat er hier af. De eerste versie van deze controle miste acht
  *    functies omdat de aanroep `execute function public.noteer_commitment()`
  *    luidt en de negatieve lookbehind op `.` die wegfilterde. Alle acht waren
  *    vals alarm, en dat is precies het soort controle dat je leert negeren.
+ *
+ * ⚠️ **En sinds 28-08 gaan `grant`, `revoke`, `comment on` en `alter function`
+ *    er ook af, want dáár zat de blinde vlek.** Bijna élke functie in dit project
+ *    draagt twee regels: `revoke all on function public.f(...)` en
+ *    `grant execute on function public.f(...) to ...`. Allebei bevatten `f(`, dus
+ *    het aanroeppatroon sloeg erop aan en was iedere functie per definitie
+ *    "levend". Het script meldde maandenlang nul — niet omdat er niets dood was,
+ *    maar omdat hij niets kón vinden. Dat is dezelfde vorm als bij
+ *    `tekst:controle` (QS8-115): een controle die nooit rood is geweest, is een
+ *    aanname.
+ *
+ *    Gevonden door de controleronde van 28-08, die drie datalaagfuncties zonder
+ *    één aanroeper vond terwijl dit script groen stond.
  */
 export function zonderDefinities(sql) {
   return sql
     .replace(/\bpublic\./gi, '')
     .replace(/create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_]+)\s*\(/gi, ' ')
-    .replace(/drop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+[^;]*;/gi, ' ');
+    .replace(/drop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+[^;]*;/gi, ' ')
+    // ⚠️ Alles wat een recht of een toelichting op een functie zet. `[^;]*`
+    //    stopt bij de eerste puntkomma, en die staat in geen van deze vier
+    //    vormen binnenin.
+    .replace(/\b(?:grant|revoke)\b[^;]*?\bon\s+function\b[^;]*;/gi, ' ')
+    .replace(/comment\s+on\s+function\b[^;]*;/gi, ' ')
+    .replace(/alter\s+function\b[^;]*;/gi, ' ');
 }
 
 /** De namen die `src/`, `app/` en `supabase/functions/` via `.rpc()` aanroepen. */
@@ -165,6 +246,16 @@ export function rpcAanroepenIn(bron) {
     namen.add(m[1].toLowerCase());
   }
   return namen;
+}
+
+/**
+ * Of `naam` ergens als functieaanroep in `bron` voorkomt.
+ *
+ * ⚠️ Alleen bedoeld als bewijs bij `BEWAAKT_BUITEN_DE_APP`, nooit als bewijs van
+ *    leven — zie de toelichting in `controleer()`.
+ */
+export function genoemdIn(bron, naam) {
+  return new RegExp(`(?<![a-z0-9_])${naam}(\\s*\\(|['"\`])`, 'i').test(bron);
 }
 
 /** Functies zonder enige aanroeper — niet in de database, niet in productiecode. */
@@ -320,17 +411,49 @@ export function sleutelVan({ tabel, kolom, waarde }) {
  * @param {{
  *   bestanden: { naam: string, sql: string }[],
  *   prodBron: string,
+ *   testBron?: string,
  *   bewust?: Record<string, string>,
+ *   bewaakt?: Record<string, string>,
  * }} invoer
  */
-export function controleer({ bestanden, prodBron, bewust = BEWUST_ONGESCHREVEN }) {
+export function controleer({
+  bestanden,
+  prodBron,
+  testBron = '',
+  bewust = BEWUST_ONGESCHREVEN,
+  bewaakt = BEWAAKT_BUITEN_DE_APP,
+}) {
   const sql = bestanden.map((b) => b.sql).join('\n');
-  const functies = functiesZonderAanroeper({ sql, prodBron });
+  const alleZonder = functiesZonderAanroeper({ sql, prodBron });
+
+  // ⚠️ Een naam op `bewaakt` zet de controle niet uit: de aanroeper buiten de app
+  //    moet er ook echt zijn. Zonder deze splitsing is dit een lijst waarop je
+  //    een dode functie parkeert, en dat is precies wat deze controle moet vinden.
+  //
+  // ⚠️ Hier telt élke vermelding en niet alleen `.rpc('naam')`, en dat is geen
+  //    slordigheid maar het verschil in wat er bewezen wordt. Aan de productiekant
+  //    gaat het om "loopt hier een pad heen" en dan is de vorm van de aanroep het
+  //    bewijs. Hier gaat het om "kijkt er iets buiten de app naar", en dat doen
+  //    deze twee allebei ánders: `functies-controle.mjs` doet een kale `fetch()`
+  //    op `/rest/v1/rpc/…` én een `select` via psql, en
+  //    `migratieregister-uitlijnen.mjs` heeft een eigen `rpc()`-hulpje. Een
+  //    strenge vorm meldde die twee als ongetest terwijl ze allebei in `/audit`
+  //    draaien — vals alarm, en dat is precies wat je leert negeren.
+  const functies = alleZonder.filter((naam) => !(naam in bewaakt));
+  const beloofdMaarOngetest = alleZonder.filter(
+    (naam) => naam in bewaakt && !genoemdIn(testBron, naam),
+  );
+
+  // ⚠️ En de andere kant, net als bij `verouderd` hieronder: een naam op de
+  //    lijst die inmiddels een echte aanroeper heeft, hoort eraf.
+  const bewaaktVerouderd = Object.keys(bewaakt).filter((naam) => !alleZonder.includes(naam));
   const alleDood = waardenZonderSchrijver({ bestanden, prodBron });
   const dood = new Set(alleDood.map(sleutelVan));
 
   return {
     functies,
+    beloofdMaarOngetest,
+    bewaaktVerouderd,
     waarden: alleDood.filter((w) => !(sleutelVan(w) in bewust)),
     // ⚠️ **De andere kant van het register, en die ontbrak.** Een uitzondering
     //    die niet meer nodig is, valt stil buiten beeld: de filter hierboven
@@ -358,13 +481,34 @@ function hoofd() {
     .map((p) => readFileSync(p, 'utf8'))
     .join('\n');
 
-  const { functies, waarden, verouderd } = controleer({ bestanden, prodBron });
+  // ⚠️ Apart van `prodBron` en met opzet: een aanroep uit `tests/` of `scripts/`
+  //    maakt een functie níét levend (de les van EPIC 9). Hij telt alleen als
+  //    bewijs bij een naam op `BEWAAKT_BUITEN_DE_APP`.
+  const testBron = ['tests', 'scripts']
+    .flatMap((m) => bronbestanden(join(WORTEL, m), [], /\.(ts|tsx|mjs)$/))
+    .map((p) => readFileSync(p, 'utf8'))
+    .join('\n');
 
-  if (functies.length === 0 && waarden.length === 0 && verouderd.length === 0) {
+  const { functies, beloofdMaarOngetest, bewaaktVerouderd, waarden, verouderd } = controleer({
+    bestanden,
+    prodBron,
+    testBron,
+  });
+
+  if (
+    functies.length === 0 &&
+    beloofdMaarOngetest.length === 0 &&
+    bewaaktVerouderd.length === 0 &&
+    waarden.length === 0 &&
+    verouderd.length === 0
+  ) {
     const aantal = functiesIn(bestanden.map((b) => b.sql).join('\n')).size;
+    const buiten = Object.keys(BEWAAKT_BUITEN_DE_APP).length;
     console.log(
-      `dode-keten-controle: ${aantal} functies hebben allemaal een aanroeper, en ` +
-        `elke CHECK-waarde wordt ergens geschreven of staat met reden op de lijst.`,
+      `dode-keten-controle: ${aantal} functies hebben allemaal een aanroeper — ` +
+        `${aantal - buiten} met een pad door de app, ${buiten} bewakingen en ` +
+        `ops-functies met een aanroeper in tests/ of scripts/. Elke CHECK-waarde ` +
+        `wordt ergens geschreven of staat met reden op de lijst.`,
     );
     return 0;
   }
@@ -373,6 +517,21 @@ function hoofd() {
     console.error(
       `✗ ${naam}() wordt door niets aangeroepen — niet via .rpc() uit src/, app/ of ` +
         `supabase/functions/, en niet door een trigger, policy, view of andere functie.`,
+    );
+  }
+  for (const naam of beloofdMaarOngetest) {
+    console.error(
+      `✗ ${naam}() staat op BEWAAKT_BUITEN_DE_APP ("de test of het script is de ` +
+        `aanroeper"), maar er staat nergens in tests/ of scripts/ een aanroep. Een ` +
+        `bewaking zonder aanroeper is een aanname — zet er een test op of haal hem ` +
+        `van de lijst.`,
+    );
+  }
+  for (const naam of bewaaktVerouderd) {
+    console.error(
+      `✗ ${naam}() staat op BEWAAKT_BUITEN_DE_APP maar heeft inmiddels een echte ` +
+        `aanroeper. Haal hem van de lijst, anders geeft het register een reden ` +
+        `voor een toestand die er niet meer is.`,
     );
   }
   for (const w of waarden) {

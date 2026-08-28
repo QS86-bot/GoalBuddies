@@ -5,6 +5,7 @@ import {
   checksIn,
   controleer,
   functiesZonderAanroeper,
+  genoemdIn,
   waardenZonderSchrijver,
   BEWUST_ONGESCHREVEN,
   TREFFER_HOORT_ELDERS,
@@ -44,6 +45,30 @@ describe('functies zonder aanroeper — wat de controle moet vinden', () => {
     expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['meld_commitment']);
     // en ter contrast: dezelfde aanroep vanuit productiecode telt wél
     expect(functiesZonderAanroeper({ sql, prodBron: testBron })).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De blinde vlek die de controleronde van 28-08 vond, en die alles
+   *    verklaarde.** Bijna élke functie in dit project draagt twee regels:
+   *    `revoke all on function public.f(...)` en `grant execute on function
+   *    public.f(...) to ...`. Allebei bevatten `f(`, dus het aanroeppatroon sloeg
+   *    erop aan en was iedere functie per definitie "levend". Het script meldde
+   *    daarom maandenlang nul — niet omdat er niets dood was, maar omdat hij
+   *    niets kón vinden.
+   *
+   * ⚠️ Dat is dezelfde vorm als bij `tekst:controle` (QS8-115): een controle die
+   *    nooit rood is geweest, is een aanname. `wijzigDoel()`, `wijzigMijlpaal()`
+   *    en `fetchCommitmentSpoor()` hadden nul aanroepers en dit script zei niets.
+   */
+  it('een functie die alleen in zijn eigen grant- en revoke-regels voorkomt', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      'revoke all on function public.spookfunctie() from public, anon, authenticated;',
+      'grant execute on function public.spookfunctie() to service_role;',
+      "comment on function public.spookfunctie() is 'doet niets';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['spookfunctie']);
   });
 });
 
@@ -416,5 +441,104 @@ describe('een uitzondering die niet meer nodig is', () => {
       expect(reden.length, `${sleutel} heeft geen reden`).toBeGreaterThan(60);
       expect(sleutel, `${sleutel} mist een tabel.kolom=waarde-vorm`).toMatch(/^[a-z_]+\.[a-z_]+=/);
     }
+  });
+});
+
+/**
+ * De uitzondering voor bewakingen — en waarom hij geen parkeerplaats is.
+ *
+ * ⚠️ **Toen de blinde vlek weg was, meldde het script twaalf functies.** Elf
+ *    ervan zijn bewakingen en ops-functies: die hebben per ontwerp geen pad door
+ *    de app en horen dat ook nooit te krijgen. Zonder uitzondering was deze
+ *    controle vanaf dag één rood en dus meteen onbruikbaar — "een controle die
+ *    alles meldt, leer je te negeren".
+ *
+ * ⚠️ **En de uitzondering moet zichzelf bewijzen, anders is hij het gat.** Een
+ *    naam op de lijst wordt alsnog gemeld als er nergens in `tests/` of
+ *    `scripts/` een aanroep staat. Dat werkte meteen: `functie_vingerafdrukken`
+ *    stond er met de reden "de test is de aanroeper" en er was geen test — zijn
+ *    aanroeper is `scripts/functies-controle.mjs`. De lijst corrigeerde zijn
+ *    eigen reden.
+ */
+describe('BEWAAKT_BUITEN_DE_APP — de uitzondering is geen parkeerplaats', () => {
+  const migratie = (naam: string) =>
+    `create or replace function public.${naam}() returns void as $$ begin end $$;` +
+    `\nrevoke all on function public.${naam}() from public, anon, authenticated;`;
+
+  it('houdt een bewaking met een aanroeper in tests stil', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('proef_bewaking') }],
+      prodBron: '',
+      testBron: "await adminDb().rpc('proef_bewaking');",
+      bewust: {},
+      bewaakt: { proef_bewaking: 'Draait in /audit en in de suite.' },
+    });
+
+    expect(uit.functies).toEqual([]);
+    expect(uit.beloofdMaarOngetest).toEqual([]);
+    expect(uit.bewaaktVerouderd).toEqual([]);
+  });
+
+  it('meldt een bewaking die nergens wordt aangeroepen, ook al staat hij op de lijst', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('proef_bewaking') }],
+      prodBron: '',
+      testBron: '',
+      bewust: {},
+      bewaakt: { proef_bewaking: 'Draait in /audit en in de suite.' },
+    });
+
+    // Niet in `functies` — de reden is een andere, en die staat in de melding.
+    expect(uit.functies).toEqual([]);
+    expect(uit.beloofdMaarOngetest).toEqual(['proef_bewaking']);
+  });
+
+  it('meldt een naam op de lijst die inmiddels een echte aanroeper heeft', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('proef_bewaking') }],
+      prodBron: "await supabase().rpc('proef_bewaking');",
+      testBron: '',
+      bewust: {},
+      bewaakt: { proef_bewaking: 'Draait in /audit en in de suite.' },
+    });
+
+    expect(uit.functies).toEqual([]);
+    expect(uit.bewaaktVerouderd).toEqual(['proef_bewaking']);
+  });
+
+  it('laat een functie die niet op de lijst staat gewoon als dood melden', () => {
+    const uit = controleer({
+      bestanden: [{ naam: '0001.sql', sql: migratie('spookfunctie') }],
+      prodBron: '',
+      testBron: "await adminDb().rpc('spookfunctie');",
+      bewust: {},
+      bewaakt: {},
+    });
+
+    // ⚠️ De les van EPIC 9 blijft staan: een aanroep uit een test maakt een
+    //    functie niet levend zolang hij niet op de lijst staat.
+    expect(uit.functies).toEqual(['spookfunctie']);
+  });
+});
+
+/**
+ * ⚠️ Het bewijs bij een lijstnaam is bewust ruimer dan `.rpc('naam')`, want de
+ *    twee ops-scripts roepen anders aan: een kale `fetch()` op `/rest/v1/rpc/…`,
+ *    een `select` via psql, en een eigen `rpc()`-hulpje. Een strenge vorm meldde
+ *    ze allebei als ongetest terwijl ze in `/audit` draaien.
+ */
+describe('genoemdIn — het bewijs bij een lijstnaam', () => {
+  it('herkent de vormen die de ops-scripts gebruiken', () => {
+    expect(genoemdIn("rpc('lijn_migratieregister_uit', { p_paren })", 'lijn_migratieregister_uit')).toBe(true);
+    expect(genoemdIn('fetch(`${url}/rest/v1/rpc/functie_vingerafdrukken`)', 'functie_vingerafdrukken')).toBe(true);
+    expect(genoemdIn("'select * from functie_vingerafdrukken();'", 'functie_vingerafdrukken')).toBe(true);
+  });
+
+  it('trapt niet in een langere naam die de kortere bevat', () => {
+    expect(genoemdIn('await db.rpc("herbereken_reeks_volledig")', 'herbereken_reeks')).toBe(false);
+  });
+
+  it('en zegt nee als de naam er niet staat', () => {
+    expect(genoemdIn('niets bijzonders hier', 'proef_bewaking')).toBe(false);
   });
 });
