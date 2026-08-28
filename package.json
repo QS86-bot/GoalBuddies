@@ -38,6 +38,7 @@
     "register:controle": "node scripts/migratieregister-controle.mjs",
     "functies:controle": "node scripts/functies-controle.mjs",
     "keten:controle": "node scripts/dode-keten-controle.mjs",
+    "rpc:controle": "node scripts/rpc-argumenten-controle.mjs",
     "storage:controle": "node scripts/storage-controle.mjs",
     "pwa:controle": "node scripts/pwa-controle.mjs",
     "levend:controle": "node scripts/levend-controle.mjs",
