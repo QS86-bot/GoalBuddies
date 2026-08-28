@@ -38,7 +38,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **595 geslaagd, 1 overgeslagen** (28-08, na 0123). De hele suite geeft met de
-   stack **1840 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   stack **1848 geslaagd en 1 overgeslagen**; zonder credentials **1274 geslaagd
    en 575 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
