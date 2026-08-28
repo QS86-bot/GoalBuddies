@@ -92,7 +92,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0113`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0114`
 staan in de map.
 
 ⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
@@ -102,7 +102,7 @@ omdat een parallelle sessie die nummers eerder claimde. Zie
 `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
 een migratienummer wel en niet vastlegt.
 
-⚠️ **`0107` t/m `0110` zijn nog niet op productie gedraaid.** Alle vier zijn op
+⚠️ **`0107` t/m `0110` en `0114` zijn nog niet op productie gedraaid.** Die vijf zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
 `register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
@@ -120,6 +120,9 @@ dan geldt op productie:
 - `0110` — de rem van A7 is met drie verzoeken weg te nemen: ontkoppelen,
   `zet_streefdatum()`, terugkoppelen. Gemeten: de datum schoof tien maanden op
   en er ging **geen enkel verzoek** naar een buddy. Zie de rij van 17-08.
+- `0114` — drie functies pinnen hun `search_path` niet, waardoor de zeef die
+  tegenvallertaal uit een doelcoach-tip weert met een gekaapt pad niets zeeft.
+  `definer_bewaking()` keek daar langs omdat die drie geen definer zijn.
 
 ⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
 `src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
