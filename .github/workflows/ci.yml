@@ -94,6 +94,66 @@ jobs:
       - name: Geen nieuwe handmatige levend-vlaggen
         run: npm run levend:controle
 
+      # -----------------------------------------------------------------------
+      # De controles die alleen de repo nodig hebben — toegevoegd 27-08-2026
+      # -----------------------------------------------------------------------
+      #
+      # ⚠️ **Deze acht stonden alleen in `/audit`, en dat is een wekelijkse
+      #    handeling.** `CLAUDE.md` zegt bij vier ervan letterlijk "sinds X een
+      #    controle en geen zin meer" — de hele winst is dat je de regel niet
+      #    hoeft te ónthouden. Maar het scrípt draaide alleen als iemand eraan
+      #    dacht, en dan is de regel alsnog iets om te onthouden, één laag hoger.
+      #
+      # ⚠️ **En CI toetste wél dat ze wérken.** De ijkingstests in
+      #    `tests/scripts/` draaien mee in `npm test`, dus de build bewees dat de
+      #    heuristieken kloppen — en liet ze vervolgens niets bewaken. Dat is
+      #    dezelfde vorm als de bevindingen die deze scripts zelf vinden.
+      #
+      # ⚠️ Samen kosten ze ongeveer anderhalve seconde; ze lezen alleen
+      #    bestanden. Wat er níét bij staat heeft een reden: `functies:` en
+      #    `register:controle` vragen een productieverbinding, `vapid:controle`
+      #    een privésleutel, en `zichtbaarheid:controle` een database — die
+      #    laatste hoort in de RLS-job hieronder.
+
+      - name: De overdrachtsdocumenten spreken elkaar niet tegen
+        run: npm run docs:controle
+
+      - name: Geen emoji in app-tekst
+        run: npm run emoji:controle
+
+      - name: Geen hardgecodeerde UI-tekst
+        run: npm run tekst:controle
+
+      # ⚠️ Het gat in de nummering is de belangrijkste van de drie toetsen: de
+      #    bestanden zijn de enige manier om dit schema ergens anders op te
+      #    bouwen, en ontbreekt er één, dan toetst de RLS-suite daar een ánder
+      #    schema dan productie — groen zonder iets te bewijzen.
+      - name: Migraties aaneengesloten en met rollback-pad
+        run: npm run migraties:controle
+
+      # ⚠️ Elke open Laag-bevinding zegt wanneer hij zwaarder wordt. Zonder die
+      #    zin is het een lijst die alleen maar groeit.
+      - name: Elke bevinding zegt wanneer hij terugkomt
+        run: npm run review:controle
+
+      # ⚠️ Geen persoonsgegeven in een jsonb-kolom die niemand als zodanig leest.
+      - name: Geen persoon in jsonb
+        run: npm run persoon:controle
+
+      # ⚠️ De gratis tier heeft 60 verbindingen voor de héle database. Deze
+      #    controle wordt rood zodra er een Postgres-driver of een
+      #    verbindingsstring bij komt — vandaag klopt de regel omdat alles via
+      #    PostgREST loopt, en dat is de afwezigheid van iets en geen instelling.
+      - name: Geen directe databaseverbindingen
+        run: npm run verbindingen:controle
+
+      # ⚠️ De gedeelde kopieën in `supabase/functions/_shared/` zijn gegenereerd.
+      #    Loopt er één uit de pas, dan werken de app en de jobs met
+      #    verschillende regels — en dat is precies wat `edge:controle` hierboven
+      #    voor `shared/time` alleen doet.
+      - name: Alle gedeelde Edge-kopieën gelijk aan src/
+        run: npm run edge:sync:controle
+
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
   # ---------------------------------------------------------------------------
@@ -213,6 +273,14 @@ jobs:
       #    iemand het merkt. Deze stap houdt de lijst opgesomd.
       - name: Wie mag er langs de pin op groups
         run: npm run pin:controle
+
+      # ⚠️ Wat er in een open groep opengaat (besluit A41) staat in vier
+      #    oppervlakken in de database, en de zin die de gebruiker leest somt die
+      #    vier op. Komt er een vijfde bij, dan vertelt die zin een deel van de
+      #    waarheid — en dan is de vraag of hij nog klopt iets voor nu en niet
+      #    voor nadat iemand toestemming gaf voor iets anders dan hij dacht.
+      - name: Wat een open groep laat zien
+        run: npm run zichtbaarheid:controle
 
       # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
       #    is bewezen; wat hier niet staat, is niet bewezen.

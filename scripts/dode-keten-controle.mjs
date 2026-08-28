@@ -43,6 +43,38 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
+ * Waarden waarvan de tekstzoektocht een treffer geeft die bij een ándere tabel
+ * hoort.
+ *
+ * ⚠️ **De schrijverstoets hieronder is tabelblind, en dat is op 27-08-2026 een
+ *    gemeten valse negatief geworden.** Hij zoekt `'waarde'` in álle
+ *    bronbestanden en weet niet bij welke tabel die treffer hoort. Voor
+ *    `points_ledger.reason = 'milestone_done'` betekende dat: nergens geboekt,
+ *    maar `chat_messages.system_event` kent dezelfde naam en die staat wél in
+ *    `src/modules/buddies/chat-schemas.ts` — dus de controle zweeg.
+ *
+ * ⚠️ **En het is geen eenmalig geval.** Veertien CHECK-waarden komen in meer dan
+ *    één tabel voor (`active`, `approved`, `archived`, `done`, `todo`, …), dus
+ *    voor elk daarvan is het antwoord "er is een schrijver" onbetrouwbaar. Een
+ *    algemene oplossing vraagt dat de bron zegt bij welke tabel een string hoort,
+ *    en dat zegt hij niet. Zie de rij van 27-08 in `docs/ENGINEER-REVIEW.md`.
+ *
+ *    Wat hier staat is de gerichte versie: een waarde in deze lijst slaat de
+ *    tekstzoektocht over en telt als dood, waarna `BEWUST_ONGESCHREVEN` beslist
+ *    of dat erg is. Zo blijft de treffer van een ándere tabel geen alibi.
+ *
+ * @type {Record<string, string>}
+ */
+export const TREFFER_HOORT_ELDERS = {
+  'points_ledger.reason=milestone_done':
+    'De treffer komt uit `chat_messages.system_event`, waar `milestone_done` een ' +
+    'systeembericht is dat `meld_mijlpaal()` schrijft. Als puntenreden boekt ' +
+    'niemand hem: de vijf schrijvers van `points_ledger` zijn ' +
+    '`award_points_on_approval` (floor, ceiling, review_given), de rollover-job ' +
+    '(cycle_missed) en `trek_goedkeuring_in` (correction).',
+};
+
+/**
  * Waarden die bewust nog niet geschreven worden, met de reden en de voorwaarde
  * die ze weer interessant maakt.
  *
@@ -73,13 +105,20 @@ export const BEWUST_ONGESCHREVEN = {
   'chat_messages.type=doc':
     'Idem als `photo` (QS8-72, Fase 2), en met dezelfde open schrijfkant.',
   'points_ledger.reason=goal_done':
-    '⚠️ De enige van deze vijf die een besluit vraagt in plaats van een epic. ' +
-    'Domeinregel 10 zegt dat het puntenplafond van een doel de som is van de ' +
-    'plafondpunten van zijn weekdoelen — dan is een aparte boeking voor het ' +
-    'afronden van het doel dubbeltelling, en hoort de waarde weg zoals ' +
-    '`missed` in 0082. Maar `milestone_done` staat er wél en wórdt geboekt, ' +
-    'dus zomaar schrappen zonder besluit zou het model veranderen. Staat als ' +
-    'rij in docs/ENGINEER-REVIEW.md.',
+    '⚠️ Vraagt een besluit in plaats van een epic. Domeinregel 10 zegt dat het ' +
+    'puntenplafond van een doel de som is van de plafondpunten van zijn ' +
+    'weekdoelen — `recalc_goal_max_points()` telt letterlijk alleen ' +
+    '`weekly_goals.points_ceiling` — dus een aparte boeking voor het afronden ' +
+    'van het doel is dubbeltelling, en hoort weg zoals `missed` in 0082. ' +
+    '⚠️ Hier stond dat `milestone_done` wél geboekt wordt en dat schrappen ' +
+    'daarom het model zou veranderen. Dat klopt niet: die naam is een ' +
+    'chat-systeembericht en geen puntenreden. Beide zijn dood, en om dezelfde ' +
+    'reden. Staat als rij in docs/ENGINEER-REVIEW.md.',
+  'points_ledger.reason=milestone_done':
+    'Zelfde geval als `goal_done` en hetzelfde besluit: mijlpalen voeden de ' +
+    'vóórtgang en niet de score, en domeinregel 10 zegt dat dat twee dingen ' +
+    'zijn. Kwam pas op 27-08 bovendrijven omdat de tekstzoektocht een treffer ' +
+    'uit `chat_messages` als schrijver las — zie `TREFFER_HOORT_ELDERS`.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
@@ -249,7 +288,14 @@ export function zonderChecks(sql) {
 }
 
 /** CHECK-waarden die geen enkel pad ooit schrijft. */
-export function waardenZonderSchrijver({ bestanden, prodBron }) {
+/**
+ * @param {{
+ *   bestanden: { naam: string, sql: string }[],
+ *   prodBron: string,
+ *   elders?: Record<string, string>,
+ * }} invoer
+ */
+export function waardenZonderSchrijver({ bestanden, prodBron, elders = TREFFER_HOORT_ELDERS }) {
   const checks = checksIn(bestanden);
   const romp = zonderChecks(bestanden.map((b) => b.sql).join('\n'));
 
@@ -257,9 +303,18 @@ export function waardenZonderSchrijver({ bestanden, prodBron }) {
   for (const [naam, c] of checks) {
     const tabel = c.tabel;
     for (const waarde of c.waarden) {
+      const rij = { constraint: naam, kolom: c.kolom, waarde, bestand: c.bestand, tabel };
+
+      // ⚠️ Eerst het register, dán de tekstzoektocht. Staat de waarde hier, dan
+      //    is een treffer elders geen bewijs — zie `TREFFER_HOORT_ELDERS`.
+      if (sleutelVan(rij) in elders) {
+        dood.push(rij);
+        continue;
+      }
+
       if (new RegExp(`['"\`]${waarde}['"\`]`).test(prodBron)) continue;
       if (new RegExp(`'${waarde}'`).test(romp)) continue;
-      dood.push({ constraint: naam, kolom: c.kolom, waarde, bestand: c.bestand, tabel });
+      dood.push(rij);
     }
   }
   return dood;
@@ -270,6 +325,13 @@ export function sleutelVan({ tabel, kolom, waarde }) {
   return `${tabel}.${kolom}=${waarde}`;
 }
 
+/**
+ * @param {{
+ *   bestanden: { naam: string, sql: string }[],
+ *   prodBron: string,
+ *   bewust?: Record<string, string>,
+ * }} invoer
+ */
 export function controleer({ bestanden, prodBron, bewust = BEWUST_ONGESCHREVEN }) {
   const sql = bestanden.map((b) => b.sql).join('\n');
   const functies = functiesZonderAanroeper({ sql, prodBron });
