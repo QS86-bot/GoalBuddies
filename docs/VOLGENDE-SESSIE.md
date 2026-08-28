@@ -3,12 +3,21 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38, #41, #54, #55,
-> #58, #59 en #60, na het opnieuw deployen van alle drie de Edge Functions, na de
-> engineering-review van alles wat die dag geland is (#33 t/m #46), en na QS8-56.
-> **Fase 2 is begonnen** — de `phase:v2`-issues van EPIC 5 staan op `main` of in
-> review. Er zijn twee dingen die op jou wachten; zie "Waar te beginnen", punt 0
-> en 0a.
+> **Laatst bijgewerkt:** 28-08-2026, na de merge van PR #71 t/m #78 (QS8-56,
+> QS8-65, QS8-79, QS8-78 en de idempotentie-reparatie) en PR #85 t/m #90 (de vijf
+> blokkerende bevindingen uit de controleronde).
+>
+> **Twee dingen die de stand van dit project veranderen:**
+>
+> 1. **De `phase:v2`-voorraad die een sessie alleen kan bouwen, is leeg.** Alle
+>    vier de issues die zonder overleg te bouwen waren, staan op `main`. Wat er in
+>    Linear overblijft vraagt Storage, een betaalprovider, een dependency, een
+>    illustrator of een module waar een andere sessie in werkt. **Begin dus niet
+>    in Linear** — begin in `docs/ENGINEER-REVIEW.md`; zie "Waar te beginnen".
+> 2. **Er is op 28-08 een volledige controleronde gedraaid** met zeven agents over
+>    ~99.500 regels. De vijf blokkerende bevindingen zijn gerepareerd, inclusief
+>    twee lekken die op productie live stonden. De rest staat als rij in het
+>    reviewdossier.
 
 ---
 
@@ -30,8 +39,10 @@ device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
 
 ⚠️ **En sinds 27-08 is Fase 2 begonnen, met Quintens goedkeuring, terwijl Fase 1
 nog openstaat.** Dat mag omdat wat er van Fase 1 rest zíjn hand vraagt en geen
-code. Drie `phase:v2`-issues zijn af en staan In Review; ze moeten in een vaste
-volgorde landen. **Lees "Waar te beginnen" punt 0 vóór je iets doet met `main`.**
+code. **Op 28-08 is die opening ook weer dicht:** alle vier de `phase:v2`-issues
+die een sessie zelfstandig kon bouwen staan op `main` (QS8-56, QS8-65, QS8-79,
+QS8-78). Wat er in de backlog overblijft vraagt Quinten of een dependency.
+**Lees "Waar te beginnen" punt 0 vóór je iets doet.**
 
 **De app is live op `goalbuddies.q-projects.tech`** (QS8-99/QS8-100). Deployen is
 één commando:
@@ -81,7 +92,7 @@ werkvoorraad.
 `bbbd1be`. Dat was de eerste PR van dit project; zie werkafspraak 1, want dat
 verandert de werkwijze.
 
-**EPIC 8 is af voor de MVP**, op de twee `phase:v2`-issues na. QS8-77 (de
+**EPIC 8 is af**, inclusief de twee `phase:v2`-issues (QS8-79 en QS8-78, 27/28-08). QS8-77 (de
 dagelijkse nudge) is op 21-08 mee afgerond met EPIC 11 en staat op Done; tot
 23-08 zeiden beide overdrachtsdocumenten dat hij nog open stond. De nudge-regel
 is compleet en getest — wat ontbreekt is nog steeds een bezorgd bericht, en dat
@@ -271,6 +282,55 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ `revoke ... from public` is in Supabase niet "van iedereen" — 28-08.**
+  `alter default privileges` deelt élke nieuwe functie en tabel in `public` uit
+  aan `anon`, `authenticated` én `service_role`. Wie er `public` en `anon` afhaalt,
+  houdt precies de rol over waaronder iedere ingelogde gebruiker draait. Migratie
+  0112 deed dat bij `seizoensrecap_cijfers()` — een `SECURITY DEFINER`-functie
+  zonder lidmaatschapstoets — en die stond dus **live op productie open voor elke
+  gebruiker**. Honderdtwintig regels verderop in datzelfde bestand stond het wél
+  goed. **De vorm is `from public, anon, authenticated`**, en sinds 0115 bewaakt
+  `tests/rls/functiegrants.test.ts` het generiek: een functie die `authenticated`
+  kan uitvoeren zonder dat enige migratie dat gunt, is een geërfd recht dat
+  niemand besloten heeft.
+
+- **⚠️ Een bevinding kan als opgelost worden afgevinkt op het verkeerde bewijs —
+  28-08.** Het venster van De Ketting stond op acht dagen bij een periode van
+  zeven, dus twee van elke zeven dagen was de afgesloten week uitleesbaar in een
+  beschermde groep. Dat is in augustus **twee keer** gesloten verklaard, met *"er
+  staat een venster op `p_period_start`"* en *"gedicht in 0037"*. Beide keren is
+  gemeten **dát** er een venster stond, nooit **hoe breed**. De test deed hetzelfde:
+  hij legt een schakel zestig dagen terug en is groen bij een venster van 8, 80 of
+  800 dagen. **Een grens toets je op de grens** — en dat is een vorm van regel 18
+  vraag 3 die de tabel in `CLAUDE.md` nog niet kende: de test bewaakt de belofte
+  op een plek waar hij niet kán breken.
+
+- **⚠️ Breek je grendel echt, want nadenken vindt dit niet — 28-08, twee keer.**
+  Bij de pushadres-allowlist bleef de test groen terwijl de `https`-eis was
+  weggehaald: elk `http`-adres erin viel al af op zijn hóst, dus de protocoltoets
+  werd nergens geraakt. Er moest een geval bij dat álleen daardoor wordt
+  tegengehouden. En bij QS8-78 bleef de badge-test groen bij het breken van
+  `best_streak`, omdat verwijderen structureel onmogelijk is. **Beide keren was
+  de test aannemelijk en bewaakte hij niets**, en beide keren bleek dat pas door
+  hem daadwerkelijk stuk te maken.
+
+- **⚠️ Een grep is geen meting, ook niet in je eigen bevinding — 28-08.**
+  De rij "26 migratiebestanden zijn niet idempotent" kwam uit twee greps en
+  klopte niet; het waren drie regels in twee bestanden. Eén van die greps
+  (`^create table [a-z"]`) matchte `create table if not exists`, want de `i` van
+  `if` valt binnen `[a-z]`. En bij een tweede controle die dag meldde een
+  regel-voor-regel-toets een vals alarm op een `grant` die over twee regels loopt.
+  **Plat je tekst en knip je commentaar weg voordat je een patroon telt** — een
+  rollback-kop noemt `grant execute ...` ook.
+
+- **⚠️ Twee sessies die tegelijk migraties schrijven, botsen — en het kost jullie
+  allebei tijd (28-08).** Mijn drie migraties moesten twee keer opschuiven omdat
+  een parallelle sessie 0107 t/m 0110 landde; hún PR schoof drie keer op om
+  dezelfde reden. `migraties:controle` ving elke botsing, en dat is de reden dat
+  het bij tijdverlies bleef. **Haal `main` op vlak vóór je een migratienummer
+  kiest, en nog een keer vlak vóór je landt** — en vergeet niet dat het
+  productieregister meeschuift als je hernummert.
 
 - **⚠️ Deze drie documenten beschrijven dezelfde stand en lopen uiteen — QS8-125.**
   `CLAUDE.md`, `docs/WERKVOORRAAD.md` §0 en dit bestand zijn drie handgeschreven
@@ -785,12 +845,20 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #60 en QS8-56)
+## STAND VAN DE REPO (28-08, na PR #90)
 
-⚠️ **De drie gestapelde PR's van 27-08 zijn geland** in de volgorde #36 → #38 →
-#41, en #54, #55, #58, #59 en #60 daarna. Wat er nu open kan staan is de PR van
-QS8-56 (het blok "Gedeeld met" op het doelscherm); die staat niet in de tabel
-hieronder, want die noemt alleen langlevende branches.
+⚠️ **Alles wat deze sessie opleverde staat op `main`.** Twee stapels, allebei in
+volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79, QS8-78 en de
+idempotentie-reparatie) en #85 t/m #90 (de vijf blokkerende bevindingen uit de
+controleronde). Er staat van deze sessie **niets meer open**.
+
+⚠️ **Er werkt een parallelle sessie in dezelfde repo**, en die landt regelmatig
+eigen migraties en controlescripts. Op 28-08 waren dat #76, #77, #79 t/m #84 en
+#89. Dat is de reden dat migratienummers deze dag twee keer moesten opschuiven —
+zie de valkuil daarover. Blijf uit `scripts/`, `.github/workflows/` en
+`src/modules/notifications/` tenzij je wijziging het echt vraagt; raak je er toch
+iets aan (zoals het register van `klokgrens-controle`), zeg dat dan in de
+commit-tekst.
 
 ⚠️ **In deze tabel staat met opzet geen commit-hash van `main` meer.** In de
 vorige versie stond hij er twee keer en op twee verschillende waarden, en tijdens
@@ -879,78 +947,136 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-### 0. De stand van de deploy — alle drie de functies lopen gelijk met `main`
+### 0. Er is geen Linear-issue om op te pakken — begin in het reviewdossier
 
-De drie PR's van 27-08 zijn geland in de volgorde #36 → #38 → #41 (QS8-57,
-QS8-41, QS8-137). De migraties heten op `main` **`0102`** en **`0103`** — niet
-`0100`/`0101`, zie de valkuil over migratienummers verderop.
+⚠️ **Dit is anders dan bij elke vorige sessie, dus lees het vóór je `/verder`
+draait.** Alle vier de `phase:v2`-issues die een sessie zelfstandig kon bouwen
+zijn op 27/28-08 gebouwd en geland. Wat er in Linear Backlog overblijft — QS8-71,
+QS8-72, QS8-86, QS8-92, QS8-108 en QS8-109 — vraagt Storage, een betaalprovider,
+een dependency, een illustrator of een module waar een parallelle sessie in werkt.
+De volledige tabel met redenen staat in `docs/WERKVOORRAAD.md` §4.
 
-**Alle drie de Edge Functions zijn dezelfde dag opnieuw gedeployd** en lopen
-gelijk met `main`, byte-voor-byte nagemeten. De versies en wat er per functie
-veranderde staan in `docs/WERKVOORRAAD.md` §2; hieronder alleen wat je moet weten
-vóór je erop gaat handelen.
+⚠️ **En Linear neemt geen nieuwe issues meer aan.** `save_issue` geeft *"You've
+exceeded the free issue limit for this workspace"*. Dat is al sinds 27-08 zo. Het
+gevolg voor jou: de conventie "één branch per Linear-issue" kan niet, dus werk op
+een `fix/…`- of `chore/…`-branch en zet de onderbouwing in de PR-tekst en in een
+beslisdocument. Upgraden kost geld en is dus grens 1 — vraag het aan Quinten,
+beslis het niet zelf.
 
-⚠️ **Wat er níét gemeten is: er is geen enkele echte aanroep gedaan.** De proxy
-van de bouwomgeving weigert `supabase.co/functions/v1/*` met een 403 op de
-CONNECT-tunnel — dezelfde grens die de kop van `edge-rapport.ts` voor de
-Sentry-ingest beschrijft. Alle drie staan op `ACTIVE` met aantoonbaar de juiste
-bron; **dát een echte job er goed doorheen komt, moet vanaf jouw machine.**
+**Waar het werk wél ligt:** `docs/ENGINEER-REVIEW.md`. Daar staan de bevindingen
+van de controleronde van 28-08, elk met de meting waarmee ze zijn vastgesteld en —
+bij een Laag-rij — de voorwaarde waaronder ze zwaarder worden. Dat is meer werk
+dan de backlog, en het is beter onderbouwd.
 
-⚠️ **Draai `npm run edge:gedeployd` een keer zelf.** Dat script vraagt
-`SUPABASE_ACCESS_TOKEN` uit `.env` en kon in de bouwomgeving niet draaien; de
-byte-vergelijking hierboven is met de hand gedaan langs dezelfde bundels. Dat is
-hetzelfde werk, maar niet dezelfde weg — en de weg die in `/audit` zit, is die
-van het script.
+### 0a. Wat de controleronde van 28-08 heeft achtergelaten
 
-⚠️ **Meet bij de eerste echte proef hoeveel van de zes weekstapvoorstellen de
-zeef overleven.** Blijft dat structureel onder de helft, dan is de prompt het
-probleem en niet de zeef — en dan voelt dit voor de gebruiker als "de coach doet
-niets".
+Zeven agents over ~99.500 regels: twee security-reviewers (database en
+applicatie), twee code-critics (`src/` en `app/`+functions), een critical-user,
+een test-engineer op de dekking, en een zoektocht naar onderbroken ketens.
 
-⚠️ **Er staat één vraag open die geld raakt** (grens 1). De tip-generatie put uit
-hetzelfde dagquotum van tien als het opsplitsen van een doel en de weekstappen.
-Twee gescheiden potten zouden beter zijn voor de gebruiker, maar brengen het
-plafond naar dertien calls per dag — dus niet gedaan. Onderbouwing in
-`docs/decisions/2026-08-27-de-doelcoachtip-per-mijlpaal.md` §5.
+**Vijf blokkerende bevindingen zijn gerepareerd** (PR #85 t/m #90), twee daarvan
+lekken die live op productie stonden. Wat blijft liggen staat als rij in het
+dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen leest:
 
-⚠️ **En één die niets kost maar wel opgeschreven moet worden:** de statusbug uit
-QS8-41 (`'error'` in de app tegenover `'failed'` in de database) hoorde een eigen
-issue te zijn. **Linear weigert nieuwe issues op de gratis tier van deze
-workspace** — "You've exceeded the free issue limit" — dus hij is in die PR
-meegegaan. Maak hem alsnog aan zodra dat kan.
+1. **Elf tabellen dragen schrijfgrants zonder bijbehorende policy.** Vandaag
+   inert — RLS weigert bij een ontbrekende policy — maar `schrijfrechten_bewaking()`
+   uit 0101 kent een **hardgecodeerde lijst van vier tabelnamen** en ziet de
+   andere zeven niet. Dat is exact de klasse die 0101 kwam voorkomen. De
+   generieke query staat in de rij.
+2. **`te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test.**
+   De meldingenjob roept hem aan als `service_role`, dus RLS kijkt daar niet mee
+   en de functie ís de grens. De enige test toetst dát een gewone gebruiker hem
+   niet mag aanroepen. De groepsjoin met de hand losknippen liet de héle RLS-suite
+   groen — 558 van 558.
+3. **49 policies over 30 tabellen evalueren `auth.uid()` per rij**, terwijl
+   `(select auth.uid())` er een InitPlan van maakt. Nul van de 58 doet het goed.
+   Lokaal met `explain` aangetoond; bij een schaaldoel van 100k raakt dit elke
+   lijstquery.
+4. **Zes tekstkolommen zonder lengtegrens** (`goals.description`,
+   `identity_statement`, `milestones.title`/`description`, `weekly_goals.floor_text`/
+   `ceiling_text`) terwijl `goals.title` er wél één heeft, en **het AI-dagquotum
+   telt jobs in plaats van tokens** — een invoer van 450.000 tekens werd
+   geaccepteerd. Opslag- en kostenmisbruik op een gratis tier zonder backups.
+5. **Vijf onbereikbare features.** `wijzigDoel()`, `wijzigMijlpaal()` en
+   `fetchCommitmentSpoor()` hebben nul aanroepers; `group_members.status` heeft
+   elf leesplekken en geen enkele knop; `ai_kosten_per_week()` draait nergens.
+   Een doel is dus na aanmaken niet meer te wijzigen, en het auditspoor dat
+   domeinregel 5 eist is nergens te zien.
 
-### 0a. Wat de engineering-review van 27-08 heeft achtergelaten
+⚠️ **Twee controlescripts hebben een blinde vlek, en hun groen zegt daarom niets
+over die klasse.** `tekst:controle` ziet geen JSX-tekst die over meerdere regels
+loopt met een expressie erin — er staan er drie in de app terwijl hij "nul" meldt.
+En `keten:controle` telt een `grant`-regel als aanroeper (`revoke all on function
+f(...)` matcht zijn patroon), waardoor bijna elke functie per definitie "levend"
+is. Repareer die twee vóór je op hun uitkomst vertrouwt.
 
-Alles wat die dag landde (#33 t/m #46) is nagemeten tegen de **gedeployde**
-stand — `pg_get_functiondef()`, `pg_policy` en de grants, niet de
-migratiebestanden. De bevindingen staan als comments op
-[#42](https://github.com/QS86-bot/GoalBuddies/pull/42),
-[#43](https://github.com/QS86-bot/GoalBuddies/pull/43) en
-[#44](https://github.com/QS86-bot/GoalBuddies/pull/44); de twee die bleven
-liggen staan als rij in `docs/ENGINEER-REVIEW.md`. Hier alleen wat er nog te
-dóén is.
+⚠️ **Wat de controleronde níét kon vaststellen** en wat dus jouw machine vraagt:
+of `verify_jwt` echt aanstaat op `rollover` en `notificaties` (er is geen
+`supabase/config.toml`, dus het staat alleen in een zin in WERKVOORRAAD), of
+e-mailbevestiging aanstaat in Supabase Auth, en of er een uitgavenplafond op de
+Anthropic-sleutel staat. Dat laatste is vandaag de enige bodem onder punt 4.
 
-**Drie migraties zijn aantoonbaar bewaakt** — 0100, 0101 en 0104 zijn met de
-hand teruggedraaid op de lokale stack en gaven respectievelijk 2, 4 en 2 rode
-tests, op de juiste plekken. Daar hoeft niets meer aan.
+⚠️ **`auth_leaked_password_protection` staat uit.** Eén schakelaar in het
+Supabase-dashboard, en Supabase' eigen adviseur noemt hem.
 
-✅ **Het ene stuk werk dat er nog lag, is gedaan (PR #58).** De helper in
-`tests/rls/epic13.test.ts` gaf `?? false` terug en plette daarmee drie toestanden
-tot één — *rij ontbreekt*, *null* (buiten het venster) en *false*. Hij geeft nu
-`boolean | null`, en een ontbrekende rij is een **fout** en geen waarde. Geijkt
-met dezelfde mutatie die de bevinding opleverde: een `group_overview()` die nul
-rijen teruggeeft gaf eerst `6 failed | 38 passed` met deze twee groen, nu
-`8 failed | 36 passed`.
 
-⚠️ **Eén ding blijft onopgelost en is bewust niet gerepareerd:** de wisselende
-reeks in `tests/rls/reeks.test.ts`. De suite draait sinds PR #54 sequentieel
-over `tests/rls/`, wat de kans erop wegneemt maar niet de oorzaak, en PR #55
-zorgt dat een volgende waarneming meteen zegt wát er verdween. PR #60 heeft er
-twee plausibele verklaringen áfgehaald — gedeelde module-state en een globale
-veegfunctie, allebei gemeten en allebei uitgesloten — maar wélk bestand het doet,
-is nog steeds niet aangewezen, en het is sinds de herstructurering niet meer te
-reproduceren. **Ga hier niet op gokken; zie de twee valkuilen over reproductie
-en over reparaties-uit-het-dossier verderop.**
+### 0b. Eén ding dat je zelf moet deployen, en het merkt zichzelf niet
+
+⚠️ **De `rollover`-functie op productie kent `maak_seizoensrecaps()` niet.**
+Gemeten op 28-08 tegen de gedeployde bron: `verbruik_weekpas`,
+`maak_straffen_verschuldigd` en `slaap_stille_groepen` staan erin,
+`maak_seizoensrecaps` **nul keer**. De migratie (0112) staat wél op productie en
+de RPC bestaat, maar niets roept hem aan.
+
+**Gevolg: de seizoensrecap van QS8-79 draait vandaag niet, en dat merk je pas bij
+de volgende kwartaalgrens** — en dan weet niemand meer dat het aan de deploy lag.
+Eén `supabase functions deploy rollover` lost het op.
+
+⚠️ **Wat wél goed staat, en dat was een openstaande vraag uit de review:**
+`verify_jwt` is `true` op alle drie de functies (`rollover`, `doelcoach`,
+`notificaties`), gemeten via de Management API. De securityreview kon dat niet
+vaststellen omdat er geen `supabase/config.toml` in de repo staat — de instelling
+klopt dus, maar hij staat nergens in code. Zolang dat zo blijft, is het een
+momentopname en geen grendel.
+
+### 0c. Wat er al openstond en nog steeds openstaat
+
+Deze punten stonden vóór 28-08 al in dit bestand en zijn niet opgelost. Ze zijn
+hier bewust bewaard, want ze verdwijnen anders bij het herschrijven van de
+bovenliggende secties — en dat is precies hoe een openstaand punt stil sterft.
+
+- ⚠️ **Er is nooit een echte aanroep naar een Edge Function gedaan.** De proxy van
+  de bouwomgeving weigert `supabase.co/functions/v1/*` met een 403 op de
+  CONNECT-tunnel. Alle drie staan op `ACTIVE` met aantoonbaar de juiste bron;
+  **dát een echte job er goed doorheen komt, moet vanaf jouw machine.**
+- ⚠️ **Draai `npm run edge:gedeployd` een keer zelf.** Dat script vraagt
+  `SUPABASE_ACCESS_TOKEN` uit `.env` en kon in de bouwomgeving niet draaien. De
+  vergelijkingen hierboven zijn met de hand gedaan langs dezelfde bron — hetzelfde
+  werk, niet dezelfde weg, en de weg die in `/audit` zit is die van het script.
+- ⚠️ **Meet bij de eerste echte proef hoeveel van de zes weekstapvoorstellen de
+  zeef overleven.** Blijft dat structureel onder de helft, dan is de prompt het
+  probleem en niet de zeef — en dan voelt dit voor de gebruiker als "de coach doet
+  niets".
+- ⚠️ **Eén open vraag die geld raakt (grens 1).** De tip-generatie put uit
+  hetzelfde dagquotum van tien als het opsplitsen van een doel en de weekstappen.
+  Twee gescheiden potten zijn beter voor de gebruiker maar brengen het plafond naar
+  dertien calls per dag. Onderbouwing in
+  `docs/decisions/2026-08-27-de-doelcoachtip-per-mijlpaal.md` §5.
+  ⚠️ **En sinds 28-08 weegt die vraag zwaarder:** het dagquotum telt jobs en niet
+  tokens, en een invoer van 450.000 tekens werd geaccepteerd. Wie het plafond
+  verhoogt zonder eerst de invoer te begrenzen, vermenigvuldigt een gat.
+- ⚠️ **De wisselende reeks in `tests/rls/reeks.test.ts` is nog steeds niet
+  verklaard.** De suite draait sinds PR #54 sequentieel over `tests/rls/`, wat de
+  kans erop wegneemt maar niet de oorzaak. PR #60 heeft er twee plausibele
+  verklaringen áfgehaald — gedeelde module-state en een globale veegfunctie,
+  allebei gemeten en allebei uitgesloten — maar wélk bestand het doet is niet
+  aangewezen, en sinds de herstructurering is het niet meer te reproduceren.
+  **Ga hier niet op gokken**; zie de valkuilen over reproductie en over
+  reparaties-uit-het-dossier.
+
+- ⚠️ **De statusbug uit QS8-41** (`'error'` in de app tegenover `'failed'` in de
+  database) hoort een eigen issue te zijn en is meegegaan in een andere PR, omdat
+  Linear geen nieuwe issues aanneemt. Maak hem alsnog aan zodra dat kan.
 
 ### En daarna: de metingen die er al lagen
 
@@ -1003,6 +1129,12 @@ begint als Fase 1 zijn exit haalt — **een groep van drie draait ≥4 opeenvolg
 cycli** (WERKVOORRAAD §4) — en dat is zelf geen bouwwerk maar gebruik. Op 27-08
 heeft Quinten daar een benoemde uitzondering op gemaakt; zie hieronder.
 
+⚠️ **En sinds 28-08 is die uitzondering opgebruikt.** De vier `phase:v2`-issues
+die zonder overleg te bouwen waren, zijn gebouwd. De zes die overblijven vragen
+Storage, een betaalprovider, een dependency, een illustrator of een module waar
+een parallelle sessie in werkt — de tabel met redenen staat in WERKVOORRAAD §4.
+**Het werk ligt nu in `docs/ENGINEER-REVIEW.md`, niet in Linear.**
+
 ⚠️ **Dus was "wat bouwen we nu" de verkeerde vraag geworden** — en op 27-08 is
 daar een antwoord op gekomen dat je moet kennen voordat je deze alinea leest als
 een verbod.
@@ -1013,11 +1145,12 @@ geen code — de vijf metingen hierboven. Er lag dus werk stil dat niet op code
 wachtte, en werk dat wél op code wachtte lag ernaast te wachten op iets waar geen
 enkele sessie iets aan kan doen.
 
-⚠️ **Wat dat níét is: een sein om de v2-backlog af te gaan.** Er zijn drie issues
-vrijgegeven, met naam, en die staan nu In Review (punt 0). De exit-eis staat
-onverkort — **een groep van drie draait ≥4 opeenvolgende cycli** — en die haal je
-niet met meer features. Wie een sessie begint met "ga verder met de volgende
-epic" doet nog steeds precies wat deze alinea verbiedt.
+⚠️ **Wat dat níét is: een sein om de v2-backlog af te gaan.** Er zijn vier issues
+vrijgegeven, met naam, en die staan sinds 28-08 alle vier op `main`. De exit-eis
+staat onverkort — **een groep van drie draait ≥4 opeenvolgende cycli** — en die
+haal je niet met meer features. Wie een sessie begint met "ga verder met de
+volgende epic" doet nog steeds precies wat deze alinea verbiedt; dat de backlog
+nu leeg is aan bouwbare issues, maakt dat alleen makkelijker.
 
 **De juiste vraag blijft welke van de vijf metingen als eerste gedaan wordt.**
 

@@ -7,8 +7,9 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 27-08-2026 (na QS8-57, QS8-41 en QS8-137, en na het
-opnieuw deployen van alle drie de Edge Functions)
+**Laatst bijgewerkt:** 28-08-2026 (na QS8-56, QS8-65, QS8-79 en QS8-78, na de
+controleronde met zeven agents, en na de vijf reparaties die daaruit kwamen —
+PR #71 t/m #78 en #85 t/m #90)
 
 ---
 
@@ -36,9 +37,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **558 geslaagd, 1 overgeslagen** (28-08, na QS8-56, QS8-65, QS8-79 en QS8-78).
-   De hele suite geeft met de stack **1741 geslaagd en 1 overgeslagen**; zonder
-   credentials **1204 geslaagd en 538 overgeslagen**. Typecheck en lint groen.
+   **561 geslaagd, 1 overgeslagen** (28-08, na de vijf reparaties uit de
+   controleronde). De hele suite geeft met de stack **1795 geslaagd en 1
+   overgeslagen**; zonder credentials **1255 geslaagd en 541 overgeslagen**.
+   Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -495,7 +497,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
 | 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, inclusief de twee `phase:v2`-issues: QS8-57 (een groep verlaten) en QS8-56 (hetzelfde doel in meer dan één groep) zijn allebei op 27-08 gebouwd |
-| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ **af**, inclusief QS8-65 (`phase:v2`, gebouwd 27-08, migratie `0107`). Een groep kiest tussen één buddy, een meerderheid en een vast aantal. ⚠️ De drempel wordt als **getal** bevroren bij het indienen, niet als regel gelezen bij het goedkeuren — anders tilt een beheerder (of een nieuw lid) de lat op onder een week die al loopt. Zie `docs/decisions/2026-08-27-de-goedkeuringsdrempel.md` |
+| 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ **af**, inclusief QS8-65 (`phase:v2`, gebouwd 27-08, migratie `0111` — hij heette bij het bouwen 0107 en is twee keer opgeschoven omdat een parallelle sessie die nummers claimde). Een groep kiest tussen één buddy, een meerderheid en een vast aantal. ⚠️ De drempel wordt als **getal** bevroren bij het indienen, niet als regel gelezen bij het goedkeuren — anders tilt een beheerder (of een nieuw lid) de lat op onder een week die al loopt. Zie `docs/decisions/2026-08-27-de-goedkeuringsdrempel.md` |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
 | 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**. Beide `phase:v2`-issues zijn op 27-08 gebouwd: QS8-79 (seizoenen met een recap, migratie `0112`) en QS8-78 (badges, migratie `0113`). ⚠️ QS8-78 hád géén acceptatiecriteria — één PRD-zin — dus alle keuzes daarin zijn van de bouwer en staan uitgeschreven in `docs/decisions/2026-08-27-badges-zijn-prive.md`. De zwaarste: **badges zijn privé**, want een badgemuur naast een ledenlijst maakt van de ontbrekende badge het signaal. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
@@ -516,6 +518,49 @@ een agent alleen kan afmaken:
 | 1 | ✅ **A47 — de RLS-suite** | Opgelost op 24-08 met QS8-119. Er zat één aanwijsbare oorzaak onder: twee aankondigingen uit dezelfde transactie dragen dezelfde `created_at`, en de test sorteerde daarop. 10 van de 10 rondes schoon, elk met een verse database | af |
 | 2 | **QS8-114 — web push** | `expo-notifications` staat erin, maar de app draait alleen op het web en web push is een ánder mechanisme (VAPID, service worker, `PushSubscription`). Vandaag komt er dus geen enkele melding aan | besluit over opslag + werk |
 | 3 | **Supabase Auth-URL's** | Bevestigingsmail wijst naar het oude adres. Dashboardhandeling van een minuut, §0a | Quinten |
+
+#### ⚠️ De `phase:v2`-voorraad die een agent alleen kan bouwen, is leeg (28-08)
+
+Alle vier de `phase:v2`-issues die zonder overleg te bouwen waren, zijn op 27/28-08
+gebouwd en geland: QS8-56, QS8-65, QS8-79 en QS8-78. Wat er in Backlog overblijft,
+kan een sessie **niet** zelf oppakken:
+
+| Issue | Waarom niet |
+|---|---|
+| QS8-71, QS8-72 | Vragen Supabase Storage: een bucket, `storage.objects`-policies, een betaalde tier en een nieuw groepszichtbaar oppervlak. Overleg met Quinten |
+| QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid |
+| QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
+| QS8-108 | Vraagt een nieuwe dependency |
+| QS8-109 | Vraagt een illustrator |
+
+**Wat er wél ligt is de controleronde van 28-08**, en die heeft meer werk
+opgeleverd dan de backlog. Zeven agents over ~99.500 regels; de vijf blokkerende
+bevindingen zijn gerepareerd (PR #85 t/m #90), de rest staat als rij in
+`docs/ENGINEER-REVIEW.md` met per rij de voorwaarde waaronder hij zwaarder wordt.
+**Begin daar, niet in Linear.** De zwaarste die nog open staan:
+
+- Elf tabellen dragen schrijfgrants zonder bijbehorende policy. Vandaag inert —
+  RLS weigert bij een ontbrekende policy — maar `schrijfrechten_bewaking()` (0101)
+  kent een **hardgecodeerde lijst van vier tabelnamen** en ziet de andere zeven
+  niet. Dat is precies de vorm die 0101 kwam voorkomen.
+- `te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test. De job
+  roept hem aan als `service_role`, dus RLS kijkt niet mee; de functie ís de
+  grens. De groepsjoin met de hand losknippen liet de hele RLS-suite groen.
+- 49 policies over 30 tabellen evalueren `auth.uid()` per rij in plaats van via
+  `(select auth.uid())`. Nul van de 58 doet het vandaag goed.
+- Zes tekstkolommen zonder lengtegrens en het AI-dagquotum dat jobs telt in
+  plaats van tokens — allebei opslag- respectievelijk kostenmisbruik op een
+  gratis tier zonder backups.
+- Vijf onbereikbare features: een doel en een mijlpaal zijn na aanmaken niet meer
+  te wijzigen, het auditspoor van een commitment is nergens te zien, ledenbeheer
+  (`group_members.status`) heeft geen knop, en `ai_kosten_per_week()` draait
+  nergens.
+
+⚠️ **En twee controlescripts hebben een blinde vlek die telt.** `tekst:controle`
+ziet geen JSX-tekst die over meerdere regels loopt met een expressie erin — er
+staan er drie in de app terwijl hij "nul" meldt. En `keten:controle` telt een
+`grant`-regel als aanroeper, waardoor bijna elke functie per definitie "levend"
+is. Zolang die twee zo staan, zegt hun groen niets over die klassen.
 
 #### Wat er van de afgeronde epics nog los ligt
 
