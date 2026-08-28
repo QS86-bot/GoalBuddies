@@ -94,8 +94,19 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0123`
-staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+**Database — af, en nu ook getest.** 34 tabellen.
+
+<!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
+Migraties `0001` t/m `0123` staan in de map: **126 bestanden**,
+waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
+De nummering is aaneengesloten.
+<!-- STAND:EINDE -->
+
+⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot
+28-08 proza, en gaf die dag vier PR's achter elkaar een merge-conflict op dezelfde
+regel — twee keer met een verkeerd getal als uitkomst. Draai `npm run stand`;
+`stand:controle` wordt rood zodra het achterloopt en draait mee in de poort.
+
 Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
 komen, zie hieronder.
 
