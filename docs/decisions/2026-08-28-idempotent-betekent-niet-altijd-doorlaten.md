@@ -96,6 +96,12 @@ in `npm test` en dus bij élke push, terwijl `migraties:controle` alleen in
 `/audit` staat. Verhuizen naar `migraties:controle` zodra `scripts/` vrij is —
 dan wel met behoud van de ijkingstest.
 
+⚠️ **En hij is meteen op vers werk beproefd.** De meting hierboven ging over 109
+bestanden; tijdens het landen van deze reeks groeide de boom naar **115** — zes
+migraties erbij van twee sessies. De grendel bleef nul melden, dus die zes
+dragen geen klasse A. Dat is de eerste keer dat hij iets bewaakte dat niet uit
+de meting kwam waarop hij geijkt is.
+
 ## Wat er niet is gedaan
 
 De vijf van klasse B zijn onaangeraakt. Er is bewust géén poging gedaan het

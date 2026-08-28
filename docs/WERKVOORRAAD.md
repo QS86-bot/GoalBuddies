@@ -37,8 +37,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **558 geslaagd, 1 overgeslagen** (28-08, na QS8-56, QS8-65, QS8-79 en QS8-78).
-   De hele suite geeft met de stack **1718 geslaagd en 1 overgeslagen**; zonder
-   credentials **1181 geslaagd en 538 overgeslagen**. Typecheck en lint groen.
+   De hele suite geeft met de stack **1741 geslaagd en 1 overgeslagen**; zonder
+   credentials **1204 geslaagd en 538 overgeslagen**. Typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
