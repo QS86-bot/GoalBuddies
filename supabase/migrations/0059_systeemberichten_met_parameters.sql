@@ -173,7 +173,7 @@ $$;
 drop function if exists public.plaats_systeembericht(uuid, text, text);
 drop function if exists public.plaats_systeembericht_in_doelgroepen(uuid, text, text);
 
-create function public.plaats_systeembericht(
+create or replace function public.plaats_systeembericht(
   p_group_id   uuid,
   p_event      text,
   p_body       text,
@@ -200,7 +200,7 @@ begin
 end;
 $$;
 
-create function public.plaats_systeembericht_in_doelgroepen(
+create or replace function public.plaats_systeembericht_in_doelgroepen(
   p_goal_id    uuid,
   p_event      text,
   p_body       text,

@@ -29,12 +29,16 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    spelen op een lege database precies het schema van productie af — negen
    vingerafdrukken, alle negen gelijk. Uitleg in §2 en in
    `docs/decisions/004-migratieregister.md`.
+   ✅ **En sinds 28-08 zijn ze ook een tweede keer af te spelen** — drie regels
+   in 0059 en 0094 waren dat niet en zijn gerepareerd. Wat er daarna nog omvalt
+   en waarom dat zo hoort, staat in
+   `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md`.
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **558 geslaagd, 1 overgeslagen** (28-08, na QS8-56, QS8-65, QS8-79 en QS8-78).
-   De hele suite geeft met de stack **1718 geslaagd en 1 overgeslagen**; zonder
-   credentials **1181 geslaagd en 538 overgeslagen**. Typecheck en lint groen.
+   De hele suite geeft met de stack **1741 geslaagd en 1 overgeslagen**; zonder
+   credentials **1204 geslaagd en 538 overgeslagen**. Typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -91,7 +95,14 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0114`
 staan in de map.
 
-⚠️ **`0107` t/m `0114` zijn nog niet op productie gedraaid.** Alle acht zijn op
+⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
+seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
+register is meeverzet toen ze van `0107`–`0109` naar `0111`–`0113` opschoven,
+omdat een parallelle sessie die nummers eerder claimde. Zie
+`docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
+een migratienummer wel en niet vastlegt.
+
+⚠️ **`0107` t/m `0110` en `0114` zijn nog niet op productie gedraaid.** Die vijf zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
 `register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
