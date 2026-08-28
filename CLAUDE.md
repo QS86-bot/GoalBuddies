@@ -399,6 +399,21 @@ docs/decisions/
 2. Autorisatie op de server. Groepslidmaatschap wordt in RLS afgedwongen.
 3. Alle input servergevalideerd met Zod.
 4. Secrets alleen via env vars.
+
+   ⚠️ **Elke `revoke` noemt `authenticated` met zoveel woorden.** In Supabase
+   deelt `alter default privileges` élke nieuwe functie en tabel in `public` uit
+   aan `anon`, `authenticated` én `service_role`. `revoke ... from public, anon`
+   ziet eruit als "van iedereen" en houdt precies de rol over waaronder iedere
+   ingelogde gebruiker draait. Op 28-08 stond `seizoensrecap_cijfers()` daardoor
+   voor elke gebruiker open, op productie, terwijl de migratie hem
+   `service_role`-only bedoelde — en honderdtwintig regels verderop deed
+   dezelfde migratie het wél goed. De vorm is `from public, anon, authenticated`.
+
+   ⚠️ **Sinds 0115 is dat een grendel en geen zin.**
+   `tests/rls/functiegrants.test.ts` legt elke functie die `authenticated` mag
+   uitvoeren naast de `grant`-regels in `supabase/migrations/`: een recht zonder
+   grant-regel is geërfd en niet besloten. Uitleg in
+   `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md`.
 5. **Rate limiting op AI-calls, uitnodigingen en auth.** Uitnodigingen zijn een
    spam-vector; bouw een limiet per gebruiker per dag.
 6. Elke AI-call kost geld: cache, dedupliceer, quota per gebruiker, log kosten per user-id.
