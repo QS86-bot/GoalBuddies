@@ -95,6 +95,13 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0113`
 staan in de map.
 
+⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
+seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
+register is meeverzet toen ze van `0107`–`0109` naar `0111`–`0113` opschoven,
+omdat een parallelle sessie die nummers eerder claimde. Zie
+`docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
+een migratienummer wel en niet vastlegt.
+
 ⚠️ **`0107` t/m `0110` zijn nog niet op productie gedraaid.** Alle vier zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
