@@ -158,7 +158,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 11 — meldingen', () => {
         //    wat het afdwingt; zonder die index staat hetzelfde apparaat bij
         //    twee accounts en krijgt het beide stromen meldingen.
         const admin = adminDb();
-        const token = `tok-gedeeld-${Date.now()}`;
+        // ⚠️ Een echt ogende endpoint-URL en geen verzonnen string: sinds 0117
+        //    toetst `registreer_push_token()` het adres tegen een allowlist van
+        //    bekende pushdiensten. Dit veld ís bij `platform = 'web'` de URL waar
+        //    de meldingenjob een fetch() op doet.
+        const token = `https://fcm.googleapis.com/fcm/send/gedeeld-${Date.now()}`;
 
         // ⚠️ Dit geval liep in de eerste opzet stuk op 42501, en dat is precies
         //    waarom deze test bestaat: de nieuwe gebruiker kón de rij van de
