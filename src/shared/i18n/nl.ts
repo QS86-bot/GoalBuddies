@@ -897,7 +897,7 @@ export const nl = {
   'bewijseis.optional': 'Alles optioneel',
 
   // ---------------------------------------------------------------------------
-  // De goedkeuringsregel van een groep — QS8-65 (PRD 6.4), migratie 0107
+  // De goedkeuringsregel van een groep — QS8-65 (PRD 6.4), migratie 0110
   // ---------------------------------------------------------------------------
   //
   // ⚠️ De uitleg noemt steeds een áántal en niet een gevoel. "Strenger" zegt de

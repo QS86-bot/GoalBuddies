@@ -88,8 +88,32 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 32 tabellen. Migraties `0001` t/m `0107`
+**Database — af, en nu ook getest.** 32 tabellen. Migraties `0001` t/m `0110`
 staan in de map.
+
+⚠️ **`0107`, `0108` en `0109` zijn nog niet op productie gedraaid.** Alle drie zijn op
+28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
+maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
+`register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
+dan geldt op productie:
+
+- `0107` — De Ketting telt een lid dat op zijn eigen kalender in zijn adempauze
+  zit nog mee in de noemer, en houdt zo een voltallige week bij de groep weg.
+  Zie de rij van 25-08 in `docs/ENGINEER-REVIEW.md`.
+- `0108` — een lid kan zijn eigen weekafsluitingen op willekeurige dagen binnen
+  het venster zetten. Elke rij wordt een kettingschakel, dus één lid kan in één
+  verzoek dertig schakels en twee mijlpaalaankondigingen maken. Gemeten via de
+  clientkant; zie de rij van 18-08.
+- `0109` — `vastgelopen_goedkeuringen()` bestaat daar niet, dus er is geen
+  manier om te tellen hoeveel wachtende weken hun beoordelaars kwijt zijn.
+
+⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
+`src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
+gehaald, en daar bestaat de functie nog niet. Het blok
+`vastgelopen_goedkeuringen` is daarom met de hand toegevoegd, in exact de vorm
+die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
+verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
+volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
@@ -555,23 +579,42 @@ beslisbevoegdheid in `CLAUDE.md`.
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
 | QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged — open: er is nooit een echte gebeurtenis uít de app aangekomen |
-| QS8-22 | Migratie-workflow | deels: dumpscript en docs staan, lokale stack niet |
+| QS8-22 | Migratie-workflow | ✅ af sinds QS8-119 — dumpscript, docs én een lokale stack. Zie de correctie hieronder |
 
-⚠️ **Besluit 16-08: de lokale stack komt later.** Docker vraagt WSL2 en
-beheerdersrechten, en die had de sessie niet. Quinten heeft besloten dat elke
-migratie voorlopig direct op het echte project mag, omdat er geen gebruikers
-komen voordat alle fases geprogrammeerd zijn.
+⚠️ **Achterhaald sinds QS8-119 (24-08-2026), en dat stond hier tot 27-08 nog
+fout.** Hier stond drie alinea's lang dat er géén lokale stack was, dat elke
+migratie dus rechtstreeks op het echte project ging, en dat `pg_dump` er niet op
+stond. Alle drie zijn onjuist:
 
-**Het moment waarop dat omslaat is scherp:** de eerste echte gebruiker die zich
-aanmeldt. Vanaf dan geen migratie meer zonder repetitie en zonder dump. Tot die
-tijd blijft elke migratie idempotent met een rollback-pad in de kop — dat is de
-enige bescherming die er nu is.
+| Wat | Waar |
+|---|---|
+| Een lokale stack | `npm run rls:stack` (`scripts/lokale-stack.sh`) — Postgres plus PostgREST, schema opgebouwd uit `supabase/migrations/` |
+| De suite ertegenaan | `npm run rls:lokaal` — geen credentials, geen productie, draait mee in CI |
+| Een dump vooraf | `npm run db:dump` (`scripts/db-dump.mjs`), en `npm run db:push` doet dump → push → registercontrole in één commando |
 
-⚠️ **Wat er nog niet is en waar je last van gaat krijgen.** Er is nog steeds geen
-lokale Supabase-stack: Docker vraagt WSL2 en beheerdersrechten, en die had de
-sessie niet. Alle migraties zijn dus rechtstreeks op het echte project gedraaid.
-Dat kon nu omdat er geen echte gebruikersdata in stond — dat verandert zodra jij
-of een testgebruiker de app opent. `pg_dump` staat er ook nog niet op.
+⚠️ **Wat de lokale stack níét is, en dat hoort erbij te staan.** Het is geen
+volledige Supabase: geen GoTrue, geen Storage, geen Edge-runtime. De RLS-suite
+tekent zijn tokens daarom zelf (QS8-116). Wat je lokaal bewijst is het **schema**
+en de **policies**; dat een echte sessie de claims draagt die die policies
+verwachten, blijft een meting tegen het echte project — `tests/rls/token.test.ts`.
+
+⚠️ **Het besluit van 16-08 staat daarmee niet meer op zichzelf.** Dat zei: elke
+migratie mag voorlopig direct op het echte project, omdat er geen gebruikers zijn
+tot alle fases geprogrammeerd zijn. Dat mág nog steeds — de database bevat op
+27-08 één account, nul doelen en nul groepen — maar het is sinds QS8-119 geen
+noodzaak meer, en er is nu een goedkopere volgorde: **eerst lokaal draaien, dan
+pushen.** Zo werkt `db:push` ook.
+
+**Het moment waarop het besluit omslaat is nog steeds scherp:** de eerste echte
+gebruiker die zich aanmeldt. Vanaf dan geen migratie meer zonder repetitie en
+zonder dump. Tot die tijd blijft elke migratie idempotent met een rollback-pad in
+de kop.
+
+⚠️ **Waarom deze correctie hier staat en niet stilletjes weggehaald is.** Dit is
+QS8-125 in zijn gevaarlijkste vorm: een document dat een sessie als eerste leest,
+dat zegt dat gereedschap ontbreekt dat er al drie dagen staat. Een sessie die dit
+gelooft, draait zijn migratie rechtstreeks op productie omdat het document zegt
+dat er geen alternatief is.
 
 ## 6. Wat menselijke actie vereist
 
