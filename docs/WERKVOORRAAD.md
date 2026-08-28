@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **573 geslaagd, 1 overgeslagen** (28-08, na 0118 en de grenstests op
-   `te_beoordelen_voor()`). De hele suite geeft met de stack **1818 geslaagd en 1
-   overgeslagen**; zonder credentials **1266 geslaagd en 553 overgeslagen**.
+   **577 geslaagd, 1 overgeslagen** (28-08, na 0119). De hele suite geeft met de
+   stack **1822 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 557 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,9 +94,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0118`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0119`
 staan in de map, en sinds 28-08 staan ze **allemaal op productie**: het register
-telt 121 rijen van `0001` tot `0118`, gelijk aan de 121 bestanden (de drie met
+telt 122 rijen van `0001` tot `0119`, gelijk aan de 122 bestanden (de drie met
 een `a`-achtervoegsel meegeteld).
 
 ⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
@@ -117,6 +117,12 @@ Ketting die een lid in adempauze meetelde in de noemer, weekafsluitingen op
 willekeurige dagen binnen het venster, `vastgelopen_goedkeuringen()` die er niet
 was, de rem van A7 die met drie verzoeken weg te nemen was, en drie functies die
 hun `search_path` niet pinden.
+
+⚠️ **`0119` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
+productie. Dat er verder niets veranderde is niet aangenomen maar nagemeten met
+een `md5()` over álle 73 policies: productie ná is byte voor byte gelijk aan wat
+het migratiebestand lokaal oplevert. Zie
+`docs/decisions/2026-08-28-auth-uid-een-keer-per-query.md`.
 
 ⚠️ **`0118` is nieuw op productie en vraagt nog één handeling van jou.** Hij trekt
 76 schrijfrechten in die geen enkele policy achter zich hebben, en één daarvan
