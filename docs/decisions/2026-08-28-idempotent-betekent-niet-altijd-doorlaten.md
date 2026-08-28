@@ -63,6 +63,14 @@ weer in, voor open groepen. Een geforceerde tweede ronde zou die verruiming
 ongedaan maken zonder dat iemand het besloten heeft — en dat is precies de
 beweging waar `CLAUDE.md` bij domeinregel 7 voor waarschuwt.
 
+⚠️ **Klasse B is geen vast getal, en dat bleek dezelfde dag.** Na het landen van
+QS8-65 stonden er **zeven** in plaats van vijf: `0021_peer_goedkeuring` en
+`0030_goedkeuring_intrekken` kwamen erbij, omdat migratie 0111 het returntype van
+`meld_goedkeuring()` en `trek_goedkeuring_in()` wijzigde. **Elke migratie die de
+vorm van een bestaand object verandert, maakt de migratie die dat object
+aanmaakte klasse B.** Dat is het normale gevolg van een schema dat leeft, en niet
+iets dat oploopt tot het opgeruimd moet worden.
+
 ## Het besluit
 
 **Onwrikbare regel 20 luidt: idempotent tegen de toestand waarvoor de migratie
