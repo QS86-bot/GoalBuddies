@@ -244,20 +244,29 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
   );
 
   it(
-    'laten geen enkele definer-functie zonder `search_path` of open voor `anon`',
+    'laten geen enkele functie zonder `search_path` staan, en geen definer open voor `anon`',
     async () => {
       // ⚠️ De tweede helft van "SECURITY DEFINER omzeilt RLS", en de helft die
-      //    niet over deze vier gaat maar over alle 98. Zonder een gepinde
+      //    niet over deze vier gaat maar over alle 123. Zonder een gepinde
       //    search_path kiest de áánroeper welke tabellen de functie leest; open
       //    voor `anon` is een niet-ingelogde beller op een functie zonder RLS.
       //
       // ⚠️ Dat tweede is de stándaard: een kale `create function` geeft execute
       //    aan PUBLIC en `anon` erft dat. Vergeten is dus openzetten.
       //
+      // ⚠️ **De eerste helft ging tot 0114 alleen over definer-functies, en dat
+      //    was te smal.** `tip_noemt_tegenvaller()` is géén definer en gaf met
+      //    een gekaapt pad toch het verkeerde antwoord: `true` werd `false`, dus
+      //    de zeef die tegenvallertaal moet tegenhouden liet alles door. Een
+      //    ongepind pad hoeft geen rechten te verhogen om een uitkomst te
+      //    veranderen. Sinds 0114 kijkt die tak naar élke functie in `public`;
+      //    het `anon`-bezwaar blijft terecht alleen over definers gaan.
+      //
       //    `invite_preview` is de enige toegestane uitzondering (0019, 0080) en
       //    staat met naam in `definer_bewaking()` zelf, niet in een document.
       //    Met de hand rood gemaakt met een functie zonder pad en een functie
-      //    met een grant aan anon — allebei melden.
+      //    met een grant aan anon — allebei melden, en sinds 0114 ook een
+      //    níet-definer zonder pad.
       const { data, error } = await adminDb().rpc('definer_bewaking');
 
       expect(error).toBeNull();
