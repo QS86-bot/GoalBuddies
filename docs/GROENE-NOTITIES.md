@@ -340,19 +340,34 @@ over wat de *groep* ziet, en die regel wordt hier niet geraakt — aanmoedigen b
 tegenslag is precies wat een buddy-app hoort te doen, en het is de tegenpool van
 de Duolingo-uil en niet dezelfde fout.
 
-⚠️ **Waar ze elkaar wél raken, en dat is de openstaande vraag:** "aanmoedigend"
-zegt niets over *ongevraagd*. Twee lezingen, en het verschil is het hele
-onderwerp van deze alinea:
+⚠️ **Quinten koos variant B op 28-08 en die is gebouwd.** "Aanmoedigend" zegt
+niets over *ongevraagd*, en dat verschil was de openstaande vraag:
 
-| | wat de coach doet | risico |
-|---|---|---|
-| **A. reactief** | je opent de app of vraagt hem iets, en dan is de toon bij een slechte week aanmoedigend in plaats van neutraal | geen — dit is puur toon |
-| **B. proactief** | de coach begint uit zichzelf zodra je achterloopt | dit is de controleur uit de alinea hierboven, ook als hij aardig is |
+| | wat de coach doet |
+|---|---|
+| A. reactief | je bent er zelf, en dan is de toon bij een slechte week aanmoedigend |
+| **B. proactief** ⭐ | **de coach begint uit zichzelf zodra je achterloopt** |
 
-Mijn advies is **A**, en dan is de oude regel niet geschrapt maar preciezer:
-*de coach begint nooit uit zichzelf over tegenslag; als je er zelf bent, is zijn
-toon aanmoedigend.* Dat vraagt nog een bevestiging van Quinten voordat het
-gebouwd wordt.
+Mijn advies was A, omdat een coach die uit zichzelf begint een controleur wordt.
+**Quinten heeft dat afgewogen en voor B gekozen, met de testronde als ijkpunt:**
+valt het verkeerd, dan gaat het voor de betaalde versie alsnog naar A. Dat is een
+verstandige volgorde — het is goedkoop om terug te draaien en je weet het pas als
+er echte mensen mee werken.
+
+**Wat er staat:** `Coachwoord` in `app/doel/[id].tsx`, binnen de Risico-radar, bij
+`at_risk`, `behind` en `unreachable`. Bij `on_track` bestaat er geen zin, dus er
+valt niets te tonen — dat is een ontbrekende sleutel en geen afspraak.
+
+⚠️ **De toon staat onder test en niet in een comment**
+(`tests/beloftes/coachwoord.test.ts`, beide talen). Juist omdát B een spanning
+draagt: een ongevraagde zin die verwijt, is precies de fout die de oude regel
+wilde voorkomen. Vier asserties, alle vier met de hand rood gemaakt — een
+weggehaalde sleutel, een verwijtende toon, een aanmoediging zonder handvat, en
+een zin toevoegen voor `on_track`.
+
+⚠️ **Aanmoedigen is hier niet "je kunt het".** Elke zin wijst naar iets wat de app
+écht kan: de vloer, de adempauze, of het bijstellen van de streefdatum. Een
+aanmoediging zonder handvat haalt de test niet.
 
 ### 3c. p149 — talen, en welke ik zou aanraden
 
