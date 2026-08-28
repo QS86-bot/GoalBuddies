@@ -94,10 +94,15 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0118`
-staan in de map, en sinds 28-08 staan ze **allemaal op productie**: het register
-telt 121 rijen van `0001` tot `0118`, gelijk aan de 121 bestanden (de drie met
-een `a`-achtervoegsel meegeteld).
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0119`
+staan in de map: 122 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+Daarvan staan `0001` t/m `0118` op productie — 121 registerrijen, nul
+tijdstempels.
+
+⚠️ **`0119` staat nog níet op productie.** Hij weigert een `tz`-waarde die geen
+tijdzone is, op `profiles` en `groups`; wat er zonder hem misging staat in het
+reviewdossier. Hij is de enige die nog niet is toegepast; de rest van de map
+staat er wel op.
 
 ⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
