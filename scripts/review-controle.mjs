@@ -119,6 +119,7 @@ function isAfgehandeld(risico) {
  */
 export function controleer(regels) {
   const klachten = [];
+  const gezien = new Set();
 
   for (const regel of regels) {
     if (!regel.startsWith('| 2026-')) continue;
@@ -158,7 +159,26 @@ export function controleer(regels) {
     // 4 — elke open Laag-rij zegt wanneer hij zwaarder wordt.
     if (kaal === 'laag' && !isAfgehandeld(risico) && !kop.includes(MARKERING)) {
       klachten.push({ soort: 'geen-voorwaarde', titel, risico });
+      continue;
     }
+
+    // 5 — dezelfde bevinding hoort er één keer in te staan.
+    //
+    // ⚠️ **Dit stond er op 28-08 drie keer in, twee keer.** Een slecht opgelost
+    //    merge-conflict liet twee rijen elk in drievoud achter, en de drie
+    //    kopieën verschilden alleen in het migratienummer dat ze noemden — dus
+    //    twee van de drie logen over waar de reparatie staat. Het is meegegaan
+    //    door een merge, een PR en een CI-run.
+    //
+    // ⚠️ De sleutel is datum + titel en niet de hele rij. Juist omdat de kopieën
+    //    van elkaar verschillen, zou een vergelijking op de volledige tekst er
+    //    geen enkele vinden — en dat is precies het geval dat hier is gebeurd.
+    const sleutel = `${regel.slice(0, regel.indexOf('|', 2))}|${titel}`;
+    if (gezien.has(sleutel)) {
+      klachten.push({ soort: 'dubbele-rij', titel, risico });
+      continue;
+    }
+    gezien.add(sleutel);
   }
 
   return klachten;
@@ -178,6 +198,10 @@ const UITLEG = {
     '  hem op de agenda. Streep het niveau door met de reden erachter\n' +
     '  (`~~Middel~~ context`, `~~Middel~~ afweging`). De rijen boven Laag zijn de\n' +
     '  agenda voor november; wat daar staat en niet hoeft, kost de lezer tijd.',
+  'dubbele-rij':
+    'Deze bevinding staat er meer dan een keer in. Dat komt van een merge die\n' +
+    '  halverwege is blijven staan; de kopieen verschillen dan net genoeg om\n' +
+    '  elkaar tegen te spreken. Houd de rij met de juiste feiten en haal de rest weg.',
   'geen-voorwaarde':
     `Zet er "${MARKERING} …" bij: welke aanname houdt hem laag? Zodra die\n` +
     '  vervalt, is het geen Laag meer. Zie QS8-123 en onwrikbare regel 19.',

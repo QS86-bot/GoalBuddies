@@ -4,7 +4,7 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
-> ⚠️ **Sinds 27-08-2026 draaien twintig van de drieëntwintig controles in CI, bij
+> ⚠️ **Sinds 27-08-2026 draaien tweeëntwintig van de vijfentwintig controles in CI, bij
 > elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
 > uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
 > draaien omdat ze een productieverbinding of een privésleutel vragen:
