@@ -101,8 +101,8 @@ tijdstempels.
 
 ⚠️ **`0119` staat nog níet op productie.** Hij weigert een `tz`-waarde die geen
 tijdzone is, op `profiles` en `groups`; wat er zonder hem misging staat in het
-reviewdossier. Toepassen kan pas als `0118` in `main` zit, want deze branch
-stapelt erop.
+reviewdossier. Hij is de enige die nog niet is toegepast; de rest van de map
+staat er wel op.
 
 ⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
