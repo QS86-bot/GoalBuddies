@@ -114,6 +114,23 @@ function naarReactie(rij: ReactieRij): Reactie | null {
 }
 
 /**
+ * Waar de volgende pagina reacties begint: de laatste rij die je al hebt.
+ *
+ * ⚠️ Beide velden of geen van beide. Eén van de twee leeg betekent voor
+ *    `weekafsluiting_reacties()` "geen cursor", en dus de eerste pagina — nooit
+ *    een halve grens. Zie 0121.
+ */
+export interface ReactieCursor {
+  readonly at: string;
+  readonly id: string;
+}
+
+/** Een pagina reacties, met de cursor waarmee je de volgende opvraagt. */
+export interface ReactiePagina extends Pagina<Reactie> {
+  readonly volgende: ReactieCursor | null;
+}
+
+/**
  * De reacties op de antwoorden van deze periode — de tweede vaste ronde.
  *
  * ⚠️ Niet per antwoord opvragen. Twaalf leden keer één verzoek is de N+1 die het
@@ -123,16 +140,14 @@ function naarReactie(rij: ReactieRij): Reactie | null {
 export async function fetchWeekafsluitingReacties(
   groupId: string,
   periode: Cycle,
-  opties: { readonly pagina?: number } = {},
-): Promise<Pagina<Reactie>> {
-  const pagina = opties.pagina ?? 0;
-  const van = pagina * REACTIES_PER_PAGINA;
-
+  opties: { readonly na?: ReactieCursor } = {},
+): Promise<ReactiePagina> {
   const { data, error } = await supabase().rpc('weekafsluiting_reacties', {
     p_group_id: groupId,
     p_period_start: periode.startDate,
     p_limit: REACTIES_PER_PAGINA,
-    p_offset: van,
+    p_na_at: opties.na?.at ?? null,
+    p_na_id: opties.na?.id ?? null,
   });
 
   if (error) {
@@ -143,12 +158,29 @@ export async function fetchWeekafsluitingReacties(
   const ruw = (data ?? []) as readonly ReactieRij[];
   const rijen = ruw.map(naarReactie).filter((r): r is Reactie => r !== null);
 
-  // ⚠️ Onbruikbare rijen gaan ook van het totaal af, anders blijft `meer` op waar
-  //    staan en biedt de UI voor altijd iets aan dat niet te laden valt.
-  const overgeslagen = ruw.length - rijen.length;
-  const totaal = Math.max(0, (ruw[0]?.total_replies ?? rijen.length) - overgeslagen);
+  // ⚠️ **De cursor komt van de láátste rij die de database gaf, niet van de
+  //    laatste bruikbare rij.** Valt een rij op de paginagrens weg in
+  //    `naarReactie()`, dan zou een cursor uit `rijen` diezelfde rij bij het
+  //    volgende verzoek opnieuw opleveren — en dan opnieuw, want hij valt weer
+  //    weg. Dat is een lus die alleen bij kapotte data optreedt en daarom in
+  //    geen enkele test opvalt.
+  const laatste = ruw.at(-1);
+  const volgende: ReactieCursor | null =
+    laatste?.created_at != null && laatste.id != null
+      ? { at: laatste.created_at, id: laatste.id }
+      : null;
 
-  return { rijen, totaal, meer: van + rijen.length < totaal };
+  // ⚠️ **"Er is meer" komt uit de paginagrootte en niet uit het totaal.** Dat
+  //    laatste deed het met `offset + opgehaald < totaal`, en juist die som
+  //    klopt niet zodra er tussendoor iets verdwijnt: het totaal daalt, de
+  //    teller niet. Een volle pagina betekent "er kán meer zijn" — dat kost
+  //    hoogstens één leeg verzoek aan het eind en kan niet liegen.
+  return {
+    rijen,
+    totaal: ruw[0]?.total_replies ?? rijen.length,
+    meer: ruw.length === REACTIES_PER_PAGINA,
+    volgende,
+  };
 }
 
 // ---------------------------------------------------------------------------

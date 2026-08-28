@@ -994,7 +994,7 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    eigenaar. Bij vertrek maakt dat niets uit, maar een beheerder die een lid op
    `paused` zet ontkoppelt niets. Zie de rij in het dossier en
    `docs/decisions/2026-08-28-de-grens-in-de-functie.md`.
-3. ✅ **De 49 policies staan sinds 0121 in de InitPlan-vorm**, ook op productie,
+3. ✅ **De 49 policies staan sinds 0122 in de InitPlan-vorm**, ook op productie,
    met een `md5()`-vergelijking over alle 73 policies als bewijs dat er niets
    anders veranderde. ⚠️ **Lees wel de nuance in de dossierrij:** het verschil is
    633 tegenover 41 ms bij een *sequentiële* scan en 2,3 tegenover 2,0 ms mét
