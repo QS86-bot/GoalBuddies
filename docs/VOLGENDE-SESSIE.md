@@ -1020,12 +1020,16 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    doorlopen** — zie de openstaande metingen hieronder. En de algemene detector
    voor dode exports vraagt een echte parser; staat als rij in het dossier.
 
-⚠️ **Twee controlescripts hebben een blinde vlek, en hun groen zegt daarom niets
-over die klasse.** `tekst:controle` ziet geen JSX-tekst die over meerdere regels
-loopt met een expressie erin — er staan er drie in de app terwijl hij "nul" meldt.
-En `keten:controle` telt een `grant`-regel als aanroeper (`revoke all on function
-f(...)` matcht zijn patroon), waardoor bijna elke functie per definitie "levend"
-is. Repareer die twee vóór je op hun uitkomst vertrouwt.
+✅ **`keten:controle` is gerepareerd — drie blinde vlekken, niet één.** Naast de
+`grant`-regels telde ook SQL-commentaar als aanroeper, en `drop function` telde
+níét mee. Alle dertien functies die daaronder zaten hebben nu een verdict; zie de
+rij in het dossier.
+
+⚠️ **`tekst:controle` heeft er nog wél een, en die staat nog open.** Hij ziet geen
+JSX-tekst die over meerdere regels loopt met een expressie erin — er staan er drie
+in de app terwijl hij "nul" meldt. **Repareer die vóór je op zijn uitkomst
+vertrouwt**, en verwacht dat er meer onder zit dan die drie: bij `keten:controle`
+gaf één reparatie er dertien bloot.
 
 ⚠️ **Wat de controleronde níét kon vaststellen** en wat dus jouw machine vraagt:
 of `verify_jwt` echt aanstaat op `rollover` en `notificaties` (er is geen

@@ -1,0 +1,41 @@
+-- 0124_de_weekpasomweg_heeft_geen_aanroeper_meer.sql — één dode functie weg
+--
+-- ROLLBACK-PAD:
+--   create or replace function public.weekpas_stand(p_goal_id uuid)
+--     returns jsonb language sql security definer
+--     set search_path to 'public', 'pg_temp'
+--   as $$
+--     select jsonb_build_object(
+--       'voorraad', s.voorraad, 'maximum', s.maximum,
+--       'voltooide_cycli', s.voltooide_cycli, 'tot_volgende', s.tot_volgende,
+--       'laatst_verbruikt', s.laatst_verbruikt
+--     )
+--     from weekpas_standen(array[p_goal_id]) s;
+--   $$;
+--   revoke all on function public.weekpas_stand(uuid) from public, anon;
+--   grant execute on function public.weekpas_stand(uuid) to authenticated;
+--
+-- ---------------------------------------------------------------------------
+-- Waarom hij weg mag
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **De reden waarvoor hij bewaard is, staat in 0041 en is verlopen.** Daar
+--    staat letterlijk: *"`weekpas_stand()` houdt zijn vorm (één doel, jsonb)
+--    zodat de bestaande aanroeper en zijn tests niet hoeven te veranderen, maar
+--    rekent zelf niets meer uit."* Die aanroeper bestaat niet meer — de app
+--    gebruikt `weekpas_standen()` (meervoud), in één verzoek en zonder N+1
+--    (schaalbaarheidsregel 12). Wat overblijft is een `security definer`-functie
+--    die `authenticated` mag uitvoeren en die niets doet.
+--
+-- ⚠️ **Gevonden door `keten:controle`, en pas nádat die twee blinde vlekken
+--    kwijt was.** Het script telde een vermelding in SQL-commentaar als
+--    aanroeper, en `weekpas_stand()` wordt in vier bestanden in commentaar
+--    genoemd. Zodra commentaar niet meer meetelt én `drop function` wél, is hij
+--    de enige functie in het schema zonder pad én zonder reden om er geen te
+--    hebben. Dat is precies het soort vondst waarvoor die controle bestaat.
+--
+-- ⚠️ **Geen gegevens, geen geschiedenis.** Dit is een `drop function` op een
+--    wrapper zonder eigen logica; de rollback hierboven zet hem letterlijk terug.
+--    `weekpas_standen()` blijft ongemoeid, en die draagt de hele berekening.
+
+drop function if exists public.weekpas_stand(uuid);

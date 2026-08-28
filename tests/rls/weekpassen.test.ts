@@ -65,8 +65,17 @@ interface Stand {
   laatst_verbruikt?: string | null;
 }
 
-function stand(data: unknown): Stand {
-  return (data ?? {}) as Stand;
+/**
+ * De stand van het eerste doel uit `weekpas_standen()`.
+ *
+ * ⚠️ Een lege lijst is een echte uitkomst en geen fout: de functie geeft alleen
+ *    rijen voor doelen die je mag zien. `{}` teruggeven zou een lege stand
+ *    voorspiegelen waar de database niets zei — daarom een expliciete melding.
+ */
+function eersteStand(data: unknown): Stand {
+  const rijen = (data ?? []) as readonly Stand[];
+  if (rijen.length === 0) throw new Error('weekpas_standen gaf geen enkele rij terug');
+  return rijen[0]!;
 }
 
 /** De vorm die de statusovergang-RPC's teruggeven. */
@@ -213,16 +222,22 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   it(
     'geeft een ander geen weekpasstand via de RPC',
     async () => {
-      // ⚠️ `weekpas_stand()` is SECURITY DEFINER en leest dus buiten RLS om. De
+      // ⚠️ `weekpas_standen()` is SECURITY DEFINER en leest dus buiten RLS om. De
       //    eigenaarstoets zit in de functie zelf; zonder die toets zou dit de
       //    voorraad van alice teruggeven — en een gedaalde voorraad is een
       //    gemiste week.
-      const { data, error } = await f.bob.db.rpc('weekpas_stand', {
-        p_goal_id: f.aliceGoalId,
+      //
+      // ⚠️ Sinds 0124 via het meervoud: het enkelvoud was een wrapper zonder
+      //    eigen logica en had geen enkele aanroeper meer. De grens zat altijd al
+      //    hier.
+      const { data, error } = await f.bob.db.rpc('weekpas_standen', {
+        p_goal_ids: [f.aliceGoalId],
       });
 
       expect(error).toBeNull();
-      expect(data).toBeNull();
+      // Geen rij, en niet een rij met nullen: dat laatste zou nog steeds zeggen
+      // dat dit doel bestáát.
+      expect(data ?? []).toEqual([]);
     },
     TEST_TIMEOUT,
   );
@@ -230,8 +245,8 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   it(
     'geeft een uitgelogde bezoeker geen weekpasstand',
     async () => {
-      const { data, error } = await anonDb().rpc('weekpas_stand', {
-        p_goal_id: f.aliceGoalId,
+      const { data, error } = await anonDb().rpc('weekpas_standen', {
+        p_goal_ids: [f.aliceGoalId],
       });
 
       // Anon heeft geen EXECUTE; dat hoort een fout te zijn en geen leeg
@@ -348,16 +363,24 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   // De eigenaar ziet wél wat van hem is
   // -------------------------------------------------------------------------
 
+  /**
+   * ⚠️ **Via `weekpas_standen()` (meervoud) en niet via het enkelvoud, sinds
+   *    0124.** Die wrapper is verwijderd: 0041 hield hem aan *"zodat de bestaande
+   *    aanroeper en zijn tests niet hoeven te veranderen"*, en die aanroeper
+   *    bestaat niet meer — de app leest het meervoud, in één verzoek en zonder
+   *    N+1. Deze test toetst daarmee voortaan de weg die de app écht neemt, en
+   *    dat is niet alleen gelijkwaardig maar beter.
+   */
   it(
     'geeft alice haar eigen stand, met het maximum uit de database',
     async () => {
-      const { data, error } = await f.alice.db.rpc('weekpas_stand', {
-        p_goal_id: f.aliceGoalId,
+      const { data, error } = await f.alice.db.rpc('weekpas_standen', {
+        p_goal_ids: [f.aliceGoalId],
       });
 
       expect(error).toBeNull();
 
-      const s = stand(data);
+      const s = eersteStand(data);
       // Twee verdiend (cadeau na de eerste, één na de zesde), één verbruikt.
       expect(s.voorraad).toBe(1);
       expect(s.maximum).toBe(2);
@@ -370,13 +393,13 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
   it(
     'geeft bob een lege stand op zijn eigen doel in plaats van een fout',
     async () => {
-      const { data, error } = await f.bob.db.rpc('weekpas_stand', {
-        p_goal_id: f.bobGoalId,
+      const { data, error } = await f.bob.db.rpc('weekpas_standen', {
+        p_goal_ids: [f.bobGoalId],
       });
 
       expect(error).toBeNull();
 
-      const s = stand(data);
+      const s = eersteStand(data);
       expect(s.voorraad).toBe(0);
       expect(s.voltooide_cycli).toBe(0);
       // Zonder één voltooide cyclus is de eerstvolgende pas het cadeau.

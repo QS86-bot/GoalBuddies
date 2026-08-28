@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **595 geslaagd, 1 overgeslagen** (28-08, na 0123). De hele suite geeft met de
-   stack **1857 geslaagd en 1 overgeslagen**; zonder credentials **1283 geslaagd
-   en 575 overgeslagen**.
+   **597 geslaagd, 1 overgeslagen** (28-08, na 0124). De hele suite geeft met de
+   stack **1867 geslaagd en 1 overgeslagen**; zonder credentials **1291 geslaagd
+   en 577 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,20 +94,29 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0123`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0124`
 staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
 komen, zie hieronder.
 
-⚠️ **`0119`, `0120` en `0121` staan nog níet op productie; `0122` en `0123` wél.**
-Dat klinkt als een fout en is het niet — het is het gevolg van twee sessies die op
-dezelfde dag nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone
-is, `0120` laat het kettingvenster op de klok van de groep tellen in plaats van in
-UTC, en `0121` pagineert de reacties met een cursor in plaats van met `offset`.
+✅ **De map en productie lopen weer gelijk, nagemeten op 28-08.** Het register
+telt 127 rijen van `0001` tot `0124`, gelijk aan de 127 bestanden, met nul
+tijdstempels en geen dubbele versies. `0119` t/m `0121` van de parallelle sessie
+zijn die dag alsnog toegepast, in die volgorde, en daarna is de
+`chain_links_select` uit `0122` opnieuw afgespeeld — want `0120` schrijft diezelfde
+policy met een kale `auth.uid()`. Tussen die twee stappen stond
+`initplan_bewaking()` rood op precies één rij; dat is de bewaking die zijn werk
+deed.
 
-⚠️ **`0121` verandert een handtekening**, en dat vraagt bij het toepassen één
-extra blik: de offsetversie moet daarna wég zijn en niet ernáást staan. Meet het
-met `pg_get_function_identity_arguments()` en niet op naam.
+⚠️ **Wat die volgorde ons leerde staat in
+`docs/decisions/2026-08-28-auth-uid-een-keer-per-query.md`:** twee sessies die op
+één dag nummers uitdelen, leveren niet alleen een botsend nummer op maar ook een
+migratie die het werk van de ander stil terugzet. Een migratienummer behoort aan
+`main` en niet aan je branch — óók, of juist, als je hem al hebt toegepast.
+
+✅ **`0121` verandert een handtekening en dat is nagemeten**: `weekafsluiting_reacties`
+staat er één keer, met de cursorvorm (`…, integer, timestamptz, uuid`). De
+offsetversie is weg en staat er niet naast.
 
 ⚠️ **En hier zit de valkuil van vandaag in.** `0122` (de InitPlan-vorm) en `0123`
 (de lengtegrenzen) stonden eerst als `0119` en `0120` in de map en waren onder
@@ -136,14 +145,23 @@ met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen
 en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
 functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
 
-⚠️ **De volgorde waarin `0120` en `0122` op productie moeten komen, is niet
-vrij.** `0122` bevat één policy die `0120` óók schrijft —
-`chain_links_select`. In de map staat de goede versie: de klok van de groep
-(`groepsdatum()`) én de InitPlan-vorm. Op productie staat vandaag de versie van
-vóór `0120`, want `groepsdatum()` bestaat daar nog niet. **Draai dus `0119`, dan
-`0120`, en speel daarna de `chain_links_select` uit `0122` opnieuw af.** Tussen
-stap twee en drie staat `initplan_bewaking()` rood — dat is geen storing maar
-precies de bedoeling.
+✅ **De volgorde waarin `0120` en `0122` moesten landen was niet vrij, en is
+aangehouden.** `0122` bevat één policy die `0120` óók schrijft —
+`chain_links_select` — en de gegenereerde versie zou de klok van de groep hebben
+teruggezet naar `current_date`. Toegepast als `0119`, `0120`, `0121`, en daarna de
+`chain_links_select` uit `0122` opnieuw. Nagemeten: die policy draagt nu
+`groepsdatum(group_id) - 6` én `( SELECT auth.uid() )`.
+
+⚠️ **Bewaar dit als vorm en niet als geval.** Een migratie die policies
+hérschrijft, is gegenereerd uit een moment — en elke migratie die ná dat moment op
+`main` landt en dezelfde policy raakt, wordt er stil door teruggezet. De bewaking
+ziet dat niet: die kijkt naar de vórm en niet naar de betekenis.
+
+⚠️ **`0124` haalt één dode functie weg.** `weekpas_stand(uuid)` was sinds 0041 een
+wrapper zonder eigen logica, bewaard voor een aanroeper die niet meer bestaat. De
+vier tests eromheen zijn verhuisd naar `weekpas_standen()` — de weg die de app
+écht neemt. Zie
+`docs/decisions/2026-08-28-de-ketencontrole-ziet-commentaar-en-drops.md`.
 
 ⚠️ **`0123` begrenst veertien tekstkolommen en de AI-invoer** en staat ook op
 productie. Vóór het toepassen geteld of een bestaande rij zou omvallen: nul, voor
