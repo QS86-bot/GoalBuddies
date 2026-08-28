@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **584 geslaagd, 1 overgeslagen** (28-08, na 0120). De hele suite geeft met de
-   stack **1829 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
-   en 564 overgeslagen**.
+   **586 geslaagd, 1 overgeslagen** (28-08, na 0121). De hele suite geeft met de
+   stack **1831 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 566 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,36 +94,53 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0120`
-staan in de map, en sinds 28-08 staan ze **allemaal op productie**: het register
-telt 123 rijen van `0001` tot `0120`, gelijk aan de 123 bestanden (de drie met
-een `a`-achtervoegsel meegeteld).
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0121`
+staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 
-⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
+⚠️ **`0119` en `0120` staan nog níet op productie, `0121` wél.** Dat klinkt als
+een fout en is het niet — het is het gevolg van twee sessies die op dezelfde dag
+nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone is; `0120`
+laat het kettingvenster op de klok van de groep tellen in plaats van in UTC.
+Allebei zijn ze gemerged en allebei wachten ze op een `db:push` of een
+MCP-toepassing.
+
+⚠️ **En hier zit de valkuil van vandaag in.** `0121` (de InitPlan-vorm) stond
+eerst als `0119` in de map en was onder dát nummer al op productie toegepast,
+terwijl de parallelle sessie het nummer op `main` aan de tijdzonetrigger gaf.
+Twee migraties, één nummer, twee betekenissen — de map en het register zeiden
+allebei "0119" en bedoelden iets anders. **Het bestand is hernummerd naar `0121`
+en het register is meeverzet**; nagemeten dat er geen dubbele versies staan.
+Zie de werkafspraak: *een migratienummer behoort aan `main` en niet aan je
+branch*, en dat geldt óók als je hem al hebt toegepast.
+
+⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
 register is meeverzet toen ze van `0107`–`0109` naar `0111`–`0113` opschoven,
 omdat een parallelle sessie die nummers eerder claimde. Zie
 `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
 een migratienummer wel en niet vastlegt.
 
-⚠️ **`0115`, `0116` en `0117` staan wél op productie** — hij dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
+⚠️ **`0115`, `0116` en `0117`** — die groep dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
 `docs/decisions/2026-08-28-het-kettingvenster.md`.
 
-✅ **`0107` t/m `0110` en `0114` stonden hier tot 28-08 als "nog niet op
-productie", en dat klopt niet meer.** Ze zijn die dag alsnog toegepast — `0107`
-en `0108` door de parallelle sessie die ze schreef, met het register meeverzet.
-Wat ze dichtten stond hier uitgeschreven en staat nu in het reviewdossier: De
-Ketting die een lid in adempauze meetelde in de noemer, weekafsluitingen op
-willekeurige dagen binnen het venster, `vastgelopen_goedkeuringen()` die er niet
-was, de rem van A7 die met drie verzoeken weg te nemen was, en drie functies die
-hun `search_path` niet pinden.
+✅ **`0107` t/m `0110` en `0114`** — de vijf uit deze sessie. Toegepast via de MCP-tool, daarna uitgelijnd
+met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen.
 
-⚠️ **`0120` begrenst veertien tekstkolommen en de AI-invoer** en staat ook op
-productie. Vóór het toepassen geteld of een bestaande rij zou omvallen: nul, voor
-alle veertien én voor `ai_jobs.input`. Zie
-`docs/decisions/2026-08-28-tekst-zonder-grens.md`.
+⚠️ **Vooraf gemeten dat uit-volgorde toepassen veilig was.** Productie had
+0111 t/m 0117 al; die raken geen enkel object dat deze vijf herschrijven — 0112
+en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
+functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
 
-⚠️ **`0119` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
+⚠️ **De volgorde waarin `0119`, `0120` en `0121` op productie moeten komen, is
+niet vrij.** `0121` bevat één policy die `0120` óók schrijft —
+`chain_links_select`. In de map staat de goede versie: de klok van de groep
+(`groepsdatum()`) én de InitPlan-vorm. Op productie staat vandaag de versie van
+vóór `0120`, want `groepsdatum()` bestaat daar nog niet. **Draai dus `0119`, dan
+`0120`, en speel daarna de `chain_links_select` uit `0121` opnieuw af.** Tussen
+stap twee en drie staat `initplan_bewaking()` rood — dat is geen storing maar
+precies de bedoeling.
+
+⚠️ **`0121` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
 productie. Dat er verder niets veranderde is niet aangenomen maar nagemeten met
 een `md5()` over álle 73 policies: productie ná is byte voor byte gelijk aan wat
 het migratiebestand lokaal oplevert. Zie
@@ -137,13 +154,33 @@ reparatie (`ignoreDuplicates`) zit in de bundel, niet in de database. **Tot `npm
 run deploy` gedraaid heeft, geeft koppelen op `goalbuddies.q-projects.tech`
 `42501`.** Zie `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
 
-⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
-`src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
-gehaald, en daar bestaat de functie nog niet. Het blok
-`vastgelopen_goedkeuringen` en de kolom `goals.losgekoppeld_op` zijn daarom met
-de hand toegevoegd, in exact de vorm die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
-verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
-volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
+⚠️ **Eén fout onderweg, en die is met meten gevonden.** Bij het overzetten van
+0114 werden de `\uXXXX`-reeksen in `tip_bevat_emoji()` als échte tekens
+overgenomen — precies de valkuil waar die migratie zelf voor waarschuwt. Het
+gedrag klopte op alle zes de controlegevallen, maar `prosrc` week af van de repo.
+Hersteld door de body met `chr(92)` op te bouwen; `md5` en lengte komen nu exact
+overeen met de lokale stack.
+
+⚠️ **De twee toevoegingen in `src/lib/database.types.ts` zijn geen
+hand-toevoegingen meer.** `goals.losgekoppeld_op` en
+`vastgelopen_goedkeuringen()` bestaan nu op het project, dus `npm run types:db`
+levert ze voortaan zelf op. De volgorde-waarschuwing die hier stond, is
+vervallen.
+
+⚠️ **Er staat er wél weer één, en dit keer met een bekende houdbaarheid.**
+`groepsdatum()` uit 0120 is met de hand in `src/lib/database.types.ts` gezet,
+want `types:db` leest het echte project en daar staat 0120 nog niet op. Zodra
+hij is toegepast, levert de generator hem zelf en is de regel geen toevoeging
+meer. **Draai `npm run types:db` na het toepassen** — anders staat er een
+handmatige regel die niemand meer als handmatig herkent.
+
+⚠️ **Wat nog wél moet: de Edge Functions opnieuw deployen.** De
+`scrubMessage()`-reparatie van 28-08 zit in `supabase/functions/_shared/`, maar
+een gedeployde bundel verandert daar niet van. Doe dat met
+`npx supabase functions deploy` vanaf de machine met `SUPABASE_ACCESS_TOKEN` —
+niet met de hand overtypen: acht bestanden in die payload dragen backslashes,
+`scrub.ts` alleen al zes regels regex, en `edge:gedeployd` vergelijkt de
+modulebóóm en niet de inhoud.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
