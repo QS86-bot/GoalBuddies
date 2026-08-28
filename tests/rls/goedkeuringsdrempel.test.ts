@@ -11,7 +11,7 @@ import {
 } from './harness';
 
 /**
- * De goedkeuringsregel per groep — QS8-65 (PRD 6.4), migratie 0107.
+ * De goedkeuringsregel per groep — QS8-65 (PRD 6.4), migratie 0111.
  *
  * ⚠️ **Twee beloftes, en de tweede is de moeilijke.**
  *
@@ -24,7 +24,7 @@ import {
  *
  * ⚠️ **En één naad.** De drempel wordt op twee plekken gelezen: bij het
  *    goedkeuren (`award_points_on_approval`) en bij het intrekken
- *    (`trek_goedkeuring_in`, die vóór 0107 `nog_geldig > 0` deed). Zouden die
+ *    (`trek_goedkeuring_in`, die vóór 0111 `nog_geldig > 0` deed). Zouden die
  *    twee elk hun eigen som maken, dan blijft een week bevestigd die de
  *    meerderheid niet meer heeft. De test "een intrekking zet de week terug"
  *    is de enige die dat kan zien.
@@ -200,7 +200,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-65 — de goedkeuringsdrempel', () => 
   /**
    * ⚠️ De regressietest, en de belangrijkste van dit bestand. `any` is de
    *    standaard en de enige stand die vandaag in productie bestaat. Verandert
-   *    hier iets, dan heeft 0107 de bestaande goedkeuring gebroken voor iedereen.
+   *    hier iets, dan heeft 0111 de bestaande goedkeuring gebroken voor iedereen.
    */
   it(
     'bevestigt bij één-buddy-goedkeuring nog steeds met één bevestiging',
@@ -310,7 +310,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-65 — de goedkeuringsdrempel', () => 
   );
 
   /**
-   * ⚠️ **De naad.** `trek_goedkeuring_in()` deed tot 0107 `nog_geldig > 0` — een
+   * ⚠️ **De naad.** `trek_goedkeuring_in()` deed tot 0111 `nog_geldig > 0` — een
    *    tweede som op een tweede plek. Met een drempel van twee leest die som "er
    *    is nog iemand akkoord" als "de regel is nog gehaald", en dan blijft een
    *    week bevestigd die de meerderheid niet meer heeft.

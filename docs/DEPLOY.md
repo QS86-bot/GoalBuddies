@@ -169,9 +169,17 @@ zelf. Na een verse installatie moet je een nieuw terminalvenster openen — een
 draaiende shell leest `PATH` niet opnieuw in, en dat is precies de fout die
 eruitziet alsof de installatie mislukt is.
 
-⚠️ **`CLAUDE.md`: nooit een migratie draaien op iets anders dan lokaal zonder
-overleg.** Zolang er geen lokale stack is, is elke migratie een handeling op de
-echte database van het echte project.
+⚠️ **Er ís sinds QS8-119 een lokale stack, en dit stond hier tot 27-08 anders.**
+`npm run rls:stack` bouwt Postgres plus PostgREST op uit `supabase/migrations/`;
+`npm run rls:lokaal` draait de RLS-suite ertegenaan zonder credentials. **Draai
+een nieuwe migratie daar eerst**, dan is `supabase db push` een herhaling en geen
+eerste poging. `npm run db:push` doet dump → push → registercontrole in één keer.
+
+⚠️ **Het blijft daarna een handeling op de echte database.** De lokale stack
+bewijst het schema en de policies; hij is geen volledige Supabase (geen GoTrue,
+geen Storage, geen Edge-runtime), dus het platform toets je er niet mee. En een
+migratie die lokaal schoon draait, kan op productie nog steeds op bestaande data
+stuiten — vandaar de dump.
 
 ### 2.3 Wat een migratie moet hebben
 

@@ -398,7 +398,7 @@ async function draaiRollover(auth: string): Promise<Response> {
   //    Geen cyclusrekenwerk: een kwartaal is een kalenderfeit dat voor iedereen
   //    op dezelfde dag valt, ongeacht wiens week op dinsdag begint. Dat is de
   //    reden dat dit in SQL mag staan (correctheidsregel 7) — de kop van
-  //    migratie 0108 schrijft de afweging uit.
+  //    migratie 0112 schrijft de afweging uit.
   const { data: recaps, error: recapFout } = await db.rpc('maak_seizoensrecaps');
 
   if (recapFout) {

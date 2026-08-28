@@ -3,11 +3,12 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38 en #41, na het
-> opnieuw deployen van alle drie de Edge Functions, en na de engineering-review
-> van alles wat die dag geland is (#33 t/m #46).
-> **Fase 2 is begonnen** — die drie `phase:v2`-issues staan op `main`. Er zijn
-> twee dingen die op jou wachten; zie "Waar te beginnen", punt 0 en 0a.
+> **Laatst bijgewerkt:** 27-08-2026, na de merge van PR #36, #38, #41, #54, #55,
+> #58, #59 en #60, na het opnieuw deployen van alle drie de Edge Functions, na de
+> engineering-review van alles wat die dag geland is (#33 t/m #46), en na QS8-56.
+> **Fase 2 is begonnen** — de `phase:v2`-issues van EPIC 5 staan op `main` of in
+> review. Er zijn twee dingen die op jou wachten; zie "Waar te beginnen", punt 0
+> en 0a.
 
 ---
 
@@ -716,6 +717,45 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   branch per issue is de regel, en een stilzwijgende uitzondering is hoe die
   regel verwatert.
 
+- **⚠️ Een fout kan al gebouwd zijn en wachten op de feature die hem zichtbaar
+  maakt — QS8-56, 27-08-2026.** Het doelscherm koos met `groepen[0]` welke groep
+  over je deadlineverzoek besliste, uit een lijst zónder `order by`. Elk slot
+  eromheen was dicht en gemeten: `vraag_deadline_verschuiving()` toetst
+  lidmaatschap én koppeling, `beslis_deadline_verzoek()` toetst `r.group_id`,
+  `deadline_requests_select` laat alleen de aangeschreven groep meelezen. Wat
+  niemand toetste was of de gebruiker die groep ooit had **aangewezen**.
+
+  ⚠️ **En dat kón niemand toetsen.** Zolang er geen scherm was dat een doel aan
+  twéé groepen hing, was de toestand onbereikbaar. Er was niet "een test die
+  groen bleef terwijl de belofte brak" — er was geen test die de belofte kón
+  raken. Dat is een variant van onwrikbare regel 18 die de lijst in `CLAUDE.md`
+  nog niet had.
+
+  **Wat je ermee doet:** bij élke feature die een bestaande aanname van "er is er
+  altijd precies één" naar "er kunnen er meer zijn" tilt, grep je eerst op `[0]`,
+  `.find(`, `first`, `single()` en `maybeSingle()` in alles wat die zaak
+  aanraakt. Dat kostte hier vijf minuten en leverde één echte vondst op —
+  `HulpVragen` en `Straf` hádden allebei al een keuzelijst; dat `DeadlineVerzetten`
+  hem niet had, was toeval en geen ontwerp.
+
+  ⚠️ **En zet de keuze als functie neer, niet als regel in het component.** Een
+  regel in een component is alleen te toetsen door te renderen of door in de
+  broncode naar een letterlijke regel te grijpen, en dat tweede is precies de
+  testvorm die bij QS8-85 stilletjes ophield iets te bewaken.
+
+- **⚠️ Een nieuwe migratie op een dráaiende lokale stack vraagt een schema-reload.**
+  PostgREST cachet de functielijst bij het starten. Voer je een migratie met een
+  nieuwe RPC uit tegen een stack die al loopt, dan geeft die RPC `PGRST202` —
+  *"Could not find the function … in the schema cache"* — en valt de bijbehorende
+  test om alsof de migratie stuk is. Dat is hij niet:
+
+  ```bash
+  psql -d goalbuddies_rls -c "notify pgrst, 'reload schema';"
+  ```
+
+  Gebeurde op 27-08 met `definer_bewaking()` uit 0106. `npm run rls:stack` bouwt
+  alles opnieuw op en heeft het probleem niet; dit treft alleen de snelle weg.
+
 ## TE ONTHOUDEN OVER HET PRODUCT
 
 **Domeinregel 7 (falen is nooit publiek) is de belangrijkste regel.** Bij elk
@@ -745,13 +785,12 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (27-08, na PR #41)
+## STAND VAN DE REPO (27-08, na PR #60 en QS8-56)
 
-⚠️ **Er staan drie PR's open die op elkaar gestapeld zijn**, en die staan niet in
-de tabel hieronder — die noemt alleen langlevende branches, en deze drie zijn
-weg zodra ze gemerged zijn. Wat ze zijn en in welke volgorde ze moeten landen,
-staat in "Waar te beginnen" punt 0. **Merge er geen op gevoel: #41 draagt de
-migratie die op #36 wacht.**
+⚠️ **De drie gestapelde PR's van 27-08 zijn geland** in de volgorde #36 → #38 →
+#41, en #54, #55, #58, #59 en #60 daarna. Wat er nu open kan staan is de PR van
+QS8-56 (het blok "Gedeeld met" op het doelscherm); die staat niet in de tabel
+hieronder, want die noemt alleen langlevende branches.
 
 ⚠️ **In deze tabel staat met opzet geen commit-hash van `main` meer.** In de
 vorige versie stond hij er twee keer en op twee verschillende waarden, en tijdens
@@ -895,19 +934,21 @@ dóén is.
 hand teruggedraaid op de lokale stack en gaven respectievelijk 2, 4 en 2 rode
 tests, op de juiste plekken. Daar hoeft niets meer aan.
 
-⚠️ **Eén stuk werk ligt er nog en is klein:** de helper op regel ~804 van
-`tests/rls/epic13.test.ts` doet `?? false` en plet daarmee drie toestanden tot
-één — *rij ontbreekt*, *null* (buiten het venster) en *false*. Gemeten: met een
-`group_overview()` die nul rijen teruggeeft blijven twee tests groen. Geen lek
-en geen regressie (0104 zelf is langs twee ándere tests wél bewaakt), maar het
-zijn twee tests die minder bewijzen dan hun naam belooft. De vorm van de
-reparatie staat in de rij; het is een half uur.
+✅ **Het ene stuk werk dat er nog lag, is gedaan (PR #58).** De helper in
+`tests/rls/epic13.test.ts` gaf `?? false` terug en plette daarmee drie toestanden
+tot één — *rij ontbreekt*, *null* (buiten het venster) en *false*. Hij geeft nu
+`boolean | null`, en een ontbrekende rij is een **fout** en geen waarde. Geijkt
+met dezelfde mutatie die de bevinding opleverde: een `group_overview()` die nul
+rijen teruggeeft gaf eerst `6 failed | 38 passed` met deze twee groen, nu
+`8 failed | 36 passed`.
 
 ⚠️ **Eén ding blijft onopgelost en is bewust niet gerepareerd:** de wisselende
 reeks in `tests/rls/reeks.test.ts`. De suite draait sinds PR #54 sequentieel
 over `tests/rls/`, wat de kans erop wegneemt maar niet de oorzaak, en PR #55
-zorgt dat een volgende waarneming meteen zegt wát er verdween. Waaróm het
-gebeurt is niet aangewezen — en het is sinds die herstructurering niet meer te
+zorgt dat een volgende waarneming meteen zegt wát er verdween. PR #60 heeft er
+twee plausibele verklaringen áfgehaald — gedeelde module-state en een globale
+veegfunctie, allebei gemeten en allebei uitgesloten — maar wélk bestand het doet,
+is nog steeds niet aangewezen, en het is sinds de herstructurering niet meer te
 reproduceren. **Ga hier niet op gokken; zie de twee valkuilen over reproductie
 en over reparaties-uit-het-dossier verderop.**
 

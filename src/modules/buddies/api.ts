@@ -6,10 +6,12 @@ import { supabase } from '../../lib/supabase';
 import { apparaatTijdzone, type Cycle } from '../../shared/time';
 import { invoerfout, type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 
+import type { DoelGroep } from './deling';
 import {
   codeSchema,
   groepPatchSchema,
   groepSchema,
+  leesZichtbaarheid,
   normaliseerCode,
   type GroepInvoer,
   type GroepPatch,
@@ -145,7 +147,7 @@ function uitkomstVan(data: unknown): RpcUitkomst {
 export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
   const { data, error } = await supabase()
     .from('groups')
-    .select('id, name, icon, huddle_day, tz, status, created_at, created_by')
+    .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid')
     .order('created_at', { ascending: true })
     .limit(50);
 
@@ -790,10 +792,7 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
   //    waar dit hele besluit op leunt. Een oudere server die dit veld nog niet
   //    stuurt, hoort geen "open" te suggereren: dan zou een bezoeker denken dat
   //    hij iets deelt wat hij niet deelt, of erger, andersom.
-  const zichtbaarheid: Zichtbaarheid =
-    gelezen.zichtbaarheid === 'open' ? 'open' : 'beschermd';
-
-  return { ...gelezen, zichtbaarheid };
+  return { ...gelezen, zichtbaarheid: leesZichtbaarheid(gelezen.zichtbaarheid) };
 }
 
 // ---------------------------------------------------------------------------
@@ -851,24 +850,31 @@ export async function ontkoppelDoelVanGroep(
 }
 
 /**
- * De groepen waar dít doel aan gekoppeld is — Q-TODO A7.
+ * De groepen waar dít doel aan gekoppeld is — Q-TODO A7, uitgebreid in QS8-56.
  *
  * ⚠️ De omgekeerde vraag van `fetchGekoppeldeDoelIds`, en nodig sinds de
  *    streefdatum van een gedeeld doel alleen met akkoord van de groep verschuift:
  *    het doelscherm moet weten óf er een groep is, en zo ja welke het verzoek
- *    krijgt.
+ *    krijgt. Sinds QS8-56 zijn dat er meer dan één en is "welke" een vraag aan de
+ *    gebruiker geworden in plaats van een aanname.
  *
  * ⚠️ `goal_group_links_select` eist lidmaatschap van de groep, dus dit levert
  *    alleen groepen op waar je zelf in zit. Voor de eigenaar van het doel is dat
- *    hetzelfde antwoord — koppelen kan hij immers alleen bij eigen groepen.
+ *    hetzelfde antwoord — koppelen kan hij immers alleen bij eigen groepen, en
+ *    `verlaat_groep()` (migratie 0102) haalt de koppeling weg zodra hij vertrekt.
+ *
+ * ⚠️ **De volgorde ligt vast en dat hoort bij de limiet.** Een `limit()` zonder
+ *    `order()` kapt een willekeurige twintig af, en tot QS8-56 stond hier alleen
+ *    de limiet. Zolang niemand een doel aan twéé groepen kon hangen viel dat niet
+ *    op; nu wel. `linked_at` staat op de rij zelf, dus dit is één vraag en geen
+ *    sortering over een ingebedde tabel.
  */
-export async function fetchGroepenVanDoel(
-  goalId: string,
-): Promise<readonly { readonly group_id: string; readonly name: string }[]> {
+export async function fetchGroepenVanDoel(goalId: string): Promise<readonly DoelGroep[]> {
   const { data, error } = await supabase()
     .from('goal_group_links')
-    .select('group_id, groups(name)')
+    .select('group_id, linked_at, groups(name, zichtbaarheid)')
     .eq('goal_id', goalId)
+    .order('linked_at', { ascending: true })
     .limit(20);
 
   if (error) {
@@ -879,6 +885,7 @@ export async function fetchGroepenVanDoel(
   return (data ?? []).map((rij) => ({
     group_id: rij.group_id,
     name: rij.groups?.name ?? t('groep.naamloos'),
+    zichtbaarheid: leesZichtbaarheid(rij.groups?.zichtbaarheid),
   }));
 }
 

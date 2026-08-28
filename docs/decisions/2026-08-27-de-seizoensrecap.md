@@ -1,4 +1,4 @@
-# Seizoenen per groep, met één recap — QS8-79 (PRD 8.5), migratie 0108
+# Seizoenen per groep, met één recap — QS8-79 (PRD 8.5), migratie 0112
 
 **27-08-2026.** Vier acceptatiecriteria, en drie ervan zijn ontwerpbeslissingen
 vermomd als details.
