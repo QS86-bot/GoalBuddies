@@ -2199,6 +2199,7 @@ export type Database = {
           type: string
         }[]
       }
+      groepsdatum: { Args: { gid: string }; Returns: string }
       group_overview: {
         Args: {
           p_group_id: string
