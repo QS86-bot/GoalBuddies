@@ -88,15 +88,22 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0107`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0108`
 staan in de map.
 
-⚠️ **`0107` is nog niet op productie gedraaid.** Hij is op 28-08-2026 gemerged
-en tegen een van nul af opgebouwde lokale stack getoetst, maar de sessie die hem
-schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en `register:controle` sloeg
-zichzelf daarom over. Tot `npm run db:push` gedraaid heeft, telt De Ketting op
-productie een lid dat op zijn eigen kalender in zijn adempauze zit nog steeds
-mee in de noemer — zie de rij van 25-08 in `docs/ENGINEER-REVIEW.md`.
+⚠️ **`0107` en `0108` zijn nog niet op productie gedraaid.** Beide zijn op
+28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
+maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
+`register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
+dan geldt op productie:
+
+- `0107` — De Ketting telt een lid dat op zijn eigen kalender in zijn adempauze
+  zit nog mee in de noemer, en houdt zo een voltallige week bij de groep weg.
+  Zie de rij van 25-08 in `docs/ENGINEER-REVIEW.md`.
+- `0108` — een lid kan zijn eigen weekafsluitingen op willekeurige dagen binnen
+  het venster zetten. Elke rij wordt een kettingschakel, dus één lid kan in één
+  verzoek dertig schakels en twee mijlpaalaankondigingen maken. Gemeten via de
+  clientkant; zie de rij van 18-08.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
