@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **588 geslaagd, 1 overgeslagen** (28-08, na 0122). De hele suite geeft met de
-   stack **1833 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
-   en 568 overgeslagen**.
+   **595 geslaagd, 1 overgeslagen** (28-08, na 0123). De hele suite geeft met de
+   stack **1840 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 575 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,7 +94,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0122`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0123`
 staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
 komen, zie hieronder.
@@ -144,6 +144,11 @@ vóór `0120`, want `groepsdatum()` bestaat daar nog niet. **Draai dus `0119`, d
 `0120`, en speel daarna de `chain_links_select` uit `0122` opnieuw af.** Tussen
 stap twee en drie staat `initplan_bewaking()` rood — dat is geen storing maar
 precies de bedoeling.
+
+⚠️ **`0123` begrenst veertien tekstkolommen en de AI-invoer** en staat ook op
+productie. Vóór het toepassen geteld of een bestaande rij zou omvallen: nul, voor
+alle veertien én voor `ai_jobs.input`. Zie
+`docs/decisions/2026-08-28-tekst-zonder-grens.md`.
 
 ⚠️ **`0122` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
 productie. Dat er verder niets veranderde is niet aangenomen maar nagemeten met

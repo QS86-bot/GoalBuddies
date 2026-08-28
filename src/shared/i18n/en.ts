@@ -642,6 +642,8 @@ export const en: Record<Sleutel, string> = {
   'coach.genereer': 'Generate milestones',
   'coach.starten_mislukt': 'The Goal Coach could not be started.',
   'coach.niet_jouw_doel': 'This goal is not yours.',
+  'coach.invoer_te_groot':
+    'Your request is too long for the Goal Coach. Shorten your description or answers and try again.',
   'coach.niet_ingelogd': 'You are no longer signed in.',
   'coach.afronden_mislukt': 'The Goal Coach could not finish the request.',
 

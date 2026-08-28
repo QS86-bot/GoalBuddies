@@ -2093,6 +2093,7 @@ export type Database = {
     }
     Functions: {
       ai_dag_limiet: { Args: never; Returns: number }
+      ai_invoer_max: { Args: never; Returns: number }
       ai_kosten_per_week: {
         Args: { p_weken?: number }
         Returns: {
@@ -2425,6 +2426,13 @@ export type Database = {
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
       sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
       systeembericht_allowlist: { Args: never; Returns: string[] }
+      tekstgrenzen_bewaking: {
+        Args: never
+        Returns: {
+          kolom: string
+          tabel: string
+        }[]
+      }
       te_beoordelen_voor: {
         Args: { p_user_id: string }
         Returns: {

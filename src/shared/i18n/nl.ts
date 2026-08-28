@@ -895,6 +895,8 @@ export const nl = {
   'coach.genereer': 'Genereer mijlpalen',
   'coach.starten_mislukt': 'De Doelcoach kon niet gestart worden.',
   'coach.niet_jouw_doel': 'Dit doel is niet van jou.',
+  'coach.invoer_te_groot':
+    'Je vraag is te lang voor de Doelcoach. Kort je omschrijving of je antwoorden wat in en probeer het opnieuw.',
   'coach.niet_ingelogd': 'Je bent niet meer ingelogd.',
   'coach.afronden_mislukt': 'De Doelcoach kon het verzoek niet afronden.',
 
