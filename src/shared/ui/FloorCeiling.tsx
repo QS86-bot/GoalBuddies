@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { radius, space, useTheme, type Theme } from '../theme';
 
 import { useReducedMotion } from './a11y';
+import { bewegingsStijl } from './beweging';
 import { FLOOR_MARK, rangeState, type Achieved, type Tone, type Viewer, type WeeklyGoalStatus } from './metrics';
 import { Body, Caption } from './Text';
 
@@ -80,7 +81,7 @@ export function FloorCeiling({
               width: `${state.fill * 100}%`,
               // Zonder beweging blijft de balk staan waar hij hoort; met beweging
               // groeit hij. Dat verschil zit in de duur, niet in de eindstand.
-              ...(reduced || Platform.OS !== 'web' ? {} : { transitionDuration: '220ms' }),
+              ...bewegingsStijl(reduced, Platform.OS === 'web', 220),
             },
           ]}
         />

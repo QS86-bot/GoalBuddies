@@ -82,6 +82,7 @@ export {
 export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
+export { bewegingsDuur, bewegingsStijl, type BewegingsStijl } from './beweging';
 export {
   FLOOR_MARK,
   milestoneProgress,
