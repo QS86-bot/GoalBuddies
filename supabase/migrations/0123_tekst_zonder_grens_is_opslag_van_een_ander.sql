@@ -1,4 +1,4 @@
--- 0122_tekst_zonder_grens_is_opslag_van_een_ander.sql — veertien lengtegrenzen
+-- 0123_tekst_zonder_grens_is_opslag_van_een_ander.sql — veertien lengtegrenzen
 -- en een bovengrens op de AI-invoer
 --
 -- ROLLBACK-PAD:
@@ -158,7 +158,7 @@ as $$ select 8000; $$;
 
 comment on function public.ai_invoer_max() is
   'De bovengrens op de invoer van één AI-job, in codepunten. Twee keer wat het '
-  'formulier maximaal kan opleveren; zie 0122.';
+  'formulier maximaal kan opleveren; zie 0123.';
 
 revoke all on function public.ai_invoer_max() from public, anon, authenticated;
 grant execute on function public.ai_invoer_max() to service_role;
@@ -201,10 +201,10 @@ begin
   end if;
 
   -- -------------------------------------------------------------------------
-  -- ⚠️ De bovengrens op de invoer — 0122
+  -- ⚠️ De bovengrens op de invoer — 0123
   -- -------------------------------------------------------------------------
   --
-  -- Tien jobs per dag is pas een quotum als één job begrensd is. Tot 0122 stond
+  -- Tien jobs per dag is pas een quotum als één job begrensd is. Tot 0123 stond
   -- hier niets: een invoer van 450.000 tekens werd geaccepteerd, opgeslagen en
   -- naar het model gestuurd. De grens staat in `ai_invoer_max()` en niet als
   -- getal op twee plekken.

@@ -1,7 +1,7 @@
 # Tekst zonder grens is opslag van een ander — en tien jobs is pas een quotum als één job begrensd is
 
 **Datum:** 28-08-2026
-**Migratie:** 0122
+**Migratie:** 0123
 **Raakt:** veertien CHECK-constraints, `vraag_ai_job()`, `ai_invoer_max()`,
 `tekstgrenzen_bewaking()`, `src/modules/ai/jobs.ts`, de berichtencatalogus,
 `tests/rls/tekstgrenzen.test.ts`

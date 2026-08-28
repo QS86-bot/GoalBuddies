@@ -1,4 +1,4 @@
--- 0121_auth_uid_een_keer_per_query.sql — 49 policies naar de InitPlan-vorm
+-- 0122_auth_uid_een_keer_per_query.sql — 49 policies naar de InitPlan-vorm
 --
 -- ROLLBACK-PAD:
 --   Elke policy hieronder terug naar de kale vorm: vervang in elke `using` en
@@ -106,7 +106,7 @@ create policy breathers_select on public.breathers
 
 drop policy if exists chain_links_select on public.chain_links;
 -- ⚠️ **Deze ene is met de hand bijgewerkt en niet gegenereerd, en dat is de
---    reden dat dit bestand 0121 heet en geen 0119.** De generatie liep tegen de
+--    reden dat dit bestand 0122 heet en geen 0119.** De generatie liep tegen de
 --    stand van vóór 0120; die migratie laat het kettingvenster op de klok van de
 --    groep tellen (`groepsdatum(group_id)`) in plaats van in UTC. De gegenereerde
 --    versie zou `current_date` hebben teruggezet en dat werk stil ongedaan
@@ -536,7 +536,7 @@ security definer
 set search_path to 'public', 'pg_catalog', 'pg_temp'
 as $$
   -- 1. De RLS-helft: de clausule die de eigenaar buiten de deur houdt.
-  --    ⚠️ Door `zonder_initplan_hijs()` heen, zodat de vorm van 0121 hem niet
+  --    ⚠️ Door `zonder_initplan_hijs()` heen, zodat de vorm van 0122 hem niet
   --       ineens laat "ontbreken". De clausule zelf staat er onveranderd.
   select 'rls'::text,
          'completion_approvals_insert mist de clausule c.user_id <> auth.uid()'::text
