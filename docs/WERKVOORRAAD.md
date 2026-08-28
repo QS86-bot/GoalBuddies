@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **586 geslaagd, 1 overgeslagen** (28-08, na 0121). De hele suite geeft met de
-   stack **1831 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
-   en 566 overgeslagen**.
+   **588 geslaagd, 1 overgeslagen** (28-08, na 0122). De hele suite geeft met de
+   stack **1833 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 568 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,7 +94,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0121`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0122`
 staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
 komen, zie hieronder.
@@ -136,16 +136,16 @@ met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen
 en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
 functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
 
-⚠️ **De volgorde waarin `0119`, `0120` en `0121` op productie moeten komen, is
-niet vrij.** `0121` bevat één policy die `0120` óók schrijft —
+⚠️ **De volgorde waarin `0120` en `0122` op productie moeten komen, is niet
+vrij.** `0122` bevat één policy die `0120` óók schrijft —
 `chain_links_select`. In de map staat de goede versie: de klok van de groep
 (`groepsdatum()`) én de InitPlan-vorm. Op productie staat vandaag de versie van
 vóór `0120`, want `groepsdatum()` bestaat daar nog niet. **Draai dus `0119`, dan
-`0120`, en speel daarna de `chain_links_select` uit `0121` opnieuw af.** Tussen
+`0120`, en speel daarna de `chain_links_select` uit `0122` opnieuw af.** Tussen
 stap twee en drie staat `initplan_bewaking()` rood — dat is geen storing maar
 precies de bedoeling.
 
-⚠️ **`0121` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
+⚠️ **`0122` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
 productie. Dat er verder niets veranderde is niet aangenomen maar nagemeten met
 een `md5()` over álle 73 policies: productie ná is byte voor byte gelijk aan wat
 het migratiebestand lokaal oplevert. Zie
