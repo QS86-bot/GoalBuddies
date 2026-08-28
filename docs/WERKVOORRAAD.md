@@ -96,22 +96,27 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 **Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0121`
 staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
+komen, zie hieronder.
 
-⚠️ **`0119` en `0120` staan nog níet op productie, `0121` wél.** Dat klinkt als
-een fout en is het niet — het is het gevolg van twee sessies die op dezelfde dag
-nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone is; `0120`
-laat het kettingvenster op de klok van de groep tellen in plaats van in UTC.
-Allebei zijn ze gemerged en allebei wachten ze op een `db:push` of een
-MCP-toepassing.
+⚠️ **`0119`, `0120` en `0121` staan nog níet op productie; `0122` en `0123` wél.**
+Dat klinkt als een fout en is het niet — het is het gevolg van twee sessies die op
+dezelfde dag nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone
+is, `0120` laat het kettingvenster op de klok van de groep tellen in plaats van in
+UTC, en `0121` pagineert de reacties met een cursor in plaats van met `offset`.
 
-⚠️ **En hier zit de valkuil van vandaag in.** `0121` (de InitPlan-vorm) stond
-eerst als `0119` in de map en was onder dát nummer al op productie toegepast,
-terwijl de parallelle sessie het nummer op `main` aan de tijdzonetrigger gaf.
-Twee migraties, één nummer, twee betekenissen — de map en het register zeiden
-allebei "0119" en bedoelden iets anders. **Het bestand is hernummerd naar `0121`
-en het register is meeverzet**; nagemeten dat er geen dubbele versies staan.
-Zie de werkafspraak: *een migratienummer behoort aan `main` en niet aan je
-branch*, en dat geldt óók als je hem al hebt toegepast.
+⚠️ **`0121` verandert een handtekening**, en dat vraagt bij het toepassen één
+extra blik: de offsetversie moet daarna wég zijn en niet ernáást staan. Meet het
+met `pg_get_function_identity_arguments()` en niet op naam.
+
+⚠️ **En hier zit de valkuil van vandaag in.** `0122` (de InitPlan-vorm) en `0123`
+(de lengtegrenzen) stonden eerst als `0119` en `0120` in de map en waren onder
+díé nummers al op productie toegepast, terwijl `main` diezelfde nummers aan ander
+werk gaf. Twee migraties, één nummer, twee betekenissen. **De bestanden zijn twee
+keer hernummerd en het register is elke keer meeverzet**; nagemeten dat er geen
+dubbele versies staan. Zie de werkafspraak: *een migratienummer behoort aan
+`main` en niet aan je branch* — en dat geldt óók, of juist, als je hem al hebt
+toegepast.
 
 ⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
@@ -168,7 +173,8 @@ levert ze voortaan zelf op. De volgorde-waarschuwing die hier stond, is
 vervallen.
 
 ⚠️ **Er staat er wél weer één, en dit keer met een bekende houdbaarheid.**
-`groepsdatum()` uit 0120 is met de hand in `src/lib/database.types.ts` gezet,
+`groepsdatum()` uit 0120 en de nieuwe argumenten van `weekafsluiting_reacties()`
+uit 0121 zijn met de hand in `src/lib/database.types.ts` gezet,
 want `types:db` leest het echte project en daar staat 0120 nog niet op. Zodra
 hij is toegepast, levert de generator hem zelf en is de regel geen toevoeging
 meer. **Draai `npm run types:db` na het toepassen** — anders staat er een

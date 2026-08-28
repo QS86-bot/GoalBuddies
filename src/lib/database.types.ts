@@ -2538,7 +2538,8 @@ export type Database = {
         Args: {
           p_group_id: string
           p_limit?: number
-          p_offset?: number
+          p_na_at?: string | null
+          p_na_id?: string | null
           p_period_start: string
         }
         Returns: {
