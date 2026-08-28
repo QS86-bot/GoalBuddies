@@ -331,6 +331,29 @@ hem aanspreekt. Nooit ongevraagd bij stilstand. Een coach die uit zichzelf begin
 te praten als je een week overslaat, is een controleur — en dat is dezelfde fout
 als in 2a, alleen met een tekenfilmfiguur.
 
+⚠️ **Bijgesteld door Quinten op 28-08-2026: bij slechte resultaten moet de
+mascotte juist aanmoedigend werken.** Dat is een productbeslissing en hij gaat
+voor op de alinea hierboven.
+
+**Waar de twee elkaar niet bijten:** de Doelcoach is privé. Domeinregel 7 gaat
+over wat de *groep* ziet, en die regel wordt hier niet geraakt — aanmoedigen bij
+tegenslag is precies wat een buddy-app hoort te doen, en het is de tegenpool van
+de Duolingo-uil en niet dezelfde fout.
+
+⚠️ **Waar ze elkaar wél raken, en dat is de openstaande vraag:** "aanmoedigend"
+zegt niets over *ongevraagd*. Twee lezingen, en het verschil is het hele
+onderwerp van deze alinea:
+
+| | wat de coach doet | risico |
+|---|---|---|
+| **A. reactief** | je opent de app of vraagt hem iets, en dan is de toon bij een slechte week aanmoedigend in plaats van neutraal | geen — dit is puur toon |
+| **B. proactief** | de coach begint uit zichzelf zodra je achterloopt | dit is de controleur uit de alinea hierboven, ook als hij aardig is |
+
+Mijn advies is **A**, en dan is de oude regel niet geschrapt maar preciezer:
+*de coach begint nooit uit zichzelf over tegenslag; als je er zelf bent, is zijn
+toon aanmoedigend.* Dat vraagt nog een bevestiging van Quinten voordat het
+gebouwd wordt.
+
 ### 3c. p149 — talen, en welke ik zou aanraden
 
 > *"Talen — Maak de GoalBuddies app ook in het Engels, Duits, Frans, Spaans,
