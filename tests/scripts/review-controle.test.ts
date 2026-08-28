@@ -50,6 +50,31 @@ describe('wat de controle moet vinden', () => {
     expect(klachten).toHaveLength(1);
     expect(klachten[0]?.soort).toBe('geen-voorwaarde');
   });
+
+  it('een rij die zichzelf uit de agenda schrijft terwijl de kolom hem open houdt', () => {
+    const klachten = controleer([
+      rij('X', 'Blijft staan als context, niet als openstaand werk.', 'Middel'),
+    ]);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('geen-agendapunt');
+  });
+
+  it('ook in de vorm "geen bevinding maar een afweging"', () => {
+    const klachten = controleer([
+      rij('X', 'Dat is geen bevinding maar een afweging die je opnieuw kunt maken.', 'Middel'),
+    ]);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('geen-agendapunt');
+  });
+
+  it('ook op Hoog, want de agenda begint boven Laag', () => {
+    const klachten = controleer([rij('X', 'Hier is geen openstaand werk meer.', '**Hoog**')]);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('geen-agendapunt');
+  });
 });
 
 describe('wat de controle met rust moet laten', () => {
@@ -98,5 +123,27 @@ describe('wat de controle met rust moet laten', () => {
 
   it('een regel die geen bevindingsrij is', () => {
     expect(controleer(['| Datum | Bestand | Onzeker | Risico |', '|---|---|---|---|', ''])).toEqual([]);
+  });
+
+  it('een rij die dezelfde woorden in een gewone zin gebruikt', () => {
+    // ⚠️ "Context" en "afweging" komen in dit document tientallen keren voor. Zou
+    //    de toets daarop aanslaan, dan meldt hij de halve lijst.
+    const klachten = controleer([
+      rij(
+        'X',
+        'De afweging staat in beslisdocument 002; de context is EPIC 7. **Wordt zwaarder als:** er een lid bij komt.',
+        'Laag',
+      ),
+    ]);
+
+    expect(klachten).toHaveLength(0);
+  });
+
+  it('een rij die zegt geen openstaand werk te zijn en dat ook in de kolom zet', () => {
+    const klachten = controleer([
+      rij('X', 'Blijft staan als context, niet als openstaand werk.', '~~Middel~~ context'),
+    ]);
+
+    expect(klachten).toHaveLength(0);
   });
 });
