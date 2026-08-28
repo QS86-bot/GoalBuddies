@@ -83,15 +83,6 @@ export const REGISTER = new Map([
     'De grenscontrole uit de bevinding zelf, met de `+ 1` van 0037.',
   ],
   [
-    'ketting_stand :: and current_date between b.starts_cycle and b.ends_cycle',
-    '⚠️ Geen grens maar een peiling: ligt vandáág in de adempauze van dit lid? ' +
-      '`starts_cycle`/`ends_cycle` staan in de persoonlijke cyclus van dát lid, ' +
-      'dus de juiste vergelijking is per lid en niet in UTC. Een dag ernaast ' +
-      'schuift een adempauze aan de rand een dag op, in beide richtingen. ' +
-      'Bewust blijven staan: het echte antwoord vraagt een tijdzone per lid in ' +
-      'deze query. Zie de rij van 25-08-2026 in docs/ENGINEER-REVIEW.md.',
-  ],
-  [
     'ketting_uit_weekafsluiting :: if new.group_period_start > current_date + 1',
     'Dezelfde bovengrens als in de trigger ernaast; die weigert de rij al, deze ' +
       'slaat alleen de schakel over.',
@@ -119,12 +110,65 @@ where n.nspname = 'public'
 order by 1;
 `;
 
+/**
+ * Knipt een SQL-regel af bij zijn commentaar.
+ *
+ * ⚠️ **Zonder dit meldt de controle zijn eigen uitleg.** Migratie 0107 zette in
+ *    `ketting_stand()` een regel commentaar die het woord `current_date`
+ *    noemt om te vertéllen dat het daar wég is — en de controle las dat als een
+ *    voorkomen zonder reden. Dezelfde vorm die `pin:controle` op 27-08 had, en
+ *    dezelfde oplossing: de beslissing uit SQL halen en hier onder test zetten.
+ *
+ * ⚠️ **Een `--` binnen een tekenreeks is geen commentaar**, en dat is niet
+ *    theoretisch: een foutmelding of een systeembericht mag een streepje
+ *    bevatten. Vandaar dat dit de aanhalingstekens telt in plaats van op de
+ *    eerste `--` te knippen. `''` binnen een tekenreeks is een ontsnapt
+ *    aanhalingsteken en sluit hem dus niet.
+ */
+export function zonderCommentaar(regel) {
+  let inTekst = false;
+
+  for (let i = 0; i < regel.length; i += 1) {
+    if (regel[i] === "'") {
+      if (inTekst && regel[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      inTekst = !inTekst;
+      continue;
+    }
+    if (!inTekst && regel[i] === '-' && regel[i + 1] === '-') return regel.slice(0, i);
+  }
+
+  return regel;
+}
+
 /** Zet de uitvoer van `psql -At` om in sleutels. Leeg en dubbel gaan eruit. */
 export function ontleed(uitvoer) {
   return uitvoer
     .split('\n')
     .map((r) => r.trim())
     .filter((r) => r.length > 0);
+}
+
+/**
+ * Houdt alleen de sleutels over waar `current_date` buiten het commentaar staat.
+ *
+ * ⚠️ **Een eigen stap en niet ingebouwd in `ontleed()`.** Die is een ontleder en
+ *    verder niets; er staat een test op dat hij elke regel doorlaat. Een filter
+ *    dat zich in een ontleder verstopt, is het soort naad waar dit project vijf
+ *    keer voor betaald heeft — en hier zou het betekenen dat je `ontleed()` niet
+ *    meer los kunt ijken.
+ *
+ * ⚠️ De SQL-kant is een grove voorselectie: élke regel die het woord noemt, ook
+ *    in commentaar. Hier valt af wat alleen daar stond.
+ */
+export function metEchteGrens(sleutels) {
+  return sleutels.filter((s) => {
+    const streep = s.indexOf(' :: ');
+    const romp = streep === -1 ? s : s.slice(streep + 4);
+    return /current_date/i.test(zonderCommentaar(romp));
+  });
 }
 
 /**
@@ -163,7 +207,7 @@ function hoofd() {
     return 1;
   }
 
-  const voorkomens = ontleed(uitvoer);
+  const voorkomens = metEchteGrens(ontleed(uitvoer));
   const { onbekend, verdwenen } = beoordeel(voorkomens);
 
   if (onbekend.length > 0) {
