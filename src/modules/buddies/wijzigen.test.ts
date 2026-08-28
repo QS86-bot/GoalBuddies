@@ -84,6 +84,7 @@ function velden(): readonly string[] {
     evidence_policy: 'optional',
     approval_rule: 'quorum',
     approval_quorum: 3,
+    season_cadence: 'monthly',
   };
 
   const uit = groepPatchSchema.safeParse(alles);

@@ -50,6 +50,20 @@ export const nl = {
    *    `chat_messages.payload`, niet uit een berekening — zie migratie 0075.
    */
   'systeembericht.chain_milestone': 'De Ketting van deze groep telt {aantal} schakels.',
+  /**
+   * ⚠️ **Eén zin met alle cijfers erin, en dat is acceptatiecriterium 2 van
+   *    QS8-79.** Habit Huddle heeft losse recap-berichten moeten terugdraaien:
+   *    een reeks meldingen achter elkaar leest als spam en niet als een moment.
+   *
+   * ⚠️ **Geen namen, en dat is domeinregel 7.** Alle drie de getallen zijn
+   *    groepstotalen. "Wie het meest" zou ook een lijst zijn van wie onderaan
+   *    staat, en een recap die vertelt dat het een rustig seizoen was, is een
+   *    tegenslagbericht met een vrolijke kop erop. Bij nul op alle drie wordt hij
+   *    helemaal niet verstuurd — zie `maak_seizoensrecaps()`.
+   */
+  'systeembericht.season_recap':
+    'Het seizoen zit erop. Samen hebben jullie {weken} weken afgerond, {mijlpalen} ' +
+    'mijlpalen gehaald en {schakels} schakels aan De Ketting toegevoegd.',
 
   /**
    * ⚠️ Besluit A41 (QS8-132). De zin zegt wat er verandert en niet wat iemand
@@ -951,6 +965,18 @@ export const nl = {
   'goedkeuringsregel.quorum_uitleg':
     'Je kiest zelf hoeveel buddy\u2019s een week moeten bevestigen. Zijn er even ' +
     'minder mensen dan dat, dan telt iedereen die er is.',
+  // ---------------------------------------------------------------------------
+  // Seizoenen — QS8-79 (PRD 8.5), migratie 0112
+  // ---------------------------------------------------------------------------
+  'seizoen.kop': 'Hoe lang duurt een seizoen?',
+  'seizoen.monthly': 'Een maand',
+  'seizoen.quarterly': 'Een kwartaal',
+  // ⚠️ De reden staat erbij en niet alleen de keuze. Een maand is met weekcycli
+  //    maar vier datapunten; dat is de afweging uit het productvoorstel §1.5.
+  'seizoen.uitleg':
+    'Aan het eind van een seizoen komt er één bericht in de groep met wat jullie ' +
+    'samen gedaan hebben. Met weekcycli geeft een kwartaal een eerlijker beeld dan ' +
+    'een maand — dat zijn er maar vier.',
   'goedkeuringsregel.kop': 'Wanneer telt een week?',
   'goedkeuringsregel.quorum_veld': 'Hoeveel bevestigingen?',
   'goedkeuringsregel.quorum_hint': 'Tussen {min} en {max}.',

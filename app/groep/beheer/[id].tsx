@@ -11,9 +11,13 @@ import {
   goedkeuringsregelLabels,
   goedkeuringsregelUitleg,
   leesGoedkeuringsregel,
+  leesSeizoenscadans,
   QUORUM_MAX,
   QUORUM_MIN,
+  SEIZOENSCADANSEN,
+  seizoenscadansLabels,
   type Goedkeuringsregel,
+  type Seizoenscadans,
   fetchMijnLidmaatschap,
   huddledagen,
   type Bewijseis,
@@ -80,6 +84,7 @@ export default function GroepBeheer() {
    *    weigert wat er niet doorheen kan.
    */
   const [quorum, setQuorum] = useState('');
+  const [cadans, setCadans] = useState<Seizoenscadans>('quarterly');
   const [bezig, setBezig] = useState<
     'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | 'archief' | null
   >(null);
@@ -114,6 +119,7 @@ export default function GroepBeheer() {
         setBewijseis((gevonden?.evidence_policy ?? 'note_required') as Bewijseis);
         setRegel(leesGoedkeuringsregel(gevonden?.approval_rule));
         setQuorum(gevonden?.approval_quorum == null ? '' : String(gevonden.approval_quorum));
+        setCadans(leesSeizoenscadans(gevonden?.season_cadence));
         setError(null);
       })
       .catch((f: unknown) => {
@@ -143,6 +149,7 @@ export default function GroepBeheer() {
       evidence_policy: bewijseis,
       approval_rule: regel,
       ...(regel === 'quorum' ? { approval_quorum: Number(quorum.trim()) } : {}),
+      season_cadence: cadans,
     });
     setBezig(null);
 
@@ -330,6 +337,24 @@ export default function GroepBeheer() {
                 ) : null}
 
                 <Caption>{t('goedkeuringsregel.niet_terugwerkend')}</Caption>
+
+                {/*
+                  ⚠️ Ook hier geen bevestigingsstap. De cadans bepaalt alleen
+                     wanneer er één bericht met groepstotalen komt; hij zet niets
+                     open over een ander en raakt geen lopend seizoen — een recap
+                     die al verstuurd is, staat in `season_recaps` en wordt niet
+                     opnieuw gemaakt.
+                */}
+                <Choice
+                  label={t('seizoen.kop')}
+                  opties={SEIZOENSCADANSEN.map((c) => ({
+                    waarde: c,
+                    label: seizoenscadansLabels()[c],
+                  }))}
+                  waarde={cadans}
+                  onKies={(gekozen) => setCadans(gekozen as Seizoenscadans)}
+                />
+                <Caption>{t('seizoen.uitleg')}</Caption>
 
                 <Button
                   variant="primair"

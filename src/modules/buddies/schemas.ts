@@ -234,6 +234,38 @@ export function leesGoedkeuringsregel(waarde: unknown): Goedkeuringsregel {
 }
 
 /**
+ * Hoe lang een seizoen duurt — QS8-79, PRD 8.5.
+ *
+ * ⚠️ **Een kwartaal is de standaard, en dat is een productafweging.** Habit
+ *    Huddle draait maandelijks, expliciet tegen *"week 3 is where groups go
+ *    quiet."* Met weekcycli is een maand maar vier datapunten; een kwartaal geeft
+ *    er dertien. De keuze staat er wél, want een groep die snel wil, mag snel.
+ *
+ * ⚠️ Kopie van de CHECK `groups_season_cadence_valid` (migratie 0001).
+ *    `seizoenen.test.ts` legt de twee naast elkaar.
+ */
+export const SEIZOENSCADANSEN = ['monthly', 'quarterly'] as const;
+export type Seizoenscadans = (typeof SEIZOENSCADANSEN)[number];
+
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function seizoenscadansLabels(): Readonly<Record<Seizoenscadans, string>> {
+  return {
+    monthly: t('seizoen.monthly'),
+    quarterly: t('seizoen.quarterly'),
+  };
+}
+
+/**
+ * ⚠️ **Onbekend is `quarterly`** — de kolomstandaard uit migratie 0001. Een
+ *    onbekende waarde als `monthly` lezen zou het scherm een kortere cadans laten
+ *    tonen dan de database aanhoudt, en dan verwacht de groep een recap die niet
+ *    komt.
+ */
+export function leesSeizoenscadans(waarde: unknown): Seizoenscadans {
+  return waarde === 'monthly' ? 'monthly' : 'quarterly';
+}
+
+/**
  * ⚠️ **`zichtbaarheid` gaat er expliciet uit, en dat is geen opruimwerk.** Zonder
  *    deze `omit` erft het patch-schema het veld van `groepSchema`, en dan
  *    typecheckt `wijzigGroep(id, { zichtbaarheid: 'open' })`, valideert hij,
@@ -266,6 +298,7 @@ export const groepPatchSchema = groepSchema
       .max(QUORUM_MAX, { error: () => t('validatie.quorum_bereik') })
       .nullable()
       .optional(),
+    season_cadence: z.enum(SEIZOENSCADANSEN).optional(),
   })
   /**
    * ⚠️ **De twee velden horen bij elkaar en dat wordt hier al geweigerd.** De
