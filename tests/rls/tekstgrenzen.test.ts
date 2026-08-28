@@ -6,7 +6,7 @@ const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
 
 /**
- * Elke tekstkolom die de client mag schrijven, heeft een lengtegrens — 0122.
+ * Elke tekstkolom die de client mag schrijven, heeft een lengtegrens — 0123.
  *
  * ⚠️ **De Zod-schema's hadden die grenzen al, en dat was precies het probleem.**
  *    `doelSchema` zegt `description` maximaal 2000 en `identity_statement`
@@ -23,7 +23,7 @@ const TEST_TIMEOUT = 30_000;
  * ⚠️ **Waarom dit op een gratis tier zonder backups telt:** opslag is er eindig
  *    en er staat geen `pg_dump` tussen jou en een tabel die volloopt.
  */
-describe.skipIf(!rlsTestsConfigured)('0122 — tekst zonder grens is opslag van een ander', () => {
+describe.skipIf(!rlsTestsConfigured)('0123 — tekst zonder grens is opslag van een ander', () => {
   let gebruiker: TestUser;
   let doelId: string;
 

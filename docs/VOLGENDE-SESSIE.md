@@ -1000,7 +1000,7 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    633 tegenover 41 ms bij een *sequentiële* scan en 2,3 tegenover 2,0 ms mét
    index. Nooit langzamer, soms vijftien keer sneller — geen brand. Zie
    `docs/decisions/2026-08-28-auth-uid-een-keer-per-query.md`.
-4. ✅ **Gedicht in 0122, ook op productie — en het waren er veertien, niet zes.**
+4. ✅ **Gedicht in 0123, ook op productie — en het waren er veertien, niet zes.**
    Elke tekstkolom die `authenticated` mag schrijven heeft nu een lengtegrens, en
    de AI-invoer is begrensd op 8.000 codepunten (twee keer wat het formulier
    maximaal kan produceren). ⚠️ **Eén ding is er níét mee opgelost en staat als
