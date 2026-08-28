@@ -34,5 +34,6 @@ export {
   type Resultaat,
   type TeBeoordelen,
   type Vraag,
+  type Cursor,
   type Wachtrij,
 } from './approvals';

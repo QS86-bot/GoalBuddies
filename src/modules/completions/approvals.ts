@@ -58,10 +58,29 @@ export interface TeBeoordelen {
   readonly approvals_required: number;
 }
 
+/**
+ * Waar de volgende pagina begint — 0125.
+ *
+ * ⚠️ **Een waarde en geen plek, en dat is het hele punt.** De rij waar deze
+ *    cursor naar wijst mag verdwijnen; `(submitted_at, id) >` blijft dan een
+ *    geldige vergelijking. Een `offset` verwijst naar een plek in een lijst die
+ *    onder je handen korter wordt, en op dit scherm maak je hem zelf korter door
+ *    goed te keuren.
+ */
+export interface Cursor {
+  readonly at: string;
+  readonly id: string;
+}
+
 export interface Wachtrij {
   readonly rijen: readonly TeBeoordelen[];
   readonly totaal: number;
   readonly meer: boolean;
+  /**
+   * De cursor waarmee je de vólgende pagina opvraagt, of `null` als er niets
+   * meer achter zit.
+   */
+  readonly cursor: Cursor | null;
 }
 
 /**
@@ -117,15 +136,25 @@ export const PER_PAGINA = 20;
  *    wachttijd.
  */
 export async function fetchBeoordelingen(
-  opties: { readonly pagina?: number } = {},
+  opties: { readonly na?: Cursor | null } = {},
 ): Promise<Wachtrij> {
-  const pagina = opties.pagina ?? 0;
-  const van = pagina * PER_PAGINA;
+  const na = opties.na ?? null;
 
-  const { data, error } = await supabase().rpc('openstaande_beoordelingen', {
-    p_limit: PER_PAGINA,
-    p_offset: van,
-  });
+  // ⚠️ **Beide cursorwaarden of geen van beide, en dat staat hier als vórm.**
+  //    De functie behandelt een half ingevulde cursor als "geen cursor" (0125),
+  //    maar dat is de tweede grendel. Deze is de eerste: er is geen tak waarin
+  //    er één van de twee meegaat, dus de fout is hier niet te máken.
+  //
+  //    Zonder cursor gaan de parameters er helemaal áf in plaats van als `null`
+  //    mee. Dat is dezelfde uitkomst — de functie heeft `default null` — en het
+  //    is de vorm die het gegenereerde type toestaat, dus een hernoemde
+  //    parameter breekt hier de build.
+  const argumenten =
+    na === null
+      ? { p_limit: PER_PAGINA }
+      : { p_limit: PER_PAGINA, p_na_at: na.at, p_na_id: na.id };
+
+  const { data, error } = await supabase().rpc('openstaande_beoordelingen', argumenten);
 
   if (error) {
     reportError(error, 'approvals.queue', { pgcode: error.code });
@@ -137,7 +166,43 @@ export async function fetchBeoordelingen(
   const overgeslagen = ruw.length - rijen.length;
   const totaal = Math.max(0, (ruw[0]?.total_open ?? rijen.length) - overgeslagen);
 
-  return { rijen, totaal, meer: van + rijen.length < totaal };
+  return { rijen, totaal, meer: ruw.length === PER_PAGINA, cursor: volgendeCursor(ruw) };
+}
+
+/**
+ * De cursor voor de volgende pagina, uit de laatste rij die de server stuurde.
+ *
+ * ⚠️ **Uit `ruw` en niet uit `rijen`, en dat verschil is een vastloper.** Een rij
+ *    die `naarTeBeoordelen()` niet kan lezen valt uit `rijen` weg. Zou de cursor
+ *    daaruit komen, dan is de laatste bruikbare rij de grens, komt de onleesbare
+ *    rij bij de volgende pagina weer mee, valt daar weer weg — en blijf je "meer
+ *    laden" indrukken op dezelfde pagina. Uit `ruw` schuift hij er definitief
+ *    langs, precies één keer gemeld door `reportError`.
+ *
+ * ⚠️ **En daarom kijkt hij naar de láátste rij en niet naar de laatste
+ *    bruíkbare.** De eerste versie hiervan zocht terug tot een rij die allebei de
+ *    waarden had, en dat is exact de lus hierboven met een extra stap ertussen —
+ *    de eigen test ving hem meteen. Twee van de vier eisen van
+ *    `naarTeBeoordelen()` gaan bovendien niet over deze twee kolommen, dus een
+ *    rij die om een ándere reden afvalt levert nog steeds een geldige cursor.
+ *
+ * ⚠️ **Kan de laatste rij zélf geen cursor leveren, dan is er geen cursor.** Het
+ *    bladeren stopt dan, en dat is de goede kant om op te leunen: `completion_id`
+ *    is een primaire sleutel en `submitted_at` staat op `not null`, dus dit kán
+ *    alleen als de functie iets anders gaat teruggeven dan haar handtekening
+ *    zegt. Doorgaan zou betekenen dat je gokt waar je bent.
+ *
+ * ⚠️ **`meer` is voortaan "er kwam een volle pagina terug" en geen rekensom.**
+ *    Het was `offset + opgehaald < totaal`, en juist die klopt niet zodra er
+ *    tussendoor iets verdwijnt: het totaal daalt, de teller niet. Een volle
+ *    pagina kost hoogstens één leeg verzoek aan het eind en kan niet liegen.
+ */
+function volgendeCursor(ruw: readonly WachtrijRij[]): Cursor | null {
+  const laatste = ruw[ruw.length - 1];
+  if (typeof laatste?.submitted_at !== 'string' || typeof laatste.completion_id !== 'string') {
+    return null;
+  }
+  return { at: laatste.submitted_at, id: laatste.completion_id };
 }
 
 /**

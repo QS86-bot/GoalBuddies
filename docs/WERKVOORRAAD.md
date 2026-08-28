@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **597 geslaagd, 1 overgeslagen** (28-08, na 0124). De hele suite geeft met de
-   stack **1867 geslaagd en 1 overgeslagen**; zonder credentials **1291 geslaagd
-   en 577 overgeslagen**.
+   **601 geslaagd, 1 overgeslagen** (28-08, na 0125). De hele suite geeft met de
+   stack **1889 geslaagd en 1 overgeslagen**; zonder credentials **1309 geslaagd
+   en 581 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,13 +94,12 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0124`
-staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
-Daarvan staan `0001` t/m `0118` op productie — plus twee die van deze sessie
-komen, zie hieronder.
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0125`
+staan in de map: 128 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+Ze staan alle 128 op productie.
 
 ✅ **De map en productie lopen weer gelijk, nagemeten op 28-08.** Het register
-telt 127 rijen van `0001` tot `0124`, gelijk aan de 127 bestanden, met nul
+telt 128 rijen van `0001` tot `0125`, gelijk aan de 128 bestanden, met nul
 tijdstempels en geen dubbele versies. `0119` t/m `0121` van de parallelle sessie
 zijn die dag alsnog toegepast, in die volgorde, en daarna is de
 `chain_links_select` uit `0122` opnieuw afgespeeld — want `0120` schrijft diezelfde
@@ -156,6 +155,12 @@ teruggezet naar `current_date`. Toegepast als `0119`, `0120`, `0121`, en daarna 
 hérschrijft, is gegenereerd uit een moment — en elke migratie die ná dat moment op
 `main` landt en dezelfde policy raakt, wordt er stil door teruggezet. De bewaking
 ziet dat niet: die kijkt naar de vórm en niet naar de betekenis.
+
+⚠️ **`0125` vervangt `offset` door een cursor in `openstaande_beoordelingen()`.**
+Goedkeuren haalde de rij uit de lijst en schoof daarmee de volgende pagina onder
+je handen door — gemeten: één van vier beoordelingen werd overgeslagen. De
+handtekening is veranderd, dus de gedeployde bundel roept hem tot de volgende
+`npm run deploy` verkeerd aan. Zie de rij in `docs/ENGINEER-REVIEW.md`.
 
 ⚠️ **`0124` haalt één dode functie weg.** `weekpas_stand(uuid)` was sinds 0041 een
 wrapper zonder eigen logica, bewaard voor een aanroeper die niet meer bestaat. De
