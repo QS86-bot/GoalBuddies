@@ -124,7 +124,7 @@ comment on index public.points_ledger_dedupe_idx is
   'review_given: die reden dedupliceert per cyclus en heeft een eigen index. '
   'Zou review_given hier blijven, dan werd het één punt per buddy vóór altijd.';
 
-create unique index points_ledger_review_dedupe_idx
+create unique index if not exists points_ledger_review_dedupe_idx
   on public.points_ledger (user_id, ref_id, cycle_start_date)
   where reason = 'review_given';
 

@@ -434,6 +434,40 @@ docs/decisions/
     toetst de RLS-suite daar een ánder schema dan productie — groen zonder iets
     te bewijzen. Twee keer met de hand gevonden, beide keren bij toeval.
 
+    ⚠️ **En sinds 28-08 is "idempotent" scherper gesteld, want letterlijk
+    gelezen eist die zin iets dat het schema slechter maakt.** Gemeten door het
+    schema op een lege database op te bouwen en daarna élk bestand een tweede
+    keer af te spelen: zeven van de 109 vielen om, en dat waren twee
+    verschillende dingen.
+
+    - **Klasse A — werkelijk niet idempotent.** Drie regels in twee bestanden:
+      een `create function` zonder `or replace` en een `create index` zonder
+      `if not exists`. Dit is de fout, en die hoort weg.
+    - **Klasse B — valt om, en dat is de beveiliging.** Vijf bestanden proberen
+      bij een tweede ronde een **oudere** definitie terug te zetten van een
+      object dat een latere migratie veranderd heeft. Postgres weigert dat.
+      **Die weigering is het enige dat de terugzet tegenhoudt** — bij
+      `group_visible_streaks` zou het zelfs een domeinregel-7-besluit
+      terugdraaien (0003 laat `last_cycle_start` er bewust uit, 0078 zette hem
+      er onder besluit A41 weer in). **Zo'n fout neem je nooit weg.**
+
+    **De regel luidt dus: idempotent tegen de toestand waarvoor de migratie
+    geschreven is.** Verandert een latere migratie de vorm van hetzelfde object,
+    dan is de botsing bij herhaling correct gedrag en geen defect.
+
+    ⚠️ De grendel staat in `tests/migraties/idempotentie.test.ts` en draait mee
+    in `npm test`, dus bij elke push. Hij vindt klasse A en laat klasse B met
+    rust; beide helften zijn met de hand geijkt. Hij hoort thuis in
+    `migraties:controle` en staat in `tests/` omdat `scripts/` het werkgebied
+    van een parallelle sessie was — verhuizen zodra dat vrij is.
+
+    ⚠️ **De drop-uitzondering leest de handtekening en niet alleen de naam.**
+    Een migratie die de vorm van een functie verandert móet hem eerst droppen,
+    want `or replace` kan een returntype niet wijzigen — dat is goed. Maar 0059
+    dropte `plaats_systeembericht(uuid, text, text)` en maakte daarna een versie
+    met zés argumenten: een andere functie, dus de drop dekte hem niet. Een
+    controle die op naam vergelijkt, laat precies die bug door.
+
 #### Regel 19 uitgeschreven (herzien 20-08-2026)
 
 Stond eerst als "geen merge zonder code-critic, security-reviewer en

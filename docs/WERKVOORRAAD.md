@@ -29,12 +29,16 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    spelen op een lege database precies het schema van productie af — negen
    vingerafdrukken, alle negen gelijk. Uitleg in §2 en in
    `docs/decisions/004-migratieregister.md`.
+   ✅ **En sinds 28-08 zijn ze ook een tweede keer af te spelen** — drie regels
+   in 0059 en 0094 waren dat niet en zijn gerepareerd. Wat er daarna nog omvalt
+   en waarom dat zo hoort, staat in
+   `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md`.
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **497 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41 en QS8-137).
-   Zonder credentials geeft `npm test` **998 geslaagd en 477 overgeslagen**; typecheck
-   en lint groen.
+   **507 geslaagd, 1 overgeslagen** (28-08). De hele suite geeft met de stack
+   **1618 geslaagd en 1 overgeslagen**; zonder credentials **1132 geslaagd en
+   487 overgeslagen**. Typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
