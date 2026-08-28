@@ -84,6 +84,18 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     }
 
     f = { alice, bob, groupId: groepData.group.id };
+
+    // ⚠️ **De huddledag op de weekdag van mórgen**, zodat "morgen" hier een
+    //    échte periodestart is. Vóór 0108 deed die dag er niet toe en kon elke
+    //    dag in het venster een weekafsluiting dragen; sindsdien is een periode
+    //    iets met een vorm, en dan moet een suite over de vensterrand die vorm
+    //    aanhouden om nog over de ránd te gaan.
+    const morgenDow = new Date(`${addDays(serverdatum(), 1)}T00:00:00Z`).getUTCDay();
+    const huddle = await adminDb()
+      .from('groups')
+      .update({ huddle_day: morgenDow })
+      .eq('id', f.groupId);
+    if (huddle.error) throw new Error(`huddledag zetten: ${huddle.error.message}`);
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -138,9 +150,22 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
    * `bewaak_week_review_periode()` — dezelfde grens, maar als trigger, en die
    * wéigert de rij in plaats van een reden terug te geven.
    */
+  /**
+   * ⚠️ **De huddledag van deze groep staat op de weekdag van mórgen**, gezet in
+   *    `beforeAll`. Daardoor is "morgen" hier een échte periodestart en niet
+   *    zomaar een dag in het venster — precies het geval dat 0037 wilde
+   *    toelaten: een periode die in de zone van de groep vandaag begint, maar in
+   *    UTC morgen is.
+   *
+   * ⚠️ **Elke test hieronder toetst een ándere SQLSTATE, en dat is de hele
+   *    reden dat 0108 een eigen code kreeg.** Zouden de venstergrens en de
+   *    huddledagtoets allebei `22007` geven, dan wordt de weigertest groen zodra
+   *    een datum om wélke van de twee redenen dan ook wordt tegengehouden — en
+   *    bewaakt hij niet meer welke grens hem tegenhield.
+   */
   describe('de weekafsluiting', () => {
     it(
-      'accepteert een weekafsluiting voor de periode van morgen',
+      'accepteert een periodestart die in UTC pas morgen begint',
       async () => {
         const morgen = addDays(serverdatum(), 1);
 
@@ -157,19 +182,80 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     );
 
     it(
-      'weigert er een voor overmorgen',
+      'weigert een periodestart die te ver vooruit ligt',
       async () => {
-        const overmorgen = addDays(serverdatum(), 2);
+        // ⚠️ Een week verder, dus nog steeds de huddledag van deze groep. Alleen
+        //    zó toetst dit de vénstergrens en niet per ongeluk de dagtoets.
+        const volgendePeriode = addDays(serverdatum(), 8);
 
         const { error } = await f.alice.db.from('week_reviews').insert({
           group_id: f.groupId,
           user_id: f.alice.id,
-          group_period_start: overmorgen,
+          group_period_start: volgendePeriode,
           did_text: 'te ver vooruit',
         });
 
         // 22007 — `invalid_datetime_format`, de code die 0037 meegeeft.
         expect(error?.code).toBe('22007');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een dag binnen het venster die geen periodestart van deze groep is',
+      async () => {
+        // ⚠️ **Dit is de belofte van 0108.** Vóór die migratie stond hier elke
+        //    dag in het venster open, en `ketting_uit_weekafsluiting` maakte er
+        //    een schakel van: één lid schreef in één statement 30 rijen en de
+        //    groep kreeg twee mijlpaalaankondigingen. Vandaag is de huddledag de
+        //    weekdag van morgen, dus vandáág is er geen.
+        const vandaag = serverdatum();
+
+        const { error } = await f.alice.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: vandaag,
+          did_text: 'een dag die geen periode begint',
+        });
+
+        // 22023 — `invalid_parameter_value`, en met opzet níet 22007.
+        expect(error?.code).toBe('22023');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'maakt geen kettingschakel van een geweigerde weekafsluiting',
+      async () => {
+        // ⚠️ De belofte is niet "de rij wordt geweigerd" maar "er komt geen
+        //    schakel bij". De weigerende trigger staat BEFORE en de
+        //    kettingschrijver AFTER; deze test bewijst dat die volgorde het
+        //    gevolg heeft dat de kop van 0108 belooft, in plaats van dat aan te
+        //    nemen.
+        const admin = adminDb();
+        const voor = await admin
+          .from('chain_links')
+          .select('id', { count: 'exact', head: true })
+          .eq('group_id', f.groupId);
+
+        // ⚠️ **Gisteren, en niet overmorgen.** Overmorgen valt al buiten het
+        //    venster van 0037, dus die rij wordt óók zonder 0108 geweigerd en
+        //    deze test zou groen blijven terwijl de belofte weg is. Gisteren
+        //    ligt binnen het venster en is geen huddledag: alleen 0108 houdt
+        //    hem tegen.
+        await f.alice.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: addDays(serverdatum(), -1),
+          did_text: 'geen periodestart',
+        });
+
+        const na = await admin
+          .from('chain_links')
+          .select('id', { count: 'exact', head: true })
+          .eq('group_id', f.groupId);
+
+        expect(na.count).toBe(voor.count);
       },
       TEST_TIMEOUT,
     );
