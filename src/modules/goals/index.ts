@@ -2,6 +2,17 @@
 // CLAUDE.md: module-communicatie loopt uitsluitend via dit bestand.
 
 export {
+  BADGES,
+  badgeLabels,
+  badgeUitleg,
+  kentBadge,
+  type Badge,
+  type VerdiendeBadge,
+} from './badges';
+
+export { fetchBadges } from './badges-api';
+
+export {
   fetchDoel,
   fetchDoelen,
   maakDoel,

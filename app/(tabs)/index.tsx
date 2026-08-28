@@ -19,7 +19,11 @@ import {
   afsluitbareCyclus,
   eersteCyclusVanDoel,
   fetchDoelen,
+  badgeLabels,
+  badgeUitleg,
+  fetchBadges,
   fetchDoelStanden,
+  type VerdiendeBadge,
   fetchDoorschuifbaar,
   fetchMijlpaalTips,
   fetchVolgendeMijlpalen,
@@ -222,6 +226,17 @@ export default function Vandaag() {
     [userId, gehaaldeDoelen, ronde],
   );
 
+  /**
+   * Verdiende badges — QS8-78.
+   *
+   * ⚠️ **Apart opgehaald en apart falend**, net als het stand-blok en de
+   *    mijlpaaltips. Een badge is versiering; een storing daarin hoort je week
+   *    van vandaag niet mee te slepen. Zonder antwoord toont het blok gewoon
+   *    niets, en dat is hetzelfde beeld als "nog geen badges" — hier mag dat,
+   *    want er valt niets te dóén met een badge die je nog niet hebt.
+   */
+  const { data: badges } = useAsync(userId ? () => fetchBadges() : null, [userId, ronde]);
+
   // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
   // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
   // storing hier hoort je week van vandaag niet mee te slepen.
@@ -316,6 +331,8 @@ export default function Vandaag() {
         loading={loading}
       />
 
+      <BadgeBlok badges={badges ?? []} />
+
       <DagzetBlok
         userId={userId ?? ''}
         localDate={profiel ? localDateIn(profiel.tz, now()) : null}
@@ -339,6 +356,56 @@ export default function Vandaag() {
  *    is de eerste indruk van iemand die net begint, en dat is precies de
  *    verkeerde: er is nog niets gemist, er is nog niets te tellen.
  */
+/**
+ * Wat je tot nu toe gedaan hebt — QS8-78 (PRD 8.4).
+ *
+ * ⚠️ **Dit blok staat op *Vandaag* en nergens anders, en dat is de hele
+ *    ontwerpkeuze.** Badges zijn privé: `badges_select` is `user_id =
+ *    auth.uid()`. Een badgemuur naast een ledenlijst is de zuiverste vorm van
+ *    het probleem dat domeinregel 7 beschrijft — **de badge die er níét staat,
+ *    is het signaal.** Wie na twaalf weken geen `streak_12` heeft, heeft
+ *    zichtbaar een week gemist.
+ *
+ *    Geef dit component dus nooit een `viewer`-prop en zet het nooit op een
+ *    groepsscherm. Dezelfde afspraak als bij `Weekpas` en `DoelStandKaart`.
+ *
+ * ⚠️ **Alleen verdiende badges, geen grijze vakjes voor wat je nog niet hebt.**
+ *    Een lijst met vijf slots waarvan er één gevuld is, is een lijst van wat je
+ *    níét gehaald hebt — met een vrolijk randje eromheen. Dat is precies het
+ *    beeld dat dit product bij de groep verbiedt, en er is geen reden om het bij
+ *    jezelf wél te doen.
+ */
+function BadgeBlok({ badges }: { readonly badges: readonly VerdiendeBadge[] }) {
+  const namen = badgeLabels();
+  const uitleg = badgeUitleg();
+
+  return (
+    <Card>
+      <Subheading>{t('badge.kop')}</Subheading>
+
+      {badges.length === 0 ? (
+        <Body muted>{t('badge.nog_geen')}</Body>
+      ) : (
+        <>
+          {badges.map((verdiend) => (
+            <Card nested key={verdiend.badge}>
+              <Subheading>{namen[verdiend.badge]}</Subheading>
+              <Caption>{uitleg[verdiend.badge]}</Caption>
+            </Card>
+          ))}
+
+          {/*
+            ⚠️ Onderaan en alleen als er iets staat. Deze zin legt uit waaróm een
+               badge blijft staan als een reeks breekt — precies het moment waarop
+               iemand anders zou denken dat hij hem kwijt is.
+          */}
+          <Caption>{t('badge.blijven_staan')}</Caption>
+        </>
+      )}
+    </Card>
+  );
+}
+
 function StandBlok({
   standen,
   titels,
