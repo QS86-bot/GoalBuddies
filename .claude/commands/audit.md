@@ -4,6 +4,18 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
+> ⚠️ **Sinds 27-08-2026 draaien zeventien van de twintig controles in CI, bij
+> elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
+> uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
+> draaien omdat ze een productieverbinding of een privésleutel vragen:
+> `functies:controle` (stap 20), `register:controle` (stap 13) en
+> `vapid:controle` (stap 23b).
+>
+> Waarom ze eerst alleen hier stonden: acht van die zeventien lezen niets dan de
+> repo en hadden nooit een reden om te wachten op een wekelijkse handeling. CI
+> toetste met de ijkingstests wél dát ze werkten, en liet ze vervolgens niets
+> bewaken.
+
 1. **Nieuwe code deze week** — bekijk de commits sinds vorige week.
    Delegeer aan `code-critic` en `security-reviewer` voor een overzichtsreview
    van wat er nieuw bij is gekomen.
