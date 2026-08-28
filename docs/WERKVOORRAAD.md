@@ -95,21 +95,30 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 ## 2. Wat er nu draait
 
 **Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0117`
-staan in de map.
+staan in de map — 117 genummerde plus `0039a`, `0041a` en `0052a` — en sinds
+28-08-2026 staan ze **alle 120 op productie**. Hieronder staat per groep hoe ze
+er gekomen zijn, want dat is drie keer anders gegaan.
 
-⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
+⚠️ **Productie loopt één migratie vóór op `main`, gemeten op 28-08-2026.** Het
+register telt 121 regels en nul tijdstempels, en die ene extra is `0118`
+(`een_grant_die_niets_geeft_hoort_weg`). Het bestand staat op de branch
+`fix/schrijfrechten-zonder-policy` en nog niet in `main`. Zolang dat zo is,
+bouwt `supabase/migrations/` **niet** het schema van productie op — precies het
+gat waar §4 hieronder voor waarschuwt, en de RLS-suite toetst dus een database
+zonder die intrekking. Landt die branch, dan is het weer gelijk; landt hij niet,
+dan hoort de intrekking op productie teruggedraaid te worden. Niet laten staan.
+
+⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
 register is meeverzet toen ze van `0107`–`0109` naar `0111`–`0113` opschoven,
 omdat een parallelle sessie die nummers eerder claimde. Zie
 `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
 een migratienummer wel en niet vastlegt.
 
-⚠️ **`0115`, `0116` en `0117` staan wél op productie** — hij dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
+⚠️ **`0115`, `0116` en `0117`** — die groep dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
 `docs/decisions/2026-08-28-het-kettingvenster.md`.
 
-✅ **`0107` t/m `0110` en `0114` staan sinds 28-08-2026 op productie**, en het
-register is uitgelijnd: 120 migraties, nul tijdstempels, mijn vijf op `0107`,
-`0108`, `0109`, `0110` en `0114`. Toegepast via de MCP-tool, daarna uitgelijnd
+✅ **`0107` t/m `0110` en `0114`** — de vijf uit deze sessie. Toegepast via de MCP-tool, daarna uitgelijnd
 met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen.
 
 ⚠️ **Vooraf gemeten dat uit-volgorde toepassen veilig was.** Productie had
