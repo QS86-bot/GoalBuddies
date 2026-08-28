@@ -1,4 +1,4 @@
--- 0119_auth_uid_een_keer_per_query.sql — 49 policies naar de InitPlan-vorm
+-- 0121_auth_uid_een_keer_per_query.sql — 49 policies naar de InitPlan-vorm
 --
 -- ROLLBACK-PAD:
 --   Elke policy hieronder terug naar de kale vorm: vervang in elke `using` en
@@ -105,9 +105,24 @@ create policy breathers_select on public.breathers
   ;
 
 drop policy if exists chain_links_select on public.chain_links;
+-- ⚠️ **Deze ene is met de hand bijgewerkt en niet gegenereerd, en dat is de
+--    reden dat dit bestand 0121 heet en geen 0119.** De generatie liep tegen de
+--    stand van vóór 0120; die migratie laat het kettingvenster op de klok van de
+--    groep tellen (`groepsdatum(group_id)`) in plaats van in UTC. De gegenereerde
+--    versie zou `current_date` hebben teruggezet en dat werk stil ongedaan
+--    hebben gemaakt — mét een groene `initplan_bewaking()`, want die kijkt naar
+--    de vórm en niet naar de betekenis.
+--
+--    Gevonden door na het mergen van `main` de twee bestanden naast elkaar te
+--    leggen. Dit is dus de uitzondering op "niet overgetypt": hier is de
+--    uitdrukking uit 0120 overgenomen en alleen `auth.uid()` gehesen.
 create policy chain_links_select on public.chain_links
   for select to authenticated
-  using (((user_id = ( select auth.uid() )) OR (is_group_member(group_id) AND (group_period_start >= (CURRENT_DATE - 6))) OR lid_van_open_groep(group_id)))
+  using (
+    user_id = ( select auth.uid() )
+    or (is_group_member(group_id) and group_period_start >= groepsdatum(group_id) - 6)
+    or lid_van_open_groep(group_id)
+  )
   ;
 
 drop policy if exists chat_messages_delete on public.chat_messages;
@@ -521,7 +536,7 @@ security definer
 set search_path to 'public', 'pg_catalog', 'pg_temp'
 as $$
   -- 1. De RLS-helft: de clausule die de eigenaar buiten de deur houdt.
-  --    ⚠️ Door `zonder_initplan_hijs()` heen, zodat de vorm van 0119 hem niet
+  --    ⚠️ Door `zonder_initplan_hijs()` heen, zodat de vorm van 0121 hem niet
   --       ineens laat "ontbreken". De clausule zelf staat er onveranderd.
   select 'rls'::text,
          'completion_approvals_insert mist de clausule c.user_id <> auth.uid()'::text

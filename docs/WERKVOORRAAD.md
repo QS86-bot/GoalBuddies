@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **582 geslaagd, 1 overgeslagen** (28-08, na 0120 en de grenstests op
-   `te_beoordelen_voor()`). De hele suite geeft met de stack **1827 geslaagd en 1
-   overgeslagen**; zonder credentials **1266 geslaagd en 562 overgeslagen**.
+   **586 geslaagd, 1 overgeslagen** (28-08, na 0121). De hele suite geeft met de
+   stack **1831 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 566 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,15 +94,24 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0120`
-staan in de map: 123 bestanden, de drie met een `a`-achtervoegsel meegeteld.
-Daarvan staan `0001` t/m `0118` op productie — 121 registerrijen, nul
-tijdstempels.
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0121`
+staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 
-⚠️ **`0119` en `0120` staan nog níet op productie.** `0119` weigert een
-`tz`-waarde die geen tijdzone is; `0120` laat het kettingvenster op de klok van
-de groep tellen in plaats van in UTC. Wat ze dichten staat in het reviewdossier.
-Zij zijn de enige twee uit de map die nog niet zijn toegepast.
+⚠️ **`0119` en `0120` staan nog níet op productie, `0121` wél.** Dat klinkt als
+een fout en is het niet — het is het gevolg van twee sessies die op dezelfde dag
+nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone is; `0120`
+laat het kettingvenster op de klok van de groep tellen in plaats van in UTC.
+Allebei zijn ze gemerged en allebei wachten ze op een `db:push` of een
+MCP-toepassing.
+
+⚠️ **En hier zit de valkuil van vandaag in.** `0121` (de InitPlan-vorm) stond
+eerst als `0119` in de map en was onder dát nummer al op productie toegepast,
+terwijl de parallelle sessie het nummer op `main` aan de tijdzonetrigger gaf.
+Twee migraties, één nummer, twee betekenissen — de map en het register zeiden
+allebei "0119" en bedoelden iets anders. **Het bestand is hernummerd naar `0121`
+en het register is meeverzet**; nagemeten dat er geen dubbele versies staan.
+Zie de werkafspraak: *een migratienummer behoort aan `main` en niet aan je
+branch*, en dat geldt óók als je hem al hebt toegepast.
 
 ⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
@@ -122,7 +131,16 @@ met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen
 en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
 functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
 
-⚠️ **`0119` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
+⚠️ **De volgorde waarin `0119`, `0120` en `0121` op productie moeten komen, is
+niet vrij.** `0121` bevat één policy die `0120` óók schrijft —
+`chain_links_select`. In de map staat de goede versie: de klok van de groep
+(`groepsdatum()`) én de InitPlan-vorm. Op productie staat vandaag de versie van
+vóór `0120`, want `groepsdatum()` bestaat daar nog niet. **Draai dus `0119`, dan
+`0120`, en speel daarna de `chain_links_select` uit `0121` opnieuw af.** Tussen
+stap twee en drie staat `initplan_bewaking()` rood — dat is geen storing maar
+precies de bedoeling.
+
+⚠️ **`0121` herschrijft 49 policies naar de InitPlan-vorm** en staat ook op
 productie. Dat er verder niets veranderde is niet aangenomen maar nagemeten met
 een `md5()` over álle 73 policies: productie ná is byte voor byte gelijk aan wat
 het migratiebestand lokaal oplevert. Zie
