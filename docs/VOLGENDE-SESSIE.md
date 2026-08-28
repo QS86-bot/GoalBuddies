@@ -1025,11 +1025,17 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
 níét mee. Alle dertien functies die daaronder zaten hebben nu een verdict; zie de
 rij in het dossier.
 
-⚠️ **`tekst:controle` heeft er nog wél een, en die staat nog open.** Hij ziet geen
-JSX-tekst die over meerdere regels loopt met een expressie erin — er staan er drie
-in de app terwijl hij "nul" meldt. **Repareer die vóór je op zijn uitkomst
-vertrouwt**, en verwacht dat er meer onder zit dan die drie: bij `keten:controle`
-gaf één reparatie er dertien bloot.
+✅ **`tekst:controle` is ook dicht.** Hij zag geen kale tekst tussen de kinderen
+van een tag: een zin die over twee regels loopt breekt op allebei zijn eisen
+tegelijk — de eerste helft eindigt op een komma, de tweede begint klein. Het
+waren er **vier en niet drie**; de twee erbij kwamen pas boven toen de reparatie
+er lag. Dezelfde volgorde als bij `keten:controle`, alleen kleiner. Uitleg in
+`docs/decisions/2026-08-28-een-zin-over-twee-regels.md`.
+
+⚠️ **De les die overblijft is de telling, niet het script.** Beide aantekeningen
+noemden een aantal dat met de hand geteld was, en beide keren was het te laag —
+één tegen dertien bij `keten:controle`, drie tegen vier hier. Schrijf bij een
+blinde vlek een gemeten aantal op, of geen aantal.
 
 ⚠️ **Wat de controleronde níét kon vaststellen** en wat dus jouw machine vraagt:
 of `verify_jwt` echt aanstaat op `rollover` en `notificaties` (er is geen

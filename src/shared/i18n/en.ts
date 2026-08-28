@@ -1428,4 +1428,14 @@ export const en: Record<Sleutel, string> = {
   'weektip.other.4': 'Make next week as easy as this one: put out what you need beforehand.',
   'weektip.other.5': 'The weeks that count rarely look special. This one counted.',
 
+  'ketting.opdagen_uitleg':
+    'One link for every member who closed their cycle this week. It is about ' +
+    'showing up, not about how much you managed.',
+  'chat.uit_cache':
+    'You are reading this week’s saved messages. The rest fills in as soon as ' +
+    'you are back online.',
+  'beoordelen.week_afgerond': 'Week finished',
+  'beoordelen.week_afgerond_met': 'Week finished — {gehaald}',
+  'groepscherm.leden_van_totaal': '{getoond} of {totaal} members.',
+
 };

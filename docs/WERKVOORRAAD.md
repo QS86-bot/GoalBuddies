@@ -630,11 +630,12 @@ bevindingen zijn gerepareerd (PR #85 t/m #90), de rest staat als rij in
   (`group_members.status`) heeft geen knop, en `ai_kosten_per_week()` draait
   nergens.
 
-⚠️ **En twee controlescripts hebben een blinde vlek die telt.** `tekst:controle`
-ziet geen JSX-tekst die over meerdere regels loopt met een expressie erin — er
-staan er drie in de app terwijl hij "nul" meldt. En `keten:controle` telt een
-`grant`-regel als aanroeper, waardoor bijna elke functie per definitie "levend"
-is. Zolang die twee zo staan, zegt hun groen niets over die klassen.
+✅ **De twee blinde vlekken in de controlescripts zijn dicht (28-08).**
+`keten:controle` telde een `grant`-regel, SQL-commentaar én geen `drop function`
+mee — dertien functies zaten daaronder. `tekst:controle` zag geen kale tekst
+tussen de kinderen van een tag; dat waren er vier, verdeeld over zes regels, en
+ze staan nu in de catalogus. Beide reparaties zijn geijkt door elke grendel met
+de hand te breken. Zie de rijen in `docs/ENGINEER-REVIEW.md`.
 
 #### Wat er van de afgeronde epics nog los ligt
 
