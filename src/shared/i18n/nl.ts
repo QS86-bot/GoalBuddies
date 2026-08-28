@@ -539,6 +539,42 @@ export const nl = {
   'koppel.geen_doel_titel': 'Je hebt nog geen doel om te delen',
   'koppel.geen_doel_tekst': 'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep koppelen.',
   'koppel.nieuw_doel': 'Nieuw doel',
+
+  // ---------------------------------------------------------------------------
+  // Gedeeld met — QS8-56 (PRD 5.5): hetzelfde doel in meer dan één groep
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Eigen sleutels en niet de `koppel.*` hierboven, want het is een andere
+  //    vraag. Op het groepsscherm kies je een doel bij een groep die vaststaat;
+  //    hier kies je groepen bij een doel dat vaststaat. Dezelfde zin hergebruiken
+  //    zou "deze groep" laten slaan op een groep die de gebruiker nog moet kiezen.
+  'deling.kop': 'Gedeeld met',
+  'deling.uitleg':
+    'Eén doel mag in meer dan één groep staan. Elke groep is een aparte toestemming: ' +
+    'je koppelt en ontkoppelt ze los van elkaar.',
+  'deling.nergens': 'Je deelt dit doel nog met niemand. Het staat alleen op jouw scherm.',
+  'deling.geen_groepen':
+    'Je zit nog in geen enkele groep. Zodra je er een hebt, kun je dit doel er hier aan koppelen.',
+  'deling.overal': 'Dit doel staat in al je groepen.',
+  'deling.koppel_kop': 'Ook delen met',
+  'deling.koppel': 'Delen met {naam}',
+  /**
+   * ⚠️ **Twee zinnen, om precies dezelfde reden als bij `koppel.uitleg_*`.** Dit
+   *    is een tweede knop die dezelfde toestemming vraagt; als deze zin zwijgt
+   *    over de weken in een open groep, is de belofte alsnog gebroken — alleen op
+   *    een ander scherm. `beloftes.test.ts` bewaakt dat de beschermde variant een
+   *    open tegenhanger heeft en dat die twee verschillen.
+   *
+   * ⚠️ Ze staan bij élke groep en niet één keer boven de lijst. Een doel kan in
+   *    een open én een beschermde groep tegelijk staan (EPIC 13 toetst precies
+   *    die stand), en dan is één zin boven de lijst voor de helft onwaar.
+   */
+  'deling.uitleg_beschermd':
+    'Beschermd. Deze groep ziet de titel en je mijlpaalvoortgang — niet je notities, ' +
+    'niet je weken en niet je punten.',
+  'deling.uitleg_open':
+    'Open. Deze groep ziet de titel, je mijlpaalvoortgang én je weken — ook de weken die je ' +
+    'niet gehaald hebt. Je notities en je punten blijven van jou.',
   'deelnemen.titel': 'Deelnemen',
   'deelnemen.eyebrow': 'MET EEN CODE',
   'deelnemen.code_label': 'Uitnodigingscode of -link',
@@ -1200,6 +1236,14 @@ export const nl = {
   'deadline.wat_veranderd_hint':
     'Je buddy’s in {groep} lezen dit en beslissen erop. Eén eerlijke zin is genoeg.',
   'deadline.jouw_groep': 'je groep',
+  // ⚠️ QS8-56. Tot dan koos het scherm stilzwijgend de eerste groep uit de lijst,
+  //    en die lijst had niet eens een vaste volgorde. Zolang een doel maar in één
+  //    groep kón staan viel dat niemand op; met PRD 5.5 is het de vraag zelf.
+  'deling.welke_groep': 'Welke groep beslist hierover?',
+  'deling.welke_groep_hint':
+    'Dit doel staat in meer dan één groep. Alleen de groep die je hier kiest, leest je ' +
+    'uitleg en beslist over de nieuwe datum.',
+  'deling.kies_eerst': 'Kies eerst welke groep erover beslist.',
   'deadline.argument_voorbeeld':
     'Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op.',
   'deadline.nog_tekens': 'Nog {aantal} tekens te gaan.',
