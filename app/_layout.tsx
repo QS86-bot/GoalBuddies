@@ -5,7 +5,14 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { isOnboarded, ProfielProvider, SessionProvider, useProfiel, useSession } from '@/modules/auth';
+import {
+  bestemmingVoor,
+  isOnboarded,
+  ProfielProvider,
+  SessionProvider,
+  useProfiel,
+  useSession,
+} from '@/modules/auth';
 import {
   fetchUitnodiging,
   neemDeel,
@@ -201,43 +208,28 @@ function Pushwacht() {
  */
 function Routewacht() {
   const { session, loading: sessieLaadt } = useSession();
-  const { profiel, loading: profielLaadt } = useProfiel();
+  const { profiel, loading: profielLaadt, error: profielFout } = useProfiel();
   const segments = useSegments();
   const router = useRouter();
 
   const wortel = segments[0] ?? '';
-  const opAanmelden = wortel === 'aanmelden';
-  const inOnboarding = wortel === 'onboarding';
-  const opUitnodiging = wortel === 'uitnodiging';
 
-  useEffect(() => {
-    if (sessieLaadt || profielLaadt) return;
-
-    // Een uitnodigingslink is het eerste dat iemand van dit product ziet. Die
-    // pagina blijft dus altijd bereikbaar, ingelogd of niet.
-    if (opUitnodiging) return;
-
-    if (!session) {
-      if (!opAanmelden) router.replace('/aanmelden');
-      return;
-    }
-
-    if (!isOnboarded(profiel)) {
-      if (!inOnboarding) router.replace('/onboarding/uitleg');
-      return;
-    }
-
-    if (opAanmelden || inOnboarding) router.replace('/');
-  }, [
-    session,
-    profiel,
+  // ⚠️ De beslissing zelf staat in `modules/auth/routewacht` en niet hier: er is
+  //    geen enkele test in `app/`, en deze wacht heeft op 28-08 aantoonbaar een
+  //    belofte gebroken zonder dat er iets rood werd. Als pure functie is hij
+  //    toetsbaar zonder renderer — zie `routewacht.test.ts`.
+  const bestemming = bestemmingVoor({
+    heeftSessie: session !== null,
     sessieLaadt,
     profielLaadt,
-    opAanmelden,
-    inOnboarding,
-    opUitnodiging,
-    router,
-  ]);
+    profielFout,
+    isOnboarded: isOnboarded(profiel),
+    wortel,
+  });
+
+  useEffect(() => {
+    if (bestemming !== null) router.replace(bestemming);
+  }, [bestemming, router]);
 
   return null;
 }

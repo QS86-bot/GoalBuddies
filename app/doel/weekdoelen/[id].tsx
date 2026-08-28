@@ -175,11 +175,19 @@ function Genereren({
     // Een hergebruikte job is al klaar; afwerken zou hem afwijzen met
     // `job_is_done`. Meteen gaan kijken dus.
     if (!aanvraag.waarde.hergebruikt) {
-      const gestart = await werkJobAf(aanvraag.waarde.jobId);
-      if (!gestart.ok) {
-        setStand({ fase: 'mislukt', melding: gestart.melding });
-        return;
-      }
+      // ⚠️ **Een mislukte aanroep is geen mislukte job, en opgeven is hier de
+      //    duurste fout die er is.** De kop hierboven legt uit dat een verbroken
+      //    verbinding de job gewoon laat doorlopen en dat je hem daarom bevraagt
+      //    — tot 28-08 zette deze tak precies die redding uit. De client brak
+      //    bovendien élke call af na vijftien seconden terwijl er twintig nodig
+      //    zijn (gerepareerd in `src/lib/supabase.ts`), dus dit was het normale
+      //    pad en niet het randgeval.
+      //
+      //    Gevolg was: "Het lukte niet" op een job die op `done` staat, de
+      //    gebruiker drukt op Opnieuw, en dat is een tweede Anthropic-call en
+      //    een tweede plek uit zijn dagquotum voor een antwoord dat al betaald
+      //    en opgeslagen is. `kijk()` onderscheidt `done` van `failed` zelf.
+      await werkJobAf(aanvraag.waarde.jobId);
     }
 
     void kijk(aanvraag.waarde.jobId);

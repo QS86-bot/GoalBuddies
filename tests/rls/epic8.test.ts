@@ -392,6 +392,48 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     );
 
     it(
+      'houdt de rand van het venster dicht: zeven dagen oud is de vórige periode',
+      async () => {
+        // ⚠️ **Dit is de rand die tot 0116 onbeproefd was.** De test hierboven
+        //    legt een schakel zestig dagen terug — ver genoeg om buiten élk
+        //    redelijk venster te vallen, dus hij bleef groen terwijl het venster
+        //    er één dag naast stond. Een huddleperiode duurt zeven dagen, dus
+        //    een lópende periode is hoogstens zes dagen oud; zeven dagen oud is
+        //    per definitie de afgesloten periode, en daar betekent een
+        //    ontbrekende schakel "gemist".
+        //
+        // ⚠️ De data zijn relatief aan vandáág en niet aan `f.periodStart`: de
+        //    policy vergelijkt met `current_date`, en dat is de grens die hier
+        //    getoetst wordt.
+        const vandaag = now().toISOString().slice(0, 10) as IsoDate;
+        const gesloten = addDays(vandaag, -7);
+        const lopend = addDays(vandaag, -6);
+
+        await adminDb().from('chain_links').insert([
+          { group_id: f.groupId, user_id: f.alice.id, group_period_start: gesloten },
+          { group_id: f.groupId, user_id: f.alice.id, group_period_start: lopend },
+        ]);
+
+        const zevenDagen = await f.bob.db
+          .from('chain_links')
+          .select('user_id')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', gesloten);
+        expect(zevenDagen.data).toHaveLength(0);
+
+        // De tegenhanger, en zonder haar bewijst de test hierboven niets: op zes
+        // dagen mág de schakel wél zichtbaar zijn, anders is De Ketting stuk.
+        const zesDagen = await f.bob.db
+          .from('chain_links')
+          .select('user_id')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', lopend);
+        expect(zesDagen.data).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'geeft via group_overview geen aanwezigheid van een afgesloten periode',
       async () => {
         // Hetzelfde raster, nettere verpakking: `p_period_start` was vrij te

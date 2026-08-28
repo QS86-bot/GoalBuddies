@@ -33,8 +33,25 @@ export type Db = SupabaseClient<Database>;
  */
 const TIMEOUT_MS = 15_000;
 
+/**
+ * ⚠️ **Een Edge Function krijgt meer tijd, en dat is geen ruimhartigheid maar
+ *    rekenwerk.** De Doelcoach doet een Anthropic-call; `doelcoach/index.ts`
+ *    geeft die zelf 30 seconden, en de kop van `app/doel/coach/[id].tsx` zegt
+ *    dat hij er gemeten twintig nodig heeft. Met de vijftien hierboven brak de
+ *    client dus élke AI-call af vóórdat hij klaar kón zijn — de job liep door,
+ *    kwam op `done` en de gebruiker kreeg "Het lukte niet".
+ *
+ * ⚠️ Vijfendertig en niet dertig: de functie mag zijn eigen dertig volmaken en
+ *    daarna nog antwoorden. Een client-timeout die gelijkloopt met de
+ *    server-timeout wint soms en verliest soms, en dat is de vervelendste soort
+ *    fout om terug te vinden.
+ */
+const FUNCTIE_TIMEOUT_MS = 35_000;
+
 function fetchMetTimeout(invoer: RequestInfo | URL, opties?: RequestInit): Promise<Response> {
-  return fetch(invoer, { ...opties, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const adres = typeof invoer === 'string' ? invoer : invoer instanceof URL ? invoer.href : invoer.url;
+  const grens = adres.includes('/functions/v1/') ? FUNCTIE_TIMEOUT_MS : TIMEOUT_MS;
+  return fetch(invoer, { ...opties, signal: AbortSignal.timeout(grens) });
 }
 
 let cached: Db | undefined;

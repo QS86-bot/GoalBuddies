@@ -92,7 +92,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0114`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0117`
 staan in de map.
 
 ⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
@@ -101,6 +101,9 @@ register is meeverzet toen ze van `0107`–`0109` naar `0111`–`0113` opschoven
 omdat een parallelle sessie die nummers eerder claimde. Zie
 `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
 een migratienummer wel en niet vastlegt.
+
+⚠️ **`0115`, `0116` en `0117` staan wél op productie** — hij dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
+`docs/decisions/2026-08-28-het-kettingvenster.md`.
 
 ⚠️ **`0107` t/m `0110` en `0114` zijn nog niet op productie gedraaid.** Die vijf zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
