@@ -88,10 +88,10 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0108`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0109`
 staan in de map.
 
-⚠️ **`0107` en `0108` zijn nog niet op productie gedraaid.** Beide zijn op
+⚠️ **`0107`, `0108` en `0109` zijn nog niet op productie gedraaid.** Alle drie zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
 `register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
@@ -104,6 +104,16 @@ dan geldt op productie:
   het venster zetten. Elke rij wordt een kettingschakel, dus één lid kan in één
   verzoek dertig schakels en twee mijlpaalaankondigingen maken. Gemeten via de
   clientkant; zie de rij van 18-08.
+- `0109` — `vastgelopen_goedkeuringen()` bestaat daar niet, dus er is geen
+  manier om te tellen hoeveel wachtende weken hun beoordelaars kwijt zijn.
+
+⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
+`src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
+gehaald, en daar bestaat de functie nog niet. Het blok
+`vastgelopen_goedkeuringen` is daarom met de hand toegevoegd, in exact de vorm
+die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
+verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
+volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
