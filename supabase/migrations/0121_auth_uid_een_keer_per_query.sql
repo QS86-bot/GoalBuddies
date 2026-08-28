@@ -110,7 +110,7 @@ drop policy if exists chain_links_select on public.chain_links;
 --    stand van vóór 0120; die migratie laat het kettingvenster op de klok van de
 --    groep tellen (`groepsdatum(group_id)`) in plaats van in UTC. De gegenereerde
 --    versie zou `current_date` hebben teruggezet en dat werk stil ongedaan
---    hebben gemaakt — mét een groene `initplan_bewaking()`, want die kijkt naar
+--    hebben gemaakt — mét een groene bewaking op de InitPlan-vorm, want die kijkt naar
 --    de vórm en niet naar de betekenis.
 --
 --    Gevonden door na het mergen van `main` de twee bestanden naast elkaar te
