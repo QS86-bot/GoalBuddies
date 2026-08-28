@@ -221,6 +221,55 @@ describe.skipIf(!rlsTestsConfigured)('QS8-56 — één doel in meer dan één gr
     TEST_TIMEOUT,
   );
 
+  /**
+   * ⚠️ **De naad tussen `koppelDoelAanGroep()` en de policies, en die was stuk.**
+   *    De datalaag doet een `upsert`, en PostgREST vertaalt dat naar
+   *    `on conflict do update`. `goal_group_links` heeft bewust geen
+   *    UPDATE-policy — aan een koppeling valt niets bij te werken — dus liep een
+   *    tweede koppeling van hetzelfde paar op `new row violates row-level
+   *    security policy`, en zag de gebruiker "koppelen mislukt" terwijl de
+   *    koppeling er gewoon stond.
+   *
+   * ⚠️ **Geen enkele test kón dit zien**, en dat is regel 18 vraag 5: elk
+   *    onderdeel was af. De policies zijn juist, de datalaag is juist, en de
+   *    tests hierboven koppelen altijd een paar dat er nog niet is. De fout zit
+   *    in de vertaling ertussen, en die heeft geen eigen bestand.
+   *
+   * ⚠️ **Dit toetst de belofte en niet de vorm.** "Nog een keer koppelen doet
+   *    geen kwaad" blijft kloppen als iemand `upsert` door `insert` vervangt, of
+   *    de vlag anders noemt. Vandaar `ignoreDuplicates` hier ook echt aanroepen
+   *    en niet de SQL naspelen.
+   */
+  it(
+    'laat hetzelfde doel twee keer aan dezelfde groep koppelen zonder fout',
+    async () => {
+      const admin = adminDb();
+      const voor = await admin
+        .from('goal_group_links')
+        .select('goal_id', { count: 'exact', head: true })
+        .eq('goal_id', f.doelAlleenA);
+
+      // Precies wat `koppelDoelAanGroep()` doet — inclusief de vlag, want díé is
+      // het verschil tussen `do nothing` en `do update`.
+      const { error } = await f.alice.db
+        .from('goal_group_links')
+        .upsert(
+          { goal_id: f.doelAlleenA, group_id: f.groepA.id },
+          { onConflict: 'goal_id,group_id', ignoreDuplicates: true },
+        );
+
+      expect(error, JSON.stringify(error)).toBeNull();
+
+      // En er staat er niet ineens een tweede: `do nothing` hoort niets te doen.
+      const na = await admin
+        .from('goal_group_links')
+        .select('goal_id', { count: 'exact', head: true })
+        .eq('goal_id', f.doelAlleenA);
+      expect(na.count).toBe(voor.count);
+    },
+    TEST_TIMEOUT,
+  );
+
   it(
     'laat een groepsgenoot het doel van een ander niet aan zijn groep koppelen',
     async () => {

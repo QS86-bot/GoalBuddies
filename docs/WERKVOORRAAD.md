@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **561 geslaagd, 1 overgeslagen** (28-08, na de vijf reparaties uit de
-   controleronde). De hele suite geeft met de stack **1795 geslaagd en 1
-   overgeslagen**; zonder credentials **1255 geslaagd en 541 overgeslagen**.
+   **563 geslaagd, 1 overgeslagen** (28-08, na 0118). De hele suite geeft met de
+   stack **1808 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 543 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,8 +94,10 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0117`
-staan in de map.
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0118`
+staan in de map, en sinds 28-08 staan ze **allemaal op productie**: het register
+telt 121 rijen van `0001` tot `0118`, gelijk aan de 121 bestanden (de drie met
+een `a`-achtervoegsel meegeteld).
 
 ⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
@@ -107,27 +109,22 @@ een migratienummer wel en niet vastlegt.
 ⚠️ **`0115`, `0116` en `0117` staan wél op productie** — hij dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
 `docs/decisions/2026-08-28-het-kettingvenster.md`.
 
-⚠️ **`0107` t/m `0110` en `0114` zijn nog niet op productie gedraaid.** Die vijf zijn op
-28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
-maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
-`register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
-dan geldt op productie:
+✅ **`0107` t/m `0110` en `0114` stonden hier tot 28-08 als "nog niet op
+productie", en dat klopt niet meer.** Ze zijn die dag alsnog toegepast — `0107`
+en `0108` door de parallelle sessie die ze schreef, met het register meeverzet.
+Wat ze dichtten stond hier uitgeschreven en staat nu in het reviewdossier: De
+Ketting die een lid in adempauze meetelde in de noemer, weekafsluitingen op
+willekeurige dagen binnen het venster, `vastgelopen_goedkeuringen()` die er niet
+was, de rem van A7 die met drie verzoeken weg te nemen was, en drie functies die
+hun `search_path` niet pinden.
 
-- `0107` — De Ketting telt een lid dat op zijn eigen kalender in zijn adempauze
-  zit nog mee in de noemer, en houdt zo een voltallige week bij de groep weg.
-  Zie de rij van 25-08 in `docs/ENGINEER-REVIEW.md`.
-- `0108` — een lid kan zijn eigen weekafsluitingen op willekeurige dagen binnen
-  het venster zetten. Elke rij wordt een kettingschakel, dus één lid kan in één
-  verzoek dertig schakels en twee mijlpaalaankondigingen maken. Gemeten via de
-  clientkant; zie de rij van 18-08.
-- `0109` — `vastgelopen_goedkeuringen()` bestaat daar niet, dus er is geen
-  manier om te tellen hoeveel wachtende weken hun beoordelaars kwijt zijn.
-- `0110` — de rem van A7 is met drie verzoeken weg te nemen: ontkoppelen,
-  `zet_streefdatum()`, terugkoppelen. Gemeten: de datum schoof tien maanden op
-  en er ging **geen enkel verzoek** naar een buddy. Zie de rij van 17-08.
-- `0114` — drie functies pinnen hun `search_path` niet, waardoor de zeef die
-  tegenvallertaal uit een doelcoach-tip weert met een gekaapt pad niets zeeft.
-  `definer_bewaking()` keek daar langs omdat die drie geen definer zijn.
+⚠️ **`0118` is nieuw op productie en vraagt nog één handeling van jou.** Hij trekt
+76 schrijfrechten in die geen enkele policy achter zich hebben, en één daarvan
+hield de knop "koppel doel aan groep" overeind: de datalaag deed een `upsert`, en
+`on conflict do update` eist het UPDATE-tabelrecht al bij het plannen. De
+reparatie (`ignoreDuplicates`) zit in de bundel, niet in de database. **Tot `npm
+run deploy` gedraaid heeft, geeft koppelen op `goalbuddies.q-projects.tech`
+`42501`.** Zie `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
 
 ⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
 `src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project

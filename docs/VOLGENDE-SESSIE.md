@@ -978,11 +978,14 @@ een test-engineer op de dekking, en een zoektocht naar onderbroken ketens.
 lekken die live op productie stonden. Wat blijft liggen staat als rij in het
 dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen leest:
 
-1. **Elf tabellen dragen schrijfgrants zonder bijbehorende policy.** Vandaag
-   inert — RLS weigert bij een ontbrekende policy — maar `schrijfrechten_bewaking()`
-   uit 0101 kent een **hardgecodeerde lijst van vier tabelnamen** en ziet de
-   andere zeven niet. Dat is exact de klasse die 0101 kwam voorkomen. De
-   generieke query staat in de rij.
+1. ✅ **Schrijfgrants zonder policy — gedicht in 0118, ook op productie.** Het
+   waren er meer dan de rij dacht: 58 voor `anon` over 21 tabellen en 18 voor
+   `authenticated` over 9. `schrijfrechten_bewaking()` rekent de regel nu uit in
+   plaats van een lijst van vier namen te dragen. ⚠️ **Eén ding vraagt nog jouw
+   machine:** de gedeployde bundel doet nog de oude `upsert` op
+   `goal_group_links`, en die eist een UPDATE-recht dat er niet meer is — dus
+   koppelen geeft `42501` tot `npm run deploy` gedraaid heeft. Zie
+   `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
 2. **`te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test.**
    De meldingenjob roept hem aan als `service_role`, dus RLS kijkt daar niet mee
    en de functie ís de grens. De enige test toetst dát een gewone gebruiker hem
