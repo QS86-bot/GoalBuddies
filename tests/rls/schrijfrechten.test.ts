@@ -13,6 +13,23 @@ const TEST_TIMEOUT = 30_000;
 const SETUP_TIMEOUT = 180_000;
 
 /**
+ * Een schrijfrecht waar geen policy bij hoort, geeft niets — en hoort weg.
+ *
+ * ⚠️ **Sinds 0118 is dit de generieke vorm, en dat is de reparatie van 0101.**
+ *    0101 trok de rechten in op vier tabellen en zette er een bewaking naast met
+ *    **die vier namen erin gebeiteld**. Dat is precies de klasse die 0101 kwam
+ *    voorkomen: `alter default privileges` van Supabase deelt élke nieuwe tabel
+ *    in `public` de volle set uit aan `anon` en `authenticated`, dus de volgende
+ *    tabel krijgt ze weer en een lijst van vier kijkt de andere kant op. Op 28-08
+ *    stonden er zo 58 rechten voor `anon` over 21 tabellen en 18 voor
+ *    `authenticated` over 9 — geen enkele in die lijst.
+ *
+ * ⚠️ **De regel die de lijst vervangt:** een schrijfrecht voor `anon` of
+ *    `authenticated` waar geen permissieve policy voor diezelfde rol en opdracht
+ *    bij hoort. Uit te rekenen, dus geen lijst nodig.
+ *
+ * Wat 0101 zelf deed staat hieronder, want die tests blijven staan:
+ *
  * Vier tabellen die alleen `service_role` schrijft, weigeren sinds 0101 lúid.
  *
  * ⚠️ **Wat er mis was is niet dat er iets kon, maar dat er niets gebeurde.**
@@ -62,14 +79,37 @@ describe.skipIf(!rlsTestsConfigured)('0101 — schrijfrechten op service_role-ta
   }, SETUP_TIMEOUT);
 
   it(
-    'geen van de vier geeft anon of authenticated nog schrijfrecht',
+    'geen enkele tabel geeft anon of authenticated een recht zonder policy',
     async () => {
       const { data, error } = await adminDb().rpc('schrijfrechten_bewaking');
 
       expect(error).toBeNull();
       // De melding noemt tabel, rol en recht, zodat de volgende lezer niet hoeft
-      // te zoeken welke van de twaalf combinaties terug is.
+      // te zoeken welke combinatie terug is.
       expect(data ?? [], JSON.stringify(data)).toEqual([]);
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **De negatieve helft, en zonder deze bewijst de test hierboven niets.**
+   *    Nul rijen is ook wat je krijgt van een bewaking die niets vindt omdat er
+   *    niets meer te schrijven valt. `authenticated` houdt na 0118 zevenendertig
+   *    schrijfrechten over — allemaal met een policy erbij — en de bewaking hoort
+   *    daar géén van te noemen. Een controle die alles meldt, leert je hem te
+   *    negeren.
+   */
+  it(
+    'laat de rechten die wél een policy hebben met rust',
+    async () => {
+      // Een gewone eigen schrijfactie. Slaagt dit niet, dan is de app dicht in
+      // plaats van opgeruimd, en zegt de nulmeting hierboven niets.
+      const { error } = await gebruiker.db
+        .from('profiles')
+        .update({ display_name: 'Schrijfrechten' })
+        .eq('id', gebruiker.id);
+
+      expect(error, JSON.stringify(error)).toBeNull();
     },
     TEST_TIMEOUT,
   );
