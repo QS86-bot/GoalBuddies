@@ -8,6 +8,7 @@ import {
   fetchGroep,
   fetchWeekafsluiting,
   fetchWeekafsluitingReacties,
+  type ReactieCursor,
   groepeerReacties,
   heeftInhoud,
   huddledagLabel,
@@ -73,7 +74,7 @@ export default function Weekafsluiting() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [ronde, setRonde] = useState(0);
-  const [reactiePagina, setReactiePagina] = useState(0);
+  const [reactieCursor, setReactieCursor] = useState<ReactieCursor | null>(null);
   const [meerBezig, setMeerBezig] = useState(false);
   const [vuil, setVuil] = useState(false);
   const [tegengehouden, setTegengehouden] = useState(false);
@@ -95,9 +96,12 @@ export default function Weekafsluiting() {
       .then((uitkomst) => {
         if (!levend) return;
         setStand(uitkomst);
-        // ⚠️ Terug naar pagina nul bij een herlading. Blijft de teller staan, dan
-        //    vraagt "meer reacties" na een verversing een pagina die er niet is.
-        setReactiePagina(0);
+        // ⚠️ De cursor komt uit de zojuist geladen eerste pagina en wordt niet op
+        //    null gezet. Dat stond hier wél toen dit een paginateller was — daar
+        //    was nul de eerste pagina. Een cursor van null betekent iets anders:
+        //    "begin opnieuw vooraan", en dan haalt "meer reacties" dezelfde
+        //    honderd rijen nog een keer op.
+        setReactieCursor(uitkomst.reactiesCursor);
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -129,8 +133,13 @@ export default function Weekafsluiting() {
 
     setMeerBezig(true);
     try {
+      // ⚠️ Geen cursor betekent "opnieuw de eerste pagina", en dat zou de knop
+      //    in een lus zetten. Er is er altijd een zolang `meer` waar is, maar
+      //    dat is een aanname over een andere functie en geen garantie.
+      if (reactieCursor === null) return;
+
       const volgende = await fetchWeekafsluitingReacties(id, stand.periode, {
-        pagina: reactiePagina + 1,
+        na: reactieCursor,
       });
 
       setStand((oud) =>
@@ -138,7 +147,7 @@ export default function Weekafsluiting() {
           ? oud
           : { ...oud, reacties: voegReactiesSamen(oud.reacties, volgende.rijen), reactiesMeer: volgende.meer },
       );
-      setReactiePagina((p) => p + 1);
+      setReactieCursor(volgende.volgende);
     } catch (fout: unknown) {
       setError(fout);
     } finally {
@@ -657,6 +666,8 @@ interface Stand {
   readonly reacties: readonly Reactie[];
   /** Zijn er meer reacties dan er nu staan? */
   readonly reactiesMeer: boolean;
+  /** Waar de volgende pagina begint — null als er niets meer volgt. */
+  readonly reactiesCursor: ReactieCursor | null;
   /** Voorstel voor vraag 1, uit de eigen Dagzetten van deze periode. */
   readonly voorstel: string;
 }
@@ -683,6 +694,7 @@ async function laad(groupId: string, userId: string | null): Promise<Stand> {
       antwoorden: [],
       reacties: [],
       reactiesMeer: false,
+      reactiesCursor: null,
       voorstel: '',
     };
   }
@@ -701,6 +713,7 @@ async function laad(groupId: string, userId: string | null): Promise<Stand> {
     antwoorden,
     reacties: reacties.rijen,
     reactiesMeer: reacties.meer,
+    reactiesCursor: reacties.volgende,
     voorstel: voorstelUitDagzetten(dagzetten),
   };
 }

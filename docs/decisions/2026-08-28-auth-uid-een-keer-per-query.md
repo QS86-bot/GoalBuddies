@@ -1,7 +1,7 @@
 # `auth.uid()` draaide één keer per rij, en dat hoeft niet
 
 **Datum:** 28-08-2026
-**Migratie:** 0121
+**Migratie:** 0122
 **Raakt:** 49 policies over 30 tabellen, `initplan_bewaking()`,
 `is_kale_auth_uid()`, `zonder_initplan_hijs()`, `domeinregel3_bewaking()`,
 `tests/rls/initplan.test.ts`
@@ -80,10 +80,10 @@ en door `md5()` gehaald.
 
 | Wat | Vingerafdruk |
 |---|---|
-| Productie vóór 0121 | `ad8d3ebd367d9864234a9b536644e973` |
-| Lokaal ná 0121, subselect weggenormaliseerd | `ad8d3ebd367d9864234a9b536644e973` |
-| Lokaal ná 0121, ruw | `49ed2f47625bfaef31a612260f770d72` |
-| Productie ná 0121, ruw | `49ed2f47625bfaef31a612260f770d72` |
+| Productie vóór 0122 | `ad8d3ebd367d9864234a9b536644e973` |
+| Lokaal ná 0122, subselect weggenormaliseerd | `ad8d3ebd367d9864234a9b536644e973` |
+| Lokaal ná 0122, ruw | `49ed2f47625bfaef31a612260f770d72` |
+| Productie ná 0122, ruw | `49ed2f47625bfaef31a612260f770d72` |
 
 De eerste twee regels bewijzen dat er niets veranderde behalve de hijs. De laatste
 twee bewijzen dat productie letterlijk hetzelfde draait als wat het
