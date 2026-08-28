@@ -94,9 +94,18 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0125`
-staan in de map: 128 bestanden, de drie met een `a`-achtervoegsel meegeteld.
-Ze staan alle 128 op productie.
+**Database — af, en nu ook getest.** 34 tabellen.
+
+<!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
+Migraties `0001` t/m `0125` staan in de map: **128 bestanden**,
+waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
+De nummering is aaneengesloten.
+<!-- STAND:EINDE -->
+
+⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot
+28-08 proza, en gaf die dag vier PR's achter elkaar een merge-conflict op dezelfde
+regel — twee keer met een verkeerd getal als uitkomst. Draai `npm run stand`;
+`stand:controle` wordt rood zodra het achterloopt en draait mee in de poort.
 
 ✅ **De map en productie lopen weer gelijk, nagemeten op 28-08.** Het register
 telt 128 rijen van `0001` tot `0125`, gelijk aan de 128 bestanden, met nul
@@ -607,10 +616,10 @@ kan een sessie **niet** zelf oppakken:
 | Issue | Waarom niet |
 |---|---|
 | QS8-71, QS8-72 | Vragen Supabase Storage: een bucket, `storage.objects`-policies, een betaalde tier en een nieuw groepszichtbaar oppervlak. Overleg met Quinten |
-| QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid |
+| QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
-| QS8-109 | Vraagt een illustrator |
+| QS8-109 | **Alleen de vórmgeving nog** — die vraagt een illustrator, en Quinten onderzoekt zelf wat hij wil (28-08). Niet oppakken in een `/verder`-ronde; niet nodig voor de MVP. **Het gedrág is wél gebouwd:** de coach moedigt ongevraagd aan bij een tegenvallende stand (variant B, besluit 28-08), met de toon onder test. Zie `docs/GROENE-NOTITIES.md` §3b |
 
 **Wat er wél ligt is de controleronde van 28-08**, en die heeft meer werk
 opgeleverd dan de backlog. Zeven agents over ~99.500 regels; de vijf blokkerende
