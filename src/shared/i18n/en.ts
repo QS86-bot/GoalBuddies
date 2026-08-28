@@ -23,6 +23,9 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.deadline_requested': '{naam} is asking the group to move a target date.',
   'systeembericht.group_sleeping': 'This group has gone quiet. One message wakes it up again.',
   'systeembericht.chain_milestone': 'The Chain of this group now counts {aantal} links.',
+  'systeembericht.season_recap':
+    'The season is done. Together you finished {weken} weeks, reached {mijlpalen} ' +
+    'milestones and added {schakels} links to the Chain.',
   'systeembericht.group_opened':
     '{naam} opened up this group. From now on members also see each other’s setbacks.',
   'systeembericht.group_protected':
@@ -674,6 +677,13 @@ export const en: Record<Sleutel, string> = {
   'goedkeuringsregel.quorum_uitleg':
     'You pick how many buddies have to confirm a week. If there are fewer people ' +
     'than that for a while, everyone present counts.',
+  'seizoen.kop': 'How long is a season?',
+  'seizoen.monthly': 'A month',
+  'seizoen.quarterly': 'A quarter',
+  'seizoen.uitleg':
+    'At the end of a season one message goes into the group with what you did ' +
+    'together. With weekly cycles a quarter gives a fairer picture than a month — ' +
+    'that is only four data points.',
   'goedkeuringsregel.kop': 'When does a week count?',
   'goedkeuringsregel.quorum_veld': 'How many confirmations?',
   'goedkeuringsregel.quorum_hint': 'Between {min} and {max}.',

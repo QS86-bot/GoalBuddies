@@ -389,6 +389,22 @@ async function draaiRollover(auth: string): Promise<Response> {
     console.error(`slapende groepen bijwerken mislukte: ${slaapFout.message}`);
   }
 
+  // ⚠️ **De seizoensrecap hangt aan dezelfde uurlijkse job, en dat is opzet** —
+  //    QS8-79. `maak_seizoensrecaps()` doet zelf de twee toetsen die ertoe doen:
+  //    is het de eerste dag van het nieuwe seizoen, en is het 08:00 in de
+  //    tijdzone van de gróép. Daarom moet dit elk uur langskomen; een dagelijkse
+  //    job zou voor de helft van de tijdzones op het verkeerde uur vallen.
+  //
+  //    Geen cyclusrekenwerk: een kwartaal is een kalenderfeit dat voor iedereen
+  //    op dezelfde dag valt, ongeacht wiens week op dinsdag begint. Dat is de
+  //    reden dat dit in SQL mag staan (correctheidsregel 7) — de kop van
+  //    migratie 0108 schrijft de afweging uit.
+  const { data: recaps, error: recapFout } = await db.rpc('maak_seizoensrecaps');
+
+  if (recapFout) {
+    console.error(`seizoensrecaps maken mislukte: ${recapFout.message}`);
+  }
+
   return new Response(
     JSON.stringify({
       ok: true,
@@ -400,6 +416,11 @@ async function draaiRollover(auth: string): Promise<Response> {
       profielen: (profielen ?? []).length,
       geslapen: geslapen ?? 0,
       risicoBijgewerkt,
+      // ⚠️ In de uitvoer, want zonder dit is de enige manier om te zien dát er
+      //    een recap uit is gegaan, de groepschat zelf. De rollover is een job
+      //    zonder scherm; wat hij niet teruggeeft, is niet gebeurd voor wie het
+      //    log leest.
+      recaps: (recaps as { recaps?: number } | null)?.recaps ?? 0,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );

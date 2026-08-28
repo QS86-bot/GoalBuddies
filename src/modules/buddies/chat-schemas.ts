@@ -97,6 +97,13 @@ export const SYSTEEM_GEBEURTENISSEN = [
    */
   'group_opened',
   'group_protected',
+  /**
+   * ⚠️ De dertiende, toegevoegd in migratie 0108 (QS8-79). Het enige
+   *    systeembericht na `chain_milestone` dat **geen persoon** noemt — een
+   *    seizoensrecap is van de groep, en de cijfers erin zijn groepstotalen
+   *    zonder namen. Een ranglijst zou ook een lijst zijn van wie onderaan staat.
+   */
+  'season_recap',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];
@@ -159,6 +166,11 @@ export interface ChatBericht {
    */
   readonly aantal: number | null;
   readonly created_at: string;
+  /**
+   * De losse getallen uit `payload`, voor een gebeurtenis die er meer dan één
+   * draagt — QS8-79, vandaag alleen `season_recap`. `null` bij alle andere.
+   */
+  readonly getallen: Readonly<Record<string, number>> | null;
 }
 
 /** Waar "ouder laden" verder gaat: het oudste bericht dat je al hebt. */

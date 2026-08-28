@@ -1575,6 +1575,44 @@ export type Database = {
           },
         ]
       }
+      season_recaps: {
+        Row: {
+          created_at: string
+          group_id: string
+          mijlpalen: number
+          schakels: number
+          season_end: string
+          season_start: string
+          weken: number
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          mijlpalen: number
+          schakels: number
+          season_end: string
+          season_start: string
+          weken: number
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          mijlpalen?: number
+          schakels?: number
+          season_end?: string
+          season_start?: string
+          weken?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_recaps_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_streaks: {
         Row: {
           best_streak: number
@@ -2222,6 +2260,7 @@ export type Database = {
           van: string
         }[]
       }
+      maak_seizoensrecaps: { Args: { p_op?: string }; Returns: Json }
       maak_straffen_verschuldigd: {
         Args: { p_owner_id: string; p_vandaag: string }
         Returns: number
@@ -2328,6 +2367,23 @@ export type Database = {
           p_weekly_goal_id: string
         }
         Returns: Json
+      }
+      seizoensgrens: {
+        Args: { p_cadence: string; p_op?: string; p_tz: string }
+        Returns: {
+          is_acht_uur: boolean
+          is_eerste_dag: boolean
+          season_end: string
+          season_start: string
+        }[]
+      }
+      seizoensrecap_cijfers: {
+        Args: { p_group_id: string; p_tot: string; p_van: string }
+        Returns: {
+          mijlpalen: number
+          schakels: number
+          weken: number
+        }[]
       }
       set_invite_revoked: {
         Args: { p_group_id: string; p_revoked: boolean }

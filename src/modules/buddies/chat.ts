@@ -90,6 +90,28 @@ function drempelUit(payload: unknown): number | null {
   return typeof waarde === 'number' && Number.isSafeInteger(waarde) && waarde > 0 ? waarde : null;
 }
 
+/**
+ * Alle bruikbare getallen uit `payload` — QS8-79.
+ *
+ * ⚠️ Vertrouwt er net zo weinig van als `drempelUit()` hierboven: alleen eindige
+ *    gehele getallen van nul of hoger komen erdoor. **Nul mág hier wél**, anders
+ *    dan bij de drempel: een seizoen met nul gehaalde mijlpalen maar wél
+ *    afgeronde weken is een geldige recap, en de zin hoort dan gewoon "0
+ *    mijlpalen" te zeggen.
+ */
+function getallenUit(payload: unknown): Readonly<Record<string, number>> | null {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) return null;
+
+  const uit: Record<string, number> = {};
+  for (const [sleutel, waarde] of Object.entries(payload as Record<string, unknown>)) {
+    if (typeof waarde === 'number' && Number.isSafeInteger(waarde) && waarde >= 0) {
+      uit[sleutel] = waarde;
+    }
+  }
+
+  return Object.keys(uit).length === 0 ? null : uit;
+}
+
 function naarBericht(rij: ChatRij): ChatBericht | null {
   if (typeof rij.id !== 'string' || typeof rij.created_at !== 'string') {
     reportError(new Error('Rij uit groepschat zonder id of tijd'), 'chat.parse');
@@ -113,6 +135,7 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
     subject_name: rij.subject_name ?? null,
     actor_name: rij.actor_name ?? null,
     aantal: drempelUit(rij.payload),
+    getallen: getallenUit(rij.payload),
     created_at: rij.created_at,
   };
 }

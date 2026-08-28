@@ -473,6 +473,9 @@ export async function wijzigGroep(
   if (gevalideerd.data.approval_quorum !== undefined) {
     update.approval_quorum = gevalideerd.data.approval_quorum;
   }
+  if (gevalideerd.data.season_cadence !== undefined) {
+    update.season_cadence = gevalideerd.data.season_cadence;
+  }
 
   const { data, error } = await supabase()
     .from('groups')
