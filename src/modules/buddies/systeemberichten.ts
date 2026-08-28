@@ -55,6 +55,11 @@ export interface SysteembericthInvoer {
    */
   readonly body: string;
   /**
+   * De losse getallen uit `payload`, voor gebeurtenissen die er meer dan één
+   * dragen — QS8-79. `null` betekent: geen payload, of niets bruikbaars erin.
+   */
+  readonly getallen: Readonly<Record<string, number>> | null;
+  /**
    * Het enige getal dat een systeembericht draagt: de bereikte drempel van De
    * Ketting. `null` bij elke andere gebeurtenis.
    *
@@ -76,6 +81,21 @@ export interface SysteembericthInvoer {
  *    groepschat is precies het soort storing dat het kanaal onbetrouwbaar maakt.
  */
 const GEBEURTENISSEN_MET_AANTAL: ReadonlySet<string> = new Set(['chain_milestone']);
+
+/**
+ * Gebeurtenissen die méér dan één getal dragen, met de sleutels die ze nodig
+ * hebben — QS8-79.
+ *
+ * ⚠️ **Dezelfde grendel als `GEBEURTENISSEN_MET_AANTAL` hierboven, en om
+ *    dezelfde reden.** Ontbreekt één van de sleutels, dan valt het bericht terug
+ *    op zijn opgeslagen `body` in plaats van "Samen hebben jullie {weken} weken"
+ *    letterlijk te tonen. Migratie 0075 heeft dat bij de ketting-mijlpaal één
+ *    keer moeten repareren; een half ingevulde zin in de groepschat is precies
+ *    de storing die het kanaal onbetrouwbaar maakt.
+ */
+const GETALLEN_PER_GEBEURTENIS: Readonly<Record<string, readonly string[]>> = {
+  season_recap: ['weken', 'mijlpalen', 'schakels'],
+};
 
 /** Een naam, of de nette vervanging als hij er niet meer is. */
 function naam(waarde: string | null): string {
@@ -106,12 +126,26 @@ export function systeemberichtTekst(invoer: SysteembericthInvoer): string {
     return invoer.body.trim();
   }
 
+  const vereist = GETALLEN_PER_GEBEURTENIS[invoer.system_event];
+  if (vereist !== undefined) {
+    const gevonden = invoer.getallen ?? {};
+    if (vereist.some((sleutel) => typeof gevonden[sleutel] !== 'number')) {
+      return invoer.body.trim();
+    }
+  }
+
   return t(`systeembericht.${invoer.system_event}` as Sleutel, {
     naam: naam(invoer.subject_name),
     actor: naam(invoer.actor_name),
     // ⚠️ Door `getal()` en niet als kale `String()`: 1000 schakels leest in het
     //    Nederlands als "1.000" en in het Engels als "1,000".
     aantal: invoer.aantal === null ? '' : getal(invoer.aantal, 0),
+    // ⚠️ Ook door `getal()`, en met dezelfde reden. Onbekende sleutels leveren
+    //    een lege string op in plaats van `undefined` — dat laatste zou als
+    //    "undefined" in een groepschat belanden.
+    ...Object.fromEntries(
+      (vereist ?? []).map((sleutel) => [sleutel, getal(invoer.getallen?.[sleutel] ?? 0, 0)]),
+    ),
   });
 }
 

@@ -50,6 +50,20 @@ export const nl = {
    *    `chat_messages.payload`, niet uit een berekening — zie migratie 0075.
    */
   'systeembericht.chain_milestone': 'De Ketting van deze groep telt {aantal} schakels.',
+  /**
+   * ⚠️ **Eén zin met alle cijfers erin, en dat is acceptatiecriterium 2 van
+   *    QS8-79.** Habit Huddle heeft losse recap-berichten moeten terugdraaien:
+   *    een reeks meldingen achter elkaar leest als spam en niet als een moment.
+   *
+   * ⚠️ **Geen namen, en dat is domeinregel 7.** Alle drie de getallen zijn
+   *    groepstotalen. "Wie het meest" zou ook een lijst zijn van wie onderaan
+   *    staat, en een recap die vertelt dat het een rustig seizoen was, is een
+   *    tegenslagbericht met een vrolijke kop erop. Bij nul op alle drie wordt hij
+   *    helemaal niet verstuurd — zie `maak_seizoensrecaps()`.
+   */
+  'systeembericht.season_recap':
+    'Het seizoen zit erop. Samen hebben jullie {weken} weken afgerond, {mijlpalen} ' +
+    'mijlpalen gehaald en {schakels} schakels aan De Ketting toegevoegd.',
 
   /**
    * ⚠️ Besluit A41 (QS8-132). De zin zegt wat er verandert en niet wat iemand
@@ -539,6 +553,42 @@ export const nl = {
   'koppel.geen_doel_titel': 'Je hebt nog geen doel om te delen',
   'koppel.geen_doel_tekst': 'Begin met één doel met een datum erop. Daarna kun je het hier aan deze groep koppelen.',
   'koppel.nieuw_doel': 'Nieuw doel',
+
+  // ---------------------------------------------------------------------------
+  // Gedeeld met — QS8-56 (PRD 5.5): hetzelfde doel in meer dan één groep
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Eigen sleutels en niet de `koppel.*` hierboven, want het is een andere
+  //    vraag. Op het groepsscherm kies je een doel bij een groep die vaststaat;
+  //    hier kies je groepen bij een doel dat vaststaat. Dezelfde zin hergebruiken
+  //    zou "deze groep" laten slaan op een groep die de gebruiker nog moet kiezen.
+  'deling.kop': 'Gedeeld met',
+  'deling.uitleg':
+    'Eén doel mag in meer dan één groep staan. Elke groep is een aparte toestemming: ' +
+    'je koppelt en ontkoppelt ze los van elkaar.',
+  'deling.nergens': 'Je deelt dit doel nog met niemand. Het staat alleen op jouw scherm.',
+  'deling.geen_groepen':
+    'Je zit nog in geen enkele groep. Zodra je er een hebt, kun je dit doel er hier aan koppelen.',
+  'deling.overal': 'Dit doel staat in al je groepen.',
+  'deling.koppel_kop': 'Ook delen met',
+  'deling.koppel': 'Delen met {naam}',
+  /**
+   * ⚠️ **Twee zinnen, om precies dezelfde reden als bij `koppel.uitleg_*`.** Dit
+   *    is een tweede knop die dezelfde toestemming vraagt; als deze zin zwijgt
+   *    over de weken in een open groep, is de belofte alsnog gebroken — alleen op
+   *    een ander scherm. `beloftes.test.ts` bewaakt dat de beschermde variant een
+   *    open tegenhanger heeft en dat die twee verschillen.
+   *
+   * ⚠️ Ze staan bij élke groep en niet één keer boven de lijst. Een doel kan in
+   *    een open én een beschermde groep tegelijk staan (EPIC 13 toetst precies
+   *    die stand), en dan is één zin boven de lijst voor de helft onwaar.
+   */
+  'deling.uitleg_beschermd':
+    'Beschermd. Deze groep ziet de titel en je mijlpaalvoortgang — niet je notities, ' +
+    'niet je weken en niet je punten.',
+  'deling.uitleg_open':
+    'Open. Deze groep ziet de titel, je mijlpaalvoortgang én je weken — ook de weken die je ' +
+    'niet gehaald hebt. Je notities en je punten blijven van jou.',
   'deelnemen.titel': 'Deelnemen',
   'deelnemen.eyebrow': 'MET EEN CODE',
   'deelnemen.code_label': 'Uitnodigingscode of -link',
@@ -896,6 +946,53 @@ export const nl = {
   'bewijseis.note_and_attachment': 'Notitie én bijlage',
   'bewijseis.optional': 'Alles optioneel',
 
+  // ---------------------------------------------------------------------------
+  // De goedkeuringsregel van een groep — QS8-65 (PRD 6.4), migratie 0111
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De uitleg noemt steeds een áántal en niet een gevoel. "Strenger" zegt de
+  //    gebruiker niets; "twee van je buddy's" wel, en dat is ook precies wat de
+  //    database telt.
+  'goedkeuringsregel.any': 'Eén buddy',
+  'goedkeuringsregel.majority': 'Een meerderheid',
+  'goedkeuringsregel.quorum': 'Een vast aantal',
+  'goedkeuringsregel.any_uitleg':
+    'Zodra één buddy je week bevestigt, telt hij. Snel, en genoeg voor een groep ' +
+    'die elkaar vertrouwt.',
+  'goedkeuringsregel.majority_uitleg':
+    'Meer dan de helft van je buddy\u2019s moet je week bevestigen. Het aantal ' +
+    'schuift mee als de groep groeit of krimpt.',
+  'goedkeuringsregel.quorum_uitleg':
+    'Je kiest zelf hoeveel buddy\u2019s een week moeten bevestigen. Zijn er even ' +
+    'minder mensen dan dat, dan telt iedereen die er is.',
+  // ---------------------------------------------------------------------------
+  // Seizoenen — QS8-79 (PRD 8.5), migratie 0112
+  // ---------------------------------------------------------------------------
+  'seizoen.kop': 'Hoe lang duurt een seizoen?',
+  'seizoen.monthly': 'Een maand',
+  'seizoen.quarterly': 'Een kwartaal',
+  // ⚠️ De reden staat erbij en niet alleen de keuze. Een maand is met weekcycli
+  //    maar vier datapunten; dat is de afweging uit het productvoorstel §1.5.
+  'seizoen.uitleg':
+    'Aan het eind van een seizoen komt er één bericht in de groep met wat jullie ' +
+    'samen gedaan hebben. Met weekcycli geeft een kwartaal een eerlijker beeld dan ' +
+    'een maand — dat zijn er maar vier.',
+  'goedkeuringsregel.kop': 'Wanneer telt een week?',
+  'goedkeuringsregel.quorum_veld': 'Hoeveel bevestigingen?',
+  'goedkeuringsregel.quorum_hint': 'Tussen {min} en {max}.',
+  // ⚠️ Staat onder de keuze en niet in een bevestigingsstap: de regel verandert
+  //    niets aan weken die al lopen, dus er valt niets te bevestigen. Dát is de
+  //    geruststelling die hier hoort.
+  'goedkeuringsregel.niet_terugwerkend':
+    'Wat je hier kiest geldt vanaf de volgende week die iemand indient. Weken die ' +
+    'al op een bevestiging wachten, houden de regel van toen.',
+  'goedkeuringsregel.stand': '{gedaan} van de {nodig} bevestigingen',
+  'goedkeuringsregel.nog_een': 'Er is nog één bevestiging nodig.',
+  'goedkeuringsregel.nog_meer': 'Er zijn nog {aantal} bevestigingen nodig.',
+  'validatie.quorum_bereik': 'Kies een aantal tussen {min} en {max}.',
+  'validatie.quorum_ontbreekt': 'Kies hoeveel bevestigingen er nodig zijn.',
+  'validatie.quorum_overbodig': 'Een aantal hoort alleen bij een vast aantal bevestigingen.',
+
   'chat.titel': 'Groepschat',
   'chat.eyebrow': 'GROEPSCHAT',
   'chat.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
@@ -1200,6 +1297,14 @@ export const nl = {
   'deadline.wat_veranderd_hint':
     'Je buddy’s in {groep} lezen dit en beslissen erop. Eén eerlijke zin is genoeg.',
   'deadline.jouw_groep': 'je groep',
+  // ⚠️ QS8-56. Tot dan koos het scherm stilzwijgend de eerste groep uit de lijst,
+  //    en die lijst had niet eens een vaste volgorde. Zolang een doel maar in één
+  //    groep kón staan viel dat niemand op; met PRD 5.5 is het de vraag zelf.
+  'deling.welke_groep': 'Welke groep beslist hierover?',
+  'deling.welke_groep_hint':
+    'Dit doel staat in meer dan één groep. Alleen de groep die je hier kiest, leest je ' +
+    'uitleg en beslist over de nieuwe datum.',
+  'deling.kies_eerst': 'Kies eerst welke groep erover beslist.',
   'deadline.argument_voorbeeld':
     'Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op.',
   'deadline.nog_tekens': 'Nog {aantal} tekens te gaan.',

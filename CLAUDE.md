@@ -515,6 +515,7 @@ was er een uitgebreide, groene testsuite die er niets van zag.
 | QS8-24 | `scrubMessage()` en `scrubContext()`, allebei uitgebreid getest | `reportError()` nam de geschoonde melding en zette de **ruwe stack** ernaast. De eerste regel van een stack ís de melding, dus alles ging er alsnog uit |
 | QS8-85 / QS8-115 | De test greep in `app/doel/[id].tsx` naar de letterlijke zin "De app rekent niets af" | De zin verhuisde naar de catalogus. De test bewaakte daarna nog steeds íets — een bestand — maar niet meer de belofte, en bleef groen tot hij per ongeluk rood werd |
 | QS8-113 / QS8-115 | Kolom, CHECK, kolomgrant, leeskant en catalogus: elk stuk af en getest | Er was geen schrijfpad naar `profiles.locale`. De héle keten was dood hout en geen enkele test kon dat zien, want er was niets kapot |
+| QS8-56 | `vraag_deadline_verschuiving()`, `beslis_deadline_verzoek()` en `deadline_requests_select` toetsten alle drie de goede groep, en alle drie waren gemeten | Het scherm koos die groep met `groepen[0]`, uit een lijst zonder `order by`. **Er was geen test die groen bleef terwijl de belofte brak — er was geen test die de belofte kón raken**, want tot PRD 5.5 was "een doel in twee groepen" een onbereikbare toestand |
 | QS8-115 / `tekst:controle` | Zeven heuristieken, elk met een uitgeschreven ijking in het commentaar | De controle zelf stond nooit onder test. Zeven vormen kwamen er niet doorheen — één woord op een prop, een prop over meerdere regels, een sleutel in een objectliteraal, een zin in `setMelding()`, JSX-tekst met een accolade. 23 zinnen door de app, en `npm run tekst:controle` meldde nul |
 
 **De vorm is elke keer dezelfde:** de test toetst een eigenschap van een
@@ -542,6 +543,13 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    Vraag bij een feature die "klaar" heet: kan een gebruiker hier daadwerkelijk
    bij, en langs welke knop? Bij QS8-113 lag er een kolom met een grant en een
    policy die niemand ooit kon vullen.
+6. **Tilt deze feature een aanname van "er is er altijd precies één" naar "er
+   kunnen er meer zijn"?** Dan staat de fout er waarschijnlijk al, en heeft
+   niemand hem kunnen zien — er is dan niet "een test die groen bleef terwijl de
+   belofte brak", er is geen test die de belofte kón raken. Grep op `[0]`,
+   `.find(`, `first`, `single()` en `maybeSingle()` in alles wat die zaak
+   aanraakt, vóór je de feature bouwt. Bij QS8-56 kostte dat vijf minuten en
+   leverde het één echte vondst op.
 
 ⚠️ **Vraag 3 beantwoord je niet door erover na te denken, maar door de belofte
 met de hand te breken en te kijken of hij rood wordt.** Dat is in dit project de

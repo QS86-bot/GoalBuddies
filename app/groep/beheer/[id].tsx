@@ -7,6 +7,17 @@ import {
   bewijseisLabels,
   BEWIJSEISEN,
   fetchGroep,
+  GOEDKEURINGSREGELS,
+  goedkeuringsregelLabels,
+  goedkeuringsregelUitleg,
+  leesGoedkeuringsregel,
+  leesSeizoenscadans,
+  QUORUM_MAX,
+  QUORUM_MIN,
+  SEIZOENSCADANSEN,
+  seizoenscadansLabels,
+  type Goedkeuringsregel,
+  type Seizoenscadans,
   fetchMijnLidmaatschap,
   huddledagen,
   type Bewijseis,
@@ -65,6 +76,15 @@ export default function GroepBeheer() {
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
   const [bewijseis, setBewijseis] = useState<Bewijseis>('note_required');
+  const [regel, setRegel] = useState<Goedkeuringsregel>('any');
+  /**
+   * ⚠️ Een string en geen getal, want dat is wat een invoerveld oplevert. Een
+   *    half getypt getal ("1" onderweg naar "12") mag geen storingsmelding geven;
+   *    `slaOp()` maakt er pas op het laatste moment een getal van, en het schema
+   *    weigert wat er niet doorheen kan.
+   */
+  const [quorum, setQuorum] = useState('');
+  const [cadans, setCadans] = useState<Seizoenscadans>('quarterly');
   const [bezig, setBezig] = useState<
     'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | 'archief' | null
   >(null);
@@ -97,6 +117,9 @@ export default function GroepBeheer() {
         setNaam(gevonden?.name ?? '');
         setHuddledag(((gevonden?.huddle_day ?? 0) % 7) as Weekday);
         setBewijseis((gevonden?.evidence_policy ?? 'note_required') as Bewijseis);
+        setRegel(leesGoedkeuringsregel(gevonden?.approval_rule));
+        setQuorum(gevonden?.approval_quorum == null ? '' : String(gevonden.approval_quorum));
+        setCadans(leesSeizoenscadans(gevonden?.season_cadence));
         setError(null);
       })
       .catch((f: unknown) => {
@@ -117,10 +140,16 @@ export default function GroepBeheer() {
     setFout(null);
     setMelding(null);
 
+    // ⚠️ Het quorum gaat alleen mee als de regel erom vraagt, en dan als getal.
+    //    Bij elke andere regel stuurt `wijzigGroep()` zelf `null` — de CHECK
+    //    `groups_quorum_bij_regel` eist dat de twee bij elkaar horen.
     const uitkomst = await wijzigGroep(id, {
       name: naam,
       huddle_day: huddledag,
       evidence_policy: bewijseis,
+      approval_rule: regel,
+      ...(regel === 'quorum' ? { approval_quorum: Number(quorum.trim()) } : {}),
+      season_cadence: cadans,
     });
     setBezig(null);
 
@@ -272,6 +301,60 @@ export default function GroepBeheer() {
                   onKies={setBewijseis}
                 />
                 <Caption>{t('beheer.bijlagen_nog_niet')}</Caption>
+
+                {/*
+                  ⚠️ **Wél in dit formulier en niet in een eigen kaart met een
+                     bevestiging, anders dan de zichtbaarheid hieronder.** Het
+                     verschil is dat omzetten hier niets openzet over anderen: de
+                     drempel wordt bij het indienen bevroren (migratie 0107), dus
+                     weken die al op een bevestiging wachten houden de regel van
+                     toen. Er is niets om te bevestigen, alleen iets om te weten —
+                     en dat staat eronder.
+                */}
+                <Choice
+                  label={t('goedkeuringsregel.kop')}
+                  opties={GOEDKEURINGSREGELS.map((r) => ({
+                    waarde: r,
+                    label: goedkeuringsregelLabels()[r],
+                  }))}
+                  waarde={regel}
+                  onKies={(gekozen) => setRegel(gekozen as Goedkeuringsregel)}
+                />
+                <Caption>{goedkeuringsregelUitleg()[regel]}</Caption>
+
+                {regel === 'quorum' ? (
+                  <Field
+                    label={t('goedkeuringsregel.quorum_veld')}
+                    hint={t('goedkeuringsregel.quorum_hint', {
+                      min: QUORUM_MIN,
+                      max: QUORUM_MAX,
+                    })}
+                    value={quorum}
+                    onChangeText={setQuorum}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                ) : null}
+
+                <Caption>{t('goedkeuringsregel.niet_terugwerkend')}</Caption>
+
+                {/*
+                  ⚠️ Ook hier geen bevestigingsstap. De cadans bepaalt alleen
+                     wanneer er één bericht met groepstotalen komt; hij zet niets
+                     open over een ander en raakt geen lopend seizoen — een recap
+                     die al verstuurd is, staat in `season_recaps` en wordt niet
+                     opnieuw gemaakt.
+                */}
+                <Choice
+                  label={t('seizoen.kop')}
+                  opties={SEIZOENSCADANSEN.map((c) => ({
+                    waarde: c,
+                    label: seizoenscadansLabels()[c],
+                  }))}
+                  waarde={cadans}
+                  onKies={(gekozen) => setCadans(gekozen as Seizoenscadans)}
+                />
+                <Caption>{t('seizoen.uitleg')}</Caption>
 
                 <Button
                   variant="primair"

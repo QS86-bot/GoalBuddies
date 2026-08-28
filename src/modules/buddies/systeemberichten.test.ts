@@ -20,6 +20,11 @@ function invoer(over: Partial<Parameters<typeof systeemberichtTekst>[0]> = {}) {
     actor_name: null,
     body: 'OPGESLAGEN ZIN',
     aantal: 25,
+    // ⚠️ Álle sleutels die een gebeurtenis kan vragen, zodat de eerste test —
+    //    "geen enkele bekende gebeurtenis valt terug op de opgeslagen zin" —
+    //    blijft toetsen wat hij belooft. Zonder deze zou `season_recap` op zijn
+    //    `body` terugvallen en de test groen blijven om de verkeerde reden.
+    getallen: { weken: 47, mijlpalen: 12, schakels: 63 } as Readonly<Record<string, number>> | null,
     ...over,
   };
 }
@@ -97,11 +102,24 @@ describe('de zinnen zelf', () => {
     //       hier: het is een groepsbreed getal zonder eenheid van tijd of persoon
     //       (het aantal schakels van De Ketting), dus het valt buiten "titel,
     //       notitie of niveau". Een zesde veld vraagt dezelfde afweging opnieuw.
+    //    ⚠️ **`getallen` is dat zesde veld, QS8-79, en de afweging is gemaakt.**
+    //       Het draagt de drie cijfers van een seizoensrecap: afgeronde weken,
+    //       gehaalde mijlpalen en schakels. Alle drie zijn **groepstotalen** —
+    //       dezelfde vorm als `aantal`, alleen met meer dan één getal — en alle
+    //       drie zijn ze monotoon: ze gaan alleen omhoog. Er zit geen persoon in,
+    //       geen titel, en geen tijdstip dat aan één lid hangt.
+    //
+    //       Wat er bewust níét in mag: een `user_id`, een naam, een "wie het
+    //       meest", of een cijfer dat kán dalen. Een ranglijst is ook een lijst
+    //       van wie onderaan staat, en een dalend getal is een gemiste week met
+    //       een omweg. Wie hier een zevende veld bij zet, maakt die afweging
+    //       opnieuw en schrijft hem hier op.
     const velden = Object.keys(invoer());
     expect(velden.sort()).toEqual([
       'aantal',
       'actor_name',
       'body',
+      'getallen',
       'subject_name',
       'system_event',
     ]);

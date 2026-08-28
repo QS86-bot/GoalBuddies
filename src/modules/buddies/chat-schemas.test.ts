@@ -33,6 +33,7 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     body: 'iets',
     type: 'text',
     system_event: null,
+    getallen: null,
     subject_name: null,
     actor_name: null,
     aantal: null,
@@ -92,7 +93,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
     }
   });
 
-  it('bevat uitsluitend de tien gebeurtenissen van migratie 0025, 0032 en 0070', () => {
+  it('bevat uitsluitend de dertien gebeurtenissen van 0025, 0032, 0070, 0076 en 0112', () => {
     // ⚠️ Een exacte lijst en geen `toContain`-reeks. Zo is een tóevoeging óók een
     //    rode test, en niet alleen een verkeerde toevoeging. Wie hier een naam
     //    bijzet, komt eerst langs de vraag: kan hieruit iemands gemiste week
@@ -122,6 +123,15 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    zijn, en dat is precies wat grens 3 van het besluit verbiedt.
       'group_opened',
       'group_protected',
+      // ⚠️ QS8-79 (migratie 0112). De seizoensrecap gaat over de gróép en noemt
+      //    geen enkele persoon — de drie cijfers erin zijn groepstotalen die
+      //    alleen omhoog gaan, dezelfde vorm als `chain_milestone`.
+      //
+      //    Twee dingen die daarbij horen en die de volgende lezer moet weten:
+      //    er komt géén recap als alle drie de cijfers nul zijn (een stille
+      //    groep krijgt geen bericht dat het stil was), en er staat geen
+      //    ranglijst in — die zou ook een lijst zijn van wie onderaan staat.
+      'season_recap',
     ]);
   });
 

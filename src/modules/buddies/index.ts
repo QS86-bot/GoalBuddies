@@ -30,6 +30,8 @@ export {
   type Vertrek,
 } from './api';
 
+export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
+
 export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
@@ -107,14 +109,26 @@ export {
   huddledagen,
   huddledagLabel,
   isCodeVorm,
+  GOEDKEURINGSREGELS,
+  goedkeuringsregelLabels,
+  goedkeuringsregelUitleg,
+  leesGoedkeuringsregel,
+  leesZichtbaarheid,
   normaliseerCode,
+  leesSeizoenscadans,
+  QUORUM_MAX,
+  QUORUM_MIN,
+  SEIZOENSCADANSEN,
+  seizoenscadansLabels,
   toonCode,
   uitnodigingsLink,
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
   ZICHTBAARHEDEN,
   type Bewijseis,
+  type Goedkeuringsregel,
   type GroepInvoer,
+  type Seizoenscadans,
   type GroepPatch,
   type Zichtbaarheid,
 } from './schemas';

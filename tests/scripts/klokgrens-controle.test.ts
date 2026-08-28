@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `levend-controle.test.ts`.
-import { beoordeel, ontleed, REGISTER } from '../../scripts/klokgrens-controle.mjs';
+import {
+  beoordeel,
+  ontleed,
+  metEchteGrens,
+  REGISTER,
+  zonderCommentaar,
+} from '../../scripts/klokgrens-controle.mjs';
 
 /**
  * De ijking van `npm run klokgrens:controle`.
@@ -78,5 +84,77 @@ describe('het echte register', () => {
       expect(sleutel, `${sleutel} heeft geen functienaam`).toContain(' :: ');
       expect(reden.length, `${sleutel} heeft geen reden`).toBeGreaterThan(30);
     }
+  });
+});
+
+/**
+ * `zonderCommentaar` — de controle melde op 28-08 zijn eigen uitleg.
+ *
+ * ⚠️ **Hoe dat kon.** De SQL-kant zoekt regel voor regel naar `current_date` en
+ *    weet niets van commentaar. Migratie 0107 haalde de péiling uit
+ *    `ketting_stand()` en zette er een regel commentaar neer die vertelt dat hij
+ *    daar wég is — met het woord erin. De controle las dat als een twaalfde
+ *    voorkomen zonder reden.
+ *
+ * ⚠️ **Dezelfde vorm die `pin:controle` op 27-08 had**, en dezelfde oplossing:
+ *    de beslissing uit de SQL halen en hier onder test zetten. Een controle die
+ *    je niet kunt voeden, kun je niet ijken.
+ *
+ * ⚠️ **De tweede helft is de belangrijkste.** Een strippert die te gretig knipt,
+ *    maakt een échte grens onzichtbaar — en dan bewaakt het register niets meer
+ *    terwijl het groen meldt. Dat is een stillere fout dan de fout die hij
+ *    repareert.
+ */
+describe('zonderCommentaar', () => {
+  it('knipt een regel af bij zijn commentaar', () => {
+    expect(zonderCommentaar('and x = 1 -- current_date stond hier')).toBe('and x = 1 ');
+  });
+
+  it('laat een regel zonder commentaar heel', () => {
+    expect(zonderCommentaar('and p > current_date + 1')).toBe('and p > current_date + 1');
+  });
+
+  it('knipt een regel die alleen maar commentaar is helemaal weg', () => {
+    expect(zonderCommentaar('-- current_date is hier weggehaald').trim()).toBe('');
+  });
+
+  it('ziet een streepje binnen een tekenreeks niet aan voor commentaar', () => {
+    // ⚠️ Niet theoretisch: een foutmelding of systeembericht mag een streepje
+    //    bevatten, en dan zou de hele grens erachter verdwijnen.
+    const regel = "raise exception 'niet-vandaag' when p > current_date;";
+    expect(zonderCommentaar(regel)).toBe(regel);
+  });
+
+  it('telt een ontsnapt aanhalingsteken niet als einde van de tekenreeks', () => {
+    const regel = "raise exception 'het''s -- niet' when p > current_date;";
+    expect(zonderCommentaar(regel)).toBe(regel);
+  });
+
+  it('knipt wél als het commentaar ná een tekenreeks komt', () => {
+    expect(zonderCommentaar("x = 'a' -- current_date")).toBe("x = 'a' ");
+  });
+});
+
+describe('metEchteGrens', () => {
+  it('houdt een regel waar de grens écht staat', () => {
+    expect(metEchteGrens(['f :: and p > current_date + 1'])).toEqual([
+      'f :: and p > current_date + 1',
+    ]);
+  });
+
+  it('laat een regel vallen die het woord alleen in commentaar noemt', () => {
+    // Precies het geval uit migratie 0107.
+    expect(metEchteGrens(['ketting_stand :: -- `current_date` stond hier en is weg'])).toEqual([]);
+  });
+
+  it('houdt een regel met een grens én commentaar erachter', () => {
+    const regel = 'f :: and p > current_date + 1 -- zie 0037';
+    expect(metEchteGrens([regel])).toEqual([regel]);
+  });
+
+  it('laat `ontleed` met rust — die is een ontleder en geen filter', () => {
+    // ⚠️ De reden dat dit twee functies zijn. Verhuist het filter ooit terug in
+    //    `ontleed()`, dan kantelt deze en de bestaande ontleedtests eronder.
+    expect(ontleed('a :: regel zonder het woord')).toEqual(['a :: regel zonder het woord']);
   });
 });

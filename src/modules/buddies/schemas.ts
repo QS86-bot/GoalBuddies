@@ -99,6 +99,25 @@ export function uitnodigingsLink(basis: string, code: string): string {
 export const ZICHTBAARHEDEN = ['beschermd', 'open'] as const;
 export type Zichtbaarheid = (typeof ZICHTBAARHEDEN)[number];
 
+/**
+ * Leest een zichtbaarheid uit iets waarvan je de vorm niet kent.
+ *
+ * ⚠️ **Onbekend is beschermd, en dat is de hele functie.** De gegenereerde types
+ *    geven `groups.zichtbaarheid` als `string` terug, dus élke lezer moet
+ *    versmallen — en elke lezer die dat met de hand doet, kan het één keer
+ *    andersom opschrijven. Eén keer `=== 'beschermd' ? 'beschermd' : 'open'` is
+ *    genoeg om een oudere server, een lege kolom of een tikfout als "open" te
+ *    laten lezen, en dan dénkt de gebruiker dat hij iets deelt wat hij niet
+ *    deelt — of erger, andersom.
+ *
+ *    Daarom staat de versmalling hier één keer en niet bij elke lezer. Zie
+ *    besluit A41 in CLAUDE.md: voor élk oppervlak is beschermd het antwoord tot
+ *    iemand het tegendeel besluit.
+ */
+export function leesZichtbaarheid(waarde: unknown): Zichtbaarheid {
+  return waarde === 'open' ? 'open' : 'beschermd';
+}
+
 /** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
 export function zichtbaarheidLabels(): Readonly<Record<Zichtbaarheid, string>> {
   return {
@@ -158,6 +177,95 @@ export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
 }
 
 /**
+ * De goedkeuringsregel van een groep — QS8-65, PRD 6.4.
+ *
+ * ⚠️ **`any` is de standaard en blijft dat.** De PRD noemt het risico van
+ *    één-buddy-goedkeuring — snel, maar manipuleerbaar als een groep samenspant —
+ *    en schrijft er meteen bij: *monitoren vóór verharden*. Een groep die
+ *    strenger wil, kiest dat zelf.
+ *
+ * ⚠️ Deze lijst is een kopie van de CHECK `groups_approval_rule_valid` (migratie
+ *    0111). Loopt hij uiteen, dan accepteert het scherm een waarde die de
+ *    database weigert — en dat is een storingsmelding op het moment dat iemand
+ *    zijn groep instelt. `goedkeuringsregels.test.ts` legt de twee naast elkaar.
+ */
+export const GOEDKEURINGSREGELS = ['any', 'majority', 'quorum'] as const;
+export type Goedkeuringsregel = (typeof GOEDKEURINGSREGELS)[number];
+
+/**
+ * De onder- en bovengrens van een quorum, gelijk aan `groups_approval_quorum_bereik`.
+ *
+ * ⚠️ Onder 2 is het geen quorum maar `any`, en boven 12 is het onhaalbaar — een
+ *    groep is bij twaalf actieve leden vol (migratie 0016).
+ */
+export const QUORUM_MIN = 2;
+export const QUORUM_MAX = 12;
+
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function goedkeuringsregelLabels(): Readonly<Record<Goedkeuringsregel, string>> {
+  return {
+    any: t('goedkeuringsregel.any'),
+    majority: t('goedkeuringsregel.majority'),
+    quorum: t('goedkeuringsregel.quorum'),
+  };
+}
+
+/** De uitleg onder de keuze: wat wordt er ánders voor de leden. */
+export function goedkeuringsregelUitleg(): Readonly<Record<Goedkeuringsregel, string>> {
+  return {
+    any: t('goedkeuringsregel.any_uitleg'),
+    majority: t('goedkeuringsregel.majority_uitleg'),
+    quorum: t('goedkeuringsregel.quorum_uitleg'),
+  };
+}
+
+/**
+ * Leest een goedkeuringsregel uit iets waarvan je de vorm niet kent.
+ *
+ * ⚠️ **Onbekend is `any`, en dat is hier de kant die niets kapotmaakt.** Anders
+ *    dan bij `leesZichtbaarheid()` gaat het hier niet om een privacybelofte maar
+ *    om hoeveel mensen moeten bevestigen. Een onbekende waarde als `majority`
+ *    lezen zou een week laten hangen die de database allang bevestigd heeft; als
+ *    `any` lezen laat het scherm hooguit te weinig zien terwijl de database de
+ *    échte regel gewoon toepast. De database beslist, dit scherm vertelt het na.
+ */
+export function leesGoedkeuringsregel(waarde: unknown): Goedkeuringsregel {
+  return waarde === 'majority' || waarde === 'quorum' ? waarde : 'any';
+}
+
+/**
+ * Hoe lang een seizoen duurt — QS8-79, PRD 8.5.
+ *
+ * ⚠️ **Een kwartaal is de standaard, en dat is een productafweging.** Habit
+ *    Huddle draait maandelijks, expliciet tegen *"week 3 is where groups go
+ *    quiet."* Met weekcycli is een maand maar vier datapunten; een kwartaal geeft
+ *    er dertien. De keuze staat er wél, want een groep die snel wil, mag snel.
+ *
+ * ⚠️ Kopie van de CHECK `groups_season_cadence_valid` (migratie 0001).
+ *    `seizoenen.test.ts` legt de twee naast elkaar.
+ */
+export const SEIZOENSCADANSEN = ['monthly', 'quarterly'] as const;
+export type Seizoenscadans = (typeof SEIZOENSCADANSEN)[number];
+
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function seizoenscadansLabels(): Readonly<Record<Seizoenscadans, string>> {
+  return {
+    monthly: t('seizoen.monthly'),
+    quarterly: t('seizoen.quarterly'),
+  };
+}
+
+/**
+ * ⚠️ **Onbekend is `quarterly`** — de kolomstandaard uit migratie 0001. Een
+ *    onbekende waarde als `monthly` lezen zou het scherm een kortere cadans laten
+ *    tonen dan de database aanhoudt, en dan verwacht de groep een recap die niet
+ *    komt.
+ */
+export function leesSeizoenscadans(waarde: unknown): Seizoenscadans {
+  return waarde === 'monthly' ? 'monthly' : 'quarterly';
+}
+
+/**
  * ⚠️ **`zichtbaarheid` gaat er expliciet uit, en dat is geen opruimwerk.** Zonder
  *    deze `omit` erft het patch-schema het veld van `groepSchema`, en dan
  *    typecheckt `wijzigGroep(id, { zichtbaarheid: 'open' })`, valideert hij,
@@ -173,7 +281,43 @@ export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
 export const groepPatchSchema = groepSchema
   .partial()
   .omit({ zichtbaarheid: true })
-  .extend({ evidence_policy: z.enum(BEWIJSEISEN).optional() });
+  .extend({
+    evidence_policy: z.enum(BEWIJSEISEN).optional(),
+    approval_rule: z.enum(GOEDKEURINGSREGELS).optional(),
+    /**
+     * ⚠️ `null` betekent hier "haal het quorum weg", en dat is een andere
+     *    handeling dan "laat ongemoeid" (`undefined`). De CHECK
+     *    `groups_quorum_bij_regel` eist dat het getal er precies is bij
+     *    `approval_rule = 'quorum'`, dus wie terugschakelt naar `any` móet het
+     *    kunnen legen — anders weigert de database de hele update.
+     */
+    approval_quorum: z
+      .number()
+      .int()
+      .min(QUORUM_MIN, { error: () => t('validatie.quorum_bereik') })
+      .max(QUORUM_MAX, { error: () => t('validatie.quorum_bereik') })
+      .nullable()
+      .optional(),
+    season_cadence: z.enum(SEIZOENSCADANSEN).optional(),
+  })
+  /**
+   * ⚠️ **De twee velden horen bij elkaar en dat wordt hier al geweigerd.** De
+   *    database heeft dezelfde eis (`groups_quorum_bij_regel`), maar die geeft
+   *    een Postgres-foutmelding en geen zin die een mens leest — en `api.ts`
+   *    laat servertekst nooit door tot het scherm.
+   */
+  .refine(
+    (p) => p.approval_rule !== 'quorum' || typeof p.approval_quorum === 'number',
+    { error: () => t('validatie.quorum_ontbreekt'), path: ['approval_quorum'] },
+  )
+  .refine(
+    (p) =>
+      p.approval_rule === undefined ||
+      p.approval_rule === 'quorum' ||
+      p.approval_quorum === undefined ||
+      p.approval_quorum === null,
+    { error: () => t('validatie.quorum_overbodig'), path: ['approval_quorum'] },
+  );
 
 export type GroepPatch = z.infer<typeof groepPatchSchema>;
 

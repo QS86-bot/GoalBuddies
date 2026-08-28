@@ -23,6 +23,9 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.deadline_requested': '{naam} is asking the group to move a target date.',
   'systeembericht.group_sleeping': 'This group has gone quiet. One message wakes it up again.',
   'systeembericht.chain_milestone': 'The Chain of this group now counts {aantal} links.',
+  'systeembericht.season_recap':
+    'The season is done. Together you finished {weken} weeks, reached {mijlpalen} ' +
+    'milestones and added {schakels} links to the Chain.',
   'systeembericht.group_opened':
     '{naam} opened up this group. From now on members also see each other’s setbacks.',
   'systeembericht.group_protected':
@@ -402,6 +405,27 @@ export const en: Record<Sleutel, string> = {
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
   'koppel.nieuw_doel': 'New goal',
+  'deling.kop': 'Shared with',
+  'deling.uitleg':
+    'One goal may sit in more than one group. Each group is a separate permission: you ' +
+    'link and unlink them independently.',
+  'deling.nergens': 'You are not sharing this goal with anyone yet. It is only on your screen.',
+  'deling.geen_groepen':
+    'You are not in a group yet. As soon as you have one, you can link this goal to it here.',
+  'deling.overal': 'This goal is in all of your groups.',
+  'deling.koppel_kop': 'Also share with',
+  'deling.koppel': 'Share with {naam}',
+  'deling.uitleg_beschermd':
+    'Protected. This group sees the title and your milestone progress — not your notes, ' +
+    'not your weeks and not your points.',
+  'deling.uitleg_open':
+    'Open. This group sees the title, your milestone progress and your weeks — including the ' +
+    'weeks you did not make. Your notes and your points stay yours.',
+  'deling.welke_groep': 'Which group decides?',
+  'deling.welke_groep_hint':
+    'This goal sits in more than one group. Only the group you pick here reads your ' +
+    'explanation and decides on the new date.',
+  'deling.kies_eerst': 'First pick which group decides.',
   'deelnemen.titel': 'Join',
   'deelnemen.eyebrow': 'WITH A CODE',
   'deelnemen.code_label': 'Invite code or link',
@@ -662,6 +686,37 @@ export const en: Record<Sleutel, string> = {
   'bewijseis.note_required': 'Note required',
   'bewijseis.note_and_attachment': 'Note and attachment',
   'bewijseis.optional': 'Everything optional',
+  'goedkeuringsregel.any': 'One buddy',
+  'goedkeuringsregel.majority': 'A majority',
+  'goedkeuringsregel.quorum': 'A fixed number',
+  'goedkeuringsregel.any_uitleg':
+    'As soon as one buddy confirms your week, it counts. Fast, and enough for a ' +
+    'group that trusts each other.',
+  'goedkeuringsregel.majority_uitleg':
+    'More than half of your buddies have to confirm your week. The number moves ' +
+    'along as the group grows or shrinks.',
+  'goedkeuringsregel.quorum_uitleg':
+    'You pick how many buddies have to confirm a week. If there are fewer people ' +
+    'than that for a while, everyone present counts.',
+  'seizoen.kop': 'How long is a season?',
+  'seizoen.monthly': 'A month',
+  'seizoen.quarterly': 'A quarter',
+  'seizoen.uitleg':
+    'At the end of a season one message goes into the group with what you did ' +
+    'together. With weekly cycles a quarter gives a fairer picture than a month — ' +
+    'that is only four data points.',
+  'goedkeuringsregel.kop': 'When does a week count?',
+  'goedkeuringsregel.quorum_veld': 'How many confirmations?',
+  'goedkeuringsregel.quorum_hint': 'Between {min} and {max}.',
+  'goedkeuringsregel.niet_terugwerkend':
+    'What you pick here applies from the next week someone submits. Weeks already ' +
+    'waiting for a confirmation keep the rule from back then.',
+  'goedkeuringsregel.stand': '{gedaan} of {nodig} confirmations',
+  'goedkeuringsregel.nog_een': 'One more confirmation is needed.',
+  'goedkeuringsregel.nog_meer': '{aantal} more confirmations are needed.',
+  'validatie.quorum_bereik': 'Pick a number between {min} and {max}.',
+  'validatie.quorum_ontbreekt': 'Pick how many confirmations are needed.',
+  'validatie.quorum_overbodig': 'A number only belongs with a fixed number of confirmations.',
 
   'chat.titel': 'Group chat',
   'chat.eyebrow': 'GROUP CHAT',
