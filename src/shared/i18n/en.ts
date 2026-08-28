@@ -619,6 +619,13 @@ export const en: Record<Sleutel, string> = {
   'coach.bewaard': 'Saved',
   'coach.bewaren': 'Save answers',
   'coach.alle_overnemen': 'Take all {aantal}',
+  'coach.woord_kop': 'The Goal Coach',
+  'coach.woord.at_risk':
+    'There is still room. Reach the floor of your weekly goal and the week still counts.',
+  'coach.woord.behind':
+    'A weaker week says nothing about the weeks after it. Reaching the floor keeps your streak going, and taking a breather is fine too.',
+  'coach.woord.unreachable':
+    'This is a moment to adjust your target date, not to stop. What you have done so far stays.',
   'coach.titel': 'The Goal Coach',
   'coach.vastgelopen': 'The Goal Coach got stuck.',
   'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow — in the meantime you can add milestones yourself.',

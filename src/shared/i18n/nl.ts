@@ -872,6 +872,13 @@ export const nl = {
   'coach.bewaard': 'Bewaard',
   'coach.bewaren': 'Antwoorden bewaren',
   'coach.alle_overnemen': 'Alle {aantal} overnemen',
+  'coach.woord_kop': 'De Doelcoach',
+  'coach.woord.at_risk':
+    'Er is nog ruimte. Haal je de vloer van je weekdoel, dan telt de week gewoon mee.',
+  'coach.woord.behind':
+    'Een mindere week zegt niets over de weken erna. De vloer halen laat je reeks doorlopen, en een adempauze inzetten mag ook.',
+  'coach.woord.unreachable':
+    'Dit is een moment om je streefdatum bij te stellen, niet om te stoppen. Wat je tot nu toe deed, blijft staan.',
   'coach.titel': 'De Doelcoach',
   'coach.vastgelopen': 'De Doelcoach liep vast.',
   'coach.daglimiet': 'Je hebt vandaag al {limiet} keer de Doelcoach gebruikt. Morgen kan het weer — je kunt intussen zelf mijlpalen toevoegen.',
