@@ -94,10 +94,20 @@ export async function fetchDoorschuifbaar(
   return (data ?? []) as unknown as Weekdoel[];
 }
 
-/** Eén mijlpaal, voor zover een weekdoelformulier hem nodig heeft. */
+/**
+ * Eén mijlpaal, voor zover een weekdoelformulier en het bewerkformulier hem nodig
+ * hebben.
+ *
+ * ⚠️ **`description` staat er sinds 28-08 bij, en dat is een reparatie en geen
+ *    uitbreiding.** `wijzigMijlpaal()` stuurt titel, omschrijving én streefdatum
+ *    in één UPDATE, zoals `mijlpaalSchema` voorschrijft. Zonder dit veld had het
+ *    bewerkscherm geen andere keus dan `description: null` mee te sturen, en dan
+ *    wist elke titelcorrectie stilzwijgend de omschrijving. Het type dwingt de
+ *    juiste waarde af in plaats van hem te laten raden.
+ */
 export type Mijlpaal = Pick<
   Tables<'milestones'>,
-  'id' | 'title' | 'status' | 'order_index' | 'target_date'
+  'id' | 'title' | 'status' | 'order_index' | 'target_date' | 'description'
 >;
 
 /**
@@ -114,7 +124,7 @@ export type Mijlpaal = Pick<
 export async function fetchMijlpalen(goalId: string): Promise<readonly Mijlpaal[]> {
   const { data, error } = await supabase()
     .from('milestones')
-    .select('id, title, status, order_index, target_date')
+    .select('id, title, status, order_index, target_date, description')
     .eq('goal_id', goalId)
     .neq('status', 'dropped')
     .order('order_index', { ascending: true })

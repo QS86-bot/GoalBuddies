@@ -61,6 +61,40 @@ export function statusTeksten(): Readonly<Record<string, CommitmentTekst>> {
   return uit;
 }
 
+/**
+ * De gebeurtenissen in het auditspoor van een commitment.
+ *
+ * ⚠️ **Een kopie van de CHECK `commitment_events_event_type_valid`, en geen
+ *    bron.** `tests/rls/policies.test.ts` legt zulke lijsten naast de constraint
+ *    zelf — in beide richtingen, want de vorige keer dat twee zulke lijsten uit
+ *    elkaar liepen (0032/0034) vergeleek de test de app-lijst met zichzélf en
+ *    bleef groen.
+ */
+export const SPOORGEBEURTENISSEN = [
+  'created',
+  'confirmed',
+  'edited',
+  'triggered',
+  'posted',
+  'resolved',
+  'cancelled',
+] as const;
+
+/**
+ * De labels per gebeurtenis, uit de catalogus.
+ *
+ * ⚠️ Een functie en geen constante, om dezelfde reden als `statusTeksten()`.
+ */
+export function spoorLabels(): Readonly<Record<string, string>> {
+  const uit: Record<string, string> = {};
+
+  for (const gebeurtenis of SPOORGEBEURTENISSEN) {
+    uit[gebeurtenis] = t(`commitmentspoor.${gebeurtenis}` as Sleutel);
+  }
+
+  return uit;
+}
+
 /** Fallback die nooit een lege kaart oplevert (coderegel 16 in de geest). */
 function onbekend(): CommitmentTekst {
   return {

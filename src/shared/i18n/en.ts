@@ -972,6 +972,38 @@ export const en: Record<Sleutel, string> = {
   'nieuwdoel.uren': 'Hours per week',
   'nieuwdoel.uren_hint':
     'How much time do you realistically have for this? Feeds the Risk radar later.',
+  'mijlpaalbewerken.titel': 'Title',
+  'mijlpaalbewerken.omschrijving': 'Description',
+  'mijlpaalbewerken.streefdatum': 'Target date',
+  'mijlpaalbewerken.streefdatum_hint':
+    'Optional, as yyyy-mm-dd. Leaving it empty is fine; this date is yours and moves without asking anyone.',
+  'mijlpaalbewerken.bewaren': 'Save',
+  'mijlpaalbewerken.annuleren': 'Cancel',
+  'mijlpalenblok.bewerken': 'Edit',
+  'mijlpalenblok.bewerken_label': 'Edit milestone {titel}',
+  'commitmentspoor.toon': 'Show the trail',
+  'commitmentspoor.verberg': 'Hide the trail',
+  'commitmentspoor.leeg_titel': 'No events yet',
+  'commitmentspoor.leeg_tekst':
+    'As soon as something happens to this commitment, it shows up here. Only you can see this.',
+  'commitmentspoor.created': 'Created',
+  'commitmentspoor.confirmed': 'Confirmed by you',
+  'commitmentspoor.edited': 'Changed',
+  'commitmentspoor.triggered': 'Became due',
+  'commitmentspoor.posted': 'Shared with the group',
+  'commitmentspoor.resolved': 'Settled',
+  'commitmentspoor.cancelled': 'Withdrawn',
+  'doelbewerken.titel': 'Edit goal',
+  'doelbewerken.eyebrow': 'Your goal',
+  'doelbewerken.bewaren': 'Save changes',
+  'doelbewerken.annuleren': 'Back without saving',
+  'doelbewerken.leeg_titel': 'This goal no longer exists',
+  'doelbewerken.leeg_tekst':
+    'It may have been deleted, or it belongs to someone else. Go back to your goals.',
+  'doelbewerken.streefdatum_kop': 'Target date',
+  'doelbewerken.streefdatum_uitleg':
+    'Your target date is {datum} and does not change here. Moving a date is something you ask a buddy for — otherwise an agreement can be stretched one-sidedly. You do that on the goal itself.',
+  'doelbewerken.knop': 'Edit goal',
   'nieuwdoel.aanmaken': 'Create goal',
   'nieuwdoel.annuleren': 'Cancel',
 
