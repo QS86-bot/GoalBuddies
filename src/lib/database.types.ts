@@ -2244,6 +2244,14 @@ export type Database = {
           tabel: string
         }[]
       }
+      initplan_bewaking: {
+        Args: never
+        Returns: {
+          deel: string
+          policy: string
+          tabel: string
+        }[]
+      }
       intrekvenster_bewaking: {
         Args: never
         Returns: {
@@ -2254,6 +2262,7 @@ export type Database = {
       invite_preview: { Args: { code: string }; Returns: Json }
       is_group_admin: { Args: { gid: string }; Returns: boolean }
       is_group_member: { Args: { gid: string }; Returns: boolean }
+      is_kale_auth_uid: { Args: { p_uitdrukking: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
       kan_beoordeeld_worden: {
         Args: { p_goal_id: string; p_owner_id: string }
@@ -2581,6 +2590,7 @@ export type Database = {
         Args: { p_date: string; p_goal_id: string }
         Returns: Json
       }
+      zonder_initplan_hijs: { Args: { p_uitdrukking: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
