@@ -20,11 +20,57 @@ describe('scrubMessage', () => {
     );
   });
 
-  it('haalt de geciteerde waarde uit een Postgres-melding', () => {
-    // Precies het geval dat zonder deze regel een uitnodigingscode lekt.
+  it('haalt de constraintnaam uit een Postgres-melding', () => {
+    // ⚠️ **Deze test heette tot 28-08-2026 "haalt de geciteerde waarde uit een
+    //    Postgres-melding" en had er een comment bij dat hij het lek van de
+    //    uitnodigingscode dekte.** Dat deed hij niet: de melding hieronder
+    //    bevat geen uitnodigingscode, alleen een constraintnaam. Hij was groen
+    //    terwijl elke code ongeschoond naar Sentry ging. De naam zegt nu wat hij
+    //    doet; de échte belofte staat in de test hieronder.
     const melding = 'duplicate key value violates unique constraint "groups_invite_code_key"';
     expect(scrubMessage(melding)).not.toContain('groups_invite_code_key');
     expect(scrubMessage(melding)).toContain(REDACTED);
+  });
+
+  describe('de waarde uit een Postgres DETAIL-regel', () => {
+    /**
+     * ⚠️ **Deze vier meldingen zijn overgetypt uit een échte Postgres 16**, niet
+     *    bedacht. De oude fixture schreef `=('zomer-2026')` mét aanhalingstekens
+     *    en dáárop sloeg `QUOTED` aan — Postgres zet ze er nooit omheen, ook niet
+     *    bij een waarde met een spatie. Een fixture die niet klopt, maakt een
+     *    controle groen zonder dat hij iets bewaakt.
+     */
+    it('haalt de uitnodigingscode eruit', () => {
+      const melding = 'Key (invite_code)=(DUP001) already exists.';
+      expect(scrubMessage(melding)).not.toContain('DUP001');
+      expect(scrubMessage(melding)).toContain(REDACTED);
+    });
+
+    it('haalt ook een waarde met een spatie eruit', () => {
+      expect(scrubMessage('Key (invite_code)=(met spatie) already exists.')).not.toContain(
+        'met spatie',
+      );
+    });
+
+    it('laat de kolomnaam staan — die is schemametadata en juist bruikbaar', () => {
+      expect(scrubMessage('Key (invite_code)=(DUP001) already exists.')).toContain('invite_code');
+    });
+
+    it('doet de melding en de DETAIL-regel samen', () => {
+      const volledig =
+        'duplicate key value violates unique constraint "groups_invite_code_key" — ' +
+        'Key (invite_code)=(DUP001) already exists.';
+      const uit = scrubMessage(volledig);
+
+      expect(uit).not.toContain('DUP001');
+      expect(uit).not.toContain('groups_invite_code_key');
+    });
+
+    it('laat een gewone zin met haakjes met rust', () => {
+      // ⚠️ De tegenhanger: het patroon eist `Key (…)=(…)` en niet zomaar haakjes.
+      const zin = 'De aanroep (met twee argumenten) is mislukt.';
+      expect(scrubMessage(zin)).toBe(zin);
+    });
   });
 
   it('kapt een absurd lange melding af', () => {
