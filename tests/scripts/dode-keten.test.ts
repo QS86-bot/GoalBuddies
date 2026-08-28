@@ -6,6 +6,7 @@ import {
   controleer,
   functiesZonderAanroeper,
   waardenZonderSchrijver,
+  TREFFER_HOORT_ELDERS,
 } from '../../scripts/dode-keten-controle.mjs';
 
 /**
@@ -230,5 +231,95 @@ describe('CHECK-waarden zonder schrijver — wat hij met rust moet laten', () =>
     expect(controleer({ bestanden, prodBron: '', bewust }).waarden).toEqual([]);
     // en zonder die reden is hij wél rood
     expect(controleer({ bestanden, prodBron: '', bewust: {} }).waarden).toHaveLength(1);
+  });
+});
+
+describe('een treffer die bij een andere tabel hoort', () => {
+  /**
+   * ⚠️ **De schrijverstoets is tabelblind, en dat is op 27-08-2026 een gemeten
+   *    valse negatief geworden.** Hij zoekt `'waarde'` in álle bronbestanden en
+   *    weet niet bij welke tabel die treffer hoort. `points_ledger.reason =
+   *    'milestone_done'` wordt nergens geboekt, maar `chat_messages.system_event`
+   *    kent dezelfde naam en die staat in `chat-schemas.ts` — dus de controle
+   *    zweeg over een dode waarde.
+   *
+   * ⚠️ Veertien CHECK-waarden komen in meer dan één tabel voor, dus dit is een
+   *    klasse en geen incident. `TREFFER_HOORT_ELDERS` is de gerichte versie:
+   *    hij zet de tekstzoektocht uit voor de gevallen waarvan gemeten is dat de
+   *    treffer elders vandaan komt.
+   */
+  const gedeeld = [
+    mig(
+      '0001_schema.sql',
+      [
+        'create table public.points_ledger (',
+        '  reason text not null,',
+        "  constraint points_ledger_reason_valid check (reason in ('correction', 'milestone_done'))",
+        ');',
+      ].join('\n'),
+    ),
+  ];
+
+  // ⚠️ `correction` wordt écht geboekt (door `trek_goedkeuring_in`), en
+  //    `milestone_done` alleen genoemd als chat-systeembericht. Twee waarden
+  //    omdat de parser een CHECK met er maar één overslaat — dat is een
+  //    kolomtoets en geen opsomming.
+  const prodBron =
+    "await db.from('points_ledger').insert({ reason: 'correction' });\n" +
+    "export const SYSTEEM = ['milestone_done'] as const;";
+
+  it('zwijgt zonder register — dit is de valse negatief zelf', () => {
+    expect(waardenZonderSchrijver({ bestanden: gedeeld, prodBron, elders: {} })).toEqual([]);
+  });
+
+  it('meldt hem zodra het register zegt dat de treffer elders hoort', () => {
+    const uit = waardenZonderSchrijver({
+      bestanden: gedeeld,
+      prodBron,
+      elders: {
+        'points_ledger.reason=milestone_done': 'komt uit chat_messages',
+      },
+    });
+
+    expect(uit).toHaveLength(1);
+    expect(uit[0]?.waarde).toBe('milestone_done');
+    expect(uit[0]?.tabel).toBe('points_ledger');
+  });
+
+  it('raakt een waarde die niet in het register staat niet aan', () => {
+    // ⚠️ Het register zet de zoektocht alleen uit voor wat er met naam in staat.
+    //    Zou het breder werken, dan meldt de controle waarden die wél geschreven
+    //    worden — en dan leer je hem te negeren.
+    const anders = [
+      mig(
+        '0001_schema.sql',
+        [
+          'create table public.iets (',
+          '  k text not null,',
+          "  constraint iets_k_valid check (k in ('leeft', 'ook_levend'))",
+          ');',
+        ].join('\n'),
+      ),
+    ];
+
+    expect(
+      waardenZonderSchrijver({
+        bestanden: anders,
+        prodBron: "const x = 'leeft'; const y = 'ook_levend';",
+        elders: {
+          'points_ledger.reason=milestone_done': 'komt uit chat_messages',
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it('noemt bij elke registerregel waar de treffer dan wél vandaan komt', () => {
+    // Een register zonder redenen is een lijst uitzonderingen; de volgende lezer
+    // moet kunnen zien waaróm die treffer geen bewijs is.
+    for (const [sleutel, reden] of Object.entries(
+      TREFFER_HOORT_ELDERS as Record<string, string>,
+    )) {
+      expect(reden.length, `${sleutel} heeft geen reden`).toBeGreaterThan(60);
+    }
   });
 });
