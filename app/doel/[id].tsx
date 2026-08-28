@@ -3,7 +3,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession, userClock } from '@/modules/auth';
-import { fetchGroepenVanDoel, fetchMijnGroepen, stuurBericht, type Groep } from '@/modules/buddies';
+import {
+  beslissendeGroep,
+  fetchGroepenVanDoel,
+  fetchMijnGroepen,
+  koppelbareGroepen,
+  koppelDoelAanGroep,
+  ontkoppelDoelVanGroep,
+  stuurBericht,
+  zichtbaarheidLabels,
+  type DoelGroep,
+  type Groep,
+  type Resultaat,
+} from '@/modules/buddies';
 import {
   fetchCommitments,
   isOpenstaand,
@@ -94,9 +106,7 @@ export default function DoelDetail() {
   const [doel, setDoel] = useState<DoelMetVoortgang | null>(null);
   const [commitments, setCommitments] = useState<readonly Commitment[]>([]);
   const [groepen, setGroepen] = useState<readonly Groep[]>([]);
-  const [doelGroepen, setDoelGroepen] = useState<
-    readonly { readonly group_id: string; readonly name: string }[]
-  >([]);
+  const [doelGroepen, setDoelGroepen] = useState<readonly DoelGroep[]>([]);
   const [risico, setRisico] = useState<Risico | null>(null);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
@@ -205,6 +215,13 @@ export default function DoelDetail() {
               </Caption>
             </Card>
 
+            <GedeeldMet
+              goalId={d.id}
+              gekoppeld={doelGroepen}
+              mijnGroepen={groepen}
+              onKlaar={herlaad}
+            />
+
             {vandaag ? (
               <DeadlineVerzetten
                 doel={d}
@@ -298,7 +315,7 @@ function DeadlineVerzetten({
 }: {
   readonly doel: DoelMetVoortgang;
   readonly vandaag: IsoDate;
-  readonly groepen: readonly { readonly group_id: string; readonly name: string }[];
+  readonly groepen: readonly DoelGroep[];
   readonly verzoek: DeadlineVerzoek | null;
   readonly besluit: DeadlineVerzoek | null;
   readonly onKlaar: () => void;
@@ -310,7 +327,27 @@ function DeadlineVerzetten({
   const [fout, setFout] = useState<string | null>(null);
 
   const gedeeld = groepen.length > 0;
-  const groep = groepen[0];
+
+  /**
+   * ⚠️ **De keuze wordt niet hier bedacht maar in `beslissendeGroep()`, en dat is
+   *    de hele reden dat die functie bestaat.** Tot QS8-56 stond hier
+   *    `groepen[0]`: het verzoek ging naar de eerste groep uit de lijst, en die
+   *    lijst had niet eens een `order by`. Welke dat was, beloofde Postgres niet.
+   *
+   *    De regel staat in `modules/buddies/deling.ts` omdat een regel in een
+   *    component alleen te toetsen is door het component te renderen of door in de
+   *    broncode naar een letterlijke regel te grijpen — en dat tweede is precies
+   *    de testvorm die bij QS8-85 stilletjes ophield iets te bewaken.
+   *
+   * ⚠️ **De keuze wordt opgeslagen als losse id en niet als groep.** Ontkoppel je
+   *    de gekozen groep in het blok hierboven, dan geeft `beslissendeGroep()`
+   *    `undefined` terug en staat de verstuurknop uit — in plaats van dat het
+   *    verzoek stilzwijgend naar een ándere groep verhuist.
+   */
+  const [groepId, setGroepId] = useState('');
+  const groep = beslissendeGroep(groepen, groepId);
+  const kiesbaar = groepen.length > 1;
+  const magVersturen = !gedeeld || groep !== undefined;
 
   async function trekIn() {
     if (verzoek === null) return;
@@ -332,10 +369,19 @@ function DeadlineVerzetten({
     setBezig(true);
     setFout(null);
 
-    const uitkomst = gedeeld
+    // ⚠️ Niet `groep?.group_id ?? ''`. Een lege id stuurde het verzoek naar de
+    //    server om daar op `not_linked` af te ketsen, en de gebruiker las een
+    //    storingsmelding waar hij een keuze had moeten maken.
+    if (gedeeld && groep === undefined) {
+      setFout(t('deling.kies_eerst'));
+      setBezig(false);
+      return;
+    }
+
+    const uitkomst = groep
       ? await vraagDeadlineVerschuiving(
           doel.id,
-          groep?.group_id ?? '',
+          groep.group_id,
           { new_date: datum, reason: argument },
           vandaag,
         )
@@ -427,6 +473,16 @@ function DeadlineVerzetten({
         placeholder="2027-03-01"
       />
 
+      {kiesbaar ? (
+        <Choice
+          label={t('deling.welke_groep')}
+          hint={t('deling.welke_groep_hint')}
+          opties={groepen.map((g) => ({ waarde: g.group_id, label: g.name }))}
+          waarde={groepId}
+          onKies={setGroepId}
+        />
+      ) : null}
+
       {gedeeld ? (
         <>
           {/*
@@ -461,7 +517,12 @@ function DeadlineVerzetten({
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
       <View style={styles.knoppen}>
-        <Button variant="primair" busy={bezig} onPress={() => void bewaar()}>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={!magVersturen}
+          onPress={() => void bewaar()}
+        >
           {gedeeld ? t('deadline.versturen') : t('deadline.vastleggen')}
         </Button>
         <Button variant="stil" onPress={() => setOpen(false)}>
@@ -534,6 +595,133 @@ function Beloning({
       <Button busy={bezig} onPress={() => void bewaar()}>
         {t('beloning.vastleggen')}
       </Button>
+    </Card>
+  );
+}
+
+/**
+ * Met welke groepen dit doel gedeeld wordt — QS8-56 (PRD 5.5).
+ *
+ * ⚠️ **Dit blok voegt geen recht toe, het maakt een bestaand recht zichtbaar.**
+ *    `goal_group_links` heeft sinds migratie 0001 een samengestelde sleutel
+ *    `(goal_id, group_id)`, dus twee groepen per doel kon altijd al. Ook het
+ *    groepsscherm stond het al toe: `KoppelDoel` filtert alleen op de koppelingen
+ *    van díé groep, dus wie in twee groepen achter elkaar hetzelfde doel koos,
+ *    had het. Wat ontbrak was de kant van het doel — nergens stond wat je met wie
+ *    deelt, en dus kon je het ook niet overzien of terugdraaien zonder eerst naar
+ *    elk groepsscherm apart te lopen.
+ *
+ * ⚠️ **Elke groep is een aparte toestemming, en dat is waarom er per rij een
+ *    ontkoppelknop staat en niet één "stop met delen".** Ontkoppelen van A hoort
+ *    B ongemoeid te laten; dat is de belofte die de RLS ook maakt
+ *    (`goal_group_links_delete` kijkt naar één rij) en die dit scherm niet mag
+ *    versimpelen.
+ *
+ * ⚠️ **De zin over wat je deelt staat per groep en niet boven de lijst.** Een
+ *    doel mag tegelijk in een open en een beschermde groep staan — EPIC 13 toetst
+ *    precies die stand — en dan is één zin boven de lijst voor de helft onwaar.
+ *    Dat is exact de fout die de critical-user-ronde van 24-08 vond bij
+ *    `koppel.uitleg`, alleen op een ander scherm.
+ */
+function GedeeldMet({
+  goalId,
+  gekoppeld,
+  mijnGroepen,
+  onKlaar,
+}: {
+  readonly goalId: string;
+  readonly gekoppeld: readonly DoelGroep[];
+  readonly mijnGroepen: readonly Groep[];
+  readonly onKlaar: () => void;
+}) {
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const koppelbaar = koppelbareGroepen(mijnGroepen, gekoppeld);
+  const labels = zichtbaarheidLabels();
+
+  async function voer(groupId: string, handeling: () => Promise<Resultaat<true>>) {
+    setBezig(groupId);
+    setFout(null);
+
+    const uitkomst = await handeling();
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    onKlaar();
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('deling.kop')}</Subheading>
+      <Body muted>{t('deling.uitleg')}</Body>
+
+      {gekoppeld.length === 0 ? (
+        <Body muted>{t('deling.nergens')}</Body>
+      ) : (
+        gekoppeld.map((groep) => (
+          <Card nested key={groep.group_id}>
+            <Subheading>{groep.name}</Subheading>
+            <Caption>{labels[groep.zichtbaarheid]}</Caption>
+            <Body muted>
+              {groep.zichtbaarheid === 'open'
+                ? t('deling.uitleg_open')
+                : t('deling.uitleg_beschermd')}
+            </Body>
+            <Button
+              variant="stil"
+              busy={bezig === groep.group_id}
+              disabled={bezig !== null && bezig !== groep.group_id}
+              onPress={() =>
+                void voer(groep.group_id, () => ontkoppelDoelVanGroep(goalId, groep.group_id))
+              }
+            >
+              {t('koppel.ontkoppel')}
+            </Button>
+          </Card>
+        ))
+      )}
+
+      {/*
+        ⚠️ Drie uitkomsten en alle drie hebben een eigen zin. "Geen groepen" en
+           "al je groepen hebben het al" zien er zonder tekst identiek uit — een
+           lege ruimte — terwijl het tegenovergestelde antwoorden zijn op de vraag
+           waarom je hier niets kunt.
+      */}
+      <Subheading>{t('deling.koppel_kop')}</Subheading>
+
+      {mijnGroepen.length === 0 ? (
+        <Body muted>{t('deling.geen_groepen')}</Body>
+      ) : koppelbaar.length === 0 ? (
+        <Body muted>{t('deling.overal')}</Body>
+      ) : (
+        koppelbaar.map((groep) => (
+          <Card nested key={groep.group_id}>
+            <Subheading>{groep.name}</Subheading>
+            <Caption>{labels[groep.zichtbaarheid]}</Caption>
+            <Body muted>
+              {groep.zichtbaarheid === 'open'
+                ? t('deling.uitleg_open')
+                : t('deling.uitleg_beschermd')}
+            </Body>
+            <Button
+              busy={bezig === groep.group_id}
+              disabled={bezig !== null && bezig !== groep.group_id}
+              onPress={() =>
+                void voer(groep.group_id, () => koppelDoelAanGroep(goalId, groep.group_id))
+              }
+            >
+              {t('deling.koppel', { naam: groep.name })}
+            </Button>
+          </Card>
+        ))
+      )}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );
 }
@@ -922,7 +1110,7 @@ function HulpVragen({
 }: {
   readonly doel: DoelMetVoortgang;
   readonly risico: Risico | null;
-  readonly groepen: readonly { readonly group_id: string; readonly name: string }[];
+  readonly groepen: readonly DoelGroep[];
   readonly userId: string | null;
 }) {
   const [tekst, setTekst] = useState('');

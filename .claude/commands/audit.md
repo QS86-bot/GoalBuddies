@@ -4,7 +4,7 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
-> ⚠️ **Sinds 27-08-2026 draaien zeventien van de twintig controles in CI, bij
+> ⚠️ **Sinds 27-08-2026 draaien achttien van de eenentwintig controles in CI, bij
 > elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
 > uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
 > draaien omdat ze een productieverbinding of een privésleutel vragen:
@@ -88,6 +88,21 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
     ⚠️ Wat hij niet ziet: of de repo gelijkloopt met `schema_migrations` op het
     échte project. Dat is stap 13.
+
+11b. **Dubbele sleutels in JSON** — draai `npm run json:controle`. Hij leest de
+    zes JSON-bestanden die git bijhoudt en meldt elke sleutel die twee keer in
+    hetzelfde object staat, plus een bestand waarvan de haakjes niet sluiten.
+
+    ⚠️ **Hij is het enige vangnet dat JSON hier heeft, en dat is nagemeten en
+    niet aangenomen.** ESLint leest `**/*.ts` en `**/*.tsx` (zie
+    `eslint.config.mjs`), `tsc` leest geen JSON, en `JSON.parse` houdt bij een
+    dubbele sleutel stilzwijgend de láátste — geen fout, geen waarschuwing,
+    geen spoor.
+
+    ⚠️ **En `pwa:controle` (stap 15) erfde die blindheid.** Met een dubbele
+    `start_url` in `public/manifest.json` beoordeelt hij de tweede en meldt
+    groen; met de hand gebroken op 28-08. Draait deze stap rood, kijk dan of een
+    ándere controle over hetzelfde bestand ten onrechte groen staat.
 
 12. **Hardgecodeerde UI-tekst** — draai `npm run tekst:controle`. Die toetst
     criterium 1 van QS8-115: er staat nergens in `src/` of `app/` nog Nederlandse

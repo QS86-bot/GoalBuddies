@@ -32,6 +32,7 @@
     "edge:controle": "node scripts/edge-tijd-controle.mjs",
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
+    "json:controle": "node scripts/json-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
     "functies:controle": "node scripts/functies-controle.mjs",

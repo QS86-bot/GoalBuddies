@@ -32,9 +32,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **537 geslaagd, 1 overgeslagen** (27-08, na QS8-57, QS8-41, QS8-137, QS8-65, QS8-79 en QS8-78).
-   Zonder credentials geeft `npm test` **1126 geslaagd en 517 overgeslagen**; typecheck
-   en lint groen.
+   **558 geslaagd, 1 overgeslagen** (28-08, na QS8-56, QS8-65, QS8-79 en QS8-78).
+   De hele suite geeft met de stack **1718 geslaagd en 1 overgeslagen**; zonder
+   credentials **1181 geslaagd en 538 overgeslagen**. Typecheck en lint groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -88,8 +88,35 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0109`
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0113`
 staan in de map.
+
+⚠️ **`0107` t/m `0110` zijn nog niet op productie gedraaid.** Alle vier zijn op
+28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
+maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
+`register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
+dan geldt op productie:
+
+- `0107` — De Ketting telt een lid dat op zijn eigen kalender in zijn adempauze
+  zit nog mee in de noemer, en houdt zo een voltallige week bij de groep weg.
+  Zie de rij van 25-08 in `docs/ENGINEER-REVIEW.md`.
+- `0108` — een lid kan zijn eigen weekafsluitingen op willekeurige dagen binnen
+  het venster zetten. Elke rij wordt een kettingschakel, dus één lid kan in één
+  verzoek dertig schakels en twee mijlpaalaankondigingen maken. Gemeten via de
+  clientkant; zie de rij van 18-08.
+- `0109` — `vastgelopen_goedkeuringen()` bestaat daar niet, dus er is geen
+  manier om te tellen hoeveel wachtende weken hun beoordelaars kwijt zijn.
+- `0110` — de rem van A7 is met drie verzoeken weg te nemen: ontkoppelen,
+  `zet_streefdatum()`, terugkoppelen. Gemeten: de datum schoof tien maanden op
+  en er ging **geen enkel verzoek** naar een buddy. Zie de rij van 17-08.
+
+⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
+`src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
+gehaald, en daar bestaat de functie nog niet. Het blok
+`vastgelopen_goedkeuringen` en de kolom `goals.losgekoppeld_op` zijn daarom met
+de hand toegevoegd, in exact de vorm die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
+verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
+volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
@@ -450,10 +477,10 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 3 | **EPIC 1 — Auth & Onboarding** (QS8-6) | Zonder gebruiker geen data | ✅ af, m.u.v. OAuth en avatar-upload |
 | 4 | **EPIC 2 — Hoofddoelen** (QS8-7) | Het object waar alles aan hangt | ✅ af |
 | 5 | **EPIC 4 — Weekdoelen & cyclus** (QS8-9) | De kernlus. Vloer/plafond, Dagzet, rollover | ✅ af, m.u.v. de UI voor doorschuiven |
-| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af. Van de twee `phase:v2`-issues is QS8-57 (een groep verlaten) op 27-08 gebouwd; alleen QS8-56 staat nog open |
+| 6 | **EPIC 5 — Buddy-groepen** (QS8-10) | Nodig vóór goedkeuring kan bestaan | ✅ af, inclusief de twee `phase:v2`-issues: QS8-57 (een groep verlaten) en QS8-56 (hetzelfde doel in meer dan één groep) zijn allebei op 27-08 gebouwd |
 | 7 | **EPIC 6 — Peer-goedkeuring** (QS8-11) | Hangt op groepen én weekdoelen | ✅ **af**, inclusief QS8-65 (`phase:v2`, gebouwd 27-08, migratie `0107`). Een groep kiest tussen één buddy, een meerderheid en een vast aantal. ⚠️ De drempel wordt als **getal** bevroren bij het indienen, niet als regel gelezen bij het goedkeuren — anders tilt een beheerder (of een nieuw lid) de lat op onder een week die al loopt. Zie `docs/decisions/2026-08-27-de-goedkeuringsdrempel.md` |
 | 8 | **EPIC 7 — Chat & weekafsluiting** (QS8-12) | Hangt op groepen | ✅ **af voor de MVP** (24-08), op de twee `phase:v2`-issues na. De ketting-mijlpaal was de laatste schakel; zie §2 |
-| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**. Beide `phase:v2`-issues zijn op 27-08 gebouwd: QS8-79 (seizoenen met een recap, migratie `0108`) en QS8-78 (badges, migratie `0109`). ⚠️ QS8-78 hád géén acceptatiecriteria — één PRD-zin — dus alle keuzes daarin zijn van de bouwer en staan uitgeschreven in `docs/decisions/2026-08-27-badges-zijn-prive.md`. De zwaarste: **badges zijn privé**, want een badgemuur naast een ledenlijst maakt van de ontbrekende badge het signaal. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
+| 9 | **EPIC 8 — Gamification** (QS8-13) | Ketting, weekpassen, adempauze | ✅ **af voor de MVP**. Beide `phase:v2`-issues zijn op 27-08 gebouwd: QS8-79 (seizoenen met een recap, migratie `0112`) en QS8-78 (badges, migratie `0113`). ⚠️ QS8-78 hád géén acceptatiecriteria — één PRD-zin — dus alle keuzes daarin zijn van de bouwer en staan uitgeschreven in `docs/decisions/2026-08-27-badges-zijn-prive.md`. De zwaarste: **badges zijn privé**, want een badgemuur naast een ledenlijst maakt van de ontbrekende badge het signaal. QS8-80 (De Ketting), QS8-81 (weekpassen), QS8-75 (dashboard), QS8-82 (adempauze), QS8-76 (feestmoment) en QS8-77 (nudge, Done op 21-08) zijn allemaal af |
 | 10 | **EPIC 11 — Notificaties** (QS8-16) | Heeft gebeurtenissen nodig om over te melden | ⚠️ **volledig gebouwd, nooit afgeleverd.** `expo-notifications` staat erin (Q-TODO B4, 21-08), de webregistratie sinds QS8-124, en de PWA eromheen is compleet en getoetst (QS8-117). Wat ontbreekt is een VAPID-sleutelpaar in `.env` en — voor iOS — een fysiek toestel. Er is dus nog geen enkele melding aangekomen |
 | 11 | **EPIC 3 — De Doelcoach** (QS8-8) | AI. Werkt pas zinvol als doelen en weekdoelen bestaan | ✅ af voor de MVP (21-08). End-to-end gedraaid met een echte sleutel. **QS8-41 (weekstappen per mijlpaal) is op 27-08 gebouwd**; daarbij bleek `doelcoach` nooit op `job.kind` te vertakken en kende de app `'error'` waar de database `'failed'` schrijft — elke mislukte generatie liep sinds QS8-38 dood in een timeout. **QS8-137 (A48 variant 2, de Doelcoach-tip per mijlpaal) dezelfde dag**, migratie `0103`: een eigenaar-only tabel `milestone_tips`, een derde `ai_jobs.kind`, en een zeef die aan beide kanten dezelfde woordenlijst gebruikt |
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
@@ -488,7 +515,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
 | Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
-| Hetzelfde doel aan meerdere groepen koppelen | QS8-56 | `phase:v2`. `goal_group_links` kan het vanaf dag één en `koppelDoelAanGroep()` ook; er is alleen nog geen scherm dat één doel aan twee groepen hangt |
+| ~~Hetzelfde doel aan meerdere groepen koppelen~~ | QS8-56 | ✅ **gebouwd 27-08**, zónder migratie. `goal_group_links` kon dit vanaf dag één en het gróépsscherm kon het ook — `KoppelDoel` filtert alleen tegen de koppelingen van díé groep, dus wie in twee groepen achter elkaar hetzelfde doel koos, hád het al. Wat ontbrak was het overzicht vanaf het doel, en dat is nu het blok **Gedeeld met** op `app/doel/[id].tsx`. ⚠️ **Onderweg bleek het deadlineverzoek stuk te staan wachten:** het scherm nam `groepen[0]` als de groep die erover besliste, en die lijst had geen `order by`. Elk slot eromheen was dicht en gemeten; de gebruiker had de groep alleen nooit aangewezen. Zie `docs/decisions/2026-08-27-een-doel-in-meer-dan-een-groep.md` §2 |
 | ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0102. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0102 |
 | ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
 
@@ -555,23 +582,42 @@ beslisbevoegdheid in `CLAUDE.md`.
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
 | QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged — open: er is nooit een echte gebeurtenis uít de app aangekomen |
-| QS8-22 | Migratie-workflow | deels: dumpscript en docs staan, lokale stack niet |
+| QS8-22 | Migratie-workflow | ✅ af sinds QS8-119 — dumpscript, docs én een lokale stack. Zie de correctie hieronder |
 
-⚠️ **Besluit 16-08: de lokale stack komt later.** Docker vraagt WSL2 en
-beheerdersrechten, en die had de sessie niet. Quinten heeft besloten dat elke
-migratie voorlopig direct op het echte project mag, omdat er geen gebruikers
-komen voordat alle fases geprogrammeerd zijn.
+⚠️ **Achterhaald sinds QS8-119 (24-08-2026), en dat stond hier tot 27-08 nog
+fout.** Hier stond drie alinea's lang dat er géén lokale stack was, dat elke
+migratie dus rechtstreeks op het echte project ging, en dat `pg_dump` er niet op
+stond. Alle drie zijn onjuist:
 
-**Het moment waarop dat omslaat is scherp:** de eerste echte gebruiker die zich
-aanmeldt. Vanaf dan geen migratie meer zonder repetitie en zonder dump. Tot die
-tijd blijft elke migratie idempotent met een rollback-pad in de kop — dat is de
-enige bescherming die er nu is.
+| Wat | Waar |
+|---|---|
+| Een lokale stack | `npm run rls:stack` (`scripts/lokale-stack.sh`) — Postgres plus PostgREST, schema opgebouwd uit `supabase/migrations/` |
+| De suite ertegenaan | `npm run rls:lokaal` — geen credentials, geen productie, draait mee in CI |
+| Een dump vooraf | `npm run db:dump` (`scripts/db-dump.mjs`), en `npm run db:push` doet dump → push → registercontrole in één commando |
 
-⚠️ **Wat er nog niet is en waar je last van gaat krijgen.** Er is nog steeds geen
-lokale Supabase-stack: Docker vraagt WSL2 en beheerdersrechten, en die had de
-sessie niet. Alle migraties zijn dus rechtstreeks op het echte project gedraaid.
-Dat kon nu omdat er geen echte gebruikersdata in stond — dat verandert zodra jij
-of een testgebruiker de app opent. `pg_dump` staat er ook nog niet op.
+⚠️ **Wat de lokale stack níét is, en dat hoort erbij te staan.** Het is geen
+volledige Supabase: geen GoTrue, geen Storage, geen Edge-runtime. De RLS-suite
+tekent zijn tokens daarom zelf (QS8-116). Wat je lokaal bewijst is het **schema**
+en de **policies**; dat een echte sessie de claims draagt die die policies
+verwachten, blijft een meting tegen het echte project — `tests/rls/token.test.ts`.
+
+⚠️ **Het besluit van 16-08 staat daarmee niet meer op zichzelf.** Dat zei: elke
+migratie mag voorlopig direct op het echte project, omdat er geen gebruikers zijn
+tot alle fases geprogrammeerd zijn. Dat mág nog steeds — de database bevat op
+27-08 één account, nul doelen en nul groepen — maar het is sinds QS8-119 geen
+noodzaak meer, en er is nu een goedkopere volgorde: **eerst lokaal draaien, dan
+pushen.** Zo werkt `db:push` ook.
+
+**Het moment waarop het besluit omslaat is nog steeds scherp:** de eerste echte
+gebruiker die zich aanmeldt. Vanaf dan geen migratie meer zonder repetitie en
+zonder dump. Tot die tijd blijft elke migratie idempotent met een rollback-pad in
+de kop.
+
+⚠️ **Waarom deze correctie hier staat en niet stilletjes weggehaald is.** Dit is
+QS8-125 in zijn gevaarlijkste vorm: een document dat een sessie als eerste leest,
+dat zegt dat gereedschap ontbreekt dat er al drie dagen staat. Een sessie die dit
+gelooft, draait zijn migratie rechtstreeks op productie omdat het document zegt
+dat er geen alternatief is.
 
 ## 6. Wat menselijke actie vereist
 

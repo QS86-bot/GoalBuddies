@@ -1,4 +1,4 @@
-# Badges zijn privé — QS8-78 (PRD 8.4), migratie 0109
+# Badges zijn privé — QS8-78 (PRD 8.4), migratie 0113
 
 **27-08-2026.** QS8-78 is één zin uit de PRD:
 

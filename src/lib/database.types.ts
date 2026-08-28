@@ -992,6 +992,7 @@ export type Database = {
           description: string | null
           id: string
           identity_statement: string | null
+          losgekoppeld_op: string | null
           max_points: number
           owner_id: string
           status: string
@@ -1006,6 +1007,7 @@ export type Database = {
           description?: string | null
           id?: string
           identity_statement?: string | null
+          losgekoppeld_op?: string | null
           max_points?: number
           owner_id: string
           status?: string
@@ -1020,6 +1022,7 @@ export type Database = {
           description?: string | null
           id?: string
           identity_statement?: string | null
+          losgekoppeld_op?: string | null
           max_points?: number
           owner_id?: string
           status?: string
@@ -2457,6 +2460,16 @@ export type Database = {
       verdien_weekpassen: {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
+      }
+      vastgelopen_goedkeuringen: {
+        Args: never
+        Returns: {
+          completion_id: string
+          cycle_start_date: string
+          goal_id: string
+          owner_id: string
+          reden: string
+        }[]
       }
       vereiste_goedkeuringen: {
         Args: { p_group_id: string; p_owner: string }

@@ -11,7 +11,7 @@ import {
 } from './harness';
 
 /**
- * Seizoenen per groep, met één recap — QS8-79 (PRD 8.5), migratie 0108.
+ * Seizoenen per groep, met één recap — QS8-79 (PRD 8.5), migratie 0112.
  *
  * ⚠️ **Vier acceptatiecriteria, en drie ervan zijn hier te meten.** De cadans per
  *    groep staat in `seizoenen.test.ts` (dat is een lijst naast een CHECK); wat

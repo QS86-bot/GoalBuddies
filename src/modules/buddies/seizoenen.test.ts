@@ -19,7 +19,7 @@ import {
  *    ene kant toetst.
  *
  * ⚠️ `season_cadence` staat sinds migratie **0001** in het schema, met zijn CHECK.
- *    Deze test leest die dus uit `0001_schema.sql` en niet uit 0108 — 0108 raakt
+ *    Deze test leest die dus uit `0001_schema.sql` en niet uit 0112 — 0112 raakt
  *    de kolom niet aan.
  */
 

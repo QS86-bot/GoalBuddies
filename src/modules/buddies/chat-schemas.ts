@@ -98,7 +98,7 @@ export const SYSTEEM_GEBEURTENISSEN = [
   'group_opened',
   'group_protected',
   /**
-   * ⚠️ De dertiende, toegevoegd in migratie 0108 (QS8-79). Het enige
+   * ⚠️ De dertiende, toegevoegd in migratie 0112 (QS8-79). Het enige
    *    systeembericht na `chain_milestone` dat **geen persoon** noemt — een
    *    seizoensrecap is van de groep, en de cijfers erin zijn groepstotalen
    *    zonder namen. Een ranglijst zou ook een lijst zijn van wie onderaan staat.

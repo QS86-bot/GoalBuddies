@@ -93,7 +93,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
     }
   });
 
-  it('bevat uitsluitend de dertien gebeurtenissen van 0025, 0032, 0070, 0076 en 0108', () => {
+  it('bevat uitsluitend de dertien gebeurtenissen van 0025, 0032, 0070, 0076 en 0112', () => {
     // ⚠️ Een exacte lijst en geen `toContain`-reeks. Zo is een tóevoeging óók een
     //    rode test, en niet alleen een verkeerde toevoeging. Wie hier een naam
     //    bijzet, komt eerst langs de vraag: kan hieruit iemands gemiste week
@@ -123,7 +123,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    zijn, en dat is precies wat grens 3 van het besluit verbiedt.
       'group_opened',
       'group_protected',
-      // ⚠️ QS8-79 (migratie 0108). De seizoensrecap gaat over de gróép en noemt
+      // ⚠️ QS8-79 (migratie 0112). De seizoensrecap gaat over de gróép en noemt
       //    geen enkele persoon — de drie cijfers erin zijn groepstotalen die
       //    alleen omhoog gaan, dezelfde vorm als `chain_milestone`.
       //

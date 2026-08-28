@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { BADGES, badgeLabels, badgeUitleg, kentBadge } from './badges';
 
 /**
- * Badges — QS8-78 (PRD 8.4), migratie 0109.
+ * Badges — QS8-78 (PRD 8.4), migratie 0113.
  *
  * ⚠️ De eerste test leest de **migratie** en niet de app. Dezelfde naad als bij
  *    `SYSTEEM_GEBEURTENISSEN` en `GOEDKEURINGSREGELS`: een lijst in TypeScript
@@ -16,7 +16,7 @@ import { BADGES, badgeLabels, badgeUitleg, kentBadge } from './badges';
  */
 
 const MIGRATIE = fileURLToPath(
-  new URL('../../../supabase/migrations/0109_badges_die_nooit_verdwijnen.sql', import.meta.url),
+  new URL('../../../supabase/migrations/0113_badges_die_nooit_verdwijnen.sql', import.meta.url),
 );
 
 /** De waarden uit `badges_bekend`. */

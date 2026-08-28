@@ -11,7 +11,7 @@ import {
 } from './harness';
 
 /**
- * Badges — QS8-78 (PRD 8.4), migratie 0109.
+ * Badges — QS8-78 (PRD 8.4), migratie 0113.
  *
  * ⚠️ **Twee beloftes, en ze zijn allebei een ontwerpkeuze die het issue niet
  *    maakte.** QS8-78 is één PRD-zin zonder acceptatiecriteria; wat hier getoetst

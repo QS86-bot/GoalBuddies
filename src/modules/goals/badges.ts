@@ -1,7 +1,7 @@
 import { t } from '../../shared/i18n';
 
 /**
- * Verdiende badges — QS8-78 (PRD 8.4), migratie 0109.
+ * Verdiende badges — QS8-78 (PRD 8.4), migratie 0113.
  *
  * ⚠️ **Zuiver, zonder Supabase-client, en dat is een les die dit project al
  *    betaald heeft.** QS8-120/121: een schema dat aan de client vastzat, was niet
@@ -26,7 +26,7 @@ import { t } from '../../shared/i18n';
  */
 
 /**
- * ⚠️ Kopie van de CHECK `badges_bekend` (migratie 0109). Loopt hij uiteen, dan
+ * ⚠️ Kopie van de CHECK `badges_bekend` (migratie 0113). Loopt hij uiteen, dan
  *    toont het scherm een leeg vakje voor een badge die de database wél kent, of
  *    belooft het er een die nooit verdiend kan worden. `badges.test.ts` legt de
  *    twee naast elkaar.
