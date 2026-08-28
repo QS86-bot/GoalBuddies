@@ -99,24 +99,23 @@ staan in de map, en sinds 28-08 staan ze **allemaal op productie**: het register
 telt 121 rijen van `0001` tot `0118`, gelijk aan de 121 bestanden (de drie met
 een `a`-achtervoegsel meegeteld).
 
-⚠️ **`0111` t/m `0113` staan wél op productie** — de goedkeuringsdrempel, de
+⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
 register is meeverzet toen ze van `0107`–`0109` naar `0111`–`0113` opschoven,
 omdat een parallelle sessie die nummers eerder claimde. Zie
 `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md` voor wat
 een migratienummer wel en niet vastlegt.
 
-⚠️ **`0115`, `0116` en `0117` staan wél op productie** — hij dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
+⚠️ **`0115`, `0116` en `0117`** — die groep dicht een lek dat live was: `seizoensrecap_cijfers()` was voor elke ingelogde gebruiker aanroepbaar, het venster van De Ketting stond op acht dagen bij een periode van zeven, en het pushadres van een webabonnement werd niet gecontroleerd. Zie `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md` en
 `docs/decisions/2026-08-28-het-kettingvenster.md`.
 
-✅ **`0107` t/m `0110` en `0114` stonden hier tot 28-08 als "nog niet op
-productie", en dat klopt niet meer.** Ze zijn die dag alsnog toegepast — `0107`
-en `0108` door de parallelle sessie die ze schreef, met het register meeverzet.
-Wat ze dichtten stond hier uitgeschreven en staat nu in het reviewdossier: De
-Ketting die een lid in adempauze meetelde in de noemer, weekafsluitingen op
-willekeurige dagen binnen het venster, `vastgelopen_goedkeuringen()` die er niet
-was, de rem van A7 die met drie verzoeken weg te nemen was, en drie functies die
-hun `search_path` niet pinden.
+✅ **`0107` t/m `0110` en `0114`** — de vijf uit deze sessie. Toegepast via de MCP-tool, daarna uitgelijnd
+met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen.
+
+⚠️ **Vooraf gemeten dat uit-volgorde toepassen veilig was.** Productie had
+0111 t/m 0117 al; die raken geen enkel object dat deze vijf herschrijven — 0112
+en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
+functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
 
 ⚠️ **`0118` is nieuw op productie en vraagt nog één handeling van jou.** Hij trekt
 76 schrijfrechten in die geen enkele policy achter zich hebben, en één daarvan
@@ -126,13 +125,26 @@ reparatie (`ignoreDuplicates`) zit in de bundel, niet in de database. **Tot `npm
 run deploy` gedraaid heeft, geeft koppelen op `goalbuddies.q-projects.tech`
 `42501`.** Zie `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
 
-⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
-`src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
-gehaald, en daar bestaat de functie nog niet. Het blok
-`vastgelopen_goedkeuringen` en de kolom `goals.losgekoppeld_op` zijn daarom met
-de hand toegevoegd, in exact de vorm die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
-verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
-volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
+⚠️ **Eén fout onderweg, en die is met meten gevonden.** Bij het overzetten van
+0114 werden de `\uXXXX`-reeksen in `tip_bevat_emoji()` als échte tekens
+overgenomen — precies de valkuil waar die migratie zelf voor waarschuwt. Het
+gedrag klopte op alle zes de controlegevallen, maar `prosrc` week af van de repo.
+Hersteld door de body met `chr(92)` op te bouwen; `md5` en lengte komen nu exact
+overeen met de lokale stack.
+
+⚠️ **De twee toevoegingen in `src/lib/database.types.ts` zijn geen
+hand-toevoegingen meer.** `goals.losgekoppeld_op` en
+`vastgelopen_goedkeuringen()` bestaan nu op het project, dus `npm run db:types`
+levert ze voortaan zelf op. De volgorde-waarschuwing die hier stond, is
+vervallen.
+
+⚠️ **Wat nog wél moet: de Edge Functions opnieuw deployen.** De
+`scrubMessage()`-reparatie van 28-08 zit in `supabase/functions/_shared/`, maar
+een gedeployde bundel verandert daar niet van. Doe dat met
+`npx supabase functions deploy` vanaf de machine met `SUPABASE_ACCESS_TOKEN` —
+niet met de hand overtypen: acht bestanden in die payload dragen backslashes,
+`scrub.ts` alleen al zes regels regex, en `edge:gedeployd` vergelijkt de
+modulebóóm en niet de inhoud.
 
 ✅ **De map en het project lopen weer gelijk, nagemeten op 27-08-2026.** Eerder
 die dag stond hier dat `0102` en `0103` wél gemerged maar níét toegepast waren;
