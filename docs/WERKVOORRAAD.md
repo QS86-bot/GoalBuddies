@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **586 geslaagd, 1 overgeslagen** (28-08, na 0121). De hele suite geeft met de
-   stack **1831 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
-   en 566 overgeslagen**.
+   **593 geslaagd, 1 overgeslagen** (28-08, na 0122). De hele suite geeft met de
+   stack **1838 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 573 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,10 +94,10 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0121`
-staan in de map: 124 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0122`
+staan in de map: 125 bestanden, de drie met een `a`-achtervoegsel meegeteld.
 
-⚠️ **`0119` en `0120` staan nog níet op productie, `0121` wél.** Dat klinkt als
+⚠️ **`0119` en `0120` staan nog níet op productie, `0121` en `0122` wél.** Dat klinkt als
 een fout en is het niet — het is het gevolg van twee sessies die op dezelfde dag
 nummers uitdeelden. `0119` weigert een `tz`-waarde die geen tijdzone is; `0120`
 laat het kettingvenster op de klok van de groep tellen in plaats van in UTC.
@@ -130,6 +130,11 @@ met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen
 0111 t/m 0117 al; die raken geen enkel object dat deze vijf herschrijven — 0112
 en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
 functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
+
+⚠️ **`0122` begrenst veertien tekstkolommen en de AI-invoer** en staat ook op
+productie. Vóór het toepassen geteld of een bestaande rij zou omvallen: nul, voor
+alle veertien én voor `ai_jobs.input`. Zie
+`docs/decisions/2026-08-28-tekst-zonder-grens.md`.
 
 ⚠️ **De volgorde waarin `0119`, `0120` en `0121` op productie moeten komen, is
 niet vrij.** `0121` bevat één policy die `0120` óók schrijft —
