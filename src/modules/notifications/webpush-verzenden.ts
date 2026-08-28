@@ -91,6 +91,50 @@ export function uitkomstVan(status: number): WebPushUitkomst {
  * @param fetchImpl bewust een parameter en niet de globale `fetch`: zo kan een
  *   test elke antwoordcode voeden, inclusief de codes die een rij verwijderen.
  */
+/**
+ * Hosts van bekende webpushdiensten.
+ *
+ * ⚠️ **Deze lijst is een kopie van `is_pushdienst()` in migratie 0117** en
+ *    `tests/beloftes/pushdienst-allowlist.test.ts` bewaakt dat ze gelijk
+ *    blijven. Loopt hij uiteen, dan weigert de database iets dat deze kant
+ *    doorlaat — of erger, andersom.
+ */
+export const PUSHDIENST_HOSTS = [
+  'fcm.googleapis.com',
+  'android.googleapis.com',
+  'web.push.apple.com',
+] as const;
+
+export const PUSHDIENST_ACHTERVOEGSELS = ['.push.services.mozilla.com', '.notify.windows.com'] as const;
+
+/**
+ * Of een endpoint-URL van een bekende webpushdienst is.
+ *
+ * ⚠️ Allowlist en geen blocklist: de verzameling echte pushdiensten is klein en
+ *    bekend, de verzameling gevaarlijke adressen niet. Een blocklist op RFC1918
+ *    en 169.254.169.254 laat elke DNS-naam door die daarheen wijst.
+ */
+export function isPushdienst(endpoint: string): boolean {
+  let host: string;
+  try {
+    const url = new URL(endpoint);
+    // `https` verplicht: Web Push kent geen `http`-endpoints, en zonder deze eis
+    // is `http://fcm.googleapis.com.aanvaller.test` een geldige host. Userinfo
+    // en een poort maken het geen pushdienst en vallen er hier uit.
+    if (url.protocol !== 'https:' || url.port !== '' || url.username !== '' || url.password !== '') {
+      return false;
+    }
+    host = url.hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+
+  return (
+    (PUSHDIENST_HOSTS as readonly string[]).includes(host) ||
+    PUSHDIENST_ACHTERVOEGSELS.some((achtervoegsel) => host.endsWith(achtervoegsel))
+  );
+}
+
 export async function verstuurWebPush(invoer: {
   readonly doel: WebPushDoel;
   readonly bericht: WebPushBericht;
@@ -126,6 +170,16 @@ export async function verstuurWebPush(invoer: {
       status: 'mislukt',
       reden: `versleutelen mislukte: ${fout instanceof Error ? fout.message : String(fout)}`,
     };
+  }
+
+  // ⚠️ **Tweede slot, en het staat hier omdat dit de plek is die het doet.**
+  //    0117 laat `registreer_push_token()` het adres al toetsen, maar deze
+  //    `fetch()` draait onder `service_role` vanuit het Supabase-netwerk: hij is
+  //    de aanvrager. Rijen die vóór 0117 zijn opgeslagen komen hier nog steeds
+  //    langs, en een tweede schrijfpad naar `push_tokens` zou de eerste toets
+  //    omzeilen. Een grendel op de plek van de handeling overleeft allebei.
+  if (!isPushdienst(invoer.doel.endpoint)) {
+    return { status: 'mislukt', reden: 'endpoint is geen bekende pushdienst' };
   }
 
   try {
