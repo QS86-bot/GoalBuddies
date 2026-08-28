@@ -1044,7 +1044,9 @@ async function laadTips(
   const volgende = await fetchVolgendeMijlpalen(goalIds);
   if (volgende.size === 0) return new Map();
 
-  const tips = await fetchMijlpaalTips([...volgende.values()].map((m) => m.id));
+  const mijlpaalIds = [...volgende.values()].map((m) => m.id);
+  let tips = await fetchMijlpaalTips(mijlpaalIds);
+  let gegenereerd = false;
 
   for (const [doelId, mijlpaal] of volgende) {
     if (tips.has(mijlpaal.id) || gevraagd.current.has(mijlpaal.id)) continue;
@@ -1053,8 +1055,20 @@ async function laadTips(
     const aanvraag = await vraagMijlpaalTip(doelId, mijlpaal.id);
     if (aanvraag.ok && !aanvraag.waarde.hergebruikt) {
       await werkJobAf(aanvraag.waarde.jobId);
+      gegenereerd = true;
     }
   }
+
+  // ⚠️ **Zonder deze tweede ophaling betaalde deze functie voor een tip die hij
+  //    in dezelfde ronde weggooide.** `tips` is een momentopname van vóór de
+  //    generatielus, dus een net gegenereerde tip zit er per definitie niet in —
+  //    en niets draait `laadTips` daarna opnieuw: `useAsync` hangt aan
+  //    `[userId, gehaaldeDoelen, ronde]`. De gebruiker zag niets, de job stond op
+  //    `done` en de kosten waren geboekt.
+  //
+  // ⚠️ Alleen als er echt iets gegenereerd is: anders is dit een tweede verzoek
+  //    per bezoek aan Vandaag, voor niets.
+  if (gegenereerd) tips = await fetchMijlpaalTips(mijlpaalIds);
 
   return new Map(
     [...volgende].flatMap(([doelId, mijlpaal]) => {
