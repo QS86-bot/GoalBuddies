@@ -150,6 +150,24 @@ export type Database = {
           },
         ]
       }
+      badges: {
+        Row: {
+          badge: string
+          earned_at: string
+          user_id: string
+        }
+        Insert: {
+          badge: string
+          earned_at?: string
+          user_id: string
+        }
+        Update: {
+          badge?: string
+          earned_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       breathers: {
         Row: {
           announced_at: string
@@ -2438,6 +2456,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      verdien_badges: { Args: { p_user_id: string }; Returns: number }
       verdien_weekpassen: {
         Args: { p_goal_id: string; p_user_id: string }
         Returns: undefined
