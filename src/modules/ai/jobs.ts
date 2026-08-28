@@ -135,6 +135,12 @@ function aanvraagMelding(reden: string | undefined, limiet: number | undefined):
       return t('coach.daglimiet', { limiet: limiet ?? 10 });
     case 'not_your_goal':
       return t('coach.niet_jouw_doel');
+    // ⚠️ Een eigen melding en niet de generieke, want dit is het enige geval dat
+    //    de gebruiker zélf kan oplossen: hij heeft te veel tekst meegestuurd.
+    //    Het getal noemen we niet — de grens staat in `ai_invoer_max()` en dat is
+    //    de enige plek waar hij hoort te staan (zie 0120).
+    case 'invoer_te_groot':
+      return t('coach.invoer_te_groot');
     case 'not_signed_in':
       return t('coach.niet_ingelogd');
     default:

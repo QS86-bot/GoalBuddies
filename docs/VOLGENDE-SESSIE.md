@@ -1000,11 +1000,13 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    633 tegenover 41 ms bij een *sequentiële* scan en 2,3 tegenover 2,0 ms mét
    index. Nooit langzamer, soms vijftien keer sneller — geen brand. Zie
    `docs/decisions/2026-08-28-auth-uid-een-keer-per-query.md`.
-4. **Zes tekstkolommen zonder lengtegrens** (`goals.description`,
-   `identity_statement`, `milestones.title`/`description`, `weekly_goals.floor_text`/
-   `ceiling_text`) terwijl `goals.title` er wél één heeft, en **het AI-dagquotum
-   telt jobs in plaats van tokens** — een invoer van 450.000 tekens werd
-   geaccepteerd. Opslag- en kostenmisbruik op een gratis tier zonder backups.
+4. ✅ **Gedicht in 0120, ook op productie — en het waren er veertien, niet zes.**
+   Elke tekstkolom die `authenticated` mag schrijven heeft nu een lengtegrens, en
+   de AI-invoer is begrensd op 8.000 codepunten (twee keer wat het formulier
+   maximaal kan produceren). ⚠️ **Eén ding is er níét mee opgelost en staat als
+   rij in het dossier:** `groups.tz` heeft dezelfde vorm als A38 — hij wordt
+   alleen in `create_group()` gevalideerd terwijl een beheerder hem via
+   `grant update (…, tz, …)` rechtstreeks mag zetten.
 5. **Vijf onbereikbare features.** `wijzigDoel()`, `wijzigMijlpaal()` en
    `fetchCommitmentSpoor()` hebben nul aanroepers; `group_members.status` heeft
    elf leesplekken en geen enkele knop; `ai_kosten_per_week()` draait nergens.
