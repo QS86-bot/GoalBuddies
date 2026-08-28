@@ -619,11 +619,28 @@ copy die een regel uitlegt die de gebruiker anders zelf moet raden.
 ## Commando's
 ```bash
 npm run dev
+npm run poort          # ⚠️ dit is de poort vóór een push — zie hieronder
 npm run typecheck
 npm run lint
 npm run test
 npm run build
 ```
+
+⚠️ **`npm run poort` draait álles: typecheck, lint, beide testsuites en elke
+`*:controle`.** Draai die en niet een greep eruit. Op 28-08-2026 ging PR #100 rood
+op `klokgrens:controle` omdat er vóór de push **vier van de tweeëntwintig**
+controles gedraaid waren — de controle deed precies zijn werk, de poort was de
+inschatting van een mens over zijn eigen werk.
+
+⚠️ **Een controle zonder database is niet groen maar *ongemeten*.** De poort houdt
+die twee uit elkaar en faalt op allebei. `functies:controle` en
+`register:controle` printen "OVERGESLAGEN" en geven daarna exitcode 0; wie alleen
+naar de exitcode kijkt, telt ze als bewijs.
+
+⚠️ **Een nieuwe migratie begint met `npm run migratie:nieuw -- "naam"`.** Die kijkt
+naar élke branch die de remote kent en niet alleen naar je eigen map. Op
+28-08-2026 botsten migratienummers **drie keer op één dag**, elke keer omdat er
+`max + 1` uit de werkkopie genomen werd terwijl het werk elders al hoger stond.
 
 ## Beslisbevoegdheid — vastgelegd 22-08-2026
 
