@@ -16,6 +16,61 @@ Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 > toetste met de ijkingstests wél dát ze werkten, en liet ze vervolgens niets
 > bewaken.
 
+## ⚠️ Twee manieren om jezelf een vals alarm aan te praten
+
+Beide zijn op 28-08-2026 in één auditronde voorgekomen, allebei binnen een uur,
+en allebei zagen ze eruit als een vondst.
+
+### 1. Tel geen rijen zonder te weten wat de functie belooft
+
+Niet elke functie met `bewaking` in zijn naam geeft **bevindingen** terug. Een
+paar geven een **rapport** — één rij per tabel of per trigger — en dan is een
+hoog aantal precies goed. Gemeten op een gezonde database:
+
+| geeft rijen op een gezonde database | betekenis |
+|---|---|
+| `realtime_bewaking` — **34** | rapport: één rij per tabel, met publicatie en replica-identity |
+| `onveranderlijkheid_bewaking` — **4** | rapport: één rij per grendel, met `heeft_grendel` |
+| `uitnodigingscode_bewaking` — **1** | rapport: alfabet, lengte, drempel, csprng |
+| `ddl_rechten_van_service_role` | geen tabel maar een **boolean**; `true` is goed |
+
+Alle andere zijn bevindingenlijsten en horen leeg te zijn:
+`ddl_rechten_in_de_api`, `definer_bewaking`, `domeinregel3_bewaking`,
+`indexdekking_bewaking`, `intrekvenster_bewaking`, `schrijfrechten_bewaking`,
+`triggerfuncties_in_de_api`, `viewrechten_bewaking`,
+`weekdoelstatus_afwijkingen`.
+
+⚠️ **`vastgelopen_goedkeuringen` (0109) is de vreemde eend en met opzet:** die
+meldt een gégevenstoestand die legitiem gaat voorkomen, geen schemafout. Nul is
+vandaag juist omdat de database leeg is; rijen zijn daar geen defect maar een
+signaal.
+
+⚠️ **De handtekening is geen betrouwbare aanwijzing.** `triggerfuncties_in_de_api`
+geeft `TABLE(functie, anon boolean, geauthenticeerd boolean)` en ziet er dus uit
+als een rapport — hij is een bevindingenlijst en hoort leeg te zijn. Lees bij
+twijfel `prosrc`, of draai hem tegen de verse lokale stack: wat dáár uit komt is
+per definitie de gezonde stand.
+
+### 2. Toets een weigering nooit op een lege tabel
+
+RLS **weigert** een UPDATE of DELETE niet — hij filtert de rijen weg. Op een
+lege tabel slaagt elke schrijfpoging dus zonder dat er iets gebeurt, en dat leest
+als "de policy staat open". Zet er eerst een échte rij in met de
+beheerdersclient, doe dan de poging als lid, en tel de rijen daarná. Dit is
+valkuil 5 én 8 uit `docs/WERKVOORRAAD.md` §7 — *"een ontbrekende policy weigert
+stil, niet luid"* en *"een redenering die klopt zolang een tabel leeg is, is geen
+bescherming"*. Een audit loopt daar net zo hard in als een test.
+
+⚠️ **En kijk bij een schrijfgrant zonder schrijfpolicy eerst naar 0073 vóór je
+het een gat noemt.** Supabase zet `alter default privileges … grant all on
+tables` voor `anon` en `authenticated`; 0073 (QS8-130, besluit van Quinten op
+24-08) heeft TRUNCATE en TRIGGER daaruit gehaald — die zijn níet aan RLS
+onderworpen — en `select, insert, update, delete, references` bewust laten
+staan, want díe zijn het wel. Een grant zonder policy is daar de bedoelde opzet
+en geen ontbrekende grendel.
+
+---
+
 1. **Nieuwe code deze week** — bekijk de commits sinds vorige week.
    Delegeer aan `code-critic` en `security-reviewer` voor een overzichtsreview
    van wat er nieuw bij is gekomen.
