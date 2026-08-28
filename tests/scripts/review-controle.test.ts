@@ -147,3 +147,53 @@ describe('wat de controle met rust moet laten', () => {
     expect(klachten).toHaveLength(0);
   });
 });
+
+/**
+ * De vijfde toets — dezelfde bevinding staat er maar één keer in (28-08-2026).
+ *
+ * ⚠️ **Dit stond op `main`, en het is er niet in één keer in gekomen.** Twee
+ *    slecht opgeloste merge-conflicten lieten twee rijen elk in **drievoud**
+ *    achter, plus zes losse conflictmarkeringen. Het is meegegaan door een merge,
+ *    een PR en een CI-run, en pas opgevallen doordat een vólgende merge geneste
+ *    markeringen opleverde.
+ *
+ * ⚠️ **De drie kopieën verschilden alleen in het migratienummer dat ze noemden**
+ *    — `0119`/`0121`/`0122` voor de ene rij en `0120`/`0122`/`0123` voor de
+ *    andere. Twee van de drie logen dus over waar de reparatie staat. Daarom is
+ *    de sleutel datum + titel en niet de volledige rij: op de volledige tekst
+ *    vergelijken vindt precies dít geval níét.
+ */
+describe('de vijfde toets — dubbele bevindingen', () => {
+  it('vindt twee rijen met dezelfde datum en dezelfde titel', () => {
+    const klachten = controleer([rij('Zelfde titel', 'a', 'Middel'), rij('Zelfde titel', 'b', 'Middel')]);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('dubbele-rij');
+  });
+
+  it('vindt ze ook als de rompen van elkaar verschillen', () => {
+    // Het echte geval: dezelfde bevinding, een ander migratienummer erin.
+    const klachten = controleer([
+      rij('Veertien tekstkolommen zonder lengtegrens', 'Gedicht in 0122.', '~~Middel~~ opgelost'),
+      rij('Veertien tekstkolommen zonder lengtegrens', 'Gedicht in 0123.', '~~Middel~~ opgelost'),
+    ]);
+
+    expect(klachten.map((k: { soort: string }) => k.soort)).toEqual(['dubbele-rij']);
+  });
+
+  it('laat twee rijen met dezelfde titel op verschillende datums met rust', () => {
+    // ⚠️ Een terugkerende bevinding krijgt een nieuwe rij met een nieuwe datum.
+    //    Die twee horen naast elkaar te staan; dat is geen duplicaat maar een
+    //    geschiedenis.
+    const uit = controleer([
+      '| 2026-08-25 | Zelfde titel | a | Middel |',
+      '| 2026-08-27 | Zelfde titel | b | Middel |',
+    ]);
+
+    expect(uit).toEqual([]);
+  });
+
+  it('laat twee verschillende bevindingen op dezelfde datum met rust', () => {
+    expect(controleer([rij('Eerste', 'a', 'Middel'), rij('Tweede', 'b', 'Middel')])).toEqual([]);
+  });
+});

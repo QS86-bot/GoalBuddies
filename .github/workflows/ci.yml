@@ -80,6 +80,13 @@ jobs:
       - name: RPC-argumenten bestaan echt
         run: npm run rpc:controle
 
+      # ⚠️ Achtergebleven conflictmarkeringen. Geen theorie: op 28-08 stonden er
+      #    zes in `docs/ENGINEER-REVIEW.md` op `main`, meegegaan door een merge,
+      #    een PR en een volledige CI-run. Elke bestaande controle deed zijn werk;
+      #    er was er geen die dít werk deed.
+      - name: Geen achtergebleven conflictmarkeringen
+        run: npm run markeringen:controle
+
       # ⚠️ Storage. Vandaag zijn er nul buckets en nul uploads, dus deze stap is
       #    groen omdat er niets ís — precies het groen waar dit project voor
       #    waarschuwt. Hij bestaat voor de dag dat de eerste upload gebouwd wordt:
