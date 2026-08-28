@@ -986,11 +986,14 @@ dossier; dit zijn de zwaarste, en ze staan hier omdat je er anders overheen lees
    `goal_group_links`, en die eist een UPDATE-recht dat er niet meer is — dus
    koppelen geeft `42501` tot `npm run deploy` gedraaid heeft. Zie
    `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
-2. **`te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test.**
-   De meldingenjob roept hem aan als `service_role`, dus RLS kijkt daar niet mee
-   en de functie ís de grens. De enige test toetst dát een gewone gebruiker hem
-   niet mag aanroepen. De groepsjoin met de hand losknippen liet de héle RLS-suite
-   groen — 558 van 558.
+2. ✅ **`te_beoordelen_voor()` heeft nu een inhoudelijke test** —
+   `tests/rls/beoordelingsgrens.test.ts`, tien tests via `adminDb()`. Alle zeven
+   clausules zijn met de hand losgeknipt en worden allemaal rood; vóór dit bestand
+   was elk van de zeven nul. ⚠️ **Eén ding blijft als ontwerpvraag open:** de
+   functie toetst het lidmaatschap van de beoordelaar en nergens dat van de
+   eigenaar. Bij vertrek maakt dat niets uit, maar een beheerder die een lid op
+   `paused` zet ontkoppelt niets. Zie de rij in het dossier en
+   `docs/decisions/2026-08-28-de-grens-in-de-functie.md`.
 3. **49 policies over 30 tabellen evalueren `auth.uid()` per rij**, terwijl
    `(select auth.uid())` er een InitPlan van maakt. Nul van de 58 doet het goed.
    Lokaal met `explain` aangetoond; bij een schaaldoel van 100k raakt dit elke
