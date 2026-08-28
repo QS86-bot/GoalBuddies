@@ -45,6 +45,17 @@ export interface TeBeoordelen {
   readonly achieved_level: string;
   readonly note: string | null;
   readonly submitted_at: string;
+  /**
+   * ⚠️ **Hoeveel bevestigingen deze week al heeft en er nodig zijn, in de groep
+   *    waarlangs jij kijkt** — QS8-65. Zonder deze twee is een meerderheidsregel
+   *    onzichtbaar: je bevestigt, de rij verdwijnt uit je lijst, en het weekdoel
+   *    blijft `pending` zonder dat iemand vertelt dat dat klopt.
+   *
+   *    Ze komen uit `openstaande_beoordelingen()` en worden hier niet uitgerekend.
+   *    De drempel is bevroren bij het indienen; alleen de database kent hem.
+   */
+  readonly approvals_done: number;
+  readonly approvals_required: number;
 }
 
 export interface Wachtrij {
@@ -87,6 +98,10 @@ function naarTeBeoordelen(rij: WachtrijRij): TeBeoordelen | null {
     achieved_level: rij.achieved_level ?? 'ceiling',
     note: rij.note,
     submitted_at: rij.submitted_at ?? '',
+    // ⚠️ Terugval op 0 en 1 — dat is de stand van vóór QS8-65 en de enige die
+    //    niets belooft: "0 van de 1" leest als "nog niemand", en dat klopt altijd.
+    approvals_done: rij.approvals_done ?? 0,
+    approvals_required: rij.approvals_required ?? 1,
   };
 }
 

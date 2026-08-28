@@ -683,6 +683,30 @@ export const en: Record<Sleutel, string> = {
   'bewijseis.note_required': 'Note required',
   'bewijseis.note_and_attachment': 'Note and attachment',
   'bewijseis.optional': 'Everything optional',
+  'goedkeuringsregel.any': 'One buddy',
+  'goedkeuringsregel.majority': 'A majority',
+  'goedkeuringsregel.quorum': 'A fixed number',
+  'goedkeuringsregel.any_uitleg':
+    'As soon as one buddy confirms your week, it counts. Fast, and enough for a ' +
+    'group that trusts each other.',
+  'goedkeuringsregel.majority_uitleg':
+    'More than half of your buddies have to confirm your week. The number moves ' +
+    'along as the group grows or shrinks.',
+  'goedkeuringsregel.quorum_uitleg':
+    'You pick how many buddies have to confirm a week. If there are fewer people ' +
+    'than that for a while, everyone present counts.',
+  'goedkeuringsregel.kop': 'When does a week count?',
+  'goedkeuringsregel.quorum_veld': 'How many confirmations?',
+  'goedkeuringsregel.quorum_hint': 'Between {min} and {max}.',
+  'goedkeuringsregel.niet_terugwerkend':
+    'What you pick here applies from the next week someone submits. Weeks already ' +
+    'waiting for a confirmation keep the rule from back then.',
+  'goedkeuringsregel.stand': '{gedaan} of {nodig} confirmations',
+  'goedkeuringsregel.nog_een': 'One more confirmation is needed.',
+  'goedkeuringsregel.nog_meer': '{aantal} more confirmations are needed.',
+  'validatie.quorum_bereik': 'Pick a number between {min} and {max}.',
+  'validatie.quorum_ontbreekt': 'Pick how many confirmations are needed.',
+  'validatie.quorum_overbodig': 'A number only belongs with a fixed number of confirmations.',
 
   'chat.titel': 'Group chat',
   'chat.eyebrow': 'GROUP CHAT',
