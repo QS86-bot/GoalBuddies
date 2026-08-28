@@ -185,7 +185,7 @@ export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
  *    strenger wil, kiest dat zelf.
  *
  * ⚠️ Deze lijst is een kopie van de CHECK `groups_approval_rule_valid` (migratie
- *    0110). Loopt hij uiteen, dan accepteert het scherm een waarde die de
+ *    0111). Loopt hij uiteen, dan accepteert het scherm een waarde die de
  *    database weigert — en dat is een storingsmelding op het moment dat iemand
  *    zijn groep instelt. `goedkeuringsregels.test.ts` legt de twee naast elkaar.
  */

@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0110 — De goedkeuringsregel per groep krijgt een drempel (QS8-65, PRD 6.4)
+-- 0111 — De goedkeuringsregel per groep krijgt een drempel (QS8-65, PRD 6.4)
 -- ---------------------------------------------------------------------------
 --
 -- ROLLBACK-PAD (in deze volgorde, en lees de waarschuwing eronder):

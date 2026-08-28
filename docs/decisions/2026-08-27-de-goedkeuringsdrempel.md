@@ -1,4 +1,4 @@
-# De goedkeuringsdrempel per groep — QS8-65 (PRD 6.4), migratie 0110
+# De goedkeuringsdrempel per groep — QS8-65 (PRD 6.4), migratie 0111
 
 **27-08-2026.** Twee acceptatiecriteria: *een regel per groep — één lid,
 meerderheid of quorum*, en *wijzigen raakt lopende goedkeuringen niet met
@@ -106,7 +106,7 @@ duikt"*) en de rest van het bestand groen.
 dezelfde aandacht gegeven als wie als derde bevestigt. Zou het punt pas bij het
 halen van de drempel vallen, dan betaalt alleen de laatste zich uit en wordt
 vroeg kijken onaantrekkelijk. Het punt hangt dus nog steeds aan
-`w.status = 'pending'`, precies als vóór 0110.
+`w.status = 'pending'`, precies als vóór 0111.
 
 **Het systeembericht wél.** "X bevestigde de week van Y" hoort pas in de chat als
 de week het ook gehaald heeft — anders staat er iets in de groepsfeed dat niet
@@ -165,7 +165,7 @@ uitgeprobeerd in plaats van opgeschreven, en dat legde iets anders bloot:
 idempotent zijn; dat is aantoonbaar niet zo, en `migraties:controle` toetst het
 niet — die kijkt naar nummering en naar de aanwezigheid van een rollback-kop.
 
-Concreet voor wie 0110 terugrolt: 0094 breekt af op regel 127 en 0059 op regel
+Concreet voor wie 0111 terugrolt: 0094 breekt af op regel 127 en 0059 op regel
 203, allebei vóór de functie die je nodig hebt. Neem uit die bestanden alleen het
-`create or replace function`-blok. Staat zo in de kop van 0110, en als eigen rij
+`create or replace function`-blok. Staat zo in de kop van 0111, en als eigen rij
 in `docs/ENGINEER-REVIEW.md`.

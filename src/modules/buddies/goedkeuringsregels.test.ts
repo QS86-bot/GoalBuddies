@@ -24,7 +24,7 @@ import {
  */
 
 const MIGRATIE = fileURLToPath(
-  new URL('../../../supabase/migrations/0110_goedkeuring_met_een_drempel.sql', import.meta.url),
+  new URL('../../../supabase/migrations/0111_goedkeuring_met_een_drempel.sql', import.meta.url),
 );
 
 /** De waarden uit `groups_approval_rule_valid`, zoals de migratie ze schrijft. */
