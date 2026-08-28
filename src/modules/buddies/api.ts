@@ -806,6 +806,20 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
  *    ledenlijst, ook niet van een groep waar je wél in zit. Hetzelfde doel kan in
  *    groep A staan en in groep B niet — dat is het acceptatiecriterium uit de PRD
  *    en het is de reden dat `goal_group_links` een aparte tabel is.
+ *
+ * ⚠️ **`ignoreDuplicates` en geen gewone upsert, en dat is een reparatie.** Tot
+ *    28-08 stond hier `upsert(...)` zonder die vlag, en dat vertaalt PostgREST
+ *    naar `on conflict do update`. `goal_group_links` heeft bewust geen
+ *    UPDATE-policy — er valt aan een koppeling niets bij te werken — dus liep een
+ *    tweede koppeling van hetzelfde paar op `new row violates row-level security
+ *    policy` en zag de gebruiker "koppelen mislukt" terwijl de koppeling er
+ *    gewoon stond. Gemeten op een echte Postgres 16, niet beredeneerd.
+ *
+ * ⚠️ **En het is de voorwaarde onder migratie 0118.** `on conflict do update`
+ *    eist het UPDATE-tabelrecht al bij het plannen, óók als er geen conflict is —
+ *    ook dát is gemeten. Zolang deze regel een upsert was, hield precies dat
+ *    inerte recht een werkende knop overeind, en had het intrekken ervan het
+ *    koppelen in zijn geheel gesloopt. `do nothing` heeft het recht niet nodig.
  */
 export async function koppelDoelAanGroep(
   goalId: string,
@@ -813,7 +827,10 @@ export async function koppelDoelAanGroep(
 ): Promise<Resultaat<true>> {
   const { error } = await supabase()
     .from('goal_group_links')
-    .upsert({ goal_id: goalId, group_id: groupId }, { onConflict: 'goal_id,group_id' });
+    .upsert(
+      { goal_id: goalId, group_id: groupId },
+      { onConflict: 'goal_id,group_id', ignoreDuplicates: true },
+    );
 
   if (error) {
     reportError(error, 'groups.link', { group_id: groupId, goal_id: goalId, pgcode: error.code });

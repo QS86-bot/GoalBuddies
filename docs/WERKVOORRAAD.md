@@ -37,9 +37,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **561 geslaagd, 1 overgeslagen** (28-08, na de vijf reparaties uit de
-   controleronde). De hele suite geeft met de stack **1795 geslaagd en 1
-   overgeslagen**; zonder credentials **1255 geslaagd en 541 overgeslagen**.
+   **563 geslaagd, 1 overgeslagen** (28-08, na 0118). De hele suite geeft met de
+   stack **1808 geslaagd en 1 overgeslagen**; zonder credentials **1266 geslaagd
+   en 543 overgeslagen**.
    Typecheck, lint en alle 22 controlescripts groen.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
@@ -94,19 +94,15 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0117`
-staan in de map — 117 genummerde plus `0039a`, `0041a` en `0052a` — en sinds
-28-08-2026 staan ze **alle 120 op productie**. Hieronder staat per groep hoe ze
-er gekomen zijn, want dat is drie keer anders gegaan.
+**Database — af, en nu ook getest.** 34 tabellen. Migraties `0001` t/m `0119`
+staan in de map: 122 bestanden, de drie met een `a`-achtervoegsel meegeteld.
+Daarvan staan `0001` t/m `0118` op productie — 121 registerrijen, nul
+tijdstempels.
 
-⚠️ **Productie loopt één migratie vóór op `main`, gemeten op 28-08-2026.** Het
-register telt 121 regels en nul tijdstempels, en die ene extra is `0118`
-(`een_grant_die_niets_geeft_hoort_weg`). Het bestand staat op de branch
-`fix/schrijfrechten-zonder-policy` en nog niet in `main`. Zolang dat zo is,
-bouwt `supabase/migrations/` **niet** het schema van productie op — precies het
-gat waar §4 hieronder voor waarschuwt, en de RLS-suite toetst dus een database
-zonder die intrekking. Landt die branch, dan is het weer gelijk; landt hij niet,
-dan hoort de intrekking op productie teruggedraaid te worden. Niet laten staan.
+⚠️ **`0119` staat nog níet op productie.** Hij weigert een `tz`-waarde die geen
+tijdzone is, op `profiles` en `groups`; wat er zonder hem misging staat in het
+reviewdossier. Toepassen kan pas als `0118` in `main` zit, want deze branch
+stapelt erop.
 
 ⚠️ **`0111` t/m `0113`** — de goedkeuringsdrempel, de
 seizoensrecap en de badges. Ze zijn op 28-08 met de hand toegepast en het
@@ -125,6 +121,14 @@ met `lijn_migratieregister_uit()` uit 0081 en nagemeten in plaats van aangenomen
 0111 t/m 0117 al; die raken geen enkel object dat deze vijf herschrijven — 0112
 en 0115 noemen `ketting_stand()` alleen in commentaar. Alle negen gewijzigde
 functies zijn daarna byte-identiek aan de repo bevonden (`md5(prosrc)`).
+
+⚠️ **`0118` is nieuw op productie en vraagt nog één handeling van jou.** Hij trekt
+76 schrijfrechten in die geen enkele policy achter zich hebben, en één daarvan
+hield de knop "koppel doel aan groep" overeind: de datalaag deed een `upsert`, en
+`on conflict do update` eist het UPDATE-tabelrecht al bij het plannen. De
+reparatie (`ignoreDuplicates`) zit in de bundel, niet in de database. **Tot `npm
+run deploy` gedraaid heeft, geeft koppelen op `goalbuddies.q-projects.tech`
+`42501`.** Zie `docs/decisions/2026-08-28-een-grant-die-niets-geeft.md`.
 
 ⚠️ **Eén fout onderweg, en die is met meten gevonden.** Bij het overzetten van
 0114 werden de `\uXXXX`-reeksen in `tip_bevat_emoji()` als échte tekens
