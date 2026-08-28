@@ -43,6 +43,45 @@ module.exports = [
     },
   },
   {
+    // ⚠️ **De datalaag wijst niet naar de presentatielaag.** `modules/` mag een
+    //    tÿpe uit `shared/ui` lenen, maar geen wáárde: dan draait de datalaag op
+    //    code uit de schermlaag en is de architectuur uit `CLAUDE.md` omgekeerd.
+    //
+    // ⚠️ **Dit is de "wordt zwaarder als" van een bevinding van 19-08, en die
+    //    gold stil.** Die rij zei: het is vandaag een `import type` en dus geen
+    //    runtime-koppeling, maar wordt zwaarder zodra het er wél een wordt. Op
+    //    28-08 nagemeten met een echte waarde-import erbij: typecheck én lint
+    //    bleven allebei groen. De voorwaarde zou dus intreden zonder dat er iets
+    //    rood werd — precies de klasse waar dit project vier keer voor betaald
+    //    heeft.
+    //
+    // ⚠️ **`allowTypeImports` staat aan, en dat is geen halve maatregel.** Vier
+    //    plekken lenen vandaag een type (`KettingStand`, `RisicoReden`,
+    //    `RisicoStand`, `WeekpasStand`) en `verbatimModuleSyntax` zorgt dat een
+    //    `import type` niets in de bundel achterlaat. Of die vier types daar
+    //    thuishoren is een conventievraag voor de engineer-review; deze regel
+    //    beantwoordt hem niet, hij houdt alleen tegen dat het stilletjes erger
+    //    wordt.
+    files: ['src/modules/**/*.ts', 'src/modules/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/shared/ui', '**/shared/ui/*'],
+              allowTypeImports: true,
+              message:
+                'De datalaag mag uit shared/ui alleen een type lenen (`import type`), geen waarde. Anders wijst modules/ naar de schermlaag. Zie de rij van 19-08 in docs/ENGINEER-REVIEW.md.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // ⚠️ CLAUDE.md, correctheidsregel 7: geen tijd- of weekberekening buiten
     //    shared/time. Deze regel is een vangnet, geen bewijs — hij vangt de
     //    voor de hand liggende gevallen, niet alles.
