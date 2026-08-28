@@ -595,10 +595,10 @@ kan een sessie **niet** zelf oppakken:
 | Issue | Waarom niet |
 |---|---|
 | QS8-71, QS8-72 | Vragen Supabase Storage: een bucket, `storage.objects`-policies, een betaalde tier en een nieuw groepszichtbaar oppervlak. Overleg met Quinten |
-| QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid |
+| QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
-| QS8-109 | Vraagt een illustrator |
+| QS8-109 | **Alleen de vórmgeving nog** — die vraagt een illustrator, en Quinten onderzoekt zelf wat hij wil (28-08). Niet oppakken in een `/verder`-ronde; niet nodig voor de MVP. **Het gedrág is wél gebouwd:** de coach moedigt ongevraagd aan bij een tegenvallende stand (variant B, besluit 28-08), met de toon onder test. Zie `docs/GROENE-NOTITIES.md` §3b |
 
 **Wat er wél ligt is de controleronde van 28-08**, en die heeft meer werk
 opgeleverd dan de backlog. Zeven agents over ~99.500 regels; de vijf blokkerende

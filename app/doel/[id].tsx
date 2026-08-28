@@ -1284,6 +1284,8 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
         </Button>
       )}
 
+      <Coachwoord stand={risico.stand} />
+
       {/*
         ⚠️ Deze zin staat er omdat de gebruiker anders moet raden hoeveel hij
            deelt. Een risicostand is een afgeleide van gemiste weken, en dat is
@@ -1293,6 +1295,40 @@ function Risicoradar({ risico }: { readonly risico: Risico | null }) {
       */}
       <Caption>{t('radar.alleen_jij')}</Caption>
     </Card>
+  );
+}
+
+/**
+ * Het woord van de Doelcoach bij een tegenvallende stand — besluit 28-08-2026.
+ *
+ * ⚠️ **Variant B, en dat is een keuze van Quinten met een reden erbij.** Er lag
+ *    een regel dat de coach *"nooit ongevraagd bij stilstand"* spreekt, omdat
+ *    een coach die uit zichzelf begint een controleur wordt. Quinten heeft die
+ *    afgewogen en gekozen voor ongevraagd aanmoedigen, met de testronde als
+ *    ijkpunt: valt het verkeerd, dan gaat het alsnog naar variant A (alleen als
+ *    je de coach zelf aanspreekt). Zie `docs/GROENE-NOTITIES.md` §3b.
+ *
+ * ⚠️ **Waarom dit domeinregel 7 niet raakt, en waarom dat gemeten is en niet
+ *    aangenomen.** Dit blok hangt aan `risico`, en dat komt uit `goal_risk`.
+ *    Die tabel draagt sinds migratie 0050 één policy — `goal_risk_select` met
+ *    `owner_id = auth.uid()` — dus een groepsgenoot krijgt hier `null` en ziet
+ *    niets. De grens ligt in de database en niet in dit scherm.
+ *
+ * ⚠️ **Aanmoedigen is hier niet "je kunt het".** Elke zin wijst naar iets wat de
+ *    app écht kan: de vloer (domeinregel 8), de adempauze, of het bijstellen van
+ *    de streefdatum. Een aanmoediging zonder handvat is een dooddoener, en die
+ *    leert een gebruiker het blok over te slaan.
+ */
+function Coachwoord({ stand }: { readonly stand: Risico['stand'] }) {
+  // Op koers is er niets aan te moedigen. Een coach die ook dán iets zegt,
+  // wordt behang.
+  if (stand === 'on_track') return null;
+
+  return (
+    <>
+      <Caption>{t('coach.woord_kop')}</Caption>
+      <Body>{t(`coach.woord.${stand}`)}</Body>
+    </>
   );
 }
 
