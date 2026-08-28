@@ -32,7 +32,11 @@ describe('reportError', () => {
 
     reportError(
       new Error(
-        "duplicate key value violates unique constraint: Key (invite_code)=('zomer-2026') " +
+        // ⚠️ **Zonder aanhalingstekens om de waarde, want zo schrijft Postgres
+        //    het.** Hier stond `=('zomer-2026')` mét quotes, en dáárop sloeg
+        //    `QUOTED` aan — de test was groen om de verkeerde reden. Op 28-08
+        //    overgetypt uit een échte Postgres 16.
+        'duplicate key value violates unique constraint: Key (invite_code)=(zomer-2026) ' +
           'already exists — meld het aan sanne@voorbeeld.nl',
       ),
       'buddies.create',

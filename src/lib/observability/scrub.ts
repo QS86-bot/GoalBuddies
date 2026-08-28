@@ -40,17 +40,50 @@ const TOKEN = /eyJ[\w-]+\.[\w-]+(\.[\w-]+)?/g;
 /** Waarden tussen enkele of dubbele aanhalingstekens in Postgres-meldingen. */
 const QUOTED = /'[^']{0,500}'|"[^"]{0,500}"/g;
 
+/**
+ * De waarde uit de `DETAIL`-regel van een Postgres-constraintfout.
+ *
+ * ⚠️ **Deze regel bestaat omdat `QUOTED` hem níét ving, en de test die dat
+ *    beweerde toetste iets anders.** Postgres schrijft de gebroken waarde
+ *    tússen haakjes en zonder aanhalingstekens:
+ *
+ *      DETAIL:  Key (invite_code)=(DUP001) already exists.
+ *
+ *    Op 28-08-2026 gemeten tegen een échte Postgres 16, ook met een waarde met
+ *    een spatie erin (`Key (invite_code)=(met spatie)`) — er komen nooit
+ *    aanhalingstekens omheen. De fixture in `scrub.test.ts` schreef
+ *    `=('zomer-2026')` mét quotes, en dáárop sloeg `QUOTED` wél aan. De test was
+ *    groen terwijl elke uitnodigingscode ongeschoond naar Sentry ging.
+ *
+ * ⚠️ **De kolomnaam blijft staan, de waarde niet.** Een kolomnaam is
+ *    schemametadata en juist wat je bij het opzoeken nodig hebt; de waarde is
+ *    wat een gebruiker heeft ingetypt. Dat onderscheid is de hele reden dat dit
+ *    een eigen patroon is en geen bredere bezem.
+ *
+ * ⚠️ `QUOTED` haalde ondertussen wél de constraintnáám weg
+ *    (`"groups_invite_code_key"`). Dat is schemametadata en geen
+ *    persoonsgegeven — hij beschermde dus de veilige helft en liet de
+ *    gevaarlijke door. Bewust niet omgedraaid in deze wijziging: `QUOTED` vangt
+ *    ook echte geciteerde waarden elders, en dat versmallen is een aparte
+ *    afweging.
+ */
+const PG_DETAIL_WAARDE = /(Key \([^)]{0,200}\)=\()[^)]{0,500}(\))/g;
+
 export const REDACTED = '[weggelaten]';
 
 /** Een foutmelding zonder e-mailadressen, tokens of geciteerde waarden. */
 export function scrubMessage(message: string): string {
-  return message
-    .replace(EMAIL, '[e-mail]')
-    .replace(TOKEN, '[token]')
-    // Postgres citeert de waarde die een constraint brak. Precies de waarde die
-    // je niet wilt versturen: "Key (invite_code)=(zomer-2026) already exists".
-    .replace(QUOTED, REDACTED)
-    .slice(0, 500);
+  return (
+    message
+      .replace(EMAIL, '[e-mail]')
+      .replace(TOKEN, '[token]')
+      // ⚠️ Vóór `QUOTED`, want die zou de haakjesvorm niet raken maar wél de
+      //    aanhalingstekens eromheen kunnen opeten als er ooit een variant komt
+      //    waarin ze allebei voorkomen.
+      .replace(PG_DETAIL_WAARDE, `$1${REDACTED}$2`)
+      .replace(QUOTED, REDACTED)
+      .slice(0, 500)
+  );
 }
 
 /**
