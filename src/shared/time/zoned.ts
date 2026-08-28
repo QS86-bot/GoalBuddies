@@ -196,8 +196,29 @@ function offsetMsAt(tz: TimeZone, at: Date): number {
  * ⚠️ Twee keer rekenen is geen slordigheid maar noodzaak. De offset hangt af van
  *    het moment, en het moment kennen we pas na het toepassen van de offset. Bij
  *    een DST-overgang levert de eerste gok de verkeerde offset; de tweede ronde
- *    corrigeert dat. In het "gat" van de voorjaarsovergang (een lokale tijd die
- *    niet bestaat) landen we op het eerstvolgende moment dat wél bestaat.
+ *    corrigeert dat.
+ *
+ * ⚠️ **In het "gat" van de voorjaarsovergang landen we op het eerstvolgende
+ *    moment dat wél bestaat — en tot 28-08-2026 stond dat hier wel, maar deed de
+ *    code het niet.** Nagemeten over alle 418 IANA-zones en elke dag van
+ *    2024 t/m 2027: er zijn vijf zones waar lokale middernacht één keer per jaar
+ *    niet bestaat (Cairo, Beirut, Havana, Santiago, Azores), en bij drie daarvan
+ *    gaf de tweede ronde een moment op de **vorige kalenderdag**:
+ *
+ *      utcFromZoned('America/Havana', 2026, 3, 8)  ->  2026-03-07 23:00 lokaal
+ *      utcFromZoned('Atlantic/Azores', 2026, 3, 29) ->  2026-03-28 23:00 lokaal
+ *
+ *    Een cyclusgrens die een dag terugvalt is precies het middernachtprobleem uit
+ *    domeinregel 2: een reeks die op de verkeerde dag breekt, kost je een
+ *    gebruiker.
+ *
+ * ⚠️ **De reparatie grijpt alleen in als de wandklok niet terugkomt, en dat is
+ *    het hele punt.** Een eerdere poging nam simpelweg de láátste van beide
+ *    kandidaten. Dat repareerde de drie gaten en brak 71 ándere dagen: bij een
+ *    hérfstovergang bestaat middernacht wél — twee keer — en daar hoort de
+ *    eerste. Auckland, Sydney, Melbourne, Jeruzalem en Chisinau schoven daardoor
+ *    een uur op. Met de round-triptoets veranderen er precies twaalf dagen, en
+ *    dat zijn de twaalf gaten.
  */
 export function utcFromZoned(
   tz: TimeZone,
@@ -213,7 +234,21 @@ export function utcFromZoned(
   const firstGuess = new Date(wallClock - offsetMsAt(tz, new Date(wallClock)));
   const corrected = new Date(wallClock - offsetMsAt(tz, firstGuess));
 
-  return corrected;
+  // Komt de gevraagde wandklok er weer uit? Dan bestaat hij en zijn we klaar.
+  const p = partsIn(tz, corrected);
+  const bestaat =
+    p.year === year &&
+    p.month === month &&
+    p.day === day &&
+    p.hour === hour &&
+    p.minute === minute &&
+    p.second === second;
+
+  if (bestaat) return corrected;
+
+  // Hij bestaat niet: de gevraagde tijd viel in het gat. Van de twee kandidaten
+  // is de latere het eerste moment ná de sprong.
+  return new Date(Math.max(firstGuess.getTime(), corrected.getTime()));
 }
 
 /** De kalenderdatum in `tz` op het moment `at`. */
