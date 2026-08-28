@@ -74,6 +74,8 @@ export {
   bewaarWeekafsluiting,
   fetchWeekafsluiting,
   fetchWeekafsluitingReacties,
+  type ReactieCursor,
+  type ReactiePagina,
   reageerOpAntwoord,
   REACTIES_PER_PAGINA,
   verwijderReactie,
