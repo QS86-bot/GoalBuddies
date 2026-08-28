@@ -938,6 +938,7 @@ export type Database = {
           description: string | null
           id: string
           identity_statement: string | null
+          losgekoppeld_op: string | null
           max_points: number
           owner_id: string
           status: string
@@ -952,6 +953,7 @@ export type Database = {
           description?: string | null
           id?: string
           identity_statement?: string | null
+          losgekoppeld_op?: string | null
           max_points?: number
           owner_id: string
           status?: string
@@ -966,6 +968,7 @@ export type Database = {
           description?: string | null
           id?: string
           identity_statement?: string | null
+          losgekoppeld_op?: string | null
           max_points?: number
           owner_id?: string
           status?: string

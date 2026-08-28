@@ -88,10 +88,10 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0109`
+**Database — af, en nu ook getest.** 31 tabellen. Migraties `0001` t/m `0110`
 staan in de map.
 
-⚠️ **`0107`, `0108` en `0109` zijn nog niet op productie gedraaid.** Alle drie zijn op
+⚠️ **`0107` t/m `0110` zijn nog niet op productie gedraaid.** Alle vier zijn op
 28-08-2026 gemerged en getoetst tegen een van nul af opgebouwde lokale stack,
 maar de sessie die ze schreef had geen `SUPABASE_SERVICE_ROLE_KEY` en
 `register:controle` sloeg zichzelf daarom over. **Draai `npm run db:push`.** Tot
@@ -106,12 +106,15 @@ dan geldt op productie:
   clientkant; zie de rij van 18-08.
 - `0109` — `vastgelopen_goedkeuringen()` bestaat daar niet, dus er is geen
   manier om te tellen hoeveel wachtende weken hun beoordelaars kwijt zijn.
+- `0110` — de rem van A7 is met drie verzoeken weg te nemen: ontkoppelen,
+  `zet_streefdatum()`, terugkoppelen. Gemeten: de datum schoof tien maanden op
+  en er ging **geen enkel verzoek** naar een buddy. Zie de rij van 17-08.
 
 ⚠️ **En `0109` heeft één hand-toevoeging in een gegenereerd bestand.**
 `src/lib/database.types.ts` wordt door `npm run db:types` uit het échte project
 gehaald, en daar bestaat de functie nog niet. Het blok
-`vastgelopen_goedkeuringen` is daarom met de hand toegevoegd, in exact de vorm
-die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
+`vastgelopen_goedkeuringen` en de kolom `goals.losgekoppeld_op` zijn daarom met
+de hand toegevoegd, in exact de vorm die de generator zou opleveren. **Draai je `db:types` vóór `db:push`, dan
 verdwijnt het blok en breekt de typecheck.** Dat is geen bug maar de juiste
 volgorde die zichzelf afdwingt: eerst pushen, dan genereren.
 
