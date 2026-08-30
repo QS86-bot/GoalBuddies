@@ -3,21 +3,28 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 28-08-2026, na de merge van PR #71 t/m #78 (QS8-56,
-> QS8-65, QS8-79, QS8-78 en de idempotentie-reparatie) en PR #85 t/m #90 (de vijf
-> blokkerende bevindingen uit de controleronde).
+> **Laatst bijgewerkt:** 30-08-2026, na de merge van PR #106 t/m #111 en na het
+> bijtrekken van Linear.
 >
-> **Twee dingen die de stand van dit project veranderen:**
+> **Drie dingen die de stand van dit project veranderen:**
 >
-> 1. **De `phase:v2`-voorraad die een sessie alleen kan bouwen, is leeg.** Alle
->    vier de issues die zonder overleg te bouwen waren, staan op `main`. Wat er in
->    Linear overblijft vraagt Storage, een betaalprovider, een dependency, een
->    illustrator of een module waar een andere sessie in werkt. **Begin dus niet
->    in Linear** — begin in `docs/ENGINEER-REVIEW.md`; zie "Waar te beginnen".
-> 2. **Er is op 28-08 een volledige controleronde gedraaid** met zeven agents over
+> 1. ⚠️ **Iemand heeft de app dóórgelopen, en dat verandert alles wat hieronder
+>    stond.** Tot 30-08 zei dit document dat er in Fase 1 geen bouwwerk meer
+>    openstond en dat alles op Quintens hand wachtte. Die stand kwam uit de
+>    documenten en uit de code — **er was niemand die de app gebruikt had.** Nu
+>    wel, en dat leverde veertien issues op waarvan **vier Urgent**. **Begin
+>    daar.**
+> 2. ✅ **Linear is weer de bron van waarheid.** Elke status is tegen de code
+>    nagelopen, het werk dat tussen 27 en 30-08 landde terwijl Linear op zijn
+>    gratis limiet zat staat er alsnog op, en **elke open rij uit
+>    `docs/ENGINEER-REVIEW.md` heeft nu een eigen issue**. QS8-169 is de index.
+>    ⚠️ Dat maakt het dossier en Linear twee plekken die hetzelfde zeggen: werk
+>    je een bevinding bij, werk dan beide bij.
+> 3. **Er is op 28-08 een volledige controleronde gedraaid** met zeven agents over
 >    ~99.500 regels. De vijf blokkerende bevindingen zijn gerepareerd, inclusief
->    twee lekken die op productie live stonden. De rest staat als rij in het
->    reviewdossier.
+>    twee lekken die op productie live stonden. Vier controlescripts bleken
+>    daarna zélf blind te zijn (`keten:`, `tekst:`, en nieuw: `rpc:` en
+>    `markeringen:`); allemaal gerepareerd en geijkt.
 
 ---
 
@@ -34,15 +41,25 @@ WERKVOORRAAD §4.
 
 ## STAND VAN ZAKEN
 
-Fase 1 is inhoudelijk af: elke epic staat, 0 t/m 12. EPIC 9 (het commitment
-device) is sinds 21-08 af, en EPIC 11 op de aflevering na — zie hieronder.
+Elke epic staat, 0 t/m 13. EPIC 9 is sinds 21-08 af, EPIC 11 op de aflevering na.
 
-⚠️ **En sinds 27-08 is Fase 2 begonnen, met Quintens goedkeuring, terwijl Fase 1
-nog openstaat.** Dat mag omdat wat er van Fase 1 rest zíjn hand vraagt en geen
-code. **Op 28-08 is die opening ook weer dicht:** alle vier de `phase:v2`-issues
-die een sessie zelfstandig kon bouwen staan op `main` (QS8-56, QS8-65, QS8-79,
-QS8-78). Wat er in de backlog overblijft vraagt Quinten of een dependency.
-**Lees "Waar te beginnen" punt 0 vóór je iets doet.**
+⚠️ **Maar "af" betekende tot 30-08: af volgens de code en de documenten.** Op die
+dag is de app voor het eerst dóórgelopen door een mens, en toen bleek er wél
+bouwwerk open te staan. Vier issues op **Urgent**:
+
+| Issue | Wat |
+|---|---|
+| **QS8-195** | De Doelcoach is vanaf het web **onbereikbaar** — de CORS-preflight krijgt 405, dus de functie wordt nooit aangeroepen. Twee jobs staan nog op `queued`. **Dit blokkeert alles wat over gegenereerde mijlpalen of weekdoelen gaat** |
+| **QS8-211** | Elk scherm buiten de tabbladen is een doodlopende weg: geen terug, geen verder |
+| **QS8-200 / QS8-201** | Epic + issue: van aanmelden naar een plan in tien minuten, uit één zin |
+
+⚠️ **Dat is de duurste les van dit project in zijn zuiverste vorm**, en hij staat
+al als vraag 5 bij onwrikbare regel 18: *kan een gebruiker hier daadwerkelijk
+bij, en langs welke knop?* Elk onderdeel was af, getest en gemeten. De keten was
+op één plek verbroken en geen enkele test kon dat zien — de RLS-suite raakt de
+Edge Functions niet aan, en er is geen test die een echte HTTP-aanroep doet.
+
+**Begin bij QS8-195.** Dat is de enige van de vier die de rest blokkeert.
 
 **De app is live op `goalbuddies.q-projects.tech`** (QS8-99/QS8-100). Deployen is
 één commando:
