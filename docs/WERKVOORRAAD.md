@@ -57,22 +57,23 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 8. **Werk landt sinds 23-08 via een PR**, met een merge-commit en niet met een
    squash, en met **één branch per Linear-issue** — de naam die Linear voorstelt,
    anders koppelt hij niets. Vastgelegd in `CLAUDE.md`. Zie §3b.
-9. **Wat op Quinten wacht staat sinds 24-08 op het bord, niet meer alleen in
-   `docs/Q-TODO.docx`.** Alles met status **Todo** in Linear is van hem:
-   QS8-126 (de repo staat publiek), QS8-131 (21 commits buiten `main`, urgent),
-   QS8-127 (A37), QS8-128 (A41+A42+A44), QS8-129 (A43), QS8-130 (A46) en
-   QS8-122. ⚠️ **B4 staat niet meer in die lijst** — `expo-notifications` staat
-   sinds PR #9 op `main`; dat besluit wachtte op een merge en niet op een
-   antwoord, en die merge is er. Q-TODO blijft de onderbouwing dragen; de status staat
-   in Linear.
+9. **Wat op Quinten wacht staat op het bord, niet in dit document.** Alles met
+   status **Todo** in Linear is van hem. ⚠️ **Die lijst stond hier tot 30-08
+   uitgeschreven en liep achter** — hij noemde zes issues die inmiddels Done
+   zijn. Dat is precies de vorm die QS8-125 heeft opgelost: één stand op één
+   plek. **Filter in Linear op Todo; die lijst is per definitie actueel.**
+   Q-TODO blijft de onderbouwing dragen, de status staat in Linear.
 10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens, en daarom is Fase 2
     op 27-08 begonnen.** EPIC 9 is sinds 21-08 af. Wat van Fase 1 overblijft
     vraagt jouw hand en geen code: een browser met VAPID-sleutels (QS8-124), een
     iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een lokale stack
     (QS8-22, A9). Quinten heeft daarop drie `phase:v2`-issues met naam
     vrijgegeven terwijl het exit-criterium van Fase 1 nog staat — welke, en wat
-    dat níet betekent, staat bij *Milestone: Fase 2 en Fase 3* in §4. **Het bord
-    klopt beter dan deze documenten** — kijk dus eerst in Linear en dan pas hier.
+    dat níet betekent, staat bij *Milestone: Fase 2 en Fase 3* in §4.
+    ⚠️ **Sinds 30-08 klopt het bord weer volledig**, en dat is geen aanname meer:
+    elke status is tegen de code nagelopen, en het werk dat tussen 27 en 30-08
+    landde terwijl Linear op zijn gratis limiet zat, staat er alsnog op — 32
+    issues erbij. **Kijk eerst in Linear en dan pas hier.**
 
 ---
 
