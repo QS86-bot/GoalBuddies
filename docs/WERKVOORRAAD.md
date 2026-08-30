@@ -70,10 +70,13 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
     (QS8-22, A9). Quinten heeft daarop drie `phase:v2`-issues met naam
     vrijgegeven terwijl het exit-criterium van Fase 1 nog staat — welke, en wat
     dat níet betekent, staat bij *Milestone: Fase 2 en Fase 3* in §4.
-    ⚠️ **Sinds 30-08 klopt het bord weer volledig**, en dat is geen aanname meer:
-    elke status is tegen de code nagelopen, en het werk dat tussen 27 en 30-08
-    landde terwijl Linear op zijn gratis limiet zat, staat er alsnog op — 32
-    issues erbij. **Kijk eerst in Linear en dan pas hier.**
+    ⚠️ **Op 30-08 is het bord bijgetrokken**: elke status is tegen de code
+    nagelopen, en het werk dat tussen 27 en 30-08 landde terwijl Linear op zijn
+    gratis limiet zat, staat er alsnog op. **Ook elke open rij uit
+    `docs/ENGINEER-REVIEW.md` heeft sindsdien een eigen issue** — Quinten wil ze
+    op het bord kunnen teruglezen. ⚠️ Dat maakt het dossier en Linear twee
+    plekken die hetzelfde zeggen; werk je een bevinding bij, werk dan beide bij.
+    De wegwijzer staat in QS8-169. **Kijk eerst in Linear en dan pas hier.**
 
 ---
 
