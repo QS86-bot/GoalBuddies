@@ -40,30 +40,35 @@ interface Afwijking {
 
 describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', () => {
   let alice: TestUser;
+  let doelId: string;
   let weekdoelId: string;
   let cyclusStart: string;
 
   /**
-   * De afwijkingen van **dit** weekdoel.
+   * De afwijkingen van **dit doel**, begrensd door de database zelf.
    *
-   * ⚠️ **Bewust gefilterd, en dat is geen zwakkere test maar de juiste.**
-   *    `weekdoelstatus_afwijkingen()` leest de héle database, en andere suites
-   *    in dezelfde stack zetten `weekly_goals.status` rechtstreeks met de
-   *    admin-client zonder een voltooiing erbij — `besluiten.test.ts` en
-   *    `policies.test.ts` doen dat allebei, en dat ís drift volgens de definitie
-   *    hierboven. Een assertie op de globale lijst hangt daarmee af van de
-   *    volgorde waarin vitest de bestanden draait: hij slaagt of faalt naar
-   *    gelang wiens `afterAll` al gelopen heeft.
+   * ⚠️ **Hier stond een filter in JavaScript, en dat was de verkeerde plek.** De
+   *    oude opmerking klopte in zijn diagnose — `weekdoelstatus_afwijkingen()`
+   *    las de héle database, en andere suites zetten `weekly_goals.status`
+   *    rechtstreeks zonder voltooiing, wat volgens de definitie drift ís — maar
+   *    hij trok de verkeerde conclusie. Een filter ná afloop maakt de *lezing*
+   *    ongevoelig voor de buren en laat het *schrijven* ongemoeid: één test
+   *    verderop riep `herstel_weekdoelstatus()` ongescopeerd aan, en die zette
+   *    de weekdoelen van `reeks.test.ts` terug naar `todo`. Gemeten op 31-08;
+   *    zie de kop van migratie 0137.
    *
-   *    Dat is precies het soort test dat je één keer geel ziet en daarna
-   *    wegklikt. De belofte die hier hoort is "de cache van dít weekdoel volgt de
-   *    gebeurtenissen"; de globale nul is een auditvraag en staat als stap in
-   *    `/audit`.
+   *    Sinds 0137 dragen beide functies `p_goal_id`. De grens ligt nu in de
+   *    database, en daarom kan het filter hier wég — wat de test meteen
+   *    stérker maakt: verdwijnt de scoping ooit, dan lekt vreemde drift in deze
+   *    lijst en vallen de asserties hieronder om. Met het filter erin zou dat
+   *    stil zijn gebleven.
    */
   async function afwijkingen(): Promise<Afwijking[]> {
-    const { data, error } = await adminDb().rpc('weekdoelstatus_afwijkingen');
+    const { data, error } = await adminDb().rpc('weekdoelstatus_afwijkingen', {
+      p_goal_id: doelId,
+    });
     if (error) throw new Error(`afwijkingen lezen: ${error.message}`);
-    return ((data ?? []) as Afwijking[]).filter((a) => a.weekly_goal_id === weekdoelId);
+    return (data ?? []) as Afwijking[];
   }
 
   async function statusVan(id: string): Promise<string | null> {
@@ -88,6 +93,7 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
       .select('id')
       .single();
     if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+    doelId = doel.data.id;
 
     const weekdoel = await alice.db
       .from('weekly_goals')
@@ -139,12 +145,18 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
   it(
     'zet hem terug, en telt hoeveel',
     async () => {
-      // ⚠️ Geen assertie op het áántal: `herstel_weekdoelstatus()` repareert de
-      //    hele database en andere suites laten drift achter. Wat deze test
-      //    bezit is de status van dít weekdoel.
-      const { error } = await adminDb().rpc('herstel_weekdoelstatus');
+      // ⚠️ **Nu wél een assertie op het aantal, en dat is het bewijs dat de
+      //    grens werkt.** Hier stond "geen assertie op het áántal, want
+      //    `herstel_weekdoelstatus()` repareert de hele database" — een
+      //    opmerking die de nevenschade beschreef en accepteerde. Sinds 0137
+      //    scoopt de aanroep op dít doel, dus het antwoord is precies één, en
+      //    een tweede zou betekenen dat er vreemde rijen zijn meegegaan.
+      const { data, error } = await adminDb().rpc('herstel_weekdoelstatus', {
+        p_goal_id: doelId,
+      });
 
       expect(error).toBeNull();
+      expect(data).toBe(1);
       expect(await statusVan(weekdoelId)).toBe('todo');
       expect(await afwijkingen()).toEqual([]);
     },
@@ -181,7 +193,7 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
       expect(uit).toHaveLength(1);
       expect(uit[0]?.verwacht).toBe('pending');
 
-      await adminDb().rpc('herstel_weekdoelstatus');
+      await adminDb().rpc('herstel_weekdoelstatus', { p_goal_id: doelId });
       expect(await statusVan(weekdoelId)).toBe('pending');
     },
     TEST_TIMEOUT,
@@ -199,7 +211,7 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
 
       expect(await afwijkingen()).toEqual([]);
 
-      await adminDb().rpc('herstel_weekdoelstatus');
+      await adminDb().rpc('herstel_weekdoelstatus', { p_goal_id: doelId });
       expect(await statusVan(weekdoelId)).toBe('missed');
     },
     TEST_TIMEOUT,
