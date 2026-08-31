@@ -76,7 +76,23 @@ export default defineConfig({
           exclude: [...configDefaults.exclude, 'tests/rls/**'],
           sequence: { concurrent: false },
         },
-        resolve: { alias: { '@': resolve(here, './src') } },
+        resolve: {
+          alias: {
+            '@': resolve(here, './src'),
+            /**
+             * ⚠️ **Zodat een test een échte Edge Function kan importeren** —
+             * QS8-195. `supabase/functions/*` draait op Deno en importeert zijn
+             * client met een `jsr:`-specifier; Node kent die niet. Zonder deze
+             * regel is de enige manier om een handler te toetsen, hem
+             * nabouwen — en een nagebouwde reproductie die niets vindt, leest
+             * als bewijs dat er niets aan de hand is.
+             *
+             * De stub bootst niets na en valt bij elke aanroep om; zie
+             * `tests/edge/supabase-js-stub.ts`.
+             */
+            'jsr:@supabase/supabase-js@2': resolve(here, './tests/edge/supabase-js-stub.ts'),
+          },
+        },
       },
       {
         test: {

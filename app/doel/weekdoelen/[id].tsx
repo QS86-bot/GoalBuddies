@@ -55,7 +55,11 @@ export default function Weekdoelcoach() {
   } = useAsync(id ? () => laad(id, mijlpaalId ?? null) : null, [id, mijlpaalId]);
 
   return (
-    <Screen title={t('weekcoach.titel')} eyebrow={t('weekcoach.eyebrow')}>
+    <Screen
+      title={t('weekcoach.titel')}
+      eyebrow={t('weekcoach.eyebrow')}
+      terug={{ naar: `/doel/${id}` }}
+    >
       <AsyncView
         loading={loading}
         error={error}
@@ -87,6 +91,11 @@ export default function Weekdoelcoach() {
 
       <Button variant="stil" block onPress={() => router.replace(`/doel/${id}`)}>
         {t('weekcoach.terug')}
+      </Button>
+
+      {/* De instelroute heeft halverwege een uitgang nodig — QS8-211. */}
+      <Button variant="stil" block onPress={() => router.replace('/')}>
+        {t('nav.naar_overzicht')}
       </Button>
     </Screen>
   );

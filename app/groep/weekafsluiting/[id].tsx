@@ -157,6 +157,7 @@ export default function Weekafsluiting() {
 
   return (
     <Screen
+      terug={{ naar: `/groep/${id}` }}
       title={t('weekafsluiting.titel')}
       eyebrow={
         stand?.groep

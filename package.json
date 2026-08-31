@@ -36,6 +36,7 @@
     "edge:controle": "node scripts/edge-tijd-controle.mjs",
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
+    "uitgang:controle": "node scripts/uitgang-controle.mjs",
     "json:controle": "node scripts/json-controle.mjs",
     "poort:proef:overgeslagen": "node -e \"console.error('proef-controle: OVERGESLAGEN — geen sleutel'); process.exit(0)\"",
     "poort:proef:rood": "node -e \"console.log('op stdout'); console.error('op stderr'); process.exit(1)\"",

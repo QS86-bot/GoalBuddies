@@ -3,21 +3,23 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 28-08-2026, na de merge van PR #71 t/m #78 (QS8-56,
-> QS8-65, QS8-79, QS8-78 en de idempotentie-reparatie) en PR #85 t/m #90 (de vijf
-> blokkerende bevindingen uit de controleronde).
+> **Laatst bijgewerkt:** 31-08-2026, na QS8-195 en QS8-211 — de eerste twee
+> reparaties uit de doorloop van 30-08.
 >
-> **Twee dingen die de stand van dit project veranderen:**
+> **Het ding dat de stand van dit project verandert:**
 >
-> 1. **De `phase:v2`-voorraad die een sessie alleen kan bouwen, is leeg.** Alle
->    vier de issues die zonder overleg te bouwen waren, staan op `main`. Wat er in
->    Linear overblijft vraagt Storage, een betaalprovider, een dependency, een
->    illustrator of een module waar een andere sessie in werkt. **Begin dus niet
->    in Linear** — begin in `docs/ENGINEER-REVIEW.md`; zie "Waar te beginnen".
-> 2. **Er is op 28-08 een volledige controleronde gedraaid** met zeven agents over
->    ~99.500 regels. De vijf blokkerende bevindingen zijn gerepareerd, inclusief
->    twee lekken die op productie live stonden. De rest staat als rij in het
->    reviewdossier.
+> **Op 30-08 is de app voor het eerst door een mens doorlopen.** Tot die dag
+> zeiden deze documenten dat Fase 1 af was en dat alles op Quintens hand wachtte.
+> Die stand kwam uit de code en uit de documenten — niemand had de app gebruikt.
+> De doorloop leverde **veertien issues** op, waarvan vier op Urgent, en die gaan
+> vóór alles wat er hieronder over volgorde staat.
+>
+> ⚠️ **Dat is geen pech maar een leemte in hoe hier gemeten wordt.** De vorige
+> regel hierboven zei dat de `phase:v2`-voorraad leeg was en dat je in het
+> reviewdossier moest beginnen. Er lag ondertussen een Doelcoach die vanaf het
+> web niet aan te roepen was en een app waarin geen enkel scherm buiten de
+> tabbladen te verlaten was. **Zeven review-agents over 99.500 regels vonden dat
+> geen van allen; één mens die de app tien minuten gebruikte, vond het meteen.**
 
 ---
 
@@ -28,9 +30,12 @@ Status Tracker). Een `git log` in de verkeerde map laat een schone, andere repo
 zien en dan lijkt er niets te doen.
 
 Lees eerst `CLAUDE.md`, dan `docs/WERKVOORRAAD.md` (sectie 0 geeft de stand in
-tien regels), dan `docs/Q-TODO.docx`. Haal daarna de openstaande issues op uit
-het Linear-project GoalBuddies en werk verder volgens de volgorde in
-WERKVOORRAAD §4.
+tien regels), dan dit bestand. Haal daarna de openstaande issues op uit het
+Linear-project GoalBuddies.
+
+⚠️ **Werk de doorloopbevindingen van 30-08 af en niet de volgorde in
+WERKVOORRAAD §4.** QS8-195 en QS8-211 zijn af (31-08); daarna QS8-200 en
+QS8-201.
 
 ## STAND VAN ZAKEN
 
@@ -282,6 +287,30 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een groene testsuite meet niet of de app te gébruiken is — 30-08.** Dit is
+  de duurste van de lijst, want hij gold voor het hele project tegelijk. Op 30-08
+  was er 1889 keer groen, 25 controlescripts, zeven review-agents over 99.500
+  regels en drie overdrachtsdocumenten die zeiden dat Fase 1 af was. Toen liep er
+  voor het eerst een mens door de app: **veertien issues, vier op Urgent.** De
+  Doelcoach was vanaf het web niet aanroepbaar (QS8-195) en geen enkel scherm
+  buiten de tabbladen was te verlaten (QS8-211).
+
+  Beide zijn onwrikbare regel 18 vraag 5 in zijn zuiverste vorm — elk onderdeel
+  af en getest, de keten op één plek verbroken — en beide waren in tien minuten
+  gebruik te vinden. **Draai de app zelf, of laat hem draaien, vóór je een feature
+  "af" noemt.** Een test bewijst dat een onderdeel doet wat je hem vroeg; hij
+  bewijst nooit dat er een knop naartoe leidt.
+
+- **⚠️ De grens van je testopstelling is een blinde vlek en geen achtergrond —
+  31-08.** `tests/rls/` raakt de Edge Functions niet aan, en er was geen enkele
+  test die een HTTP-verzoek aan een handler deed. Precies daar zat QS8-195, en
+  hij kon daar jaren zitten. De reparatie was niet "beter opletten": het
+  `jsr:`-specifier wijst in `vitest.config.mts` nu naar een stub, `Deno` wordt
+  vóór de import als globale gezet, en `tests/beloftes/edge-cors.test.ts` voert
+  de échte handlers een echt `OPTIONS`-verzoek. **Vraag bij elke laag: wat draait
+  hier waar geen enkele test bij kan, en wat kost het om erbij te komen?** Hier
+  was dat twintig regels configuratie.
 
 - **⚠️ `revoke ... from public` is in Supabase niet "van iedereen" — 28-08.**
   `alter default privileges` deelt élke nieuwe functie en tabel in `public` uit
@@ -947,26 +976,31 @@ werken wel. Reken erop dat dit soort opruimwerk bij jou terechtkomt.
 
 ## Waar te beginnen
 
-### 0. Er is geen Linear-issue om op te pakken — begin in het reviewdossier
+### 0. Begin bij de doorloop van 30-08 — niet in het reviewdossier
 
-⚠️ **Dit is anders dan bij elke vorige sessie, dus lees het vóór je `/verder`
-draait.** Alle vier de `phase:v2`-issues die een sessie zelfstandig kon bouwen
-zijn op 27/28-08 gebouwd en geland. Wat er in Linear Backlog overblijft — QS8-71,
-QS8-72, QS8-86, QS8-92, QS8-108 en QS8-109 — vraagt Storage, een betaalprovider,
-een dependency, een illustrator of een module waar een parallelle sessie in werkt.
-De volledige tabel met redenen staat in `docs/WERKVOORRAAD.md` §4.
+⚠️ **Dit punt zei tot 31-08 het tegenovergestelde**, en het is leerzaam waarom.
+Er stond: "Er is geen Linear-issue om op te pakken — begin in het reviewdossier",
+want de `phase:v2`-voorraad was leeg en de backlog vroeg Storage, een
+betaalprovider of een besluit van Quinten. Dat klopte op papier. Op 30-08 liep er
+voor het eerst een mens door de app en kwamen er **veertien issues** bij, vier op
+Urgent — waaronder een Doelcoach die vanaf het web niet aan te roepen was en een
+app waarin geen enkel scherm buiten de tabbladen te verlaten was.
 
-⚠️ **En Linear neemt geen nieuwe issues meer aan.** `save_issue` geeft *"You've
-exceeded the free issue limit for this workspace"*. Dat is al sinds 27-08 zo. Het
-gevolg voor jou: de conventie "één branch per Linear-issue" kan niet, dus werk op
-een `fix/…`- of `chore/…`-branch en zet de onderbouwing in de PR-tekst en in een
-beslisdocument. Upgraden kost geld en is dus grens 1 — vraag het aan Quinten,
-beslis het niet zelf.
+**De volgorde is nu:**
 
-**Waar het werk wél ligt:** `docs/ENGINEER-REVIEW.md`. Daar staan de bevindingen
-van de controleronde van 28-08, elk met de meting waarmee ze zijn vastgesteld en —
-bij een Laag-rij — de voorwaarde waaronder ze zwaarder worden. Dat is meer werk
-dan de backlog, en het is beter onderbouwd.
+| | Issue | Waarom in deze volgorde |
+|---|---|---|
+| ✅ | **QS8-195** | De CORS-preflight kreeg 405, dus alles wat over gegenereerde mijlpalen of weekdoelen gaat, stond stil. Af op 31-08 — ⚠️ **maar pas op productie na `npx supabase functions deploy doelcoach rollover notificaties`** |
+| ✅ | **QS8-211** | Elk scherm buiten de tabbladen was een doodlopende weg. Af op 31-08 |
+| → | **QS8-200 / QS8-201** | Van aanmelden naar een plan in tien minuten, en een doel uit één zin |
+
+Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
+van 28-08 staan met hun meting erbij.
+
+⚠️ **Linear neemt inmiddels wél weer nieuwe issues aan** — de veertien issues van
+30-08 staan er. De limietmelding *"You've exceeded the free issue limit"* van
+27/28-08 geldt niet meer, dus de conventie "één branch per Linear-issue" kan weer
+gewoon. Controleer dat wel even vóór je erop rekent.
 
 ### 0a. Wat de controleronde van 28-08 heeft achtergelaten
 

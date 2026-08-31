@@ -486,6 +486,12 @@ export const nl = {
   'onboarding.aan_de_slag': 'Aan de slag',
   'onboarding.verder': 'Verder',
   'onboarding.overslaan': 'Overslaan',
+
+  // Navigatie — QS8-211. Deze staan bewust apart van elk scherm: de terugknop en
+  // de uitgang uit de instelroute horen bij `Screen` en niet bij het scherm dat
+  // ze toevallig als eerste nodig had.
+  'nav.terug': 'Terug',
+  'nav.naar_overzicht': 'Klaar, naar mijn overzicht',
   'onboarding.profiel_titel': 'Even over jou',
   'onboarding.naamloos': 'Naamloos',
   'onboarding.naam': 'Hoe heet je?',

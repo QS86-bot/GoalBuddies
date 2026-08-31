@@ -92,7 +92,7 @@ export default function Doelcoach() {
   }, [id]);
 
   return (
-    <Screen title={t('coach.titel')} eyebrow={t('coach.eyebrow')}>
+    <Screen title={t('coach.titel')} eyebrow={t('coach.eyebrow')} terug={{ naar: `/doel/${id}` }}>
       <AsyncView
         loading={loading}
         error={error}
@@ -128,6 +128,11 @@ export default function Doelcoach() {
           </View>
         )}
       </AsyncView>
+
+      {/* De instelroute heeft halverwege een uitgang nodig — QS8-211. */}
+      <Button variant="stil" block onPress={() => router.replace('/')}>
+        {t('nav.naar_overzicht')}
+      </Button>
     </Screen>
   );
 }

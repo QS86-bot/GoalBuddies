@@ -7,9 +7,8 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 28-08-2026 (na QS8-56, QS8-65, QS8-79 en QS8-78, na de
-controleronde met zeven agents, en na de vijf reparaties die daaruit kwamen —
-PR #71 t/m #78 en #85 t/m #90)
+**Laatst bijgewerkt:** 31-08-2026 (na QS8-195 en QS8-211, de eerste twee
+reparaties uit de doorloop van 30-08)
 
 ---
 
@@ -18,10 +17,13 @@ PR #71 t/m #78 en #85 t/m #90)
 Lees dit eerst; de rest is naslag. **Tien regels, en dat is de bedoeling** —
 staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of §7.
 
-1. **Fase 1 is af op de laatste schakel van EPIC 11 na, en de app is live.**
-   Alle epics staan; EPIC 9 sinds 21-08. `goalbuddies.q-projects.tech` draait
-   (QS8-99/QS8-100) en deployen is `npm run deploy`. Volgorde in §4, wat er staat
-   in §2. ⚠️ Supabase Auth wijst nog naar het oude adres — zie §0a.
+1. **⚠️ Op 30-08 is de app voor het eerst door een mens doorlopen, en dát
+   verandert de stand.** Tot die dag zeiden deze documenten dat Fase 1 af was en
+   op Quintens hand wachtte — een stand die uit de code kwam en uit de
+   documenten, niet uit gebruik. De doorloop leverde veertien issues op, vier op
+   Urgent. **Begin daar en niet in §4.** Alle epics staan nog steeds en
+   `goalbuddies.q-projects.tech` draait (QS8-99/QS8-100); deployen is
+   `npm run deploy`. ⚠️ Supabase Auth wijst nog naar het oude adres — zie §0a.
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
@@ -37,10 +39,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **601 geslaagd, 1 overgeslagen** (28-08, na 0125). De hele suite geeft met de
-   stack **1889 geslaagd en 1 overgeslagen**; zonder credentials **1309 geslaagd
-   en 581 overgeslagen**.
-   Typecheck, lint en alle 25 controlescripts groen.
+   **605 geslaagd, 1 overgeslagen** (31-08, na QS8-211). De hele suite geeft met
+   de stack **2005 geslaagd en 1 overgeslagen**.
+   Typecheck, lint en alle 26 controlescripts groen; `npm run poort` meldt
+   30 stappen, allemaal groen en allemaal gemeten.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -65,14 +67,13 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    sinds PR #9 op `main`; dat besluit wachtte op een merge en niet op een
    antwoord, en die merge is er. Q-TODO blijft de onderbouwing dragen; de status staat
    in Linear.
-10. **⚠️ Alles in de MVP-volgorde is af of wacht op een mens, en daarom is Fase 2
-    op 27-08 begonnen.** EPIC 9 is sinds 21-08 af. Wat van Fase 1 overblijft
-    vraagt jouw hand en geen code: een browser met VAPID-sleutels (QS8-124), een
-    iPhone (QS8-117), het Supabase-dashboard (QS8-25, A10) en een lokale stack
-    (QS8-22, A9). Quinten heeft daarop drie `phase:v2`-issues met naam
-    vrijgegeven terwijl het exit-criterium van Fase 1 nog staat — welke, en wat
-    dat níet betekent, staat bij *Milestone: Fase 2 en Fase 3* in §4. **Het bord
-    klopt beter dan deze documenten** — kijk dus eerst in Linear en dan pas hier.
+10. **⚠️ De volgorde loopt sinds 30-08 langs de doorloopbevindingen en niet meer
+    langs §4.** QS8-195 en QS8-211 zijn af (31-08); daarna QS8-200/QS8-201. Wat
+    van Fase 1 overblijft vraagt nog steeds Quintens hand en geen code: een
+    browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117), het
+    Supabase-dashboard (QS8-25, QS8-141) en de twee deploys (QS8-139, QS8-140).
+    **Het bord klopt beter dan deze documenten** — kijk dus eerst in Linear en
+    dan pas hier.
 
 ---
 

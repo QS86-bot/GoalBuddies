@@ -179,7 +179,7 @@ export default function DoelDetail() {
   const klok = profiel ? userClock(profiel) : null;
 
   return (
-    <Screen title={t('doelscherm.titel')}>
+    <Screen title={t('doelscherm.titel')} terug={{ naar: '/doelen' }}>
       <AsyncView
         loading={loading}
         error={error}
@@ -297,6 +297,16 @@ export default function DoelDetail() {
           </View>
         )}
       </AsyncView>
+
+      {/*
+        ⚠️ Buiten de `AsyncView` — QS8-211. Staat de uitgang binnen de data-tak,
+           dan is hij er precies niet in de twee toestanden waarin je hem het
+           hardst nodig hebt: aan het laden en na een fout. Dit scherm heeft geen
+           tabbalk onder zich, dus dan is er niets.
+      */}
+      <Button variant="stil" block onPress={() => router.replace('/')}>
+        {t('nav.naar_overzicht')}
+      </Button>
     </Screen>
   );
 }
