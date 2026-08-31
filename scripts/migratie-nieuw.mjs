@@ -24,10 +24,11 @@
  * Draaien: `npm run migratie:nieuw -- "korte naam met streepjes"`.
  * Met `--droog` schrijft hij niets en zegt hij alleen welk nummer vrij is.
  */
-import { execFileSync } from 'node:child_process';
 import { readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { nummersPerBranch as nummersPerBranchVolledig } from './migratiebranches.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAP = 'supabase/migrations';
@@ -71,26 +72,26 @@ export function branchesVoorOp({ lokaal, perBranch }) {
     .sort((a, b) => b.hoogste - a.hoogste);
 }
 
-function git(...argumenten) {
-  return execFileSync('git', argumenten, { cwd: WORTEL, encoding: 'utf8' });
-}
-
+/**
+ * Per branch het hoogste nummer, afgeleid uit de gedeelde scan.
+ *
+ * ⚠️ **De scan zelf staat sinds QS8-238 in `migratiebranches.mjs`**, want
+ *    `migraties:controle` heeft hem óók nodig — en daar met de vólledige
+ *    verzameling in plaats van alleen het hoogste. Twee bijna gelijke git-scans
+ *    naast elkaar is precies hoe ze uit elkaar gaan lopen.
+ *
+ * ⚠️ Dit script had genoeg aan het hoogste nummer: het kiest er een vrij. De
+ *    controle heeft alles nodig, want een branch die 0126 t/m 0130 draagt terwijl
+ *    deze map op 0125 staat, geeft als hoogste 0130 — en dan weet je nog steeds
+ *    niet dat 0126 t/m 0129 ook ontbreken.
+ */
 function nummersPerBranch() {
-  const branches = git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin')
-    .split('\n')
-    .filter((r) => r.trim() !== '' && !r.endsWith('/HEAD'));
+  const volledig = nummersPerBranchVolledig();
+  if (volledig === null) return {};
 
   const perBranch = {};
-  for (const ref of branches) {
-    let namen = [];
-    try {
-      namen = git('ls-tree', '-r', '--name-only', ref, `${MAP}/`)
-        .split('\n')
-        .map((p) => p.split('/').pop() ?? '');
-    } catch {
-      // Een branch zonder migratiemap telt gewoon als nul.
-    }
-    perBranch[ref.replace('refs/remotes/', '')] = hoogsteIn(namen);
+  for (const [branch, nummers] of Object.entries(volledig)) {
+    perBranch[branch] = nummers.length === 0 ? 0 : Math.max(...nummers);
   }
   return perBranch;
 }
