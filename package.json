@@ -39,6 +39,7 @@
     "json:controle": "node scripts/json-controle.mjs",
     "poort:proef:overgeslagen": "node -e \"console.error('proef-controle: OVERGESLAGEN — geen sleutel'); process.exit(0)\"",
     "poort:proef:rood": "node -e \"console.log('op stdout'); console.error('op stderr'); process.exit(1)\"",
+    "adviseur:controle": "node scripts/adviseur-controle.mjs",
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
