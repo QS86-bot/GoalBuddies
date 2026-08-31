@@ -899,6 +899,10 @@ export const nl = {
     'Dit is een moment om je streefdatum bij te stellen, niet om te stoppen. Wat je tot nu toe deed, blijft staan.',
   'coach.titel': 'De Doelcoach',
   'coach.vastgelopen': 'De Doelcoach liep vast.',
+  'coach.plan_zonder_mijlpalen':
+    'Je doel staat, maar de stappen zijn niet opgeslagen. Voeg ze zelf toe of laat de coach het opnieuw proberen.',
+  'coach.plan_zonder_weekdoel':
+    'Je doel en je stappen staan. Alleen het weekdoel is niet opgeslagen — kies zelf wat je deze week doet.',
   'coach.daglimiet': 'Je hebt vandaag al {limiet} keer de Doelcoach gebruikt. Morgen kan het weer — je kunt intussen zelf mijlpalen toevoegen.',
   'coach.eyebrow': 'ZES VRAGEN',
   'coach.zes_vragen': 'Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de mijlpalen bij jou passen — maar overslaan werkt gewoon.',

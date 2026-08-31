@@ -84,6 +84,33 @@ export async function vraagMijlpalen(
 }
 
 /**
+ * Vraagt de coach om een compleet plan uit één zin — QS8-201.
+ *
+ * ⚠️ **`null` als doel, en dat is het hele punt van deze soort.** Bij de andere
+ *    drie bestaat het doel al en is de vraag "help me hiermee verder". Hier
+ *    bestaat het nog niet: dit is de vraag waaruit het doel ontstaat. De poort
+ *    slaat zijn eigendomscontrole over bij een NULL (`if p_goal_id is not null
+ *    and not exists ...`), en `ai_jobs_select` staat op `user_id`, dus de
+ *    aanvrager kan zijn eigen job gewoon ophalen. Allebei nagemeten vóór 0132.
+ *
+ * ⚠️ **Eén call en niet drie.** Titel, categorie, identiteitszin, mijlpalen én
+ *    het eerste weekdoel komen uit hetzelfde antwoord. Drie losse jobs zouden
+ *    drie plekken uit het dagquotum van tien kosten, drie wachttijden, en drie
+ *    kansen dat er één faalt.
+ *
+ * ⚠️ Dezelfde zin met dezelfde datum binnen een dag geeft hetzelfde plan terug
+ *    uit de cache (`hergebruikt: true`). Dat is goedkoop en snel, maar het
+ *    betekent dat "genereer opnieuw" met identieke invoer geen nieuw plan
+ *    oplevert — zie de kop van migratie 0132.
+ */
+export async function vraagPlan(
+  zin: string,
+  streefdatum: string,
+): Promise<Uitkomst<JobVerwijzing>> {
+  return vraagJob('plan', null, { zin, streefdatum });
+}
+
+/**
  * De gedeelde helft van `vraagMijlpalen()` en `vraagWeekdoelen()`.
  *
  * ⚠️ **`kind` is geen parameter van de publieke rand, en dat is met opzet.** Zou
@@ -93,13 +120,24 @@ export async function vraagMijlpalen(
  *    één brede naar binnen.
  */
 async function vraagJob(
-  kind: 'milestones' | 'weekly_goals' | 'milestone_tip',
-  goalId: string,
+  kind: 'milestones' | 'weekly_goals' | 'milestone_tip' | 'plan',
+  goalId: string | null,
   invoer: Record<string, unknown>,
 ): Promise<Uitkomst<JobVerwijzing>> {
   const { data, error } = await supabase().rpc('vraag_ai_job', {
     p_kind: kind,
-    p_goal_id: goalId,
+    // ⚠️ **De cast is nodig omdat het gegenereerde type te streng is, niet omdat
+    //    de database het niet aankan.** `vraag_ai_job(p_kind text, p_goal_id
+    //    uuid, p_input jsonb)` accepteert NULL en gaat er expliciet mee om
+    //    (`if p_goal_id is not null and not exists ...`); dat is wat `plan`
+    //    sinds 0132 gebruikt, want daar bestaat het doel nog niet. Supabase'
+    //    typegenerator kan aan een RPC-argument niet zien of het nullable is en
+    //    schrijft overal `string`.
+    //
+    //    ⚠️ Niet oplossen door `database.types.ts` met de hand bij te werken:
+    //    dat bestand is gegenereerd en de volgende `npm run types:db` gooit het
+    //    weer weg. De cast hoort hier, met deze reden erbij.
+    p_goal_id: goalId as string,
     p_input: invoer as never,
   });
 
