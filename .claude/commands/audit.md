@@ -4,12 +4,20 @@ description: Wekelijkse gezondheidscheck van de codebase — draai dit elke vrij
 
 Voer een wekelijkse audit uit. Schrijf zelf geen code; lever een rapport.
 
-> ⚠️ **Sinds 27-08-2026 draaien tweeëntwintig van de vijfentwintig controles in CI, bij
-> elke push.** Deze audit hoeft ze niet over te doen; ga er langs als een
-> uitkomst je verbaast, en besteed de tijd aan de drie die CI **niet** kan
-> draaien omdat ze een productieverbinding of een privésleutel vragen:
-> `functies:controle` (stap 20), `register:controle` (stap 13) en
-> `vapid:controle` (stap 23b).
+> ⚠️ **De meeste controles draaien in CI, bij elke push.** Deze audit hoeft ze
+> niet over te doen; ga er langs als een uitkomst je verbaast, en besteed de tijd
+> aan de drie die CI **niet** draait. Nagemeten op 31-08-2026: 23 van de 26.
+>
+> | Niet in CI | Waarom |
+> |---|---|
+> | `functies:controle` (stap 20) | vraagt een service-role-key |
+> | `adviseur:controle` (stap 27) | vraagt een `SUPABASE_ACCESS_TOKEN` |
+> | `stand:controle` | geen sleutel nodig — staat er gewoon niet in, en dat is waarschijnlijk een omissie |
+>
+> ⚠️ Deze kop noemde tot 31-08 `register:controle` en `vapid:controle` als de
+> twee andere. Die draaien allebei wél in CI. Wie zo'n opsomming met de hand
+> onderhoudt, onderhoudt hem niet — dit hoort een gegenereerde regel te zijn,
+> zoals het stand-blok in WERKVOORRAAD §2.
 >
 > Waarom ze eerst alleen hier stonden: acht van die zeventien lezen niets dan de
 > repo en hadden nooit een reden om te wachten op een wekelijkse handeling. CI
@@ -540,6 +548,22 @@ en geen ontbrekende grendel.
     ⚠️ Op 27-08 gemeten: met die clausule uit de policy bleven alle 428
     RLS-tests groen. Het gedrag klopte nog — de constraint vangt de gebruiker —
     maar de dubbele beveiliging was een enkele geworden. Zie migratie 0098.
+
+27. **Supabase' eigen linter** — draai `npm run adviseur:controle`. Die haalt de
+    beveiligingsadviezen van Supabase op en legt ze langs de allowlist in
+    `scripts/adviseur-controle.mjs`.
+
+    ⚠️ **De andere 25 controles toetsen alle 25 iets wat wij zélf bedacht hebben
+    te toetsen.** Deze is de enige die iets kan vinden waar niemand hier aan
+    gedacht heeft. Op 31-08-2026 gaf hij 53 bevindingen, alle 53 verklaard —
+    twee bewuste `security_definer_view`s, twee tabellen met RLS zonder policy
+    (allebei deny-all en onder test), de leaked-password-schakelaar (QS8-141),
+    `invite_preview` als enige oningelogde functie (QS8-236) en 47
+    definer-functies (QS8-181).
+
+    ⚠️ Zonder token print hij `OVERGESLAGEN` en eindigt met 0. Dat is
+    **ongemeten** en niet groen; de poort deelt dat sinds QS8-239 correct in.
+    Kijk hier dus naar het woord en niet naar de exitcode.
 
 Rapporteer in maximaal één A4. Bovenaan: de drie dingen die Quinten deze week
 moet oplossen. Als er niets urgents is, zeg dat kort.
