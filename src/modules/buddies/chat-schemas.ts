@@ -266,5 +266,24 @@ export function isCacheGeldig(cache: ChatCache | null, periodStart: string): boo
  *    sessie eruit — en dan logt de app iemand uit omdat hij te veel gepraat heeft.
  */
 export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly ChatBericht[] {
-  return berichten.length <= CACHE_MAX ? berichten : berichten.slice(-CACHE_MAX);
+  const gesneden = berichten.length <= CACHE_MAX ? berichten : berichten.slice(-CACHE_MAX);
+  return gesneden.map(zonderAvatar);
+}
+
+/**
+ * Haalt de avatar uit een bericht dat de cache in gaat — migratie 0126.
+ *
+ * ⚠️ **Een ondertekende URL verloopt na een uur; de cache leeft een week.** Sinds
+ *    0126 is de avatar-bucket privé, dus `sender_avatar` draagt in een geladen
+ *    bericht een signed URL. Bewaren we die, dan toont het scherm na een uur geen
+ *    avatar maar een *kapotte* avatar — `Avatar` valt alleen terug op initialen
+ *    bij `null`, niet bij een URL die 400 teruggeeft.
+ *
+ *    Dit is dezelfde afweging als in `src/modules/auth/avatar.ts`: een verlopen
+ *    URL is erger dan geen URL, want hij ziet er goed uit en doet het niet. De
+ *    cache is er voor een slechte verbinding, en dan is een initiaal precies
+ *    genoeg.
+ */
+function zonderAvatar(bericht: ChatBericht): ChatBericht {
+  return bericht.sender_avatar === null ? bericht : { ...bericht, sender_avatar: null };
 }
