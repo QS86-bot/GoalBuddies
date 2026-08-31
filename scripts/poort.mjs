@@ -23,7 +23,7 @@
  * Draaien: `npm run poort`. Met `--snel` blijven de twee testsuites achterwege
  * — bedoeld om tussendoor te kijken, niet om op te pushen.
  */
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -70,14 +70,31 @@ export const HEEFT_DATABASE_NODIG = new Set([
  *    hem als groen telt, en dan meldt de poort "alles groen" over een schema dat
  *    niemand heeft aangeraakt.
  */
-export function beoordeel({ code, uitvoer, heeftDatabaseNodig }) {
+export function beoordeel({ code, uitvoer, heeftDatabaseNodig, soort = 'controle' }) {
   // ⚠️ **Eerst de overslag, en die staat bewust vóór de exitcode.**
   //    `functies:controle` en `register:controle` printen "OVERGESLAGEN" en
   //    geven daarna **exitcode 0**. Voor elke poort die alleen naar de exitcode
   //    kijkt, zijn ze dus groen terwijl ze niets gemeten hebben — precies de
   //    vorm die deze codebase al drie keer duur betaald heeft. CI draait ze niet
   //    (zie `.github/workflows/ci.yml`), dus daar loog niets; lokaal wél.
-  if (OVERGESLAGEN.test(uitvoer)) return 'ongemeten';
+  //
+  // ⚠️ **Alleen een controle mag zichzelf overslaan, en dat is de reparatie van
+  //    31-08.** Een testsuite kan niet "geen sleutel" hebben; als daar
+  //    `OVERGESLAGEN` in de uitvoer staat, is dat de ínhoud van een test — een
+  //    diff, een fixture, een verwachting — en geen mededeling van de stap zelf.
+  //
+  //    Dit is de derde ronde op dezelfde val. Eerst stond het patroon op het
+  //    kale woord en maskeerde het een rode suite. Toen is het verankerd op de
+  //    regelvorm die een controle schrijft. Op 31-08 bleek dat nog steeds niet
+  //    genoeg: `tests/scripts/adviseur-controle.test.ts` viel om, de diff toonde
+  //    de regel `⚠ adviseur-controle: OVERGESLAGEN — ...` uit het script zelf,
+  //    en die past exact op het verankerde patroon. De poort noemde een rode
+  //    suite "ongemeten".
+  //
+  //    Een tekstpatroon kan dit niet oplossen: elk patroon dat de échte melding
+  //    vindt, vindt ook een citaat ervan. De grens moet dus om de stapsoort
+  //    liggen en niet om de tekst.
+  if (soort === 'controle' && OVERGESLAGEN.test(uitvoer)) return 'ongemeten';
 
   if (code === 0) return 'groen';
 
@@ -110,18 +127,43 @@ const GEEN_DATABASE =
  */
 const OVERGESLAGEN = /^[^\n]*\b[\w-]+(?:-controle|:controle)?:\s*OVERGESLAGEN\b/m;
 
-function draai(commando) {
-  try {
-    const uitvoer = execFileSync('npm', ['run', '--silent', commando], {
-      cwd: WORTEL,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    return { code: 0, uitvoer };
-  } catch (fout) {
-    const uitvoer = `${fout.stdout ?? ''}${fout.stderr ?? ''}`;
-    return { code: fout.status ?? 1, uitvoer };
+/**
+ * Draait één stap en geeft zijn exitcode én álle uitvoer terug.
+ *
+ * ⚠️ **`spawnSync` en niet `execFileSync`, en dat is een reparatie waar deze
+ *    poort zijn eigen bestaansreden op verloor.** `execFileSync` geeft bij een
+ *    geslaagde afloop alléén stdout terug; stderr komt er pas uit via de
+ *    foutafhandeling, dus alleen als de stap rood is.
+ *
+ *    Precies de twee controles waarvoor `beoordeel()` hierboven geschreven is —
+ *    `functies:controle` en `register:controle` — schrijven hun `OVERGESLAGEN`
+ *    naar **stderr** en eindigen daarna met **exitcode 0**. Die regel werd dus
+ *    weggegooid vóórdat `beoordeel()` hem kon zien, en de poort meldde ze als
+ *    groen terwijl ze niets gemeten hadden. De drieverdeling stond er wel en
+ *    kwam voor die twee gevallen nooit aan.
+ *
+ *    Nagemeten op 31-08-2026: `execFileSync` op een proces dat naar stderr
+ *    schrijft en met 0 eindigt, geeft `""` terug; `spawnSync` geeft de regel.
+ *    Zie QS8-239.
+ */
+export function draai(commando) {
+  const uitkomst = spawnSync('npm', ['run', '--silent', commando], {
+    cwd: WORTEL,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  // ⚠️ Ging het spawnen zelf mis (npm niet gevonden), dan is er geen exitcode.
+  //    Dat is rood en geen overslag: er is niets gedraaid en dus niets gemeten,
+  //    maar het is ook geen bewuste overslag van de stap zelf.
+  if (uitkomst.error) {
+    return { code: 1, uitvoer: `poort: ${commando} kon niet starten — ${uitkomst.error.message}` };
   }
+
+  return {
+    code: uitkomst.status ?? 1,
+    uitvoer: `${uitkomst.stdout ?? ''}${uitkomst.stderr ?? ''}`,
+  };
 }
 
 async function hoofd() {
@@ -144,7 +186,12 @@ async function hoofd() {
   const uitkomsten = [];
   for (const stap of stappen) {
     const { code, uitvoer } = draai(stap.commando);
-    const oordeel = beoordeel({ code, uitvoer, heeftDatabaseNodig: stap.database === true });
+    const oordeel = beoordeel({
+      code,
+      uitvoer,
+      heeftDatabaseNodig: stap.database === true,
+      soort: stap.soort,
+    });
     uitkomsten.push({ ...stap, oordeel, uitvoer });
     const teken = oordeel === 'groen' ? '✓' : oordeel === 'ongemeten' ? '·' : '✗';
     process.stdout.write(`${teken} ${stap.naam}\n`);

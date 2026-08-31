@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { beoordeel, controlesUit, HEEFT_DATABASE_NODIG, STAPPEN } from '../../scripts/poort.mjs';
+import { beoordeel, controlesUit, draai, HEEFT_DATABASE_NODIG, STAPPEN } from '../../scripts/poort.mjs';
 
 describe('controlesUit', () => {
   it('pikt élk script op dat op :controle eindigt', () => {
@@ -151,5 +151,116 @@ describe('de opstelling zelf', () => {
   it('kent de database-afhankelijke controles bij naam', () => {
     expect(HEEFT_DATABASE_NODIG.has('klokgrens:controle')).toBe(true);
     expect(HEEFT_DATABASE_NODIG.has('emoji:controle')).toBe(false);
+  });
+});
+
+
+/**
+ * De naad tussen `draai()` en `beoordeel()` — QS8-239.
+ *
+ * ⚠️ **Beide helften waren af, en samen logen ze.** `beoordeel()` staat hierboven
+ *    uitgebreid onder test en deelde altijd correct in: uitvoer met
+ *    `OVERGESLAGEN` erin is *ongemeten*. Maar `draai()` gaf hem die uitvoer niet.
+ *    `execFileSync` levert bij een geslaagde afloop alléén stdout; stderr komt er
+ *    pas uit via de foutafhandeling. En juist de twee controles waarvoor de
+ *    drieverdeling geschreven ís — `functies:controle` en `register:controle` —
+ *    schrijven hun `OVERGESLAGEN` naar stderr en eindigen met exitcode 0.
+ *
+ * ⚠️ **Er was geen test die dit kón zien**, want er was geen test die `draai()`
+ *    raakte. Regel 18 vraag 1: waar knopen twee correcte onderdelen aan elkaar?
+ *    Daar hoort een test, en niet alleen op weerszijden ervan.
+ *
+ * ⚠️ Deze tests draaien een écht subproces via een npm-script, want dat is de
+ *    naad. Een `spawnSync` die hier gemockt wordt, toetst niets: de bug zát in
+ *    welke stromen het echte subproces teruggeeft.
+ */
+describe('draai geeft stderr óók terug als de stap slaagt', () => {
+  it('vangt een OVERGESLAGEN op stderr bij exitcode 0', () => {
+    const { code, uitvoer } = draai('poort:proef:overgeslagen');
+
+    expect(code).toBe(0);
+    expect(uitvoer).toContain('OVERGESLAGEN');
+
+    // Dit is de belofte, en niet dat de string er staat: de poort moet hem
+    // hierna als ongemeten indelen en niet als groen.
+    expect(beoordeel({ code, uitvoer, heeftDatabaseNodig: false })).toBe('ongemeten');
+  });
+
+  it('geeft stdout en stderr allebei terug bij een rode stap', () => {
+    const { code, uitvoer } = draai('poort:proef:rood');
+
+    expect(code).not.toBe(0);
+    expect(uitvoer).toContain('op stdout');
+    expect(uitvoer).toContain('op stderr');
+  });
+
+  it('noemt een stap die niet bestaat rood en niet overgeslagen', () => {
+    // ⚠️ Een niet-bestaand script mag nooit als overslag tellen. Dat is hoe een
+    //    hernoemde controle stil uit de poort verdwijnt.
+    const { code, uitvoer } = draai('poort:proef:bestaat-niet');
+    expect(beoordeel({ code, uitvoer, heeftDatabaseNodig: false })).toBe('rood');
+  });
+});
+
+
+/**
+ * Een rode suite mag nooit "ongemeten" heten — QS8-239, derde ronde.
+ *
+ * ⚠️ **Dit is dezelfde val voor de derde keer, en de eerste twee reparaties
+ *    waren allebei tekstpatronen.** Eerst stond de heuristiek op het kale woord
+ *    `OVERGESLAGEN`; een falende test toonde een diff waar dat woord in stond en
+ *    de poort noemde de suite ongemeten in plaats van rood. Toen is het patroon
+ *    verankerd op de regelvorm die een controle zélf schrijft.
+ *
+ *    Op 31-08-2026 viel `tests/scripts/adviseur-controle.test.ts` om en toonde
+ *    vitest een diff met de regel `⚠ adviseur-controle: OVERGESLAGEN — geen
+ *    SUPABASE_ACCESS_TOKEN` — de bróncode van het script, en dus exact de
+ *    verankerde vorm. Rood werd weer ongemeten.
+ *
+ * ⚠️ **Geen enkel tekstpatroon kan dit oplossen**, en dat is de les: elk patroon
+ *    dat de échte melding vindt, vindt ook een citaat ervan. Een testsuite kan
+ *    geen sleutel missen — alleen een controle kan zichzelf overslaan. De grens
+ *    ligt dus om de stapsoort en niet om de tekst.
+ */
+describe('alleen een controle mag zichzelf overslaan', () => {
+  const alsofControleGeslaagd = 'adviseur-controle: OVERGESLAGEN — geen SUPABASE_ACCESS_TOKEN';
+
+  it('noemt een controle die dat zegt ongemeten', () => {
+    expect(
+      beoordeel({ code: 0, uitvoer: alsofControleGeslaagd, heeftDatabaseNodig: false, soort: 'controle' }),
+    ).toBe('ongemeten');
+  });
+
+  it('noemt een rode suite die dat woord in zijn uitvoer heeft gewoon rood', () => {
+    // De uitvoer van een vitest-run die een diff van het script toont.
+    const rodeSuite = [
+      'FAIL tests/scripts/adviseur-controle.test.ts',
+      '- verwacht',
+      `+ ${alsofControleGeslaagd}`,
+      'Tests  1 failed | 17 passed (18)',
+    ].join('\n');
+
+    expect(
+      beoordeel({ code: 1, uitvoer: rodeSuite, heeftDatabaseNodig: false, soort: 'suite' }),
+    ).toBe('rood');
+  });
+
+  it('noemt een groene suite met dat woord erin gewoon groen', () => {
+    expect(
+      beoordeel({ code: 0, uitvoer: alsofControleGeslaagd, heeftDatabaseNodig: false, soort: 'suite' }),
+    ).toBe('groen');
+  });
+
+  it('laat een suite zonder database wél ongemeten heten', () => {
+    // ⚠️ Die route loopt via GEEN_DATABASE en niet via de overslag, en moet
+    //    blijven werken: een RLS-suite zonder stack heeft niets bewezen.
+    expect(
+      beoordeel({
+        code: 1,
+        uitvoer: 'Error: fetch failed',
+        heeftDatabaseNodig: true,
+        soort: 'suite',
+      }),
+    ).toBe('ongemeten');
   });
 });
