@@ -11,6 +11,20 @@ export {
   type Uitkomst,
 } from './api';
 
+export {
+  AVATAR_BUCKET,
+  AVATAR_GELDIGHEID_S,
+  AVATAR_MAX_BYTES,
+  AVATAR_TYPES,
+  avatarPad,
+  base64NaarBytes,
+  keurBestand,
+  metGetekendeAvatars,
+  tekenAvatars,
+  uploadAvatar,
+  verwijderAvatar,
+} from './avatar';
+
 export { SessionProvider, useRequiredUserId, useSession } from './SessionProvider';
 export { ProfielProvider, useProfiel } from './ProfielProvider';
 
