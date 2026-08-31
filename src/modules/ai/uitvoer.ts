@@ -161,3 +161,124 @@ export function weekdoelenUit(output: unknown): readonly VoorstelWeekdoel[] {
 function tekst(waarde: unknown): string {
   return typeof waarde === 'string' ? waarde.trim() : '';
 }
+
+// ---------------------------------------------------------------------------
+// Het plan uit één zin — QS8-201
+// ---------------------------------------------------------------------------
+
+/**
+ * De categorieën die `goals.category` accepteert.
+ *
+ * ⚠️ **Bewust hier herhaald en niet geïmporteerd uit `goals/schemas.ts`.** Dit
+ *    bestand importeert met opzet niets uit een module die de Supabase-client
+ *    meetrekt — zie de kop. De prijs is een kopie; de grendel daarop is de test
+ *    die deze lijst naast `CATEGORIEEN` legt, en die valt om zodra er één
+ *    verschuift.
+ *
+ * ⚠️ QS8-224 wil deze lijst uitbreiden. Gebeurt dat, dan verandert hier de lijst,
+ *    daar de CHECK op `goals`, en de opsomming in de prompt van de Doelcoach.
+ *    Alle drie, of de AI kiest een categorie die de database weigert.
+ */
+const CATEGORIEEN_UIT_HET_SCHEMA = ['business', 'study', 'other'] as const;
+
+/**
+ * Een compleet plan zoals de Doelcoach het in één ronde teruggeeft — QS8-201.
+ *
+ * ⚠️ **`title` is niet-nullable en de rest wel, en dat is het hele contract.**
+ *    Zonder titel is er geen doel te maken; dat is de enige echt fatale
+ *    ontbrekende waarde. Alle andere velden hebben een terugval: geen categorie
+ *    wordt `other`, geen identiteitszin wordt leeg, geen weekdoel betekent dat
+ *    de gebruiker zijn eerste week zelf invult.
+ */
+export interface VoorstelPlan {
+  readonly title: string;
+  readonly category: (typeof CATEGORIEEN_UIT_HET_SCHEMA)[number];
+  readonly identity_statement: string | null;
+  readonly milestones: readonly VoorstelMijlpaal[];
+  /** Het eerste weekdoel onder mijlpaal 1, of `null` als het model er geen bruikbaar gaf. */
+  readonly first_weekly_goal: VoorstelWeekdoel | null;
+  readonly haalbaarheid: string | null;
+}
+
+/** De grens die `doelSchema` op een doeltitel hanteert. */
+const TITEL_MAX = 120;
+
+/** De ondergrens op een doeltitel, gelijk aan `doelSchema`. */
+const DOELTITEL_MIN = 3;
+
+/**
+ * Leest het plan uit de uitvoer van een afgeronde `plan`-job — QS8-201.
+ *
+ * Geeft `null` als er geen bruikbare titel in zit. Dat is de enige harde eis:
+ * uit een plan zónder titel valt geen doel te maken, en dan is een lege
+ * terugmelding eerlijker dan een scherm met een leeg invoerveld dat "voorstel"
+ * heet.
+ *
+ * ⚠️ **Hergebruikt `mijlpalenUit()`, `weekdoelenUit()` en `haalbaarheidUit()`.**
+ *    Die dragen elk hun eigen zeef — de vloer die niet gelijk mag zijn aan het
+ *    plafond, de veldgrenzen, de lege titels. Dat hier overdoen zou betekenen dat
+ *    één plan langs een ándere lat gaat dan hetzelfde voorstel via het bestaande
+ *    pad, en dan verschilt wat de gebruiker krijgt per route.
+ *
+ * ⚠️ **Een onbekende categorie wordt `other` en geen fout.** `goals.category`
+ *    heeft een CHECK; een model dat "health" verzint zou het aanmaken laten
+ *    falen op een `23514` die de gebruiker niets zegt. De terugval is de
+ *    conservatieve keuze en hij is zichtbaar: het scherm laat de categorie zien
+ *    en je kunt hem bijstellen vóór je bevestigt.
+ */
+export function planUit(output: unknown): VoorstelPlan | null {
+  if (typeof output !== 'object' || output === null || Array.isArray(output)) return null;
+
+  const rij = output as Record<string, unknown>;
+  const titel = tekst(rij.title ?? rij.titel);
+
+  if (titel.length < DOELTITEL_MIN || titel.length > TITEL_MAX) return null;
+
+  // ⚠️ Het eerste bruikbare weekdoel, niet het eerste dat het model noemde.
+  //    `weekdoelenUit()` gooit rijen zonder vloer of met vloer == plafond eruit;
+  //    zou hier `[0]` van de rúwe lijst staan, dan glipt precies zo'n rij langs
+  //    de zeef die daar met reden staat.
+  //
+  // ⚠️ **`alsLijst()` omdat het schema hier één object teruggeeft en geen array.**
+  //    `weekdoelenUit()` accepteert een kale array of een object mét
+  //    `weekly_goals`; een los weekdoelobject valt tussen die twee door en geeft
+  //    stil een lege lijst. Dan zou elk plan zonder eerste week aankomen en
+  //    niemand zou zien waarom.
+  const weekdoelen = weekdoelenUit(
+    alsLijst(rij.first_weekly_goal ?? rij.eerste_weekdoel ?? rij.weekly_goals ?? rij.weekdoelen),
+  );
+
+  return {
+    title: titel,
+    category: categorieUit(rij.category ?? rij.categorie),
+    identity_statement: optioneel(rij.identity_statement ?? rij.identiteitszin),
+    milestones: mijlpalenUit(rij),
+    first_weekly_goal: weekdoelen[0] ?? null,
+    haalbaarheid: haalbaarheidUit(rij),
+  };
+}
+
+function categorieUit(waarde: unknown): (typeof CATEGORIEEN_UIT_HET_SCHEMA)[number] {
+  const schoon = tekst(waarde).toLowerCase();
+  return (CATEGORIEEN_UIT_HET_SCHEMA as readonly string[]).includes(schoon)
+    ? (schoon as (typeof CATEGORIEEN_UIT_HET_SCHEMA)[number])
+    : 'other';
+}
+
+function optioneel(waarde: unknown): string | null {
+  const schoon = tekst(waarde);
+  return schoon === '' ? null : schoon;
+}
+
+/**
+ * Eén weekdoelobject wordt een lijst van één; een lijst blijft een lijst.
+ *
+ * ⚠️ Alles wat geen object of array is, wordt een lege lijst — dan valt het
+ *    verderop stil weg in plaats van `weekdoelenUit()` iets te voeren waar hij
+ *    niets mee kan.
+ */
+function alsLijst(waarde: unknown): unknown[] {
+  if (Array.isArray(waarde)) return waarde;
+  if (typeof waarde === 'object' && waarde !== null) return [waarde];
+  return [];
+}
