@@ -55,6 +55,12 @@ export interface PlanRijen {
  *    schermvullend voorstel moet blijven dat je kunt overzien vóór je
  *    bevestigt. Wat erboven komt, valt af — en dat is zichtbaar, want het scherm
  *    toont wat er staat.
+ *
+ * ⚠️ **De prompt vraagt er acht en dit plafond staat op twaalf, en dat verschil
+ *    is met opzet.** Een grens die precies op het gevraagde aantal ligt, kapt af
+ *    zodra het model er één meer geeft — en dan verdwijnt er stil een mijlpaal
+ *    die de gebruiker op het scherm zag staan. De ruimte ertussen is de marge
+ *    waarin dat niet gebeurt.
  */
 export const MAX_MIJLPALEN = 12;
 

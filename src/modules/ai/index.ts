@@ -26,6 +26,12 @@ export {
 } from './uitvoer';
 
 export {
+  onvolledigMelding,
+  pasPlanToe,
+  type PlanUitkomst,
+} from './plan-toepassen';
+
+export {
   MAX_MIJLPALEN,
   rijenUitPlan,
   type MijlpaalRij,
