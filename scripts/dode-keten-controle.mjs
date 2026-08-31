@@ -214,19 +214,6 @@ export const BEWAAKT_BUITEN_DE_APP = {
  * @type {Record<string, string>}
  */
 export const WACHT_OP_EEN_BESLUIT = {
-  ketting_schakel:
-    '⚠️ **Een correcte, volledig bewaakte RPC die niemand aanroept.** QS8-80 ' +
-    'bouwde hem als de weg waarlangs je een kettingschakel verdient: ingelogd, ' +
-    'lid van de groep, de periode binnen bereik, een goedgekeurd weekdoel in ' +
-    'die cyclus, en hoogstens één schakel per cyclus. Maar de app roept hem ' +
-    'nooit aan — `ketting_uit_weekafsluiting()` is een trigger en doet het ' +
-    'vanzelf zodra je je week afsluit. ' +
-    '**De vraag: is een schakel iets dat je zelf claimt, of iets dat de ' +
-    'weekafsluiting voor je doet?** Is het het tweede, dan hoort deze functie ' +
-    'weg — hij staat open voor `authenticated` en schrijft in een tabel die de ' +
-    'groep leest. Is het het eerste, dan hoort er een knop bij. ' +
-    'Vandaag is hij geen gat (elke toets erin klopt), maar wel oppervlak dat ' +
-    'niemand gebruikt.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */

@@ -79,10 +79,6 @@ export const REGISTER = new Map([
       'op de grens van een hele week, en dan naar de voorzichtige kant.',
   ],
   [
-    'ketting_schakel :: if p_period_start > current_date + 1 or p_period_start < current_date - 35 then',
-    'De grenscontrole uit de bevinding zelf, met de `+ 1` van 0037.',
-  ],
-  [
     'ketting_uit_weekafsluiting :: if new.group_period_start > current_date + 1',
     'Dezelfde bovengrens als in de trigger ernaast; die weigert de rij al, deze ' +
       'slaat alleen de schakel over.',
