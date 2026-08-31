@@ -951,6 +951,8 @@ export const nl = {
   'groep.deelnemen_mislukt': 'Deelnemen lukte niet. Probeer het zo nog eens.',
   'groep.deelnemen_mislukt_link': 'Deelnemen lukte niet. Vraag je buddy om een nieuwe link.',
   'groep.uitnodiging_laden': 'Deze uitnodiging kon niet geladen worden.',
+  'groep.uitnodiging_te_druk':
+    'Deze uitnodiging is het afgelopen uur te vaak geopend. Probeer het straks opnieuw — de link blijft gewoon geldig.',
   'groep.koppelen_mislukt': 'Koppelen lukte niet. Ben je lid van deze groep?',
   'groep.ontkoppelen_mislukt': 'Ontkoppelen lukte niet.',
   'groep.gekoppelde_groepen_laden': 'De gekoppelde groepen konden niet geladen worden.',

@@ -691,6 +691,8 @@ export const en: Record<Sleutel, string> = {
   'groep.deelnemen_mislukt': 'Joining did not work. Please try again in a moment.',
   'groep.deelnemen_mislukt_link': 'Joining did not work. Ask your buddy for a new link.',
   'groep.uitnodiging_laden': 'This invitation could not be loaded.',
+  'groep.uitnodiging_te_druk':
+    'This invitation has been opened too often in the past hour. Try again shortly — the link is still valid.',
   'groep.koppelen_mislukt': 'Linking did not work. Are you a member of this group?',
   'groep.ontkoppelen_mislukt': 'Unlinking did not work.',
   'groep.gekoppelde_groepen_laden': 'The linked groups could not be loaded.',
