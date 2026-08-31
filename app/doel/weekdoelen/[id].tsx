@@ -11,6 +11,7 @@ import {
   fetchMijlpalen,
   heeftAntwoorden,
   maakWeekdoel,
+  maakWeekplan,
   type DoelMetVoortgang,
   type InterviewInvoer,
   type Mijlpaal,
@@ -34,14 +35,23 @@ import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } 
  *    want een `while (true)` tegen een vastgelopen job is op een gratis tier een
  *    rekening.
  *
- * ⚠️ **Er is geen "alles toevoegen"-knop, en dat is de belangrijkste keuze in
- *    dit scherm.** `maakWeekdoel()` zet altijd de húidige cyclus — de client mag
- *    "deze week" niet bepalen (correctheidsregel 7), en er is geen schrijfpad
- *    naar een toekomstige week. Zes voorstellen in één keer overnemen zou dus
- *    zes weekdoelen in dezelfde week zetten, en domeinregel 10 zegt dat taken
- *    toevoegen het puntenplafond verhoogt: vijf gegarandeerd gemiste weken en
- *    vijf minpunten, voor iets wat de app zélf heeft voorgesteld. Toevoegen gaat
- *    daarom per stap, en de copy zegt waarom.
+ * ⚠️ **Hier stond tot 31-08-2026 dat er geen "alles toevoegen"-knop was, en dat
+ *    dat de belangrijkste keuze in dit scherm was.** Die knop is er nu wel —
+ *    QS8-203, migratie 0138 — en het is belangrijk om te zien dat de réden niet
+ *    is weggevallen:
+ *
+ *    `maakWeekdoel()` zet nog steeds altijd de húidige cyclus, want de client
+ *    mag "deze week" niet bepalen (correctheidsregel 7). En domeinregel 10 zegt
+ *    nog steeds dat elk weekdoel het puntenplafond verhoogt. Zes voorstellen als
+ *    zes weekdoelen wegschrijven zou dus nog steeds vijf gegarandeerd gemiste
+ *    weken en vijf minpunten opleveren, voor iets wat de app zélf heeft
+ *    voorgesteld.
+ *
+ *    Wat er veranderd is, is dat er nu een plaats is voor een stap die nog géén
+ *    weekdoel is. `neemPlanOver()` maakt precies één weekdoel — de eerste — en
+ *    zet de rest in `weekly_plan_steps`, waar niets meetelt tot de rollover hem
+ *    inschuift. De knop die hier niet mocht staan, is dus nog steeds verboden;
+ *    dit is een andere knop.
  */
 export default function Weekdoelcoach() {
   const { id, mijlpaal: mijlpaalId } = useLocalSearchParams<{ id: string; mijlpaal?: string }>();
@@ -124,6 +134,7 @@ function Genereren({
   const [toegevoegd, setToegevoegd] = useState<ReadonlySet<number>>(new Set());
   const [bezig, setBezig] = useState<number | null>(null);
   const [fout, setFout] = useState<string | null>(null);
+  const [planKlaar, setPlanKlaar] = useState(false);
 
   // ⚠️ In een ref zodat het opruimen van het effect hem kan stoppen. Zonder dit
   //    blijft de lus doortikken nadat het scherm weg is, en dan schrijft hij
@@ -200,6 +211,91 @@ function Genereren({
     }
 
     void kijk(aanvraag.waarde.jobId);
+  }
+
+  /**
+   * De waarde van `bezig` terwijl het hele plan wordt weggezet.
+   *
+   * ⚠️ `-1` en niet `null`, want `null` betekent "niets loopt er". Een aparte
+   *    booleaanse vlag ernaast zou twee bronnen geven voor één toestand, en dan
+   *    is de vraag welke van de twee de knoppen uitzet.
+   */
+  const ALLES = -1;
+
+  /**
+   * Het hele plan wegzetten — QS8-203.
+   *
+   * ⚠️ **Stap 1 wordt een weekdoel, de rest wordt plan.** Precies één rij in
+   *    `weekly_goals`, en dus precies één verhoging van het puntenplafond. Zou
+   *    dit alle stappen als weekdoel wegschrijven, dan is dit dezelfde knop die
+   *    dit scherm bewust niet had.
+   *
+   * ⚠️ **Het weekdoel eerst en het plan daarna.** Er is geen transactie over
+   *    twee tabellen heen — zelfde situatie als in `plan-toepassen.ts` (QS8-201)
+   *    — dus er moet gekozen worden wat er overblijft als de tweede helft
+   *    faalt. Een weekdoel zonder plan is een bruikbare week; een plan zonder
+   *    weekdoel is een lijst waar niets uit inschuift tot de volgende cyclus.
+   */
+  async function neemPlanOver(voorstellen: readonly VoorstelWeekdoel[]) {
+    if (klok === null || voorstellen.length === 0) return;
+    setBezig(ALLES);
+    setFout(null);
+
+    // ⚠️ `[0]` met een expliciete controle en niet een destructurering die
+    //    TypeScript als `VoorstelWeekdoel` leest. `noUncheckedIndexedAccess`
+    //    staat aan en heeft gelijk: een lege lijst komt hier niet, maar dat
+    //    weten we door de regel hierboven en niet door het type.
+    const eersteStap = voorstellen[0];
+    if (eersteStap === undefined) {
+      setBezig(null);
+      return;
+    }
+    const rest = voorstellen.slice(1);
+
+    const eerste = await eersteCyclusVanDoel(doel.id, klok);
+    const weekdoel = await maakWeekdoel(
+      klok,
+      {
+        goal_id: doel.id,
+        milestone_id: mijlpaal.id,
+        title: eersteStap.title,
+        floor_text: eersteStap.floor_text,
+        ceiling_text: eersteStap.ceiling_text,
+      },
+      eerste,
+    );
+
+    if (!weekdoel.ok) {
+      setBezig(null);
+      setFout(weekdoel.melding);
+      return;
+    }
+
+    if (rest.length > 0) {
+      const plan = await maakWeekplan(
+        doel.id,
+        mijlpaal.id,
+        rest.map((v) => ({
+          title: v.title,
+          floor_text: v.floor_text,
+          ceiling_text: v.ceiling_text,
+        })),
+      );
+
+      if (!plan.ok) {
+        // ⚠️ Het weekdoel staat er wél. Dat zeggen is eerlijker dan alleen de
+        //    fout tonen: anders drukt de gebruiker nog eens en heeft hij twee
+        //    weekdoelen in dezelfde week — precies wat dit scherm voorkomt.
+        setBezig(null);
+        setPlanKlaar(true);
+        setFout(plan.melding);
+        return;
+      }
+    }
+
+    setBezig(null);
+    setPlanKlaar(true);
+    setToegevoegd(new Set(voorstellen.map((_, i) => i)));
   }
 
   async function voegToe(voorstel: VoorstelWeekdoel, index: number) {
@@ -282,10 +378,37 @@ function Genereren({
         <Card nested>
           <Subheading>{t('weekcoach.voorstellen', { aantal: stand.voorstellen.length })}</Subheading>
           {/*
-            ⚠️ Deze zin is de reden dat er geen verzamelknop staat, en zonder hem
-               moet de gebruiker zelf raden waarom.
+            ⚠️ Deze zin legde tot QS8-203 uit waarom er géén verzamelknop stond.
+               Hij staat er nog, maar nu als uitleg bij de knop eronder: de
+               stappen zijn nog steeds voor opeenvolgende weken, alleen hoef je er
+               niet meer elke week voor terug te komen.
           */}
           <Body muted>{t('weekcoach.een_per_week')}</Body>
+
+          {/*
+            ⚠️ **De knop die tot 31-08-2026 met opzet niet bestond** — QS8-203,
+               migratie 0138. De reden dat hij er niet was, is niet weggevallen:
+               `maakWeekdoel()` zet nog steeds altijd de húidige cyclus, en zes
+               weekdoelen in één week zijn nog steeds vijf minpunten. Wat er
+               veranderd is, is dat er nu een plaats is voor een stap die nog géén
+               weekdoel is. Alleen de eerste wordt er een; de rest wacht in
+               `weekly_plan_steps` en telt nergens in mee.
+          */}
+          {planKlaar ? (
+            <Caption>{t('weekplan.overgenomen')}</Caption>
+          ) : (
+            <>
+              <Button
+                variant="primair"
+                block
+                busy={bezig === ALLES}
+                onPress={() => void neemPlanOver(stand.voorstellen)}
+              >
+                {t('weekplan.neem_over')}
+              </Button>
+              <Caption>{t('weekplan.neem_over_uitleg')}</Caption>
+            </>
+          )}
         </Card>
 
         {stand.voorstellen.map((voorstel, index) => (

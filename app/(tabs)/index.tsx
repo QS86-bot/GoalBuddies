@@ -27,6 +27,7 @@ import {
   fetchDoorschuifbaar,
   fetchMijlpaalTips,
   fetchVolgendeMijlpalen,
+  fetchIngeschovenDezeCyclus,
   fetchWeekdoelen,
   huidigeCyclus,
   inCoulanceperiode,
@@ -81,6 +82,7 @@ export default function Vandaag() {
   const [weekdoelen, setWeekdoelen] = useState<readonly Weekdoel[]>([]);
   const [openstaand, setOpenstaand] = useState<readonly Weekdoel[]>([]);
   const [dagzetten, setDagzetten] = useState<readonly DagZet[]>([]);
+
   const [standen, setStanden] = useState<ReadonlyMap<string, DoelStand>>(new Map());
   const [doeltitels, setDoeltitels] = useState<ReadonlyMap<string, string>>(new Map());
   /**
@@ -237,7 +239,7 @@ export default function Vandaag() {
    */
   const { data: badges } = useAsync(userId ? () => fetchBadges() : null, [userId, ronde]);
 
-  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
+  // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
   // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
   // storing hier hoort je week van vandaag niet mee te slepen.
   //
@@ -262,6 +264,29 @@ export default function Vandaag() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, cyclusStart, ronde]);
 
+  /**
+   * Weekdoelen van deze cyclus die uit een weekplan zijn ingeschoven — QS8-203.
+   *
+   * ⚠️ Dit is de eis dat inschuiven nooit stilzwijgend gebeurt. Zonder deze
+   *    melding komt er een weekdoel bij zonder dat de gebruiker iets deed, en
+   *    verandert zijn puntenplafond zonder dat iemand het ziet.
+   *
+   * ⚠️ **`cyclus` en niet `afTeSluiten`**, en dat is hetzelfde onderscheid dat de
+   *    rollover maakt. De lijst hierboven toont de week die je nog mág afsluiten
+   *    — binnen de coulanceperiode is dat de vórige. Een stap schuift in in de
+   *    week waar je nú in zit. Zou dit `afTeSluiten` lezen, dan verdwijnt de
+   *    melding precies in het venster waarin ze het meest verrast.
+   *
+   * ⚠️ Apart opgehaald en apart falend, om dezelfde reden als het stand-blok:
+   *    dit is een melding en geen gegeven dat het scherm nodig heeft.
+   *    `fetchIngeschovenDezeCyclus()` vangt zijn eigen fout af en geeft dan een
+   *    lege verzameling — geen melding is hier het juiste faalgedrag.
+   */
+  const { data: ingeschoven } = useAsync(
+    cyclus ? () => fetchIngeschovenDezeCyclus(cyclus) : null,
+    [cyclusStart, ronde],
+  );
+
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
   return (
@@ -281,6 +306,13 @@ export default function Vandaag() {
           </Body>
         </Card>
       ) : null}
+
+      {ingeschoven === undefined || ingeschoven.size === 0 ? null : (
+        <Card nested>
+          <Subheading>{t('weekplan.ingeschoven_kop')}</Subheading>
+          <Body muted>{t('weekplan.ingeschoven_tekst')}</Body>
+        </Card>
+      )}
 
       <AsyncView
         loading={loading}

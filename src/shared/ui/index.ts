@@ -35,6 +35,7 @@ export { RisicoBadge } from './RisicoBadge';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
+export { Weekplanblok, type WeekplanRegel } from './Weekplanblok';
 export { Viering } from './Viering';
 export { TaalKeuze } from './TaalKeuze';
 export {
