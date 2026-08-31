@@ -8,6 +8,7 @@ import { partsIn } from '../_shared/time/zoned.ts';
 import { previousCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { meld } from '../_shared/melden.ts';
+import { metCors } from '../_shared/cors.ts';
 import {
   berichtVoor,
   magNudgen,
@@ -117,7 +118,12 @@ function taalVan(profiel: Profiel): Taalcode | null {
   return profiel.locale === 'en' ? 'en' : null;
 }
 
-Deno.serve(async (req: Request) => {
+// ⚠️ `metCors` ook hier, terwijl deze functie server-side wordt aangeroepen en
+//    dus nooit een preflight krijgt — QS8-195, punt 3. Dat is niet gratis
+//    plaksel: de volgende die hem vanaf het web aanroept, betaalt anders
+//    dezelfde twee minuten die de Doelcoach gekost heeft. Zonder `Origin` doet
+//    `metCors` niets.
+Deno.serve(metCors(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
 
   if (rolUit(auth) !== 'service_role') {
@@ -145,7 +151,7 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-});
+}));
 
 async function draaiNotificaties(auth: string): Promise<Response> {
   const db = maakClient(

@@ -29,6 +29,7 @@
 | `SUPABASE_DB_URL` | Directe verbinding, voor `pg_dump` | **server** | elke migratie |
 | `ANTHROPIC_API_KEY` | De Doelcoach | **server** | EPIC 3 |
 | `SENTRY_DSN` | Foutrapportage vanuit de Edge Functions | **server** | QS8-24 |
+| `TOEGESTANE_HERKOMSTEN` | De CORS-allowlist van de Edge Functions, komma-gescheiden | **server** (Edge Function-omgeving) | QS8-195 |
 
 ⚠️ **Alles met `EXPO_PUBLIC_` ervoor zit in de bundle die de browser downloadt.**
 Dat is geen instelling maar een eigenschap van Expo. Een secret dat daar per
@@ -37,6 +38,20 @@ weghaalt, want de bundle staat dan al in caches.
 
 De validatie staat in `src/lib/env.ts`: een ontbrekende variabele faalt bij het
 opstarten, niet halverwege een gebruikersactie.
+
+⚠️ **`TOEGESTANE_HERKOMSTEN` staat bewust níét in `src/lib/env.ts` en niet in
+`.env` van de webbuild.** Hij hoort in de omgeving van de Edge Functions, want
+alleen die lezen hem:
+
+```bash
+npx supabase secrets set TOEGESTANE_HERKOMSTEN='https://goalbuddies.q-projects.tech'
+```
+
+Ontbreekt hij, dan geldt het adres uit CLAUDE.md als standaard — dezelfde waarde
+en dezelfde reden als `STANDAARD_APP_URL` in `src/lib/env.ts`. Een lege standaard
+zou de Doelcoach precies zo onbereikbaar maken als de bug van QS8-195, alleen dan
+stil en pas op productie. Zet hem zodra er een tweede omgeving bijkomt; een
+tweede adres is een tweede komma-gescheiden waarde en geen `*`.
 
 ---
 

@@ -8,6 +8,7 @@ import { closableUserCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
+import { metCors } from '../_shared/cors.ts';
 
 /**
  * De cycle-rollover — QS8-49, en daarmee ook QS8-47 en QS8-51.
@@ -93,7 +94,12 @@ function rolUit(authHeader: string): string {
   }
 }
 
-Deno.serve(async (req: Request) => {
+// ⚠️ `metCors` ook hier, terwijl deze functie server-side wordt aangeroepen en
+//    dus nooit een preflight krijgt — QS8-195, punt 3. Dat is niet gratis
+//    plaksel: de volgende die hem vanaf het web aanroept, betaalt anders
+//    dezelfde twee minuten die de Doelcoach gekost heeft. Zonder `Origin` doet
+//    `metCors` niets.
+Deno.serve(metCors(async (req: Request) => {
   const auth = req.headers.get('Authorization') ?? '';
 
   if (rolUit(auth) !== 'service_role') {
@@ -120,7 +126,7 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-});
+}));
 
 async function draaiRollover(auth: string): Promise<Response> {
 

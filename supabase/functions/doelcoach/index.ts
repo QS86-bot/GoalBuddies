@@ -26,6 +26,7 @@ type Systeemclient = ReturnType<typeof maakSysteemclient>;
 //    de hand gerekend. Correctheidsregel 7 geldt ook hier.
 import { daysBetween, localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
+import { metCors } from '../_shared/cors.ts';
 
 /**
  * De Doelcoach — QS8-38, met de poort van QS8-42 ervoor.
@@ -561,7 +562,10 @@ async function vraagClaude(
   }
 }
 
-Deno.serve(async (verzoek: Request) => {
+// ⚠️ `metCors` en niet een `if` bovenin — QS8-195. De preflight moet beantwoord
+//    zijn vóór de methodetoets hieronder, anders krijgt een browser 405 op zijn
+//    OPTIONS en verstuurt hij de POST nooit. Zie `_shared/cors.ts`.
+Deno.serve(metCors(async (verzoek: Request) => {
   if (verzoek.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
 
   const authHeader = verzoek.headers.get('Authorization') ?? '';
@@ -752,4 +756,4 @@ Deno.serve(async (verzoek: Request) => {
     //    stuk is terwijl er een keurige mislukking is vastgelegd.
     return json({ ok: false, job_id: job.id, reason: 'job_failed' }, 200);
   }
-});
+}));
