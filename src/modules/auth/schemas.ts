@@ -24,10 +24,33 @@ import { isGeldigeTijdzone } from '../../shared/time';
  * ⚠️ Controle tegen bekende gelekte wachtwoorden doet Supabase Auth zelf, maar
  *    die stond op dit project uit. Zie docs/Q-TODO.docx.
  */
+/**
+ * De ondergrens, als benoemde constante — QS8-234.
+ *
+ * ⚠️ **Dit getal staat hier én in het Supabase-dashboard, en die twee moeten
+ *    hetzelfde zeggen.** Dit is Zod, in de browser. De server heeft zijn eigen
+ *    `password_min_length` (standaard 6), en staat die lager, dan is dit getal
+ *    een suggestie: één POST naar `/auth/v1/signup` met de anon-sleutel — die
+ *    per definitie in elke bundel zit — omzeilt het volledig.
+ *
+ *    `npm run wachtwoord:controle` legt die twee naast elkaar. Verander dit
+ *    getal dus niet zonder de schakelaar mee te nemen; de controle wordt
+ *    daarop rood.
+ *
+ * ⚠️ Zod's `.min()` telt UTF-16-eenheden en Postgres telt codepunten, maar dat
+ *    verschil valt hier de veilige kant op: `.length` is altijd ≥ het aantal
+ *    codepunten, dus wie hier doorkomt heeft minstens zoveel tekens. Bij een
+ *    ondergrens elders in deze codebase gaat dat juist mis — zie QS8-118.
+ */
+export const WACHTWOORD_MINIMUM = 12;
+
+/** De bovengrens. bcrypt kapt boven 72 bytes af, dus daarboven telt niets meer. */
+export const WACHTWOORD_MAXIMUM = 72;
+
 export const wachtwoordSchema = z
   .string()
-  .min(12, { error: () => t('validatie.wachtwoord_kort') })
-  .max(72, { error: () => t('validatie.wachtwoord_lang') });
+  .min(WACHTWOORD_MINIMUM, { error: () => t('validatie.wachtwoord_kort') })
+  .max(WACHTWOORD_MAXIMUM, { error: () => t('validatie.wachtwoord_lang') });
 
 export const emailSchema = z
   .string()
