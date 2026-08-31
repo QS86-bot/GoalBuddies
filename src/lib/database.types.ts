@@ -1952,6 +1952,77 @@ export type Database = {
           },
         ]
       }
+      weekly_plan_steps: {
+        Row: {
+          activated_cycle: string | null
+          ai_generated: boolean
+          ceiling_text: string | null
+          created_at: string
+          floor_text: string | null
+          goal_id: string
+          id: string
+          milestone_id: string | null
+          order_index: number
+          title: string
+          weekly_goal_id: string | null
+        }
+        Insert: {
+          activated_cycle?: string | null
+          ai_generated?: boolean
+          ceiling_text?: string | null
+          created_at?: string
+          floor_text?: string | null
+          goal_id: string
+          id?: string
+          milestone_id?: string | null
+          order_index: number
+          title: string
+          weekly_goal_id?: string | null
+        }
+        Update: {
+          activated_cycle?: string | null
+          ai_generated?: boolean
+          ceiling_text?: string | null
+          created_at?: string
+          floor_text?: string | null
+          goal_id?: string
+          id?: string
+          milestone_id?: string | null
+          order_index?: number
+          title?: string
+          weekly_goal_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_plan_steps_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goal_dashboard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_plan_steps_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_plan_steps_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_plan_steps_weekly_goal_id_fkey"
+            columns: ["weekly_goal_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       goal_dashboard: {
@@ -2118,6 +2189,14 @@ export type Database = {
       }
     }
     Functions: {
+      activeer_weekplanstap: {
+        Args: {
+          p_cycle_index: number
+          p_cycle_start_date: string
+          p_goal_id: string
+        }
+        Returns: Json
+      }
       ai_dag_limiet: { Args: never; Returns: number }
       ai_invoer_max: { Args: never; Returns: number }
       ai_kosten_per_week: {
@@ -2260,6 +2339,10 @@ export type Database = {
       }
       herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
       herorden_mijlpalen: {
+        Args: { p_goal_id: string; p_ids: string[] }
+        Returns: Json
+      }
+      herorden_weekplan: {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json
       }
@@ -2456,6 +2539,14 @@ export type Database = {
       shares_group_with_user: { Args: { other: string }; Returns: boolean }
       slaap_stille_groepen: { Args: { p_dagen?: number }; Returns: number }
       sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
+      start_weekplanstap: {
+        Args: {
+          p_cycle_index: number
+          p_cycle_start_date: string
+          p_step_id: string
+        }
+        Returns: Json
+      }
       systeembericht_allowlist: { Args: never; Returns: string[] }
       tekstgrenzen_bewaking: {
         Args: never
@@ -2620,6 +2711,14 @@ export type Database = {
         Args: { p_gearchiveerd: boolean; p_goal_id: string }
         Returns: Json
       }
+      weekplan_kandidaten: {
+        Args: { p_owner_id: string }
+        Returns: {
+          eerste_cyclus: string
+          goal_id: string
+        }[]
+      }
+      weekplanstappen_over: { Args: never; Returns: number }
       zet_groepszichtbaarheid: {
         Args: { p_bevestigd?: boolean; p_group_id: string; p_naar: string }
         Returns: Json

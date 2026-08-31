@@ -1840,6 +1840,53 @@ export const nl = {
   'beoordelen.week_afgerond_met': 'Week afgerond — {gehaald}',
   'groepscherm.leden_van_totaal': '{getoond} van {totaal} leden.',
 
+
+  // ---------------------------------------------------------------------------
+  // Het weekplan — QS8-203, migratie 0137
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De copy moet op twee plekken zeggen dat een geplande stap niets kost.
+  //    Wie zes stappen ziet en denkt dat het zes weekdoelen zijn, denkt ook dat
+  //    hij er vijf gaat missen — en dat is precies de verwarring die dit hele
+  //    ontwerp voorkomt.
+  'weekplan.kop': 'Je weekplan',
+  'weekplan.uitleg':
+    'Deze stappen staan klaar voor de weken hierna. Elke week schuift de bovenste er vanzelf in als weekdoel.',
+  'weekplan.kost_niets':
+    'Een geplande stap telt nog niet mee: hij levert geen punten op en kan geen minpunt kosten. Dat begint pas als hij je weekdoel wordt.',
+  'weekplan.leeg':
+    'Er staat nog geen plan klaar. Laat de coach weekstappen bedenken onder een mijlpaal, dan komt de rest hier te staan.',
+  'weekplan.eerstvolgende': 'Schuift als eerste in',
+  'weekplan.over_weken': 'Over {weken} weken',
+  'weekplan.start_nu': 'Start deze nu',
+  'weekplan.start_nu_label': 'Start "{titel}" deze week',
+  'weekplan.verwijder': 'Weg uit het plan',
+  'weekplan.verwijder_label': 'Haal "{titel}" uit het plan',
+  'weekplan.omhoog': 'Eerder',
+  'weekplan.omhoog_label': 'Zet "{titel}" eerder in het plan',
+  'weekplan.omlaag': 'Later',
+  'weekplan.omlaag_label': 'Zet "{titel}" later in het plan',
+  'weekplan.laden_mislukt': 'Het plan kon niet geladen worden.',
+  'weekplan.opslaan_mislukt': 'Het plan kon niet opgeslagen worden.',
+  'weekplan.verwijderen_mislukt': 'Die stap kon niet weggehaald worden.',
+  'weekplan.starten_mislukt': 'Die stap kon niet gestart worden.',
+  'weekplan.al_ingeschoven': 'Die stap is al een weekdoel geworden.',
+  'weekplan.deze_week_al': 'Voor dit doel is deze week al een stap ingeschoven.',
+  'weekplan.doel_niet_actief': 'Dit doel loopt niet meer, dus er schuift niets meer in.',
+  'weekplan.geen_stap': 'Er staat geen stap meer klaar.',
+  'weekplan.te_veel_deze_dag': 'Je hebt vandaag te veel weekdoelen gemaakt. Probeer het morgen weer.',
+  'weekplan.niet_ingelogd': 'Log opnieuw in en probeer het nog eens.',
+  'weekplan.niet_van_jou': 'Deze stap is niet van jou.',
+  'weekplan.lijst_veranderd': 'Het plan is intussen veranderd. Laad het opnieuw.',
+  'weekplan.ingeschoven_kop': 'Er staat een nieuw weekdoel klaar',
+  'weekplan.ingeschoven_tekst':
+    'De volgende stap uit je plan is deze week je weekdoel geworden. Dat verhoogt je puntenplafond met deze week.',
+  'weekplan.neem_over': 'Zet het hele plan klaar',
+  'weekplan.neem_over_uitleg':
+    'De eerste stap wordt je weekdoel voor deze week. De rest komt in je plan te staan en schuift er elke week vanzelf één in.',
+  'weekplan.overgenomen': 'Het plan staat klaar. Stap 1 is je weekdoel voor deze week.',
+  'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
+  'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

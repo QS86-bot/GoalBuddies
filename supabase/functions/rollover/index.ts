@@ -4,7 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    re-exporteert ook clock.ts, en dat bestand leest process.env om freezeNow()
 //    in productie te weigeren — op Deno is dat een valkuil die je pas merkt als
 //    de job 's nachts stilvalt.
-import { closableUserCycle } from '../_shared/time/cycle.ts';
+import { closableUserCycle, cyclesBetween, userCycle, userCycleOn } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
@@ -57,6 +57,12 @@ interface Profiel {
   id: string;
   week_start_day: number;
   tz: string;
+}
+
+/** Eén rij uit `weekplan_kandidaten()` — migratie 0137. */
+interface Kandidaat {
+  goal_id: string;
+  eerste_cyclus: string | null;
 }
 
 interface OpenWeekdoel {
@@ -154,6 +160,9 @@ async function draaiRollover(auth: string): Promise<Response> {
   let gemist = 0;
   let vrijgesteld = 0;
   let risicoBijgewerkt = 0;
+
+  // Geplande weekstappen die deze ronde een weekdoel geworden zijn — QS8-203.
+  let ingeschoven = 0;
 
   // Straffen die verschuldigd zijn geworden — QS8-84.
   let verschuldigd = 0;
@@ -348,6 +357,81 @@ async function draaiRollover(auth: string): Promise<Response> {
       }
     }
 
+    // -----------------------------------------------------------------------
+    // Het weekplan inschuiven — QS8-203, migratie 0137
+    // -----------------------------------------------------------------------
+    //
+    // ⚠️ **De cyclus is `userCycle` en niet `afsluitbaar`.** Dat is het hele
+    //    verschil tussen de twee helften van deze job. Afschrijven gaat over de
+    //    week die vóórbij is en mag pas na de coulanceperiode; inschuiven gaat
+    //    over de week waar de gebruiker nú in zit. Zou dit `afsluitbaar` nemen,
+    //    dan komt het nieuwe weekdoel binnen de coulanceperiode in de vórige
+    //    week terecht — en die is al verstreken, dus de eerstvolgende ronde
+    //    schrijft hem meteen als gemist af. Een minpunt op een weekdoel dat de
+    //    app zelf net heeft aangemaakt.
+    //
+    // ⚠️ **Staat ná het afschrijven en dat is opzet.** Andersom zou het verse
+    //    weekdoel in dezelfde ronde langs de `missed`-lus komen. Dat gaat vandaag
+    //    goed omdat die lus op `cycle_start_date < afsluitbaar.startDate` filtert,
+    //    maar dat is een eigenschap van een andere query — precies het soort
+    //    verband dat stilvalt zodra iemand die filter aanpast.
+    //
+    // ⚠️ **Eén vraag per gebruiker en niet twee per doel** (onwrikbare regel 12).
+    //    `weekplan_kandidaten()` geeft de actieve doelen mét openstaande stap en
+    //    de vroegste cyclus van dat doel in één keer terug; het omrekenen naar
+    //    een cyclusnummer gebeurt hier, met `shared/time`.
+    //
+    // ⚠️ Idempotent, en de grendel is een unieke index en geen afspraak:
+    //    `weekly_plan_steps_een_per_cyclus`. Een tweede ronde in hetzelfde uur
+    //    krijgt `al_geactiveerd` terug en maakt niets.
+    const huidige = userCycle(
+      { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
+      nu,
+    );
+
+    const { data: kandidaten, error: kandidaatFout } = await db.rpc('weekplan_kandidaten', {
+      p_owner_id: profiel.id,
+    });
+
+    if (kandidaatFout) {
+      // Zacht: het afschrijven is het echte werk van deze job. Wel zichtbaar —
+      // een plan dat niet inschuift, is een week waarin de gebruiker niets te
+      // doen heeft zonder dat iemand dat besloten heeft.
+      console.error(`weekplan-kandidaten ophalen mislukte voor ${profiel.id}: ${kandidaatFout.message}`);
+    } else {
+      for (const kandidaat of (kandidaten ?? []) as Kandidaat[]) {
+        // ⚠️ Geen rekenwerk in SQL: het cyclusnummer komt uit `shared/time`,
+        //    net als in `maakWeekdoel()` (correctheidsregel 7).
+        const eerste =
+          kandidaat.eerste_cyclus === null
+            ? null
+            : userCycleOn(
+                { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
+                kandidaat.eerste_cyclus,
+              );
+
+        const index = eerste === null ? 1 : cyclesBetween(eerste, huidige) + 1;
+
+        const { data: uitkomst, error: stapFout } = await db.rpc('activeer_weekplanstap', {
+          p_goal_id: kandidaat.goal_id,
+          p_cycle_start_date: huidige.startDate,
+          p_cycle_index: index,
+        });
+
+        if (stapFout) {
+          console.error(
+            `weekplanstap activeren mislukte voor ${kandidaat.goal_id}: ${stapFout.message}`,
+          );
+          continue;
+        }
+
+        // ⚠️ `al_geactiveerd` en `geen_stap` zijn de normale uitkomsten van een
+        //    tweede ronde en van een leeg plan. Die tellen niet mee en horen
+        //    niet in het log — anders staat er elk uur een regel per doel.
+        if ((uitkomst as { ok?: boolean } | null)?.ok === true) ingeschoven += 1;
+      }
+    }
+
     // Reeksen herberekenen voor de doelen die geraakt zijn. Herberekenen en
     // niet ophogen: user_streaks is cache, geen waarheid.
     const geraakteDoelen = new Set((open ?? []).map((w) => (w as unknown as OpenWeekdoel).goal_id));
@@ -452,6 +536,11 @@ async function draaiRollover(auth: string): Promise<Response> {
       profielen: (profielen ?? []).length,
       geslapen: geslapen ?? 0,
       risicoBijgewerkt,
+      // ⚠️ Om dezelfde reden als `recaps` en `alsnogGoedgekeurd`: een job zonder
+      //    scherm heeft alleen zijn uitvoer. Dit getal is bovendien het enige
+      //    bewijs dat het inschuiven draait — er gaat geen melding uit en er
+      //    breekt niets als het stilvalt. Precies de vorm van QS8-140.
+      ingeschoven,
       // ⚠️ In de uitvoer, want zonder dit is de enige manier om te zien dát er
       //    een recap uit is gegaan, de groepschat zelf. De rollover is een job
       //    zonder scherm; wat hij niet teruggeeft, is niet gebeurd voor wie het

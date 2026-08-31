@@ -39,15 +39,19 @@ import {
   fetchMijlpalen,
   fetchOpenVerzoek,
   fetchRisico,
+  fetchWeekplan,
   herordenMijlpalen,
+  herordenWeekplan,
   maakMijlpaal,
   maakWeekdoel,
   planAdempauze,
   planbareCycli,
   trekDeadlineVerzoekIn,
+  startWeekplanstapNu,
   verplaats,
   verwijderDoel,
   verwijderMijlpaal,
+  verwijderWeekplanstap,
   vraagDeadlineVerschuiving,
   rondDoelAf,
   zetArchief,
@@ -84,6 +88,7 @@ import {
   Subheading,
   useHulpvraagVerborgen,
   useAsync,
+  Weekplanblok,
 } from '@/shared/ui';
 
 /**
@@ -261,6 +266,16 @@ export default function DoelDetail() {
               onKlaar={herlaad}
               onCoach={() => router.push(`/doel/coach/${d.id}`)}
             />
+
+            {/*
+              ⚠️ Onder de mijlpalen en bóven "weekdoel toevoegen" — QS8-203. Dat
+                 is de leesvolgorde van het scherm: de mijlpalen zijn het doel
+                 opgeknipt, het plan is de eerstvolgende weken daarvan, en pas
+                 daaronder maak je er zelf een. Staat het plan eronder, dan maakt
+                 de gebruiker een weekdoel dat er de volgende cyclus alsnog bij
+                 komt.
+            */}
+            <Weekplan doel={d} klok={klok} onKlaar={herlaad} />
 
             <WeekdoelToevoegen doel={d} klok={klok} onKlaar={herlaad} />
 
@@ -1783,6 +1798,143 @@ function MijlpaalBewerken({
         </Button>
       </View>
     </View>
+  );
+}
+
+/**
+ * Het weekplan — QS8-203, migratie 0137.
+ *
+ * ⚠️ **Dit blok is de reden dat het plan geen dood hout is.** Een tabel met een
+ *    RPC en een grant waar geen scherm bij kan, is precies wat QS8-113 en
+ *    QS8-112 opleverden: elk schakeltje af, de keten nergens verbonden, en geen
+ *    enkele test die dat kón zien. Het plan wordt gevuld vanaf het coach-scherm
+ *    en ingeschoven door de rollover; hier is de plek waar de eigenaar het ziet
+ *    en bijstelt.
+ *
+ * ⚠️ Onwrikbare regel 16: laadstaat, foutstaat én lege staat. De lege staat is
+ *    hier het normale geval — de meeste doelen hebben nog geen plan — dus die
+ *    zin doet werk en is geen opvulling.
+ *
+ * ⚠️ De cyclus wordt hier niet berekend. `startWeekplanstapNu()` haalt hem uit
+ *    de klok van de gebruiker (correctheidsregel 7).
+ */
+function Weekplan({
+  doel,
+  klok,
+  onKlaar,
+}: {
+  readonly doel: DoelMetVoortgang;
+  readonly klok: UserClock | null;
+  readonly onKlaar: () => void;
+}) {
+  // ⚠️ `useAsync` en geen eigen `levend`-vlag. Dat blokje stond op 25-08 al
+  //    tweeëndertig keer woordelijk in deze codebase; `levend:controle` bewaakt
+  //    dat er geen drieëndertigste bij komt die één van de vier toetsen vergeet.
+  const {
+    data: stappen,
+    loading: laadt,
+    error: laadfout,
+    herlaad: laad,
+  } = useAsync(() => fetchWeekplan(doel.id), [doel.id]);
+
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function startNu(id: string) {
+    if (klok === null) return;
+    setBezig(id);
+    setFout(null);
+
+    const uitkomst = await startWeekplanstapNu(id, doel.id, klok);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    laad();
+    // ⚠️ Het doelscherm herladen en niet alleen dit blok: er staat nu een
+    //    weekdoel bij, en het puntenplafond eronder is veranderd.
+    onKlaar();
+  }
+
+  async function verwijder(id: string) {
+    setBezig(id);
+    setFout(null);
+
+    const uitkomst = await verwijderWeekplanstap(id);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    laad();
+  }
+
+  async function schuif(id: string, richting: 'omhoog' | 'omlaag') {
+    // ⚠️ `verplaats()` geeft de lijst ongewijzigd terug als er niets te schuiven
+    //    valt. Dan is de RPC een netwerkronde voor niets — en erger, hij zou het
+    //    scherm laten knipperen alsof er iets veranderde.
+    const volgorde = verplaats(
+      (stappen ?? []).map((stap) => stap.id),
+      id,
+      richting,
+    );
+
+    if (volgorde.length === 0) return;
+
+    setBezig(id);
+    setFout(null);
+
+    const uitkomst = await herordenWeekplan(doel.id, volgorde);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    laad();
+  }
+
+  if (laadt) {
+    return (
+      <Card nested>
+        <Body muted>{t('weekplan.kop')}</Body>
+      </Card>
+    );
+  }
+
+  // ⚠️ Onwrikbare regel 16: de foutstaat is een eigen tak en niet een leeg blok.
+  //    `Weekplanblok` zou anders "er staat nog geen plan klaar" tonen terwijl er
+  //    misschien wél een plan is dat gewoon niet binnenkwam — en dat is de
+  //    verkeerde geruststelling.
+  if (laadfout !== null && laadfout !== undefined) {
+    return (
+      <Card nested>
+        <Subheading>{t('weekplan.kop')}</Subheading>
+        <Caption danger>{t('weekplan.laden_mislukt')}</Caption>
+        <Button variant="stil" onPress={laad}>
+          {t('laden.opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card nested>
+      <Weekplanblok
+        stappen={stappen ?? []}
+        bezig={bezig}
+        onStartNu={(id) => void startNu(id)}
+        onVerwijder={(id) => void verwijder(id)}
+        onSchuif={(id, richting) => void schuif(id, richting)}
+      />
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
   );
 }
 

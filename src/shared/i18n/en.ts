@@ -1490,4 +1490,46 @@ export const en: Record<Sleutel, string> = {
   'beoordelen.week_afgerond_met': 'Week finished — {gehaald}',
   'groepscherm.leden_van_totaal': '{getoond} of {totaal} members.',
 
+
+  // ---------------------------------------------------------------------------
+  // The weekly plan — QS8-203, migration 0137
+  // ---------------------------------------------------------------------------
+  'weekplan.kop': 'Your weekly plan',
+  'weekplan.uitleg':
+    'These steps are lined up for the weeks ahead. Every week the top one slides in as your weekly goal.',
+  'weekplan.kost_niets':
+    "A planned step doesn't count yet: it earns no points and can't cost you one. That starts when it becomes your weekly goal.",
+  'weekplan.leeg':
+    'No plan yet. Have the coach work out weekly steps under a milestone and the rest will show up here.',
+  'weekplan.eerstvolgende': 'Slides in first',
+  'weekplan.over_weken': 'In {weken} weeks',
+  'weekplan.start_nu': 'Start this one now',
+  'weekplan.start_nu_label': 'Start "{titel}" this week',
+  'weekplan.verwijder': 'Remove from plan',
+  'weekplan.verwijder_label': 'Remove "{titel}" from the plan',
+  'weekplan.omhoog': 'Earlier',
+  'weekplan.omhoog_label': 'Move "{titel}" earlier in the plan',
+  'weekplan.omlaag': 'Later',
+  'weekplan.omlaag_label': 'Move "{titel}" later in the plan',
+  'weekplan.laden_mislukt': "The plan couldn't be loaded.",
+  'weekplan.opslaan_mislukt': "The plan couldn't be saved.",
+  'weekplan.verwijderen_mislukt': "That step couldn't be removed.",
+  'weekplan.starten_mislukt': "That step couldn't be started.",
+  'weekplan.al_ingeschoven': 'That step has already become a weekly goal.',
+  'weekplan.deze_week_al': 'A step has already slid in for this goal this week.',
+  'weekplan.doel_niet_actief': "This goal isn't running any more, so nothing else will slide in.",
+  'weekplan.geen_stap': 'There is no step left to start.',
+  'weekplan.te_veel_deze_dag': "You've made too many weekly goals today. Try again tomorrow.",
+  'weekplan.niet_ingelogd': 'Sign in again and give it another go.',
+  'weekplan.niet_van_jou': "That step isn't yours.",
+  'weekplan.lijst_veranderd': 'The plan has changed in the meantime. Load it again.',
+  'weekplan.ingeschoven_kop': 'A new weekly goal is ready',
+  'weekplan.ingeschoven_tekst':
+    'The next step from your plan became this week\'s goal. That raises your points ceiling for this week.',
+  'weekplan.neem_over': 'Line up the whole plan',
+  'weekplan.neem_over_uitleg':
+    'The first step becomes your goal for this week. The rest goes into your plan, and one slides in every week.',
+  'weekplan.overgenomen': 'The plan is ready. Step 1 is your goal for this week.',
+  'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
+  'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
 };
