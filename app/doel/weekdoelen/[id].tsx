@@ -37,7 +37,7 @@ import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } 
  *
  * ⚠️ **Hier stond tot 31-08-2026 dat er geen "alles toevoegen"-knop was, en dat
  *    dat de belangrijkste keuze in dit scherm was.** Die knop is er nu wel —
- *    QS8-203, migratie 0137 — en het is belangrijk om te zien dat de réden niet
+ *    QS8-203, migratie 0138 — en het is belangrijk om te zien dat de réden niet
  *    is weggevallen:
  *
  *    `maakWeekdoel()` zet nog steeds altijd de húidige cyclus, want de client
@@ -387,7 +387,7 @@ function Genereren({
 
           {/*
             ⚠️ **De knop die tot 31-08-2026 met opzet niet bestond** — QS8-203,
-               migratie 0137. De reden dat hij er niet was, is niet weggevallen:
+               migratie 0138. De reden dat hij er niet was, is niet weggevallen:
                `maakWeekdoel()` zet nog steeds altijd de húidige cyclus, en zes
                weekdoelen in één week zijn nog steeds vijf minpunten. Wat er
                veranderd is, is dat er nu een plaats is voor een stap die nog géén

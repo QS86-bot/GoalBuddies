@@ -1842,7 +1842,7 @@ export const nl = {
 
 
   // ---------------------------------------------------------------------------
-  // Het weekplan — QS8-203, migratie 0137
+  // Het weekplan — QS8-203, migratie 0138
   // ---------------------------------------------------------------------------
   //
   // ⚠️ De copy moet op twee plekken zeggen dat een geplande stap niets kost.

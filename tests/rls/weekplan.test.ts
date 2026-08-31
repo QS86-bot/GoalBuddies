@@ -10,7 +10,7 @@ import {
 } from './harness';
 
 /**
- * Het weekplan — QS8-203, migratie 0137.
+ * Het weekplan — QS8-203, migratie 0138.
  *
  * ⚠️ **Vier beloftes, en drie ervan zijn geen eigenschap van één onderdeel.**
  *    Onwrikbare regel 18: onderdelen zijn makkelijk te testen en naden niet, dus

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { t } from '../../shared/i18n';
 
 /**
- * Geplande weekstappen — QS8-203, migratie 0137.
+ * Geplande weekstappen — QS8-203, migratie 0138.
  *
  * ⚠️ De grenzen zijn met opzet identiek aan die van `weekdoelSchema`. Een
  *    geplande stap wordt letterlijk een weekdoel: de rollover kopieert titel,
@@ -12,14 +12,14 @@ import { t } from '../../shared/i18n';
  *    een moment dat de gebruiker niets aan het invullen is.
  *
  *    Er zijn drie plekken waar deze grens staat en ze horen gelijk te blijven:
- *    dit schema, `weekly_plan_steps_title_len` c.s. in 0137, en dezelfde
+ *    dit schema, `weekly_plan_steps_title_len` c.s. in 0138, en dezelfde
  *    constraints op `weekly_goals` (0001 en 0123). De test naast dit bestand
  *    houdt de eerste twee tegen elkaar.
  */
 
 /**
  * ⚠️ Een plan reikt hoogstens een jaar vooruit — `weekly_plan_steps_order_bereik`
- *    in 0137. Het getal staat hier ook, want een formulier dat 53 stappen
+ *    in 0138. Het getal staat hier ook, want een formulier dat 53 stappen
  *    accepteert en dan een `23514` uit de database terugkrijgt, vertelt de
  *    gebruiker niets.
  */
@@ -65,7 +65,7 @@ export type WeekplanInvoer = z.infer<typeof weekplanSchema>;
 /**
  * De redenen die `start_weekplanstap()` en `activeer_weekplanstap()` teruggeven.
  *
- * ⚠️ Deze lijst is een kopie van wat 0137 kan antwoorden en staat onder test.
+ * ⚠️ Deze lijst is een kopie van wat 0138 kan antwoorden en staat onder test.
  *    Loopt hij achter, dan valt een reden in de UI stil terug op "er ging iets
  *    mis" terwijl de database precies verteld heeft wát er mis was — en dat is
  *    de klasse fout waar regel 18 over gaat.
@@ -92,7 +92,7 @@ export function isPlanstapReden(waarde: unknown): waarde is PlanstapReden {
 /**
  * De melding bij een geweigerde activatie.
  *
- * ⚠️ Elke reden uit 0137 heeft hier een eigen zin. Een `default` die alles
+ * ⚠️ Elke reden uit 0138 heeft hier een eigen zin. Een `default` die alles
  *    opvangt zou een nieuwe reden stil laten verdwijnen achter "er ging iets
  *    mis" — en dan heeft de database precies verteld wat er aan de hand was en
  *    ziet de gebruiker het niet.

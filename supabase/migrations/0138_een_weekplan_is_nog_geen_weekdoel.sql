@@ -1,4 +1,4 @@
--- 0137_een_weekplan_is_nog_geen_weekdoel.sql — geplande weekstappen krijgen een eigen tabel (QS8-203)
+-- 0138_een_weekplan_is_nog_geen_weekdoel.sql — geplande weekstappen krijgen een eigen tabel (QS8-203)
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.weekplan_kandidaten(uuid);

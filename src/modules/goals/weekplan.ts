@@ -18,7 +18,7 @@ import {
 } from './weekplan-schemas';
 
 /**
- * Het weekplan — QS8-203, migratie 0137.
+ * Het weekplan — QS8-203, migratie 0138.
  *
  * Een geplande stap is nog géén weekdoel. Hij telt niet mee in `max_points`,
  * levert geen punten op en kan geen minpunt kosten. Pas als de rollover hem
@@ -30,7 +30,7 @@ import {
  *    en `schuifDoor()` dat doen (correctheidsregel 7).
  *
  * ⚠️ **Dit is privé en het hoort nergens op een groepsscherm.** De policies in
- *    0137 zijn eigenaar-only zonder tak voor groepsgenoten, ook in een open
+ *    0138 zijn eigenaar-only zonder tak voor groepsgenoten, ook in een open
  *    groep (A41). De filters hieronder zijn leesbaarheid voor de volgende lezer;
  *    de afdwinging zit in RLS.
  */
@@ -41,7 +41,7 @@ export type Weekplanstap = Tables<'weekly_plan_steps'>;
  * ⚠️ Sorteren op drie kolommen en niet op één. `order_index` is niet uniek per
  *    doel, dus bij een gelijkspel bepaalt het queryplan de volgorde — en dan
  *    geeft dezelfde data twee keer een ander antwoord. `activeer_weekplanstap()`
- *    in 0137 sorteert om dezelfde reden op dezelfde drie.
+ *    in 0138 sorteert om dezelfde reden op dezelfde drie.
  */
 function opVolgorde<T extends { order_index: number; created_at: string; id: string }>(
   rijen: readonly T[],

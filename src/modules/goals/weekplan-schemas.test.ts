@@ -109,7 +109,7 @@ describe('weekplanSchema', () => {
 
   /**
    * ⚠️ De grens hier hoort gelijk te zijn aan `weekly_plan_steps_order_bereik`
-   *    in 0137. Zonder deze regel is "zet het hele plan klaar" een lus die de
+   *    in 0138. Zonder deze regel is "zet het hele plan klaar" een lus die de
    *    dagrem uit 0091 leegtrekt met één druk op de knop.
    */
   it('weigert een plan dat verder reikt dan een jaar', () => {
@@ -142,7 +142,7 @@ describe('isPlanstapReden', () => {
 
 describe('meldingBijReden', () => {
   /**
-   * ⚠️ **De naad tussen 0137 en het scherm.** Elke reden die de database kan
+   * ⚠️ **De naad tussen 0138 en het scherm.** Elke reden die de database kan
    *    teruggeven heeft hier een eigen zin. Zou er een `default` staan, dan
    *    verdwijnt een nieuwe reden achter "er ging iets mis" terwijl de database
    *    precies verteld heeft wát er mis was — en dat is de klasse fout waar

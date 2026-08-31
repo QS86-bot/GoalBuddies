@@ -2346,7 +2346,7 @@ export type Database = {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json
       }
-      herstel_weekdoelstatus: { Args: never; Returns: number }
+      herstel_weekdoelstatus: { Args: { p_goal_id?: string }; Returns: number }
       indexdekking_bewaking: {
         Args: never
         Returns: {
@@ -2685,7 +2685,7 @@ export type Database = {
       }
       weekdoelen_over: { Args: never; Returns: number }
       weekdoelstatus_afwijkingen: {
-        Args: never
+        Args: { p_goal_id?: string }
         Returns: {
           opgeslagen: string
           verwacht: string

@@ -58,9 +58,31 @@ export default defineConfig({
      * (`removeTestUsers()` doet `.in(column, ids)` met uitsluitend de gebruikers
      * van dát bestand) en de identiteiten zijn al uniek per bestand. Een
      * naamruimte voegt geen isolatie toe die er niet al is — wie hem bouwt,
-     * hernoemt het probleem. De rij van 27-08 in `docs/ENGINEER-REVIEW.md` is de
-     * bron; deze regel houdt de uitslag betrouwbaar en maakt de suite niet
-     * robuust.
+     * hernoemt het probleem.
+     *
+     * ⚠️ **Op 31-08 is de oorzaak alsnog gevonden, en het was geen identiteit
+     * maar een `update` zonder grens** (QS8-145). `statuscache.test.ts` riep
+     * `herstel_weekdoelstatus()` aan, en die schreef over de héle
+     * `weekly_goals`-tabel: de vier met de hand op `approved` gezette weken van
+     * `reeks.test.ts` gelden per definitie als drift, dus die werden
+     * teruggezet naar `todo`. Gemeten in één transactie op een lege database:
+     *
+     *   reeks VOOR herstel:  4
+     *   herstel raakte 4 rijen aan
+     *   reeks NA herstel:    0
+     *   rijen nog aanwezig:  5
+     *
+     * Dat is exact de faalsignatuur hierboven, en het verklaart ook waarom
+     * `fixtureGaaf()` zweeg: die telt rijen, en de rijen bleven staan.
+     * Migratie 0137 geeft de functie een grens; `tests/rls/nevenschade.test.ts`
+     * bewaakt de klasse.
+     *
+     * ⚠️ **En tóch blijft deze regel staan.** Er is één pad bewezen en gedicht,
+     * niet aangetoond dat er geen tweede is — vier van de vijf globale
+     * schrijvers in dit schema worden vandaag alleen tegengehouden door een
+     * aanname over de fixtures, en die staan als zodanig opgeschreven in
+     * `nevenschade.test.ts`. Sequentieel kost dertig seconden en die koop je
+     * hiermee niet af.
      *
      * ⚠️ `sequence.concurrent` doet dit **niet**. Dat gaat over `test.concurrent`
      * bínnen één bestand; hier stond het al op `false` met een commentaarregel
@@ -99,8 +121,12 @@ export default defineConfig({
           ...gedeeld,
           name: 'rls',
           include: ['tests/rls/**/*.test.ts'],
-          // ⚠️ De hele reden dat deze groep bestaat. Niet weghalen zonder de
-          //    fixture-naamruimte die hierboven staat.
+          // ⚠️ De hele reden dat deze groep bestaat. Hier stond "niet weghalen
+          //    zonder de fixture-naamruimte hierboven", en die naamruimte is
+          //    verworpen — zie de kop. Wat er nu geldt: niet weghalen zolang er
+          //    globale schrijvers zijn die alleen door een aanname over de
+          //    fixtures worden tegengehouden. `tests/rls/nevenschade.test.ts`
+          //    somt ze op en noemt per stuk wanneer die aanname vervalt.
           fileParallelism: false,
           sequence: { concurrent: false },
         },

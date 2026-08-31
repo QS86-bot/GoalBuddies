@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { Body, Caption, Subheading } from './Text';
 
 /**
- * Het weekplan onder een doel — QS8-203, migratie 0137.
+ * Het weekplan onder een doel — QS8-203, migratie 0138.
  *
  * "Deze week, daarna, daarna." Wat hier staat is nog géén weekdoel: het telt
  * niet mee in het puntenplafond, levert geen punten op en kan geen minpunt
@@ -14,7 +14,7 @@ import { Body, Caption, Subheading } from './Text';
  * ⚠️ **Dit component is privé en hoort nooit in een groepsscherm.** Zelfde
  *    strekking als bij `Weekpas`: een weekplan is een vooruitblik op je eigen
  *    werk, en wie ziet dat er al twee weken niets ingeschoven is, weet iets over
- *    andermans weken (domeinregel 7). De policies in 0137 zijn eigenaar-only
+ *    andermans weken (domeinregel 7). De policies in 0138 zijn eigenaar-only
  *    zonder tak voor groepsgenoten — ook in een open groep (A41) — maar leun
  *    daar niet op: geef dit component geen `viewer`-prop in de hoop dat het dan
  *    wel goedkomt.

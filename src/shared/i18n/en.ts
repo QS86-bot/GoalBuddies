@@ -1492,7 +1492,7 @@ export const en: Record<Sleutel, string> = {
 
 
   // ---------------------------------------------------------------------------
-  // The weekly plan — QS8-203, migration 0137
+  // The weekly plan — QS8-203, migration 0138
   // ---------------------------------------------------------------------------
   'weekplan.kop': 'Your weekly plan',
   'weekplan.uitleg':
