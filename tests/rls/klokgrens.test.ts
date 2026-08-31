@@ -102,49 +102,12 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     await removeTestUsers();
   }, SETUP_TIMEOUT);
 
-  /**
-   * `ketting_schakel()` — de grens uit de bevinding zelf.
-   *
-   * ⚠️ Alice heeft hier geen goedgekeurd weekdoel, en dat is met opzet. De
-   *    functie toetst op volgorde: lid, dán het venster, dán de cyclus, dán het
-   *    weekdoel. Wie `period_out_of_range` níét terugkrijgt, is langs het venster
-   *    gekomen — welke reden er daarna ook uitrolt. Zo hoeft deze test niet elke
-   *    ándere voorwaarde na te bouwen om over déze grens iets te bewijzen.
-   */
-  describe('ketting_schakel', () => {
-    it(
-      'laat een periodestart van morgen door — die is in Auckland vandaag',
-      async () => {
-        const morgen = addDays(serverdatum(), 1);
-
-        const { data, error } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: morgen,
-          p_cycle_start: morgen,
-        });
-
-        expect(error).toBeNull();
-        expect(uitkomst(data).reason).not.toBe('period_out_of_range');
-      },
-      TEST_TIMEOUT,
-    );
-
-    it(
-      'weigert overmorgen — geen enkele zone loopt twee dagen voor',
-      async () => {
-        const overmorgen = addDays(serverdatum(), 2);
-
-        const { data } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: overmorgen,
-          p_cycle_start: overmorgen,
-        });
-
-        expect(uitkomst(data).reason).toBe('period_out_of_range');
-      },
-      TEST_TIMEOUT,
-    );
-  });
+  // ⚠️ Hier stond tot 31-08 een blok `ketting_schakel()` met dezelfde twee
+  //    grenstests (morgen mag, overmorgen niet). Die functie is in migratie 0133
+  //    verwijderd omdat hij nul aanroepers had (QS8-144). De grens zelf is niet
+  //    verdwenen: het blok hieronder toetst hem op `bewaak_week_review_periode()`,
+  //    de trigger die op de overgebleven route dezelfde +1/−35 bewaakt — en die
+  //    bovendien eist dat de datum een échte periodestart is.
 
   /**
    * `bewaak_week_review_periode()` — dezelfde grens, maar als trigger, en die

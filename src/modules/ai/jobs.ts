@@ -91,7 +91,7 @@ export async function vraagMijlpalen(
  *    bestaat het nog niet: dit is de vraag waaruit het doel ontstaat. De poort
  *    slaat zijn eigendomscontrole over bij een NULL (`if p_goal_id is not null
  *    and not exists ...`), en `ai_jobs_select` staat op `user_id`, dus de
- *    aanvrager kan zijn eigen job gewoon ophalen. Allebei nagemeten vóór 0132.
+ *    aanvrager kan zijn eigen job gewoon ophalen. Allebei nagemeten vóór 0134.
  *
  * ⚠️ **Eén call en niet drie.** Titel, categorie, identiteitszin, mijlpalen én
  *    het eerste weekdoel komen uit hetzelfde antwoord. Drie losse jobs zouden
@@ -101,7 +101,7 @@ export async function vraagMijlpalen(
  * ⚠️ Dezelfde zin met dezelfde datum binnen een dag geeft hetzelfde plan terug
  *    uit de cache (`hergebruikt: true`). Dat is goedkoop en snel, maar het
  *    betekent dat "genereer opnieuw" met identieke invoer geen nieuw plan
- *    oplevert — zie de kop van migratie 0132.
+ *    oplevert — zie de kop van migratie 0134.
  */
 export async function vraagPlan(
   zin: string,
@@ -130,7 +130,7 @@ async function vraagJob(
     //    de database het niet aankan.** `vraag_ai_job(p_kind text, p_goal_id
     //    uuid, p_input jsonb)` accepteert NULL en gaat er expliciet mee om
     //    (`if p_goal_id is not null and not exists ...`); dat is wat `plan`
-    //    sinds 0132 gebruikt, want daar bestaat het doel nog niet. Supabase'
+    //    sinds 0134 gebruikt, want daar bestaat het doel nog niet. Supabase'
     //    typegenerator kan aan een RPC-argument niet zien of het nullable is en
     //    schrijft overal `string`.
     //

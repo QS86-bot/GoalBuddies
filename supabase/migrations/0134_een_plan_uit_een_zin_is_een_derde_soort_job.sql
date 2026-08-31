@@ -1,4 +1,4 @@
--- 0132_een_plan_uit_een_zin_is_een_derde_soort_job.sql — ai_jobs.kind krijgt 'plan'
+-- 0134_een_plan_uit_een_zin_is_een_derde_soort_job.sql — ai_jobs.kind krijgt 'plan'
 --
 -- ROLLBACK-PAD:
 --   alter table public.ai_jobs drop constraint if exists ai_jobs_kind_valid;
@@ -64,7 +64,7 @@ alter table public.ai_jobs add constraint ai_jobs_kind_valid
   check (kind in ('milestones', 'weekly_goals', 'milestone_tip', 'plan'));
 
 comment on column public.ai_jobs.goal_id is
-  'Het doel waar deze job bij hoort. ⚠️ NULL bij kind = ''plan'' (0132): daar '
+  'Het doel waar deze job bij hoort. ⚠️ NULL bij kind = ''plan'' (0134): daar '
   'bestaat het doel nog niet — de job maakt juist het voorstel waaruit het doel '
   'ontstaat. ai_jobs_select staat daarom op user_id en niet op goal_id.';
 
@@ -85,7 +85,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
   end if;
 
-  -- 0132: 'plan' erbij — één zin en een datum, zonder bestaand doel.
+  -- 0134: 'plan' erbij — één zin en een datum, zonder bestaand doel.
   if p_kind not in ('milestones', 'weekly_goals', 'milestone_tip', 'plan') then
     return jsonb_build_object('ok', false, 'reason', 'unknown_kind');
   end if;
@@ -193,7 +193,7 @@ $function$;
 
 comment on function public.vraag_ai_job(text, uuid, jsonb) is
   'De poort voor elke AI-job: quotum, dedup, invoergrens en eigendom. ⚠️ Vier '
-  'soorten sinds 0132: milestones, weekly_goals, milestone_tip en plan. Een '
+  'soorten sinds 0134: milestones, weekly_goals, milestone_tip en plan. Een '
   'soort erbij vraagt hier én in de CHECK op ai_jobs.kind én in de kopie in '
   'src/modules/ai/jobs.ts, die onder test staat.';
 
