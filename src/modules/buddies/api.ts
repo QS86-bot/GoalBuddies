@@ -773,6 +773,23 @@ export interface Uitnodiging {
  * ⚠️ `null` betekent: ingetrokken, verlopen of nooit bestaan. Die drie geven met
  *    opzet hetzelfde antwoord.
  */
+/**
+ * Is dit het limietantwoord van `invite_preview()` in plaats van een groep?
+ *
+ * ⚠️ Een eigen wacht en niet `'limiet_bereikt' in data`, omdat `data` hier
+ *    `Json` is: dat is ook een getal, een string of een array, en `in` gooit op
+ *    alles wat geen object is. Een oudere server stuurt dit veld niet — dan is
+ *    dit `false` en loopt de gewone route door.
+ */
+function isLimietBereikt(data: unknown): boolean {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    !Array.isArray(data) &&
+    (data as Record<string, unknown>).limiet_bereikt === true
+  );
+}
+
 export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null> {
   const schoon = normaliseerCode(code);
   if (schoon.length === 0) return null;
@@ -785,6 +802,17 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
   }
 
   if (data === null) return null;
+
+  // ⚠️ **De limiet uit 0131, en die is met opzet géén `null`.** `null` betekent
+  //    hier sinds 0019 "ingetrokken, verlopen of nooit bestaan" — één antwoord
+  //    voor drie gevallen, zodat de functie geen orakel is dat vertelt welke
+  //    codes bestaan. Een bereikte limiet hoort daar niet bij: die code klópte,
+  //    hij is alleen te vaak geopend. Zou hij hier op `null` uitkomen, dan hoort
+  //    een échte genodigde dat zijn uitnodiging niet meer geldt terwijl hij over
+  //    een uur gewoon werkt — en niemand ziet dat gebeuren.
+  if (isLimietBereikt(data)) {
+    throw new Error(t('groep.uitnodiging_te_druk'));
+  }
 
   const gelezen = data as unknown as Uitnodiging & { zichtbaarheid?: unknown };
 

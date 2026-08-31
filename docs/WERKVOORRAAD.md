@@ -97,9 +97,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0125` staan in de map: **128 bestanden**,
+Migraties `0001` t/m `0131` staan in de map: **129 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-De nummering is aaneengesloten.
+⚠️ **Er ontbreken nummers: 0126, 0127, 0128, 0129, 0130.** Zie `migraties:controle`.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot
