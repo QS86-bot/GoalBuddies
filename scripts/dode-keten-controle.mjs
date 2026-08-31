@@ -95,18 +95,13 @@ export const BEWUST_ONGESCHREVEN = {
     'zodra de chat op `type` gaat renderen.',
   'chat_messages.type=doc':
     'Idem als `photo` (QS8-72, Fase 2), en met dezelfde open schrijfkant.',
-  'points_ledger.reason=goal_done':
-    '⚠️ Vraagt een besluit in plaats van een epic. Domeinregel 10 zegt dat het ' +
-    'puntenplafond van een doel de som is van de plafondpunten van zijn ' +
-    'weekdoelen — `recalc_goal_max_points()` telt letterlijk alleen ' +
-    '`weekly_goals.points_ceiling` — dus een aparte boeking voor het afronden ' +
-    'van het doel is dubbeltelling, en hoort weg zoals `missed` in 0082. ' +
-    '⚠️ Hier stond dat `milestone_done` wél geboekt wordt en dat schrappen ' +
-    'daarom het model zou veranderen. Dat klopt niet: die naam is een ' +
-    'chat-systeembericht en geen puntenreden. Beide zijn dood, en om dezelfde ' +
-    'reden. Staat als rij in docs/ENGINEER-REVIEW.md.',
   'points_ledger.reason=milestone_done':
-    'Zelfde geval als `goal_done` en hetzelfde besluit: mijlpalen voeden de ' +
+    // ⚠️ `goal_done` stond hier tot 31-08 naast, met dezelfde reden. Hij is in
+    //    migratie 0132 geschrapt na een besluit van Quinten; deze bleef staan
+    //    omdat het een tweede besluit is (telt een mijlpaal apart mee?) en dit
+    //    project één besluit per keer neemt. Zie QS8-215.
+    'Zelfde geval als het geschrapte `goal_done` en waarschijnlijk hetzelfde ' +
+    'besluit, maar nog niet genomen: mijlpalen voeden de ' +
     'vóórtgang en niet de score, en domeinregel 10 zegt dat dat twee dingen ' +
     'zijn. Kwam pas op 27-08 bovendrijven omdat de tekstzoektocht een treffer ' +
     'uit `chat_messages` als schrijver las — zie `TREFFER_HOORT_ELDERS`.',
