@@ -6,6 +6,13 @@ import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
+//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
+//    React en React Native mee — in een test die in Node draait is dat een
+//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
+//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+import { metGetekendeAvatars } from '../auth/avatar';
+
 import type { Resultaat } from './api';
 import {
   BERICHTEN_PER_PAGINA,
@@ -166,8 +173,14 @@ export async function fetchChat(
   const ruw = (data ?? []) as readonly ChatRij[];
   const nieuwsteEerst = ruw.map(naarBericht).filter((b): b is ChatBericht => b !== null);
 
+  // ⚠️ Eén ronde tekenen voor de hele pagina, niet per bericht. De avatar-bucket
+  //    is privé sinds 0126, dus `sender_avatar` draagt een pad; een verzoek per
+  //    regel is exact de N+1 uit schaalbaarheidsregel 12, en dertig regels is
+  //    precies de schaal waarop dat pijn doet.
+  const getekend = await metGetekendeAvatars(nieuwsteEerst, 'sender_avatar');
+
   return {
-    berichten: [...nieuwsteEerst].reverse(),
+    berichten: [...getekend].reverse(),
     // ⚠️ Op `ruw` en niet op de gefilterde lijst. Viel er een rij weg omdat hij
     //    onbruikbaar was, dan valt er nog steeds verder terug te bladeren.
     meer: ruw.length === BERICHTEN_PER_PAGINA,

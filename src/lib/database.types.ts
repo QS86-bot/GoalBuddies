@@ -1277,6 +1277,32 @@ export type Database = {
           },
         ]
       }
+      invite_preview_limits: {
+        Row: {
+          aantal: number
+          group_id: string
+          venster_start: string
+        }
+        Insert: {
+          aantal?: number
+          group_id: string
+          venster_start?: string
+        }
+        Update: {
+          aantal?: number
+          group_id?: string
+          venster_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_preview_limits_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       milestone_tips: {
         Row: {
           body: string

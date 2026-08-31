@@ -1,5 +1,12 @@
 import { t } from '../../shared/i18n';
 
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
+//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
+//    React en React Native mee — in een test die in Node draait is dat een
+//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
+//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+import { metGetekendeAvatars } from '../auth/avatar';
+
 import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -366,7 +373,10 @@ export async function fetchGroepsoverzicht(
   }
 
   const ruw = (data ?? []) as readonly OverzichtRij[];
-  const rijen = ruw.map(naarGroepslid).filter((lid): lid is Groepslid => lid !== null);
+  const rijen = await metGetekendeAvatars(
+    ruw.map(naarGroepslid).filter((lid): lid is Groepslid => lid !== null),
+    'avatar_url',
+  );
 
   // ⚠️ Onbruikbare rijen gaan óók van het totaal af. Zonder die aftrek blijft
   //    `meer` op waar staan en toont de UI voor altijd "11 van 12" zonder dat er
@@ -773,6 +783,23 @@ export interface Uitnodiging {
  * ⚠️ `null` betekent: ingetrokken, verlopen of nooit bestaan. Die drie geven met
  *    opzet hetzelfde antwoord.
  */
+/**
+ * Is dit het limietantwoord van `invite_preview()` in plaats van een groep?
+ *
+ * ⚠️ Een eigen wacht en niet `'limiet_bereikt' in data`, omdat `data` hier
+ *    `Json` is: dat is ook een getal, een string of een array, en `in` gooit op
+ *    alles wat geen object is. Een oudere server stuurt dit veld niet — dan is
+ *    dit `false` en loopt de gewone route door.
+ */
+function isLimietBereikt(data: unknown): boolean {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    !Array.isArray(data) &&
+    (data as Record<string, unknown>).limiet_bereikt === true
+  );
+}
+
 export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null> {
   const schoon = normaliseerCode(code);
   if (schoon.length === 0) return null;
@@ -785,6 +812,17 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
   }
 
   if (data === null) return null;
+
+  // ⚠️ **De limiet uit 0131, en die is met opzet géén `null`.** `null` betekent
+  //    hier sinds 0019 "ingetrokken, verlopen of nooit bestaan" — één antwoord
+  //    voor drie gevallen, zodat de functie geen orakel is dat vertelt welke
+  //    codes bestaan. Een bereikte limiet hoort daar niet bij: die code klópte,
+  //    hij is alleen te vaak geopend. Zou hij hier op `null` uitkomen, dan hoort
+  //    een échte genodigde dat zijn uitnodiging niet meer geldt terwijl hij over
+  //    een uur gewoon werkt — en niemand ziet dat gebeuren.
+  if (isLimietBereikt(data)) {
+    throw new Error(t('groep.uitnodiging_te_druk'));
+  }
 
   const gelezen = data as unknown as Uitnodiging & { zichtbaarheid?: unknown };
 

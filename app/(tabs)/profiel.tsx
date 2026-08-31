@@ -1,8 +1,14 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import {
+  AVATAR_MAX_BYTES,
+  base64NaarBytes,
+  fetchProfiel,
   signOut,
+  uploadAvatar,
+  verwijderAvatar,
   updateProfiel,
   useProfiel,
   verwijderMijnAccount,
@@ -105,6 +111,8 @@ export default function Profiel() {
               <Subheading>{t('profiel.reeks_titel')}</Subheading>
               <Caption>{t('profiel.reeks_uitleg')}</Caption>
             </Card>
+
+            <AvatarKeuze profiel={p} onGewijzigd={zetProfiel} />
 
             <BuddyBijdrage userId={p.id} />
 
@@ -815,9 +823,136 @@ function Beginschermuitleg() {
   );
 }
 
+/**
+ * De profielfoto kiezen — migratie 0126.
+ *
+ * ⚠️ **Hij staat op het scherm en niet in `modules/auth`, en dat is een regel.**
+ *    De datalaag mag uit `shared/ui` alleen een type lenen, geen component —
+ *    anders wijst `modules/` naar de schermlaag (zie de rij van 19-08 in
+ *    `docs/ENGINEER-REVIEW.md`). Alles wat hieronder géén UI is, staat daarom in
+ *    `src/modules/auth/avatar.ts` en is daar los getest.
+ *
+ * ⚠️ **Dit was het ontbrekende schrijfpad**, en het is precies dezelfde vorm als
+ *    `profiles.locale` vóór QS8-115 (CLAUDE.md regel 18, vraag 5): de kolom
+ *    `avatar_url` bestond vanaf migratie 0001, `Avatar` las hem, en er was geen
+ *    enkele knop die hem ooit kon vullen. Elk schakeltje af, de keten dood — de
+ *    variant die geen test vindt, want er is niets kapot.
+ *
+ * ⚠️ **`base64: true` en geen `fetch(uri)`.** De kiezer geeft op native een
+ *    `file://`-uri en op web een `data:`-uri; `fetch()` op de eerste is in React
+ *    Native niet betrouwbaar. Base64 werkt op beide platformen hetzelfde, en dat
+ *    is hier meer waard dan de paar honderd kilobyte die het onderweg kost.
+ *
+ * ⚠️ **De grens staat op drie plekken en dat is met opzet.** `allowsEditing` plus
+ *    `quality` houdt de meeste foto's onder de 2 MB, `keurBestand()` vangt de
+ *    rest vóór er iets de deur uit gaat, en de bucket zelf is de grendel
+ *    (onwrikbare regel 3). De eerste twee zijn gemak; alleen de derde is
+ *    beveiliging.
+ */
+
+function AvatarKeuze({
+  profiel,
+  onGewijzigd,
+}: {
+  readonly profiel: ProfielRij;
+  readonly onGewijzigd: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function herlaad() {
+    // ⚠️ Opnieuw ophalen en niet het pad zelf in de state zetten: `fetchProfiel`
+    //    tekent de avatar, en een ongetekend pad in een `<Image>` is een leeg
+    //    vlak zonder foutmelding.
+    const vers = await fetchProfiel(profiel.id);
+    if (vers !== null) onGewijzigd(vers);
+  }
+
+  async function kies() {
+    setFout(null);
+
+    const toestemming = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!toestemming.granted) {
+      setFout(t('avatar.geen_toegang'));
+      return;
+    }
+
+    const keuze = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+      base64: true,
+    });
+
+    const gekozen = keuze.canceled ? null : (keuze.assets[0] ?? null);
+    if (gekozen === null) return;
+
+    const base64 = gekozen.base64 ?? null;
+    if (base64 === null) {
+      setFout(t('avatar.uploaden_mislukt'));
+      return;
+    }
+
+    const bytes = base64NaarBytes(base64);
+    if (bytes === null) {
+      setFout(t('avatar.uploaden_mislukt'));
+      return;
+    }
+
+    setBezig(true);
+    const uitkomst = await uploadAvatar(profiel.id, {
+      data: bytes,
+      mime: gekozen.mimeType ?? 'image/jpeg',
+    });
+
+    if (uitkomst.ok) await herlaad();
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  async function weghalen() {
+    setFout(null);
+    setBezig(true);
+
+    const uitkomst = await verwijderAvatar(profiel.id);
+    if (uitkomst.ok) await herlaad();
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  const heeftFoto = profiel.avatar_url !== null;
+
+  return (
+    <Card>
+      <Subheading>{t('avatar.kop')}</Subheading>
+      <View style={styles.avatarRij}>
+        <Avatar name={profiel.display_name} url={profiel.avatar_url} size={56} />
+        <Body muted>{t('avatar.uitleg')}</Body>
+      </View>
+
+      <Button onPress={() => void kies()} busy={bezig} variant="secundair">
+        {heeftFoto ? t('avatar.vervangen') : t('avatar.kiezen')}
+      </Button>
+
+      {heeftFoto ? (
+        <Button onPress={() => void weghalen()} disabled={bezig} variant="stil">
+          {t('avatar.verwijderen')}
+        </Button>
+      ) : null}
+
+      <Caption>{t('avatar.grens', { mb: String(Math.round(AVATAR_MAX_BYTES / 1024 / 1024)) })}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
   blokken: { gap: space.blokGap + 3 },
   kop: { flexDirection: 'row', gap: space.blokGap, alignItems: 'center' },
   kopTekst: { gap: 2, flex: 1 },
   keuzes: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
+  avatarRij: { flexDirection: 'row', alignItems: 'center', gap: space.blokGap },
 });

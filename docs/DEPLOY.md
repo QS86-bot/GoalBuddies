@@ -283,6 +283,73 @@ noemt.
 
 ---
 
+## 2.6a Storage — vier regels bij de eerste bucket
+
+Sinds migratie `0126` heeft dit project één bucket: **`avatars`**, privé, 2 MB,
+`image/jpeg|png|webp`. Wat daar geldt, geldt bij elke volgende bucket.
+
+1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
+   die met de hand gemaakt is, staat nergens in deze repository — en dan kan
+   `supabase/migrations/` het schema van productie niet meer opbouwen en toetst
+   de RLS-suite een ánder schema dan er draait. `npm run storage:controle` gaat
+   af zodra er code naar een bucket schrijft die geen migratie aanmaakt.
+2. **`public = false`, en dat is geen voorzichtigheid.** Een openbare bucket
+   omzeilt RLS volledig: elk bestand is met de URL alleen te lezen, buiten elke
+   policy om. `storage:controle` wordt rood op élke openbare bucket.
+3. **De bucketnaam is een constante, geen berekening.** `AVATAR_BUCKET` in
+   `src/modules/auth/avatar.ts`. Een naam die uit een variabele komt, ontsnapt
+   aan de controle hierboven.
+4. **Tekenen gaat in één ronde per lijst.** Een privébucket vraagt een
+   ondertekende URL per bestand; per rij tekenen is de N+1 uit
+   schaalbaarheidsregel 12, en het groepsoverzicht is precies de plek waar dat
+   pijn doet. Gebruik `metGetekendeAvatars(rijen, veld)` op het ophaalpad zelf.
+   `npm run avatar:controle` wordt rood zodra een ophaalpad een avatar-kolom mapt
+   zonder hem te tekenen.
+
+⚠️ **Toegepast op productie op 28-08-2026: `0126` t/m `0130`.** De laatste drie
+komen uit de reviewronde en horen erbij — `0126` alleen is niet af. Zie
+`docs/decisions/2026-08-28-de-eerste-bucket.md` §7.
+
+⚠️ **Bij het toepassen van 0126 op productie:** de insert in `storage.buckets`
+staat op `on conflict (id) do update`, dus een bucket die er per ongeluk al is
+wordt op de juiste stand gezet in plaats van te botsen. De vier policies staan
+elk achter een `drop policy if exists`. Controleer na afloop:
+
+```sql
+select id, public, file_size_limit, allowed_mime_types from storage.buckets;
+select polname from pg_policy p
+  join pg_class c on c.oid = p.polrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'storage' and c.relname = 'objects';
+```
+
+Verwacht: één rij `avatars | f | 2097152 | {image/jpeg,image/png,image/webp}` en
+vier policies `avatars_select`, `avatars_insert`, `avatars_update`,
+`avatars_delete`.
+
+En na `0129`/`0130` er nog twee bij:
+
+```sql
+select pg_get_constraintdef(oid) from pg_constraint
+ where conname = 'profiles_avatar_url_eigen_pad';
+select tgname from pg_trigger t
+  join pg_class c on c.oid = t.tgrelid
+  join pg_namespace n on n.oid = c.relnamespace
+ where n.nspname = 'storage' and c.relname = 'objects' and not t.tgisinternal;
+```
+
+Verwacht: een CHECK met `~ ('^' || id || '/[A-Za-z0-9._-]+$')` — een `like` daar
+is de zwakkere versie van `0127` en laat `../` door — en een trigger
+`avatars_aantal_begrensd`.
+
+⚠️ **Twee dingen die deze repository níét kan meten en die je met de hand moet
+doen zodra je bij het project kunt.** De bucket heet in de kop van `0126` "de
+grendel" voor onwrikbare regel 3, maar `file_size_limit` en `allowed_mime_types`
+worden afgedwongen door de storage-diénst en niet door de tabel — en die dienst
+draait niet in de lokale schil. Eén upload van 3 MB en één van `application/pdf`
+tegen het echte project, en kijken of hij weigert. Zolang dat niet gedaan is, is
+die grendel een aanname en geen meting.
+
 ## 2.7 Verbindingen en pooling
 
 **`max_connections` staat op 60**, nagemeten op 24-08-2026. Dat is voor de héle

@@ -1,5 +1,12 @@
 import { t } from '../../shared/i18n';
 
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
+//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
+//    React en React Native mee — in een test die in Node draait is dat een
+//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
+//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+import { metGetekendeAvatars } from '../auth/avatar';
+
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
@@ -85,7 +92,8 @@ export async function fetchWeekafsluiting(
   }
 
   const ruw = (data ?? []) as readonly AntwoordRij[];
-  return ruw.map(naarAntwoord).filter((a): a is Antwoord => a !== null);
+  const antwoorden = ruw.map(naarAntwoord).filter((a): a is Antwoord => a !== null);
+  return metGetekendeAvatars(antwoorden, 'avatar_url');
 }
 
 type RpcReactieRij =
@@ -156,7 +164,10 @@ export async function fetchWeekafsluitingReacties(
   }
 
   const ruw = (data ?? []) as readonly ReactieRij[];
-  const rijen = ruw.map(naarReactie).filter((r): r is Reactie => r !== null);
+  const rijen = await metGetekendeAvatars(
+    ruw.map(naarReactie).filter((r): r is Reactie => r !== null),
+    'author_avatar',
+  );
 
   // ⚠️ **De cursor komt van de láátste rij die de database gaf, niet van de
   //    laatste bruikbare rij.** Valt een rij op de paginagrens weg in
