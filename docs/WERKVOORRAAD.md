@@ -7,8 +7,9 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 31-08-2026 (na QS8-195 en QS8-211, de eerste twee
-reparaties uit de doorloop van 30-08)
+**Laatst bijgewerkt:** 31-08-2026 (na QS8-215, QS8-144, QS8-173 en QS8-178 —
+de vier besluiten uit de doorloop van 30-08 die om een antwoord van Quinten
+vroegen; daarvóór QS8-195 en QS8-211)
 
 ---
 
@@ -210,13 +211,24 @@ hand-toevoegingen meer.** `goals.losgekoppeld_op` en
 levert ze voortaan zelf op. De volgorde-waarschuwing die hier stond, is
 vervallen.
 
-⚠️ **Er staat er wél weer één, en dit keer met een bekende houdbaarheid.**
-`groepsdatum()` uit 0120 en de nieuwe argumenten van `weekafsluiting_reacties()`
-uit 0121 zijn met de hand in `src/lib/database.types.ts` gezet,
-want `types:db` leest het echte project en daar staat 0120 nog niet op. Zodra
-hij is toegepast, levert de generator hem zelf en is de regel geen toevoeging
-meer. **Draai `npm run types:db` na het toepassen** — anders staat er een
-handmatige regel die niemand meer als handmatig herkent.
+⚠️ **Er staan er wél weer een paar, en dit keer met een bekende houdbaarheid.**
+Met de hand in `src/lib/database.types.ts` gezet, want `types:db` leest het
+echte project en daar staan deze migraties nog niet op:
+
+| Handtekening | Uit |
+| -- | -- |
+| `groepsdatum()` | 0120 |
+| de nieuwe argumenten van `weekafsluiting_reacties()` | 0121 |
+| `eigenaarsdatum(uid uuid)` | 0134 |
+| `keur_vastgelopen_goedkeuringen_goed(p_termijn_dagen integer)` | 0135 |
+
+Zodra ze zijn toegepast, levert de generator ze zelf en zijn het geen
+toevoegingen meer. **Draai `npm run types:db` na het toepassen** — anders staan
+er handmatige regels die niemand meer als handmatig herkent.
+
+⚠️ **En dat is in deze container niet te doen**, wat de reden is dat het hier
+staat en niet gedaan is: `types:db` heeft én een productietoken én een draaiende
+Docker-daemon nodig, óók met `--db-url`. Dit is dus een regel voor §6.
 
 ⚠️ **Wat nog wél moet: de Edge Functions opnieuw deployen.** De
 `scrubMessage()`-reparatie van 28-08 zit in `supabase/functions/_shared/`, maar
@@ -796,6 +808,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
 | Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
+| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — na het toepassen van 0120 t/m 0135 |
 
 ---
 
@@ -1126,6 +1139,35 @@ De zwaarste op dit moment:
    geen fout, geen waarschuwing, wél een verwijzing naar een rij die niet meer
    bestaat. Kostte 0031 zijn AVG-belofte; gerepareerd in 0033. **Bij elke nieuwe
    `on delete set null`: staat er een trigger op die kolom?**
+
+9. **Twee dode paden zijn weg, en er blijft van allebei een staartje liggen**
+   (QS8-215 en QS8-144, migraties 0132 en 0133, 31-08).
+
+   - **`milestone_done` is een puntenreden die niemand boekt.** Exact dezelfde
+     vraag als `goal_done`, die met 0132 geschrapt is: telt een mijlpaal apart
+     mee, of zit hij al in de som van de weekdoelen eronder (domeinregel 10)?
+     Bewust niet meegenomen in 0132 — dat was één besluit, dit is een tweede.
+     ⚠️ Let op dat `milestone_done` óók een systeembericht**type** is; die twee
+     zijn los van elkaar, en het door elkaar halen ervan is precies wat de
+     premisse van QS8-215 fout maakte.
+   - **`chain_links.earned_cycle_start` en `chain_links_one_per_cycle` zijn dood
+     sinds 0133.** Ze bestonden voor `ketting_schakel()`, en de trigger
+     `ketting_uit_weekafsluiting()` die het werk overneemt, vult die kolom niet.
+     Droppen kan pas na één meting, want `chain_links` is een tabel die de groep
+     leest:
+
+     ```sql
+     select count(*) from chain_links where earned_cycle_start is not null;
+     ```
+
+     Nul betekent opruimen. Staat er iets in, dan is dat histórie uit de tijd dat
+     de functie wél werd aangeroepen, en dan is het geen opruiming maar een
+     migratie met een bewaarvraag.
+
+   ⚠️ **Beide zijn opzettelijk blijven staan en dat is geen uitstel.** Een
+   migratie die "en meteen dit er ook maar bij" doet, is precies hoe een
+   puntenmodel of een groepszichtbare tabel verandert zonder dat iemand het
+   besloten heeft.
 
 **Nog één productbeslissing ligt bij Quinten** (`docs/Q-TODO.docx`): mag een
 uitnodigingslink de doeltitels van je leden tonen aan iedereen die hem heeft
