@@ -5,6 +5,7 @@ export {
   fetchJob,
   vraagMijlpaalTip,
   vraagMijlpalen,
+  vraagPlan,
   vraagWeekdoelen,
   werkJobAf,
   type Job,
@@ -17,7 +18,22 @@ export { JOB_STATUSSEN, type JobStatus } from './job-schemas';
 export {
   haalbaarheidUit,
   mijlpalenUit,
+  planUit,
   weekdoelenUit,
   type VoorstelMijlpaal,
+  type VoorstelPlan,
   type VoorstelWeekdoel,
 } from './uitvoer';
+
+export {
+  onvolledigMelding,
+  pasPlanToe,
+  type PlanUitkomst,
+} from './plan-toepassen';
+
+export {
+  MAX_MIJLPALEN,
+  rijenUitPlan,
+  type MijlpaalRij,
+  type PlanRijen,
+} from './plan-rijen';
