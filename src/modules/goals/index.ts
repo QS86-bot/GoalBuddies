@@ -128,3 +128,26 @@ export {
   type DoelPatch,
   type DoelStatus,
 } from './schemas';
+
+export {
+  fetchIngeschovenDezeCyclus,
+  fetchWeekplan,
+  herordenWeekplan,
+  maakWeekplan,
+  startWeekplanstapNu,
+  stelWeekplanstapBij,
+  verwijderWeekplanstap,
+  type Weekplanstap,
+} from './weekplan';
+
+export {
+  isPlanstapReden,
+  MAX_PLANSTAPPEN,
+  meldingBijReden,
+  PLANSTAP_REDENEN,
+  weekplanSchema,
+  weekplanstapSchema,
+  type PlanstapReden,
+  type WeekplanInvoer,
+  type WeekplanstapInvoer,
+} from './weekplan-schemas';
