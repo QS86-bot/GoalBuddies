@@ -3,8 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 31-08-2026, na zes merges op één dag — de doorloop van
-> 30-08 (QS8-195, QS8-211) én een beveiligingsronde (QS8-234 t/m QS8-239).
+> **Laatst bijgewerkt:** 31-08-2026, na acht merges op één dag — de doorloop van
+> 30-08 (QS8-195, QS8-211), een beveiligingsronde (QS8-234 t/m QS8-239) en de
+> reparatie van de blinde vlek eronder (QS8-238).
 >
 > **Twee dingen die de stand van dit project veranderen, en ze wijzen dezelfde
 > kant op.**
@@ -350,11 +351,30 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   normale gang van zaken hier, en dus precies waar het vaakst misgaat.
 
   Het is bij toeval gevonden: een nieuwe migratie sprong over het gat heen en
-  toen zat het er ineens wél tússen. Staat als QS8-238 en is **niet gerepareerd**.
+  toen zat het er ineens wél tússen.
 
-  ⚠️ Bij de reparatie: `scripts/migratie-nieuw.mjs` kijkt al naar élke remote
-  branch en waarschuwde uit zichzelf. Diezelfde meting hoort een rode controle te
-  zijn en niet een terzijde bij het aanmaken.
+  ✅ **Gerepareerd op 31-08 (QS8-238, #119).** Stap 4 van `migraties:controle`
+  kijkt nu naar wat de remote branches dragen. De ijking die het issue zelf
+  voorschreef — haal het hoogste migratiebestand weg — maakt hem nu rood; daarvóór
+  deed hij niets.
+
+  ⚠️ **En daar zit de les die blijft.** De eerste reproductie klopte niet: mét
+  0131 aanwezig vindt de óude controle het gat óók, want dan zit het er tússen.
+  Dat was precies het toeval van vanochtend en niet de fout. Pas zónder 0131 is de
+  oude controle groen. **Een reproductie die je niet naspeelt tot hij de échte
+  toestand is, bewijst iets anders dan je denkt.**
+
+  ⚠️ **Wat er nog steeds niet gemeten wordt:** stap 4 kijkt naar branches en niet
+  naar `supabase_migrations.schema_migrations` op productie. Dat vraagt een
+  service-role-key en blijft de tweede helft van QS8-122. In dit project schelen
+  die twee weinig — de volgorde is toepassen en dán landen — maar ze zijn niet
+  hetzelfde.
+
+  ⚠️ **En stap 1 t/m 3 van datzelfde script hebben nog steeds geen enkele test.**
+  Bewust niet verbouwd bij QS8-238: ze werken, en aanraken is risico zonder
+  aanleiding. Maar het is exact dezelfde vorm als de bevinding hierboven — een
+  controle die niemand ooit gevoed heeft. Wie aan de gereedschapskist wil werken,
+  begint daar.
 
 - **⚠️ Een groene testsuite meet niet of de app te gébruiken is — 30-08.** Dit is
   de duurste van de lijst, want hij gold voor het hele project tegelijk. Op 30-08
@@ -1063,12 +1083,13 @@ app waarin geen enkel scherm buiten de tabbladen te verlaten was.
 | ✅ | **QS8-237 / QS8-239** | De twee grendels die zelf niet maten. Gemerged 31-08 (#112, #117) |
 | ✅ | **QS8-235 / QS8-236** | `adviseur:controle` en de limiet op `invite_preview`. Gemerged 31-08 (#113, #114) |
 | ⏳ | **QS8-234** | De controle is gemerged (#115), maar de **servergrens is nog ongemeten**. Vraagt Quintens hand — zie 0b |
-| → | **QS8-238** | `migraties:controle` ziet een gat alleen tússen laagste en hoogste. Precies hoe QS8-237 maanden onzichtbaar bleef, en het kan zo weer |
+| ✅ | **QS8-238** | De blinde vlek onder QS8-237: `migraties:controle` keek nooit aan de bovenkant. Gemerged 31-08 (#119) |
 | → | **QS8-200 / QS8-201** | Van aanmelden naar een plan in tien minuten, en een doel uit één zin |
 
-⚠️ **Zet QS8-238 niet onderaan omdat het "maar een script" is.** Hij is de reden
-dat QS8-237 niemand opviel, en de volgende vijf migraties die buiten `main`
-belanden, zijn even onzichtbaar als de vorige vijf.
+⚠️ **Twee dingen van deze dag zijn af maar niet klaar**, en ze staan allebei in
+0b: de Edge Functions moeten nog gedeployd (QS8-195) en `password_min_length`
+moet nog gezet (QS8-234). Tot dan zijn beide reparaties gemerged en werkt geen
+van beide.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.
