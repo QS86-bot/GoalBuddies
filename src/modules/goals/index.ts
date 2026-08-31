@@ -85,11 +85,19 @@ export { bewaarInterview, fetchInterview, type Interview } from './interview';
 
 export {
   ANTWOORD_MAX,
+  GESPIEGELDE_VELDEN,
   heeftAntwoorden,
   interviewStappen,
   interviewSchema,
   LEEG_INTERVIEW,
+  SPIEGELING,
+  spiegelpatch,
+  urenUitTekst,
+  vulVoorUitDoel,
+  type DoelVoorvulling,
+  type GespiegeldVeld,
   type InterviewInvoer,
+  type Voorvulling,
 } from './interview-schemas';
 
 export {
