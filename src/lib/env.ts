@@ -20,12 +20,60 @@ import { z } from 'zod';
  */
 const STANDAARD_APP_URL = 'https://goalbuddies.q-projects.tech';
 
+/**
+ * Waar de app zijn fouten heen stuurt.
+ *
+ * ⚠️ **Een DSN is geen secret, en dat is niet slordigheid maar het ontwerp.**
+ *    Hij is een schrijf-only adres dat per definitie in élke clientbundel staat
+ *    die je publiceert; iedereen die de site opent kan hem uitlezen. Hem
+ *    behandelen als geheim levert geen bescherming op, alleen een stap die maar
+ *    op één machine gezet kan worden.
+ *
+ * ⚠️ **En juist díe stap was het probleem.** Tot 30-08-2026 stond hij alleen in
+ *    een `.env` op Quintens laptop. Gevolg: er was nooit één fout uit de app in
+ *    Sentry aangekomen — niet omdat er iets stuk was, maar omdat het bewijs aan
+ *    een handeling hing die vier dagen op vijf lijstjes stond en vijf keer niet
+ *    gebeurde. Zelfde vorm als `setErrorSink()` dat nergens werd aangeroepen:
+ *    elk schakeltje af, de keten nergens aangesloten.
+ *
+ * ⚠️ Wat het wél kost: wie hem uit de bundel plukt kan de quota volpompen. Dat
+ *    gold gisteren ook al — hij stond in elke gedeployde bundel — en op de
+ *    gratis tier is dat ruis en geen rekening. Wil je hem in een omgeving
+ *    uitzetten, zet `EXPO_PUBLIC_SENTRY_DSN` dan expliciet op leeg; dat wint van
+ *    deze standaard en er gaat dan niets naar buiten.
+ */
+const STANDAARD_SENTRY_DSN =
+  'https://ef95b807683ebf76afef7c9184aabbcb@o4511976142274560.ingest.de.sentry.io/4511976458027088';
+
+/**
+ * Welke omgeving een gebeurtenis in Sentry krijgt.
+ *
+ * ⚠️ **Deze functie is de prijs van de standaard hierboven.** Zodra de DSN
+ *    overal staat, rapporteert een `npm run dev` net zo hard als productie — en
+ *    zonder dit veld zijn die twee in Sentry niet uit elkaar te houden. Dan is
+ *    de eerste echte productiefout zoek tussen jouw eigen geknoei.
+ *
+ * ⚠️ De waarden zijn Engels en dat is met opzet: `environment` is een veld dat
+ *    Sentry zelf filtert en groepeert, net als `server_name` en `runtime`
+ *    hiernaast. Dit is interop en geen UI-tekst.
+ */
+export function sentryOmgevingUit(
+  expliciet: string | undefined,
+  nodeEnv: string | undefined,
+): string {
+  const gezet = (expliciet ?? '').trim();
+  if (gezet !== '') return gezet;
+  return nodeEnv === 'production' ? 'production' : (nodeEnv ?? 'development');
+}
+
 const clientSchema = z.object({
   supabaseUrl: z.url({ error: 'EXPO_PUBLIC_SUPABASE_URL ontbreekt of is geen URL' }),
   supabaseAnonKey: z
     .string()
     .min(1, { error: 'EXPO_PUBLIC_SUPABASE_ANON_KEY ontbreekt' }),
   sentryDsn: z.string().optional(),
+  /** `production`, `development`, `test` — zie `sentryOmgevingUit()`. */
+  sentryOmgeving: z.string().min(1),
   appUrl: z.url({ error: 'EXPO_PUBLIC_APP_URL is geen URL' }),
   /**
    * De publieke VAPID-sleutel voor web push (QS8-114, aangezet in QS8-124).
@@ -49,7 +97,14 @@ export function clientEnv(): ClientEnv {
   const parsed = clientSchema.safeParse({
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    // ⚠️ `??` en niet `||`: een expliciet lege waarde betekent "uit" en moet
+    //    de standaard verslaan. Met `||` zou leeg terugvallen op de standaard
+    //    en was Sentry niet uit te zetten.
+    sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? STANDAARD_SENTRY_DSN,
+    sentryOmgeving: sentryOmgevingUit(
+      process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT,
+      process.env.NODE_ENV,
+    ),
     appUrl: process.env.EXPO_PUBLIC_APP_URL ?? STANDAARD_APP_URL,
     vapidPublicKey: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY,
   });

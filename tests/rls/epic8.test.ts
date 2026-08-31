@@ -6,10 +6,18 @@
  *    gedeelde teller van de groep; een verzonnen schakel maakt daar meer kapot
  *    dan een ontbrekende.
  *
- * ⚠️ Twee schrijvers, één tabel (migratie 0036, besluit van 19-08-2026). De
- *    weekafsluiting schrijft via een trigger, een goedgekeurd weekdoel via
- *    `ketting_schakel()`. De unieke constraint moet van beide routes samen één
- *    schakel maken — dat is hier een test en geen aanname.
+ * ⚠️ **Eén schrijver sinds 31-08-2026 (migratie 0133, QS8-144).** Er waren er
+ *    twee: de weekafsluiting via een trigger, en `ketting_schakel()` waarmee je
+ *    hem zelf claimde. Die tweede had nul aanroepers en is weg.
+ *
+ * ⚠️ **Wat dat met deze suite deed, en waarom hier geen test zomaar geschrapt
+ *    is.** Vier tests toetsten de argumentvalidatie van een functie die niet
+ *    meer bestaat; die zijn weg. Maar drie ervan bewaakten de belofte in de kop
+ *    hierboven — kun je een schakel krijgen die je niet verdiend hebt — en die
+ *    belofte hangt niet aan een functie. Ze zijn omgeschreven naar de route die
+ *    overblijft, niet verwijderd. Dat onderscheid is CLAUDE.md regel 18: een
+ *    test die met zijn onderwerp meeverdwijnt, neemt een belofte mee die niemand
+ *    mist tot ze breekt.
  *
  * ⚠️ Alle accounts worden één keer in `beforeAll` gemaakt. Supabase weigert na
  *    ongeveer dertig aanmeldingen in korte tijd met "Request rate limit
@@ -164,38 +172,27 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     );
 
     it(
-      'geeft een schakel voor een goedgekeurd weekdoel',
+      'levert bij twee weekafsluitingen in dezelfde periode één schakel op',
       async () => {
-        const { data, error } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: f.periodStart,
-          p_cycle_start: f.cycleStart,
-        });
-
-        expect(error).toBeNull();
-        expect(uitkomst(data).ok).toBe(true);
-      },
-      TEST_TIMEOUT,
-    );
-
-    it(
-      'levert bij twee routes samen één schakel op',
-      async () => {
-        // Alice verdient hem nog een keer: eerst via de RPC (hierboven al), nu
-        // ook via de weekafsluiting. De constraint hoort dat op te vangen.
+        // ⚠️ Deze test heette tot 31-08 'levert bij twee routes samen één
+        //    schakel op' en zette de trigger naast `ketting_schakel()`. Die
+        //    tweede route bestaat niet meer, maar de belofte wél: de tabel is de
+        //    gedeelde teller van de groep, en twee keer afsluiten in dezelfde
+        //    periode mag nooit twee schakels opleveren. `chain_links_one_per_period`
+        //    dwingt dat af; hier staat dat het ook echt gebeurt.
         await f.alice.db.from('week_reviews').insert({
           group_id: f.groupId,
           user_id: f.alice.id,
           group_period_start: f.periodStart,
-          did_text: 'ook nog afgesloten',
+          did_text: 'eerste afsluiting',
         });
 
-        const opnieuw = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: f.periodStart,
-          p_cycle_start: f.cycleStart,
+        await f.alice.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: f.periodStart,
+          did_text: 'en nog een keer',
         });
-        expect(uitkomst(opnieuw.data).created).toBe(false);
 
         const schakels = await adminDb()
           .from('chain_links')
@@ -212,34 +209,29 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
   describe('een schakel die je niet verdiend hebt', () => {
     it(
-      'weigert zonder goedgekeurd weekdoel',
-      async () => {
-        // Bob heeft geen enkel weekdoel. Zijn weekafsluiting gaf hem al een
-        // schakel; deze route hoort hem er geen tweede te geven, en vooral: hij
-        // hoort te weigeren op de reden en niet per ongeluk te slagen.
-        const { data } = await f.bob.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: f.periodStart,
-          p_cycle_start: f.cycleStart,
-        });
-
-        expect(uitkomst(data).ok).toBe(false);
-        expect(uitkomst(data).reason).toBe('no_approved_goal');
-      },
-      TEST_TIMEOUT,
-    );
-
-    it(
       'weigert een buitenstaander',
       async () => {
-        const { data } = await f.carol.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: f.periodStart,
-          p_cycle_start: f.cycleStart,
+        // ⚠️ Deze toets zat tot 31-08 in `ketting_schakel()` als `not_a_member`.
+        //    Met die functie weg staat hij niet in de code maar in de policy:
+        //    `week_reviews_write` eist `user_id = auth.uid() AND
+        //    is_group_member(group_id)`. Verhuisd van functie naar policy is nog
+        //    steeds bewaakt — maar alleen als iemand dat toetst, en dat is dit.
+        const { error } = await f.carol.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.carol.id,
+          group_period_start: f.periodStart,
+          did_text: 'ik hoor hier niet',
         });
 
-        expect(uitkomst(data).ok).toBe(false);
-        expect(uitkomst(data).reason).toBe('not_a_member');
+        expect(error).not.toBeNull();
+
+        const schakels = await adminDb()
+          .from('chain_links')
+          .select('id')
+          .eq('group_id', f.groupId)
+          .eq('user_id', f.carol.id);
+
+        expect(schakels.data).toHaveLength(0);
       },
       TEST_TIMEOUT,
     );
@@ -247,32 +239,39 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
     it(
       'weigert een periode in de toekomst',
       async () => {
+        // ⚠️ Zelfde venster als `ketting_schakel()` had (+1 / −35), nu getoetst
+        //    op de plek waar hij sinds 0133 nog staat: `bewaak_week_review_periode`.
+        //    Een schakel dertig dagen vooruit zou een sluitende ketting opleveren
+        //    voor weken die nog niet bestaan.
         const straks = addDays(f.periodStart, 30);
-        const { data } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: straks,
-          p_cycle_start: f.cycleStart,
+
+        const { error } = await f.alice.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: straks,
+          did_text: 'alvast',
         });
 
-        expect(uitkomst(data).reason).toBe('period_out_of_range');
+        expect(error).not.toBeNull();
+
+        const schakels = await adminDb()
+          .from('chain_links')
+          .select('id')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', straks);
+
+        expect(schakels.data).toHaveLength(0);
       },
       TEST_TIMEOUT,
     );
 
-    it(
-      'weigert een periode ver in het verleden',
-      async () => {
-        const lang = addDays(f.periodStart, -200);
-        const { data } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: lang,
-          p_cycle_start: f.cycleStart,
-        });
-
-        expect(uitkomst(data).reason).toBe('period_out_of_range');
-      },
-      TEST_TIMEOUT,
-    );
+    // ⚠️ 'weigert een periode ver in het verleden' stond hier tot 31-08 en riep
+    //    `ketting_schakel()` aan met −200 dagen. Hij is niet omgeschreven maar
+    //    verwijderd, omdat 'laat geen weekafsluiting in een willekeurige week
+    //    toe' verderop exact dezelfde grendel al toetst op de overgebleven route,
+    //    met −364 dagen. Twee tests op één grendel maakt de suite trager zonder
+    //    hem strenger te maken — maar dít commentaar hoort er wél te staan, want
+    //    zonder deze regel leest de verwijdering als een verloren belofte.
 
     it(
       'laat niemand rechtstreeks een schakel in de tabel schrijven',
@@ -303,39 +302,44 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
    */
   describe('de gaten uit de reviewronde', () => {
     it(
-      'geeft geen tweede schakel voor dezelfde cyclus in een andere periode',
+      'weigert een datum binnen het venster die geen periodestart is',
       async () => {
-        // Vóór 0037 leverde één goedgekeurd weekdoel tot 36 schakels op: de
-        // dedup zat op de periode, en `p_period_start` hoeft niet op een
-        // periodegrens te liggen.
-        // ⚠️ Eén dag terug en niet zeven. Zeven dagen terug ligt verder dan een
-        //    week van `cycleStart`, en dan weigert de functie al op
-        //    `cycle_period_mismatch` — de grens die er vóór staat. Dat is de
-        //    juiste volgorde, maar het maakt die testdatum ongeschikt om
-        //    hergebruik van een cyclus mee aan te tonen.
-        const anderePeriode = addDays(f.periodStart, -1);
-        const { data } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: anderePeriode,
-          p_cycle_start: f.cycleStart,
+        // ⚠️ **Dit is de erfgenaam van twee geschrapte tests, en de belangrijkste
+        //    van dit blok.** Er stonden hier tot 31-08 twee tests op
+        //    `ketting_schakel()`: 'geen tweede schakel voor dezelfde cyclus' en
+        //    'weigert een periode die niet bij de cyclus hoort'. Ze bewaakten de
+        //    exploit van vóór 0037: één goedgekeurd weekdoel leverde tot 36
+        //    schakels op, omdat de dedup op de periode zat én `p_period_start`
+        //    niet op een periodegrens hoefde te liggen.
+        //
+        // ⚠️ Met `ketting_schakel()` weg vervalt het cyclusbegrip in deze tabel
+        //    volledig: een schakel is voortaan strikt één per groepsperiode. De
+        //    exploit kan dus niet meer via de cyclus — maar wél via een
+        //    zelfgekozen datum, en dáár blijft hij denkbaar. `bewaak_week_review_periode`
+        //    houdt dat tegen doordat hij een échte periodestart eist, een toets
+        //    die `ketting_schakel()` niet eens had.
+        //
+        // ⚠️ De datum ligt bewust bínnen het venster (één dag terug). De test
+        //    verderop die −364 dagen probeert, raakt de vensterrand en zou hier
+        //    slagen op de verkeerde grendel. De binnenkant was waar alles zat.
+        const geenPeriodestart = addDays(f.periodStart, -1);
+
+        const { error } = await f.alice.db.from('week_reviews').insert({
+          group_id: f.groupId,
+          user_id: f.alice.id,
+          group_period_start: geenPeriodestart,
+          did_text: 'net naast de grens',
         });
 
-        expect(uitkomst(data).ok).toBe(false);
-        expect(uitkomst(data).reason).toBe('cycle_already_used');
-      },
-      TEST_TIMEOUT,
-    );
+        expect(error).not.toBeNull();
 
-    it(
-      'weigert een periode die niet bij de opgegeven cyclus hoort',
-      async () => {
-        const { data } = await f.alice.db.rpc('ketting_schakel', {
-          p_group_id: f.groupId,
-          p_period_start: f.periodStart,
-          p_cycle_start: addDays(f.cycleStart, -21),
-        });
+        const schakels = await adminDb()
+          .from('chain_links')
+          .select('id')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', geenPeriodestart);
 
-        expect(uitkomst(data).reason).toBe('cycle_period_mismatch');
+        expect(schakels.data).toHaveLength(0);
       },
       TEST_TIMEOUT,
     );

@@ -95,18 +95,13 @@ export const BEWUST_ONGESCHREVEN = {
     'zodra de chat op `type` gaat renderen.',
   'chat_messages.type=doc':
     'Idem als `photo` (QS8-72, Fase 2), en met dezelfde open schrijfkant.',
-  'points_ledger.reason=goal_done':
-    '⚠️ Vraagt een besluit in plaats van een epic. Domeinregel 10 zegt dat het ' +
-    'puntenplafond van een doel de som is van de plafondpunten van zijn ' +
-    'weekdoelen — `recalc_goal_max_points()` telt letterlijk alleen ' +
-    '`weekly_goals.points_ceiling` — dus een aparte boeking voor het afronden ' +
-    'van het doel is dubbeltelling, en hoort weg zoals `missed` in 0082. ' +
-    '⚠️ Hier stond dat `milestone_done` wél geboekt wordt en dat schrappen ' +
-    'daarom het model zou veranderen. Dat klopt niet: die naam is een ' +
-    'chat-systeembericht en geen puntenreden. Beide zijn dood, en om dezelfde ' +
-    'reden. Staat als rij in docs/ENGINEER-REVIEW.md.',
   'points_ledger.reason=milestone_done':
-    'Zelfde geval als `goal_done` en hetzelfde besluit: mijlpalen voeden de ' +
+    // ⚠️ `goal_done` stond hier tot 31-08 naast, met dezelfde reden. Hij is in
+    //    migratie 0132 geschrapt na een besluit van Quinten; deze bleef staan
+    //    omdat het een tweede besluit is (telt een mijlpaal apart mee?) en dit
+    //    project één besluit per keer neemt. Zie QS8-215.
+    'Zelfde geval als het geschrapte `goal_done` en waarschijnlijk hetzelfde ' +
+    'besluit, maar nog niet genomen: mijlpalen voeden de ' +
     'vóórtgang en niet de score, en domeinregel 10 zegt dat dat twee dingen ' +
     'zijn. Kwam pas op 27-08 bovendrijven omdat de tekstzoektocht een treffer ' +
     'uit `chat_messages` als schrijver las — zie `TREFFER_HOORT_ELDERS`.',
@@ -219,19 +214,6 @@ export const BEWAAKT_BUITEN_DE_APP = {
  * @type {Record<string, string>}
  */
 export const WACHT_OP_EEN_BESLUIT = {
-  ketting_schakel:
-    '⚠️ **Een correcte, volledig bewaakte RPC die niemand aanroept.** QS8-80 ' +
-    'bouwde hem als de weg waarlangs je een kettingschakel verdient: ingelogd, ' +
-    'lid van de groep, de periode binnen bereik, een goedgekeurd weekdoel in ' +
-    'die cyclus, en hoogstens één schakel per cyclus. Maar de app roept hem ' +
-    'nooit aan — `ketting_uit_weekafsluiting()` is een trigger en doet het ' +
-    'vanzelf zodra je je week afsluit. ' +
-    '**De vraag: is een schakel iets dat je zelf claimt, of iets dat de ' +
-    'weekafsluiting voor je doet?** Is het het tweede, dan hoort deze functie ' +
-    'weg — hij staat open voor `authenticated` en schrijft in een tabel die de ' +
-    'groep leest. Is het het eerste, dan hoort er een knop bij. ' +
-    'Vandaag is hij geen gat (elke toets erin klopt), maar wel oppervlak dat ' +
-    'niemand gebruikt.',
 };
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */

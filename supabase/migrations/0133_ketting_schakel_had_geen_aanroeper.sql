@@ -1,0 +1,83 @@
+-- 0133_ketting_schakel_had_geen_aanroeper.sql — de zelfclaim-route vervalt (QS8-144)
+--
+-- ROLLBACK-PAD:
+--   De volledige definitie staat in migratie 0036 en is daar ongewijzigd terug
+--   te halen. Let op: `create or replace` volstaat, de handtekening verandert
+--   niet. Denk er dan aan dat `earned_cycle_start` en de index
+--   `chain_links_one_per_cycle` hieronder weer betekenis krijgen.
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- `ketting_schakel(uuid, date, date)` was sinds 0036 de weg waarlangs je een
+-- kettingschakel zélf claimde. Gemeten op 28-08 en opnieuw op 31-08: **nul
+-- aanroepers** — niet in `src/`, `app/` of `supabase/functions/`, niet in een
+-- trigger, policy, view of andere functie. Alleen `tests/rls/epic8.test.ts`
+-- riep hem aan, en een test is geen gebruiker.
+--
+-- Besluit van Quinten, 31-08-2026: **een schakel verdien je automatisch.**
+-- `ketting_uit_weekafsluiting()` blijft de enige weg; er komt geen knop.
+--
+-- ---------------------------------------------------------------------------
+-- De vraag die eerst beantwoord moest worden
+-- ---------------------------------------------------------------------------
+--
+-- Een functie weghalen die zes toetsen draagt, is alleen veilig als de
+-- overblijvende route diezelfde grenzen kent. Anders is dit geen opruiming maar
+-- een gat. Naast elkaar gelegd met `pg_get_functiondef()`:
+--
+--   | toets in ketting_schakel        | de trigger-route                        |
+--   |---------------------------------|-----------------------------------------|
+--   | auth.uid() is null              | n.v.t. — er is geen client, de trigger  |
+--   |                                 | draait op een rij die al bestaat        |
+--   | is_group_member(group_id)       | `week_reviews_write`: user_id =         |
+--   |                                 | auth.uid() AND is_group_member(...)     |
+--   | periode binnen +1 / −35          | `bewaak_week_review_periode`, letterlijk|
+--   |                                 | hetzelfde venster                       |
+--   | periode vs cyclus binnen ±7      | vervalt — de trigger kent geen cyclus   |
+--   | goedgekeurd weekdoel in cyclus   | ⚠️ vervalt, en dat is met opzet — zie   |
+--   |                                 | hieronder                               |
+--   | hoogstens één per cyclus         | vervalt; `chain_links_one_per_period`   |
+--   |                                 | blijft en dekt de groepsperiode         |
+--
+-- **De trigger-route is strikt strenger.** `bewaak_week_review_periode` eist
+-- bovenop hetzelfde venster ook nog dat de datum een échte periodestart van díé
+-- groep is — een toets die `ketting_schakel` niet had. Er gaat dus geen grendel
+-- verloren; er komt er één bij.
+--
+-- ⚠️ **Dat de eis "een goedgekeurd weekdoel" vervalt, is geen versoepeling maar
+--    een andere regel, en de juiste.** De Ketting gaat over **opdagen**, niet
+--    over presteren — zo staat hij in beslisdocument 001 en zo staat hij in
+--    CLAUDE.md bij domeinregel 7 ("de groep ziet De Ketting (opdagen)"). Een
+--    schakel hoort bij je weekafsluiting, niet bij je resultaat. De twee routes
+--    implementeerden dus twee verschíllende regels, en de trigger heeft de
+--    regel die bij het product hoort.
+--
+--    Dat is meteen het sterkste argument om er één over te houden: twee
+--    schrijvers naar dezelfde tabel met verschillende regels lopen uit elkaar
+--    zodra iemand er één aanpast, en dan is het geen ongebruikte functie meer
+--    maar een tegenspraak.
+--
+-- ---------------------------------------------------------------------------
+-- Wat hier NIET gebeurt, en waarom
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ `chain_links.earned_cycle_start` blijft staan, en de partiële index
+--    `chain_links_one_per_cycle` ook — terwijl ze na deze migratie allebei dood
+--    zijn: `ketting_schakel` was de enige schrijver van die kolom, dus hij is
+--    voortaan altijd NULL en de index (die `where earned_cycle_start is not
+--    null` draagt) kan nooit meer iets vangen.
+--
+--    Ze weghalen is een kolom laten vallen, en dat is onomkeerbaar. Op productie
+--    staan mogelijk rijen mét een waarde; die kan ik van hier niet zien. Eén
+--    besluit per keer, en dit besluit ging over de functie.
+--
+--    Genoteerd in QS8-144 als opvolging, met de meting erbij die nodig is:
+--    `select count(*) from chain_links where earned_cycle_start is not null`.
+
+-- ⚠️ **De volledige handtekening en niet alleen de naam.** Migratie 0059 dropte
+--    `plaats_systeembericht(uuid, text, text)` en maakte daarna een versie met
+--    zes argumenten — een ándere functie, dus de drop dekte hem niet. Een drop
+--    op naam is een drop die je niet gemeten hebt (CLAUDE.md regel 20).
+drop function if exists public.ketting_schakel(uuid, date, date);
