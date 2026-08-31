@@ -10,6 +10,8 @@ import {
   uploadAvatar,
   verwijderAvatar,
   updateProfiel,
+  userClock,
+  zetWeekStartdag,
   useProfiel,
   verwijderMijnAccount,
   type Profiel as ProfielRij,
@@ -122,11 +124,7 @@ export default function Profiel() {
               onOpgeslagen={zetProfiel}
             />
 
-            <WeekStartInstelling
-              waarde={p.week_start_day as Weekday}
-              userId={p.id}
-              onOpgeslagen={zetProfiel}
-            />
+            <WeekStartInstelling profiel={p} onOpgeslagen={zetProfiel} />
 
             <TijdzoneInstelling waarde={p.tz} userId={p.id} onOpgeslagen={zetProfiel} />
 
@@ -379,14 +377,18 @@ function TijdzoneInstelling({
  *    hint, want anders durft niemand het aan te raken.
  */
 function WeekStartInstelling({
-  waarde,
-  userId,
+  profiel,
   onOpgeslagen,
 }: {
-  readonly waarde: Weekday;
-  readonly userId: string;
+  // ⚠️ De hele rij en niet losse velden: `zetWeekStartdag()` heeft de klok
+  //    nodig om de oude én de nieuwe cyclus uit te rekenen, en die komt uit
+  //    `userClock()`. Zou dit scherm `week_start_day` en `tz` los doorgeven en
+  //    er zelf iets mee rekenen, dan is dat precies de tweede klok waar
+  //    correctheidsregel 7 tegen is.
+  readonly profiel: ProfielRij;
   readonly onOpgeslagen: (profiel: ProfielRij) => void;
 }) {
+  const waarde = profiel.week_start_day as Weekday;
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
   const [gevraagd, setGevraagd] = useState<Weekday | null>(null);
@@ -395,7 +397,10 @@ function WeekStartInstelling({
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await updateProfiel(userId, { week_start_day: dag });
+    // ⚠️ Niet meer `updateProfiel()`: `week_start_day` is sinds migratie 0139
+    //    voor de client niet schrijfbaar. De RPC zet de dag én verhuist de
+    //    lopende `todo`-weekdoelen mee, in één transactie.
+    const uitkomst = await zetWeekStartdag(profiel.id, userClock(profiel), dag);
     if (uitkomst.ok) {
       onOpgeslagen(uitkomst.profiel);
       setGevraagd(null);

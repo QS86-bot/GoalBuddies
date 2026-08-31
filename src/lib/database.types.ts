@@ -2727,6 +2727,10 @@ export type Database = {
         Args: { p_date: string; p_goal_id: string }
         Returns: Json
       }
+      zet_week_startdag: {
+        Args: { p_dag: number; p_nieuwe_start: string; p_oude_start: string }
+        Returns: Json
+      }
       zonder_initplan_hijs: { Args: { p_uitdrukking: string }; Returns: string }
     }
     Enums: {

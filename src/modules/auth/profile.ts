@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import type { Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { type UserClock, type Weekday } from '../../shared/time';
+import { now, userCycle, type UserClock, type Weekday } from '../../shared/time';
 
 import { tekenAvatars } from './avatar';
 import { profielPatchSchema, type ProfielPatch } from './schemas';
@@ -93,7 +93,6 @@ export async function updateProfiel(
   const velden = gevalideerd.data;
   const update: TablesUpdate<'profiles'> = {};
   if (velden.display_name !== undefined) update.display_name = velden.display_name;
-  if (velden.week_start_day !== undefined) update.week_start_day = velden.week_start_day;
   if (velden.tz !== undefined) update.tz = velden.tz;
   if (velden.reminder_time !== undefined) update.reminder_time = velden.reminder_time;
   if (velden.reminder_enabled !== undefined) update.reminder_enabled = velden.reminder_enabled;
@@ -200,3 +199,63 @@ export function userClock(profiel: Pick<Profiel, 'week_start_day' | 'tz'>): User
   };
 }
 
+/**
+ * De week-startdag verzetten, mét de lopende weekdoelen — QS8-138, migratie 0139.
+ *
+ * ⚠️ **Waarom dit niet meer via `updateProfiel()` gaat.** `week_start_day` is
+ *    sinds 0139 voor de client niet meer schrijfbaar. Dat is geen omweg maar de
+ *    afdwinging: verzet je je startdag midden in een cyclus, dan draagt je
+ *    lopende weekdoel nog de oude `cycle_start_date`, valt het uit elke lijst,
+ *    en stempelt de rollover het een week later als gemist — een minpunt en een
+ *    gebroken reeks voor het wijzigen van een instelling.
+ *
+ *    Bleef de kolom schrijfbaar, dan zou de volgende schrijver dat stilzwijgend
+ *    overslaan. Onwrikbare regel 18, vraag 5: een keten waarvan elk schakeltje
+ *    klopt terwijl het geheel niet verbonden is.
+ *
+ * ⚠️ **De twee cycli worden hier berekend en niet op de server**, want er is
+ *    geen SQL-helper die een cyclus uitrekent en een tweede opvatting van "welke
+ *    week is het" in de database is precies wat correctheidsregel 7 verbiedt.
+ *    Zelfde verdeling als bij `schuifDoor()`. De server toetst wél dat beide
+ *    data vandaag bevatten — anders was dit een route naar een weggepoetste week.
+ */
+export async function zetWeekStartdag(
+  userId: string,
+  klok: UserClock,
+  dag: Weekday,
+): Promise<ProfielUitkomst> {
+  // ⚠️ `userCycle` uit `shared/time` en niet `huidigeCyclus` uit de
+  //    goals-module: module-communicatie loopt via `modules/<naam>/index.ts`, en
+  //    auth hoort niet in goals te grijpen voor een berekening die gedeeld is.
+  const nu = now();
+  const oude = userCycle(klok, nu);
+  const nieuwe = userCycle({ ...klok, weekStartDay: dag }, nu);
+
+  const { data, error } = await supabase().rpc('zet_week_startdag', {
+    p_dag: dag,
+    p_oude_start: oude.startDate,
+    p_nieuwe_start: nieuwe.startDate,
+  });
+
+  if (error) {
+    reportError(error, 'profile.week_start', { user_id: userId, code: error.code });
+    return { ok: false, melding: t('profiel.opslaan_mislukt') };
+  }
+
+  const uit = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uit.ok !== true) {
+    // ⚠️ De reden gaat naar Sentry en niet naar het scherm: `geen_profiel` en
+    //    `cyclus_bevat_vandaag_niet` zijn toestanden die een gebruiker niet kan
+    //    veroorzaken en ook niet kan verhelpen. Zwijgen mag niet — dan denkt hij
+    //    dat het gelukt is.
+    reportError(new Error(`zet_week_startdag: ${uit.reason ?? 'onbekend'}`), 'profile.week_start', {
+      user_id: userId,
+    });
+    return { ok: false, melding: t('profiel.opslaan_mislukt') };
+  }
+
+  const profiel = await teruglezen(userId);
+  if (profiel === null) return { ok: false, melding: t('profiel.opslaan_mislukt') };
+
+  return { ok: true, profiel };
+}
