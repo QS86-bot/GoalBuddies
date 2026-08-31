@@ -3,23 +3,43 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 31-08-2026, na QS8-195 en QS8-211 — de eerste twee
-> reparaties uit de doorloop van 30-08.
+> **Laatst bijgewerkt:** 31-08-2026, na zes merges op één dag — de doorloop van
+> 30-08 (QS8-195, QS8-211) én een beveiligingsronde (QS8-234 t/m QS8-239).
 >
-> **Het ding dat de stand van dit project verandert:**
+> **Twee dingen die de stand van dit project veranderen, en ze wijzen dezelfde
+> kant op.**
 >
-> **Op 30-08 is de app voor het eerst door een mens doorlopen.** Tot die dag
+> **1. Op 30-08 is de app voor het eerst door een mens doorlopen.** Tot die dag
 > zeiden deze documenten dat Fase 1 af was en dat alles op Quintens hand wachtte.
 > Die stand kwam uit de code en uit de documenten — niemand had de app gebruikt.
-> De doorloop leverde **veertien issues** op, waarvan vier op Urgent, en die gaan
-> vóór alles wat er hieronder over volgorde staat.
+> De doorloop leverde **veertien issues** op, waarvan vier op Urgent.
 >
-> ⚠️ **Dat is geen pech maar een leemte in hoe hier gemeten wordt.** De vorige
-> regel hierboven zei dat de `phase:v2`-voorraad leeg was en dat je in het
+> ⚠️ Dat is geen pech maar een leemte in hoe hier gemeten wordt. De vorige regel
+> hierboven zei dat de `phase:v2`-voorraad leeg was en dat je in het
 > reviewdossier moest beginnen. Er lag ondertussen een Doelcoach die vanaf het
 > web niet aan te roepen was en een app waarin geen enkel scherm buiten de
 > tabbladen te verlaten was. **Zeven review-agents over 99.500 regels vonden dat
 > geen van allen; één mens die de app tien minuten gebruikte, vond het meteen.**
+>
+> **2. Op 31-08 bleek dat twee van de grendels zélf niet maten.** Een
+> beveiligingsdoorlichting vond drie echte gaten, en op weg daarnaartoe twee
+> dingen die veel erger waren dan de gaten:
+>
+> - **De poort telde ongemeten controles als groen** (QS8-239). `draai()` gebruikte
+>   `execFileSync`, en die geeft bij exitcode 0 alleen stdout terug — dus de
+>   `OVERGESLAGEN` van `functies:controle` en `register:controle`, die naar stderr
+>   gaat, werd weggegooid. In élke lokale poortrun zonder `.env` stonden die twee
+>   op ✓ terwijl ze niets maten. De drieverdeling stond er, was getest, en kwam
+>   voor de twee gevallen waarvoor hij geschréven is nooit aan.
+> - **`main` kon het schema van productie niet opbouwen** (QS8-237). Vijf
+>   migraties draaiden op productie terwijl hun bestanden op een branch zonder PR
+>   stonden. De RLS-suite op `main` draaide dus tegen een schema zónder 0128 — de
+>   migratie die het lek dichtzette waarbij een uitnodigingslink de `auth.uid()`
+>   van acht leden meestuurde.
+>
+> ⚠️ **Allebei waren onzichtbaar omdat de controle die ze moest vinden zelf een
+> blinde vlek had.** Lees de twee nieuwe valkuilen onderaan die sectie vóór je
+> een controle vertrouwt die je niet met de hand rood hebt gekregen.
 
 ---
 
@@ -287,6 +307,54 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een grendel die zijn eigen categorie niet haalt, is duurder dan geen
+  grendel — 31-08.** `poort.mjs` deelt elke stap in drieën omdat een controle die
+  zijn sleutel niet vond *ongemeten* is en niet groen. Die indeling zat in
+  `beoordeel()`, stond uitgebreid onder test, en klopte. Maar `draai()` gaf hem de
+  uitvoer niet: `execFileSync` levert bij exitcode 0 alléén stdout, en juist de
+  twee controles waarvoor de drieverdeling geschreven is schrijven hun
+  `OVERGESLAGEN` naar stderr — want, in hun eigen woorden, *"op stdout leest
+  'overgeslagen' als 'gelukt'"*.
+
+  Gemeten en niet beredeneerd:
+
+  ```
+  execFileSync bij exitcode 0 geeft terug: ""
+  spawnSync stderr: "x-controle: OVERGESLAGEN — geen sleutel"
+  ```
+
+  ⚠️ **Er was geen test die groen bleef terwijl de belofte brak — er was geen test
+  die `draai()` kón raken.** `beoordeel()` was het onderdeel, "de poort meldt nooit
+  groen over iets dat niet gemeten is" is de belofte, en die hing aan de naad
+  ertussen. Regel 18 vraag 1.
+
+  ⚠️ **En de reparatie faalde dezelfde dag nóg een keer, op dezelfde manier.** Een
+  testbestand viel om, vitest toonde een diff met de regel
+  `⚠ adviseur-controle: OVERGESLAGEN — …` uit de bróncode, en dat past exact op
+  het patroon. De poort noemde een **rode** suite "ongemeten". Dat was de derde
+  ronde op dezelfde val, en de eerste twee reparaties waren allebei scherpere
+  tekstpatronen. **Geen enkel tekstpatroon lost dit op**: elk patroon dat de échte
+  melding vindt, vindt ook een citaat ervan. De grens ligt nu om de stapsoort —
+  een testsuite kan geen sleutel missen.
+
+- **⚠️ Een controle die een gat zoekt, kijkt zelden aan de bovenkant — 31-08.**
+  `migraties:controle` telt de nummers tussen het laagste en het hoogste bestand.
+  Ontbreekt er iets **boven** het hoogste, dan is de reeks netjes aaneengesloten
+  tot waar hij ophoudt, en meldde hij letterlijk *"De nummering is
+  aaneengesloten"* terwijl er vijf migraties ontbraken.
+
+  ⚠️ **Juist de bovenkant is het gevaarlijkst.** Een gat in het midden komt van een
+  oude fout. Een gat aan de bovenkant komt van de **nieuwste** migraties — die net
+  op productie draaien en waarvan de bestanden nog op een branch staan. Dat is de
+  normale gang van zaken hier, en dus precies waar het vaakst misgaat.
+
+  Het is bij toeval gevonden: een nieuwe migratie sprong over het gat heen en
+  toen zat het er ineens wél tússen. Staat als QS8-238 en is **niet gerepareerd**.
+
+  ⚠️ Bij de reparatie: `scripts/migratie-nieuw.mjs` kijkt al naar élke remote
+  branch en waarschuwde uit zichzelf. Diezelfde meting hoort een rode controle te
+  zijn en niet een terzijde bij het aanmaken.
 
 - **⚠️ Een groene testsuite meet niet of de app te gébruiken is — 30-08.** Dit is
   de duurste van de lijst, want hij gold voor het hele project tegelijk. Op 30-08
@@ -990,9 +1058,17 @@ app waarin geen enkel scherm buiten de tabbladen te verlaten was.
 
 | | Issue | Waarom in deze volgorde |
 |---|---|---|
-| ✅ | **QS8-195** | De CORS-preflight kreeg 405, dus alles wat over gegenereerde mijlpalen of weekdoelen gaat, stond stil. Af op 31-08 — ⚠️ **maar pas op productie na `npx supabase functions deploy doelcoach rollover notificaties`** |
-| ✅ | **QS8-211** | Elk scherm buiten de tabbladen was een doodlopende weg. Af op 31-08 |
+| ✅ | **QS8-195** | De CORS-preflight kreeg 405, dus alles wat over gegenereerde mijlpalen of weekdoelen gaat, stond stil. Gemerged 31-08 (#116) — ⚠️ **maar pas werkend op productie na `npx supabase functions deploy doelcoach rollover notificaties`** |
+| ✅ | **QS8-211** | Elk scherm buiten de tabbladen was een doodlopende weg. Gemerged 31-08 (#116) |
+| ✅ | **QS8-237 / QS8-239** | De twee grendels die zelf niet maten. Gemerged 31-08 (#112, #117) |
+| ✅ | **QS8-235 / QS8-236** | `adviseur:controle` en de limiet op `invite_preview`. Gemerged 31-08 (#113, #114) |
+| ⏳ | **QS8-234** | De controle is gemerged (#115), maar de **servergrens is nog ongemeten**. Vraagt Quintens hand — zie 0b |
+| → | **QS8-238** | `migraties:controle` ziet een gat alleen tússen laagste en hoogste. Precies hoe QS8-237 maanden onzichtbaar bleef, en het kan zo weer |
 | → | **QS8-200 / QS8-201** | Van aanmelden naar een plan in tien minuten, en een doel uit één zin |
+
+⚠️ **Zet QS8-238 niet onderaan omdat het "maar een script" is.** Hij is de reden
+dat QS8-237 niemand opviel, en de volgende vijf migraties die buiten `main`
+belanden, zijn even onzichtbaar als de vorige vijf.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.
@@ -1100,6 +1176,29 @@ Supabase-dashboard, en Supabase' eigen adviseur noemt hem.
 
 
 ### 0b. Wat je zelf moet deployen, en het merkt zichzelf niet
+
+⚠️ **Sinds 31-08 staat de CORS-reparatie bovenaan dit lijstje, en die merkt
+zichzelf wél — maar pas als je de app gebruikt.** QS8-195 is gemerged, maar de
+Edge Functions op productie draaien nog de oude bron zonder preflight. Tot
+
+```bash
+npx supabase functions deploy doelcoach rollover notificaties
+```
+
+gedraaid is, blijft de Doelcoach vanaf het web onbereikbaar: de browser stuurt
+`OPTIONS`, krijgt 405, en voert de POST nooit uit. De job blijft dan op `queued`
+staan en het scherm wacht twee minuten voor het opgeeft — dus het lijkt op "de AI
+doet het niet" en niet op "er is niets gedeployd".
+
+⚠️ **En één ding dat geen deploy is maar een schakelaar** (QS8-234): zet
+`password_min_length` in het Supabase-dashboard onder Authentication → Policies
+gelijk aan `WACHTWOORD_MINIMUM` uit `src/modules/auth/schemas.ts`. Tot dat
+gebeurd is, is het minimum van twaalf tekens **alleen Zod in de browser** — één
+POST naar `/auth/v1/signup` met de anon-sleutel, die per definitie in elke bundel
+zit, omzeilt hem. Draai daarna `npm run wachtwoord:controle` met een
+`SUPABASE_ACCESS_TOKEN` in de omgeving. Doe hem in dezelfde ronde als de
+schakelaars van QS8-141.
+
 
 ⚠️ **Twee dingen wachten op `npm run deploy` van de webbundel.** Allebei zijn het
 migraties die op productie staan terwijl de gedeployde bundel de oude vorm nog
