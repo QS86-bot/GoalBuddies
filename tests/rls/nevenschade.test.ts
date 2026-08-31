@@ -134,11 +134,11 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
       if (error) throw new Error(`vreemd weekdoel: ${error.message}`);
     }
 
-    // En de gemengde week, precies zoals in `reeks.test.ts`.
+    // En de gemengde week, precies zoals in `reeks.test.ts`. Twee rijen, geen
+    // drie: de wachtende week hoort in een eigen cyclus en komt hieronder.
     for (const [titel, status] of [
       ['vreemd gemist', 'missed'],
       ['vreemd gehaald', 'approved'],
-      ['vreemd wachtend', 'pending'],
     ] as const) {
       const { error } = await admin.from('weekly_goals').insert({
         goal_id: buurDoel.data.id,
