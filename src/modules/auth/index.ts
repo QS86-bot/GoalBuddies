@@ -34,6 +34,7 @@ export {
   rondOnboardingAf,
   updateProfiel,
   userClock,
+  zetWeekStartdag,
   type Profiel,
   type ProfielUitkomst,
 } from './profile';

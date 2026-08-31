@@ -245,7 +245,7 @@ export const en: Record<Sleutel, string> = {
   'weekstart.label': 'My week starts on',
   'weekstart.hint':
     'Decides when your weekly goals start over and when your points count. ' +
-    'Changeable later; a running week just finishes out.',
+    'Changeable later; weekly goals you still have to do come along.',
 
   'weekpas.punt_toch_af': 'Last week was not completed, but your streak continues. One point did come off for that week.',
   'laden.mislukt': 'Something went wrong while loading. Try again; if it keeps failing, it is on us.',
@@ -495,7 +495,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.typ_woord': 'Type {woord} to confirm',
   'profiel.definitief': 'Delete permanently',
   'profiel.toch_niet': 'Never mind',
-  'profiel.weekstart_uitleg': 'The new day applies from your next week. Weekly goals in your current week do not move with it — finish those first. Your points, your streak and your completed weeks stay as they are.',
+  'profiel.weekstart_uitleg': 'The new day applies immediately. Weekly goals you still have to do move along to your new week; submitted and completed weeks stay where they are. Your points and streak do not change.',
   'profiel.thema_systeem': 'System',
   'profiel.thema_donker': 'Dark',
   'profiel.thema_licht': 'Light',
@@ -1377,7 +1377,7 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_verlaten.knop': 'Yes, leave this group',
   'bevestiging.weekstart_verzetten.titel': 'Start your week on a different day?',
   'bevestiging.weekstart_verzetten.uitleg':
-    'From your next week onwards everything starts on the new day. ⚠️ Weekly goals in your current week do not move with it: they drop out of view and then count as missed — that costs a point and breaks your streak. Finish them first, or wait until this week is over. Your points, your streak and your completed weeks all stay as they are.',
+    'Your week starts on the new day from now on. Weekly goals you still have to do move along to your new week, so you lose nothing. Weeks you have already submitted or completed stay where they are, and your points and streak do not change.',
   'bevestiging.weekstart_verzetten.knop': 'Yes, move my week start',
   'verlaten.titel': 'Leave this group',
   'verlaten.uitleg':

@@ -374,7 +374,7 @@ export const nl = {
   'weekstart.label': 'Mijn week begint op',
   'weekstart.hint':
     'Bepaalt wanneer je weekdoelen opnieuw beginnen en wanneer je punten tellen. ' +
-    'Later aanpasbaar; een lopende week telt gewoon uit.',
+    'Later aanpasbaar; weekdoelen die je nog moet doen gaan dan mee.',
 
   'weekpas.punt_toch_af': 'Vorige week is niet afgerond, maar je reeks loopt gewoon door. Voor die week is er wel één punt afgegaan.',
   'laden.mislukt': 'Er ging iets mis bij het ophalen. Probeer het opnieuw; blijft het misgaan, dan ligt het aan ons.',
@@ -665,7 +665,7 @@ export const nl = {
   'bevestiging.groep_verlaten.knop': 'Ja, verlaat deze groep',
   'bevestiging.weekstart_verzetten.titel': 'Je week op een andere dag laten beginnen?',
   'bevestiging.weekstart_verzetten.uitleg':
-    'Vanaf je volgende week begint alles op de nieuwe dag. ⚠️ Weekdoelen die nu op je lopende week staan, verhuizen níét mee: die raak je uit beeld en ze tellen daarna als gemist — dat kost een punt en breekt je reeks. Rond ze eerst af, of wacht tot deze week voorbij is. Je punten, je reeks en je afgeronde weken blijven verder gewoon staan.',
+    'Je week begint vanaf nu op de nieuwe dag. Weekdoelen die je nog moet doen gaan mee naar je nieuwe week, dus je raakt niets kwijt. Weken die je al hebt ingediend of afgerond blijven staan waar ze staan, en je punten en je reeks veranderen niet.',
   'bevestiging.weekstart_verzetten.knop': 'Ja, verzet mijn weekstart',
   'verlaten.titel': 'Deze groep verlaten',
   'verlaten.uitleg':
@@ -739,7 +739,7 @@ export const nl = {
   'profiel.typ_woord': 'Typ {woord} om te bevestigen',
   'profiel.definitief': 'Definitief verwijderen',
   'profiel.toch_niet': 'Toch niet',
-  'profiel.weekstart_uitleg': 'De nieuwe dag geldt vanaf je volgende week. Weekdoelen die nu op je lopende week staan verhuizen niet mee — rond die eerst af. Je punten, je reeks en je afgeronde weken blijven staan.',
+  'profiel.weekstart_uitleg': 'De nieuwe dag geldt meteen. Weekdoelen die je nog moet doen gaan mee naar je nieuwe week; ingediende en afgeronde weken blijven staan waar ze staan. Je punten en je reeks veranderen niet.',
   'profiel.thema_systeem': 'Systeem',
   'profiel.thema_donker': 'Donker',
   'profiel.thema_licht': 'Licht',
