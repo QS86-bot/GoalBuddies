@@ -158,6 +158,7 @@ export default function UitnodigingScherm() {
           : t('uitnodiging.titel')
       }
       eyebrow={t('uitnodiging.eyebrow')}
+      terug={{ naar: '/' }}
     >
       <AsyncView
         loading={loading}

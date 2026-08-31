@@ -37,8 +37,8 @@ import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import {
   AsyncView,
-  bevestigingen,
   Bevestiging,
+  bevestigingen,
   Body,
   Button,
   Caption,
@@ -48,6 +48,7 @@ import {
   Field,
   Screen,
   Subheading,
+  useTerug,
 } from '@/shared/ui';
 
 /**
@@ -66,6 +67,7 @@ import {
 export default function GroepBeheer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const terug = useTerug(`/groep/${id}`);
   const { userId } = useSession();
 
   const [groep, setGroep] = useState<Groep | null>(null);
@@ -242,7 +244,7 @@ export default function GroepBeheer() {
   }
 
   return (
-    <Screen title={t('beheer.titel')} eyebrow={t('beheer.eyebrow')}>
+    <Screen title={t('beheer.titel')} eyebrow={t('beheer.eyebrow')} terug={{ naar: `/groep/${id}` }}>
       <AsyncView
         loading={loading}
         error={error}
@@ -481,7 +483,7 @@ export default function GroepBeheer() {
         }
       </AsyncView>
 
-      <Button variant="stil" block onPress={() => router.back()}>
+      <Button variant="stil" block onPress={terug}>
         {t('beheer.terug')}
       </Button>
     </Screen>

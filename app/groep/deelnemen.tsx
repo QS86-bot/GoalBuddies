@@ -3,7 +3,16 @@ import { useState } from 'react';
 
 import { neemDeel, toonCode } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
-import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared/ui';
+import {
+  Body,
+  Button,
+  Caption,
+  Card,
+  Field,
+  Screen,
+  Subheading,
+  useTerug,
+} from '@/shared/ui';
 
 /**
  * Een code met de hand invoeren — QS8-53.
@@ -18,6 +27,7 @@ import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared
  */
 export default function Deelnemen() {
   const router = useRouter();
+  const terug = useTerug('/groep');
 
   const [invoer, setInvoer] = useState('');
   const [bezig, setBezig] = useState(false);
@@ -39,7 +49,7 @@ export default function Deelnemen() {
   }
 
   return (
-    <Screen title={t('deelnemen.titel')} eyebrow={t('deelnemen.eyebrow')}>
+    <Screen title={t('deelnemen.titel')} eyebrow={t('deelnemen.eyebrow')} terug={{ naar: '/groep' }}>
       <Card>
         <Field
           label={t('deelnemen.code_label')}
@@ -66,7 +76,7 @@ export default function Deelnemen() {
         <Body muted>{t('deelnemen.werkt_niet_uitleg')}</Body>
       </Card>
 
-      <Button variant="stil" block onPress={() => router.back()}>
+      <Button variant="stil" block onPress={terug}>
         {t('deelnemen.terug')}
       </Button>
     </Screen>

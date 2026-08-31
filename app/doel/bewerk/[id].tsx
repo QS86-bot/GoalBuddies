@@ -21,6 +21,7 @@ import {
   Screen,
   Subheading,
   useAsync,
+  useTerug,
 } from '@/shared/ui';
 
 /**
@@ -45,6 +46,7 @@ import {
 export default function DoelBewerken() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const terug = useTerug(`/doel/${id}`);
 
   const {
     data: doel,
@@ -54,7 +56,11 @@ export default function DoelBewerken() {
   } = useAsync(id ? () => fetchDoel(id) : null, [id]);
 
   return (
-    <Screen title={t('doelbewerken.titel')} eyebrow={t('doelbewerken.eyebrow')}>
+    <Screen
+      title={t('doelbewerken.titel')}
+      eyebrow={t('doelbewerken.eyebrow')}
+      terug={{ naar: `/doel/${id}` }}
+    >
       <AsyncView
         loading={loading}
         error={error}
@@ -76,7 +82,7 @@ export default function DoelBewerken() {
         }
       </AsyncView>
 
-      <Button variant="stil" block onPress={() => router.back()}>
+      <Button variant="stil" block onPress={terug}>
         {t('doelbewerken.annuleren')}
       </Button>
     </Screen>

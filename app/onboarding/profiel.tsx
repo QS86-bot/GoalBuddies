@@ -127,7 +127,11 @@ function OnboardingProfielFormulier() {
   }
 
   return (
-    <Screen title={t('onboarding.profiel_titel')} eyebrow={t('onboarding.eyebrow')}>
+    <Screen
+      title={t('onboarding.profiel_titel')}
+      eyebrow={t('onboarding.eyebrow')}
+      terug={{ naar: '/onboarding/uitleg' }}
+    >
       <Card>
         <View style={styles.naamrij}>
           <Avatar name={naam || t('onboarding.naamloos')} url={profiel?.avatar_url} size={44} />

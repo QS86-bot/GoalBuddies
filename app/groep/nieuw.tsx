@@ -11,7 +11,17 @@ import {
 } from '@/modules/buddies';
 import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
-import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
+import {
+  Body,
+  Button,
+  Caption,
+  Card,
+  Choice,
+  Field,
+  Screen,
+  Subheading,
+  useTerug,
+} from '@/shared/ui';
 
 /**
  * Een buddy-groep aanmaken — QS8-52.
@@ -27,6 +37,7 @@ import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '
  */
 export default function NieuweGroep() {
   const router = useRouter();
+  const terug = useTerug('/groep');
 
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
@@ -53,7 +64,7 @@ export default function NieuweGroep() {
   }
 
   return (
-    <Screen title={t('groepnieuw.titel')} eyebrow={t('groepnieuw.eyebrow')}>
+    <Screen title={t('groepnieuw.titel')} eyebrow={t('groepnieuw.eyebrow')} terug={{ naar: '/groep' }}>
       <Card>
         <Field
           label={t('groepnieuw.naam')}
@@ -105,7 +116,7 @@ export default function NieuweGroep() {
       <Button variant="primair" block busy={bezig} onPress={() => void bewaar()}>
         {t('groepnieuw.aanmaken')}
       </Button>
-      <Button variant="stil" block onPress={() => router.back()}>
+      <Button variant="stil" block onPress={terug}>
         {t('groepnieuw.annuleren')}
       </Button>
     </Screen>

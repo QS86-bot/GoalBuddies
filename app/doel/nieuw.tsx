@@ -5,7 +5,17 @@ import { useProfiel, useSession } from '@/modules/auth';
 import { CATEGORIEEN, categorieLabels, maakDoel, type Categorie } from '@/modules/goals';
 import { t } from '@/shared/i18n';
 import { localDateIn, now } from '@/shared/time';
-import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '@/shared/ui';
+import {
+  Body,
+  Button,
+  Caption,
+  Card,
+  Choice,
+  Field,
+  Screen,
+  Subheading,
+  useTerug,
+} from '@/shared/ui';
 
 /**
  * Een hoofddoel aanmaken — QS8-31, met de identiteitsvraag uit QS8-36.
@@ -17,6 +27,7 @@ import { Body, Button, Caption, Card, Choice, Field, Screen, Subheading } from '
  */
 export default function NieuwDoel() {
   const router = useRouter();
+  const terug = useTerug('/doelen');
   const { userId } = useSession();
   const { profiel } = useProfiel();
 
@@ -62,7 +73,7 @@ export default function NieuwDoel() {
   }
 
   return (
-    <Screen title={t('nieuwdoel.titel')} eyebrow={t('nieuwdoel.eyebrow')}>
+    <Screen title={t('nieuwdoel.titel')} eyebrow={t('nieuwdoel.eyebrow')} terug={{ naar: '/doelen' }}>
       <Card>
         <Field
           label={t('nieuwdoel.wat')}
@@ -128,7 +139,7 @@ export default function NieuwDoel() {
       <Button variant="primair" block busy={bezig} onPress={() => void bewaar()}>
         {t('nieuwdoel.aanmaken')}
       </Button>
-      <Button variant="stil" block onPress={() => router.back()}>
+      <Button variant="stil" block onPress={terug}>
         {t('nieuwdoel.annuleren')}
       </Button>
     </Screen>

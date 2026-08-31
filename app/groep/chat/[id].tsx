@@ -229,6 +229,7 @@ export default function GroepChat() {
       title={groep?.name ?? t('chat.titel')}
       eyebrow={t('chat.eyebrow')}
       scroll={false}
+      terug={{ naar: `/groep/${id}` }}
     >
       {/*
         ⚠️ `data` is de groep plús de berichten, en `isEmpty` kijkt naar de groep.

@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -25,6 +24,7 @@ import {
   Field,
   Screen,
   Subheading,
+  useTerug,
 } from '@/shared/ui';
 
 /**
@@ -47,7 +47,7 @@ import {
  *    wat hij níét gedaan heeft (domeinregel 7).
  */
 export default function Beoordelen() {
-  const router = useRouter();
+  const naarVandaag = useTerug('/');
   const { userId } = useSession();
 
   const [wachtrij, setWachtrij] = useState<Wachtrij | null>(null);
@@ -126,7 +126,7 @@ export default function Beoordelen() {
   }, [herlaad, aanHetTypen]);
 
   return (
-    <Screen title={t('beoordeling.titel')}>
+    <Screen title={t('beoordeling.titel')} terug={{ naar: '/' }}>
       <AsyncView
         loading={loading}
         error={error}
@@ -205,7 +205,7 @@ export default function Beoordelen() {
         )}
       </AsyncView>
 
-      <Button variant="stil" block onPress={() => router.back()}>
+      <Button variant="stil" block onPress={naarVandaag}>
         {t('beoordeling.terug')}
       </Button>
     </Screen>

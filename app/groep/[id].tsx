@@ -102,6 +102,7 @@ export default function GroepDetail() {
 
   return (
     <Screen
+      terug={{ naar: '/groep' }}
       title={stand?.groep?.name ?? t('groepdetail.titel')}
       eyebrow={
         stand?.groep

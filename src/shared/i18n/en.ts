@@ -352,6 +352,10 @@ export const en: Record<Sleutel, string> = {
   'onboarding.aan_de_slag': 'Get started',
   'onboarding.verder': 'Next',
   'onboarding.overslaan': 'Skip',
+
+  // Navigation — QS8-211. Deliberately separate from any one screen.
+  'nav.terug': 'Back',
+  'nav.naar_overzicht': 'Done, to my overview',
   'onboarding.profiel_titel': 'A bit about you',
   'onboarding.naamloos': 'Nameless',
   'onboarding.naam': 'What is your name?',

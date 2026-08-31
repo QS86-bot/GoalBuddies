@@ -32,7 +32,7 @@ export { FloorCeiling } from './FloorCeiling';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
-export { Screen } from './Screen';
+export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';
 export { Viering } from './Viering';
