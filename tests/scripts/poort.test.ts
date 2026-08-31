@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { beoordeel, controlesUit, HEEFT_DATABASE_NODIG, STAPPEN } from '../../scripts/poort.mjs';
+import { beoordeel, controlesUit, draai, HEEFT_DATABASE_NODIG, STAPPEN } from '../../scripts/poort.mjs';
 
 describe('controlesUit', () => {
   it('pikt élk script op dat op :controle eindigt', () => {
@@ -151,5 +151,53 @@ describe('de opstelling zelf', () => {
   it('kent de database-afhankelijke controles bij naam', () => {
     expect(HEEFT_DATABASE_NODIG.has('klokgrens:controle')).toBe(true);
     expect(HEEFT_DATABASE_NODIG.has('emoji:controle')).toBe(false);
+  });
+});
+
+
+/**
+ * De naad tussen `draai()` en `beoordeel()` — QS8-239.
+ *
+ * ⚠️ **Beide helften waren af, en samen logen ze.** `beoordeel()` staat hierboven
+ *    uitgebreid onder test en deelde altijd correct in: uitvoer met
+ *    `OVERGESLAGEN` erin is *ongemeten*. Maar `draai()` gaf hem die uitvoer niet.
+ *    `execFileSync` levert bij een geslaagde afloop alléén stdout; stderr komt er
+ *    pas uit via de foutafhandeling. En juist de twee controles waarvoor de
+ *    drieverdeling geschreven ís — `functies:controle` en `register:controle` —
+ *    schrijven hun `OVERGESLAGEN` naar stderr en eindigen met exitcode 0.
+ *
+ * ⚠️ **Er was geen test die dit kón zien**, want er was geen test die `draai()`
+ *    raakte. Regel 18 vraag 1: waar knopen twee correcte onderdelen aan elkaar?
+ *    Daar hoort een test, en niet alleen op weerszijden ervan.
+ *
+ * ⚠️ Deze tests draaien een écht subproces via een npm-script, want dat is de
+ *    naad. Een `spawnSync` die hier gemockt wordt, toetst niets: de bug zát in
+ *    welke stromen het echte subproces teruggeeft.
+ */
+describe('draai geeft stderr óók terug als de stap slaagt', () => {
+  it('vangt een OVERGESLAGEN op stderr bij exitcode 0', () => {
+    const { code, uitvoer } = draai('poort:proef:overgeslagen');
+
+    expect(code).toBe(0);
+    expect(uitvoer).toContain('OVERGESLAGEN');
+
+    // Dit is de belofte, en niet dat de string er staat: de poort moet hem
+    // hierna als ongemeten indelen en niet als groen.
+    expect(beoordeel({ code, uitvoer, heeftDatabaseNodig: false })).toBe('ongemeten');
+  });
+
+  it('geeft stdout en stderr allebei terug bij een rode stap', () => {
+    const { code, uitvoer } = draai('poort:proef:rood');
+
+    expect(code).not.toBe(0);
+    expect(uitvoer).toContain('op stdout');
+    expect(uitvoer).toContain('op stderr');
+  });
+
+  it('noemt een stap die niet bestaat rood en niet overgeslagen', () => {
+    // ⚠️ Een niet-bestaand script mag nooit als overslag tellen. Dat is hoe een
+    //    hernoemde controle stil uit de poort verdwijnt.
+    const { code, uitvoer } = draai('poort:proef:bestaat-niet');
+    expect(beoordeel({ code, uitvoer, heeftDatabaseNodig: false })).toBe('rood');
   });
 });

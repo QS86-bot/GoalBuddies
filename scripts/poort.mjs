@@ -23,7 +23,7 @@
  * Draaien: `npm run poort`. Met `--snel` blijven de twee testsuites achterwege
  * — bedoeld om tussendoor te kijken, niet om op te pushen.
  */
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -110,18 +110,43 @@ const GEEN_DATABASE =
  */
 const OVERGESLAGEN = /^[^\n]*\b[\w-]+(?:-controle|:controle)?:\s*OVERGESLAGEN\b/m;
 
-function draai(commando) {
-  try {
-    const uitvoer = execFileSync('npm', ['run', '--silent', commando], {
-      cwd: WORTEL,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    return { code: 0, uitvoer };
-  } catch (fout) {
-    const uitvoer = `${fout.stdout ?? ''}${fout.stderr ?? ''}`;
-    return { code: fout.status ?? 1, uitvoer };
+/**
+ * Draait één stap en geeft zijn exitcode én álle uitvoer terug.
+ *
+ * ⚠️ **`spawnSync` en niet `execFileSync`, en dat is een reparatie waar deze
+ *    poort zijn eigen bestaansreden op verloor.** `execFileSync` geeft bij een
+ *    geslaagde afloop alléén stdout terug; stderr komt er pas uit via de
+ *    foutafhandeling, dus alleen als de stap rood is.
+ *
+ *    Precies de twee controles waarvoor `beoordeel()` hierboven geschreven is —
+ *    `functies:controle` en `register:controle` — schrijven hun `OVERGESLAGEN`
+ *    naar **stderr** en eindigen daarna met **exitcode 0**. Die regel werd dus
+ *    weggegooid vóórdat `beoordeel()` hem kon zien, en de poort meldde ze als
+ *    groen terwijl ze niets gemeten hadden. De drieverdeling stond er wel en
+ *    kwam voor die twee gevallen nooit aan.
+ *
+ *    Nagemeten op 31-08-2026: `execFileSync` op een proces dat naar stderr
+ *    schrijft en met 0 eindigt, geeft `""` terug; `spawnSync` geeft de regel.
+ *    Zie QS8-239.
+ */
+export function draai(commando) {
+  const uitkomst = spawnSync('npm', ['run', '--silent', commando], {
+    cwd: WORTEL,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  // ⚠️ Ging het spawnen zelf mis (npm niet gevonden), dan is er geen exitcode.
+  //    Dat is rood en geen overslag: er is niets gedraaid en dus niets gemeten,
+  //    maar het is ook geen bewuste overslag van de stap zelf.
+  if (uitkomst.error) {
+    return { code: 1, uitvoer: `poort: ${commando} kon niet starten — ${uitkomst.error.message}` };
   }
+
+  return {
+    code: uitkomst.status ?? 1,
+    uitvoer: `${uitkomst.stdout ?? ''}${uitkomst.stderr ?? ''}`,
+  };
 }
 
 async function hoofd() {
