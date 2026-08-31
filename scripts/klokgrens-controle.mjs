@@ -79,6 +79,17 @@ export const REGISTER = new Map([
       'op de grens van een hele week, en dan naar de voorzichtige kant.',
   ],
   [
+    'wikkel_commitments_af :: v_vandaag := coalesce(eigenaarsdatum(v_doel.owner_id), current_date);',
+    '⚠️ Dit is de terugval en niet de grens. De grens is `eigenaarsdatum()` — de ' +
+      'eigen datum van de eigenaar — en die staat er sinds 0134 juist om `current_date` ' +
+      'hier wég te halen: in UTC gaf de `+ 1` de een nul respijtdagen en de ander twee. ' +
+      '`current_date` blijft alleen staan voor het geval dat het profiel niet meer ' +
+      'bestaat, en dan is het bewust de mildste kant: zou de null doorlopen, dan wordt ' +
+      '`v_op_tijd` zelf null, gaat de `if` naar de `else`, en vervalt de beloning van ' +
+      'iemand die niets verkeerd deed. Getoetst in tests/rls/respijtdag.test.ts, met ' +
+      'twee zones die het hele etmaal dekken.',
+  ],
+  [
     'ketting_uit_weekafsluiting :: if new.group_period_start > current_date + 1',
     'Dezelfde bovengrens als in de trigger ernaast; die weigert de rij al, deze ' +
       'slaat alleen de schakel over.',
@@ -86,12 +97,6 @@ export const REGISTER = new Map([
   [
     'ketting_uit_weekafsluiting :: or new.group_period_start < current_date - 35 then',
     'Ondergrens met vijf weken speling.',
-  ],
-  [
-    'wikkel_commitments_af :: v_op_tijd := current_date <= v_doel.target_date + 1;',
-    'De `+ 1` staat hier aan de andere kant van het `<=` en doet hetzelfde werk: ' +
-      'een deadline is pas verstreken als hij dat in élke zone is. Domeinregel 5 ' +
-      '— een straf gaat nooit een dag te vroeg lopen.',
   ],
 ]);
 

@@ -18,11 +18,16 @@
  *    kwijtraakt, zichtbaar wordt — en dat een gezonde week dat niet is. Zonder
  *    die tweede helft bewijst een gevulde uitkomst alleen dat er íets misgaat.
  *
- * ⚠️ **0109 repareert de vastloper niet, en dat is geen omissie.** De echte
- *    oplossing is de goedkeuringstermijn uit beslisdocument 001 §2.6b.3, en
- *    welke uitkomst een verlopen `pending` krijgt is een productbeslissing die
- *    het puntenmodel raakt. Deze suite bewaakt de teller, niet de reparatie —
- *    zodat route vijf opvalt in plaats van stil te blijven.
+ * ⚠️ **0109 repareerde de vastloper niet; migratie 0135 doet dat wél.** De
+ *    productbeslissing waar die eerste kop op wachtte is op 31-08-2026 genomen
+ *    (QS8-178): een vastgelopen week wordt na de goedkeuringstermijn alsnog
+ *    góédgekeurd, niet als gemist geboekt. Alle vier de routes zijn handelingen
+ *    van een ánder, en iemand een minpunt geven omdat zijn buddy vertrok, straft
+ *    hem voor iets buiten zijn macht.
+ *
+ *    Deze suite bewaakt daarom nu twee dingen: dat elke route zíchtbaar wordt
+ *    (0109, zodat route vijf opvalt) én dat elke route ook daadwerkelijk
+ *    afgehandeld wordt (0135). Het laatste blok hieronder is dat tweede.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -292,6 +297,197 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         expect((data as { ok?: boolean } | null)?.ok).toBe(true);
 
         expect(await vastgelopenReden(o.goalId)).toBe('geen_actieve_groep');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  /**
+   * De goedkeuringstermijn — QS8-178, migratie 0135.
+   *
+   * ⚠️ **De belofte is dat geen van de vier routes een week eeuwig laat hangen.**
+   *    Daarom draait dit blok ze alle vier langs en niet één als steekproef: de
+   *    bevinding van 27-08 telde er twee terwijl het er vier waren, en de twee
+   *    die hij miste waren precies de twee die niemand verwachtte.
+   *
+   * ⚠️ **`submitted_at` wordt met de hand teruggezet.** De termijn loopt vanaf
+   *    het indienen, dus een test die zeven dagen wacht is geen test. Dat is
+   *    geen truc: het is de enige manier om een tijdgrens te toetsen zonder de
+   *    klok van de database te verzetten, en het raakt precies de kolom die de
+   *    functie leest.
+   */
+  describe('de goedkeuringstermijn handelt elke route af', () => {
+    /** Zet het indienen ver genoeg terug om de termijn te laten verstrijken. */
+    async function verouder(completionId: string, dagen: number): Promise<void> {
+      const terug = new Date(Date.now() - dagen * 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await adminDb()
+        .from('completions')
+        .update({ submitted_at: terug })
+        .eq('id', completionId);
+      if (error) throw new Error(`verouderen: ${error.message}`);
+    }
+
+    async function weekstatus(completionId: string): Promise<string> {
+      const c = await adminDb()
+        .from('completions')
+        .select('weekly_goal_id')
+        .eq('id', completionId)
+        .single();
+      if (c.error || c.data === null) throw new Error(`voltooiing: ${c.error?.message}`);
+
+      const w = await adminDb()
+        .from('weekly_goals')
+        .select('status')
+        .eq('id', c.data.weekly_goal_id)
+        .single();
+      if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
+
+      return w.data.status as string;
+    }
+
+    async function keurGoed(termijn = 7): Promise<number> {
+      const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
+        p_termijn_dagen: termijn,
+      });
+      if (error) throw new Error(`termijn: ${error.message}`);
+      return data as unknown as number;
+    }
+
+    /**
+     * ⚠️ **De belangrijkste van dit blok.** Een week die nog binnen de termijn
+     *    valt, hoort met rust gelaten te worden — anders is de termijn geen
+     *    termijn maar een automatische goedkeuring, en dan is peer-goedkeuring
+     *    afgeschaft zonder dat iemand dat besloten heeft (domeinregel 3).
+     */
+    it(
+      'laat een vastgelopen week bínnen de termijn met rust',
+      async () => {
+        const o = await bouwOpstelling('termijn-vers');
+
+        const { error } = await o.eigenaar.db
+          .from('goal_group_links')
+          .delete()
+          .eq('goal_id', o.goalId);
+        expect(error).toBeNull();
+        expect(await vastgelopenReden(o.goalId)).toBe('geen_koppeling');
+
+        await verouder(o.completionId, 3);
+        await keurGoed(7);
+
+        expect(await weekstatus(o.completionId)).toBe('pending');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een gezonde week met rust, hoe oud hij ook is',
+      async () => {
+        const o = await bouwOpstelling('termijn-gezond');
+
+        // Niets ontkoppeld: er is nog een beoordelaar. Dan is er niets vastgelopen.
+        expect(await vastgelopenReden(o.goalId)).toBeNull();
+
+        await verouder(o.completionId, 60);
+        await keurGoed(7);
+
+        expect(await weekstatus(o.completionId)).toBe('pending');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ Alle vier de routes, elk met een eigen opstelling. De handeling zelf
+     *    wordt gecontroleerd vóór de uitkomst — dat is de les uit dit issue:
+     *    twee metingen zagen er eerst uit als "geen route" terwijl in werkelijkheid
+     *    de hándeling niet gelukt was.
+     */
+    it(
+      'keurt na de termijn alsnog goed, langs elk van de vier routes',
+      async () => {
+        // R1 — de eigenaar ontkoppelt zijn doel.
+        const r1 = await bouwOpstelling('termijn-r1');
+        const ontkoppeld = await r1.eigenaar.db
+          .from('goal_group_links')
+          .delete()
+          .eq('goal_id', r1.goalId);
+        expect(ontkoppeld.error, 'R1: ontkoppelen moet lukken').toBeNull();
+
+        // R2 — de eigenaar verlaat de groep. Drie argumenten; zie route 2 hierboven.
+        const r2 = await bouwOpstelling('termijn-r2');
+        const verlaten = await r2.eigenaar.db.rpc('verlaat_groep', {
+          p_group_id: r2.groupId,
+          p_bevestigd: true,
+          p_nieuwe_beheerder: r2.beoordelaar.id,
+        });
+        expect(
+          (verlaten.data as { ok?: boolean } | null)?.ok,
+          'R2: verlaten moet lukken',
+        ).toBe(true);
+
+        // R3 — de beheerder zet de enige beoordelaar op inactive.
+        const r3 = await bouwOpstelling('termijn-r3');
+        const gedeactiveerd = await adminDb()
+          .from('group_members')
+          .update({ status: 'inactive' })
+          .eq('group_id', r3.groupId)
+          .eq('user_id', r3.beoordelaar.id);
+        expect(gedeactiveerd.error, 'R3: deactiveren moet lukken').toBeNull();
+
+        // R4 — de beheerder archiveert de groep.
+        const r4 = await bouwOpstelling('termijn-r4');
+        const gearchiveerd = await adminDb()
+          .from('groups')
+          .update({ status: 'archived' })
+          .eq('id', r4.groupId);
+        expect(gearchiveerd.error, 'R4: archiveren moet lukken').toBeNull();
+
+        const routes = [r1, r2, r3, r4];
+
+        // Alle vier moeten nu als vastgelopen gezien worden — anders toetst de
+        // rest van deze test niets.
+        for (const [i, o] of routes.entries()) {
+          expect(await vastgelopenReden(o.goalId), `route ${i + 1} hoort vastgelopen te zijn`)
+            .not.toBeNull();
+          await verouder(o.completionId, 10);
+        }
+
+        await keurGoed(7);
+
+        for (const [i, o] of routes.entries()) {
+          expect(await weekstatus(o.completionId), `route ${i + 1} hoort goedgekeurd te zijn`)
+            .toBe('approved');
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Append-only, dus twee keer draaien mag niets extra's boeken**
+     *    (domeinregel 6). De rollover draait elk uur; zonder deze eigenschap zou
+     *    één vastgelopen week elke ronde opnieuw punten opleveren.
+     */
+    it(
+      'boekt bij een tweede ronde niets extra',
+      async () => {
+        const o = await bouwOpstelling('termijn-nogmaals');
+        await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+        await verouder(o.completionId, 10);
+
+        await keurGoed(7);
+        expect(await weekstatus(o.completionId)).toBe('approved');
+
+        const punten = async (): Promise<number> => {
+          const { data, error } = await adminDb()
+            .from('points_ledger')
+            .select('id')
+            .eq('user_id', o.eigenaar.id);
+          if (error) throw new Error(`punten: ${error.message}`);
+          return (data ?? []).length;
+        };
+
+        const na1 = await punten();
+        await keurGoed(7);
+        expect(await punten(), 'een tweede ronde mag niets toevoegen').toBe(na1);
       },
       TEST_TIMEOUT,
     );
