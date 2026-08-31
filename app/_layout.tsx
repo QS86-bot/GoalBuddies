@@ -131,6 +131,11 @@ setErrorSink(
   maakSentrySink({
     dsn: clientEnv().sentryDsn,
     runtime: Platform.OS,
+    // ⚠️ **Zonder dit veld is een fout uit `npm run dev` niet te onderscheiden
+    //    van een fout uit productie.** Sinds de DSN een standaard in `env.ts`
+    //    heeft, rapporteert élke omgeving — en dan is de eerste echte
+    //    productiefout zoek tussen het geknoei van de ontwikkelaar.
+    omgeving: clientEnv().sentryOmgeving,
     // ⚠️ De versie uit `app.json`, en weglaten als hij er niet is in plaats van
     //    er iets van te maken. Sentry koppelt source maps aan een release; een
     //    verzonnen versie koppelt ze aan de verkeerde.

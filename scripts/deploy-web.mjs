@@ -37,6 +37,12 @@ import { pathToFileURL } from 'node:url';
 
 import { config } from 'dotenv';
 
+import {
+  bestandenMetSleutel,
+  oordeel,
+  sleutelUit,
+  standaardDsnUit,
+} from './dsn-controle.mjs';
 import { beoordeelAntwoorden, VERPLICHTE_PADEN } from './pwa-controle.mjs';
 
 config({ path: '.env', quiet: true });
@@ -44,6 +50,8 @@ config({ path: '.env', quiet: true });
 const DOMEIN = 'goalbuddies.q-projects.tech';
 const GEBRUIKER = 'u349450154';
 const DIST = 'dist';
+/** Waar de standaard-DSN vandaan komt — één waarheid, zie `standaardDsnUit()`. */
+const BRON_MET_DSN = join('src', 'lib', 'env.ts');
 
 function fail(bericht, hint) {
   console.error(`\n  ✗ ${bericht}\n`);
@@ -643,6 +651,82 @@ async function main() {
   //    broncode. Dit is de enige stap hier die de deploy afbreekt.
   stap('Source maps uit de bundel halen');
   eisEenSchoneBundel();
+
+/**
+ * Eist dat de Sentry-DSN daadwerkelijk in de gebouwde bundel staat.
+ *
+ * ⚠️ **Dit is de eerste van de vier schakels tussen een fout in de app en een
+ *    regel in Sentry**, en tot 30-08-2026 was hij nooit gemeten. Er was in vier
+ *    dagen geen enkele gebeurtenis uit de app aangekomen en niemand kon zien
+ *    waar het spaak liep. Deze stap maakt dat zichtbaar op het moment dat het
+ *    nog gratis is: de bundel ligt er, er is nog niets geüpload.
+ *
+ * ⚠️ **Alleen "wél een DSN, niet in de bundel" breekt af.** Dat is het geval
+ *    waarin je dénkt dat je bewaakt wordt — dezelfde vorm als `setErrorSink()`
+ *    dat nergens werd aangeroepen. Geen DSN is een keuze en mag door, want een
+ *    app onbereikbaar maken om een leesbaarheidsprobleem is de verkeerde ruil;
+ *    zie `stuurSourceMapsNaarSentry()`, dat om dezelfde reden overslaat.
+ *
+ * ⚠️ Draait óók in `--droog`, met opzet: anders is de enige manier om hem te
+ *    zien draaien een echte deploy, en dat is precies wat een controle
+ *    onijkbaar maakt.
+ */
+function eisDeDsnInDeBundel() {
+  // ⚠️ Dezelfde volgorde als `clientEnv()`: een expliciet gezette waarde wint,
+  //    ook als hij leeg is (dat betekent "uit"). Alleen als hij níét gezet is,
+  //    telt de standaard uit de bron.
+  const standaard = standaardDsnUit(readFileSync(BRON_MET_DSN, 'utf8'));
+  if (standaard === null) {
+    fail(
+      `Kon STANDAARD_SENTRY_DSN niet vinden in ${BRON_MET_DSN}.`,
+      'Is de constante hernoemd? Werk `standaardDsnUit()` in scripts/dsn-controle.mjs bij — deze controle meet anders niets.',
+    );
+  }
+  const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? standaard;
+  const sleutel = sleutelUit(dsn);
+  const bestanden = alleBestanden(DIST)
+    .filter((pad) => pad.endsWith('.js') || pad.endsWith('.html'))
+    .map((pad) => ({ pad, inhoud: leesOfLeeg(pad) }));
+
+  const gevonden = bestandenMetSleutel(sleutel, bestanden);
+  const uitkomst = oordeel({ dsn, gevonden });
+
+  if (uitkomst === 'aanwezig') {
+    console.log(`    De DSN staat in ${gevonden.length} bestand(en); de app kan melden.`);
+    return;
+  }
+
+  if (uitkomst === 'uit') {
+    console.log('    Geen DSN geconfigureerd — deze bundel meldt geen fouten.');
+    console.log('    Dat mag, maar je hoort er niets van als er iets omvalt.');
+    return;
+  }
+
+  console.error('\n  ✗ DE BUNDEL MELDT GEEN FOUTEN, TERWIJL ER EEN DSN IS.\n');
+  if (uitkomst === 'onbruikbaar') {
+    console.error('    EXPO_PUBLIC_SENTRY_DSN is gezet maar er is geen sleutel uit te halen.');
+    console.error('    Verwacht: https://<sleutel>@<host>/<project-id>\n');
+  } else {
+    console.error(`    De sleutel ${sleutel} komt in geen enkel bestand in ${DIST}/ voor.`);
+    console.error('    De DSN is dus niet in de build beland — controleer of `.env` gelezen');
+    console.error('    is vóór `expo export`, en niet pas daarna gewijzigd.\n');
+  }
+  console.error('    Dit is het geval waarin je dénkt dat je bewaakt wordt. Er gaat');
+  console.error('    daarom niets de deur uit.\n');
+  process.exit(1);
+}
+
+/** Leest een bestand, of geeft een lege string als dat niet lukt (binair). */
+function leesOfLeeg(pad) {
+  try {
+    return readFileSync(pad, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+  stap('De DSN in de bundel natrekken');
+  eisDeDsnInDeBundel();
 
   stap('Inpakken');
   const archief = pakIn();
