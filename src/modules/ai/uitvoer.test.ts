@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { haalbaarheidUit, mijlpalenUit, weekdoelenUit } from './uitvoer';
+import { haalbaarheidUit, mijlpalenUit, planUit, weekdoelenUit } from './uitvoer';
 
 /**
  * ⚠️ Dit is modeluitvoer, en dat is de reden dat deze tests bestaan. De Edge
@@ -196,6 +196,138 @@ describe('weekdoelenUit', () => {
   it('geeft een lege lijst bij onzin in plaats van om te vallen', () => {
     for (const onzin of [null, undefined, 42, 'tekst', {}, { weekly_goals: 'geen array' }]) {
       expect(weekdoelenUit(onzin), JSON.stringify(onzin)).toEqual([]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// planUit — QS8-201
+// ---------------------------------------------------------------------------
+
+/** Een compleet plan zoals het schema van de Doelcoach het teruggeeft. */
+function plan(over: Record<string, unknown> = {}) {
+  return {
+    title: '20 kg afvallen voor de zomer',
+    category: 'other',
+    identity_statement: 'Ik ben iemand die elke week beweegt.',
+    milestones: [
+      { title: 'Eerste 5 kg', description: 'Rustig beginnen.', target_date: '2026-10-01' },
+      { title: 'Volgende 10 kg', description: null, target_date: '2026-12-01' },
+    ],
+    first_weekly_goal: {
+      title: 'Drie keer wandelen',
+      floor_text: 'Eén keer twintig minuten',
+      ceiling_text: 'Drie keer veertig minuten',
+    },
+    haalbaarheid: '',
+    ...over,
+  };
+}
+
+describe('planUit', () => {
+  it('leest een compleet plan', () => {
+    const uit = planUit(plan());
+
+    expect(uit?.title).toBe('20 kg afvallen voor de zomer');
+    expect(uit?.category).toBe('other');
+    expect(uit?.identity_statement).toBe('Ik ben iemand die elke week beweegt.');
+    expect(uit?.milestones).toHaveLength(2);
+    expect(uit?.first_weekly_goal?.floor_text).toBe('Eén keer twintig minuten');
+    expect(uit?.haalbaarheid).toBeNull();
+  });
+
+  it('leest een weekdoel dat als één object binnenkomt en niet als lijst', () => {
+    // ⚠️ Dit is de val die bij het schrijven al toesloeg. `weekdoelenUit()`
+    //    accepteert een kale array of een object mét `weekly_goals`; een lós
+    //    weekdoelobject valt tussen die twee door en geeft stil een lege lijst.
+    //    Dan komt élk plan zonder eerste week aan en ziet niemand waarom.
+    expect(planUit(plan())?.first_weekly_goal).not.toBeNull();
+  });
+
+  it('accepteert Nederlandse sleutels', () => {
+    const uit = planUit({
+      titel: 'Mijn website af voor kerst',
+      categorie: 'business',
+      identiteitszin: 'Ik ben iemand die afmaakt wat hij begint.',
+      mijlpalen: [{ titel: 'Ontwerp klaar', streefdatum: '2026-10-15' }],
+      eerste_weekdoel: { titel: 'Twee avonden bouwen', vloer: 'Eén avond', plafond: 'Drie avonden' },
+    });
+
+    expect(uit?.title).toBe('Mijn website af voor kerst');
+    expect(uit?.category).toBe('business');
+    expect(uit?.milestones).toHaveLength(1);
+    expect(uit?.first_weekly_goal?.title).toBe('Twee avonden bouwen');
+  });
+
+  it.each([
+    ['een onbekende categorie', 'health'],
+    ['een lege categorie', ''],
+    ['geen categorie', undefined],
+    ['een getal', 42],
+  ])('valt bij %s terug op other in plaats van te falen', (_naam, categorie) => {
+    // ⚠️ `goals.category` heeft een CHECK. Een verzonnen categorie zou het
+    //    aanmaken laten stuklopen op een 23514 die de gebruiker niets zegt.
+    //    De terugval is zichtbaar: het scherm toont de categorie en je kunt hem
+    //    bijstellen vóór je bevestigt.
+    expect(planUit(plan({ category: categorie }))?.category).toBe('other');
+  });
+
+  it('herkent een categorie ongeacht hoofdletters', () => {
+    expect(planUit(plan({ category: 'Study' }))?.category).toBe('study');
+  });
+
+  it.each([
+    ['een lege titel', ''],
+    ['een titel van twee tekens', 'ab'],
+    ['alleen spaties', '   '],
+    ['geen titel', undefined],
+  ])('geeft null bij %s — daar valt geen doel van te maken', (_naam, titel) => {
+    expect(planUit(plan({ title: titel }))).toBeNull();
+  });
+
+  it.each([
+    ['null', null],
+    ['een array', [{ title: 'x' }]],
+    ['een string', 'geen plan'],
+    ['een getal', 7],
+  ])('geeft null bij %s', (_naam, invoer) => {
+    expect(planUit(invoer)).toBeNull();
+  });
+
+  it('houdt het doel bruikbaar als het weekdoel onbruikbaar is', () => {
+    // ⚠️ Een vloer gelijk aan het plafond is geen weekdoel maar een tweede
+    //    formulering van dezelfde stap (domeinregel 8). Dat maakt het plan niet
+    //    onbruikbaar: het doel en de mijlpalen blijven staan, de gebruiker vult
+    //    zijn eerste week zelf in.
+    const uit = planUit(
+      plan({ first_weekly_goal: { title: 'Wandelen', floor_text: 'Elke dag', ceiling_text: 'elke dag' } }),
+    );
+
+    expect(uit).not.toBeNull();
+    expect(uit?.first_weekly_goal).toBeNull();
+    expect(uit?.milestones).toHaveLength(2);
+  });
+
+  it('geeft de haalbaarheidstegenspraak door als die er is', () => {
+    const uit = planUit(plan({ haalbaarheid: 'Twintig kilo in drie maanden is erg snel.' }));
+    expect(uit?.haalbaarheid).toBe('Twintig kilo in drie maanden is erg snel.');
+  });
+
+  it('laat de identiteitszin null als hij ontbreekt', () => {
+    expect(planUit(plan({ identity_statement: '' }))?.identity_statement).toBeNull();
+  });
+});
+
+describe('de categorielijst in uitvoer.ts', () => {
+  it('loopt gelijk met het schema van goals', async () => {
+    // ⚠️ `uitvoer.ts` importeert met opzet niets uit een module die de
+    //    Supabase-client meetrekt, dus de lijst staat daar in kopie. Deze test
+    //    is de grendel daarop: verschuift `CATEGORIEEN` (QS8-224 wil dat), dan
+    //    valt hij om en niet stilletjes de categoriekeuze van de Doelcoach.
+    const { CATEGORIEEN } = await import('../goals/schemas');
+
+    for (const categorie of CATEGORIEEN) {
+      expect(planUit(plan({ category: categorie }))?.category).toBe(categorie);
     }
   });
 });
