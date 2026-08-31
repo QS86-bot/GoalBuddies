@@ -24,10 +24,26 @@
  *    het moment dat die branch landt. Zet hem niet uit; dat is precies het gat
  *    dat hij moet bewaken.
  *
+ * ⚠️ **Tot 31-08-2026 keek stap 2 alleen tússen het laagste en het hoogste
+ *    bestand, en dat was een blinde vlek precies daar waar het het vaakst
+ *    misgaat.** Ontbreekt er iets **boven** het hoogste nummer, dan is de reeks
+ *    netjes aaneengesloten tot waar hij ophoudt. Deze controle meldde daardoor
+ *    letterlijk "De nummering is aaneengesloten" terwijl `0126` t/m `0130` op
+ *    productie draaiden en hun bestanden op een branch zonder PR stonden —
+ *    waaronder de migratie die het `auth.uid()`-lek in de uitnodigingslink
+ *    dichtzette. Zie QS8-237 en QS8-238.
+ *
+ *    Het is bij toeval gevonden: een nieuwe migratie sprong over het gat heen en
+ *    toen zat het er ineens wél tússen. Stap 4 hieronder maakt dat een meting.
+ *
  * Wat hij níét kan: toetsen of de repo gelijkloopt met
  * `supabase_migrations.schema_migrations` op het echte project. Dat vraagt een
  * service-role-key, en die hoort niet in een controle die op elke machine draait
  * (beveiligingsregel 4). Dat is de tweede helft van QS8-122 en staat daar.
+ *
+ * ⚠️ Stap 4 is dus de goedkope helft: hij ziet niet wat er op productie draait,
+ *    maar wél wat er op een andere branch staat. In dit project is dat bijna
+ *    hetzelfde, want de volgorde is toepassen en dán landen.
  *
  * Draaien: `npm run migraties:controle`. Hoort mee in `/audit`.
  */
@@ -35,6 +51,13 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import {
+  alsNummer,
+  nummersPerBranch,
+  nummersUit,
+  ontbrekendPerBranch,
+} from './migratiebranches.mjs';
 
 const MAP = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
 
@@ -131,10 +154,46 @@ for (const naam of bestanden) {
 }
 
 // ---------------------------------------------------------------------------
+// 4. Geen gat aan de bovenkant — QS8-238
+// ---------------------------------------------------------------------------
+//
+// ⚠️ Stap 2 kan dit per definitie niet zien: hij telt tússen het laagste en het
+//    hoogste bestand, en wat er boven het hoogste ontbreekt valt daar buiten.
+//    Deze stap kijkt daarom niet naar de map maar naar wat de rémote draagt.
+//
+// ⚠️ Een branch die migraties draagt die hier ontbreken, is in dit project bijna
+//    altijd de gevaarlijke toestand en niet gewoon parallel werk: de volgorde is
+//    toepassen en dán landen (docs/DEPLOY.md), dus zo'n migratie draait meestal
+//    al op productie terwijl deze map hem niet kan afspelen.
+//
+// ⚠️ Zonder git of zonder remote geeft `nummersPerBranch()` `null` en zwijgt deze
+//    stap. Dat is bewust géén "OVERGESLAGEN": de andere drie stappen hebben wél
+//    gemeten, en de hele controle ongemeten noemen om deze ene stap zou de
+//    andere drie verbergen.
+
+const perBranch = nummersPerBranch();
+
+if (perBranch !== null) {
+  const achterstand = ontbrekendPerBranch({
+    lokaal: nummersUit(bestanden),
+    perBranch,
+  });
+
+  for (const { branch, ontbreekt } of achterstand) {
+    fouten.push(
+      `${branch} draagt ${ontbreekt.length} migratie(s) die hier ontbreken: ` +
+        `${ontbreekt.map(alsNummer).join(', ')}. ` +
+        'Deze map kan het schema dus niet opbouwen zoals het elders al staat.',
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 if (fouten.length === 0) {
   console.log(
-    `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een rollback-pad.`,
+    `migraties-controle: ${bestanden.length} migraties, aaneengesloten en elk met een rollback-pad.` +
+      (perBranch === null ? '' : ' Geen branch draagt een nummer dat hier ontbreekt.'),
   );
   process.exit(0);
 }
@@ -145,6 +204,10 @@ console.error(
   '\nDe migratiebestanden zijn de enige manier om dit schema ergens anders op te\n' +
     'bouwen — een lokale stack, een tweede project, een herstel. Ontbreekt er één,\n' +
     'dan toetst de RLS-suite daar een ander schema dan productie. Zie QS8-122, en\n' +
-    'voor het gat 0057–0061 zie QS8-131 en WERKVOORRAAD §2a.',
+    'voor het gat 0057–0061 zie QS8-131 en WERKVOORRAAD §2a.\n\n' +
+    '⚠️ Meldt hij een branch die migraties draagt die hier ontbreken, land die\n' +
+    'branch dan — cherry-picken van losse migratiebestanden gaat mis zodra ze op\n' +
+    'iets anders leunen (een shim, een bucket). Zie QS8-237.\n' +
+    'Dit beeld is zo oud als je laatste `git fetch`.',
 );
 process.exit(1);
