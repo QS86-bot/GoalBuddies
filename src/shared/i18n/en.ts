@@ -1532,4 +1532,5 @@ export const en: Record<Sleutel, string> = {
   'weekplan.overgenomen': 'The plan is ready. Step 1 is your goal for this week.',
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
+  'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
 };

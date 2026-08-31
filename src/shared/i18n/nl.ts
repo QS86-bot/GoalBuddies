@@ -1887,6 +1887,7 @@ export const nl = {
   'weekplan.overgenomen': 'Het plan staat klaar. Stap 1 is je weekdoel voor deze week.',
   'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
   'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
+  'coach.al_ingevuld': 'Dit had je al ingevuld bij je doel; je kunt het hier bijstellen.',
 } as const;
 
 export type Sleutel = keyof typeof nl;

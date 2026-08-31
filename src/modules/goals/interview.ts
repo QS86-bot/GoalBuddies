@@ -9,6 +9,7 @@ import { invoerfout } from '../../shared/api';
 import {
   interviewSchema,
   LEEG_INTERVIEW,
+  spiegelpatch,
   type InterviewInvoer,
 } from './interview-schemas';
 
@@ -123,13 +124,12 @@ export async function bewaarInterview(
  *    Risico-radar bestaat nog niet.
  */
 async function spiegelNaarDoel(goalId: string, antwoorden: InterviewInvoer): Promise<void> {
-  const patch: { identity_statement?: string; available_hours_per_week?: number } = {};
-  if (antwoorden.identity !== null && antwoorden.identity !== '') {
-    patch.identity_statement = antwoorden.identity;
-  }
-  if (antwoorden.hours_per_week !== null) {
-    patch.available_hours_per_week = antwoorden.hours_per_week;
-  }
+  // ⚠️ **Het rekenwerk staat in `spiegelpatch()` en niet hier** — QS8-205. Deze
+  //    functie schreef de twee velden met een `if` per stuk, en het scherm dat
+  //    ze moet vóórvullen zou dan een tweede lijst zijn geworden. Twee lijsten
+  //    over hetzelfde begrip is precies de naad die in dit project al drie keer
+  //    is gaan lekken; nu lezen beide kanten dezelfde tabel.
+  const patch = spiegelpatch(antwoorden);
 
   if (Object.keys(patch).length === 0) return;
 

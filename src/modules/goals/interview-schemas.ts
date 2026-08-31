@@ -109,3 +109,134 @@ const STAP_VELDEN = [
 export function heeftAntwoorden(invoer: InterviewInvoer): boolean {
   return Object.values(invoer).some((waarde) => waarde !== null && waarde !== '');
 }
+
+
+/**
+ * De twee vragen die `/doel/nieuw` al gesteld heeft — QS8-205.
+ *
+ * ⚠️ **Dit is de tegenhanger van de spiegeling naar `goals`, en dat is de hele
+ *    reden dat het bestaat.** Een interviewantwoord wordt teruggeschreven naar
+ *    `goals.identity_statement` en `goals.available_hours_per_week`; de app weet
+ *    dus al dat het één ding is. Tot 31-08-2026 liep die weg maar één kant op, en
+ *    het gevolg was dat het interview twee vragen stelde die één scherm eerder
+ *    al beantwoord waren.
+ *
+ * ⚠️ **Eén tabel en geen twee lijsten.** De voor de hand liggende vorm was een
+ *    lijst hier en een `if` per veld in `spiegelNaarDoel()`, met een test die de
+ *    twee tegen elkaar legt. Dat is precies de constructie die in dit project al
+ *    drie keer is gaan lekken: twee correcte onderdelen, en een naad die
+ *    stilvalt zodra iemand er één bijwerkt. Hier is er niets om uit de pas te
+ *    lopen — `spiegelpatch()` en `vulVoorUitDoel()` lezen allebei deze tabel.
+ */
+export const SPIEGELING = {
+  identity: 'identity_statement',
+  hours_per_week: 'available_hours_per_week',
+} as const;
+
+export type GespiegeldVeld = keyof typeof SPIEGELING;
+
+export const GESPIEGELDE_VELDEN = Object.keys(SPIEGELING) as readonly GespiegeldVeld[];
+
+/** Precies zoveel van een doel als de spiegeling nodig heeft. */
+export interface DoelVoorvulling {
+  readonly identity_statement: string | null;
+  readonly available_hours_per_week: number | null;
+}
+
+/**
+ * Is dit antwoord gegeven, of overgeslagen?
+ *
+ * ⚠️ `''` en `null` zijn allebei overgeslagen. Twee functies die dat verschillend
+ *    lezen, is precies hoe een naad gaat lekken: de ene schrijft een lege string
+ *    weg en de andere vult hem voor.
+ */
+function gegeven(waarde: string | number | null): boolean {
+  if (waarde === null) return false;
+  return typeof waarde === 'string' ? waarde.trim() !== '' : true;
+}
+
+/**
+ * Wat er van een interview naar `goals` gaat.
+ *
+ * ⚠️ Een overgeslagen vraag overschrijft niets. Wie bij het tweede interview de
+ *    urenvraag overslaat, houdt het getal uit het eerste — anders zou overslaan
+ *    stilletjes gegevens wissen, en dat is niet wat "overslaan mag" betekent.
+ */
+export function spiegelpatch(antwoorden: InterviewInvoer): Partial<DoelVoorvulling> {
+  const patch: Record<string, string | number> = {};
+
+  for (const veld of GESPIEGELDE_VELDEN) {
+    const waarde = antwoorden[veld];
+    if (gegeven(waarde)) patch[SPIEGELING[veld]] = waarde as string | number;
+  }
+
+  return patch as Partial<DoelVoorvulling>;
+}
+
+export interface Voorvulling {
+  readonly antwoorden: InterviewInvoer;
+  /** Welke velden uit het doel komen in plaats van uit een eerder interview. */
+  readonly voorgevuld: readonly GespiegeldVeld[];
+}
+
+/**
+ * Vult de gespiegelde vragen voor met wat er al op het doel staat.
+ *
+ * ⚠️ **Een eerder antwoord wint altijd.** Wat de gebruiker in het interview
+ *    getypt heeft, is zijn antwoord op déze vraag; de kolom op `goals` is een
+ *    afgeleide daarvan. Zou het doel winnen, dan kan een tweede bezoek aan dit
+ *    scherm een antwoord overschrijven met een oudere waarde.
+ *
+ * ⚠️ **Er wordt niets afgerond.** `goals.available_hours_per_week` is
+ *    `numeric(4,1)`, dus 6,5 uur is een geldige waarde. Die naar 6 of 7 brengen
+ *    om in een invoerveld te passen is gegevens veranderen zonder dat iemand
+ *    erom vroeg — het veld moet zich aanpassen, niet de waarde. Zie
+ *    `urenUitTekst()` hieronder.
+ */
+export function vulVoorUitDoel(
+  antwoorden: InterviewInvoer,
+  doel: DoelVoorvulling,
+): Voorvulling {
+  const voorgevuld: GespiegeldVeld[] = [];
+  const uit: Record<string, unknown> = { ...antwoorden };
+
+  for (const veld of GESPIEGELDE_VELDEN) {
+    if (gegeven(antwoorden[veld])) continue;
+
+    const uitDoel = doel[SPIEGELING[veld]];
+    if (!gegeven(uitDoel)) continue;
+
+    uit[veld] = uitDoel;
+    voorgevuld.push(veld);
+  }
+
+  return { antwoorden: uit as InterviewInvoer, voorgevuld };
+}
+
+/**
+ * Leest een urenantwoord uit wat de gebruiker typt.
+ *
+ * ⚠️ **Dit bestond niet en dat was tot QS8-205 niet te merken.** Het veld
+ *    streepte alles weg wat geen cijfer was (`replace(/[^0-9]/g, '')`), en dat
+ *    kon omdat er via het interview nooit een breuk binnenkwam. Maar
+ *    `/doel/nieuw` accepteert er wél een — `available_hours_per_week` is
+ *    `numeric(4,1)` — en zodra dit scherm die waarde voorvult, verandert
+ *    zes-en-een-half uur in vijfenzestig zodra de gebruiker het veld aanraakt.
+ *
+ *    Elk onderdeel klopte; de naad tussen de twee schermen lekte. Precies de
+ *    vorm uit regel 18.
+ *
+ * ⚠️ Komma én punt, want een Nederlandstalig toetsenbord geeft een komma.
+ */
+export function urenUitTekst(tekst: string): number | null {
+  const schoon = tekst.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+  if (schoon === '') return null;
+
+  // ⚠️ Alleen het eerste scheidingsteken telt. "6.5.5" is geen getal, en
+  //    `Number()` geeft daar `NaN` op — dat mag nooit als antwoord landen.
+  const [heel, ...rest] = schoon.split('.');
+  const samen = rest.length === 0 ? heel : `${heel}.${rest.join('')}`;
+
+  const waarde = Number(samen);
+  return Number.isFinite(waarde) ? waarde : null;
+}
