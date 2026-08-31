@@ -80,3 +80,29 @@ Geijkt door `execFileSync` terug te zetten — precies die ene test wordt rood.
 alleen**. Er is nagekeken of er nog een controle de overslagvorm op stderr
 gebruikt; die is er niet. Maar dat is een controle op één patroon, niet op elke
 manier waarop een script stil kan falen met exitcode 0.
+
+## 6. En dezelfde val, dezelfde dag, voor de derde keer
+
+Bij het inhangen van `adviseur:controle` viel `tests/scripts/adviseur-controle.test.ts`
+om (een aparte fout — het script schond de `pathToFileURL`-conventie uit
+`padvormen.test.ts`). Vitest toonde een diff met de regel
+
+```
+⚠ adviseur-controle: OVERGESLAGEN — geen SUPABASE_ACCESS_TOKEN
+```
+
+— de bróncode van het script, en dus exact de vorm waarop het patroon in ronde
+twee verankerd was. De poort noemde een **rode** suite "ongemeten".
+
+⚠️ **Geen enkel tekstpatroon lost dit op, en dat is de eigenlijke les.** Elk
+patroon dat de échte melding vindt, vindt ook een citaat ervan — in een diff, een
+fixture, een verwachting. Twee reparaties op rij waren scherpere patronen, en
+allebei faalden op de volgende vorm van hetzelfde.
+
+De grens ligt niet in de tekst maar in de stapsoort: **een testsuite kan geen
+sleutel missen.** Alleen een controle kan zichzelf overslaan. `beoordeel()` neemt
+daarom `soort` mee en past de overslag alleen toe op `soort === 'controle'`.
+
+Dat een suite zonder database ongemeten heet, blijft: die route loopt via
+`GEEN_DATABASE` en `heeftDatabaseNodig`, niet via de overslag, en staat apart
+onder test.

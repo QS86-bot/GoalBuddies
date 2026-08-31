@@ -70,14 +70,31 @@ export const HEEFT_DATABASE_NODIG = new Set([
  *    hem als groen telt, en dan meldt de poort "alles groen" over een schema dat
  *    niemand heeft aangeraakt.
  */
-export function beoordeel({ code, uitvoer, heeftDatabaseNodig }) {
+export function beoordeel({ code, uitvoer, heeftDatabaseNodig, soort = 'controle' }) {
   // ⚠️ **Eerst de overslag, en die staat bewust vóór de exitcode.**
   //    `functies:controle` en `register:controle` printen "OVERGESLAGEN" en
   //    geven daarna **exitcode 0**. Voor elke poort die alleen naar de exitcode
   //    kijkt, zijn ze dus groen terwijl ze niets gemeten hebben — precies de
   //    vorm die deze codebase al drie keer duur betaald heeft. CI draait ze niet
   //    (zie `.github/workflows/ci.yml`), dus daar loog niets; lokaal wél.
-  if (OVERGESLAGEN.test(uitvoer)) return 'ongemeten';
+  //
+  // ⚠️ **Alleen een controle mag zichzelf overslaan, en dat is de reparatie van
+  //    31-08.** Een testsuite kan niet "geen sleutel" hebben; als daar
+  //    `OVERGESLAGEN` in de uitvoer staat, is dat de ínhoud van een test — een
+  //    diff, een fixture, een verwachting — en geen mededeling van de stap zelf.
+  //
+  //    Dit is de derde ronde op dezelfde val. Eerst stond het patroon op het
+  //    kale woord en maskeerde het een rode suite. Toen is het verankerd op de
+  //    regelvorm die een controle schrijft. Op 31-08 bleek dat nog steeds niet
+  //    genoeg: `tests/scripts/adviseur-controle.test.ts` viel om, de diff toonde
+  //    de regel `⚠ adviseur-controle: OVERGESLAGEN — ...` uit het script zelf,
+  //    en die past exact op het verankerde patroon. De poort noemde een rode
+  //    suite "ongemeten".
+  //
+  //    Een tekstpatroon kan dit niet oplossen: elk patroon dat de échte melding
+  //    vindt, vindt ook een citaat ervan. De grens moet dus om de stapsoort
+  //    liggen en niet om de tekst.
+  if (soort === 'controle' && OVERGESLAGEN.test(uitvoer)) return 'ongemeten';
 
   if (code === 0) return 'groen';
 
@@ -169,7 +186,12 @@ async function hoofd() {
   const uitkomsten = [];
   for (const stap of stappen) {
     const { code, uitvoer } = draai(stap.commando);
-    const oordeel = beoordeel({ code, uitvoer, heeftDatabaseNodig: stap.database === true });
+    const oordeel = beoordeel({
+      code,
+      uitvoer,
+      heeftDatabaseNodig: stap.database === true,
+      soort: stap.soort,
+    });
     uitkomsten.push({ ...stap, oordeel, uitvoer });
     const teken = oordeel === 'groen' ? '✓' : oordeel === 'ongemeten' ? '·' : '✗';
     process.stdout.write(`${teken} ${stap.naam}\n`);

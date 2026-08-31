@@ -201,3 +201,66 @@ describe('draai geeft stderr óók terug als de stap slaagt', () => {
     expect(beoordeel({ code, uitvoer, heeftDatabaseNodig: false })).toBe('rood');
   });
 });
+
+
+/**
+ * Een rode suite mag nooit "ongemeten" heten — QS8-239, derde ronde.
+ *
+ * ⚠️ **Dit is dezelfde val voor de derde keer, en de eerste twee reparaties
+ *    waren allebei tekstpatronen.** Eerst stond de heuristiek op het kale woord
+ *    `OVERGESLAGEN`; een falende test toonde een diff waar dat woord in stond en
+ *    de poort noemde de suite ongemeten in plaats van rood. Toen is het patroon
+ *    verankerd op de regelvorm die een controle zélf schrijft.
+ *
+ *    Op 31-08-2026 viel `tests/scripts/adviseur-controle.test.ts` om en toonde
+ *    vitest een diff met de regel `⚠ adviseur-controle: OVERGESLAGEN — geen
+ *    SUPABASE_ACCESS_TOKEN` — de bróncode van het script, en dus exact de
+ *    verankerde vorm. Rood werd weer ongemeten.
+ *
+ * ⚠️ **Geen enkel tekstpatroon kan dit oplossen**, en dat is de les: elk patroon
+ *    dat de échte melding vindt, vindt ook een citaat ervan. Een testsuite kan
+ *    geen sleutel missen — alleen een controle kan zichzelf overslaan. De grens
+ *    ligt dus om de stapsoort en niet om de tekst.
+ */
+describe('alleen een controle mag zichzelf overslaan', () => {
+  const alsofControleGeslaagd = 'adviseur-controle: OVERGESLAGEN — geen SUPABASE_ACCESS_TOKEN';
+
+  it('noemt een controle die dat zegt ongemeten', () => {
+    expect(
+      beoordeel({ code: 0, uitvoer: alsofControleGeslaagd, heeftDatabaseNodig: false, soort: 'controle' }),
+    ).toBe('ongemeten');
+  });
+
+  it('noemt een rode suite die dat woord in zijn uitvoer heeft gewoon rood', () => {
+    // De uitvoer van een vitest-run die een diff van het script toont.
+    const rodeSuite = [
+      'FAIL tests/scripts/adviseur-controle.test.ts',
+      '- verwacht',
+      `+ ${alsofControleGeslaagd}`,
+      'Tests  1 failed | 17 passed (18)',
+    ].join('\n');
+
+    expect(
+      beoordeel({ code: 1, uitvoer: rodeSuite, heeftDatabaseNodig: false, soort: 'suite' }),
+    ).toBe('rood');
+  });
+
+  it('noemt een groene suite met dat woord erin gewoon groen', () => {
+    expect(
+      beoordeel({ code: 0, uitvoer: alsofControleGeslaagd, heeftDatabaseNodig: false, soort: 'suite' }),
+    ).toBe('groen');
+  });
+
+  it('laat een suite zonder database wél ongemeten heten', () => {
+    // ⚠️ Die route loopt via GEEN_DATABASE en niet via de overslag, en moet
+    //    blijven werken: een RLS-suite zonder stack heeft niets bewezen.
+    expect(
+      beoordeel({
+        code: 1,
+        uitvoer: 'Error: fetch failed',
+        heeftDatabaseNodig: true,
+        soort: 'suite',
+      }),
+    ).toBe('ongemeten');
+  });
+});
