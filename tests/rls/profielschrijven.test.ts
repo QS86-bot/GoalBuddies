@@ -60,12 +60,25 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
     TEST_TIMEOUT,
   );
 
+  /**
+   * ⚠️ **`week_start_day` stond hier tot 0139 bij, en is er bewust uit.** Die
+   *    kolom is sinds die migratie voor de client niet meer schrijfbaar: hij
+   *    gaat via `zet_week_startdag()`, dat de dag én de lopende `todo`-weekdoelen
+   *    in één transactie verzet (QS8-138).
+   *
+   *    Deze test bleef hier staan met de kolom erin en werd terecht rood met
+   *    42501 — de smalle weg is smaller geworden. **De belofte die eraan hing is
+   *    niet weg maar verhuisd**, en wordt nu getoetst in
+   *    `tests/rls/weekstart.test.ts`: dat de kolom dicht zit, dat de RPC hem zet,
+   *    en dat de kolommen die de app wél schrijft open blijven. Zonder die
+   *    verwijzing is dit precies de verhuizing waar regel 18 voor waarschuwt.
+   */
   it(
-    'slaat de taal, de tijdzone en de week-startdag op langs de smalle weg',
+    'slaat de taal en de tijdzone op langs de smalle weg',
     async () => {
       const { data, error } = await alice.db
         .from('profiles')
-        .update({ locale: 'en', tz: 'Pacific/Auckland', week_start_day: 3 })
+        .update({ locale: 'en', tz: 'Pacific/Auckland' })
         .eq('id', alice.id)
         .select('id')
         .single();
@@ -91,7 +104,6 @@ describe.skipIf(!rlsTestsConfigured)('Je eigen profiel opslaan', () => {
       expect(error).toBeNull();
       expect(data?.locale).toBe('en');
       expect(data?.tz).toBe('Pacific/Auckland');
-      expect(data?.week_start_day).toBe(3);
     },
     TEST_TIMEOUT,
   );
