@@ -411,6 +411,36 @@ async function draaiRollover(auth: string): Promise<Response> {
     console.error(`seizoensrecaps maken mislukte: ${recapFout.message}`);
   }
 
+  // ⚠️ **De goedkeuringstermijn — QS8-178, migratie 0135.** Een voltooiing die op
+  //    goedkeuring wacht terwijl de beoordelaars zijn weggevallen, bleef eeuwig
+  //    `pending`: geen minpunt, maar ook nooit punten. Vier routes leiden daarheen
+  //    en alle vier zijn het handelingen van een ánder — de beheerder deactiveert
+  //    je beoordelaar, archiveert de groep, of de eigenaar ontkoppelt zijn doel.
+  //
+  //    Beslisdocument 001 §2.6b.3 had dit al besloten en het was nooit gebouwd:
+  //    bij het verstrijken van de termijn krijgt het weekdoel alsnog zijn punten,
+  //    zodat een trage buddy jou geen minpunt kan bezorgen.
+  //
+  // ⚠️ **Hier en niet in een eigen job.** Deze functie draait al elk uur en heeft
+  //    de cyclusberekening al. Een tweede planner is een tweede plek die stil kan
+  //    uitvallen — en dat is precies wat QS8-140 vandaag laat zien: `maak_seizoensrecaps`
+  //    stond maandenlang in de database zonder dat iets hem aanriep.
+  //
+  //    Geen cyclusrekenwerk: zeven dagen sinds het indienen is een leeftijd en
+  //    geen week, dus dit mag in SQL staan (correctheidsregel 7).
+  const { data: alsnogGoedgekeurd, error: termijnFout } = await db.rpc(
+    'keur_vastgelopen_goedkeuringen_goed',
+    { p_termijn_dagen: 7 },
+  );
+
+  if (termijnFout) {
+    console.error(`vastgelopen goedkeuringen afhandelen mislukte: ${termijnFout.message}`);
+    await meld(
+      new Error(`vastgelopen goedkeuringen afhandelen mislukte: ${termijnFout.message}`),
+      'rollover.goedkeuringstermijn',
+    );
+  }
+
   return new Response(
     JSON.stringify({
       ok: true,
@@ -427,6 +457,10 @@ async function draaiRollover(auth: string): Promise<Response> {
       //    zonder scherm; wat hij niet teruggeeft, is niet gebeurd voor wie het
       //    log leest.
       recaps: (recaps as { recaps?: number } | null)?.recaps ?? 0,
+      // ⚠️ Om dezelfde reden als `recaps` hierboven: een job zonder scherm heeft
+      //    alleen zijn uitvoer. Wat hij niet teruggeeft, is niet gebeurd voor wie
+      //    het log leest — en dít getal hoort nul te zijn zolang er niets vastloopt.
+      alsnogGoedgekeurd: (alsnogGoedgekeurd as number | null) ?? 0,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );

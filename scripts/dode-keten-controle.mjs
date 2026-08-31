@@ -187,13 +187,6 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'Lijnt het migratieregister uit na een MCP-apply (DEPLOY.md §2.2). ' +
     'Aanroeper is `scripts/migratieregister-uitlijnen.mjs`; een knop hiervoor ' +
     'in de app zou een ontwikkelhandeling in productie zetten.',
-  vastgelopen_goedkeuringen:
-    '⚠️ Geen bewaking maar een telling, en 0109 schrijft met zoveel woorden op ' +
-    'waarom er geen scherm bij hoort: de échte reparatie is de ' +
-    'goedkeuringstermijn uit beslisdocument 001 §2.6b.3, en dát is een ' +
-    'productbeslissing die het puntenmodel raakt. Tot die keuze gemaakt is, is ' +
-    'de toestand telbaar en verder niets. **Hoort van deze lijst af zodra die ' +
-    'termijn er is** — dan is dit een scherm of een job.',
 };
 
 /**

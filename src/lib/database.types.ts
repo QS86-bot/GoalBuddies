@@ -2226,6 +2226,7 @@ export type Database = {
           type: string
         }[]
       }
+      eigenaarsdatum: { Args: { uid: string }; Returns: string }
       groepsdatum: { Args: { gid: string }; Returns: string }
       group_overview: {
         Args: {
@@ -2291,6 +2292,10 @@ export type Database = {
       is_group_member: { Args: { gid: string }; Returns: boolean }
       is_kale_auth_uid: { Args: { p_uitdrukking: string }; Returns: boolean }
       join_group_with_code: { Args: { code: string }; Returns: Json }
+      keur_vastgelopen_goedkeuringen_goed: {
+        Args: { p_termijn_dagen?: number }
+        Returns: number
+      }
       kan_beoordeeld_worden: {
         Args: { p_goal_id: string; p_owner_id: string }
         Returns: boolean
