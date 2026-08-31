@@ -1,4 +1,4 @@
--- 0136_weekdoelstatus_herstellen_binnen_een_grens.sql — de statuscache repareren zonder de rest van de database aan te raken (QS8-145)
+-- 0137_weekdoelstatus_herstellen_binnen_een_grens.sql — de statuscache repareren zonder de rest van de database aan te raken (QS8-145)
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.herstel_weekdoelstatus(uuid);

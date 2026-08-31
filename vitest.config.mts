@@ -74,7 +74,7 @@ export default defineConfig({
      *
      * Dat is exact de faalsignatuur hierboven, en het verklaart ook waarom
      * `fixtureGaaf()` zweeg: die telt rijen, en de rijen bleven staan.
-     * Migratie 0136 geeft de functie een grens; `tests/rls/nevenschade.test.ts`
+     * Migratie 0137 geeft de functie een grens; `tests/rls/nevenschade.test.ts`
      * bewaakt de klasse.
      *
      * ⚠️ **En tóch blijft deze regel staan.** Er is één pad bewezen en gedicht,

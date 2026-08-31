@@ -55,9 +55,9 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
    *    ongevoelig voor de buren en laat het *schrijven* ongemoeid: één test
    *    verderop riep `herstel_weekdoelstatus()` ongescopeerd aan, en die zette
    *    de weekdoelen van `reeks.test.ts` terug naar `todo`. Gemeten op 31-08;
-   *    zie de kop van migratie 0136.
+   *    zie de kop van migratie 0137.
    *
-   *    Sinds 0136 dragen beide functies `p_goal_id`. De grens ligt nu in de
+   *    Sinds 0137 dragen beide functies `p_goal_id`. De grens ligt nu in de
    *    database, en daarom kan het filter hier wég — wat de test meteen
    *    stérker maakt: verdwijnt de scoping ooit, dan lekt vreemde drift in deze
    *    lijst en vallen de asserties hieronder om. Met het filter erin zou dat
@@ -148,7 +148,7 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
       // ⚠️ **Nu wél een assertie op het aantal, en dat is het bewijs dat de
       //    grens werkt.** Hier stond "geen assertie op het áántal, want
       //    `herstel_weekdoelstatus()` repareert de hele database" — een
-      //    opmerking die de nevenschade beschreef en accepteerde. Sinds 0136
+      //    opmerking die de nevenschade beschreef en accepteerde. Sinds 0137
       //    scoopt de aanroep op dít doel, dus het antwoord is precies één, en
       //    een tweede zou betekenen dat er vreemde rijen zijn meegegaan.
       const { data, error } = await adminDb().rpc('herstel_weekdoelstatus', {

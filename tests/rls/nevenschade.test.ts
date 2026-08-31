@@ -335,7 +335,7 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
   }
 
   /**
-   * ⚠️ **De assertie waar dit bestand om bestaat.** Vóór 0136 ging deze reeks
+   * ⚠️ **De assertie waar dit bestand om bestaat.** Vóór 0137 ging deze reeks
    *    van 4 naar 0 door een aanroep die over dít doel niets te zeggen had.
    */
   it(
