@@ -63,7 +63,8 @@
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",
     "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
-    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls"
+    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls",
+    "migratie:hernummer": "node scripts/migratie-hernummer.mjs"
   },
   "engines": {
     "node": ">=22"
