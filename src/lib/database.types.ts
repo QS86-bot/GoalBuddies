@@ -1560,8 +1560,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string
+          focus_areas: string[]
           id: string
           locale: string | null
+          minutes_per_day: number | null
           onboarded_at: string | null
           reminder_enabled: boolean
           reminder_time: string | null
@@ -1571,13 +1573,17 @@ export type Database = {
           updated_at: string
           wants_own_goal: boolean
           week_start_day: number
+          what_breaks_it: string[]
+          when_i_do_it: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name: string
+          focus_areas?: string[]
           id: string
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
@@ -1587,13 +1593,17 @@ export type Database = {
           updated_at?: string
           wants_own_goal?: boolean
           week_start_day?: number
+          what_breaks_it?: string[]
+          when_i_do_it?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string
+          focus_areas?: string[]
           id?: string
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
@@ -1603,6 +1613,8 @@ export type Database = {
           updated_at?: string
           wants_own_goal?: boolean
           week_start_day?: number
+          what_breaks_it?: string[]
+          when_i_do_it?: string | null
         }
         Relationships: []
       }
@@ -2179,8 +2191,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
+          focus_areas: string[] | null
           id: string | null
           locale: string | null
+          minutes_per_day: number | null
           onboarded_at: string | null
           reminder_enabled: boolean | null
           reminder_time: string | null
@@ -2190,13 +2204,17 @@ export type Database = {
           updated_at: string | null
           wants_own_goal: boolean | null
           week_start_day: number | null
+          what_breaks_it: string[] | null
+          when_i_do_it: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          focus_areas?: string[] | null
           id?: string | null
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
@@ -2206,13 +2224,17 @@ export type Database = {
           updated_at?: string | null
           wants_own_goal?: boolean | null
           week_start_day?: number | null
+          what_breaks_it?: string[] | null
+          when_i_do_it?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          focus_areas?: string[] | null
           id?: string | null
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
@@ -2222,6 +2244,8 @@ export type Database = {
           updated_at?: string | null
           wants_own_goal?: boolean | null
           week_start_day?: number | null
+          what_breaks_it?: string[] | null
+          when_i_do_it?: string | null
         }
         Relationships: []
       }

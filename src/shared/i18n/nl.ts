@@ -2040,6 +2040,66 @@ export const nl = {
   'overzicht.groep_uitleg': 'De stand van een groep staat op het groepsscherm zelf — daar weet de app om welke groep het gaat.',
   'overzicht.groep_open': 'Naar je groepen',
 
+  // ---------------------------------------------------------------------------
+  // De korte vragenlijst — QS8-257, besluit A56
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Vraag 4 gaat over eerdere mislukking en de toon moet dat dragen.** Niet
+  //    "wat doe jij fout" maar "wat laat gewoontes normaal gesproken stuklopen" —
+  //    het onderwerp is de gewoonte en niet de persoon. Domeinregel 7 gaat over
+  //    wat de groep ziet; deze zin ziet alleen de gebruiker zelf, en juist daar
+  //    telt de toon.
+  'vragenlijst.titel': 'Vier korte vragen',
+  'vragenlijst.eyebrow': 'ZODAT DE APP JE KENT',
+  'vragenlijst.overslaan': 'Sla over',
+  'vragenlijst.volgende': 'Volgende',
+  'vragenlijst.vorige': 'Terug',
+  'vragenlijst.klaar': 'Klaar',
+  'vragenlijst.opslaan_mislukt': 'Je antwoorden konden niet opgeslagen worden.',
+  'vragenlijst.alles_overslaan': 'Alles overslaan kan ook. Je verliest er niets mee en je kunt het later invullen.',
+
+  'vragenlijst.focus.vraag': 'Waar wil je je op richten?',
+  'vragenlijst.focus.toelichting': 'Kies er hoogstens drie. Ze sturen wat de app je voorstelt en waar je groepen vindt.',
+  'vragenlijst.focus.vol': 'Je hebt er drie. Tik er een uit om te wisselen.',
+
+  'vragenlijst.tijd.vraag': 'Hoeveel tijd kun je eerlijk geven?',
+  'vragenlijst.tijd.toelichting': 'Op een gewone dag, niet je beste dag.',
+  'vragenlijst.minuten.5': '5 minuten',
+  'vragenlijst.minuten.15': '15 minuten',
+  'vragenlijst.minuten.30': '30 minuten',
+  'vragenlijst.minuten.60': 'Een uur of meer',
+  'vragenlijst.uren_per_week': 'Dat is ongeveer {uren} uur per week. Dat vullen we straks voor je in, en je kunt het wijzigen.',
+
+  'vragenlijst.moment.vraag': 'Wanneer ga je het echt doen?',
+  'vragenlijst.moment.toelichting': 'Een vast moment houdt het vol; een vage bedoeling niet.',
+  'vragenlijst.moment.morning': "'s Ochtends",
+  'vragenlijst.moment.workday': 'Ergens op de werkdag',
+  'vragenlijst.moment.evening': "'s Avonds",
+  'vragenlijst.moment.varies': 'Dat wisselt sterk',
+
+  'vragenlijst.valkuil.vraag': 'Wat laat jouw gewoontes normaal gesproken stuklopen?',
+  'vragenlijst.valkuil.toelichting': 'Vink er zoveel aan als kloppen. Hier is de app voor gebouwd.',
+  'valkuil.forget': 'Ik vergeet het gewoon',
+  'valkuil.forget.antwoord': 'Straks krijg je een herinnering op de dag van je groep. Die is er nog niet, en dan zeggen we ook niet dat hij er is.',
+  'valkuil.motivation_drops': 'Motivatie zakt na week één',
+  'valkuil.motivation_drops.antwoord': 'Daar is de weekpas voor: een gemiste week kost je je reeks niet. En je vloer zorgt dat een matige week nog steeds telt.',
+  'valkuil.all_or_nothing': 'Alles of niets: één dag mis en ik stop',
+  'valkuil.all_or_nothing.antwoord': 'Daarom heeft elk weekdoel een vloer naast zijn plafond. Vloer gehaald betekent dat de week telt — dezelfde reeks, dezelfde goedkeuring.',
+  'valkuil.nobody_notices': 'Niemand merkt het als ik stop',
+  'valkuil.nobody_notices.antwoord': 'Je week wordt door een buddy bevestigd, niet door jezelf. Dat is waar deze app om draait.',
+  'valkuil.life_chaotic': 'Mijn leven wordt soms chaotisch',
+  'valkuil.life_chaotic.antwoord': 'Dan kondig je vooraf een adempauze aan. Je groep ziet dat je even pauzeert, en je reeks blijft staan.',
+  'valkuil.bekijk': 'Laat zien',
+
+  'vragenlijst.samenvatting.kop': 'Dit heb je me verteld',
+  'vragenlijst.samenvatting.uitleg': 'Tik een antwoord aan om het te wijzigen.',
+  'vragenlijst.samenvatting.leeg': 'Je hebt alles overgeslagen. Dat mag, en je kunt het later alsnog invullen.',
+  'vragenlijst.samenvatting.niets': 'Overgeslagen',
+  'vragenlijst.samenvatting.bewaren': 'Bewaren en verder',
+  'vragenlijst.samenvatting.dit_helpt': 'Wat de app hiermee doet',
+
+  'validatie.focus_te_veel': 'Kies er hoogstens drie.',
+
   'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
   'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',
