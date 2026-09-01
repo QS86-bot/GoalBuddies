@@ -494,6 +494,43 @@ stond. Een controle die nog nooit rood is geweest, is een aanname.
 Gaat hij af, dan is de sleutel **gelekt** zodra hij in een build heeft gezeten —
 ook als je hem een minuut later weghaalt. Ververs hem.
 
+#### ⚠️ Elke naam in `.env` staat in `SCREAMING_SNAKE_CASE` — anders bestaat hij niet voor de scan
+
+Gemeten op 31-08-2026 (QS8-242). Er stond een regel in `.env` die letterlijk
+`Google OAuth secret=…` heette: spaties, kleine letters. De parser leest namen
+met `[A-Z0-9_]+`, dus die regel kwam er niet doorheen, stond niet in de
+namenlijst, en de waarde is **nooit met de bundel vergeleken**. De scan meldde
+geen fout — hij meldde dat er niets te controleren viel.
+
+*(Er is niets gelekt: `.env` staat in `.gitignore` en is nooit gecommit.)*
+
+Dezelfde spaties lieten `source .env` struikelen. Het bestand vertelde dus wél
+dat er iets mis was, alleen tegen de mens en niet tegen de controle.
+
+**Drie dingen zijn daarop veranderd, en alle drie zijn ze te ijken:**
+
+| | |
+|---|---|
+| Een regel die de parser niet kan lezen | **stopt de deploy** met het regelnummer erbij, in plaats van stil overgeslagen te worden |
+| "Nul gecontroleerd" | is **niet** meer hetzelfde als "schoon". Nul geheimen met een waarde stopt de deploy; het aantal wordt altijd geprint |
+| Welke namen bewaakt worden | komt uit **`.env.example`** plus wat er in `.env` staat — dus ook een geheim dat alleen via de omgeving binnenkomt, zoals de secrets van een CI-runner |
+
+⚠️ Die eerste kolom is precies het onderscheid dat dit document elders zelf maakt
+bij `functies:controle` en `register:controle`: **ongemeten ziet er hetzelfde uit
+als groen**, en wie naar de exitcode kijkt telt het als bewijs. Die val stond
+hier ook, maar dan zonder dat er iemand voor gewaarschuwd was.
+
+⚠️ **Zet een nieuw geheim dus ook in `.env.example`**, met een lege waarde. Dat
+bestand is sinds QS8-242 niet alleen documentatie maar de bron van wat de
+secret-scan bewaakt — een tweede lijst in het script zou onvermijdelijk gaan
+afwijken. `HOSTINGER_API_TOKEN` ontbrak er en viel daardoor buiten de scan van
+de deploy die hem zélf gebruikt.
+
+De ijking staat in `tests/scripts/deploy-geheimen.test.ts`: vijf grendels, elk
+met een eigen mutatie rood gemaakt, plus de vormen die de scan met **rust** moet
+laten — `TZ=UTC` zit in elke bundel, en een controle die altijd afgaat wordt
+uitgezet.
+
 ### Diepe links: de `.htaccess` wordt gegenereerd
 
 ⚠️ `expo export` met `output: "static"` schrijft een dynamische route weg als een
