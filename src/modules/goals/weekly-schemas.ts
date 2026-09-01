@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { t } from '../../shared/i18n';
 
+import { MAX_DAGEN_PER_WEEK } from './schemas';
+
 /**
  * De invoer van een weekdoel.
  *
@@ -30,9 +32,59 @@ export const weekdoelSchema = z.object({
    */
   floor_text: z.string().trim().max(200, { error: () => t('validatie.vloer_plafond_kort') }).nullable(),
   ceiling_text: z.string().trim().max(200, { error: () => t('validatie.vloer_plafond_kort') }).nullable(),
-});
 
-export type WeekdoelInvoer = z.infer<typeof weekdoelSchema>;
+  /**
+   * De vloer en het plafond in dagen — besluit A53, migratie 0140.
+   *
+   * ⚠️ **Allebei leeg is een gewoon weekdoel**, en dat is het normale geval. Is
+   *    `ceiling_days` gevuld, dan telt deze week dagen en leidt de database het
+   *    bereikte niveau daaruit af in plaats van het aan het formulier te vragen.
+   *
+   * ⚠️ De grenzen staan ook in `weekly_goals_dagen_geordend` in 0140. Loopt dit
+   *    schema daarop achter, dan accepteert het formulier iets wat de database
+   *    met een `23514` weigert — en die melding zegt de gebruiker niets.
+   */
+  floor_days: z
+    .number()
+    .int({ error: () => t('validatie.dagen_heel') })
+    .min(1, { error: () => t('validatie.dagen_bereik') })
+    .max(MAX_DAGEN_PER_WEEK, { error: () => t('validatie.dagen_bereik') })
+    .nullable()
+    .default(null),
+  ceiling_days: z
+    .number()
+    .int({ error: () => t('validatie.dagen_heel') })
+    .min(1, { error: () => t('validatie.dagen_bereik') })
+    .max(MAX_DAGEN_PER_WEEK, { error: () => t('validatie.dagen_bereik') })
+    .nullable()
+    .default(null),
+})
+  /**
+   * ⚠️ Dezelfde ordening als de CHECK in 0140, en om dezelfde reden als de
+   *    lengtegrenzen hierboven: wat hier doorkomt en daar niet, is een
+   *    storingsmelding in plaats van een invoerfout.
+   */
+  .refine(
+    (v) => v.floor_days === null || v.ceiling_days === null || v.floor_days <= v.ceiling_days,
+    { error: () => t('validatie.vloer_boven_plafond'), path: ['floor_days'] },
+  )
+  /**
+   * ⚠️ Een vloer zonder plafond bestaat niet. De CHECK weigert hem ook, maar
+   *    daar is het een `23514`; hier is het een zin.
+   */
+  .refine((v) => v.floor_days === null || v.ceiling_days !== null, {
+    error: () => t('validatie.vloer_zonder_plafond'),
+    path: ['ceiling_days'],
+  });
+
+/**
+ * ⚠️ `z.input` en niet `z.infer`. Sinds A53 heeft dit schema velden met een
+ *    `.default()`, en die zijn aan de invoerkant optioneel en aan de
+ *    uitvoerkant gevuld. Met `z.infer` (de uitvoer) zou elke bestaande
+ *    aanroeper ineens verplicht een ritme of een dagental moeten meesturen —
+ *    en dan is de standaard geen standaard.
+ */
+export type WeekdoelInvoer = z.input<typeof weekdoelSchema>;
 
 /**
  * Wat er bij het afronden gekozen wordt — QS8-46.

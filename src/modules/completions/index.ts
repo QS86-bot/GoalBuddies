@@ -37,3 +37,13 @@ export {
   type Cursor,
   type Wachtrij,
 } from './approvals';
+
+export {
+  fetchAfgevinktOp,
+  fetchAfvinkingen,
+  fetchAfvinktellingen,
+  maakAfvinkingOngedaan,
+  meldingBijAfvinkfout,
+  vinkDagAf,
+  type Dagafvinking,
+} from './afvinken';

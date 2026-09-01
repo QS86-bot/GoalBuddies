@@ -125,6 +125,11 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 export {
   CATEGORIEEN,
   DOELGEBEURTENISSEN,
+  MAX_DAGEN_PER_WEEK,
+  niveauUitDagen,
+  RITMES,
+  ritmeLabels,
+  ritmeUitleg,
   DOELGEBEURTENISSEN_CLIENT,
   categorieLabels,
   datumLigtInDeToekomst,
@@ -135,6 +140,7 @@ export {
   type DoelInvoer,
   type DoelPatch,
   type DoelStatus,
+  type Ritme,
 } from './schemas';
 
 export {

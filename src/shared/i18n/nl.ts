@@ -1888,6 +1888,40 @@ export const nl = {
   'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
   'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
   'coach.al_ingevuld': 'Dit had je al ingevuld bij je doel; je kunt het hier bijstellen.',
+
+  // ---------------------------------------------------------------------------
+  // Het ritme van een doel — besluit A53, migratie 0140
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ De uitleg zegt wat de keuze kóst en niet wat hij is. "Dagelijks" klinkt
+  //    als de serieuze optie, en dan kiest iedereen hem — terwijl het de enige is
+  //    die zeven momenten per week van je vraagt.
+  'ritme.weekly': 'Ik kijk naar de week',
+  'ritme.weekly_uitleg':
+    'Aan het eind van de week rond je af. Hoe je er komt, is aan jou — er is niets af te vinken.',
+  'ritme.times_per_week': 'Een paar keer per week',
+  'ritme.times_per_week_uitleg':
+    'Je vinkt de dagen af waarop je eraan gewerkt hebt. De week telt zodra je je vloer haalt.',
+  'ritme.daily': 'Elke dag',
+  'ritme.daily_uitleg':
+    'Voor iets wat je dagelijks doet. Vraagt het meest van je, dus kies dit alleen als het echt elke dag is.',
+  'ritme.kop': 'Hoe vaak werk je hieraan?',
+  'ritme.dagen_gehaald': '{gehaald} van {plafond} dagen',
+  'ritme.vloer_gehaald': 'Je vloer is gehaald. Deze week telt.',
+  'ritme.vloer_nog_niet': 'Nog {aantal} dagen tot je vloer.',
+  'ritme.plafond_gehaald': 'Plafond gehaald.',
+  'ritme.vink_af': 'Vink vandaag af',
+  'ritme.vink_af_label': 'Vink vandaag af voor "{titel}"',
+  'ritme.maak_ongedaan': 'Toch niet',
+  'ritme.maak_ongedaan_label': 'Maak de afvinking van vandaag ongedaan voor "{titel}"',
+  'ritme.afvinken_mislukt': 'Dat afvinken lukte niet.',
+  'ritme.buiten_de_week': 'Die dag hoort niet bij deze week.',
+  'ritme.onder_de_vloer': 'Deze week haalt de vloer nog niet, dus er valt nog niets af te ronden.',
+  'ritme.te_veel_deze_dag': 'Je hebt vandaag te veel afgevinkt. Probeer het morgen weer.',
+  'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
+  'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
+  'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',
+  'validatie.vloer_zonder_plafond': 'Een vloer in dagen vraagt ook een plafond.',
 } as const;
 
 export type Sleutel = keyof typeof nl;
