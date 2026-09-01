@@ -31,15 +31,6 @@ import { telTekens } from '../tekst';
  */
 
 /**
- * De categorieën waar een eigen set voor bestaat.
- *
- * ⚠️ **Een kopie van `CATEGORIEEN` uit `modules/goals`, en met opzet geen import.**
- *    `shared` mag niet van een module afhangen; dat is de richting waarin de
- *    architectuur juist niet leunt. De prijs is een naad, en die staat onder
- *    test: `tips.test.ts` legt beide lijsten naast elkaar en wordt rood zodra er
- *    een categorie bijkomt waar geen regels voor zijn.
- */
-/**
  * De woorden die een tip nooit mag bevatten.
  *
  * ⚠️ **Dit stond tot 27-08-2026 als losse reguliere expressie in `tips.test.ts`,
@@ -125,21 +116,68 @@ export function noemtTegenvaller(tekst: string): boolean {
   return TEGENVALLER_WOORDEN.some((woord) => klein.includes(woord));
 }
 
-export const TIP_CATEGORIEEN = ['business', 'study', 'other'] as const;
-export type TipCategorie = (typeof TIP_CATEGORIEEN)[number];
+/**
+ * De zes sets regels die er bestaan.
+ *
+ * ⚠️ **Zes sets voor vijftien categorieën, en dat is sinds QS8-224 een besluit.**
+ *    Tot dan waren het er drie voor drie, en gold hier gelijkheid met
+ *    `CATEGORIEEN`. Vijftien eigen sets zou vijfenzeventig regels in twee talen
+ *    vragen, en de meeste daarvan zouden vulling zijn — terwijl de test die eist
+ *    dat elke set van de andere verschilt, juist bestaat om vulling tegen te
+ *    houden. Een set die vier gebieden bedient is beter dan vier sets die
+ *    hetzelfde zeggen.
+ *
+ * ⚠️ De eerste drie zijn de groepen uit `CATEGORIE_GROEPEN`; `business`, `study`
+ *    en `other` houden hun eigen set omdat die regels er al waren en werken.
+ */
+export const TIP_SETS = ['lichaam', 'mensen', 'werk', 'business', 'study', 'other'] as const;
+export type TipSet = (typeof TIP_SETS)[number];
 
 /**
- * Hoort deze categorie bij een set regels?
+ * Welke set bij welk gebied hoort.
  *
- * ⚠️ Bestaat omdat `Doel.category` een `string` is en niet een `Categorie`: de
- *    database kan er iets in hebben staan wat deze build niet kent. Zonder deze
- *    zeef zou `weektip()` dan `t('weektip.onbekend.3')` aanroepen, en `t()` geeft
- *    bij een ontbrekende sleutel de sleutel zelf terug — dan staat er letterlijk
- *    "weektip.onbekend.3" op het dashboard. Diezelfde terugval heeft dit project
- *    deze maand al twee keer een zichtbare bug gekost.
+ * ⚠️ **Een kopie van `CATEGORIEEN` uit `modules/goals`, en met opzet geen
+ *    import.** `shared` mag niet van een module afhangen; dat is de richting
+ *    waarin de architectuur juist niet leunt. De prijs is een naad, en die staat
+ *    onder test: `tips.test.ts` legt de sleutels van deze afbeelding naast
+ *    `CATEGORIEEN` en wordt rood zodra er een gebied bijkomt dat hier niet in
+ *    staat.
+ *
+ * ⚠️ `learning` en `skills` krijgen de studieset en niet de werkset. Ze staan in
+ *    `CATEGORIE_GROEPEN` wél bij "werk en groei" — dat is de indeling voor kleur
+ *    en voor de keuzelijst. Voor een tip telt iets anders: die gaat over wát je
+ *    deze week deed, en leren lijkt in dat opzicht op studeren.
  */
-export function isTipCategorie(waarde: string): waarde is TipCategorie {
-  return (TIP_CATEGORIEEN as readonly string[]).includes(waarde);
+export const TIPSET_PER_CATEGORIE: Readonly<Record<string, TipSet>> = {
+  fitness: 'lichaam',
+  nutrition: 'lichaam',
+  self_care: 'lichaam',
+  mindfulness: 'lichaam',
+  connection: 'mensen',
+  helping: 'mensen',
+  creativity: 'mensen',
+  productivity: 'werk',
+  organization: 'werk',
+  resilience: 'werk',
+  learning: 'study',
+  skills: 'study',
+  business: 'business',
+  study: 'study',
+  other: 'other',
+};
+
+/**
+ * De set die bij deze categorie hoort, met `other` als terugval.
+ *
+ * ⚠️ Die terugval bestaat omdat `Doel.category` een `string` is en niet een
+ *    `Categorie`: de database kan er iets in hebben staan wat deze build niet
+ *    kent. Zonder hem zou `weektip()` `t('weektip.onbekend.3')` aanroepen, en
+ *    `t()` geeft bij een ontbrekende sleutel de sleutel zélf terug — dan staat
+ *    er letterlijk "weektip.onbekend.3" op het dashboard. Diezelfde terugval
+ *    heeft dit project al twee keer een zichtbare bug gekost.
+ */
+export function tipSetVoor(categorie: string): TipSet {
+  return TIPSET_PER_CATEGORIE[categorie] ?? 'other';
 }
 
 /**
@@ -170,7 +208,7 @@ export const TIPS_PER_CATEGORIE = 5;
  * @param cycleStart de startdatum van de cyclus, als `YYYY-MM-DD`
  */
 export function weektip(categorie: string, cycleStart: string): string {
-  const set: TipCategorie = isTipCategorie(categorie) ? categorie : 'other';
+  const set = tipSetVoor(categorie);
 
   // Een stabiele som over de datum. Geen hash-bibliotheek: het hoeft niet
   // onvoorspelbaar te zijn, alleen gelijkmatig en herhaalbaar.

@@ -211,11 +211,14 @@ const TIP_SCHEMA = {
  *    de gebruiker niets zegt. Het schema maakt de goede waarde waarschijnlijk,
  *    `planUit()` maakt hem zeker — die valt terug op `other`.
  *
- *    ⚠️ Wordt die lijst uitgebreid (QS8-224), dan verandert hij op drie plekken:
- *    hier, in de CHECK op `goals`, en in `CATEGORIEEN_UIT_HET_SCHEMA` in
- *    `src/modules/ai/uitvoer.ts`. Die laatste staat onder test tegen
- *    `CATEGORIEEN`; deze staat dat niet, want een Edge Function draait niet mee
- *    in de unitsuite.
+ *    ⚠️ **Op 01-09-2026 uitgebreid naar vijftien (QS8-224, migratie 0142), en
+ *    die verandering raakte drie plekken:** hier, de CHECK op `goals`, en
+ *    `CATEGORIEEN_UIT_HET_SCHEMA` in `src/modules/ai/uitvoer.ts`. Die laatste
+ *    staat onder test tegen `CATEGORIEEN`; deze staat dat niet, want een Edge
+ *    Function draait niet mee in de unitsuite. **Dat is de zwakke schakel van de
+ *    drie** — hij wordt niet rood, hij levert stil een categorie op die de
+ *    database weigert. De vangnet eronder is `planUit()`, dat op `other`
+ *    terugvalt; die is er dus niet voor de netheid.
  *
  * ⚠️ **`first_weekly_goal` is één object en geen array.** Er is er precies één
  *    nodig — die van deze week. Een array zou de vraag "en de rest dan?"
@@ -225,7 +228,26 @@ const PLAN_SCHEMA = {
   type: 'object',
   properties: {
     title: { type: 'string' },
-    category: { type: 'string', enum: ['business', 'study', 'other'] },
+    category: {
+      type: 'string',
+      enum: [
+        'fitness',
+        'nutrition',
+        'self_care',
+        'mindfulness',
+        'connection',
+        'helping',
+        'creativity',
+        'productivity',
+        'organization',
+        'learning',
+        'skills',
+        'resilience',
+        'business',
+        'study',
+        'other',
+      ],
+    },
     identity_statement: { type: 'string' },
     haalbaarheid: { type: 'string' },
     milestones: {
@@ -402,8 +424,15 @@ function bouwPlanPrompt(input: Record<string, unknown>, locale: string | null): 
     '',
     '- "title": het doel in een korte, concrete titel. Schrijf hem op zoals de',
     '  gebruiker hem zou herkennen, niet formeler dan zijn eigen zin.',
-    '- "category": kies "business" voor werk en ondernemen, "study" voor leren',
-    '  en opleiding, en "other" voor al het andere.',
+    '- "category": het gebied waar dit doel over gaat. Kies er precies één:',
+    '  "fitness" (sport en beweging), "nutrition" (voeding), "self_care"',
+    '  (zelfzorg, slaap, herstel), "mindfulness" (rust en aandacht),',
+    '  "connection" (contact met anderen), "helping" (iets voor een ander),',
+    '  "creativity" (maken en scheppen), "productivity" (meer gedaan krijgen),',
+    '  "organization" (orde en overzicht), "learning" (leren en opleiding),',
+    '  "skills" (een vaardigheid oefenen), "resilience" (veerkracht en',
+    '  gewoontes volhouden), "business" (werk en ondernemen), "study"',
+    '  (school en studie). Past er echt geen: "other".',
     '- "identity_statement": één zin in de ik-vorm over wie de gebruiker wordt',
     '  door dit vol te houden — niet wat hij bereikt. "Ik ben iemand die elke',
     '  week beweegt", niet "Ik weeg 20 kilo minder".',

@@ -90,16 +90,139 @@ export function niveauUitDagen(
   return gehaald >= plafondDagen ? 'ceiling' : 'floor';
 }
 
-export const CATEGORIEEN = ['business', 'study', 'other'] as const;
+/**
+ * De vijftien gebieden waar een doel over kan gaan — QS8-224, migratie 0142.
+ *
+ * ⚠️ **Een kopie van de CHECK `goals_category_valid` en geen bron.**
+ *    `tests/rls/policies.test.ts` legt de twee in béide richtingen naast elkaar.
+ *    Een waarde erbij is dus altijd eerst een migratie.
+ *
+ * ⚠️ De volgorde is die van `CATEGORIE_GROEPEN` hieronder en niet alfabetisch:
+ *    dit is de volgorde waarin een gebruiker ze te zien krijgt.
+ */
+export const CATEGORIEEN = [
+  'fitness',
+  'nutrition',
+  'self_care',
+  'mindfulness',
+  'connection',
+  'helping',
+  'creativity',
+  'productivity',
+  'organization',
+  'learning',
+  'skills',
+  'resilience',
+  'business',
+  'study',
+  'other',
+] as const;
 export type Categorie = (typeof CATEGORIEEN)[number];
 
 /** Zie de andere meldingentabellen: een functie, want de taal ligt niet vast op importtijd. */
 export function categorieLabels(): Readonly<Record<Categorie, string>> {
   return {
+    fitness: t('categorie.fitness'),
+    nutrition: t('categorie.nutrition'),
+    self_care: t('categorie.self_care'),
+    mindfulness: t('categorie.mindfulness'),
+    connection: t('categorie.connection'),
+    helping: t('categorie.helping'),
+    creativity: t('categorie.creativity'),
+    productivity: t('categorie.productivity'),
+    organization: t('categorie.organization'),
+    learning: t('categorie.learning'),
+    skills: t('categorie.skills'),
+    resilience: t('categorie.resilience'),
     business: t('categorie.business'),
     study: t('categorie.study'),
     other: t('categorie.other'),
   };
+}
+
+/**
+ * De vier groepen waarin die vijftien uiteenvallen.
+ *
+ * ⚠️ **Dit bestaat omdat vijftien knoppen naast elkaar geen keuze is maar een
+ *    muur** — precies het bezwaar uit QS8-224 punt 4. `Choice` is de vorm voor
+ *    twee tot zeven opties; met een groep erboven is elke groep weer die maat.
+ *
+ * ⚠️ **De eerste drie groepen zijn de kleurfamilies uit besluit A55** (QS8-255),
+ *    en dat is met opzet dezelfde indeling: kleur codeert de familie, het
+ *    pictogram het gebied. Zou de keuzelijst anders groeperen dan de kleur, dan
+ *    ziet een gebruiker twee indelingen van dezelfde vijftien woorden.
+ *
+ * ⚠️ **De vierde groep heeft geen kleur, en dat is een open punt van A55 en niet
+ *    van dit bestand.** Besluit A55 meet drie kleuren voor twaalf gebieden; wat
+ *    `business`, `study` en `other` krijgen, is daar nooit beantwoord. Ze staan
+ *    hier daarom als eigen groep en niet weggemoffeld bij een van de drie.
+ */
+export const CATEGORIE_GROEPEN = [
+  { sleutel: 'lichaam', leden: ['fitness', 'nutrition', 'self_care', 'mindfulness'] },
+  { sleutel: 'mensen', leden: ['connection', 'helping', 'creativity'] },
+  { sleutel: 'werk', leden: ['productivity', 'organization', 'learning', 'skills', 'resilience'] },
+  { sleutel: 'rest', leden: ['business', 'study', 'other'] },
+] as const satisfies readonly {
+  readonly sleutel: string;
+  readonly leden: readonly Categorie[];
+}[];
+
+export type CategorieGroep = (typeof CATEGORIE_GROEPEN)[number]['sleutel'];
+
+/** Een functie, om dezelfde reden als `categorieLabels()`. */
+export function groepLabels(): Readonly<Record<CategorieGroep, string>> {
+  return {
+    lichaam: t('categoriegroep.lichaam'),
+    mensen: t('categoriegroep.mensen'),
+    werk: t('categoriegroep.werk'),
+    rest: t('categoriegroep.rest'),
+  };
+}
+
+/**
+ * In welke groep dit gebied valt.
+ *
+ * ⚠️ Geeft `null` bij een onbekende waarde in plaats van een terugval op `rest`.
+ *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
+ *    er iets in hebben staan wat deze build niet kent, en dan is "ik weet het
+ *    niet" het eerlijke antwoord. Een stille terugval zou zo'n doel in een
+ *    groep tonen waar het niet in hoort.
+ */
+export function categorieGroep(categorie: string): CategorieGroep | null {
+  const groep = CATEGORIE_GROEPEN.find((g) => (g.leden as readonly string[]).includes(categorie));
+  return groep?.sleutel ?? null;
+}
+
+/**
+ * De vijftien gebieden als vier groepen met vertaalde labels, klaar voor
+ * `GegroepeerdeKeuze`.
+ *
+ * ⚠️ **Hier en niet in elk scherm apart.** `/doel/nieuw` en `/doel/bewerk` bouwen
+ *    allebei dezelfde lijst; stond die op twee plekken, dan is een nieuwe groep
+ *    één scherm bijwerken en het andere vergeten. Dat is de fout die dit project
+ *    al drie keer op een andere plek heeft gemaakt.
+ *
+ * ⚠️ **Geen import uit `shared/ui`, ook al past de vorm op `Keuzegroep`.** Dat
+ *    zou react-native in de datalaag trekken, en dan is `schemas.ts` niet meer
+ *    los te testen. De vorm komt structureel overeen en dat is genoeg —
+ *    TypeScript vergelijkt hier op vorm en niet op naam.
+ *
+ * ⚠️ Een functie en geen constante, om dezelfde reden als `categorieLabels()`:
+ *    de labels komen uit `t()` en die ligt niet vast op importtijd.
+ */
+export function categorieKeuzegroepen(): readonly {
+  readonly sleutel: CategorieGroep;
+  readonly label: string;
+  readonly opties: readonly { readonly waarde: Categorie; readonly label: string }[];
+}[] {
+  const labels = categorieLabels();
+  const groepen = groepLabels();
+
+  return CATEGORIE_GROEPEN.map((groep) => ({
+    sleutel: groep.sleutel,
+    label: groepen[groep.sleutel],
+    opties: groep.leden.map((lid) => ({ waarde: lid, label: labels[lid] })),
+  }));
 }
 
 /**
