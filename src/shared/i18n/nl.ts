@@ -2031,7 +2031,6 @@ export const nl = {
   'overzicht.eyebrow': 'DE AFGELOPEN TWAALF WEKEN',
   'overzicht.open': 'Bekijk je overzicht',
   'overzicht.laden_mislukt': 'Je overzicht kon niet geladen worden.',
-  'overzicht.opnieuw': 'Opnieuw proberen',
 
   'overzicht.weken_kop': 'Twaalf weken',
   'overzicht.weken_leeg': 'Zodra je je eerste week afrondt, komt hij hier te staan.',
@@ -2077,8 +2076,6 @@ export const nl = {
   'vragenlijst.overslaan': 'Sla over',
   'vragenlijst.volgende': 'Volgende',
   'vragenlijst.vorige': 'Terug',
-  'vragenlijst.klaar': 'Klaar',
-  'vragenlijst.opslaan_mislukt': 'Je antwoorden konden niet opgeslagen worden.',
   'vragenlijst.alles_overslaan': 'Alles overslaan kan ook. Je verliest er niets mee en je kunt het later invullen.',
 
   'vragenlijst.focus.vraag': 'Waar wil je je op richten?',
@@ -2169,7 +2166,6 @@ export const nl = {
    *    is erger dan geen belofte. De zin zegt precies wat er gebeurd is.
    */
   'ontdek.verzonden': 'Je aanvraag staat bij de beheerder van deze groep. Of en wanneer die reageert, bepaalt die zelf.',
-  'ontdek.al_aangevraagd': 'Aangevraagd',
   'ontdek.over_nog': 'Je kunt vandaag nog {aantal} groepen aanschrijven.',
   'ontdek.over_op': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
 
@@ -2287,17 +2283,13 @@ export const nl = {
   'melden.blokkeer_knop': 'Deze persoon blokkeren',
   'melden.deblokkeer_knop': 'Blokkade opheffen',
   'melden.geblokkeerd_titel': 'Geblokkeerd',
-  'melden.geblokkeerd_leeg': 'Je hebt niemand geblokkeerd.',
   'melden.blokkades_mislukt': 'Je blokkades konden niet geladen worden.',
   /**
    * ⚠️ **Deze zin zegt met zoveel woorden wat blokkeren níét doet**, en dat is
    *    het belangrijkste eraan. Wie denkt dat de knop iemand uit zijn groep zet,
    *    drukt hem in en concludeert daarna dat de app stuk is.
    */
-  'melden.blokkeer_uitleg':
-    'Deze persoon komt hierna niet meer bij je in een groep terecht — niet via een uitnodiging, niet via zoeken. Zit hij nu al in een groep met jou, dan verandert daar niets: dat zou hem laten merken dat je hem geblokkeerd hebt. Wil je hem daar weg, verlaat dan die groep of vraag de beheerder.',
   'melden.blokkeer_stil': 'Hij krijgt hier geen bericht van en kan het nergens zien.',
-  'melden.geblokkeerd_sinds': 'Geblokkeerd op {datum}',
   'melden.geblokkeerd': 'Dit kan niet.',
 
   // Een lid verwijderen
