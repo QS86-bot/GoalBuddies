@@ -54,6 +54,24 @@ export {
   type OntdekteGroep,
 } from './ontdekken';
 
+export {
+  blokkeer,
+  deblokkeer,
+  fetchBlokkades,
+  fetchMeldingenOver,
+  meldBericht,
+  meldPersoon,
+  verwijderLid,
+  type Blokkade,
+} from './veiligheid';
+
+export {
+  meldredenLabels,
+  MELDREDENEN,
+  TOELICHTING_MAX,
+  type Meldreden,
+} from './veiligheid-schemas';
+
 export { fetchKettingStand } from './ketting';
 
 export {

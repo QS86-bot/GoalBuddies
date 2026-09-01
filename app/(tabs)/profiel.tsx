@@ -16,6 +16,7 @@ import {
   verwijderMijnAccount,
   type Profiel as ProfielRij,
 } from '@/modules/auth';
+import { deblokkeer, fetchBlokkades } from '@/modules/buddies';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
   herinneringVelden,
@@ -48,6 +49,7 @@ import {
   Subheading,
   TaalKeuze,
   TijdzoneKeuze,
+  useAsync,
   useVieringenAan,
   WeekStartKeuze,
 } from '@/shared/ui';
@@ -117,6 +119,8 @@ export default function Profiel() {
             <AvatarKeuze profiel={p} onGewijzigd={zetProfiel} />
 
             <BuddyBijdrage userId={p.id} />
+
+            <Blokkades />
 
             <TaalInstelling
               waarde={p.locale}
@@ -949,6 +953,69 @@ function AvatarKeuze({
       ) : null}
 
       <Caption>{t('avatar.grens', { mb: String(Math.round(AVATAR_MAX_BYTES / 1024 / 1024)) })}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+/**
+ * Wie jij geblokkeerd hebt — QS8-232.
+ *
+ * ⚠️ **Zonder dit blok is blokkeren een handeling zonder weg terug**, en dan is
+ *    het geen instelling maar een straf. De knop staat in de groep, de lijst
+ *    staat hier: dit is de enige plek die niet aan één groep hangt, en een
+ *    blokkade hangt dat ook niet.
+ *
+ * ⚠️ **De kaart verdwijnt als je niemand geblokkeerd hebt.** Een lege lijst
+ *    "Geblokkeerd" op ieders profiel suggereert dat dit een normaal onderdeel van
+ *    de app is waar je iets mee moet.
+ *
+ * ⚠️ De namen komen uit `mijn_blokkades()` en niet uit een join op `profiles`:
+ *    die laat `display_name` alleen door voor wie een groep met je deelt, en een
+ *    geblokkeerde deelt er meestal geen meer. Zie de module.
+ */
+function Blokkades() {
+  const { data, loading, error, herlaad } = useAsync(() => fetchBlokkades(), []);
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function hef(userId: string) {
+    setBezig(userId);
+    setFout(null);
+
+    const uitkomst = await deblokkeer(userId);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    herlaad();
+  }
+
+  // ⚠️ Bij een storing blijft de kaart weg en niet met een foutbalk staan. Dit is
+  //    een blok naast de instellingen, geen hoofdinhoud; wie hier komt, kwam voor
+  //    iets anders.
+  if (loading || error !== null || data === undefined || data.length === 0) return null;
+
+  return (
+    <Card>
+      <Subheading>{t('melden.geblokkeerd_titel')}</Subheading>
+
+      {data.map((blokkade) => (
+        <View key={blokkade.userId}>
+          <Body>{blokkade.naam}</Body>
+          <Button
+            variant="stil"
+            busy={bezig === blokkade.userId}
+            onPress={() => void hef(blokkade.userId)}
+          >
+            {t('melden.deblokkeer_knop')}
+          </Button>
+        </View>
+      ))}
+
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );

@@ -137,6 +137,12 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    beantwoorden.
     groepOntdekbaarMaken: bouw('bevestiging.groep_ontdekbaar_maken'),
     groepVerbergen: bouw('bevestiging.groep_verbergen'),
+    // ⚠️ QS8-232, migratie 0145. Allebei handelingen over een ánder mens, en
+    //    allebei met een uitleg die zegt wat er níet gebeurt: blokkeren zet
+    //    niemand uit een groep, en verwijderen stuurt geen bericht rond. Juist
+    //    dat tweede deel is wat iemand nodig heeft om te beslissen.
+    lidVerwijderen: bouw('bevestiging.lid_verwijderen'),
+    persoonBlokkeren: bouw('bevestiging.persoon_blokkeren'),
     groepArchiveren: bouw('bevestiging.groep_archiveren'),
     // ⚠️ QS8-57, migratie 0098. Vertrekken is niet terug te draaien vanuit de
     //    app — terugkomen vraagt een geldige uitnodigingslink, en die heeft de
@@ -164,6 +170,8 @@ export type BevestigingsNaam =
   | 'groepBeschermen'
   | 'groepOntdekbaarMaken'
   | 'groepVerbergen'
+  | 'lidVerwijderen'
+  | 'persoonBlokkeren'
   | 'groepArchiveren'
   | 'groepVerlaten'
   | 'doelVerwijderen'

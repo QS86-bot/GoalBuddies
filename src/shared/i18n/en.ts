@@ -1795,6 +1795,75 @@ export const en: Record<Sleutel, string> = {
 
   'validatie.groepsomschrijving_lang': 'Keep it to 280 characters.',
 
+
+  'leden.titel': 'Who takes part',
+  'leden.eyebrow': 'Group',
+  'leden.leeg_titel': 'Nobody yet',
+  'leden.leeg_tekst': 'As soon as somebody joins, they show up here.',
+  'leden.beheerder': 'Admin',
+  'leden.jijzelf': 'This is you.',
+  'groepdetail.naar_leden': 'Who takes part',
+
+  'melden.titel': 'Report',
+  'melden.persoon_knop': 'Report this person',
+  'melden.bericht_knop': 'Report this message',
+  'melden.reden_label': 'What is going on?',
+  'melden.toelichting_label': 'Details',
+  'melden.toelichting_hint': 'Optional. What you write here is read by the admin of this group.',
+  'melden.versturen': 'Send report',
+  'melden.annuleren': 'Never mind',
+
+  'melden.wat_gebeurt_er':
+    'Your report goes to the admin of this group, and we can read it. There is no team reviewing reports yet, so we are not going to say there is. If this is something you want to be rid of right now, block that person as well.',
+  'melden.verzonden':
+    'Your report is in. The admin of this group can see it; the person you reported cannot.',
+  'melden.niet_zichtbaar': 'The person you report never sees that you did this.',
+
+  'melden.reden.harassment': 'Harassment or bullying',
+  'melden.reden.spam': 'Spam or advertising',
+  'melden.reden.inappropriate': 'Inappropriate content',
+  'melden.reden.impersonation': 'Pretending to be someone else',
+  'melden.reden.other': 'Something else',
+
+  'melden.te_veel': 'You have made twenty reports today. Tomorrow you can again.',
+  'melden.geen_lid': 'You are not in this group.',
+  'melden.bericht_weg': 'This message no longer exists.',
+  'melden.onbekend': 'This person is not in this group.',
+  'melden.jezelf': 'You cannot report yourself.',
+  'melden.mislukt': 'That did not work. Please try again.',
+  'melden.onbekend_lid': 'Someone',
+
+  'melden.blokkeer_knop': 'Block this person',
+  'melden.deblokkeer_knop': 'Unblock',
+  'melden.geblokkeerd_titel': 'Blocked',
+  'melden.geblokkeerd_leeg': 'You have not blocked anyone.',
+  'melden.blokkades_mislukt': 'Your blocked list could not be loaded.',
+  'melden.blokkeer_uitleg':
+    'From now on this person will not end up in a group with you — not through an invitation, not through search. If they are already in a group with you, nothing changes there: that would let them notice you blocked them. If you want them gone from that group, leave it or ask the admin.',
+  'melden.blokkeer_stil': 'They get no message about this and cannot see it anywhere.',
+  'melden.geblokkeerd_sinds': 'Blocked on {datum}',
+  'melden.geblokkeerd': 'This is not possible.',
+
+  'melden.verwijder_knop': 'Remove from group',
+  'melden.geen_beheerder': 'Only an admin of this group can do this.',
+  'melden.niet_bevestigd': 'This action was not confirmed.',
+  'melden.al_verwijderd': 'This person is no longer in the group.',
+  'melden.laatste_beheerder':
+    'This is the only admin of this group. Make someone else an admin first.',
+  'melden.verwijderd': 'This member is no longer in the group.',
+  'melden.verwijderd_doelen':
+    'This member is no longer in the group. {aantal} goals have been unlinked.',
+
+  'bevestiging.lid_verwijderen.titel': 'Remove this member from the group?',
+  'bevestiging.lid_verwijderen.uitleg':
+    'This person can no longer open the group: not the chat, not the week closings, not The Chain. Their goals leave this group and an open request to move a target date lapses. What they built up stays theirs: their points, their streak and their completions. They cannot come back with the invitation link. The group gets no message about this, but it is recorded in the group history.',
+  'bevestiging.lid_verwijderen.knop': 'Yes, remove this member',
+
+  'bevestiging.persoon_blokkeren.titel': 'Block this person?',
+  'bevestiging.persoon_blokkeren.uitleg':
+    'From now on they will not end up in a group with you — not through an invitation link, not through search. Groups you are both in right now do not change: that would let them notice you did this. They get no message and cannot see it anywhere. You can always undo the block.',
+  'bevestiging.persoon_blokkeren.knop': 'Yes, block',
+
   'validatie.dagen_heel': 'Enter a whole number of days.',
   'validatie.dagen_bereik': 'A week has seven days.',
   'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",

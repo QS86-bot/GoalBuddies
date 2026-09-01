@@ -34,6 +34,7 @@ export { EmptyState } from './EmptyState';
 export { Field } from './Field';
 export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
+export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
