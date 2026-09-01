@@ -62,6 +62,42 @@ async function vastgelopenReden(goalId: string): Promise<string | null> {
   return rijen.find((r) => r.goal_id === goalId)?.reden ?? null;
 }
 
+/**
+ * Zet het indienen ver genoeg terug om de termijn te laten verstrijken.
+ *
+ * ⚠️ Dit gaat via de beheerdersclient omdat het móet: sinds 0146 heeft
+ *    `authenticated` geen INSERT-recht meer op `submitted_at` en al helemaal geen
+ *    UPDATE-recht. Dat is precies wat `route 3` hieronder toetst.
+ */
+async function verouder(completionId: string, dagen: number): Promise<void> {
+  const terug = new Date(Date.now() - dagen * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await adminDb()
+    .from('completions')
+    .update({ submitted_at: terug })
+    .eq('id', completionId);
+  if (error) throw new Error(`verouderen: ${error.message}`);
+}
+
+/** Laat de rollover zijn ronde doen. */
+async function draaiTermijn(termijn = 7): Promise<number> {
+  const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
+    p_termijn_dagen: termijn,
+  });
+  if (error) throw new Error(`termijn: ${error.message}`);
+  return data as unknown as number;
+}
+
+/** Hoeveel buddy's deze voltooiing daadwerkelijk hebben goedgekeurd. */
+async function goedkeuringen(completionId: string): Promise<number> {
+  const { count, error } = await adminDb()
+    .from('completion_approvals')
+    .select('id', { count: 'exact', head: true })
+    .eq('completion_id', completionId);
+  if (error) throw new Error(`goedkeuringen: ${error.message}`);
+
+  return count ?? 0;
+}
+
 /** De status van het weekdoel achter een voltooiing. */
 async function weekstatus(completionId: string): Promise<string> {
   const c = await adminDb()
@@ -340,140 +376,257 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
   /**
    * De toestand die de eigenaar zélf maakt — QS8-186, migratie 0146.
    *
-   * ⚠️ **Dit is de derde keer dat dezelfde vorm duur is geworden**, en de eerste
-   *    keer dat hij op een autorisatiegrens landt. De dossierrij van 17-08 droeg
-   *    als voorwaarde *"wordt zwaarder als een beslissing op de koppelstand gaat
-   *    leunen"*; dat gebeurde in 0064 (een scoregat, gedicht in 0066), in 0110
-   *    (`zet_streefdatum()`) en hier — bij de goedkeuring zelf.
+   * ⚠️ **De belofte is domeinregel 3, en die is breder dan één tijdlijn.** Een
+   *    eerdere versie van dit blok toetste drie handmatig gezette tijdlijnen, en
+   *    de security-review vond daarna vijf routes die er groen langs liepen — met
+   *    precies de diagnose uit CLAUDE.md regel 18 vraag 3: *deze test kan groen
+   *    blijven terwijl de belofte breekt.* Hij gréép naar een toestand in plaats
+   *    van naar de handeling.
    *
-   * ⚠️ **De belofte is domeinregel 3 en niet "de functie geeft nul rijen".**
-   *    Alleen een buddy mag een week goedkeuren. De auto-goedkeuring van 0135 is
-   *    daar de uitzondering op, met een goede reden: wie geen buddy heeft moet
-   *    niet eeuwig blijven hangen. Het gat was dat de eigenaar die uitzondering
-   *    **op afroep kon oproepen** — je keurt dan niet zelf goed, je zorgt dat
-   *    niemand hoeft goed te keuren.
+   *    Daarom staat de belofte hier nu als tabel: **geen enkele handeling die de
+   *    eigenaar alléén kan doen, levert een goedgekeurde week met punten op
+   *    zonder goedkeuring van een buddy.** Elke route voert de échte handeling
+   *    uit als de échte client, en assert daarna hetzelfde drietal.
    *
-   * ⚠️ **Deze twee tests zijn met de hand rood gemaakt** door 0146 terug te
-   *    draaien op een opgebouwd schema. Zonder die migratie levert route A een
-   *    `approved` week met twee punten en nul goedkeuringen op, en route B
-   *    hetzelfde zónder ook maar te wachten.
+   * ⚠️ **De must-allow-helft staat eronder en weegt even zwaar.** De
+   *    auto-goedkeuring van 0135 bestaat voor wie zijn buddy búiten zijn schuld
+   *    kwijtraakt. Zou deze reparatie die ook dichtzetten, dan hangt precies de
+   *    gebruiker waarvoor hij gebouwd is voorgoed op `pending`.
    */
-  describe('de eigenaar kan de vastloper niet zelf maken', () => {
-    /** Zet de twee stempels dertig dagen terug, mét hun volgorde intact. */
-    async function dertigDagenLater(goalId: string, completionId: string): Promise<void> {
-      const admin = adminDb();
-      const basis = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  describe('geen handeling van de eigenaar levert een goedkeuring op', () => {
+    /**
+     * Voert een route uit en legt de drie beloftes naast de uitkomst.
+     *
+     * @param voorafAfronden of de voltooiing al bestond vóór de handeling. Beide
+     *   volgordes horen erin: bij QS8-186 sloot de eerste versie alleen
+     *   "handeling eerst", en juist de ándere volgorde is wat iemand in het echt
+     *   doet — je ontkoppelt pas als blijkt dat je buddy niet reageert.
+     */
+    async function routeBlijftDicht(
+      label: string,
+      voorafAfronden: boolean,
+      handeling: (o: Opstelling) => Promise<void>,
+    ): Promise<void> {
+      const o = await bouwOpstelling(label);
 
-      const g = await admin
-        .from('goals')
-        .update({ losgekoppeld_op: new Date(basis).toISOString() })
-        .eq('id', goalId);
-      if (g.error) throw new Error(`losgekoppeld_op: ${g.error.message}`);
+      if (voorafAfronden) {
+        await verouder(o.completionId, 20);
+        await handeling(o);
+      } else {
+        await handeling(o);
+        await verouder(o.completionId, 20);
+      }
 
-      // ⚠️ Eén minuut ná het ontkoppelen — dat is de volgorde die de truc heeft.
-      const c = await admin
-        .from('completions')
-        .update({ submitted_at: new Date(basis + 60_000).toISOString() })
-        .eq('id', completionId);
-      if (c.error) throw new Error(`submitted_at: ${c.error.message}`);
+      await draaiTermijn(7);
+
+      expect(await weekstatus(o.completionId), `${label}: de week hoort te wachten`).toBe('pending');
+      expect(await punten(o.goalId), `${label}: geen punten zonder buddy`).toBe(0);
+      expect(await goedkeuringen(o.completionId), `${label}: er was geen beoordelaar`).toBe(0);
     }
 
+    const ontkoppel = async (o: Opstelling): Promise<void> => {
+      const { error } = await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+      if (error) throw new Error(`ontkoppelen: ${error.message}`);
+    };
+
     it(
-      'route A — ontkoppelen, afronden en de termijn uitzitten levert geen goedkeuring op',
-      async () => {
-        const o = await bouwOpstelling('zelfgemaakt-a');
+      'route 1 — ontkoppelen en daarna afronden',
+      () => routeBlijftDicht('route1', false, ontkoppel),
+      SETUP_TIMEOUT,
+    );
 
-        const los = await o.eigenaar.db
-          .from('goal_group_links')
-          .delete()
-          .eq('goal_id', o.goalId);
-        expect(los.error, 'de eigenaar mag zijn doel ontkoppelen — dat is de opstelling').toBeNull();
-
-        await dertigDagenLater(o.goalId, o.completionId);
-
-        expect(
-          await vastgelopenReden(o.goalId),
-          'een voltooiing die vlak na het ontkoppelen is ingediend, ligt niet vast',
-        ).toBeNull();
-
-        const { error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
-          p_termijn_dagen: 7,
-        });
-        if (error) throw new Error(`termijn: ${error.message}`);
-
-        expect(await weekstatus(o.completionId)).toBe('pending');
-        expect(await punten(o.goalId), 'geen punten zonder een buddy die goedkeurt').toBe(0);
-      },
+    /** ⚠️ De natuurlijkere volgorde, en degene die de eerste reparatie miste. */
+    it(
+      'route 2 — afronden, wachten of je buddy reageert, en dán ontkoppelen',
+      () => routeBlijftDicht('route2', true, ontkoppel),
       SETUP_TIMEOUT,
     );
 
     /**
-     * ⚠️ **Route B stond los van de ontkoppeltruc en was erger.** De termijn
-     *    loopt vanaf `submitted_at`, en die kolom stond in de INSERT-kolomgrant.
-     *    Eén insert met een datum van dertig dagen geleden gaf dus geen wachttijd
-     *    van zeven dagen maar nul.
+     * ⚠️ **Opnieuw koppelen en meteen weer ontkoppelen was de sleutel onder de
+     *    eerste reparatie**, want die schoof de stempel waar zij zich op baseerde
+     *    vooruit. Nu werkt diezelfde handeling tégen de eigenaar: elke nieuwe
+     *    handeling legt de stempel alleen maar later.
      */
     it(
-      'route B — de client mag `submitted_at` niet zelf zetten',
-      async () => {
-        const o = await bouwOpstelling('zelfgemaakt-b');
-        const admin = adminDb();
+      'route 3 — opnieuw koppelen en weer ontkoppelen reset niets',
+      () =>
+        routeBlijftDicht('route3', true, async (o) => {
+          await ontkoppel(o);
+          const terug = await o.eigenaar.db
+            .from('goal_group_links')
+            .insert({ goal_id: o.goalId, group_id: o.groupId });
+          if (terug.error) throw new Error(`terugkoppelen: ${terug.error.message}`);
+          await ontkoppel(o);
+        }),
+      SETUP_TIMEOUT,
+    );
 
-        const w = await admin
+    /**
+     * ⚠️ **Eén koppeling laten staan zette de hele tak buiten werking** in de
+     *    eerste versie, want die vroeg "is dit doel nu ontkoppeld?". Een
+     *    zelfgemaakte lege groep kost één extra verzoek.
+     */
+    it(
+      'route 4 — een tweede, lege eigen groep gekoppeld laten',
+      () =>
+        routeBlijftDicht('route4', true, async (o) => {
+          const groep = await o.eigenaar.db.rpc('create_group', { group_name: 'Leeg-route4' });
+          const data = groep.data as unknown as { ok?: boolean; group?: { id: string } };
+          if (data.ok !== true || !data.group) throw new Error('lege groep aanmaken mislukte');
+
+          const bij = await o.eigenaar.db
+            .from('goal_group_links')
+            .insert({ goal_id: o.goalId, group_id: data.group.id });
+          if (bij.error) throw new Error(`bijkoppelen: ${bij.error.message}`);
+
+          const weg = await o.eigenaar.db
+            .from('goal_group_links')
+            .delete()
+            .eq('goal_id', o.goalId)
+            .eq('group_id', o.groupId);
+          if (weg.error) throw new Error(`ontkoppelen: ${weg.error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /** ⚠️ Wie een groep aanmaakt is er beheerder van — dit is één RPC. */
+    it(
+      'route 5 — je eigen groep archiveren',
+      () =>
+        routeBlijftDicht('route5', true, async (o) => {
+          const { data, error } = await o.eigenaar.db.rpc('archiveer_groep', {
+            p_group_id: o.groupId,
+            p_bevestigd: true,
+          });
+          if (error) throw new Error(`archiveren: ${error.message}`);
+          const uit = data as unknown as { ok?: boolean };
+          if (uit.ok !== true) throw new Error(`archiveren geweigerd: ${JSON.stringify(data)}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'route 6 — je enige beoordelaar op inactive zetten',
+      () =>
+        routeBlijftDicht('route6', true, async (o) => {
+          const { error } = await o.eigenaar.db
+            .from('group_members')
+            .update({ status: 'inactive' })
+            .eq('group_id', o.groupId)
+            .eq('user_id', o.beoordelaar.id);
+          if (error) throw new Error(`deactiveren: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De klok is niet van de client, en dat is een eigen route.** De termijn
+     *    loopt vanaf `submitted_at`; stond die kolom in de INSERT-kolomgrant, dan
+     *    is de wachttijd nul in plaats van zeven dagen.
+     */
+    it(
+      'route 7 — `submitted_at` zelf meesturen',
+      async () => {
+        const o = await bouwOpstelling('route7');
+        const w = await adminDb()
           .from('completions')
           .select('weekly_goal_id')
           .eq('id', o.completionId)
           .single();
         if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
 
-        const terug = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
         const poging = await o.eigenaar.db.from('completions').insert({
           weekly_goal_id: w.data.weekly_goal_id,
           user_id: o.eigenaar.id,
           achieved_level: 'ceiling',
           note: 'af',
           cycle_start_date: localDateIn('UTC' as TimeZone, now()) as IsoDate,
-          submitted_at: terug,
+          submitted_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
         });
 
-        expect(poging.error, 'een client die zijn eigen indientijd zet, hoort 42501 te krijgen').not.toBeNull();
-        expect(poging.error?.code).toBe('42501');
+        expect(poging.error?.code, 'een client die zijn eigen indientijd zet hoort 42501 te krijgen').toBe(
+          '42501',
+        );
       },
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️ **De must-allow-helft.** 0135 bestaat voor wie zijn beoordelaar búiten zijn
+   *    schuld kwijtraakt. Zou 0146 die ook dichtzetten, dan is de reparatie erger
+   *    dan het gat: dan hangt precies die gebruiker voorgoed op `pending`.
+   */
+  describe('een verlies buiten de eigenaar om wordt nog steeds afgehandeld', () => {
+    async function wordtAlsnogGoedgekeurd(
+      label: string,
+      handeling: (o: Opstelling) => Promise<void>,
+    ): Promise<void> {
+      const o = await bouwOpstelling(label);
+      await verouder(o.completionId, 20);
+      await handeling(o);
+      await draaiTermijn(7);
+
+      expect(await weekstatus(o.completionId), `${label}: hier hoort 0135 zijn werk te doen`).toBe(
+        'approved',
+      );
+    }
+
+    it(
+      'de buddy vertrekt uit zichzelf',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-buddy', async (o) => {
+          const { data, error } = await o.beoordelaar.db.rpc('verlaat_groep', {
+            p_group_id: o.groupId,
+            p_bevestigd: true,
+          });
+          if (error) throw new Error(`verlaten: ${error.message}`);
+          const uit = data as unknown as { ok?: boolean };
+          if (uit.ok !== true) throw new Error(`verlaten geweigerd: ${JSON.stringify(data)}`);
+        }),
       SETUP_TIMEOUT,
     );
 
     /**
-     * ⚠️ **De must-allow-helft, en die weegt hier zwaar.** Wie zijn groep écht
-     *    verlaat, moet ná het venster gewoon verder kunnen. Zou 0146 dat blokkeren,
-     *    dan hangt elke solo-gebruiker voorgoed op `pending` — een reparatie die
-     *    erger is dan het gat.
+     * ⚠️ `slaap_stille_groepen()` draait in de rollover zonder JWT, dus
+     *    `auth.uid()` is daar NULL en er wordt niets gestempeld. Dat is de tak
+     *    die deze test bewaakt: een groep die vanzelf in slaap valt, is geen
+     *    handeling van de eigenaar.
      */
     it(
-      'laat een voltooiing van ruim ná het ontkoppelen wél gewoon vastlopen',
-      async () => {
-        const o = await bouwOpstelling('zelfgemaakt-c');
+      'het systeem legt de groep slapen',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-slaap', async (o) => {
+          const { error } = await adminDb()
+            .from('groups')
+            .update({ status: 'sleeping' })
+            .eq('id', o.groupId);
+          if (error) throw new Error(`slapen: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
 
-        const los = await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
-        expect(los.error).toBeNull();
+    /**
+     * ⚠️ **Wie een half jaar geleden ontkoppelde, is gewoon een solo-gebruiker.**
+     *    Zonder deze afkoeling zou één ontkoppeling een doel voorgoed uitsluiten
+     *    van de auto-goedkeuring — en dat is de dode keten van QS8-113 in een
+     *    nieuwe jas.
+     */
+    it(
+      'de eigenaar ontkoppelde lang geleden en werkt sindsdien solo',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-oud', async (o) => {
+          const weg = await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+          if (weg.error) throw new Error(`ontkoppelen: ${weg.error.message}`);
 
-        const admin = adminDb();
-        const basis = Date.now() - 30 * 24 * 60 * 60 * 1000;
-
-        // Ontkoppeld op dag −30, pas op dag −20 afgerond: buiten het venster.
-        const g = await admin
-          .from('goals')
-          .update({ losgekoppeld_op: new Date(basis).toISOString() })
-          .eq('id', o.goalId);
-        if (g.error) throw new Error(`losgekoppeld_op: ${g.error.message}`);
-
-        const c = await admin
-          .from('completions')
-          .update({ submitted_at: new Date(basis + 10 * 24 * 60 * 60 * 1000).toISOString() })
-          .eq('id', o.completionId);
-        if (c.error) throw new Error(`submitted_at: ${c.error.message}`);
-
-        expect(await vastgelopenReden(o.goalId)).toBe('geen_koppeling');
-      },
+          const oud = new Date(Date.now() - 180 * 86_400_000).toISOString();
+          const { error } = await adminDb()
+            .from('goals')
+            .update({ beoordelaar_weggehaald_op: oud })
+            .eq('id', o.goalId);
+          if (error) throw new Error(`verouderen: ${error.message}`);
+        }),
       SETUP_TIMEOUT,
     );
   });
@@ -493,16 +646,6 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
    *    functie leest.
    */
   describe('de goedkeuringstermijn handelt elke route af', () => {
-    /** Zet het indienen ver genoeg terug om de termijn te laten verstrijken. */
-    async function verouder(completionId: string, dagen: number): Promise<void> {
-      const terug = new Date(Date.now() - dagen * 24 * 60 * 60 * 1000).toISOString();
-      const { error } = await adminDb()
-        .from('completions')
-        .update({ submitted_at: terug })
-        .eq('id', completionId);
-      if (error) throw new Error(`verouderen: ${error.message}`);
-    }
-
     async function keurGoed(termijn = 7): Promise<number> {
       const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
         p_termijn_dagen: termijn,
@@ -601,8 +744,8 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
 
         const routes = [r1, r2, r3, r4];
 
-        // Alle vier moeten nu als vastgelopen gezien worden — anders toetst de
-        // rest van deze test niets.
+        // ⚠️ Alle vier blijven zíchtbaar — dat is de belofte van 0109 en die
+        //    verandert niet. Zonder deze regel toetst de rest hier niets.
         for (const [i, o] of routes.entries()) {
           expect(await vastgelopenReden(o.goalId), `route ${i + 1} hoort vastgelopen te zijn`)
             .not.toBeNull();
@@ -611,9 +754,29 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
 
         await keurGoed(7);
 
-        for (const [i, o] of routes.entries()) {
-          expect(await weekstatus(o.completionId), `route ${i + 1} hoort goedgekeurd te zijn`)
-            .toBe('approved');
+        /**
+         * ⚠️ **Hier is deze test op 01-09 gesplitst, en dat is een besluit en
+         *    geen verzwakking.** 0135 keurde alle vier de routes goed, met als
+         *    onderbouwing dat het alle vier handelingen van een ánder zijn. Die
+         *    onderbouwing bleek onjuist (QS8-186): R1 en R2 doet de eigenaar
+         *    zelf, en dan is de auto-goedkeuring een weg om domeinregel 3 heen.
+         *    R3 en R4 lopen hier via `adminDb()` — een handeling zonder
+         *    `auth.uid()`, dus niet van de eigenaar — en die horen wél door te
+         *    gaan.
+         */
+        for (const [i, o] of [r3, r4].entries()) {
+          expect(
+            await weekstatus(o.completionId),
+            `R${i + 3} is niet door de eigenaar veroorzaakt en hoort goedgekeurd te zijn`,
+          ).toBe('approved');
+        }
+
+        for (const [i, o] of [r1, r2].entries()) {
+          expect(
+            await weekstatus(o.completionId),
+            `R${i + 1} is een handeling van de eigenaar en hoort te blijven wachten`,
+          ).toBe('pending');
+          expect(await punten(o.goalId), `R${i + 1} hoort geen punten op te leveren`).toBe(0);
         }
       },
       TEST_TIMEOUT,
@@ -628,7 +791,16 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       'boekt bij een tweede ronde niets extra',
       async () => {
         const o = await bouwOpstelling('termijn-nogmaals');
-        await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+
+        // ⚠️ Via `adminDb()` en niet via de eigenaar: sinds 0146 wordt een
+        //    vastloper die de eigenaar zélf maakt niet meer afgehandeld, en dan
+        //    toetst deze test niets meer over dubbel boeken. De eigenschap die
+        //    hier bewaakt wordt — append-only — staat daar los van.
+        const gearchiveerd = await adminDb()
+          .from('groups')
+          .update({ status: 'archived' })
+          .eq('id', o.groupId);
+        expect(gearchiveerd.error, 'archiveren moet lukken').toBeNull();
         await verouder(o.completionId, 10);
 
         await keurGoed(7);

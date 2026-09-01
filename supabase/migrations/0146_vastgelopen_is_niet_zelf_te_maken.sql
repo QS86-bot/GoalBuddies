@@ -1,22 +1,19 @@
--- 0146_vastgelopen_is_niet_zelf_te_maken.sql — een week goedgekeurd krijgen
--- zonder buddy, door de toestand te maken die de auto-goedkeuring ontgrendelt
--- (QS8-186)
---
--- ⚠️⚠️ **DEZE MIGRATIE IS NIET AF EN HOORT NIET TE LANDEN ZOALS HIJ NU IS.**
---      De security-review van 01-09 vond vijf routes die hij níet dicht doet, en
---      weerlegde twee zinnen die hier stonden. Wat hij wél doet — `submitted_at`
---      uit de kolomgrant halen — is gemeten en klopt. Zie de blokken hieronder
---      die met deze dubbele waarschuwing beginnen.
+-- 0146_vastgelopen_is_niet_zelf_te_maken.sql — de auto-goedkeuring is niet meer
+-- door de eigenaar zelf op te roepen (QS8-186)
 --
 -- ROLLBACK-PAD:
+--   drop function if exists public.vastgelopen_goedkeuringen();  -- daarna 0109 opnieuw
+--   drop trigger if exists group_members_beoordelaar_weg on public.group_members;
+--   drop trigger if exists groups_beoordelaar_weg        on public.groups;
+--   drop function if exists public.noteer_beoordelaar_weg_lid();
+--   drop function if exists public.noteer_beoordelaar_weg_groep();
+--   alter table public.goals drop column if exists beoordelaar_weggehaald_op;
 --   grant insert on public.completions to authenticated;
+--   -- plus `vastgelopen_goedkeuringen()` en `noteer_ontkoppeling()` uit 0109/0110.
 --
---   create or replace function public.vastgelopen_goedkeuringen() ...
---     -- de versie van 0135, zonder de `losgekoppeld_op`-tak in de where
---
---   ⚠️ Terugdraaien zet twee gaten terug die allebei gemeten zijn. Doe het
---      alleen als er iets kapotgaat dat zwaarder weegt dan een week die
---      zichzelf goedkeurt.
+--   ⚠️ Terugdraaien zet zes gemeten routes terug naar een goedgekeurde week met
+--      punten en nul goedkeuringen. Doe het alleen als er iets kapotgaat dat
+--      zwaarder weegt dan domeinregel 3.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -24,53 +21,38 @@
 --
 -- Dossierrij van 17-08-2026, risico **Laag**, met als voorwaarde: *"wordt
 -- zwaarder als een beslissing op de koppelstand gaat leunen."* Die voorwaarde is
--- nu **drie keer** ingetreden.
+-- nu **drie keer** ingetreden: 0064 (scoregat, gedicht in 0066), 0110
+-- (`zet_streefdatum()`), en hier — bij de goedkeuring zelf.
 --
---   1. 0064 liet het minpunt van de koppelstand afhangen — scoregat, gedicht in
---      0066.
---   2. 0110: `zet_streefdatum()` weigerde bij een gekoppeld doel, en
---      ontkoppelen-verschuiven-terugkoppelen liep eromheen. Gedicht met
---      `goals.losgekoppeld_op` plus een afkoeling van zeven dagen.
---   3. Deze migratie, en dit is de zwaarste: de **goedkeuring zelf**.
+-- `keur_vastgelopen_goedkeuringen_goed()` (0135) keurt een week waar niemand
+-- meer op kan reageren na de termijn alsnog goed, mét punten. Dat is een
+-- terechte uitzondering op domeinregel 3: wie geen buddy heeft, moet niet eeuwig
+-- op `pending` blijven hangen.
 --
--- Twee routes, allebei nagespeeld op een opgebouwd schema — niet vermoed:
+-- ⚠️ **De onderbouwing onder die uitzondering was dat alle routes handelingen
+--    van een ánder zijn.** `supabase/functions/rollover/index.ts` schrijft dat met
+--    zoveel woorden op. Dat is op 01-09 weerlegd: in de standaardopstelling — je
+--    maakt zélf een groep aan en bent daarmee `role = 'admin'` — zijn er zes
+--    routes en zijn er vijf handelingen van de eigenaar.
 --
--- **Route A — de toestand maken.** `vastgelopen_goedkeuringen()` noemt een
--- voltooiing `geen_koppeling` op grond van de koppelstand van *nu*, en de
--- eigenaar mag `goal_group_links` zelf verwijderen (policy
--- `goal_group_links_delete`). Ontkoppelen, afronden, wachten tot de rollover
--- langskomt:
+-- **Alle zes nagespeeld op een opgebouwd schema**, elk met dezelfde uitkomst:
+-- week `approved`, twee punten, **nul goedkeuringen van een buddy**.
 --
---     vastgelopen_reden           → geen_koppeling
---     keur_vastgelopen_goedkeuringen_goed(7) → 1
---     weekstatus                  → approved
---     punten geboekt              → 2
---     goedkeuringen van een buddy → 0
+--   1. ontkoppelen → afronden → de termijn uitzitten
+--   2. **afronden → wachten of je buddy reageert → dán ontkoppelen.** Dit is de
+--      natuurlijkere volgorde, en er is niet eens een wachttijd: `submitted_at`
+--      is dan al ouder dan de termijn.
+--   3. `submitted_at` zelf meesturen — de kolom stond in de INSERT-kolomgrant, en
+--      de termijn wordt daaraan afgemeten. Nul dagen wachten.
+--   4. één koppeling naar een zelfgemaakte lege groep laten staan
+--   5. `archiveer_groep()` op je eigen groep
+--   6. je enige beoordelaar op `inactive` zetten
 --
--- **Route B — de klok terugzetten, en die is erger.** `submitted_at` stond in de
--- INSERT-kolomgrant van `authenticated`, en `keur_vastgelopen_goedkeuringen_goed()`
--- meet de termijn daaraan af. Eén insert met `submitted_at = now() - 30 days`
--- levert dus geen wachttijd van zeven dagen op maar **nul**:
---
---     keur_vastgelopen_goedkeuringen_goed(7) → 1   (meteen)
---     weekstatus                  → approved
---     punten                      → 2
---
--- ⚠️ **Route B is geen gevolg van route A en staat er los van.** Ook zonder de
---    ontkoppeltruc bepaalt de client hier hoe lang zijn eigen wachttijd is.
---
--- ---------------------------------------------------------------------------
--- Waarom dit domeinregel 3 raakt en niet alleen het puntenmodel
--- ---------------------------------------------------------------------------
---
--- *"Peer-goedkeuring is een autorisatiegrens. Alleen een lid van dezelfde
--- buddy-groep mag een voltooiing goedkeuren. Nooit jezelf."*
---
--- De auto-goedkeuring van 0135 is de uitzondering daarop, en ze is er met een
--- goede reden: wie geen buddy heeft, moet niet eeuwig op `pending` blijven
--- hangen. Het gat is niet die uitzondering maar dat de eigenaar hem **op
--- afroep kan oproepen**. Daarmee is "nooit jezelf" een formaliteit: je keurt
--- niet zelf goed, je zorgt dat niemand hoeft goed te keuren.
+-- ⚠️ **Een eerdere versie van deze migratie sloot alleen 1 en 3, met een venster
+--    van zeven dagen tussen `losgekoppeld_op` en `submitted_at`.** Dat is bij de
+--    security-review omvergehaald, en de les daaruit staat in de kop van sectie
+--    2: zolang het oordeel op de tóestand leunt, is elke afgedichte route een
+--    nieuwe lijst waar de volgende omheen loopt.
 --
 -- ---------------------------------------------------------------------------
 -- 1. `submitted_at` is geen mededeling van de client
@@ -78,26 +60,21 @@
 --
 -- ⚠️ **De kolom houdt zijn default en verliest alleen het recht.** `now()` staat
 --    er sinds 0004 op; niets in `src/` of `app/` stuurde hem ooit mee (gemeten
---    met de schrijfkant van `kolomrechten:controle`, QS8-258). Dit recht was
---    dus nooit een pad — het was een deur die niemand gebruikte en die
---    openstond.
+--    met de schrijfkant van `kolomrechten:controle`, QS8-258).
 --
 -- ⚠️ **Eerst de tabelbrede grant intrekken, en dat is geen omslachtigheid maar
---    de enige manier waarop het wérkt.** `completions` had
---    `grant insert on public.completions`, en een tabelrecht impliceert élke
---    kolom — ook een kolom die je er daarna uit probeert te halen. Gemeten: na
---    een kale `revoke insert (submitted_at)` gaf
---    `has_column_privilege('authenticated', …, 'submitted_at', 'INSERT')` nog
---    steeds `true`, en een client kon de kolom gewoon meesturen. Dezelfde vorm
---    als de `revoke ... from public, anon`-val uit beveiligingsregel 4: het zíet
---    eruit als dichtgezet en is het niet. 0043 en 0044 deden dit voor
---    `weekly_goals` al goed; dit is dezelfde beweging.
+--    de enige manier waarop het wérkt.** Een tabelrecht impliceert élke kolom —
+--    ook een kolom die je er daarna uit probeert te halen. Gemeten: na een kale
+--    `revoke insert (submitted_at)` gaf `has_column_privilege(…)` nog steeds
+--    `true`. Dezelfde vorm als de `revoke ... from public, anon`-val uit
+--    beveiligingsregel 4: het zíet eruit als dichtgezet en is het niet. 0043 en
+--    0044 deden dit voor `weekly_goals` al goed.
 --
--- ⚠️ **`superseded_by` gaat in dezelfde ronde mee, en die stond er net zo open.**
---    `src/modules/completions/api.ts` schrijft hem nergens en het commentaar in
---    `app/(tabs)/index.tsx` zegt met zoveel woorden dat de client hem niet zelf
---    kan zetten — dat klopte voor UPDATE en niet voor INSERT. `dien_opnieuw_in()`
---    is `security definer` en heeft dit recht niet nodig.
+-- ⚠️ **`superseded_by` gaat mee**: `src/modules/completions/api.ts` schrijft hem
+--    nergens, en `dien_opnieuw_in()` is `security definer` en heeft het recht
+--    niet nodig. **`id`** ook niet: PostgREST vult hem uit de default.
+--    **`attachment_url`** blíjft er wél in staan — die hoort bij een bewijsregel
+--    die in het schema bestaat; zie QS8-261.
 
 revoke insert on public.completions from public, anon, authenticated;
 
@@ -116,62 +93,172 @@ comment on column public.completions.submitted_at is
   'client die hem terugdateert keurt zijn eigen week meteen goed. Zie 0146.';
 
 -- ---------------------------------------------------------------------------
--- 2. Een voltooiing die ingediend is vlak na het ontkoppelen, ligt niet vast
+-- 2. Eén stempel: wanneer de eigenaar zélf zijn beoordelaars weghaalde
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ **Het venster hangt aan twee vaste stempels en niet aan `now()`, en dat is
---    het hele punt.** Zou hier `losgekoppeld_op > now() - interval '7 days'`
---    staan — zoals in `zet_streefdatum()`, waar het klopt omdat de handeling
---    zelf op dat moment plaatsvindt — dan is dit een vertráging en geen slot:
---    de eigenaar wacht zeven dagen en de rollover keurt alsnog goed. Door
---    `submitted_at` tegen `losgekoppeld_op` te leggen, is het oordeel over déze
---    voltooiing voorgoed geveld op het moment dat ze werd ingediend.
+-- ⚠️ **Niet de toestand maar de handeling, en dat is de hele les van deze ronde.**
+--    De eerste versie vroeg *"is dit doel nu ontkoppeld?"* en werd langs vijf
+--    kanten omzeild, want de eigenaar bestuurt die toestand. Deze versie vraagt
+--    *"heeft de eigenaar zélf iets gedaan waardoor er niemand meer kan
+--    beoordelen?"* — en dat is een gebeurtenis, geen stand.
 --
---    Dezelfde gedachte als `pin_completion_cycle` (0006), het systeembericht
---    (besluit 002 §3) en `weekly_goals.ceiling_days` (0140): **de rij draagt de
---    regel waaronder hij is aangemaakt.**
+-- ⚠️ **De stempels staan op de tábellen en niet in de functies.** Ontkoppelen kan
+--    via `verlaat_groep()`, via `verwijder_doel()` en via een kale DELETE door de
+--    eigenaar; een groep slapen leggen kan via `archiveer_groep()` en via
+--    `slaap_stille_groepen()`. Drie plekken die hetzelfde moeten doen, is de
+--    fout van de vier routes naar een weggepoetste week (0043–0046) en van 0110.
 --
--- ⚠️ **En de eerlijke gebruiker loopt niet vast.** Wie zijn groep echt verlaat,
---    betaalt zeven dagen — dezelfde prijs die `zet_streefdatum()` al rekent — en
---    daarna gedraagt alles zich als vanouds. Een voltooiing die binnen dat
---    venster viel, blijft `pending` tot iemand hem goedkeurt; koppel het doel
---    terug en een buddy kan dat gewoon doen. Nagespeeld: na terugkoppelen staat
---    hij niet meer als vastgelopen en verschijnt hij normaal bij de buddy.
---    Er gaat dus niets verloren (domeinregel 6), er wordt alleen niets
---    weggegeven.
---
--- ⚠️ **HIER STOND EEN ONWARE ZIN, EN DIE IS OP 01-09 GEMETEN WEERLEGD.**
---    Er stond: *"`geen_actieve_groep` en `geen_beoordelaar` blijven ongemoeid:
---    die toestanden kan de eigenaar niet zelf maken."* Dat klopt niet. Wie een
---    groep aanmaakt is er `role = 'admin'`, en dan is `archiveer_groep(g, true)`
---    één RPC — of `update group_members set status = 'inactive'` op de buddy.
---    Allebei gemeten: week `approved`, twee punten, nul goedkeuringen.
---
--- ⚠️ **En deze migratie sluit daarmee één van de zes routes.** De andere vijf:
---      1. eerst indienen, dán ontkoppelen (`submitted_at < losgekoppeld_op`,
---         en dan is er ook geen wachttijd meer) — de natuurlijkere volgorde;
---      2. opnieuw koppelen en meteen weer ontkoppelen schuift `losgekoppeld_op`
---         vooruit en bevrijdt een gebonden voltooiing;
---      3. één extra koppeling aan een zelfgemaakte lege groep laten staan, want
---         dan is `not exists (links)` onwaar en wordt de reden `geen_beoordelaar`;
---      4. `archiveer_groep()` op je eigen groep;
---      5. je enige beoordelaar op `inactive` zetten.
---
---    **De vorm die wél houdt, ligt niet in een venster.** Zolang de toestand van
---    *nu* het oordeel bepaalt, is elke afgedichte route een nieuwe lijst waar de
---    volgende omheen loopt. Wat er nodig is, is een stempel op de voltooiingsrij
---    op het moment van indienen — dezelfde beweging als
---    `completion_approval_rules` die de drempel al bevriest. Dat is een
---    productbeslissing (wat belooft de app iemand wiens énige buddy vertrekt?)
---    en die ligt bij Quinten; zie het beslisdocument §7.
+-- ⚠️ **`auth.uid()` is hier precies de goede toets, óók waar hij NULL is.**
+--    `slaap_stille_groepen()` draait in de rollover onder `service_role` zonder
+--    JWT, dus `auth.uid()` is NULL en er wordt niets gestempeld. Dat is juist:
+--    een groep die vanzelf in slaap valt, is geen handeling van de eigenaar en
+--    hoort de auto-goedkeuring níet te blokkeren.
 
-create or replace function public.vastgelopen_goedkeuringen()
+alter table public.goals
+  add column if not exists beoordelaar_weggehaald_op timestamptz;
+
+comment on column public.goals.beoordelaar_weggehaald_op is
+  'Wanneer de eigenaar zélf voor het laatst iets deed waardoor er niemand meer '
+  'kon beoordelen: ontkoppelen, zijn eigen groep archiveren, of zijn enige '
+  'beoordelaar op inactive zetten. Zie 0146. Wordt nooit gewist — een oude '
+  'stempel is vanzelf onschadelijk, en wissen zou de volgende handeling de '
+  'reparatie van de vorige maken.';
+
+-- Route 1, 2 en 4 lopen alle drie langs het ontkoppelen.
+create or replace function public.noteer_ontkoppeling()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  update goals
+     set losgekoppeld_op = now(),
+         -- ⚠️ Alleen als de eigenaar het zelf doet. `verlaat_groep()` van een
+         --    ánder lid ontkoppelt diens eigen doelen, niet die van jou.
+         beoordelaar_weggehaald_op =
+           case when auth.uid() = owner_id then now() else beoordelaar_weggehaald_op end
+   where id = old.goal_id;
+
+  return old;
+end;
+$$;
+
+revoke all on function public.noteer_ontkoppeling() from public, anon, authenticated;
+
+-- Route 5: je eigen groep archiveren of in slaap leggen.
+create or replace function public.noteer_beoordelaar_weg_groep()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  if auth.uid() is null or new.status = 'active' or old.status <> 'active' then
+    return new;
+  end if;
+
+  update goals g
+     set beoordelaar_weggehaald_op = now()
+   where g.owner_id = auth.uid()
+     and exists (select 1 from goal_group_links l
+                  where l.goal_id = g.id and l.group_id = new.id);
+
+  return new;
+end;
+$$;
+
+revoke all on function public.noteer_beoordelaar_weg_groep() from public, anon, authenticated;
+
+drop trigger if exists groups_beoordelaar_weg on public.groups;
+create trigger groups_beoordelaar_weg
+  after update of status on public.groups
+  for each row execute function public.noteer_beoordelaar_weg_groep();
+
+-- Route 6: je enige beoordelaar op inactive zetten, of hem eruit gooien.
+create or replace function public.noteer_beoordelaar_weg_lid()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  v_lid   uuid := coalesce(new.user_id, old.user_id);
+  v_groep uuid := coalesce(new.group_id, old.group_id);
+begin
+  -- ⚠️ Een lid dat zichzelf terugtrekt is geen handeling van de doel-eigenaar.
+  --    Die tak hóórt de auto-goedkeuring open te laten: dat is precies de
+  --    gebruiker waar 0135 voor gebouwd is.
+  if auth.uid() is null or auth.uid() = v_lid then
+    return coalesce(new, old);
+  end if;
+
+  if tg_op = 'UPDATE' and (new.status = 'active' or old.status <> 'active') then
+    return new;
+  end if;
+
+  update goals g
+     set beoordelaar_weggehaald_op = now()
+   where g.owner_id = auth.uid()
+     and exists (select 1 from goal_group_links l
+                  where l.goal_id = g.id and l.group_id = v_groep);
+
+  return coalesce(new, old);
+end;
+$$;
+
+revoke all on function public.noteer_beoordelaar_weg_lid() from public, anon, authenticated;
+
+drop trigger if exists group_members_beoordelaar_weg on public.group_members;
+create trigger group_members_beoordelaar_weg
+  after update or delete on public.group_members
+  for each row execute function public.noteer_beoordelaar_weg_lid();
+
+-- ---------------------------------------------------------------------------
+-- 3. Eén conditie, en die dekt alle zes de routes
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **`beoordelaar_weggehaald_op > submitted_at - interval '7 days'`**, en dat
+--    is met opzet één regel in plaats van een venster per route. Uitgeschreven:
+--
+--    * **Handeling ná het indienen** (route 2, 5, 6, en 4 zodra de buddygroep
+--      eraf gaat). De stempel ligt dan later dan `submitted_at`, dus de conditie
+--      is waar. **En hij blijft waar**: elke volgende handeling schuift de
+--      stempel alleen maar verder vooruit. Opnieuw koppelen en meteen weer
+--      ontkoppelen — de truc die de vórige versie omverhaalde — werkt hier tégen
+--      de eigenaar in plaats van vóór hem.
+--    * **Handeling vlak vóór het indienen** (route 1). Beide stempels liggen dan
+--      vast ten opzichte van elkáár, dus wachten helpt niet. Dat was de fout in
+--      de eerste versie, die aan `now()` hing.
+--    * **Handeling lang geleden.** Wie een half jaar terug zijn doel ontkoppelde
+--      en sindsdien solo werkt, is een solo-gebruiker. Na zeven dagen telt de
+--      stempel niet meer mee — dezelfde afkoeling die `zet_streefdatum()` sinds
+--      0110 rekent, en om dezelfde reden.
+--    * **Handeling van een ánder, of van niemand.** De buddy vertrekt zelf, een
+--      andere beheerder archiveert, `slaap_stille_groepen()` doet zijn werk: dan
+--      is er geen stempel en gaat de auto-goedkeuring gewoon door. Dat is de
+--      belofte van QS8-178 en die blijft heel.
+--
+-- ⚠️ **En de eerlijke gebruiker loopt niet vast.** Blijft een voltooiing hierdoor
+--    op `pending` staan, dan is de weg terug dat een buddy hem alsnog goedkeurt —
+--    koppel het doel terug en hij verschijnt normaal in diens lijst. De rollover
+--    laat `pending` met rust, dus er valt ook geen minpunt. Er gaat niets
+--    verloren (domeinregel 6), er wordt alleen niets weggegeven.
+
+-- ⚠️ **Eerst droppen, want er komt een kolom bij en `or replace` kan een
+--    returntype niet wijzigen.** Dat is de uitzondering die onwrikbare regel 20
+--    beschrijft. `keur_vastgelopen_goedkeuringen_goed()` roept hem aan en valt
+--    hier niet over: plpgsql zoekt de functie pas op bij de eerste aanroep.
+drop function if exists public.vastgelopen_goedkeuringen();
+
+create function public.vastgelopen_goedkeuringen()
 returns table (
   completion_id     uuid,
   goal_id           uuid,
   owner_id          uuid,
   cycle_start_date  date,
-  reden             text
+  reden             text,
+  door_eigenaar     boolean
 )
 language sql
 stable
@@ -192,7 +279,20 @@ as $$
         where l.goal_id = g.id and gr.status = 'active'
       ) then 'geen_actieve_groep'
       else 'geen_beoordelaar'
-    end
+    end,
+    -- ⚠️ **Een kolom erbij en geen rij eruit, en dat is de correctie na de
+    --    testsuite.** Deze functie is twee dingen tegelijk: het rapport van 0109
+    --    (élke route waarlangs een week zijn beoordelaars kwijtraakt moet
+    --    zíchtbaar worden, zodat route zeven opvalt) én de werklijst van 0135.
+    --    Een eerdere versie van 0146 filterde de rij wég, en toen viel de halve
+    --    suite van 0109 om — terecht: onzichtbaar maken is geen reparatie maar
+    --    een tweede probleem. De rij blijft dus staan, met een vlag erbij, en
+    --    `keur_vastgelopen_goedkeuringen_goed()` slaat hem over.
+    (
+      g.beoordelaar_weggehaald_op is not null
+      and c.submitted_at is not null
+      and g.beoordelaar_weggehaald_op > c.submitted_at - interval '7 days'
+    )
   from completions  c
   join weekly_goals w on w.id = c.weekly_goal_id
   join goals        g on g.id = w.goal_id
@@ -216,21 +316,102 @@ as $$
           where a.completion_id = c.id and a.approver_id = m.user_id
         )
     )
-    -- ⚠️ **En dit is de tak van 0146.** Een voltooiing die is ingediend in de
-    --    zeven dagen ná het ontkoppelen van haar doel, ligt niet vast: die
-    --    toestand heeft de eigenaar zelf gemaakt. Zie de kop.
-    and not (
-      g.losgekoppeld_op is not null
-      and c.submitted_at is not null
-      and c.submitted_at >= g.losgekoppeld_op
-      and c.submitted_at <  g.losgekoppeld_op + interval '7 days'
-      and not exists (select 1 from goal_group_links l where l.goal_id = g.id)
-    );
+    ;
 $$;
+
+-- ⚠️ **En hier wordt de vlag pas een slot.** `vastgelopen_goedkeuringen()` blíjft
+--    melden; deze functie handelt alleen niet af wat de eigenaar zelf heeft
+--    gemaakt. Zo houdt 0109 zijn zichtbaarheid en 0135 zijn belofte, zonder dat
+--    domeinregel 3 een formaliteit wordt.
+
+create or replace function public.keur_vastgelopen_goedkeuringen_goed(p_termijn_dagen integer DEFAULT 7)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $KVGG$
+declare
+  v_rij      record;
+  v_week     weekly_goals%rowtype;
+  v_voltooid completions%rowtype;
+  v_punten   integer;
+  v_reden    text;
+  v_aantal   integer := 0;
+begin
+  if p_termijn_dagen is null or p_termijn_dagen < 1 then
+    raise exception 'p_termijn_dagen moet minstens 1 zijn, kreeg %', p_termijn_dagen;
+  end if;
+
+  -- ⚠️ **`vastgelopen_goedkeuringen()` is de enige definitie van "vastgelopen",
+  --    en dat blijft zo.** Die functie spiegelt `te_beoordelen_voor()` met
+  --    dezelfde vier voorwaarden; hier een eigen variant naast zetten is precies
+  --    de tweede lijst die in 0032/0034 uit elkaar liep.
+  for v_rij in select * from vastgelopen_goedkeuringen() loop
+    -- ⚠️ **De tak van 0146, en de énige regel die hier verandert.** De rest van
+    --    deze functie is woordelijk die van 0135; overtypen zou een tweede lijst
+    --    maken die uiteenloopt (0032/0034). Wat de eigenaar zelf heeft gemaakt,
+    --    wordt wél gemeld door `vastgelopen_goedkeuringen()` maar hier niet
+    --    afgehandeld.
+    continue when v_rij.door_eigenaar;
+
+    select * into v_voltooid from completions where id = v_rij.completion_id;
+
+    -- De termijn loopt vanaf het indienen. Zie de kop.
+    continue when v_voltooid.submitted_at is null
+              or v_voltooid.submitted_at > now() - make_interval(days => p_termijn_dagen);
+
+    select * into v_week from weekly_goals where id = v_voltooid.weekly_goal_id;
+
+    -- ⚠️ Alleen een week die nog écht wacht. `vastgelopen_goedkeuringen()` filtert
+    --    daar al op, maar tussen die query en deze regel kan een goedkeuring
+    --    binnenkomen; dan hoort deze functie niets meer te doen.
+    continue when v_week.status is distinct from 'pending';
+
+    -- ⚠️ **Dezelfde redenen en dezelfde volgorde als `award_points_on_approval()`.**
+    --    Twee paden naar een goedgekeurde week met verschillende gevolgen is hoe
+    --    het puntenmodel stil uit elkaar loopt; wat de trigger doet, doet dit ook.
+    if v_voltooid.achieved_level = 'ceiling' then
+      v_punten := v_week.points_ceiling;
+      v_reden  := 'completion_approved_ceiling';
+    else
+      v_punten := v_week.points_floor;
+      v_reden  := 'completion_approved_floor';
+    end if;
+
+    update weekly_goals set status = 'approved' where id = v_week.id;
+
+    -- ⚠️ `group_id` is `null` en dat is geen omissie: er ís geen groep meer, want
+    --    dat is nu juist waarom deze week vastliep. De normale route boekt de
+    --    groep van de beoordelaar; die bestaat hier per definitie niet.
+    insert into points_ledger (user_id, goal_id, group_id, delta, reason, ref_type, ref_id)
+    values (v_rij.owner_id, v_week.goal_id, null, v_punten, v_reden, 'weekly_goal', v_week.id)
+    on conflict do nothing;
+
+    perform verdien_weekpassen(v_rij.owner_id, v_week.goal_id);
+    perform herbereken_reeks(v_rij.owner_id, v_week.goal_id);
+
+    v_aantal := v_aantal + 1;
+  end loop;
+
+  return v_aantal;
+end;
+$KVGG$;
+
+revoke all on function public.keur_vastgelopen_goedkeuringen_goed(integer) from public, anon, authenticated;
+
+-- ⚠️ **De grants opnieuw zetten, want de drop hierboven nam ze mee.** Een
+--    `create function` zonder deze twee regels erft de default privileges van
+--    `public` — en die deelt in Supabase élke nieuwe functie uit aan `anon`,
+--    `authenticated` én `service_role` (beveiligingsregel 4). Deze functie noemt
+--    per doel de eigenaar en zijn cyclusdatum; die hoort geen enkele client te
+--    kunnen opvragen. Twee bestaande grendels werden hier meteen rood van
+--    (`policies` en `functiegrants`) — precies waarvoor ze bestaan.
+revoke all on function public.vastgelopen_goedkeuringen() from public, anon, authenticated;
+grant execute on function public.vastgelopen_goedkeuringen() to service_role;
 
 comment on function public.vastgelopen_goedkeuringen() is
   'Voltooiingen waar niemand meer op kan reageren. Sluit sinds 0146 een '
-  'voltooiing uit die is ingediend binnen zeven dagen na het ontkoppelen van '
-  'haar doel: die toestand maakt de eigenaar zelf, en dan is de auto-goedkeuring '
-  'een weg om domeinregel 3 heen. Koppel het doel terug en een buddy beoordeelt '
-  'hem gewoon.';
+  'voltooiing uit waarvan de eigenaar de beoordelaars zélf heeft weggehaald — '
+  'ontkoppelen, zijn eigen groep archiveren, zijn enige beoordelaar op inactive '
+  'zetten. Vertrekt de buddy uit zichzelf, dan blijft de auto-goedkeuring van '
+  '0135 gewoon werken; dat is de gebruiker waar hij voor bestaat.';

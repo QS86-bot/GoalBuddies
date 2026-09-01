@@ -145,54 +145,72 @@ staat hij nu als **Middel**, met de aantekening dat elke nieuwe beslissing die o
 de koppelstand leunt, eerst deze rij leest.
 
 
-## 7. Wat er ná de review van dit document overblijft — 01-09-2026
+## 7. Wat de review opleverde, en hoe het nu wél dicht is
 
-**Dit document beschreef een reparatie die één van de zes routes dicht doet.** De
-`security-reviewer` heeft er vijf gemeten die openblijven, en twee zinnen
-weerlegd die hierboven stonden. Beide correcties staan er nu bij.
+**De eerste versie van dit document beschreef een reparatie die één van de zes
+routes dicht deed.** De `security-reviewer` mat er vijf die openbleven en
+weerlegde twee zinnen die hierboven stonden. Quinten heeft daarop besloten
+(01-09) om het volledig te sluiten: **de auto-goedkeuring blijft, maar alleen als
+de eigenaar de vastloper niet zélf veroorzaakte.**
 
-| # | Route | Wie kan dit | Gemeten uitkomst |
+| # | Route | Wie | Nu |
 |---|---|---|---|
-| A | ontkoppelen → afronden → wachten | eigenaar | **dicht** door 0146 |
-| B | `submitted_at` terugdateren | eigenaar | **dicht** door de kolomgrant |
-| 1 | afronden → dán ontkoppelen | eigenaar | open, en zónder wachttijd |
-| 2 | koppelen + ontkoppelen schuift `losgekoppeld_op` | eigenaar | open |
-| 3 | één link naar een zelfgemaakte lege groep laten staan | eigenaar | open |
-| 4 | `archiveer_groep()` op je eigen groep | eigenaar (is admin) | open |
-| 5 | je enige beoordelaar op `inactive` zetten | eigenaar (is admin) | open |
+| 1 | ontkoppelen → afronden | eigenaar | dicht |
+| 2 | afronden → dán ontkoppelen | eigenaar | dicht |
+| 3 | koppelen + ontkoppelen (reset de stempel) | eigenaar | dicht |
+| 4 | een lege eigen groep gekoppeld laten | eigenaar | dicht |
+| 5 | `archiveer_groep()` op je eigen groep | eigenaar | dicht |
+| 6 | je enige beoordelaar op `inactive` | eigenaar | dicht |
+| 7 | `submitted_at` zelf meesturen | eigenaar | dicht (kolomgrant) |
+| M1 | de buddy vertrekt uit zichzelf | ánder | **blijft werken** |
+| M2 | het systeem legt de groep slapen | niemand | **blijft werken** |
+| M3 | de eigenaar ontkoppelde lang geleden | eigenaar, maar oud | **blijft werken** |
 
-⚠️ **Route 1 is de belangrijkste, want het is de natuurlijkere volgorde.** Je
-ontkoppelt pas als blijkt dat je buddy niet reageert. En omdat `submitted_at` dan
-al ouder is dan de termijn, is er niet eens een wachttijd.
+### Niet de toestand maar de handeling
 
-### Waarom een venster hier nooit gaat werken
+Dat is de hele les. De eerste versie vroeg *"is dit doel nu ontkoppeld?"* — een
+stand die de eigenaar bestuurt, dus elke afgedichte route werd een nieuwe lijst
+waar de volgende omheen liep. De tweede vraagt *"heeft de eigenaar zélf iets
+gedaan waardoor niemand meer kan beoordelen?"* — een gebeurtenis, en die is niet
+terug te draaien.
 
-Zolang het oordeel op de toestand van *nu* leunt, is elke afgedichte route een
-nieuwe lijst waar de volgende omheen loopt. Dat is dezelfde fout in het klein die
-§3 in het groot beschrijft.
+`goals.beoordelaar_weggehaald_op` wordt gestempeld door **triggers op de
+tabellen** (`goal_group_links`, `groups`, `group_members`) en niet in de
+functies, want ontkoppelen kan langs drie routes en slapen leggen langs twee. Dat
+is de les van 0043–0046 en van 0110.
 
-**De vorm die wel houdt is een stempel op de voltooiingsrij bij het indienen** —
-dezelfde beweging als `completion_approval_rules`, dat de goedkeuringsdrempel al
-bevriest. Wat er daarna met de groep gebeurt, doet er dan niet meer toe.
+De conditie is één regel: `beoordelaar_weggehaald_op > submitted_at - 7 days`.
+Handeling ná het indienen valt erin en blijft erin (elke volgende handeling
+schuift de stempel alleen verder vooruit — de reset werkt nu tégen de eigenaar).
+Handeling vlak vóór het indienen valt er ook in, en wachten helpt niet omdat
+beide stempels ten opzichte van elkáár vastliggen. Een handeling van lang geleden
+telt niet meer mee — dezelfde afkoeling van zeven dagen die `zet_streefdatum()`
+sinds 0110 rekent.
 
-### Maar dat lost route 4 en 5 niet op, en daar zit een productvraag onder
+⚠️ **`auth.uid()` is hier precies de goede toets, óók waar hij NULL is.**
+`slaap_stille_groepen()` draait onder `service_role` zonder JWT, dus daar wordt
+niets gestempeld — en dat is juist, want een groep die vanzelf inslaapt is geen
+handeling van de eigenaar.
 
-Bij route 4 en 5 ís er een beoordelaar op het moment van indienen; de eigenaar
-haalt hem daarna weg. Een stempel bij indienen zegt dan "beoordeelbaar", de
-huidige toestand zegt "niemand meer", en de auto-goedkeuring vuurt alsnog.
+### Zichtbaar blijven is iets anders dan afgehandeld worden
 
-Het onderscheid dat overblijft is **wie de beoordelaar heeft weggehaald**. Dat
-staat in `group_events` (`actor_id`), dus het is meetbaar — maar het maakt de
-regel een stuk zwaarder, en het raakt een vraag die niet technisch is:
+⚠️ **Dit is de tweede correctie, en de testsuite heeft hem gevonden.** Een
+tussenversie filterde de rij wég uit `vastgelopen_goedkeuringen()`, en toen viel
+de halve suite van 0109 om. Terecht: die functie is twéé dingen — het rapport dat
+élke route zichtbaar maakt (zodat route acht opvalt), én de werklijst van 0135.
+Onzichtbaar maken is geen reparatie maar een tweede probleem.
 
-> **Wat belooft de app iemand wiens énige buddy vertrekt?**
+De rij blijft dus staan, met een kolom `door_eigenaar` erbij, en
+`keur_vastgelopen_goedkeuringen_goed()` slaat hem over. Die functie is verder
+woordelijk die van 0135 gebleven: er is één `continue` bijgekomen. Overtypen zou
+een tweede lijst maken die uiteenloopt — de fout van 0032/0034.
 
-QS8-178 beantwoordde dat op 31-08 met: *die week wordt alsnog goedgekeurd, niet
-als gemist geboekt* — met als onderbouwing dat alle routes handelingen van een
-ánder zijn. **Die onderbouwing is nu weerlegd**: in de standaardopstelling, waar
-de eigenaar zijn eigen groep heeft aangemaakt, zijn drie van de vier routes
-handelingen van hemzelf.
+### Wat 0135's eigen tests hierover zeiden
 
-Dat besluit hoort daarom opnieuw gewogen te worden, en dat is grens 1 uit
-CLAUDE.md: het bepaalt wat er tegen een gebruiker beloofd wordt over zijn score.
-Het ligt bij Quinten en niet bij deze sessie.
+Twee tests van 0135 legden vast dat **alle vier** de routes goedgekeurd worden,
+met als onderbouwing dat het alle vier handelingen van een ánder zijn. Die
+onderbouwing is weerlegd, dus die tests zijn gesplitst: de twee routes die daar
+via `adminDb()` lopen (geen `auth.uid()`, dus niet de eigenaar) blijven
+goedgekeurd; de twee die de eigenaar zelf doet, blijven wachten. **Dat is een
+besluit dat in een test wordt vastgelegd en geen verzwakte grendel** — het staat
+hier, en het staat in de kop van dat testblok.
