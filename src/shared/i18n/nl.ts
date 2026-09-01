@@ -1719,6 +1719,34 @@ export const nl = {
   'weekdoelform.plafond': 'Het plafond',
   'weekdoelform.plafond_hint': 'Waar ga je voor als de week meezit?',
   'weekdoelform.plafond_voorbeeld': '3 gesprekken gevoerd',
+
+  // ⚠️ QS8-260, besluit A53. **De kop vraagt naar déze week en niet naar het
+  //    doel**, en dat is geen woordkeus maar de hele scheiding uit 0140: het
+  //    ritme van het doel stuurt het voorstel, `ceiling_days` op de weekrij ís
+  //    het oordeel. Zou de tekst hier "hoe vaak werk je aan dit doel" zeggen,
+  //    dan verwacht de gebruiker dat hij zijn doel aanpast — en verandert in zijn
+  //    beleving de uitslag van weken die er al staan.
+  'weekdoelform.ritme': 'Hoe telt deze week?',
+  'weekdoelform.ritme_hint':
+    'Begint op wat je bij dit doel hebt gekozen. Wijzig je het hier, dan geldt dat voor deze week — je doel blijft staan zoals het staat.',
+  'weekdoelform.plafond_dagen': 'Op hoeveel dagen ga je voor?',
+  'weekdoelform.plafond_dagen_hint': 'Als de week meezit.',
+  'weekdoelform.vloer_dagen': 'En op je slechtste week? (aanbevolen)',
+  'weekdoelform.vloer_dagen_hint':
+    'Het aantal dagen dat je ook haalt als het tegenzit. Haal je dat, dan telt de week gewoon mee.',
+  'weekdoelform.geen_vloer': 'Geen vloer',
+  'weekdoelform.dagen_aantal': '{aantal} dagen',
+  /**
+   * ⚠️ **Deze twee zinnen zeggen wat het kóst en niet wat het is.** Zonder vloer
+   *    is één dag te weinig een gemiste week, en dat is precies de situatie
+   *    waarvoor domeinregel 8 bestaat. De gebruiker hoort dat te lezen vóórdat
+   *    hij op toevoegen drukt, niet op zondagavond.
+   */
+  'weekdoelform.dagen_zonder_vloer':
+    'Je haalt deze week als je {plafond} dagen afvinkt. Eén dag minder telt als een gemiste week.',
+  'weekdoelform.dagen_met_vloer':
+    'Vanaf {vloer} dagen telt je week mee en loopt je reeks door; bij {plafond} dagen haal je je plafond.',
+
   'weekdoelform.mijlpaal': 'Hoort dit bij een mijlpaal?',
   'weekdoelform.mijlpaal_hint': 'Mag ook los onder je doel hangen.',
   'weekdoelform.los': 'Los onder dit doel',

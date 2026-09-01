@@ -1318,6 +1318,22 @@ export const en: Record<Sleutel, string> = {
   'weekdoelform.plafond': 'The ceiling',
   'weekdoelform.plafond_hint': 'What are you going for if the week goes well?',
   'weekdoelform.plafond_voorbeeld': '3 calls held',
+
+  'weekdoelform.ritme': 'How does this week count?',
+  'weekdoelform.ritme_hint':
+    'Starts from what you picked for this goal. Change it here and it applies to this week — your goal stays as it is.',
+  'weekdoelform.plafond_dagen': 'How many days are you going for?',
+  'weekdoelform.plafond_dagen_hint': 'If the week goes well.',
+  'weekdoelform.vloer_dagen': 'And on your worst week? (recommended)',
+  'weekdoelform.vloer_dagen_hint':
+    'The number of days you still manage when things go wrong. Reach that and the week counts.',
+  'weekdoelform.geen_vloer': 'No floor',
+  'weekdoelform.dagen_aantal': '{aantal} days',
+  'weekdoelform.dagen_zonder_vloer':
+    'You make this week by checking off {plafond} days. One day less counts as a missed week.',
+  'weekdoelform.dagen_met_vloer':
+    'From {vloer} days your week counts and your streak continues; at {plafond} days you reach your ceiling.',
+
   'weekdoelform.mijlpaal': 'Does this belong to a milestone?',
   'weekdoelform.mijlpaal_hint': 'It can also hang loose under your goal.',
   'weekdoelform.los': 'Loose under this goal',

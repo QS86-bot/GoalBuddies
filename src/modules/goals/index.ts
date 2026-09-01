@@ -2,6 +2,14 @@
 // CLAUDE.md: module-communicatie loopt uitsluitend via dit bestand.
 
 export {
+  dagenUitKeuze,
+  dagopties,
+  GEEN_DAGEN,
+  type Dagoptie,
+  type Dagvelden,
+} from './ritme-invoer';
+
+export {
   BADGES,
   badgeLabels,
   badgeUitleg,
@@ -131,6 +139,7 @@ export {
   DOELGEBEURTENISSEN,
   MAX_DAGEN_PER_WEEK,
   niveauUitDagen,
+  leesRitme,
   RITMES,
   ritmeLabels,
   ritmeUitleg,

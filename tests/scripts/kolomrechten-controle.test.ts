@@ -906,25 +906,28 @@ describe('de echte codebase', () => {
   });
 
   /**
-   * ⚠️ **De keten van QS8-253 is nog steeds onderbroken, en dat hoort zo te
-   *    blijven staan tot QS8-260 hem sluit.** `maakWeekdoel()` schrijft de twee
-   *    dagvelden niet, dus de grant erop is dood hout — en dat meldt de controle,
-   *    via `GEEN_SCHRIJFPAD`, met de reden erbij.
+   * ⚠️ **De keten van QS8-253 is gesloten — QS8-260.** Deze test stond
+   *    omgedraaid: hij eiste dat `maakWeekdoel()` de twee dagvelden **niet**
+   *    schrijft, want de grant erop was dood hout zolang geen enkel scherm ze
+   *    meegaf.
    *
-   *    Een eerdere versie van deze PR zette de kolommen in de insert. Dat maakte
-   *    de melding stil zonder dat er ooit een getal in kon komen: geen enkel
-   *    scherm geeft ze mee, en `weekdoelSchema` heeft `.default(null)`. **De
-   *    dode-houtrichting toetst of een kolomnaam voorkomt, niet of er een pad is
-   *    dat er een waarde in stopt** — dus een kolom in een literaal zetten is de
-   *    goedkoopste manier om een QS8-113-melding te doven. Deze test houdt dat
-   *    tegen.
+   *    Waaróm hij zo stond, hoort hier te blijven staan. Een eerdere versie van
+   *    de QS8-258-PR zette de kolommen in de insert en maakte daarmee de
+   *    `GEEN_SCHRIJFPAD`-melding stil, zonder dat er ooit een getal in kon komen:
+   *    geen enkel scherm gaf ze mee en `weekdoelSchema` heeft `.default(null)`.
+   *    **De dode-houtrichting toetst of een kolomnaam vóórkomt, niet of er een
+   *    pad is dat er een waarde in stopt** — een kolom in een literaal zetten is
+   *    dus de goedkoopste manier om zo'n melding te doven.
+   *
+   *    Sinds QS8-260 is er wél een pad: het weekdoelformulier vraagt de dagen en
+   *    `maakWeekdoel()` geeft ze door. De test kijkt daarom nu de andere kant op.
+   *    Hij bewaakt daarmee nog steeds niet dat er een schérm is — dat kán deze
+   *    controle niet zien — maar wel dat de doorgifte er is; het scherm zelf
+   *    hangt aan `tests/beloftes/bereikbaar.test.ts`.
    */
-  it.each(['floor_days', 'ceiling_days'])(
-    'schrijft %s (nog) niet naar weekly_goals — zie QS8-260',
-    (kolom) => {
-      expect(van('weekly_goals', 'insert')[0]?.kolommen).not.toContain(kolom);
-    },
-  );
+  it.each(['floor_days', 'ceiling_days'])('schrijft %s naar weekly_goals — QS8-260', (kolom) => {
+    expect(van('weekly_goals', 'insert')[0]?.kolommen).toContain(kolom);
+  });
 
   /**
    * ⚠️ De lijst is uitputtend en geen ondergrens: komt er een derde onleesbare
