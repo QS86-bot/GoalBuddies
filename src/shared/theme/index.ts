@@ -6,8 +6,16 @@
  *    losse kleur laat ze uit elkaar lopen.
  */
 
-export type { Palette } from './tokens';
-export { fontMono, fontSans, radius, roles, space } from './tokens';
+export type { Categoriekleuren, Palette } from './tokens';
+export {
+  categoriekleurenNavy,
+  categoriekleurenNavyLight,
+  fontMono,
+  fontSans,
+  radius,
+  roles,
+  space,
+} from './tokens';
 export { contrastRatio, WCAG } from './contrast';
 
 export {

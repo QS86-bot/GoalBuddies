@@ -1423,7 +1423,7 @@ export const nl = {
   //    "je mag dit niet zien" staan, dan verraadt de melding dát het bestaat.
   'doelscherm.leeg_titel': 'Dit doel bestaat niet',
   'doelscherm.leeg_body': 'Of het is verwijderd, of het is niet van jou. Controleer de link.',
-  'doelscherm.categorie_streefdatum': '{categorie} · streefdatum {datum}',
+  'doelscherm.streefdatum': 'Streefdatum {datum}',
   'doelscherm.weekdoelen_afgerond': '{gedaan} van {totaal} weekdoelen afgerond',
 
   'deadline.verzoek_loopt': 'Je verzoek loopt',

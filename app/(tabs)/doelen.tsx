@@ -20,6 +20,7 @@ import {
   Body,
   Button,
   Caption,
+  CategorieMerk,
   Card,
   MilestoneProgress,
   RisicoBadge,
@@ -140,7 +141,13 @@ function DoelKaart({
       <Card>
         <View style={styles.kop}>
           <Subheading>{doel.title}</Subheading>
-          <Caption>{categorie}</Caption>
+          {/*
+            ⚠️ Het gebied als pictogram in de kleur van zijn familie — QS8-255.
+               De kleur groepeert, het pictogram onderscheidt, en het label staat
+               er nog steeds in tekst bij: de kleur draagt niets dat niet ook te
+               lezen is.
+          */}
+          <CategorieMerk categorie={doel.category ?? 'other'} label={categorie} />
         </View>
 
         {doel.identity_statement ? (

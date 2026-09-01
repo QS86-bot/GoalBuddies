@@ -23,6 +23,8 @@ export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
+export { CategorieMerk } from './CategorieMerk';
+export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
 export { DoelStandKaart } from './DoelStandKaart';
