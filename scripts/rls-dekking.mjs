@@ -28,6 +28,11 @@
  *    `npm run poort`; draai hem als je wilt weten waar de suite gaten heeft, en
  *    maak van elke bevinding een test of een aantekening.
  *
+ * ⚠️ **Hij weigert te draaien tegen iets anders dan de lokale stack.** Zie
+ *    `magHierDraaien()`: lokale host, `RLS_DOEL=lokaal`, en de database moet
+ *    `goalbuddies_rls` heten. De kop hieronder waarschuwde daar eerst alleen
+ *    voor, en een waarschuwing is geen slot.
+ *
  * ⚠️ **Hij verandert de database en zet hem daarna terug — en dat is bij de
  *    eerste echte run misgegaan.** Een `finally` helpt niet als het proces
  *    gedóód wordt: bij een afbreking op tien minuten bleef
@@ -149,6 +154,37 @@ export function oordeel(policy, uitkomst) {
 const HERSTELBESTAND = join(WORTEL, '.rls-dekking-herstel.json');
 
 /**
+ * Weigert te draaien tegen iets anders dan de lokale stack.
+ *
+ * ⚠️ **Dit script zet policies wagenwijd open.** Op de lokale stack is dat een
+ *    meting; op het echte project is het een gat in de beveiliging dat blijft
+ *    staan zolang de run duurt — en langer als hij afbreekt. De kop waarschuwde
+ *    daarvoor, en een waarschuwing is geen slot: `PGHOST` naar het echte project
+ *    wijzen en `npm run rls:dekking` typen was genoeg.
+ *
+ * ⚠️ **De toets is bewust een allowlist en geen blocklist.** "Is dit niet
+ *    productie" is niet te beantwoorden; "is dit onmiskenbaar mijn eigen
+ *    machine" wel. Alles wat daar niet onder valt, gaat er niet doorheen —
+ *    inclusief een hostnaam die je niet had verwacht.
+ */
+export function magHierDraaien({ host, db, doel }) {
+  const lokaal = host === undefined || host === '' || ['localhost', '127.0.0.1', '::1'].includes(host);
+  if (!lokaal) return { ok: false, reden: `PGHOST is \`${host}\` en dat is geen lokale machine` };
+
+  if (doel !== 'lokaal') {
+    return { ok: false, reden: 'RLS_DOEL staat niet op `lokaal`' };
+  }
+
+  // ⚠️ De naam van de échte database staat nergens in dit script, en dat hoort
+  //    zo: hij hoeft alleen te weten welke naam hij wél mag muteren.
+  if (db !== 'goalbuddies_rls') {
+    return { ok: false, reden: `de database heet \`${db}\` en niet \`goalbuddies_rls\`` };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Zet terug wat een afgebroken run heeft laten liggen.
  *
  * ⚠️ **Dit gebeurt vóór de eerste meting en niet erna**, want een meting tegen
@@ -206,6 +242,19 @@ function draai(bestanden) {
 
 function hoofd() {
   const filter = process.argv[2] ?? '';
+  const db = process.env.DB ?? 'goalbuddies_rls';
+
+  const mag = magHierDraaien({ host: process.env.PGHOST, db, doel: process.env.RLS_DOEL });
+  if (!mag.ok) {
+    console.error(
+      `✗ rls-dekking weigert te draaien: ${mag.reden}.\n\n` +
+        'Dit script zet elke policy om beurten wagenwijd open. Op de lokale stack is\n' +
+        'dat een meting; ergens anders is het een gat dat blijft staan zolang de run\n' +
+        'duurt — en langer als hij afbreekt.\n\n' +
+        'Start de stack met `npm run rls:stack` en draai met RLS_DOEL=lokaal.',
+    );
+    return 1;
+  }
 
   // ⚠️ **De `try` dekt alléén de aanroep en niet het ontleden.** De eerste versie
   //    deed dat wel, en meldde een échte parseerfout als "geen database" — dan

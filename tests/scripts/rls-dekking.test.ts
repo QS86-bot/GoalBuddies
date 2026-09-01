@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `letterversies.test.ts`.
 import {
   bestandenVoor,
+  magHierDraaien,
   herstelSql,
   ontleedPolicies,
   oordeel,
@@ -30,6 +31,8 @@ import {
  *   C  `bestandenVoor` een lege lijst laten teruggeven     → 1 rood
  *   D  `oordeel` groen als bewaakt lezen                   → 2 rood
  *   E  de veldtoets uit `ontleedPolicies`                  → 1 rood
+ *   F  de hosttoets uit `magHierDraaien`                   → 3 rood
+ *   G  de databasenaamtoets                                → 1 rood
  */
 
 const rij = JSON.stringify([
@@ -169,5 +172,55 @@ describe('oordeel', () => {
 
   it('houdt een policy zonder uitdrukking apart', () => {
     expect(oordeel(policy, 'onverzwakbaar').status).toBe('geen-uitdrukking');
+  });
+});
+
+
+/**
+ * ⚠️ **Het slot dat er het langst niet was.** Dit script zet elke policy om
+ *    beurten wagenwijd open. Op de lokale stack is dat een meting; ergens anders
+ *    is het een gat dat blijft staan zolang de run duurt — en langer als hij
+ *    afbreekt. De kop van het script waarschuwde daarvoor, en een waarschuwing
+ *    is geen slot: `PGHOST` naar het echte project wijzen was genoeg.
+ *
+ * ⚠️ **Een allowlist en geen blocklist.** "Is dit niet productie" is niet te
+ *    beantwoorden; "is dit onmiskenbaar mijn eigen machine" wel. Daarom staan
+ *    hier ook de gevallen die er níet doorheen horen te komen zónder dat iemand
+ *    ze had bedacht.
+ */
+describe('magHierDraaien', () => {
+  const goed = { host: 'localhost', db: 'goalbuddies_rls', doel: 'lokaal' };
+
+  it.each([
+    ['localhost', 'localhost'],
+    ['127.0.0.1', '127.0.0.1'],
+    ['::1', '::1'],
+    ['een lege PGHOST (unix-socket)', ''],
+    ['geen PGHOST', undefined],
+  ])('laat %s door', (_naam, host) => {
+    expect(magHierDraaien({ ...goed, host }).ok).toBe(true);
+  });
+
+  it.each([
+    ['het echte project', 'db.wehgocadxehottiiyvsc.supabase.co'],
+    ['een ip dat erop lijkt', '127.0.0.1.kwaadaardig.nl'],
+    ['een willekeurige host', 'staging.intern'],
+  ])('weigert %s', (_naam, host) => {
+    const uit = magHierDraaien({ ...goed, host });
+
+    expect(uit.ok).toBe(false);
+    expect(uit.reden).toContain('lokale machine');
+  });
+
+  it('weigert zonder RLS_DOEL=lokaal', () => {
+    expect(magHierDraaien({ ...goed, doel: undefined }).ok).toBe(false);
+  });
+
+  /** ⚠️ Lokaal én `RLS_DOEL=lokaal` is niet genoeg: `DB` wijst de database aan. */
+  it('weigert een andere databasenaam', () => {
+    const uit = magHierDraaien({ ...goed, db: 'productie' });
+
+    expect(uit.ok).toBe(false);
+    expect(uit.reden).toContain('productie');
   });
 });
