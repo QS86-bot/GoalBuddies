@@ -128,6 +128,19 @@ Voordat er één feature gebouwd wordt:
   geen zelfbedachte kleuren erbij. Volledige tokenset in Linear QS8-87.
   *(Vervangt de emerald-richting uit PRD 10.1, gewijzigd 15-08-2026.)*
 
+  ⚠️ **Besluit A55, 31-08-2026 — verruimd, en nog niet gebouwd.** Er mag kleur bij,
+  **uitsluitend waar hij iets codeert**: categorieën en datavlakken. De rest blijft
+  navy. Dat is de derde weg tussen "kleurrijk zoals Habit Huddle" en het
+  productvoorstel §5, dat bewust koos voor rustig gereedschap.
+
+  ⚠️ **Drie categoriekleuren, en dat is een gemeten grens en geen smaak.** Goud is
+  vergeven aan het merk en groen, oranje en rood aan status, dus er past maar een
+  smalle band bij. `#4f97e8` · `#e0578f` · `#8f9c36` halen alle zes de controles op
+  lichtheid, chroma, contrast en kleurenblindheid, in donker én licht; élke vierde
+  kandidaat viel om. **De kleur codeert de familie, het pictogram codeert het
+  gebied.** Cijfers in
+  `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md`.
+
 ### Live-adressen
 | Omgeving | Adres |
 |---|---|
@@ -241,7 +254,8 @@ Voordat er één feature gebouwd wordt:
    de beste reeks en de laatste cyclus (0078), De Ketting (0079).
 
    ⚠️ **"Open" betekent nooit "alles open", en zeven oppervlakken bewijzen dat.**
-   Punten (A42), systeemberichten over tegenslag, realtime, ingetrokken
+   Punten (A42 — zie A54, dat dit terugdraait), systeemberichten over tegenslag,
+   realtime, ingetrokken
    goedkeuringen, de weekpassen, de teller van De Ketting en de
    mijlpaalaankondiging blijven dicht, óók in een open groep. Wie er ooit een wil
    verruimen, leest eerst de rij en de reden in
@@ -301,6 +315,27 @@ Voordat er één feature gebouwd wordt:
    dagboekregel die je desgewenst met je groep deelt. Een dag overslaan heeft geen
    enkel gevolg.
 
+   ⚠️ **Besluit A53, 31-08-2026: afgebakend, niet afgeschaft — en nog niet gebouwd.**
+   Een doel krijgt een **ritme** dat je bij het aanmaken kiest: `weekly` (zoals nu),
+   `times_per_week`, of `daily`. Voor een doel met weekritme geldt deze regel
+   onverkort. Voor de andere twee telt een dagafvinking wél mee — maar **uitsluitend
+   voor de vraag of de wéék gehaald is**, en nooit als losse punteneenheid.
+
+   ⚠️ **Punten blijven per week geboekt.** Zeven dagen afvinken levert geen zeven keer
+   `+2` op; het levert de week op. Anders is het puntenmodel van regel 10 in één klap
+   zeven keer zo groot voor wie een dagdoel kiest, en zegt een score niets meer over
+   doelen onderling.
+
+   ⚠️ **Een dagreeks bestaat alleen bij ritme `daily`, en komt met zijn vergeving
+   erbij of niet.** De nachtuil-marge (tot 08:00 telt gisteren nog) en een dagpas
+   horen in dezelfde migratie. Zonder die twee is een dagreeks een strafmechanisme,
+   en dat is het enige wat deze app nergens wil zijn.
+
+   ⚠️ **De groep ziet nooit welke dagen iemand niet afvinkte.** Een dagelijkse
+   afvinking is fijnmaziger tegenslag dan een gemiste week; domeinregel 7 wordt
+   daardoor strenger en niet losser. Zie
+   `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md`.
+
 10. **Het puntenmodel.** Plafond gehaald `+2`, vloer gehaald `+1`, week gemist `−1`,
     adempauze `0`. Elk doel heeft een puntenplafond: de som van de plafondpunten van
     zijn weekdoelen. Taken toevoegen verhoogt het plafond.
@@ -311,6 +346,16 @@ Voordat er één feature gebouwd wordt:
     - **Punten zijn privé.** `points_ledger` en het puntentotaal zijn alleen voor de
       eigenaar leesbaar. Een dalend totaal is zichtbaar bewijs van een gemiste week,
       en dat botst met domeinregel 7. De groep ziet De Ketting en mijlpalen.
+
+      ⚠️ **Teruggedraaid door besluit A54, 31-08-2026 — nog niet gebouwd.** Quinten
+      heeft, met het bezwaar hieronder voorgelegd, gekozen voor **een klassement per
+      lid**. Wat dat kost staat in
+      `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md`, en de voorgestelde
+      vorm is dat het klassement `groups.zichtbaarheid` volgt: in een **open** groep
+      (A41) een puntenklassement, in een **beschermde** groep de optelteller. Drie
+      dingen blijven hoe dan ook dicht: geen minpunten in beeld, geen historische
+      grafiek per lid, en geen nadruk op de laatste plaats. **Tot dit gebouwd is,
+      geldt de tekst hieronder onverkort.**
 
       ⚠️ **Besluit A42, 24-08-2026: zo houden.** De vraag was of een gedeeld
       puntentotaal niet competitiever is. Dat is het, en het lekt: wie het totaal
