@@ -39,7 +39,7 @@ import {
 
 describe('kopNummer', () => {
   it('leest de sjabloonstijl met bestandsnaam en al', () => {
-    expect(kopNummer('-- 0139_de_week_startdag.sql — waarom dit bestaat\n--\n')).toBe('0139');
+    expect(kopNummer('-- 0998_een_verzonnen_migratie.sql — waarom dit bestaat\n--\n')).toBe('0998');
   });
 
   /** De oudere stijl. Vijftien migraties gebruiken hem; hij is niet fout. */
@@ -70,7 +70,7 @@ describe('kopNummer', () => {
 
 describe('kopKlopt', () => {
   it('is waar als de kop het bestand noemt', () => {
-    expect(kopKlopt('0139_de_week.sql', '-- 0139_de_week.sql — iets\n')).toBe(true);
+    expect(kopKlopt('0998_verzonnen.sql', '-- 0998_verzonnen.sql — iets\n')).toBe(true);
   });
 
   /**
@@ -150,9 +150,26 @@ describe('vervangIn', () => {
 });
 
 describe('beoordeelHernummering', () => {
+  /**
+   * ⚠️ **De nummers hier liggen met opzet boven alles wat ooit bestaat, en dat
+   *    is een gerepareerde fout.** In de eerste versie droegen deze regels een
+   *    nummer dat óók een echte migratie was. Toen ik dit script heen en terug
+   *    draaide om het geheel te bewijzen, herschreef het ze — terecht, want een
+   *    viercijferig nummer is van een verwijzing niet te onderscheiden.
+   *
+   *    ⚠️ **En daarmee is een eigenschap van het gereedschap zichtbaar geworden
+   *    die het vermelden waard is: heen en terug is niet symmetrisch zodra de
+   *    tekst het doelnummer zélf al noemt.** De heenweg maakt er dan twee van
+   *    dezelfde soort, en de terugweg kan ze niet meer uit elkaar houden. Dat is
+   *    geen defect maar de grens van wat een tekstvervanging kan weten — en
+   *    precies waarom de CLI elke vervanging met bestand en regelnummer afdrukt.
+   *
+   *    Een verzonnen voorbeeld hoort dus een nummer te dragen dat nooit een
+   *    echte migratie wordt. `099x` is dat.
+   */
   const basis = {
     van: '0134',
-    naar: '0139',
+    naar: '0998',
     aanwezig: ['0134', '0135'],
     perBranch: {},
     register: ['0131'],
@@ -163,9 +180,9 @@ describe('beoordeelHernummering', () => {
   });
 
   it.each([
-    ['vorm', { van: '134', naar: '0139' }],
+    ['vorm', { van: '134', naar: '0998' }],
     ['gelijk', { van: '0134', naar: '0134' }],
-    ['bron_ontbreekt', { van: '0199', naar: '0139' }],
+    ['bron_ontbreekt', { van: '0997', naar: '0998' }],
     ['doel_bezet', { van: '0134', naar: '0135' }],
   ])('weigert met reden %s', (reden, patch) => {
     const uit = beoordeelHernummering({ ...basis, ...patch });
@@ -177,7 +194,7 @@ describe('beoordeelHernummering', () => {
   it('weigert een doelnummer dat een andere branch al draagt', () => {
     const uit = beoordeelHernummering({
       ...basis,
-      perBranch: { 'origin/iets-anders': 140 },
+      perBranch: { 'origin/iets-anders': 998 },
     });
     expect(uit.ok).toBe(false);
     expect(uit.reden).toBe('doel_bezet_elders');
