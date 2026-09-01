@@ -31,9 +31,28 @@ geen enkele test vindt (regel 18 vraag 5). Wie de ene richting bouwt, heeft de
 andere er bijna bij — en dan is hem weglaten een keuze en geen omissie.
 
 ⚠️ En hij vond bij zijn éérste echte ronde meteen zo'n geval: `maakWeekdoel()`
-somde zijn velden op en liet `floor_days` en `ceiling_days` eruit. Schema, kolom,
-CHECK, grant en trigger waren alle vijf af; een ritme-weekdoel kón niet bestaan.
-Dat is in dezelfde commit gerepareerd.
+somt zijn velden op en laat `floor_days` en `ceiling_days` eruit. Schema, kolom,
+CHECK, grant, trigger én het dashboard dat ze leest zijn alle zes af; een
+ritme-weekdoel kán niet bestaan. Dat staat als **QS8-260** op de lijst.
+
+⚠️ **En de eerste versie van deze PR "repareerde" dat door de twee kolomnamen in
+de insert te zetten. Dat is bij de review teruggedraaid, en de reden is de
+belangrijkste zin van dit document.** Geen enkele aanroeper van `maakWeekdoel()`
+geeft die velden mee en `weekdoelSchema` heeft `.default(null)`, dus er kwam nooit
+een getal in. Wat er wél veranderde: `beoordeelSchrijven()` telde de kolom als
+"geschreven" en de melding verdween.
+
+**De dode-houtrichting toetst of een kolomnaam ergens vóórkomt, niet of er een
+pad is dat er ooit een andere waarde dan de default in stopt.** Voor élk veld met
+een `.default()` in een Zod-schema is deze richting daarmee met één regel blind te
+maken — en dat is dan de goedkoopste manier om een QS8-113-melding te doven. Wie
+hier langskomt met een dode-houtbevinding: de vraag is niet "hoe krijg ik hem
+stil" maar "kan een gebruiker hier daadwerkelijk bij, en langs welke knop"
+(regel 18 vraag 5).
+
+De twee kolommen staan nu in `GEEN_SCHRIJFPAD` met die reden erbij, en er staat
+een test in `tests/scripts/kolomrechten-controle.test.ts` die rood wordt zodra
+iemand ze tóch in de insert zet zonder scherm.
 
 ## 3. De grens die de controle bruikbaar houdt: alleen versmalde grants
 
@@ -78,14 +97,43 @@ beoordeeld" over een toestand die niet meer bestaat, en dekt daarna de volgende
 bevinding op diezelfde plek af. Zelfde regel als `NOG_NIET_AANGESLOTEN` in
 `catalogus-controle.mjs`.
 
-## 6. De ijking
+## 6. Stil minder zien is erger dan niets zien
 
-Twaalf mutaties, één per grendel, met de gemeten uitslag in de kop van
-`tests/scripts/kolomrechten-controle.test.ts`. Eén ervan stond er niet toen de
-lijst geschreven werd: de ijkingstest voor een sleutel tussen aanhalingstekens
-was meteen rood, want de aanhalingsmodus sloeg aan vóór de sleutelherkenning en
-`'goal_id':` werd in zijn geheel als string ingeslikt. Een controle die stilletjes
-mínder ziet — en niemand had hem ooit gevoed.
+Dit is wat de reviewronde op PR #140 opleverde, en het is de kern van waarom deze
+controle gevaarlijker kon zijn dan géén controle: **als de lezer een vorm niet
+kende, gaf hij mínder kolommen terug in plaats van "dit kan ik niet lezen".** Bij
+"kan ik niet lezen" word je rood en kijk je zelf; bij "minder kolommen" ben je
+groen en denk je dat het nagekeken is.
+
+Drie vormen deden dat, en de eerste is doodgewoon TypeScript:
+
+| Vorm | Wat er gebeurde |
+|---|---|
+| `{ owner_id: u, title }` — ES6-verkorting | de kolom verdween; met de grants van `693149e` reproduceert dit de 0140-storing **volledig groen** |
+| `z.object({ ...basis, … })` of `.extend()` | het schema gaf een te korte lijst, en `losSpreadOp()` bood die aan als volledig antwoord |
+| `insert([{…}, {…}])` | alleen het eerste object werd gelezen |
+
+De reparatie is één regel gedachtegang: **alles op diepte 1 dat de lezer niet
+thuis kan brengen, gaat luid naar buiten en maakt de hele schrijfactie
+onleesbaar.** Een onleesbare actie telt in béide richtingen niet mee en hoort met
+een reden op `NIET_TE_LEZEN`.
+
+## 7. De ijking
+
+Eenentwintig mutaties, één per grendel, met de gemeten uitslag in de kop van
+`tests/scripts/kolomrechten-controle.test.ts`.
+
+Drie ervan stonden er niet toen de lijst geschreven werd, en alle drie om
+dezelfde reden: de ijking was er eerder dan de reparatie.
+
+- **J** — een sleutel tussen aanhalingstekens werd als string ingeslikt.
+- **R** — de Windows-padgrendel stond op het wóórd `metSchuineStrepen`, dat in het
+  commentaar van élk normaliserend script staat. Hij bewaakte commentaar.
+- **T** — de ijking voerde zijn geval door een pad dat een éérdere grendel al
+  afving, en bleef dus groen toen ik de grendel uit zijn eigen naam weghaalde.
+
+R en T zijn woordelijk de val die CLAUDE.md beschrijft: *breek de grendel die de
+ijking noemt, niet zomaar iets.* Beide waren bij hun eerste meting **0 rood**.
 
 Daarnaast is het hoofdgeval tegen de échte database gemeten: met
 `revoke insert (ritme) on public.goals from authenticated` — de toestand van

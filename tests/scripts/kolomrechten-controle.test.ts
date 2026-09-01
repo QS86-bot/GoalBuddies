@@ -1,11 +1,15 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `levend-controle.test.ts`.
 import {
   argumentNa,
+  bronbestanden,
+  GEEN_SCHRIJFPAD,
+  NIET_TE_LEZEN,
+  bronnaam,
   beoordeel,
   beoordeelSchrijven,
   kolomNaam,
@@ -15,6 +19,7 @@ import {
   ontleedRechten,
   ontleedSchrijfrechten,
   rechtenVoor,
+  schrijfacties,
   schrijfIn,
   selectiesIn,
   velduitLokaal,
@@ -67,6 +72,42 @@ describe('lezen wat er in de code staat', () => {
   it('leest door een alias heen', () => {
     expect(kolomNaam('naam:display_name')).toBe('display_name');
     expect(kolomNaam(' id ')).toBe('id');
+  });
+
+  /** ⚠️ Een vorm die de lezer niet kent maakt de hele actie onleesbaar. */
+  it('meldt een onbekende vorm als onleesbaar in plaats van als minder kolommen', () => {
+    const uit = alsActies(schrijfIn('a.ts', `.from('goals').insert({ [k]: v, id: x })`));
+
+    expect(uit[0]?.kolommen).toBeNull();
+    expect(uit[0]?.reden).toContain('niet kent');
+  });
+
+  /** ⚠️ `insert([{…},{…}])` — `objectSleutels` leest alleen het eerste object. */
+  it('meldt een lijst van objecten als onleesbaar', () => {
+    const uit = alsActies(schrijfIn('a.ts', `.from('goals').insert([{ a: 1 }, { b: 2 }])`));
+
+    expect(uit[0]?.kolommen).toBeNull();
+    expect(uit[0]?.reden).toContain('lijst van objecten');
+  });
+
+  /**
+   * ⚠️ **Alleen een tweede argument lezen als er een komma stond.** Anders leest
+   *    `argumentNa` door tot de vólgende keten en vindt daar misschien een
+   *    `ignoreDuplicates` die bij een heel andere aanroep hoort — waarna het
+   *    UPDATE-recht stilzwijgend wegvalt.
+   */
+  it('pakt geen opties uit tekst die verderop in dezelfde keten staat', () => {
+    // ⚠️ Een commentaarregel die `ignoreDuplicates` nóemt staat in deze codebase
+    //    bij precies deze aanroepen — zie `koppelDoelAanGroep()`. Zonder de
+    //    kommatoets leest `argumentNa` door tot na de sluithaak, vindt hem daar,
+    //    en laat het UPDATE-recht stilzwijgend vallen.
+    const bron = [
+      `.from('week_reviews').upsert({ id: x })`,
+      `  // ooit stond hier { ignoreDuplicates: true }, zie migratie 0118`,
+      `  .select('id')`,
+    ].join('\n');
+
+    expect(schrijfIn('a.ts', bron)[0]?.rechten).toEqual(['INSERT', 'UPDATE']);
   });
 
   it('kijkt niet verder dan de volgende keten', () => {
@@ -183,6 +224,28 @@ describe('de grants inlezen', () => {
  *   L  de toets op een tabel zonder enig recht eruit        → 1 rood
  *   M  de worp op een afgekapte psql-regel eruit             → 1 rood
  *
+ * Na de review op PR #140 erbij. N tot en met P zijn stille gaten: de controle
+ * gaf mínder kolommen terug in plaats van "dit kan ik niet lezen", en daarmee
+ * kwam de 0140-storing er groen doorheen.
+ *
+ *   N  de ES6-verkorting niet als sleutel lezen              → 2 rood
+ *   O  `onbekend` niet luid maken in `schrijfIn`             → 1 rood
+ *   P  een schema met een spread tóch registreren            → 2 rood
+ *   Q  `ongemeten` uit `verlopenRegels` halen                → 1 rood
+ *   R  de normalisatie uit `bronnaam` slopen                 → 1 rood (in `padvormen`)
+ *   S  het `schemas`-argument uit `schrijfacties`            → 2 rood
+ *   T  opties lezen ook zonder voorafgaande komma            → 1 rood
+ *   U  een lijst van objecten niet melden                    → 1 rood
+ *   V  een botsende schemanaam stil laten winnen             → 1 rood
+ *
+ * ⚠️ **R en T waren bij hun eerste meting allebei 0 rood, en dat is het leerzame
+ *    deel.** R stond in `padvormen.test.ts` op het wóórd `metSchuineStrepen` —
+ *    dat komt in het commentaar van elk normaliserend script voor, dus de
+ *    grendel bewaakte commentaar. T had een ijking die zijn geval door een pad
+ *    voerde dat een éérdere grendel al afving: de vensterknip op `.from('` haalde
+ *    de tweede keten al weg. Beide zijn de val die CLAUDE.md beschrijft — een
+ *    ijking die groen blijft als je de grendel uit zijn eigen naam weghaalt.
+ *
  * ⚠️ **J stond er niet toen dit geschreven werd, en dat is het punt.** De
  *    ijkingstest voor een sleutel tussen aanhalingstekens was meteen rood: de
  *    aanhalingsmodus sloeg aan vóór de sleutelherkenning, dus `'goal_id':` werd
@@ -237,6 +300,36 @@ describe('objectSleutels', () => {
     expect(objectSleutels(tekst).sleutels).toEqual(['a']);
   });
 
+  /**
+   * ⚠️ **Het gat dat de security-review vond, en het zwaarste van deze PR.** Een
+   *    ES6-verkorting is een doodgewone TS-vorm, en deze lezer sloeg hem stil
+   *    over. Nagespeeld met de grants van `693149e`:
+   *    `.insert({ owner_id: u, title: t, ritme })` gaf `['owner_id', 'title']` —
+   *    de kolom zonder INSERT-recht was weg, de controle zweeg, en PostgREST
+   *    geeft daar 42501 op élke rij. Woordelijk de storing waarvoor deze controle
+   *    bestaat, en de poort bleef groen.
+   */
+  it('leest een ES6-verkorting als sleutel', () => {
+    expect(objectSleutels('{ owner_id: u, title }').sleutels).toEqual(['owner_id', 'title']);
+  });
+
+  it('leest een sleutel tussen dubbele aanhalingstekens', () => {
+    expect(objectSleutels('{ "goal_id": x, id: y }').sleutels).toEqual(['goal_id', 'id']);
+  });
+
+  /**
+   * ⚠️ **Alles wat deze lezer niet kent, gaat luid naar buiten.** Dat is de
+   *    reparatie achter alle drie de gevallen hierboven: bij "dit kan ik niet
+   *    lezen" word je rood en kijk je zelf, bij "minder kolommen" ben je groen en
+   *    denk je dat het nagekeken is. Het verschil is het hele issue.
+   */
+  it('meldt een berekende sleutel als onbekend in plaats van hem over te slaan', () => {
+    const uit = objectSleutels('{ [kolom]: waarde, id: x }');
+
+    expect(uit.sleutels).toEqual(['id']);
+    expect(uit.onbekend.length).toBeGreaterThan(0);
+  });
+
   it('meldt een spread apart in plaats van hem te negeren', () => {
     const uit = objectSleutels('{ ...gevalideerd.data, owner_id: u }');
 
@@ -249,7 +342,7 @@ describe('objectSleutels', () => {
   });
 
   it('valt niet om zonder accolade', () => {
-    expect(objectSleutels('rijen')).toEqual({ sleutels: [], spreads: [] });
+    expect(objectSleutels('rijen')).toEqual({ sleutels: [], spreads: [], onbekend: [] });
   });
 });
 
@@ -258,6 +351,33 @@ describe('zodSchemas', () => {
     const bron = `export const doelSchema = z.object({\n  ritme: z.enum(R).default('weekly'),\n  title: z.string(),\n});`;
 
     expect(zodSchemas(bron)).toEqual({ doelSchema: ['ritme', 'title'] });
+  });
+
+  /**
+   * ⚠️ **Een half gelezen schema is gevaarlijker dan geen schema.** `losSpreadOp()`
+   *    geeft een te korte lijst terug als volledig antwoord, en dan telt
+   *    `schrijfIn()` de actie als gelezen terwijl er kolommen ontbreken — de
+   *    storing van 0140 opnieuw, en groen. Niet registreren is het luide antwoord.
+   */
+  it.each([
+    ['een spread erin', `export const xSchema = z.object({ ...basis, title: z.string() });`],
+    ['een extend erachter', `export const xSchema = z.object({ a: z.string() }).extend({ b: z.string() });`],
+  ])('registreert een schema met %s niet', (_naam, bron) => {
+    expect(zodSchemas(bron)).toEqual({});
+  });
+
+  /**
+   * ⚠️ `afrondSchema` bestaat vandaag twee keer — in `weekly-schemas.ts` en in
+   *    `completion-schemas.ts`. De laatste in de mapvolgorde zou stil winnen, en
+   *    dan lost een spread op naar het verkeerde schema.
+   */
+  it('laat een botsende schemanaam niet stil winnen', () => {
+    const bron = [
+      `export const xSchema = z.object({ a: z.string() });`,
+      `export const xSchema = z.object({ b: z.string() });`,
+    ].join('\n');
+
+    expect((zodSchemas(bron) as Record<string, string[] | null>)['xSchema']).toBeNull();
   });
 
   /** ⚠️ Een afgeleid schema is bewust geen bron — zie de kop van `zodSchemas`. */
@@ -552,7 +672,9 @@ describe('beoordeelSchrijven', () => {
     const acties = schrijfIn('a.ts', `.from('goals').insert({ owner_id: u, title: t })`);
     const uit = beoordeelSchrijven({ acties, rechten: RECHTEN_SCHRIJF });
 
-    expect(uit).toEqual({ ontbrekend: [], ongeschreven: [], onleesbaar: [] });
+    expect(uit.ontbrekend).toEqual([]);
+    expect(uit.ongeschreven).toEqual([]);
+    expect(uit.onleesbaar).toEqual([]);
   });
 });
 
@@ -568,55 +690,73 @@ describe('beoordeelSchrijven', () => {
 describe('meldingen', () => {
   const leeg = { ontbrekend: [], ongeschreven: [], onleesbaar: [] };
 
+  /**
+   * ⚠️ **Eigen lijsten en niet die van de module.** Lazen deze tests
+   *    `GEEN_SCHRIJFPAD` rechtstreeks, dan hangen ze aan productiegegevens:
+   *    zodra het groepsinstellingenscherm `icon` gaat schrijven — wat de reden
+   *    bij die rij zélf aankondigt — breken ze om iets dat niets met hun
+   *    onderwerp te maken heeft, en is de goedkoopste reparatie een andere
+   *    willekeurige rij invullen. Dan bewaakt de ijking niets meer.
+   */
+  const lijsten = {
+    geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'geen scherm' }],
+    nietTeLezen: [
+      { pad: 'src/modules/goals/interview.ts', tabel: 'goals', reden: 'een functie, geen literaal' },
+    ],
+  };
+
   it('zwijgt als er niets te melden valt', () => {
-    expect(meldingen(leeg)).toEqual([]);
+    expect(meldingen(leeg, lijsten)).toEqual([]);
   });
 
   /** ⚠️ De must-allow: een beoordeelde uitzondering hoort níet elke dag te piepen. */
   it('laat een bekende uitzondering met rust', () => {
-    const uit = meldingen({
-      ...leeg,
-      ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['icon'] }],
-    });
+    const uit = meldingen(
+      { ...leeg, ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['icon'] }] },
+      lijsten,
+    );
 
     expect(uit).toEqual([]);
   });
 
   it('meldt een dode kolom die niet op de lijst staat', () => {
-    const uit = meldingen({
-      ...leeg,
-      ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['verzonnen'] }],
-    });
+    const uit = meldingen(
+      { ...leeg, ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['verzonnen'] }] },
+      lijsten,
+    );
 
     expect(uit).toHaveLength(1);
     expect(uit[0]).toContain('groups.verzonnen');
   });
 
   it('splitst een dode grant op twee kolommen in twee meldingen', () => {
-    const uit = meldingen({
-      ...leeg,
-      ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['een', 'twee'] }],
-    });
+    const uit = meldingen(
+      { ...leeg, ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['een', 'twee'] }] },
+      lijsten,
+    );
 
     expect(uit).toHaveLength(2);
   });
 
   it('meldt een onleesbaar pad dat niet op de lijst staat', () => {
-    const uit = meldingen({
-      ...leeg,
-      onleesbaar: [{ pad: 'src/nieuw.ts', tabel: 'goals', soort: 'insert', reden: 'iets' }],
-    });
+    const uit = meldingen(
+      { ...leeg, onleesbaar: [{ pad: 'src/nieuw.ts', tabel: 'goals', soort: 'insert', reden: 'iets' }] },
+      lijsten,
+    );
 
     expect(uit[0]).toContain('ongemeten is niet groen');
   });
 
   it('laat een bekend onleesbaar pad met rust', () => {
-    const uit = meldingen({
-      ...leeg,
-      onleesbaar: [
-        { pad: 'src/modules/goals/interview.ts', tabel: 'goals', soort: 'update', reden: 'x' },
-      ],
-    });
+    const uit = meldingen(
+      {
+        ...leeg,
+        onleesbaar: [
+          { pad: 'src/modules/goals/interview.ts', tabel: 'goals', soort: 'update', reden: 'x' },
+        ],
+      },
+      lijsten,
+    );
 
     expect(uit).toEqual([]);
   });
@@ -629,20 +769,71 @@ describe('verlopenRegels', () => {
    *    volgende bevinding op diezelfde plek stilletjes af.
    */
   it('meldt elke regel waarvoor geen bevinding meer bestaat', () => {
-    const uit = verlopenRegels({ ongeschreven: [], onleesbaar: [] });
+    const lijsten = {
+      geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'x' }],
+      nietTeLezen: [{ pad: 'src/a.ts', tabel: 'goals', reden: 'x' }],
+    };
+    const uit = verlopenRegels({ ongeschreven: [], onleesbaar: [], ongemeten: {} }, lijsten);
 
-    expect(uit.length).toBeGreaterThan(0);
+    expect(uit).toHaveLength(2);
     expect(uit.some((r: string) => r.includes('GEEN_SCHRIJFPAD'))).toBe(true);
     expect(uit.some((r: string) => r.includes('NIET_TE_LEZEN'))).toBe(true);
   });
 
-  it('zwijgt over een regel die nog steeds een bevinding is', () => {
-    const uit = verlopenRegels({
-      ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['icon'] }],
-      onleesbaar: [],
-    });
+  /**
+   * ⚠️ **Het gat dat de review vond, en het gevaarlijkste van deze PR.**
+   *    `ongeschreven` zwijgt om drie redenen: de grant werd tabelbreed, er is
+   *    geen grant, of één schrijfpad is onleesbaar. Zonder onderscheid leest
+   *    `verlopenRegels()` alle drie als "wordt geschreven — haal de uitzondering
+   *    weg". Nagespeeld: één onleesbare insert op `chat_messages` gaf de opdracht
+   *    om de rij voor `system_event` te verwijderen — de kolom die CLAUDE.md met
+   *    drie sloten bewaakt, omdat systeemberichten anders te vervalsen zijn.
+   *
+   *    **Een rode grendel die je vertelt een grendel te slopen, is erger dan geen
+   *    grendel**, en een verkeerde instructie in een grendel wordt op een dag
+   *    opgevolgd.
+   */
+  it('zegt "herzie" en niet "haal weg" als de tabel ongemeten is', () => {
+    const lijsten = {
+      geenSchrijfpad: [{ tabel: 'chat_messages', soort: 'INSERT', kolom: 'system_event', reden: 'x' }],
+      nietTeLezen: [],
+    };
+    const uit = verlopenRegels(
+      {
+        ongeschreven: [],
+        onleesbaar: [],
+        ongemeten: { 'chat_messages|INSERT': 'één schrijfpad naar deze tabel is niet te lezen' },
+      },
+      lijsten,
+    );
 
-    expect(uit.some((r: string) => r.includes('groups.icon'))).toBe(false);
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('ongemeten');
+    expect(uit[0]).not.toMatch(/wórdt geschreven/);
+  });
+
+  /** ⚠️ En zonder die reden is het wél gewoon verlopen — beide kanten. */
+  it('zegt "haal weg" als er niets ongemeten is', () => {
+    const lijsten = {
+      geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'x' }],
+      nietTeLezen: [],
+    };
+    const uit = verlopenRegels({ ongeschreven: [], onleesbaar: [], ongemeten: {} }, lijsten);
+
+    expect(uit[0]).toMatch(/wórdt geschreven/);
+  });
+
+  it('zwijgt over een regel die nog steeds een bevinding is', () => {
+    const lijsten = {
+      geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'x' }],
+      nietTeLezen: [],
+    };
+    const uit = verlopenRegels(
+      { ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['icon'] }], onleesbaar: [], ongemeten: {} },
+      lijsten,
+    );
+
+    expect(uit).toEqual([]);
   });
 });
 
@@ -659,31 +850,49 @@ describe('verlopenRegels', () => {
 describe('de echte codebase', () => {
   const WORTEL = join(__dirname, '..', '..');
 
-  function bronnen(map: string, uit: string[] = []): string[] {
-    for (const naam of readdirSync(map)) {
-      if (naam === 'node_modules' || naam === '.git') continue;
-      const pad = join(map, naam);
-      if (statSync(pad).isDirectory()) bronnen(pad, uit);
-      else if (/\.tsx?$/.test(naam) && !/\.test\.tsx?$/.test(naam)) uit.push(pad);
-    }
-    return uit;
-  }
-
-  const paden = ['src', 'app'].flatMap((m) => bronnen(join(WORTEL, m)));
-  const schemas: Record<string, string[]> = {};
-  for (const pad of paden) Object.assign(schemas, zodSchemas(readFileSync(pad, 'utf8')));
-
-  const acties: Actie[] = paden.flatMap((pad) =>
-    alsActies(schrijfIn(relative(WORTEL, pad), readFileSync(pad, 'utf8'), schemas)),
+  /**
+   * ⚠️ **Via `bronbestanden()` en `schrijfacties()` uit het script zélf**, en niet
+   *    via een eigen kopie ervan. Die kopie stond hier tot de review op PR #140,
+   *    en toen bleek waarom dat niet werkt: haal je in `schrijfacties()` het
+   *    `schemas`-argument weg, dan mist de échte controle `goals.ritme` — de
+   *    bevinding waar dit hele issue voor bestaat — en blijft élke test hier
+   *    groen, want het blok bouwde zijn eigen schema-map. Regel 18 vraag 3, met
+   *    een gemeten antwoord.
+   */
+  const acties: Actie[] = alsActies(
+    schrijfacties(bronbestanden(), (pad: string) => readFileSync(pad, 'utf8')),
   );
 
   const van = (tabel: string, soort: string): Actie[] =>
     acties.filter((a) => a.tabel === tabel && a.soort === soort);
 
-  it('vindt elke schrijfactie in src en app', () => {
-    // Zakt dit getal, dan is er een vorm bijgekomen die deze controle niet leest —
-    // en dan zwijgt hij over die tabel in beide richtingen.
-    expect(acties.length).toBeGreaterThanOrEqual(27);
+  /**
+   * ⚠️ **Gelijkheid en geen ondergrens, en dat verschil is de hele test.** Hier
+   *    stond `toBeGreaterThanOrEqual(27)` met erboven de zin "zakt dit getal, dan
+   *    is er een vorm bijgekomen die deze controle niet leest". Dat is precies
+   *    wat een ondergrens *niet* meet: een onzichtbare schrijfactie verlaagt de
+   *    teller niet, hij verhoogt hem gewoon niet. De test bleef dan groen terwijl
+   *    de belofte brak — regel 18 vraag 3, en vraag 4 erbij, want hij greep naar
+   *    een aantal in plaats van naar de belofte.
+   *
+   *    De tweede telling is onafhankelijk: een kale grep over dezelfde bestanden.
+   *    Die kent de parser niet en kan dus niet met hem meebewegen.
+   */
+  it('vindt élke PostgREST-schrijfketen in src en app', () => {
+    const geteld = bronbestanden()
+      .map((pad: string) => readFileSync(pad, 'utf8').match(/\.(insert|update|upsert)\(/g) ?? [])
+      .reduce((n: number, m: RegExpMatchArray | string[]) => n + m.length, 0);
+
+    expect(
+      acties.length,
+      'een schrijfactie die de parser niet ziet, telt hier niet mee — en dan zwijgt ' +
+        'de controle over die tabel in béide richtingen',
+    ).toBe(geteld);
+  });
+
+  /** ⚠️ Zonder deze regel bewaakt de test hierboven een leeg getal. */
+  it('vindt er meer dan een handvol', () => {
+    expect(acties.length).toBeGreaterThan(20);
   });
 
   /**
@@ -697,22 +906,67 @@ describe('de echte codebase', () => {
   });
 
   /**
-   * ⚠️ **De keten van QS8-253, die deze controle bij zijn eerste echte ronde
-   *    onderbroken aantrof.** Schema, kolom, CHECK, grant en trigger waren alle
-   *    vijf af; `maakWeekdoel()` somde de velden op en liet deze twee eruit, dus
-   *    een ritme-weekdoel kon niet bestaan. Er was niets kapot, en dus geen test
-   *    die het kon zien — regel 18 vraag 5.
+   * ⚠️ **De keten van QS8-253 is nog steeds onderbroken, en dat hoort zo te
+   *    blijven staan tot QS8-260 hem sluit.** `maakWeekdoel()` schrijft de twee
+   *    dagvelden niet, dus de grant erop is dood hout — en dat meldt de controle,
+   *    via `GEEN_SCHRIJFPAD`, met de reden erbij.
+   *
+   *    Een eerdere versie van deze PR zette de kolommen in de insert. Dat maakte
+   *    de melding stil zonder dat er ooit een getal in kon komen: geen enkel
+   *    scherm geeft ze mee, en `weekdoelSchema` heeft `.default(null)`. **De
+   *    dode-houtrichting toetst of een kolomnaam voorkomt, niet of er een pad is
+   *    dat er een waarde in stopt** — dus een kolom in een literaal zetten is de
+   *    goedkoopste manier om een QS8-113-melding te doven. Deze test houdt dat
+   *    tegen.
    */
-  it.each(['floor_days', 'ceiling_days'])('schrijft %s naar weekly_goals', (kolom) => {
-    expect(van('weekly_goals', 'insert')[0]?.kolommen).toContain(kolom);
-  });
+  it.each(['floor_days', 'ceiling_days'])(
+    'schrijft %s (nog) niet naar weekly_goals — zie QS8-260',
+    (kolom) => {
+      expect(van('weekly_goals', 'insert')[0]?.kolommen).not.toContain(kolom);
+    },
+  );
 
-  it('leest de kolommen van elke schrijfactie op één na twee', () => {
+  /**
+   * ⚠️ De lijst is uitputtend en geen ondergrens: komt er een derde onleesbare
+   *    vorm bij, dan hoort die beoordeeld te worden en niet meegeteld.
+   */
+  it('leest de kolommen van elke schrijfactie op twee na', () => {
     const onleesbaar = acties.filter((a) => a.kolommen === null);
 
     expect(onleesbaar.map((a) => a.pad).sort()).toEqual([
       'src/modules/ai/plan-toepassen.ts',
       'src/modules/goals/interview.ts',
     ]);
+  });
+
+  /**
+   * ⚠️ **De vorm van de uitzonderingslijsten, tegen het echte project.** De
+   *    unittests hierboven voeden hun eigen lijsten — anders hangen ze aan
+   *    productiegegevens en breken ze zodra iemand `groups.icon` gaat schrijven.
+   *    Wat dán niemand meer toetst is of de échte lijsten kloppen van vorm, en
+   *    dat is wat hier staat.
+   */
+  it('schrijft elk pad in NIET_TE_LEZEN met schuine strepen', () => {
+    for (const regel of NIET_TE_LEZEN) {
+      expect(regel.pad, `${regel.pad} — vergelijk met bronnaam(), die normaliseert`).not.toContain(
+        '\\',
+      );
+      expect(regel.reden.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('geeft elke regel in GEEN_SCHRIJFPAD een reden', () => {
+    for (const regel of GEEN_SCHRIJFPAD) {
+      expect(regel.reden.length, `${regel.tabel}.${regel.kolom} staat er zonder reden`).toBeGreaterThan(
+        20,
+      );
+    }
+  });
+
+  /** ⚠️ Op Windows levert `relative()` backslashes; de lijsten gebruiken `/`. */
+  it('normaliseert een pad naar de vorm die de lijsten opschrijven', () => {
+    expect(bronnaam(join(WORTEL, 'src', 'modules', 'goals', 'interview.ts'))).toBe(
+      'src/modules/goals/interview.ts',
+    );
   });
 });

@@ -42,7 +42,18 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { metSchuineStrepen } from './paden.mjs';
+
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Het pad zoals de uitzonderingslijsten het opschrijven — altijd met `/`. */
+export const bronnaam = (pad) => metSchuineStrepen(relative(WORTEL, pad));
+
+/** De boom waar deze controle over gaat: `src/` en `app/`, zonder tests. */
+export const BRONMAPPEN = ['src', 'app'];
+
+/** Alle bronbestanden van die boom, als absolute paden. */
+export const bronbestanden = () => BRONMAPPEN.flatMap((m) => bestanden(join(WORTEL, m)));
 
 /**
  * Kolommen die wél in een `select()` staan maar geen kolom van de tabel zijn.
@@ -244,15 +255,29 @@ export function argumentNa(inhoud, start) {
  * Werkt net zo goed op een `z.object({ … })` als op het argument van een
  * `insert()`: allebei zijn het een accolade met `sleutel:` op diepte 1.
  *
- * @returns `{ sleutels, spreads }` — `spreads` zijn de `...expr` die er nog
- *   ongelezen in staan; die lost `losSpreadOp()` op, of niemand.
+ * @returns `{ sleutels, spreads, onbekend }`. `spreads` zijn de `...expr` die er
+ *   nog ongelezen in staan; die lost `losSpreadOp()` op, of niemand. `onbekend`
+ *   is alles op diepte 1 dat deze lezer níet thuis kon brengen.
+ *
+ * ⚠️ **`onbekend` is de belangrijkste van de drie, en hij is er pas sinds de
+ *    review op PR #140.** Deze lezer gaf tot dan toe stilzwijgend mínder
+ *    kolommen terug als hij een vorm niet kende, en dat is dodelijker dan geen
+ *    controle: bij "dit kan ik niet lezen" word je rood en kijk je zelf, bij
+ *    "minder kolommen" ben je groen en denk je dat het nagekeken is.
+ *
+ *    Nagespeeld met de grants van commit `693149e`:
+ *    `.insert({ owner_id: u, title: t, ritme })` — een gewone ES6-verkorting —
+ *    leverde `['owner_id', 'title']` op. De kolom zonder INSERT-recht was weg,
+ *    de controle meldde niets, en PostgREST geeft daar 42501 op élke rij. Dat is
+ *    woordelijk de storing waarvoor deze controle bestaat.
  */
 export function objectSleutels(tekst) {
   const begin = tekst.indexOf('{');
-  if (begin === -1) return { sleutels: [], spreads: [] };
+  if (begin === -1) return { sleutels: [], spreads: [], onbekend: [] };
 
   const sleutels = [];
   const spreads = [];
+  const onbekend = [];
   let diepte = 0;
   let aanhaling = null;
   let inRegel = false;
@@ -291,12 +316,15 @@ export function objectSleutels(tekst) {
       i++;
       continue;
     }
+
+    const opDiepte1 = diepte === 1 && !inWaarde;
+
     if (c === "'" || c === '"' || c === '`') {
       // ⚠️ **Een sleutel tussen aanhalingstekens is geen string.** Wie hier meteen
       //    de aanhalingsmodus inschakelt, slikt `'goal_id':` in zijn geheel op en
       //    ziet die kolom nooit. Dat is een controle die stilletjes minder ziet,
       //    en de rode test die dit vond stond er eerder dan de reparatie.
-      if (diepte !== 1 || inWaarde || !/^'[A-Za-z0-9_]+'\s*:/.test(tekst.slice(i))) {
+      if (!opDiepte1 || !/^(['"])[A-Za-z0-9_]+\1\s*:/.test(tekst.slice(i))) {
         aanhaling = c;
         continue;
       }
@@ -324,8 +352,12 @@ export function objectSleutels(tekst) {
       continue;
     }
 
+    if (c === ',' || /\s/.test(c)) continue;
+
+    const rest = tekst.slice(i);
+
     // `...gevalideerd.data` — een spread die hier nog ongelezen is.
-    const spread = /^\.\.\.([A-Za-z0-9_.]+)/.exec(tekst.slice(i));
+    const spread = /^\.\.\.([A-Za-z0-9_.]+)/.exec(rest);
     if (spread !== null) {
       spreads.push(spread[1]);
       i += spread[0].length - 1;
@@ -333,16 +365,36 @@ export function objectSleutels(tekst) {
       continue;
     }
 
-    // `naam:` of `'naam':` — een sleutel op het bovenste niveau.
-    const sleutel = /^(?:'([A-Za-z0-9_]+)'|([A-Za-z_][A-Za-z0-9_]*))\s*:/.exec(tekst.slice(i));
+    // `naam:`, `'naam':` of `"naam":` — een sleutel met een waarde erachter.
+    const sleutel = /^(?:(['"])([A-Za-z0-9_]+)\1|([A-Za-z_][A-Za-z0-9_]*))\s*:/.exec(rest);
     if (sleutel !== null) {
-      sleutels.push(sleutel[1] ?? sleutel[2]);
+      sleutels.push(sleutel[2] ?? sleutel[3]);
       i += sleutel[0].length - 1;
       inWaarde = true;
+      continue;
     }
+
+    // ⚠️ `{ owner_id, title }` — de ES6-verkorting. De naam ís hier de kolom, en
+    //    hem overslaan was het gat dat de 0140-storing groen liet passeren.
+    const kort = /^([A-Za-z_][A-Za-z0-9_]*)\s*(?=[,}])/.exec(rest);
+    if (kort !== null) {
+      sleutels.push(kort[1]);
+      i += kort[0].length - 1;
+      inWaarde = true;
+      continue;
+    }
+
+    // ⚠️ **Alles wat hier overblijft is ongemeten, en ongemeten is niet groen.**
+    //    Een berekende sleutel (`[kolom]: waarde`), een methode, een vorm die
+    //    deze lezer niet kent — hem overslaan betekent een kolom minder zonder
+    //    dat iemand het ziet. Hij gaat luid naar buiten en `schrijfIn()` maakt de
+    //    hele schrijfactie er onleesbaar van.
+    const stuk = /^[^,]{1,40}/.exec(rest);
+    onbekend.push((stuk === null ? c : stuk[0]).trim());
+    inWaarde = true;
   }
 
-  return { sleutels, spreads };
+  return { sleutels, spreads, onbekend };
 }
 
 /**
@@ -366,7 +418,27 @@ export function zodSchemas(inhoud) {
   for (let m = patroon.exec(inhoud); m !== null; m = patroon.exec(inhoud)) {
     const arg = argumentNa(inhoud, m.index + m[0].length);
     if (arg === null) continue;
-    uit[m[1]] = objectSleutels(arg).sleutels;
+
+    const { sleutels, spreads, onbekend } = objectSleutels(arg);
+
+    // ⚠️ **Een half gelezen schema is gevaarlijker dan geen schema.** Staat er
+    //    `z.object({ ...basisvelden, … })` of een `.extend()` achter, dan is deze
+    //    lijst te kort — en `losSpreadOp()` geeft hem dan als volledig antwoord
+    //    terug, waarna `schrijfIn()` hem als volledig gelezen telt. De kolommen
+    //    die de client wél meestuurt zijn dan onzichtbaar, en dat is precies de
+    //    storing van 0140 opnieuw. Niet registreren is hier het luide antwoord:
+    //    `losSpreadOp()` geeft dan `null` en de schrijfactie wordt onleesbaar.
+    const staart = inhoud.slice(m.index + m[0].length + arg.length, m.index + m[0].length + arg.length + 40);
+    if (spreads.length > 0 || onbekend.length > 0 || /^\s*\)\s*\.(extend|merge|and)\b/.test(staart)) {
+      continue;
+    }
+
+    // ⚠️ Twee bestanden met dezelfde schemanaam — `afrondSchema` staat vandaag in
+    //    `weekly-schemas.ts` én in `completion-schemas.ts`. De laatste in de
+    //    mapvolgorde zou anders stil winnen, en dan lost een spread op naar het
+    //    verkeerde schema. Botsen ze, dan bestaat de naam voor deze lezer niet.
+    if (m[1] in uit) uit[m[1]] = null;
+    else uit[m[1]] = sleutels;
   }
 
   return uit;
@@ -393,8 +465,8 @@ export function velduitLokaal(inhoud, naam) {
   // Vorm 2: een `.map()` die een objectliteraal teruggeeft.
   const pijl = /^[^;]*?=>\s*\(\s*\{/.exec(rest);
   if (pijl !== null) {
-    const { sleutels, spreads } = objectSleutels(rest.slice(pijl[0].length - 1));
-    return spreads.length > 0 ? null : sleutels;
+    const { sleutels, spreads, onbekend } = objectSleutels(rest.slice(pijl[0].length - 1));
+    return spreads.length > 0 || onbekend.length > 0 ? null : sleutels;
   }
 
   // Vorm 1: een (meestal leeg) beginobject plus losse toewijzingen.
@@ -467,11 +539,30 @@ export function schrijfIn(pad, inhoud, schemas = {}) {
     const soort = aanroep[1];
     const na = aanroep.index + aanroep[0].length;
     const arg = argumentNa(venster, na);
-    const opties = arg === null ? null : argumentNa(venster, na + arg.length + 1);
+
+    // ⚠️ **Alleen een tweede argument lezen als er daadwerkelijk een komma stond.**
+    //    Eindigde het eerste argument op `)`, dan begint het lezen ánders ná de
+    //    sluithaak en loopt het door tot de volgende keten — en vindt daar
+    //    misschien een `ignoreDuplicates: true` die bij een héél andere aanroep
+    //    hoort. `rechtenVoor()` laat dan het UPDATE-recht vallen en een
+    //    ontbrekende kolomgrant blijft onbesproken.
+    const opties =
+      arg !== null && venster[na + arg.length] === ','
+        ? argumentNa(venster, na + arg.length + 1)
+        : null;
     const gemeen = { pad, tabel, soort, rechten: rechtenVoor(soort, opties) };
 
     if (arg === null) {
       uit.push({ ...gemeen, kolommen: null, reden: 'het argument is niet af te lezen' });
+      continue;
+    }
+
+    // ⚠️ `insert([{ … }, { … }])` — een bulk-insert. `objectSleutels()` leest
+    //    alleen het eerste object en zou de rest stil laten vallen. Vandaag komt
+    //    deze vorm niet voor (alles loopt via `.map()`); komt hij er, dan is dit
+    //    een luide melding en geen halve kolomlijst.
+    if (/^\s*\[/.test(arg)) {
+      uit.push({ ...gemeen, kolommen: null, reden: 'een lijst van objecten is hier niet te lezen' });
       continue;
     }
 
@@ -487,7 +578,16 @@ export function schrijfIn(pad, inhoud, schemas = {}) {
       continue;
     }
 
-    const { sleutels, spreads } = objectSleutels(arg);
+    const { sleutels, spreads, onbekend } = objectSleutels(arg);
+
+    if (onbekend.length > 0) {
+      uit.push({
+        ...gemeen,
+        kolommen: null,
+        reden: `\`${onbekend[0]}\` is een vorm die deze lezer niet kent`,
+      });
+      continue;
+    }
     if (sleutels.length === 0 && spreads.length === 0) {
       uit.push({ ...gemeen, kolommen: null, reden: 'geen objectliteraal' });
       continue;
@@ -571,10 +671,20 @@ export function ontleedSchrijfrechten(uitvoer) {
 /**
  * Legt de geschreven kolommen naast de schrijfrechten, in beide richtingen.
  *
- * @returns `{ ontbrekend, ongeschreven, onleesbaar }` — achtereenvolgens: een
- *   kolom die geschreven wordt zonder recht (de storing van 0140), een kolom met
- *   een recht dat niemand gebruikt (het dode hout van QS8-113), en een
- *   schrijfactie die hier niet te lezen was (ongemeten, en dus niet groen).
+ * @returns `{ ontbrekend, ongeschreven, onleesbaar, ongemeten }` — een kolom die
+ *   geschreven wordt zonder recht (de storing van 0140), een kolom met een recht
+ *   dat niemand gebruikt (het dode hout van QS8-113), een schrijfactie die hier
+ *   niet te lezen was, en de `tabel|recht`-paren waarover niets te zeggen viel.
+ *
+ * ⚠️ **Die vierde is er sinds de review op PR #140 en hij is niet cosmetisch.**
+ *    `ongeschreven` zwijgt om drie verschillende redenen: de grant is tabelbreed,
+ *    er is geen grant, of één schrijfpad is onleesbaar. Zonder `ongemeten` leest
+ *    `verlopenRegels()` alle drie als "wordt geschreven — haal de uitzondering
+ *    weg". Nagespeeld: één onleesbare insert op `chat_messages` was genoeg om
+ *    élke uitzondering als verlopen te melden, inclusief de opdracht de rij voor
+ *    `chat_messages.system_event` te verwijderen — de kolom die CLAUDE.md met
+ *    drie sloten bewaakt. **Een rode grendel die je vertelt een grendel te
+ *    slopen, is erger dan geen grendel.**
  */
 export function beoordeelSchrijven({ acties, rechten }) {
   const ontbrekend = [];
@@ -630,22 +740,37 @@ export function beoordeelSchrijven({ acties, rechten }) {
   //    tabelbrede grant zou dit `id`, `created_at` en elke triggerkolom melden,
   //    en een controle die alles meldt leer je te negeren.
   const ongeschreven = [];
+  const ongemeten = {};
 
   for (const [tabel, per] of Object.entries(rechten)) {
     for (const [soort, r] of Object.entries(per)) {
-      if (r.breed || r.kolommen.length === 0) continue;
+      const sleutel = `${tabel}|${soort}`;
 
-      const g = geschreven[`${tabel}|${soort}`];
-      // Niets geschreven, of niet volledig te lezen: dan is dit ongemeten en
-      // geen bevinding. Dat onleesbare pad staat al in `onleesbaar`.
-      if (g === undefined || !g.volledig) continue;
+      if (r.breed) {
+        ongemeten[sleutel] = 'de grant is tabelbreed';
+        continue;
+      }
+      if (r.kolommen.length === 0) {
+        ongemeten[sleutel] = 'er is geen kolomgrant';
+        continue;
+      }
+
+      const g = geschreven[sleutel];
+      if (g === undefined) {
+        ongemeten[sleutel] = 'niets in `src/` of `app/` schrijft naar deze tabel';
+        continue;
+      }
+      if (!g.volledig) {
+        ongemeten[sleutel] = 'één schrijfpad naar deze tabel is niet te lezen';
+        continue;
+      }
 
       const dood = r.kolommen.filter((k) => !g.kolommen.has(k));
       if (dood.length > 0) ongeschreven.push({ tabel, soort, kolommen: dood });
     }
   }
 
-  return { ontbrekend, ongeschreven, onleesbaar };
+  return { ontbrekend, ongeschreven, onleesbaar, ongemeten };
 }
 
 // ---------------------------------------------------------------------------
@@ -712,6 +837,27 @@ export const GEEN_SCHRIJFPAD = [
   {
     tabel: 'weekly_goals',
     soort: 'INSERT',
+    kolom: 'floor_days',
+    reden:
+      '⚠️ dit is een échte onderbroken keten en geen beoordeelde uitzondering — ' +
+      'QS8-260. 0140 gaf de kolom, de CHECK, de grant en de trigger; ' +
+      '`weekdoelSchema` valideert het veld en het dashboard leest het. Wat ' +
+      'ontbreekt is een scherm dat er een getal in zet, en zolang dat er niet is ' +
+      'kan een ritme-weekdoel niet bestaan. ⚠️ **De kolom in `maakWeekdoel()` ' +
+      'zetten haalt deze melding weg zonder de keten te sluiten** — dat stond in ' +
+      'een eerdere versie van deze PR en is bij de review teruggedraaid. De ' +
+      'dode-houtrichting toetst of een kolomnaam voorkomt, niet of er ooit een ' +
+      'andere waarde dan de default in komt.',
+  },
+  {
+    tabel: 'weekly_goals',
+    soort: 'INSERT',
+    kolom: 'ceiling_days',
+    reden: 'idem — zelfde keten, zelfde issue QS8-260.',
+  },
+  {
+    tabel: 'weekly_goals',
+    soort: 'INSERT',
     kolom: 'ai_generated',
     reden:
       'herkomst wordt bij een weekdoel niet door de client gezet — zie de kop van ' +
@@ -729,7 +875,7 @@ export const GEEN_SCHRIJFPAD = [
     tabel: 'weekly_goals',
     soort: 'INSERT',
     kolom: 'points_ceiling',
-    reden: 'idem.',
+    reden: 'idem — zelfde default op de kolom, zelfde domeinregel 10.',
   },
 ];
 
@@ -762,14 +908,33 @@ export const NIET_TE_LEZEN = [
   },
 ];
 
-function schrijfacties(paden, lees) {
+/**
+ * De schrijfacties van een hele boom, met de schema's van diezelfde boom.
+ *
+ * ⚠️ **Geëxporteerd omdat de test hem anders nabouwt**, en dan toetst hij een
+ *    kopie in plaats van wat er draait. Nagespeeld tijdens de review op PR #140:
+ *    het `schemas`-argument hier weghalen laat de échte controle `goals.ritme`
+ *    missen — de bevinding waar dit issue voor bestaat — en álle tests bleven
+ *    groen, want het testblok bouwde zijn eigen schema-map. Regel 18 vraag 3.
+ *
+ * ⚠️ **`metSchuineStrepen` en niet `relative()` alleen.** Op Windows levert
+ *    `relative()` `src\\modules\\…` en is `NIET_TE_LEZEN` met schuine strepen
+ *    geschreven; dan matcht geen enkele uitzondering, worden beide paden als
+ *    bevinding gemeld én beide regels als verlopen. Dat is vier valse meldingen
+ *    en een rode poort op Quintens eigen machine. Exact de fout van 26-08-2026
+ *    waarvoor `scripts/paden.mjs` gemaakt is — zie de kop daarvan.
+ */
+export function schrijfacties(paden, lees) {
   const schemas = {};
   for (const pad of paden) Object.assign(schemas, zodSchemas(lees(pad)));
-  return paden.flatMap((pad) => schrijfIn(relative(WORTEL, pad), lees(pad), schemas));
+  return paden.flatMap((pad) => schrijfIn(bronnaam(pad), lees(pad), schemas));
 }
 
 const dodeSleutel = (tabel, soort, kolom) => `${tabel}|${soort}|${kolom}`;
 const leesSleutel = (pad, tabel) => `${pad}|${tabel}`;
+
+/** De lijsten waartegen `meldingen()` en `verlopenRegels()` afwegen. */
+const LIJSTEN = { geenSchrijfpad: GEEN_SCHRIJFPAD, nietTeLezen: NIET_TE_LEZEN };
 
 /**
  * De bevindingen die niet op een uitzonderingslijst staan, als tekst.
@@ -779,13 +944,20 @@ const leesSleutel = (pad, tabel) => `${pad}|${tabel}`;
  *    elk verzonnen voorbeeld heeft per definitie een lege bevindingenlijst, en
  *    dan is élke uitzondering "verlopen". Een controle die je niet kunt voeden,
  *    kun je niet ijken (QS8-115).
+ *
+ * ⚠️ **En de lijsten komen als argument binnen en niet uit de module**, om
+ *    dezelfde reden. Lazen ze `GEEN_SCHRIJFPAD` rechtstreeks, dan hangt elke
+ *    ijking aan productiegegevens: zodra het groepsinstellingenscherm `icon`
+ *    gaat schrijven — wat de reden bij die rij zelf aankondigt — breken tests om
+ *    iets dat niets met hun onderwerp te maken heeft, en is de goedkoopste
+ *    reparatie een andere willekeurige rij invullen.
  */
-export function meldingen({ ontbrekend, ongeschreven, onleesbaar }) {
+export function meldingen({ ontbrekend, ongeschreven, onleesbaar }, lijsten = LIJSTEN) {
   const uit = [];
 
   for (const f of ontbrekend) uit.push(`${f.pad}  —  ${f.reden}`);
 
-  const bekend = new Set(GEEN_SCHRIJFPAD.map((r) => dodeSleutel(r.tabel, r.soort, r.kolom)));
+  const bekend = new Set(lijsten.geenSchrijfpad.map((r) => dodeSleutel(r.tabel, r.soort, r.kolom)));
   for (const o of ongeschreven) {
     for (const kolom of o.kolommen) {
       if (bekend.has(dodeSleutel(o.tabel, o.soort, kolom))) continue;
@@ -796,7 +968,7 @@ export function meldingen({ ontbrekend, ongeschreven, onleesbaar }) {
     }
   }
 
-  const gelezen = new Set(NIET_TE_LEZEN.map((r) => leesSleutel(r.pad, r.tabel)));
+  const gelezen = new Set(lijsten.nietTeLezen.map((r) => leesSleutel(r.pad, r.tabel)));
   for (const o of onleesbaar) {
     if (gelezen.has(leesSleutel(o.pad, o.tabel))) continue;
     uit.push(
@@ -812,29 +984,48 @@ export function meldingen({ ontbrekend, ongeschreven, onleesbaar }) {
  * Uitzonderingen die geen bevinding meer zijn, en dus weg horen.
  *
  * ⚠️ **Een verlopen uitzondering is een leugen in een grendel**: hij zegt "dit is
- *    beoordeeld" over een toestand die niet meer bestaat, en hij dekt daarna de
+ *    beoordeeld" over een toestand die niet meer bestaat, en dekt daarna de
  *    volgende bevinding op diezelfde plek stilletjes af. Dezelfde regel als bij
  *    `NOG_NIET_AANGESLOTEN` in `catalogus-controle.mjs`.
+ *
+ * ⚠️ **Maar "geen bevinding meer" is niet hetzelfde als "opgelost", en dat
+ *    onderscheid is de reparatie na de review op PR #140.** Zwijgt de controle
+ *    over een tabel omdat de grant tabelbreed werd of omdat één schrijfpad niet
+ *    te lezen is, dan is de uitzondering niet verlopen maar **ongemeten** — en
+ *    dan is de opdracht "herzie deze regel" en niet "haal hem weg". Zonder dat
+ *    onderscheid gaf één onleesbare insert op `chat_messages` de opdracht om de
+ *    rij voor `system_event` te verwijderen, de kolom met drie sloten.
  */
-export function verlopenRegels({ ongeschreven, onleesbaar }) {
+export function verlopenRegels({ ongeschreven, onleesbaar, ongemeten = {} }, lijsten = LIJSTEN) {
   const dood = new Set();
   for (const o of ongeschreven) {
     for (const kolom of o.kolommen) dood.add(dodeSleutel(o.tabel, o.soort, kolom));
   }
   const paden = new Set(onleesbaar.map((o) => leesSleutel(o.pad, o.tabel)));
+  const uit = [];
 
-  return [
-    ...GEEN_SCHRIJFPAD.filter((r) => !dood.has(dodeSleutel(r.tabel, r.soort, r.kolom))).map(
-      (r) =>
-        `\`${r.tabel}.${r.kolom}\` (${r.soort}) staat in \`GEEN_SCHRIJFPAD\` maar wórdt ` +
-        'geschreven — haal de regel weg',
-    ),
-    ...NIET_TE_LEZEN.filter((r) => !paden.has(leesSleutel(r.pad, r.tabel))).map(
-      (r) =>
-        `${r.pad} → \`${r.tabel}\` staat in \`NIET_TE_LEZEN\` maar is gewoon te lezen — ` +
+  for (const r of lijsten.geenSchrijfpad) {
+    if (dood.has(dodeSleutel(r.tabel, r.soort, r.kolom))) continue;
+
+    const reden = ongemeten[`${r.tabel}|${r.soort}`];
+    uit.push(
+      reden === undefined
+        ? `\`${r.tabel}.${r.kolom}\` (${r.soort}) staat in \`GEEN_SCHRIJFPAD\` maar wórdt ` +
+            'geschreven — haal de regel weg'
+        : `\`${r.tabel}.${r.kolom}\` (${r.soort}) staat in \`GEEN_SCHRIJFPAD\`, maar ${reden} — ` +
+            'de uitzondering is niet verlopen maar ongemeten; herzie hem, haal hem niet weg',
+    );
+  }
+
+  for (const r of lijsten.nietTeLezen) {
+    if (paden.has(leesSleutel(r.pad, r.tabel))) continue;
+    uit.push(
+      `${r.pad} → \`${r.tabel}\` staat in \`NIET_TE_LEZEN\` maar is gewoon te lezen — ` +
         'haal de regel weg',
-    ),
-  ];
+    );
+  }
+
+  return uit;
 }
 
 function hoofd() {
@@ -874,10 +1065,10 @@ function hoofd() {
   const rechten = ontleedRechten(uitLezen);
   const schrijfrechten = ontleedSchrijfrechten(uitSchrijven);
 
-  const paden = ['src', 'app'].flatMap((m) => bestanden(join(WORTEL, m)));
+  const paden = bronbestanden();
   const lees = (pad) => readFileSync(pad, 'utf8');
 
-  const selecties = paden.flatMap((pad) => selectiesIn(relative(WORTEL, pad), lees(pad)));
+  const selecties = paden.flatMap((pad) => selectiesIn(bronnaam(pad), lees(pad)));
   const leesfouten = beoordeel(selecties, rechten);
 
   const acties = schrijfacties(paden, lees);

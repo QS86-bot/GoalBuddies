@@ -205,15 +205,6 @@ export async function maakWeekdoel(
       title: gevalideerd.data.title,
       floor_text: gevalideerd.data.floor_text,
       ceiling_text: gevalideerd.data.ceiling_text,
-      // ⚠️ **Zonder deze twee kan een ritme-weekdoel niet bestaan** — QS8-258.
-      //    `weekdoelSchema` valideert ze en migratie 0140 geeft er een
-      //    INSERT-grant op, maar deze insert somde de velden op en liet ze eruit.
-      //    Elk schakeltje was af — schema, kolom, CHECK, grant, trigger — en de
-      //    keten was nergens verbonden, dus er was niets kapot dat een test kon
-      //    zien (onwrikbare regel 18 vraag 5). Gevonden door de schrijfkant van
-      //    `kolomrechten:controle`, die een grant meldt die niets gebruikt.
-      floor_days: gevalideerd.data.floor_days,
-      ceiling_days: gevalideerd.data.ceiling_days,
       cycle_start_date: cyclus.startDate,
       cycle_index: index,
     })
