@@ -94,7 +94,7 @@ export default function Aanmelden() {
           {...(nieuw ? { hint: t('aanmelden.wachtwoord_hint') } : {})}
           value={wachtwoord}
           onChangeText={setWachtwoord}
-          secureTextEntry
+          wachtwoord
           autoCapitalize="none"
           autoComplete={nieuw ? 'new-password' : 'current-password'}
           textContentType={nieuw ? 'newPassword' : 'password'}
