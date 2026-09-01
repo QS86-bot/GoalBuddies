@@ -32,6 +32,8 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { statSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
@@ -119,4 +121,155 @@ export function nummersPerBranch() {
     perBranch[ref.replace('refs/remotes/', '')] = nummersUit(namen);
   }
   return perBranch;
+}
+
+/* ---------------------------------------------------------------------------
+ * Het beeld verversen — QS8-247
+ * ------------------------------------------------------------------------- */
+
+/**
+ * ⚠️ **Waarom dit hieronder een eigen helft is, en niet in `nummersPerBranch()`
+ *    zit.** De scan hierboven leest `refs/remotes/origin` en zegt in zijn eigen
+ *    kop dat dat beeld zo oud is als je laatste fetch. Dat was eerlijk en het
+ *    was niet genoeg: op 31-08-2026 botste een migratienummer voor de **vierde**
+ *    keer, mét `migratie:nieuw`, om exact de reden die het script zelf al had
+ *    opgeschreven. Een gereedschap dat bestaat om een botsing te voorkomen en
+ *    waarvan de juistheid afhangt van een handeling die het zelf niet doet,
+ *    verplaatst het probleem naar de gebruiker.
+ *
+ * ⚠️ **En de grens loopt tussen de twee soorten aanroepers.** Wie een nummer
+ *    **uitdeelt** (`migratie:nieuw`, `migratie:hernummer`) fetcht: daar is een
+ *    verouderd beeld een verkeerd antwoord. Wie **controleert**
+ *    (`migraties:controle`) fetcht niet: die draait in de poort en in CI, waar
+ *    een netwerkaanroep de uitslag afhankelijk zou maken van bereikbaarheid —
+ *    en CI draait toch al op een verse checkout. Vandaar dat dit een losse
+ *    export is die je aanroept en geen bijwerking van de scan.
+ *
+ *    `tests/scripts/migratiebranches-fetch.test.ts` meet beide kanten met een
+ *    echte remote op schijf; die test is de enige die "wel gefetcht" van "niet
+ *    gefetcht" kan onderscheiden.
+ */
+
+/** Rule 14: een netwerkaanroep zonder tijdslimiet is een hang die niemand ziet. */
+const FETCH_TIJDSLIMIET_MS = 20_000;
+
+/**
+ * Het pad naar `FETCH_HEAD`, via git zelf.
+ *
+ * ⚠️ Niet `.git/FETCH_HEAD` met de hand plakken: in een worktree is `.git` een
+ *    bestand en staat de echte map ergens anders. `rev-parse --git-path` weet
+ *    dat wel.
+ */
+function fetchHeadPad() {
+  try {
+    const pad = git('rev-parse', '--git-path', 'FETCH_HEAD').trim();
+    return pad === '' ? null : isAbsolute(pad) ? pad : join(WORTEL, pad);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wanneer er voor het laatst gefetcht is, of `null` als dat niet te zien is.
+ *
+ * ⚠️ `FETCH_HEAD` wordt bij élke fetch herschreven, ook als er niets nieuws was.
+ *    Een verse kloon heeft hem nog niet — en "nog nooit gefetcht sinds de kloon"
+ *    is precies de toestand waarin het beeld het meest achterloopt.
+ */
+export function laatsteFetch() {
+  const pad = fetchHeadPad();
+  if (pad === null) return null;
+  try {
+    return statSync(pad).mtime;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `git fetch --prune origin`, met het oordeel of het gelukt is.
+ *
+ * Geeft `{ vers, sinds, fout }`: `vers` of het beeld nú opgehaald is, `sinds`
+ * wanneer het beeld waar je mee wérkt vandaan komt, en `fout` de eerste regel
+ * van wat git zei.
+ *
+ * ⚠️ **`sinds` wordt vóór de poging gelezen, en dat is een gemeten bevinding en
+ *    geen voorzorg.** Git maakt `FETCH_HEAD` aan zodra hij begint — óók als hij
+ *    de remote daarna niet kan bereiken. Las je de tijd erná, dan meldde een
+ *    mislukte fetch "van zojuist" terwijl er niets was opgehaald: precies de
+ *    valse zekerheid waar dit hele mechanisme tegen bestaat. Gevonden op
+ *    01-09-2026 doordat `migratie-fetch.test.ts` rood ging op een fixture met
+ *    een `FETCH_HEAD` van drie dagen oud.
+ */
+export function haalRemoteOp() {
+  const voorheen = laatsteFetch();
+  try {
+    execFileSync('git', ['fetch', '--prune', 'origin'], {
+      cwd: WORTEL,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: FETCH_TIJDSLIMIET_MS,
+    });
+    return { vers: true, sinds: laatsteFetch(), fout: null };
+  } catch (fout) {
+    return { vers: false, sinds: voorheen, fout: eersteRegel(fout) };
+  }
+}
+
+/** De eerste regel van wat git op stderr zei — de rest is ruis in een melding. */
+function eersteRegel(fout) {
+  const tekst = String(fout?.stderr ?? fout?.message ?? fout ?? '').trim();
+  return tekst === '' ? 'onbekende fout' : (tekst.split('\n')[0] ?? '').trim();
+}
+
+/**
+ * Hoe oud een beeld is, in woorden.
+ *
+ * ⚠️ Grof met opzet. Het verschil dat telt is "van net" tegen "van gisteren", en
+ *    niet 41 tegen 43 minuten. Een precieze duur leest als precisie die er niet
+ *    is.
+ *
+ * @param {number} ms
+ * @returns {string}
+ */
+export function ouderdomInWoorden(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return 'onbekend oud';
+  const minuten = Math.floor(ms / 60_000);
+  if (minuten < 1) return 'van zojuist';
+  if (minuten < 60) return `${minuten} ${minuten === 1 ? 'minuut' : 'minuten'} oud`;
+  const uren = Math.floor(minuten / 60);
+  if (uren < 24) return `${uren} uur oud`;
+  const dagen = Math.floor(uren / 24);
+  return `${dagen} ${dagen === 1 ? 'dag' : 'dagen'} oud`;
+}
+
+/**
+ * De regels die een uitdelend script afdrukt over de versheid van zijn beeld.
+ *
+ * ⚠️ **Het verschil tussen "net gefetcht" en "een dag oud" ís het risico**, en
+ *    dat is de hele reden dat deze melding bestaat. De oude tekst noemde de
+ *    onzekerheid wel, maar in beide gevallen dezelfde — en dan leest hij als
+ *    een disclaimer in plaats van als een waarschuwing.
+ *
+ * ⚠️ **Mislukken is geen reden om te stoppen.** Zonder netwerk moet je nog
+ *    steeds een migratie kunnen beginnen; weigeren maakt het werk niet af. Wat
+ *    wél moet is dat de uitkomst niet meer als zeker gelezen kan worden — dus
+ *    een `⚠`-regel met de leeftijd erbij en de opdracht om zelf te kijken.
+ *
+ * @param {{vers: boolean, sinds: Date | null, nu?: Date, fout?: string | null}} beeld
+ * @returns {string[]}
+ */
+export function versheidsmelding({ vers, sinds, nu = new Date(), fout = null }) {
+  if (vers) return ['✓ remote-beeld ververst (git fetch --prune origin)'];
+
+  const ouderdom =
+    sinds instanceof Date && !Number.isNaN(sinds.getTime())
+      ? `van ${sinds.toISOString().slice(0, 16).replace('T', ' ')} UTC, ${ouderdomInWoorden(nu.getTime() - sinds.getTime())}`
+      : 'nog nooit ververst sinds de kloon';
+
+  return [
+    `⚠ Kon niet fetchen: ${fout ?? 'onbekende fout'}`,
+    `  Dit beeld is ${ouderdom}.`,
+    '  Controleer zelf of er elders hoger genummerd is voordat je dit nummer gebruikt.',
+  ];
 }

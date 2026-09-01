@@ -449,6 +449,12 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   kiest, en nog een keer vlak vóór je landt** — en vergeet niet dat het
   productieregister meeschuift als je hernummert.
 
+  ⚠️ **De eerste helft daarvan doet `migratie:nieuw` sinds 01-09 zelf** (QS8-247):
+  hij fetcht voordat hij telt, en zegt het als dat niet lukte. **De tweede helft
+  blijft handwerk** — hij fetcht op het moment dat je het nummer kiest, en niet op
+  het moment dat je landt. De regel en de grens met `migraties:controle` staan in
+  `CLAUDE.md`.
+
 - **⚠️ Deze drie documenten beschrijven dezelfde stand en lopen uiteen — QS8-125.**
   `CLAUDE.md`, `docs/WERKVOORRAAD.md` §0 en dit bestand zijn drie handgeschreven
   kopieën van hetzelfde. Werk je er één bij, dan liegen de andere twee. Op 23-08

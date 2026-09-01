@@ -4,6 +4,8 @@ import {
   alsNummer,
   nummersUit,
   ontbrekendPerBranch,
+  ouderdomInWoorden,
+  versheidsmelding,
 } from '../../scripts/migratiebranches.mjs';
 
 /**
@@ -128,5 +130,82 @@ describe('alsNummer', () => {
   it('schrijft vier cijfers, zoals de bestandsnamen', () => {
     expect(alsNummer(7)).toBe('0007');
     expect(alsNummer(131)).toBe('0131');
+  });
+});
+
+/**
+ * De versheidsmelding — QS8-247.
+ *
+ * ⚠️ **De belofte is niet "er komt een waarschuwing".** Die stond er al: de scan
+ *    zei in zijn eigen commentaar dat het beeld zo oud is als je laatste fetch,
+ *    en op 31-08-2026 botste het nummer een **vierde** keer. De belofte is dat
+ *    je aan de melding kunt **zien welk van de twee** het is — net opgehaald, of
+ *    van gisteren. Eén tekst voor beide gevallen leest als een disclaimer, en
+ *    een disclaimer leer je overslaan.
+ *
+ * ⚠️ Dat "doortellen na een mislukte fetch" mág is een keuze en geen omissie:
+ *    zonder netwerk moet je een migratie kunnen beginnen, en weigeren maakt het
+ *    werk niet af. Wat de melding dan moet doen is de zekerheid weghalen. Dat
+ *    de fetch daadwerkelijk gebeurt, kan hier niet gemeten worden — dat doet
+ *    `migratie-fetch.test.ts` met een echte remote op schijf.
+ */
+describe('ouderdomInWoorden', () => {
+  it.each([
+    ['van zojuist', 5_000],
+    ['1 minuut oud', 61_000],
+    ['42 minuten oud', 42 * 60_000],
+    ['3 uur oud', 3 * 3_600_000],
+    ['1 dag oud', 25 * 3_600_000],
+    ['4 dagen oud', 4 * 86_400_000],
+  ])('zegt %s', (verwacht, ms) => {
+    expect(ouderdomInWoorden(ms)).toBe(verwacht);
+  });
+
+  /** Een klok die achteruit loopt is geen reden om "−2 minuten oud" te schrijven. */
+  it.each([
+    ['negatief', -1],
+    ['NaN', Number.NaN],
+  ])('houdt zich in bij %s', (_naam, ms) => {
+    expect(ouderdomInWoorden(ms)).toBe('onbekend oud');
+  });
+});
+
+describe('versheidsmelding', () => {
+  it('meldt één regel als het beeld nét ververst is', () => {
+    const regels = versheidsmelding({ vers: true, sinds: new Date(), fout: null });
+    expect(regels).toHaveLength(1);
+    expect(regels[0]).toContain('ververst');
+  });
+
+  /**
+   * ⚠️ **Dit onderscheid ís de bevinding.** Zou hier dezelfde tekst staan als
+   *    hierboven, dan bewaakt de melding niets.
+   */
+  it('noemt bij een mislukte fetch de leeftijd van het beeld', () => {
+    const nu = new Date('2026-08-31T20:00:00Z');
+    const regels = versheidsmelding({
+      vers: false,
+      sinds: new Date('2026-08-29T20:00:00Z'),
+      nu,
+      fout: 'fatal: could not read from remote repository',
+    });
+
+    expect(regels.join('\n')).toContain('Kon niet fetchen');
+    expect(regels.join('\n')).toContain('2026-08-29 20:00');
+    expect(regels.join('\n')).toContain('2 dagen oud');
+    expect(regels.join('\n')).toContain('Controleer zelf');
+  });
+
+  /**
+   * ⚠️ Een verse kloon heeft nog geen `FETCH_HEAD`, en dat is juist de toestand
+   *    waarin het beeld het verst achterloopt — daar mag geen lege datum staan.
+   */
+  it('zegt het met zoveel woorden als er nog nooit gefetcht is', () => {
+    const regels = versheidsmelding({ vers: false, sinds: null, fout: 'geen origin' });
+    expect(regels.join('\n')).toContain('nog nooit ververst sinds de kloon');
+  });
+
+  it('valt niet om zonder foutmelding', () => {
+    expect(versheidsmelding({ vers: false, sinds: null }).join('\n')).toContain('onbekende fout');
   });
 });
