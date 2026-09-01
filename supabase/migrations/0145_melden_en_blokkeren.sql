@@ -7,18 +7,7 @@
 --   drop function if exists public.deblokkeer(uuid);
 --   drop function if exists public.meld(uuid, uuid, uuid, text, text);
 --   drop function if exists public.meldingen_over();
---   -- ⚠️ **De revoke hoort er ook bij een triggerfunctie te staan**, en dat was hier
---    vergeten. `alter default privileges` deelt élke nieuwe functie in `public`
---    uit aan `anon`, `authenticated` én `service_role`; zonder dit blok staat de
---    triggerfunctie als RPC in de API en kan iedereen hem aanroepen. Drie tests
---    werden er rood van (`functiegrants`, `hulpfuncties`, `epic7`) — precies
---    waarvoor ze in 0115 gebouwd zijn.
---
--- ⚠️ Géén `grant execute` terug: een trigger draait als zijn eigenaar en heeft
---    geen enkel uitvoerrecht van een client nodig.
-revoke all on function public.meld_uitzetting() from public, anon, authenticated;
-
-drop trigger if exists group_members_uitzetting on public.group_members;
+--   drop trigger if exists group_members_uitzetting on public.group_members;
 --   drop function if exists public.meld_uitzetting();
 --   drop function if exists public.blokkade_met_groep(uuid, uuid);
 --   drop table if exists public.reports;
@@ -641,6 +630,17 @@ begin
   return new;
 end;
 $$;
+
+-- ⚠️ **De revoke hoort er ook bij een triggerfunctie te staan**, en dat was hier
+--    vergeten. `alter default privileges` deelt élke nieuwe functie in `public`
+--    uit aan `anon`, `authenticated` én `service_role`; zonder dit blok staat de
+--    triggerfunctie als RPC in de API en kan iedereen hem aanroepen. Drie tests
+--    werden er rood van (`functiegrants`, `hulpfuncties`, `epic7`) — precies
+--    waarvoor ze in 0115 gebouwd zijn.
+--
+-- ⚠️ Géén `grant execute` terug: een trigger draait als zijn eigenaar en heeft
+--    geen enkel uitvoerrecht van een client nodig.
+revoke all on function public.meld_uitzetting() from public, anon, authenticated;
 
 -- ⚠️ **AFTER en niet BEFORE.** `guard_group_member_update()` draait BEFORE en
 --    kan `new.status` terugzetten naar de oude waarde voor wie geen beheerder
