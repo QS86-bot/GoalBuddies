@@ -13,6 +13,9 @@
 --   alter table public.goals drop constraint if exists goals_ritme_valid;
 --   alter table public.goals drop column if exists ritme;
 --
+--   ⚠️ De kolomgrants hoeven hier niet apart teruggedraaid: een grant hangt aan
+--      de kolom en verdwijnt met `drop column` mee.
+--
 --   ⚠️ `day_checkins` gaat in zijn geheel weg en dat kost geschiedenis: de dagen
 --      waarop iemand heeft opgedaagd. Wat er níét mee weggaat zijn de punten en
 --      de voltooiingen — die staan in `points_ledger` en `completions` en zijn
@@ -104,6 +107,24 @@ comment on column public.goals.ritme is
   'dat doet weekly_goals.ceiling_days. Dit veld stuurt het voorstel voor het '
   'volgende weekdoel, en straks of er een dagreeks bestaat (A53).';
 
+-- ⚠️ **Een nieuwe kolom is niet schrijfbaar, en dat is geen detail.** `goals`
+--    heeft sinds 0046 een kolomgrant voor INSERT en geen tabelgrant; een kolom
+--    die daar niet in staat, levert `42501` op zodra de client hem meestuurt —
+--    en de client stuurt hem mee, want `doelSchema` geeft `ritme` een default.
+--    Zonder deze regel is élk doel aanmaken kapot en niet alleen een ritme-doel.
+--
+--    Precies de keten uit onwrikbare regel 18 vraag 5, maar dan andersom: bij
+--    QS8-113 lag er een kolom die niemand kon vullen; hier zou een bestaand
+--    schrijfpad breken op een kolom die erbij kwam. Beide kanten zijn onzichtbaar
+--    zonder een database, en deze is gevonden door de suite lokaal te draaien.
+grant insert (ritme) on public.goals to authenticated;
+
+-- ⚠️ **Met opzet geen UPDATE.** Het ritme wordt bij het aanmaken gekozen; er is
+--    geen scherm dat het achteraf verzet, en een grant zonder schrijfpad is
+--    precies het dode hout van QS8-113. Komt dat scherm er, dan hoort de grant
+--    in díe migratie — samen met het antwoord op de vraag wat er dan met de
+--    lopende week gebeurt (niets: die draagt zijn eigen `ceiling_days`).
+
 -- ---------------------------------------------------------------------------
 -- 2. De vloer en het plafond in dagen
 -- ---------------------------------------------------------------------------
@@ -134,9 +155,62 @@ comment on column public.weekly_goals.ceiling_days is
   'weekdoel dat op tekst wordt beoordeeld. Is deze kolom gevuld, dan telt de '
   'week dagen en leidt niveau_uit_dagen() het bereikte niveau af (QS8-253).';
 
+-- Zelfde reden als bij `goals.ritme` hierboven: 0043 geeft `weekly_goals` een
+-- kolomgrant voor INSERT. `weekdoelSchema` zet beide velden standaard op NULL en
+-- stuurt ze dus altijd mee, ook bij een gewoon weekdoel.
+grant insert (floor_days, ceiling_days) on public.weekly_goals to authenticated;
+
+-- ⚠️ Geen UPDATE, en hier weegt dat zwaarder dan bij `goals.ritme`: `ceiling_days`
+--    ís het oordeel over deze week. Wie hem halverwege van 5 naar 3 zet, haalt
+--    zijn plafond met terugwerkende kracht. Dat is dezelfde soort verzetbaarheid
+--    die 0043 t/m 0046 voor `cycle_start_date` en de punten hebben dichtgezet.
+
 -- ---------------------------------------------------------------------------
--- 3. De dagelijkse rem
+-- 3. De afvinkingen zelf
 -- ---------------------------------------------------------------------------
+
+create table if not exists public.day_checkins (
+  id             uuid        primary key default gen_random_uuid(),
+  weekly_goal_id uuid        not null references public.weekly_goals (id) on delete cascade,
+  -- ⚠️ De datum in de tijdzone van de gebruiker, aangeleverd door de client.
+  --    Welke dag het "daar" is, wordt uitsluitend in `shared/time` bepaald
+  --    (correctheidsregel 7) — precies zoals bij `daily_moves.local_date`. Wat
+  --    de server wél toetst is dat die datum binnen de cyclus van het weekdoel
+  --    valt; zie `afvinking_binnen_de_cyclus()`.
+  local_date     date        not null,
+  created_at     timestamptz not null default now()
+);
+
+comment on table public.day_checkins is
+  'Eén rij per dag waarop aan een ritme-weekdoel is gewerkt (QS8-253). '
+  'Uitsluitend leesbaar en schrijfbaar voor de eigenaar van het doel — ook in '
+  'een open groep (A41): een rooster met gaten is fijnmaziger tegenslag dan een '
+  'gemiste week, en domeinregel 7 wordt daardoor strenger en niet losser.';
+
+-- ⚠️ **De grendel.** Twee keer op dezelfde dag afvinken telt één keer, en dat is
+--    een index en geen afspraak. Zonder deze index is elk dagdoel met één knop
+--    op zeven te krijgen.
+create unique index if not exists day_checkins_een_per_dag
+  on public.day_checkins (weekly_goal_id, local_date);
+
+-- Onwrikbare regel 11: een index op elke foreign key en op elke kolom waarop
+-- gefilterd wordt. De unieke index hierboven dekt `weekly_goal_id` al als
+-- voorloopkolom; deze dekt het opruimen per datum.
+create index if not exists day_checkins_datum_idx
+  on public.day_checkins (local_date);
+
+-- ---------------------------------------------------------------------------
+-- 4. De dagelijkse rem
+-- ---------------------------------------------------------------------------
+
+-- ⚠️ **Deze functie staat ná de tabel, en dat is geen smaak.** Een `language
+--    sql`-body wordt bij `create` geparseerd en tegen het schema gelegd; stond
+--    dit blok vóór sectie 3, dan valt de migratie om op `relation
+--    "day_checkins" does not exist`. Bij `plpgsql` gebeurt dat niet — daar wordt
+--    de body pas bij de eerste aanroep ontleed, en dat is precies waarom
+--    `afvinking_binnen_de_cyclus()` hieronder wél op zijn oorspronkelijke plek
+--    kon staan. De policies in sectie 6 roepen deze functie aan, dus verder naar
+--    achteren kan hij niet.
 
 /**
  * Hoeveel dagafvinkingen mag de ingelogde gebruiker nu nog maken?
@@ -144,7 +218,7 @@ comment on column public.weekly_goals.ceiling_days is
  * Zelfde vorm en zelfde reden als `weekdoelen_over()` uit 0091 en
  * `weekplanstappen_over()` uit 0138 — beveiligingsregel 5.
  *
- * ⚠️ De unieke index hieronder begrenst één weekdoel al tot zeven afvinkingen.
+ * ⚠️ De unieke index in sectie 3 begrenst één weekdoel al tot zeven afvinkingen.
  *    Wat hij níét begrenst is het aantal wéékdoelen, en dus is dit geen dubbele
  *    beveiliging maar de enige die telt bij misbruik.
  *
@@ -179,40 +253,6 @@ comment on function public.dagafvinkingen_over() is
 
 revoke all on function public.dagafvinkingen_over() from public, anon, authenticated;
 grant execute on function public.dagafvinkingen_over() to authenticated;
-
--- ---------------------------------------------------------------------------
--- 4. De afvinkingen zelf
--- ---------------------------------------------------------------------------
-
-create table if not exists public.day_checkins (
-  id             uuid        primary key default gen_random_uuid(),
-  weekly_goal_id uuid        not null references public.weekly_goals (id) on delete cascade,
-  -- ⚠️ De datum in de tijdzone van de gebruiker, aangeleverd door de client.
-  --    Welke dag het "daar" is, wordt uitsluitend in `shared/time` bepaald
-  --    (correctheidsregel 7) — precies zoals bij `daily_moves.local_date`. Wat
-  --    de server wél toetst is dat die datum binnen de cyclus van het weekdoel
-  --    valt; zie `afvinking_binnen_de_cyclus()`.
-  local_date     date        not null,
-  created_at     timestamptz not null default now()
-);
-
-comment on table public.day_checkins is
-  'Eén rij per dag waarop aan een ritme-weekdoel is gewerkt (QS8-253). '
-  'Uitsluitend leesbaar en schrijfbaar voor de eigenaar van het doel — ook in '
-  'een open groep (A41): een rooster met gaten is fijnmaziger tegenslag dan een '
-  'gemiste week, en domeinregel 7 wordt daardoor strenger en niet losser.';
-
--- ⚠️ **De grendel.** Twee keer op dezelfde dag afvinken telt één keer, en dat is
---    een index en geen afspraak. Zonder deze index is elk dagdoel met één knop
---    op zeven te krijgen.
-create unique index if not exists day_checkins_een_per_dag
-  on public.day_checkins (weekly_goal_id, local_date);
-
--- Onwrikbare regel 11: een index op elke foreign key en op elke kolom waarop
--- gefilterd wordt. De unieke index hierboven dekt `weekly_goal_id` al als
--- voorloopkolom; deze dekt het opruimen per datum.
-create index if not exists day_checkins_datum_idx
-  on public.day_checkins (local_date);
 
 -- ---------------------------------------------------------------------------
 -- 5. Een afvinking valt binnen de week waar hij bij hoort
