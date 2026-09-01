@@ -44,6 +44,19 @@ interface Props {
    *    en niet stil anders.
    */
   readonly onWeghalen?: (() => void) | undefined;
+  /**
+   * Melden van het bericht van een ánder — QS8-232.
+   *
+   * ⚠️ **Alleen doorgeven bij een bericht dat niet van jou is.** Een meldknop
+   *    onder je eigen zin is onzin, en de database weigert hem ook (`reason:
+   *    self`).
+   *
+   * ⚠️ Hij staat naast de tijd en niet achter een lang indrukken. Een meldknop
+   *    die je moet ontdekken, is een meldknop die niet bestaat op het moment dat
+   *    iemand hem nodig heeft — en dat moment is precies het moment waarop je
+   *    niet gaat zoeken.
+   */
+  readonly onMelden?: (() => void) | undefined;
 }
 
 export function ChatRegel({
@@ -53,6 +66,7 @@ export function ChatRegel({
   vanMij = false,
   tijd,
   onWeghalen,
+  onMelden,
 }: Props) {
   const c = useTheme().colors;
 
@@ -96,12 +110,21 @@ export function ChatRegel({
 
         {/* `Caption` neemt met opzet geen `style` aan — de typografie hoort van
             het stelsel te komen. De uitlijning gaat dus via een omhulsel. */}
-        {tijd === undefined && onWeghalen === undefined ? null : (
+        {tijd === undefined && onWeghalen === undefined && onMelden === undefined ? null : (
           <View style={[styles.voet, vanMij ? styles.tijdRechts : null]}>
             {tijd === undefined ? null : <Caption>{tijd}</Caption>}
             {onWeghalen === undefined ? null : (
               <Pressable onPress={onWeghalen} accessibilityRole="button">
                 <Caption>{t('chat.weghalen')}</Caption>
+              </Pressable>
+            )}
+            {onMelden === undefined ? null : (
+              <Pressable
+                onPress={onMelden}
+                accessibilityRole="button"
+                accessibilityLabel={t('melden.bericht_knop')}
+              >
+                <Caption>{t('melden.titel')}</Caption>
               </Pressable>
             )}
           </View>

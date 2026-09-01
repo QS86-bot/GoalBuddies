@@ -219,6 +219,16 @@ export default function GroepDetail() {
                   })}
                 </Caption>
               ) : null}
+
+              {/*
+                ⚠️ QS8-232. De ingang naar melden, blokkeren en — voor een
+                   beheerder — iemand uit de groep zetten. Hij staat hier en niet
+                   achter de beheerderinstellingen: die zijn onbereikbaar voor
+                   precies de leden die dit nodig hebben.
+              */}
+              <Button variant="stil" block onPress={() => router.push(`/groep/leden/${id}`)}>
+                {t('groepdetail.naar_leden')}
+              </Button>
             </Card>
 
             {/*

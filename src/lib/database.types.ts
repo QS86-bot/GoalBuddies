@@ -1148,6 +1148,63 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          bericht_kopie: string | null
+          created_at: string
+          group_id: string
+          id: string
+          message_id: string | null
+          reden: string
+          reporter_id: string
+          status: string
+          subject_id: string
+          toelichting: string | null
+        }
+        Insert: {
+          bericht_kopie?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          message_id?: string | null
+          reden: string
+          reporter_id: string
+          status?: string
+          subject_id: string
+          toelichting?: string | null
+        }
+        Update: {
+          bericht_kopie?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          message_id?: string | null
+          reden?: string
+          reporter_id?: string
+          status?: string
+          subject_id?: string
+          toelichting?: string | null
+        }
+        Relationships: []
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       group_join_requests: {
         Row: {
           bericht: string | null
@@ -2296,6 +2353,40 @@ export type Database = {
       }
     }
     Functions: {
+      blokkeer: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      deblokkeer: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      meld: {
+        Args: {
+          p_group_id: string
+          p_message_id?: string | null
+          p_reden?: string
+          p_subject_id?: string | null
+          p_toelichting?: string | null
+        }
+        Returns: Json
+      }
+      mijn_blokkades: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          display_name: string
+          user_id: string
+        }[]
+      }
+      meldingen_over: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      verwijder_lid: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_user_id: string }
+        Returns: Json
+      }
       activeer_weekplanstap: {
         Args: {
           p_cycle_index: number

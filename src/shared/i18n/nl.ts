@@ -2031,7 +2031,6 @@ export const nl = {
   'overzicht.eyebrow': 'DE AFGELOPEN TWAALF WEKEN',
   'overzicht.open': 'Bekijk je overzicht',
   'overzicht.laden_mislukt': 'Je overzicht kon niet geladen worden.',
-  'overzicht.opnieuw': 'Opnieuw proberen',
 
   'overzicht.weken_kop': 'Twaalf weken',
   'overzicht.weken_leeg': 'Zodra je je eerste week afrondt, komt hij hier te staan.',
@@ -2077,8 +2076,6 @@ export const nl = {
   'vragenlijst.overslaan': 'Sla over',
   'vragenlijst.volgende': 'Volgende',
   'vragenlijst.vorige': 'Terug',
-  'vragenlijst.klaar': 'Klaar',
-  'vragenlijst.opslaan_mislukt': 'Je antwoorden konden niet opgeslagen worden.',
   'vragenlijst.alles_overslaan': 'Alles overslaan kan ook. Je verliest er niets mee en je kunt het later invullen.',
 
   'vragenlijst.focus.vraag': 'Waar wil je je op richten?',
@@ -2169,7 +2166,6 @@ export const nl = {
    *    is erger dan geen belofte. De zin zegt precies wat er gebeurd is.
    */
   'ontdek.verzonden': 'Je aanvraag staat bij de beheerder van deze groep. Of en wanneer die reageert, bepaalt die zelf.',
-  'ontdek.al_aangevraagd': 'Aangevraagd',
   'ontdek.over_nog': 'Je kunt vandaag nog {aantal} groepen aanschrijven.',
   'ontdek.over_op': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
 
@@ -2222,6 +2218,99 @@ export const nl = {
   'voertaal.en': 'Engels',
 
   'validatie.groepsomschrijving_lang': 'Hou het bij 280 tekens.',
+
+
+  // ---------------------------------------------------------------------------
+  // Melden en blokkeren — QS8-232, migratie 0145
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De copy belooft precies wat er gebeurt en geen woord meer.** Er is geen
+  //    moderatieproces — dat staat als `phase:v3` op het bord — dus de eerlijke
+  //    zin is: de beheerder van deze groep ziet het, en wij kunnen het uitlezen.
+  //    "Wordt beoordeeld" terwijl er niemand kijkt, is erger dan geen meldknop:
+  //    dan wacht iemand op een uitkomst die nooit komt en doet in de tussentijd
+  //    niets anders om zichzelf te helpen.
+  //
+  // ⚠️ **Geen enkele zin hier bevestigt of ontkent dat iemand geblokkeerd is.**
+  //    Er is geen scherm dat "je bent geblokkeerd" zegt, en er is er ook geen dat
+  //    "deze persoon heeft jou geblokkeerd" zegt. Zou die zin bestaan, dan is
+  //    blokkeren iets wat je je twee keer bedenkt.
+
+  'leden.titel': 'Wie er meedoen',
+  'leden.eyebrow': 'Groep',
+  'leden.leeg_titel': 'Nog niemand',
+  'leden.leeg_tekst': 'Zodra er iemand meedoet, staat hij hier.',
+  'leden.beheerder': 'Beheerder',
+  'leden.jijzelf': 'Dit ben jij.',
+  'groepdetail.naar_leden': 'Wie er meedoen',
+
+  'melden.titel': 'Melden',
+  'melden.persoon_knop': 'Deze persoon melden',
+  'melden.bericht_knop': 'Dit bericht melden',
+  'melden.reden_label': 'Wat is er aan de hand?',
+  'melden.toelichting_label': 'Toelichting',
+  'melden.toelichting_hint': 'Optioneel. Wat je hier schrijft, leest de beheerder van deze groep.',
+  'melden.versturen': 'Melding versturen',
+  'melden.annuleren': 'Laat maar',
+
+  /**
+   * ⚠️ **De belangrijkste twee zinnen van dit issue.** Ze staan zowel vóór het
+   *    versturen als erna, want dit is wat iemand moet weten om te beslissen of
+   *    hij hier iets aan heeft. Alles wat hier bij zou komen — "we nemen het
+   *    serieus", "je hoort van ons" — is een belofte die niemand nakomt.
+   */
+  'melden.wat_gebeurt_er':
+    'Je melding gaat naar de beheerder van deze groep, en wij kunnen hem uitlezen. Er is nog geen team dat meldingen beoordeelt, dus we zeggen niet dat dat gebeurt. Zit je ergens mee waar je nu vanaf wilt, blokkeer die persoon dan ook.',
+  'melden.verzonden':
+    'Je melding staat er. De beheerder van deze groep kan hem zien; de gemelde persoon niet.',
+  'melden.niet_zichtbaar': 'De persoon over wie je meldt, ziet nooit dat je dit gedaan hebt.',
+
+  'melden.reden.harassment': 'Intimidatie of pesten',
+  'melden.reden.spam': 'Spam of reclame',
+  'melden.reden.inappropriate': 'Ongepaste inhoud',
+  'melden.reden.impersonation': 'Doet zich voor als iemand anders',
+  'melden.reden.other': 'Iets anders',
+
+  'melden.te_veel': 'Je hebt vandaag twintig meldingen gedaan. Morgen kan het weer.',
+  'melden.geen_lid': 'Je zit niet in deze groep.',
+  'melden.bericht_weg': 'Dit bericht bestaat niet meer.',
+  'melden.onbekend': 'Deze persoon zit niet in deze groep.',
+  'melden.jezelf': 'Je kunt jezelf niet melden.',
+  'melden.mislukt': 'Dat lukte niet. Probeer het opnieuw.',
+  'melden.onbekend_lid': 'Iemand',
+
+  // Blokkeren
+  'melden.blokkeer_knop': 'Deze persoon blokkeren',
+  'melden.deblokkeer_knop': 'Blokkade opheffen',
+  'melden.geblokkeerd_titel': 'Geblokkeerd',
+  'melden.blokkades_mislukt': 'Je blokkades konden niet geladen worden.',
+  /**
+   * ⚠️ **Deze zin zegt met zoveel woorden wat blokkeren níét doet**, en dat is
+   *    het belangrijkste eraan. Wie denkt dat de knop iemand uit zijn groep zet,
+   *    drukt hem in en concludeert daarna dat de app stuk is.
+   */
+  'melden.blokkeer_stil': 'Hij krijgt hier geen bericht van en kan het nergens zien.',
+  'melden.geblokkeerd': 'Dit kan niet.',
+
+  // Een lid verwijderen
+  'melden.verwijder_knop': 'Uit de groep zetten',
+  'melden.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
+  'melden.niet_bevestigd': 'Deze handeling is niet bevestigd.',
+  'melden.al_verwijderd': 'Deze persoon zit al niet meer in de groep.',
+  'melden.laatste_beheerder':
+    'Dit is de enige beheerder van deze groep. Maak eerst iemand anders beheerder.',
+  'melden.verwijderd': 'Dit lid zit niet meer in de groep.',
+  'melden.verwijderd_doelen': 'Dit lid zit niet meer in de groep. {aantal} doelen zijn ontkoppeld.',
+
+  'bevestiging.lid_verwijderen.titel': 'Dit lid uit de groep zetten?',
+  'bevestiging.lid_verwijderen.uitleg':
+    'Deze persoon kan de groep niet meer openen: niet de chat, niet de weekafsluitingen, niet De Ketting. Zijn doelen gaan uit deze groep en een openstaand verzoek om een streefdatum te verschuiven vervalt. Wat hij heeft opgebouwd blijft van hem: zijn punten, zijn reeks en zijn voltooiingen. Hij kan niet terugkomen met de uitnodigingslink. De groep krijgt hier geen bericht van, maar het staat wel in de groepsgeschiedenis.',
+  'bevestiging.lid_verwijderen.knop': 'Ja, zet dit lid eruit',
+
+  'bevestiging.persoon_blokkeren.titel': 'Deze persoon blokkeren?',
+  'bevestiging.persoon_blokkeren.uitleg':
+    'Hij komt hierna niet meer bij je in een groep terecht — niet via een uitnodigingslink, niet via zoeken. Groepen waar jullie nu samen in zitten veranderen niet: dat zou hem laten merken dat je dit gedaan hebt. Hij krijgt geen bericht en kan het nergens zien. Je kunt de blokkade altijd opheffen.',
+  'bevestiging.persoon_blokkeren.knop': 'Ja, blokkeer',
 
   'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
