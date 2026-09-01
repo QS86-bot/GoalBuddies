@@ -55,3 +55,11 @@ export {
 } from './schemas';
 
 export { bestemmingVoor, type Bestemming, type Routestand } from './routewacht';
+
+export {
+  andereModus,
+  beginModus,
+  ROUTE_AANMELDEN,
+  type Aanmeldmodus,
+  type Routeparameters,
+} from './aanmeldmodus';
