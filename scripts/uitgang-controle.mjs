@@ -27,8 +27,10 @@
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -182,14 +184,14 @@ function hoofd() {
   const fouten = [];
 
   for (const vol of bestanden) {
-    const pad = relative(WORTEL, vol).split(sep).join('/');
+    const pad = metSchuineStrepen(relative(WORTEL, vol));
     fouten.push(...beoordeelScherm({ pad, bron: readFileSync(vol, 'utf8') }));
   }
 
   // Een uitzondering voor een bestand dat niet meer bestaat, is een aanname die
   // niemand meer nakijkt.
   for (const pad of Object.keys(GEEN_UITGANG_NODIG)) {
-    if (!bestanden.some((vol) => relative(WORTEL, vol).split(sep).join('/') === pad)) {
+    if (!bestanden.some((vol) => metSchuineStrepen(relative(WORTEL, vol)) === pad)) {
       fouten.push(`${pad} staat in GEEN_UITGANG_NODIG maar bestaat niet meer.`);
     }
   }
