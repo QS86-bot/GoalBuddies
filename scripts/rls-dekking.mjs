@@ -28,17 +28,29 @@
  *    `npm run poort`; draai hem als je wilt weten waar de suite gaten heeft, en
  *    maak van elke bevinding een test of een aantekening.
  *
- * ⚠️ **Hij verandert de database en zet hem daarna terug.** Draai hem uitsluitend
- *    tegen de lokale stack. Breekt hij halverwege af, dan staat er één policy nog
- *    open — de melding zegt welke, en opnieuw opbouwen met `npm run rls:stack`
- *    is altijd goed.
+ * ⚠️ **Hij verandert de database en zet hem daarna terug — en dat is bij de
+ *    eerste echte run misgegaan.** Een `finally` helpt niet als het proces
+ *    gedóód wordt: bij een afbreking op tien minuten bleef
+ *    `group_members_insert_founder` op `with check (true)` staan, en de meting
+ *    daarná draaide dus tegen een database met een gat erin. Die uitslag was
+ *    onbruikbaar zonder dat er iets aan te zien was.
+ *
+ *    **Erger nog was hoe ik het bijna niet zag:** mijn controlevraag keek alleen
+ *    naar `using`, niet naar `with check`, en meldde vrolijk "alles teruggezet".
+ *    Een controle die de helft van zijn onderwerp niet kent, is geruststellender
+ *    dan geen controle.
+ *
+ *    Daarom schrijft dit script vóór élke mutatie de oorspronkelijke definitie
+ *    naar `.rls-dekking-herstel.json` en ruimt dat bestand pas op als alles
+ *    terugstaat. Ligt het er bij de start nog, dan is een vorige run afgebroken
+ *    en herstelt hij eerst — vóór hij iets meet.
  *
  * Gebruik:
  *   npm run rls:dekking              alle policies
  *   npm run rls:dekking -- goals     alleen tabellen waarvan de naam dit bevat
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -134,6 +146,49 @@ export function oordeel(policy, uitkomst) {
   };
 }
 
+const HERSTELBESTAND = join(WORTEL, '.rls-dekking-herstel.json');
+
+/**
+ * Zet terug wat een afgebroken run heeft laten liggen.
+ *
+ * ⚠️ **Dit gebeurt vóór de eerste meting en niet erna**, want een meting tegen
+ *    een database met een openstaande policy is geen meting. Dat is precies wat
+ *    er de eerste keer gebeurde, en het viel niet op omdat het resultaat er
+ *    normaal uitzag.
+ */
+function herstelWatOpenstond() {
+  if (!existsSync(HERSTELBESTAND)) return;
+
+  const policy = JSON.parse(readFileSync(HERSTELBESTAND, 'utf8'));
+  const sql = herstelSql(policy);
+  console.log(
+    `⚠ een vorige run is afgebroken bij ${policy.tabel}.${policy.naam} — eerst terugzetten.\n`,
+  );
+  if (sql !== null) psql(sql);
+  rmSync(HERSTELBESTAND);
+}
+
+/**
+ * Elke policy die wagenwijd openstaat.
+ *
+ * ⚠️ **Béide helften, en dat is de reparatie van de eerste versie.** Een
+ *    INSERT-policy heeft alléén een `with check`; keek je daar niet naar, dan
+ *    meldde deze controle "alles dicht" over precies het gat dat er lag.
+ */
+function watOpenstaat() {
+  return psql(`
+    select c.relname || '.' || p.polname
+    from pg_policy p
+    join pg_class c on c.oid = p.polrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and (pg_get_expr(p.polqual, p.polrelid) = 'true'
+        or pg_get_expr(p.polwithcheck, p.polrelid) = 'true');
+  `)
+    .split('\n')
+    .filter((r) => r.trim().length > 0);
+}
+
 function psql(sql) {
   const args = ['--quiet', '--no-psqlrc', '-At', '-d', process.env.DB ?? 'goalbuddies_rls', '-c', sql];
   if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
@@ -170,6 +225,22 @@ function hoofd() {
 
   const policies = ontleedPolicies(ruw).filter((p) => p.tabel.includes(filter));
 
+  herstelWatOpenstond();
+
+  // ⚠️ **Nooit meten tegen een database die al openstaat.** Blijft hier iets
+  //    over, dan is het niet van deze run en weet dit script niet wat de
+  //    oorspronkelijke uitdrukking was — dan is opnieuw opbouwen het antwoord.
+  const alOpen = watOpenstaat();
+  if (alOpen.length > 0) {
+    console.error(
+      `✗ ${alOpen.length} policy/policies staan al wagenwijd open:\n\n` +
+        alOpen.map((r) => `    ${r}`).join('\n') +
+        '\n\nMeten tegen zo\'n database geeft een uitslag die er normaal uitziet en\n' +
+        'niets waard is. Bouw de stack opnieuw op met `npm run rls:stack`.',
+    );
+    return 1;
+  }
+
   const bestanden = readdirSync(TESTMAP)
     .filter((n) => n.endsWith('.test.ts'))
     .map((naam) => ({ naam, inhoud: readFileSync(join(TESTMAP, naam), 'utf8') }));
@@ -188,14 +259,18 @@ function hoofd() {
       continue;
     }
 
+    // ⚠️ **Eerst opschrijven, dán muteren.** Een `finally` overleeft geen
+    //    SIGKILL; een bestand op schijf wel. De volgende run leest het en zet
+    //    terug voordat hij iets meet.
+    writeFileSync(HERSTELBESTAND, JSON.stringify(policy), 'utf8');
     psql(open);
+
     let uitkomst;
     try {
       uitkomst = draai(bestandenVoor(policy.tabel, bestanden));
     } finally {
-      // ⚠️ Altijd terugzetten, ook als vitest omvalt. Blijft er tóch een policy
-      //    open staan, dan zegt de melding hieronder welke.
       psql(terug);
+      rmSync(HERSTELBESTAND, { force: true });
     }
 
     const b = oordeel(policy, uitkomst);
