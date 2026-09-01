@@ -9,7 +9,8 @@ import { STANDAARDTAAL, zetTaal } from '../i18n';
 
 import {
   noemtTegenvaller,
-  TIP_CATEGORIEEN,
+  TIP_SETS,
+  TIPSET_PER_CATEGORIE,
   TIPS_PER_CATEGORIE,
   tipVoorWeek,
   weektip,
@@ -31,7 +32,7 @@ afterEach(() => {
 
 describe('de weektip', () => {
   it('geeft voor elke categorie een echte zin', () => {
-    for (const categorie of TIP_CATEGORIEEN) {
+    for (const categorie of CATEGORIEEN) {
       const tip = weektip(categorie, '2026-08-24');
 
       // Geen kale catalogussleutel: `t()` valt daar bij een ontbrekende sleutel
@@ -60,14 +61,21 @@ describe('de weektip', () => {
     expect(gezien.size).toBeGreaterThan(1);
   });
 
-  it('is per categorie anders', () => {
-    const zelfdeWeek = TIP_CATEGORIEEN.map((c) => weektip(c, '2026-08-24'));
+  it('is per set anders', () => {
+    // ⚠️ Eén vertegenwoordiger per set en niet de setnaam zelf. `weektip()` neemt
+    //    een categorie aan; een setnaam erin stoppen valt terug op `other`, en
+    //    dan toetst dit zes keer dezelfde regel. Precies dat gebeurde bij de
+    //    omzetting van QS8-224, en de test werd er terecht rood van.
+    const vertegenwoordigers = TIP_SETS.map(
+      (set) => Object.keys(TIPSET_PER_CATEGORIE).find((c) => TIPSET_PER_CATEGORIE[c] === set) ?? '',
+    );
+    const zelfdeWeek = vertegenwoordigers.map((categorie) => weektip(categorie, '2026-08-24'));
 
-    expect(new Set(zelfdeWeek).size).toBe(TIP_CATEGORIEEN.length);
+    expect(new Set(zelfdeWeek).size).toBe(TIP_SETS.length);
   });
 
   it('bestaat in beide talen', () => {
-    for (const categorie of TIP_CATEGORIEEN) {
+    for (const categorie of CATEGORIEEN) {
       for (const taal of ['nl', 'en'] as const) {
         zetTaal(taal);
         expect(weektip(categorie, '2026-08-24'), `${categorie}/${taal}`).not.toMatch(/^weektip\./);
@@ -91,7 +99,7 @@ describe('de weektip', () => {
 
     for (const taal of ['nl', 'en'] as const) {
       zetTaal(taal);
-      for (const categorie of TIP_CATEGORIEEN) {
+      for (const categorie of CATEGORIEEN) {
         for (const week of weken) {
           expect(
             noemtTegenvaller(weektip(categorie, week)),
@@ -105,14 +113,31 @@ describe('de weektip', () => {
   /**
    * De naad tussen twee lijsten die elkaar spiegelen — onwrikbare regel 18.
    *
-   * ⚠️ `TIP_CATEGORIEEN` is een kopie van `CATEGORIEEN`, want `shared` mag niet
-   *    van een module afhangen. Elke andere test hierboven loopt over de kópie,
-   *    dus die blijven allemaal groen als er een categorie bijkomt waar geen
-   *    regels voor bestaan — precies de vorm "elk onderdeel klopt en het geheel
+   * ⚠️ `TIPSET_PER_CATEGORIE` is een kopie van `CATEGORIEEN`, want `shared` mag
+   *    niet van een module afhangen. Elke andere test hierboven loopt over de
+   *    kópie, dus die blijven allemaal groen als er een categorie bijkomt die
+   *    hier niet in staat — precies de vorm "elk onderdeel klopt en het geheel
    *    lekt". Deze test is de enige die beide kanten ziet.
+   *
+   * ⚠️ **Tot QS8-224 was dit een gelijkheid tussen twee lijsten van drie.** Nu
+   *    zijn er vijftien gebieden en zes sets, dus is het een afbeelding — maar de
+   *    belofte is precies dezelfde: geen gebied zonder regels. De gelijkheid
+   *    hieronder staat op de sléutels en niet op de waarden, want twee gebieden
+   *    mogen dezelfde set delen.
    */
   it('heeft regels voor elke categorie die een doel kan hebben', () => {
-    expect([...TIP_CATEGORIEEN].sort()).toEqual([...CATEGORIEEN].sort());
+    expect(Object.keys(TIPSET_PER_CATEGORIE).sort()).toEqual([...CATEGORIEEN].sort());
+  });
+
+  /**
+   * ⚠️ De andere kant van dezelfde afbeelding: een set waar geen enkel gebied
+   *    naar wijst, is dode tekst die niemand ooit te zien krijgt — en die valt
+   *    niet op, want alle tests hierboven lópen juist over `TIP_SETS`.
+   */
+  it('laat geen set achter waar geen enkele categorie naar wijst', () => {
+    const gebruikt = new Set(Object.values(TIPSET_PER_CATEGORIE));
+
+    expect([...gebruikt].sort()).toEqual([...TIP_SETS].sort());
   });
 
   /**

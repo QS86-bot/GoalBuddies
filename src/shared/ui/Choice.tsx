@@ -27,6 +27,16 @@ interface Props<T extends string | number> {
   readonly waarde: T;
   readonly onKies: (waarde: T) => void;
   readonly disabled?: boolean;
+  /**
+   * Toont het label als bijschrift in plaats van als kop.
+   *
+   * ⚠️ Bestaat voor `GegroepeerdeKeuze`, waar deze `Choice` één groep ín een
+   *    grotere keuze is. Twee `Subheading`s onder elkaar zeggen dat er twee
+   *    even belangrijke koppen staan, en dat is dan niet waar. De rol blijft
+   *    `radiogroup` met hetzelfde label — dit is een kwestie van gewicht, niet
+   *    van toegankelijkheid.
+   */
+  readonly subtiel?: boolean;
 }
 
 export function Choice<T extends string | number>({
@@ -36,10 +46,11 @@ export function Choice<T extends string | number>({
   waarde,
   onKies,
   disabled = false,
+  subtiel = false,
 }: Props<T>) {
   return (
     <View style={styles.blok} accessibilityRole="radiogroup" accessibilityLabel={label}>
-      <Subheading>{label}</Subheading>
+      {subtiel ? <Caption>{label}</Caption> : <Subheading>{label}</Subheading>}
       {hint === undefined ? null : <Caption>{hint}</Caption>}
 
       <View style={styles.rij}>

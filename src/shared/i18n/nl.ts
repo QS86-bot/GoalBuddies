@@ -1218,6 +1218,37 @@ export const nl = {
   'doel.reeks_laden': 'Je reeks kon niet geladen worden.',
   'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
 
+  // ---------------------------------------------------------------------------
+  // De vijftien gebieden — QS8-224, migratie 0142
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Labels en geen omschrijvingen.** Ze staan naast elkaar in een keuzelijst,
+  //    dus ze moeten op één regel passen en meteen te onderscheiden zijn. "Sport
+  //    en beweging" en niet "Sport, beweging en alles wat je lichaam vraagt".
+  //
+  // ⚠️ **Geen emoji, ook niet als pictogram.** Een pictogram naast een label is
+  //    iets anders dan een emoji in een label; dat eerste komt met QS8-255 en is
+  //    geen tekst. Zie de emoji-regel in CLAUDE.md.
+  'nieuwdoel.categorie_hint': 'Waar gaat dit doel over? Eén gebied per doel.',
+
+  'categorie.fitness': 'Sport en beweging',
+  'categorie.nutrition': 'Voeding',
+  'categorie.self_care': 'Zelfzorg',
+  'categorie.mindfulness': 'Rust en aandacht',
+  'categorie.connection': 'Contact met anderen',
+  'categorie.helping': 'Iets voor een ander',
+  'categorie.creativity': 'Creativiteit',
+  'categorie.productivity': 'Productiviteit',
+  'categorie.organization': 'Orde en overzicht',
+  'categorie.learning': 'Leren',
+  'categorie.skills': 'Vaardigheden',
+  'categorie.resilience': 'Veerkracht',
+
+  'categoriegroep.lichaam': 'Lichaam en rust',
+  'categoriegroep.mensen': 'Mensen en maken',
+  'categoriegroep.werk': 'Werk en groei',
+  'categoriegroep.rest': 'Werk, school en overig',
+
   'categorie.business': 'Werk',
   'categorie.study': 'Studie',
   'categorie.other': 'Overig',
@@ -1802,6 +1833,21 @@ export const nl = {
   // ⚠️ Vijf per categorie. Ze gaan over de wéék die je net gehaald hebt, niet over
   //    het leven in het algemeen — dat was het bezwaar tegen de wijze quotes. En
   //    geen enkele noemt een tegenvaller; er staat een test op.
+  'weektip.lichaam.1': 'Je lichaam onthoudt de weken die je wél kwam opdagen. Deze was er een.',
+  'weektip.lichaam.2': 'Wat deze week goed voelde, is de versie die je volhoudt. Onthoud die.',
+  'weektip.lichaam.3': 'Rust hoort erbij en telt mee. Plan hem net zo bewust als de rest.',
+  'weektip.lichaam.4': 'Deze week hoefde niet zwaar te zijn om te tellen. Hij telde.',
+  'weektip.lichaam.5': 'Leg alvast klaar wat je volgende week nodig hebt. Dat scheelt de helft van het besluit.',
+  'weektip.mensen.1': 'Wat je deze week voor iemand deed, blijft langer hangen dan je denkt.',
+  'weektip.mensen.2': 'Een week waarin je contact zocht, is een week die iemand anders ook merkte.',
+  'weektip.mensen.3': 'Maken en delen kost dezelfde week. Deze week deed je het allebei.',
+  'weektip.mensen.4': 'Vertel iemand wat je deze week gemaakt of gedaan hebt. Het maakt het echt.',
+  'weektip.mensen.5': 'Zet nu vast wie je volgende week spreekt. Dan hoeft dat besluit er niet meer bij.',
+  'weektip.werk.1': 'Wat je deze week op orde bracht, hoeft volgende week niet opnieuw.',
+  'weektip.werk.2': 'Deze week gedaan krijgen is iets anders dan deze week druk zijn. Dit was het eerste.',
+  'weektip.werk.3': 'Schrijf op welke aanpak deze week wérkte. Dat is je handleiding voor de drukke weken.',
+  'weektip.werk.4': 'Een week volhouden is de vaardigheid; de rest is uitvoering. Deze week ging het.',
+  'weektip.werk.5': 'Kies nu je eerste stap voor volgende week, nu je nog weet waar je gebleven was.',
   'weektip.business.1': 'Eén afgeronde week is een week waarin iemand anders nog aan het plannen was.',
   'weektip.business.2': 'Wat je deze week af kreeg, hoeft volgende week niet meer bedacht te worden.',
   'weektip.business.3': 'Schrijf op wat deze week wérkte. Dat is je eigen handleiding voor de drukke weken.',

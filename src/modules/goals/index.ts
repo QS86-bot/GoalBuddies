@@ -124,6 +124,10 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,
+  CATEGORIE_GROEPEN,
+  categorieGroep,
+  categorieKeuzegroepen,
+  groepLabels,
   DOELGEBEURTENISSEN,
   MAX_DAGEN_PER_WEEK,
   niveauUitDagen,

@@ -23,6 +23,7 @@ export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
+export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
 export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
@@ -41,12 +42,14 @@ export { TaalKeuze } from './TaalKeuze';
 export {
   noemtTegenvaller,
   TEGENVALLER_WOORDEN,
-  TIP_CATEGORIEEN,
+  TIP_SETS,
+  TIPSET_PER_CATEGORIE,
+  tipSetVoor,
   ZEEF_IJKING,
   TIPS_PER_CATEGORIE,
   tipVoorWeek,
   weektip,
-  type TipCategorie,
+  type TipSet,
 } from './tips';
 export { TijdzoneKeuze } from './TijdzoneKeuze';
 export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';
