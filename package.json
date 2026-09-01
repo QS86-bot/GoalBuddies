@@ -64,7 +64,8 @@
     "rls:stack": "bash scripts/lokale-stack.sh",
     "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
     "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls",
-    "migratie:hernummer": "node scripts/migratie-hernummer.mjs"
+    "migratie:hernummer": "node scripts/migratie-hernummer.mjs",
+    "rls:dekking": "node scripts/rls-dekking.mjs"
   },
   "engines": {
     "node": ">=22"
