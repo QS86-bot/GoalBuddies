@@ -181,6 +181,7 @@ describe('de grants inlezen', () => {
  *   J  een sleutel tussen aanhalingstekens als string lezen → 1 rood
  *   K  de toets op een ontbrekend kolomrecht eruit          → 1 rood
  *   L  de toets op een tabel zonder enig recht eruit        → 1 rood
+ *   M  de worp op een afgekapte psql-regel eruit             → 1 rood
  *
  * ⚠️ **J stond er niet toen dit geschreven werd, en dat is het punt.** De
  *    ijkingstest voor een sleutel tussen aanhalingstekens was meteen rood: de
@@ -435,6 +436,30 @@ describe('ontleedSchrijfrechten', () => {
 
     expect(uit.goals?.INSERT).toEqual({ kolommen: ['owner_id', 'ritme'], totaal: 14, breed: false });
     expect(uit.goals?.UPDATE?.kolommen).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Een halve regel is een fout en geen lege grant**, en dat verschil is hier
+   *    het hele punt. Zonder deze worp valt `kolommen.split()` om met een
+   *    TypeError, en die werd in `hoofd()` opgevangen door de tak die "geen
+   *    database" meldt — waarna de poort een kapotte uitlezing *ongemeten* noemt
+   *    in plaats van rood. Een grendel die een fout in stilte omzet in een
+   *    overslag is erger dan geen grendel; die zin staat in `poort.mjs`.
+   */
+  it('gooit op een afgekapte regel in plaats van hem als lege grant te lezen', () => {
+    expect(() => ontleedSchrijfrechten('goals|INSERT|14|8')).toThrow(/onleesbare regel/);
+  });
+
+  /**
+   * ⚠️ **De must-allow ernaast: een tabel waar niets op mag, is géén fout.** Die
+   *    heeft een lege kolomlijst en een afsluitende `|`, en die hoort gewoon
+   *    ingelezen te worden — anders valt de controle om op de helft van het
+   *    schema.
+   */
+  it('leest een tabel zonder enige grant gewoon in', () => {
+    const uit = alsSchrijfrechten(ontleedSchrijfrechten('points_ledger|INSERT|10|0|\n'));
+
+    expect(uit.points_ledger?.INSERT?.kolommen).toEqual([]);
   });
 
   /** ⚠️ De grens die de controle bruikbaar houdt: breed is geen besluit per kolom. */

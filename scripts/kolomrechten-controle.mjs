@@ -545,6 +545,16 @@ export function ontleedSchrijfrechten(uitvoer) {
   for (const regel of uitvoer.split('\n')) {
     if (regel.trim().length === 0) continue;
     const [tabel, soort, totaal, mag, kolommen] = regel.split('|');
+
+    // ⚠️ **Een halve regel is een fout en geen lege grant.** Zonder deze worp
+    //    valt `kolommen.split()` om met een TypeError, en die wordt in `hoofd()`
+    //    opgevangen door de tak die "geen database" meldt — dan noemt de poort
+    //    een kapotte uitlezing *ongemeten* in plaats van rood. Dezelfde val als
+    //    waar `beoordeel()` in `poort.mjs` voor gebouwd is.
+    if (kolommen === undefined) {
+      throw new Error(`onleesbare regel uit information_schema: ${JSON.stringify(regel)}`);
+    }
+
     uit[tabel] ??= {};
     uit[tabel][soort] = {
       kolommen: kolommen.split(',').filter((k) => k.length > 0),
@@ -835,11 +845,17 @@ function hoofd() {
     return execFileSync('psql', args, { encoding: 'utf8' });
   };
 
-  let rechten;
-  let schrijfrechten;
+  // ⚠️ **De `try` dekt alléén de aanroep en niet het ontleden.** Anders wordt een
+  //    kapotte uitlezing — een half afgekapte regel, een kolom die verdwijnt —
+  //    gemeld als "geen database", en dan noemt de poort hem *ongemeten* in
+  //    plaats van rood. Een grendel die een fout in stilte omzet in een overslag
+  //    is erger dan geen grendel; die zin staat in `poort.mjs` en geldt hier net
+  //    zo goed.
+  let uitLezen;
+  let uitSchrijven;
   try {
-    rechten = ontleedRechten(vraag(VRAAG));
-    schrijfrechten = ontleedSchrijfrechten(vraag(SCHRIJFVRAAG));
+    uitLezen = vraag(VRAAG);
+    uitSchrijven = vraag(SCHRIJFVRAAG);
   } catch (fout) {
     // ⚠️ **`OVERGESLAGEN` én exitcode 1, en dat is met opzet allebei.** De poort
     //    herkent de overslag aan deze regel; wie alleen naar de exitcode kijkt,
@@ -854,6 +870,9 @@ function hoofd() {
     );
     return 1;
   }
+
+  const rechten = ontleedRechten(uitLezen);
+  const schrijfrechten = ontleedSchrijfrechten(uitSchrijven);
 
   const paden = ['src', 'app'].flatMap((m) => bestanden(join(WORTEL, m)));
   const lees = (pad) => readFileSync(pad, 'utf8');
