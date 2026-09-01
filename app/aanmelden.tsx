@@ -1,7 +1,15 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
-import { signInWithEmail, signInWithOAuth, signUpWithEmail } from '@/modules/auth';
+import {
+  andereModus,
+  beginModus,
+  signInWithEmail,
+  signInWithOAuth,
+  signUpWithEmail,
+  type Aanmeldmodus,
+} from '@/modules/auth';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared/ui';
@@ -13,9 +21,20 @@ import { Body, Button, Caption, Card, Field, Screen, Subheading } from '@/shared
  * ⚠️ De foutmelding bij een verkeerde combinatie is bewust één melding voor
  *    "onbekend adres" en "verkeerd wachtwoord" (zie `modules/auth/api.ts`). Twee
  *    aparte meldingen vertellen een aanvaller welke adressen een account hebben.
+ *
+ * ⚠️ **Waar dit scherm op opent, staat niet hier maar in `aanmeldmodus.ts`**
+ *    (QS8-248). Er is geen renderer in dit project, dus een beslissing die in een
+ *    `useState` blijft zitten is niet te toetsen — zelfde reden als
+ *    `routewacht.ts`. Zet hier dus nooit een modus met de hand neer; dan gaat de
+ *    grendel in `tests/beloftes/aanmeldscherm.test.ts` rood, en terecht.
  */
 export default function Aanmelden() {
-  const [nieuw, setNieuw] = useState(true);
+  const parameters = useLocalSearchParams();
+  const [modus, setModus] = useState<Aanmeldmodus>(() => beginModus(parameters));
+
+  // Eén afgeleide, zodat de rest van dit scherm leest zoals het altijd las.
+  const nieuw = modus === 'aanmelden';
+
   const [email, setEmail] = useState('');
   const [wachtwoord, setWachtwoord] = useState('');
   const [bezig, setBezig] = useState(false);
@@ -93,7 +112,7 @@ export default function Aanmelden() {
           variant="stil"
           block
           onPress={() => {
-            setNieuw((n) => !n);
+            setModus(andereModus);
             setFout(null);
             setGelukt(null);
           }}
