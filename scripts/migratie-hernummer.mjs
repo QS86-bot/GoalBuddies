@@ -42,7 +42,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { nummersPerBranch } from './migratiebranches.mjs';
+import { haalRemoteOp, nummersPerBranch, versheidsmelding } from './migratiebranches.mjs';
 import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
@@ -303,6 +303,13 @@ async function hoofd() {
   if (van === undefined || naar === undefined) {
     console.error('Gebruik: npm run migratie:hernummer -- <van> <naar> [--droog]');
     process.exit(1);
+  }
+
+  // ⚠️ Ook dit script deelt een nummer uit — `doel_bezet_elders` is alleen zoveel
+  //    waard als het beeld waarop hij rust. Zelfde grens als `migratie:nieuw`
+  //    (QS8-247).
+  for (const regel of versheidsmelding({ ...haalRemoteOp(), nu: new Date() })) {
+    console.log(regel);
   }
 
   const bestanden = readdirSync(MAP).filter((n) => n.endsWith('.sql'));

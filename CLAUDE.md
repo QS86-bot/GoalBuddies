@@ -652,6 +652,32 @@ naar élke branch die de remote kent en niet alleen naar je eigen map. Op
 28-08-2026 botsten migratienummers **drie keer op één dag**, elke keer omdat er
 `max + 1` uit de werkkopie genomen werd terwijl het werk elders al hoger stond.
 
+⚠️ **En sinds 01-09-2026 fetcht dat script zelf, want eerlijk zijn was niet
+genoeg** (QS8-247). Op 31-08 botste het nummer een **vierde** keer, mét de tool,
+om precies de reden die de tool in zijn eigen commentaar al had opgeschreven:
+`refs/remotes/origin` is zo oud als je laatste fetch. **Een gereedschap dat
+bestaat om een botsing te voorkomen, mag zijn juistheid niet laten afhangen van
+een handeling die het zelf niet doet** — dan is de waarschuwing een disclaimer
+en verplaats je het probleem naar de lezer.
+
+De grens loopt tussen twee soorten scripts, en die is er een om aan te houden:
+
+| Soort | Fetcht | Waarom |
+|---|---|---|
+| **Deelt een nummer uit** — `migratie:nieuw`, `migratie:hernummer` | ja | een verouderd beeld is hier een verkeerd antwoord |
+| **Controleert** — `migraties:controle` | nee | draait in de poort en in CI, waar een netwerkaanroep de uitslag afhankelijk maakt van bereikbaarheid — en CI draait toch al op een verse checkout |
+
+Mislukt de fetch, dan telt het script dóór — zonder netwerk moet je een migratie
+kunnen beginnen — maar noemt hij hoe oud het beeld is. **Het verschil tussen "van
+net" en "van eergisteren" ís het risico**; één tekst voor beide gevallen leest als
+een disclaimer, en die leer je overslaan.
+
+⚠️ Beide kanten staan onder test in `tests/scripts/migratie-fetch.test.ts`, met
+een echte remote op schijf. Dat kost een fixture en het moet: elke bestaande test
+voedde het script zijn éígen `perBranch`-object, en dan is "klopt dat object" niet
+te stellen. Die tests bleven groen terwijl de belofte brak omdat ze hem niet
+kónden raken — CLAUDE.md-vraag 3 in zijn zuiverste vorm.
+
 ## Beslisbevoegdheid — vastgelegd 22-08-2026
 
 > Vervangt de lijst "Wat je NOOIT doet zonder te vragen". Quinten heeft die op
