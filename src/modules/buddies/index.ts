@@ -42,6 +42,18 @@ export {
   type UitnodigingsRoute,
 } from './pending';
 
+export {
+  beslisVerzoek,
+  fetchOntdekteGroepen,
+  fetchOpenstaandeVerzoeken,
+  fetchVerzoekenOver,
+  GROEPEN_PER_PAGINA,
+  vraagLidmaatschapAan,
+  zetOntdekbaar,
+  type Lidmaatschapsverzoek,
+  type OntdekteGroep,
+} from './ontdekken';
+
 export { fetchKettingStand } from './ketting';
 
 export {
@@ -123,6 +135,7 @@ export {
   goedkeuringsregelLabels,
   goedkeuringsregelUitleg,
   leesGoedkeuringsregel,
+  leesVoertaal,
   leesZichtbaarheid,
   normaliseerCode,
   leesSeizoenscadans,
@@ -130,8 +143,11 @@ export {
   QUORUM_MIN,
   SEIZOENSCADANSEN,
   seizoenscadansLabels,
+  OMSCHRIJVING_MAX,
   toonCode,
   uitnodigingsLink,
+  voertaalLabels,
+  VOERTALEN,
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
   ZICHTBAARHEDEN,
@@ -140,6 +156,7 @@ export {
   type GroepInvoer,
   type Seizoenscadans,
   type GroepPatch,
+  type Voertaal,
   type Zichtbaarheid,
 } from './schemas';
 

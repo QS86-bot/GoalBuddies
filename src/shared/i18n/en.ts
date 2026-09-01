@@ -30,6 +30,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} opened up this group. From now on members also see each other’s setbacks.',
   'systeembericht.group_protected':
     '{naam} made this group protected again. Other people’s setbacks are no longer visible.',
+  'systeembericht.group_discoverable':
+    '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members — nothing else.',
 
   'algemeen.oud_lid': 'A former member',
 
@@ -472,6 +474,7 @@ export const en: Record<Sleutel, string> = {
   'groepen.leeg_tekst': 'Three people is the best size: big enough that someone always responds, small enough that you cannot hide. Create a group or use the invite link you were given.',
   'groepen.aanmaken': 'Create group',
   'groepen.heb_code': 'I have an invite code',
+  'groepen.ontdekken': 'Search for a group',
   'groepen.wachten_onbekend': 'Are buddies waiting on you?',
   'groepen.wacht_een': 'One buddy is waiting on you',
   'groepen.wachten_meer': '{n} buddies are waiting on you',
@@ -1391,6 +1394,14 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.groep_beschermen.uitleg':
     'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard disappears. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
+  'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
+  'bevestiging.groep_ontdekbaar_maken.uitleg':
+    'People you don’t know yet will be able to find this group and ask to join. They see the name, the topic, your description, the language, the huddle day and how many members there are. They do not see who is in it, which goals are in it, the chat, The Chain or anyone’s streak. Requests come to you and you do not have to accept a single one. Everyone in the group gets a message about it. You can undo this at any time, immediately.',
+  'bevestiging.groep_ontdekbaar_maken.knop': 'Yes, make it discoverable',
+  'bevestiging.groep_verbergen.titel': 'Hide this group again?',
+  'bevestiging.groep_verbergen.uitleg':
+    'The group disappears from the search list and nobody can knock any more. Requests that already came in stay and you can still answer them. Nothing changes for the members.',
+  'bevestiging.groep_verbergen.knop': 'Yes, hide it',
   'bevestiging.groep_verlaten.titel': 'Leave this group?',
   'bevestiging.groep_verlaten.uitleg':
     'Your goal leaves this group and you will no longer be able to open the chat, the week reviews or The Chain here. What you have built up stays: your points, your streak, your completions and the approvals you gave. If your goal is also linked to another group, nothing changes there. You can only come back with a valid invite link.',
@@ -1699,6 +1710,90 @@ export const en: Record<Sleutel, string> = {
   'vragenlijst.samenvatting.dit_helpt': 'What the app does with this',
 
   'validatie.focus_te_veel': 'Pick at most three.',
+
+
+  'ontdek.titel': 'Find a group',
+  'ontdek.eyebrow': 'Search',
+  'ontdek.uitleg':
+    'These are groups that made themselves findable. You see what they are about and how many people are in them — a group shows nothing more than that to someone from outside.',
+  'ontdek.filter_categorie': 'What it is about',
+  'ontdek.filter_taal': 'Language',
+  'ontdek.alles': 'All',
+  'ontdek.laden_mislukt': 'The groups could not be loaded.',
+  'ontdek.leeg_titel': 'No group found yet',
+  'ontdek.leeg_tekst':
+    'There is no findable group in this combination yet. Try another topic or another language — or start one yourself and open it up.',
+  'ontdek.leden': '{aantal} members',
+  'ontdek.leden_een': '1 member',
+  'ontdek.huddledag': 'Huddle on {dag}',
+  'ontdek.meer': 'More groups',
+  'ontdek.zelf_beginnen': 'Start a group yourself',
+
+  'ontdek.aanvragen': 'Ask to join',
+  'ontdek.bericht_label': 'Introduce yourself',
+  'ontdek.bericht_hint':
+    'Optional. A sentence or two about what you are working on. The admin of this group reads this.',
+  'ontdek.versturen': 'Send',
+  'ontdek.annuleren': 'Never mind',
+  'ontdek.verzonden':
+    'Your request is with the admin of this group. Whether and when they reply is up to them.',
+  'ontdek.al_aangevraagd': 'Requested',
+  'ontdek.over_nog': 'You can approach {aantal} more groups today.',
+  'ontdek.over_op': 'You have approached ten groups today. Tomorrow you can again.',
+
+  'ontdek.te_veel_aanvragen': 'You have approached ten groups today. Tomorrow you can again.',
+  'ontdek.al_lid': 'You are already in this group.',
+  'ontdek.niet_open':
+    'This group can no longer be found. The admin may have just hidden it.',
+  'ontdek.geen_beheerder': 'Only an admin of this group can do this.',
+  'ontdek.niet_bevestigd': 'This change was not confirmed.',
+  'ontdek.niet_beschermd':
+    'An open group cannot be discoverable: strangers would see each other’s setbacks. Make the group protected first.',
+  'ontdek.geen_categorie':
+    'First pick what this group is about. Without a topic it cannot be found.',
+  'ontdek.al_beslist': 'This request has already been decided.',
+  'ontdek.ongewijzigd': 'That was already the case.',
+  'ontdek.mislukt': 'That did not work. Please try again.',
+  'ontdek.verzoeken_mislukt': 'The requests could not be loaded.',
+  'ontdek.onbekend_lid': 'Someone',
+
+  'ontdek.beheer_titel': 'Being found',
+  'ontdek.beheer_aan': 'This group can be found by people you do not know yet.',
+  'ontdek.beheer_uit': 'This group can only be reached with an invitation link.',
+  'ontdek.beheer_uitleg':
+    'Whoever searches sees the name, the topic, the description, the language, the huddle day and the number of members. Not who is in it, not the goals, not the chat, not The Chain and not anyone’s streak.',
+  'ontdek.beheer_moet_beschermd_zijn':
+    'Only a protected group can be discoverable. In an open group members see each other’s setbacks, and that is none of a stranger’s business.',
+  'ontdek.beheer_aanzetten': 'Make this group discoverable',
+  'ontdek.beheer_uitzetten': 'Take it out of the search list',
+  'ontdek.melding_ontdekbaar':
+    'This group can now be found. Your group got a message about it.',
+  'ontdek.melding_verborgen': 'This group is no longer in the search list.',
+
+  'ontdek.categorie_label': 'What this group is about',
+  'ontdek.categorie_hint': 'This is what people can find your group by.',
+  'ontdek.omschrijving_label': 'Description',
+  'ontdek.omschrijving_hint':
+    'A sentence or two. This is the only thing a stranger reads about you.',
+  'ontdek.voertaal_label': 'Language',
+  'ontdek.voertaal_hint':
+    'What do you speak with each other? This changes nothing about the language of the app.',
+  'ontdek.geen_keuze': 'Not chosen',
+
+  'ontdek.verzoeken_titel': 'Requests',
+  'ontdek.verzoeken_leeg': 'There are no open requests right now.',
+  'ontdek.verzoeken_uitleg':
+    'Whoever you accept joins the group and from that moment sees everything a member sees. Whoever you decline gets no message about it, and neither does the group.',
+  'ontdek.aannemen': 'Accept',
+  'ontdek.afwijzen': 'Decline',
+  'ontdek.aangenomen': 'Accepted.',
+  'ontdek.afgewezen': 'Declined.',
+  'ontdek.zonder_bericht': 'No message',
+
+  'voertaal.nl': 'Dutch',
+  'voertaal.en': 'English',
+
+  'validatie.groepsomschrijving_lang': 'Keep it to 280 characters.',
 
   'validatie.dagen_heel': 'Enter a whole number of days.',
   'validatie.dagen_bereik': 'A week has seven days.',

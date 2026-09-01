@@ -75,6 +75,18 @@ export const nl = {
   'systeembericht.group_protected':
     '{naam} heeft deze groep weer beschermd. Tegenslag van een ander is niet meer zichtbaar.',
 
+  /**
+   * ⚠️ QS8-231, migratie 0144. Het enige systeembericht van dit issue, en het is
+   *    er een omdat niemand er achteraf achter mag komen dat zijn groep vindbaar
+   *    is geworden voor onbekenden. De zin noemt daarom meteen de grens: wat een
+   *    vreemde ziet, en dat het daarbij blijft.
+   *
+   * ⚠️ Er komt géén bericht bij het wéér verbergen. Dat is geen nieuws — er
+   *    verandert niets aan wat iemand in de groep ziet — en geen afwezig signaal.
+   */
+  'systeembericht.group_discoverable':
+    '{naam} heeft deze groep vindbaar gemaakt. Mensen die je nog niet kent zien de naam, het onderwerp, de omschrijving en het aantal leden — verder niets.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
 
@@ -659,6 +671,14 @@ export const nl = {
   'bevestiging.groep_beschermen.uitleg':
     'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement verdwijnt. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
+  'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
+  'bevestiging.groep_ontdekbaar_maken.uitleg':
+    'Mensen die je nog niet kent kunnen deze groep dan vinden en lidmaatschap aanvragen. Zij zien de naam, het onderwerp, je omschrijving, de voertaal, de huddledag en hoeveel leden er zijn. Zij zien niet wie erin zitten, welke doelen erin staan, de chat, De Ketting of iemands reeks. Aanvragen komen bij jou binnen en je hoeft er geen enkele aan te nemen. Iedereen in de groep krijgt er een bericht van. Terugzetten kan altijd en meteen.',
+  'bevestiging.groep_ontdekbaar_maken.knop': 'Ja, maak hem vindbaar',
+  'bevestiging.groep_verbergen.titel': 'Deze groep weer verbergen?',
+  'bevestiging.groep_verbergen.uitleg':
+    'De groep verdwijnt uit de zoeklijst en er kan niemand meer aankloppen. Aanvragen die al binnen zijn blijven staan en kun je gewoon beantwoorden. Voor de leden verandert er niets.',
+  'bevestiging.groep_verbergen.knop': 'Ja, verberg hem',
   'bevestiging.groep_verlaten.titel': 'Deze groep verlaten?',
   'bevestiging.groep_verlaten.uitleg':
     'Je doel gaat uit deze groep en je kunt de chat, de weekafsluitingen en De Ketting hier niet meer openen. Wat je hebt opgebouwd blijft staan: je punten, je reeks, je voltooiingen en de goedkeuringen die je hebt gegeven. Hangt je doel ook aan een andere groep, dan verandert daar niets. Terugkomen kan alleen met een geldige uitnodigingslink.',
@@ -716,6 +736,7 @@ export const nl = {
   'groepen.leeg_tekst': 'Drie mensen is de beste maat: groot genoeg dat er altijd iemand reageert, klein genoeg dat je je niet kunt verstoppen. Maak een groep aan of gebruik de uitnodigingslink die je hebt gekregen.',
   'groepen.aanmaken': 'Groep aanmaken',
   'groepen.heb_code': 'Ik heb een uitnodigingscode',
+  'groepen.ontdekken': 'Een groep zoeken',
   'groepen.wachten_onbekend': 'Wachten er buddy’s op je?',
   'groepen.wacht_een': 'Een buddy wacht op je',
   'groepen.wachten_meer': '{n} buddy’s wachten op je',
@@ -2099,6 +2120,106 @@ export const nl = {
   'vragenlijst.samenvatting.dit_helpt': 'Wat de app hiermee doet',
 
   'validatie.focus_te_veel': 'Kies er hoogstens drie.',
+
+
+  // ---------------------------------------------------------------------------
+  // Groepen ontdekken — QS8-231, migratie 0144
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De toon van dit scherm is de helft van het issue.** Wie hier komt, kent
+  //    niemand. Elke zin die belooft dat het wel goed komt, is een zin die
+  //    teleurstelt als een beheerder niet reageert — en een aanvraag die
+  //    nergens op antwoord krijgt is de eerste ervaring van een nieuwe
+  //    gebruiker. De teksten zeggen daarom wat er gebeurt en niet wat er hoort
+  //    te gebeuren.
+  //
+  // ⚠️ **En geen enkele zin hier zegt iets over een persoon.** Wat een
+  //    buitenstaander te zien krijgt, staat in de kolomlijst van
+  //    `ontdek_groepen()` — niet in dit bestand. Deze teksten mogen die grens
+  //    beschrijven maar nooit verruimen.
+
+  'ontdek.titel': 'Een groep vinden',
+  'ontdek.eyebrow': 'Zoeken',
+  'ontdek.uitleg':
+    'Dit zijn groepen die zich hebben laten vinden. Je ziet waar ze het over hebben en hoeveel mensen erin zitten — meer laat een groep aan iemand van buiten niet zien.',
+  'ontdek.filter_categorie': 'Waar gaat het over',
+  'ontdek.filter_taal': 'Taal',
+  'ontdek.alles': 'Alles',
+  'ontdek.laden_mislukt': 'De groepen konden niet geladen worden.',
+  'ontdek.leeg_titel': 'Nog geen groep gevonden',
+  'ontdek.leeg_tekst':
+    'Er is nog geen vindbare groep in deze combinatie. Probeer een ander onderwerp of een andere taal — of begin er zelf een en zet hem open.',
+  'ontdek.leden': '{aantal} leden',
+  'ontdek.leden_een': '1 lid',
+  'ontdek.huddledag': 'Huddle op {dag}',
+  'ontdek.meer': 'Meer groepen',
+  'ontdek.zelf_beginnen': 'Zelf een groep beginnen',
+
+  'ontdek.aanvragen': 'Vraag lidmaatschap aan',
+  'ontdek.bericht_label': 'Stel jezelf voor',
+  'ontdek.bericht_hint':
+    'Optioneel. Eén of twee zinnen over waar je aan werkt. De beheerder van deze groep leest dit.',
+  'ontdek.versturen': 'Versturen',
+  'ontdek.annuleren': 'Laat maar',
+  /**
+   * ⚠️ **"Verstuurd" en niet "je hoort snel iets".** Er is geen enkele garantie
+   *    dat een beheerder antwoordt, en een belofte die de app niet kan nakomen
+   *    is erger dan geen belofte. De zin zegt precies wat er gebeurd is.
+   */
+  'ontdek.verzonden': 'Je aanvraag staat bij de beheerder van deze groep. Of en wanneer die reageert, bepaalt die zelf.',
+  'ontdek.al_aangevraagd': 'Aangevraagd',
+  'ontdek.over_nog': 'Je kunt vandaag nog {aantal} groepen aanschrijven.',
+  'ontdek.over_op': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
+
+  'ontdek.te_veel_aanvragen': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
+  'ontdek.al_lid': 'Je zit al in deze groep.',
+  'ontdek.niet_open': 'Deze groep is niet meer te vinden. Misschien heeft de beheerder hem net verborgen.',
+  'ontdek.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
+  'ontdek.niet_bevestigd': 'Deze wijziging is niet bevestigd.',
+  'ontdek.niet_beschermd':
+    'Een open groep kan niet vindbaar zijn: dan zouden onbekenden elkaars tegenslag zien. Bescherm de groep eerst.',
+  'ontdek.geen_categorie': 'Kies eerst waar deze groep over gaat. Zonder onderwerp is hij niet te vinden.',
+  'ontdek.al_beslist': 'Over deze aanvraag is al beslist.',
+  'ontdek.ongewijzigd': 'Dat stond al zo.',
+  'ontdek.mislukt': 'Dat lukte niet. Probeer het opnieuw.',
+  'ontdek.verzoeken_mislukt': 'De aanvragen konden niet geladen worden.',
+  'ontdek.onbekend_lid': 'Iemand',
+
+  // De kant van de beheerder
+  'ontdek.beheer_titel': 'Gevonden worden',
+  'ontdek.beheer_aan': 'Deze groep is te vinden voor mensen die je nog niet kent.',
+  'ontdek.beheer_uit': 'Deze groep is alleen te bereiken met een uitnodigingslink.',
+  'ontdek.beheer_uitleg':
+    'Wie zoekt ziet de naam, het onderwerp, de omschrijving, de voertaal, de huddledag en het aantal leden. Niet wie erin zitten, niet de doelen, niet de chat, niet De Ketting en niet iemands reeks.',
+  'ontdek.beheer_moet_beschermd_zijn':
+    'Alleen een beschermde groep kan vindbaar zijn. In een open groep zien leden elkaars tegenslag, en dat gaat een vreemde niet aan.',
+  'ontdek.beheer_aanzetten': 'Maak deze groep vindbaar',
+  'ontdek.beheer_uitzetten': 'Haal hem uit de zoeklijst',
+  'ontdek.melding_ontdekbaar': 'Deze groep is nu te vinden. Je groep heeft er een bericht van gekregen.',
+  'ontdek.melding_verborgen': 'Deze groep staat niet meer in de zoeklijst.',
+
+  'ontdek.categorie_label': 'Waar gaat deze groep over',
+  'ontdek.categorie_hint': 'Dit is waarop mensen je groep kunnen vinden.',
+  'ontdek.omschrijving_label': 'Omschrijving',
+  'ontdek.omschrijving_hint': 'Eén of twee zinnen. Dit is het enige wat een vreemde over jullie leest.',
+  'ontdek.voertaal_label': 'Voertaal',
+  'ontdek.voertaal_hint': 'Waarin praten jullie met elkaar? Dit verandert niets aan de taal van de app.',
+  'ontdek.geen_keuze': 'Niet gekozen',
+
+  'ontdek.verzoeken_titel': 'Aanvragen',
+  'ontdek.verzoeken_leeg': 'Er staan nu geen aanvragen open.',
+  'ontdek.verzoeken_uitleg':
+    'Wie je aanneemt komt in de groep en ziet vanaf dat moment alles wat een lid ziet. Wie je afwijst krijgt daar geen bericht van, en de groep ook niet.',
+  'ontdek.aannemen': 'Aannemen',
+  'ontdek.afwijzen': 'Afwijzen',
+  'ontdek.aangenomen': 'Aangenomen.',
+  'ontdek.afgewezen': 'Afgewezen.',
+  'ontdek.zonder_bericht': 'Zonder bericht',
+
+  'voertaal.nl': 'Nederlands',
+  'voertaal.en': 'Engels',
+
+  'validatie.groepsomschrijving_lang': 'Hou het bij 280 tekens.',
 
   'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',

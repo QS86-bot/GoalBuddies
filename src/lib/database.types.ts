@@ -1148,6 +1148,39 @@ export type Database = {
           },
         ]
       }
+      group_join_requests: {
+        Row: {
+          bericht: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          group_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          bericht?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          bericht?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           group_id: string
@@ -1198,6 +1231,7 @@ export type Database = {
         Row: {
           approval_quorum: number | null
           approval_rule: string
+          categorie: string | null
           created_at: string
           created_by: string | null
           evidence_policy: string
@@ -1208,14 +1242,18 @@ export type Database = {
           invite_revoked: boolean
           last_activity_at: string
           name: string
+          omschrijving: string | null
+          ontdekbaar: boolean
           season_cadence: string
           status: string
           tz: string
+          voertaal: string | null
           zichtbaarheid: string
         }
         Insert: {
           approval_quorum?: number | null
           approval_rule?: string
+          categorie?: string | null
           created_at?: string
           created_by?: string | null
           evidence_policy?: string
@@ -1226,14 +1264,18 @@ export type Database = {
           invite_revoked?: boolean
           last_activity_at?: string
           name: string
+          omschrijving?: string | null
+          ontdekbaar?: boolean
           season_cadence?: string
           status?: string
           tz?: string
+          voertaal?: string | null
           zichtbaarheid?: string
         }
         Update: {
           approval_quorum?: number | null
           approval_rule?: string
+          categorie?: string | null
           created_at?: string
           created_by?: string | null
           evidence_policy?: string
@@ -1244,9 +1286,12 @@ export type Database = {
           invite_revoked?: boolean
           last_activity_at?: string
           name?: string
+          omschrijving?: string | null
+          ontdekbaar?: boolean
           season_cadence?: string
           status?: string
           tz?: string
+          voertaal?: string | null
           zichtbaarheid?: string
         }
         Relationships: [
@@ -2381,6 +2426,31 @@ export type Database = {
       }
       groep_teller: { Args: { p_group_id: string }; Returns: Json }
       groepsdatum: { Args: { gid: string }; Returns: string }
+      lidmaatschapsverzoeken_over: { Args: never; Returns: number }
+      ontdek_groepen: {
+        Args: {
+          p_categorie?: string | null
+          p_limit?: number
+          p_offset?: number
+          p_taal?: string | null
+        }
+        Returns: {
+          categorie: string
+          group_id: string
+          huddle_day: number
+          leden: number
+          naam: string
+          omschrijving: string
+          totaal: number
+          voertaal: string
+        }[]
+      }
+      vraag_lidmaatschap_aan: { Args: { p_bericht?: string | null; p_group_id: string }; Returns: Json }
+      zet_groepsontdekbaarheid: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_naar: boolean }
+        Returns: Json
+      }
+      beslis_lidmaatschapsverzoek: { Args: { p_naar: string; p_request_id: string }; Returns: Json }
       group_overview: {
         Args: {
           p_group_id: string

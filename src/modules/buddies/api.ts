@@ -489,6 +489,16 @@ export async function wijzigGroep(
     update.season_cadence = gevalideerd.data.season_cadence;
   }
 
+  // ⚠️ QS8-231. Alle drie mogen `null` zijn — dat is "haal weg" en niet "laat
+  //    staan"; zie het schema. `ontdekbaar` staat hier bewust niet: die kolom
+  //    heeft geen kolomgrant, `guard_group_update()` zet hem terug, en de enige
+  //    route is `zet_groepsontdekbaarheid()`.
+  if (gevalideerd.data.categorie !== undefined) update.categorie = gevalideerd.data.categorie;
+  if (gevalideerd.data.omschrijving !== undefined) {
+    update.omschrijving = gevalideerd.data.omschrijving;
+  }
+  if (gevalideerd.data.voertaal !== undefined) update.voertaal = gevalideerd.data.voertaal;
+
   const { data, error } = await supabase()
     .from('groups')
     .update(update)
