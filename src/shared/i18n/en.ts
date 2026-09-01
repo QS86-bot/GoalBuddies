@@ -1613,6 +1613,42 @@ export const en: Record<Sleutel, string> = {
   'teller.mijlpalen_meer': '{n} milestones reached',
   'teller.nog_niets': 'Your first wrapped-up week will show up here.',
 
+  'overzicht.titel': 'Your overview',
+  'overzicht.eyebrow': 'THE PAST TWELVE WEEKS',
+  'overzicht.open': 'See your overview',
+  'overzicht.laden_mislukt': 'Your overview could not be loaded.',
+  'overzicht.opnieuw': 'Try again',
+
+  'overzicht.weken_kop': 'Twelve weeks',
+  'overzicht.weken_leeg': 'Once you wrap up your first week, it shows up here.',
+  'overzicht.week_label': 'Week of {datum}: {stand}',
+  'weekstand.plafond': 'ceiling reached',
+  'weekstand.vloer': 'floor reached \u2014 this week counts',
+  'weekstand.ingediend': 'submitted, waiting for your buddy',
+  'weekstand.gemist': 'not wrapped up',
+  'weekstand.leeg': 'no weekly goal',
+
+  'overzicht.kalender_kop': 'Your days',
+  'overzicht.kalender_uitleg': 'Only the goals you work on several times a week.',
+  'overzicht.kalender_leeg': 'No days ticked off yet.',
+  'overzicht.dag_label': '{datum}: {aantal} ticked off',
+  'overzicht.dag_leeg_label': '{datum}: nothing ticked off',
+
+  'overzicht.reeks_kop': 'Your longest run',
+  'overzicht.reeks_weken': '{n} weeks',
+  'overzicht.reeks_week': '1 week',
+  'overzicht.reeks_nu': 'Now {n}',
+  'overzicht.punten_kop': 'Your points',
+  'overzicht.punten_prive': 'Only you see this number.',
+
+  'overzicht.gebieden_kop': 'What your goals are about',
+  'overzicht.gebieden_leeg': 'You do not have any goals yet.',
+  'overzicht.gebied_label': '{gebied}: {aantal}',
+
+  'overzicht.groep_kop': 'Your groups',
+  'overzicht.groep_uitleg': 'A group\u2019s standing lives on the group screen itself \u2014 that is where the app knows which group you mean.',
+  'overzicht.groep_open': 'Go to your groups',
+
   'validatie.dagen_heel': 'Enter a whole number of days.',
   'validatie.dagen_bereik': 'A week has seven days.',
   'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",

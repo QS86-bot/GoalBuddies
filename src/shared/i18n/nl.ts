@@ -1996,6 +1996,50 @@ export const nl = {
   'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
   'teller.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
 
+  // ---------------------------------------------------------------------------
+  // Het persoonlijke overzicht — QS8-256
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Geen enkele zin hier noemt een gemiste week als verwijt.** Dit scherm
+  //    toont je eigen terugblik, en CLAUDE.md staat dat toe ("eigen tegenvallers
+  //    zijn privé zichtbaar voor jezelf") — maar de toon van domeinregel 7 geldt
+  //    ook voor tekst die alleen jij leest. "Niet afgerond" en niet "gemist".
+  'overzicht.titel': 'Je overzicht',
+  'overzicht.eyebrow': 'DE AFGELOPEN TWAALF WEKEN',
+  'overzicht.open': 'Bekijk je overzicht',
+  'overzicht.laden_mislukt': 'Je overzicht kon niet geladen worden.',
+  'overzicht.opnieuw': 'Opnieuw proberen',
+
+  'overzicht.weken_kop': 'Twaalf weken',
+  'overzicht.weken_leeg': 'Zodra je je eerste week afrondt, komt hij hier te staan.',
+  'overzicht.week_label': 'Week van {datum}: {stand}',
+  'weekstand.plafond': 'plafond gehaald',
+  'weekstand.vloer': 'vloer gehaald — deze week telt',
+  'weekstand.ingediend': 'ingediend, wacht op je buddy',
+  'weekstand.gemist': 'niet afgerond',
+  'weekstand.leeg': 'geen weekdoel',
+
+  'overzicht.kalender_kop': 'Je dagen',
+  'overzicht.kalender_uitleg': 'Alleen de doelen waar je meerdere keren per week aan werkt.',
+  'overzicht.kalender_leeg': 'Nog geen dagen afgevinkt.',
+  'overzicht.dag_label': '{datum}: {aantal} afgevinkt',
+  'overzicht.dag_leeg_label': '{datum}: niets afgevinkt',
+
+  'overzicht.reeks_kop': 'Je langste reeks',
+  'overzicht.reeks_weken': '{n} weken',
+  'overzicht.reeks_week': '1 week',
+  'overzicht.reeks_nu': 'Nu {n}',
+  'overzicht.punten_kop': 'Je punten',
+  'overzicht.punten_prive': 'Alleen jij ziet dit getal.',
+
+  'overzicht.gebieden_kop': 'Waar je doelen over gaan',
+  'overzicht.gebieden_leeg': 'Je hebt nog geen doelen.',
+  'overzicht.gebied_label': '{gebied}: {aantal}',
+
+  'overzicht.groep_kop': 'Je groepen',
+  'overzicht.groep_uitleg': 'De stand van een groep staat op het groepsscherm zelf — daar weet de app om welke groep het gaat.',
+  'overzicht.groep_open': 'Naar je groepen',
+
   'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
   'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',
