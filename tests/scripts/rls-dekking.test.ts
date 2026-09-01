@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `letterversies.test.ts`.
 import {
   bestandenVoor,
+  kloptDeBestemming,
+  leesUitkomst,
   magHierDraaien,
+  verdachtePolicies,
   herstelSql,
   ontleedPolicies,
   oordeel,
@@ -33,6 +36,15 @@ import {
  *   E  de veldtoets uit `ontleedPolicies`                  → 1 rood
  *   F  de hosttoets uit `magHierDraaien`                   → 3 rood
  *   G  de databasenaamtoets                                → 1 rood
+ *
+ * Na de security-review van 01-09 erbij. H tot en met L horen bij bevindingen die
+ * met een meting zijn aangetoond, niet met een redenering:
+ *
+ *   H  de loopback-toets uit `magHierDraaien`               → 4 rood
+ *   I  de poorttoets                                        → 1 rood
+ *   J  de nameting op het adres (`kloptDeBestemming`)       → 2 rood
+ *   K  `verdachtePolicies` alleen naar `using` laten kijken → 1 rood
+ *   L  de nul-tests-toets uit `leesUitkomst`                → 2 rood
  */
 
 const rij = JSON.stringify([
@@ -45,6 +57,7 @@ const rij = JSON.stringify([
     //    stukliep (`approval_withdrawals_select`).
     qual: '(owner_id = auth.uid())\n  OR is_group_member(group_id)',
     wcheck: '',
+    recht: true,
   },
 ]);
 
@@ -62,7 +75,8 @@ describe('ontleedPolicies', () => {
 
   /** ⚠️ Een halve rij is een fout en geen lege policy — zie `kolomrechten`. */
   it.each([
-    ['een veld dat mist', '[{"tabel":"goals","naam":"x","cmd":"r"}]'],
+    ['een veld dat mist', '[{"tabel":"goals","naam":"x","cmd":"r","recht":true}]'],
+    ['`recht` dat mist', '[{"tabel":"g","naam":"x","cmd":"r","qual":"a","wcheck":"","recht":null}]'],
     ['geen lijst', '{"tabel":"goals"}'],
   ])('gooit op %s', (_naam, json) => {
     expect(() => ontleedPolicies(json)).toThrow();
@@ -189,38 +203,119 @@ describe('oordeel', () => {
  *    ze had bedacht.
  */
 describe('magHierDraaien', () => {
-  const goed = { host: 'localhost', db: 'goalbuddies_rls', doel: 'lokaal' };
+  const goed = { host: 'localhost', poort: '5433', db: 'goalbuddies_rls', doel: 'lokaal' };
 
-  it.each([
-    ['localhost', 'localhost'],
-    ['127.0.0.1', '127.0.0.1'],
-    ['::1', '::1'],
-    ['een lege PGHOST (unix-socket)', ''],
-    ['geen PGHOST', undefined],
-  ])('laat %s door', (_naam, host) => {
+  it.each([['localhost'], ['127.0.0.1'], ['::1']])('laat %s door', (host) => {
     expect(magHierDraaien({ ...goed, host }).ok).toBe(true);
   });
 
+  /**
+   * ⚠️ **Hier stond een tak die de omweg goedkeurde.** De eerste versie liet een
+   *    lege of ontbrekende `PGHOST` door "want dat is een unix-socket". Gemeten:
+   *    `env -u PGHOST PGHOSTADDR=127.0.0.1 psql …` maakt dan een TCP-verbinding
+   *    naar een willekeurig adres. De ijking legde die omweg vast als gewenst
+   *    gedrag, dus de mutatie op de hosttoets werd rood terwijl de grendel die
+   *    hij beweerde te bewaken er niet was — precies de val die CLAUDE.md
+   *    beschrijft. Het script legt de bestemming nu op in plaats van hem af te
+   *    leiden, dus `undefined` bestaat hier niet meer.
+   */
   it.each([
     ['het echte project', 'db.wehgocadxehottiiyvsc.supabase.co'],
     ['een ip dat erop lijkt', '127.0.0.1.kwaadaardig.nl'],
-    ['een willekeurige host', 'staging.intern'],
+    ['een lege host', ''],
+    ['geen host', undefined],
   ])('weigert %s', (_naam, host) => {
     const uit = magHierDraaien({ ...goed, host });
 
     expect(uit.ok).toBe(false);
-    expect(uit.reden).toContain('lokale machine');
+    expect(uit.reden).toContain('loopback');
+  });
+
+  it('weigert een andere poort', () => {
+    expect(magHierDraaien({ ...goed, poort: '5432' }).reden).toContain('5433');
   });
 
   it('weigert zonder RLS_DOEL=lokaal', () => {
     expect(magHierDraaien({ ...goed, doel: undefined }).ok).toBe(false);
   });
 
-  /** ⚠️ Lokaal én `RLS_DOEL=lokaal` is niet genoeg: `DB` wijst de database aan. */
   it('weigert een andere databasenaam', () => {
-    const uit = magHierDraaien({ ...goed, db: 'productie' });
+    expect(magHierDraaien({ ...goed, db: 'postgres' }).reden).toContain('postgres');
+  });
+});
 
-    expect(uit.ok).toBe(false);
-    expect(uit.reden).toContain('productie');
+/**
+ * ⚠️ **De tweede helft van het slot, en zonder haar is de eerste een vrome wens.**
+ *    libpq kiest zijn bestemming óók uit `PGHOSTADDR`, `PGSERVICE` en
+ *    `PGSERVICEFILE`, en die staan buiten elke lijst die je vooraf opschrijft.
+ *    `magHierDraaien` toetst wat we van plan zijn; dit toetst waar we uitkwamen.
+ */
+describe('kloptDeBestemming', () => {
+  const goed = { adres: '127.0.0.1', poort: 5433, database: 'goalbuddies_rls' };
+
+  it('laat de lokale stack door', () => {
+    expect(kloptDeBestemming(goed).ok).toBe(true);
+  });
+
+  it.each([
+    ['een ander adres', { adres: '10.0.0.5' }],
+    ['een unix-socket, want dan weten we niet waarheen', { adres: 'unix-socket' }],
+    ['een andere poort', { poort: 5432 }],
+    ['een andere database', { database: 'postgres' }],
+  ])('weigert %s', (_naam, afwijking) => {
+    expect(kloptDeBestemming({ ...goed, ...afwijking }).ok).toBe(false);
+  });
+});
+
+/**
+ * ⚠️ **De toets die op dezelfde gegevens werkt als de lus.** De eerste versie las
+ *    de policies ín, herstelde daarna pas wat een afgebroken run had laten
+ *    liggen, en vroeg de database vervolgens of er nog iets openstond. Dat
+ *    antwoord was "nee" terwijl de lijst in het geheugen het gat nog droeg — en
+ *    aan het eind van die beurt zette de lus hem "terug" naar `true`.
+ */
+describe('verdachtePolicies', () => {
+  it('vindt een policy die als `true` is ingelezen', () => {
+    expect(
+      verdachtePolicies([
+        { tabel: 'g', naam: 'p', qual: 'owner_id = x', wcheck: '' },
+        { tabel: 'g', naam: 'q', qual: '', wcheck: 'true' },
+      ]),
+    ).toEqual(['g.q']);
+  });
+
+  /** ⚠️ Béide helften — een INSERT-policy heeft alléén een `with check`. */
+  it('vindt hem ook aan de using-kant', () => {
+    expect(verdachtePolicies([{ tabel: 'g', naam: 'p', qual: 'true', wcheck: '' }])).toEqual(['g.p']);
+  });
+
+  it('laat een gewone policy met rust', () => {
+    expect(verdachtePolicies([{ tabel: 'g', naam: 'p', qual: 'a = 1', wcheck: 'b = 2' }])).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️ **"Bewaakt" mag niet betekenen "er ging íets mis".** De eerste versie las elke
+ *    niet-nul exitcode als bewaakt — ook een startup-error, een dichte PostgREST
+ *    of geheugen op. Dat schuift een policy van onbewaakt naar bewaakt, en die
+ *    richting is de geruststellende.
+ */
+describe('leesUitkomst', () => {
+  const json = (o: object): string => JSON.stringify(o);
+
+  it('noemt een gefaalde assertie rood', () => {
+    expect(leesUitkomst(json({ numTotalTests: 10, numFailedTests: 1 })).uitkomst).toBe('rood');
+  });
+
+  it('noemt een volledig groene run groen', () => {
+    expect(leesUitkomst(json({ numTotalTests: 10, numFailedTests: 0 })).uitkomst).toBe('groen');
+  });
+
+  it.each([
+    ['er geen enkele test draaide', json({ numTotalTests: 0, numFailedTests: 0 })],
+    ['alles overgeslagen werd', json({ numTotalTests: 5, numPendingTests: 5, numFailedTests: 0 })],
+    ['de uitvoer geen JSON is', 'FATAL: kon niet starten'],
+  ])('noemt het onbruikbaar als %s', (_naam, uit) => {
+    expect(leesUitkomst(uit).uitkomst).toBe('onbruikbaar');
   });
 });
