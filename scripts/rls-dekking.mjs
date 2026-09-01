@@ -77,10 +77,18 @@ select coalesce(json_agg(json_build_object(
          'cmd',    p.polcmd,
          'qual',   coalesce(pg_get_expr(p.polqual, p.polrelid), ''),
          'wcheck', coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''),
-         'recht',  has_table_privilege('authenticated', c.oid,
-                     case p.polcmd when 'r' then 'SELECT' when 'a' then 'INSERT'
-                                   when 'w' then 'UPDATE' when 'd' then 'DELETE'
-                                   else 'INSERT' end)
+         'recht',  case p.polcmd
+                     -- ⚠️ DELETE bestaat niet per kolom; SELECT, INSERT en UPDATE wél.
+                     when 'd' then has_table_privilege('authenticated', c.oid, 'DELETE')
+                     when 'r' then has_any_column_privilege('authenticated', c.oid, 'SELECT')
+                     when 'a' then has_any_column_privilege('authenticated', c.oid, 'INSERT')
+                     when 'w' then has_any_column_privilege('authenticated', c.oid, 'UPDATE')
+                     -- Een for-all-policy dekt vier opdrachten; een recht volstaat.
+                     else has_any_column_privilege('authenticated', c.oid, 'SELECT')
+                       or has_any_column_privilege('authenticated', c.oid, 'INSERT')
+                       or has_any_column_privilege('authenticated', c.oid, 'UPDATE')
+                       or has_table_privilege('authenticated', c.oid, 'DELETE')
+                   end
        ) order by c.relname, p.polname), '[]')
 from pg_policy p
 join pg_class c on c.oid = p.polrelid
@@ -169,6 +177,14 @@ export function oordeel(policy, uitkomst) {
   //    `chain_links_delete` op `using (true)` geeft een DELETE nog steeds
   //    `42501 permission denied for table` — de grendel is de grant, niet de
   //    policy. En díe grendel is wél getest, in `schrijfrechten.test.ts`.
+  //
+  // ⚠️ **`has_any_column_privilege` en niet `has_table_privilege`, en dat verschil
+  //    kostte een hele meting.** De eerste versie van deze tak vroeg naar het
+  //    tábelrecht, en dat is `false` zodra een tabel een kolomgrant heeft in
+  //    plaats van een tabelbrede. Daardoor vielen `goals_insert`,
+  //    `completions_insert`, `profiles_update` en zeven andere uit de meting —
+  //    juist de tabellen waar de app dagelijks in schrijft. Gemeten:
+  //    `goals` geeft `tabelrecht = f` en `kolomrecht = t`.
   //
   //    Wie hier tóch een test bij schrijft, schrijft een test die niet kán falen
   //    (regel 18 vraag 3). Het instrument moet daar dus niet naartoe duwen.
