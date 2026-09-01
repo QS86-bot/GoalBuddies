@@ -32,6 +32,7 @@
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
+    "catalogus:controle": "node scripts/catalogus-controle.mjs",
     "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
     "edge:controle": "node scripts/edge-tijd-controle.mjs",
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
