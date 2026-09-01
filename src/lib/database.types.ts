@@ -701,6 +701,35 @@ export type Database = {
           },
         ]
       }
+      day_checkins: {
+        Row: {
+          created_at: string
+          id: string
+          local_date: string
+          weekly_goal_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          local_date: string
+          weekly_goal_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          local_date?: string
+          weekly_goal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_checkins_weekly_goal_id_fkey"
+            columns: ["weekly_goal_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deadline_requests: {
         Row: {
           created_at: string
@@ -995,6 +1024,7 @@ export type Database = {
           losgekoppeld_op: string | null
           max_points: number
           owner_id: string
+          ritme: string
           status: string
           target_date: string
           title: string
@@ -1010,6 +1040,7 @@ export type Database = {
           losgekoppeld_op?: string | null
           max_points?: number
           owner_id: string
+          ritme?: string
           status?: string
           target_date: string
           title: string
@@ -1025,6 +1056,7 @@ export type Database = {
           losgekoppeld_op?: string | null
           max_points?: number
           owner_id?: string
+          ritme?: string
           status?: string
           target_date?: string
           title?: string
@@ -1880,10 +1912,12 @@ export type Database = {
         Row: {
           ai_generated: boolean
           beoordeelbaar: boolean
+          ceiling_days: number | null
           ceiling_text: string | null
           created_at: string
           cycle_index: number
           cycle_start_date: string
+          floor_days: number | null
           floor_text: string | null
           goal_id: string
           id: string
@@ -1897,10 +1931,12 @@ export type Database = {
         Insert: {
           ai_generated?: boolean
           beoordeelbaar?: boolean
+          ceiling_days?: number | null
           ceiling_text?: string | null
           created_at?: string
           cycle_index: number
           cycle_start_date: string
+          floor_days?: number | null
           floor_text?: string | null
           goal_id: string
           id?: string
@@ -1914,10 +1950,12 @@ export type Database = {
         Update: {
           ai_generated?: boolean
           beoordeelbaar?: boolean
+          ceiling_days?: number | null
           ceiling_text?: string | null
           created_at?: string
           cycle_index?: number
           cycle_start_date?: string
+          floor_days?: number | null
           floor_text?: string | null
           goal_id?: string
           id?: string
@@ -2247,6 +2285,7 @@ export type Database = {
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
+      dagafvinkingen_over: { Args: never; Returns: number }
       definer_bewaking: {
         Args: never
         Returns: {

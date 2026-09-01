@@ -13,6 +13,83 @@ import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
  *    afgaan.
  */
 
+/**
+ * Het ritme van een doel — besluit A53, migratie 0140.
+ *
+ * ⚠️ **Dit veld bepaalt niet hoe een week beoordeeld wordt.** Dat doet
+ *    `weekly_goals.ceiling_days`. Het ritme is de voorkeur van de gebruiker: het
+ *    stuurt het voorstel voor het volgende weekdoel, en straks de vraag of er
+ *    een dagreeks bestaat.
+ *
+ *    Waarom die scheiding: leest het oordeel het doel, dan verandert het oordeel
+ *    over een afgelopen week zodra iemand zijn ritme omzet. Een week die op
+ *    vrijdag "drie van vijf dagen" was, moet dat blijven — de rij draagt de
+ *    regel waaronder hij is aangemaakt.
+ *
+ * ⚠️ Deze lijst is een kopie van de CHECK `goals_ritme_valid` en geen bron.
+ *    `tests/rls/policies.test.ts` legt hem naast de CHECK zélf — niet naast
+ *    zichzelf, want dat is precies wat 0032 en 0034 uit elkaar liet lopen zonder
+ *    dat er iets rood werd.
+ */
+export const RITMES = ['weekly', 'times_per_week', 'daily'] as const;
+export type Ritme = (typeof RITMES)[number];
+
+/** Zie de andere meldingentabellen: een functie, want de taal ligt niet vast op importtijd. */
+export function ritmeLabels(): Readonly<Record<Ritme, string>> {
+  return {
+    weekly: t('ritme.weekly'),
+    times_per_week: t('ritme.times_per_week'),
+    daily: t('ritme.daily'),
+  };
+}
+
+/** De toelichting onder elke keuze. Hij legt uit wat het kóst, niet wat het is. */
+export function ritmeUitleg(): Readonly<Record<Ritme, string>> {
+  return {
+    weekly: t('ritme.weekly_uitleg'),
+    times_per_week: t('ritme.times_per_week_uitleg'),
+    daily: t('ritme.daily_uitleg'),
+  };
+}
+
+/**
+ * ⚠️ Een week heeft zeven dagen en dat is de enige bovengrens die hier klopt.
+ *    Hij staat ook in `weekly_goals_dagen_geordend` in 0140; loopt hij uiteen,
+ *    dan accepteert het formulier iets wat de database met een `23514` weigert
+ *    en zegt die melding de gebruiker niets.
+ */
+export const MAX_DAGEN_PER_WEEK = 7;
+
+/**
+ * Het bereikte niveau, afgeleid uit het aantal afgevinkte dagen.
+ *
+ * ⚠️ **Dit is een tweede uitvoering van een regel die in de database staat**, en
+ *    dat is met opzet én met een risico. `niveau_uit_dagen()` in 0140 is de
+ *    waarheid — die beslist wat er in `completions` landt. Deze functie bestaat
+ *    omdat het scherm móét kunnen zeggen wát je gaat indienen vóórdat je op de
+ *    knop drukt; zonder dat is "afronden" een gok.
+ *
+ *    Twee uitvoeringen van één regel is precies de naad waar onwrikbare regel 18
+ *    over gaat. De grendel staat daarom in `tests/rls/ritme.test.ts`: dezelfde
+ *    gevallen gaan door de database én door deze functie, en de twee moeten
+ *    hetzelfde zeggen.
+ *
+ * ⚠️ Zonder vloer is het plafond de ondergrens — dat is wat "geen vloer"
+ *    betekent: er is één niveau, en dat haal je of niet.
+ *
+ * @returns `'ceiling'` of `'floor'` als de week telt, en `null` als hij de vloer
+ *   niet haalt. `null` is geen fout maar de normale toestand op woensdag.
+ */
+export function niveauUitDagen(
+  gehaald: number,
+  vloerDagen: number | null,
+  plafondDagen: number,
+): 'ceiling' | 'floor' | null {
+  const ondergrens = vloerDagen ?? plafondDagen;
+  if (gehaald < ondergrens) return null;
+  return gehaald >= plafondDagen ? 'ceiling' : 'floor';
+}
+
 export const CATEGORIEEN = ['business', 'study', 'other'] as const;
 export type Categorie = (typeof CATEGORIEEN)[number];
 
@@ -39,6 +116,12 @@ export const isoDatum = z
   .refine(isGeldigeIsoDatum, { error: () => t('validatie.datum_vorm') });
 
 export const doelSchema = z.object({
+  /**
+   * ⚠️ Standaard `weekly`, en dat is de hele migratiestrategie: elk bestaand
+   *    doel is een weekdoel en verandert niet. Wie het veld niet aanraakt,
+   *    krijgt precies het gedrag van vóór A53.
+   */
+  ritme: z.enum(RITMES).default('weekly'),
   title: z
     .string()
     .trim()
@@ -64,7 +147,14 @@ export const doelSchema = z.object({
     .nullable(),
 });
 
-export type DoelInvoer = z.infer<typeof doelSchema>;
+/**
+ * ⚠️ `z.input` en niet `z.infer`. Sinds A53 heeft dit schema velden met een
+ *    `.default()`, en die zijn aan de invoerkant optioneel en aan de
+ *    uitvoerkant gevuld. Met `z.infer` (de uitvoer) zou elke bestaande
+ *    aanroeper ineens verplicht een ritme of een dagental moeten meesturen —
+ *    en dan is de standaard geen standaard.
+ */
+export type DoelInvoer = z.input<typeof doelSchema>;
 
 /**
  * ⚠️ `target_date` staat hier bewust níét in, en op typeniveau niet in plaats van

@@ -7,9 +7,13 @@ import { useProfiel, useSession, userClock } from '@/modules/auth';
 import {
   bewijseisVoorDoel,
   dienOpnieuwIn,
+  fetchAfgevinktOp,
+  fetchAfvinktellingen,
   fetchDagzetten,
   fetchVragen,
+  maakAfvinkingOngedaan,
   rondAf,
+  vinkDagAf,
   zetDagzet,
   type Bewijseis,
   type DagZet,
@@ -29,6 +33,7 @@ import {
   fetchVolgendeMijlpalen,
   fetchIngeschovenDezeCyclus,
   fetchWeekdoelen,
+  niveauUitDagen,
   huidigeCyclus,
   inCoulanceperiode,
   schuifDoor,
@@ -120,6 +125,15 @@ export default function Vandaag() {
   // ⚠️ De week die de rollover zojuist dichtzette, en dus níét `afTeSluiten`.
   //    Die twee zijn per definitie verschillend — zie `zojuistAfgeslotenCyclus`.
   const geslotenStart = klok ? zojuistAfgeslotenCyclus(klok).startDate : null;
+
+  /**
+   * De datum van vandaag in de tijdzone van de gebruiker — QS8-253.
+   *
+   * ⚠️ Uit `shared/time` en nergens anders (correctheidsregel 7). Welke dag het
+   *    "hier" is, bepaalt of een afvinking van vandaag is; de server toetst
+   *    alleen nog dat die datum binnen de week van het weekdoel valt.
+   */
+  const vandaagLokaal = profiel ? localDateIn(profiel.tz, now()) : null;
 
   useEffect(() => {
     if (!userId || !afTeSluiten || !cyclus) return;
@@ -287,6 +301,33 @@ export default function Vandaag() {
     [cyclusStart, ronde],
   );
 
+  /**
+   * De afvinktellingen van deze cyclus — QS8-253.
+   *
+   * ⚠️ Eén verzoek voor alle weekdoelen samen. Een telling per kaart is de
+   *    klassieke N+1 (onwrikbare regel 12), en dit scherm toont er standaard vijf.
+   *
+   * ⚠️ Apart falend: `fetchAfvinktellingen()` vangt zijn eigen fout af en geeft
+   *    dan een lege telling. Een teller die "0 van 5" toont is beter dan een
+   *    hoofdscherm dat niet opkomt — en het afvinken zelf blijft werken.
+   */
+  const { data: afvinkingen } = useAsync(
+    cyclus ? () => fetchAfvinktellingen(cyclus) : null,
+    [cyclusStart, ronde],
+  );
+
+  /**
+   * Welke weekdoelen vandáág zijn afgevinkt.
+   *
+   * ⚠️ Een aparte verzameling en niet af te leiden uit de telling: bij drie van
+   *    de vijf dagen weet je niet óf vandaag erbij zat, en dat is precies wat de
+   *    knop moet weten.
+   */
+  const { data: vandaagAf } = useAsync(
+    vandaagLokaal === null ? null : () => fetchAfgevinktOp(vandaagLokaal),
+    [vandaagLokaal, ronde],
+  );
+
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
 
   return (
@@ -333,6 +374,9 @@ export default function Vandaag() {
                 weekdoel={weekdoel}
                 categorie={doelcategorieen.get(weekdoel.goal_id) ?? ''}
                 mijlpaaltip={mijlpaaltips?.get(weekdoel.goal_id) ?? null}
+                afgevinkt={afvinkingen?.get(weekdoel.id) ?? 0}
+                vandaagAfgevinkt={(vandaagAf ?? new Set()).has(weekdoel.id)}
+                localDate={vandaagLokaal}
                 userId={userId ?? ''}
                 onKlaar={herlaad}
               />
@@ -639,6 +683,9 @@ function WeekdoelKaart({
   weekdoel,
   categorie,
   mijlpaaltip,
+  afgevinkt,
+  vandaagAfgevinkt,
+  localDate,
   userId,
   onKlaar,
 }: {
@@ -662,6 +709,17 @@ function WeekdoelKaart({
    *    het hele punt van de gefaseerde volgorde in besluit A48.
    */
   readonly mijlpaaltip: Mijlpaaltip | null;
+  /**
+   * Het aantal dagen dat deze week al is afgevinkt — QS8-253.
+   *
+   * ⚠️ Komt van de ouder en wordt hier niet opgehaald. Het hoofdscherm toont
+   *    alle weekdoelen, dus een verzoek per kaart is de klassieke N+1
+   *    (onwrikbare regel 12). `fetchAfvinktellingen()` haalt ze in één keer.
+   */
+  readonly afgevinkt: number;
+  readonly vandaagAfgevinkt: boolean;
+  /** Vandaag in de tijdzone van de gebruiker, uit `shared/time`. */
+  readonly localDate: string | null;
   readonly userId: string;
   readonly onKlaar: () => void;
 }) {
@@ -677,6 +735,21 @@ function WeekdoelKaart({
   const { aan: vieringenAan } = useVieringenAan();
 
   const heeftVloer = Boolean(weekdoel.floor_text);
+
+  /**
+   * ⚠️ **Een ritme-weekdoel kiest zijn niveau niet** — besluit A53. Bij zo'n week
+   *    staat het antwoord al in de database: je hebt vier van de vijf dagen
+   *    afgevinkt. `niveau_uit_dagen()` in 0140 overschrijft wat het formulier
+   *    stuurt, dus een keuze tonen zou een keuze suggereren die er niet is.
+   *
+   *    Deze afleiding is de tweede uitvoering van die regel en bestaat alleen om
+   *    te kunnen tónen wat je gaat indienen. De database is de waarheid; de test
+   *    in `tests/rls/ritme.test.ts` legt de twee naast elkaar.
+   */
+  const telDagen = weekdoel.ceiling_days !== null;
+  const afgeleidNiveau = telDagen
+    ? niveauUitDagen(afgevinkt, weekdoel.floor_days, weekdoel.ceiling_days ?? 0)
+    : null;
   const afgerond = weekdoel.status !== 'todo';
   const wachtOpOordeel = weekdoel.status === 'pending';
 
@@ -723,11 +796,41 @@ function WeekdoelKaart({
     };
   }, [weekdoel.id, wachtOpOordeel]);
 
+  const [vinkBezig, setVinkBezig] = useState(false);
+
+  /**
+   * Vandaag afvinken, of het weer ongedaan maken — QS8-253.
+   *
+   * ⚠️ Geen bevestiging en geen viering. Een afvinking is de kleinste handeling
+   *    in de app en moet in één tik klaar zijn; alles wat je eromheen zet, maakt
+   *    hem duurder dan hij is. De viering hoort bij de wéék, en die staat er al.
+   */
+  async function wisselVandaag() {
+    if (localDate === null) return;
+    setVinkBezig(true);
+    setFout(null);
+
+    const uitkomst = vandaagAfgevinkt
+      ? await maakAfvinkingOngedaan(weekdoel.id, localDate)
+      : await vinkDagAf(weekdoel.id, localDate);
+
+    setVinkBezig(false);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    onKlaar();
+  }
+
   async function afronden() {
     setBezig(true);
     setFout(null);
 
-    const niveauKeuze = heeftVloer ? niveau : 'ceiling';
+    // ⚠️ Bij een ritme-week wint de afleiding uit de dagen van de keuze in het
+    //    formulier. De database doet dat sowieso; hier meesturen wat er ook
+    //    uitkomt, voorkomt dat de gebruiker een ander woord ziet dan er landt.
+    const niveauKeuze = telDagen ? (afgeleidNiveau ?? 'floor') : heeftVloer ? niveau : 'ceiling';
 
     // ⚠️ Opnieuw indienen loopt via een RPC: `completions` is append-only en
     //    heeft geen UPDATE-policy, dus de client kan `superseded_by` niet zelf
@@ -821,6 +924,56 @@ function WeekdoelKaart({
       />
 
       {/*
+        ⚠️ **De knop die van dit ritme meer maakt dan een kolom** — QS8-253. Een
+           tabel met een RPC en een grant waar geen scherm bij kan, is dood hout
+           dat geen enkele test ziet; dat is de les van QS8-113 en QS8-112.
+
+        ⚠️ Alleen bij een ritme-weekdoel, en alleen zolang de week nog loopt. Een
+           afgeronde week nog kunnen bijvinken zou betekenen dat je je eigen
+           niveau achteraf omhoog schuift, en dat is precies wat
+           `niveau_uit_dagen()` in de database voorkomt.
+      */}
+      {telDagen && !afgerond && localDate !== null ? (
+        <View style={styles.afvinken}>
+          <Body>
+            {t('ritme.dagen_gehaald', {
+              gehaald: afgevinkt,
+              plafond: weekdoel.ceiling_days ?? 0,
+            })}
+          </Body>
+
+          {/*
+            ⚠️ De regel eronder zegt waar je staat ten opzichte van je vlóér, en
+               niet ten opzichte van je plafond. De vloer is de belofte die telt
+               (domeinregel 8); het plafond is de bonus. Andersom framen maakt van
+               elke gehaalde week een half gehaalde week.
+          */}
+          <Caption>
+            {afgeleidNiveau === 'ceiling'
+              ? t('ritme.plafond_gehaald')
+              : afgeleidNiveau === 'floor'
+                ? t('ritme.vloer_gehaald')
+                : t('ritme.vloer_nog_niet', {
+                    aantal: (weekdoel.floor_days ?? weekdoel.ceiling_days ?? 0) - afgevinkt,
+                  })}
+          </Caption>
+
+          <Button
+            variant={vandaagAfgevinkt ? 'stil' : 'secundair'}
+            busy={vinkBezig}
+            accessibilityLabel={
+              vandaagAfgevinkt
+                ? t('ritme.maak_ongedaan_label', { titel: weekdoel.title })
+                : t('ritme.vink_af_label', { titel: weekdoel.title })
+            }
+            onPress={() => void wisselVandaag()}
+          >
+            {vandaagAfgevinkt ? t('ritme.maak_ongedaan') : t('ritme.vink_af')}
+          </Button>
+        </View>
+      ) : null}
+
+      {/*
         ⚠️ **De weektip — besluit A48, variant 3.** Tot nu toe kreeg je tussen je
            eerste weekpas en de volgende vijf keer niets, en dat zijn precies de
            weken waarin iemand afhaakt.
@@ -865,7 +1018,7 @@ function WeekdoelKaart({
 
       {(afgerond && !wachtOpOordeel) || !open ? null : (
         <View style={styles.afrond}>
-          {heeftVloer ? (
+          {heeftVloer && !telDagen ? (
             <Choice
               label={t('vandaag.niveau_label')}
               hint={t('vandaag.niveau_hint')}
@@ -1031,6 +1184,7 @@ function DagzetBlok({
 }
 
 const styles = StyleSheet.create({
+  afvinken: { gap: 6, marginTop: 8 },
   lijst: { gap: space.blokGap },
   standen: { gap: space.blokGap + 3 },
   afrond: { gap: space.blokGap - 3, paddingTop: space.blokGap - 4 },

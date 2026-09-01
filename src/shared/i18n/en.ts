@@ -1533,4 +1533,34 @@ export const en: Record<Sleutel, string> = {
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
   'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
+
+  // ---------------------------------------------------------------------------
+  // A goal's rhythm — decision A53, migration 0140
+  // ---------------------------------------------------------------------------
+  'ritme.weekly': 'I look at the week',
+  'ritme.weekly_uitleg':
+    "You wrap up at the end of the week. How you get there is up to you — there's nothing to tick off.",
+  'ritme.times_per_week': 'A few times a week',
+  'ritme.times_per_week_uitleg':
+    'You tick off the days you worked on it. The week counts as soon as you reach your floor.',
+  'ritme.daily': 'Every day',
+  'ritme.daily_uitleg':
+    'For something you do daily. It asks the most of you, so pick this only if it really is every day.',
+  'ritme.kop': 'How often will you work on this?',
+  'ritme.dagen_gehaald': '{gehaald} of {plafond} days',
+  'ritme.vloer_gehaald': "Your floor is met. This week counts.",
+  'ritme.vloer_nog_niet': '{aantal} more days to your floor.',
+  'ritme.plafond_gehaald': 'Ceiling reached.',
+  'ritme.vink_af': 'Tick off today',
+  'ritme.vink_af_label': 'Tick off today for "{titel}"',
+  'ritme.maak_ongedaan': 'Undo',
+  'ritme.maak_ongedaan_label': "Undo today's tick for \"{titel}\"",
+  'ritme.afvinken_mislukt': "That didn't save.",
+  'ritme.buiten_de_week': "That day isn't part of this week.",
+  'ritme.onder_de_vloer': "This week hasn't reached its floor yet, so there's nothing to wrap up.",
+  'ritme.te_veel_deze_dag': "You've ticked off too much today. Try again tomorrow.",
+  'validatie.dagen_heel': 'Enter a whole number of days.',
+  'validatie.dagen_bereik': 'A week has seven days.',
+  'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",
+  'validatie.vloer_zonder_plafond': 'A floor in days needs a ceiling too.',
 };
