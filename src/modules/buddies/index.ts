@@ -44,6 +44,14 @@ export {
 
 export { fetchKettingStand } from './ketting';
 
+export {
+  fetchGroepsteller,
+  fetchKlassement,
+  KLASSEMENT_PER_PAGINA,
+  type Groepsteller,
+  type Klassementsrij,
+} from './klassement';
+
 export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
 
 export {

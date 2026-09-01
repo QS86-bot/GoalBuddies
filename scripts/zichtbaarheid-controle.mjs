@@ -36,9 +36,15 @@ import { pathToFileURL } from 'node:url';
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
  *
- * ⚠️ Vier stuks, en alle vier staan ze in `zichtbaarheid.open_uitleg` en in
- *    `bevestiging.groep_openzetten.uitleg`. Komt er een vijfde bij, dan wordt
+ * ⚠️ Vijf stuks, en alle vijf staan ze in `zichtbaarheid.open_uitleg` en in
+ *    `bevestiging.groep_openzetten.uitleg`. Komt er een zesde bij, dan wordt
  *    deze controle rood — en dán is de vraag of die zin nog klopt, niet later.
+ *
+ * ⚠️ **Dat heeft op 01-09-2026 precies gewerkt en dat is het opschrijven waard.**
+ *    Het klassement uit besluit A54 werd hier rood, en de melding wees naar de
+ *    twee zinnen — die tot dat moment drie oppervlakken opsomden terwijl er vier
+ *    waren en er een vijfde bij kwam. Zonder deze controle was de gebruiker de
+ *    groep open blijven zetten op een zin die zijn punten niet noemde.
  */
 export const OPPERVLAKKEN = new Map([
   [
@@ -60,6 +66,14 @@ export const OPPERVLAKKEN = new Map([
     'policy:chain_links.chain_links_select',
     'De Ketting per lid (migratie 0079). De teller erboven blijft dicht — die is ' +
       'optellend en verraadt niemand (besluit A42).',
+  ],
+  [
+    'functie:groep_klassement',
+    'Het puntenklassement per lid (migratie 0141, besluit A54). Het vijfde ' +
+      'oppervlak, en het eerste dat een besluit terúgdraait: punten stonden onder ' +
+      'A42 in §6b als bewust dicht. Wat opengaat is het groepstotaal, niet het ' +
+      'persoonlijke totaal en niet de deltas — en het kan niet dalen van een ' +
+      'gemiste week, want `cycle_missed` draagt geen groep.',
   ],
 ]);
 
