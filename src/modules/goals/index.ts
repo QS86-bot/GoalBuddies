@@ -169,3 +169,12 @@ export {
   type WeekplanInvoer,
   type WeekplanstapInvoer,
 } from './weekplan-schemas';
+
+export { fetchWeekbalken } from './overzicht';
+export {
+  laatsteCycli,
+  standUitWeekdoelen,
+  WEKEN_IN_OVERZICHT,
+  type Weekbalk,
+  type Weekstand,
+} from './overzicht-stand';

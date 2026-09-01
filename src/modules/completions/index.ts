@@ -40,6 +40,7 @@ export {
 
 export {
   fetchAfgevinktOp,
+  fetchAfvinkdagen,
   fetchAfvinkingen,
   fetchAfvinktellingen,
   maakAfvinkingOngedaan,
