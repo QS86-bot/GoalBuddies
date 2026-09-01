@@ -62,6 +62,41 @@ async function vastgelopenReden(goalId: string): Promise<string | null> {
   return rijen.find((r) => r.goal_id === goalId)?.reden ?? null;
 }
 
+/** De status van het weekdoel achter een voltooiing. */
+async function weekstatus(completionId: string): Promise<string> {
+  const c = await adminDb()
+    .from('completions')
+    .select('weekly_goal_id')
+    .eq('id', completionId)
+    .single();
+  if (c.error || c.data === null) throw new Error(`voltooiing: ${c.error?.message}`);
+
+  const w = await adminDb()
+    .from('weekly_goals')
+    .select('status')
+    .eq('id', c.data.weekly_goal_id)
+    .single();
+  if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
+
+  return w.data.status as string;
+}
+
+/**
+ * Wat er voor dit doel in het grootboek staat.
+ *
+ * ⚠️ Punten zijn privé (domeinregel 10), dus dit gaat per definitie via de
+ *    beheerdersclient. Dat is opstelling en niet wat hier getoetst wordt.
+ */
+async function punten(goalId: string): Promise<number> {
+  const { data, error } = await adminDb()
+    .from('points_ledger')
+    .select('delta')
+    .eq('goal_id', goalId);
+  if (error) throw new Error(`points_ledger: ${error.message}`);
+
+  return (data ?? []).reduce((som, r) => som + (r.delta as number), 0);
+}
+
 /**
  * Bouwt een verse groep met een eigenaar, één beoordelaar en een week die op
  * goedkeuring wacht.
@@ -303,6 +338,147 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
   });
 
   /**
+   * De toestand die de eigenaar zélf maakt — QS8-186, migratie 0146.
+   *
+   * ⚠️ **Dit is de derde keer dat dezelfde vorm duur is geworden**, en de eerste
+   *    keer dat hij op een autorisatiegrens landt. De dossierrij van 17-08 droeg
+   *    als voorwaarde *"wordt zwaarder als een beslissing op de koppelstand gaat
+   *    leunen"*; dat gebeurde in 0064 (een scoregat, gedicht in 0066), in 0110
+   *    (`zet_streefdatum()`) en hier — bij de goedkeuring zelf.
+   *
+   * ⚠️ **De belofte is domeinregel 3 en niet "de functie geeft nul rijen".**
+   *    Alleen een buddy mag een week goedkeuren. De auto-goedkeuring van 0135 is
+   *    daar de uitzondering op, met een goede reden: wie geen buddy heeft moet
+   *    niet eeuwig blijven hangen. Het gat was dat de eigenaar die uitzondering
+   *    **op afroep kon oproepen** — je keurt dan niet zelf goed, je zorgt dat
+   *    niemand hoeft goed te keuren.
+   *
+   * ⚠️ **Deze twee tests zijn met de hand rood gemaakt** door 0146 terug te
+   *    draaien op een opgebouwd schema. Zonder die migratie levert route A een
+   *    `approved` week met twee punten en nul goedkeuringen op, en route B
+   *    hetzelfde zónder ook maar te wachten.
+   */
+  describe('de eigenaar kan de vastloper niet zelf maken', () => {
+    /** Zet de twee stempels dertig dagen terug, mét hun volgorde intact. */
+    async function dertigDagenLater(goalId: string, completionId: string): Promise<void> {
+      const admin = adminDb();
+      const basis = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+      const g = await admin
+        .from('goals')
+        .update({ losgekoppeld_op: new Date(basis).toISOString() })
+        .eq('id', goalId);
+      if (g.error) throw new Error(`losgekoppeld_op: ${g.error.message}`);
+
+      // ⚠️ Eén minuut ná het ontkoppelen — dat is de volgorde die de truc heeft.
+      const c = await admin
+        .from('completions')
+        .update({ submitted_at: new Date(basis + 60_000).toISOString() })
+        .eq('id', completionId);
+      if (c.error) throw new Error(`submitted_at: ${c.error.message}`);
+    }
+
+    it(
+      'route A — ontkoppelen, afronden en de termijn uitzitten levert geen goedkeuring op',
+      async () => {
+        const o = await bouwOpstelling('zelfgemaakt-a');
+
+        const los = await o.eigenaar.db
+          .from('goal_group_links')
+          .delete()
+          .eq('goal_id', o.goalId);
+        expect(los.error, 'de eigenaar mag zijn doel ontkoppelen — dat is de opstelling').toBeNull();
+
+        await dertigDagenLater(o.goalId, o.completionId);
+
+        expect(
+          await vastgelopenReden(o.goalId),
+          'een voltooiing die vlak na het ontkoppelen is ingediend, ligt niet vast',
+        ).toBeNull();
+
+        const { error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
+          p_termijn_dagen: 7,
+        });
+        if (error) throw new Error(`termijn: ${error.message}`);
+
+        expect(await weekstatus(o.completionId)).toBe('pending');
+        expect(await punten(o.goalId), 'geen punten zonder een buddy die goedkeurt').toBe(0);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Route B stond los van de ontkoppeltruc en was erger.** De termijn
+     *    loopt vanaf `submitted_at`, en die kolom stond in de INSERT-kolomgrant.
+     *    Eén insert met een datum van dertig dagen geleden gaf dus geen wachttijd
+     *    van zeven dagen maar nul.
+     */
+    it(
+      'route B — de client mag `submitted_at` niet zelf zetten',
+      async () => {
+        const o = await bouwOpstelling('zelfgemaakt-b');
+        const admin = adminDb();
+
+        const w = await admin
+          .from('completions')
+          .select('weekly_goal_id')
+          .eq('id', o.completionId)
+          .single();
+        if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
+
+        const terug = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const poging = await o.eigenaar.db.from('completions').insert({
+          weekly_goal_id: w.data.weekly_goal_id,
+          user_id: o.eigenaar.id,
+          achieved_level: 'ceiling',
+          note: 'af',
+          cycle_start_date: localDateIn('UTC' as TimeZone, now()) as IsoDate,
+          submitted_at: terug,
+        });
+
+        expect(poging.error, 'een client die zijn eigen indientijd zet, hoort 42501 te krijgen').not.toBeNull();
+        expect(poging.error?.code).toBe('42501');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De must-allow-helft, en die weegt hier zwaar.** Wie zijn groep écht
+     *    verlaat, moet ná het venster gewoon verder kunnen. Zou 0146 dat blokkeren,
+     *    dan hangt elke solo-gebruiker voorgoed op `pending` — een reparatie die
+     *    erger is dan het gat.
+     */
+    it(
+      'laat een voltooiing van ruim ná het ontkoppelen wél gewoon vastlopen',
+      async () => {
+        const o = await bouwOpstelling('zelfgemaakt-c');
+
+        const los = await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+        expect(los.error).toBeNull();
+
+        const admin = adminDb();
+        const basis = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+        // Ontkoppeld op dag −30, pas op dag −20 afgerond: buiten het venster.
+        const g = await admin
+          .from('goals')
+          .update({ losgekoppeld_op: new Date(basis).toISOString() })
+          .eq('id', o.goalId);
+        if (g.error) throw new Error(`losgekoppeld_op: ${g.error.message}`);
+
+        const c = await admin
+          .from('completions')
+          .update({ submitted_at: new Date(basis + 10 * 24 * 60 * 60 * 1000).toISOString() })
+          .eq('id', o.completionId);
+        if (c.error) throw new Error(`submitted_at: ${c.error.message}`);
+
+        expect(await vastgelopenReden(o.goalId)).toBe('geen_koppeling');
+      },
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
    * De goedkeuringstermijn — QS8-178, migratie 0135.
    *
    * ⚠️ **De belofte is dat geen van de vier routes een week eeuwig laat hangen.**
@@ -325,24 +501,6 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         .update({ submitted_at: terug })
         .eq('id', completionId);
       if (error) throw new Error(`verouderen: ${error.message}`);
-    }
-
-    async function weekstatus(completionId: string): Promise<string> {
-      const c = await adminDb()
-        .from('completions')
-        .select('weekly_goal_id')
-        .eq('id', completionId)
-        .single();
-      if (c.error || c.data === null) throw new Error(`voltooiing: ${c.error?.message}`);
-
-      const w = await adminDb()
-        .from('weekly_goals')
-        .select('status')
-        .eq('id', c.data.weekly_goal_id)
-        .single();
-      if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
-
-      return w.data.status as string;
     }
 
     async function keurGoed(termijn = 7): Promise<number> {
