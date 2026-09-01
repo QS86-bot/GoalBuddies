@@ -205,6 +205,20 @@ export async function maakWeekdoel(
       title: gevalideerd.data.title,
       floor_text: gevalideerd.data.floor_text,
       ceiling_text: gevalideerd.data.ceiling_text,
+      /**
+       * ⚠️ **De ontbrekende schakel van QS8-253, gesloten in QS8-260.** 0140 gaf
+       *    `weekly_goals` deze twee kolommen, de CHECK, de trigger en de
+       *    kolomgrant; `weekdoelSchema` valideert ze en het dashboard leest ze.
+       *    Deze regels stonden er niet, dus `ceiling_days` was in de praktijk
+       *    altijd NULL en gedroeg élk weekdoel zich zoals vóór A53.
+       *
+       * ⚠️ **Er is met opzet géén UPDATE-grant op deze twee.** `ceiling_days` ís
+       *    het oordeel over de week: wie hem halverwege van 5 naar 3 zet, haalt
+       *    zijn plafond met terugwerkende kracht. Ze horen dus alleen bij het
+       *    aanmaken, en dat is precies wat deze insert doet.
+       */
+      floor_days: gevalideerd.data.floor_days,
+      ceiling_days: gevalideerd.data.ceiling_days,
       cycle_start_date: cyclus.startDate,
       cycle_index: index,
     })

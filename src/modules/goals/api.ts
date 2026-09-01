@@ -10,9 +10,11 @@ import {
   datumLigtInDeToekomst,
   doelPatchSchema,
   doelSchema,
+  leesRitme,
   type DoelgebeurtenisClient,
   type DoelInvoer,
   type DoelPatch,
+  type Ritme,
 } from './schemas';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
@@ -65,6 +67,19 @@ export interface DoelMetVoortgang {
   readonly milestones_done: number;
   readonly weekly_total: number;
   readonly weekly_approved: number;
+  /**
+   * Het ritme van dit doel — besluit A53, migratie 0140, in de view sinds 0146.
+   *
+   * ⚠️ **Een voorkeur en geen oordeel.** Hij stuurt de beginstand van het
+   *    weekdoelformulier; wat een week wáárd is, staat in
+   *    `weekly_goals.ceiling_days` op de rij zelf. Zou het oordeel het doel
+   *    lezen, dan verandert de uitslag van een afgelopen week zodra iemand zijn
+   *    ritme omzet.
+   *
+   * ⚠️ Versmald met `leesRitme()` en niet met een cast: de view geeft `string`
+   *    terug, en onbekend hoort `weekly` te zijn — de stand van vóór A53.
+   */
+  readonly ritme: Ritme;
 }
 
 /** Zet een viewrij om, of geeft `null` als de rij niet compleet is. */
@@ -82,6 +97,7 @@ function naarDoel(rij: Tables<'goal_dashboard'>): DoelMetVoortgang | null {
     title: rij.title,
     description: rij.description,
     category: rij.category ?? 'other',
+    ritme: leesRitme(rij.ritme),
     identity_statement: rij.identity_statement,
     target_date: rij.target_date,
     status: rij.status ?? 'active',

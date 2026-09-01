@@ -2189,6 +2189,7 @@ export type Database = {
           milestones_done: number | null
           milestones_total: number | null
           owner_id: string | null
+          ritme: string | null
           status: string | null
           target_date: string | null
           title: string | null

@@ -1318,6 +1318,22 @@ export const en: Record<Sleutel, string> = {
   'weekdoelform.plafond': 'The ceiling',
   'weekdoelform.plafond_hint': 'What are you going for if the week goes well?',
   'weekdoelform.plafond_voorbeeld': '3 calls held',
+
+  'weekdoelform.ritme': 'How does this week count?',
+  'weekdoelform.ritme_hint':
+    'Starts from what you picked for this goal. Change it here and it applies to this week — your goal stays as it is.',
+  'weekdoelform.plafond_dagen': 'How many days are you going for?',
+  'weekdoelform.plafond_dagen_hint': 'If the week goes well.',
+  'weekdoelform.vloer_dagen': 'And on your worst week? (recommended)',
+  'weekdoelform.vloer_dagen_hint':
+    'The number of days you still manage when things go wrong. Reach that and the week counts.',
+  'weekdoelform.geen_vloer': 'No floor',
+  'weekdoelform.dagen_aantal': '{aantal} days',
+  'weekdoelform.dagen_zonder_vloer':
+    'You make this week by checking off {plafond} days. One day less counts as a missed week.',
+  'weekdoelform.dagen_met_vloer':
+    'From {vloer} days your week counts and your streak continues; at {plafond} days you reach your ceiling.',
+
   'weekdoelform.mijlpaal': 'Does this belong to a milestone?',
   'weekdoelform.mijlpaal_hint': 'It can also hang loose under your goal.',
   'weekdoelform.los': 'Loose under this goal',
@@ -1630,7 +1646,6 @@ export const en: Record<Sleutel, string> = {
   'overzicht.eyebrow': 'THE PAST TWELVE WEEKS',
   'overzicht.open': 'See your overview',
   'overzicht.laden_mislukt': 'Your overview could not be loaded.',
-  'overzicht.opnieuw': 'Try again',
 
   'overzicht.weken_kop': 'Twelve weeks',
   'overzicht.weken_leeg': 'Once you wrap up your first week, it shows up here.',
@@ -1667,8 +1682,6 @@ export const en: Record<Sleutel, string> = {
   'vragenlijst.overslaan': 'Skip',
   'vragenlijst.volgende': 'Next',
   'vragenlijst.vorige': 'Back',
-  'vragenlijst.klaar': 'Done',
-  'vragenlijst.opslaan_mislukt': 'Your answers could not be saved.',
   'vragenlijst.alles_overslaan': 'You can skip all of it. You lose nothing, and you can fill it in later.',
 
   'vragenlijst.focus.vraag': 'What do you want to focus on?',
@@ -1739,7 +1752,6 @@ export const en: Record<Sleutel, string> = {
   'ontdek.annuleren': 'Never mind',
   'ontdek.verzonden':
     'Your request is with the admin of this group. Whether and when they reply is up to them.',
-  'ontdek.al_aangevraagd': 'Requested',
   'ontdek.over_nog': 'You can approach {aantal} more groups today.',
   'ontdek.over_op': 'You have approached ten groups today. Tomorrow you can again.',
 
@@ -1838,12 +1850,8 @@ export const en: Record<Sleutel, string> = {
   'melden.blokkeer_knop': 'Block this person',
   'melden.deblokkeer_knop': 'Unblock',
   'melden.geblokkeerd_titel': 'Blocked',
-  'melden.geblokkeerd_leeg': 'You have not blocked anyone.',
   'melden.blokkades_mislukt': 'Your blocked list could not be loaded.',
-  'melden.blokkeer_uitleg':
-    'From now on this person will not end up in a group with you — not through an invitation, not through search. If they are already in a group with you, nothing changes there: that would let them notice you blocked them. If you want them gone from that group, leave it or ask the admin.',
   'melden.blokkeer_stil': 'They get no message about this and cannot see it anywhere.',
-  'melden.geblokkeerd_sinds': 'Blocked on {datum}',
   'melden.geblokkeerd': 'This is not possible.',
 
   'melden.verwijder_knop': 'Remove from group',

@@ -1719,6 +1719,34 @@ export const nl = {
   'weekdoelform.plafond': 'Het plafond',
   'weekdoelform.plafond_hint': 'Waar ga je voor als de week meezit?',
   'weekdoelform.plafond_voorbeeld': '3 gesprekken gevoerd',
+
+  // ⚠️ QS8-260, besluit A53. **De kop vraagt naar déze week en niet naar het
+  //    doel**, en dat is geen woordkeus maar de hele scheiding uit 0140: het
+  //    ritme van het doel stuurt het voorstel, `ceiling_days` op de weekrij ís
+  //    het oordeel. Zou de tekst hier "hoe vaak werk je aan dit doel" zeggen,
+  //    dan verwacht de gebruiker dat hij zijn doel aanpast — en verandert in zijn
+  //    beleving de uitslag van weken die er al staan.
+  'weekdoelform.ritme': 'Hoe telt deze week?',
+  'weekdoelform.ritme_hint':
+    'Begint op wat je bij dit doel hebt gekozen. Wijzig je het hier, dan geldt dat voor deze week — je doel blijft staan zoals het staat.',
+  'weekdoelform.plafond_dagen': 'Op hoeveel dagen ga je voor?',
+  'weekdoelform.plafond_dagen_hint': 'Als de week meezit.',
+  'weekdoelform.vloer_dagen': 'En op je slechtste week? (aanbevolen)',
+  'weekdoelform.vloer_dagen_hint':
+    'Het aantal dagen dat je ook haalt als het tegenzit. Haal je dat, dan telt de week gewoon mee.',
+  'weekdoelform.geen_vloer': 'Geen vloer',
+  'weekdoelform.dagen_aantal': '{aantal} dagen',
+  /**
+   * ⚠️ **Deze twee zinnen zeggen wat het kóst en niet wat het is.** Zonder vloer
+   *    is één dag te weinig een gemiste week, en dat is precies de situatie
+   *    waarvoor domeinregel 8 bestaat. De gebruiker hoort dat te lezen vóórdat
+   *    hij op toevoegen drukt, niet op zondagavond.
+   */
+  'weekdoelform.dagen_zonder_vloer':
+    'Je haalt deze week als je {plafond} dagen afvinkt. Eén dag minder telt als een gemiste week.',
+  'weekdoelform.dagen_met_vloer':
+    'Vanaf {vloer} dagen telt je week mee en loopt je reeks door; bij {plafond} dagen haal je je plafond.',
+
   'weekdoelform.mijlpaal': 'Hoort dit bij een mijlpaal?',
   'weekdoelform.mijlpaal_hint': 'Mag ook los onder je doel hangen.',
   'weekdoelform.los': 'Los onder dit doel',
@@ -2031,7 +2059,6 @@ export const nl = {
   'overzicht.eyebrow': 'DE AFGELOPEN TWAALF WEKEN',
   'overzicht.open': 'Bekijk je overzicht',
   'overzicht.laden_mislukt': 'Je overzicht kon niet geladen worden.',
-  'overzicht.opnieuw': 'Opnieuw proberen',
 
   'overzicht.weken_kop': 'Twaalf weken',
   'overzicht.weken_leeg': 'Zodra je je eerste week afrondt, komt hij hier te staan.',
@@ -2077,8 +2104,6 @@ export const nl = {
   'vragenlijst.overslaan': 'Sla over',
   'vragenlijst.volgende': 'Volgende',
   'vragenlijst.vorige': 'Terug',
-  'vragenlijst.klaar': 'Klaar',
-  'vragenlijst.opslaan_mislukt': 'Je antwoorden konden niet opgeslagen worden.',
   'vragenlijst.alles_overslaan': 'Alles overslaan kan ook. Je verliest er niets mee en je kunt het later invullen.',
 
   'vragenlijst.focus.vraag': 'Waar wil je je op richten?',
@@ -2169,7 +2194,6 @@ export const nl = {
    *    is erger dan geen belofte. De zin zegt precies wat er gebeurd is.
    */
   'ontdek.verzonden': 'Je aanvraag staat bij de beheerder van deze groep. Of en wanneer die reageert, bepaalt die zelf.',
-  'ontdek.al_aangevraagd': 'Aangevraagd',
   'ontdek.over_nog': 'Je kunt vandaag nog {aantal} groepen aanschrijven.',
   'ontdek.over_op': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
 
@@ -2287,17 +2311,13 @@ export const nl = {
   'melden.blokkeer_knop': 'Deze persoon blokkeren',
   'melden.deblokkeer_knop': 'Blokkade opheffen',
   'melden.geblokkeerd_titel': 'Geblokkeerd',
-  'melden.geblokkeerd_leeg': 'Je hebt niemand geblokkeerd.',
   'melden.blokkades_mislukt': 'Je blokkades konden niet geladen worden.',
   /**
    * ⚠️ **Deze zin zegt met zoveel woorden wat blokkeren níét doet**, en dat is
    *    het belangrijkste eraan. Wie denkt dat de knop iemand uit zijn groep zet,
    *    drukt hem in en concludeert daarna dat de app stuk is.
    */
-  'melden.blokkeer_uitleg':
-    'Deze persoon komt hierna niet meer bij je in een groep terecht — niet via een uitnodiging, niet via zoeken. Zit hij nu al in een groep met jou, dan verandert daar niets: dat zou hem laten merken dat je hem geblokkeerd hebt. Wil je hem daar weg, verlaat dan die groep of vraag de beheerder.',
   'melden.blokkeer_stil': 'Hij krijgt hier geen bericht van en kan het nergens zien.',
-  'melden.geblokkeerd_sinds': 'Geblokkeerd op {datum}',
   'melden.geblokkeerd': 'Dit kan niet.',
 
   // Een lid verwijderen

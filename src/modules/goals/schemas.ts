@@ -34,6 +34,23 @@ import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
 export const RITMES = ['weekly', 'times_per_week', 'daily'] as const;
 export type Ritme = (typeof RITMES)[number];
 
+/**
+ * Leest een ritme uit iets waarvan je de vorm niet kent.
+ *
+ * ⚠️ **Onbekend is `weekly`, en dat is de hele functie.** De gegenereerde types
+ *    geven `goals.ritme` als `string` terug, dus élke lezer moet versmallen — en
+ *    elke lezer die dat met de hand doet, kan het één keer anders opschrijven.
+ *    Dezelfde vorm en dezelfde reden als `leesZichtbaarheid()` in `buddies`.
+ *
+ * ⚠️ **`weekly` is de veilige kant** en niet zomaar de eerste waarde: dat is de
+ *    stand waarin een weekdoel zich gedraagt zoals vóór A53 — geen dagen, geen
+ *    afgeleid niveau. Een tikfout of een oudere server levert dus het gedrag op
+ *    dat er altijd al was, en niet een week die ineens dagen telt.
+ */
+export function leesRitme(waarde: unknown): Ritme {
+  return waarde === 'daily' || waarde === 'times_per_week' ? waarde : 'weekly';
+}
+
 /** Zie de andere meldingentabellen: een functie, want de taal ligt niet vast op importtijd. */
 export function ritmeLabels(): Readonly<Record<Ritme, string>> {
   return {

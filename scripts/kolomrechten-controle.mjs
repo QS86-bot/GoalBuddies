@@ -837,27 +837,6 @@ export const GEEN_SCHRIJFPAD = [
   {
     tabel: 'weekly_goals',
     soort: 'INSERT',
-    kolom: 'floor_days',
-    reden:
-      '⚠️ dit is een échte onderbroken keten en geen beoordeelde uitzondering — ' +
-      'QS8-260. 0140 gaf de kolom, de CHECK, de grant en de trigger; ' +
-      '`weekdoelSchema` valideert het veld en het dashboard leest het. Wat ' +
-      'ontbreekt is een scherm dat er een getal in zet, en zolang dat er niet is ' +
-      'kan een ritme-weekdoel niet bestaan. ⚠️ **De kolom in `maakWeekdoel()` ' +
-      'zetten haalt deze melding weg zonder de keten te sluiten** — dat stond in ' +
-      'een eerdere versie van deze PR en is bij de review teruggedraaid. De ' +
-      'dode-houtrichting toetst of een kolomnaam voorkomt, niet of er ooit een ' +
-      'andere waarde dan de default in komt.',
-  },
-  {
-    tabel: 'weekly_goals',
-    soort: 'INSERT',
-    kolom: 'ceiling_days',
-    reden: 'idem — zelfde keten, zelfde issue QS8-260.',
-  },
-  {
-    tabel: 'weekly_goals',
-    soort: 'INSERT',
     kolom: 'ai_generated',
     reden:
       'herkomst wordt bij een weekdoel niet door de client gezet — zie de kop van ' +
