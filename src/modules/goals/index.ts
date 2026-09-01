@@ -178,3 +178,30 @@ export {
   type Weekbalk,
   type Weekstand,
 } from './overzicht-stand';
+
+export {
+  heeftVragenlijstAntwoorden,
+  LEGE_VRAGENLIJST,
+  MAX_FOCUSGEBIEDEN,
+  MINUTEN_OPTIES,
+  MOMENTEN,
+  minutenLabels,
+  momentLabels,
+  patchUitVragenlijst,
+  urenPerWeekUitMinuten,
+  valkuilAntwoord,
+  valkuilLabels,
+  VALKUILEN,
+  vragenlijstSchema,
+  type Minuten,
+  type Moment,
+  type Valkuil,
+  type VragenlijstInvoer,
+} from './vragenlijst-schemas';
+
+export {
+  PROFIELCONTEXT,
+  PROFIELSPIEGELING,
+  vulVoorUitProfiel,
+  type ProfielVoorvulling,
+} from './interview-schemas';
