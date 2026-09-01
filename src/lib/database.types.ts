@@ -2345,6 +2345,17 @@ export type Database = {
         }[]
       }
       eigenaarsdatum: { Args: { uid: string }; Returns: string }
+      groep_klassement: {
+        Args: { p_group_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          display_name: string
+          positie: number
+          punten: number
+          total_members: number
+          user_id: string
+        }[]
+      }
+      groep_teller: { Args: { p_group_id: string }; Returns: Json }
       groepsdatum: { Args: { gid: string }; Returns: string }
       group_overview: {
         Args: {

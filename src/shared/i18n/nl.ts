@@ -635,7 +635,7 @@ export const nl = {
   'zichtbaarheid.beschermd_uitleg':
     'De groep ziet wat er lukt: afgeronde weken, mijlpalen, aanmoedigingen. Een gemiste week blijft van jou, tenzij je hem zelf deelt.',
   'zichtbaarheid.open_uitleg':
-    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, en wie er in welke week meedeed. Kies dit alleen als iedereen dat wil.',
+    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, en elkaars puntentotaal in deze groep. Kies dit alleen als iedereen dat wil.',
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
   'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
   'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
@@ -655,11 +655,11 @@ export const nl = {
     'Openzetten werkt met terugwerkende kracht: de groep ziet vanaf dat moment ook de gemiste weken die er al staan. Iedereen krijgt er een bericht van, zodat wie dat niet wil zijn doel kan ontkoppelen.',
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, en van elke week wie er meedeed — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, en een klassement met elkaars puntentotaal in deze groep — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
-    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht. Iedereen krijgt er een bericht van.',
+    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement verdwijnt. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
   'bevestiging.groep_verlaten.titel': 'Deze groep verlaten?',
   'bevestiging.groep_verlaten.uitleg':
@@ -1920,6 +1920,38 @@ export const nl = {
   'ritme.buiten_de_week': 'Die dag hoort niet bij deze week.',
   'ritme.onder_de_vloer': 'Deze week haalt de vloer nog niet, dus er valt nog niets af te ronden.',
   'ritme.te_veel_deze_dag': 'Je hebt vandaag te veel afgevinkt. Probeer het morgen weer.',
+  // ---------------------------------------------------------------------------
+  // Het klassement en de teller — QS8-254, besluit A54
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Geen enkele zin hier noemt een minpunt, een gemiste week of een laatste
+  //    plaats.** Dat is niet alleen toon: de RPC's uit 0141 hebben geen kolom
+  //    voor een delta en geen kolom voor een datum, dus er valt hier ook niets
+  //    over te zeggen. Als je merkt dat je zo'n zin nodig hebt, is er iets aan
+  //    de database veranderd en niet aan de copy.
+  //
+  // ⚠️ **De teller zwijgt bij nul.** "Samen 0 weken afgerond" is een
+  //    tegenslagbericht met een vrolijke kop erop — dezelfde afweging die de
+  //    seizoensrecap in 0112 maakte, en om precies dezelfde reden.
+  'klassement.kop': 'Het klassement',
+  'klassement.uitleg':
+    'Jullie hebben afgesproken open te zijn, dus staan de punten van deze groep hier bij elkaar.',
+  'klassement.punten_een': '1 punt',
+  'klassement.punten_meer': '{n} punten',
+  'klassement.rij_label': 'Plek {positie}: {naam}, {punten}',
+  'klassement.leeg': 'Er zijn hier nog geen punten verdiend. De eerste afgeronde week zet hem in gang.',
+  'klassement.van_totaal': '{getoond} van {totaal} leden',
+  'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',
+  'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
+  'klassement.opnieuw': 'Opnieuw proberen',
+
+  'teller.kop': 'Samen',
+  'teller.weken_een': '1 week afgerond',
+  'teller.weken_meer': '{n} weken afgerond',
+  'teller.mijlpalen_een': '1 mijlpaal gehaald',
+  'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
+  'teller.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
+
   'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
   'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',

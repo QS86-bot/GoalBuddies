@@ -240,12 +240,16 @@ Voordat er één feature gebouwd wordt:
    oppervlakken zijn beoordeeld en alles wat om moest is om: weekdoelen (0077),
    de beste reeks en de laatste cyclus (0078), De Ketting (0079).
 
-   ⚠️ **"Open" betekent nooit "alles open", en zeven oppervlakken bewijzen dat.**
-   Punten (A42), systeemberichten over tegenslag, realtime, ingetrokken
-   goedkeuringen, de weekpassen, de teller van De Ketting en de
-   mijlpaalaankondiging blijven dicht, óók in een open groep. Wie er ooit een wil
-   verruimen, leest eerst de rij en de reden in
-   `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
+   ⚠️ **"Open" betekent nooit "alles open", en zes oppervlakken bewijzen dat.**
+   Systeemberichten over tegenslag, realtime, ingetrokken goedkeuringen, de
+   weekpassen, de teller van De Ketting en de mijlpaalaankondiging blijven dicht,
+   óók in een open groep. Wie er ooit een wil verruimen, leest eerst de rij en de
+   reden in `docs/decisions/002-domeinregel7-oppervlakken.md` §6b.
+
+   ⚠️ **Het waren er zeven tot 01-09-2026.** Punten stonden erbij, en besluit A54
+   heeft ze er in een open groep uit gehaald — maar alléén het **groepstotaal per
+   lid**, niet het persoonlijke totaal en niet de deltas. De precieze grens staat
+   bij domeinregel 10 hieronder; hem uit het hoofd naspelen gaat mis.
 
    ⚠️ **Voor élk níeuw oppervlak is beschermd het antwoord tot iemand het
    tegendeel besluit.** Bouw niets "vast open"; dat is precies hoe een standaard
@@ -308,16 +312,34 @@ Voordat er één feature gebouwd wordt:
     Drie regels die daaruit volgen en niet mogen verwateren:
     - Een **weekpas beschermt de reeks, niet het punt.** Anders is missen gratis en
       zegt de score niets.
-    - **Punten zijn privé.** `points_ledger` en het puntentotaal zijn alleen voor de
+    - **Je persoonlijke puntentotaal is privé.** `points_ledger` is alleen voor de
       eigenaar leesbaar. Een dalend totaal is zichtbaar bewijs van een gemiste week,
-      en dat botst met domeinregel 7. De groep ziet De Ketting en mijlpalen.
+      en dat botst met domeinregel 7.
 
-      ⚠️ **Besluit A42, 24-08-2026: zo houden.** De vraag was of een gedeeld
+      ⚠️ **Besluit A42, 24-08-2026: zo houden** — de vraag was of een gedeeld
       puntentotaal niet competitiever is. Dat is het, en het lekt: wie het totaal
       deelt, deelt het missen via een omweg. Wat wél mag is een teller die **alleen
-      optelt** — "deze groep heeft samen 47 weken afgerond". Die gaat nooit omlaag
-      en verraadt niemand. Dat is dezelfde vorm als De Ketting en zijn mijlpalen
-      (migratie 0070), dus het is een bestaand patroon en geen idee.
+      optelt**, zoals De Ketting en zijn mijlpalen (0070).
+
+      ⚠️ **Besluit A54, 31-08-2026, gebouwd op 01-09-2026 (QS8-254, migratie
+      0141): er is één uitzondering, en die is smal.** Een **open** groep (A41)
+      krijgt een klassement per lid. Wat dat toont is niet je persoonlijke totaal
+      maar de punten die je **in díe groep** verdiend hebt, en dat verschil draagt
+      de hele regel:
+
+      - `cycle_missed` wordt zónder `group_id` geboekt — een gemiste week is niet
+        aan één groep toe te rekenen. **Het klassement kan dus niet dalen van een
+        gemiste week**, en dat is precies wat A42 beschermde.
+      - Dat was een toevalligheid van de rollover en is sinds 0141 een grendel:
+        `points_ledger_gemist_is_niet_van_een_groep`. Wie die CHECK weghaalt,
+        verandert een klassement in een tegenslagmeter.
+      - `groep_klassement()` geeft **geen delta en geen datum** terug. Die kolommen
+        bestaan niet, zodat de belofte niet in een component staat.
+      - In een **beschermde** groep geeft de RPC nul rijen. De grens is
+        `lid_van_open_groep()` en staat in de database, niet in het scherm.
+
+      De redenering staat in `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md`
+      §2 en de oppervlakteanalyse als rij 28 in beslisdocument 002.
     - **Score en voortgang zijn twee dingen.** Voortgang is mijlpaalgebaseerd en loopt
       alleen omhoog; de score kan dalen. Nooit in één balk tonen.
 

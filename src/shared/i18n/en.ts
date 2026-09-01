@@ -1363,15 +1363,15 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd_uitleg':
     'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
   'zichtbaarheid.open_uitleg':
-    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, and who took part in which week. Only pick this if everyone wants it.',
+    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, and each other’s point totals in this group. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, and who took part in each week — including the ones already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group — including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
-    'From now on the group only sees what works out. Missed weeks become private again, retroactively too. Everyone gets a message about it.',
+    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard disappears. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
   'bevestiging.groep_verlaten.titel': 'Leave this group?',
   'bevestiging.groep_verlaten.uitleg':
@@ -1561,6 +1561,25 @@ export const en: Record<Sleutel, string> = {
   'ritme.buiten_de_week': "That day isn't part of this week.",
   'ritme.onder_de_vloer': "This week hasn't reached its floor yet, so there's nothing to wrap up.",
   'ritme.te_veel_deze_dag': "You've ticked off too much today. Try again tomorrow.",
+  'klassement.kop': 'The leaderboard',
+  'klassement.uitleg':
+    'You have agreed to be open with each other, so this group\u2019s points are gathered here.',
+  'klassement.punten_een': '1 point',
+  'klassement.punten_meer': '{n} points',
+  'klassement.rij_label': 'Place {positie}: {naam}, {punten}',
+  'klassement.leeg': 'No points have been earned here yet. The first wrapped-up week gets it going.',
+  'klassement.van_totaal': '{getoond} of {totaal} members',
+  'klassement.laden_mislukt': 'The leaderboard could not be loaded.',
+  'klassement.teller_mislukt': 'The counter could not be loaded.',
+  'klassement.opnieuw': 'Try again',
+
+  'teller.kop': 'Together',
+  'teller.weken_een': '1 week wrapped up',
+  'teller.weken_meer': '{n} weeks wrapped up',
+  'teller.mijlpalen_een': '1 milestone reached',
+  'teller.mijlpalen_meer': '{n} milestones reached',
+  'teller.nog_niets': 'Your first wrapped-up week will show up here.',
+
   'validatie.dagen_heel': 'Enter a whole number of days.',
   'validatie.dagen_bereik': 'A week has seven days.',
   'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",
