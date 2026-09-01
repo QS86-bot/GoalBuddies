@@ -58,6 +58,11 @@ import {
   nummersUit,
   ontbrekendPerBranch,
 } from './migratiebranches.mjs';
+// ⚠️ Eén definitie van "wat is de kopregel", gedeeld met de herschrijver.
+//    Zou deze controle een eigen versie hebben, dan kunnen die twee het oneens
+//    worden en bewaakt de bewaker iets anders dan de schrijver schrijft — de
+//    twee-lijsten-fout uit 0032/0034. Zie de kop van `migratie-hernummer.mjs`.
+import { kopNummer } from './migratie-hernummer.mjs';
 
 const MAP = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
 
@@ -189,6 +194,51 @@ if (perBranch !== null) {
 }
 
 // ---------------------------------------------------------------------------
+// 5. De kopregel noemt het bestand zelf — QS8-241
+// ---------------------------------------------------------------------------
+//
+// ⚠️ **Dit is de fout die op 31-08 doorglipte, en geen enkele controle zag hem.**
+//    Een migratie werd hernummerd met
+//
+//      sed -i 's/\b0134\b/0136/g' …
+//
+//    en dat laat de kopregel stil staan: `_` is in GNU sed een woordteken, dus
+//    in `0134_een_plan` staat er geen woordgrens achter de `4`. Het bestand
+//    heette daarna `0136_…` terwijl zijn eerste regel `0134_…` zei. Gevonden met
+//    het oog in een grep.
+//
+// ⚠️ **Waarom dit een eigen stap is en niet in `migratie:hernummer` volstaat.**
+//    Die repareert de gevallen die via hém lopen. Deze stap vangt het gevál,
+//    ongeacht de weg — met de hand, met sed, of met een script dat nog niet
+//    bestond. Onwrikbare regel 18: toets de belofte, niet het onderdeel.
+//
+//    De belofte is: **de eerste regel van een migratie noemt zijn eigen naam.**
+//    Dat is de regel die een lezer als eerste gelooft, en die na een verhuizing
+//    als eerste liegt.
+
+for (const naam of bestanden) {
+  if (!NAAM.test(naam)) continue;
+
+  const inhoud = readFileSync(join(MAP, naam), 'utf8');
+  const kop = kopNummer(inhoud);
+
+  if (kop === null) {
+    fouten.push(
+      `De kop van ${naam} noemt zijn eigen nummer niet. Zet het in de eerste ` +
+        'commentaarregel, zoals het sjabloon van `migratie:nieuw` doet.',
+    );
+    continue;
+  }
+
+  if (kop !== naam.slice(0, 4)) {
+    fouten.push(
+      `De kop van ${naam} zegt ${kop}. Dat is precies wat er na een hernummering ` +
+        'met de hand achterblijft; draai `npm run migratie:hernummer -- <van> <naar>`.',
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 if (fouten.length === 0) {
   console.log(
@@ -208,6 +258,9 @@ console.error(
     '⚠️ Meldt hij een branch die migraties draagt die hier ontbreken, land die\n' +
     'branch dan — cherry-picken van losse migratiebestanden gaat mis zodra ze op\n' +
     'iets anders leunen (een shim, een bucket). Zie QS8-237.\n' +
-    'Dit beeld is zo oud als je laatste `git fetch`.',
+    'Dit beeld is zo oud als je laatste `git fetch`.\n\n' +
+    '⚠️ Twee migraties met hetzelfde nummer, of een kop die zijn eigen naam niet\n' +
+    'noemt? Hernummer met `npm run migratie:hernummer -- <van> <naar>` en niet met\n' +
+    'de hand: die laatste vergeet de kopregel. Zie QS8-241.',
 );
 process.exit(1);
