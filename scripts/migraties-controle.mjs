@@ -63,6 +63,7 @@ import {
 //    worden en bewaakt de bewaker iets anders dan de schrijver schrijft — de
 //    twee-lijsten-fout uit 0032/0034. Zie de kop van `migratie-hernummer.mjs`.
 import { kopNummer } from './migratie-hernummer.mjs';
+import { cliTegenspraak } from './letterversies.mjs';
 
 const MAP = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
 
@@ -236,6 +237,29 @@ for (const naam of bestanden) {
         'met de hand achterblijft; draai `npm run migratie:hernummer -- <van> <naar>`.',
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Laat geen enkel script de CLI migraties toepassen zolang er letterversies
+//    staan — QS8-251.
+// ---------------------------------------------------------------------------
+//
+// ⚠️ **Waarom hier en niet in een eigen controle.** Dit gaat over de migratiemap
+//    en over niets anders: de tegenspraak bestáát alleen zolang die map een
+//    bestandsnaam bevat die de CLI niet kan lezen. Een aparte `*:controle` zou
+//    dezelfde map een tweede keer moeten inlezen om dezelfde vraag te stellen.
+//
+// ⚠️ **De belofte stond maanden in proza en nergens in code.**
+//    `docs/decisions/004-migratieregister.md` zei "dit project gebruikt de CLI
+//    niet voor het toepassen van migraties", terwijl `package.json` een
+//    `db:push` had die precies dat deed. Regel 18 vraag 4: er was geen test die
+//    de belofte kón raken.
+
+try {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  fouten.push(...cliTegenspraak({ scripts: pkg.scripts, bestandsnamen: bestanden }));
+} catch {
+  fouten.push('package.json is niet te lezen — de CLI-tegenspraak is dus ongemeten.');
 }
 
 // ---------------------------------------------------------------------------

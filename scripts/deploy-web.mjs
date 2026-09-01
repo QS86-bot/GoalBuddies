@@ -108,6 +108,132 @@ function alleBestanden(map) {
 }
 
 /**
+ * Welke geheimen dit project kent, uit `.env.example` — QS8-242.
+ *
+ * ⚠️ **Afgeleid en niet met de hand bijgehouden.** Een tweede lijst in dit
+ *    script zou onvermijdelijk gaan afwijken van `.env.example`, en dan bewaakt
+ *    de controle iets anders dan het project heeft. Dat is de fout van 0032/0034,
+ *    waar een test de app-lijst met zichzelf vergeleek.
+ *
+ * ⚠️ `EXPO_PUBLIC_*` valt eruit: die zijn per definitie publiek en horen in de
+ *    bundel te staan.
+ *
+ * @param {string | undefined} voorbeeld
+ * @returns {string[]}
+ */
+export function bewaakteNamen(voorbeeld) {
+  return leesEnv(voorbeeld).namen.filter((n) => !n.startsWith('EXPO_PUBLIC_'));
+}
+
+/**
+ * De namen in een env-bestand, én de regels die de parser niet kan lezen.
+ *
+ * ⚠️ **Een onleesbare regel is een aanwijzing en geen ruis, en dat is de kern van
+ *    dit issue.** Op 31-08 stond er in `.env` een regel die letterlijk
+ *    `Google OAuth secret=…` heette: spaties, kleine letters. Die kwam niet door
+ *    `[A-Z0-9_]+` heen, stond dus niet in de namenlijst, en de waarde is nooit
+ *    met de bundel vergeleken. De scan meldde geen fout — hij meldde dat er
+ *    niets te controleren viel.
+ *
+ *    Diezelfde spaties lieten `source .env` struikelen. Het bestand vertelde dus
+ *    wél dat er iets mis was, alleen tegen de mens en niet tegen de controle.
+ *
+ * @param {string | undefined} tekst
+ * @returns {{namen: string[], onleesbaar: {nummer: number, regel: string}[]}}
+ */
+export function leesEnv(tekst) {
+  const namen = [];
+  const onleesbaar = [];
+
+  String(tekst ?? '')
+    .split(/\r?\n/)
+    .forEach((regel, i) => {
+      const kaal = regel.trim();
+      if (kaal === '' || kaal.startsWith('#')) return;
+
+      const goed = /^\s*([A-Z0-9_]+)\s*=/.exec(regel);
+      if (goed) {
+        namen.push(goed[1] ?? '');
+        return;
+      }
+      // Wél een toewijzing, maar niet in een vorm die de controle kent.
+      if (kaal.includes('=')) onleesbaar.push({ nummer: i + 1, regel: kaal.split('=')[0] ?? '' });
+    });
+
+  return { namen, onleesbaar };
+}
+
+/**
+ * Welke waarden er in de bundel gezocht worden, en wat er met opzet afvalt.
+ *
+ * ⚠️ **Twee bronnen, en dat is blinde vlek 2 van QS8-242.** De oude versie
+ *    filterde op `naam in leesEnvNamen()`, dus een geheim dat via de omgeving
+ *    binnenkomt — een `export` in een shell, of de secrets van een CI-runner —
+ *    kwam er niet doorheen, ook al stond de waarde gewoon in `process.env`.
+ *    Nu telt een naam mee als hij in `.env` staat **of** in `.env.example`.
+ *
+ * ⚠️ **Niet de hele omgeving.** Alles uit `process.env` pakken lijkt veiliger en
+ *    is het niet: op een runner staan daar honderden variabelen, en `PWD` of
+ *    `PATH` komen zó in een bronverwijzing terecht. Een controle die altijd
+ *    afgaat, wordt uitgezet.
+ *
+ * ⚠️ **Korte waarden vallen af, en die val is echt.** `TZ=UTC` zit in élke
+ *    bundel en zou de deploy voorgoed blokkeren op een vals alarm.
+ *
+ * @param {{omgeving: Record<string, string | undefined>,
+ *          envTekst?: string | undefined,
+ *          voorbeeldTekst?: string | undefined,
+ *          minimaleLengte?: number | undefined}} invoer
+ */
+export function teControleren({ omgeving, envTekst, voorbeeldTekst, minimaleLengte = 12 }) {
+  const uitEnv = leesEnv(envTekst).namen;
+  const uitVoorbeeld = bewaakteNamen(voorbeeldTekst);
+  const bekend = new Set([...uitEnv, ...uitVoorbeeld]);
+
+  const geheimen = [];
+  const overgeslagen = [];
+
+  for (const naam of [...bekend].sort()) {
+    const waarde = (omgeving[naam] ?? '').trim();
+
+    if (naam.startsWith('EXPO_PUBLIC_')) {
+      overgeslagen.push({ naam, reden: 'publiek' });
+      continue;
+    }
+    if (waarde === '') {
+      overgeslagen.push({ naam, reden: 'niet gezet' });
+      continue;
+    }
+    if (waarde.length < minimaleLengte) {
+      overgeslagen.push({ naam, reden: `korter dan ${minimaleLengte} tekens` });
+      continue;
+    }
+    geheimen.push({ naam, waarde });
+  }
+
+  return { geheimen, overgeslagen };
+}
+
+/**
+ * Welke geheimen in welke bestanden staan.
+ *
+ * `inhoud` is een `Map` van pad naar tekst, zodat dit los te voeden is — het
+ * lezen van schijf hoort niet in de beslissing.
+ *
+ * @param {{naam: string, waarde: string}[]} geheimen
+ * @param {Map<string, string>} inhoud
+ */
+export function treffersIn(geheimen, inhoud) {
+  const uit = [];
+  for (const [pad, tekst] of inhoud) {
+    for (const { naam, waarde } of geheimen) {
+      if (tekst.includes(waarde)) uit.push({ naam, pad });
+    }
+  }
+  return uit;
+}
+
+/**
  * Zoekt geheimen terug in de gebouwde bestanden.
  *
  * ⚠️ Waarom de wáárde en niet de naam. Een bundler die `SUPABASE_SERVICE_ROLE_KEY`
@@ -115,38 +241,56 @@ function alleBestanden(map) {
  *    vindt dus niets terwijl het lek er wel is. Daarom wordt hier op de inhoud
  *    gezocht.
  *
- * ⚠️ Korte waarden worden overgeslagen. Een env-variabele van drie tekens
- *    (`TZ=UTC`) komt in élke bundel voor en zou de deploy voorgoed blokkeren op
- *    een vals alarm — en een controle die altijd afgaat, wordt uitgezet.
+ * ⚠️ **"Nul gecontroleerd" is sinds QS8-242 een andere uitkomst dan "schoon".**
+ *    De oude versie printte *"Geen te controleren geheimen in .env gevonden"* en
+ *    liet de deploy doorlopen. Dat is exact de val die `docs/DEPLOY.md` elders
+ *    zelf benoemt bij `functies:controle`: ongemeten ziet er hetzelfde uit als
+ *    groen, en wie naar de exitcode kijkt telt het als bewijs.
  */
 function scanOpGeheimen(bestanden) {
-  const MINIMALE_LENGTE = 12;
+  const envTekst = existsSync('.env') ? readFileSync('.env', 'utf8') : undefined;
+  const voorbeeldTekst = existsSync('.env.example')
+    ? readFileSync('.env.example', 'utf8')
+    : undefined;
 
-  const geheimen = Object.entries(process.env)
-    .filter(([naam]) => !naam.startsWith('EXPO_PUBLIC_'))
-    .filter(([naam]) => naam in leesEnvNamen())
-    .map(([naam, waarde]) => ({ naam, waarde: (waarde ?? '').trim() }))
-    .filter(({ waarde }) => waarde.length >= MINIMALE_LENGTE);
+  const { onleesbaar } = leesEnv(envTekst);
+  const { geheimen, overgeslagen } = teControleren({
+    omgeving: process.env,
+    envTekst,
+    voorbeeldTekst,
+  });
+
+  // ⚠️ Blinde vlek 1: een regel die de parser niet kan lezen, bestaat niet voor
+  //    de controle. Melden en niet overslaan.
+  if (onleesbaar.length > 0) {
+    console.error('\n  ✗ .env heeft regels die deze controle niet kan lezen:\n');
+    for (const { nummer, regel } of onleesbaar) {
+      console.error(`    regel ${nummer}: ${regel.slice(0, 40)}…`);
+    }
+    console.error(
+      '\n    Een naam met spaties of kleine letters valt buiten de scan, en dat is\n' +
+        '    niet aan de uitvoer te zien. Gebruik SCREAMING_SNAKE_CASE.\n',
+    );
+    process.exit(1);
+  }
 
   if (geheimen.length === 0) {
-    console.log('    Geen te controleren geheimen in .env gevonden.');
-    return;
+    console.error('\n  ✗ NUL geheimen gecontroleerd — dat is niet hetzelfde als schoon.\n');
+    console.error(`    ${overgeslagen.length} naam/namen bekend, geen enkele met een waarde`);
+    console.error('    van voldoende lengte. Zonder .env is deze deploy ongemeten.\n');
+    process.exit(1);
   }
 
-  const gevonden = [];
-
+  const inhoud = new Map();
   for (const pad of bestanden) {
-    let inhoud;
     try {
-      inhoud = readFileSync(pad, 'utf8');
+      inhoud.set(pad, readFileSync(pad, 'utf8'));
     } catch {
-      continue; // Binair bestand (een plaatje, een lettertype). Slaat niets over dat tekst is.
-    }
-
-    for (const { naam, waarde } of geheimen) {
-      if (inhoud.includes(waarde)) gevonden.push({ naam, pad });
+      // Binair bestand (een plaatje, een lettertype). Slaat niets over dat tekst is.
     }
   }
+
+  const gevonden = treffersIn(geheimen, inhoud);
 
   if (gevonden.length > 0) {
     console.error('\n  ✗ GEHEIMEN IN DE BUNDEL — er is niets geüpload.\n');
@@ -159,20 +303,11 @@ function scanOpGeheimen(bestanden) {
     process.exit(1);
   }
 
-  console.log(`    ${geheimen.length} geheimen gecontroleerd, geen ervan staat in de bundel.`);
-}
-
-/** De namen die écht in `.env` staan — niet de hele omgeving van de shell. */
-function leesEnvNamen() {
-  if (!existsSync('.env')) return {};
-
-  const namen = {};
-  for (const regel of readFileSync('.env', 'utf8').split(/\r?\n/)) {
-    const match = /^\s*([A-Z0-9_]+)\s*=/.exec(regel);
-    if (match) namen[match[1]] = true;
-  }
-
-  return namen;
+  console.log(
+    `    ${geheimen.length} geheimen gecontroleerd in ${inhoud.size} bestanden, ` +
+      `geen ervan staat in de bundel.`,
+  );
+  console.log(`    ${overgeslagen.length} naam/namen overgeslagen (publiek, leeg of te kort).`);
 }
 
 // ---------------------------------------------------------------------------

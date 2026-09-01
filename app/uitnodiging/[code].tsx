@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { useProfiel, useSession } from '@/modules/auth';
+import { ROUTE_AANMELDEN, useProfiel, useSession } from '@/modules/auth';
 import {
   bewaarOpenstaandeUitnodiging,
   fetchUitnodiging,
@@ -270,7 +270,13 @@ export default function UitnodigingScherm() {
               </Button>
             ) : (
               <>
-                <Button variant="primair" block onPress={() => router.push('/aanmelden')}>
+                {/*
+                  ⚠️ Rechtstreeks op het aanmeldformulier (QS8-248). Wie een
+                     uitnodiging krijgt is bijna altijd nieuw; het scherm zelf
+                     opent standaard op inloggen, want dat is het geval dat
+                     honderden keren voorkomt.
+                */}
+                <Button variant="primair" block onPress={() => router.push(ROUTE_AANMELDEN)}>
                   {t('uitnodiging.inloggen')}
                 </Button>
                 <Caption>{t('uitnodiging.blijft_bewaard')}</Caption>

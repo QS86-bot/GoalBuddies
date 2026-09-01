@@ -98,6 +98,24 @@ export default function Profiel() {
             </Card>
 
             {/*
+              ⚠️ **Uitloggen staat hier en niet onderaan, en dat is een gemeten
+                 bevinding** (QS8-245). Het was het twáalfde blok op dit scherm,
+                 onder taal, tijdzone, meldingen, herinnering, thema en viering —
+                 een halve minuut scrollen langs instellingen die je niet zocht.
+                 De eigenaar van het product vond hem zelf niet.
+
+                 Het kostte bovendien echt iets: `routewacht.ts` stuurt je van
+                 `/aanmelden` naar `/` zodra je een sessie hebt, en het
+                 aanmeldscherm is de enige plek met de Apple- en Google-knop.
+                 Uitloggen is dus de enige route daarheen, en die route was niet
+                 te vinden.
+
+                 ⚠️ Account verwijderen blijft wél onderaan, met zijn
+                 overtyp-bevestiging. Dat is met opzet moeilijk bereikbaar.
+            */}
+            <Uitloggen />
+
+            {/*
               ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
                  Zolang nergens anders een reeks stond, was dat een plaatshouder.
                  Sinds QS8-75 toont "Vandaag" de échte reeks per doel, en dan is
@@ -146,17 +164,57 @@ export default function Profiel() {
 
             <VieringKeuze />
 
-            <Card nested>
-              <Subheading>{t('profiel.uitloggen_kop')}</Subheading>
-              <Body muted>{t('profiel.uitloggen_uitleg')}</Body>
-              <Button onPress={() => void signOut()}>{t('profiel.uitloggen_knop')}</Button>
-            </Card>
-
             <AccountVerwijderen />
           </View>
         )}
       </AsyncView>
     </Screen>
+  );
+}
+
+/**
+ * Uitloggen — QS8-245.
+ *
+ * ⚠️ **Waarom dit een component is en geen drie regels in het scherm.** Hier
+ *    stond `void signOut()`, en dat gooit de `Uitkomst` weg. `signOut()` bouwt
+ *    netjes `auth.fout.uitloggen` op ("Uitloggen lukte niet. Probeer het
+ *    opnieuw."), die melding staat in beide catalogi en is op inhoud getest —
+ *    en geen enkel scherm liet hem ooit zien. Mislukte het uitloggen, dan
+ *    gebeurde er zichtbaar niets en dacht je dat de knop stuk was.
+ *
+ *    Dat is onwrikbare regel 18 vraag 5: elk schakeltje af, de keten nergens
+ *    verbonden. Er was niets kapot te maken, dus geen enkele test kon het zien.
+ *    `tests/beloftes/uitkomst-niet-weggooien.test.ts` bewaakt voortaan de hele
+ *    klasse in plaats van dit ene geval.
+ */
+function Uitloggen() {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function uitloggen() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await signOut();
+
+    // ⚠️ Alleen bij een fout terug naar rust. Lukt het wél, dan haalt de
+    //    routewacht dit scherm weg en hoort de knop bezig te blijven tot dat
+    //    gebeurd is — anders flikkert hij nog even terug naar klikbaar.
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+    }
+  }
+
+  return (
+    <Card nested>
+      <Subheading>{t('profiel.uitloggen_kop')}</Subheading>
+      <Body muted>{t('profiel.uitloggen_uitleg')}</Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <Button busy={bezig} onPress={() => void uitloggen()}>
+        {t('profiel.uitloggen_knop')}
+      </Button>
+    </Card>
   );
 }
 

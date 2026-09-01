@@ -1185,8 +1185,15 @@ groene poort:
    controle die nooit rood is geweest.
 
 ⚠️ **Wat je níét kunt doen, en dat is de hele Todo-kolom.** Alles daar draagt
-`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**: productie staat op `0131` en
-de repo loopt vooruit, de drie Edge Functions dateren van 27-08. Dat issue draagt
+`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**: de repo loopt vooruit op
+productie, en de drie Edge Functions dateren van 27-08.
+
+⚠️ **En dat getal noem je hier niet — deze regel heeft het op 01-09 zelf fout
+gehad.** Hier stond "productie staat op 0131", overgeschreven uit QS8-243. Toen
+dat met `list_migrations` gemeten werd, stond productie op **0138**: 0132 t/m
+0138 waren op 31-08 met psql toegepast, en dat stond alleen in QS8-251. Precies
+QS8-125, en precies de val die dit document twee alinea's verderop bij het
+migratiebereik beschrijft. **Vraag het aan de database, niet aan een document.** Dat issue draagt
 het volledige stappenplan inclusief de dump vooraf, de volgorde, `notify pgrst,
 'reload schema'`, het uitlijnen van het register en `npm run types:db`. **Doe daar
 niets aan uit eigen beweging** — een migratie toepassen zonder de controlestap
