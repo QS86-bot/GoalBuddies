@@ -1,5 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  renameSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -77,8 +86,10 @@ function git(cwd: string, ...argumenten: string[]) {
       GIT_AUTHOR_EMAIL: 'ijking@example.invalid',
       GIT_COMMITTER_NAME: 'IJking',
       GIT_COMMITTER_EMAIL: 'ijking@example.invalid',
-      GIT_CONFIG_GLOBAL: '/dev/null',
-      GIT_CONFIG_SYSTEM: '/dev/null',
+      // Een pad dat niet bestaat: git leest dan geen enkele globale config, en
+      // dat is draagbaarder dan `/dev/null`.
+      GIT_CONFIG_GLOBAL: join(tmpdir(), 'gb-geen-git-config'),
+      GIT_CONFIG_SYSTEM: join(tmpdir(), 'gb-geen-git-config'),
     },
   });
 }
@@ -198,14 +209,15 @@ describe('een mislukte fetch', () => {
     utimesSync(fetchHead, drieDagenTerug, drieDagenTerug);
 
     // De remote wegtrekken is de goedkoopste manier om een fetch te laten falen
-    // zonder ook maar iets van een netwerk aan te raken.
+    // zonder ook maar iets van een netwerk aan te raken. ⚠️ `renameSync` en geen
+    // `mv`: dit bestand hoort ook te draaien op een machine zonder coreutils.
     const opzij = `${afstand}.opzij`;
-    execFileSync('mv', [afstand, opzij]);
+    renameSync(afstand, opzij);
     let uit = '';
     try {
       uit = draai('migratie-nieuw.mjs', 'iets', '--droog');
     } finally {
-      execFileSync('mv', [opzij, afstand]);
+      renameSync(opzij, afstand);
     }
 
     expect(uit).toContain('Kon niet fetchen');
