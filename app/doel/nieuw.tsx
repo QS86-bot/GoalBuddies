@@ -3,8 +3,7 @@ import { useState } from 'react';
 
 import { useProfiel, useSession } from '@/modules/auth';
 import {
-  CATEGORIEEN,
-  categorieLabels,
+  categorieKeuzegroepen,
   maakDoel,
   RITMES,
   ritmeLabels,
@@ -20,6 +19,7 @@ import {
   Caption,
   Card,
   Choice,
+  GegroepeerdeKeuze,
   Field,
   Screen,
   Subheading,
@@ -119,9 +119,15 @@ export default function NieuwDoel() {
           inputMode="numeric"
         />
 
-        <Choice
+        {/*
+          ⚠️ Vijftien gebieden in vier groepen — QS8-224. Een enkele `Choice` met
+             vijftien knoppen is geen keuze maar een muur; zie de kop van
+             `GegroepeerdeKeuze`.
+        */}
+        <GegroepeerdeKeuze
           label={t('nieuwdoel.categorie')}
-          opties={CATEGORIEEN.map((c) => ({ waarde: c, label: categorieLabels()[c] }))}
+          hint={t('nieuwdoel.categorie_hint')}
+          groepen={categorieKeuzegroepen()}
           waarde={categorie}
           onKies={setCategorie}
         />

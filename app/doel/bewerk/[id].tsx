@@ -2,8 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import {
-  CATEGORIEEN,
-  categorieLabels,
+  categorieKeuzegroepen,
   fetchDoel,
   wijzigDoel,
   type Categorie,
@@ -16,7 +15,7 @@ import {
   Button,
   Caption,
   Card,
-  Choice,
+  GegroepeerdeKeuze,
   Field,
   Screen,
   Subheading,
@@ -148,9 +147,15 @@ function Formulier({ doel, onKlaar }: FormulierProps) {
       </Card>
 
       <Card>
-        <Choice
+        {/*
+          ⚠️ Vijftien gebieden in vier groepen — QS8-224. Een enkele `Choice` met
+             vijftien knoppen is geen keuze maar een muur; zie de kop van
+             `GegroepeerdeKeuze`.
+        */}
+        <GegroepeerdeKeuze
           label={t('nieuwdoel.categorie')}
-          opties={CATEGORIEEN.map((c) => ({ waarde: c, label: categorieLabels()[c] }))}
+          hint={t('nieuwdoel.categorie_hint')}
+          groepen={categorieKeuzegroepen()}
           waarde={categorie}
           onKies={setCategorie}
         />

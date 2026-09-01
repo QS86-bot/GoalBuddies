@@ -75,6 +75,18 @@ export const nl = {
   'systeembericht.group_protected':
     '{naam} heeft deze groep weer beschermd. Tegenslag van een ander is niet meer zichtbaar.',
 
+  /**
+   * ⚠️ QS8-231, migratie 0144. Het enige systeembericht van dit issue, en het is
+   *    er een omdat niemand er achteraf achter mag komen dat zijn groep vindbaar
+   *    is geworden voor onbekenden. De zin noemt daarom meteen de grens: wat een
+   *    vreemde ziet, en dat het daarbij blijft.
+   *
+   * ⚠️ Er komt géén bericht bij het wéér verbergen. Dat is geen nieuws — er
+   *    verandert niets aan wat iemand in de groep ziet — en geen afwezig signaal.
+   */
+  'systeembericht.group_discoverable':
+    '{naam} heeft deze groep vindbaar gemaakt. Mensen die je nog niet kent zien de naam, het onderwerp, de omschrijving en het aantal leden — verder niets.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
 
@@ -635,7 +647,7 @@ export const nl = {
   'zichtbaarheid.beschermd_uitleg':
     'De groep ziet wat er lukt: afgeronde weken, mijlpalen, aanmoedigingen. Een gemiste week blijft van jou, tenzij je hem zelf deelt.',
   'zichtbaarheid.open_uitleg':
-    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, en wie er in welke week meedeed. Kies dit alleen als iedereen dat wil.',
+    'De groep ziet ook wat er niet lukt: gemiste en doorgeschoven weken, elkaars beste reeks, wie er in welke week meedeed, en elkaars puntentotaal in deze groep. Kies dit alleen als iedereen dat wil.',
   'zichtbaarheid.niet_bevestigd': 'Bevestig eerst: dit verandert wat de groep over anderen ziet.',
   'zichtbaarheid.onbekend': 'Die instelling bestaat niet.',
   'zichtbaarheid.ongewijzigd': 'Zo stond hij al.',
@@ -655,12 +667,20 @@ export const nl = {
     'Openzetten werkt met terugwerkende kracht: de groep ziet vanaf dat moment ook de gemiste weken die er al staan. Iedereen krijgt er een bericht van, zodat wie dat niet wil zijn doel kan ontkoppelen.',
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
-    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, en van elke week wie er meedeed — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
+    'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, en een klassement met elkaars puntentotaal in deze groep — ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
   'bevestiging.groep_openzetten.knop': 'Ja, zet hem open',
   'bevestiging.groep_beschermen.titel': 'Deze groep weer beschermen?',
   'bevestiging.groep_beschermen.uitleg':
-    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht. Iedereen krijgt er een bericht van.',
+    'De groep ziet vanaf nu alleen nog wat er lukt. Gemiste weken worden weer privé, ook met terugwerkende kracht, en het klassement verdwijnt. Iedereen krijgt er een bericht van.',
   'bevestiging.groep_beschermen.knop': 'Ja, bescherm hem',
+  'bevestiging.groep_ontdekbaar_maken.titel': 'Deze groep vindbaar maken?',
+  'bevestiging.groep_ontdekbaar_maken.uitleg':
+    'Mensen die je nog niet kent kunnen deze groep dan vinden en lidmaatschap aanvragen. Zij zien de naam, het onderwerp, je omschrijving, de voertaal, de huddledag en hoeveel leden er zijn. Zij zien niet wie erin zitten, welke doelen erin staan, de chat, De Ketting of iemands reeks. Aanvragen komen bij jou binnen en je hoeft er geen enkele aan te nemen. Iedereen in de groep krijgt er een bericht van. Terugzetten kan altijd en meteen.',
+  'bevestiging.groep_ontdekbaar_maken.knop': 'Ja, maak hem vindbaar',
+  'bevestiging.groep_verbergen.titel': 'Deze groep weer verbergen?',
+  'bevestiging.groep_verbergen.uitleg':
+    'De groep verdwijnt uit de zoeklijst en er kan niemand meer aankloppen. Aanvragen die al binnen zijn blijven staan en kun je gewoon beantwoorden. Voor de leden verandert er niets.',
+  'bevestiging.groep_verbergen.knop': 'Ja, verberg hem',
   'bevestiging.groep_verlaten.titel': 'Deze groep verlaten?',
   'bevestiging.groep_verlaten.uitleg':
     'Je doel gaat uit deze groep en je kunt de chat, de weekafsluitingen en De Ketting hier niet meer openen. Wat je hebt opgebouwd blijft staan: je punten, je reeks, je voltooiingen en de goedkeuringen die je hebt gegeven. Hangt je doel ook aan een andere groep, dan verandert daar niets. Terugkomen kan alleen met een geldige uitnodigingslink.',
@@ -718,6 +738,7 @@ export const nl = {
   'groepen.leeg_tekst': 'Drie mensen is de beste maat: groot genoeg dat er altijd iemand reageert, klein genoeg dat je je niet kunt verstoppen. Maak een groep aan of gebruik de uitnodigingslink die je hebt gekregen.',
   'groepen.aanmaken': 'Groep aanmaken',
   'groepen.heb_code': 'Ik heb een uitnodigingscode',
+  'groepen.ontdekken': 'Een groep zoeken',
   'groepen.wachten_onbekend': 'Wachten er buddy’s op je?',
   'groepen.wacht_een': 'Een buddy wacht op je',
   'groepen.wachten_meer': '{n} buddy’s wachten op je',
@@ -1220,6 +1241,37 @@ export const nl = {
   'doel.reeks_laden': 'Je reeks kon niet geladen worden.',
   'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
 
+  // ---------------------------------------------------------------------------
+  // De vijftien gebieden — QS8-224, migratie 0142
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Labels en geen omschrijvingen.** Ze staan naast elkaar in een keuzelijst,
+  //    dus ze moeten op één regel passen en meteen te onderscheiden zijn. "Sport
+  //    en beweging" en niet "Sport, beweging en alles wat je lichaam vraagt".
+  //
+  // ⚠️ **Geen emoji, ook niet als pictogram.** Een pictogram naast een label is
+  //    iets anders dan een emoji in een label; dat eerste komt met QS8-255 en is
+  //    geen tekst. Zie de emoji-regel in CLAUDE.md.
+  'nieuwdoel.categorie_hint': 'Waar gaat dit doel over? Eén gebied per doel.',
+
+  'categorie.fitness': 'Sport en beweging',
+  'categorie.nutrition': 'Voeding',
+  'categorie.self_care': 'Zelfzorg',
+  'categorie.mindfulness': 'Rust en aandacht',
+  'categorie.connection': 'Contact met anderen',
+  'categorie.helping': 'Iets voor een ander',
+  'categorie.creativity': 'Creativiteit',
+  'categorie.productivity': 'Productiviteit',
+  'categorie.organization': 'Orde en overzicht',
+  'categorie.learning': 'Leren',
+  'categorie.skills': 'Vaardigheden',
+  'categorie.resilience': 'Veerkracht',
+
+  'categoriegroep.lichaam': 'Lichaam en rust',
+  'categoriegroep.mensen': 'Mensen en maken',
+  'categoriegroep.werk': 'Werk en groei',
+  'categoriegroep.rest': 'Werk, school en overig',
+
   'categorie.business': 'Werk',
   'categorie.study': 'Studie',
   'categorie.other': 'Overig',
@@ -1394,7 +1446,7 @@ export const nl = {
   //    "je mag dit niet zien" staan, dan verraadt de melding dát het bestaat.
   'doelscherm.leeg_titel': 'Dit doel bestaat niet',
   'doelscherm.leeg_body': 'Of het is verwijderd, of het is niet van jou. Controleer de link.',
-  'doelscherm.categorie_streefdatum': '{categorie} · streefdatum {datum}',
+  'doelscherm.streefdatum': 'Streefdatum {datum}',
   'doelscherm.weekdoelen_afgerond': '{gedaan} van {totaal} weekdoelen afgerond',
 
   'deadline.verzoek_loopt': 'Je verzoek loopt',
@@ -1667,6 +1719,34 @@ export const nl = {
   'weekdoelform.plafond': 'Het plafond',
   'weekdoelform.plafond_hint': 'Waar ga je voor als de week meezit?',
   'weekdoelform.plafond_voorbeeld': '3 gesprekken gevoerd',
+
+  // ⚠️ QS8-260, besluit A53. **De kop vraagt naar déze week en niet naar het
+  //    doel**, en dat is geen woordkeus maar de hele scheiding uit 0140: het
+  //    ritme van het doel stuurt het voorstel, `ceiling_days` op de weekrij ís
+  //    het oordeel. Zou de tekst hier "hoe vaak werk je aan dit doel" zeggen,
+  //    dan verwacht de gebruiker dat hij zijn doel aanpast — en verandert in zijn
+  //    beleving de uitslag van weken die er al staan.
+  'weekdoelform.ritme': 'Hoe telt deze week?',
+  'weekdoelform.ritme_hint':
+    'Begint op wat je bij dit doel hebt gekozen. Wijzig je het hier, dan geldt dat voor deze week — je doel blijft staan zoals het staat.',
+  'weekdoelform.plafond_dagen': 'Op hoeveel dagen ga je voor?',
+  'weekdoelform.plafond_dagen_hint': 'Als de week meezit.',
+  'weekdoelform.vloer_dagen': 'En op je slechtste week? (aanbevolen)',
+  'weekdoelform.vloer_dagen_hint':
+    'Het aantal dagen dat je ook haalt als het tegenzit. Haal je dat, dan telt de week gewoon mee.',
+  'weekdoelform.geen_vloer': 'Geen vloer',
+  'weekdoelform.dagen_aantal': '{aantal} dagen',
+  /**
+   * ⚠️ **Deze twee zinnen zeggen wat het kóst en niet wat het is.** Zonder vloer
+   *    is één dag te weinig een gemiste week, en dat is precies de situatie
+   *    waarvoor domeinregel 8 bestaat. De gebruiker hoort dat te lezen vóórdat
+   *    hij op toevoegen drukt, niet op zondagavond.
+   */
+  'weekdoelform.dagen_zonder_vloer':
+    'Je haalt deze week als je {plafond} dagen afvinkt. Eén dag minder telt als een gemiste week.',
+  'weekdoelform.dagen_met_vloer':
+    'Vanaf {vloer} dagen telt je week mee en loopt je reeks door; bij {plafond} dagen haal je je plafond.',
+
   'weekdoelform.mijlpaal': 'Hoort dit bij een mijlpaal?',
   'weekdoelform.mijlpaal_hint': 'Mag ook los onder je doel hangen.',
   'weekdoelform.los': 'Los onder dit doel',
@@ -1804,6 +1884,21 @@ export const nl = {
   // ⚠️ Vijf per categorie. Ze gaan over de wéék die je net gehaald hebt, niet over
   //    het leven in het algemeen — dat was het bezwaar tegen de wijze quotes. En
   //    geen enkele noemt een tegenvaller; er staat een test op.
+  'weektip.lichaam.1': 'Je lichaam onthoudt de weken die je wél kwam opdagen. Deze was er een.',
+  'weektip.lichaam.2': 'Wat deze week goed voelde, is de versie die je volhoudt. Onthoud die.',
+  'weektip.lichaam.3': 'Rust hoort erbij en telt mee. Plan hem net zo bewust als de rest.',
+  'weektip.lichaam.4': 'Deze week hoefde niet zwaar te zijn om te tellen. Hij telde.',
+  'weektip.lichaam.5': 'Leg alvast klaar wat je volgende week nodig hebt. Dat scheelt de helft van het besluit.',
+  'weektip.mensen.1': 'Wat je deze week voor iemand deed, blijft langer hangen dan je denkt.',
+  'weektip.mensen.2': 'Een week waarin je contact zocht, is een week die iemand anders ook merkte.',
+  'weektip.mensen.3': 'Maken en delen kost dezelfde week. Deze week deed je het allebei.',
+  'weektip.mensen.4': 'Vertel iemand wat je deze week gemaakt of gedaan hebt. Het maakt het echt.',
+  'weektip.mensen.5': 'Zet nu vast wie je volgende week spreekt. Dan hoeft dat besluit er niet meer bij.',
+  'weektip.werk.1': 'Wat je deze week op orde bracht, hoeft volgende week niet opnieuw.',
+  'weektip.werk.2': 'Deze week gedaan krijgen is iets anders dan deze week druk zijn. Dit was het eerste.',
+  'weektip.werk.3': 'Schrijf op welke aanpak deze week wérkte. Dat is je handleiding voor de drukke weken.',
+  'weektip.werk.4': 'Een week volhouden is de vaardigheid; de rest is uitvoering. Deze week ging het.',
+  'weektip.werk.5': 'Kies nu je eerste stap voor volgende week, nu je nog weet waar je gebleven was.',
   'weektip.business.1': 'Eén afgeronde week is een week waarin iemand anders nog aan het plannen was.',
   'weektip.business.2': 'Wat je deze week af kreeg, hoeft volgende week niet meer bedacht te worden.',
   'weektip.business.3': 'Schrijf op wat deze week wérkte. Dat is je eigen handleiding voor de drukke weken.',
@@ -1920,6 +2015,331 @@ export const nl = {
   'ritme.buiten_de_week': 'Die dag hoort niet bij deze week.',
   'ritme.onder_de_vloer': 'Deze week haalt de vloer nog niet, dus er valt nog niets af te ronden.',
   'ritme.te_veel_deze_dag': 'Je hebt vandaag te veel afgevinkt. Probeer het morgen weer.',
+  // ---------------------------------------------------------------------------
+  // Het klassement en de teller — QS8-254, besluit A54
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Geen enkele zin hier noemt een minpunt, een gemiste week of een laatste
+  //    plaats.** Dat is niet alleen toon: de RPC's uit 0141 hebben geen kolom
+  //    voor een delta en geen kolom voor een datum, dus er valt hier ook niets
+  //    over te zeggen. Als je merkt dat je zo'n zin nodig hebt, is er iets aan
+  //    de database veranderd en niet aan de copy.
+  //
+  // ⚠️ **De teller zwijgt bij nul.** "Samen 0 weken afgerond" is een
+  //    tegenslagbericht met een vrolijke kop erop — dezelfde afweging die de
+  //    seizoensrecap in 0112 maakte, en om precies dezelfde reden.
+  'klassement.kop': 'Het klassement',
+  'klassement.uitleg':
+    'Jullie hebben afgesproken open te zijn, dus staan de punten van deze groep hier bij elkaar.',
+  'klassement.punten_een': '1 punt',
+  'klassement.punten_meer': '{n} punten',
+  'klassement.rij_label': 'Plek {positie}: {naam}, {punten}',
+  'klassement.leeg': 'Er zijn hier nog geen punten verdiend. De eerste afgeronde week zet hem in gang.',
+  'klassement.van_totaal': '{getoond} van {totaal} leden',
+  'klassement.laden_mislukt': 'Het klassement kon niet geladen worden.',
+  'klassement.teller_mislukt': 'De teller kon niet geladen worden.',
+  'klassement.opnieuw': 'Opnieuw proberen',
+
+  'teller.kop': 'Samen',
+  'teller.weken_een': '1 week afgerond',
+  'teller.weken_meer': '{n} weken afgerond',
+  'teller.mijlpalen_een': '1 mijlpaal gehaald',
+  'teller.mijlpalen_meer': '{n} mijlpalen gehaald',
+  'teller.nog_niets': 'Jullie eerste afgeronde week komt hier te staan.',
+
+  // ---------------------------------------------------------------------------
+  // Het persoonlijke overzicht — QS8-256
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Geen enkele zin hier noemt een gemiste week als verwijt.** Dit scherm
+  //    toont je eigen terugblik, en CLAUDE.md staat dat toe ("eigen tegenvallers
+  //    zijn privé zichtbaar voor jezelf") — maar de toon van domeinregel 7 geldt
+  //    ook voor tekst die alleen jij leest. "Niet afgerond" en niet "gemist".
+  'overzicht.titel': 'Je overzicht',
+  'overzicht.eyebrow': 'DE AFGELOPEN TWAALF WEKEN',
+  'overzicht.open': 'Bekijk je overzicht',
+  'overzicht.laden_mislukt': 'Je overzicht kon niet geladen worden.',
+
+  'overzicht.weken_kop': 'Twaalf weken',
+  'overzicht.weken_leeg': 'Zodra je je eerste week afrondt, komt hij hier te staan.',
+  'overzicht.week_label': 'Week van {datum}: {stand}',
+  'weekstand.plafond': 'plafond gehaald',
+  'weekstand.vloer': 'vloer gehaald — deze week telt',
+  'weekstand.ingediend': 'ingediend, wacht op je buddy',
+  'weekstand.gemist': 'niet afgerond',
+  'weekstand.leeg': 'geen weekdoel',
+
+  'overzicht.kalender_kop': 'Je dagen',
+  'overzicht.kalender_uitleg': 'Alleen de doelen waar je meerdere keren per week aan werkt.',
+  'overzicht.kalender_leeg': 'Nog geen dagen afgevinkt.',
+  'overzicht.dag_label': '{datum}: {aantal} afgevinkt',
+  'overzicht.dag_leeg_label': '{datum}: niets afgevinkt',
+
+  'overzicht.reeks_kop': 'Je langste reeks',
+  'overzicht.reeks_weken': '{n} weken',
+  'overzicht.reeks_week': '1 week',
+  'overzicht.reeks_nu': 'Nu {n}',
+  'overzicht.punten_kop': 'Je punten',
+  'overzicht.punten_prive': 'Alleen jij ziet dit getal.',
+
+  'overzicht.gebieden_kop': 'Waar je doelen over gaan',
+  'overzicht.gebieden_leeg': 'Je hebt nog geen doelen.',
+  'overzicht.gebied_label': '{gebied}: {aantal}',
+
+  'overzicht.groep_kop': 'Je groepen',
+  'overzicht.groep_uitleg': 'De stand van een groep staat op het groepsscherm zelf — daar weet de app om welke groep het gaat.',
+  'overzicht.groep_open': 'Naar je groepen',
+
+  // ---------------------------------------------------------------------------
+  // De korte vragenlijst — QS8-257, besluit A56
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Vraag 4 gaat over eerdere mislukking en de toon moet dat dragen.** Niet
+  //    "wat doe jij fout" maar "wat laat gewoontes normaal gesproken stuklopen" —
+  //    het onderwerp is de gewoonte en niet de persoon. Domeinregel 7 gaat over
+  //    wat de groep ziet; deze zin ziet alleen de gebruiker zelf, en juist daar
+  //    telt de toon.
+  'vragenlijst.titel': 'Vier korte vragen',
+  'vragenlijst.eyebrow': 'ZODAT DE APP JE KENT',
+  'vragenlijst.overslaan': 'Sla over',
+  'vragenlijst.volgende': 'Volgende',
+  'vragenlijst.vorige': 'Terug',
+  'vragenlijst.alles_overslaan': 'Alles overslaan kan ook. Je verliest er niets mee en je kunt het later invullen.',
+
+  'vragenlijst.focus.vraag': 'Waar wil je je op richten?',
+  'vragenlijst.focus.toelichting': 'Kies er hoogstens drie. Ze sturen wat de app je voorstelt en waar je groepen vindt.',
+  'vragenlijst.focus.vol': 'Je hebt er drie. Tik er een uit om te wisselen.',
+
+  'vragenlijst.tijd.vraag': 'Hoeveel tijd kun je eerlijk geven?',
+  'vragenlijst.tijd.toelichting': 'Op een gewone dag, niet je beste dag.',
+  'vragenlijst.minuten.5': '5 minuten',
+  'vragenlijst.minuten.15': '15 minuten',
+  'vragenlijst.minuten.30': '30 minuten',
+  'vragenlijst.minuten.60': 'Een uur of meer',
+  'vragenlijst.uren_per_week': 'Dat is ongeveer {uren} uur per week. Dat vullen we straks voor je in, en je kunt het wijzigen.',
+
+  'vragenlijst.moment.vraag': 'Wanneer ga je het echt doen?',
+  'vragenlijst.moment.toelichting': 'Een vast moment houdt het vol; een vage bedoeling niet.',
+  'vragenlijst.moment.morning': "'s Ochtends",
+  'vragenlijst.moment.workday': 'Ergens op de werkdag',
+  'vragenlijst.moment.evening': "'s Avonds",
+  'vragenlijst.moment.varies': 'Dat wisselt sterk',
+
+  'vragenlijst.valkuil.vraag': 'Wat laat jouw gewoontes normaal gesproken stuklopen?',
+  'vragenlijst.valkuil.toelichting': 'Vink er zoveel aan als kloppen. Hier is de app voor gebouwd.',
+  'valkuil.forget': 'Ik vergeet het gewoon',
+  'valkuil.forget.antwoord': 'Straks krijg je een herinnering op de dag van je groep. Die is er nog niet, en dan zeggen we ook niet dat hij er is.',
+  'valkuil.motivation_drops': 'Motivatie zakt na week één',
+  'valkuil.motivation_drops.antwoord': 'Daar is de weekpas voor: een gemiste week kost je je reeks niet. En je vloer zorgt dat een matige week nog steeds telt.',
+  'valkuil.all_or_nothing': 'Alles of niets: één dag mis en ik stop',
+  'valkuil.all_or_nothing.antwoord': 'Daarom heeft elk weekdoel een vloer naast zijn plafond. Vloer gehaald betekent dat de week telt — dezelfde reeks, dezelfde goedkeuring.',
+  'valkuil.nobody_notices': 'Niemand merkt het als ik stop',
+  'valkuil.nobody_notices.antwoord': 'Je week wordt door een buddy bevestigd, niet door jezelf. Dat is waar deze app om draait.',
+  'valkuil.life_chaotic': 'Mijn leven wordt soms chaotisch',
+  'valkuil.life_chaotic.antwoord': 'Dan kondig je vooraf een adempauze aan. Je groep ziet dat je even pauzeert, en je reeks blijft staan.',
+  'valkuil.bekijk': 'Laat zien',
+
+  'vragenlijst.samenvatting.kop': 'Dit heb je me verteld',
+  'vragenlijst.samenvatting.uitleg': 'Tik een antwoord aan om het te wijzigen.',
+  'vragenlijst.samenvatting.leeg': 'Je hebt alles overgeslagen. Dat mag, en je kunt het later alsnog invullen.',
+  'vragenlijst.samenvatting.niets': 'Overgeslagen',
+  'vragenlijst.samenvatting.bewaren': 'Bewaren en verder',
+  'vragenlijst.samenvatting.dit_helpt': 'Wat de app hiermee doet',
+
+  'validatie.focus_te_veel': 'Kies er hoogstens drie.',
+
+
+  // ---------------------------------------------------------------------------
+  // Groepen ontdekken — QS8-231, migratie 0144
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De toon van dit scherm is de helft van het issue.** Wie hier komt, kent
+  //    niemand. Elke zin die belooft dat het wel goed komt, is een zin die
+  //    teleurstelt als een beheerder niet reageert — en een aanvraag die
+  //    nergens op antwoord krijgt is de eerste ervaring van een nieuwe
+  //    gebruiker. De teksten zeggen daarom wat er gebeurt en niet wat er hoort
+  //    te gebeuren.
+  //
+  // ⚠️ **En geen enkele zin hier zegt iets over een persoon.** Wat een
+  //    buitenstaander te zien krijgt, staat in de kolomlijst van
+  //    `ontdek_groepen()` — niet in dit bestand. Deze teksten mogen die grens
+  //    beschrijven maar nooit verruimen.
+
+  'ontdek.titel': 'Een groep vinden',
+  'ontdek.eyebrow': 'Zoeken',
+  'ontdek.uitleg':
+    'Dit zijn groepen die zich hebben laten vinden. Je ziet waar ze het over hebben en hoeveel mensen erin zitten — meer laat een groep aan iemand van buiten niet zien.',
+  'ontdek.filter_categorie': 'Waar gaat het over',
+  'ontdek.filter_taal': 'Taal',
+  'ontdek.alles': 'Alles',
+  'ontdek.laden_mislukt': 'De groepen konden niet geladen worden.',
+  'ontdek.leeg_titel': 'Nog geen groep gevonden',
+  'ontdek.leeg_tekst':
+    'Er is nog geen vindbare groep in deze combinatie. Probeer een ander onderwerp of een andere taal — of begin er zelf een en zet hem open.',
+  'ontdek.leden': '{aantal} leden',
+  'ontdek.leden_een': '1 lid',
+  'ontdek.huddledag': 'Huddle op {dag}',
+  'ontdek.meer': 'Meer groepen',
+  'ontdek.zelf_beginnen': 'Zelf een groep beginnen',
+
+  'ontdek.aanvragen': 'Vraag lidmaatschap aan',
+  'ontdek.bericht_label': 'Stel jezelf voor',
+  'ontdek.bericht_hint':
+    'Optioneel. Eén of twee zinnen over waar je aan werkt. De beheerder van deze groep leest dit.',
+  'ontdek.versturen': 'Versturen',
+  'ontdek.annuleren': 'Laat maar',
+  /**
+   * ⚠️ **"Verstuurd" en niet "je hoort snel iets".** Er is geen enkele garantie
+   *    dat een beheerder antwoordt, en een belofte die de app niet kan nakomen
+   *    is erger dan geen belofte. De zin zegt precies wat er gebeurd is.
+   */
+  'ontdek.verzonden': 'Je aanvraag staat bij de beheerder van deze groep. Of en wanneer die reageert, bepaalt die zelf.',
+  'ontdek.over_nog': 'Je kunt vandaag nog {aantal} groepen aanschrijven.',
+  'ontdek.over_op': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
+
+  'ontdek.te_veel_aanvragen': 'Je hebt vandaag tien groepen aangeschreven. Morgen kan het weer.',
+  'ontdek.al_lid': 'Je zit al in deze groep.',
+  'ontdek.niet_open': 'Deze groep is niet meer te vinden. Misschien heeft de beheerder hem net verborgen.',
+  'ontdek.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
+  'ontdek.niet_bevestigd': 'Deze wijziging is niet bevestigd.',
+  'ontdek.niet_beschermd':
+    'Een open groep kan niet vindbaar zijn: dan zouden onbekenden elkaars tegenslag zien. Bescherm de groep eerst.',
+  'ontdek.geen_categorie': 'Kies eerst waar deze groep over gaat. Zonder onderwerp is hij niet te vinden.',
+  'ontdek.al_beslist': 'Over deze aanvraag is al beslist.',
+  'ontdek.ongewijzigd': 'Dat stond al zo.',
+  'ontdek.mislukt': 'Dat lukte niet. Probeer het opnieuw.',
+  'ontdek.verzoeken_mislukt': 'De aanvragen konden niet geladen worden.',
+  'ontdek.onbekend_lid': 'Iemand',
+
+  // De kant van de beheerder
+  'ontdek.beheer_titel': 'Gevonden worden',
+  'ontdek.beheer_aan': 'Deze groep is te vinden voor mensen die je nog niet kent.',
+  'ontdek.beheer_uit': 'Deze groep is alleen te bereiken met een uitnodigingslink.',
+  'ontdek.beheer_uitleg':
+    'Wie zoekt ziet de naam, het onderwerp, de omschrijving, de voertaal, de huddledag en het aantal leden. Niet wie erin zitten, niet de doelen, niet de chat, niet De Ketting en niet iemands reeks.',
+  'ontdek.beheer_moet_beschermd_zijn':
+    'Alleen een beschermde groep kan vindbaar zijn. In een open groep zien leden elkaars tegenslag, en dat gaat een vreemde niet aan.',
+  'ontdek.beheer_aanzetten': 'Maak deze groep vindbaar',
+  'ontdek.beheer_uitzetten': 'Haal hem uit de zoeklijst',
+  'ontdek.melding_ontdekbaar': 'Deze groep is nu te vinden. Je groep heeft er een bericht van gekregen.',
+  'ontdek.melding_verborgen': 'Deze groep staat niet meer in de zoeklijst.',
+
+  'ontdek.categorie_label': 'Waar gaat deze groep over',
+  'ontdek.categorie_hint': 'Dit is waarop mensen je groep kunnen vinden.',
+  'ontdek.omschrijving_label': 'Omschrijving',
+  'ontdek.omschrijving_hint': 'Eén of twee zinnen. Dit is het enige wat een vreemde over jullie leest.',
+  'ontdek.voertaal_label': 'Voertaal',
+  'ontdek.voertaal_hint': 'Waarin praten jullie met elkaar? Dit verandert niets aan de taal van de app.',
+  'ontdek.geen_keuze': 'Niet gekozen',
+
+  'ontdek.verzoeken_titel': 'Aanvragen',
+  'ontdek.verzoeken_leeg': 'Er staan nu geen aanvragen open.',
+  'ontdek.verzoeken_uitleg':
+    'Wie je aanneemt komt in de groep en ziet vanaf dat moment alles wat een lid ziet. Wie je afwijst krijgt daar geen bericht van, en de groep ook niet.',
+  'ontdek.aannemen': 'Aannemen',
+  'ontdek.afwijzen': 'Afwijzen',
+  'ontdek.aangenomen': 'Aangenomen.',
+  'ontdek.afgewezen': 'Afgewezen.',
+  'ontdek.zonder_bericht': 'Zonder bericht',
+
+  'voertaal.nl': 'Nederlands',
+  'voertaal.en': 'Engels',
+
+  'validatie.groepsomschrijving_lang': 'Hou het bij 280 tekens.',
+
+
+  // ---------------------------------------------------------------------------
+  // Melden en blokkeren — QS8-232, migratie 0145
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **De copy belooft precies wat er gebeurt en geen woord meer.** Er is geen
+  //    moderatieproces — dat staat als `phase:v3` op het bord — dus de eerlijke
+  //    zin is: de beheerder van deze groep ziet het, en wij kunnen het uitlezen.
+  //    "Wordt beoordeeld" terwijl er niemand kijkt, is erger dan geen meldknop:
+  //    dan wacht iemand op een uitkomst die nooit komt en doet in de tussentijd
+  //    niets anders om zichzelf te helpen.
+  //
+  // ⚠️ **Geen enkele zin hier bevestigt of ontkent dat iemand geblokkeerd is.**
+  //    Er is geen scherm dat "je bent geblokkeerd" zegt, en er is er ook geen dat
+  //    "deze persoon heeft jou geblokkeerd" zegt. Zou die zin bestaan, dan is
+  //    blokkeren iets wat je je twee keer bedenkt.
+
+  'leden.titel': 'Wie er meedoen',
+  'leden.eyebrow': 'Groep',
+  'leden.leeg_titel': 'Nog niemand',
+  'leden.leeg_tekst': 'Zodra er iemand meedoet, staat hij hier.',
+  'leden.beheerder': 'Beheerder',
+  'leden.jijzelf': 'Dit ben jij.',
+  'groepdetail.naar_leden': 'Wie er meedoen',
+
+  'melden.titel': 'Melden',
+  'melden.persoon_knop': 'Deze persoon melden',
+  'melden.bericht_knop': 'Dit bericht melden',
+  'melden.reden_label': 'Wat is er aan de hand?',
+  'melden.toelichting_label': 'Toelichting',
+  'melden.toelichting_hint': 'Optioneel. Wat je hier schrijft, leest de beheerder van deze groep.',
+  'melden.versturen': 'Melding versturen',
+  'melden.annuleren': 'Laat maar',
+
+  /**
+   * ⚠️ **De belangrijkste twee zinnen van dit issue.** Ze staan zowel vóór het
+   *    versturen als erna, want dit is wat iemand moet weten om te beslissen of
+   *    hij hier iets aan heeft. Alles wat hier bij zou komen — "we nemen het
+   *    serieus", "je hoort van ons" — is een belofte die niemand nakomt.
+   */
+  'melden.wat_gebeurt_er':
+    'Je melding gaat naar de beheerder van deze groep, en wij kunnen hem uitlezen. Er is nog geen team dat meldingen beoordeelt, dus we zeggen niet dat dat gebeurt. Zit je ergens mee waar je nu vanaf wilt, blokkeer die persoon dan ook.',
+  'melden.verzonden':
+    'Je melding staat er. De beheerder van deze groep kan hem zien; de gemelde persoon niet.',
+  'melden.niet_zichtbaar': 'De persoon over wie je meldt, ziet nooit dat je dit gedaan hebt.',
+
+  'melden.reden.harassment': 'Intimidatie of pesten',
+  'melden.reden.spam': 'Spam of reclame',
+  'melden.reden.inappropriate': 'Ongepaste inhoud',
+  'melden.reden.impersonation': 'Doet zich voor als iemand anders',
+  'melden.reden.other': 'Iets anders',
+
+  'melden.te_veel': 'Je hebt vandaag twintig meldingen gedaan. Morgen kan het weer.',
+  'melden.geen_lid': 'Je zit niet in deze groep.',
+  'melden.bericht_weg': 'Dit bericht bestaat niet meer.',
+  'melden.onbekend': 'Deze persoon zit niet in deze groep.',
+  'melden.jezelf': 'Je kunt jezelf niet melden.',
+  'melden.mislukt': 'Dat lukte niet. Probeer het opnieuw.',
+  'melden.onbekend_lid': 'Iemand',
+
+  // Blokkeren
+  'melden.blokkeer_knop': 'Deze persoon blokkeren',
+  'melden.deblokkeer_knop': 'Blokkade opheffen',
+  'melden.geblokkeerd_titel': 'Geblokkeerd',
+  'melden.blokkades_mislukt': 'Je blokkades konden niet geladen worden.',
+  /**
+   * ⚠️ **Deze zin zegt met zoveel woorden wat blokkeren níét doet**, en dat is
+   *    het belangrijkste eraan. Wie denkt dat de knop iemand uit zijn groep zet,
+   *    drukt hem in en concludeert daarna dat de app stuk is.
+   */
+  'melden.blokkeer_stil': 'Hij krijgt hier geen bericht van en kan het nergens zien.',
+  'melden.geblokkeerd': 'Dit kan niet.',
+
+  // Een lid verwijderen
+  'melden.verwijder_knop': 'Uit de groep zetten',
+  'melden.geen_beheerder': 'Alleen een beheerder van deze groep kan dit doen.',
+  'melden.niet_bevestigd': 'Deze handeling is niet bevestigd.',
+  'melden.al_verwijderd': 'Deze persoon zit al niet meer in de groep.',
+  'melden.laatste_beheerder':
+    'Dit is de enige beheerder van deze groep. Maak eerst iemand anders beheerder.',
+  'melden.verwijderd': 'Dit lid zit niet meer in de groep.',
+  'melden.verwijderd_doelen': 'Dit lid zit niet meer in de groep. {aantal} doelen zijn ontkoppeld.',
+
+  'bevestiging.lid_verwijderen.titel': 'Dit lid uit de groep zetten?',
+  'bevestiging.lid_verwijderen.uitleg':
+    'Deze persoon kan de groep niet meer openen: niet de chat, niet de weekafsluitingen, niet De Ketting. Zijn doelen gaan uit deze groep en een openstaand verzoek om een streefdatum te verschuiven vervalt. Wat hij heeft opgebouwd blijft van hem: zijn punten, zijn reeks en zijn voltooiingen. Hij kan niet terugkomen met de uitnodigingslink. De groep krijgt hier geen bericht van, maar het staat wel in de groepsgeschiedenis.',
+  'bevestiging.lid_verwijderen.knop': 'Ja, zet dit lid eruit',
+
+  'bevestiging.persoon_blokkeren.titel': 'Deze persoon blokkeren?',
+  'bevestiging.persoon_blokkeren.uitleg':
+    'Hij komt hierna niet meer bij je in een groep terecht — niet via een uitnodigingslink, niet via zoeken. Groepen waar jullie nu samen in zitten veranderen niet: dat zou hem laten merken dat je dit gedaan hebt. Hij krijgt geen bericht en kan het nergens zien. Je kunt de blokkade altijd opheffen.',
+  'bevestiging.persoon_blokkeren.knop': 'Ja, blokkeer',
+
   'validatie.dagen_heel': 'Vul een heel aantal dagen in.',
   'validatie.dagen_bereik': 'Een week heeft zeven dagen.',
   'validatie.vloer_boven_plafond': 'Je vloer kan niet boven je plafond liggen.',

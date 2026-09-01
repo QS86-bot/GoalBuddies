@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    die in Node draait. Zelfde reden als de losse client in harness.ts.
 import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
 import {
+  CATEGORIEEN,
   DOELGEBEURTENISSEN,
   STATUSSEN,
 } from '../../src/modules/goals/schemas';
@@ -3007,6 +3008,80 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    (0032/0034) vergeleek de test de app-lijst met **zichzelf** en bleef
    *    groen.
    */
+  /**
+   * De vijftien gebieden — QS8-224, migratie 0142.
+   *
+   * ⚠️ **Deze toets ontbrák, terwijl QS8-224 aannam dat hij er was.** De lijsten
+   *    voor `goals_status_valid` en `goal_events_type_valid` werden hier wél met
+   *    de database vergeleken, `goals_category_valid` niet. Gemeten door
+   *    `fitness` uit `CATEGORIEEN` te halen en de suite te draaien: honderd
+   *    tests groen, terwijl de app en de database het niet meer eens waren.
+   *
+   *    Dat is de vorm van 0032/0034 in zijn zuiverste gedaante — niet een test
+   *    die groen bleef terwijl de belofte brak, maar géén test die de belofte
+   *    kon raken.
+   */
+  describe('de doelcategorieën', () => {
+    it(
+      'staat in de database exact toe wat de app kent',
+      async () => {
+        const { data, error } = await adminDb().rpc('check_waarden', {
+          p_tabel: 'goals',
+          p_constraint: 'goals_category_valid',
+        });
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+
+        // ⚠️ Eerst de inhoud vastpinnen, om dezelfde reden als hierboven: een
+        //    lege uitkomst betekent óók "geen constraint met die naam", en dan
+        //    zijn twee lege lijsten gelijk terwijl het slot weg is.
+        expect(inDeDatabase).toEqual(
+          [
+            'business',
+            'connection',
+            'creativity',
+            'fitness',
+            'helping',
+            'learning',
+            'mindfulness',
+            'nutrition',
+            'organization',
+            'other',
+            'productivity',
+            'resilience',
+            'self_care',
+            'skills',
+            'study',
+          ],
+        );
+        expect(inDeDatabase).toEqual([...CATEGORIEEN].sort());
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een verzonnen categorie, ook via de systeemclient',
+      async () => {
+        // ⚠️ Via `adminDb()`: een gewone gebruiker ketst al af op de kolomgrant,
+        //    en dan bewijst een geweigerde poging niets over de CHECK. Dit is de
+        //    laag die ook een definer-functie tegenhoudt.
+        const poging = await adminDb()
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'CATEGORIE verzonnen',
+            target_date: '2027-06-30',
+            category: 'sport',
+          });
+
+        expect(poging.error?.code, 'een verzonnen categorie werd gewoon opgeslagen').toBe('23514');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('de doelstatussen', () => {
     it(
       'staat in de database exact toe wat de app kent',

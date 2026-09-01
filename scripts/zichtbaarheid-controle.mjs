@@ -36,9 +36,15 @@ import { pathToFileURL } from 'node:url';
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
  *
- * ⚠️ Vier stuks, en alle vier staan ze in `zichtbaarheid.open_uitleg` en in
- *    `bevestiging.groep_openzetten.uitleg`. Komt er een vijfde bij, dan wordt
+ * ⚠️ Vijf stuks, en alle vijf staan ze in `zichtbaarheid.open_uitleg` en in
+ *    `bevestiging.groep_openzetten.uitleg`. Komt er een zesde bij, dan wordt
  *    deze controle rood — en dán is de vraag of die zin nog klopt, niet later.
+ *
+ * ⚠️ **Dat heeft op 01-09-2026 precies gewerkt en dat is het opschrijven waard.**
+ *    Het klassement uit besluit A54 werd hier rood, en de melding wees naar de
+ *    twee zinnen — die tot dat moment drie oppervlakken opsomden terwijl er vier
+ *    waren en er een vijfde bij kwam. Zonder deze controle was de gebruiker de
+ *    groep open blijven zetten op een zin die zijn punten niet noemde.
  */
 export const OPPERVLAKKEN = new Map([
   [
@@ -60,6 +66,14 @@ export const OPPERVLAKKEN = new Map([
     'policy:chain_links.chain_links_select',
     'De Ketting per lid (migratie 0079). De teller erboven blijft dicht — die is ' +
       'optellend en verraadt niemand (besluit A42).',
+  ],
+  [
+    'functie:groep_klassement',
+    'Het puntenklassement per lid (migratie 0141, besluit A54). Het vijfde ' +
+      'oppervlak, en het eerste dat een besluit terúgdraait: punten stonden onder ' +
+      'A42 in §6b als bewust dicht. Wat opengaat is het groepstotaal, niet het ' +
+      'persoonlijke totaal en niet de deltas — en het kan niet dalen van een ' +
+      'gemiste week, want `cycle_missed` draagt geen groep.',
   ],
 ]);
 
@@ -84,6 +98,14 @@ export const GEEN_OPPERVLAK = new Map([
     'functie:invite_preview',
     'Geeft de stand van de gróep terug, niet iets over een lid — verantwoord in 0080: ' +
       'het is het feit dat iemand nodig heeft om te besluiten of hij meedoet.',
+  ],
+  [
+    'functie:zet_groepsontdekbaarheid',
+    'Leest `zichtbaarheid` om te wéigeren (QS8-231, migratie 0144): een open groep kan ' +
+      'niet vindbaar zijn, want dan zouden onbekenden elkaars tegenslag zien. Hij geeft ' +
+      'dus niets over een lid terug — hij gebruikt de stand als grens en niet als filter. ' +
+      '⚠️ De grendel is de CHECK `groups_ontdekbaar_is_beschermd`; deze functie is de ' +
+      'uitleg erbij, zodat een scherm een reden kan tonen in plaats van een 23514.',
   ],
 ]);
 
