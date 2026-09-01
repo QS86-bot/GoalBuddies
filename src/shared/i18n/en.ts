@@ -275,6 +275,8 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.blijft_bewaard': 'Your invitation is kept on this device. Even if you have to confirm your email first, you will be in the group afterwards.',
   'uitnodiging.rondkijken': 'Just have a look around',
   'uitnodiging.deelnemen_mislukt': 'Joining did not work. Please try again in a moment.',
+  'veld.wachtwoord_tonen': 'Show',
+  'veld.wachtwoord_verbergen': 'Hide',
   'aanmelden.titel_nieuw': 'Create account',
   'aanmelden.titel_terug': 'Welcome back',
   'aanmelden.eyebrow': 'GOALBUDDIES',

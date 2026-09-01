@@ -404,6 +404,8 @@ export const nl = {
   'uitnodiging.blijft_bewaard': 'Je uitnodiging blijft op dit apparaat bewaard. Ook als je eerst je e-mail moet bevestigen, sta je daarna gewoon in de groep.',
   'uitnodiging.rondkijken': 'Toch even rondkijken',
   'uitnodiging.deelnemen_mislukt': 'Deelnemen lukte niet. Probeer het zo nog eens.',
+  'veld.wachtwoord_tonen': 'Tonen',
+  'veld.wachtwoord_verbergen': 'Verbergen',
   'aanmelden.titel_nieuw': 'Account maken',
   'aanmelden.titel_terug': 'Welkom terug',
   'aanmelden.eyebrow': 'GOALBUDDIES',
