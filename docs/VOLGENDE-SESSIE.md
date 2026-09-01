@@ -3,9 +3,22 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 31-08-2026, na acht merges op één dag — de doorloop van
-> 30-08 (QS8-195, QS8-211), een beveiligingsronde (QS8-234 t/m QS8-239) en de
-> reparatie van de blinde vlek eronder (QS8-238).
+> **Laatst bijgewerkt:** 01-09-2026. Vier PR's geland (#125, #128, #130, #131) en
+> een duplicaat opgeruimd. **Lees eerst de drie punten hieronder** — het derde
+> verandert wat je als volgende oppakt.
+>
+> **3. De Todo-kolom is leeg voor een bouwsessie, en de backlog juist niet.** Elk
+> issue dat op Todo staat draagt `wacht-op-Quinten`: de migraties boven 0131
+> toepassen, de Edge Functions deployen, de webbundel, twee dashboardschakelaars,
+> de schermen doorlopen. **Daar kun je niets aan doen** — een bouwomgeving heeft
+> geen `SUPABASE_ACCESS_TOKEN` en geen service-role-key, dus zij kan de drift wel
+> méten maar niet opheffen en daarna niet controleren.
+>
+> ⚠️ **Trek daaruit níét de conclusie dat er niets te bouwen is.** Dat is precies
+> de fout die dit document op 30-08 al eens maakte ("de voorraad is leeg, begin in
+> het reviewdossier") terwijl er een Doelcoach lag die vanaf het web niet aan te
+> roepen was. **In de backlog staat volop werk**, waaronder een epic die op
+> 01-09 is aangemaakt — zie "Waar te beginnen" punt 0.
 >
 > **Twee dingen die de stand van dit project veranderen, en ze wijzen dezelfde
 > kant op.**
@@ -54,9 +67,14 @@ Lees eerst `CLAUDE.md`, dan `docs/WERKVOORRAAD.md` (sectie 0 geeft de stand in
 tien regels), dan dit bestand. Haal daarna de openstaande issues op uit het
 Linear-project GoalBuddies.
 
-⚠️ **Werk de doorloopbevindingen van 30-08 af en niet de volgorde in
-WERKVOORRAAD §4.** QS8-195 en QS8-211 zijn af (31-08); daarna QS8-200 en
-QS8-201.
+⚠️ **Werk de doorloopbevindingen af en niet de volgorde in WERKVOORRAAD §4.** De
+bevindingen van 30-08 zijn geland; wat er nu voorligt staat in "Waar te
+beginnen" punt 0.
+
+⚠️ **Er werkt een parallelle sessie in dezelfde repo, en dat is op 01-09 opnieuw
+zichtbaar:** `origin/claude/qs8-252-besluiten-a53-a56` bouwt op dit moment het
+beslisdocument bij QS8-252. **Kijk naar de remote branches vóór je iets
+oppakt** — `git branch -r` — en niet alleen naar Linear.
 
 ## STAND VAN ZAKEN
 
@@ -939,6 +957,48 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   Gebeurde op 27-08 met `definer_bewaking()` uit 0106. `npm run rls:stack` bouwt
   alles opnieuw op en heeft het probleem niet; dit treft alleen de snelle weg.
 
+- **⚠️ Git maakt `FETCH_HEAD` aan zodra hij begínt, ook als hij de remote nooit
+  bereikt (01-09).** Gevonden bij QS8-247, en het is een meetval van de
+  gevaarlijkste soort: de eerste versie las de leeftijd van het beeld ná de
+  fetchpoging, dus een **mislukte** fetch meldde "van zojuist" terwijl er niets
+  was opgehaald — exact de valse zekerheid waar dat hele mechanisme tegen
+  bestaat. Geen enkele unit-test kon dat zien; de fixture met een `FETCH_HEAD`
+  van drie dagen oud maakte het zichtbaar in één run.
+
+  **De algemene vorm: een tijdstempel die een gereedschap zélf schrijft, bewijst
+  niet dat het gereedschap geslaagd is.** Lees hem vóór de poging, of meet iets
+  anders.
+
+- **⚠️ Een lokale poort haalt 22 van de 26 controles, en dat scheelt vier
+  ongemeten in plaats van twaalf (01-09).** `RLS_DOEL=lokaal` alléén laat er acht
+  ongemeten; de andere vier komen erbij zodra `psql` de lokale stack kan vinden:
+
+  ```bash
+  export PATH=/usr/lib/postgresql/16/bin:$PATH
+  export PGHOST=localhost PGPORT=5433 PGUSER=postgres RLS_DOEL=lokaal
+  npm run poort
+  ```
+
+  Daarmee méten ook `klokgrens`, `kolomrechten`, `pin` en `zichtbaarheid` in
+  plaats van zichzelf over te slaan. **Wat er dan nog ongemeten blijft is
+  `adviseur`, `functies`, `register` en `wachtwoord`** — die vier vergelijken met
+  het échte Supabase-project en hebben referenties nodig die een bouwsessie niet
+  heeft. Noem ze in je verslag met naam; "de poort is groen" is niet waar zolang
+  er vier niets gemeten hebben.
+
+  ⚠️ Start de stack niet als root: `initdb` en `pg_ctl` moeten als `ubuntu`
+  draaien, en `/var/run/postgresql` moet van `ubuntu` zijn. Draait er al een
+  Postgres, dan faalt `npm run rls:stack` op *"kon niet weg"* — start dan eerst
+  de server met `pg_ctl -D /tmp/goalbuddies-lokale-stack/pgdata` en draai het
+  script daarna opnieuw.
+
+- **⚠️ Vergelijk vóór een merge de `head_sha` van de groene run met de kop van de
+  PR (01-09).** Bij #125 stond het groen op een **oudere** commit, en mergen had
+  een kapotte migratiemap opgeleverd; bij #128 stond een tweede run op dezelfde
+  SHA en was hij alleen in de wachtrij — dan is mergen veilig. `get_status` geeft
+  de SHA waarop de checks horen; staat daar iets anders dan de PR-kop, dan zegt
+  het groen niets over wat je merget.
+
 ## TE ONTHOUDEN OVER HET PRODUCT
 
 **Domeinregel 7 (falen is nooit publiek) is de belangrijkste regel.** Bij elk
@@ -968,7 +1028,7 @@ gemiste week blijft gemist) en archiveren (voor een doel met geschiedenis).
 DELETE-events geen RLS toe. Er staat een test op (`realtime_bewaking()`,
 migratie 0027).
 
-## STAND VAN DE REPO (28-08, na PR #90)
+## STAND VAN DE REPO
 
 ⚠️ **Alles wat deze sessie opleverde staat op `main`.** Twee stapels, allebei in
 volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79, QS8-78 en de
@@ -1080,22 +1140,58 @@ voor het eerst een mens door de app en kwamen er **veertien issues** bij, vier o
 Urgent — waaronder een Doelcoach die vanaf het web niet aan te roepen was en een
 app waarin geen enkel scherm buiten de tabbladen te verlaten was.
 
-**De volgorde is nu:**
+**Wat er sinds 31-08 geland is** — allemaal op `main`, alle vier gemerged met een
+groene poort:
 
-| | Issue | Waarom in deze volgorde |
+| Issue | Wat het oploste | PR |
 |---|---|---|
-| ✅ | **QS8-195** | De CORS-preflight kreeg 405, dus alles wat over gegenereerde mijlpalen of weekdoelen gaat, stond stil. Gemerged 31-08 (#116) — ⚠️ **maar pas werkend op productie na `npx supabase functions deploy doelcoach rollover notificaties`** |
-| ✅ | **QS8-211** | Elk scherm buiten de tabbladen was een doodlopende weg. Gemerged 31-08 (#116) |
-| ✅ | **QS8-237 / QS8-239** | De twee grendels die zelf niet maten. Gemerged 31-08 (#112, #117) |
-| ✅ | **QS8-235 / QS8-236** | `adviseur:controle` en de limiet op `invite_preview`. Gemerged 31-08 (#113, #114) |
-| ⏳ | **QS8-234** | De controle is gemerged (#115), maar de **servergrens is nog ongemeten**. Vraagt Quintens hand — zie 0b |
-| ✅ | **QS8-238** | De blinde vlek onder QS8-237: `migraties:controle` keek nooit aan de bovenkant. Gemerged 31-08 (#119) |
-| → | **QS8-200 / QS8-201** | Van aanmelden naar een plan in tien minuten, en een doel uit één zin |
+| QS8-195 / QS8-211 | de CORS-preflight en de doodlopende schermen | #116 |
+| QS8-237 / QS8-239 | de twee grendels die zelf niet maten | #112, #117 |
+| QS8-235 / QS8-236 | `adviseur:controle` en de limiet op `invite_preview` | #113, #114 |
+| QS8-238 | `migraties:controle` keek nooit aan de bovenkant | #119 |
+| QS8-145 | `herstel_weekdoelstatus()` repareerde de héle tabel — de kruisbesmetting in de RLS-suite | #125 |
+| QS8-138 | de week-startdag verzet de lópende week mee; `profiles` van 14 naar 10 schrijfbare kolommen | #128 |
+| QS8-241 | `migratie:hernummer`, en een kop die over zijn eigen nummer liegt is nu rood | #130 |
+| QS8-247 | `migratie:nieuw` fetcht zelf voordat hij telt | #131 |
 
-⚠️ **Twee dingen van deze dag zijn af maar niet klaar**, en ze staan allebei in
-0b: de Edge Functions moeten nog gedeployd (QS8-195) en `password_min_length`
-moet nog gezet (QS8-234). Tot dan zijn beide reparaties gemerged en werkt geen
-van beide.
+**Waar je nu begint, in deze volgorde:**
+
+1. **Kijk eerst welke branches er open staan** (`git branch -r`). Op 01-09 stond
+   er een parallelle sessie op `claude/qs8-252-besluiten-a53-a56`. Twee sessies
+   in dezelfde bestanden is de duurste vorm van tijdverlies die dit project kent.
+2. **QS8-252 — de epic van 01-09**, als die branch geland is of hem niet raakt.
+   Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
+   krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een
+   **klassement per lid**, **kleur waar hij iets codeert**, en de vragenlijst
+   staat ná de aanmeldmuur. Volgorde binnen de epic: ritme eerst (het verandert
+   het datamodel), dan categorieën en kleur, dan het dashboard, dan het
+   klassement, dan de vragenlijst.
+
+   ⚠️ **A54 draait besluit A42 terug** — het klassement per lid raakt domeinregel
+   7 én 10, en `CLAUDE.md` zegt vandaag nog "A42: zo houden". **Lees
+   `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md` vóór je iets aan
+   punten of groepszichtbaarheid doet**, en werk `CLAUDE.md` bij zodra dat
+   document geland is. Zolang die twee elkaar tegenspreken, is de constitutie
+   niet te vertrouwen op precies het punt waar ze het meest telt.
+3. **De losse doorloopbugs uit de backlog** als de epic te groot is om te
+   beginnen: QS8-248 (het aanmeldscherm opent op "Account maken" in plaats van op
+   inloggen), QS8-245 (de uitlogknop staat onder elf kaarten), QS8-249, QS8-226.
+   Klein, af te ronden binnen een sessie, en het zijn stuk voor stuk dingen die
+   een mens tegenkwam.
+4. **QS8-251 en QS8-242** als je liever aan het gereedschap werkt: `npm run
+   db:push` kán niet werken en staat toch in `package.json` én in `DEPLOY.md` als
+   hét pad, en de secret-scan van de deploy meldt nul omdat hij niets kán zien.
+   Die tweede is dezelfde vorm als `tekst:controle` en `keten:controle`: een
+   controle die nooit rood is geweest.
+
+⚠️ **Wat je níét kunt doen, en dat is de hele Todo-kolom.** Alles daar draagt
+`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**: productie staat op `0131` en
+de repo loopt vooruit, de drie Edge Functions dateren van 27-08. Dat issue draagt
+het volledige stappenplan inclusief de dump vooraf, de volgorde, `notify pgrst,
+'reload schema'`, het uitlijnen van het register en `npm run types:db`. **Doe daar
+niets aan uit eigen beweging** — een migratie toepassen zonder de controlestap
+erna is de helft van het werk, en die controlestap vraagt referenties die een
+bouwsessie niet heeft.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.
@@ -1216,6 +1312,13 @@ gedraaid is, blijft de Doelcoach vanaf het web onbereikbaar: de browser stuurt
 `OPTIONS`, krijgt 405, en voert de POST nooit uit. De job blijft dan op `queued`
 staan en het scherm wacht twee minuten voor het opgeeft — dus het lijkt op "de AI
 doet het niet" en niet op "er is niets gedeployd".
+
+⚠️ **Sinds 01-09 is dít lijstje niet meer de bron — QS8-243 is dat.** Daar staat
+het volledige stappenplan voor de achterstand op productie: de dump vooraf, de
+volgorde, `notify pgrst, 'reload schema'`, het uitlijnen van het register en
+`npm run types:db`. Wat hieronder staat is de uitleg per stuk; de volgorde staat
+in het issue. **Werk daar, niet hier** — twee lijstjes die dezelfde stand
+beschrijven is precies QS8-125.
 
 ⚠️ **En één ding dat geen deploy is maar een schakelaar** (QS8-234): zet
 `password_min_length` in het Supabase-dashboard onder Authentication → Policies
