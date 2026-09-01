@@ -88,8 +88,13 @@ and not (
 )
 ```
 
-Beide stempels staan vast, dus het oordeel over déze voltooiing is voorgoed
-geveld op het moment dat ze werd ingediend. Dezelfde gedachte als
+⚠️ **Die redenering is fout, en de security-review heeft hem met een meting
+onderuit gehaald.** `losgekoppeld_op` staat *niet* vast: de trigger
+`noteer_ontkoppeling()` zet hem bij élke ontkoppeling op `now()`. Twee verzoeken
+— koppelen, ontkoppelen — schuiven hem vooruit en bevrijden een voltooiing die
+deze tak net gebonden had. Het oordeel is dus niet voorgoed geveld maar één
+DELETE later herzien. Wat hieronder stond als de kern van het ontwerp, was de
+zwakste schakel erin. Dezelfde gedachte als
 `pin_completion_cycle` (0006), het systeembericht (besluit 002 §3) en
 `weekly_goals.ceiling_days` (0140): **de rij draagt de regel waaronder hij is
 aangemaakt.**
@@ -138,3 +143,56 @@ ontkoppelen — staat er nog. Dat is een bewuste grens:
 voorwaarde die hem laag hield is drie keer ingetreden. In `ENGINEER-REVIEW.md`
 staat hij nu als **Middel**, met de aantekening dat elke nieuwe beslissing die op
 de koppelstand leunt, eerst deze rij leest.
+
+
+## 7. Wat er ná de review van dit document overblijft — 01-09-2026
+
+**Dit document beschreef een reparatie die één van de zes routes dicht doet.** De
+`security-reviewer` heeft er vijf gemeten die openblijven, en twee zinnen
+weerlegd die hierboven stonden. Beide correcties staan er nu bij.
+
+| # | Route | Wie kan dit | Gemeten uitkomst |
+|---|---|---|---|
+| A | ontkoppelen → afronden → wachten | eigenaar | **dicht** door 0146 |
+| B | `submitted_at` terugdateren | eigenaar | **dicht** door de kolomgrant |
+| 1 | afronden → dán ontkoppelen | eigenaar | open, en zónder wachttijd |
+| 2 | koppelen + ontkoppelen schuift `losgekoppeld_op` | eigenaar | open |
+| 3 | één link naar een zelfgemaakte lege groep laten staan | eigenaar | open |
+| 4 | `archiveer_groep()` op je eigen groep | eigenaar (is admin) | open |
+| 5 | je enige beoordelaar op `inactive` zetten | eigenaar (is admin) | open |
+
+⚠️ **Route 1 is de belangrijkste, want het is de natuurlijkere volgorde.** Je
+ontkoppelt pas als blijkt dat je buddy niet reageert. En omdat `submitted_at` dan
+al ouder is dan de termijn, is er niet eens een wachttijd.
+
+### Waarom een venster hier nooit gaat werken
+
+Zolang het oordeel op de toestand van *nu* leunt, is elke afgedichte route een
+nieuwe lijst waar de volgende omheen loopt. Dat is dezelfde fout in het klein die
+§3 in het groot beschrijft.
+
+**De vorm die wel houdt is een stempel op de voltooiingsrij bij het indienen** —
+dezelfde beweging als `completion_approval_rules`, dat de goedkeuringsdrempel al
+bevriest. Wat er daarna met de groep gebeurt, doet er dan niet meer toe.
+
+### Maar dat lost route 4 en 5 niet op, en daar zit een productvraag onder
+
+Bij route 4 en 5 ís er een beoordelaar op het moment van indienen; de eigenaar
+haalt hem daarna weg. Een stempel bij indienen zegt dan "beoordeelbaar", de
+huidige toestand zegt "niemand meer", en de auto-goedkeuring vuurt alsnog.
+
+Het onderscheid dat overblijft is **wie de beoordelaar heeft weggehaald**. Dat
+staat in `group_events` (`actor_id`), dus het is meetbaar — maar het maakt de
+regel een stuk zwaarder, en het raakt een vraag die niet technisch is:
+
+> **Wat belooft de app iemand wiens énige buddy vertrekt?**
+
+QS8-178 beantwoordde dat op 31-08 met: *die week wordt alsnog goedgekeurd, niet
+als gemist geboekt* — met als onderbouwing dat alle routes handelingen van een
+ánder zijn. **Die onderbouwing is nu weerlegd**: in de standaardopstelling, waar
+de eigenaar zijn eigen groep heeft aangemaakt, zijn drie van de vier routes
+handelingen van hemzelf.
+
+Dat besluit hoort daarom opnieuw gewogen te worden, en dat is grens 1 uit
+CLAUDE.md: het bepaalt wat er tegen een gebruiker beloofd wordt over zijn score.
+Het ligt bij Quinten en niet bij deze sessie.

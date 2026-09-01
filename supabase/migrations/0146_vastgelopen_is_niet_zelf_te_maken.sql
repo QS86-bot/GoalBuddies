@@ -2,6 +2,12 @@
 -- zonder buddy, door de toestand te maken die de auto-goedkeuring ontgrendelt
 -- (QS8-186)
 --
+-- ⚠️⚠️ **DEZE MIGRATIE IS NIET AF EN HOORT NIET TE LANDEN ZOALS HIJ NU IS.**
+--      De security-review van 01-09 vond vijf routes die hij níet dicht doet, en
+--      weerlegde twee zinnen die hier stonden. Wat hij wél doet — `submitted_at`
+--      uit de kolomgrant halen — is gemeten en klopt. Zie de blokken hieronder
+--      die met deze dubbele waarschuwing beginnen.
+--
 -- ROLLBACK-PAD:
 --   grant insert on public.completions to authenticated;
 --
@@ -134,9 +140,30 @@ comment on column public.completions.submitted_at is
 --    Er gaat dus niets verloren (domeinregel 6), er wordt alleen niets
 --    weggegeven.
 --
--- ⚠️ **Alleen `geen_koppeling` wordt versmald.** `geen_actieve_groep` en
---    `geen_beoordelaar` blijven ongemoeid: die toestanden kan de eigenaar niet
---    zelf maken — daar is een andere groep of een ander lid voor nodig.
+-- ⚠️ **HIER STOND EEN ONWARE ZIN, EN DIE IS OP 01-09 GEMETEN WEERLEGD.**
+--    Er stond: *"`geen_actieve_groep` en `geen_beoordelaar` blijven ongemoeid:
+--    die toestanden kan de eigenaar niet zelf maken."* Dat klopt niet. Wie een
+--    groep aanmaakt is er `role = 'admin'`, en dan is `archiveer_groep(g, true)`
+--    één RPC — of `update group_members set status = 'inactive'` op de buddy.
+--    Allebei gemeten: week `approved`, twee punten, nul goedkeuringen.
+--
+-- ⚠️ **En deze migratie sluit daarmee één van de zes routes.** De andere vijf:
+--      1. eerst indienen, dán ontkoppelen (`submitted_at < losgekoppeld_op`,
+--         en dan is er ook geen wachttijd meer) — de natuurlijkere volgorde;
+--      2. opnieuw koppelen en meteen weer ontkoppelen schuift `losgekoppeld_op`
+--         vooruit en bevrijdt een gebonden voltooiing;
+--      3. één extra koppeling aan een zelfgemaakte lege groep laten staan, want
+--         dan is `not exists (links)` onwaar en wordt de reden `geen_beoordelaar`;
+--      4. `archiveer_groep()` op je eigen groep;
+--      5. je enige beoordelaar op `inactive` zetten.
+--
+--    **De vorm die wél houdt, ligt niet in een venster.** Zolang de toestand van
+--    *nu* het oordeel bepaalt, is elke afgedichte route een nieuwe lijst waar de
+--    volgende omheen loopt. Wat er nodig is, is een stempel op de voltooiingsrij
+--    op het moment van indienen — dezelfde beweging als
+--    `completion_approval_rules` die de drempel al bevriest. Dat is een
+--    productbeslissing (wat belooft de app iemand wiens énige buddy vertrekt?)
+--    en die ligt bij Quinten; zie het beslisdocument §7.
 
 create or replace function public.vastgelopen_goedkeuringen()
 returns table (
