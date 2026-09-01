@@ -2,7 +2,7 @@
 
 **Datum:** 01-09-2026
 **Aanleiding:** QS8-186, de dossierrij van 17-08-2026 die voor de derde keer afging
-**Raakt:** `supabase/migrations/0146_vastgelopen_is_niet_zelf_te_maken.sql`,
+**Raakt:** `supabase/migrations/0147_vastgelopen_is_niet_zelf_te_maken.sql`,
 `tests/rls/vastgelopen.test.ts`, `scripts/kolomrechten-controle.mjs`
 
 ## 1. Dezelfde vorm, drie keer, en elke keer duurder
@@ -76,7 +76,7 @@ uitzondering geldt?* Zo ja, dan is de regel weg — niet verzwakt.
 daar klopt dat: de handeling die geweigerd wordt, vindt op dát moment plaats.
 
 Hier zou diezelfde vorm een **vertraging** zijn en geen slot. De eigenaar wacht
-zeven dagen en de rollover keurt alsnog goed. Daarom legt 0146 `submitted_at`
+zeven dagen en de rollover keurt alsnog goed. Daarom legt 0147 `submitted_at`
 naast `losgekoppeld_op`:
 
 ```sql
@@ -108,7 +108,7 @@ er wordt alleen niets weggegeven.
 
 ## 5. Een tabelrecht impliceert elke kolom, ook de kolom die je eruit haalt
 
-De eerste versie van 0146 deed `revoke insert (submitted_at)`. Dat leek te
+De eerste versie van 0147 deed `revoke insert (submitted_at)`. Dat leek te
 werken en deed niets: `completions` had `grant insert on public.completions`, en
 een tabelrecht impliceert élke kolom.
 

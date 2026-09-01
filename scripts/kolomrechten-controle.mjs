@@ -839,7 +839,7 @@ export const GEEN_SCHRIJFPAD = [
     soort: 'INSERT',
     kolom: 'attachment_url',
     reden:
-      '0146 versmalde deze grant om `submitted_at` en `superseded_by` eruit te ' +
+      '0147 versmalde deze grant om `submitted_at` en `superseded_by` eruit te ' +
       'halen; `attachment_url` bleef er bewust in staan. De kolom hoort bij ' +
       '`groups.evidence_policy = \'note_and_attachment\'`, en er is nog geen ' +
       'scherm dat een bijlage uploadt. ⚠️ En `enforce_evidence_policy()` eist ' +

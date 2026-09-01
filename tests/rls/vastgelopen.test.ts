@@ -65,7 +65,7 @@ async function vastgelopenReden(goalId: string): Promise<string | null> {
 /**
  * Zet het indienen ver genoeg terug om de termijn te laten verstrijken.
  *
- * ⚠️ Dit gaat via de beheerdersclient omdat het móet: sinds 0146 heeft
+ * ⚠️ Dit gaat via de beheerdersclient omdat het móet: sinds 0147 heeft
  *    `authenticated` geen INSERT-recht meer op `submitted_at` en al helemaal geen
  *    UPDATE-recht. Dat is precies wat `route 3` hieronder toetst.
  */
@@ -374,7 +374,7 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
   });
 
   /**
-   * De toestand die de eigenaar zélf maakt — QS8-186, migratie 0146.
+   * De toestand die de eigenaar zélf maakt — QS8-186, migratie 0147.
    *
    * ⚠️ **De belofte is domeinregel 3, en die is breder dan één tijdlijn.** Een
    *    eerdere versie van dit blok toetste drie handmatig gezette tijdlijnen, en
@@ -555,7 +555,7 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
 
   /**
    * ⚠️ **De must-allow-helft.** 0135 bestaat voor wie zijn beoordelaar búiten zijn
-   *    schuld kwijtraakt. Zou 0146 die ook dichtzetten, dan is de reparatie erger
+   *    schuld kwijtraakt. Zou 0147 die ook dichtzetten, dan is de reparatie erger
    *    dan het gat: dan hangt precies die gebruiker voorgoed op `pending`.
    */
   describe('een verlies buiten de eigenaar om wordt nog steeds afgehandeld', () => {
@@ -792,7 +792,7 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       async () => {
         const o = await bouwOpstelling('termijn-nogmaals');
 
-        // ⚠️ Via `adminDb()` en niet via de eigenaar: sinds 0146 wordt een
+        // ⚠️ Via `adminDb()` en niet via de eigenaar: sinds 0147 wordt een
         //    vastloper die de eigenaar zélf maakt niet meer afgehandeld, en dan
         //    toetst deze test niets meer over dubbel boeken. De eigenschap die
         //    hier bewaakt wordt — append-only — staat daar los van.

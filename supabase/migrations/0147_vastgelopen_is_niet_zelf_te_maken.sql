@@ -1,4 +1,4 @@
--- 0146_vastgelopen_is_niet_zelf_te_maken.sql — de auto-goedkeuring is niet meer
+-- 0147_vastgelopen_is_niet_zelf_te_maken.sql — de auto-goedkeuring is niet meer
 -- door de eigenaar zelf op te roepen (QS8-186)
 --
 -- ROLLBACK-PAD:
@@ -90,7 +90,7 @@ grant insert (
 comment on column public.completions.submitted_at is
   'Wanneer deze voltooiing is ingediend. Zet de database, niet de client: '
   '`keur_vastgelopen_goedkeuringen_goed()` meet de termijn hieraan af, en een '
-  'client die hem terugdateert keurt zijn eigen week meteen goed. Zie 0146.';
+  'client die hem terugdateert keurt zijn eigen week meteen goed. Zie 0147.';
 
 -- ---------------------------------------------------------------------------
 -- 2. Eén stempel: wanneer de eigenaar zélf zijn beoordelaars weghaalde
@@ -120,7 +120,7 @@ alter table public.goals
 comment on column public.goals.beoordelaar_weggehaald_op is
   'Wanneer de eigenaar zélf voor het laatst iets deed waardoor er niemand meer '
   'kon beoordelen: ontkoppelen, zijn eigen groep archiveren, of zijn enige '
-  'beoordelaar op inactive zetten. Zie 0146. Wordt nooit gewist — een oude '
+  'beoordelaar op inactive zetten. Zie 0147. Wordt nooit gewist — een oude '
   'stempel is vanzelf onschadelijk, en wissen zou de volgende handeling de '
   'reparatie van de vorige maken.';
 
@@ -284,7 +284,7 @@ as $$
     --    testsuite.** Deze functie is twee dingen tegelijk: het rapport van 0109
     --    (élke route waarlangs een week zijn beoordelaars kwijtraakt moet
     --    zíchtbaar worden, zodat route zeven opvalt) én de werklijst van 0135.
-    --    Een eerdere versie van 0146 filterde de rij wég, en toen viel de halve
+    --    Een eerdere versie van 0147 filterde de rij wég, en toen viel de halve
     --    suite van 0109 om — terecht: onzichtbaar maken is geen reparatie maar
     --    een tweede probleem. De rij blijft dus staan, met een vlag erbij, en
     --    `keur_vastgelopen_goedkeuringen_goed()` slaat hem over.
@@ -347,7 +347,7 @@ begin
   --    dezelfde vier voorwaarden; hier een eigen variant naast zetten is precies
   --    de tweede lijst die in 0032/0034 uit elkaar liep.
   for v_rij in select * from vastgelopen_goedkeuringen() loop
-    -- ⚠️ **De tak van 0146, en de énige regel die hier verandert.** De rest van
+    -- ⚠️ **De tak van 0147, en de énige regel die hier verandert.** De rest van
     --    deze functie is woordelijk die van 0135; overtypen zou een tweede lijst
     --    maken die uiteenloopt (0032/0034). Wat de eigenaar zelf heeft gemaakt,
     --    wordt wél gemeld door `vastgelopen_goedkeuringen()` maar hier niet
@@ -410,7 +410,7 @@ revoke all on function public.vastgelopen_goedkeuringen() from public, anon, aut
 grant execute on function public.vastgelopen_goedkeuringen() to service_role;
 
 comment on function public.vastgelopen_goedkeuringen() is
-  'Voltooiingen waar niemand meer op kan reageren. Sluit sinds 0146 een '
+  'Voltooiingen waar niemand meer op kan reageren. Sluit sinds 0147 een '
   'voltooiing uit waarvan de eigenaar de beoordelaars zélf heeft weggehaald — '
   'ontkoppelen, zijn eigen groep archiveren, zijn enige beoordelaar op inactive '
   'zetten. Vertrekt de buddy uit zichzelf, dan blijft de auto-goedkeuring van '
