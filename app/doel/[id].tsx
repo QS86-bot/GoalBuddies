@@ -76,6 +76,7 @@ import {
   Body,
   Button,
   Caption,
+  CategorieMerk,
   Card,
   Choice,
   Field,
@@ -200,12 +201,20 @@ export default function DoelDetail() {
           <View style={styles.blokken}>
             <Card>
               <Subheading>{d.title}</Subheading>
-              <Caption>
-                {t('doelscherm.categorie_streefdatum', {
-                  categorie: categorieLabels()[(d.category ?? 'other') as Categorie],
-                  datum: d.target_date ?? '',
-                })}
-              </Caption>
+              {/*
+                ⚠️ Het gebied krijgt zijn eigen merk (QS8-255) en staat daarom
+                   niet meer in dezelfde zin als de streefdatum: één zin met een
+                   pictogram er middenin leest slechter dan twee elementen naast
+                   elkaar, en een schermlezer zou het icoon dan tussen twee
+                   woorden aantreffen.
+              */}
+              <View style={styles.kopregel}>
+                <CategorieMerk
+                  categorie={d.category ?? 'other'}
+                  label={categorieLabels()[(d.category ?? 'other') as Categorie]}
+                />
+                <Caption>{t('doelscherm.streefdatum', { datum: d.target_date ?? '' })}</Caption>
+              </View>
 
               {d.identity_statement ? (
                 <Body muted>&ldquo;{d.identity_statement}&rdquo;</Body>
@@ -2365,6 +2374,7 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
 }
 
 const styles = StyleSheet.create({
+  kopregel: { flexDirection: 'row', alignItems: 'center', gap: space.blokGap - 3, flexWrap: 'wrap' },
   blokken: { gap: space.blokGap + 3 },
   mijlpalen: { gap: space.blokGap - 2 },
   uitwegen: { gap: space.blokGap - 3 },

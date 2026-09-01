@@ -1087,7 +1087,7 @@ export const en: Record<Sleutel, string> = {
   'doelscherm.titel': 'Goal',
   'doelscherm.leeg_titel': 'This goal does not exist',
   'doelscherm.leeg_body': 'Either it was deleted, or it is not yours. Check the link.',
-  'doelscherm.categorie_streefdatum': '{categorie} · target date {datum}',
+  'doelscherm.streefdatum': 'Target date {datum}',
   'doelscherm.weekdoelen_afgerond': '{gedaan} of {totaal} weekly goals completed',
 
   'deadline.verzoek_loopt': 'Your request is pending',

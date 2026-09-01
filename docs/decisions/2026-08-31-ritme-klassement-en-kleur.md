@@ -159,13 +159,40 @@ er niet.
 
 Gemeten op het navy-stelsel van Q-Projects met de zes gebruikelijke toetsen
 (contrast op navy, onderlinge ΔE in OKLab, en beide onder deuteranopie,
-protanopie en tritanopie): **drie kleuren komen erdoorheen** — `#4f97e8`,
-`#e0578f` en `#8f9c36`. Elke vierde kandidaat valt om op kleurenblindheid of op
-onderlinge afstand bij normaal zicht.
+protanopie en tritanopie): **drie kleuren komen erdoorheen**. Elke vierde
+kandidaat valt om op kleurenblindheid of op onderlinge afstand bij normaal zicht.
 
 Daaruit volgt de regel: **kleur codeert de familie, het icoon codeert het
-gebied.** Twaalf categorieën worden drie families van vier, elk met een eigen
-icoon.
+gebied.** Vijftien gebieden worden vier groepen — drie met een kleur, en één
+zonder.
+
+### Gebouwd op 01-09-2026, en de meting is scherper geworden
+
+| Familie | donker | licht | Gebieden |
+|---|---|---|---|
+| Lichaam en rust | `#4f97e8` | `#2a6ec0` | sport · voeding · zelfzorg · rust en aandacht |
+| Mensen en maken | `#dd4fa0` | `#b53080` | contact · iets voor een ander · creativiteit |
+| Werk en groei | `#8f9c36` | `#4a5410` | productiviteit · orde · leren · vaardigheden · veerkracht |
+| *(geen kleur)* | — | — | werk · studie · overig |
+
+⚠️ **De roze is veranderd, en dat is een correctie op deze eigen meting.** Hier
+stond `#e0578f`, gemeten op contrast en op onderlinge afstand tussen de drie
+families. Wat er níét gemeten was, is de afstand tot de **statuskleuren**: die
+was 8.9 tot `red`. Rood betekent in dit stelsel uitsluitend deadline-risico, dus
+een roze markering die daar tegenaan ligt leest als een waarschuwing over een
+doel waar niets aan de hand is.
+
+Dat is gevonden door de meting in code te zetten in plaats van in dit document:
+`src/shared/theme/kleurafstand.ts` met `kleurafstand.test.ts` erop. De nieuwe
+waarden liggen op elke as ruimer dan de oude — familie-onderling minimaal 12.1
+(donker) en 11.9 (licht), tot de dichtstbijzijnde statuskleur minimaal 12.1 en
+11.9.
+
+⚠️ **De vierde groep heeft geen kleur, en dat is geen omissie maar het gevolg van
+de meting.** A55 zocht drie kleuren voor twaalf gebieden; `business`, `study` en
+`other` vielen buiten die opdracht. Ze krijgen wél een pictogram, in de neutrale
+kleur. Wie ze een eigen kleur wil geven, verzint een vierde — en dat is precies
+wat de band te smal voor is.
 
 ⚠️ Nog open: gaan die drie kleuren het Q-Projects-stelsel in — waar de Status
 Tracker ze erft — of blijven ze een uitbreiding van alleen GoalBuddies?

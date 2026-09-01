@@ -1,6 +1,15 @@
 import type { ColorSchemeName } from 'react-native';
 
-import { navy, navyLight, roles, shadow, type Palette } from './tokens';
+import {
+  categoriekleurenNavy,
+  categoriekleurenNavyLight,
+  navy,
+  navyLight,
+  roles,
+  shadow,
+  type Categoriekleuren,
+  type Palette,
+} from './tokens';
 
 /** De twee thema's van het Q-Projects navy-stelsel. */
 
@@ -9,6 +18,14 @@ export interface Theme {
   readonly dark: boolean;
   readonly colors: Palette;
   readonly roles: ReturnType<typeof roles>;
+  /**
+   * De kleur per categoriefamilie — besluit A55.
+   *
+   * ⚠️ Staat naast `colors` en niet erin, omdat `Palette` het gedeelde
+   *    Q-Projects-stelsel is en dit een uitbreiding van GoalBuddies. Zie de kop
+   *    bij `Categoriekleuren` in `tokens.ts`.
+   */
+  readonly families: Categoriekleuren;
   readonly shadow: (typeof shadow)['navy'] | (typeof shadow)['navyLight'];
 }
 
@@ -17,6 +34,7 @@ export const navyTheme: Theme = {
   dark: true,
   colors: navy,
   roles: roles(navy),
+  families: categoriekleurenNavy,
   shadow: shadow.navy,
 };
 
@@ -25,6 +43,7 @@ export const navyLightTheme: Theme = {
   dark: false,
   colors: navyLight,
   roles: roles(navyLight),
+  families: categoriekleurenNavyLight,
   shadow: shadow.navyLight,
 };
 
