@@ -99,6 +99,14 @@ export const GEEN_OPPERVLAK = new Map([
     'Geeft de stand van de gróep terug, niet iets over een lid — verantwoord in 0080: ' +
       'het is het feit dat iemand nodig heeft om te besluiten of hij meedoet.',
   ],
+  [
+    'functie:zet_groepsontdekbaarheid',
+    'Leest `zichtbaarheid` om te wéigeren (QS8-231, migratie 0144): een open groep kan ' +
+      'niet vindbaar zijn, want dan zouden onbekenden elkaars tegenslag zien. Hij geeft ' +
+      'dus niets over een lid terug — hij gebruikt de stand als grens en niet als filter. ' +
+      '⚠️ De grendel is de CHECK `groups_ontdekbaar_is_beschermd`; deze functie is de ' +
+      'uitleg erbij, zodat een scherm een reden kan tonen in plaats van een 23514.',
+  ],
 ]);
 
 /**

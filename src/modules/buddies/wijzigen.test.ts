@@ -85,6 +85,11 @@ function velden(): readonly string[] {
     approval_rule: 'quorum',
     approval_quorum: 3,
     season_cadence: 'monthly',
+    // QS8-231. `ontdekbaar` staat er met opzet niet bij: die kolom loopt over
+    // `zet_groepsontdekbaarheid()`, net als `zichtbaarheid` over zijn eigen RPC.
+    categorie: 'fitness',
+    omschrijving: 'Een zin over deze groep.',
+    voertaal: 'nl',
   };
 
   const uit = groepPatchSchema.safeParse(alles);

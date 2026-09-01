@@ -64,6 +64,15 @@ export default function GroepTab() {
       <Button variant="secundair" block onPress={() => router.push('/groep/deelnemen')}>
         {t('groepen.heb_code')}
       </Button>
+      {/*
+        ⚠️ QS8-231. Onderaan en niet bovenaan: wie hier komt heeft meestal al een
+           groep of een link. Zoeken is de derde weg naar binnen en niet de
+           eerste — en een lijst met vreemden bovenaan het scherm zou dit
+           tabblad iets anders maken dan het is.
+      */}
+      <Button variant="stil" block onPress={() => router.push('/groep/ontdek')}>
+        {t('groepen.ontdekken')}
+      </Button>
     </Screen>
   );
 }

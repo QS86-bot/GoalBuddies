@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { CATEGORIEEN } from '../../shared/categorieen';
 import { t, weekdagNaam } from '../../shared/i18n';
+import { telTekens } from '../../shared/tekst';
 
 import type { Weekday } from '../../shared/time';
 
@@ -133,6 +135,46 @@ export function zichtbaarheidUitleg(): Readonly<Record<Zichtbaarheid, string>> {
     open: t('zichtbaarheid.open_uitleg'),
   };
 }
+
+/**
+ * De voertaal van een groep — QS8-231, migratie 0144.
+ *
+ * ⚠️ **Een zoekingang en geen instelling.** Hij verandert niets aan de taal van
+ *    de app; hij zegt waarin deze groep met elkaar praat, zodat wie zoekt niet
+ *    in een gesprek belandt dat hij niet volgt.
+ *
+ * ⚠️ Kopie van de CHECK `groups_voertaal_geldig`, die dezelfde lijst draagt als
+ *    `profiles_locale_bekend`. `tests/rls/ontdekken.test.ts` legt de twee naast
+ *    elkaar. Een taal erbij is dus altijd eerst een migratie.
+ */
+export const VOERTALEN = ['nl', 'en'] as const;
+export type Voertaal = (typeof VOERTALEN)[number];
+
+/** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
+export function voertaalLabels(): Readonly<Record<Voertaal, string>> {
+  return {
+    nl: t('voertaal.nl'),
+    en: t('voertaal.en'),
+  };
+}
+
+/** Zoals `leesZichtbaarheid()`: de gegenereerde types geven `string` terug. */
+export function leesVoertaal(waarde: unknown): Voertaal | null {
+  return waarde === 'nl' || waarde === 'en' ? waarde : null;
+}
+
+/**
+ * Dezelfde grens als `groups_omschrijving_len` (0144).
+ *
+ * ⚠️ **Geteld in codepunten en niet met `.max()`.** Zod telt UTF-16-eenheden en
+ *    `char_length` in Postgres telt codepunten; bij een bóvengrens is `.max()`
+ *    de strengere van de twee, dus hij weigert niets wat de database zou
+ *    accepteren — maar hij weigert wél op een ander getal dan de teller onder
+ *    het veld laat zien. Elf emoji zijn dan "22 van de 280" voor de gebruiker en
+ *    22 voor het schema, terwijl de database er 11 telt. Eén eenheid overal
+ *    (CLAUDE.md), dus `telTekens()` aan beide kanten.
+ */
+export const OMSCHRIJVING_MAX = 280;
 
 export const groepSchema = z.object({
   name: z
@@ -299,6 +341,37 @@ export const groepPatchSchema = groepSchema
       .nullable()
       .optional(),
     season_cadence: z.enum(SEIZOENSCADANSEN).optional(),
+
+    /**
+     * De drie velden van QS8-231 waarmee een groep zich laat vinden.
+     *
+     * ⚠️ **`ontdekbaar` staat er met opzet níét bij**, net als `zichtbaarheid`.
+     *    Dat is een toestemming en geen gegeven over de groep: hij loopt over
+     *    `zet_groepsontdekbaarheid()`, die om een bevestiging vraagt en er een
+     *    systeembericht van maakt. `guard_group_update()` zet hem bovendien
+     *    terug en er is geen kolomgrant, dus dit schema is de derde rem en niet
+     *    de enige.
+     *
+     * ⚠️ **`null` betekent "haal weg" en `undefined` "laat staan"**, net als bij
+     *    `approval_quorum`. Een groep die niet meer gevonden wil worden op
+     *    onderwerp moet zijn categorie kunnen legen — en de database weigert dat
+     *    zolang hij ontdekbaar is (`groups_ontdekbaar_heeft_categorie`), wat
+     *    precies de bedoeling is.
+     */
+    categorie: z.enum(CATEGORIEEN).nullable().optional(),
+    omschrijving: z
+      .string()
+      .trim()
+      .refine((v) => telTekens(v) <= OMSCHRIJVING_MAX, {
+        error: () => t('validatie.groepsomschrijving_lang'),
+      })
+      // ⚠️ Leeggemaakt is `null` en niet `''`. `groups_omschrijving_len` eist
+      //    minstens één teken, dus een leeg veld zou een storingsmelding geven
+      //    voor de meest gewone handeling die er is: iets weghalen.
+      .transform((v) => (v === '' ? null : v))
+      .nullable()
+      .optional(),
+    voertaal: z.enum(VOERTALEN).nullable().optional(),
   })
   /**
    * ⚠️ **De twee velden horen bij elkaar en dat wordt hier al geweigerd.** De

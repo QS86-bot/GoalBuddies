@@ -130,6 +130,13 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     // ⚠️ Migratie 0092. Archiveren vervangt het verwijderen van een groep, dat
     //    naar zes tabellen cascadeerde. Het is de zwaarste knop in dit scherm:
     //    hij neemt de groep weg bij álle leden, en er is geen weg terug.
+    // ⚠️ QS8-231, migratie 0144. Ook deze twee gaan over ánderen: wie zijn groep
+    //    vindbaar maakt, doet dat namens iedereen die erin zit. De uitleg noemt
+    //    daarom niet alleen wat een vreemde te zien krijgt maar vooral wat níet —
+    //    dat tweede is de vraag die een beheerder aan zijn leden moet kunnen
+    //    beantwoorden.
+    groepOntdekbaarMaken: bouw('bevestiging.groep_ontdekbaar_maken'),
+    groepVerbergen: bouw('bevestiging.groep_verbergen'),
     groepArchiveren: bouw('bevestiging.groep_archiveren'),
     // ⚠️ QS8-57, migratie 0098. Vertrekken is niet terug te draaien vanuit de
     //    app — terugkomen vraagt een geldige uitnodigingslink, en die heeft de
@@ -155,6 +162,8 @@ export type BevestigingsNaam =
   | 'weekdoelDoorschuiven'
   | 'groepOpenzetten'
   | 'groepBeschermen'
+  | 'groepOntdekbaarMaken'
+  | 'groepVerbergen'
   | 'groepArchiveren'
   | 'groepVerlaten'
   | 'doelVerwijderen'

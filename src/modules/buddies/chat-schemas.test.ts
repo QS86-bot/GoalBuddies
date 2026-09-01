@@ -123,6 +123,14 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    zijn, en dat is precies wat grens 3 van het besluit verbiedt.
       'group_opened',
       'group_protected',
+      // ⚠️ QS8-231 (migratie 0144). Gaat over de gróép — hij is vindbaar
+      //    geworden — en noemt geen mislukking. Er is met opzet géén tegenhanger
+      //    voor het wéér verbergen: dat is geen nieuws, want er verandert niets
+      //    aan wat een lid ziet, en dus wordt de afwezigheid ervan ook geen
+      //    signaal. En er komt niets over een aanvraag of een afwijzing: "X
+      //    wilde erbij en mocht niet" is een uitspraak over een ander die niets
+      //    positiefs draagt. Het spoor staat in `group_events`.
+      'group_discoverable',
       // ⚠️ QS8-79 (migratie 0112). De seizoensrecap gaat over de gróép en noemt
       //    geen enkele persoon — de drie cijfers erin zijn groepstotalen die
       //    alleen omhoog gaan, dezelfde vorm als `chain_milestone`.

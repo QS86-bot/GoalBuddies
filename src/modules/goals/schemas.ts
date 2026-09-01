@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
+import { CATEGORIEEN, isCategorie, type Categorie } from '../../shared/categorieen';
 import { t } from '../../shared/i18n';
-
 import { isGeldigeIsoDatum, type IsoDate } from '../../shared/time';
 
 /**
@@ -93,31 +93,13 @@ export function niveauUitDagen(
 /**
  * De vijftien gebieden waar een doel over kan gaan — QS8-224, migratie 0142.
  *
- * ⚠️ **Een kopie van de CHECK `goals_category_valid` en geen bron.**
- *    `tests/rls/policies.test.ts` legt de twee in béide richtingen naast elkaar.
- *    Een waarde erbij is dus altijd eerst een migratie.
- *
- * ⚠️ De volgorde is die van `CATEGORIE_GROEPEN` hieronder en niet alfabetisch:
- *    dit is de volgorde waarin een gebruiker ze te zien krijgt.
+ * ⚠️ **De lijst zelf staat sinds QS8-231 in `shared/categorieen`**, want een
+ *    groep deelt hem sindsdien (0144) en `modules/buddies` kan hem hier niet
+ *    vandaan halen zonder de Supabase-client mee te trekken. Hij wordt hier
+ *    doorgeëxporteerd, zodat elke bestaande lezer op zijn plek blijft. De
+ *    onderbouwing en de drie CHECK-naden staan in dat bestand.
  */
-export const CATEGORIEEN = [
-  'fitness',
-  'nutrition',
-  'self_care',
-  'mindfulness',
-  'connection',
-  'helping',
-  'creativity',
-  'productivity',
-  'organization',
-  'learning',
-  'skills',
-  'resilience',
-  'business',
-  'study',
-  'other',
-] as const;
-export type Categorie = (typeof CATEGORIEEN)[number];
+export { CATEGORIEEN, isCategorie, type Categorie };
 
 /** Zie de andere meldingentabellen: een functie, want de taal ligt niet vast op importtijd. */
 export function categorieLabels(): Readonly<Record<Categorie, string>> {
