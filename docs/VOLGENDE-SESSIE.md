@@ -9,10 +9,12 @@
 > Lees eerst de drie punten hieronder — het derde verandert wat je als volgende
 > oppakt — en daarna de vier van 02-09.
 >
-> **02-09, punt 0: productie staat op `0146` en de map op `0149`.** De acht
-> migraties van QS8-243 zijn toegepast en per catalogus nagemeten; `0147` t/m
-> `0149` zijn daarna geland en staan er dus nog niet op. Hoe dat toepassen ging
-> en waarom een bouwsessie dat wél kan, staat bij "Waar te beginnen" punt 0.
+> **02-09, punt 0: productie is bijgetrokken, in twee rondes.** Eerst `0139` t/m
+> `0146` (de acht van QS8-243), daarna `0147` t/m `0149` toen die landden. Allebei
+> per catalogus nagemeten. ⚠️ **Ga niet uit van het nummer dat hier staat** — het
+> verschoof die dag drie keer, en de map loopt vooruit zodra er een PR landt.
+> Hoe dat toepassen ging en waarom een bouwsessie dat wél kan, staat bij "Waar te
+> beginnen" punt 0.
 > ⚠️ En één ding dat daar hoort te staan: **er is geen `pg_dump` gemaakt**, want
 > de container heeft geen `SUPABASE_DB_URL`. Dat is een afwijking van onwrikbare
 > regel 20 en geen detail.
