@@ -745,7 +745,6 @@ export const en: Record<Sleutel, string> = {
   'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
 
   'bewijseis.note_required': 'Note required',
-  'bewijseis.note_and_attachment': 'Note and attachment',
   'bewijseis.optional': 'Everything optional',
   'goedkeuringsregel.any': 'One buddy',
   'goedkeuringsregel.majority': 'A majority',

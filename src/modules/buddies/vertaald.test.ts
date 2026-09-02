@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { STANDAARDTAAL, zetTaal } from '../../shared/i18n';
 
-import { bewijseisLabels, huddledagen, huddledagLabel } from './schemas';
+import { BEWIJSEISEN, bewijseisLabels, huddledagen, huddledagLabel } from './schemas';
 import { vragen } from './weekafsluiting-schemas';
 
 /**
@@ -56,12 +56,17 @@ describe('de huddledagen', () => {
 });
 
 describe('de bewijseisen', () => {
-  it('hebben in elke taal drie verschillende labels', () => {
+  it('hebben in elke taal net zoveel verschillende labels als er eisen zijn', () => {
+    // ⚠️ **`BEWIJSEISEN.length` en geen vast getal — QS8-261.** Hier stond `3`,
+    //    en toen `note_and_attachment` met 0150 verdween, werd deze test rood
+    //    zonder dat er iets stuk was. Een getal dat de lijst nálopt in plaats van
+    //    hem te lézen, is een tweede lijst; dat is de fout van 0032/0034 in
+    //    testvorm.
     for (const taalcode of ['nl', 'en'] as const) {
       zetTaal(taalcode);
       const labels = Object.values(bewijseisLabels());
 
-      expect(new Set(labels).size, taalcode).toBe(3);
+      expect(new Set(labels).size, taalcode).toBe(BEWIJSEISEN.length);
       for (const label of labels) expect(label.trim(), taalcode).not.toBe('');
     }
   });
