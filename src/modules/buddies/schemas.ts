@@ -206,14 +206,13 @@ export type GroepInvoer = z.infer<typeof groepSchema>;
  *    keuze die de sociale lus op gang brengt. Een duim omhoog op een bewering is
  *    een formaliteit; één zin geeft de goedkeurder iets om op te reageren.
  */
-export const BEWIJSEISEN = ['note_required', 'note_and_attachment', 'optional'] as const;
+export const BEWIJSEISEN = ['note_required', 'optional'] as const;
 export type Bewijseis = (typeof BEWIJSEISEN)[number];
 
 /** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
 export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
   return {
     note_required: t('bewijseis.note_required'),
-    note_and_attachment: t('bewijseis.note_and_attachment'),
     optional: t('bewijseis.optional'),
   };
 }

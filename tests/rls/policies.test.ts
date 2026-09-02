@@ -15,7 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    laatste re-exporteert ook api.ts en pending.ts, en die trekken de
 //    Supabase-client en AsyncStorage mee — en daarmee React Native, in een test
 //    die in Node draait. Zelfde reden als de losse client in harness.ts.
-import { isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
+import { BEWIJSEISEN, isCodeVorm, normaliseerCode } from '../../src/modules/buddies/schemas';
 import {
   CATEGORIEEN,
   DOELGEBEURTENISSEN,
@@ -3077,6 +3077,59 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           });
 
         expect(poging.error?.code, 'een verzonnen categorie werd gewoon opgeslagen').toBe('23514');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️ **`note_and_attachment` is er in 0150 uit, en dit is de grendel die hem
+   *    tegenhoudt als hij terugkomt** (QS8-261).
+   *
+   *    De instelling bestond overal — in de CHECK, in `BEWIJSEISEN`, in het
+   *    beheerscherm, in beide catalogi — en werd nergens afgedwongen:
+   *    `enforce_evidence_policy()` toetst uitsluitend de notitie, en er was geen
+   *    scherm dat een bijlage kón toevoegen. Een groep die "Notitie én bijlage"
+   *    koos, kreeg exact het gedrag van `note_required`.
+   *
+   * ⚠️ **De inhoud staat eerst vastgepind en dat is geen omhaal.** Een lege
+   *    uitkomst betekent óók *"er is geen constraint met die naam"*, en dan zijn
+   *    twee lege lijsten gelijk terwijl het slot weg is. Dezelfde reden als bij
+   *    de doelcategorieën hierboven.
+   */
+  describe('de bewijseis van een groep', () => {
+    it(
+      'staat in de database exact toe wat de app kent, en de bijlage hoort daar niet bij',
+      async () => {
+        const { data, error } = await adminDb().rpc('check_waarden', {
+          p_tabel: 'groups',
+          p_constraint: 'groups_evidence_policy_valid',
+        });
+
+        expect(error).toBeNull();
+
+        const inDeDatabase = [...(data ?? [])].sort();
+
+        expect(inDeDatabase).toEqual(['note_required', 'optional']);
+        expect(inDeDatabase).toEqual([...BEWIJSEISEN].sort());
+        expect(
+          inDeDatabase,
+          'de bijlage-eis is er in 0150 uit tot er een uploadpad is — komt hij ' +
+            'terug, dan hoort `enforce_evidence_policy()` hem ook echt af te dwingen',
+        ).not.toContain('note_and_attachment');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert de oude bijlage-eis, ook via de systeemclient',
+      async () => {
+        const poging = await adminDb()
+          .from('groups')
+          .update({ evidence_policy: 'note_and_attachment' })
+          .eq('id', f.groupId);
+
+        expect(poging.error?.code, 'de oude waarde werd gewoon opgeslagen').toBe('23514');
       },
       TEST_TIMEOUT,
     );

@@ -31,7 +31,7 @@ export type DagZet = Tables<'daily_moves'>;
 
 
 /** Wat een groep aan bewijs eist, uit `groups.evidence_policy` (6.5). */
-export type Bewijseis = 'note_required' | 'note_and_attachment' | 'optional';
+export type Bewijseis = 'note_required' | 'optional';
 
 /**
  * Rondt een weekdoel af.
@@ -158,7 +158,6 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
 
   const eisen = (data ?? []).map((g) => g.evidence_policy);
 
-  if (eisen.includes('note_and_attachment')) return 'note_and_attachment';
   if (eisen.includes('note_required')) return 'note_required';
   return 'optional';
 }

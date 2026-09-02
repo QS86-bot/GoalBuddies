@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { STANDAARDTAAL, zetTaal } from '../../shared/i18n';
 
-import { bewijseisLabels, huddledagen, huddledagLabel } from './schemas';
+import { BEWIJSEISEN, bewijseisLabels, huddledagen, huddledagLabel } from './schemas';
 import { vragen } from './weekafsluiting-schemas';
 
 /**
@@ -56,12 +56,21 @@ describe('de huddledagen', () => {
 });
 
 describe('de bewijseisen', () => {
-  it('hebben in elke taal drie verschillende labels', () => {
+  /**
+   * ⚠️ **Het aantal komt uit `BEWIJSEISEN` en staat hier niet als getal.** Dat
+   *    stond er wel — "drie verschillende labels" — en toen 0150
+   *    `note_and_attachment` schrapte (QS8-261) werd deze test rood zonder dat
+   *    er iets kapot was. Een teller in proza veroudert bij elke wijziging van
+   *    de lijst; wat deze test bedóelt is dat élke eis een eigen, niet-lege
+   *    vertaling heeft.
+   */
+  it('hebben in elke taal een eigen, niet-lege vertaling', () => {
     for (const taalcode of ['nl', 'en'] as const) {
       zetTaal(taalcode);
       const labels = Object.values(bewijseisLabels());
 
-      expect(new Set(labels).size, taalcode).toBe(3);
+      expect(labels.length, taalcode).toBe(BEWIJSEISEN.length);
+      expect(new Set(labels).size, taalcode).toBe(BEWIJSEISEN.length);
       for (const label of labels) expect(label.trim(), taalcode).not.toBe('');
     }
   });
