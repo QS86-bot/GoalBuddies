@@ -17,13 +17,9 @@ gekost hebben. Werk hem bij aan het eind van elke sessie.
 Verder bouwen doe je met **`/verder`**. Die pakt zelf het volgende issue uit
 Linear en werkt het af tot een pushbare branch.
 
-## gstack
+## Webbrowsen
 
-Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
-
-Available gstack skills: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/setup-gbrain`, `/retro`, `/investigate`, `/document-release`, `/document-generate`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`.
-
-Note: teammates also need gstack installed locally — clone `https://github.com/garrytan/gstack` and run `./setup` from within `~/.claude/skills/gstack` (or their host's skills dir) to register the skills.
+Gebruik `WebFetch` en `WebSearch`. Nooit `mcp__claude-in-chrome__*`.
 
 ## Project
 - **Naam:** GoalBuddies
