@@ -198,8 +198,9 @@ Voordat er één feature gebouwd wordt:
    (de groep ziet ook tegenslag). De regel afschaffen is afgewezen.
 
    Wat dat besluit **niet** is: geen verruiming van bestaande groepen (die zijn
-   beschermd), geen tweede pad naast RLS — de keuze is een kolom op `groups` waar
-   de policies op variëren en mag nooit alleen in de UI bestaan — en geen
+   beschermd), geen tweede pad naast RLS — de keuze is een kolom op `groups` die
+   **voor geen enkele client schrijfbaar** is en waar de policies op variëren, en
+   die nooit alleen in de UI mag bestaan — en geen
    omzetting die stilzwijgend gebeurt. Omzetten verandert met terugwerkende kracht
    wat er over ándere leden zichtbaar wordt, dus het loopt via
    `zet_groepszichtbaarheid()` met de zorgvuldigheid van een commitment device
@@ -493,7 +494,7 @@ laten. Die tweede helft is even belangrijk: een controle die alles meldt, leert 
 hem te negeren. Zie `tests/scripts/tekst-controle.test.ts` en
 `tests/scripts/migratieregister.test.ts`.
 
-⚠️ Twee van de drie gevallen hierboven kwamen boven bij een **verhuizing** —
+⚠️ Twee van die zeven gevallen kwamen boven bij een **verhuizing** —
 code die naar een ander bestand ging. Dat is de gevaarlijkste beweging die er
 is: de tests verhuizen mee en blijven groen, want ze toetsen wat er in het
 bestand staat en niet wat het bestand belóófde. **Loop bij elke verhuizing na
