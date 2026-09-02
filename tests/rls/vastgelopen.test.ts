@@ -126,6 +126,56 @@ async function verouder(completionId: string, dagen: number): Promise<void> {
   }
 }
 
+/**
+ * Zet de stempel een vast aantal dagen **vóór** het indienen.
+ *
+ * ⚠️ **Dit is de enige plek in dit bestand die naar een toestand grijpt in plaats
+ *    van naar een handeling, en dat is met reden.** Wat hier getoetst wordt is
+ *    het gétal zeven, en die afstand is met echte handelingen niet te maken
+ *    zonder acht dagen te wachten. De handeling zélf is elders al zeven keer
+ *    getoetst.
+ *
+ * ⚠️ **Zonder deze twee gevallen bewaakt niets het getal.** De her-review mat
+ *    het: `- interval '7 days'` vervangen door `- interval '1 second'` liet alle
+ *    drieëntwintig tests groen. Elke route zette handeling en indiening binnen
+ *    milliseconden na elkaar, dus de afstand in de suite was ofwel ~0 ofwel 180
+ *    dagen en nooit iets ertussenin. De oude ijking bewees dát er speling was,
+ *    niet hoevéél.
+ */
+async function stempelVoorIndienen(goalId: string, dagenVoor: number): Promise<void> {
+  const admin = adminDb();
+
+  const doel = await admin
+    .from('goals')
+    .select('id')
+    .eq('id', goalId)
+    .single();
+  if (doel.error) throw new Error(`stempel: ${doel.error.message}`);
+
+  const week = await admin.from('weekly_goals').select('id').eq('goal_id', goalId);
+  if (week.error) throw new Error(`stempel: ${week.error.message}`);
+
+  const ids = (week.data ?? []).map((w) => w.id);
+  const voltooiing = await admin
+    .from('completions')
+    .select('submitted_at')
+    .in('weekly_goal_id', ids)
+    .is('superseded_by', null)
+    .single();
+  if (voltooiing.error || voltooiing.data?.submitted_at === null) {
+    throw new Error(`stempel: geen voltooiing met submitted_at (${voltooiing.error?.message})`);
+  }
+
+  const ingediend = new Date(voltooiing.data.submitted_at as string).getTime();
+  const stempel = new Date(ingediend - dagenVoor * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await admin
+    .from('goals')
+    .update({ beoordelaar_weggehaald_op: stempel })
+    .eq('id', goalId);
+  if (error) throw new Error(`stempel: ${error.message}`);
+}
+
 /** Laat de rollover zijn ronde doen. */
 async function draaiTermijn(termijn = 7): Promise<number> {
   const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
@@ -654,6 +704,114 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       );
     }
 
+    /**
+     * ⚠️ **De zwaarste bevinding van de her-review, en het is een gewone
+     *    dinsdag.** Je bent beheerder van je eigen groep met buddy B en lid C.
+     *    Je zet C eruit omdat hij spamt; B kan je week nog gewoon beoordelen.
+     *    De eerste versie van 0147 stempelde daarbij ál je doelen in die groep,
+     *    terwijl er niets was vastgelopen. Twee weken later vertrok B **uit
+     *    zichzelf** en de week kreeg nooit meer punten — precies de gebruiker
+     *    waarvoor 0135 gebouwd is.
+     *
+     *    Gemeten vóór de reparatie: stempel `true` terwijl niets vastliep, en na
+     *    het vertrek van B week `pending` met nul punten.
+     */
+    it(
+      'een lid eruit zetten terwijl je buddy blijft, blokkeert later verlies niet',
+      async () => {
+        const o = await bouwOpstelling('mustallow-moderatie');
+
+        const derde = await createTestUser('mustallow-moderatie-derde');
+        const code = await adminDb()
+          .from('groups')
+          .select('invite_code')
+          .eq('id', o.groupId)
+          .single();
+        if (code.error || code.data === null) throw new Error(`code: ${code.error?.message}`);
+
+        const mee = await derde.db.rpc('join_group_with_code', {
+          code: code.data.invite_code as string,
+        });
+        const meeUit = (mee.data ?? {}) as { ok?: boolean; reason?: string };
+        if (meeUit.ok !== true) throw new Error(`derde werd geen lid: ${meeUit.reason ?? '?'}`);
+
+        await verouder(o.completionId, 20);
+
+        // De eigenaar modereert: het derde lid gaat eruit. De beoordelaar blijft.
+        const eruit = await o.eigenaar.db.rpc('verwijder_lid', {
+          p_group_id: o.groupId,
+          p_user_id: derde.id,
+          p_bevestigd: true,
+        });
+        if (eruit.error) throw new Error(`verwijderen: ${eruit.error.message}`);
+
+        const doel = await adminDb()
+          .from('goals')
+          .select('beoordelaar_weggehaald_op')
+          .eq('id', o.goalId)
+          .single();
+        if (doel.error) throw new Error(`stempel: ${doel.error.message}`);
+        expect(
+          doel.data?.beoordelaar_weggehaald_op,
+          'er viel geen beoordelaar weg, dus er hoort geen stempel te staan',
+        ).toBeNull();
+
+        // En dán vertrekt de échte buddy uit zichzelf.
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await draaiTermijn(7);
+
+        expect(
+          await weekstatus(o.completionId),
+          'dit verlies is niet van de eigenaar en hoort gewoon afgehandeld te worden',
+        ).toBe('approved');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **"De beurt ligt bij de eigenaar" klopt alleen zolang er iemand wacht.**
+     *    Vroeg je buddy om toelichting en verliet hij daarna de groep uit
+     *    zichzelf, dan wachtte er niemand meer — en toch bleef de vlag staan.
+     *    Gemeten vóór de reparatie: geen stempel, reden `wacht_op_indiener`,
+     *    week `pending` en nul punten, ook na zestig dagen.
+     */
+    it(
+      'de buddy vroeg om toelichting en vertrok daarna zelf',
+      async () => {
+        const o = await bouwOpstelling('mustallow-vroeg-en-weg');
+
+        const gevraagd = await o.beoordelaar.db.from('completion_approvals').insert({
+          completion_id: o.completionId,
+          approver_id: o.beoordelaar.id,
+          subject_id: o.beoordelaar.id,
+          group_id: o.groupId,
+          status: 'more_info',
+          comment: 'Hoe ver ben je gekomen?',
+        });
+        if (gevraagd.error) throw new Error(`toelichting: ${gevraagd.error.message}`);
+
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await verouder(o.completionId, 20);
+        await draaiTermijn(7);
+
+        expect(
+          await weekstatus(o.completionId),
+          'er wacht niemand meer op een antwoord, dus dit is een vastloper',
+        ).toBe('approved');
+      },
+      SETUP_TIMEOUT,
+    );
+
     it(
       'de buddy vertrekt uit zichzelf',
       () =>
@@ -689,6 +847,35 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
     );
 
     /**
+     * ⚠️ **De vraag stond nog open en de groep viel in slaap.** Dit toetst de
+     *    `gr.status = 'active'`-helft van de vlag: de buddy staat nog wél als
+     *    actief lid in `group_members`, maar zijn groep is er niet meer om in te
+     *    antwoorden. Dan wacht er niemand en is dit een gewone vastloper.
+     */
+    it(
+      'de buddy vroeg om toelichting en daarna viel de groep in slaap',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-vraag-en-slaap', async (o) => {
+          const gevraagd = await o.beoordelaar.db.from('completion_approvals').insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.beoordelaar.id,
+            group_id: o.groupId,
+            status: 'more_info',
+            comment: 'Hoe ver ben je gekomen?',
+          });
+          if (gevraagd.error) throw new Error(`toelichting: ${gevraagd.error.message}`);
+
+          const { error } = await adminDb()
+            .from('groups')
+            .update({ status: 'sleeping' })
+            .eq('id', o.groupId);
+          if (error) throw new Error(`slapen: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
      * ⚠️ **Wie een half jaar geleden ontkoppelde, is gewoon een solo-gebruiker.**
      *    Zonder deze afkoeling zou één ontkoppeling een doel voorgoed uitsluiten
      *    van de auto-goedkeuring — en dat is de dode keten van QS8-113 in een
@@ -708,6 +895,53 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
             .eq('id', o.goalId);
           if (error) throw new Error(`verouderen: ${error.message}`);
         }),
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️ **Het getal zeven, van onderaf en van bovenaf.** De routes hierboven
+   *    bewijzen dát er een venster is; deze twee bewijzen hoe bréed het is. Zonder
+   *    ze kon `- interval '7 days'` naar één seconde zonder dat er iets rood werd
+   *    — en dat getal is in de kop van 0147, in de rollover en op de
+   *    review-agenda de *prijs* van het weglopen bij domeinregel 3.
+   */
+  describe('de zeven dagen zijn een venster en geen formaliteit', () => {
+    async function metAfstand(label: string, dagenVoor: number): Promise<Opstelling> {
+      const o = await bouwOpstelling(label, false);
+      await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+      o.completionId = await rondAf(o);
+
+      // Eerst het indienen ver genoeg terug om de termijn te laten verstrijken,
+      // dán de stempel op zijn afstand — die tweede leest de eerste.
+      await verouder(o.completionId, 20);
+      await stempelVoorIndienen(o.goalId, dagenVoor);
+      await draaiTermijn(7);
+      return o;
+    }
+
+    it(
+      'drie dagen vóór het indienen valt binnen het venster en blijft dicht',
+      async () => {
+        const o = await metAfstand('venster-drie', 3);
+        expect(await weekstatus(o.completionId), 'binnen zeven dagen: geen goedkeuring').toBe(
+          'pending',
+        );
+        expect(await punten(o.goalId)).toBe(0);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'acht dagen vóór het indienen valt erbuiten en gaat gewoon door',
+      async () => {
+        const o = await metAfstand('venster-acht', 8);
+        expect(
+          await weekstatus(o.completionId),
+          'buiten zeven dagen is dit een solo-gebruiker en geen ontwijking',
+        ).toBe('approved');
+        expect(await punten(o.goalId)).toBe(2);
+      },
       SETUP_TIMEOUT,
     );
   });
