@@ -40,7 +40,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **787 geslaagd, 1 overgeslagen** (02-09, na QS8-186, QS8-262 ronde 1 en 2, en QS8-264). De
+   **802 geslaagd, 1 overgeslagen** (02-09, na QS8-186, QS8-262 en QS8-264). De
    hele suite geeft met de stack **2716 geslaagd en 1 overgeslagen**.
    Typecheck, lint en alle 30 controlescripts groen; `npm run poort` meldt
    34 stappen.
