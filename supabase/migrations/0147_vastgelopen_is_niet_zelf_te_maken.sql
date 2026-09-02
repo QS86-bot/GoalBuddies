@@ -125,6 +125,56 @@ comment on column public.goals.beoordelaar_weggehaald_op is
   'reparatie van de vorige maken.';
 
 -- Route 1, 2 en 4 lopen alle drie langs het ontkoppelen.
+-- ---------------------------------------------------------------------------
+-- 2a. Stempelen is alleen eerlijk als er ook écht een beoordelaar wegviel
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit is de reparatie van de tweede reviewronde, en de bevinding was
+--    terecht en vervelend.** De eerste versie stempelde bij élke handeling van
+--    de eigenaar in een groep waar zijn doel aan hangt. Gemeten met een gewoon
+--    scenario: je bent beheerder van je eigen groep met buddy B en lid C, je zet
+--    C eruit omdat hij spamt, en B kan je week nog gewoon beoordelen.
+--
+--      C eruit                                    → {"ok": true}
+--      stempel gezet terwijl B nog kan beoordelen → true
+--      vastgelopen?                               → (nee)
+--
+--    Er was niets vastgelopen en er stond een stempel. En omdat de stempel
+--    alleen vooruit schuift en `submitted_at` vaststaat, blijft hij waar: toen
+--    B twee weken later **uit zichzelf** vertrok — precies de gebruiker
+--    waarvoor 0135 gebouwd is — bleef de week op `pending` staan met nul punten.
+--
+-- **De reparatie: stempel alleen wanneer er ná de handeling niemand meer over
+-- is die dit doel mag beoordelen.** Dat is dezelfde spiegel die
+-- `vastgelopen_goedkeuringen()` gebruikt, en hij hoort op één plek te staan —
+-- twee lijsten die hetzelfde horen te zeggen lopen uiteen (0032/0034).
+
+create or replace function public.heeft_nog_beoordelaar(p_goal_id uuid, p_owner uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+  select exists (
+    select 1
+    from goal_group_links l
+    join groups        gr on gr.id = l.group_id
+    join group_members m  on m.group_id = l.group_id
+    where l.goal_id  = p_goal_id
+      and gr.status  = 'active'
+      and m.status   = 'active'
+      and m.user_id <> p_owner
+  );
+$$;
+
+comment on function public.heeft_nog_beoordelaar(uuid, uuid) is
+  'Is er na deze handeling nog iemand die dit doel mag beoordelen? De spiegel '
+  'van vastgelopen_goedkeuringen(), zodat de drie stempeltriggers niet stempelen '
+  'wanneer er niets wegviel.';
+
+revoke all on function public.heeft_nog_beoordelaar(uuid, uuid) from public, anon, authenticated;
+
 create or replace function public.noteer_ontkoppeling()
 returns trigger
 language plpgsql
@@ -134,10 +184,17 @@ as $$
 begin
   update goals
      set losgekoppeld_op = now(),
-         -- ⚠️ Alleen als de eigenaar het zelf doet. `verlaat_groep()` van een
-         --    ánder lid ontkoppelt diens eigen doelen, niet die van jou.
+         -- ⚠️ Alleen als de eigenaar het zelf doet én er niemand meer over is
+         --    die dit doel mag beoordelen. `verlaat_groep()` van een ánder lid
+         --    ontkoppelt diens eigen doelen, niet die van jou; en ontkoppelen
+         --    van één groep terwijl een tweede groep nog beoordelaars heeft, is
+         --    geen verlies (zie sectie 2a).
          beoordelaar_weggehaald_op =
-           case when auth.uid() = owner_id then now() else beoordelaar_weggehaald_op end
+           case
+             when auth.uid() = owner_id and not heeft_nog_beoordelaar(id, owner_id)
+               then now()
+             else beoordelaar_weggehaald_op
+           end
    where id = old.goal_id;
 
   return old;
@@ -162,7 +219,10 @@ begin
      set beoordelaar_weggehaald_op = now()
    where g.owner_id = auth.uid()
      and exists (select 1 from goal_group_links l
-                  where l.goal_id = g.id and l.group_id = new.id);
+                  where l.goal_id = g.id and l.group_id = new.id)
+     -- ⚠️ Zie sectie 2a: een tweede groep met actieve leden houdt het doel
+     --    beoordeelbaar, en dan viel er niets weg.
+     and not heeft_nog_beoordelaar(g.id, g.owner_id);
 
   return new;
 end;
@@ -201,7 +261,13 @@ begin
      set beoordelaar_weggehaald_op = now()
    where g.owner_id = auth.uid()
      and exists (select 1 from goal_group_links l
-                  where l.goal_id = g.id and l.group_id = v_groep);
+                  where l.goal_id = g.id and l.group_id = v_groep)
+     -- ⚠️ **De regel die de her-review afdwong** (sectie 2a). Zonder deze
+     --    voorwaarde stempelt élke moderatiehandeling in je eigen groep al je
+     --    doelen daar, ook wanneer je échte buddy nog gewoon kan beoordelen —
+     --    en dat sluit de auto-goedkeuring blijvend voor een verlies dat later
+     --    en buiten je schuld komt.
+     and not heeft_nog_beoordelaar(g.id, g.owner_id);
 
   return coalesce(new, old);
 end;
@@ -319,14 +385,45 @@ as $$
       --    Zonder deze helft keurt de termijn precies dát af waar de eigenaar
       --    zelf niets mee deed — gemeten, allebei: week `approved`, punten
       --    geboekt, nul geldige goedkeuringen.
+      --
+      -- ⚠️⚠️ **`m.status = 'active'` is de reparatie van de tweede reviewronde,
+      --    en zonder die regel hangt de eerlijke gebruiker voorgoed.** "De beurt
+      --    ligt bij de eigenaar" klopt alleen zolang er íemand is die op zijn
+      --    antwoord wacht. Vroeg je buddy om toelichting en verliet hij daarna
+      --    de groep **uit zichzelf**, dan wachtte er niemand meer — en toch bleef
+      --    de vlag staan. Gemeten: geen stempel (de eigenaar deed niets), reden
+      --    `wacht_op_indiener`, rollover 0, week `pending`, nul punten, en dat
+      --    bleef zo na zestig dagen. Dat is precies het geval waarvoor 0135
+      --    bestaat. De beurt ligt dus bij de eigenaar zolang de vrager nog een
+      --    **actief** lid is van een actieve groep waar dit doel aan hangt.
+      --
+      -- ⚠️ **`m.status = 'active'` is vandaag niet te breken, en dat staat hier
+      --    in plaats van dat het verzwegen wordt.** `gr.status` wél: de test
+      --    *"de buddy vroeg om toelichting en daarna viel de groep in slaap"*
+      --    wordt rood zodra je die regel weghaalt. Voor `m.status` is er geen
+      --    pad: `verlaat_groep()` **verwijdert** de rij (dan grijpt de join al
+      --    mis), en de enige route die hem op `inactive` zet is
+      --    `verwijder_lid()` door een beheerder — in de standaardopstelling de
+      --    eigenaar zelf, en dan sluit de éérste helft van de vlag hem al.
+      --    Er is geen functie om iemand anders tot beheerder te maken, dus een
+      --    derde die de vrager deactiveert bestaat niet.
+      --    **Wordt toetsbaar zodra er een pad is om een tweede beheerder aan te
+      --    stellen** — schrijf dan de test die deze regel breekt. Tot die tijd
+      --    is hij verdedigend en geen bewezen grendel (QS8-262, vraag 3).
       or exists (
         select 1
         from completion_approvals a
+        join goal_group_links l  on l.goal_id   = g.id
+        join groups           gr on gr.id       = l.group_id
+        join group_members    m  on m.group_id  = l.group_id
+                                and m.user_id   = a.approver_id
         where a.completion_id = c.id
+          and gr.status = 'active'
+          and m.status  = 'active'
           and (
             a.status = 'more_info'
             or exists (
-              select 1 from approval_withdrawals x where x.completion_id = c.id
+              select 1 from approval_withdrawals x where x.approval_id = a.id
             )
           )
       )
