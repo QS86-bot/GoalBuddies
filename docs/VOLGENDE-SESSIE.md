@@ -3,9 +3,33 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 01-09-2026. Vier PR's geland (#125, #128, #130, #131) en
-> een duplicaat opgeruimd. **Lees eerst de drie punten hieronder** — het derde
-> verandert wat je als volgende oppakt.
+> **Laatst bijgewerkt:** 02-09-2026. Een tokenaudit over de opzet waarin deze
+> sessies draaien. **Lees eerst punt 0**, daarna de drie punten daaronder — het
+> derde daarvan verandert wat je als volgende oppakt.
+>
+> **0. Er staat werk klaar op `claude/goalbuddies-token-optimization-vi3fpu` dat
+> nog niet gemerged is.** Vier commits, geen enkele raakt app-code of een
+> migratie; ze gaan alleen over wat elke sessie aan context meesleept.
+>
+> - **`CLAUDE.md` is van 13.348 naar 10.172 tokens.** De uitgeschreven
+>   geschiedenis — de zeven gevallen bij regel 18, de drie redenen waarom de
+>   security-reviewer nooit wacht, de meting van 109 migraties, PR #1 en PR #100 —
+>   staat nu verbatim in
+>   `docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md`. Elke regel
+>   is blijven staan; alle 259 verwijderde regels zijn mechanisch teruggevonden.
+> - **De gstack-sectie is weg.** Die somde 38 skills op waarvan er geen één
+>   geïnstalleerd was.
+> - **Zeven ongebruikte MCP-servers zijn geblokkeerd** in `.claude/settings.json`
+>   (Gmail, Agenda, Drive, Plaud, Zoom, n8n, Firecrawl). Bevestigd werkend: 107
+>   tool-namen vielen halverwege de sessie weg. github, Linear en Supabase blijven.
+> - **Subagents lezen `CLAUDE.md` niet meer opnieuw in** — ze krijgen hem al.
+>
+> ⚠️ **En daarbij kwam een tegenspraak boven die er al ruim een week stond:**
+> `/verder` voerde "een architectuurkeuze waar je niet zeker over bent" op als
+> stopvoorwaarde en citeerde de lijst *"Wat je NOOIT doet zonder te vragen"* — een
+> sectie die op 22-08 is vervangen door Beslisbevoegdheid. Precies de vijf punten
+> die `/verder` als gate noemde staan daar sindsdien als afweging. Het commando
+> stuurde dus aan op stoppen waar de grondwet zegt doorbouwen. Rechtgezet.
 >
 > **3. De Todo-kolom is leeg voor een bouwsessie, en de backlog juist niet.** Elk
 > issue dat op Todo staat draagt `wacht-op-Quinten`: de migraties boven 0131
@@ -63,9 +87,10 @@ cwd van de sessie wijst vaak naar een ander project** (DN Projectbegeleiding, de
 Status Tracker). Een `git log` in de verkeerde map laat een schone, andere repo
 zien en dan lijkt er niets te doen.
 
-Lees eerst `CLAUDE.md`, dan `docs/WERKVOORRAAD.md` (sectie 0 geeft de stand in
-tien regels), dan dit bestand. Haal daarna de openstaande issues op uit het
-Linear-project GoalBuddies.
+`CLAUDE.md` staat al in je context en hoeft niet opnieuw ingelezen te worden —
+niet door jou en niet door een subagent. Lees `docs/WERKVOORRAAD.md` (sectie 0
+geeft de stand in tien regels) en dit bestand. Haal daarna de openstaande issues
+op uit het Linear-project GoalBuddies.
 
 ⚠️ **Werk de doorloopbevindingen af en niet de volgorde in WERKVOORRAAD §4.** De
 bevindingen van 30-08 zijn geland; wat er nu voorligt staat in "Waar te
@@ -324,8 +349,49 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    liegt het bord zodra die PR alsnog dichtgaat.
 7. Loop je vast op iets dat mijn beslissing of toegang vraagt: zet het in
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
+8. **`CLAUDE.md` niet inlezen — je hébt hem al** (02-09-2026). Een subagent krijgt
+   de volledige CLAUDE.md-hiërarchie automatisch in zijn startcontext; alleen de
+   ingebouwde Explore en Plan slaan hem over, en onze zeven agents zijn eigen
+   agents. Een `Read` erop is dus een tweede kopie van ruim tienduizend tokens,
+   koud, per agent-start — en `/feature` ketent er meerdere.
+
+   ⚠️ **Zet de regels ook niet in de agentbestanden.** Dat lost de tokens op en
+   maakt er een erger probleem voor terug: één feit op zeven plekken. De
+   eigendomsregel uit `CLAUDE.md` bestaat omdat kopieën gaan afwijken, en
+   `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een getal in een rapport leest als gemeten, ook als het geraden is —
+  02-09.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
+  `npm run poort` *"alle output ongefilterd in de context dumpt"*, en beval een
+  PreToolUse-hook aan om dat af te remmen. Er was toen geen enkele meting onder;
+  de redenering was "34 controles, dus veel uitvoer". Plausibel, en fout:
+
+  ```
+  npm run poort   (34 controles)   40 regels   ~305 tokens
+  npm test                         11 regels   ~123 tokens
+  npm run lint                      0 regels        0 tokens
+  npm run typecheck                 0 regels        0 tokens
+  ```
+
+  `poort.mjs` vat zichzelf al samen tot één regel per controle. De aanbevolen
+  hook zou nul tokens hebben bespaard en wél iets hebben gekost: een filter
+  tussen de bouwer en de uitslag van de poort, in een project waar de tests de
+  enige review zijn die bestaat.
+
+  ⚠️ **Dezelfde fout stond twee alinea's verderop in hetzelfde rapport.** De
+  audit beloofde `CLAUDE.md` van 13.348 naar ~5.000 tokens te brengen, op basis
+  van de grootte van de secties zonder ernaar te kijken. Na 28 verplaatste blokken
+  bleek 10.172 de bodem: wat overbleef was regel en geen geschiedenis. Verder
+  omlaag kan alleen door procedure te schrappen.
+
+  **De les is niet "meet beter" maar iets specifiekers:** dit document eist al
+  *gemeten en niet beredeneerd* van elke controle en elke test. Een audit valt
+  daar net zo goed onder, en juist daar voelt het overbodig — je bent immers aan
+  het meten. Een bevinding met een zwaartekolom ernaast ziet er meteen uit als
+  bewijs. **Zet geen getal en geen zwaarte naast een bewering die je niet hebt
+  gedraaid**, en zeg het hardop als je hem alsnog moet terugnemen.
 
 - **⚠️ Een grendel die zijn eigen categorie niet haalt, is duurder dan geen
   grendel — 31-08.** `poort.mjs` deelt elke stap in drieën omdat een controle die
@@ -1030,10 +1096,13 @@ migratie 0027).
 
 ## STAND VAN DE REPO
 
-⚠️ **Alles wat deze sessie opleverde staat op `main`.** Twee stapels, allebei in
-volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79, QS8-78 en de
-idempotentie-reparatie) en #85 t/m #90 (de vijf blokkerende bevindingen uit de
-controleronde). Er staat van deze sessie **niets meer open**.
+⚠️ **Alles wat de bouwsessies van 28-08 t/m 01-09 opleverden staat op `main`.**
+Twee stapels, allebei in volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79,
+QS8-78 en de idempotentie-reparatie) en #85 t/m #90 (de vijf blokkerende
+bevindingen uit de controleronde). Daarvan staat **niets meer open**.
+
+⚠️ **De tokenaudit van 02-09 is de uitzondering en staat nog níet op `main`** —
+zie punt 0 bovenaan dit bestand. Dat is de enige openstaande stapel.
 
 ⚠️ **Er werkt een parallelle sessie in dezelfde repo**, en die landt regelmatig
 eigen migraties en controlescripts. Op 28-08 waren dat #76, #77, #79 t/m #84 en
