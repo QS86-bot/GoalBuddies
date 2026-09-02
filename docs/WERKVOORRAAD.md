@@ -1122,6 +1122,11 @@ database leunt: wie kan die stand veranderen, en wanneer?**
     future"**: klokverschil, ook geen policyfout. Zoek bij een opbouwfout dus
     eerst in de melding, niet in de policies.
 
+    ⚠️ **Dezelfde fout draagt in een rapport een ander gezicht, en die staat als
+    valkuil in `docs/VOLGENDE-SESSIE.md`** — *een getal leest als gemeten, ook als
+    het geraden is* (QS8-265, 02-09). Bij een diagnose voelt het gokken nog als
+    gokken; bij een bevinding met een zwaartekolom ernaast niet meer.
+
 16. **Een comment die uitlegt waarom iets zo moet, bewijst niet dat het zo is.**
     Het scherm "Vandaag" haalde onophoudelijk gegevens op omdat er objecten in een
     dependency-array stonden die elke render vers gebouwd worden — met de comment
