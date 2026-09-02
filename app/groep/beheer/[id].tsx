@@ -398,10 +398,11 @@ export default function GroepBeheer() {
                 <Caption>{t('beheer.huddledag_uitleg')}</Caption>
 
                 {/*
-                  ⚠️ De bijlage-optie staat er wel en doet nog niets: er is geen
-                     Storage-bucket (Q-TODO A12), dus die eis zou onhaalbaar zijn.
-                     Tot die tijd gedraagt hij zich als "notitie verplicht", en dat
-                     staat eronder in plaats van dat de knop stilletjes liegt.
+                  ⚠️ **De bijlage-optie is er in 0150 uit** (QS8-261): hij bestond
+                     overal behalve waar hij afgedwongen moest worden. Hier stond
+                     dat hij er wél was en niets deed, met een bijschrift eronder
+                     dat bijlagen nog niet konden — allebei weg, want er valt niets
+                     meer te kiezen. Hij komt terug samen met het uploadpad.
                 */}
                 <Choice
                   label={t('beheer.bewijs_label')}
@@ -410,7 +411,6 @@ export default function GroepBeheer() {
                   waarde={bewijseis}
                   onKies={setBewijseis}
                 />
-                <Caption>{t('beheer.bijlagen_nog_niet')}</Caption>
 
                 {/*
                   ⚠️ **Wél in dit formulier en niet in een eigen kaart met een
