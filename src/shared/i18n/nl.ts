@@ -1029,7 +1029,6 @@ export const nl = {
   //    een duim omhoog op een bewering is een formaliteit, één zin geeft de
   //    goedkeurder iets om op te reageren.
   'bewijseis.note_required': 'Notitie verplicht',
-  'bewijseis.note_and_attachment': 'Notitie én bijlage',
   'bewijseis.optional': 'Alles optioneel',
 
   // ---------------------------------------------------------------------------

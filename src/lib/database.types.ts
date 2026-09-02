@@ -2427,6 +2427,7 @@ export type Database = {
         Returns: Json
       }
       bedenktijd: { Args: never; Returns: string }
+      bewijseis_allowlist: { Args: never; Returns: string[] }
       berichten_over: { Args: never; Returns: number }
       beslis_deadline_verzoek: {
         Args: { p_akkoord: boolean; p_note?: string; p_request_id: string }

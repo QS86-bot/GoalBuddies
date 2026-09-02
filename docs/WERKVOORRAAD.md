@@ -7,9 +7,13 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 02-09-2026 (na QS8-231, QS8-232 en QS8-260, en na het
-toepassen van `0139` t/m `0146` op productie; daarvóór QS8-215, QS8-144,
-QS8-173 en QS8-178)
+**Laatst bijgewerkt:** 02-09-2026 (na QS8-261, en na het toepassen van `0139`
+t/m `0149` op productie in twee rondes; daarvóór QS8-231, QS8-232 en QS8-260)
+
+⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
+`docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
+een om te kennen: *"Notitie én bijlage"* bestond op zes plekken en werd op nul
+plekken afgedwongen. Niets was kapot, dus niets werd rood.
 
 ---
 
@@ -112,7 +116,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0149` staan in de map: **152 bestanden**,
+Migraties `0001` t/m `0150` staan in de map: **153 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -342,7 +346,7 @@ schema van productie. `npm run register:controle` bewaakt dat repo en project
 gelijk blijven lopen. Onderbouwing en de twee valkuilen die daarbij boven kwamen
 staan in `docs/decisions/004-migratieregister.md`.
 
-✅ **De grondwet is op 02-09 opgeschoond (PR #156).** `CLAUDE.md` ging van 13.348
+✅ **De grondwet is op 02-09 opgeschoond — QS8-265, PR #156 en #158.** `CLAUDE.md` ging van 13.348
 naar 10.187 tokens — een kwart eruit, en geen enkele regel. Wat eruit ging was de
 uitgeschreven geschiedenis: de zeven gevallen bij regel 18, de drie redenen waarom
 de security-reviewer nooit wacht, de meting van 109 migraties op idempotentie, het
@@ -1121,6 +1125,11 @@ database leunt: wie kan die stand veranderen, en wanneer?**
     is het vier keer níét geweest. Een tweede gezicht hiervan is **"JWT issued at
     future"**: klokverschil, ook geen policyfout. Zoek bij een opbouwfout dus
     eerst in de melding, niet in de policies.
+
+    ⚠️ **Dezelfde fout draagt in een rapport een ander gezicht, en die staat als
+    valkuil in `docs/VOLGENDE-SESSIE.md`** — *een getal leest als gemeten, ook als
+    het geraden is* (QS8-265, 02-09). Bij een diagnose voelt het gokken nog als
+    gokken; bij een bevinding met een zwaartekolom ernaast niet meer.
 
 16. **Een comment die uitlegt waarom iets zo moet, bewijst niet dat het zo is.**
     Het scherm "Vandaag" haalde onophoudelijk gegevens op omdat er objecten in een
