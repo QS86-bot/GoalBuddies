@@ -7,9 +7,13 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 02-09-2026 (na QS8-231, QS8-232 en QS8-260, en na het
-toepassen van `0139` t/m `0146` op productie; daarvóór QS8-215, QS8-144,
-QS8-173 en QS8-178)
+**Laatst bijgewerkt:** 02-09-2026 (na QS8-261, en na het toepassen van `0139`
+t/m `0149` op productie in twee rondes; daarvóór QS8-231, QS8-232 en QS8-260)
+
+⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
+`docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
+een om te kennen: *"Notitie én bijlage"* bestond op zes plekken en werd op nul
+plekken afgedwongen. Niets was kapot, dus niets werd rood.
 
 ---
 
@@ -112,7 +116,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0149` staan in de map: **152 bestanden**,
+Migraties `0001` t/m `0150` staan in de map: **153 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

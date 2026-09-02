@@ -835,17 +835,6 @@ export const GEEN_SCHRIJFPAD = [
       'gebruikt, is het een recht zonder pad.',
   },
   {
-    tabel: 'completions',
-    soort: 'INSERT',
-    kolom: 'attachment_url',
-    reden:
-      '0147 versmalde deze grant om `submitted_at` en `superseded_by` eruit te ' +
-      'halen; `attachment_url` bleef er bewust in staan. De kolom hoort bij ' +
-      '`groups.evidence_policy = \'note_and_attachment\'`, en er is nog geen ' +
-      'scherm dat een bijlage uploadt. ⚠️ En `enforce_evidence_policy()` eist ' +
-      'vandaag alléén een notitie — óók bij die instelling. Zie QS8-261.',
-  },
-  {
     tabel: 'weekly_goals',
     soort: 'INSERT',
     kolom: 'ai_generated',
