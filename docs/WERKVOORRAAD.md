@@ -40,10 +40,14 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **605 geslaagd, 1 overgeslagen** (31-08, na QS8-211). De hele suite geeft met
-   de stack **2005 geslaagd en 1 overgeslagen**.
-   Typecheck, lint en alle 26 controlescripts groen; `npm run poort` meldt
-   30 stappen, allemaal groen en allemaal gemeten.
+   **765 geslaagd, 1 overgeslagen** (02-09, na QS8-186 en QS8-262 ronde 1). De
+   hele suite geeft met de stack **2716 geslaagd en 1 overgeslagen**.
+   Typecheck, lint en alle 30 controlescripts groen; `npm run poort` meldt
+   34 stappen.
+   ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
+   (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
+   apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is
+   geen groene poort — draai ze bij het toepassen van een migratie.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
