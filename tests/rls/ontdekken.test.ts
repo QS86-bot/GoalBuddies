@@ -456,9 +456,22 @@ describe.skipIf(!rlsTestsConfigured)('een groep die zich laat vinden', () => {
 
   /**
    * ⚠️ `ontdekbaar` is een toestemming en geen instelling: hij heeft geen
-   *    kolomgrant én `guard_group_update()` zet hem terug. Twee grendels, en
-   *    deze toets raakt ze allebei tegelijk — wat genoeg is, want de belofte is
-   *    "langs deze weg lukt het niet" en niet "er staan twee sloten".
+   *    kolomgrant én `guard_group_update()` zet hem terug.
+   *
+   * ⚠️⚠️ **"Deze toets raakt ze allebei tegelijk — wat genoeg is" stond hier tot
+   *    02-09, en dat was het níet.** Van die twee grendels werkte er één:
+   *    `guard_group_update()` was `SECURITY DEFINER` en besliste op
+   *    `current_user`, en binnen een definer-functie is dat de eigenaar — dus de
+   *    pin ging nooit om. Deze test bleef groen, want de kolomgrant alleen houdt
+   *    het al tegen. **Een toets die twee sloten tegelijk raakt, kan niet zien
+   *    dat er één kapot is**, en dat is precies de vorm van CLAUDE.md regel 18
+   *    vraag 3.
+   *
+   *    Deze test blijft staan — hij bewaakt de belofte *"langs deze weg lukt het
+   *    niet"*, en dat is de belofte die de gebruiker raakt.
+   *    `tests/rls/groepspin.test.ts` (QS8-264) tilt de twee sloten uit elkaar
+   *    door `authenticated` tijdelijk het kolomrecht te geven en te kijken of de
+   *    pin het alsnog terugdraait.
    */
   it(
     'laat een beheerder ontdekbaar niet rechtstreeks zetten',

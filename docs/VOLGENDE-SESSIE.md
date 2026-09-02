@@ -3,13 +3,51 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 02-09-2026. Een tokenaudit over de opzet waarin deze
-> sessies draaien. **Lees eerst punt 0**, daarna de drie punten daaronder — het
-> derde daarvan verandert wat je als volgende oppakt.
+> **Laatst bijgewerkt:** 02-09-2026. **#141 (QS8-186) en #151 (QS8-262 ronde 1)
+> geland**, en er staat een tokenaudit klaar die nog niet gemerged is. Lees eerst
+> de drie punten hieronder — het derde verandert wat je als volgende oppakt — en
+> daarna de drie van 02-09.
 >
-> **0. Er staat werk klaar op `claude/goalbuddies-token-optimization-vi3fpu` dat
-> nog niet gemerged is.** Vier commits, geen enkele raakt app-code of een
-> migratie; ze gaan alleen over wat elke sessie aan context meesleept.
+> **02-09, punt A: een reparatie is twee keer omvergehaald door de review, en
+> allebei de keren terecht.** QS8-186 sloot zeven routes waarlangs een gebruiker
+> zichzélf een goedgekeurde week met punten kon geven. De eerste versie leunde op
+> de koppel**toestand** en werd omvergehaald; de tweede leunde op de **handeling**
+> en was te breed — een beheerder die een onverwant lid eruit zette, sloot
+> daarmee de auto-goedkeuring voor een verlies dat later en buiten zijn schuld
+> kwam. **En de derde bevinding was van mijzelf:** mijn ijking bewees dát er een
+> venster van zeven dagen was, niet hoe **breed**. `- interval '7 days'`
+> vervangen door `'1 second'` liet alle 23 tests groen.
+>
+> ⚠️ **Dat laatste is de les om mee te nemen.** Een mutatie die een grendel
+> hélemaal weghaalt, bewijst alleen dat de grendel bestáát. Wil je een getál
+> bewaken, dan moet er een geval aan weerszijden van dat getal staan.
+>
+> **02-09, punt B: twee dingen liggen nu bij Quinten.**
+>
+> 1. **De afkoeling van zeven dagen is geen slot.** Wie zijn doel ontkoppelt en
+>    daarna een week niets doet, valt terug op het gedrag van 0135: elke volgende
+>    week keurt weer automatisch goed, met volle punten en zonder buddy. Dat is
+>    bewust ontwerp — wie maanden solo werkt ís een solo-gebruiker — maar het is
+>    ook de prijs van het weglopen bij domeinregel 3, en die prijs is zeven dagen.
+>    Te goedkoop? Dan is de knop een puntenmodelbesluit (domeinregel 10) en geen
+>    bug. Staat als open rij in `docs/ENGINEER-REVIEW.md` en als comment op
+>    QS8-186.
+> 2. **QS8-264: `guard_group_update()` heeft nog nooit gesloten.** Hij beslist op
+>    `current_user` terwijl hij zelf `SECURITY DEFINER` is, dus dat is binnenin
+>    altijd `postgres`. Er lekt vandaag niets — de kolomgrants houden het tegen —
+>    maar drie plekken in het project claimen twee grendels waar er één is, en de
+>    agendarij van 16-08 staat ten onrechte op *opgelost*. Gemeten met een
+>    tijdelijke kolomgrant in een teruggedraaide transactie.
+>
+> ⚠️ **QS8-262 is niet af.** Ronde 1 deed de twintig altijd-`false` helften; de
+> vier leespolicies van domeinregel 7 en de schrijfkant van `profiles`,
+> `weekly_plan_steps` en `goal_interviews` staan nog open. Zie de comment op dat
+> issue voor wat er precies over is.
+>
+> **02-09, punt C: er staat een tokenaudit klaar op
+> `claude/goalbuddies-token-optimization-vi3fpu`, nog niet gemerged.** Geen enkele
+> commit erin raakt app-code, een migratie of een policy; ze gaan alleen over wat
+> elke sessie aan context meesleept.
 >
 > - **`CLAUDE.md` is van 13.348 naar 10.172 tokens.** De uitgeschreven
 >   geschiedenis — de zeven gevallen bij regel 18, de drie redenen waarom de
