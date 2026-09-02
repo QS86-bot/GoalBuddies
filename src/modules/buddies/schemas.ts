@@ -205,15 +205,24 @@ export type GroepInvoer = z.infer<typeof groepSchema>;
  *    nieuwe groep begint op de standaard (notitie verplicht), want dat is de
  *    keuze die de sociale lus op gang brengt. Een duim omhoog op een bewering is
  *    een formaliteit; één zin geeft de goedkeurder iets om op te reageren.
+ *
+ * ⚠️ **`note_and_attachment` stond hier tot 0150 en is weg — QS8-261.** De waarde
+ *    bestond op zes plekken en werd op nul plekken afgedwongen:
+ *    `enforce_evidence_policy()` toetste alleen de notitie, en er is nog geen
+ *    scherm dat een bijlage kan uploaden. Een beheerder die hem koos, kreeg het
+ *    gedrag van `note_required` en de gerustheid van iets strengers.
+ *
+ *    Hij komt terug zodra QS8-196 een uploadpad neerzet. **Verruim deze lijst
+ *    niet vooruitlopend** — `tests/rls/bewijseis.test.ts` legt hem naast de CHECK
+ *    in de database en wordt rood ongeacht welke kant het eerst verandert.
  */
-export const BEWIJSEISEN = ['note_required', 'note_and_attachment', 'optional'] as const;
+export const BEWIJSEISEN = ['note_required', 'optional'] as const;
 export type Bewijseis = (typeof BEWIJSEISEN)[number];
 
 /** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
 export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
   return {
     note_required: t('bewijseis.note_required'),
-    note_and_attachment: t('bewijseis.note_and_attachment'),
     optional: t('bewijseis.optional'),
   };
 }

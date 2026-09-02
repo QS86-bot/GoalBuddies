@@ -182,6 +182,17 @@ export const BEWAAKT_BUITEN_DE_APP = {
     '(0101, generiek sinds 0118).',
   domeinregel3_bewaking:
     'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+  bewijseis_allowlist:
+    'De waarden uit de CHECK `groups_evidence_policy_valid` (0150). Aanroeper is ' +
+    '`tests/rls/bewijseis.test.ts`, dat `BEWIJSEISEN` ernaast legt — een ' +
+    'gelijkheidstoets, dus rood ongeacht welke kant het eerst verandert. Zonder ' +
+    'zo\'n functie vergelijkt zo\'n test zichzelf, en dat is precies wat er bij ' +
+    '0032 misging (QS8-261).',
+  alleenlezen_bewaking:
+    'Welke policyhelften letterlijk `false` zijn terwijl `authenticated` het ' +
+    'recht wél heeft (0148). Aanroeper is `tests/rls/alleenlezen.test.ts`, dat ' +
+    'zijn fixtures ernaast legt en rood wordt zodra de twee uiteenlopen — in ' +
+    'béide richtingen.',
   migratieregister:
     'Het register van het échte project, voor `register:controle`.',
   triggerfuncties_in_de_api:

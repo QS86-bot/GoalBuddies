@@ -9,10 +9,10 @@ werkt. Zonder argument bepaal je zelf wat er aan de beurt is.
 
 ## Stap 1 — Oriënteer je
 
-Lees, in deze volgorde:
-1. `CLAUDE.md` — de grondwet. Wint van alles.
-2. `docs/WERKVOORRAAD.md` — waar het project staat en in welke volgorde je werkt.
-3. `docs/decisions/001-datamodel.md` — als je iets met de database doet.
+`CLAUDE.md` is de grondwet en wint van alles. Hij staat al in je context — niet
+opnieuw inlezen. Lees wél:
+1. `docs/WERKVOORRAAD.md` — waar het project staat en in welke volgorde je werkt.
+2. `docs/decisions/001-datamodel.md` — als je iets met de database doet.
 
 Haal daarna de openstaande issues op uit Linear: project **GoalBuddies**, team
 `QS86-bot Linear`. Kijk naar status, milestone en prioriteit.
@@ -84,12 +84,6 @@ Pak het volgende issue. Blijf doorwerken tot je op een stopvoorwaarde stuit.
 
 - Iets dat **menselijke actie** vereist: een key, een dashboardinstelling, een
   installatie, een betaalde tier. Zie `docs/WERKVOORRAAD.md` §6.
-- Een **architectuurkeuze** waar je niet zeker over bent. `CLAUDE.md`: bij
-  twijfel stoppen en vragen.
-- Iets uit **"Wat je NOOIT doet zonder te vragen"** in `CLAUDE.md`: een
-  dependency toevoegen, het datamodel van een bestaande tabel wijzigen, auth-,
-  RLS-, goedkeurings- of commitment-logica aanpassen, een migratie op iets
-  anders dan lokaal draaien, meer dan 15 bestanden in één keer aanraken.
 - Een **migratie op een database met data erin**. `pg_dump` eerst; de gratis
   tier heeft geen automatische backups.
 - Een besluit uit `docs/WERKVOORRAAD.md` §9 dat je zou willen omgooien.
@@ -97,6 +91,15 @@ Pak het volgende issue. Blijf doorwerken tot je op een stopvoorwaarde stuit.
 Meld dan wat je nodig hebt, wat er tot dan toe af is, en wat er blijft liggen.
 Ga niet zelf een work-around bedenken voor iets waar een mens één klik voor
 nodig heeft.
+
+⚠️ **En verder stop je niet.** Een architectuurkeuze waar je niet zeker over
+bent is géén stopvoorwaarde: `CLAUDE.md`, Beslisbevoegdheid, zegt dat je dan de
+conservatiefste optie kiest die het werk áf maakt, doorbouwt, en de aanname
+zichtbaar zet in het issue én in het beslisdocument. Datzelfde geldt voor een
+dependency toevoegen, het datamodel van een bestaande tabel wijzigen,
+auth-/RLS-/goedkeuringslogica aanpassen, een migratie op het echte project
+draaien en meer dan 15 bestanden aanraken — die zijn op 22-08-2026 van gate naar
+afweging gegaan: je beslist ze zelf en je verantwoordt ze.
 
 ## Rapporteer elke ronde
 

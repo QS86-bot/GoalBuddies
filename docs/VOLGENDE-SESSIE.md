@@ -3,16 +3,77 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 01-09-2026. Vier PR's geland (#125, #128, #130, #131) en
-> een duplicaat opgeruimd. **Lees eerst de drie punten hieronder** — het derde
-> verandert wat je als volgende oppakt.
+> **Laatst bijgewerkt:** 02-09-2026. **#141 (QS8-186), #151 (QS8-262 ronde 1) en
+> #153 (QS8-264) en #156 (de tokenaudit) geland, en de migraties `0139` t/m
+> `0146` zijn op productie toegepast.**
+> Lees eerst de drie punten hieronder — het derde verandert wat je als volgende
+> oppakt — en daarna de vier van 02-09.
 >
-> **3. De Todo-kolom is leeg voor een bouwsessie, en de backlog juist niet.** Elk
-> issue dat op Todo staat draagt `wacht-op-Quinten`: de migraties boven 0131
-> toepassen, de Edge Functions deployen, de webbundel, twee dashboardschakelaars,
-> de schermen doorlopen. **Daar kun je niets aan doen** — een bouwomgeving heeft
-> geen `SUPABASE_ACCESS_TOKEN` en geen service-role-key, dus zij kan de drift wel
-> méten maar niet opheffen en daarna niet controleren.
+> **02-09, punt 0: productie is bijgetrokken, in twee rondes.** Eerst `0139` t/m
+> `0146` (de acht van QS8-243), daarna `0147` t/m `0149` toen die landden. Allebei
+> per catalogus nagemeten. ⚠️ **Ga niet uit van het nummer dat hier staat** — het
+> verschoof die dag drie keer, en de map loopt vooruit zodra er een PR landt.
+> Hoe dat toepassen ging en waarom een bouwsessie dat wél kan, staat bij "Waar te
+> beginnen" punt 0.
+> ⚠️ En één ding dat daar hoort te staan: **er is geen `pg_dump` gemaakt**, want
+> de container heeft geen `SUPABASE_DB_URL`. Dat is een afwijking van onwrikbare
+> regel 20 en geen detail.
+>
+> **02-09, punt A: een reparatie is twee keer omvergehaald door de review, en
+> allebei de keren terecht.** QS8-186 sloot zeven routes waarlangs een gebruiker
+> zichzélf een goedgekeurde week met punten kon geven. De eerste versie leunde op
+> de koppel**toestand** en werd omvergehaald; de tweede leunde op de **handeling**
+> en was te breed — een beheerder die een onverwant lid eruit zette, sloot
+> daarmee de auto-goedkeuring voor een verlies dat later en buiten zijn schuld
+> kwam. **En de derde bevinding was van mijzelf:** mijn ijking bewees dát er een
+> venster van zeven dagen was, niet hoe **breed**. `- interval '7 days'`
+> vervangen door `'1 second'` liet alle 23 tests groen.
+>
+> ⚠️ **Dat laatste is de les om mee te nemen.** Een mutatie die een grendel
+> hélemaal weghaalt, bewijst alleen dat de grendel bestáát. Wil je een getál
+> bewaken, dan moet er een geval aan weerszijden van dat getal staan.
+>
+> **02-09, punt B: twee dingen liggen nu bij Quinten.**
+>
+> 1. **De afkoeling van zeven dagen is geen slot.** Wie zijn doel ontkoppelt en
+>    daarna een week niets doet, valt terug op het gedrag van 0135: elke volgende
+>    week keurt weer automatisch goed, met volle punten en zonder buddy. Dat is
+>    bewust ontwerp — wie maanden solo werkt ís een solo-gebruiker — maar het is
+>    ook de prijs van het weglopen bij domeinregel 3, en die prijs is zeven dagen.
+>    Te goedkoop? Dan is de knop een puntenmodelbesluit (domeinregel 10) en geen
+>    bug. Staat als open rij in `docs/ENGINEER-REVIEW.md` en als comment op
+>    QS8-186.
+> 2. **QS8-264: `guard_group_update()` heeft nog nooit gesloten.** Hij beslist op
+>    `current_user` terwijl hij zelf `SECURITY DEFINER` is, dus dat is binnenin
+>    altijd `postgres`. Er lekt vandaag niets — de kolomgrants houden het tegen —
+>    maar drie plekken in het project claimen twee grendels waar er één is, en de
+>    agendarij van 16-08 staat ten onrechte op *opgelost*. Gemeten met een
+>    tijdelijke kolomgrant in een teruggedraaide transactie.
+>
+> ⚠️ **QS8-262 is niet af.** Ronde 1 deed de twintig altijd-`false` helften; de
+> vier leespolicies van domeinregel 7 en de schrijfkant van `profiles`,
+> `weekly_plan_steps` en `goal_interviews` staan nog open. Zie de comment op dat
+> issue voor wat er precies over is.
+>
+> **02-09, punt C: de tokenaudit is geland — QS8-265, PR #156 en #158.**
+> `CLAUDE.md` is een kwart korter zonder dat er één regel uit is: de uitgeschreven
+> geschiedenis staat nu in
+> `docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md`. Wat er verder
+> veranderde aan hoe hier gewerkt wordt — subagents, MCP-servers, `/verder` —
+> staat in `docs/WERKVOORRAAD.md` §2.
+>
+> ⚠️ **Eén ding daaruit verandert je gedrag en staat als werkafspraak 8 hieronder:
+> `CLAUDE.md` hoef je niet in te lezen, je hebt hem al.** Dat geldt voor jou én
+> voor elke subagent die je start.
+>
+> **3. De Todo-kolom is smaller dan hij lijkt, en de backlog juist niet.** Elk
+> issue dat op Todo staat draagt `wacht-op-Quinten`: de Edge Functions deployen,
+> de webbundel, twee dashboardschakelaars, de schermen doorlopen.
+> ⚠️ **De migraties stonden in dat rijtje en horen er niet meer in.** Op 02-09
+> bleek een bouwsessie ze wél te kunnen toepassen — niet met `psql` of
+> `npm run db:push`, maar via de Supabase-MCP, die onder een eigen token draait.
+> Zie punt 0 hieronder voor de werkwijze en de valkuilen. Wat overblijft vraagt
+> nog steeds Quintens machine, en dat is echt zo.
 >
 > ⚠️ **Trek daaruit níét de conclusie dat er niets te bouwen is.** Dat is precies
 > de fout die dit document op 30-08 al eens maakte ("de voorraad is leeg, begin in
@@ -63,9 +124,10 @@ cwd van de sessie wijst vaak naar een ander project** (DN Projectbegeleiding, de
 Status Tracker). Een `git log` in de verkeerde map laat een schone, andere repo
 zien en dan lijkt er niets te doen.
 
-Lees eerst `CLAUDE.md`, dan `docs/WERKVOORRAAD.md` (sectie 0 geeft de stand in
-tien regels), dan dit bestand. Haal daarna de openstaande issues op uit het
-Linear-project GoalBuddies.
+`CLAUDE.md` staat al in je context en hoeft niet opnieuw ingelezen te worden —
+niet door jou en niet door een subagent. Lees `docs/WERKVOORRAAD.md` (sectie 0
+geeft de stand in tien regels) en dit bestand. Haal daarna de openstaande issues
+op uit het Linear-project GoalBuddies.
 
 ⚠️ **Werk de doorloopbevindingen af en niet de volgorde in WERKVOORRAAD §4.** De
 bevindingen van 30-08 zijn geland; wat er nu voorligt staat in "Waar te
@@ -324,8 +386,49 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    liegt het bord zodra die PR alsnog dichtgaat.
 7. Loop je vast op iets dat mijn beslissing of toegang vraagt: zet het in
    `docs/Q-TODO.docx` en ga door met het volgende issue. Niet wachten.
+8. **`CLAUDE.md` niet inlezen — je hébt hem al** (02-09-2026). Een subagent krijgt
+   de volledige CLAUDE.md-hiërarchie automatisch in zijn startcontext; alleen de
+   ingebouwde Explore en Plan slaan hem over, en onze zeven agents zijn eigen
+   agents. Een `Read` erop is dus een tweede kopie van ruim tienduizend tokens,
+   koud, per agent-start — en `/feature` ketent er meerdere.
+
+   ⚠️ **Zet de regels ook niet in de agentbestanden.** Dat lost de tokens op en
+   maakt er een erger probleem voor terug: één feit op zeven plekken. De
+   eigendomsregel uit `CLAUDE.md` bestaat omdat kopieën gaan afwijken, en
+   `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een getal in een rapport leest als gemeten, ook als het geraden is —
+  02-09, QS8-265.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
+  `npm run poort` *"alle output ongefilterd in de context dumpt"*, en beval een
+  PreToolUse-hook aan om dat af te remmen. Er was toen geen enkele meting onder;
+  de redenering was "34 controles, dus veel uitvoer". Plausibel, en fout:
+
+  ```
+  npm run poort   (34 controles)   40 regels   ~305 tokens
+  npm test                         11 regels   ~123 tokens
+  npm run lint                      0 regels        0 tokens
+  npm run typecheck                 0 regels        0 tokens
+  ```
+
+  `poort.mjs` vat zichzelf al samen tot één regel per controle. De aanbevolen
+  hook zou nul tokens hebben bespaard en wél iets hebben gekost: een filter
+  tussen de bouwer en de uitslag van de poort, in een project waar de tests de
+  enige review zijn die bestaat.
+
+  ⚠️ **Dezelfde fout stond twee alinea's verderop in hetzelfde rapport.** De
+  audit beloofde `CLAUDE.md` van 13.348 naar ~5.000 tokens te brengen, op basis
+  van de grootte van de secties zonder ernaar te kijken. Na 28 verplaatste blokken
+  bleek 10.172 de bodem: wat overbleef was regel en geen geschiedenis. Verder
+  omlaag kan alleen door procedure te schrappen.
+
+  **De les is niet "meet beter" maar iets specifiekers:** dit document eist al
+  *gemeten en niet beredeneerd* van elke controle en elke test. Een audit valt
+  daar net zo goed onder, en juist daar voelt het overbodig — je bent immers aan
+  het meten. Een bevinding met een zwaartekolom ernaast ziet er meteen uit als
+  bewijs. **Zet geen getal en geen zwaarte naast een bewering die je niet hebt
+  gedraaid**, en zeg het hardop als je hem alsnog moet terugnemen.
 
 - **⚠️ Een grendel die zijn eigen categorie niet haalt, is duurder dan geen
   grendel — 31-08.** `poort.mjs` deelt elke stap in drieën omdat een controle die
@@ -1030,10 +1133,13 @@ migratie 0027).
 
 ## STAND VAN DE REPO
 
-⚠️ **Alles wat deze sessie opleverde staat op `main`.** Twee stapels, allebei in
-volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79, QS8-78 en de
-idempotentie-reparatie) en #85 t/m #90 (de vijf blokkerende bevindingen uit de
-controleronde). Er staat van deze sessie **niets meer open**.
+⚠️ **Alles wat de bouwsessies van 28-08 t/m 01-09 opleverden staat op `main`.**
+Twee stapels, allebei in volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79,
+QS8-78 en de idempotentie-reparatie) en #85 t/m #90 (de vijf blokkerende
+bevindingen uit de controleronde). Daarvan staat **niets meer open**.
+
+⚠️ **En 02-09 heeft daar een hele dag bovenop gezet**, met #152 t/m #156 als
+laatste stapel. Er staat op dit moment niets van deze reeks meer open.
 
 ⚠️ **Er werkt een parallelle sessie in dezelfde repo**, en die landt regelmatig
 eigen migraties en controlescripts. Op 28-08 waren dat #76, #77, #79 t/m #84 en
@@ -1185,20 +1291,38 @@ groene poort:
    controle die nooit rood is geweest.
 
 ⚠️ **Wat je níét kunt doen, en dat is de hele Todo-kolom.** Alles daar draagt
-`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**: de repo loopt vooruit op
-productie, en de drie Edge Functions dateren van 27-08.
+`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**, en dat issue is op 02-09
+voor de helft afgewerkt: **de migraties zijn toegepast, de Edge Functions niet.**
 
-⚠️ **En dat getal noem je hier niet — deze regel heeft het op 01-09 zelf fout
+⚠️ **En het getal noem je hier niet — deze regel heeft het op 01-09 zelf fout
 gehad.** Hier stond "productie staat op 0131", overgeschreven uit QS8-243. Toen
-dat met `list_migrations` gemeten werd, stond productie op **0138**: 0132 t/m
+dat met `list_migrations` gemeten werd, stond productie op 0138: 0132 t/m
 0138 waren op 31-08 met psql toegepast, en dat stond alleen in QS8-251. Precies
 QS8-125, en precies de val die dit document twee alinea's verderop bij het
-migratiebereik beschrijft. **Vraag het aan de database, niet aan een document.** Dat issue draagt
-het volledige stappenplan inclusief de dump vooraf, de volgorde, `notify pgrst,
-'reload schema'`, het uitlijnen van het register en `npm run types:db`. **Doe daar
-niets aan uit eigen beweging** — een migratie toepassen zonder de controlestap
-erna is de helft van het werk, en die controlestap vraagt referenties die een
-bouwsessie niet heeft.
+migratiebereik beschrijft. **Vraag het aan de database, niet aan een document —
+ook niet aan deze zin.**
+
+⚠️ **De migraties bleken op 02-09 wél te kunnen, en dat corrigeert de aanname
+hierboven.** De Supabase-MCP draait onder een token dat deze container niet als
+env var heeft; `execute_sql` werkt dus waar `psql` en `npm run db:push` stuk
+lopen. Wat daarbij geleerd is:
+
+- **`apply_migration` niet gebruiken.** Die deelt een tijdstempel als versie uit
+  en breekt daarmee de `0001`-vorm van het register. Gebruik `execute_sql` en zet
+  de rij er zelf bij.
+- **De transactiewikkel eruit halen.** `execute_sql` draait zijn eigen
+  transactie; `begin`/`commit` in het bestand levert een fout op.
+- **Nameten kan zonder `functies:controle`.** Bouw de bestanden op een lokale
+  database op (`npm run rls:stack`) en vergelijk per catalogus een sómhash met
+  productie. Zeven catalogi, zeven vergelijkingen — dat is dezelfde belofte als
+  het controlescript, langs een weg die zonder service-role-key wél werkt.
+- ⚠️ **Wat er níét was, is een `pg_dump`.** Zie §2 van de werkvoorraad; het is
+  een afwijking van een regel uit `CLAUDE.md` en geen detail.
+
+**De andere helft van QS8-243 staat nog open** en vraagt echt Quintens machine:
+`npx supabase functions deploy doelcoach rollover notificaties`, en
+`password_min_length` in het dashboard. Een migratie zonder de functie die hem
+aanroept is een halve feature.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.

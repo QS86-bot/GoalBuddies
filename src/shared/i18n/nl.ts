@@ -454,7 +454,6 @@ export const nl = {
   'beheer.huddledag_uitleg': 'Wijzigen breekt geen lopende ketting: een schakel draagt de week waarin hij gelegd is, en die wordt nooit herberekend.',
   'beheer.bewijs_label': 'Hoeveel bewijs vraagt deze groep?',
   'beheer.bewijs_hint': 'Een duim omhoog op een bewering is een formaliteit. Eén zin kost tien seconden en geeft je buddy iets om op te reageren — dat is wat het gesprek op gang brengt.',
-  'beheer.bijlagen_nog_niet': 'Bijlagen kunnen nog niet: er is nog geen opslag. Kies je die stand, dan geldt voorlopig alleen de notitie. Wijzigen raakt bestaande afrondingen niet.',
   'beheer.opslaan': 'Opslaan',
   'beheer.link_titel': 'Uitnodigingslink',
   'beheer.link_uitleg': 'Wie deze link opent, ziet de groep en hoeveel mensen erin zitten — ook zonder account. Wat jullie aan doelen delen, ziet iemand pas na het meedoen. Deel de link toch alleen met mensen die je erbij wilt.',
@@ -727,8 +726,9 @@ export const nl = {
   'doelen.titel': 'Doelen',
   'doelen.leeg_titel': 'Nog geen doel',
   'doelen.leeg_tekst': 'Begin met één doel met een datum erop. De Doelcoach hakt het daarna in mijlpalen, en die mijlpalen worden je weekdoelen.',
-  'doelen.van_totaal': '{aantal} van {totaal} doelen. Meer laden komt zodra er meer dan twintig zijn.',
+  'doelen.van_totaal': '{aantal} van {totaal} doelen.',
   'doelen.nieuw': 'Nieuw doel',
+  'doelen.meer_laden': 'Meer doelen laden',
   'doelen.doel': 'Doel',
   'doelen.streefdatum': 'Streefdatum {datum}',
   'doelen.datum_verstreken': 'Datum verstreken',
@@ -1028,7 +1028,6 @@ export const nl = {
   //    een duim omhoog op een bewering is een formaliteit, één zin geeft de
   //    goedkeurder iets om op te reageren.
   'bewijseis.note_required': 'Notitie verplicht',
-  'bewijseis.note_and_attachment': 'Notitie én bijlage',
   'bewijseis.optional': 'Alles optioneel',
 
   // ---------------------------------------------------------------------------
