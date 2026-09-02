@@ -180,6 +180,75 @@ export function vervangIn(tekst, van, naar) {
  * @param perBranch `{ branch: hoogsteNummer }` uit `migratiebranches.mjs`
  * @param register  de versies op productie, of `null` als dat ongemeten is
  */
+/**
+ * Welk bestand bedoelt `<van>`?
+ *
+ * ⚠️⚠️ **Dit bestond niet, en de oude regel was `bestanden.find(...)` — de
+ *    eerste treffer.** Op 01-09-2026 stonden er na een merge twee migraties met
+ *    nummer `0146`: eentje die via PR #149 op `main` geland was, en eentje die
+ *    nog niet gelandwas. `migratie:hernummer -- 0146 0147` pakte **het gelande
+ *    bestand**, hernoemde het, en werkte alle verwijzingen bij — inclusief een
+ *    bronbestand dat bij die ándere migratie hoorde. De kans dat hij het
+ *    verkeerde koos was precies vijftig procent (QS8-263).
+ *
+ * ⚠️ **De bestaande weigering dekte dit niet, en dat is de kern.** Het script
+ *    weigert al als het bronnummer in het register op productie staat — maar
+ *    die vraag gaat over het **nummer**, en bij twee bestanden kan het antwoord
+ *    per **bestand** verschillen. Was dit doorgegaan, dan was een gelande
+ *    migratie hernummerd terwijl zijn oude nummer op productie staat: precies
+ *    de uiteenloop van QS8-122.
+ *
+ * ⚠️ **Weigeren en niet kiezen.** Er was een variant denkbaar die per bestand in
+ *    het register kijkt en automatisch het níet-gelande exemplaar neemt. Die
+ *    klinkt slim en is het niet: hij beslist iets namens de gebruiker in precies
+ *    het geval waar vergissen duur is. `<van>` mag daarom ook een bestandsnaam
+ *    zijn — dan is er niets meer te raden.
+ *
+ * @param van het argument zoals de gebruiker het gaf: een nummer of een bestandsnaam
+ * @param bestanden alle `.sql`-namen in de migratiemap
+ */
+export function kiesBron(van, bestanden) {
+  const namen = bestanden ?? [];
+
+  // Een bestandsnaam wijst zichzelf aan; er valt dan niets te kiezen.
+  if (/\.sql$/i.test(van ?? '')) {
+    const naam = (van ?? '').replace(/^.*[/\\]/, '');
+    if (!namen.includes(naam)) {
+      return { ok: false, reden: 'bestand_ontbreekt', uitleg: `${naam} staat niet in de map.` };
+    }
+    // ⚠️ **Gekozen is niet hetzelfde als veilig, en dat moet de CLI zeggen.**
+    //    De verwijzingsvervanging verderop gaat op **nummer**: hij zoekt overal
+    //    naar `0146` en kan niet weten of zo'n vermelding bij dít bestand hoort
+    //    of bij de ander met hetzelfde nummer. Bij een botsing is de hernoeming
+    //    dus wél de goede, maar de verwijzingen zijn dat niet noodzakelijk.
+    const nummer = naam.slice(0, 4);
+    const gedeeld = namen.filter((n) => n.startsWith(`${nummer}_`)).length > 1;
+    return { ok: true, bestand: naam, nummer, gedeeld };
+  }
+
+  const treffers = namen.filter((n) => n.startsWith(`${van}_`));
+
+  if (treffers.length === 0) {
+    return { ok: false, reden: 'bron_ontbreekt', uitleg: `Er staat geen migratie ${van} in de map.` };
+  }
+
+  if (treffers.length > 1) {
+    return {
+      ok: false,
+      reden: 'bron_dubbel',
+      uitleg:
+        `Er staan ${treffers.length} migraties met nummer ${van} in de map:\n` +
+        treffers.map((n) => `    ${n}`).join('\n') +
+        '\n  Welke van de twee bedoel je? Geef de bestandsnaam in plaats van het\n' +
+        '  nummer. ⚠️ Eén ervan kan al geland of toegepast zijn, en juist díe\n' +
+        '  hernummeren maakt de map onverenigbaar met het register (QS8-263).',
+      treffers,
+    };
+  }
+
+  return { ok: true, bestand: treffers[0], nummer: van };
+}
+
 export function beoordeelHernummering({ van, naar, aanwezig, perBranch, register }) {
   if (!/^\d{4}$/.test(van ?? '') || !/^\d{4}$/.test(naar ?? '')) {
     return { ok: false, reden: 'vorm', uitleg: 'Beide nummers zijn vier cijfers, zoals 0134.' };
@@ -301,7 +370,11 @@ async function hoofd() {
   const [van, naar] = argumenten.filter((a) => !a.startsWith('--'));
 
   if (van === undefined || naar === undefined) {
-    console.error('Gebruik: npm run migratie:hernummer -- <van> <naar> [--droog]');
+    console.error(
+      'Gebruik: npm run migratie:hernummer -- <van> <naar> [--droog]\n' +
+        '  <van> is een viercijferig nummer, of een bestandsnaam wanneer er twee\n' +
+        '  migraties met hetzelfde nummer in de map staan.',
+    );
     process.exit(1);
   }
 
@@ -316,8 +389,27 @@ async function hoofd() {
   const aanwezig = [...new Set(bestanden.map((n) => n.slice(0, 4)))];
   const register = negeerRegister ? [] : await leesRegister();
 
+  // ⚠️ **Eerst wélk bestand, dan pas of het mag.** Die volgorde is de reparatie
+  //    van QS8-263: de toets op het register gaat over het númmer, en bij twee
+  //    bestanden met hetzelfde nummer kan het antwoord per bestand verschillen.
+  const bron = kiesBron(van, bestanden);
+  if (!bron.ok) {
+    console.error(`✗ ${van} → ${naar} kan niet: ${bron.reden}\n  ${bron.uitleg}`);
+    process.exit(1);
+  }
+
+  if (bron.gedeeld === true) {
+    console.log(
+      `⚠️  Er staan meer migraties met nummer ${bron.nummer} in de map.\n` +
+        `    Het béstand hieronder is de goede — die heb je zelf aangewezen — maar de\n` +
+        `    verwijzingen niet noodzakelijk: die worden op nummer gezocht, en ${bron.nummer}\n` +
+        '    in een tekst kan net zo goed bij de ander horen. Loop de lijst hieronder\n' +
+        '    na vóór je zonder --droog draait.\n',
+    );
+  }
+
   const oordeel = beoordeelHernummering({
-    van,
+    van: bron.nummer,
     naar,
     aanwezig,
     perBranch: nummersPerBranch(),
@@ -325,11 +417,14 @@ async function hoofd() {
   });
 
   if (!oordeel.ok) {
-    console.error(`✗ ${van} → ${naar} kan niet: ${oordeel.reden}\n  ${oordeel.uitleg}`);
+    console.error(`✗ ${bron.nummer} → ${naar} kan niet: ${oordeel.reden}\n  ${oordeel.uitleg}`);
     process.exit(1);
   }
 
-  const oud = bestanden.find((n) => n.startsWith(`${van}_`));
+  const oud = bron.bestand;
+  // ⚠️ Vanaf hier telt het nummer van het gékozen bestand, niet het argument —
+  //    dat kan een bestandsnaam zijn geweest.
+  const bronNummer = bron.nummer;
   const oudeBasis = basisUit(oud);
   const nieuweBasis = `${naar}${oudeBasis.slice(4)}`;
 
@@ -339,7 +434,7 @@ async function hoofd() {
   const oudPad = join(MAP, oud);
   const inhoud = readFileSync(oudPad, 'utf8');
   const metKop = herschrijfKop(inhoud, nieuweBasis);
-  const { tekst: nieuweInhoud, treffers } = vervangIn(metKop, van, naar);
+  const { tekst: nieuweInhoud, treffers } = vervangIn(metKop, bronNummer, naar);
 
   console.log(`  ${relative(WORTEL, oudPad)}`);
   console.log(`    kopregel herschreven naar ${nieuweBasis}.sql`);
@@ -351,12 +446,12 @@ async function hoofd() {
     for (const pad of bestandenOnder(join(WORTEL, map))) {
       if (pad === oudPad) continue;
       const tekst = readFileSync(pad, 'utf8');
-      const uit = vervangIn(tekst, van, naar);
+      const uit = vervangIn(tekst, bronNummer, naar);
       if (uit.treffers === 0) continue;
 
       const regels = tekst.split('\n');
       const nummers = regels
-        .map((r, i) => (verwijzingsPatroon(van).test(r) ? i + 1 : 0))
+        .map((r, i) => (verwijzingsPatroon(bronNummer).test(r) ? i + 1 : 0))
         .filter((n) => n > 0);
 
       elders.push({ pad, inhoud: uit.tekst, treffers: uit.treffers, regels: nummers });
