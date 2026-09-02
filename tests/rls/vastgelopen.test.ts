@@ -774,6 +774,64 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       SETUP_TIMEOUT,
     );
 
+    /**
+     * ⚠️ **De naad tussen deze reparatie en `dien_opnieuw_in()`.** Die functie
+     *    maakt een níeuwe voltooiing, en die draagt geen enkele goedkeuring —
+     *    dus de helft van de vlag die op `more_info` let, is daarna vals. Twee
+     *    correcte onderdelen die aan elkaar knopen, en precies de plek waar
+     *    CLAUDE.md regel 18 een test wil.
+     *
+     *    Gemeten: de nieuwe voltooiing wordt helemaal niet als vastgelopen
+     *    gemeld, want de buddy heeft er nog niet over gestemd. Er is dus niets
+     *    om automatisch goed te keuren, en dat is de goede uitkomst — de beurt
+     *    ligt weer bij de beoordelaar.
+     *
+     * ⚠️ **De grendel die deze test bewaakt, met naam.** `vastgelopen_goedkeuringen()`
+     *    telt de stem van een lid **per voltooiing** (`a.completion_id = c.id`)
+     *    en niet per weekdoel. Zou dat per weekdoel gaan, dan telt de oude
+     *    `more_info` mee voor de níeuwe indiening, is de week alsnog
+     *    "vastgelopen" en keurt de termijn hem goed. Geijkt: die ene join
+     *    verruimen maakt precies deze test rood en geen andere.
+     */
+    it(
+      'opnieuw indienen geeft de beurt terug aan de buddy en niet aan de termijn',
+      async () => {
+        const o = await bouwOpstelling('beurt-opnieuw');
+
+        const gevraagd = await o.beoordelaar.db.from('completion_approvals').insert({
+          completion_id: o.completionId,
+          approver_id: o.beoordelaar.id,
+          subject_id: o.beoordelaar.id,
+          group_id: o.groupId,
+          status: 'more_info',
+          comment: 'Hoe ver ben je gekomen?',
+        });
+        if (gevraagd.error) throw new Error(`toelichting vragen: ${gevraagd.error.message}`);
+
+        const opnieuw = await o.eigenaar.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: o.weeklyGoalId,
+          p_achieved_level: 'ceiling',
+          p_note: 'opnieuw af',
+        });
+        if (opnieuw.error) throw new Error(`opnieuw indienen: ${opnieuw.error.message}`);
+        const uitkomst = opnieuw.data as unknown as { ok?: boolean; completion_id?: string };
+        expect(uitkomst.ok, 'opnieuw indienen hoort te lukken').toBe(true);
+        expect(uitkomst.completion_id, 'er hoort een nieuwe voltooiing te zijn').toBeTruthy();
+
+        const nieuweId = uitkomst.completion_id as string;
+        await verouder(nieuweId, 20);
+        await draaiTermijn(7);
+
+        expect(
+          await vastgelopenReden(o.goalId),
+          'de buddy heeft nog niet over de nieuwe voltooiing gestemd, dus er ligt niets vast',
+        ).toBeNull();
+        expect(await weekstatus(nieuweId), 'de week hoort op de buddy te wachten').toBe('pending');
+        expect(await punten(o.goalId), 'geen punten zonder geldige goedkeuring').toBe(0);
+      },
+      SETUP_TIMEOUT,
+    );
+
     it(
       'de buddy trok zijn goedkeuring in',
       () =>
