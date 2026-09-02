@@ -401,8 +401,22 @@ export default function GroepBeheer() {
                   ⚠️ **De bijlage-optie is er in 0150 uit** (QS8-261): hij bestond
                      overal behalve waar hij afgedwongen moest worden. Hier stond
                      dat hij er wél was en niets deed, met een bijschrift eronder
-                     dat bijlagen nog niet konden — allebei weg, want er valt niets
-                     meer te kiezen. Hij komt terug samen met het uploadpad.
+                     dat bijlagen nog niet konden. Hij komt terug samen met het
+                     uploadpad.
+
+                  ⚠️ **Het bijschrift droeg twee beweringen en maar één ervan is
+                     verlopen.** "Bijlagen kunnen nog niet" ging over een stand die
+                     niet meer te kiezen is; "wijzigen raakt bestaande afrondingen
+                     niet" gaat over deze keuze zelf en is onverminderd waar. De
+                     eerste versie van deze opruiming (#169) haalde de hele zin weg
+                     en gooide daarmee de tweede helft mee — teruggezet als
+                     `beheer.bewijs_wijzigen`, met dank aan #168 dat hem wél zag.
+
+                  ⚠️ De grendel eronder is `completions_evidence`, en die staat op
+                     `before insert` (0021, ongewijzigd door 0150). Een afronding
+                     die er al is, wordt dus nooit opnieuw langs de eis gehaald.
+                     Verandert die timing ooit, dan wordt deze zin onwaar en hoort
+                     hij hier weg.
                 */}
                 <Choice
                   label={t('beheer.bewijs_label')}
@@ -411,6 +425,7 @@ export default function GroepBeheer() {
                   waarde={bewijseis}
                   onKies={setBewijseis}
                 />
+                <Caption>{t('beheer.bewijs_wijzigen')}</Caption>
 
                 {/*
                   ⚠️ **Wél in dit formulier en niet in een eigen kaart met een

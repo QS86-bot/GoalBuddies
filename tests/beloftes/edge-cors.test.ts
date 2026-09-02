@@ -160,6 +160,45 @@ describe('elke Edge Function is vanaf het web aanroepbaar', () => {
     expect((await afhandelen(preflight())).headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
+  it.each(['http://localhost:8081', 'http://127.0.0.1:19006', 'http://localhost:3000'])(
+    'laat de ontwikkelserver op %s erbij',
+    async (herkomst) => {
+      // ⚠️ **Zonder dit is de Doelcoach lokaal onbereikbaar**, en dat is dezelfde
+      //    klasse fout als QS8-195 zelf — alleen op de plek waar je hem zou
+      //    repareren in plaats van op productie. Elke poort, want Expo kiest er
+      //    zelf een als 8081 bezet is.
+      const antwoord = await (await handlerVan('doelcoach'))(preflight(herkomst));
+      expect(antwoord.headers.get('Access-Control-Allow-Origin')).toBe(herkomst);
+    },
+  );
+
+  it('laat een domein dat alleen op localhost lijkt er niet bij', async () => {
+    // De hostnaam moet het zijn, niet iets dat ermee begint of erop eindigt.
+    const afhandelen = await handlerVan('doelcoach');
+
+    for (const herkomst of [
+      'https://localhost.kwaadaardig.example',
+      'https://mijnlocalhost.example',
+      'http://127.0.0.1.kwaadaardig.example',
+    ]) {
+      const antwoord = await afhandelen(preflight(herkomst));
+      expect(antwoord.headers.get('Access-Control-Allow-Origin'), herkomst).toBeNull();
+    }
+  });
+
+  it('beantwoordt ook een geweigerde herkomst met 204 — de status bewijst niets', async () => {
+    // ⚠️ **Dit is geen wens maar een vastlegging, en hij heeft een avond gekost.**
+    //    Op 31-08 werd "de OPTIONS geeft 204" gelezen als bewijs dat CORS werkte.
+    //    Dat is het niet: de status is onvoorwaardelijk, alleen de kop niet. Deze
+    //    test legt dat vast zodat niemand de status ooit als signaal gaat
+    //    gebruiken, en zodat wie hem wél wil veranderen ziet dat het een besluit
+    //    was en geen slordigheid.
+    const antwoord = await (await handlerVan('doelcoach'))(preflight('https://vreemd.example'));
+
+    expect(antwoord.status).toBe(204);
+    expect(antwoord.headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
   it('doet niets bij een aanroep zonder Origin', async () => {
     // De rollover en de meldingenjob worden server-side aangeroepen. Een
     // `Access-Control-*`-kop op dat antwoord is geen fout, maar wel ruis die

@@ -53,6 +53,37 @@ zou de Doelcoach precies zo onbereikbaar maken als de bug van QS8-195, alleen da
 stil en pas op productie. Zet hem zodra er een tweede omgeving bijkomt; een
 tweede adres is een tweede komma-gescheiden waarde en geen `*`.
 
+⚠️ **`localhost` en `127.0.0.1` staan er altijd bij, op elke poort**, zonder dat
+je iets hoeft te zetten (`isOntwikkelherkomst()` in `_shared/cors.ts`). Zonder
+dat is de Doelcoach onbereikbaar vanaf `npm run dev:web` — dezelfde klasse fout
+als QS8-195, alleen dan op de plek waar je hem zou repareren. Een pagina kan zijn
+eigen `Origin` niet kiezen, dus alleen iets dat écht op jouw machine draait krijgt
+die kop, en het JWT is nog steeds vereist.
+
+### Hoe je controleert of CORS werkt
+
+⚠️ **Kijk naar de kop, niet naar de status.** Op 31-08-2026 kostte dat een avond:
+"de OPTIONS geeft 204" werd gelezen als bewijs dat de reparatie werkte. Dat is het
+niet. `metCors` beantwoordt **elke** preflight met 204 — ook die van een herkomst
+die niet op de lijst staat. Alleen `Access-Control-Allow-Origin` is voorwaardelijk,
+en dáár blokkeert de browser op.
+
+```bash
+curl -i -X OPTIONS \
+  -H 'Origin: https://goalbuddies.q-projects.tech' \
+  -H 'Access-Control-Request-Method: POST' \
+  https://<ref>.supabase.co/functions/v1/doelcoach
+```
+
+| Wat je ziet | Wat het betekent |
+|---|---|
+| `204` mét `access-control-allow-origin` | goed |
+| `204` zónder die kop | de herkomst staat niet op de lijst — de browser blokkeert de POST |
+| `405` | de reparatie van QS8-195 draait niet; controleer met `npm run edge:gedeployd` |
+
+Dat gedrag ligt vast in `tests/beloftes/edge-cors.test.ts` ("de status bewijst
+niets"), zodat niemand de statuscode alsnog als signaal gaat gebruiken.
+
 ---
 
 ## 2. Databasewerk
