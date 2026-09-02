@@ -4,8 +4,8 @@
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
 > **Laatst bijgewerkt:** 02-09-2026. **#141 (QS8-186), #151 (QS8-262 ronde 1) en
-> #153 (QS8-264) geland, en de migraties `0139` t/m `0146` zijn op productie
-> toegepast.** Er staat daarnaast een tokenaudit klaar die nog niet gemerged is.
+> #153 (QS8-264) en #156 (de tokenaudit) geland, en de migraties `0139` t/m
+> `0146` zijn op productie toegepast.**
 > Lees eerst de drie punten hieronder — het derde verandert wat je als volgende
 > oppakt — en daarna de vier van 02-09.
 >
@@ -53,30 +53,15 @@
 > `weekly_plan_steps` en `goal_interviews` staan nog open. Zie de comment op dat
 > issue voor wat er precies over is.
 >
-> **02-09, punt C: er staat een tokenaudit klaar op
-> `claude/goalbuddies-token-optimization-vi3fpu`, nog niet gemerged.** Geen enkele
-> commit erin raakt app-code, een migratie of een policy; ze gaan alleen over wat
-> elke sessie aan context meesleept.
+> **02-09, punt C: de tokenaudit is geland (PR #156).** `CLAUDE.md` is een kwart
+> korter zonder dat er één regel uit is: de uitgeschreven geschiedenis staat nu in
+> `docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md`. Wat er verder
+> veranderde aan hoe hier gewerkt wordt — subagents, MCP-servers, `/verder` —
+> staat in `docs/WERKVOORRAAD.md` §2.
 >
-> - **`CLAUDE.md` is van 13.348 naar 10.172 tokens.** De uitgeschreven
->   geschiedenis — de zeven gevallen bij regel 18, de drie redenen waarom de
->   security-reviewer nooit wacht, de meting van 109 migraties, PR #1 en PR #100 —
->   staat nu verbatim in
->   `docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md`. Elke regel
->   is blijven staan; alle 259 verwijderde regels zijn mechanisch teruggevonden.
-> - **De gstack-sectie is weg.** Die somde 38 skills op waarvan er geen één
->   geïnstalleerd was.
-> - **Zeven ongebruikte MCP-servers zijn geblokkeerd** in `.claude/settings.json`
->   (Gmail, Agenda, Drive, Plaud, Zoom, n8n, Firecrawl). Bevestigd werkend: 107
->   tool-namen vielen halverwege de sessie weg. github, Linear en Supabase blijven.
-> - **Subagents lezen `CLAUDE.md` niet meer opnieuw in** — ze krijgen hem al.
->
-> ⚠️ **En daarbij kwam een tegenspraak boven die er al ruim een week stond:**
-> `/verder` voerde "een architectuurkeuze waar je niet zeker over bent" op als
-> stopvoorwaarde en citeerde de lijst *"Wat je NOOIT doet zonder te vragen"* — een
-> sectie die op 22-08 is vervangen door Beslisbevoegdheid. Precies de vijf punten
-> die `/verder` als gate noemde staan daar sindsdien als afweging. Het commando
-> stuurde dus aan op stoppen waar de grondwet zegt doorbouwen. Rechtgezet.
+> ⚠️ **Eén ding daaruit verandert je gedrag en staat als werkafspraak 8 hieronder:
+> `CLAUDE.md` hoef je niet in te lezen, je hebt hem al.** Dat geldt voor jou én
+> voor elke subagent die je start.
 >
 > **3. De Todo-kolom is smaller dan hij lijkt, en de backlog juist niet.** Elk
 > issue dat op Todo staat draagt `wacht-op-Quinten`: de Edge Functions deployen,
@@ -1150,8 +1135,8 @@ Twee stapels, allebei in volgorde geland: #71 t/m #78 (QS8-56, QS8-65, QS8-79,
 QS8-78 en de idempotentie-reparatie) en #85 t/m #90 (de vijf blokkerende
 bevindingen uit de controleronde). Daarvan staat **niets meer open**.
 
-⚠️ **De tokenaudit van 02-09 is de uitzondering en staat nog níet op `main`** —
-zie punt 0 bovenaan dit bestand. Dat is de enige openstaande stapel.
+⚠️ **En 02-09 heeft daar een hele dag bovenop gezet**, met #152 t/m #156 als
+laatste stapel. Er staat op dit moment niets van deze reeks meer open.
 
 ⚠️ **Er werkt een parallelle sessie in dezelfde repo**, en die landt regelmatig
 eigen migraties en controlescripts. Op 28-08 waren dat #76, #77, #79 t/m #84 en
