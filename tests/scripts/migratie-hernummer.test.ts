@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   basisUit,
   beoordeelHernummering,
+  kiesBron,
   herschrijfKop,
   kopKlopt,
   kopNummer,
@@ -146,6 +147,80 @@ describe('vervangIn', () => {
   /** Een jaartal heeft geen voorloopnul en botst dus per definitie niet. */
   it('raakt een jaartal niet', () => {
     expect(vervangIn('op 2026 gemeten', '0026', '0136').tekst).toBe('op 2026 gemeten');
+  });
+});
+
+/**
+ * ⚠️⚠️ **`kiesBron` bestaat omdat `bestanden.find(...)` de eerste treffer pakte.**
+ *    Op 01-09-2026 stonden er na een merge twee migraties met nummer `0146` —
+ *    eentje geland op `main`, eentje nog niet — en `migratie:hernummer -- 0146
+ *    0147` hernoemde **het gelande bestand**, inclusief de verwijzingen in een
+ *    bronbestand dat bij die ándere migratie hoorde. Vijftig procent kans, en
+ *    het viel verkeerd (QS8-263).
+ *
+ * ⚠️ **De bestaande weigering dekte dit niet**, en dat is het leerzame deel: het
+ *    script weigert al als het bronnummer op productie staat, maar die vraag
+ *    gaat over het **nummer** en bij twee bestanden verschilt het antwoord per
+ *    **bestand**. Een toets op het verkeerde niveau leest als dekking.
+ */
+describe('kiesBron', () => {
+  const twee = ['0146_geland.sql', '0146_van_mij.sql', '0147_iets.sql'];
+
+  it('weigert bij twee bestanden met hetzelfde nummer en noemt ze allebei', () => {
+    const uit = kiesBron('0146', twee);
+    expect(uit.ok).toBe(false);
+    expect(uit.reden).toBe('bron_dubbel');
+    expect(uit.uitleg).toContain('0146_geland.sql');
+    expect(uit.uitleg).toContain('0146_van_mij.sql');
+  });
+
+  it('kiest wél zodra er maar één bestand met dat nummer is', () => {
+    const uit = kiesBron('0147', twee);
+    expect(uit.ok).toBe(true);
+    expect(uit.bestand).toBe('0147_iets.sql');
+    expect(uit.nummer).toBe('0147');
+  });
+
+  /** De weg terug: een bestandsnaam wijst zichzelf aan, dus er valt niets te raden. */
+  it('accepteert een bestandsnaam en leidt het nummer eruit af', () => {
+    const uit = kiesBron('0146_van_mij.sql', twee);
+    expect(uit.ok).toBe(true);
+    expect(uit.bestand).toBe('0146_van_mij.sql');
+    expect(uit.nummer).toBe('0146');
+  });
+
+  it('accepteert ook een pad, want dat is wat je uit je shell plakt', () => {
+    const uit = kiesBron('supabase/migrations/0146_geland.sql', twee);
+    expect(uit.ok).toBe(true);
+    expect(uit.bestand).toBe('0146_geland.sql');
+  });
+
+  it('weigert een bestandsnaam die niet in de map staat', () => {
+    const uit = kiesBron('0146_verzonnen.sql', twee);
+    expect(uit.ok).toBe(false);
+    expect(uit.reden).toBe('bestand_ontbreekt');
+  });
+
+  /**
+   * ⚠️ **Gekozen is niet hetzelfde als veilig.** De verwijzingsvervanging gaat op
+   *    **nummer** — hij zoekt overal naar `0146` — en kan niet weten of zo'n
+   *    vermelding bij dít bestand hoort of bij de ander met hetzelfde nummer.
+   *    Bij een botsing is de hernoeming dus wél de goede, maar de verwijzingen
+   *    zijn dat niet noodzakelijk. De CLI waarschuwt daarvoor; deze vlag draagt
+   *    hem.
+   */
+  it('meldt dat het nummer gedeeld is wanneer je met een bestandsnaam kiest', () => {
+    expect(kiesBron('0146_van_mij.sql', twee).gedeeld).toBe(true);
+  });
+
+  it('meldt niets gedeelds wanneer het nummer uniek is', () => {
+    expect(kiesBron('0147_iets.sql', twee).gedeeld).toBe(false);
+  });
+
+  it('weigert een nummer dat er niet is', () => {
+    const uit = kiesBron('0199', twee);
+    expect(uit.ok).toBe(false);
+    expect(uit.reden).toBe('bron_ontbreekt');
   });
 });
 
