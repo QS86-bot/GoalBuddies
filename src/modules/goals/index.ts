@@ -23,6 +23,7 @@ export { fetchBadges } from './badges-api';
 export {
   fetchDoel,
   fetchDoelen,
+  fetchDoelnamen,
   maakDoel,
   PER_PAGINA,
   rondDoelAf,
@@ -32,6 +33,7 @@ export {
   type Afronding,
   type Doel,
   type DoelMetVoortgang,
+  type Doelnaam,
   type Pagina,
   type Resultaat,
 } from './api';
@@ -127,6 +129,7 @@ export { verwijderDoel } from './api';
 export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
+export { doelIdsInBeeld } from './doelen-in-beeld';
 
 export { fetchRisico, fetchRisicos, type Risico } from './risico';
 

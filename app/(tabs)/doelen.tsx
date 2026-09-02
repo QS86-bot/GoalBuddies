@@ -45,12 +45,33 @@ export default function Doelen() {
 
   const [risicos, setRisicos] = useState<ReadonlyMap<string, Risico>>(new Map());
 
+  /**
+   * ⚠️ **De volgende pagina was er niet, en de tekst beloofde hem wel** —
+   *    QS8-226. Onderaan stond *"Meer laden komt zodra er meer dan twintig
+   *    zijn"*: een aantekening voor de bouwer, zichtbaar voor de gebruiker.
+   *    Bij eenentwintig doelen was het eenentwintigste nergens te bereiken —
+   *    "meerdere doelen kunnen wel, maar de app laat dat niet zien", precies de
+   *    titel van dit issue.
+   *
+   * ⚠️ De opgehaalde pagina's stapelen in `rijen`; `pagina` is alleen de
+   *    laatst opgehaalde. Zo blijft `fetchDoelen()` gepagineerd (regel 10) en
+   *    ziet de gebruiker toch zijn hele lijst.
+   */
+  const [paginaNr, setPaginaNr] = useState(0);
+  const [eerdere, setEerdere] = useState<readonly DoelMetVoortgang[]>([]);
+
   const {
     data: pagina,
     loading,
     error,
     herlaad,
-  } = useAsync(userId ? () => fetchDoelen(userId) : null, [userId]);
+  } = useAsync(
+    userId ? () => fetchDoelen(userId, { pagina: paginaNr }) : null,
+    [userId, paginaNr],
+  );
+
+  const rijen = [...eerdere, ...(pagina?.rijen ?? [])];
+  const meer = pagina?.meer ?? false;
 
   // De risicostanden in één verzoek voor de hele pagina — niet één per doel
   // (regel 12). Faalt apart: een lijst zonder standen is bruikbaar, een lijst
@@ -58,8 +79,14 @@ export default function Doelen() {
   //
   // ⚠️ Alleen van jezelf. `goal_risk` is eigenaar-only sinds migratie 0050, dus
   //    dit levert per definitie niets op voor het doel van een ander.
+  // ⚠️ **Een string en geen array als afhankelijkheid.** `rijen` is elke render
+  //    een verse array, dus als dependency waardeloos — en met `setRisicos()`
+  //    erin een oneindige laadlus. Dezelfde val die bevinding QS8-75 op het
+  //    hoofdscherm opleverde; dat scherm doet het met `gehaaldeDoelen` net zo.
+  const doelIds = rijen.map((d) => d.id).join(',');
+
   useEffect(() => {
-    const ids = pagina?.rijen.map((d) => d.id) ?? [];
+    const ids = doelIds === '' ? [] : doelIds.split(',');
     if (ids.length === 0) return;
     let levend = true;
 
@@ -74,26 +101,37 @@ export default function Doelen() {
     return () => {
       levend = false;
     };
-  }, [pagina]);
+  }, [doelIds]);
 
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
 
   return (
     <Screen title={t('doelen.titel')}>
+      {/*
+        ⚠️ **Boven de lijst en niet eronder** — QS8-226, punt 2. Hij stond
+           onderaan, ónder de paginering: bij drie doelen moest je ervoor
+           scrollen, en juist wie er één heeft, moet zien dat er een tweede bij
+           kan. Buiten `AsyncView`, zodat hij er ook staat terwijl de lijst nog
+           laadt of stukliep.
+      */}
+      <Button variant="primair" block onPress={() => router.push('/doel/nieuw')}>
+        {t('doelen.nieuw')}
+      </Button>
+
       <AsyncView
         loading={loading}
         error={error}
         data={pagina}
-        isEmpty={(p) => p.rijen.length === 0}
+        isEmpty={() => rijen.length === 0}
         onRetry={herlaad}
         empty={{
           title: t('doelen.leeg_titel'),
           body: t('doelen.leeg_tekst'),
         }}
       >
-        {(p) => (
+        {() => (
           <View style={styles.lijst}>
-            {p.rijen.map((doel) => (
+            {rijen.map((doel) => (
               <DoelKaart
                 key={doel.id}
                 doel={doel}
@@ -103,18 +141,26 @@ export default function Doelen() {
               />
             ))}
 
-            {p.meer ? (
-              <Caption>
-                {t('doelen.van_totaal', { aantal: p.rijen.length, totaal: p.totaal })}
-              </Caption>
+            {meer ? (
+              <>
+                <Caption>
+                  {t('doelen.van_totaal', { aantal: rijen.length, totaal: pagina?.totaal ?? 0 })}
+                </Caption>
+                <Button
+                  variant="secundair"
+                  block
+                  onPress={() => {
+                    setEerdere(rijen);
+                    setPaginaNr((n) => n + 1);
+                  }}
+                >
+                  {t('doelen.meer_laden')}
+                </Button>
+              </>
             ) : null}
           </View>
         )}
       </AsyncView>
-
-      <Button variant="primair" block onPress={() => router.push('/doel/nieuw')}>
-        {t('doelen.nieuw')}
-      </Button>
     </Screen>
   );
 }
