@@ -28,11 +28,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
-   ✅ **Productie is op 02-09 bijgetrokken tot `0146`** — `0139` t/m `0146` zijn
-   die dag toegepast en nagemeten tegen een lokale opbouw uit dezelfde bestanden.
-   Zeven catalogi vergeleken, alle zeven gelijk. ⚠️ **`0147` t/m `0149` zijn
-   daarna geland en staan er niet op**, en morgen is dat getal weer anders —
-   vraag het aan de database en niet aan deze regel. Zie §2.
+   ✅ **Op 02-09 is productie bijgetrokken, in twee rondes: `0139` t/m `0146` en
+   daarna `0147` t/m `0149`.** Allebei toegepast met `execute_sql` en nagemeten
+   tegen een lokale opbouw uit dezelfde bestanden — zeven catalogi per ronde.
+   ⚠️ **Er staat hier met opzet geen getal:** dat verschoof die dag drie keer,
+   en de map loopt vooruit zodra er een PR landt. Vraag het aan de database en
+   niet aan deze regel. Zie §2.
    ⚠️ **Wat er dan nóg openstaat vraagt Quintens machine:** drie Edge Functions
    deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
    in het dashboard. Migraties alleen zijn de feature niet.
@@ -128,11 +129,17 @@ geen dubbele versies. `0139` t/m `0146` zijn die dag toegepast, in volgorde, met
 `execute_sql` en een handmatige rij in het register — want `apply_migration`
 deelt een tijdstempel uit en dat breekt de `0001`-vorm.
 
-⚠️ **`0147` t/m `0149` zijn ná die meting geland en staan er dus níet op** (QS8-186,
-QS8-262 en QS8-264). Dat is geen fout maar de normale gang: de map loopt vooruit
-zodra er een PR landt. **Noem daarom nooit "de map en productie lopen gelijk" als
-stand — vraag het aan de database.** Dit blok zei dat een uur lang, en het was
-achterhaald voordat de PR die het schreef geland was.
+✅ **`0147` t/m `0149` zijn er later diezelfde dag achteraan gegaan** (QS8-186,
+QS8-262 en QS8-264). Het register stond bij die meting op **152 rijen tot `0149`**.
+Zelfde werkwijze, en opnieuw zeven catalogi nagemeten: zes byte-voor-byte gelijk,
+en de acht functies uit die drie migraties komen **ruw** overeen — commentaar en
+al. Genormaliseerd over alle 168 functies is de sómhash aan beide kanten
+`0cba586b0747e69cc2c305912bac7d36`.
+
+⚠️ **En schrijf hier geen getal op als stand.** Dit blok zei een uur lang "de map
+en productie lopen gelijk", en dat was achterhaald voordat de PR die het schreef
+geland was. Drie keer op één dag verschoof het getal. De map loopt per definitie
+vooruit zodra er een PR landt: **vraag het aan de database, niet aan deze regel.**
 
 ⚠️ **Er is die dag géén `pg_dump` gemaakt en dat is een afwijking van de regel.**
 De cloudcontainer heeft geen `SUPABASE_DB_URL` en geen databasewachtwoord, dus
