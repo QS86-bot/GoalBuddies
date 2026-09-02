@@ -124,11 +124,23 @@ begin
   -- QS8-231: ontdekbaarheid is een toestemming en geen instelling.
   new.ontdekbaar       := old.ontdekbaar;
 
-  -- ⚠️ De grendel van 0060, en niet de kale regel die hier stond. `created_by`
-  --    heeft `on delete set null`: leeglopen moet erdoor, alles anders niet.
-  if old.created_by is null or new.created_by is not null then
-    new.created_by := old.created_by;
-  end if;
+  -- ⚠️⚠️ **De tak van 0060 is hier weg, en dat is gemeten en niet bedacht.**
+  --    Daar stond `if old.created_by is null or new.created_by is not null`, om
+  --    de overgang *van een oprichter naar geen oprichter* door te laten — de
+  --    `on delete set null` die 0033 en 0060 beschrijven.
+  --
+  --    Die reden is achterhaald door de reparatie hierboven. Deze regel wordt
+  --    **alleen nog bereikt door een client**: elke andere schrijver, de
+  --    referentiële actie inbegrepen, komt niet voorbij de vroege uitgang. Dat
+  --    is nagemeten — bij `delete from auth.users` draait de RI-actie met
+  --    `current_user = postgres`.
+  --
+  --    De tak liet daarmee precies één ding door dat niemand wil: een
+  --    beheerder-client die het oprichterschap van zijn eigen groep leegtrekt.
+  --    Gemeten met een tijdelijk `grant update (created_by)`: **NULL**, de pin
+  --    hield hem niet tegen. Met deze regel onvoorwaardelijk blijft de oprichter
+  --    staan, én loopt het verwijderen van een account nog gewoon door.
+  new.created_by := old.created_by;
 
   return new;
 end;

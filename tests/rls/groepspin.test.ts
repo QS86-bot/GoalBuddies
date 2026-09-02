@@ -65,13 +65,18 @@ function stackBeschikbaar(): boolean {
 
 const beschikbaar = stackBeschikbaar();
 
+/** Een vaste eigenaar-id, zodat `created_by` exact te asserteren is. */
+const EIGENAAR = '00000000-0000-4000-8000-000000000264';
+
 /**
- * De kolommen die `guard_group_update()` vastpint, met een waarde die er
- * aantoonbaar ánders uitziet dan wat de opstelling erin zet.
+ * Elke kolom die `guard_group_update()` vastpint, met een waarde die er
+ * aantoonbaar anders uitziet dan wat de opstelling erin zet.
  *
- * ⚠️ `id`, `created_at` en `created_by` staan er niet bij: die drie hebben een
- *    eigen tak in de trigger (`created_by` mag naar `null` lopen wegens
- *    `on delete set null`, zie 0060/0086) en horen bij een andere belofte.
+ * ⚠️ **Alle negen, en niet vijf.** De eerste versie van dit bestand beloofde in
+ *    zijn kop negen kolommen en toetste er vijf; `last_activity_at` viel tussen
+ *    de lijst en de uitzonderingsnotitie door en werd door niets bewaakt.
+ *    `id` en `created_at` staan er niet bij omdat een client ze niet kán
+ *    aanwijzen zonder de rij kwijt te raken — die twee zijn de sleutel zelf.
  */
 const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[] = [
   { kolom: 'status', nieuw: "'sleeping'", hoortTeBlijven: 'active' },
@@ -79,43 +84,68 @@ const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[
   { kolom: 'zichtbaarheid', nieuw: "'open'", hoortTeBlijven: 'beschermd' },
   { kolom: 'invite_code', nieuw: "'GEKAAPT1'", hoortTeBlijven: 'PINCODE1' },
   { kolom: 'invite_revoked', nieuw: 'true', hoortTeBlijven: 'false' },
+  { kolom: 'last_activity_at', nieuw: 'now()', hoortTeBlijven: '2020-01-01' },
+  // ⚠️ De tak van 0060 liet `not-null → null` door, en dat is precies wat een
+  //    beheerder wil om zijn eigen oprichterschap te wissen. Sinds 0149 pint de
+  //    regel onvoorwaardelijk; het verwijderen van een account loopt niet langs
+  //    deze tak (gemeten: de RI-actie draait als `postgres`).
+  { kolom: 'created_by', nieuw: 'null', hoortTeBlijven: EIGENAAR },
 ];
 
 /**
  * Bouwt een groep, geeft `authenticated` tijdelijk het kolomrecht, laat hem de
- * update doen en geeft terug wat er daarna in de kolom staat. Rolt alles terug.
+ * update doen en geeft `<aantal geraakte rijen>|<waarde na afloop>` terug.
+ * Rolt alles terug.
+ *
+ * ⚠️⚠️ **Het aantal geraakte rijen staat er sinds de security-review bij, en
+ *    zonder dat getal bewaakte deze suite de verkeerde grendel.** `groups_update`
+ *    heeft `using is_group_admin(id)`. Raakt de UPDATE nul rijen — omdat de
+ *    gebruiker geen beheerder is, of omdat die policy ooit verandert — dan komt
+ *    er geen fout, blijft de kolom op zijn oude waarde staan en is de test
+ *    groen, óók met de pin volledig kapot. Gemeten: dezelfde opstelling met
+ *    `role = 'member'` en `security definer` teruggezet gaf `active`, dus groen.
+ *
+ *    **Dat is exact de fout die deze commit in `ontdekken.test.ts` aanwijst**,
+ *    één niveau dieper: twee sloten in één assertie. Nu moet de rij geraakt zijn
+ *    én de waarde ongewijzigd, en dat kan alleen de pin.
  */
-function naClientUpdate(kolom: string, nieuw: string): string {
-  return psql(`
+function naClientUpdate(kolom: string, nieuw: string): { geraakt: number; waarde: string } {
+  const uit = psql(`
     begin;
-    create temp table t as select gen_random_uuid() eig, gen_random_uuid() grp;
+    create temp table t as select '${EIGENAAR}'::uuid eig, gen_random_uuid() grp;
     grant select on t to authenticated;
     insert into auth.users (id, email) select eig, 'pin@x.nl' from t;
-    -- Let op: categorie staat er meteen in, want
-    -- groups_ontdekbaar_heeft_categorie weigert een ontdekbare groep zonder
-    -- categorie. Zonder die waarde wordt de test rood op een CHECK in plaats
-    -- van op de pin.
-    insert into groups (id, name, created_by, status, invite_code, categorie)
-      select grp, 'Pin', eig, 'active', 'PINCODE1', 'other' from t;
+    -- categorie staat er meteen in, want groups_ontdekbaar_heeft_categorie
+    -- weigert een ontdekbare groep zonder categorie. Zonder die waarde wordt de
+    -- test rood op een CHECK in plaats van op de pin.
+    insert into groups (id, name, created_by, status, invite_code, categorie, last_activity_at)
+      select grp, 'Pin', eig, 'active', 'PINCODE1', 'other', '2020-01-01' from t;
     insert into group_members (group_id, user_id, role, status)
       select grp, eig, 'admin', 'active' from t;
 
-    -- ⚠️ Het recht dat hij vandaag niet heeft. Zonder deze regel toetst de test
-    --    de grant en niet de pin.
+    -- Het recht dat hij vandaag niet heeft. Zonder deze regel toetst de test de
+    -- grant en niet de pin.
     grant update (${kolom}) on groups to authenticated;
 
     select set_config('request.jwt.claims',
       json_build_object('sub', eig, 'role', 'authenticated')::text, true) from t;
     set local role authenticated;
-    update groups set ${kolom} = ${nieuw} where id = (select grp from t);
+    with u as (
+      update groups set ${kolom} = ${nieuw} where id = (select grp from t) returning 1
+    )
+    select set_config('pin.geraakt', (select count(*)::text from u), true);
     reset role;
 
-    select ${kolom}::text from groups where id = (select grp from t);
+    select current_setting('pin.geraakt') || '|' || coalesce(${kolom}::text, 'NULL')
+      from groups where id = (select grp from t);
     rollback;
   `)
     .split('\n')
     .filter((r) => r.trim() !== '')
     .at(-1) as string;
+
+  const [geraakt, waarde] = uit.split('|');
+  return { geraakt: Number(geraakt), waarde: waarde as string };
 }
 
 describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
@@ -123,11 +153,24 @@ describe.skipIf(!beschikbaar)('de pin op groups houdt een client tegen', () => {
     it(
       `${kolom} is niet door een client te wijzigen, ook niet mét het kolomrecht`,
       () => {
+        const { geraakt, waarde } = naClientUpdate(kolom, nieuw);
+
+        // ⚠️ Eerst: raakte de UPDATE überhaupt een rij? Zonder deze regel kan
+        //    `groups_update` de test groen houden terwijl de pin kapot is.
         expect(
-          naClientUpdate(kolom, nieuw),
+          geraakt,
+          `${kolom}: de UPDATE raakte geen enkele rij, dus deze test bewijst ` +
+            'niets over de pin — hij bewijst dat `groups_update` filterde',
+        ).toBe(1);
+
+        // ⚠️ `startsWith` en niet `toBe`, want `last_activity_at` komt terug als
+        //    volledige tijdstempel terwijl alleen de dátum ertoe doet. Voor de
+        //    andere zes is de verwachte waarde de hele waarde.
+        expect(
+          waarde.startsWith(hoortTeBlijven),
           `${kolom}: de trigger hoort dit terug te draaien — met alleen de ` +
-            'kolomgrant als slot is dit één grendel en geen twee',
-        ).toBe(hoortTeBlijven);
+            `kolomgrant als slot is dit één grendel en geen twee. Kreeg: ${waarde}`,
+        ).toBe(true);
       },
       30_000,
     );
