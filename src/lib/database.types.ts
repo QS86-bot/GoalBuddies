@@ -2414,6 +2414,14 @@ export type Database = {
       }
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
+      alleenlezen_bewaking: {
+        Args: never
+        Returns: {
+          helft: string
+          opdracht: string
+          tabel: string
+        }[]
+      }
       archiveer_groep: {
         Args: { p_bevestigd?: boolean; p_group_id: string }
         Returns: Json

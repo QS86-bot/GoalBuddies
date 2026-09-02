@@ -182,6 +182,11 @@ export const BEWAAKT_BUITEN_DE_APP = {
     '(0101, generiek sinds 0118).',
   domeinregel3_bewaking:
     'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+  alleenlezen_bewaking:
+    'Welke policyhelften letterlijk `false` zijn terwijl `authenticated` het ' +
+    'recht wél heeft (0148). Aanroeper is `tests/rls/alleenlezen.test.ts`, dat ' +
+    'zijn fixtures ernaast legt en rood wordt zodra de twee uiteenlopen — in ' +
+    'béide richtingen.',
   migratieregister:
     'Het register van het échte project, voor `register:controle`.',
   triggerfuncties_in_de_api:
