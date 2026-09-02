@@ -7,9 +7,9 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 31-08-2026 (na QS8-215, QS8-144, QS8-173 en QS8-178 —
-de vier besluiten uit de doorloop van 30-08 die om een antwoord van Quinten
-vroegen; daarvóór QS8-195 en QS8-211)
+**Laatst bijgewerkt:** 02-09-2026 (na QS8-231, QS8-232 en QS8-260, en na het
+toepassen van `0139` t/m `0146` op productie; daarvóór QS8-215, QS8-144,
+QS8-173 en QS8-178)
 
 ---
 
@@ -28,6 +28,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
+   ✅ **Productie staat sinds 02-09 op `0146`** — `0139` t/m `0146` zijn die dag
+   toegepast en nagemeten tegen een lokale opbouw uit dezelfde bestanden. Zeven
+   catalogi vergeleken, alle zeven gelijk. Zie §2.
+   ⚠️ **Wat er dan nóg openstaat vraagt Quintens machine:** drie Edge Functions
+   deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
+   in het dashboard. Migraties alleen zijn de feature niet.
 3. ✅ **Het migratieregister kent nog één nummering** en de map bouwt het schema
    aantoonbaar op. **QS8-122 is af** en QS8-119 is daarmee vrij. De bestanden
    spelen op een lege database precies het schema van productie af — negen
@@ -40,10 +46,14 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **605 geslaagd, 1 overgeslagen** (31-08, na QS8-211). De hele suite geeft met
-   de stack **2005 geslaagd en 1 overgeslagen**.
-   Typecheck, lint en alle 26 controlescripts groen; `npm run poort` meldt
-   30 stappen, allemaal groen en allemaal gemeten.
+   **744 geslaagd, 1 overgeslagen** (02-09). De hele suite geeft met de stack
+   **2695 geslaagd en 1 overgeslagen** over 193 bestanden.
+   Typecheck, lint en 26 van de 30 controlescripts groen.
+   ⚠️ **Vier controles meten niets in een cloudcontainer** — `adviseur`,
+   `functies`, `register` en `wachtwoord` vragen `SUPABASE_ACCESS_TOKEN` of
+   `SUPABASE_SERVICE_ROLE_KEY`, en die staan daar niet. De poort noemt dat
+   apart en faalt erop; **dat is geen groene poort.** Op Quintens machine hoort
+   hij wél dertig gemeten stappen te geven.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -109,10 +119,33 @@ De nummering is aaneengesloten.
 regel — twee keer met een verkeerd getal als uitkomst. Draai `npm run stand`;
 `stand:controle` wordt rood zodra het achterloopt en draait mee in de poort.
 
-✅ **De map en productie lopen weer gelijk, nagemeten op 28-08.** Het register
-telt 128 rijen van `0001` tot `0125`, gelijk aan de 128 bestanden, met nul
-tijdstempels en geen dubbele versies. `0119` t/m `0121` van de parallelle sessie
-zijn die dag alsnog toegepast, in die volgorde, en daarna is de
+✅ **De map en productie lopen gelijk, opnieuw nagemeten op 02-09.** Het register
+telt **149 rijen van `0001` tot `0146`**, gelijk aan de 149 bestanden, met nul
+tijdstempels en geen dubbele versies. `0139` t/m `0146` zijn die dag toegepast,
+in volgorde, met `execute_sql` en een handmatige rij in het register — want
+`apply_migration` deelt een tijdstempel uit en dat breekt de `0001`-vorm.
+
+⚠️ **Er is die dag géén `pg_dump` gemaakt en dat is een afwijking van de regel.**
+De cloudcontainer heeft geen `SUPABASE_DB_URL` en geen databasewachtwoord, dus
+`npm run db:dump` kán daar niet. Wat er wél ligt is een JSON-uitdraai van de 24
+rijen die er stonden, in een scratchpad die met de sessie verdwijnt. Voor déze
+acht migraties woog dat licht — het zijn nieuwe kolommen, nieuwe tabellen en
+nieuwe functies op een vrijwel lege database, geen enkele `drop` op gevulde data
+— maar het is een aanname en geen backup. **Een volgende ronde hoort van
+Quintens machine te komen, of de container krijgt een dump-pad.**
+
+✅ **Nagemeten in plaats van aangenomen: zeven catalogi vergeleken** tussen
+productie en een lokale database die uit dezelfde bestanden is opgebouwd.
+Kolommen, constraints, policies, indexen, grants en views komen byte-voor-byte
+overeen. Functies: 164 aan beide kanten (op de twee testshims na), en met
+commentaar en witruimte weggenormaliseerd is de sómhash gelijk —
+`31bec0e63aac4f1f812bda6cc3318908`. **Ruw** verschillen 38 functies, en dat is
+QS8-220: op productie zit het commentaar er in de oudere functies uit, omdat een
+eerdere sessie ze met een ingekorte body heeft toegepast. Alle 38 zijn van vóór
+`0139`; alles wat op 02-09 is toegepast, komt ruw óók al overeen.
+
+De ronde daarvóór was 28-08. `0119` t/m `0121` van de parallelle sessie
+zijn toen alsnog toegepast, in die volgorde, en daarna is de
 `chain_links_select` uit `0122` opnieuw afgespeeld — want `0120` schrijft diezelfde
 policy met een kale `auth.uid()`. Tussen die twee stappen stond
 `initplan_bewaking()` rood op precies één rij; dat is de bewaking die zijn werk
@@ -808,7 +841,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
 | Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
-| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — na het toepassen van 0120 t/m 0135 |
+| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie staat sinds 02-09 op `0146`, dus dit loopt achter op álles vanaf `0120` |
 
 ---
 

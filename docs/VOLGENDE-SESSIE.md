@@ -3,16 +3,18 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 01-09-2026. Vier PR's geland (#125, #128, #130, #131) en
-> een duplicaat opgeruimd. **Lees eerst de drie punten hieronder** — het derde
-> verandert wat je als volgende oppakt.
+> **Laatst bijgewerkt:** 02-09-2026. Acht PR's geland (#142 t/m #149) en de
+> migraties `0139` t/m `0146` op productie toegepast. **Lees eerst de drie punten
+> hieronder** — het derde verandert wat je als volgende oppakt.
 >
-> **3. De Todo-kolom is leeg voor een bouwsessie, en de backlog juist niet.** Elk
-> issue dat op Todo staat draagt `wacht-op-Quinten`: de migraties boven 0131
-> toepassen, de Edge Functions deployen, de webbundel, twee dashboardschakelaars,
-> de schermen doorlopen. **Daar kun je niets aan doen** — een bouwomgeving heeft
-> geen `SUPABASE_ACCESS_TOKEN` en geen service-role-key, dus zij kan de drift wel
-> méten maar niet opheffen en daarna niet controleren.
+> **3. De Todo-kolom is smaller dan hij lijkt, en de backlog juist niet.** Elk
+> issue dat op Todo staat draagt `wacht-op-Quinten`: de Edge Functions deployen,
+> de webbundel, twee dashboardschakelaars, de schermen doorlopen.
+> ⚠️ **De migraties stonden in dat rijtje en horen er niet meer in.** Op 02-09
+> bleek een bouwsessie ze wél te kunnen toepassen — niet met `psql` of
+> `npm run db:push`, maar via de Supabase-MCP, die onder een eigen token draait.
+> Zie punt 0 hieronder voor de werkwijze en de valkuilen. Wat overblijft vraagt
+> nog steeds Quintens machine, en dat is echt zo.
 >
 > ⚠️ **Trek daaruit níét de conclusie dat er niets te bouwen is.** Dat is precies
 > de fout die dit document op 30-08 al eens maakte ("de voorraad is leeg, begin in
@@ -1185,20 +1187,38 @@ groene poort:
    controle die nooit rood is geweest.
 
 ⚠️ **Wat je níét kunt doen, en dat is de hele Todo-kolom.** Alles daar draagt
-`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**: de repo loopt vooruit op
-productie, en de drie Edge Functions dateren van 27-08.
+`wacht-op-Quinten`. Het zwaartepunt is **QS8-243**, en dat issue is op 02-09
+voor de helft afgewerkt: **de migraties zijn toegepast, de Edge Functions niet.**
 
-⚠️ **En dat getal noem je hier niet — deze regel heeft het op 01-09 zelf fout
+⚠️ **En het getal noem je hier niet — deze regel heeft het op 01-09 zelf fout
 gehad.** Hier stond "productie staat op 0131", overgeschreven uit QS8-243. Toen
-dat met `list_migrations` gemeten werd, stond productie op **0138**: 0132 t/m
+dat met `list_migrations` gemeten werd, stond productie op 0138: 0132 t/m
 0138 waren op 31-08 met psql toegepast, en dat stond alleen in QS8-251. Precies
 QS8-125, en precies de val die dit document twee alinea's verderop bij het
-migratiebereik beschrijft. **Vraag het aan de database, niet aan een document.** Dat issue draagt
-het volledige stappenplan inclusief de dump vooraf, de volgorde, `notify pgrst,
-'reload schema'`, het uitlijnen van het register en `npm run types:db`. **Doe daar
-niets aan uit eigen beweging** — een migratie toepassen zonder de controlestap
-erna is de helft van het werk, en die controlestap vraagt referenties die een
-bouwsessie niet heeft.
+migratiebereik beschrijft. **Vraag het aan de database, niet aan een document —
+ook niet aan deze zin.**
+
+⚠️ **De migraties bleken op 02-09 wél te kunnen, en dat corrigeert de aanname
+hierboven.** De Supabase-MCP draait onder een token dat deze container niet als
+env var heeft; `execute_sql` werkt dus waar `psql` en `npm run db:push` stuk
+lopen. Wat daarbij geleerd is:
+
+- **`apply_migration` niet gebruiken.** Die deelt een tijdstempel als versie uit
+  en breekt daarmee de `0001`-vorm van het register. Gebruik `execute_sql` en zet
+  de rij er zelf bij.
+- **De transactiewikkel eruit halen.** `execute_sql` draait zijn eigen
+  transactie; `begin`/`commit` in het bestand levert een fout op.
+- **Nameten kan zonder `functies:controle`.** Bouw de bestanden op een lokale
+  database op (`npm run rls:stack`) en vergelijk per catalogus een sómhash met
+  productie. Zeven catalogi, zeven vergelijkingen — dat is dezelfde belofte als
+  het controlescript, langs een weg die zonder service-role-key wél werkt.
+- ⚠️ **Wat er níét was, is een `pg_dump`.** Zie §2 van de werkvoorraad; het is
+  een afwijking van een regel uit `CLAUDE.md` en geen detail.
+
+**De andere helft van QS8-243 staat nog open** en vraagt echt Quintens machine:
+`npx supabase functions deploy doelcoach rollover notificaties`, en
+`password_min_length` in het dashboard. Een migratie zonder de functie die hem
+aanroept is een halve feature.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.
