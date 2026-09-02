@@ -81,6 +81,40 @@ geen tabbalk onder zich; valt de uitgang weg, dan is er niets.
 
 ---
 
+## 5. Nagekomen op 01-09: de ontwikkelserver hoorde erbij, en een 204 bewijst niets
+
+Twee dingen kwamen pas boven toen de reparatie live stond en er echt tegenaan
+gewerkt werd. Ze horen bij dit besluit, dus ze staan hier en niet in een eigen
+document.
+
+**De allowlist bevatte alleen het productieadres.** Dat maakte de Doelcoach
+onbereikbaar vanaf `npm run dev:web`, en dat is precies dezelfde klasse fout als
+QS8-195: de functie is er, hij werkt, en je kunt er niet bij — alleen viel deze
+niet op productie op maar op de plek waar je hem zou repareren.
+`isOntwikkelherkomst()` laat nu `localhost` en `127.0.0.1` toe op elke poort.
+
+Waarom dat mag: een pagina kan zijn eigen `Origin` niet kiezen, dus alleen iets
+dat écht op jouw machine draait krijgt die kop, en de functie eist nog steeds een
+geldig JWT. CORS is hier geen authenticatie maar een beperking op wie het
+ántwoord mag lézen. Supabase' eigen voorbeelden gebruiken `*`; dit is strikt
+strenger.
+
+⚠️ **De toets kijkt naar de hostnaam en niet of de tekst `localhost` bevat.**
+Dat verschil is het hele slot: `https://localhost.kwaadaardig.example` bevat
+`localhost` en is van iemand anders. Er staat een test op die precies dat geval
+voedt, en de naïeve variant is met de hand gebroken om te zien dat hij rood wordt.
+
+**En de statuscode van een preflight bewijst niets.** `metCors` antwoordt altijd
+met 204, ook op een herkomst die niet op de lijst staat; alleen de kop is
+voorwaardelijk. Dat is correct CORS-gedrag — de browser blokkeert op de
+ontbrekende kop — maar het is een slecht debugsignaal, en op 31-08 is "de OPTIONS
+geeft 204" gelezen als bewijs dat de reparatie werkte. Dat kostte een avond.
+
+Het gedrag blijft zoals het is; wat verandert is dat het nu **vastligt** in
+`tests/beloftes/edge-cors.test.ts` ("de status bewijst niets") en dat
+`docs/DEPLOY.md` uitschrijft waar je wél naar kijkt. Wie de status ooit tóch wil
+laten variëren, ziet dan dat het een besluit was en geen slordigheid.
+
 ## Wat hierna nog met de hand moet
 
 De CORS-reparatie staat in de repo en niet op productie. Zolang
