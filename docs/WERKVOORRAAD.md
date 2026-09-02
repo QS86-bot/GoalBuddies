@@ -48,9 +48,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **787 geslaagd, 1 overgeslagen** (02-09, na QS8-186, QS8-262 ronde 1 en 2, en
-   QS8-264). De hele suite geeft met de stack **2738 geslaagd en 1 overgeslagen**
-   over 196 bestanden.
+   **802 geslaagd, 1 overgeslagen** (02-09, na QS8-186, QS8-262 en QS8-264). De
+   hele suite geeft met de stack **2753 geslaagd en 1 overgeslagen** over 197 bestanden.
    Typecheck, lint en alle 30 controlescripts groen; `npm run poort` meldt
    34 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
@@ -335,6 +334,39 @@ productie draaien.
 schema van productie. `npm run register:controle` bewaakt dat repo en project
 gelijk blijven lopen. Onderbouwing en de twee valkuilen die daarbij boven kwamen
 staan in `docs/decisions/004-migratieregister.md`.
+
+✅ **De grondwet is op 02-09 opgeschoond (PR #156).** `CLAUDE.md` ging van 13.348
+naar 10.187 tokens — een kwart eruit, en geen enkele regel. Wat eruit ging was de
+uitgeschreven geschiedenis: de zeven gevallen bij regel 18, de drie redenen waarom
+de security-reviewer nooit wacht, de meting van 109 migraties op idempotentie, het
+geval `seizoensrecap_cijfers()`, de vier botsende migratienummers, PR #1 en
+PR #100. Die 28 blokken staan **verbatim** in
+`docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md`.
+
+Dat is de eigen eigendomsregel op zichzelf toegepast: `CLAUDE.md` bezit de regels,
+dit document bezit de stand, en geen van beide bezit het verhaal.
+
+⚠️ **Waarom dit in de werkvoorraad staat en niet alleen in een beslisdocument:**
+het bestand wordt bij élke turn als cache-read betaald en bij élke subagent-start
+koud ingelezen, dus de omvang is een eigenschap van hoe dit project werkt. Drie
+dingen die daaruit volgen en die je merkt:
+
+- **Subagents lezen `CLAUDE.md` niet meer in** — ze krijgen de volledige
+  hiërarchie automatisch. De instructie stond bij backend-, frontend-engineer en
+  spec-planner en haalde hem een tweede keer binnen.
+- **Zeven ongebruikte MCP-servers zijn geblokkeerd** in `.claude/settings.json`
+  (Gmail, Agenda, Drive, Plaud, Zoom, n8n, Firecrawl): 269 tool-namen werden er
+  162. `github`, `Linear` en `Supabase` blijven.
+- **De gstack-sectie is weg.** Die beloofde 38 skills waarvan er geen één
+  geïnstalleerd was.
+
+⚠️ **Eén tegenspraak kwam daarbij boven en is rechtgezet:** `/verder` voerde een
+architectuurkeuze op als stopvoorwaarde en citeerde de lijst *"Wat je NOOIT doet
+zonder te vragen"*, een sectie die `CLAUDE.md` op 22-08 heeft vervangen door
+Beslisbevoegdheid. Het commando stuurde dus aan op stoppen waar de grondwet zegt
+doorbouwen. **Gevolg om te weten:** "een migratie op iets anders dan lokaal
+draaien" is daarmee geen stopvoorwaarde meer — conform de grondwet, maar het
+vergroot de bewegingsruimte. Staat als Laag-rij in `docs/ENGINEER-REVIEW.md`.
 
 ### 2a. Wat er van de verdwaalde branch geleerd is — 24-08-2026
 
