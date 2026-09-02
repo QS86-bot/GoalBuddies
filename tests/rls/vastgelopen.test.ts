@@ -185,15 +185,39 @@ async function draaiTermijn(termijn = 7): Promise<number> {
   return data as unknown as number;
 }
 
-/** Hoeveel buddy's deze voltooiing daadwerkelijk hebben goedgekeurd. */
+/**
+ * Hoeveel buddy's deze voltooiing daadwerkelijk hebben goedgekeurd.
+ *
+ * ⚠️ **`status = 'approved'` én zonder intrekking, want anders telt deze helper
+ *    iets anders dan zijn eigen naam.** Hij telde élke rij in
+ *    `completion_approvals`, dus ook een `more_info` en een ingetrokken
+ *    goedkeuring — terwijl `goedkeuringsdrempel_gehaald()` in de database
+ *    allebei uitsluit. Vandaag alleen gebruikt in `toBe(0)`, waar dat
+ *    conservatief uitpakt; de eerste `toBe(1)` die iemand schrijft om te
+ *    bewijzen dát er goedgekeurd is, zou groen worden van een vraag om
+ *    toelichting.
+ */
 async function goedkeuringen(completionId: string): Promise<number> {
-  const { count, error } = await adminDb()
-    .from('completion_approvals')
-    .select('id', { count: 'exact', head: true })
-    .eq('completion_id', completionId);
-  if (error) throw new Error(`goedkeuringen: ${error.message}`);
+  const admin = adminDb();
 
-  return count ?? 0;
+  const stemmen = await admin
+    .from('completion_approvals')
+    .select('id')
+    .eq('completion_id', completionId)
+    .eq('status', 'approved');
+  if (stemmen.error) throw new Error(`goedkeuringen: ${stemmen.error.message}`);
+
+  const ids = (stemmen.data ?? []).map((r) => r.id);
+  if (ids.length === 0) return 0;
+
+  const ingetrokken = await admin
+    .from('approval_withdrawals')
+    .select('approval_id')
+    .in('approval_id', ids);
+  if (ingetrokken.error) throw new Error(`goedkeuringen: ${ingetrokken.error.message}`);
+
+  const weg = new Set((ingetrokken.data ?? []).map((r) => r.approval_id));
+  return ids.filter((id) => !weg.has(id)).length;
 }
 
 /** De status van het weekdoel achter een voltooiing. */
@@ -273,9 +297,12 @@ async function bouwOpstelling(label: string, metVoltooiing = true): Promise<Opst
     .insert({ goal_id: doel.data.id, group_id: groepData.group.id });
   if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
 
-  // ⚠️ Via de beheerdersclient: `authenticated` heeft geen insert-recht op
-  //    `weekly_goals` — die lopen in de app via een RPC. Dat is opstelling en
-  //    niet wat hier getoetst wordt.
+  // ⚠️ Via de beheerdersclient, en de réden stond hier fout tot 02-09.
+  //    `authenticated` heeft wél degelijk een INSERT-recht op `weekly_goals` —
+  //    twaalf kolommen en een `weekly_goals_insert`-policy. Wat hij niet mag is
+  //    `points_miss`, en die zet deze opstelling. Gemeten; de oude tekst
+  //    ("geen insert-recht, loopt via een RPC") was onwaar en zou een lezer
+  //    laten denken dat deze fixture een slot omzeilt dat er niet is.
   const weekdoel = await admin
     .from('weekly_goals')
     .insert({
