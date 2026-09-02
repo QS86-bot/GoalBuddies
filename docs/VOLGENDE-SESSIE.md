@@ -55,8 +55,9 @@
 > `weekly_plan_steps` en `goal_interviews` staan nog open. Zie de comment op dat
 > issue voor wat er precies over is.
 >
-> **02-09, punt C: de tokenaudit is geland (PR #156).** `CLAUDE.md` is een kwart
-> korter zonder dat er één regel uit is: de uitgeschreven geschiedenis staat nu in
+> **02-09, punt C: de tokenaudit is geland — QS8-265, PR #156 en #158.**
+> `CLAUDE.md` is een kwart korter zonder dat er één regel uit is: de uitgeschreven
+> geschiedenis staat nu in
 > `docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md`. Wat er verder
 > veranderde aan hoe hier gewerkt wordt — subagents, MCP-servers, `/verder` —
 > staat in `docs/WERKVOORRAAD.md` §2.
@@ -399,7 +400,7 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
 - **⚠️ Een getal in een rapport leest als gemeten, ook als het geraden is —
-  02-09.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
+  02-09, QS8-265.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
   `npm run poort` *"alle output ongefilterd in de context dumpt"*, en beval een
   PreToolUse-hook aan om dat af te remmen. Er was toen geen enkele meting onder;
   de redenering was "34 controles, dus veel uitvoer". Plausibel, en fout:

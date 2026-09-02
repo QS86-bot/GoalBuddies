@@ -342,7 +342,7 @@ schema van productie. `npm run register:controle` bewaakt dat repo en project
 gelijk blijven lopen. Onderbouwing en de twee valkuilen die daarbij boven kwamen
 staan in `docs/decisions/004-migratieregister.md`.
 
-✅ **De grondwet is op 02-09 opgeschoond (PR #156).** `CLAUDE.md` ging van 13.348
+✅ **De grondwet is op 02-09 opgeschoond — QS8-265, PR #156 en #158.** `CLAUDE.md` ging van 13.348
 naar 10.187 tokens — een kwart eruit, en geen enkele regel. Wat eruit ging was de
 uitgeschreven geschiedenis: de zeven gevallen bij regel 18, de drie redenen waarom
 de security-reviewer nooit wacht, de meting van 109 migraties op idempotentie, het
