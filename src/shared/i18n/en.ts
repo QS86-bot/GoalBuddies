@@ -315,7 +315,7 @@ export const en: Record<Sleutel, string> = {
   'beheer.huddledag_uitleg': 'Changing this does not break a running chain: a link carries the week it was made in, and that is never recalculated.',
   'beheer.bewijs_label': 'How much proof does this group ask for?',
   'beheer.bewijs_hint': 'A thumbs up on a claim is a formality. One sentence costs ten seconds and gives your buddy something to respond to — that is what gets the conversation going.',
-  'beheer.bijlagen_nog_niet': 'Attachments are not possible yet: there is no storage. If you pick that setting, only the note applies for now. Changing it does not affect existing completions.',
+  'beheer.bewijs_wijzigen': 'Changing this does not affect existing completions.',
   'beheer.opslaan': 'Save',
   'beheer.link_titel': 'Invite link',
   'beheer.link_uitleg': 'Whoever opens this link sees the group and how many people are in it — even without an account. What you share in goals is only visible after joining. Still, only share the link with people you want in.',

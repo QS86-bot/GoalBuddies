@@ -398,10 +398,18 @@ export default function GroepBeheer() {
                 <Caption>{t('beheer.huddledag_uitleg')}</Caption>
 
                 {/*
-                  ⚠️ De bijlage-optie staat er wel en doet nog niets: er is geen
-                     Storage-bucket (Q-TODO A12), dus die eis zou onhaalbaar zijn.
-                     Tot die tijd gedraagt hij zich als "notitie verplicht", en dat
-                     staat eronder in plaats van dat de knop stilletjes liegt.
+                  ⚠️ **De bijlage-optie is er met 0150 uit, en het bijschrift
+                     eronder ging mee** — QS8-261. Daar stond: *"Bijlagen kunnen
+                     nog niet ... Kies je die stand, dan geldt voorlopig alleen de
+                     notitie."* Dat legde een keuze uit die niet meer bestaat.
+
+                  ⚠️ **En geen enkele controle zag dat.** `catalogus:controle`
+                     zoekt sleutels die nérgens getoond worden; deze wérd getoond,
+                     alleen naast iets dat weg was. Een tekst kan dus verlopen
+                     zonder dat er iets rood wordt — dat is de vorm van regel 18
+                     vraag 3, en de reden dat dit hier met zoveel woorden staat.
+
+                  De lijst komt uit `BEWIJSEISEN`, dus de opties volgen vanzelf.
                 */}
                 <Choice
                   label={t('beheer.bewijs_label')}
@@ -410,7 +418,7 @@ export default function GroepBeheer() {
                   waarde={bewijseis}
                   onKies={setBewijseis}
                 />
-                <Caption>{t('beheer.bijlagen_nog_niet')}</Caption>
+                <Caption>{t('beheer.bewijs_wijzigen')}</Caption>
 
                 {/*
                   ⚠️ **Wél in dit formulier en niet in een eigen kaart met een
