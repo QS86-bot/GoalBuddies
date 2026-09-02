@@ -40,7 +40,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **765 geslaagd, 1 overgeslagen** (02-09, na QS8-186 en QS8-262 ronde 1). De
+   **773 geslaagd, 1 overgeslagen** (02-09, na QS8-186, QS8-262 ronde 1 en QS8-264). De
    hele suite geeft met de stack **2716 geslaagd en 1 overgeslagen**.
    Typecheck, lint en alle 30 controlescripts groen; `npm run poort` meldt
    34 stappen.
@@ -103,7 +103,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0148` staan in de map: **151 bestanden**,
+Migraties `0001` t/m `0149` staan in de map: **152 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
