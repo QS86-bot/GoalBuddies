@@ -200,10 +200,50 @@ de halve suite van 0109 om. Terecht: die functie is twéé dingen — het rappor
 élke route zichtbaar maakt (zodat route acht opvalt), én de werklijst van 0135.
 Onzichtbaar maken is geen reparatie maar een tweede probleem.
 
-De rij blijft dus staan, met een kolom `door_eigenaar` erbij, en
+De rij blijft dus staan, met een kolom `beurt_bij_eigenaar` erbij, en
 `keur_vastgelopen_goedkeuringen_goed()` slaat hem over. Die functie is verder
 woordelijk die van 0135 gebleven: er is één `continue` bijgekomen. Overtypen zou
 een tweede lijst maken die uiteenloopt — de fout van 0032/0034.
+
+### De derde correctie: een beurt is geen vastloper
+
+⚠️ **De kolom heette eerst `door_eigenaar`, en die naam was te smal.** De
+her-review van 02-09 vond twee routes waar de eigenaar níets deed en de
+auto-goedkeuring tóch afging, allebei gemeten: een buddy die om toelichting
+vroeg (`status = 'more_info'`), en een buddy die zijn goedkeuring introk.
+
+De oorzaak is één regel: `vastgelopen_goedkeuringen()` noemt een voltooiing
+vastgelopen zodra er geen actief lid meer is dat nog **niet** gestemd heeft.
+`completion_approvals_one_vote` staat één stem per beoordelaar toe en
+`trek_goedkeuring_in()` wist de rij niet — dus ná allebei die handelingen telt
+die buddy als "heeft gestemd" terwijl hij in werkelijkheid iets terúg heeft
+gevraagd. De rij viel door naar `geen_beoordelaar`, en na de termijn werd de week
+`approved` met twee punten en nul geldige goedkeuringen.
+
+**Dat is geen vastloper maar een beurt, en de beurt ligt bij de eigenaar**: de
+weg vooruit is `dien_opnieuw_in()`, en die functie is van hem. Automatisch
+goedkeuren beloont hier dus precies het stilzitten van degene die aan zet is.
+
+Daarom is de kolom hernoemd naar `beurt_bij_eigenaar` en dekt hij nu twee dingen
+die één ding zijn: *de eigenaar veroorzaakte het* én *de eigenaar is aan zet*.
+`reden` kreeg een vierde waarde, `wacht_op_indiener`, want `geen_beoordelaar`
+was in dit geval een onwaarheid — er zit wel degelijk een actieve beoordelaar in
+een actieve groep.
+
+### Wat deze migratie níet belooft
+
+⚠️ **De conditie is een afkoeling en geen slot, en dat hoort er met zoveel
+woorden te staan.** De belofte is: *geen handeling van de eigenaar levert bínnen
+zeven dagen een goedgekeurde week met punten op zonder goedkeuring van een
+buddy.* Wie ontkoppelt en daarna zeven dagen niets doet, valt terug op het gedrag
+van 0135 — en elke volgende week van dat doel keurt weer automatisch goed.
+
+Dat is het ontwerp: wie al een half jaar solo werkt, ís een solo-gebruiker, en
+dezelfde afkoeling rekent `zet_streefdatum()` sinds 0110. Maar het is óók de
+prijs van het verlaten van de peer-goedkeuring, en die prijs is zeven dagen.
+**Of dat te goedkoop is, is een productbeslissing en geen bug**; hij staat als
+open vraag in `docs/ENGINEER-REVIEW.md`. Een eerdere versie van deze tekst
+beloofde "geen énkele handeling", en dat was te veel gezegd.
 
 ### Wat 0135's eigen tests hierover zeiden
 

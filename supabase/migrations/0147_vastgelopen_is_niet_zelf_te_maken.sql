@@ -258,7 +258,7 @@ returns table (
   owner_id          uuid,
   cycle_start_date  date,
   reden             text,
-  door_eigenaar     boolean
+  beurt_bij_eigenaar boolean
 )
 language sql
 stable
@@ -278,6 +278,23 @@ as $$
         join groups gr on gr.id = l.group_id
         where l.goal_id = g.id and gr.status = 'active'
       ) then 'geen_actieve_groep'
+      -- ⚠️ **De vierde waarde, en die corrigeert een onwaarheid.** Vroeg een
+      --    buddy om toelichting, of trok hij zijn goedkeuring in, dan telt hij
+      --    hieronder als "heeft gestemd" en viel deze rij door naar
+      --    `geen_beoordelaar` — terwijl er een actieve beoordelaar in een
+      --    actieve groep zit die net iets terúg heeft gevraagd. Dat is geen
+      --    verloren beoordelaar maar een beurt.
+      when exists (
+        select 1
+        from completion_approvals a
+        where a.completion_id = c.id
+          and (
+            a.status = 'more_info'
+            or exists (
+              select 1 from approval_withdrawals x where x.completion_id = c.id
+            )
+          )
+      ) then 'wacht_op_indiener'
       else 'geen_beoordelaar'
     end,
     -- ⚠️ **Een kolom erbij en geen rij eruit, en dat is de correctie na de
@@ -289,9 +306,30 @@ as $$
     --    een tweede probleem. De rij blijft dus staan, met een vlag erbij, en
     --    `keur_vastgelopen_goedkeuringen_goed()` slaat hem over.
     (
-      g.beoordelaar_weggehaald_op is not null
-      and c.submitted_at is not null
-      and g.beoordelaar_weggehaald_op > c.submitted_at - interval '7 days'
+      (
+        g.beoordelaar_weggehaald_op is not null
+        and c.submitted_at is not null
+        and g.beoordelaar_weggehaald_op > c.submitted_at - interval '7 days'
+      )
+      -- ⚠️ **De tweede helft, en die dekt route 8 en 9.** `more_info` en een
+      --    ingetrokken goedkeuring laten de rij van de beoordelaar stáán, en
+      --    `completion_approvals_one_vote` staat één stem per beoordelaar toe.
+      --    Die buddy kán dus niet nog eens stemmen; de weg vooruit is
+      --    `dien_opnieuw_in()`, en dat is een handeling van de **eigenaar**.
+      --    Zonder deze helft keurt de termijn precies dát af waar de eigenaar
+      --    zelf niets mee deed — gemeten, allebei: week `approved`, punten
+      --    geboekt, nul geldige goedkeuringen.
+      or exists (
+        select 1
+        from completion_approvals a
+        where a.completion_id = c.id
+          and (
+            a.status = 'more_info'
+            or exists (
+              select 1 from approval_withdrawals x where x.completion_id = c.id
+            )
+          )
+      )
     )
   from completions  c
   join weekly_goals w on w.id = c.weekly_goal_id
@@ -320,9 +358,21 @@ as $$
 $$;
 
 -- ⚠️ **En hier wordt de vlag pas een slot.** `vastgelopen_goedkeuringen()` blíjft
---    melden; deze functie handelt alleen niet af wat de eigenaar zelf heeft
---    gemaakt. Zo houdt 0109 zijn zichtbaarheid en 0135 zijn belofte, zonder dat
+--    melden; deze functie handelt alleen niet af wat aan de eigenaar zelf ligt.
+--    Zo houdt 0109 zijn zichtbaarheid en 0135 zijn belofte, zonder dat
 --    domeinregel 3 een formaliteit wordt.
+--
+-- ⚠️ **Wat deze migratie wél en níet belooft — en dat verschil is met opzet
+--    opgeschreven, want de eerste versie van deze kop beloofde te veel.** De
+--    belofte is: *geen handeling van de eigenaar levert bínnen zeven dagen een
+--    goedgekeurde week met punten op zonder goedkeuring van een buddy.* De
+--    conditie is een **afkoeling en geen slot**: wie zijn doel ontkoppelt en
+--    daarna zeven dagen niets doet, valt terug op het gedrag van 0135 en elke
+--    volgende week keurt weer automatisch goed. Dat is het bewuste ontwerp uit
+--    sectie 3 — wie al een half jaar solo werkt, ís een solo-gebruiker — maar
+--    het is óók de prijs van het verlaten van de peer-goedkeuring, en die prijs
+--    is zeven dagen. **Is dat te goedkoop, dan is dat een productbeslissing en
+--    geen bug**; hij staat als vraag in `docs/ENGINEER-REVIEW.md`.
 
 create or replace function public.keur_vastgelopen_goedkeuringen_goed(p_termijn_dagen integer DEFAULT 7)
  RETURNS integer
@@ -352,7 +402,7 @@ begin
     --    maken die uiteenloopt (0032/0034). Wat de eigenaar zelf heeft gemaakt,
     --    wordt wél gemeld door `vastgelopen_goedkeuringen()` maar hier niet
     --    afgehandeld.
-    continue when v_rij.door_eigenaar;
+    continue when v_rij.beurt_bij_eigenaar;
 
     select * into v_voltooid from completions where id = v_rij.completion_id;
 

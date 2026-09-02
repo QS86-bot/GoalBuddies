@@ -68,7 +68,7 @@ export interface DoelMetVoortgang {
   readonly weekly_total: number;
   readonly weekly_approved: number;
   /**
-   * Het ritme van dit doel — besluit A53, migratie 0140, in de view sinds 0147.
+   * Het ritme van dit doel — besluit A53, migratie 0140, in de view sinds 0146.
    *
    * ⚠️ **Een voorkeur en geen oordeel.** Hij stuurt de beginstand van het
    *    weekdoelformulier; wat een week wáárd is, staat in

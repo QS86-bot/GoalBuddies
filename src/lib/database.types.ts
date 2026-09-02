@@ -2843,6 +2843,7 @@ export type Database = {
       vastgelopen_goedkeuringen: {
         Args: never
         Returns: {
+          beurt_bij_eigenaar: boolean
           completion_id: string
           cycle_start_date: string
           goal_id: string
