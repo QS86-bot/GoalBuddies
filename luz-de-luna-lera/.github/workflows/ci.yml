@@ -1,0 +1,43 @@
+name: CI
+
+# Solo-fase: "Tests zijn de enige review die bestaat." Zolang er geen tweede paar
+# ogen is, is dit die ogen. De poort draait hier precies zoals lokaal.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  poort:
+    name: poort (typecheck · lint · test · controles)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # ⚠️ Volledige geschiedenis: `migraties:controle` kijkt naar wat andere
+          #    branches aan migraties dragen. Met een ondiepe checkout ziet hij niets
+          #    en zwijgt hij — dat is geen groen, dat is ongemeten.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` en niet `npm install`: de lockfile is de waarheid.
+      - run: npm ci
+
+      # ⚠️ Eén stap en niet een greep eruit. Geleerd in GoalBuddies: een PR ging
+      #    rood omdat er vóór de push vier van de tweeëntwintig controles gedraaid
+      #    waren. De poort stopt niet bij de eerste rode en telt "ongemeten" apart.
+      - run: npm run poort

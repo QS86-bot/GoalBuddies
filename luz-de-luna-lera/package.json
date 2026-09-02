@@ -1,0 +1,40 @@
+{
+  "name": "luz-de-luna-lera",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Website en geautomatiseerde klantreis voor de coachingpraktijk Luz de Luna Lera: landingspagina, zelftest, gepersonaliseerde e-mailfunnel, boeken en betalen van het Roots-traject.",
+  "type": "module",
+  "scripts": {
+    "poort": "node scripts/poort.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "stand": "node scripts/stand.mjs",
+    "stand:controle": "node scripts/stand.mjs --controle",
+    "migratie:nieuw": "node scripts/migratie-nieuw.mjs",
+    "migratie:hernummer": "node scripts/migratie-hernummer.mjs",
+    "docs:controle": "node scripts/docs-controle.mjs",
+    "emoji:controle": "node scripts/emoji-controle.mjs",
+    "json:controle": "node scripts/json-controle.mjs",
+    "review:controle": "node scripts/review-controle.mjs",
+    "migraties:controle": "node scripts/migraties-controle.mjs",
+    "markeringen:controle": "node scripts/conflictmarkeringen-controle.mjs",
+    "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
+    "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
+    "poort:proef:overgeslagen": "node -e \"console.error('proef-controle: OVERGESLAGEN — geen sleutel'); process.exit(0)\"",
+    "poort:proef:rood": "node -e \"console.log('op stdout'); console.error('op stderr'); process.exit(1)\""
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^22.19.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.12.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,45 @@
+# Regeleindes: overal LF, ook in de werkboom op Windows.
+#
+# ⚠️ Dit bestand bestaat om een valkuil te laten verdwijnen in plaats van hem te
+#    blijven opschrijven. De bestanden in deze repo stonden als CRLF op schijf,
+#    en daardoor mislukte élke meerregelige zoek-en-vervang met perl of python
+#    **stil**: het patroon `foo\nbar` matcht dan niets, het script meldt "ok" en
+#    er is niets gebeurd. Dat stond sinds 18-08 als valkuil in
+#    `docs/WERKVOORRAAD.md` — en op 20-08 ging het in één sessie alsnog drie keer
+#    mis, in `metrics.test.ts`, `Weekpas.tsx` en `modules/goals/index.ts`.
+#
+#    De les daaruit is algemener dan regeleindes: **een valkuil die een reflex
+#    moet onderbreken werkt niet als tekst.** Je leest de lijst op het moment dat
+#    je nadenkt, niet op het moment dat je een commando intikt. Zulke regels
+#    horen in gereedschap; alleen regels die een bewuste beslissing raken horen
+#    in een lijst.
+#
+# `text=auto eol=lf` doet twee dingen: git normaliseert naar LF in de index
+# (zoals altijd al), én checkt uit met LF in plaats van CRLF. Daarmee is er geen
+# enkel tekstbestand in deze repo meer met CRLF, en verdwijnt de hele klasse.
+#
+# Windows heeft hier geen last van: Node, VS Code, PowerShell en git bash gaan
+# allemaal om met LF.
+
+* text=auto eol=lf
+
+# Binaire bestanden nooit aanraken.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.pdf    binary
+*.docx   binary
+*.pptx   binary
+*.xlsx   binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.tar.gz binary
+*.zip    binary
+
+# Lockfiles en dumps: wel tekst, maar nooit met de hand bewerkt.
+package-lock.json  text eol=lf -diff
+backups/*.sql      text eol=lf -diff

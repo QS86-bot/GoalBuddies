@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# secrets — nooit committen
+.env
+.env.*
+!.env.example
+
+# build & cache
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# supabase
+supabase/.branches/
+supabase/.temp/
+*.dump
+backup-*.sql
+backups/
+
+# tooling
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.gstack/
+.linear/
+
+# bronmateriaal van Evianne — persoonlijke teksten en klantdata blijven lokaal
+docs/content/bron/*
+!docs/content/bron/README.md
