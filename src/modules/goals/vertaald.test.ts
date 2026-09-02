@@ -4,7 +4,7 @@ import { STANDAARDTAAL, zetTaal } from '../../shared/i18n';
 
 import { deadlineVerzoekSchema } from './deadline-schemas';
 import { interviewStappen } from './interview-schemas';
-import { categorieLabels, doelSchema } from './schemas';
+import { CATEGORIEEN, categorieLabels, doelSchema } from './schemas';
 
 /**
  * QS8-115, modules-laag: `goals`.
@@ -18,12 +18,20 @@ afterEach(() => {
 });
 
 describe('de categorieën', () => {
-  it('hebben in elke taal drie verschillende labels', () => {
+  /**
+   * ⚠️ Tegen `CATEGORIEEN.length` en niet tegen een getal. Bij QS8-224 gingen er
+   *    twaalf gebieden bij en stond hier `toBe(3)` — dan is de test een
+   *    onderhoudspost in plaats van een grendel. Wat hij moet bewaken is dat er
+   *    geen twee gebieden hetzelfde heten en dat er geen label leeg is; het
+   *    áántal is daar de uitdrukking van en niet het onderwerp.
+   */
+  it('hebben in elke taal een eigen, niet-leeg label', () => {
     for (const taalcode of ['nl', 'en'] as const) {
       zetTaal(taalcode);
       const labels = Object.values(categorieLabels());
 
-      expect(new Set(labels).size, taalcode).toBe(3);
+      expect(labels.length, taalcode).toBe(CATEGORIEEN.length);
+      expect(new Set(labels).size, taalcode).toBe(CATEGORIEEN.length);
       for (const label of labels) expect(label.trim(), taalcode).not.toBe('');
     }
   });

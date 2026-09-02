@@ -102,6 +102,13 @@ export async function updateProfiel(
   }
   if (velden.locale !== undefined) update.locale = velden.locale;
 
+  // De vier uit de vragenlijst — QS8-257. Zelfde regel als hierboven: alleen wat
+  // er echt in de patch zit, want een `undefined` zou hier `null` schrijven.
+  if (velden.focus_areas !== undefined) update.focus_areas = [...velden.focus_areas];
+  if (velden.minutes_per_day !== undefined) update.minutes_per_day = velden.minutes_per_day;
+  if (velden.when_i_do_it !== undefined) update.when_i_do_it = velden.when_i_do_it;
+  if (velden.what_breaks_it !== undefined) update.what_breaks_it = [...velden.what_breaks_it];
+
   // ⚠️ **`select('id')` en niet `select('*')`, en dat is geen zuinigheid.**
   //    Migratie 0089 trok de tabelbrede SELECT op `profiles` in: `authenticated`
   //    mag nog maar `id`, `display_name` en `avatar_url` lezen. Een `returning *`

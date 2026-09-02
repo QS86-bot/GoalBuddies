@@ -42,7 +42,45 @@ export {
   type UitnodigingsRoute,
 } from './pending';
 
+export {
+  beslisVerzoek,
+  fetchOntdekteGroepen,
+  fetchOpenstaandeVerzoeken,
+  fetchVerzoekenOver,
+  GROEPEN_PER_PAGINA,
+  vraagLidmaatschapAan,
+  zetOntdekbaar,
+  type Lidmaatschapsverzoek,
+  type OntdekteGroep,
+} from './ontdekken';
+
+export {
+  blokkeer,
+  deblokkeer,
+  fetchBlokkades,
+  fetchMeldingenOver,
+  meldBericht,
+  meldPersoon,
+  verwijderLid,
+  type Blokkade,
+} from './veiligheid';
+
+export {
+  meldredenLabels,
+  MELDREDENEN,
+  TOELICHTING_MAX,
+  type Meldreden,
+} from './veiligheid-schemas';
+
 export { fetchKettingStand } from './ketting';
+
+export {
+  fetchGroepsteller,
+  fetchKlassement,
+  KLASSEMENT_PER_PAGINA,
+  type Groepsteller,
+  type Klassementsrij,
+} from './klassement';
 
 export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
 
@@ -115,6 +153,7 @@ export {
   goedkeuringsregelLabels,
   goedkeuringsregelUitleg,
   leesGoedkeuringsregel,
+  leesVoertaal,
   leesZichtbaarheid,
   normaliseerCode,
   leesSeizoenscadans,
@@ -122,8 +161,11 @@ export {
   QUORUM_MIN,
   SEIZOENSCADANSEN,
   seizoenscadansLabels,
+  OMSCHRIJVING_MAX,
   toonCode,
   uitnodigingsLink,
+  voertaalLabels,
+  VOERTALEN,
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
   ZICHTBAARHEDEN,
@@ -132,6 +174,7 @@ export {
   type GroepInvoer,
   type Seizoenscadans,
   type GroepPatch,
+  type Voertaal,
   type Zichtbaarheid,
 } from './schemas';
 

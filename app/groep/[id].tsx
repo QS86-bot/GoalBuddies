@@ -8,7 +8,9 @@ import {
   fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepsoverzicht,
+  fetchGroepsteller,
   fetchKettingStand,
+  fetchKlassement,
   fetchMijnLidmaatschap,
   huddledagLabel,
   huidigeGroepsperiode,
@@ -18,7 +20,9 @@ import {
   verlaatGroep,
   zichtbaarheidLabels,
   type Groep,
+  type Groepsteller,
   type Groepslid,
+  type Klassementsrij,
   type Zichtbaarheid,
   type Pagina,
 } from '@/modules/buddies';
@@ -180,6 +184,14 @@ export default function GroepDetail() {
               </Card>
             ) : null}
 
+            {/*
+              ⚠️ De teller staat bij De Ketting en niet bij het klassement, want
+                 het is hetzelfde soort getal: een optelling over de hele groep
+                 zonder namen. Hij staat in béide zichtbaarheidstanden — dat is
+                 de vorm die besluit A42 zelf al toestond.
+            */}
+            <SamenKaart uitkomst={s.teller} onOpnieuw={herlaad} />
+
             <Card>
               <Subheading>{t('groepscherm.wie_meedoen')}</Subheading>
               {/*
@@ -207,7 +219,32 @@ export default function GroepDetail() {
                   })}
                 </Caption>
               ) : null}
+
+              {/*
+                ⚠️ QS8-232. De ingang naar melden, blokkeren en — voor een
+                   beheerder — iemand uit de groep zetten. Hij staat hier en niet
+                   achter de beheerderinstellingen: die zijn onbereikbaar voor
+                   precies de leden die dit nodig hebben.
+              */}
+              <Button variant="stil" block onPress={() => router.push(`/groep/leden/${id}`)}>
+                {t('groepdetail.naar_leden')}
+              </Button>
             </Card>
+
+            {/*
+              ⚠️ **Ná de ledenlijst en niet ervoor.** Het eerste wat je op dit
+                 scherm ziet hoort te zijn wat jullie sámen hebben en wie er
+                 meedoet; pas daarna hoe iedereen ervoor staat. Zou het
+                 klassement bovenaan staan, dan is het eerste wat een lid van
+                 zijn groep leest een ranglijst.
+
+              ⚠️ Dit blok staat er in élke groep, en verbergt niets. In een
+                 beschermde groep geeft `groep_klassement()` nul rijen terug en
+                 rendert het niets — de regel van besluit A54 staat in 0141 en
+                 niet hier. Een scherm dat de regel zelf zou moeten kennen, is
+                 een regel die met één verzoek aan PostgREST te omzeilen valt.
+            */}
+            <KlassementKaart uitkomst={s.klassement} onOpnieuw={herlaad} />
 
             {/*
               ⚠️ Twee aparte schermen en niet één. De weekafsluiting is één kaart
@@ -761,6 +798,136 @@ function KoppelDoel({
 }
 
 /**
+ * De twee optellende groepstotalen — QS8-254.
+ *
+ * ⚠️ **Bij nul zwijgt hij.** "Samen 0 weken afgerond" is een tegenslagbericht met
+ *    een vrolijke kop erop; dezelfde afweging die de seizoensrecap in 0112
+ *    maakte, en om precies dezelfde reden. In plaats daarvan staat er waar de
+ *    teller straks komt te staan.
+ */
+function SamenKaart({
+  uitkomst,
+  onOpnieuw,
+}: {
+  readonly uitkomst: TellerUitkomst;
+  readonly onOpnieuw: () => void;
+}) {
+  if (uitkomst.staat === 'geen-lid') return null;
+
+  if (uitkomst.staat === 'fout') {
+    return (
+      <Card nested>
+        <Body muted>{t('klassement.teller_mislukt')}</Body>
+        <Button variant="stil" onPress={onOpnieuw}>
+          {t('klassement.opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
+
+  const { weken, mijlpalen } = uitkomst.teller;
+
+  return (
+    <Card>
+      <Subheading>{t('teller.kop')}</Subheading>
+      {weken === 0 && mijlpalen === 0 ? (
+        <Body muted>{t('teller.nog_niets')}</Body>
+      ) : (
+        <>
+          <Body>{weken === 1 ? t('teller.weken_een') : t('teller.weken_meer', { n: weken })}</Body>
+          {mijlpalen === 0 ? null : (
+            <Caption>
+              {mijlpalen === 1
+                ? t('teller.mijlpalen_een')
+                : t('teller.mijlpalen_meer', { n: mijlpalen })}
+            </Caption>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Het klassement van een open groep — QS8-254, besluit A54.
+ *
+ * ⚠️ **Er is geen tak voor "beschermde groep".** Dit component weet niet wat
+ *    `groups.zichtbaarheid` is en hoeft dat niet te weten: in een beschermde
+ *    groep komen er nul rijen binnen en rendert het niets. Zou het scherm de
+ *    stand zélf lezen en de kaart verbergen, dan zou de RPC hem alsnog uitleveren
+ *    aan wie er rechtstreeks om vraagt.
+ *
+ * ⚠️ **Er staat geen enkel minteken op dit scherm, en dat kán ook niet.** Een
+ *    `Klassementsrij` heeft een totaal en een positie en verder niets — geen
+ *    delta, geen datum. Die kolommen bestaan niet in `groep_klassement()`.
+ */
+function KlassementKaart({
+  uitkomst,
+  onOpnieuw,
+}: {
+  readonly uitkomst: KlassementUitkomst;
+  readonly onOpnieuw: () => void;
+}) {
+  if (uitkomst.staat === 'fout') {
+    return (
+      <Card nested>
+        <Body muted>{t('klassement.laden_mislukt')}</Body>
+        <Button variant="stil" onPress={onOpnieuw}>
+          {t('klassement.opnieuw')}
+        </Button>
+      </Card>
+    );
+  }
+
+  const { rijen, totaal, meer } = uitkomst.pagina;
+
+  // Nul rijen betekent "deze groep is beschermd" of "je bent geen lid". Allebei
+  // is de juiste uitkomst niets, en niet een lege kaart met een kop erboven.
+  if (rijen.length === 0) return null;
+
+  const iedereenOpNul = rijen.every((rij) => rij.punten === 0);
+
+  return (
+    <Card>
+      <Subheading>{t('klassement.kop')}</Subheading>
+      <Caption>{t('klassement.uitleg')}</Caption>
+
+      {iedereenOpNul ? (
+        <Body muted>{t('klassement.leeg')}</Body>
+      ) : (
+        rijen.map((rij) => <KlassementRij key={rij.userId} rij={rij} />)
+      )}
+
+      {meer ? (
+        <Caption>{t('klassement.van_totaal', { getoond: rijen.length, totaal })}</Caption>
+      ) : null}
+    </Card>
+  );
+}
+
+/** Eén regel: plek, naam, punten. Meer valt er niet te tonen. */
+function KlassementRij({ rij }: { readonly rij: Klassementsrij }) {
+  const punten =
+    rij.punten === 1 ? t('klassement.punten_een') : t('klassement.punten_meer', { n: rij.punten });
+
+  return (
+    <View
+      style={styles.klassementRij}
+      accessible
+      accessibilityLabel={t('klassement.rij_label', {
+        positie: rij.positie,
+        naam: rij.naam,
+        punten,
+      })}
+    >
+      <Caption>{rij.positie}</Caption>
+      <Body>{rij.naam}</Body>
+      <Caption>{punten}</Caption>
+    </View>
+  );
+}
+
+/**
  * De uitkomst van De Ketting, met drie standen in plaats van twee.
  *
  * ⚠️ `geen-lid` en `fout` zagen er eerst hetzelfde uit — allebei een leeg
@@ -772,11 +939,34 @@ type KettingUitkomst =
   | { readonly staat: 'geen-lid' }
   | { readonly staat: 'fout' };
 
+/**
+ * De teller en het klassement, met dezelfde drie standen als De Ketting.
+ *
+ * ⚠️ Dat `geen-lid` en `fout` uit elkaar gehouden worden, is hier geen kopie van
+ *    de vorm maar dezelfde bevinding: een lid dat door een storing niets ziet,
+ *    hoort iets anders te zien dan een buitenstaander.
+ *
+ * ⚠️ Het klassement heeft een vierde geval dat de Ketting niet kent, en dat is
+ *    het belangrijkste van dit scherm: **een beschermde groep krijgt nul rijen**.
+ *    Dat is geen fout en geen leegte, maar de regel van besluit A54 — en het
+ *    scherm hoeft die regel niet te kennen, want de RPC geeft dan gewoon niets.
+ */
+type TellerUitkomst =
+  | { readonly staat: 'ok'; readonly teller: Groepsteller }
+  | { readonly staat: 'geen-lid' }
+  | { readonly staat: 'fout' };
+
+type KlassementUitkomst =
+  | { readonly staat: 'ok'; readonly pagina: Pagina<Klassementsrij> }
+  | { readonly staat: 'fout' };
+
 interface Stand {
   readonly groep: Groep | null;
   readonly overzicht: Pagina<Groepslid>;
   readonly beheerder: boolean;
   readonly ketting: KettingUitkomst;
+  readonly teller: TellerUitkomst;
+  readonly klassement: KlassementUitkomst;
 }
 
 /**
@@ -799,6 +989,8 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
       overzicht: { rijen: [], totaal: 0, meer: false },
       beheerder: false,
       ketting: { staat: 'geen-lid' },
+      teller: { staat: 'geen-lid' },
+      klassement: { staat: 'ok', pagina: { rijen: [], totaal: 0, meer: false } },
     };
   }
 
@@ -811,7 +1003,7 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
   //    kaal in deze `Promise.all`, dan zette één hik in `ketting_stand()` het
   //    hele groepsoverzicht in de foutstand — ledenlijst, chat en al. Bevinding
   //    van de security- en de gebruikersreview, allebei.
-  const [overzicht, lidmaatschap, ketting] = await Promise.all([
+  const [overzicht, lidmaatschap, ketting, teller, klassement] = await Promise.all([
     fetchGroepsoverzicht(groupId, periode),
     fetchMijnLidmaatschap(groupId, userId),
     fetchKettingStand(groupId, periode)
@@ -819,12 +1011,35 @@ async function laadGroep(groupId: string, userId: string): Promise<Stand> {
         stand === null ? { staat: 'geen-lid' } : { staat: 'ok', stand },
       )
       .catch((): KettingUitkomst => ({ staat: 'fout' })),
+    // ⚠️ Om dezelfde reden als De Ketting dragen deze twee hun eigen fout: één
+    //    hik in een teller hoort de ledenlijst en de chat niet mee te nemen.
+    fetchGroepsteller(groupId)
+      .then((teller): TellerUitkomst =>
+        teller === null ? { staat: 'geen-lid' } : { staat: 'ok', teller },
+      )
+      .catch((): TellerUitkomst => ({ staat: 'fout' })),
+    fetchKlassement(groupId)
+      .then((pagina): KlassementUitkomst => ({ staat: 'ok', pagina }))
+      .catch((): KlassementUitkomst => ({ staat: 'fout' })),
   ]);
 
-  return { groep, overzicht, beheerder: lidmaatschap?.role === 'admin', ketting };
+  return {
+    groep,
+    overzicht,
+    beheerder: lidmaatschap?.role === 'admin',
+    ketting,
+    teller,
+    klassement,
+  };
 }
 
 const styles = StyleSheet.create({
   lijst: { gap: space.blokGap },
+  klassementRij: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.blokGap - 3,
+  },
   knoppen: { flexDirection: 'row', gap: space.blokGap - 3, flexWrap: 'wrap' },
 });

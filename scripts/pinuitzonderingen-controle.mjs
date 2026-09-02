@@ -69,6 +69,16 @@ export const REGISTER = new Map([
       'beheerder, expliciete bevestiging, een rij in `group_events`, een ' +
       'systeembericht en een rem van 24 uur (0076).',
   ],
+  [
+    'zet_groepsontdekbaarheid',
+    'Zet `ontdekbaar` (QS8-231, migratie 0144). Zelfde vorm en zelfde reden ' +
+      'als de regel hierboven: de kolom heeft géén kolomgrant en wordt door ' +
+      '`guard_group_update()` teruggezet, dus dit is de enige route — en die ' +
+      'toetst zelf op actieve beheerder en expliciete bevestiging, schrijft ' +
+      'een rij in `group_events` en plaatst een systeembericht. ⚠️ Hij raakt ' +
+      'de vijf gepinde kolommen niet aan; hij *leest* `zichtbaarheid` om te ' +
+      'weigeren als de groep open is.',
+  ],
 ]);
 
 /**

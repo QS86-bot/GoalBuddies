@@ -87,6 +87,19 @@ export const TREFFER_HOORT_ELDERS = {
  * @type {Record<string, string>}
  */
 export const BEWUST_ONGESCHREVEN = {
+  'reports.status=reviewed':
+    'Wacht op een moderatieproces, dat als `phase:v3` op het bord staat (QS8-232). ' +
+    '⚠️ Vandaag is `reports_update` `using (false)` voor élke client, dus deze ' +
+    'waarde is ook niet te schrijven — de kolom bestaat vooruitlopend en niet ' +
+    'half. **Wordt interessant zodra er iemand of iets is dat meldingen ' +
+    'beoordeelt.** Is dat er dan nog steeds niet, dan hoort de waarde weg zoals ' +
+    'in 0082 en 0087, en `status` met hem — een kolom met één bereikbare waarde ' +
+    'is geen kolom.',
+  'reports.status=dismissed':
+    'Idem als `reviewed` (QS8-232): wacht op een moderatieproces (`phase:v3`), ' +
+    'is vandaag voor geen enkele client schrijfbaar, en **wordt interessant ' +
+    'zodra er iemand of iets is dat meldingen beoordeelt.** Is dat er dan nog ' +
+    'niet, dan hoort de waarde weg.',
   'chat_messages.type=photo':
     'Wacht op Storage-buckets, die er nog niet zijn (QS8-71, Fase 2). ⚠️ De ' +
     'waarde is vandaag ' +

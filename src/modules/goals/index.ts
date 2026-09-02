@@ -2,6 +2,14 @@
 // CLAUDE.md: module-communicatie loopt uitsluitend via dit bestand.
 
 export {
+  dagenUitKeuze,
+  dagopties,
+  GEEN_DAGEN,
+  type Dagoptie,
+  type Dagvelden,
+} from './ritme-invoer';
+
+export {
   BADGES,
   badgeLabels,
   badgeUitleg,
@@ -124,9 +132,14 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,
+  CATEGORIE_GROEPEN,
+  categorieGroep,
+  categorieKeuzegroepen,
+  groepLabels,
   DOELGEBEURTENISSEN,
   MAX_DAGEN_PER_WEEK,
   niveauUitDagen,
+  leesRitme,
   RITMES,
   ritmeLabels,
   ritmeUitleg,
@@ -165,3 +178,39 @@ export {
   type WeekplanInvoer,
   type WeekplanstapInvoer,
 } from './weekplan-schemas';
+
+export { fetchWeekbalken } from './overzicht';
+export {
+  laatsteCycli,
+  standUitWeekdoelen,
+  WEKEN_IN_OVERZICHT,
+  type Weekbalk,
+  type Weekstand,
+} from './overzicht-stand';
+
+export {
+  heeftVragenlijstAntwoorden,
+  LEGE_VRAGENLIJST,
+  MAX_FOCUSGEBIEDEN,
+  MINUTEN_OPTIES,
+  MOMENTEN,
+  minutenLabels,
+  momentLabels,
+  patchUitVragenlijst,
+  urenPerWeekUitMinuten,
+  valkuilAntwoord,
+  valkuilLabels,
+  VALKUILEN,
+  vragenlijstSchema,
+  type Minuten,
+  type Moment,
+  type Valkuil,
+  type VragenlijstInvoer,
+} from './vragenlijst-schemas';
+
+export {
+  PROFIELCONTEXT,
+  PROFIELSPIEGELING,
+  vulVoorUitProfiel,
+  type ProfielVoorvulling,
+} from './interview-schemas';

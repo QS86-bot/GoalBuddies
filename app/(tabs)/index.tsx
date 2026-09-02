@@ -396,6 +396,17 @@ export default function Vandaag() {
           {t('vandaag.weekdoel_toevoegen')}
         </Button>
         <Caption>{t('vandaag.toevoegen_uitleg')}</Caption>
+
+        {/*
+          ⚠️ De ingang naar het overzicht staat hier en niet als vijfde tabblad:
+             `(tabs)/_layout.tsx` legt vast dat het er vier zijn en waarom. Hij
+             staat onderaan omdat Vandaag over vandaag gaat — een terugblik op
+             twaalf weken hoort niet bovenaan het scherm dat je 's ochtends
+             opent.
+        */}
+        <Button variant="stil" block onPress={() => router.push('/overzicht')}>
+          {t('overzicht.open')}
+        </Button>
       </View>
 
       <OpenstaandBlok weekdoelen={openstaand} klok={klok} onKlaar={herlaad} />

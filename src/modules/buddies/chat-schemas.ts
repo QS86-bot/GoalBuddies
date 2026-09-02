@@ -98,6 +98,16 @@ export const SYSTEEM_GEBEURTENISSEN = [
   'group_opened',
   'group_protected',
   /**
+   * ⚠️ **Toegevoegd in migratie 0144 (QS8-231).** De groep is vanaf nu te vinden
+   *    voor onbekenden, en niemand mag daar achteraf achter komen — dezelfde
+   *    zorgvuldigheid als bij `group_opened`.
+   *
+   *    Er is met opzet géén tegenhanger voor het weer dichtzetten: dat is geen
+   *    tegenslag, maar het is ook geen nieuws, en de regel uit 0070 zegt dat je
+   *    een bericht alleen toevoegt als de afwezigheid ervan géén signaal wordt.
+   */
+  'group_discoverable',
+  /**
    * ⚠️ De dertiende, toegevoegd in migratie 0112 (QS8-79). Het enige
    *    systeembericht na `chain_milestone` dat **geen persoon** noemt — een
    *    seizoensrecap is van de groep, en de cijfers erin zijn groepstotalen

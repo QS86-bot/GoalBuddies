@@ -1148,6 +1148,96 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          bericht_kopie: string | null
+          created_at: string
+          group_id: string
+          id: string
+          message_id: string | null
+          reden: string
+          reporter_id: string
+          status: string
+          subject_id: string
+          toelichting: string | null
+        }
+        Insert: {
+          bericht_kopie?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          message_id?: string | null
+          reden: string
+          reporter_id: string
+          status?: string
+          subject_id: string
+          toelichting?: string | null
+        }
+        Update: {
+          bericht_kopie?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          message_id?: string | null
+          reden?: string
+          reporter_id?: string
+          status?: string
+          subject_id?: string
+          toelichting?: string | null
+        }
+        Relationships: []
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      group_join_requests: {
+        Row: {
+          bericht: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          group_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          bericht?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          bericht?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          group_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           group_id: string
@@ -1198,6 +1288,7 @@ export type Database = {
         Row: {
           approval_quorum: number | null
           approval_rule: string
+          categorie: string | null
           created_at: string
           created_by: string | null
           evidence_policy: string
@@ -1208,14 +1299,18 @@ export type Database = {
           invite_revoked: boolean
           last_activity_at: string
           name: string
+          omschrijving: string | null
+          ontdekbaar: boolean
           season_cadence: string
           status: string
           tz: string
+          voertaal: string | null
           zichtbaarheid: string
         }
         Insert: {
           approval_quorum?: number | null
           approval_rule?: string
+          categorie?: string | null
           created_at?: string
           created_by?: string | null
           evidence_policy?: string
@@ -1226,14 +1321,18 @@ export type Database = {
           invite_revoked?: boolean
           last_activity_at?: string
           name: string
+          omschrijving?: string | null
+          ontdekbaar?: boolean
           season_cadence?: string
           status?: string
           tz?: string
+          voertaal?: string | null
           zichtbaarheid?: string
         }
         Update: {
           approval_quorum?: number | null
           approval_rule?: string
+          categorie?: string | null
           created_at?: string
           created_by?: string | null
           evidence_policy?: string
@@ -1244,9 +1343,12 @@ export type Database = {
           invite_revoked?: boolean
           last_activity_at?: string
           name?: string
+          omschrijving?: string | null
+          ontdekbaar?: boolean
           season_cadence?: string
           status?: string
           tz?: string
+          voertaal?: string | null
           zichtbaarheid?: string
         }
         Relationships: [
@@ -1560,8 +1662,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string
+          focus_areas: string[]
           id: string
           locale: string | null
+          minutes_per_day: number | null
           onboarded_at: string | null
           reminder_enabled: boolean
           reminder_time: string | null
@@ -1571,13 +1675,17 @@ export type Database = {
           updated_at: string
           wants_own_goal: boolean
           week_start_day: number
+          what_breaks_it: string[]
+          when_i_do_it: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name: string
+          focus_areas?: string[]
           id: string
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
@@ -1587,13 +1695,17 @@ export type Database = {
           updated_at?: string
           wants_own_goal?: boolean
           week_start_day?: number
+          what_breaks_it?: string[]
+          when_i_do_it?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string
+          focus_areas?: string[]
           id?: string
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean
           reminder_time?: string | null
@@ -1603,6 +1715,8 @@ export type Database = {
           updated_at?: string
           wants_own_goal?: boolean
           week_start_day?: number
+          what_breaks_it?: string[]
+          when_i_do_it?: string | null
         }
         Relationships: []
       }
@@ -2075,6 +2189,7 @@ export type Database = {
           milestones_done: number | null
           milestones_total: number | null
           owner_id: string | null
+          ritme: string | null
           status: string | null
           target_date: string | null
           title: string | null
@@ -2179,8 +2294,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
+          focus_areas: string[] | null
           id: string | null
           locale: string | null
+          minutes_per_day: number | null
           onboarded_at: string | null
           reminder_enabled: boolean | null
           reminder_time: string | null
@@ -2190,13 +2307,17 @@ export type Database = {
           updated_at: string | null
           wants_own_goal: boolean | null
           week_start_day: number | null
+          what_breaks_it: string[] | null
+          when_i_do_it: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          focus_areas?: string[] | null
           id?: string | null
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
@@ -2206,13 +2327,17 @@ export type Database = {
           updated_at?: string | null
           wants_own_goal?: boolean | null
           week_start_day?: number | null
+          what_breaks_it?: string[] | null
+          when_i_do_it?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          focus_areas?: string[] | null
           id?: string | null
           locale?: string | null
+          minutes_per_day?: number | null
           onboarded_at?: string | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
@@ -2222,11 +2347,47 @@ export type Database = {
           updated_at?: string | null
           wants_own_goal?: boolean | null
           week_start_day?: number | null
+          what_breaks_it?: string[] | null
+          when_i_do_it?: string | null
         }
         Relationships: []
       }
     }
     Functions: {
+      blokkeer: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      deblokkeer: {
+        Args: { p_user: string }
+        Returns: Json
+      }
+      meld: {
+        Args: {
+          p_group_id: string
+          p_message_id?: string | null
+          p_reden?: string
+          p_subject_id?: string | null
+          p_toelichting?: string | null
+        }
+        Returns: Json
+      }
+      mijn_blokkades: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          display_name: string
+          user_id: string
+        }[]
+      }
+      meldingen_over: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      verwijder_lid: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_user_id: string }
+        Returns: Json
+      }
       activeer_weekplanstap: {
         Args: {
           p_cycle_index: number
@@ -2345,7 +2506,43 @@ export type Database = {
         }[]
       }
       eigenaarsdatum: { Args: { uid: string }; Returns: string }
+      groep_klassement: {
+        Args: { p_group_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          display_name: string
+          positie: number
+          punten: number
+          total_members: number
+          user_id: string
+        }[]
+      }
+      groep_teller: { Args: { p_group_id: string }; Returns: Json }
       groepsdatum: { Args: { gid: string }; Returns: string }
+      lidmaatschapsverzoeken_over: { Args: never; Returns: number }
+      ontdek_groepen: {
+        Args: {
+          p_categorie?: string | null
+          p_limit?: number
+          p_offset?: number
+          p_taal?: string | null
+        }
+        Returns: {
+          categorie: string
+          group_id: string
+          huddle_day: number
+          leden: number
+          naam: string
+          omschrijving: string
+          totaal: number
+          voertaal: string
+        }[]
+      }
+      vraag_lidmaatschap_aan: { Args: { p_bericht?: string | null; p_group_id: string }; Returns: Json }
+      zet_groepsontdekbaarheid: {
+        Args: { p_bevestigd?: boolean; p_group_id: string; p_naar: boolean }
+        Returns: Json
+      }
+      beslis_lidmaatschapsverzoek: { Args: { p_naar: string; p_request_id: string }; Returns: Json }
       group_overview: {
         Args: {
           p_group_id: string

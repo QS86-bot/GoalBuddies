@@ -120,6 +120,23 @@ export const profielSchema = z.object({
    *    een nieuw type systeembericht. De comment op de kolom zegt dat ook.
    */
   locale: z.enum(TALEN, { error: () => t('validatie.taal') }).nullable(),
+
+  /**
+   * De vier antwoorden uit de korte vragenlijst — QS8-257, migratie 0143.
+   *
+   * ⚠️ **De vorm staat hier, de betekenis in `vragenlijst-schemas.ts`.** Dit
+   *    schema bewaakt wat er in de kolom past; welke gebieden er bestaan en wat
+   *    een valkuil betekent, hoort bij de doelenmodule. Zou de lijst hier ook
+   *    staan, dan zijn er twee.
+   *
+   * ⚠️ Losse `z.string()` en geen `z.enum()`: de allowlists zijn CHECKs in 0143
+   *    en 0142, en die worden aan de doelenkant getoetst. Een tweede kopie hier
+   *    zou een derde plek zijn die uit de pas kan lopen.
+   */
+  focus_areas: z.array(z.string()).max(3, { error: () => t('validatie.focus_te_veel') }),
+  minutes_per_day: z.number().int().positive().nullable(),
+  when_i_do_it: z.string().nullable(),
+  what_breaks_it: z.array(z.string()),
 });
 
 export type ProfielInvoer = z.infer<typeof profielSchema>;

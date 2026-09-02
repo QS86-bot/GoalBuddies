@@ -158,6 +158,50 @@ export function meldingBijAfvinkfout(code: string | undefined): string {
 }
 
 /**
+ * Op welke dagen er in een periode iets is afgevinkt, met hoeveel per dag.
+ *
+ * ⚠️ Voedt de kalender op het overzicht (QS8-256). Eén verzoek voor de hele
+ *    periode en geen lus over dagen of over doelen — dat laatste zou op een
+ *    scherm dat per definitie over een reeks dagen gaat de klassieke N+1 zijn.
+ *
+ * ⚠️ **Dit blijft privé.** `day_checkins` is eigenaar-only zonder tak voor
+ *    groepsgenoten, ook in een open groep (oppervlak 27). Een kalender met gaten
+ *    is fijnmaziger tegenslag dan een gemiste week; hij hoort op je eigen scherm
+ *    en nergens anders.
+ *
+ * @param van eerste dag, `YYYY-MM-DD`, uit `shared/time`
+ * @param tot laatste dag, `YYYY-MM-DD`, uit `shared/time`
+ * @returns per datum het aantal afvinkingen
+ */
+export async function fetchAfvinkdagen(
+  van: string,
+  tot: string,
+): Promise<ReadonlyMap<string, number>> {
+  const { data, error } = await supabase()
+    .from('day_checkins')
+    .select('local_date')
+    .gte('local_date', van)
+    .lte('local_date', tot)
+    // Een kwartaal maal een ruim aantal doelen. Onwrikbare regel 10.
+    .limit(1000);
+
+  if (error) {
+    // ⚠️ Zacht, net als `fetchAfvinktellingen()`: dit voedt één blok op een
+    //    scherm met meer blokken. Een lege kalender is beter dan een overzicht
+    //    dat niet opkomt.
+    reportError(error, 'checkins.range', { code: error.code });
+    return new Map();
+  }
+
+  const perDag = new Map<string, number>();
+  for (const rij of data ?? []) {
+    perDag.set(rij.local_date, (perDag.get(rij.local_date) ?? 0) + 1);
+  }
+
+  return perDag;
+}
+
+/**
  * Welke weekdoelen op één specifieke dag zijn afgevinkt.
  *
  * ⚠️ Bestaat naast `fetchAfvinktellingen()` en is er geen afleiding van: bij

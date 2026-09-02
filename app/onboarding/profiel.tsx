@@ -140,7 +140,16 @@ function OnboardingProfielFormulier() {
     }
 
     zetProfiel(afgerond.profiel);
-    router.replace(eigenDoel ? '/doelen' : '/groep');
+
+    // ⚠️ **De vragenlijst komt hierna en niet hiervóór** — besluit A56. Eerst
+    //    het minimum dat de app nodig heeft om te werken (naam, tijdzone,
+    //    week-startdag), dan pas de vier vragen die haar beter maken. Andersom is
+    //    het een drempel vóór er iets te winnen valt.
+    //
+    // ⚠️ En de onboarding is op dit punt al afgerond: wie de vragenlijst
+    //    wegklikt, belandt in een werkende app en niet opnieuw in de onboarding.
+    //    Dat is wat "overslaan mag" betekent.
+    router.replace('/onboarding/vragenlijst');
   }
 
   return (
