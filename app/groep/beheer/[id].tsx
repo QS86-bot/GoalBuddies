@@ -398,18 +398,20 @@ export default function GroepBeheer() {
                 <Caption>{t('beheer.huddledag_uitleg')}</Caption>
 
                 {/*
-                  ⚠️ **De bijlage-optie is er met 0150 uit, en het bijschrift
-                     eronder ging mee** — QS8-261. Daar stond: *"Bijlagen kunnen
-                     nog niet ... Kies je die stand, dan geldt voorlopig alleen de
-                     notitie."* Dat legde een keuze uit die niet meer bestaat.
+                  ⚠️ **De bijlage-optie is er in 0150 uit** (QS8-261): hij bestond
+                     overal behalve waar hij afgedwongen moest worden. Hier stond
+                     dat hij er wél was en niets deed, met een bijschrift eronder
+                     dat bijlagen nog niet konden — allebei weg, want er valt niets
+                     meer te kiezen. Hij komt terug samen met het uploadpad.
 
-                  ⚠️ **En geen enkele controle zag dat.** `catalogus:controle`
-                     zoekt sleutels die nérgens getoond worden; deze wérd getoond,
-                     alleen naast iets dat weg was. Een tekst kan dus verlopen
-                     zonder dat er iets rood wordt — dat is de vorm van regel 18
-                     vraag 3, en de reden dat dit hier met zoveel woorden staat.
+                  ⚠️ **En geen enkele controle zag dat het bijschrift verliep.**
+                     `catalogus:controle` zoekt sleutels die nérgens getoond
+                     worden; deze wérd getoond, alleen naast iets dat weg was.
+                     Een tekst kan dus verlopen zonder dat er iets rood wordt.
 
-                  De lijst komt uit `BEWIJSEISEN`, dus de opties volgen vanzelf.
+                  Wat er nog wél toe doet, staat eronder: wijzigen werkt niet
+                  met terugwerkende kracht — een acceptatiecriterium uit 0021,
+                  en het enige dat de beheerder hier echt moet weten.
                 */}
                 <Choice
                   label={t('beheer.bewijs_label')}

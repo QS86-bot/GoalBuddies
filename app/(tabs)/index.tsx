@@ -22,10 +22,11 @@ import {
 import {
   afsluitbareCyclus,
   eersteCyclusVanDoel,
-  fetchDoelen,
+  fetchDoelnamen,
   badgeLabels,
   badgeUitleg,
   fetchBadges,
+  doelIdsInBeeld,
   fetchDoelStanden,
   type VerdiendeBadge,
   fetchDoorschuifbaar,
@@ -41,6 +42,7 @@ import {
   verwijderWeekdoel,
   zojuistAfgeslotenCyclus,
   type DoelStand,
+  type Doelnaam,
   type Mijlpaaltip,
   type Weekdoel,
 } from '@/modules/goals';
@@ -93,8 +95,8 @@ export default function Vandaag() {
   /**
    * De categorie per doel — besluit A48, voor de weektip.
    *
-   * ⚠️ Uit dezelfde `fetchDoelen()` als de titels hierboven, en dus zonder één
-   *    extra verzoek. Een aparte query per kaart zou hier de N+1 zijn die
+   * ⚠️ Uit dezelfde `fetchDoelnamen()` als de titels hierboven, en dus zonder
+   *    één extra verzoek. Een aparte query per kaart zou hier de N+1 zijn die
    *    onwrikbare regel 12 met naam noemt, en dat voor een regel tekst.
    */
   const [doelcategorieen, setDoelcategorieen] = useState<ReadonlyMap<string, string>>(new Map());
@@ -182,12 +184,28 @@ export default function Vandaag() {
     if (!userId) return;
     let levend = true;
 
-    Promise.all([fetchDoelStanden(userId), fetchDoelen(userId)])
-      .then(([gevondenStanden, doelenPagina]) => {
+    // ⚠️ **Twee ronden, en de tweede vraagt naar wat er op het scherm staat —
+    //    QS8-226.** Hier stond `fetchDoelen(userId)`, en die geeft pagina 0: de
+    //    eerste twintig doelen. `StandBlok` filtert vervolgens elke stand weg
+    //    waarvan hij de titel niet kent, met als reden "dat is een gearchiveerd
+    //    of verwijderd doel". Bij eenentwintig actieve doelen klopte die reden
+    //    niet meer en verdween een levend doel stilzwijgend van het dashboard.
+    //
+    //    `doelIdsInBeeld()` levert precies de doelen waar dit scherm naar
+    //    verwijst — de standen én de weekdoelen — en `fetchDoelnamen()` haalt
+    //    daar de titels bij. Begrensd, want de lijst komt uit wat er getoond
+    //    wordt.
+    fetchDoelStanden(userId)
+      .then(async (gevondenStanden) => {
+        if (!levend) return { gevondenStanden, namen: new Map() as ReadonlyMap<string, Doelnaam> };
+        const namen = await fetchDoelnamen(doelIdsInBeeld(gevondenStanden, weekdoelen));
+        return { gevondenStanden, namen };
+      })
+      .then(({ gevondenStanden, namen }) => {
         if (!levend) return;
         setStanden(gevondenStanden);
-        setDoeltitels(new Map(doelenPagina.rijen.map((d) => [d.id, d.title])));
-        setDoelcategorieen(new Map(doelenPagina.rijen.map((d) => [d.id, d.category])));
+        setDoeltitels(new Map([...namen].map(([id, n]) => [id, n.title])));
+        setDoelcategorieen(new Map([...namen].map(([id, n]) => [id, n.category])));
       })
       .catch(() => {
         // Bewust stil op het scherm, maar niet stil in de logboeken: de
@@ -203,7 +221,7 @@ export default function Vandaag() {
     return () => {
       levend = false;
     };
-  }, [userId, ronde]);
+  }, [userId, ronde, weekdoelen]);
 
   /**
    * De sleutel van de doelen met een gehaalde week — QS8-137.
@@ -230,7 +248,7 @@ export default function Vandaag() {
    *
    * ⚠️ **Twee verzoeken voor alle kaarten samen, niet twee per kaart.** Dat is
    *    onwrikbare regel 12, en het is dezelfde reden waarom `doelcategorieen`
-   *    hierboven uit één `fetchDoelen()` komt.
+   *    hierboven uit één `fetchDoelnamen()` komt.
    *
    * ⚠️ **Falen is stil en dat is hier het goede gedrag.** Elke route die geen tip
    *    oplevert — geen mijlpaal, nog niets gegenereerd, quotum op, een storing —
