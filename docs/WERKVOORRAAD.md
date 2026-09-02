@@ -28,9 +28,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 2. **Er zijn nog geen echte gebruikers**, en dat is de aanname onder elke afspraak
    hier. Migraties mogen daarom rechtstreeks op productie. **Dat vervalt op de dag
    dat de eerste gebruiker zich aanmeldt.**
-   ✅ **Productie staat sinds 02-09 op `0146`** — `0139` t/m `0146` zijn die dag
-   toegepast en nagemeten tegen een lokale opbouw uit dezelfde bestanden. Zeven
-   catalogi vergeleken, alle zeven gelijk. Zie §2.
+   ✅ **Productie is op 02-09 bijgetrokken tot `0146`** — `0139` t/m `0146` zijn
+   die dag toegepast en nagemeten tegen een lokale opbouw uit dezelfde bestanden.
+   Zeven catalogi vergeleken, alle zeven gelijk. ⚠️ **`0147` t/m `0149` zijn
+   daarna geland en staan er niet op**, en morgen is dat getal weer anders —
+   vraag het aan de database en niet aan deze regel. Zie §2.
    ⚠️ **Wat er dan nóg openstaat vraagt Quintens machine:** drie Edge Functions
    deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
    in het dashboard. Migraties alleen zijn de feature niet.
@@ -46,14 +48,15 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **744 geslaagd, 1 overgeslagen** (02-09). De hele suite geeft met de stack
-   **2695 geslaagd en 1 overgeslagen** over 193 bestanden.
-   Typecheck, lint en 26 van de 30 controlescripts groen.
-   ⚠️ **Vier controles meten niets in een cloudcontainer** — `adviseur`,
-   `functies`, `register` en `wachtwoord` vragen `SUPABASE_ACCESS_TOKEN` of
-   `SUPABASE_SERVICE_ROLE_KEY`, en die staan daar niet. De poort noemt dat
-   apart en faalt erop; **dat is geen groene poort.** Op Quintens machine hoort
-   hij wél dertig gemeten stappen te geven.
+   **773 geslaagd, 1 overgeslagen** (02-09, na QS8-186, QS8-262 ronde 1 en QS8-264). De
+   hele suite geeft met de stack **2724 geslaagd en 1 overgeslagen** over 195
+   bestanden — nagemeten op de merge van #154, waar de stand 2716 stond.
+   Typecheck, lint en alle 30 controlescripts groen; `npm run poort` meldt
+   34 stappen.
+   ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
+   (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
+   apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is
+   geen groene poort — draai ze bij het toepassen van een migratie.
    ✅ **En sinds 24-08 draait hij in CI**, in een eigen job zonder secrets.
 5. **⚠️ De meldingenketen is compleet en heeft nog nooit iets afgeleverd.**
    `expo-notifications` staat erin (**Q-TODO B4 is af**), de webregistratie sinds
@@ -109,7 +112,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0146` staan in de map: **149 bestanden**,
+Migraties `0001` t/m `0149` staan in de map: **152 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -119,11 +122,18 @@ De nummering is aaneengesloten.
 regel — twee keer met een verkeerd getal als uitkomst. Draai `npm run stand`;
 `stand:controle` wordt rood zodra het achterloopt en draait mee in de poort.
 
-✅ **De map en productie lopen gelijk, opnieuw nagemeten op 02-09.** Het register
-telt **149 rijen van `0001` tot `0146`**, gelijk aan de 149 bestanden, met nul
-tijdstempels en geen dubbele versies. `0139` t/m `0146` zijn die dag toegepast,
-in volgorde, met `execute_sql` en een handmatige rij in het register — want
-`apply_migration` deelt een tijdstempel uit en dat breekt de `0001`-vorm.
+✅ **Productie is op 02-09 bijgetrokken tot `0146`, en liep dezelfde dag weer
+achter.** Op het moment van meten telde het register **149 rijen van `0001` tot
+`0146`**, gelijk aan de 149 bestanden die er toen lagen, met nul tijdstempels en
+geen dubbele versies. `0139` t/m `0146` zijn die dag toegepast, in volgorde, met
+`execute_sql` en een handmatige rij in het register — want `apply_migration`
+deelt een tijdstempel uit en dat breekt de `0001`-vorm.
+
+⚠️ **`0147` t/m `0149` zijn ná die meting geland en staan er dus níet op** (QS8-186,
+QS8-262 en QS8-264). Dat is geen fout maar de normale gang: de map loopt vooruit
+zodra er een PR landt. **Noem daarom nooit "de map en productie lopen gelijk" als
+stand — vraag het aan de database.** Dit blok zei dat een uur lang, en het was
+achterhaald voordat de PR die het schreef geland was.
 
 ⚠️ **Er is die dag géén `pg_dump` gemaakt en dat is een afwijking van de regel.**
 De cloudcontainer heeft geen `SUPABASE_DB_URL` en geen databasewachtwoord, dus

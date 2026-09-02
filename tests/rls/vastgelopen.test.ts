@@ -50,6 +50,9 @@ interface Opstelling {
   beoordelaar: TestUser;
   groupId: string;
   goalId: string;
+  weeklyGoalId: string;
+  /** De cyclusdag waarop het weekdoel staat — `rondAf()` heeft hem nodig. */
+  cycleStart: IsoDate;
   completionId: string;
 }
 
@@ -63,6 +66,196 @@ async function vastgelopenReden(goalId: string): Promise<string | null> {
 }
 
 /**
+ * Zet het indienen ver genoeg terug om de termijn te laten verstrijken.
+ *
+ * ⚠️ Dit gaat via de beheerdersclient omdat het móet: sinds 0147 heeft
+ *    `authenticated` geen INSERT-recht meer op `submitted_at` en al helemaal geen
+ *    UPDATE-recht. Dat is precies wat `route 3` hieronder toetst.
+ */
+async function verouder(completionId: string, dagen: number): Promise<void> {
+  const ms = dagen * 24 * 60 * 60 * 1000;
+  const admin = adminDb();
+  const terug = (t: string | null): string | null =>
+    t === null ? null : new Date(new Date(t).getTime() - ms).toISOString();
+
+  const voltooiing = await admin
+    .from('completions')
+    .select('submitted_at, weekly_goal_id')
+    .eq('id', completionId)
+    .single();
+  if (voltooiing.error || voltooiing.data === null) {
+    throw new Error(`verouderen: ${voltooiing.error?.message}`);
+  }
+
+  const weekdoel = await admin
+    .from('weekly_goals')
+    .select('goal_id')
+    .eq('id', voltooiing.data.weekly_goal_id)
+    .single();
+  if (weekdoel.error || weekdoel.data === null) {
+    throw new Error(`verouderen: ${weekdoel.error?.message}`);
+  }
+
+  const doel = await admin
+    .from('goals')
+    .select('beoordelaar_weggehaald_op')
+    .eq('id', weekdoel.data.goal_id)
+    .single();
+  if (doel.error || doel.data === null) throw new Error(`verouderen: ${doel.error?.message}`);
+
+  const ingediend = await admin
+    .from('completions')
+    .update({ submitted_at: terug(voltooiing.data.submitted_at) ?? new Date().toISOString() })
+    .eq('id', completionId);
+  if (ingediend.error) throw new Error(`verouderen: ${ingediend.error.message}`);
+
+  // ⚠️ **De stempel schuift mee, en dat is het verschil tussen terugspoelen en
+  //    herschrijven.** Zette deze helper `submitted_at` op een absolute datum
+  //    en liet hij `beoordelaar_weggehaald_op` staan, dan lag de stempel na de
+  //    verplaatsing altijd twintig dagen ná het indienen — welke volgorde de
+  //    route in het echt ook had. De conditie van 0147 was dan bij elke route
+  //    waar om dezelfde reden, en de speling van zeven dagen toetste niets.
+  //    Beide klokken evenveel terugzetten laat de volgorde staan.
+  const stempel = terug(doel.data.beoordelaar_weggehaald_op);
+  if (stempel !== null) {
+    const verzet = await admin
+      .from('goals')
+      .update({ beoordelaar_weggehaald_op: stempel })
+      .eq('id', weekdoel.data.goal_id);
+    if (verzet.error) throw new Error(`verouderen: ${verzet.error.message}`);
+  }
+}
+
+/**
+ * Zet de stempel een vast aantal dagen **vóór** het indienen.
+ *
+ * ⚠️ **Dit is de enige plek in dit bestand die naar een toestand grijpt in plaats
+ *    van naar een handeling, en dat is met reden.** Wat hier getoetst wordt is
+ *    het gétal zeven, en die afstand is met echte handelingen niet te maken
+ *    zonder acht dagen te wachten. De handeling zélf is elders al zeven keer
+ *    getoetst.
+ *
+ * ⚠️ **Zonder deze twee gevallen bewaakt niets het getal.** De her-review mat
+ *    het: `- interval '7 days'` vervangen door `- interval '1 second'` liet alle
+ *    drieëntwintig tests groen. Elke route zette handeling en indiening binnen
+ *    milliseconden na elkaar, dus de afstand in de suite was ofwel ~0 ofwel 180
+ *    dagen en nooit iets ertussenin. De oude ijking bewees dát er speling was,
+ *    niet hoevéél.
+ */
+async function stempelVoorIndienen(goalId: string, dagenVoor: number): Promise<void> {
+  const admin = adminDb();
+
+  const doel = await admin
+    .from('goals')
+    .select('id')
+    .eq('id', goalId)
+    .single();
+  if (doel.error) throw new Error(`stempel: ${doel.error.message}`);
+
+  const week = await admin.from('weekly_goals').select('id').eq('goal_id', goalId);
+  if (week.error) throw new Error(`stempel: ${week.error.message}`);
+
+  const ids = (week.data ?? []).map((w) => w.id);
+  const voltooiing = await admin
+    .from('completions')
+    .select('submitted_at')
+    .in('weekly_goal_id', ids)
+    .is('superseded_by', null)
+    .single();
+  if (voltooiing.error || voltooiing.data?.submitted_at === null) {
+    throw new Error(`stempel: geen voltooiing met submitted_at (${voltooiing.error?.message})`);
+  }
+
+  const ingediend = new Date(voltooiing.data.submitted_at as string).getTime();
+  const stempel = new Date(ingediend - dagenVoor * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await admin
+    .from('goals')
+    .update({ beoordelaar_weggehaald_op: stempel })
+    .eq('id', goalId);
+  if (error) throw new Error(`stempel: ${error.message}`);
+}
+
+/** Laat de rollover zijn ronde doen. */
+async function draaiTermijn(termijn = 7): Promise<number> {
+  const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
+    p_termijn_dagen: termijn,
+  });
+  if (error) throw new Error(`termijn: ${error.message}`);
+  return data as unknown as number;
+}
+
+/**
+ * Hoeveel buddy's deze voltooiing daadwerkelijk hebben goedgekeurd.
+ *
+ * ⚠️ **`status = 'approved'` én zonder intrekking, want anders telt deze helper
+ *    iets anders dan zijn eigen naam.** Hij telde élke rij in
+ *    `completion_approvals`, dus ook een `more_info` en een ingetrokken
+ *    goedkeuring — terwijl `goedkeuringsdrempel_gehaald()` in de database
+ *    allebei uitsluit. Vandaag alleen gebruikt in `toBe(0)`, waar dat
+ *    conservatief uitpakt; de eerste `toBe(1)` die iemand schrijft om te
+ *    bewijzen dát er goedgekeurd is, zou groen worden van een vraag om
+ *    toelichting.
+ */
+async function goedkeuringen(completionId: string): Promise<number> {
+  const admin = adminDb();
+
+  const stemmen = await admin
+    .from('completion_approvals')
+    .select('id')
+    .eq('completion_id', completionId)
+    .eq('status', 'approved');
+  if (stemmen.error) throw new Error(`goedkeuringen: ${stemmen.error.message}`);
+
+  const ids = (stemmen.data ?? []).map((r) => r.id);
+  if (ids.length === 0) return 0;
+
+  const ingetrokken = await admin
+    .from('approval_withdrawals')
+    .select('approval_id')
+    .in('approval_id', ids);
+  if (ingetrokken.error) throw new Error(`goedkeuringen: ${ingetrokken.error.message}`);
+
+  const weg = new Set((ingetrokken.data ?? []).map((r) => r.approval_id));
+  return ids.filter((id) => !weg.has(id)).length;
+}
+
+/** De status van het weekdoel achter een voltooiing. */
+async function weekstatus(completionId: string): Promise<string> {
+  const c = await adminDb()
+    .from('completions')
+    .select('weekly_goal_id')
+    .eq('id', completionId)
+    .single();
+  if (c.error || c.data === null) throw new Error(`voltooiing: ${c.error?.message}`);
+
+  const w = await adminDb()
+    .from('weekly_goals')
+    .select('status')
+    .eq('id', c.data.weekly_goal_id)
+    .single();
+  if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
+
+  return w.data.status as string;
+}
+
+/**
+ * Wat er voor dit doel in het grootboek staat.
+ *
+ * ⚠️ Punten zijn privé (domeinregel 10), dus dit gaat per definitie via de
+ *    beheerdersclient. Dat is opstelling en niet wat hier getoetst wordt.
+ */
+async function punten(goalId: string): Promise<number> {
+  const { data, error } = await adminDb()
+    .from('points_ledger')
+    .select('delta')
+    .eq('goal_id', goalId);
+  if (error) throw new Error(`points_ledger: ${error.message}`);
+
+  return (data ?? []).reduce((som, r) => som + (r.delta as number), 0);
+}
+
+/**
  * Bouwt een verse groep met een eigenaar, één beoordelaar en een week die op
  * goedkeuring wacht.
  *
@@ -70,7 +263,7 @@ async function vastgelopenReden(goalId: string): Promise<string | null> {
  *    doet dat bij het invoegen van de voltooiing. Een fixture die de status zelf
  *    schrijft, toetst een toestand die de app misschien nooit maakt.
  */
-async function bouwOpstelling(label: string): Promise<Opstelling> {
+async function bouwOpstelling(label: string, metVoltooiing = true): Promise<Opstelling> {
   const eigenaar = await createTestUser(`${label}-eigenaar`);
   const beoordelaar = await createTestUser(`${label}-beoordelaar`);
 
@@ -104,9 +297,12 @@ async function bouwOpstelling(label: string): Promise<Opstelling> {
     .insert({ goal_id: doel.data.id, group_id: groepData.group.id });
   if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
 
-  // ⚠️ Via de beheerdersclient: `authenticated` heeft geen insert-recht op
-  //    `weekly_goals` — die lopen in de app via een RPC. Dat is opstelling en
-  //    niet wat hier getoetst wordt.
+  // ⚠️ Via de beheerdersclient, en de réden stond hier fout tot 02-09.
+  //    `authenticated` heeft wél degelijk een INSERT-recht op `weekly_goals` —
+  //    twaalf kolommen en een `weekly_goals_insert`-policy. Wat hij niet mag is
+  //    `points_miss`, en die zet deze opstelling. Gemeten; de oude tekst
+  //    ("geen insert-recht, loopt via een RPC") was onwaar en zou een lezer
+  //    laten denken dat deze fixture een slot omzeilt dat er niet is.
   const weekdoel = await admin
     .from('weekly_goals')
     .insert({
@@ -122,14 +318,42 @@ async function bouwOpstelling(label: string): Promise<Opstelling> {
     .single();
   if (weekdoel.error || weekdoel.data === null) throw new Error(`weekdoel: ${weekdoel.error?.message}`);
 
-  const voltooiing = await eigenaar.db
+  const opstelling: Opstelling = {
+    eigenaar,
+    beoordelaar,
+    groupId: groepData.group.id,
+    goalId: doel.data.id,
+    weeklyGoalId: weekdoel.data.id,
+    cycleStart: vandaag,
+    completionId: '',
+  };
+
+  if (metVoltooiing) opstelling.completionId = await rondAf(opstelling);
+
+  return opstelling;
+}
+
+/**
+ * Dient de voltooiing in, als de eigenaar zelf.
+ *
+ * ⚠️ **Dit staat apart van `bouwOpstelling()` omdat de vólgorde de test is.**
+ *    De conditie van 0147 vergelijkt `beoordelaar_weggehaald_op` met
+ *    `submitted_at`, en route 1 is nu juist het geval waarin de handeling
+ *    vóór het indienen ligt. Zolang de opstelling de voltooiing altijd als
+ *    eerste maakte, was die tijdlijn niet te maken met echte handelingen — en
+ *    dan toetst geen enkele route de speling van zeven dagen. Gemeten: met de
+ *    oude opstelling bleef de suite groen als je `- interval '7 days'` uit de
+ *    functie haalde. Dat is CLAUDE.md regel 18 vraag 3.
+ */
+async function rondAf(o: Opstelling): Promise<string> {
+  const voltooiing = await o.eigenaar.db
     .from('completions')
     .insert({
-      weekly_goal_id: weekdoel.data.id,
-      user_id: eigenaar.id,
+      weekly_goal_id: o.weeklyGoalId,
+      user_id: o.eigenaar.id,
       achieved_level: 'ceiling',
       note: 'af',
-      cycle_start_date: vandaag,
+      cycle_start_date: o.cycleStart,
     })
     .select('id')
     .single();
@@ -137,13 +361,7 @@ async function bouwOpstelling(label: string): Promise<Opstelling> {
     throw new Error(`voltooiing: ${voltooiing.error?.message}`);
   }
 
-  return {
-    eigenaar,
-    beoordelaar,
-    groupId: groepData.group.id,
-    goalId: doel.data.id,
-    completionId: voltooiing.data.id,
-  };
+  return voltooiing.data.id;
 }
 
 describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt', () => {
@@ -303,6 +521,607 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
   });
 
   /**
+   * De toestand die de eigenaar zélf maakt — QS8-186, migratie 0147.
+   *
+   * ⚠️ **De belofte is domeinregel 3, en die is breder dan één tijdlijn.** Een
+   *    eerdere versie van dit blok toetste drie handmatig gezette tijdlijnen, en
+   *    de security-review vond daarna vijf routes die er groen langs liepen — met
+   *    precies de diagnose uit CLAUDE.md regel 18 vraag 3: *deze test kan groen
+   *    blijven terwijl de belofte breekt.* Hij gréép naar een toestand in plaats
+   *    van naar de handeling.
+   *
+   *    Daarom staat de belofte hier nu als tabel: **geen handeling die de
+   *    eigenaar alléén kan doen, levert bínnen zeven dagen een goedgekeurde week
+   *    met punten op zonder goedkeuring van een buddy.** Elke route voert de
+   *    échte handeling uit als de échte client, en assert daarna hetzelfde
+   *    drietal.
+   *
+   * ⚠️ **"Binnen zeven dagen" hoort in die zin en is geen slag om de arm.** De
+   *    conditie van 0147 is een afkoeling: ontkoppelen en dan zeven dagen
+   *    niets doen brengt je terug bij het gedrag van 0135. Dat is bewust
+   *    ontwerp — zie de kop van de migratie — maar wie de belofte zónder die
+   *    voorwaarde opschrijft, laat een test iets bewaken wat er niet staat.
+   *
+   * ⚠️ **De must-allow-helft staat eronder en weegt even zwaar.** De
+   *    auto-goedkeuring van 0135 bestaat voor wie zijn buddy búiten zijn schuld
+   *    kwijtraakt. Zou deze reparatie die ook dichtzetten, dan hangt precies de
+   *    gebruiker waarvoor hij gebouwd is voorgoed op `pending`.
+   */
+  describe('geen handeling van de eigenaar levert een goedkeuring op', () => {
+    /**
+     * Voert een route uit en legt de drie beloftes naast de uitkomst.
+     *
+     * @param voorafAfronden of de voltooiing al bestond vóór de handeling. Beide
+     *   volgordes horen erin: bij QS8-186 sloot de eerste versie alleen
+     *   "handeling eerst", en juist de ándere volgorde is wat iemand in het echt
+     *   doet — je ontkoppelt pas als blijkt dat je buddy niet reageert.
+     */
+    async function routeBlijftDicht(
+      label: string,
+      voorafAfronden: boolean,
+      handeling: (o: Opstelling) => Promise<void>,
+    ): Promise<void> {
+      const o = await bouwOpstelling(label, voorafAfronden);
+
+      if (voorafAfronden) {
+        await handeling(o);
+      } else {
+        // ⚠️ Handeling eerst, dán indienen — en de voltooiing bestaat hier nog
+        //    niet, want anders ligt `submitted_at` per definitie vóór de
+        //    stempel en is deze helft dezelfde tijdlijn als de andere.
+        await handeling(o);
+        o.completionId = await rondAf(o);
+      }
+
+      await verouder(o.completionId, 20);
+
+      await draaiTermijn(7);
+
+      expect(await weekstatus(o.completionId), `${label}: de week hoort te wachten`).toBe('pending');
+      expect(await punten(o.goalId), `${label}: geen punten zonder buddy`).toBe(0);
+      expect(await goedkeuringen(o.completionId), `${label}: er was geen beoordelaar`).toBe(0);
+    }
+
+    const ontkoppel = async (o: Opstelling): Promise<void> => {
+      const { error } = await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+      if (error) throw new Error(`ontkoppelen: ${error.message}`);
+    };
+
+    it(
+      'route 1 — ontkoppelen en daarna afronden',
+      () => routeBlijftDicht('route1', false, ontkoppel),
+      SETUP_TIMEOUT,
+    );
+
+    /** ⚠️ De natuurlijkere volgorde, en degene die de eerste reparatie miste. */
+    it(
+      'route 2 — afronden, wachten of je buddy reageert, en dán ontkoppelen',
+      () => routeBlijftDicht('route2', true, ontkoppel),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Opnieuw koppelen en meteen weer ontkoppelen was de sleutel onder de
+     *    eerste reparatie**, want die schoof de stempel waar zij zich op baseerde
+     *    vooruit. Nu werkt diezelfde handeling tégen de eigenaar: elke nieuwe
+     *    handeling legt de stempel alleen maar later.
+     */
+    it(
+      'route 3 — opnieuw koppelen en weer ontkoppelen reset niets',
+      () =>
+        routeBlijftDicht('route3', true, async (o) => {
+          await ontkoppel(o);
+          const terug = await o.eigenaar.db
+            .from('goal_group_links')
+            .insert({ goal_id: o.goalId, group_id: o.groupId });
+          if (terug.error) throw new Error(`terugkoppelen: ${terug.error.message}`);
+          await ontkoppel(o);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Eén koppeling laten staan zette de hele tak buiten werking** in de
+     *    eerste versie, want die vroeg "is dit doel nu ontkoppeld?". Een
+     *    zelfgemaakte lege groep kost één extra verzoek.
+     */
+    it(
+      'route 4 — een tweede, lege eigen groep gekoppeld laten',
+      () =>
+        routeBlijftDicht('route4', true, async (o) => {
+          const groep = await o.eigenaar.db.rpc('create_group', { group_name: 'Leeg-route4' });
+          const data = groep.data as unknown as { ok?: boolean; group?: { id: string } };
+          if (data.ok !== true || !data.group) throw new Error('lege groep aanmaken mislukte');
+
+          const bij = await o.eigenaar.db
+            .from('goal_group_links')
+            .insert({ goal_id: o.goalId, group_id: data.group.id });
+          if (bij.error) throw new Error(`bijkoppelen: ${bij.error.message}`);
+
+          const weg = await o.eigenaar.db
+            .from('goal_group_links')
+            .delete()
+            .eq('goal_id', o.goalId)
+            .eq('group_id', o.groupId);
+          if (weg.error) throw new Error(`ontkoppelen: ${weg.error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /** ⚠️ Wie een groep aanmaakt is er beheerder van — dit is één RPC. */
+    it(
+      'route 5 — je eigen groep archiveren',
+      () =>
+        routeBlijftDicht('route5', true, async (o) => {
+          const { data, error } = await o.eigenaar.db.rpc('archiveer_groep', {
+            p_group_id: o.groupId,
+            p_bevestigd: true,
+          });
+          if (error) throw new Error(`archiveren: ${error.message}`);
+          const uit = data as unknown as { ok?: boolean };
+          if (uit.ok !== true) throw new Error(`archiveren geweigerd: ${JSON.stringify(data)}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'route 6 — je enige beoordelaar op inactive zetten',
+      () =>
+        routeBlijftDicht('route6', true, async (o) => {
+          const { error } = await o.eigenaar.db
+            .from('group_members')
+            .update({ status: 'inactive' })
+            .eq('group_id', o.groupId)
+            .eq('user_id', o.beoordelaar.id);
+          if (error) throw new Error(`deactiveren: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De klok is niet van de client, en dat is een eigen route.** De termijn
+     *    loopt vanaf `submitted_at`; stond die kolom in de INSERT-kolomgrant, dan
+     *    is de wachttijd nul in plaats van zeven dagen.
+     */
+    it(
+      'route 7 — `submitted_at` zelf meesturen',
+      async () => {
+        const o = await bouwOpstelling('route7');
+        const w = await adminDb()
+          .from('completions')
+          .select('weekly_goal_id')
+          .eq('id', o.completionId)
+          .single();
+        if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
+
+        const poging = await o.eigenaar.db.from('completions').insert({
+          weekly_goal_id: w.data.weekly_goal_id,
+          user_id: o.eigenaar.id,
+          achieved_level: 'ceiling',
+          note: 'af',
+          cycle_start_date: localDateIn('UTC' as TimeZone, now()) as IsoDate,
+          submitted_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+        });
+
+        expect(poging.error?.code, 'een client die zijn eigen indientijd zet hoort 42501 te krijgen').toBe(
+          '42501',
+        );
+      },
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️ **De must-allow-helft.** 0135 bestaat voor wie zijn beoordelaar búiten zijn
+   *    schuld kwijtraakt. Zou 0147 die ook dichtzetten, dan is de reparatie erger
+   *    dan het gat: dan hangt precies die gebruiker voorgoed op `pending`.
+   */
+  describe('een verlies buiten de eigenaar om wordt nog steeds afgehandeld', () => {
+    async function wordtAlsnogGoedgekeurd(
+      label: string,
+      handeling: (o: Opstelling) => Promise<void>,
+    ): Promise<void> {
+      const o = await bouwOpstelling(label);
+      await verouder(o.completionId, 20);
+      await handeling(o);
+      await draaiTermijn(7);
+
+      expect(await weekstatus(o.completionId), `${label}: hier hoort 0135 zijn werk te doen`).toBe(
+        'approved',
+      );
+    }
+
+    /**
+     * ⚠️ **De zwaarste bevinding van de her-review, en het is een gewone
+     *    dinsdag.** Je bent beheerder van je eigen groep met buddy B en lid C.
+     *    Je zet C eruit omdat hij spamt; B kan je week nog gewoon beoordelen.
+     *    De eerste versie van 0147 stempelde daarbij ál je doelen in die groep,
+     *    terwijl er niets was vastgelopen. Twee weken later vertrok B **uit
+     *    zichzelf** en de week kreeg nooit meer punten — precies de gebruiker
+     *    waarvoor 0135 gebouwd is.
+     *
+     *    Gemeten vóór de reparatie: stempel `true` terwijl niets vastliep, en na
+     *    het vertrek van B week `pending` met nul punten.
+     */
+    it(
+      'een lid eruit zetten terwijl je buddy blijft, blokkeert later verlies niet',
+      async () => {
+        const o = await bouwOpstelling('mustallow-moderatie');
+
+        const derde = await createTestUser('mustallow-moderatie-derde');
+        const code = await adminDb()
+          .from('groups')
+          .select('invite_code')
+          .eq('id', o.groupId)
+          .single();
+        if (code.error || code.data === null) throw new Error(`code: ${code.error?.message}`);
+
+        const mee = await derde.db.rpc('join_group_with_code', {
+          code: code.data.invite_code as string,
+        });
+        const meeUit = (mee.data ?? {}) as { ok?: boolean; reason?: string };
+        if (meeUit.ok !== true) throw new Error(`derde werd geen lid: ${meeUit.reason ?? '?'}`);
+
+        await verouder(o.completionId, 20);
+
+        // De eigenaar modereert: het derde lid gaat eruit. De beoordelaar blijft.
+        const eruit = await o.eigenaar.db.rpc('verwijder_lid', {
+          p_group_id: o.groupId,
+          p_user_id: derde.id,
+          p_bevestigd: true,
+        });
+        if (eruit.error) throw new Error(`verwijderen: ${eruit.error.message}`);
+
+        const doel = await adminDb()
+          .from('goals')
+          .select('beoordelaar_weggehaald_op')
+          .eq('id', o.goalId)
+          .single();
+        if (doel.error) throw new Error(`stempel: ${doel.error.message}`);
+        expect(
+          doel.data?.beoordelaar_weggehaald_op,
+          'er viel geen beoordelaar weg, dus er hoort geen stempel te staan',
+        ).toBeNull();
+
+        // En dán vertrekt de échte buddy uit zichzelf.
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await draaiTermijn(7);
+
+        expect(
+          await weekstatus(o.completionId),
+          'dit verlies is niet van de eigenaar en hoort gewoon afgehandeld te worden',
+        ).toBe('approved');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **"De beurt ligt bij de eigenaar" klopt alleen zolang er iemand wacht.**
+     *    Vroeg je buddy om toelichting en verliet hij daarna de groep uit
+     *    zichzelf, dan wachtte er niemand meer — en toch bleef de vlag staan.
+     *    Gemeten vóór de reparatie: geen stempel, reden `wacht_op_indiener`,
+     *    week `pending` en nul punten, ook na zestig dagen.
+     */
+    it(
+      'de buddy vroeg om toelichting en vertrok daarna zelf',
+      async () => {
+        const o = await bouwOpstelling('mustallow-vroeg-en-weg');
+
+        const gevraagd = await o.beoordelaar.db.from('completion_approvals').insert({
+          completion_id: o.completionId,
+          approver_id: o.beoordelaar.id,
+          subject_id: o.beoordelaar.id,
+          group_id: o.groupId,
+          status: 'more_info',
+          comment: 'Hoe ver ben je gekomen?',
+        });
+        if (gevraagd.error) throw new Error(`toelichting: ${gevraagd.error.message}`);
+
+        const weg = await o.beoordelaar.db.rpc('verlaat_groep', {
+          p_group_id: o.groupId,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`verlaten: ${weg.error.message}`);
+
+        await verouder(o.completionId, 20);
+        await draaiTermijn(7);
+
+        expect(
+          await weekstatus(o.completionId),
+          'er wacht niemand meer op een antwoord, dus dit is een vastloper',
+        ).toBe('approved');
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'de buddy vertrekt uit zichzelf',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-buddy', async (o) => {
+          const { data, error } = await o.beoordelaar.db.rpc('verlaat_groep', {
+            p_group_id: o.groupId,
+            p_bevestigd: true,
+          });
+          if (error) throw new Error(`verlaten: ${error.message}`);
+          const uit = data as unknown as { ok?: boolean };
+          if (uit.ok !== true) throw new Error(`verlaten geweigerd: ${JSON.stringify(data)}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ `slaap_stille_groepen()` draait in de rollover zonder JWT, dus
+     *    `auth.uid()` is daar NULL en er wordt niets gestempeld. Dat is de tak
+     *    die deze test bewaakt: een groep die vanzelf in slaap valt, is geen
+     *    handeling van de eigenaar.
+     */
+    it(
+      'het systeem legt de groep slapen',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-slaap', async (o) => {
+          const { error } = await adminDb()
+            .from('groups')
+            .update({ status: 'sleeping' })
+            .eq('id', o.groupId);
+          if (error) throw new Error(`slapen: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De vraag stond nog open en de groep viel in slaap.** Dit toetst de
+     *    `gr.status = 'active'`-helft van de vlag: de buddy staat nog wél als
+     *    actief lid in `group_members`, maar zijn groep is er niet meer om in te
+     *    antwoorden. Dan wacht er niemand en is dit een gewone vastloper.
+     */
+    it(
+      'de buddy vroeg om toelichting en daarna viel de groep in slaap',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-vraag-en-slaap', async (o) => {
+          const gevraagd = await o.beoordelaar.db.from('completion_approvals').insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.beoordelaar.id,
+            group_id: o.groupId,
+            status: 'more_info',
+            comment: 'Hoe ver ben je gekomen?',
+          });
+          if (gevraagd.error) throw new Error(`toelichting: ${gevraagd.error.message}`);
+
+          const { error } = await adminDb()
+            .from('groups')
+            .update({ status: 'sleeping' })
+            .eq('id', o.groupId);
+          if (error) throw new Error(`slapen: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Wie een half jaar geleden ontkoppelde, is gewoon een solo-gebruiker.**
+     *    Zonder deze afkoeling zou één ontkoppeling een doel voorgoed uitsluiten
+     *    van de auto-goedkeuring — en dat is de dode keten van QS8-113 in een
+     *    nieuwe jas.
+     */
+    it(
+      'de eigenaar ontkoppelde lang geleden en werkt sindsdien solo',
+      () =>
+        wordtAlsnogGoedgekeurd('mustallow-oud', async (o) => {
+          const weg = await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+          if (weg.error) throw new Error(`ontkoppelen: ${weg.error.message}`);
+
+          const oud = new Date(Date.now() - 180 * 86_400_000).toISOString();
+          const { error } = await adminDb()
+            .from('goals')
+            .update({ beoordelaar_weggehaald_op: oud })
+            .eq('id', o.goalId);
+          if (error) throw new Error(`verouderen: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️ **Het getal zeven, van onderaf en van bovenaf.** De routes hierboven
+   *    bewijzen dát er een venster is; deze twee bewijzen hoe bréed het is. Zonder
+   *    ze kon `- interval '7 days'` naar één seconde zonder dat er iets rood werd
+   *    — en dat getal is in de kop van 0147, in de rollover en op de
+   *    review-agenda de *prijs* van het weglopen bij domeinregel 3.
+   */
+  describe('de zeven dagen zijn een venster en geen formaliteit', () => {
+    async function metAfstand(label: string, dagenVoor: number): Promise<Opstelling> {
+      const o = await bouwOpstelling(label, false);
+      await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+      o.completionId = await rondAf(o);
+
+      // Eerst het indienen ver genoeg terug om de termijn te laten verstrijken,
+      // dán de stempel op zijn afstand — die tweede leest de eerste.
+      await verouder(o.completionId, 20);
+      await stempelVoorIndienen(o.goalId, dagenVoor);
+      await draaiTermijn(7);
+      return o;
+    }
+
+    it(
+      'drie dagen vóór het indienen valt binnen het venster en blijft dicht',
+      async () => {
+        const o = await metAfstand('venster-drie', 3);
+        expect(await weekstatus(o.completionId), 'binnen zeven dagen: geen goedkeuring').toBe(
+          'pending',
+        );
+        expect(await punten(o.goalId)).toBe(0);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'acht dagen vóór het indienen valt erbuiten en gaat gewoon door',
+      async () => {
+        const o = await metAfstand('venster-acht', 8);
+        expect(
+          await weekstatus(o.completionId),
+          'buiten zeven dagen is dit een solo-gebruiker en geen ontwijking',
+        ).toBe('approved');
+        expect(await punten(o.goalId)).toBe(2);
+      },
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️ **Een beurt is geen vastloper, en dat verschil kostte twee lekken.**
+   *    `completion_approvals_one_vote` staat één stem per beoordelaar toe en
+   *    `trek_goedkeuring_in()` wist de rij niet. Ná een vraag om toelichting of
+   *    een intrekking telt die buddy dus als "heeft gestemd", en dan viel de
+   *    voltooiing door naar `geen_beoordelaar` — terwijl er een actieve buddy in
+   *    een actieve groep zit. De termijn keurde hem daarna goed, mét punten en
+   *    zonder één geldige goedkeuring.
+   *
+   *    De weg vooruit is `dien_opnieuw_in()`, en dat is een handeling van de
+   *    **eigenaar**. Automatisch goedkeuren beloont hier dus precies het
+   *    stilzitten van degene die aan zet is. Beide gevallen zijn gemeten vóór de
+   *    reparatie: week `approved`, twee punten, nul geldige goedkeuringen.
+   */
+  describe('een beurt die bij de eigenaar ligt levert geen goedkeuring op', () => {
+    async function beurtBlijftLiggen(
+      label: string,
+      handeling: (o: Opstelling) => Promise<void>,
+    ): Promise<void> {
+      const o = await bouwOpstelling(label);
+      await handeling(o);
+
+      // De eigenaar deed niets — de stempel hoort leeg te zijn. Zonder deze
+      // regel zou de conditie van 0147 dit geval om de ándere reden dichthouden
+      // en toetst de rest hier niets.
+      const doel = await adminDb()
+        .from('goals')
+        .select('beoordelaar_weggehaald_op')
+        .eq('id', o.goalId)
+        .single();
+      if (doel.error) throw new Error(`stempel: ${doel.error.message}`);
+      expect(
+        doel.data?.beoordelaar_weggehaald_op,
+        `${label}: de eigenaar deed niets, dus er hoort geen stempel te staan`,
+      ).toBeNull();
+
+      await verouder(o.completionId, 20);
+      await draaiTermijn(7);
+
+      expect(await weekstatus(o.completionId), `${label}: de week hoort te wachten`).toBe(
+        'pending',
+      );
+      expect(await punten(o.goalId), `${label}: geen punten zonder geldige goedkeuring`).toBe(0);
+    }
+
+    it(
+      'de buddy vroeg om toelichting',
+      () =>
+        beurtBlijftLiggen('beurt-toelichting', async (o) => {
+          const { error } = await o.beoordelaar.db.from('completion_approvals').insert({
+            completion_id: o.completionId,
+            approver_id: o.beoordelaar.id,
+            subject_id: o.beoordelaar.id,
+            group_id: o.groupId,
+            status: 'more_info',
+            comment: 'Hoe ver ben je gekomen?',
+          });
+          if (error) throw new Error(`toelichting vragen: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De naad tussen deze reparatie en `dien_opnieuw_in()`.** Die functie
+     *    maakt een níeuwe voltooiing, en die draagt geen enkele goedkeuring —
+     *    dus de helft van de vlag die op `more_info` let, is daarna vals. Twee
+     *    correcte onderdelen die aan elkaar knopen, en precies de plek waar
+     *    CLAUDE.md regel 18 een test wil.
+     *
+     *    Gemeten: de nieuwe voltooiing wordt helemaal niet als vastgelopen
+     *    gemeld, want de buddy heeft er nog niet over gestemd. Er is dus niets
+     *    om automatisch goed te keuren, en dat is de goede uitkomst — de beurt
+     *    ligt weer bij de beoordelaar.
+     *
+     * ⚠️ **De grendel die deze test bewaakt, met naam.** `vastgelopen_goedkeuringen()`
+     *    telt de stem van een lid **per voltooiing** (`a.completion_id = c.id`)
+     *    en niet per weekdoel. Zou dat per weekdoel gaan, dan telt de oude
+     *    `more_info` mee voor de níeuwe indiening, is de week alsnog
+     *    "vastgelopen" en keurt de termijn hem goed. Geijkt: die ene join
+     *    verruimen maakt precies deze test rood en geen andere.
+     */
+    it(
+      'opnieuw indienen geeft de beurt terug aan de buddy en niet aan de termijn',
+      async () => {
+        const o = await bouwOpstelling('beurt-opnieuw');
+
+        const gevraagd = await o.beoordelaar.db.from('completion_approvals').insert({
+          completion_id: o.completionId,
+          approver_id: o.beoordelaar.id,
+          subject_id: o.beoordelaar.id,
+          group_id: o.groupId,
+          status: 'more_info',
+          comment: 'Hoe ver ben je gekomen?',
+        });
+        if (gevraagd.error) throw new Error(`toelichting vragen: ${gevraagd.error.message}`);
+
+        const opnieuw = await o.eigenaar.db.rpc('dien_opnieuw_in', {
+          p_weekly_goal_id: o.weeklyGoalId,
+          p_achieved_level: 'ceiling',
+          p_note: 'opnieuw af',
+        });
+        if (opnieuw.error) throw new Error(`opnieuw indienen: ${opnieuw.error.message}`);
+        const uitkomst = opnieuw.data as unknown as { ok?: boolean; completion_id?: string };
+        expect(uitkomst.ok, 'opnieuw indienen hoort te lukken').toBe(true);
+        expect(uitkomst.completion_id, 'er hoort een nieuwe voltooiing te zijn').toBeTruthy();
+
+        const nieuweId = uitkomst.completion_id as string;
+        await verouder(nieuweId, 20);
+        await draaiTermijn(7);
+
+        expect(
+          await vastgelopenReden(o.goalId),
+          'de buddy heeft nog niet over de nieuwe voltooiing gestemd, dus er ligt niets vast',
+        ).toBeNull();
+        expect(await weekstatus(nieuweId), 'de week hoort op de buddy te wachten').toBe('pending');
+        expect(await punten(o.goalId), 'geen punten zonder geldige goedkeuring').toBe(0);
+      },
+      SETUP_TIMEOUT,
+    );
+
+    it(
+      'de buddy trok zijn goedkeuring in',
+      () =>
+        beurtBlijftLiggen('beurt-ingetrokken', async (o) => {
+          const gegeven = await o.beoordelaar.db
+            .from('completion_approvals')
+            .insert({
+              completion_id: o.completionId,
+              approver_id: o.beoordelaar.id,
+              subject_id: o.beoordelaar.id,
+              group_id: o.groupId,
+              status: 'approved',
+            })
+            .select('id')
+            .single();
+          if (gegeven.error || gegeven.data === null) {
+            throw new Error(`goedkeuren: ${gegeven.error?.message}`);
+          }
+
+          const { error } = await o.beoordelaar.db.rpc('trek_goedkeuring_in', {
+            p_approval_id: gegeven.data.id,
+          });
+          if (error) throw new Error(`intrekken: ${error.message}`);
+        }),
+      SETUP_TIMEOUT,
+    );
+  });
+
+  /**
    * De goedkeuringstermijn — QS8-178, migratie 0135.
    *
    * ⚠️ **De belofte is dat geen van de vier routes een week eeuwig laat hangen.**
@@ -317,34 +1136,6 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
    *    functie leest.
    */
   describe('de goedkeuringstermijn handelt elke route af', () => {
-    /** Zet het indienen ver genoeg terug om de termijn te laten verstrijken. */
-    async function verouder(completionId: string, dagen: number): Promise<void> {
-      const terug = new Date(Date.now() - dagen * 24 * 60 * 60 * 1000).toISOString();
-      const { error } = await adminDb()
-        .from('completions')
-        .update({ submitted_at: terug })
-        .eq('id', completionId);
-      if (error) throw new Error(`verouderen: ${error.message}`);
-    }
-
-    async function weekstatus(completionId: string): Promise<string> {
-      const c = await adminDb()
-        .from('completions')
-        .select('weekly_goal_id')
-        .eq('id', completionId)
-        .single();
-      if (c.error || c.data === null) throw new Error(`voltooiing: ${c.error?.message}`);
-
-      const w = await adminDb()
-        .from('weekly_goals')
-        .select('status')
-        .eq('id', c.data.weekly_goal_id)
-        .single();
-      if (w.error || w.data === null) throw new Error(`weekdoel: ${w.error?.message}`);
-
-      return w.data.status as string;
-    }
-
     async function keurGoed(termijn = 7): Promise<number> {
       const { data, error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
         p_termijn_dagen: termijn,
@@ -443,8 +1234,8 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
 
         const routes = [r1, r2, r3, r4];
 
-        // Alle vier moeten nu als vastgelopen gezien worden — anders toetst de
-        // rest van deze test niets.
+        // ⚠️ Alle vier blijven zíchtbaar — dat is de belofte van 0109 en die
+        //    verandert niet. Zonder deze regel toetst de rest hier niets.
         for (const [i, o] of routes.entries()) {
           expect(await vastgelopenReden(o.goalId), `route ${i + 1} hoort vastgelopen te zijn`)
             .not.toBeNull();
@@ -453,9 +1244,29 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
 
         await keurGoed(7);
 
-        for (const [i, o] of routes.entries()) {
-          expect(await weekstatus(o.completionId), `route ${i + 1} hoort goedgekeurd te zijn`)
-            .toBe('approved');
+        /**
+         * ⚠️ **Hier is deze test op 01-09 gesplitst, en dat is een besluit en
+         *    geen verzwakking.** 0135 keurde alle vier de routes goed, met als
+         *    onderbouwing dat het alle vier handelingen van een ánder zijn. Die
+         *    onderbouwing bleek onjuist (QS8-186): R1 en R2 doet de eigenaar
+         *    zelf, en dan is de auto-goedkeuring een weg om domeinregel 3 heen.
+         *    R3 en R4 lopen hier via `adminDb()` — een handeling zonder
+         *    `auth.uid()`, dus niet van de eigenaar — en die horen wél door te
+         *    gaan.
+         */
+        for (const [i, o] of [r3, r4].entries()) {
+          expect(
+            await weekstatus(o.completionId),
+            `R${i + 3} is niet door de eigenaar veroorzaakt en hoort goedgekeurd te zijn`,
+          ).toBe('approved');
+        }
+
+        for (const [i, o] of [r1, r2].entries()) {
+          expect(
+            await weekstatus(o.completionId),
+            `R${i + 1} is een handeling van de eigenaar en hoort te blijven wachten`,
+          ).toBe('pending');
+          expect(await punten(o.goalId), `R${i + 1} hoort geen punten op te leveren`).toBe(0);
         }
       },
       TEST_TIMEOUT,
@@ -470,7 +1281,16 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       'boekt bij een tweede ronde niets extra',
       async () => {
         const o = await bouwOpstelling('termijn-nogmaals');
-        await o.eigenaar.db.from('goal_group_links').delete().eq('goal_id', o.goalId);
+
+        // ⚠️ Via `adminDb()` en niet via de eigenaar: sinds 0147 wordt een
+        //    vastloper die de eigenaar zélf maakt niet meer afgehandeld, en dan
+        //    toetst deze test niets meer over dubbel boeken. De eigenschap die
+        //    hier bewaakt wordt — append-only — staat daar los van.
+        const gearchiveerd = await adminDb()
+          .from('groups')
+          .update({ status: 'archived' })
+          .eq('id', o.groupId);
+        expect(gearchiveerd.error, 'archiveren moet lukken').toBeNull();
         await verouder(o.completionId, 10);
 
         await keurGoed(7);

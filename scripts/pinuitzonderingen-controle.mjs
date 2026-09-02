@@ -12,16 +12,30 @@
  *    eigenaar.
  *
  *    De vraag was of dat een gat is. Het antwoord: nee, maar alleen zolang
- *    iemand de lijst kent. Er zijn er vijf, alle vijf met opzet — een groep
- *    archiveren, toetreden, de code roteren, de code intrekken en de
- *    zichtbaarheid omzetten móéten die kolommen kunnen wijzigen. De zesde die
- *    er ooit bijkomt erft de uitzondering zonder dat iemand het merkt, en dát is
- *    wat dit script tegenhoudt.
+ *    iemand de lijst kent — een groep archiveren, toetreden, de code roteren,
+ *    de code intrekken en de zichtbaarheid of ontdekbaarheid omzetten móéten
+ *    die kolommen kunnen wijzigen. De volgende die er ooit bijkomt erft de
+ *    uitzondering zonder dat iemand het merkt, en dát is wat dit script
+ *    tegenhoudt.
+ *
+ * ⚠️⚠️ **"Er zijn er vijf" stond hier tot 02-09-2026, en dat klopte niet meer —
+ *    het waren er acht, en dit script zag er zes.** Twee van de gemiste
+ *    functies zijn `SECURITY DEFINER`-**triggerfuncties** (`wek_groep`,
+ *    `wek_groep_via_review`): die hebben geen EXECUTE-recht voor
+ *    `authenticated` nodig, want een trigger vuurt zonder — dus de vraag die op
+ *    dat recht scopete, zag ze niet. Een client die een bericht plaatst, vuurt
+ *    ze wél, en ze schrijven `groups.status` en `last_activity_at`.
+ *
+ *    Er lekte niets (hardgecodeerde waarden, en de rij komt uit `new.group_id`
+ *    die door de INSERT-policy van de brontabel begrensd is), maar dit register
+ *    bestaat om precies één ding te beloven en die belofte had een gat.
+ *    **Een telling die in een commentaar staat, veroudert; laat het script hem
+ *    uitrekenen.** Daarom staat het getal hier niet meer.
  *
  * ⚠️ **Waarom geen herbouw naar een expliciete vlag.** Het alternatief is de
- *    kolommen onvoorwaardelijk pinnen en de vijf functies een sessievlag laten
+ *    kolommen onvoorwaardelijk pinnen en die functies een sessievlag laten
  *    zetten. Dat draait de standaard om — uitzondering per statement in plaats
- *    van per rol — en dat is netter. Maar het raakt vijf beveiligingsfuncties
+ *    van per rol — en dat is netter. Maar het raakt acht beveiligingsfuncties
  *    die vandaag correct zijn, en een functie die de vlag vergeet faalt stíl:
  *    zijn wijziging wordt teruggedraaid zonder fout. Dat is een slechtere ruil
  *    dan een register. Komt er ooit een zesde uitzondering bij, dan is dát het
@@ -64,8 +78,26 @@ export const REGISTER = new Map([
     'Zet `invite_revoked`. Zelfde reden: intrekken moet kunnen, en alleen hier.',
   ],
   [
+    'wek_groep',
+    'Zet een slapende groep terug op `active` en werkt `last_activity_at` bij, ' +
+      'als AFTER INSERT-trigger op `chat_messages`, `week_reviews` en ' +
+      '`chain_links`. ⚠️ **Deze en de volgende stonden hier tot 02-09 niet in, ' +
+      'en dat was een gat in dit register en niet in het schema** (QS8-264): ' +
+      'een definer-triggerfunctie heeft geen EXECUTE-recht voor ' +
+      '`authenticated` nodig, dus de oude vraag zag hem niet — terwijl een ' +
+      'client die een bericht plaatst hem wél vuurt. De waarden zijn ' +
+      'hardgecodeerd (`active`, `now()`) en de rij komt uit `new.group_id`, ' +
+      'die door `is_group_member()` in de INSERT-policy van elke brontabel ' +
+      'begrensd is.',
+  ],
+  [
+    'wek_groep_via_review',
+    'Idem, als AFTER INSERT-trigger op `week_review_replies`. Zelfde ' +
+      'hardgecodeerde waarden en dezelfde begrenzing op de brontabel.',
+  ],
+  [
     'zet_groepszichtbaarheid',
-    'Zet `zichtbaarheid` (besluit A41). De zwaarste van de vijf — actieve ' +
+    'Zet `zichtbaarheid` (besluit A41). De zwaarste van het register — actieve ' +
       'beheerder, expliciete bevestiging, een rij in `group_events`, een ' +
       'systeembericht en een rem van 24 uur (0076).',
   ],
@@ -76,7 +108,7 @@ export const REGISTER = new Map([
       '`guard_group_update()` teruggezet, dus dit is de enige route — en die ' +
       'toetst zelf op actieve beheerder en expliciete bevestiging, schrijft ' +
       'een rij in `group_events` en plaatst een systeembericht. ⚠️ Hij raakt ' +
-      'de vijf gepinde kolommen niet aan; hij *leest* `zichtbaarheid` om te ' +
+      'de gepinde kolommen niet aan; hij *leest* `zichtbaarheid` om te ' +
       'weigeren als de groep open is.',
   ],
 ]);
@@ -107,7 +139,21 @@ from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.prosecdef
-  and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  and (
+    -- (a) een functie die een client zélf mag aanroepen
+    has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    -- (b) een definer-functie die aan een trigger hangt. ⚠️ Hier zat het gat:
+    --     zo'n functie hééft geen EXECUTE-recht voor \`authenticated\` nodig —
+    --     een trigger vuurt zonder — dus (a) zag hem niet. Een client die een
+    --     bericht plaatst, vuurt hem wél. Gemeten op 02-09-2026:
+    --     \`wek_groep\` en \`wek_groep_via_review\` schrijven allebei
+    --     \`groups.status\` en \`last_activity_at\` en stonden niet in het
+    --     register.
+    or exists (
+      select 1 from pg_trigger t
+      where t.tgfoid = p.oid and not t.tgisinternal
+    )
+  )
 order by p.proname;
 `;
 

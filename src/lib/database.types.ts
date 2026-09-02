@@ -1021,6 +1021,7 @@ export type Database = {
           description: string | null
           id: string
           identity_statement: string | null
+          beoordelaar_weggehaald_op: string | null
           losgekoppeld_op: string | null
           max_points: number
           owner_id: string
@@ -1037,6 +1038,7 @@ export type Database = {
           description?: string | null
           id?: string
           identity_statement?: string | null
+          beoordelaar_weggehaald_op?: string | null
           losgekoppeld_op?: string | null
           max_points?: number
           owner_id: string
@@ -1053,6 +1055,7 @@ export type Database = {
           description?: string | null
           id?: string
           identity_statement?: string | null
+          beoordelaar_weggehaald_op?: string | null
           losgekoppeld_op?: string | null
           max_points?: number
           owner_id?: string
@@ -2411,6 +2414,14 @@ export type Database = {
       }
       ai_verbruik: { Args: never; Returns: Json }
       annuleer_adempauze: { Args: { p_id: string }; Returns: Json }
+      alleenlezen_bewaking: {
+        Args: never
+        Returns: {
+          helft: string
+          opdracht: string
+          tabel: string
+        }[]
+      }
       archiveer_groep: {
         Args: { p_bevestigd?: boolean; p_group_id: string }
         Returns: Json
@@ -2840,6 +2851,7 @@ export type Database = {
       vastgelopen_goedkeuringen: {
         Args: never
         Returns: {
+          beurt_bij_eigenaar: boolean
           completion_id: string
           cycle_start_date: string
           goal_id: string
