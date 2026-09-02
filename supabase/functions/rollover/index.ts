@@ -497,13 +497,30 @@ async function draaiRollover(auth: string): Promise<Response> {
 
   // ⚠️ **De goedkeuringstermijn — QS8-178, migratie 0135.** Een voltooiing die op
   //    goedkeuring wacht terwijl de beoordelaars zijn weggevallen, bleef eeuwig
-  //    `pending`: geen minpunt, maar ook nooit punten. Vier routes leiden daarheen
-  //    en alle vier zijn het handelingen van een ánder — de beheerder deactiveert
-  //    je beoordelaar, archiveert de groep, of de eigenaar ontkoppelt zijn doel.
+  //    `pending`: geen minpunt, maar ook nooit punten.
   //
   //    Beslisdocument 001 §2.6b.3 had dit al besloten en het was nooit gebouwd:
   //    bij het verstrijken van de termijn krijgt het weekdoel alsnog zijn punten,
   //    zodat een trage buddy jou geen minpunt kan bezorgen.
+  //
+  // ⚠️⚠️ **Hier stond dat alle vier de routes handelingen van een ánder zijn, en
+  //    dat was onjuist — de zin noemde in zijn eigen opsomming al "of de eigenaar
+  //    ontkoppelt zijn doel".** Op 01-09 nagemeten (QS8-186): in de
+  //    standaardopstelling — je maakt zélf je groep aan en bent daarmee beheerder —
+  //    zijn er zeven routes en zijn er vijf handelingen van de eigenaar, elk met
+  //    dezelfde uitkomst: week `approved`, twee punten, nul goedkeuringen. Daar
+  //    kwamen op 02-09 twee gevallen bij waarin de eigenaar niets deed maar wél aan
+  //    zet was: een buddy die om toelichting vroeg, en een ingetrokken goedkeuring.
+  //
+  //    Migratie 0147 sluit dat af aan de databasekant: `vastgelopen_goedkeuringen()`
+  //    meldt zo'n rij nog steeds — dat is het rapport van 0109 — maar zet
+  //    `beurt_bij_eigenaar`, en de functie hieronder slaat die over. Deze aanroep
+  //    verandert dus niet; de onderbouwing eronder wel.
+  //
+  //    ⚠️ Het is een afkoeling van zeven dagen en geen slot. Wie zijn doel
+  //    ontkoppelt en daarna een week niets doet, valt terug op het gedrag van 0135
+  //    — bewust ontwerp, want wie al maanden solo werkt ís een solo-gebruiker, maar
+  //    het staat als open productvraag in `docs/ENGINEER-REVIEW.md`.
   //
   // ⚠️ **Hier en niet in een eigen job.** Deze functie draait al elk uur en heeft
   //    de cyclusberekening al. Een tweede planner is een tweede plek die stil kan
