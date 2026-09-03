@@ -18,6 +18,7 @@ import {
   type Bewijseis,
   type DagZet,
   type Vraag,
+  useTeBeoordelen,
 } from '@/modules/completions';
 import {
   afsluitbareCyclus,
@@ -71,6 +72,7 @@ import {
   weekdoelActies,
   weekpasUitleg,
   type WeeklyGoalStatus,
+  TeBeoordelenKaart,
 } from '@/shared/ui';
 
 /**
@@ -83,6 +85,7 @@ import {
  */
 export default function Vandaag() {
   const router = useRouter();
+  const teBeoordelen = useTeBeoordelen();
   const { userId } = useSession();
   const { profiel } = useProfiel();
 
@@ -357,6 +360,24 @@ export default function Vandaag() {
           : t('vandaag.eyebrow_deze')
       }
     >
+      {/*
+        ⚠️ **Bovenaan het hoofdscherm, en dat is de hele reparatie van QS8-148.**
+           Deze kaart stond alleen op het gróepstabblad — een scherm dat je opent
+           als je er iets te zoeken hebt. De peer-goedkeuring hing daarmee aan een
+           pad dat niemand tegenkomt, en dat is de succesmetriek uit de PRD (≥80%
+           binnen 48 uur) aan een verstopte knop.
+
+        ⚠️ Vóór de eigen weekdoelen, want een oordeel dat iemand ánders ophoudt
+           is dringender dan je eigen lijstje. En hij verdwijnt vanzelf als er
+           niets wacht — zie `toonBeoordeelkaart()`; een kaart die permanent "0"
+           meldt, leert mensen om er niet meer naar te kijken.
+
+        ⚠️ Dit is geen tegenslag van een ander en botst dus niet met domeinregel
+           7: het telt voltooiingen die iemand heeft ingediend — een afgeronde
+           week — en nooit een gemiste.
+      */}
+      <TeBeoordelenKaart stand={teBeoordelen} onOpen={() => router.push('/beoordelen')} />
+
       {coulance && afTeSluiten ? (
         <Card nested>
           <Subheading>{t('vandaag.coulance_titel')}</Subheading>
