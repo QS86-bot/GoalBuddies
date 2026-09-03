@@ -98,6 +98,15 @@ export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
 
 export { focusRing, motionDuration, useReducedMotion } from './a11y';
 export { bewegingsDuur, bewegingsStijl, type BewegingsStijl } from './beweging';
+export { Wachtbalk } from './Wachtbalk';
+export {
+  VERWACHTE_WACHT_MS,
+  voortgangsweergave,
+  wachtstand,
+  type Voortgangsweergave,
+  type Wachtfase,
+  type Wachtstand,
+} from './wachtvoortgang';
 export {
   FLOOR_MARK,
   milestoneProgress,

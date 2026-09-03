@@ -53,8 +53,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **853 geslaagd, 1 overgeslagen** (03-09, na QS8-213). De
-   hele suite geeft met de stack **2896 geslaagd en 1 overgeslagen** over 205 bestanden.
+   **857 geslaagd, 1 overgeslagen** (03-09, na QS8-213 en QS8-208). De
+   hele suite geeft met de stack **2922 geslaagd en 1 overgeslagen** over 208 bestanden.
    Typecheck, lint en alle 30 controlescripts groen; `npm run poort` meldt
    34 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
@@ -88,7 +88,9 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 10. **⚠️ De volgorde loopt sinds 30-08 langs de doorloopbevindingen en niet meer
     langs §4.** QS8-195 en QS8-211 zijn af (31-08), en QS8-213 op 03-09: de
     profiel-onboarding vraagt nog twee dingen in plaats van zeven, en de tijdzone
-    staat er als regel tekst met een correctiepad ernaast. Daarna QS8-200/QS8-201. Wat
+    staat er als regel tekst met een correctiepad ernaast. QS8-208 volgde: de drie
+    schermen die op de Doelcoach wachten laten nu zien dat ze wachten, met een
+    uitweg die de job laat doorlopen. Daarna QS8-200/QS8-201. Wat
     van Fase 1 overblijft vraagt nog steeds Quintens hand en geen code: een
     browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117), het
     Supabase-dashboard (QS8-25, QS8-141) en de twee deploys (QS8-139, QS8-140).

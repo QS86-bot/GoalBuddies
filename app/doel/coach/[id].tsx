@@ -37,6 +37,7 @@ import {
   Field,
   Screen,
   Subheading,
+  Wachtbalk,
 } from '@/shared/ui';
 
 /**
@@ -430,8 +431,31 @@ function Genereren({
   if (stand.fase === 'bezig') {
     return (
       <Card nested>
-        <Subheading>{t('coach.denkt_na')}</Subheading>
-        <Body muted>{t('coach.duurt_even')}</Body>
+        <Wachtbalk
+          stappen={[
+            t('wachten.stap_lezen'),
+            t('wachten.stap_bedenken'),
+            t('wachten.stap_nalopen'),
+          ]}
+          uitweg={
+            <>
+              {/*
+                ⚠️ **Weggaan laat de job doorlopen, en dat is niet toevallig.**
+                   `levend.current` zet alleen dit scherm stil; de Edge Function
+                   werkt hem af en het antwoord landt in `ai_jobs`. De poort hasht
+                   de invoer en hergebruikt een geslaagde job met dezelfde hash
+                   binnen een dag, dus opnieuw op genereren drukken levert het
+                   antwoord op zonder een tweede Anthropic-call en zonder een
+                   tweede plek uit het dagquotum. Dat staat in de copy, want
+                   anders durft niemand weg te gaan.
+              */}
+              <Button variant="stil" block onPress={onKlaar}>
+                {t('wachten.liever_zelf')}
+              </Button>
+              <Caption>{t('wachten.liever_zelf_uitleg')}</Caption>
+            </>
+          }
+        />
       </Card>
     );
   }

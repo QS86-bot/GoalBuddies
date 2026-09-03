@@ -18,7 +18,17 @@ import {
 } from '@/modules/goals';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } from '@/shared/ui';
+import {
+  AsyncView,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Screen,
+  Subheading,
+  useAsync,
+  Wachtbalk,
+} from '@/shared/ui';
 
 /**
  * Weekstappen laten genereren onder één mijlpaal — QS8-41, PRD 3.4.
@@ -335,8 +345,22 @@ function Genereren({
   if (stand.fase === 'bezig') {
     return (
       <Card nested>
-        <Subheading>{t('weekcoach.denkt_na')}</Subheading>
-        <Body muted>{t('weekcoach.duurt_even')}</Body>
+        <Wachtbalk
+          stappen={[
+            t('wachten.stap_week_lezen'),
+            t('wachten.stap_week_bedenken'),
+            t('wachten.stap_week_nalopen'),
+          ]}
+          uitweg={
+            <>
+              {/* Zelfde belofte als op het coachscherm: weggaan laat de job lopen. */}
+              <Button variant="stil" block onPress={() => router.replace(`/doel/${doel.id}`)}>
+                {t('wachten.liever_zelf')}
+              </Button>
+              <Caption>{t('wachten.liever_zelf_uitleg')}</Caption>
+            </>
+          }
+        />
       </Card>
     );
   }

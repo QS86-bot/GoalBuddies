@@ -23,6 +23,7 @@ import {
   Screen,
   Subheading,
   useTerug,
+  Wachtbalk,
 } from '@/shared/ui';
 
 /**
@@ -113,6 +114,19 @@ export default function PlanUitEenZin() {
     void kijk(aanvraag.waarde.jobId);
   }
 
+  /**
+   * De handmatige route, met mee wat er al getypt is.
+   *
+   * ⚠️ Stond twee keer uitgeschreven zodra QS8-208 er een uitweg tijdens het
+   *    wachten bij zette. Twee kopieën van dezelfde URL is twee plekken waar de
+   *    parameters uit de pas kunnen lopen, en dan verliest de gebruiker precies
+   *    de zin die hij niet nog een keer wil typen.
+   */
+  function zelfInvullen() {
+    const titel = encodeURIComponent(zin.trim());
+    router.push(`/doel/nieuw?titel=${titel}&datum=${encodeURIComponent(datum.trim())}`);
+  }
+
   async function bevestig(plan: VoorstelPlan) {
     if (!userId || !profiel) return;
     setBevestigen(true);
@@ -173,17 +187,38 @@ export default function PlanUitEenZin() {
             />
           </Card>
 
-          {stand.fase === 'bezig' ? <Body muted>{t('plan.bezig')}</Body> : null}
+          {/*
+            ⚠️ **Ook dit scherm wacht twintig seconden, en het stond niet in
+               QS8-208.** Het issue noemt de Doelcoach en het weekdoelenscherm;
+               `tests/beloftes/wachten-op-de-coach.test.ts` leidt zijn lijst af
+               uit wie `fetchJob()` aanroept en vond er dus drie. Dat is precies
+               waarom die lijst niet uit twee bestandsnamen bestaat.
+          */}
+          {stand.fase === 'bezig' ? (
+            <Card nested>
+              <Wachtbalk
+                stappen={[
+                  t('wachten.stap_zin_lezen'),
+                  t('wachten.stap_doel_bedenken'),
+                  t('wachten.stap_nalopen'),
+                ]}
+                uitweg={
+                  <>
+                    <Button variant="stil" block onPress={zelfInvullen}>
+                      {t('wachten.liever_zelf')}
+                    </Button>
+                    <Caption>{t('wachten.liever_zelf_uitleg')}</Caption>
+                  </>
+                }
+              />
+            </Card>
+          ) : null}
 
           {stand.fase === 'mislukt' ? (
             <Card nested>
               <Caption danger>{stand.melding}</Caption>
               <Body muted>{t('plan.terugval_uitleg')}</Body>
-              <Button
-                variant="secundair"
-                block
-                onPress={() => router.push(`/doel/nieuw?titel=${encodeURIComponent(zin.trim())}&datum=${encodeURIComponent(datum.trim())}`)}
-              >
+              <Button variant="secundair" block onPress={zelfInvullen}>
                 {t('plan.zelf_invullen')}
               </Button>
             </Card>
