@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { bestemmingVoor, type Routestand } from './routewacht';
+import { bestemmingVoor, NA_ONBOARDING_BEREIKBAAR, type Routestand } from './routewacht';
 
 function stand(over: Partial<Routestand> = {}): Routestand {
   return {
@@ -10,6 +10,7 @@ function stand(over: Partial<Routestand> = {}): Routestand {
     profielFout: null,
     isOnboarded: true,
     wortel: '',
+    tak: '',
     ...over,
   };
 }
@@ -38,7 +39,29 @@ describe('de routewacht', () => {
   it('haalt iemand die klaar is weg van aanmelden en onboarding', () => {
     expect(bestemmingVoor(stand({ wortel: 'aanmelden' }))).toBe('/');
     expect(bestemmingVoor(stand({ wortel: 'onboarding' }))).toBe('/');
+    expect(bestemmingVoor(stand({ wortel: 'onboarding', tak: 'profiel' }))).toBe('/');
     expect(bestemmingVoor(stand())).toBeNull();
+  });
+
+  /**
+   * ⚠️ **De uitzondering van QS8-266, en hij is met opzet smal.** De vragenlijst
+   *    komt ná het afronden (besluit A56) en werd door de wacht weggestuurd op
+   *    het moment dat `bewaar()` ernaartoe navigeerde: `wortel` is `onboarding`,
+   *    `onboarded_at` staat, dus `'/'`.
+   *
+   * ⚠️ De tweede regel hieronder is de helft die de uitzondering smal houdt.
+   *    Zonder die regel zou "laat de hele onboarding met rust zodra je klaar
+   *    bent" ook groen zijn, en dat is een ándere belofte.
+   */
+  it('laat de vragenlijst staan zodra de onboarding afgerond is, en verder niets', () => {
+    expect(bestemmingVoor(stand({ wortel: 'onboarding', tak: 'vragenlijst' }))).toBeNull();
+    expect(bestemmingVoor(stand({ wortel: 'onboarding', tak: 'uitleg' }))).toBe('/');
+  });
+
+  it('geldt voor elke route in de lijst, ook als er ooit een tweede bij komt', () => {
+    for (const tak of NA_ONBOARDING_BEREIKBAAR) {
+      expect(bestemmingVoor(stand({ wortel: 'onboarding', tak }))).toBeNull();
+    }
   });
 
   /**

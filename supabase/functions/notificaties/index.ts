@@ -6,13 +6,14 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    de job stilvalt.
 import { partsIn } from '../_shared/time/zoned.ts';
 import { previousCycle, userCycle } from '../_shared/time/cycle.ts';
-import type { Weekday } from '../_shared/time/types.ts';
+import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
 import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
 import {
   berichtVoor,
   magNudgen,
   nudgeBericht,
+  overzichtsuur,
   type Taalcode,
   uurUit,
   type Bericht,
@@ -311,7 +312,12 @@ async function draaiNotificaties(auth: string): Promise<Response> {
         nu,
       );
 
-      const overzichtsUur = uurUit(profiel.reminder_time) ?? 9;
+      // ⚠️ **Nooit vóór de coulanceperiode** — QS8-202. Het waarom staat bij
+      //    `overzichtsuur()`; de korte versie is dat de rollover een gemiste week
+      //    pas ná `GRACE_HOURS` afschrijft, dus vóór dat uur is "is er een weekpas
+      //    verbruikt" per definitie nee — en de ontdubbeling laat die dag geen
+      //    tweede melding meer toe.
+      const overzichtsUur = overzichtsuur(uurUit(profiel.reminder_time), GRACE_HOURS);
 
       // ⚠️ **Niet over een week waarin je met opzet niets deed.** De nudge en het
       //    goedkeuringsverzoek slaan een lid met een lopende adempauze al over
@@ -333,12 +339,39 @@ async function draaiNotificaties(auth: string): Promise<Response> {
         const wasAdempauze = await inAdempauze(db, profiel.id, afgelopen.startDate);
 
         if (!wasAdempauze && !(await alVerstuurd(db, profiel.id, 'cycle_summary', lokaleDatum, null))) {
+          // ⚠️ **Hier hing QS8-202.** "Een weekpas heeft je reeks gered" stond
+          //    alleen als privéblok op het dashboard, en wie de app die week niet
+          //    opende, hoorde het nooit. Dit is het enige moment waarop de app
+          //    hem uit zichzelf bereikt, en het valt precies goed: de rollover
+          //    verbruikt de pas op de cyclusgrens en dit bericht gaat over
+          //    diezelfde net afgesloten week.
+          //
+          // ⚠️ **Strikt persoonlijk, en dat is de hele reden dat het een `push`
+          //    is en geen systeembericht.** Een verbruikte weekpas is het bewijs
+          //    van een gemiste week (domeinregel 7). Deze melding gaat naar de
+          //    apparaten van de eigenaar en nergens anders heen; de soort blijft
+          //    `cycle_summary`, dus er komt geen groepsoppervlak bij.
+          //
+          // ⚠️ De vraag staat bínnen de tijdvoorwaarde, om dezelfde reden als de
+          //    adempauze hierboven: ervoor is het een extra query per profiel per
+          //    ronde voor een bericht dat hoogstens één keer per week valt.
+          const weekpasGered = await weekpasVerbruikt(db, profiel.id, afgelopen.startDate);
+
           const gelukt = await stuur(db, {
             userId: profiel.id,
             apparaten,
             nu,
+            // ⚠️ De sóórt blijft `cycle_summary` en alleen de tékst verandert.
+            //    `notifications_sent_kind_bekend` (0053) kent vier waarden; een
+            //    vijfde zou een migratie zijn, en de ontdubbeling op
+            //    `(user_id, kind, local_date)` zou een tweede melding over
+            //    dezelfde week toelaten.
+            //
+            // ⚠️ Dit bestand staat buiten `tsc` (Deno), dus het type houdt hier
+            //    niets tegen. De grendel is de grep in
+            //    `tests/beloftes/weekpas-bereikt-je.test.ts`.
             soort: 'cycle_summary',
-            bericht: berichtVoor('cycle_summary', {}, taalVan(profiel)),
+            bericht: berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
             lokaleDatum,
             refId: null,
           });
@@ -429,6 +462,38 @@ async function inAdempauze(db: Db, userId: string, datum: string): Promise<boole
     .eq('user_id', userId)
     .lte('starts_cycle', datum)
     .gte('ends_cycle', datum);
+
+  return (count ?? 0) > 0;
+}
+
+/**
+ * Is er een weekpas verbruikt voor de cyclus die op `datum` begon? — QS8-202.
+ *
+ * ⚠️ **Leest `week_pass_events` rechtstreeks en niet `weekpas_standen()`.** Die
+ *    RPC filtert op `auth.uid()` en deze job draait als `service_role`, dus daar
+ *    zou hij nul rijen krijgen. Bovendien geeft hij `max(cycle_start_date)` per
+ *    doel, en de vraag hier is smaller: is er voor déze week iets verbruikt.
+ *
+ * ⚠️ `head: true` met een `count`: er hoeft geen rij mee terug, alleen het
+ *    antwoord ja of nee. Eén doel is genoeg om de zin te verantwoorden.
+ */
+async function weekpasVerbruikt(db: Db, userId: string, datum: string): Promise<boolean> {
+  const { count, error } = await db
+    .from('week_pass_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('event', 'spent')
+    .eq('cycle_start_date', datum);
+
+  // ⚠️ **Een mislukte vraag is niet hetzelfde als "geen weekpas".** Zonder deze
+  //    tak wordt een schemawijziging of een ingetrokken recht stilzwijgend het
+  //    gewone weekoverzicht, en de ontdubbeling maakt dat voor die week
+  //    definitief: de gebruiker hoort het nooit meer. Coderegel 14, en dezelfde
+  //    vorm als `openBeoordelingen()` hieronder.
+  if (error) {
+    console.error(`weekpas-stand ophalen mislukte: ${error.message}`);
+    await meld(error, 'notificaties.weekpas', { code: 'weekpas_onleesbaar' });
+  }
 
   return (count ?? 0) > 0;
 }

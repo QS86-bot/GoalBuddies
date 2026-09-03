@@ -3,11 +3,65 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 02-09-2026. **#141 (QS8-186), #151 (QS8-262 ronde 1) en
-> #153 (QS8-264) en #156 (de tokenaudit) geland, en de migraties `0139` t/m
-> `0146` zijn op productie toegepast.**
-> Lees eerst de drie punten hieronder — het derde verandert wat je als volgende
-> oppakt — en daarna de vier van 02-09.
+> **Laatst bijgewerkt:** 03-09-2026. **Zes van de acht doorloopbevindingen uit
+> een seriële batch geland (#178, #179, #181, #182, #185, #188): QS8-213,
+> QS8-208, QS8-221, QS8-218, QS8-219 en QS8-202.**
+> Lees eerst de vier punten van 03-09 hieronder, dan de drie daaronder — de derde
+> daarvan verandert wat je als volgende oppakt — en daarna die van 02-09.
+>
+> **03-09, punt 0: twee van de acht zijn níét af, en dat verschilt per stuk.**
+>
+> 1. **QS8-192 is overgeslagen.** Niet geblokkeerd, niet afgewogen: de batch liep
+>    van QS8-213 naar QS8-208 naar QS8-221 en zo verder, en dit issue is er
+>    tussenuit gevallen zonder dat iemand het merkte. Hij staat onaangeraakt op
+>    Backlog. ⚠️ **De les zit in hoe het niet opviel:** de eindrapportage van die
+>    sessie telde "zeven van de acht geland" terwijl het er zes waren. Een
+>    voortgangsgetal dat je zelf optelt uit wat je gedaan hebt, mist per definitie
+>    wat je niet gedaan hebt. Tel af tegen de lijst, niet op vanuit je werk.
+> 2. **QS8-174 ligt op twee blokkades en draagt nu `wacht-op-Quinten`.** De
+>    ontworpen en lokaal geverifieerde SQL staat vóluit in dat issue; herhaal het
+>    ontwerpwerk niet. Zie punt B hieronder.
+>
+> **03-09, punt A: drie keer bewaakte een test de plek in plaats van de belofte,
+> en alle drie zijn ze door een review gevonden en niet door de suite.**
+>
+> - Bij QS8-213 bewaakte een belofte-test de **naam** van een helper.
+>   `herinneringStandaard({ onboarded_at: null })` bleef groen en zou de
+>   dagelijkse herinnering van élke bestaande gebruiker terugzetten op 20:00 —
+>   precies de belofte waar die helper voor bestaat.
+> - Bij QS8-202 stond er `.toContain('punt')` onder een zin die het tegendeel van
+>   domeinregel 10 beweerde. Beide lezingen bevatten dat woord.
+> - Bij QS8-202 greep een groepsgrendel naar `<Weekpas` in zes bestandsnamen,
+>   terwijl dat component in geen enkel scherm rechtstreeks staat: `DoelStandKaart`
+>   rendert hem. Wie die kaart op een groepsscherm hergebruikt, lekt een weekpas
+>   en de grendel blijft groen.
+>
+> ⚠️ **De ijking ving geen van drieën, en de reden is dezelfde.** Elke mutatie
+> ging door een grendel die er al lag: de naamlijst, het woord, de bestandsnaam.
+> `CLAUDE.md` waarschuwt hiervoor bij regel 18 — *breek de grendel die de ijking
+> nóemt* — en dit is drie keer op één dag de praktijk ervan.
+>
+> **03-09, punt B: een feature kan af zijn, getest zijn en niets doen omdat twee
+> jobs drie uur uit elkaar staan.** QS8-202 liet het weekoverzicht vragen of er
+> een weekpas verbruikt was. Dat overzicht valt om het herinneringsuur (standaard
+> 9:00); de rollover schrijft een gemiste week pas áf ná de coulanceperiode van
+> twaalf uur. Het antwoord was dus altijd nee — voor iedereen die nooit een
+> herinneringstijd instelde, en dat is de standaard, want `reminder_time` heeft
+> geen kolomstandaard. En de ontdubbeling op `(user_id, kind, local_date)` liet
+> die dag geen tweede melding meer toe.
+>
+> ⚠️ Elk schakeltje af, de keten onderbroken: regel 18 vraag 5, maar dan over
+> **tijd** in plaats van over een ontbrekende knop. Geen van de belofte-tests
+> raakte de klok. De grendel meet nu met de échte `closableUserCycle()` of de week
+> op het gekozen uur al afgeschreven ís, in plaats van erover te redeneren.
+>
+> **03-09, punt C: leid de lijst van een controle af uit een aanroep, niet uit
+> bestandsnamen.** De belofte-test van QS8-208 haalt zijn schermen op uit wie
+> `fetchJob()` aanroept, en vond daardoor meteen een derde scherm dat niet in het
+> issue stond (`app/doel/plan.tsx`) — dat wachtte net zo lang op een AI-job en
+> toonde één regel tekst. Een lijst met twee bestandsnamen erin had dat per
+> definitie niet gezien. Dezelfde beweging staat sinds deze sessie ook in de
+> groepsgrendel van QS8-202, die zijn schermen uit `app/groep/` leest.
 >
 > **02-09, punt 0: productie is bijgetrokken, in twee rondes.** Eerst `0139` t/m
 > `0146` (de acht van QS8-243), daarna `0147` t/m `0149` toen die landden. Allebei
@@ -133,10 +187,24 @@ op uit het Linear-project GoalBuddies.
 bevindingen van 30-08 zijn geland; wat er nu voorligt staat in "Waar te
 beginnen" punt 0.
 
-⚠️ **Er werkt een parallelle sessie in dezelfde repo, en dat is op 01-09 opnieuw
-zichtbaar:** `origin/claude/qs8-252-besluiten-a53-a56` bouwt op dit moment het
-beslisdocument bij QS8-252. **Kijk naar de remote branches vóór je iets
-oppakt** — `git branch -r` — en niet alleen naar Linear.
+⚠️ **Er werkt een parallelle sessie in dezelfde repo, en op 03-09 kostte dat
+werk.** **Kijk naar de remote branches vóór je iets oppakt** — `git branch -r` —
+en niet alleen naar Linear. Twee dingen die daar die dag uit kwamen:
+
+- `origin/quintenstrijdonk/qs8-197-apple-en-google-knop` draagt **migratie 0154**
+  en is nog niet geland. Zolang dat zo is, laat élke nieuwe migratie een gat in de
+  nummering en wordt `npm run migraties:controle` rood — dus kan de poort niet
+  groen en CI niet slagen. Dat blokkeerde QS8-174 volledig. **Wil je een migratie
+  schrijven, kijk dan eerst of er een lager nummer op een open branch staat.**
+
+  ⚠️ **En je ziet dit meteen, ook zonder iets te doen.** Op een schone `main`
+  staat `npm run migraties:controle` op 03-09 rood met precies deze melding
+  (nagemeten met een `git stash`). Ga er dus niet van uit dat je eigen wijziging
+  hem brak; de controle meldt de branchnaam, en die naam is het antwoord. Hij
+  wordt vanzelf groen zodra die branch landt.
+- `origin/quintenstrijdonk/qs8-266-...` is al opgepakt door een andere sessie.
+  QS8-266 is op 03-09 aangemaakt (de vragenlijst na de onboarding is
+  onbereikbaar); dat issue is dus niet meer vrij.
 
 ## STAND VAN ZAKEN
 
@@ -398,6 +466,76 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een belofte-test die de náám van een helper bewaakt, bewaakt zijn belofte
+  niet — 03-09, QS8-213.** De test stond toe dat er precies één helper gespreid
+  werd in de profielpatch, en controleerde dat met een naamlijst. De
+  security-review mat wat daar doorheen kwam:
+
+  ```
+  ...herinneringStandaard({ onboarded_at: profiel?.onboarded_at ?? null })   groen (juist)
+  ...herinneringStandaard({ onboarded_at: null })                            groen (fout!)
+  'share_moves_by_default': false        (sleutel gequote)                   groen (fout!)
+  ...{ share_moves_by_default: false }   (inline spread)                     groen (fout!)
+  share_moves_by_default: false          (kaal)                              rood
+  ```
+
+  Die tweede regel is de gevaarlijke: één woord korter, leest als "de
+  onboarding-standaard", en zet vanaf dat moment de dagelijkse herinnering van
+  élke bestaande gebruiker terug op 20:00. Dat is precies de belofte waar die
+  helper voor gebouwd is.
+
+  ⚠️ **En de ijking wees er niet naar.** Die had de helper vervangen door een
+  ándere helper, en dat wordt rood op de naamlijst — de grendel die er toch al
+  lag. `CLAUDE.md` zegt bij regel 18 letterlijk: *breek de grendel die de ijking
+  nóemt*. Wat de test nu doet, is kijken wat er ín de haakjes staat; en een
+  gequote of berekende sleutel is rood in plaats van stil.
+
+- **⚠️ Een test die een woord zoekt, is groen op beide lezingen van dat woord —
+  03-09, QS8-202.** De pushmelding zei *"Het punt voor die week krijg je wel"*,
+  wat leest als *je ontvángt het punt*, en in het Engels (*"you still take the
+  point"*) nog sterker. Bedoeld was het omgekeerde: dat punt ben je kwijt.
+  Domeinregel 10 zegt met zoveel woorden dat die regel niet mag verwateren, en
+  dit is het énige kanaal dat iemand bereikt die de app niet opent.
+
+  De test eronder was `.toContain('punt')`. Beide formuleringen bevatten dat
+  woord. **Toets bij copy die een regel draagt de ríchting en niet het
+  onderwerp** — `not.toMatch(/punt.*krijg je/)` naast `toMatch(/afgegaan/)`.
+
+  ⚠️ De juiste zin stond al in de catalogus, bij `weekpas.punt_toch_af`. Twee
+  plekken die hetzelfde moeten zeggen en niet naar elkaar wijzen, lopen uiteen —
+  en de nieuwste van de twee is niet vanzelf de betere.
+
+- **⚠️ Een feature kan af zijn, getest zijn en niets doen omdat twee jobs uit
+  elkaar staan — 03-09, QS8-202.** Uitgeschreven in punt B bovenaan dit bestand.
+  De korte versie: het weekoverzicht vroeg om 9:00 of er een weekpas verbruikt
+  was, en de rollover verbruikt hem pas na de coulanceperiode van twaalf uur.
+  Altijd nee, voor de standaardgebruiker, en de ontdubbeling maakte dat voor die
+  week definitief.
+
+  ⚠️ **Dit is regel 18 vraag 5 over tijd in plaats van over een knop.** De vraag
+  *"kan een gebruiker hier daadwerkelijk bij"* heeft een tweede helft die niemand
+  stelde: *"en op het moment dat dit draait, ís het antwoord er dan al?"* Bij
+  alles wat op een cyclusgrens hangt — rollover, weekpas, punten, meldingen — is
+  dat een eigen vraag.
+
+- **⚠️ Leid de lijst van een controle af uit een aanroep, niet uit bestandsnamen
+  — 03-09, QS8-208 en QS8-202.** De belofte-test van de wachtschermen haalt zijn
+  lijst op uit wie `fetchJob()` aanroept en vond meteen een derde scherm dat niet
+  in het issue stond. Een groepsgrendel die zes bestandsnamen opsomde, miste
+  zowel nieuwe schermen als de transitieve weg (`DoelStandKaart` rendert
+  `Weekpas`, en geen enkel scherm noemt `Weekpas` rechtstreeks).
+
+  ⚠️ **De sterkste vorm blijft de database.** Bij de weekpas is de échte grendel
+  `week_pass_events_select`, die alleen je eigen rijen geeft. Een bronscan vangt
+  de fout een laag eerder waar hij nog leesbaar is, maar hij is de tweede
+  verdedigingslinie en niet de eerste.
+
+- **⚠️ Tel je voortgang af tegen de lijst, niet op vanuit je werk — 03-09.** Een
+  seriële batch van acht issues leverde een eindrapportage op die "zeven van de
+  acht geland" zei. Het waren er zes: QS8-192 was er tussenuit gevallen zonder dat
+  iemand het merkte, en het getal is opgeteld uit wat er gedaan wás. Een optelling
+  van je eigen werk kan per definitie niet zien wat je niet gedaan hebt.
 
 - **⚠️ Een getal in een rapport leest als gemeten, ook als het geraden is —
   02-09, QS8-265.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
@@ -1260,11 +1398,35 @@ groene poort:
 | QS8-241 | `migratie:hernummer`, en een kop die over zijn eigen nummer liegt is nu rood | #130 |
 | QS8-247 | `migratie:nieuw` fetcht zelf voordat hij telt | #131 |
 
+**Wat er op 03-09 bij kwam** — een seriële batch van acht doorloopbevindingen,
+zes geland met een groene poort:
+
+| Issue | Wat het oploste | PR |
+|---|---|---|
+| QS8-213 | de profiel-onboarding vraagt nog twee dingen in plaats van zeven | #178 |
+| QS8-208 | de drie wachtschermen van de Doelcoach laten zien dát ze wachten | #179 |
+| QS8-221 | datums en tijden in de notatie van het toestel, opgemaakt op één plek | #181 |
+| QS8-218 | de gedachtestreepjes uit beide catalogi, met `streepje:controle` erop | #182 |
+| QS8-219 | de `levend`-ratel van 27 naar 21, langs `useAsyncMetTerugval()` | #185 |
+| QS8-202 | het weekoverzicht meldt dat een weekpas je reeks gered heeft | #188 |
+
+⚠️ **De andere twee staan nog open, en om verschillende redenen:** QS8-192 is
+overgeslagen (niet afgewogen — hij viel uit de lijst) en QS8-174 ligt op twee
+blokkades met `wacht-op-Quinten`. Zie punt 0 bovenaan dit bestand.
+
 **Waar je nu begint, in deze volgorde:**
 
-1. **Kijk eerst welke branches er open staan** (`git branch -r`). Op 01-09 stond
-   er een parallelle sessie op `claude/qs8-252-besluiten-a53-a56`. Twee sessies
-   in dezelfde bestanden is de duurste vorm van tijdverlies die dit project kent.
+1. **Kijk eerst welke branches er open staan** (`git branch -r`). Op 03-09 droeg
+   `quintenstrijdonk/qs8-197-apple-en-google-knop` migratie **0154** zonder
+   geland te zijn, en `quintenstrijdonk/qs8-266-...` was al door een andere
+   sessie opgepakt. Twee sessies in dezelfde bestanden is de duurste vorm van
+   tijdverlies die dit project kent — en een migratie op een open branch blokkeert
+   élke nieuwe migratie, want de nummering krijgt dan een gat.
+
+   ⚠️ **QS8-174 wacht daar vandaag op.** De SQL is af en staat in het issue; wat
+   hij nodig heeft is dat 0154 landt, en daarna de migratie op productie plus
+   `npm run types:db`. Zonder dat kent `database.types.ts` de nieuwe RPC niet en
+   is hij niet type-veilig aan te roepen.
 2. **QS8-252 — de epic van 01-09**, als die branch geland is of hem niet raakt.
    Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
    krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een

@@ -7,7 +7,9 @@ import {
   magNudgen,
   nudgeBericht,
   nudgeReden,
+  overzichtsuur,
   STANDAARD_HERINNERINGSTIJD,
+  tekstsleutelVoor,
   tijdVoorInvoer,
   uurUit,
   type Melding,
@@ -355,5 +357,146 @@ describe('tijdVoorInvoer', () => {
     // ⚠️ De naad tussen het invoerveld en de meldingenjob. `tijdVoorInvoer()`
     //    toont, `uurUit()` beslist — en die twee horen hetzelfde uur te zien.
     expect(uurUit(tijdVoorInvoer('7:05'))).toBe(7);
+  });
+});
+
+
+/**
+ * "Een weekpas heeft je reeks gered" bereikt je ook zonder de app te openen — QS8-202.
+ *
+ * ⚠️ **De naad zit tussen de rollover en de meldingen-job.** De eerste verbruikt
+ *    de pas op de cyclusgrens en schrijft `week_pass_events`; de tweede stuurt op
+ *    diezelfde dag het weekoverzicht. Allebei correct, en het geheel lekte: wie
+ *    de app die week niet opende, hoorde nooit dat zijn pas op was. Het privéblok
+ *    op het dashboard was de enige plek, en dat vraagt dat je langskomt.
+ *
+ * ⚠️ **De soort blijft `cycle_summary` en dat is geen besparing maar de
+ *    reparatie.** Een vijfde soort zou een migratie zijn (de CHECK
+ *    `notifications_sent_kind_bekend` uit 0053 kent er vier), én de ontdubbeling
+ *    loopt op `(user_id, kind, local_date)` — dan kreeg iemand met een verbruikte
+ *    weekpas twee meldingen over dezelfde week.
+ */
+describe('tekstsleutelVoor', () => {
+  it('geeft de weekpas-tekst als er een pas verbruikt is', () => {
+    expect(tekstsleutelVoor('cycle_summary', true)).toBe('cycle_summary_weekpas');
+  });
+
+  it('geeft het gewone weekoverzicht als er geen pas verbruikt is', () => {
+    expect(tekstsleutelVoor('cycle_summary', false)).toBe('cycle_summary');
+    expect(tekstsleutelVoor('cycle_summary')).toBe('cycle_summary');
+  });
+
+  it('laat elke andere soort met rust, ook met de vlag aan', () => {
+    // ⚠️ Een goedkeuringsverzoek met "een weekpas heeft je reeks gered" erin is
+    //    onzin, en erger: het zou over iemand anders gaan.
+    expect(tekstsleutelVoor('approval_request', true)).toBe('approval_request');
+    expect(tekstsleutelVoor('approval_received', true)).toBe('approval_received');
+  });
+
+  it('geeft nooit iets terug dat als soort in de database zou passen', () => {
+    // ⚠️ **Dit is de grendel onder "geen migratie".** `notifications_sent.kind`
+    //    mag alleen de vier waarden uit de CHECK van 0053 dragen. Belandt de
+    //    variant ooit in dat veld, dan weigert Postgres de rij en gaat er geen
+    //    enkele melding meer uit — een storing die pas op de cyclusgrens blijkt.
+    const SOORTEN_IN_DE_DATABASE = [
+      'nudge',
+      'approval_request',
+      'approval_received',
+      'cycle_summary',
+    ];
+
+    expect(SOORTEN_IN_DE_DATABASE).not.toContain(tekstsleutelVoor('cycle_summary', true));
+  });
+});
+
+describe('berichtVoor met een geredde week', () => {
+  it('zegt in beide talen dat een weekpas de reeks gered heeft', () => {
+    expect(berichtVoor('cycle_summary', { weekpasGered: true }, 'nl').titel).toContain('weekpas');
+    expect(berichtVoor('cycle_summary', { weekpasGered: true }, 'en').titel).toContain('week pass');
+  });
+
+  it('is een ander bericht dan het gewone weekoverzicht', () => {
+    const gewoon = berichtVoor('cycle_summary', {}, 'nl');
+    const gered = berichtVoor('cycle_summary', { weekpasGered: true }, 'nl');
+
+    expect(gered.titel).not.toBe(gewoon.titel);
+    expect(gered.body).not.toBe(gewoon.body);
+  });
+
+  it('zegt dat het punt eraf ging, en niet dat je het krijgt', () => {
+    // ⚠️ Domeinregel 10: een weekpas beschermt de reeks, níét het punt. Anders is
+    //    missen gratis en zegt de score niets.
+    //
+    // ⚠️ **De eerste versie van deze test toetste `.toContain('punt')`, en dat is
+    //    precies te weinig.** De zin die er stond was "Het punt voor die week krijg
+    //    je wel" — dat leest als *je ontvangt het punt*, en in het Engels ("you
+    //    still take the point") nog sterker. Onder een titel die begint met "heeft
+    //    je reeks gered" kiest een lezer per definitie de positieve lezing. Beide
+    //    formuleringen bevatten het woord, dus de test was groen op een zin die
+    //    het tegendeel van de regel beweerde. Gevonden in de security-review van
+    //    03-09; deze test toetst nu de ríchting.
+    const nl = berichtVoor('cycle_summary', { weekpasGered: true }, 'nl').body;
+    const en = berichtVoor('cycle_summary', { weekpasGered: true }, 'en').body;
+
+    expect(nl).toMatch(/punt (is )?afgegaan|punt eraf|afgegaan/i);
+    expect(nl).not.toMatch(/punt.*krijg je|krijg je.*punt/i);
+
+    expect(en).toMatch(/came off|did come off/i);
+    expect(en).not.toMatch(/take the point|get the point|earn the point/i);
+  });
+
+  it('noemt geen doel en geen groep', () => {
+    // ⚠️ Domeinregel 7 en de kop van dit bestand: een pushmelding staat op een
+    //    vergrendeld scherm dat iemand anders kan meelezen, en een verbruikte
+    //    weekpas is het bewijs van een gemiste week. De zin gaat over jou en
+    //    noemt verder niets.
+    const nl = berichtVoor('cycle_summary', { weekpasGered: true }, 'nl');
+    const en = berichtVoor('cycle_summary', { weekpasGered: true }, 'en');
+
+    expect(`${nl.titel} ${nl.body}`).not.toMatch(/groep|doel/i);
+    // ⚠️ De Engelse helft stond er eerst niet bij. Twee catalogi die niet gelijk
+    //    op getoetst worden, is de scheefgroei van QS8-115.
+    expect(`${en.titel} ${en.body}`).not.toMatch(/group|goal/i);
+  });
+});
+
+
+/**
+ * Het uur waarop het weekoverzicht valt — QS8-202, na de security-review.
+ *
+ * ⚠️ **Dit is de naad waar de hele feature op stukliep, en geen enkele test raakte
+ *    hem.** De vorige versie stuurde het overzicht om het herinneringsuur
+ *    (standaard 9:00), en de rollover schrijft een gemiste week pas ná de
+ *    coulanceperiode van twaalf uur af. Om 9:00 was er dus nooit een verbruikte
+ *    weekpas te vinden, en de ontdubbeling op `(user_id, kind, local_date)` liet
+ *    die dag geen tweede melding meer toe. De feature was gebouwd, getest en deed
+ *    niets — elk schakeltje af, de keten onderbroken.
+ *
+ * ⚠️ De tests hieronder toetsen het uur; `tests/beloftes/weekpas-bereikt-je.test.ts`
+ *    legt datzelfde uur naast de échte cyclusrekenaars uit `shared/time`, zodat
+ *    "de week is dan afgeschreven" een meting is en geen redenering.
+ */
+describe('overzichtsuur', () => {
+  it('wacht op de coulanceperiode bij een ochtendherinnering', () => {
+    expect(overzichtsuur(9)).toBe(12);
+    expect(overzichtsuur(7)).toBe(12);
+  });
+
+  it('doet hetzelfde voor wie nooit een tijd instelde', () => {
+    // ⚠️ Dat is de standaardsituatie: `reminder_time` heeft geen kolomstandaard.
+    //    Deze groep was dus honderd procent van het bereik van de fout.
+    expect(overzichtsuur(null)).toBe(12);
+  });
+
+  it('houdt een avondherinnering waar hij staat', () => {
+    expect(overzichtsuur(20)).toBe(20);
+    expect(overzichtsuur(13)).toBe(13);
+  });
+
+  it('valt precies op de grens en niet erna', () => {
+    // ⚠️ De rollover draait op het hele uur en deze job op het halve, dus binnen
+    //    uur 12 is de rollover eerst. `>=` is genoeg; `>` zou het overzicht een
+    //    uur later zetten zonder reden.
+    expect(overzichtsuur(12)).toBe(12);
   });
 });
