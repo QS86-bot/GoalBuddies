@@ -36,9 +36,22 @@ import { pathToFileURL } from 'node:url';
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
  *
- * ⚠️ Vijf stuks, en alle vijf staan ze in `zichtbaarheid.open_uitleg` en in
- *    `bevestiging.groep_openzetten.uitleg`. Komt er een zesde bij, dan wordt
- *    deze controle rood — en dán is de vraag of die zin nog klopt, niet later.
+ * ⚠️ Zes rijen, maar **vijf feiten** — en dat onderscheid is de reden dat de zin
+ *    voor de gebruiker niet meegroeit. `zichtbare_reeksen_van_groep` (0151) is
+ *    een tweede pad naar hetzelfde feit als `group_visible_streaks`, niet een
+ *    zesde ding dat opengaat. Komt er een rij bij die wél een nieuw feit
+ *    opent, dan wordt deze controle rood — en dán is de vraag of
+ *    `zichtbaarheid.open_uitleg` en `bevestiging.groep_openzetten.uitleg` nog
+ *    kloppen, niet later.
+ *
+ * ⚠️ **De tweede-pad-rij is de uitzondering en hij hoort er een te blijven.** Het
+ *    is verleidelijk om hem bij `GEEN_OPPERVLAK` te zetten — hij opent immers
+ *    niets nieuws — maar hij ís een oppervlak: hij geeft gemaskeerde
+ *    gebruikersdata terug en de maskering varieert op `zichtbaarheid`. Hem bij
+ *    het mechanisme zetten zou betekenen dat een plek die écht data uitgeeft,
+ *    ongeclassificeerd langs de volgende lezer glijdt. Wat hem hier houdt is dat
+ *    zijn gelijkheid met de view onder test staat; loopt die ooit uiteen, dan is
+ *    het wél een zesde feit en groeit de zin alsnog.
  *
  * ⚠️ **Dat heeft op 01-09-2026 precies gewerkt en dat is het opschrijven waard.**
  *    Het klassement uit besluit A54 werd hier rood, en de melding wees naar de
@@ -66,6 +79,17 @@ export const OPPERVLAKKEN = new Map([
     'policy:chain_links.chain_links_select',
     'De Ketting per lid (migratie 0079). De teller erboven blijft dicht — die is ' +
       'optellend en verraadt niemand (besluit A42).',
+  ],
+  [
+    'functie:zichtbare_reeksen_van_groep',
+    'Dezelfde beste reeks als `view:group_visible_streaks` — geen zesde ding dat ' +
+      'opengaat maar een tweede deur naar het vijfde (migratie 0151). Hij bestaat ' +
+      'omdat de view op `security_barrier` staat en zijn `where` daardoor per rij ' +
+      'van de héle `user_streaks` draait; `group_overview()` gebruikt hem. ' +
+      '⚠️ Staat hij hier, dan hoeft `zichtbaarheid.open_uitleg` niet te groeien — ' +
+      'maar wijkt hij ooit inhoudelijk van de view af, dan is dat wél een nieuw ' +
+      'oppervlak. Die gelijkheid staat onder test in ' +
+      '`tests/rls/reeksen-van-een-groep.test.ts`, in beide richtingen.',
   ],
   [
     'functie:groep_klassement',
