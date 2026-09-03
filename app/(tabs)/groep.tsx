@@ -1,12 +1,21 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { fetchMijnGroepen, huddledagLabel, type Groep } from '@/modules/buddies';
-import { fetchBeoordelingen, volgBeoordelingen } from '@/modules/completions';
+import { useTeBeoordelen } from '@/modules/completions';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } from '@/shared/ui';
+import {
+  AsyncView,
+  Body,
+  Button,
+  Caption,
+  Card,
+  Screen,
+  Subheading,
+  TeBeoordelenKaart,
+  useAsync,
+} from '@/shared/ui';
 
 /**
  * Groep — de ingang naar je buddy-groepen.
@@ -27,12 +36,18 @@ import { AsyncView, Body, Button, Caption, Card, Screen, Subheading, useAsync } 
  */
 export default function GroepTab() {
   const router = useRouter();
+  const teBeoordelen = useTeBeoordelen();
 
   const { data: groepen, loading, error, herlaad } = useAsync(() => fetchMijnGroepen(), []);
 
   return (
     <Screen title={t('groepen.titel')}>
-      <TeBeoordelenKaart />
+      {/*
+        ⚠️ Sinds QS8-148 staat deze kaart óók op het hoofdscherm, uit één
+           component met één hook. Twee kopieën zouden na de eerste wijziging
+           uiteenlopen — de fout van 0032/0034 in schermvorm.
+      */}
+      <TeBeoordelenKaart stand={teBeoordelen} onOpen={() => router.push('/beoordelen')} />
 
       <AsyncView
         loading={loading}
@@ -74,72 +89,6 @@ export default function GroepTab() {
         {t('groepen.ontdekken')}
       </Button>
     </Screen>
-  );
-}
-
-/**
- * "Er wacht iets op jou" — QS8-62.
- *
- * ⚠️ Deze kaart was de énige ingang naar het beoordeelscherm, en hij verborg
- *    zichzelf als het tellen mislukte. In de trein stond er dan "niets te
- *    beoordelen" terwijl er drie mensen wachtten, zonder enige manier om dat te
- *    controleren. Dat is dodelijk voor de succesmetriek uit de PRD (≥80% binnen
- *    48 uur): wie het niet ziet, beoordeelt niet.
- *
- *    Nu: bij een storing blijft de kaart staan met een eerlijke tekst en de knop
- *    erin. Beter een keer voor niets kijken dan nooit weten dat er iets was.
- *
- * ⚠️ Op nul blijft hij wél weg. Een kaart die permanent "0 te beoordelen" meldt,
- *    leert mensen om er niet meer naar te kijken — en dan is hij nutteloos op
- *    het moment dat er wél iets staat.
- */
-function TeBeoordelenKaart() {
-  const router = useRouter();
-  const [aantal, setAantal] = useState(0);
-  const [mislukt, setMislukt] = useState(false);
-  const [ronde, setRonde] = useState(0);
-
-  useEffect(() => {
-    let levend = true;
-
-    fetchBeoordelingen()
-      .then((w) => {
-        if (!levend) return;
-        setAantal(w.totaal);
-        setMislukt(false);
-      })
-      .catch(() => {
-        if (levend) setMislukt(true);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [ronde]);
-
-  useEffect(() => {
-    const stop = volgBeoordelingen(() => setRonde((n) => n + 1));
-    return stop;
-  }, []);
-
-  if (aantal === 0 && !mislukt) return null;
-
-  return (
-    <Card>
-      <Subheading>
-        {mislukt
-          ? t('groepen.wachten_onbekend')
-          : aantal === 1
-            ? t('groepen.wacht_een')
-            : t('groepen.wachten_meer', { n: aantal })}
-      </Subheading>
-      <Body muted>
-        {mislukt ? t('groepen.ophalen_mislukt') : t('groepen.week_afgerond')}
-      </Body>
-      <Button variant="primair" block onPress={() => router.push('/beoordelen')}>
-        {t('groepen.beoordelen')}
-      </Button>
-    </Card>
   );
 }
 

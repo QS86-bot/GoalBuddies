@@ -16,6 +16,12 @@ export { useAsync, laad } from './useAsync';
 export { bindVertrekwacht } from './vertrekwacht';
 export type { Terugknop, Venster, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
 export { useVertrekwacht } from './useVertrekwacht';
+export { TeBeoordelenKaart } from './TeBeoordelenKaart';
+export {
+  beoordeelkopSleutel,
+  toonBeoordeelkaart,
+  type Beoordeelstand,
+} from './tebeoordelen';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
 export { initialen } from './naming';

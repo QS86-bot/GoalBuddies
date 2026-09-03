@@ -48,3 +48,5 @@ export {
   vinkDagAf,
   type Dagafvinking,
 } from './afvinken';
+
+export { useTeBeoordelen } from './useTeBeoordelen';
