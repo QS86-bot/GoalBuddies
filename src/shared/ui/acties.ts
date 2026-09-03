@@ -129,7 +129,12 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     groepBeschermen: bouw('bevestiging.groep_beschermen'),
     // ⚠️ Migratie 0092. Archiveren vervangt het verwijderen van een groep, dat
     //    naar zes tabellen cascadeerde. Het is de zwaarste knop in dit scherm:
-    //    hij neemt de groep weg bij álle leden, en er is geen weg terug.
+    //    hij zet de groep voor álle leden op slot.
+    // ⚠️ **Hier stond "en er is geen weg terug", en dat klopt sinds 0153 niet
+    //    meer.** Teruglezen kan, en een beheerder kan de groep terughalen met
+    //    `groepHeropenen` hieronder. De uitleg in de catalogus is daarop
+    //    bijgewerkt: die beloofde onomkeerbaarheid, en dat is precies het soort
+    //    zin waarmee iemand besluit het dan maar niet te doen.
     // ⚠️ QS8-231, migratie 0144. Ook deze twee gaan over ánderen: wie zijn groep
     //    vindbaar maakt, doet dat namens iedereen die erin zit. De uitleg noemt
     //    daarom niet alleen wat een vreemde te zien krijgt maar vooral wat níet —
@@ -144,6 +149,10 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     lidVerwijderen: bouw('bevestiging.lid_verwijderen'),
     persoonBlokkeren: bouw('bevestiging.persoon_blokkeren'),
     groepArchiveren: bouw('bevestiging.groep_archiveren'),
+    // ⚠️ QS8-217, migratie 0153. Heropenen is de tegenhanger van archiveren en
+    //    krijgt daarom dezelfde zorgvuldigheid: het geeft bij álle leden iets
+    //    terug wat weg was, en de uitleg zegt wat er wél en niet mee terugkomt.
+    groepHeropenen: bouw('bevestiging.groep_heropenen'),
     // ⚠️ QS8-57, migratie 0098. Vertrekken is niet terug te draaien vanuit de
     //    app — terugkomen vraagt een geldige uitnodigingslink, en die heeft de
     //    vertrekker misschien niet meer. De uitleg noemt daarom niet alleen wat
@@ -173,6 +182,7 @@ export type BevestigingsNaam =
   | 'lidVerwijderen'
   | 'persoonBlokkeren'
   | 'groepArchiveren'
+  | 'groepHeropenen'
   | 'groepVerlaten'
   | 'doelVerwijderen'
   | 'doelAfronden'

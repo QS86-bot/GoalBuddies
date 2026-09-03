@@ -26,6 +26,7 @@ import {
   vernieuwUitnodiging,
   wijzigGroep,
   archiveerGroep,
+  heropenGroep,
   beslisVerzoek,
   fetchOpenstaandeVerzoeken,
   OMSCHRIJVING_MAX,
@@ -112,7 +113,15 @@ export default function GroepBeheer() {
   const [voertaal, setVoertaal] = useState<Voertaal | 'geen'>('geen');
 
   const [bezig, setBezig] = useState<
-    'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | 'ontdek' | 'verzoek' | 'archief' | null
+    | 'opslaan'
+    | 'vernieuwen'
+    | 'sluiten'
+    | 'zicht'
+    | 'ontdek'
+    | 'verzoek'
+    | 'archief'
+    | 'heropen'
+    | null
   >(null);
   /**
    * ⚠️ Openklappen en niet meteen doen. Besluit A41 grens 3: omzetten raakt
@@ -128,6 +137,7 @@ export default function GroepBeheer() {
    *    en is vanuit de app niet terug te draaien.
    */
   const [archiefVraag, setArchiefVraag] = useState(false);
+  const [heropenVraag, setHeropenVraag] = useState(false);
   /** Zelfde vorm en zelfde reden als `zichtVraag`: dit zet iets open voor vreemden. */
   const [ontdekVraag, setOntdekVraag] = useState(false);
   /** De id's die deze sessie al beslist heeft. Zie `verzoeken` hieronder. */
@@ -331,6 +341,34 @@ export default function GroepBeheer() {
     //    een lege-staat of een foutmelding voor een handeling die juist geslaagd
     //    is. `setBezig` blijft daarom staan tot we weg zijn.
     router.replace('/groep');
+  }
+
+  async function heropen() {
+    if (!id) return;
+    setBezig('heropen');
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await heropenGroep(id, true);
+    setBezig(null);
+    setHeropenVraag(false);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    // ⚠️ **Blijven staan en niet weglopen** — het spiegelbeeld van `archiveer()`.
+    //    Daar loopt het scherm weg omdat je daarna op een groep zit die niets
+    //    meer doet; hier is de groep juist weer volledig in bedrijf, en dan is de
+    //    beheerpagina precies waar je wilt staan.
+    //
+    //    De status gaat lokaal mee, net als bij `zetZichtbaarheid()` en
+    //    `zetOntdekbaar()` hierboven — de database heeft hem al, en dit scherm
+    //    hoeft er geen ronde voor te doen. Daar hangt van af welke van de twee
+    //    kaarten onderaan getoond wordt.
+    setGroep((huidig) => (huidig === null ? huidig : { ...huidig, status: 'active' }));
+    setMelding(t('beheer.melding_heropend'));
   }
 
   async function zetGesloten(gesloten: boolean) {
@@ -713,24 +751,51 @@ export default function GroepBeheer() {
                    hij vervangt sinds 0092 het verwijderen van een groep, en dat
                    is niet terug te draaien vanuit de app.
               */}
-              <Card>
-                <Subheading>{t('beheer.archief_titel')}</Subheading>
-                <Body muted>{t('beheer.archief_uitleg')}</Body>
-                <Caption>{t('beheer.archief_waarschuwing')}</Caption>
+              {/*
+                ⚠️ **Eén van de twee, nooit allebei.** Een scherm dat "archiveren"
+                   én "terughalen" naast elkaar toont, laat de gebruiker raden in
+                   welke toestand hij staat. De status van de groep bepaalt het,
+                   en dat is dezelfde bron als de database gebruikt om de knop te
+                   weigeren — geen tweede waarheid in de UI.
+              */}
+              {g.status === 'archived' ? (
+                <Card>
+                  <Subheading>{t('beheer.heropen_titel')}</Subheading>
+                  <Body muted>{t('beheer.heropen_uitleg')}</Body>
 
-                {archiefVraag ? (
-                  <Bevestiging
-                    tekst={bevestigingen().groepArchiveren}
-                    bezig={bezig === 'archief'}
-                    onBevestig={() => void archiveer()}
-                    onAnnuleer={() => setArchiefVraag(false)}
-                  />
-                ) : (
-                  <Button variant="secundair" block onPress={() => setArchiefVraag(true)}>
-                    {t('beheer.archiveren')}
-                  </Button>
-                )}
-              </Card>
+                  {heropenVraag ? (
+                    <Bevestiging
+                      tekst={bevestigingen().groepHeropenen}
+                      bezig={bezig === 'heropen'}
+                      onBevestig={() => void heropen()}
+                      onAnnuleer={() => setHeropenVraag(false)}
+                    />
+                  ) : (
+                    <Button variant="secundair" block onPress={() => setHeropenVraag(true)}>
+                      {t('beheer.heropenen')}
+                    </Button>
+                  )}
+                </Card>
+              ) : (
+                <Card>
+                  <Subheading>{t('beheer.archief_titel')}</Subheading>
+                  <Body muted>{t('beheer.archief_uitleg')}</Body>
+                  <Caption>{t('beheer.archief_waarschuwing')}</Caption>
+
+                  {archiefVraag ? (
+                    <Bevestiging
+                      tekst={bevestigingen().groepArchiveren}
+                      bezig={bezig === 'archief'}
+                      onBevestig={() => void archiveer()}
+                      onAnnuleer={() => setArchiefVraag(false)}
+                    />
+                  ) : (
+                    <Button variant="secundair" block onPress={() => setArchiefVraag(true)}>
+                      {t('beheer.archiveren')}
+                    </Button>
+                  )}
+                </Card>
+              )}
 
               {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
               {fout === null ? null : <Caption danger>{fout}</Caption>}

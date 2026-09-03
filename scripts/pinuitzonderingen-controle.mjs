@@ -59,6 +59,16 @@ import { pathToFileURL } from 'node:url';
  */
 export const REGISTER = new Map([
   [
+    'heropen_groep',
+    'Zet `status` van `archived` terug naar `active` (0153, QS8-217) — de ' +
+      'tegenhanger van `archiveer_groep` en met dezelfde eisen: een actieve ' +
+      'beheerder plus een expliciete bevestiging. ⚠️ Hij komt bovendien langs een ' +
+      'tweede slot dat de andere functies hier niet hebben: de trigger ' +
+      '`archief_blijft_archief()` pint een archief voor élke rol vast, en laat ' +
+      'deze ene transitie alleen door als `app.heropent_groep` het id van precies ' +
+      'die groep draagt. Die instelling zet niemand anders.',
+  ],
+  [
     'archiveer_groep',
     'Zet `status` op `archived`. Dat ís de pinned kolom, en de functie eist een ' +
       'actieve beheerder plus een expliciete bevestiging (0092).',

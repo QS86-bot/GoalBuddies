@@ -678,9 +678,15 @@ export async function zetGroepszichtbaarheid(
  *    domeinregel 5 zegt dat zoiets expliciet bevestigd moet zijn. De database
  *    weigert zonder.
  *
- * ⚠️ Ná deze aanroep is de groep voor jou ook niet meer leesbaar —
- *    `is_group_member()` is onwaar voor een gearchiveerde groep. Het scherm moet
- *    dus wegnavigeren en niet proberen te herladen.
+ * ⚠️ **Dit stond hier andersom tot 0153 en het is nu onwaar.** Er stond: "ná deze
+ *    aanroep is de groep voor jou ook niet meer leesbaar". Dat klopte onder 0092
+ *    — `is_group_member()` was onwaar voor een archief en `groups_select` liep
+ *    langs diezelfde functie — en het is precies wat QS8-217 repareerde. Een
+ *    gearchiveerde groep is sinds 0153 gewoon te openen; er is alleen niets meer
+ *    in te schrijven.
+ *
+ *    Het scherm navigeert nog steeds weg na het archiveren, maar dat is nu een
+ *    keuze over waar je daarna wilt staan en geen noodzaak.
  */
 export async function archiveerGroep(
   groupId: string,
@@ -693,6 +699,47 @@ export async function archiveerGroep(
 
   if (error) {
     reportError(error, 'groups.archive', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/**
+ * Haalt een groep terug uit het archief — migratie 0153 (QS8-217).
+ *
+ * ⚠️ **Dit is de vierde route terug, en de eerste met een naam.** 0092 vond er
+ *    vier door in `pg_proc` te zoeken naar elke functie die `update groups` doet,
+ *    en zette er één trigger op die voor élke rol pint — ook voor `service_role`
+ *    en definer-functies, want drie van de vier wáren definer-functies. Die pin
+ *    blijft staan; `heropen_groep()` heeft er één sleutel voor, en die draagt het
+ *    id van precies deze groep.
+ *
+ * ⚠️ `bevestigd` om dezelfde reden als bij `archiveerGroep()`: de handeling geeft
+ *    bij álle leden iets terug wat weg was, en domeinregel 5 zegt dat zoiets
+ *    expliciet bevestigd moet zijn. De database weigert zonder.
+ *
+ * ⚠️ Alleen een actieve beheerder. `is_group_admin()` geeft onwaar voor een
+ *    archief, dus de functie kijkt rechtstreeks in `group_members` — dat is geen
+ *    omweg maar de enige weg, en het staat sinds 0092 in de kop van die migratie
+ *    opgeschreven.
+ */
+export async function heropenGroep(
+  groupId: string,
+  bevestigd: boolean,
+): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('heropen_groep', {
+    p_group_id: groupId,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.reopen', { group_id: groupId, pgcode: error.code });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
