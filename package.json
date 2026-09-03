@@ -34,6 +34,7 @@
     "catalogus:controle": "node scripts/catalogus-controle.mjs",
     "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
     "edge:controle": "node scripts/edge-tijd-controle.mjs",
+    "logboek:controle": "node scripts/logboek-controle.mjs",
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
     "uitgang:controle": "node scripts/uitgang-controle.mjs",

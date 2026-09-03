@@ -8,6 +8,7 @@ import { closableUserCycle, cyclesBetween, userCycle, userCycleOn } from '../_sh
 import type { Weekday } from '../_shared/time/types.ts';
 import { localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
+import { paginas } from '../_shared/bladeren/index.ts';
 import { metCors } from '../_shared/cors.ts';
 
 /**
@@ -134,6 +135,16 @@ Deno.serve(metCors(async (req: Request) => {
   }
 }));
 
+/**
+ * Hoeveel profielen de rollover per ronde ophaalt — QS8-206.
+ *
+ * ⚠️ **Bewust klein.** Deze job doet per profiel nog meerdere query's, dus de
+ *    grens is niet het geheugen maar de looptijd van één Edge Function. Een
+ *    kleinere pagina betekent meer ronden en niet meer werk; een grotere zet de
+ *    hele job op het spel zodra hij zijn tijdslimiet raakt.
+ */
+const PROFIELEN_PER_PAGINA = 200;
+
 async function draaiRollover(auth: string): Promise<Response> {
 
 
@@ -142,19 +153,6 @@ async function draaiRollover(auth: string): Promise<Response> {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? auth.replace(/^Bearer\s+/i, ''),
     { auth: { persistSession: false } },
   );
-
-  const { data: profielen, error: profielFout } = await db
-    .from('profiles')
-    .select('id, week_start_day, tz');
-
-  if (profielFout) {
-    // ⚠️ De melding van Postgres gaat door `scrubMessage()` heen voordat er iets
-    //    verstuurd wordt; een geciteerde waarde uit een constraint blijft hier.
-    await meld(new Error(`profielen ophalen mislukte: ${profielFout.message}`), 'rollover.profielen', {
-      code: 'profielen_ophalen_mislukt',
-    });
-    return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
-  }
 
   const nu = new Date();
   let gemist = 0;
@@ -173,7 +171,57 @@ async function draaiRollover(auth: string): Promise<Response> {
   // Profielen die overgeslagen zijn omdat hun cyclus niet te bepalen was.
   let overgeslagen = 0;
 
-  for (const profiel of (profielen ?? []) as Profiel[]) {
+  // ---------------------------------------------------------------------------
+  // De profielen, in pagina's
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ **Dit was `.select('id, week_start_day, tz')` zonder meer**, en dat is de
+  //    dossierrij van 19-08. PostgREST kent een `max-rows`; staat die gezet, dan
+  //    kapt hij de lijst af en slaat deze job **stilzwijgend een deel van de
+  //    gebruikers over** — geen fout, geen melding, alleen weken die voor
+  //    niemand afgesloten worden. Onwrikbare regel 10.
+  //
+  // ⚠️ **`order('id')` is geen netheid maar de voorwaarde.** Zonder een stabiele
+  //    sortering is `range()` betekenisloos: Postgres mag rijen dan in elke
+  //    volgorde teruggeven, en dan overlappen pagina's elkaar én missen ze
+  //    rijen. Dit is dezelfde grendel als bij de cursorpaginering van 0121,
+  //    0125 en 0152, alleen hoeft het hier geen cursor te zijn — een job leest
+  //    alles en een verschuiving tussen twee pagina's raakt hooguit één profiel
+  //    dat deze ronde overgeslagen of dubbel bekeken wordt. Dubbel is
+  //    onschadelijk: elke stap hieronder is idempotent op de cyclus die hij
+  //    afsluit.
+  //
+  // ⚠️ **De paginagrootte is bewust klein.** Deze functie doet per profiel nog
+  //    meerdere query's, dus het geheugen is niet de grens maar de looptijd van
+  //    één Edge Function. Kleiner betekent meer ronden en niet meer werk.
+  // ⚠️ **De lus zelf staat in `src/shared/bladeren` en niet hier**, want daar
+  //    draait vitest. Wat hier blijft is de query — en die draagt de enige
+  //    eigenschap die `paginas()` níét kan bewaken: de `order`.
+  let profielenGezien = 0;
+  let profielFout: { message: string } | null = null;
+
+  const haalProfielen = async (start: number, aantal: number): Promise<readonly Profiel[]> => {
+    const { data, error } = await db
+      .from('profiles')
+      .select('id, week_start_day, tz')
+      .order('id', { ascending: true })
+      .range(start, start + aantal - 1);
+
+    if (error) {
+      profielFout = error;
+      // ⚠️ Leeg teruggeven en de fout apart onthouden: `paginas()` stopt dan
+      //    netjes en de aanroeper beslist wat er met de fout gebeurt. Gooien zou
+      //    de generator halverwege afbreken en de al verwerkte pagina's stil
+      //    laten vervallen.
+      return [];
+    }
+    return (data ?? []) as Profiel[];
+  };
+
+  for await (const pagina of paginas(haalProfielen, PROFIELEN_PER_PAGINA)) {
+    profielenGezien += pagina.length;
+
+  for (const profiel of pagina) {
     // ⚠️ De cyclus die deze gebruiker nog mág afsluiten. Binnen de
     //    coulanceperiode is dat nog de vórige week, en dan is er dus níéts te
     //    rollen — anders kost een late log alsnog een minpunt (QS8-51).
@@ -238,7 +286,7 @@ async function draaiRollover(auth: string): Promise<Response> {
       // Zacht, zoals de andere afgeleide stappen: de rest van de rollover moet
       // door. Wel zichtbaar — een straf die niet afgaat, ondermijnt het hele
       // commitment device (domeinregel 5).
-      console.error(`straffen afwikkelen mislukte voor ${profiel.id}: ${strafFout.message}`);
+      console.error(`straffen afwikkelen mislukte voor een profiel: ${strafFout.message}`);
     } else {
       verschuldigd += typeof straffen === 'number' ? straffen : 0;
     }
@@ -264,7 +312,7 @@ async function draaiRollover(auth: string): Promise<Response> {
       .order('cycle_start_date', { ascending: true });
 
     if (openFout) {
-      console.error(`weekdoelen ophalen mislukte voor ${profiel.id}: ${openFout.message}`);
+      console.error(`weekdoelen ophalen mislukte voor een profiel: ${openFout.message}`);
       continue;
     }
 
@@ -350,7 +398,7 @@ async function draaiRollover(auth: string): Promise<Response> {
         // reeks en hoort niet stil te gebeuren, maar de rollover mag er niet op
         // stuklopen: de andere profielen moeten nog.
         console.error(
-          `weekpas verbruiken mislukte voor ${profiel.id}/${weekdoel.goal_id}: ${pasFout.message}`,
+          `weekpas verbruiken mislukte voor doel ${weekdoel.goal_id}: ${pasFout.message}`,
         );
       } else if (geredeWeek === true) {
         gered += 1;
@@ -397,7 +445,7 @@ async function draaiRollover(auth: string): Promise<Response> {
       // Zacht: het afschrijven is het echte werk van deze job. Wel zichtbaar —
       // een plan dat niet inschuift, is een week waarin de gebruiker niets te
       // doen heeft zonder dat iemand dat besloten heeft.
-      console.error(`weekplan-kandidaten ophalen mislukte voor ${profiel.id}: ${kandidaatFout.message}`);
+      console.error(`weekplan-kandidaten ophalen mislukte voor een profiel: ${kandidaatFout.message}`);
     } else {
       for (const kandidaat of (kandidaten ?? []) as Kandidaat[]) {
         // ⚠️ Geen rekenwerk in SQL: het cyclusnummer komt uit `shared/time`,
@@ -460,6 +508,25 @@ async function draaiRollover(auth: string): Promise<Response> {
         risicoBijgewerkt += 1;
       }
     }
+  }
+
+  }
+
+  // ⚠️ **Pas hier, en niet in `haalProfielen`.** Een 500 midden in de lus zou de
+  //    profielen die al afgehandeld zijn onvermeld laten; nu is het werk gedaan
+  //    en meldt de job dat hij niet compleet was.
+  if (profielFout !== null) {
+    // ⚠️ De melding van Postgres gaat door `scrubMessage()` heen voordat er iets
+    //    verstuurd wordt; een geciteerde waarde uit een constraint blijft hier.
+    await meld(
+      new Error(`profielen ophalen mislukte: ${(profielFout as { message: string }).message}`),
+      'rollover.profielen',
+      { code: 'profielen_ophalen_mislukt' },
+    );
+    return new Response(
+      JSON.stringify({ error: (profielFout as { message: string }).message }),
+      { status: 500 },
+    );
   }
 
   // Slapende groepen — QS8-60.
@@ -550,7 +617,11 @@ async function draaiRollover(auth: string): Promise<Response> {
       overgeslagen,
       vrijgesteld,
       verschuldigd,
-      profielen: (profielen ?? []).length,
+      // ⚠️ **Dit was `(profielen ?? []).length` en dus de lengte van de láátste
+      //    pagina.** Sinds QS8-206 leest deze job in pagina's, en dan is dat
+      //    getal geen totaal meer maar een restant — precies het soort stille
+      //    onwaarheid waar dit veld voor bedoeld is om hem te voorkomen.
+      profielen: profielenGezien,
       geslapen: geslapen ?? 0,
       risicoBijgewerkt,
       // ⚠️ Om dezelfde reden als `recaps` en `alsnogGoedgekeurd`: een job zonder

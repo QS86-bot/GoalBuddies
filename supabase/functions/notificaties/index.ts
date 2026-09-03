@@ -347,7 +347,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       }
     } catch (fout) {
       console.error(
-        `cyclus bepalen mislukte voor ${profiel.id}: ${
+        `cyclus bepalen mislukte voor een profiel: ${
           fout instanceof Error ? fout.message : String(fout)
         }`,
       );
@@ -487,7 +487,7 @@ async function openBeoordelingen(
   const { data, error } = await db.rpc('te_beoordelen_voor', { p_user_id: userId });
 
   if (error) {
-    console.error(`te beoordelen ophalen mislukte voor ${userId}: ${error.message}`);
+    console.error(`te beoordelen ophalen mislukte voor een gebruiker: ${error.message}`);
     return [];
   }
 
@@ -515,7 +515,7 @@ async function verseGoedkeuringen(
     .limit(20);
 
   if (error) {
-    console.error(`goedkeuringen ophalen mislukte voor ${userId}: ${error.message}`);
+    console.error(`goedkeuringen ophalen mislukte voor een gebruiker: ${error.message}`);
     return [];
   }
 
@@ -626,14 +626,14 @@ async function stuurExpo(
     });
 
     if (!antwoord.ok) {
-      console.error(`Expo gaf HTTP ${antwoord.status} voor ${userId}`);
+      console.error(`Expo gaf HTTP ${antwoord.status} voor een gebruiker`);
       return 0;
     }
 
     return apparaten.length;
   } catch (fout) {
     console.error(
-      `versturen mislukte voor ${userId}: ${fout instanceof Error ? fout.message : String(fout)}`,
+      `versturen mislukte voor een gebruiker: ${fout instanceof Error ? fout.message : String(fout)}`,
     );
     // ⚠️ Dit is de stap die de keten van EPIC 11 afmaakt. Valt hij om, dan komt
     //    er geen enkele melding aan en is er verder geen enkel signaal.
@@ -695,7 +695,7 @@ async function stuur(
     // Een unieke-indexfout betekent dat een andere run hem al gestuurd heeft.
     // Dat is geen storing maar precies waar die index voor is.
     if (logFout.code !== '23505') {
-      console.error(`melding vastleggen mislukte voor ${opdracht.userId}: ${logFout.message}`);
+      console.error(`melding vastleggen mislukte voor een gebruiker: ${logFout.message}`);
     }
     return false;
   }
@@ -727,7 +727,7 @@ async function stuur(
       .eq('id', (logRij as { id: string }).id);
     if (error) {
       console.error(
-        `mislukte melding kon niet teruggedraaid worden voor ${opdracht.userId}: ${error.message}`,
+        `mislukte melding kon niet teruggedraaid worden voor een gebruiker: ${error.message}`,
       );
     }
     return false;
