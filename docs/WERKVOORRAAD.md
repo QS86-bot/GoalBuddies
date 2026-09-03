@@ -54,8 +54,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **869 geslaagd, 1 overgeslagen** (03-09, na QS8-213, QS8-208, QS8-221,
-   QS8-218 en QS8-219). De hele suite geeft met de stack **2997 geslaagd en
-   1 overgeslagen** over 212 bestanden.
+   QS8-218, QS8-219 en QS8-202). De hele suite geeft met de stack **3064 geslaagd
+   en 1 overgeslagen** over 216 bestanden.
    Typecheck, lint en alle 31 controlescripts groen; `npm run poort` meldt
    35 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
@@ -95,7 +95,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
     datums en tijden volgen nu de notatie van het toestel, met de opmaak op één
     plek in `shared/time`. QS8-218 haalde de gedachtestreepjes uit beide catalogi
     en zette er `npm run streepje:controle` op, en QS8-219 bracht de
-    `levend`-ratel van 27 naar 21. Daarna QS8-200/QS8-201. Wat
+    `levend`-ratel van 27 naar 21. QS8-202 laat het weekoverzicht zeggen dat een
+    weekpas je reeks gered heeft, en verschoof dat overzicht naar ná de
+    coulanceperiode: daarvóór is die vraag per definitie nee. Daarna
+    QS8-200/QS8-201. Wat
     van Fase 1 overblijft vraagt nog steeds Quintens hand en geen code: een
     browser met VAPID-sleutels (QS8-124), een iPhone (QS8-117), het
     Supabase-dashboard (QS8-25, QS8-141) en de twee deploys (QS8-139, QS8-140).
