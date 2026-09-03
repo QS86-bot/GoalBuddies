@@ -56,12 +56,67 @@ gearchiveerde groep zijn chat en weekafsluitingen toont maar niet de weekdoelen
 zelf. **Dat is een gat in de belofte en het is de veilige kant ervan**; het staat
 als losse bevinding in `docs/ENGINEER-REVIEW.md`.
 
-⚠️ **Archiveren verruimt niets.** Elke rij die na 0153 zichtbaar is in een
-gearchiveerde groep, was zichtbaar toen de groep nog liep. De maskering van
-besluit A41 wordt zelfs **strénger**: `lid_van_open_groep()` en
+⚠️ **Archiveren verruimt geen oppervlak.** De maskering van besluit A41 wordt
+zelfs **strénger**: `lid_van_open_groep()` en
 `deelt_open_groep_met_doel()` hebben allebei hun eigen archieftoets, dus een ópen
 groep gedraagt zich na archiveren als een beschermde. Dat is met opzet niet
 aangeraakt.
+
+## Wat de security-ronde vond, en waarom dat de helft van deze migratie werd
+
+Regel 19 zegt dat de `security-reviewer` bij RLS direct draait. Dat leverde vier
+dingen op die geen test van mij had kunnen geven, en één ervan was het zwaarste
+van deze hele wijziging.
+
+**1. Er zaten al drie deuren in de muur, en 0153 opende de gang ernaartoe.**
+`chat_messages_delete`, `week_review_replies_delete` en de `using` van
+`week_reviews_write` toetsten alleen de eigenaar en nooit het archief — die
+policies komen uit 0122 en noemden `is_group_member()` nooit, dus ze zaten ook
+niet in de telling van zeventien. Tot 0153 laadde de chat van een gearchiveerde
+groep niet, dus de verwijderknop stond er niet. **Lezen openzetten maakte
+verwijderen bereikbaar.**
+
+📏 Nagemeten in `pg_policies` en `information_schema.role_table_grants`, en
+daarna nagespeeld: een lid verwijderde als `authenticated` zijn eigen bericht uit
+een gearchiveerde groep, en het was weg.
+
+⚠️ **En de copy die in dezelfde wijziging meekwam ontkende het** — *"niemand kan
+er daarna nog iets in doen"*, *"er wordt niets gewist"*. Een tekst die
+onomkeerbaarheid belooft naast een knop die hem breekt, is de duurste combinatie
+die dit project kent.
+
+Er waren twee uitwegen. Gekozen is de conservatiefste: de policies dicht. Archiveren
+is de vervanger van weggooien (0092), er zijn geen backups op de gratis tier, en
+domeinregel 6 zegt dat geschiedenis gecorrigeerd wordt met een correctie en niet
+door te overschrijven. De andere uitweg — het wissen toestaan en de tekst
+aanpassen — is een productbesluit en staat als zodanig in het dossier.
+
+**2. De teller bewaakte een functienaam en niet de belofte.** `archiefleesgat()`
+zocht policies die één van twee namen letterlijk noemen. Wat hij bewees was *"geen
+schrijfpolicy noemt `mag_groep_lezen`"*; wat hij belóófde was *"in een archief valt
+niet te schrijven"*. De drie deuren hierboven bestonden voor die teller niet.
+
+⚠️ **Regel 18 vraag 2, in het gereedschap zelf.** Er is nu een derde tak die naar
+de belofte kijkt: elke schrijvende policy op een tabel met een `group_id` moet
+érgens een archieftoets dragen — via een van de vier functies die er een hebben.
+**Die tak vond meteen een vierde deur**, `completion_approvals_insert`, die het
+lidmaatschap inline uitschrijft en daardoor nooit een archieftoets had. Goedkeuren
+in een archief kent punten toe en zet een weekdoel op `approved`.
+
+⚠️ De ijking van die derde tak is de mutatie die `chat_messages_delete` terugzet —
+dán noemt de teller hem bij naam. Hem uitzetten terwijl er niets fout is, maakt
+niets rood en bewijst dus niets: dat was de verkeerde mutatie.
+
+**3. De grens van tien groepen was end-to-end te omzeilen.** `create_group()` telt
+gearchiveerde groepen niet mee, met de goede reden dat archiveren anders net zo
+duur is als weggooien. Dat was sluitend zolang archiveren onomkeerbaar was; met een
+weg terug is het tien maken, tien archiveren, tien nieuwe maken, en daarna alles
+heropenen. `heropen_groep()` telt nu mee.
+
+**4. Eén sleutel op twee plekken.** `groep.gearchiveerd` werd gebruikt voor het
+lid dat een archief opent *en* voor het niet-lid dat een uitnodigingslink volgt.
+De nieuwe tekst zegt "je kunt alles teruglezen" — waar voor de eerste, onzin voor
+de tweede.
 
 ## De sleutel
 
@@ -130,8 +185,19 @@ Zes mutaties, elk apart, elk rood op de test die hem noemt:
 | de pin uit `archief_blijft_archief()` | *"blijft gearchiveerd bij een gewone update"* |
 | de sleutel uit `heropen_groep()` | *"gaat open voor de beheerder"* |
 | `chat_messages_insert` op `mag_groep_lezen()` | *"laat er niemand meer in schrijven"* + de teller |
+| `chat_messages_delete` terug zonder archieftoets | *"laat niemand zijn eigen chatbericht meer wissen"* + de teller |
+| `week_reviews_write` terug op alleen de eigenaar | *"laat niemand zijn eigen weekafsluiting meer wissen"* |
+| een derde functie die de sleutel noemt | *"heeft precies twee functies die de ontgrendelsleutel kennen"* |
 
-⚠️ **De laatste is de belangrijkste en hij was het makkelijkst te vergeten.** Dat
-is de gevaarlijke richting van de splitsing — schrijven in een archief — en de
-teller vangt hem naast de gerichte test. Een mutatie in de veilige richting die
+⚠️ **De schrijfrichting is de belangrijkste en was het makkelijkst te vergeten.**
+De teller vangt hem naast de gerichte test. Een mutatie in de veilige richting die
 maar één test rood maakt, zegt minder dan deze.
+
+⚠️ **Twee eigenschappen van de sleutel zijn niet te ijken en dat staat in het
+dossier in plaats van dat het wegvalt.** Haal de `true` uit `set_config` en er
+wordt niets rood; vervang het groeps-id door `true` en er wordt niets rood. Dat
+zijn precies de twee dingen die deze keuze dragen. Ze dekken elkaar vandaag
+toevallig af — met de id-binding is een sessie-brede GUC niet exploiteerbaar — maar
+samen wegvallen is catastrofaal en ongemerkt. Een test die de `true` voedt vraagt
+twee verzoeken op dezelfde poolverbinding, en dat is via PostgREST niet af te
+dwingen. Wat er wél ligt is `sleutelzetters()`, tegen de derde functie.

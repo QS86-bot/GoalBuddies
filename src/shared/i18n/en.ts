@@ -1456,6 +1456,7 @@ export const en: Record<Sleutel, string> = {
     'Nothing is deleted, and as an admin you can bring the group back later.',
   'beheer.archiveren': 'Archive this group',
   'groep.gearchiveerd': 'This group is archived. You can read everything back, but nothing can be added.',
+  'groep.link_gearchiveerd': 'This group has been archived. You cannot join it.',
   'beheer.heropen_titel': 'Bring the group back',
   'beheer.heropen_uitleg':
     'This group is in the archive. Bring it back and everyone can post messages, week reviews and goals in it again.',

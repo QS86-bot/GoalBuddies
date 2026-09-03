@@ -716,6 +716,7 @@ export const nl = {
   'beheer.archiveren': 'Deze groep archiveren',
   'beheer.melding_gearchiveerd': 'De groep is gearchiveerd.',
   'groep.gearchiveerd': 'Deze groep is gearchiveerd. Je kunt alles teruglezen, maar er is niets meer in te doen.',
+  'groep.link_gearchiveerd': 'Deze groep is gearchiveerd. Je kunt er niet meer bij.',
   'beheer.heropen_titel': 'Groep terughalen',
   'beheer.heropen_uitleg':
     'Deze groep staat in het archief. Haal hem terug en iedereen kan er weer berichten, weekafsluitingen en doelen in kwijt.',

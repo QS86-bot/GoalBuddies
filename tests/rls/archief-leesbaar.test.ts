@@ -261,6 +261,67 @@ describe.skipIf(!rlsTestsConfigured)('een gearchiveerde groep is leesbaar', () =
     TEST_TIMEOUT,
   );
 
+
+  it(
+    'laat niemand zijn eigen chatbericht meer wissen',
+    async () => {
+      // ⚠️ **Dit is de deur die de security-ronde vond, en hij stond al open vóór
+      //    deze migratie — alleen liep er geen gang naartoe.** `chat_messages_delete`
+      //    toetste alleen `sender_id = auth.uid()` en nooit het archief. Tot 0153
+      //    laadde de chat van een gearchiveerde groep niet, dus de verwijderknop
+      //    stond er niet; het openen van de leeskant maakte hem bereikbaar.
+      //
+      //    📏 Nagespeeld vóór de reparatie: een lid verwijderde als
+      //    `authenticated` zijn eigen bericht uit een gearchiveerde groep, en het
+      //    was weg. Op de gratis tier zijn er geen backups.
+      //
+      //    ⚠️ Rood gemaakt door de policy terug te zetten op alleen
+      //    `sender_id = (select auth.uid())`.
+      await f.bram.db.from('chat_messages').delete().eq('id', f.berichtId);
+
+      // Een DELETE die door de `using` wordt weggefilterd raakt nul rijen en geeft
+      // géén fout — daarom telt hier alleen of de rij er nog is.
+      const { data } = await adminDb().from('chat_messages').select('id').eq('id', f.berichtId);
+      expect((data ?? []).length).toBe(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat niemand zijn eigen weekafsluiting meer wissen',
+    async () => {
+      // ⚠️ `week_reviews_write` is `for all`, en DELETE kent geen `with_check` —
+      //    dus de `is_group_member` die daarin stond gold niet voor verwijderen.
+      //    Dat is dezelfde deur, één tabel verder, en hij was net zo onzichtbaar.
+      //    Rood gemaakt door de `using` terug te zetten op alleen
+      //    `user_id = (select auth.uid())`.
+      await f.bram.db.from('week_reviews').delete().eq('id', f.reviewId);
+
+      const { data } = await adminDb().from('week_reviews').select('id').eq('id', f.reviewId);
+      expect((data ?? []).length).toBe(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+
+  it(
+    'heeft precies twee functies die de ontgrendelsleutel kennen',
+    async () => {
+      // ⚠️ **De belofte "die instelling zet alleen `heropen_groep()`" stond in
+      //    commentaar en nergens als controle** — aangewezen door de
+      //    security-ronde. Elke derde functie die `app.heropent_groep` noemt, is
+      //    een tweede sleutel op een slot dat 0092 voor élke rol dichtzette.
+      //
+      //    ⚠️ Rood gemaakt door een wegwerpfunctie te maken die die instelling
+      //    noemt: `sleutelzetters()` noemt hem meteen bij naam.
+      const { data, error } = await adminDb().rpc('sleutelzetters');
+      if (error) throw new Error(`sleutelzetters: ${error.message}`);
+
+      expect(data ?? []).toEqual([]);
+    },
+    TEST_TIMEOUT,
+  );
+
   // -------------------------------------------------------------------------
   // De weg terug
   // -------------------------------------------------------------------------

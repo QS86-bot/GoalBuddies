@@ -104,7 +104,14 @@ function meldingen(): Readonly<Record<string, string>> {
     too_many_groups: t('groep.te_veel_groepen'),
     // ⚠️ Migratie 0092: een uitnodigingslink naar een gearchiveerde groep. De
     //    code blijft geldig, de groep niet meer.
-    archived: t('groep.gearchiveerd'),
+    //
+    // ⚠️ **Een eigen sleutel en niet `groep.gearchiveerd`, en dat verschil is het
+    //    publiek.** Deze melding gaat naar een **niet-lid** dat een link volgt.
+    //    `groep.gearchiveerd` zegt sinds 0153 "je kunt alles teruglezen" — waar
+    //    voor een lid, en onzin voor iemand die er nooit in zat en er ook niet in
+    //    komt. Gevonden door de security-ronde: één sleutel op twee plekken die
+    //    verschillende dingen moeten zeggen.
+    archived: t('groep.link_gearchiveerd'),
 
     // create_group
     name_too_short: t('groep.naam_kort'),
@@ -155,6 +162,19 @@ export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
   const { data, error } = await supabase()
     .from('groups')
     .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid')
+    // ⚠️ **Deze filter is er sinds 0153 en hij is dragend, geen vangnet.** Tot die
+    //    migratie gaf `groups_select` een gearchiveerde groep helemaal niet terug,
+    //    dus elke aanroeper kreeg vanzelf alleen levende groepen. Nu niet meer, en
+    //    dat raakt meer dan het lijstscherm: `Straf` op `app/doel/[id].tsx` bouwt
+    //    hier zijn keuzelijst van begunstigde groepen mee, en zou een archief
+    //    aanbieden als ontvanger van een commitment device — waarna
+    //    `commitments_insert` weigert en de gebruiker een generieke storing ziet,
+    //    op het scherm waar domeinregel 5 juist maximale zorgvuldigheid vraagt.
+    //
+    //    Gevonden door de security-ronde op 0153. Een archief lees je terug via
+    //    `fetchGroep()` en het beheerscherm; hij hoort niet mee te doen in lijsten
+    //    waar je iets mee áán gaat.
+    .neq('status', 'archived')
     .order('created_at', { ascending: true })
     .limit(50);
 

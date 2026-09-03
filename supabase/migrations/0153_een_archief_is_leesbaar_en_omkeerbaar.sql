@@ -72,12 +72,27 @@
 -- werden, de deadline-verzoeken (A7, die vraag je zelf aan), de groepsgebeurtenissen
 -- en de seizoensrecaps (per domeinregel 7 alleen positieve signalen).
 --
--- ⚠️ **Archiveren verruimt niets.** Elke rij die na deze migratie zichtbaar is in
---    een gearchiveerde groep, was zichtbaar toen de groep nog liep. De maskering
---    van A41 wordt zelfs strénger: `lid_van_open_groep()` en
---    `deelt_open_groep_met_doel()` hebben allebei hun eigen archieftoets, dus een
---    ópen groep gedraagt zich na archiveren als een beschermde. Dat is met opzet
---    niet aangeraakt.
+-- ⚠️ **Archiveren verruimt geen oppervlak.** De maskering van A41 wordt zelfs
+--    strénger: `lid_van_open_groep()` en `deelt_open_groep_met_doel()` hebben
+--    allebei hun eigen archieftoets, dus een ópen groep gedraagt zich na
+--    archiveren als een beschermde. Dat is met opzet niet aangeraakt.
+--
+-- ⚠️ **Hier stond "elke rij die na deze migratie zichtbaar is, was zichtbaar toen
+--    de groep nog liep", en dat is te sterk.** De security-ronde wees twee
+--    definer-schrijvers aan die géén archieftoets hebben:
+--    `maak_straffen_verschuldigd()` (0057) filtert alleen op
+--    `g.status <> 'completed'`, en `plaats_systeembericht()` (0059) kent er geen.
+--    Een straf kan dus weken ná het archiveren op `due` springen, en dan
+--    verschijnt er een `commitment_due`-systeembericht in de chat van een groep
+--    die al gesloten was.
+--
+--    **Dat is geen lek** — een zelf ingestelde straf is de uitzondering die
+--    domeinregel 7 met zoveel woorden noemt, en domeinregel 11 zegt dat de
+--    begunstigde groep juist dán leesrecht krijgt. Maar het argument waaróp het
+--    openzetten van tien oppervlakken rust, moet kloppen, want dat is precies de
+--    zin waarmee de volgende lezer oppervlak elf openzet. Vandaar de smallere
+--    formulering hierboven, en een rij in `docs/ENGINEER-REVIEW.md` voor de twee
+--    functies zelf.
 --
 -- ---------------------------------------------------------------------------
 -- De weg terug, en waarom er een sleutel bij hoort
@@ -219,6 +234,120 @@ create policy week_reviews_select on public.week_reviews
   using (mag_groep_lezen(group_id));
 
 -- ---------------------------------------------------------------------------
+-- 2b. Drie deuren die er al zaten, en die deze migratie bereikbaar maakt
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Gevonden door de security-ronde, en daarna nagemeten en nagespeeld.** Drie
+--    schrijfpolicies dragen géén archieftoets, omdat ze `is_group_member()` nooit
+--    genoemd hebben en dus ook niet in de telling van zeventien zaten:
+--
+--      chat_messages_delete        using (sender_id = auth.uid())
+--      week_review_replies_delete  using (author_id = auth.uid())
+--      week_reviews_write (ALL)    using (user_id   = auth.uid())
+--
+--    `authenticated` heeft DELETE op alle drie de tabellen — nagekeken in
+--    `information_schema.role_table_grants`, niet aangenomen.
+--
+-- ⚠️ **Vóór deze migratie was dat onbereikbaar en daarom onzichtbaar.** De chat
+--    van een gearchiveerde groep laadde niet, dus de verwijderknop stond er niet.
+--    0153 opent de leeskant en daarmee de gang ernaartoe: scherm laadt →
+--    verwijderknop rendert → verwijderen slaagt. **Dit is dus een bevinding van
+--    déze migratie en niet van 0122**, ook al staat de policy daar.
+--
+--    📏 Nagespeeld op de lokale stack: een lid van een gearchiveerde groep
+--    verwijderde als `authenticated` zijn eigen bericht, en het was weg.
+--
+-- ⚠️ **En de copy die in deze wijziging meekomt ontkent het met zoveel woorden** —
+--    `bevestiging.groep_archiveren.uitleg` zegt *"niemand kan er daarna nog iets
+--    in doen"* en `beheer.archief_waarschuwing` zegt *"er wordt niets gewist"*.
+--    Een tekst die onomkeerbaarheid belooft naast een knop die hem breekt, is de
+--    duurste combinatie die dit project kent.
+--
+-- **Er waren twee uitwegen en dit is de conservatiefste:** de drie policies
+-- krijgen de toets die de rest van de schrijfkant al heeft. Archiveren is in deze
+-- app de vervanger van weggooien (0092), er zijn geen backups op de gratis tier,
+-- en domeinregel 6 zegt dat geschiedenis gecorrigeerd wordt met een correctie en
+-- niet door te overschrijven. De andere uitweg — de tekst aanpassen en het wissen
+-- toestaan — is een productbesluit en staat als zodanig in `docs/ENGINEER-REVIEW.md`.
+--
+-- ⚠️ **Bijwerking, met opzet en in de goede richting:** een **inactief** lid kan
+--    zijn eigen berichten nu ook in een lévende groep niet meer wissen. Dat is
+--    consistent met elke andere schrijfpolicy, die allemaal `status <> 'inactive'`
+--    eisen — het was hier de uitzondering en niet de regel.
+
+drop policy if exists chat_messages_delete on public.chat_messages;
+create policy chat_messages_delete on public.chat_messages
+  for delete to authenticated
+  using (sender_id = (select auth.uid()) and is_group_member(group_id));
+
+drop policy if exists week_review_replies_delete on public.week_review_replies;
+create policy week_review_replies_delete on public.week_review_replies
+  for delete to authenticated
+  using (
+    author_id = (select auth.uid())
+    and exists (
+      select 1 from week_reviews r
+      where r.id = week_review_replies.week_review_id and is_group_member(r.group_id)
+    )
+  );
+
+-- ⚠️ `week_reviews_write` is `for all`, en DELETE kent geen `with_check` — dus de
+--    `is_group_member` die daarin stond gold niet voor verwijderen. Hij wordt
+--    gesplitst zodat de `using` de toets zelf draagt.
+drop policy if exists week_reviews_write on public.week_reviews;
+create policy week_reviews_write on public.week_reviews
+  for all to authenticated
+  using (user_id = (select auth.uid()) and is_group_member(group_id))
+  with check (user_id = (select auth.uid()) and is_group_member(group_id));
+
+-- ---------------------------------------------------------------------------
+-- 2c. En een vierde, gevonden door de teller zelf
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **De nieuwe derde tak van `archiefleesgat()` vond er nog één, en dat is het
+--    beste bewijs dat die tak nodig was.** `completion_approvals_insert` schrijft
+--    het lidmaatschap ínline uit (`group_members ... status <> 'inactive'`) in
+--    plaats van `is_group_member()` aan te roepen, en heeft daardoor nooit een
+--    archieftoets gehad. Goedkeuren in een gearchiveerde groep kent punten toe en
+--    zet een weekdoel op `approved` — dat is de zwaarste schrijfhandeling die
+--    dit project kent (domeinregel 3 én 10).
+--
+--    Bereikbaar met een voltooiings-id van vóór het archiveren; de leeskant is
+--    dicht maar de schrijfkant vroeg er niet naar. Ouder dan 0153 en niet erger
+--    geworden door 0153 — maar hij staat hier omdat de teller van déze migratie
+--    hem vond en het onverantwoord is hem te laten liggen tot iemand anders
+--    struikelt.
+--
+-- ⚠️ De inline-toets blijft staan en de functie komt ernáást. Hem vervangen zou
+--    een pagineringswijziging in een autorisatiepolicy zijn: de inline-vorm doet
+--    de toets op `completion_approvals.group_id` en de functie doet hem opnieuw,
+--    en dat verschil hoort niet in deze migratie te worden uitgezocht.
+
+drop policy if exists completion_approvals_insert on public.completion_approvals;
+create policy completion_approvals_insert on public.completion_approvals
+  for insert to authenticated
+  with check (
+    approver_id = (select auth.uid())
+    and is_group_member(group_id)
+    and exists (
+      select 1 from group_members m
+      where m.group_id = completion_approvals.group_id
+        and m.user_id  = (select auth.uid())
+        and m.status  <> 'inactive'
+    )
+    and exists (
+      select 1
+      from completions c
+      join weekly_goals w on w.id = c.weekly_goal_id
+      join goal_group_links l on l.goal_id = w.goal_id
+      where c.id = completion_approvals.completion_id
+        and l.group_id = completion_approvals.group_id
+        and c.user_id <> (select auth.uid())
+        and c.superseded_by is null
+    )
+  );
+
+-- ---------------------------------------------------------------------------
 -- 3. De teller die de splitsing bewaakt
 -- ---------------------------------------------------------------------------
 --
@@ -229,10 +358,25 @@ create policy week_reviews_select on public.week_reviews
 --    krijgt `is_group_member()` omdat dat de naam is die iedereen kent, en dan
 --    is één tabel stilzwijgend dicht in het archief.
 --
---    Deze functie telt wat er niet klopt, in béide richtingen: een SELECT-policy
---    die nog langs de schrijffunctie loopt, én een schrijfpolicy die langs de
---    leesfunctie loopt — dat tweede is het gevaarlijke, want dan mag je schrijven
---    in een gearchiveerde groep.
+--    Deze functie telt wat er niet klopt, in **drie** richtingen.
+--
+-- ⚠️ **De derde tak is er pas ná de security-ronde bij gekomen, en dat is de les
+--    van deze migratie.** De eerste twee takken zochten policies die één van de
+--    twee functienamen letterlijk noemen. Wat ze daarmee bewezen was *"geen
+--    schrijfpolicy noemt `mag_groep_lezen`"* — een eigenschap van een naam. Wat
+--    ze belóófden was *"in een archief valt niet te schrijven"* — een eigenschap
+--    van het geheel. Drie DELETE-policies noemden geen van beide functies en
+--    bestonden voor deze teller dus niet, terwijl ze precies het gat waren.
+--
+--    Regel 18 vraag 2 in het gereedschap zelf: een controle die naar een náám
+--    zoekt in plaats van naar de belofte, is groen om de verkeerde reden.
+--
+-- ⚠️ Tak 1 filtert op `cmd in ('SELECT','ALL')` en niet alleen op SELECT: een
+--    `for all`-policy poort óók lezen. `week_reviews_write` is er vandaag zo een.
+--
+-- ⚠️ En `schemaname in ('public','storage')`, want `storage-controle` kent al een
+--    bijlagenbucketfixture met `is_group_member(...)` erin. Die bucket bestaat nog
+--    niet, en juist dan hoort de teller er al te staan.
 
 create or replace function public.archiefleesgat()
   returns table (naam text, bezwaar text)
@@ -242,21 +386,59 @@ create or replace function public.archiefleesgat()
   set search_path = public, pg_temp
 as $$
   select (p.tablename || '.' || p.policyname)::text,
-         'SELECT-policy loopt langs is_group_member(); die sluit een archief uit'
+         'leespolicy loopt langs is_group_member(); die sluit een archief uit'
   from pg_policies p
-  where p.schemaname = 'public'
-    and p.cmd = 'SELECT'
+  where p.schemaname in ('public', 'storage')
+    and p.cmd in ('SELECT', 'ALL')
     and coalesce(p.qual, '') like '%is_group_member%'
-    -- ⚠️ De uitzondering met naam en reden, niet met een stilzwijgen: De Ketting
-    --    hóórt dicht te blijven. Zie de kop van deze migratie.
-    and p.policyname <> 'chain_links_select'
+    -- ⚠️ De uitzonderingen met naam en reden, niet met een stilzwijgen. De
+    --    Ketting hóórt dicht te blijven (zie de kop); `week_reviews_write` is een
+    --    schrijfpolicy die toevallig `for all` is en waarvan het lezen langs
+    --    `week_reviews_select` loopt.
+    and p.policyname not in ('chain_links_select', 'week_reviews_write')
   union all
   select (p.tablename || '.' || p.policyname)::text,
          'schrijvende policy loopt langs mag_groep_lezen(); die laat een archief door'
   from pg_policies p
-  where p.schemaname = 'public'
+  where p.schemaname in ('public', 'storage')
     and p.cmd <> 'SELECT'
     and (coalesce(p.qual, '') || coalesce(p.with_check, '')) like '%mag_groep_lezen%'
+  union all
+  -- ⚠️ **De derde tak, en de enige die naar de belófte kijkt in plaats van naar
+  --    een functienaam.** Elke schrijvende policy op een tabel met een
+  --    `group_id`-kolom moet érgens een archieftoets dragen. Vier functies
+  --    hebben er een: `is_group_member`, `is_group_admin`,
+  --    `shares_group_with_goal` en `deelt_open_groep_met_doel`. Noemt een
+  --    schrijfpolicy er geen enkele, dan staat die tabel open in een archief —
+  --    en dat is precies hoe `chat_messages_delete` er drie migraties lang in
+  --    zat zonder dat iets het zag.
+  select (p.tablename || '.' || p.policyname)::text,
+         'schrijvende policy op een groepstabel zonder enige archieftoets'
+  from pg_policies p
+  join information_schema.columns c
+    on c.table_schema = p.schemaname
+   and c.table_name   = p.tablename
+   and c.column_name  = 'group_id'
+  where p.schemaname = 'public'
+    and p.cmd <> 'SELECT'
+    and (coalesce(p.qual, '') || coalesce(p.with_check, '')) not like '%is_group_member%'
+    and (coalesce(p.qual, '') || coalesce(p.with_check, '')) not like '%is_group_admin%'
+    and (coalesce(p.qual, '') || coalesce(p.with_check, '')) not like '%shares_group_with_goal%'
+    and (coalesce(p.qual, '') || coalesce(p.with_check, '')) not like '%deelt_open_groep_met_doel%'
+    -- Policies die niets doorlaten hoeven geen toets.
+    and coalesce(p.qual, '') <> 'false'
+    and coalesce(p.with_check, '') <> 'false'
+    -- ⚠️ Twee uitzonderingen, met naam en reden en niet met een stilzwijgen:
+    --
+    --   `goal_group_links_delete` — de eigenaar koppelt zijn eigen doel los. Dat
+    --   hóórt ook uit een gearchiveerde groep te kunnen: het doel is van hem, en
+    --   hem daaraan vastketenen omdat de groep gesloten is zou het archief een
+    --   slot op iemand ánders spullen maken.
+    --
+    --   `group_members_insert_founder` — de oprichtersrij bij het aanmaken. Een
+    --   groep die net gemaakt wordt staat per constructie op `active`; er ís op
+    --   dat moment geen archief om tegen te toetsen.
+    and p.policyname not in ('goal_group_links_delete', 'group_members_insert_founder')
   order by 1;
 $$;
 
@@ -266,6 +448,49 @@ comment on function public.archiefleesgat() is
   'uitsluit én — gevaarlijker — een schrijfpolicy die er een doorlaat.';
 
 revoke all on function public.archiefleesgat() from public, anon, authenticated;
+-- ⚠️ Expliciet en niet geërfd. `alter default privileges` geeft `service_role` dit
+--    recht toch al, en precies dát is de klasse waar 0115 en `functiegrants.test.ts`
+--    voor bestaan: een recht zonder grant-regel is geërfd en niet besloten.
+grant execute on function public.archiefleesgat() to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 3b. Wie mag de sleutel zetten?
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **De belofte "die instelling zet alleen `heropen_groep()`" stond in
+--    commentaar en nergens als controle.** Dit project heeft voor precies die
+--    klasse `pinuitzonderingen-controle`, `realtime_bewaking()`,
+--    `triggerfuncties_in_de_api()` en `archiefleesgat()`. Een nieuw
+--    bypass-mechanisme zonder eigen teller zou de uitzondering zijn.
+--
+--    Twee functies mogen `app.heropent_groep` noemen: degene die hem zet en
+--    degene die hem leest. Elke derde is een tweede sleutel.
+
+create or replace function public.sleutelzetters()
+  returns table (naam text, bezwaar text)
+  language sql
+  stable
+  security definer
+  set search_path = public, pg_temp
+as $$
+  select p.proname::text,
+         'noemt app.heropent_groep; alleen heropen_groep() en '
+         'archief_blijft_archief() horen die sleutel te kennen (0153)'
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.prosrc like '%app.heropent_groep%'
+    and p.proname not in ('heropen_groep', 'archief_blijft_archief', 'sleutelzetters')
+  order by 1;
+$$;
+
+comment on function public.sleutelzetters() is
+  'Functies die de ontgrendelsleutel van het archief noemen (0153). Hoort leeg '
+  'te zijn: alleen `heropen_groep()` zet hem en alleen `archief_blijft_archief()` '
+  'leest hem. Een derde functie is een tweede sleutel.';
+
+revoke all on function public.sleutelzetters() from public, anon, authenticated;
+grant execute on function public.sleutelzetters() to service_role;
 
 -- ---------------------------------------------------------------------------
 -- 4. Een gebeurtenis die nog niet bestond
@@ -328,6 +553,7 @@ create or replace function public.heropen_groep(
 as $$
 declare
   v_status text;
+  v_lidmaatschap integer;
 begin
   if auth.uid() is null then
     raise exception 'Niet ingelogd';
@@ -363,10 +589,35 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'unchanged');
   end if;
 
+  -- ⚠️ **Dezelfde telling als in `create_group()` en `join_group_with_code()`,
+  --    en zonder deze regel is de grens van tien te omzeilen.** Die twee tellen
+  --    gearchiveerde groepen níét mee, met de goede reden dat archiveren anders
+  --    net zo duur is als weggooien: je raakt de groep kwijt én je plek blijft
+  --    bezet. Dat was sluitend zolang archiveren onomkeerbaar was.
+  --
+  --    Met een weg terug is het een gat: tien groepen maken, alle tien
+  --    archiveren (teller op nul), tien nieuwe maken, en daarna alles heropenen.
+  --    Gevonden door de security-ronde op deze migratie.
+  select count(*) into v_lidmaatschap
+  from group_members m
+  join groups g on g.id = m.group_id
+  where m.user_id = auth.uid()
+    and m.status <> 'inactive'
+    and g.status <> 'archived';
+
+  if v_lidmaatschap >= 10 then
+    return jsonb_build_object('ok', false, 'reason', 'too_many_groups');
+  end if;
+
   -- De sleutel, transactielokaal en met het id erin.
   perform set_config('app.heropent_groep', p_group_id::text, true);
 
-  update groups set status = 'active' where id = p_group_id;
+  -- ⚠️ `last_activity_at` gaat mee. `slaap_stille_groepen()` (0016) zet elke
+  --    actieve groep met oude activiteit terug op `sleeping` mét een
+  --    systeembericht; een groep die een maand in het archief stond zou dus de
+  --    eerstvolgende nacht in slaap vallen met "deze groep is een tijdje stil
+  --    geweest" — direct na het terughalen.
+  update groups set status = 'active', last_activity_at = now() where id = p_group_id;
 
   -- ⚠️ Teruglezen en niet aannemen. `archief_blijft_archief()` pint stil vast in
   --    plaats van te gooien, dus een mislukte heropening geeft zonder deze

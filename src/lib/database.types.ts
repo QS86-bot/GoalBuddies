@@ -2987,6 +2987,10 @@ export type Database = {
         Args: never
         Returns: { bezwaar: string; naam: string }[]
       }
+      sleutelzetters: {
+        Args: never
+        Returns: { bezwaar: string; naam: string }[]
+      }
       heropen_groep: {
         Args: { p_bevestigd?: boolean; p_group_id: string }
         Returns: Json
