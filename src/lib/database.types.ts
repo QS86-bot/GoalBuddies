@@ -2981,6 +2981,20 @@ export type Database = {
         Returns: Json
       }
       zonder_initplan_hijs: { Args: { p_uitdrukking: string }; Returns: string }
+      barrierelezers: {
+        Args: never
+        Returns: { bezwaar: string; naam: string }[]
+      }
+      zichtbare_reeksen_van_groep: {
+        Args: { p_group_id: string }
+        Returns: {
+          best_streak: number | null
+          current_streak: number
+          goal_id: string
+          last_cycle_start: string | null
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

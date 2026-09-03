@@ -188,6 +188,13 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'gelijkheidstoets, dus rood ongeacht welke kant het eerst verandert. Zonder ' +
     'zo\'n functie vergelijkt zo\'n test zichzelf, en dat is precies wat er bij ' +
     '0032 misging (QS8-261).',
+  barrierelezers:
+    'Welke functies `group_visible_streaks` lezen (0151). Hoort leeg te zijn. ' +
+    'Aanroeper is `tests/rls/reeksen-van-een-groep.test.ts`. ⚠️ Dit is de énige ' +
+    'grendel op de réden van 0151: alle andere tests daar toetsen dat de twee ' +
+    'paden hetzelfde géven, en dat blijft waar als iemand de dure join naar de ' +
+    'barrière-view terugzet. Gemeten: die terugzetting maakt nul van de elf ' +
+    'andere tests rood.',
   alleenlezen_bewaking:
     'Welke policyhelften letterlijk `false` zijn terwijl `authenticated` het ' +
     'recht wél heeft (0148). Aanroeper is `tests/rls/alleenlezen.test.ts`, dat ' +
