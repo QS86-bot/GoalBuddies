@@ -61,6 +61,8 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'logboek:controle',
   'zichtbaarheid:controle',
   'register:controle',
+  // ⚠️ Leest `pg_proc`, niet de migratiebestanden — zonder database meet hij niets.
+  'definers:controle',
 ]);
 
 /**
