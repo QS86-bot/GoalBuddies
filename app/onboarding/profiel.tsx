@@ -10,7 +10,7 @@ import {
   useSession,
   zetWeekStartdag,
 } from '@/modules/auth';
-import { herinneringVelden } from '@/modules/notifications';
+import { herinneringStandaard } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import { apparaatTijdzone, type Weekday } from '@/shared/time';
@@ -24,7 +24,6 @@ import {
   Choice,
   Field,
   Screen,
-  Subheading,
   TijdzoneKeuze,
   WeekStartKeuze,
 } from '@/shared/ui';
@@ -39,13 +38,17 @@ import {
 /**
  * Wacht tot het profiel bekend is, en laat het formulier daarna pas monteren.
  *
- * ⚠️ **Zonder deze wacht kon dit scherm de week-startdag terugzetten.** De zeven
+ * ⚠️ **Zonder deze wacht kon dit scherm de week-startdag terugzetten.** De
  *    `useState`-initialisatoren hieronder draaien één keer, bij de eerste
  *    render, en er is geen effect dat ze bijstelt. Rendert het formulier terwijl
  *    het profiel nog onbekend is, dan staan ze op hun standaardwaarden — en
- *    schrijft "Bewaren" `week_start_day = 1`, `tz = apparaatTijdzone()` en de
- *    herinneringsinstellingen over wat er stond. `display_name: ''` werd nog
- *    door `profielSchema` tegengehouden, de andere zes niet.
+ *    schrijft "Bewaren" `week_start_day = 1` en `tz = apparaatTijdzone()` over
+ *    wat er stond. `display_name: ''` werd nog door `profielSchema`
+ *    tegengehouden, de rest niet.
+ *
+ * ⚠️ **Sinds QS8-213 schrijft dit scherm minder velden, en dat is geen vervanging
+ *    van deze wacht.** De twee die overblijven zijn precies de twee waar de
+ *    initialisatoren toe doen.
  *
  * ⚠️ Dat is klok 1 van domeinregel 1, stilzwijgend verzet. Het pad ernaartoe is
  *    niet exotisch: `Routewacht` stuurde bij een mislukte profielophaling naar
@@ -82,12 +85,11 @@ function OnboardingProfielFormulier() {
   const [naam, setNaam] = useState(profiel?.display_name ?? '');
   const [tz, setTz] = useState(profiel?.tz ?? apparaatTijdzone());
   const [weekStart, setWeekStart] = useState<Weekday>((profiel?.week_start_day ?? 1) as Weekday);
-  const [herinneringAan, setHerinneringAan] = useState(profiel?.reminder_enabled ?? true);
-  const [tijd, setTijd] = useState(profiel?.reminder_time?.slice(0, 5) ?? '20:00');
-  const [toon, setToon] = useState<'gentle' | 'firm'>(
-    (profiel?.reminder_tone as 'gentle' | 'firm') ?? 'gentle',
-  );
   const [eigenDoel, setEigenDoel] = useState(profiel?.wants_own_goal ?? true);
+
+  // Het correctiepad staat dicht tot iemand zegt dat de zone niet klopt. Zie de
+  // kaart hieronder voor waarom dat de hele wijziging van QS8-213 is.
+  const [zoneOpen, setZoneOpen] = useState(false);
 
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
@@ -97,14 +99,25 @@ function OnboardingProfielFormulier() {
     setBezig(true);
     setFout(null);
 
+    // ⚠️ **Alleen wat dit scherm de gebruiker daadwerkelijk vraagt.** Elk veld
+    //    dat hier met een vaste waarde in staat, is een veld dat iemand met een
+    //    bestaand profiel kwijtraakt zodra hij hier per ongeluk belandt — en dat
+    //    pad is niet exotisch, zie de kop van dit bestand.
+    //    `share_moves_by_default: false` stond hier als zo'n constante. Nagemeten
+    //    op 03-09: die kolom heeft geen enkele lezer en had hier zijn laatste
+    //    schrijver, en de kolomstandaard is toch al `false`. Weghalen redt dus
+    //    geen voorkeur — het haalt de vórm weg waarmee er ooit wél een kwijtraakt.
+    //
+    // ⚠️ De herinnering komt uit `herinneringStandaard()` en niet uit drie
+    //    velden op dit scherm: die vraag hoort niet bij iemand die de app nog
+    //    niet kent. Dat is óók de plek waar "uit is uit" bewaakt wordt — voor wie
+    //    de onboarding al gehad heeft, geeft die functie niets terug.
+    //    `tests/beloftes/onboarding-schrijft-niets-over.test.ts` houdt deze lijst
+    //    kort.
     const uitkomst = await updateProfiel(userId, {
       display_name: naam,
       tz,
-      // ⚠️ "Uit is uit" zit in `herinneringVelden()` en niet hier: sinds
-      //    26-08-2026 kan het profieltabblad hetzelfde, en dezelfde belofte op
-      //    twee schermen is de naad uit regel 18.
-      ...herinneringVelden({ aan: herinneringAan, tijd, toon }),
-      share_moves_by_default: false,
+      ...herinneringStandaard({ onboarded_at: profiel?.onboarded_at ?? null }),
     });
 
     if (!uitkomst.ok) {
@@ -181,53 +194,35 @@ function OnboardingProfielFormulier() {
       </Card>
 
       {/*
-        ⚠️ **Hetzelfde component als op het profielscherm, en dat is geen
-           luiheid** — precies het argument dat `WeekStartKeuze` al maakt. Hier
-           stond een kaal invoerveld, en dat vraagt van iemand die net begint dat
-           hij de IANA-naam van zijn zone uit zijn hoofd kent. `TijdzoneKeuze`
-           zoekt op plaatsnaam en heeft de knop "de tijdzone van dit apparaat"
-           erbij; twee schermen die dezelfde keuze anders aanbieden, is twee
-           plekken waar een onbekende zone binnen kan komen.
+        ⚠️ **De tijdzone is een regel tekst en geen veld** — QS8-213. Hij kwam al
+           uit het apparaat (`apparaatTijdzone()` leest
+           `Intl.DateTimeFormat().resolvedOptions().timeZone`), maar hij stond
+           hier als volledig zoekveld met label, hint en plaatshouder. Dat leest
+           als iets wat je moet invullen, terwijl het bedoeld is als correctiepad
+           voor wie verhuisd is of wiens telefoon het mis heeft.
+
+        ⚠️ **`TijdzoneKeuze` blijft er wél onder zitten, ongewijzigd.** Alleen de
+           regel tonen zonder weg ernaartoe zou de keten van QS8-27 opnieuw
+           doorknippen: zone verkeerd, en geen enkele knop om hem recht te
+           zetten. Het is dezelfde component, in volle vorm, één tik verderop.
       */}
       <Card>
-        <TijdzoneKeuze waarde={tz} onKies={setTz} />
-      </Card>
-
-      <Card>
-        <Subheading>{t('onboarding.dagelijkse_herinnering')}</Subheading>
-        <Choice
-          label={t('onboarding.herinnering')}
-          opties={[
-            { waarde: 'aan', label: t('onboarding.aan') },
-            { waarde: 'uit', label: t('onboarding.uit') },
-          ]}
-          waarde={herinneringAan ? 'aan' : 'uit'}
-          onKies={(v) => setHerinneringAan(v === 'aan')}
-        />
-
-        {herinneringAan ? (
-          <>
-            <Field
-              label={t('onboarding.hoe_laat')}
-              value={tijd}
-              onChangeText={setTijd}
-              placeholder="20:00"
-              inputMode="numeric"
-            />
-            <Choice
-              label={t('onboarding.toon')}
-              hint={t('onboarding.toon_hint')}
-              opties={[
-                { waarde: 'gentle', label: t('onboarding.zacht') },
-                { waarde: 'firm', label: t('onboarding.streng') },
-              ]}
-              waarde={toon}
-              onKies={setToon}
-            />
-          </>
-        ) : (
-          <Body muted>{t('onboarding.uit_blijft_uit')}</Body>
-        )}
+        <View style={styles.zonerij}>
+          {/*
+            ⚠️ De `View` eromheen en geen `style` op `Body`: die component zet
+               `style` zelf en spreidt `...rest` daarná, dus een eigen `style`
+               vervángt de typografie in plaats van hem aan te vullen.
+          */}
+          <View style={styles.zonetekst}>
+            <Body>{t('onboarding.tijdzone_van_telefoon', { zone: tz })}</Body>
+          </View>
+          {zoneOpen ? null : (
+            <Button variant="stil" onPress={() => setZoneOpen(true)}>
+              {t('onboarding.tijdzone_klopt_niet')}
+            </Button>
+          )}
+        </View>
+        {zoneOpen ? <TijdzoneKeuze waarde={tz} onKies={setTz} /> : null}
       </Card>
 
       <Card nested>
@@ -255,4 +250,11 @@ function OnboardingProfielFormulier() {
 const styles = StyleSheet.create({
   naamrij: { flexDirection: 'row', gap: space.blokGap, alignItems: 'flex-start' },
   naamveld: { flex: 1 },
+  zonerij: {
+    flexDirection: 'row',
+    gap: space.blokGap,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  zonetekst: { flexShrink: 1 },
 });
