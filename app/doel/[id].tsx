@@ -106,8 +106,18 @@ import {
   Subheading,
   useHulpvraagVerborgen,
   useAsync,
+  useAsyncMetTerugval,
   Weekplanblok,
 } from '@/shared/ui';
+
+/**
+ * De lege terugval voor `useAsyncMetTerugval` — QS8-219.
+ *
+ * ⚠️ **Een constante en geen `[]` op de aanroepplek.** Een literaal is elke
+ *    render een nieuwe array; die hook houdt de terugval daarom buiten `deps`,
+ *    en dan hoort de waarde ook echt constant te zijn.
+ */
+const LEGE_MIJLPALEN: readonly Mijlpaal[] = [];
 
 /**
  * ⚠️ De waarde die "geen mijlpaal" betekent in de keuzelijst. Een lege string
@@ -134,7 +144,6 @@ export default function DoelDetail() {
   const [commitments, setCommitments] = useState<readonly Commitment[]>([]);
   const [groepen, setGroepen] = useState<readonly Groep[]>([]);
   const [doelGroepen, setDoelGroepen] = useState<readonly DoelGroep[]>([]);
-  const [risico, setRisico] = useState<Risico | null>(null);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,22 +189,7 @@ export default function DoelDetail() {
   //    Staat hier en niet in het radarblok, omdat de hulpvraag-kaart (QS8-95)
   //    dezelfde stand nodig heeft — twee keer ophalen zou twee keer hetzelfde
   //    verzoek zijn.
-  useEffect(() => {
-    if (!id) return;
-    let levend = true;
-
-    fetchRisico(id)
-      .then((gevonden) => {
-        if (levend) setRisico(gevonden);
-      })
-      .catch(() => {
-        if (levend) setRisico(null);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [id, ronde]);
+  const risico = useAsyncMetTerugval(id ? () => fetchRisico(id) : null, null, [id, ronde]);
 
   const herlaad = useCallback(() => setRonde((n) => n + 1), []);
   const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
@@ -1490,7 +1484,6 @@ function Mijlpalen({
   readonly onCoach: () => void;
 }) {
   const router = useRouter();
-  const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
   /**
@@ -1509,21 +1502,10 @@ function Mijlpalen({
   const [fout, setFout] = useState<string | null>(null);
   const [ronde, setRonde] = useState(0);
 
-  useEffect(() => {
-    let levend = true;
-
-    fetchMijlpalen(doel.id)
-      .then((gevonden) => {
-        if (levend) setMijlpalen(gevonden);
-      })
-      .catch(() => {
-        if (levend) setMijlpalen([]);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [doel.id, ronde]);
+  const mijlpalen = useAsyncMetTerugval(() => fetchMijlpalen(doel.id), LEGE_MIJLPALEN, [
+    doel.id,
+    ronde,
+  ]);
 
   const ververs = () => {
     setRonde((n) => n + 1);
@@ -2070,7 +2052,16 @@ function WeekdoelToevoegen({
   const [vloer, setVloer] = useState('');
   const [plafond, setPlafond] = useState('');
   const [mijlpaalId, setMijlpaalId] = useState<string>(LOS_VAN_MIJLPAAL);
-  const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
+
+  // ⚠️ Pas ophalen als het formulier open is: dit blok staat op een scherm dat
+  //    ook zonder weekdoel bruikbaar moet zijn. Zonder mijlpalen kun je nog
+  //    steeds een los weekdoel maken, en dat is de meest voorkomende situatie —
+  //    vandaar de lege terugval en geen foutmelding.
+  const mijlpalen = useAsyncMetTerugval(
+    open ? () => fetchMijlpalen(doel.id) : null,
+    LEGE_MIJLPALEN,
+    [open, doel.id],
+  );
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -2107,24 +2098,7 @@ function WeekdoelToevoegen({
 
   // De mijlpalen pas ophalen als het formulier open is: dit blok staat op een
   // scherm dat ook zonder weekdoel bruikbaar moet zijn.
-  useEffect(() => {
-    if (!open) return;
-    let levend = true;
 
-    fetchMijlpalen(doel.id)
-      .then((gevonden) => {
-        if (levend) setMijlpalen(gevonden);
-      })
-      .catch(() => {
-        // Stil: zonder mijlpalen kun je nog steeds een los weekdoel maken, en
-        // dat is de meest voorkomende situatie. De datalaag heeft al gemeld.
-        if (levend) setMijlpalen([]);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [open, doel.id]);
 
   async function bewaar() {
     if (!klok) return;

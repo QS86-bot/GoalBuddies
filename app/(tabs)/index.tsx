@@ -66,6 +66,7 @@ import {
   Screen,
   Subheading,
   useAsync,
+  useAsyncMetTerugval,
   useVieringenAan,
   Viering,
   tipVoorWeek,
@@ -74,6 +75,18 @@ import {
   type WeeklyGoalStatus,
   TeBeoordelenKaart,
 } from '@/shared/ui';
+
+/**
+ * Vaste terugvallen voor `useAsyncMetTerugval` — QS8-219.
+ *
+ * ⚠️ **Constanten en geen literalen op de aanroepplek.** Een `[]` in de aanroep
+ *    is elke render een nieuwe array; die hook houdt hem daarom buiten `deps`,
+ *    en dan hoort de waarde ook echt constant te zijn. Zo staat het verband
+ *    zichtbaar in plaats van als afspraak in een kop.
+ */
+const GEEN_WEEKDOELEN: readonly Weekdoel[] = [];
+const GEEN_VRAGEN: readonly Vraag[] = [];
+const STANDAARD_BEWIJSEIS: Bewijseis = 'note_required';
 
 /**
  * Vandaag — de huidige cyclus, de weekdoelen met vloer en plafond, de Dagzet.
@@ -90,7 +103,6 @@ export default function Vandaag() {
   const { profiel } = useProfiel();
 
   const [weekdoelen, setWeekdoelen] = useState<readonly Weekdoel[]>([]);
-  const [openstaand, setOpenstaand] = useState<readonly Weekdoel[]>([]);
   const [dagzetten, setDagzetten] = useState<readonly DagZet[]>([]);
 
   const [standen, setStanden] = useState<ReadonlyMap<string, DoelStand>>(new Map());
@@ -281,23 +293,14 @@ export default function Vandaag() {
   // ⚠️ `klok` staat hier niet in de afhankelijkheden en `cyclusStart` wel, om
   //    dezelfde reden als hierboven: `userClock(profiel)` geeft elke render een
   //    vers object en zou dus een oneindige lus opleveren.
-  useEffect(() => {
-    if (!userId || !klok) return;
-    let levend = true;
-
-    fetchDoorschuifbaar(userId, klok)
-      .then((gevonden) => {
-        if (levend) setOpenstaand(gevonden);
-      })
-      .catch(() => {
-        if (levend) setOpenstaand([]);
-      });
-
-    return () => {
-      levend = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, cyclusStart, ronde]);
+  const openstaand = useAsyncMetTerugval(
+    userId && klok ? () => fetchDoorschuifbaar(userId, klok) : null,
+    GEEN_WEEKDOELEN,
+    // ⚠️ `klok` staat hier niet in en `cyclusStart` wel, om dezelfde reden als
+    //    hierboven: `userClock(profiel)` geeft elke render een vers object en zou
+    //    dus een oneindige lus opleveren.
+    [userId, cyclusStart, ronde],
+  );
 
   /**
    * Weekdoelen van deze cyclus die uit een weekplan zijn ingeschoven — QS8-203.
@@ -778,8 +781,7 @@ function WeekdoelKaart({
   const [notitie, setNotitie] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
-  const [eis, setEis] = useState<Bewijseis>('note_required');
-  const [vragen, setVragen] = useState<readonly Vraag[]>([]);
+
   const [vraagt, setVraagt] = useState<'afsluiten' | 'verwijderen' | null>(null);
   const [gevierd, setGevierd] = useState(false);
   const { aan: vieringenAan } = useVieringenAan();
@@ -811,40 +813,19 @@ function WeekdoelKaart({
   // ⚠️ De bewijseis komt uit de groep en niet uit een constante. Hij is hier
   //    alleen bedoeld om vooraf de juiste zin te tonen; afdwingen doet de
   //    trigger `enforce_evidence_policy` (migratie 0021).
-  useEffect(() => {
-    let levend = true;
-
-    bewijseisVoorDoel(weekdoel.goal_id)
-      .then((gevonden) => {
-        if (levend) setEis(gevonden);
-      })
-      .catch(() => {
-        if (levend) setEis('note_required');
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [weekdoel.goal_id]);
+  const eis = useAsyncMetTerugval(
+    () => bewijseisVoorDoel(weekdoel.goal_id),
+    STANDAARD_BEWIJSEIS,
+    [weekdoel.goal_id],
+  );
 
   // De vragen die buddy's gesteld hebben — zonder dit is "vertel me meer" een
   // dood spoor en denkt de beoordelaar dat hij iets gedaan heeft.
-  useEffect(() => {
-    if (!wachtOpOordeel) return;
-    let levend = true;
-
-    fetchVragen(weekdoel.id)
-      .then((gevonden) => {
-        if (levend) setVragen(gevonden);
-      })
-      .catch(() => {
-        if (levend) setVragen([]);
-      });
-
-    return () => {
-      levend = false;
-    };
-  }, [weekdoel.id, wachtOpOordeel]);
+  const vragen = useAsyncMetTerugval(
+    wachtOpOordeel ? () => fetchVragen(weekdoel.id) : null,
+    GEEN_VRAGEN,
+    [wachtOpOordeel, weekdoel.id],
+  );
 
   const [vinkBezig, setVinkBezig] = useState(false);
 

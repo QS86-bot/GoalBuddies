@@ -12,7 +12,7 @@
  */
 
 export { AsyncView } from './AsyncView';
-export { useAsync, laad } from './useAsync';
+export { laad, terugvalZetters, useAsync, useAsyncMetTerugval } from './useAsync';
 export { bindVertrekwacht } from './vertrekwacht';
 export type { Terugknop, Venster, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
 export { useVertrekwacht } from './useVertrekwacht';
