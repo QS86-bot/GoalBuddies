@@ -2,6 +2,14 @@
 // CLAUDE.md: module-communicatie loopt uitsluitend via dit bestand.
 
 export {
+  dagenUitKeuze,
+  dagopties,
+  GEEN_DAGEN,
+  type Dagoptie,
+  type Dagvelden,
+} from './ritme-invoer';
+
+export {
   BADGES,
   badgeLabels,
   badgeUitleg,
@@ -15,6 +23,7 @@ export { fetchBadges } from './badges-api';
 export {
   fetchDoel,
   fetchDoelen,
+  fetchDoelnamen,
   maakDoel,
   PER_PAGINA,
   rondDoelAf,
@@ -24,6 +33,7 @@ export {
   type Afronding,
   type Doel,
   type DoelMetVoortgang,
+  type Doelnaam,
   type Pagina,
   type Resultaat,
 } from './api';
@@ -85,11 +95,19 @@ export { bewaarInterview, fetchInterview, type Interview } from './interview';
 
 export {
   ANTWOORD_MAX,
+  GESPIEGELDE_VELDEN,
   heeftAntwoorden,
   interviewStappen,
   interviewSchema,
   LEEG_INTERVIEW,
+  SPIEGELING,
+  spiegelpatch,
+  urenUitTekst,
+  vulVoorUitDoel,
+  type DoelVoorvulling,
+  type GespiegeldVeld,
   type InterviewInvoer,
+  type Voorvulling,
 } from './interview-schemas';
 
 export {
@@ -111,12 +129,23 @@ export { verwijderDoel } from './api';
 export { fetchWeekpasStanden, type WeekpasStanden } from './weekpas';
 
 export { fetchDoelStanden, type DoelStand, type Reeks } from './stand';
+export { doelIdsInBeeld } from './doelen-in-beeld';
 
 export { fetchRisico, fetchRisicos, type Risico } from './risico';
 
 export {
   CATEGORIEEN,
+  CATEGORIE_GROEPEN,
+  categorieGroep,
+  categorieKeuzegroepen,
+  groepLabels,
   DOELGEBEURTENISSEN,
+  MAX_DAGEN_PER_WEEK,
+  niveauUitDagen,
+  leesRitme,
+  RITMES,
+  ritmeLabels,
+  ritmeUitleg,
   DOELGEBEURTENISSEN_CLIENT,
   categorieLabels,
   datumLigtInDeToekomst,
@@ -127,6 +156,7 @@ export {
   type DoelInvoer,
   type DoelPatch,
   type DoelStatus,
+  type Ritme,
 } from './schemas';
 
 export {
@@ -151,3 +181,39 @@ export {
   type WeekplanInvoer,
   type WeekplanstapInvoer,
 } from './weekplan-schemas';
+
+export { fetchWeekbalken } from './overzicht';
+export {
+  laatsteCycli,
+  standUitWeekdoelen,
+  WEKEN_IN_OVERZICHT,
+  type Weekbalk,
+  type Weekstand,
+} from './overzicht-stand';
+
+export {
+  heeftVragenlijstAntwoorden,
+  LEGE_VRAGENLIJST,
+  MAX_FOCUSGEBIEDEN,
+  MINUTEN_OPTIES,
+  MOMENTEN,
+  minutenLabels,
+  momentLabels,
+  patchUitVragenlijst,
+  urenPerWeekUitMinuten,
+  valkuilAntwoord,
+  valkuilLabels,
+  VALKUILEN,
+  vragenlijstSchema,
+  type Minuten,
+  type Moment,
+  type Valkuil,
+  type VragenlijstInvoer,
+} from './vragenlijst-schemas';
+
+export {
+  PROFIELCONTEXT,
+  PROFIELSPIEGELING,
+  vulVoorUitProfiel,
+  type ProfielVoorvulling,
+} from './interview-schemas';

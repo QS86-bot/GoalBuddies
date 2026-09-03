@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { toIsoDate } from '../../shared/time';
 
-import { datumLigtInDeToekomst, doelPatchSchema, doelSchema } from './schemas';
+import {
+  datumLigtInDeToekomst,
+  doelPatchSchema,
+  doelSchema,
+  niveauUitDagen,
+  RITMES,
+} from './schemas';
 
 const vandaag = toIsoDate(2026, 8, 16);
 
@@ -81,5 +87,92 @@ describe('doelPatchSchema', () => {
 
   it('blijft dezelfde eisen stellen aan wat er wél in staat', () => {
     expect(doelPatchSchema.safeParse({ title: 'ab' }).success).toBe(false);
+  });
+});
+
+describe('niveauUitDagen', () => {
+  /**
+   * QS8-253, besluit A53.
+   *
+   * ⚠️ **Deze functie is de tweede uitvoering van een regel die in de database
+   *    staat.** `niveau_uit_dagen()` in migratie 0140 beslist wat er werkelijk in
+   *    `completions` landt; deze functie bestaat alleen zodat het scherm kan
+   *    tónen wat je gaat indienen.
+   *
+   *    Twee uitvoeringen van één regel is precies de naad waar onwrikbare regel
+   *    18 over gaat, en de gevallen hieronder zijn daarom óók de gevallen die
+   *    `tests/rls/ritme.test.ts` door de database voert. Lopen ze uiteen, dan
+   *    ziet de gebruiker een ander woord dan er geboekt wordt.
+   */
+  it('geeft het plafond zodra je erop of erboven zit', () => {
+    expect(niveauUitDagen(5, 3, 5)).toBe('ceiling');
+    expect(niveauUitDagen(7, 3, 5)).toBe('ceiling');
+  });
+
+  it('geeft de vloer tussen vloer en plafond', () => {
+    expect(niveauUitDagen(3, 3, 5)).toBe('floor');
+    expect(niveauUitDagen(4, 3, 5)).toBe('floor');
+  });
+
+  it('geeft null onder de vloer — dat is de normale stand op woensdag', () => {
+    expect(niveauUitDagen(0, 3, 5)).toBeNull();
+    expect(niveauUitDagen(2, 3, 5)).toBeNull();
+  });
+
+  /**
+   * ⚠️ Zonder vloer is het plafond de ondergrens. Dat is geen strengheid maar wat
+   *    "geen vloer" betekent: er is één niveau, en dat haal je of niet. De vloer
+   *    is optioneel gebleven bij de review van 15-08 en dat verandert hier niet.
+   */
+  it('behandelt een ontbrekende vloer als "het plafond of niets"', () => {
+    expect(niveauUitDagen(4, null, 5)).toBeNull();
+    expect(niveauUitDagen(5, null, 5)).toBe('ceiling');
+  });
+
+  /** Een dagelijks doel is `times_per_week` met plafond zeven, en geen tweede feature. */
+  it('werkt voor een dagelijks doel zonder aparte behandeling', () => {
+    expect(niveauUitDagen(7, 5, 7)).toBe('ceiling');
+    expect(niveauUitDagen(6, 5, 7)).toBe('floor');
+    expect(niveauUitDagen(4, 5, 7)).toBeNull();
+  });
+});
+
+describe('het ritme op een doel', () => {
+  it('is standaard weekly, zodat een bestaand doel niets verandert', () => {
+    const zonder = doelSchema.parse({
+      title: 'Een doel met een lange genoeg titel',
+      description: null,
+      category: 'other',
+      target_date: '2030-01-01',
+      identity_statement: null,
+      available_hours_per_week: null,
+    });
+    expect(zonder.ritme).toBe('weekly');
+  });
+
+  it('accepteert elk ritme uit de lijst en niets daarbuiten', () => {
+    for (const ritme of RITMES) {
+      const uit = doelSchema.safeParse({
+        ritme,
+        title: 'Een doel met een lange genoeg titel',
+        description: null,
+        category: 'other',
+        target_date: '2030-01-01',
+        identity_statement: null,
+        available_hours_per_week: null,
+      });
+      expect(uit.success).toBe(true);
+    }
+
+    const onbekend = doelSchema.safeParse({
+      ritme: 'hourly',
+      title: 'Een doel met een lange genoeg titel',
+      description: null,
+      category: 'other',
+      target_date: '2030-01-01',
+      identity_statement: null,
+      available_hours_per_week: null,
+    });
+    expect(onbekend.success).toBe(false);
   });
 });

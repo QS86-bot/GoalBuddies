@@ -10,9 +10,11 @@ import {
   datumLigtInDeToekomst,
   doelPatchSchema,
   doelSchema,
+  leesRitme,
   type DoelgebeurtenisClient,
   type DoelInvoer,
   type DoelPatch,
+  type Ritme,
 } from './schemas';
 
 // ⚠️ Opnieuw geëxporteerd zodat de aanroepers via `modules/<naam>/index.ts`
@@ -65,6 +67,19 @@ export interface DoelMetVoortgang {
   readonly milestones_done: number;
   readonly weekly_total: number;
   readonly weekly_approved: number;
+  /**
+   * Het ritme van dit doel — besluit A53, migratie 0140, in de view sinds 0146.
+   *
+   * ⚠️ **Een voorkeur en geen oordeel.** Hij stuurt de beginstand van het
+   *    weekdoelformulier; wat een week wáárd is, staat in
+   *    `weekly_goals.ceiling_days` op de rij zelf. Zou het oordeel het doel
+   *    lezen, dan verandert de uitslag van een afgelopen week zodra iemand zijn
+   *    ritme omzet.
+   *
+   * ⚠️ Versmald met `leesRitme()` en niet met een cast: de view geeft `string`
+   *    terug, en onbekend hoort `weekly` te zijn — de stand van vóór A53.
+   */
+  readonly ritme: Ritme;
 }
 
 /** Zet een viewrij om, of geeft `null` als de rij niet compleet is. */
@@ -82,6 +97,7 @@ function naarDoel(rij: Tables<'goal_dashboard'>): DoelMetVoortgang | null {
     title: rij.title,
     description: rij.description,
     category: rij.category ?? 'other',
+    ritme: leesRitme(rij.ritme),
     identity_statement: rij.identity_statement,
     target_date: rij.target_date,
     status: rij.status ?? 'active',
@@ -128,6 +144,57 @@ export async function fetchDoelen(
   const totaal = count ?? rijen.length;
 
   return { rijen, totaal, meer: van + rijen.length < totaal };
+}
+
+/** De titel en het gebied van één doel, voor een lijst die er naar verwijst. */
+export interface Doelnaam {
+  readonly title: string;
+  readonly category: string;
+}
+
+/**
+ * De titels en gebieden van precies deze doelen — QS8-226.
+ *
+ * ⚠️ **Waarom dit bestaat en `fetchDoelen()` hier niet voldoet.** Het hoofdscherm
+ *    bouwde zijn titelkaart uit `fetchDoelen(userId)`, en die geeft **pagina 0**:
+ *    de eerste twintig. `StandBlok` filtert vervolgens elke stand weg waarvan hij
+ *    de titel niet kent — met als reden "dat is een gearchiveerd of verwijderd
+ *    doel". Bij eenentwintig actieve doelen klopte die reden niet meer, en dan
+ *    verdween een levend doel stilzwijgend van het dashboard. Geen fout, geen
+ *    melding, gewoon weg.
+ *
+ *    Onwrikbare regel 18 vraag 6: een aanname die van "ze passen op één pagina"
+ *    naar "er kunnen er meer zijn" gaat. De reparatie is niet een tweede pagina
+ *    ophalen maar de vraag omdraaien — vraag naar de doelen die je toont, in
+ *    plaats van te hopen dat ze in de eerste pagina zaten.
+ *
+ * ⚠️ **Begrensd, en dat is geen detail** (regel 10). De lijst komt uit wat er op
+ *    het scherm staat; `PER_PAGINA` ligt er als plafond overheen zodat een
+ *    onverwacht lange lijst hier geen ongepagineerde query wordt.
+ */
+export async function fetchDoelnamen(
+  ids: readonly string[],
+): Promise<ReadonlyMap<string, Doelnaam>> {
+  const uniek = [...new Set(ids)].slice(0, PER_PAGINA);
+  if (uniek.length === 0) return new Map();
+
+  const { data, error } = await supabase()
+    .from('goals')
+    .select('id, title, category')
+    .in('id', uniek);
+
+  if (error) {
+    reportError(error, 'goals.namen', { aantal: uniek.length, code: error.code });
+    return new Map();
+  }
+
+  const kaart = new Map<string, Doelnaam>();
+  for (const rij of data ?? []) {
+    if (rij.title === null) continue;
+    kaart.set(rij.id, { title: rij.title, category: rij.category ?? 'other' });
+  }
+
+  return kaart;
 }
 
 export async function fetchDoel(goalId: string): Promise<DoelMetVoortgang | null> {

@@ -11,6 +11,10 @@ import {
   fetchGroep,
   huidigeGroepsperiode,
   isSysteembericht,
+  meldBericht,
+  meldredenLabels,
+  MELDREDENEN,
+  type Meldreden,
   systeemberichtTekst,
   stuurBericht,
   verwijderBericht,
@@ -30,8 +34,15 @@ import {
   Card,
   ChatRegel,
   Field,
+  Meldpaneel,
   Screen,
 } from '@/shared/ui';
+
+/** De vijf redenen met hun labels; een functie, want de taal ligt niet vast op importtijd. */
+function MELDREDEN_OPTIES(): readonly { readonly waarde: string; readonly label: string }[] {
+  const labels = meldredenLabels();
+  return MELDREDENEN.map((r) => ({ waarde: r, label: labels[r] }));
+}
 
 /**
  * De groepschat — QS8-69.
@@ -196,6 +207,36 @@ export default function GroepChat() {
    *    verversing hem terug — dat is beter dan een regel die blijft staan zonder
    *    dat iemand weet waarom.
    */
+  /**
+   * Melden — QS8-232.
+   *
+   * ⚠️ **Het paneel staat onder de lijst en niet in een dialoog over het
+   *    bericht heen.** Wie meldt, wil kunnen blijven zien waar het over ging;
+   *    een overlay die de chat afdekt maakt van de melding een handeling in het
+   *    donker. Vandaar één geopend bericht tegelijk in de state.
+   */
+  const [meldId, setMeldId] = useState<string | null>(null);
+  const [meldBezig, setMeldBezig] = useState(false);
+  const [meldFout, setMeldFout] = useState<string | null>(null);
+  const [gemeld, setGemeld] = useState<readonly string[]>([]);
+
+  async function verstuurMelding(reden: string, toelichting: string) {
+    if (meldId === null || !id) return;
+    setMeldBezig(true);
+    setMeldFout(null);
+
+    const uitkomst = await meldBericht(id, meldId, reden as Meldreden, toelichting);
+    setMeldBezig(false);
+
+    if (!uitkomst.ok) {
+      setMeldFout(uitkomst.melding);
+      return;
+    }
+
+    setGemeld((huidig) => [...huidig, meldId]);
+    setMeldId(null);
+  }
+
   async function haalWeg(berichtId: string) {
     setBerichten((oud) => (oud ?? []).filter((b) => b.id !== berichtId));
 
@@ -309,11 +350,26 @@ export default function GroepChat() {
                     tijd={klokTijd(item.created_at, tz)}
                     {...(item.sender_id === userId
                       ? { onWeghalen: () => void haalWeg(item.id) }
-                      : {})}
+                      : { onMelden: () => setMeldId(item.id) })}
                   />
                 )
               }
             />
+
+            {meldId === null ? null : (
+              <Meldpaneel
+                redenen={MELDREDEN_OPTIES()}
+                bezig={meldBezig}
+                fout={meldFout}
+                onVerstuur={(reden, toelichting) => void verstuurMelding(reden, toelichting)}
+                onAnnuleer={() => {
+                  setMeldId(null);
+                  setMeldFout(null);
+                }}
+              />
+            )}
+
+            {gemeld.length === 0 ? null : <Caption>{t('melden.verzonden')}</Caption>}
 
             <Invoer
               groupId={id ?? ''}

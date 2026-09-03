@@ -30,6 +30,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} opened up this group. From now on members also see each other’s setbacks.',
   'systeembericht.group_protected':
     '{naam} made this group protected again. Other people’s setbacks are no longer visible.',
+  'systeembericht.group_discoverable':
+    '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members — nothing else.',
 
   'algemeen.oud_lid': 'A former member',
 
@@ -245,7 +247,7 @@ export const en: Record<Sleutel, string> = {
   'weekstart.label': 'My week starts on',
   'weekstart.hint':
     'Decides when your weekly goals start over and when your points count. ' +
-    'Changeable later; a running week just finishes out.',
+    'Changeable later; weekly goals you still have to do come along.',
 
   'weekpas.punt_toch_af': 'Last week was not completed, but your streak continues. One point did come off for that week.',
   'laden.mislukt': 'Something went wrong while loading. Try again; if it keeps failing, it is on us.',
@@ -275,6 +277,8 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.blijft_bewaard': 'Your invitation is kept on this device. Even if you have to confirm your email first, you will be in the group afterwards.',
   'uitnodiging.rondkijken': 'Just have a look around',
   'uitnodiging.deelnemen_mislukt': 'Joining did not work. Please try again in a moment.',
+  'veld.wachtwoord_tonen': 'Show',
+  'veld.wachtwoord_verbergen': 'Hide',
   'aanmelden.titel_nieuw': 'Create account',
   'aanmelden.titel_terug': 'Welcome back',
   'aanmelden.eyebrow': 'GOALBUDDIES',
@@ -311,7 +315,7 @@ export const en: Record<Sleutel, string> = {
   'beheer.huddledag_uitleg': 'Changing this does not break a running chain: a link carries the week it was made in, and that is never recalculated.',
   'beheer.bewijs_label': 'How much proof does this group ask for?',
   'beheer.bewijs_hint': 'A thumbs up on a claim is a formality. One sentence costs ten seconds and gives your buddy something to respond to — that is what gets the conversation going.',
-  'beheer.bijlagen_nog_niet': 'Attachments are not possible yet: there is no storage. If you pick that setting, only the note applies for now. Changing it does not affect existing completions.',
+  'beheer.bewijs_wijzigen': 'Changing this does not affect existing completions.',
   'beheer.opslaan': 'Save',
   'beheer.link_titel': 'Invite link',
   'beheer.link_uitleg': 'Whoever opens this link sees the group and how many people are in it — even without an account. What you share in goals is only visible after joining. Still, only share the link with people you want in.',
@@ -461,8 +465,9 @@ export const en: Record<Sleutel, string> = {
   'doelen.titel': 'Goals',
   'doelen.leeg_titel': 'No goal yet',
   'doelen.leeg_tekst': 'Start with one goal with a date on it. The Goal Coach then cuts it into milestones, and those milestones become your weekly goals.',
-  'doelen.van_totaal': '{aantal} of {totaal} goals. Loading more arrives once there are more than twenty.',
+  'doelen.van_totaal': '{aantal} of {totaal} goals.',
   'doelen.nieuw': 'New goal',
+  'doelen.meer_laden': 'Load more goals',
   'doelen.doel': 'Goal',
   'doelen.streefdatum': 'Target date {datum}',
   'doelen.datum_verstreken': 'Date passed',
@@ -472,6 +477,7 @@ export const en: Record<Sleutel, string> = {
   'groepen.leeg_tekst': 'Three people is the best size: big enough that someone always responds, small enough that you cannot hide. Create a group or use the invite link you were given.',
   'groepen.aanmaken': 'Create group',
   'groepen.heb_code': 'I have an invite code',
+  'groepen.ontdekken': 'Search for a group',
   'groepen.wachten_onbekend': 'Are buddies waiting on you?',
   'groepen.wacht_een': 'One buddy is waiting on you',
   'groepen.wachten_meer': '{n} buddies are waiting on you',
@@ -495,7 +501,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.typ_woord': 'Type {woord} to confirm',
   'profiel.definitief': 'Delete permanently',
   'profiel.toch_niet': 'Never mind',
-  'profiel.weekstart_uitleg': 'The new day applies from your next week. Weekly goals in your current week do not move with it — finish those first. Your points, your streak and your completed weeks stay as they are.',
+  'profiel.weekstart_uitleg': 'The new day applies immediately. Weekly goals you still have to do move along to your new week; submitted and completed weeks stay where they are. Your points and streak do not change.',
   'profiel.thema_systeem': 'System',
   'profiel.thema_donker': 'Dark',
   'profiel.thema_licht': 'Light',
@@ -740,7 +746,6 @@ export const en: Record<Sleutel, string> = {
   'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
 
   'bewijseis.note_required': 'Note required',
-  'bewijseis.note_and_attachment': 'Note and attachment',
   'bewijseis.optional': 'Everything optional',
   'goedkeuringsregel.any': 'One buddy',
   'goedkeuringsregel.majority': 'A majority',
@@ -907,6 +912,26 @@ export const en: Record<Sleutel, string> = {
   'doel.reeks_laden': 'Your streak could not be loaded.',
   'doel.weekpassen_laden': 'Your week passes could not be loaded.',
 
+  'nieuwdoel.categorie_hint': 'What is this goal about? One area per goal.',
+
+  'categorie.fitness': 'Fitness and movement',
+  'categorie.nutrition': 'Nutrition',
+  'categorie.self_care': 'Self-care',
+  'categorie.mindfulness': 'Calm and attention',
+  'categorie.connection': 'Connecting with people',
+  'categorie.helping': 'Helping others',
+  'categorie.creativity': 'Creativity',
+  'categorie.productivity': 'Productivity',
+  'categorie.organization': 'Order and overview',
+  'categorie.learning': 'Learning',
+  'categorie.skills': 'Skills',
+  'categorie.resilience': 'Resilience',
+
+  'categoriegroep.lichaam': 'Body and rest',
+  'categoriegroep.mensen': 'People and making',
+  'categoriegroep.werk': 'Work and growth',
+  'categoriegroep.rest': 'Work, school and other',
+
   'categorie.business': 'Work',
   'categorie.study': 'Study',
   'categorie.other': 'Other',
@@ -1065,7 +1090,7 @@ export const en: Record<Sleutel, string> = {
   'doelscherm.titel': 'Goal',
   'doelscherm.leeg_titel': 'This goal does not exist',
   'doelscherm.leeg_body': 'Either it was deleted, or it is not yours. Check the link.',
-  'doelscherm.categorie_streefdatum': '{categorie} · target date {datum}',
+  'doelscherm.streefdatum': 'Target date {datum}',
   'doelscherm.weekdoelen_afgerond': '{gedaan} of {totaal} weekly goals completed',
 
   'deadline.verzoek_loopt': 'Your request is pending',
@@ -1227,7 +1252,7 @@ export const en: Record<Sleutel, string> = {
   'mijlpalenblok.coach': 'Let the Goal Coach suggest them',
   'mijlpalenblok.gehaald': 'Done',
   'mijlpalenblok.stap': 'Step {nummer} of {totaal}',
-  'mijlpalenblok.streefdatum': ' · target date {datum}',
+  'mijlpalenblok.streefdatum': 'Target date {datum}',
   'mijlpalenblok.toch_niet': 'Not done after all',
   'mijlpalenblok.zet_gehaald': 'Done',
   'mijlpalenblok.weekstappen': 'Weekly steps',
@@ -1242,6 +1267,8 @@ export const en: Record<Sleutel, string> = {
   'mijlpalenblok.nieuwe_hint':
     'An intermediate result you can point at. For example: first ten thousand words.',
   'mijlpalenblok.nieuwe_voorbeeld': 'First ten thousand words',
+  'mijlpalenblok.omschrijving_hint':
+    'Optional. What does this step involve? You can update it later.',
   'mijlpalenblok.toevoegen': 'Add',
   'mijlpalenblok.annuleren': 'Cancel',
   'mijlpalenblok.toevoegen_knop': 'Add milestone',
@@ -1293,6 +1320,22 @@ export const en: Record<Sleutel, string> = {
   'weekdoelform.plafond': 'The ceiling',
   'weekdoelform.plafond_hint': 'What are you going for if the week goes well?',
   'weekdoelform.plafond_voorbeeld': '3 calls held',
+
+  'weekdoelform.ritme': 'How does this week count?',
+  'weekdoelform.ritme_hint':
+    'Starts from what you picked for this goal. Change it here and it applies to this week — your goal stays as it is.',
+  'weekdoelform.plafond_dagen': 'How many days are you going for?',
+  'weekdoelform.plafond_dagen_hint': 'If the week goes well.',
+  'weekdoelform.vloer_dagen': 'And on your worst week? (recommended)',
+  'weekdoelform.vloer_dagen_hint':
+    'The number of days you still manage when things go wrong. Reach that and the week counts.',
+  'weekdoelform.geen_vloer': 'No floor',
+  'weekdoelform.dagen_aantal': '{aantal} days',
+  'weekdoelform.dagen_zonder_vloer':
+    'You make this week by checking off {plafond} days. One day less counts as a missed week.',
+  'weekdoelform.dagen_met_vloer':
+    'From {vloer} days your week counts and your streak continues; at {plafond} days you reach your ceiling.',
+
   'weekdoelform.mijlpaal': 'Does this belong to a milestone?',
   'weekdoelform.mijlpaal_hint': 'It can also hang loose under your goal.',
   'weekdoelform.los': 'Loose under this goal',
@@ -1361,23 +1404,31 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.beschermd_uitleg':
     'The group sees what works out: finished weeks, milestones, encouragement. A missed week stays yours unless you share it yourself.',
   'zichtbaarheid.open_uitleg':
-    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, and who took part in which week. Only pick this if everyone wants it.',
+    'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, and each other’s point totals in this group. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, and who took part in each week — including the ones already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group — including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
-    'From now on the group only sees what works out. Missed weeks become private again, retroactively too. Everyone gets a message about it.',
+    'From now on the group only sees what works out. Missed weeks become private again, retroactively too, and the leaderboard disappears. Everyone gets a message about it.',
   'bevestiging.groep_beschermen.knop': 'Yes, protect it',
+  'bevestiging.groep_ontdekbaar_maken.titel': 'Make this group discoverable?',
+  'bevestiging.groep_ontdekbaar_maken.uitleg':
+    'People you don’t know yet will be able to find this group and ask to join. They see the name, the topic, your description, the language, the huddle day and how many members there are. They do not see who is in it, which goals are in it, the chat, The Chain or anyone’s streak. Requests come to you and you do not have to accept a single one. Everyone in the group gets a message about it. You can undo this at any time, immediately.',
+  'bevestiging.groep_ontdekbaar_maken.knop': 'Yes, make it discoverable',
+  'bevestiging.groep_verbergen.titel': 'Hide this group again?',
+  'bevestiging.groep_verbergen.uitleg':
+    'The group disappears from the search list and nobody can knock any more. Requests that already came in stay and you can still answer them. Nothing changes for the members.',
+  'bevestiging.groep_verbergen.knop': 'Yes, hide it',
   'bevestiging.groep_verlaten.titel': 'Leave this group?',
   'bevestiging.groep_verlaten.uitleg':
     'Your goal leaves this group and you will no longer be able to open the chat, the week reviews or The Chain here. What you have built up stays: your points, your streak, your completions and the approvals you gave. If your goal is also linked to another group, nothing changes there. You can only come back with a valid invite link.',
   'bevestiging.groep_verlaten.knop': 'Yes, leave this group',
   'bevestiging.weekstart_verzetten.titel': 'Start your week on a different day?',
   'bevestiging.weekstart_verzetten.uitleg':
-    'From your next week onwards everything starts on the new day. ⚠️ Weekly goals in your current week do not move with it: they drop out of view and then count as missed — that costs a point and breaks your streak. Finish them first, or wait until this week is over. Your points, your streak and your completed weeks all stay as they are.',
+    'Your week starts on the new day from now on. Weekly goals you still have to do move along to your new week, so you lose nothing. Weeks you have already submitted or completed stay where they are, and your points and streak do not change.',
   'bevestiging.weekstart_verzetten.knop': 'Yes, move my week start',
   'verlaten.titel': 'Leave this group',
   'verlaten.uitleg':
@@ -1464,6 +1515,21 @@ export const en: Record<Sleutel, string> = {
   'tijdzone.opgeslagen': 'Time zone saved.',
 
 
+  'weektip.lichaam.1': 'Your body remembers the weeks you showed up. This was one of them.',
+  'weektip.lichaam.2': 'The version that felt good this week is the one you can keep. Remember it.',
+  'weektip.lichaam.3': 'Rest is part of it and it counts. Plan it as deliberately as the rest.',
+  'weektip.lichaam.4': 'This week did not have to be hard to count. It counted.',
+  'weektip.lichaam.5': 'Lay out what you need for next week now. That is half the decision gone.',
+  'weektip.mensen.1': 'What you did for someone this week stays with them longer than you think.',
+  'weektip.mensen.2': 'A week where you reached out is a week someone else noticed too.',
+  'weektip.mensen.3': 'Making something and sharing it take the same week. This week you did both.',
+  'weektip.mensen.4': 'Tell someone what you made or did this week. It makes it real.',
+  'weektip.mensen.5': 'Decide now who you will talk to next week, so that choice is already made.',
+  'weektip.werk.1': 'What you put in order this week does not need doing again next week.',
+  'weektip.werk.2': 'Getting things done this week is not the same as being busy. This was the first.',
+  'weektip.werk.3': 'Write down which approach worked this week. That is your manual for the busy ones.',
+  'weektip.werk.4': 'Keeping a week going is the skill; the rest is execution. This week it worked.',
+  'weektip.werk.5': 'Pick your first step for next week now, while you still know where you left off.',
   'weektip.business.1': 'One finished week is a week someone else spent planning.',
   'weektip.business.2': 'What you finished this week does not need thinking about next week.',
   'weektip.business.3': 'Write down what worked this week. That is your own manual for the busy ones.',
@@ -1532,4 +1598,286 @@ export const en: Record<Sleutel, string> = {
   'weekplan.overgenomen': 'The plan is ready. Step 1 is your goal for this week.',
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
+  'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
+
+  // ---------------------------------------------------------------------------
+  // A goal's rhythm — decision A53, migration 0140
+  // ---------------------------------------------------------------------------
+  'ritme.weekly': 'I look at the week',
+  'ritme.weekly_uitleg':
+    "You wrap up at the end of the week. How you get there is up to you — there's nothing to tick off.",
+  'ritme.times_per_week': 'A few times a week',
+  'ritme.times_per_week_uitleg':
+    'You tick off the days you worked on it. The week counts as soon as you reach your floor.',
+  'ritme.daily': 'Every day',
+  'ritme.daily_uitleg':
+    'For something you do daily. It asks the most of you, so pick this only if it really is every day.',
+  'ritme.kop': 'How often will you work on this?',
+  'ritme.dagen_gehaald': '{gehaald} of {plafond} days',
+  'ritme.vloer_gehaald': "Your floor is met. This week counts.",
+  'ritme.vloer_nog_niet': '{aantal} more days to your floor.',
+  'ritme.plafond_gehaald': 'Ceiling reached.',
+  'ritme.vink_af': 'Tick off today',
+  'ritme.vink_af_label': 'Tick off today for "{titel}"',
+  'ritme.maak_ongedaan': 'Undo',
+  'ritme.maak_ongedaan_label': "Undo today's tick for \"{titel}\"",
+  'ritme.afvinken_mislukt': "That didn't save.",
+  'ritme.buiten_de_week': "That day isn't part of this week.",
+  'ritme.onder_de_vloer': "This week hasn't reached its floor yet, so there's nothing to wrap up.",
+  'ritme.te_veel_deze_dag': "You've ticked off too much today. Try again tomorrow.",
+  'klassement.kop': 'The leaderboard',
+  'klassement.uitleg':
+    'You have agreed to be open with each other, so this group\u2019s points are gathered here.',
+  'klassement.punten_een': '1 point',
+  'klassement.punten_meer': '{n} points',
+  'klassement.rij_label': 'Place {positie}: {naam}, {punten}',
+  'klassement.leeg': 'No points have been earned here yet. The first wrapped-up week gets it going.',
+  'klassement.van_totaal': '{getoond} of {totaal} members',
+  'klassement.laden_mislukt': 'The leaderboard could not be loaded.',
+  'klassement.teller_mislukt': 'The counter could not be loaded.',
+  'klassement.opnieuw': 'Try again',
+
+  'teller.kop': 'Together',
+  'teller.weken_een': '1 week wrapped up',
+  'teller.weken_meer': '{n} weeks wrapped up',
+  'teller.mijlpalen_een': '1 milestone reached',
+  'teller.mijlpalen_meer': '{n} milestones reached',
+  'teller.nog_niets': 'Your first wrapped-up week will show up here.',
+
+  'overzicht.titel': 'Your overview',
+  'overzicht.eyebrow': 'THE PAST TWELVE WEEKS',
+  'overzicht.open': 'See your overview',
+  'overzicht.laden_mislukt': 'Your overview could not be loaded.',
+
+  'overzicht.weken_kop': 'Twelve weeks',
+  'overzicht.weken_leeg': 'Once you wrap up your first week, it shows up here.',
+  'overzicht.week_label': 'Week of {datum}: {stand}',
+  'weekstand.plafond': 'ceiling reached',
+  'weekstand.vloer': 'floor reached \u2014 this week counts',
+  'weekstand.ingediend': 'submitted, waiting for your buddy',
+  'weekstand.gemist': 'not wrapped up',
+  'weekstand.leeg': 'no weekly goal',
+
+  'overzicht.kalender_kop': 'Your days',
+  'overzicht.kalender_uitleg': 'Only the goals you work on several times a week.',
+  'overzicht.kalender_leeg': 'No days ticked off yet.',
+  'overzicht.dag_label': '{datum}: {aantal} ticked off',
+  'overzicht.dag_leeg_label': '{datum}: nothing ticked off',
+
+  'overzicht.reeks_kop': 'Your longest run',
+  'overzicht.reeks_weken': '{n} weeks',
+  'overzicht.reeks_week': '1 week',
+  'overzicht.reeks_nu': 'Now {n}',
+  'overzicht.punten_kop': 'Your points',
+  'overzicht.punten_prive': 'Only you see this number.',
+
+  'overzicht.gebieden_kop': 'What your goals are about',
+  'overzicht.gebieden_leeg': 'You do not have any goals yet.',
+  'overzicht.gebied_label': '{gebied}: {aantal}',
+
+  'overzicht.groep_kop': 'Your groups',
+  'overzicht.groep_uitleg': 'A group\u2019s standing lives on the group screen itself \u2014 that is where the app knows which group you mean.',
+  'overzicht.groep_open': 'Go to your groups',
+
+  'vragenlijst.titel': 'Four short questions',
+  'vragenlijst.eyebrow': 'SO THE APP KNOWS YOU',
+  'vragenlijst.overslaan': 'Skip',
+  'vragenlijst.volgende': 'Next',
+  'vragenlijst.vorige': 'Back',
+  'vragenlijst.alles_overslaan': 'You can skip all of it. You lose nothing, and you can fill it in later.',
+
+  'vragenlijst.focus.vraag': 'What do you want to focus on?',
+  'vragenlijst.focus.toelichting': 'Pick at most three. They steer what the app suggests and where you find groups.',
+  'vragenlijst.focus.vol': 'You have three. Tap one off to swap.',
+
+  'vragenlijst.tijd.vraag': 'How much time can you honestly give?',
+  'vragenlijst.tijd.toelichting': 'On an ordinary day, not your best day.',
+  'vragenlijst.minuten.5': '5 minutes',
+  'vragenlijst.minuten.15': '15 minutes',
+  'vragenlijst.minuten.30': '30 minutes',
+  'vragenlijst.minuten.60': 'An hour or more',
+  'vragenlijst.uren_per_week': 'That is roughly {uren} hours a week. We will fill that in for you later, and you can change it.',
+
+  'vragenlijst.moment.vraag': 'When are you actually going to do it?',
+  'vragenlijst.moment.toelichting': 'A fixed moment holds up; a vague intention does not.',
+  'vragenlijst.moment.morning': 'In the morning',
+  'vragenlijst.moment.workday': 'Somewhere in the workday',
+  'vragenlijst.moment.evening': 'In the evening',
+  'vragenlijst.moment.varies': 'It varies a lot',
+
+  'vragenlijst.valkuil.vraag': 'What normally makes your habits fall apart?',
+  'vragenlijst.valkuil.toelichting': 'Tick as many as ring true. This is what the app was built for.',
+  'valkuil.forget': 'I simply forget',
+  'valkuil.forget.antwoord': 'Later you will get a reminder on your group\u2019s day. It does not exist yet, and we will not pretend it does.',
+  'valkuil.motivation_drops': 'Motivation drops after week one',
+  'valkuil.motivation_drops.antwoord': 'That is what a week pass is for: a missed week does not cost you your run. And your floor keeps a mediocre week counting.',
+  'valkuil.all_or_nothing': 'All or nothing: one missed day and I stop',
+  'valkuil.all_or_nothing.antwoord': 'That is why every weekly goal has a floor next to its ceiling. Floor reached means the week counts \u2014 same run, same approval.',
+  'valkuil.nobody_notices': 'Nobody notices if I stop',
+  'valkuil.nobody_notices.antwoord': 'Your week is confirmed by a buddy, not by yourself. That is what this app is built around.',
+  'valkuil.life_chaotic': 'My life gets chaotic sometimes',
+  'valkuil.life_chaotic.antwoord': 'Then you announce a breather in advance. Your group sees that you are pausing, and your run stays.',
+  'valkuil.bekijk': 'Show me',
+
+  'vragenlijst.samenvatting.kop': 'Here is what you told me',
+  'vragenlijst.samenvatting.uitleg': 'Tap an answer to change it.',
+  'vragenlijst.samenvatting.leeg': 'You skipped everything. That is fine, and you can still fill it in later.',
+  'vragenlijst.samenvatting.niets': 'Skipped',
+  'vragenlijst.samenvatting.bewaren': 'Save and continue',
+  'vragenlijst.samenvatting.dit_helpt': 'What the app does with this',
+
+  'validatie.focus_te_veel': 'Pick at most three.',
+
+
+  'ontdek.titel': 'Find a group',
+  'ontdek.eyebrow': 'Search',
+  'ontdek.uitleg':
+    'These are groups that made themselves findable. You see what they are about and how many people are in them — a group shows nothing more than that to someone from outside.',
+  'ontdek.filter_categorie': 'What it is about',
+  'ontdek.filter_taal': 'Language',
+  'ontdek.alles': 'All',
+  'ontdek.laden_mislukt': 'The groups could not be loaded.',
+  'ontdek.leeg_titel': 'No group found yet',
+  'ontdek.leeg_tekst':
+    'There is no findable group in this combination yet. Try another topic or another language — or start one yourself and open it up.',
+  'ontdek.leden': '{aantal} members',
+  'ontdek.leden_een': '1 member',
+  'ontdek.huddledag': 'Huddle on {dag}',
+  'ontdek.meer': 'More groups',
+  'ontdek.zelf_beginnen': 'Start a group yourself',
+
+  'ontdek.aanvragen': 'Ask to join',
+  'ontdek.bericht_label': 'Introduce yourself',
+  'ontdek.bericht_hint':
+    'Optional. A sentence or two about what you are working on. The admin of this group reads this.',
+  'ontdek.versturen': 'Send',
+  'ontdek.annuleren': 'Never mind',
+  'ontdek.verzonden':
+    'Your request is with the admin of this group. Whether and when they reply is up to them.',
+  'ontdek.over_nog': 'You can approach {aantal} more groups today.',
+  'ontdek.over_op': 'You have approached ten groups today. Tomorrow you can again.',
+
+  'ontdek.te_veel_aanvragen': 'You have approached ten groups today. Tomorrow you can again.',
+  'ontdek.al_lid': 'You are already in this group.',
+  'ontdek.niet_open':
+    'This group can no longer be found. The admin may have just hidden it.',
+  'ontdek.geen_beheerder': 'Only an admin of this group can do this.',
+  'ontdek.niet_bevestigd': 'This change was not confirmed.',
+  'ontdek.niet_beschermd':
+    'An open group cannot be discoverable: strangers would see each other’s setbacks. Make the group protected first.',
+  'ontdek.geen_categorie':
+    'First pick what this group is about. Without a topic it cannot be found.',
+  'ontdek.al_beslist': 'This request has already been decided.',
+  'ontdek.ongewijzigd': 'That was already the case.',
+  'ontdek.mislukt': 'That did not work. Please try again.',
+  'ontdek.verzoeken_mislukt': 'The requests could not be loaded.',
+  'ontdek.onbekend_lid': 'Someone',
+
+  'ontdek.beheer_titel': 'Being found',
+  'ontdek.beheer_aan': 'This group can be found by people you do not know yet.',
+  'ontdek.beheer_uit': 'This group can only be reached with an invitation link.',
+  'ontdek.beheer_uitleg':
+    'Whoever searches sees the name, the topic, the description, the language, the huddle day and the number of members. Not who is in it, not the goals, not the chat, not The Chain and not anyone’s streak.',
+  'ontdek.beheer_moet_beschermd_zijn':
+    'Only a protected group can be discoverable. In an open group members see each other’s setbacks, and that is none of a stranger’s business.',
+  'ontdek.beheer_aanzetten': 'Make this group discoverable',
+  'ontdek.beheer_uitzetten': 'Take it out of the search list',
+  'ontdek.melding_ontdekbaar':
+    'This group can now be found. Your group got a message about it.',
+  'ontdek.melding_verborgen': 'This group is no longer in the search list.',
+
+  'ontdek.categorie_label': 'What this group is about',
+  'ontdek.categorie_hint': 'This is what people can find your group by.',
+  'ontdek.omschrijving_label': 'Description',
+  'ontdek.omschrijving_hint':
+    'A sentence or two. This is the only thing a stranger reads about you.',
+  'ontdek.voertaal_label': 'Language',
+  'ontdek.voertaal_hint':
+    'What do you speak with each other? This changes nothing about the language of the app.',
+  'ontdek.geen_keuze': 'Not chosen',
+
+  'ontdek.verzoeken_titel': 'Requests',
+  'ontdek.verzoeken_leeg': 'There are no open requests right now.',
+  'ontdek.verzoeken_uitleg':
+    'Whoever you accept joins the group and from that moment sees everything a member sees. Whoever you decline gets no message about it, and neither does the group.',
+  'ontdek.aannemen': 'Accept',
+  'ontdek.afwijzen': 'Decline',
+  'ontdek.aangenomen': 'Accepted.',
+  'ontdek.afgewezen': 'Declined.',
+  'ontdek.zonder_bericht': 'No message',
+
+  'voertaal.nl': 'Dutch',
+  'voertaal.en': 'English',
+
+  'validatie.groepsomschrijving_lang': 'Keep it to 280 characters.',
+
+
+  'leden.titel': 'Who takes part',
+  'leden.eyebrow': 'Group',
+  'leden.leeg_titel': 'Nobody yet',
+  'leden.leeg_tekst': 'As soon as somebody joins, they show up here.',
+  'leden.beheerder': 'Admin',
+  'leden.jijzelf': 'This is you.',
+  'groepdetail.naar_leden': 'Who takes part',
+
+  'melden.titel': 'Report',
+  'melden.persoon_knop': 'Report this person',
+  'melden.bericht_knop': 'Report this message',
+  'melden.reden_label': 'What is going on?',
+  'melden.toelichting_label': 'Details',
+  'melden.toelichting_hint': 'Optional. What you write here is read by the admin of this group.',
+  'melden.versturen': 'Send report',
+  'melden.annuleren': 'Never mind',
+
+  'melden.wat_gebeurt_er':
+    'Your report goes to the admin of this group, and we can read it. There is no team reviewing reports yet, so we are not going to say there is. If this is something you want to be rid of right now, block that person as well.',
+  'melden.verzonden':
+    'Your report is in. The admin of this group can see it; the person you reported cannot.',
+  'melden.niet_zichtbaar': 'The person you report never sees that you did this.',
+
+  'melden.reden.harassment': 'Harassment or bullying',
+  'melden.reden.spam': 'Spam or advertising',
+  'melden.reden.inappropriate': 'Inappropriate content',
+  'melden.reden.impersonation': 'Pretending to be someone else',
+  'melden.reden.other': 'Something else',
+
+  'melden.te_veel': 'You have made twenty reports today. Tomorrow you can again.',
+  'melden.geen_lid': 'You are not in this group.',
+  'melden.bericht_weg': 'This message no longer exists.',
+  'melden.onbekend': 'This person is not in this group.',
+  'melden.jezelf': 'You cannot report yourself.',
+  'melden.mislukt': 'That did not work. Please try again.',
+  'melden.onbekend_lid': 'Someone',
+
+  'melden.blokkeer_knop': 'Block this person',
+  'melden.deblokkeer_knop': 'Unblock',
+  'melden.geblokkeerd_titel': 'Blocked',
+  'melden.blokkades_mislukt': 'Your blocked list could not be loaded.',
+  'melden.blokkeer_stil': 'They get no message about this and cannot see it anywhere.',
+  'melden.geblokkeerd': 'This is not possible.',
+
+  'melden.verwijder_knop': 'Remove from group',
+  'melden.geen_beheerder': 'Only an admin of this group can do this.',
+  'melden.niet_bevestigd': 'This action was not confirmed.',
+  'melden.al_verwijderd': 'This person is no longer in the group.',
+  'melden.laatste_beheerder':
+    'This is the only admin of this group. Make someone else an admin first.',
+  'melden.verwijderd': 'This member is no longer in the group.',
+  'melden.verwijderd_doelen':
+    'This member is no longer in the group. {aantal} goals have been unlinked.',
+
+  'bevestiging.lid_verwijderen.titel': 'Remove this member from the group?',
+  'bevestiging.lid_verwijderen.uitleg':
+    'This person can no longer open the group: not the chat, not the week closings, not The Chain. Their goals leave this group and an open request to move a target date lapses. What they built up stays theirs: their points, their streak and their completions. They cannot come back with the invitation link. The group gets no message about this, but it is recorded in the group history.',
+  'bevestiging.lid_verwijderen.knop': 'Yes, remove this member',
+
+  'bevestiging.persoon_blokkeren.titel': 'Block this person?',
+  'bevestiging.persoon_blokkeren.uitleg':
+    'From now on they will not end up in a group with you — not through an invitation link, not through search. Groups you are both in right now do not change: that would let them notice you did this. They get no message and cannot see it anywhere. You can always undo the block.',
+  'bevestiging.persoon_blokkeren.knop': 'Yes, block',
+
+  'validatie.dagen_heel': 'Enter a whole number of days.',
+  'validatie.dagen_bereik': 'A week has seven days.',
+  'validatie.vloer_boven_plafond': "Your floor can't be above your ceiling.",
+  'validatie.vloer_zonder_plafond': 'A floor in days needs a ceiling too.',
 };

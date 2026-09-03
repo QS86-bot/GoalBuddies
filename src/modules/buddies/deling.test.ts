@@ -23,6 +23,11 @@ function groep(id: string, extra: Partial<Tables<'groups'>> = {}): Tables<'group
     created_at: '2026-01-01T00:00:00Z',
     created_by: null,
     evidence_policy: 'none',
+    // QS8-231 — een groep die zich niet laat vinden, en dat is de standaard.
+    ontdekbaar: false,
+    categorie: null,
+    omschrijving: null,
+    voertaal: null,
     huddle_day: 0,
     icon: null,
     invite_code: `code-${id}`,

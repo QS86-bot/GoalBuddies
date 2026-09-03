@@ -20,6 +20,14 @@ const MOET_EEN_SCHERM_HEBBEN: Readonly<Record<string, string>> = {
   wijzigMijlpaal:
     'Aanmaken, verwijderen, herordenen en op gehaald zetten konden allemaal; ' +
     'alleen de tekst van een mijlpaal was permanent.',
+  dagenUitKeuze:
+    'De belofte van A53: een weekdoel dat in dagen telt. Zonder scherm dat deze ' +
+    'functie aanroept blijft `ceiling_days` altijd NULL en gedraagt élk weekdoel ' +
+    'zich zoals vóór A53 — precies de toestand die QS8-260 heeft opgelost. ⚠️ ' +
+    'Deze regel staat er omdat de mutatie het aantoonde: het scherm de twee ' +
+    'velden op `null` laten zetten maakte géén enkele test rood, want ' +
+    '`kolomrechten:controle` kijkt naar kolomnamen in `maakWeekdoel()` en niet ' +
+    'naar wat een scherm meegeeft.',
   fetchCommitmentSpoor:
     'Domeinregel 5 eist dat een commitment auditeerbaar is. Een spoor dat ' +
     'niemand kan opvragen is precies zo goed als geen spoor.',

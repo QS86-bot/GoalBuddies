@@ -26,6 +26,13 @@ import {
   vernieuwUitnodiging,
   wijzigGroep,
   archiveerGroep,
+  beslisVerzoek,
+  fetchOpenstaandeVerzoeken,
+  OMSCHRIJVING_MAX,
+  voertaalLabels,
+  VOERTALEN,
+  type Voertaal,
+  zetOntdekbaar,
   zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   zichtbaarheidLabels,
@@ -33,7 +40,10 @@ import {
   type Groep,
   type Zichtbaarheid,
 } from '@/modules/buddies';
+import { categorieLabels } from '@/modules/goals';
+import { CATEGORIEEN, type Categorie } from '@/shared/categorieen';
 import { t } from '@/shared/i18n';
+import { telTekens } from '@/shared/tekst';
 import type { Weekday } from '@/shared/time';
 import {
   AsyncView,
@@ -48,6 +58,7 @@ import {
   Field,
   Screen,
   Subheading,
+  useAsync,
   useTerug,
 } from '@/shared/ui';
 
@@ -87,8 +98,21 @@ export default function GroepBeheer() {
    */
   const [quorum, setQuorum] = useState('');
   const [cadans, setCadans] = useState<Seizoenscadans>('quarterly');
+
+  /**
+   * De drie velden van QS8-231 waarmee een groep zich laat vinden.
+   *
+   * ⚠️ **`'geen'` en niet `null` in de state.** `Choice` werkt met een waarde en
+   *    een lege keuze bestaat daar niet; `slaOp()` maakt er weer `null` van. Zou
+   *    dit `null` zijn, dan is "nog niet gekozen" niet te onderscheiden van "net
+   *    leeggemaakt", en dan blijft een categorie staan die de beheerder weghaalde.
+   */
+  const [categorie, setCategorie] = useState<Categorie | 'geen'>('geen');
+  const [omschrijving, setOmschrijving] = useState('');
+  const [voertaal, setVoertaal] = useState<Voertaal | 'geen'>('geen');
+
   const [bezig, setBezig] = useState<
-    'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | 'archief' | null
+    'opslaan' | 'vernieuwen' | 'sluiten' | 'zicht' | 'ontdek' | 'verzoek' | 'archief' | null
   >(null);
   /**
    * ⚠️ Openklappen en niet meteen doen. Besluit A41 grens 3: omzetten raakt
@@ -104,6 +128,10 @@ export default function GroepBeheer() {
    *    en is vanuit de app niet terug te draaien.
    */
   const [archiefVraag, setArchiefVraag] = useState(false);
+  /** Zelfde vorm en zelfde reden als `zichtVraag`: dit zet iets open voor vreemden. */
+  const [ontdekVraag, setOntdekVraag] = useState(false);
+  /** De id's die deze sessie al beslist heeft. Zie `verzoeken` hieronder. */
+  const [beslist, setBeslist] = useState<readonly string[]>([]);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -122,6 +150,17 @@ export default function GroepBeheer() {
         setRegel(leesGoedkeuringsregel(gevonden?.approval_rule));
         setQuorum(gevonden?.approval_quorum == null ? '' : String(gevonden.approval_quorum));
         setCadans(leesSeizoenscadans(gevonden?.season_cadence));
+        setCategorie(
+          CATEGORIEEN.includes(gevonden?.categorie as Categorie)
+            ? (gevonden?.categorie as Categorie)
+            : 'geen',
+        );
+        setOmschrijving(gevonden?.omschrijving ?? '');
+        setVoertaal(
+          VOERTALEN.includes(gevonden?.voertaal as Voertaal)
+            ? (gevonden?.voertaal as Voertaal)
+            : 'geen',
+        );
         setError(null);
       })
       .catch((f: unknown) => {
@@ -135,6 +174,25 @@ export default function GroepBeheer() {
       levend = false;
     };
   }, [id, userId]);
+
+  /**
+   * De openstaande aanvragen — QS8-231.
+   *
+   * ⚠️ **`fn` is `null` zolang je geen beheerder bent**, en dat is precies waar
+   *    `useAsync` voor gemaakt is. `group_join_requests_select` laat een gewoon
+   *    lid niets zien, dus zonder die voorwaarde zou elk lid een lege lijst
+   *    ophalen die nooit iets kan bevatten.
+   *
+   * ⚠️ **Beslist-zijn is afgeleid en geen tweede kopie van de lijst.** Zou de
+   *    lijst in eigen state staan en uit dit antwoord geseed worden, dan is er
+   *    een moment waarop de twee uit elkaar lopen — en dan bepaalt de volgorde
+   *    van twee renders wat de beheerder ziet.
+   */
+  const { data: binnengekomen } = useAsync(
+    beheerder && id ? () => fetchOpenstaandeVerzoeken(id) : null,
+    [id, beheerder],
+  );
+  const verzoeken = (binnengekomen ?? []).filter((v) => !beslist.includes(v.id));
 
   async function slaOp() {
     if (!id) return;
@@ -152,6 +210,12 @@ export default function GroepBeheer() {
       approval_rule: regel,
       ...(regel === 'quorum' ? { approval_quorum: Number(quorum.trim()) } : {}),
       season_cadence: cadans,
+      // ⚠️ `null` is hier "haal weg" en niet "laat staan" — zie `groepPatchSchema`.
+      //    De database weigert het leegmaken zolang de groep ontdekbaar is, en dat
+      //    is de juiste kant op: zonder onderwerp is hij niet te vinden.
+      categorie: categorie === 'geen' ? null : categorie,
+      omschrijving: omschrijving.trim() === '' ? null : omschrijving,
+      voertaal: voertaal === 'geen' ? null : voertaal,
     });
     setBezig(null);
 
@@ -201,6 +265,50 @@ export default function GroepBeheer() {
     setMelding(
       naar === 'open' ? t('beheer.melding_open_gezet') : t('beheer.melding_beschermd_gezet'),
     );
+  }
+
+  /**
+   * Vindbaar maken, of juist niet — QS8-231.
+   *
+   * ⚠️ Dezelfde vorm als `zetZichtbaarheid()` en dat is geen toeval: allebei
+   *    zetten ze iets open namens mensen die het niet gevraagd hebben. De
+   *    database weigert zonder `p_bevestigd`, dus dit scherm is de tweede rem.
+   */
+  async function zetVindbaar(naar: boolean) {
+    if (!id) return;
+    setBezig('ontdek');
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await zetOntdekbaar(id, naar, true);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    setOntdekVraag(false);
+    setGroep((huidig) => (huidig === null ? huidig : { ...huidig, ontdekbaar: uitkomst.waarde }));
+    setMelding(naar ? t('ontdek.melding_ontdekbaar') : t('ontdek.melding_verborgen'));
+
+  }
+
+  async function beslis(requestId: string, naar: 'accepted' | 'declined') {
+    setBezig('verzoek');
+    setFout(null);
+    setMelding(null);
+
+    const uitkomst = await beslisVerzoek(requestId, naar);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    setBeslist((huidig) => [...huidig, requestId]);
+    setMelding(naar === 'accepted' ? t('ontdek.aangenomen') : t('ontdek.afgewezen'));
   }
 
   async function archiveer() {
@@ -290,10 +398,25 @@ export default function GroepBeheer() {
                 <Caption>{t('beheer.huddledag_uitleg')}</Caption>
 
                 {/*
-                  ⚠️ De bijlage-optie staat er wel en doet nog niets: er is geen
-                     Storage-bucket (Q-TODO A12), dus die eis zou onhaalbaar zijn.
-                     Tot die tijd gedraagt hij zich als "notitie verplicht", en dat
-                     staat eronder in plaats van dat de knop stilletjes liegt.
+                  ⚠️ **De bijlage-optie is er in 0150 uit** (QS8-261): hij bestond
+                     overal behalve waar hij afgedwongen moest worden. Hier stond
+                     dat hij er wél was en niets deed, met een bijschrift eronder
+                     dat bijlagen nog niet konden. Hij komt terug samen met het
+                     uploadpad.
+
+                  ⚠️ **Het bijschrift droeg twee beweringen en maar één ervan is
+                     verlopen.** "Bijlagen kunnen nog niet" ging over een stand die
+                     niet meer te kiezen is; "wijzigen raakt bestaande afrondingen
+                     niet" gaat over deze keuze zelf en is onverminderd waar. De
+                     eerste versie van deze opruiming (#169) haalde de hele zin weg
+                     en gooide daarmee de tweede helft mee — teruggezet als
+                     `beheer.bewijs_wijzigen`, met dank aan #168 dat hem wél zag.
+
+                  ⚠️ De grendel eronder is `completions_evidence`, en die staat op
+                     `before insert` (0021, ongewijzigd door 0150). Een afronding
+                     die er al is, wordt dus nooit opnieuw langs de eis gehaald.
+                     Verandert die timing ooit, dan wordt deze zin onwaar en hoort
+                     hij hier weg.
                 */}
                 <Choice
                   label={t('beheer.bewijs_label')}
@@ -302,7 +425,7 @@ export default function GroepBeheer() {
                   waarde={bewijseis}
                   onKies={setBewijseis}
                 />
-                <Caption>{t('beheer.bijlagen_nog_niet')}</Caption>
+                <Caption>{t('beheer.bewijs_wijzigen')}</Caption>
 
                 {/*
                   ⚠️ **Wél in dit formulier en niet in een eigen kaart met een
@@ -358,10 +481,55 @@ export default function GroepBeheer() {
                 />
                 <Caption>{t('seizoen.uitleg')}</Caption>
 
+                {/*
+                  ⚠️ **Wél in dit formulier, net als de goedkeuringsregel.** Deze
+                     drie zijn gegevens over de groep — zoals de naam — en geen
+                     toestemming: ze zetten uit zichzelf niets open. Pas de
+                     schakelaar hieronder maakt de groep vindbaar, en die staat
+                     daarom in een eigen kaart met een bevestiging.
+                */}
+                <Choice
+                  label={t('ontdek.categorie_label')}
+                  hint={t('ontdek.categorie_hint')}
+                  opties={[
+                    { waarde: 'geen' as const, label: t('ontdek.geen_keuze') },
+                    ...CATEGORIEEN.map((c) => ({ waarde: c, label: categorieLabels()[c] })),
+                  ]}
+                  waarde={categorie}
+                  onKies={(gekozen) => setCategorie(gekozen as Categorie | 'geen')}
+                />
+
+                <Field
+                  label={t('ontdek.omschrijving_label')}
+                  hint={t('ontdek.omschrijving_hint')}
+                  value={omschrijving}
+                  onChangeText={setOmschrijving}
+                  multiline
+                />
+                {/*
+                  ⚠️ `telTekens()` en niet `value.length`: Postgres telt
+                     codepunten en JavaScript UTF-16-eenheden. Een teller die in
+                     de verkeerde eenheid telt, zegt "nog ruimte" op een ander
+                     moment dan de database (CLAUDE.md).
+                */}
+                <Caption>{`${telTekens(omschrijving)}/${OMSCHRIJVING_MAX}`}</Caption>
+
+                <Choice
+                  label={t('ontdek.voertaal_label')}
+                  hint={t('ontdek.voertaal_hint')}
+                  opties={[
+                    { waarde: 'geen' as const, label: t('ontdek.geen_keuze') },
+                    ...VOERTALEN.map((v) => ({ waarde: v, label: voertaalLabels()[v] })),
+                  ]}
+                  waarde={voertaal}
+                  onKies={(gekozen) => setVoertaal(gekozen as Voertaal | 'geen')}
+                />
+
                 <Button
                   variant="primair"
                   block
                   busy={bezig === 'opslaan'}
+                  disabled={telTekens(omschrijving) > OMSCHRIJVING_MAX}
                   onPress={() => void slaOp()}
                 >
                   {t('beheer.opslaan')}
@@ -408,6 +576,94 @@ export default function GroepBeheer() {
                   </Button>
                 )}
               </Card>
+
+              {/*
+                ⚠️ **Een eigen kaart met een bevestiging, en om dezelfde reden als
+                   de zichtbaarheid hierboven.** Vindbaar maken doe je namens
+                   iedereen die in de groep zit; dat mag nooit meeliften op de
+                   opslaanknop van een formulier waar ook de groepsnaam in staat.
+              */}
+              <Card>
+                <Subheading>{t('ontdek.beheer_titel')}</Subheading>
+                <Body muted>{g.ontdekbaar ? t('ontdek.beheer_aan') : t('ontdek.beheer_uit')}</Body>
+                <Body muted>{t('ontdek.beheer_uitleg')}</Body>
+
+                {/*
+                  ⚠️ De twee voorwaarden staan hier als zin en in de database als
+                     CHECK (`groups_ontdekbaar_is_beschermd`,
+                     `groups_ontdekbaar_heeft_categorie`). Dit scherm legt uit
+                     waarom de knop niets doet; het is niet wat het tegenhoudt.
+                */}
+                {(g.zichtbaarheid ?? 'beschermd') !== 'beschermd' ? (
+                  <Caption danger>{t('ontdek.beheer_moet_beschermd_zijn')}</Caption>
+                ) : null}
+                {g.categorie === null ? <Caption danger>{t('ontdek.geen_categorie')}</Caption> : null}
+
+                {ontdekVraag ? (
+                  <Bevestiging
+                    tekst={
+                      g.ontdekbaar
+                        ? bevestigingen().groepVerbergen
+                        : bevestigingen().groepOntdekbaarMaken
+                    }
+                    bezig={bezig === 'ontdek'}
+                    onBevestig={() => void zetVindbaar(!g.ontdekbaar)}
+                    onAnnuleer={() => setOntdekVraag(false)}
+                  />
+                ) : (
+                  <Button
+                    variant="secundair"
+                    block
+                    disabled={
+                      !g.ontdekbaar &&
+                      ((g.zichtbaarheid ?? 'beschermd') !== 'beschermd' || g.categorie === null)
+                    }
+                    onPress={() => setOntdekVraag(true)}
+                  >
+                    {g.ontdekbaar ? t('ontdek.beheer_uitzetten') : t('ontdek.beheer_aanzetten')}
+                  </Button>
+                )}
+              </Card>
+
+              {/*
+                ⚠️ **Deze kaart staat er ook als de groep niet meer vindbaar is.**
+                   Wie zich verbergt houdt de aanvragen die al binnen waren, en
+                   dat staat in de bevestigingstekst. Zou de kaart met de
+                   schakelaar meeverdwijnen, dan is die belofte niet waar te maken.
+              */}
+              {verzoeken.length === 0 && !g.ontdekbaar ? null : (
+                <Card>
+                  <Subheading>{t('ontdek.verzoeken_titel')}</Subheading>
+                  <Body muted>{t('ontdek.verzoeken_uitleg')}</Body>
+
+                  {verzoeken.length === 0 ? (
+                    <Caption>{t('ontdek.verzoeken_leeg')}</Caption>
+                  ) : (
+                    verzoeken.map((verzoek) => (
+                      <Card key={verzoek.id}>
+                        <Body>{verzoek.naam}</Body>
+                        <Body muted>{verzoek.bericht ?? t('ontdek.zonder_bericht')}</Body>
+                        <Button
+                          variant="primair"
+                          block
+                          busy={bezig === 'verzoek'}
+                          onPress={() => void beslis(verzoek.id, 'accepted')}
+                        >
+                          {t('ontdek.aannemen')}
+                        </Button>
+                        <Button
+                          variant="stil"
+                          block
+                          busy={bezig === 'verzoek'}
+                          onPress={() => void beslis(verzoek.id, 'declined')}
+                        >
+                          {t('ontdek.afwijzen')}
+                        </Button>
+                      </Card>
+                    ))
+                  )}
+                </Card>
+              )}
 
               <Card>
                 <Subheading>{t('beheer.link_titel')}</Subheading>

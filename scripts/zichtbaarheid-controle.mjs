@@ -36,9 +36,28 @@ import { pathToFileURL } from 'node:url';
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
  *
- * ⚠️ Vier stuks, en alle vier staan ze in `zichtbaarheid.open_uitleg` en in
- *    `bevestiging.groep_openzetten.uitleg`. Komt er een vijfde bij, dan wordt
- *    deze controle rood — en dán is de vraag of die zin nog klopt, niet later.
+ * ⚠️ Zes rijen, maar **vijf feiten** — en dat onderscheid is de reden dat de zin
+ *    voor de gebruiker niet meegroeit. `zichtbare_reeksen_van_groep` (0151) is
+ *    een tweede pad naar hetzelfde feit als `group_visible_streaks`, niet een
+ *    zesde ding dat opengaat. Komt er een rij bij die wél een nieuw feit
+ *    opent, dan wordt deze controle rood — en dán is de vraag of
+ *    `zichtbaarheid.open_uitleg` en `bevestiging.groep_openzetten.uitleg` nog
+ *    kloppen, niet later.
+ *
+ * ⚠️ **De tweede-pad-rij is de uitzondering en hij hoort er een te blijven.** Het
+ *    is verleidelijk om hem bij `GEEN_OPPERVLAK` te zetten — hij opent immers
+ *    niets nieuws — maar hij ís een oppervlak: hij geeft gemaskeerde
+ *    gebruikersdata terug en de maskering varieert op `zichtbaarheid`. Hem bij
+ *    het mechanisme zetten zou betekenen dat een plek die écht data uitgeeft,
+ *    ongeclassificeerd langs de volgende lezer glijdt. Wat hem hier houdt is dat
+ *    zijn gelijkheid met de view onder test staat; loopt die ooit uiteen, dan is
+ *    het wél een zesde feit en groeit de zin alsnog.
+ *
+ * ⚠️ **Dat heeft op 01-09-2026 precies gewerkt en dat is het opschrijven waard.**
+ *    Het klassement uit besluit A54 werd hier rood, en de melding wees naar de
+ *    twee zinnen — die tot dat moment drie oppervlakken opsomden terwijl er vier
+ *    waren en er een vijfde bij kwam. Zonder deze controle was de gebruiker de
+ *    groep open blijven zetten op een zin die zijn punten niet noemde.
  */
 export const OPPERVLAKKEN = new Map([
   [
@@ -60,6 +79,25 @@ export const OPPERVLAKKEN = new Map([
     'policy:chain_links.chain_links_select',
     'De Ketting per lid (migratie 0079). De teller erboven blijft dicht — die is ' +
       'optellend en verraadt niemand (besluit A42).',
+  ],
+  [
+    'functie:zichtbare_reeksen_van_groep',
+    'Dezelfde beste reeks als `view:group_visible_streaks` — geen zesde ding dat ' +
+      'opengaat maar een tweede deur naar het vijfde (migratie 0151). Hij bestaat ' +
+      'omdat de view op `security_barrier` staat en zijn `where` daardoor per rij ' +
+      'van de héle `user_streaks` draait; `group_overview()` gebruikt hem. ' +
+      '⚠️ Staat hij hier, dan hoeft `zichtbaarheid.open_uitleg` niet te groeien — ' +
+      'maar wijkt hij ooit inhoudelijk van de view af, dan is dat wél een nieuw ' +
+      'oppervlak. Die gelijkheid staat onder test in ' +
+      '`tests/rls/reeksen-van-een-groep.test.ts`, in beide richtingen.',
+  ],
+  [
+    'functie:groep_klassement',
+    'Het puntenklassement per lid (migratie 0141, besluit A54). Het vijfde ' +
+      'oppervlak, en het eerste dat een besluit terúgdraait: punten stonden onder ' +
+      'A42 in §6b als bewust dicht. Wat opengaat is het groepstotaal, niet het ' +
+      'persoonlijke totaal en niet de deltas — en het kan niet dalen van een ' +
+      'gemiste week, want `cycle_missed` draagt geen groep.',
   ],
 ]);
 
@@ -84,6 +122,14 @@ export const GEEN_OPPERVLAK = new Map([
     'functie:invite_preview',
     'Geeft de stand van de gróep terug, niet iets over een lid — verantwoord in 0080: ' +
       'het is het feit dat iemand nodig heeft om te besluiten of hij meedoet.',
+  ],
+  [
+    'functie:zet_groepsontdekbaarheid',
+    'Leest `zichtbaarheid` om te wéigeren (QS8-231, migratie 0144): een open groep kan ' +
+      'niet vindbaar zijn, want dan zouden onbekenden elkaars tegenslag zien. Hij geeft ' +
+      'dus niets over een lid terug — hij gebruikt de stand als grens en niet als filter. ' +
+      '⚠️ De grendel is de CHECK `groups_ontdekbaar_is_beschermd`; deze functie is de ' +
+      'uitleg erbij, zodat een scherm een reden kan tonen in plaats van een 23514.',
   ],
 ]);
 

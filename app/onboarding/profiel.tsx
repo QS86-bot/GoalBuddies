@@ -6,7 +6,9 @@ import {
   rondOnboardingAf,
   updateProfiel,
   useProfiel,
+  userClock,
   useSession,
+  zetWeekStartdag,
 } from '@/modules/auth';
 import { herinneringVelden } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
@@ -98,7 +100,6 @@ function OnboardingProfielFormulier() {
     const uitkomst = await updateProfiel(userId, {
       display_name: naam,
       tz,
-      week_start_day: weekStart,
       // ⚠️ "Uit is uit" zit in `herinneringVelden()` en niet hier: sinds
       //    26-08-2026 kan het profieltabblad hetzelfde, en dezelfde belofte op
       //    twee schermen is de naad uit regel 18.
@@ -108,6 +109,22 @@ function OnboardingProfielFormulier() {
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
+      setBezig(false);
+      return;
+    }
+
+    // ⚠️ **De week-startdag gaat apart, want de kolom is sinds migratie 0139
+    //    voor de client niet meer schrijfbaar.** Dat pad zet de dag én verhuist
+    //    lopende `todo`-weekdoelen mee; hier is dat laatste per definitie een
+    //    no-op, want een gebruiker die de onboarding doet heeft er nog geen.
+    //
+    //    De klok komt uit het net geschreven profiel, zodat de tijdzone die de
+    //    gebruiker hierboven koos meteen meetelt bij het uitrekenen van de
+    //    cyclus — met de oude zone zou de grens er in de verkeerde tijdzone
+    //    liggen.
+    const dag = await zetWeekStartdag(userId, userClock(uitkomst.profiel), weekStart);
+    if (!dag.ok) {
+      setFout(dag.melding);
       setBezig(false);
       return;
     }
@@ -123,7 +140,16 @@ function OnboardingProfielFormulier() {
     }
 
     zetProfiel(afgerond.profiel);
-    router.replace(eigenDoel ? '/doelen' : '/groep');
+
+    // ⚠️ **De vragenlijst komt hierna en niet hiervóór** — besluit A56. Eerst
+    //    het minimum dat de app nodig heeft om te werken (naam, tijdzone,
+    //    week-startdag), dan pas de vier vragen die haar beter maken. Andersom is
+    //    het een drempel vóór er iets te winnen valt.
+    //
+    // ⚠️ En de onboarding is op dit punt al afgerond: wie de vragenlijst
+    //    wegklikt, belandt in een werkende app en niet opnieuw in de onboarding.
+    //    Dat is wat "overslaan mag" betekent.
+    router.replace('/onboarding/vragenlijst');
   }
 
   return (

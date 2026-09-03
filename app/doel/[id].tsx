@@ -42,10 +42,17 @@ import {
   fetchWeekplan,
   herordenMijlpalen,
   herordenWeekplan,
+  dagenUitKeuze,
+  dagopties,
+  GEEN_DAGEN,
+  leesRitme,
   maakMijlpaal,
   maakWeekdoel,
   planAdempauze,
   planbareCycli,
+  RITMES,
+  ritmeLabels,
+  ritmeUitleg,
   trekDeadlineVerzoekIn,
   startWeekplanstapNu,
   verplaats,
@@ -64,6 +71,7 @@ import {
   type DoelMetVoortgang,
   type Mijlpaal,
   type Risico,
+  type Ritme,
 } from '@/modules/goals';
 import { t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
@@ -76,6 +84,7 @@ import {
   Body,
   Button,
   Caption,
+  CategorieMerk,
   Card,
   Choice,
   Field,
@@ -200,12 +209,20 @@ export default function DoelDetail() {
           <View style={styles.blokken}>
             <Card>
               <Subheading>{d.title}</Subheading>
-              <Caption>
-                {t('doelscherm.categorie_streefdatum', {
-                  categorie: categorieLabels()[(d.category ?? 'other') as Categorie],
-                  datum: d.target_date ?? '',
-                })}
-              </Caption>
+              {/*
+                ⚠️ Het gebied krijgt zijn eigen merk (QS8-255) en staat daarom
+                   niet meer in dezelfde zin als de streefdatum: één zin met een
+                   pictogram er middenin leest slechter dan twee elementen naast
+                   elkaar, en een schermlezer zou het icoon dan tussen twee
+                   woorden aantreffen.
+              */}
+              <View style={styles.kopregel}>
+                <CategorieMerk
+                  categorie={d.category ?? 'other'}
+                  label={categorieLabels()[(d.category ?? 'other') as Categorie]}
+                />
+                <Caption>{t('doelscherm.streefdatum', { datum: d.target_date ?? '' })}</Caption>
+              </View>
 
               {d.identity_statement ? (
                 <Body muted>&ldquo;{d.identity_statement}&rdquo;</Body>
@@ -1450,6 +1467,16 @@ function Mijlpalen({
   const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
+  /**
+   * ⚠️ **Dezelfde drie velden als bij bewerken, en dat is dezelfde grendel** —
+   *    QS8-225. `maakMijlpaal()` neemt `MijlpaalInvoer`, en daar zijn
+   *    `description` en `target_date` verplichte sleutels met een nullable
+   *    waarde. Dit formulier stuurde ze allebei hard op `null`: een mijlpaal was
+   *    alleen met een titel aan te maken, en de omschrijving moest er daarna via
+   *    "bewerken" in — twee handelingen voor één ding.
+   */
+  const [omschrijving, setOmschrijving] = useState('');
+  const [datum, setDatum] = useState('');
   /** De mijlpaal die op dit moment bewerkt wordt, of `null`. */
   const [bewerkt, setBewerkt] = useState<Mijlpaal | null>(null);
   const [bezig, setBezig] = useState(false);
@@ -1483,8 +1510,8 @@ function Mijlpalen({
 
     const uitkomst = await maakMijlpaal(doel.id, {
       title: titel,
-      description: null,
-      target_date: null,
+      description: omschrijving.trim() === '' ? null : omschrijving,
+      target_date: datum.trim() === '' ? null : datum,
     });
 
     if (!uitkomst.ok) {
@@ -1495,6 +1522,8 @@ function Mijlpalen({
 
     setBezig(false);
     setTitel('');
+    setOmschrijving('');
+    setDatum('');
     setOpen(false);
     ververs();
   }
@@ -1557,14 +1586,33 @@ function Mijlpalen({
           {mijlpalen.map((m, i) => (
             <View key={m.id} style={styles.mijlpaal}>
               <Body>{m.title}</Body>
+
+              {/*
+                ⚠️ **De omschrijving stond hier niet, en dat was zonde van iets
+                   waar al voor betaald is** — QS8-225. `MIJLPAAL_SCHEMA` in de
+                   Edge Function zet `description` in `required`, dus élke
+                   gegenereerde mijlpaal heeft er een. Die was tot nu toe alleen
+                   te zien door op "bewerken" te drukken.
+              */}
+              {m.description === null || m.description.trim() === '' ? null : (
+                <Body muted>{m.description}</Body>
+              )}
+
               <Caption>
                 {m.status === 'done'
                   ? t('mijlpalenblok.gehaald')
                   : t('mijlpalenblok.stap', { nummer: i + 1, totaal: mijlpalen.length })}
-                {m.target_date === null
-                  ? ''
-                  : t('mijlpalenblok.streefdatum', { datum: m.target_date })}
               </Caption>
+
+              {/*
+                ⚠️ Een eigen regel en geen achtervoegsel meer aan de stapnummering.
+                   " · streefdatum 2027-03-31" achter "Stap 2 van 5" leest als één
+                   mededeling terwijl het er twee zijn, en de datum verdween in de
+                   staart van de zin.
+              */}
+              {m.target_date === null ? null : (
+                <Caption>{t('mijlpalenblok.streefdatum', { datum: m.target_date })}</Caption>
+              )}
 
               <View style={styles.knoppen}>
                 {/*
@@ -1678,6 +1726,36 @@ function Mijlpalen({
             placeholder={t('mijlpalenblok.nieuwe_voorbeeld')}
           />
 
+          {/*
+            ⚠️ **Woordelijk dezelfde velden als `MijlpaalBewerken`, en met opzet.**
+               Twee formulieren voor hetzelfde ding die verschillende velden
+               tonen, is hoe je een veld kwijtraakt bij de eerste correctie —
+               precies wat de kop van dat component beschrijft.
+
+            ⚠️ Een gewoon veld en geen kalender, ondanks wat QS8-225 voorstelt:
+               `Kalender` in `shared/ui` is een leesbare heatmap voor het
+               overzicht en geen datumkiezer. Er ís er geen; er een bouwen is
+               eigen werk en niet iets om hier langs de zijlijn te doen.
+          */}
+          <Field
+            label={t('mijlpaalbewerken.omschrijving')}
+            hint={t('mijlpalenblok.omschrijving_hint')}
+            value={omschrijving}
+            onChangeText={setOmschrijving}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Field
+            label={t('mijlpaalbewerken.streefdatum')}
+            hint={t('mijlpaalbewerken.streefdatum_hint')}
+            value={datum}
+            onChangeText={setDatum}
+            placeholder="2027-03-31"
+            autoCapitalize="none"
+            inputMode="numeric"
+          />
+
           <View style={styles.knoppen}>
             <Button
               variant="primair"
@@ -1693,6 +1771,8 @@ function Mijlpalen({
               onPress={() => {
                 setOpen(false);
                 setFout(null);
+                setOmschrijving('');
+                setDatum('');
               }}
             >
               {t('mijlpalenblok.annuleren')}
@@ -1968,6 +2048,37 @@ function WeekdoelToevoegen({
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
+  /**
+   * Telt deze week in dagen? — QS8-260, besluit A53, migratie 0140.
+   *
+   * ⚠️ **De keuze gaat over déze week en niet over het doel, en dat is de kern
+   *    van A53.** `goals.ritme` is de voorkeur van de gebruiker en stuurt het
+   *    vóórstel; `weekly_goals.ceiling_days` ís het oordeel over deze week. Zou
+   *    het oordeel het doel lezen, dan verandert de uitslag van een afgelopen
+   *    week zodra iemand zijn ritme omzet — en een week die op vrijdag "drie van
+   *    vijf dagen" was, moet dat blijven.
+   *
+   *    Vandaar dat dit formulier het ritme van het doel als **beginstand**
+   *    gebruikt en het daarna met rust laat: hier wordt `goals.ritme` niet
+   *    teruggeschreven. Wie zijn voorkeur wil wijzigen, doet dat bij het doel.
+   */
+  const [ritme, setRitme] = useState<Ritme>(leesRitme(doel.ritme));
+  const [plafondDagen, setPlafondDagen] = useState<string>(GEEN_DAGEN);
+  const [vloerDagen, setVloerDagen] = useState<string>(GEEN_DAGEN);
+
+  // ⚠️ `daily` betekent zeven, en dan is een plafondkeuze een vraag met één
+  //    antwoord. `times_per_week` vraagt het wél — dat is precies het verschil
+  //    tussen de twee ritmes.
+  // ⚠️ **De regel staat in `ritme-invoer.ts` en niet hier, en dat is niet om de
+  //    nette reden.** Dit bestand importeert de Supabase-client en die trekt
+  //    React Native mee, dus met vitest is er niets van te toetsen — terwijl
+  //    juist de vraag wanneer een week in dagen telt onder test hoort te staan.
+  const { floor_days: dagenVloer, ceiling_days: dagenPlafond } = dagenUitKeuze(
+    ritme,
+    plafondDagen,
+    vloerDagen,
+  );
+
   // De mijlpalen pas ophalen als het formulier open is: dit blok staat op een
   // scherm dat ook zonder weekdoel bruikbaar moet zijn.
   useEffect(() => {
@@ -2008,6 +2119,12 @@ function WeekdoelToevoegen({
         // als lege string — anders lijkt er een vloer te zijn die er niet is.
         floor_text: vloer.trim() === '' ? null : vloer,
         ceiling_text: plafond.trim() === '' ? null : plafond,
+        // ⚠️ **Dit was de onderbroken keten van QS8-260.** De kolommen, de CHECK,
+        //    de grant, het schema en de dagteller op het dashboard stonden er
+        //    allemaal; alleen kwam er nooit een getal in, want geen enkel scherm
+        //    gaf ze mee. Elk schakeltje af, en het geheel dood — regel 18 vraag 5.
+        floor_days: dagenVloer,
+        ceiling_days: dagenPlafond,
       },
       eerste,
     );
@@ -2023,6 +2140,8 @@ function WeekdoelToevoegen({
     setTitel('');
     setVloer('');
     setPlafond('');
+    setPlafondDagen(GEEN_DAGEN);
+    setVloerDagen(GEEN_DAGEN);
     setMijlpaalId(LOS_VAN_MIJLPAAL);
     onKlaar();
   }
@@ -2069,6 +2188,63 @@ function WeekdoelToevoegen({
         onChangeText={setPlafond}
         placeholder={t('weekdoelform.plafond_voorbeeld')}
       />
+
+      {/*
+        ⚠️ **Onder de tekstvelden en niet erboven, en dat is een volgordekeuze.**
+           Wat je deze week wilt bereiken staat in woorden; hoe vaak je eraan
+           werkt is een tweede vraag daarover. Andersom begint het formulier met
+           een getal en moet de gebruiker raden waar dat getal over gaat.
+
+        ⚠️ Dit is de keuze voor **deze week**, niet voor het doel — zie de state
+           hierboven. De beginstand komt uit `goals.ritme`.
+      */}
+      <Choice
+        label={t('weekdoelform.ritme')}
+        hint={t('weekdoelform.ritme_hint')}
+        opties={RITMES.map((r) => ({ waarde: r, label: ritmeLabels()[r] }))}
+        waarde={ritme}
+        onKies={(gekozen) => setRitme(gekozen as Ritme)}
+      />
+      <Caption>{ritmeUitleg()[ritme]}</Caption>
+
+      {ritme === 'times_per_week' ? (
+        <Choice
+          label={t('weekdoelform.plafond_dagen')}
+          hint={t('weekdoelform.plafond_dagen_hint')}
+          opties={dagopties((aantal) => t('weekdoelform.dagen_aantal', { aantal }))}
+          waarde={plafondDagen}
+          onKies={setPlafondDagen}
+        />
+      ) : null}
+
+      {/*
+        ⚠️ **De vloer in dagen is optioneel en wordt actief aangemoedigd**, net
+           als de vloer in tekst hierboven — domeinregel 8. Hij verschijnt pas
+           zodra er een plafond is: een vloer zonder plafond bestaat niet, en dat
+           staat als `.refine()` in `weekdoelSchema` én als CHECK in 0140. Een
+           veld tonen dat de database gaat weigeren, is een formulier dat je
+           laat falen.
+      */}
+      {dagenPlafond === null ? null : (
+        <>
+          <Choice
+            label={t('weekdoelform.vloer_dagen')}
+            hint={t('weekdoelform.vloer_dagen_hint')}
+            opties={dagopties((aantal) => t('weekdoelform.dagen_aantal', { aantal }), {
+              tot: dagenPlafond,
+              metGeen: true,
+              geenLabel: t('weekdoelform.geen_vloer'),
+            })}
+            waarde={vloerDagen}
+            onKies={setVloerDagen}
+          />
+          <Caption>
+            {dagenVloer === null
+              ? t('weekdoelform.dagen_zonder_vloer', { plafond: dagenPlafond })
+              : t('weekdoelform.dagen_met_vloer', { vloer: dagenVloer, plafond: dagenPlafond })}
+          </Caption>
+        </>
+      )}
 
       {/*
         Alleen tonen als er iets te kiezen valt. Eén optie ("los van een
@@ -2365,6 +2541,7 @@ function Weggooien({ doel, onWeg }: { readonly doel: DoelMetVoortgang; readonly 
 }
 
 const styles = StyleSheet.create({
+  kopregel: { flexDirection: 'row', alignItems: 'center', gap: space.blokGap - 3, flexWrap: 'wrap' },
   blokken: { gap: space.blokGap + 3 },
   mijlpalen: { gap: space.blokGap - 2 },
   uitwegen: { gap: space.blokGap - 3 },

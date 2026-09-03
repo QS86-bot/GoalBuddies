@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 import type { Cycle } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
+import type { Bewijseis } from '../buddies';
 
 import {
   afrondSchema,
@@ -30,8 +31,21 @@ export type Voltooiing = Tables<'completions'>;
 export type DagZet = Tables<'daily_moves'>;
 
 
-/** Wat een groep aan bewijs eist, uit `groups.evidence_policy` (6.5). */
-export type Bewijseis = 'note_required' | 'note_and_attachment' | 'optional';
+/**
+ * Wat een groep aan bewijs eist, uit `groups.evidence_policy` (6.5).
+ *
+ * ⚠️ **Overgenomen uit `modules/buddies` en niet hier opnieuw opgeschreven —
+ *    QS8-261.** Hier stond tot 0150 een eigen unie met dezelfde drie waarden
+ *    erin. Toen `note_and_attachment` uit `BEWIJSEISEN` verdween, moest hij dus
+ *    op twee plekken weg, en er was niets dat rood werd als je er één vergat.
+ *    Dat is de vorm van 0032/0034: twee lijsten die hetzelfde horen te zeggen,
+ *    lopen uiteen.
+ *
+ *    Een `import type` is bij het compileren volledig weg, dus dit koppelt geen
+ *    runtime aan `modules/buddies` — de reden waarom module-communicatie via
+ *    `index.ts` loopt, blijft heel.
+ */
+export type { Bewijseis };
 
 /**
  * Rondt een weekdoel af.
@@ -158,7 +172,11 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
 
   const eisen = (data ?? []).map((g) => g.evidence_policy);
 
-  if (eisen.includes('note_and_attachment')) return 'note_and_attachment';
+  // ⚠️ Dezelfde "strengste wint"-volgorde als `enforce_evidence_policy()` in de
+  //    database, en dat moet zo blijven: deze functie vertelt de gebruiker
+  //    vooraf wat er van hem verwacht wordt, de trigger weigert achteraf. Zeggen
+  //    ze iets anders, dan krijgt hij een foutmelding voor iets waar het scherm
+  //    niet om vroeg. De `note_and_attachment`-tak stond hier tot 0150 (QS8-261).
   if (eisen.includes('note_required')) return 'note_required';
   return 'optional';
 }

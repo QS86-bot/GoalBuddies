@@ -16,6 +16,12 @@ export { useAsync, laad } from './useAsync';
 export { bindVertrekwacht } from './vertrekwacht';
 export type { Terugknop, Venster, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
 export { useVertrekwacht } from './useVertrekwacht';
+export { TeBeoordelenKaart } from './TeBeoordelenKaart';
+export {
+  beoordeelkopSleutel,
+  toonBeoordeelkaart,
+  type Beoordeelstand,
+} from './tebeoordelen';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
 export { initialen } from './naming';
@@ -23,12 +29,18 @@ export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
+export { CategorieMerk } from './CategorieMerk';
+export { Kalender, type KalenderDag } from './Kalender';
+export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
+export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';
+export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
 export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
 export { Ketting } from './Ketting';
 export { FloorCeiling } from './FloorCeiling';
+export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
@@ -41,12 +53,14 @@ export { TaalKeuze } from './TaalKeuze';
 export {
   noemtTegenvaller,
   TEGENVALLER_WOORDEN,
-  TIP_CATEGORIEEN,
+  TIP_SETS,
+  TIPSET_PER_CATEGORIE,
+  tipSetVoor,
   ZEEF_IJKING,
   TIPS_PER_CATEGORIE,
   tipVoorWeek,
   weektip,
-  type TipCategorie,
+  type TipSet,
 } from './tips';
 export { TijdzoneKeuze } from './TijdzoneKeuze';
 export { isBruikbareZone, VOORSTELLEN_MAX, zoekTijdzones } from './tijdzone';

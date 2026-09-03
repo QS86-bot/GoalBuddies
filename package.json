@@ -22,7 +22,6 @@
     "db:dump": "node scripts/db-dump.mjs",
     "edge:sync": "node scripts/sync-edge-shared.mjs",
     "edge:sync:controle": "node scripts/sync-edge-shared.mjs --check",
-    "db:push": "npm run db:dump && supabase db push && npm run register:controle -- --streng",
     "deploy": "node scripts/deploy-web.mjs",
     "deploy:droog": "node scripts/deploy-web.mjs --droog",
     "auth:urls": "node scripts/auth-urls.mjs",
@@ -32,6 +31,7 @@
     "emoji:controle": "node scripts/emoji-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
+    "catalogus:controle": "node scripts/catalogus-controle.mjs",
     "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
     "edge:controle": "node scripts/edge-tijd-controle.mjs",
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
@@ -63,12 +63,15 @@
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",
     "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
-    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls"
+    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls",
+    "migratie:hernummer": "node scripts/migratie-hernummer.mjs",
+    "rls:dekking": "node scripts/rls-dekking.mjs"
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.112.3",
     "expo": "^57.0.13",

@@ -72,12 +72,49 @@ export function toegestaneHerkomsten(): readonly string[] {
 }
 
 /**
+ * Draait deze herkomst op de machine van de ontwikkelaar? — 01-09-2026.
+ *
+ * ⚠️ **Waarom dit erbij moest.** De allowlist bevatte alleen het productieadres,
+ *    en dat maakte de Doelcoach onbereikbaar vanaf `npm run dev:web` — de enige
+ *    manier om er lokaal aan te werken. Dat is dezelfde klasse fout als QS8-195
+ *    zelf: de functie is er, hij werkt, en je kunt er niet bij. Alleen viel deze
+ *    niet op productie op maar op de plek waar je hem zou repareren.
+ *
+ * ⚠️ **Waarom dit veilig is, en waar de grens ligt.** Een pagina kan zijn eigen
+ *    `Origin` niet kiezen; alleen iets dat écht op jouw `localhost` draait krijgt
+ *    deze kop. Zo iemand staat al op je machine, en de functie eist bovendien
+ *    nog steeds een geldig JWT — CORS is hier geen authenticatie maar een
+ *    beperking op wie het ántwoord mag lézen. Het alternatief dat Supabase' eigen
+ *    voorbeelden gebruiken is `*`, en dit is strikt strenger dan dat.
+ *
+ *    De grens: alleen de hostnamen `localhost` en `127.0.0.1`, elke poort. Geen
+ *    patroon over willekeurige domeinen, want dan is het alsnog een wildcard met
+ *    extra stappen.
+ */
+export function isOntwikkelherkomst(herkomst: string): boolean {
+  try {
+    const { hostname } = new URL(herkomst);
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    // Geen geldige URL is geen herkomst die wij toelaten.
+    return false;
+  }
+}
+
+/**
  * De CORS-headers die bij dit verzoek horen.
  *
  * Geen `Origin` betekent geen browser: de rollover en de meldingenjob worden
  * server-side aangeroepen en hebben hier niets aan. Een `Origin` die niet op de
  * lijst staat krijgt géén `Access-Control-Allow-Origin` — de browser blokkeert
  * het antwoord dan zelf, en dat is precies de bedoeling.
+ *
+ * ⚠️ **En dat maakt de statuscode een misleidend signaal, wat op 31-08 een ronde
+ *    debuggen kostte.** `metCors` beantwoordt élke preflight met 204, ook die van
+ *    een herkomst die er niet op staat; alleen de kop is voorwaardelijk. "De
+ *    OPTIONS geeft 204" bewijst dus niets. **Kijk naar
+ *    `Access-Control-Allow-Origin` in het antwoord, niet naar de status.** Dat
+ *    staat zo ook in `docs/DEPLOY.md`.
  *
  * ⚠️ `Vary: Origin` staat er altijd op zodra er een `Origin` was. Zonder die kop
  *    mag een cache het antwoord voor de ene herkomst aan de andere geven, en dan
@@ -90,7 +127,8 @@ export function corsKoppen(
   if (herkomst === null || herkomst === '') return {};
 
   const koppen: Record<string, string> = { Vary: 'Origin' };
-  if (!toegestaan.includes(herkomst.replace(/\/+$/, ''))) return koppen;
+  const schoon = herkomst.replace(/\/+$/, '');
+  if (!toegestaan.includes(schoon) && !isOntwikkelherkomst(schoon)) return koppen;
 
   koppen['Access-Control-Allow-Origin'] = herkomst;
   koppen['Access-Control-Allow-Headers'] = TOEGESTANE_KOPPEN;

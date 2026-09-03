@@ -65,6 +65,72 @@ export const navyLight: Palette = {
 };
 
 /**
+ * ⚠️ **De categoriekleuren — een uitbreiding van GoalBuddies op het
+ *    Q-Projects-stelsel, en nog geen onderdeel ervan.**
+ *
+ * Besluit A55 (QS8-255): kleur mag erbij, uitsluitend waar hij iets codeert.
+ * Alles hierboven komt letterlijk uit `tracker.q-projects.tech`; deze drie niet
+ * — ze zijn hier gemeten en gekozen. Ze staan daarom apart en niet in `Palette`,
+ * zodat de dag waarop ze wél in het gedeelde stelsel worden opgenomen één
+ * bestand kost en geen zoektocht.
+ *
+ * ⚠️ **Open vraag die Quinten moet beantwoorden** (QS8-255): gaan deze drie het
+ *    Q-Projects-stelsel in — waarmee de Status Tracker ze erft en de twee apps
+ *    één geheel blijven — of blijft dit een eigen uitbreiding? Zolang die vraag
+ *    openstaat, is dít de veilige uitvoering.
+ *
+ * ⚠️ **Drie en niet meer, en dat is gemeten en geen smaak.** Op navy is goud
+ *    vergeven aan het merk en groen, oranje en rood aan status. Wat overblijft
+ *    is een smalle band; elke vierde kandidaat viel om op onderscheid bij
+ *    kleurenblindheid of bij gewoon kleurenzicht. De cijfers staan in
+ *    `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md` §3, en de grendel
+ *    eronder staat in `kleurafstand.test.ts` — die rekent het bij elke run na.
+ *
+ * ⚠️ **Daaruit volgt de ontwerpregel: de kleur codeert de familie, het pictogram
+ *    codeert het gebied.** Vijftien kleuren bestaan niet; vijftien pictogrammen
+ *    wel.
+ *
+ * ⚠️ **De roze wijkt af van het cijfer in A55, en dat is een correctie.** Daar
+ *    stond `#e0578f`, gemeten op contrast en op onderlinge afstand tussen de
+ *    drie families. Wat er níét gemeten was, is de afstand tot de státuskleuren
+ *    — en die was 8.9 tot `red`. Rood betekent in dit stelsel uitsluitend
+ *    deadline-risico, dus een roze markering die daar tegenaan ligt, leest als
+ *    een waarschuwing over een doel waar niets aan de hand is. Gevonden door
+ *    `kleurafstand.test.ts`, niet door te kijken.
+ *
+ * ⚠️ De vierde groep uit `CATEGORIE_GROEPEN` — `business`, `study` en `other` —
+ *    heeft géén kleur. A55 meet er drie voor twaalf gebieden en zegt over deze
+ *    drie niets, en een vierde erbij verzinnen is precies wat de kop van dit
+ *    bestand verbiedt. Ze blijven neutraal tot iemand anders besluit.
+ */
+export interface Categoriekleuren {
+  /** Lichaam en rust: sport, voeding, zelfzorg, rust en aandacht. */
+  readonly lichaam: string;
+  /** Mensen en maken: contact, iets voor een ander, creativiteit. */
+  readonly mensen: string;
+  /** Werk en groei: productiviteit, orde, leren, vaardigheden, veerkracht. */
+  readonly werk: string;
+}
+
+export const categoriekleurenNavy: Categoriekleuren = {
+  lichaam: '#4f97e8',
+  mensen: '#dd4fa0',
+  werk: '#8f9c36',
+};
+
+/**
+ * ⚠️ Donkerder dan hun tegenhangers hierboven, want de ondergrond is wit.
+ *    Dezelfde tint zou op `#ffffff` onder de drempel van 3.0 duiken — dat is
+ *    geen smaakverschil maar dezelfde reden waarom `green`, `orange` en `red`
+ *    hier ook andere waarden hebben.
+ */
+export const categoriekleurenNavyLight: Categoriekleuren = {
+  lichaam: '#2a6ec0',
+  mensen: '#b53080',
+  werk: '#4a5410',
+};
+
+/**
  * Betekenisrollen. Componenten praten in rollen, niet in kleuren — dan blijft
  * "wat betekent deze kleur" op één plek staan.
  */

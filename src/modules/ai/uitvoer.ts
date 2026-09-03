@@ -175,11 +175,28 @@ function tekst(waarde: unknown): string {
  *    die deze lijst naast `CATEGORIEEN` legt, en die valt om zodra er één
  *    verschuift.
  *
- * ⚠️ QS8-224 wil deze lijst uitbreiden. Gebeurt dat, dan verandert hier de lijst,
- *    daar de CHECK op `goals`, en de opsomming in de prompt van de Doelcoach.
- *    Alle drie, of de AI kiest een categorie die de database weigert.
+ * ⚠️ **Uitgebreid naar vijftien op 01-09-2026 (QS8-224, migratie 0142), en dat
+ *    raakte drie plekken tegelijk:** deze lijst, de CHECK op `goals`, en de
+ *    opsomming in de prompt van de Doelcoach. Alle drie, of de AI kiest een
+ *    categorie die de database weigert.
  */
-const CATEGORIEEN_UIT_HET_SCHEMA = ['business', 'study', 'other'] as const;
+const CATEGORIEEN_UIT_HET_SCHEMA = [
+  'fitness',
+  'nutrition',
+  'self_care',
+  'mindfulness',
+  'connection',
+  'helping',
+  'creativity',
+  'productivity',
+  'organization',
+  'learning',
+  'skills',
+  'resilience',
+  'business',
+  'study',
+  'other',
+] as const;
 
 /**
  * Een compleet plan zoals de Doelcoach het in één ronde teruggeeft — QS8-201.

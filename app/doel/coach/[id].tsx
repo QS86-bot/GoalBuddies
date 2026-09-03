@@ -20,7 +20,10 @@ import {
   interviewStappen,
   LEEG_INTERVIEW,
   maakMijlpaal,
+  urenUitTekst,
+  vulVoorUitDoel,
   type DoelMetVoortgang,
+  type GespiegeldVeld,
   type InterviewInvoer,
 } from '@/modules/goals';
 import { t } from '@/shared/i18n';
@@ -65,6 +68,15 @@ export default function Doelcoach() {
 
   const [doel, setDoel] = useState<DoelMetVoortgang | null>(null);
   const [antwoorden, setAntwoorden] = useState<InterviewInvoer>(LEEG_INTERVIEW);
+  /**
+   * Welke vragen al beantwoord waren op `/doel/nieuw` — QS8-205.
+   *
+   * ⚠️ Dit is geen versiering. Een veld dat zomaar ingevuld blijkt te zijn, leest
+   *    als een fout van de app; het scherm hoort te zeggen waar die tekst vandaan
+   *    komt. En het is de helft van de belofte: de vraag wordt niet opnieuw
+   *    gesteld, maar hij is nog wel bij te stellen.
+   */
+  const [voorgevuld, setVoorgevuld] = useState<readonly GespiegeldVeld[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -76,7 +88,18 @@ export default function Doelcoach() {
       .then(([gevonden, interview]) => {
         if (!levend) return;
         setDoel(gevonden);
-        if (interview !== null) setAntwoorden(interview.antwoorden);
+
+        // ⚠️ Ook als er nog géén interview is. Dat is juist het normale geval bij
+        //    een vers doel, en precies dan staan de twee antwoorden al op
+        //    `goals` — dat is waar QS8-205 over gaat.
+        if (gevonden !== null) {
+          const vulling = vulVoorUitDoel(interview?.antwoorden ?? LEEG_INTERVIEW, gevonden);
+          setAntwoorden(vulling.antwoorden);
+          setVoorgevuld(vulling.voorgevuld);
+        } else if (interview !== null) {
+          setAntwoorden(interview.antwoorden);
+        }
+
         setError(null);
       })
       .catch((fout: unknown) => {
@@ -116,6 +139,7 @@ export default function Doelcoach() {
               goalId={d.id}
               userId={userId}
               antwoorden={antwoorden}
+              voorgevuld={voorgevuld}
               onWijzig={setAntwoorden}
             />
 
@@ -149,11 +173,13 @@ function Interview({
   goalId,
   userId,
   antwoorden,
+  voorgevuld,
   onWijzig,
 }: {
   readonly goalId: string;
   readonly userId: string | null;
   readonly antwoorden: InterviewInvoer;
+  readonly voorgevuld: readonly GespiegeldVeld[];
   readonly onWijzig: (nieuw: InterviewInvoer) => void;
 }) {
   const [bezig, setBezig] = useState(false);
@@ -182,6 +208,13 @@ function Interview({
       {interviewStappen().map((stap) => {
         const waarde = antwoorden[stap.veld];
 
+        // ⚠️ De toelichting krijgt er een zin bij in plaats van dat er een tweede
+        //    regel onder het veld komt. Twee hints onder één invoerveld leest als
+        //    twee eisen, en dit is er geen.
+        const toelichting = (voorgevuld as readonly string[]).includes(stap.veld)
+          ? `${stap.toelichting} ${t('coach.al_ingevuld')}`
+          : stap.toelichting;
+
         // ⚠️ Vraag 4 is een getal en de rest tekst. Dat verschil is er niet voor
         //    de vorm: de Risico-radar rékent met de uren, en een tekstveld
         //    levert "een uurtje of zes" op.
@@ -190,17 +223,19 @@ function Interview({
             <Field
               key={stap.veld}
               label={stap.vraag}
-              hint={stap.toelichting}
+              hint={toelichting}
               value={waarde === null ? '' : String(waarde)}
+              // ⚠️ `urenUitTekst()` en niet `replace(/[^0-9]/g, '')` — QS8-205.
+              //    `available_hours_per_week` is `numeric(4,1)`, dus zes-en-een-half
+              //    uur is een geldige waarde die `/doel/nieuw` accepteert. Sinds
+              //    dit veld die waarde vóórvult, zou het wegstrepen van het
+              //    scheidingsteken hem in vijfenzestig veranderen zodra de
+              //    gebruiker het veld aanraakt.
               onChangeText={(tekst) => {
-                const schoon = tekst.replace(/[^0-9]/g, '');
-                onWijzig({
-                  ...antwoorden,
-                  hours_per_week: schoon === '' ? null : Number(schoon),
-                });
+                onWijzig({ ...antwoorden, hours_per_week: urenUitTekst(tekst) });
                 setBewaard(false);
               }}
-              keyboardType="number-pad"
+              keyboardType="decimal-pad"
               placeholder="6"
             />
           );
@@ -210,7 +245,7 @@ function Interview({
           <Field
             key={stap.veld}
             label={stap.vraag}
-            hint={stap.toelichting}
+            hint={toelichting}
             value={typeof waarde === 'string' ? waarde : ''}
             onChangeText={(tekst) => {
               onWijzig({ ...antwoorden, [stap.veld]: tekst === '' ? null : tekst });

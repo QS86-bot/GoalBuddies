@@ -10,10 +10,13 @@ import {
   uploadAvatar,
   verwijderAvatar,
   updateProfiel,
+  userClock,
+  zetWeekStartdag,
   useProfiel,
   verwijderMijnAccount,
   type Profiel as ProfielRij,
 } from '@/modules/auth';
+import { deblokkeer, fetchBlokkades } from '@/modules/buddies';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {
   herinneringVelden,
@@ -46,6 +49,7 @@ import {
   Subheading,
   TaalKeuze,
   TijdzoneKeuze,
+  useAsync,
   useVieringenAan,
   WeekStartKeuze,
 } from '@/shared/ui';
@@ -94,6 +98,24 @@ export default function Profiel() {
             </Card>
 
             {/*
+              ⚠️ **Uitloggen staat hier en niet onderaan, en dat is een gemeten
+                 bevinding** (QS8-245). Het was het twáalfde blok op dit scherm,
+                 onder taal, tijdzone, meldingen, herinnering, thema en viering —
+                 een halve minuut scrollen langs instellingen die je niet zocht.
+                 De eigenaar van het product vond hem zelf niet.
+
+                 Het kostte bovendien echt iets: `routewacht.ts` stuurt je van
+                 `/aanmelden` naar `/` zodra je een sessie hebt, en het
+                 aanmeldscherm is de enige plek met de Apple- en Google-knop.
+                 Uitloggen is dus de enige route daarheen, en die route was niet
+                 te vinden.
+
+                 ⚠️ Account verwijderen blijft wél onderaan, met zijn
+                 overtyp-bevestiging. Dat is met opzet moeilijk bereikbaar.
+            */}
+            <Uitloggen />
+
+            {/*
               ⚠️ Hier stond een `StreakCounter` met een hardgecodeerde `cycles={0}`.
                  Zolang nergens anders een reeks stond, was dat een plaatshouder.
                  Sinds QS8-75 toont "Vandaag" de échte reeks per doel, en dan is
@@ -116,17 +138,15 @@ export default function Profiel() {
 
             <BuddyBijdrage userId={p.id} />
 
+            <Blokkades />
+
             <TaalInstelling
               waarde={p.locale}
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
 
-            <WeekStartInstelling
-              waarde={p.week_start_day as Weekday}
-              userId={p.id}
-              onOpgeslagen={zetProfiel}
-            />
+            <WeekStartInstelling profiel={p} onOpgeslagen={zetProfiel} />
 
             <TijdzoneInstelling waarde={p.tz} userId={p.id} onOpgeslagen={zetProfiel} />
 
@@ -144,17 +164,57 @@ export default function Profiel() {
 
             <VieringKeuze />
 
-            <Card nested>
-              <Subheading>{t('profiel.uitloggen_kop')}</Subheading>
-              <Body muted>{t('profiel.uitloggen_uitleg')}</Body>
-              <Button onPress={() => void signOut()}>{t('profiel.uitloggen_knop')}</Button>
-            </Card>
-
             <AccountVerwijderen />
           </View>
         )}
       </AsyncView>
     </Screen>
+  );
+}
+
+/**
+ * Uitloggen — QS8-245.
+ *
+ * ⚠️ **Waarom dit een component is en geen drie regels in het scherm.** Hier
+ *    stond `void signOut()`, en dat gooit de `Uitkomst` weg. `signOut()` bouwt
+ *    netjes `auth.fout.uitloggen` op ("Uitloggen lukte niet. Probeer het
+ *    opnieuw."), die melding staat in beide catalogi en is op inhoud getest —
+ *    en geen enkel scherm liet hem ooit zien. Mislukte het uitloggen, dan
+ *    gebeurde er zichtbaar niets en dacht je dat de knop stuk was.
+ *
+ *    Dat is onwrikbare regel 18 vraag 5: elk schakeltje af, de keten nergens
+ *    verbonden. Er was niets kapot te maken, dus geen enkele test kon het zien.
+ *    `tests/beloftes/uitkomst-niet-weggooien.test.ts` bewaakt voortaan de hele
+ *    klasse in plaats van dit ene geval.
+ */
+function Uitloggen() {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function uitloggen() {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await signOut();
+
+    // ⚠️ Alleen bij een fout terug naar rust. Lukt het wél, dan haalt de
+    //    routewacht dit scherm weg en hoort de knop bezig te blijven tot dat
+    //    gebeurd is — anders flikkert hij nog even terug naar klikbaar.
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      setBezig(false);
+    }
+  }
+
+  return (
+    <Card nested>
+      <Subheading>{t('profiel.uitloggen_kop')}</Subheading>
+      <Body muted>{t('profiel.uitloggen_uitleg')}</Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <Button busy={bezig} onPress={() => void uitloggen()}>
+        {t('profiel.uitloggen_knop')}
+      </Button>
+    </Card>
   );
 }
 
@@ -379,14 +439,18 @@ function TijdzoneInstelling({
  *    hint, want anders durft niemand het aan te raken.
  */
 function WeekStartInstelling({
-  waarde,
-  userId,
+  profiel,
   onOpgeslagen,
 }: {
-  readonly waarde: Weekday;
-  readonly userId: string;
+  // ⚠️ De hele rij en niet losse velden: `zetWeekStartdag()` heeft de klok
+  //    nodig om de oude én de nieuwe cyclus uit te rekenen, en die komt uit
+  //    `userClock()`. Zou dit scherm `week_start_day` en `tz` los doorgeven en
+  //    er zelf iets mee rekenen, dan is dat precies de tweede klok waar
+  //    correctheidsregel 7 tegen is.
+  readonly profiel: ProfielRij;
   readonly onOpgeslagen: (profiel: ProfielRij) => void;
 }) {
+  const waarde = profiel.week_start_day as Weekday;
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
   const [gevraagd, setGevraagd] = useState<Weekday | null>(null);
@@ -395,7 +459,10 @@ function WeekStartInstelling({
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await updateProfiel(userId, { week_start_day: dag });
+    // ⚠️ Niet meer `updateProfiel()`: `week_start_day` is sinds migratie 0139
+    //    voor de client niet schrijfbaar. De RPC zet de dag én verhuist de
+    //    lopende `todo`-weekdoelen mee, in één transactie.
+    const uitkomst = await zetWeekStartdag(profiel.id, userClock(profiel), dag);
     if (uitkomst.ok) {
       onOpgeslagen(uitkomst.profiel);
       setGevraagd(null);
@@ -944,6 +1011,69 @@ function AvatarKeuze({
       ) : null}
 
       <Caption>{t('avatar.grens', { mb: String(Math.round(AVATAR_MAX_BYTES / 1024 / 1024)) })}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+/**
+ * Wie jij geblokkeerd hebt — QS8-232.
+ *
+ * ⚠️ **Zonder dit blok is blokkeren een handeling zonder weg terug**, en dan is
+ *    het geen instelling maar een straf. De knop staat in de groep, de lijst
+ *    staat hier: dit is de enige plek die niet aan één groep hangt, en een
+ *    blokkade hangt dat ook niet.
+ *
+ * ⚠️ **De kaart verdwijnt als je niemand geblokkeerd hebt.** Een lege lijst
+ *    "Geblokkeerd" op ieders profiel suggereert dat dit een normaal onderdeel van
+ *    de app is waar je iets mee moet.
+ *
+ * ⚠️ De namen komen uit `mijn_blokkades()` en niet uit een join op `profiles`:
+ *    die laat `display_name` alleen door voor wie een groep met je deelt, en een
+ *    geblokkeerde deelt er meestal geen meer. Zie de module.
+ */
+function Blokkades() {
+  const { data, loading, error, herlaad } = useAsync(() => fetchBlokkades(), []);
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function hef(userId: string) {
+    setBezig(userId);
+    setFout(null);
+
+    const uitkomst = await deblokkeer(userId);
+    setBezig(null);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
+    herlaad();
+  }
+
+  // ⚠️ Bij een storing blijft de kaart weg en niet met een foutbalk staan. Dit is
+  //    een blok naast de instellingen, geen hoofdinhoud; wie hier komt, kwam voor
+  //    iets anders.
+  if (loading || error !== null || data === undefined || data.length === 0) return null;
+
+  return (
+    <Card>
+      <Subheading>{t('melden.geblokkeerd_titel')}</Subheading>
+
+      {data.map((blokkade) => (
+        <View key={blokkade.userId}>
+          <Body>{blokkade.naam}</Body>
+          <Button
+            variant="stil"
+            busy={bezig === blokkade.userId}
+            onPress={() => void hef(blokkade.userId)}
+          >
+            {t('melden.deblokkeer_knop')}
+          </Button>
+        </View>
+      ))}
+
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );

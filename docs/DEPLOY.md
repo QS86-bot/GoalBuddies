@@ -53,6 +53,37 @@ zou de Doelcoach precies zo onbereikbaar maken als de bug van QS8-195, alleen da
 stil en pas op productie. Zet hem zodra er een tweede omgeving bijkomt; een
 tweede adres is een tweede komma-gescheiden waarde en geen `*`.
 
+⚠️ **`localhost` en `127.0.0.1` staan er altijd bij, op elke poort**, zonder dat
+je iets hoeft te zetten (`isOntwikkelherkomst()` in `_shared/cors.ts`). Zonder
+dat is de Doelcoach onbereikbaar vanaf `npm run dev:web` — dezelfde klasse fout
+als QS8-195, alleen dan op de plek waar je hem zou repareren. Een pagina kan zijn
+eigen `Origin` niet kiezen, dus alleen iets dat écht op jouw machine draait krijgt
+die kop, en het JWT is nog steeds vereist.
+
+### Hoe je controleert of CORS werkt
+
+⚠️ **Kijk naar de kop, niet naar de status.** Op 31-08-2026 kostte dat een avond:
+"de OPTIONS geeft 204" werd gelezen als bewijs dat de reparatie werkte. Dat is het
+niet. `metCors` beantwoordt **elke** preflight met 204 — ook die van een herkomst
+die niet op de lijst staat. Alleen `Access-Control-Allow-Origin` is voorwaardelijk,
+en dáár blokkeert de browser op.
+
+```bash
+curl -i -X OPTIONS \
+  -H 'Origin: https://goalbuddies.q-projects.tech' \
+  -H 'Access-Control-Request-Method: POST' \
+  https://<ref>.supabase.co/functions/v1/doelcoach
+```
+
+| Wat je ziet | Wat het betekent |
+|---|---|
+| `204` mét `access-control-allow-origin` | goed |
+| `204` zónder die kop | de herkomst staat niet op de lijst — de browser blokkeert de POST |
+| `405` | de reparatie van QS8-195 draait niet; controleer met `npm run edge:gedeployd` |
+
+Dat gedrag ligt vast in `tests/beloftes/edge-cors.test.ts` ("de status bewijst
+niets"), zodat niemand de statuscode alsnog als signaal gaat gebruiken.
+
 ---
 
 ## 2. Databasewerk
@@ -163,38 +194,80 @@ de belangrijkste regel van dat bestand zijn. Zonder die laatste bouwt een lege
 database een schema op dat *strenger* is dan productie, en dan bevestigt een
 RLS-test iets wat daar niet waar is.
 
-### 2.2b Met de Supabase CLI
+### 2.2b Toepassen op productie — met `psql`, niet met de CLI
 
-```bash
-npm run db:push        # dump, supabase db push, en daarna register:controle --streng
-npm run types:db       # databasetypes hergenereren — niet vergeten
+⚠️ **`npm run db:push` bestaat sinds 01-09-2026 niet meer, en dat is een
+reparatie en geen versobering** (QS8-251). Het commando riep `supabase db push`
+aan, en **die CLI kan de drie letterversies niet lezen**:
+
+```
+0039a_weekpas_maximum_niet_voor_anon.sql
+0041a_weekpas_maximum_search_path.sql
+0052a_triggerfuncties_bewaking.sql
 ```
 
-⚠️ **`db:push` eindigt sinds 27-08-2026 op `register:controle --streng`.** Dit is
-het pad waarlangs een migratie op productie landt, dus hier zijn de credentials
-per definitie aanwezig — en dan is overslaan geen afspraak maar een gemiste
-controle. Dat was precies het gevaar in `docs/ENGINEER-REVIEW.md`: een migratie
-toegepast zonder dat er ooit iets naast legt. Vergeet je stap 3
-(`register:uitlijnen`), dan eindigt `db:push` nu rood in plaats van stil.
+Sommige versies lezen een bestandsnaam met `^([0-9]+)_` en slaan die drie dus
+stilzwijgend over — niet bij `push` en niet bij `repair`.
+`docs/decisions/004-migratieregister.md` schreef dat in juli al op, met zoveel
+woorden: *"Dit project gebruikt de CLI niet voor het toepassen van migraties."*
 
-Beide vragen de Supabase CLI. Die staat sinds 18-08-2026 op deze machine:
-via scoop, v2.115.0, shim in `%USERPROFILE%\scoop\shims`. Installeren gaat met
-`scoop install supabase`; `npm i -g supabase` werkt niet, dat blokkeert Supabase
-zelf. Na een verse installatie moet je een nieuw terminalvenster openen — een
-draaiende shell leest `PATH` niet opnieuw in, en dat is precies de fout die
-eruitziet alsof de installatie mislukt is.
+**Alleen: het commando stond er wél, en dit handboek noemde het hét pad.** Het
+beslisdocument zei "niet met de CLI", `package.json` en §2.2b zeiden "zo doe je
+het". Dat is dezelfde vorm als QS8-125 — één vraag, twee documenten, twee
+antwoorden — en het is erger dan een verouderde regel: je komt erachter met een
+half toegepaste migratieset op **productie**, op een gratis tier zonder
+automatische backups, met een commando dat het handboek je net had aangeraden.
 
-⚠️ **Er ís sinds QS8-119 een lokale stack, en dit stond hier tot 27-08 anders.**
-`npm run rls:stack` bouwt Postgres plus PostgREST op uit `supabase/migrations/`;
-`npm run rls:lokaal` draait de RLS-suite ertegenaan zonder credentials. **Draai
-een nieuwe migratie daar eerst**, dan is `supabase db push` een herhaling en geen
-eerste poging. `npm run db:push` doet dump → push → registercontrole in één keer.
+⚠️ `register:controle --streng` stond áchter `supabase db push` in dezelfde
+keten, dus het gat was **luid en niet stil**. Dat deel van beslisdocument 004
+klopte. Het is alleen de verkeerde plek om het te merken.
 
-⚠️ **Het blijft daarna een handeling op de echte database.** De lokale stack
-bewijst het schema en de policies; hij is geen volledige Supabase (geen GoTrue,
-geen Storage, geen Edge-runtime), dus het platform toets je er niet mee. En een
-migratie die lokaal schoon draait, kan op productie nog steeds op bestaande data
-stuiten — vandaar de dump.
+#### De route die wél werkt
+
+Uitgevoerd op 31-08-2026 voor 0132 t/m 0138, en daarna nagemeten.
+
+```bash
+# 1. Dump vooraf. Gratis tier heeft geen automatische backups (regel 20).
+npm run db:dump
+
+# 2. Elk bestand, op nummer, met ON_ERROR_STOP zodat hij niet half doorloopt.
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/0139_....sql
+
+# 3. Per migratie een rij in het register — de CLI doet dit normaal voor je.
+psql "$SUPABASE_DB_URL" -c \
+  "insert into supabase_migrations.schema_migrations (version, name)
+   values ('0139', 'de_week_startdag_verzet_de_lopende_week_mee');"
+
+# 4. De schemacache van PostgREST verversen, anders geeft elke nieuwe functie
+#    PGRST202 — ook al staat hij er.
+psql "$SUPABASE_DB_URL" -c "notify pgrst, 'reload schema';"
+
+# 5. Naast elkaar leggen. Dit is de stap die het verschil ziet tussen
+#    "toegepast" en "toegepast én geregistreerd".
+npm run register:controle -- --streng
+npm run types:db
+```
+
+⚠️ **Stap 3 is de stap die je vergeet**, en hij is stil: de migratie draait, het
+schema klopt, en het register loopt achter. `register:controle --streng` is de
+enige die dat ziet.
+
+⚠️ **De volgorde is niet vrij.** Latere migraties herschrijven functies uit
+eerdere; door elkaar afspelen zet een oudere definitie terug.
+
+#### Waarom niet gewoon de letterversies hernummeren
+
+Omdat ze op productie **al toegepast zijn**, met precies die versie in het
+register. Hernummeren maakt de map onverenigbaar met wat er draait — zie QS8-122
+en QS8-237. `npm run migratie:hernummer` weigert een bron die in het register
+staat, en dat is met opzet.
+
+#### De grendel
+
+`npm run migraties:controle` wordt sinds QS8-251 rood zodra `package.json` een
+script bevat dat `supabase db push` aanroept terwijl er letterversies in
+`supabase/migrations/` staan. Daarmee kan deze tegenspraak niet terugkomen —
+en de grendel is met de hand rood gemaakt voordat hij geloofd werd.
 
 ### 2.3 Wat een migratie moet hebben
 
@@ -493,6 +566,43 @@ stond. Een controle die nog nooit rood is geweest, is een aanname.
 
 Gaat hij af, dan is de sleutel **gelekt** zodra hij in een build heeft gezeten —
 ook als je hem een minuut later weghaalt. Ververs hem.
+
+#### ⚠️ Elke naam in `.env` staat in `SCREAMING_SNAKE_CASE` — anders bestaat hij niet voor de scan
+
+Gemeten op 31-08-2026 (QS8-242). Er stond een regel in `.env` die letterlijk
+`Google OAuth secret=…` heette: spaties, kleine letters. De parser leest namen
+met `[A-Z0-9_]+`, dus die regel kwam er niet doorheen, stond niet in de
+namenlijst, en de waarde is **nooit met de bundel vergeleken**. De scan meldde
+geen fout — hij meldde dat er niets te controleren viel.
+
+*(Er is niets gelekt: `.env` staat in `.gitignore` en is nooit gecommit.)*
+
+Dezelfde spaties lieten `source .env` struikelen. Het bestand vertelde dus wél
+dat er iets mis was, alleen tegen de mens en niet tegen de controle.
+
+**Drie dingen zijn daarop veranderd, en alle drie zijn ze te ijken:**
+
+| | |
+|---|---|
+| Een regel die de parser niet kan lezen | **stopt de deploy** met het regelnummer erbij, in plaats van stil overgeslagen te worden |
+| "Nul gecontroleerd" | is **niet** meer hetzelfde als "schoon". Nul geheimen met een waarde stopt de deploy; het aantal wordt altijd geprint |
+| Welke namen bewaakt worden | komt uit **`.env.example`** plus wat er in `.env` staat — dus ook een geheim dat alleen via de omgeving binnenkomt, zoals de secrets van een CI-runner |
+
+⚠️ Die eerste kolom is precies het onderscheid dat dit document elders zelf maakt
+bij `functies:controle` en `register:controle`: **ongemeten ziet er hetzelfde uit
+als groen**, en wie naar de exitcode kijkt telt het als bewijs. Die val stond
+hier ook, maar dan zonder dat er iemand voor gewaarschuwd was.
+
+⚠️ **Zet een nieuw geheim dus ook in `.env.example`**, met een lege waarde. Dat
+bestand is sinds QS8-242 niet alleen documentatie maar de bron van wat de
+secret-scan bewaakt — een tweede lijst in het script zou onvermijdelijk gaan
+afwijken. `HOSTINGER_API_TOKEN` ontbrak er en viel daardoor buiten de scan van
+de deploy die hem zélf gebruikt.
+
+De ijking staat in `tests/scripts/deploy-geheimen.test.ts`: vijf grendels, elk
+met een eigen mutatie rood gemaakt, plus de vormen die de scan met **rust** moet
+laten — `TZ=UTC` zit in elke bundel, en een controle die altijd afgaat wordt
+uitgezet.
 
 ### Diepe links: de `.htaccess` wordt gegenereerd
 

@@ -15,6 +15,14 @@
  *    naar de werkkopie — inclusief branches waarvan de PR nog niet geland is,
  *    want juist díé dragen de nummers die nog niet in `main` staan.
  *
+ * ⚠️ **Sinds QS8-247 fetcht dit script eerst zelf.** Op 31-08-2026 botste er
+ *    opnieuw een nummer, mét deze tool — omdat de werkkopie niet wist wat er een
+ *    uur eerder gepusht was. De scan zei dat eerlijk in zijn eigen commentaar,
+ *    en dat is precies te weinig: een gereedschap dat bestaat om een botsing te
+ *    voorkomen, mag zijn juistheid niet laten afhangen van een handeling die het
+ *    zelf niet doet. Mislukt de fetch, dan telt hij dóór — zonder netwerk moet je
+ *    een migratie kunnen beginnen — maar noemt hij hoe oud het beeld is.
+ *
  * ⚠️ **Het is geen slot en dat kan het ook niet zijn.** Twee sessies die op
  *    dezelfde seconde beginnen, krijgen hetzelfde nummer — daar helpt alleen een
  *    reservering die je commit. Wat dit wél wegneemt is het gewone geval: iemand
@@ -28,7 +36,11 @@ import { readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { nummersPerBranch as nummersPerBranchVolledig } from './migratiebranches.mjs';
+import {
+  haalRemoteOp,
+  nummersPerBranch as nummersPerBranchVolledig,
+  versheidsmelding,
+} from './migratiebranches.mjs';
 
 const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 const MAP = 'supabase/migrations';
@@ -119,6 +131,12 @@ function hoofd() {
   const argumenten = process.argv.slice(2).filter((a) => a !== '--droog');
   const droog = process.argv.includes('--droog');
   const naam = (argumenten[0] ?? '').trim().replace(/\s+/g, '_').toLowerCase();
+
+  // ⚠️ Vóór de scan, niet erna: `nummersPerBranch()` leest `refs/remotes/origin`,
+  //    en dat is precies wat de fetch bijwerkt.
+  for (const regel of versheidsmelding({ ...haalRemoteOp(), nu: new Date() })) {
+    process.stdout.write(`${regel}\n`);
+  }
 
   const lokaal = readdirSync(join(WORTEL, MAP)).filter((n) => n.endsWith('.sql'));
   const perBranch = nummersPerBranch();

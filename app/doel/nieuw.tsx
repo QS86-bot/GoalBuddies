@@ -2,7 +2,15 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { CATEGORIEEN, categorieLabels, maakDoel, type Categorie } from '@/modules/goals';
+import {
+  categorieKeuzegroepen,
+  maakDoel,
+  RITMES,
+  ritmeLabels,
+  ritmeUitleg,
+  type Categorie,
+  type Ritme,
+} from '@/modules/goals';
 import { t } from '@/shared/i18n';
 import { localDateIn, now } from '@/shared/time';
 import {
@@ -11,6 +19,7 @@ import {
   Caption,
   Card,
   Choice,
+  GegroepeerdeKeuze,
   Field,
   Screen,
   Subheading,
@@ -35,6 +44,12 @@ export default function NieuwDoel() {
   const [identiteit, setIdentiteit] = useState('');
   const [beschrijving, setBeschrijving] = useState('');
   const [categorie, setCategorie] = useState<Categorie>('other');
+  /**
+   * ⚠️ `weekly` is de standaard en dat is de hele migratiestrategie van A53:
+   *    wie het veld niet aanraakt, krijgt precies het gedrag van vóór dit
+   *    besluit. Een doel is niet ineens iets waar je elke dag aan moet.
+   */
+  const [ritme, setRitme] = useState<Ritme>('weekly');
   const [datum, setDatum] = useState('');
   const [uren, setUren] = useState('');
 
@@ -56,6 +71,7 @@ export default function NieuwDoel() {
         title: titel,
         description: beschrijving.trim() === '' ? null : beschrijving,
         category: categorie,
+        ritme,
         target_date: datum,
         identity_statement: identiteit.trim() === '' ? null : identiteit,
         available_hours_per_week: uren.trim() === '' ? null : Number(uren),
@@ -103,11 +119,36 @@ export default function NieuwDoel() {
           inputMode="numeric"
         />
 
-        <Choice
+        {/*
+          ⚠️ Vijftien gebieden in vier groepen — QS8-224. Een enkele `Choice` met
+             vijftien knoppen is geen keuze maar een muur; zie de kop van
+             `GegroepeerdeKeuze`.
+        */}
+        <GegroepeerdeKeuze
           label={t('nieuwdoel.categorie')}
-          opties={CATEGORIEEN.map((c) => ({ waarde: c, label: categorieLabels()[c] }))}
+          hint={t('nieuwdoel.categorie_hint')}
+          groepen={categorieKeuzegroepen()}
           waarde={categorie}
           onKies={setCategorie}
+        />
+
+        {/*
+          ⚠️ **Het ritme — besluit A53.** De uitleg onder de keuze zegt wat elke
+             optie kóst en niet wat hij is: "dagelijks" klinkt als de serieuze
+             keuze, en dan kiest iedereen hem terwijl het de enige is die zeven
+             momenten per week vraagt.
+
+          ⚠️ Dit veld stuurt alleen het vóórstel voor je weekdoelen. Wat er
+             werkelijk beoordeeld wordt staat op het weekdoel zelf
+             (`ceiling_days`), zodat een afgelopen week niet van betekenis
+             verandert als je hier later iets anders kiest.
+        */}
+        <Choice
+          label={t('ritme.kop')}
+          hint={ritmeUitleg()[ritme]}
+          opties={RITMES.map((r) => ({ waarde: r, label: ritmeLabels()[r] }))}
+          waarde={ritme}
+          onKies={setRitme}
         />
       </Card>
 
