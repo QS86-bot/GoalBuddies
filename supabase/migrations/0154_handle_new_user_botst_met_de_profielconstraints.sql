@@ -3,9 +3,11 @@
 -- weigeren, en dan rolt de hele `auth.users`-insert terug.
 --
 -- ROLLBACK-PAD:
---   De vorige body staat in 0004_harden_functions.sql. Terugzetten met
---   `create or replace function public.handle_new_user()` en die body, plus
---   `alter function public.handle_new_user() set search_path = public, pg_temp;`.
+--   De vorige body staat in 0002_functions_triggers.sql (0004 bevat alleen de
+--   `revoke`, niet de body — nagemeten na de review). Terugzetten met
+--   `create or replace function public.handle_new_user()` en die body — inclusief
+--   `set search_path = public, pg_temp` ín de definitie, want zonder dat wist een
+--   `create or replace` de pin (gemeten, zie hieronder).
 --   ⚠️ Daarmee is aanmelden met een provider weer stuk — zie hieronder.
 --
 -- ---------------------------------------------------------------------------
@@ -72,6 +74,12 @@
 --     `char_length` in de CHECK telt (CLAUDE.md: één eenheid overal). Afkappen is
 --     hier beter dan weigeren: een lange naam mag nooit een aanmelding kosten.
 --
+-- ⚠️ **Er zijn drie CHECKs op de kolommen die deze trigger schrijft, niet twee.**
+--    De eerste versie van deze kop noemde `profiles_avatar_url_eigen_pad` en
+--    `profiles_display_name_len` en miste `profiles_avatar_url_len` (maximaal
+--    1000 tekens). Gevonden bij de security-review en nagemeten; de regex is
+--    daarom begrensd op 200 tekens na de id.
+--
 -- ⚠️ De `search_path` blijft expliciet gezet, zoals 0004 hem achterliet. Zonder
 --    dat is dit een `SECURITY DEFINER`-functie zonder vast zoekpad, en dat is de
 --    eigenschap die `definer_bewaking()` (0106) op nul houdt.
@@ -81,6 +89,15 @@ create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
+-- ⚠️⚠️ **De pin staat hier ín de `create or replace` en niet in een losse
+--    `alter` eronder.** Gemeten na de review: `create or replace` zonder `set`
+--    wíst `proconfig`, en `definer_bewaking()` meldt dan meteen 1. Met de pin een
+--    statement later stond er dus een venster waarin een `SECURITY DEFINER`
+--    -triggerfunctie op `auth.users` geen vast zoekpad heeft — precies wat 0004
+--    §1 beschrijft. Lokaal is dat venster er niet omdat `schema-opbouwen.sh` elke
+--    migratie in één transactie draait; op productie is dat niet gegarandeerd, en
+--    die vraag is goedkoper weg te nemen dan te beantwoorden.
+set search_path = public, pg_temp
 as $$
 begin
   insert into public.profiles (id, display_name, avatar_url)
@@ -101,8 +118,15 @@ begin
     -- ⚠️ Alleen een pad dat aan `profiles_avatar_url_eigen_pad` voldoet. Een
     --    provider stuurt hier een `https://`-URL, en die hoort niet in deze
     --    kolom — zie de kop. Alles wat niet past, wordt `null`.
+    -- ⚠️ `{1,200}` en niet `+`. Er zijn **drie** CHECKs op de kolommen die deze
+    --    trigger schrijft, en `profiles_avatar_url_len` (maximaal 1000 tekens) is
+    --    de derde — die stond niet in de eerste versie van deze kop. Gemeten:
+    --    een eigen pad met 1001 tekens erachter laat de `auth.users`-insert
+    --    alsnog terugrollen. Vandaag onbereikbaar (je kent je eigen id niet vóór
+    --    de aanmelding), maar de bewering "de trigger levert waarden die de
+    --    constraints áán kunnen" was daarmee niet waar.
     case
-      when new.raw_user_meta_data ->> 'avatar_url' ~ ('^' || new.id::text || '/[A-Za-z0-9._-]+$')
+      when new.raw_user_meta_data ->> 'avatar_url' ~ ('^' || new.id::text || '/[A-Za-z0-9._-]{1,200}$')
         then new.raw_user_meta_data ->> 'avatar_url'
       else null
     end
@@ -113,6 +137,9 @@ begin
 end;
 $$;
 
+-- ⚠️ Blijft staan als gordel naast de bretels: hij is nu idempotent en overbodig,
+--    en dat is goedkoper dan de vraag of elke omgeving dit bestand als één
+--    transactie doorvoert.
 alter function public.handle_new_user() set search_path = public, pg_temp;
 
 comment on function public.handle_new_user() is

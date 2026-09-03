@@ -39,7 +39,11 @@ import { describe, expect, it } from 'vitest';
 const OMGEVING = {
   ...process.env,
   PGHOST: process.env.PGHOST ?? '127.0.0.1',
-  PGPORT: process.env.PGPORT ?? '5432',
+  // ⚠️ 5433 en niet 5432: `scripts/lokale-stack.sh` draait op `${PGPORT:-5433}`.
+  //    Met 5432 als standaard verbindt dit bestand nergens mee, slaat het zichzelf
+  //    over en geeft de suite exitcode 0 — en `poort.mjs` leest dat voor een suite
+  //    als **groen** en niet als ongemeten. Gemeten bij de review.
+  PGPORT: process.env.PGPORT ?? '5433',
   PGPASSWORD: process.env.PGPASSWORD ?? 'postgres',
 };
 
@@ -73,6 +77,19 @@ function stackBeschikbaar(): boolean {
 
 const beschikbaar = stackBeschikbaar();
 
+// ⚠️ **Overslaan mag alleen als niemand beweerde te meten.** Staat `RLS_DOEL`
+//    gezet, dan is dit een bewuste RLS-run en is een onbereikbare database geen
+//    reden om te zwijgen maar om te falen — anders is "ongemeten" niet van
+//    "groen" te onderscheiden, en dat is precies het onderscheid dat de poort
+//    bewaakt.
+if (!beschikbaar && process.env.RLS_DOEL !== undefined) {
+  throw new Error(
+    `Geen database op ${OMGEVING.PGHOST}:${OMGEVING.PGPORT}/${DB}, terwijl RLS_DOEL ` +
+      `op "${process.env.RLS_DOEL}" staat. Start de stack met \`npm run rls:stack\`. ` +
+      'Stil overslaan zou hier als groen tellen.',
+  );
+}
+
 /**
  * Meldt een gebruiker aan met deze metadata en geeft het profiel terug dat de
  * trigger ervan maakte. Draait in een teruggedraaide transactie.
@@ -80,32 +97,70 @@ const beschikbaar = stackBeschikbaar();
  * ⚠️ Geeft `null` terug als de aanmelding zélf mislukt — dat is de uitkomst die
  *    ertoe doet, want dan bestaat het account niet.
  */
+/**
+ * ⚠️⚠️ **Een SQL-fout is geen geweigerde aanmelding.** De eerste versie ving elke
+ *    exception op en gaf `null` — dus "psql viel om" en "de constraint weigerde"
+ *    kwamen er hetzelfde uit. Gemeten bij de review: een volstrekt gewone
+ *    providernaam als `Siobhan O'Brien` brak de string en leverde een rode test
+ *    met de melding *"de aanmelding is mislukt"*, terwijl de database die naam
+ *    prima accepteert. De volgende die hier een geval met een apostrof, een
+ *    backslash of `$$` toevoegt, gaat de trigger verdenken.
+ *
+ *    Twee dingen daartegen: de waarden gaan als **parameter** de SQL in
+ *    (`psql -v` plus `:'naam'`), en een fout die géén constraintschending is,
+ *    wordt hier gegooid in plaats van stilletjes `null`.
+ */
 function meldAan(
   id: string,
   email: string,
   metadata: string,
 ): { naam: string; avatar: string } | null {
+  const sql =
+    `begin; ` +
+    `insert into auth.users (id, email, raw_user_meta_data) ` +
+    `values (:'id', :'email', :'meta'::jsonb); ` +
+    `select display_name || '${SCHEIDING}' || coalesce(avatar_url, '') ` +
+    `from profiles where id = :'id'; ` +
+    `rollback;`;
+
+  let uit: string;
   try {
-    const uit = psql(
-      `begin; ` +
-        `insert into auth.users (id, email, raw_user_meta_data) ` +
-        `values ('${id}', '${email}', '${metadata}'::jsonb); ` +
-        `select display_name || '${SCHEIDING}' || coalesce(avatar_url, '') ` +
-        `from profiles where id = '${id}'; ` +
-        `rollback;`,
+    uit = execFileSync(
+      'psql',
+      [
+        '-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1',
+        '-v', `id=${id}`, '-v', `email=${email}`, '-v', `meta=${metadata}`,
+        '-tA',
+      ],
+      // ⚠️ **Via stdin en niet via `-c`.** Gemeten: met `-c` laat psql `:'id'`
+      //    letterlijk staan en krijg je `syntax error at or near ":"`. Variabelen
+      //    worden alleen geïnterpoleerd bij invoer die psql zelf inleest.
+      { env: OMGEVING, encoding: 'utf8', input: sql },
+    ).trim();
+  } catch (fout) {
+    const tekst = fout instanceof Error ? `${fout.message}` : String(fout);
+    // Een constraintschending ís de uitkomst die deze tests meten: de trigger
+    // faalt, de insert rolt terug, het account bestaat niet.
+    if (/violates check constraint|violates not-null|invalid byte sequence/i.test(tekst)) {
+      return null;
+    }
+    throw new Error(
+      `meldAan: psql viel om op iets anders dan een constraint. Dat is geen ` +
+        `geweigerde aanmelding maar een kapotte test.\n${tekst.split('\n').slice(0, 4).join('\n')}`,
     );
-    const regel = uit.split('\n').find((r) => r.includes(SCHEIDING));
-    if (regel === undefined) return null;
-    // ⚠️ `split` geeft `string | undefined` per element onder `noUncheckedIndexedAccess`.
-    //    Een lege avatar is hier een geldige uitkomst — dat is precies wat de
-    //    Google-test verwacht — dus die valt terug op de lege string en niet op
-    //    een fout.
-    const [naam = '', avatar = ''] = regel.split(SCHEIDING);
-    return { naam, avatar };
-  } catch {
-    return null;
   }
+
+  const regel = uit.split('\n').find((r) => r.includes(SCHEIDING));
+  if (regel === undefined) return null;
+  // ⚠️ `split` geeft `string | undefined` per element onder `noUncheckedIndexedAccess`.
+  //    Een lege avatar is hier een geldige uitkomst — dat is precies wat de
+  //    Google-test verwacht — dus die valt terug op de lege string.
+  const [naam = '', avatar = ''] = regel.split(SCHEIDING);
+  return { naam, avatar };
 }
+
+/** Telt codepunten, niet UTF-16-eenheden. */
+const codepunten = (s: string): number => [...s].length;
 
 const ID = (n: number): string => `00000000-0000-4000-8000-00000000f2${n.toString().padStart(2, '0')}`;
 
@@ -155,7 +210,42 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
         'de aanmelding is mislukt op `profiles_display_name_len` — een lange naam ' +
           'mag nooit een account kosten',
       ).not.toBeNull();
-      expect(uit?.naam.length, 'de naam is niet afgekapt op 80 codepunten').toBe(80);
+      expect(codepunten(uit?.naam ?? ''), 'de naam is niet afgekapt op 80 codepunten').toBe(80);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een naam met emoji wordt op een heel teken afgekapt, niet middenin',
+    () => {
+      // ⚠️⚠️ **Dit geval ontbrak, en daardoor bewaakte dit bestand zijn eigen
+      //    belofte niet.** De migratie zegt dat `left(..., 80)` codepunten telt en
+      //    dat een byte-afkapping een teken doormidden zou knippen. Bij de review
+      //    is die belofte met de hand gebroken — de body vervangen door
+      //    `convert_from(substring(convert_to(...,'UTF8') from 1 for 80),'UTF8')`
+      //    — en alle vijf de tests bleven groen, terwijl een echte Google-naam met
+      //    emoji de aanmelding dan kost (`invalid byte sequence`).
+      //
+      //    De oorzaak was dat élke naam in dit bestand ASCII was, en dat de
+      //    telling met `.length` liep — dat telt UTF-16-eenheden, wat voor ASCII
+      //    toevallig hetzelfde is. Vandaar `codepunten()` hierboven.
+      // ⚠️ Honderd en niet zestig: `👩` is **één** codepunt (U+1F469), dus zestig
+      //    stuks halen de grens van 80 niet eens en wordt er niets afgekapt. Twee
+      //    UTF-16-eenheden per emoji is precies het verschil waar deze test over
+      //    gaat, en het kostte hier bijna een test die niets meet.
+      const naam = `a${'👩'.repeat(100)}`;
+      const uit = meldAan(ID(6), 'emoji@gmail.com', JSON.stringify({ full_name: naam }));
+
+      expect(
+        uit,
+        'de aanmelding is mislukt op een naam met emoji — dat is de byte-afkapping',
+      ).not.toBeNull();
+      expect(codepunten(uit?.naam ?? ''), 'niet op 80 codepunten afgekapt').toBe(80);
+      expect(
+        uit?.naam.endsWith('👩'),
+        'de laatste emoji is doormidden geknipt — dat is een afkapping op bytes ' +
+          'of op UTF-16-eenheden en niet op codepunten',
+      ).toBe(true);
     },
     TEST_TIMEOUT,
   );
@@ -180,6 +270,36 @@ describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
       const id = ID(5);
       const uit = meldAan(id, 'x@y.nl', `{"avatar_url":"${id}/foto.png"}`);
       expect(uit?.avatar).toBe(`${id}/foto.png`);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een avatarpad dat naar iemand ánders wijst, gaat niet mee',
+    () => {
+      // ⚠️ **Het spiegelbeeld van de must-allow, en het ontbrak.** Zonder deze
+      //    test blijven alle andere groen als iemand de regex verruimt tot
+      //    `^[0-9a-f-]+/…` — een `https://`-URL matcht die verruiming immers ook
+      //    niet. Maar een aanmelding mét een vreemd pad loopt dan alsnog stuk op
+      //    `profiles_avatar_url_eigen_pad`, en dat is precies de dichte deur die
+      //    0154 komt repareren.
+      const uit = meldAan(ID(7), 'vreemd@y.nl', `{"avatar_url":"${ID(1)}/foto.png"}`);
+      expect(uit, 'de aanmelding is mislukt').not.toBeNull();
+      expect(uit?.avatar, 'het pad van een ander is overgenomen').toBe('');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'een avatarpad dat te lang is voor `profiles_avatar_url_len`, gaat niet mee',
+    () => {
+      // ⚠️ De **derde** CHECK, die in de eerste versie van de migratiekop
+      //    ontbrak. De regex is daarom begrensd op 200 tekens na de id: een pad
+      //    van 1001 tekens zou anders de hele aanmelding kosten.
+      const id = ID(8);
+      const uit = meldAan(id, 'lang@y.nl', JSON.stringify({ avatar_url: `${id}/${'a'.repeat(1001)}` }));
+      expect(uit, 'de aanmelding is mislukt op profiles_avatar_url_len').not.toBeNull();
+      expect(uit?.avatar, 'een pad van 1001 tekens is alsnog overgenomen').toBe('');
     },
     TEST_TIMEOUT,
   );
