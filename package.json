@@ -29,6 +29,7 @@
     "vapid:genereer": "node scripts/vapid-genereer.mjs",
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
+    "streepje:controle": "node scripts/streepje-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
     "catalogus:controle": "node scripts/catalogus-controle.mjs",

@@ -633,7 +633,7 @@ function BuddyBijdrage({ userId }: { readonly userId: string }) {
         {mislukt
           ? t('profiel.bijdrage_mislukt')
           : aantal === null
-            ? '—'
+            ? t('profiel.bijdrage_onbekend')
             : aantal === 0
               ? t('profiel.bijdrage_geen')
               : aantal === 1

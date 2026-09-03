@@ -74,11 +74,16 @@ describe('het Doelcoach-interview', () => {
     //    mag een vertaling niet vlakker maken.
     zetTaal('nl');
     const nl = interviewStappen().find((s) => s.veld === 'stuck_before');
-    expect(nl?.toelichting).toContain('je groep ziet dit nooit');
+    // ⚠️ Hoofdletterongevoelig sinds QS8-218. De zin is toen herschreven van
+    //    "… zichtbaar — je groep ziet dit nooit." naar twee zinnen, en toen begon
+    //    hij met een hoofdletter. De belofte veranderde niet, alleen de
+    //    schrijfwijze — en een test die op de kást van één letter afgaat, toetst
+    //    de plek en niet de belofte (regel 18, vraag 4).
+    expect(nl?.toelichting?.toLowerCase()).toContain('je groep ziet dit nooit');
 
     zetTaal('en');
     const en = interviewStappen().find((s) => s.veld === 'stuck_before');
-    expect(en?.toelichting).toContain('your group never sees this');
+    expect(en?.toelichting?.toLowerCase()).toContain('your group never sees this');
   });
 
   it('geeft elke stap een eigen vraag', () => {
