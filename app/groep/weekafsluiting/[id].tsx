@@ -27,9 +27,9 @@ import {
   type Reactie,
 } from '@/modules/buddies';
 import { fetchDagzetten } from '@/modules/completions';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { klokTijd, type Cycle } from '@/shared/time';
+import { toonKlokTijd, type Cycle } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
@@ -621,7 +621,7 @@ function AntwoordBlok({
       {reacties.map((r) => (
         <View key={r.id} style={styles.reactie}>
           <Caption>
-            {r.author_name} · {klokTijd(r.created_at, tz)}
+            {r.author_name} · {toonKlokTijd(r.created_at, tz, opmaaktaal())}
           </Caption>
           <Body>{r.body}</Body>
           {r.author_id === userId ? (

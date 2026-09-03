@@ -32,6 +32,15 @@ export {
 } from './cycle';
 
 export {
+  toonDatum,
+  toonDatumKort,
+  toonDatumLang,
+  toonKlokTijd,
+  toonMoment,
+  toonTijd,
+} from './opmaak';
+
+export {
   addDays,
   apparaatTijdzone,
   normaliseerZone,
@@ -39,7 +48,6 @@ export {
   daysBetween,
   isGeldigeIsoDatum,
   isGeldigeTijdzone,
-  klokTijd,
   localDateIn,
   toIsoDate,
   weekdagPeildatum,

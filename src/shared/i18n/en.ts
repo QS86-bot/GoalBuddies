@@ -504,6 +504,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.herinnering_uitleg': 'One quiet nudge a day, and only if you have not done anything yet. Wrote a Daily Move today or closed a week? Then it stays silent.',
   'profiel.herinnering_label': 'Reminder',
   'profiel.herinnering_hoe_laat': 'What time',
+  'profiel.herinnering_om': 'Currently set to {tijd}.',
   'profiel.herinnering_hoe_laat_hint': 'In your own time zone, on a 24-hour clock. For example 20:00.',
   'profiel.herinnering_toon': 'Tone',
   'profiel.herinnering_toon_hint': 'Firm is more direct, never accusing. The app does not hold anything against you.',

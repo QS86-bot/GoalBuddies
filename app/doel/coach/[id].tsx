@@ -26,7 +26,8 @@ import {
   type GespiegeldVeld,
   type InterviewInvoer,
 } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
+import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -511,7 +512,7 @@ function Genereren({
             <View key={`${voorstel.title}-${i}`} style={styles.voorstel}>
               <Body>{voorstel.title}</Body>
               {voorstel.target_date === null ? null : (
-                <Caption>{t('algemeen.streefdatum', { datum: voorstel.target_date })}</Caption>
+                <Caption>{t('algemeen.streefdatum', { datum: toonDatum(voorstel.target_date, opmaaktaal()) })}</Caption>
               )}
             </View>
           ))}

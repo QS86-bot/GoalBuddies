@@ -32,7 +32,8 @@ import {
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
 } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
+import { toonDatum } from '@/shared/time';
 import { space } from '@/shared/theme';
 import {
   AsyncView,
@@ -667,7 +668,7 @@ function DoelKaart({
       <MilestoneProgress done={lid.milestones_done} total={lid.milestones_total} />
 
       {lid.goal_target_date === null ? null : (
-        <Caption>{t('algemeen.streefdatum', { datum: lid.goal_target_date })}</Caption>
+        <Caption>{t('algemeen.streefdatum', { datum: toonDatum(lid.goal_target_date, opmaaktaal()) })}</Caption>
       )}
 
       {/*
