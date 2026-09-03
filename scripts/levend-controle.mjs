@@ -7,8 +7,15 @@
  * achttien bestanden. Sinds `src/shared/ui/useAsync.ts` bestaat er één plek waar
  * die bewaking staat, met een test die hem élke faalrichting voorhoudt.
  *
- * ⚠️ **Waarom een ratel en geen verbod.** Niet alle 32 zijn dezelfde vorm. Vijf
- *    waren een getrouwe `useAsync`-vervanger en zijn om; de rest niet:
+ * ⚠️ **Sinds 03-09-2026 staat het plafond op 21** — QS8-219. Er is een tweede
+ *    vorm bij gekomen, `useAsyncMetTerugval()`, en daar gingen er zes doorheen:
+ *    één ophaal naar één waarde, een fout die de wáárde op iets neutraals zet, en
+ *    geen laad- of foutstand. Die vorm past niet in `useAsync` — `data ??
+ *    terugval` lijkt hetzelfde en is het niet, want dan houdt een mislukte
+ *    hérlaadbeurt de oude waarde vast in plaats van terug te vallen.
+ *
+ * ⚠️ **Waarom een ratel en geen verbod.** Niet alle 32 zijn dezelfde vorm. Elf
+ *    waren een getrouwe vervanger en zijn om; de rest niet:
  *
  *      - `groep/chat/[id].tsx` laadt eerst uit de cache en dán van de server —
  *        twee schrijfmomenten in één effect, geen `data`/`loading`/`error`.
@@ -18,6 +25,12 @@
  *        gebruiker daarna zélf in typt (`beheer/[id].tsx` zet naam, huddledag en
  *        bewijseis als formuliervelden). Die door de hook persen zou de
  *        laadbeurt en het formulier aan elkaar knopen.
+ *      - En een derde soort, gevonden bij QS8-219: state die óók buiten de
+ *        laadbeurt gezet wordt. `Adempauzes` in `doel/[id].tsx` zet `pauzes` na
+ *        het aanmaken en annuleren van een pauze, en `groep/[id].tsx` haalt een
+ *        afgehandeld verzoek uit de lijst. Zulke state is niet van de laadbeurt
+ *        alleen, en door een hook persen betekent dat een lokale wijziging
+ *        nergens meer heen kan.
  *
  *    Ze allemaal in één vorm dwingen zou de code slechter maken, en een verbod
  *    zou twintig `eslint-disable`-regels opleveren die niemand meer leest. Wat
@@ -44,7 +57,7 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
  * ⚠️ Alleen verlagen. Wie dit getal verhoogt om een build groen te krijgen,
  *    heeft de ratel omgedraaid in plaats van gebruikt.
  */
-export const PLAFOND = 27;
+export const PLAFOND = 21;
 
 /** Waar de vlag telt. `useAsync` zelf en zijn test horen er niet bij. */
 export const UITGEZONDERD = ['src/shared/ui/useAsync.ts', 'src/shared/ui/useAsync.test.ts'];
