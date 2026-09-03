@@ -406,7 +406,31 @@ export function leesUitkomst(json) {
   const gedraaid = (uit.numTotalTests ?? 0) - (uit.numPendingTests ?? 0);
   if (gedraaid <= 0) return { uitkomst: 'onbruikbaar', reden: 'er is geen enkele test gedraaid' };
 
-  return { uitkomst: (uit.numFailedTests ?? 0) > 0 ? 'rood' : 'groen', gedraaid };
+  if ((uit.numFailedTests ?? 0) > 0) return { uitkomst: 'rood', gedraaid };
+
+  // ⚠️ **Een groene uitslag is alleen te geloven als er geen bestand omviel.**
+  //    K3 hierboven dekt de ene kant af — "er ging íets mis" mag niet als bewaakt
+  //    tellen. Dit is de ándere kant, en die is op 03-09 een weggegooide meting
+  //    geweest: valt PostgREST weg, dan sneuvelt élke aanroep in `beforeAll`. Dat
+  //    is een *error* en geen gefaalde assertie, en de rest van het bestand wordt
+  //    overgeslagen. `numFailedTests` blijft dan nul terwijl er tientallen
+  //    bestanden rood staan — en dat leest als "niets werd rood", dus als
+  //    onbewaakt.
+  //
+  //    Die richting is de gevaarlijke: het instrument verzint dan gaten die er
+  //    niet zijn, en wie ze gaat dichten schrijft tests voor een probleem dat niet
+  //    bestaat. Bij een échte onbewaakte policy draait de suite gewoon groen —
+  //    nul gefaalde bestanden — dus deze toets kost geen enkele geldige meting.
+  if ((uit.numFailedTestSuites ?? 0) > 0) {
+    return {
+      uitkomst: 'onbruikbaar',
+      reden:
+        `${uit.numFailedTestSuites} testbestand(en) vielen om zonder dat er één assertie faalde ` +
+        '— de stack is er waarschijnlijk onder weggevallen',
+    };
+  }
+
+  return { uitkomst: 'groen', gedraaid };
 }
 
 function draai(bestanden) {

@@ -315,7 +315,40 @@ describe('leesUitkomst', () => {
     ['er geen enkele test draaide', json({ numTotalTests: 0, numFailedTests: 0 })],
     ['alles overgeslagen werd', json({ numTotalTests: 5, numPendingTests: 5, numFailedTests: 0 })],
     ['de uitvoer geen JSON is', 'FATAL: kon niet starten'],
+    [
+      'er bestanden omvielen zonder één gefaalde assertie',
+      json({ numTotalTests: 813, numPendingTests: 687, numFailedTests: 0, numFailedTestSuites: 58 }),
+    ],
   ])('noemt het onbruikbaar als %s', (_naam, uit) => {
     expect(leesUitkomst(uit).uitkomst).toBe('onbruikbaar');
+  });
+
+  /**
+   * ⚠️ **De cijfers hierboven zijn geen verzinsel.** 813/687/0/58 is letterlijk
+   *    wat vitest teruggaf op 03-09 nadat de omgeving Postgres en PostgREST onder
+   *    een lopende meting had weggehaald. Zonder deze toets heette elke policy in
+   *    dat deel van de run "onbewaakt" — het instrument verzon gaten.
+   *
+   * ⚠️ **En de tegenkant hoort erbij**, want een toets die te veel wegstuurt is
+   *    net zo stuk: bij een écht onbewaakte policy draait de suite gewoon door en
+   *    valt er geen bestand om. Die uitslag moet groen blijven, anders kost deze
+   *    reparatie elke geldige meting.
+   */
+  it('houdt een groene run groen als er geen bestand omviel', () => {
+    expect(
+      leesUitkomst(
+        json({ numTotalTests: 813, numPendingTests: 1, numFailedTests: 0, numFailedTestSuites: 0 }),
+      ).uitkomst,
+    ).toBe('groen');
+  });
+
+  it('laat een gefaalde assertie rood ook als er bestanden omvielen', () => {
+    // Het normale geval bij een bewáákte policy: de tests die hem toetsen falen,
+    // en hun bestand telt daarmee als gefaald. Dat mag geen `onbruikbaar` worden.
+    expect(
+      leesUitkomst(
+        json({ numTotalTests: 813, numPendingTests: 0, numFailedTests: 3, numFailedTestSuites: 2 }),
+      ).uitkomst,
+    ).toBe('rood');
   });
 });
