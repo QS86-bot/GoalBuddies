@@ -221,7 +221,10 @@ function Routewacht() {
   const segments = useSegments();
   const router = useRouter();
 
-  const wortel = segments[0] ?? '';
+  // ⚠️ `useSegments()` typeert zichzelf als een tuple van één; het tweede segment
+  //    bestaat wel degelijk (`/onboarding/vragenlijst`) en de wacht heeft het
+  //    nodig — zie `NA_ONBOARDING_BEREIKBAAR`.
+  const [wortel = '', tak = ''] = segments as readonly string[];
 
   // ⚠️ De beslissing zelf staat in `modules/auth/routewacht` en niet hier: er is
   //    geen enkele test in `app/`, en deze wacht heeft op 28-08 aantoonbaar een
@@ -234,6 +237,7 @@ function Routewacht() {
     profielFout,
     isOnboarded: isOnboarded(profiel),
     wortel,
+    tak,
   });
 
   useEffect(() => {

@@ -55,7 +55,7 @@ export {
   type ProfielPatch,
 } from './schemas';
 
-export { bestemmingVoor, type Bestemming, type Routestand } from './routewacht';
+export { bestemmingVoor, NA_ONBOARDING_BEREIKBAAR, type Bestemming, type Routestand } from './routewacht';
 
 export {
   andereModus,

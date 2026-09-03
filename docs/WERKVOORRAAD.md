@@ -7,8 +7,8 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 02-09-2026 (na QS8-261, en na het toepassen van `0139`
-t/m `0149` op productie in twee rondes; daarvóór QS8-231, QS8-232 en QS8-260)
+**Laatst bijgewerkt:** 03-09-2026 (na QS8-266 en QS8-196; daarvóór QS8-261 en
+het toepassen van `0139` t/m `0149` op productie in twee rondes)
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -53,11 +53,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **869 geslaagd, 1 overgeslagen** (03-09, na QS8-213, QS8-208, QS8-221,
-   QS8-218 en QS8-219). De hele suite geeft met de stack **2997 geslaagd en
-   1 overgeslagen** over 212 bestanden.
-   Typecheck, lint en alle 31 controlescripts groen; `npm run poort` meldt
-   35 stappen.
+   **878 geslaagd, 1 overgeslagen** (03-09, na QS8-196 en QS8-266; daarvóór
+   QS8-213, QS8-208, QS8-221, QS8-218 en QS8-219). De hele suite geeft met de
+   stack **3056 geslaagd en 1 overgeslagen** over 216 bestanden.
+   Typecheck, lint en alle 32 controlescripts groen; `npm run poort` meldt
+   36 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
    apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is
