@@ -197,9 +197,24 @@ interface SoortTekst {
   readonly pad: string;
 }
 
-const SOORTEN: Readonly<
-  Record<Taalcode, Readonly<Record<Exclude<Melding, 'nudge'>, SoortTekst>>>
-> = {
+/**
+ * De teksten die er zijn, en dat is méér dan er soorten zijn — QS8-202.
+ *
+ * ⚠️ **`cycle_summary_weekpas` is een tekst en géén soort.** Wat er in
+ *    `notifications_sent.kind` belandt, blijft één van de vier uit `Melding`; de
+ *    CHECK `notifications_sent_kind_bekend` (migratie 0053) kent er niet meer, en
+ *    een vijfde soort zou dus een migratie zijn. Dat is hier niet nodig: het is
+ *    dezelfde melding op hetzelfde moment aan dezelfde persoon, met een andere
+ *    zin erin.
+ *
+ * ⚠️ **En het is bewust dezelfde soort en niet alleen een besparing.** De
+ *    ontdubbeling van `notificaties/index.ts` loopt op `(user_id, kind,
+ *    local_date)`. Zou dit een eigen soort zijn, dan kreeg iemand met een
+ *    verbruikte weekpas twéé meldingen over dezelfde week.
+ */
+type Tekstsleutel = Exclude<Melding, 'nudge'> | 'cycle_summary_weekpas';
+
+const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTekst>>>> = {
   nl: {
     approval_request: {
       titel: 'Een buddy wacht op je',
@@ -217,6 +232,12 @@ const SOORTEN: Readonly<
       titel: 'Je week is afgelopen',
       metNaam: () => 'Kijk terug op wat er gelukt is en zet je doelen voor de nieuwe week.',
       zonderNaam: 'Kijk terug op wat er gelukt is en zet je doelen voor de nieuwe week.',
+      pad: '/',
+    },
+    cycle_summary_weekpas: {
+      titel: 'Een weekpas heeft je reeks gered',
+      metNaam: () => 'Je reeks loopt gewoon door. Voor die week is er wel één punt afgegaan.',
+      zonderNaam: 'Je reeks loopt gewoon door. Voor die week is er wel één punt afgegaan.',
       pad: '/',
     },
   },
@@ -239,15 +260,91 @@ const SOORTEN: Readonly<
       zonderNaam: 'Look back at what worked and set your goals for the new week.',
       pad: '/',
     },
+    cycle_summary_weekpas: {
+      titel: 'A week pass saved your streak',
+      metNaam: () => 'Your streak continues. One point did come off for that week.',
+      zonderNaam: 'Your streak continues. One point did come off for that week.',
+      pad: '/',
+    },
   },
 };
 
+/**
+ * Het uur waarop het weekoverzicht mag vallen — QS8-202.
+ *
+ * ⚠️ **Hier zat de keten onderbroken, en elk schakeltje was af.** Het overzicht
+ *    ging om het herinneringsuur de deur uit, standaard 9:00. De rollover schrijft
+ *    een gemiste week pas áf ná de coulanceperiode van `GRACE_HOURS` (12 uur):
+ *    `closableUserCycle()` geeft binnen dat venster nog de vórige cyclus terug, en
+ *    de rollover filtert op `< afsluitbaar.startDate`. Om 9:00 staat de week dus
+ *    nog op `todo`, is er geen `missed`, en heeft `verbruik_weekpas()` niets
+ *    gedaan — die eist zelf dat de cyclus gemist is (migratie 0042).
+ *
+ *    Gevolg zonder deze functie: de vraag "is er een weekpas verbruikt" was om
+ *    9:00 altijd nee. En de unieke index `notifications_sent_per_dag`
+ *    (`user_id, kind, local_date`) zorgt dat er die dag geen tweede melding meer
+ *    uitgaat, dus de gebruiker hoorde het alsnog nooit. Precies de klacht waar
+ *    QS8-202 voor bestaat, in een nieuwe vorm. Gevonden in de security-review van
+ *    03-09-2026, niet door een test — er wás geen test die de tijd raakte.
+ *
+ * ⚠️ **Dit verschuift ook het gewone weekoverzicht, en dat is een verbetering en
+ *    geen bijwerking.** "Kijk terug op wat er gelukt is" om 9:00 gaat over een week
+ *    waarvan de statussen nog niet vaststaan; de gebruiker mag hem tot 12:00 nog
+ *    afsluiten. Ná de coulanceperiode klopt het bericht pas.
+ *
+ * ⚠️ De rollover draait op het hele uur en deze job op het halve (zie
+ *    `.github/workflows/*.yml`), dus binnen uur 12 is de rollover eerst. Daarom is
+ *    `>= GRACE_HOURS` genoeg en niet `>`.
+ *
+ * ⚠️ **De 12 staat hier als getal en niet als import, want dit bestand heeft er
+ *    geen.** Dat is met opzet: het gaat via `edge:sync` naar een Deno-omgeving.
+ *    De aanroeper geeft `GRACE_HOURS` mee, en `regels.test.ts` legt de standaard
+ *    ernaast — zo kan de kopie niet stil uit de pas lopen met `shared/time`.
+ */
+export function overzichtsuur(herinneringUur: number | null, graceUren = 12): number {
+  return Math.max(herinneringUur ?? 9, graceUren);
+}
+
+/**
+ * Welke tekst hoort bij deze melding — QS8-202.
+ *
+ * ⚠️ **Apart en geëxporteerd, want dit is de beslissing die je fout kunt hebben.**
+ *    De uitkomst mag nooit in `notifications_sent.kind` belanden: `Melding` kent
+ *    er vier en de CHECK van 0053 ook. Wat hier uit komt is de sleutel van een
+ *    zin, en de aanroeper geeft de soort apart door.
+ *
+ * ⚠️ **En TypeScript is dáár niet de grendel, hoe erg dat er ook op lijkt.**
+ *    `tsconfig.json` sluit `supabase/functions` uit — die code draait op Deno — en
+ *    de poort kent geen `deno check`. De enige aanroeper staat dus buiten `tsc`.
+ *    Wat de variant uit `kind` houdt is de grep in
+ *    `tests/beloftes/weekpas-bereikt-je.test.ts`. Aangewezen in de
+ *    security-review van 03-09; het slot klopte, de motivering wees naar het
+ *    verkeerde.
+ */
+export function tekstsleutelVoor(
+  soort: Exclude<Melding, 'nudge'>,
+  weekpasGered = false,
+): Tekstsleutel {
+  return soort === 'cycle_summary' && weekpasGered ? 'cycle_summary_weekpas' : soort;
+}
+
 export function berichtVoor(
   soort: Exclude<Melding, 'nudge'>,
-  input: { readonly naam?: string; readonly groepId?: string },
+  input: {
+    readonly naam?: string;
+    readonly groepId?: string;
+    /**
+     * Heeft een weekpas de zojuist afgesloten week gered? — QS8-202.
+     *
+     * ⚠️ **Alleen zinvol bij `cycle_summary`, en dat wordt hier afgedwongen.** Bij
+     *    elke andere soort is dit stil genegeerd in plaats van een tweede tekst
+     *    die niemand verwacht.
+     */
+    readonly weekpasGered?: boolean;
+  },
   taal?: Taalcode | null,
 ): Bericht {
-  const tekst = kies(SOORTEN, taal)[soort];
+  const tekst = kies(SOORTEN, taal)[tekstsleutelVoor(soort, input.weekpasGered)];
 
   return {
     titel: tekst.titel,
