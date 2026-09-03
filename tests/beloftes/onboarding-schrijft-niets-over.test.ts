@@ -347,6 +347,18 @@ const MAG_IN_DE_ONBOARDING: Readonly<Record<string, string>> = {
   useProfiel: 'Alleen lezen: het profiel waar de initialisatoren mee vullen.',
   useSession: 'Alleen lezen: het id van de ingelogde gebruiker.',
   userClock: 'Puur rekenwerk over de klok, schrijft niets.',
+  // ⚠️ QS8-196. Deze drie horen bij de profielfoto, en die schrijft níét naar
+  //    `profiles` langs de patch heen — hij schrijft naar de bucket, en
+  //    `uploadAvatar()` zet daarna `avatar_url` via zijn eigen weg met de CHECK
+  //    `profiles_avatar_url_eigen_pad` (0127) eronder. Dat is precies waarom deze
+  //    lijst een reden vraagt en niet alleen een naam: "raakt dit `profiles`?" is
+  //    hier ja, en het antwoord op "mag dat" is ja om een andere reden dan bij de
+  //    vijf hierboven.
+  useAvatarKeuze: 'Kiezen, uploaden en weghalen van de profielfoto. Schrijft naar de bucket; ' +
+    '`avatar_url` gaat mee via `uploadAvatar()`, met de CHECK van 0127 als grendel.',
+  AVATAR_MAX_BYTES: 'Alleen een getal voor de tekst onder de knop — dezelfde constante die ' +
+    '`tests/beloftes/avatar.test.ts` naast migratie 0126 legt.',
+  Profiel: 'Alleen een type. Bij het compileren weg.',
 };
 
 /**

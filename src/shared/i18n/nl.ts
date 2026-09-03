@@ -509,7 +509,7 @@ export const nl = {
   'onboarding.naam': 'Hoe heet je?',
   'onboarding.naam_hint': 'Dit zien je buddy’s. Een voornaam is genoeg.',
   'onboarding.naam_plaatshouder': 'Quinten',
-  'onboarding.geen_avatar': 'Geen avatar? Dan tonen we je initialen. Een foto kiezen kan straks bij Profiel.',
+  'onboarding.geen_avatar': 'Geen foto? Dan tonen we je initialen. Je kunt er hier een kiezen, of later bij Profiel.',
   'onboarding.tijdzone_van_telefoon': 'Tijdzone: {zone}, van je telefoon.',
   'onboarding.tijdzone_klopt_niet': 'Klopt niet',
   'onboarding.waarvoor': 'Waarvoor kom je?',

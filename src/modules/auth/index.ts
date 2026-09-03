@@ -27,6 +27,7 @@ export {
 
 export { SessionProvider, useRequiredUserId, useSession } from './SessionProvider';
 export { ProfielProvider, useProfiel } from './ProfielProvider';
+export { useAvatarKeuze, type Avatarkeuze } from './useAvatarKeuze';
 
 export {
   fetchProfiel,

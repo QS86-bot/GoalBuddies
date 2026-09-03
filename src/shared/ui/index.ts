@@ -24,6 +24,7 @@ export {
 } from './tebeoordelen';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
+export { AvatarKeuze } from './AvatarKeuze';
 export { initialen } from './naming';
 export { Button, type ButtonVariant } from './Button';
 export { Card } from './Card';

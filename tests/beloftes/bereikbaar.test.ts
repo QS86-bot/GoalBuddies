@@ -28,6 +28,21 @@ const MOET_EEN_SCHERM_HEBBEN: Readonly<Record<string, string>> = {
     'velden op `null` laten zetten maakte géén enkele test rood, want ' +
     '`kolomrechten:controle` kijkt naar kolomnamen in `maakWeekdoel()` en niet ' +
     'naar wat een scherm meegeeft.',
+  useAvatarKeuze:
+    'De hele leeskant van een profielfoto stond er sinds migratie 0001 — kolom, ' +
+    'grant, `Avatar`-component, vier schermen die hem tonen — en er was geen ' +
+    'enkele knop die hem kon vullen. ⚠️ **Deze regel staat er pas sinds QS8-196, ' +
+    'en de knop bestond toen al**: hij is op 03-09 van `app/(tabs)/profiel.tsx` ' +
+    'naar `shared/ui` verhuisd zodat de onboarding hem ook kan gebruiken, en bij ' +
+    'die verhuizing bleek dat geen enkele test zag of hij er nog was. Dat is de ' +
+    'gevaarlijkste beweging die er is (CLAUDE.md over verhuizingen) en precies ' +
+    'waar dit register voor bestaat. ' +
+    '⚠️ **De hook staat hier en niet `uploadAvatar`, en dat is een grens van dit ' +
+    'register.** Sinds de splitsing roept het scherm de hook aan en de hook de ' +
+    'datalaag; deze toets ziet alleen de eerste schakel. De tweede — dat de hook ' +
+    'écht uploadt én verwijdert — staat in `tests/beloftes/avatar.test.ts`. Twee ' +
+    'schakels, twee toetsen, want deze lijst kan niet door een module heen kijken ' +
+    '(zie de kop: dat vraagt een parser).',
   fetchCommitmentSpoor:
     'Domeinregel 5 eist dat een commitment auditeerbaar is. Een spoor dat ' +
     'niemand kan opvragen is precies zo goed als geen spoor.',

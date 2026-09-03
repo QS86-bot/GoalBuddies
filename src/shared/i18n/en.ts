@@ -363,7 +363,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.naam': 'What is your name?',
   'onboarding.naam_hint': 'This is what your buddies see. A first name is enough.',
   'onboarding.naam_plaatshouder': 'Quinten',
-  'onboarding.geen_avatar': 'No avatar? Then we show your initials. You can choose a photo later under Profile.',
+  'onboarding.geen_avatar': 'No photo? Then we show your initials. You can pick one here, or later under Profile.',
   'onboarding.tijdzone_van_telefoon': 'Time zone: {zone}, from your phone.',
   'onboarding.tijdzone_klopt_niet': 'Not right',
   'onboarding.waarvoor': 'What brings you here?',
