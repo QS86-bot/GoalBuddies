@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   berichtVoor,
+  herinneringStandaard,
   herinneringVelden,
   magNudgen,
   nudgeBericht,
   nudgeReden,
+  STANDAARD_HERINNERINGSTIJD,
   tijdVoorInvoer,
   uurUit,
   type Melding,
@@ -282,6 +284,46 @@ describe('herinneringVelden', () => {
 
     expect(velden.reminder_enabled).toBe(true);
     expect(velden.reminder_time).toBe('07:30');
+  });
+});
+
+/**
+ * De standaardherinnering van de onboarding — QS8-213.
+ *
+ * ⚠️ De belofte is niet "er staat een goede standaard" maar "hij raakt niemands
+ *    keuze aan". Dat tweede is wat er stuk kan, en het is de reden dat deze
+ *    functie naar `onboarded_at` kijkt en niet naar `reminder_time`.
+ */
+describe('herinneringStandaard', () => {
+  it('zet een tijdstip voor wie de onboarding nog niet gehad heeft', () => {
+    const velden = herinneringStandaard({ onboarded_at: null });
+
+    expect(velden.reminder_enabled).toBe(true);
+    expect(velden.reminder_time).toBe(STANDAARD_HERINNERINGSTIJD);
+    expect(velden.reminder_tone).toBe('gentle');
+  });
+
+  it('een aan-standaard zonder tijdstip zou nooit afgaan', () => {
+    // ⚠️ De kolomstandaard is `reminder_enabled = true` (migratie 0001) en
+    //    `reminder_time` heeft er geen. Dit is de reden dát deze functie bestaat:
+    //    zonder uur slaat `nudgeReden()` de gebruiker over.
+    expect(uurUit(herinneringStandaard({ onboarded_at: null }).reminder_time ?? null)).toBe(20);
+  });
+
+  it('schrijft niets voor wie de onboarding al gehad heeft', () => {
+    // ⚠️ Het geval dat telt: iemand die zijn herinnering op het profieltabblad
+    //    uitzette en daarna per ongeluk op het onboardingscherm belandt. Zou dit
+    //    `reminder_enabled: true` teruggeven, dan is "uit is uit" gebroken langs
+    //    een tweede weg — die van `tests/beloftes/herinnering.test.ts` zou daar
+    //    niets van zien, want die kijkt naar wie de velden samenstelt.
+    expect(herinneringStandaard({ onboarded_at: '2026-08-01T10:00:00Z' })).toEqual({});
+  });
+
+  it('geeft een leeg object en geen velden op undefined', () => {
+    // ⚠️ `updateProfiel()` schrijft elk veld dat het meekrijgt. `reminder_time:
+    //    undefined` als sleutel aanwezig hebben is dus geen "laat staan" maar een
+    //    schrijver die van de sleutelnaam afhangt.
+    expect(Object.keys(herinneringStandaard({ onboarded_at: '2026-08-01T10:00:00Z' }))).toEqual([]);
   });
 });
 
