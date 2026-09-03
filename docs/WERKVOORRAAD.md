@@ -55,7 +55,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **878 geslaagd, 1 overgeslagen** (03-09, na QS8-196 en QS8-266; daarvóór
    QS8-213, QS8-208, QS8-221, QS8-218 en QS8-219). De hele suite geeft met de
-   stack **3056 geslaagd en 1 overgeslagen** over 216 bestanden.
+   stack **3065 geslaagd en 1 overgeslagen** over 217 bestanden.
    Typecheck, lint en alle 32 controlescripts groen; `npm run poort` meldt
    36 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**

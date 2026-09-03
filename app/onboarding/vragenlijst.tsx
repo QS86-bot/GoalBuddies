@@ -25,6 +25,7 @@ import {
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
 import {
+  AsyncView,
   Body,
   Button,
   Caption,
@@ -61,7 +62,43 @@ type Stap = 0 | 1 | 2 | 3 | 4;
 /** De laatste stap is de samenvatting en geen vraag. */
 const SAMENVATTING: Stap = 4;
 
+/**
+ * Wacht tot het profiel bekend is, en laat het formulier daarna pas monteren.
+ *
+ * ⚠️ **Exact dezelfde wacht als in `app/onboarding/profiel.tsx`, en om exact
+ *    dezelfde reden.** De `useState`-initialisator hieronder draait één keer, bij
+ *    de eerste render, en er is geen effect dat hem bijstelt. Monteert het
+ *    formulier terwijl het profiel nog onbekend is, dan staan de vier antwoorden
+ *    op leeg — het scherm vertelt de gebruiker dus dat hij niets ingevuld heeft —
+ *    en vervangt "Bewaren" zijn eerdere antwoorden door wat hij daarna aanvinkt.
+ *
+ * ⚠️ **Deze wacht ontbrak tot 03-09, en dat kon niemand zien: het scherm was
+ *    onbereikbaar** (QS8-266). De reparatie die het bereikbaar maakte, maakte
+ *    deze fout voor het eerst bereikbaar — de kopieerfout waar onwrikbare regel
+ *    19 voor waarschuwt: de oplossing stond ernaast en was niet meegenomen.
+ *
+ * ⚠️ Een buitenste component en geen `if` in het formulier: alleen zo monteren de
+ *    initialisatoren pas als het profiel er is. Een vroege `return` in hetzelfde
+ *    component zou de hooks-volgorde breken.
+ */
 export default function Vragenlijst() {
+  const { profiel, loading, error, herlaad } = useProfiel();
+
+  return (
+    <AsyncView
+      loading={loading}
+      error={error}
+      data={profiel ?? undefined}
+      isEmpty={() => false}
+      onRetry={herlaad}
+      empty={{ title: t('onboarding.profiel_leeg_titel'), body: t('onboarding.profiel_leeg_tekst') }}
+    >
+      {() => <VragenlijstFormulier />}
+    </AsyncView>
+  );
+}
+
+function VragenlijstFormulier() {
   const router = useRouter();
   const { userId } = useSession();
   const { profiel, herlaad } = useProfiel();

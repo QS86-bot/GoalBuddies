@@ -431,3 +431,106 @@ describe('de tijdzone blijft corrigeerbaar in de onboarding', () => {
     }
   });
 });
+
+/**
+ * Wat er tussen de haakjes van elke `useState(...)` staat.
+ *
+ * ⚠️ Dezelfde haakjestelling als `argumenten()`, en om dezelfde reden: de eerste
+ *    `)` die je tegenkomt is niet de sluitende. `useState(profiel?.x ?? apparaat())`
+ *    zou anders halverwege afgekapt worden.
+ */
+export function useStateArgumenten(bron: string): readonly string[] {
+  const schoon = ontdaanVanCommentaar(bron);
+  const gevonden: string[] = [];
+
+  let vanaf = schoon.indexOf('useState');
+  while (vanaf !== -1) {
+    const open = schoon.indexOf('(', vanaf);
+    let diepte = 0;
+    let sluit = -1;
+
+    for (let i = open; i < schoon.length; i += 1) {
+      if (schoon[i] === '(') diepte += 1;
+      else if (schoon[i] === ')') {
+        diepte -= 1;
+        if (diepte === 0) {
+          sluit = i;
+          break;
+        }
+      }
+    }
+
+    if (sluit !== -1) gevonden.push(schoon.slice(open + 1, sluit));
+    vanaf = schoon.indexOf('useState', vanaf + 1);
+  }
+
+  return gevonden;
+}
+
+/**
+ * Grendel 6: een scherm dat zijn formulier uit het profiel vult, wacht op het profiel.
+ *
+ * ⚠️ **De vorm van de week-startdag-bug, en hij stond er nog een tweede keer.**
+ *    Een `useState`-initialisator draait één keer, bij de eerste render, en er is
+ *    geen effect dat hem bijstelt. Monteert het formulier terwijl `profiel` nog
+ *    `null` is — `ProfielProvider` begint op `loading: true, profiel: null`, en
+ *    op web is elke diepe route rechtstreeks op te vragen — dan staat het veld op
+ *    zijn standaardwaarde, ziet de gebruiker dat hij niets ingevuld heeft, en
+ *    vervangt "Bewaren" wat er stond.
+ *
+ * ⚠️ **`app/onboarding/profiel.tsx` had die wacht sinds 28-08 en
+ *    `vragenlijst.tsx` niet.** Dat kon niemand zien, want de vragenlijst was
+ *    onbereikbaar (QS8-266); de reparatie die haar bereikbaar maakte, maakte ook
+ *    deze fout bereikbaar. Gevonden in de security-review van 03-09. Dit is de
+ *    kopieerfout waar onwrikbare regel 19 voor waarschuwt: de oplossing stond
+ *    ernaast en is niet meegenomen — precies waarom een register beter is dan een
+ *    goed voorbeeld.
+ *
+ * ⚠️ **Waarom niet op `useProfiel()` alleen toetsen.** Een scherm mag het profiel
+ *    best lézen zonder wacht; dat is niet de fout. De fout is het profiel in een
+ *    `useState` gieten, want alleen dán is een lege waarde een schrijfactie
+ *    geworden.
+ *
+ * ⚠️ Met de hand rood gemaakt: de `AsyncView` uit `vragenlijst.tsx` gehaald.
+ */
+describe('een onboardingscherm dat het profiel invult, wacht erop', () => {
+  const uitHetProfiel = ONBOARDINGBESTANDEN.filter((pad) =>
+    useStateArgumenten(readFileSync(join(WORTEL, pad), 'utf8')).some((a) => a.includes('profiel')),
+  );
+
+  it('vindt de schermen die dat doen, anders toetst de rest niets', () => {
+    expect(
+      uitHetProfiel.length,
+      'Geen enkel onboardingscherm vult een useState uit het profiel. Verhuisd, of ' +
+        'gaat deze lezer de vorm niet meer aan?',
+    ).toBeGreaterThan(0);
+  });
+
+  it.each(uitHetProfiel)('%s rendert een AsyncView', (pad) => {
+    expect(
+      ontdaanVanCommentaar(readFileSync(join(WORTEL, pad), 'utf8')),
+      `${pad} vult een useState uit het profiel zonder op het profiel te wachten. ` +
+        'Monteert het formulier voordat het profiel er is, dan schrijft Bewaren ' +
+        'standaardwaarden over wat er stond — de week-startdag-bug van 28-08.',
+    ).toContain('<AsyncView');
+  });
+});
+
+describe('useStateArgumenten leest wat er staat', () => {
+  it('telt haakjes en kapt niet af op de eerste sluiter', () => {
+    expect(useStateArgumenten('useState(profiel?.x ?? apparaat())')).toEqual([
+      'profiel?.x ?? apparaat()',
+    ]);
+  });
+
+  it('vindt elke aanroep, ook met een typeargument', () => {
+    expect(useStateArgumenten('useState<Stap>(0); useState(profiel?.y)')).toEqual([
+      '0',
+      'profiel?.y',
+    ]);
+  });
+
+  it('laat commentaar buiten beschouwing', () => {
+    expect(useStateArgumenten('// useState(profiel)\nuseState(1)')).toEqual(['1']);
+  });
+});

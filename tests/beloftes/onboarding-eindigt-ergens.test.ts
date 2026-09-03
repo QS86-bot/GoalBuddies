@@ -62,9 +62,21 @@ const ONBOARDINGSCHERMEN: Readonly<Record<string, { readonly isOnboarded: boolea
   },
 };
 
-/** De stand op het moment van navigeren: sessie, profiel geladen, geen fout. */
+/**
+ * De stand op het moment van navigeren: sessie, profiel geladen, geen fout.
+ *
+ * ⚠️ **De segmenten komen uit de routetabel en niet uit het pad.** In productie
+ *    vult `app/_layout.tsx` `wortel` en `tak` met `useSegments()`, en dat zijn
+ *    **bestands**segmenten: groepsmappen (`(tabs)`) tellen mee en een dynamisch
+ *    segment heet letterlijk `[id]`. Ze met `pad.split('/')` namaken geeft
+ *    vandaag hetzelfde antwoord voor alle onboardingroutes — en zou stil ophouden
+ *    te kloppen zodra er een groepsmap onder `app/onboarding/` komt: `tak` wordt
+ *    dan `'(x)'`, de allowlist matcht niet meer, de vragenlijst is opnieuw
+ *    onbereikbaar, en deze test blijft groen omdat hij nog steeds de URL splitst.
+ *    Gevonden in de security-review van QS8-266 (L1). Regel 18, vraag 3.
+ */
 function bijAankomst(pad: string, isOnboarded: boolean): Routestand {
-  const segmenten = pad.split('/').filter((s) => s !== '');
+  const segmenten = bestandssegmentenVoor(pad);
 
   return {
     heeftSessie: true,
@@ -96,22 +108,32 @@ export function navigeertNaar(bron: string): readonly string[] {
  *    als ontbrekend — precies het soort valse melding waardoor je een controle
  *    leert negeren.
  */
-export function routesIn(map: string, onder = ''): readonly string[] {
-  const uit: string[] = [];
+export interface Route {
+  /** Wat er in de adresbalk staat. */
+  readonly url: string;
+  /** Wat `useSegments()` teruggeeft: mét groepsmappen, met `[id]` als naam. */
+  readonly segmenten: readonly string[];
+}
+
+export function routesIn(map: string, url = '', segmenten: readonly string[] = []): readonly Route[] {
+  const uit: Route[] = [];
 
   for (const naam of readdirSync(map)) {
     const pad = join(map, naam);
+    const groep = naam.startsWith('(') && naam.endsWith(')');
 
     if (statSync(pad).isDirectory()) {
-      const segment = naam.startsWith('(') && naam.endsWith(')') ? onder : `${onder}/${naam}`;
-      uit.push(...routesIn(pad, segment));
+      uit.push(...routesIn(pad, groep ? url : `${url}/${naam}`, [...segmenten, naam]));
       continue;
     }
 
     if (!naam.endsWith('.tsx') || naam.startsWith('_') || naam.startsWith('+')) continue;
 
     const kaal = naam.slice(0, -'.tsx'.length);
-    uit.push(kaal === 'index' ? onder || '/' : `${onder}/${kaal}`);
+    uit.push({
+      url: kaal === 'index' ? url || '/' : `${url}/${kaal}`,
+      segmenten: kaal === 'index' ? segmenten : [...segmenten, kaal],
+    });
   }
 
   return uit;
@@ -120,20 +142,34 @@ export function routesIn(map: string, onder = ''): readonly string[] {
 const ROUTES = routesIn(join(WORTEL, 'app'));
 
 /** `/doel/coach/[id]` matcht `/doel/coach/abc`. */
-function bestaatAlsRoute(pad: string): boolean {
+function matcht(route: Route, pad: string): boolean {
   const gevraagd = pad.split('/').filter((s) => s !== '');
+  const echte = route.url.split('/').filter((s) => s !== '');
 
-  return ROUTES.some((route) => {
-    const echte = route.split('/').filter((s) => s !== '');
-    if (echte.length !== gevraagd.length) return false;
-    return echte.every((s, i) => (s.startsWith('[') ? true : s === gevraagd[i]));
-  });
+  if (echte.length !== gevraagd.length) return false;
+  return echte.every((s, i) => (s.startsWith('[') ? true : s === gevraagd[i]));
+}
+
+function bestaatAlsRoute(pad: string): boolean {
+  return ROUTES.some((route) => matcht(route, pad));
+}
+
+/**
+ * De segmenten die `useSegments()` voor dit pad zou geven.
+ *
+ * ⚠️ Kent de app het pad niet, dan valt deze functie terug op de URL. Dat is de
+ *    eerlijke uitkomst: `bestaatAlsRoute()` maakt dat geval al rood, en een
+ *    stille lege lijst zou de wachttoets erná betekenisloos maken.
+ */
+function bestandssegmentenVoor(pad: string): readonly string[] {
+  return ROUTES.find((route) => matcht(route, pad))?.segmenten ?? pad.split('/').filter((s) => s !== '');
 }
 
 describe('elke navigatie in de onboarding komt ergens aan', () => {
   it('vindt de routes van de app, anders toetst de rest niets', () => {
-    expect(ROUTES).toContain('/doelen');
-    expect(ROUTES).toContain('/onboarding/vragenlijst');
+    const urls = ROUTES.map((r) => r.url);
+    expect(urls).toContain('/doelen');
+    expect(urls).toContain('/onboarding/vragenlijst');
   });
 
   for (const [scherm, { isOnboarded, reden }] of Object.entries(ONBOARDINGSCHERMEN)) {
@@ -178,14 +214,24 @@ describe('de twee lezers lezen wat er staat', () => {
     expect(navigeertNaar("router.push('/a');")).toEqual([]);
   });
 
-  it('routesIn laat een groepsmap uit de URL en houdt de rest', () => {
-    expect(ROUTES).toContain('/doelen');
-    expect(ROUTES).not.toContain('/(tabs)/doelen');
-    expect(ROUTES).toContain('/');
+  it('routesIn laat een groepsmap uit de URL en houdt hem in de segmenten', () => {
+    const doelen = ROUTES.find((r) => r.url === '/doelen');
+
+    expect(doelen, 'app/(tabs)/doelen.tsx hoort /doelen te zijn').toBeDefined();
+    // ⚠️ Dit is het verschil waar L1 over ging: de URL kent `(tabs)` niet en
+    //    `useSegments()` wél. Vielen ze samen, dan bewaakte deze test niets.
+    expect(doelen?.segmenten).toEqual(['(tabs)', 'doelen']);
+    expect(ROUTES.map((r) => r.url)).toContain('/');
   });
 
   it('routesIn slaat layouts en +html over', () => {
-    expect(ROUTES.some((r) => r.includes('_layout') || r.includes('+html'))).toBe(false);
+    expect(ROUTES.some((r) => r.url.includes('_layout') || r.url.includes('+html'))).toBe(false);
+  });
+
+  it('bestandssegmentenVoor geeft wat useSegments() zou geven', () => {
+    expect(bestandssegmentenVoor('/doelen')).toEqual(['(tabs)', 'doelen']);
+    expect(bestandssegmentenVoor('/onboarding/vragenlijst')).toEqual(['onboarding', 'vragenlijst']);
+    expect(bestandssegmentenVoor('/doel/coach/abc')).toEqual(['doel', 'coach', '[id]']);
   });
 
   /**
