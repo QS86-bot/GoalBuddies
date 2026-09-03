@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { laad } from './useAsync';
+import { laad, terugvalZetters } from './useAsync';
 
 /**
  * De belofte onder `useAsync` — en onder de 32 kopieën waar hij er vijf van vervangt.
@@ -108,5 +108,75 @@ describe('laad — wat er níét gebeurt zodra het scherm weg is', () => {
     await bezig;
 
     expect(zet.data).not.toHaveBeenCalled();
+  });
+});
+
+
+/**
+ * De tweede vorm: één waarde met een terugval — QS8-219.
+ *
+ * ⚠️ **Zes plekken hadden dit blokje, en `useAsync` past er niet op.** Ze hebben
+ *    geen laadstand en geen foutstand; een fout zet de wáárde terug op iets
+ *    neutraals. Door `useAsync` persen zou `data ?? terugval` betekenen, en dan
+ *    houdt een mislukte hérlaadbeurt de oude waarde vast in plaats van terug te
+ *    vallen — een gedragswijziging vermomd als opruimwerk.
+ *
+ * ⚠️ **De hele beslissing is één regel, en die regel is een val.** `laad()` roept
+ *    `zet.fout(null)` aan ná een geslaagde lezing, om een eerdere fout te wissen.
+ *    Wie dat niet weet, schrijft `fout: () => zet(terugval)` en overschrijft
+ *    precies de waarde die er net in gezet is. Het scherm toont dan altijd de
+ *    terugval, en dat ziet er niet uit als een fout — de terugval is een geldige
+ *    waarde.
+ *
+ * ⚠️ Met de hand rood gemaakt: de `if (fout !== null)` weghalen maakt de eerste
+ *    test hieronder rood, en `data: zet` vervangen door een lege functie de
+ *    tweede.
+ */
+describe('terugvalZetters — de val zit in het wissen van de fout', () => {
+  it('laat de geladen waarde staan na een geslaagde lezing', async () => {
+    const geschreven: string[] = [];
+
+    await laad<string>(
+      () => Promise.resolve('uit de database'),
+      () => true,
+      terugvalZetters<string>((w) => geschreven.push(w), 'de terugval'),
+    );
+
+    // ⚠️ Niet alleen "de waarde is geschreven", maar ook "de terugval is er
+    //    daarna niet overheen gegaan". Dat tweede is wat er misgaat.
+    expect(geschreven).toEqual(['uit de database']);
+  });
+
+  it('schrijft de terugval bij een echte fout', async () => {
+    const geschreven: string[] = [];
+
+    await laad(
+      () => Promise.reject(new Error('mislukt')),
+      () => true,
+      terugvalZetters<string>((w) => geschreven.push(w), 'de terugval'),
+    );
+
+    expect(geschreven).toEqual(['de terugval']);
+  });
+
+  it('schrijft niets nadat het scherm weg is, ook de terugval niet', async () => {
+    // De belofte van deze hele module, en die geldt voor beide vormen.
+    const geschreven: string[] = [];
+
+    await laad(
+      () => Promise.reject(new Error('mislukt')),
+      () => false,
+      terugvalZetters<string>((w) => geschreven.push(w), 'de terugval'),
+    );
+
+    expect(geschreven).toEqual([]);
+  });
+
+  it('meldt geen laadstand, want deze vorm kent er geen', async () => {
+    // `klaar` is met opzet leeg: het scherm toont de terugval tot er iets beters
+    // is. Zou hier een `setState` staan, dan is dat een render zonder reden.
+    const zetters = terugvalZetters(() => {}, 0);
+
+    expect(() => zetters.klaar()).not.toThrow();
   });
 });

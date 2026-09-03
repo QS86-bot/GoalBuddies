@@ -110,3 +110,87 @@ export function useAsync<T>(
 
   return { data, loading, error, herlaad };
 }
+
+/**
+ * De zetters die `useAsyncMetTerugval` aan `laad()` meegeeft — QS8-219.
+ *
+ * ⚠️ **Apart en geëxporteerd, om dezelfde reden als `laad()` zelf.** De hook
+ *    hieronder kan niet in een node-omgeving draaien zonder een
+ *    React-testbibliotheek, en er zit precies één beslissing in die je fout kunt
+ *    hebben. Die staat hier, en `useAsync.test.ts` voert hem los door `laad()`.
+ *
+ * ⚠️ **De val zit in `zet.fout(null)`.** `laad()` roept die aan ná een geslaagde
+ *    lezing, om een eerdere fout te wissen. Zou deze functie bij élke aanroep de
+ *    terugval schrijven, dan overschrijft ze meteen de waarde die er net in
+ *    gezet is — en dan toont het scherm altijd de terugval, ook als het ophalen
+ *    lukte. Dat is een fout die er precies zo uitziet als de goede versie, want
+ *    de terugval is een geldige waarde.
+ */
+export function terugvalZetters<T>(
+  zet: (waarde: T) => void,
+  terugval: T,
+): {
+  readonly data: (waarde: T) => void;
+  readonly fout: (fout: unknown) => void;
+  readonly klaar: () => void;
+} {
+  return {
+    data: zet,
+    fout: (fout) => {
+      // ⚠️ `null` is "de fout is voorbij" en geen fout. Zie de kop hierboven.
+      if (fout !== null) zet(terugval);
+    },
+    // Deze vorm kent geen laadstand: het scherm toont de terugval tot er iets
+    // beters is, en dat is precies wat de aanroepers hiervan deden.
+    klaar: () => {},
+  };
+}
+
+/**
+ * Eén laadbeurt naar één waarde, met een terugval als het misgaat — QS8-219.
+ *
+ * ⚠️ **Waarom naast `useAsync` en niet erin.** Vijf plekken hadden dezelfde vorm
+ *    en géén van drieën wat `useAsync` teruggeeft: geen laadstand, geen
+ *    foutstand, en een fout die de wáárde terugzet op een neutrale waarde in
+ *    plaats van een melding te worden. Ze door `useAsync` persen zou betekenen
+ *    dat `data ?? terugval` de terugval doet, en dat is nét iets anders: dan
+ *    houdt een mislukte hérlaadbeurt de oude waarde vast in plaats van terug te
+ *    vallen. Dat is een gedragswijziging vermomd als opruimwerk.
+ *
+ * ⚠️ **De terugval staat niet in `deps`, en dat moet ook niet.** Aanroepers
+ *    geven `[]` mee als lege terugval, en dat is elke render een nieuwe array —
+ *    in `deps` zou dit oneindig doorladen. Gevolg van die keuze: de terugval
+ *    hoort een constante te zijn. Bij alle vijf aanroepers is dat zo.
+
+ * ⚠️ **Een zesde plek lijkt erop en gaat er níét door.** `Adempauzes` in
+ *    `app/doel/[id].tsx` zet `pauzes` ook ná het aanmaken en het annuleren van
+ *    een pauze; die state is dus niet alleen van de laadbeurt. Door deze hook
+ *    persen zou betekenen dat een lokale wijziging nergens meer heen kan — het
+ *    soort opruimen dat een koppeling máákt, waar QS8-219 zelf voor waarschuwt.
+ *
+ * ⚠️ De bewaking is niet gekopieerd maar geleend: `laad()` doet hem, en die
+ *    staat onder test.
+ */
+export function useAsyncMetTerugval<T>(
+  fn: (() => Promise<T>) | null,
+  terugval: T,
+  deps: readonly unknown[],
+): T {
+  const [waarde, setWaarde] = useState<T>(terugval);
+
+  useEffect(() => {
+    if (fn === null) return;
+    let levend = true;
+
+    void laad(fn, () => levend, terugvalZetters(setWaarde, terugval));
+
+    return () => {
+      levend = false;
+    };
+    // ⚠️ `fn` en `terugval` staan er met opzet niet in — zie de kop. De
+    //    aanroeper bepaalt met `deps` wanneer er opnieuw geladen wordt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return waarde;
+}
