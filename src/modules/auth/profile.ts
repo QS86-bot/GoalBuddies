@@ -109,6 +109,24 @@ export async function updateProfiel(
   if (velden.when_i_do_it !== undefined) update.when_i_do_it = velden.when_i_do_it;
   if (velden.what_breaks_it !== undefined) update.what_breaks_it = [...velden.what_breaks_it];
 
+  // ⚠️ **Een lege patch is een geldige patch, en hij mag het net niet halen.**
+  //    `patchUitVragenlijst()` geeft met opzet `{}` terug als de gebruiker alle
+  //    vier de vragen overslaat — dat is de regel die voorkomt dat overslaan
+  //    bestaande antwoorden wist (acceptatiecriterium 4 van QS8-37). Zonder deze
+  //    tak ging dat lege object alsnog naar PostgREST, en die antwoordt op een
+  //    `PATCH` zonder velden met nul rijen: `.single()` maakt daar PGRST116 van,
+  //    de gebruiker leest "Opslaan mislukt", en `reportError()` schrijft een
+  //    Sentry-melding met zijn user-id erbij. Gemeten tegen de lokale stack op
+  //    03-09, gevonden in de security-review van QS8-266.
+  //
+  //    Hier en niet bij de aanroeper: elke aanroeper die het zelf gaat
+  //    controleren, is de volgende keten die ergens niet verbonden is.
+  if (Object.keys(update).length === 0) {
+    const ongewijzigd = await teruglezen(userId);
+    if (ongewijzigd === null) return { ok: false, melding: t('profiel.opslaan_mislukt') };
+    return { ok: true, profiel: ongewijzigd };
+  }
+
   // ⚠️ **`select('id')` en niet `select('*')`, en dat is geen zuinigheid.**
   //    Migratie 0089 trok de tabelbrede SELECT op `profiles` in: `authenticated`
   //    mag nog maar `id`, `display_name` en `avatar_url` lezen. Een `returning *`
