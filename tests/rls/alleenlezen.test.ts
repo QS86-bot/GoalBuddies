@@ -68,6 +68,31 @@ import {
  *    `week_review_replies_update` staan beide helften op `false`; een test kan
  *    het páár bewaken, niet elke helft apart. Zet iemand alleen de `check` om,
  *    dan verandert er niets en blijft deze test terecht groen.
+ *
+ * ## ⚠️⚠️ Nagemeten op 03-09-2026 — deze toets keek naar de opdracht en niet naar de helft
+ *
+ * `alleenlezen_bewaking()` geeft de policy**helft** terug, en de volledigheidstoets
+ * gooide die weg: hij vergeleek op `tabel + opdracht`. Een UPDATE-policy heeft
+ * twee helften, dus zolang er één `false` bleef veranderde de verzameling niet.
+ *
+ * **Gemeten.** `approval_withdrawals_update` op `using (true)` bracht
+ * `alleenlezen_bewaking()` van 20 naar 19 rijen — en dit bestand bleef 3/3 groen.
+ * Bij `reports_update`, dat maar één helft heeft, werd hij wél rood; dat verschil
+ * was het bewijs. Zes helften over drie policies vielen zo buiten beeld:
+ * `approval_withdrawals_update`, `deadline_requests_update` en
+ * `week_review_replies_update`.
+ *
+ * Het is dezelfde vorm als de fout die dit project al zeven keer betaald heeft, en
+ * hij stond in het bestand dat er juist voor gebouwd is: **een assertie die twee
+ * grendels tegelijk raakt, kan niet zien dat er één weg is.**
+ *
+ * ⚠️ De gedrágstests hieronder konden dit níet zien, en dat blijft zo — terecht.
+ *    Met één helft nog op `false` verandert er niets aan wat de client kan. De
+ *    structurele toets kón het wél zien en deed het niet; dáár zat het gat.
+ *
+ * ⚠️ Geijkt: alle zes de helften apart opengezet, elk maakt nu de
+ *    volledigheidstoets rood. Het paar (beide helften) maakte óók vóór deze
+ *    reparatie al twee tests rood — dat was nooit het probleem.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -111,12 +136,38 @@ function bouwer(db: TestDb, tabel: Tabelnaam): LosseBouwer {
   return (db as unknown as { from: (t: string) => LosseBouwer }).from(tabel);
 }
 
+type Opdracht = 'DELETE' | 'INSERT' | 'UPDATE';
+
+/** Een policyhelft zoals `alleenlezen_bewaking()` hem teruggeeft. */
+type Helft = `${Opdracht} ${'using' | 'check'}`;
+
 /** Eén rij die de client niet mag aanraken, plus hoe je hem terugvindt. */
 interface Doelwit {
   /** De tabel, zoals `alleenlezen_bewaking()` hem noemt. */
   readonly tabel: Tabelnaam;
-  /** De opdrachten waarvoor deze tabel een `false`-helft heeft. */
-  readonly opdrachten: readonly ('DELETE' | 'INSERT' | 'UPDATE')[];
+  /**
+   * De policy**helften** die `false` zijn — niet de opdrachten.
+   *
+   * ⚠️⚠️ **Dit stond hier als opdracht en dat was een gat.** De volledigheidstoets
+   *    vergeleek op `tabel + opdracht` en gooide de helft weg. Een UPDATE-policy
+   *    heeft er twee, dus zolang er één `false` bleef, veranderde de verzameling
+   *    niet en bleef de toets groen. Gemeten: `approval_withdrawals_update` op
+   *    `using (true)` liet `alleenlezen_bewaking()` van 20 naar 19 rijen zakken
+   *    en dít bestand bleef 3/3 groen. Bij `reports_update` — één helft — werd
+   *    hij wél rood, en dat verschil was het bewijs.
+   *
+   *    Zes helften over drie policies vielen zo buiten beeld:
+   *    `approval_withdrawals_update`, `deadline_requests_update` en
+   *    `week_review_replies_update`.
+   *
+   * ⚠️ **De opdrachten worden hieruit afgeleid en niet apart opgeschreven**, want
+   *    twee lijsten naast elkaar lopen uiteen. Afleiden mag hier omdat Postgres de
+   *    vorm vastlegt: DELETE heeft alleen een `using`, INSERT alleen een `check`,
+   *    UPDATE allebei. Wélke daarvan `false` zijn is per policy anders — zie
+   *    `group_join_requests`, dat wel een `UPDATE using` heeft en geen
+   *    `UPDATE check` — en dat is precies waarom het hier met de hand staat.
+   */
+  readonly helften: readonly Helft[];
   /** De client die de poging doet — degene die er nog het meeste recht op heeft. */
   poger: TestUser;
   /** Het filter waarmee `adminDb()` en de client dezelfde rij aanwijzen. */
@@ -128,6 +179,11 @@ interface Doelwit {
 }
 
 let doelwitten: Doelwit[] = [];
+
+/** De opdrachten van een doelwit, afgeleid uit zijn helften. */
+function opdrachtenVan(d: Doelwit): Opdracht[] {
+  return [...new Set(d.helften.map((h) => h.split(' ')[0] as Opdracht))];
+}
 
 function filter(vraag: LosseVraag, sleutel: Readonly<Record<string, string>>): LosseVraag {
   let q = vraag;
@@ -395,7 +451,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
     doelwitten = [
       {
         tabel: 'approval_withdrawals',
-        opdrachten: ['DELETE', 'INSERT', 'UPDATE'],
+        helften: ['DELETE using', 'INSERT check', 'UPDATE using', 'UPDATE check'],
         poger: buddy,
         sleutel: { approval_id: gegeven.data.id },
         // ⚠️ **`created_at` en niet `approver_id`, en dat is gemeten.** PostgREST
@@ -413,7 +469,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'deadline_requests',
-        opdrachten: ['DELETE', 'INSERT', 'UPDATE'],
+        helften: ['DELETE using', 'INSERT check', 'UPDATE using', 'UPDATE check'],
         poger: eigenaar,
         sleutel: { id: verzoekRij.data.id },
         wijziging: { status: 'approved' },
@@ -428,7 +484,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'group_join_requests',
-        opdrachten: ['DELETE', 'INSERT', 'UPDATE'],
+        helften: ['DELETE using', 'INSERT check', 'UPDATE using'],
         poger: buitenstaander,
         sleutel: { group_id: openId, user_id: buitenstaander.id },
         // ⚠️ Een wáárde die de CHECK toelaat. `'approved'` bestaat hier niet
@@ -439,7 +495,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'group_members',
-        opdrachten: ['DELETE'],
+        helften: ['DELETE using'],
         poger: buddy,
         sleutel: { group_id: groupId, user_id: buddy.id },
         wijziging: { role: 'admin' },
@@ -447,7 +503,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'groups',
-        opdrachten: ['DELETE', 'INSERT'],
+        helften: ['DELETE using', 'INSERT check'],
         poger: eigenaar,
         sleutel: { id: groupId },
         wijziging: { name: 'Omgedoopt' },
@@ -455,7 +511,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'reports',
-        opdrachten: ['DELETE', 'INSERT', 'UPDATE'],
+        helften: ['DELETE using', 'INSERT check', 'UPDATE using'],
         poger: eigenaar,
         sleutel: { reporter_id: eigenaar.id, group_id: groupId },
         // ⚠️ Idem: `reports_status_geldig` kent alleen open/reviewed/dismissed.
@@ -469,7 +525,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'user_blocks',
-        opdrachten: ['UPDATE'],
+        helften: ['UPDATE using'],
         poger: eigenaar,
         sleutel: { blocker_id: eigenaar.id, blocked_id: buitenstaander.id },
         wijziging: { blocked_id: buddy.id },
@@ -477,7 +533,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       },
       {
         tabel: 'week_review_replies',
-        opdrachten: ['UPDATE'],
+        helften: ['UPDATE using', 'UPDATE check'],
         poger: buddy,
         sleutel: { id: reactie.data.id },
         wijziging: { body: 'Toch maar niet' },
@@ -502,17 +558,26 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
       const { data, error } = await adminDb().rpc('alleenlezen_bewaking');
       if (error) throw new Error(`alleenlezen_bewaking: ${error.message}`);
 
-      const gemeten = (data ?? []) as { tabel: string; opdracht: string }[];
+      const gemeten = (data ?? []) as { tabel: string; opdracht: string; helft: string }[];
       expect(gemeten.length, 'zonder rijen bewijst deze test niets').toBeGreaterThan(0);
 
-      const uitDeDatabase = [...new Set(gemeten.map((r) => `${r.tabel} ${r.opdracht}`))].sort();
+      // ⚠️⚠️ **Per hélft vergelijken en niet per opdracht.** Hier stond
+      //    `${r.tabel} ${r.opdracht}`, en dat gooide de helft weg. Een
+      //    UPDATE-policy heeft er twee, dus zolang er één `false` bleef veranderde
+      //    deze verzameling niet en zag de toets een opengezette helft niet.
+      //    Gemeten: `approval_withdrawals_update` op `using (true)` bracht
+      //    `alleenlezen_bewaking()` van 20 naar 19 rijen terwijl dit bestand 3/3
+      //    groen bleef.
+      const uitDeDatabase = [
+        ...new Set(gemeten.map((r) => `${r.tabel} ${r.opdracht} ${r.helft}`)),
+      ].sort();
       const uitDeFixtures = doelwitten
-        .flatMap((d) => d.opdrachten.map((o) => `${d.tabel} ${o}`))
+        .flatMap((d) => d.helften.map((h) => `${d.tabel} ${h}`))
         .sort();
 
       expect(uitDeFixtures, [
         'De fixtures en de database lopen uiteen.',
-        'Staat er iets in de database dat hier ontbreekt, dan is er een tabel',
+        'Staat er iets in de database dat hier ontbreekt, dan is er een helft',
         'bijgekomen die de client niet mag schrijven — schrijf er een fixture bij.',
         'Ontbreekt er juist iets in de database, dan is een `false` weggevallen,',
         'en dat is de regressie waar dit bestand voor bestaat.',
@@ -525,7 +590,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
     'geen enkele rij is door de client te verwijderen of te wijzigen',
     async () => {
       for (const d of doelwitten) {
-        for (const opdracht of d.opdrachten) {
+        for (const opdracht of opdrachtenVan(d)) {
           if (opdracht === 'INSERT') continue;
 
           const bron = bouwer(d.poger.db, d.tabel);
@@ -543,7 +608,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
     'geen enkele rij is door de client rechtstreeks in te voegen',
     async () => {
       for (const d of doelwitten) {
-        if (!d.opdrachten.includes('INSERT') || d.nieuweRij === null) continue;
+        if (!opdrachtenVan(d).includes('INSERT') || d.nieuweRij === null) continue;
 
         const tel = async (): Promise<number | null | undefined> => {
           const uit = await bouwer(adminDb(), d.tabel).select('*', { count: 'exact', head: true });

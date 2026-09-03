@@ -55,6 +55,22 @@ import {
  *       werkzame grendel is. **Wordt toetsbaar zodra `weekly_plan_steps_select`
  *       verruimt** — bijvoorbeeld als groepsgenoten ooit elkaars weekplan mogen
  *       inzien; dan is dit de enige regel die schrijven nog tegenhoudt.
+ *
+ * ## ⚠️⚠️ Nagemeten op 03-09-2026 — de acteur was de zwakke
+ *
+ * Deze ronde toetste `weekly_plan_steps_insert` en `goal_interviews_all` tegen een
+ * gebruiker die met de eigenaar níets deelde. Dat is de zwákkere aanvaller: hij
+ * wordt overal twee keer tegengehouden.
+ *
+ * **Gemeten.** Verruim een van beide met `or shares_group_with_goal(g.id)` — wat
+ * iemand erin zet die hem van een leespolicy overneemt — en de héle suite van 843
+ * tests bleef groen. Een buddy kon dus een interviewantwoord op jouw doel
+ * schrijven en een weekplanstap aan jouw doel hangen.
+ *
+ * De reparatie is geen extra test maar een sterkere acteur: `eigenaar` en `ander`
+ * delen nu een groep en `andersGoalId` hangt eraan, dus de eigenaarsconjunct is
+ * het énige slot dat nog werkt. Beide verruimingen maken nu hun eigen test rood.
+ * Dezelfde les als ronde 4 (#174).
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -105,6 +121,34 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
 
     const eigenGoalId = await maakDoel(eigenaar, 'SCHRIJF-EIGEN');
     const andersGoalId = await maakDoel(ander, 'SCHRIJF-ANDER');
+
+    // ⚠️⚠️ **`eigenaar` en `ander` delen een groep, en `andersGoalId` hangt eraan.**
+    //    Dat is er op 03-09 bij gekomen na het nameten van deze ronde, en het is
+    //    de kern van de correctie.
+    //
+    //    Zonder die koppeling was `eigenaar` een volstrékt onbetrokken gebruiker,
+    //    en dan is hij de zwákkere aanvaller: hij wordt overal twee keer
+    //    tegengehouden. Gemeten: verruim `goal_interviews_all.check` of
+    //    `weekly_plan_steps_insert.check` met `or shares_group_with_goal(g.id)` —
+    //    precies wat iemand erin zet die hem van een leespolicy overneemt — en de
+    //    héle suite van 843 tests bleef groen. Een buddy kon dus een
+    //    interviewantwoord op jouw doel schrijven en een weekplanstap aan jouw
+    //    doel hangen, en niets merkte het.
+    //
+    //    Met de koppeling is `eigenaar` een groepsgenoot van `ander`, en dan is de
+    //    eigenaarsconjunct het énige slot. Dezelfde les als ronde 4.
+    const groep = await ander.db.rpc('create_group', { group_name: 'Schrijfgrenzen' });
+    const gd = groep.data as unknown as { ok?: boolean; group?: { id: string; invite_code: string } };
+    if (gd.ok !== true || !gd.group) throw new Error(`groep: ${JSON.stringify(groep.data)}`);
+
+    const mee = await eigenaar.db.rpc('join_group_with_code', { code: gd.group.invite_code });
+    const meeUit = (mee.data ?? {}) as { ok?: boolean; reason?: string };
+    if (meeUit.ok !== true) throw new Error(`meedoen: ${meeUit.reason ?? '?'}`);
+
+    const koppel = await ander.db
+      .from('goal_group_links')
+      .insert({ goal_id: andersGoalId, group_id: gd.group.id });
+    if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
 
     const maakStap = async (goalId: string): Promise<string> => {
       const s = await admin
