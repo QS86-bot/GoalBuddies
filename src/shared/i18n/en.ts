@@ -1252,7 +1252,7 @@ export const en: Record<Sleutel, string> = {
   'mijlpalenblok.coach': 'Let the Goal Coach suggest them',
   'mijlpalenblok.gehaald': 'Done',
   'mijlpalenblok.stap': 'Step {nummer} of {totaal}',
-  'mijlpalenblok.streefdatum': ' · target date {datum}',
+  'mijlpalenblok.streefdatum': 'Target date {datum}',
   'mijlpalenblok.toch_niet': 'Not done after all',
   'mijlpalenblok.zet_gehaald': 'Done',
   'mijlpalenblok.weekstappen': 'Weekly steps',
@@ -1267,6 +1267,8 @@ export const en: Record<Sleutel, string> = {
   'mijlpalenblok.nieuwe_hint':
     'An intermediate result you can point at. For example: first ten thousand words.',
   'mijlpalenblok.nieuwe_voorbeeld': 'First ten thousand words',
+  'mijlpalenblok.omschrijving_hint':
+    'Optional. What does this step involve? You can update it later.',
   'mijlpalenblok.toevoegen': 'Add',
   'mijlpalenblok.annuleren': 'Cancel',
   'mijlpalenblok.toevoegen_knop': 'Add milestone',
