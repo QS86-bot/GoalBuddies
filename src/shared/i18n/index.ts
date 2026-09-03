@@ -34,6 +34,13 @@ const CATALOGI: Readonly<Record<Taal, Readonly<Record<string, string>>>> = { nl,
 
 let huidig: Taal = STANDAARDTAAL;
 
+/**
+ * De volledige locale van het apparaat, of `null` als de gebruiker zelf koos.
+ *
+ * `null` betekent "volg `huidig`" en niet "onbekend" — zie `opmaaktaal()`.
+ */
+let opmaakTag: string | null = null;
+
 /** De taal waarin de app nu praat. */
 export function taal(): Taal {
   return huidig;
@@ -48,7 +55,69 @@ export function taal(): Taal {
  */
 export function zetTaal(nieuw: string | null | undefined): Taal {
   huidig = isTaal(nieuw) ? nieuw : STANDAARDTAAL;
+
+  // ⚠️ Een eigen keuze overstemt de regionale notatie van het toestel. Wie in de
+  //    app Nederlands kiest op een Britse telefoon, wil `31-12-2026` en niet
+  //    `31/12/2026` — dat is dezelfde dag in een andere schrijfwijze, en de keuze
+  //    ging over de taal van de app als geheel. Zie `opmaaktaal()`.
+  opmaakTag = null;
   return huidig;
+}
+
+/**
+ * De volledige taalaanduiding waarin datums en tijden worden opgeschreven.
+ *
+ * ⚠️ **Dit is niet hetzelfde als `taal()`, en dat verschil is het hele punt van
+ *    QS8-221.** De catalogus kent twee talen, `nl` en `en`; de notatie van een
+ *    datum kent er honderden. Een Britse telefoon geeft `en-GB` en hoort
+ *    `31/12/2026` te zien, een Amerikaanse geeft `en-US` en hoort `12/31/2026` te
+ *    zien — en allebei lezen ze dezelfde Engelse catalogus. Zou de opmaak op
+ *    `taal()` leunen, dan krijgt de halve wereld de Amerikaanse volgorde.
+ *
+ * ⚠️ Zodra de gebruiker zélf een taal kiest, wint die (`zetTaal()` wist de tag).
+ *    Dat is acceptatiecriterium 3: wie in de app een taal kiest, ziet de datums
+ *    meebewegen.
+ */
+export function opmaaktaal(): string {
+  return opmaakTag ?? huidig;
+}
+
+/**
+ * De taal én de notatie uit het apparaat halen, in één aanroep.
+ *
+ * ⚠️ **Eén functie en niet twee zetters, zodat de volgorde niet uitmaakt.** Zou
+ *    dit `zetTaal(...)` plus een losse `zetOpmaaktaal(...)` zijn, dan wist de
+ *    eerste wat de tweede net zette — of andersom, afhankelijk van de volgorde
+ *    waarin iemand ze neerzet. Dan is de juistheid een eigenschap van twee regels
+ *    in `_layout.tsx` in plaats van van deze module.
+ *
+ * ⚠️ De notatie komt uit `Intl.DateTimeFormat().resolvedOptions().locale` — de
+ *    locale die de runtime daadwerkelijk gebruikt, mét regio. `voorkeuren` is
+ *    daar bewust níét de bron van: dat lijstje bepaalt welke catalogus past, en
+ *    de eerste voorkeur kan een taal zijn die deze app niet spreekt.
+ */
+export function zetTaalUitApparaat(voorkeuren: readonly string[]): Taal {
+  huidig = taalUitApparaat(voorkeuren);
+  opmaakTag = apparaatOpmaaktaal();
+  return huidig;
+}
+
+/**
+ * De locale waarin dit toestel datums schrijft, of `null`.
+ *
+ * ⚠️ In een `try`, om dezelfde reden als `apparaatVoorkeuren()`: een ontbrekende
+ *    `Intl` mag niet betekenen dat de app niet opstart.
+ *
+ * ⚠️ Dit leest `.locale` en niet `.timeZone`. Dat is geen tijdberekening maar de
+ *    schrijfwijze van het toestel, en de lint-regel maakt datzelfde onderscheid
+ *    sinds hij één keer te breed stond.
+ */
+function apparaatOpmaaktaal(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale || null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -8,7 +8,8 @@ import {
   type Categorie,
   type DoelMetVoortgang,
 } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
+import { toonDatum } from '@/shared/time';
 import {
   AsyncView,
   Body,
@@ -162,7 +163,7 @@ function Formulier({ doel, onKlaar }: FormulierProps) {
 
         {/* ⚠️ Geen datumveld, maar wel uitleg. Zie de kop van dit bestand. */}
         <Subheading>{t('doelbewerken.streefdatum_kop')}</Subheading>
-        <Body muted>{t('doelbewerken.streefdatum_uitleg', { datum: doel.target_date })}</Body>
+        <Body muted>{t('doelbewerken.streefdatum_uitleg', { datum: toonDatum(doel.target_date, opmaaktaal()) })}</Body>
       </Card>
 
       <Card nested>

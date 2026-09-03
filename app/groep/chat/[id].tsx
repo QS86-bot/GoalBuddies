@@ -23,9 +23,9 @@ import {
   type ChatBericht,
   type Groep,
 } from '@/modules/buddies';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { klokTijd } from '@/shared/time';
+import { toonKlokTijd } from '@/shared/time';
 import {
   AsyncView,
   Body,
@@ -347,7 +347,7 @@ export default function GroepChat() {
                     senderName={item.sender_name}
                     senderAvatar={item.sender_avatar}
                     vanMij={item.sender_id === userId}
-                    tijd={klokTijd(item.created_at, tz)}
+                    tijd={toonKlokTijd(item.created_at, tz, opmaaktaal())}
                     {...(item.sender_id === userId
                       ? { onWeghalen: () => void haalWeg(item.id) }
                       : { onMelden: () => setMeldId(item.id) })}

@@ -776,6 +776,7 @@ export const nl = {
   'profiel.herinnering_uitleg': 'Eén rustig zetje per dag, alleen als je nog niets gedaan hebt. Heb je vandaag al een Dagzet geschreven of een week afgerond, dan blijft het stil.',
   'profiel.herinnering_label': 'Herinnering',
   'profiel.herinnering_hoe_laat': 'Hoe laat',
+  'profiel.herinnering_om': 'Nu ingesteld op {tijd}.',
   'profiel.herinnering_hoe_laat_hint': 'In je eigen tijdzone, als 24-uursklok. Bijvoorbeeld 20:00.',
   'profiel.herinnering_toon': 'Toon',
   'profiel.herinnering_toon_hint': 'Streng is directer, nooit verwijtend. De app rekent je nergens op af.',

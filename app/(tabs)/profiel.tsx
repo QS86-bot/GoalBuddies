@@ -31,9 +31,9 @@ import {
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
-import { t, taal, zetTaal, type Taal } from '@/shared/i18n';
+import { opmaaktaal, t, taal, zetTaal, type Taal } from '@/shared/i18n';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
-import { apparaatTijdzone, type Weekday } from '@/shared/time';
+import { apparaatTijdzone, toonTijd, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
@@ -742,6 +742,16 @@ function HerinneringInstelling({
             placeholder="20:00"
             inputMode="numeric"
           />
+          {/*
+            ⚠️ **Het veld blijft `HH:MM` en de regel eronder volgt de klok van het
+               toestel** — QS8-221. Dat is precies de naad die het issue noemt:
+               weergave en opslag mogen niet door elkaar lopen. `20:00` gaat de
+               database in en `8:00 PM` komt er nooit in; wie een 12-uursklok
+               heeft, moet wél kunnen zien wat hij net heeft ingesteld.
+               `tests/beloftes/datumopmaak.test.ts` bewaakt dat een opmaakhelper
+               nooit aan de invoerkant terechtkomt.
+          */}
+          <Caption>{t('profiel.herinnering_om', { tijd: toonTijd(wilTijd, opmaaktaal()) })}</Caption>
           <Choice
             label={t('profiel.herinnering_toon')}
             hint={t('profiel.herinnering_toon_hint')}

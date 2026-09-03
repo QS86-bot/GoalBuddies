@@ -38,6 +38,15 @@ export {
 } from './cycle.ts';
 
 export {
+  toonDatum,
+  toonDatumKort,
+  toonDatumLang,
+  toonKlokTijd,
+  toonMoment,
+  toonTijd,
+} from './opmaak.ts';
+
+export {
   addDays,
   apparaatTijdzone,
   normaliseerZone,
@@ -45,7 +54,6 @@ export {
   daysBetween,
   isGeldigeIsoDatum,
   isGeldigeTijdzone,
-  klokTijd,
   localDateIn,
   toIsoDate,
   weekdagPeildatum,

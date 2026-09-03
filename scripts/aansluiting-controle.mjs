@@ -54,6 +54,11 @@ export const AANSLUITPUNTEN = {
   zetTaal:
     'Zonder aanroep blijft de catalogus op de standaardtaal staan, ongeacht wat ' +
     'er in `profiles.locale` staat — de dode keten van QS8-113, één laag hoger.',
+  zetTaalUitApparaat:
+    'Zonder aanroep start de app op de standaardtaal én op de standaardnotatie: ' +
+    'een Engelse telefoon krijgt Nederlandse teksten, en een Britse ziet ' +
+    '`12/31/2026` waar `31/12/2026` hoort te staan. Dit is de startwaarde die ' +
+    '`zetTaal()` later overstemt zodra `profiles.locale` gevuld is (QS8-221).',
 };
 
 /**

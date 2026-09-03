@@ -11,9 +11,9 @@ import {
   type DoelMetVoortgang,
   type Risico,
 } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
 import { space, useTheme } from '@/shared/theme';
-import { localDateIn, now } from '@/shared/time';
+import { localDateIn, now, toonDatum } from '@/shared/time';
 import {
   AsyncView,
   useAsync,
@@ -213,7 +213,7 @@ function DoelKaart({
         {risico === null ? null : <RisicoBadge stand={risico.stand} />}
 
         <View style={styles.voet}>
-          <Caption>{t('doelen.streefdatum', { datum: doel.target_date ?? '' })}</Caption>
+          <Caption>{t('doelen.streefdatum', { datum: toonDatum(doel.target_date ?? '', opmaaktaal()) })}</Caption>
           {verstreken ? (
             // Rood mag hier: dit is deadline-risico, het enige waar die kleur
             // voor is. Niet voor een gemiste week (domeinregel 7).

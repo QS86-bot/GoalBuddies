@@ -9,11 +9,13 @@ import {
   STANDAARDTAAL,
   t,
   TALEN,
+  opmaaktaal,
   taal,
   taalUitApparaat,
   vergelijkTekst,
   weekdagNaam,
   zetTaal,
+  zetTaalUitApparaat,
 } from './index';
 
 /**
@@ -224,5 +226,53 @@ describe('vergelijkTekst() — sorteren volgt de taal', () => {
 
     expect(inEngels).toEqual(inNederlands);
     expect(inNederlands).toEqual(['appel', 'Boek lezen', 'école', 'Zwemmen']);
+  });
+});
+
+
+/**
+ * Welke taal de opmaak van een datum volgt — QS8-221.
+ *
+ * ⚠️ **`opmaaktaal()` is niet hetzelfde als `taal()`, en dat verschil is het hele
+ *    punt.** De catalogus kent twee talen; de notatie van een datum kent er
+ *    honderden. `en-GB` en `en-US` lezen dezelfde Engelse catalogus en schrijven
+ *    een andere datum.
+ *
+ * ⚠️ Met de hand rood gemaakt: `zetTaal()` de `opmaakTag` níét laten wissen maakt
+ *    "een eigen keuze wint" rood, en `zetTaalUitApparaat()` de tag niet laten
+ *    zetten maakt "de regio van het toestel telt mee" rood.
+ */
+describe('opmaaktaal', () => {
+  it('volgt de gekozen taal zodra de gebruiker zelf kiest', () => {
+    // Acceptatiecriterium 3: wie in de app een taal kiest, ziet de datums
+    // meebewegen.
+    zetTaalUitApparaat(['en-GB']);
+    zetTaal('nl');
+
+    expect(opmaaktaal()).toBe('nl');
+  });
+
+  it('neemt de notatie van het toestel over zolang de gebruiker niets koos', () => {
+    // ⚠️ **De eerste versie van deze test was te slap en de ijking wees dat aan.**
+    //    Hij toetste `opmaaktaal().length >= 2`, en dat blijft waar als
+    //    `zetTaalUitApparaat()` de tag helemaal niet zet: dan staat er `'en'`, en
+    //    krijgt een Britse telefoon de Amerikaanse datumvolgorde. Precies het
+    //    geval waar deze functie voor bestaat, en de test zag het niet.
+    //
+    //    Wat er wél te toetsen valt zonder aan te nemen op welke machine dit
+    //    draait, is de belofte zelf: de notatie is die van de runtime.
+    const vanHetToestel = Intl.DateTimeFormat().resolvedOptions().locale;
+
+    zetTaalUitApparaat(['en-GB']);
+
+    expect(taal()).toBe('en');
+    expect(opmaaktaal()).toBe(vanHetToestel);
+  });
+
+  it('geeft altijd iets bruikbaars, ook zonder toestelinformatie', () => {
+    zetTaalUitApparaat([]);
+
+    // Een lege string zou `Intl.DateTimeFormat('')` opleveren, en dat gooit.
+    expect(opmaaktaal()).not.toBe('');
   });
 });

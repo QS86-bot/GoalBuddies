@@ -73,10 +73,19 @@ import {
   type Risico,
   type Ritme,
 } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
-import { localDateIn, nextCycle, now, type IsoDate, type UserClock } from '@/shared/time';
+import {
+  apparaatTijdzone,
+  localDateIn,
+  nextCycle,
+  now,
+  toonDatum,
+  toonMoment,
+  type IsoDate,
+  type UserClock,
+} from '@/shared/time';
 import {
   AsyncView,
   bevestigingen,
@@ -221,7 +230,7 @@ export default function DoelDetail() {
                   categorie={d.category ?? 'other'}
                   label={categorieLabels()[(d.category ?? 'other') as Categorie]}
                 />
-                <Caption>{t('doelscherm.streefdatum', { datum: d.target_date ?? '' })}</Caption>
+                <Caption>{t('doelscherm.streefdatum', { datum: toonDatum(d.target_date ?? '', opmaaktaal()) })}</Caption>
               </View>
 
               {d.identity_statement ? (
@@ -497,7 +506,7 @@ function DeadlineVerzetten({
           <Card nested>
             <Body>
               {besluit.status === 'approved'
-                ? t('deadline.akkoord', { datum: besluit.new_date })
+                ? t('deadline.akkoord', { datum: toonDatum(besluit.new_date, opmaaktaal()) })
                 : t('deadline.afgewezen')}
             </Body>
             {besluit.decision_note === null ? null : (
@@ -599,6 +608,7 @@ function Beloning({
   readonly bestaand: Commitment | undefined;
   readonly onKlaar: () => void;
 }) {
+  const { profiel } = useProfiel();
   const [tekst, setTekst] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
@@ -616,7 +626,16 @@ function Beloning({
         <Body>{bestaand.body}</Body>
         <Caption>{t('commitment.stand', { titel: stand.titel, uitleg: stand.uitleg })}</Caption>
         <Caption>
-          {t('beloning.vastgelegd_op', { datum: bestaand.confirmed_at.slice(0, 10) })}
+          {/*
+            ⚠️ **In de zone van de lézer en niet in UTC.** Hier stond
+               `confirmed_at.slice(0, 10)`, en dat is de UTC-dag: wie in Los
+               Angeles om 17:00 een commitment vastlegt, zag daar de dag erna
+               staan. Een datum bij een afspraak die een consequentie draagt
+               (domeinregel 5) hoort te kloppen.
+          */}
+          {t('beloning.vastgelegd_op', {
+            datum: toonMoment(bestaand.confirmed_at, profiel?.tz ?? apparaatTijdzone(), opmaaktaal()),
+          })}
         </Caption>
         <Spoor commitmentId={bestaand.id} />
       </Card>
@@ -1395,6 +1414,7 @@ function Coachwoord({ stand }: { readonly stand: Risico['stand'] }) {
  *    zoeken is geen spoor.
  */
 function Spoor({ commitmentId }: { readonly commitmentId: string }) {
+  const { profiel } = useProfiel();
   const [open, setOpen] = useState(false);
 
   const { data, loading, error, herlaad } = useAsync(
@@ -1428,7 +1448,13 @@ function Spoor({ commitmentId }: { readonly commitmentId: string }) {
             {rijen.map((rij) => (
               <View key={rij.id} style={styles.mijlpaal}>
                 <Body>{spoorLabels()[rij.event_type] ?? rij.event_type}</Body>
-                <Caption>{rij.created_at.slice(0, 16).replace('T', ' ')}</Caption>
+                {/*
+                  ⚠️ Hier stond `created_at.slice(0, 16).replace('T', ' ')`: een
+                     ISO-tijdstempel in UTC, dus de verkeerde notatie én het
+                     verkeerde uur. Een auditspoor (domeinregel 5) hoort in de
+                     zone van wie het leest.
+                */}
+                <Caption>{toonMoment(rij.created_at, profiel?.tz ?? apparaatTijdzone(), opmaaktaal())}</Caption>
               </View>
             ))}
           </View>
@@ -1611,7 +1637,7 @@ function Mijlpalen({
                    staart van de zin.
               */}
               {m.target_date === null ? null : (
-                <Caption>{t('mijlpalenblok.streefdatum', { datum: m.target_date })}</Caption>
+                <Caption>{t('mijlpalenblok.streefdatum', { datum: toonDatum(m.target_date, opmaaktaal()) })}</Caption>
               )}
 
               <View style={styles.knoppen}>
@@ -2399,10 +2425,10 @@ function Adempauzes({
             return (
               <View key={p.id} style={styles.pauze}>
                 <Body>
-                  {t('adempauze.week_van', { datum: p.starts_cycle })}
+                  {t('adempauze.week_van', { datum: toonDatum(p.starts_cycle, opmaaktaal()) })}
                   {p.ends_cycle === p.starts_cycle
                     ? ''
-                    : t('adempauze.tot_en_met', { datum: p.ends_cycle })}
+                    : t('adempauze.tot_en_met', { datum: toonDatum(p.ends_cycle, opmaaktaal()) })}
                 </Body>
                 <Caption>
                   {voorbij
@@ -2435,7 +2461,7 @@ function Adempauzes({
             hint={t('adempauze.vanaf_hint')}
             opties={kandidaten.map((c, i) => ({
               waarde: String(i) as '0' | '1',
-              label: t('adempauze.week_van', { datum: c.startDate }),
+              label: t('adempauze.week_van', { datum: toonDatum(c.startDate, opmaaktaal()) }),
             }))}
             waarde={startIndex}
             onKies={setStartIndex}

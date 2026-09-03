@@ -34,7 +34,7 @@ import {
   reportError,
   setErrorSink,
 } from '@/lib/observability';
-import { apparaatVoorkeuren, t, taalUitApparaat, zetTaal } from '@/shared/i18n';
+import { apparaatVoorkeuren, t, zetTaalUitApparaat } from '@/shared/i18n';
 import { ThemeProvider, useTheme } from '@/shared/theme';
 
 /**
@@ -181,7 +181,11 @@ zetPushBron(Platform.OS === 'web' ? maakWebPushBron() : expoPush);
 //    Buiten de component en niet in een effect: dit moet vaststaan vóórdat het
 //    eerste scherm rendert, anders flitst er een Nederlandse regel voorbij bij
 //    iemand die Engels heeft ingesteld.
-zetTaal(taalUitApparaat(apparaatVoorkeuren()));
+// ⚠️ **Eén aanroep en niet twee** — QS8-221. `zetTaalUitApparaat()` zet de taal
+//    én de notatie waarin datums worden geschreven. Los zouden ze elkaar
+//    overschrijven, afhankelijk van de volgorde waarin ze hier staan; dan is de
+//    juistheid een eigenschap van dit bestand in plaats van van de module.
+zetTaalUitApparaat(apparaatVoorkeuren());
 
 function Pushwacht() {
   const { session } = useSession();

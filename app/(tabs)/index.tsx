@@ -47,9 +47,9 @@ import {
   type Mijlpaaltip,
   type Weekdoel,
 } from '@/modules/goals';
-import { t, taal, vergelijkTekst } from '@/shared/i18n';
+import { opmaaktaal, t, taal, vergelijkTekst } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { localDateIn, now, type UserClock } from '@/shared/time';
+import { localDateIn, now, toonDatum, type UserClock } from '@/shared/time';
 import {
   AsyncView,
   bevestigingen,
@@ -356,7 +356,7 @@ export default function Vandaag() {
       title={t('vandaag.titel')}
       eyebrow={
         afTeSluiten
-          ? t('vandaag.eyebrow_week', { datum: afTeSluiten.startDate })
+          ? t('vandaag.eyebrow_week', { datum: toonDatum(afTeSluiten.startDate, opmaaktaal()) })
           : t('vandaag.eyebrow_deze')
       }
     >
@@ -382,7 +382,7 @@ export default function Vandaag() {
         <Card nested>
           <Subheading>{t('vandaag.coulance_titel')}</Subheading>
           <Body muted>
-            {t('vandaag.coulance_tekst', { datum: afTeSluiten.startDate })}
+            {t('vandaag.coulance_tekst', { datum: toonDatum(afTeSluiten.startDate, opmaaktaal()) })}
           </Body>
         </Card>
       ) : null}
@@ -713,7 +713,7 @@ function DoorschuifKaart({
     <Card flat>
       <View style={styles.kop}>
         <Body>{weekdoel.title}</Body>
-        <Caption>{t('dashboard.week_van', { datum: weekdoel.cycle_start_date })}</Caption>
+        <Caption>{t('dashboard.week_van', { datum: toonDatum(weekdoel.cycle_start_date, opmaaktaal()) })}</Caption>
       </View>
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
