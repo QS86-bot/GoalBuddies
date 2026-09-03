@@ -30,7 +30,55 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  * | `schuif_weekdoel_door` | **0 van 858** | ❌ |
  *
  * Dat vier van de zeven wél gevonden worden, is meteen het bewijs dat de sweep
- * werkt. Dit bestand dicht de drie die overbleven.
+ * werkt.
+ *
+ * ## ⚠️⚠️ En de sweep was een greep, geen inventarisatie
+ *
+ * De klasse telt er **twaalf**, niet zeven. De security-reviewer somde hem
+ * mechanisch op — `pg_proc` filteren op `prosecdef`, een schrijfactie op
+ * `goals/weekly_goals/milestones/completions/points_ledger` in `prosrc`, en
+ * `has_function_privilege('authenticated', oid, 'EXECUTE')` — en vond zo een
+ * áchtste gat dat ik niet had gemeten: **`verwijder_weekdoel`, 0 rood van 865**,
+ * door mij nagemeten. De bestaande dekking in `weekpassen.test.ts` roept hem
+ * twee keer aan, beide keren als de eigenaar op zijn eigen doel.
+ *
+ * De vier die geen van ons had gemeten zijn wél bewaakt (`verwijder_doel`,
+ * `herorden_mijlpalen`, `dien_opnieuw_in`) of hebben geen losse poort
+ * (`zet_week_startdag` scopet in de `update` zelf, en daar zegt deze
+ * mutatievorm principieel niets over).
+ *
+ * ⚠️ **Zeven definer-*trigger*functies vallen buiten deze vorm.** Die dragen geen
+ *    eigenaarspoort; hun autorisatie is de policy op de schrijfactie die ze
+ *    aftrapt, en die komt wél langs `rls:dekking`. Dat is iets anders dan "in
+ *    orde": het is "hier meet deze sweep niets".
+ *
+ * Dit bestand dicht de vier gaten: de drie uit mijn sweep plus de achtste.
+ *
+ * ## De takken die ná de poort komen — volledig, want half is misleidend
+ *
+ * | Functie | Vóór de poort | Ná de poort |
+ * | -- | -- | -- |
+ * | `zet_doelstatus` | — | — |
+ * | `zet_streefdatum` | — | `bad_date`, `needs_group_approval`, `recent_ontkoppeld`, en een `{ok:true, changed:false}`-tak die **niets schrijft** |
+ * | `schuif_weekdoel_door` | `ongeldige_cyclus` | `not_missed`, `te_veel_deze_dag` |
+ * | `verwijder_weekdoel` | — | `not_open`, `heeft_voltooiing`, `te_oud` |
+ *
+ * ⚠️ **`recent_ontkoppeld` is de gevaarlijkste voor dit bestand**, en wel omdat
+ *    hij zichzelf kan bewapenen. `noteer_ontkoppeling()` is een `after delete`
+ *    -trigger op `goal_group_links` die `losgekoppeld_op = now()` zet. Zou een
+ *    latere sessie de fixture "vereenvoudigen" door `groepsGoalId` te ontkoppelen
+ *    in plaats van een apart `soloGoalId` aan te houden, dan weigert
+ *    `zet_streefdatum` zeven dagen lang om díe reden.
+ *
+ * ⚠️ **`weekdoelen_over()` is géén sluipende afscherming, en dat is niet de
+ *    intuïtieve lezing.** De teller is op de **aanroeper** gescopeerd
+ *    (`g.owner_id = auth.uid()`), niet op de eigenaar van het weekdoel dat wordt
+ *    doorgeschoven. Een aanvaller heeft dus zijn eigen voorraad over en wordt er
+ *    nooit door tegengehouden.
+ *
+ * Elke weigerassertie hieronder pint daarom de **reden** bij naam. Verschuift een
+ * fixture ooit, dan valt dat op als een verkeerde grendel en niet als een groene
+ * test.
  *
  * ⚠️ **Dekkingsgaten en geen beveiligingsgaten.** De poorten zitten er en ze
  *    werken; wat ontbrak is de test die het merkt als iemand ze weghaalt.
@@ -93,6 +141,16 @@ interface Wereld {
   /** Staat op `missed`, want anders schermt `not_missed` af. */
   gemistWeekId: string;
   eigenGemistWeekId: string;
+  /**
+   * Verse `todo`-weekdoelen voor `verwijder_weekdoel`.
+   *
+   * ⚠️ Die functie heeft ná de eigenaarspoort nog drie takken: `not_open`
+   *    (status moet `todo` zijn), `heeft_voltooiing` en `te_oud` (buiten
+   *    `bedenktijd()`). Een vers aangemaakt weekdoel zonder voltooiing passeert
+   *    alle drie, dus is de eigenaarspoort daar het enige dat nog tegenhoudt.
+   */
+  todoWeekId: string;
+  eigenTodoWeekId: string;
   vandaag: IsoDate;
 }
 
@@ -159,6 +217,27 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
     const gemistWeekId = await maakGemistWeekdoel(groepsGoalId, 'DEFWEEK-GEMIST');
     const eigenGemistWeekId = await maakGemistWeekdoel(soloGoalId, 'DEFWEEK-EIGEN');
 
+    const maakTodoWeekdoel = async (goalId: string, titel: string): Promise<string> => {
+      const r = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: goalId,
+          title: titel,
+          points_ceiling: 2,
+          points_floor: 1,
+          points_miss: -1,
+          cycle_start_date: addDays(vandaag, 14),
+          cycle_index: 3,
+        })
+        .select('id')
+        .single();
+      if (r.error || r.data === null) throw new Error(`weekdoel ${titel}: ${r.error?.message}`);
+      return r.data.id;
+    };
+
+    const todoWeekId = await maakTodoWeekdoel(groepsGoalId, 'DEFWEEK-TODO');
+    const eigenTodoWeekId = await maakTodoWeekdoel(soloGoalId, 'DEFWEEK-TODO-EIGEN');
+
     w = {
       eigenaar,
       groepsgenoot,
@@ -168,6 +247,8 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
       datumGoalId,
       gemistWeekId,
       eigenGemistWeekId,
+      todoWeekId,
+      eigenTodoWeekId,
       vandaag,
     };
   }, SETUP_TIMEOUT);
@@ -247,6 +328,15 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           .eq('id', w.soloGoalId)
           .single();
 
+        // ⚠️ **Zonder dit anker bewijst de rijcontrole hieronder niets.**
+        //    `zet_streefdatum` geeft `not_owner` op twee gronden:
+        //    `g.id is null or g.owner_id <> auth.uid()`. Bestaat het doel niet,
+        //    dan is `voor` én `na` `undefined` en slaagt de vergelijking — een
+        //    groene test die de poort nooit geraakt heeft. Gevonden door de
+        //    security-reviewer; de andere twee gevallen hebben hun anker al
+        //    (de must-see-test respectievelijk de statuscontrole aan het eind).
+        expect(voor.data, 'soloGoalId bestaat niet — deze test raakt de poort niet').not.toBeNull();
+
         const poging = await w.groepsgenoot.db.rpc('zet_streefdatum', {
           p_goal_id: w.soloGoalId,
           p_date: addDays(w.vandaag, 365),
@@ -298,6 +388,60 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
   });
 
   // ---------------------------------------------------------------------------
+  describe('verwijder_weekdoel — je wist het weekdoel van een ander niet', () => {
+    /**
+     * ⚠️⚠️ **Dit is de achtste, en hij zat niet in mijn eigen sweep.** Die mat
+     *    zeven functies; de klasse telt er twaalf. Gevonden door de
+     *    security-reviewer met een mechanische opsomming, en daarna zelf
+     *    nagemeten: eigenaarspoort weg → **0 rood van 865**. De bestaande dekking
+     *    in `weekpassen.test.ts` roept hem twee keer aan, beide keren als de
+     *    eigenaar op zijn eigen doel — er was nooit een niet-eigenaar in beeld.
+     *
+     *    Het gevaar: verruimt iemand die poort, dan wist een vreemde jouw
+     *    `todo`-weekdoel binnen de bedenktijd. Dat is de A40-route, gericht op
+     *    andermans week in plaats van je eigen.
+     */
+    it(
+      'een groepsgenoot krijgt not_owner en het weekdoel blijft staan',
+      async () => {
+        const poging = await w.groepsgenoot.db.rpc('verwijder_weekdoel', {
+          p_weekly_goal_id: w.todoWeekId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        expect(uitslag(poging.data).ok, 'dit hoort geweigerd te worden').toBe(false);
+        expect(
+          uitslag(poging.data).reason,
+          'staat hier `not_open`, `heeft_voltooiing` of `te_oud`, dan vangt een ' +
+            'latere tak de aanvaller op en toetst deze test de verkeerde poort',
+        ).toBe('not_owner');
+
+        const na = await adminDb().from('weekly_goals').select('id').eq('id', w.todoWeekId);
+        expect(na.data ?? [], 'het weekdoel is alsnog verwijderd').toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar wist zijn eigen verse weekdoel wél',
+      async () => {
+        const poging = await w.eigenaar.db.rpc('verwijder_weekdoel', {
+          p_weekly_goal_id: w.eigenTodoWeekId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen weekdoel wissen hoort te lukken — kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        const na = await adminDb().from('weekly_goals').select('id').eq('id', w.eigenTodoWeekId);
+        expect(na.data ?? [], 'het weekdoel staat er nog').toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // ---------------------------------------------------------------------------
   describe('schuif_weekdoel_door — je schuift het weekdoel van een ander niet door', () => {
     it(
       'een groepsgenoot krijgt not_owner en er komt geen weekdoel bij',
@@ -343,9 +487,10 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
     it(
       'de eigenaar schuift zijn eigen gemiste weekdoel wél door',
       async () => {
+        const nieuweStart = addDays(w.vandaag, 7);
         const poging = await w.eigenaar.db.rpc('schuif_weekdoel_door', {
           p_weekly_goal_id: w.eigenGemistWeekId,
-          p_cycle_start_date: addDays(w.vandaag, 7),
+          p_cycle_start_date: nieuweStart,
           p_cycle_index: 2,
         });
         if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
@@ -353,6 +498,31 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           uitslag(poging.data).ok,
           `je eigen weekdoel doorschuiven hoort te lukken — kreeg ${uitslag(poging.data).reason}`,
         ).toBe(true);
+
+        // ⚠️⚠️ **`ok:true` alleen is hier geen bewijs, en dat is gemeten.** Deze
+        //    helft toetste eerst alleen de JSON-envelop. Zet je de `update` en de
+        //    doelcyclus van de functie stuk — hij schuift dan niets door en
+        //    markeert niets — dan bleef hij groen. De twee andere must-allows
+        //    lazen hun rij wél terug en werden bij dezelfde soort mutatie rood;
+        //    deze was de uitzondering. Gevonden door de security-reviewer.
+        //
+        //    Het verschil telt in déze familie extra: `zet_streefdatum` heeft een
+        //    tak die `{ok: true, changed: false}` teruggeeft zónder te schrijven.
+        //    `ok:true` en "de rij is veranderd" zijn hier dus niet hetzelfde ding.
+        const oud = await adminDb()
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', w.eigenGemistWeekId)
+          .single();
+        expect(oud.data?.status, 'het oude weekdoel is niet op `carried` gezet').toBe('carried');
+
+        const nieuw = await adminDb()
+          .from('weekly_goals')
+          .select('cycle_index')
+          .eq('goal_id', w.soloGoalId)
+          .eq('cycle_start_date', nieuweStart)
+          .single();
+        expect(nieuw.data?.cycle_index, 'er staat geen doorgeschoven weekdoel in de nieuwe cyclus').toBe(2);
       },
       TEST_TIMEOUT,
     );
