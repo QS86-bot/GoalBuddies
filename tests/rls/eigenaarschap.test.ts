@@ -108,24 +108,58 @@ import {
  *    is de les van ronde 2, waar de eigenaarstak stilletjes door de groepstak
  *    gedekt werd omdat de eigenaar zelf ook lid was.
  *
- * ## Geijkt — acht mutaties, elk apart
+ * ## ⚠️⚠️ De gevaarlijke acteur is de buddy, niet de vreemde
+ *
+ * Dit stond er in de eerste versie **niet**, en de security-reviewer ving het.
+ * Ik heb het daarna zelf nagemeten voordat ik het verwerkte.
+ *
+ * Een vreemde wordt overal twee keer tegengehouden: de leespolicy laat hem de rij
+ * niet eens zien, én de schrijfpolicy weigert. Hij is dus de zwákkere acteur. De
+ * groepsgenoot ziet je doel, je mijlpaal en je voltooiing wél — voor hém is de
+ * schrijfpolicy het énige slot. Bij `goals_update` en `weekly_goals_update` was
+ * die les toegepast; bij `milestones_write` en `completions_insert` niet.
+ *
+ * **Gemeten**, door beide policies te verruimen met `or shares_group_with_goal(…)`
+ * — precies wat iemand erin zet die hem van de leespolicy overneemt:
+ *
+ * | Verruimd | Uitslag vóór de reparatie |
+ * | -- | -- |
+ * | `milestones_write` | 21/21 groen — een buddy mag je mijlpaal wissen en verplaatsen |
+ * | `completions_insert` | 21/21 groen — een buddy boekt een voltooiing op jouw weekdoel |
+ *
+ * Dat tweede is geen schoonheidsfoutje: `mark_weekly_goal_pending()` zet dan jóuw
+ * weekdoel op `pending`, `meld_voltooiing()` plaatst een systeembericht in de
+ * groep, en `completions_active_uniq` blokkeert daarna jouw eigen voltooiing. Het
+ * raakt domeinregel 3 en 6.
+ *
+ * ## Geijkt — tien mutaties, elk apart
  *
  * | # | Open gezet | Rood |
  * | -- | -- | -- |
  * | 1 | `goals_insert.check` | het doel op andermans naam |
- * | 2 | `completions_insert.check` | beide conjuncten (user_id én weekdoel) |
+ * | 2 | `completions_insert.check` | beide conjuncten, plus de groepsgenoot |
  * | 3 | `completions_select.using` | de vreemde ziet voltooiingen |
  * | 4 | `milestones_select.using` | de vreemde ziet mijlpalen |
- * | 5 | `milestones_write.using` | de twee `using:`-tests, plus de leestest — `for all` betekent dat deze helft óók SELECT stuurt |
- * | 6 | `milestones_write.check` | alleen de INSERT-test |
+ * | 5 | `milestones_write.using` | de twee `using:`-tests, de twee groepsgenoot-tests, plus de leestest — `for all` betekent dat deze helft óók SELECT stuurt |
+ * | 6 | `milestones_write.check` | de twee INSERT-tests |
  * | 7 | `goals_update` — **beide** | de groepsgenoot hernoemt het doel |
  * | 8 | `weekly_goals_update` — **beide** | de groepsgenoot hernoemt het weekdoel |
+ * | 9 | `milestones_write` verruimd naar groepsgenoten | de drie buddy-tests |
+ * | 10 | `completions_insert` verruimd naar groepsgenoten | de buddy-voltooiing |
  *
  * Bij 7 en 8 is elke helft ook los open gezet: **nul rood**, in beide richtingen.
  * Dat is de meting achter de bewering hierboven dat die helften elkaar dekken —
  * niet een redenering maar vier extra runs.
  *
- * ⚠️ Na afloop is het schema **opnieuw opgebouwd** en de suite opnieuw gedraaid.
+ * ⚠️ **En één mutatie op de gránt in plaats van op een policy**, want twee
+ *    weigertests stonden in zijn schaduw: `revoke insert, delete on milestones
+ *    from authenticated` geeft `permission denied for table milestones`, en dat is
+ *    óók SQLSTATE 42501. Elke weigertest bleef daarmee groen terwijl de eigenaar
+ *    zelf niets meer kon. De twee must-allow-tests eronder worden nu rood — en tot
+ *    deze ronde ging in de héle RLS-suite élke geslaagde mijlpaal-INSERT en
+ *    -DELETE via `adminDb()`, dus er was geen enkel anker.
+ *
+ * ⚠️ Na de ijking is het schema **opnieuw opgebouwd** en alles opnieuw gedraaid.
  *    Een teruggezette mutatie is geen gemeten schema; dat heeft deze sessie al
  *    twee valse uitslagen gekost.
  */
@@ -146,8 +180,24 @@ interface Wereld {
   soloGoalId: string;
   /** Het doel van de vreemde — nodig om een mijlpaal naartoe te kunnen stelen. */
   vreemdGoalId: string;
+  /** Idem voor de groepsgenoot: een `check`-geldige bestemming om naartoe te trekken. */
+  groepsgenootGoalId: string;
   groepsWeekId: string;
   soloWeekId: string;
+  /**
+   * Weekdoelen zónder actieve voltooiing.
+   *
+   * ⚠️ **`completions_active_uniq` is `unique (weekly_goal_id) where superseded_by
+   *    is null`.** Richt je een weigertest op een weekdoel waar al een voltooiing
+   *    op staat, dan weigert bij een opengezette policy niet de policy maar die
+   *    index — met `23505`. Gemeten: policy open plus een bezet weekdoel geeft
+   *    `23505`, policy open plus een vrij weekdoel geeft `INSERT 0 1`. De eerste
+   *    versie van dit bestand mat dus de index en niet de policy.
+   */
+  vrijSoloWeek1: string;
+  vrijSoloWeek2: string;
+  vrijSoloWeek3: string;
+  vrijGroepsWeekId: string;
   groepsCompletionId: string;
   soloCompletionId: string;
   groepsMijlpaalId: string;
@@ -195,6 +245,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
     const groepsGoalId = await maakDoel(eigenaar, 'EIG-GROEP');
     const soloGoalId = await maakDoel(eigenaar, 'EIG-SOLO');
     const vreemdGoalId = await maakDoel(vreemde, 'EIG-VREEMD');
+    const groepsgenootGoalId = await maakDoel(groepsgenoot, 'EIG-GENOOT');
 
     const koppel = await eigenaar.db
       .from('goal_group_links')
@@ -221,6 +272,10 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
 
     const groepsWeekId = await maakWeek(groepsGoalId, 'EIGWEEK-GROEP');
     const soloWeekId = await maakWeek(soloGoalId, 'EIGWEEK-SOLO');
+    const vrijSoloWeek1 = await maakWeek(soloGoalId, 'EIGWEEK-VRIJ-1');
+    const vrijSoloWeek2 = await maakWeek(soloGoalId, 'EIGWEEK-VRIJ-2');
+    const vrijSoloWeek3 = await maakWeek(soloGoalId, 'EIGWEEK-VRIJ-3');
+    const vrijGroepsWeekId = await maakWeek(groepsGoalId, 'EIGWEEK-GROEP-VRIJ');
 
     const maakVoltooiing = async (weekId: string): Promise<string> => {
       const r = await eigenaar.db
@@ -261,8 +316,13 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
       groepsGoalId,
       soloGoalId,
       vreemdGoalId,
+      groepsgenootGoalId,
       groepsWeekId,
       soloWeekId,
+      vrijSoloWeek1,
+      vrijSoloWeek2,
+      vrijSoloWeek3,
+      vrijGroepsWeekId,
       groepsCompletionId,
       soloCompletionId,
       groepsMijlpaalId,
@@ -293,6 +353,17 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
   const rij = (tabel: 'goals' | 'weekly_goals' | 'milestones', id: string) => () =>
     adminDb().from(tabel).select('*').eq('id', id).maybeSingle();
 
+  /** Er staat geen voltooiing op dit weekdoel — gelezen buiten elke policy om. */
+  async function geenVoltooiingOp(weeklyGoalId: string): Promise<void> {
+    const r = await adminDb().from('completions').select('id').eq('weekly_goal_id', weeklyGoalId);
+    expect(
+      r.data ?? [],
+      'de voltooiing is alsnog geland — een weigering die tóch schrijft is erger ' +
+        'dan geen weigering, want dan staat de test er als bewijs voor een slot ' +
+        'dat niets deed',
+    ).toHaveLength(0);
+  }
+
   /**
    * ⚠️ **`milestones_goal_order_uniq` eist een eigen `order_index` per doel.**
    *    Deelden de wegwerprijen er één, dan ketste de tweede af op die index — en
@@ -313,15 +384,18 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
    *    Gemeten: dat gebeurde hier twee keer, en het maakte mutatie 5
    *    onleesbaar.
    */
-  async function wegwerpMijlpaal(titel: string): Promise<string> {
+  async function wegwerpMijlpaalOp(goalId: string, titel: string): Promise<string> {
     const r = await adminDb()
       .from('milestones')
-      .insert({ goal_id: w.soloGoalId, title: titel, order_index: volgendeIndex(), status: 'todo' })
+      .insert({ goal_id: goalId, title: titel, order_index: volgendeIndex(), status: 'todo' })
       .select('id')
       .single();
     if (r.error || r.data === null) throw new Error(`wegwerpmijlpaal: ${r.error?.message}`);
     return r.data.id;
   }
+
+  const wegwerpMijlpaal = (titel: string): Promise<string> =>
+    wegwerpMijlpaalOp(w.soloGoalId, titel);
 
   // ---------------------------------------------------------------------------
   describe('goals_insert (check) — een doel staat op jouw naam of het bestaat niet', () => {
@@ -344,6 +418,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
         const gelekt = await adminDb()
           .from('goals')
           .select('id')
+          .eq('owner_id', w.eigenaar.id)
           .eq('title', 'GESTOLEN DOEL');
         expect(gelekt.data ?? [], 'het doel is alsnog aangemaakt').toHaveLength(0);
       },
@@ -366,6 +441,20 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
 
   // ---------------------------------------------------------------------------
   describe('completions_insert (check) — twee conjuncten, elk apart', () => {
+    /**
+     * ⚠️ **Alle drie de weigertests staan op een weekdoel zónder voltooiing.**
+     *    Zie `vrijSoloWeek*` in `Wereld`: met een bezet weekdoel ketst een
+     *    opengezette policy af op `completions_active_uniq` en meet deze test de
+     *    unieke index in plaats van de policy.
+     *
+     * ⚠️ **En op een solodoel, niet op het groepsdoel** — behalve waar de
+     *    groepsgenoot de acteur is. `enforce_evidence_policy()` is `before insert`
+     *    en raist `23514`, en dat staat ín `WEIGERCODES`. Op een doel zonder
+     *    groepskoppeling is de bewijseis leeg en vuurt hij niet. Verplaats je een
+     *    van deze tests ooit naar een gekoppeld doel zonder notitie mee te sturen,
+     *    dan weigert die trigger en niet de policy — en de test is groen om de
+     *    verkeerde reden.
+     */
     it(
       'je kunt geen voltooiing op naam van een ander boeken',
       async () => {
@@ -374,7 +463,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
         await insertMagNiet(
           () =>
             w.eigenaar.db.from('completions').insert({
-              weekly_goal_id: w.soloWeekId,
+              weekly_goal_id: w.vrijSoloWeek1,
               user_id: w.vreemde.id,
               achieved_level: 'ceiling',
               note: 'niet van mij',
@@ -382,19 +471,20 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
             }),
           'een voltooiing met andermans user_id',
         );
+        await geenVoltooiingOp(w.vrijSoloWeek1);
       },
       TEST_TIMEOUT,
     );
 
     it(
-      'je kunt geen voltooiing hangen aan het weekdoel van een ander',
+      'een vreemde hangt geen voltooiing aan het weekdoel van een ander',
       async () => {
         // `user_id` is de vreemde zélf, dus de eerste conjunct is tevreden.
         // Alleen "dit weekdoel hangt aan mijn doel" kan dit nog tegenhouden.
         await insertMagNiet(
           () =>
             w.vreemde.db.from('completions').insert({
-              weekly_goal_id: w.soloWeekId,
+              weekly_goal_id: w.vrijSoloWeek2,
               user_id: w.vreemde.id,
               achieved_level: 'ceiling',
               note: 'niet mijn week',
@@ -402,12 +492,80 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
             }),
           'een voltooiing op andermans weekdoel',
         );
+        await geenVoltooiingOp(w.vrijSoloWeek2);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot ziet het vrije weekdoel — anders bewaakt de test hieronder niets',
+      async () => {
+        const { data } = await w.groepsgenoot.db
+          .from('weekly_goals')
+          .select('id')
+          .eq('id', w.vrijGroepsWeekId);
+        expect(
+          data ?? [],
+          'de groepsgenoot ziet dit weekdoel niet, dus de insert hieronder zegt ' +
+            'niets over completions_insert',
+        ).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot hangt geen voltooiing aan het weekdoel van een ander',
+      async () => {
+        // ⚠️⚠️ **Dit is de test die er in de eerste versie niet stond, en het is
+        //    de enige die de aanvaller toetst die ertoe doet.** De vreemde wordt
+        //    twee keer tegengehouden — hij ziet het weekdoel niet eens. De
+        //    groepsgenoot ziet het wél (de test hierboven bewijst dat), dus voor
+        //    hém is `completions_insert` het énige slot.
+        //
+        //    Gemeten: verruim je de tweede conjunct met
+        //    `or shares_group_with_goal(g.id)`, dan boekt een buddy een voltooiing
+        //    op jóuw weekdoel. `mark_weekly_goal_pending()` zet daarna jouw
+        //    weekdoel op `pending`, `meld_voltooiing()` plaatst een systeembericht
+        //    in de groep, en `completions_active_uniq` blokkeert vervolgens jouw
+        //    eigen voltooiing. Zonder deze test bleven alle 833 tests groen.
+        await insertMagNiet(
+          () =>
+            w.groepsgenoot.db.from('completions').insert({
+              weekly_goal_id: w.vrijGroepsWeekId,
+              user_id: w.groepsgenoot.id,
+              achieved_level: 'ceiling',
+              note: 'niet mijn week',
+              cycle_start_date: w.vandaag,
+            }),
+          'een voltooiing van een groepsgenoot op jouw weekdoel',
+        );
+        await geenVoltooiingOp(w.vrijGroepsWeekId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar boekt wél een voltooiing op zijn eigen weekdoel',
+      async () => {
+        // ⚠️ **Deze must-allow stond alleen in `beforeAll`, en dat is niet
+        //    hetzelfde.** Wordt de policy te streng, dan valt het bestand daar om
+        //    als *error* en niet als gefaalde assertie — en volgens de dossierrij
+        //    over `rls-dekking.mjs` telt een omgevallen bestand niet als meting.
+        //    De positieve helft van de strengste policy hier hoort dus een eigen
+        //    test te zijn.
+        const { error } = await w.eigenaar.db.from('completions').insert({
+          weekly_goal_id: w.vrijSoloWeek3,
+          user_id: w.eigenaar.id,
+          achieved_level: 'ceiling',
+          note: 'af',
+          cycle_start_date: w.vandaag,
+        });
+        expect(error, 'je eigen voltooiing boeken hoort te lukken').toBeNull();
       },
       TEST_TIMEOUT,
     );
   });
 
-  // ---------------------------------------------------------------------------
   describe('completions_select (using) — wie mag een voltooiing lezen', () => {
     it(
       'de eigenaar ziet zijn voltooiing op een doel dat aan géén groep hangt',
@@ -514,9 +672,15 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
     it(
       'using: een vreemde trekt andermans mijlpaal niet naar zijn eigen doel',
       async () => {
-        // ⚠️ De tweede route naar dezelfde helft, en de scherpste: de nieuwe rij
-        //    zou de `check` glansrijk halen — `goal_id` wijst dan naar een doel
-        //    van de vreemde zélf. Alleen `using` houdt dit nog tegen.
+        // ⚠️ De tweede route naar dezelfde helft: de nieuwe rij zou de `check`
+        //    glansrijk halen — `goal_id` wijst dan naar een doel van de vreemde
+        //    zélf.
+        //
+        // ⚠️ **Voor een vréemde zijn het er twee en niet één:** `milestones_write`
+        //    is `for all`, dus zijn `using` stuurt óók het lezen, en de rij is voor
+        //    hem sowieso onzichtbaar. Die twee zijn van buitenaf niet te scheiden.
+        //    De variant met de groepsgenoot hieronder ís één slot, en dáár is deze
+        //    zin onverkort waar.
         const id = await wegwerpMijlpaal('EIGMIJL-WEGWERP-TREK');
 
         await magNietLanden(
@@ -548,6 +712,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
         const gelekt = await adminDb()
           .from('milestones')
           .select('id')
+          .eq('goal_id', w.soloGoalId)
           .eq('title', 'INGESLOPEN MIJLPAAL');
         expect(gelekt.data ?? [], 'de mijlpaal is alsnog aangemaakt').toHaveLength(0);
       },
@@ -577,6 +742,122 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
           () => w.eigenaar.db.from('milestones').update({ goal_id: w.vreemdGoalId }).eq('id', id),
           rij('milestones', id),
         );
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot ziet de mijlpaal — anders bewaken de drie tests hieronder niets',
+      async () => {
+        const { data } = await w.groepsgenoot.db
+          .from('milestones')
+          .select('id')
+          .eq('id', w.groepsMijlpaalId);
+        expect(
+          data ?? [],
+          'de groepsgenoot ziet de mijlpaal niet, dus de drie tests hieronder ' +
+            'zeggen niets over milestones_write',
+        ).toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **De drie tests hieronder stonden er in de eerste versie niet, en ze
+     *    zijn de enige die de aanvaller toetsen die ertoe doet.** De vreemde wordt
+     *    twee keer tegengehouden: `milestones_select` laat hem de rij niet zien én
+     *    `milestones_write` weigert. De groepsgenoot ziet de mijlpaal wél, dus
+     *    voor hém is `milestones_write` het énige slot.
+     *
+     *    Gemeten: verruim `milestones_write` naar
+     *    `owner_id = auth.uid() or shares_group_with_goal(g.id)` — precies wat
+     *    iemand erin zet die hem van `milestones_select` overneemt — en dan mag
+     *    een buddy jouw mijlpaal wissen of onder zijn eigen doel hangen. Zonder
+     *    deze drie bleef de héle suite groen.
+     */
+    it(
+      'een groepsgenoot wist jouw mijlpaal niet',
+      async () => {
+        const id = await wegwerpMijlpaalOp(w.groepsGoalId, 'EIGMIJL-GROEP-WIS');
+        await magNietLanden(
+          () => w.groepsgenoot.db.from('milestones').delete().eq('id', id),
+          rij('milestones', id),
+        );
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot trekt jouw mijlpaal niet naar zijn eigen doel',
+      async () => {
+        const id = await wegwerpMijlpaalOp(w.groepsGoalId, 'EIGMIJL-GROEP-TREK');
+        await magNietLanden(
+          () =>
+            w.groepsgenoot.db
+              .from('milestones')
+              .update({ goal_id: w.groepsgenootGoalId })
+              .eq('id', id),
+          rij('milestones', id),
+        );
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot hangt geen mijlpaal aan jouw doel',
+      async () => {
+        await insertMagNiet(
+          () =>
+            w.groepsgenoot.db.from('milestones').insert({
+              goal_id: w.groepsGoalId,
+              title: 'INGESLOPEN DOOR BUDDY',
+              order_index: volgendeIndex(),
+              status: 'todo',
+            }),
+          'een mijlpaal van een groepsgenoot op jouw doel',
+        );
+
+        const gelekt = await adminDb()
+          .from('milestones')
+          .select('id')
+          .eq('goal_id', w.groepsGoalId)
+          .eq('title', 'INGESLOPEN DOOR BUDDY');
+        expect(gelekt.data ?? [], 'de mijlpaal is alsnog aangemaakt').toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Zonder deze twee staan de weigertests hierboven in de schaduw van de
+     *    tábelgrant.** `revoke insert, delete on milestones from authenticated`
+     *    geeft `permission denied for table milestones`, en dat is óók SQLSTATE
+     *    42501 — dus elke weigertest blijft groen terwijl de eigenaar zelf niets
+     *    meer kan. Gemeten. In de hele RLS-suite ging tot nu toe élke geslaagde
+     *    mijlpaal-INSERT en -DELETE via `adminDb()`; er was dus geen enkel anker.
+     */
+    it(
+      'de eigenaar maakt wél een mijlpaal op zijn eigen doel',
+      async () => {
+        const { error } = await w.eigenaar.db.from('milestones').insert({
+          goal_id: w.soloGoalId,
+          title: 'EIGEN MIJLPAAL',
+          order_index: volgendeIndex(),
+          status: 'todo',
+        });
+        expect(error, 'je eigen mijlpaal aanmaken hoort te lukken').toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar wist wél zijn eigen mijlpaal',
+      async () => {
+        const id = await wegwerpMijlpaal('EIGMIJL-EIGEN-WIS');
+        const { error } = await w.eigenaar.db.from('milestones').delete().eq('id', id);
+        expect(error, 'je eigen mijlpaal wissen hoort te lukken').toBeNull();
+
+        const na = await adminDb().from('milestones').select('id').eq('id', id);
+        expect(na.data ?? [], 'de mijlpaal staat er nog').toHaveLength(0);
       },
       TEST_TIMEOUT,
     );
