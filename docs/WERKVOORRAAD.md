@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 03-09-2026 (na QS8-266, QS8-202 en QS8-196; daarvóór QS8-261 en
+**Laatst bijgewerkt:** 03-09-2026 (na QS8-223, QS8-266, QS8-202 en QS8-196; daarvóór QS8-261 en
 het toepassen van `0139` t/m `0149` op productie in twee rondes)
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
@@ -55,10 +55,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **878 geslaagd, 1 overgeslagen** (03-09, na QS8-266, QS8-202 en
    QS8-196; daarvóór QS8-213, QS8-208, QS8-221, QS8-218 en QS8-219). De hele
-   suite geeft met de stack **3121 geslaagd en 1 overgeslagen** over
-   219 bestanden.
-   Typecheck, lint en alle 32 controlescripts groen;
-   `npm run poort` meldt 36 stappen.
+   suite geeft met de stack **3148 geslaagd en 1 overgeslagen** over
+   221 bestanden.
+   Typecheck, lint en alle 33 controlescripts groen;
+   `npm run poort` meldt 37 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
    apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is

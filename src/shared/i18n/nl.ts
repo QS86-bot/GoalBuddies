@@ -383,6 +383,20 @@ export const nl = {
   'mijlpalen.geen': 'Nog geen mijlpalen',
   'mijlpalen.voortgang': '{done} van {total} mijlpalen',
 
+  // ---------------------------------------------------------------------------
+  // De datumkiezer — QS8-223
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Geen enkele sleutel hier draagt een datumnotatie. Wat de knop toont komt
+  //    uit `toonDatum()` en wat de kop toont uit `toonMaand()`; een voorbeeld als
+  //    "JJJJ-MM-DD" in de tekst zou precies de eis terugzetten die dit component
+  //    weghaalt.
+  'datumkeuze.kies': 'Kies een datum',
+  'datumkeuze.niets_gekozen': 'nog geen datum',
+  'datumkeuze.wissen': 'Geen datum',
+  'datumkeuze.vorige_maand': 'Vorige maand',
+  'datumkeuze.volgende_maand': 'Volgende maand',
+
   'weekstart.label': 'Mijn week begint op',
   'weekstart.hint':
     'Bepaalt wanneer je weekdoelen opnieuw beginnen en wanneer je punten tellen. ' +

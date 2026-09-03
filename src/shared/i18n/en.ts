@@ -244,6 +244,12 @@ export const en: Record<Sleutel, string> = {
   'mijlpalen.geen': 'No milestones yet',
   'mijlpalen.voortgang': '{done} of {total} milestones',
 
+  'datumkeuze.kies': 'Pick a date',
+  'datumkeuze.niets_gekozen': 'no date yet',
+  'datumkeuze.wissen': 'No date',
+  'datumkeuze.vorige_maand': 'Previous month',
+  'datumkeuze.volgende_maand': 'Next month',
+
   'weekstart.label': 'My week starts on',
   'weekstart.hint':
     'Decides when your weekly goals start over and when your points count. ' +

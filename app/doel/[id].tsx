@@ -77,6 +77,7 @@ import { opmaaktaal, t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 import {
+  addDays,
   apparaatTijdzone,
   localDateIn,
   nextCycle,
@@ -85,6 +86,7 @@ import {
   toonMoment,
   type IsoDate,
   type UserClock,
+  type Weekday,
 } from '@/shared/time';
 import {
   AsyncView,
@@ -96,6 +98,7 @@ import {
   CategorieMerk,
   Card,
   Choice,
+  DatumKeuze,
   Field,
   HULPVRAAG_MAX,
   hulpvraagVoorstel,
@@ -261,10 +264,11 @@ export default function DoelDetail() {
               onKlaar={herlaad}
             />
 
-            {vandaag ? (
+            {vandaag && klok ? (
               <DeadlineVerzetten
                 doel={d}
                 vandaag={vandaag}
+                startDag={klok.weekStartDay}
                 groepen={doelGroepen}
                 verzoek={verzoek}
                 besluit={besluit}
@@ -367,6 +371,7 @@ export default function DoelDetail() {
 function DeadlineVerzetten({
   doel,
   vandaag,
+  startDag,
   groepen,
   verzoek,
   besluit,
@@ -374,6 +379,8 @@ function DeadlineVerzetten({
 }: {
   readonly doel: DoelMetVoortgang;
   readonly vandaag: IsoDate;
+  /** De week-startdag uit het profiel — `DatumKeuze` verzint hem nooit zelf. */
+  readonly startDag: Weekday;
   readonly groepen: readonly DoelGroep[];
   readonly verzoek: DeadlineVerzoek | null;
   readonly besluit: DeadlineVerzoek | null;
@@ -525,11 +532,19 @@ function DeadlineVerzetten({
   return (
     <Card nested>
       <Subheading>{t('deadline.nieuwe_datum')}</Subheading>
-      <Field
+      {/*
+        ⚠️ Een kalender en geen tekstveld — QS8-223. `min` is morgen en niet
+           vandaag: `zetStreefdatum()` eist een datum in de toekomst, en die
+           grens hoort een dag te zijn die je niet kunt aantikken in plaats van
+           een melding achteraf.
+      */}
+      <DatumKeuze
         label={t('deadline.datum_label')}
-        value={datum}
-        onChangeText={setDatum}
-        placeholder="2027-03-01"
+        waarde={datum}
+        onKies={setDatum}
+        startDag={startDag}
+        vandaag={vandaag}
+        min={addDays(vandaag, 1)}
       />
 
       {kiesbaar ? (
@@ -1484,6 +1499,9 @@ function Mijlpalen({
   readonly onCoach: () => void;
 }) {
   const router = useRouter();
+  const { profiel } = useProfiel();
+  const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
+  const startDag = profiel ? (profiel.week_start_day as Weekday) : null;
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
   /**
@@ -1740,10 +1758,9 @@ function Mijlpalen({
                tonen, is hoe je een veld kwijtraakt bij de eerste correctie —
                precies wat de kop van dat component beschrijft.
 
-            ⚠️ Een gewoon veld en geen kalender, ondanks wat QS8-225 voorstelt:
-               `Kalender` in `shared/ui` is een leesbare heatmap voor het
-               overzicht en geen datumkiezer. Er ís er geen; er een bouwen is
-               eigen werk en niet iets om hier langs de zijlijn te doen.
+            ⚠️ **Hier stond dat er geen datumkiezer wás.** Dat klopte tot
+               03-09: `Kalender` in `shared/ui` is een leesbare heatmap voor het
+               overzicht en geen kiezer. `DatumKeuze` is die kiezer wél — QS8-223.
           */}
           <Field
             label={t('mijlpaalbewerken.omschrijving')}
@@ -1754,15 +1771,32 @@ function Mijlpalen({
             numberOfLines={3}
           />
 
-          <Field
-            label={t('mijlpaalbewerken.streefdatum')}
-            hint={t('mijlpaalbewerken.streefdatum_hint')}
-            value={datum}
-            onChangeText={setDatum}
-            placeholder="2027-03-31"
-            autoCapitalize="none"
-            inputMode="numeric"
-          />
+          {/*
+            ⚠️ **Een kalender en geen tekstveld — QS8-223.** De aantekening die
+               hier stond ("er ís geen datumkiezer; er een bouwen is eigen werk")
+               klopte tot vandaag; `DatumKeuze` in `shared/ui` is die kiezer.
+
+            ⚠️ **Alleen mét profiel, net als `DeadlineVerzetten` hierboven.** De
+               kalender heeft twee dingen uit het profiel nodig die hij nooit zelf
+               mag verzinnen: vandaag in jóuw tijdzone, en jouw week-startdag
+               (domeinregel 1). Is het profiel niet geladen — de routewacht
+               wacht daarop, dus in de praktijk alleen na een mislukte ophaling —
+               dan is de mijlpaal nog steeds aan te maken, zonder datum.
+
+            ⚠️ Geen `min`: een mijlpaal in het verleden afvinken is een normale
+               handeling, anders dan een streefdatum verzetten.
+          */}
+          {vandaag === null || startDag === null ? null : (
+            <DatumKeuze
+              label={t('mijlpaalbewerken.streefdatum')}
+              hint={t('mijlpaalbewerken.streefdatum_hint')}
+              waarde={datum}
+              onKies={setDatum}
+              startDag={startDag}
+              vandaag={vandaag}
+              optioneel
+            />
+          )}
 
           <View style={styles.knoppen}>
             <Button
@@ -1818,6 +1852,9 @@ function MijlpaalBewerken({
   readonly onKlaar: () => void;
   readonly onAnnuleer: () => void;
 }) {
+  const { profiel } = useProfiel();
+  const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
+  const startDag = profiel ? (profiel.week_start_day as Weekday) : null;
   const [titel, setTitel] = useState(mijlpaal.title);
   const [omschrijving, setOmschrijving] = useState(mijlpaal.description ?? '');
   const [datum, setDatum] = useState(mijlpaal.target_date ?? '');
@@ -1860,15 +1897,18 @@ function MijlpaalBewerken({
         numberOfLines={3}
       />
 
-      <Field
-        label={t('mijlpaalbewerken.streefdatum')}
-        hint={t('mijlpaalbewerken.streefdatum_hint')}
-        value={datum}
-        onChangeText={setDatum}
-        placeholder="2027-03-31"
-        autoCapitalize="none"
-        inputMode="numeric"
-      />
+      {/* ⚠️ Zie de kalender bij het aanmaken: zelfde grens, zelfde reden. */}
+      {vandaag === null || startDag === null ? null : (
+        <DatumKeuze
+          label={t('mijlpaalbewerken.streefdatum')}
+          hint={t('mijlpaalbewerken.streefdatum_hint')}
+          waarde={datum}
+          onKies={setDatum}
+          startDag={startDag}
+          vandaag={vandaag}
+          optioneel
+        />
+      )}
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 

@@ -104,6 +104,25 @@ export function toonDatumKort(iso: string, locale: string): string {
 }
 
 /**
+ * De kop van een maandraster: `september 2026` of `September 2026`.
+ *
+ * ⚠️ **Hoofdletter erop, om dezelfde reden als bij `weekdagNaam()`.** `Intl`
+ *    geeft in het Nederlands "september" met kleine letter — juist in een zin,
+ *    niet als kop boven een kalender. Engels en Duits veranderen hier niet.
+ */
+export function toonMaand(iso: string, locale: string): string {
+  return terugvalDatum(iso, () => {
+    const naam = new Intl.DateTimeFormat(locale, {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(alsUtcDag(iso as IsoDate));
+
+    return naam.charAt(0).toUpperCase() + naam.slice(1);
+  });
+}
+
+/**
  * Waar ruimte niet telt: `donderdag 31 december 2026`.
  *
  * ⚠️ Mét de weekdag, want dat is de reden om de lange vorm te kiezen. "Week van

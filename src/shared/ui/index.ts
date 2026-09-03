@@ -31,6 +31,7 @@ export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { CategorieMerk } from './CategorieMerk';
+export { DatumKeuze } from './DatumKeuze';
 export { Kalender, type KalenderDag } from './Kalender';
 export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';

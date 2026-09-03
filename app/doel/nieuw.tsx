@@ -12,15 +12,16 @@ import {
   type Ritme,
 } from '@/modules/goals';
 import { t } from '@/shared/i18n';
-import { localDateIn, now } from '@/shared/time';
+import { addDays, localDateIn, now, type Weekday } from '@/shared/time';
 import {
   Body,
   Button,
   Caption,
   Card,
   Choice,
-  GegroepeerdeKeuze,
+  DatumKeuze,
   Field,
+  GegroepeerdeKeuze,
   Screen,
   Subheading,
   useTerug,
@@ -109,15 +110,30 @@ export default function NieuwDoel() {
       </Card>
 
       <Card>
-        <Field
-          label={t('nieuwdoel.streefdatum')}
-          hint={t('nieuwdoel.streefdatum_hint')}
-          value={datum}
-          onChangeText={setDatum}
-          placeholder="2026-12-31"
-          autoCapitalize="none"
-          inputMode="numeric"
-        />
+        {/*
+          ⚠️ **Een kalender en geen tekstveld — QS8-223.** `min` is morgen: een
+             streefdatum in het verleden hoort een dag te zijn die je niet kunt
+             aantikken en niet een melding achteraf. De grens blijft óók in
+             `datumLigtInDeToekomst` en in de database staan — een kalender is
+             gebruiksgemak, geen validatie.
+
+          ⚠️ Alleen mét profiel: de kalender heeft vandaag in jóuw tijdzone en
+             jouw week-startdag nodig, en mag allebei nooit zelf verzinnen
+             (domeinregel 1). Zonder profiel kan dit scherm sowieso niets
+             bewaren — `bewaar()` stopt op dezelfde voorwaarde.
+        */}
+        {profiel === null ? null : (
+          <DatumKeuze
+            label={t('nieuwdoel.streefdatum')}
+            hint={t('nieuwdoel.streefdatum_hint')}
+            waarde={datum}
+            onKies={setDatum}
+            startDag={profiel.week_start_day as Weekday}
+            vandaag={localDateIn(profiel.tz, now())}
+            min={addDays(localDateIn(profiel.tz, now()), 1)}
+            optioneel
+          />
+        )}
 
         {/*
           ⚠️ Vijftien gebieden in vier groepen — QS8-224. Een enkele `Choice` met
