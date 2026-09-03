@@ -3,8 +3,11 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import {
+  AVATAR_MAX_BYTES,
   rondOnboardingAf,
   updateProfiel,
+  useAvatarKeuze,
+  type Profiel,
   useProfiel,
   userClock,
   useSession,
@@ -17,6 +20,7 @@ import { apparaatTijdzone, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
+  AvatarKeuze,
   Body,
   Button,
   Caption,
@@ -189,6 +193,15 @@ function OnboardingProfielFormulier() {
         <Caption>{t('onboarding.geen_avatar')}</Caption>
       </Card>
 
+      {/*
+        ⚠️ **Hier én op het profieltabblad, en overslaanbaar.** Een foto vragen
+           vóór iemand de app kent is een drempel in precies de trechter die
+           QS8-200 wil inkorten, dus er is geen verplichting en geen eigen stap —
+           de kaart staat er gewoon bij. Tot QS8-196 kon het hier helemaal niet
+           en verwees de tekst hierboven naar Profiel.
+      */}
+      {profiel === null ? null : <Avatarkaart profiel={profiel} onGewijzigd={zetProfiel} />}
+
       <Card>
         <WeekStartKeuze waarde={weekStart} onKies={setWeekStart} />
       </Card>
@@ -258,3 +271,32 @@ const styles = StyleSheet.create({
   },
   zonetekst: { flexShrink: 1 },
 });
+
+/**
+ * De twee helften aan elkaar — QS8-196.
+ *
+ * ⚠️ Dezelfde vier regels als op het profieltabblad, en dat is hier de bedoeling:
+ *    de knop staat in `shared/ui` en het werk in `useAvatarKeuze()`, dus er zit
+ *    niets in dit stukje dat tussen de twee schermen uit elkaar kan lopen.
+ */
+function Avatarkaart({
+  profiel,
+  onGewijzigd,
+}: {
+  readonly profiel: Profiel;
+  readonly onGewijzigd: (profiel: Profiel) => void;
+}) {
+  const keuze = useAvatarKeuze(profiel, onGewijzigd);
+
+  return (
+    <AvatarKeuze
+      naam={profiel.display_name}
+      avatarUrl={profiel.avatar_url}
+      maxBytes={AVATAR_MAX_BYTES}
+      bezig={keuze.bezig}
+      fout={keuze.fout}
+      onKies={() => void keuze.kies()}
+      onWeghalen={() => void keuze.weghalen()}
+    />
+  );
+}

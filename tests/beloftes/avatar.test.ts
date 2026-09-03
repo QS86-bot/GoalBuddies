@@ -230,3 +230,33 @@ describe('metGetekendeAvatars', () => {
     expect(uit.map((r) => r.avatar_url)).toEqual([null, null]);
   });
 });
+
+describe('de tweede schakel: de hook doet wat de knop belooft', () => {
+  /**
+   * ⚠️ **`bereikbaar.test.ts` ziet alleen dat een scherm `useAvatarKeuze()`
+   *    aanroept.** Dat register kan niet door een module heen kijken — de kop
+   *    daar zegt waarom: een echte detector vraagt een parser (QS8-150). Zonder
+   *    déze toets zou een hook die zijn `uploadAvatar()` kwijtraakt door beide
+   *    kanten heen glippen: het scherm roept hem nog aan, de knop rendert nog,
+   *    en er gebeurt niets.
+   *
+   * ⚠️ Op de bron en niet op gedrag, en dat is hier bewust de mindere vorm: er is
+   *    in dit project geen rendertestopstelling, dus een echte klik is niet na te
+   *    spelen. Wat deze toets wél kan is bewijzen dat de twee kanten van de keten
+   *    aan elkaar zitten — en dat was precies wat er ontbrak.
+   */
+  const HOOK = readFileSync('src/modules/auth/useAvatarKeuze.ts', 'utf8');
+
+  it('uploadt', () => {
+    expect(HOOK).toContain('uploadAvatar(');
+  });
+
+  it('verwijdert — terug naar je initialen is een acceptatiecriterium', () => {
+    expect(HOOK).toContain('verwijderAvatar(');
+  });
+
+  it('laadt het profiel opnieuw in plaats van het pad zelf te zetten', () => {
+    // Een ongetekend pad in een `<Image>` is een leeg vlak zonder foutmelding.
+    expect(HOOK).toContain('fetchProfiel(');
+  });
+});
