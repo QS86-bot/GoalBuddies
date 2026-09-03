@@ -13,7 +13,8 @@ import {
 } from '@/modules/ai';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { categorieLabels } from '@/modules/goals';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
+import { toonDatum } from '@/shared/time';
 import {
   Body,
   Button,
@@ -283,8 +284,18 @@ function PlanVoorstel({
         ) : (
           plan.milestones.map((m, i) => (
             <Body key={`${i}-${m.title}`}>
-              {i + 1}. {m.title}
-              {m.target_date === null ? '' : ` — ${m.target_date}`}
+              {/*
+                ⚠️ **Twee dingen tegelijk, en het tweede was ontglipt.** Het
+                   gedachtestreepje moest eruit (QS8-218), en de datum ernaast
+                   stond hier nog als kale ISO-waarde — QS8-221 vond hem niet,
+                   want die zoekt naar sleutels met een `{datum}` erin en dit is
+                   een sjabloonstring in JSX.
+              */}
+              {t('plan.stap_regel', {
+                nummer: i + 1,
+                titel: m.title,
+                datum: m.target_date === null ? '' : toonDatum(m.target_date, opmaaktaal()),
+              })}
             </Body>
           ))
         )}

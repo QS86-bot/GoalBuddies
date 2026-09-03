@@ -31,7 +31,7 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.group_protected':
     '{naam} made this group protected again. Other people’s setbacks are no longer visible.',
   'systeembericht.group_discoverable':
-    '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members — nothing else.',
+    '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
 
   'algemeen.oud_lid': 'A former member',
 
@@ -50,7 +50,7 @@ export const en: Record<Sleutel, string> = {
   'auth.verwijder.verlopen': 'Your session has expired. Log in again and then try once more.',
   'auth.verwijder.enige_beheerder':
     'You are the only admin of a group that still has other people in it. Make ' +
-    'someone else an admin first — otherwise that group is left behind with ' +
+    'someone else an admin first. Otherwise that group is left behind with ' +
     'nobody able to manage it.',
   'auth.verwijder.mislukt': 'Deleting your account did not work. Please try again.',
   'auth.verwijder.mislukt_kort': 'Deleting your account did not work.',
@@ -63,7 +63,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.opslaan_mislukt': 'Saving did not work. Please try again.',
 
   'validatie.wachtwoord_kort': 'Use at least 12 characters. A short phrase works fine.',
-  'validatie.wachtwoord_lang': 'More than 72 characters is not possible — bcrypt cuts off after that.',
+  'validatie.wachtwoord_lang': 'More than 72 characters is not possible; bcrypt cuts off after that.',
   'validatie.email': 'This does not look like an email address.',
   'validatie.wachtwoord_leeg': 'Enter your password.',
   'validatie.weekdag': 'A week starts on a day between Sunday and Saturday.',
@@ -113,7 +113,7 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.weekdoel_afsluiten.titel': 'Close this week?',
   'bevestiging.weekdoel_afsluiten.uitleg':
     'The weekly goal stays, and counts as a missed week once your week is over. ' +
-    'That costs one point and breaks your streak — unless you spend a week pass on it. ' +
+    'That costs one point and breaks your streak, unless you spend a week pass on it. ' +
     'You can carry it over to next week afterwards.',
   'bevestiging.weekdoel_afsluiten.knop': 'Close',
 
@@ -135,7 +135,7 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.doel_verwijderen.uitleg':
     'Only meant for a goal you just created by accident. It works as long as nothing ' +
     'hangs off it: no weekly goals, no points, not shared with a group. ' +
-    'Does your goal have history? Archive it instead — then everything is kept.',
+    'Does your goal have history? Archive it instead. Then everything is kept.',
   'bevestiging.doel_verwijderen.knop': 'Delete',
 
   'bevestiging.doel_afronden.titel': 'Complete this goal?',
@@ -180,13 +180,13 @@ export const en: Record<Sleutel, string> = {
   'risico.behind.kaal': 'You need a higher pace than you managed these last weeks.',
 
   'risico.at_risk.vloer':
-    'You are making your weeks, but almost always at the floor. That counts in full — it just keeps pushing your ceiling further away.',
+    'You are making your weeks, but almost always at the floor. That counts in full. It just keeps pushing your ceiling further away.',
   'risico.at_risk.tempo':
     'You have {mijlpalen} to go in {weken}. That asks {benodigd} per week; you are at {tempo} now.',
   'risico.at_risk.kaal': 'You are still inside the lines, but there is little room left.',
 
   'risico.on_track.geen_geschiedenis':
-    'No history to go on yet — and that is fine. A new goal starts on track.',
+    'No history to go on yet, and that is fine. A new goal starts on track.',
   'risico.on_track.tempo':
     'You made {gehaald} of your last {weken_bekeken}, with {mijlpalen} to go in {weken}. That will work out.',
   'risico.on_track.kaal': 'Your pace is enough for what is left.',
@@ -199,7 +199,7 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.plafond_gehaald': 'Ceiling reached',
   'weekdoel.vloer_gehaald': 'Floor reached',
   'weekdoel.gehaald': 'Done',
-  'weekdoel.wacht_op_buddy': '{wat} — waiting for your buddy',
+  'weekdoel.wacht_op_buddy': '{wat}: waiting for your buddy',
 
   'reeks.geen': 'No streak yet',
   'reeks.een': '1 week in a row',
@@ -208,7 +208,7 @@ export const en: Record<Sleutel, string> = {
   'ketting.niemand': 'Nobody is in yet',
   'ketting.net_begonnen': 'The week has just started',
   'ketting.jij_alleen': 'Your link is in',
-  'ketting.voltallig': 'Everyone is in — the chain is closed',
+  'ketting.voltallig': 'Everyone is in: the chain is closed',
   'ketting.schakels_een': '1 link this week',
   'ketting.schakels_meer': '{n} links this week',
 
@@ -221,7 +221,7 @@ export const en: Record<Sleutel, string> = {
 
   'weekpas.uitleg':
     'A week pass keeps your streak alive when you miss a week. You still get the minus ' +
-    'point for that week — a pass protects your streak, not your points. You do not have ' +
+    'point for that week; a pass protects your streak, not your points. You do not have ' +
     'to do anything: miss a week and we spend one automatically. Week passes are saved per goal.',
 
   'weekpas.vol':
@@ -235,8 +235,8 @@ export const en: Record<Sleutel, string> = {
   'chat.van_ander': '{naam}: {tekst}',
   'chat.weghalen': 'Remove',
 
-  'delen.gekopieerd': 'Copied — paste it into your chat',
-  'delen.mislukt': 'Sharing does not work here — select the link above',
+  'delen.gekopieerd': 'Copied. Paste it into your chat',
+  'delen.mislukt': 'Sharing does not work here. Select the link above',
 
   'stand.punten': 'Points',
   'stand.langste_reeks': 'Longest streak',
@@ -258,7 +258,7 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.titel_verlopen': 'This link no longer works',
   'uitnodiging.eyebrow': 'BUDDY GROUP',
   'uitnodiging.leeg_titel': 'This invitation no longer works',
-  'uitnodiging.leeg_tekst': 'The link was withdrawn or replaced by a new one. Ask whoever invited you to send it again — then you will get the valid one straight away.',
+  'uitnodiging.leeg_tekst': 'The link was withdrawn or replaced by a new one. Ask whoever invited you to send it again. Then you will get the valid one straight away.',
   'uitnodiging.leden_een': '{n} member · huddle day {dag}',
   'uitnodiging.leden_meer': '{n} members · huddle day {dag}',
   'uitnodiging.geen_gedeeld_doel': 'Not working on a shared goal yet',
@@ -266,10 +266,10 @@ export const en: Record<Sleutel, string> = {
   'uitnodiging.wat_je_doet': 'What you will be doing here',
   'uitnodiging.uitleg_kern': 'You pick one goal with a date on it. Each week you decide what you want to finish, and one of your buddies approves that you did. That is all.',
   'uitnodiging.uitleg_missen_beschermd': 'Missing a week costs one point and nothing else. Nobody in the group sees it.',
-  'uitnodiging.uitleg_missen_open': 'Missing a week costs one point and nothing else. In this group the others do see it — that is what “open” above means.',
+  'uitnodiging.uitleg_missen_open': 'Missing a week costs one point and nothing else. In this group the others do see it. That is what “open” above means.',
   'uitnodiging.al_lid': 'You are in the group',
   'uitnodiging.doorsturen': 'You are being taken to the group.',
-  'uitnodiging.eerst_profiel': 'Finish your profile first — the group will be waiting for you.',
+  'uitnodiging.eerst_profiel': 'Finish your profile first. The group will be waiting for you.',
   'uitnodiging.naar_groep': 'To the group',
   'uitnodiging.profiel_afmaken': 'Finish profile',
   'uitnodiging.deelnemen': 'Join this group',
@@ -294,7 +294,7 @@ export const en: Record<Sleutel, string> = {
   'aanmelden.alleen_browser': 'Signing in with Apple or Google currently only works in the browser.',
   'beoordeling.titel': 'Review',
   'beoordeling.leeg_titel': 'Nothing to review',
-  'beoordeling.leeg_tekst': 'As soon as a buddy finishes a week, it shows up here. One line back is enough — that is the point.',
+  'beoordeling.leeg_tekst': 'As soon as a buddy finishes a week, it shows up here. One line back is enough. That is the point.',
   'beoordeling.terugdraai_venster': 'Wrong buddy? You can still undo this for {minuten} minutes.',
   'beoordeling.terug': 'Back',
   'beoordeling.terugdraaien': 'Undo',
@@ -314,11 +314,11 @@ export const en: Record<Sleutel, string> = {
   'beheer.naam_hint': 'The Thursday club',
   'beheer.huddledag_uitleg': 'Changing this does not break a running chain: a link carries the week it was made in, and that is never recalculated.',
   'beheer.bewijs_label': 'How much proof does this group ask for?',
-  'beheer.bewijs_hint': 'A thumbs up on a claim is a formality. One sentence costs ten seconds and gives your buddy something to respond to — that is what gets the conversation going.',
+  'beheer.bewijs_hint': 'A thumbs up on a claim is a formality. One sentence costs ten seconds and gives your buddy something to respond to. That is what gets the conversation going.',
   'beheer.bewijs_wijzigen': 'Changing this does not affect existing completions.',
   'beheer.opslaan': 'Save',
   'beheer.link_titel': 'Invite link',
-  'beheer.link_uitleg': 'Whoever opens this link sees the group and how many people are in it — even without an account. What you share in goals is only visible after joining. Still, only share the link with people you want in.',
+  'beheer.link_uitleg': 'Whoever opens this link sees the group and how many people are in it, even without an account. What you share in goals is only visible after joining. Still, only share the link with people you want in.',
   'beheer.deel': 'Share the invitation',
   'beheer.deel_titel': 'Join {groep}',
   'beheer.kopieer': 'Or copy it by hand',
@@ -326,7 +326,7 @@ export const en: Record<Sleutel, string> = {
   'beheer.nieuwe_link': 'Create a new link',
   'beheer.link_openzetten': 'Open the link again',
   'beheer.link_sluiten': 'Close the link',
-  'beheer.sluiten_uitleg': 'Closing keeps the code but refuses everyone. Creating a new link replaces the code, and then the old one is dead for good — that is what you do when a link ended up somewhere it should not have.',
+  'beheer.sluiten_uitleg': 'Closing keeps the code but refuses everyone. Creating a new link replaces the code, and then the old one is dead for good. That is what you do when a link ended up somewhere it should not have.',
   'beheer.terug': 'Back to the group',
   'beheer.melding_gesloten': 'The link is closed.',
   'beheer.melding_open': 'The link is open again.',
@@ -334,7 +334,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.profiel_leeg_tekst': 'Try again in a moment. Nothing is lost.',
   'onboarding.eyebrow': 'ONE MORE SCREEN',
   'onboarding.stap1.kop': 'One goal, with a date on it',
-  'onboarding.stap1.a': 'You start with one goal that has to be finished on a day you pick. Not five goals — one.',
+  'onboarding.stap1.a': 'You start with one goal that has to be finished on a day you pick. Not five goals. One.',
   'onboarding.stap1.b': 'The Goal Coach then cuts it into milestones, and those milestones become your weekly goals.',
   'onboarding.stap2.kop': 'The week is the unit',
   'onboarding.stap2.a': 'Each week you decide what you want to finish. At the end of your week you tick off what worked.',
@@ -345,7 +345,7 @@ export const en: Record<Sleutel, string> = {
   'onboarding.stap3.c': 'This is the idea the app is built around. Your streak should serve you, not the other way around.',
   'onboarding.stap4.kop': 'A buddy approves it',
   'onboarding.stap4.a': 'Someone from your group confirms that you did it. Approving yourself is not possible.',
-  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group — the default — nobody sees it. If a group deliberately chooses to be open, you are told before you join.',
+  'onboarding.stap4.b': 'Missing a week costs you one point and nothing else. In a protected group, and that is the default, nobody sees it. If a group deliberately chooses to be open, you are told before you join.',
   'onboarding.stap_van': 'STEP {nu} OF {totaal}',
   'onboarding.zo_ziet_eruit': 'Here is what that looks like',
   'onboarding.voorbeeld_titel': 'Run three times',
@@ -385,7 +385,7 @@ export const en: Record<Sleutel, string> = {
   'groepdetail.naar_weekafsluiting': 'The weekly wrap-up',
   'groepdetail.naar_chat': 'Group chat',
   'groepdetail.uitnodigen': 'Invite someone',
-  'groepdetail.link_uitleg': 'Whoever opens this link sees the group and how many people are in it — even without an account. Only share it with people you want in.',
+  'groepdetail.link_uitleg': 'Whoever opens this link sees the group and how many people are in it, even without an account. Only share it with people you want in.',
   'groepdetail.deel': 'Share the invitation',
   'groepdetail.deel_titel': 'Join {groep}',
   'groepdetail.beheren': 'Manage group',
@@ -402,8 +402,8 @@ export const en: Record<Sleutel, string> = {
   'deadlineverzoek.liever_niet': 'Rather not',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
-  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress — not your notes, not your weeks and not your points. You can always undo it.',
-  'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks — including the weeks you did not make. Your notes and your points stay yours. You can always undo it.',
+  'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress. Not your notes, not your weeks and not your points. You can always undo it.',
+  'koppel.uitleg_open': 'As long as you link nothing, nobody here sees what you are working on. This group is open: linking shares the title, your milestone progress and your weeks, including the weeks you did not make. Your notes and your points stay yours. You can always undo it.',
   'koppel.geen_doel_titel': 'You do not have a goal to share yet',
   'koppel.geen_doel_tekst': 'Start with one goal with a date on it. After that you can link it to this group here.',
   'koppel.nieuw_doel': 'New goal',
@@ -418,10 +418,10 @@ export const en: Record<Sleutel, string> = {
   'deling.koppel_kop': 'Also share with',
   'deling.koppel': 'Share with {naam}',
   'deling.uitleg_beschermd':
-    'Protected. This group sees the title and your milestone progress — not your notes, ' +
+    'Protected. This group sees the title and your milestone progress. Not your notes, ' +
     'not your weeks and not your points.',
   'deling.uitleg_open':
-    'Open. This group sees the title, your milestone progress and your weeks — including the ' +
+    'Open. This group sees the title, your milestone progress and your weeks, including the ' +
     'weeks you did not make. Your notes and your points stay yours.',
   'deling.welke_groep': 'Which group decides?',
   'deling.welke_groep_hint':
@@ -433,9 +433,10 @@ export const en: Record<Sleutel, string> = {
   'deelnemen.code_label': 'Invite code or link',
   'deelnemen.code_hint': 'Twelve characters. Dashes, spaces and the whole link are fine; we strip those ourselves.',
   'deelnemen.herkend': 'Recognised as: {code}',
+  'deelnemen.nog_niet_herkend': 'No valid code recognised yet.',
   'deelnemen.knop': 'Join this group',
   'deelnemen.werkt_niet': 'Code not working?',
-  'deelnemen.werkt_niet_uitleg': 'A link may have been withdrawn, or replaced by a new one. Ask whoever invited you to send the link again — that one will be valid.',
+  'deelnemen.werkt_niet_uitleg': 'A link may have been withdrawn, or replaced by a new one. Ask whoever invited you to send the link again. That one will be valid.',
   'deelnemen.terug': 'Back',
   'groepnieuw.titel': 'New group',
   'groepnieuw.eyebrow': 'THREE IS THE BEST SIZE',
@@ -443,7 +444,7 @@ export const en: Record<Sleutel, string> = {
   'groepnieuw.naam_hint': 'Two to sixty characters. Something you will recognise in a WhatsApp message.',
   'groepnieuw.naam_voorbeeld': 'The Thursday club',
   'groepnieuw.huddledag': 'Huddle day',
-  'groepnieuw.huddledag_hint': 'The day you come together. It decides the weekly wrap-up, The Chain and the group overview — not when your own weekly goals reset, because that stays your personal week start day.',
+  'groepnieuw.huddledag_hint': 'The day you come together. It decides the weekly wrap-up, The Chain and the group overview. Not when your own weekly goals reset: that stays your personal week start day.',
   'groepnieuw.later_wijzigen': 'Changeable later. A running chain does not break from it: links stay in the week they were made.',
   'groepnieuw.wat_daarna': 'What happens next',
   'groepnieuw.wat_daarna_a': 'You get an invite link you can share. Whoever opens it sees the group and what you are working on, even without an account. You can always refresh or close the link.',
@@ -473,8 +474,8 @@ export const en: Record<Sleutel, string> = {
   'groepen.wachten_onbekend': 'Are buddies waiting on you?',
   'groepen.wacht_een': 'One buddy is waiting on you',
   'groepen.wachten_meer': '{n} buddies are waiting on you',
-  'groepen.ophalen_mislukt': 'We could not fetch that just now. Have a look yourself — it takes ten seconds.',
-  'groepen.week_afgerond': 'They finished their week. One line back is enough — that is the whole point.',
+  'groepen.ophalen_mislukt': 'We could not fetch that just now. Have a look yourself; it takes ten seconds.',
+  'groepen.week_afgerond': 'They finished their week. One line back is enough. That is the whole point.',
   'groepen.beoordelen': 'Review',
   'groepen.slaapt': 'This group is asleep. As soon as someone finishes a week, it wakes right up.',
   'groepen.huddledag': 'Huddle day: {dag}',
@@ -484,9 +485,9 @@ export const en: Record<Sleutel, string> = {
   'profiel.eigen_doel': 'Working on a goal of their own',
   'profiel.als_buddy': 'Taking part as a buddy',
   'profiel.reeks_titel': 'Your streak',
-  'profiel.reeks_uitleg': 'Your streak counts weeks and appears per goal under “Your standing” on Today. A week pass protects your streak if you miss a week — not the point, because otherwise the score means nothing.',
+  'profiel.reeks_uitleg': 'Your streak counts weeks and appears per goal under “Your standing” on Today. A week pass protects your streak if you miss a week. Not the point, because otherwise the score means nothing.',
   'profiel.verwijder_titel': 'Delete account',
-  'profiel.verwijder_uitleg': 'Your goals, weeks, Daily Moves, points and memberships disappear. What stays are the approvals you gave your buddies and your messages in the group chat — without your name on them. Those are theirs.',
+  'profiel.verwijder_uitleg': 'Your goals, weeks, Daily Moves, points and memberships disappear. What stays are the approvals you gave your buddies and your messages in the group chat, without your name on them. Those are theirs.',
   'profiel.verwijder_knop': 'I want to delete my account',
   'profiel.zeker_weten': 'Are you sure?',
   'profiel.geen_backup': 'This cannot be undone. There is no backup and no recovery period.',
@@ -498,7 +499,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.thema_donker': 'Dark',
   'profiel.thema_licht': 'Light',
   'profiel.weergave': 'Appearance',
-  'profiel.weergave_uitleg': 'Dark is the default of this system. If you pick System, the app follows your device setting — including when it switches in the evening.',
+  'profiel.weergave_uitleg': 'Dark is the default of this system. If you pick System, the app follows your device setting, including when it switches in the evening.',
   'profiel.weergave_label': 'Appearance: {stand}',
   'profiel.herinnering_titel': 'Daily reminder',
   'profiel.herinnering_uitleg': 'One quiet nudge a day, and only if you have not done anything yet. Wrote a Daily Move today or closed a week? Then it stays silent.',
@@ -510,7 +511,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.herinnering_toon_hint': 'Firm is more direct, never accusing. The app does not hold anything against you.',
   'profiel.herinnering_zacht': 'Gentle',
   'profiel.herinnering_streng': 'Firm',
-  'profiel.herinnering_uit_blijft_uit': 'Off means off. Turn it back on later and you pick a time again — it does not return on its own.',
+  'profiel.herinnering_uit_blijft_uit': 'Off means off. Turn it back on later and you pick a time again. It does not return on its own.',
   'profiel.herinnering_bewaren': 'Save reminder',
   'profiel.herinnering_bewaard': 'Saved.',
   'profiel.herinnering_geen_meldingen': 'Turn notifications on above, otherwise nothing gets delivered.',
@@ -523,10 +524,11 @@ export const en: Record<Sleutel, string> = {
   'profiel.viering_beweging': 'If your device asks for reduced motion, the app leaves out the animation anyway. The text simply stays.',
   'profiel.bijdrage_titel': 'Buddy contribution',
   'profiel.bijdrage_mislukt': 'Cannot fetch that right now. Your contribution is still there, it just cannot be counted.',
+  'profiel.bijdrage_onbekend': 'Not known yet.',
   'profiel.bijdrage_geen': 'You have not reviewed a buddy’s week yet.',
   'profiel.bijdrage_een': 'You have reviewed one week of a buddy.',
   'profiel.bijdrage_meer': 'You have reviewed {n} weeks of buddies.',
-  'profiel.bijdrage_uitleg': 'Reviewing counts. Asking a question is worth just as much as approving — it is about being involved, not about saying yes.',
+  'profiel.bijdrage_uitleg': 'Reviewing counts. Asking a question is worth just as much as approving. It is about being involved, not about saying yes.',
   'profiel.meldingen': 'Notifications',
   'profiel.meldingen_aanzetten': 'Turn on notifications',
   'profiel.meldingen_uitzetten': 'Turn off notifications',
@@ -535,7 +537,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.meldingen_mislukt': 'Turning it on did not work. Please try again in a moment.',
   'profiel.meldingen_aan': 'Notifications are on. You get a message when a buddy approves your week or when your wrap-up is ready.',
   'profiel.meldingen_uit': 'Get a message when a buddy approves your week or when your wrap-up is ready. We ask your browser for permission once.',
-  'profiel.meldingen_geweigerd': 'You refused notifications earlier. That can only be undone in your browser settings — we cannot ask again.',
+  'profiel.meldingen_geweigerd': 'You refused notifications earlier. That can only be undone in your browser settings; we cannot ask again.',
   'profiel.meldingen_niet_ondersteund': 'This browser cannot receive notifications.',
   'profiel.meldingen_geen_sleutel': 'Notifications are not ready in this environment yet. This is not on you.',
   'profiel.beginscherm_ios': 'On iPhone and iPad, notifications only work when the app is on your home screen. Tap Share and choose Add to Home Screen; then open it from there.',
@@ -544,15 +546,15 @@ export const en: Record<Sleutel, string> = {
   'vandaag.eyebrow_week': 'WEEK OF {datum}',
   'vandaag.eyebrow_deze': 'THIS WEEK',
   'vandaag.coulance_titel': 'Your previous week is still running',
-  'vandaag.coulance_tekst': 'Your new week has started, but you can still wrap up the week of {datum}. That window lasts twelve hours — done on Sunday evening, logged on Monday morning.',
+  'vandaag.coulance_tekst': 'Your new week has started, but you can still wrap up the week of {datum}. That window lasts twelve hours: done on Sunday evening, logged on Monday morning.',
   'vandaag.leeg_titel': 'No weekly goals yet',
-  'vandaag.leeg_tekst': 'A weekly goal is what you want to finish this week. Give it a floor — the version you still manage on your worst week — and a ceiling. Reaching the floor counts: your streak continues. You create it on the goal it belongs to.',
+  'vandaag.leeg_tekst': 'A weekly goal is what you want to finish this week. Give it a floor, the version you still manage on your worst week, and a ceiling. Reaching the floor counts: your streak continues. You create it on the goal it belongs to.',
   'vandaag.weekdoel_toevoegen': 'Add weekly goal',
   'vandaag.toevoegen_uitleg': 'You create a weekly goal on the goal it belongs to.',
   'vandaag.stand': 'Your standing',
   'vandaag.stand_leeg': 'As soon as your first week is approved, your streak and your points appear here.',
   'vandaag.openstaand': 'Still open from earlier weeks',
-  'vandaag.meenemen_uitleg': 'You can carry these into the week that is running now. The week itself stays missed — carrying moves the work, it does not restore your streak.',
+  'vandaag.meenemen_uitleg': 'You can carry these into the week that is running now. The week itself stays missed: carrying moves the work, it does not restore your streak.',
   'vandaag.antwoord_opnieuw': 'Answer and submit again',
   'vandaag.niveau_label': 'What did you reach?',
   'vandaag.niveau_hint': 'Reaching the floor counts. Your streak continues; only the points differ.',
@@ -593,7 +595,7 @@ export const en: Record<Sleutel, string> = {
   'beoordeling.laden_mislukt': 'The reviews could not be loaded.',
   'beoordeling.een_buddy': 'A buddy',
   'beoordeling.vraag_nodig':
-    'Add your question — without one your buddy does not know what to add.',
+    'Add your question. Without one your buddy does not know what to add.',
   'beoordeling.al_beoordeeld': 'You have already reviewed this week for your buddy.',
   'beoordeling.mislukt': 'Reviewing did not work. Refresh the list and try again.',
   'beoordeling.bijdrage_laden': 'Your buddy contribution could not be loaded.',
@@ -617,7 +619,7 @@ export const en: Record<Sleutel, string> = {
 
   'validatie.notitie_lang': 'At most 2000 characters.',
   'validatie.dagzet_leeg': 'One line is enough, but it cannot be empty.',
-  'validatie.reactie_lang': 'Keep it short — at most 1000 characters.',
+  'validatie.reactie_lang': 'Keep it short: at most 1000 characters.',
 
   'coach.bewaard': 'Saved',
   'coach.bewaren': 'Save answers',
@@ -658,6 +660,7 @@ export const en: Record<Sleutel, string> = {
   'plan.zelf_invullen': 'Fill it in myself',
   'plan.haalbaarheid': 'Honestly',
   'plan.stappen': 'Your steps',
+  'plan.stap_regel': '{nummer}. {titel} {datum}',
   'plan.geen_stappen': 'The coach did not suggest any steps. You can add them yourself.',
   'plan.deze_week': 'This week',
   'plan.geen_weekdoel': 'No weekly goal yet. You will pick what you do this week.',
@@ -668,12 +671,12 @@ export const en: Record<Sleutel, string> = {
   'coach.plan_zonder_mijlpalen':
     'Your goal is saved, but the steps are not. Add them yourself, or let the coach try again.',
   'coach.plan_zonder_weekdoel':
-    'Your goal and steps are saved. Only the weekly goal is missing — pick what you will do this week.',
-  'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow — in the meantime you can add milestones yourself.',
+    'Your goal and steps are saved. Only the weekly goal is missing. Pick what you will do this week.',
+  'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow. In the meantime you can add milestones yourself.',
   'coach.eyebrow': 'SIX QUESTIONS',
-  'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you — but skipping works fine.',
+  'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you, but skipping works fine.',
   'coach.alleen_voor_jou': 'Your answers are only for you and the Goal Coach. Your group never sees them.',
-  'coach.bewaren_niet_nodig': 'Saving is not needed to continue — the Goal Coach uses what is here.',
+  'coach.bewaren_niet_nodig': 'Saving is not needed to continue; the Goal Coach uses what is here.',
   'wachten.denkt_na': 'The Goal Coach is thinking',
   'wachten.duurt_even': 'This takes about twenty seconds.',
   'wachten.duurt_langer': 'This is taking longer than usual. It is still working.',
@@ -694,9 +697,9 @@ export const en: Record<Sleutel, string> = {
   'coach.opnieuw': 'Try again',
   'coach.bedenking': 'The Goal Coach has a reservation',
   'coach.bedenking_uitleg': 'You can simply take the milestones. Moving your target date or making your goal smaller can be done afterwards on the goal screen.',
-  'coach.neem_over': 'Take them over and adjust them afterwards however you like — deleting, rewriting and reordering can all be done on the goal screen.',
+  'coach.neem_over': 'Take them over and adjust them afterwards however you like: deleting, rewriting and reordering can all be done on the goal screen.',
   'coach.toch_niet': 'Never mind',
-  'coach.al_mijlpalen': 'You already have milestones on this goal. Taking these over adds them and does not replace them — delete what you do not want to keep first.',
+  'coach.al_mijlpalen': 'You already have milestones on this goal. Taking these over adds them and does not replace them. Delete what you do not want to keep first.',
   'coach.laten_voorstellen': 'Have milestones suggested',
   'coach.wat_hij_doet': 'The Goal Coach cuts your goal into milestones with target dates, based on what you filled in above. You can change everything afterwards.',
   'coach.tien_per_dag': 'You can do this ten times a day. The same question within a day does not cost a new turn.',
@@ -709,7 +712,7 @@ export const en: Record<Sleutel, string> = {
   'coach.afronden_mislukt': 'The Goal Coach could not finish the request.',
 
   'groep.rate_limited':
-    'You have tried an invitation too often today. In 24 hours it works again — ' +
+    'You have tried an invitation too often today. In 24 hours it works again; ' +
     'meanwhile, ask your buddy to send the link once more.',
   'groep.ongeldige_link':
     'This invitation link no longer works. It was withdrawn or it is wrong; ' +
@@ -734,7 +737,7 @@ export const en: Record<Sleutel, string> = {
   'groep.deelnemen_mislukt_link': 'Joining did not work. Ask your buddy for a new link.',
   'groep.uitnodiging_laden': 'This invitation could not be loaded.',
   'groep.uitnodiging_te_druk':
-    'This invitation has been opened too often in the past hour. Try again shortly — the link is still valid.',
+    'This invitation has been opened too often in the past hour. Try again shortly; the link is still valid.',
   'groep.koppelen_mislukt': 'Linking did not work. Are you a member of this group?',
   'groep.ontkoppelen_mislukt': 'Unlinking did not work.',
   'groep.gekoppelde_groepen_laden': 'The linked groups could not be loaded.',
@@ -776,14 +779,14 @@ export const en: Record<Sleutel, string> = {
   'badge.streak_4': 'Four weeks in a row',
   'badge.streak_4_uitleg': 'You kept it up for four cycles in a row.',
   'badge.streak_12': 'Twelve weeks in a row',
-  'badge.streak_12_uitleg': 'You kept it up for twelve cycles in a row — a whole quarter.',
+  'badge.streak_12_uitleg': 'You kept it up for twelve cycles in a row: a whole quarter.',
   'badge.blijven_staan': 'What you earned stays. Also when a streak breaks once.',
   'seizoen.kop': 'How long is a season?',
   'seizoen.monthly': 'A month',
   'seizoen.quarterly': 'A quarter',
   'seizoen.uitleg':
     'At the end of a season one message goes into the group with what you did ' +
-    'together. With weekly cycles a quarter gives a fairer picture than a month — ' +
+    'together. With weekly cycles a quarter gives a fairer picture than a month: ' +
     'that is only four data points.',
   'goedkeuringsregel.kop': 'When does a week count?',
   'goedkeuringsregel.quorum_veld': 'How many confirmations?',
@@ -803,7 +806,7 @@ export const en: Record<Sleutel, string> = {
   'chat.geen_lid_titel': 'This group is not here, or not for you',
   'chat.geen_lid_tekst': 'You are not a member of this group, or it no longer exists. Ask for a new invite link if you belong here.',
   'chat.ouder_laden': 'Load older',
-  'chat.nog_niets': 'No messages yet. One line is enough — “what are you doing this week?” works better than a long introduction.',
+  'chat.nog_niets': 'No messages yet. One line is enough. “What are you doing this week?” works better than a long introduction.',
   'chat.terug': 'Back to the group',
   'chat.sessie_laadt': 'Your session is still loading. Try again in a second.',
   'chat.invoer_label': 'New message',
@@ -838,7 +841,7 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.toch_niet': 'Never mind',
   'weekafsluiting.bijwerken': 'Update',
   'weekafsluiting.terugnemen': 'Take back',
-  'weekafsluiting.mogen_leeg': 'All three may stay empty. Whoever fills in nothing does not appear on the card — no empty line comes of it.',
+  'weekafsluiting.mogen_leeg': 'All three may stay empty. Whoever fills in nothing does not appear on the card; no empty line comes of it.',
   'weekafsluiting.delen': 'Share with my group',
   'weekafsluiting.toch_niet_bijwerken': 'Do not update after all',
   'weekafsluiting.nog_niemand': 'Nobody has shared anything this week yet. Whoever starts makes it easier for the rest.',
@@ -864,7 +867,7 @@ export const en: Record<Sleutel, string> = {
   'weekafsluiting.v3.voorbeeld': 'Finish chapter three, and book an extra hour on Tuesday.',
 
   'weekafsluiting.leeg':
-    'Fill in at least one question. Skipping all three is fine too — then nothing is saved.',
+    'Fill in at least one question. Skipping all three is fine too. Then nothing is saved.',
   'weekafsluiting.reactie_leeg': 'There is nothing in your reply yet.',
   'weekafsluiting.laden_mislukt': 'The week review could not be loaded.',
   'weekafsluiting.reacties_laden': 'The replies could not be loaded.',
@@ -904,7 +907,7 @@ export const en: Record<Sleutel, string> = {
 
   'doel.verwijderen_mislukt': 'Deleting did not work.',
   'doel.te_oud':
-    'This goal has been around too long to delete. Archive it — then your history ' +
+    'This goal has been around too long to delete. Archive it; then your history ' +
     'stays and it disappears from your list.',
   'doel.gedeeld_met_groep': 'This goal is linked to a group. Unlink it first, or archive it.',
   'doel.heeft_weekdoelen':
@@ -945,13 +948,13 @@ export const en: Record<Sleutel, string> = {
   'validatie.doeltitel_lang': 'At most 200 characters.',
   'validatie.omschrijving_lang': 'At most 2000 characters.',
   'validatie.datum_vorm': 'Use an existing date like 2026-12-31.',
-  'validatie.identiteit_lang': 'Keep it short — one sentence works best.',
+  'validatie.identiteit_lang': 'Keep it short: one sentence works best.',
   'validatie.uren_max': 'A week has 168 hours.',
 
   'deadline.argument_kort':
     'Write one sentence about what changed. Your buddies decide on this, ' +
     'so "no time" is too little to say yes to.',
-  'deadline.argument_lang': 'Keep it short — at most 1000 characters.',
+  'deadline.argument_lang': 'Keep it short: at most 1000 characters.',
   'deadline.geen_lid': 'You are not a member of this group.',
   'deadline.niet_gekoppeld': 'This goal is not linked to this group.',
   'deadline.zelfde_datum': 'Choose a date other than the one that is set now.',
@@ -973,7 +976,7 @@ export const en: Record<Sleutel, string> = {
   'adempauze.laden_mislukt': 'Your breathers could not be loaded.',
   'adempauze.inplannen_mislukt': 'The breather could not be scheduled.',
   'adempauze.te_laat':
-    'You announce a breather in advance. The week that is running cannot be used — pick the week ahead.',
+    'You announce a breather in advance. The week that is running cannot be used. Pick the week ahead.',
   'adempauze.te_lang': 'A breather lasts at most two weeks.',
   'adempauze.overlap': 'There is already a breather over these weeks.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
@@ -995,7 +998,7 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.opslaan_mislukt': 'Your weekly goal could not be saved.',
   'weekdoel.verwijderen_mislukt': 'Deleting did not work.',
   'weekdoel.te_oud':
-    'This weekly goal has been around too long to delete. You can close it — ' +
+    'This weekly goal has been around too long to delete. You can close it; ' +
     'then the week counts as missed.',
   'weekdoel.al_gebeurd': 'Something has already happened with this weekly goal, so deleting is no longer possible.',
   'weekdoel.al_ingediend': 'You have already submitted something for this. Deleting is no longer possible.',
@@ -1028,7 +1031,7 @@ export const en: Record<Sleutel, string> = {
   'interview.already_done.toelichting': 'You rarely start at zero, and that helps the planning.',
   'interview.stuck_before.vraag': 'Where did it get stuck before?',
   'interview.stuck_before.toelichting':
-    'Visible only to you and the Goal Coach — your group never sees this.',
+    'Visible only to you and the Goal Coach. Your group never sees this.',
 
   // ---------------------------------------------------------------------------
   // Creating a goal — QS8-31
@@ -1084,7 +1087,7 @@ export const en: Record<Sleutel, string> = {
     'It may have been deleted, or it belongs to someone else. Go back to your goals.',
   'doelbewerken.streefdatum_kop': 'Target date',
   'doelbewerken.streefdatum_uitleg':
-    'Your target date is {datum} and does not change here. Moving a date is something you ask a buddy for — otherwise an agreement can be stretched one-sidedly. You do that on the goal itself.',
+    'Your target date is {datum} and does not change here. Moving a date is something you ask a buddy for; otherwise an agreement can be stretched one-sidedly. You do that on the goal itself.',
   'doelbewerken.knop': 'Edit goal',
   'nieuwdoel.aanmaken': 'Create goal',
   'nieuwdoel.annuleren': 'Cancel',
@@ -1131,7 +1134,7 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   // Reward and penalty on the goal screen — QS8-34, QS8-35 and QS8-85
   // ---------------------------------------------------------------------------
-  'commitment.stand': '{titel} — {uitleg}',
+  'commitment.stand': '{titel}: {uitleg}',
   'commitment.geen_afrekening': 'The app settles nothing. This is only kept on record.',
 
   'beloning.jouw': 'Your reward',
@@ -1154,7 +1157,7 @@ export const en: Record<Sleutel, string> = {
     'being done.',
   'straf.dan_geldt': 'Then this applies: {tekst}',
   'straf.tot_dan':
-    'Until that moment nobody sees this — not even your group. You can withdraw it as long ' +
+    'Until that moment nobody sees this, not even your group. You can withdraw it as long ' +
     'as it has not taken effect.',
   'straf.ja_vastleggen': 'Yes, record this',
   'straf.terug': 'Back',
@@ -1178,10 +1181,10 @@ export const en: Record<Sleutel, string> = {
     'You completed this goal. Your groups have seen it and your reward has been released.',
   'afronden.kop': 'Complete',
   'afronden.een_open':
-    'One milestone is still open. Tick it off, or drop it if you no longer need it — then ' +
+    'One milestone is still open. Tick it off, or drop it if you no longer need it; then ' +
     'you can complete this goal.',
   'afronden.meer_open':
-    '{aantal} milestones are still open. Tick them off, or drop what you no longer need — ' +
+    '{aantal} milestones are still open. Tick them off, or drop what you no longer need; ' +
     'then you can complete this goal.',
   'afronden.alles_af':
     'All milestones are done. Complete your goal, and your group will know and your reward ' +
@@ -1204,12 +1207,12 @@ export const en: Record<Sleutel, string> = {
   'herplannen.stand_n_1': '{open} milestones are still open and there is one week left. ',
   'herplannen.stand_n_n': '{open} milestones are still open and there are {weken} weeks left. ',
   'herplannen.geen_ramp':
-    'That is not a disaster and it says nothing about you — it says the plan no longer fits. ' +
+    'That is not a disaster and it says nothing about you. It says the plan no longer fits. ' +
     'Adjusting a goal works better than letting it quietly bleed out.',
   'herplannen.drie_dingen': 'Three things you can do:',
   'herplannen.datum_kop': 'Move your target date',
   'herplannen.datum_uitleg':
-    'Above under “Deadline”. If you share this goal with a group, you ask them to agree — ' +
+    'Above under “Deadline”. If you share this goal with a group, you ask them to agree, ' +
     'that costs you no points.',
   'herplannen.mijlpalen_kop': 'Drop milestones',
   'herplannen.mijlpalen_uitleg':
@@ -1231,7 +1234,7 @@ export const en: Record<Sleutel, string> = {
     'Your buddies can respond to it in the group chat. That is exactly what they are for.',
   'hulpvraag.kop': 'Stuck? Ask your group',
   'hulpvraag.uitleg':
-    'You are falling behind on this goal. That is what your group is for — two sentences and ' +
+    'You are falling behind on this goal. That is what your group is for: two sentences and ' +
     'someone thinks along with you. You see exactly what you send before it goes out.',
   'hulpvraag.vraag_knop': 'Ask for help',
   'hulpvraag.niet_nu': 'Not right now',
@@ -1252,7 +1255,7 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   'mijlpalenblok.kop': 'Milestones',
   'mijlpalenblok.leeg':
-    'No milestones yet. Cut your goal into intermediate results you can point at — then you ' +
+    'No milestones yet. Cut your goal into intermediate results you can point at; then you ' +
     'know every week what you are working on.',
   'mijlpalenblok.coach': 'Let the Goal Coach suggest them',
   'mijlpalenblok.gehaald': 'Done',
@@ -1318,7 +1321,7 @@ export const en: Record<Sleutel, string> = {
   'weekdoelform.titel_voorbeeld': '3 customer calls',
   'weekdoelform.vloer': 'The floor (recommended)',
   'weekdoelform.vloer_hint':
-    'What do you manage even in a bad week? Reaching this keeps your streak running — only ' +
+    'What do you manage even in a bad week? Reaching this keeps your streak running; only ' +
     'the points differ.',
   'weekdoelform.vloer_voorbeeld': '1 call scheduled',
   'weekdoelform.plafond': 'The ceiling',
@@ -1327,7 +1330,7 @@ export const en: Record<Sleutel, string> = {
 
   'weekdoelform.ritme': 'How does this week count?',
   'weekdoelform.ritme_hint':
-    'Starts from what you picked for this goal. Change it here and it applies to this week — your goal stays as it is.',
+    'Starts from what you picked for this goal. Change it here and it applies to this week. Your goal stays as it is.',
   'weekdoelform.plafond_dagen': 'How many days are you going for?',
   'weekdoelform.plafond_dagen_hint': 'If the week goes well.',
   'weekdoelform.vloer_dagen': 'And on your worst week? (recommended)',
@@ -1349,7 +1352,7 @@ export const en: Record<Sleutel, string> = {
   'adempauze.kop': 'Breather',
   'adempauze.uitleg':
     'Going on holiday, ill, or just a strange month? Then pause one or two weeks. Those weeks ' +
-    'cost you no point and your streak stays where it is — it just does not grow.',
+    'cost you no point and your streak stays where it is; it just does not grow.',
   'adempauze.groep_ziet':
     'Your group sees that you have a breather and from when to when. They do not see which ' +
     'weekly goals you did or did not reach.',
@@ -1412,7 +1415,7 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
-    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group — including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
+    'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group, including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
   'bevestiging.groep_openzetten.knop': 'Yes, open it up',
   'bevestiging.groep_beschermen.titel': 'Protect this group again?',
   'bevestiging.groep_beschermen.uitleg':
@@ -1451,7 +1454,7 @@ export const en: Record<Sleutel, string> = {
     'You are the last member. The group is archived when you leave, so no group is left without an admin.',
   'bevestiging.groep_archiveren.titel': 'Archive this group?',
   'bevestiging.groep_archiveren.uitleg':
-    'Nobody can do anything in it afterwards: no messages, no week reviews, no new members. Reading still works — the chat and the week reviews stay open to members, and your buddies\u2019 streaks remain correct. As an admin you can bring the group back later.',
+    'Nobody can do anything in it afterwards: no messages, no week reviews, no new members. Reading still works: the chat and the week reviews stay open to members, and your buddies\u2019 streaks remain correct. As an admin you can bring the group back later.',
   'bevestiging.groep_archiveren.knop': 'Yes, archive this group',
   'beheer.archief_titel': 'Archive group',
   'beheer.archief_uitleg':
@@ -1509,7 +1512,7 @@ export const en: Record<Sleutel, string> = {
   'beheer.leeg_tekst': 'You are not a member of this group, or it no longer exists.',
   'beheer.huddledag_label': 'Huddle day',
   'beheer.huddledag_hint':
-    'The group’s shared day. It changes nothing about when your own weekly goals reset — that stays your personal week start day.',
+    'The group’s shared day. It changes nothing about when your own weekly goals reset. That stays your personal week start day.',
   'beheer.voorlezen': 'You can also read it out: {code}',
   'beoordelen.bevestigd': 'You confirmed {naam}’s week.',
   'beoordelen.sessie_laadt': 'Your session is still loading. Try again in a second.',
@@ -1567,7 +1570,7 @@ export const en: Record<Sleutel, string> = {
     'You are reading this week’s saved messages. The rest fills in as soon as ' +
     'you are back online.',
   'beoordelen.week_afgerond': 'Week finished',
-  'beoordelen.week_afgerond_met': 'Week finished — {gehaald}',
+  'beoordelen.week_afgerond_met': 'Week finished: {gehaald}',
   'groepscherm.leden_van_totaal': '{getoond} of {totaal} members.',
 
 
@@ -1619,7 +1622,7 @@ export const en: Record<Sleutel, string> = {
   // ---------------------------------------------------------------------------
   'ritme.weekly': 'I look at the week',
   'ritme.weekly_uitleg':
-    "You wrap up at the end of the week. How you get there is up to you — there's nothing to tick off.",
+    "You wrap up at the end of the week. How you get there is up to you; there's nothing to tick off.",
   'ritme.times_per_week': 'A few times a week',
   'ritme.times_per_week_uitleg':
     'You tick off the days you worked on it. The week counts as soon as you reach your floor.',
@@ -1746,14 +1749,14 @@ export const en: Record<Sleutel, string> = {
   'ontdek.titel': 'Find a group',
   'ontdek.eyebrow': 'Search',
   'ontdek.uitleg':
-    'These are groups that made themselves findable. You see what they are about and how many people are in them — a group shows nothing more than that to someone from outside.',
+    'These are groups that made themselves findable. You see what they are about and how many people are in them. A group shows nothing more than that to someone from outside.',
   'ontdek.filter_categorie': 'What it is about',
   'ontdek.filter_taal': 'Language',
   'ontdek.alles': 'All',
   'ontdek.laden_mislukt': 'The groups could not be loaded.',
   'ontdek.leeg_titel': 'No group found yet',
   'ontdek.leeg_tekst':
-    'There is no findable group in this combination yet. Try another topic or another language — or start one yourself and open it up.',
+    'There is no findable group in this combination yet. Try another topic or another language. Or start one yourself and open it up.',
   'ontdek.leden': '{aantal} members',
   'ontdek.leden_een': '1 member',
   'ontdek.huddledag': 'Huddle on {dag}',
@@ -1887,7 +1890,7 @@ export const en: Record<Sleutel, string> = {
 
   'bevestiging.persoon_blokkeren.titel': 'Block this person?',
   'bevestiging.persoon_blokkeren.uitleg':
-    'From now on they will not end up in a group with you — not through an invitation link, not through search. Groups you are both in right now do not change: that would let them notice you did this. They get no message and cannot see it anywhere. You can always undo the block.',
+    'From now on they will not end up in a group with you: not through an invitation link, not through search. Groups you are both in right now do not change: that would let them notice you did this. They get no message and cannot see it anywhere. You can always undo the block.',
   'bevestiging.persoon_blokkeren.knop': 'Yes, block',
 
   'validatie.dagen_heel': 'Enter a whole number of days.',

@@ -62,8 +62,17 @@ export default function Deelnemen() {
           {...(fout === null ? {} : { error: fout })}
         />
 
+        {/*
+          ⚠️ Hier stond een gedachtestreepje als plaatshouder (QS8-218). Een
+             leesteken dat "nog niets" moet betekenen, is voor een schermlezer
+             een streepje en verder niets; een zin zegt het wel.
+        */}
         {invoer.trim() === '' ? null : (
-          <Caption>{t('deelnemen.herkend', { code: toonCode(invoer) || '—' })}</Caption>
+          <Caption>
+            {toonCode(invoer) === ''
+              ? t('deelnemen.nog_niet_herkend')
+              : t('deelnemen.herkend', { code: toonCode(invoer) })}
+          </Caption>
         )}
 
         <Button variant="primair" block busy={bezig} onPress={() => void verzend()}>

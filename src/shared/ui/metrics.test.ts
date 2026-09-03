@@ -163,8 +163,12 @@ describe('kettingLabel', () => {
   });
 
   it('viert voltallig, en in een groep van één zonder grootspraak', () => {
+    // ⚠️ De letterlijke zin is bij QS8-218 herschreven (het gedachtestreepje
+    //    werd een dubbele punt). De belofte is niet de zin maar wat hij zegt:
+    //    voltallig wordt gevierd, en in een groep van één blijft het bij de
+    //    eigen schakel — een groep van één is geen ketting.
     expect(kettingLabel({ schakels: 3, inAanmerking: 3, voltallig: true })).toBe(
-      'Voltallig — de ketting is rond',
+      'Voltallig: de ketting is rond',
     );
     expect(kettingLabel({ schakels: 1, inAanmerking: 1, voltallig: true })).toBe(
       'Je schakel ligt er',
