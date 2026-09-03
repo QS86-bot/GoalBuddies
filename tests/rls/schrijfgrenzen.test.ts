@@ -56,6 +56,32 @@ import {
  *       verruimt** — bijvoorbeeld als groepsgenoten ooit elkaars weekplan mogen
  *       inzien; dan is dit de enige regel die schrijven nog tegenhoudt.
  *
+ * ## ⚠️ `profiles_insert` langs de groepskant — gemeten, en niet te toetsen
+ *
+ * De security-reviewer meldde dit als derde geval van de zwakke acteur:
+ * `profielA` en `profielB` delen niets, en `profiles_insert` verruimd naar
+ * `(id = auth.uid()) or shares_group_with_user(id)` laat alle 853 tests groen.
+ * **Die meting klopt. De conclusie erbij niet, en dat is met de hand nagegaan.**
+ *
+ * Die groepstak kan namelijk nooit iets toestaan. `group_members.user_id` hangt
+ * met `on delete cascade` aan `profiles`, dus:
+ *
+ * - bestaat het profiel van het slachtoffer nog, dan ketst de insert af op de
+ *   primaire sleutel (`23505`) en komt de policy niet aan bod;
+ * - is het weg, dan is zijn lidmaatschap mee gecascadeerd en geeft
+ *   `shares_group_with_user()` `false`.
+ *
+ * Gemeten in een teruggedraaide transactie met twee leden in één groep: vóór het
+ * wissen `true`, na het wissen `false`, nul lidmaatschappen over. **Er is dus geen
+ * toestand waarin die tak iets doet, en daarom valt er ook geen test voor te
+ * schrijven** — een test die hem zou moeten breken, kan de wereld niet bouwen
+ * waarin hij breekt.
+ *
+ * **Wordt toetsbaar zodra `group_members.user_id` zijn `on delete cascade`
+ * verliest** — bijvoorbeeld als een lidmaatschap ooit als geschiedenis bewaard
+ * blijft. Dan bestaat de combinatie "geen profiel, wel lidmaatschap" wél, en is
+ * deze tak ineens de enige grendel.
+ *
  * ## ⚠️⚠️ Nagemeten op 03-09-2026 — de acteur was de zwakke
  *
  * Deze ronde toetste `weekly_plan_steps_insert` en `goal_interviews_all` tegen een
@@ -71,6 +97,15 @@ import {
  * delen nu een groep en `andersGoalId` hangt eraan, dus de eigenaarsconjunct is
  * het énige slot dat nog werkt. Beide verruimingen maken nu hun eigen test rood.
  * Dezelfde les als ronde 4 (#174).
+ *
+ * ⚠️ **De koppeling dicht een dérde blinde vlek die niemand had opgemerkt**, en
+ *    dat is door de reviewer gemeten: `profiles_update` was óók blind voor een
+ *    verruiming langs de groepskant. Met beide helften verruimd naar
+ *    `or shares_group_with_user(id)` wordt *"je past de naam van een ander niet
+ *    aan"* nu rood; zonder de koppeling bleef hij groen. Die policy staat
+ *    hieronder als **niet-falsifieerbaar per helft** genoteerd, en dat blijft
+ *    waar — maar de verruiming die iemand realistisch schrijft raakt beide
+ *    helften tegelijk, en dáár is hij nu wél tegen bestand.
  */
 
 const SETUP_TIMEOUT = 180_000;

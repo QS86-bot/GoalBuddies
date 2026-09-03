@@ -138,8 +138,29 @@ function bouwer(db: TestDb, tabel: Tabelnaam): LosseBouwer {
 
 type Opdracht = 'DELETE' | 'INSERT' | 'UPDATE';
 
-/** Een policyhelft zoals `alleenlezen_bewaking()` hem teruggeeft. */
-type Helft = `${Opdracht} ${'using' | 'check'}`;
+/**
+ * Een policyhelft zoals `alleenlezen_bewaking()` hem teruggeeft.
+ *
+ * ⚠️⚠️ **`ALL` staat er met opzet bij, en het is géén vierde opdracht.** Postgres
+ *    kent `for all`, en `alleenlezen_bewaking()` geeft dat door — er staan er
+ *    vandaag vier in dit schema (`daily_moves_write`, `goal_interviews_all`,
+ *    `milestones_write`, `week_reviews_write`). Zou er ooit een `false`-helft op
+ *    zo'n policy komen, dan levert de functie `ALL using` of `ALL check`.
+ *
+ *    De valkuil zit niet in dat geval maar in de **reparatie** die je dan zou
+ *    doen: `'ALL'` bij `Opdracht` zetten. Dan geeft `opdrachtenVan()` `['ALL']`,
+ *    kiest de gedragslus hieronder de UPDATE-tak (want het is geen `'DELETE'`) en
+ *    slaat de insert-lus over (want het is geen `'INSERT'`). Structurele toets
+ *    groen, gedragstest groen, en de DELETE- én INSERT-dekking van die tabel is
+ *    spoorloos. Vóór deze ronde stond hier een handgeschreven
+ *    `opdrachten: ['DELETE','INSERT','UPDATE']`, en dan schreef de auteur die
+ *    drie gewoon op — de afleiding neemt hier een beslissing die eerst een mens
+ *    nam.
+ *
+ *    Daarom staat `ALL` in `Helft` maar níet in `Opdracht`, en vouwt
+ *    `opdrachtenVan()` hem uit naar alle drie. Gevonden door de security-reviewer.
+ */
+type Helft = `${Opdracht | 'ALL'} ${'using' | 'check'}`;
 
 /** Eén rij die de client niet mag aanraken, plus hoe je hem terugvindt. */
 interface Doelwit {
@@ -180,9 +201,22 @@ interface Doelwit {
 
 let doelwitten: Doelwit[] = [];
 
-/** De opdrachten van een doelwit, afgeleid uit zijn helften. */
+/**
+ * De opdrachten van een doelwit, afgeleid uit zijn helften.
+ *
+ * ⚠️ `ALL` vouwt uit naar alle drie — zie de toelichting bij `Helft`. Raden welke
+ *    van de drie bedoeld is, is precies hoe de dekking stil verdwijnt.
+ */
 function opdrachtenVan(d: Doelwit): Opdracht[] {
-  return [...new Set(d.helften.map((h) => h.split(' ')[0] as Opdracht))];
+  const alle: Opdracht[] = ['DELETE', 'INSERT', 'UPDATE'];
+  return [
+    ...new Set(
+      d.helften.flatMap((h) => {
+        const kop = h.split(' ')[0];
+        return kop === 'ALL' ? alle : [kop as Opdracht];
+      }),
+    ),
+  ];
 }
 
 function filter(vraag: LosseVraag, sleutel: Readonly<Record<string, string>>): LosseVraag {
@@ -608,7 +642,19 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
     'geen enkele rij is door de client rechtstreeks in te voegen',
     async () => {
       for (const d of doelwitten) {
-        if (!opdrachtenVan(d).includes('INSERT') || d.nieuweRij === null) continue;
+        if (!opdrachtenVan(d).includes('INSERT')) continue;
+
+        // ⚠️ **Gooien en niet overslaan.** Een fixture die een INSERT-helft noemt
+        //    maar geen `nieuweRij` meegeeft, hield de volledigheidstoets groen
+        //    (die kijkt alleen naar `helften`) én deze test groen (die sloeg
+        //    over): nul dekking, twee vinkjes. Vandaag doet geen enkele fixture
+        //    dat, maar de valdeur was onzichtbaar.
+        if (d.nieuweRij === null) {
+          throw new Error(
+            `${d.tabel}: de helften noemen een INSERT maar er is geen \`nieuweRij\`. ` +
+              'Zonder rij toetst deze test niets en meldt hij niets.',
+          );
+        }
 
         const tel = async (): Promise<number | null | undefined> => {
           const uit = await bouwer(adminDb(), d.tabel).select('*', { count: 'exact', head: true });
