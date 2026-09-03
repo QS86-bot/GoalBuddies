@@ -3,6 +3,7 @@
 
 export {
   archiveerGroep,
+  heropenGroep,
   fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepenVanDoel,

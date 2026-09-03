@@ -2982,6 +2982,19 @@ export type Database = {
         Returns: Json
       }
       zonder_initplan_hijs: { Args: { p_uitdrukking: string }; Returns: string }
+      mag_groep_lezen: { Args: { gid: string }; Returns: boolean }
+      archiefleesgat: {
+        Args: never
+        Returns: { bezwaar: string; naam: string }[]
+      }
+      sleutelzetters: {
+        Args: never
+        Returns: { bezwaar: string; naam: string }[]
+      }
+      heropen_groep: {
+        Args: { p_bevestigd?: boolean; p_group_id: string }
+        Returns: Json
+      }
       barrierelezers: {
         Args: never
         Returns: { bezwaar: string; naam: string }[]

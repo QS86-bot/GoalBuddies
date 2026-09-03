@@ -188,6 +188,17 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'gelijkheidstoets, dus rood ongeacht welke kant het eerst verandert. Zonder ' +
     'zo\'n functie vergelijkt zo\'n test zichzelf, en dat is precies wat er bij ' +
     '0032 misging (QS8-261).',
+  sleutelzetters:
+    'Functies die de ontgrendelsleutel van het archief noemen (0153). Hoort leeg ' +
+    'te zijn — alleen `heropen_groep()` zet hem en alleen ' +
+    '`archief_blijft_archief()` leest hem. Aanroeper is ' +
+    '`tests/rls/archief-leesbaar.test.ts`.',
+  archiefleesgat:
+    'Policies die aan de verkeerde kant van de lees/schrijf-splitsing van 0153 ' +
+    'staan. Hoort leeg te zijn. Aanroeper is ' +
+    '`tests/rls/archief-leesbaar.test.ts`. ⚠️ Tweezijdig, en de tweede richting ' +
+    'is de gevaarlijke: een SELECT-policy die een archief nog uitsluit is een ' +
+    'gemis, een schrijfpolicy die er een doorlaat is een lek.',
   barrierelezers:
     'Welke functies `group_visible_streaks` lezen (0151). Hoort leeg te zijn. ' +
     'Aanroeper is `tests/rls/reeksen-van-een-groep.test.ts`. ⚠️ Dit is de énige ' +

@@ -1450,15 +1450,25 @@ export const en: Record<Sleutel, string> = {
     'You are the last member. The group is archived when you leave, so no group is left without an admin.',
   'bevestiging.groep_archiveren.titel': 'Archive this group?',
   'bevestiging.groep_archiveren.uitleg':
-    'The group then disappears for everyone: the chat, the week reviews and The Chain can no longer be opened, not even by you. Nothing in it is deleted — it stays stored, and your buddies\u2019 streaks remain correct. But this cannot be undone from the app.',
+    'Nobody can do anything in it afterwards: no messages, no week reviews, no new members. Reading still works — the chat and the week reviews stay open to members, and your buddies\u2019 streaks remain correct. As an admin you can bring the group back later.',
   'bevestiging.groep_archiveren.knop': 'Yes, archive this group',
   'beheer.archief_titel': 'Archive group',
   'beheer.archief_uitleg':
-    'If this group is finished, this is how you close it. It disappears for all members and nobody can do anything in it any more.',
+    'If this group is finished, this is how you close it. Nobody can do anything in it any more; every member can still read back through it.',
   'beheer.archief_waarschuwing':
-    'Nothing is deleted, but you will not be able to open the group afterwards.',
+    'Nothing is deleted, and as an admin you can bring the group back later.',
   'beheer.archiveren': 'Archive this group',
-  'groep.gearchiveerd': 'This group has been archived and can no longer be opened.',
+  'groep.gearchiveerd': 'This group is archived. You can read everything back, but nothing can be added.',
+  'groep.link_gearchiveerd': 'This group has been archived. You cannot join it.',
+  'beheer.heropen_titel': 'Bring the group back',
+  'beheer.heropen_uitleg':
+    'This group is in the archive. Bring it back and everyone can post messages, week reviews and goals in it again.',
+  'beheer.heropenen': 'Bring this group back',
+  'beheer.melding_heropend': 'The group has been taken out of the archive.',
+  'bevestiging.groep_heropenen.titel': 'Bring this group back?',
+  'bevestiging.groep_heropenen.uitleg':
+    'The group takes full part again: everyone can write in it, link goals to it and join the week review. Members are not notified, so let them know yourself.',
+  'bevestiging.groep_heropenen.knop': 'Yes, bring this group back',
   'beheer.melding_gearchiveerd': 'The group has been archived.',
   'zichtbaarheid.onbekend': 'That setting does not exist.',
   'zichtbaarheid.ongewijzigd': 'It was already set that way.',

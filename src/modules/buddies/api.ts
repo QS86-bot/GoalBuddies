@@ -104,7 +104,14 @@ function meldingen(): Readonly<Record<string, string>> {
     too_many_groups: t('groep.te_veel_groepen'),
     // ⚠️ Migratie 0092: een uitnodigingslink naar een gearchiveerde groep. De
     //    code blijft geldig, de groep niet meer.
-    archived: t('groep.gearchiveerd'),
+    //
+    // ⚠️ **Een eigen sleutel en niet `groep.gearchiveerd`, en dat verschil is het
+    //    publiek.** Deze melding gaat naar een **niet-lid** dat een link volgt.
+    //    `groep.gearchiveerd` zegt sinds 0153 "je kunt alles teruglezen" — waar
+    //    voor een lid, en onzin voor iemand die er nooit in zat en er ook niet in
+    //    komt. Gevonden door de security-ronde: één sleutel op twee plekken die
+    //    verschillende dingen moeten zeggen.
+    archived: t('groep.link_gearchiveerd'),
 
     // create_group
     name_too_short: t('groep.naam_kort'),
@@ -155,6 +162,19 @@ export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
   const { data, error } = await supabase()
     .from('groups')
     .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid')
+    // ⚠️ **Deze filter is er sinds 0153 en hij is dragend, geen vangnet.** Tot die
+    //    migratie gaf `groups_select` een gearchiveerde groep helemaal niet terug,
+    //    dus elke aanroeper kreeg vanzelf alleen levende groepen. Nu niet meer, en
+    //    dat raakt meer dan het lijstscherm: `Straf` op `app/doel/[id].tsx` bouwt
+    //    hier zijn keuzelijst van begunstigde groepen mee, en zou een archief
+    //    aanbieden als ontvanger van een commitment device — waarna
+    //    `commitments_insert` weigert en de gebruiker een generieke storing ziet,
+    //    op het scherm waar domeinregel 5 juist maximale zorgvuldigheid vraagt.
+    //
+    //    Gevonden door de security-ronde op 0153. Een archief lees je terug via
+    //    `fetchGroep()` en het beheerscherm; hij hoort niet mee te doen in lijsten
+    //    waar je iets mee áán gaat.
+    .neq('status', 'archived')
     .order('created_at', { ascending: true })
     .limit(50);
 
@@ -678,9 +698,15 @@ export async function zetGroepszichtbaarheid(
  *    domeinregel 5 zegt dat zoiets expliciet bevestigd moet zijn. De database
  *    weigert zonder.
  *
- * ⚠️ Ná deze aanroep is de groep voor jou ook niet meer leesbaar —
- *    `is_group_member()` is onwaar voor een gearchiveerde groep. Het scherm moet
- *    dus wegnavigeren en niet proberen te herladen.
+ * ⚠️ **Dit stond hier andersom tot 0153 en het is nu onwaar.** Er stond: "ná deze
+ *    aanroep is de groep voor jou ook niet meer leesbaar". Dat klopte onder 0092
+ *    — `is_group_member()` was onwaar voor een archief en `groups_select` liep
+ *    langs diezelfde functie — en het is precies wat QS8-217 repareerde. Een
+ *    gearchiveerde groep is sinds 0153 gewoon te openen; er is alleen niets meer
+ *    in te schrijven.
+ *
+ *    Het scherm navigeert nog steeds weg na het archiveren, maar dat is nu een
+ *    keuze over waar je daarna wilt staan en geen noodzaak.
  */
 export async function archiveerGroep(
   groupId: string,
@@ -693,6 +719,47 @@ export async function archiveerGroep(
 
   if (error) {
     reportError(error, 'groups.archive', { group_id: groupId, pgcode: error.code });
+    return { ok: false, melding: t('groep.actie_mislukt') };
+  }
+
+  const uitkomst = uitkomstVan(data);
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: melding(uitkomst.reason, t('groep.actie_mislukt_kort')) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/**
+ * Haalt een groep terug uit het archief — migratie 0153 (QS8-217).
+ *
+ * ⚠️ **Dit is de vierde route terug, en de eerste met een naam.** 0092 vond er
+ *    vier door in `pg_proc` te zoeken naar elke functie die `update groups` doet,
+ *    en zette er één trigger op die voor élke rol pint — ook voor `service_role`
+ *    en definer-functies, want drie van de vier wáren definer-functies. Die pin
+ *    blijft staan; `heropen_groep()` heeft er één sleutel voor, en die draagt het
+ *    id van precies deze groep.
+ *
+ * ⚠️ `bevestigd` om dezelfde reden als bij `archiveerGroep()`: de handeling geeft
+ *    bij álle leden iets terug wat weg was, en domeinregel 5 zegt dat zoiets
+ *    expliciet bevestigd moet zijn. De database weigert zonder.
+ *
+ * ⚠️ Alleen een actieve beheerder. `is_group_admin()` geeft onwaar voor een
+ *    archief, dus de functie kijkt rechtstreeks in `group_members` — dat is geen
+ *    omweg maar de enige weg, en het staat sinds 0092 in de kop van die migratie
+ *    opgeschreven.
+ */
+export async function heropenGroep(
+  groupId: string,
+  bevestigd: boolean,
+): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('heropen_groep', {
+    p_group_id: groupId,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.reopen', { group_id: groupId, pgcode: error.code });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 

@@ -162,13 +162,24 @@ describe.skipIf(!rlsTestsConfigured)('0092 — archiveren in plaats van wissen',
   );
 
   it(
-    'verdwijnt uit beeld, en de levende groep niet',
+    'blijft in beeld voor zijn leden — sinds 0153, en dit was andersom',
     async () => {
+      // ⚠️ **Deze test stond hier omgekeerd, en dat is geen fout van toen maar
+      //    een besluit van nu.** 0092 liet de archieftoets in
+      //    `is_group_member()` staan, en `groups_select` liep langs diezelfde
+      //    functie — dus de groep verdween voor iedereen. Dat is als bewuste
+      //    keuze met open eind opgeschreven en werd de dossierrij van 25-08
+      //    (QS8-217): *"archief belooft leesbaarheid die er niet is"*.
+      //
+      //    0153 splitst lezen en schrijven. Wat hierboven staat blijft
+      //    onverkort gelden — er is niets meer in te schrijven — maar de rijen
+      //    zijn weer te bereiken. **De rest van dit bestand is niet aangeraakt;
+      //    alleen deze ene belofte is omgedraaid.**
       const { data } = await bob.db.from('groups').select('id');
       const zichtbaar = (data ?? []).map((r) => r.id);
 
       expect(zichtbaar).toContain(levend.id);
-      expect(zichtbaar).not.toContain(archief.id);
+      expect(zichtbaar).toContain(archief.id);
     },
     TEST_TIMEOUT,
   );

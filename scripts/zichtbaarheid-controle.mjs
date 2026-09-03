@@ -115,6 +115,24 @@ export const GEEN_OPPERVLAK = new Map([
     'Dezelfde hulpfunctie voor de doelkant: deelt de kijker een open groep met dít ' +
       'doel? Ook mechanisme en geen oppervlak.',
   ],
+  [
+    'functie:archiefleesgat',
+    'De teller van de lees/schrijf-splitsing van 0153. Noemt ' +
+      '`deelt_open_groep_met_doel` alleen als één van de vier functies die een ' +
+      'archieftoets dragen — hij leest geen enkele rij van een lid en geeft alleen ' +
+      'policynamen terug.',
+  ],
+  [
+    'functie:sleutelzetters',
+    '⚠️ **Een valse positief op een naam, en die is het opschrijven waard.** Deze ' +
+      'functie gaat over de ontgrendelsleutel van het archief (0153) en heeft niets ' +
+      'met zichtbaarheid te maken. Hij komt hier terecht omdat zijn body de naam ' +
+      '`heropen_groep` noemt, en daar zit `open_groep` letterlijk in — de zoekterm ' +
+      'van deze controle. Wie ooit een functienaam kiest met `open_groep` erin, ' +
+      'belandt hier. Dat is geen defect (deze controle hoort liever te veel te ' +
+      'melden dan te weinig, zie de kop) maar het is wél de reden dat deze rij een ' +
+      'uitleg draagt in plaats van een streepje.',
+  ],
   ['functie:zet_groepszichtbaarheid', 'De setter (0076). Zet de stand, leest niets van een lid.'],
   ['functie:guard_group_update', 'Pint de kolom vast; een client mag hem niet schrijven.'],
   ['functie:create_group', 'Zet de beginstand. Nieuwe groepen zijn beschermd.'],

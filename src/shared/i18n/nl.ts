@@ -698,16 +698,26 @@ export const nl = {
     'Je bent het laatste lid. De groep wordt bij je vertrek gearchiveerd, zodat er geen groep zonder beheerder achterblijft.',
   'bevestiging.groep_archiveren.titel': 'Deze groep archiveren?',
   'bevestiging.groep_archiveren.uitleg':
-    'De groep verdwijnt daarna voor iedereen: de chat, de weekafsluitingen en De Ketting zijn niet meer te openen, ook niet voor jou. Wat erin staat wordt niet gewist — het blijft bewaard, en de reeksen van je buddies blijven kloppen. Maar dit is niet terug te draaien vanuit de app.',
+    'Niemand kan er daarna nog iets in doen: geen berichten, geen weekafsluitingen, geen nieuwe leden. Lezen kan wel — de chat en de weekafsluitingen blijven voor de leden gewoon te openen, en de reeksen van je buddies blijven kloppen. Als beheerder kun je de groep later weer terughalen.',
   'bevestiging.groep_archiveren.knop': 'Ja, archiveer deze groep',
   'beheer.archief_titel': 'Groep archiveren',
   'beheer.archief_uitleg':
-    'Is deze groep klaar, dan sluit je hem hiermee af. Hij verdwijnt bij alle leden en niemand kan er nog iets in doen.',
+    'Is deze groep klaar, dan sluit je hem hiermee af. Niemand kan er nog iets in doen; teruglezen blijft voor alle leden mogelijk.',
   'beheer.archief_waarschuwing':
-    'Er wordt niets gewist, maar je kunt de groep hierna niet meer openen.',
+    'Er wordt niets gewist, en je kunt de groep later als beheerder weer terughalen.',
   'beheer.archiveren': 'Deze groep archiveren',
   'beheer.melding_gearchiveerd': 'De groep is gearchiveerd.',
-  'groep.gearchiveerd': 'Deze groep is gearchiveerd en niet meer te openen.',
+  'groep.gearchiveerd': 'Deze groep is gearchiveerd. Je kunt alles teruglezen, maar er is niets meer in te doen.',
+  'groep.link_gearchiveerd': 'Deze groep is gearchiveerd. Je kunt er niet meer bij.',
+  'beheer.heropen_titel': 'Groep terughalen',
+  'beheer.heropen_uitleg':
+    'Deze groep staat in het archief. Haal hem terug en iedereen kan er weer berichten, weekafsluitingen en doelen in kwijt.',
+  'beheer.heropenen': 'Deze groep terughalen',
+  'beheer.melding_heropend': 'De groep is teruggehaald uit het archief.',
+  'bevestiging.groep_heropenen.titel': 'Deze groep terughalen?',
+  'bevestiging.groep_heropenen.uitleg':
+    'De groep doet daarna weer volledig mee: iedereen kan er weer in schrijven, doelen aan koppelen en meedoen aan de weekafsluiting. De leden krijgen hier geen bericht van, dus laat het ze zelf even weten.',
+  'bevestiging.groep_heropenen.knop': 'Ja, haal deze groep terug',
   'beheer.naar_open': 'Deze groep openzetten',
   'beheer.naar_beschermd': 'Deze groep weer beschermen',
   'beheer.melding_open_gezet': 'De groep staat open. Iedereen heeft er een bericht van gekregen.',
