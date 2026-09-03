@@ -295,6 +295,49 @@ export function herinneringVelden(keuze: {
 }
 
 /**
+ * Het tijdstip waarop een herinnering staat als de gebruiker er nooit een koos.
+ *
+ * ⚠️ **Zonder tijdstip gaat er niets af.** `reminder_enabled` staat sinds
+ *    migratie 0001 op `true` en `reminder_tone` op `gentle`, maar `reminder_time`
+ *    heeft geen kolomstandaard — dus tot iemand hem zet, geeft `uurUit(null)`
+ *    geen uur en slaat `nudgeReden()` de gebruiker over. Een aan-standaard
+ *    zonder tijdstip is een herinnering die nooit komt.
+ */
+export const STANDAARD_HERINNERINGSTIJD = '20:00';
+
+/**
+ * De herinneringsvelden die de onboarding schrijft — QS8-213.
+ *
+ * ⚠️ **De onboarding vraagt de herinnering niet meer**, en dan is de vraag wie
+ *    hem zet. Antwoord: dit, en alleen voor wie de onboarding nog niet gehad
+ *    heeft. Voor iedereen daarna is het antwoord "niets".
+ *
+ * ⚠️ **Waarom `onboarded_at` de maatstaf is en niet `reminder_time === null`.**
+ *    Dat tweede lijkt "nog niets gekozen" te betekenen en betekent het niet:
+ *    `herinneringVelden()` maakt `reminder_time` juist léég zodra je de
+ *    herinnering uitzet, want "uit is uit". Wie hem op het profieltabblad
+ *    uitzette en daarna per ongeluk op het onboardingscherm belandt, zou hem dan
+ *    terugkrijgen op 20:00 — precies de belofte die
+ *    `tests/beloftes/herinnering.test.ts` bewaakt, gebroken langs een tweede weg.
+ *
+ * ⚠️ **Een leeg object is hier het antwoord en geen vergissing.**
+ *    `updateProfiel()` schrijft alleen de velden die je meestuurt, dus niets
+ *    meesturen is de enige vorm van "laat staan wat er staat". Een `undefined`
+ *    per veld zou hetzelfde doen en leest als een waarde die kwijtraakte.
+ */
+export function herinneringStandaard(profiel: {
+  readonly onboarded_at: string | null;
+}): Partial<ReturnType<typeof herinneringVelden>> {
+  if (profiel.onboarded_at !== null) return {};
+
+  return herinneringVelden({
+    aan: true,
+    tijd: STANDAARD_HERINNERINGSTIJD,
+    toon: 'gentle',
+  });
+}
+
+/**
  * Een `time`-waarde uit de database als `HH:MM`, klaar voor een invoerveld.
  *
  * ⚠️ Postgres geeft `20:00:00` terug en een invoerveld toont `20:00`. Bewust
