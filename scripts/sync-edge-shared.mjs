@@ -44,6 +44,14 @@ const afwijkingen = [];
 /** Wat er gekopieerd wordt, en waarheen. */
 const SETS = [
   { bron: join('src', 'shared', 'time'), doel: join('supabase', 'functions', '_shared', 'time') },
+  // ⚠️ Sinds QS8-206. `paginas()` is de lus waarmee de rollover zijn profielen
+  //    afloopt; hij staat in `src/` omdat daar vitest draait, en hier omdat de
+  //    Edge Function hem aanroept. Zelfde reden als `webpush-crypto.ts`.
+  {
+    bron: join('src', 'shared', 'bladeren'),
+    doel: join('supabase', 'functions', '_shared', 'bladeren'),
+    alleen: ['index.ts'],
+  },
   {
     bron: join('src', 'modules', 'notifications'),
     doel: join('supabase', 'functions', '_shared', 'notificaties'),
