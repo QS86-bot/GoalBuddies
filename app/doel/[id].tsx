@@ -1467,6 +1467,16 @@ function Mijlpalen({
   const [mijlpalen, setMijlpalen] = useState<readonly Mijlpaal[]>([]);
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
+  /**
+   * ⚠️ **Dezelfde drie velden als bij bewerken, en dat is dezelfde grendel** —
+   *    QS8-225. `maakMijlpaal()` neemt `MijlpaalInvoer`, en daar zijn
+   *    `description` en `target_date` verplichte sleutels met een nullable
+   *    waarde. Dit formulier stuurde ze allebei hard op `null`: een mijlpaal was
+   *    alleen met een titel aan te maken, en de omschrijving moest er daarna via
+   *    "bewerken" in — twee handelingen voor één ding.
+   */
+  const [omschrijving, setOmschrijving] = useState('');
+  const [datum, setDatum] = useState('');
   /** De mijlpaal die op dit moment bewerkt wordt, of `null`. */
   const [bewerkt, setBewerkt] = useState<Mijlpaal | null>(null);
   const [bezig, setBezig] = useState(false);
@@ -1500,8 +1510,8 @@ function Mijlpalen({
 
     const uitkomst = await maakMijlpaal(doel.id, {
       title: titel,
-      description: null,
-      target_date: null,
+      description: omschrijving.trim() === '' ? null : omschrijving,
+      target_date: datum.trim() === '' ? null : datum,
     });
 
     if (!uitkomst.ok) {
@@ -1512,6 +1522,8 @@ function Mijlpalen({
 
     setBezig(false);
     setTitel('');
+    setOmschrijving('');
+    setDatum('');
     setOpen(false);
     ververs();
   }
@@ -1574,14 +1586,33 @@ function Mijlpalen({
           {mijlpalen.map((m, i) => (
             <View key={m.id} style={styles.mijlpaal}>
               <Body>{m.title}</Body>
+
+              {/*
+                ⚠️ **De omschrijving stond hier niet, en dat was zonde van iets
+                   waar al voor betaald is** — QS8-225. `MIJLPAAL_SCHEMA` in de
+                   Edge Function zet `description` in `required`, dus élke
+                   gegenereerde mijlpaal heeft er een. Die was tot nu toe alleen
+                   te zien door op "bewerken" te drukken.
+              */}
+              {m.description === null || m.description.trim() === '' ? null : (
+                <Body muted>{m.description}</Body>
+              )}
+
               <Caption>
                 {m.status === 'done'
                   ? t('mijlpalenblok.gehaald')
                   : t('mijlpalenblok.stap', { nummer: i + 1, totaal: mijlpalen.length })}
-                {m.target_date === null
-                  ? ''
-                  : t('mijlpalenblok.streefdatum', { datum: m.target_date })}
               </Caption>
+
+              {/*
+                ⚠️ Een eigen regel en geen achtervoegsel meer aan de stapnummering.
+                   " · streefdatum 2027-03-31" achter "Stap 2 van 5" leest als één
+                   mededeling terwijl het er twee zijn, en de datum verdween in de
+                   staart van de zin.
+              */}
+              {m.target_date === null ? null : (
+                <Caption>{t('mijlpalenblok.streefdatum', { datum: m.target_date })}</Caption>
+              )}
 
               <View style={styles.knoppen}>
                 {/*
@@ -1695,6 +1726,36 @@ function Mijlpalen({
             placeholder={t('mijlpalenblok.nieuwe_voorbeeld')}
           />
 
+          {/*
+            ⚠️ **Woordelijk dezelfde velden als `MijlpaalBewerken`, en met opzet.**
+               Twee formulieren voor hetzelfde ding die verschillende velden
+               tonen, is hoe je een veld kwijtraakt bij de eerste correctie —
+               precies wat de kop van dat component beschrijft.
+
+            ⚠️ Een gewoon veld en geen kalender, ondanks wat QS8-225 voorstelt:
+               `Kalender` in `shared/ui` is een leesbare heatmap voor het
+               overzicht en geen datumkiezer. Er ís er geen; er een bouwen is
+               eigen werk en niet iets om hier langs de zijlijn te doen.
+          */}
+          <Field
+            label={t('mijlpaalbewerken.omschrijving')}
+            hint={t('mijlpalenblok.omschrijving_hint')}
+            value={omschrijving}
+            onChangeText={setOmschrijving}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Field
+            label={t('mijlpaalbewerken.streefdatum')}
+            hint={t('mijlpaalbewerken.streefdatum_hint')}
+            value={datum}
+            onChangeText={setDatum}
+            placeholder="2027-03-31"
+            autoCapitalize="none"
+            inputMode="numeric"
+          />
+
           <View style={styles.knoppen}>
             <Button
               variant="primair"
@@ -1710,6 +1771,8 @@ function Mijlpalen({
               onPress={() => {
                 setOpen(false);
                 setFout(null);
+                setOmschrijving('');
+                setDatum('');
               }}
             >
               {t('mijlpalenblok.annuleren')}

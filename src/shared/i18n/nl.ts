@@ -1645,7 +1645,7 @@ export const nl = {
   'mijlpalenblok.coach': 'Laat de Doelcoach ze voorstellen',
   'mijlpalenblok.gehaald': 'Gehaald',
   'mijlpalenblok.stap': 'Stap {nummer} van {totaal}',
-  'mijlpalenblok.streefdatum': ' · streefdatum {datum}',
+  'mijlpalenblok.streefdatum': 'Streefdatum {datum}',
   // ⚠️ "Toch niet gehaald" en niet "ongedaan maken": op gehaald zetten plaatst een
   //    systeembericht in elke gekoppelde groep, en een chatbericht is een
   //    onveranderlijke kopie. Terugzetten haalt dat bericht niet weg. De knop zegt
@@ -1664,6 +1664,8 @@ export const nl = {
   'mijlpalenblok.nieuwe_hint':
     'Een tussenresultaat dat je kunt aanwijzen. Bijvoorbeeld: eerste tienduizend woorden.',
   'mijlpalenblok.nieuwe_voorbeeld': 'Eerste tienduizend woorden',
+  'mijlpalenblok.omschrijving_hint':
+    'Optioneel. Wat houdt deze stap precies in? Je kunt hem later nog bijwerken.',
   'mijlpalenblok.toevoegen': 'Toevoegen',
   'mijlpalenblok.annuleren': 'Annuleren',
   'mijlpalenblok.toevoegen_knop': 'Mijlpaal toevoegen',
