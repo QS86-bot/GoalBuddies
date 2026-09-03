@@ -2559,7 +2559,8 @@ export type Database = {
         Args: {
           p_group_id: string
           p_limit?: number
-          p_offset?: number
+          p_na_joined_at?: string
+          p_na_user_id?: string
           p_period_start: string
         }
         Returns: {

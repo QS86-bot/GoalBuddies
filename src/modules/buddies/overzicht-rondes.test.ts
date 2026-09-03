@@ -103,9 +103,37 @@ describe('fetchGroepsoverzicht — het aantal rondes', () => {
     // meegroeit.
     await fetchGroepsoverzicht('groep-1', { startDate: '2026-08-24', endDate: '2026-08-30' } as never);
 
-    const argumenten = rpc.mock.calls[0]?.[1] as { p_limit?: number; p_offset?: number };
-    expect(argumenten.p_limit).toBeGreaterThan(0);
-    expect(argumenten.p_offset).toBe(0);
+    const argumenten = rpc.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(argumenten.p_limit as number).toBeGreaterThan(0);
+  });
+
+  it('stuurt zonder cursor géén halve cursor mee', async () => {
+    // ⚠️ **De eerste grendel van 0152, en hij zit hier en niet in SQL.** De
+    //    functie behandelt een half ingevulde cursor als "geen cursor", maar dat
+    //    is de tweede grendel. Deze is de eerste: de sleutels horen er op de
+    //    eerste pagina helemaal áf te zijn, niet als `null` mee. Zou er één van
+    //    de twee meegaan, dan is `(x, null)` in SQL geen vergelijking maar NULL
+    //    en valt de hele pagina stil weg.
+    await fetchGroepsoverzicht('groep-1', { startDate: '2026-08-24', endDate: '2026-08-30' } as never);
+
+    const argumenten = rpc.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(Object.keys(argumenten)).not.toContain('p_na_joined_at');
+    expect(Object.keys(argumenten)).not.toContain('p_na_user_id');
+  });
+
+  it('stuurt mét cursor allebei de sleutels mee', async () => {
+    await fetchGroepsoverzicht(
+      'groep-1',
+      { startDate: '2026-08-24', endDate: '2026-08-30' } as never,
+      { na: { joinedAt: '2026-08-01T10:00:00Z', userId: 'lid-7' } },
+    );
+
+    const argumenten = rpc.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(argumenten.p_na_joined_at).toBe('2026-08-01T10:00:00Z');
+    expect(argumenten.p_na_user_id).toBe('lid-7');
+    // ⚠️ En geen `p_offset` meer: die parameter bestaat sinds 0152 niet, en een
+    //    aanroep die hem tóch meestuurt krijgt van PostgREST een PGRST202.
+    expect(Object.keys(argumenten)).not.toContain('p_offset');
   });
 });
 

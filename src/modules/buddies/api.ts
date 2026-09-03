@@ -338,6 +338,26 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
 }
 
 /**
+ * Waar de volgende pagina leden begint — 0152 (QS8-149).
+ *
+ * ⚠️ **Een waarde en geen plek, en dat is het hele punt.** De rij waar deze
+ *    cursor naar wijst mag verdwijnen; `(joined_at, user_id) >` blijft dan een
+ *    geldige vergelijking. Een `offset` verwijst naar een plek in een lijst die
+ *    onder je handen korter wordt — en hier maakt niet de kijker hem korter maar
+ *    een vertrek of een beheerder, wat precies de reden was dat deze van de drie
+ *    offsetlijsten als laatste ging.
+ */
+export interface Ledencursor {
+  readonly joinedAt: string;
+  readonly userId: string;
+}
+
+export interface Ledenpagina extends Pagina<Groepslid> {
+  /** De cursor voor de vólgende pagina, of `null` als er niets meer achter zit. */
+  readonly cursor: Ledencursor | null;
+}
+
+/**
  * Het groepsoverzicht in één ronde — QS8-55.
  *
  * ⚠️ De klassieke N+1 van dit project. Eén RPC levert lid, gekoppeld doel,
@@ -355,17 +375,27 @@ function naarGroepslid(rij: OverzichtRij): Groepslid | null {
 export async function fetchGroepsoverzicht(
   groupId: string,
   periode: Cycle,
-  opties: { readonly pagina?: number } = {},
-): Promise<Pagina<Groepslid>> {
-  const pagina = opties.pagina ?? 0;
-  const van = pagina * LEDEN_PER_PAGINA;
+  opties: { readonly na?: Ledencursor | null } = {},
+): Promise<Ledenpagina> {
+  const na = opties.na ?? null;
 
-  const { data, error } = await supabase().rpc('group_overview', {
-    p_group_id: groupId,
-    p_period_start: periode.startDate,
-    p_limit: LEDEN_PER_PAGINA,
-    p_offset: van,
-  });
+  // ⚠️ **Beide cursorwaarden of geen van beide, en dat staat hier als vórm.**
+  //    Migratie 0152 behandelt een half ingevulde cursor als "geen cursor", maar
+  //    dat is de tweede grendel. Deze is de eerste: er is geen tak waarin er één
+  //    van de twee meegaat, dus de fout is hier niet te máken. Dezelfde
+  //    constructie als in `fetchBeoordelingen()` (0125).
+  const argumenten =
+    na === null
+      ? { p_group_id: groupId, p_period_start: periode.startDate, p_limit: LEDEN_PER_PAGINA }
+      : {
+          p_group_id: groupId,
+          p_period_start: periode.startDate,
+          p_limit: LEDEN_PER_PAGINA,
+          p_na_joined_at: na.joinedAt,
+          p_na_user_id: na.userId,
+        };
+
+  const { data, error } = await supabase().rpc('group_overview', argumenten);
 
   if (error) {
     reportError(error, 'groups.overview', { group_id: groupId, pgcode: error.code });
@@ -384,7 +414,46 @@ export async function fetchGroepsoverzicht(
   const overgeslagen = ruw.length - rijen.length;
   const totaal = Math.max(0, (ruw[0]?.total_members ?? rijen.length) - overgeslagen);
 
-  return { rijen, totaal, meer: van + rijen.length < totaal };
+  return {
+    rijen,
+    totaal,
+    // ⚠️ **`meer` is voortaan "er kwam een volle pagina terug" en geen rekensom.**
+    //    Het was `offset + opgehaald < totaal`, en juist die klopt niet zodra er
+    //    tussendoor iemand vertrekt: het totaal daalt, de teller niet. Een volle
+    //    pagina kost hoogstens één leeg verzoek aan het eind en kan niet liegen.
+    meer: ruw.length === LEDEN_PER_PAGINA,
+    cursor: volgendeLedencursor(ruw),
+  };
+}
+
+/**
+ * De cursor voor de volgende pagina, uit de laatste rij die de server stuurde.
+ *
+ * ⚠️ **Uit `ruw` en niet uit `rijen`, en dat verschil is een vastloper.** Een rij
+ *    die `naarGroepslid()` niet kan lezen valt uit `rijen` weg. Zou de cursor
+ *    daaruit komen, dan is de laatste brúikbare rij de grens, komt de onleesbare
+ *    rij bij de volgende pagina weer mee, valt daar weer weg — en blijf je "meer
+ *    laden" indrukken op dezelfde pagina. Uit `ruw` schuift hij er definitief
+ *    langs, precies één keer gemeld door `reportError`.
+ *
+ * ⚠️ **En daarom de láátste rij en niet de laatste brúikbare.** Bij 0125 zocht de
+ *    eerste versie terug naar een rij die allebei de waarden had, en dat is
+ *    exact dezelfde lus met een stap ertussen. `naarGroepslid()` valt bovendien
+ *    op `user_id` — één van de twee cursorkolommen — dus een rij die afvalt kan
+ *    nog steeds een geldige cursor dragen zolang `joined_at` er staat.
+ *
+ * ⚠️ **Kan de laatste rij zélf geen cursor leveren, dan is er geen cursor.** Het
+ *    bladeren stopt dan, en dat is de goede kant om op te leunen: `user_id` en
+ *    `joined_at` staan allebei in de primaire sleutel of op NOT NULL, dus dit
+ *    kán alleen als de functie iets anders teruggeeft dan haar handtekening
+ *    zegt. Doorgaan zou betekenen dat je gokt waar je bent.
+ */
+function volgendeLedencursor(ruw: readonly OverzichtRij[]): Ledencursor | null {
+  const laatste = ruw[ruw.length - 1];
+  if (typeof laatste?.joined_at !== 'string' || typeof laatste.user_id !== 'string') {
+    return null;
+  }
+  return { joinedAt: laatste.joined_at, userId: laatste.user_id };
 }
 
 // ---------------------------------------------------------------------------
