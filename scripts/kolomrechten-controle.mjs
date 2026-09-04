@@ -42,6 +42,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+
 import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1008,12 +1010,7 @@ export function verlopenRegels({ ongeschreven, onleesbaar, ongemeten = {} }, lij
 }
 
 function hoofd() {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const vraag = (sql) => {
-    const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', sql];
-    if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
-    return execFileSync('psql', args, { encoding: 'utf8' });
-  };
+  const vraag = (sql) => execFileSync('psql', psqlArgumenten(sql), { encoding: 'utf8' });
 
   // ⚠️ **De `try` dekt alléén de aanroep en niet het ontleden.** Anders wordt een
   //    kapotte uitlezing — een half afgekapte regel, een kolom die verdwijnt —
@@ -1033,10 +1030,13 @@ function hoofd() {
     //    `beoordeel()` in `poort.mjs`: een controle die zich overslaat en
     //    daarna 0 teruggeeft, is voor de helft van zijn lezers groen.
     console.error(
-      '⚠ kolomrechten-controle: OVERGESLAGEN — geen database om de grants uit te lezen.\n\n' +
-        'Deze controle leest `information_schema.column_privileges` en niet de\n' +
-        'migratiebestanden. Start de lokale stack met `npm run rls:stack`.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+      verbindingsmelding({
+        naam: 'kolomrechten-controle',
+        leest:
+          'Deze controle leest `information_schema.column_privileges` en niet de\n' +
+          'migratiebestanden.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
     );
     return 1;
   }

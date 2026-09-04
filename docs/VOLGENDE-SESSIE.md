@@ -31,13 +31,11 @@
 > en `zichtbaarheid` roepen `psql` aan zónder `-U`, dus die valt terug op de
 > OS-gebruiker — hier `root`, waar geen databaserol voor bestaat. De poort telde
 > ze bij de vier die écht productiesleutels vragen en meldde *"9 controle(s)
-> zonder database"*. ⚠️ **Zet `PGUSER=postgres` en het worden er vier.**
-> Nagemeten: zelfde database, zelfde moment, alleen die env-var verschilt.
-> Zolang dit niet gerepareerd is, draai je de poort dus zó:
->
-> ```bash
-> export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres RLS_DOEL=lokaal
-> ```
+> zonder database"*. ✅ **Gerepareerd op 04-09**: `psqlArgumenten()` in
+> `scripts/psql.mjs` noemt de gebruiker, en `PGUSER` hoef je niet meer te zetten.
+> De poort telt er nu vier — nagemeten zónder die env-var. Wat de regels zijn
+> geworden staat in `CLAUDE.md` bij de commando's, de redenering in
+> `docs/decisions/2026-09-04-geen-database-was-de-verkeerde-reden.md`.
 >
 >
 > **04-09, punt III: migratie 0154 is geland (#191, QS8-197) en dáármee is
@@ -619,7 +617,12 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   stack draait en de RLS-suite er wél tegen meet. ⚠️ **Een melding die de
   verkeerde oorzaak noemt, is duurder dan geen melding:** hij stuurt de lezer weg
   van de oplossing en de poort telt vijf ongemeten controles als een grens van de
-  omgeving. Zet `PGUSER=postgres` tot QS8-268 gerepareerd is.
+  omgeving. ✅ Gerepareerd dezelfde dag. ⚠️ **De duurste helft zit niet in de
+  bug maar in de omweg:** dit bestand droeg sinds eind augustus twee passages die
+  zeiden dát je `PGUSER` moet zetten, mét de `export`-regel erbij. Een omweg die
+  je opschrijft, houdt op een bug te zijn. Vraag bij elke "zo doe je dat hier"
+  in dit bestand: is dit een eigenschap van de omgeving, of een defect dat een
+  vaste vorm heeft gekregen?
 
 - **⚠️ Een reden om iets te laten liggen, veroudert net zo hard als code —
   04-09, QS8-192.** De dossierrij zei dat expo-router geen ondersteunde manier
@@ -1228,13 +1231,12 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   en als de drop dan nog weigert: `psql -c "drop database if exists
   goalbuddies_rls;"` met de hand.
 
-  ⚠️ **`schema-opbouwen.sh` gaat uit van Postgres op poort 5433 en gebruiker
-  `postgres`.** Draait jouw cluster op 5432, of ben je als een andere gebruiker
-  ingelogd, dan falen zowel `rls:stack` als de drie controlescripts die
-  `pg_proc` lezen (`pin`, `klokgrens`, `kolomrechten`) — met een psql-fout die
-  naar de database wijst terwijl de vérbinding fout staat. `PGPORT` en `PGUSER`
-  zetten lost het op; ze zijn niet in het script gehardcodeerd omdat ze per
-  machine verschillen.
+  ⚠️ **`schema-opbouwen.sh` gaat uit van Postgres op poort 5433.** Draait jouw
+  cluster op 5432, dan faalt `rls:stack`; `PGPORT` zetten lost dat op, en dat
+  staat niet in het script omdat het per machine verschilt. ✅ **De gebruiker is
+  sinds 04-09 geen probleem meer** (QS8-268): de controles noemen `postgres` zelf
+  als er geen `PGUSER` staat, en een psql-fout wijst nu naar de échte oorzaak in
+  plaats van naar de database.
 
   ⚠️ **En draai de suite nooit met `--no-isolate`.** Op 27-08 als proef
   gebruikt om te zien of testbestanden moduletoestand delen: 28 van de 30
@@ -1310,9 +1312,11 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
   ```bash
   export PATH=/usr/lib/postgresql/16/bin:$PATH
-  export PGHOST=localhost PGPORT=5433 PGUSER=postgres RLS_DOEL=lokaal
+  export PGHOST=localhost PGPORT=5433 RLS_DOEL=lokaal
   npm run poort
   ```
+
+  ⚠️ `PGUSER` stond hier tot 04-09 bij en is er sinds QS8-268 niet meer nodig.
 
   Daarmee méten ook `klokgrens`, `kolomrechten`, `pin` en `zichtbaarheid` in
   plaats van zichzelf over te slaan. **Wat er dan nog ongemeten blijft is

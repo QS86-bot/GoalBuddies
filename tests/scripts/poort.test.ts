@@ -138,6 +138,53 @@ describe('beoordeel', () => {
   });
 });
 
+/**
+ * Een server die draait en jou weigert, is geen ontbrekende database — QS8-268.
+ *
+ * ⚠️ **Waarom dit een eigen naad is.** `GEEN_DATABASE` matcht op
+ *    `connection to server`, en élke psql-mislukking begint met die zin — ook
+ *    die waarbij de server prima draait en alleen de rol of het wachtwoord niet
+ *    klopt. Zonder de `GEWEIGERD`-regel telt de poort zo'n kapotte instelling
+ *    dus als "zonder database", en herhaalt hij precies de onwaarheid die de
+ *    vijf controles zelf vertelden.
+ *
+ * ⚠️ **Met de hand rood gemaakt** door de `GEWEIGERD`-regel uit `beoordeel()` te
+ *    halen: dan wordt het eerste geval hieronder `ongemeten`.
+ */
+describe('beoordeel — geweigerd is niet hetzelfde als geen database', () => {
+  const geweigerd =
+    '✗ definers-controle: GEWEIGERD — de server draait, maar deze gebruiker mag er niet in.\n\n' +
+    'psql zei: psql: error: connection to server at "127.0.0.1", port 5432 failed: ' +
+    'FATAL:  role "root" does not exist';
+
+  it('noemt een geweigerde gebruiker rood, ook al staat er `connection to server` in', () => {
+    expect(beoordeel({ code: 1, uitvoer: geweigerd, heeftDatabaseNodig: true })).toBe('rood');
+  });
+
+  it('laat een échte ontbrekende server gewoon ongemeten', () => {
+    expect(
+      beoordeel({
+        code: 1,
+        uitvoer:
+          '⚠ definers-controle: OVERGESLAGEN — geen database om tegen te meten.\n\n' +
+          'psql zei: psql: error: connection to server at "127.0.0.1", port 5499 failed: ' +
+          'Connection refused',
+        heeftDatabaseNodig: true,
+      }),
+    ).toBe('ongemeten');
+  });
+
+  it('maakt een geslaagde stap die de melding citeert niet alsnog rood', () => {
+    // De regel staat ná `code === 0`, en dat is wat een citaat beschermt — geen
+    // `soort`-grens zoals bij OVERGESLAGEN. Die zou hier niets veranderen, en
+    // een grendel die niets verandert hoort er niet te staan.
+    expect(beoordeel({ code: 0, uitvoer: geweigerd, heeftDatabaseNodig: true, soort: 'test' })).toBe(
+      'groen',
+    );
+    expect(beoordeel({ code: 0, uitvoer: geweigerd, heeftDatabaseNodig: true })).toBe('groen');
+  });
+});
+
 describe('de opstelling zelf', () => {
   it('draait de twee suites én de basis', () => {
     expect(STAPPEN.map((s: { commando: string }) => s.commando)).toEqual([

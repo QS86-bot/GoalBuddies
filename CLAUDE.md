@@ -544,6 +544,20 @@ die twee uit elkaar en faalt op allebei. `functies:controle` en
 `register:controle` printen "OVERGESLAGEN" en geven daarna exitcode 0; wie alleen
 naar de exitcode kijkt, telt ze als bewijs.
 
+⚠️ **Maar "geen database" moet dan wel waar zijn.** Sinds 04-09-2026 (QS8-268)
+deelt `scripts/psql.mjs` een mislukte verbinding in vier: er is geen server, de
+database bestaat niet, de gebruiker wordt geweigerd, of het is iets anders.
+Alleen de eerste twee heten **OVERGESLAGEN**; een geweigerde gebruiker is een
+kapotte instelling en dus **rood**, want de database ligt er gewoon. Zes scripts
+zeiden jarenlang "start de lokale stack" terwijl die draaide, en de poort telde
+er daardoor negen ongemeten waar er vier hoorden.
+
+⚠️ **Een controle die `psql` aanroept, bouwt zijn eigen aanroep niet.** Dat is
+zesmaal dezelfde vergeten vlag geweest. `psqlArgumenten()` is de enige weg; een
+uitzondering hoort in het register in `tests/scripts/psql-verbinding.test.ts`,
+mét reden. Uitleg in
+`docs/decisions/2026-09-04-geen-database-was-de-verkeerde-reden.md`.
+
 ⚠️ **Een nieuwe migratie begint met `npm run migratie:nieuw -- "naam"`.** Die
 kijkt naar élke branch die de remote kent en niet alleen naar je eigen map, en hij
 **fetcht zelf** (sinds 01-09-2026, QS8-247). Migratienummers zijn vier keer
