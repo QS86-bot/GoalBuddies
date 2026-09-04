@@ -1,5 +1,7 @@
 import { isGeldigeTijdzone, tijdzones } from '../time';
 
+import { TIJDZONE_ALIASSEN } from './tijdzone-aliassen';
+
 /**
  * Zoeken in de lijst met tijdzones — QS8-27, criterium 1.
  *
@@ -22,7 +24,48 @@ export const VOORSTELLEN_MAX = 8;
  *    streepje waar hij een spatie typte.
  */
 function zoekvorm(waarde: string): string {
-  return waarde.toLowerCase().replaceAll('_', ' ').replaceAll('/', ' ');
+  return waarde
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replaceAll('_', ' ')
+    .replaceAll('/', ' ')
+    .replaceAll("'", '');
+}
+
+/**
+ * Zone → de termen waarop hij óók te vinden is.
+ *
+ * ⚠️ Eén keer opgebouwd. De tabel verandert binnen een sessie niet, en het
+ *    alternatief is bij elke toetsaanslag over een paar honderd sleutels lopen.
+ */
+const aliassenPerZone: ReadonlyMap<string, readonly string[]> = (() => {
+  const kaart = new Map<string, string[]>();
+  for (const [term, zone] of Object.entries(TIJDZONE_ALIASSEN)) {
+    const bestaand = kaart.get(zone);
+    if (bestaand === undefined) kaart.set(zone, [zoekvorm(term)]);
+    else bestaand.push(zoekvorm(term));
+  }
+  return kaart;
+})();
+
+/**
+ * De zones waarin gezocht wordt als het platform er zelf geen kent.
+ *
+ * ⚠️ **Dit is de tweede helft van QS8-212.** Zonder
+ *    `Intl.supportedValuesOf` geeft `tijdzones()` met opzet een lege lijst — dat
+ *    contract staat in `shared/time` en blijft zo. Maar een lege lijst betekende
+ *    ook een lege zoekopdracht, en dan werkte alleen nog de letterlijke
+ *    zonenaam: precies de gebruiker met een ouder toestel, van wie de klok het
+ *    vaakst niet klopt.
+ *
+ * ⚠️ **Gefilterd op wat `Intl.DateTimeFormat` wél aankan.** Die kent de zone ook
+ *    op een toestel dat hem niet opsomt — dat is dezelfde waarneming waar
+ *    `isBruikbareZone()` op leunt. Een voorstel dat het toestel niet kan
+ *    gebruiken, hoort er niet te staan.
+ */
+function terugvalzones(): readonly string[] {
+  return [...new Set(Object.values(TIJDZONE_ALIASSEN))].filter(isGeldigeTijdzone).sort();
 }
 
 /**
@@ -44,16 +87,32 @@ export function zoekTijdzones(
   const gezocht = zoekvorm(term.trim());
   if (gezocht === '') return [];
 
-  const treffers = alles.filter((zone) => zoekvorm(zone).includes(gezocht));
+  const lijst = alles.length > 0 ? alles : terugvalzones();
+  const aliassen = (zone: string): readonly string[] => aliassenPerZone.get(zone) ?? [];
 
-  // De plaatsnaam is het deel achter de laatste schuine streep; daar zoekt een
-  // mens op, niet op het werelddeel ervoor.
-  const beginMet = (zone: string): boolean =>
-    zoekvorm(zone.slice(zone.lastIndexOf('/') + 1)).startsWith(gezocht);
+  const treffers = lijst.filter(
+    (zone) =>
+      zoekvorm(zone).includes(gezocht) || aliassen(zone).some((a) => a.includes(gezocht)),
+  );
+
+  // ⚠️ **Drie rangen en niet twee, en dat is een gemeten correctie.** De eerste
+  //    versie liet een alias net zo zwaar tellen als een echte plaatsnaam. Toen
+  //    zakte `Pacific/Auckland` bij het zoeken op "a" uit de eerste vier, want
+  //    "antwerpen", "ankara" en "atlanta" duwden hun zones ernaast omhoog. Een
+  //    alias hoort te helpen waar de lijst niets heeft — niet de lijst
+  //    verdringen waar hij wél wat heeft.
+  //
+  //    De plaatsnaam is het deel achter de laatste schuine streep; daar zoekt
+  //    een mens op, niet op het werelddeel ervoor.
+  const rang = (zone: string): number => {
+    if (zoekvorm(zone.slice(zone.lastIndexOf('/') + 1)).startsWith(gezocht)) return 0;
+    if (aliassen(zone).some((a) => a.startsWith(gezocht))) return 1;
+    return 2;
+  };
 
   return [...treffers]
     .sort((a, b) => {
-      const verschil = Number(beginMet(b)) - Number(beginMet(a));
+      const verschil = rang(a) - rang(b);
       return verschil !== 0 ? verschil : a.localeCompare(b);
     })
     .slice(0, VOORSTELLEN_MAX);
