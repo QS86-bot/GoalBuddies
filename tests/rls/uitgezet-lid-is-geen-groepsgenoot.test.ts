@@ -153,3 +153,94 @@ describe.skipIf(!beschikbaar)('en wie er nog wél bij hoort, blijft zichtbaar', 
     expect(zicht(UITZETTEN, BOB, BOB)).toEqual({ profiel: 1, avatar: 1 });
   });
 });
+
+/**
+ * Het derde oppervlak: **de ledenlijst hangt niet af van wie er kijkt.**
+ *
+ * ⚠️⚠️ **Dit is de naad die 0159 blootlegde, gevonden door de security-review en
+ *    zelf nagemeten.** `group_overview()` is `SECURITY INVOKER` en doet
+ *    `from group_members m join profiles p on p.id = m.user_id` — een inner join
+ *    zónder statustoets. Vóór 0159 ging dat nooit mis, want elk profiel van een
+ *    groepsgenoot was leesbaar. Daarna besliste `profiles_select` mee, en die
+ *    vraagt of je érgens een groep deelt met die persoon — niet per se déze.
+ *
+ * 📏 Gemeten met Bob uit groep A gezet, Carol die met hem óók in groep B zit en
+ *    Dave die dat niet doet:
+ *
+ *      carol (deelt groep B met bob):  a, b/inactive, c, d   total=4
+ *      dave  (deelt niets met bob):    a,             c, d   total=3
+ *
+ *    Wélke leden je ziet en welk getal eronder staat, hingen af van iets dat de
+ *    kijker niet kan zien en dat niets met deze groep te maken heeft. 0160 laat
+ *    de functie zelf filteren.
+ *
+ * ⚠️ **De twee kijkers staan er allebei, en dat is de hele test.** Eén kijker
+ *    bewijst hier niets: het gaat er niet om dat de lijst korter is maar dat hij
+ *    voor iedereen hetzelfde is.
+ */
+
+const CAROL = '00000000-0000-4000-8000-00000000c146';
+const DAVE = '00000000-0000-4000-8000-00000000d146';
+const GROEP_B = '00000000-0000-4000-8000-00000000f146';
+
+/** Groep A met vier leden; Carol deelt daarnaast groep B met Bob, Dave niet. */
+const TWEE_GROEPEN = `
+  insert into auth.users (id, email) values
+    ('${ALICE}', 'alice146@x.nl'), ('${BOB}', 'bob146@x.nl'),
+    ('${CAROL}', 'carol146@x.nl'), ('${DAVE}', 'dave146@x.nl');
+  insert into groups (id, name, created_by, status, invite_code, categorie) values
+    ('${GROEP}', 'Model146A', '${ALICE}', 'active', 'MODEL14A', 'other'),
+    ('${GROEP_B}', 'Model146B', '${CAROL}', 'active', 'MODEL14B', 'other');
+  insert into group_members (group_id, user_id, role, status) values
+    ('${GROEP}', '${ALICE}', 'admin', 'active'),
+    ('${GROEP}', '${BOB}', 'member', 'active'),
+    ('${GROEP}', '${CAROL}', 'member', 'active'),
+    ('${GROEP}', '${DAVE}', 'member', 'active'),
+    ('${GROEP_B}', '${CAROL}', 'admin', 'active'),
+    ('${GROEP_B}', '${BOB}', 'member', 'active');
+`;
+
+/** De ledenlijst van groep A zoals `kijker` hem krijgt. */
+function ledenlijst(kijker: string, wijziging: string): { leden: string[]; totaal: number } {
+  const claims = JSON.stringify({ sub: kijker, role: 'authenticated' }).replace(/'/g, "''");
+
+  const regel = psql(`
+    begin;
+    ${TWEE_GROEPEN}
+    ${wijziging}
+    select set_config('request.jwt.claims', '${claims}', true);
+    set local role authenticated;
+    select 'lijst|' || coalesce(string_agg(user_id::text, ',' order by user_id), '')
+        || '|' || coalesce(max(total_members), 0)
+      from group_overview('${GROEP}', current_date);
+    reset role;
+    rollback;
+  `)
+    .split('\n')
+    .find((r) => r.startsWith('lijst|')) as string;
+
+  const [, leden, totaal] = regel.split('|');
+  return { leden: (leden as string).split(',').filter((x) => x !== ''), totaal: Number(totaal) };
+}
+
+describe.skipIf(!beschikbaar)('de ledenlijst hangt niet af van wie er kijkt', () => {
+  it('toont alle vier zolang er niemand uit ligt — anders bewijst de rest niets', () => {
+    const carol = ledenlijst(CAROL, '');
+    const dave = ledenlijst(DAVE, '');
+
+    expect(carol.leden).toHaveLength(4);
+    expect(carol).toEqual(dave);
+  });
+
+  it('laat de uitgezette weg, ook voor wie een ándere groep met hem deelt', () => {
+    const carol = ledenlijst(CAROL, UITZETTEN);
+    const dave = ledenlijst(DAVE, UITZETTEN);
+
+    // ⚠️ Vóór 0160 stond hier voor Carol een lijst van vier met `total=4`, en
+    //    voor Dave een van drie. Dít is de belofte: dezelfde groep, hetzelfde
+    //    antwoord.
+    expect(carol, 'de lijst verschilt per kijker').toEqual(dave);
+    expect(carol.leden).not.toContain(BOB);
+    expect(carol.totaal, 'de teller telt de uitgezette mee').toBe(3);
+  });
+});

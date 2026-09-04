@@ -106,11 +106,27 @@
 --    blijven staan."*
 --
 -- De schermen rekenen dus al op een naam die er niet is, voor precies dit geval,
--- en tonen `algemeen.oud_lid`. 📏 Nagemeten dat er ook geen scherm is dat een
--- uitgezet lid nog toont: `app/groep/[id].tsx` filtert `member_status !==
--- 'inactive'` uit de ledenlijst. Er wordt met deze migratie geen enkele rij
+-- en tonen `algemeen.oud_lid`. Er wordt met deze migratie geen enkele rij
 -- herschreven en geen enkel bericht onleesbaar — alleen de náám valt terug, net
--- als bij iemand die zelf is vertrokken.
+-- als bij iemand die zelf is vertrokken. 📏 Elk naamveld dat langs een left join
+-- op `profiles` komt is nagelopen en heeft zo'n terugval: `chat.ts`,
+-- `weekafsluiting.ts`, `approvals.ts`, `veiligheid.ts` en `api.ts`.
+--
+-- ⚠️⚠️ **Hier stond dat geen enkel scherm een uitgezet lid nog toont, met een
+--    verwijzing naar de filter in `app/groep/[id].tsx`. Dat was onjuist, en de
+--    security-review op deze branch heeft het gevonden.** Die filter zit ín de
+--    component `VerlaatGroep` en dient de opvolgerkeuze; hij is geen ledenlijst.
+--    De échte ledenlijst is `app/groep/leden/[id].tsx`, en die filtert niet.
+--
+--    Dat is regel 18 vraag 4 in het wild: de bewering greep naar een plek waar
+--    het patroon toevallig óók staat, in plaats van naar het scherm dat de
+--    belofte draagt — en ze was load-bearing, want ze is precies het argument
+--    waarmee het bezwaar van 0029 opzijgezet wordt.
+--
+--    De ledenlijst loopt langs `group_overview()`, en die filtert sinds **0160**
+--    zelf op lidstatus. De zin klopt dus nu wél, maar door die migratie en niet
+--    door de meting die hier stond. Zie de kop van 0160 voor wat er ondertussen
+--    aan het licht kwam.
 --
 -- ⚠️ De omgekeerde reparatie — `verwijder_lid()` de rij laten verwijderen zoals
 --    `verlaat_groep()` dat doet — kan niet: `verwijder_lid()` bewaart die rij met

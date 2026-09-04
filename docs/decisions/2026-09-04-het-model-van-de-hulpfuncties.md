@@ -13,18 +13,32 @@ al is de reden dat dit document er hoort te zijn.
 
 ## De vier assen
 
-| functie | kijker | tegenpartij | archief | open |
-|---|---|---|---|---|
-| `is_group_member` | ✓ | n.v.t. | dicht | — |
-| `is_group_admin` | ✓ (+admin) | n.v.t. | dicht | — |
-| `mag_groep_lezen` | ✓ | n.v.t. | **open** | — |
-| `lid_van_open_groep` | ✓ | n.v.t. | dicht | ✓ |
-| `shares_group_with_goal` | ✓ | ✓ | dicht | — |
-| `deelt_open_groep_met_doel` | ✓ | ✓ | dicht | ✓ |
-| `shares_group_with_user` | ✓ | ✓ *(sinds 0159)* | **open** | — |
+De persoon over wie geoordeeld wordt komt uit het JWT (`auth.uid()`) of uit een
+parameter. Dat onderscheid is geen as van het model maar wel de reden dat de
+onderste drie er eerst niet bij stonden: 📏 een afleiding die `auth.uid()` eiste
+liet ze vallen, en dat is door de security-review op 0159 gevonden.
 
-`tests/rls/hulpfunctiemodel.test.ts` legt deze tabel naast de gedeployde bron en
-wordt rood zodra er een functie bijkomt die zijn model niet noemt.
+| functie | afgeknepen rijen | vorm | archief | open |
+|---|---|---|---|---|
+| `is_group_member` | 1 | `<> inactive` | dicht | — |
+| `is_group_admin` | 1 (+admin) | `<> inactive` | dicht | — |
+| `mag_groep_lezen` | 1 | `<> inactive` | **open** | — |
+| `lid_van_open_groep` | 1 | `<> inactive` | dicht | ✓ |
+| `shares_group_with_goal` | 2 | `<> inactive` | dicht | — |
+| `deelt_open_groep_met_doel` | 2 | `<> inactive` | dicht | ✓ |
+| `shares_group_with_user` | **2** *(sinds 0159)* | `<> inactive` | **open** | — |
+| `kan_beoordeeld_worden` | 1 | `is distinct from` | open | — |
+| `blokkade_met_groep` | 1 | `<> inactive` | open | — |
+| `heeft_nog_beoordelaar` | 1 | **`= active`** | (alleen actief) | — |
+
+`tests/rls/hulpfunctiemodel.test.ts` leidt de lijst uit de gedeployde database af
+en legt hem naast deze tabel; een elfde functie die zijn model niet noemt maakt
+hem rood.
+
+⚠️ **De detector knipt eerst het SQL-commentaar weg**, en dat is geen netheid.
+📏 Zonder die stap overleeft een mutant die het echte predicaat weghaalt en een
+rollback-notitie laat staan die het citeert — gemeten op deze branch, en twee
+functies in `public` dragen vandaag al zo'n regel.
 
 ### 1. De kijkerskant — overal hetzelfde, en dat is gemeten
 
@@ -36,6 +50,16 @@ kennen. 0029 zegt hem: *"Alleen `inactive`. `paused` is een zelfgekozen pauze en
 geen moderatie; wie even niet meedoet, hoort zijn groep gewoon te kunnen lezen.
 Zou `paused` hier meelopen, dan is een adempauze nemen hetzelfde als eruit gezet
 worden."*
+
+⚠️ **Eén functie schrijft wél `= 'active'`, en dat is een gepaard besluit.**
+`heeft_nog_beoordelaar()` (0147) is de spiegel van `vastgelopen_goedkeuringen()`
+en moet exact dezelfde verzameling opleveren; wie er één van de twee verzet,
+breekt het paar. Het gevolg is dat een lid met een adempauze niet als beschikbare
+beoordelaar telt, anders dan overal elders in dit model. 📏 Zeven functies in
+`public` combineren `group_members` met `= 'active'`; alleen deze valt binnen de
+familie van dit document. De vraag of dat de bedoeling is staat als open rij in
+`docs/ENGINEER-REVIEW.md` (04-09) — hier wordt hij alleen vastgelegd, niet
+beslecht.
 
 ### 2. De tegenpartijkant — de as waar 0029 en 0102 elkaar tegenspreken
 
@@ -121,6 +145,29 @@ route 2). De `inactive`-rij ís het slot. De toets hoort dus in de functie.
 
 Wat er lekte: naam, avatar, tijdzone en week-startdag van iemand die de groep
 zojuist had weggestuurd — onbeperkt, en zonder dat hij er iets van zag.
+
+⚠️ **Het sluit met maximaal een uur vertraging, en niet meteen.**
+`AVATAR_GELDIGHEID_S` in `src/modules/auth/avatar.ts` staat op 3600, en een
+signed URL wordt niet opnieuw langs RLS gehaald. Wie het overzicht laadde vlak
+vóór de uitzetting, houdt die avatar nog een uur bereikbaar. Begrensd in plaats
+van onbeperkt is de winst; nul is het niet.
+
+## Wat 0160 daarnaast rechtzet
+
+0159 legde een naad bloot die er al lag. `group_overview()` doet een **inner join
+op `profiles` zonder statustoets**, en die join loopt langs `profiles_select`.
+Vóór 0159 ging dat nooit mis; daarna bepaalde de kíjker het antwoord.
+
+📏 Gemeten met Bob uit groep A gezet, Carol die met hem óók in groep B zit en
+Dave die dat niet doet:
+
+    carol (deelt groep B met bob):  a, b/inactive, c, d   total=4
+    dave  (deelt niets met bob):    a,             c, d   total=3
+
+Dat is erger dan allebei de vaste standen: wélke leden je ziet hangt af van iets
+dat niets met deze groep te maken heeft, en `total_members` wordt er
+kijkerafhankelijk van. 0160 laat de functie zelf filteren — de database hoort dit
+te doen en niet het scherm.
 
 ## Wat hier niet mee opgelost is
 
