@@ -93,6 +93,8 @@ interface Fixture {
   grensGoalId: string;
   /** Doel met één cyclus die precies tussen de twee klokken in valt. */
   vensterGoalId: string;
+  /** Doel met één cyclus precies op de rand van het terugkijkvenster. */
+  vensterrandGoalId: string;
 }
 
 describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', () => {
@@ -172,11 +174,54 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       title: 'RISICOKLOK-WEEKDOEL',
       points_ceiling: 2,
       points_floor: 1,
-      points_miss: -1,
+      // ⚠️ `points_miss` staat bewust níet in deze insert: de kolom zit niet in
+      //    de INSERT-grant van `authenticated` (hij hoort bij het puntenmodel en
+      //    niet bij de invoer) en de standaardwaarde is al `-1`. Wie hem toch
+      //    meestuurt krijgt "permission denied for table weekly_goals", en dat
+      //    leest als een policyweigering terwijl het een kolomgrant is.
       cycle_start_date: vroegste,
       cycle_index: 1,
     });
     if (weekdoel.error) throw new Error(`weekdoel: ${weekdoel.error.message}`);
+
+    // ⚠️ **Een derde doel, want de rand van het venster is een ándere grendel.**
+    //    Zou de cyclus hieronder bij `vensterDoel` staan, dan telt hij mee in
+    //    dezelfde `cycli_bekeken` als de cyclus hierboven en zegt een rode
+    //    assertie niet meer wélke van de twee `current_date`-en eronder zat.
+    const randDoel = await eigenaar.db
+      .from('goals')
+      .insert({
+        owner_id: eigenaar.id,
+        title: 'RISICOKLOK-VENSTERRAND',
+        target_date: addDays(eigenDatum, 200),
+      })
+      .select('id')
+      .single();
+    if (randDoel.error || randDoel.data === null) {
+      throw new Error(`vensterranddoel: ${randDoel.error?.message}`);
+    }
+
+    // ⚠️ **De cyclus ligt precies op de rand van het terugkijkvenster van vier
+    //    weken.** Het venster begint op `vandaag - 28`, en de twee klokken
+    //    liggen één dag uit elkaar — dus één van beide sluit deze cyclus uit en
+    //    de ander telt hem mee. Welke, hangt van de richting af:
+    //
+    //      richting +1 (eigenaar loopt vóór): eigen venster begint op
+    //        eigenDatum-28, de server die van hem op eigenDatum-29. Een cyclus
+    //        op eigenDatum-29 valt dus buiten het eigen venster en binnen dat
+    //        van de server.
+    //      richting -1: precies andersom, met de cyclus op eigenDatum-28.
+    const randDag = addDays(eigenDatum, richting > 0 ? -29 : -28);
+
+    const randWeekdoel = await eigenaar.db.from('weekly_goals').insert({
+      goal_id: randDoel.data.id,
+      title: 'RISICOKLOK-RANDWEEKDOEL',
+      points_ceiling: 2,
+      points_floor: 1,
+      cycle_start_date: randDag,
+      cycle_index: 1,
+    });
+    if (randWeekdoel.error) throw new Error(`randweekdoel: ${randWeekdoel.error.message}`);
 
     f = {
       eigenaar,
@@ -185,6 +230,7 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       richting,
       grensGoalId: grensDoel.data.id,
       vensterGoalId: vensterDoel.data.id,
+      vensterrandGoalId: randDoel.data.id,
     };
   }, SETUP_TIMEOUT);
 
@@ -264,6 +310,27 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
         `de cyclus begint op de vroegste van de twee kalenders. Op die van de ` +
           `eigenaar telt hij ${opEigenKlok} keer mee, op die van de server ` +
           `${opServerklok} keer — kwam dat laatste eruit, dan rekent de radar nog in UTC`,
+      ).toBe(opEigenKlok);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'legt de rand van het terugkijkvenster op de dag van de eigenaar',
+    async () => {
+      const r = await reden(f.vensterrandGoalId);
+
+      // Het venster begint op `vandaag - 28`. De cyclus staat er precies op de
+      // rand van, dus de late klok telt hem mee en de vroege niet.
+      const opEigenKlok = f.richting > 0 ? 0 : 1;
+      const opServerklok = f.richting > 0 ? 1 : 0;
+
+      expect(
+        r.cycli_bekeken,
+        `de cyclus ligt op de rand van het terugkijkvenster van vier weken. Op de ` +
+          `kalender van de eigenaar telt hij ${opEigenKlok} keer mee, op die van de ` +
+          `server ${opServerklok} keer — kwam dat laatste eruit, dan rekent het ` +
+          'venster nog in UTC',
       ).toBe(opEigenKlok);
     },
     TEST_TIMEOUT,
