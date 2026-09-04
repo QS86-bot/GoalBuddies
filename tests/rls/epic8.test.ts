@@ -30,7 +30,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 //    laatste trekt de Supabase-client en AsyncStorage mee, en daarmee React
 //    Native, in een test die in Node draait.
 import { groepsperiodeVan } from '../../src/modules/buddies/periods';
-import { addDays, now, userCycle, type IsoDate } from '../../src/shared/time';
+import {
+  addDays,
+  localDateIn,
+  now,
+  userCycle,
+  type IsoDate,
+  type TimeZone,
+} from '../../src/shared/time';
 import {
   adminDb,
   createTestUser,
@@ -50,6 +57,8 @@ interface Fixture {
   /** Lid van geen enkele groep van alice en bob. */
   carol: TestUser;
   groupId: string;
+  /** De tijdzone van de groep — de klok waarop `groepsdatum()` het venster meet. */
+  tz: TimeZone;
   /** De lopende groepsperiode. */
   periodStart: IsoDate;
   /** De persoonlijke cyclus waarin het goedgekeurde weekdoel staat. */
@@ -134,6 +143,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       bob,
       carol,
       groupId,
+      tz: rij.data.tz as TimeZone,
       periodStart: periode.startDate,
       cycleStart: cycle.startDate,
     };
@@ -407,9 +417,19 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         //    ontbrekende schakel "gemist".
         //
         // ⚠️ De data zijn relatief aan vandáág en niet aan `f.periodStart`: de
-        //    policy vergelijkt met `current_date`, en dat is de grens die hier
+        //    policy vergelijkt met de dag van nu, en dat is de grens die hier
         //    getoetst wordt.
-        const vandaag = now().toISOString().slice(0, 10) as IsoDate;
+        //
+        // ⚠️ **"Vandaag" is vandaag op de klok van de gróep** — de policy luidt
+        //    `group_period_start >= groepsdatum(group_id) - 6`, en
+        //    `groepsdatum()` rekent in `groups.tz`. Hier stond tot QS8-267 de
+        //    UTC-datum, met een commentaarregel die beweerde dat de policy
+        //    `current_date` gebruikte. Dat wás ooit zo; een latere migratie
+        //    verplaatste de grens naar de groepsklok en deze test bleef groen
+        //    omdat de twee klokken tweeëntwintig uur per dag dezelfde dag
+        //    aanwijzen. De overige twee uur — de groep staat standaard in
+        //    Europe/Amsterdam — was hij rood zonder dat er iets kapot was.
+        const vandaag = localDateIn(f.tz, now());
         const gesloten = addDays(vandaag, -7);
         const lopend = addDays(vandaag, -6);
 
