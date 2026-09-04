@@ -19,6 +19,8 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { addDays, localDateIn, now, type IsoDate, type TimeZone } from '../../src/shared/time';
+
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './harness';
 
 const TEST_TIMEOUT = 30_000;
@@ -219,6 +221,12 @@ describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', ()
 
     const eigenaar = await createTestUser('radar-eigenaar');
     eigenaarId = eigenaar.id;
+
+    // ⚠️ Dezelfde klok als `herbereken_risico()`: die van de eigenaar. Zie
+    //    `datumOver()` voor wat het kostte toen dit de serverklok was.
+    const profiel = await adminDb().from('profiles').select('tz').eq('id', eigenaarId).single();
+    if (profiel.error || profiel.data === null) throw new Error(`profiel: ${profiel.error?.message}`);
+    eigenaarsDatum = localDateIn(profiel.data.tz as TimeZone, now());
 
     for (const s of SCENARIOS) {
       await bouwScenario(s);
@@ -431,8 +439,24 @@ describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', ()
 
 
 /** Een datum `dagen` dagen vanaf vandaag, als `YYYY-MM-DD`. */
-function datumOver(dagen: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + dagen);
-  return d.toISOString().slice(0, 10);
+/**
+ * ⚠️ **Op de klok van de eigenaar en niet in UTC.** `herbereken_risico()` rekent
+ *    sinds migratie 0155 met `eigenaarsdatum()` — `profiles.tz`, standaard
+ *    Europe/Amsterdam. Deze functie rekende in UTC, en zodra de eigen datum een
+ *    dag vóórloopt op de serverdatum viel de oudste cyclus (`-28`) buiten
+ *    `v_venster_start` en gaf scenario c004 `at_risk` in plaats van `behind`.
+ *
+ *    Gemeten door de tz-default tijdelijk op Pacific/Kiritimati te zetten:
+ *    `expected 'at_risk' to be 'behind'`. In CEST is dat elke dag tussen 22:00Z
+ *    en 23:59Z — twee uur per dag **loos rood**, en dat is nog vervelender dan
+ *    loos groen, want het leert je een falende poort te negeren.
+ *
+ *    Dit was een regressie van 0155: die migratie verplaatste de functie naar de
+ *    eigenaarsklok en liet dit bestand op de serverklok staan. QS8-271.
+ */
+function datumOver(dagen: number): IsoDate {
+  return addDays(eigenaarsDatum, dagen);
 }
+
+/** De dag zoals de eigenaar hem ziet — in `beforeAll` gevuld uit `profiles.tz`. */
+let eigenaarsDatum: IsoDate;

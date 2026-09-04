@@ -1,9 +1,10 @@
--- 0157_de_vloerverhouding_telt_over_hetzelfde_venster.sql — je vloer halen kon een waarschuwing opleveren (QS8-271)
+-- 0157_de_vloerverhouding_telt_over_hetzelfde_venster.sql — een lópende week telde als een gemiste (QS8-271)
 --
 -- ROLLBACK-PAD:
---   `create or replace` op `herbereken_risico()` met de vloerquery uit 0155:
---   `count(*)` in plaats van `count(distinct w.cycle_start_date)`, en de regel
---   `and w.cycle_start_date < v_vandaag` eruit. Er verandert geen data en geen
+--   `create or replace` op `herbereken_risico()` met de query's uit 0155:
+--   `count(*)` in plaats van `count(distinct w.cycle_start_date)` in de
+--   vloerquery, en `w.cycle_start_date < v_vandaag` in plaats van
+--   `w.cycle_start_date + 6 < v_vandaag` in béide query's. Er verandert geen data en geen
 --   handtekening; `goal_risk` wordt bij elke aanroep overschreven.
 --
 -- ---------------------------------------------------------------------------
@@ -30,12 +31,46 @@
 -- `v_vloerdeel` kon daardoor bóven 1 uitkomen, en de drempel is 0,75.
 --
 -- ---------------------------------------------------------------------------
+-- ⚠️ De grens was zelf ook fout, en dat is de tweede ronde van deze migratie
+-- ---------------------------------------------------------------------------
+--
+-- De eerste versie zette `and w.cycle_start_date < v_vandaag` op de teller en
+-- noemde het klaar. Dat is fout: **een cyclus loopt van `cycle_start_date` tot
+-- en met `+ 6`** — die vorm staat als grendel in `afvinking_binnen_de_cyclus()`.
+-- `< v_vandaag` betekent dus niet "de cyclus is af" maar "de cyclus is niet
+-- vandáág begonnen", en dat dekt één dag van de zeven.
+--
+-- Gemeten, zelfde geschiedenis, alleen de startdag van de lopende week schuift:
+--
+--   lopende cyclus begon 0 dagen geleden -> on_track
+--   lopende cyclus begon 1 dagen geleden -> at_risk
+--   lopende cyclus begon 2 dagen geleden -> at_risk
+--   lopende cyclus begon 3 dagen geleden -> at_risk
+--   lopende cyclus begon 6 dagen geleden -> at_risk
+--
+-- Het symptoom trad dus zes van de zeven dagen gewoon nog op, en de eerste
+-- versie van `vloerverhouding.test.ts` zette zijn lopende cyclus op precies de
+-- ene dag waarop de reparatie werkte. Gevonden door de security-review.
+--
+-- ⚠️ **En dezelfde fout stond ongerepareerd in de tempo-query ernaast**, waar
+--    hij iedereen raakt en geen vloergeschiedenis nodig heeft. Gemeten: drie
+--    weken op het plafond, met het weekdoel van deze week nog op `todo`:
+--
+--      lopende week begon 0 dagen geleden -> on_track  (tempo 1.00)
+--      lopende week begon 2 dagen geleden -> at_risk   (tempo 0.75)
+--      lopende week begon 6 dagen geleden -> at_risk   (tempo 0.75)
+--
+--    Een week die nog gewoon loopt telde als een week die je niet gehaald hebt.
+--    Beide query's dragen nu `cycle_start_date + 6 < v_vandaag`.
+--
+-- ---------------------------------------------------------------------------
 -- Wat het voor een gebruiker betekende
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ **Haal je déze week je vloer en keurt een buddy dat goed, dan kon de app je
---    daarvoor `at_risk` teruggeven.** Een risicowaarschuwing als antwoord op een
---    geslaagde week.
+-- ⚠️ **Een week die nog loopt telde als een week die je niet gehaald hebt**, en
+--    een vloer die je déze week haalde telde als bewijs dat je structureel op de
+--    vloer zit. Allebei een risicowaarschuwing als antwoord op een week die nog
+--    bezig is of juist geslaagd.
 --
 -- Dat botst met twee dingen die dit project met zoveel woorden heeft
 -- opgeschreven:
@@ -141,13 +176,28 @@ begin
   -- een cyclus kan meer dan één weekdoel bevatten.
   v_venster_start := v_vandaag - (c_venster * 7);
 
+  -- ⚠️ **`+ 6 <` en niet `<`, en dat is de correctie van 0157.** Een cyclus loopt
+  --    van `cycle_start_date` tot en met `+ 6` — die vorm staat als grendel in
+  --    `afvinking_binnen_de_cyclus()`. `cycle_start_date < v_vandaag` betekent
+  --    dus niet "de cyclus is afgelopen" maar "de cyclus is niet vandáág
+  --    begonnen", en dat dekt één dag van de zeven.
+  --
+  --    Gemeten wat dat kostte: drie weken op het plafond met het weekdoel van
+  --    déze week nog op `todo` gaf `tempo = 0.75` en `at_risk` zodra de week
+  --    één of meer dagen geleden begon — en `tempo = 1.00` met `on_track` als
+  --    hij vandaag begon. Een lopende week telde in de noemer terwijl hij nog
+  --    niet goedgekeurd kán zijn.
+  --
+  --    Met deze grens vallen precies de cyclusstarts op `-28`, `-21`, `-14` en
+  --    `-7` in het venster: vier afgesloten cycli, en `c_venster` betekent
+  --    eindelijk wat hij belooft.
   select count(distinct w.cycle_start_date),
          count(distinct w.cycle_start_date) filter (where w.status = 'approved')
     into v_recent_totaal, v_recent_goed
     from weekly_goals w
    where w.goal_id = p_goal_id
      and w.cycle_start_date >= v_venster_start
-     and w.cycle_start_date < v_vandaag;
+     and w.cycle_start_date + 6 < v_vandaag;
 
   -- Structureel alleen de vloer halen is een vroeg signaal, en het is er een dat
   -- je alléén ziet als je ernaar kijkt: de weken tellen gewoon mee, de reeks
@@ -165,7 +215,7 @@ begin
    where w.goal_id = p_goal_id
      and w.status = 'approved'
      and w.cycle_start_date >= v_venster_start
-     and w.cycle_start_date < v_vandaag
+     and w.cycle_start_date + 6 < v_vandaag
      and c.achieved_level = 'floor';
 
   v_tempo := case when v_recent_totaal = 0 then null

@@ -26,10 +26,23 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './
  *    assertie. De tests toetsten een eigenschap van het ónderdeel; deze grens zat
  *    in de naad ertussen — regel 18, vraag 1.
  *
- * ## Twee tests, één per helft van de reparatie
+ * ## ⚠️ De lopende cyclus staat níet op vandaag, en dat is de kern
  *
- * De eerste toetst de bovengrens, de tweede de eenheid. Ze staan los omdat een
- * rode test anders niet zegt wélke van de twee weg is.
+ * De eerste versie van dit bestand zette de lopende cyclus op `eigenDatum` — de
+ * dag waarop hij begon. Dat is de énige dag waarop de eerste reparatie werkte:
+ * `cycle_start_date < v_vandaag` betekent niet "de cyclus is af" maar "de cyclus
+ * is niet vandaag begonnen", en een cyclus loopt zeven dagen.
+ *
+ * Gemeten met dezelfde geschiedenis en alleen een schuivende startdag:
+ * `on_track` op dag 0, `at_risk` op dag 1 tot en met 6. De test bewees de grens
+ * dus op het uitzonderingsgeval en niet op het normale geval.
+ *
+ * Elke opstelling hieronder zet de lopende cyclus daarom **midden in de week**.
+ *
+ * ## Drie tests, één per grendel
+ *
+ * De vloergrens, de eenheid, en de tempogrens ernaast — die laatste droeg
+ * dezelfde fout en raakt iederéén, ook zonder vloergeschiedenis.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -158,10 +171,11 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
       expect(voor.reden.cycli_gehaald, 'de opstelling telt drie afgesloten cycli').toBe(3);
       expect(voor.stand, 'zonder de lopende cyclus staat dit doel op koers').toBe('on_track');
 
-      // ⚠️ **En nu de week van vandaag, gehaald op de vloer.** Dat is precies wat
-      //    domeinregel 8 een geslaagde week noemt. De noemer telt hem niet mee
-      //    (`< v_vandaag`); telde de teller hem wél, dan wordt 2/3 ineens 3/3.
-      await zetCyclus(goalId, eigenDatum, 'floor', 'week 0');
+      // ⚠️ **De lopende week, en met opzet niet op de dag dat hij begon.** Drie
+      //    dagen geleden gestart is het normale geval — je haalt je vloer
+      //    zelden op maandagochtend. Op `eigenDatum` zou deze test slagen met
+      //    de kapotte grens `< v_vandaag` erin.
+      await zetCyclus(goalId, addDays(eigenDatum, -3), 'floor', 'week 0');
 
       const na = await meet(goalId);
 
@@ -173,7 +187,8 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
       expect(
         na.reden.vloeraandeel,
         'de lopende cyclus telde mee in de teller en niet in de noemer, dus het ' +
-          'vloeraandeel sprong van 0,667 naar 1,0',
+          'vloeraandeel sprong van 0,667 naar 1,0. Let op de grens: een cyclus is ' +
+          'pas af als `cycle_start_date + 6 < vandaag`',
       ).toBeCloseTo(2 / 3, 5);
 
       expect(
@@ -212,6 +227,152 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
         'twee weekdoelen in één week maakten van twee vloerweken er drie, en dat ' +
           'tilde het aandeel over de drempel',
       ).toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'telt de lopende cyclus niet mee in de noemer van het tempo',
+    async () => {
+      // ⚠️ **Dezelfde grens, de andere query — en deze raakt iedereen.** Voor de
+      //    vloerverhouding heb je drie gehaalde cycli nodig voor er iets vuurt;
+      //    hier is een openstaand weekdoel van deze week genoeg. Gemeten vóór de
+      //    reparatie: drie weken op het plafond gaven `tempo 0.75` en `at_risk`
+      //    zodra de lopende week één dag oud was.
+      const goalId = await maakDoel('TEMPO-LOPEND');
+
+      // Een streefdatum kort genoeg om het benodigde tempo op 1,0 te zetten, en
+      // drie open mijlpalen: dan is `benodigd > tempo` de tak die kan vuren.
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 21) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2, 3].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      await zetCyclus(goalId, addDays(eigenDatum, -21), 'ceiling', 'week -3');
+      await zetCyclus(goalId, addDays(eigenDatum, -14), 'ceiling', 'week -2');
+      await zetCyclus(goalId, addDays(eigenDatum, -7), 'ceiling', 'week -1');
+
+      const voor = await meet(goalId);
+      expect(voor.reden.cycli_bekeken, 'drie afgesloten cycli').toBe(3);
+      expect(voor.stand, 'drie van de drie gehaald is op koers').toBe('on_track');
+
+      // ⚠️ Het weekdoel van deze week: aangemaakt, nog niet afgevinkt. Dat is op
+      //    woensdag de normaalste zaak van de wereld.
+      const lopend = await adminDb().from('weekly_goals').insert({
+        goal_id: goalId,
+        title: 'lopende week',
+        cycle_start_date: addDays(eigenDatum, -3),
+        cycle_index: 1,
+        status: 'todo',
+      });
+      if (lopend.error) throw new Error(`lopend weekdoel: ${lopend.error.message}`);
+
+      const na = await meet(goalId);
+
+      expect(
+        na.reden.cycli_bekeken,
+        'een cyclus die nog loopt hoort niet in de noemer — hij kán nog niet ' +
+          'goedgekeurd zijn',
+      ).toBe(3);
+
+      expect(
+        na.stand,
+        'een openstaand weekdoel van de lopende week trok het tempo van 1,00 naar ' +
+          '0,75 en leverde een risicowaarschuwing op',
+      ).toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'telt een week die van vloer naar plafond is opgewaardeerd niet als vloerweek',
+    async () => {
+      // ⚠️ De conjunct `c.superseded_by is null` was ongedekt, en hij draagt een
+      //    echte handeling: `dien_opnieuw_in()` supersedeert de oude voltooiing
+      //    en zet een nieuwe neer. Zonder dat filter telt een week waarin je van
+      //    vloer naar plafond opwaardeerde alsnog als vloerweek — precies
+      //    andersom dan wat er gebeurde.
+      const goalId = await maakDoel('VLOER-OPGEWAARDEERD');
+      const admin = adminDb();
+
+      await zetCyclus(goalId, addDays(eigenDatum, -21), 'floor', 'week -3');
+      await zetCyclus(goalId, addDays(eigenDatum, -14), 'floor', 'week -2');
+
+      // Week -7: eerst op de vloer afgesloten, daarna opgewaardeerd.
+      const week = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: goalId,
+          title: 'week -1',
+          cycle_start_date: addDays(eigenDatum, -7),
+          cycle_index: 1,
+          status: 'todo',
+        })
+        .select('id')
+        .single();
+      if (week.error || week.data === null) throw new Error(`weekdoel: ${week.error?.message}`);
+
+      const oud = await admin
+        .from('completions')
+        .insert({
+          weekly_goal_id: week.data.id,
+          user_id: eigenaarId,
+          achieved_level: 'floor',
+          note: 'eerst de vloer',
+          cycle_start_date: addDays(eigenDatum, -7),
+        })
+        .select('id')
+        .single();
+      if (oud.error || oud.data === null) throw new Error(`eerste voltooiing: ${oud.error?.message}`);
+
+      // ⚠️ **De driestap komt uit `dien_opnieuw_in()` zelf en is geen omweg.**
+      //    `completions_active_uniq` is uniek op `weekly_goal_id` wáár
+      //    `superseded_by is null`, dus twee actieve voltooiingen naast elkaar
+      //    kan niet — ook niet één tel lang. De RPC zet de nieuwe rij daarom
+      //    neer mét een `superseded_by`, verwijst dan de oude naar de nieuwe, en
+      //    maakt de nieuwe pas daarna actief.
+      const nieuw = await admin
+        .from('completions')
+        .insert({
+          weekly_goal_id: week.data.id,
+          user_id: eigenaarId,
+          achieved_level: 'ceiling',
+          note: 'toch het plafond',
+          cycle_start_date: addDays(eigenDatum, -7),
+          superseded_by: oud.data.id,
+        })
+        .select('id')
+        .single();
+      if (nieuw.error || nieuw.data === null) {
+        throw new Error(`tweede voltooiing: ${nieuw.error?.message}`);
+      }
+
+      const heen = await admin
+        .from('completions')
+        .update({ superseded_by: nieuw.data.id })
+        .eq('id', oud.data.id);
+      if (heen.error) throw new Error(`oude supersede: ${heen.error.message}`);
+
+      const terug = await admin
+        .from('completions')
+        .update({ superseded_by: null })
+        .eq('id', nieuw.data.id);
+      if (terug.error) throw new Error(`nieuwe activeren: ${terug.error.message}`);
+
+      await admin.from('weekly_goals').update({ status: 'approved' }).eq('id', week.data.id);
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_gehaald, 'drie afgesloten en gehaalde cycli').toBe(3);
+      expect(
+        uit.reden.vloeraandeel,
+        'de opgewaardeerde week telde alsnog als vloerweek — `superseded_by is null` ' +
+          'ontbreekt in de teller',
+      ).toBeCloseTo(2 / 3, 5);
     },
     TEST_TIMEOUT,
   );
