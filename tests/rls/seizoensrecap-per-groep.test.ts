@@ -254,3 +254,124 @@ describe.skipIf(!beschikbaar)('een afbreking van buiten is geen groepsfout', () 
     expect(uitslag.mislukt).toBeGreaterThanOrEqual(2);
   });
 });
+
+/**
+ * De derde grendel: **een recap die de chat niet haalt, is geen recap.**
+ *
+ * ⚠️⚠️ **Dit is de bevinding die de security-review van 04-09 blokkerend noemde,
+ *    en hij klopte.** `plaats_systeembericht()` (0059) heeft een eigen
+ *    `exception when others then raise warning` en geeft `void` terug, dus zijn
+ *    fout bereikt het groepsblok van 0158 nooit. De rij in `season_recaps`
+ *    committeerde dan zonder bericht — en omdat de `continue when exists (…)`
+ *    juist díe tabel leest, was die groep zijn seizoensrecap **voorgoed** kwijt
+ *    terwijl de teruggave `recaps: 1, mislukt: 0` zei.
+ *
+ * ⚠️ **De belofte is dus niet "de insert rolt terug" maar "het volgende uur
+ *    probeert hij het opnieuw".** Vandaar dat elk geval hieronder twee keer
+ *    draait: één keer met de storing en één keer zonder. Een test die alleen de
+ *    eerste helft doet, laat de belangrijkste helft onbewaakt.
+ */
+
+/** Laat elke insert van een `season_recap`-bericht mislukken. */
+const CHAT_KAPOT = `
+  create function pg_temp.chat_kapot() returns trigger language plpgsql as $k$
+  begin raise exception 'chat kapot'; end $k$;
+  create trigger recap_chat_kapot before insert on chat_messages for each row
+    when (new.system_event = 'season_recap') execute function pg_temp.chat_kapot();
+`;
+
+/**
+ * Laat de insert in `season_recaps` stil niets doen — een getrouw model van de
+ * `on conflict do nothing`-tak die een tweede, gelijktijdige aanroep raakt.
+ */
+const RIJ_LANDT_NIET = `
+  create function pg_temp.rij_valt_weg() returns trigger language plpgsql as $k$
+  begin return null; end $k$;
+  create trigger recap_rij_weg before insert on season_recaps for each row
+    execute function pg_temp.rij_valt_weg();
+`;
+
+interface Ronde {
+  recaps: number;
+  mislukt: number;
+  rijen: number;
+  berichten: number;
+}
+
+/**
+ * Draait de job twee keer op hetzelfde moment: eerst mét de storing, dan zonder.
+ * De tweede ronde is de eigenlijke belofte — hij zegt of het volgende uur de
+ * groep nog kán bedienen.
+ */
+function tweeRondes(storing: string, opheffen: string): { met: Ronde; zonder: Ronde } {
+  const meting = (label: string) => `
+    select '${label}|' || current_setting('recap.uit')
+      || '|' || (select count(*) from season_recaps where group_id = (select goed from t))
+      || '|' || (select count(*) from chat_messages
+                  where group_id = (select goed from t) and system_event = 'season_recap');
+  `;
+
+  const regels = psql(`
+    begin;
+    ${OPSTELLING}
+    ${storing}
+    select set_config('recap.uit',
+      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz)::text, true) from t;
+    ${meting('met')}
+    ${opheffen}
+    select set_config('recap.uit',
+      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz)::text, true) from t;
+    ${meting('zonder')}
+    rollback;
+  `)
+    .split('\n')
+    .filter((r) => r.startsWith('met|') || r.startsWith('zonder|'));
+
+  const lees = (label: string): Ronde => {
+    const regel = regels.find((r) => r.startsWith(`${label}|`)) as string;
+    const [, rauw, rijen, berichten] = regel.split('|');
+    const uit = JSON.parse(rauw as string) as { recaps: number; mislukt: number };
+    return {
+      recaps: uit.recaps,
+      mislukt: uit.mislukt,
+      rijen: Number(rijen),
+      berichten: Number(berichten),
+    };
+  };
+
+  return { met: lees('met'), zonder: lees('zonder') };
+}
+
+describe.skipIf(!beschikbaar)('een recap die de chat niet haalt, is geen recap', () => {
+  it('laat niets achter in season_recaps als het bericht niet geplaatst wordt', () => {
+    const { met } = tweeRondes(CHAT_KAPOT, 'drop trigger recap_chat_kapot on chat_messages;');
+
+    // ⚠️ Dít was de bevinding: rijen 1, berichten 0, mislukt 0 — en de groep
+    //    daarmee voorgoed buitengesloten voor dat seizoen.
+    expect(met.berichten, 'er stond een bericht terwijl de chat stuk was').toBe(0);
+    expect(met.rijen, 'de boekhoudrij bleef staan zonder bericht').toBe(0);
+    expect(met.recaps, 'de job telde een recap die er niet is').toBe(0);
+    // Beide groepen uit de opstelling verdienen een recap en struikelen allebei
+    // over de kapotte chat.
+    expect(met.mislukt, 'de mislukking werd niet geteld').toBe(2);
+  });
+
+  it('en bedient de groep het volgende uur alsnog', () => {
+    const { zonder } = tweeRondes(CHAT_KAPOT, 'drop trigger recap_chat_kapot on chat_messages;');
+
+    expect(zonder.recaps, 'de tweede ronde deed niets meer').toBe(2);
+    expect(zonder.mislukt, 'de tweede ronde ging alsnog mis').toBe(0);
+    expect(zonder.berichten).toBe(1);
+    expect(zonder.rijen).toBe(1);
+  });
+
+  it('plaatst geen bericht als de boekhoudrij niet landt', () => {
+    // De `on conflict do nothing`-tak, zoals een tweede gelijktijdige aanroep hem
+    // raakt. Zonder de toets erop komt er een tweede, onwisbare recap in de chat.
+    const { met } = tweeRondes(RIJ_LANDT_NIET, 'drop trigger recap_rij_weg on season_recaps;');
+
+    expect(met.berichten, 'er ging een recap uit zonder rij in season_recaps').toBe(0);
+    expect(met.recaps).toBe(0);
+    expect(met.mislukt, 'een rij die al bestond is geen mislukking').toBe(0);
+  });
+});

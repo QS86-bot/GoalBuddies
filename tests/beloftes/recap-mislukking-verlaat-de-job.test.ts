@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { REDACTED, scrubContext } from '../../src/lib/observability/scrub';
+
 /**
  * Een overgeslagen groep verlaat de job — QS8-171, migratie 0158.
  *
@@ -31,6 +33,12 @@ import { describe, expect, it } from 'vitest';
  *   C  `recapsOvergeslagen` uit het antwoord van de rollover  → 1 rood
  *   D  de afleiding uit de migratie naar een naam die niet
  *      bestaat wijzen                                         → 1 rood ("vindt geen")
+ *   E  `count` in de Sentry-context terug naar `groepen`      → 1 rood
+ *
+ * ⚠️ **E is er pas na de security-review van 04-09**, en het is de vorm van regel
+ *    18 vraag 5: de melding werd verstuurd, het veld heette alleen anders dan
+ *    `scrubContext()` doorlaat, dus het getal kwam als `[weggelaten]` aan. Elk
+ *    onderdeel klopte en het geheel zei niets.
  */
 
 const WORTEL = join(__dirname, '..', '..');
@@ -142,5 +150,47 @@ describe('een overgeslagen groep verlaat de recapjob', () => {
       antwoord?.[1],
       'een deels mislukte recapjob is in de uitvoer niet van een geslaagde te onderscheiden',
     ).toContain(naam);
+  });
+});
+
+describe('en wat er mee naar Sentry gaat, komt daar ook aan', () => {
+  const bron = zonderCommentaar(readFileSync(ROLLOVER, 'utf8'));
+
+  /**
+   * ⚠️ **`scrubContext()` laat alleen de sleutels uit zijn eigen lijst door en
+   *    vervangt de rest door `[weggelaten]`.** Een zelfbedachte veldnaam
+   *    verdwijnt dus stil: de melding komt aan, het getal niet. Deze test voert
+   *    de context uit de bron door de échte functie in plaats van de lijst over
+   *    te typen.
+   */
+  it('stuurt het aantal overgeslagen groepen mee in een sleutel die overleeft', () => {
+    // Élke `meld()` met tag `rollover.recap`, want er zijn er meer dan één en
+    // ze horen allemaal aan te komen.
+    const contexten = [...bron.matchAll(/'rollover\.recap',\s*\{([^}]*)\}/g)].map(
+      (m) => [...(m[1] ?? '').matchAll(/(\w+)\s*:/g)].map((k) => k[1] as string),
+    );
+
+    expect(
+      contexten.length,
+      'geen `meld(…, \'rollover.recap\', { … })` met een context gevonden — ' +
+        'verhuisd of hernoemd? Dan bewaakt deze test niets.',
+    ).toBeGreaterThan(0);
+
+    // ⚠️ Minstens één ervan draagt méér dan alleen een `code`: het getal zelf.
+    //    Zonder deze regel is de test groen bij drie lege contexten.
+    expect(
+      contexten.some((sleutels) => sleutels.some((k) => k !== 'code')),
+      'geen enkele melding draagt het aantal overgeslagen groepen',
+    ).toBe(true);
+
+    // Een proefwaarde per sleutel; het gaat om de naam, niet om de inhoud.
+    const weggelaten = contexten.flatMap((sleutels) => {
+      const proef = Object.fromEntries(sleutels.map((k) => [k, k === 'code' ? 'proef' : 1]));
+      return Object.entries(scrubContext(proef))
+        .filter(([, waarde]) => waarde === REDACTED)
+        .map(([sleutel]) => sleutel);
+    });
+
+    expect(weggelaten, 'deze sleutel komt niet in Sentry aan').toEqual([]);
   });
 });

@@ -84,12 +84,41 @@
 --    dat hij stuk is. De belofte staat wél onder test: `57014` hoort deze
 --    functie te verlaten, of dat nu door de taal komt of door een tak.
 --
--- ⚠️ **De insert en het bericht blijven bij elkaar.** Een blok met een
---    `exception`-tak is een subtransactie, dus als `plaats_systeembericht()`
---    faalt, rolt de rij in `season_recaps` mee terug. Dat is niet alleen netjes:
---    de primaire sleutel op die tabel ís de belofte "één bericht per seizoen"
---    (0112), en een rij zonder bericht zou de groep dat seizoen definitief hun
---    recap kosten. Nu kan het volgende uur het opnieuw proberen.
+-- ⚠️⚠️ **De insert en het bericht blijven bij elkaar, en dat vraagt twee regels
+--    die er in de eerste versie van deze migratie niet stonden.** Een blok met
+--    een `exception`-tak is een subtransactie, dus een fout dáárbinnen rolt de
+--    rij in `season_recaps` mee terug. Dat is geen netheid maar de kern: de
+--    primaire sleutel op die tabel ís de belofte "één bericht per seizoen"
+--    (0112), en de `continue when exists (…)` erboven leest hem. Een rij zonder
+--    bericht sluit die groep dus **voorgoed** buiten voor dat seizoen.
+--
+-- 📏 **En precies dat gebeurde**, want `plaats_systeembericht()` (0059) heeft een
+--    eigen `exception when others then raise warning` en geeft `void` terug: zijn
+--    fout bereikt dit blok nooit. Nagemeten met een storing op de chatinsert:
+--
+--      uur 1        {"ok": true, "recaps": 1, "mislukt": 0}   rijen 1, berichten 0
+--      uur 2 (heel) {"ok": true, "recaps": 0, "mislukt": 0}   berichten 0
+--
+--    Eén groep raakt zijn kwartaalrecap kwijt, de teller zegt "gelukt", en geen
+--    enkele test wordt daar rood van. **Dat is het stille falen waar deze
+--    migratie voor bestaat, ingebouwd door de reparatie zelf** — gevonden door de
+--    security-review van 04-09 en hier nagemeten voordat hij verwerkt is.
+--
+--    Vandaar de telling om de aanroep heen. `plaats_systeembericht()` blijft
+--    ongemoeid: hij heeft veertien aanroepers en zijn slikgedrag is elders juist
+--    gewenst — een systeembericht hoort een handeling van een gebruiker niet te
+--    laten mislukken. Hier is het andersom, en dat verschil hoort bij de
+--    aanroeper te staan en niet in de gedeelde functie.
+--
+-- ⚠️ **`on conflict do nothing` zegt niet dát de rij landde, en het bericht ging
+--    er onvoorwaardelijk achteraan.** Binnen één aanroep kan dat niet botsen — de
+--    `continue when exists (…)` zit ervoor — maar twee overlappende aanroepen
+--    (een pinger die na een timeout opnieuw prikt, een handmatige run naast de
+--    planning) passeren onder READ COMMITTED allebei die toets, waarna de tweede
+--    insert niets doet en tóch een bericht plaatst. Twee identieke recaps in de
+--    chat, en een chatbericht is een onveranderlijke kopie (beslisdocument 002
+--    §3) — dus niet op te ruimen. Stond zo sinds 0112; deze migratie herschrijft
+--    die regels en herhaalt de belofte, dus hij hoort hier gerepareerd te worden.
 --
 -- ⚠️ De prijs is een subtransactie per groep per uur. Bij de honderd groepen van
 --    vandaag en de duizenden van het schaaldoel is dat verwaarloosbaar naast de
@@ -111,6 +140,9 @@ declare
   stil     integer := 0;
   mislukt  integer := 0;
   fouten   jsonb   := '[]'::jsonb;
+  gezet    integer;
+  voor     integer;
+  na       integer;
 begin
   -- ⚠️ Alleen `service_role`. Deze functie plaatst berichten in groepschats;
   --    een ingelogde gebruiker die hem kan aanroepen, kan de hele boel laten
@@ -157,7 +189,16 @@ begin
       insert into season_recaps (group_id, season_start, season_end, weken, mijlpalen, schakels)
       values (g.id, grens.season_start, grens.season_end,
               cijfers.weken, cijfers.mijlpalen, cijfers.schakels)
-      on conflict do nothing;
+      on conflict do nothing
+      returning 1 into gezet;
+
+      -- ⚠️ Landde de rij niet, dan was een andere aanroep ons voor en heeft die
+      --    het bericht al geplaatst. Doorgaan zou de tweede recap posten.
+      continue when gezet is null;
+
+      select count(*) into voor
+      from chat_messages
+      where group_id = g.id and system_event = 'season_recap';
 
       perform plaats_systeembericht(
         g.id,
@@ -174,6 +215,18 @@ begin
           'schakels', cijfers.schakels
         )
       );
+
+      -- ⚠️ **`plaats_systeembericht()` eet zijn eigen fouten op** (0059) en geeft
+      --    `void` terug, dus zonder deze telling commit de rij in `season_recaps`
+      --    zonder bericht en is de groep dat seizoen kwijt. Zie de kop; gemeten.
+      select count(*) into na
+      from chat_messages
+      where group_id = g.id and system_event = 'season_recap';
+
+      if na = voor then
+        raise exception 'season_recap voor groep % is niet in de chat beland', g.id
+          using errcode = 'P0001';
+      end if;
 
       gemaakt := gemaakt + 1;
 
