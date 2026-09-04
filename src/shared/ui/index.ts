@@ -13,8 +13,8 @@
 
 export { AsyncView } from './AsyncView';
 export { laad, terugvalZetters, useAsync, useAsyncMetTerugval } from './useAsync';
-export { bindVertrekwacht } from './vertrekwacht';
-export type { Terugknop, Venster, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
+export { bindVertrekwacht, vertrekstap } from './vertrekwacht';
+export type { Terugknop, Venster, Vertrekstap, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
 export { useVertrekwacht } from './useVertrekwacht';
 export { TeBeoordelenKaart } from './TeBeoordelenKaart';
 export {

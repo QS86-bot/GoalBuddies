@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { bindVertrekwacht, type Terugknop, type Venster, type VertrekGebeurtenis } from './vertrekwacht';
+import {
+  bindVertrekwacht,
+  vertrekstap,
+  type Terugknop,
+  type Venster,
+  type VertrekGebeurtenis,
+} from './vertrekwacht';
 
 /**
  * De belofte onder de vertrekwacht: **onopgeslagen tekst gaat niet weg zonder
@@ -187,5 +193,43 @@ describe('bindVertrekwacht — beide uitgangen tegelijk', () => {
 
     expect(venster.verwijderd).toHaveLength(1);
     expect(terugknop.opgeheven.aantal).toBe(1);
+  });
+});
+
+/**
+ * De volgorde waarin een scherm zijn eigen wacht verlaat.
+ *
+ * ⚠️ **Wat hier misgaat als je het fout doet, is niet zichtbaar in een fout.**
+ *    De wacht houdt sinds 04-09-2026 ook een navigatie bínnen de app tegen. Zet
+ *    je "Toch weg, zonder delen" dan rechtstreeks op `router.replace()`, dan
+ *    houdt de wacht zijn eigen nooduitgang dicht: de knop doet zichtbaar niets,
+ *    er is geen melding, en de gebruiker zit vast met precies de tekst die hij
+ *    kwijt wilde. Geen enkel onderdeel is dan kapot.
+ *
+ * ⚠️ **Tweezijdig.** `wachten` en `gaan` staan hier naast elkaar, want dat is de
+ *    hele beslissing: te vroeg gaan is de val hierboven, en nooit gaan is een
+ *    dode knop.
+ */
+describe('vertrekstap — eerst de slagboom omlaag, dan pas rijden', () => {
+  const wens = { doen: () => {} };
+
+  it('doet niets zolang niemand weg wil, ook al staat er tekst', () => {
+    expect(vertrekstap(true, null)).toBe('niets');
+  });
+
+  it('doet niets zonder wens en zonder wacht', () => {
+    expect(vertrekstap(false, null)).toBe('niets');
+  });
+
+  it('leest `undefined` als "geen wens" en niet als "ga maar"', () => {
+    expect(vertrekstap(false, undefined)).toBe('niets');
+  });
+
+  it('wacht één render zolang de wacht nog staat', () => {
+    expect(vertrekstap(true, wens)).toBe('wachten');
+  });
+
+  it('gaat zodra de wacht gevallen is', () => {
+    expect(vertrekstap(false, wens)).toBe('gaan');
   });
 });
