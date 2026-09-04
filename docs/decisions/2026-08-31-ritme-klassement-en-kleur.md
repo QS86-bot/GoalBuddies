@@ -166,6 +166,12 @@ Daaruit volgt de regel: **kleur codeert de familie, het icoon codeert het
 gebied.** Vijftien gebieden worden vier groepen — drie met een kleur, en één
 zonder.
 
+> ⚠️ **De indeling is op 04-09-2026 vervangen — besluit A58**, in
+> `2026-09-04-drie-families-en-de-kleuren-die-niet-kunnen.md`. Twaalf gebieden in
+> drie families van vier, en geen restgroep meer. De regel hierboven blijft
+> onveranderd; wat verandert is dat de vierde groep — die hier ontstond omdat er
+> maar drie kleuren waren — is opgeheven in plaats van gedoogd.
+
 ### Gebouwd op 01-09-2026, en de meting is scherper geworden
 
 | Familie | donker | licht | Gebieden |
