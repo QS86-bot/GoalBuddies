@@ -8,6 +8,7 @@ import {
   psqlArgumenten,
   STANDAARD_DB,
   STANDAARD_GEBRUIKER,
+  STANDAARD_POORT,
   verbindingsmelding,
   verbindingsoordeel,
 } from '../../scripts/psql.mjs';
@@ -82,8 +83,17 @@ describe('psqlArgumenten — de aanroep zelf', () => {
     expect(psqlArgumenten('select 1', {})).not.toContain('-h');
   });
 
-  it('geeft de poort niet mee — psql leest PGPORT zelf', () => {
-    expect(psqlArgumenten('select 1', { PGPORT: '5433' })).not.toContain('-p');
+  it('noemt de poort van de lokale stack en niet die van psql zelf', () => {
+    // ⚠️ Dit stond tot QS8-270 andersom, met als reden "psql leest PGPORT zelf".
+    //    Die reden klopte niet: psql's standaard is 5432 en dit project draait op
+    //    5433, dus zonder deze regel keken de controles naar een lege poort.
+    const args = psqlArgumenten('select 1', {});
+    expect(args[args.indexOf('-p') + 1]).toBe(STANDAARD_POORT);
+  });
+
+  it('laat een eigen PGPORT staan', () => {
+    const args = psqlArgumenten('select 1', { PGPORT: '5432' });
+    expect(args[args.indexOf('-p') + 1]).toBe('5432');
   });
 });
 

@@ -41,36 +41,21 @@
  *    Na 1 en 2 is het schema opnieuw opgebouwd; een teruggezette mutatie is geen
  *    gemeten schema.
  */
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+
 import { en } from '../../src/shared/i18n/en';
 import { nl } from '../../src/shared/i18n/nl';
 
-const OMGEVING = {
-  ...process.env,
-  PGHOST: process.env.PGHOST ?? '127.0.0.1',
-  PGPORT: process.env.PGPORT ?? '5432',
-  PGPASSWORD: process.env.PGPASSWORD ?? 'postgres',
-};
-
-const DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
 
 /** De sleutel staat hier één keer; hij is het onderwerp van alle drie de tests. */
 const SLEUTEL = 'beheer.bewijs_wijzigen';
 
 /** Het scherm waar het bijschrift hoort te staan. */
 const SCHERM = 'app/groep/beheer/[id].tsx';
-
-function psql(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-tAc', sql],
-    { env: OMGEVING, encoding: 'utf8' },
-  ).trim();
-}
 
 /**
  * Elke trigger op `completions` waarvan de functie de bewijseis leest, met de
@@ -89,15 +74,10 @@ const TRIGGERS = `
   order by t.tgname
 `;
 
-function stackBeschikbaar(): boolean {
-  try {
-    return psql("select count(*) from pg_class where relname = 'completions'") === '1';
-  } catch {
-    return false;
-  }
-}
-
-const beschikbaar = stackBeschikbaar();
+const beschikbaar = stackBeschikbaarOfFaal(
+  "select count(*) from pg_class where relname = 'completions'",
+  import.meta.url,
+);
 
 function triggers(): string[] {
   const uit = psql(TRIGGERS);
