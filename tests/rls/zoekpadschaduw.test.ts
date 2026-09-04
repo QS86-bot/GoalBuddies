@@ -32,7 +32,25 @@ import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-sta
  *    biedt geen DDL, dus een aanvaller krijgt zijn `create temp table` er niet
  *    in. Dit bestand bewaakt defense-in-depth, geen gedicht lek.
  *
- * ## Twee tests die verschillende dingen bewaken
+ * ## ⚠️ Waarom de schaduwrij een ONGELDIGE tijdzone draagt
+ *
+ * De eerste versie van dit bestand zette `Pacific/Kiritimati` in de tijdelijke
+ * tabel en vergeleek de twee datums. **Dat was tien uur per dag loos groen**, en
+ * dat is gemeten en niet bedacht: tussen 00:00 en 09:59 UTC wijzen UTC en
+ * Kiritimati dezelfde dag aan, dus `schaduw === echt` hield ongeacht of de
+ * schaduw werkte. De ijking gaf alleen "rood" omdat hij om 18:01 UTC gedraaid is.
+ *
+ * ⚠️ **Dat is exact de fout uit QS8-267**, diezelfde dag gerepareerd in
+ *    `klokgrens.test.ts` en `epic8.test.ts`: twee klokken vergelijken die elkaar
+ *    een deel van de dag overlappen. Hier stond hij opnieuw, in een test die over
+ *    iets heel anders ging.
+ *
+ * De opstelling vergelijkt daarom geen datums meer. De schaduwrij draagt een
+ * tijdzone die niet bestáát, dus een overschaduwde lezing **werpt** — op elk uur
+ * van de dag, zonder van `now()` af te hangen. Geen lezing uit de schaduw
+ * betekent een geldige datum; wél een lezing betekent een exception.
+ *
+ * ## Vier tests die verschillende dingen bewaken
  *
  * De eerste toetst het **gedrag**: overschaduwen werkt niet meer. De tweede
  * toetst de **klasse** via `definer_bewaking()`, zodat een vijfde functie zonder
@@ -66,42 +84,66 @@ function inEenSessie(sql: string): string {
   ).trim();
 }
 
+/** Zoals `inEenSessie`, maar geeft de foutmelding terug in plaats van te werpen. */
+function inEenSessieOfFout(sql: string): { ok: true; uit: string } | { ok: false; fout: string } {
+  try {
+    return { ok: true, uit: inEenSessie(sql) };
+  } catch (opgevangen) {
+    const tekst = opgevangen instanceof Error ? opgevangen.message : String(opgevangen);
+    return { ok: false, fout: tekst };
+  }
+}
+
+/**
+ * Een tijdzone die niet bestaat.
+ *
+ * ⚠️ Dit is het hart van de opstelling: `now() at time zone` wérpt hierop. Wordt
+ *    de tijdelijke tabel gelezen, dan valt de aanroep om; wordt hij niet gelezen,
+ *    dan komt er een gewone datum uit. Dat onderscheid hangt van geen enkele klok
+ *    af.
+ */
+const ONBESTAANDE_ZONE = 'Nergens/Bestaat_Niet';
+
 describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie', () => {
   it(
     'laat `eigenaarsdatum()` de echte profielrij lezen, ook met een tijdelijke `profiles`',
     async () => {
-      // ⚠️ De twee zones liggen een etmaal uit elkaar, dus een overschaduwde
-      //    lezing geeft aantoonbaar een ándere datum dan de echte. Zou de temp
-      //    table dezelfde zone dragen, dan is "gelijk" geen bewijs.
-      const uit = inEenSessie(`
+      const uitkomst = inEenSessieOfFout(`
         begin;
         insert into auth.users (id, email, raw_user_meta_data)
           values ('9e1d0000-0000-4000-8000-000000000001', 'schaduw@voorbeeld.test', '{}'::jsonb);
         update profiles set tz = 'UTC'
           where id = '9e1d0000-0000-4000-8000-000000000001';
 
-        select 'echt=' || eigenaarsdatum('9e1d0000-0000-4000-8000-000000000001');
-
         create temp table profiles (id uuid, tz text);
-        insert into profiles values ('9e1d0000-0000-4000-8000-000000000001', 'Pacific/Kiritimati');
+        insert into profiles values
+          ('9e1d0000-0000-4000-8000-000000000001', '${ONBESTAANDE_ZONE}');
 
-        select 'schaduw=' || eigenaarsdatum('9e1d0000-0000-4000-8000-000000000001');
+        select 'datum=' || eigenaarsdatum('9e1d0000-0000-4000-8000-000000000001');
         rollback;
       `);
 
-      const regels = uit.split('\n').map((r) => r.trim());
-      const echt = regels.find((r) => r.startsWith('echt='))?.slice('echt='.length);
-      const schaduw = regels.find((r) => r.startsWith('schaduw='))?.slice('schaduw='.length);
-
-      // ⚠️ Eerst dat er íets uitkwam. Zou de functie niets teruggeven, dan is
-      //    "de twee zijn gelijk" waar én leeg, en bewijst deze test niets.
-      expect(echt, `geen datum uit de opstelling: ${uit}`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-
+      // ⚠️ Wérpt de aanroep, dan is de tijdelijke tabel gelezen: die draagt een
+      //    tijdzone die niet bestaat, en de échte rij staat op UTC.
       expect(
-        schaduw,
-        'de tijdelijke tabel `profiles` heeft de echte overschaduwd — `eigenaarsdatum()` ' +
-          'mist `pg_temp` in zijn zoekpad',
-      ).toBe(echt);
+        uitkomst.ok,
+        uitkomst.ok
+          ? ''
+          : 'de tijdelijke tabel `profiles` is gelezen — `eigenaarsdatum()` mist ' +
+            `\`pg_temp\` achteraan in zijn zoekpad.\n\n${uitkomst.ok ? '' : uitkomst.fout}`,
+      ).toBe(true);
+
+      if (!uitkomst.ok) return;
+
+      const datum = uitkomst.uit
+        .split('\n')
+        .map((r) => r.trim())
+        .find((r) => r.startsWith('datum='))
+        ?.slice('datum='.length);
+
+      // ⚠️ En de must-see: er kwam écht een datum uit. Zonder deze helft zou een
+      //    opstelling die per ongeluk niets aanroept ook slagen.
+      expect(datum, `geen datum uit de opstelling: ${uitkomst.uit}`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     },
     TEST_TIMEOUT,
   );
@@ -110,9 +152,10 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
     'laat `groepsdatum()` de echte groepsrij lezen, ook met een tijdelijke `groups`',
     async () => {
       // ⚠️ Aparte test en niet dezelfde opstelling: dit is een ándere functie met
-      //    een eigen zoekpad, en hij stuurt een ándere grendel — `chain_links_select`.
-      //    Eén assertie over twee functies zou niet zeggen welke van de twee lekt.
-      const uit = inEenSessie(`
+      //    een eigen zoekpad, en hij stuurt een ándere grendel —
+      //    `chain_links_select`, de zichtbaarheidsgrens van De Ketting. Eén
+      //    assertie over twee functies zou niet zeggen welke van de twee lekt.
+      const uitkomst = inEenSessieOfFout(`
         begin;
         insert into auth.users (id, email, raw_user_meta_data)
           values ('9e1d0000-0000-4000-8000-000000000002', 'schaduw2@voorbeeld.test', '{}'::jsonb);
@@ -120,27 +163,31 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
           values ('9e1d0000-0000-4000-8000-00000000000a', 'Schaduwgroep',
                   '9e1d0000-0000-4000-8000-000000000002', 'SCHAD1', 'UTC');
 
-        select 'echt=' || groepsdatum('9e1d0000-0000-4000-8000-00000000000a');
-
         create temp table groups (id uuid, tz text);
-        insert into groups values ('9e1d0000-0000-4000-8000-00000000000a', 'Pacific/Kiritimati');
+        insert into groups values
+          ('9e1d0000-0000-4000-8000-00000000000a', '${ONBESTAANDE_ZONE}');
 
-        select 'schaduw=' || groepsdatum('9e1d0000-0000-4000-8000-00000000000a');
+        select 'datum=' || groepsdatum('9e1d0000-0000-4000-8000-00000000000a');
         rollback;
       `);
 
-      const regels = uit.split('\n').map((r) => r.trim());
-      const echt = regels.find((r) => r.startsWith('echt='))?.slice('echt='.length);
-      const schaduw = regels.find((r) => r.startsWith('schaduw='))?.slice('schaduw='.length);
-
-      expect(echt, `geen datum uit de opstelling: ${uit}`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-
       expect(
-        schaduw,
-        'de tijdelijke tabel `groups` heeft de echte overschaduwd — `groepsdatum()` mist ' +
-          '`pg_temp` in zijn zoekpad, en die functie stuurt de zichtbaarheidsgrens van ' +
-          'De Ketting',
-      ).toBe(echt);
+        uitkomst.ok,
+        uitkomst.ok
+          ? ''
+          : 'de tijdelijke tabel `groups` is gelezen — `groepsdatum()` mist ' +
+            `\`pg_temp\` achteraan in zijn zoekpad.\n\n${uitkomst.ok ? '' : uitkomst.fout}`,
+      ).toBe(true);
+
+      if (!uitkomst.ok) return;
+
+      const datum = uitkomst.uit
+        .split('\n')
+        .map((r) => r.trim())
+        .find((r) => r.startsWith('datum='))
+        ?.slice('datum='.length);
+
+      expect(datum, `geen datum uit de opstelling: ${uitkomst.uit}`).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     },
     TEST_TIMEOUT,
   );
@@ -169,43 +216,80 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
     TEST_TIMEOUT,
   );
 
-  it(
-    'laat `definer_bewaking()` een zoekpad zonder `pg_temp` ook echt melden',
-    async () => {
-      // ⚠️ **Zonder deze test bewaakt de derde tak van 0156 niets**, en dat is
-      //    gemeten en niet bedacht: haal die tak uit `definer_bewaking()` en alle
-      //    andere tests hier blijven groen. De catalogustest hierboven vraagt het
-      //    de catalogus rechtstreeks en merkt er dus niets van.
-      //
-      //    Dit is de must-see erbij: een bewaking die nooit iets vindt is net zo
-      //    groen als eentje die werkt. We voeren hem één geval en eisen dat hij
-      //    het noemt — in een teruggedraaide transactie, dus er blijft niets van
-      //    staan.
+  /**
+   * ⚠️ **Elke vorm los aangeboden, en de helft die met rust gelaten moet worden
+   *    net zo goed.** `CLAUDE.md`: een controle die je niet kunt voeden, kun je
+   *    niet ijken — en een controle die álles meldt, leer je negeren.
+   *
+   *    De rij `pg_temp, public, pg_catalog` is degene die de security-review
+   *    vond: de eerste versie van deze tak toetste of de tékst `pg_temp` ergens
+   *    voorkwam, en die vorm schaduwt aantoonbaar terwijl hij dat toetsje
+   *    passeert. Het is bovendien de vorm die iemand schrijft die 0156 leest en
+   *    denkt "ik moet `pg_temp` toevoegen".
+   */
+  const VORMEN: readonly { naam: string; pad: string; gemeld: boolean; waarom: string }[] = [
+    { naam: 'vorm_goed', pad: 'public, pg_temp', gemeld: false, waarom: 'de bedoelde vorm' },
+    {
+      naam: 'vorm_leeg',
+      pad: "''",
+      gemeld: false,
+      waarom: 'een leeg pad is de strengste stand die er is; alles moet dan gekwalificeerd',
+    },
+    {
+      naam: 'vorm_vooraan',
+      pad: 'pg_temp, public, pg_catalog',
+      gemeld: true,
+      waarom: 'pg_temp vooraan schaduwt precies zo hard als pg_temp weglaten',
+    },
+    {
+      naam: 'vorm_solo',
+      pad: 'pg_temp',
+      gemeld: true,
+      waarom: 'alles onkwalificeerd landt dan in het schema van de aanvaller',
+    },
+    {
+      naam: 'vorm_zonder',
+      pad: 'public, pg_catalog',
+      gemeld: true,
+      waarom: 'het oorspronkelijke geval van QS8-269',
+    },
+    {
+      naam: 'vorm_lijkend',
+      pad: 'public, mijn_pg_temp_schema',
+      gemeld: true,
+      waarom: 'een schemanaam die `pg_temp` bevat is geen pg_temp',
+    },
+  ];
+
+  it.each(VORMEN)(
+    'definer_bewaking() over `set search_path = $pad`: gemeld = $gemeld',
+    async ({ naam, pad, gemeld, waarom }) => {
+      // ⚠️ In een teruggedraaide transactie, dus er blijft niets van staan. Het
+      //    schema uit `vorm_lijkend` maken we mee aan, anders weigert Postgres
+      //    het pad niet — hij accepteert onbekende schema's stil, maar dan toetst
+      //    deze rij iets anders dan hij zegt.
       const uit = inEenSessie(`
         begin;
-        create function public.zoekpad_proef_qs8_269() returns integer
+        create schema if not exists mijn_pg_temp_schema;
+        create function public.${naam}() returns integer
           language sql immutable
-          set search_path = public, pg_catalog
+          set search_path = ${pad}
           as 'select 1';
 
-        select 'gemeld=' || coalesce(
-          (select string_agg(bezwaar, ',') from definer_bewaking()
-           where naam = 'zoekpad_proef_qs8_269'),
-          'NIETS');
+        select 'gemeld=' || case when exists (
+          select 1 from definer_bewaking()
+          where naam = '${naam}' and bezwaar like 'pg_temp%'
+        ) then 'ja' else 'nee' end;
         rollback;
       `);
 
-      const gemeld = uit
+      const gezien = uit
         .split('\n')
         .map((r) => r.trim())
         .find((r) => r.startsWith('gemeld='))
         ?.slice('gemeld='.length);
 
-      expect(
-        gemeld,
-        'definer_bewaking() noemt een functie met een zoekpad zonder `pg_temp` niet — ' +
-          'de derde tak uit 0156 is weg, en dan valt een vijfde geval stil binnen',
-      ).toBe('zoekpad noemt pg_temp niet');
+      expect(gezien, `${naam} (${pad}): ${waarom}`).toBe(gemeld ? 'ja' : 'nee');
     },
     TEST_TIMEOUT,
   );

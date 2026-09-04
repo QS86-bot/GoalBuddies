@@ -38,6 +38,15 @@
 --    overschaduwen. Ze staan hier omdat de régel uniform hoort te zijn, niet
 --    omdat ze een gat waren.
 --
+-- ⚠️ **Die redenering dekt relaties en niet datatypes**, en dat is een correctie
+--    uit de review. `pg_temp` wordt óók vóór de rest doorzocht voor **typen**,
+--    en beide triggerfuncties declareerden onder het oude pad onkwalificeerde
+--    typen (`map text`, `aantal integer`). Aangetoond dat een tijdelijk
+--    composiettype `text` een cast laat omvallen. Er is geen werkende bypass uit
+--    gekomen — drie pogingen gaven netjes de bedoelde uitzondering — dus de
+--    conclusie hierboven staat. Maar deze twee gaan om een bétere reden mee dan
+--    "ze lezen gekwalificeerd".
+--
 -- ⚠️ **Vandaag was het geen open deur.** PostgREST biedt geen DDL en er is geen
 --    functie met dynamische SQL die `authenticated` mag uitvoeren, dus een
 --    aanvaller krijgt zijn `create temp table` er niet in. Dit is
@@ -51,7 +60,13 @@
 --
 -- Vier namen herstellen lost vandaag op; een tak in de bewaking lost morgen op.
 -- `tests/rls/hulpfuncties.test.ts` eist dat `definer_bewaking()` nul rijen
--- geeft, dus vanaf nu maakt een vijfde functie zonder `pg_temp` die test rood.
+-- geeft, dus vanaf nu maakt een vijfde functie met een verkeerd zoekpad die test
+-- rood.
+--
+-- ⚠️ **De tak toetst de plék van `pg_temp` en niet zijn aanwezigheid**, en dat is
+--    een correctie uit de security-review op deze migratie. Zie het commentaar
+--    in de functie zelf: `set search_path = pg_temp, public, pg_catalog` schaduwt
+--    aantoonbaar en glipte langs de eerste versie.
 --
 -- ⚠️ De tak kijkt naar **élke** functie in `public` met een gepind pad en niet
 --    alleen naar definers — dezelfde verruiming als 0114 op de eerste tak, en om
@@ -157,20 +172,43 @@ as $$
   where n.nspname = 'public'
     and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\_path=%')
   union all
-  -- ⚠️ **De derde tak, sinds 0156.** Een pad dat `pg_temp` niet noemt is niet
-  --    "zonder tijdelijk schema" maar "met het tijdelijke schema vooraan":
-  --    Postgres doorzoekt `pg_temp` dan als eerste voor relaties. Gemeten op
-  --    `eigenaarsdatum()`: met een tijdelijke tabel `profiles` in de sessie gaf
-  --    de definer-functie de rij van de aanvaller terug.
+  -- ⚠️ **De derde tak, sinds 0156.** Een pad dat `pg_temp` niet áchteraan zet is
+  --    niet "zonder tijdelijk schema" maar "met het tijdelijke schema ergens
+  --    vóór de rest": Postgres doorzoekt `pg_temp` als eerste voor relaties
+  --    zodra hij niet expliciet later staat. Gemeten op `eigenaarsdatum()`: met
+  --    een tijdelijke tabel `profiles` in de sessie gaf de definer-functie de rij
+  --    van de aanvaller terug.
   --
-  --    Net als de eerste tak over élke functie en niet alleen over definers —
-  --    een overschaduwde relatie verandert een uitkomst zonder dat er rechten
-  --    aan te pas komen.
-  select p.proname::text, 'zoekpad noemt pg_temp niet'
-  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  -- ⚠️ **Op de plék en niet op de aanwezigheid, en dat is de correctie van de
+  --    review.** Een eerste versie toetste of de tekst `pg_temp` érgens voorkwam.
+  --    Gemeten dat dat te weinig is: `set search_path = pg_temp, public,
+  --    pg_catalog` schaduwt gewoon (2026-09-04 werd 2026-09-05) en werd niet
+  --    gemeld. En dat is juist de vorm die iemand schrijft die deze migratie
+  --    leest en denkt "ik moet `pg_temp` toevoegen".
+  --
+  --    Daarom drie eisen tegelijk: minstens twee elementen, `pg_temp` als
+  --    láátste, en een leeg pad (`search_path=""`) telt niet mee. Dat laatste is
+  --    geen uitzondering maar de strengste stand die er is — alles moet dan
+  --    gekwalificeerd — en gemeten schaduwt daar niets. Een controle die de béste
+  --    optie als defect meldt, leer je wegklikken.
+  --
+  --    Net als de eerste tak over élke functie en niet alleen over definers: een
+  --    overschaduwde relatie verandert een uitkomst zonder dat er rechten aan te
+  --    pas komen.
+  select p.proname::text, 'pg_temp hoort achteraan in het zoekpad'
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  cross join lateral (
+    select c from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\_path=%' limit 1
+  ) g(regel)
+  cross join lateral (select btrim(substring(g.regel from 13))) v(pad)
+  cross join lateral (select string_to_array(v.pad, ',')) d(delen)
   where n.nspname = 'public'
-    and exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search\_path=%')
-    and not exists (select 1 from unnest(p.proconfig) c where c like 'search\_path=%pg\_temp%')
+    and v.pad <> '""'
+    and (
+      coalesce(array_length(d.delen, 1), 0) < 2
+      or btrim(d.delen[array_length(d.delen, 1)]) <> 'pg_temp'
+    )
   union all
   -- ⚠️ Dit bezwaar blijft wél alleen over definer-functies gaan: een gewone
   --    functie die `anon` mag aanroepen draait met de rechten van `anon`, en dan
