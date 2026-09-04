@@ -39,6 +39,23 @@
 > export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres RLS_DOEL=lokaal
 > ```
 >
+>
+> **04-09, punt III: migratie 0154 is geland (#191, QS8-197) en dáármee is
+> QS8-174 vrij.** Dit is het belangrijkste punt van vandaag, want het heft de
+> blokkade op die twee sessies lang alles met een migratie tegenhield.
+> Nagemeten ná de merge: `npm run migraties:controle` meldt **157 migraties,
+> aaneengesloten**, en geen branch draagt nog een nummer dat de map mist. ⚠️ **De
+> waarschuwing hieronder over 0154 is dus geschiedenis en geen stand meer** — hij
+> blijft staan omdat de vórm terugkomt, niet omdat dit geval nog speelt. **Kijk
+> alsnog altijd zelf** (`git branch -r`, en de controle noemt de branchnaam):
+> hetzelfde is deze week drie keer gebeurd.
+>
+> ⚠️ **Wat QS8-174 nu nog nodig heeft is niet meer de branch maar de database:**
+> de migratie op productie toepassen en daarna `npm run types:db`, want
+> `database.types.ts` wordt gegenereerd en kent de nieuwe RPC anders niet. De
+> volledige, lokaal geverifieerde SQL staat in het issue — herhaal het
+> ontwerpwerk niet.
+>
 > **03-09, punt 0: van de acht is er nog één níét af.**
 >
 > 1. **QS8-192 was overgeslagen en is op 04-09 alsnog gebouwd.** Niet geblokkeerd,
@@ -52,9 +69,10 @@
 >    `package.json` na te meten en klopte al acht dagen niet meer. Een *"Wordt
 >    zwaarder als"* die op een controleerbaar feit staat, meet je na bij élke
 >    aanraking. Zie `docs/decisions/2026-09-04-de-terugknop-van-de-browser.md`.
-> 2. **QS8-174 ligt op twee blokkades en draagt nu `wacht-op-Quinten`.** De
+> 2. **QS8-174 lag op twee blokkades en er is er op 04-09 één weggevallen.** De
 >    ontworpen en lokaal geverifieerde SQL staat vóluit in dat issue; herhaal het
->    ontwerpwerk niet. Zie punt B hieronder.
+>    ontwerpwerk niet. Zie punt III hierboven voor wat er nog rest, en punt B
+>    hieronder voor het ontwerp.
 >
 > **03-09, punt A: drie keer bewaakte een test de plek in plaats van de belofte,
 > en alle drie zijn ze door een review gevonden en niet door de suite.**
@@ -225,17 +243,20 @@ beginnen" punt 0.
 werk.** **Kijk naar de remote branches vóór je iets oppakt** — `git branch -r` —
 en niet alleen naar Linear. Twee dingen die daar die dag uit kwamen:
 
-- `origin/quintenstrijdonk/qs8-197-apple-en-google-knop` draagt **migratie 0154**
-  en is nog niet geland. Zolang dat zo is, laat élke nieuwe migratie een gat in de
-  nummering en wordt `npm run migraties:controle` rood — dus kan de poort niet
-  groen en CI niet slagen. Dat blokkeerde QS8-174 volledig. **Wil je een migratie
-  schrijven, kijk dan eerst of er een lager nummer op een open branch staat.**
+- ✅ **Opgelost op 04-09, en de vorm blijft het lezen waard.**
+  `origin/quintenstrijdonk/qs8-197-apple-en-google-knop` droeg **migratie 0154**
+  en was twee sessies lang niet geland. Zolang dat zo is, laat élke nieuwe
+  migratie een gat in de nummering en wordt `npm run migraties:controle` rood —
+  dus kan de poort niet groen en CI niet slagen. Dat blokkeerde QS8-174 volledig.
+  **Wil je een migratie schrijven, kijk dan eerst of er een lager nummer op een
+  open branch staat.**
 
   ⚠️ **En je ziet dit meteen, ook zonder iets te doen.** Op een schone `main`
-  staat `npm run migraties:controle` op 03-09 rood met precies deze melding
+  stond `npm run migraties:controle` op 03-09 rood met precies deze melding
   (nagemeten met een `git stash`). Ga er dus niet van uit dat je eigen wijziging
   hem brak; de controle meldt de branchnaam, en die naam is het antwoord. Hij
-  wordt vanzelf groen zodra die branch landt.
+  wordt vanzelf groen zodra die branch landt — en dat is op 04-09 gebeurd met
+  #191. Nagemeten: 157 migraties, aaneengesloten.
 - `origin/quintenstrijdonk/qs8-266-...` is al opgepakt door een andere sessie.
   QS8-266 is op 03-09 aangemaakt (de vragenlijst na de onboarding is
   onbereikbaar); dat issue is dus niet meer vrij. Het is inmiddels geland (#189).
@@ -1500,10 +1521,13 @@ I bovenaan. Nieuw en nog niet opgepakt: **QS8-268** — zie punt II.
    tijdverlies die dit project kent — en een migratie op een open branch blokkeert
    élke nieuwe migratie, want de nummering krijgt dan een gat.
 
-   ⚠️ **QS8-174 wacht daar vandaag op.** De SQL is af en staat in het issue; wat
-   hij nodig heeft is dat 0154 landt, en daarna de migratie op productie plus
-   `npm run types:db`. Zonder dat kent `database.types.ts` de nieuwe RPC niet en
-   is hij niet type-veilig aan te roepen.
+   ✅ **Beide zijn op 04-09 geland** (#191 en #189), dus de nummering is heel:
+   157 migraties, aaneengesloten. De gewoonte blijft, de blokkade is weg.
+
+   ⚠️ **QS8-174 is daarmee vrij, en wat hij nog nodig heeft is de database en niet
+   de branch:** de migratie op productie toepassen en daarna `npm run types:db`.
+   Zonder dat kent `database.types.ts` de nieuwe RPC niet en is hij niet
+   type-veilig aan te roepen. De SQL is af en staat in het issue.
 2. **QS8-252 — de epic van 01-09**, als die branch geland is of hem niet raakt.
    Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
    krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een
