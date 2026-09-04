@@ -19,36 +19,23 @@
  *    Zonder draaiende stack wordt deze suite overgeslagen — en dat is
  *    *ongemeten* en niet groen. `npm run poort` houdt dat onderscheid vast.
  */
-import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-const OMGEVING = {
-  ...process.env,
-  PGHOST: process.env.PGHOST ?? '127.0.0.1',
-  PGPORT: process.env.PGPORT ?? '5432',
-  PGPASSWORD: process.env.PGPASSWORD ?? 'postgres',
-};
+import { psql as psqlKaal, schemaHeeft, stackBeschikbaar } from './psql';
 
-const DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
+// ⚠️ De verbindingsgegevens staan in `./psql` en niet hier — zie de kop van dat
+//    bestand: dit blok stond vier keer en was drie keer fout (QS8-270).
 
+/** ⚠️ Uitgebreid, want de asserties hieronder lezen de constraintnaam uit de fout. */
 function psql(sql: string): string {
-  return execFileSync('psql', ['-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-tAc', sql], {
-    env: OMGEVING,
-    encoding: 'utf8',
-  }).trim();
+  return psqlKaal(sql, { uitgebreid: true });
 }
 
 /** Draait de stack, en kent hij de bucket van 0126? */
-function stackBeschikbaar(): boolean {
-  try {
-    return psql("select count(*) from storage.buckets where id = 'avatars'") === '1';
-  } catch {
-    return false;
-  }
-}
-
-const beschikbaar = stackBeschikbaar();
+const beschikbaar = stackBeschikbaar(
+  schemaHeeft("select count(*) from storage.buckets where id = 'avatars'"),
+);
 
 /**
  * Voert SQL uit alsof PostgREST het namens deze gebruiker doet.

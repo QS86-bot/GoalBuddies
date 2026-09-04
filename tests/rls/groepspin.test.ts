@@ -35,35 +35,16 @@
  *    Zonder stack wordt deze suite overgeslagen — en dat is *ongemeten* en niet
  *    groen.
  */
-import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
-const OMGEVING = {
-  ...process.env,
-  PGHOST: process.env.PGHOST ?? '127.0.0.1',
-  PGPORT: process.env.PGPORT ?? '5432',
-  PGPASSWORD: process.env.PGPASSWORD ?? 'postgres',
-};
+import { psql, schemaHeeft, stackBeschikbaar } from './psql';
 
-const DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
+// ⚠️ De verbindingsgegevens staan in `./psql` en niet hier — zie de kop van dat
+//    bestand: dit blok stond vier keer en was drie keer fout (QS8-270).
 
-function psql(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-tAc', sql],
-    { env: OMGEVING, encoding: 'utf8' },
-  ).trim();
-}
-
-function stackBeschikbaar(): boolean {
-  try {
-    return psql("select count(*) from pg_proc where proname = 'guard_group_update'") === '1';
-  } catch {
-    return false;
-  }
-}
-
-const beschikbaar = stackBeschikbaar();
+const beschikbaar = stackBeschikbaar(
+  schemaHeeft("select count(*) from pg_proc where proname = 'guard_group_update'"),
+);
 
 /** Een vaste eigenaar-id, zodat `created_by` exact te asserteren is. */
 const EIGENAAR = '00000000-0000-4000-8000-000000000264';

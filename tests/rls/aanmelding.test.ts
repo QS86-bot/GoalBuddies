@@ -36,18 +36,14 @@ import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-const OMGEVING = {
-  ...process.env,
-  PGHOST: process.env.PGHOST ?? '127.0.0.1',
-  // ⚠️ 5433 en niet 5432: `scripts/lokale-stack.sh` draait op `${PGPORT:-5433}`.
-  //    Met 5432 als standaard verbindt dit bestand nergens mee, slaat het zichzelf
-  //    over en geeft de suite exitcode 0 — en `poort.mjs` leest dat voor een suite
-  //    als **groen** en niet als ongemeten. Gemeten bij de review.
-  PGPORT: process.env.PGPORT ?? '5433',
-  PGPASSWORD: process.env.PGPASSWORD ?? 'postgres',
-};
+import { PSQL_DB as DB, PSQL_OMGEVING, schemaHeeft, stackBeschikbaar } from './psql';
 
-const DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
+// ⚠️ **Dit bestand had het als enige goed**, en dat hielp de drie ernaast niet:
+//    het poortnummer stond hier op 5433 mét de uitleg erbij, terwijl
+//    `avatarbucket`, `bewijsbijschrift` en `groepspin` op 5432 stonden. Een
+//    waarschuwing die je opschrijft in plaats van uitvoert, moet elke volgende
+//    lezer opnieuw vinden — daarom staat het nu in `./psql` (QS8-270).
+
 const TEST_TIMEOUT = 30_000;
 
 /**
@@ -59,36 +55,11 @@ const TEST_TIMEOUT = 30_000;
  */
 const SCHEIDING = '|~|';
 
-function psql(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', 'postgres', '-d', DB, '-q', '-v', 'ON_ERROR_STOP=1', '-tAc', sql],
-    { env: OMGEVING, encoding: 'utf8' },
-  ).trim();
-}
-
-function stackBeschikbaar(): boolean {
-  try {
-    return psql("select count(*) from pg_proc where proname = 'handle_new_user'") === '1';
-  } catch {
-    return false;
-  }
-}
-
-const beschikbaar = stackBeschikbaar();
-
-// ⚠️ **Overslaan mag alleen als niemand beweerde te meten.** Staat `RLS_DOEL`
-//    gezet, dan is dit een bewuste RLS-run en is een onbereikbare database geen
-//    reden om te zwijgen maar om te falen — anders is "ongemeten" niet van
-//    "groen" te onderscheiden, en dat is precies het onderscheid dat de poort
-//    bewaakt.
-if (!beschikbaar && process.env.RLS_DOEL !== undefined) {
-  throw new Error(
-    `Geen database op ${OMGEVING.PGHOST}:${OMGEVING.PGPORT}/${DB}, terwijl RLS_DOEL ` +
-      `op "${process.env.RLS_DOEL}" staat. Start de stack met \`npm run rls:stack\`. ` +
-      'Stil overslaan zou hier als groen tellen.',
-  );
-}
+// ⚠️ De werpende variant: overslaan mag alleen als niemand beweerde te meten.
+//    Zie `./psql`.
+const beschikbaar = stackBeschikbaar(
+  schemaHeeft("select count(*) from pg_proc where proname = 'handle_new_user'"),
+);
 
 /**
  * Meldt een gebruiker aan met deze metadata en geeft het profiel terug dat de
@@ -135,7 +106,10 @@ function meldAan(
       // ⚠️ **Via stdin en niet via `-c`.** Gemeten: met `-c` laat psql `:'id'`
       //    letterlijk staan en krijg je `syntax error at or near ":"`. Variabelen
       //    worden alleen geïnterpoleerd bij invoer die psql zelf inleest.
-      { env: OMGEVING, encoding: 'utf8', input: sql },
+      // ⚠️ De omgeving komt uit `./psql` — het poortnummer hoort daar en niet
+      //    hier — maar de aanroep is eigen: hij voert psql-variabelen via stdin
+      //    en past niet in de gedeelde `psql()`.
+      { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
     ).trim();
   } catch (fout) {
     const tekst = fout instanceof Error ? `${fout.message}` : String(fout);
