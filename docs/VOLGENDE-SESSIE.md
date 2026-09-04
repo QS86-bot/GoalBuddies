@@ -5,9 +5,56 @@
 >
 > **Laatst bijgewerkt:** 04-09-2026. **Zeven van de acht doorloopbevindingen uit
 > een seriële batch geland: QS8-213, QS8-208, QS8-221, QS8-218, QS8-219, QS8-202
-> en QS8-192.**
-> Lees eerst de vier punten van 03-09 hieronder, dan de drie daaronder — de derde
-> daarvan verandert wat je als volgende oppakt — en daarna die van 02-09.
+> en QS8-192.** Daarnaast landde op 04-09 **QS8-267** (#192) uit een parallelle
+> sessie, en staat er één nieuwe bevinding open: **QS8-268**.
+> Lees eerst de twee punten van 04-09, dan de vier van 03-09, dan de drie
+> daaronder — die derde verandert wat je als volgende oppakt — en daarna die van
+> 02-09.
+>
+> **04-09, punt I: `main` stond elke nacht twee uur rood, en de test had gelijk
+> noch ongelijk — hij keek naar de verkeerde klok (QS8-267, #192).** Tussen 22:00
+> en 24:00 UTC vielen twee RLS-tests om. Geen lek: `group_overview()` en de policy
+> `chain_links_select` deden precies wat ze beloven. De tests rekenden hun datums
+> in UTC uit en legden ze naast een grendel die op de **groepsklok** staat
+> (`groepsdatum()`, en dus `groups.tz` — standaard Europe/Amsterdam, in september
+> UTC+2). ⚠️ **De twee uur zijn niet het dure deel; de tweeëntwintig zijn dat.**
+> Zolang twee klokken hetzelfde antwoord geven, kan een test die in UTC rekent de
+> UTC-implementatie niet van de groepsklok-implementatie onderscheiden — hij was
+> twee uur per dag ten onrechte rood en tweeëntwintig uur per dag blind. Het
+> commentaar bij de epic8-test bewéérde zelfs dat de policy `current_date`
+> gebruikt; een latere migratie had die grens verplaatst en de test bleef groen.
+> **Vraag bij elke tijdgebonden test: op wélke klok staat de grendel die ik
+> toets?** Er zijn er hier drie — UTC, groepsklok, gebruikersklok.
+>
+> **04-09, punt II: vijf controles meldden "geen database" terwijl de database er
+> gewoon stond (QS8-268, open).** `definers`, `klokgrens`, `kolomrechten`, `pin`
+> en `zichtbaarheid` roepen `psql` aan zónder `-U`, dus die valt terug op de
+> OS-gebruiker — hier `root`, waar geen databaserol voor bestaat. De poort telde
+> ze bij de vier die écht productiesleutels vragen en meldde *"9 controle(s)
+> zonder database"*. ⚠️ **Zet `PGUSER=postgres` en het worden er vier.**
+> Nagemeten: zelfde database, zelfde moment, alleen die env-var verschilt.
+> Zolang dit niet gerepareerd is, draai je de poort dus zó:
+>
+> ```bash
+> export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres RLS_DOEL=lokaal
+> ```
+>
+>
+> **04-09, punt III: migratie 0154 is geland (#191, QS8-197) en dáármee is
+> QS8-174 vrij.** Dit is het belangrijkste punt van vandaag, want het heft de
+> blokkade op die twee sessies lang alles met een migratie tegenhield.
+> Nagemeten ná de merge: `npm run migraties:controle` meldt **157 migraties,
+> aaneengesloten**, en geen branch draagt nog een nummer dat de map mist. ⚠️ **De
+> waarschuwing hieronder over 0154 is dus geschiedenis en geen stand meer** — hij
+> blijft staan omdat de vórm terugkomt, niet omdat dit geval nog speelt. **Kijk
+> alsnog altijd zelf** (`git branch -r`, en de controle noemt de branchnaam):
+> hetzelfde is deze week drie keer gebeurd.
+>
+> ⚠️ **Wat QS8-174 nu nog nodig heeft is niet meer de branch maar de database:**
+> de migratie op productie toepassen en daarna `npm run types:db`, want
+> `database.types.ts` wordt gegenereerd en kent de nieuwe RPC anders niet. De
+> volledige, lokaal geverifieerde SQL staat in het issue — herhaal het
+> ontwerpwerk niet.
 >
 > **03-09, punt 0: van de acht is er nog één níét af.**
 >
@@ -22,9 +69,10 @@
 >    `package.json` na te meten en klopte al acht dagen niet meer. Een *"Wordt
 >    zwaarder als"* die op een controleerbaar feit staat, meet je na bij élke
 >    aanraking. Zie `docs/decisions/2026-09-04-de-terugknop-van-de-browser.md`.
-> 2. **QS8-174 ligt op twee blokkades en draagt nu `wacht-op-Quinten`.** De
+> 2. **QS8-174 lag op twee blokkades en er is er op 04-09 één weggevallen.** De
 >    ontworpen en lokaal geverifieerde SQL staat vóluit in dat issue; herhaal het
->    ontwerpwerk niet. Zie punt B hieronder.
+>    ontwerpwerk niet. Zie punt III hierboven voor wat er nog rest, en punt B
+>    hieronder voor het ontwerp.
 >
 > **03-09, punt A: drie keer bewaakte een test de plek in plaats van de belofte,
 > en alle drie zijn ze door een review gevonden en niet door de suite.**
@@ -195,20 +243,30 @@ beginnen" punt 0.
 werk.** **Kijk naar de remote branches vóór je iets oppakt** — `git branch -r` —
 en niet alleen naar Linear. Twee dingen die daar die dag uit kwamen:
 
-- `origin/quintenstrijdonk/qs8-197-apple-en-google-knop` draagt **migratie 0154**
-  en is nog niet geland. Zolang dat zo is, laat élke nieuwe migratie een gat in de
-  nummering en wordt `npm run migraties:controle` rood — dus kan de poort niet
-  groen en CI niet slagen. Dat blokkeerde QS8-174 volledig. **Wil je een migratie
-  schrijven, kijk dan eerst of er een lager nummer op een open branch staat.**
+- ✅ **Opgelost op 04-09, en de vorm blijft het lezen waard.**
+  `origin/quintenstrijdonk/qs8-197-apple-en-google-knop` droeg **migratie 0154**
+  en was twee sessies lang niet geland. Zolang dat zo is, laat élke nieuwe
+  migratie een gat in de nummering en wordt `npm run migraties:controle` rood —
+  dus kan de poort niet groen en CI niet slagen. Dat blokkeerde QS8-174 volledig.
+  **Wil je een migratie schrijven, kijk dan eerst of er een lager nummer op een
+  open branch staat.**
 
   ⚠️ **En je ziet dit meteen, ook zonder iets te doen.** Op een schone `main`
-  staat `npm run migraties:controle` op 03-09 rood met precies deze melding
+  stond `npm run migraties:controle` op 03-09 rood met precies deze melding
   (nagemeten met een `git stash`). Ga er dus niet van uit dat je eigen wijziging
   hem brak; de controle meldt de branchnaam, en die naam is het antwoord. Hij
-  wordt vanzelf groen zodra die branch landt.
+  wordt vanzelf groen zodra die branch landt — en dat is op 04-09 gebeurd met
+  #191. Nagemeten: 157 migraties, aaneengesloten.
 - `origin/quintenstrijdonk/qs8-266-...` is al opgepakt door een andere sessie.
   QS8-266 is op 03-09 aangemaakt (de vragenlijst na de onboarding is
-  onbereikbaar); dat issue is dus niet meer vrij.
+  onbereikbaar); dat issue is dus niet meer vrij. Het is inmiddels geland (#189).
+
+⚠️ **Op 04-09 gebeurde het nog een keer, en toen goed:** terwijl deze sessie aan
+QS8-192 werkte, pakte een tweede sessie QS8-267 op en landde die als #192. Dat
+ging zonder botsing omdat de twee elkaars bestanden niet raakten — maar dat was
+geluk en geen afspraak. **Nagemeten op 04-09 stond migratie 0154 nog steeds
+alleen op `qs8-197-apple-en-google-knop`,** dus de blokkade van QS8-174 staat
+onveranderd.
 
 ## STAND VAN ZAKEN
 
@@ -540,6 +598,28 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   acht geland" zei. Het waren er zes: QS8-192 was er tussenuit gevallen zonder dat
   iemand het merkte, en het getal is opgeteld uit wat er gedaan wás. Een optelling
   van je eigen werk kan per definitie niet zien wat je niet gedaan hebt.
+
+- **⚠️ Twee klokken die 22 uur per dag hetzelfde zeggen, zijn geen bewijs dat je
+  de goede pakt — 04-09, QS8-267.** Twee RLS-tests rekenden in UTC naast een
+  grendel die op de groepsklok staat. Ze waren twee uur per nacht ten onrechte
+  rood, en de andere tweeëntwintig uur blind: een test die in UTC rekent kan de
+  UTC-implementatie niet van de groepsklok-implementatie onderscheiden zolang die
+  twee samenvallen. Toen een migratie de grens van `current_date` naar
+  `groepsdatum()` verplaatste, bleef de test dus gewoon groen — en het commentaar
+  erboven bleef de oude klok noemen. ⚠️ **De reparatie is niet "de test slimmer
+  laten rekenen" maar de zaak zó opzetten dat de klokken uit elkaar lopen**: geef
+  de groep een tijdzone die *nu* een andere datum heeft dan UTC, dan is een
+  terugval naar `current_date` altijd rood in plaats van bij toeval. Vraag bij
+  elke tijdgebonden test op wélke klok de grendel staat; er zijn er hier drie.
+
+- **⚠️ "Geen database" kan betekenen dat de database er staat en jij de verkeerde
+  gebruiker bent — 04-09, QS8-268.** Vijf controles (`definers`, `klokgrens`,
+  `kolomrechten`, `pin`, `zichtbaarheid`) roepen `psql` aan zonder `-U` en vallen
+  terug op de OS-gebruiker. Ze melden dan *"Start de lokale stack"* terwijl die
+  stack draait en de RLS-suite er wél tegen meet. ⚠️ **Een melding die de
+  verkeerde oorzaak noemt, is duurder dan geen melding:** hij stuurt de lezer weg
+  van de oplossing en de poort telt vijf ongemeten controles als een grens van de
+  omgeving. Zet `PGUSER=postgres` tot QS8-268 gerepareerd is.
 
 - **⚠️ Een reden om iets te laten liggen, veroudert net zo hard als code —
   04-09, QS8-192.** De dossierrij zei dat expo-router geen ondersteunde manier
@@ -1428,6 +1508,10 @@ zes geland met een groene poort:
 ⚠️ **Alleen QS8-174 staat nog open:** twee blokkades, `wacht-op-Quinten`. Zie
 punt 0 bovenaan dit bestand.
 
+Buiten de batch landde op 04-09 nog **QS8-267** (#192, uit een parallelle
+sessie): de klokgrenstests rekenen nu op de klok van hun eigen grendel. Zie punt
+I bovenaan. Nieuw en nog niet opgepakt: **QS8-268** — zie punt II.
+
 **Waar je nu begint, in deze volgorde:**
 
 1. **Kijk eerst welke branches er open staan** (`git branch -r`). Op 03-09 droeg
@@ -1437,10 +1521,13 @@ punt 0 bovenaan dit bestand.
    tijdverlies die dit project kent — en een migratie op een open branch blokkeert
    élke nieuwe migratie, want de nummering krijgt dan een gat.
 
-   ⚠️ **QS8-174 wacht daar vandaag op.** De SQL is af en staat in het issue; wat
-   hij nodig heeft is dat 0154 landt, en daarna de migratie op productie plus
-   `npm run types:db`. Zonder dat kent `database.types.ts` de nieuwe RPC niet en
-   is hij niet type-veilig aan te roepen.
+   ✅ **Beide zijn op 04-09 geland** (#191 en #189), dus de nummering is heel:
+   157 migraties, aaneengesloten. De gewoonte blijft, de blokkade is weg.
+
+   ⚠️ **QS8-174 is daarmee vrij, en wat hij nog nodig heeft is de database en niet
+   de branch:** de migratie op productie toepassen en daarna `npm run types:db`.
+   Zonder dat kent `database.types.ts` de nieuwe RPC niet en is hij niet
+   type-veilig aan te roepen. De SQL is af en staat in het issue.
 2. **QS8-252 — de epic van 01-09**, als die branch geland is of hem niet raakt.
    Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
    krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een
