@@ -3,21 +3,25 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 03-09-2026. **Zes van de acht doorloopbevindingen uit
-> een seriële batch geland (#178, #179, #181, #182, #185, #188): QS8-213,
-> QS8-208, QS8-221, QS8-218, QS8-219 en QS8-202.**
+> **Laatst bijgewerkt:** 04-09-2026. **Zeven van de acht doorloopbevindingen uit
+> een seriële batch geland: QS8-213, QS8-208, QS8-221, QS8-218, QS8-219, QS8-202
+> en QS8-192.**
 > Lees eerst de vier punten van 03-09 hieronder, dan de drie daaronder — de derde
 > daarvan verandert wat je als volgende oppakt — en daarna die van 02-09.
 >
-> **03-09, punt 0: twee van de acht zijn níét af, en dat verschilt per stuk.**
+> **03-09, punt 0: van de acht is er nog één níét af.**
 >
-> 1. **QS8-192 is overgeslagen.** Niet geblokkeerd, niet afgewogen: de batch liep
->    van QS8-213 naar QS8-208 naar QS8-221 en zo verder, en dit issue is er
->    tussenuit gevallen zonder dat iemand het merkte. Hij staat onaangeraakt op
->    Backlog. ⚠️ **De les zit in hoe het niet opviel:** de eindrapportage van die
->    sessie telde "zeven van de acht geland" terwijl het er zes waren. Een
->    voortgangsgetal dat je zelf optelt uit wat je gedaan hebt, mist per definitie
->    wat je niet gedaan hebt. Tel af tegen de lijst, niet op vanuit je werk.
+> 1. **QS8-192 was overgeslagen en is op 04-09 alsnog gebouwd.** Niet geblokkeerd,
+>    niet afgewogen: de batch liep van QS8-213 naar QS8-208 naar QS8-221 en zo
+>    verder, en dit issue viel er tussenuit zonder dat iemand het merkte. ⚠️ **De
+>    les zit in hoe het niet opviel** en die blijft staan ook nu het issue af is:
+>    de eindrapportage van die sessie telde "zeven van de acht geland" terwijl het
+>    er zes waren. Tel af tegen de lijst, niet op vanuit je werk.
+>    ⚠️ **En de bevinding zelf droeg een tweede les:** de reden om hem te laten
+>    liggen — "expo-router exporteert geen `usePreventRemove`" — was in één
+>    `package.json` na te meten en klopte al acht dagen niet meer. Een *"Wordt
+>    zwaarder als"* die op een controleerbaar feit staat, meet je na bij élke
+>    aanraking. Zie `docs/decisions/2026-09-04-de-terugknop-van-de-browser.md`.
 > 2. **QS8-174 ligt op twee blokkades en draagt nu `wacht-op-Quinten`.** De
 >    ontworpen en lokaal geverifieerde SQL staat vóluit in dat issue; herhaal het
 >    ontwerpwerk niet. Zie punt B hieronder.
@@ -536,6 +540,16 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   acht geland" zei. Het waren er zes: QS8-192 was er tussenuit gevallen zonder dat
   iemand het merkte, en het getal is opgeteld uit wat er gedaan wás. Een optelling
   van je eigen werk kan per definitie niet zien wat je niet gedaan hebt.
+
+- **⚠️ Een reden om iets te laten liggen, veroudert net zo hard als code —
+  04-09, QS8-192.** De dossierrij zei dat expo-router geen ondersteunde manier
+  exporteert om een navigatie tegen te houden. Dat was op één `package.json` na
+  te meten, het klopte al acht dagen niet meer, en niemand keek — de rij is in die
+  periode wél twee keer gelezen. ⚠️ **Erger nog: het gegeven wees de andere kant
+  op dan gedacht.** Het ontbrekende `exports`-veld maakte een diepe import juist
+  *mogelijk* in plaats van onmogelijk, en zo'n import typecheckt gewoon. Lees een
+  reden altijd terug tegen de bron die hij noemt, niet tegen wat je ervan
+  onthouden hebt.
 
 - **⚠️ Een getal in een rapport leest als gemeten, ook als het geraden is —
   02-09, QS8-265.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
@@ -1409,10 +1423,10 @@ zes geland met een groene poort:
 | QS8-218 | de gedachtestreepjes uit beide catalogi, met `streepje:controle` erop | #182 |
 | QS8-219 | de `levend`-ratel van 27 naar 21, langs `useAsyncMetTerugval()` | #185 |
 | QS8-202 | het weekoverzicht meldt dat een weekpas je reeks gered heeft | #188 |
+| QS8-192 | de terugknop van de browser gooit de weekafsluiting niet meer weg | #191 |
 
-⚠️ **De andere twee staan nog open, en om verschillende redenen:** QS8-192 is
-overgeslagen (niet afgewogen — hij viel uit de lijst) en QS8-174 ligt op twee
-blokkades met `wacht-op-Quinten`. Zie punt 0 bovenaan dit bestand.
+⚠️ **Alleen QS8-174 staat nog open:** twee blokkades, `wacht-op-Quinten`. Zie
+punt 0 bovenaan dit bestand.
 
 **Waar je nu begint, in deze volgorde:**
 
