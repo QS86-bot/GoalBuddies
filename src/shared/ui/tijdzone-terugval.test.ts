@@ -81,23 +81,54 @@ describe('een toestel zonder Intl.supportedValuesOf', () => {
    *    raadplegen in plaats van `Intl` — dan is er op een leeg toestel geen
    *    enkele weg meer naar een tijdzone, en kantelt dit geval als enige.
    */
-  it('laat een zelf getypte zone nog steeds toe — de enige weg die overblijft', async () => {
+  it('laat een zelf getypte zone nog steeds toe — de laatste uitweg', async () => {
     vi.resetModules();
     vi.stubGlobal('Intl', {
       DateTimeFormat: Intl.DateTimeFormat,
     });
 
     const { tijdzones } = await import('../time');
-    const { isBruikbareZone, zoekTijdzones } = await import('./tijdzone');
+    const { isBruikbareZone } = await import('./tijdzone');
 
-    // Er is niets om uit te kiezen…
+    // Het platform noemt er nog steeds geen enkele…
     expect(tijdzones()).toEqual([]);
-    expect(zoekTijdzones('amsterdam')).toEqual([]);
 
     // …en toch komt de gebruiker eruit.
     expect(isBruikbareZone('Europe/Amsterdam')).toBe(true);
     expect(isBruikbareZone('europe/amsterdam')).toBe(true);
     expect(isBruikbareZone('Geen/Zone')).toBe(false);
+  });
+
+  /**
+   * ⚠️ **Dit geval keerde om bij QS8-212, en dat was de bedoeling.** Hier stond
+   *    `expect(zoekTijdzones('amsterdam')).toEqual([])` — de belofte was dat er
+   *    op zo'n toestel niets te kiezen viel en dat intypen de énige weg was.
+   *    Dat is geen eigenschap die je wil bewaken maar een gebrek dat getoetst
+   *    werd: wie geen `Intl.supportedValuesOf` heeft, moest de exacte
+   *    IANA-schrijfwijze uit zijn hoofd kennen.
+   *
+   * ⚠️ **De aliassentabel is nu de terugval**, en die staat los van het
+   *    platform. `tijdzones()` blijft leeg — dat contract in `shared/time` is
+   *    ongewijzigd en klopt: het platform kent ze echt niet. Alleen het zóéken
+   *    valt terug.
+   */
+  it('zoekt sinds QS8-212 in de aliassentabel in plaats van in het niets', async () => {
+    vi.resetModules();
+    vi.stubGlobal('Intl', {
+      DateTimeFormat: Intl.DateTimeFormat,
+    });
+
+    const { tijdzones } = await import('../time');
+    const { zoekTijdzones } = await import('./tijdzone');
+
+    expect(tijdzones()).toEqual([]);
+    expect(zoekTijdzones('amsterdam')).toContain('Europe/Amsterdam');
+    expect(zoekTijdzones('rotterdam')).toContain('Europe/Amsterdam');
+    expect(zoekTijdzones('tokyo')).toContain('Asia/Tokyo');
+
+    // En wat er niet in de tabel staat, blijft leeg — de terugval is een
+    // hulplijn en geen tweede zonelijst.
+    expect(zoekTijdzones('abidjan')).toEqual([]);
   });
 });
 
