@@ -5,9 +5,39 @@
 >
 > **Laatst bijgewerkt:** 04-09-2026. **Zeven van de acht doorloopbevindingen uit
 > een seriële batch geland: QS8-213, QS8-208, QS8-221, QS8-218, QS8-219, QS8-202
-> en QS8-192.**
-> Lees eerst de vier punten van 03-09 hieronder, dan de drie daaronder — de derde
-> daarvan verandert wat je als volgende oppakt — en daarna die van 02-09.
+> en QS8-192.** Daarnaast landde op 04-09 **QS8-267** (#192) uit een parallelle
+> sessie, en staat er één nieuwe bevinding open: **QS8-268**.
+> Lees eerst de twee punten van 04-09, dan de vier van 03-09, dan de drie
+> daaronder — die derde verandert wat je als volgende oppakt — en daarna die van
+> 02-09.
+>
+> **04-09, punt I: `main` stond elke nacht twee uur rood, en de test had gelijk
+> noch ongelijk — hij keek naar de verkeerde klok (QS8-267, #192).** Tussen 22:00
+> en 24:00 UTC vielen twee RLS-tests om. Geen lek: `group_overview()` en de policy
+> `chain_links_select` deden precies wat ze beloven. De tests rekenden hun datums
+> in UTC uit en legden ze naast een grendel die op de **groepsklok** staat
+> (`groepsdatum()`, en dus `groups.tz` — standaard Europe/Amsterdam, in september
+> UTC+2). ⚠️ **De twee uur zijn niet het dure deel; de tweeëntwintig zijn dat.**
+> Zolang twee klokken hetzelfde antwoord geven, kan een test die in UTC rekent de
+> UTC-implementatie niet van de groepsklok-implementatie onderscheiden — hij was
+> twee uur per dag ten onrechte rood en tweeëntwintig uur per dag blind. Het
+> commentaar bij de epic8-test bewéérde zelfs dat de policy `current_date`
+> gebruikt; een latere migratie had die grens verplaatst en de test bleef groen.
+> **Vraag bij elke tijdgebonden test: op wélke klok staat de grendel die ik
+> toets?** Er zijn er hier drie — UTC, groepsklok, gebruikersklok.
+>
+> **04-09, punt II: vijf controles meldden "geen database" terwijl de database er
+> gewoon stond (QS8-268, open).** `definers`, `klokgrens`, `kolomrechten`, `pin`
+> en `zichtbaarheid` roepen `psql` aan zónder `-U`, dus die valt terug op de
+> OS-gebruiker — hier `root`, waar geen databaserol voor bestaat. De poort telde
+> ze bij de vier die écht productiesleutels vragen en meldde *"9 controle(s)
+> zonder database"*. ⚠️ **Zet `PGUSER=postgres` en het worden er vier.**
+> Nagemeten: zelfde database, zelfde moment, alleen die env-var verschilt.
+> Zolang dit niet gerepareerd is, draai je de poort dus zó:
+>
+> ```bash
+> export PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres RLS_DOEL=lokaal
+> ```
 >
 > **03-09, punt 0: van de acht is er nog één níét af.**
 >
@@ -208,7 +238,14 @@ en niet alleen naar Linear. Twee dingen die daar die dag uit kwamen:
   wordt vanzelf groen zodra die branch landt.
 - `origin/quintenstrijdonk/qs8-266-...` is al opgepakt door een andere sessie.
   QS8-266 is op 03-09 aangemaakt (de vragenlijst na de onboarding is
-  onbereikbaar); dat issue is dus niet meer vrij.
+  onbereikbaar); dat issue is dus niet meer vrij. Het is inmiddels geland (#189).
+
+⚠️ **Op 04-09 gebeurde het nog een keer, en toen goed:** terwijl deze sessie aan
+QS8-192 werkte, pakte een tweede sessie QS8-267 op en landde die als #192. Dat
+ging zonder botsing omdat de twee elkaars bestanden niet raakten — maar dat was
+geluk en geen afspraak. **Nagemeten op 04-09 stond migratie 0154 nog steeds
+alleen op `qs8-197-apple-en-google-knop`,** dus de blokkade van QS8-174 staat
+onveranderd.
 
 ## STAND VAN ZAKEN
 
@@ -540,6 +577,28 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   acht geland" zei. Het waren er zes: QS8-192 was er tussenuit gevallen zonder dat
   iemand het merkte, en het getal is opgeteld uit wat er gedaan wás. Een optelling
   van je eigen werk kan per definitie niet zien wat je niet gedaan hebt.
+
+- **⚠️ Twee klokken die 22 uur per dag hetzelfde zeggen, zijn geen bewijs dat je
+  de goede pakt — 04-09, QS8-267.** Twee RLS-tests rekenden in UTC naast een
+  grendel die op de groepsklok staat. Ze waren twee uur per nacht ten onrechte
+  rood, en de andere tweeëntwintig uur blind: een test die in UTC rekent kan de
+  UTC-implementatie niet van de groepsklok-implementatie onderscheiden zolang die
+  twee samenvallen. Toen een migratie de grens van `current_date` naar
+  `groepsdatum()` verplaatste, bleef de test dus gewoon groen — en het commentaar
+  erboven bleef de oude klok noemen. ⚠️ **De reparatie is niet "de test slimmer
+  laten rekenen" maar de zaak zó opzetten dat de klokken uit elkaar lopen**: geef
+  de groep een tijdzone die *nu* een andere datum heeft dan UTC, dan is een
+  terugval naar `current_date` altijd rood in plaats van bij toeval. Vraag bij
+  elke tijdgebonden test op wélke klok de grendel staat; er zijn er hier drie.
+
+- **⚠️ "Geen database" kan betekenen dat de database er staat en jij de verkeerde
+  gebruiker bent — 04-09, QS8-268.** Vijf controles (`definers`, `klokgrens`,
+  `kolomrechten`, `pin`, `zichtbaarheid`) roepen `psql` aan zonder `-U` en vallen
+  terug op de OS-gebruiker. Ze melden dan *"Start de lokale stack"* terwijl die
+  stack draait en de RLS-suite er wél tegen meet. ⚠️ **Een melding die de
+  verkeerde oorzaak noemt, is duurder dan geen melding:** hij stuurt de lezer weg
+  van de oplossing en de poort telt vijf ongemeten controles als een grens van de
+  omgeving. Zet `PGUSER=postgres` tot QS8-268 gerepareerd is.
 
 - **⚠️ Een reden om iets te laten liggen, veroudert net zo hard als code —
   04-09, QS8-192.** De dossierrij zei dat expo-router geen ondersteunde manier
@@ -1427,6 +1486,10 @@ zes geland met een groene poort:
 
 ⚠️ **Alleen QS8-174 staat nog open:** twee blokkades, `wacht-op-Quinten`. Zie
 punt 0 bovenaan dit bestand.
+
+Buiten de batch landde op 04-09 nog **QS8-267** (#192, uit een parallelle
+sessie): de klokgrenstests rekenen nu op de klok van hun eigen grendel. Zie punt
+I bovenaan. Nieuw en nog niet opgepakt: **QS8-268** — zie punt II.
 
 **Waar je nu begint, in deze volgorde:**
 
