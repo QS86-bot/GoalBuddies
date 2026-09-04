@@ -39,6 +39,8 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+
 /**
  * Elke `current_date` in het schema, met de reden waarom hij daar mag staan.
  *
@@ -190,10 +192,7 @@ export function beoordeel(voorkomens, register = REGISTER) {
 }
 
 function lees() {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', VRAAG];
-  if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
-  return execFileSync('psql', args, { encoding: 'utf8' });
+  return execFileSync('psql', psqlArgumenten(VRAAG), { encoding: 'utf8' });
 }
 
 function hoofd() {
@@ -202,11 +201,13 @@ function hoofd() {
     uitvoer = lees();
   } catch (fout) {
     console.error(
-      `✗ Geen database om tegen te meten (${process.env.DB ?? 'goalbuddies_rls'}).\n\n` +
-        'Deze controle leest `pg_get_functiondef()` en niet de migratiebestanden —\n' +
-        'die laatste vertellen wat er ooit gedeployd is, niet wat er draait.\n' +
-        'Start de lokale stack met `npm run rls:stack`.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+      verbindingsmelding({
+        naam: 'klokgrens-controle',
+        leest:
+          'Deze controle leest `pg_get_functiondef()` en niet de migratiebestanden —\n' +
+          'die laatste vertellen wat er ooit gedeployd is, niet wat er draait.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
     );
     return 1;
   }

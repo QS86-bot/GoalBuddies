@@ -53,10 +53,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **878 geslaagd, 1 overgeslagen** (03-09, na QS8-266, QS8-202 en
-   QS8-196; daarvóór QS8-213, QS8-208, QS8-221, QS8-218 en QS8-219). De hele
-   suite geeft met de stack **3121 geslaagd en 1 overgeslagen** over
-   219 bestanden.
+   **900 geslaagd, 1 overgeslagen** (04-09, na QS8-197, QS8-267 en QS8-262
+   ronde 6; daarvóór QS8-266, QS8-202 en QS8-196). De hele
+   suite geeft met de stack **3167 geslaagd en 1 overgeslagen** over
+   223 bestanden.
    Typecheck, lint en alle 32 controlescripts groen;
    `npm run poort` meldt 36 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
