@@ -50,6 +50,8 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+
 /**
  * De functies die met opzet langs `guard_group_update()` mogen, met de reden.
  *
@@ -244,10 +246,7 @@ export function beoordeel(schrijvers, register = REGISTER) {
 }
 
 function psql(vraag) {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', vraag];
-  if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
-  return execFileSync('psql', args, { encoding: 'utf8' });
+  return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
 }
 
 function hoofd() {
@@ -258,10 +257,11 @@ function hoofd() {
     leuntOpRol = ontleed(psql(VRAAG_TRIGGER))[0];
   } catch (fout) {
     console.error(
-      '✗ Geen database om tegen te meten.\n\n' +
-        'Deze controle leest `pg_proc` en niet de migratiebestanden.\n' +
-        'Start de lokale stack met `npm run rls:stack`.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+      verbindingsmelding({
+        naam: 'pinuitzonderingen-controle',
+        leest: 'Deze controle leest `pg_proc` en niet de migratiebestanden.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
     );
     return 1;
   }
