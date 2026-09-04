@@ -560,6 +560,29 @@ async function draaiRollover(auth: string): Promise<Response> {
 
   if (recapFout) {
     console.error(`seizoensrecaps maken mislukte: ${recapFout.message}`);
+    await meld(new Error(`seizoensrecaps maken mislukte: ${recapFout.message}`), 'rollover.recap');
+  }
+
+  // ⚠️ **Sinds migratie 0158 (QS8-171) breekt de recapjob niet meer af op één
+  //    stukke groepsrij — hij slaat die groep over en telt hem.** Dat lost het
+  //    afbreken op en zou het stille falen inbouwen als het hier bij bleef: een
+  //    RPC die netjes `ok: true` teruggeeft terwijl er groepen zijn overgeslagen,
+  //    is precies de vorm waar QS8-140 op stukliep.
+  //
+  //    Vandaar twee dingen, en niet één. `meld()` maakt er een gebeurtenis van
+  //    die iemand bereikt; het getal in de teruggave hieronder maakt hem
+  //    naleesbaar voor wie het log leest. De `group_id`'s gaan niet mee naar
+  //    Sentry — ze staan in het Postgres-log naast de volledige melding, en dat
+  //    is de kant waar de uuid's thuishoren.
+  const recapMislukt = (recaps as { mislukt?: number } | null)?.mislukt ?? 0;
+
+  if (recapMislukt > 0) {
+    console.error(`seizoensrecap overgeslagen voor ${recapMislukt} groep(en)`);
+    await meld(
+      new Error(`seizoensrecap overgeslagen voor ${recapMislukt} groep(en)`),
+      'rollover.recap',
+      { code: 'recap_groep_overgeslagen', groepen: recapMislukt },
+    );
   }
 
   // ⚠️ **De goedkeuringstermijn — QS8-178, migratie 0135.** Een voltooiing die op
@@ -634,6 +657,12 @@ async function draaiRollover(auth: string): Promise<Response> {
       //    zonder scherm; wat hij niet teruggeeft, is niet gebeurd voor wie het
       //    log leest.
       recaps: (recaps as { recaps?: number } | null)?.recaps ?? 0,
+      // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan hebben zoveel groepen dit
+      //    seizoen geen recap gekregen en is de oorzaak per groep terug te
+      //    vinden in het Postgres-log — QS8-171, migratie 0158. Zonder dit getal
+      //    in de uitvoer is een deels mislukte job niet van een geslaagde te
+      //    onderscheiden.
+      recapsOvergeslagen: recapMislukt,
       // ⚠️ Om dezelfde reden als `recaps` hierboven: een job zonder scherm heeft
       //    alleen zijn uitvoer. Wat hij niet teruggeeft, is niet gebeurd voor wie
       //    het log leest — en dít getal hoort nul te zijn zolang er niets vastloopt.
