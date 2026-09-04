@@ -77,6 +77,13 @@ tweede, losstaande toestemmingsvorm bij.
 en dan vervalt domeinregel 7 voor het puntentotaal in élke groep. Dat is een
 grotere stap dan deze en hoort dan apart opgeschreven te worden.
 
+> ✅ **Dat is op 03-09-2026 besloten — besluit A57**, en het staat apart
+> opgeschreven in `2026-09-03-een-klassement-in-elke-groep.md`. Elke groep krijgt
+> een klassement, dus van de drie grendels hierboven vervalt er één: de
+> `lid_van_open_groep()`-toets in de `where`. De CHECK en de handtekening blijven,
+> en dragen daarna meer gewicht dan hier. **Nog niet gebouwd** — dat document
+> houdt vier vragen open die eerst een antwoord vragen.
+
 ### De keuze die pas bij het bouwen zichtbaar werd
 
 Er zijn twee getallen die allebei "de score van dit lid" heten, en het issue zei
