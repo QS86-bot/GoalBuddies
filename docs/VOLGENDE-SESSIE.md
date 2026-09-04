@@ -1423,7 +1423,7 @@ zes geland met een groene poort:
 | QS8-218 | de gedachtestreepjes uit beide catalogi, met `streepje:controle` erop | #182 |
 | QS8-219 | de `levend`-ratel van 27 naar 21, langs `useAsyncMetTerugval()` | #185 |
 | QS8-202 | het weekoverzicht meldt dat een weekpas je reeks gered heeft | #188 |
-| QS8-192 | de terugknop van de browser gooit de weekafsluiting niet meer weg | #191 |
+| QS8-192 | de terugknop van de browser gooit de weekafsluiting niet meer weg | #193 |
 
 ⚠️ **Alleen QS8-174 staat nog open:** twee blokkades, `wacht-op-Quinten`. Zie
 punt 0 bovenaan dit bestand.
