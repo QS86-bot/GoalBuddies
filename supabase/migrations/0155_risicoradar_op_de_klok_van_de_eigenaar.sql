@@ -1,7 +1,8 @@
 -- 0155_risicoradar_op_de_klok_van_de_eigenaar.sql — de Risico-radar rekende "vandaag" in UTC (QS8-172)
 --
 -- ROLLBACK-PAD:
---   Zet `herbereken_risico()` terug met de body uit 0120: `current_date` op de
+--   Zet `herbereken_risico()` terug met de body uit 0051 (`0051_haalbaarheid.sql`,
+--   de laatste migratie die deze functie definieert): `current_date` op de
 --   drie plaatsen waar nu `v_vandaag` staat, en de declaratie plus de
 --   toewijzing van `v_vandaag` eruit. De functie schrijft alleen naar
 --   `goal_risk`, en die rij wordt bij elke aanroep overschreven — er is dus

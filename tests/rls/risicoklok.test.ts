@@ -50,7 +50,21 @@ const TEST_TIMEOUT = 30_000;
 
 const UTC = 'UTC' as TimeZone;
 
-/** De serverdatum — `current_date` aan deze kant van de lijn. */
+/**
+ * De serverdatum — `current_date` aan deze kant van de lijn.
+ *
+ * ⚠️ **Dit is een model van `current_date`, en het klopt alleen als de database
+ *    in UTC staat.** Die aanname draagt élke assertie hieronder: reken de test
+ *    in UTC terwijl de server ergens anders staat, dan wijst "de serverklok" de
+ *    verkeerde dag aan en toetst de suite iets anders dan ze zegt.
+ *
+ *    Gemeten op 04-09-2026: de lokale stack staat op `Etc/UTC`, en de
+ *    Postgres-container van CI ook. **Er staat geen grendel op.** Er is vandaag
+ *    geen `*_bewaking()`-functie die de zone van de server teruggeeft, en er
+ *    eentje bijmaken hoort niet in een migratie die over de Risico-radar gaat.
+ *    Staat in `docs/ENGINEER-REVIEW.md` met de voorwaarde waaronder het zwaarder
+ *    wordt: zodra de suite ergens draait waar de database níet in UTC staat.
+ */
 function serverdatum(): IsoDate {
   return localDateIn(UTC, now());
 }

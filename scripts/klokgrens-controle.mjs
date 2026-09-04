@@ -75,8 +75,11 @@ export const REGISTER = new Map([
       '`greatest(0, null)` in Postgres `0` en niet null, dus een null-datum zou ' +
       'stil `v_weken_over = 0` opleveren en dat is met openstaande mijlpalen ' +
       'meteen `unreachable` — het hardste oordeel dat deze functie kent, ' +
-      'uitgesproken op een ontbrekend profiel. Getoetst in ' +
-      'tests/rls/risicoklok.test.ts, met twee zones die het hele etmaal dekken.',
+      'uitgesproken op een ontbrekend profiel. ⚠️ Wat in ' +
+      'tests/rls/risicoklok.test.ts getoetst wordt is de `v_vandaag`-tak, met twee ' +
+      'zones die het hele etmaal dekken — de terugval zelf is per constructie niet ' +
+      'toetsbaar zolang de foreign key hem onbereikbaar houdt, en dat is precies ' +
+      'de reden dat hij hier met naam en al staat in plaats van in een test.',
   ],
   [
     'wikkel_commitments_af :: v_vandaag := coalesce(eigenaarsdatum(v_doel.owner_id), current_date);',
