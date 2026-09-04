@@ -552,6 +552,13 @@ kapotte instelling en dus **rood**, want de database ligt er gewoon. Zes scripts
 zeiden jarenlang "start de lokale stack" terwijl die draaide, en de poort telde
 er daardoor negen ongemeten waar er vier hoorden.
 
+⚠️ **En dat gold niet voor de RLS-suite, tot 04-09-2026 (QS8-270).** Drie
+testbestanden stonden op de verkeerde poort, sloegen zichzelf stil over en gaven
+exitcode 0 — dertig tests weg, poort groen. `stackBeschikbaarOfFaal()` in
+`tests/rls/psql-stack.ts` **werpt** nu zodra `RLS_DOEL` gezet is: zwijgen mag
+alleen als niemand beweerde te meten. Uitleg in
+`docs/decisions/2026-09-04-een-suite-die-zegt-te-meten.md`.
+
 ⚠️ **Een controle die `psql` aanroept, bouwt zijn eigen aanroep niet.** Dat is
 zesmaal dezelfde vergeten vlag geweest. `psqlArgumenten()` is de enige weg; een
 uitzondering hoort in het register in `tests/scripts/psql-verbinding.test.ts`,

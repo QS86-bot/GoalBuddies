@@ -54,7 +54,10 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
    **900 geslaagd, 1 overgeslagen** (04-09, na QS8-197, QS8-267 en QS8-262
-   ronde 6; daarvóór QS8-266, QS8-202 en QS8-196). De hele
+   ronde 6; daarvóór QS8-266, QS8-202 en QS8-196).
+   ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
+   Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
+   870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
    suite geeft met de stack **3167 geslaagd en 1 overgeslagen** over
    223 bestanden.
    Typecheck, lint en alle 32 controlescripts groen;
@@ -631,6 +634,10 @@ En dan de twee stappen die geen enkele machine voor je doet:
    maar alleen omdat `.env` de sleutels heeft. Controleer dat de teller klopt —
    staat er `skipped` bij `tests/rls/`, dan heb je géén RLS-dekking gedraaid en
    zegt groen niets over autorisatie.
+   ✅ **Sinds QS8-270 hoef je dat niet meer met de hand te zien voor de vier
+   bestanden die psql gebruiken:** die vállen om zodra `RLS_DOEL` gezet is en de
+   database onbereikbaar is. Voor de rest van de groep blijft het aflezen jouw
+   werk — zie de rij van 04-09 in `docs/ENGINEER-REVIEW.md`.
 
 ⚠️ **Waarom dit een aparte stap is en niet "CI doet het wel".** De CI-job
 "Alles groen" dekt typecheck, lint en de niet-RLS-tests. De RLS-suite slaat

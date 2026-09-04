@@ -40,6 +40,15 @@ export const STANDAARD_DB = 'goalbuddies_rls';
 export const STANDAARD_GEBRUIKER = 'postgres';
 
 /**
+ * De poort waarop `scripts/lokale-stack.sh` draait.
+ *
+ * ⚠️ **5433 en niet psql's eigen 5432.** Dit getal staat ook in
+ *    `scripts/lokale-stack.sh` en in `tests/rls/psql-stack.ts`; wie het hier
+ *    verandert, verandert het daar mee.
+ */
+export const STANDAARD_POORT = '5433';
+
+/**
  * De argumenten waarmee een controle psql aanroept.
  *
  * ⚠️ **`-w` staat er met opzet bij.** Zonder die vlag vraagt psql interactief om
@@ -48,9 +57,16 @@ export const STANDAARD_GEBRUIKER = 'postgres';
  *    hangt is erger dan een die rood wordt: in CI kost hij het hele budget van
  *    de job en de uitslag is "nog bezig", niet "fout".
  *
- * ⚠️ **De poort wordt niet doorgegeven en dat is met opzet.** psql leest
- *    `PGPORT` zelf; een eigen standaard hier zou stil afwijken van wat de rest
- *    van de omgeving doet, en dan meet je een andere database dan je denkt.
+ * ⚠️ **De poort staat er sinds QS8-270 wél bij, en dat corrigeert de redenering
+ *    die hier eerst stond.** Er stond: *psql leest `PGPORT` zelf; een eigen
+ *    standaard zou stil afwijken van wat de rest van de omgeving doet.* Dat
+ *    klopte niet — psql's eigen standaard is **5432**, en de rest van dit project
+ *    draait op **5433** (`scripts/lokale-stack.sh` op `${PGPORT:-5433}`, en
+ *    `tests/rls/psql-stack.ts` net zo). Zónder deze regel keken deze controles
+ *    dus naar een poort waar niets staat en meldden ze "geen database" op een
+ *    machine waar de stack gewoon draait — precies de fout die QS8-268 was, één
+ *    dimensie verder. Gemeten: negen ongemeten controles zonder `PGPORT`, vier
+ *    ermee.
  *
  * @param {string} sql
  * @param {Record<string, string | undefined>} [env]
@@ -67,6 +83,8 @@ export function psqlArgumenten(sql, env = process.env) {
     db,
     '-U',
     env.PGUSER ?? STANDAARD_GEBRUIKER,
+    '-p',
+    env.PGPORT ?? STANDAARD_POORT,
     '-c',
     sql,
   ];
