@@ -39,10 +39,19 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './
  *
  * Elke opstelling hieronder zet de lopende cyclus daarom **midden in de week**.
  *
- * ## Drie tests, één per grendel
+ * ## Eén test per grendel, en dat zijn er inmiddels meer dan drie
  *
- * De vloergrens, de eenheid, en de tempogrens ernaast — die laatste droeg
- * dezelfde fout en raakt iederéén, ook zonder vloergeschiedenis.
+ * Begonnen met de vloergrens, de eenheid en de tempogrens ernaast — die laatste
+ * droeg dezelfde fout en raakt iederéén, ook zonder vloergeschiedenis. Daar
+ * kwamen de neutrale cyclusstatussen bij (QS8-275) en de gemengde cyclus
+ * (QS8-278). Ze horen in één bestand omdat ze één ding bewaken: dat
+ * `herbereken_risico()` telt wat het commentaar erboven belooft.
+ *
+ * ⚠️ **De must-see hoort er per definitie bij.** Vier van deze tests eisen
+ *    `on_track`; wie de vloertak in zijn geheel uit de if-keten haalt, houdt ze
+ *    alle vier groen. De test die eist dát het vloersignaal vuurt, is wat het
+ *    verschil maakt tussen "de teller is gerepareerd" en "de teller telt niets
+ *    meer" — en die tweede is de radar stuk in de andere richting.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -121,6 +130,117 @@ async function zetCyclusMetStatus(
   if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
 
   const bij = await admin.from('weekly_goals').update({ status }).eq('id', week.data.id);
+  if (bij.error) throw new Error(`status ${titel}: ${bij.error.message}`);
+}
+
+/**
+ * Zet één cyclus neer met een ingediende, nog niet goedgekeurde voltooiing.
+ *
+ * ⚠️ De status wordt hier níet met de hand gezet: `mark_weekly_goal_pending()`
+ *    (0023) doet dat in dezelfde transactie als de insert. Dit is dus geen
+ *    kunstmatige toestand maar de normale gang van zaken tussen indienen en
+ *    goedkeuren.
+ */
+async function zetCyclusInAfwachting(
+  goalId: string,
+  dag: IsoDate,
+  niveau: 'floor' | 'ceiling',
+  titel: string,
+): Promise<void> {
+  const admin = adminDb();
+
+  const week = await admin
+    .from('weekly_goals')
+    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, cycle_index: 1, status: 'todo' })
+    .select('id')
+    .single();
+  if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
+
+  const voltooiing = await admin.from('completions').insert({
+    weekly_goal_id: week.data.id,
+    user_id: eigenaarId,
+    achieved_level: niveau,
+    note: `Fixture ${titel}`,
+    cycle_start_date: dag,
+  });
+  if (voltooiing.error) throw new Error(`voltooiing ${titel}: ${voltooiing.error.message}`);
+}
+
+/**
+ * Zet één cyclus neer waarin de voltooiing is gecorrigeerd: eerst `van`,
+ * daarna `naar`, met de oude rij gesupersedeerd.
+ *
+ * ⚠️ **De driestap komt uit `dien_opnieuw_in()` zelf en is geen omweg.**
+ *    `completions_active_uniq` is uniek op `weekly_goal_id` wáár
+ *    `superseded_by is null`, dus twee actieve voltooiingen naast elkaar kan
+ *    niet — ook niet één tel lang. De RPC zet de nieuwe rij daarom neer mét een
+ *    `superseded_by`, verwijst dan de oude naar de nieuwe, en maakt de nieuwe
+ *    pas daarna actief.
+ *
+ * ⚠️ **Beide richtingen zijn bereikbaar.** Gemeten in
+ *    `pg_get_functiondef('public.dien_opnieuw_in(uuid,text,text)')`: de RPC
+ *    accepteert elk van de twee niveaus zolang de week op `pending` staat, en
+ *    weigert alleen een week die al `approved` of gesloten is. Corrigeren van
+ *    plafond naar vloer is dus net zo gewoon als andersom.
+ */
+async function zetCyclusGecorrigeerd(
+  goalId: string,
+  dag: IsoDate,
+  van: 'floor' | 'ceiling',
+  naar: 'floor' | 'ceiling',
+  titel: string,
+): Promise<void> {
+  const admin = adminDb();
+
+  const week = await admin
+    .from('weekly_goals')
+    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, cycle_index: 1, status: 'todo' })
+    .select('id')
+    .single();
+  if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
+
+  const oud = await admin
+    .from('completions')
+    .insert({
+      weekly_goal_id: week.data.id,
+      user_id: eigenaarId,
+      achieved_level: van,
+      note: `eerst ${van}`,
+      cycle_start_date: dag,
+    })
+    .select('id')
+    .single();
+  if (oud.error || oud.data === null) throw new Error(`eerste voltooiing: ${oud.error?.message}`);
+
+  const nieuw = await admin
+    .from('completions')
+    .insert({
+      weekly_goal_id: week.data.id,
+      user_id: eigenaarId,
+      achieved_level: naar,
+      note: `toch ${naar}`,
+      cycle_start_date: dag,
+      superseded_by: oud.data.id,
+    })
+    .select('id')
+    .single();
+  if (nieuw.error || nieuw.data === null) {
+    throw new Error(`tweede voltooiing: ${nieuw.error?.message}`);
+  }
+
+  const heen = await admin
+    .from('completions')
+    .update({ superseded_by: nieuw.data.id })
+    .eq('id', oud.data.id);
+  if (heen.error) throw new Error(`oude supersede: ${heen.error.message}`);
+
+  const terug = await admin
+    .from('completions')
+    .update({ superseded_by: null })
+    .eq('id', nieuw.data.id);
+  if (terug.error) throw new Error(`nieuwe activeren: ${terug.error.message}`);
+
+  const bij = await admin.from('weekly_goals').update({ status: 'approved' }).eq('id', week.data.id);
   if (bij.error) throw new Error(`status ${titel}: ${bij.error.message}`);
 }
 
@@ -313,88 +433,258 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
   it(
     'telt een week die van vloer naar plafond is opgewaardeerd niet als vloerweek',
     async () => {
-      // ⚠️ De conjunct `c.superseded_by is null` was ongedekt, en hij draagt een
-      //    echte handeling: `dien_opnieuw_in()` supersedeert de oude voltooiing
-      //    en zet een nieuwe neer. Zonder dat filter telt een week waarin je van
-      //    vloer naar plafond opwaardeerde alsnog als vloerweek — precies
-      //    andersom dan wat er gebeurde.
+      // ⚠️ **Dit is een gedragstest en niet de grendel op `superseded_by`.** Tot
+      //    0162 was hij dat wél: onder de oude `exists`-vorm was de opwaardering
+      //    hét onderscheidende geval. Onder `bool_and` niet meer — de cyclus valt
+      //    in beide gevallen uit de teller, want mét het filter ziet hij alleen
+      //    het plafond en zónder het filter ziet hij vloer én plafond, en dat
+      //    geeft allebei `false`. Gemeten: teller 2, noemer 3, met en zonder.
+      //
+      //    De grendel is naar de test hieronder verhuisd, waar het verschil wél
+      //    zit. Deze blijft staan omdat het gedrag zelf de moeite van het
+      //    vastleggen waard is: opwaarderen mag je niet als vloerweek nastaan.
       const goalId = await maakDoel('VLOER-OPGEWAARDEERD');
-      const admin = adminDb();
 
       await zetCyclus(goalId, addDays(eigenDatum, -21), 'floor', 'week -3');
       await zetCyclus(goalId, addDays(eigenDatum, -14), 'floor', 'week -2');
-
-      // Week -7: eerst op de vloer afgesloten, daarna opgewaardeerd.
-      const week = await admin
-        .from('weekly_goals')
-        .insert({
-          goal_id: goalId,
-          title: 'week -1',
-          cycle_start_date: addDays(eigenDatum, -7),
-          cycle_index: 1,
-          status: 'todo',
-        })
-        .select('id')
-        .single();
-      if (week.error || week.data === null) throw new Error(`weekdoel: ${week.error?.message}`);
-
-      const oud = await admin
-        .from('completions')
-        .insert({
-          weekly_goal_id: week.data.id,
-          user_id: eigenaarId,
-          achieved_level: 'floor',
-          note: 'eerst de vloer',
-          cycle_start_date: addDays(eigenDatum, -7),
-        })
-        .select('id')
-        .single();
-      if (oud.error || oud.data === null) throw new Error(`eerste voltooiing: ${oud.error?.message}`);
-
-      // ⚠️ **De driestap komt uit `dien_opnieuw_in()` zelf en is geen omweg.**
-      //    `completions_active_uniq` is uniek op `weekly_goal_id` wáár
-      //    `superseded_by is null`, dus twee actieve voltooiingen naast elkaar
-      //    kan niet — ook niet één tel lang. De RPC zet de nieuwe rij daarom
-      //    neer mét een `superseded_by`, verwijst dan de oude naar de nieuwe, en
-      //    maakt de nieuwe pas daarna actief.
-      const nieuw = await admin
-        .from('completions')
-        .insert({
-          weekly_goal_id: week.data.id,
-          user_id: eigenaarId,
-          achieved_level: 'ceiling',
-          note: 'toch het plafond',
-          cycle_start_date: addDays(eigenDatum, -7),
-          superseded_by: oud.data.id,
-        })
-        .select('id')
-        .single();
-      if (nieuw.error || nieuw.data === null) {
-        throw new Error(`tweede voltooiing: ${nieuw.error?.message}`);
-      }
-
-      const heen = await admin
-        .from('completions')
-        .update({ superseded_by: nieuw.data.id })
-        .eq('id', oud.data.id);
-      if (heen.error) throw new Error(`oude supersede: ${heen.error.message}`);
-
-      const terug = await admin
-        .from('completions')
-        .update({ superseded_by: null })
-        .eq('id', nieuw.data.id);
-      if (terug.error) throw new Error(`nieuwe activeren: ${terug.error.message}`);
-
-      await admin.from('weekly_goals').update({ status: 'approved' }).eq('id', week.data.id);
+      await zetCyclusGecorrigeerd(goalId, addDays(eigenDatum, -7), 'floor', 'ceiling', 'week -1');
 
       const uit = await meet(goalId);
 
       expect(uit.reden.cycli_gehaald, 'drie afgesloten en gehaalde cycli').toBe(3);
       expect(
         uit.reden.vloeraandeel,
-        'de opgewaardeerde week telde alsnog als vloerweek — `superseded_by is null` ' +
-          'ontbreekt in de teller',
+        'de opgewaardeerde week hoort niet als vloerweek te tellen',
       ).toBeCloseTo(2 / 3, 5);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'telt een week die van plafond naar vloer is teruggezet wél als vloerweek',
+    async () => {
+      // ⚠️ **Dit is de grendel op `c.superseded_by is null`, en hij zat er niet.**
+      //    De security-review op 0162 wees hem aan en de meting bevestigde het:
+      //    het filter weghalen liet de hele suite groen, omdat de enige test die
+      //    hem noemde de opwaardering gebruikte — het geval dat onder `bool_and`
+      //    geen verschil meer maakt.
+      //
+      //    Gemeten op drie teruggezette cycli:
+      //
+      //      met `superseded_by is null`   -> at_risk   vloeraandeel 1.000
+      //      zonder                        -> on_track  vloeraandeel 0.000
+      //
+      //    Zonder het filter ziet de `bool_and` het ingetrokken plafond nog
+      //    steeds staan, concludeert "niet alléén de vloer", en zwijgt over
+      //    iemand die drie weken op rij terugviel op zijn vloer. Kapot in de
+      //    richting waar niemand naar keek: de radar die niets zegt.
+      //
+      // ⚠️ **En dit is een bereikbaar pad, geen bedachte toestand.**
+      //    `dien_opnieuw_in()` accepteert beide niveaus zolang de week `pending`
+      //    is — plafond indienen en vóór goedkeuring corrigeren naar de vloer is
+      //    de normaalste week van de wereld.
+      const goalId = await maakDoel('VLOER-TERUGGEZET');
+
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclusGecorrigeerd(
+          goalId,
+          addDays(eigenDatum, weken),
+          'ceiling',
+          'floor',
+          `week ${weken}`,
+        );
+      }
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_gehaald, 'drie afgesloten en gehaalde cycli').toBe(3);
+      expect(
+        uit.reden.vloeraandeel,
+        'de ingetrokken plafondvoltooiing telde mee in de `bool_and` en maakte van ' +
+          'drie vloerweken nul vloerweken',
+      ).toBeCloseTo(1, 5);
+      expect(
+        uit.stand,
+        'drie weken teruggevallen op de vloer is precies het patroon dat deze tak ' +
+          'moet vangen',
+      ).toBe('at_risk');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'telt een vloerweek van buiten het venster niet mee',
+    async () => {
+      // ⚠️ **De ondergrens `>= v_venster_start` in de teller was ongedekt**, en
+      //    dat is dezelfde grens die 0157 aan de bovenkant repareerde. Geen enkel
+      //    scenario in de drie risicobestanden zette ooit een goedgekeurde cyclus
+      //    mét voltooiing vóór `-28`, dus de conjunct kon zonder gevolgen weg.
+      //
+      //    Gemeten met zes vloercycli op −35 tot −70 naast drie plafondcycli
+      //    binnen het venster:
+      //
+      //      met de ondergrens    -> on_track  vloeraandeel 0.000
+      //      zonder               -> at_risk   vloeraandeel 2.000
+      //
+      //    Twee. Bij een drempel van 0,75 en een noemer die per definitie
+      //    hoogstens vier telt — precies de vorm van QS8-271 terug, en de reden
+      //    dat `v_vloerdeel` daar boven 1 uit kon komen.
+      const goalId = await maakDoel('VLOER-BUITEN-VENSTER');
+
+      // Binnen het venster: drie weken netjes op het plafond.
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'ceiling', `plafond ${weken}`);
+      }
+
+      // Ver daarbuiten: een vloerverleden dat allang niet meer telt. `c_venster`
+      // is vier cycli, dus alles vanaf −35 ligt erbuiten.
+      for (const weken of [-35, -42, -49, -56, -63, -70]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'floor', `oude vloer ${weken}`);
+      }
+
+      const uit = await meet(goalId);
+
+      expect(
+        uit.reden.cycli_gehaald,
+        'de noemer kijkt vier cycli terug, dus alleen de drie binnen het venster',
+      ).toBe(3);
+      expect(
+        uit.reden.vloeraandeel,
+        'de teller telde zes cycli van buiten het venster mee tegen een noemer van ' +
+          'drie, en gaf 2,00 op een drempel van 0,75',
+      ).toBeCloseTo(0, 5);
+      expect(
+        uit.stand,
+        'een vloerverleden van een half jaar geleden hoort vandaag geen ' +
+          'waarschuwing meer op te leveren',
+      ).toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **De gemengde cyclus — QS8-278.**
+   *
+   * De teller vroeg *"bestáát er een vloervoltooiing in deze cyclus"*, terwijl de
+   * regel die hij bewaakt *"structureel alléén de vloer"* belooft. Dat verschil
+   * is onzichtbaar zolang een cyclus precies één weekdoel heeft, en er staat geen
+   * unieke sleutel op `(goal_id, cycle_start_date)`.
+   *
+   * Gemeten vóór 0162, vier afgesloten cycli met tempo 1,00 en tien weken tot de
+   * streefdatum:
+   *
+   * ```
+   * alleen vloer   -> at_risk   vloeraandeel 1.00
+   * twee vloeren   -> at_risk   vloeraandeel 1.00   (de reparatie van 0157)
+   * gemengd        -> at_risk   vloeraandeel 1.00   <- deze
+   * alleen plafond -> on_track  vloeraandeel 0.00
+   * ```
+   *
+   * De drie tests hieronder horen bij elkaar en dekken elk een andere grendel:
+   * de gemengde cyclus valt uit de teller, het vloersignaal blíjft vuren bij een
+   * echte vloerreeks, en de `bool_and` loopt over de goedgekeurde weekdoelen en
+   * niet over alles wat er in die week gepland stond.
+   */
+  it(
+    'telt een cyclus met een plafond én een vloer niet als vloerweek',
+    async () => {
+      const goalId = await maakDoel('VLOER-GEMENGD');
+
+      // Drie afgesloten cycli, elk met twéé weekdoelen: één op het plafond
+      // gehaald en één op de vloer. Je hebt élke week je plafond aangeraakt.
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'ceiling', `week ${weken}a`);
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'floor', `week ${weken}b`);
+      }
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_gehaald, 'drie cycli, ook al liggen er zes weekdoelen').toBe(3);
+
+      expect(
+        uit.reden.vloeraandeel,
+        'de teller vroeg of er een vloervoltooiing bestónd in plaats van of er ' +
+          'alléén een vloer was, en telde deze drie weken dus alle drie mee: 3/3',
+      ).toBeCloseTo(0, 5);
+
+      expect(
+        uit.stand,
+        'drie weken je plafond gehaald, en de radar zei dat je structureel op de ' +
+          'vloer zit — de onterecht zwaardere stand waar de dossierrij van 20-08 ' +
+          'voor waarschuwt',
+      ).toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'waarschuwt nog steeds wie structureel alleen de vloer haalt',
+    async () => {
+      // ⚠️ **De must-see, en zonder deze test bewijst de reparatie niets.** Een
+      //    teller die de gemengde cyclus overslaat is niet te onderscheiden van
+      //    een teller die niets meer telt — en dan is de radar stuk in de andere
+      //    richting: hij zwijgt over precies het patroon dat hij moet vangen.
+      //
+      //    Dit is bovendien de énige test in dit bestand die de vloertak zíet
+      //    vuren. De vier tests erboven eisen alle vier `on_track`; wie de hele
+      //    tak zou weghalen, zou ze alle vier groen houden.
+      const goalId = await maakDoel('VLOER-STRUCTUREEL');
+
+      await zetCyclus(goalId, addDays(eigenDatum, -21), 'floor', 'week -3');
+      await zetCyclus(goalId, addDays(eigenDatum, -14), 'floor', 'week -2');
+      await zetCyclus(goalId, addDays(eigenDatum, -7), 'floor', 'week -1');
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_gehaald, 'drie afgesloten en gehaalde cycli').toBe(3);
+      expect(uit.reden.vloeraandeel, 'drie van de drie op de vloer').toBeCloseTo(1, 5);
+      expect(
+        uit.stand,
+        'structureel alleen de vloer halen is het signaal dat deze tak bestáát om ' +
+          'te geven — de reparatie van de gemengde cyclus mag hem niet meenemen',
+      ).toBe('at_risk');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'kijkt naar de goedgekeurde weekdoelen en niet naar wat er ingediend is',
+    async () => {
+      // ⚠️ **De grens zit binnen de groep.** De `bool_and` loopt over de
+      //    weekdoelen die `approved` zijn; een plafond dat je wél ingediend hebt
+      //    maar dat nog op goedkeuring wacht, hoort je niet uit het vloersignaal
+      //    te tillen. De teller moet dezelfde eenheid tellen als de noemer, en
+      //    `v_recent_goed` telt uitsluitend goedgekeurde weken.
+      //
+      // ⚠️ **De eerste versie van deze test voerde het geval door een pad dat een
+      //    éérdere grendel al afving** — een plafondweekdoel op `missed` zónder
+      //    voltooiing wordt al door de `join completions` weggelaten, dus de
+      //    statusfilter eruit halen liet hem gewoon groen. Gemeten en niet
+      //    beredeneerd: mutatie C was groen, en dat is precies wat CLAUDE.md
+      //    bedoelt met een ijking die zijn eigen grendel niet raakt. Een
+      //    voltooiing zet het weekdoel via `mark_weekly_goal_pending()` op
+      //    `pending`, en dát is de vorm die de filter écht voedt.
+      const goalId = await maakDoel('VLOER-INGEDIEND');
+
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'floor', `week ${weken} vloer`);
+        await zetCyclusInAfwachting(
+          goalId,
+          addDays(eigenDatum, weken),
+          'ceiling',
+          `week ${weken} plafond (in afwachting)`,
+        );
+      }
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_gehaald, 'elke cyclus heeft één goedgekeurd weekdoel').toBe(3);
+      expect(
+        uit.reden.vloeraandeel,
+        'een plafond dat nog op goedkeuring wacht telt niet mee in de `bool_and` — ' +
+          'er is in die week nog niets anders goedgekeurd dan de vloer',
+      ).toBeCloseTo(1, 5);
+      expect(uit.stand, 'drie weken alleen de vloer goedgekeurd gekregen').toBe('at_risk');
     },
     TEST_TIMEOUT,
   );
