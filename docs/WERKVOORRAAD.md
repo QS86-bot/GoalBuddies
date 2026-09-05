@@ -53,14 +53,14 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **971 geslaagd, 1 overgeslagen** over 79 bestanden (05-09, na QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280 en QS8-281).
+   **972 geslaagd, 1 overgeslagen** over 79 bestanden (05-09, na QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281 en QS8-282).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3339 geslaagd en 1 overgeslagen** over
+   suite geeft met de stack **3340 geslaagd en 1 overgeslagen** over
    238 bestanden.
-   Typecheck, lint en alle 36 controlescripts groen;
-   `npm run poort` meldt 38 stappen.
+   Typecheck, lint en alle 35 controlescripts groen;
+   `npm run poort` meldt 39 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
    apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is

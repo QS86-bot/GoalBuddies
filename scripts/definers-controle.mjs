@@ -93,10 +93,15 @@ const REGISTER = new Map([
   ['dien_opnieuw_in', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
   [
     'zet_week_startdag',
-    'Géén losse poort: de scoping zit in de `update … and g.owner_id = v_uid` zelf. ' +
-      '⚠️ Daardoor is dit de enige RPC waar de mutatievorm van ronde 5 principieel ' +
-      'blind voor is — je kunt de poort niet weghalen zonder de functie te slopen. ' +
-      'Wordt toetsbaar zodra de scoping naar een aparte `if` verhuist.',
+    'Géén losse poort: de scoping zit in de `update … and g.owner_id = v_uid` zelf, ' +
+      'en er staat een tweede grendel naast in `update profiles … where id = v_uid`. ' +
+      '⚠️ Hier stond tot 05-09 dat dit "de enige RPC is waar de mutatievorm van ronde 5 ' +
+      'principieel blind voor is" en dat hij "toetsbaar wordt zodra de scoping naar een ' +
+      'aparte `if` verhuist". Béíde helften zijn weerlegd (QS8-282): de conjunct is gewoon ' +
+      'weg te halen — de functie draait door en gaf `{"ok": true, "verzet": 2}` — en hij is ' +
+      'toetsbaar zonder enige verhuizing. Wat ontbrak was een fixture met een twéede ' +
+      'gebruiker erin. Gemeten: zonder die tweede gebruiker nul rood van 963. ' +
+      'Bewaakt door `tests/rls/weekstart.test.ts`, met zowel een wildvreemde als een buddy.',
   ],
 
   // --- RPC's die `authenticated` níét mag aanroepen --------------------------
