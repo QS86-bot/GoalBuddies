@@ -287,7 +287,7 @@ export const nl = {
   'risico.unreachable.kaal': 'Er is meer werk over dan er tijd is tot je streefdatum.',
 
   'risico.behind.niets_afgerond':
-    'Je hebt de laatste {weken_bekeken} geen week helemaal afgerond, en er staat nog werk open. Dit is het moment om je doel kleiner te maken of je datum te verschuiven.',
+    'Je hebt de laatste {weken_bekeken} geen week afgerond, en er staat nog werk open. Dit is het moment om je doel kleiner te maken of je datum te verschuiven.',
   'risico.behind.tempo':
     'Je haalde {gehaald} van je laatste {weken_bekeken}. Om {mijlpalen} in {weken} af te ronden heb je een hoger tempo nodig dan dat.',
   'risico.behind.kaal': 'Je hebt een hoger tempo nodig dan je de laatste weken haalde.',
@@ -297,6 +297,15 @@ export const nl = {
   //    gebruiker dat de vloer niet goed genoeg is. Er staat een test op.
   'risico.at_risk.vloer':
     'Je haalt je weken, maar bijna altijd op de vloer. Dat telt volledig mee. Alleen schuift je plafond zo wel steeds verder weg.',
+  // ⚠️ **Deze zin bestaat sinds 0163 (QS8-279) en hij is niet cosmetisch.** De
+  //    noemer telt een week pas als gehaald wanneer élk beoordeeld weekdoel erin
+  //    goedgekeurd is, dus wie er elke week één laat liggen heeft een tempo van
+  //    nul terwijl hij van alles afrondt. Zonder deze zin krijgt hij
+  //    `risico.at_risk.tempo` te lezen: "je zit nu op 0" — bij twintig van de
+  //    vierentwintig weekdoelen. De uitweg die hier genoemd wordt is de vloer, en
+  //    dat is met opzet: dat is de milde weg die domeinregel 8 openhoudt.
+  'risico.at_risk.deels':
+    'Je rondt elke week iets af, maar de laatste {weken_bekeken} geen enkele week helemaal. Plan er per week minder, of zet een vloer onder wat blijft liggen.',
   'risico.at_risk.tempo':
     'Je hebt {mijlpalen} in {weken} te gaan. Dat vraagt {benodigd} per week; je zit nu op {tempo}.',
   'risico.at_risk.kaal': 'Je loopt nog binnen de lijnen, maar er is weinig ruimte over.',

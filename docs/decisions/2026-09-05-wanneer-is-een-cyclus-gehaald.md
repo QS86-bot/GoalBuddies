@@ -82,20 +82,80 @@ En de andere kant weegt zwaarder: onder de lezing die er stond kón het tempo ni
 dalen zolang je per week één ding afvinkte. Een radar die alleen maar `on_track`
 kan zeggen, waarschuwt niemand.
 
-⚠️ **Wordt dit zwaarder als:** doelen in de praktijk stelselmatig meer dan één
-weekdoel per cyclus krijgen. Vandaag is één per cyclus de normale vorm en is de
-meervoudige het randgeval; kantelt dat, dan is dit de eerste regel om te herzien —
-en dan is de verhoudingslezing de kandidaat, mét de vloerteller erbij.
+⚠️ **De gemengde cyclus is geen randgeval, en dat is nagemeten.** De eerste
+versie van dit document noemde hem er een. Gemeten in de code na de
+security-review op 0163: `maakWeekdoel()` (`src/modules/goals/weekly.ts`) zet élk
+nieuw weekdoel in de húidige cyclus, zonder limiet en zonder unieke sleutel, en
+`rollover/index.ts` zet élk overgebleven `todo` of `cancelled` weekdoel op
+`missed`. Een scherm in de app zegt het zelf: *"zes weekdoelen in één week zijn
+nog steeds vijf minpunten."* Wie er twee plant en er één laat liggen, heeft een
+gemengde cyclus — met twee knoppen en zonder iets ongewoons te doen.
 
-## Eén zin in de app veranderde mee
+Dat maakt de keuze hierboven niet anders, maar wel zwaarwegender: hij raakt de
+gewone gebruiker en niet de uitzondering. Precies daarom staat de gradatie
+hieronder erbij.
 
-`risico.behind.niets_afgerond` zei *"Je hebt de laatste 3 weken geen week
-afgerond"*. Onder de oude lezing kwam `cycli_gehaald = 0` alleen voor bij iemand
-die werkelijk niets goedgekeurd kreeg; onder deze lezing haalt zo iemand mogelijk
-elke week íets, maar geen enkele week helemaal. De zin staat nu op *"geen week
-helemaal afgerond"* (en `fully finished` in het Engels) — dezelfde belofte, en nu
-ook waar in het geval dat 0163 mogelijk maakt. Zonder die ene wijziging legt de
-app een regel uit die de gebruiker zelf moet raden.
+⚠️ **Wordt dit zwaarder als:** het gemiddelde aantal weekdoelen per cyclus
+stijgt. Bij twee is "één laten liggen" de helft; bij zes is het een zesde en
+weegt de alles-of-niets-lezing steeds zwaarder. Kantelt dat, dan is de
+verhoudingslezing de kandidaat, mét de vloerteller erbij.
+
+## ⚠️ Wat de strengere noemer verderop kapot maakte
+
+De standenketen eronder heeft een tak die op `v_tempo = 0` hangt, met dit
+commentaar erboven: *"Vier cycli op rij niets afgerond, met werk dat nog moet."*
+Die zin was waar zolang een tempo van nul betekende dat er niets goedgekeurd was.
+Onder deze lezing betekent hij iets anders: geen enkele week is *heel* geworden.
+
+Gemeten op de nieuwe noemer — vier afgesloten cycli, twee open mijlpalen, tien
+weken tot de streefdatum:
+
+```
+5 goedgekeurde plafonds + 1 gemist weekdoel per cyclus -> behind  tempo 0.00
+1 goedgekeurde vloer    + 1 gemist weekdoel per cyclus -> behind  tempo 0.00
+niets goedgekeurd, alles gemist                        -> behind  tempo 0.00
+```
+
+De eerste haalde twintig van zijn vierentwintig weekdoelen en las: *"Je hebt de
+laatste 4 weken geen week afgerond… Dit is het moment om je doel kleiner te maken
+of je datum te verschuiven."* Dat is de op één na zwaarste stand die dit systeem
+kent. Gevonden door de security-review op 0163 en zelf nagemeten.
+
+De tweede raakt de vloer. Onder 0162 kreeg die gebruiker `risico.at_risk.vloer` —
+de enige zin in de app die zegt *"Dat telt volledig mee"*, met een testcommentaar
+erbij dat hij er niet uit mag. Die tak eist `v_recent_goed >= 3`, en dat is nu 0,
+dus de zin werd onbereikbaar voor precies de gebruiker voor wie hij geschreven is.
+
+**De reparatie is `v_recent_deels`** — het aantal cycli met mínstens één
+goedgekeurd weekdoel — en het is geen verzachting van de noemer. Die blijft
+precies zoals hierboven beschreven: geen van deze drie heeft een hele week
+afgerond en geen van de drie staat op koers. Hersteld wordt de vóórwaarde van de
+tak: hij is geschreven voor "er komt niets af", dat geval bestaat nog steeds en
+houdt zijn `behind`. Wie wél elke week iets afrondt, krijgt `at_risk` — een
+waarschuwing, niet het zwaarste oordeel.
+
+⚠️ **Domeinregel 8 raakt dit niet, en dat is de moeite van het opschrijven waard
+omdat het er wél op lijkt.** De vloer van een weekdoel telt onverkort: dat
+weekdoel staat op `approved`, de reeks loopt door, de goedkeuring verloopt
+identiek. Wat hier meetelt is een *ander* weekdoel in dezelfde week dat bleef
+liggen. De regel gaat over de lat van één weekdoel, niet over hoeveel weekdoelen
+je die week nog meer had.
+
+## Eén zin erbij in de app
+
+`risico.at_risk.deels`: *"Je rondt elke week iets af, maar de laatste 4 weken geen
+enkele week helemaal. Plan er per week minder, of zet een vloer onder wat blijft
+liggen."* Zonder die zin valt deze gebruiker door naar `risico.at_risk.tempo` en
+leest hij *"je zit nu op 0"* — bij twintig van de vierentwintig weekdoelen.
+
+De uitweg die de zin noemt is de vloer, en dat is met opzet: dat is de milde weg
+die domeinregel 8 openhoudt, en dit is de gebruiker die er iets aan heeft.
+
+⚠️ `risico.behind.niets_afgerond` (*"geen week afgerond"*) bleef staan zoals hij
+was. Met de gradatie erboven is `behind` met `cycli_gehaald = 0` alleen nog
+bereikbaar wanneer er werkelijk niets goedgekeurd is, en dan klopt de zin weer.
+Hij stond één commit lang op *"geen week helemaal afgerond"*, en die omweg is niet
+meer nodig.
 
 ## De naad die erbij hoort
 

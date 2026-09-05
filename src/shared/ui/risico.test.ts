@@ -126,6 +126,52 @@ describe('risicoUitleg', () => {
     expect(tekst).toContain('telt volledig mee');
   });
 
+  /**
+   * ⚠️ **Een tempo van nul betekent sinds 0163 (QS8-279) niet meer "er kwam niets
+   *    af".** De noemer telt een week pas als gehaald wanneer élk beoordeeld
+   *    weekdoel erin goedgekeurd is, dus wie er elke week één laat liggen staat
+   *    op nul terwijl hij van alles afrondt. De tempozin zou hem "je zit nu op 0"
+   *    voorhouden bij twintig van de vierentwintig weekdoelen.
+   *
+   * ⚠️ **De tegenproef staat eronder en hoort erbij.** Zonder die tweede is deze
+   *    zin niet te onderscheiden van een zin die élk nultempo opslokt — en dan is
+   *    de waarschuwing voor wie werkelijk niets afrondt eruit verdwenen.
+   */
+  it('zegt niet "je zit op 0" tegen wie elke week iets afrondt', () => {
+    const tekst = risicoUitleg('at_risk', {
+      weken_over: 10,
+      open_mijlpalen: 2,
+      cycli_bekeken: 4,
+      cycli_gehaald: 0,
+      cycli_deels: 4,
+      tempo: 0,
+      benodigd_tempo: 0.2,
+      vloeraandeel: null,
+    });
+
+    expect(tekst).toContain('elke week iets af');
+    expect(tekst).not.toContain('op 0');
+    // ⚠️ De uitweg die genoemd wordt is de vloer, en dat is met opzet: dat is de
+    //    milde weg die domeinregel 8 openhoudt voor precies deze gebruiker.
+    expect(tekst).toContain('vloer');
+  });
+
+  it('houdt de waarschuwing voor wie werkelijk niets afrondt', () => {
+    const tekst = risicoUitleg('behind', {
+      weken_over: 10,
+      open_mijlpalen: 2,
+      cycli_bekeken: 4,
+      cycli_gehaald: 0,
+      cycli_deels: 0,
+      tempo: 0,
+      benodigd_tempo: 0.2,
+      vloeraandeel: null,
+    });
+
+    expect(tekst).toContain('geen week afgerond');
+    expect(tekst).not.toContain('elke week iets af');
+  });
+
   it('gebruikt een komma als decimaalteken', () => {
     const tekst = risicoUitleg('at_risk', {
       weken_over: 10,

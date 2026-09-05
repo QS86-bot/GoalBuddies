@@ -64,6 +64,7 @@ let eigenDatum: IsoDate;
 interface Reden {
   cycli_bekeken?: number;
   cycli_gehaald?: number;
+  cycli_deels?: number;
   vloeraandeel?: number | null;
 }
 
@@ -790,22 +791,39 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
    *
    * ## De ijking, per grendel en gemeten
    *
-   * Vijf mutaties, elk apart op de gedeployde functie gezet met de suite ertegen.
-   * De vier tests hieronder heten 1 tot en met 4 in volgorde van verschijnen.
+   * Zeven mutaties, elk apart op de gedeployde functie gezet met de suite ertegen.
+   * De zes tests hieronder heten 1 tot en met 6 in volgorde van verschijnen.
    *
    * | mutatie | rood |
    * | -- | -- |
    * | `bool_or` in plaats van `bool_and` — de lezing "minstens één" van vóór 0163 | 1, 3 |
-   * | het statusfilter uit de `where` — de `bool_and` loopt over élke status | 2, plus de vier bestaande statustests |
+   * | het statusfilter uit de `where` — de `bool_and` loopt over élke status | 2, de drie NEUTRAAL-tests en *kijkt naar de goedgekeurde weekdoelen* |
    * | de vloerquery houdt zijn eigen venstergrenzen in plaats van `= any (v_gehaalde_cycli)` | **alleen** 3 |
    * | teller en noemer in weekdoelen in plaats van cycli — de verhoudingslezing | 1, 3, 4, plus twee bestaande |
    * | `and count(*) = 1` erbij — de eenheid is niet meer de cyclus | **alleen** 4, plus twee bestaande |
+   * | `v_recent_deels` uit de tak op `v_tempo = 0` — het oude oordeel voor iedereen | 1, 6 |
+   * | die tak altijd `at_risk` — de gradatie slokt het zwaarste oordeel op | 5, 6 |
    *
-   * ⚠️ **Twee van de vier delen hun grendel met een test die er al stond, en dat
-   *    hoort erbij te staan.** Test 2 wordt rood bij dezelfde mutatie als de
+   * ⚠️ **De tweede rij stond hier eerst verkeerd, en dat is precies wat een
+   *    matrix waardeloos maakt.** Er stond "plus de vier bestaande statustests";
+   *    gemeten worden het de drie NEUTRAAL-tests plus *kijkt naar de
+   *    goedgekeurde weekdoelen*, terwijl de must-see op `missed` juist **groen**
+   *    blijft. Gevonden door de security-review op 0163. Een matrix die als
+   *    bewijs wordt opgevoerd dat elke grendel apart geraakt is, moet zelf
+   *    gemeten zijn — niet ingevuld naar verwachting.
+   *
+   * ⚠️ **Twee tests delen hun grendel met een test die er al stond, en dat hoort
+   *    erbij te staan.** Test 2 wordt rood bij dezelfde mutatie als de
    *    NEUTRAAL-tests, test 1 bij dezelfde als test 3. Wat ze toevoegen is de
    *    vórm en niet de grendel — en een test die dat niet van zichzelf weet, doet
    *    alsof hij iets bewaakt dat al bewaakt was.
+   *
+   * ⚠️ **De laatste twee rijen slaan twee kanten op, en dat is geen toeval.** De
+   *    strengere noemer maakte de tak op `v_tempo = 0` bereikbaar voor een
+   *    gebruiker voor wie hij niet geschreven is. Een gradatie die dat repareert
+   *    is pas een reparatie als het oorspronkelijke geval zijn oordeel houdt —
+   *    anders is de waarschuwing voor wie werkelijk niets afrondt eruit
+   *    verdwenen, en dat merk je aan niets.
    */
 
   it(
@@ -846,6 +864,109 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
         uit.stand,
         'drie weken op rij een weekdoel gemist, met drie mijlpalen over drie weken, ' +
           'is geen doel dat op koers ligt',
+      ).toBe('at_risk');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'houdt het zwaarste oordeel voor wie werkelijk niets afrondt',
+    async () => {
+      // ⚠️ **De tegenproef bij de tak op `v_tempo = 0`, en zonder haar is de
+      //    gradatie niet te onderscheiden van een tak die niet meer vuurt.** Die
+      //    tak is geschreven voor "er komt niets af"; sinds de strengere noemer
+      //    staat óók iemand op tempo nul die elke week van alles afrondt en er
+      //    telkens één laat liggen. Gemeten op de nieuwe noemer, vier afgesloten
+      //    cycli met twee open mijlpalen: vijf goedgekeurde plafonds náást één
+      //    gemist weekdoel gaf `behind` — de op één na zwaarste stand die dit
+      //    systeem kent, bij twintig van de vierentwintig weekdoelen.
+      //
+      //    `v_recent_deels` draagt dat verschil. De test hierboven eist dat de
+      //    gedeeltelijke week `at_risk` oplevert; deze eist dat de lege week nog
+      //    steeds `behind` oplevert.
+      const goalId = await maakDoel('TEMPO-NIETS-GEHAALD');
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 70) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      for (const weken of [-28, -21, -14, -7]) {
+        await zetCyclusMetStatus(goalId, addDays(eigenDatum, weken), 'missed', `week ${weken} gemist`);
+      }
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_bekeken, 'vier cycli kregen een oordeel').toBe(4);
+      expect(uit.reden.cycli_gehaald, 'geen enkele week is heel geworden').toBe(0);
+      expect(
+        uit.reden.cycli_deels,
+        'en er is ook niets goedgekeurd — dát is het geval waarvoor de tak bestaat',
+      ).toBe(0);
+      expect(
+        uit.stand,
+        'vier cycli op rij niets afgerond met werk dat nog moet, hoort het zwaardere ' +
+          'oordeel te houden — anders is de gradatie een verzachting geworden',
+      ).toBe('behind');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'geeft geen zwaarder oordeel aan wie elke week iets afrondt dan aan wie niets afrondt',
+    async () => {
+      // ⚠️ **De naad tussen de noemer en de standenketen, en die is met de hand
+      //    gemeten en niet beredeneerd.** `v_tempo = 0` bekent sinds 0163 twee
+      //    verschillende gebruikers, en de tak eronder was voor één van de twee
+      //    geschreven. Deze test zet ze naast elkaar in één opstelling zodat de
+      //    volgorde niet uitmaakt: dezelfde streefdatum, dezelfde mijlpalen,
+      //    dezelfde vier cycli — alleen het aantal goedgekeurde weekdoelen
+      //    verschilt.
+      const veel = await maakDoel('TEMPO-VEEL-AF');
+      const niets = await maakDoel('TEMPO-NIETS-AF');
+      for (const goalId of [veel, niets]) {
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(eigenDatum, 70) })
+          .eq('id', goalId);
+        const mijlpalen = await adminDb()
+          .from('milestones')
+          .insert([1, 2].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+        if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+      }
+
+      for (const weken of [-28, -21, -14, -7]) {
+        for (const nummer of [1, 2, 3, 4, 5]) {
+          await zetCyclus(veel, addDays(eigenDatum, weken), 'ceiling', `week ${weken} af #${nummer}`);
+        }
+        await zetCyclusMetStatus(veel, addDays(eigenDatum, weken), 'missed', `week ${weken} gemist`);
+        await zetCyclusMetStatus(niets, addDays(eigenDatum, weken), 'missed', `week ${weken} gemist`);
+      }
+
+      const metWerk = await meet(veel);
+      const zonderWerk = await meet(niets);
+
+      expect(metWerk.reden.cycli_gehaald, 'geen van beide heeft een hele week').toBe(0);
+      expect(zonderWerk.reden.cycli_gehaald, 'geen van beide heeft een hele week').toBe(0);
+
+      expect(
+        metWerk.reden.cycli_deels,
+        'twintig van de vierentwintig weekdoelen goedgekeurd, in alle vier de weken',
+      ).toBe(4);
+
+      expect(
+        metWerk.stand,
+        'twintig van de vierentwintig weekdoelen gehaald gaf `behind` — de op één na ' +
+          'zwaarste stand, met het advies je doel kleiner te maken',
+      ).toBe('at_risk');
+
+      expect(
+        zonderWerk.stand,
+        'en die zwaarste stand hoort te blijven bestaan voor wie werkelijk niets ' +
+          'afrondde, anders is de reparatie een verzachting',
       ).toBe('behind');
     },
     TEST_TIMEOUT,

@@ -51,6 +51,23 @@
 --    een gehaalde vloer staat op `approved` en telt onverkort mee.
 --
 -- ---------------------------------------------------------------------------
+-- ⚠️ En wat een strengere noemer verderop brak
+-- ---------------------------------------------------------------------------
+--
+-- De tak op `v_tempo = 0` draagt het commentaar "Vier cycli op rij niets
+-- afgerond". Die zin was waar zolang een tempo van nul betekende dat er niets
+-- goedgekeurd was; onder deze lezing betekent hij "geen week is héél geworden",
+-- en dat is óók de stand van iemand die elke week van alles afrondt en er telkens
+-- één laat liggen. Gemeten, vier cycli met twee open mijlpalen en tien weken tot
+-- de streefdatum: vijf goedgekeurde plafonds náást één gemist weekdoel gaven
+-- `behind` — de op één na zwaarste stand, met het advies je doel kleiner te
+-- maken, bij twintig van de vierentwintig weekdoelen.
+--
+-- `v_recent_deels` herstelt de vóórwaarde van die tak zonder de noemer te
+-- verzachten. Uitgeschreven bij de tak zelf en in het beslisdocument. Gevonden
+-- door de security-review op deze migratie.
+--
+-- ---------------------------------------------------------------------------
 -- Idempotent: `create or replace` op één functie, handtekening onveranderd.
 -- ---------------------------------------------------------------------------
 
@@ -78,6 +95,7 @@ declare
   v_recent_totaal   integer;
   v_recent_goed     integer;
   v_recent_vloer    integer;
+  v_recent_deels    integer;
   v_gehaalde_cycli  date[];
   v_tempo           numeric;
   v_benodigd        numeric;
@@ -187,6 +205,13 @@ begin
   --    vloerteller hieronder. Welke van de drie lezingen dat is en waarom, staat
   --    in `docs/decisions/2026-09-05-wanneer-is-een-cyclus-gehaald.md`.
   --
+  -- ⚠️ **De `coalesce` op de array is verdediging en geen grendel.** Gemeten:
+  --    `array_agg(...) filter (...)` is null precies wanneer `count(*) filter
+  --    (...)` nul is, en dan is `v_recent_goed = 0` en `v_vloerdeel` sowieso
+  --    null; `= any (null)` en `= any ('{}')` geven allebei nul rijen. Hij weg
+  --    halen maakt geen enkele test rood, en dat is terecht — schrijf er dus ook
+  --    geen test op die niets bewaakt.
+  --
   -- ⚠️ **`v_gehaalde_cycli` is er zodat de vloerteller niet zijn eigen antwoord
   --    op dezelfde vraag hoeft te geven.** Dat is de naad, en die is hier al
   --    tweemaal gescheurd: 0157 (ander venster) en 0162 (andere eenheid). Twee
@@ -194,11 +219,13 @@ begin
   --    array is dat wel.
   select count(*),
          count(*) filter (where b.gehaald),
+         count(*) filter (where b.iets),
          coalesce(array_agg(b.cyclus) filter (where b.gehaald), '{}'::date[])
-    into v_recent_totaal, v_recent_goed, v_gehaalde_cycli
+    into v_recent_totaal, v_recent_goed, v_recent_deels, v_gehaalde_cycli
     from (
       select w.cycle_start_date as cyclus,
-             bool_and(w.status = 'approved') as gehaald
+             bool_and(w.status = 'approved') as gehaald,
+             bool_or(w.status = 'approved') as iets
         from weekly_goals w
        where w.goal_id = p_goal_id
          and w.status in ('approved', 'missed')
@@ -326,8 +353,43 @@ begin
     v_stand := 'behind';
 
   elsif v_recent_totaal >= c_min_geschiedenis and v_tempo = 0 then
-    -- Vier cycli op rij niets afgerond, met werk dat nog moet.
-    v_stand := case when v_open_mijlpalen > 0 then 'behind' else 'at_risk' end;
+    -- ⚠️ **`v_tempo = 0` betekende "er is niets afgerond" en dat is sinds 0163
+    --    niet meer waar.** Deze tak stond er voor vier cycli op rij waarin
+    --    niemand iets goedgekeurd kreeg, en dat was onder de oude noemer
+    --    hetzelfde als een tempo van nul. Met "gehaald = élk beoordeeld weekdoel
+    --    goedgekeurd" is een tempo van nul óók de stand van iemand die elke week
+    --    van alles afvinkt en er telkens één laat liggen.
+    --
+    --    Gemeten op de nieuwe noemer, vier afgesloten cycli met twee open
+    --    mijlpalen en tien weken tot de streefdatum:
+    --
+    --      5 goedgekeurde plafonds + 1 gemist weekdoel per cyclus -> tempo 0.00
+    --      1 goedgekeurde vloer    + 1 gemist weekdoel per cyclus -> tempo 0.00
+    --      niets goedgekeurd, alles gemist                        -> tempo 0.00
+    --
+    --    Alle drie kregen `behind` — de op één na zwaarste stand die dit systeem
+    --    kent, met de tekst "geen week afgerond" en het advies je doel kleiner te
+    --    maken. De eerste haalde twintig van zijn vierentwintig weekdoelen.
+    --
+    -- ⚠️ **`v_recent_deels` draagt het verschil, en dat is geen verzachting.**
+    --    De strengere noemer blijft precies zoals hij is: geen van deze drie
+    --    heeft een hele week afgerond en geen van de drie staat op koers. Wat
+    --    hersteld wordt is de vóórwaarde van deze tak — hij is geschreven voor
+    --    "er komt niets af", en dat geval bestaat nog steeds en krijgt nog steeds
+    --    `behind`. Wie wél elke week iets afrondt, krijgt een waarschuwing en
+    --    niet het zwaarste oordeel.
+    --
+    -- ⚠️ **Domeinregel 8 raakt dit niet, en dat is de moeite van het opschrijven
+    --    waard omdat het er wél op lijkt.** De vloer van een weekdoel telt
+    --    onverkort: dat weekdoel is `approved`, de reeks loopt door, de
+    --    goedkeuring verloopt identiek. Wat hier meetelt is een ánder weekdoel in
+    --    dezelfde week dat blééf liggen. De regel gaat over de lat van één
+    --    weekdoel, niet over hoeveel weekdoelen je die week nog meer had.
+    if v_recent_deels > 0 then
+      v_stand := 'at_risk';
+    else
+      v_stand := case when v_open_mijlpalen > 0 then 'behind' else 'at_risk' end;
+    end if;
 
   elsif v_benodigd is not null and v_tempo > 0 and v_benodigd > v_tempo then
     v_stand := 'at_risk';
@@ -350,6 +412,7 @@ begin
     'mijlpalen_af',     v_afgerond,
     'cycli_bekeken',    v_recent_totaal,
     'cycli_gehaald',    v_recent_goed,
+    'cycli_deels',      v_recent_deels,
     'tempo',            v_tempo,
     'benodigd_tempo',   v_benodigd,
     'vloeraandeel',     v_vloerdeel
