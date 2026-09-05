@@ -1019,6 +1019,14 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const rechtstreeks = await f.bob.db.from('goals').delete().eq('id', f.aliceGoalId);
       expect(rechtstreeks.error?.code).toBe('42501');
 
+      // ⚠️ **De `count` hieronder kan de eigenaarspoort niet bewaken**, en dat is
+      //    op 05-09 nagemeten (QS8-283). Haal je die poort weg, dan vangt
+      //    `gedeeld_met_groep` het geval af — Alice' doel hangt in deze fixture aan
+      //    een groep — en het enige rood is dan `expected 'gedeeld_met_groep' to
+      //    be 'not_owner'`: een veranderde fóutreden. De aanroeper komt nooit bij
+      //    de `delete`, dus de `count` blijft hoe dan ook 1. De effectdekking van
+      //    `verwijder_doel` staat sinds QS8-283 in
+      //    `tests/rls/definerpoorten.test.ts`, op een ongekoppeld doel.
       const viaRpc = await f.bob.db.rpc('verwijder_doel', { p_goal_id: f.aliceGoalId });
       expect(uitkomst(viaRpc.data).ok).toBe(false);
       expect(uitkomst(viaRpc.data).reason).toBe('not_owner');

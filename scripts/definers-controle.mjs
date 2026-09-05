@@ -102,9 +102,12 @@ const REGISTER = new Map([
       '`expected \'gedeeld_met_groep\' to be \'not_owner\'` — een foutreden, geen effect. ' +
       'Nagemeten met een vers, ongekoppeld doel: de poort eruit en het doel van een ander is weg. ' +
       'Sinds QS8-283 bewaakt door `definerpoorten.test.ts`. ' +
-      '⚠️ De buddy-tak is hier aantoonbaar niet te raken — buddy zijn vereist een gedeelde ' +
-      'groep, en een gekoppeld doel weigert deze functie al met `gedeeld_met_groep`. ' +
-      'Wordt toetsbaar zodra die tak verdwijnt of ná de eigenaarspoort schuift.',
+      '⚠️ Twee buddy-predicaten, en ze gedragen zich hier verschillend — noem ze dus bij naam. ' +
+      '`shares_group_with_goal()` is niet te raken: hij leest alleen `goal_group_links`, en een doel ' +
+      'met een linkrij weigert deze functie al met `gedeeld_met_groep`, een éérdere poort. ' +
+      '`shares_group_with_user()` is wél te raken — die leest alleen `group_members` — en wordt ' +
+      'gevangen (gemeten: die verruiming maakt de test rood). ' +
+      'De eerste vorm wordt toetsbaar zodra `gedeeld_met_groep` verdwijnt of naar achteren schuift.',
   ],
   ['herorden_mijlpalen', 'Toetst `g.owner_id = v_uid` en pint `m.goal_id`. Gemeten: poort weg → één rode test.'],
   ['dien_opnieuw_in', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],

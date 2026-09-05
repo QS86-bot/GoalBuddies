@@ -610,6 +610,34 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
    */
   describe('rond_doel_af — je rondt het doel van een ander niet af', () => {
     it(
+      'de groepsgenoot is echt een buddy van dít doel — anders vangt de test de verruiming niet',
+      async () => {
+        // ⚠️⚠️ **Deze test bewaakt één regel in de opbouw, en dat is geen
+        //    overdaad.** De hele verruimingsdekking hieronder hangt eraan dat
+        //    `afrondGoalId` aan de groep gekoppeld is: zónder die koppeling is de
+        //    groepsgenoot een wildvreemde, geeft `shares_group_with_goal()`
+        //    `false`, en blijft de mutatie `or shares_group_with_goal(g.id)`
+        //    onzichtbaar.
+        //
+        //    📏 Gemeten door die ene regel uit de `insert` te halen: alle dertien
+        //    tests in dit bestand bleven groen, terwijl de verruiming er
+        //    ongehinderd doorheen kwam. Het lijstje koppelingen ziet er
+        //    redundant uit naast `groepsGoalId` — precies het soort regel dat een
+        //    volgende sessie opruimt.
+        const buddy = await w.groepsgenoot.db.rpc('shares_group_with_goal', {
+          g: w.afrondGoalId,
+        });
+        if (buddy.error) throw new Error(`aanroep: ${buddy.error.message}`);
+        expect(
+          buddy.data,
+          'de groepsgenoot deelt geen groep met dit doel, dus hij is hier de zwakke ' +
+            'acteur en de verruimingsmutatie blijft onzichtbaar',
+        ).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'een groepsgenoot krijgt not_owner en het doel blijft actief',
       async () => {
         // ⚠️ **Op een gekóppeld doel, en dat is hier de sterke acteur.**
@@ -662,27 +690,34 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
   // ---------------------------------------------------------------------------
   describe('verwijder_doel — je wist het doel van een ander niet', () => {
     /**
-     * ⚠️⚠️ **Hier is de buddy-tak aantoonbaar níet te raken, en dat staat er
-     *    liever dan dat het verzwegen wordt.** `shares_group_with_goal()` is
-     *    alleen waar voor een doel dat aan een gedeelde groep hangt, en zo'n doel
-     *    weigert `verwijder_doel` al met `gedeeld_met_groep` — dat is een
-     *    éérdere poort dan de plek waar de verruiming zou bijten.
+     * ⚠️⚠️ **Er zijn twee buddy-predicaten in dit schema, en ze gedragen zich
+     *    hier verschillend. Noem ze dus bij naam.** De eerste versie van deze kop
+     *    zei "de buddy-tak is niet te raken", en dat was in twee richtingen
+     *    verkeerd: het verzweeg dekking die er wél is, en het wees de volgende
+     *    lezer op de verkeerde aanleiding om terug te komen. Precies de valkuil
+     *    die in de kop van dit bestand staat opgetekend na `zet_week_startdag`.
      *
-     *    📏 Gemeten, met beide eigenaarspoorten verruimd tot
-     *    `or shares_group_with_goal(...)` en een buddy op een gekoppeld doel:
+     *    **`shares_group_with_goal()` is hier niet te raken.** Hij leest
+     *    uitsluitend uit `goal_group_links`, dus `true` impliceert een linkrij —
+     *    en `verwijder_doel` weigert élk doel met een linkrij al met
+     *    `gedeeld_met_groep`, een éérdere poort dan waar de verruiming zou
+     *    bijten. 📏 Gemeten met die verruiming en een buddy op een gekoppeld
+     *    doel: `{"ok": false, "gedeeld_met_groep"}`, de rij bestaat nog.
      *
-     * ```
-     * rond_doel_af    -> {"ok": true}                          status = completed
-     * verwijder_doel  -> {"ok": false, "gedeeld_met_groep"}    bestaat nog
-     * ```
+     *    **`shares_group_with_user()` is wél te raken, en wordt gevangen.** Die
+     *    leest alleen `group_members` en heeft geen koppeling nodig, dus hij is
+     *    waar voor de groepsgenoot ook op een ongekoppeld doel. 📏 Gemeten met
+     *    `or shares_group_with_user(g2.owner_id)`: deze test wordt rood.
      *
-     *    De twee voorwaarden sluiten elkaar uit. Deze test gebruikt daarom de
-     *    wildvreemde-vorm van de groepsgenoot: hij deelt geen groep mét dít doel,
-     *    en dat is hier de sterkst mogelijke acteur.
+     *    Deze test gebruikt dus geen zwakke acteur. De groepsgenoot deelt een
+     *    groep mét de eigenaar; hij deelt er alleen geen mét dit doel, en dat is
+     *    hier onvermijdelijk.
      *
-     *    **Wordt toetsbaar met een buddy zodra `gedeeld_met_groep` verdwijnt of
-     *    ná de eigenaarspoort naar achteren schuift** — bijvoorbeeld als een
-     *    gedeeld doel ooit wél verwijderd mag worden.
+     *    **De `shares_group_with_goal()`-vorm wordt toetsbaar zodra
+     *    `gedeeld_met_groep` verdwijnt of ná de eigenaarspoort naar achteren
+     *    schuift** — bijvoorbeeld als een gedeeld doel ooit wél verwijderd mag
+     *    worden. ⚠️ Die tak heeft vandaag géén eigen test; zie de dossierrij van
+     *    05-09.
      */
     it(
       'een ander krijgt not_owner en het doel blijft bestaan',
@@ -704,6 +739,33 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
 
         const na = await adminDb().from('goals').select('id').eq('id', w.wisGoalId);
         expect(na.data ?? [], 'het doel is alsnog verwijderd').toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar wist zijn eigen gedéélde doel niet — de poort waar de kop op leunt',
+      async () => {
+        // ⚠️⚠️ **`gedeeld_met_groep` had nul dekking**, en dat is ongemakkelijk:
+        //    de kop hierboven redeneert dat de `shares_group_with_goal()`-tak
+        //    ongevaarlijk is *omdat* deze poort eerder vuurt. Een argument dat op
+        //    een grendel leunt die niets bewaakt, is een aanname.
+        //
+        //    Verdwijnt deze poort samen met een verruimde eigenaarspoort, dan
+        //    wist een groepsgenoot een gedeeld doel — met cascade op alles wat
+        //    eraan hangt. Niets zou dat gemeld hebben.
+        const poging = await w.eigenaar.db.rpc('verwijder_doel', {
+          p_goal_id: w.groepsGoalId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        expect(uitslag(poging.data).ok, 'een gedeeld doel wissen hoort geweigerd te worden').toBe(
+          false,
+        );
+        expect(uitslag(poging.data).reason).toBe('gedeeld_met_groep');
+
+        const na = await adminDb().from('goals').select('id').eq('id', w.groepsGoalId);
+        expect(na.data ?? [], 'het gedeelde doel is alsnog verwijderd').toHaveLength(1);
       },
       TEST_TIMEOUT,
     );
