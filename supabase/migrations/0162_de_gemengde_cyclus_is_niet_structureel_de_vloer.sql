@@ -203,6 +203,30 @@ begin
   --    één rij, dus het aggregaat loopt nooit over een lege verzameling en kan
   --    geen null opleveren. Bij één weekdoel per cyclus is de uitkomst identiek
   --    aan de vorm hierboven; het verschil zit uitsluitend in de gemengde cyclus.
+  --
+  -- ⚠️ **Maar de join néémt ook rijen weg, en dat hoort erbij te staan.** Een
+  --    weekdoel dat `approved` is zonder actieve voltooiing valt stil uit de
+  --    `bool_and`, dus "alléén de vloer" is strikt gelezen "alléén de vloer, voor
+  --    zover er iets van bekend is". Gemeten: drie cycli met elk een goedgekeurde
+  --    vloer plus zo'n weekdoel geven `vloeraandeel = 1.00` en `at_risk`.
+  --
+  --    Een `left join` repareert dat níet — aggregaten slaan null-invoer over, dus
+  --    `bool_and(true, null)` is `true` en de teller komt op hetzelfde uit
+  --    (gemeten). Het is bovendien drift en geen bereikbare toestand: `authenticated`
+  --    heeft UPDATE alleen op `title`, `ceiling_text`, `floor_text` en
+  --    `milestone_id`, dus geen client kan `status` op `approved` zetten. Dát pad
+  --    wordt al bewaakt door `weekdoelstatus_afwijkingen()` uit 0096, en dat is de
+  --    juiste plek — niet hier.
+  --
+  -- ⚠️ **Een plafond dat nog op goedkeuring wacht, telt niet als plafond.** Een
+  --    cyclus met een goedgekeurde vloer naast een `pending` plafond geldt dus als
+  --    "alléén de vloer" (gemeten: `vloeraandeel = 1.00`). Dat is met opzet: de
+  --    teller telt dezelfde eenheid als de noemer, en `v_recent_goed` telt
+  --    uitsluitend goedgekeurde weken. De prijs staat erbij — een trage buddy
+  --    duwt je richting `at_risk` terwijl je je plafond wél aanraakte. De
+  --    goedkeuringstermijn is zeven dagen en `keur_vastgelopen_goedkeuringen_goed()`
+  --    ruimt de rest op, dus dat venster is smal; wordt het breder, dan is dit de
+  --    regel om te herzien.
   select count(*)
     into v_recent_vloer
     from (
