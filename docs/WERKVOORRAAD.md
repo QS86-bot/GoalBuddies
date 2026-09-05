@@ -59,8 +59,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
    suite geeft met de stack **3326 geslaagd en 1 overgeslagen** over
    236 bestanden.
-   Typecheck, lint en alle 32 controlescripts groen;
-   `npm run poort` meldt 36 stappen.
+   Typecheck, lint en alle 35 controlescripts groen;
+   `npm run poort` meldt 39 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
    apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is
