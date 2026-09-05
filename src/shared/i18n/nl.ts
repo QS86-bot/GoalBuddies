@@ -287,7 +287,7 @@ export const nl = {
   'risico.unreachable.kaal': 'Er is meer werk over dan er tijd is tot je streefdatum.',
 
   'risico.behind.niets_afgerond':
-    'Je hebt de laatste {weken_bekeken} geen week afgerond, en er staat nog werk open. Dit is het moment om je doel kleiner te maken of je datum te verschuiven.',
+    'Je hebt de laatste {weken_bekeken} geen week helemaal afgerond, en er staat nog werk open. Dit is het moment om je doel kleiner te maken of je datum te verschuiven.',
   'risico.behind.tempo':
     'Je haalde {gehaald} van je laatste {weken_bekeken}. Om {mijlpalen} in {weken} af te ronden heb je een hoger tempo nodig dan dat.',
   'risico.behind.kaal': 'Je hebt een hoger tempo nodig dan je de laatste weken haalde.',

@@ -772,4 +772,212 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
     },
     TEST_TIMEOUT,
   );
+
+  /**
+   * ## De gemengde cyclus, nu aan de kant van het tempo — QS8-279
+   *
+   * ⚠️ **Dezelfde aanname, de andere query.** 0162 repareerde "er zit precies één
+   *    weekdoel in een cyclus" voor de vloerteller en liet hem voor de
+   *    tempo-noemer staan. Beide helften telden `count(distinct
+   *    w.cycle_start_date)` over dezelfde rijen met een ander filter, en een
+   *    cyclus met zowel een `approved` als een `missed` weekdoel valt in béide —
+   *    dus teller en noemer kregen er allebei één bij en `tempo` bleef 1,00,
+   *    hoeveel weekdoelen je in die week ook miste.
+   *
+   * ⚠️ **Welke lezing hier gekozen is, staat in
+   *    `docs/decisions/2026-09-05-wanneer-is-een-cyclus-gehaald.md`:** een cyclus
+   *    is gehaald als élk beoordeeld weekdoel erin goedgekeurd is.
+   *
+   * ## De ijking, per grendel en gemeten
+   *
+   * Vijf mutaties, elk apart op de gedeployde functie gezet met de suite ertegen.
+   * De vier tests hieronder heten 1 tot en met 4 in volgorde van verschijnen.
+   *
+   * | mutatie | rood |
+   * | -- | -- |
+   * | `bool_or` in plaats van `bool_and` — de lezing "minstens één" van vóór 0163 | 1, 3 |
+   * | het statusfilter uit de `where` — de `bool_and` loopt over élke status | 2, plus de vier bestaande statustests |
+   * | de vloerquery houdt zijn eigen venstergrenzen in plaats van `= any (v_gehaalde_cycli)` | **alleen** 3 |
+   * | teller en noemer in weekdoelen in plaats van cycli — de verhoudingslezing | 1, 3, 4, plus twee bestaande |
+   * | `and count(*) = 1` erbij — de eenheid is niet meer de cyclus | **alleen** 4, plus twee bestaande |
+   *
+   * ⚠️ **Twee van de vier delen hun grendel met een test die er al stond, en dat
+   *    hoort erbij te staan.** Test 2 wordt rood bij dezelfde mutatie als de
+   *    NEUTRAAL-tests, test 1 bij dezelfde als test 3. Wat ze toevoegen is de
+   *    vórm en niet de grendel — en een test die dat niet van zichzelf weet, doet
+   *    alsof hij iets bewaakt dat al bewaakt was.
+   */
+
+  it(
+    'telt een cyclus met een gemist weekdoel ernaast niet als gehaald',
+    async () => {
+      const goalId = await maakDoel('TEMPO-GEMENGD');
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 21) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2, 3].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      // Drie afgesloten cycli, elk met één goedgekeurd plafond én één gemist
+      // weekdoel in diezelfde week.
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'ceiling', `week ${weken} plafond`);
+        await zetCyclusMetStatus(goalId, addDays(eigenDatum, weken), 'missed', `week ${weken} gemist`);
+      }
+
+      const uit = await meet(goalId);
+
+      expect(
+        uit.reden.cycli_bekeken,
+        'drie cycli kregen een oordeel, ook al liggen er zes weekdoelen',
+      ).toBe(3);
+
+      expect(
+        uit.reden.cycli_gehaald,
+        'geen van deze drie weken is heel geworden — vóór 0163 stonden ze hier alle ' +
+          'drie als gehaald, en dan kan het tempo niet onder 1,00 komen hoeveel ' +
+          'weekdoelen je ook mist',
+      ).toBe(0);
+
+      expect(
+        uit.stand,
+        'drie weken op rij een weekdoel gemist, met drie mijlpalen over drie weken, ' +
+          'is geen doel dat op koers ligt',
+      ).toBe('behind');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een neutrale status naast een gehaald weekdoel de cyclus niet kosten',
+    async () => {
+      // ⚠️ **Dezelfde grendel als de NEUTRAAL-tests hierboven, en een andere
+      //    vorm.** Gemeten: haal het statusfilter uit de `where` en deze test
+      //    wordt rood — maar die vier ook. Wat hier bijkomt is de stand die daar
+      //    niet voorkomt: een neutrale status ín een week die verder gehaald is.
+      //    Onder de query van 0162 kon die vorm niets aantonen, want daar keek de
+      //    noemer niet naar wat er verder in de week stond. Sinds de `bool_and`
+      //    doet hij dat wel, en dan is dit de deur waardoor de fout die 0159 uit
+      //    de noemer haalde weer naar binnen kan.
+      const goalId = await maakDoel('TEMPO-NEUTRAAL-NAAST');
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 21) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2, 3].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'ceiling', `week ${weken} plafond`);
+        await zetCyclusMetStatus(
+          goalId,
+          addDays(eigenDatum, weken),
+          'excused',
+          `week ${weken} adempauze`,
+        );
+      }
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_bekeken, 'drie cycli kregen een oordeel').toBe(3);
+      expect(
+        uit.reden.cycli_gehaald,
+        'een adempauze naast een gehaald plafond hoort de week niet te kosten — ' +
+          'domeinregel 10 zet hem op 0 en niet op strafbaar',
+      ).toBe(3);
+      expect(uit.stand, 'drie weken je plafond gehaald is op koers').toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'telt in de vloerteller geen cyclus die de noemer niet telt',
+    async () => {
+      // ⚠️ **De naad, en die is hier al tweemaal gescheurd** — 0157 (ander
+      //    venster) en 0162 (andere eenheid). `v_vloerdeel` deelt de vloerteller
+      //    door `v_recent_goed`; wordt de noemer strenger en de teller niet, dan
+      //    komt de verhouding boven 1 uit. Dat is geen getal dat alleen in de
+      //    database staat: de onderbouwing gaat als `reason` mee naar de UI, en
+      //    "in 300% van je weken haal je alleen de vloer" is niet uit te leggen.
+      //
+      //    Gemeten met alleen de noemer gerepareerd: `vloeraandeel = 3.00`. Met
+      //    de gedeelde cyclusverzameling erbij: `0.00`.
+      const goalId = await maakDoel('VLOER-NAAD');
+
+      // Drie cycli met een goedgekeurde vloer náást een gemist weekdoel: die
+      // tellen niet meer als gehaald, dus ze horen ook niet in de vloerteller.
+      for (const weken of [-21, -14, -7]) {
+        await zetCyclus(goalId, addDays(eigenDatum, weken), 'floor', `week ${weken} vloer`);
+        await zetCyclusMetStatus(goalId, addDays(eigenDatum, weken), 'missed', `week ${weken} gemist`);
+      }
+      // Eén hele cyclus, zodat de noemer niet nul is en `vloeraandeel` een getal
+      // krijgt in plaats van null.
+      await zetCyclus(goalId, addDays(eigenDatum, -28), 'ceiling', 'week -4 plafond');
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_bekeken, 'vier cycli kregen een oordeel').toBe(4);
+      expect(uit.reden.cycli_gehaald, 'alleen de vierde week is heel geworden').toBe(1);
+
+      const aandeel = uit.reden.vloeraandeel;
+      expect(aandeel, 'de onderbouwing hoort een vloeraandeel te dragen').not.toBeNull();
+      expect(
+        aandeel as number,
+        'de vloerteller telde drie cycli die de noemer niet telt, en gaf 3/1',
+      ).toBeLessThanOrEqual(1);
+      expect(
+        aandeel as number,
+        'geen van de gehaalde cycli is een vloercyclus — de enige hele week was een plafond',
+      ).toBeCloseTo(0, 5);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'kost geen tempo aan wie al zijn weekdoelen haalt',
+    async () => {
+      // ⚠️ **De tegenproef die het issue met zoveel woorden eist.** Een strengere
+      //    lezing van "gehaald" is pas een reparatie als hij niemand raakt die het
+      //    wél doet. Achttien goedgekeurde weekdoelen in drie weken horen hetzelfde
+      //    tempo te geven als drie: de eenheid is de cyclus en niet het weekdoel.
+      //
+      //    Gemeten dat dit een eigen grendel is: zet `and count(*) = 1` bij de
+      //    `bool_and` en alléén deze test wordt rood van de vier.
+      const goalId = await maakDoel('TEMPO-ALLES-GEHAALD');
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 21) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2, 3].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      for (const weken of [-21, -14, -7]) {
+        for (const nummer of [1, 2, 3, 4, 5, 6]) {
+          await zetCyclus(goalId, addDays(eigenDatum, weken), 'ceiling', `week ${weken} plafond #${nummer}`);
+        }
+      }
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_bekeken, 'drie cycli, niet achttien weekdoelen').toBe(3);
+      expect(
+        uit.reden.cycli_gehaald,
+        'achttien goedgekeurde weekdoelen in drie weken zijn drie gehaalde cycli — ' +
+          'telt de teller in weekdoelen, dan staat hier 18 en is het tempo 6,00',
+      ).toBe(3);
+      expect(
+        uit.stand,
+        'wie élk weekdoel haalt, hoort geen risicowaarschuwing te krijgen van een ' +
+          'reparatie die over gemíste weekdoelen gaat',
+      ).toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
 });

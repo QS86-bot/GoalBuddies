@@ -174,7 +174,7 @@ export const en: Record<Sleutel, string> = {
   'risico.unreachable.kaal': 'There is more work left than there is time until your target date.',
 
   'risico.behind.niets_afgerond':
-    'You have not finished a week in the last {weken_bekeken}, and there is still work open. This is the moment to make your goal smaller or move your date.',
+    'You have not fully finished a week in the last {weken_bekeken}, and there is still work open. This is the moment to make your goal smaller or move your date.',
   'risico.behind.tempo':
     'You made {gehaald} of your last {weken_bekeken}. Finishing {mijlpalen} in {weken} needs a higher pace than that.',
   'risico.behind.kaal': 'You need a higher pace than you managed these last weeks.',
