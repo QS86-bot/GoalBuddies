@@ -429,19 +429,41 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         //    omdat de twee klokken tweeëntwintig uur per dag dezelfde dag
         //    aanwijzen. De overige twee uur — de groep staat standaard in
         //    Europe/Amsterdam — was hij rood zonder dat er iets kapot was.
+        //
+        // ⚠️⚠️ **En de telling filtert op Alice, want `chain_links` is de gedeelde
+        //    teller van de groep** — QS8-276. Zonder dat filter telde deze test de
+        //    schakels mee die twee éérdere tests in dit bestand op `f.periodStart`
+        //    neerleggen, en dat gaat één dag per week mis: `huddle_day` staat op
+        //    zondag, dus op zaterdag ís `f.periodStart` gelijk aan `vandaag - 6`.
+        //    📏 Gemeten op zaterdag 05-09-2026: `expected [ …(2) ] to have a
+        //    length of 1`. Zes van de zeven dagen liggen die data uit elkaar en
+        //    was hij groen — de belofte brak daar niet, de telling wel.
+        //
+        // ⚠️ **En de insert wordt op diezelfde dag geweigerd** door
+        //    `chain_links_one_per_period`, want Alice heeft dan al een schakel op
+        //    die datum. `upsert` met `ignoreDuplicates` maakt de opstelling
+        //    idempotent; de foutcontrole eronder blijft daardoor betekenisvol in
+        //    plaats van een botsing weg te slikken die er hoort te zijn.
         const vandaag = localDateIn(f.tz, now());
         const gesloten = addDays(vandaag, -7);
         const lopend = addDays(vandaag, -6);
 
-        await adminDb().from('chain_links').insert([
-          { group_id: f.groupId, user_id: f.alice.id, group_period_start: gesloten },
-          { group_id: f.groupId, user_id: f.alice.id, group_period_start: lopend },
-        ]);
+        const neergelegd = await adminDb()
+          .from('chain_links')
+          .upsert(
+            [
+              { group_id: f.groupId, user_id: f.alice.id, group_period_start: gesloten },
+              { group_id: f.groupId, user_id: f.alice.id, group_period_start: lopend },
+            ],
+            { onConflict: 'group_id,user_id,group_period_start', ignoreDuplicates: true },
+          );
+        expect(neergelegd.error, 'de opstelling landde niet').toBeNull();
 
         const zevenDagen = await f.bob.db
           .from('chain_links')
           .select('user_id')
           .eq('group_id', f.groupId)
+          .eq('user_id', f.alice.id)
           .eq('group_period_start', gesloten);
         expect(zevenDagen.data).toHaveLength(0);
 
@@ -451,6 +473,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .from('chain_links')
           .select('user_id')
           .eq('group_id', f.groupId)
+          .eq('user_id', f.alice.id)
           .eq('group_period_start', lopend);
         expect(zesDagen.data).toHaveLength(1);
       },
