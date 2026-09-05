@@ -59,19 +59,23 @@ import {
  *       zíet de stap van een ander niet, de `where` van zijn UPDATE raakt nul
  *       rijen, en de `using` komt er niet aan te pas.
  *
- *       Dat klopt voor een opdracht mét `where`. Postgres past het SELECT-beleid
- *       op een UPDATE of DELETE alleen toe zodra die kolommen léést — dus bij
- *       een `where` of een `returning`. **Zonder filter is de eigenaarsconjunct
- *       van de schrijfpolicy de enige grendel die er nog staat**, en gemeten op
- *       05-09 accepteert PostgREST zo'n ongefilterde opdracht gewoon: `HTTP 204`
- *       en `supabase-js` stuurt hem zonder te klagen.
+ *       Dat klopt voor een opdracht die kolommen van de doeltabel léést.
+ *       Postgres past het SELECT-beleid op een UPDATE of DELETE pas dán toe —
+ *       en *"leest een kolom"* is niet hetzelfde als *"heeft een `where`"*:
+ *       `where true` en een `where exists (… andere tabel)` landen allebei,
+ *       `where order_index > 0` en een `returning` niet. **Leest de opdracht
+ *       niets, dan is de eigenaarsconjunct van de schrijfpolicy de enige grendel
+ *       die er nog staat**, en gemeten op 05-09 accepteert PostgREST zo'n
+ *       ongefilterde opdracht gewoon: `HTTP 204`, en `supabase-js` stuurt hem
+ *       zonder te klagen.
  *
  *       De conjunct wás dus te ijken; de weg ernaartoe was alleen niet
  *       geprobeerd. Sinds QS8-280 staat hij onder test in
  *       `tests/rls/planstapgrens.test.ts`, samen met dezelfde conjunct in
  *       `_delete.using` — de gevaarlijkste van de twee, want op een DELETE staat
- *       geen `with check` die hem opvangt. Vier mutaties, elk precies één test
- *       rood.
+ *       geen `with check` die hem opvangt — en samen met de `check`-helft van
+ *       `_update`, die de security-review op dat PR alsnog als ongedekt aanwees:
+ *       alléén die helft verruimen liet 962 tests groen.
  *
  *       **De les die blijft: "niet te breken" is een meting en geen conclusie.**
  *       Hier was het een redenering over één manier van proberen, en die is als
@@ -338,7 +342,7 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
     );
   });
 
-  describe('weekly_plan_steps — vijf grendels in twee policies', () => {
+  describe('weekly_plan_steps — vijf grendels in drie policies', () => {
     it(
       'je voegt een stap toe aan je eigen doel',
       async () => {
