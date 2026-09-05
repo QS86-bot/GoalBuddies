@@ -37,11 +37,13 @@
 
 import { Buffer } from 'node:buffer';
 import { webcrypto } from 'node:crypto';
+import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 const { subtle } = webcrypto;
 
 /** base64url zonder opvulling, gelijk aan `naarBase64url` in webpush-crypto.ts. */
-function naarBase64url(bytes) {
+export function naarBase64url(bytes) {
   return Buffer.from(bytes)
     .toString('base64')
     .replace(/\+/g, '-')
@@ -49,7 +51,23 @@ function naarBase64url(bytes) {
     .replace(/=+$/, '');
 }
 
-async function genereerVapidSleutelpaar() {
+/**
+ * Genereert een sleutelpaar — dezelfde vorm als `genereerVapidSleutelpaar()` in
+ * `src/modules/notifications/webpush-crypto.ts`.
+ *
+ * ⚠️ **Geëxporteerd zodat er een test op kan staan, en dat is de hele reparatie
+ *    van QS8-222.** De eigen implementatie blijft — die keuze is bewust genomen
+ *    — maar tot 05-09-2026 hield níets de twee gelijk. Dat is dezelfde vorm als
+ *    `supabase/functions/_shared/time/`, alleen stond daar wél een controle op.
+ *
+ *    De belofte is niet "deze tien regels zijn correct" maar *"een paar uit dit
+ *    script wordt door de verzendkant geaccepteerd"*, en die staat in
+ *    `tests/scripts/vapid-generator.test.ts`. Loopt het curve- of exportformaat
+ *    uit elkaar, dan weigert `crypto.subtle.importKey()` in
+ *    `vapidAuthorization()` en wordt die test rood — in plaats van dat een
+ *    melding stil niet aankomt.
+ */
+export async function genereerVapidSleutelpaar() {
   const paar = await subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
     'sign',
     'verify',
@@ -62,23 +80,27 @@ async function genereerVapidSleutelpaar() {
   return { publiek: naarBase64url(publiek), prive: jwk.d };
 }
 
-const { publiek, prive } = await genereerVapidSleutelpaar();
+/* c8 ignore start */
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const { publiek, prive } = await genereerVapidSleutelpaar();
 
-process.stdout.write(
-  [
-    '',
-    'vapid: een nieuw sleutelpaar (P-256, RFC 8292).',
-    '',
-    '  .env — alleen de publieke helft (die gaat de webbundel in):',
-    `    EXPO_PUBLIC_VAPID_PUBLIC_KEY=${publiek}`,
-    '',
-    '  Edge Function — nooit in .env of de webbuild:',
-    '    npx supabase secrets set \\',
-    `      EXPO_PUBLIC_VAPID_PUBLIC_KEY='${publiek}' \\`,
-    `      VAPID_PRIVATE_KEY='${prive}' \\`,
-    "      VAPID_SUBJECT='mailto:jij@voorbeeld.nl'",
-    '',
-    '  let op: dit paar verklaart elk bestaand webabonnement ongeldig — roteer bewust.',
-    '',
-  ].join('\n'),
-);
+  process.stdout.write(
+    [
+      '',
+      'vapid: een nieuw sleutelpaar (P-256, RFC 8292).',
+      '',
+      '  .env — alleen de publieke helft (die gaat de webbundel in):',
+      `    EXPO_PUBLIC_VAPID_PUBLIC_KEY=${publiek}`,
+      '',
+      '  Edge Function — nooit in .env of de webbuild:',
+      '    npx supabase secrets set \\',
+      `      EXPO_PUBLIC_VAPID_PUBLIC_KEY='${publiek}' \\`,
+      `      VAPID_PRIVATE_KEY='${prive}' \\`,
+      "      VAPID_SUBJECT='mailto:jij@voorbeeld.nl'",
+      '',
+      '  let op: dit paar verklaart elk bestaand webabonnement ongeldig — roteer bewust.',
+      '',
+    ].join('\n'),
+  );
+}
+/* c8 ignore stop */
