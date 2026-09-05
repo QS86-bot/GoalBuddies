@@ -529,6 +529,7 @@ export const nl = {
   'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
   'groepdetail.titel': 'Groep',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
+  'groepdetail.eyebrow_vandaag': 'VANDAAG IS DE HUDDLEDAG',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
   'groepdetail.geen_lid_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een nieuwe uitnodigingslink als je erbij hoort.',
   'groepdetail.slaapt': 'Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.',
@@ -760,6 +761,10 @@ export const nl = {
   'groepen.beoordelen': 'Beoordelen',
   'groepen.slaapt': 'Deze groep slaapt. Sluit iemand een week af, dan is hij meteen weer wakker.',
   'groepen.huddledag': 'Huddledag: {dag}',
+  // ⚠️ **De dag zelf noemt geen dagnaam meer (QS8-199).** "Huddledag: zondag" op
+  //    zondag laat de lezer zelf uitrekenen dat het vandaag is, en dat is precies
+  //    wat er tot 05-09 niet opviel. Wat hier telt is het nú, niet de naam.
+  'groepen.huddledag_vandaag': 'Huddledag: vandaag',
   'profiel.titel': 'Profiel',
   'profiel.leeg_titel': 'Geen profiel gevonden',
   'profiel.leeg_tekst': 'Dat hoort niet te kunnen. Log uit en opnieuw in; blijft het misgaan, dan ligt het aan ons.',
