@@ -3,13 +3,44 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 04-09-2026. **Zeven van de acht doorloopbevindingen uit
-> een seriële batch geland: QS8-213, QS8-208, QS8-221, QS8-218, QS8-219, QS8-202
-> en QS8-192.** Daarnaast landde op 04-09 **QS8-267** (#192) uit een parallelle
-> sessie, en staat er één nieuwe bevinding open: **QS8-268**.
-> Lees eerst de twee punten van 04-09, dan de vier van 03-09, dan de drie
-> daaronder — die derde verandert wat je als volgende oppakt — en daarna die van
-> 02-09.
+> **Laatst bijgewerkt:** 05-09-2026. Op 04 en 05-09 landden uit deze sessie
+> **QS8-268, QS8-270, QS8-212, QS8-171, QS8-146, QS8-276 en QS8-277**; uit een
+> parallelle sessie **QS8-267, QS8-269, QS8-271, QS8-272, QS8-273, QS8-274 en
+> QS8-275**.
+> Lees eerst de drie punten van 05-09 — het eerste verandert hóé je begint — dan
+> de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **05-09, punt I: er werkt een tweede sessie in deze repo, en dat is twee keer
+> dubbel werk geweest.** Bij QS8-270 lag er al een PR (#198 tegen mijn #199); bij
+> QS8-269 stond ik op het punt hetzelfde te bouwen. **Beide keren stond het issue
+> op Backlog terwijl er al een branch mét migratie lag** — de andere sessie
+> verzet de status niet. ⚠️ **`git branch -r` is dus niet genoeg als je hem één
+> keer aan het begin draait:** bij QS8-269 kende `git branch -r` de branch twintig
+> minuten eerder nog niet, en alleen `npm run migratie:nieuw` zag hem, omdat die
+> sinds QS8-247 zelf fetcht. **Zet een issue op In Progress vóórdat je begint** —
+> dat is de enige rem die vooraf werkt — en fetch opnieuw vlak voordat je een
+> migratienummer trekt.
+>
+> **05-09, punt II: `main` is één dag per week rood geweest, en niemand die het
+> zag (QS8-276, #206).** De venstertest van De Ketting telde schakels in
+> `chain_links` zonder filter op `user_id`, en `huddle_day` staat op zondag — dus
+> op zaterdag ís `f.periodStart` gelijk aan `vandaag - 6` en telde hij de schakels
+> van twee eerdere tests in hetzelfde bestand mee. Zes van de zeven dagen groen,
+> en op die zesde mat hij iets anders dan hij beweerde. ⚠️ Op diezelfde dag
+> botste ook de insert met `chain_links_one_per_period` en werd die uitkomst niet
+> gelezen. **Vraag bij elke test die in een gedeelde tabel telt: schrijft een
+> ándere test daar ook in, en op welke dag vallen die data samen?**
+>
+> **05-09, punt III: een migratienummer botste voor de vierde keer, en het
+> gereedschap dat dat opruimt schreef het verkeerde bestand bij (QS8-277, #207).**
+> `migratie:nieuw` fetchte netjes; de migratie van de andere sessie was op dat
+> moment alleen nog niet gepusht. ⚠️ Bij het hernummeren schreef
+> `migratie:hernummer` de kopregel van de búúrmigratie bij, plus twee regels in
+> `ENGINEER-REVIEW.md` die bij hún issue hoorden — en het script *wist* dat het
+> nummer gedeeld was en drukte er alleen een waarschuwing over. Sinds #207 wordt
+> een kaal nummer bij een botsing **gemeld en niet geraden**; alleen een volledige
+> migratienaam is bewijs. **Draai na élke hernummering `git diff` en kijk of er
+> een bestand bij zit dat niet van jou is.**
 >
 > **04-09, punt I: `main` stond elke nacht twee uur rood, en de test had gelijk
 > noch ongelijk — hij keek naar de verkeerde klok (QS8-267, #192).** Tussen 22:00
@@ -27,7 +58,7 @@
 > toets?** Er zijn er hier drie — UTC, groepsklok, gebruikersklok.
 >
 > **04-09, punt II: vijf controles meldden "geen database" terwijl de database er
-> gewoon stond (QS8-268, open).** `definers`, `klokgrens`, `kolomrechten`, `pin`
+> gewoon stond (QS8-268, geland).** `definers`, `klokgrens`, `kolomrechten`, `pin`
 > en `zichtbaarheid` roepen `psql` aan zónder `-U`, dus die valt terug op de
 > OS-gebruiker — hier `root`, waar geen databaserol voor bestaat. De poort telde
 > ze bij de vier die écht productiesleutels vragen en meldde *"9 controle(s)
@@ -526,6 +557,27 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een issue op Backlog betekent niet dat er niemand aan werkt — 04/05-09,
+  QS8-269 en QS8-270.** Twee keer op één dag lag er al een branch mét migratie
+  terwijl het issue in Linear nog op Backlog stond. De ene keer was het werk al
+  gedaan (PR #198 tegen mijn #199), de andere keer ving `npm run migratie:nieuw`
+  het net op tijd — die fetcht sinds QS8-247 zelf en zag een branch die
+  `git branch -r` twintig minuten eerder nog niet kende.
+
+  **Wat hieruit volgt, en het is niet "kijk beter":**
+
+  1. **Zet het issue op In Progress vóórdat je begint.** Dat is de enige rem die
+     vóóraf werkt. Achteraf ontdekken dat je hetzelfde bouwde, kost een hele
+     ronde.
+  2. **Een beeld van `git branch -r` is zo oud als je laatste fetch.** Fetch
+     opnieuw op het moment dat het ertoe doet — vlak voordat je een migratienummer
+     trekt, en dat doet `migratie:nieuw` voor je.
+  3. **Kijk niet alleen naar de status maar naar de branches.** De andere sessie
+     verzet de status niet; de branch is het enige eerlijke signaal.
+
+  ⚠️ **En bouw niet door op "hij staat op Backlog dus hij is vrij".** Dat is
+  precies de aanname die twee keer misging.
 
 - **⚠️ Een belofte-test die de náám van een helper bewaakt, bewaakt zijn belofte
   niet — 03-09, QS8-213.** De test stond toe dat er precies één helper gespreid
@@ -1513,8 +1565,15 @@ zes geland met een groene poort:
 punt 0 bovenaan dit bestand.
 
 Buiten de batch landde op 04-09 nog **QS8-267** (#192, uit een parallelle
-sessie): de klokgrenstests rekenen nu op de klok van hun eigen grendel. Zie punt
-I bovenaan. Nieuw en nog niet opgepakt: **QS8-268** — zie punt II.
+sessie): de klokgrenstests rekenen nu op de klok van hun eigen grendel.
+
+**Wat er op 04 en 05-09 bij kwam en geland is** — deze sessie: QS8-268 (de poort
+telde negen controles zonder database waar er vier hoorden), QS8-270 (de
+RLS-suite sloeg dertig tests stil over en gaf exitcode 0), QS8-212 (de
+tijdzonekeuze vond alleen steden mét een eigen IANA-zone), QS8-171 (één stukke
+groep kostte alle groepen hun seizoensrecap), QS8-146 (het model van de tien
+lidmaatschapshulpfuncties, plus: een uitgezet lid is geen groepsgenoot meer),
+QS8-276 en QS8-277. Uit de parallelle sessie: QS8-269, QS8-271 t/m QS8-275.
 
 **Waar je nu begint, in deze volgorde:**
 
@@ -1547,10 +1606,29 @@ I bovenaan. Nieuw en nog niet opgepakt: **QS8-268** — zie punt II.
    document geland is. Zolang die twee elkaar tegenspreken, is de constitutie
    niet te vertrouwen op precies het punt waar ze het meest telt.
 3. **De losse doorloopbugs uit de backlog** als de epic te groot is om te
-   beginnen: QS8-248 (het aanmeldscherm opent op "Account maken" in plaats van op
-   inloggen), QS8-245 (de uitlogknop staat onder elf kaarten), QS8-249, QS8-226.
-   Klein, af te ronden binnen een sessie, en het zijn stuk voor stuk dingen die
-   een mens tegenkwam.
+   beginnen. Klein, af te ronden binnen een sessie, en het zijn stuk voor stuk
+   dingen die een mens tegenkwam.
+
+   ⚠️⚠️ **Hier stond tot 05-09 een lijst met vier issuenummers, en drie ervan
+   waren al af.** Dat is de vorm waar dit hele document tegen bestaat: een lijst
+   die je met de hand bijhoudt, veroudert stil, en `docs:controle` ziet hem niet
+   — die vangt tegenspraken mét een patroon, en een naam die intussen Done is
+   heeft dat niet.
+
+   **Vraag het daarom aan Linear en niet aan deze regel:**
+
+   - Todo, gesorteerd op prioriteit, zónder het label `wacht-op-Quinten`. Staat
+     daar niets, dan is de Backlog aan de beurt.
+   - Sla de rijen over die met **🗣 REVIEW** beginnen en de dossierrijen die
+     alleen een oordeel vragen: die zijn agenda voor november, geen bouwwerk. Je
+     herkent ze aan een beschrijving die eindigt in *"dat is een oordeel en geen
+     meting"* of *"bewust niet gerepareerd"* zonder acceptatiecriteria.
+   - Kijk dan pas naar `git branch -r` én naar de migratienummers op die
+     branches. Zie de valkuil bovenaan: Backlog betekent niet vrij.
+
+   📏 Op 05-09 gemeten: de **hele Todo-kolom** draagt `wacht-op-Quinten`, op
+   QS8-126 na (de repo privé maken, bewust uitgesteld tot de software af is) — dus
+   in de praktijk begin je vandaag in de Backlog.
 4. **QS8-251 en QS8-242** als je liever aan het gereedschap werkt: `npm run
    db:push` kán niet werken en staat toch in `package.json` én in `DEPLOY.md` als
    hét pad, en de secret-scan van de deploy meldt nul omdat hij niets kán zien.
