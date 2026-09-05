@@ -36,6 +36,14 @@ export const nl = {
   'systeembericht.member_joined': '{naam} doet mee.',
   'systeembericht.completion_pending': '{naam} heeft een week afgerond en wacht op bevestiging.',
   'systeembericht.completion_approved': '{actor} bevestigde de week van {naam}.',
+  // ⚠️ **De samengevouwen varianten — QS8-198.** Ze tonen niets extra's: dezelfde
+  //    personen en dezelfde gebeurtenis, op één regel in plaats van drie. Wat ze
+  //    níét mogen krijgen is een titel, een notitie of een niveau; dat geldt hier
+  //    net zo hard als voor de losse zinnen (beslisdocument 002 §3).
+  'systeembericht.member_joined_gevouwen': '{namen} doen mee.',
+  'systeembericht.completion_pending_gevouwen':
+    '{namen} hebben een week afgerond en wachten op bevestiging.',
+  'systeembericht.completion_approved_gevouwen': '{actor} bevestigde de weken van {namen}.',
   'systeembericht.milestone_done': '{naam} heeft een mijlpaal gehaald.',
   'systeembericht.goal_completed': '{naam} heeft een doel afgerond.',
   'systeembericht.commitment_unlocked': '{naam} heeft een beloning vrijgespeeld.',
@@ -89,6 +97,8 @@ export const nl = {
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
+  // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
+  'algemeen.en': 'en',
 
   // ---------------------------------------------------------------------------
   // Aanmelden en inloggen — de referentie-implementatie van QS8-113

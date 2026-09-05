@@ -188,5 +188,11 @@ export {
   kentGebeurtenis,
   oudLid,
   systeemberichtTekst,
-  type SysteembericthInvoer,
 } from './systeemberichten';
+export {
+  gevouwenTekst,
+  voegNamenSamen,
+  vouwSysteemberichten,
+  type ChatRegelItem,
+} from './systeemberichten-vouwen';
+export type { SysteembericthInvoer } from './systeemberichten';
