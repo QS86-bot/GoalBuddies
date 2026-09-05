@@ -297,6 +297,15 @@ export const nl = {
   //    gebruiker dat de vloer niet goed genoeg is. Er staat een test op.
   'risico.at_risk.vloer':
     'Je haalt je weken, maar bijna altijd op de vloer. Dat telt volledig mee. Alleen schuift je plafond zo wel steeds verder weg.',
+  // ⚠️ **Deze zin bestaat sinds 0163 (QS8-279) en hij is niet cosmetisch.** De
+  //    noemer telt een week pas als gehaald wanneer élk beoordeeld weekdoel erin
+  //    goedgekeurd is, dus wie er elke week één laat liggen heeft een tempo van
+  //    nul terwijl hij van alles afrondt. Zonder deze zin krijgt hij
+  //    `risico.at_risk.tempo` te lezen: "je zit nu op 0" — bij twintig van de
+  //    vierentwintig weekdoelen. De uitweg die hier genoemd wordt is de vloer, en
+  //    dat is met opzet: dat is de milde weg die domeinregel 8 openhoudt.
+  'risico.at_risk.deels':
+    'Je rondt elke week iets af, maar de laatste {weken_bekeken} geen enkele week helemaal. Plan er per week minder, of zet een vloer onder wat blijft liggen.',
   'risico.at_risk.tempo':
     'Je hebt {mijlpalen} in {weken} te gaan. Dat vraagt {benodigd} per week; je zit nu op {tempo}.',
   'risico.at_risk.kaal': 'Je loopt nog binnen de lijnen, maar er is weinig ruimte over.',

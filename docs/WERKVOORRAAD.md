@@ -53,12 +53,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **964 geslaagd, 1 overgeslagen** over 78 bestanden (05-09, na QS8-275, QS8-276, QS8-146, QS8-278, QS8-280 en QS8-282).
+   **972 geslaagd, 1 overgeslagen** over 79 bestanden (05-09, na QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281 en QS8-282).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3326 geslaagd en 1 overgeslagen** over
-   236 bestanden.
+   suite geeft met de stack **3336 geslaagd en 1 overgeslagen** over
+   237 bestanden.
    Typecheck, lint en alle 35 controlescripts groen;
    `npm run poort` meldt 39 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
@@ -131,7 +131,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0162` staan in de map: **165 bestanden**,
+Migraties `0001` t/m `0163` staan in de map: **166 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

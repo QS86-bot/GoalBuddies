@@ -181,6 +181,8 @@ export const en: Record<Sleutel, string> = {
 
   'risico.at_risk.vloer':
     'You are making your weeks, but almost always at the floor. That counts in full. It just keeps pushing your ceiling further away.',
+  'risico.at_risk.deels':
+    'You finish something every week, but none of the last {weken_bekeken} completely. Plan less per week, or put a floor under what keeps slipping.',
   'risico.at_risk.tempo':
     'You have {mijlpalen} to go in {weken}. That asks {benodigd} per week; you are at {tempo} now.',
   'risico.at_risk.kaal': 'You are still inside the lines, but there is little room left.',

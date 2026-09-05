@@ -29,6 +29,7 @@ import {
   adminDb,
   createTestUser,
   magNietLanden,
+  registreerGroep,
   removeTestUsers,
   rlsTestsConfigured,
   type TestUser,
@@ -93,6 +94,16 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
     if (error) throw new Error(`groep ${naam} (HTTP): ${error.message}`);
     const g = (data ?? {}) as { ok?: boolean; group?: { id: string; invite_code: string } };
     if (g.ok !== true || !g.group) throw new Error(`groep ${naam}: ${JSON.stringify(data)}`);
+
+    // ⚠️ **Dit bestand is de reden dat `registreerGroep()` bestaat (QS8-281).**
+    //    Eén test hieronder laat een gebruiker zijn eigen account verwijderen, en
+    //    `verwijder_mijn_account()` archiveert dan zijn solo-groep en haalt hem
+    //    uit `auth.users`. Het lidmaatschap cascadeert weg en `created_by` komt op
+    //    NULL, dus béide wegen waarlangs het opruimen die groep zou vinden zijn
+    //    dicht voordat het opruimen begint. Elke volledige suite-run liet er zo
+    //    één achter.
+    registreerGroep(g.group.id);
+
     return { id: g.group.id, code: g.group.invite_code };
   }
 
