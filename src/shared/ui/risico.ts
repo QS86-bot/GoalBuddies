@@ -36,6 +36,7 @@ export interface RisicoReden {
   readonly mijlpalen_af?: number | null;
   readonly cycli_bekeken?: number | null;
   readonly cycli_gehaald?: number | null;
+  readonly cycli_deels?: number | null;
   readonly tempo?: number | null;
   readonly benodigd_tempo?: number | null;
   readonly vloeraandeel?: number | null;
@@ -156,6 +157,13 @@ export function risicoUitleg(stand: RisicoStand, reden: RisicoReden | null): str
     const vloer = r.vloeraandeel ?? null;
     if (vloer !== null && vloer >= 0.75) {
       return t('risico.at_risk.vloer');
+    }
+    // ⚠️ **Vóór de tempozin, want die zou hier "je zit nu op 0" zeggen.** Een
+    //    tempo van nul betekent sinds 0163 niet meer dat er niets afkwam: het
+    //    betekent dat geen énkele week helemaal af kwam. Wie elke week iets
+    //    goedgekeurd kreeg, hoort dat te lezen en niet een nul.
+    if (r.tempo === 0 && (r.cycli_deels ?? 0) > 0 && bekeken !== null) {
+      return t('risico.at_risk.deels', { weken_bekeken: aantal('week', bekeken) });
     }
     if (open !== null && weken !== null && r.benodigd_tempo != null && r.tempo != null) {
       return t('risico.at_risk.tempo', {
