@@ -204,6 +204,19 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     });
     if (weekdoel.error) throw new Error(`weekdoel: ${weekdoel.error.message}`);
 
+    // ⚠️ **Op `missed` en niet op `todo`, sinds QS8-275.** De noemer telt alleen
+    //    cycli die een óórdeel gekregen hebben — `approved` of `missed` — zodat
+    //    een adempauze het tempo niet drukt. Een weekdoel dat op `todo` blijft
+    //    staan telt dus voor geen enkele klok mee, en dan meet deze test niets.
+    //    `missed` is hier de goedkoopste beoordeelde status: hij vraagt geen
+    //    voltooiing.
+    const beoordeeld = await adminDb()
+      .from('weekly_goals')
+      .update({ status: 'missed' })
+      .eq('goal_id', vensterDoel.data.id)
+      .eq('cycle_start_date', vroegste);
+    if (beoordeeld.error) throw new Error(`status weekdoel: ${beoordeeld.error.message}`);
+
     // ⚠️ **Een derde doel, want de rand van het venster is een ándere grendel.**
     //    Zou de cyclus hieronder bij `vensterDoel` staan, dan telt hij mee in
     //    dezelfde `cycli_bekeken` als de cyclus hierboven en zegt een rode
@@ -242,6 +255,14 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       cycle_index: 1,
     });
     if (randWeekdoel.error) throw new Error(`randweekdoel: ${randWeekdoel.error.message}`);
+
+    // ⚠️ Zelfde reden als hierboven: alleen een beoordeelde cyclus telt mee.
+    const randBeoordeeld = await adminDb()
+      .from('weekly_goals')
+      .update({ status: 'missed' })
+      .eq('goal_id', randDoel.data.id)
+      .eq('cycle_start_date', randDag);
+    if (randBeoordeeld.error) throw new Error(`status randweekdoel: ${randBeoordeeld.error.message}`);
 
     f = {
       eigenaar,

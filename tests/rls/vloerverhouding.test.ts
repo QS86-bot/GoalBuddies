@@ -102,6 +102,28 @@ async function zetCyclus(
   if (bij.error) throw new Error(`status ${titel}: ${bij.error.message}`);
 }
 
+/**
+ * Zet één afgesloten cyclus neer met een gegeven eindstatus en zónder
+ * voltooiing — een week die niet gehaald is, om welke reden dan ook.
+ */
+async function zetCyclusMetStatus(
+  goalId: string,
+  dag: IsoDate,
+  status: 'missed' | 'excused' | 'cancelled' | 'carried',
+  titel: string,
+): Promise<void> {
+  const admin = adminDb();
+  const week = await admin
+    .from('weekly_goals')
+    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, cycle_index: 1, status: 'todo' })
+    .select('id')
+    .single();
+  if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
+
+  const bij = await admin.from('weekly_goals').update({ status }).eq('id', week.data.id);
+  if (bij.error) throw new Error(`status ${titel}: ${bij.error.message}`);
+}
+
 /** Maakt een doel zonder mijlpalen en met een verre streefdatum. */
 async function maakDoel(titel: string): Promise<string> {
   // ⚠️ Geen open mijlpalen en de streefdatum ver weg: anders wint een van de
@@ -373,6 +395,90 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
         'de opgewaardeerde week telde alsnog als vloerweek — `superseded_by is null` ' +
           'ontbreekt in de teller',
       ).toBeCloseTo(2 / 3, 5);
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **Welke statussen "tellen tegen je" is geen smaakkwestie** — dat staat al
+   *    vast in het puntenmodel. Gemeten over het hele schema en de Edge
+   *    Functions: alléén `missed` levert een `cycle_missed`-boeking op
+   *    (`rollover/index.ts` zet daar de status en het minpunt in één handeling).
+   *    `excused`, `cancelled` en `carried` boeken niets, en horen dus ook het
+   *    tempo niet te drukken.
+   *
+   *    De must-see staat erbij: een écht gemiste week móet het tempo verlagen.
+   *    Zonder die helft is "de reparatie werkt" niet te onderscheiden van "de
+   *    noemer telt niets meer".
+   */
+  const NEUTRAAL = [
+    { status: 'excused' as const, waarom: 'een adempauze is per domeinregel 10 nul, niet strafbaar' },
+    { status: 'cancelled' as const, waarom: 'je hebt de week zelf afgesloten; `sluit_weekdoel_af()` boekt niets' },
+    { status: 'carried' as const, waarom: 'het weekdoel staat in een latere cyclus als nieuwe rij' },
+  ];
+
+  it.each(NEUTRAAL)(
+    'laat een cyclus met status $status het tempo niet drukken',
+    async ({ status, waarom }) => {
+      const goalId = await maakDoel(`TEMPO-${status.toUpperCase()}`);
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 21) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2, 3].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      await zetCyclus(goalId, addDays(eigenDatum, -21), 'ceiling', 'week -3');
+      await zetCyclus(goalId, addDays(eigenDatum, -14), 'ceiling', 'week -2');
+      await zetCyclus(goalId, addDays(eigenDatum, -7), 'ceiling', 'week -1');
+      await zetCyclusMetStatus(goalId, addDays(eigenDatum, -28), status, `week -4 (${status})`);
+
+      const uit = await meet(goalId);
+
+      expect(
+        uit.reden.cycli_bekeken,
+        `${waarom} — de noemer hoort alleen cycli te tellen die een oordeel kregen`,
+      ).toBe(3);
+
+      expect(
+        uit.stand,
+        `een cyclus met status ${status} drukte het tempo van 1,00 naar 0,75 en leverde ` +
+          'een risicowaarschuwing op',
+      ).toBe('on_track');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat een écht gemiste week het tempo wél drukken',
+    async () => {
+      // ⚠️ De must-see. Zonder deze helft is de reparatie niet te onderscheiden
+      //    van een noemer die helemaal niets meer telt, en dan is de radar stuk
+      //    in de andere richting: hij zwijgt over iemand die wél achterloopt.
+      const goalId = await maakDoel('TEMPO-MISSED');
+      await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(eigenDatum, 21) })
+        .eq('id', goalId);
+      const mijlpalen = await adminDb()
+        .from('milestones')
+        .insert([1, 2, 3].map((i) => ({ goal_id: goalId, title: `M${i}`, order_index: i, status: 'todo' })));
+      if (mijlpalen.error) throw new Error(`mijlpalen: ${mijlpalen.error.message}`);
+
+      await zetCyclus(goalId, addDays(eigenDatum, -21), 'ceiling', 'week -3');
+      await zetCyclus(goalId, addDays(eigenDatum, -14), 'ceiling', 'week -2');
+      await zetCyclus(goalId, addDays(eigenDatum, -7), 'ceiling', 'week -1');
+      await zetCyclusMetStatus(goalId, addDays(eigenDatum, -28), 'missed', 'week -4 (missed)');
+
+      const uit = await meet(goalId);
+
+      expect(uit.reden.cycli_bekeken, 'een gemiste week telt wél in de noemer').toBe(4);
+      expect(
+        uit.stand,
+        'drie van de vier gehaald met drie mijlpalen over drie weken hoort at_risk te zijn',
+      ).toBe('at_risk');
     },
     TEST_TIMEOUT,
   );
