@@ -47,6 +47,20 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  * (`zet_week_startdag` scopet in de `update` zelf, en daar zegt deze
  * mutatievorm principieel niets over).
  *
+ * ⚠️⚠️ **Die laatste zin klopte en was tóch schadelijk — nagemeten op
+ *    05-09-2026 (QS8-282).** Over déze mutatievorm valt er inderdaad niets te
+ *    zeggen: `zet_week_startdag` heeft geen vroege `return`-poort om weg te
+ *    halen. Maar er is nooit iemand teruggekomen met de vorm die er wél iets
+ *    over zegt — de conjunct `and g.owner_id = v_uid` uit de `where` van de
+ *    `update` halen. Dat gaf **nul rode tests van 963**, terwijl het weekdoel
+ *    van een wildvreemde meeverhuisde en de teruggegeven `verzet` dat ook nog
+ *    verklapte.
+ *
+ *    **"Zo niet te meten" is hier stilletjes "niet gemeten" geworden.** Een
+ *    zin die een functie opzij zet, hoort te zeggen wélke vorm hem wél raakt —
+ *    anders leest de volgende lezer hem als "hier is niets te halen". De
+ *    grendel staat nu onder test in `weekstart.test.ts`.
+ *
  * ⚠️ **Zeven definer-*trigger*functies vallen buiten deze vorm.** Die dragen geen
  *    eigenaarspoort; hun autorisatie is de policy op de schrijfactie die ze
  *    aftrapt, en die komt wél langs `rls:dekking`. Dat is iets anders dan "in

@@ -66,6 +66,16 @@ interface Fixture {
   /** Een `todo` uit een cyclus die allang voorbij is — het misbruikgeval. */
   oudId: string;
   oudeCyclus: IsoDate;
+  /**
+   * Een wildvreemde met een `todo` in dezelfde cyclus — het geval van QS8-282.
+   *
+   * ⚠️ Bram deelt met Alice **niets**: geen groep, geen doel, geen uitnodiging.
+   *    Het enige dat ze gemeen hebben is de startdatum van hun week, en dat is
+   *    met maandag als standaard de gewone toestand voor bijna elke gebruiker.
+   */
+  bramId: string;
+  bramDoelId: string;
+  bramWeekId: string;
 }
 
 describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
@@ -139,6 +149,46 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
       .single();
     if (oud.error || oud.data === null) throw new Error(`oud weekdoel: ${oud.error?.message}`);
 
+    // ⚠️ **De wildvreemde.** Zijn weekdoel staat op dezelfde `cycle_start_date`
+    //    als dat van Alice, en verder is er geen enkele relatie. `zet_week_startdag`
+    //    is SECURITY DEFINER, dus er komt geen policy aan te pas: de enige regel
+    //    die hem beschermt is de eigenaarsconjunct in de `update`.
+    const bram = await createTestUser('weekstart-bram');
+    const bramProfiel = await admin
+      .from('profiles')
+      .update({ week_start_day: OUDE_DAG, tz: ZONE })
+      .eq('id', bram.id);
+    if (bramProfiel.error) throw new Error(`profiel bram: ${bramProfiel.error.message}`);
+
+    const bramDoel = await admin
+      .from('goals')
+      .insert({
+        owner_id: bram.id,
+        title: 'WEEKSTART doel van Bram',
+        category: 'other',
+        target_date: '2026-12-31',
+      })
+      .select('id')
+      .single();
+    if (bramDoel.error || bramDoel.data === null) {
+      throw new Error(`doel bram: ${bramDoel.error?.message}`);
+    }
+
+    const bramWeek = await admin
+      .from('weekly_goals')
+      .insert({
+        goal_id: bramDoel.data.id,
+        title: 'WEEKSTART todo van Bram',
+        cycle_start_date: oudeStart,
+        cycle_index: 500,
+        status: 'todo',
+      })
+      .select('id')
+      .single();
+    if (bramWeek.error || bramWeek.data === null) {
+      throw new Error(`weekdoel bram: ${bramWeek.error?.message}`);
+    }
+
     f = {
       alice,
       doelId: doel.data.id,
@@ -147,6 +197,9 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
       ids,
       oudId: oud.data.id,
       oudeCyclus,
+      bramId: bram.id,
+      bramDoelId: bramDoel.data.id,
+      bramWeekId: bramWeek.data.id,
     };
   }, SETUP_TIMEOUT);
 
@@ -155,6 +208,8 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
       const admin = adminDb();
       await admin.from('weekly_goals').delete().eq('goal_id', f.doelId);
       await admin.from('goals').delete().eq('id', f.doelId);
+      await admin.from('weekly_goals').delete().eq('goal_id', f.bramDoelId);
+      await admin.from('goals').delete().eq('id', f.bramDoelId);
     }
     await removeTestUsers();
   }, SETUP_TIMEOUT);
@@ -186,6 +241,14 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
       .update({ week_start_day: OUDE_DAG })
       .eq('id', f.alice.id);
     if (profiel.error) throw new Error(`dag terugzetten: ${profiel.error.message}`);
+
+    // ⚠️ Bram hoort er ook bij: onder een gemuteerde grendel verhuist zíjn rij
+    //    mee, en dan zou de volgende test op een al verschoven opstelling meten.
+    const bramTerug = await admin
+      .from('weekly_goals')
+      .update({ cycle_start_date: f.oudeStart, status: 'todo' })
+      .eq('id', f.bramWeekId);
+    if (bramTerug.error) throw new Error(`bram terugzetten: ${bramTerug.error.message}`);
   });
 
   async function verzet(
@@ -334,6 +397,80 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
       expect(uit.ok).toBe(true);
       expect(uit.verzet).toBe(0);
       expect(await cyclusVan(f.ids.todo)).toBe(f.oudeStart);
+    },
+    TEST_TIMEOUT,
+  );
+  /**
+   * ⚠️⚠️ **De eigenaarsconjunct in de `update` — QS8-282.**
+   *
+   * `zet_week_startdag()` is `SECURITY DEFINER`, dus er komt op `weekly_goals`
+   * geen enkele policy aan te pas. De hele bescherming van andermans cyclus is
+   * één conjunct in de `where` van de verhuizing: `and g.owner_id = v_uid`.
+   *
+   * 📏 Die conjunct werd tot 05-09 door **geen enkele test** bewaakt. Gemeten
+   *    met twee gebruikers zonder enige relatie, allebei een `todo` in dezelfde
+   *    cyclus, waarna de één zijn startdag verzet:
+   *
+   * ```
+   * functie zoals hij is     {"ok": true, "verzet": 1}   het weekdoel van de ander blijft staan
+   * conjunct -> `and true`   {"ok": true, "verzet": 2}   het weekdoel van de ander schuift mee
+   * ```
+   *
+   *    Met maandag als standaard-startdag is "iedereen met een openstaand
+   *    weekdoel in deze cyclus" in de praktijk bijna iedereen. En `verzet` gaat
+   *    terug naar de aanroeper, dus de teller lekt hoeveel andermans weken er
+   *    geraakt zijn.
+   *
+   * ⚠️ **Waarom het gat er zat, en dat is de les.** `definerpoorten.test.ts`
+   *    noemt deze functie mét naam en zet hem opzij: *"scopet in de `update`
+   *    zelf, en daar zegt deze mutatievorm principieel niets over"*. Dat klopt
+   *    over díe vorm — dat bestand haalt een vroege `return`-poort weg en die
+   *    heeft deze functie niet. Maar niemand kwam terug met de vorm die er wél
+   *    iets over zegt. **"Zo niet te meten" werd stilletjes "niet gemeten"**,
+   *    dezelfde beweging als bij `superseded_by` in QS8-280.
+   *
+   * ⚠️ **Beide asserties zijn nodig.** Alleen `verzet` toetsen mist het geval
+   *    waarin de teller klopt en de rij toch verschoven is; alleen de datum
+   *    toetsen laat het lek in de teruggegeven teller staan.
+   *
+   * ⚠️⚠️ **En het scherpste van deze ronde: de assertie bestónd al.** De test
+   *    *"neemt een todo van de lopende week mee naar de nieuwe cyclus"* eist
+   *    hierboven al `expect(uit.verzet).toBe(1)`, met de woorden *"er hoort
+   *    precies één todo mee te gaan"*. Die zin was al die tijd juist. Wat
+   *    ontbrak was een fixture waarin dat getal ooit iets ánders kon zijn: er
+   *    stond maar één gebruiker met één `todo` in die cyclus, dus `1` was
+   *    onvermijdelijk en de assertie bewaakte niets.
+   *
+   *    Sinds Bram in de opstelling staat, wordt díe test óók rood op deze
+   *    mutatie — en dat is geen dubbeling maar het bewijs dat de reparatie in de
+   *    fixture zat en niet in de assertie. Regel 18, vraag 6, in zijn zuiverste
+   *    vorm: een aanname van *"er is er altijd precies één"* die naar *"er
+   *    kunnen er meer zijn"* is getild, met de blinde vlek er al in.
+   */
+  it(
+    'raakt het weekdoel van een wildvreemde in dezelfde cyclus niet aan',
+    async () => {
+      const uit = await verzet(NIEUWE_DAG, f.oudeStart, f.nieuweStart);
+
+      expect(uit.ok, 'de verhuizing zelf hoort gewoon te slagen').toBe(true);
+      expect(
+        uit.verzet,
+        'alleen het eigen `todo`-weekdoel telt mee — een hoger getal is het aantal ' +
+          'weken van anderen dat is meeverhuisd, en dat getal gaat naar de aanroeper terug',
+      ).toBe(1);
+
+      expect(
+        await cyclusVan(f.bramWeekId),
+        'de cyclus van een wildvreemde hoort onaangeroerd te blijven — er is geen ' +
+          'policy die hier meekijkt, alleen `and g.owner_id = v_uid` in de `update`',
+      ).toBe(f.oudeStart);
+
+      // ⚠️ De must-see. Zonder deze regel is elke uitkomst hierboven ook te
+      //    halen met een `update` die helemaal niets verplaatst.
+      expect(
+        await cyclusVan(f.ids.todo),
+        'en het eigen weekdoel verhuist wél — anders bewijst de rest niets',
+      ).toBe(f.nieuweStart);
     },
     TEST_TIMEOUT,
   );
