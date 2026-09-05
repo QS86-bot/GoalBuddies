@@ -189,6 +189,20 @@ const REGISTER: Readonly<Record<string, Rij>> = {
  *    lidmaatschapsoordeel. De belofte gaat over dat oordeel en niet over waar de
  *    persoon vandaan komt.
  */
+let gelezen: Map<string, string> | null = null;
+
+/**
+ * ⚠️ **Lui, en dat is geen optimalisatie.** Stond de aanroep in de body van de
+ *    `describe`, dan draaide hij óók als de suite overgeslagen wordt: vitest
+ *    voert een `describe.skipIf`-callback gewoon uit om de tests te verzamelen.
+ *    📏 Zo ging deze suite in CI onderuit — `psql: connection refused` op de
+ *    machine zonder stack, terwijl de 73 andere RLS-bestanden netjes zwegen.
+ */
+function functies(): Map<string, string> {
+  gelezen ??= gedeployd();
+  return gelezen;
+}
+
 function gedeployd(): Map<string, string> {
   const uit = psql(`
     select p.proname || E'\\t'
@@ -229,16 +243,14 @@ export function modelVan(bron: string): Model {
 }
 
 describe.skipIf(!beschikbaar)('het model van de lidmaatschapshulpfuncties', () => {
-  const functies = gedeployd();
-
   it('vindt ze daadwerkelijk, en verzint ze niet', () => {
     // ⚠️ Zonder deze regel is alles hieronder groen zodra de afleiding niets meer
     //    vindt — bijvoorbeeld doordat `prosecdef` ooit verandert.
-    expect(functies.size, 'de afleiding vond geen enkele hulpfunctie').toBeGreaterThanOrEqual(10);
+    expect(functies().size, 'de afleiding vond geen enkele hulpfunctie').toBeGreaterThanOrEqual(10);
   });
 
   it('noemt elke gedeployde hulpfunctie in het register', () => {
-    const onbenoemd = [...functies.keys()].filter((naam) => !(naam in REGISTER));
+    const onbenoemd = [...functies().keys()].filter((naam) => !(naam in REGISTER));
 
     expect(
       onbenoemd,
@@ -249,13 +261,13 @@ describe.skipIf(!beschikbaar)('het model van de lidmaatschapshulpfuncties', () =
   });
 
   it('en het register noemt geen functie die niet bestaat', () => {
-    const verdwenen = Object.keys(REGISTER).filter((naam) => !functies.has(naam));
+    const verdwenen = Object.keys(REGISTER).filter((naam) => !functies().has(naam));
     expect(verdwenen, 'het register loopt achter op de database').toEqual([]);
   });
 
   for (const [naam, rij] of Object.entries(REGISTER)) {
     it(`${naam} staat zoals besloten`, () => {
-      const bron = functies.get(naam);
+      const bron = functies().get(naam);
       if (bron === undefined) return; // de test hierboven meldt dit al
 
       expect(modelVan(bron), rij.reden).toEqual({
@@ -276,7 +288,7 @@ describe.skipIf(!beschikbaar)('het model van de lidmaatschapshulpfuncties', () =
    *    een diff niet ziet zonder de regel te kennen.
    */
   it('houdt de twee afknijpvormen uit elkaar in plaats van er één te verbieden', () => {
-    const vormen = [...functies.entries()].map(([naam, bron]) => {
+    const vormen = [...functies().entries()].map(([naam, bron]) => {
       const m = modelVan(bron);
       return { naam, streng: m.alleenActief > 0, mild: m.nietInactief > 0 };
     });
