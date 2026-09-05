@@ -24,8 +24,14 @@ import {
  *    *"ik zit onder de dagelijkse limiet"*; `_update` is *"ik ben de eigenaar"*
  *    **én** *"deze stap is nog niet geactiveerd"*, met in de `check` daarbovenop
  *    *"en hij wijst nog naar geen weekdoel"*. Dat zijn vijf afzonderlijke
- *    grendels in twee policies, en elk is los te breken — dus elk hoort los
- *    geijkt.
+ *    grendels, en elk is los te breken — dus elk hoort los geijkt.
+ *
+ * ⚠️ **Er staan drie policies op `weekly_plan_steps` en niet twee.** Deze kop
+ *    zei tot 05-09 "vijf grendels in twee policies" en noemde `_delete` nergens,
+ *    terwijl die zijn eigen `using` heeft met dezelfde twee conjuncten erin. Die
+ *    policy en de eigenaarshelft van `_update.using` staan sinds QS8-280 onder
+ *    test in `tests/rls/planstapgrens.test.ts` — zie de aantekening bij geval 2
+ *    hieronder.
  *
  * ⚠️⚠️ **De les van ronde 1 en 2, en hij gold hier weer: zoek eerst welke ándere
  *    grendel het geval toevallig dekt.** Een profiel wordt automatisch
@@ -47,14 +53,29 @@ import {
  *       lopen**, bijvoorbeeld als een beheerder ooit andermans profiel mag
  *       lezen maar niet schrijven.
  *
- *    2. **De eigenaarsconjunct van `weekly_plan_steps_update.using`.**
- *       `weekly_plan_steps_select` is eigenaar-only, dus een client zíet de stap
- *       van een ander helemaal niet: de `where` van zijn UPDATE raakt nul rijen
- *       en de `using` komt er niet aan te pas. Dat is een stríkter slot en geen
- *       zwakker, maar het betekent dat deze conjunct voor een client nooit de
- *       werkzame grendel is. **Wordt toetsbaar zodra `weekly_plan_steps_select`
- *       verruimt** — bijvoorbeeld als groepsgenoten ooit elkaars weekplan mogen
- *       inzien; dan is dit de enige regel die schrijven nog tegenhoudt.
+ *    2. ~~**De eigenaarsconjunct van `weekly_plan_steps_update.using`.**~~
+ *       ⚠️⚠️ **Deze stond hier fout, en de fout zat in het woord "where".**
+ *       Er stond: `weekly_plan_steps_select` is eigenaar-only, dus een client
+ *       zíet de stap van een ander niet, de `where` van zijn UPDATE raakt nul
+ *       rijen, en de `using` komt er niet aan te pas.
+ *
+ *       Dat klopt voor een opdracht mét `where`. Postgres past het SELECT-beleid
+ *       op een UPDATE of DELETE alleen toe zodra die kolommen léést — dus bij
+ *       een `where` of een `returning`. **Zonder filter is de eigenaarsconjunct
+ *       van de schrijfpolicy de enige grendel die er nog staat**, en gemeten op
+ *       05-09 accepteert PostgREST zo'n ongefilterde opdracht gewoon: `HTTP 204`
+ *       en `supabase-js` stuurt hem zonder te klagen.
+ *
+ *       De conjunct wás dus te ijken; de weg ernaartoe was alleen niet
+ *       geprobeerd. Sinds QS8-280 staat hij onder test in
+ *       `tests/rls/planstapgrens.test.ts`, samen met dezelfde conjunct in
+ *       `_delete.using` — de gevaarlijkste van de twee, want op een DELETE staat
+ *       geen `with check` die hem opvangt. Vier mutaties, elk precies één test
+ *       rood.
+ *
+ *       **De les die blijft: "niet te breken" is een meting en geen conclusie.**
+ *       Hier was het een redenering over één manier van proberen, en die is als
+ *       vaststaand opgeschreven.
  *
  * ## ⚠️ `profiles_insert` langs de groepskant — gemeten, en niet te toetsen
  *
