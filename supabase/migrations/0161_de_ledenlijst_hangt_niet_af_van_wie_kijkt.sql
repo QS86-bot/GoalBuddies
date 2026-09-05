@@ -1,4 +1,4 @@
--- 0160_de_ledenlijst_hangt_niet_af_van_wie_kijkt.sql — de naad die 0159 blootlegde
+-- 0161_de_ledenlijst_hangt_niet_af_van_wie_kijkt.sql — de naad die 0160 blootlegde
 --
 -- ROLLBACK-PAD:
 --   De vorige vorm is deze functie zónder de regel `and m.status <> 'inactive'`
@@ -13,13 +13,13 @@
 -- Waar dit vandaan komt
 -- ---------------------------------------------------------------------------
 --
--- Gevonden door de `security-reviewer` op 0159 (QS8-146) en zelf nagemeten
+-- Gevonden door de `security-reviewer` op 0160 (QS8-146) en zelf nagemeten
 -- voordat hij verwerkt is.
 --
 -- `group_overview()` is `SECURITY INVOKER` en doet `from group_members m join
 -- profiles p on p.id = m.user_id` — een **inner join zonder statustoets**. Vóór
--- 0159 ging dat nooit mis: elk profiel van een groepsgenoot was leesbaar, dus de
--- rij overleefde altijd. Sinds 0159 beslist `profiles_select` mee, en die vraagt
+-- 0160 ging dat nooit mis: elk profiel van een groepsgenoot was leesbaar, dus de
+-- rij overleefde altijd. Sinds 0160 beslist `profiles_select` mee, en die vraagt
 -- of je een gróép deelt met die persoon — érgens, niet per se deze.
 --
 -- 📏 **Gemeten in één transactie, beide kijkers, dezelfde groep.** Bob is uit
@@ -111,7 +111,7 @@ AS $function$
     left join zichtbare_reeksen_van_groep(p_group_id) s
       on s.user_id = m.user_id and s.goal_id = d.id
     where m.group_id = p_group_id
-      -- ⚠️ **Deze regel stond hier niet, en sinds 0159 is dat zichtbaar.** Zie
+      -- ⚠️ **Deze regel stond hier niet, en sinds 0160 is dat zichtbaar.** Zie
       --    de kop: de inner join op `profiles` besliste het antwoord, en die
       --    loopt langs `profiles_select`.
       and m.status <> 'inactive'
@@ -149,6 +149,6 @@ $function$;
 
 comment on function public.group_overview(uuid, date, integer, timestamptz, uuid) is
   'Het groepsoverzicht, gepagineerd met een cursor op (joined_at, user_id) — '
-  'QS8-206/0152. Toont uitsluitend leden die er nog bij horen: sinds 0160 '
+  'QS8-206/0152. Toont uitsluitend leden die er nog bij horen: sinds 0161 '
   'filtert de functie zelf op status, in plaats van dat de inner join op '
   'profiles het per ongeluk voor hem doet (QS8-146).';

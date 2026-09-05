@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Het model van de lidmaatschapshulpfuncties — QS8-146, migratie 0159.
+ * Het model van de lidmaatschapshulpfuncties — QS8-146, migratie 0160.
  *
  * ⚠️ **De belofte is niet "deze functies zien er hetzelfde uit".** Ze horen juist
  *    te verschillen: de schrijfkant sluit een archief af en de leeskant niet, en
@@ -15,7 +15,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    autorisatieverschil, en ze zitten samen onder tientallen policies. 0029
  *    schreef op dat alleen de kijkerskant afgeknepen wordt; 0102 draaide dat om
  *    voor `shares_group_with_goal()` met een meting erbij; en
- *    `shares_group_with_user()` bleef tot 0159 in de oude stand staan zonder dat
+ *    `shares_group_with_user()` bleef tot 0160 in de oude stand staan zonder dat
  *    één document dat zei. Dat is niet te vinden met een test die één functie
  *    toetst — het verschil zít tussen de functies.
  *
@@ -135,7 +135,7 @@ const REGISTER: Readonly<Record<string, Rij>> = {
     archief: false,
     open: false,
     reden:
-      'Tegenpartijtoets sinds 0159 (QS8-146): uitgezet worden maakte je niet onzichtbaar ' +
+      'Tegenpartijtoets sinds 0160 (QS8-146): uitgezet worden maakte je niet onzichtbaar ' +
       'terwijl zelf vertrekken dat wél deed. Geen archieftoets, want dit is de leeskant — ' +
       'hij draagt profiles_select en de avataremmer.',
   },
@@ -144,7 +144,7 @@ const REGISTER: Readonly<Record<string, Rij>> = {
   //
   // ⚠️ Ze staan hier omdat ze een lidmaatschapsoordeel vellen, en dat is waar de
   //    belofte over gaat. Zou de afleiding `auth.uid()` eisen, dan vielen ze
-  //    erbuiten — precies het gat dat de security-review op 0159 aanwees.
+  //    erbuiten — precies het gat dat de security-review op 0160 aanwees.
   kan_beoordeeld_worden: {
     nietInactief: 1,
     alleenActief: 0,

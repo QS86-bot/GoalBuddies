@@ -1,4 +1,4 @@
--- 0159_een_uitgezet_lid_is_geen_groepsgenoot.sql — het model van de hulpfuncties
+-- 0160_een_uitgezet_lid_is_geen_groepsgenoot.sql — het model van de hulpfuncties
 --
 -- ROLLBACK-PAD:
 --   create or replace function public.shares_group_with_user(other uuid)
@@ -123,9 +123,9 @@
 --    belofte draagt — en ze was load-bearing, want ze is precies het argument
 --    waarmee het bezwaar van 0029 opzijgezet wordt.
 --
---    De ledenlijst loopt langs `group_overview()`, en die filtert sinds **0160**
+--    De ledenlijst loopt langs `group_overview()`, en die filtert sinds **0161**
 --    zelf op lidstatus. De zin klopt dus nu wél, maar door die migratie en niet
---    door de meting die hier stond. Zie de kop van 0160 voor wat er ondertussen
+--    door de meting die hier stond. Zie de kop van 0161 voor wat er ondertussen
 --    aan het licht kwam.
 --
 -- ⚠️ De omgekeerde reparatie — `verwijder_lid()` de rij laten verwijderen zoals
@@ -163,7 +163,7 @@ $$;
 comment on function public.shares_group_with_user(uuid) is
   'Deelt de huidige gebruiker een groep met deze persoon? Beide kanten moeten '
   'er nog bij horen: een uitgezet lid (status inactive) is geen groepsgenoot '
-  'meer, in geen van beide richtingen — 0159, QS8-146. Een adempauze (paused) '
+  'meer, in geen van beide richtingen — 0160, QS8-146. Een adempauze (paused) '
   'telt wél mee. Een gearchiveerde groep telt óók mee: deze functie staat aan de '
   'leeskant, net als mag_groep_lezen() (0153). SECURITY DEFINER tegen '
   'RLS-recursie. Het volledige model van de zeven hulpfuncties staat in '

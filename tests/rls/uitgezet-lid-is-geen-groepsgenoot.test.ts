@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Een uitgezet lid is geen groepsgenoot meer — QS8-146, migratie 0159.
+ * Een uitgezet lid is geen groepsgenoot meer — QS8-146, migratie 0160.
  *
  * ⚠️ **De belofte is niet "`shares_group_with_user()` geeft false".** Dat is de
  *    functie. De belofte is: *wie uit een groep gezet is, is voor die groep niet
@@ -15,7 +15,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    `verlaat_groep()` (0102) verwíjdert de lidmaatschapsrij; `verwijder_lid()`
  *    (0145) zet hem op `inactive` en laat hem staan — met opzet, want die rij ís
  *    het slot dat heraansluiten met dezelfde code tegenhoudt. 📏 Gemeten vóór
- *    0159, als Alice:
+ *    0160, als Alice:
  *
  *      bob is actief lid                        true
  *      bob is uitgezet (status = 'inactive')    true      ← het gat
@@ -44,7 +44,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    deze suite zichzelf over zodra iemand die toets weghaalt — en dan vangt de
  *    beschikbaarheidsgrendel het geval af dat de asserties horen te vangen. Een
  *    ijking die daarlangs loopt, bewaakt niets van wat ze belooft (CLAUDE.md,
- *    regel 18). Draait de stack op een schema van vóór 0159, dan worden de
+ *    regel 18). Draait de stack op een schema van vóór 0160, dan worden de
  *    asserties hieronder rood, en dat is de goede uitslag.
  */
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -116,7 +116,7 @@ describe.skipIf(!beschikbaar)('wie uit de groep gezet is, is niet meer zichtbaar
   });
 
   it('sluit zijn profiel én zijn avatar af zodra hij uitgezet is', () => {
-    // Dit is het gat: vóór 0159 stond hier { profiel: 1, avatar: 1 }.
+    // Dit is het gat: vóór 0160 stond hier { profiel: 1, avatar: 1 }.
     expect(zicht(UITZETTEN)).toEqual({ profiel: 0, avatar: 0 });
   });
 
@@ -157,10 +157,10 @@ describe.skipIf(!beschikbaar)('en wie er nog wél bij hoort, blijft zichtbaar', 
 /**
  * Het derde oppervlak: **de ledenlijst hangt niet af van wie er kijkt.**
  *
- * ⚠️⚠️ **Dit is de naad die 0159 blootlegde, gevonden door de security-review en
+ * ⚠️⚠️ **Dit is de naad die 0160 blootlegde, gevonden door de security-review en
  *    zelf nagemeten.** `group_overview()` is `SECURITY INVOKER` en doet
  *    `from group_members m join profiles p on p.id = m.user_id` — een inner join
- *    zónder statustoets. Vóór 0159 ging dat nooit mis, want elk profiel van een
+ *    zónder statustoets. Vóór 0160 ging dat nooit mis, want elk profiel van een
  *    groepsgenoot was leesbaar. Daarna besliste `profiles_select` mee, en die
  *    vraagt of je érgens een groep deelt met die persoon — niet per se déze.
  *
@@ -171,7 +171,7 @@ describe.skipIf(!beschikbaar)('en wie er nog wél bij hoort, blijft zichtbaar', 
  *      dave  (deelt niets met bob):    a,             c, d   total=3
  *
  *    Wélke leden je ziet en welk getal eronder staat, hingen af van iets dat de
- *    kijker niet kan zien en dat niets met deze groep te maken heeft. 0160 laat
+ *    kijker niet kan zien en dat niets met deze groep te maken heeft. 0161 laat
  *    de functie zelf filteren.
  *
  * ⚠️ **De twee kijkers staan er allebei, en dat is de hele test.** Eén kijker
@@ -236,7 +236,7 @@ describe.skipIf(!beschikbaar)('de ledenlijst hangt niet af van wie er kijkt', ()
     const carol = ledenlijst(CAROL, UITZETTEN);
     const dave = ledenlijst(DAVE, UITZETTEN);
 
-    // ⚠️ Vóór 0160 stond hier voor Carol een lijst van vier met `total=4`, en
+    // ⚠️ Vóór 0161 stond hier voor Carol een lijst van vier met `total=4`, en
     //    voor Dave een van drie. Dít is de belofte: dezelfde groep, hetzelfde
     //    antwoord.
     expect(carol, 'de lijst verschilt per kijker').toEqual(dave);

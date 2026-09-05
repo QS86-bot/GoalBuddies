@@ -1,6 +1,6 @@
 # Het model van de lidmaatschapshulpfuncties
 
-**04-09-2026 — QS8-146, migratie 0159.**
+**04-09-2026 — QS8-146, migratie 0160.**
 
 Zeven `SECURITY DEFINER`-functies beantwoorden de vraag *"hoort deze gebruiker
 erbij?"*, en ze zitten samen onder tientallen policies. Ze zijn in vijf stappen
@@ -16,7 +16,7 @@ al is de reden dat dit document er hoort te zijn.
 De persoon over wie geoordeeld wordt komt uit het JWT (`auth.uid()`) of uit een
 parameter. Dat onderscheid is geen as van het model maar wel de reden dat de
 onderste drie er eerst niet bij stonden: 📏 een afleiding die `auth.uid()` eiste
-liet ze vallen, en dat is door de security-review op 0159 gevonden.
+liet ze vallen, en dat is door de security-review op 0160 gevonden.
 
 | functie | afgeknepen rijen | vorm | archief | open |
 |---|---|---|---|---|
@@ -26,7 +26,7 @@ liet ze vallen, en dat is door de security-review op 0159 gevonden.
 | `lid_van_open_groep` | 1 | `<> inactive` | dicht | ✓ |
 | `shares_group_with_goal` | 2 | `<> inactive` | dicht | — |
 | `deelt_open_groep_met_doel` | 2 | `<> inactive` | dicht | ✓ |
-| `shares_group_with_user` | **2** *(sinds 0159)* | `<> inactive` | **open** | — |
+| `shares_group_with_user` | **2** *(sinds 0160)* | `<> inactive` | **open** | — |
 | `kan_beoordeeld_worden` | 1 | `is distinct from` | open | — |
 | `blokkade_met_groep` | 1 | `<> inactive` | open | — |
 | `heeft_nog_beoordelaar` | 1 | **`= active`** | (alleen actief) | — |
@@ -118,14 +118,14 @@ uitzondering van A54: een klassement per lid bestaat alleen in een **open** groe
 In een beschermde groep geeft de RPC nul rijen. Zie
 `docs/decisions/2026-08-31-ritme-klassement-en-kleur.md` §2.
 
-## Wat 0159 verandert
+## Wat 0160 verandert
 
 Eén predicaat: `shares_group_with_user()` toetst nu ook of de ánder er nog bij
 hoort.
 
 📏 Gemeten op een verse database uit `supabase/migrations/`, als Alice:
 
-| toestand van Bob | vóór 0159 | ná 0159 |
+| toestand van Bob | vóór 0160 | ná 0160 |
 |---|---|---|
 | actief lid | true | true |
 | **uitgezet** (`status = 'inactive'`) | **true** | **false** |
@@ -152,11 +152,11 @@ signed URL wordt niet opnieuw langs RLS gehaald. Wie het overzicht laadde vlak
 vóór de uitzetting, houdt die avatar nog een uur bereikbaar. Begrensd in plaats
 van onbeperkt is de winst; nul is het niet.
 
-## Wat 0160 daarnaast rechtzet
+## Wat 0161 daarnaast rechtzet
 
-0159 legde een naad bloot die er al lag. `group_overview()` doet een **inner join
+0160 legde een naad bloot die er al lag. `group_overview()` doet een **inner join
 op `profiles` zonder statustoets**, en die join loopt langs `profiles_select`.
-Vóór 0159 ging dat nooit mis; daarna bepaalde de kíjker het antwoord.
+Vóór 0160 ging dat nooit mis; daarna bepaalde de kíjker het antwoord.
 
 📏 Gemeten met Bob uit groep A gezet, Carol die met hem óók in groep B zit en
 Dave die dat niet doet:
@@ -166,7 +166,7 @@ Dave die dat niet doet:
 
 Dat is erger dan allebei de vaste standen: wélke leden je ziet hangt af van iets
 dat niets met deze groep te maken heeft, en `total_members` wordt er
-kijkerafhankelijk van. 0160 laat de functie zelf filteren — de database hoort dit
+kijkerafhankelijk van. 0161 laat de functie zelf filteren — de database hoort dit
 te doen en niet het scherm.
 
 ## Wat hier niet mee opgelost is

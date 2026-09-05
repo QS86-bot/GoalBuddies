@@ -201,7 +201,7 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
       //    `shares_group_with_user()` staan. Deze test legde dat verschil vast
       //    met de aantekening dat het nooit besloten was.
       //
-      //    **0159 (QS8-146) besluit het:** een functie die twee mensen aan elkaar
+      //    **0160 (QS8-146) besluit het:** een functie die twee mensen aan elkaar
       //    verbindt, toetst beide kanten. Het bezwaar van 0029 is inmiddels in de
       //    app beantwoord — `chat.ts` valt terug op `algemeen.oud_lid` en zegt
       //    zelf dat `profiles_select` niet meer geldt voor wie de groep verlaten
@@ -237,7 +237,7 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
       //    terwijl de chat, de weekafsluitingen en De Ketting van die groep
       //    voor iedereen dicht zijn.
       //
-      //    **Het besluit is op 04-09 genomen (QS8-146, 0159) en het luidt: zo
+      //    **Het besluit is op 04-09 genomen (QS8-146, 0160) en het luidt: zo
       //    houden.** 0153 splitste de leeskant af als `mag_groep_lezen()` juist
       //    omdat een archief leesbaar hoort te zijn;
       //    `shares_group_with_user()` staat aan diezelfde leeskant en draagt
