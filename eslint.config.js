@@ -149,4 +149,62 @@ module.exports = [
       ],
     },
   },
+  {
+    // ⚠️ **Onwrikbare regel 15, en dan het deel dat overal geldt** — QS8-190.
+    //    `nesting <3 diep` stond sinds 16-08 als bevinding open met de opmerking
+    //    dat de regel alléén op papier bestond. 📏 Gemeten toen hij hier
+    //    aangezet werd: **nul** overtredingen in `app/`, één in `src/`
+    //    (`kleurafstand.ts`, in deze ronde ontnest). De regel was dus al waar en
+    //    werd alleen door niets bewaakt — het goedkoopste soort grendel dat er
+    //    is, en precies daarom stond hij er niet.
+    //
+    // ⚠️ `scripts/` staat er niet bij, en dat is gemeten en geen vergeetpost:
+    //    daar zijn er elf, allemaal in controlescripts die over geneste
+    //    datastructuren lopen. Die horen in hun eigen ronde; zie de rij van
+    //    05-09 in `docs/ENGINEER-REVIEW.md`.
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx'],
+    rules: { 'max-depth': ['error', 3] },
+  },
+  {
+    // ⚠️ **En dan het deel dat níét overal kan gelden: <50 regels.**
+    //
+    // 📏 Gemeten op 05-09-2026, testbestanden niet meegeteld: **66 functies in
+    //    `app/` boven de vijftig, en elf in `src/`** — waarvan er negen in
+    //    `src/shared/ui` staan. De twee daarbuiten
+    //    (`useAvatarKeuze`, `verstuurWebPush`) zijn in deze ronde gesplitst.
+    //
+    // **Daarom geldt de vijftig hier en alleen hier: logica.** Een functie die
+    // beslist, rekent of praat met de server hoort in één oogopslag te lezen
+    // zijn, en dat is precies wat regel 15 bedoelt.
+    //
+    // ⚠️ **Een component is iets anders, en dat is geen uitvlucht.** Het lichaam
+    //    van een React-component is grotendeels JSX: één `return` met opmaak
+    //    erin. Zestig regels opmaak zijn niet het probleem waar regel 15 voor
+    //    bestaat; vertakking is dat wel, en daar gaat `max-depth` hierboven over.
+    //    Wat de omvang van de schermlaag in toom houdt is de rátel in
+    //    `scripts/regel15-controle.mjs` — die telt hoevéél functies er boven de
+    //    vijftig zitten en laat dat getal alleen dalen.
+    //
+    // ⚠️ **Testbestanden zijn uitgezonderd** omdat `describe(() => …)` er als
+    //    functie in telt. Een suite van tweehonderd regels is één blok met
+    //    gevallen erin, geen functie die iemand moet kunnen overzien — en een
+    //    regel die dat wél zo telt, leer je uitzetten.
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/shared/ui/**', '**/*.test.ts', '**/*.test.tsx'],
+    rules: {
+      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // ⚠️ **`src/shared/ui` is de componentenlaag van `src/`** en volgt daarom de
+    //    schermlaag en niet de logicalaag. 📏 De langste staat er op 73 regels
+    //    (`Weekplanblok`), dus vijfenzeventig is een plafond dat vandaag bindt
+    //    en niet een dat niemand kan raken. Zakt de langste, dan hoort dit getal
+    //    mee te zakken — dezelfde afspraak als bij de ratel.
+    files: ['src/shared/ui/**/*.ts', 'src/shared/ui/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    rules: {
+      'max-lines-per-function': ['error', { max: 75, skipBlankLines: true, skipComments: true }],
+    },
+  },
 ];

@@ -109,6 +109,13 @@ jobs:
       - name: Geen nieuwe handmatige levend-vlaggen
         run: npm run levend:controle
 
+      # ⚠️ Dezelfde vorm, op coderegel 15. ESLint bewaakt de nesting en de
+      #    vijftig regels in de logicalaag; deze ratel bewaakt hoevéél functies
+      #    er in de schermlaag boven de vijftig zitten — en dat getal mag alleen
+      #    dalen. Zonder hem staat regel 15 daar alleen op papier (QS8-190).
+      - name: De schermlaag wordt niet langer
+        run: npm run regel15:controle
+
       # -----------------------------------------------------------------------
       # De controles die alleen de repo nodig hebben — toegevoegd 27-08-2026
       # -----------------------------------------------------------------------
