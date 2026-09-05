@@ -16,6 +16,10 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.member_joined': '{naam} joined.',
   'systeembericht.completion_pending': '{naam} finished a week and is waiting for confirmation.',
   'systeembericht.completion_approved': '{actor} confirmed {naam}’s week.',
+  'systeembericht.member_joined_gevouwen': '{namen} joined.',
+  'systeembericht.completion_pending_gevouwen':
+    '{namen} finished a week and are waiting for confirmation.',
+  'systeembericht.completion_approved_gevouwen': '{actor} confirmed the weeks of {namen}.',
   'systeembericht.milestone_done': '{naam} reached a milestone.',
   'systeembericht.goal_completed': '{naam} completed a goal.',
   'systeembericht.commitment_unlocked': '{naam} unlocked a reward.',
@@ -34,6 +38,7 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
 
   'algemeen.oud_lid': 'A former member',
+  'algemeen.en': 'and',
 
   'auth.fout.ongeldig': 'This email address and password do not match.',
   'auth.fout.bestaat_al':
