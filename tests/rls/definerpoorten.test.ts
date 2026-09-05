@@ -165,6 +165,26 @@ interface Wereld {
    */
   todoWeekId: string;
   eigenTodoWeekId: string;
+  /**
+   * Doelen voor `rond_doel_af` en `verwijder_doel` — QS8-283.
+   *
+   * ⚠️ **Deze twee bestaan omdat de bestaande fixtures het verkeerde meten.**
+   *    De sweep gaf bij allebei één rode test, maar dat rood was een veranderde
+   *    fóutreden: in `epic9.test.ts` vangt `open_milestones` de mutatie af en in
+   *    `weekpassen.test.ts` doet `gedeeld_met_groep` dat. De aanroeper komt daar
+   *    nooit bij de schrijfactie, dus niets zag ooit dat een vreemde het doel
+   *    écht afrondt of wist.
+   *
+   * ⚠️ **Ze zijn met opzet verschillend gekoppeld, en dat is geen slordigheid.**
+   *    `rond_doel_af` heeft geen koppelingstak, dus dat doel kán aan de groep
+   *    hangen en dáár is de groepsgenoot de sterke acteur. `verwijder_doel`
+   *    weigert een gekoppeld doel met `gedeeld_met_groep`, dus dat doel moet
+   *    juist ongekoppeld zijn — zie de kop bij dat blok voor wat dat betekent.
+   */
+  afrondGoalId: string;
+  eigenAfrondGoalId: string;
+  wisGoalId: string;
+  eigenWisGoalId: string;
   vandaag: IsoDate;
 }
 
@@ -200,10 +220,21 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
     const soloGoalId = await maakDoel('DEF-SOLO');
     const archiveerGoalId = await maakDoel('DEF-ARCHIVEER');
     const datumGoalId = await maakDoel('DEF-DATUM');
+    const afrondGoalId = await maakDoel('DEF-AFRONDEN');
+    const eigenAfrondGoalId = await maakDoel('DEF-AFRONDEN-EIGEN');
+    const wisGoalId = await maakDoel('DEF-WISSEN');
+    const eigenWisGoalId = await maakDoel('DEF-WISSEN-EIGEN');
 
+    // ⚠️ `afrondGoalId` hangt óók aan de groep: daar is de groepsgenoot de
+    //    sterke acteur. `wisGoalId` juist níet — `verwijder_doel` weigert een
+    //    gekoppeld doel met `gedeeld_met_groep` en dan meet die test die tak.
     const koppel = await eigenaar.db
       .from('goal_group_links')
-      .insert({ goal_id: groepsGoalId, group_id: gd.group.id });
+      .insert([
+        { goal_id: groepsGoalId, group_id: gd.group.id },
+        { goal_id: afrondGoalId, group_id: gd.group.id },
+        { goal_id: eigenAfrondGoalId, group_id: gd.group.id },
+      ]);
     if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
 
     // ⚠️ `status: 'missed'` via `adminDb()`: de client mag `weekly_goals.status`
@@ -263,6 +294,10 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
       eigenGemistWeekId,
       todoWeekId,
       eigenTodoWeekId,
+      afrondGoalId,
+      eigenAfrondGoalId,
+      wisGoalId,
+      eigenWisGoalId,
       vandaag,
     };
   }, SETUP_TIMEOUT);
@@ -537,6 +572,156 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           .eq('cycle_start_date', nieuweStart)
           .single();
         expect(nieuw.data?.cycle_index, 'er staat geen doorgeschoven weekdoel in de nieuwe cyclus').toBe(2);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  // ---------------------------------------------------------------------------
+  /**
+   * ⚠️⚠️ **`rond_doel_af` en `verwijder_doel` — QS8-283.**
+   *
+   * Deze twee stonden in `scripts/definers-controle.mjs` als *"Gemeten: poort
+   * weg → één rode test"*. Dat rood bestond, en het bewees niets: in beide
+   * bestaande fixtures vangt een **látere** poort de mutatie af, dus het enige
+   * verschil was de foutreden.
+   *
+   * ```
+   * rond_doel_af    epic9.test.ts       expected 'open_milestones'   to be 'not_owner'
+   * verwijder_doel  weekpassen.test.ts  expected 'gedeeld_met_groep' to be 'not_owner'
+   * ```
+   *
+   * 📏 Wat er werkelijk gebeurt, gemeten met een opstelling waarin die latere
+   *    poort niet vuurt en een aanroeper die niet de eigenaar is:
+   *
+   * ```
+   * rond_doel_af    poort er wél in -> {"ok": false, "not_owner"}  status = active
+   * rond_doel_af    poort eruit     -> {"ok": true, …}             status = completed
+   * verwijder_doel  poort er wél in -> {"ok": false, "not_owner"}  bestaat_nog = 1
+   * verwijder_doel  poort eruit     -> {"ok": true}                bestaat_nog = 0
+   * ```
+   *
+   *    Een vreemde rondt het doel van een ander af — onomkeerbaar, mét
+   *    `meld_doel_af()` in elke gekoppelde groep en `wikkel_commitments_af()`
+   *    erachteraan — of wist het. Geen enkele assertie zou dat gezien hebben.
+   *
+   * ⚠️ **De assertie is dus juist en de opstelling maakte hem onfalsifieerbaar**
+   *    in precies de richting die ertoe doet. Regel 18, vraag 3, en de derde
+   *    ronde op rij waarin die vorm bovenkomt.
+   */
+  describe('rond_doel_af — je rondt het doel van een ander niet af', () => {
+    it(
+      'een groepsgenoot krijgt not_owner en het doel blijft actief',
+      async () => {
+        // ⚠️ **Op een gekóppeld doel, en dat is hier de sterke acteur.**
+        //    `rond_doel_af` heeft geen koppelingstak, dus dit doel mag aan de
+        //    groep hangen — en dan geeft `shares_group_with_goal()` voor de
+        //    groepsgenoot `true`. Gemeten met de poort verruimd tot
+        //    `or shares_group_with_goal(g.id)`: hij rondt het doel dan af.
+        //
+        // ⚠️ Zonder open mijlpalen, want anders vangt `open_milestones` het af
+        //    en toetst deze test die tak in plaats van de eigenaarspoort. Dat
+        //    was precies de fout in de oude meting.
+        const poging = await w.groepsgenoot.db.rpc('rond_doel_af', {
+          p_goal_id: w.afrondGoalId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        expect(uitslag(poging.data).ok, 'dit hoort geweigerd te worden').toBe(false);
+        expect(
+          uitslag(poging.data).reason,
+          'een andere reden betekent dat een látere poort dit afving en de ' +
+            'eigenaarspoort niet getoetst is',
+        ).toBe('not_owner');
+
+        const na = await adminDb().from('goals').select('status').eq('id', w.afrondGoalId).single();
+        expect(na.data?.status, 'het doel is alsnog afgerond').toBe('active');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar rondt zijn eigen doel wél af',
+      async () => {
+        const poging = await w.eigenaar.db.rpc('rond_doel_af', {
+          p_goal_id: w.eigenAfrondGoalId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(uitslag(poging.data).ok, 'je eigen doel afronden hoort te lukken').toBe(true);
+
+        const na = await adminDb()
+          .from('goals')
+          .select('status')
+          .eq('id', w.eigenAfrondGoalId)
+          .single();
+        expect(na.data?.status).toBe('completed');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // ---------------------------------------------------------------------------
+  describe('verwijder_doel — je wist het doel van een ander niet', () => {
+    /**
+     * ⚠️⚠️ **Hier is de buddy-tak aantoonbaar níet te raken, en dat staat er
+     *    liever dan dat het verzwegen wordt.** `shares_group_with_goal()` is
+     *    alleen waar voor een doel dat aan een gedeelde groep hangt, en zo'n doel
+     *    weigert `verwijder_doel` al met `gedeeld_met_groep` — dat is een
+     *    éérdere poort dan de plek waar de verruiming zou bijten.
+     *
+     *    📏 Gemeten, met beide eigenaarspoorten verruimd tot
+     *    `or shares_group_with_goal(...)` en een buddy op een gekoppeld doel:
+     *
+     * ```
+     * rond_doel_af    -> {"ok": true}                          status = completed
+     * verwijder_doel  -> {"ok": false, "gedeeld_met_groep"}    bestaat nog
+     * ```
+     *
+     *    De twee voorwaarden sluiten elkaar uit. Deze test gebruikt daarom de
+     *    wildvreemde-vorm van de groepsgenoot: hij deelt geen groep mét dít doel,
+     *    en dat is hier de sterkst mogelijke acteur.
+     *
+     *    **Wordt toetsbaar met een buddy zodra `gedeeld_met_groep` verdwijnt of
+     *    ná de eigenaarspoort naar achteren schuift** — bijvoorbeeld als een
+     *    gedeeld doel ooit wél verwijderd mag worden.
+     */
+    it(
+      'een ander krijgt not_owner en het doel blijft bestaan',
+      async () => {
+        // ⚠️ Ongekoppeld, vers en zonder weekdoelen: `gedeeld_met_groep`,
+        //    `te_oud`, `heeft_weekdoelen` en `heeft_punten` vuren geen van alle,
+        //    dus de eigenaarspoort is het enige dat nog tegenhoudt.
+        const poging = await w.groepsgenoot.db.rpc('verwijder_doel', {
+          p_goal_id: w.wisGoalId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        expect(uitslag(poging.data).ok, 'dit hoort geweigerd te worden').toBe(false);
+        expect(
+          uitslag(poging.data).reason,
+          'een andere reden betekent dat een látere poort dit afving en de ' +
+            'eigenaarspoort niet getoetst is',
+        ).toBe('not_owner');
+
+        const na = await adminDb().from('goals').select('id').eq('id', w.wisGoalId);
+        expect(na.data ?? [], 'het doel is alsnog verwijderd').toHaveLength(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar wist zijn eigen doel wél',
+      async () => {
+        const poging = await w.eigenaar.db.rpc('verwijder_doel', {
+          p_goal_id: w.eigenWisGoalId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen verse doel wissen hoort te lukken, kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        const na = await adminDb().from('goals').select('id').eq('id', w.eigenWisGoalId);
+        expect(na.data ?? [], 'en dan is het ook echt weg').toHaveLength(0);
       },
       TEST_TIMEOUT,
     );

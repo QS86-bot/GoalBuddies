@@ -84,11 +84,28 @@ const REGISTER = new Map([
   ['zet_streefdatum', 'Eigenaarspoort. Bewaakt door `definerpoorten.test.ts`. ⚠️ De zwaarste van de reeks: de directe route om A7 heen.'],
   ['schuif_weekdoel_door', 'Eigenaarspoort. Bewaakt door `definerpoorten.test.ts`.'],
   ['verwijder_weekdoel', 'Eigenaarspoort. Bewaakt door `definerpoorten.test.ts` — de achtste, gevonden bij de review op ronde 5.'],
-  ['rond_doel_af', 'Eigenaarspoort. Gemeten: poort weg → `epic9.test.ts` wordt rood.'],
+  [
+    'rond_doel_af',
+    'Eigenaarspoort. ⚠️ Hier stond "Gemeten: poort weg → `epic9.test.ts` wordt rood", ' +
+      'en dat rood was een veranderde fóutreden: die fixture heeft openstaande mijlpalen, ' +
+      'dus `open_milestones` ving de mutatie af en de aanroeper kwam nooit bij de `update`. ' +
+      'Nagemeten met een doel zónder open mijlpalen: de poort eruit en een vreemde zet het ' +
+      'doel van een ander op `completed`. Sinds QS8-283 bewaakt door ' +
+      '`definerpoorten.test.ts`, met de groepsgenoot als sterke acteur op een gekoppeld doel.',
+  ],
   ['sluit_weekdoel_af', 'Eigenaarspoort. Gemeten: poort weg → `weekpassen.test.ts` wordt rood.'],
   ['trek_goedkeuring_in', 'Moet de goedkeurder zijn én actief lid. Gemeten: poort weg → `besluiten.test.ts` wordt rood.'],
   ['beslis_deadline_verzoek', 'Niet de aanvrager zelf én actief lid. Gemeten: poort weg → `besluiten.test.ts` wordt rood.'],
-  ['verwijder_doel', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
+  [
+    'verwijder_doel',
+    'Eigenaarspoort. ⚠️ Zelfde geval als `rond_doel_af`: het ene rode test was ' +
+      '`expected \'gedeeld_met_groep\' to be \'not_owner\'` — een foutreden, geen effect. ' +
+      'Nagemeten met een vers, ongekoppeld doel: de poort eruit en het doel van een ander is weg. ' +
+      'Sinds QS8-283 bewaakt door `definerpoorten.test.ts`. ' +
+      '⚠️ De buddy-tak is hier aantoonbaar niet te raken — buddy zijn vereist een gedeelde ' +
+      'groep, en een gekoppeld doel weigert deze functie al met `gedeeld_met_groep`. ' +
+      'Wordt toetsbaar zodra die tak verdwijnt of ná de eigenaarspoort schuift.',
+  ],
   ['herorden_mijlpalen', 'Toetst `g.owner_id = v_uid` en pint `m.goal_id`. Gemeten: poort weg → één rode test.'],
   ['dien_opnieuw_in', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
   [
