@@ -57,8 +57,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3305 geslaagd en 1 overgeslagen** over
-   234 bestanden.
+   suite geeft met de stack **3320 geslaagd en 1 overgeslagen** over
+   235 bestanden.
    Typecheck, lint en alle 32 controlescripts groen;
    `npm run poort` meldt 36 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
