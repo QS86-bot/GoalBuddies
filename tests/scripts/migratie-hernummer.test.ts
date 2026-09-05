@@ -11,7 +11,7 @@ import {
   herschrijfKop,
   kopKlopt,
   kopNummer,
-  vervangIn,
+  herschrijfVerwijzingen,
 } from '../../scripts/migratie-hernummer.mjs';
 
 /**
@@ -119,17 +119,38 @@ describe('herschrijfKop', () => {
   });
 });
 
-describe('vervangIn', () => {
+/**
+ * ⚠️ **Dit heette `vervangIn` en die zocht alleen op nummer.** QS8-277 liet zien
+ *    dat dat één ding te weinig is zodra twee migraties hetzelfde nummer dragen:
+ *    het script schreef toen de kopregel van de ánder bij, plus twee regels in
+ *    een dossier die bij het issue van die ander hoorden. De oude tests staan
+ *    hieronder ongewijzigd — dezelfde vormen, dezelfde beloftes — plus de gevallen
+ *    die er niet waren.
+ */
+describe('herschrijfVerwijzingen — een uniek nummer, zoals het altijd ging', () => {
+  const uniek = (tekst: string, nummer: string, oudeBasis: string, nieuweBasis: string) =>
+    herschrijfVerwijzingen(tekst, { nummer, oudeBasis, nieuweBasis, gedeeld: false });
+
   it('vervangt een verwijzing midden in een zin', () => {
-    expect(vervangIn('sinds 0134 gebruikt', '0134', '0136').tekst).toBe('sinds 0136 gebruikt');
+    expect(uniek('sinds 0134 gebruikt', '0134', '0134_x', '0136_x').tekst).toBe(
+      'sinds 0136 gebruikt',
+    );
   });
 
   it('vervangt de vorm met een underscore erachter', () => {
-    expect(vervangIn('zie 0134_een_plan.sql', '0134', '0136').tekst).toBe('zie 0136_een_plan.sql');
+    expect(uniek('zie 0134_een_plan.sql', '0134', '0134_een_plan', '0136_een_plan').tekst).toBe(
+      'zie 0136_een_plan.sql',
+    );
   });
 
   it('telt hoeveel het er waren', () => {
-    expect(vervangIn('0134 en 0134 en 0135', '0134', '0136').treffers).toBe(2);
+    expect(uniek('0134 en 0134 en 0135', '0134', '0134_x', '0136_x').treffers).toBe(2);
+  });
+
+  it('zegt op welke regels het gebeurde', () => {
+    expect(uniek('niets\n0134 hier\nniets\n0134 daar', '0134', '0134_x', '0136_x').regels).toEqual(
+      [2, 4],
+    );
   });
 
   /**
@@ -141,28 +162,91 @@ describe('vervangIn', () => {
     ['een langer getal', 'nummer 20134 hier', '0134'],
     ['een nummer met een letter erachter', '0052b', '0052'],
   ])('laat %s met rust', (_naam, tekst, van) => {
-    expect(vervangIn(tekst, van, '9999').tekst).toBe(tekst);
+    expect(uniek(tekst, van, `${van}_x`, '9999_x').tekst).toBe(tekst);
   });
 
   /** Een jaartal heeft geen voorloopnul en botst dus per definitie niet. */
   it('raakt een jaartal niet', () => {
-    expect(vervangIn('op 2026 gemeten', '0026', '0136').tekst).toBe('op 2026 gemeten');
+    expect(uniek('op 2026 gemeten', '0026', '0026_x', '0136_x').tekst).toBe('op 2026 gemeten');
+  });
+
+  /** De staart-lookahead: een langere slug is een ánder bestand. */
+  it('herschrijft geen basis die alleen maar met de onze begint', () => {
+    const uit = uniek('zie 0134_een_plan_b.sql', '0134', '0134_een_plan', '0136_een_plan');
+    expect(uit.tekst).toBe('zie 0136_een_plan_b.sql');
   });
 });
 
 /**
- * ⚠️⚠️ **`kiesBron` bestaat omdat `bestanden.find(...)` de eerste treffer pakte.**
- *    Op 01-09-2026 stonden er na een merge twee migraties met nummer `0146` —
- *    eentje geland op `main`, eentje nog niet — en `migratie:hernummer -- 0146
- *    0147` hernoemde **het gelande bestand**, inclusief de verwijzingen in een
- *    bronbestand dat bij die ándere migratie hoorde. Vijftig procent kans, en
- *    het viel verkeerd (QS8-263).
- *
- * ⚠️ **De bestaande weigering dekte dit niet**, en dat is het leerzame deel: het
- *    script weigert al als het bronnummer op productie staat, maar die vraag
- *    gaat over het **nummer** en bij twee bestanden verschilt het antwoord per
- *    **bestand**. Een toets op het verkeerde niveau leest als dekking.
+ * ⚠️⚠️ **Het hoofdgeval, en het geval waar het script op misging.** Bij twee
+ *    migraties op hetzelfde nummer is een kaal nummer niet toe te wijzen. De
+ *    volledige naam wél — die kan maar naar één bestand wijzen.
  */
+describe('herschrijfVerwijzingen — een gedeeld nummer', () => {
+  const ONS = '0159_een_uitgezet_lid';
+  const ANDER = '0159_een_adempauze';
+  const NIEUW = '0160_een_uitgezet_lid';
+
+  const gedeeld = (tekst: string) =>
+    herschrijfVerwijzingen(tekst, {
+      nummer: '0159',
+      oudeBasis: ONS,
+      nieuweBasis: NIEUW,
+      gedeeld: true,
+      bekendeBases: [ONS, ANDER],
+    });
+
+  it('herschrijft een verwijzing die de volle naam noemt', () => {
+    const uit = gedeeld(`zie ${ONS}.sql voor de reden`);
+    expect(uit.tekst).toBe(`zie ${NIEUW}.sql voor de reden`);
+    expect(uit.treffers).toBe(1);
+    expect(uit.gemeld).toEqual([]);
+  });
+
+  it('laat een kaal nummer staan en meldt het met regel en tekst', () => {
+    const uit = gedeeld('regel een\nOpgelost met migratie 0159 (van de ander).');
+
+    expect(uit.tekst).toBe('regel een\nOpgelost met migratie 0159 (van de ander).');
+    expect(uit.treffers).toBe(0);
+    expect(uit.gemeld).toEqual([
+      { regel: 2, fragment: 'Opgelost met migratie 0159 (van de ander).' },
+    ]);
+  });
+
+  it('raakt de naam van de ándere migratie niet aan en meldt hem ook niet', () => {
+    // ⚠️ Dít is de kopregel die op 05-09 werd bijgeschreven. Hij is geen
+    //    verwijzing naar ons en ook geen twijfelgeval: dat bestand staat in de map.
+    const kop = `-- ${ANDER}.sql — de migratie van de andere sessie`;
+    const uit = gedeeld(kop);
+
+    expect(uit.tekst).toBe(kop);
+    expect(uit.treffers).toBe(0);
+    expect(uit.gemeld).toEqual([]);
+  });
+
+  it('doet allebei in één tekst, en houdt ze uit elkaar', () => {
+    const uit = gedeeld(
+      [`1. ${ONS}.sql — de onze`, '2. migratie 0159 — van de ander', `3. ${ANDER}.sql`].join('\n'),
+    );
+
+    expect(uit.tekst.split('\n')[0]).toBe(`1. ${NIEUW}.sql — de onze`);
+    expect(uit.tekst.split('\n')[1]).toBe('2. migratie 0159 — van de ander');
+    expect(uit.tekst.split('\n')[2]).toBe(`3. ${ANDER}.sql`);
+    expect(uit.gemeld.map((g) => g.regel)).toEqual([2]);
+  });
+
+  /**
+   * ⚠️ **De tegenhelft.** Zonder dit geval zou "meldt en vervangt niet" ook
+   *    kloppen bij een functie die bij een gedeeld nummer helemáál niets doet —
+   *    en dan is de hernummering van de volle namen stil weg.
+   */
+  it('is niet stiller dan nodig: de volle naam gaat wél mee', () => {
+    const uit = gedeeld(`${ONS}.sql en nog eens ${ONS}.sql`);
+    expect(uit.treffers).toBe(2);
+    expect(uit.tekst).not.toContain(ONS);
+  });
+});
+
 describe('kiesBron', () => {
   const twee = ['0146_geland.sql', '0146_van_mij.sql', '0147_iets.sql'];
 

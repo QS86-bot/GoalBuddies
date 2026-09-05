@@ -153,24 +153,121 @@ export function herschrijfKop(inhoud, nieuweBasis) {
 }
 
 /**
- * Vervangt elke verwijzing naar `van` door `naar`, en zegt hoeveel.
+ * De volledige basis van een migratie, veilig als patroon.
  *
- * ⚠️ **Wat dit níét kan, en waarom het script alles afdrukt.** Een kaal `0134`
- *    in proza dat géén migratie bedoelt, is van een verwijzing niet te
- *    onderscheiden — er staat geen merkteken omheen. Wat wél helpt: migraties
- *    zijn altijd vier cijfers met voorloopnullen, en jaartallen en puntenaantallen
- *    zijn dat niet. De rest vangt de mens op, en daarom drukt de CLI elke
- *    vervanging af met bestand en regelnummer. Een stille vervanging in een
- *    beslisdocument is een geschiedvervalsing.
+ * ⚠️ De staart-lookahead is er zodat `0159_een_plan` niet matcht binnen
+ *    `0159_een_plan_b`. Zonder die regel hernoemt het script een migratie die
+ *    toevallig met dezelfde woorden begint.
  */
-export function vervangIn(tekst, van, naar) {
-  const patroon = verwijzingsPatroon(van);
+function basisPatroon(basis) {
+  return new RegExp(`(?<![0-9a-zA-Z])${basis}(?![a-z0-9_])`, 'g');
+}
+
+/**
+ * Herschrijft de verwijzingen in één bestand — QS8-277.
+ *
+ * ⚠️⚠️ **Waarom de oude `vervangIn()` hierin opgegaan is.** Die zocht op
+ *    **nummer** en verder niets, en dat is precies één ding te weinig zodra er
+ *    twee migraties met dat nummer in de map staan. 📏 Gemeten op
+ *    05-09-2026, bij het oplossen van de vierde nummerbotsing:
+ *
+ *      supabase/migrations/0159_een_adempauze_telt_niet_als_gemiste_week.sql
+ *      -- 0159_een_adempauze_… — …      →    -- 0160_een_adempauze_… — …
+ *
+ *    Het script schreef de **kopregel van de ánder** bij, plus twee verwijzingen
+ *    in `docs/ENGINEER-REVIEW.md` die bij het issue van die ander hoorden. Beide
+ *    met de hand teruggezet; dat is precies de correctie die je een keer vergeet.
+ *
+ * ⚠️ **De oude vorm wist het al en zei het alleen.** `kiesBron()` gaf `gedeeld`
+ *    terug en de CLI drukte *"loop de lijst na vóór je zonder --droog draait"* —
+ *    en herschreef daarna alles alsof er niets aan de hand was. Dat is dezelfde
+ *    vorm die QS8-247 in `migratie:nieuw` wegnam: **een gereedschap dat bestaat
+ *    om een botsing op te ruimen, mag zijn juistheid niet laten afhangen van een
+ *    handeling die het zelf niet doet.** Een waarschuwing die je toch moet
+ *    negeren om verder te komen, is een disclaimer.
+ *
+ * **De regel, in twee helften:**
+ *
+ * 1. **Een volledige basis is bewijs.** `0159_een_uitgezet_lid_…` kan maar naar
+ *    één bestand wijzen, ook als er twee migraties 0159 heten. Die wordt altijd
+ *    herschreven.
+ * 2. **Een kaal nummer is dat niet.** Bij een gedeeld nummer wordt het
+ *    *gemeld* — met bestand en regel — en niet aangeraakt. Bij een uniek nummer
+ *    valt er niets te verwarren en wordt het gewoon herschreven, zoals altijd.
+ *
+ * ⚠️ **En een kaal nummer dat de naam van een ánder bestand begint, telt niet
+ *    eens als vondst.** `0159_een_adempauze_…` ís de naam van een migratie die
+ *    in de map staat; dat is geen verwijzing naar de onze en ook geen twijfelgeval.
+ *    Zonder die uitzondering meldt het script bij élke botsing de kop van de
+ *    buurman, en een melding die je altijd wegwuift, leer je wegwuiven.
+ *
+ * ⚠️ **Het issue vroeg om "het zusterbestand nooit aanraken" als harde
+ *    uitzondering. Dit is scherper en niet losser:** de basisregel laat de kop
+ *    van de zuster met rust omdat die zijn éígen naam noemt, maar staat wél toe
+ *    dat de zuster een verwijzing naar óns bestand bij krijgt — en dat hoort ook.
+ *    Een blanket-uitzondering zou daar een verouderde verwijzing achterlaten.
+ *
+ * ⚠️ De opties dragen hier een expliciet type, en niet uit netheid: twee velden
+ *    hebben een standaardwaarde en dan leidt `tsc` het hele object daaruit af —
+ *    de velden zónder standaard vallen dan weg en elke aanroeper wordt rood.
+ *
+ * @param {string} tekst de inhoud van het bestand
+ * @param {{
+ *   nummer: string,
+ *   oudeBasis: string,
+ *   nieuweBasis: string,
+ *   gedeeld?: boolean,
+ *   bekendeBases?: readonly string[],
+ * }} opties
+ *   `nummer` is het bronnummer in vier cijfers, `oudeBasis` en `nieuweBasis` zijn
+ *   de volledige namen zonder `.sql`, `gedeeld` zegt of er meer migraties op dit
+ *   nummer staan, en `bekendeBases` is de basis van élke migratie in de map.
+ */
+export function herschrijfVerwijzingen(tekst, opties) {
+  const { nummer, oudeBasis, nieuweBasis, gedeeld = false, bekendeBases = [] } = opties;
+  const naar = (nieuweBasis ?? '').slice(0, 4);
+  const bekend = new Set(bekendeBases);
+  const basis = basisPatroon(oudeBasis);
+  const kaal = verwijzingsPatroon(nummer);
+
   let treffers = 0;
-  const uit = (tekst ?? '').replace(patroon, () => {
-    treffers += 1;
-    return naar;
+  const geraakt = new Set();
+  const gemeld = [];
+
+  const uit = (tekst ?? '').split('\n').map((regel, i) => {
+    // 1. De volledige basis: bewijs, dus altijd.
+    basis.lastIndex = 0;
+    const metBasis = regel.replace(basis, () => {
+      treffers += 1;
+      geraakt.add(i + 1);
+      return nieuweBasis;
+    });
+
+    // 2. Wat er kaal overblijft.
+    kaal.lastIndex = 0;
+    return metBasis.replace(kaal, (treffer, positie) => {
+      // De naam van een ánder bestand is geen verwijzing naar het onze, en ook
+      // geen twijfelgeval: die staat gewoon in de map.
+      const staart = /^(\d{4}[a-z]?_[a-z0-9_]+)/.exec(metBasis.slice(positie));
+      if (staart !== null && bekend.has(staart[1])) return treffer;
+
+      if (gedeeld) {
+        gemeld.push({ regel: i + 1, fragment: regel.trim() });
+        return treffer;
+      }
+
+      treffers += 1;
+      geraakt.add(i + 1);
+      return naar;
+    });
   });
-  return { tekst: uit, treffers };
+
+  return {
+    tekst: uit.join('\n'),
+    treffers,
+    regels: [...geraakt].sort((a, b) => a - b),
+    gemeld,
+  };
 }
 
 /**
@@ -401,10 +498,10 @@ async function hoofd() {
   if (bron.gedeeld === true) {
     console.log(
       `⚠️  Er staan meer migraties met nummer ${bron.nummer} in de map.\n` +
-        `    Het béstand hieronder is de goede — die heb je zelf aangewezen — maar de\n` +
-        `    verwijzingen niet noodzakelijk: die worden op nummer gezocht, en ${bron.nummer}\n` +
-        '    in een tekst kan net zo goed bij de ander horen. Loop de lijst hieronder\n' +
-        '    na vóór je zonder --droog draait.\n',
+        '    Buiten het gekozen bestand worden daarom alleen verwijzingen herschreven\n' +
+        '    die de vólledige naam noemen — die kan maar naar één bestand wijzen. Een\n' +
+        `    kaal ${bron.nummer} elders wordt gemeld en niet aangeraakt: dat is met twee\n` +
+        '    bestanden op hetzelfde nummer niet te bewijzen. QS8-277.\n',
     );
   }
 
@@ -430,11 +527,25 @@ async function hoofd() {
 
   console.log(`${oudeBasis}.sql → ${nieuweBasis}.sql\n`);
 
-  // 1. Het bestand zelf: de kop expliciet, de rest via het patroon.
+  // ⚠️ Élke migratienaam in de map, zodat een verwijzing naar een ánder bestand
+  //    als zodanig herkend wordt en niet als kaal nummer meetelt.
+  const bekendeBases = bestanden.map((n) => basisUit(n)).filter((b) => b !== null);
+
+  // ⚠️ **Binnen het gekozen bestand mag het script kiezen, daarbuiten niet.** Dit
+  //    is het bestand dat je zelf hebt aangewezen en waarvan het nummer verandert;
+  //    een kaal nummer erin gaat over zijn eigen nummering. Vandaar `gedeeld:
+  //    false` — de naam van een ánder bestand blijft ook hier staan, want die
+  //    uitzondering zit in `herschrijfVerwijzingen()` zelf.
   const oudPad = join(MAP, oud);
   const inhoud = readFileSync(oudPad, 'utf8');
   const metKop = herschrijfKop(inhoud, nieuweBasis);
-  const { tekst: nieuweInhoud, treffers } = vervangIn(metKop, bronNummer, naar);
+  const { tekst: nieuweInhoud, treffers } = herschrijfVerwijzingen(metKop, {
+    nummer: bronNummer,
+    oudeBasis,
+    nieuweBasis,
+    gedeeld: false,
+    bekendeBases,
+  });
 
   console.log(`  ${relative(WORTEL, oudPad)}`);
   console.log(`    kopregel herschreven naar ${nieuweBasis}.sql`);
@@ -442,25 +553,51 @@ async function hoofd() {
 
   // 2. Elke andere plek.
   const elders = [];
+  const nagelopen = [];
   for (const map of DOORZOEKEN) {
     for (const pad of bestandenOnder(join(WORTEL, map))) {
       if (pad === oudPad) continue;
       const tekst = readFileSync(pad, 'utf8');
-      const uit = vervangIn(tekst, bronNummer, naar);
+      const uit = herschrijfVerwijzingen(tekst, {
+        nummer: bronNummer,
+        oudeBasis,
+        nieuweBasis,
+        gedeeld: bron.gedeeld === true,
+        bekendeBases,
+      });
+
+      if (uit.gemeld.length > 0) nagelopen.push({ pad, gemeld: uit.gemeld });
       if (uit.treffers === 0) continue;
 
-      const regels = tekst.split('\n');
-      const nummers = regels
-        .map((r, i) => (verwijzingsPatroon(bronNummer).test(r) ? i + 1 : 0))
-        .filter((n) => n > 0);
-
-      elders.push({ pad, inhoud: uit.tekst, treffers: uit.treffers, regels: nummers });
+      elders.push({ pad, inhoud: uit.tekst, treffers: uit.treffers, regels: uit.regels });
     }
   }
 
   for (const e of elders) {
     console.log(`  ${relative(WORTEL, e.pad)}`);
     console.log(`    ${e.treffers} verwijzing(en), regel ${e.regels.join(', ')}`);
+  }
+
+  // ⚠️ **Onderaan en met naam, want dit is het werk dat overblijft.** Bij een
+  //    gedeeld nummer kan het script deze regels niet bewijzen, en dan hoort het
+  //    ze niet te raden. Ze staan hier zodat een mens ze naloopt — niet als
+  //    disclaimer vooraf maar als een lijst achteraf.
+  if (nagelopen.length > 0) {
+    const totaal = nagelopen.reduce((n, e) => n + e.gemeld.length, 0);
+    console.log(
+      `\n⚠️  ${totaal} kale verwijzing(en) naar ${bronNummer} niet aangeraakt, in ` +
+        `${nagelopen.length} bestand(en):`,
+    );
+    for (const e of nagelopen) {
+      console.log(`  ${relative(WORTEL, e.pad)}`);
+      for (const g of e.gemeld) {
+        console.log(`    regel ${g.regel}: ${g.fragment.slice(0, 100)}`);
+      }
+    }
+    console.log(
+      `\n  Hoort zo'n regel bij ${oudeBasis}, zet hem dan met de hand op ${naar}.\n` +
+        `  Hoort hij bij de ándere migratie ${bronNummer}, laat hem staan.`,
+    );
   }
 
   if (droog) {
@@ -472,7 +609,12 @@ async function hoofd() {
   execFileSync('git', ['mv', oudPad, join(MAP, `${nieuweBasis}.sql`)], { cwd: WORTEL });
   for (const e of elders) writeFileSync(e.pad, e.inhoud);
 
-  console.log(`\n✓ hernummerd. Draai \`npm run poort\` voordat je pusht.`);
+  const rest =
+    nagelopen.length > 0
+      ? `, maar ${nagelopen.reduce((n, e) => n + e.gemeld.length, 0)} kale verwijzing(en) ` +
+        'hierboven niet aangeraakt'
+      : '';
+  console.log(`\n✓ hernummerd${rest}. Draai \`npm run poort\` voordat je pusht.`);
 }
 
 // ⚠️ Alleen draaien als script, niet bij het importeren vanuit een test.
