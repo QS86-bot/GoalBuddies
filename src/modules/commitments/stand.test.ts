@@ -7,6 +7,7 @@ import {
   COMMITMENT_STANDEN,
   isAfgegaan,
   isOpenstaand,
+  magStrafVastleggen,
   statusTeksten,
   tekstVoor,
 } from './stand';
@@ -104,5 +105,39 @@ describe('isOpenstaand', () => {
     expect(isOpenstaand(commitment('penalty', 'set'))).toBe(true);
     expect(isOpenstaand(commitment('penalty', 'due'))).toBe(false);
     expect(isOpenstaand(commitment('reward', 'unlocked'))).toBe(false);
+  });
+});
+
+/**
+ * De clientkant van de derde grens van migratie 0170 — QS8-293.
+ *
+ * ⚠️ **Wat hier getoetst wordt is niet "de kaart verdwijnt" maar "de client
+ *    biedt niets aan wat de database weigert".** Dat is de belofte; het scherm
+ *    is maar één plek waar hij waargemaakt wordt. Vandaar dat de grens een
+ *    functie is en niet een `<` in de JSX (regel 18 vraag 4).
+ *
+ * ⚠️ De grens in de database is `target_date >= mijn_datum()`. Staat hier `>`,
+ *    dan verbergt het scherm het formulier op een dag waarop de database de
+ *    straf gewoon zou aannemen — een client die strénger is dan de server, en
+ *    dat is precies de kant die CLAUDE.md verbiedt bij dit paar regels.
+ */
+describe('magStrafVastleggen — dezelfde grens als `commitments_insert`', () => {
+  it('mag op een doel dat in de toekomst afloopt', () => {
+    expect(magStrafVastleggen('2026-09-30', '2026-09-06')).toBe(true);
+  });
+
+  it('mag nog op de dag zelf, want de database zegt `>=`', () => {
+    expect(magStrafVastleggen('2026-09-06', '2026-09-06')).toBe(true);
+  });
+
+  it('mag niet meer zodra de streefdatum voorbij is', () => {
+    expect(magStrafVastleggen('2026-09-05', '2026-09-06')).toBe(false);
+  });
+
+  it('mag zolang het scherm nog niet weet welke dag het is', () => {
+    // ⚠️ Het profiel bepaalt de tijdzone en is dan nog aan het laden. De
+    //    database weigert alsnog; een kaart die van "kan niet" naar "kan wel"
+    //    springt zodra een lading binnenkomt, is de slechtere van de twee.
+    expect(magStrafVastleggen('2020-01-01', null)).toBe(true);
   });
 });

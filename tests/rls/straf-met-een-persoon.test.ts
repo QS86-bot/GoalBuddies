@@ -338,10 +338,22 @@ describe.skipIf(!rlsTestsConfigured)('een straf met één persoon als begunstigd
         //    dan hoort de bandtoets in `commitments_update` het over te nemen —
         //    en die staat er sinds deze migratie.
         const admin = adminDb();
+        // Eigen doel, zelfde reden als hierboven: één openstaande straf per doel.
+        const eigenDoel = await admin
+          .from('goals')
+          .insert({
+            owner_id: w.alice.id,
+            title: 'STRAFDOEL getuige-blijft',
+            target_date: addDays(w.vandaag, 60),
+          })
+          .select('id')
+          .single();
+        if (eigenDoel.error) throw new Error(`doel: ${eigenDoel.error.message}`);
+
         const straf = await admin
           .from('commitments')
           .insert({
-            goal_id: w.goalId,
+            goal_id: eigenDoel.data.id,
             type: 'penalty',
             body: 'Deze getuige blijft wie hij is',
             beneficiary_user_id: w.bob.id,
@@ -506,10 +518,24 @@ describe.skipIf(!rlsTestsConfigured)('een straf met één persoon als begunstigd
           .insert({ group_id: groep.data.group_id, user_id: getuige.id, role: 'member', status: 'active' });
         if (lid.error) throw new Error(`lid: ${lid.error.message}`);
 
+        // ⚠️ Een eigen doel, want sinds migratie 0170 mag er per doel maar
+        //    één openstaande straf zijn. Delen met een andere test betekent
+        //    hier dat je de cap meet in plaats van wat deze test belooft.
+        const eigenDoel = await admin
+          .from('goals')
+          .insert({
+            owner_id: w.alice.id,
+            title: 'STRAFDOEL getuige-verdwijnt',
+            target_date: addDays(w.vandaag, 60),
+          })
+          .select('id')
+          .single();
+        if (eigenDoel.error) throw new Error(`doel: ${eigenDoel.error.message}`);
+
         const straf = await w.alice.db
           .from('commitments')
           .insert({
-            goal_id: w.goalId,
+            goal_id: eigenDoel.data.id,
             type: 'penalty',
             body: 'Ik trakteer deze getuige op taart',
             beneficiary_user_id: getuige.id,
@@ -548,10 +574,22 @@ describe.skipIf(!rlsTestsConfigured)('een straf met één persoon als begunstigd
         //    Kon de eigenaar `beneficiary_user_id` op null zetten, dan is de
         //    straf onzichtbaar geworden zonder dat er iets besloten is.
         const admin = adminDb();
+        // Eigen doel: sinds 0170 mag er per doel maar één openstaande straf zijn.
+        const eigenDoel = await admin
+          .from('goals')
+          .insert({
+            owner_id: w.alice.id,
+            title: 'STRAFDOEL getuige-blijft-staan',
+            target_date: addDays(w.vandaag, 60),
+          })
+          .select('id')
+          .single();
+        if (eigenDoel.error) throw new Error(`doel: ${eigenDoel.error.message}`);
+
         const straf = await admin
           .from('commitments')
           .insert({
-            goal_id: w.goalId,
+            goal_id: eigenDoel.data.id,
             type: 'penalty',
             body: 'Deze getuige blijft staan',
             beneficiary_user_id: w.bob.id,
