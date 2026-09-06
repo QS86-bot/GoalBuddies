@@ -55,6 +55,7 @@ export function controlesUit(scripts) {
 /** Welke controles een opgebouwde database nodig hebben om iets te bewijzen. */
 export const HEEFT_DATABASE_NODIG = new Set([
   'klokgrens:controle',
+  'tijdzones:controle',
   'functies:controle',
   'kolomrechten:controle',
   'pin:controle',
