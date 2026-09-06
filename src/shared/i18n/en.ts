@@ -980,10 +980,9 @@ export const en: Record<Sleutel, string> = {
 
   'adempauze.laden_mislukt': 'Your breathers could not be loaded.',
   'adempauze.inplannen_mislukt': 'The breather could not be scheduled.',
-  'adempauze.te_laat':
-    'You announce a breather in advance. The week that is running cannot be used. Pick the week ahead.',
-  'adempauze.te_lang': 'A breather lasts at most two weeks.',
   'adempauze.overlap': 'There is already a breather over these weeks.',
+  'adempauze.te_lang': 'A breather lasts at most {max} weeks.',
+  'adempauze.datum_ongeldig': 'Enter a date as yyyy-mm-dd.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
   'adempauze.eind_voor_start': 'The end date is before the start date.',
   'adempauze.annuleren_mislukt': 'Cancelling did not work.',
@@ -1356,23 +1355,29 @@ export const en: Record<Sleutel, string> = {
 
   'adempauze.kop': 'Breather',
   'adempauze.uitleg':
-    'Going on holiday, ill, or just a strange month? Then pause one or two weeks. Those weeks ' +
-    'cost you no point and your streak stays where it is; it just does not grow.',
+    'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
+    'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
+    'have several side by side, and a week that is already over is allowed too.',
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when. They do not see which ' +
-    'weekly goals you did or did not reach.',
+    'Your group sees that you have a breather and from when to when, including one you place ' +
+    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
+    'reach.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
   'adempauze.loopt': 'Running now',
   'adempauze.ingepland': 'Scheduled',
   'adempauze.annuleren': 'Cancel',
-  'adempauze.vanaf': 'From which week?',
-  'adempauze.vanaf_hint':
-    'You announce a breather in advance, so the week that is running now is no longer possible.',
-  'adempauze.hoe_lang': 'How long?',
-  'adempauze.een_week': 'One week',
-  'adempauze.twee_weken': 'Two weeks',
+  'adempauze.vanaf': 'From',
+  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Any date works, including one that is already past.',
+  'adempauze.tot': 'Up to and including',
+  'adempauze.tot_hint': 'Leaving this empty means one week.',
+  'adempauze.wordt_een_week': 'This becomes the week of {van}.',
+  'adempauze.wordt_meer_weken':
+    'This becomes {weken} weeks: from {van} up to and including the week of {tot}.',
+  'adempauze.terugwerkend':
+    'These weeks are already over. Missed weeks inside them are excused after all and the ' +
+    'minus point is reversed.',
   'adempauze.inplannen': 'Schedule',
   'adempauze.inplannen_knop': 'Schedule a breather',
 

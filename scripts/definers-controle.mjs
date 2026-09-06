@@ -110,6 +110,17 @@ const REGISTER = new Map([
       'De eerste vorm wordt toetsbaar zodra `gedeeld_met_groep` verdwijnt of naar achteren schuift.',
   ],
   ['herorden_mijlpalen', 'Toetst `g.owner_id = v_uid` en pint `m.goal_id`. Gemeten: poort weg → één rode test.'],
+  [
+    'plan_adempauze',
+    'Eigenaarspoort. ⚠️ Stapte deze klasse pas in met QS8-227: sindsdien zet een adempauze '
+      + 'over een al afgesloten week die week op `excused` en boekt hij het minpunt terug in '
+      + '`points_ledger`. Daarvóór schreef de functie alleen in `breathers`. Bewaakt door '
+      + '`definerpoorten.test.ts`. ⚠️ Met een eigen doel en een cyclusstart die samenvalt met '
+      + 'de gemiste week, want de weekdagtoets zit achter de poort: de bestaande test in '
+      + '`epic8.test.ts` zou bij een weggehaalde poort omvallen op `geen_cyclusstart` en dus '
+      + 'op een fóutreden. Gemeten: poort weg → de groepsgenoot zet de gemiste week van de '
+      + 'eigenaar op `excused` (`expected \'excused\' to be \'missed\'`).',
+  ],
   ['dien_opnieuw_in', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
   [
     'zet_week_startdag',

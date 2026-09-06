@@ -39,6 +39,28 @@
 -- ⚠️ **De overlapcontrole en `breathers_geen_dubbele_start` blijven ook.** Twee
 -- pauzes over dezelfde week is een ongeldige toestand en geen vrijheid.
 --
+-- ⚠️ **En de overlapcontrole heeft er een slot bij nodig, want zonder was ze er
+-- geen.** `if exists (...) then return` en de `insert` erna zijn twee losse
+-- statements: in read committed zien twee gelijktijdige aanroepen elkaars
+-- ongecommitte rij niet en komen ze er allebei door. Nagemeten in de
+-- security-review van 06-09-2026 met twee parallelle sessies: **twee
+-- overlappende adempauzes op hetzelfde doel.** `breathers_geen_dubbele_start`
+-- vangt dat niet af zodra de begindatums verschillen.
+--
+-- Daarom een `pg_advisory_xact_lock` op het doel, vóór de controle. Geen
+-- `exclude`-constraint: die vraagt `btree_gist`, en dit project draait op nul
+-- extensies — een eerste extensie op de gratis tier is een grotere beslissing
+-- dan deze bug rechtvaardigt. De grendel staat onder test.
+--
+-- ⚠️ **Er komt één grens bij die er niet stond: een jaar.** Dat is een bewuste
+-- afwijking van "elke lengte" uit QS8-227 en ze staat met reden in
+-- `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md` §7. De korte versie:
+-- `annuleer_adempauze()` weigert alles waarvan `starts_cycle <= vandaag`, dus
+-- een pauze die in het verleden begint is **nooit meer te annuleren**. Zonder
+-- bovengrens is één verkeerd getypt jaartal een doel dat permanent op pauze
+-- staat, zonder weg terug in de app. Gemeten in dezelfde review: `9999-12-27`
+-- werd geaccepteerd, 415853 weken.
+--
 -- ---------------------------------------------------------------------------
 -- Idempotent: een `drop constraint if exists` en `create or replace` op één
 -- functie. De handtekening verandert niet.
@@ -59,6 +81,8 @@ declare
   v_id         uuid;
   v_week       record;
   v_hersteld   integer := 0;
+  -- Hoogstens een jaar. Zie de kop.
+  c_max_cycli  constant integer := 52;
 begin
   -- ⚠️ De NULL-controle staat vooraan en niet impliciet in een vergelijking.
   --    `x = auth.uid()` met een lege `auth.uid()` is geen bewering maar een
@@ -91,9 +115,8 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'omgekeerde_periode');
   end if;
 
-  -- ⚠️ **`te_lang` en `niet_vooraf` zijn hier weg — besluit van 30-08-2026,
-  --    QS8-227.** Er stond een grens van twee cycli en een eis dat een pauze
-  --    vóór de lopende cyclus aangekondigd werd. Die tweede was er tegen een
+  -- ⚠️ **`niet_vooraf` is hier weg — besluit van 30-08-2026, QS8-227.** Er stond
+  --    een eis dat een pauze vóór de lopende cyclus aangekondigd werd, tegen een
   --    zondagavondontsnapping: wie zijn week niet gaat halen, kondigt een pauze
   --    aan en de rollover schrijft `excused` in plaats van `missed`.
   --
@@ -102,6 +125,29 @@ begin
   --    `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md`; de korte versie is
   --    dat de reeks en het minpunt hiermee vrijwillig worden, en dat dat een
   --    keuze van de eigenaar is en geen omissie.
+  --
+  -- ⚠️ **`te_lang` bestaat nog, maar betekent iets anders.** De grens van twee
+  --    cycli is weg; er staat er een van een jaar voor in de plaats, en om een
+  --    andere reden. Zie hieronder.
+
+  -- ⚠️ **Een jaar, en dat is een bewuste afwijking van "elke lengte".** Niet
+  --    tegen misbruik — die deur staat met dit besluit open en dat is de keuze —
+  --    maar omdat een pauze die in het verleden begint volgens
+  --    `annuleer_adempauze()` nooit meer te annuleren is. Zonder plafond maakt
+  --    één verkeerd getypt jaartal het doel permanent onbruikbaar voor elke
+  --    volgende adempauze, want die overlapt er dan mee. Reden en afweging in
+  --    `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md` §7.
+  if p_ends_cycle > p_starts_cycle + (c_max_cycli - 1) * 7 then
+    return jsonb_build_object('ok', false, 'reason', 'te_lang');
+  end if;
+
+  -- ⚠️ **Het slot vóór de controle, en niet erna.** Zonder deze regel zijn de
+  --    `if exists` hieronder en de `insert` erop twee losse statements: twee
+  --    gelijktijdige aanroepen zien elkaars ongecommitte rij niet en leggen
+  --    allebei een adempauze neer. Gemeten met twee parallelle sessies (06-09).
+  --    Het slot hangt aan het doel, dus twee verschillende doelen wachten niet
+  --    op elkaar, en `xact` laat hem los bij commit én bij rollback.
+  perform pg_advisory_xact_lock(hashtextextended(p_goal_id::text, 0));
 
   -- Geen overlap met een adempauze die er al ligt op ditzelfde doel.
   if exists (
@@ -134,15 +180,27 @@ begin
   --    wéékdoel, dus twee weekdoelen in dezelfde cyclus dragen elk hun eigen
   --    minpunt. Eén vaste `+1` zou daar te weinig of te veel terugdraaien.
   --
-  -- ⚠️ **Alleen `missed` en niet elke afgesloten status.** `cancelled` heeft de
-  --    gebruiker zelf gekozen en `carried` staat als nieuwe rij in een latere
-  --    cyclus; die twee zijn geen gemiste week en hebben geen minpunt om terug
-  --    te draaien.
+  -- ⚠️ **`missed` én `carried`, en die tweede stond hier eerst niet.** De
+  --    motivering luidde dat `carried` "als nieuwe rij in een latere cyclus
+  --    staat en geen minpunt heeft om terug te draaien". Dat is nagemeten en het
+  --    klopt niet: `schuif_weekdoel_door()` weigert alles wat niet `missed` is
+  --    en zet díe rij dan op `carried`, zónder het al geboekte `cycle_missed`
+  --    aan te raken. Een `carried`-rij ís dus een gemiste week mét minpunt, en
+  --    `herbereken_reeks()` telt hem ook als gemist
+  --    (`w.status in ('missed', 'carried')`).
+  --
+  --    Zonder deze status deed een adempauze over een doorgeschoven week niets
+  --    en zei het scherm toch dat het gelukt was. Gevonden in de
+  --    security-review van 06-09-2026.
+  --
+  -- ⚠️ **`cancelled` blijft er wél buiten.** Die heeft de gebruiker zelf
+  --    ingetrokken; er staat geen minpunt onder en er valt niets vrij te
+  --    stellen.
   for v_week in
     select w.id, w.points_miss
       from weekly_goals w
      where w.goal_id = p_goal_id
-       and w.status = 'missed'
+       and w.status in ('missed', 'carried')
        and w.cycle_start_date >= p_starts_cycle
        and w.cycle_start_date <= p_ends_cycle
   loop
@@ -158,6 +216,12 @@ begin
      where pl.ref_type = 'weekly_goal'
        and pl.ref_id = v_week.id
        and pl.reason = 'cycle_missed'
+       -- ⚠️ De som telt op wat er voor **deze** gebruiker geboekt is, terwijl de
+       --    correctie op `v_uid` landt. Vandaag onbereikbaar — `weekly_goals`
+       --    heeft geen eigen `user_id` en eigendom van een doel is niet over te
+       --    dragen — maar zonder deze regel is die twee-eenheid een aanname en
+       --    geen voorwaarde. Uit de security-review van 06-09-2026.
+       and pl.user_id = v_uid
     having sum(pl.delta) is not null and sum(pl.delta) <> 0;
 
     v_hersteld := v_hersteld + 1;

@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { addDays, localDateIn, now, type IsoDate, type TimeZone } from '../../src/shared/time';
+import {
+  addDays,
+  localDateIn,
+  now,
+  userCycle,
+  type IsoDate,
+  type TimeZone,
+} from '../../src/shared/time';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
@@ -784,6 +791,149 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
 
         const na = await adminDb().from('goals').select('id').eq('id', w.eigenWisGoalId);
         expect(na.data ?? [], 'en dan is het ook echt weg').toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  // ---------------------------------------------------------------------------
+  describe('plan_adempauze — je vrijstelt de gemiste week van een ander niet', () => {
+    /**
+     * ⚠️ **De negende, en hij kwam uit `definers:controle` en niet uit een
+     *    sweep.** QS8-227 gaf `plan_adempauze()` een schrijfactie op
+     *    `weekly_goals` én `points_ledger` die hij daarvoor niet had: een
+     *    adempauze over een al afgesloten week zet die op `excused` en boekt het
+     *    minpunt terug. Daarmee stapte de functie de klasse van dit bestand in.
+     *
+     * ⚠️ **Een eigen doel en een eigen weekdoel, en dat is de les van QS8-283.**
+     *    `epic8.test.ts` heeft al een test die `not_owner` verwacht, maar die
+     *    toetst een fóutreden: haal de poort weg en de weekdagtoets erachter
+     *    geeft `geen_cyclusstart` op de datum die daar gebruikt wordt, en dan is
+     *    de test rood zonder dat er iets over het effect gezegd is. Hier valt de
+     *    cyclusstart met opzet samen met de gemiste week, zodat er ná de poort
+     *    niets meer tussen zit.
+     */
+    let doelId = '';
+    let weekId = '';
+
+    beforeAll(async () => {
+      const admin = adminDb();
+      const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate;
+
+      const groep = await admin
+        .from('goal_group_links')
+        .select('group_id')
+        .eq('goal_id', w.groepsGoalId)
+        .single();
+      if (groep.error) throw new Error(`groep: ${groep.error.message}`);
+
+      const doel = await admin
+        .from('goals')
+        .insert({
+          owner_id: w.eigenaar.id,
+          title: 'DEFPAUZE',
+          target_date: addDays(cyclus, 120),
+        })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+      doelId = doel.data.id as string;
+
+      const koppel = await admin
+        .from('goal_group_links')
+        .insert({ goal_id: doelId, group_id: groep.data.group_id });
+      if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
+
+      const week = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: doelId,
+          title: 'DEFPAUZE-GEMIST',
+          points_ceiling: 2,
+          points_floor: 1,
+          points_miss: -1,
+          cycle_start_date: cyclus,
+          cycle_index: 1,
+          status: 'missed',
+        })
+        .select('id, beoordeelbaar')
+        .single();
+      if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+      // Zonder beoordelaar slaat de trigger van QS8-110 het minpunt over, en dan
+      // valt er niets te stelen.
+      expect(week.data.beoordeelbaar).toBe(true);
+      weekId = week.data.id as string;
+
+      const punt = await admin.from('points_ledger').insert({
+        user_id: w.eigenaar.id,
+        goal_id: doelId,
+        delta: -1,
+        reason: 'cycle_missed',
+        ref_type: 'weekly_goal',
+        ref_id: weekId,
+      });
+      if (punt.error) throw new Error(`minpunt: ${punt.error.message}`);
+    }, SETUP_TIMEOUT);
+
+    it(
+      'een groepsgenoot krijgt not_owner en de gemiste week blijft gemist',
+      async () => {
+        const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate;
+
+        const poging = await w.groepsgenoot.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclus,
+          p_ends_cycle: cyclus,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        // ⚠️ **Het effect wordt vóór de reden getoetst, en dat is de hele les van
+        //    QS8-283.** Zou `reason` eerst staan, dan valt deze test bij een
+        //    weggehaalde poort om op een veranderde fóutreden en zegt hij nog
+        //    steeds niets over wat er met de week van een ander gebeurde.
+        const admin = adminDb();
+
+        const na = await admin.from('weekly_goals').select('status').eq('id', weekId).single();
+        expect(
+          na.data?.status,
+          'de week van een ander is vrijgesteld door iemand die er niets over te zeggen heeft',
+        ).toBe('missed');
+
+        const rijen = await admin.from('points_ledger').select('delta').eq('ref_id', weekId);
+        expect(
+          (rijen.data ?? []).reduce((som, r) => som + (r.delta as number), 0),
+          'het minpunt van een ander is teruggedraaid',
+        ).toBe(-1);
+
+        const pauzes = await admin.from('breathers').select('id').eq('goal_id', doelId);
+        expect(pauzes.data ?? [], 'er staat een adempauze op het doel van een ander').toHaveLength(
+          0,
+        );
+
+        expect(uitslag(poging.data).reason).toBe('not_owner');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar plant hem wél, en dan gaat de week op excused',
+      async () => {
+        // ⚠️ De must-allow. Zonder deze helft bewijst het geval hierboven ook een
+        //    functie die het voor niemand doet.
+        const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate;
+
+        const poging = await w.eigenaar.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclus,
+          p_ends_cycle: cyclus,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen adempauze plannen hoort te lukken, kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        const na = await adminDb().from('weekly_goals').select('status').eq('id', weekId).single();
+        expect(na.data?.status).toBe('excused');
       },
       TEST_TIMEOUT,
     );
