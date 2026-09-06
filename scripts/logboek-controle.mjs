@@ -61,6 +61,25 @@ export const PERSOONSVORMEN = [
 ];
 
 /**
+ * Waar het haakjespaar dat op `open` begint, sluit — de index ná het sluithaakje.
+ * `null` als het niet sluit.
+ *
+ * ⚠️ Staat los omdat de teller anders vier niveaus diep zit (coderegel 15,
+ *    QS8-291).
+ */
+function haakjesEinde(bron, open) {
+  let diepte = 0;
+  for (let i = open; i < bron.length; i += 1) {
+    if (bron[i] === '(') diepte += 1;
+    else if (bron[i] === ')') {
+      diepte -= 1;
+      if (diepte === 0) return i + 1;
+    }
+  }
+  return null;
+}
+
+/**
  * Elke `console.*`-aanroep in een bestand, compleet — inclusief de argumenten die
  * over meerdere regels lopen.
  *
@@ -73,18 +92,7 @@ export function consoleAanroepen(bron) {
 
   let m;
   while ((m = start.exec(bron)) !== null) {
-    let diepte = 0;
-    let eind = m.end ?? start.lastIndex;
-    for (let i = start.lastIndex - 1; i < bron.length; i += 1) {
-      if (bron[i] === '(') diepte += 1;
-      else if (bron[i] === ')') {
-        diepte -= 1;
-        if (diepte === 0) {
-          eind = i + 1;
-          break;
-        }
-      }
-    }
+    const eind = haakjesEinde(bron, start.lastIndex - 1) ?? m.end ?? start.lastIndex;
     uit.push({
       regel: bron.slice(0, m.index).split('\n').length,
       tekst: bron.slice(m.index, eind),
