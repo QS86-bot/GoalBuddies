@@ -21,6 +21,7 @@ import {
   fetchCommitmentSpoor,
   fetchMogelijkeBegunstigden,
   isOpenstaand,
+  magStrafVastleggen,
   spoorLabels,
   tekstVoor,
   trekIn,
@@ -323,6 +324,7 @@ export default function DoelDetail() {
               goalId={d.id}
               groepen={groepen}
               bestaand={commitments.find((c) => c.type === 'penalty')}
+              streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               onKlaar={herlaad}
             />
 
@@ -822,11 +824,13 @@ function Straf({
   goalId,
   groepen,
   bestaand,
+  streefdatumVoorbij,
   onKlaar,
 }: {
   readonly goalId: string;
   readonly groepen: readonly Groep[];
   readonly bestaand: Commitment | undefined;
+  readonly streefdatumVoorbij: boolean;
   readonly onKlaar: () => void;
 }) {
   const router = useRouter();
@@ -872,6 +876,21 @@ function Straf({
           </Button>
         ) : null}
         <Spoor commitmentId={bestaand.id} />
+      </Card>
+    );
+  }
+
+  // ⚠️ **Dezelfde reden als bij de intrekknop hierboven: geen knop tonen die de
+  //    server afwijst.** Sinds migratie 0170 weigert `commitments_insert` een
+  //    straf op een doel waarvan de streefdatum al voorbij is — die zou bij de
+  //    eerstvolgende rollover meteen verschuldigd zijn, en dat was de
+  //    spamvector van QS8-293. Uitleg én een uitweg: de streefdatum verzetten
+  //    staat een kaart hoger op ditzelfde scherm.
+  if (streefdatumVoorbij) {
+    return (
+      <Card nested>
+        <Subheading>{t('straf.kop')}</Subheading>
+        <Body muted>{t('straf.datum_voorbij')}</Body>
       </Card>
     );
   }
