@@ -143,27 +143,25 @@ export type TipSet = (typeof TIP_SETS)[number];
  *    `CATEGORIEEN` en wordt rood zodra er een gebied bijkomt dat hier niet in
  *    staat.
  *
- * ⚠️ `learning` en `skills` krijgen de studieset en niet de werkset. Ze staan in
- *    `CATEGORIE_GROEPEN` wél bij "werk en groei" — dat is de indeling voor kleur
- *    en voor de keuzelijst. Voor een tip telt iets anders: die gaat over wát je
- *    deze week deed, en leren lijkt in dat opzicht op studeren.
+ * ⚠️ **De tipsets volgen de families niet, en dat is met opzet.** `skills` krijgt
+ *    de studieset terwijl het gebied sinds A58 bij Ambitie hoort, en `building`
+ *    krijgt de werkset. De families gaan over kleur en over de keuzelijst; een
+ *    tip gaat over wát je deze week deed, en vaardigheden oefenen lijkt in dat
+ *    opzicht op studeren. Twee indelingen met elk hun eigen reden.
  */
 export const TIPSET_PER_CATEGORIE: Readonly<Record<string, TipSet>> = {
   fitness: 'lichaam',
   nutrition: 'lichaam',
   self_care: 'lichaam',
   mindfulness: 'lichaam',
-  connection: 'mensen',
-  helping: 'mensen',
   creativity: 'mensen',
   productivity: 'werk',
-  organization: 'werk',
-  resilience: 'werk',
-  learning: 'study',
-  skills: 'study',
+  connection: 'mensen',
+  other: 'other',
   business: 'business',
   study: 'study',
-  other: 'other',
+  building: 'werk',
+  skills: 'study',
 };
 
 /**

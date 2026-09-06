@@ -108,7 +108,8 @@ export function niveauUitDagen(
 }
 
 /**
- * De vijftien gebieden waar een doel over kan gaan — QS8-224, migratie 0142.
+ * De twaalf gebieden waar een doel over kan gaan — QS8-224, migratie 0142, en
+ * teruggebracht van vijftien naar twaalf door besluit A58 (migratie 0156).
  *
  * ⚠️ **De lijst zelf staat sinds QS8-231 in `shared/categorieen`**, want een
  *    groep deelt hem sindsdien (0144) en `modules/buddies` kan hem hier niet
@@ -125,22 +126,19 @@ export function categorieLabels(): Readonly<Record<Categorie, string>> {
     nutrition: t('categorie.nutrition'),
     self_care: t('categorie.self_care'),
     mindfulness: t('categorie.mindfulness'),
-    connection: t('categorie.connection'),
-    helping: t('categorie.helping'),
     creativity: t('categorie.creativity'),
     productivity: t('categorie.productivity'),
-    organization: t('categorie.organization'),
-    learning: t('categorie.learning'),
-    skills: t('categorie.skills'),
-    resilience: t('categorie.resilience'),
+    connection: t('categorie.connection'),
+    other: t('categorie.other'),
     business: t('categorie.business'),
     study: t('categorie.study'),
-    other: t('categorie.other'),
+    building: t('categorie.building'),
+    skills: t('categorie.skills'),
   };
 }
 
 /**
- * De vier groepen waarin die vijftien uiteenvallen.
+ * De drie families waarin die twaalf uiteenvallen.
  *
  * ⚠️ **Dit bestaat omdat vijftien knoppen naast elkaar geen keuze is maar een
  *    muur** — precies het bezwaar uit QS8-224 punt 4. `Choice` is de vorm voor
@@ -149,18 +147,22 @@ export function categorieLabels(): Readonly<Record<Categorie, string>> {
  * ⚠️ **De eerste drie groepen zijn de kleurfamilies uit besluit A55** (QS8-255),
  *    en dat is met opzet dezelfde indeling: kleur codeert de familie, het
  *    pictogram het gebied. Zou de keuzelijst anders groeperen dan de kleur, dan
- *    ziet een gebruiker twee indelingen van dezelfde vijftien woorden.
+ *    ziet een gebruiker twee indelingen van dezelfde twaalf woorden.
  *
- * ⚠️ **De vierde groep heeft geen kleur, en dat is een open punt van A55 en niet
- *    van dit bestand.** Besluit A55 meet drie kleuren voor twaalf gebieden; wat
- *    `business`, `study` en `other` krijgen, is daar nooit beantwoord. Ze staan
- *    hier daarom als eigen groep en niet weggemoffeld bij een van de drie.
+ * ⚠️ **Drie families van vier sinds besluit A58 (04-09-2026), en er is geen
+ *    restgroep meer.** Er stonden er vier, en de vierde — `business`, `study`,
+ *    `other` — was geen familie maar wat er overbleef nadat A55 drie kleuren had
+ *    gevonden. Quinten vroeg waar die vier vandaan kwamen, en dat bleek het
+ *    antwoord: ze zijn nooit ontworpen.
+ *
+ * ⚠️ **Elke groep heeft er nu precies vier**, en dat is geen toeval maar de reden
+ *    dat deze groepen bestaan: twee tot zeven opties is de maat waarop een mens
+ *    nog kiest.
  */
 export const CATEGORIE_GROEPEN = [
-  { sleutel: 'lichaam', leden: ['fitness', 'nutrition', 'self_care', 'mindfulness'] },
-  { sleutel: 'mensen', leden: ['connection', 'helping', 'creativity'] },
-  { sleutel: 'werk', leden: ['productivity', 'organization', 'learning', 'skills', 'resilience'] },
-  { sleutel: 'rest', leden: ['business', 'study', 'other'] },
+  { sleutel: 'gezondheid', leden: ['fitness', 'nutrition', 'self_care', 'mindfulness'] },
+  { sleutel: 'softskills', leden: ['creativity', 'productivity', 'connection', 'other'] },
+  { sleutel: 'ambitie', leden: ['business', 'study', 'building', 'skills'] },
 ] as const satisfies readonly {
   readonly sleutel: string;
   readonly leden: readonly Categorie[];
@@ -171,17 +173,17 @@ export type CategorieGroep = (typeof CATEGORIE_GROEPEN)[number]['sleutel'];
 /** Een functie, om dezelfde reden als `categorieLabels()`. */
 export function groepLabels(): Readonly<Record<CategorieGroep, string>> {
   return {
-    lichaam: t('categoriegroep.lichaam'),
-    mensen: t('categoriegroep.mensen'),
-    werk: t('categoriegroep.werk'),
-    rest: t('categoriegroep.rest'),
+    gezondheid: t('categoriegroep.gezondheid'),
+    softskills: t('categoriegroep.softskills'),
+    ambitie: t('categoriegroep.ambitie'),
   };
 }
 
 /**
  * In welke groep dit gebied valt.
  *
- * ⚠️ Geeft `null` bij een onbekende waarde in plaats van een terugval op `rest`.
+ * ⚠️ Geeft `null` bij een onbekende waarde in plaats van een terugval op een
+ *    willekeurige groep.
  *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
  *    er iets in hebben staan wat deze build niet kent, en dan is "ik weet het
  *    niet" het eerlijke antwoord. Een stille terugval zou zo'n doel in een
@@ -193,7 +195,7 @@ export function categorieGroep(categorie: string): CategorieGroep | null {
 }
 
 /**
- * De vijftien gebieden als vier groepen met vertaalde labels, klaar voor
+ * De twaalf gebieden als drie groepen met vertaalde labels, klaar voor
  * `GegroepeerdeKeuze`.
  *
  * ⚠️ **Hier en niet in elk scherm apart.** `/doel/nieuw` en `/doel/bewerk` bouwen

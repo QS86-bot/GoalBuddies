@@ -22,23 +22,35 @@
  *
  * ⚠️ De volgorde is die van `CATEGORIE_GROEPEN` en niet alfabetisch: dit is de
  *    volgorde waarin een gebruiker ze te zien krijgt.
+ *
+ * ⚠️ **Twaalf en niet meer vijftien — besluit A58, 04-09-2026.** Er stonden er
+ *    vijftien in vier groepen, en die vierde groep was geen familie maar een
+ *    restje: wat er overbleef nadat A55 drie kleuren had gevonden. Nu zijn het
+ *    drie families van vier, en `other` is een lid van Softskills in plaats van
+ *    de kop van een restgroep.
+ *
+ *    Vervallen: `helping`, `learning`, `organization` en `resilience`. Nieuw:
+ *    `building`. Dat is een gegevenswijziging en geen hernoeming — zie migratie
+ *    0156 en `docs/decisions/2026-09-04-drie-families-en-de-kleuren-die-niet-kunnen.md`.
  */
 export const CATEGORIEEN = [
+  // Gezondheid
   'fitness',
   'nutrition',
   'self_care',
   'mindfulness',
-  'connection',
-  'helping',
+
+  // Softskills
   'creativity',
   'productivity',
-  'organization',
-  'learning',
-  'skills',
-  'resilience',
+  'connection',
+  'other',
+
+  // Ambitie
   'business',
   'study',
-  'other',
+  'building',
+  'skills',
 ] as const;
 
 export type Categorie = (typeof CATEGORIEEN)[number];

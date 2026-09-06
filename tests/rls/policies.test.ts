@@ -3062,18 +3062,15 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         //    zijn twee lege lijsten gelijk terwijl het slot weg is.
         expect(inDeDatabase).toEqual(
           [
+            'building',
             'business',
             'connection',
             'creativity',
             'fitness',
-            'helping',
-            'learning',
             'mindfulness',
             'nutrition',
-            'organization',
             'other',
             'productivity',
-            'resilience',
             'self_care',
             'skills',
             'study',
