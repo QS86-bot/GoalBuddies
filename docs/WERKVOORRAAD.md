@@ -13,7 +13,8 @@ productie in twee rondes)
 
 ⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
-uitvoerrecht voor `authenticated` kwijtraakten) staan er nog niet op. `0164` moet
+uitvoerrecht voor `authenticated` kwijtraakten) en `0169` (het oppervlak van de
+persoon-getuige) staan er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
 dit document.
@@ -61,12 +62,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **1042 geslaagd, 1 overgeslagen** over 83 bestanden (06-09, na QS8-176; daarvóór QS8-291 en het samengaan met main; daarvóór QS8-228, QS8-289, QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
+   **1061 geslaagd, 1 overgeslagen** over 84 bestanden (06-09, na QS8-293; daarvóór QS8-294, QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3463 geslaagd en 1 overgeslagen** over
-   248 bestanden.
+   suite geeft met de stack **3496 geslaagd en 1 overgeslagen** over
+   250 bestanden.
    ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
    geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
    legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
@@ -147,7 +148,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0172` staan in de map: **172 bestanden**,
+Migraties `0001` t/m `0172` staan in de map: **175 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 ⚠️ **Er ontbreken nummers: 0169, 0170, 0171.** Zie `migraties:controle`.
 <!-- STAND:EINDE -->
@@ -787,7 +788,7 @@ bestanden, niet tegen dit document.
   **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
   tegendeel schrijft.**
 
-⚠️ **Twee staan er nog, maar smaller dan de regel suggereerde:**
+⚠️ **Eén staat er nog, en smaller dan de regel suggereerde:**
 
 - **Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
   doet `count(*)`. Dat is kostenmisbruik op een gratis tier: één job met een
@@ -795,14 +796,24 @@ bestanden, niet tegen dit document.
   📏 De tekstkolommen daarentegen zijn wél begrensd sinds QS8-118: `commitments.body`,
   `week_review_replies.body`, `milestone_tips.body` en `deadline_requests.reason`
   dragen allemaal een `char_length`-CHECK. Twee `text`-kolommen hebben er geen —
-  `ai_jobs.error` (door de server geschreven) en **`push_tokens.token`, die een
-  client wél zelf schrijft**. Die laatste is de enige die er nog toe doet.
-- **Van de vijf "onbereikbare features" zijn er vier bereikbaar geworden.**
+  `ai_jobs.error` (door de server geschreven) en **`push_tokens.token`**. ⚠️ Dat laatste heb ik
+  eerst verkeerd samengevat als *"een client schrijft hem zelf"*; dat klopt niet
+  — `authenticated` heeft geen INSERT of UPDATE op die tabel, en de enige
+  schrijver is `registreer_push_token()`. Wat de client wél doet is de wáárde
+  meegeven, en dáár ontbreekt de bovengrens. Opgepakt als **QS8-297**.
+- **Van de vijf "onbereikbare features" zijn ze inmiddels alle vijf beantwoord.**
   📏 Gemeten: een doel bewerken kan via `app/doel/bewerk/[id].tsx`, een mijlpaal
   via `/doel/weekdoelen/[id]?mijlpaal=`, ledenbeheer heeft `app/groep/leden` en
   `app/groep/beheer`, en `commitment_events` wordt gelezen in `app/doel/[id].tsx`.
-  Wat er overblijft is **`ai_kosten_per_week()`, dat buiten het register van
-  `keten:controle` geen enkele aanroeper heeft.**
+  ⚠️ **En de vijfde was helemaal geen bevinding — die correctie is van 06-09.**
+  Ik schreef hier eerst dat `ai_kosten_per_week()` overbleef omdat hij geen
+  aanroeper heeft. 📏 Nagemeten: hij bestáát wél (`ai_kosten_per_week(p_weken
+  integer default 8)`), en hij is `service_role=true`, `authenticated=false`.
+  Dat is geen dode code maar een **ops-functie**, en `keten:controle` draagt de
+  reden woordelijk: *"wat de Doelcoach kost, over álle gebruikers samen — bewust
+  niet voor `authenticated`: het totaal verraadt hoeveel anderen de coach
+  gebruiken."* Een functie met een register-verdict is beantwoord, niet
+  vergeten.
 
 ⚠️ **De les die blijft.** Deze vijf regels zijn niet verouderd doordat iemand
 slordig was, maar doordat een reparatie werd geland zonder dat dit blok

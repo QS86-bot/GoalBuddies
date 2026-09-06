@@ -10,16 +10,28 @@
 > dan de drie van 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna
 > die van 02-09.
 >
-> **06-09, punt I: ik heb een issue gebouwd dat de andere sessie al gebouwd
-> hád, en drie signalen wezen dat aan voordat ik begon.** QS8-287 stond op *In
+> **06-09, punt 0 — doe dit vóór alles: `npm run claim -- <branchnaam van
+> Linear>`.** Dat fetcht, kijkt of het issuenummer al ergens op de remote staat,
+> en zet anders een lege claim-commit neer. Vindt hij een botsing, bouw dat issue
+> dan niet. Sinds QS8-294, en de aanleiding staat in punt I hieronder.
+>
+> ⚠️ **Het issue op In Progress zetten is géén claim gebleken** — dat is
+> geprobeerd en het hielp niet. Doe het wel, maar vertrouw er niet op.
+>
+> **06-09, punt I: ik heb drie keer een issue gebouwd dat de andere sessie al
+> gebouwd hád** (QS8-287, QS8-286, QS8-214), **en bij de laatste wezen alle
+> signalen die ik had het aan voordat ik begon.** QS8-287 stond op *In
 > Progress*, er lag een branch mét migratie 0165, en er lag een PR. Ik zag PR
 > #224 pas toen mijn eigen werk al af was — en las hem toen als *mijn* PR,
 > omdat het issuenummer klopte. Het was een ándere branch met een ándere 0165.
-> ⚠️ **De rem die werkt is niet "kijk of het issue op Backlog staat", maar
-> `git log origin/main` én `gh pr list` op het issuenummer vlak voordat je de
-> eerste regel schrijft.** Punt I van 05-09 zei dit al voor de status; dit is
-> dezelfde les één stap verder: **een PR met jouw issuenummer erin is niet
-> automatisch jouw PR.** Kijk naar de branchnaam.
+> ⚠️ **De rem die werkt is niet "kijk of het issue op Backlog staat" en ook niet
+> "zet hem op In Progress" — het is de claim uit punt 0.** Punt I van 05-09 zei
+> dit al voor de status; dit is dezelfde les twee stappen verder. Twee dingen die
+> daarbij horen: **een PR met jouw issuenummer erin is niet automatisch jouw PR**
+> (kijk naar de branchnaam — bij QS8-287 stonden er twee slugs voor één issue),
+> en **een botsing is geen reden om je werk weg te gooien**: kijk wat er in de
+> ander zijn versie ontbreekt en maak daar een vervolgissue van. Zo zijn QS8-290
+> en de opmerking bij QS8-214 ontstaan.
 >
 > ⚠️ Wat daar wél uit kwam en de moeite waard was: een tweede review op hún
 > werk. #224 loste het gat correct op en liet op drie plekken de oude

@@ -2538,6 +2538,18 @@ export type Database = {
           user_id: string
         }[]
       }
+      getuigenissen: {
+        Args: never
+        Returns: {
+          body: string
+          confirmed_at: string
+          created_at: string
+          eigenaar_naam: string
+          id: string
+          status: string
+          type: string
+        }[]
+      }
       groep_teller: { Args: { p_group_id: string }; Returns: Json }
       groepsdatum: { Args: { gid: string }; Returns: string }
       lidmaatschapsverzoeken_over: { Args: never; Returns: number }

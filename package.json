@@ -10,6 +10,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "build": "expo export --platform web",
+    "claim": "node scripts/claim.mjs",
     "stand": "node scripts/stand.mjs",
     "stand:controle": "node scripts/stand.mjs --controle",
     "poort": "node scripts/poort.mjs",
