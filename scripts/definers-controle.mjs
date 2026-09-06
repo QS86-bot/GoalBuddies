@@ -84,11 +84,31 @@ const REGISTER = new Map([
   ['zet_streefdatum', 'Eigenaarspoort. Bewaakt door `definerpoorten.test.ts`. ⚠️ De zwaarste van de reeks: de directe route om A7 heen.'],
   ['schuif_weekdoel_door', 'Eigenaarspoort. Bewaakt door `definerpoorten.test.ts`.'],
   ['verwijder_weekdoel', 'Eigenaarspoort. Bewaakt door `definerpoorten.test.ts` — de achtste, gevonden bij de review op ronde 5.'],
-  ['rond_doel_af', 'Eigenaarspoort. Gemeten: poort weg → `epic9.test.ts` wordt rood.'],
+  [
+    'rond_doel_af',
+    'Eigenaarspoort. ⚠️ Hier stond "Gemeten: poort weg → `epic9.test.ts` wordt rood", ' +
+      'en dat rood was een veranderde fóutreden: die fixture heeft openstaande mijlpalen, ' +
+      'dus `open_milestones` ving de mutatie af en de aanroeper kwam nooit bij de `update`. ' +
+      'Nagemeten met een doel zónder open mijlpalen: de poort eruit en een vreemde zet het ' +
+      'doel van een ander op `completed`. Sinds QS8-283 bewaakt door ' +
+      '`definerpoorten.test.ts`, met de groepsgenoot als sterke acteur op een gekoppeld doel.',
+  ],
   ['sluit_weekdoel_af', 'Eigenaarspoort. Gemeten: poort weg → `weekpassen.test.ts` wordt rood.'],
   ['trek_goedkeuring_in', 'Moet de goedkeurder zijn én actief lid. Gemeten: poort weg → `besluiten.test.ts` wordt rood.'],
   ['beslis_deadline_verzoek', 'Niet de aanvrager zelf én actief lid. Gemeten: poort weg → `besluiten.test.ts` wordt rood.'],
-  ['verwijder_doel', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
+  [
+    'verwijder_doel',
+    'Eigenaarspoort. ⚠️ Zelfde geval als `rond_doel_af`: het ene rode test was ' +
+      '`expected \'gedeeld_met_groep\' to be \'not_owner\'` — een foutreden, geen effect. ' +
+      'Nagemeten met een vers, ongekoppeld doel: de poort eruit en het doel van een ander is weg. ' +
+      'Sinds QS8-283 bewaakt door `definerpoorten.test.ts`. ' +
+      '⚠️ Twee buddy-predicaten, en ze gedragen zich hier verschillend — noem ze dus bij naam. ' +
+      '`shares_group_with_goal()` is niet te raken: hij leest alleen `goal_group_links`, en een doel ' +
+      'met een linkrij weigert deze functie al met `gedeeld_met_groep`, een éérdere poort. ' +
+      '`shares_group_with_user()` is wél te raken — die leest alleen `group_members` — en wordt ' +
+      'gevangen (gemeten: die verruiming maakt de test rood). ' +
+      'De eerste vorm wordt toetsbaar zodra `gedeeld_met_groep` verdwijnt of naar achteren schuift.',
+  ],
   ['herorden_mijlpalen', 'Toetst `g.owner_id = v_uid` en pint `m.goal_id`. Gemeten: poort weg → één rode test.'],
   ['dien_opnieuw_in', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
   [
