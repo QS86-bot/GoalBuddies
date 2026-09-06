@@ -60,6 +60,14 @@ describe('schrijftNaarKerntabel', () => {
     ['alleen lezen', 'select * from goals where id = 1'],
     ['een andere tabel', 'insert into chat_messages (body) values ($$x$$)'],
     ['een verwijzing in een join', 'select 1 from completions c join goals g on g.id = c.id'],
+    // ⚠️ De vier hieronder horen bij de tabellen die er op 06-09-2026 zijn
+    //    bijgekomen (QS8-286). Elk van de vier begint met de naam van een
+    //    kerntabel en is er géén — precies de vorm waar `(?![\w-])` voor staat,
+    //    en de vorm die een verbrede lijst het makkelijkst stukmaakt.
+    ['een groepstabel die er alleen op lijkt', 'insert into group_events (group_id) values (1)'],
+    ['een ledentabel met een langere naam', 'update group_member_requests set status = $$x$$'],
+    ['een badgetabel met hetzelfde voorvoegsel', 'insert into badge_definities (code) values (1)'],
+    ['een verzoektabel met een langere naam', 'delete from deadline_requests_archief where id = 1'],
   ])('laat %s met rust', (_naam, bron) => {
     expect(schrijftNaarKerntabel(bron)).toBe(false);
   });
@@ -84,9 +92,39 @@ describe('schrijftNaarKerntabel', () => {
     ).toBe(true);
   });
 
-  it('kent alle vijf de kerntabellen', () => {
+  it('kent elke tabel uit de lijst', () => {
     for (const tabel of KERNTABELLEN) {
       expect(schrijftNaarKerntabel(`insert into ${tabel} (id) values (1)`), tabel).toBe(true);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ **De lijst zelf was de aanname, en dat is de vondst van QS8-286.**
+   *    `KERNTABELLEN` telde vijf tabellen die allemaal over een dóél gingen.
+   *    Daarbuiten schreven veertien definer-RPC's aan `groups`,
+   *    `group_members`, `deadline_requests`, `approval_withdrawals`,
+   *    `weekly_plan_steps` en `badges` — en die vielen daardoor buiten élk
+   *    rapport. Drie ervan bleken hun eigenaarspoort ongedekt te hebben.
+   *
+   *    Dat is de sweep-die-zich-voordoet-als-inventarisatie, één laag hoger: het
+   *    gereedschap dat de klasse telt trok zijn eigen grens, en niemand mat waar
+   *    die grens langs liep.
+   *
+   * ⚠️ **Deze test bewaakt niet dat de lijst compleet is** — dat kán een test
+   *    niet. Hij bewaakt dat de zes die het probleem waren er niet stilletjes
+   *    weer uit vallen. Wie er een weghaalt, haalt de bijbehorende functies uit
+   *    het register en dat is precies de beweging die dit issue was.
+   */
+  it('houdt de groepstabellen erin die QS8-286 heeft toegevoegd', () => {
+    for (const tabel of [
+      'groups',
+      'group_members',
+      'deadline_requests',
+      'approval_withdrawals',
+      'weekly_plan_steps',
+      'badges',
+    ]) {
+      expect(KERNTABELLEN, tabel).toContain(tabel);
     }
   });
 });
