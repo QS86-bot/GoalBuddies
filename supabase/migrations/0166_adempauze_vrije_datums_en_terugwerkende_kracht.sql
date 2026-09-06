@@ -1,4 +1,4 @@
--- 0165_adempauze_vrije_datums_en_terugwerkende_kracht.sql — de adempauze mag elke lengte hebben en ook achteraf (QS8-227)
+-- 0166_adempauze_vrije_datums_en_terugwerkende_kracht.sql — de adempauze mag elke lengte hebben en ook achteraf (QS8-227)
 --
 -- ROLLBACK-PAD:
 --   `alter table breathers add constraint breathers_hoogstens_twee_cycli

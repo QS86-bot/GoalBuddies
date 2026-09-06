@@ -17,7 +17,7 @@ import type { Resultaat } from '../../shared/api';
  * De langste adempauze die `plan_adempauze()` accepteert, in hele cycli.
  *
  * ⚠️ **Dit getal staat ook in de database**, als `c_max_cycli` in
- *    `supabase/migrations/0165_...sql`. Daar hoort het thuis — een grens die
+ *    `supabase/migrations/0166_...sql`. Daar hoort het thuis — een grens die
  *    alleen in de client staat, is geen grens. Deze kopie bestaat zodat het
  *    scherm hem kan tónen, en er staat een test op die de twee naast elkaar
  *    legt.

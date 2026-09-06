@@ -1,13 +1,13 @@
 # De adempauze wordt vrij, en wat dat kost
 
-**Datum:** 06-09-2026 · **Issue:** QS8-227 · **Migratie:** 0165
+**Datum:** 06-09-2026 · **Issue:** QS8-227 · **Migratie:** 0166
 **Besluit van:** Quinten, 30-08-2026 · **Advies daarvóór:** tegen
 
 ---
 
 ## 1. Wat er verandert
 
-| | Vóór 0165 | Sinds 0165 |
+| | Vóór 0166 | Sinds 0166 |
 |---|---|---|
 | Lengte | hoogstens twee cycli | elke lengte |
 | Wanneer | vanaf de vólgende cyclus | elke cyclus, ook een die al voorbij is |
@@ -183,7 +183,7 @@ al afvangt, bewaakt niets van wat hij belooft.
 
 ## 6. Rollback
 
-In de kop van `supabase/migrations/0165_...sql`. Terugzetten laat reeds
+In de kop van `supabase/migrations/0166_...sql`. Terugzetten laat reeds
 herstelde weken op `excused` staan mét hun correctierij — dat is geschiedenis en
 hoort niet teruggedraaid te worden (domeinregel 6).
 
@@ -270,7 +270,7 @@ voorwaarde.
 | Bevinding | Wat ermee gedaan is |
 |---|---|
 | De teller van De Ketting kan nu midden in een groepsperiode verspringen, doordat een pauze over de lópende week een lid per direct uit `in_aanmerking` haalt | Rij in `docs/ENGINEER-REVIEW.md`. Het is een aggregaat en geen rij over één persoon, maar CLAUDE.md noemt die teller wél bij de zes oppervlakken die dicht blijven — dus het hoort in de afweging en niet in een commit |
-| `points_ledger_dedupe_idx` (0001) is wat een gelijktijdige dubbele correctie tegenhoudt, en 0165 noemt hem nergens | Rij in `docs/ENGINEER-REVIEW.md`. Verdwijnt die index ooit bij een refactor van de dedupe-strategie, dan is dit stil een puntenautomaat |
+| `points_ledger_dedupe_idx` (0001) is wat een gelijktijdige dubbele correctie tegenhoudt, en 0166 noemt hem nergens | Rij in `docs/ENGINEER-REVIEW.md`. Verdwijnt die index ooit bij een refactor van de dedupe-strategie, dan is dit stil een puntenautomaat |
 
 ⚠️ **Punten verdienen kan niet.** De review probeerde het langs vijf routes —
 herhaald aanroepen, gelijktijdig, de week terugzetten op `missed`, een andere

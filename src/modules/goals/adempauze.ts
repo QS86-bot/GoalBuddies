@@ -101,7 +101,7 @@ function planMelding(reden: string | undefined): string {
   switch (reden) {
     // ⚠️ **`niet_vooraf` staat hier niet meer, en dat is met opzet geen "voor de
     //    zekerheid laten staan".** `plan_adempauze()` geeft die reden sinds
-    //    migratie 0165 niet meer terug; een tak die niet meer bereikt kan worden,
+    //    migratie 0166 niet meer terug; een tak die niet meer bereikt kan worden,
     //    doet net alsof de regel nog bestaat en houdt de bijbehorende zin in de
     //    vertaalbestanden in leven. Zie
     //    `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md`.
