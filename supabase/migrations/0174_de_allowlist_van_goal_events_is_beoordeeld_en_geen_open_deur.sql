@@ -1,4 +1,4 @@
--- 0172_de_allowlist_van_goal_events_is_beoordeeld_en_geen_open_deur.sql — `goal_events_bewaking()` meldt zodra de allowlist afwijkt van de vier die tegen domeinregel 7 gewogen zijn, én zodra hij de CHECK niet herkent (QS8-176).
+-- 0174_de_allowlist_van_goal_events_is_beoordeeld_en_geen_open_deur.sql — `goal_events_bewaking()` meldt zodra de allowlist afwijkt van de vier die tegen domeinregel 7 gewogen zijn, én zodra hij de CHECK niet herkent (QS8-176).
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.goal_events_bewaking();
