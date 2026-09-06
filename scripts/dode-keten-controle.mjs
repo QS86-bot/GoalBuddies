@@ -176,7 +176,10 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'Leest de CHECK-waarden uit het schema, zodat de app-lijsten ernaast gelegd ' +
     'kunnen worden (0082). Zonder deze functie vergelijkt zo\'n test zichzelf.',
   definer_bewaking:
-    'SECURITY DEFINER-functies zonder `set search_path` of open voor `anon` (0106).',
+    'SECURITY DEFINER-functies zonder `set search_path`, met `pg_temp` niet ' +
+    'achteraan, open voor `anon`, of open voor `authenticated` zonder de ' +
+    'aanroeper te toetsen (0106, 0114, 0156, 0167). De vijfde tak meldt een ' +
+    'uitzondering in het eigen register die geen bezwaar meer dekt.',
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',

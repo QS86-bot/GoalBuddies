@@ -285,11 +285,21 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
       //    veranderen. Sinds 0114 kijkt die tak naar élke functie in `public`;
       //    het `anon`-bezwaar blijft terecht alleen over definers gaan.
       //
-      //    `invite_preview` is de enige toegestane uitzondering (0019, 0080) en
-      //    staat met naam in `definer_bewaking()` zelf, niet in een document.
+      // ⚠️ **Sinds 0167 zijn het vijf takken en geen drie** (QS8-289). Erbij:
+      //    een definer die `authenticated` mag aanroepen zonder de aanroeper te
+      //    toetsen — de klasse van `verdien_badges()` — en een tak die meldt dat
+      //    een uitzondering in het register geen bezwaar meer dekt.
+      //
+      //    De uitzonderingen staan met naam, reden én datum in
+      //    `definer_bewaking()` zelf en niet in een document: `invite_preview`
+      //    (0019, 0080), en sinds 0167 `vereiste_goedkeuringen` en `groepsdatum`,
+      //    waar een revoke de app breekt en een toets binnenín nodig is.
+      //
       //    Met de hand rood gemaakt met een functie zonder pad en een functie
       //    met een grant aan anon — allebei melden, en sinds 0114 ook een
-      //    níet-definer zonder pad.
+      //    níet-definer zonder pad. De vierde en vijfde tak worden per vorm
+      //    gevoed in `definer-aanroepertoets.test.ts`; hier staat alleen de
+      //    klassevraag.
       const { data, error } = await adminDb().rpc('definer_bewaking');
 
       expect(error).toBeNull();
