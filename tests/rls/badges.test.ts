@@ -289,12 +289,19 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
    *    écht verdiend heeft. Wie alleen naar het effect keek, zag hier niets. Het
    *    lek zat in het getal.
    *
-   * ⚠️ **Waarom een revoke en niet een toets binnenin.** De enige echte
-   *    aanroeper is de trigger `badge_na_gebeurtenis`, en die roept de functie
-   *    aan met de **eigenaar van het doel** terwijl de handelende gebruiker een
-   *    goedkeurende buddy kan zijn. Een `auth.uid() = p_user_id`-toets zou die
-   *    legitieme weg breken en het orakel op je eigen id openlaten. Het
-   *    uitvoerrecht is de juiste plek.
+   * ⚠️ **Waarom een revoke en niet een toets binnenin.** De onderbouwing staat
+   *    in de kop van migratie 0165 en wordt hier bewust **niet herhaald** — hij
+   *    stond hier eerst wél, met de `milestones`-tak als voorbeeld, en dat
+   *    voorbeeld was fout: 📏 `milestones_write` is eigenaar-only, dus daar is
+   *    `auth.uid()` altijd gelijk aan `p_user_id`. Hetzelfde geldt voor de
+   *    takken `goals` en `completion_approvals`. De énige tak waar de handelende
+   *    gebruiker en het doelwit uiteenlopen is `user_streaks`, en díe is voor een
+   *    client niet rechtstreeks te bereiken.
+   *
+   *    ⚠️ Twee versies van dezelfde rechtvaardiging is precies hoe dit gat is
+   *    ontstaan: in 0113 stond een nette uitleg waarom de grant veilig was, die
+   *    uitleg was fout, en iedereen die hem later las werd erdoor gerustgesteld.
+   *    Eén plek, en hier een verwijzing.
    */
   it(
     'is voor een client niet meer aan te roepen — ook niet voor jezelf',
@@ -371,6 +378,14 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
       if (mijlpaal.error || mijlpaal.data === null) {
         throw new Error(`mijlpaal: ${mijlpaal.error?.message}`);
       }
+
+      // ⚠️ **Zonder deze regel leunt de test op de volgorde van de tests ervóór.**
+      //    Krijgt Alice ooit eerder een afgevinkte mijlpaal, dan is hij triviaal
+      //    groen en bewaakt hij niets meer.
+      expect(
+        await badgesVan(alice),
+        'Alice hoort deze badge nog niet te hebben — anders bewijst de regel hieronder niets',
+      ).not.toContain('first_milestone');
 
       const afvinken = await alice.db
         .from('milestones')

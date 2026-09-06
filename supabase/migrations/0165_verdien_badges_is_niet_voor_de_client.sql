@@ -78,11 +78,23 @@
 --    Een toets op gelijkheid zou die weg dichtzetten en het orakel alsnog
 --    openlaten voor je eigen id.
 --
---    ⚠️ Bij `completion_approvals` is dat níet het geval, en dat stond hier
---    eerst wél als voorbeeld: daar is de handelende gebruiker zélf het doelwit
---    (`first_review` gaat naar de goedkeurder). Gemeten en gecorrigeerd — een
---    rechtvaardiging met een verkeerd voorbeeld leest de volgende lezer als
---    onjuist.
+--    ⚠️ **`user_streaks` is de énige tak waar ze uiteenlopen**, en dat is
+--    nagemeten over alle vier de takken van `badge_na_gebeurtenis()`. Bij
+--    `completion_approvals` is de handelende gebruiker zélf het doelwit
+--    (`wie := new.approver_id`); bij `goals` is het `new.owner_id` onder een
+--    policy die eigenaar-only is; bij `milestones` is het de eigenaar van het
+--    doel, en `milestones_write` is óók eigenaar-only. Er stond hier eerst
+--    `completion_approvals` als voorbeeld en dat was dus juist het geval dat het
+--    tegendeel bewijst. Gemeten en gecorrigeerd — een rechtvaardiging met een
+--    verkeerd voorbeeld leest de volgende lezer als onjuist, en dan wantrouwt
+--    hij de hele redenering.
+--
+--    ⚠️ Precies die ene tak is voor een client **niet** rechtstreeks te
+--    bereiken: `user_streaks` wordt alleen door `herbereken_reeks()` geschreven,
+--    en die is definer. De andere drie tabellen hebben wél een schrijfpolicy voor
+--    `authenticated`. Dat is geen tegenargument maar de reden dat de toets een
+--    slechte grendel is: hij zou bijten waar het niet mag en zwijgen waar het wel
+--    moet.
 --
 -- ⚠️ **"De enige aanroeper" slaat op de code, niet op de rechten.** Mechanisch
 --    nagegaan over alle functies, views, policies en `supabase/functions/`: geen
@@ -91,9 +103,15 @@
 --
 -- ---------------------------------------------------------------------------
 -- Idempotent: een `revoke` op een recht dat er niet meer is, is een no-op.
+--
+-- ⚠️ **De volledige vorm van onwrikbare regel 4**, ook al deed 0113 regel 227
+--    `public` en `anon` al. Gemeten: die twee hadden het recht hier niet meer,
+--    dus dit is voor hen een no-op. De regel schrijft de drie samen voor zodat
+--    een latere audit niet hoeft na te zoeken of het weglaten opzet was — het
+--    weglaten van precies één rol ís de fout die dit issue veroorzaakte.
 -- ---------------------------------------------------------------------------
 
-revoke execute on function public.verdien_badges(uuid) from authenticated;
+revoke execute on function public.verdien_badges(uuid) from public, anon, authenticated;
 
 comment on function public.verdien_badges(uuid) is
   'Kent verdiende badges toe. ⚠️ Sinds 0165 NIET uitvoerbaar door authenticated: '
