@@ -62,10 +62,29 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
 **GitHub:** `QS86-bot/GoalBuddies`, hoofdbranch `main`.
 
 ### Versiebeheer
+- **⚠️ Claim eerst, bouw daarna — `npm run claim -- <branchnaam van Linear>`.**
+  Dat fetcht, kijkt of het issuenummer al ergens op de remote staat, en zet
+  anders een lege claim-commit neer. Sinds 06-09-2026 (QS8-294), en de aanleiding
+  is dat er **op één dag drie keer hetzelfde issue gebouwd is** — QS8-287,
+  QS8-286 en QS8-214, elke keer allebei helemaal af.
+
+  ⚠️ **Het issue op In Progress zetten is géén claim gebleken.** Bij QS8-214 is
+  dat gedáán, vóór de eerste regel code, en de andere sessie begon daarna
+  alsnog. Wat wél gelezen wordt is de remote branchlijst, want daar leunen
+  `migratie:nieuw` en `migraties:controle` toch al op. Zet het issue dus
+  *ook* op In Progress, maar vertrouw daar niet op.
+
+  ⚠️ **En een claim is een afspraak en geen slot.** Niets in git houdt een
+  tweede branch tegen; dit werkt alleen zolang beide kanten kijken. Vindt de
+  claim een botsing, dan bouw je dat issue niet — is er iets aan hún werk dat
+  ontbreekt, dan is dat een vervolgissue en geen tweede branch op hetzelfde
+  issue. Zo is QS8-290 ontstaan.
 - **Eén branch per Linear-issue, en dat is vastgelegd op 23-08-2026.** Gebruik de
   naam die Linear zelf voorstelt
   (`quintenstrijdonk/qs8-98-08-rls-testsuite-met-echte-jwts`) — dan koppelt Linear
-  de branch, de PR en het issue automatisch aan elkaar.
+  de branch, de PR en het issue automatisch aan elkaar. `npm run claim` neemt die
+  naam over als je hem meegeeft; met alleen een issuenummer maakt hij een
+  terugvalnaam en zegt hij erbij dat Linear dan niet automatisch koppelt.
 
   ⚠️ **Raakt je werk meerdere issues, dan zijn het meerdere branches en meerdere
   PR's.** Kan een issue niet los landen omdat het op een ander leunt, gebruik dan
