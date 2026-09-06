@@ -63,6 +63,10 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'register:controle',
   // ⚠️ Leest `pg_proc`, niet de migratiebestanden — zonder database meet hij niets.
   'definers:controle',
+  // ⚠️ Draait beide suites om te weten hoeveel tests er slagen (QS8-284). Zonder
+  //    de stack blijft de RLS-helft leeg, en dan telt hij iets anders dan hij
+  //    schrijft.
+  'tellers:controle',
 ]);
 
 /**

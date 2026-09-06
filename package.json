@@ -11,6 +11,8 @@
     "ios": "expo start --ios",
     "build": "expo export --platform web",
     "stand": "node scripts/stand.mjs",
+    "tellers": "node scripts/tellers.mjs",
+    "tellers:controle": "node scripts/tellers.mjs --controle",
     "stand:controle": "node scripts/stand.mjs --controle",
     "poort": "node scripts/poort.mjs",
     "migratie:nieuw": "node scripts/migratie-nieuw.mjs",

@@ -57,10 +57,18 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3368 geslaagd en 1 overgeslagen** over
-   241 bestanden.
-   Typecheck, lint en alle 35 controlescripts groen;
-   `npm run poort` meldt 39 stappen.
+<!-- TELLERS:BEGIN — gegenereerd door `npm run tellers` -->
+De hele suite geeft met de stack **3380 geslaagd en 1 overgeslagen**
+over 242 bestanden.
+Typecheck, lint en alle 35 controlescripts groen;
+`npm run poort` meldt 39 stappen.
+<!-- TELLERS:EINDE -->
+
+   ⚠️ **Ook dit blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het
+   was tot 06-09 proza, en botste die dag drie keer op rij bij het samengaan met
+   `main` — telkens met twee antwoorden waarvan er minstens één aan geen van
+   beide kanten klopte. Draai `npm run tellers`; `tellers:controle` wordt rood
+   zodra het blok afwijkt van wat er gemeten wordt. Zie QS8-284.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
    apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is
