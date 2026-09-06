@@ -14,17 +14,18 @@ import {
   fetchMijnLidmaatschap,
   huddledagLabel,
   huidigeGroepsperiode,
+  isHuddledagVandaag,
   koppelDoelAanGroep,
   ontkoppelDoelVanGroep,
+  type Groep,
+  type Groepslid,
+  type Groepsteller,
+  type Klassementsrij,
+  type Pagina,
+  type Zichtbaarheid,
   uitnodigingsLink,
   verlaatGroep,
   zichtbaarheidLabels,
-  type Groep,
-  type Groepsteller,
-  type Groepslid,
-  type Klassementsrij,
-  type Zichtbaarheid,
-  type Pagina,
 } from '@/modules/buddies';
 import {
   beslisDeadlineVerzoek,
@@ -111,9 +112,21 @@ export default function GroepDetail() {
       title={stand?.groep?.name ?? t('groepdetail.titel')}
       eyebrow={
         stand?.groep
-          ? t('groepdetail.eyebrow', {
-              dag: huddledagLabel(stand.groep.huddle_day).toUpperCase(),
-            })
+          ? // ⚠️ **De dag zelf krijgt een eigen zin en niet een dagnaam (QS8-199).**
+            //    De huddledag bepaalt de weekafsluiting, De Ketting en het
+            //    groepsoverzicht, en er was niets dat hem markeerde wanneer hij er
+            //    was. "HUDDLEDAG ZONDAG" op zondag laat de lezer dat zelf
+            //    uitrekenen.
+            //
+            // ⚠️ De vraag "is het vandaag?" wordt hier niet beantwoord maar
+            //    gesteld: `isHuddledagVandaag()` leest de klok van de groep, in de
+            //    tijdzone van de groep. Een component die `getDay()` doet, rekent
+            //    in de tijdzone van het toestel — correctheidsregel 7.
+            isHuddledagVandaag(stand.groep)
+            ? t('groepdetail.eyebrow_vandaag')
+            : t('groepdetail.eyebrow', {
+                dag: huddledagLabel(stand.groep.huddle_day).toUpperCase(),
+              })
           : undefined
       }
     >

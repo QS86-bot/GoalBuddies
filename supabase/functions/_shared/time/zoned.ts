@@ -257,6 +257,20 @@ export function utcFromZoned(
   return new Date(Math.max(firstGuess.getTime(), corrected.getTime()));
 }
 
+/**
+ * De kalenderdatum in `tz` van een opgeslagen tijdstempel — QS8-198.
+ *
+ * ⚠️ **Bestaat zodat niemand er buiten deze map een `new Date(...)` voor hoeft
+ *    te schrijven.** Alles in de database staat in UTC; de vraag "op welke dag
+ *    viel dit voor déze groep" is een tijdzoneberekening, en correctheidsregel 7
+ *    zegt dat die hier hoort. De eslint-regel `no-restricted-syntax` dwingt dat
+ *    af, en toen hij bij het samenvouwen van systeemberichten afging was dat
+ *    geen hindernis maar het juiste antwoord: er ontbrak een helper.
+ */
+export function localDateOf(timestamp: string, tz: TimeZone): IsoDate {
+  return localDateIn(tz, new Date(timestamp));
+}
+
 /** De kalenderdatum in `tz` op het moment `at`. */
 export function localDateIn(tz: TimeZone, at: Date): IsoDate {
   const p = partsIn(tz, at);

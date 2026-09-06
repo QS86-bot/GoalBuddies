@@ -141,6 +141,36 @@ export function isPushdienst(endpoint: string): boolean {
   );
 }
 
+/**
+ * De versleutelde body plus de VAPID-header, of de reden dat het niet lukte.
+ *
+ * ⚠️ **Apart sinds QS8-190**, en niet alleen om onder de vijftig regels te
+ *    komen: dit stuk is het enige in `verstuurWebPush()` dat wérpt, en die worp
+ *    hoort binnen één functie te blijven. `versleutelPayload()` valt om op een
+ *    kapotte sleutel of een onleesbaar abonnement, en dat is geen reden om de
+ *    rij op te ruimen — dat zou een configuratiefout omzetten in dataverlies.
+ */
+async function maakPakket(invoer: {
+  readonly doel: WebPushDoel;
+  readonly sleutels: VapidSleutels;
+  readonly nu: Date;
+}, payload: string): Promise<{ body: Uint8Array; vapid: { Authorization: string } } | { reden: string }> {
+  try {
+    return {
+      body: await versleutelPayload(invoer.doel, payload),
+      vapid: await vapidAuthorization({
+        endpoint: invoer.doel.endpoint,
+        publiekeSleutel: invoer.sleutels.publiek,
+        priveSleutel: invoer.sleutels.prive,
+        subject: invoer.sleutels.subject,
+        nu: invoer.nu,
+      }),
+    };
+  } catch (fout) {
+    return { reden: `versleutelen mislukte: ${fout instanceof Error ? fout.message : String(fout)}` };
+  }
+}
+
 export async function verstuurWebPush(invoer: {
   readonly doel: WebPushDoel;
   readonly bericht: WebPushBericht;
@@ -158,25 +188,9 @@ export async function verstuurWebPush(invoer: {
     return { status: 'mislukt', reden: `bericht is ${payload.length} bytes, meer dan ${PAYLOAD_MAX}` };
   }
 
-  let body: Uint8Array;
-  let vapid: { Authorization: string };
-  try {
-    body = await versleutelPayload(invoer.doel, payload);
-    vapid = await vapidAuthorization({
-      endpoint: invoer.doel.endpoint,
-      publiekeSleutel: invoer.sleutels.publiek,
-      priveSleutel: invoer.sleutels.prive,
-      subject: invoer.sleutels.subject,
-      nu: invoer.nu,
-    });
-  } catch (fout) {
-    // Een kapotte sleutel of een onleesbaar abonnement. Geen reden om de rij op
-    // te ruimen: dat zou een configuratiefout omzetten in dataverlies.
-    return {
-      status: 'mislukt',
-      reden: `versleutelen mislukte: ${fout instanceof Error ? fout.message : String(fout)}`,
-    };
-  }
+  const pakket = await maakPakket(invoer, payload);
+  if ('reden' in pakket) return { status: 'mislukt', reden: pakket.reden };
+  const { body, vapid } = pakket;
 
   // ⚠️ **Tweede slot, en het staat hier omdat dit de plek is die het doet.**
   //    0117 laat `registreer_push_token()` het adres al toetsen, maar deze

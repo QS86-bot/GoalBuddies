@@ -64,7 +64,7 @@ function naarGroep(rij: RpcGroep): OntdekteGroep | null {
 /**
  * Zoek ontdekbare groepen.
  *
- * @param categorie één van de vijftien gebieden, of `null` voor alle
+ * @param categorie één van de twaalf gebieden, of `null` voor alle
  * @param taal de voertaal, of `null` voor alle
  */
 export async function fetchOntdekteGroepen(

@@ -16,6 +16,10 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.member_joined': '{naam} joined.',
   'systeembericht.completion_pending': '{naam} finished a week and is waiting for confirmation.',
   'systeembericht.completion_approved': '{actor} confirmed {naam}’s week.',
+  'systeembericht.member_joined_gevouwen': '{namen} joined.',
+  'systeembericht.completion_pending_gevouwen':
+    '{namen} finished a week and are waiting for confirmation.',
+  'systeembericht.completion_approved_gevouwen': '{actor} confirmed the weeks of {namen}.',
   'systeembericht.milestone_done': '{naam} reached a milestone.',
   'systeembericht.goal_completed': '{naam} completed a goal.',
   'systeembericht.commitment_unlocked': '{naam} unlocked a reward.',
@@ -34,6 +38,7 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
 
   'algemeen.oud_lid': 'A former member',
+  'algemeen.en': 'and',
 
   'auth.fout.ongeldig': 'This email address and password do not match.',
   'auth.fout.bestaat_al':
@@ -92,10 +97,20 @@ export const en: Record<Sleutel, string> = {
   'commitment.penalty.cancelled.uitleg':
     'You finished your goal, so this stake will not come into effect.',
 
+  'getuigenis.titel': 'You are the witness',
+  'getuigenis.uitleg':
+    'These people named you as the witness to their stake. Their target date has ' +
+    'passed.',
+  'getuigenis.van': "{naam}'s stake",
+  'getuigenis.afgehandeld': 'Settled',
+  'getuigenis.verschuldigd': 'Due',
+
   'commitment.onbekend.titel': 'Unknown',
   'commitment.onbekend.uitleg': 'The state of this arrangement cannot be determined.',
 
-  'commitment.fout.geen_groep': 'Choose a group that benefits if it does not work out.',
+  'commitment.fout.geen_begunstigde':
+    'First pick who the witness is: a group or one person.',
+  'commitment.begunstigde.naamloos': 'A group member',
   'commitment.fout.invoer': 'Check what you entered.',
   'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
@@ -181,6 +196,8 @@ export const en: Record<Sleutel, string> = {
 
   'risico.at_risk.vloer':
     'You are making your weeks, but almost always at the floor. That counts in full. It just keeps pushing your ceiling further away.',
+  'risico.at_risk.deels':
+    'You finish something every week, but none of the last {weken_bekeken} completely. Plan less per week, or put a floor under what keeps slipping.',
   'risico.at_risk.tempo':
     'You have {mijlpalen} to go in {weken}. That asks {benodigd} per week; you are at {tempo} now.',
   'risico.at_risk.kaal': 'You are still inside the lines, but there is little room left.',
@@ -374,6 +391,7 @@ export const en: Record<Sleutel, string> = {
   'groepdetail.zichtbaarheid': 'This group’s visibility: {stand}',
   'groepdetail.titel': 'Group',
   'groepdetail.eyebrow': 'HUDDLE DAY {dag}',
+  'groepdetail.eyebrow_vandaag': 'TODAY IS THE HUDDLE DAY',
   'groepdetail.geen_lid_titel': 'This group is not here, or not for you',
   'groepdetail.geen_lid_tekst': 'You are not a member of this group, or it no longer exists. Ask for a new invite link if you belong here.',
   'groepdetail.slaapt': 'This group is asleep: nothing has happened for a while, so the reminders stopped. As soon as someone finishes a week, it wakes right up.',
@@ -479,6 +497,7 @@ export const en: Record<Sleutel, string> = {
   'groepen.beoordelen': 'Review',
   'groepen.slaapt': 'This group is asleep. As soon as someone finishes a week, it wakes right up.',
   'groepen.huddledag': 'Huddle day: {dag}',
+  'groepen.huddledag_vandaag': 'Huddle day: today',
   'profiel.titel': 'Profile',
   'profiel.leeg_titel': 'No profile found',
   'profiel.leeg_tekst': 'That should not be possible. Sign out and back in; if it keeps failing, it is on us.',
@@ -922,23 +941,19 @@ export const en: Record<Sleutel, string> = {
 
   'nieuwdoel.categorie_hint': 'What is this goal about? One area per goal.',
 
-  'categorie.fitness': 'Fitness and movement',
+  'categorie.fitness': 'Sport',
   'categorie.nutrition': 'Nutrition',
   'categorie.self_care': 'Self-care',
-  'categorie.mindfulness': 'Calm and attention',
-  'categorie.connection': 'Connecting with people',
-  'categorie.helping': 'Helping others',
+  'categorie.mindfulness': 'Meditation',
   'categorie.creativity': 'Creativity',
   'categorie.productivity': 'Productivity',
-  'categorie.organization': 'Order and overview',
-  'categorie.learning': 'Learning',
+  'categorie.connection': 'Social',
   'categorie.skills': 'Skills',
-  'categorie.resilience': 'Resilience',
+  'categorie.building': 'Building',
 
-  'categoriegroep.lichaam': 'Body and rest',
-  'categoriegroep.mensen': 'People and making',
-  'categoriegroep.werk': 'Work and growth',
-  'categoriegroep.rest': 'Work, school and other',
+  'categoriegroep.gezondheid': 'Health',
+  'categoriegroep.softskills': 'Soft skills',
+  'categoriegroep.ambitie': 'Ambition',
 
   'categorie.business': 'Work',
   'categorie.study': 'Study',
@@ -975,10 +990,9 @@ export const en: Record<Sleutel, string> = {
 
   'adempauze.laden_mislukt': 'Your breathers could not be loaded.',
   'adempauze.inplannen_mislukt': 'The breather could not be scheduled.',
-  'adempauze.te_laat':
-    'You announce a breather in advance. The week that is running cannot be used. Pick the week ahead.',
-  'adempauze.te_lang': 'A breather lasts at most two weeks.',
   'adempauze.overlap': 'There is already a breather over these weeks.',
+  'adempauze.te_lang': 'A breather lasts at most {max} weeks.',
+  'adempauze.datum_ongeldig': 'Enter a date as yyyy-mm-dd.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
   'adempauze.eind_voor_start': 'The end date is before the start date.',
   'adempauze.annuleren_mislukt': 'Cancelling did not work.',
@@ -1149,8 +1163,9 @@ export const en: Record<Sleutel, string> = {
   'straf.intrekken': 'Withdraw',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
-    'A penalty goes to one of your groups. You are not in one yet, so this is only possible ' +
-    'once you have a buddy group.',
+    'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
+    'in any group yet, so start there.',
+  'straf.naar_groepen': 'To your groups',
   'straf.zeker': 'Are you sure?',
   'straf.bevestig_uitleg':
     'If {groep} gets to see this, it is because your target date passed without your goal ' +
@@ -1170,6 +1185,13 @@ export const en: Record<Sleutel, string> = {
   'straf.veld': 'My penalty',
   'straf.voorbeeld': 'I treat the group to dinner',
   'straf.welke_groep': 'Which group benefits?',
+  'straf.wie_getuige': 'Who is the witness?',
+  'straf.een_groep': 'A whole group',
+  'straf.een_persoon': 'One person',
+  'straf.welke_persoon': 'Who benefits?',
+  'straf.persoon_uitleg':
+    'Until your target date passes, this person sees nothing. After that they may read your ' +
+    'penalty. Do tell them yourself, because the app does not message them yet.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 
@@ -1351,23 +1373,29 @@ export const en: Record<Sleutel, string> = {
 
   'adempauze.kop': 'Breather',
   'adempauze.uitleg':
-    'Going on holiday, ill, or just a strange month? Then pause one or two weeks. Those weeks ' +
-    'cost you no point and your streak stays where it is; it just does not grow.',
+    'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
+    'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
+    'have several side by side, and a week that is already over is allowed too.',
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when. They do not see which ' +
-    'weekly goals you did or did not reach.',
+    'Your group sees that you have a breather and from when to when, including one you place ' +
+    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
+    'reach.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
   'adempauze.loopt': 'Running now',
   'adempauze.ingepland': 'Scheduled',
   'adempauze.annuleren': 'Cancel',
-  'adempauze.vanaf': 'From which week?',
-  'adempauze.vanaf_hint':
-    'You announce a breather in advance, so the week that is running now is no longer possible.',
-  'adempauze.hoe_lang': 'How long?',
-  'adempauze.een_week': 'One week',
-  'adempauze.twee_weken': 'Two weeks',
+  'adempauze.vanaf': 'From',
+  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Any date works, including one that is already past.',
+  'adempauze.tot': 'Up to and including',
+  'adempauze.tot_hint': 'Leaving this empty means one week.',
+  'adempauze.wordt_een_week': 'This becomes the week of {van}.',
+  'adempauze.wordt_meer_weken':
+    'This becomes {weken} weeks: from {van} up to and including the week of {tot}.',
+  'adempauze.terugwerkend':
+    'These weeks are already over. Missed weeks inside them are excused after all and the ' +
+    'minus point is reversed.',
   'adempauze.inplannen': 'Schedule',
   'adempauze.inplannen_knop': 'Schedule a breather',
 

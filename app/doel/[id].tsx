@@ -19,6 +19,7 @@ import {
 import {
   fetchCommitments,
   fetchCommitmentSpoor,
+  fetchMogelijkeBegunstigden,
   isOpenstaand,
   spoorLabels,
   tekstVoor,
@@ -26,6 +27,7 @@ import {
   zetBeloning,
   zetStraf,
   type Commitment,
+  type MogelijkeBegunstigde,
 } from '@/modules/commitments';
 import {
   annuleerAdempauze,
@@ -48,8 +50,8 @@ import {
   leesRitme,
   maakMijlpaal,
   maakWeekdoel,
+  periodeUitDatums,
   planAdempauze,
-  planbareCycli,
   RITMES,
   ritmeLabels,
   ritmeUitleg,
@@ -66,6 +68,7 @@ import {
   zetMijlpaalStatus,
   zetStreefdatum,
   type Adempauze,
+  type AdempauzePeriode,
   type Categorie,
   type DeadlineVerzoek,
   type DoelMetVoortgang,
@@ -79,7 +82,6 @@ import { space } from '@/shared/theme';
 import {
   apparaatTijdzone,
   localDateIn,
-  nextCycle,
   now,
   toonDatum,
   toonMoment,
@@ -118,6 +120,9 @@ import {
  *    en dan hoort de waarde ook echt constant te zijn.
  */
 const LEGE_MIJLPALEN: readonly Mijlpaal[] = [];
+
+/** Zelfde reden als hierboven: `useAsyncMetTerugval` houdt de terugval buiten `deps`. */
+const GEEN_BEGUNSTIGDEN: readonly MogelijkeBegunstigde[] = [];
 
 /**
  * ⚠️ De waarde die "geen mijlpaal" betekent in de keuzelijst. Een lege string
@@ -804,8 +809,14 @@ function GedeeldMet({
  *    staat. Eén knop die meteen vastlegt zou de regel technisch halen en
  *    inhoudelijk breken.
  *
- * ⚠️ De keuzelijst toont alleen groepen waar je lid van bent. Dat is
- *    gebruiksgemak — de echte grens ligt in `commitments_insert` (migratie 0006).
+ * ⚠️ De keuzelijst toont alleen groepen waar je lid van bent en mensen met wie
+ *    je een groep deelt. Dat is gebruiksgemak — de echte grens ligt in
+ *    `commitments_insert` (migratie 0006, uitgebreid in 0168).
+ *
+ * ⚠️ **Een persoon als getuige is een kleinere kring, geen lege kring** (QS8-228).
+ *    Domeinregel 11 verandert niet: de getuige krijgt leesrecht op het moment
+ *    dat de straf verschuldigd wordt, en geen seconde eerder. Wat verandert is
+ *    hoevéél mensen dat zijn.
  */
 function Straf({
   goalId,
@@ -818,11 +829,21 @@ function Straf({
   readonly bestaand: Commitment | undefined;
   readonly onKlaar: () => void;
 }) {
+  const router = useRouter();
   const [tekst, setTekst] = useState('');
+  const [soort, setSoort] = useState<'groep' | 'persoon'>('groep');
   const [groepId, setGroepId] = useState(groepen[0]?.id ?? '');
+  const [gekozenPersoon, setGekozenPersoon] = useState('');
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+
+  const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
+
+  // ⚠️ De keuze is afgeleid en niet in state gezet vanuit de lading. Twee
+  //    plekken die hetzelfde weten gaan uit de pas lopen, en dan verstuurt het
+  //    scherm een andere persoon dan het toont.
+  const persoonId = gekozenPersoon !== '' ? gekozenPersoon : (mensen[0]?.id ?? '');
 
   if (bestaand) {
     const stand = tekstVoor(bestaand);
@@ -855,21 +876,32 @@ function Straf({
     );
   }
 
-  if (groepen.length === 0) {
+  // ⚠️ Uitleg én een uitweg, geen dood veld. Zonder groep is er ook geen
+  //    groepsgenoot om als getuige te kiezen — de band lóópt via de groep.
+  if (groepen.length === 0 && mensen.length === 0) {
     return (
       <Card nested>
         <Subheading>{t('straf.kop')}</Subheading>
         <Body muted>{t('straf.geen_groep')}</Body>
+        <Button onPress={() => router.push('/(tabs)/groep')}>{t('straf.naar_groepen')}</Button>
       </Card>
     );
   }
 
   const gekozenGroep = groepen.find((g) => g.id === groepId);
+  const persoon = mensen.find((m) => m.id === persoonId);
+  const getuige = soort === 'groep' ? gekozenGroep?.name : persoon?.naam;
+  const kanVerder =
+    tekst.trim().length >= 3 && (soort === 'groep' ? groepId !== '' : persoonId !== '');
 
   async function bewaar() {
     setBezig(true);
     setFout(null);
-    const uitkomst = await zetStraf(goalId, { body: tekst, image_url: null }, groepId);
+    const uitkomst = await zetStraf(
+      goalId,
+      { body: tekst, image_url: null },
+      soort === 'groep' ? { soort: 'groep', id: groepId } : { soort: 'persoon', id: persoonId },
+    );
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setBevestigen(false);
@@ -884,7 +916,7 @@ function Straf({
         <Subheading>{t('straf.zeker')}</Subheading>
         <Body>
           {t('straf.bevestig_uitleg', {
-            groep: gekozenGroep?.name ?? t('straf.jouw_groep'),
+            groep: getuige ?? t('straf.jouw_groep'),
           })}
         </Body>
         <Body muted>{t('straf.dan_geldt', { tekst })}</Body>
@@ -915,14 +947,45 @@ function Straf({
         placeholder={t('straf.voorbeeld')}
       />
 
-      <Choice
-        label={t('straf.welke_groep')}
-        opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
-        waarde={groepId}
-        onKies={setGroepId}
-      />
+      {/*
+        ⚠️ De keuze tussen groep en persoon staat er alleen als er ook echt wat te
+           kiezen valt. Eén optie aanbieden is een vraag stellen waarvan het
+           antwoord al vaststaat.
+      */}
+      {groepen.length > 0 && mensen.length > 0 ? (
+        <Choice
+          label={t('straf.wie_getuige')}
+          opties={[
+            { waarde: 'groep', label: t('straf.een_groep') },
+            { waarde: 'persoon', label: t('straf.een_persoon') },
+          ]}
+          waarde={soort}
+          onKies={setSoort}
+        />
+      ) : null}
 
-      <Button disabled={tekst.trim().length < 3} onPress={() => setBevestigen(true)}>
+      {soort === 'groep' && groepen.length > 0 ? (
+        <Choice
+          label={t('straf.welke_groep')}
+          opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
+          waarde={groepId}
+          onKies={setGroepId}
+        />
+      ) : null}
+
+      {soort === 'persoon' && mensen.length > 0 ? (
+        <>
+          <Choice
+            label={t('straf.welke_persoon')}
+            opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
+            waarde={persoonId}
+            onKies={setGekozenPersoon}
+          />
+          <Caption>{t('straf.persoon_uitleg')}</Caption>
+        </>
+      ) : null}
+
+      <Button disabled={!kanVerder} onPress={() => setBevestigen(true)}>
         {t('straf.verder')}
       </Button>
     </Card>
@@ -2317,8 +2380,8 @@ function Adempauzes({
 }) {
   const [pauzes, setPauzes] = useState<readonly Adempauze[]>([]);
   const [open, setOpen] = useState(false);
-  const [lengte, setLengte] = useState<'een' | 'twee'>('een');
-  const [startIndex, setStartIndex] = useState<'0' | '1'>('0');
+  const [vanaf, setVanaf] = useState('');
+  const [tot, setTot] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -2340,17 +2403,17 @@ function Adempauzes({
 
   if (!klok) return null;
 
-  const kandidaten = planbareCycli(klok, now());
-  const start = kandidaten[startIndex === '0' ? 0 : 1];
+  // ⚠️ De afronding wordt élke render opnieuw gevraagd en niet in state
+  //    bijgehouden. Twee plekken die hetzelfde weten, gaan uit de pas lopen, en
+  //    dan toont het scherm een andere week dan het verstuurt.
+  const periode = periodeUitDatums(klok, vanaf, tot);
 
   async function plan() {
-    if (!klok || !start) return;
+    if (!klok || !periode.ok) return;
     setBezig(true);
     setFout(null);
 
-    // Eén cyclus: begin en eind zijn dezelfde week. Twee: de week erna.
-    const eind = lengte === 'een' ? start : nextCycle(start);
-    const uitkomst = await planAdempauze(doel.id, start, eind);
+    const uitkomst = await planAdempauze(doel.id, periode.waarde.start, periode.waarde.eind);
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
@@ -2360,6 +2423,8 @@ function Adempauzes({
 
     setBezig(false);
     setOpen(false);
+    setVanaf('');
+    setTot('');
     setPauzes(await fetchAdempauzes(doel.id));
     onKlaar();
   }
@@ -2430,29 +2495,35 @@ function Adempauzes({
 
       {open ? (
         <View style={styles.pauzeForm}>
-          <Choice
+          <Field
             label={t('adempauze.vanaf')}
             hint={t('adempauze.vanaf_hint')}
-            opties={kandidaten.map((c, i) => ({
-              waarde: String(i) as '0' | '1',
-              label: t('adempauze.week_van', { datum: toonDatum(c.startDate, opmaaktaal()) }),
-            }))}
-            waarde={startIndex}
-            onKies={setStartIndex}
+            value={vanaf}
+            onChangeText={setVanaf}
+            placeholder={vandaag}
+            autoCapitalize="none"
+            inputMode="numeric"
           />
 
-          <Choice
-            label={t('adempauze.hoe_lang')}
-            opties={[
-              { waarde: 'een', label: t('adempauze.een_week') },
-              { waarde: 'twee', label: t('adempauze.twee_weken') },
-            ]}
-            waarde={lengte}
-            onKies={setLengte}
+          <Field
+            label={t('adempauze.tot')}
+            hint={t('adempauze.tot_hint')}
+            value={tot}
+            onChangeText={setTot}
+            placeholder={vandaag}
+            autoCapitalize="none"
+            inputMode="numeric"
           />
+
+          <Afronding periode={periode} vanaf={vanaf} vandaag={vandaag} />
 
           <View style={styles.knoppen}>
-            <Button variant="primair" busy={bezig} onPress={() => void plan()}>
+            <Button
+              variant="primair"
+              busy={bezig}
+              disabled={!periode.ok}
+              onPress={() => void plan()}
+            >
               {t('adempauze.inplannen')}
             </Button>
             <Button
@@ -2471,6 +2542,52 @@ function Adempauzes({
         <Button onPress={() => setOpen(true)}>{t('adempauze.inplannen_knop')}</Button>
       )}
     </Card>
+  );
+}
+
+/**
+ * Wat de ingetypte datums worden — QS8-227.
+ *
+ * ⚠️ **Afronden zonder het te tonen is stilzwijgend iets anders doen dan
+ *    gevraagd.** De rollover werkt per hele cyclus, dus een datum midden in de
+ *    week wordt de week eromheen. Dat mag, maar dan moet je het kunnen zien
+ *    vóórdat je op inplannen drukt en niet erna aan je puntentotaal.
+ *
+ * ⚠️ **Zolang het eerste veld leeg is staat hier niets.** Een foutmelding onder
+ *    een veld waar je nog niet in getypt hebt, leest als een verwijt.
+ */
+function Afronding({
+  periode,
+  vanaf,
+  vandaag,
+}: {
+  readonly periode: Resultaat<AdempauzePeriode>;
+  readonly vanaf: string;
+  readonly vandaag: string;
+}) {
+  if (vanaf.trim() === '') return null;
+
+  if (!periode.ok) return <Caption danger>{periode.melding}</Caption>;
+
+  const { start, eind, weken } = periode.waarde;
+  const van = toonDatum(start.startDate, opmaaktaal());
+
+  return (
+    <>
+      <Caption>
+        {weken === 1
+          ? t('adempauze.wordt_een_week', { van })
+          : t('adempauze.wordt_meer_weken', {
+              weken,
+              van,
+              tot: toonDatum(eind.startDate, opmaaktaal()),
+            })}
+      </Caption>
+
+      {/* De pauze ligt helemaal in het verleden: dan gebeurt er meer dan
+          vooruit plannen, en dat hoort de gebruiker te weten voordat hij drukt. */}
+      {eind.endDate < vandaag ? <Caption>{t('adempauze.terugwerkend')}</Caption> : null}
+    </>
   );
 }
 

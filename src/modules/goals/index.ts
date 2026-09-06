@@ -67,9 +67,14 @@ export {
   annuleerAdempauze,
   fetchAdempauzes,
   planAdempauze,
-  planbareCycli,
   type Adempauze,
 } from './adempauze';
+
+export {
+  MAX_ADEMPAUZE_CYCLI,
+  periodeUitDatums,
+  type AdempauzePeriode,
+} from './adempauze-periode';
 
 export {
   fetchMijlpaalTips,

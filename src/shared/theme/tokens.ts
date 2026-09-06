@@ -74,10 +74,9 @@ export const navyLight: Palette = {
  * zodat de dag waarop ze wél in het gedeelde stelsel worden opgenomen één
  * bestand kost en geen zoektocht.
  *
- * ⚠️ **Open vraag die Quinten moet beantwoorden** (QS8-255): gaan deze drie het
- *    Q-Projects-stelsel in — waarmee de Status Tracker ze erft en de twee apps
- *    één geheel blijven — of blijft dit een eigen uitbreiding? Zolang die vraag
- *    openstaat, is dít de veilige uitvoering.
+ * ✅ **Beantwoord op 03-09-2026 (besluit K1): een uitbreiding van alleen
+ *    GoalBuddies.** De Status Tracker erft ze niet, en daarom staan ze hier
+ *    apart en niet in `Palette`.
  *
  * ⚠️ **Drie en niet meer, en dat is gemeten en geen smaak.** Op navy is goud
  *    vergeven aan het merk en groen, oranje en rood aan status. Wat overblijft
@@ -98,24 +97,41 @@ export const navyLight: Palette = {
  *    een waarschuwing over een doel waar niets aan de hand is. Gevonden door
  *    `kleurafstand.test.ts`, niet door te kijken.
  *
- * ⚠️ De vierde groep uit `CATEGORIE_GROEPEN` — `business`, `study` en `other` —
- *    heeft géén kleur. A55 meet er drie voor twaalf gebieden en zegt over deze
- *    drie niets, en een vierde erbij verzinnen is precies wat de kop van dit
- *    bestand verbiedt. Ze blijven neutraal tot iemand anders besluit.
+ * ⚠️ **De families en twee van de drie kleuren zijn op 04-09-2026 gewijzigd —
+ *    besluit A58.** Er waren vier groepen waarvan er één geen kleur had; het zijn
+ *    er nu drie van elk vier gebieden. Quinten vroeg om groen, oranje en geel.
+ *
+ *    **Groen en geel konden, oranje niet, en dat is gemeten en geen smaak.** De
+ *    drie gevraagde kleuren zijn in dit stelsel de státuskleuren: afstand 0.0 tot
+ *    `green`, `orange` en `accent`. En groen, oranje en geel liggen bovendien in
+ *    dezelfde verwarringsband bij rood-groenblindheid — met de felste vrije
+ *    kandidaten van het kleurenbord zakt dat drietal bij protanopie naar 3.1,
+ *    waar de drempel 10 is.
+ *
+ *    Wat er staat is de dichtstbijzijnde uitvoering die het wél haalt: **de
+ *    groen en de geel blijven, alleen de oranje is geruild voor magenta** — de
+ *    enige van de drie die op twee manieren tegelijk onmogelijk was. Cijfers en
+ *    de simulatiestrook in
+ *    `docs/decisions/2026-09-04-drie-families-en-de-kleuren-die-niet-kunnen.md`.
+ *
+ * ⚠️ **De marge is krapper dan die van de vorige drie, en dat is de prijs.**
+ *    Onderling 11.1 (donker) en 10.8 (licht), tegen 12.1 en 11.9 hiervóór.
+ *    `kleurafstand.test.ts` rekent het bij elke run na; wie de groen zachter
+ *    maakt, zakt onder de drempel tegen de geel.
  */
 export interface Categoriekleuren {
-  /** Lichaam en rust: sport, voeding, zelfzorg, rust en aandacht. */
-  readonly lichaam: string;
-  /** Mensen en maken: contact, iets voor een ander, creativiteit. */
-  readonly mensen: string;
-  /** Werk en groei: productiviteit, orde, leren, vaardigheden, veerkracht. */
-  readonly werk: string;
+  /** Gezondheid: sport, voeding, zelfzorg, meditatie. */
+  readonly gezondheid: string;
+  /** Softskills: creativiteit, productiviteit, sociaal, overig. */
+  readonly softskills: string;
+  /** Ambitie: werk, studie, bouwen, vaardigheden. */
+  readonly ambitie: string;
 }
 
 export const categoriekleurenNavy: Categoriekleuren = {
-  lichaam: '#4f97e8',
-  mensen: '#dd4fa0',
-  werk: '#8f9c36',
+  gezondheid: '#22cc22',
+  softskills: '#dd4fa0',
+  ambitie: '#ffe14d',
 };
 
 /**
@@ -125,9 +141,9 @@ export const categoriekleurenNavy: Categoriekleuren = {
  *    hier ook andere waarden hebben.
  */
 export const categoriekleurenNavyLight: Categoriekleuren = {
-  lichaam: '#2a6ec0',
-  mensen: '#b53080',
-  werk: '#4a5410',
+  gezondheid: '#0a9612',
+  softskills: '#b53080',
+  ambitie: '#6d5a00',
 };
 
 /**
