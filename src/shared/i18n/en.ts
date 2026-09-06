@@ -1166,6 +1166,9 @@ export const en: Record<Sleutel, string> = {
     'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
     'in any group yet, so start there.',
   'straf.naar_groepen': 'To your groups',
+  'straf.datum_voorbij':
+    'This goal\u2019s target date has passed, so a penalty would apply straight away. Move your ' +
+    'target date first if you still want to work on it.',
   'straf.zeker': 'Are you sure?',
   'straf.bevestig_uitleg':
     'If {groep} gets to see this, it is because your target date passed without your goal ' +
