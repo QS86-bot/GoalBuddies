@@ -412,6 +412,20 @@ export const nl = {
   'mijlpalen.geen': 'Nog geen mijlpalen',
   'mijlpalen.voortgang': '{done} van {total} mijlpalen',
 
+  // ---------------------------------------------------------------------------
+  // De datumkiezer — QS8-223
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Geen enkele sleutel hier draagt een datumnotatie. Wat de knop toont komt
+  //    uit `toonDatum()` en wat de kop toont uit `toonMaand()`; een voorbeeld als
+  //    "JJJJ-MM-DD" in de tekst zou precies de eis terugzetten die dit component
+  //    weghaalt.
+  'datumkeuze.kies': 'Kies een datum',
+  'datumkeuze.niets_gekozen': 'nog geen datum',
+  'datumkeuze.wissen': 'Geen datum',
+  'datumkeuze.vorige_maand': 'Vorige maand',
+  'datumkeuze.volgende_maand': 'Volgende maand',
+
   'weekstart.label': 'Mijn week begint op',
   'weekstart.hint':
     'Bepaalt wanneer je weekdoelen opnieuw beginnen en wanneer je punten tellen. ' +
@@ -1567,6 +1581,14 @@ export const nl = {
     'Een straf heeft een getuige nodig: een groep, of één iemand met wie je een groep deelt. ' +
     'Je zit nog nergens in, dus begin daar.',
   'straf.naar_groepen': 'Naar je groepen',
+  // ⚠️ **Ook hier: uitleg in plaats van een knop die de server afwijst.** Sinds
+  //    migratie 0170 weigert `commitments_insert` een straf op een doel waarvan
+  //    de streefdatum al voorbij is — die zou bij de eerstvolgende rollover
+  //    meteen verschuldigd zijn, en dat was de spamvector van QS8-293. De uitweg
+  //    is de streefdatum, en die staat een kaart hoger op ditzelfde scherm.
+  'straf.datum_voorbij':
+    'De streefdatum van dit doel is voorbij, dus een straf zou meteen gelden. Verzet eerst je ' +
+    'streefdatum als je er nog aan wilt werken.',
   'straf.zeker': 'Weet je het zeker?',
   'straf.bevestig_uitleg':
     'Als {groep} dit te zien krijgt, is dat omdat je streefdatum verstreken is zonder dat ' +
