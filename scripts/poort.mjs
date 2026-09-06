@@ -194,6 +194,28 @@ export function draai(commando) {
   };
 }
 
+/**
+ * De zin onder een ronde waarin niets rood stond maar niet alles gemeten is.
+ *
+ * ⚠️ **Hij noemt de oorzaak niet meer als vaststaand, en dat is QS8-177.** Tot
+ *    dan zei deze regel "zonder database — start de stack", en dat was voor élke
+ *    ongemeten controle waar. Sinds `pgversie:controle` is dat niet meer zo: die
+ *    bereikt de database wél en meldt zich ongemeten omdat de lokale major een
+ *    andere is dan die van productie. "Start de stack" is dan verkeerd advies op
+ *    het moment dat de stack draait — en verkeerd advies leer je negeren.
+ *
+ * @param {{ naam: string }[]} ongemeten
+ */
+function ongemetenZin(ongemeten) {
+  return (
+    `· ${ongemeten.length} controle(s) hebben niets gemeten: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
+    '  Waaróm staat bij de controle zelf. Meestal is er geen database — start de\n' +
+    '  stack met `npm run rls:stack` en draai opnieuw. Maar niet altijd:\n' +
+    '  `pgversie:controle` bereikt de database wél en meldt zich ongemeten als de\n' +
+    '  lokale major een andere is dan die van productie (QS8-177).\n\n'
+  );
+}
+
 async function hoofd() {
   const snel = process.argv.includes('--snel');
   // ⚠️ Met `readFileSync` en niet met een import-attribuut: die syntax slikt de
@@ -233,12 +255,7 @@ async function hoofd() {
   }
 
   process.stdout.write('\n');
-  if (ongemeten.length > 0) {
-    process.stdout.write(
-      `· ${ongemeten.length} controle(s) zonder database: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
-        '  Die hebben niets gemeten. Start de stack met `npm run rls:stack` en draai opnieuw.\n\n',
-    );
-  }
+  if (ongemeten.length > 0) process.stdout.write(ongemetenZin(ongemeten));
 
   if (rood.length > 0) {
     process.stderr.write(`✗ ${rood.length} van de ${stappen.length} staan rood.\n`);

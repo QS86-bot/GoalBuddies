@@ -57,8 +57,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3452 geslaagd en 1 overgeslagen** over
-   247 bestanden.
+   suite geeft met de stack **3466 geslaagd en 1 overgeslagen** over
+   248 bestanden.
    ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
    geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
    legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
@@ -66,8 +66,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    het samengaan met `main` is het antwoord `npm run poort`, niet het hoogste
    van de twee getallen. Zie de dossierrij van 06-09.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 35 controlescripts groen;
-`npm run poort` meldt 39 stappen.
+Typecheck, lint en alle 36 controlescripts groen;
+`npm run poort` meldt 40 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
