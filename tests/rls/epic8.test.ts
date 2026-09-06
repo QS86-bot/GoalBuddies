@@ -977,12 +977,21 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         //    toetst gelijkheid van twee verzamelingen en niet twee keer een kant
         //    — de valkuil die migratie 0032 een groene test opleverde.
         const admin = adminDb();
+
+        // ⚠️ **Met een expliciete volgorde, en dat is geen netheid — QS8-285.**
+        //    `limit(1)` zonder `order by` laat Postgres kiezen welke rij hij
+        //    teruggeeft; dat mag per plan verschillen. Deze test kiest daarmee
+        //    telkens mogelijk een ánder doel, en dan is "de poort weghalen geeft
+        //    één rode test" niet gegarandeerd reproduceerbaar. `id` is een totale
+        //    ordening, dus dit is altijd dezelfde rij.
         const doel = await admin
           .from('goals')
           .select('id')
           .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
           .limit(1)
           .single();
+        if (doel.error) throw new Error(`doel kiezen: ${doel.error.message}`);
 
         const doelId = doel.data?.id ?? '';
 
@@ -1014,6 +1023,24 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         });
         expect(uitkomst(vreemde.data).reason).toBe('not_owner');
 
+        // ⚠️ **De envelop is niet het effect — QS8-285.** Hier stond alleen de
+        //    `reason`. Gemeten met een `herorden_mijlpalen` die de volgorde van
+        //    een vreemde overschrijft en dáárna pas `not_owner` teruggeeft: deze
+        //    test bleef groen terwijl de schrijfactie landde. Het enige rood was
+        //    nevenschade in een buurtest, en wie dát als dekking telt, leest iets
+        //    anders dan er staat.
+        const naVreemde = await admin
+          .from('milestones')
+          .select('id, order_index')
+          .in('id', [idEen, idTwee])
+          .order('id', { ascending: true });
+        if (naVreemde.error) throw new Error(`nameten: ${naVreemde.error.message}`);
+
+        expect(
+          Object.fromEntries((naVreemde.data ?? []).map((m) => [m.id as string, m.order_index])),
+          'Bob kreeg `not_owner` te horen en de volgorde van Alice is tóch geschreven',
+        ).toEqual({ [idEen]: 101, [idTwee]: 102 });
+
         // ⚠️ De positieve controle: de volledige lijst omgedraaid moet wél
         //    lukken, en de volgorde moet daarna echt anders zijn. Zonder dit
         //    blijven de twee weigeringen groen terwijl herordenen stuk is.
@@ -1030,6 +1057,26 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .order('order_index', { ascending: true });
 
         expect((na.data ?? []).map((m) => m.id)).toEqual([idTwee, idEen]);
+
+        // ⚠️ **En op de posities zelf en niet alleen op de sortering — QS8-285.**
+        //    Een assertie die `order by order_index` teruguitleest, bewijst alleen
+        //    dat de rijen in díe volgorde staan; hij zegt niets over wat er in de
+        //    kolom terechtkwam. `p_ids` is een lijst van twee, dus de contractuele
+        //    uitkomst is 1 en 2 — precies de `ordinality` die de functie belooft
+        //    te schrijven.
+        //
+        // ⚠️ **Wat hier níet meer staat, en waarom.** Er stond eerst een toets
+        //    dat de twee posities van elkáár verschillen, tegen een aanvaller die
+        //    élke mijlpaal op dezelfde waarde zet. Gemeten: dat kán niet.
+        //    `milestones_goal_order_uniq` is UNIQUE op `(goal_id, order_index)`,
+        //    dus zo'n schrijfactie valt om op de constraint en de RPC geeft een
+        //    fout in plaats van een envelop. Een assertie die door geen enkele
+        //    mutatie te bereiken is, bewaakt niets — en dit is er wél een die te
+        //    voeden is.
+        expect(
+          Object.fromEntries((na.data ?? []).map((m) => [m.id as string, m.order_index])),
+          'de functie belooft de positie uit `ordinality` te schrijven, dus 1 en 2',
+        ).toEqual({ [idTwee]: 1, [idEen]: 2 });
 
         await admin.from('milestones').delete().in('id', [idEen, idTwee]);
       },

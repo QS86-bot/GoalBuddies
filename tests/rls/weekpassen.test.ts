@@ -786,6 +786,23 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       expect(uitkomst(poging.data).ok).toBe(false);
       expect(uitkomst(poging.data).reason).toBe('not_owner');
 
+      // ⚠️ **De envelop is niet het effect — QS8-285.** Deze test toetste alleen
+      //    wat de functie terúggaf. Een `sluit_weekdoel_af` die netjes
+      //    `{ok:false}` meldt en de week van Alice tóch afsluit, kwam er daarmee
+      //    doorheen. Wat een eigenaarspoort belooft is dat er níéts gebeurt, en
+      //    dat staat in de rij en niet in het antwoord.
+      const na = await admin
+        .from('weekly_goals')
+        .select('status')
+        .eq('id', vanAlice.data.id)
+        .single();
+      if (na.error) throw new Error(`nameten: ${na.error.message}`);
+
+      expect(
+        na.data.status,
+        'Bob kreeg `not_owner` te horen en de week van Alice is tóch afgesloten',
+      ).toBe('todo');
+
       await admin.from('weekly_goals').delete().eq('id', vanAlice.data.id);
     },
     TEST_TIMEOUT,
