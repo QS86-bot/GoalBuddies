@@ -140,7 +140,7 @@ export const nl = {
   // ⚠️ Zod-meldingen. Deze staan in schema's die op moduleniveau gebouwd worden,
   //    dus de aanroep moet lui zijn: `{ error: () => t(...) }` en niet
   //    `{ error: t(...) }`. Zie de kop van `auth/schemas.ts`.
-  'validatie.wachtwoord_kort': 'Gebruik minstens 12 tekens. Een korte zin werkt prima.',
+  'validatie.wachtwoord_kort': 'Gebruik minstens 8 tekens. Een korte zin werkt prima.',
   'validatie.wachtwoord_lang': 'Meer dan 72 tekens kan niet; bcrypt kapt daarna af.',
   'validatie.email': 'Dit ziet er niet uit als een e-mailadres.',
   'validatie.wachtwoord_leeg': 'Vul je wachtwoord in.',
@@ -443,7 +443,7 @@ export const nl = {
   'aanmelden.email': 'E-mailadres',
   'aanmelden.email_hint': 'jij@voorbeeld.nl',
   'aanmelden.wachtwoord': 'Wachtwoord',
-  'aanmelden.wachtwoord_hint': 'Minstens 12 tekens. Een korte zin werkt prima en onthoud je beter.',
+  'aanmelden.wachtwoord_hint': 'Minstens 8 tekens. Een korte zin werkt prima en onthoud je beter.',
   'aanmelden.knop_nieuw': 'Account maken',
   'aanmelden.knop_inloggen': 'Inloggen',
   'aanmelden.heb_al_account': 'Ik heb al een account',

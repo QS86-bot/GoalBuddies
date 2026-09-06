@@ -33,7 +33,7 @@ describe('Zod-meldingen volgen de taal', () => {
 
     zetTaal('nl');
     expect(eersteMelding(aanmeldenSchema.safeParse(kort))).toBe(
-      'Gebruik minstens 12 tekens. Een korte zin werkt prima.',
+      'Gebruik minstens 8 tekens. Een korte zin werkt prima.',
     );
 
     // ⚠️ Hetzelfde schema-object, alleen een andere taal. Zou de melding hier
@@ -41,7 +41,7 @@ describe('Zod-meldingen volgen de taal', () => {
     //    `{ error: () => t(...) }`.
     zetTaal('en');
     expect(eersteMelding(aanmeldenSchema.safeParse(kort))).toBe(
-      'Use at least 12 characters. A short phrase works fine.',
+      'Use at least 8 characters. A short phrase works fine.',
     );
   });
 

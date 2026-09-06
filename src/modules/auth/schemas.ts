@@ -27,6 +27,14 @@ import { isGeldigeTijdzone } from '../../shared/time';
 /**
  * De ondergrens, als benoemde constante — QS8-234.
  *
+ * ⚠️ **Op 06-09-2026 van twaalf naar acht — QS8-216, een besluit van Quinten.**
+ *    Acht is waar NIST op uitkomt en waar Supabase Auth mee overweg kan; de
+ *    lengte alleen is hier ook niet de bescherming. Dat is de leaked-password
+ *    protection uit QS8-141, die een gelekt wachtwoord van dertig tekens wél
+ *    weigert en een ongelekt van acht doorlaat. Een hogere ondergrens zonder
+ *    die schakelaar koopt minder dan hij lijkt te kopen, en kost een gebruiker
+ *    bij het aanmelden.
+ *
  * ⚠️ **Dit getal staat hier én in het Supabase-dashboard, en die twee moeten
  *    hetzelfde zeggen.** Dit is Zod, in de browser. De server heeft zijn eigen
  *    `password_min_length` (standaard 6), en staat die lager, dan is dit getal
@@ -42,7 +50,7 @@ import { isGeldigeTijdzone } from '../../shared/time';
  *    codepunten, dus wie hier doorkomt heeft minstens zoveel tekens. Bij een
  *    ondergrens elders in deze codebase gaat dat juist mis — zie QS8-118.
  */
-export const WACHTWOORD_MINIMUM = 12;
+export const WACHTWOORD_MINIMUM = 8;
 
 /** De bovengrens. bcrypt kapt boven 72 bytes af, dus daarboven telt niets meer. */
 export const WACHTWOORD_MAXIMUM = 72;
