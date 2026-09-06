@@ -158,11 +158,12 @@ module.exports = [
     //    werd alleen door niets bewaakt — het goedkoopste soort grendel dat er
     //    is, en precies daarom stond hij er niet.
     //
-    // ⚠️ `scripts/` staat er niet bij, en dat is gemeten en geen vergeetpost:
-    //    daar zijn er elf, allemaal in controlescripts die over geneste
-    //    datastructuren lopen. Die horen in hun eigen ronde; zie de rij van
-    //    05-09 in `docs/ENGINEER-REVIEW.md`.
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx'],
+    // ⚠️ **`scripts/` staat er sinds 06-09-2026 wél bij** (QS8-291). De elf
+    //    overtredingen die de rij van 05-09 noemde, zijn in die ronde gesplitst;
+    //    het waren allemaal controlescripts die over geneste datastructuren
+    //    lopen, en de reparatie was elke keer dezelfde: de binnenste lus naar een
+    //    functie met een naam.
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx', 'scripts/**/*.mjs'],
     rules: { 'max-depth': ['error', 3] },
   },
   {
@@ -205,6 +206,36 @@ module.exports = [
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'max-lines-per-function': ['error', { max: 75, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // ⚠️ **`scripts/` viel structureel buiten de linter** (QS8-291, dossierrij
+    //    01-09). `eslint.config.js` dekte alleen `**/*.ts(x)`, en deze map is
+    //    `.mjs` — dus 57 bestanden en 14.170 regels zagen geen enkele coderegel.
+    //
+    //    📏 Gemeten vóór deze ronde: `npx eslint scripts/` gaf geen enkele regel
+    //    uitvoer. **En dat is precies de map waar de grendels van dit project
+    //    wonen**: elke `*:controle` staat hier, dus de regels die de rest van de
+    //    codebase moet volgen golden niet voor de code die ze afdwingt.
+    //
+    // ⚠️ **De vijftig staat hier bewust níét als lintregel.** 📏 Vijftien
+    //    functies zitten erboven, en een regel die vijftien keer rood staat leer
+    //    je uitzetten — dezelfde afweging die hierboven voor `app/` gemaakt is.
+    //    Wat hier bindt is de rátel in `scripts/regel15-controle.mjs`, die telt
+    //    hoevéél functies erboven zitten en dat getal alleen laat dalen.
+    //
+    //    `max-depth` kan wél hard, want vertakking is waar regel 15 echt over
+    //    gaat en die elf zijn gesplitst — zie het blok hierboven.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: { process: 'readonly', console: 'readonly', URL: 'readonly', TextDecoder: 'readonly' },
+    },
+    rules: {
+      // CLAUDE.md, coderegel 14: geen lege catch.
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 ];
