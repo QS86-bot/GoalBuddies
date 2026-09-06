@@ -356,8 +356,13 @@ jobs:
       #    hier blind te pushen: `registry.npmjs.org` is wél bereikbaar, en het
       #    jsr-pakket is dezelfde broncode als het npm-pakket. Een kopie van deze
       #    map waarin de specifier `npm:@supabase/supabase-js@<zelfde versie>`
-      #    wordt, typecheckt daarom volledig op een werkplek — het versienummer
-      #    staat in de eerste CI-uitslag. Doe dat vóór je pusht.
+      #    wordt, typecheckt daarom volledig op een werkplek.
+      #
+      #    ⚠️ **Sinds QS8-214 hoef je dat niet meer met de hand te doen:**
+      #    `npm run edge:types:controle` maakt die kopie, herschrijft precies
+      #    die ene specifier en draait check én lint met dezelfde vlag als
+      #    hieronder. Hij draait mee in `npm run poort`. Zonder Deno meldt hij
+      #    OVERGESLAGEN en telt de poort hem als ongemeten — niet als groen.
       #
       #    Deze stap kostte bij de eerste twee rondes vier fouten, en alle vier
       #    waren ze onzichtbaar in het groen:
