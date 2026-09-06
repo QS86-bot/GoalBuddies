@@ -3,12 +3,49 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 05-09-2026. Op 04 en 05-09 landden uit deze sessie
-> **QS8-268, QS8-270, QS8-212, QS8-171, QS8-146, QS8-276 en QS8-277**; uit een
-> parallelle sessie **QS8-267, QS8-269, QS8-271, QS8-272, QS8-273, QS8-274 en
-> QS8-275**.
-> Lees eerst de drie punten van 05-09 — het eerste verandert hóé je begint — dan
-> de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
+> **Laatst bijgewerkt:** 06-09-2026. Op 06-09 landden **QS8-284, QS8-287,
+> QS8-288, QS8-227 en QS8-290**; open staan **QS8-286** (branch ligt klaar),
+> **QS8-289** en **QS8-197**.
+> Lees eerst de drie punten van 06-09 — het eerste is de duurste van de dag —
+> dan de drie van 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna
+> die van 02-09.
+>
+> **06-09, punt I: ik heb een issue gebouwd dat de andere sessie al gebouwd
+> hád, en drie signalen wezen dat aan voordat ik begon.** QS8-287 stond op *In
+> Progress*, er lag een branch mét migratie 0165, en er lag een PR. Ik zag PR
+> #224 pas toen mijn eigen werk al af was — en las hem toen als *mijn* PR,
+> omdat het issuenummer klopte. Het was een ándere branch met een ándere 0165.
+> ⚠️ **De rem die werkt is niet "kijk of het issue op Backlog staat", maar
+> `git log origin/main` én `gh pr list` op het issuenummer vlak voordat je de
+> eerste regel schrijft.** Punt I van 05-09 zei dit al voor de status; dit is
+> dezelfde les één stap verder: **een PR met jouw issuenummer erin is niet
+> automatisch jouw PR.** Kijk naar de branchnaam.
+>
+> ⚠️ Wat daar wél uit kwam en de moeite waard was: een tweede review op hún
+> werk. #224 loste het gat correct op en liet op drie plekken de oude
+> rechtvaardiging staan, waaronder het beslisdocument dat de ingetrokken grant
+> nog verdedigde. Dat is QS8-290 geworden. **Dubbel werk is niet altijd nul
+> waarde — maar reken er niet op.**
+>
+> **06-09, punt II: een oppervlak is niet alleen een tabel, maar ook wat een
+> functie teruggeeft (QS8-287).** `verdien_badges(p_user_id)` was definer,
+> uitvoerbaar door `authenticated` voor een wíllekeurig id, en gaf terug hoevéél
+> badges hij toekende. De tábel bleef dicht — `badges_select` is eigenaar-only —
+> en het getal vertelde het toch. In `badges.test.ts` stond een test die dat gat
+> vastlegde als bedóeld gedrag, met een kop die uitlegde waarom het veilig was.
+> ⚠️ **Vraag bij elke definer-functie: wat leert de aanroeper uit de
+> retourwaarde, los van wat hij mag lézen?** Er staan er nog zeven van die vorm;
+> dat is QS8-289, en `uitnodigingscode_bewaking()` daaruit vertelt iedereen die
+> is ingelogd hoe je uitnodigingscodes zijn opgebouwd.
+>
+> **06-09, punt III: een mutatie waarvan de ópzet stil faalt, leest als een
+> geslaagde ijking van het tegendeel.** Bij QS8-290 plantte ik een badge om te
+> toetsen of een nieuwe assertie bijt; de insert gebruikte `badge_key` in plaats
+> van `badge`, gaf een fout die ik niet las, en de test bleef groen. Dat zag er
+> exact uit als "die assertie bewaakt niets" — het omgekeerde van wat er aan de
+> hand was. ⚠️ **Laat een mutatie hard falen als zijn eigen opzet mislukt**
+> (`if (error) throw`), anders ijk je de mutatie en niet de grendel. Dit is de
+> tegenhanger van de regel die al in CLAUDE.md staat over ijken per grendel.
 >
 > **05-09, punt I: er werkt een tweede sessie in deze repo, en dat is twee keer
 > dubbel werk geweest.** Bij QS8-270 lag er al een PR (#198 tegen mijn #199); bij
