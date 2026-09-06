@@ -691,7 +691,7 @@ export const en: Record<Sleutel, string> = {
     'Your goal is saved, but the steps are not. Add them yourself, or let the coach try again.',
   'coach.plan_zonder_weekdoel':
     'Your goal and steps are saved. Only the weekly goal is missing. Pick what you will do this week.',
-  'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow. In the meantime you can add milestones yourself.',
+  'coach.daglimiet': 'The Goal Coach has done enough for you today. It resets tomorrow. In the meantime you can add milestones yourself.',
   'coach.eyebrow': 'SIX QUESTIONS',
   'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you, but skipping works fine.',
   'coach.alleen_voor_jou': 'Your answers are only for you and the Goal Coach. Your group never sees them.',
@@ -1424,7 +1424,7 @@ export const en: Record<Sleutel, string> = {
   'beoordelen.meer_laden': 'Load more',
   'groepscherm.wie_meedoen': 'Who is taking part',
   'groepscherm.meer_tijd': 'A buddy is asking for more time',
-  'coach.poging_telt': 'Every attempt counts towards your ten per day.',
+  'coach.poging_telt': 'Every attempt counts towards what the Goal Coach can still do for you today.',
   'weekafsluiting.wat_gedeeld': 'What the group shared',
 
   // ---------------------------------------------------------------------------

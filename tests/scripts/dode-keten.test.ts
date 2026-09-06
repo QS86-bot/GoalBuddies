@@ -8,6 +8,7 @@ import {
   functiesZonderAanroeper,
   genoemdIn,
   waardenZonderSchrijver,
+  zonderStatement,
   BEWUST_ONGESCHREVEN,
   TREFFER_HOORT_ELDERS,
 } from '../../scripts/dode-keten-controle.mjs';
@@ -79,6 +80,51 @@ describe('functies zonder aanroeper — wat de controle moet vinden', () => {
     expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['spookfunctie']);
   });
 
+  /**
+   * ⚠️ **De vorm die op 06-09-2026 twee functies verborgen hield** (QS8-296).
+   *    `comment on function … is '…';` werd tot dan weggehaald met `[^;]*;`, en
+   *    dat stopt bij de eerste puntkomma — óók een die binnen de tekst staat. De
+   *    rest van de zin bleef in de romp, en elke functienaam mét haakjes die daar
+   *    genoemd werd, heette daarna levend.
+   *
+   *    Gemeten met het echte register: `realtime_bewaking()` en
+   *    `systeembericht_allowlist()` kwamen zo alle twee als aangeroepen door,
+   *    terwijl alleen tests ze aanroepen.
+   */
+  it('een functie die alleen genoemd wordt in een comment-tekst mét puntkomma', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      'create or replace function public.andere() returns void as $$ begin end $$;',
+      "comment on function public.andere() is 'eerst dit; en spookfunctie() hoort erbij';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['andere', 'spookfunctie']);
+  });
+
+  it('een functie die alleen genoemd wordt in een comment-tekst mét apostrof', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      'create or replace function public.andere() returns void as $$ begin end $$;',
+      "comment on function public.andere() is 'zo''n geval; spookfunctie() staat erin';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['andere', 'spookfunctie']);
+  });
+
+  /**
+   * ⚠️ Niet alleen `comment on function`. Een toelichting op een tabel, kolom,
+   *    constraint of policy is net zo min een aanroep, en die vier stonden niet
+   *    in het patroon.
+   */
+  it('een functie die alleen genoemd wordt in een comment op een kolom', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      "comment on column public.doelen.titel is 'zie spookfunctie() hiernaast';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['spookfunctie']);
+  });
+
   it('een functie die alleen in zijn eigen grant- en revoke-regels voorkomt', () => {
     const sql = [
       'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
@@ -92,6 +138,23 @@ describe('functies zonder aanroeper — wat de controle moet vinden', () => {
 });
 
 describe('functies zonder aanroeper — wat hij met rust moet laten', () => {
+  /**
+   * ⚠️ **De andere kant van de puntkomma-reparatie, en die is even belangrijk.**
+   *    Een statementverwijderaar die te vér doorleest, eet de aanroep op die
+   *    erna staat — en dan is een levende functie opeens dood. Dat is dezelfde
+   *    controle die je leert uitzetten, alleen met de melding aan de andere kant.
+   */
+  it('een aanroep die ná een comment-regel met puntkomma staat, telt gewoon', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      "comment on function public.spookfunctie() is 'let op; dit is een zin';",
+      'create or replace function public.roeper() returns void as ' +
+        '$$ begin perform spookfunctie(); end $$;',
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['roeper']);
+  });
+
   it('een triggerfunctie die met `public.` wordt aangehangen', () => {
     // ⚠️ Dit is de vorm die de eerste versie acht keer verkeerd meldde.
     const sql = [
@@ -667,5 +730,57 @@ describe('WACHT_OP_EEN_BESLUIT — een agenda en geen parkeerplaats', () => {
     // gemeld: een test is geen pad door de app.
     expect(uit.functies).toEqual([]);
     expect(uit.beslistVerouderd).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️ **De losse vorm van de puntkomma-reparatie** (QS8-296). Hij staat hier apart
+ *    omdat `functiesZonderAanroeper()` er nog vier andere stappen omheen doet, en
+ *    dan is niet te zeggen wélke stap een geval afving. Zelfde reden als bij
+ *    `psqlArgumenten()`: één grendel per ijking.
+ */
+describe('zonderStatement — de puntkomma die het statement afsluit', () => {
+  it('leest door een puntkomma binnen een tekstliteraal heen', () => {
+    const uit = zonderStatement(
+      "comment on function f() is 'een; twee'; select g();",
+      /\bcomment\s+on\b/gi,
+    );
+
+    expect(uit.trim()).toBe('select g();');
+  });
+
+  it('behandelt een verdubbelde apostrof als tekst en niet als einde', () => {
+    const uit = zonderStatement(
+      "comment on function f() is 'zo''n; geval'; select g();",
+      /\bcomment\s+on\b/gi,
+    );
+
+    expect(uit.trim()).toBe('select g();');
+  });
+
+  it('haalt meerdere statements achter elkaar weg', () => {
+    const uit = zonderStatement(
+      "comment on table t is 'een;'; select g(); comment on column t.c is 'twee;';",
+      /\bcomment\s+on\b/gi,
+    );
+
+    expect(uit.replace(/\s+/g, ' ').trim()).toBe('select g();');
+  });
+
+  it('laat tekst zonder treffer ongemoeid', () => {
+    const bron = 'select g(); select h();';
+
+    expect(zonderStatement(bron, /\bcomment\s+on\b/gi)).toBe(bron);
+  });
+
+  /**
+   * ⚠️ De behoedzame kant: loopt het statement zonder puntkomma af, dan gaat de
+   *    rest weg. Liever een naam te veel als dood gemeld dan een dode functie die
+   *    levend heet.
+   */
+  it('slikt de rest als de puntkomma ontbreekt', () => {
+    const uit = zonderStatement("select g(); comment on table t is 'afgekapt", /\bcomment\s+on\b/gi);
+
+    expect(uit.trim()).toBe('select g();');
   });
 });

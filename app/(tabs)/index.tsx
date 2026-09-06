@@ -1296,7 +1296,7 @@ const styles = StyleSheet.create({
  *    nodig. De prijs is dat een laadfunctie een neveneffect heeft, en die staat
  *    hier opgeschreven zodat de volgende lezer hem niet per ongeluk weghaalt.
  *
- * ⚠️ **De aanvraag is stilzwijgend en kost uit het gedeelde dagquotum van tien**,
+ * ⚠️ **De aanvraag is stilzwijgend en kost uit het gedeelde dagbudget**,
  *    hetzelfde quotum als het opsplitsen van een doel en de weekstappen. Dat is
  *    aanvaardbaar omdat het per mijlpaal één keer gebeurt en niet per week — de
  *    grendel daarvoor staat in `vraag_ai_job()` (migratie 0103) en niet hier.

@@ -151,26 +151,34 @@ async function vraagJob(
     job_id?: string;
     hergebruikt?: boolean;
     reason?: string;
-    limiet?: number;
   };
 
   if (uit.ok !== true || uit.job_id === undefined) {
-    return { ok: false, melding: aanvraagMelding(uit.reason, uit.limiet) };
+    return { ok: false, melding: aanvraagMelding(uit.reason) };
   }
 
   return { ok: true, waarde: { jobId: uit.job_id, hergebruikt: uit.hergebruikt === true } };
 }
 
-function aanvraagMelding(reden: string | undefined, limiet: number | undefined): string {
+function aanvraagMelding(reden: string | undefined): string {
   switch (reden) {
     case 'quota_reached':
-      // ⚠️ Het getal komt uit de database mee, zodat deze tekst niet de tweede
-      //    plek wordt waar de limiet staat.
+      // ⚠️ **Deze zin noemt sinds 0175 geen getal meer, en dat is de reparatie
+      //    en niet een verschraling.** Hij gaf het dagplafond door dat de database
+      //    meestuurde — tien — zodat de tekst niet de tweede plek werd waar dat
+      //    getal stond. Maar de poort weegt nu dollarcent: wie grote prompts
+      //    stuurt loopt bij drie jobs tegen dezelfde muur als een ander bij tien.
+      //    Elk getal in deze zin zou dus voor de één kloppen en voor de ander
+      //    liegen, en een terugvalwaarde (`?? 10`) zou dezelfde leugen zijn met
+      //    een nettere oorzaak. Geen getal is hier het enige dat altijd waar is,
+      //    én het houdt de oorspronkelijke reden overeind: het plafond staat
+      //    nergens in de app. Wie de cijfers wil, leest `ai_verbruik()`.
+      //    Zie QS8-296.
       //
       // ⚠️ Stond tot 25-08-2026 als kale zin in dit bestand, vijf regels naast de
       //    `t()`-aanroepen eronder — en `tekst:controle` zag hem niet, want een
       //    `return` van een zin viel buiten élke heuristiek. Zie QS8-115.
-      return t('coach.daglimiet', { limiet: limiet ?? 10 });
+      return t('coach.daglimiet');
     case 'not_your_goal':
       return t('coach.niet_jouw_doel');
     // ⚠️ Een eigen melding en niet de generieke, want dit is het enige geval dat

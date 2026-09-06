@@ -62,12 +62,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **1061 geslaagd, 1 overgeslagen** over 84 bestanden (06-09, na QS8-293; daarvóór QS8-294, QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
+   **1069 geslaagd, 1 overgeslagen** over 85 bestanden (06-09, na QS8-296, na QS8-293; daarvóór QS8-294, QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3496 geslaagd en 1 overgeslagen** over
-   250 bestanden.
+   suite geeft met de stack **3513 geslaagd en 1 overgeslagen** over
+   251 bestanden.
    ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
    geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
    legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
@@ -148,9 +148,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0172` staan in de map: **175 bestanden**,
+Migraties `0001` t/m `0175` staan in de map: **176 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-De nummering is aaneengesloten.
+⚠️ **Er ontbreken nummers: 0173, 0174.** Zie `migraties:controle`.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot
@@ -788,11 +788,17 @@ bestanden, niet tegen dit document.
   **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
   tegendeel schrijft.**
 
-⚠️ **Eén staat er nog, en smaller dan de regel suggereerde:**
+✅ **De laatste is op 06-09-2026 gesloten (QS8-296, migratie 0175):**
 
-- **Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
-  doet `count(*)`. Dat is kostenmisbruik op een gratis tier: één job met een
-  enorme prompt telt als één.
+- ~~**Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
+  doet `count(*)`.~~ De poort weegt sinds 0175 **dollarcent** en telt geen rijen:
+  `ai_dag_budget_cent()` = `ai_dag_limiet()` × `ai_job_voorschot_cent()`, en elke
+  job kost `greatest(coalesce(cost_cents, 0), voorschot)`. De bodem is de helft
+  die de invoerkant dekt — een job zonder bedrag (queued, running, failed, of een
+  meting die op nul uitkwam) eet meteen budget, dus een burst komt er niet langs.
+  📏 Plafond per gebruiker per dag: van ≈88 cent naar 30 cent plus hoogstens één
+  job overschot. Tien gewone jobs passen nog steeds; tien máximale worden er drie.
+  Zie `docs/decisions/2026-09-06-een-quotum-dat-telt-weegt-niets.md`.
   📏 De tekstkolommen daarentegen zijn wél begrensd sinds QS8-118: `commitments.body`,
   `week_review_replies.body`, `milestone_tips.body` en `deadline_requests.reason`
   dragen allemaal een `char_length`-CHECK. Twee `text`-kolommen hebben er geen —
