@@ -109,7 +109,7 @@ export function niveauUitDagen(
 
 /**
  * De twaalf gebieden waar een doel over kan gaan — QS8-224, migratie 0142, en
- * teruggebracht van vijftien naar twaalf door besluit A58 (migratie 0156).
+ * teruggebracht van vijftien naar twaalf door besluit A58 (migratie 0164).
  *
  * ⚠️ **De lijst zelf staat sinds QS8-231 in `shared/categorieen`**, want een
  *    groep deelt hem sindsdien (0144) en `modules/buddies` kan hem hier niet
