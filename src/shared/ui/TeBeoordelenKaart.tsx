@@ -1,7 +1,8 @@
+import type { Beoordeelstand } from '../standen';
 import { Button } from './Button';
 import { Card } from './Card';
 import { Body, Subheading } from './Text';
-import { beoordeelkopSleutel, toonBeoordeelkaart, type Beoordeelstand } from './tebeoordelen';
+import { beoordeelkopSleutel, toonBeoordeelkaart } from './tebeoordelen';
 import { t } from '../i18n';
 
 /**
