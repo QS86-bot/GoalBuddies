@@ -15,7 +15,10 @@ import {
   meldredenLabels,
   MELDREDENEN,
   type Meldreden,
+  gevouwenTekst,
   systeemberichtTekst,
+  vouwSysteemberichten,
+  type ChatRegelItem,
   stuurBericht,
   verwijderBericht,
   voegSamen,
@@ -25,7 +28,7 @@ import {
 } from '@/modules/buddies';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { toonKlokTijd } from '@/shared/time';
+import { toonKlokTijd, type TimeZone } from '@/shared/time';
 import {
   AsyncView,
   Body,
@@ -80,7 +83,7 @@ export default function GroepChat() {
   const [ouderBezig, setOuderBezig] = useState(false);
   const [wegFout, setWegFout] = useState<string | null>(null);
 
-  const lijst = useRef<FlatList<ChatBericht> | null>(null);
+  const lijst = useRef<FlatList<ChatRegelItem> | null>(null);
 
   /**
    * Het nieuwste bericht dat we al naar beneden gescrold hebben.
@@ -295,7 +298,7 @@ export default function GroepChat() {
             t('chat.geen_lid_tekst'),
         }}
       >
-        {({ rijen }) => (
+        {({ groep: g, rijen }) => (
           <View style={styles.vult}>
             {uitCache ? (
               <Caption>{t('chat.uit_cache')}</Caption>
@@ -306,8 +309,24 @@ export default function GroepChat() {
             <FlatList
               ref={lijst}
               style={styles.vult}
-              data={rijen}
-              keyExtractor={(bericht) => bericht.id}
+              /*
+                ⚠️ **Samengevouwen systeemberichten — QS8-198.** Een actieve groep
+                   bedolf zijn eigen gesprek onder systeemregels. Drie of meer
+                   gelijksoortige op dezelfde dag worden één regel; er valt niets
+                   weg, alleen de herhaling.
+
+                ⚠️ **Op de klok van de groep en niet die van de lezer.** `tz`
+                   hierboven is de tijdzone van het profiel — goed voor de
+                   klokjes naast een bericht, want dat is een lezersvraag. Waar
+                   de dag ophoudt is een gróepsvraag (domeinregel 1): anders
+                   ziet een lid op reis een ander aantal regels dan zijn
+                   groepsgenoten thuis, en dan praten ze over een gesprek dat er
+                   voor ieder anders uitziet.
+              */
+              data={vouwSysteemberichten(rijen, (g?.tz ?? tz) as TimeZone)}
+              keyExtractor={(regel) =>
+                regel.soort === 'gevouwen' ? `gevouwen-${regel.id}` : regel.bericht.id
+              }
               contentContainerStyle={styles.rijen}
               // ⚠️ Alleen naar beneden als er onderaan iets nieuws is bijgekomen.
               //    Zonder deze vergelijking springt "Ouder laden" je terug naar de
@@ -333,24 +352,26 @@ export default function GroepChat() {
                   </Body>
                 </Card>
               }
-              renderItem={({ item }) =>
-                isSysteembericht(item) ? (
+              renderItem={({ item: regel }) =>
+                regel.soort === 'gevouwen' ? (
+                  <ChatRegel body={gevouwenTekst(regel)} />
+                ) : isSysteembericht(regel.bericht) ? (
                   // ⚠️ De zin wordt hier gemaakt en komt niet uit `item.body` —
                   //    migratie 0059, QS8-107 stap 2. `body` is nog wél gevuld,
                   //    maar alleen als terugval; het rechtstreeks tonen zou de
                   //    Nederlandse zin uit de database vastzetten in het scherm,
                   //    en dat is precies wat vertalen straks onmogelijk maakt.
-                  <ChatRegel body={systeemberichtTekst(item)} />
+                  <ChatRegel body={systeemberichtTekst(regel.bericht)} />
                 ) : (
                   <ChatRegel
-                    body={item.body}
-                    senderName={item.sender_name}
-                    senderAvatar={item.sender_avatar}
-                    vanMij={item.sender_id === userId}
-                    tijd={toonKlokTijd(item.created_at, tz, opmaaktaal())}
-                    {...(item.sender_id === userId
-                      ? { onWeghalen: () => void haalWeg(item.id) }
-                      : { onMelden: () => setMeldId(item.id) })}
+                    body={regel.bericht.body}
+                    senderName={regel.bericht.sender_name}
+                    senderAvatar={regel.bericht.sender_avatar}
+                    vanMij={regel.bericht.sender_id === userId}
+                    tijd={toonKlokTijd(regel.bericht.created_at, tz, opmaaktaal())}
+                    {...(regel.bericht.sender_id === userId
+                      ? { onWeghalen: () => void haalWeg(regel.bericht.id) }
+                      : { onMelden: () => setMeldId(regel.bericht.id) })}
                   />
                 )
               }

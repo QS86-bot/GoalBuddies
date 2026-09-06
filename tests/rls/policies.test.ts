@@ -2879,6 +2879,29 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
         expect(uitkomst(antwoord.data).ok).toBe(false);
         expect(uitkomst(antwoord.data).reason).toBe('not_owner');
+
+        // ⚠️ **De envelop is niet het effect — QS8-285.** Deze test toetste
+        //    alleen het antwoord. Een `dien_opnieuw_in` die netjes `{ok:false}`
+        //    meldt en de voltooiing van de eigenaar tóch vervangt, kwam er
+        //    daarmee doorheen — en dan staat er een niveau en een notitie in die
+        //    de eigenaar nooit geschreven heeft.
+        const actief = await adminDb()
+          .from('completions')
+          .select('id, achieved_level, note')
+          .eq('weekly_goal_id', b.weeklyGoalId)
+          .is('superseded_by', null);
+        if (actief.error) throw new Error(`nameten: ${actief.error.message}`);
+
+        expect(
+          actief.data,
+          'er hoort precies één actieve voltooiing te staan, en het is nog die van de eigenaar',
+        ).toHaveLength(1);
+        expect(actief.data[0]?.id).toBe(b.completionId);
+        expect(
+          actief.data[0]?.achieved_level,
+          'de buddy diende `floor` in namens de eigenaar en kreeg `not_owner` — het niveau hoort `ceiling` te blijven',
+        ).toBe('ceiling');
+        expect(actief.data[0]?.note).toBe('Gedaan wat ik zei');
       },
       SETUP_TIMEOUT,
     );

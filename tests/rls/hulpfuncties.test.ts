@@ -191,21 +191,36 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
   );
 
   it(
-    'lopen uiteen zodra de ánder eruit ligt — doel dicht, profiel open',
+    'knijpen allebei de deelfuncties dicht zodra de ánder eruit ligt',
     async () => {
-      // ⚠️ 0029 zei: alleen de kijkerskant knijpen, anders verdwijnt het doel van
-      //    een uitgezet lid uit het groepsoverzicht en dát is geschiedenis
-      //    herschrijven. 0102 draaide dat om voor `shares_group_with_goal()` en
-      //    liet `shares_group_with_user()` staan. Beide standen zijn te
-      //    verdedigen; dat ze verschíllen is nooit besloten.
+      // ⚠️ **Hier stond tot 04-09 het tegenovergestelde, en dat was de bevinding
+      //    en niet de belofte.** 0029 zei: alleen de kijkerskant knijpen, anders
+      //    verdwijnt het doel van een uitgezet lid uit het groepsoverzicht en dát
+      //    is geschiedenis herschrijven. 0102 draaide dat om voor
+      //    `shares_group_with_goal()` — mét een meting — en liet
+      //    `shares_group_with_user()` staan. Deze test legde dat verschil vast
+      //    met de aantekening dat het nooit besloten was.
+      //
+      //    **0160 (QS8-146) besluit het:** een functie die twee mensen aan elkaar
+      //    verbindt, toetst beide kanten. Het bezwaar van 0029 is inmiddels in de
+      //    app beantwoord — `chat.ts` valt terug op `algemeen.oud_lid` en zegt
+      //    zelf dat `profiles_select` niet meer geldt voor wie de groep verlaten
+      //    heeft. Er wordt geen rij herschreven; alleen de naam valt terug.
+      //
+      //    ⚠️ Wat er ónder deze regel gebeurt — welk oppervlak dichtgaat — staat
+      //    in `uitgezet-lid-is-geen-groepsgenoot.test.ts`: dit bestand meet de
+      //    vier functies naast elkaar, dat bestand de belofte erachter.
+      //    Het volledige model staat in
+      //    `docs/decisions/2026-09-04-het-model-van-de-hulpfuncties.md`.
       const o = await opzet('ander-eruit', 'Hulp ander eruit');
       await zetLidstatus(o.groupId, o.ander.id, 'inactive');
 
       expect(await meet(o)).toEqual({
+        // De kijker zelf is nog gewoon lid en beheerder van zijn eigen groep.
         lid: true,
         beheerder: true,
         deeltDoel: false,
-        deeltGebruiker: true,
+        deeltGebruiker: false,
       });
     },
     TEST_TIMEOUT,
@@ -222,10 +237,18 @@ describe.skipIf(!rlsTestsConfigured)('de vier RLS-hulpfuncties lopen gelijk', ()
       //    terwijl de chat, de weekafsluitingen en De Ketting van die groep
       //    voor iedereen dicht zijn.
       //
-      //    Bewust niet gerepareerd: dichtzetten haalt een naam weg uit
-      //    geschiedenis die iemand nog kan tegenkomen, en dat is een
-      //    productkeuze en geen bugfix. Wat hier stond te ontbreken was niet het
-      //    slot maar het besluit.
+      //    **Het besluit is op 04-09 genomen (QS8-146, 0160) en het luidt: zo
+      //    houden.** 0153 splitste de leeskant af als `mag_groep_lezen()` juist
+      //    omdat een archief leesbaar hoort te zijn;
+      //    `shares_group_with_user()` staat aan diezelfde leeskant en draagt
+      //    `profiles_select` en de avataremmer. Een naam en een avatar zeggen
+      //    niets over een gemiste week. Zou de archieftoets hier tóch bij komen,
+      //    dan wordt een groep archiveren hetzelfde als iedereen wegsturen.
+      //
+      //    Dat `shares_group_with_goal()` een archief wél dichthoudt is de
+      //    uitzondering met reden: `weekly_goals` draagt `missed` en `carried`
+      //    (0153). Het volledige model staat in
+      //    `docs/decisions/2026-09-04-het-model-van-de-hulpfuncties.md`.
       const o = await opzet('archief', 'Hulp archief');
       const gearchiveerd = await o.kijker.db.rpc('archiveer_groep', {
         p_group_id: o.groupId,

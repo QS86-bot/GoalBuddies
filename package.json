@@ -55,6 +55,7 @@
     "avatar:controle": "node scripts/avatar-controle.mjs",
     "pwa:controle": "node scripts/pwa-controle.mjs",
     "levend:controle": "node scripts/levend-controle.mjs",
+    "regel15:controle": "node scripts/regel15-controle.mjs",
     "klokgrens:controle": "node scripts/klokgrens-controle.mjs",
     "kolomrechten:controle": "node scripts/kolomrechten-controle.mjs",
     "pin:controle": "node scripts/pinuitzonderingen-controle.mjs",

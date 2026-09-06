@@ -388,7 +388,33 @@ docs/decisions/
 ### Code
 13. TypeScript strict. Geen `any`, geen `@ts-ignore` zonder reden.
 14. Geen lege catch. Elke externe call heeft een timeout.
-15. Functies <50 regels, nesting <3 diep.
+15. **Functies <50 regels, nesting <3 diep** — en sinds 05-09-2026 (QS8-190) is
+    dat geen zin meer maar drie grendels, want het stond hiervoor alléén op
+    papier: elke functie in de schermlaag overtrad hem en niets werd er rood van.
+
+    | Waar | Wat er geldt | Wie het afdwingt |
+    |---|---|---|
+    | overal in `src/` en `app/` | nesting <3 | `max-depth` in `eslint.config.js` |
+    | logica: `src/` buiten `shared/ui` | <50 regels | `max-lines-per-function` |
+    | componenten: `src/shared/ui` | een plafond dat vandaag bindt | `max-lines-per-function` |
+    | de schermlaag: `app/` | het **aantal** functies boven de 50 mag alleen dalen | `npm run regel15:controle` |
+
+    ⚠️ **Een component wordt anders geteld dan een functie, en dat is geen
+    uitvlucht.** Het lichaam van een React-component is grotendeels JSX: één
+    `return` met opmaak erin. Zestig regels opmaak zijn niet het probleem waar
+    deze regel voor bestaat; vertakking is dat wel, en daar gaat `max-depth`
+    over — die geldt in de schermlaag onverkort.
+
+    ⚠️ **Testbestanden tellen niet mee.** `describe(() => …)` is voor ESLint een
+    functie, en een suite van tweehonderd regels is één blok met gevallen erin.
+    Een regel die dát meldt, leer je uitzetten.
+
+    ⚠️ **De ratel slaat twee kanten op.** `regel15:controle` wordt rood als er een
+    lange functie bij komt, én als het aantal zákt zonder dat het plafond
+    meezakt — anders is het een plafond waar je onder kunt blijven zitten en
+    glijdt de volgende lange functie in de vrijgekomen ruimte. Splits je een
+    scherm, verlaag dan het plafond in `scripts/regel15-controle.mjs`. Zelfde
+    vorm als `levend:controle`.
 16. Elke async view heeft loading-, error- én empty-state.
 
 ### Proces

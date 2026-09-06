@@ -119,20 +119,35 @@ export function simuleer(kleur: string, soort: Kleurenblindheid): string {
  * Dit is het getal waar besluit A55 op rust: zakt het onder de drempel, dan is
  * er een paar dat niemand meer uit elkaar houdt.
  */
+/**
+ * De kleinste afstand binnen één lijst, zonder de simulatie erbij.
+ *
+ * ⚠️ Apart, en niet omdat het mooier leest: met de dubbele lus ín
+ *    `kleinsteAfstand()` staat er vier niveaus diep een `if`, en dat is precies
+ *    wat `max-depth` sinds QS8-190 tegenhoudt. De reden achter die regel geldt
+ *    hier ook — twee geneste lussen mét een vroege uitgang zijn niet in één
+ *    oogopslag te lezen.
+ */
+function kleinstePaar(gezien: readonly (string | undefined)[]): number {
+  let kleinste = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < gezien.length; i += 1) {
+    for (let j = i + 1; j < gezien.length; j += 1) {
+      const a = gezien[i];
+      const b = gezien[j];
+      if (a !== undefined && b !== undefined) kleinste = Math.min(kleinste, kleurafstand(a, b));
+    }
+  }
+
+  return kleinste;
+}
+
 export function kleinsteAfstand(kleuren: readonly string[]): number {
   let kleinste = Number.POSITIVE_INFINITY;
 
   for (const zicht of [null, ...KLEURENBLINDHEID]) {
     const gezien = kleuren.map((k) => (zicht === null ? k : simuleer(k, zicht)));
-
-    for (let i = 0; i < gezien.length; i += 1) {
-      for (let j = i + 1; j < gezien.length; j += 1) {
-        const a = gezien[i];
-        const b = gezien[j];
-        if (a === undefined || b === undefined) continue;
-        kleinste = Math.min(kleinste, kleurafstand(a, b));
-      }
-    }
+    kleinste = Math.min(kleinste, kleinstePaar(gezien));
   }
 
   return kleinste;

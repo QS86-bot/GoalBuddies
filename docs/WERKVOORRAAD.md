@@ -53,15 +53,14 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **900 geslaagd, 1 overgeslagen** (04-09, na QS8-197, QS8-267 en QS8-262
-   ronde 6; daarvóór QS8-266, QS8-202 en QS8-196).
+   **978 geslaagd, 1 overgeslagen** over 79 bestanden (05-09, na QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198 en QS8-199).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3167 geslaagd en 1 overgeslagen** over
-   223 bestanden.
-   Typecheck, lint en alle 32 controlescripts groen;
-   `npm run poort` meldt 36 stappen.
+   suite geeft met de stack **3368 geslaagd en 1 overgeslagen** over
+   241 bestanden.
+   Typecheck, lint en alle 35 controlescripts groen;
+   `npm run poort` meldt 39 stappen.
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
    apart: *"niets staat rood, maar 4 controles hebben niets gemeten"*. Dat is
@@ -132,7 +131,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0155` staan in de map: **158 bestanden**,
+Migraties `0001` t/m `0163` staan in de map: **166 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

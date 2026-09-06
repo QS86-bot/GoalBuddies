@@ -45,6 +45,7 @@ export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
+export { BovenrandAlVerrekend, useBovenrandAlVerrekend, veiligeBovenrand } from './bovenrand';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';

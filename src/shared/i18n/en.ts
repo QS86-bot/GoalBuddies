@@ -16,6 +16,10 @@ export const en: Record<Sleutel, string> = {
   'systeembericht.member_joined': '{naam} joined.',
   'systeembericht.completion_pending': '{naam} finished a week and is waiting for confirmation.',
   'systeembericht.completion_approved': '{actor} confirmed {naam}’s week.',
+  'systeembericht.member_joined_gevouwen': '{namen} joined.',
+  'systeembericht.completion_pending_gevouwen':
+    '{namen} finished a week and are waiting for confirmation.',
+  'systeembericht.completion_approved_gevouwen': '{actor} confirmed the weeks of {namen}.',
   'systeembericht.milestone_done': '{naam} reached a milestone.',
   'systeembericht.goal_completed': '{naam} completed a goal.',
   'systeembericht.commitment_unlocked': '{naam} unlocked a reward.',
@@ -34,6 +38,7 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
 
   'algemeen.oud_lid': 'A former member',
+  'algemeen.en': 'and',
 
   'auth.fout.ongeldig': 'This email address and password do not match.',
   'auth.fout.bestaat_al':
@@ -181,6 +186,8 @@ export const en: Record<Sleutel, string> = {
 
   'risico.at_risk.vloer':
     'You are making your weeks, but almost always at the floor. That counts in full. It just keeps pushing your ceiling further away.',
+  'risico.at_risk.deels':
+    'You finish something every week, but none of the last {weken_bekeken} completely. Plan less per week, or put a floor under what keeps slipping.',
   'risico.at_risk.tempo':
     'You have {mijlpalen} to go in {weken}. That asks {benodigd} per week; you are at {tempo} now.',
   'risico.at_risk.kaal': 'You are still inside the lines, but there is little room left.',
@@ -374,6 +381,7 @@ export const en: Record<Sleutel, string> = {
   'groepdetail.zichtbaarheid': 'This group’s visibility: {stand}',
   'groepdetail.titel': 'Group',
   'groepdetail.eyebrow': 'HUDDLE DAY {dag}',
+  'groepdetail.eyebrow_vandaag': 'TODAY IS THE HUDDLE DAY',
   'groepdetail.geen_lid_titel': 'This group is not here, or not for you',
   'groepdetail.geen_lid_tekst': 'You are not a member of this group, or it no longer exists. Ask for a new invite link if you belong here.',
   'groepdetail.slaapt': 'This group is asleep: nothing has happened for a while, so the reminders stopped. As soon as someone finishes a week, it wakes right up.',
@@ -479,6 +487,7 @@ export const en: Record<Sleutel, string> = {
   'groepen.beoordelen': 'Review',
   'groepen.slaapt': 'This group is asleep. As soon as someone finishes a week, it wakes right up.',
   'groepen.huddledag': 'Huddle day: {dag}',
+  'groepen.huddledag_vandaag': 'Huddle day: today',
   'profiel.titel': 'Profile',
   'profiel.leeg_titel': 'No profile found',
   'profiel.leeg_tekst': 'That should not be possible. Sign out and back in; if it keeps failing, it is on us.',
