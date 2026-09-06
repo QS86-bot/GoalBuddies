@@ -357,6 +357,19 @@ describe('userCycleOn — een cyclus rond een datum die je al hebt', () => {
     }
   });
 
+  it('geeft null voor een datum waarvan de cyclus buiten de kalender valt', () => {
+    // ⚠️ **Geen theoretisch geval maar een gemeten crash.** De laatste week van
+    //    het jaar 9999 loopt door in het jaar 10000, en dat past niet in een
+    //    `YYYY-MM-DD`. Tot 06-09-2026 wierp dit een uitzondering die dwars door
+    //    de aanroeper heen sloeg: wie `9999-12-27` in het adempauzeveld typte,
+    //    kreeg geen melding maar een leeg scherm.
+    expect(userCycleOn(maandag, '9999-12-27')).toBeNull();
+
+    // En de must-allow ernaast: een datum ver in de toekomst waar de cyclus wél
+    // past, hoort gewoon een cyclus te geven.
+    expect(userCycleOn(maandag, '9998-12-28')?.startDate).toBe('9998-12-28');
+  });
+
   it('houdt rekening met de tijdzone van de klok', () => {
     const tokio: UserClock = { weekStartDay: 1, tz: TOK };
     const cyclus = userCycleOn(tokio, '2026-08-13');

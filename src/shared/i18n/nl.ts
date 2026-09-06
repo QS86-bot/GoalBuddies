@@ -1351,10 +1351,9 @@ export const nl = {
   // ---------------------------------------------------------------------------
   'adempauze.laden_mislukt': 'Je adempauzes konden niet geladen worden.',
   'adempauze.inplannen_mislukt': 'De adempauze kon niet ingepland worden.',
-  'adempauze.te_laat':
-    'Een adempauze kondig je vooraf aan. De week die nu loopt kan niet meer. Kies de week die komt.',
-  'adempauze.te_lang': 'Een adempauze duurt hoogstens twee weken.',
   'adempauze.overlap': 'Er ligt al een adempauze over deze weken.',
+  'adempauze.te_lang': 'Een adempauze duurt hoogstens {max} weken.',
+  'adempauze.datum_ongeldig': 'Vul een datum in als jjjj-mm-dd.',
   'adempauze.geen_hele_week': 'Kies een hele week, die begint op jouw eigen startdag.',
   'adempauze.eind_voor_start': 'De einddatum ligt vóór de startdatum.',
   'adempauze.annuleren_mislukt': 'Annuleren lukte niet.',
@@ -1794,28 +1793,44 @@ export const nl = {
 
   'adempauze.kop': 'Adempauze',
   'adempauze.uitleg':
-    'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet dan een of twee ' +
-    'weken stil. Die weken kosten je geen punt en je reeks blijft staan waar hij staat; hij ' +
-    'groeit alleen niet mee.',
+    'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet die weken dan stil. ' +
+    'Ze kosten je geen punt en je reeks blijft staan waar hij staat; hij groeit alleen niet mee. ' +
+    'Je kiest zelf hoe lang, je mag er meerdere naast elkaar hebben, en een week die al voorbij ' +
+    'is mag ook.',
   // ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** Dit is domeinregel
   //    7's eigen uitzondering: de route loopt via jou, want je kondigt hem zelf
   //    aan. De statuskolom per week is sinds migratie 0047 dicht. Deze zin zegt
   //    precies waar die grens ligt; laat de tweede helft er nooit af.
+  //
+  // ⚠️ **De eerste helft is op 06-09-2026 uitgebreid, en niet uit netheid.** Sinds
+  //    QS8-227 mag een adempauze over weken liggen die al voorbij zijn, en die is
+  //    voor de groep net zo zichtbaar. Wie dat weglaat, laat de gebruiker "ze zien
+  //    niet welke weken je gemist hebt" lezen terwijl een pauze die je áchteraf
+  //    aankondigt precies dat verraadt. Zie
+  //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
   'adempauze.groep_ziet':
-    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer. Ze zien niet welke ' +
-    'weekdoelen je wel of niet gehaald hebt.',
+    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer, ook als je hem over ' +
+    'weken legt die al voorbij zijn. Ze zien niet welke weekdoelen je wel of niet gehaald ' +
+    'hebt.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',
   'adempauze.loopt': 'Loopt nu',
   'adempauze.ingepland': 'Ingepland',
   'adempauze.annuleren': 'Annuleren',
-  'adempauze.vanaf': 'Vanaf welke week?',
-  'adempauze.vanaf_hint':
-    'Een adempauze kondig je vooraf aan, dus de week die nu loopt kan niet meer.',
-  'adempauze.hoe_lang': 'Hoe lang?',
-  'adempauze.een_week': 'Eén week',
-  'adempauze.twee_weken': 'Twee weken',
+  'adempauze.vanaf': 'Vanaf',
+  'adempauze.vanaf_hint': 'Als jjjj-mm-dd. Elke datum mag, ook een die al voorbij is.',
+  'adempauze.tot': 'Tot en met',
+  'adempauze.tot_hint': 'Leeg laten betekent één week.',
+  // ⚠️ **Deze zin is het halve punt van de vrije datums.** De rollover werkt
+  //    per hele week, dus wat je intypt wordt afgerond. Zonder dat hier te
+  //    tonen doet het scherm stilzwijgend iets anders dan je vroeg, en dan is
+  //    de eerste keer dat je het merkt je puntentotaal.
+  'adempauze.wordt_een_week': 'Dit wordt de week van {van}.',
+  'adempauze.wordt_meer_weken': 'Dit wordt {weken} weken: van {van} tot en met de week van {tot}.',
+  'adempauze.terugwerkend':
+    'Deze weken zijn al voorbij. Gemiste weken erin worden alsnog vrijgesteld en het minpunt ' +
+    'wordt teruggedraaid.',
   'adempauze.inplannen': 'Inplannen',
   'adempauze.inplannen_knop': 'Adempauze inplannen',
 
