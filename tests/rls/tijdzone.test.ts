@@ -19,12 +19,22 @@
  *    leert je hem te omzeilen. Er staat hieronder dus ook een echte zone die
  *    erdóór moet.
  *
- * ⚠️ **De zones hier komen met opzet uit de doorsnede van ICU en Postgres.**
- *    De lokale stack kent er 499 en productie 1196: achttien oude aliassen
- *    (`Asia/Calcutta`, `Europe/Kiev`, …) bestaan wél op productie en niet op
- *    Debian-tzdata. Een test met zo'n alias zou lokaal rood zijn en op
- *    productie groen — hij zou de omgeving toetsen en niet de regel. Zie de rij
- *    van 28-08 in `docs/ENGINEER-REVIEW.md`.
+ * ⚠️ **De zones hier komen met opzet uit de doorsnede van lokaal en productie.**
+ *    Oude aliassen (`Asia/Calcutta`, `Europe/Kiev`, `US/Eastern`, `Japan`, …)
+ *    bestaan wél op productie en niet op Debian-tzdata. Een test met zo'n alias
+ *    zou lokaal rood zijn en op productie groen — hij zou de omgeving toetsen en
+ *    niet de regel.
+ *
+ * ⚠️⚠️ **En het gevaar loopt twee kanten op; tot 06-09-2026 stond hier alleen de
+ *    luide kant.** `localtime` en `posixrules` bestaan **alleen lokaal**: een
+ *    test die er een gebruikt is lokaal groen en op productie stuk, en niets zou
+ *    dat zeggen. `npm run tijdzones:controle` bewaakt sinds QS8-170 allebei de
+ *    richtingen, dus dit is geen afspraak meer maar een grendel.
+ *
+ * ⚠️ **De getallen in de rij van 28-08 klopten niet helemaal.** 📏 Nagemeten op
+ *    de draaiende productiedatabase: 1196 is inclusief 598 `posix/`-spiegels, dus
+ *    de echte vergelijking is 499 tegen 598 — 99 namen verschil en niet 697. Zie
+ *    de kop van `scripts/tijdzones-controle.mjs`.
  */
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
 
