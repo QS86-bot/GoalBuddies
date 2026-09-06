@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 import { t } from '../../shared/i18n';
 
+import { leesVoertaal, type Voertaal } from './schemas';
+
 /**
  * Groepen ontdekken en lidmaatschap aanvragen — QS8-231, migratie 0144.
  *
@@ -26,7 +28,7 @@ export interface OntdekteGroep {
   readonly naam: string;
   readonly categorie: string;
   readonly omschrijving: string | null;
-  readonly voertaal: string | null;
+  readonly voertaal: Voertaal | null;
   readonly huddleDag: number;
   readonly leden: number;
 }
@@ -55,7 +57,11 @@ function naarGroep(rij: RpcGroep): OntdekteGroep | null {
     naam: rij.naam,
     categorie: rij.categorie,
     omschrijving: rij.omschrijving,
-    voertaal: rij.voertaal,
+    // ⚠️ **Hier en niet op het scherm** (QS8-301). De RPC geeft `string` terug,
+    // en `ontdek.tsx` maakte er met `as Voertaal` zelf maar iets van. Dat is
+    // dezelfde grens die `leesZichtbaarheid()` in `api.ts` wél netjes trekt:
+    // één keer narrowen waar de rij binnenkomt, en daarna klopt het type.
+    voertaal: leesVoertaal(rij.voertaal),
     huddleDag: rij.huddle_day ?? 0,
     leden: rij.leden ?? 0,
   };

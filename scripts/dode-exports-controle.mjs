@@ -79,41 +79,24 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
  *    parkeert een naam in plaats van een bevinding vast te leggen.
  */
 export const BEKENDE_ONBEREIKBAAR = {
-  useRequiredUserId:
-    'Een hook die de sessie hard opeist en werpt als hij ontbreekt. Geen enkel ' +
-    'scherm gebruikt hem; die lezen `userId` rechtstreeks uit de context en ' +
-    'controleren zelf. Kandidaat om weg te halen, niet om een scherm voor te ' +
-    'bouwen.',
-  leesVoertaal:
-    'Leest een voertaal uit onbekende invoer. `leesZichtbaarheid()` ernaast is ' +
-    'wél bereikbaar; deze is bij het bouwen van de groepsinstellingen blijven ' +
-    'liggen.',
   isAfgegaan:
     'Wordt niet door een scherm gebruikt maar wél door `tests/rls/epic9.test.ts`, ' +
     'dat hem naast `commitment_zichtbaar_voor_groep()` legt. ⚠️ Dat is een ' +
     'geldige reden om te bestaan en geen reden om bereikbaar te zijn: hij is een ' +
     'kopie van een databaseregel die onder test staat. Weghalen breekt die toets.',
-  fetchVoltooiing:
-    'Haalt één voltooiing op bij een weekdoel. Geen scherm vraagt hem op — de ' +
-    'schermen lezen voltooiingen via de wachtrij en het weekoverzicht.',
   fetchAfvinkingen:
     'Haalt de dagafvinkingen van een weekdoel op. ⚠️ De schrijfkant (afvinken) ' +
-    'heeft wél een knop; de leeskant hangt erbuiten. Dat is de vorm die QS8-113 ' +
-    'ook had, alleen andersom.',
-  categorieGroep:
-    'Zet een categorie om naar zijn groep. `src/shared/ui/categoriemerk.ts` ' +
-    'noemt hem alleen in een commentaarregel; de kleurkeuze doet het zelf.',
+    'heeft wél een knop; de leeskant hangt erbuiten. Hier hoort een scherm bij en ' +
+    'dat is eigen werk — QS8-301 groep 1.',
   stelWeekplanstapBij:
     '⚠️ **De zwaarste van de negen.** Een schrijffunctie op de datalaag: een ' +
     'weekplanstap bijstellen. Zonder scherm kan een gebruiker een stap wel ' +
-    'aanmaken en herordenen maar niet bijstellen — precies de vorm van QS8-112.',
-  heeftVragenlijstAntwoorden:
-    'Zegt of een vragenlijst iets ingevuld heeft. Nergens aangeroepen; de ' +
-    'onboarding kijkt zelf naar de velden.',
+    'aanmaken en herordenen maar niet bijstellen — precies de vorm van QS8-112. ' +
+    'Hier hoort een scherm bij — QS8-301 groep 1.',
   vulVoorUitProfiel:
     'Vult een interview voor uit het profiel. Staat onder test in ' +
     '`vragenlijst-schemas.test.ts`, maar geen enkel scherm roept hem aan — dus ' +
-    'de voorvulling die A-nummer belooft, gebeurt niet.',
+    'de voorvulling die dit belooft, gebeurt niet. QS8-301 groep 1.',
 };
 
 /** De mappen waar een mens de app binnenkomt: een scherm of een geplande taak. */
