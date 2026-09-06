@@ -182,7 +182,9 @@ export const nl = {
   'commitment.onbekend.titel': 'Onbekend',
   'commitment.onbekend.uitleg': 'De stand van deze afspraak is niet te bepalen.',
 
-  'commitment.fout.geen_groep': 'Kies een groep die hiervan profiteert als het niet lukt.',
+  'commitment.fout.geen_begunstigde':
+    'Kies eerst wie de getuige is: een groep of één persoon.',
+  'commitment.begunstigde.naamloos': 'Een groepsgenoot',
   'commitment.fout.invoer': 'Controleer je invoer.',
   'commitment.fout.vastleggen': 'Vastleggen lukte niet. Probeer het opnieuw.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
@@ -1549,9 +1551,14 @@ export const nl = {
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
   'straf.kop': 'Straf',
+  // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
+  //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om
+  //    als getuige te kiezen; een keuzelijst tonen die leeg is, is een knop die
+  //    niets doet.
   'straf.geen_groep':
-    'Een straf gaat naar een van je groepen. Je zit nog nergens in, dus dit kan pas als je ' +
-    'een buddy-groep hebt.',
+    'Een straf heeft een getuige nodig: een groep, of één iemand met wie je een groep deelt. ' +
+    'Je zit nog nergens in, dus begin daar.',
+  'straf.naar_groepen': 'Naar je groepen',
   'straf.zeker': 'Weet je het zeker?',
   'straf.bevestig_uitleg':
     'Als {groep} dit te zien krijgt, is dat omdat je streefdatum verstreken is zonder dat ' +
@@ -1573,6 +1580,15 @@ export const nl = {
   'straf.veld': 'Mijn straf',
   'straf.voorbeeld': 'Ik trakteer de groep op een etentje',
   'straf.welke_groep': 'Welke groep profiteert?',
+  'straf.wie_getuige': 'Wie is de getuige?',
+  'straf.een_groep': 'Een hele groep',
+  'straf.een_persoon': 'Eén persoon',
+  'straf.welke_persoon': 'Wie profiteert?',
+  // ⚠️ De keerzijde van "één persoon": het is een kleinere kring, niet géén
+  //    kring. Wie dat niet weet, kiest een persoon in de veronderstelling dat
+  //    het onzichtbaar blijft.
+  'straf.persoon_uitleg':
+    'Deze persoon ziet je straf zodra hij verschuldigd wordt, en tot dat moment niets.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
 

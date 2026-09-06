@@ -100,7 +100,9 @@ export const en: Record<Sleutel, string> = {
   'commitment.onbekend.titel': 'Unknown',
   'commitment.onbekend.uitleg': 'The state of this arrangement cannot be determined.',
 
-  'commitment.fout.geen_groep': 'Choose a group that benefits if it does not work out.',
+  'commitment.fout.geen_begunstigde':
+    'First pick who the witness is: a group or one person.',
+  'commitment.begunstigde.naamloos': 'A group member',
   'commitment.fout.invoer': 'Check what you entered.',
   'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
@@ -1153,8 +1155,9 @@ export const en: Record<Sleutel, string> = {
   'straf.intrekken': 'Withdraw',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
-    'A penalty goes to one of your groups. You are not in one yet, so this is only possible ' +
-    'once you have a buddy group.',
+    'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
+    'in any group yet, so start there.',
+  'straf.naar_groepen': 'To your groups',
   'straf.zeker': 'Are you sure?',
   'straf.bevestig_uitleg':
     'If {groep} gets to see this, it is because your target date passed without your goal ' +
@@ -1174,6 +1177,12 @@ export const en: Record<Sleutel, string> = {
   'straf.veld': 'My penalty',
   'straf.voorbeeld': 'I treat the group to dinner',
   'straf.welke_groep': 'Which group benefits?',
+  'straf.wie_getuige': 'Who is the witness?',
+  'straf.een_groep': 'A whole group',
+  'straf.een_persoon': 'One person',
+  'straf.welke_persoon': 'Who benefits?',
+  'straf.persoon_uitleg':
+    'This person sees your penalty the moment it falls due, and nothing before that.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 
