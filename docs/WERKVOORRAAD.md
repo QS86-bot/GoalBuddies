@@ -13,7 +13,8 @@ productie in twee rondes)
 
 ⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
-uitvoerrecht voor `authenticated` kwijtraakten) staan er nog niet op. `0164` moet
+uitvoerrecht voor `authenticated` kwijtraakten) en `0169` (het oppervlak van de
+persoon-getuige) staan er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
 dit document.
@@ -61,7 +62,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **1056 geslaagd, 1 overgeslagen** over 83 bestanden (06-09, na QS8-293; daarvóór QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
+   **1056 geslaagd, 1 overgeslagen** over 83 bestanden (06-09, na QS8-293; daarvóór QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele

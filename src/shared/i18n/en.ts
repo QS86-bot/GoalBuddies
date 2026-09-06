@@ -97,6 +97,14 @@ export const en: Record<Sleutel, string> = {
   'commitment.penalty.cancelled.uitleg':
     'You finished your goal, so this stake will not come into effect.',
 
+  'getuigenis.titel': 'You are the witness',
+  'getuigenis.uitleg':
+    'These people named you as the witness to their stake. Their target date has ' +
+    'passed.',
+  'getuigenis.van': "{naam}'s stake",
+  'getuigenis.afgehandeld': 'Settled',
+  'getuigenis.verschuldigd': 'Due',
+
   'commitment.onbekend.titel': 'Unknown',
   'commitment.onbekend.uitleg': 'The state of this arrangement cannot be determined.',
 
