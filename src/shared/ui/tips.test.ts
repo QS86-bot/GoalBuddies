@@ -120,7 +120,7 @@ describe('de weektip', () => {
    *    lekt". Deze test is de enige die beide kanten ziet.
    *
    * ⚠️ **Tot QS8-224 was dit een gelijkheid tussen twee lijsten van drie.** Nu
-   *    zijn er vijftien gebieden en zes sets, dus is het een afbeelding — maar de
+   *    zijn er twaalf gebieden en zes sets, dus is het een afbeelding — maar de
    *    belofte is precies dezelfde: geen gebied zonder regels. De gelijkheid
    *    hieronder staat op de sléutels en niet op de waarden, want twee gebieden
    *    mogen dezelfde set delen.

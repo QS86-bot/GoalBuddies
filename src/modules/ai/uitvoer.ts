@@ -180,7 +180,7 @@ function tekst(waarde: unknown): string {
  *    opsomming in de prompt van de Doelcoach. Alle drie, of de AI kiest een
  *    categorie die de database weigert.
  */
-const CATEGORIEEN_UIT_HET_SCHEMA = [
+export const CATEGORIEEN_UIT_HET_SCHEMA = [
   'fitness',
   'nutrition',
   'self_care',

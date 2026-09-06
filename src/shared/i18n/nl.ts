@@ -1284,7 +1284,7 @@ export const nl = {
   'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
 
   // ---------------------------------------------------------------------------
-  // De twaalf gebieden — QS8-224, en drie families sinds A58 (migratie 0156)
+  // De twaalf gebieden — QS8-224, en drie families sinds A58 (migratie 0164)
   // ---------------------------------------------------------------------------
   //
   // ⚠️ **Labels en geen omschrijvingen.** Ze staan naast elkaar in een keuzelijst,
