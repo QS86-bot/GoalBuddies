@@ -256,4 +256,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 3 — de poort voor AI-jobs', () => {
       TEST_TIMEOUT,
     );
   });
+
+  // -------------------------------------------------------------------------
+  // ⚠️ **Het gewicht van een job wordt in `tests/rls/ai-budget.test.ts` getoetst**
+  //    en niet hier. Dit bestand gaat over de poort van EPIC 3 — mag je een job
+  //    aanvragen, en van wie is hij. Dat een dúre job meer van het budget opeet
+  //    dan een goedkope is een eigenschap van 0175 en verdient zijn eigen
+  //    bestand, met de ijkingen erbij.
 });

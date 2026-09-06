@@ -12,6 +12,11 @@
 --   drop function if exists public.ai_jobkosten_cent(numeric);
 --   drop function if exists public.ai_dag_budget_cent();
 --   drop function if exists public.ai_job_voorschot_cent();
+--   -- 4. en de vreemde sleutel terug naar cascade — ⚠️ alleen als je het gat
+--   --    van hieronder bewust terugzet:
+--   alter table public.ai_jobs drop constraint if exists ai_jobs_goal_id_fkey;
+--   alter table public.ai_jobs add constraint ai_jobs_goal_id_fkey
+--     foreign key (goal_id) references public.goals(id) on delete cascade;
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -38,13 +43,19 @@
 --    trekken. Elk bedrag hieronder komt daarom uit de grenzen die de code zélf al
 --    afdwingt, en dat staat hier met zoveel woorden omdat het een aanname is:
 --
---      uitvoer  MAX_TOKENS = 8.000 (doelcoach/index.ts), à 1000 cent/Mtok  → 8,0 cent
+--      uitvoer  MAX_TOKENS = 8.000 (doelcoach/index.ts), à 1500 cent/Mtok  → 12,0 cent
 --      invoer   ai_invoer_max() = 8.000 codepunten + systeemprompt,
---               ruim geschat 4.000 tokens, à 200 cent/Mtok                → 0,8 cent
+--               ruim geschat 4.000 tokens, à 300 cent/Mtok                →  1,2 cent
 --      ------------------------------------------------------------------------
---      één job in het slechtste geval                                     ≈ 8,8 cent
+--      één job in het slechtste geval                                     ≈ 13,2 cent
 --
---    Tien daarvan is **88 cent per gebruiker per dag** — dat is wat het quotum
+--    ⚠️ Die prijzen zijn 300 / 1500 en niet 200 / 1000, en dat is in dezelfde
+--       ronde rechtgezet: de introductieprijs van Sonnet 5 liep tot en met
+--       31-08-2026 en `PRIJS_PER_MTOK_CENT` stond op 06-09 nog op het oude getal.
+--       Zes dagen `cost_cents` staan dus ongeveer een derde te laag geboekt — al
+--       is dat vandaag zonder gevolg, want er is geen enkele geslaagde job.
+--
+--    Tien daarvan is **132 cent per gebruiker per dag** — dat is wat het quotum
 --    vandaag toestaat. Op een tier zonder uitgavenplafond is dat de kant waar het
 --    misgaat, want de rekening bij Anthropic loopt op tokens en niet op aanroepen.
 --
@@ -73,8 +84,11 @@
 --      kosten van een job = greatest(coalesce(cost_cents, 0), voorschot)
 --
 --    Gevolgen, alle drie bedoeld:
---      * een `queued` of `running` job (nog geen `cost_cents`) eet meteen budget,
---        dus een burst van twintig jobs komt niet langs de poort;
+--      * een `queued` of `running` job (nog geen `cost_cents`) eet meteen budget.
+--        ⚠️ Dat alléén is niet genoeg om een burst te stoppen — de poort leest en
+--        schrijft in twee stappen, en dat is te racen. Wat het wél doet is de
+--        burst duur maken zodra de rijen er staan; het serialiseren gebeurt met
+--        een `pg_advisory_xact_lock` per gebruiker, zie punt 6 hieronder;
 --      * een `failed` job houdt het voorschot — de Edge Function schrijft daar
 --        geen kosten, en het commentaar dáár zegt al "een call die halverwege
 --        afbreekt is al betaald";
@@ -85,8 +99,13 @@
 --
 -- 📏 Wat dat samen doet met het plafond van een dag:
 --
---      vandaag       10 × 8,8  = 88 cent
---      hierna        budget 30 cent, plus hoogstens één job overschot ≈ 39 cent
+--      vandaag       10 × 13,2 = 132 cent
+--      hierna        budget 30 cent, plus hoogstens één job overschot ≈ 43 cent
+--
+--    📏 Beide getallen zijn met de hand nagemeten op de lokale stack, met jobs à
+--       13,2 cent: de poort weigert bij de derde. Met het budget losgekoppeld van
+--       `limiet × voorschot` weigert hij pas bij de achtste — dat verschil ís de
+--       wijziging.
 --
 --    De overschrijding is begrensd op één job in het slechtste geval, en dát is
 --    waarom `ai_invoer_max()` en `MAX_TOKENS` ertoe doen: zonder die twee is de
@@ -94,8 +113,9 @@
 --
 -- ⚠️ **Een gewone gebruiker merkt hier niets van, en dat is geen bijvangst maar
 --    de eis.** Het voorschot staat op 3 cent — de bovenkant van wat een normale
---    job kost, niet het gemiddelde — zodat een normale job precies één plek van
---    de tien kost. Wie tien gewone jobs draait, houdt tien gewone jobs. Wie tien
+--    job kost, niet het gemiddelde: bij 300 / 1500 kost een gewone ronde (≈2.500
+--    tokens in, ≈1.200 uit) zo'n 2,5 cent. Een normale job kost dus precies één
+--    plek van de tien. Wie tien gewone jobs draait, houdt tien gewone jobs. Wie
 --    máximale jobs draait, krijgt er drie. Dat is de hele wijziging.
 --
 -- ⚠️ **Dit getal is een aanname en hoort her-ijkt te worden.** Zodra er honderd
@@ -106,9 +126,50 @@
 begin;
 
 -- ---------------------------------------------------------------------------
+-- 0. Een verbruiksrij overleeft het doel waar hij bij hoorde
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Zonder dit is al het onderstaande een suggestie**, en het is gevonden
+--    door de security-review op deze migratie. `ai_jobs.goal_id` droeg
+--    `on delete cascade` naar `goals` (sinds 0001), en `verwijder_doel()` is
+--    definer met `execute` voor `authenticated`. Die functie weigert bij een
+--    groepskoppeling, weekdoelen, punten of een lopend commitment, en bij een
+--    doel ouder dan `bedenktijd()` — maar een vers doel met alléén AI-jobs
+--    eronder voldoet aan alle vijf.
+--
+-- 📏 Nagemeten, en de twee getallen sluiten precies op elkaar aan: `bedenktijd()`
+--    is **24 uur** en het quotumvenster is `now() - interval '1 day'`. Élke job
+--    die meetelt hangt dus aan een doel dat nog verwijderbaar is. Drie gewone
+--    API-verzoeken — doel maken, quotum opmaken, doel weggooien — en de dag
+--    begint opnieuw. Onbeperkt, want er staat geen grens op het aantal doelen.
+--
+-- ⚠️ **`set null` en niet "weigeren te verwijderen".** Het doel mág weg; dat is
+--    een bestaande belofte (0058) en die verandert hier niet. Wat niet mag is dat
+--    de rekening meegaat. De kolom is al nullable en `plan`-jobs staan er sinds
+--    0136 al op NULL, dus dit is geen nieuwe toestand voor welke lezer dan ook.
+--
+-- ⚠️ Regel 18, vraag 5, in zuivere vorm: elk schakeltje was af — de poort telde
+--    goed, `cost_cents` zat dicht — en de keten liep toch rond, langs een knop
+--    die niets met de Doelcoach te maken heeft. De test staat in
+--    `tests/rls/ai-budget.test.ts` en is met de hand rood gemaakt.
+
+alter table public.ai_jobs drop constraint if exists ai_jobs_goal_id_fkey;
+alter table public.ai_jobs add constraint ai_jobs_goal_id_fkey
+  foreign key (goal_id) references public.goals(id) on delete set null;
+
+comment on constraint ai_jobs_goal_id_fkey on public.ai_jobs is
+  'set null en niet cascade sinds 0175: een verbruiksrij overleeft het doel waar '
+  'hij bij hoorde, anders is het dagbudget te resetten door het doel weg te '
+  'gooien binnen bedenktijd() (QS8-296).';
+
+-- ---------------------------------------------------------------------------
 -- 1. Wat een gewone job kost — de bodem onder elke job
 -- ---------------------------------------------------------------------------
 
+-- ⚠️ `pg_catalog, pg_temp` en niet `public, pg_temp`, en dat verschil met de twee
+--    functies hieronder is opzet: deze noemt geen enkel object in `public`, net
+--    als `ai_invoer_max()` in 0123. Wie hier kopieert, kopieert de nauwste vorm
+--    die het geval toelaat.
 create or replace function public.ai_job_voorschot_cent()
 returns numeric
 language sql
@@ -209,6 +270,16 @@ comment on function public.ai_verbruik() is
   'Het dagverbruik van de aanroeper in dollarcent, naast het dagbudget. ⚠️ Alleen '
   'over de eigen jobs (auth.uid()) — anders dan ai_kosten_per_week(), dat over '
   'alle gebruikers gaat en daarom service_role blijft (QS8-296).';
+
+-- ⚠️ **De rechten staan hier opnieuw, en dat is geen ruis.** `create or replace`
+--    laat de ACL staan, dus vandaag verandert er niets. Maar de énige revoke voor
+--    deze functie stond in 0038 en luidt `from public, anon` — precies de vorm
+--    die onwrikbare regel 4 verbiedt, want `alter default privileges` deelt in
+--    Supabase óók aan `authenticated` uit. Wie hem ooit dropt en opnieuw
+--    aanmaakt, erft dat recht zonder dat iemand het besloten heeft. Gemeld door
+--    de security-review op deze migratie.
+revoke all on function public.ai_verbruik() from public, anon, authenticated;
+grant execute on function public.ai_verbruik() to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 6. De poort
@@ -321,6 +392,22 @@ begin
       'ok', true, 'job_id', bestaande.id, 'hergebruikt', true, 'reason', 'bezig'
     );
   end if;
+
+  -- ⚠️⚠️ **Zonder dit slot telt de poort N keer opnieuw bij N verzoeken tegelijk.**
+  --    Hij leest wat er verbruikt is en schrijft daarna pas; PostgREST geeft elk
+  --    HTTP-verzoek zijn eigen transactie, dus twee gelijktijdige verzoeken zien
+  --    allebei hetzelfde oude getal en komen allebei door. 📏 Gemeten met twintig
+  --    parallelle aanvragen op een leeg venster: **13 tot 14 toegelaten waar er
+  --    10 passen**. Bij vijftig verbindingen is het budget vijftig keer zo groot.
+  --
+  --    De lock is per gebruiker (`auth.uid()` gehasht) en valt vrij bij commit,
+  --    dus er is geen wachtrij tussen gebruikers en niets om op te ruimen.
+  --
+  -- ⚠️ Dit was géén regressie — de `count(*)`-poort van vóór 0175 was even
+  --    raceable — maar het is wél precies de belofte die deze migratie doet, en
+  --    een eerdere versie van deze kop beweerde dat een burst er niet langs kwam.
+  --    Gevonden door de security-review, en de zin is rechtgezet.
+  perform pg_advisory_xact_lock(hashtextextended(auth.uid()::text, 0));
 
   -- 0175: het quotum weegt cent en telt geen rijen.
   select coalesce(sum(ai_jobkosten_cent(j.cost_cents)), 0) into gebruikt_cent

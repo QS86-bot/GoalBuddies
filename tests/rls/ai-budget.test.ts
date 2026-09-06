@@ -305,6 +305,113 @@ describe.skipIf(!rlsTestsConfigured)('het AI-dagbudget telt cent', () => {
     );
 
     /**
+     * ⚠️⚠️ **Het gat dat de security-review vond, en het is de belangrijkste test
+     *    in dit bestand.** Het budget hangt aan rijen in `ai_jobs`, en die rijen
+     *    hingen met `on delete cascade` aan `goals`. `verwijder_doel()` is
+     *    definer, uitvoerbaar door `authenticated`, en laat een vers doel zonder
+     *    weekdoelen, punten, groepskoppeling of commitment gewoon weg — binnen
+     *    `bedenktijd()`.
+     *
+     *    📏 En `bedenktijd()` is **24 uur**, precies het venster waarover het
+     *    quotum telt. Élke job die meetelt hing dus aan een doel dat nog
+     *    verwijderbaar was. Drie gewone API-verzoeken — doel maken, quotum
+     *    opmaken, doel weggooien — en de dag begint opnieuw. Zo vaak als je wilt.
+     *
+     *    ⚠️ Dit is regel 18 vraag 5 in zuivere vorm: elk schakeltje was af. De
+     *    poort telde goed, het schrijfrecht op `cost_cents` zat dicht, en de
+     *    keten was toch open — langs een knop die niets met de Doelcoach te
+     *    maken heeft. Er was geen test die vroeg of de rijen kúnnen verdwijnen.
+     */
+    it(
+      'het doel weggooien zet het dagbudget niet terug op nul',
+      async () => {
+        const cycle = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
+        const gemaakt = await f.alice.db
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'WEGGOOIDOEL', target_date: cycle.endDate })
+          .select('id')
+          .single();
+        const wegwerpdoel = (gemaakt.data as { id: string }).id;
+
+        await boek(f.alice, wegwerpdoel, 10, 1);
+        expect((await vraag(f.alice, f.aliceGoal, 'voor-weggooien')).reason).toBe('quota_reached');
+
+        const weg = await f.alice.db.rpc('verwijder_doel', { p_goal_id: wegwerpdoel });
+        expect((weg.data as { ok?: boolean }).ok, JSON.stringify(weg.data)).toBe(true);
+
+        // ⚠️ Het doel mág weg — dat is een bestaande belofte en die blijft. Wat
+        //    niet mag is dat de rekening meegaat.
+        expect(verbruik((await f.alice.db.rpc('ai_verbruik')).data).jobs).toBe(10);
+        expect((await vraag(f.alice, f.aliceGoal, 'na-weggooien')).reason).toBe('quota_reached');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **De tweede vondst van de security-review: de poort was te racen.**
+     *    Hij telt eerst op wat er vandaag verbruikt is en zet daarna de nieuwe
+     *    job erbij. PostgREST geeft elk HTTP-verzoek zijn eigen transactie, dus
+     *    twee gelijktijdige verzoeken lezen allebei het oude getal en komen
+     *    allebei door. Bij N tegelijk is het budget N keer zo groot.
+     *
+     *    ⚠️ Dit is geen regressie — de oude `count(*)`-poort was even raceable —
+     *    maar het ís de belofte die deze wijziging doet. De kop van 0175 zei
+     *    letterlijk dat een burst er niet langs komt, en dat was aantoonbaar
+     *    onwaar. Een verkeerde geruststelling in de documentatie is erger dan
+     *    geen geruststelling.
+     *
+     *    ⚠️ **Wat deze test toetst is een bovengrens en geen exact getal.** Hij
+     *    kan groen zijn zonder dat de race optreedt — dat is de eerlijke grens
+     *    van een gelijktijdigheidstest — maar hij kan nooit ten onrechte rood
+     *    worden: meer jobs dan het budget toelaat, is altijd fout.
+     */
+    it(
+      'twintig gelijktijdige verzoeken komen niet allemaal door',
+      async () => {
+        const budget = verbruik((await f.alice.db.rpc('ai_verbruik')).data).budget;
+        const tegelijk = 20;
+
+        const uitkomsten = await Promise.all(
+          Array.from({ length: tegelijk }, (_, i) => vraag(f.alice, f.aliceGoal, `race-${i}`)),
+        );
+        const toegelaten = uitkomsten.filter((u) => u.reason === 'queued').length;
+
+        // Het voorschot is de bodem, dus elke toegelaten job kost er minstens
+        // één. Meer dan `budget / voorschot` toelaten kan dus niet kloppen.
+        const voorschot = budget / 10;
+        expect(toegelaten).toBeLessThanOrEqual(Math.ceil(budget / voorschot));
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Wat de vorige test bewijst is het gedrag; dit legt de oorzaak vast.**
+     *    Wat een schrijfpoging op `ai_jobs` tegenhoudt is geen policy maar de
+     *    afwezigheid van een grant — er is één policy op deze tabel
+     *    (`ai_jobs_select`) en verder niets. Dat is de bewuste vorm sinds 0118
+     *    ("een grant die niets geeft hoort weg"), maar het betekent ook dat één
+     *    `grant` in een latere migratie de deur openzet zonder dat er een policy
+     *    is die hem dichthoudt.
+     *
+     *    Deze test legt die afwezigheid vast, zodat zo'n grant een rode test is
+     *    en niet een stille verruiming. Gemeld door de security-review.
+     */
+    it(
+      'authenticated heeft geen INSERT, UPDATE of DELETE op ai_jobs',
+      async () => {
+        const { data, error } = await adminDb().rpc('schrijfrechten_bewaking');
+        expect(error).toBeNull();
+
+        const opAiJobs = (data ?? []).filter(
+          (r: { tabel?: string }) => r.tabel === 'ai_jobs',
+        );
+
+        expect(opAiJobs).toEqual([]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
      * ⚠️ De overschrijding is begrensd op één job, en dát is waarom
      *    `ai_invoer_max()` ertoe doet: zonder die grens is de laatste toegelaten
      *    job onbegrensd en dan zegt het budget niets meer.

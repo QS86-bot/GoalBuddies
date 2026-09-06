@@ -425,6 +425,14 @@ export function zonderDefinities(sql) {
  *    de rest weg. Dat is de behoedzame kant: liever een naam te veel als dood
  *    gemeld dan een dode functie die levend heet.
  *
+ * ⚠️ **Dit is geen SQL-parser, en dat hoort de volgende lezer te weten.** Hij kent
+ *    geen dollar-quoting (`$$…$$`), en `zonderDefinities()` haalt bovendien de
+ *    `--`-regels weg vóórdat hier naar apostrofs gekeken wordt. Een `--` binnen
+ *    een tekstliteraal kan de apostrofs dus onbalanceren en deze scanner de rest
+ *    van het bestand laten opeten. De richting daarvan is fail-loud — er worden
+ *    dan functies ten onrechte als dood gemeld en de controle wordt rood — dus
+ *    het is geen gat. Gemeld door de security-review op QS8-296.
+ *
  * @param {string} sql
  * @param {RegExp} start globale regex die het begin van het statement vindt
  * @returns {string}

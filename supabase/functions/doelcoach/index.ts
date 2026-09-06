@@ -98,12 +98,24 @@ const TIMEOUT_MS = 30_000;
 /**
  * Prijzen per miljoen tokens, in dollarcent.
  *
- * ⚠️ Peildatum 19-08-2026. Dit is de introductieprijs van Sonnet 5, die loopt
- *    tot en met 31-08-2026; daarna wordt het 300 / 1500. **Zet dat dan hier om.**
- *    Een `cost_cents` die stilletjes verouderd is, is erger dan geen bedrag:
- *    je baseert er beslissingen op zonder te weten dat hij niet meer klopt.
+ * ⚠️ **Bijgewerkt op 06-09-2026 (QS8-296): de introductieprijs is verlopen.**
+ *    De vorige regel hier zei het zelf — *"loopt tot en met 31-08-2026; daarna
+ *    wordt het 300 / 1500. Zet dat dan hier om"* — en op 06-09 stond hij er nog
+ *    steeds op 200 / 1000. Zes dagen lang is elke `cost_cents` dus met ongeveer
+ *    de helft te laag geboekt.
+ *
+ * ⚠️ **Dat is precies waarom dit issue erover gaat.** Sinds 0174 hangt er een
+ *    dagbudget in centen aan deze getallen; een prijs die te laag staat, laat
+ *    dat budget te ruim zijn zonder dat iemand het merkt. Een `cost_cents` die
+ *    stilletjes verouderd is, is erger dan geen bedrag: je baseert er
+ *    beslissingen op zonder te weten dat hij niet meer klopt.
+ *
+ * ⚠️ **Een datum in een commentaarregel is geen grendel.** Dit is dezelfde vorm
+ *    als de zin over een grant uit QS8-293: een uitspraak die waar was toen hij
+ *    geschreven werd, die vanzelf onwaar wordt, en waar niets rood van gaat. Er
+ *    staat een rij over in `docs/ENGINEER-REVIEW.md`.
  */
-const PRIJS_PER_MTOK_CENT = { invoer: 200, uitvoer: 1000 } as const;
+const PRIJS_PER_MTOK_CENT = { invoer: 300, uitvoer: 1500 } as const;
 
 /**
  * Het schema waar het antwoord aan moet voldoen.

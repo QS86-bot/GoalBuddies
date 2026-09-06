@@ -30,14 +30,18 @@ elk bedrag hieronder is daarmee een aanname en geen meting.
 Wat er wél is, zijn de grenzen die de code zelf al afdwingt:
 
 ```
-uitvoer  MAX_TOKENS = 8.000 (doelcoach/index.ts), à 1000 cent/Mtok  → 8,0 cent
+uitvoer  MAX_TOKENS = 8.000 (doelcoach/index.ts), à 1500 cent/Mtok  → 12,0 cent
 invoer   ai_invoer_max() = 8.000 codepunten + systeemprompt,
-         ruim geschat 4.000 tokens, à 200 cent/Mtok                 → 0,8 cent
+         ruim geschat 4.000 tokens, à 300 cent/Mtok                 →  1,2 cent
 --------------------------------------------------------------------------
-één job in het slechtste geval                                      ≈ 8,8 cent
+één job in het slechtste geval                                      ≈ 13,2 cent
 ```
 
-Tien daarvan is **88 cent per gebruiker per dag**, en dat is wat het quotum
+⚠️ Die prijzen zijn 300 / 1500 en niet de 200 / 1000 die er tot vandaag stonden.
+De introductieprijs van Sonnet 5 liep tot en met 31-08-2026 en `PRIJS_PER_MTOK_CENT`
+stond op 06-09 nog op het oude getal; dat is in dezelfde ronde rechtgezet. Zie §9.
+
+Tien daarvan is **132 cent per gebruiker per dag**, en dat is wat het quotum
 toestond. Op een tier zonder uitgavenplafond is dat de kant waar het misgaat: de
 rekening bij Anthropic loopt op tokens en niet op aanroepen.
 
@@ -77,9 +81,10 @@ ai_jobkosten_cent(cost) = greatest(coalesce(cost, 0), ai_job_voorschot_cent())
 Elke job kost minstens het voorschot vanáf het moment dat hij in de tabel staat.
 Drie gevolgen, alle drie bedoeld:
 
-1. **Een `queued` of `running` job eet meteen budget.** Een burst van twintig
-   jobs komt dus niet langs de poort, ook al is er nog van geen enkele een
-   bedrag bekend.
+1. **Een `queued` of `running` job eet meteen budget**, ook al is er nog van geen
+   enkele een bedrag bekend. ⚠️ Dat alléén stopt een burst *niet* — zie §11; daar
+   is een slot voor nodig. Wat de bodem wél doet is de burst duur maken zodra de
+   rijen er staan.
 2. **Een `failed` job houdt het voorschot.** Het commentaar in
    `doelcoach/index.ts` zegt het al: *"een call die halverwege afbreekt is al
    betaald."* Tot 0175 stond dat er als voornemen; nu telt het.
@@ -95,10 +100,14 @@ dus niet losser dan het was.
 
 ## 4. Wat dit met het plafond doet
 
-|  | plafond per gebruiker per dag |
-|---|---|
-| vóór 0175 | 10 × 8,8 = **88 cent** |
-| na 0175 | budget 30 cent + hoogstens één job overschot ≈ **39 cent** |
+|  | plafond per gebruiker per dag | poort weigert bij |
+|---|---|---|
+| vóór 0175 | 10 × 13,2 = **132 cent** | de 11e job, hoe duur ook |
+| na 0175 | budget 30 cent + hoogstens één job overschot ≈ **43 cent** | de 3e maximale job |
+
+📏 Beide met de hand nagemeten op de lokale stack met jobs à 13,2 cent, en
+daarnaast de variant waarin het budget níét uit `limiet × voorschot` volgt maar
+op 100 cent staat: die weigert pas bij de achtste. Dat verschil is de wijziging.
 
 ⚠️ **De overschrijding is begrensd op één job**, want de laatste job wordt
 toegelaten op het voorschot en kan daarna duurder uitvallen. Dát is waarom
@@ -114,7 +123,8 @@ krijgt er drie.
 
 ⚠️ **Het getal is een aanname en hoort her-ijkt te worden.** Zodra er honderd
 echte jobs geboekt zijn, staat het antwoord in `ai_kosten_per_week()` en is het
-één regel SQL.
+één regel SQL. Bij 300 / 1500 kost een gewone ronde (≈2.500 tokens in, ≈1.200
+uit) zo'n 2,5 cent, dus 3 cent zit vandaag net aan de bovenkant van normaal.
 
 ## 5. De melding noemt geen getal meer
 
@@ -205,20 +215,121 @@ tekstblinde puntkomma (5 rood), het nooit stoppen bij de puntkomma (5 rood, en
 dáár valt de "aanroep ná een comment telt gewoon"-kant om), en het patroon terug
 naar alleen `comment on function` (1 rood).
 
-## 9. Wat er níét in zit
+## 9. De prijs die verlopen was
 
-⚠️ **`PRIJS_PER_MTOK_CENT` in `doelcoach/index.ts` is verlopen.** Het commentaar
-erboven zegt met zoveel woorden dat de introductieprijs van Sonnet 5 tot en met
-**31-08-2026** liep en dat het daarna 300 / 1500 wordt — *"Zet dat dan hier om."*
-Vandaag is het 06-09. Elke `cost_cents` die na 31-08 geboekt wordt, is daarmee
-ongeveer een derde te laag, en dit budget rekent in diezelfde te lage cent.
+⚠️ **`PRIJS_PER_MTOK_CENT` in `doelcoach/index.ts` stond nog op de
+introductieprijs.** Het commentaar erboven zei het zelf: de introductieprijs van
+Sonnet 5 liep tot en met **31-08-2026** en wordt daarna 300 / 1500 — *"Zet dat
+dan hier om."* Op 06-09 stond hij nog op 200 / 1000. Zes dagen lang zou elke
+`cost_cents` ongeveer een derde te laag geboekt zijn.
 
-Niet in deze migratie meegenomen, en dat is een keuze met twee redenen: het
-bedrag is van buiten dit project en hier niet te verifiëren, en `cost_cents` is
-een boekhoudkundig feit — er een niet-geverifieerd getal in schrijven is erger dan
-een getal dat aantoonbaar van 19-08 is. Bovendien vraagt het een deploy van de
-Edge Function, en die loopt via Quintens machine. Staat als eigen issue en als rij
-in `docs/ENGINEER-REVIEW.md`.
+📏 Praktisch gevolg vandaag: **nul.** `ai_jobs` bevat drie rijen, alle drie
+`failed`, geen enkele met een bedrag. Er is niets fout geboekt.
 
-Het budget verandert er niet wezenlijk van: gaat de prijs omhoog, dan koopt 30
-cent minder jobs — precies de kant die je wilt.
+De constante staat nu op 300 / 1500, en de bedragen in dit document en in de kop
+van 0175 zijn daarop herrekend. Dat is geen detail: een budget in cent is precies
+zo goed als de prijs waarmee die cent geboekt wordt.
+
+⚠️ **Een datum in een commentaarregel is geen grendel.** Dat is de les die blijft
+staan, en het is dezelfde vorm als de zin over een grant uit QS8-293: een
+uitspraak die waar was toen hij geschreven werd, die vanzelf onwaar wordt, en
+waar niets rood van gaat. Er staat een rij over in `docs/ENGINEER-REVIEW.md`.
+
+## 10. Twee sessies, één issue — en wat er van beide in zit
+
+Dit issue is op 06-09 door twee sessies tegelijk gebouwd, de vierde keer op één
+dag. `npm run claim` bestaat sinds QS8-294 precies hiervoor, maar de andere
+sessie was al begonnen voordat de claim op de remote stond: **een claim werkt
+alleen vooraf.**
+
+Beide versies waren af. Ze zijn naast elkaar gemeten op dezelfde lokale stack, met
+jobs van 13,2 cent — en dat is de enige reden dat er hier iets te kiezen viel in
+plaats van te betogen:
+
+| | poort weigert bij | plafond/dag | tien jobs zonder bedrag |
+|---|---|---|---|
+| twee poorten: `count(*) >= 10` én `sum(cost_cents) >= 100` | 8e maximale job | ≈119 cent | glijden langs het budget, gestopt door de telling |
+| één poort in cent, met het voorschot als bodem | 3e maximale job | ≈43 cent | gestopt door het budget zelf |
+
+Wat er uit de andere versie is overgenomen: **de prijsreparatie** (§9) — die was
+daar wél gedaan en hier bewust uitgesteld, en het bleek de betere keuze omdat de
+code zelf het nieuwe getal noemde. Wat er níét in zit: de tweede poort. De reden
+is niet dat twee grenzen slecht zijn maar dat ze hier hetzelfde meten in twee
+eenheden, en dat de telling dan de bindende blijft — precies wat dit issue moest
+weghalen. Zonder bodem telt een job zonder bedrag voor nul, en dat is de helft
+van het probleem.
+
+⚠️ **Eén getal blijft een vraag voor Quinten en niet voor Claude:** hoeveel mag
+één gebruiker per dag kosten? 30 cent (hier) of 100 cent (de andere versie)
+scheelt een factor drie in de rekening en drie tegen acht maximale jobs voor een
+zware gebruiker. Dat raakt grens 1 van de beslisbevoegdheid — wat er in rekening
+gebracht wordt — dus staat hier de behoedzame kant, en is het één regel SQL om
+hem te verzetten.
+
+## 11. Wat de security-review erbij vond, en waarom het blokkerend was
+
+Twee gaten, allebei zelf nagemeten en allebei in deze ronde gedicht. Ze staan hier
+apart omdat ze samen het patroon dragen: **de poort was goed en de omgeving niet.**
+
+### 11a. Het budget was met drie gewone verzoeken terug te zetten
+
+`ai_jobs.goal_id` droeg `on delete cascade` naar `goals` — sinds 0001, en
+ongewijzigd op productie (`pg_get_constraintdef` nagemeten). `verwijder_doel()` is
+`security definer` met `execute` voor `authenticated`, en weigert bij een
+groepskoppeling, weekdoelen, punten, een lopend commitment of een doel ouder dan
+`bedenktijd()`. Een vers doel met alléén AI-jobs eronder voldoet aan alle vijf.
+
+📏 En de twee vensters sluiten exact op elkaar aan: `bedenktijd()` is **24 uur** en
+het quotum telt over `now() - interval '1 day'`. Élke job die meetelt hing dus aan
+een doel dat nog verwijderbaar was. Doel maken → quotum opmaken → doel weggooien →
+opnieuw. Onbeperkt, want er staat geen grens op het aantal doelen.
+
+De reparatie is `on delete set null`. Het doel mág weg — dat is een bestaande
+belofte uit 0058 — maar de rekening blijft staan. De kolom was al nullable en
+`plan`-jobs staan er sinds 0136 al op NULL, dus het is geen nieuwe toestand.
+
+⚠️ **Dit is regel 18 vraag 5 in zuivere vorm.** Elk schakeltje was af: de poort
+telde goed, `cost_cents` zat dicht, de tests waren groen. De keten liep toch rond,
+langs een knop die niets met de Doelcoach te maken heeft. Er was geen test die
+vroeg of de rijen kúnnen verdwijnen — alleen of ze te wijzigen waren.
+
+### 11b. De poort was te racen, en de kop beweerde het tegendeel
+
+Lezen en schrijven staan in twee stappen. PostgREST geeft elk HTTP-verzoek zijn
+eigen transactie, dus gelijktijdige verzoeken zien allemaal hetzelfde oude getal.
+
+📏 Gemeten met twintig parallelle aanvragen op een leeg venster: **13 tot 14
+toegelaten waar er 10 passen**, drie runs achter elkaar. Bij vijftig verbindingen
+is het budget vijftig keer zo groot.
+
+Dat was géén regressie — de `count(*)`-poort van vóór 0175 was even raceable —
+maar het ís de belofte die deze wijziging doet, en de eerste versie van de
+migratiekop en van §3 hierboven zei letterlijk dat een burst er niet langs kwam.
+**Een verkeerde geruststelling in de documentatie is erger dan geen
+geruststelling**, want de volgende lezer bouwt erop verder. De zin is rechtgezet
+en het slot is er nu: `pg_advisory_xact_lock` op de gehashte `auth.uid()`, per
+gebruiker, vrijvallend bij commit.
+
+⚠️ Opvallend genoeg benoemde de concurrerende implementatie (§10) deze race
+expliciet — en hield er de telling voor aan, wat hem niet oplost maar wel begrenst.
+Hier is hij opgelost.
+
+### 11c. Wat er niet gerepareerd is, maar wel is opgeschreven
+
+- **Een storing verbrandt het dagbudget en de melding beweert het omgekeerde.**
+  Een `failed` job kost het voorschot — bedoeld, want een afgebroken call is al
+  betaald. Maar tijdens een storing als QS8-195 verbrandt een gebruiker zijn hele
+  dag aan mislukkingen en leest daarna "De Doelcoach heeft vandaag genoeg voor je
+  gedaan". Dat is onwaar op het moment dat het het meest telt. En er is geen
+  telemetrie: `quota_reached` is een geslaagde RPC, dus `reportError()` vuurt niet.
+  Rij in `docs/ENGINEER-REVIEW.md`.
+- **`ai_jobs` leunt op een ontbrekende grant en niet op een policy.** Er is één
+  policy (`ai_jobs_select`); schrijven wordt tegengehouden doordat de rechten er
+  niet zijn. Dat is de bewuste vorm sinds 0118, maar één `grant` in een latere
+  migratie opent de deur zonder dat een policy hem dichthoudt. Vastgelegd met een
+  test in plaats van met een policy: `ai-budget.test.ts` legt de afwezigheid van
+  INSERT, UPDATE en DELETE vast via `schrijfrechten_bewaking()`, en die test is
+  met de hand rood gemaakt door de grant te zetten.
+- **`ai_verbruik()` heeft in `database.types.ts` het type `Json`.** De sleutels
+  zijn hernoemd en geen typecheck vangt dat. Vandaag ongevaarlijk — de app leest
+  hem nergens — maar zodra er een scherm komt is dit een stille breuk.
