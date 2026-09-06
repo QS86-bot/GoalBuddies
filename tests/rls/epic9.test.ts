@@ -171,10 +171,23 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
        */
       ouderdom?: string,
     ): Promise<string> {
-      // ⚠️ Met een eigen `created_at` gaat het via de admin-client: die kolom
-      //    staat niet in de UPDATE- of INSERT-grant van `authenticated`, en dat
-      //    hoort zo — een gebruiker die zijn eigen `created_at` kiest, kiest zijn
-      //    eigen wachtvenster.
+      // ⚠️⚠️ **Deze opmerking heeft hier een ronde lang gestaan als vaststelling
+      //    terwijl hij onwaar was, en dat is de duurste regel van QS8-293.** Er
+      //    stond: "die kolom staat niet in de UPDATE- of INSERT-grant van
+      //    `authenticated`". De UPDATE-helft klopte (0057); de INSERT-helft was
+      //    de geërfde Supabase-standaard en deelde élke kolom uit, `created_at`
+      //    incluis — waarmee het wachtvenster van 0170 met één veld in de
+      //    POST-body op nul stond.
+      //
+      //    De invariant was goed bedacht en nooit gemeten. **Een zin over een
+      //    grant is pas waar als er een query naast staat.** Die staat er nu:
+      //    `tests/rls/straf-plafond.test.ts`, "een gebruiker kan
+      //    `commitments.created_at` niet meesturen bij het aanmaken". Sinds 0171
+      //    klopt de zin dus, en is hij bovendien getoetst.
+      //
+      //    Met een eigen `created_at` gaat het daarom via de admin-client: die
+      //    rol slaat grants en policies over, en dat is precies waarom een
+      //    opstelling hem mag gebruiken en een gebruiker niet.
       const client = ouderdom === undefined ? alice.db : adminDb();
       const rij = await client
         .from('commitments')

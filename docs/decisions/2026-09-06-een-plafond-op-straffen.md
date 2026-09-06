@@ -294,10 +294,14 @@ eigenschap die je wilt, hangt aan niets dat een gebruiker aanraakt:
 > *Een straf die je vastlegt, kan niet binnen een dag verschuldigd worden.*
 
 `maak_straffen_verschuldigd` krijgt daarom `and c.created_at < now() - interval
-'24 hours'`. Server-tijd aan beide kanten. Dat is **geen tweede kopie van de
-policyregel** maar een andere belofte op een andere plek — hetzelfde onderscheid
-dat 0168 maakte tussen de bandtoets in de policy en de getuigetoets in de
-trigger.
+'24 hours'`. Dat is **geen tweede kopie van de policyregel** maar een andere
+belofte op een andere plek — hetzelfde onderscheid dat 0168 maakte tussen de
+bandtoets in de policy en de getuigetoets in de trigger.
+
+⚠️⚠️ **Hier stond "server-tijd aan beide kanten, met geen enkele gebruikerskolom
+te verzetten". Dat was onwaar, en §15 gaat daarover.** De rechterkant is
+serverklok; de linkerkant kwam uit de POST-body. Derde ronde, derde te stellige
+zin.
 
 En het is op zichzelf de betere regel. Domeinregel 5 zegt dat een commitment
 device nooit stilzwijgend in werking treedt; een nacht tussen het vastleggen en
@@ -357,3 +361,93 @@ en het rechtstreeks verzetten van `target_date` — en er was geen enkele test d
 rood werd als een van die kolommen aan de grant werd toegevoegd. `commitments_update`
 toetst `type` nergens; de grant is de héle grendel. Nu ligt hij vast, inclusief
 een must-allow zodat een kapotte query niet als "dicht" leest.
+
+
+## 15. ⚠️⚠️ Derde ronde — en de duurste regel stond in een testbestand
+
+0170 hing zijn belofte aan `c.created_at`. De derde security-ronde mat
+`information_schema.column_privileges`:
+
+```
+INSERT-grant commitments | beneficiary_group_id, beneficiary_user_id, body,
+                           confirmed_at, created_at, goal_id, id, image_url,
+                           status, type
+UPDATE-grant commitments | body, image_url, status
+```
+
+0057 versmalde alleen de UPDATE-grant. De INSERT-grant was nooit versmald en dus
+nog de standaard die Supabase via `alter default privileges` uitdeelt: álle
+kolommen. Zelf nagemeten, als gewone `authenticated`-gebruiker:
+
+```
+A  created_at zoals de client hem meestuurde: 2020-01-01 00:00:00+00
+B  rollover verschuldigd = 1   status = due
+```
+
+Eén veld in de POST-body en het wachtvenster van 0170 stond op nul.
+
+### Wat dit issue drie keer heeft laten zien
+
+| Ronde | De zin | Waar hij fout zat |
+|---|---|---|
+| 1 | "twee grenzen, en samen sluiten ze de route" | de naad tussen twee grenzen |
+| 2 | "één dag speling, inherent aan tijdzones" | een grens die twee momenten vergelijkt met een gebruikerskolom ertussen |
+| 3 | "server-tijd aan beide kanten" | de linkerkant kwam uit de request-body |
+
+Alle drie de keren was elk onderdeel correct. Alle drie de keren stond de
+geruststelling in `ENGINEER-REVIEW.md` vóórdat iemand hem gemeten had.
+
+⚠️ **En de scherpste vorm ervan stond in `tests/rls/epic9.test.ts`:**
+
+> *"die kolom staat niet in de UPDATE- of INSERT-grant van `authenticated`, en
+> dat hoort zo — een gebruiker die zijn eigen `created_at` kiest, kiest zijn
+> eigen wachtvenster."*
+
+De invariant is precies goed. Hij is opgeschreven als vaststelling, er stond geen
+query naast, en dus werd er niets rood van. **Een zin over een grant is pas waar
+als er een query naast staat.** Dat staat als eigen rij in `ENGINEER-REVIEW.md`,
+want het is een gewoonte en geen bug.
+
+### De reparatie: twee sloten, geen van beide op `service_role`
+
+**1. De INSERT-grant versmallen** (0171), dezelfde vorm die 0044 en 0046 elders
+al gebruiken. Dit zet het vandaag dicht: de client kan de kolom niet noemen, dus
+de default `now()` geldt.
+
+**2. Een klokconjunct in `commitments_insert`**, want een grant overleeft het
+volgende "bewerk je commitment"-scherm niet:
+
+```sql
+and created_at between now() - interval '5 minutes' and now() + interval '5 minutes'
+and (confirmed_at is null
+     or confirmed_at between now() - interval '5 minutes' and now() + interval '5 minutes')
+```
+
+⚠️ **Beide kanten van het venster, en de bovenkant is niet cosmetisch.** Een
+`created_at` in de toekomst stelt je eigen straf onbeperkt uit — je eigen
+commitment device ontlopen, en daar gaat domeinregel 5 over.
+
+⚠️ **`confirmed_at` erbij, en dat is geen meelift.** Dat veld ís de bevestiging
+waar domeinregel 5 om vraagt. Hij blijft in de grant omdat `zetStraf()` hem
+meestuurt, dus daar doet alleen de policy het werk.
+
+⚠️ **Géén trigger, en dat is een keuze.** Een BEFORE INSERT die `created_at`
+forceert, bindt óók `service_role` — en dan kan geen enkele opstelling meer een
+straf bouwen die er gisteren al stond, waarmee de grendel van 0170 zelf
+ontoetsbaar wordt. Grant en policy laten `service_role` met rust, en dat is hier
+de juiste kant: de aanvaller heeft die rol niet.
+
+### De ijking, en waarom er een grant tijdelijk terug open gaat
+
+| Mutatie | Rood | Groen |
+|---|---|---|
+| klokconjuncten uit de policy (grant smal) | de drie kloktests | 21 |
+| INSERT-grant weer volledig open (policy intact) | *een gebruiker kan `commitments.created_at` niet meesturen* | 23 |
+
+⚠️ **Die eerste werkt alleen omdat het kloksblok de grant tijdens zijn eigen
+tests terugzet.** Met de versmalde grant erop stuiten die inserts op een
+permissiefout en niet op de policy — ze zouden groen zijn met de conjunct er
+volledig uit. Dat is letterlijk de val die CLAUDE.md bij regel 18 beschrijft: een
+ijking die zijn geval door een pad voert dat een éérdere grendel al afvangt,
+bewaakt niets. Het geval dat de policy bewaakt is *"stel dat de grant ooit
+terugkomt"*, dus hoort de grant tijdens die tests terug te zijn.

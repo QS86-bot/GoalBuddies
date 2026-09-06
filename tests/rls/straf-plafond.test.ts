@@ -650,13 +650,17 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
      *    verandert, leer je bij te werken zonder te lezen. Dit zijn de twee
      *    kolommen waar een grens aan hangt.
      */
-    function magBijwerken(tabel: string, kolom: string): boolean {
+    function magSchrijven(tabel: string, kolom: string, recht: 'INSERT' | 'UPDATE'): boolean {
       const uit = psql(
         `select count(*) from information_schema.column_privileges ` +
           `where grantee = 'authenticated' and table_name = '${tabel}' ` +
-          `and column_name = '${kolom}' and privilege_type = 'UPDATE'`,
+          `and column_name = '${kolom}' and privilege_type = '${recht}'`,
       );
       return uit.trim() !== '0';
+    }
+
+    function magBijwerken(tabel: string, kolom: string): boolean {
+      return magSchrijven(tabel, kolom, 'UPDATE');
     }
 
     it(
@@ -691,6 +695,153 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
         //    dan zijn de twee tests hierboven groen zonder iets te meten.
         expect(magBijwerken('commitments', 'body')).toBe(true);
         expect(magBijwerken('goals', 'title')).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een gebruiker kan `commitments.created_at` niet meesturen bij het aanmaken',
+      () => {
+        // ⚠️⚠️ **Dit blok toetste alleen UPDATE, en dáár zat de fout.** De
+        //    24-uursgrendel van 0170 hangt aan `created_at`, en die kolom stond
+        //    gewoon in de INSERT-grant — de standaard die Supabase uitdeelt en
+        //    die 0057 alleen voor UPDATE versmalde. Eén veld in de POST-body en
+        //    het wachtvenster stond op nul. 0171 versmalt de INSERT-grant.
+        expect(
+          magSchrijven('commitments', 'created_at', 'INSERT'),
+          'commitments.created_at staat in de INSERT-grant — dan kiest de client ' +
+            'zijn eigen wachtvenster en is de grendel van 0170 nul waard',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de kolommen die de client wél moet kunnen meesturen, kan hij nog steeds meesturen',
+      () => {
+        // ⚠️ De must-allow op de versmalling zelf. Een `revoke insert` zonder de
+        //    juiste `grant` erna breekt elk scherm dat een commitment vastlegt,
+        //    en dat is geen theoretisch risico — het is precies wat een te grove
+        //    versmalling doet.
+        for (const kolom of ['goal_id', 'type', 'body', 'beneficiary_user_id', 'confirmed_at']) {
+          expect(magSchrijven('commitments', kolom, 'INSERT'), `${kolom} is weggevallen`).toBe(true);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('de klok van een commitment is niet van de client', () => {
+    /**
+     * ⚠️ **Het tweede slot op dezelfde belofte, en het bestaat omdat het eerste
+     *    een grant is.** Een grant overleeft het volgende "bewerk je
+     *    commitment"-scherm niet; deze conjunct in `commitments_insert` wel.
+     *
+     * ⚠️⚠️ **Dáárom zet dit blok de INSERT-grant tijdelijk terug open.** Met de
+     *    versmalde grant erop stuiten deze inserts op een permissiefout en niet
+     *    op de policy — ze zouden groen zijn met de conjunct er volledig uit.
+     *    Dat is precies waar CLAUDE.md bij regel 18 voor waarschuwt: een ijking
+     *    die zijn geval door een pad voert dat een éérdere grendel al afvangt,
+     *    bewaakt niets van wat hij belooft. Het geval dat hier getoetst wordt is
+     *    *"stel dat de grant ooit terugkomt"*, dus hoort de grant tijdens deze
+     *    tests terug te zijn.
+     *
+     * ⚠️ De grant van de tests hierboven blijft daarmee heel: die draaien in een
+     *    eigen `describe` en meten `information_schema` en niet een insert.
+     *    Vitest draait de bestanden in deze suite niet parallel
+     *    (`fileParallelism: false`), dus er is geen andere test die tijdens dit
+     *    venster een commitment aanmaakt.
+     */
+    beforeAll(() => {
+      psql('grant insert (created_at) on public.commitments to authenticated');
+    });
+
+    afterAll(() => {
+      psql('revoke insert (created_at) on public.commitments from authenticated');
+    });
+
+    it(
+      'een straf met een teruggedateerde `created_at` komt er niet in',
+      async () => {
+        const doelId = await versDoel('KLOK teruggedateerd');
+
+        const poging = await w.alice.db.from('commitments').insert({
+          goal_id: doelId,
+          type: 'penalty',
+          body: 'KLOK straf uit 2020',
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: new Date().toISOString(),
+          created_at: '2020-01-01T00:00:00Z',
+        });
+
+        expect(poging.error, 'een teruggedateerde straf is erdoor gekomen').not.toBeNull();
+
+        const rijen = await adminDb().from('commitments').select('id').eq('goal_id', doelId);
+        expect(rijen.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'en een `created_at` ver in de toekomst ook niet',
+      async () => {
+        // ⚠️ **Niet cosmetisch.** Een straf met een `created_at` van volgend jaar
+        //    stelt het wachtvenster van 0170 een jaar uit — dat is je eigen
+        //    commitment device ontlopen, en domeinregel 5 gaat daar precies over.
+        const doelId = await versDoel('KLOK toekomst');
+
+        const poging = await w.alice.db.from('commitments').insert({
+          goal_id: doelId,
+          type: 'penalty',
+          body: 'KLOK straf van volgend jaar',
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: new Date().toISOString(),
+          created_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+
+        expect(poging.error, 'een straf uit de toekomst is erdoor gekomen').not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een teruggedateerde `confirmed_at` komt er ook niet in',
+      async () => {
+        // ⚠️ `confirmed_at` ís de bevestiging waar domeinregel 5 om vraagt.
+        //    Een client die hem vrij kiest, kiest wanneer hij volgens de
+        //    administratie ja gezegd heeft.
+        const doelId = await versDoel('KLOK bevestiging');
+
+        const poging = await w.alice.db.from('commitments').insert({
+          goal_id: doelId,
+          type: 'penalty',
+          body: 'KLOK straf met oude bevestiging',
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: '2020-01-01T00:00:00Z',
+        });
+
+        expect(poging.error, 'een teruggedateerde bevestiging is erdoor gekomen').not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een gewone straf, zonder klok in de body, kan gewoon',
+      async () => {
+        // ⚠️ De must-allow. Zonder haar is de conjunct "geen enkele straf mag",
+        //    en dat is groen op precies dezelfde manier.
+        const doelId = await versDoel('KLOK gewoon');
+
+        const poging = await w.alice.db.from('commitments').insert({
+          goal_id: doelId,
+          type: 'penalty',
+          body: 'KLOK gewone straf',
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: new Date().toISOString(),
+        });
+
+        expect(poging.error, `een gewone straf hoort te mogen: ${poging.error?.message}`).toBeNull();
       },
       TEST_TIMEOUT,
     );
