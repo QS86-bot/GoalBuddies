@@ -11,6 +11,7 @@ export {
 export {
   fetchCommitments,
   fetchCommitmentSpoor,
+  fetchGetuigenissen,
   fetchMogelijkeBegunstigden,
   trekIn,
   zetBeloning,
@@ -18,6 +19,7 @@ export {
   type Begunstigde,
   type Commitment,
   type CommitmentGebeurtenis,
+  type Getuigenis,
   type MogelijkeBegunstigde,
 } from './api';
 
