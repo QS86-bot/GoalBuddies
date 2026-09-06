@@ -53,9 +53,33 @@
 -- van.
 --
 -- ⚠️ **Een `auth.uid() = p_user_id`-toets binnenin zou de verkeerde reparatie
---    zijn**, en dat is nagegaan: de trigger roept hem aan met de **eigenaar van
---    het doel**, terwijl de handelende gebruiker een goedkeurende buddy kan
---    zijn. Zo'n toets zou juist de legitieme interne weg breken.
+--    zijn**, maar niet om de reden die hier tot QS8-290 stond. Er stond dat de
+--    trigger hem aanroept met de **eigenaar van het doel** terwijl de handelende
+--    gebruiker een goedkeurende buddy kan zijn — en dat is juist het geval dat
+--    het tegendeel bewijst.
+--
+--    📏 Nagemeten over alle vier de takken van `badge_na_gebeurtenis()`:
+--
+--      milestones           wie = eigenaar van het doel   GELIJK
+--                           (`milestones_write` is eigenaar-only)
+--      goals                wie = new.owner_id            GELIJK
+--                           (`goals_update` is `owner_id = auth.uid()`)
+--      completion_approvals wie = new.approver_id         GELIJK
+--                           (de goedkeurder ís het doelwit)
+--      user_streaks         wie = new.user_id             VERSCHILLEND
+--                           (via `herbereken_reeks()` uit `trek_goedkeuring_in()`)
+--
+--    Eén tak van de vier, en precies díe tak is voor een client **niet
+--    rechtstreeks te bereiken**: `user_streaks` wordt alleen door
+--    definer-functies geschreven, de andere drie tabellen hebben wél een
+--    schrijfpolicy voor `authenticated`. Dat is geen tegenargument maar de
+--    scherpste formulering van waaróm de toets een slechte grendel is: **hij
+--    zou bijten waar het niet mag en zwijgen waar het wel moet.**
+--
+--    ⚠️ Deze correctie is het onderwerp van QS8-290 en niet een detail. Een
+--    rechtvaardiging met een verkeerd voorbeeld is met één psql-commando te
+--    weerleggen, en dan wantrouwt de volgende lezer de hele redenering — terwijl
+--    de conclusie klopt. Precies wat 0113 met deze functie heeft gedaan.
 --
 -- ⚠️ `service_role` houdt het recht. Dat is de rol van de Edge Functions, en die
 --    draait niet namens een gebruiker.

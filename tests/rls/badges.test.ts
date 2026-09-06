@@ -286,11 +286,15 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
       const vreemde = await bob.db.rpc('verdien_badges', { p_user_id: alice.id });
       expect(vreemde.error, 'Bob mocht badges schrijven voor Alice').not.toBeNull();
 
-      // ⚠️ Ook niet voor zichzelf, en dat is met opzet. De reparatie van QS8-287
-      //    is het récht intrekken en niet een eigenaarstoets toevoegen: de
-      //    trigger roept deze functie aan met de eigenaar van het doel, terwijl
-      //    de handelende gebruiker een goedkeurende buddy kan zijn. Een
-      //    `auth.uid() = p_user_id`-toets zou juist die weg breken.
+      // ⚠️ Ook niet voor zichzelf, en dat is met opzet: de reparatie van QS8-287
+      //    is het récht intrekken en niet een eigenaarstoets toevoegen.
+      //
+      // ⚠️ **Waaróm dat zo is, staat in de kop van migratie 0165 en wordt hier
+      //    bewust niet herhaald.** Er stond hier eerst wél een eigen versie van
+      //    die onderbouwing, en die noemde de verkeerde tak — 📏 `milestones_write`
+      //    is eigenaar-only, dus dáár is `auth.uid()` juist altijd gelijk aan
+      //    `p_user_id`. Twee versies van dezelfde rechtvaardiging is precies hoe
+      //    dit gat is ontstaan (QS8-290). Eén plek, en hier een verwijzing.
       const eigen = await bob.db.rpc('verdien_badges', { p_user_id: bob.id });
       expect(eigen.error, 'de RPC stond nog open voor de aanroeper zelf').not.toBeNull();
     },
@@ -322,6 +326,15 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
       if (mijlpaal.error || mijlpaal.data === null) {
         throw new Error(`mijlpaal: ${mijlpaal.error?.message}`);
       }
+
+      // ⚠️ **Zonder deze regel leunt de test op de volgorde van de tests ervóór.**
+      //    Krijgt Alice ooit eerder een afgevinkte mijlpaal, dan is hij triviaal
+      //    groen en bewaakt hij niets meer — een eigenschap van vijf ándere
+      //    tests, niet van deze.
+      expect(
+        await badgesVan(alice),
+        'Alice hoort deze badge nog niet te hebben — anders bewijst de assertie hieronder niets',
+      ).not.toContain('first_milestone');
 
       const af = await alice.db
         .from('milestones')
