@@ -537,16 +537,28 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         //    Bewust géén groepskoppeling op dit doel: anders slaat
         //    `gedeeld_met_groep` eerder toe en bewijst de test iets anders dan
         //    hij zegt.
+        // ⚠️ **Vooruit aanmaken en dan terugzetten via `adminDb()`**, sinds
+        //    migratie 0169. `goals_insert` weigert een streefdatum in het
+        //    verleden, en dat is precies de bedoeling — zonder die grens is een
+        //    doel met `current_date - 30` de kortste weg naar een straf die
+        //    meteen verschuldigd is (QS8-293). Deze test gaat niet over
+        //    aanmaken maar over een straf die al afgegaan is, dus de opstelling
+        //    verhuist naar de rol die de policy overslaat.
         const doel = await f.alice.db
           .from('goals')
           .insert({
             owner_id: f.alice.id,
             title: 'COMMITMENT weggooidoel',
-            target_date: addDays(vandaag(), -2),
+            target_date: addDays(vandaag(), 30),
           })
           .select('id')
           .single();
         if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(vandaag(), -2) })
+          .eq('id', doel.data.id);
 
         const straf = await f.alice.db
           .from('commitments')
@@ -573,11 +585,18 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .insert({
             owner_id: f.alice.id,
             title: 'COMMITMENT weggooidoel 2',
-            target_date: addDays(vandaag(), -2),
+            target_date: addDays(vandaag(), 30),
           })
           .select('id')
           .single();
         if (tweede.error || tweede.data === null) throw new Error(`doel 2: ${tweede.error?.message}`);
+
+        // Zie de opmerking hierboven: terugzetten hoort bij de opstelling en
+        // niet bij wat deze test toetst.
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(vandaag(), -2) })
+          .eq('id', tweede.data.id);
 
         const straf2 = await f.alice.db.from('commitments').insert({
           goal_id: tweede.data.id,
