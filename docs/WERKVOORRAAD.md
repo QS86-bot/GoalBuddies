@@ -7,8 +7,17 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 03-09-2026 (na QS8-266, QS8-202 en QS8-196; daarvóór QS8-261 en
-het toepassen van `0139` t/m `0149` op productie in twee rondes)
+**Laatst bijgewerkt:** 06-09-2026 (na QS8-287, QS8-288, QS8-289 en QS8-291;
+daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
+productie in twee rondes)
+
+⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
+drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
+uitvoerrecht voor `authenticated` kwijtraakten) en `0169` (het oppervlak van de
+persoon-getuige) staan er nog niet op. `0164` moet
+in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
+waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
+dit document.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -53,12 +62,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **1031 geslaagd, 1 overgeslagen** over 82 bestanden (06-09, na QS8-291 en het samengaan met main; daarvóór QS8-228, QS8-289, QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
+   **1036 geslaagd, 1 overgeslagen** over 83 bestanden (06-09, na QS8-292 en QS8-291 en het samengaan met main; daarvóór QS8-228, QS8-289, QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3463 geslaagd en 1 overgeslagen** over
-   248 bestanden.
+   suite geeft met de stack **3478 geslaagd en 1 overgeslagen** over
+   250 bestanden.
    ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
    geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
    legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
@@ -139,7 +148,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0168` staan in de map: **171 bestanden**,
+Migraties `0001` t/m `0169` staan in de map: **172 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -751,24 +760,67 @@ kan een sessie **niet** zelf oppakken:
 opgeleverd dan de backlog. Zeven agents over ~99.500 regels; de vijf blokkerende
 bevindingen zijn gerepareerd (PR #85 t/m #90), de rest staat als rij in
 `docs/ENGINEER-REVIEW.md` met per rij de voorwaarde waaronder hij zwaarder wordt.
-**Begin daar, niet in Linear.** De zwaarste die nog open staan:
+**Begin daar, niet in Linear.**
 
-- Elf tabellen dragen schrijfgrants zonder bijbehorende policy. Vandaag inert —
-  RLS weigert bij een ontbrekende policy — maar `schrijfrechten_bewaking()` (0101)
-  kent een **hardgecodeerde lijst van vier tabelnamen** en ziet de andere zeven
-  niet. Dat is precies de vorm die 0101 kwam voorkomen.
-- `te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test. De job
-  roept hem aan als `service_role`, dus RLS kijkt niet mee; de functie ís de
-  grens. De groepsjoin met de hand losknippen liet de hele RLS-suite groen.
-- 49 policies over 30 tabellen evalueren `auth.uid()` per rij in plaats van via
-  `(select auth.uid())`. Nul van de 58 doet het vandaag goed.
-- Zes tekstkolommen zonder lengtegrens en het AI-dagquotum dat jobs telt in
-  plaats van tokens — allebei opslag- respectievelijk kostenmisbruik op een
-  gratis tier zonder backups.
-- Vijf onbereikbare features: een doel en een mijlpaal zijn na aanmaken niet meer
-  te wijzigen, het auditspoor van een commitment is nergens te zien, ledenbeheer
-  (`group_members.status`) heeft geen knop, en `ai_kosten_per_week()` draait
-  nergens.
+⚠️ **Deze lijst stond tot 06-09-2026 vijf bevindingen te noemen die grotendeels
+al af waren.** Dat is de gevaarlijkste vorm die een overdrachtsdocument kan
+hebben: een sessie die hem gehoorzaam volgt, begint aan werk dat er niet meer is,
+en de rest van het bestand verliest daarmee zijn geloofwaardigheid. Elke regel
+hieronder is op 06-09 opnieuw **gemeten** — tegen de draaiende database en de
+bestanden, niet tegen dit document.
+
+✅ **Drie zijn helemaal dicht:**
+
+- ~~Elf tabellen dragen schrijfgrants zonder bijbehorende policy en
+  `schrijfrechten_bewaking()` kent een hardgecodeerde lijst van vier.~~
+  📏 `schrijfrechten_bewaking()` geeft **nul rijen** en is generiek sinds `0118`
+  (QS8-151).
+- ~~`te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test.~~
+  Die test staat er: `tests/rls/beoordelingsgrens.test.ts`.
+- ~~49 policies evalueren `auth.uid()` per rij in plaats van via
+  `(select auth.uid())`.~~ 📏 **Nul van de 61** doet het vandaag per rij; alle 61
+  gaan via een InitPlan sinds `0122` (QS8-153).
+
+  ⚠️ **Bij die laatste heb ik mezelf eerst voor de gek gehouden**, en dat hoort
+  hier omdat het een meetfout is die iedereen hier kan maken: mijn eerste query
+  gebruikte `~` in plaats van `~*` terwijl `pg_get_expr()` `SELECT` in kapitalen
+  teruggeeft. Uitkomst: "61 van de 61 fout" waar het "61 van de 61 goed" is.
+  **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
+  tegendeel schrijft.**
+
+⚠️ **Eén staat er nog, en smaller dan de regel suggereerde:**
+
+- **Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
+  doet `count(*)`. Dat is kostenmisbruik op een gratis tier: één job met een
+  enorme prompt telt als één.
+  📏 De tekstkolommen daarentegen zijn wél begrensd sinds QS8-118: `commitments.body`,
+  `week_review_replies.body`, `milestone_tips.body` en `deadline_requests.reason`
+  dragen allemaal een `char_length`-CHECK. Twee `text`-kolommen hebben er geen —
+  `ai_jobs.error` (door de server geschreven) en **`push_tokens.token`**. ⚠️ Dat laatste heb ik
+  eerst verkeerd samengevat als *"een client schrijft hem zelf"*; dat klopt niet
+  — `authenticated` heeft geen INSERT of UPDATE op die tabel, en de enige
+  schrijver is `registreer_push_token()`. Wat de client wél doet is de wáárde
+  meegeven, en dáár ontbreekt de bovengrens. Opgepakt als **QS8-297**.
+- **Van de vijf "onbereikbare features" zijn ze inmiddels alle vijf beantwoord.**
+  📏 Gemeten: een doel bewerken kan via `app/doel/bewerk/[id].tsx`, een mijlpaal
+  via `/doel/weekdoelen/[id]?mijlpaal=`, ledenbeheer heeft `app/groep/leden` en
+  `app/groep/beheer`, en `commitment_events` wordt gelezen in `app/doel/[id].tsx`.
+  ⚠️ **En de vijfde was helemaal geen bevinding — die correctie is van 06-09.**
+  Ik schreef hier eerst dat `ai_kosten_per_week()` overbleef omdat hij geen
+  aanroeper heeft. 📏 Nagemeten: hij bestáát wél (`ai_kosten_per_week(p_weken
+  integer default 8)`), en hij is `service_role=true`, `authenticated=false`.
+  Dat is geen dode code maar een **ops-functie**, en `keten:controle` draagt de
+  reden woordelijk: *"wat de Doelcoach kost, over álle gebruikers samen — bewust
+  niet voor `authenticated`: het totaal verraadt hoeveel anderen de coach
+  gebruiken."* Een functie met een register-verdict is beantwoord, niet
+  vergeten.
+
+⚠️ **De les die blijft.** Deze vijf regels zijn niet verouderd doordat iemand
+slordig was, maar doordat een reparatie werd geland zonder dat dit blok
+meebewoog — de rij in `docs/ENGINEER-REVIEW.md` werd wél doorgestreept. **Sluit
+je een dossierrij, grep dan op dat feit in dit bestand voordat je klaar bent**;
+dat is dezelfde afspraak die bovenaan `CLAUDE.md` staat, en hier is hij vijf keer
+overgeslagen.
 
 ✅ **De twee blinde vlekken in de controlescripts zijn dicht (28-08).**
 `keten:controle` telde een `grant`-regel, SQL-commentaar én geen `drop function`
