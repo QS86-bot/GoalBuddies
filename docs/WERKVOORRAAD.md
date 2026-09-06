@@ -57,8 +57,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3435 geslaagd en 1 overgeslagen** over
-   246 bestanden.
+   suite geeft met de stack **3444 geslaagd en 1 overgeslagen** over
+   247 bestanden.
    ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
    geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
    legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
