@@ -1,4 +1,4 @@
-import type { Tables } from '../../lib/database.types';
+import type { Database, Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
@@ -38,6 +38,46 @@ export type { Resultaat };
 export type Commitment = Tables<'commitments'>;
 export type CommitmentGebeurtenis = Tables<'commitment_events'>;
 
+
+/**
+ * Eén straf waarvan jij persoonlijk de getuige bent — QS8-292.
+ *
+ * ⚠️ **Geen `Tables<'commitments'>`**, en dat is het punt van dit type: de
+ *    getuige ziet mínder dan de eigenaar. Geen `goal_id`, geen
+ *    `beneficiary_user_id`, geen `image_url` — en wél de naam van de eigenaar,
+ *    die in de tabel zelf niet eens staat.
+ */
+export type Getuigenis = Database['public']['Functions']['getuigenissen']['Returns'][number];
+
+/**
+ * De straffen waarvan jij persoonlijk de getuige bent.
+ *
+ * ⚠️ **Waarom dit een RPC is en niet een `.from('commitments')`.** Het leesrecht
+ *    bestaat sinds 0168 — `commitments_select`, derde tak — maar het is niet
+ *    genoeg om er een scherm van te maken. 📏 Gemeten met een echte opstelling:
+ *    de getuige leest de straf (1 rij, mét `body`) en het dóél niet (0 rijen).
+ *    En `commitments` draagt geen `owner_id`, dus **hij kan niet vaststellen van
+ *    wie de straf is**. `getuigenissen()` (0169) legt daar precies één veld bij:
+ *    de naam.
+ *
+ * ⚠️ **De functie neemt geen argumenten, en dat is de autorisatie.** `auth.uid()`
+ *    staat ín het lichaam, dus er is geen manier om hem voor iemand anders aan
+ *    te roepen — de les van `verdien_badges(p_user_id)` (0165) als ontwerpkeuze.
+ *
+ * ⚠️ **Werpt niet, maar geeft een lege lijst bij een fout.** Dit blok staat naast
+ *    je eigen week en hoort die niet mee te slepen; dezelfde afweging die het
+ *    stand-blok op *Vandaag* apart laadt na de gebruikersreview op QS8-75.
+ */
+export async function fetchGetuigenissen(): Promise<readonly Getuigenis[]> {
+  const { data, error } = await supabase().rpc('getuigenissen');
+
+  if (error) {
+    reportError(error, 'commitments.getuigenissen', { code: error.code });
+    return [];
+  }
+
+  return data ?? [];
+}
 
 export async function fetchCommitments(goalId: string): Promise<readonly Commitment[]> {
   const { data, error } = await supabase()

@@ -179,6 +179,14 @@ export const nl = {
   'commitment.penalty.cancelled.uitleg':
     'Je hebt je doel afgerond, dus deze inzet gaat niet meer in werking.',
 
+  'getuigenis.titel': 'Jij bent getuige',
+  'getuigenis.uitleg':
+    'Deze mensen hebben jou aangewezen als getuige van hun inzet. Hun streefdatum ' +
+    'is verstreken.',
+  'getuigenis.van': 'De inzet van {naam}',
+  'getuigenis.afgehandeld': 'Afgehandeld',
+  'getuigenis.verschuldigd': 'Verschuldigd',
+
   'commitment.onbekend.titel': 'Onbekend',
   'commitment.onbekend.uitleg': 'De stand van deze afspraak is niet te bepalen.',
 
