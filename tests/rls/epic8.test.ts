@@ -429,19 +429,41 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         //    omdat de twee klokken tweeëntwintig uur per dag dezelfde dag
         //    aanwijzen. De overige twee uur — de groep staat standaard in
         //    Europe/Amsterdam — was hij rood zonder dat er iets kapot was.
+        //
+        // ⚠️⚠️ **En de telling filtert op Alice, want `chain_links` is de gedeelde
+        //    teller van de groep** — QS8-276. Zonder dat filter telde deze test de
+        //    schakels mee die twee éérdere tests in dit bestand op `f.periodStart`
+        //    neerleggen, en dat gaat één dag per week mis: `huddle_day` staat op
+        //    zondag, dus op zaterdag ís `f.periodStart` gelijk aan `vandaag - 6`.
+        //    📏 Gemeten op zaterdag 05-09-2026: `expected [ …(2) ] to have a
+        //    length of 1`. Zes van de zeven dagen liggen die data uit elkaar en
+        //    was hij groen — de belofte brak daar niet, de telling wel.
+        //
+        // ⚠️ **En de insert wordt op diezelfde dag geweigerd** door
+        //    `chain_links_one_per_period`, want Alice heeft dan al een schakel op
+        //    die datum. `upsert` met `ignoreDuplicates` maakt de opstelling
+        //    idempotent; de foutcontrole eronder blijft daardoor betekenisvol in
+        //    plaats van een botsing weg te slikken die er hoort te zijn.
         const vandaag = localDateIn(f.tz, now());
         const gesloten = addDays(vandaag, -7);
         const lopend = addDays(vandaag, -6);
 
-        await adminDb().from('chain_links').insert([
-          { group_id: f.groupId, user_id: f.alice.id, group_period_start: gesloten },
-          { group_id: f.groupId, user_id: f.alice.id, group_period_start: lopend },
-        ]);
+        const neergelegd = await adminDb()
+          .from('chain_links')
+          .upsert(
+            [
+              { group_id: f.groupId, user_id: f.alice.id, group_period_start: gesloten },
+              { group_id: f.groupId, user_id: f.alice.id, group_period_start: lopend },
+            ],
+            { onConflict: 'group_id,user_id,group_period_start', ignoreDuplicates: true },
+          );
+        expect(neergelegd.error, 'de opstelling landde niet').toBeNull();
 
         const zevenDagen = await f.bob.db
           .from('chain_links')
           .select('user_id')
           .eq('group_id', f.groupId)
+          .eq('user_id', f.alice.id)
           .eq('group_period_start', gesloten);
         expect(zevenDagen.data).toHaveLength(0);
 
@@ -451,6 +473,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .from('chain_links')
           .select('user_id')
           .eq('group_id', f.groupId)
+          .eq('user_id', f.alice.id)
           .eq('group_period_start', lopend);
         expect(zesDagen.data).toHaveLength(1);
       },
@@ -662,19 +685,27 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       return addDays(cyclus.startDate, 7 * weken);
     }
 
+    /**
+     * ⚠️ **Hier stonden tot 06-09-2026 twee weigeringen, en die zijn een besluit
+     *    geworden en geen bug.** `niet_vooraf` hield de lopende cyclus tegen —
+     *    tegen een zondagavondontsnapping uit het minpunt — en `te_lang` hield
+     *    het bij twee cycli. Quinten heeft op 30-08 voor volledige vrijheid
+     *    gekozen, mét het tegenadvies erbij; QS8-227 en
+     *    `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md`.
+     *
+     *    De tests zijn daarom niet weggehaald maar omgedraaid: wat eerst
+     *    geweigerd moest worden, moet nu lukken én zijn gevolg hebben. Een
+     *    verwijderde test laat niet zien dat er iets besloten is.
+     */
     it(
-      'weigert een adempauze over de week die nu loopt',
+      'staat een adempauze over de week die nu loopt toe',
       async () => {
-        // ⚠️ De belangrijkste test van dit blok. Kon dit wél, dan is de
-        //    adempauze op zondagavond een gratis uitweg uit het minpunt: je weet
-        //    dat je je week niet haalt, kondigt hem aan, en de rollover zet je
-        //    weekdoel op `excused` in plaats van `missed`. Dezelfde ontsnapping
-        //    als A39 (doorschuiven vóór de job) en A40 (wissen vóór de job).
         const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
         const doel = await adminDb()
           .from('goals')
           .select('id')
           .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
           .limit(1)
           .single();
 
@@ -684,30 +715,660 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           p_ends_cycle: cyclus.startDate,
         });
 
-        expect(uitkomst(antwoord.data).ok).toBe(false);
-        expect(uitkomst(antwoord.data).reason).toBe('niet_vooraf');
+        expect(uitkomst(antwoord.data).ok).toBe(true);
+
+        await adminDb()
+          .from('breathers')
+          .delete()
+          .eq('id', (uitkomst(antwoord.data) as { id: string }).id);
       },
       TEST_TIMEOUT,
     );
 
     it(
-      'weigert meer dan twee cycli',
+      'staat een adempauze van vijf weken toe',
       async () => {
         const doel = await adminDb()
           .from('goals')
           .select('id')
           .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
           .limit(1)
           .single();
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doel.data?.id ?? '',
-          p_starts_cycle: cyclusOverWeken(1),
-          p_ends_cycle: cyclusOverWeken(3),
+          p_starts_cycle: cyclusOverWeken(10),
+          p_ends_cycle: cyclusOverWeken(14),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(true);
+
+        await adminDb()
+          .from('breathers')
+          .delete()
+          .eq('id', (uitkomst(antwoord.data) as { id: string }).id);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een adempauze van langer dan een jaar',
+      async () => {
+        // ⚠️ **De enige grens die QS8-227 erbíj zet, en dat is een bewuste
+        //    afwijking van "elke lengte".** Niet tegen misbruik — die deur staat
+        //    met dit besluit open — maar omdat `annuleer_adempauze()` alles
+        //    weigert waarvan `starts_cycle <= vandaag`. Een pauze die in het
+        //    verleden begint is dus nooit meer te annuleren, en zonder plafond
+        //    maakt één verkeerd getypt jaartal het doel permanent onbruikbaar
+        //    voor elke volgende adempauze. Uit de security-review van 06-09-2026,
+        //    die er een van 415853 weken inplande.
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
+          .limit(1)
+          .single();
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: cyclusOverWeken(60),
+          p_ends_cycle: cyclusOverWeken(60 + 52),
         });
 
         expect(uitkomst(antwoord.data).ok).toBe(false);
         expect(uitkomst(antwoord.data).reason).toBe('te_lang');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'staat een adempauze van precies een jaar toe',
+      async () => {
+        // ⚠️ De must-allow bij de grens hierboven. Zonder dit geval bewijst die
+        //    test ook een functie die alles langer dan een week weigert, en dan
+        //    is de grens ergens anders komen te liggen dan hij zegt.
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
+          .limit(1)
+          .single();
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doel.data?.id ?? '',
+          p_starts_cycle: cyclusOverWeken(70),
+          p_ends_cycle: cyclusOverWeken(70 + 51),
+        });
+
+        expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);
+
+        await adminDb()
+          .from('breathers')
+          .delete()
+          .eq('id', (uitkomst(antwoord.data) as { id: string }).id);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'stelt ook een doorgeschoven week vrij en draait dat minpunt terug',
+      async () => {
+        // ⚠️ **`carried` hoorde hier eerst niet bij, en de motivering daarvoor
+        //    was aantoonbaar onjuist.** De migratie schreef dat een
+        //    doorgeschoven week "geen minpunt heeft om terug te draaien".
+        //    Nagemeten: `schuif_weekdoel_door()` weigert alles wat niet `missed`
+        //    is en zet díe rij op `carried`, zónder het al geboekte
+        //    `cycle_missed` aan te raken — en `herbereken_reeks()` telt `carried`
+        //    óók als gemist. Een adempauze over zo'n week deed dus niets terwijl
+        //    het scherm zei dat het gelukt was. Uit de security-review van
+        //    06-09-2026.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'Doorgeschoven week', target_date: cyclusOverWeken(20) })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+        const doelId = doel.data.id as string;
+
+        expect(
+          (await admin.from('goal_group_links').insert({ goal_id: doelId, group_id: f.groupId }))
+            .error,
+        ).toBeNull();
+        expect(
+          (
+            await admin
+              .from('group_members')
+              .upsert(
+                { group_id: f.groupId, user_id: f.bob.id, role: 'member', status: 'active' },
+                { onConflict: 'group_id,user_id' },
+              )
+          ).error,
+        ).toBeNull();
+
+        const week = await admin
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'doorgeschoven',
+            cycle_start_date: cyclusOverWeken(-9),
+            cycle_index: 1,
+            status: 'carried',
+            points_miss: -1,
+          })
+          .select('id, beoordeelbaar')
+          .single();
+        if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+        expect(week.data.beoordeelbaar).toBe(true);
+
+        const punt = await admin.from('points_ledger').insert({
+          user_id: f.alice.id,
+          goal_id: doelId,
+          delta: -1,
+          reason: 'cycle_missed',
+          ref_type: 'weekly_goal',
+          ref_id: week.data.id,
+        });
+        if (punt.error) throw new Error(`minpunt: ${punt.error.message}`);
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclusOverWeken(-9),
+          p_ends_cycle: cyclusOverWeken(-9),
+        });
+
+        expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);
+        expect((uitkomst(antwoord.data) as { hersteld: number }).hersteld).toBe(1);
+
+        const na = await admin.from('weekly_goals').select('status').eq('id', week.data.id).single();
+        expect(na.data?.status).toBe('excused');
+
+        const rijen = await admin.from('points_ledger').select('delta').eq('ref_id', week.data.id);
+        expect(
+          (rijen.data ?? []).reduce((som, r) => som + (r.delta as number), 0),
+          'het minpunt van een doorgeschoven week hoort net zo goed terug te gaan',
+        ).toBe(0);
+
+        await admin.from('goals').delete().eq('id', doelId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat een ingetrokken week met rust',
+      async () => {
+        // ⚠️ **De must-not-do naast `carried`.** `cancelled` heeft de gebruiker
+        //    zelf ingetrokken; er staat geen minpunt onder. Zou de lus "elke
+        //    afgesloten status" pakken, dan verandert een adempauze hier iets
+        //    zonder reden en telt `hersteld` een week mee die niemand miste.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'Ingetrokken week', target_date: cyclusOverWeken(20) })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+        const doelId = doel.data.id as string;
+
+        const week = await admin
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'ingetrokken',
+            cycle_start_date: cyclusOverWeken(-11),
+            cycle_index: 1,
+            status: 'cancelled',
+            points_miss: -1,
+          })
+          .select('id')
+          .single();
+        if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclusOverWeken(-11),
+          p_ends_cycle: cyclusOverWeken(-11),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(true);
+        expect((uitkomst(antwoord.data) as { hersteld: number }).hersteld).toBe(0);
+
+        const na = await admin.from('weekly_goals').select('status').eq('id', week.data.id).single();
+        expect(na.data?.status, 'een ingetrokken week blijft ingetrokken').toBe('cancelled');
+
+        await admin.from('goals').delete().eq('id', doelId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zet een al afgesloten gemiste week op excused en draait het minpunt terug',
+      async () => {
+        // ⚠️ **Het meeste werk van QS8-227 en het makkelijkst over het hoofd te
+        //    zien.** Zonder dit blok verandert er niets aan een week die de
+        //    rollover al heeft afgesloten: het scherm zegt "je pauzeert" en de
+        //    score zegt het tegendeel.
+        //
+        // ⚠️ **Met een correctierij en niet door de `cycle_missed`-rij weg te
+        //    halen.** Domeinregel 6 zegt dat de geschiedenis append-only is; het
+        //    saldo klopt en het spoor blijft staan.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'Adempauze achteraf', target_date: cyclusOverWeken(20) })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+        const doelId = doel.data.id as string;
+
+        // ⚠️ **De koppeling aan de groep is geen versiering.**
+        //    `zet_beoordeelbaar_bij_insert()` overschrijft een meegegeven
+        //    `beoordeelbaar` altijd met `kan_beoordeeld_worden()`, en die vraagt
+        //    of er iemand anders is die kán goedkeuren. Zonder groep blijft het
+        //    weekdoel onbeoordeelbaar, weigert de trigger van QS8-110 de
+        //    `cycle_missed`-boeking **zonder foutmelding**, en toetst deze test
+        //    het terugdraaien van een minpunt dat er nooit stond.
+        //
+        // ⚠️ Bobs lidmaatschap wordt hier gezet en niet aangenomen: een eerdere
+        //    test in dit bestand verwijdert die rij. Zelfde reden en zelfde vorm
+        //    als bij "de groepsgenoot ziet de adempauze" verderop.
+        expect(
+          (
+            await admin
+              .from('group_members')
+              .upsert(
+                { group_id: f.groupId, user_id: f.bob.id, role: 'member', status: 'active' },
+                { onConflict: 'group_id,user_id' },
+              )
+          ).error,
+        ).toBeNull();
+
+        const koppeling = await admin
+          .from('goal_group_links')
+          .insert({ goal_id: doelId, group_id: f.groupId });
+        if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
+
+        const week = await admin
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'gemiste week',
+            cycle_start_date: cyclusOverWeken(-4),
+            cycle_index: 1,
+            status: 'missed',
+            points_miss: -1,
+          })
+          .select('id, beoordeelbaar')
+          .single();
+        if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+        expect(
+          week.data.beoordeelbaar,
+          'zonder beoordelaar valt er niets terug te draaien en toetst deze test niets',
+        ).toBe(true);
+
+        const punt = await admin.from('points_ledger').insert({
+          user_id: f.alice.id,
+          goal_id: doelId,
+          delta: -1,
+          reason: 'cycle_missed',
+          ref_type: 'weekly_goal',
+          ref_id: week.data.id,
+        });
+        if (punt.error) throw new Error(`minpunt: ${punt.error.message}`);
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclusOverWeken(-4),
+          p_ends_cycle: cyclusOverWeken(-4),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(true);
+        expect((uitkomst(antwoord.data) as { hersteld: number }).hersteld).toBe(1);
+
+        const na = await admin.from('weekly_goals').select('status').eq('id', week.data.id).single();
+        expect(na.data?.status, 'de afgesloten week hoort nu vrijgesteld te zijn').toBe('excused');
+
+        const rijen = await admin
+          .from('points_ledger')
+          .select('delta, reason')
+          .eq('ref_id', week.data.id);
+        const saldo = (rijen.data ?? []).reduce((som, r) => som + (r.delta as number), 0);
+
+        expect(saldo, 'het minpunt is teruggedraaid').toBe(0);
+        expect(
+          (rijen.data ?? []).some((r) => r.reason === 'cycle_missed'),
+          'de oorspronkelijke boeking blijft staan — de geschiedenis is append-only',
+        ).toBe(true);
+        expect((rijen.data ?? []).some((r) => r.reason === 'correction')).toBe(true);
+
+        await admin.from('goals').delete().eq('id', doelId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'herberekent de reeks, zodat een herstelde week hem niet meer breekt',
+      async () => {
+        // ⚠️ **De derde helft van het herstel, en de stilste.** Status en punten
+        //    kloppen na de lus; `user_streaks` is een afgeleide tabel die alleen
+        //    verandert als iemand hem bijwerkt. Zonder de aanroep van
+        //    `herbereken_reeks()` blijft de gebruiker een gebroken reeks zien
+        //    terwijl de week die hem brak is vrijgesteld, en dat is precies het
+        //    soort fout dat niemand meldt als bug.
+        //
+        // ⚠️ De reeks staat vooraf met opzet op de verouderde waarde. Zou de
+        //    tabel leeg blijven, dan zou een test die "2" verwacht ook slagen op
+        //    een implementatie die de rij per ongeluk opnieuw aanmaakt in plaats
+        //    van te herberekenen.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'Reeks na herstel', target_date: cyclusOverWeken(20) })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+        const doelId = doel.data.id as string;
+
+        const weken = [
+          { weken: -6, status: 'approved' },
+          { weken: -5, status: 'missed' },
+          { weken: -4, status: 'approved' },
+        ];
+        let index = 0;
+        for (const w of weken) {
+          index += 1;
+          const rij = await admin.from('weekly_goals').insert({
+            goal_id: doelId,
+            title: `week ${index}`,
+            cycle_start_date: cyclusOverWeken(w.weken),
+            cycle_index: index,
+            status: w.status,
+            points_miss: -1,
+          });
+          if (rij.error) throw new Error(`weekdoel ${index}: ${rij.error.message}`);
+        }
+
+        const vooraf = await admin.from('user_streaks').upsert(
+          {
+            user_id: f.alice.id,
+            goal_id: doelId,
+            current_streak: 1,
+            best_streak: 1,
+            last_cycle_start: cyclusOverWeken(-4),
+            total_points: 0,
+          },
+          { onConflict: 'user_id,goal_id' },
+        );
+        if (vooraf.error) throw new Error(`reeks vooraf: ${vooraf.error.message}`);
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclusOverWeken(-5),
+          p_ends_cycle: cyclusOverWeken(-5),
+        });
+        expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);
+
+        const na = await admin
+          .from('user_streaks')
+          .select('current_streak')
+          .eq('user_id', f.alice.id)
+          .eq('goal_id', doelId)
+          .single();
+
+        expect(
+          na.data?.current_streak,
+          'de twee gehaalde weken sluiten nu op elkaar aan, want de week ertussen is vrijgesteld',
+        ).toBe(2);
+
+        await admin.from('goals').delete().eq('id', doelId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'draait het minpunt van elk weekdoel in de cyclus apart terug',
+      async () => {
+        // ⚠️ **Vraag 6 van regel 18, en hij hoort hier.** Dit issue tilt de
+        //    adempauze van "hoogstens twee cycli vooruit" naar "elke reeks weken,
+        //    ook achteraf", en daarmee van "er is er hooguit één per cyclus" naar
+        //    "er kunnen er meer zijn". `points_miss` staat op het wéékdoel, dus
+        //    twee weekdoelen in dezelfde cyclus dragen elk hun eigen minpunt. Een
+        //    herstel dat één vaste `+1` per cyclus boekt, is hier zichtbaar te
+        //    weinig — en zonder deze test valt dat pas op aan iemands score.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'Twee gemiste weekdoelen', target_date: cyclusOverWeken(20) })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+        const doelId = doel.data.id as string;
+
+        expect(
+          (await admin.from('goal_group_links').insert({ goal_id: doelId, group_id: f.groupId }))
+            .error,
+        ).toBeNull();
+        expect(
+          (
+            await admin
+              .from('group_members')
+              .upsert(
+                { group_id: f.groupId, user_id: f.bob.id, role: 'member', status: 'active' },
+                { onConflict: 'group_id,user_id' },
+              )
+          ).error,
+        ).toBeNull();
+
+        const cyclus = cyclusOverWeken(-5);
+        const weekIds: string[] = [];
+
+        for (const index of [1, 2]) {
+          const week = await admin
+            .from('weekly_goals')
+            .insert({
+              goal_id: doelId,
+              title: `gemist weekdoel ${index}`,
+              cycle_start_date: cyclus,
+              cycle_index: index,
+              status: 'missed',
+              points_miss: -1,
+            })
+            .select('id, beoordeelbaar')
+            .single();
+          if (week.error) throw new Error(`weekdoel ${index}: ${week.error.message}`);
+          expect(week.data.beoordeelbaar).toBe(true);
+          weekIds.push(week.data.id as string);
+
+          const punt = await admin.from('points_ledger').insert({
+            user_id: f.alice.id,
+            goal_id: doelId,
+            delta: -1,
+            reason: 'cycle_missed',
+            ref_type: 'weekly_goal',
+            ref_id: week.data.id,
+          });
+          if (punt.error) throw new Error(`minpunt ${index}: ${punt.error.message}`);
+        }
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclus,
+          p_ends_cycle: cyclus,
+        });
+
+        expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);
+        expect(
+          (uitkomst(antwoord.data) as { hersteld: number }).hersteld,
+          'beide weekdoelen horen hersteld te zijn, niet de cyclus als geheel',
+        ).toBe(2);
+
+        const rijen = await admin
+          .from('points_ledger')
+          .select('delta, reason, ref_id')
+          .in('ref_id', weekIds);
+        const saldo = (rijen.data ?? []).reduce((som, r) => som + (r.delta as number), 0);
+
+        expect(saldo, 'beide minpunten horen teruggedraaid te zijn, niet één').toBe(0);
+        expect(
+          (rijen.data ?? []).filter((r) => r.reason === 'correction'),
+          'één correctie per weekdoel',
+        ).toHaveLength(2);
+
+        await admin.from('goals').delete().eq('id', doelId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'boekt geen correctie voor een gemiste week die geen minpunt kostte',
+      async () => {
+        // ⚠️ **De must-see, en hij komt uit een meting die eerst misging.** De
+        //    trigger `geen_minpunt_zonder_beoordelaar` (QS8-110) slaat
+        //    `cycle_missed` over voor een weekdoel zonder beoordelaar. Er staat
+        //    dan niets om terug te draaien, en een vaste `+1` zou punten
+        //    verzinnen die niemand verloren heeft.
+        //
+        // ⚠️ **Dit doel wordt met opzet niet aan een groep gekoppeld** — dat is
+        //    precies het verschil met de test hierboven, en het enige verschil.
+        const admin = adminDb();
+        const doel = await admin
+          .from('goals')
+          .insert({ owner_id: f.alice.id, title: 'Adempauze zonder punt', target_date: cyclusOverWeken(20) })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+        const doelId = doel.data.id as string;
+
+        const week = await admin
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'gemist zonder beoordelaar',
+            cycle_start_date: cyclusOverWeken(-6),
+            cycle_index: 1,
+            status: 'missed',
+            points_miss: -1,
+          })
+          .select('id')
+          .single();
+        if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+
+        const antwoord = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclusOverWeken(-6),
+          p_ends_cycle: cyclusOverWeken(-6),
+        });
+
+        expect(uitkomst(antwoord.data).ok).toBe(true);
+
+        const na = await admin.from('weekly_goals').select('status').eq('id', week.data.id).single();
+        expect(na.data?.status, 'de week wordt wél vrijgesteld').toBe('excused');
+
+        const rijen = await admin.from('points_ledger').select('delta').eq('ref_id', week.data.id);
+        expect(
+          rijen.data ?? [],
+          'er viel niets terug te draaien, dus er hoort ook niets bijgeboekt te worden',
+        ).toHaveLength(0);
+
+        await admin.from('goals').delete().eq('id', doelId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat drie losse adempauzes naast elkaar bestaan',
+      async () => {
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
+          .limit(1)
+          .single();
+        const doelId = doel.data?.id ?? '';
+
+        const ids: string[] = [];
+        for (const weken of [30, 34, 38]) {
+          const antwoord = await f.alice.db.rpc('plan_adempauze', {
+            p_goal_id: doelId,
+            p_starts_cycle: cyclusOverWeken(weken),
+            p_ends_cycle: cyclusOverWeken(weken + 1),
+          });
+          expect(uitkomst(antwoord.data).ok, `pauze vanaf week ${weken}`).toBe(true);
+          ids.push((uitkomst(antwoord.data) as { id: string }).id);
+        }
+
+        expect(ids).toHaveLength(3);
+        await adminDb().from('breathers').delete().in('id', ids);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een adempauze die over een bestaande heen ligt',
+      async () => {
+        // ⚠️ **De naad van QS8-227.** De overlapcontrole stond er al, maar was
+        //    vóór dit issue nauwelijks te raken: een pauze duurde hoogstens twee
+        //    cycli en moest vooruit gepland worden, dus botsen kostte moeite.
+        //    Nu mag een pauze elke lengte hebben en mogen er meerdere naast
+        //    elkaar staan, en dan is elkaar overlappen de gewone fout. De
+        //    migratie noemt hem met zoveel woorden als iets dat blijft; dan
+        //    hoort er ook iets te zijn dat rood wordt als hij verdwijnt.
+        //
+        // ⚠️ Geen van de twee botsingen deelt zijn begindatum met de bestaande
+        //    pauze, dus `breathers_geen_dubbele_start` vangt ze allebei niet af.
+        //    Zou die constraint het werk doen, dan toetste deze test de
+        //    verkeerde grendel.
+        const doel = await adminDb()
+          .from('goals')
+          .select('id')
+          .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
+          .limit(1)
+          .single();
+        const doelId = doel.data?.id ?? '';
+
+        const eerste = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclusOverWeken(50),
+          p_ends_cycle: cyclusOverWeken(52),
+        });
+        expect(uitkomst(eerste.data).ok, JSON.stringify(eerste.data)).toBe(true);
+
+        try {
+          // Deels eroverheen: begint erin, eindigt erbuiten.
+          const deels = await f.alice.db.rpc('plan_adempauze', {
+            p_goal_id: doelId,
+            p_starts_cycle: cyclusOverWeken(51),
+            p_ends_cycle: cyclusOverWeken(54),
+          });
+          expect(uitkomst(deels.data).ok).toBe(false);
+          expect(uitkomst(deels.data).reason).toBe('overlapt');
+
+          // Er helemaal omheen: begint ervoor, eindigt erna.
+          const omheen = await f.alice.db.rpc('plan_adempauze', {
+            p_goal_id: doelId,
+            p_starts_cycle: cyclusOverWeken(49),
+            p_ends_cycle: cyclusOverWeken(53),
+          });
+          expect(uitkomst(omheen.data).ok).toBe(false);
+          expect(uitkomst(omheen.data).reason).toBe('overlapt');
+
+          const alles = await adminDb()
+            .from('breathers')
+            .select('id')
+            .eq('goal_id', doelId)
+            .gte('starts_cycle', cyclusOverWeken(49));
+          expect(alles.data ?? [], 'er hoort er precies één te liggen').toHaveLength(1);
+        } finally {
+          await adminDb()
+            .from('breathers')
+            .delete()
+            .eq('id', (uitkomst(eerste.data) as { id: string }).id);
+        }
       },
       TEST_TIMEOUT,
     );
@@ -941,6 +1602,82 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
       },
       TEST_TIMEOUT,
     );
+
+    it(
+      'is voor een groepsgenoot ook zichtbaar met terugwerkende kracht',
+      async () => {
+        // ⚠️ **Acceptatiecriterium van QS8-227, en het is een naad.** Sinds dit
+        //    issue mag een adempauze over een week liggen die al voorbij is. De
+        //    aankondiging aan de groep is de énige rem die op zo'n pauze
+        //    overblijft — het besluit geeft de andere drie bewust op — dus een
+        //    pauze achteraf die de groep níét bereikt, is niet een half gebouwde
+        //    feature maar de rem die eraf valt.
+        //
+        // ⚠️ Deze test staat er los van de test hierboven en niet als tweede
+        //    assertie erin. Ze toetsen twee beloftes: die hierboven dat de rij
+        //    niet afgeschermd is, deze dat de richting in de tijd er niet toe
+        //    doet. In één test zou de eerste de tweede kunnen dragen.
+        const doel = await adminDb()
+          .from('goals')
+          .insert({
+            owner_id: f.alice.id,
+            title: 'Adempauze achteraf, gedeeld',
+            target_date: addDays(cyclusOverWeken(0), 120),
+          })
+          .select('id')
+          .single();
+        expect(doel.error).toBeNull();
+        const doelId = doel.data?.id ?? '';
+
+        expect(
+          (await adminDb().from('goal_group_links').insert({ goal_id: doelId, group_id: f.groupId }))
+            .error,
+        ).toBeNull();
+        expect(
+          (
+            await adminDb()
+              .from('group_members')
+              .upsert(
+                { group_id: f.groupId, user_id: f.bob.id, role: 'member', status: 'active' },
+                { onConflict: 'group_id,user_id' },
+              )
+          ).error,
+        ).toBeNull();
+
+        const start = cyclusOverWeken(-8);
+        const eind = cyclusOverWeken(-7);
+
+        const gezet = await f.alice.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: start,
+          p_ends_cycle: eind,
+        });
+        const id = (gezet.data as { id?: string } | null)?.id;
+        expect(id, `de adempauze is niet aangemaakt: ${JSON.stringify(gezet.data)}`).toBeDefined();
+
+        try {
+          const gezien = await f.bob.db
+            .from('breathers')
+            .select('id, starts_cycle, ends_cycle, announced_at')
+            .eq('id', id ?? '');
+
+          expect(gezien.error).toBeNull();
+          expect(
+            gezien.data ?? [],
+            'een adempauze met terugwerkende kracht hoort net zo aangekondigd te zijn',
+          ).toHaveLength(1);
+
+          const rij = (gezien.data ?? [])[0];
+          expect(rij?.starts_cycle).toBe(start);
+          expect(rij?.ends_cycle).toBe(eind);
+          expect(rij?.announced_at, 'zonder aankondigingsmoment is er niets aangekondigd').not.toBeNull();
+        } finally {
+          await adminDb().from('breathers').delete().eq('id', id ?? '');
+          await adminDb().from('goals').delete().eq('id', doelId);
+        }
+      },
+      TEST_TIMEOUT,
+    );
   });
   // -------------------------------------------------------------------------
   // QS8-39 — mijlpalen herordenen, migratie 0049
@@ -954,12 +1691,21 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         //    toetst gelijkheid van twee verzamelingen en niet twee keer een kant
         //    — de valkuil die migratie 0032 een groene test opleverde.
         const admin = adminDb();
+
+        // ⚠️ **Met een expliciete volgorde, en dat is geen netheid — QS8-285.**
+        //    `limit(1)` zonder `order by` laat Postgres kiezen welke rij hij
+        //    teruggeeft; dat mag per plan verschillen. Deze test kiest daarmee
+        //    telkens mogelijk een ánder doel, en dan is "de poort weghalen geeft
+        //    één rode test" niet gegarandeerd reproduceerbaar. `id` is een totale
+        //    ordening, dus dit is altijd dezelfde rij.
         const doel = await admin
           .from('goals')
           .select('id')
           .eq('owner_id', f.alice.id)
+          .order('id', { ascending: true })
           .limit(1)
           .single();
+        if (doel.error) throw new Error(`doel kiezen: ${doel.error.message}`);
 
         const doelId = doel.data?.id ?? '';
 
@@ -991,6 +1737,24 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         });
         expect(uitkomst(vreemde.data).reason).toBe('not_owner');
 
+        // ⚠️ **De envelop is niet het effect — QS8-285.** Hier stond alleen de
+        //    `reason`. Gemeten met een `herorden_mijlpalen` die de volgorde van
+        //    een vreemde overschrijft en dáárna pas `not_owner` teruggeeft: deze
+        //    test bleef groen terwijl de schrijfactie landde. Het enige rood was
+        //    nevenschade in een buurtest, en wie dát als dekking telt, leest iets
+        //    anders dan er staat.
+        const naVreemde = await admin
+          .from('milestones')
+          .select('id, order_index')
+          .in('id', [idEen, idTwee])
+          .order('id', { ascending: true });
+        if (naVreemde.error) throw new Error(`nameten: ${naVreemde.error.message}`);
+
+        expect(
+          Object.fromEntries((naVreemde.data ?? []).map((m) => [m.id as string, m.order_index])),
+          'Bob kreeg `not_owner` te horen en de volgorde van Alice is tóch geschreven',
+        ).toEqual({ [idEen]: 101, [idTwee]: 102 });
+
         // ⚠️ De positieve controle: de volledige lijst omgedraaid moet wél
         //    lukken, en de volgorde moet daarna echt anders zijn. Zonder dit
         //    blijven de twee weigeringen groen terwijl herordenen stuk is.
@@ -1007,6 +1771,26 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
           .order('order_index', { ascending: true });
 
         expect((na.data ?? []).map((m) => m.id)).toEqual([idTwee, idEen]);
+
+        // ⚠️ **En op de posities zelf en niet alleen op de sortering — QS8-285.**
+        //    Een assertie die `order by order_index` teruguitleest, bewijst alleen
+        //    dat de rijen in díe volgorde staan; hij zegt niets over wat er in de
+        //    kolom terechtkwam. `p_ids` is een lijst van twee, dus de contractuele
+        //    uitkomst is 1 en 2 — precies de `ordinality` die de functie belooft
+        //    te schrijven.
+        //
+        // ⚠️ **Wat hier níet meer staat, en waarom.** Er stond eerst een toets
+        //    dat de twee posities van elkáár verschillen, tegen een aanvaller die
+        //    élke mijlpaal op dezelfde waarde zet. Gemeten: dat kán niet.
+        //    `milestones_goal_order_uniq` is UNIQUE op `(goal_id, order_index)`,
+        //    dus zo'n schrijfactie valt om op de constraint en de RPC geeft een
+        //    fout in plaats van een envelop. Een assertie die door geen enkele
+        //    mutatie te bereiken is, bewaakt niets — en dit is er wél een die te
+        //    voeden is.
+        expect(
+          Object.fromEntries((na.data ?? []).map((m) => [m.id as string, m.order_index])),
+          'de functie belooft de positie uit `ordinality` te schrijven, dus 1 en 2',
+        ).toEqual({ [idTwee]: 1, [idEen]: 2 });
 
         await admin.from('milestones').delete().in('id', [idEen, idTwee]);
       },

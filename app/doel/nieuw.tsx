@@ -120,8 +120,9 @@ export default function NieuwDoel() {
         />
 
         {/*
-          ⚠️ Vijftien gebieden in vier groepen — QS8-224. Een enkele `Choice` met
-             vijftien knoppen is geen keuze maar een muur; zie de kop van
+          ⚠️ Twaalf gebieden in drie families — QS8-224, en drie families sinds
+             A58. Een enkele `Choice` met twaalf knoppen is geen keuze maar een
+             muur; zie de kop van
              `GegroepeerdeKeuze`.
         */}
         <GegroepeerdeKeuze

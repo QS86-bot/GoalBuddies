@@ -195,6 +195,23 @@ export function overloadsUit(bestanden) {
 }
 
 /**
+ * De index vlak ná het stringletterlijk dat op `i` opent.
+ *
+ * ⚠️ Staat los omdat de escape-`if` in de zoeklus anders vier niveaus diep zit
+ *    (coderegel 15, QS8-291). Een backslash slaat het vólgende teken over, zodat
+ *    een ontsnapt aanhalingsteken de string niet afsluit.
+ */
+function naStringLetterlijk(inhoud, i) {
+  const quote = inhoud[i];
+  let j = i + 1;
+  while (j < inhoud.length && inhoud[j] !== quote) {
+    if (inhoud[j] === '\\') j += 1;
+    j += 1;
+  }
+  return j + 1;
+}
+
+/**
  * De sleutels op het bovenste niveau van een objectliteraal.
  *
  * ⚠️ **Alleen het bovenste niveau, en dat is een gemeten eis.** `vraag_ai_job()`
@@ -222,13 +239,7 @@ export function bovensteSleutels(inhoud) {
       continue;
     }
     if (teken === "'" || teken === '"' || teken === '`') {
-      const quote = teken;
-      i += 1;
-      while (i < inhoud.length && inhoud[i] !== quote) {
-        if (inhoud[i] === '\\') i += 1;
-        i += 1;
-      }
-      i += 1;
+      i = naStringLetterlijk(inhoud, i);
       continue;
     }
 

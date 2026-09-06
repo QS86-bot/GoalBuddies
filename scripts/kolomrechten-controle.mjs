@@ -671,6 +671,22 @@ export function ontleedSchrijfrechten(uitvoer) {
 }
 
 /**
+ * Boekt wat één actie schrijft, per `tabel|recht`.
+ *
+ * ⚠️ Staat los omdat de lus over de kolommen anders vier niveaus diep zit
+ *    (coderegel 15, QS8-291). `kolommen === null` betekent "we weten niet
+ *    welke", en dan is de boeking voor dat recht niet meer volledig.
+ */
+function boekActie(geschreven, a) {
+  for (const recht of a.rechten) {
+    const sleutel = `${a.tabel}|${recht}`;
+    geschreven[sleutel] ??= { kolommen: new Set(), volledig: true };
+    if (a.kolommen === null) geschreven[sleutel].volledig = false;
+    else for (const k of a.kolommen) geschreven[sleutel].kolommen.add(k);
+  }
+}
+
+/**
  * Legt de geschreven kolommen naast de schrijfrechten, in beide richtingen.
  *
  * @returns `{ ontbrekend, ongeschreven, onleesbaar, ongemeten }` — een kolom die
@@ -696,12 +712,7 @@ export function beoordeelSchrijven({ acties, rechten }) {
   const geschreven = {};
 
   for (const a of acties) {
-    for (const recht of a.rechten) {
-      const sleutel = `${a.tabel}|${recht}`;
-      geschreven[sleutel] ??= { kolommen: new Set(), volledig: true };
-      if (a.kolommen === null) geschreven[sleutel].volledig = false;
-      else for (const k of a.kolommen) geschreven[sleutel].kolommen.add(k);
-    }
+    boekActie(geschreven, a);
 
     if (a.kolommen === null) {
       onleesbaar.push({ pad: a.pad, tabel: a.tabel, soort: a.soort, reden: a.reden });

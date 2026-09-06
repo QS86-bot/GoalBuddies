@@ -34,6 +34,47 @@ export interface Avatarkeuze {
   readonly weghalen: () => Promise<void>;
 }
 
+/** Wat het kiezen van een afbeelding opleverde. */
+type Afbeeldingkeuze =
+  | { readonly soort: 'afgebroken' }
+  | { readonly soort: 'fout'; readonly sleutel: 'avatar.geen_toegang' | 'avatar.uploaden_mislukt' }
+  | { readonly soort: 'gekozen'; readonly data: Uint8Array; readonly mime: string };
+
+/**
+ * Vraagt toestemming, opent de bibliotheek en levert bytes op.
+ *
+ * ⚠️ **Apart van de hook, en niet alleen om onder de vijftig regels te komen**
+ *    (QS8-190). Dit stuk kent vier uitgangen — geen toestemming, afgebroken, geen
+ *    bruikbare data, en gelukt — en die stonden alle vier verweven met
+ *    `setFout`/`setBezig`. Nu geeft het één waarde terug en beslist de hook wat
+ *    er op het scherm mee gebeurt; dat is ook de enige manier om dit ooit los te
+ *    kunnen toetsen.
+ *
+ * ⚠️ De foutsleutels staan in het type en niet als losse strings: een sleutel die
+ *    niet in de catalogus bestaat is dan een typefout en geen lege melding.
+ */
+async function kiesAfbeelding(): Promise<Afbeeldingkeuze> {
+  const toestemming = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!toestemming.granted) return { soort: 'fout', sleutel: 'avatar.geen_toegang' };
+
+  const keuze = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.7,
+    base64: true,
+  });
+
+  const gekozen = keuze.canceled ? null : (keuze.assets[0] ?? null);
+  if (gekozen === null) return { soort: 'afgebroken' };
+
+  const base64 = gekozen.base64 ?? null;
+  const bytes = base64 === null ? null : base64NaarBytes(base64);
+  if (bytes === null) return { soort: 'fout', sleutel: 'avatar.uploaden_mislukt' };
+
+  return { soort: 'gekozen', data: bytes, mime: gekozen.mimeType ?? 'image/jpeg' };
+}
+
 export function useAvatarKeuze(
   profiel: Profiel,
   onGewijzigd: (profiel: Profiel) => void,
@@ -52,40 +93,15 @@ export function useAvatarKeuze(
   async function kies() {
     setFout(null);
 
-    const toestemming = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!toestemming.granted) {
-      setFout(t('avatar.geen_toegang'));
-      return;
-    }
-
-    const keuze = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-      base64: true,
-    });
-
-    const gekozen = keuze.canceled ? null : (keuze.assets[0] ?? null);
-    if (gekozen === null) return;
-
-    const base64 = gekozen.base64 ?? null;
-    if (base64 === null) {
-      setFout(t('avatar.uploaden_mislukt'));
-      return;
-    }
-
-    const bytes = base64NaarBytes(base64);
-    if (bytes === null) {
-      setFout(t('avatar.uploaden_mislukt'));
+    const gekozen = await kiesAfbeelding();
+    if (gekozen.soort === 'afgebroken') return;
+    if (gekozen.soort === 'fout') {
+      setFout(t(gekozen.sleutel));
       return;
     }
 
     setBezig(true);
-    const uitkomst = await uploadAvatar(profiel.id, {
-      data: bytes,
-      mime: gekozen.mimeType ?? 'image/jpeg',
-    });
+    const uitkomst = await uploadAvatar(profiel.id, { data: gekozen.data, mime: gekozen.mime });
 
     if (uitkomst.ok) await herlaad();
     else setFout(uitkomst.melding);

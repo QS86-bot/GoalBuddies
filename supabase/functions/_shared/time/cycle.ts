@@ -73,10 +73,26 @@ function cycleContaining(clock: ClockShape, at: Date): Cycle {
 export function userCycleOn(clock: UserClock, dateInCycle: string): Cycle | null {
   if (!isGeldigeIsoDatum(dateInCycle)) return null;
 
-  return cycleFromDate(
-    { startDay: clock.weekStartDay, tz: clock.tz },
-    dateInCycle.trim() as IsoDate,
-  );
+  const datum = dateInCycle.trim() as IsoDate;
+
+  // ⚠️ **Een geldige datum hoeft nog geen cyclus te hébben.** De laatste week van
+  //    het jaar 9999 loopt door in het jaar 10000, en dat past niet in een
+  //    `YYYY-MM-DD`; `cycleFromDate()` wierp daar een `Ongeldige datum:
+  //    10000-01-03`. Dit is de énige ingang van deze module waar rauwe
+  //    gebruikerstekst binnenkomt, en zijn contract is `Cycle | null` — een
+  //    uitzondering die dwars door de aanroeper heen slaat, hoort daar niet bij.
+  //    Gevonden op 06-09-2026 (QS8-227): iemand die `9999-12-27` in het
+  //    adempauzeveld typte, liet het hele scherm omvallen in plaats van een
+  //    melding te krijgen.
+  //
+  // ⚠️ Toetst `datum + 7` en niet de cyclusstart, en wijst daarmee hoogstens zes
+  //    dagen te veel af — allemaal in de laatste week van het jaar 9999. De
+  //    exacte variant zou de eerste twee regels van `cycleFromDate()` hier
+  //    herhalen, en een tweede kopie van de weekgrens is een duurdere fout dan
+  //    deze marge.
+  if (!isGeldigeIsoDatum(addDays(datum, 7))) return null;
+
+  return cycleFromDate({ startDay: clock.weekStartDay, tz: clock.tz }, datum);
 }
 
 /** De cyclus waarin de gebruiker zich nu bevindt. */

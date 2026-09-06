@@ -1,5 +1,6 @@
 import {
   groupPeriod,
+  localDateIn,
   now,
   type Cycle,
   type GroupClock,
@@ -52,4 +53,45 @@ export function groepsperiodeVan(
   moment: Date,
 ): Cycle {
   return groupPeriod(groepsklok(groep), moment);
+}
+
+/**
+ * Is `moment` de huddledag van deze groep? — QS8-199.
+ *
+ * ⚠️ **Geen weekdagrekenwerk, en dat is het hele punt.** De verleiding is
+ *    `new Date().getDay() === groep.huddle_day`, en die is op drie manieren fout:
+ *    hij rekent in de tijdzone van het toestel in plaats van die van de groep,
+ *    hij kent de coulanceperiode niet, en hij is een tijdberekening buiten
+ *    `shared/time` — correctheidsregel 7 verbiedt dat met zoveel woorden.
+ *
+ *    Wat er wél staat is een vergelijking: de groepsperiode begínt op de
+ *    huddledag, dus "vandaag is de huddledag" is precies "de lokale datum van de
+ *    groep is de startdatum van de lopende periode". Eén bron van waarheid, en
+ *    hij verschuift vanzelf mee als de definitie van een periode ooit wijzigt.
+ *
+ * ⚠️ **`periode.tz` en niet `groep.tz`.** Dezelfde waarde vandaag, maar de eerste
+ *    komt uit de klok die de periode zélf berekend heeft. Zou `groepsklok()` de
+ *    tijdzone ooit normaliseren, dan volgt deze vergelijking dat; met `groep.tz`
+ *    zou hij stil op de rauwe kolom blijven kijken.
+ */
+export function isHuddledagOp(
+  groep: { readonly huddle_day: number; readonly tz: string },
+  moment: Date,
+): boolean {
+  const periode = groepsperiodeVan(groep, moment);
+  return localDateIn(periode.tz, moment) === periode.startDate;
+}
+
+/**
+ * Is het vandaag de huddledag van deze groep?
+ *
+ * Bestaat naast `isHuddledagOp` om dezelfde reden als `huidigeGroepsperiode`
+ * naast `groepsperiodeVan`: "nu" valt niet te testen zonder de klok vast te
+ * zetten.
+ */
+export function isHuddledagVandaag(groep: {
+  readonly huddle_day: number;
+  readonly tz: string;
+}): boolean {
+  return isHuddledagOp(groep, now());
 }

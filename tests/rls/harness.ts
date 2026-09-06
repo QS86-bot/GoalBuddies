@@ -254,6 +254,50 @@ interface AangemaakteGebruiker {
 const createdUsers: AangemaakteGebruiker[] = [];
 
 /**
+ * De groepen die deze run zelf heeft aangemaakt — QS8-281.
+ *
+ * ⚠️ **De wezen-lus in `removeTestUsers()` vindt een groep via de
+ *    lidmaatschappen van de gebruikers die hij opruimt, en dat is precies één
+ *    weg te weinig.** Verdwijnt een lidmaatschap vóór het opruimen, dan is die
+ *    vraag niet meer te stellen. Dat gebeurt echt: `vertrek.test.ts` laat een
+ *    gebruiker zijn eigen account verwijderen, en `verwijder_mijn_account()`
+ *    archiveert dan zijn solo-groep en verwijdert hem uit `auth.users` — waarna
+ *    het lidmaatschap cascadeert en `groups.created_by` op NULL komt te staan.
+ *    Beide wegen naar die groep zijn dan dicht.
+ *
+ * ⚠️ **Waarom een boekhouding en niet "elke lege groep opruimen".** Gemeten op
+ *    05-09: de achtergebleven rijen staan op `status = 'archived'` met nul
+ *    leden — en dát is in productie de bedoelde uitkomst van een
+ *    accountverwijdering (0102 §6b, zodat er geen actieve groep met een
+ *    werkende uitnodigingscode achterblijft). "Gearchiveerd en leeg" is dus
+ *    geen handtekening van deze suite maar van een echte gebruiker die
+ *    vertrokken is. Deze suite draait met een key die RLS omzeilt, desnoods
+ *    tegen het echte project; wat er weg mag, moet aantoonbaar van ons zijn.
+ */
+const createdGroups = new Set<string>();
+
+/**
+ * Het moment waarop deze run begon.
+ *
+ * ⚠️ Alleen om áchteraf te kunnen zien wat er is blijven staan — nooit om iets
+ *    te verwijderen. Een tijdstempel is geen eigendomsbewijs.
+ */
+const RUN_START = new Date().toISOString();
+
+/**
+ * Meld dat deze run een groep heeft aangemaakt, zodat het opruimen hem terugvindt
+ * ook als het lidmaatschap er onderweg uit valt.
+ *
+ * ⚠️ **Vergeten aan te roepen is geen stille fout.** `removeTestUsers()` kijkt aan
+ *    het eind of er groepen van ná `RUN_START` zonder leden zijn blijven staan en
+ *    gooit als dat zo is. Dat is de grendel onder deze boekhouding: zonder hem is
+ *    dit machinerie zonder bewaker, en dat is precies waar QS8-281 over gaat.
+ */
+export function registreerGroep(groupId: string): void {
+  createdGroups.add(groupId);
+}
+
+/**
  * Het adrespatroon van een testgebruiker — QS8-119.
  *
  * ⚠️ Deze suite verwijdert rijen met een key die RLS volledig omzeilt, tegen het
@@ -673,7 +717,18 @@ export async function removeTestUsers(): Promise<void> {
     .select('group_id')
     .in('user_id', ids);
 
-  const groepen = [...new Set((lidmaatschappen ?? []).map((r) => r.group_id as string))];
+  // ⚠️ **Twee wegen naar dezelfde vraag, en dat is geen dubbelop (QS8-281).** De
+  //    lidmaatschappen dekken alles wat deze run heeft aangeraakt; `createdGroups`
+  //    dekt wat deze run heeft áángemaakt. Ze overlappen bijna helemaal — behalve
+  //    bij de groep waarvan het lidmaatschap al weg is voordat we hier komen, en
+  //    dat is nou juist het geval dat elke run een wees achterliet.
+  const groepen = [
+    ...new Set([
+      ...(lidmaatschappen ?? []).map((r) => r.group_id as string),
+      ...createdGroups,
+    ]),
+  ];
+  createdGroups.clear();
 
   await wipe('completion_approvals', 'approver_id');
   await wipe('completion_approvals', 'subject_id');
@@ -710,6 +765,72 @@ export async function removeTestUsers(): Promise<void> {
       console.warn(`Testgebruiker ${id} opruimen mislukte: ${error.message}`);
     }
   }
+
+  await meldAchtergeblevenGroepen();
+}
+
+/**
+ * De bewaker onder het opruimen — QS8-281.
+ *
+ * ⚠️ **De belofte is "een run laat niets achter", en die stond nergens onder
+ *    test.** Er stond machinerie: een wezen-lus met een uitgeschreven kop over
+ *    het lek dat hij repareerde. Die kop klopte niet meer, en niets werd er rood
+ *    van — 23 gearchiveerde `Solo-groep`-rijen, één per volledige suite-run.
+ *    Regel 18 in het klein: de test toetste de ónderdelen, de belofte was van het
+ *    geheel.
+ *
+ * ⚠️ **Deze functie verwijdert niets.** Hij kijkt of er groepen van ná
+ *    `RUN_START` zonder leden zijn blijven staan en gooit als dat zo is. Dat
+ *    onderscheid is het hele punt: een tijdstempel zegt "dit is van vandaag" en
+ *    niet "dit is van ons", en op dat verschil hoort geen `delete` te leunen.
+ *    Wat weg mag, gaat via de boekhouding hierboven.
+ *
+ * ⚠️ **De vensterkeuze leunt op `fileParallelism: false` voor deze groep**
+ *    (`vitest.config.mts`). Eén bestand tegelijk betekent dat een groep van een
+ *    ánder bestand op dit moment óf nog leden heeft óf al opgeruimd is; een lege
+ *    groep van ná `RUN_START` is dus van dit bestand. Draait deze groep ooit
+ *    parallel, dan is dit een valse rode en hoort deze bewaker mee verbouwd te
+ *    worden.
+ */
+async function meldAchtergeblevenGroepen(): Promise<void> {
+  const admin = adminDb();
+
+  const { data: verse, error } = await admin
+    .from('groups')
+    .select('id, name, status')
+    .gte('created_at', RUN_START);
+
+  if (error) {
+    console.warn(`Achtergebleven groepen opsporen mislukte: ${error.message}`);
+    return;
+  }
+
+  const wezen: string[] = [];
+  for (const groep of verse ?? []) {
+    const { count } = await admin
+      .from('group_members')
+      .select('group_id', { count: 'exact', head: true })
+      .eq('group_id', groep.id as string);
+
+    if ((count ?? 0) === 0) {
+      wezen.push(`${groep.id as string} — "${groep.name as string}" (${groep.status as string})`);
+    }
+  }
+
+  if (wezen.length === 0) return;
+
+  throw new Error(
+    [
+      `Deze run laat ${wezen.length} groep(en) zonder leden achter:`,
+      '',
+      ...wezen.map((w) => `  ${w}`),
+      '',
+      '⚠️ Het opruimen vindt een groep via de lidmaatschappen van de gebruikers',
+      '   die het verwijdert. Verdwijnt een lidmaatschap eerder — bijvoorbeeld',
+      '   doordat een test `verwijder_mijn_account()` aanroept — dan is die weg',
+      '   dicht. Roep `registreerGroep(id)` aan waar de groep wordt aangemaakt.',
+    ].join('\n'),
+  );
 }
 
 /**

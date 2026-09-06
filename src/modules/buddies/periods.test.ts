@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { freezeNow, unfreezeNow, userCycle, type UserClock } from '../../shared/time';
 
-import { groepsklok, groepsperiodeVan, huidigeGroepsperiode } from './periods';
+import {
+  groepsklok,
+  groepsperiodeVan,
+  huidigeGroepsperiode,
+  isHuddledagOp,
+  isHuddledagVandaag,
+} from './periods';
 
 /**
  * De tweede klok — QS8-58.
@@ -97,3 +103,87 @@ describe('groepsklok', () => {
     );
   });
 });
+
+/**
+ * De huddledag valt op de dag zelf op — QS8-199.
+ *
+ * ⚠️ **De belofte is een weergavevraag en toch hoort de toets hier.** De dag
+ *    markeren is UI; wélke dag dat is, is de tweede klok. Zou dit in een
+ *    component staan als `new Date().getDay() === groep.huddle_day`, dan klopt
+ *    het in Amsterdam op een zondagmiddag en nergens anders — en dat is precies
+ *    de vorm die correctheidsregel 7 verbiedt.
+ *
+ * ⚠️ **Getest met twee verschillende huddledagen, zoals domeinregel 1 eist.**
+ *    Eén huddledag bewijst niets: de vergelijking "lokale datum == startdatum van
+ *    de periode" is per definitie waar op de dag waarop je hem toevallig uitprobeert.
+ */
+describe('de huddledag valt op de dag zelf op', () => {
+  it('zegt ja op de huddledag en nee op de zes andere dagen', () => {
+    // Zondag 16 augustus 2026 is de start van de periode van `groepMetZondag`.
+    const dagen = [
+      ['2026-08-16', true],
+      ['2026-08-17', false],
+      ['2026-08-18', false],
+      ['2026-08-19', false],
+      ['2026-08-20', false],
+      ['2026-08-21', false],
+      ['2026-08-22', false],
+    ] as const;
+
+    for (const [datum, verwacht] of dagen) {
+      expect(
+        isHuddledagOp(groepMetZondag, new Date(`${datum}T12:00:00Z`)),
+        `${datum} zou ${verwacht ? 'wél' : 'niet'} de huddledag moeten zijn`,
+      ).toBe(verwacht);
+    }
+  });
+
+  it('verschuift mee met de huddledag van de groep', () => {
+    // ⚠️ De tegenproef bij de test hierboven. Dezelfde zeven dagen, een andere
+    //    groep: precies één ervan is nu waar, en het is een ándere.
+    const donderdag = new Date('2026-08-20T12:00:00Z');
+    const zondag = new Date('2026-08-16T12:00:00Z');
+
+    expect(isHuddledagOp(groepMetDonderdag, donderdag)).toBe(true);
+    expect(isHuddledagOp(groepMetDonderdag, zondag)).toBe(false);
+
+    expect(isHuddledagOp(groepMetZondag, zondag)).toBe(true);
+    expect(isHuddledagOp(groepMetZondag, donderdag)).toBe(false);
+  });
+
+  it('leest de klok van de groep en niet die van het toestel', () => {
+    // ⚠️ **Het geval waarop `getDay()` stukgaat.** Zondag 16 augustus 2026 om
+    //    13:00 UTC is in Amsterdam nog zondagmiddag (UTC+2) en in Auckland al
+    //    maandagochtend (UTC+12). Eén moment, twee antwoorden — en dát is wat een
+    //    component die de tijdzone van het toestel gebruikt niet kan geven.
+    //
+    // ⚠️ **De eerste versie van deze test koos 23:30 UTC en werd rood.** Terecht:
+    //    dat is in Amsterdam al 01:30 op maandag, dus daar was de huddledag óók
+    //    voorbij. De code klopte en de opstelling niet. Genoteerd omdat het de
+    //    reden is dat dit geval hier staat: een tijdzoneredenering die je "even
+    //    nadenkt" klopt ongeveer even vaak als niet.
+    const laatOpZondagUtc = new Date('2026-08-16T13:00:00Z');
+
+    const auckland = { huddle_day: 0, tz: 'Pacific/Auckland' };
+    expect(
+      isHuddledagOp(auckland, laatOpZondagUtc),
+      'in Auckland is het dan maandag, dus de huddledag is voorbij',
+    ).toBe(false);
+
+    expect(
+      isHuddledagOp(groepMetZondag, laatOpZondagUtc),
+      'in Amsterdam is het op dat moment nog zondag',
+    ).toBe(true);
+  });
+
+  it('kijkt naar nu wanneer je geen moment meegeeft', () => {
+    freezeNow(new Date('2026-08-16T12:00:00Z'));
+    expect(isHuddledagVandaag(groepMetZondag)).toBe(true);
+    expect(isHuddledagVandaag(groepMetDonderdag)).toBe(false);
+
+    freezeNow(new Date('2026-08-20T12:00:00Z'));
+    expect(isHuddledagVandaag(groepMetZondag)).toBe(false);
+    expect(isHuddledagVandaag(groepMetDonderdag)).toBe(true);
+  });
+});
+

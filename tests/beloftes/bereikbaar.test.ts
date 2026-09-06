@@ -43,6 +43,15 @@ const MOET_EEN_SCHERM_HEBBEN: Readonly<Record<string, string>> = {
     'écht uploadt én verwijdert — staat in `tests/beloftes/avatar.test.ts`. Twee ' +
     'schakels, twee toetsen, want deze lijst kan niet door een module heen kijken ' +
     '(zie de kop: dat vraagt een parser).',
+  fetchGetuigenissen:
+    'Het leesrecht van de persoon-getuige bestaat sinds 0168 — `commitments_select`, ' +
+    'derde tak — en er was tot QS8-292 geen enkel scherm dat het gebruikte. De ' +
+    'énige lezing van `commitments` vraagt per doel en staat op het scherm van de ' +
+    'eigenaar, dat de getuige niet eens kan openen. ⚠️ **Dit is de rij waar dit ' +
+    'register voor bestaat**: elk schakeltje was af, de keten was onderbroken, en ' +
+    'geen enkele test kon het zien. Verdwijnt het blok van *Vandaag*, dan is de ' +
+    'straf weer een voornemen in plaats van een commitment device — de werking ' +
+    'komt uit het gezien wórden.',
   fetchCommitmentSpoor:
     'Domeinregel 5 eist dat een commitment auditeerbaar is. Een spoor dat ' +
     'niemand kan opvragen is precies zo goed als geen spoor.',

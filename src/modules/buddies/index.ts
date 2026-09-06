@@ -83,7 +83,12 @@ export {
   type Klassementsrij,
 } from './klassement';
 
-export { groepsperiodeVan, huidigeGroepsperiode } from './periods';
+export {
+  groepsperiodeVan,
+  huidigeGroepsperiode,
+  isHuddledagOp,
+  isHuddledagVandaag,
+} from './periods';
 
 export {
   bewaarChatCache,
@@ -183,5 +188,11 @@ export {
   kentGebeurtenis,
   oudLid,
   systeemberichtTekst,
-  type SysteembericthInvoer,
 } from './systeemberichten';
+export {
+  gevouwenTekst,
+  voegNamenSamen,
+  vouwSysteemberichten,
+  type ChatRegelItem,
+} from './systeemberichten-vouwen';
+export type { SysteembericthInvoer } from './systeemberichten';

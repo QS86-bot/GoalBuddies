@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { vraagMijlpaalTip, werkJobAf } from '@/modules/ai';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
+import { fetchGetuigenissen, type Getuigenis } from '@/modules/commitments';
 import {
   bewijseisVoorDoel,
   dienOpnieuwIn,
@@ -286,6 +287,16 @@ export default function Vandaag() {
    */
   const { data: badges } = useAsync(userId ? () => fetchBadges() : null, [userId, ronde]);
 
+  /**
+   * De straffen waarvan jij persoonlijk de getuige bent — QS8-292.
+   *
+   * ⚠️ Apart geladen en niet in de `Promise.all` hierboven, om dezelfde reden
+   *    als het stand-blok: een storing hier hoort je eigen week niet mee te
+   *    slepen. `fetchGetuigenissen()` wérpt bovendien niet maar geeft een lege
+   *    lijst, dus het blok verdwijnt stil in plaats van het scherm te breken.
+   */
+  const { data: getuigenissen } = useAsync(userId ? () => fetchGetuigenissen() : null, [userId, ronde]);
+
   // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
   // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
   // storing hier hoort je week van vandaag niet mee te slepen.
@@ -460,6 +471,8 @@ export default function Vandaag() {
         loading={loading}
       />
 
+      <GetuigenisBlok getuigenissen={getuigenissen ?? []} />
+
       <BadgeBlok badges={badges ?? []} />
 
       <DagzetBlok
@@ -504,6 +517,47 @@ export default function Vandaag() {
  *    beeld dat dit product bij de groep verbiedt, en er is geen reden om het bij
  *    jezelf wél te doen.
  */
+/**
+ * De straffen waarvan jij persoonlijk de getuige bent — QS8-292.
+ *
+ * ⚠️ **Dit blok bestond niet terwijl het recht er sinds 0168 wél was.** De
+ *    getuige kreeg leesrecht op het moment dat een straf verschuldigd werd, maar
+ *    er was geen enkele plek waar hij het tegenkwam: de énige lezing van
+ *    `commitments` vraagt per doel en staat op het scherm van de eigenaar, dat
+ *    de getuige niet eens kan openen. Regel 18 vraag 5 — elk schakeltje af, de
+ *    keten onderbroken.
+ *
+ * ⚠️ **Leeg betekent wég, en dat is anders dan bij `BadgeBlok`.** Getuige zijn
+ *    is de uitzondering en niet de regel; een kop "Jij bent getuige" met
+ *    daaronder "nog niets" zou op bijna elk scherm staan en niets betekenen.
+ *
+ * ⚠️ **Geen doeltitel, en dat is geen omissie.** 0168 sluit het doel voor de
+ *    getuige af — titel, streefdatum en voortgang gaan hem niet aan. Wat hij ziet
+ *    is de inzet die de ander zichzelf oplegde, en van wie. Zie migratie 0169.
+ */
+function GetuigenisBlok({ getuigenissen }: { readonly getuigenissen: readonly Getuigenis[] }) {
+  if (getuigenissen.length === 0) return null;
+
+  return (
+    <Card>
+      <Subheading>{t('getuigenis.titel')}</Subheading>
+      <Body muted>{t('getuigenis.uitleg')}</Body>
+
+      {getuigenissen.map((g) => (
+        <Card nested key={g.id}>
+          <Subheading>
+            {t('getuigenis.van', { naam: g.eigenaar_naam || t('commitment.begunstigde.naamloos') })}
+          </Subheading>
+          <Body>{g.body}</Body>
+          <Caption>
+            {g.status === 'resolved' ? t('getuigenis.afgehandeld') : t('getuigenis.verschuldigd')}
+          </Caption>
+        </Card>
+      ))}
+    </Card>
+  );
+}
+
 function BadgeBlok({ badges }: { readonly badges: readonly VerdiendeBadge[] }) {
   const namen = badgeLabels();
   const uitleg = badgeUitleg();

@@ -2,7 +2,9 @@ import { t } from '../../shared/i18n';
 
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { nextCycle, userCycle, type Cycle, type UserClock } from '../../shared/time';
+import type { Cycle } from '../../shared/time';
+
+import { MAX_ADEMPAUZE_CYCLI } from './adempauze-periode';
 
 import type { Resultaat } from './weekly';
 
@@ -57,30 +59,19 @@ export async function fetchAdempauzes(goalId: string): Promise<readonly Adempauz
 }
 
 /**
- * De twee cycli die je nú kunt kiezen als begin van een adempauze.
- *
- * ⚠️ Begint bij de **volgende** cyclus en niet bij de lopende. Dat is geen
- *    schermkeuze maar wat `plan_adempauze()` afdwingt: mocht de lopende cyclus
- *    ook mogen, dan is dit op zondagavond een gratis uitweg uit het minpunt —
- *    je weet dat je je week niet haalt, kondigt een adempauze aan, en de
- *    rollover zet je weekdoel op `excused`. Dezelfde ontsnapping als A39 en A40.
- *
- * ⚠️ Rekent zelf niets uit: `nextCycle` komt uit `shared/time`
- *    (correctheidsregel 7).
- */
-export function planbareCycli(klok: UserClock, nu: Date): readonly Cycle[] {
-  const eerste = nextCycle(userCycle(klok, nu));
-  return [eerste, nextCycle(eerste)];
-}
-
-/**
- * Plant een adempauze van één of twee cycli.
+ * Plant een adempauze over een reeks hele cycli.
  *
  * ⚠️ Via een RPC, want de grenzen horen in de database. Vóór migratie 0048 stond
  *    `breathers` wagenwijd open: met één API-verzoek legde je een adempauze van
  *    tien jaar over al je doelen en kreeg je nooit meer een minpunt. "Maximaal
  *    twee cycli" stond in de issue en nergens in de database — hetzelfde patroon
  *    als A35.
+ *
+ * ⚠️ **De lengtegrens is er sinds QS8-227 niet meer, de rest wel.** Wat er
+ *    bewust is opgegeven en wat er overeind bleef, staat in
+ *    `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md`. De opsomming
+ *    hierboven blijft staan omdat ze uitlegt waaróm dit via een RPC loopt, en
+ *    dat verandert niet.
  */
 export async function planAdempauze(
   goalId: string,
@@ -108,10 +99,19 @@ export async function planAdempauze(
 
 function planMelding(reden: string | undefined): string {
   switch (reden) {
-    case 'niet_vooraf':
-      return t('adempauze.te_laat');
+    // ⚠️ **`niet_vooraf` staat hier niet meer, en dat is met opzet geen "voor de
+    //    zekerheid laten staan".** `plan_adempauze()` geeft die reden sinds
+    //    migratie 0166 niet meer terug; een tak die niet meer bereikt kan worden,
+    //    doet net alsof de regel nog bestaat en houdt de bijbehorende zin in de
+    //    vertaalbestanden in leven. Zie
+    //    `docs/decisions/2026-09-06-de-adempauze-wordt-vrij.md`.
+    //
+    // ⚠️ **`te_lang` staat er wél nog, maar betekent iets anders.** Twee cycli is
+    //    een jaar geworden, en om een andere reden — zie §7 van hetzelfde
+    //    document. Deze tak is de vangnetkant: het scherm toont de grens al
+    //    vóór de knop, dus wie hier komt, kwam ergens anders vandaan.
     case 'te_lang':
-      return t('adempauze.te_lang');
+      return t('adempauze.te_lang', { max: MAX_ADEMPAUZE_CYCLI });
     case 'overlapt':
       return t('adempauze.overlap');
     case 'geen_cyclusstart':

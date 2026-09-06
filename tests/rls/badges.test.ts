@@ -262,19 +262,90 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
   );
 
   /**
-   * ⚠️ `verdien_badges()` mag door een ingelogde gebruiker aangeroepen worden, en
-   *    dat is veilig: hij schrijft alleen wat op grond van de data al verdiend ís.
-   *    Deze test legt dat vast, want het is een grant die er raar uitziet.
+   * ⚠️ **Hier stond een test die het gat vastlegde als bedoeld gedrag.** Hij
+   *    heette *"geeft via de RPC niets weg dat niet verdiend is"* en zijn kop
+   *    zei: *"`verdien_badges()` mag door een ingelogde gebruiker aangeroepen
+   *    worden, en dat is veilig: hij schrijft alleen wat op grond van de data al
+   *    verdiend ís."*
+   *
+   *    Die redenering klopt over de schríjfactie en mist wat eronder zit. De
+   *    functie is `SECURITY DEFINER`, heeft nergens een `auth.uid()`, en geeft
+   *    **een getal** terug. Gemeten op 06-09 (QS8-287): Bob riep hem aan met
+   *    Alice haar id, kreeg `1` terug, en schreef in háár badge-tabel. Dat getal
+   *    is een orakel op privégegevens — `badges_select` is `user_id = auth.uid()`
+   *    omdat badges privé zijn, en herhaald aanroepen vertelt een vreemde
+   *    wannéér iemand iets bereikt. Domeinregel 7 langs een achterdeur.
+   *
+   * ⚠️ De les die blijft: **een test die een recht vastlegt, moet zeggen waaróm
+   *    dat recht er is** — niet alleen dat het bestaat. Deze stond er als
+   *    verklaring van iets dat er raar uitzag, en maakte het daarmee officieel.
    */
   it(
-    'geeft via de RPC niets weg dat niet verdiend is',
+    'laat een ingelogde gebruiker verdien_badges() niet aanroepen, voor niemand',
     async () => {
-      const { error } = await bob.db.rpc('verdien_badges', { p_user_id: bob.id });
-      if (error) throw new Error(`verdien_badges: ${error.message}`);
+      const vreemde = await bob.db.rpc('verdien_badges', { p_user_id: alice.id });
+      expect(vreemde.error, 'Bob mocht badges schrijven voor Alice').not.toBeNull();
 
-      expect(await badgesVan(bob), 'de RPC deelde onverdiende badges uit').not.toContain(
-        'first_goal',
-      );
+      // ⚠️ Ook niet voor zichzelf, en dat is met opzet: de reparatie van QS8-287
+      //    is het récht intrekken en niet een eigenaarstoets toevoegen.
+      //
+      // ⚠️ **Waaróm dat zo is, staat in de kop van migratie 0165 en wordt hier
+      //    bewust niet herhaald.** Er stond hier eerst wél een eigen versie van
+      //    die onderbouwing, en die noemde de verkeerde tak — 📏 `milestones_write`
+      //    is eigenaar-only, dus dáár is `auth.uid()` juist altijd gelijk aan
+      //    `p_user_id`. Twee versies van dezelfde rechtvaardiging is precies hoe
+      //    dit gat is ontstaan (QS8-290). Eén plek, en hier een verwijzing.
+      const eigen = await bob.db.rpc('verdien_badges', { p_user_id: bob.id });
+      expect(eigen.error, 'de RPC stond nog open voor de aanroeper zelf').not.toBeNull();
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **De tweede helft, en zonder die helft bewaakt de eerste niets.**
+   *    "Niemand mag het meer" is ook te halen met een functie die stuk is. Deze
+   *    test loopt de weg die wél moet blijven werken: een gebruiker vinkt zijn
+   *    eigen mijlpaal af, de trigger `badges_na_mijlpaal` vuurt, en die roept
+   *    `verdien_badges()` aan.
+   *
+   * ⚠️ **Met opzet als de gebruiker zelf en niet als `service_role`.** Dat is
+   *    precies het geval waar de reparatie op leunt: `badge_na_gebeurtenis()` is
+   *    `SECURITY DEFINER` met eigenaar `postgres`, dus de aanroep daarbinnen
+   *    draait niet onder het uitvoerrecht van `authenticated`. Zou die
+   *    redenering niet kloppen, dan wordt deze test rood en de vorige groen —
+   *    en dan is de badge onbereikbaar geworden in plaats van beschermd.
+   */
+  it(
+    'kent een mijlpaalbadge nog steeds toe langs de trigger',
+    async () => {
+      const mijlpaal = await alice.db
+        .from('milestones')
+        .insert({ goal_id: doelId, title: 'Badge via de trigger', order_index: 99, status: 'todo' })
+        .select('id')
+        .single();
+      if (mijlpaal.error || mijlpaal.data === null) {
+        throw new Error(`mijlpaal: ${mijlpaal.error?.message}`);
+      }
+
+      // ⚠️ **Zonder deze regel leunt de test op de volgorde van de tests ervóór.**
+      //    Krijgt Alice ooit eerder een afgevinkte mijlpaal, dan is hij triviaal
+      //    groen en bewaakt hij niets meer — een eigenschap van vijf ándere
+      //    tests, niet van deze.
+      expect(
+        await badgesVan(alice),
+        'Alice hoort deze badge nog niet te hebben — anders bewijst de assertie hieronder niets',
+      ).not.toContain('first_milestone');
+
+      const af = await alice.db
+        .from('milestones')
+        .update({ status: 'done' })
+        .eq('id', mijlpaal.data.id);
+      if (af.error) throw new Error(`mijlpaal afvinken: ${af.error.message}`);
+
+      expect(
+        await badgesVan(alice),
+        'de trigger kende de mijlpaalbadge niet meer toe — de interne weg is gebroken',
+      ).toContain('first_milestone');
     },
     TEST_TIMEOUT,
   );

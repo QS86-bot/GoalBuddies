@@ -3,8 +3,8 @@
  *
  * ⚠️ **De ontwerpregel in één tabel: de kleur codeert de familie, het pictogram
  *    codeert het gebied.** Er passen precies drie kleuren op navy (zie
- *    `kleurafstand.test.ts`), en er zijn vijftien gebieden. Vijftien kleuren
- *    bestaan niet; vijftien pictogrammen wel. Zo doet Habit Huddle het ook.
+ *    `kleurafstand.test.ts`), en er zijn twaalf gebieden. Twaalf kleuren
+ *    bestaan niet; twaalf pictogrammen wel. Zo doet Habit Huddle het ook.
  *
  * ⚠️ **Een kopie van `CATEGORIEEN` uit `modules/goals`, en met opzet geen
  *    import.** `shared` mag niet van een module afhangen. De prijs is een naad,
@@ -13,14 +13,20 @@
  *    pictogram heeft. Zelfde vorm en zelfde reden als `TIPSET_PER_CATEGORIE`.
  *
  * ⚠️ **De familie hier moet gelijk zijn aan `CATEGORIE_GROEPEN`**, en ook dát
- *    staat onder test. Twee indelingen van dezelfde vijftien woorden is precies
+ *    staat onder test. Twee indelingen van dezelfde twaalf woorden is precies
  *    de fout die dit bestand anders introduceert: de keuzelijst groepeert dan
  *    anders dan de kleur.
  *
- * ⚠️ **`business`, `study` en `other` hebben géén familie en dus geen kleur.**
- *    A55 meet drie kleuren voor twaalf gebieden en zegt over deze drie niets;
- *    een vierde kleur erbij verzinnen is precies wat `tokens.ts` verbiedt. Ze
- *    krijgen wél een pictogram — dat is de helft die er wel is.
+ * ⚠️ **Sinds besluit A58 heeft élk gebied een familie.** Er waren vier groepen
+ *    waarvan de vierde — `business`, `study`, `other` — geen kleur had, en dat
+ *    was geen ontwerp maar een restje: wat er overbleef nadat A55 drie kleuren
+ *    had gevonden. Nu zijn het drie families van vier.
+ *
+ * ⚠️ **`familie` blijft toch `null` kunnen zijn, en dat is geen restant.**
+ *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
+ *    een waarde bevatten die deze build niet kent, en dan is "geen familie" het
+ *    eerlijke antwoord. Een terugval op een wíllekeurige familie zou zo'n doel in
+ *    de verkeerde kleur zetten — dezelfde redenering als bij `categorieGroep()`.
  */
 
 import type { Categoriekleuren } from '../theme/tokens';
@@ -35,24 +41,20 @@ export interface Categoriemerk {
 }
 
 export const CATEGORIEMERKEN: Readonly<Record<string, Categoriemerk>> = {
-  fitness: { icoon: 'run', familie: 'lichaam' },
-  nutrition: { icoon: 'food-apple', familie: 'lichaam' },
-  self_care: { icoon: 'sleep', familie: 'lichaam' },
-  mindfulness: { icoon: 'meditation', familie: 'lichaam' },
+  fitness: { icoon: 'run', familie: 'gezondheid' },
+  nutrition: { icoon: 'food-apple', familie: 'gezondheid' },
+  self_care: { icoon: 'sleep', familie: 'gezondheid' },
+  mindfulness: { icoon: 'meditation', familie: 'gezondheid' },
 
-  connection: { icoon: 'account-group', familie: 'mensen' },
-  helping: { icoon: 'hand-heart', familie: 'mensen' },
-  creativity: { icoon: 'palette', familie: 'mensen' },
+  creativity: { icoon: 'palette', familie: 'softskills' },
+  productivity: { icoon: 'check-circle-outline', familie: 'softskills' },
+  connection: { icoon: 'account-group', familie: 'softskills' },
+  other: { icoon: 'dots-horizontal', familie: 'softskills' },
 
-  productivity: { icoon: 'check-circle-outline', familie: 'werk' },
-  organization: { icoon: 'folder-outline', familie: 'werk' },
-  learning: { icoon: 'school-outline', familie: 'werk' },
-  skills: { icoon: 'tools', familie: 'werk' },
-  resilience: { icoon: 'shield-check-outline', familie: 'werk' },
-
-  business: { icoon: 'briefcase-outline', familie: null },
-  study: { icoon: 'book-open-variant', familie: null },
-  other: { icoon: 'dots-horizontal', familie: null },
+  business: { icoon: 'briefcase-outline', familie: 'ambitie' },
+  study: { icoon: 'book-open-variant', familie: 'ambitie' },
+  building: { icoon: 'hammer-wrench', familie: 'ambitie' },
+  skills: { icoon: 'tools', familie: 'ambitie' },
 };
 
 /**

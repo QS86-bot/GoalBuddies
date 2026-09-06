@@ -177,11 +177,17 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     }
 
     // ⚠️ **De cyclus valt precies tussen de twee klokken in.** `herbereken_risico()`
-    //    telt cycli met `cycle_start_date < vandaag`. Zet je hem op de vróegste
-    //    van de twee datums, dan telt de late klok hem wél en de vroege niet —
-    //    welke van de twee dat is, hangt van de richting af, en het verschil is
-    //    één rij in `cycli_bekeken`.
-    const vroegste = richting > 0 ? serverdatum() : eigenDatum;
+    //    telt cycli die **af** zijn, en dat is `cycle_start_date + 6 < vandaag`
+    //    sinds QS8-271 — een cyclus loopt zeven dagen, dus `< vandaag` betekende
+    //    "niet vandaag begonnen" en niet "afgelopen".
+    //
+    // ⚠️ **Daarom ligt hij op zeven dagen terug en niet op één.** De grens valt
+    //    tussen de twee klokken zodra `cycle_start_date + 6` precies de vroegste
+    //    van de twee datums is: de late klok ziet de cyclus als afgesloten, de
+    //    vroege nog niet. Vóór QS8-271 stond hier één dag terug, en dat is sinds
+    //    die reparatie voor béide klokken een lopende cyclus — dan telt hij
+    //    nergens mee en bewijst deze test niets.
+    const vroegste = addDays(eigenDatum, richting > 0 ? -7 : -6);
 
     const weekdoel = await eigenaar.db.from('weekly_goals').insert({
       goal_id: vensterDoel.data.id,
@@ -197,6 +203,19 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       cycle_index: 1,
     });
     if (weekdoel.error) throw new Error(`weekdoel: ${weekdoel.error.message}`);
+
+    // ⚠️ **Op `missed` en niet op `todo`, sinds QS8-275.** De noemer telt alleen
+    //    cycli die een óórdeel gekregen hebben — `approved` of `missed` — zodat
+    //    een adempauze het tempo niet drukt. Een weekdoel dat op `todo` blijft
+    //    staan telt dus voor geen enkele klok mee, en dan meet deze test niets.
+    //    `missed` is hier de goedkoopste beoordeelde status: hij vraagt geen
+    //    voltooiing.
+    const beoordeeld = await adminDb()
+      .from('weekly_goals')
+      .update({ status: 'missed' })
+      .eq('goal_id', vensterDoel.data.id)
+      .eq('cycle_start_date', vroegste);
+    if (beoordeeld.error) throw new Error(`status weekdoel: ${beoordeeld.error.message}`);
 
     // ⚠️ **Een derde doel, want de rand van het venster is een ándere grendel.**
     //    Zou de cyclus hieronder bij `vensterDoel` staan, dan telt hij mee in
@@ -236,6 +255,14 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       cycle_index: 1,
     });
     if (randWeekdoel.error) throw new Error(`randweekdoel: ${randWeekdoel.error.message}`);
+
+    // ⚠️ Zelfde reden als hierboven: alleen een beoordeelde cyclus telt mee.
+    const randBeoordeeld = await adminDb()
+      .from('weekly_goals')
+      .update({ status: 'missed' })
+      .eq('goal_id', randDoel.data.id)
+      .eq('cycle_start_date', randDag);
+    if (randBeoordeeld.error) throw new Error(`status randweekdoel: ${randBeoordeeld.error.message}`);
 
     f = {
       eigenaar,
@@ -314,16 +341,16 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     async () => {
       const r = await reden(f.vensterGoalId);
 
-      // De cyclus staat op de vroegste van de twee datums. De late klok ziet hem
-      // als begonnen, de vroege nog niet.
+      // De cyclus eindigt precies tussen de twee klokken in. De late klok ziet
+      // hem als afgesloten, de vroege nog als lopend.
       const opEigenKlok = f.richting > 0 ? 1 : 0;
       const opServerklok = f.richting > 0 ? 0 : 1;
 
       expect(
         r.cycli_bekeken,
-        `de cyclus begint op de vroegste van de twee kalenders. Op die van de ` +
-          `eigenaar telt hij ${opEigenKlok} keer mee, op die van de server ` +
-          `${opServerklok} keer — kwam dat laatste eruit, dan rekent de radar nog in UTC`,
+        `de cyclus eindigt tussen de twee kalenders in. Op die van de eigenaar telt ` +
+          `hij ${opEigenKlok} keer mee, op die van de server ${opServerklok} keer — ` +
+          'kwam dat laatste eruit, dan rekent de radar nog in UTC',
       ).toBe(opEigenKlok);
     },
     TEST_TIMEOUT,

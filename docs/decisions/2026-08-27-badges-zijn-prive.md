@@ -106,11 +106,45 @@ gebeurtenis; hij raakt er nooit een kwijt.** Zou elke trigger zijn eigen badge
 inserten, dan is een gemist pad een badge die nooit meer komt, en dat merk je pas
 als een gebruiker het meldt.
 
-⚠️ **`authenticated` mag `verdien_badges()` aanroepen, en dat ziet er raarder uit
-dan het is.** De functie schrijft alleen badges die op grond van de data al
+⚠️⚠️ ~~**`authenticated` mag `verdien_badges()` aanroepen, en dat ziet er raarder
+uit dan het is.** De functie schrijft alleen badges die op grond van de data al
 verdiend zíjn. Wie hem voor een ander aanroept, kent die ander hooguit iets toe
 dat hij toch al hoorde te hebben — en leest er niets van terug, want
-`badges_select` is eigenaar-only. Er staat een test op die dat vastlegt.
+`badges_select` is eigenaar-only. Er staat een test op die dat vastlegt.~~
+
+**Die alinea was fout, en op 06-09-2026 met migratie 0165 teruggedraaid
+(QS8-287).** Hij blijft hier staan omdat hij precies de redenering is die het gat
+open hield: wie zich afvroeg waarom die grant er stond, vond hier een nette
+onderbouwing dat hij veilig was.
+
+De fout zit in *"leest er niets van terug"*. Dat klopt voor de **tabel** —
+`badges_select` is inderdaad eigenaar-only — maar niet voor de **retourwaarde**.
+`verdien_badges()` geeft terug hoevéél badges hij zojuist toekende. 📏 Gemeten met
+Alice die één afgerond doel heeft en Bob die niets met haar deelt:
+
+```
+bob roept aan voor alice   -> 1
+bob voor zichzelf          -> 0
+bob leest badges van alice -> 0      (de tabel blijft dicht)
+badges van alice in de db  -> 1      (maar het getal vertelde het hem)
+```
+
+Dat getal is een orakel op precies wat §1 privé verklaart: herhaald aanroepen
+vertelt je wánneer iemand anders iets bereikt. En de schrijfweg zelf was de enige
+weg naar `badges` — die tabel heeft met opzet geen INSERT-policy.
+
+⚠️ **De les zit in het woord "hooguit".** De alinea keek naar het *effect* van de
+schrijfactie, en dat effect wás goedaardig. Het lek zat in wat de functie
+teruggaf. Wie een grendel beoordeelt op zijn gevolgen voor de data, mist de
+gevolgen voor wat de aanroeper te wéten komt.
+
+Sinds 0165 mag `authenticated` de functie niet meer uitvoeren. De enige aanroeper
+is de trigger `badge_na_gebeurtenis`, die `security definer` is met eigenaar
+`postgres`. ⚠️ **Daarmee is die `security definer` dragend geworden**: valt hij
+weg, dan krijgt niemand nog een badge en slikt de trigger de fout in. Er staat
+sinds QS8-287 een test op die keten in `tests/rls/badges.test.ts`, en die loopt
+bewust langs een dírecte schrijfactie van de client — via een definer-RPC erft de
+trigger díé context en valt het ontbrekende recht niet op.
 
 ---
 

@@ -1,7 +1,12 @@
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { fetchMijnGroepen, huddledagLabel, type Groep } from '@/modules/buddies';
+import {
+  fetchMijnGroepen,
+  huddledagLabel,
+  isHuddledagVandaag,
+  type Groep,
+} from '@/modules/buddies';
 import { useTeBeoordelen } from '@/modules/completions';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
@@ -107,7 +112,19 @@ function GroepKaart({ groep, onOpen }: { readonly groep: Groep; readonly onOpen:
           <Body muted>{t('groepen.slaapt')}</Body>
         ) : null}
 
-        <Caption>{t('groepen.huddledag', { dag: huddledagLabel(groep.huddle_day) })}</Caption>
+        {/*
+          ⚠️ **Op de dag zelf staat er "vandaag" en geen dagnaam (QS8-199).** In
+             een lijst met meer groepen is dit de plek waar het opvalt: de ene
+             regel zegt "zondag" en de andere "vandaag". De vraag wordt gesteld
+             aan de klok van de gróep — `isHuddledagVandaag()` — en niet met
+             `getDay()` in de tijdzone van het toestel, want dat is een
+             tijdberekening buiten `shared/time` (correctheidsregel 7).
+        */}
+        <Caption>
+          {isHuddledagVandaag(groep)
+            ? t('groepen.huddledag_vandaag')
+            : t('groepen.huddledag', { dag: huddledagLabel(groep.huddle_day) })}
+        </Caption>
       </Card>
     </Pressable>
   );
