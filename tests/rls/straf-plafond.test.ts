@@ -688,6 +688,33 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
     );
 
     it(
+      'een gebruiker kan de klok van een commitment ook niet bijwerken',
+      () => {
+        // ⚠️⚠️ **Dit is de UPDATE-kant van het wachtvenster, en die stond er
+        //    eerst niet — terwijl de motivatie van de policyconjunct in 0171
+        //    letterlijk een "bewerk je commitment"-scherm noemt.** Zo'n scherm
+        //    vraagt een UPDATE-recht, en `commitments_update` heeft géén
+        //    klokconjunct. Gemeten: met `update (created_at, confirmed_at)` staat
+        //    het wachtvenster van 0170 weer op nul langs die kant.
+        //
+        //    Voor de UPDATE draagt de kolomgrant het dus alléén. Dat is
+        //    verdedigbaar, maar het hoort gemeten te zijn en niet aangenomen —
+        //    dat onderscheid is deze branch vier rondes lang duur geweest.
+        expect(
+          magBijwerken('commitments', 'created_at'),
+          'commitments.created_at staat in de UPDATE-grant — het wachtvenster van 0170 ' +
+            'is dan met één PATCH terug te zetten, en `commitments_update` toetst de klok niet',
+        ).toBe(false);
+        expect(
+          magBijwerken('commitments', 'confirmed_at'),
+          'commitments.confirmed_at staat in de UPDATE-grant — dan kiest de client achteraf ' +
+            'wanneer hij volgens de administratie ja gezegd heeft (domeinregel 5)',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'de kolommen die wél bijgewerkt mogen worden, zijn er ook echt',
       () => {
         // ⚠️ De must-allow, en niet cosmetisch: zou `magBijwerken()` altijd

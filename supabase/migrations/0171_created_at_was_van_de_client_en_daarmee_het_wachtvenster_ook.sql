@@ -51,10 +51,26 @@
 -- gebruiken. Dit is de grendel die het vandaag dichtzet: de client kan de kolom
 -- niet meer noemen, dus de default `now()` geldt.
 --
--- **2. Een klokconjunct in `commitments_insert`**, want een grant overleeft het
--- volgende "bewerk je commitment"-scherm niet. Wordt de grant ooit verruimd, dan
--- weigert de policy een teruggedateerde rij alsnog. Twee onafhankelijke sloten
--- op één belofte, elk apart te ijken.
+-- **2. Een klokconjunct in `commitments_insert`**, zodat een verruiming van de
+-- INSERT-grant de belofte niet meteen weer opent. Twee sloten op één belofte,
+-- elk apart te ijken.
+--
+-- ⚠️⚠️ **Onafhankelijk zijn die twee alleen voor de INSERT, en de eerste versie
+--    van deze kop beweerde meer.** Daar stond dat het tweede slot er is "want een
+--    grant overleeft het volgende bewerk-je-commitment-scherm niet" — maar zo'n
+--    scherm vraagt een **UPDATE**-recht, en `commitments_update` heeft geen
+--    enkele klokconjunct. Gemeten: geef `authenticated`
+--    `update (created_at, confirmed_at)` en het wachtvenster van 0170 staat weer
+--    op nul, langs de UPDATE-kant.
+--
+--    Voor die kant draagt de kolomgrant het dus alléén, net als vóór deze
+--    migratie. Dat is verdedigbaar — de UPDATE-grant is sinds 0057 met opzet
+--    versmald tot `body, image_url, status` — maar het hoort gemeten te zijn en
+--    niet aangenomen: `tests/rls/straf-plafond.test.ts` legt nu ook
+--    `commitments.created_at` en `commitments.confirmed_at` op de UPDATE-kant
+--    vast. Een klokconjunct in `commitments_update` erbij zou een derde kopie van
+--    dezelfde regel zijn op een pad dat vandaag niet bestaat; dat is de vorm die
+--    0168 er juist uit haalde omdat hij niet te ijken viel.
 --
 -- ⚠️ **Een trigger zou hier verkeerd zijn en dat is geen luiheid.** Een BEFORE
 --    INSERT-trigger die `new.created_at := now()` forceert, bindt óók
@@ -78,8 +94,15 @@
 --    bevestigd, auditeerbaar". Een client die hem vrij kiest, kiest wanneer hij
 --    volgens de administratie ja gezegd heeft. Hij blijft in de grant staan
 --    omdat `zetStraf()` hem meestuurt (`confirmed_at: 'now'`), dus hier doet
---    alleen de policy het werk. `null` blijft toegestaan: een commitment dat nog
---    niet bevestigd is, hoort te kunnen bestaan.
+--    alleen de policy het werk.
+--
+--    ⚠️ Hier stond eerst een tak `confirmed_at is null or …`, met de toelichting
+--    dat een onbevestigd commitment moet kunnen bestaan. Gemeten:
+--    `confirmed_at | timestamp with time zone | not null`, zonder default. Die
+--    tak kon dus nooit vuren en de zin erboven beschreef een toestand die het
+--    schema verbiedt. **Precies de klasse fout die dit issue drie rondes gekost
+--    heeft** — een uitspraak over het schema, opgeschreven als vaststelling,
+--    zonder query ernaast. De tak is eruit.
 --
 -- ⚠️ **`id` en `status` gaan er ook uit.** Geen enkel schrijfpad in `src/` of
 --    `app/` stuurt ze mee — gemeten door `kolomrechten:controle`, die daar rood
@@ -151,8 +174,5 @@ create policy commitments_insert on commitments
     -- ⚠️ QS8-293, derde ronde. Zie de kop: hieraan hangt het wachtvenster van
     --    0170, en het hing tot nu toe aan een veld uit de POST-body.
     and created_at between now() - interval '5 minutes' and now() + interval '5 minutes'
-    and (
-      confirmed_at is null
-      or confirmed_at between now() - interval '5 minutes' and now() + interval '5 minutes'
-    )
+    and confirmed_at between now() - interval '5 minutes' and now() + interval '5 minutes'
   );

@@ -451,3 +451,80 @@ volledig uit. Dat is letterlijk de val die CLAUDE.md bij regel 18 beschrijft: ee
 ijking die zijn geval door een pad voert dat een éérdere grendel al afvangt,
 bewaakt niets. Het geval dat de policy bewaakt is *"stel dat de grant ooit
 terugkomt"*, dus hoort de grant tijdens die tests terug te zijn.
+
+
+## 16. Vierde ronde — 0171 houdt stand, de zin eronder niet
+
+De vierde ronde probeerde de aanval langs veertien ingangen opnieuw: gewone
+insert, upsert met `on_conflict` op twee sleutels, `PUT`, meerdere rijen
+tegelijk, `?columns=` in de URL, `?select=` met de kolom erin, een `PATCH`
+achteraf, en als `anon`. Allemaal `42501` of `42P10`; de must-allows allemaal
+201. Met de grant expres weer volledig open houdt de policy hem tegen, en het
+venster is precies ±5 minuten aan beide kanten. **0171 doet wat hij belooft.**
+
+Wat er niet klopte, stond er weer omheen — voor de vierde keer, en dat is
+inmiddels het patroon van dit issue en niet een incident.
+
+### 16a. "Twee onafhankelijke sloten" was alleen waar voor de INSERT
+
+De kop van 0171 motiveerde het tweede slot met *"een grant overleeft het volgende
+'bewerk je commitment'-scherm niet"*. Zo'n scherm vraagt een **UPDATE**-recht, en
+`commitments_update` heeft geen enkele klokconjunct — gemeten in `pg_policy`.
+Geef `authenticated` `update (created_at, confirmed_at)` en het wachtvenster van
+0170 staat weer op nul langs die kant.
+
+Voor de UPDATE draagt de kolomgrant het dus alléén. Dat is verdedigbaar — 0057
+versmalde die grant met opzet tot `body, image_url, status` — maar het hoort
+gemeten te zijn en niet aangenomen. Er staan nu twee regels bij in het
+grantblok, geijkt met beide grants los.
+
+⚠️ **Een klokconjunct in `commitments_update` erbij zou een derde kopie van
+dezelfde regel zijn op een pad dat vandaag niet bestaat.** Dat is precies de vorm
+die 0168 er weer uit haalde omdat hij niet te ijken viel.
+
+### 16b. De `confirmed_at is null`-tak kon nooit vuren
+
+`confirmed_at` is `not null` zonder default — gemeten. De tak stond er met de
+toelichting dat een onbevestigd commitment moet kunnen bestaan; dat verbiedt het
+schema. Dode logica plus een zin die een onmogelijke toestand beschrijft, en
+opnieuw: een uitspraak over het schema, opgeschreven als vaststelling, zonder
+query ernaast. De tak is eruit.
+
+### 16c. En de "wordt zwaarder als" beschreef iets dat al waar was
+
+De rij in `ENGINEER-REVIEW.md` zei: *"wordt zwaarder als er een tabel bijkomt met
+een kolom die een grendel draagt"*. Die tabel hoefde niet bij te komen. Er staan
+er vier, en de ronde mat er drie uit — de sterkste zelf nagemeten:
+
+```
+over() vooraf: 200
+na 300 TERUGGEDATEERDE stappen: over() = 200   rijen = 300
+na 200 EERLIJKE stappen: over() = 0
+de 201e eerlijke stap: geweigerd (42501)
+```
+
+`weekly_plan_steps` (limiet 200/dag), `day_checkins` (500) en —
+het zwaarst — `completion_approvals`, waar `trek_goedkeuring_in()` op
+`created_at` beslist en de goedkeurder dus zelf bepaalt of het intrekvenster van
+vijftien minuten open staat. Dat raakt domeinregel 3.
+
+⚠️ **Niet in deze branch gerepareerd**, en dat is een procesbesluit: vier andere
+tabellen, drie andere features, en meenemen in een issue over straffen maakt het
+onzichtbaar (CLAUDE.md, één branch per issue). Het staat als **QS8-295** in
+Linear met de metingen erin, en de rij in `ENGINEER-REVIEW.md` staat op **Hoog**
+in plaats van als voorwaarde die nog moet intreden.
+
+### Wat dit issue over zichzelf heeft geleerd
+
+| Ronde | De zin die er stond | Waar hij fout zat |
+|---|---|---|
+| 1 | "twee grenzen, en samen sluiten ze de route" | de naad tussen twee grenzen |
+| 2 | "één dag speling, inherent aan tijdzones" | een grens die twee momenten vergelijkt met een gebruikerskolom ertussen |
+| 3 | "server-tijd aan beide kanten" | de linkerkant kwam uit de request-body |
+| 4 | "twee onafhankelijke sloten" / "wordt zwaarder als" | waar voor INSERT, niet voor UPDATE; en het restrisico was al ingetreden |
+
+Vier keer was de code beter dan de zin ernaast. **De code werd elke ronde
+gemeten; de zin niet.** Dat is de eigenlijke bevinding van QS8-293, en hij staat
+als eigen rij in `ENGINEER-REVIEW.md`: een zin over een grant, een default of een
+schema is pas waar als er een query naast staat — en die query hoort in een test,
+niet in een commentaarregel.
