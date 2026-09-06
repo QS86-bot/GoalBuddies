@@ -126,7 +126,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
   ): Promise<string> {
     const admin = adminDb();
 
-    // ⚠️ **Vooruit aanmaken en dan terugzetten**, sinds migratie 0169:
+    // ⚠️ **Vooruit aanmaken en dan terugzetten**, sinds migratie 0170:
     //    `goals_insert` weigert een streefdatum in het verleden, en `cycleStart`
     //    is hier per definitie een week die al gemist ís. Deze opstelling gaat
     //    over `weekly_goals.status` en niet over het aanmaken van een doel, dus

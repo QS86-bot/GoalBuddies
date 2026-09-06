@@ -1,4 +1,4 @@
--- 0169_een_plafond_op_straffen_en_een_ondergrens_op_de_streefdatum.sql — één openstaand commitment per soort per doel, een streefdatum die niet in het verleden begint, en geen straf op een verstreken deadline (QS8-293)
+-- 0170_een_plafond_op_straffen_en_een_ondergrens_op_de_streefdatum.sql — één openstaand commitment per soort per doel, een streefdatum die niet in het verleden begint, en geen straf op een verstreken deadline (QS8-293)
 --
 -- ROLLBACK-PAD:
 --   drop index if exists commitments_een_open_per_soort;

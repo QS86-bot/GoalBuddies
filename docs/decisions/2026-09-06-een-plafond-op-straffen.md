@@ -1,6 +1,6 @@
 # Een plafond op straffen, en een streefdatum die niet in het verleden begint
 
-**Datum:** 06-09-2026 · **Issue:** QS8-293 · **Migratie:** 0169
+**Datum:** 06-09-2026 · **Issue:** QS8-293 · **Migratie:** 0170
 
 ---
 
@@ -286,7 +286,7 @@ dat het gemeten en dicht was. **Dat document is twee rondes achter elkaar
 geruststellender geweest dan de meting rechtvaardigde, en dat is een ernstiger
 patroon dan de bug zelf** — wat daar als dicht staat, kijkt niemand meer na.
 
-### De reparatie: een belofte aan de serverklok (migratie 0170)
+### De reparatie: een belofte aan de serverklok (migratie 0171)
 
 Elke grens die in gebruikerstijd rekent, is met dezelfde kolom te verzetten. De
 eigenschap die je wilt, hangt aan niets dat een gebruiker aanraakt:
@@ -328,7 +328,7 @@ De straf die er al op stond, gaat bij de eerstvolgende rollover af.
 
 Alice deed op dat moment niets. Haar buddy was traag.
 
-**De weigering in 0170 is smal en niet algemeen.** Alleen bij een akkoord, en
+**De weigering in 0171 is smal en niet algemeen.** Alleen bij een akkoord, en
 alleen als de gevraagde datum al voorbij is, gemeten aan
 `eigenaarsdatum(r.requester_id)` — de dag van de *aanvrager*, niet die van de
 goedkeurder, anders hangt de uitkomst af van waar de buddy woont. Een datum die
@@ -365,7 +365,7 @@ een must-allow zodat een kapotte query niet als "dicht" leest.
 
 ## 15. ⚠️⚠️ Derde ronde — en de duurste regel stond in een testbestand
 
-0170 hing zijn belofte aan `c.created_at`. De derde security-ronde mat
+0171 hing zijn belofte aan `c.created_at`. De derde security-ronde mat
 `information_schema.column_privileges`:
 
 ```
@@ -384,7 +384,7 @@ A  created_at zoals de client hem meestuurde: 2020-01-01 00:00:00+00
 B  rollover verschuldigd = 1   status = due
 ```
 
-Eén veld in de POST-body en het wachtvenster van 0170 stond op nul.
+Eén veld in de POST-body en het wachtvenster van 0171 stond op nul.
 
 ### Wat dit issue drie keer heeft laten zien
 
@@ -410,7 +410,7 @@ want het is een gewoonte en geen bug.
 
 ### De reparatie: twee sloten, geen van beide op `service_role`
 
-**1. De INSERT-grant versmallen** (0171), dezelfde vorm die 0044 en 0046 elders
+**1. De INSERT-grant versmallen** (0172), dezelfde vorm die 0044 en 0046 elders
 al gebruiken. Dit zet het vandaag dicht: de client kan de kolom niet noemen, dus
 de default `now()` geldt.
 
@@ -433,7 +433,7 @@ meestuurt, dus daar doet alleen de policy het werk.
 
 ⚠️ **Géén trigger, en dat is een keuze.** Een BEFORE INSERT die `created_at`
 forceert, bindt óók `service_role` — en dan kan geen enkele opstelling meer een
-straf bouwen die er gisteren al stond, waarmee de grendel van 0170 zelf
+straf bouwen die er gisteren al stond, waarmee de grendel van 0171 zelf
 ontoetsbaar wordt. Grant en policy laten `service_role` met rust, en dat is hier
 de juiste kant: de aanvaller heeft die rol niet.
 
@@ -453,25 +453,25 @@ bewaakt niets. Het geval dat de policy bewaakt is *"stel dat de grant ooit
 terugkomt"*, dus hoort de grant tijdens die tests terug te zijn.
 
 
-## 16. Vierde ronde — 0171 houdt stand, de zin eronder niet
+## 16. Vierde ronde — 0172 houdt stand, de zin eronder niet
 
 De vierde ronde probeerde de aanval langs veertien ingangen opnieuw: gewone
 insert, upsert met `on_conflict` op twee sleutels, `PUT`, meerdere rijen
 tegelijk, `?columns=` in de URL, `?select=` met de kolom erin, een `PATCH`
 achteraf, en als `anon`. Allemaal `42501` of `42P10`; de must-allows allemaal
 201. Met de grant expres weer volledig open houdt de policy hem tegen, en het
-venster is precies ±5 minuten aan beide kanten. **0171 doet wat hij belooft.**
+venster is precies ±5 minuten aan beide kanten. **0172 doet wat hij belooft.**
 
 Wat er niet klopte, stond er weer omheen — voor de vierde keer, en dat is
 inmiddels het patroon van dit issue en niet een incident.
 
 ### 16a. "Twee onafhankelijke sloten" was alleen waar voor de INSERT
 
-De kop van 0171 motiveerde het tweede slot met *"een grant overleeft het volgende
+De kop van 0172 motiveerde het tweede slot met *"een grant overleeft het volgende
 'bewerk je commitment'-scherm niet"*. Zo'n scherm vraagt een **UPDATE**-recht, en
 `commitments_update` heeft geen enkele klokconjunct — gemeten in `pg_policy`.
 Geef `authenticated` `update (created_at, confirmed_at)` en het wachtvenster van
-0170 staat weer op nul langs die kant.
+0171 staat weer op nul langs die kant.
 
 Voor de UPDATE draagt de kolomgrant het dus alléén. Dat is verdedigbaar — 0057
 versmalde die grant met opzet tot `body, image_url, status` — maar het hoort

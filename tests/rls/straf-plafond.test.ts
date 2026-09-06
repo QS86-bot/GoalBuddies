@@ -1,6 +1,6 @@
 /**
  * Het plafond op straffen en de ondergrens op de streefdatum — QS8-293,
- * migratie 0169.
+ * migratie 0170.
  *
  * ⚠️ **De aanval die dit issue opleverde, en hij was end-to-end gemeten.** Een
  *    doel met `current_date - 30`, vijf straffen erop met dezelfde persoon als
@@ -384,13 +384,13 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
     /**
      * ⚠️ **De belofte is niet "de policy weigert" maar "een straf die je
      *    vastlegt kan niet meteen verschuldigd worden".** Dat verschil is de
-     *    hele tweede security-ronde op dit issue: de drie grenzen van 0169
+     *    hele tweede security-ronde op dit issue: de drie grenzen van 0170
      *    waren elk correct en de rollover kwam er onderdoor, omdat `mijn_datum()`
      *    en de datum die de rollover gebruikt allebei uit `profiles.tz` komen —
      *    een kolom die de gebruiker zelf schrijft.
      */
     async function strafOpDoelDatVerloopt(titel: string): Promise<{ doelId: string; strafId: string }> {
-      // Opbouw: het doel loopt nog, dus de straf mag erop (grens 3 van 0169).
+      // Opbouw: het doel loopt nog, dus de straf mag erop (grens 3 van 0170).
       const doel = await adminDb()
         .from('goals')
         .insert({ owner_id: w.alice.id, title: titel, target_date: addDays(w.vandaag, 30) })
@@ -530,7 +530,7 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
   describe('een verlopen deadline-verzoek verschuift niets', () => {
     /**
      * ⚠️ **De goedkeuring mag niet de trekker van een commitment device zijn.**
-     *    0169 liet `beslis_deadline_verzoek()` bewust buiten de datumgrens — een
+     *    0170 liet `beslis_deadline_verzoek()` bewust buiten de datumgrens — een
      *    verzoek mag niet stranden doordat een buddy er een week over doet — en
      *    zag daarbij één ding over het hoofd: staat er een straf op het doel, dan
      *    laat die goedkeuring hem afgaan terwijl de aanvrager niets deed.
@@ -642,7 +642,7 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
      *
      * ⚠️ **Waarom dit een test is en geen aantekening.** Komt er ooit een scherm
      *    "bewerk je doel" of "wijzig je commitment", dan is de grant het eerste
-     *    wat verruimd wordt, en dan valt de grens van 0169 stil om — de policy
+     *    wat verruimd wordt, en dan valt de grens van 0170 stil om — de policy
      *    die dan overneemt, bestaat niet. Deze test wordt rood op het moment dat
      *    het gebeurt, en niet pas bij de volgende security-ronde.
      *
@@ -691,18 +691,18 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
       'een gebruiker kan de klok van een commitment ook niet bijwerken',
       () => {
         // ⚠️⚠️ **Dit is de UPDATE-kant van het wachtvenster, en die stond er
-        //    eerst niet — terwijl de motivatie van de policyconjunct in 0171
+        //    eerst niet — terwijl de motivatie van de policyconjunct in 0172
         //    letterlijk een "bewerk je commitment"-scherm noemt.** Zo'n scherm
         //    vraagt een UPDATE-recht, en `commitments_update` heeft géén
         //    klokconjunct. Gemeten: met `update (created_at, confirmed_at)` staat
-        //    het wachtvenster van 0170 weer op nul langs die kant.
+        //    het wachtvenster van 0171 weer op nul langs die kant.
         //
         //    Voor de UPDATE draagt de kolomgrant het dus alléén. Dat is
         //    verdedigbaar, maar het hoort gemeten te zijn en niet aangenomen —
         //    dat onderscheid is deze branch vier rondes lang duur geweest.
         expect(
           magBijwerken('commitments', 'created_at'),
-          'commitments.created_at staat in de UPDATE-grant — het wachtvenster van 0170 ' +
+          'commitments.created_at staat in de UPDATE-grant — het wachtvenster van 0171 ' +
             'is dan met één PATCH terug te zetten, en `commitments_update` toetst de klok niet',
         ).toBe(false);
         expect(
@@ -730,14 +730,14 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
       'een gebruiker kan `commitments.created_at` niet meesturen bij het aanmaken',
       () => {
         // ⚠️⚠️ **Dit blok toetste alleen UPDATE, en dáár zat de fout.** De
-        //    24-uursgrendel van 0170 hangt aan `created_at`, en die kolom stond
+        //    24-uursgrendel van 0171 hangt aan `created_at`, en die kolom stond
         //    gewoon in de INSERT-grant — de standaard die Supabase uitdeelt en
         //    die 0057 alleen voor UPDATE versmalde. Eén veld in de POST-body en
-        //    het wachtvenster stond op nul. 0171 versmalt de INSERT-grant.
+        //    het wachtvenster stond op nul. 0172 versmalt de INSERT-grant.
         expect(
           magSchrijven('commitments', 'created_at', 'INSERT'),
           'commitments.created_at staat in de INSERT-grant — dan kiest de client ' +
-            'zijn eigen wachtvenster en is de grendel van 0170 nul waard',
+            'zijn eigen wachtvenster en is de grendel van 0171 nul waard',
         ).toBe(false);
       },
       TEST_TIMEOUT,
@@ -814,7 +814,7 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
       'en een `created_at` ver in de toekomst ook niet',
       async () => {
         // ⚠️ **Niet cosmetisch.** Een straf met een `created_at` van volgend jaar
-        //    stelt het wachtvenster van 0170 een jaar uit — dat is je eigen
+        //    stelt het wachtvenster van 0171 een jaar uit — dat is je eigen
         //    commitment device ontlopen, en domeinregel 5 gaat daar precies over.
         const doelId = await versDoel('KLOK toekomst');
 

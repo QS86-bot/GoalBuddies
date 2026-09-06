@@ -881,7 +881,7 @@ function Straf({
   }
 
   // ⚠️ **Dezelfde reden als bij de intrekknop hierboven: geen knop tonen die de
-  //    server afwijst.** Sinds migratie 0169 weigert `commitments_insert` een
+  //    server afwijst.** Sinds migratie 0170 weigert `commitments_insert` een
   //    straf op een doel waarvan de streefdatum al voorbij is — die zou bij de
   //    eerstvolgende rollover meteen verschuldigd zijn, en dat was de
   //    spamvector van QS8-293. Uitleg én een uitweg: de streefdatum verzetten

@@ -144,7 +144,7 @@ export function isOpenstaand(commitment: Commitment): boolean {
 /**
  * Kan er op dit doel nog een straf vastgelegd worden?
  *
- * ⚠️ **Dit is de clientkant van de derde grens van migratie 0169 (QS8-293), en
+ * ⚠️ **Dit is de clientkant van de derde grens van migratie 0170 (QS8-293), en
  *    de grens is met opzet exact dezelfde.** `commitments_insert` weigert een
  *    `penalty` op een doel waarvan `target_date < mijn_datum()`: zo'n straf zou
  *    bij de eerstvolgende rollover meteen verschuldigd zijn, en dat was de

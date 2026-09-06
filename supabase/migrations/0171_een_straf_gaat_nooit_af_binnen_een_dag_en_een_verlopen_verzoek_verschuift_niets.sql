@@ -1,4 +1,4 @@
--- 0170_een_straf_gaat_nooit_af_binnen_een_dag_en_een_verlopen_verzoek_verschuift_niets.sql — de twee routes waarlangs een straf alsnog meteen afgaat (QS8-293)
+-- 0171_een_straf_gaat_nooit_af_binnen_een_dag_en_een_verlopen_verzoek_verschuift_niets.sql — de twee routes waarlangs een straf alsnog meteen afgaat (QS8-293)
 --
 -- ROLLBACK-PAD:
 --   `create or replace` op `maak_straffen_verschuldigd()` zonder de
@@ -11,7 +11,7 @@
 -- Waar dit vandaan komt
 -- ---------------------------------------------------------------------------
 --
--- De tweede security-ronde op 0169. Die migratie zette drie grenzen en beweerde
+-- De tweede security-ronde op 0170. Die migratie zette drie grenzen en beweerde
 -- daarmee de spamvector af te knijpen tot "één dag speling, inherent aan
 -- tijdzones". **Dat was voor de tweede keer te veel beweerd**, en beide routes
 -- hieronder zijn end-to-end nagemeten tegen de draaiende database.
@@ -20,7 +20,7 @@
 -- Route 1 — `profiles.tz` staat aan beide kanten van de vergelijking
 -- ---------------------------------------------------------------------------
 --
--- De grens van 0169 vergelijkt `goals.target_date` met `mijn_datum()`. De
+-- De grens van 0170 vergelijkt `goals.target_date` met `mijn_datum()`. De
 -- rollover vergelijkt dezelfde kolom met `localDateIn(profiel.tz, now())`
 -- (`supabase/functions/rollover/index.ts`). **Dat zijn twee momenten, en de
 -- waarde ertussen is een kolom die de gebruiker zelf schrijft** — `tz` staat in
@@ -35,13 +35,13 @@
 --   E  rollover verschuldigd = 1    status = due
 --   F  bob leest de straf: 1 rij(en)
 --
--- Nul vertraging. De derde grens van 0169 kostte de aanvaller één `PATCH
+-- Nul vertraging. De derde grens van 0170 kostte de aanvaller één `PATCH
 -- /profiles` in plaats van één dag geduld.
 --
 -- ⚠️ **Er is geen uur waarop dit niet werkt.** `Etc/GMT+12` en `Etc/GMT-14`
 --    liggen 26 uur uit elkaar, dus hun datums verschillen áltijd minstens één
 --    dag. De statische speling van `mijn_datum()` is inderdaad één dag — dat
---    stukje van de redenering in 0169 klopte — maar de grens vergelijkt twee
+--    stukje van de redenering in 0170 klopte — maar de grens vergelijkt twee
 --    momenten, en dan is één dag statische speling twee dagen stúúrbare speling.
 --
 -- ⚠️ **Waarom de reparatie niet in `mijn_datum()` of in de policy zit.** Elke
@@ -51,7 +51,7 @@
 --       *een straf die je vastlegt, kan niet binnen een dag verschuldigd worden.*
 --
 --    Dat is geen tweede kopie van de policyregel maar een ándere belofte op een
---    ándere plek — precies het onderscheid dat 0168 en 0169 elders wél maakten.
+--    ándere plek — precies het onderscheid dat 0168 en 0170 elders wél maakten.
 --    `now()` en `c.created_at` zijn allebei serverwaarden; er is geen kolom die
 --    een gebruiker kan draaien om ze uit elkaar te trekken.
 --
@@ -65,7 +65,7 @@
 -- Route 2 — een goedkeuring die de deadline naar het verleden zet
 -- ---------------------------------------------------------------------------
 --
--- 0169 zette de datumgrens in `goals_insert`, `zet_streefdatum()` en
+-- 0170 zette de datumgrens in `goals_insert`, `zet_streefdatum()` en
 -- `vraag_deadline_verschuiving()`, en liet `beslis_deadline_verzoek()` er met
 -- zoveel woorden buiten: *"een verzoek dat bij het indienen geldig was, mag niet
 -- stranden doordat een buddy er een week over doet."*

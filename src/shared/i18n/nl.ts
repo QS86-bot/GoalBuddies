@@ -1568,7 +1568,7 @@ export const nl = {
     'Je zit nog nergens in, dus begin daar.',
   'straf.naar_groepen': 'Naar je groepen',
   // ⚠️ **Ook hier: uitleg in plaats van een knop die de server afwijst.** Sinds
-  //    migratie 0169 weigert `commitments_insert` een straf op een doel waarvan
+  //    migratie 0170 weigert `commitments_insert` een straf op een doel waarvan
   //    de streefdatum al voorbij is — die zou bij de eerstvolgende rollover
   //    meteen verschuldigd zijn, en dat was de spamvector van QS8-293. De uitweg
   //    is de streefdatum, en die staat een kaart hoger op ditzelfde scherm.

@@ -34,7 +34,7 @@ import {
 const SETUP_TIMEOUT = 180_000;
 
 /**
- * Een `created_at` ver genoeg terug voor het wachtvenster van migratie 0170.
+ * Een `created_at` ver genoeg terug voor het wachtvenster van migratie 0171.
  *
  * ⚠️ Een straf gaat nooit af binnen 24 uur na het vastleggen — dat is de grendel
  *    tegen de tijdzonetruc uit de tweede security-ronde op QS8-293. Elke
@@ -176,13 +176,13 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
       //    stond: "die kolom staat niet in de UPDATE- of INSERT-grant van
       //    `authenticated`". De UPDATE-helft klopte (0057); de INSERT-helft was
       //    de geërfde Supabase-standaard en deelde élke kolom uit, `created_at`
-      //    incluis — waarmee het wachtvenster van 0170 met één veld in de
+      //    incluis — waarmee het wachtvenster van 0171 met één veld in de
       //    POST-body op nul stond.
       //
       //    De invariant was goed bedacht en nooit gemeten. **Een zin over een
       //    grant is pas waar als er een query naast staat.** Die staat er nu:
       //    `tests/rls/straf-plafond.test.ts`, "een gebruiker kan
-      //    `commitments.created_at` niet meesturen bij het aanmaken". Sinds 0171
+      //    `commitments.created_at` niet meesturen bij het aanmaken". Sinds 0172
       //    klopt de zin dus, en is hij bovendien getoetst.
       //
       //    Met een eigen `created_at` gaat het daarom via de admin-client: die
@@ -594,7 +594,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         //    `gedeeld_met_groep` eerder toe en bewijst de test iets anders dan
         //    hij zegt.
         // ⚠️ **Vooruit aanmaken en dan terugzetten via `adminDb()`**, sinds
-        //    migratie 0169. `goals_insert` weigert een streefdatum in het
+        //    migratie 0170. `goals_insert` weigert een streefdatum in het
         //    verleden, en dat is precies de bedoeling — zonder die grens is een
         //    doel met `current_date - 30` de kortste weg naar een straf die
         //    meteen verschuldigd is (QS8-293). Deze test gaat niet over
@@ -625,10 +625,10 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         if (straf.error || straf.data === null) throw new Error(`straf: ${straf.error?.message}`);
 
         // ⚠️ **Terugdateren pas ná de straf**, en dat is sinds de derde grens van
-        //    0169 de enige volgorde die klopt: `commitments_insert` weigert een
+        //    0170 de enige volgorde die klopt: `commitments_insert` weigert een
         //    straf op een doel waarvan de deadline al voorbij is. Het is
         //    bovendien het echte pad — de straf stond er toen het doel nog liep.
-        //    De straf zelf krijgt een oude `created_at`, want sinds 0170 gaat een
+        //    De straf zelf krijgt een oude `created_at`, want sinds 0171 gaat een
         //    straf nooit af binnen 24 uur na het vastleggen. Hier mag dat met een
         //    UPDATE en in de opbouw van de suite niet: deze test kijkt niet naar
         //    het auditspoor, en daar schrijft die UPDATE een `edited` in.

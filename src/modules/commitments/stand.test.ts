@@ -109,7 +109,7 @@ describe('isOpenstaand', () => {
 });
 
 /**
- * De clientkant van de derde grens van migratie 0169 — QS8-293.
+ * De clientkant van de derde grens van migratie 0170 — QS8-293.
  *
  * ⚠️ **Wat hier getoetst wordt is niet "de kaart verdwijnt" maar "de client
  *    biedt niets aan wat de database weigert".** Dat is de belofte; het scherm

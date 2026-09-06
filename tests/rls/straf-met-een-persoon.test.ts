@@ -518,7 +518,7 @@ describe.skipIf(!rlsTestsConfigured)('een straf met één persoon als begunstigd
           .insert({ group_id: groep.data.group_id, user_id: getuige.id, role: 'member', status: 'active' });
         if (lid.error) throw new Error(`lid: ${lid.error.message}`);
 
-        // ⚠️ Een eigen doel, want sinds migratie 0169 mag er per doel maar
+        // ⚠️ Een eigen doel, want sinds migratie 0170 mag er per doel maar
         //    één openstaande straf zijn. Delen met een andere test betekent
         //    hier dat je de cap meet in plaats van wat deze test belooft.
         const eigenDoel = await admin
@@ -574,7 +574,7 @@ describe.skipIf(!rlsTestsConfigured)('een straf met één persoon als begunstigd
         //    Kon de eigenaar `beneficiary_user_id` op null zetten, dan is de
         //    straf onzichtbaar geworden zonder dat er iets besloten is.
         const admin = adminDb();
-        // Eigen doel: sinds 0169 mag er per doel maar één openstaande straf zijn.
+        // Eigen doel: sinds 0170 mag er per doel maar één openstaande straf zijn.
         const eigenDoel = await admin
           .from('goals')
           .insert({

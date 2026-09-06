@@ -1,9 +1,9 @@
--- 0171_created_at_was_van_de_client_en_daarmee_het_wachtvenster_ook.sql — de 24-uursgrendel van 0170 hing aan een kolom die de client zelf meestuurt (QS8-293)
+-- 0172_created_at_was_van_de_client_en_daarmee_het_wachtvenster_ook.sql — de 24-uursgrendel van 0171 hing aan een kolom die de client zelf meestuurt (QS8-293)
 --
 -- ROLLBACK-PAD:
 --   grant insert on public.commitments to authenticated;
 --   plus `create or replace` op `commitments_insert` zonder de klokconjuncten
---   (definitie in 0169).
+--   (definitie in 0170).
 --   ⚠️ Deze migratie voegt alleen weigeringen toe; er gaat bij een terugzet
 --   niets verloren behalve de bescherming zelf.
 --
@@ -11,7 +11,7 @@
 -- Waar dit vandaan komt
 -- ---------------------------------------------------------------------------
 --
--- De derde security-ronde op dit issue. 0170 beloofde: *een straf die je
+-- De derde security-ronde op dit issue. 0171 beloofde: *een straf die je
 -- vastlegt, gaat nooit binnen een dag af*, en hing die belofte aan
 -- `c.created_at < now() - interval '24 hours'` — "server-tijd aan beide kanten,
 -- met geen enkele gebruikerskolom te verzetten".
@@ -60,7 +60,7 @@
 --    grant overleeft het volgende bewerk-je-commitment-scherm niet" — maar zo'n
 --    scherm vraagt een **UPDATE**-recht, en `commitments_update` heeft geen
 --    enkele klokconjunct. Gemeten: geef `authenticated`
---    `update (created_at, confirmed_at)` en het wachtvenster van 0170 staat weer
+--    `update (created_at, confirmed_at)` en het wachtvenster van 0171 staat weer
 --    op nul, langs de UPDATE-kant.
 --
 --    Voor die kant draagt de kolomgrant het dus alléén, net als vóór deze
@@ -75,7 +75,7 @@
 -- ⚠️ **Een trigger zou hier verkeerd zijn en dat is geen luiheid.** Een BEFORE
 --    INSERT-trigger die `new.created_at := now()` forceert, bindt óók
 --    `service_role` — en dan kan geen enkele opstelling meer een straf bouwen
---    die er gisteren al stond. Precies de grendel van 0170 wordt daarmee
+--    die er gisteren al stond. Precies de grendel van 0171 wordt daarmee
 --    ontoetsbaar. Grant en policy laten `service_role` met rust, en dát is hier
 --    de juiste kant: de aanvaller heeft die rol niet.
 --
@@ -172,7 +172,7 @@ create policy commitments_insert on commitments
       )
     )
     -- ⚠️ QS8-293, derde ronde. Zie de kop: hieraan hangt het wachtvenster van
-    --    0170, en het hing tot nu toe aan een veld uit de POST-body.
+    --    0171, en het hing tot nu toe aan een veld uit de POST-body.
     and created_at between now() - interval '5 minutes' and now() + interval '5 minutes'
     and confirmed_at between now() - interval '5 minutes' and now() + interval '5 minutes'
   );
