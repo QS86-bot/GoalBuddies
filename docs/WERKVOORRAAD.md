@@ -788,7 +788,7 @@ bestanden, niet tegen dit document.
   **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
   tegendeel schrijft.**
 
-⚠️ **Twee staan er nog, maar smaller dan de regel suggereerde:**
+⚠️ **Eén staat er nog, en smaller dan de regel suggereerde:**
 
 - **Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
   doet `count(*)`. Dat is kostenmisbruik op een gratis tier: één job met een
@@ -796,14 +796,24 @@ bestanden, niet tegen dit document.
   📏 De tekstkolommen daarentegen zijn wél begrensd sinds QS8-118: `commitments.body`,
   `week_review_replies.body`, `milestone_tips.body` en `deadline_requests.reason`
   dragen allemaal een `char_length`-CHECK. Twee `text`-kolommen hebben er geen —
-  `ai_jobs.error` (door de server geschreven) en **`push_tokens.token`, die een
-  client wél zelf schrijft**. Die laatste is de enige die er nog toe doet.
-- **Van de vijf "onbereikbare features" zijn er vier bereikbaar geworden.**
+  `ai_jobs.error` (door de server geschreven) en **`push_tokens.token`**. ⚠️ Dat laatste heb ik
+  eerst verkeerd samengevat als *"een client schrijft hem zelf"*; dat klopt niet
+  — `authenticated` heeft geen INSERT of UPDATE op die tabel, en de enige
+  schrijver is `registreer_push_token()`. Wat de client wél doet is de wáárde
+  meegeven, en dáár ontbreekt de bovengrens. Opgepakt als **QS8-297**.
+- **Van de vijf "onbereikbare features" zijn ze inmiddels alle vijf beantwoord.**
   📏 Gemeten: een doel bewerken kan via `app/doel/bewerk/[id].tsx`, een mijlpaal
   via `/doel/weekdoelen/[id]?mijlpaal=`, ledenbeheer heeft `app/groep/leden` en
   `app/groep/beheer`, en `commitment_events` wordt gelezen in `app/doel/[id].tsx`.
-  Wat er overblijft is **`ai_kosten_per_week()`, dat buiten het register van
-  `keten:controle` geen enkele aanroeper heeft.**
+  ⚠️ **En de vijfde was helemaal geen bevinding — die correctie is van 06-09.**
+  Ik schreef hier eerst dat `ai_kosten_per_week()` overbleef omdat hij geen
+  aanroeper heeft. 📏 Nagemeten: hij bestáát wél (`ai_kosten_per_week(p_weken
+  integer default 8)`), en hij is `service_role=true`, `authenticated=false`.
+  Dat is geen dode code maar een **ops-functie**, en `keten:controle` draagt de
+  reden woordelijk: *"wat de Doelcoach kost, over álle gebruikers samen — bewust
+  niet voor `authenticated`: het totaal verraadt hoeveel anderen de coach
+  gebruiken."* Een functie met een register-verdict is beantwoord, niet
+  vergeten.
 
 ⚠️ **De les die blijft.** Deze vijf regels zijn niet verouderd doordat iemand
 slordig was, maar doordat een reparatie werd geland zonder dat dit blok
