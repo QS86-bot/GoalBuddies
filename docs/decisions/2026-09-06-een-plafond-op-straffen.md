@@ -57,7 +57,8 @@ beantwoord met de naad tussen `goals_insert` en de rollover, niet met de naad
 tussen het doel en de straf. **Het onderdeel dat ontbrak, was het onderdeel dat
 er niet was.**
 
-§10 hieronder is de reparatie.
+§10 hieronder is de reparatie — **en §12 vertelt dat óók die niet genoeg was.**
+Lees die twee samen; §10 op zichzelf beweert opnieuw te veel.
 
 ### 3a. Eén openstaand commitment per soort per doel
 
@@ -248,3 +249,111 @@ al een opstelling die een situatie bouwde die in productie niet kan ontstaan.
 ⚠️ Dat is een derde soort winst van deze grens, naast de twee in §1: hij maakt
 een onmogelijke toestand ook in de tests onmogelijk, en dat is precies waar een
 fixture stilletjes gaat liegen over wat hij bewijst.
+
+## 12. ⚠️⚠️ De tweede security-ronde — de derde grens sloot de route óók niet
+
+§3 hierboven vertelt dat "twee grenzen, en samen sluiten ze de route" onwaar
+bleek. §10 verving die zin door: de derde grens sluit hem, met als restrisico
+"één dag speling, inherent aan tijdzones".
+
+**Dat was voor de tweede keer te veel beweerd.** Gemeten in de tweede ronde,
+end-to-end, als gewone `authenticated`-gebruiker in één transactie:
+
+```
+A  mijn_datum west = 2026-09-06   (server utc = 2026-09-06)   -- tz = Etc/GMT+12
+B  doel met die datum aangemaakt als gebruiker: ja
+C  straf erop aangemaakt als gebruiker: ja
+D  mijn_datum oost  = 2026-09-07   (verschil = 1 dagen)       -- tz = Etc/GMT-14
+E  rollover verschuldigd = 1    status = due
+F  bob leest de straf: 1 rij(en)
+```
+
+Nul vertraging. De derde grens kostte de aanvaller één `PATCH /profiles`.
+
+**Waar de redenering in §10(a) fout ging.** Die klopte over de *statische*
+speling: `mijn_datum()` ligt op elk moment in `[current_date - 1,
+current_date + 1]`, en een absolute vloer `>= current_date - 1` zou dus nooit
+binden. Dat is nagemeten en het staat nog steeds. Maar de grens vergelijkt
+**twee momenten** — `mijn_datum()` bij de insert, en
+`localDateIn(profiel.tz, now())` in de rollover — en de waarde ertussen is een
+kolom die de gebruiker zelf schrijft. Eén dag statische speling is dan twee
+dagen stuurbare speling.
+
+⚠️ **De vorm van deze fout is dezelfde als in §3, één laag dieper.** In §3 zat de
+naad tussen twee grenzen; hier zit hij tussen een grens en de rollover. Beide
+keren was elk onderdeel correct. Beide keren stond er in `ENGINEER-REVIEW.md`
+dat het gemeten en dicht was. **Dat document is twee rondes achter elkaar
+geruststellender geweest dan de meting rechtvaardigde, en dat is een ernstiger
+patroon dan de bug zelf** — wat daar als dicht staat, kijkt niemand meer na.
+
+### De reparatie: een belofte aan de serverklok (migratie 0170)
+
+Elke grens die in gebruikerstijd rekent, is met dezelfde kolom te verzetten. De
+eigenschap die je wilt, hangt aan niets dat een gebruiker aanraakt:
+
+> *Een straf die je vastlegt, kan niet binnen een dag verschuldigd worden.*
+
+`maak_straffen_verschuldigd` krijgt daarom `and c.created_at < now() - interval
+'24 hours'`. Server-tijd aan beide kanten. Dat is **geen tweede kopie van de
+policyregel** maar een andere belofte op een andere plek — hetzelfde onderscheid
+dat 0168 maakte tussen de bandtoets in de policy en de getuigetoets in de
+trigger.
+
+En het is op zichzelf de betere regel. Domeinregel 5 zegt dat een commitment
+device nooit stilzwijgend in werking treedt; een nacht tussen het vastleggen en
+het afgaan ís dat. Voor een eerlijke gebruiker verandert er hooguit dat een straf
+op een doel dat vandaag afloopt een paar uur later afgaat.
+
+## 13. Route 2 — een trage goedkeuring die een straf laat afgaan
+
+§3b liet `beslis_deadline_verzoek()` bewust buiten de datumgrens, met deze reden:
+*een verzoek dat bij het indienen geldig was, mag niet stranden doordat een buddy
+er een week over doet.* Die redenering klopte over het verzoek en zag één ding
+over het hoofd: **staat er een straf op het doel, dan is de goedkeuring de
+trekker van een commitment device.**
+
+Gelezen uit `pg_get_functiondef()`: `update goals set target_date = r.new_date`,
+zonder enige toets.
+
+```
+Alice vraagt op 1 september om 3 september.   Volkomen legitiem.
+Bob keurt goed op 6 september.
+target_date wordt 2026-09-03, dus verstreken.
+De straf die er al op stond, gaat bij de eerstvolgende rollover af.
+```
+
+Alice deed op dat moment niets. Haar buddy was traag.
+
+**De weigering in 0170 is smal en niet algemeen.** Alleen bij een akkoord, en
+alleen als de gevraagde datum al voorbij is, gemeten aan
+`eigenaarsdatum(r.requester_id)` — de dag van de *aanvrager*, niet die van de
+goedkeurder, anders hangt de uitkomst af van waar de buddy woont. Een datum die
+nog in de toekomst ligt gaat door zoals altijd, en daar staat een must-allow op.
+
+⚠️ De tak staat **vóór** de `update` op `deadline_requests`, dus een verlopen
+verzoek blijft `open`. Anders is de knop van de goedkeurder verbruikt zonder dat
+er iets gebeurd is.
+
+⚠️ Wat dit níét oplost: de aanvrager krijgt een weigering en moet zelf opnieuw
+vragen. Automatisch laten verlopen mét bericht zou vriendelijker zijn, maar een
+nieuw type systeembericht vraagt een migratie op de allowlist en dat is een eigen
+issue. Het staat als rij in `ENGINEER-REVIEW.md`.
+
+## 14. De ijking van ronde 2 — zeven mutaties
+
+| Mutatie | Rood |
+|---|---|
+| `created_at`-conjunct weg uit `maak_straffen_verschuldigd` | *een straf die net is vastgelegd wordt niet verschuldigd* + *de tijdzone omzetten levert niets op* |
+| dezelfde conjunct te streng (`400 days`) | *na een dag gaat hij wél af* |
+| verlooptak weg uit `beslis_deadline_verzoek` | *een goedkeuring kan de streefdatum niet naar het verleden zetten* |
+| verlooptak te breed (`<= +30`) | *een verzoek waarvan de datum nog niet voorbij is, wordt gewoon ingewilligd* |
+| `grant update (target_date) on goals` | *een gebruiker kan `goals.target_date` niet rechtstreeks bijwerken* |
+| `grant update (type) on commitments` | *een gebruiker kan `commitments.type` niet bijwerken* |
+| `magBijwerken()` altijd `false` | *de kolommen die wél bijgewerkt mogen worden, zijn er ook echt* |
+
+⚠️ Die laatste drie gaan over iets wat helemaal geen policy is. **Twee routes uit
+de security-ronde zijn dicht door een UPDATE-kolomgrant** — de reward→penalty-flip
+en het rechtstreeks verzetten van `target_date` — en er was geen enkele test die
+rood werd als een van die kolommen aan de grant werd toegevoegd. `commitments_update`
+toetst `type` nergens; de grant is de héle grendel. Nu ligt hij vast, inclusief
+een must-allow zodat een kapotte query niet als "dicht" leest.

@@ -33,6 +33,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { psql } from './psql-stack';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
@@ -373,6 +374,323 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
         });
 
         expect(poging.error, `de laatste dag hoort te mogen: ${poging.error?.message}`).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('een straf gaat nooit af binnen een dag', () => {
+    /**
+     * ⚠️ **De belofte is niet "de policy weigert" maar "een straf die je
+     *    vastlegt kan niet meteen verschuldigd worden".** Dat verschil is de
+     *    hele tweede security-ronde op dit issue: de drie grenzen van 0169
+     *    waren elk correct en de rollover kwam er onderdoor, omdat `mijn_datum()`
+     *    en de datum die de rollover gebruikt allebei uit `profiles.tz` komen —
+     *    een kolom die de gebruiker zelf schrijft.
+     */
+    async function strafOpDoelDatVerloopt(titel: string): Promise<{ doelId: string; strafId: string }> {
+      // Opbouw: het doel loopt nog, dus de straf mag erop (grens 3 van 0169).
+      const doel = await adminDb()
+        .from('goals')
+        .insert({ owner_id: w.alice.id, title: titel, target_date: addDays(w.vandaag, 30) })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel ${titel}: ${doel.error.message}`);
+      const doelId = doel.data.id as string;
+
+      const straf = await w.alice.db
+        .from('commitments')
+        .insert({
+          goal_id: doelId,
+          type: 'penalty',
+          body: `${titel} straf`,
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+      if (straf.error) throw new Error(`straf ${titel}: ${straf.error.message}`);
+
+      // En dan verstrijkt de datum. Via `adminDb()`, want dat is het verlopen
+      // van tijd en niet een handeling die getoetst wordt.
+      const verzet = await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(w.vandaag, -1) })
+        .eq('id', doelId);
+      if (verzet.error) throw new Error(`verzetten: ${verzet.error.message}`);
+
+      return { doelId, strafId: straf.data.id as string };
+    }
+
+    async function standVan(strafId: string): Promise<string> {
+      const rij = await adminDb().from('commitments').select('status').eq('id', strafId).single();
+      if (rij.error) throw new Error(`status: ${rij.error.message}`);
+      return rij.data.status as string;
+    }
+
+    it(
+      'een straf die net is vastgelegd wordt niet verschuldigd, ook niet als de deadline voorbij is',
+      async () => {
+        const { strafId } = await strafOpDoelDatVerloopt('DAG verse straf');
+
+        const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
+          p_owner_id: w.alice.id,
+          p_vandaag: addDays(w.vandaag, 1),
+        });
+        expect(uitkomst.error, `rollover: ${uitkomst.error?.message}`).toBeNull();
+        expect(uitkomst.data, 'een verse straf is verschuldigd geworden').toBe(0);
+        expect(await standVan(strafId)).toBe('set');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'na een dag gaat hij wél af',
+      async () => {
+        // ⚠️ De must-allow, en zonder haar is de grendel hierboven "straffen gaan
+        //    nooit af" — dat is geen commitment device meer.
+        const { strafId } = await strafOpDoelDatVerloopt('DAG oude straf');
+
+        const ouder = await adminDb()
+          .from('commitments')
+          .update({ created_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString() })
+          .eq('id', strafId);
+        expect(ouder.error, `ouder maken: ${ouder.error?.message}`).toBeNull();
+
+        const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
+          p_owner_id: w.alice.id,
+          p_vandaag: addDays(w.vandaag, 1),
+        });
+        expect(uitkomst.data, 'een straf van gisteren gaat niet meer af').toBe(1);
+        expect(await standVan(strafId)).toBe('due');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de tijdzone omzetten tussen het vastleggen en de rollover levert niets op',
+      async () => {
+        // ⚠️ **De aanval zelf, end-to-end.** `profiles.tz` staat in de
+        //    UPDATE-kolomgrant van `authenticated`, en zowel `mijn_datum()` als
+        //    de datum die de rollover meegeeft komt eruit. `Etc/GMT+12` en
+        //    `Etc/GMT-14` liggen 26 uur uit elkaar, dus hun datums verschillen
+        //    altijd minstens één dag — er is geen uur waarop dit niet werkte.
+        const west = await w.alice.db.from('profiles').update({ tz: 'Etc/GMT+12' }).eq('id', w.alice.id);
+        expect(west.error, `tz naar west: ${west.error?.message}`).toBeNull();
+
+        const eigenDatum = await adminDb().rpc('eigenaarsdatum', { uid: w.alice.id });
+        const doel = await w.alice.db
+          .from('goals')
+          .insert({
+            owner_id: w.alice.id,
+            title: 'DAG tijdzonetruc',
+            target_date: eigenDatum.data as string,
+          })
+          .select('id')
+          .single();
+        if (doel.error || doel.data === null) {
+          throw new Error(`doel op de eigen datum: ${doel.error?.message}`);
+        }
+
+        const straf = await w.alice.db
+          .from('commitments')
+          .insert({
+            goal_id: doel.data.id as string,
+            type: 'penalty',
+            body: 'DAG straf via de tijdzonetruc',
+            beneficiary_user_id: w.bob.id,
+            confirmed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (straf.error || straf.data === null) throw new Error(`straf: ${straf.error?.message}`);
+
+        const oost = await w.alice.db.from('profiles').update({ tz: 'Etc/GMT-14' }).eq('id', w.alice.id);
+        expect(oost.error, `tz naar oost: ${oost.error?.message}`).toBeNull();
+
+        const oostDatum = await adminDb().rpc('eigenaarsdatum', { uid: w.alice.id });
+        const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
+          p_owner_id: w.alice.id,
+          p_vandaag: oostDatum.data as string,
+        });
+        expect(uitkomst.data, 'de tijdzonetruc heeft een straf laten afgaan').toBe(0);
+        expect(await standVan(straf.data.id as string)).toBe('set');
+
+        // De tijdzone terugzetten, anders rekent de rest van deze suite mee in
+        // een andere dag dan `w.vandaag`.
+        const terug = await adminDb().from('profiles').update({ tz: 'UTC' }).eq('id', w.alice.id);
+        expect(terug.error).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('een verlopen deadline-verzoek verschuift niets', () => {
+    /**
+     * ⚠️ **De goedkeuring mag niet de trekker van een commitment device zijn.**
+     *    0169 liet `beslis_deadline_verzoek()` bewust buiten de datumgrens — een
+     *    verzoek mag niet stranden doordat een buddy er een week over doet — en
+     *    zag daarbij één ding over het hoofd: staat er een straf op het doel, dan
+     *    laat die goedkeuring hem afgaan terwijl de aanvrager niets deed.
+     *    Domeinregel 5 en 11 tegelijk.
+     */
+    async function verzoekOp(titel: string, nieuweDatum: IsoDate): Promise<{ doelId: string; verzoekId: string }> {
+      const doel = await adminDb()
+        .from('goals')
+        .insert({ owner_id: w.alice.id, title: titel, target_date: addDays(w.vandaag, 60) })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel ${titel}: ${doel.error.message}`);
+      const doelId = doel.data.id as string;
+
+      const koppel = await adminDb()
+        .from('goal_group_links')
+        .insert({ goal_id: doelId, group_id: w.groupId });
+      if (koppel.error) throw new Error(`koppelen: ${koppel.error.message}`);
+
+      // Het verzoek zelf gaat via de RPC, met een datum die dan nog geldig is —
+      // dat is precies het geval: geldig bij het indienen.
+      const gevraagd = await w.alice.db.rpc('vraag_deadline_verschuiving', {
+        p_goal_id: doelId,
+        p_group_id: w.groupId,
+        p_new_date: addDays(w.vandaag, 10),
+        p_reason: 'Ik heb wat meer tijd nodig voor dit doel, om hele goede redenen.',
+      });
+      if (uit(gevraagd.data).ok !== true) throw new Error(`verzoek: ${JSON.stringify(gevraagd.data)}`);
+
+      const verzoek = await adminDb()
+        .from('deadline_requests')
+        .select('id')
+        .eq('goal_id', doelId)
+        .single();
+      if (verzoek.error) throw new Error(`verzoek ophalen: ${verzoek.error.message}`);
+
+      // En dan verstrijkt de gevraagde datum terwijl de buddy nog nadenkt.
+      const verlopen = await adminDb()
+        .from('deadline_requests')
+        .update({ new_date: nieuweDatum })
+        .eq('id', verzoek.data.id);
+      if (verlopen.error) throw new Error(`verlopen laten raken: ${verlopen.error.message}`);
+
+      return { doelId, verzoekId: verzoek.data.id as string };
+    }
+
+    it(
+      'een goedkeuring kan de streefdatum niet naar het verleden zetten',
+      async () => {
+        const { doelId, verzoekId } = await verzoekOp('VERZOEK verlopen', addDays(w.vandaag, -2));
+
+        const beslist = await w.bob.db.rpc('beslis_deadline_verzoek', {
+          p_request_id: verzoekId,
+          p_akkoord: true,
+        });
+
+        expect(uit(beslist.data).ok).toBe(false);
+        expect(uit(beslist.data).reason).toBe('verzoek_verlopen');
+
+        const doel = await adminDb().from('goals').select('target_date').eq('id', doelId).single();
+        expect(doel.data?.target_date, 'de streefdatum staat in het verleden').toBe(
+          addDays(w.vandaag, 60),
+        );
+
+        // ⚠️ En het verzoek is niet stilletjes als beslist weggeschreven: de
+        //    goedkeurder heeft zijn knop niet verbruikt aan een weigering.
+        const verzoek = await adminDb()
+          .from('deadline_requests')
+          .select('status')
+          .eq('id', verzoekId)
+          .single();
+        expect(verzoek.data?.status).toBe('open');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een verzoek waarvan de datum nog niet voorbij is, wordt gewoon ingewilligd',
+      async () => {
+        // ⚠️ De must-allow, en de reden dat de weigering smal is. Een buddy die er
+        //    een week over doet bij een datum drie weken verderop, verandert niets.
+        const { doelId, verzoekId } = await verzoekOp('VERZOEK op tijd', addDays(w.vandaag, 20));
+
+        const beslist = await w.bob.db.rpc('beslis_deadline_verzoek', {
+          p_request_id: verzoekId,
+          p_akkoord: true,
+        });
+
+        expect(uit(beslist.data).ok, `hoort ingewilligd te worden: ${JSON.stringify(beslist.data)}`)
+          .toBe(true);
+
+        const doel = await adminDb().from('goals').select('target_date').eq('id', doelId).single();
+        expect(doel.data?.target_date).toBe(addDays(w.vandaag, 20));
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('de kolommen die deze grenzen dragen, staan niet in de UPDATE-grant', () => {
+    /**
+     * ⚠️ **Twee routes uit de security-ronde zijn dicht door een kolomgrant en
+     *    niet door een policy, en niets legde die grant vast.** Gemeten in
+     *    `information_schema.column_privileges`: `authenticated` mag op
+     *    `commitments` alleen `body, image_url, status` bijwerken en op `goals`
+     *    niet `target_date`. Dáárom mislukken de reward→penalty-flip en het
+     *    rechtstreeks verzetten van de streefdatum — `commitments_update` heeft
+     *    geen enkele toets op `type` en geen datumconjunct.
+     *
+     * ⚠️ **Waarom dit een test is en geen aantekening.** Komt er ooit een scherm
+     *    "bewerk je doel" of "wijzig je commitment", dan is de grant het eerste
+     *    wat verruimd wordt, en dan valt de grens van 0169 stil om — de policy
+     *    die dan overneemt, bestaat niet. Deze test wordt rood op het moment dat
+     *    het gebeurt, en niet pas bij de volgende security-ronde.
+     *
+     * ⚠️ Toetst de kolom en niet de hele lijst: een lijst die per migratie
+     *    verandert, leer je bij te werken zonder te lezen. Dit zijn de twee
+     *    kolommen waar een grens aan hangt.
+     */
+    function magBijwerken(tabel: string, kolom: string): boolean {
+      const uit = psql(
+        `select count(*) from information_schema.column_privileges ` +
+          `where grantee = 'authenticated' and table_name = '${tabel}' ` +
+          `and column_name = '${kolom}' and privilege_type = 'UPDATE'`,
+      );
+      return uit.trim() !== '0';
+    }
+
+    it(
+      'een gebruiker kan `commitments.type` niet bijwerken, dus geen beloning naar straf flippen',
+      () => {
+        expect(
+          magBijwerken('commitments', 'type'),
+          'commitments.type staat in de UPDATE-grant — de reward-naar-penalty-flip is open, ' +
+            'en `commitments_update` toetst `type` nergens',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een gebruiker kan `goals.target_date` niet rechtstreeks bijwerken',
+      () => {
+        expect(
+          magBijwerken('goals', 'target_date'),
+          'goals.target_date staat in de UPDATE-grant — dan is de datumgrens van ' +
+            '`zet_streefdatum()` en `vraag_deadline_verschuiving()` om te lopen met één PATCH',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de kolommen die wél bijgewerkt mogen worden, zijn er ook echt',
+      () => {
+        // ⚠️ De must-allow, en niet cosmetisch: zou `magBijwerken()` altijd
+        //    `false` teruggeven — een tikfout in de query, een lege uitkomst —
+        //    dan zijn de twee tests hierboven groen zonder iets te meten.
+        expect(magBijwerken('commitments', 'body')).toBe(true);
+        expect(magBijwerken('goals', 'title')).toBe(true);
       },
       TEST_TIMEOUT,
     );
