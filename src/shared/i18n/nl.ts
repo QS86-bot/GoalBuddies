@@ -36,6 +36,14 @@ export const nl = {
   'systeembericht.member_joined': '{naam} doet mee.',
   'systeembericht.completion_pending': '{naam} heeft een week afgerond en wacht op bevestiging.',
   'systeembericht.completion_approved': '{actor} bevestigde de week van {naam}.',
+  // ⚠️ **De samengevouwen varianten — QS8-198.** Ze tonen niets extra's: dezelfde
+  //    personen en dezelfde gebeurtenis, op één regel in plaats van drie. Wat ze
+  //    níét mogen krijgen is een titel, een notitie of een niveau; dat geldt hier
+  //    net zo hard als voor de losse zinnen (beslisdocument 002 §3).
+  'systeembericht.member_joined_gevouwen': '{namen} doen mee.',
+  'systeembericht.completion_pending_gevouwen':
+    '{namen} hebben een week afgerond en wachten op bevestiging.',
+  'systeembericht.completion_approved_gevouwen': '{actor} bevestigde de weken van {namen}.',
   'systeembericht.milestone_done': '{naam} heeft een mijlpaal gehaald.',
   'systeembericht.goal_completed': '{naam} heeft een doel afgerond.',
   'systeembericht.commitment_unlocked': '{naam} heeft een beloning vrijgespeeld.',
@@ -89,6 +97,8 @@ export const nl = {
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
+  // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
+  'algemeen.en': 'en',
 
   // ---------------------------------------------------------------------------
   // Aanmelden en inloggen — de referentie-implementatie van QS8-113
@@ -529,6 +539,7 @@ export const nl = {
   'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
   'groepdetail.titel': 'Groep',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
+  'groepdetail.eyebrow_vandaag': 'VANDAAG IS DE HUDDLEDAG',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
   'groepdetail.geen_lid_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een nieuwe uitnodigingslink als je erbij hoort.',
   'groepdetail.slaapt': 'Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.',
@@ -760,6 +771,10 @@ export const nl = {
   'groepen.beoordelen': 'Beoordelen',
   'groepen.slaapt': 'Deze groep slaapt. Sluit iemand een week af, dan is hij meteen weer wakker.',
   'groepen.huddledag': 'Huddledag: {dag}',
+  // ⚠️ **De dag zelf noemt geen dagnaam meer (QS8-199).** "Huddledag: zondag" op
+  //    zondag laat de lezer zelf uitrekenen dat het vandaag is, en dat is precies
+  //    wat er tot 05-09 niet opviel. Wat hier telt is het nú, niet de naam.
+  'groepen.huddledag_vandaag': 'Huddledag: vandaag',
   'profiel.titel': 'Profiel',
   'profiel.leeg_titel': 'Geen profiel gevonden',
   'profiel.leeg_tekst': 'Dat hoort niet te kunnen. Log uit en opnieuw in; blijft het misgaan, dan ligt het aan ons.',
