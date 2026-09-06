@@ -70,12 +70,24 @@
 -- `SECURITY DEFINER` met eigenaar `postgres`. Die draait dus niet onder het
 -- recht van `authenticated` en breekt hier niet op.
 --
--- ⚠️ **Een `auth.uid() = p_user_id`-toets binnenín zou juist wél breken**, en dat
---    is nagegaan: die trigger roept de functie aan met de **eigenaar van het
---    doel**, terwijl de handelende gebruiker een goedkeurende buddy kan zijn.
---    Een toets op gelijkheid zou de legitieme interne weg dichtzetten en het
---    orakel alsnog openlaten voor je eigen id. Het uitvoerrecht is de juiste
---    plek.
+-- ⚠️ **Een `auth.uid() = p_user_id`-toets binnenín zou juist wél breken.** De
+--    handelende gebruiker en het doelwit lopen uiteen zodra de badge aan een
+--    reeks hangt: `herbereken_reeks()` schrijft `user_streaks` van de éigenaar,
+--    en wordt onder meer aangeroepen door `trek_goedkeuring_in()` — dat is een
+--    buddy die iets intrekt, terwijl de badge van de eigenaar herrekend wordt.
+--    Een toets op gelijkheid zou die weg dichtzetten en het orakel alsnog
+--    openlaten voor je eigen id.
+--
+--    ⚠️ Bij `completion_approvals` is dat níet het geval, en dat stond hier
+--    eerst wél als voorbeeld: daar is de handelende gebruiker zélf het doelwit
+--    (`first_review` gaat naar de goedkeurder). Gemeten en gecorrigeerd — een
+--    rechtvaardiging met een verkeerd voorbeeld leest de volgende lezer als
+--    onjuist.
+--
+-- ⚠️ **"De enige aanroeper" slaat op de code, niet op de rechten.** Mechanisch
+--    nagegaan over alle functies, views, policies en `supabase/functions/`: geen
+--    tweede aanroeper. `service_role` houdt het recht wél, en de rollover raakt
+--    de functie indirect via `herbereken_reeks` → `user_streaks` → trigger.
 --
 -- ---------------------------------------------------------------------------
 -- Idempotent: een `revoke` op een recht dat er niet meer is, is een no-op.

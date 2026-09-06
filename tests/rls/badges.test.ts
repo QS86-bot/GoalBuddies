@@ -262,11 +262,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
   );
 
   /**
-   * ⚠️ `verdien_badges()` mag door een ingelogde gebruiker aangeroepen worden, en
-   *    dat is veilig: hij schrijft alleen wat op grond van de data al verdiend ís.
-   *    Deze test legt dat vast, want het is een grant die er raar uitziet.
-   */
-  /**
    * ⚠️⚠️ **`verdien_badges()` is sinds 0165 geen client-oppervlak meer — QS8-287.**
    *
    * Hier stond één test die de RPC áls client aanriep en eiste dat hij niets
@@ -321,14 +316,73 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
     async () => {
       // ⚠️ **De must-see, en zonder deze helft bewijst de revoke niets.** "Niemand
       //    kan hem meer aanroepen" is ook te halen met een functie die stuk is.
-      //    Deze roept hem aan zoals de trigger dat doet — buiten de client om —
-      //    en eist dat hij nog steeds werkt én nog steeds kieskeurig is.
+      //
+      // ⚠️ **`adminDb()` is `service_role` en níét de weg van de trigger**, en dat
+      //    stond hier eerst wél zo. Die rol heeft een eigen expliciete grant uit
+      //    0113; de trigger draait als `postgres`, via definer-eigenaarschap. Twee
+      //    verschillende rechten. Deze test toetst dus dat de functie zelf nog
+      //    werkt en kieskeurig is — de kéten staat in de test hieronder.
       const uit = await adminDb().rpc('verdien_badges', { p_user_id: bob.id });
       expect(uit.error, 'de interne weg hoort gewoon te werken').toBeNull();
 
       expect(await badgesVan(bob), 'de RPC deelde onverdiende badges uit').not.toContain(
         'first_goal',
       );
+    },
+    TEST_TIMEOUT,
+  );
+  /**
+   * ⚠️⚠️ **De keten die 0165 dragend maakte — en die niets bewaakte.**
+   *
+   * Vóór de revoke kon de badge-trigger langs twee wegen werken: via zijn eigen
+   * `security definer`, óf via het recht dat `authenticated` toch al had. Die
+   * tweede is nu weg — terecht, want dat wás het lek — en daarmee is de eerste
+   * ineens het enige pad.
+   *
+   * 📏 Gemeten door `prosecdef` van `badge_na_gebeurtenis()` op `false` te zetten:
+   *
+   * ```
+   * trigger zoals hij is   badges | first_milestone
+   * security definer eruit WARNING: … permission denied for function verdien_badges
+   *                        badges | GEEN
+   * hele RLS-suite         979 geslaagd, nul rood
+   * ```
+   *
+   * Elke badge voor élke gebruiker verdwijnt stilzwijgend, want de trigger slikt
+   * die fout met opzet in — een badge mag nooit een echte handeling laten
+   * omvallen, en dat is de juiste keuze. Maar daardoor is er geen enkel signaal.
+   *
+   * ⚠️ **Deze test moet langs een dírecte schrijfactie van de client lopen.** De
+   *    eerste opzet gebruikte `rond_doel_af()`, en die bleef groen onder de
+   *    mutatie: die RPC is zélf definer, dus de trigger erft díé context en het
+   *    ontbrekende recht valt niet op. Een `update milestones set status = 'done'`
+   *    van de eigenaar zelf draait wél onder `authenticated`, en dat is de weg
+   *    waar de grendel dragend is.
+   */
+  it(
+    'kent een badge toe bij een directe schrijfactie van de client',
+    async () => {
+      const admin = adminDb();
+      const mijlpaal = await admin
+        .from('milestones')
+        .insert({ goal_id: doelId, title: 'BADGE mijlpaal', order_index: 900, status: 'todo' })
+        .select('id')
+        .single();
+      if (mijlpaal.error || mijlpaal.data === null) {
+        throw new Error(`mijlpaal: ${mijlpaal.error?.message}`);
+      }
+
+      const afvinken = await alice.db
+        .from('milestones')
+        .update({ status: 'done' })
+        .eq('id', mijlpaal.data.id);
+      expect(afvinken.error, 'de eigenaar mag zijn eigen mijlpaal afvinken').toBeNull();
+
+      expect(
+        await badgesVan(alice),
+        'de badge-keten is stil kapot: de trigger kon `verdien_badges()` niet meer ' +
+          'aanroepen en slikte de fout in',
+      ).toContain('first_milestone');
     },
     TEST_TIMEOUT,
   );
