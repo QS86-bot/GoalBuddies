@@ -25,6 +25,7 @@ export {
   COMMITMENT_STANDEN,
   isAfgegaan,
   isOpenstaand,
+  magStrafVastleggen,
   SPOORGEBEURTENISSEN,
   spoorLabels,
   statusTeksten,

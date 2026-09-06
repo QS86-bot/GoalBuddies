@@ -140,3 +140,30 @@ export function isAfgegaan(commitment: { readonly status: string }): boolean {
 export function isOpenstaand(commitment: Commitment): boolean {
   return commitment.status === 'set';
 }
+
+/**
+ * Kan er op dit doel nog een straf vastgelegd worden?
+ *
+ * ⚠️ **Dit is de clientkant van de derde grens van migratie 0169 (QS8-293), en
+ *    de grens is met opzet exact dezelfde.** `commitments_insert` weigert een
+ *    `penalty` op een doel waarvan `target_date < mijn_datum()`: zo'n straf zou
+ *    bij de eerstvolgende rollover meteen verschuldigd zijn, en dat was de
+ *    spamvector — twintig doelen met de datum van vandaag, morgen bij elk een
+ *    straf met dezelfde persoon als getuige.
+ *
+ * ⚠️ **Waarom dit een geëxporteerde functie is en geen `<` in de JSX.** Zolang
+ *    de vergelijking in een scherm staat, is de enige test die hem kan raken een
+ *    test die in dat schermbestand zoekt — en die verhuist niet mee (regel 18
+ *    vraag 4). Hier staat de grens náást de databasegrens en is hij los te
+ *    toetsen, inclusief de dag zelf: `>=` daar, dus vandaag mag hier ook nog.
+ *
+ * ⚠️ `vandaag` komt van de aanroeper, want alleen `shared/time` mag bepalen
+ *    welke dag dat is (correctheidsregel 7). Weet het scherm het nog niet — het
+ *    profiel is dan nog aan het laden — dan is het antwoord `true`: de database
+ *    weigert alsnog, en een kaart die verdwijnt zodra een lading binnenkomt is
+ *    erger dan een knop die één keer een melding geeft.
+ */
+export function magStrafVastleggen(streefdatum: string, vandaag: string | null): boolean {
+  if (vandaag === null) return true;
+  return streefdatum >= vandaag;
+}
