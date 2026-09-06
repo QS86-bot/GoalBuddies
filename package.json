@@ -69,7 +69,9 @@
     "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls",
     "migratie:hernummer": "node scripts/migratie-hernummer.mjs",
     "rls:dekking": "node scripts/rls-dekking.mjs",
-    "definers:controle": "node scripts/definers-controle.mjs"
+    "definers:controle": "node scripts/definers-controle.mjs",
+    "poortstand": "node scripts/poortstand.mjs",
+    "poortstand:controle": "node scripts/poortstand.mjs --controle"
   },
   "engines": {
     "node": ">=22"
