@@ -17,10 +17,16 @@
  *    de fout die dit bestand anders introduceert: de keuzelijst groepeert dan
  *    anders dan de kleur.
  *
- * ⚠️ **`business`, `study` en `other` hebben géén familie en dus geen kleur.**
- *    A55 meet drie kleuren voor twaalf gebieden en zegt over deze drie niets;
- *    een vierde kleur erbij verzinnen is precies wat `tokens.ts` verbiedt. Ze
- *    krijgen wél een pictogram — dat is de helft die er wel is.
+ * ⚠️ **Sinds besluit A58 heeft élk gebied een familie.** Er waren vier groepen
+ *    waarvan de vierde — `business`, `study`, `other` — geen kleur had, en dat
+ *    was geen ontwerp maar een restje: wat er overbleef nadat A55 drie kleuren
+ *    had gevonden. Nu zijn het drie families van vier.
+ *
+ * ⚠️ **`familie` blijft toch `null` kunnen zijn, en dat is geen restant.**
+ *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
+ *    een waarde bevatten die deze build niet kent, en dan is "geen familie" het
+ *    eerlijke antwoord. Een terugval op een wíllekeurige familie zou zo'n doel in
+ *    de verkeerde kleur zetten — dezelfde redenering als bij `categorieGroep()`.
  */
 
 import type { Categoriekleuren } from '../theme/tokens';
@@ -35,24 +41,20 @@ export interface Categoriemerk {
 }
 
 export const CATEGORIEMERKEN: Readonly<Record<string, Categoriemerk>> = {
-  fitness: { icoon: 'run', familie: 'lichaam' },
-  nutrition: { icoon: 'food-apple', familie: 'lichaam' },
-  self_care: { icoon: 'sleep', familie: 'lichaam' },
-  mindfulness: { icoon: 'meditation', familie: 'lichaam' },
+  fitness: { icoon: 'run', familie: 'gezondheid' },
+  nutrition: { icoon: 'food-apple', familie: 'gezondheid' },
+  self_care: { icoon: 'sleep', familie: 'gezondheid' },
+  mindfulness: { icoon: 'meditation', familie: 'gezondheid' },
 
-  connection: { icoon: 'account-group', familie: 'mensen' },
-  helping: { icoon: 'hand-heart', familie: 'mensen' },
-  creativity: { icoon: 'palette', familie: 'mensen' },
+  creativity: { icoon: 'palette', familie: 'softskills' },
+  productivity: { icoon: 'check-circle-outline', familie: 'softskills' },
+  connection: { icoon: 'account-group', familie: 'softskills' },
+  other: { icoon: 'dots-horizontal', familie: 'softskills' },
 
-  productivity: { icoon: 'check-circle-outline', familie: 'werk' },
-  organization: { icoon: 'folder-outline', familie: 'werk' },
-  learning: { icoon: 'school-outline', familie: 'werk' },
-  skills: { icoon: 'tools', familie: 'werk' },
-  resilience: { icoon: 'shield-check-outline', familie: 'werk' },
-
-  business: { icoon: 'briefcase-outline', familie: null },
-  study: { icoon: 'book-open-variant', familie: null },
-  other: { icoon: 'dots-horizontal', familie: null },
+  business: { icoon: 'briefcase-outline', familie: 'ambitie' },
+  study: { icoon: 'book-open-variant', familie: 'ambitie' },
+  building: { icoon: 'hammer-wrench', familie: 'ambitie' },
+  skills: { icoon: 'tools', familie: 'ambitie' },
 };
 
 /**
