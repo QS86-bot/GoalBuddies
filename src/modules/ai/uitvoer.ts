@@ -185,17 +185,14 @@ const CATEGORIEEN_UIT_HET_SCHEMA = [
   'nutrition',
   'self_care',
   'mindfulness',
-  'connection',
-  'helping',
   'creativity',
   'productivity',
-  'organization',
-  'learning',
-  'skills',
-  'resilience',
+  'connection',
+  'other',
   'business',
   'study',
-  'other',
+  'building',
+  'skills',
 ] as const;
 
 /**

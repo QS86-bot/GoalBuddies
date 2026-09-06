@@ -1284,7 +1284,7 @@ export const nl = {
   'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
 
   // ---------------------------------------------------------------------------
-  // De vijftien gebieden — QS8-224, migratie 0142
+  // De twaalf gebieden — QS8-224, en drie families sinds A58 (migratie 0156)
   // ---------------------------------------------------------------------------
   //
   // ⚠️ **Labels en geen omschrijvingen.** Ze staan naast elkaar in een keuzelijst,
@@ -1296,23 +1296,19 @@ export const nl = {
   //    geen tekst. Zie de emoji-regel in CLAUDE.md.
   'nieuwdoel.categorie_hint': 'Waar gaat dit doel over? Eén gebied per doel.',
 
-  'categorie.fitness': 'Sport en beweging',
+  'categorie.fitness': 'Sport',
   'categorie.nutrition': 'Voeding',
   'categorie.self_care': 'Zelfzorg',
-  'categorie.mindfulness': 'Rust en aandacht',
-  'categorie.connection': 'Contact met anderen',
-  'categorie.helping': 'Iets voor een ander',
+  'categorie.mindfulness': 'Meditatie',
   'categorie.creativity': 'Creativiteit',
   'categorie.productivity': 'Productiviteit',
-  'categorie.organization': 'Orde en overzicht',
-  'categorie.learning': 'Leren',
+  'categorie.connection': 'Sociaal',
   'categorie.skills': 'Vaardigheden',
-  'categorie.resilience': 'Veerkracht',
+  'categorie.building': 'Bouwen',
 
-  'categoriegroep.lichaam': 'Lichaam en rust',
-  'categoriegroep.mensen': 'Mensen en maken',
-  'categoriegroep.werk': 'Werk en groei',
-  'categoriegroep.rest': 'Werk, school en overig',
+  'categoriegroep.gezondheid': 'Gezondheid',
+  'categoriegroep.softskills': 'Softskills',
+  'categoriegroep.ambitie': 'Ambitie',
 
   'categorie.business': 'Werk',
   'categorie.study': 'Studie',

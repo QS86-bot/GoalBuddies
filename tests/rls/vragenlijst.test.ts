@@ -133,7 +133,7 @@ describe.skipIf(!rlsTestsConfigured)('de korte vragenlijst', () => {
       const uit = await f.anna.db
         .from('profiles')
         .update({
-          focus_areas: ['fitness', 'learning'],
+          focus_areas: ['fitness', 'study'],
           minutes_per_day: 30,
           when_i_do_it: 'morning',
           what_breaks_it: ['all_or_nothing'],
@@ -148,7 +148,7 @@ describe.skipIf(!rlsTestsConfigured)('de korte vragenlijst', () => {
         .eq('id', f.anna.id)
         .single();
 
-      expect(na.data?.focus_areas).toEqual(['fitness', 'learning']);
+      expect(na.data?.focus_areas).toEqual(['fitness', 'study']);
       expect(na.data?.minutes_per_day).toBe(30);
       expect(na.data?.when_i_do_it).toBe('morning');
       expect(na.data?.what_breaks_it).toEqual(['all_or_nothing']);

@@ -2,7 +2,8 @@
 
 **Datum:** 04-09-2026
 **Besluit:** A58 — vervangt de indeling uit A55 (`2026-08-31-ritme-klassement-en-kleur.md` §3)
-**Status:** de indeling is besloten; **de kleurtoewijzing staat open** — zie §5
+**Status:** besloten en gebouwd (migratie 0164). De kleurtoewijzing is op
+04-09-2026 beslist — zie §5
 **Aanleiding:** antwoord van Quinten op vraag K2 van de besluitenronde
 
 ---
@@ -165,36 +166,42 @@ geelgroen; het leest als groen en niet als statusgroen.
 
 ---
 
-## 5. Wat hier open blijft — de toewijzing
+## 5. De kleuren: wat het geworden is
 
-De indeling uit §2 is besloten. Wélke van de drie kleuren bij welke familie hoort,
-is een keuze over hoe de app voelt, en die hoort bij jou. Twee voorstellen:
+Quinten koos op 04-09-2026, na de visuele proef, **optie 1: groen en geel
+blijven, oranje gaat eruit.**
 
-**Voorstel A — dichtst bij je woorden.**
-
-| Familie | Kleur | Waarom |
+| Familie | donker | licht |
 |---|---|---|
-| Gezondheid | olijf `#8f9c36` | de enige groen die kan |
-| Softskills | magenta `#dd4fa0` | mensen en maken; "Sociaal" zit hier |
-| Ambitie | blauw `#4f97e8` | — |
+| **Gezondheid** | `#22cc22` | `#0a9612` |
+| **Softskills** | `#dd4fa0` | `#b53080` |
+| **Ambitie** | `#ffe14d` | `#6d5a00` |
 
-**Voorstel B — minste verandering aan wat er nu staat.**
+Twee van de drie gevraagde kleuren staan er dus. **Alleen oranje is geruild voor
+magenta**, en dat is de enige van de drie die op twee manieren tegelijk
+onmogelijk was: hij is statusoranje (afstand 0,0), én hij is de partner in de
+rood-groenverwarring uit §3b.
 
-| Familie | Kleur | Waarom |
-|---|---|---|
-| Gezondheid | blauw `#4f97e8` | draagt vandaag "lichaam en rust", en die vier gebieden gaan één op één over |
-| Softskills | magenta `#dd4fa0` | draagt vandaag "mensen en maken" |
-| Ambitie | olijf `#8f9c36` | draagt vandaag "werk en groei" |
+### Wat het kost, in cijfers
 
-⚠️ **Voorstel B verandert geen enkele kleurwaarde en geen enkel bestaand doel van
-kleur.** Voorstel A ruilt twee families van kleur en is daarmee zichtbaar anders
-voor wie de app al gebruikt — vandaag niemand.
+| | onderling donker | onderling licht | tot status | slechtste zicht |
+|---|---|---|---|---|
+| de drie van vóór A58 | 12,1 | 11,9 | 10,4 | 12,1 |
+| **de drie van A58** | **11,1** | **10,8** | **11,6** | **11,1** |
 
-**Zolang er niets gekozen is, ga ik uit van B**, om de reden die hierboven staat:
-het is de enige variant die niets omzet wat al klopt. Kies je A, dan is dat één
-regel in `tokens.ts` en één in `categoriemerk.ts`.
+De marge is krapper. Op het lichte thema staat er nog 0,8 boven de drempel van
+10, waar dat eerst 1,9 was.
 
----
+⚠️ **Gevolg dat je moet kennen: de groen moet fel en puur blijven.** Een zachtere
+of grijzere groen zakt onder de 10 tegen de geel — dat is de klassieke
+groen-geelbotsing, en die zit hier al ingebakken doordat beide kleuren gevraagd
+waren. `kleurafstand.test.ts` rekent het bij elke run na en wordt rood; dat is
+geen tuning-ruimte maar een grens.
+
+⚠️ **Een vierde kleur is hierna helemaal uitgesloten.** Bij de vorige drie was er
+nog één violet die het net haalde (gemeten op 03-09); met deze drie is die ruimte
+op. Dat is de prijs van twee gevraagde kleuren die naast elkaar in het spectrum
+liggen.
 
 ## 6. Wat er moet veranderen als dit gebouwd wordt
 
