@@ -19,6 +19,7 @@ import {
 import {
   fetchCommitments,
   fetchCommitmentSpoor,
+  fetchMogelijkeBegunstigden,
   isOpenstaand,
   spoorLabels,
   tekstVoor,
@@ -26,6 +27,7 @@ import {
   zetBeloning,
   zetStraf,
   type Commitment,
+  type MogelijkeBegunstigde,
 } from '@/modules/commitments';
 import {
   annuleerAdempauze,
@@ -118,6 +120,9 @@ import {
  *    en dan hoort de waarde ook echt constant te zijn.
  */
 const LEGE_MIJLPALEN: readonly Mijlpaal[] = [];
+
+/** Zelfde reden als hierboven: `useAsyncMetTerugval` houdt de terugval buiten `deps`. */
+const GEEN_BEGUNSTIGDEN: readonly MogelijkeBegunstigde[] = [];
 
 /**
  * ⚠️ De waarde die "geen mijlpaal" betekent in de keuzelijst. Een lege string
@@ -804,8 +809,14 @@ function GedeeldMet({
  *    staat. Eén knop die meteen vastlegt zou de regel technisch halen en
  *    inhoudelijk breken.
  *
- * ⚠️ De keuzelijst toont alleen groepen waar je lid van bent. Dat is
- *    gebruiksgemak — de echte grens ligt in `commitments_insert` (migratie 0006).
+ * ⚠️ De keuzelijst toont alleen groepen waar je lid van bent en mensen met wie
+ *    je een groep deelt. Dat is gebruiksgemak — de echte grens ligt in
+ *    `commitments_insert` (migratie 0006, uitgebreid in 0168).
+ *
+ * ⚠️ **Een persoon als getuige is een kleinere kring, geen lege kring** (QS8-228).
+ *    Domeinregel 11 verandert niet: de getuige krijgt leesrecht op het moment
+ *    dat de straf verschuldigd wordt, en geen seconde eerder. Wat verandert is
+ *    hoevéél mensen dat zijn.
  */
 function Straf({
   goalId,
@@ -818,11 +829,21 @@ function Straf({
   readonly bestaand: Commitment | undefined;
   readonly onKlaar: () => void;
 }) {
+  const router = useRouter();
   const [tekst, setTekst] = useState('');
+  const [soort, setSoort] = useState<'groep' | 'persoon'>('groep');
   const [groepId, setGroepId] = useState(groepen[0]?.id ?? '');
+  const [gekozenPersoon, setGekozenPersoon] = useState('');
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+
+  const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
+
+  // ⚠️ De keuze is afgeleid en niet in state gezet vanuit de lading. Twee
+  //    plekken die hetzelfde weten gaan uit de pas lopen, en dan verstuurt het
+  //    scherm een andere persoon dan het toont.
+  const persoonId = gekozenPersoon !== '' ? gekozenPersoon : (mensen[0]?.id ?? '');
 
   if (bestaand) {
     const stand = tekstVoor(bestaand);
@@ -855,21 +876,32 @@ function Straf({
     );
   }
 
-  if (groepen.length === 0) {
+  // ⚠️ Uitleg én een uitweg, geen dood veld. Zonder groep is er ook geen
+  //    groepsgenoot om als getuige te kiezen — de band lóópt via de groep.
+  if (groepen.length === 0 && mensen.length === 0) {
     return (
       <Card nested>
         <Subheading>{t('straf.kop')}</Subheading>
         <Body muted>{t('straf.geen_groep')}</Body>
+        <Button onPress={() => router.push('/(tabs)/groep')}>{t('straf.naar_groepen')}</Button>
       </Card>
     );
   }
 
   const gekozenGroep = groepen.find((g) => g.id === groepId);
+  const persoon = mensen.find((m) => m.id === persoonId);
+  const getuige = soort === 'groep' ? gekozenGroep?.name : persoon?.naam;
+  const kanVerder =
+    tekst.trim().length >= 3 && (soort === 'groep' ? groepId !== '' : persoonId !== '');
 
   async function bewaar() {
     setBezig(true);
     setFout(null);
-    const uitkomst = await zetStraf(goalId, { body: tekst, image_url: null }, groepId);
+    const uitkomst = await zetStraf(
+      goalId,
+      { body: tekst, image_url: null },
+      soort === 'groep' ? { soort: 'groep', id: groepId } : { soort: 'persoon', id: persoonId },
+    );
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setBevestigen(false);
@@ -884,7 +916,7 @@ function Straf({
         <Subheading>{t('straf.zeker')}</Subheading>
         <Body>
           {t('straf.bevestig_uitleg', {
-            groep: gekozenGroep?.name ?? t('straf.jouw_groep'),
+            groep: getuige ?? t('straf.jouw_groep'),
           })}
         </Body>
         <Body muted>{t('straf.dan_geldt', { tekst })}</Body>
@@ -915,14 +947,45 @@ function Straf({
         placeholder={t('straf.voorbeeld')}
       />
 
-      <Choice
-        label={t('straf.welke_groep')}
-        opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
-        waarde={groepId}
-        onKies={setGroepId}
-      />
+      {/*
+        ⚠️ De keuze tussen groep en persoon staat er alleen als er ook echt wat te
+           kiezen valt. Eén optie aanbieden is een vraag stellen waarvan het
+           antwoord al vaststaat.
+      */}
+      {groepen.length > 0 && mensen.length > 0 ? (
+        <Choice
+          label={t('straf.wie_getuige')}
+          opties={[
+            { waarde: 'groep', label: t('straf.een_groep') },
+            { waarde: 'persoon', label: t('straf.een_persoon') },
+          ]}
+          waarde={soort}
+          onKies={setSoort}
+        />
+      ) : null}
 
-      <Button disabled={tekst.trim().length < 3} onPress={() => setBevestigen(true)}>
+      {soort === 'groep' && groepen.length > 0 ? (
+        <Choice
+          label={t('straf.welke_groep')}
+          opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
+          waarde={groepId}
+          onKies={setGroepId}
+        />
+      ) : null}
+
+      {soort === 'persoon' && mensen.length > 0 ? (
+        <>
+          <Choice
+            label={t('straf.welke_persoon')}
+            opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
+            waarde={persoonId}
+            onKies={setGekozenPersoon}
+          />
+          <Caption>{t('straf.persoon_uitleg')}</Caption>
+        </>
+      ) : null}
+
+      <Button disabled={!kanVerder} onPress={() => setBevestigen(true)}>
         {t('straf.verder')}
       </Button>
     </Card>

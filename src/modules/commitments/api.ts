@@ -63,37 +63,135 @@ export async function zetBeloning(
   goalId: string,
   invoer: CommitmentInvoer,
 ): Promise<Resultaat<Commitment>> {
-  return await maak(goalId, 'reward', invoer, null);
+  return await maak(goalId, 'reward', invoer);
 }
 
 /**
- * Legt een straf vast — QS8-35.
+ * De mensen die je als begunstigde van een straf mag kiezen.
  *
- * ⚠️ De begunstigde groep is verplicht (schema-constraint) en moet een groep
- *    zijn waar je zélf lid van bent. Dat laatste wordt in RLS afgedwongen sinds
- *    0006, niet in de UI: een keuzelijst die alleen jouw groepen toont is
+ * ⚠️ **Iedereen met wie je een groep deelt, en niemand anders.** Een vreemde
+ *    kiezen zou een manier zijn om iemand ongevraagd getuige te maken van je
+ *    straf. De grens ligt in `commitments_insert` via
+ *    `shares_group_with_user()`; deze lijst is de comfortabele kant ervan.
+ *
+ * ⚠️ **Twee query's en geen N+1** (regel 12): eerst je eigen lidmaatschappen,
+ *    dan in één keer de leden van díe groepen. Per groep vragen zou het
+ *    klassieke groepsoverzicht-probleem zijn, op een lijst die niemand ziet.
+ *
+ * ⚠️ Allebei begrensd (regel 10). Een gebruiker zit in hoogstens tien groepen
+ *    (`create_group`, `too_many_groups`), dus de eerste grens is ruim; de tweede
+ *    is een dak en geen paginering — bij honderd kandidaten is een keuzelijst
+ *    sowieso het verkeerde middel, en dan hoort er een zoekveld te komen.
+ */
+export interface MogelijkeBegunstigde {
+  readonly id: string;
+  readonly naam: string;
+}
+
+const MAX_GROEPEN = 20;
+const MAX_KANDIDATEN = 100;
+
+export async function fetchMogelijkeBegunstigden(): Promise<readonly MogelijkeBegunstigde[]> {
+  const db = supabase();
+
+  const { data: sessie } = await db.auth.getUser();
+  const ik = sessie.user?.id ?? '';
+  if (ik === '') return [];
+
+  const mijn = await db
+    .from('group_members')
+    .select('group_id')
+    .eq('user_id', ik)
+    .neq('status', 'inactive')
+    .limit(MAX_GROEPEN);
+
+  if (mijn.error) {
+    reportError(mijn.error, 'commitments.begunstigden.groepen', { code: mijn.error.code });
+    return [];
+  }
+
+  const groepIds = (mijn.data ?? []).map((r) => r.group_id);
+  if (groepIds.length === 0) return [];
+
+  const leden = await db
+    .from('group_members')
+    .select('user_id, profiles(display_name)')
+    .in('group_id', groepIds)
+    .neq('user_id', ik)
+    .neq('status', 'inactive')
+    .limit(MAX_KANDIDATEN);
+
+  if (leden.error) {
+    reportError(leden.error, 'commitments.begunstigden.leden', { code: leden.error.code });
+    return [];
+  }
+
+  // ⚠️ Ontdubbelen op `user_id`: wie in twee van jouw groepen zit, staat hier
+  //    twee keer. Een keuzelijst met dezelfde naam er twee keer in leest als een
+  //    fout, en `Choice` gebruikt de waarde als sleutel.
+  const gezien = new Map<string, MogelijkeBegunstigde>();
+  for (const rij of leden.data ?? []) {
+    const id = rij.user_id as string;
+    if (gezien.has(id)) continue;
+    const profiel = rij.profiles as { display_name?: string | null } | null;
+    gezien.set(id, { id, naam: profiel?.display_name ?? t('commitment.begunstigde.naamloos') });
+  }
+
+  return [...gezien.values()];
+}
+
+/**
+ * Wie de getuige van een straf is: een hele groep, of één persoon.
+ *
+ * ⚠️ **Nooit allebei, en dat is een CHECK en niet een afspraak** — met twee
+ *    begunstigden is niet te zeggen wie de getuige is. Zie migratie 0168.
+ */
+export type Begunstigde =
+  | { readonly soort: 'groep'; readonly id: string }
+  | { readonly soort: 'persoon'; readonly id: string };
+
+/**
+ * Legt een straf vast — QS8-35, uitgebreid in QS8-228.
+ *
+ * ⚠️ Een begunstigde is verplicht en moet iemand zijn met wie je een band hebt:
+ *    een groep waar je lid van bent, of iemand met wie je een groep deelt. Dat
+ *    wordt in RLS afgedwongen (`commitments_insert`, 0006 en 0168) en niet in de
+ *    UI: een keuzelijst die alleen jouw groepen en groepsgenoten toont is
  *    gebruiksgemak, geen beveiliging.
  *
- * ⚠️ De groep krijgt dit commitment pas te zien als het verschuldigd wordt. Tot
- *    die tijd is het alleen van jou (domeinregel 11, afgedwongen in
+ * ⚠️ **Waarom er überhaupt een begunstigde moet zijn.** Domeinregel 11: die
+ *    krijgt leesrecht op het moment dat de straf verschuldigd wordt. Zonder
+ *    getuige ziet niemand hem ooit, en dan is een straf een voornemen in plaats
+ *    van een commitment device — de werking komt uit het gezien worden.
+ *
+ * ⚠️ De begunstigde ziet dit commitment pas als het verschuldigd wordt. Tot die
+ *    tijd is het alleen van jou (domeinregel 11, afgedwongen in
  *    `commitments_select`).
  */
 export async function zetStraf(
   goalId: string,
   invoer: CommitmentInvoer,
-  beneficiaryGroupId: string,
+  begunstigde: Begunstigde,
 ): Promise<Resultaat<Commitment>> {
-  if (!beneficiaryGroupId) {
-    return { ok: false, melding: t('commitment.fout.geen_groep') };
+  if (!begunstigde.id) {
+    return { ok: false, melding: t('commitment.fout.geen_begunstigde') };
   }
-  return await maak(goalId, 'penalty', invoer, beneficiaryGroupId);
+
+  return await maak(
+    goalId,
+    'penalty',
+    invoer,
+    begunstigde.soort === 'groep' ? begunstigde : null,
+    begunstigde.soort === 'persoon' ? begunstigde : null,
+  );
 }
 
 async function maak(
   goalId: string,
   type: 'reward' | 'penalty',
   invoer: CommitmentInvoer,
-  beneficiaryGroupId: string | null,
+  groep: Begunstigde | null = null,
+  persoon: Begunstigde | null = null,
 ): Promise<Resultaat<Commitment>> {
   const gevalideerd = commitmentSchema.safeParse(invoer);
   if (!gevalideerd.success) {
@@ -107,7 +205,8 @@ async function maak(
       type,
       body: gevalideerd.data.body,
       image_url: gevalideerd.data.image_url,
-      beneficiary_group_id: beneficiaryGroupId,
+      beneficiary_group_id: groep?.id ?? null,
+      beneficiary_user_id: persoon?.id ?? null,
       // ⚠️ De bevestiging is het aanmaken zelf: dit wordt pas aangeroepen ná de
       //    aparte bevestigingsstap in de UI, waar de consequentie letterlijk
       //    uitgeschreven staat. `'now'` laat Postgres de tijd zetten.
