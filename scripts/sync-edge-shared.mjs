@@ -41,6 +41,19 @@ const CONTROLE = process.argv.includes('--check');
 /** De afwijkingen die `--check` gevonden heeft. */
 const afwijkingen = [];
 
+/**
+ * Meldt of de kopie op `doelpad` ontbreekt of achterloopt.
+ *
+ * ⚠️ Staat los omdat de `if/else if` in de lus anders vier niveaus diep zit
+ *    (coderegel 15, QS8-291). De twee gevallen blijven apart: "ontbreekt" en
+ *    "loopt achter" vragen een andere handeling van de lezer.
+ */
+function meldAfwijking(afwijkingen, doelpad, verwacht, bronpad) {
+  const huidig = lees(doelpad);
+  if (huidig === null) afwijkingen.push(`${doelpad} ontbreekt`);
+  else if (huidig !== verwacht) afwijkingen.push(`${doelpad} loopt achter op ${bronpad}`);
+}
+
 /** Wat er gekopieerd wordt, en waarheen. */
 const SETS = [
   { bron: join('src', 'shared', 'time'), doel: join('supabase', 'functions', '_shared', 'time') },
@@ -131,16 +144,8 @@ for (const set of SETS) {
     const doelpad = join(set.doel, naam);
     const verwacht = kop(set.bron) + metExtensies;
 
-    if (CONTROLE) {
-      const huidig = lees(doelpad);
-      if (huidig === null) {
-        afwijkingen.push(`${doelpad} ontbreekt`);
-      } else if (huidig !== verwacht) {
-        afwijkingen.push(`${doelpad} loopt achter op ${join(set.bron, naam)}`);
-      }
-    } else {
-      writeFileSync(doelpad, verwacht);
-    }
+    if (CONTROLE) meldAfwijking(afwijkingen, doelpad, verwacht, join(set.bron, naam));
+    else writeFileSync(doelpad, verwacht);
 
     totaal += 1;
   }

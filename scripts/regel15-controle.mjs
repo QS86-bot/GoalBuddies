@@ -63,6 +63,12 @@ export const GRENS = 50;
 export const PLAFOND = Object.freeze({
   'app/': 66,
   'src/shared/ui/': 9,
+  // ⚠️ **`scripts/` telt mee sinds 06-09-2026** (QS8-291). Die map viel
+  //    structureel buiten de linter — 57 bestanden, 14.170 regels — en de
+  //    vijftig kan er om dezelfde reden als in `app/` geen lintregel zijn:
+  //    er zitten er vandaag vijftien boven, en een regel die vijftien keer rood
+  //    staat leer je uitzetten. De nesting is er wél hard aan gegaan.
+  'scripts/': 15,
 });
 
 /** De lagen die deze ratel telt, in de volgorde waarin ze gemeld worden. */
@@ -71,7 +77,7 @@ export const LAGEN = Object.freeze(Object.keys(PLAFOND));
 /** Bij welke laag hoort dit pad? `null` = telt niet mee. */
 export function laagVan(pad) {
   const schoon = (pad ?? '').replace(/\\/g, '/');
-  if (/\.test\.tsx?$/.test(schoon)) return null;
+  if (/\.test\.(?:tsx?|mjs)$/.test(schoon)) return null;
   // ⚠️ Langste eerst: `src/shared/ui/` zit ín `src/`, en wie op de eerste
   //    treffer stopt zonder te sorteren, telt hem bij de verkeerde laag.
   return [...LAGEN].sort((a, b) => b.length - a.length).find((l) => schoon.startsWith(l)) ?? null;
@@ -113,14 +119,14 @@ async function meet() {
     cwd: WORTEL,
     overrideConfigFile: join(WORTEL, 'eslint.config.js'),
     overrideConfig: {
-      files: ['app/**/*.tsx', 'app/**/*.ts', 'src/**/*.ts', 'src/**/*.tsx'],
+      files: ['app/**/*.tsx', 'app/**/*.ts', 'src/**/*.ts', 'src/**/*.tsx', 'scripts/**/*.mjs'],
       rules: {
         'max-lines-per-function': ['error', { max: GRENS, skipBlankLines: true, skipComments: true }],
       },
     },
   });
 
-  const uitslagen = await linter.lintFiles(['app', 'src']);
+  const uitslagen = await linter.lintFiles(['app', 'src', 'scripts']);
   const vondsten = [];
 
   for (const uitslag of uitslagen) {

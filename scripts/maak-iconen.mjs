@@ -102,35 +102,43 @@ function merkDekking(x, y, maat, schaal) {
   return false;
 }
 
+/** Hoeveel monsters per as; 4×4 per pixel is genoeg om de rand glad te krijgen. */
+const MONSTERS = 4;
+
+/**
+ * De dekking van één pixel, als breuk tussen 0 en 1.
+ *
+ * ⚠️ Staat los omdat de twee monsterlussen ín de twee pixellussen anders vier
+ *    niveaus diep zitten (coderegel 15, QS8-291).
+ */
+function dekkingVan(x, y, maat, schaal) {
+  let raak = 0;
+  for (let sy = 0; sy < MONSTERS; sy += 1) {
+    for (let sx = 0; sx < MONSTERS; sx += 1) {
+      if (merkDekking(x + (sx + 0.5) / MONSTERS, y + (sy + 0.5) / MONSTERS, maat, schaal)) raak += 1;
+    }
+  }
+  return raak / (MONSTERS * MONSTERS);
+}
+
+/** Zet één pixel op index `i`, met of zonder ondergrond. */
+function schrijfPixel(rgba, i, dekking, transparant) {
+  if (transparant) {
+    // Badge: alleen de vorm. Android maskeert hem toch naar één kleur.
+    [rgba[i], rgba[i + 1], rgba[i + 2]] = GOUD;
+    rgba[i + 3] = Math.round(dekking * 255);
+    return;
+  }
+  for (let k = 0; k < 3; k += 1) rgba[i + k] = Math.round(BG[k] + (GOUD[k] - BG[k]) * dekking);
+  rgba[i + 3] = 255;
+}
+
 function tekenIcoon(maat, { transparant = false, schaal = 1 } = {}) {
   const rgba = Buffer.alloc(maat * maat * 4);
-  const MONSTERS = 4;
 
   for (let y = 0; y < maat; y += 1) {
     for (let x = 0; x < maat; x += 1) {
-      let raak = 0;
-      for (let sy = 0; sy < MONSTERS; sy += 1) {
-        for (let sx = 0; sx < MONSTERS; sx += 1) {
-          const px = x + (sx + 0.5) / MONSTERS;
-          const py = y + (sy + 0.5) / MONSTERS;
-          if (merkDekking(px, py, maat, schaal)) raak += 1;
-        }
-      }
-      const dekking = raak / (MONSTERS * MONSTERS);
-      const i = (y * maat + x) * 4;
-
-      if (transparant) {
-        // Badge: alleen de vorm. Android maskeert hem toch naar één kleur.
-        rgba[i] = GOUD[0];
-        rgba[i + 1] = GOUD[1];
-        rgba[i + 2] = GOUD[2];
-        rgba[i + 3] = Math.round(dekking * 255);
-      } else {
-        for (let k = 0; k < 3; k += 1) {
-          rgba[i + k] = Math.round(BG[k] + (GOUD[k] - BG[k]) * dekking);
-        }
-        rgba[i + 3] = 255;
-      }
+      schrijfPixel(rgba, (y * maat + x) * 4, dekkingVan(x, y, maat, schaal), transparant);
     }
   }
 
