@@ -413,10 +413,17 @@ docs/decisions/
 
     | Waar | Wat er geldt | Wie het afdwingt |
     |---|---|---|
-    | overal in `src/` en `app/` | nesting <3 | `max-depth` in `eslint.config.js` |
+    | overal in `src/`, `app/` en `scripts/` | nesting <3 | `max-depth` in `eslint.config.js` |
     | logica: `src/` buiten `shared/ui` | <50 regels | `max-lines-per-function` |
     | componenten: `src/shared/ui` | een plafond dat vandaag bindt | `max-lines-per-function` |
     | de schermlaag: `app/` | het **aantal** functies boven de 50 mag alleen dalen | `npm run regel15:controle` |
+    | de scripts: `scripts/` | idem — het **aantal** mag alleen dalen | `npm run regel15:controle` |
+
+    ⚠️ **`scripts/` viel tot 06-09-2026 helemaal buiten de linter** (QS8-291):
+    `eslint.config.js` dekte alleen `**/*.ts(x)` en die map is `.mjs`, dus 57
+    bestanden en 14.170 regels zagen geen enkele coderegel — precies de map waar
+    de grendels van dit project wonen. De nesting is er hard aan gegaan; de
+    vijftig staat er als ratel, om dezelfde reden als in `app/`.
 
     ⚠️ **Een component wordt anders geteld dan een functie, en dat is geen
     uitvlucht.** Het lichaam van een React-component is grotendeels JSX: één

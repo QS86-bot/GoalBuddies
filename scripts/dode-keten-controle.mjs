@@ -257,6 +257,19 @@ export const WACHT_OP_EEN_BESLUIT = {
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
 const PRODUCTIEMAPPEN = ['src', 'app', 'supabase/functions'];
 
+/**
+ * Haalt elke CHECK op (`tabel`, `kolom`) uit het register.
+ *
+ * ⚠️ Staat los omdat de lus erbinnen anders vier niveaus diep zit (coderegel 15,
+ *    QS8-291). Een naam erbij maakt bovendien leesbaar wát die binnenste lus
+ *    doet: vergeten, niet verzamelen.
+ */
+function vergeetConstraintsOpKolom(huidig, tabel, kolom) {
+  for (const [cnaam, c] of huidig) {
+    if (c.tabel === tabel && c.kolom === kolom) huidig.delete(cnaam);
+  }
+}
+
 function bronbestanden(dir, uit = [], vorm = /\.(ts|tsx)$/) {
   for (const naam of readdirSync(dir)) {
     if (naam === 'node_modules' || naam === '.git') continue;
@@ -422,10 +435,7 @@ export function checksIn(bestanden) {
     for (const m of sql.matchAll(
       /alter\s+table\s+(?:only\s+)?(?:public\.)?([a-z0-9_]+)[\s\S]*?drop\s+column\s+(?:if\s+exists\s+)?([a-z0-9_]+)/gi,
     )) {
-      const [, tabel, kolom] = [m[0], m[1].toLowerCase(), m[2].toLowerCase()];
-      for (const [cnaam, c] of huidig) {
-        if (c.tabel === tabel && c.kolom === kolom) huidig.delete(cnaam);
-      }
+      vergeetConstraintsOpKolom(huidig, m[1].toLowerCase(), m[2].toLowerCase());
     }
 
     for (const m of sql.matchAll(/constraint\s+([a-z0-9_]+)\s+check\s*\(/gi)) {
