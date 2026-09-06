@@ -280,7 +280,7 @@ function GroepsKaart({ groep, aangevraagd, geblokkeerd, onVraagAan }: KaartProps
       </Caption>
       <Caption>{t('ontdek.huddledag', { dag: huddledagLabel(groep.huddleDag) })}</Caption>
       {groep.voertaal === null ? null : (
-        <Caption>{voertaalLabels()[groep.voertaal as Voertaal] ?? groep.voertaal}</Caption>
+        <Caption>{voertaalLabels()[groep.voertaal] ?? groep.voertaal}</Caption>
       )}
 
       {aangevraagd || klaar ? (

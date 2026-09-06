@@ -68,16 +68,3 @@ export function useSession(): SessionContextWaarde {
   return useContext(SessionContext);
 }
 
-/**
- * De id van de ingelogde gebruiker, of een fout.
- *
- * Voor code die zonder gebruiker niets te doen heeft. Beter hier stukgaan dan
- * verderop een query bouwen met `undefined` erin — die levert namelijk gewoon
- * nul rijen op, en dan zoek je een uur naar een lege lijst.
- */
-export function useRequiredUserId(): string {
-  const { userId, loading } = useSession();
-  if (loading) throw new Error('useRequiredUserId() aangeroepen terwijl de sessie nog laadt.');
-  if (!userId) throw new Error('useRequiredUserId() aangeroepen zonder ingelogde gebruiker.');
-  return userId;
-}
