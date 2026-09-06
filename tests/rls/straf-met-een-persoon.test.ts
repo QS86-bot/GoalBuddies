@@ -215,6 +215,164 @@ describe.skipIf(!rlsTestsConfigured)('een straf met één persoon als begunstigd
     );
 
     it(
+      'jezelf aanwijzen kan niet, ook niet als service_role',
+      async () => {
+        // ⚠️⚠️ **Gevonden in de security-ronde van 06-09-2026, en het was een gat
+        //    in de kern van deze migratie.** `shares_group_with_user()` is waar
+        //    voor je eigen id zodra je in één groep zit: die functie joint
+        //    `group_members` op zichzelf, en je eigen rij voldoet aan béíde
+        //    kanten. Eén gewoon API-verzoek gaf een straf die aan elke grendel
+        //    voldeed en die letterlijk niemand ooit ziet — precies de lege kring
+        //    waar deze migratie voor bestaat.
+        //
+        // ⚠️ Twee routes, twee asserties: de policy houdt de client tegen, de
+        //    trigger ook de rol die alle policies overslaat.
+        const viaClient = await w.alice.db.from('commitments').insert({
+          goal_id: w.goalId,
+          type: 'penalty',
+          body: 'Ik ben mijn eigen getuige',
+          beneficiary_user_id: w.alice.id,
+          confirmed_at: 'now',
+        });
+        expect(viaClient.error, 'je kunt jezelf als getuige aanwijzen').not.toBeNull();
+
+        const viaAdmin = await adminDb().from('commitments').insert({
+          goal_id: w.goalId,
+          type: 'penalty',
+          body: 'Ik ben mijn eigen getuige, via service_role',
+          beneficiary_user_id: w.alice.id,
+          confirmed_at: new Date().toISOString(),
+        });
+        expect(viaAdmin.error, 'de trigger laat zelfnominatie door').not.toBeNull();
+
+        const rijen = await adminDb()
+          .from('commitments')
+          .select('id')
+          .eq('beneficiary_user_id', w.alice.id);
+        expect(rijen.data ?? []).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een beloning met een persoon als begunstigde kan niet',
+      async () => {
+        // ⚠️ Een beloning is voor jezelf; er is niemand die hem hoort te zien.
+        //    Vandaag onschadelijk omdat niets een beloning op `due` of
+        //    `resolved` zet — maar `commitment_zichtbaar_voor_persoon()` bevat
+        //    `resolved`, dus het wordt een lek zodra iemand die twee lijsten
+        //    gelijktrekt. Uit dezelfde security-ronde.
+        const poging = await adminDb().from('commitments').insert({
+          goal_id: w.goalId,
+          type: 'reward',
+          body: 'Een beloning met een getuige',
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: new Date().toISOString(),
+        });
+
+        expect(poging.error, 'een beloning draagt nu een begunstigde persoon').not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een beloning omzetten naar een straf laat geen straf zonder getuige achter',
+      async () => {
+        // ⚠️⚠️ **De duurste bevinding van de security-ronde, en de reden dat de
+        //    kop van 0168 herschreven is.** De eerste versie van
+        //    `bewaak_begunstigde()` keerde in de UPDATE-tak vroeg terug, zodat de
+        //    begunstigde-eis daar nooit geëvalueerd werd. Gemeten: `insert` een
+        //    beloning zonder getuige, dan `update … set type = 'penalty'`, en er
+        //    stond een straf die niemand ooit ziet.
+        //
+        //    De migratie, het beslisdocument én het commitbericht beweerden
+        //    alle drie dat de trigger "niet zwakker is dan de CHECK". Dat was
+        //    onwaar op precies deze plek, en de test die hem zou vangen bleef
+        //    groen omdat hij alleen de INSERT-kant voerde. Een opgeschreven
+        //    grendel die niet bestaat is duurder dan geen grendel.
+        const admin = adminDb();
+        const beloning = await admin
+          .from('commitments')
+          .insert({
+            goal_id: w.goalId,
+            type: 'reward',
+            body: 'Een beloning die straks een straf wordt',
+            confirmed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (beloning.error) throw new Error(`beloning: ${beloning.error.message}`);
+
+        try {
+          const omzetten = await admin
+            .from('commitments')
+            .update({ type: 'penalty' })
+            .eq('id', beloning.data.id);
+
+          expect(
+            omzetten.error,
+            'een beloning is een straf zonder getuige geworden',
+          ).not.toBeNull();
+
+          const na = await admin
+            .from('commitments')
+            .select('type')
+            .eq('id', beloning.data.id)
+            .single();
+          expect(na.data?.type).toBe('reward');
+        } finally {
+          await admin.from('commitments').delete().eq('id', beloning.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar mag de begunstigde niet wisselen, en dat is een kolomrecht',
+      async () => {
+        // ⚠️ **Deze test legt vast wat het gat vandaag dichthoudt, en dat is niet
+        //    de policy.** `authenticated` mag alleen `body`, `image_url` en
+        //    `status` bijwerken (0057), dus een wissel ketst af op
+        //    `permission denied` en niet op een bandtoets. Die grant is erfenis
+        //    en geen besluit: wordt `beneficiary_user_id` er ooit aan toegevoegd,
+        //    dan hoort de bandtoets in `commitments_update` het over te nemen —
+        //    en die staat er sinds deze migratie.
+        const admin = adminDb();
+        const straf = await admin
+          .from('commitments')
+          .insert({
+            goal_id: w.goalId,
+            type: 'penalty',
+            body: 'Deze getuige blijft wie hij is',
+            beneficiary_user_id: w.bob.id,
+            confirmed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (straf.error) throw new Error(`straf: ${straf.error.message}`);
+
+        try {
+          const poging = await w.alice.db
+            .from('commitments')
+            .update({ beneficiary_user_id: w.carol.id })
+            .eq('id', straf.data.id);
+
+          expect(poging.error, 'de eigenaar heeft de getuige gewisseld').not.toBeNull();
+
+          const na = await admin
+            .from('commitments')
+            .select('beneficiary_user_id')
+            .eq('id', straf.data.id)
+            .single();
+          expect(na.data?.beneficiary_user_id, 'de getuige is een vreemde geworden').toBe(w.bob.id);
+        } finally {
+          await admin.from('commitments').delete().eq('id', straf.data.id);
+        }
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
       'een beloning zonder begunstigde kan wél',
       async () => {
         // De must-allow ernaast: een beloning is voor jezelf en heeft geen

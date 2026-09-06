@@ -77,12 +77,24 @@ Dus:
 * een **trigger** voor wat alleen bij het schrijven geldt: een straf krijgt een
   begunstigde mee.
 
-⚠️ **De trigger is niet zwakker dan de CHECK.** Hij vuurt ook voor
-`service_role` — een trigger is geen policy, en daar staat een test op die via
-`adminDb()` gaat. Wat hij wél kan en een CHECK niet, is onderscheid maken tussen
-"iemand haalt de getuige weg" en "de getuige bestaat niet meer". Die eerste is
-verboden (domeinregel 5: een commitment device gaat nooit stilzwijgend uit), de
-tweede is precies wat de foreign key doet.
+⚠️ **De trigger vuurt ook voor `service_role`** — een trigger is geen policy, en
+daar staat een test op die via `adminDb()` gaat. Wat hij wél kan en een CHECK
+niet, is onderscheid maken tussen "iemand haalt de getuige weg" en "de getuige
+bestaat niet meer". Die eerste is verboden (domeinregel 5: een commitment device
+gaat nooit stilzwijgend uit), de tweede is precies wat de foreign key doet.
+
+⚠️⚠️ **Hier stond eerst "de trigger is niet zwakker dan de CHECK", en dat was
+onwaar.** De eerste versie keerde in de UPDATE-tak vroeg terug, zodat de
+begunstigde-eis daar nooit geëvalueerd werd. Gemeten in de security-ronde:
+`insert` een beloning zonder getuige, dan `update … set type = 'penalty'`, en er
+stond een straf die niemand ooit ziet — precies de toestand die deze migratie
+bestaat om te verbieden.
+
+Die zin stond op drie plekken: in de migratiekop, hier, en in het commitbericht.
+**Een opgeschreven grendel die niet bestaat is duurder dan geen grendel**, want
+de volgende lezer bouwt erop. De test die hem zou vangen bleef groen omdat hij
+alleen de INSERT-kant voerde — regel 18 vraag 3, en het antwoord was niet "erover
+nadenken" maar het met de hand breken.
 
 ## 5. ⚠️⚠️ En daarachter lag nog een naad: het spoor overleefde zijn eigen actor niet
 
@@ -136,6 +148,9 @@ rood werd.
 | 7 | de uitzondering voor een verdwenen profiel | `exists` → `true` | laat de getuige zijn account verwijderen |
 | 8 | nooit een groep én een persoon | de CHECK gedropt | tegelijk kan niet, ook niet als service_role |
 | 9 | de actor-null in het spoor | terug naar `auth.uid()` | laat de getuige zijn account verwijderen |
+| 10 | de eis geldt óók op UPDATE | de vroege `return new` terug | een beloning omzetten naar een straf laat geen straf zonder getuige achter |
+| 11 | jezelf aanwijzen kan niet | de toets uit de trigger | jezelf aanwijzen kan niet, ook niet als service_role |
+| 12 | een persoon alleen bij een straf | de CHECK gedropt | een beloning met een persoon als begunstigde kan niet |
 
 ⚠️ **Grendels 7 en 9 delen hun test, en dat is geen luiheid maar wat de belofte
 is:** "een openstaande straf blokkeert de accountverwijdering van de getuige
@@ -152,3 +167,80 @@ het filter `-t "een groep en een persoon tegelijk"` matcht `én` niet, en de
 uitslag was "12 overgeslagen, groen". Dat is de vorm waar CLAUDE.md bij regel 18
 voor waarschuwt: een ijking die zijn geval niet eens bereikt, meldt groen en
 bewaakt niets. Overgedaan met een stuk van de naam zónder accent.
+
+
+---
+
+## 8. Wat de security-ronde vond, en wat ermee gedaan is
+
+Drie onafhankelijke reviews, alle drie blokkerend, alle drie op grotendeels
+dezelfde punten. Elke bevinding hieronder is door mij zelf nagemeten tegen de
+draaiende database vóór ik hem verwerkte.
+
+### Gerepareerd in deze branch
+
+| Wat | Gemeten | Wat er nu staat |
+|---|---|---|
+| De trigger toetste de begunstigde-eis niet op UPDATE | `reward` → `penalty` gaf een straf zonder getuige | de eis staat buiten de `tg_op`-vertakking, met de FK-uitzondering ervóór |
+| Je kon **jezelf** als getuige aanwijzen | `shares_group_with_user(auth.uid())` is `t` zodra je in één groep zit | verboden in de trigger — zie 8a |
+| `commitments_update` had geen bandtoets | wat het gat dichthield was een kolomgrant uit 0057, zonder test | de bandtoets staat nu in de policy, met een test op de kolomgrant |
+| Een `reward` mocht een persoon als begunstigde dragen | insert geslaagd | CHECK `commitments_persoon_alleen_bij_straf` |
+| Rij 20 van `002-domeinregel7-oppervlakken.md` kende de persoonstak niet | alleen gelezen | bijgewerkt, met de meting erin |
+
+⚠️ **Zelfnominatie was de scherpste.** `shares_group_with_user()` joint
+`group_members` op zichzelf, en je eigen rij voldoet aan béíde kanten. Eén
+gewoon API-verzoek gaf een straf die aan alle grendels voldeed en die letterlijk
+niemand ooit ziet — de lege kring waar §2 van dit document over gaat. Het woord
+"zelf" kwam in de migratie, dit document en de testsuite geen enkele keer voor:
+dit was geen afgewogen keuze maar een gat.
+
+### 8a. Eén ijking bleef groen, en dat kostte een tweede kopie van de regel
+
+De eerste reparatie tegen zelfnominatie stond op twee plekken: in
+`commitments_insert` én in de trigger. De ijking van de policy-helft **bleef
+groen** — de conjunct eruit halen maakte geen enkele test rood, want elk geval
+liep alsnog tegen de trigger aan.
+
+Dat is precies de valkuil die CLAUDE.md bij regel 18 noemt: *een ijking die zijn
+geval door een pad voert dat een éérdere grendel al afvangt, bewaakt niets van
+wat hij belooft.* Twee kopieën van dezelfde regel die geen van beide los te
+toetsen zijn, is bovendien de vorm die stil uit de pas gaat lopen.
+
+De policy-helft is er daarom weer uit. Wat blijft is de trigger, en dat is de
+sterkste van de twee: die bindt ook `service_role`. De **bandtoets** blijft wél
+in de policy, en dat is geen inconsequentie — die gaat over wie een *gebruiker*
+mag kiezen, en `service_role` is het systeem en geen gebruiker.
+
+⚠️ **Dit is dezelfde les als de blokkerende bevinding zelf, één laag hoger.**
+Daar stond een grendel opgeschreven die niet bestond; hier stond er een die wel
+bestond maar niet te toetsen was. Allebei geven ze een groen scherm zonder
+bewijs.
+
+### Weggezet als eigen issue
+
+| Wat | Waarom niet hier |
+|---|---|
+| De persoon-getuige heeft geen scherm en geen melding (QS8-292) | een leesoppervlak plus een notificatietype; eigen datamodelvraag, en de groepschat is nadrukkelijk níét de route |
+| Geen plafond op het aantal straffen per doel (QS8-293) | raakt ook `goals.target_date` en de vraag of een getuige mag weigeren — dat laatste is een productbeslissing |
+
+⚠️ **De eerste is de eerlijkste kritiek op dit issue.** De rechtvaardiging van de
+hele feature is "de werking komt uit het gezien worden", en voor de persoonstak
+is dat vandaag niet geleverd. De copy belooft daarom géén melding meer: ze zegt
+dat de getuige het na de streefdatum mág lezen, en dat je het hem zelf even moet
+laten weten. Dat is waar, en het was het niet.
+
+### Onderweg gevonden en hersteld: een besluit dat uit `002` gevallen was
+
+⚠️⚠️ Commit `da744f2` (QS8-290, een parallelle sessie) werkte oppervlak 25 bij
+vanaf een basis van vóór QS8-227 en nam daarmee de **derde benoemde uitzondering
+op domeinregel 7** mee — de rij over een adempauze die je achteraf aankondigt,
+de §4a-kop, rij 21 en de A41-aantekening. Zonder één woord erover in het
+commitbericht, en `docs:controle` en `review:controle` waren allebei groen.
+
+Nagemeten: `git show origin/main:… | grep -c QS8-227` gaf **0**. Hersteld in deze
+branch, met de badges-toevoeging van die commit intact.
+
+**Dat is erger dan een besluit dat er nooit in stond:** `breathers_select` deelt
+het recht nog steeds uit, dus het document was strenger geworden dan de
+werkelijkheid — en dan repareert de volgende sessie iets wat een besluit is, of
+verruimt verder op een precedent dat ze niet kan zien.

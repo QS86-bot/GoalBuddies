@@ -52,10 +52,21 @@
 --   * een trigger voor wat alleen bij het schrijven geldt: een straf krijgt een
 --     begunstigde mee.
 --
--- ⚠️ **De trigger is niet zwakker dan de CHECK.** Hij vuurt ook voor
--- `service_role` — een trigger is geen policy. Wat hij wél doet is onderscheid
--- maken tussen "iemand haalt de getuige weg" en "de getuige bestaat niet meer",
--- en dat onderscheid kan een CHECK niet uitdrukken.
+-- ⚠️ **De trigger vuurt ook voor `service_role`** — een trigger is geen policy —
+-- en hij toetst op INSERT én op UPDATE. Wat hij kan en een CHECK niet, is
+-- onderscheid maken tussen "iemand haalt de getuige weg" en "de getuige bestaat
+-- niet meer".
+--
+-- ⚠️⚠️ **Hier stond eerst "de trigger is niet zwakker dan de CHECK", en dat was
+-- onwaar.** De eerste versie keerde in de UPDATE-tak vroeg terug, zodat de
+-- begunstigde-eis daar nooit geëvalueerd werd: `insert` een beloning zonder
+-- getuige, dan `update … set type = 'penalty'`, en er stond een straf die
+-- niemand ooit ziet. Gemeten in de security-ronde van 06-09-2026, en de test die
+-- hem zou vangen bleef groen omdat hij alleen de INSERT-kant voerde.
+--
+-- **Een opgeschreven grendel die niet bestaat is duurder dan geen grendel.** Die
+-- zin stond in deze kop, in het beslisdocument én in het commitbericht; drie
+-- plekken waar de volgende lezer op zou vertrouwen.
 --
 -- ---------------------------------------------------------------------------
 -- Idempotent: `add column if not exists`, `drop constraint if exists`,
@@ -77,6 +88,16 @@ alter table commitments drop constraint if exists commitments_beneficiary_niet_a
 alter table commitments add constraint commitments_beneficiary_niet_allebei
   check (beneficiary_group_id is null or beneficiary_user_id is null);
 
+-- ⚠️ **Een persoon als begunstigde hoort alleen bij een straf.** Een beloning is
+--    voor jezelf; er is niemand die hem hoort te zien. Vandaag onschadelijk —
+--    niets zet een beloning op `due` of `resolved` — maar
+--    `commitment_zichtbaar_voor_persoon()` bevat `resolved`, dus het wordt een
+--    lek zodra iemand die twee lijsten gelijktrekt. Uit de security-ronde van
+--    06-09-2026.
+alter table commitments drop constraint if exists commitments_persoon_alleen_bij_straf;
+alter table commitments add constraint commitments_persoon_alleen_bij_straf
+  check (beneficiary_user_id is null or type = 'penalty');
+
 alter table commitments drop constraint if exists commitments_penalty_has_beneficiary;
 
 /**
@@ -95,30 +116,69 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
+declare
+  v_verdwenen boolean := false;
 begin
   if tg_op = 'UPDATE' then
-    -- De getuige weghalen mag alleen als hij er niet meer ís.
-    if old.beneficiary_user_id is not null
-       and new.beneficiary_user_id is null
-       and exists (select 1 from profiles p where p.id = old.beneficiary_user_id) then
-      raise exception 'De begunstigde van een commitment is niet weg te halen zolang hij bestaat'
-        using errcode = 'check_violation';
+    -- ⚠️ **Precies één geval waarin de getuige leeg mág worden: hij bestaat
+    --    niet meer.** Dan heeft de foreign key de kolom gewist, niet een
+    --    gebruiker. Staat er nog een profiel of een groep met dat id, dan was
+    --    het iemand die de getuige wegpoetst, en dat is wat domeinregel 5
+    --    verbiedt: een commitment device gaat niet stilzwijgend uit.
+    if old.beneficiary_user_id is not null and new.beneficiary_user_id is null then
+      if exists (select 1 from profiles p where p.id = old.beneficiary_user_id) then
+        raise exception 'De begunstigde van een commitment is niet weg te halen zolang hij bestaat'
+          using errcode = 'check_violation';
+      end if;
+      v_verdwenen := true;
     end if;
 
-    if old.beneficiary_group_id is not null
-       and new.beneficiary_group_id is null
-       and exists (select 1 from groups g where g.id = old.beneficiary_group_id) then
-      raise exception 'De begunstigde van een commitment is niet weg te halen zolang hij bestaat'
-        using errcode = 'check_violation';
+    if old.beneficiary_group_id is not null and new.beneficiary_group_id is null then
+      if exists (select 1 from groups g where g.id = old.beneficiary_group_id) then
+        raise exception 'De begunstigde van een commitment is niet weg te halen zolang hij bestaat'
+          using errcode = 'check_violation';
+      end if;
+      v_verdwenen := true;
     end if;
-
-    return new;
   end if;
 
+  -- ⚠️⚠️ **Deze toets stond eerst alleen op INSERT, en dat maakte de trigger
+  --    strikt zwákker dan de CHECK die hij verving** — terwijl de kop hierboven
+  --    het tegendeel beweerde. Gemeten in de security-ronde van 06-09-2026:
+  --    `insert` een beloning zonder getuige, dan `update … set type = 'penalty'`,
+  --    en er stond een straf die niemand ooit ziet. Precies de toestand die deze
+  --    migratie bestaat om te verbieden, en de test die hem zou vangen bleef
+  --    groen omdat hij alleen de INSERT-kant voerde.
+  --
+  --    Een opgeschreven grendel die niet bestaat is duurder dan geen grendel:
+  --    de volgende lezer bouwt erop.
   if new.type = 'penalty'
      and new.beneficiary_group_id is null
-     and new.beneficiary_user_id is null then
+     and new.beneficiary_user_id is null
+     and not v_verdwenen then
     raise exception 'Een straf heeft een begunstigde nodig'
+      using errcode = 'check_violation';
+  end if;
+
+  -- ⚠️ **Jezelf aanwijzen is geen getuige hebben.** `shares_group_with_user()`
+  --    is waar voor je eigen id zodra je in één groep zit — die functie joint
+  --    `group_members` op zichzelf, en je eigen rij voldoet aan beide kanten.
+  --    Gemeten in dezelfde ronde: één gewoon API-verzoek en je hebt een straf
+  --    die aan elke grendel voldoet en die letterlijk niemand ziet. Dat is de
+  --    lege kring waar de kop van deze migratie over gaat.
+  --
+  --    Staat hier én in `commitments_insert`: de policy houdt de client tegen,
+  --    de trigger ook `service_role`.
+  --    Het anker is `goals.owner_id` en niet `auth.uid()`: een straf hoort bij
+  --    een doel, en de eigenaar daarvan is degene die de consequentie draagt.
+  --    `auth.uid()` is leeg in de rollover en zou de toets daar stilzwijgend
+  --    uitzetten.
+  if new.beneficiary_user_id is not null
+     and exists (
+       select 1 from goals g
+       where g.id = new.goal_id and g.owner_id = new.beneficiary_user_id
+     ) then
+    raise exception 'Je kunt niet je eigen getuige zijn'
       using errcode = 'check_violation';
   end if;
 
@@ -238,6 +298,54 @@ create policy commitments_insert on commitments
       where g.id = commitments.goal_id and g.owner_id = (select auth.uid())
     )
     and status = 'set'
+    and (beneficiary_group_id is null or is_group_member(beneficiary_group_id))
+    and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id))
+  );
+
+-- ⚠️⚠️ **Hier stond ook een toets tegen zelfnominatie, en die is er weer uit —
+-- niet omdat de regel niet klopt, maar omdat de ijking hem niet kon vinden.**
+-- De trigger toetst hetzelfde en vuurt voor élke schrijver, dus de conjunct in
+-- deze policy weghalen maakte géén enkele test rood: elk geval liep alsnog tegen
+-- de trigger aan. Dat is precies wat CLAUDE.md bij regel 18 beschrijft — een
+-- ijking die zijn geval door een pad voert dat een éérdere grendel al afvangt,
+-- bewaakt niets van wat hij belooft.
+--
+-- Twee kopieën van dezelfde regel die geen van beide los te toetsen zijn, is de
+-- vorm die stil uit de pas gaat lopen. Eén plek, en dat is de sterkste: de
+-- trigger bindt ook `service_role`.
+--
+-- ⚠️ De **bandtoets** blijft wél hier en niet in de trigger, en dat is geen
+-- inconsequentie: die gaat over wie een *gebruiker* mag kiezen. `service_role`
+-- is het systeem en geen gebruiker.
+
+-- ---------------------------------------------------------------------------
+-- Dezelfde band op UPDATE, en niet omdat het vandaag kan
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Wat een gebruiker vandaag tegenhoudt is een kolomgrant uit 0057, niet
+-- deze policy.** `authenticated` mag alleen `body`, `image_url` en `status`
+-- bijwerken, dus `beneficiary_user_id` wisselen ketst af op `permission denied`
+-- — gemeten in de security-ronde van 06-09-2026.
+--
+-- **Dat is erfenis en geen besluit.** De dag dat er een "wissel van getuige"
+-- komt en die kolom aan de grant wordt toegevoegd, is de bandtoets in één regel
+-- weg en wordt er niets rood van. De policy zegt het nu zelf.
+drop policy if exists commitments_update on commitments;
+create policy commitments_update on commitments
+  for update to authenticated
+  using (
+    status = 'set'
+    and exists (
+      select 1 from goals g
+      where g.id = commitments.goal_id and g.owner_id = (select auth.uid())
+    )
+  )
+  with check (
+    status in ('set', 'cancelled')
+    and exists (
+      select 1 from goals g
+      where g.id = commitments.goal_id and g.owner_id = (select auth.uid())
+    )
     and (beneficiary_group_id is null or is_group_member(beneficiary_group_id))
     and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id))
   );

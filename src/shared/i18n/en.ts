@@ -1182,7 +1182,8 @@ export const en: Record<Sleutel, string> = {
   'straf.een_persoon': 'One person',
   'straf.welke_persoon': 'Who benefits?',
   'straf.persoon_uitleg':
-    'This person sees your penalty the moment it falls due, and nothing before that.',
+    'Until your target date passes, this person sees nothing. After that they may read your ' +
+    'penalty. Do tell them yourself, because the app does not message them yet.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 
