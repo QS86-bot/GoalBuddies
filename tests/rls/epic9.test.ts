@@ -134,14 +134,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
     const opTijdGoalId = await maakDoel('COMMITMENT op tijd', addDays(cycle.startDate, 30));
     const teLaatGoalId = await maakDoel('COMMITMENT te laat', addDays(cycle.startDate, 30));
 
-    // ⚠️ Via de admin-client. `zet_streefdatum()` weigert een datum in het
-    //    verleden, en terecht — dat is opbouw en niet wat hier getest wordt.
-    const verzetten = await admin
-      .from('goals')
-      .update({ target_date: addDays(vandaag(), -3) })
-      .eq('id', teLaatGoalId);
-    if (verzetten.error) throw new Error(`streefdatum verzetten: ${verzetten.error.message}`);
-
     const mijlpaal = await alice.db
       .from('milestones')
       .insert({ goal_id: opTijdGoalId, title: 'COMMITMENT mijlpaal', order_index: 1 })
@@ -171,6 +163,23 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
       return rij.data.id;
     }
 
+    const beloningId = await maakCommitment(opTijdGoalId, 'reward', 'COMMITMENT beloning');
+    const strafOpTijdId = await maakCommitment(opTijdGoalId, 'penalty', 'COMMITMENT straf op tijd');
+    const strafTeLaatId = await maakCommitment(teLaatGoalId, 'penalty', 'COMMITMENT straf te laat');
+
+    // ⚠️ **Pas hier, en dat is sinds QS8-293 geen volgorde meer maar de enige
+    //    volgorde die klopt.** `commitments_insert` weigert een straf op een doel
+    //    waarvan de streefdatum al verstreken is, dus terugdateren vóór de straf
+    //    zou de opbouw laten omvallen. Belangrijker: dit ís het echte pad — de
+    //    straf werd vastgelegd toen het doel nog liep, en de datum verstreek
+    //    daarna. Via de admin-client, want `zet_streefdatum()` weigert een datum
+    //    in het verleden en dat is opbouw, niet wat hier getoetst wordt.
+    const verzetten = await admin
+      .from('goals')
+      .update({ target_date: addDays(vandaag(), -3) })
+      .eq('id', teLaatGoalId);
+    if (verzetten.error) throw new Error(`streefdatum verzetten: ${verzetten.error.message}`);
+
     f = {
       alice,
       bob,
@@ -178,9 +187,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
       opTijdGoalId,
       teLaatGoalId,
       milestoneId: mijlpaal.data.id,
-      beloningId: await maakCommitment(opTijdGoalId, 'reward', 'COMMITMENT beloning'),
-      strafOpTijdId: await maakCommitment(opTijdGoalId, 'penalty', 'COMMITMENT straf op tijd'),
-      strafTeLaatId: await maakCommitment(teLaatGoalId, 'penalty', 'COMMITMENT straf te laat'),
+      beloningId,
+      strafOpTijdId,
+      strafTeLaatId,
       cycleStart: cycle.startDate,
     };
   }, SETUP_TIMEOUT);
@@ -555,11 +564,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .single();
         if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
 
-        await adminDb()
-          .from('goals')
-          .update({ target_date: addDays(vandaag(), -2) })
-          .eq('id', doel.data.id);
-
         const straf = await f.alice.db
           .from('commitments')
           .insert({
@@ -572,6 +576,15 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .select('id')
           .single();
         if (straf.error || straf.data === null) throw new Error(`straf: ${straf.error?.message}`);
+
+        // ⚠️ **Terugdateren pas ná de straf**, en dat is sinds de derde grens van
+        //    0169 de enige volgorde die klopt: `commitments_insert` weigert een
+        //    straf op een doel waarvan de deadline al voorbij is. Het is
+        //    bovendien het echte pad — de straf stond er toen het doel nog liep.
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(vandaag(), -2) })
+          .eq('id', doel.data.id);
 
         // Zolang de straf nog `set` is, mag weggooien gewoon: hij is nooit
         // buiten het eigen scherm geweest.
@@ -591,13 +604,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .single();
         if (tweede.error || tweede.data === null) throw new Error(`doel 2: ${tweede.error?.message}`);
 
-        // Zie de opmerking hierboven: terugzetten hoort bij de opstelling en
-        // niet bij wat deze test toetst.
-        await adminDb()
-          .from('goals')
-          .update({ target_date: addDays(vandaag(), -2) })
-          .eq('id', tweede.data.id);
-
         const straf2 = await f.alice.db.from('commitments').insert({
           goal_id: tweede.data.id,
           type: 'penalty',
@@ -606,6 +612,12 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           confirmed_at: now().toISOString(),
         });
         if (straf2.error) throw new Error(`straf 2: ${straf2.error.message}`);
+
+        // Zie de opmerking hierboven: eerst de straf, dán terugdateren.
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(vandaag(), -2) })
+          .eq('id', tweede.data.id);
 
         await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,

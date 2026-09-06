@@ -1,11 +1,11 @@
--- 0169_een_plafond_op_straffen_en_een_ondergrens_op_de_streefdatum.sql — één openstaand commitment per soort per doel, en een streefdatum die niet in het verleden begint (QS8-293)
+-- 0169_een_plafond_op_straffen_en_een_ondergrens_op_de_streefdatum.sql — één openstaand commitment per soort per doel, een streefdatum die niet in het verleden begint, en geen straf op een verstreken deadline (QS8-293)
 --
 -- ROLLBACK-PAD:
 --   drop index if exists commitments_een_open_per_soort;
 --   drop function if exists mijn_datum();
---   plus `create or replace` op `goals_insert`, `zet_streefdatum()` en
---   `vraag_deadline_verschuiving()` zonder de datumgrens — de vorige definities
---   staan in 0001, 0032 en 0110.
+--   plus `create or replace` op `goals_insert`, `commitments_insert`,
+--   `zet_streefdatum()` en `vraag_deadline_verschuiving()` zonder de datumgrens
+--   — de vorige definities staan in 0001, 0032, 0110 en 0168.
 --   ⚠️ De index droppen kan altijd; de grens weghalen ook. Er gaat bij een
 --   terugzet niets verloren, want deze migratie voegt alleen weigeringen toe.
 --
@@ -31,8 +31,15 @@
 -- klasse — commitments stonden alleen niet in die opsomming.
 --
 -- ---------------------------------------------------------------------------
--- Twee grenzen, en samen sluiten ze de route
+-- Drie grenzen, en de derde is er pas na de meting bijgekomen
 -- ---------------------------------------------------------------------------
+--
+-- ⚠️ Hier stond eerst "twee grenzen, en samen sluiten ze de route". Dat was
+-- niet waar, en de security-ronde op deze branch heeft het aangetoond: grens 2
+-- bewaakt het aanmaken van een doel en niet het aanhaken van een straf. De
+-- derde grens onderaan dit bestand is de reparatie. De les hoort hier te
+-- blijven staan: **twee grenzen die elk hun eigen onderdeel bewaken, bewijzen
+-- niets over het geheel dat ertussen zit.**
 --
 -- **1. Eén openstaand commitment per soort per doel.** Het scherm nam dat al
 -- aan: `app/doel/[id].tsx` zoekt de straf met `.find(c => c.type === 'penalty')`
@@ -298,3 +305,66 @@ begin
   return jsonb_build_object('ok', true, 'request_id', nieuw);
 end;
 $function$;
+
+-- ---------------------------------------------------------------------------
+-- 3. Een straf hangt niet aan een doel waarvan de deadline al verstreken is
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Dit is de naad, en hij lekte.** Grens 2 hierboven bewaakt het *aanmaken*
+--    van een doel. Grens 1 bewaakt het *aantal* straffen. Allebei correct, en
+--    samen dekten ze de aanval niet af — want een straf is een tweede handeling
+--    op een later moment, en tussen die twee handelingen kan de datum verstrijken.
+--
+--    Gemeten als gewone `authenticated`-gebruiker, tegen de draaiende database
+--    met grens 1 en 2 er al in:
+--
+--      A doel met target_date = vandaag        -> aangemaakt als gebruiker | 1
+--      B straf op een verstreken deadline      -> aangemaakt als gebruiker | 1
+--      C maak_straffen_verschuldigd(...)       -> 1
+--      D status                                -> due
+--
+--    Eén dag wachten en de route uit de kop van deze migratie ligt weer open:
+--    twintig doelen met de datum van vandaag, morgen bij elk een straf met
+--    dezelfde persoon als getuige. Dat is regel 18 vraag 1 in zijn zuiverste
+--    vorm — twee grenzen die elk hun eigen onderdeel bewaken, met de belofte
+--    ertussenin.
+--
+-- ⚠️ **Alleen `penalty`.** Een beloning geeft niemand leesrecht en legt niemand
+--    iets op; hem aan een verstreken doel hangen is hooguit zinloos. Domeinregel
+--    11 gaat over de straf, en dit is de grens die daarbij hoort.
+--
+-- ⚠️ **In de policy en niet in `bewaak_begunstigde()`**, en dat is dezelfde
+--    afweging als bij de bandtoets een stuk hoger in dit bestand: de grens gaat
+--    over wat een *gebruiker* zelf mag vastleggen, en hij hangt aan
+--    `mijn_datum()` — dat is `auth.uid()`, en die is leeg in de rollover. In de
+--    trigger zou hij `service_role` stilzwijgend blokkeren of, met de
+--    eigenaarsdatum erin, een tweede kopie van een regel worden die dan niet
+--    los te ijken is. Eén plek, en de ijking kan erbij.
+--
+-- ⚠️ **Wat hiermee niet dicht is, en dat staat ook in `ENGINEER-REVIEW.md`:**
+--    `profiles.tz` is van de gebruiker zelf, dus `mijn_datum()` is met een
+--    geldige zone (0119 toetst tegen `pg_timezone_names`) één dag te verzetten —
+--    UTC-12 tot UTC+14 spant precies `current_date - 1` tot `current_date + 1`.
+--    Een absolute vloer `>= current_date - 1` erbij zou dus nóóit binden en is
+--    daarom niet toegevoegd: dat is een conjunct die er streng uitziet en niets
+--    weigert. De speling is één dag en inherent aan tijdzones; de vector die
+--    overblijft loopt via het aantal doelen, en dáár zit geen grens op.
+drop policy if exists commitments_insert on commitments;
+create policy commitments_insert on commitments
+  for insert to authenticated
+  with check (
+    exists (
+      select 1 from goals g
+      where g.id = commitments.goal_id and g.owner_id = (select auth.uid())
+    )
+    and status = 'set'
+    and (beneficiary_group_id is null or is_group_member(beneficiary_group_id))
+    and (beneficiary_user_id is null or shares_group_with_user(beneficiary_user_id))
+    and (
+      type <> 'penalty'
+      or exists (
+        select 1 from goals g
+        where g.id = commitments.goal_id and g.target_date >= mijn_datum()
+      )
+    )
+  );

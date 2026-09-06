@@ -31,7 +31,33 @@ spam-vector is. Dit is dezelfde klasse; commitments stonden alleen niet in die
 opsomming. **De regel benoemt drie plekken, niet drie soorten** — en dat is
 precies hoe de vierde erbuiten valt.
 
-## 3. Twee grenzen, en samen sluiten ze de route
+## 3. Drie grenzen — en de eerste twee sloten de route níét
+
+⚠️ **Hier stond "twee grenzen, en samen sluiten ze de route". Dat was fout, en
+het is de belangrijkste les van dit issue.** De security-ronde op deze branch
+mat het na met beide grenzen er al in, als gewone `authenticated`-gebruiker:
+
+```
+A doel met deadline vandaag        -> aangemaakt als gebruiker | 1
+B straf op een verstreken deadline -> aangemaakt als gebruiker | 1
+C maak_straffen_verschuldigd(...)  -> 1
+D status                           -> due
+```
+
+Grens 3b bewaakt het **aanmaken van een doel**. Grens 3a bewaakt het **aantal**
+straffen. Allebei correct, allebei getest, allebei groen — en de belofte zit
+ertússen, want een straf is een tweede handeling op een later moment, en tussen
+die twee handelingen kan de datum verstrijken. Eén dag wachten was genoeg om de
+hele route uit §1 weer open te leggen: twintig doelen met de datum van vandaag,
+morgen bij elk een straf met dezelfde persoon als getuige.
+
+Dat is onwrikbare regel 18 vraag 1 in zijn zuiverste vorm — *waar knopen twee
+correcte onderdelen aan elkaar?* — en ik had hem bij het schrijven van §7
+beantwoord met de naad tussen `goals_insert` en de rollover, niet met de naad
+tussen het doel en de straf. **Het onderdeel dat ontbrak, was het onderdeel dat
+er niet was.**
+
+§10 hieronder is de reparatie.
 
 ### 3a. Eén openstaand commitment per soort per doel
 
@@ -151,3 +177,74 @@ maken hem nu vooruit aan en zetten hem terug via `adminDb()`.
 ⚠️ Dat is dezelfde omweg die epic13 al gebruikte voor `weekly_goals.status`, en
 met dezelfde reden: **de omweg hoort in de ópbouw en niet in wat getest wordt.**
 Geen van die drie tests gaat over het aanmaken van een doel.
+
+
+## 10. De derde grens — een straf hangt niet aan een verstreken deadline
+
+```sql
+and (
+  type <> 'penalty'
+  or exists (
+    select 1 from goals g
+    where g.id = commitments.goal_id and g.target_date >= mijn_datum()
+  )
+)
+```
+
+**Alleen `penalty`.** Een beloning geeft niemand leesrecht en legt niemand iets
+op; hem aan een afgelopen doel hangen is hooguit zinloos. Domeinregel 11 gaat
+over de straf en dit is de grens die daarbij hoort. Er staat een must-allow op
+die soortgrens: haal `type <> 'penalty'` weg en *"een beloning op datzelfde doel
+mag wél"* wordt rood.
+
+**In de policy en niet in `bewaak_begunstigde()`.** Dezelfde afweging als bij de
+bandtoets van 0168: de grens gaat over wat een *gebruiker* zelf mag vastleggen,
+en hij hangt aan `mijn_datum()` — dat is `auth.uid()`, en die is leeg in de
+rollover. In de trigger zou hij `service_role` stilzwijgend blokkeren, of met de
+eigenaarsdatum erin een tweede kopie worden van een regel die dan niet los te
+ijken is. Dat is precies de val waar 0168 al een keer in liep.
+
+### De ijking, per grendel
+
+| Mutatie | Rood | Groen |
+|---|---|---|
+| conjunct helemaal weg | *een straf op een doel waarvan de deadline al voorbij is, kan niet* | 9 |
+| `type <> 'penalty'` weg (geldt dan ook voor beloningen) | *een beloning op datzelfde doel mag wél* | 9 |
+| `>=` wordt `>` | *op een doel dat vandaag afloopt mag een straf nog wél* | 9 |
+
+Drie mutaties, drie verschillende rode tests, elk de test die zijn eigen belofte
+noemt. Geen enkele mutatie liet iets anders rood worden — dus geen van deze drie
+gevallen wordt door een éérdere grendel afgevangen.
+
+### Wat hiermee niet dicht is
+
+**(a) De tijdzone is van de gebruiker zelf.** `mijn_datum()` rekent in
+`profiles.tz`, en dat is een kolom die de gebruiker schrijft. 0119 toetst hem
+tegen `pg_timezone_names`, dus het is altijd een échte zone — en dat begrenst
+het meteen: van UTC-12 tot UTC+14 spant de lokale datum precies `current_date -
+1` tot `current_date + 1`. Eén dag speling, inherent aan tijdzones.
+
+⚠️ **Een absolute vloer `and target_date >= current_date - 1` erbij is
+overwogen en bewust níét toegevoegd.** Hij zou nooit binden: `current_date - 1`
+is exact de ondergrens die een geldige zone al oplevert. Dat is een conjunct die
+streng oogt en niets weigert, en die is erger dan geen conjunct — de volgende
+lezer denkt dat daar iets bewaakt wordt.
+
+**(b) Het aantal doelen is nergens begrensd.** Met één straf per doel loopt de
+spamvector daarlangs. Die grens raakt de vraag óf een getuige mag weigeren, en
+dat is een productbeslissing over een commitment device — zie §6 en de rij in
+`docs/ENGINEER-REVIEW.md`, die daarom op **Middel** staat en niet op Laag.
+
+## 11. Wat er in de opstellingen veranderde door de derde grens
+
+Op drie plekken in `tests/rls/epic9.test.ts` werd een doel teruggedateerd
+**vóór** er een straf op ging — één in de opbouw van de suite en twee in de test
+over het weggooien van een doel. Dat kan sinds de derde grens niet meer, en de reparatie is geen
+omweg maar de juiste volgorde: **eerst de straf, dán de datum laten
+verstrijken.** Dat is ook het echte pad — de straf werd vastgelegd toen het doel
+nog liep. Een opstelling die de handelingen in de verkeerde volgorde deed, was
+al een opstelling die een situatie bouwde die in productie niet kan ontstaan.
+
+⚠️ Dat is een derde soort winst van deze grens, naast de twee in §1: hij maakt
+een onmogelijke toestand ook in de tests onmogelijk, en dat is precies waar een
+fixture stilletjes gaat liegen over wat hij bewijst.
