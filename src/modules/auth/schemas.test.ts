@@ -39,6 +39,19 @@ describe('wachtwoord', () => {
     expect(wachtwoordSchema.safeParse('a'.repeat(WACHTWOORD_MINIMUM)).success).toBe(true);
   });
 
+  it('telt codepunten en geen UTF-16-eenheden', () => {
+    // ⚠️ Dit was het gat. Met een kale `.min(8)` telde de grens UTF-16-eenheden,
+    //    en `'😀😀😀😀'` is vier tekens in acht eenheden — die kwam er moeiteloos
+    //    door. De ondergrens was in codepunten dus vier en niet acht, en QS8-216
+    //    verlaagde hem daarmee niet van 12 naar 8 maar van 6 naar 4.
+    expect(wachtwoordSchema.safeParse('😀'.repeat(WACHTWOORD_MINIMUM - 1)).success).toBe(false);
+    expect(wachtwoordSchema.safeParse('😀'.repeat(WACHTWOORD_MINIMUM)).success).toBe(true);
+
+    // Een samengesteld gezin is één grafeem maar zeven codepunten — en zeven is
+    // te kort. `telTekens()` telt codepunten, want dat is wat de database telt.
+    expect(wachtwoordSchema.safeParse('👨‍👩‍👧‍👦').success).toBe(false);
+  });
+
   it('kapt niet stilzwijgend af boven de bcrypt-grens', () => {
     // bcrypt negeert alles na 72 bytes. Zonder deze grens denkt iemand met een
     // wachtwoord van 100 tekens dat die laatste 28 meetellen.
@@ -58,19 +71,32 @@ describe('het getal in de tekst volgt de constante', () => {
   /**
    * ⚠️ **Regel 18, vraag 1: hier knopen twee correcte onderdelen aan elkaar.**
    *    Het schema weigert op `WACHTWOORD_MINIMUM`, en vier catalogusregels
-   *    noemen dat getal in woorden. Tot vandaag hield niets die twee bij
+   *    noemen dat getal in woorden. Tot QS8-216 hield niets die twee bij
    *    elkaar: wie de constante verlaagt en de teksten laat staan, krijgt een
    *    app die om twaalf tekens vraagt en er acht accepteert. Beide onderdelen
    *    kloppen dan, de belofte niet — en `wachtwoord:controle` ziet het niet,
    *    want die kijkt naar de server en niet naar de catalogus.
    *
-   *    QS8-216 wás precies die wijziging, en dit is de test die hem bewaakt.
+   * ⚠️ **De eerste versie van deze test was zelf vraag 3.** Hij matchte
+   *    `/\d+/g` over de hele zin en toetste of `8` er ergens in stond. Daarmee
+   *    bleef *"Minstens 12 tekens. Een zin van 8 woorden werkt prima."* groen
+   *    terwijl de gebruiker twaalf las — de belofte gebroken, de test tevreden.
+   *    Met een probe aangetoond, niet beredeneerd. Nu wordt het getal
+   *    **achter het woord** gevangen en niet ergens in de zin gezocht.
    *
    * ⚠️ **Vraag 4: dit grijpt naar de sleutel en niet naar het scherm.**
    *    `aanmelden.wachtwoord_hint` staat vandaag in `app/aanmelden.tsx`.
-   *    Verhuist die hint morgen naar de onboarding, dan verhuist deze test
-   *    mee — hij toetst de catalogus, die de bron is.
+   *    Verhuist die hint morgen naar de onboarding, dan verhuist deze test mee.
    */
+  const ONDERGRENS = /minstens (\d+) tekens|at least (\d+) characters/i;
+
+  /** Het getal dat de zin als ondergrens nóemt, of null als hij er geen noemt. */
+  function genoemdeOndergrens(tekst: string): number | null {
+    const treffer = ONDERGRENS.exec(tekst);
+    if (treffer === null) return null;
+    return Number(treffer[1] ?? treffer[2]);
+  }
+
   const sleutels = ['validatie.wachtwoord_kort', 'aanmelden.wachtwoord_hint'] as const;
   const catalogi = [
     ['nl', nl],
@@ -80,10 +106,28 @@ describe('het getal in de tekst volgt de constante', () => {
   for (const [taalcode, catalogus] of catalogi) {
     for (const sleutel of sleutels) {
       it(`${taalcode}: ${sleutel} noemt ${WACHTWOORD_MINIMUM}`, () => {
-        const getallen = catalogus[sleutel].match(/\d+/g) ?? [];
-        expect(getallen).toContain(String(WACHTWOORD_MINIMUM));
+        expect(genoemdeOndergrens(catalogus[sleutel])).toBe(WACHTWOORD_MINIMUM);
       });
     }
+  }
+
+  /**
+   * ⚠️ **De lijst hierboven is met de hand bijgehouden, en dat is precies de
+   *    vorm die stil verkeerd gaat.** Komt er een catalogusregel bij die óók
+   *    een ondergrens in tekens noemt, dan dekt geen enkele test hem en wordt
+   *    niemand rood. Deze twee toetsen dwingen af dat de lijst compleet blijft:
+   *    is er een vijfde regel met zo'n getal, dan gaan ze rood en beslist
+   *    iemand of hij erbij hoort — in plaats van dat het toeval blijft.
+   */
+  for (const [taalcode, catalogus] of catalogi) {
+    it(`${taalcode}: geen andere sleutel noemt een ondergrens in tekens`, () => {
+      const gevonden = Object.entries(catalogus)
+        .filter(([, tekst]) => genoemdeOndergrens(tekst) !== null)
+        .map(([sleutel]) => sleutel)
+        .sort();
+
+      expect(gevonden).toEqual([...sleutels].sort());
+    });
   }
 });
 
