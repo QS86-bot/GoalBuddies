@@ -692,6 +692,9 @@ export const en: Record<Sleutel, string> = {
   'coach.plan_zonder_weekdoel':
     'Your goal and steps are saved. Only the weekly goal is missing. Pick what you will do this week.',
   'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow. In the meantime you can add milestones yourself.',
+  'coach.budget_bereikt':
+    'The Goal Coach has done enough thinking for you today. It resets tomorrow, and ' +
+    'in the meantime you can add milestones yourself.',
   'coach.eyebrow': 'SIX QUESTIONS',
   'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you, but skipping works fine.',
   'coach.alleen_voor_jou': 'Your answers are only for you and the Goal Coach. Your group never sees them.',

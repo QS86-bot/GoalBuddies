@@ -171,6 +171,13 @@ function aanvraagMelding(reden: string | undefined, limiet: number | undefined):
       //    `t()`-aanroepen eronder — en `tekst:controle` zag hem niet, want een
       //    `return` van een zin viel buiten élke heuristiek. Zie QS8-115.
       return t('coach.daglimiet', { limiet: limiet ?? 10 });
+    // ⚠️ **Een eigen melding en niet de generieke** (QS8-296). Dit is de tweede
+    //    grens op hetzelfde quotum: `quota_reached` gaat over hoe vaak je de
+    //    coach gevraagd hebt, dit over hoeveel rekenwerk dat gekost heeft. Wie
+    //    hier komt heeft niets fout gedaan en kan het morgen weer proberen —
+    //    dezelfde uitweg, een andere reden, en dus een andere zin.
+    case 'budget_bereikt':
+      return t('coach.budget_bereikt');
     case 'not_your_goal':
       return t('coach.niet_jouw_doel');
     // ⚠️ Een eigen melding en niet de generieke, want dit is het enige geval dat

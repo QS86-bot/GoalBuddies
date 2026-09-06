@@ -990,6 +990,17 @@ export const nl = {
   'coach.plan_zonder_weekdoel':
     'Je doel en je stappen staan. Alleen het weekdoel is niet opgeslagen. Kies zelf wat je deze week doet.',
   'coach.daglimiet': 'Je hebt vandaag al {limiet} keer de Doelcoach gebruikt. Morgen kan het weer. Je kunt intussen zelf mijlpalen toevoegen.',
+  // ⚠️ **Geen bedrag in de tekst** (QS8-296). Het dagbudget is een rem op de
+  //    rekening en geen prijs die de gebruiker betaalt; een bedrag noemen maakt
+  //    van een technische grens een suggestie dat er afgerekend wordt. Het
+  //    getal staat in `ai_dag_budget_cent()` en komt in het antwoord mee, voor
+  //    wie het nodig heeft.
+  //
+  // ⚠️ En dezelfde uitweg als bij de daglimiet: zelf mijlpalen toevoegen werkt
+  //    gewoon. Een melding zonder uitweg is een doodlopende weg.
+  'coach.budget_bereikt':
+    'De Doelcoach heeft vandaag genoeg gerekend voor jou. Morgen kan het weer, en ' +
+    'intussen kun je zelf mijlpalen toevoegen.',
   'coach.eyebrow': 'ZES VRAGEN',
   'coach.zes_vragen': 'Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de mijlpalen bij jou passen, maar overslaan werkt gewoon.',
   'coach.alleen_voor_jou': 'Je antwoorden zijn alleen voor jou en de Doelcoach. Je groep ziet ze nooit.',

@@ -38,6 +38,8 @@ function uitkomst(data: unknown): {
   hergebruikt?: boolean;
   limiet?: number;
   gebruikt?: number;
+  budget_cent?: number;
+  besteed_cent?: number;
 } {
   return (data ?? {}) as Record<string, never>;
 }
@@ -243,6 +245,143 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 3 — de poort voor AI-jobs', () => {
 
         expect(uitkomst(vanBob.data).gebruikt).toBeGreaterThanOrEqual(10);
         expect(uitkomst(vanAlice.data).gebruikt).toBeLessThan(10);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('het dagquotum ziet het verschil tussen een grote en een kleine job', () => {
+    /**
+     * ⚠️ **De belofte is niet "er is een budget" maar "een dure job eet meer van
+     *    het quotum dan een goedkope".** Tot QS8-296 telde `vraag_ai_job` alleen
+     *    rijen: tien maximale prompts en tien piepkleine kostten evenveel van je
+     *    quotum, terwijl de rekening bij Anthropic op de tokens loopt.
+     *
+     * ⚠️ **De kosten worden hier met de hand geboekt, en dat is geen omweg.**
+     *    `cost_cents` wordt in productie door de Edge Function geschreven als
+     *    een job klaar is; die draait hier niet. Wat deze tests toetsen is de
+     *    póórt, en die leest alleen de kolom — precies zoals bij een echte job.
+     */
+    async function boekKosten(userId: string, cent: number): Promise<void> {
+      const uit = await adminDb()
+        .from('ai_jobs')
+        .update({ cost_cents: cent, status: 'done' })
+        .eq('user_id', userId);
+      if (uit.error) throw new Error(`kosten boeken: ${uit.error.message}`);
+    }
+
+    async function ruimJobsOp(userId: string): Promise<void> {
+      const uit = await adminDb().from('ai_jobs').delete().eq('user_id', userId);
+      if (uit.error) throw new Error(`opruimen: ${uit.error.message}`);
+    }
+
+    it(
+      'een dure job zet de poort dicht terwijl de telling nog ruimte heeft',
+      async () => {
+        // ⚠️ Dit is het geval dat vóór QS8-296 niet bestond: één job, dus negen
+        //    van de tien nog vrij, en tóch geen toegang meer.
+        await ruimJobsOp(f.alice.id);
+
+        const eerste = await f.alice.db.rpc('vraag_ai_job', {
+          p_kind: 'milestones',
+          p_goal_id: f.aliceGoal,
+          p_input: { zin: 'QUOTUM een dure job' },
+        });
+        expect(uitkomst(eerste.data).ok, JSON.stringify(eerste.data)).toBe(true);
+
+        await boekKosten(f.alice.id, 120);
+
+        const tweede = await f.alice.db.rpc('vraag_ai_job', {
+          p_kind: 'milestones',
+          p_goal_id: f.aliceGoal,
+          p_input: { zin: 'QUOTUM de volgende' },
+        });
+
+        expect(uitkomst(tweede.data).ok).toBe(false);
+        expect(uitkomst(tweede.data).reason).toBe('budget_bereikt');
+
+        // En de telling had nog ruimte zat — dáár zat het gat.
+        const verbruik = await f.alice.db.rpc('ai_verbruik');
+        expect(uitkomst(verbruik.data).gebruikt).toBeLessThan(10);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'goedkope jobs komen er gewoon doorheen',
+      async () => {
+        // ⚠️ De must-allow. Zonder haar is "het budget is bereikt" groen op
+        //    precies dezelfde manier als een budget van nul, en dan is de
+        //    Doelcoach stuk in plaats van begrensd.
+        await ruimJobsOp(f.alice.id);
+
+        const eerste = await f.alice.db.rpc('vraag_ai_job', {
+          p_kind: 'milestones',
+          p_goal_id: f.aliceGoal,
+          p_input: { zin: 'QUOTUM goedkoop een' },
+        });
+        expect(uitkomst(eerste.data).ok).toBe(true);
+
+        await boekKosten(f.alice.id, 1);
+
+        const tweede = await f.alice.db.rpc('vraag_ai_job', {
+          p_kind: 'milestones',
+          p_goal_id: f.aliceGoal,
+          p_input: { zin: 'QUOTUM goedkoop twee' },
+        });
+        expect(uitkomst(tweede.data).ok, JSON.stringify(tweede.data)).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een job die nog draait telt niet als nul maar houdt de telling bezet',
+      async () => {
+        // ⚠️⚠️ **De naad van dit issue.** `cost_cents` bestaat pas als een job
+        //    klaar is, en toelating gebeurt als hij begint. Een budget dat
+        //    alleen `sum(cost_cents)` optelt is dus te racen — vuur er tien af
+        //    en ze worden allemaal toegelaten, want op dat moment heeft nog
+        //    niets iets gekost.
+        //
+        //    Wat dat gat dekt is de telling van tien, en dáárom blijft die
+        //    staan. Deze test legt vast dat de twee grenzen elkaar dekken: met
+        //    tien lopende jobs zonder kosten is `besteed_cent` nul én is de
+        //    poort dicht.
+        await ruimJobsOp(f.alice.id);
+
+        for (let i = 0; i < 10; i += 1) {
+          const uit = await f.alice.db.rpc('vraag_ai_job', {
+            p_kind: 'milestones',
+            p_goal_id: f.aliceGoal,
+            p_input: { zin: `QUOTUM lopend ${i}` },
+          });
+          expect(uitkomst(uit.data).ok, `job ${i}: ${JSON.stringify(uit.data)}`).toBe(true);
+        }
+
+        const verbruik = await f.alice.db.rpc('ai_verbruik');
+        expect(uitkomst(verbruik.data).besteed_cent).toBe(0);
+        expect(uitkomst(verbruik.data).gebruikt).toBe(10);
+
+        const elfde = await f.alice.db.rpc('vraag_ai_job', {
+          p_kind: 'milestones',
+          p_goal_id: f.aliceGoal,
+          p_input: { zin: 'QUOTUM lopend elf' },
+        });
+        expect(uitkomst(elfde.data).ok).toBe(false);
+        expect(uitkomst(elfde.data).reason).toBe('quota_reached');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'het verbruik noemt het budget en wat er van over is',
+      async () => {
+        await ruimJobsOp(f.alice.id);
+        const verbruik = await f.alice.db.rpc('ai_verbruik');
+
+        expect(uitkomst(verbruik.data).budget_cent).toBe(100);
+        expect(uitkomst(verbruik.data).besteed_cent).toBe(0);
       },
       TEST_TIMEOUT,
     );
