@@ -180,6 +180,12 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'achteraan, open voor `anon`, of open voor `authenticated` zonder de ' +
     'aanroeper te toetsen (0106, 0114, 0156, 0167). De vijfde tak meldt een ' +
     'uitzondering in het eigen register die geen bezwaar meer dekt.',
+  goal_events_bewaking:
+    'De allowlist van `goal_events.event_type` naast de vier die tegen ' +
+    'domeinregel 7 gewogen zijn — oppervlak 24 volgt het doel en niet de groep, ' +
+    'dus een vijfde type verbreedt wat elke gekoppelde groep leest (0172). ' +
+    'Meldt ook als de CHECK niet meer de verwachte vorm heeft: onherkenbaar ' +
+    'moet een alarm zijn en geen stilte.',
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',
