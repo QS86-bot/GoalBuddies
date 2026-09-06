@@ -81,12 +81,17 @@ export default function Weekafsluiting() {
 
   /**
    * ⚠️ **De uitgangen die niet van de app zijn** — verversen, het tabblad
-   *    sluiten, de hardwareknop op Android. De knop hieronder was sinds EPIC 7
-   *    gedekt, deze niet, en juist vraag 2 is de enige plek in de app waar
+   *    sluiten, de hardwareknop op Android, en sinds 04-09-2026 ook de terugknop
+   *    van de browser en het terugveeggebaar op iOS. De knop hieronder was sinds
+   *    EPIC 7 gedekt, deze niet, en juist vraag 2 is de enige plek in de app waar
    *    iemand zijn eigen tegenslag opschrijft. Zie
-   *    `docs/decisions/2026-08-27-de-uitgangen-van-de-weekafsluiting.md`.
+   *    `docs/decisions/2026-08-27-de-uitgangen-van-de-weekafsluiting.md` en
+   *    `docs/decisions/2026-09-04-de-terugknop-van-de-browser.md`.
+   *
+   * ⚠️ **`verlaat` is geen gemak maar de nooduitgang.** De wacht houdt nu ook een
+   *    navigatie bínnen de app tegen, dus "Toch weg" moet erdoorheen.
    */
-  useVertrekwacht(vuil, () => setTegengehouden(true));
+  const verlaat = useVertrekwacht(vuil, () => setTegengehouden(true));
 
   useEffect(() => {
     if (!id) return;
@@ -241,20 +246,25 @@ export default function Weekafsluiting() {
         ⚠️ Weg navigeren met onopgeslagen tekst vraagt eerst een tweede tik. Deze knop
            dekt de uitgang binnen de app; `useVertrekwacht` hierboven dekt sinds
            27-08-2026 het verversen, het sluiten van het tabblad en de hardwareknop
-           op Android. De terugknop van de browser blijft over — expo-router 57
-           exporteert geen manier om die tegen te houden, en dat staat als bevinding
-           in `docs/ENGINEER-REVIEW.md`.
+           op Android, en sinds 04-09-2026 ook de terugknop van de browser en het
+           terugveeggebaar op iOS.
+
+        ⚠️ **Allebei de knoppen gaan door `verlaat()` en niet rechtstreeks naar
+           `router`.** Sinds de routerwacht erbij zit, is weggaan binnen de app zelf
+           ook een navigatie die tegengehouden wordt — een kale `router.replace()`
+           hier zou de wacht zijn eigen nooduitgang laten dichthouden. Zie
+           `vertrekstap()` in `src/shared/ui/vertrekwacht.ts`.
       */}
       {vuil ? (
         <>
           <Caption danger>{t('weekafsluiting.niet_gedeeld')}</Caption>
           {tegengehouden ? <Caption>{t('weekafsluiting.terugknop_tegengehouden')}</Caption> : null}
-          <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
+          <Button variant="stil" block onPress={() => verlaat(() => router.replace(`/groep/${id}`))}>
             {t('weekafsluiting.toch_weg')}
           </Button>
         </>
       ) : (
-        <Button variant="stil" block onPress={() => router.replace(`/groep/${id}`)}>
+        <Button variant="stil" block onPress={() => verlaat(() => router.replace(`/groep/${id}`))}>
           {t('weekafsluiting.terug')}
         </Button>
       )}

@@ -11,11 +11,16 @@ export {
 export {
   fetchCommitments,
   fetchCommitmentSpoor,
+  fetchGetuigenissen,
+  fetchMogelijkeBegunstigden,
   trekIn,
   zetBeloning,
   zetStraf,
+  type Begunstigde,
   type Commitment,
   type CommitmentGebeurtenis,
+  type Getuigenis,
+  type MogelijkeBegunstigde,
 } from './api';
 
 export {

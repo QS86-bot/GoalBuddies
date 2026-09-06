@@ -30,6 +30,8 @@
  */
 
 import { execFileSync } from 'node:child_process';
+
+import { psqlArgumenten } from './psql.mjs';
 import process from 'node:process';
 
 import { config } from 'dotenv';
@@ -83,9 +85,7 @@ async function uitProductie() {
 }
 
 function uitLokaal() {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', 'select * from functie_vingerafdrukken();'];
-  if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
+  const args = psqlArgumenten('select * from functie_vingerafdrukken();');
 
   const uitvoer = execFileSync('psql', args, { encoding: 'utf8' });
 

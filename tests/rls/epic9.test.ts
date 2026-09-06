@@ -420,7 +420,11 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         if (poging.error) throw new Error(`afronden: ${poging.error.message}`);
 
         expect(uitkomst(poging.data).ok).toBe(false);
-        expect(uitkomst(poging.data).reason).toBe('open_milestones');
+// ⚠️ Dit rood is een fóutreden en geen effectbewijs: bij een weggehaalde
+      //    eigenaarspoort vangt `open_milestones` het geval af en komt de
+      //    aanroeper nooit bij de `update`. De effectdekking van `rond_doel_af`
+      //    staat sinds QS8-283 in `tests/rls/definerpoorten.test.ts`.
+              expect(uitkomst(poging.data).reason).toBe('open_milestones');
         expect(uitkomst(poging.data).aantal).toBe(1);
       },
       TEST_TIMEOUT,

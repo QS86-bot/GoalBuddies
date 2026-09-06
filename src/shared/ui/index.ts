@@ -13,8 +13,8 @@
 
 export { AsyncView } from './AsyncView';
 export { laad, terugvalZetters, useAsync, useAsyncMetTerugval } from './useAsync';
-export { bindVertrekwacht } from './vertrekwacht';
-export type { Terugknop, Venster, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
+export { bindVertrekwacht, vertrekstap } from './vertrekwacht';
+export type { Terugknop, Venster, Vertrekstap, Vertrekwacht, VertrekGebeurtenis } from './vertrekwacht';
 export { useVertrekwacht } from './useVertrekwacht';
 export { TeBeoordelenKaart } from './TeBeoordelenKaart';
 export {
@@ -46,6 +46,7 @@ export { Meldpaneel, type MeldpaneelProps } from './Meldpaneel';
 export { MemberRow } from './MemberRow';
 export { MilestoneProgress } from './MilestoneProgress';
 export { RisicoBadge } from './RisicoBadge';
+export { BovenrandAlVerrekend, useBovenrandAlVerrekend, veiligeBovenrand } from './bovenrand';
 export { Screen, useTerug, type Terug } from './Screen';
 export { StreakCounter } from './StreakCounter';
 export { Weekpas } from './Weekpas';

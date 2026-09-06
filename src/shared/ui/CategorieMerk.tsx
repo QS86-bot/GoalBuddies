@@ -17,14 +17,20 @@ import { Caption } from './Text';
  *
  * ⚠️ **Het pictogram is decoratief voor een schermlezer, het label is de
  *    informatie.** Vandaar `accessibilityElementsHidden` op het icoon: wie de
- *    app beluistert, hoort "Sport en beweging" en niet "hardlopen, Sport en
- *    beweging". De kleur draagt hier bovendien nooit iets dat niet ook in tekst
+ *    app beluistert, hoort "Sport" en niet "hardlopen, Sport". De kleur draagt hier bovendien nooit iets dat niet ook in tekst
  *    staat — de familie is een groepering, geen status.
  *
- * ⚠️ **Drie gebieden hebben geen kleur en dat is zichtbaar met opzet.**
- *    `business`, `study` en `other` vallen buiten de drie families van A55; ze
- *    krijgen het pictogram in de neutrale kleur. Een vierde familiekleur
- *    verzinnen is precies wat `tokens.ts` verbiedt.
+ * ⚠️ **Sinds besluit A58 heeft élk gebied een kleur.** Hier stond dat
+ *    `business`, `study` en `other` er geen hadden — dat was zo tot 04-09-2026,
+ *    toen die drie een restgroep vormden die overbleef nadat A55 drie kleuren
+ *    had gevonden. Het zijn nu drie families van vier en de restgroep bestaat
+ *    niet meer.
+ *
+ * ⚠️ **De neutrale kleur blijft de terugval**, en die is niet dood hout:
+ *    `categoriemerk()` geeft `familie: null` voor een waarde die deze build niet
+ *    kent, en `Doel.category` is in de gegenereerde typen een `string`. Een
+ *    terugval op een wíllekeurige familie zou zo'n doel in de verkeerde kleur
+ *    zetten.
  */
 
 interface Props {

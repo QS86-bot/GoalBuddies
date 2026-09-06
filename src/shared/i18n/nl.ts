@@ -36,6 +36,14 @@ export const nl = {
   'systeembericht.member_joined': '{naam} doet mee.',
   'systeembericht.completion_pending': '{naam} heeft een week afgerond en wacht op bevestiging.',
   'systeembericht.completion_approved': '{actor} bevestigde de week van {naam}.',
+  // ⚠️ **De samengevouwen varianten — QS8-198.** Ze tonen niets extra's: dezelfde
+  //    personen en dezelfde gebeurtenis, op één regel in plaats van drie. Wat ze
+  //    níét mogen krijgen is een titel, een notitie of een niveau; dat geldt hier
+  //    net zo hard als voor de losse zinnen (beslisdocument 002 §3).
+  'systeembericht.member_joined_gevouwen': '{namen} doen mee.',
+  'systeembericht.completion_pending_gevouwen':
+    '{namen} hebben een week afgerond en wachten op bevestiging.',
+  'systeembericht.completion_approved_gevouwen': '{actor} bevestigde de weken van {namen}.',
   'systeembericht.milestone_done': '{naam} heeft een mijlpaal gehaald.',
   'systeembericht.goal_completed': '{naam} heeft een doel afgerond.',
   'systeembericht.commitment_unlocked': '{naam} heeft een beloning vrijgespeeld.',
@@ -89,6 +97,8 @@ export const nl = {
 
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
+  // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
+  'algemeen.en': 'en',
 
   // ---------------------------------------------------------------------------
   // Aanmelden en inloggen — de referentie-implementatie van QS8-113
@@ -169,10 +179,20 @@ export const nl = {
   'commitment.penalty.cancelled.uitleg':
     'Je hebt je doel afgerond, dus deze inzet gaat niet meer in werking.',
 
+  'getuigenis.titel': 'Jij bent getuige',
+  'getuigenis.uitleg':
+    'Deze mensen hebben jou aangewezen als getuige van hun inzet. Hun streefdatum ' +
+    'is verstreken.',
+  'getuigenis.van': 'De inzet van {naam}',
+  'getuigenis.afgehandeld': 'Afgehandeld',
+  'getuigenis.verschuldigd': 'Verschuldigd',
+
   'commitment.onbekend.titel': 'Onbekend',
   'commitment.onbekend.uitleg': 'De stand van deze afspraak is niet te bepalen.',
 
-  'commitment.fout.geen_groep': 'Kies een groep die hiervan profiteert als het niet lukt.',
+  'commitment.fout.geen_begunstigde':
+    'Kies eerst wie de getuige is: een groep of één persoon.',
+  'commitment.begunstigde.naamloos': 'Een groepsgenoot',
   'commitment.fout.invoer': 'Controleer je invoer.',
   'commitment.fout.vastleggen': 'Vastleggen lukte niet. Probeer het opnieuw.',
   'commitment.fout.intrekken': 'Intrekken lukte niet.',
@@ -297,6 +317,15 @@ export const nl = {
   //    gebruiker dat de vloer niet goed genoeg is. Er staat een test op.
   'risico.at_risk.vloer':
     'Je haalt je weken, maar bijna altijd op de vloer. Dat telt volledig mee. Alleen schuift je plafond zo wel steeds verder weg.',
+  // ⚠️ **Deze zin bestaat sinds 0163 (QS8-279) en hij is niet cosmetisch.** De
+  //    noemer telt een week pas als gehaald wanneer élk beoordeeld weekdoel erin
+  //    goedgekeurd is, dus wie er elke week één laat liggen heeft een tempo van
+  //    nul terwijl hij van alles afrondt. Zonder deze zin krijgt hij
+  //    `risico.at_risk.tempo` te lezen: "je zit nu op 0" — bij twintig van de
+  //    vierentwintig weekdoelen. De uitweg die hier genoemd wordt is de vloer, en
+  //    dat is met opzet: dat is de milde weg die domeinregel 8 openhoudt.
+  'risico.at_risk.deels':
+    'Je rondt elke week iets af, maar de laatste {weken_bekeken} geen enkele week helemaal. Plan er per week minder, of zet een vloer onder wat blijft liggen.',
   'risico.at_risk.tempo':
     'Je hebt {mijlpalen} in {weken} te gaan. Dat vraagt {benodigd} per week; je zit nu op {tempo}.',
   'risico.at_risk.kaal': 'Je loopt nog binnen de lijnen, maar er is weinig ruimte over.',
@@ -534,6 +563,7 @@ export const nl = {
   'groepdetail.zichtbaarheid': 'Zichtbaarheid van deze groep: {stand}',
   'groepdetail.titel': 'Groep',
   'groepdetail.eyebrow': 'HUDDLEDAG {dag}',
+  'groepdetail.eyebrow_vandaag': 'VANDAAG IS DE HUDDLEDAG',
   'groepdetail.geen_lid_titel': 'Deze groep is er niet, of niet voor jou',
   'groepdetail.geen_lid_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer. Vraag om een nieuwe uitnodigingslink als je erbij hoort.',
   'groepdetail.slaapt': 'Deze groep slaapt: er is een tijd niets gebeurd, dus de herinneringen zijn gestopt. Sluit iemand een week af, dan is hij meteen weer wakker.',
@@ -765,6 +795,10 @@ export const nl = {
   'groepen.beoordelen': 'Beoordelen',
   'groepen.slaapt': 'Deze groep slaapt. Sluit iemand een week af, dan is hij meteen weer wakker.',
   'groepen.huddledag': 'Huddledag: {dag}',
+  // ⚠️ **De dag zelf noemt geen dagnaam meer (QS8-199).** "Huddledag: zondag" op
+  //    zondag laat de lezer zelf uitrekenen dat het vandaag is, en dat is precies
+  //    wat er tot 05-09 niet opviel. Wat hier telt is het nú, niet de naam.
+  'groepen.huddledag_vandaag': 'Huddledag: vandaag',
   'profiel.titel': 'Profiel',
   'profiel.leeg_titel': 'Geen profiel gevonden',
   'profiel.leeg_tekst': 'Dat hoort niet te kunnen. Log uit en opnieuw in; blijft het misgaan, dan ligt het aan ons.',
@@ -1274,7 +1308,7 @@ export const nl = {
   'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
 
   // ---------------------------------------------------------------------------
-  // De vijftien gebieden — QS8-224, migratie 0142
+  // De twaalf gebieden — QS8-224, en drie families sinds A58 (migratie 0164)
   // ---------------------------------------------------------------------------
   //
   // ⚠️ **Labels en geen omschrijvingen.** Ze staan naast elkaar in een keuzelijst,
@@ -1286,23 +1320,19 @@ export const nl = {
   //    geen tekst. Zie de emoji-regel in CLAUDE.md.
   'nieuwdoel.categorie_hint': 'Waar gaat dit doel over? Eén gebied per doel.',
 
-  'categorie.fitness': 'Sport en beweging',
+  'categorie.fitness': 'Sport',
   'categorie.nutrition': 'Voeding',
   'categorie.self_care': 'Zelfzorg',
-  'categorie.mindfulness': 'Rust en aandacht',
-  'categorie.connection': 'Contact met anderen',
-  'categorie.helping': 'Iets voor een ander',
+  'categorie.mindfulness': 'Meditatie',
   'categorie.creativity': 'Creativiteit',
   'categorie.productivity': 'Productiviteit',
-  'categorie.organization': 'Orde en overzicht',
-  'categorie.learning': 'Leren',
+  'categorie.connection': 'Sociaal',
   'categorie.skills': 'Vaardigheden',
-  'categorie.resilience': 'Veerkracht',
+  'categorie.building': 'Bouwen',
 
-  'categoriegroep.lichaam': 'Lichaam en rust',
-  'categoriegroep.mensen': 'Mensen en maken',
-  'categoriegroep.werk': 'Werk en groei',
-  'categoriegroep.rest': 'Werk, school en overig',
+  'categoriegroep.gezondheid': 'Gezondheid',
+  'categoriegroep.softskills': 'Softskills',
+  'categoriegroep.ambitie': 'Ambitie',
 
   'categorie.business': 'Werk',
   'categorie.study': 'Studie',
@@ -1345,10 +1375,9 @@ export const nl = {
   // ---------------------------------------------------------------------------
   'adempauze.laden_mislukt': 'Je adempauzes konden niet geladen worden.',
   'adempauze.inplannen_mislukt': 'De adempauze kon niet ingepland worden.',
-  'adempauze.te_laat':
-    'Een adempauze kondig je vooraf aan. De week die nu loopt kan niet meer. Kies de week die komt.',
-  'adempauze.te_lang': 'Een adempauze duurt hoogstens twee weken.',
   'adempauze.overlap': 'Er ligt al een adempauze over deze weken.',
+  'adempauze.te_lang': 'Een adempauze duurt hoogstens {max} weken.',
+  'adempauze.datum_ongeldig': 'Vul een datum in als jjjj-mm-dd.',
   'adempauze.geen_hele_week': 'Kies een hele week, die begint op jouw eigen startdag.',
   'adempauze.eind_voor_start': 'De einddatum ligt vóór de startdatum.',
   'adempauze.annuleren_mislukt': 'Annuleren lukte niet.',
@@ -1544,9 +1573,14 @@ export const nl = {
   'straf.jouw': 'Je straf',
   'straf.intrekken': 'Intrekken',
   'straf.kop': 'Straf',
+  // ⚠️ **Uitleg én een uitweg, geen dood veld** (acceptatiecriterium van
+  //    QS8-228). Wie hier komt heeft geen groep en dus ook geen groepsgenoot om
+  //    als getuige te kiezen; een keuzelijst tonen die leeg is, is een knop die
+  //    niets doet.
   'straf.geen_groep':
-    'Een straf gaat naar een van je groepen. Je zit nog nergens in, dus dit kan pas als je ' +
-    'een buddy-groep hebt.',
+    'Een straf heeft een getuige nodig: een groep, of één iemand met wie je een groep deelt. ' +
+    'Je zit nog nergens in, dus begin daar.',
+  'straf.naar_groepen': 'Naar je groepen',
   'straf.zeker': 'Weet je het zeker?',
   'straf.bevestig_uitleg':
     'Als {groep} dit te zien krijgt, is dat omdat je streefdatum verstreken is zonder dat ' +
@@ -1555,7 +1589,7 @@ export const nl = {
   // ⚠️ Domeinregel 11 in één zin: de groep krijgt pas leesrecht op het moment dat
   //    de straf verschuldigd wordt. Tot dan is dit van jou alleen.
   'straf.tot_dan':
-    'Tot dat moment ziet niemand dit, ook je groep niet. Intrekken kan zolang het niet in ' +
+    'Tot dat moment ziet niemand dit, ook je getuige niet. Intrekken kan zolang het niet in ' +
     'werking is getreden.',
   'straf.ja_vastleggen': 'Ja, leg dit vast',
   'straf.terug': 'Terug',
@@ -1563,11 +1597,26 @@ export const nl = {
     'Wat gebeurt er als je je streefdatum niet haalt? Optioneel, en je kunt hem intrekken ' +
     'zolang hij niet in werking is.',
   'straf.geen_geld':
-    'De app rekent niets af en verwerkt geen geld. Je legt hier vast wat je met je groep ' +
-    'afspreekt; het uitvoeren doen jullie zelf.',
+    'De app rekent niets af en verwerkt geen geld. Je legt hier vast wat je afspreekt; ' +
+    'het uitvoeren doen jullie zelf.',
   'straf.veld': 'Mijn straf',
   'straf.voorbeeld': 'Ik trakteer de groep op een etentje',
   'straf.welke_groep': 'Welke groep profiteert?',
+  'straf.wie_getuige': 'Wie is de getuige?',
+  'straf.een_groep': 'Een hele groep',
+  'straf.een_persoon': 'Eén persoon',
+  'straf.welke_persoon': 'Wie profiteert?',
+  // ⚠️ De keerzijde van "één persoon": het is een kleinere kring, niet géén
+  //    kring. Wie dat niet weet, kiest een persoon in de veronderstelling dat
+  //    het onzichtbaar blijft.
+  // ⚠️ **Geen belofte over een melding, en dat is met opzet.** Deze persoon
+  //    krijgt leesrecht op het moment dat de straf verschuldigd wordt — maar er
+  //    is nog geen scherm of bericht waar hij het tegenkomt (QS8-292). "Ziet je
+  //    straf" zou dus iets beloven wat de app niet levert, en dat is bij een
+  //    commitment device domeinregel 5. Zeg wat waar is: vertel het hem zelf.
+  'straf.persoon_uitleg':
+    'Tot je streefdatum verstrijkt ziet deze persoon niets. Daarna mag hij je straf lezen. ' +
+    'Laat het hem wel zelf even weten, want de app stuurt hem nog geen bericht.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
 
@@ -1788,28 +1837,44 @@ export const nl = {
 
   'adempauze.kop': 'Adempauze',
   'adempauze.uitleg':
-    'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet dan een of twee ' +
-    'weken stil. Die weken kosten je geen punt en je reeks blijft staan waar hij staat; hij ' +
-    'groeit alleen niet mee.',
+    'Ga je op vakantie, ben je ziek, of is het gewoon een gekke maand? Zet die weken dan stil. ' +
+    'Ze kosten je geen punt en je reeks blijft staan waar hij staat; hij groeit alleen niet mee. ' +
+    'Je kiest zelf hoe lang, je mag er meerdere naast elkaar hebben, en een week die al voorbij ' +
+    'is mag ook.',
   // ⚠️ **Wat de groep ziet is de aankondiging, niet je weken.** Dit is domeinregel
   //    7's eigen uitzondering: de route loopt via jou, want je kondigt hem zelf
   //    aan. De statuskolom per week is sinds migratie 0047 dicht. Deze zin zegt
   //    precies waar die grens ligt; laat de tweede helft er nooit af.
+  //
+  // ⚠️ **De eerste helft is op 06-09-2026 uitgebreid, en niet uit netheid.** Sinds
+  //    QS8-227 mag een adempauze over weken liggen die al voorbij zijn, en die is
+  //    voor de groep net zo zichtbaar. Wie dat weglaat, laat de gebruiker "ze zien
+  //    niet welke weken je gemist hebt" lezen terwijl een pauze die je áchteraf
+  //    aankondigt precies dat verraadt. Zie
+  //    `docs/decisions/002-domeinregel7-oppervlakken.md` rij 21 en §4a.
   'adempauze.groep_ziet':
-    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer. Ze zien niet welke ' +
-    'weekdoelen je wel of niet gehaald hebt.',
+    'Je groep ziet dát je een adempauze hebt en van wanneer tot wanneer, ook als je hem over ' +
+    'weken legt die al voorbij zijn. Ze zien niet welke weekdoelen je wel of niet gehaald ' +
+    'hebt.',
   'adempauze.week_van': 'Week van {datum}',
   'adempauze.tot_en_met': ' tot en met de week van {datum}',
   'adempauze.voorbij': 'Voorbij',
   'adempauze.loopt': 'Loopt nu',
   'adempauze.ingepland': 'Ingepland',
   'adempauze.annuleren': 'Annuleren',
-  'adempauze.vanaf': 'Vanaf welke week?',
-  'adempauze.vanaf_hint':
-    'Een adempauze kondig je vooraf aan, dus de week die nu loopt kan niet meer.',
-  'adempauze.hoe_lang': 'Hoe lang?',
-  'adempauze.een_week': 'Eén week',
-  'adempauze.twee_weken': 'Twee weken',
+  'adempauze.vanaf': 'Vanaf',
+  'adempauze.vanaf_hint': 'Als jjjj-mm-dd. Elke datum mag, ook een die al voorbij is.',
+  'adempauze.tot': 'Tot en met',
+  'adempauze.tot_hint': 'Leeg laten betekent één week.',
+  // ⚠️ **Deze zin is het halve punt van de vrije datums.** De rollover werkt
+  //    per hele week, dus wat je intypt wordt afgerond. Zonder dat hier te
+  //    tonen doet het scherm stilzwijgend iets anders dan je vroeg, en dan is
+  //    de eerste keer dat je het merkt je puntentotaal.
+  'adempauze.wordt_een_week': 'Dit wordt de week van {van}.',
+  'adempauze.wordt_meer_weken': 'Dit wordt {weken} weken: van {van} tot en met de week van {tot}.',
+  'adempauze.terugwerkend':
+    'Deze weken zijn al voorbij. Gemiste weken erin worden alsnog vrijgesteld en het minpunt ' +
+    'wordt teruggedraaid.',
   'adempauze.inplannen': 'Inplannen',
   'adempauze.inplannen_knop': 'Adempauze inplannen',
 

@@ -417,6 +417,7 @@ export type Database = {
       commitments: {
         Row: {
           beneficiary_group_id: string | null
+          beneficiary_user_id: string | null
           body: string
           confirmed_at: string
           created_at: string
@@ -428,6 +429,7 @@ export type Database = {
         }
         Insert: {
           beneficiary_group_id?: string | null
+          beneficiary_user_id?: string | null
           body: string
           confirmed_at: string
           created_at?: string
@@ -439,6 +441,7 @@ export type Database = {
         }
         Update: {
           beneficiary_group_id?: string | null
+          beneficiary_user_id?: string | null
           body?: string
           confirmed_at?: string
           created_at?: string
@@ -454,6 +457,13 @@ export type Database = {
             columns: ["beneficiary_group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_beneficiary_user_id_fkey"
+            columns: ["beneficiary_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2526,6 +2536,18 @@ export type Database = {
           punten: number
           total_members: number
           user_id: string
+        }[]
+      }
+      getuigenissen: {
+        Args: never
+        Returns: {
+          body: string
+          confirmed_at: string
+          created_at: string
+          eigenaar_naam: string
+          id: string
+          status: string
+          type: string
         }[]
       }
       groep_teller: { Args: { p_group_id: string }; Returns: Json }

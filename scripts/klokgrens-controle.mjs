@@ -39,6 +39,8 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+
 /**
  * Elke `current_date` in het schema, met de reden waarom hij daar mag staan.
  *
@@ -64,19 +66,22 @@ export const REGISTER = new Map([
     'Ondergrens met vijf weken speling; een dag verschuiving valt daar ruim binnen.',
   ],
   [
-    'herbereken_risico :: and w.cycle_start_date < current_date;',
-    'Telt alleen cycli die al begonnen zijn. Een dag te streng betekent één week ' +
-      'minder in het venster, en dus een lagere risicoschatting — de kant waarop ' +
-      'de app niets beweert dat ze niet weet.',
-  ],
-  [
-    'herbereken_risico :: v_venster_start := current_date - (c_venster * 7);',
-    'Terugkijkvenster van hele weken; een dag verschuiving verandert de uitkomst niet.',
-  ],
-  [
-    'herbereken_risico :: v_weken_over := greatest(0, floor((v_doel.target_date - current_date) / 7.0)::integer);',
-    'Weken tot de streefdatum, naar beneden afgerond. Een dag scheelt hoogstens ' +
-      'op de grens van een hele week, en dan naar de voorzichtige kant.',
+    'herbereken_risico :: v_vandaag := coalesce(eigenaarsdatum(v_doel.owner_id), current_date);',
+    '⚠️ Dit is de terugval en niet de grens, net als in `wikkel_commitments_af`. ' +
+      'Hier stonden tot 0155 drie losse `current_date`-en — de weken tot de ' +
+      'streefdatum, de start van het terugkijkvenster en "cycli die al begonnen ' +
+      'zijn" — en alle drie beantwoordden "vandaag" voor één mens in de zone van ' +
+      'de server. Ze lopen nu alle drie over `v_vandaag`. De terugval is vandaag ' +
+      'onbereikbaar (`goals.owner_id` is NOT NULL en cascadeert op `profiles`), ' +
+      'maar hij draagt gewicht als die foreign key ooit verandert: gemeten geeft ' +
+      '`greatest(0, null)` in Postgres `0` en niet null, dus een null-datum zou ' +
+      'stil `v_weken_over = 0` opleveren en dat is met openstaande mijlpalen ' +
+      'meteen `unreachable` — het hardste oordeel dat deze functie kent, ' +
+      'uitgesproken op een ontbrekend profiel. ⚠️ Wat in ' +
+      'tests/rls/risicoklok.test.ts getoetst wordt is de `v_vandaag`-tak, met twee ' +
+      'zones die het hele etmaal dekken — de terugval zelf is per constructie niet ' +
+      'toetsbaar zolang de foreign key hem onbereikbaar houdt, en dat is precies ' +
+      'de reden dat hij hier met naam en al staat in plaats van in een test.',
   ],
   [
     'wikkel_commitments_af :: v_vandaag := coalesce(eigenaarsdatum(v_doel.owner_id), current_date);',
@@ -187,10 +192,7 @@ export function beoordeel(voorkomens, register = REGISTER) {
 }
 
 function lees() {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', VRAAG];
-  if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
-  return execFileSync('psql', args, { encoding: 'utf8' });
+  return execFileSync('psql', psqlArgumenten(VRAAG), { encoding: 'utf8' });
 }
 
 function hoofd() {
@@ -199,11 +201,13 @@ function hoofd() {
     uitvoer = lees();
   } catch (fout) {
     console.error(
-      `✗ Geen database om tegen te meten (${process.env.DB ?? 'goalbuddies_rls'}).\n\n` +
-        'Deze controle leest `pg_get_functiondef()` en niet de migratiebestanden —\n' +
-        'die laatste vertellen wat er ooit gedeployd is, niet wat er draait.\n' +
-        'Start de lokale stack met `npm run rls:stack`.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+      verbindingsmelding({
+        naam: 'klokgrens-controle',
+        leest:
+          'Deze controle leest `pg_get_functiondef()` en niet de migratiebestanden —\n' +
+          'die laatste vertellen wat er ooit gedeployd is, niet wat er draait.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
     );
     return 1;
   }

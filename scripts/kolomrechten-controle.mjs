@@ -42,6 +42,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+
 import { metSchuineStrepen } from './paden.mjs';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -669,6 +671,22 @@ export function ontleedSchrijfrechten(uitvoer) {
 }
 
 /**
+ * Boekt wat één actie schrijft, per `tabel|recht`.
+ *
+ * ⚠️ Staat los omdat de lus over de kolommen anders vier niveaus diep zit
+ *    (coderegel 15, QS8-291). `kolommen === null` betekent "we weten niet
+ *    welke", en dan is de boeking voor dat recht niet meer volledig.
+ */
+function boekActie(geschreven, a) {
+  for (const recht of a.rechten) {
+    const sleutel = `${a.tabel}|${recht}`;
+    geschreven[sleutel] ??= { kolommen: new Set(), volledig: true };
+    if (a.kolommen === null) geschreven[sleutel].volledig = false;
+    else for (const k of a.kolommen) geschreven[sleutel].kolommen.add(k);
+  }
+}
+
+/**
  * Legt de geschreven kolommen naast de schrijfrechten, in beide richtingen.
  *
  * @returns `{ ontbrekend, ongeschreven, onleesbaar, ongemeten }` — een kolom die
@@ -694,12 +712,7 @@ export function beoordeelSchrijven({ acties, rechten }) {
   const geschreven = {};
 
   for (const a of acties) {
-    for (const recht of a.rechten) {
-      const sleutel = `${a.tabel}|${recht}`;
-      geschreven[sleutel] ??= { kolommen: new Set(), volledig: true };
-      if (a.kolommen === null) geschreven[sleutel].volledig = false;
-      else for (const k of a.kolommen) geschreven[sleutel].kolommen.add(k);
-    }
+    boekActie(geschreven, a);
 
     if (a.kolommen === null) {
       onleesbaar.push({ pad: a.pad, tabel: a.tabel, soort: a.soort, reden: a.reden });
@@ -1008,12 +1021,7 @@ export function verlopenRegels({ ongeschreven, onleesbaar, ongemeten = {} }, lij
 }
 
 function hoofd() {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const vraag = (sql) => {
-    const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', sql];
-    if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
-    return execFileSync('psql', args, { encoding: 'utf8' });
-  };
+  const vraag = (sql) => execFileSync('psql', psqlArgumenten(sql), { encoding: 'utf8' });
 
   // ⚠️ **De `try` dekt alléén de aanroep en niet het ontleden.** Anders wordt een
   //    kapotte uitlezing — een half afgekapte regel, een kolom die verdwijnt —
@@ -1033,10 +1041,13 @@ function hoofd() {
     //    `beoordeel()` in `poort.mjs`: een controle die zich overslaat en
     //    daarna 0 teruggeeft, is voor de helft van zijn lezers groen.
     console.error(
-      '⚠ kolomrechten-controle: OVERGESLAGEN — geen database om de grants uit te lezen.\n\n' +
-        'Deze controle leest `information_schema.column_privileges` en niet de\n' +
-        'migratiebestanden. Start de lokale stack met `npm run rls:stack`.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+      verbindingsmelding({
+        naam: 'kolomrechten-controle',
+        leest:
+          'Deze controle leest `information_schema.column_privileges` en niet de\n' +
+          'migratiebestanden.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
     );
     return 1;
   }

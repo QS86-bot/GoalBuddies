@@ -29,15 +29,18 @@ describe('het categoriemerk', () => {
 
   /**
    * ⚠️ **De belangrijkste toets hier.** Zou de keuzelijst anders groeperen dan de
-   *    kleur, dan ziet een gebruiker twee indelingen van dezelfde vijftien
-   *    woorden — en dan codeert de kleur niet de familie maar iets anders.
+   *    kleur, dan ziet een gebruiker twee indelingen van dezelfde twaalf woorden
+   *    — en dan codeert de kleur niet de familie maar iets anders.
+   *
+   * ⚠️ **Er stond hier een uitzondering voor `rest`, en die is met A58 weg.** De
+   *    vierde groep had geen kleur, dus daar hoorde `null`. Nu heeft élk gebied
+   *    een familie, en de toets is daarmee strenger geworden: geen enkel gebied
+   *    mag nog zonder kleur zitten.
    */
   it('kent dezelfde families als de keuzelijst', () => {
     for (const groep of CATEGORIE_GROEPEN) {
       for (const lid of groep.leden) {
-        const verwacht = groep.sleutel === 'rest' ? null : groep.sleutel;
-
-        expect(categoriemerk(lid).familie, lid).toBe(verwacht);
+        expect(categoriemerk(lid).familie, lid).toBe(groep.sleutel);
       }
     }
   });

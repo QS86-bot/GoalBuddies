@@ -786,6 +786,23 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       expect(uitkomst(poging.data).ok).toBe(false);
       expect(uitkomst(poging.data).reason).toBe('not_owner');
 
+      // ⚠️ **De envelop is niet het effect — QS8-285.** Deze test toetste alleen
+      //    wat de functie terúggaf. Een `sluit_weekdoel_af` die netjes
+      //    `{ok:false}` meldt en de week van Alice tóch afsluit, kwam er daarmee
+      //    doorheen. Wat een eigenaarspoort belooft is dat er níéts gebeurt, en
+      //    dat staat in de rij en niet in het antwoord.
+      const na = await admin
+        .from('weekly_goals')
+        .select('status')
+        .eq('id', vanAlice.data.id)
+        .single();
+      if (na.error) throw new Error(`nameten: ${na.error.message}`);
+
+      expect(
+        na.data.status,
+        'Bob kreeg `not_owner` te horen en de week van Alice is tóch afgesloten',
+      ).toBe('todo');
+
       await admin.from('weekly_goals').delete().eq('id', vanAlice.data.id);
     },
     TEST_TIMEOUT,
@@ -1019,6 +1036,14 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const rechtstreeks = await f.bob.db.from('goals').delete().eq('id', f.aliceGoalId);
       expect(rechtstreeks.error?.code).toBe('42501');
 
+      // ⚠️ **De `count` hieronder kan de eigenaarspoort niet bewaken**, en dat is
+      //    op 05-09 nagemeten (QS8-283). Haal je die poort weg, dan vangt
+      //    `gedeeld_met_groep` het geval af — Alice' doel hangt in deze fixture aan
+      //    een groep — en het enige rood is dan `expected 'gedeeld_met_groep' to
+      //    be 'not_owner'`: een veranderde fóutreden. De aanroeper komt nooit bij
+      //    de `delete`, dus de `count` blijft hoe dan ook 1. De effectdekking van
+      //    `verwijder_doel` staat sinds QS8-283 in
+      //    `tests/rls/definerpoorten.test.ts`, op een ongekoppeld doel.
       const viaRpc = await f.bob.db.rpc('verwijder_doel', { p_goal_id: f.aliceGoalId });
       expect(uitkomst(viaRpc.data).ok).toBe(false);
       expect(uitkomst(viaRpc.data).reason).toBe('not_owner');

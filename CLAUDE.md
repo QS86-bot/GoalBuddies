@@ -388,7 +388,40 @@ docs/decisions/
 ### Code
 13. TypeScript strict. Geen `any`, geen `@ts-ignore` zonder reden.
 14. Geen lege catch. Elke externe call heeft een timeout.
-15. Functies <50 regels, nesting <3 diep.
+15. **Functies <50 regels, nesting <3 diep** — en sinds 05-09-2026 (QS8-190) is
+    dat geen zin meer maar drie grendels, want het stond hiervoor alléén op
+    papier: elke functie in de schermlaag overtrad hem en niets werd er rood van.
+
+    | Waar | Wat er geldt | Wie het afdwingt |
+    |---|---|---|
+    | overal in `src/`, `app/` en `scripts/` | nesting <3 | `max-depth` in `eslint.config.js` |
+    | logica: `src/` buiten `shared/ui` | <50 regels | `max-lines-per-function` |
+    | componenten: `src/shared/ui` | een plafond dat vandaag bindt | `max-lines-per-function` |
+    | de schermlaag: `app/` | het **aantal** functies boven de 50 mag alleen dalen | `npm run regel15:controle` |
+    | de scripts: `scripts/` | idem — het **aantal** mag alleen dalen | `npm run regel15:controle` |
+
+    ⚠️ **`scripts/` viel tot 06-09-2026 helemaal buiten de linter** (QS8-291):
+    `eslint.config.js` dekte alleen `**/*.ts(x)` en die map is `.mjs`, dus 57
+    bestanden en 14.170 regels zagen geen enkele coderegel — precies de map waar
+    de grendels van dit project wonen. De nesting is er hard aan gegaan; de
+    vijftig staat er als ratel, om dezelfde reden als in `app/`.
+
+    ⚠️ **Een component wordt anders geteld dan een functie, en dat is geen
+    uitvlucht.** Het lichaam van een React-component is grotendeels JSX: één
+    `return` met opmaak erin. Zestig regels opmaak zijn niet het probleem waar
+    deze regel voor bestaat; vertakking is dat wel, en daar gaat `max-depth`
+    over — die geldt in de schermlaag onverkort.
+
+    ⚠️ **Testbestanden tellen niet mee.** `describe(() => …)` is voor ESLint een
+    functie, en een suite van tweehonderd regels is één blok met gevallen erin.
+    Een regel die dát meldt, leer je uitzetten.
+
+    ⚠️ **De ratel slaat twee kanten op.** `regel15:controle` wordt rood als er een
+    lange functie bij komt, én als het aantal zákt zonder dat het plafond
+    meezakt — anders is het een plafond waar je onder kunt blijven zitten en
+    glijdt de volgende lange functie in de vrijgekomen ruimte. Splits je een
+    scherm, verlaag dan het plafond in `scripts/regel15-controle.mjs`. Zelfde
+    vorm als `levend:controle`.
 16. Elke async view heeft loading-, error- én empty-state.
 
 ### Proces
@@ -543,6 +576,27 @@ was de inschatting van een mens over zijn eigen werk.
 die twee uit elkaar en faalt op allebei. `functies:controle` en
 `register:controle` printen "OVERGESLAGEN" en geven daarna exitcode 0; wie alleen
 naar de exitcode kijkt, telt ze als bewijs.
+
+⚠️ **Maar "geen database" moet dan wel waar zijn.** Sinds 04-09-2026 (QS8-268)
+deelt `scripts/psql.mjs` een mislukte verbinding in vier: er is geen server, de
+database bestaat niet, de gebruiker wordt geweigerd, of het is iets anders.
+Alleen de eerste twee heten **OVERGESLAGEN**; een geweigerde gebruiker is een
+kapotte instelling en dus **rood**, want de database ligt er gewoon. Zes scripts
+zeiden jarenlang "start de lokale stack" terwijl die draaide, en de poort telde
+er daardoor negen ongemeten waar er vier hoorden.
+
+⚠️ **En dat gold niet voor de RLS-suite, tot 04-09-2026 (QS8-270).** Drie
+testbestanden stonden op de verkeerde poort, sloegen zichzelf stil over en gaven
+exitcode 0 — dertig tests weg, poort groen. `stackBeschikbaarOfFaal()` in
+`tests/rls/psql-stack.ts` **werpt** nu zodra `RLS_DOEL` gezet is: zwijgen mag
+alleen als niemand beweerde te meten. Uitleg in
+`docs/decisions/2026-09-04-een-suite-die-zegt-te-meten.md`.
+
+⚠️ **Een controle die `psql` aanroept, bouwt zijn eigen aanroep niet.** Dat is
+zesmaal dezelfde vergeten vlag geweest. `psqlArgumenten()` is de enige weg; een
+uitzondering hoort in het register in `tests/scripts/psql-verbinding.test.ts`,
+mét reden. Uitleg in
+`docs/decisions/2026-09-04-geen-database-was-de-verkeerde-reden.md`.
 
 ⚠️ **Een nieuwe migratie begint met `npm run migratie:nieuw -- "naam"`.** Die
 kijkt naar élke branch die de remote kent en niet alleen naar je eigen map, en hij

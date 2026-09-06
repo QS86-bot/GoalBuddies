@@ -101,6 +101,22 @@ export function beoordeel({ code, uitvoer, heeftDatabaseNodig, soort = 'controle
 
   if (code === 0) return 'groen';
 
+  // ⚠️ **Een geweigerde gebruiker is rood en niet ongemeten, en dat is QS8-268.**
+  //    `GEEN_DATABASE` hieronder matcht op `connection to server`, en élke
+  //    psql-mislukking begint met die zin — ook die waarbij de server prima
+  //    draait en alleen de rol of het wachtwoord niet klopt. Zonder deze regel
+  //    heet zo'n kapotte instelling dus "zonder database", en dan herhaalt de
+  //    poort precies de onwaarheid die de vijf controles zelf vertelden.
+  //
+  // ⚠️ **Hier staat géén `soort`-grens, en dat is nagemeten en niet vergeten.**
+  //    `OVERGESLAGEN` hierboven heeft er wel een, omdat die regel een geslaagde
+  //    stap alsnog kan omkatten en dus een citaat kan treffen. Deze staat ná
+  //    `code === 0`, dus een suite die de melding alleen cíteert is dan al
+  //    groen; en een suite die zelf faalt, is met of zonder deze regel rood.
+  //    Een grens die geen enkel geval verandert, is geen grendel maar een
+  //    geruststelling — de ijking van QS8-268 vond hem groen onder mutatie.
+  if (GEWEIGERD.test(uitvoer)) return 'rood';
+
   if (heeftDatabaseNodig && GEEN_DATABASE.test(uitvoer)) return 'ongemeten';
 
   return 'rood';
@@ -116,6 +132,15 @@ export function beoordeel({ code, uitvoer, heeftDatabaseNodig, soort = 'controle
  */
 const GEEN_DATABASE =
   /geen database|kon niet verbinden|connection to server|fetch failed|lokale-stack/i;
+
+/**
+ * De eigen regel van een controle die wél verbond en werd geweigerd.
+ *
+ * ⚠️ **Het anker is de regelvorm die het script schrijft, niet de psql-tekst.**
+ *    `verbindingsmelding()` in `scripts/psql.mjs` schrijft hem; wie hem hier
+ *    verandert, verandert hem daar mee. Zie QS8-268.
+ */
+const GEWEIGERD = /^[^\n]*\b[\w-]+(?:-controle|:controle)?:\s*GEWEIGERD\b/m;
 
 /**
  * De eigen overslag-regel van een controle, en niet het woord ergens in een lap

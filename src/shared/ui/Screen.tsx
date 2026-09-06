@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { useBovenrandAlVerrekend, veiligeBovenrand } from './bovenrand';
 import { Eyebrow, Heading } from './Text';
 
 /**
@@ -106,6 +107,14 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
+  // ⚠️ **De tabbalk staat sinds QS8-246 bovenaan en neemt de veilige zone zélf.**
+  //    Gemeten in de bronbestanden van de navigator: met `tabBarPosition: 'top'`
+  //    zet de balk `paddingTop: insets.top`. Er hier nóg een keer bij optellen
+  //    geeft op een toestel met een notch een dubbele marge — en dat is het
+  //    geval dat op een simulator zonder notch onzichtbaar blijft.
+  const bovenrandAl = useBovenrandAlVerrekend();
+  const bovenrand = veiligeBovenrand(insets.top, bovenrandAl);
+
   // ⚠️ `flex: 1` erbij zodra het scherm níét scrollt, en alleen dan. Dit blok is
   //    dan de enige hoogtehouder, en een View zonder flex krimpt in React Native
   //    naar zijn inhoud — waardoor een lijst die zelf scrollt (de groepschat,
@@ -125,7 +134,7 @@ export function Screen({ title, eyebrow, children, scroll = true, terug }: Props
 
   const buiten = [
     styles.scherm,
-    { backgroundColor: theme.colors.bg, paddingTop: insets.top + space.shell },
+    { backgroundColor: theme.colors.bg, paddingTop: bovenrand + space.shell },
   ];
 
   if (!scroll) {

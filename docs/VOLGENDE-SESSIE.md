@@ -3,11 +3,183 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 02-09-2026. **#141 (QS8-186), #151 (QS8-262 ronde 1) en
-> #153 (QS8-264) en #156 (de tokenaudit) geland, en de migraties `0139` t/m
-> `0146` zijn op productie toegepast.**
-> Lees eerst de drie punten hieronder — het derde verandert wat je als volgende
-> oppakt — en daarna de vier van 02-09.
+> **Laatst bijgewerkt:** 06-09-2026. Op 06-09 landden **QS8-284, QS8-287,
+> QS8-288, QS8-227 en QS8-290**; open staan **QS8-286** (branch ligt klaar),
+> **QS8-289** en **QS8-197**.
+> Lees eerst de drie punten van 06-09 — het eerste is de duurste van de dag —
+> dan de drie van 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna
+> die van 02-09.
+>
+> **06-09, punt I: ik heb een issue gebouwd dat de andere sessie al gebouwd
+> hád, en drie signalen wezen dat aan voordat ik begon.** QS8-287 stond op *In
+> Progress*, er lag een branch mét migratie 0165, en er lag een PR. Ik zag PR
+> #224 pas toen mijn eigen werk al af was — en las hem toen als *mijn* PR,
+> omdat het issuenummer klopte. Het was een ándere branch met een ándere 0165.
+> ⚠️ **De rem die werkt is niet "kijk of het issue op Backlog staat", maar
+> `git log origin/main` én `gh pr list` op het issuenummer vlak voordat je de
+> eerste regel schrijft.** Punt I van 05-09 zei dit al voor de status; dit is
+> dezelfde les één stap verder: **een PR met jouw issuenummer erin is niet
+> automatisch jouw PR.** Kijk naar de branchnaam.
+>
+> ⚠️ Wat daar wél uit kwam en de moeite waard was: een tweede review op hún
+> werk. #224 loste het gat correct op en liet op drie plekken de oude
+> rechtvaardiging staan, waaronder het beslisdocument dat de ingetrokken grant
+> nog verdedigde. Dat is QS8-290 geworden. **Dubbel werk is niet altijd nul
+> waarde — maar reken er niet op.**
+>
+> **06-09, punt II: een oppervlak is niet alleen een tabel, maar ook wat een
+> functie teruggeeft (QS8-287).** `verdien_badges(p_user_id)` was definer,
+> uitvoerbaar door `authenticated` voor een wíllekeurig id, en gaf terug hoevéél
+> badges hij toekende. De tábel bleef dicht — `badges_select` is eigenaar-only —
+> en het getal vertelde het toch. In `badges.test.ts` stond een test die dat gat
+> vastlegde als bedóeld gedrag, met een kop die uitlegde waarom het veilig was.
+> ⚠️ **Vraag bij elke definer-functie: wat leert de aanroeper uit de
+> retourwaarde, los van wat hij mag lézen?** Er staan er nog zeven van die vorm;
+> dat is QS8-289, en `uitnodigingscode_bewaking()` daaruit vertelt iedereen die
+> is ingelogd hoe je uitnodigingscodes zijn opgebouwd.
+>
+> **06-09, punt III: een mutatie waarvan de ópzet stil faalt, leest als een
+> geslaagde ijking van het tegendeel.** Bij QS8-290 plantte ik een badge om te
+> toetsen of een nieuwe assertie bijt; de insert gebruikte `badge_key` in plaats
+> van `badge`, gaf een fout die ik niet las, en de test bleef groen. Dat zag er
+> exact uit als "die assertie bewaakt niets" — het omgekeerde van wat er aan de
+> hand was. ⚠️ **Laat een mutatie hard falen als zijn eigen opzet mislukt**
+> (`if (error) throw`), anders ijk je de mutatie en niet de grendel. Dit is de
+> tegenhanger van de regel die al in CLAUDE.md staat over ijken per grendel.
+>
+> **05-09, punt I: er werkt een tweede sessie in deze repo, en dat is twee keer
+> dubbel werk geweest.** Bij QS8-270 lag er al een PR (#198 tegen mijn #199); bij
+> QS8-269 stond ik op het punt hetzelfde te bouwen. **Beide keren stond het issue
+> op Backlog terwijl er al een branch mét migratie lag** — de andere sessie
+> verzet de status niet. ⚠️ **`git branch -r` is dus niet genoeg als je hem één
+> keer aan het begin draait:** bij QS8-269 kende `git branch -r` de branch twintig
+> minuten eerder nog niet, en alleen `npm run migratie:nieuw` zag hem, omdat die
+> sinds QS8-247 zelf fetcht. **Zet een issue op In Progress vóórdat je begint** —
+> dat is de enige rem die vooraf werkt — en fetch opnieuw vlak voordat je een
+> migratienummer trekt.
+>
+> **05-09, punt II: `main` is één dag per week rood geweest, en niemand die het
+> zag (QS8-276, #206).** De venstertest van De Ketting telde schakels in
+> `chain_links` zonder filter op `user_id`, en `huddle_day` staat op zondag — dus
+> op zaterdag ís `f.periodStart` gelijk aan `vandaag - 6` en telde hij de schakels
+> van twee eerdere tests in hetzelfde bestand mee. Zes van de zeven dagen groen,
+> en op die zesde mat hij iets anders dan hij beweerde. ⚠️ Op diezelfde dag
+> botste ook de insert met `chain_links_one_per_period` en werd die uitkomst niet
+> gelezen. **Vraag bij elke test die in een gedeelde tabel telt: schrijft een
+> ándere test daar ook in, en op welke dag vallen die data samen?**
+>
+> **05-09, punt III: een migratienummer botste voor de vierde keer, en het
+> gereedschap dat dat opruimt schreef het verkeerde bestand bij (QS8-277, #207).**
+> `migratie:nieuw` fetchte netjes; de migratie van de andere sessie was op dat
+> moment alleen nog niet gepusht. ⚠️ Bij het hernummeren schreef
+> `migratie:hernummer` de kopregel van de búúrmigratie bij, plus twee regels in
+> `ENGINEER-REVIEW.md` die bij hún issue hoorden — en het script *wist* dat het
+> nummer gedeeld was en drukte er alleen een waarschuwing over. Sinds #207 wordt
+> een kaal nummer bij een botsing **gemeld en niet geraden**; alleen een volledige
+> migratienaam is bewijs. **Draai na élke hernummering `git diff` en kijk of er
+> een bestand bij zit dat niet van jou is.**
+>
+> **04-09, punt I: `main` stond elke nacht twee uur rood, en de test had gelijk
+> noch ongelijk — hij keek naar de verkeerde klok (QS8-267, #192).** Tussen 22:00
+> en 24:00 UTC vielen twee RLS-tests om. Geen lek: `group_overview()` en de policy
+> `chain_links_select` deden precies wat ze beloven. De tests rekenden hun datums
+> in UTC uit en legden ze naast een grendel die op de **groepsklok** staat
+> (`groepsdatum()`, en dus `groups.tz` — standaard Europe/Amsterdam, in september
+> UTC+2). ⚠️ **De twee uur zijn niet het dure deel; de tweeëntwintig zijn dat.**
+> Zolang twee klokken hetzelfde antwoord geven, kan een test die in UTC rekent de
+> UTC-implementatie niet van de groepsklok-implementatie onderscheiden — hij was
+> twee uur per dag ten onrechte rood en tweeëntwintig uur per dag blind. Het
+> commentaar bij de epic8-test bewéérde zelfs dat de policy `current_date`
+> gebruikt; een latere migratie had die grens verplaatst en de test bleef groen.
+> **Vraag bij elke tijdgebonden test: op wélke klok staat de grendel die ik
+> toets?** Er zijn er hier drie — UTC, groepsklok, gebruikersklok.
+>
+> **04-09, punt II: vijf controles meldden "geen database" terwijl de database er
+> gewoon stond (QS8-268, geland).** `definers`, `klokgrens`, `kolomrechten`, `pin`
+> en `zichtbaarheid` roepen `psql` aan zónder `-U`, dus die valt terug op de
+> OS-gebruiker — hier `root`, waar geen databaserol voor bestaat. De poort telde
+> ze bij de vier die écht productiesleutels vragen en meldde *"9 controle(s)
+> zonder database"*. ✅ **Gerepareerd op 04-09**: `psqlArgumenten()` in
+> `scripts/psql.mjs` noemt de gebruiker, en `PGUSER` hoef je niet meer te zetten.
+> De poort telt er nu vier — nagemeten zónder die env-var. Wat de regels zijn
+> geworden staat in `CLAUDE.md` bij de commando's, de redenering in
+> `docs/decisions/2026-09-04-geen-database-was-de-verkeerde-reden.md`.
+>
+>
+> **04-09, punt III: migratie 0154 is geland (#191, QS8-197) en dáármee is
+> QS8-174 vrij.** Dit is het belangrijkste punt van vandaag, want het heft de
+> blokkade op die twee sessies lang alles met een migratie tegenhield.
+> Nagemeten ná de merge: `npm run migraties:controle` meldt **157 migraties,
+> aaneengesloten**, en geen branch draagt nog een nummer dat de map mist. ⚠️ **De
+> waarschuwing hieronder over 0154 is dus geschiedenis en geen stand meer** — hij
+> blijft staan omdat de vórm terugkomt, niet omdat dit geval nog speelt. **Kijk
+> alsnog altijd zelf** (`git branch -r`, en de controle noemt de branchnaam):
+> hetzelfde is deze week drie keer gebeurd.
+>
+> ⚠️ **Wat QS8-174 nu nog nodig heeft is niet meer de branch maar de database:**
+> de migratie op productie toepassen en daarna `npm run types:db`, want
+> `database.types.ts` wordt gegenereerd en kent de nieuwe RPC anders niet. De
+> volledige, lokaal geverifieerde SQL staat in het issue — herhaal het
+> ontwerpwerk niet.
+>
+> **03-09, punt 0: van de acht is er nog één níét af.**
+>
+> 1. **QS8-192 was overgeslagen en is op 04-09 alsnog gebouwd.** Niet geblokkeerd,
+>    niet afgewogen: de batch liep van QS8-213 naar QS8-208 naar QS8-221 en zo
+>    verder, en dit issue viel er tussenuit zonder dat iemand het merkte. ⚠️ **De
+>    les zit in hoe het niet opviel** en die blijft staan ook nu het issue af is:
+>    de eindrapportage van die sessie telde "zeven van de acht geland" terwijl het
+>    er zes waren. Tel af tegen de lijst, niet op vanuit je werk.
+>    ⚠️ **En de bevinding zelf droeg een tweede les:** de reden om hem te laten
+>    liggen — "expo-router exporteert geen `usePreventRemove`" — was in één
+>    `package.json` na te meten en klopte al acht dagen niet meer. Een *"Wordt
+>    zwaarder als"* die op een controleerbaar feit staat, meet je na bij élke
+>    aanraking. Zie `docs/decisions/2026-09-04-de-terugknop-van-de-browser.md`.
+> 2. **QS8-174 lag op twee blokkades en er is er op 04-09 één weggevallen.** De
+>    ontworpen en lokaal geverifieerde SQL staat vóluit in dat issue; herhaal het
+>    ontwerpwerk niet. Zie punt III hierboven voor wat er nog rest, en punt B
+>    hieronder voor het ontwerp.
+>
+> **03-09, punt A: drie keer bewaakte een test de plek in plaats van de belofte,
+> en alle drie zijn ze door een review gevonden en niet door de suite.**
+>
+> - Bij QS8-213 bewaakte een belofte-test de **naam** van een helper.
+>   `herinneringStandaard({ onboarded_at: null })` bleef groen en zou de
+>   dagelijkse herinnering van élke bestaande gebruiker terugzetten op 20:00 —
+>   precies de belofte waar die helper voor bestaat.
+> - Bij QS8-202 stond er `.toContain('punt')` onder een zin die het tegendeel van
+>   domeinregel 10 beweerde. Beide lezingen bevatten dat woord.
+> - Bij QS8-202 greep een groepsgrendel naar `<Weekpas` in zes bestandsnamen,
+>   terwijl dat component in geen enkel scherm rechtstreeks staat: `DoelStandKaart`
+>   rendert hem. Wie die kaart op een groepsscherm hergebruikt, lekt een weekpas
+>   en de grendel blijft groen.
+>
+> ⚠️ **De ijking ving geen van drieën, en de reden is dezelfde.** Elke mutatie
+> ging door een grendel die er al lag: de naamlijst, het woord, de bestandsnaam.
+> `CLAUDE.md` waarschuwt hiervoor bij regel 18 — *breek de grendel die de ijking
+> nóemt* — en dit is drie keer op één dag de praktijk ervan.
+>
+> **03-09, punt B: een feature kan af zijn, getest zijn en niets doen omdat twee
+> jobs drie uur uit elkaar staan.** QS8-202 liet het weekoverzicht vragen of er
+> een weekpas verbruikt was. Dat overzicht valt om het herinneringsuur (standaard
+> 9:00); de rollover schrijft een gemiste week pas áf ná de coulanceperiode van
+> twaalf uur. Het antwoord was dus altijd nee — voor iedereen die nooit een
+> herinneringstijd instelde, en dat is de standaard, want `reminder_time` heeft
+> geen kolomstandaard. En de ontdubbeling op `(user_id, kind, local_date)` liet
+> die dag geen tweede melding meer toe.
+>
+> ⚠️ Elk schakeltje af, de keten onderbroken: regel 18 vraag 5, maar dan over
+> **tijd** in plaats van over een ontbrekende knop. Geen van de belofte-tests
+> raakte de klok. De grendel meet nu met de échte `closableUserCycle()` of de week
+> op het gekozen uur al afgeschreven ís, in plaats van erover te redeneren.
+>
+> **03-09, punt C: leid de lijst van een controle af uit een aanroep, niet uit
+> bestandsnamen.** De belofte-test van QS8-208 haalt zijn schermen op uit wie
+> `fetchJob()` aanroept, en vond daardoor meteen een derde scherm dat niet in het
+> issue stond (`app/doel/plan.tsx`) — dat wachtte net zo lang op een AI-job en
+> toonde één regel tekst. Een lijst met twee bestandsnamen erin had dat per
+> definitie niet gezien. Dezelfde beweging staat sinds deze sessie ook in de
+> groepsgrendel van QS8-202, die zijn schermen uit `app/groep/` leest.
 >
 > **02-09, punt 0: productie is bijgetrokken, in twee rondes.** Eerst `0139` t/m
 > `0146` (de acht van QS8-243), daarna `0147` t/m `0149` toen die landden. Allebei
@@ -133,10 +305,34 @@ op uit het Linear-project GoalBuddies.
 bevindingen van 30-08 zijn geland; wat er nu voorligt staat in "Waar te
 beginnen" punt 0.
 
-⚠️ **Er werkt een parallelle sessie in dezelfde repo, en dat is op 01-09 opnieuw
-zichtbaar:** `origin/claude/qs8-252-besluiten-a53-a56` bouwt op dit moment het
-beslisdocument bij QS8-252. **Kijk naar de remote branches vóór je iets
-oppakt** — `git branch -r` — en niet alleen naar Linear.
+⚠️ **Er werkt een parallelle sessie in dezelfde repo, en op 03-09 kostte dat
+werk.** **Kijk naar de remote branches vóór je iets oppakt** — `git branch -r` —
+en niet alleen naar Linear. Twee dingen die daar die dag uit kwamen:
+
+- ✅ **Opgelost op 04-09, en de vorm blijft het lezen waard.**
+  `origin/quintenstrijdonk/qs8-197-apple-en-google-knop` droeg **migratie 0154**
+  en was twee sessies lang niet geland. Zolang dat zo is, laat élke nieuwe
+  migratie een gat in de nummering en wordt `npm run migraties:controle` rood —
+  dus kan de poort niet groen en CI niet slagen. Dat blokkeerde QS8-174 volledig.
+  **Wil je een migratie schrijven, kijk dan eerst of er een lager nummer op een
+  open branch staat.**
+
+  ⚠️ **En je ziet dit meteen, ook zonder iets te doen.** Op een schone `main`
+  stond `npm run migraties:controle` op 03-09 rood met precies deze melding
+  (nagemeten met een `git stash`). Ga er dus niet van uit dat je eigen wijziging
+  hem brak; de controle meldt de branchnaam, en die naam is het antwoord. Hij
+  wordt vanzelf groen zodra die branch landt — en dat is op 04-09 gebeurd met
+  #191. Nagemeten: 157 migraties, aaneengesloten.
+- `origin/quintenstrijdonk/qs8-266-...` is al opgepakt door een andere sessie.
+  QS8-266 is op 03-09 aangemaakt (de vragenlijst na de onboarding is
+  onbereikbaar); dat issue is dus niet meer vrij. Het is inmiddels geland (#189).
+
+⚠️ **Op 04-09 gebeurde het nog een keer, en toen goed:** terwijl deze sessie aan
+QS8-192 werkte, pakte een tweede sessie QS8-267 op en landde die als #192. Dat
+ging zonder botsing omdat de twee elkaars bestanden niet raakten — maar dat was
+geluk en geen afspraak. **Nagemeten op 04-09 stond migratie 0154 nog steeds
+alleen op `qs8-197-apple-en-google-knop`,** dus de blokkade van QS8-174 staat
+onveranderd.
 
 ## STAND VAN ZAKEN
 
@@ -398,6 +594,134 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️ Een issue op Backlog betekent niet dat er niemand aan werkt — 04/05-09,
+  QS8-269 en QS8-270.** Twee keer op één dag lag er al een branch mét migratie
+  terwijl het issue in Linear nog op Backlog stond. De ene keer was het werk al
+  gedaan (PR #198 tegen mijn #199), de andere keer ving `npm run migratie:nieuw`
+  het net op tijd — die fetcht sinds QS8-247 zelf en zag een branch die
+  `git branch -r` twintig minuten eerder nog niet kende.
+
+  **Wat hieruit volgt, en het is niet "kijk beter":**
+
+  1. **Zet het issue op In Progress vóórdat je begint.** Dat is de enige rem die
+     vóóraf werkt. Achteraf ontdekken dat je hetzelfde bouwde, kost een hele
+     ronde.
+  2. **Een beeld van `git branch -r` is zo oud als je laatste fetch.** Fetch
+     opnieuw op het moment dat het ertoe doet — vlak voordat je een migratienummer
+     trekt, en dat doet `migratie:nieuw` voor je.
+  3. **Kijk niet alleen naar de status maar naar de branches.** De andere sessie
+     verzet de status niet; de branch is het enige eerlijke signaal.
+
+  ⚠️ **En bouw niet door op "hij staat op Backlog dus hij is vrij".** Dat is
+  precies de aanname die twee keer misging.
+
+- **⚠️ Een belofte-test die de náám van een helper bewaakt, bewaakt zijn belofte
+  niet — 03-09, QS8-213.** De test stond toe dat er precies één helper gespreid
+  werd in de profielpatch, en controleerde dat met een naamlijst. De
+  security-review mat wat daar doorheen kwam:
+
+  ```
+  ...herinneringStandaard({ onboarded_at: profiel?.onboarded_at ?? null })   groen (juist)
+  ...herinneringStandaard({ onboarded_at: null })                            groen (fout!)
+  'share_moves_by_default': false        (sleutel gequote)                   groen (fout!)
+  ...{ share_moves_by_default: false }   (inline spread)                     groen (fout!)
+  share_moves_by_default: false          (kaal)                              rood
+  ```
+
+  Die tweede regel is de gevaarlijke: één woord korter, leest als "de
+  onboarding-standaard", en zet vanaf dat moment de dagelijkse herinnering van
+  élke bestaande gebruiker terug op 20:00. Dat is precies de belofte waar die
+  helper voor gebouwd is.
+
+  ⚠️ **En de ijking wees er niet naar.** Die had de helper vervangen door een
+  ándere helper, en dat wordt rood op de naamlijst — de grendel die er toch al
+  lag. `CLAUDE.md` zegt bij regel 18 letterlijk: *breek de grendel die de ijking
+  nóemt*. Wat de test nu doet, is kijken wat er ín de haakjes staat; en een
+  gequote of berekende sleutel is rood in plaats van stil.
+
+- **⚠️ Een test die een woord zoekt, is groen op beide lezingen van dat woord —
+  03-09, QS8-202.** De pushmelding zei *"Het punt voor die week krijg je wel"*,
+  wat leest als *je ontvángt het punt*, en in het Engels (*"you still take the
+  point"*) nog sterker. Bedoeld was het omgekeerde: dat punt ben je kwijt.
+  Domeinregel 10 zegt met zoveel woorden dat die regel niet mag verwateren, en
+  dit is het énige kanaal dat iemand bereikt die de app niet opent.
+
+  De test eronder was `.toContain('punt')`. Beide formuleringen bevatten dat
+  woord. **Toets bij copy die een regel draagt de ríchting en niet het
+  onderwerp** — `not.toMatch(/punt.*krijg je/)` naast `toMatch(/afgegaan/)`.
+
+  ⚠️ De juiste zin stond al in de catalogus, bij `weekpas.punt_toch_af`. Twee
+  plekken die hetzelfde moeten zeggen en niet naar elkaar wijzen, lopen uiteen —
+  en de nieuwste van de twee is niet vanzelf de betere.
+
+- **⚠️ Een feature kan af zijn, getest zijn en niets doen omdat twee jobs uit
+  elkaar staan — 03-09, QS8-202.** Uitgeschreven in punt B bovenaan dit bestand.
+  De korte versie: het weekoverzicht vroeg om 9:00 of er een weekpas verbruikt
+  was, en de rollover verbruikt hem pas na de coulanceperiode van twaalf uur.
+  Altijd nee, voor de standaardgebruiker, en de ontdubbeling maakte dat voor die
+  week definitief.
+
+  ⚠️ **Dit is regel 18 vraag 5 over tijd in plaats van over een knop.** De vraag
+  *"kan een gebruiker hier daadwerkelijk bij"* heeft een tweede helft die niemand
+  stelde: *"en op het moment dat dit draait, ís het antwoord er dan al?"* Bij
+  alles wat op een cyclusgrens hangt — rollover, weekpas, punten, meldingen — is
+  dat een eigen vraag.
+
+- **⚠️ Leid de lijst van een controle af uit een aanroep, niet uit bestandsnamen
+  — 03-09, QS8-208 en QS8-202.** De belofte-test van de wachtschermen haalt zijn
+  lijst op uit wie `fetchJob()` aanroept en vond meteen een derde scherm dat niet
+  in het issue stond. Een groepsgrendel die zes bestandsnamen opsomde, miste
+  zowel nieuwe schermen als de transitieve weg (`DoelStandKaart` rendert
+  `Weekpas`, en geen enkel scherm noemt `Weekpas` rechtstreeks).
+
+  ⚠️ **De sterkste vorm blijft de database.** Bij de weekpas is de échte grendel
+  `week_pass_events_select`, die alleen je eigen rijen geeft. Een bronscan vangt
+  de fout een laag eerder waar hij nog leesbaar is, maar hij is de tweede
+  verdedigingslinie en niet de eerste.
+
+- **⚠️ Tel je voortgang af tegen de lijst, niet op vanuit je werk — 03-09.** Een
+  seriële batch van acht issues leverde een eindrapportage op die "zeven van de
+  acht geland" zei. Het waren er zes: QS8-192 was er tussenuit gevallen zonder dat
+  iemand het merkte, en het getal is opgeteld uit wat er gedaan wás. Een optelling
+  van je eigen werk kan per definitie niet zien wat je niet gedaan hebt.
+
+- **⚠️ Twee klokken die 22 uur per dag hetzelfde zeggen, zijn geen bewijs dat je
+  de goede pakt — 04-09, QS8-267.** Twee RLS-tests rekenden in UTC naast een
+  grendel die op de groepsklok staat. Ze waren twee uur per nacht ten onrechte
+  rood, en de andere tweeëntwintig uur blind: een test die in UTC rekent kan de
+  UTC-implementatie niet van de groepsklok-implementatie onderscheiden zolang die
+  twee samenvallen. Toen een migratie de grens van `current_date` naar
+  `groepsdatum()` verplaatste, bleef de test dus gewoon groen — en het commentaar
+  erboven bleef de oude klok noemen. ⚠️ **De reparatie is niet "de test slimmer
+  laten rekenen" maar de zaak zó opzetten dat de klokken uit elkaar lopen**: geef
+  de groep een tijdzone die *nu* een andere datum heeft dan UTC, dan is een
+  terugval naar `current_date` altijd rood in plaats van bij toeval. Vraag bij
+  elke tijdgebonden test op wélke klok de grendel staat; er zijn er hier drie.
+
+- **⚠️ "Geen database" kan betekenen dat de database er staat en jij de verkeerde
+  gebruiker bent — 04-09, QS8-268.** Vijf controles (`definers`, `klokgrens`,
+  `kolomrechten`, `pin`, `zichtbaarheid`) roepen `psql` aan zonder `-U` en vallen
+  terug op de OS-gebruiker. Ze melden dan *"Start de lokale stack"* terwijl die
+  stack draait en de RLS-suite er wél tegen meet. ⚠️ **Een melding die de
+  verkeerde oorzaak noemt, is duurder dan geen melding:** hij stuurt de lezer weg
+  van de oplossing en de poort telt vijf ongemeten controles als een grens van de
+  omgeving. ✅ Gerepareerd dezelfde dag. ⚠️ **De duurste helft zit niet in de
+  bug maar in de omweg:** dit bestand droeg sinds eind augustus twee passages die
+  zeiden dát je `PGUSER` moet zetten, mét de `export`-regel erbij. Een omweg die
+  je opschrijft, houdt op een bug te zijn. Vraag bij elke "zo doe je dat hier"
+  in dit bestand: is dit een eigenschap van de omgeving, of een defect dat een
+  vaste vorm heeft gekregen?
+
+- **⚠️ Een reden om iets te laten liggen, veroudert net zo hard als code —
+  04-09, QS8-192.** De dossierrij zei dat expo-router geen ondersteunde manier
+  exporteert om een navigatie tegen te houden. Dat was op één `package.json` na
+  te meten, het klopte al acht dagen niet meer, en niemand keek — de rij is in die
+  periode wél twee keer gelezen. ⚠️ **Erger nog: het gegeven wees de andere kant
+  op dan gedacht.** Het ontbrekende `exports`-veld maakte een diepe import juist
+  *mogelijk* in plaats van onmogelijk, en zo'n import typecheckt gewoon. Lees een
+  reden altijd terug tegen de bron die hij noemt, niet tegen wat je ervan
+  onthouden hebt.
 
 - **⚠️ Een getal in een rapport leest als gemeten, ook als het geraden is —
   02-09, QS8-265.** De tokenaudit meldde als bevinding met de zwaarte "MIDDEL" dat
@@ -996,13 +1320,12 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
   en als de drop dan nog weigert: `psql -c "drop database if exists
   goalbuddies_rls;"` met de hand.
 
-  ⚠️ **`schema-opbouwen.sh` gaat uit van Postgres op poort 5433 en gebruiker
-  `postgres`.** Draait jouw cluster op 5432, of ben je als een andere gebruiker
-  ingelogd, dan falen zowel `rls:stack` als de drie controlescripts die
-  `pg_proc` lezen (`pin`, `klokgrens`, `kolomrechten`) — met een psql-fout die
-  naar de database wijst terwijl de vérbinding fout staat. `PGPORT` en `PGUSER`
-  zetten lost het op; ze zijn niet in het script gehardcodeerd omdat ze per
-  machine verschillen.
+  ⚠️ **`schema-opbouwen.sh` gaat uit van Postgres op poort 5433.** Draait jouw
+  cluster op 5432, dan faalt `rls:stack`; `PGPORT` zetten lost dat op, en dat
+  staat niet in het script omdat het per machine verschilt. ✅ **De gebruiker is
+  sinds 04-09 geen probleem meer** (QS8-268): de controles noemen `postgres` zelf
+  als er geen `PGUSER` staat, en een psql-fout wijst nu naar de échte oorzaak in
+  plaats van naar de database.
 
   ⚠️ **En draai de suite nooit met `--no-isolate`.** Op 27-08 als proef
   gebruikt om te zien of testbestanden moduletoestand delen: 28 van de 30
@@ -1078,9 +1401,11 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
   ```bash
   export PATH=/usr/lib/postgresql/16/bin:$PATH
-  export PGHOST=localhost PGPORT=5433 PGUSER=postgres RLS_DOEL=lokaal
+  export PGHOST=localhost PGPORT=5433 RLS_DOEL=lokaal
   npm run poort
   ```
+
+  ⚠️ `PGUSER` stond hier tot 04-09 bij en is er sinds QS8-268 niet meer nodig.
 
   Daarmee méten ook `klokgrens`, `kolomrechten`, `pin` en `zichtbaarheid` in
   plaats van zichzelf over te slaan. **Wat er dan nog ongemeten blijft is
@@ -1260,11 +1585,49 @@ groene poort:
 | QS8-241 | `migratie:hernummer`, en een kop die over zijn eigen nummer liegt is nu rood | #130 |
 | QS8-247 | `migratie:nieuw` fetcht zelf voordat hij telt | #131 |
 
+**Wat er op 03-09 bij kwam** — een seriële batch van acht doorloopbevindingen,
+zes geland met een groene poort:
+
+| Issue | Wat het oploste | PR |
+|---|---|---|
+| QS8-213 | de profiel-onboarding vraagt nog twee dingen in plaats van zeven | #178 |
+| QS8-208 | de drie wachtschermen van de Doelcoach laten zien dát ze wachten | #179 |
+| QS8-221 | datums en tijden in de notatie van het toestel, opgemaakt op één plek | #181 |
+| QS8-218 | de gedachtestreepjes uit beide catalogi, met `streepje:controle` erop | #182 |
+| QS8-219 | de `levend`-ratel van 27 naar 21, langs `useAsyncMetTerugval()` | #185 |
+| QS8-202 | het weekoverzicht meldt dat een weekpas je reeks gered heeft | #188 |
+| QS8-192 | de terugknop van de browser gooit de weekafsluiting niet meer weg | #193 |
+
+⚠️ **Alleen QS8-174 staat nog open:** twee blokkades, `wacht-op-Quinten`. Zie
+punt 0 bovenaan dit bestand.
+
+Buiten de batch landde op 04-09 nog **QS8-267** (#192, uit een parallelle
+sessie): de klokgrenstests rekenen nu op de klok van hun eigen grendel.
+
+**Wat er op 04 en 05-09 bij kwam en geland is** — deze sessie: QS8-268 (de poort
+telde negen controles zonder database waar er vier hoorden), QS8-270 (de
+RLS-suite sloeg dertig tests stil over en gaf exitcode 0), QS8-212 (de
+tijdzonekeuze vond alleen steden mét een eigen IANA-zone), QS8-171 (één stukke
+groep kostte alle groepen hun seizoensrecap), QS8-146 (het model van de tien
+lidmaatschapshulpfuncties, plus: een uitgezet lid is geen groepsgenoot meer),
+QS8-276 en QS8-277. Uit de parallelle sessie: QS8-269, QS8-271 t/m QS8-275.
+
 **Waar je nu begint, in deze volgorde:**
 
-1. **Kijk eerst welke branches er open staan** (`git branch -r`). Op 01-09 stond
-   er een parallelle sessie op `claude/qs8-252-besluiten-a53-a56`. Twee sessies
-   in dezelfde bestanden is de duurste vorm van tijdverlies die dit project kent.
+1. **Kijk eerst welke branches er open staan** (`git branch -r`). Op 03-09 droeg
+   `quintenstrijdonk/qs8-197-apple-en-google-knop` migratie **0154** zonder
+   geland te zijn, en `quintenstrijdonk/qs8-266-...` was al door een andere
+   sessie opgepakt. Twee sessies in dezelfde bestanden is de duurste vorm van
+   tijdverlies die dit project kent — en een migratie op een open branch blokkeert
+   élke nieuwe migratie, want de nummering krijgt dan een gat.
+
+   ✅ **Beide zijn op 04-09 geland** (#191 en #189), dus de nummering is heel:
+   157 migraties, aaneengesloten. De gewoonte blijft, de blokkade is weg.
+
+   ⚠️ **QS8-174 is daarmee vrij, en wat hij nog nodig heeft is de database en niet
+   de branch:** de migratie op productie toepassen en daarna `npm run types:db`.
+   Zonder dat kent `database.types.ts` de nieuwe RPC niet en is hij niet
+   type-veilig aan te roepen. De SQL is af en staat in het issue.
 2. **QS8-252 — de epic van 01-09**, als die branch geland is of hem niet raakt.
    Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
    krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een
@@ -1280,10 +1643,29 @@ groene poort:
    document geland is. Zolang die twee elkaar tegenspreken, is de constitutie
    niet te vertrouwen op precies het punt waar ze het meest telt.
 3. **De losse doorloopbugs uit de backlog** als de epic te groot is om te
-   beginnen: QS8-248 (het aanmeldscherm opent op "Account maken" in plaats van op
-   inloggen), QS8-245 (de uitlogknop staat onder elf kaarten), QS8-249, QS8-226.
-   Klein, af te ronden binnen een sessie, en het zijn stuk voor stuk dingen die
-   een mens tegenkwam.
+   beginnen. Klein, af te ronden binnen een sessie, en het zijn stuk voor stuk
+   dingen die een mens tegenkwam.
+
+   ⚠️⚠️ **Hier stond tot 05-09 een lijst met vier issuenummers, en drie ervan
+   waren al af.** Dat is de vorm waar dit hele document tegen bestaat: een lijst
+   die je met de hand bijhoudt, veroudert stil, en `docs:controle` ziet hem niet
+   — die vangt tegenspraken mét een patroon, en een naam die intussen Done is
+   heeft dat niet.
+
+   **Vraag het daarom aan Linear en niet aan deze regel:**
+
+   - Todo, gesorteerd op prioriteit, zónder het label `wacht-op-Quinten`. Staat
+     daar niets, dan is de Backlog aan de beurt.
+   - Sla de rijen over die met **🗣 REVIEW** beginnen en de dossierrijen die
+     alleen een oordeel vragen: die zijn agenda voor november, geen bouwwerk. Je
+     herkent ze aan een beschrijving die eindigt in *"dat is een oordeel en geen
+     meting"* of *"bewust niet gerepareerd"* zonder acceptatiecriteria.
+   - Kijk dan pas naar `git branch -r` én naar de migratienummers op die
+     branches. Zie de valkuil bovenaan: Backlog betekent niet vrij.
+
+   📏 Op 05-09 gemeten: de **hele Todo-kolom** draagt `wacht-op-Quinten`, op
+   QS8-126 na (de repo privé maken, bewust uitgesteld tot de software af is) — dus
+   in de praktijk begin je vandaag in de Backlog.
 4. **QS8-251 en QS8-242** als je liever aan het gereedschap werkt: `npm run
    db:push` kán niet werken en staat toch in `package.json` én in `DEPLOY.md` als
    hét pad, en de secret-scan van de deploy meldt nul omdat hij niets kán zien.

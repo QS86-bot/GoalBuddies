@@ -10,6 +10,7 @@ import {
   toonDatum,
   toonMaand,
   type IsoDate,
+  type Maandraster,
   type Weekday,
 } from '../time';
 import { radius, space, useTheme } from '../theme';
@@ -84,9 +85,6 @@ export function DatumKeuze({
   error,
   disabled = false,
 }: Props) {
-  const theme = useTheme();
-  const c = theme.colors;
-
   // ⚠️ De maand die je bekijkt is iets anders dan de datum die je koos. Wie
   //    doorbladert en niets aantikt, hoort niet teruggeworpen te worden.
   const [maand, setMaand] = useState<IsoDate>(
@@ -94,7 +92,6 @@ export function DatumKeuze({
   );
   const [open, setOpen] = useState(false);
 
-  const raster = maandraster(maand, startDag);
   const taal = opmaaktaal();
 
   return (
@@ -102,92 +99,224 @@ export function DatumKeuze({
       <Subheading>{label}</Subheading>
       {hint === undefined ? null : <Caption>{hint}</Caption>}
 
-      {/*
-        ⚠️ **De knop toont de datum in de notatie van het toestel** (QS8-221) en
-           nooit de ISO-waarde. Wat er naar de datalaag gaat is wél ISO; dat
-           verschil is de hele reden dat `toonDatum` bestaat.
-      */}
-      <Button
-        variant="stil"
-        block
+      <Datumknop
+        label={label}
+        waarde={waarde}
+        taal={taal}
         disabled={disabled}
         onPress={() => setOpen((o) => !o)}
-        accessibilityLabel={`${label}: ${
-          waarde === '' ? t('datumkeuze.niets_gekozen') : toonDatum(waarde, taal)
-        }`}
-      >
-        {waarde === '' ? t('datumkeuze.kies') : toonDatum(waarde, taal)}
-      </Button>
+      />
 
       {error === undefined ? null : <Caption danger>{error}</Caption>}
 
       {!open ? null : (
-        <View style={[styles.paneel, { backgroundColor: c.panelDark, borderColor: c.border }]}>
-          <View style={styles.maandrij}>
-            <Button
-              variant="stil"
-              onPress={() => setMaand(maandErbij(maand, -1))}
-              accessibilityLabel={t('datumkeuze.vorige_maand')}
-            >
-              {'<'}
-            </Button>
-            <Subheading>{toonMaand(maand, taal)}</Subheading>
-            <Button
-              variant="stil"
-              onPress={() => setMaand(maandErbij(maand, 1))}
-              accessibilityLabel={t('datumkeuze.volgende_maand')}
-            >
-              {'>'}
-            </Button>
-          </View>
+        <Kalenderpaneel
+          maand={maand}
+          onMaand={setMaand}
+          startDag={startDag}
+          taal={taal}
+          waarde={waarde}
+          vandaag={vandaag}
+          min={min}
+          max={max}
+          optioneel={optioneel}
+          onKies={(datum) => {
+            onKies(datum);
+            setOpen(false);
+          }}
+        />
+      )}
+    </View>
+  );
+}
 
-          <View style={styles.week}>
-            {raster.kolommen.map((dag) => (
-              <View key={dag} style={styles.vakje}>
-                <Caption>{weekdagKort(dag)}</Caption>
-              </View>
-            ))}
-          </View>
+/**
+ * De knop die het paneel opent en de gekozen datum toont.
+ *
+ * ⚠️ **De knop toont de datum in de notatie van het toestel** (QS8-221) en nooit
+ *    de ISO-waarde. Wat er naar de datalaag gaat is wél ISO; dat verschil is de
+ *    hele reden dat `toonDatum` bestaat.
+ *
+ * ⚠️ Het `accessibilityLabel` noemt het veld én de stand, want "12 maart" alleen
+ *    zegt een schermlezer niet wélke datum dit is.
+ */
+function Datumknop({
+  label,
+  waarde,
+  taal,
+  disabled,
+  onPress,
+}: {
+  readonly label: string;
+  readonly waarde: string;
+  readonly taal: string;
+  readonly disabled: boolean;
+  readonly onPress: () => void;
+}) {
+  const tekst = waarde === '' ? t('datumkeuze.kies') : toonDatum(waarde, taal);
+  const stand = waarde === '' ? t('datumkeuze.niets_gekozen') : toonDatum(waarde, taal);
 
-          {raster.weken.map((week) => (
-            <View key={week[0]!.datum} style={styles.week}>
-              {week.map((dag) => (
-                <Dagvakje
-                  key={dag.datum}
-                  datum={dag.datum}
-                  inMaand={dag.inMaand}
-                  gekozen={dag.datum === waarde}
-                  vandaag={dag.datum === vandaag}
-                  teKiezen={dagIsTeKiezen(dag.datum, {
-                    min: min as IsoDate | undefined,
-                    max: max as IsoDate | undefined,
-                  })}
-                  onKies={() => {
-                    onKies(dag.datum);
-                    setOpen(false);
-                  }}
-                />
-              ))}
-            </View>
+  return (
+    <Button
+      variant="stil"
+      block
+      disabled={disabled}
+      onPress={onPress}
+      accessibilityLabel={`${label}: ${stand}`}
+    >
+      {tekst}
+    </Button>
+  );
+}
+
+/**
+ * De weekdagkoppen en de zes weken eronder.
+ *
+ * ⚠️ Altijd zes rijen — dat besluit staat in `maandraster()` en niet hier: een
+ *    raster dat per maand van hoogte verspringt, laat de knoppen eronder
+ *    dansen.
+ */
+function Dagenraster({
+  raster,
+  waarde,
+  vandaag,
+  min,
+  max,
+  onKies,
+}: {
+  readonly raster: Maandraster;
+  readonly waarde: string;
+  readonly vandaag: string;
+  readonly min?: string | undefined;
+  readonly max?: string | undefined;
+  readonly onKies: (datum: string) => void;
+}) {
+  return (
+    <>
+      <View style={styles.week}>
+        {raster.kolommen.map((dag) => (
+          <View key={dag} style={styles.vakje}>
+            <Caption>{weekdagKort(dag)}</Caption>
+          </View>
+        ))}
+      </View>
+
+      {raster.weken.map((week) => (
+        <View key={week[0]!.datum} style={styles.week}>
+          {week.map((dag) => (
+            <Dagvakje
+              key={dag.datum}
+              datum={dag.datum}
+              inMaand={dag.inMaand}
+              gekozen={dag.datum === waarde}
+              vandaag={dag.datum === vandaag}
+              teKiezen={dagIsTeKiezen(dag.datum, {
+                min: min as IsoDate | undefined,
+                max: max as IsoDate | undefined,
+              })}
+              onKies={() => onKies(dag.datum)}
+            />
           ))}
-
-          {/*
-            ⚠️ Wissen staat er alleen als leeg ook echt mag. Een knop die een
-               verplicht veld leegmaakt, levert een foutmelding op en geen keuze.
-          */}
-          {!optioneel ? null : (
-            <Button
-              variant="stil"
-              block
-              onPress={() => {
-                onKies('');
-                setOpen(false);
-              }}
-            >
-              {t('datumkeuze.wissen')}
-            </Button>
-          )}
         </View>
+      ))}
+    </>
+  );
+}
+
+/**
+ * De maandkop: terug, de maandnaam, vooruit.
+ *
+ * ⚠️ De twee knoppen dragen een `accessibilityLabel` en niet alleen een pijltje.
+ *    `<` en `>` zijn voor een schermlezer geen richting maar een teken.
+ */
+function Maandkop({
+  maand,
+  taal,
+  onMaand,
+}: {
+  readonly maand: IsoDate;
+  readonly taal: string;
+  readonly onMaand: (m: IsoDate) => void;
+}) {
+  return (
+    <View style={styles.maandrij}>
+      <Button
+        variant="stil"
+        onPress={() => onMaand(maandErbij(maand, -1))}
+        accessibilityLabel={t('datumkeuze.vorige_maand')}
+      >
+        {'<'}
+      </Button>
+      <Subheading>{toonMaand(maand, taal)}</Subheading>
+      <Button
+        variant="stil"
+        onPress={() => onMaand(maandErbij(maand, 1))}
+        accessibilityLabel={t('datumkeuze.volgende_maand')}
+      >
+        {'>'}
+      </Button>
+    </View>
+  );
+}
+
+/**
+ * Het opengeklapte paneel: maandkop, weekdagen, het raster en de wisknop.
+ *
+ * ⚠️ **Staat los van `DatumKeuze` omdat die anders over de vijfenzeventig regels
+ *    gaat** die `src/shared/ui` sinds QS8-190 als plafond heeft. Het is bovendien
+ *    de natuurlijke snede: `DatumKeuze` houdt de stáát (welke maand, open of
+ *    dicht) en dit stuk tekent alleen.
+ *
+ * ⚠️ De keuze sluit het paneel, en dat gebeurt in één `onKies` hierboven — niet
+ *    twee keer, want dan is "sluit na kiezen" een belofte op twee plekken.
+ */
+function Kalenderpaneel({
+  maand,
+  onMaand,
+  startDag,
+  taal,
+  waarde,
+  vandaag,
+  min,
+  max,
+  optioneel,
+  onKies,
+}: {
+  readonly maand: IsoDate;
+  readonly onMaand: (m: IsoDate) => void;
+  readonly startDag: Weekday;
+  readonly taal: string;
+  readonly waarde: string;
+  readonly vandaag: string;
+  readonly min?: string | undefined;
+  readonly max?: string | undefined;
+  readonly optioneel: boolean;
+  readonly onKies: (datum: string) => void;
+}) {
+  const c = useTheme().colors;
+  const raster = maandraster(maand, startDag);
+
+  return (
+    <View style={[styles.paneel, { backgroundColor: c.panelDark, borderColor: c.border }]}>
+      <Maandkop maand={maand} taal={taal} onMaand={onMaand} />
+
+      <Dagenraster
+        raster={raster}
+        waarde={waarde}
+        vandaag={vandaag}
+        min={min}
+        max={max}
+        onKies={onKies}
+      />
+
+      {/*
+        ⚠️ Wissen staat er alleen als leeg ook echt mag. Een knop die een
+           verplicht veld leegmaakt, levert een foutmelding op en geen keuze.
+      */}
+      {!optioneel ? null : (
+        <Button variant="stil" block onPress={() => onKies('')}>
+          {t('datumkeuze.wissen')}
+        </Button>
       )}
     </View>
   );

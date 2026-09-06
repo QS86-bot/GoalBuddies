@@ -32,6 +32,8 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
+
 /**
  * De oppervlakken die met opzet variëren op `groups.zichtbaarheid`, met wat de
  * gebruiker daarover leest.
@@ -200,10 +202,7 @@ export function beoordeel(gevonden, oppervlakken = OPPERVLAKKEN, geen = GEEN_OPP
 }
 
 function psql(vraag) {
-  const db = process.env.DB ?? 'goalbuddies_rls';
-  const args = ['--quiet', '--no-psqlrc', '-At', '-d', db, '-c', vraag];
-  if (process.env.PGHOST) args.unshift('-h', process.env.PGHOST);
-  return execFileSync('psql', args, { encoding: 'utf8' });
+  return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
 }
 
 function hoofd() {
@@ -212,10 +211,13 @@ function hoofd() {
     gevonden = ontleed(psql(VRAAG));
   } catch (fout) {
     console.error(
-      '✗ Geen database om tegen te meten.\n\n' +
-        'Deze controle leest `pg_proc`, `pg_policies` en `pg_views`, niet de\n' +
-        'migratiebestanden. Start de lokale stack met `npm run rls:stack`.\n\n' +
-        `psql zei: ${fout instanceof Error ? fout.message.split('\n')[0] : String(fout)}`,
+      verbindingsmelding({
+        naam: 'zichtbaarheid-controle',
+        leest:
+          'Deze controle leest `pg_proc`, `pg_policies` en `pg_views`, niet de\n' +
+          'migratiebestanden.',
+        melding: fout instanceof Error ? fout.message : String(fout),
+      }),
     );
     return 1;
   }

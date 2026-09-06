@@ -49,6 +49,36 @@ function serverdatum(): IsoDate {
   return localDateIn(UTC, now());
 }
 
+/**
+ * Een tijdzone waarvan de datum op dít moment een andere is dan de serverdatum.
+ *
+ * ⚠️ **Zonder zo'n zone is een klokgrenstest twee uur per dag scherp en de rest
+ *    van de dag blind.** De belofte van een venster op de groeps- of
+ *    gebruikersklok is alleen te onderscheiden van dezelfde grens op
+ *    `current_date` op de momenten dat die twee klokken een verschíllende datum
+ *    aanwijzen. Vallen ze samen, dan geeft elke implementatie hetzelfde antwoord
+ *    en blijft de test groen terwijl de belofte weg is — regel 18, vraag 3, en
+ *    het antwoord erop is geen extra assertie maar een fixture waarin de klokken
+ *    uit elkaar liggen.
+ *
+ * Pacific/Kiritimati (UTC+14) en Pacific/Niue (UTC−11) spannen samen 25 uur, dus
+ * op élk moment wijkt er minstens één van de serverdatum af. Een vaste zone zou
+ * deze tests het grootste deel van de dag groen maken zonder iets te toetsen —
+ * precies het groen waar dit project voor waarschuwt.
+ *
+ * ⚠️ Deze functie stond tot QS8-267 alleen in het `ketting_stand`-blok
+ *    hieronder. Het `group_overview`-blok had hem net zo hard nodig en rekende
+ *    in UTC; die twee uur per dag waren de zichtbare helft van de fout, de
+ *    andere tweeëntwintig de dure.
+ */
+function afwijkendeZone(): TimeZone {
+  const vandaagUtc = serverdatum();
+  for (const kandidaat of ['Pacific/Kiritimati', 'Pacific/Niue'] as const) {
+    if (localDateIn(kandidaat as TimeZone, now()) !== vandaagUtc) return kandidaat as TimeZone;
+  }
+  throw new Error('UTC+14 en UTC−11 spannen 25 uur; dit kan niet voorkomen.');
+}
+
 interface Fixture {
   alice: TestUser;
   /** Lid zonder weekafsluiting — zijn schakels worden hier met de hand gezet. */
@@ -62,6 +92,28 @@ function uitkomst(data: unknown): { ok?: boolean; reason?: string } {
 
 describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => {
   let f: Fixture;
+  /** De tijdzone van de groep — in `beforeAll` bewust naast de serverdatum gezet. */
+  let groepZone: TimeZone;
+
+  /**
+   * De datum op de klok van de gróep, en dus de enige klok waarop een venster
+   * van deze database te meten valt.
+   *
+   * ⚠️ **Dit is de reparatie van QS8-267.** Het `group_overview`-blok rekende
+   *    zijn datums in UTC uit en legde ze naast een venster dat
+   *    `groepsdatum(group_id) + 1` luidt. Tweeëntwintig uur per dag geven die
+   *    twee hetzelfde antwoord en was de test blind; de overige twee uur was hij
+   *    rood zonder dat er iets kapot was. Van die twee gebreken is het eerste
+   *    het dure.
+   *
+   * ⚠️ **Niet elke datum in dit bestand hoort op deze klok.** Het
+   *    `week_reviews`-blok hierboven toetst `bewaak_week_review_periode()`, en
+   *    díe grendel vergelijkt met `current_date`. Daar staat `serverdatum()`, en
+   *    dat is geen omissie maar de derde klok van dit bestand.
+   */
+  function groepsdatum(): IsoDate {
+    return localDateIn(groepZone, now());
+  }
 
   beforeAll(async () => {
     const alice = await createTestUser('klokgrens-alice');
@@ -84,16 +136,22 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     }
 
     f = { alice, bob, groupId: groepData.group.id };
+    groepZone = afwijkendeZone();
 
     // ⚠️ **De huddledag op de weekdag van mórgen**, zodat "morgen" hier een
     //    échte periodestart is. Vóór 0108 deed die dag er niet toe en kon elke
     //    dag in het venster een weekafsluiting dragen; sindsdien is een periode
     //    iets met een vorm, en dan moet een suite over de vensterrand die vorm
     //    aanhouden om nog over de ránd te gaan.
+    //
+    // ⚠️ **De weekdag hangt aan de serverdatum en niet aan de groepsdatum**, want
+    //    de grendel die hem leest — `bewaak_week_review_periode()` — vergelijkt
+    //    zijn vénster met `current_date`. Dat is de derde klok in dit bestand en
+    //    hij hoort niet met de andere twee verward te worden.
     const morgenDow = new Date(`${addDays(serverdatum(), 1)}T00:00:00Z`).getUTCDay();
     const huddle = await adminDb()
       .from('groups')
-      .update({ huddle_day: morgenDow })
+      .update({ huddle_day: morgenDow, tz: groepZone })
       .eq('id', f.groupId);
     if (huddle.error) throw new Error(`huddledag zetten: ${huddle.error.message}`);
   }, SETUP_TIMEOUT);
@@ -232,10 +290,16 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
    *    gevallen, dus `closed_this_period` kan alleen op de vensterregel afketsen.
    *    Zonder die tweede schakel zou de test net zo groen zijn met een grens op
    *    `current_date`, en dan bewaakte hij niets.
+   *
+   * ⚠️ **"Morgen" is hier morgen op de klok van de gróep**, en dat is sinds
+   *    QS8-267 het hele punt. Het venster in `group_overview` luidt
+   *    `p_period_start <= groepsdatum(group_id) + 1`; de groep van deze suite
+   *    staat een datum naast UTC, dus een terugval naar `current_date + 1`
+   *    schuift het venster een dag op en maakt de eerste test hieronder rood.
    */
   describe('het groepsoverzicht', () => {
     beforeAll(async () => {
-      const vandaag = serverdatum();
+      const vandaag = groepsdatum();
       const { error } = await adminDb()
         .from('chain_links')
         .insert([
@@ -265,7 +329,7 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     it(
       'toont de schakel van morgen als afgesloten',
       async () => {
-        expect(await geslotenVoor(addDays(serverdatum(), 1))).toBe(true);
+        expect(await geslotenVoor(addDays(groepsdatum(), 1))).toBe(true);
       },
       TEST_TIMEOUT,
     );
@@ -273,7 +337,7 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     it(
       'toont die van overmorgen niet, ook al staat hij in de tabel',
       async () => {
-        const uitkomst = await geslotenVoor(addDays(serverdatum(), 2));
+        const uitkomst = await geslotenVoor(addDays(groepsdatum(), 2));
 
         // ⚠️ De belofte is "onthult geen aanwezigheid", en die staat voorop:
         //    wat er ook uitkomt, `true` mag het niet zijn.
@@ -286,6 +350,92 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
         //    dan legde deze test die verwarring vast als correct gedrag — en een
         //    test die een gat bekrachtigt is erger dan geen test.
         expect(uitkomst).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  /**
+   * De policy `chain_links_select` — de ándere kant van hetzelfde venster.
+   *
+   * ⚠️ **Deze rand stond in `epic8.test.ts` en werd daar in UTC gemeten**
+   *    (QS8-267). De policy luidt
+   *    `group_period_start >= groepsdatum(group_id) - 6` en die groep staat in
+   *    Europe/Amsterdam, dus de twee klokken wijzen tweeëntwintig uur per dag
+   *    dezelfde dag aan en de test kon `current_date` niet van `groepsdatum()`
+   *    onderscheiden. Hier wél: de groep van deze suite staat met opzet een
+   *    datum naast de serverdatum, dus een terugval naar `current_date` maakt
+   *    één van deze twee tests altijd rood — welke van de twee hangt af van of
+   *    de gekozen zone vóór of achter loopt, en dat is precies waarom het er
+   *    twee zijn.
+   *
+   * ⚠️ **De zichtbare helft is niet de vrijblijvende.** Zonder haar zou een
+   *    policy die álles dichthoudt deze suite groen laten, en De Ketting is dan
+   *    stuk zonder dat iemand het merkt.
+   */
+  describe('de leesbare rand van De Ketting', () => {
+    /** De laatste dag die nog in de lopende periode valt, en de eerste die dat niet doet. */
+    let lopend: IsoDate;
+    let gesloten: IsoDate;
+
+    beforeAll(async () => {
+      lopend = addDays(groepsdatum(), -6);
+      gesloten = addDays(groepsdatum(), -7);
+
+      const { error } = await adminDb()
+        .from('chain_links')
+        .insert([
+          { group_id: f.groupId, user_id: f.bob.id, group_period_start: lopend },
+          { group_id: f.groupId, user_id: f.bob.id, group_period_start: gesloten },
+        ]);
+      if (error) throw new Error(`randschakels zetten: ${error.message}`);
+    }, SETUP_TIMEOUT);
+
+    /** Wat alice — groepsgenoot, niet de eigenaar — van bobs schakel op `dag` ziet. */
+    async function zichtbaarVoorAlice(dag: IsoDate): Promise<number> {
+      const { data, error } = await f.alice.db
+        .from('chain_links')
+        .select('user_id')
+        .eq('group_id', f.groupId)
+        .eq('user_id', f.bob.id)
+        .eq('group_period_start', dag);
+      if (error) throw new Error(`chain_links lezen: ${error.message}`);
+      return (data ?? []).length;
+    }
+
+    it(
+      'laat een groepsgenoot de schakel van zes dagen terug zien',
+      async () => {
+        expect(await zichtbaarVoorAlice(lopend)).toBe(1);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'houdt die van zeven dagen terug dicht — dat is de vórige periode',
+      async () => {
+        // ⚠️ Een huddleperiode duurt zeven dagen, dus een lopende periode is
+        //    hoogstens zes dagen oud. Zeven dagen terug is per definitie de
+        //    afgesloten periode, en daar betekent een ontbrekende schakel
+        //    "gemist" — domeinregel 7, en de reden dat deze grens bestaat.
+        expect(await zichtbaarVoorAlice(gesloten)).toBe(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'laat bob zijn eigen schakel van zeven dagen terug wél zien',
+      async () => {
+        // ⚠️ Zonder deze derde is de test hierboven niet te onderscheiden van
+        //    "de rij bestaat niet". De policy heeft twee takken; deze bewijst
+        //    dat de rij er is en dat alleen de vénstertak hem tegenhield.
+        const { data, error } = await f.bob.db
+          .from('chain_links')
+          .select('user_id')
+          .eq('group_id', f.groupId)
+          .eq('group_period_start', gesloten);
+        if (error) throw new Error(`chain_links lezen: ${error.message}`);
+        expect(data).toHaveLength(1);
       },
       TEST_TIMEOUT,
     );
@@ -321,15 +471,6 @@ describe.skipIf(!rlsTestsConfigured)('ketting_stand peilt de adempauze per lid',
   let f: Fixture;
   let zone: TimeZone;
   let doelId: string;
-
-  /** Een zone waarvan de datum nú van de serverdatum verschilt. */
-  function afwijkendeZone(): TimeZone {
-    const vandaagUtc = serverdatum();
-    for (const kandidaat of ['Pacific/Kiritimati', 'Pacific/Niue'] as const) {
-      if (localDateIn(kandidaat as TimeZone, now()) !== vandaagUtc) return kandidaat as TimeZone;
-    }
-    throw new Error('UTC+14 en UTC−11 spannen 25 uur; dit kan niet voorkomen.');
-  }
 
   /** De stand zoals een lid hem ziet. */
   async function stand(): Promise<{ in_aanmerking?: number }> {
