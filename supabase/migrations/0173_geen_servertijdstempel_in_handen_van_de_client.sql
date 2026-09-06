@@ -1,4 +1,4 @@
--- 0175_geen_servertijdstempel_in_handen_van_de_client.sql — negentien tabellen
+-- 0173_geen_servertijdstempel_in_handen_van_de_client.sql — negentien tabellen
 -- (QS8-299, vervolg op 0173/QS8-295)
 --
 -- ROLLBACK-PAD:
@@ -238,7 +238,7 @@ comment on function public.tijdstempel_bewaking() is
   'Kolommen van type timestamptz met een now()-default die anon of authenticated '
   'mag schrijven — elke teller of venster dat erop rekent is dan te omzeilen. '
   'Tweede tak: een uitzondering in het eigen register die niets meer dekt. '
-  'Zie migratie 0175 (QS8-299).';
+  'Zie migratie 0173 (QS8-299).';
 
 -- ⚠️ De volledige vorm van onwrikbare regel 4. Deze functie is er voor
 --    `adminDb()` in de testsuite; `authenticated` heeft hem niet nodig en zou er

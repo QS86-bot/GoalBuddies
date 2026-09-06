@@ -12,10 +12,10 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    limiet van 200 per dag bleef omzeilbaar met eerlijk invoegen en daarna
  *    terugdateren.
  *
- * ⚠️ **Het waren tabelbréde grants, en dat is de reden dat 0175 lang is.** Een
+ * ⚠️ **Het waren tabelbréde grants, en dat is de reden dat 0173 lang is.** Een
  *    `revoke insert(kolom)` doet niets tegen een `grant insert` op de hele
  *    tabel; de enige weg is de tabelgrant intrekken en per kolom teruggeven.
- *    📏 Gemeten vóór 0175: **33 grants over 19 tabellen**. Erna: nul.
+ *    📏 Gemeten vóór 0173: **33 grants over 19 tabellen**. Erna: nul.
  *
  * ## Twee tests, en ze bewaken verschillende dingen
  *
@@ -56,7 +56,7 @@ describe.skipIf(!beschikbaar)('de client zet geen servertijdstempel', () => {
       //    die horen open te blijven.
       //
       // ⚠️ Hier stond eerst `week_reviews.id`, en die viel om — terecht: dat is
-      //    één van de 23 kolommen zonder schrijfpad die 0175 níét meer uitdeelt.
+      //    één van de 23 kolommen zonder schrijfpad die 0173 níét meer uitdeelt.
       //    Een must-allow moet een kolom noemen die de gebruiker écht vult, niet
       //    een sleutel die de database zelf zet. Zonder
       //    deze helft zou een migratie die álles intrekt ook groen staan.

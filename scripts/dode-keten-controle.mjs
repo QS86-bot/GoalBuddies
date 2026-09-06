@@ -182,7 +182,7 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'uitzondering in het eigen register die geen bezwaar meer dekt.',
   tijdstempel_bewaking:
     'Kolommen van type timestamptz met een now()-default die anon of ' +
-    'authenticated mag schrijven (0175). Elke teller en elk venster dat op zo\'n ' +
+    'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
     'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
     'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
   schrijfrechten_bewaking:
