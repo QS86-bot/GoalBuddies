@@ -266,11 +266,65 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
    *    dat is veilig: hij schrijft alleen wat op grond van de data al verdiend ís.
    *    Deze test legt dat vast, want het is een grant die er raar uitziet.
    */
+  /**
+   * ⚠️⚠️ **`verdien_badges()` is sinds 0165 geen client-oppervlak meer — QS8-287.**
+   *
+   * Hier stond één test die de RPC áls client aanriep en eiste dat hij niets
+   * onverdiends uitdeelde. Die belofte klopte, maar hij ging over de verkeerde
+   * vraag: de functie is `SECURITY DEFINER`, neemt een **willekeurig**
+   * gebruikers-id aan, en bevatte nergens een `auth.uid()`.
+   *
+   * 📏 Gemeten met Alice die één afgerond doel heeft en Bob die niets met haar
+   *    deelt — geen groep, geen doel:
+   *
+   * ```
+   * bob roept aan voor alice   -> 1
+   * bob voor zichzelf          -> 0
+   * badges van alice daarna    -> 1
+   * ```
+   *
+   * Twee dingen tegelijk. Bob schrijft in de badge-tabel van Alice — en dat was
+   * de énige weg naar die tabel, want `badges` heeft met opzet geen
+   * INSERT-policy. En **het teruggegeven getal is een orakel op privégegevens**:
+   * `badges_select` is `user_id = auth.uid()`, dus dat getal vertelt Bob hoeveel
+   * badges Alice zojuist verdiend had, en herhaald aanroepen vertelt hem wánneer
+   * ze iets bereikt. Precies het signaal dat belofte 1 hierboven dichtzet.
+   *
+   * ⚠️ **De schrijfactie zelf was goedaardig** — hij kent alleen toe wat de ander
+   *    écht verdiend heeft. Wie alleen naar het effect keek, zag hier niets. Het
+   *    lek zat in het getal.
+   *
+   * ⚠️ **Waarom een revoke en niet een toets binnenin.** De enige echte
+   *    aanroeper is de trigger `badge_na_gebeurtenis`, en die roept de functie
+   *    aan met de **eigenaar van het doel** terwijl de handelende gebruiker een
+   *    goedkeurende buddy kan zijn. Een `auth.uid() = p_user_id`-toets zou die
+   *    legitieme weg breken en het orakel op je eigen id openlaten. Het
+   *    uitvoerrecht is de juiste plek.
+   */
   it(
-    'geeft via de RPC niets weg dat niet verdiend is',
+    'is voor een client niet meer aan te roepen — ook niet voor jezelf',
     async () => {
-      const { error } = await bob.db.rpc('verdien_badges', { p_user_id: bob.id });
-      if (error) throw new Error(`verdien_badges: ${error.message}`);
+      const eigen = await bob.db.rpc('verdien_badges', { p_user_id: bob.id });
+      expect(
+        eigen.error?.code,
+        'de client mag deze functie helemaal niet meer uitvoeren',
+      ).toBe('42501');
+
+      const andermans = await bob.db.rpc('verdien_badges', { p_user_id: alice.id });
+      expect(andermans.error?.code, 'en zeker niet voor iemand anders').toBe('42501');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'deelt via de interne weg nog steeds alleen verdiende badges uit',
+    async () => {
+      // ⚠️ **De must-see, en zonder deze helft bewijst de revoke niets.** "Niemand
+      //    kan hem meer aanroepen" is ook te halen met een functie die stuk is.
+      //    Deze roept hem aan zoals de trigger dat doet — buiten de client om —
+      //    en eist dat hij nog steeds werkt én nog steeds kieskeurig is.
+      const uit = await adminDb().rpc('verdien_badges', { p_user_id: bob.id });
+      expect(uit.error, 'de interne weg hoort gewoon te werken').toBeNull();
 
       expect(await badgesVan(bob), 'de RPC deelde onverdiende badges uit').not.toContain(
         'first_goal',

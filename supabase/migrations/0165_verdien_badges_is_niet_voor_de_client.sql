@@ -1,0 +1,91 @@
+-- 0165_verdien_badges_is_niet_voor_de_client.sql — `verdien_badges()` had geen enkele autorisatietoets en stond open voor elke ingelogde gebruiker (QS8-287)
+--
+-- ROLLBACK-PAD:
+--   `grant execute on function public.verdien_badges(uuid) to authenticated;`
+--   Er verandert geen data en geen functiedefinitie; alleen het uitvoerrecht van
+--   één rol op één functie.
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- Gevonden bij de sweep over de definer-RPC's buiten `KERNTABELLEN` (QS8-286)
+-- en nagemeten. `verdien_badges(p_user_id uuid)` is `SECURITY DEFINER`, was
+-- uitvoerbaar door `authenticated`, en bevat **nergens** een `auth.uid()`. Hij
+-- neemt een willekeurig gebruikers-id aan.
+--
+-- Gemeten met Alice die één afgerond doel heeft (goed voor één badge) en Bob die
+-- niets met haar deelt — geen groep, geen doel:
+--
+--   bob roept aan voor alice   -> 1
+--   bob voor zichzelf          -> 0
+--   badges van alice daarna    -> 1
+--
+-- ---------------------------------------------------------------------------
+-- ⚠️ Twee dingen tegelijk, en het tweede is het ergste
+-- ---------------------------------------------------------------------------
+--
+-- 1. **Bob schrijft in de badge-tabel van Alice.** `badges` heeft met opzet géén
+--    INSERT-policy — 0113 zegt met zoveel woorden dat `verdien_badges()` de
+--    enige schrijver is — dus dit was de enige weg naar die tabel, en hij stond
+--    voor iedereen open.
+--
+-- 2. **De retourwaarde is een orakel op privégegevens.** `badges_select` is
+--    `user_id = auth.uid()`: badges zijn privé, en dat is een besluit met een
+--    reden (*"een badgemuur naast een ledenlijst maakt van de ontbrekende badge
+--    het signaal"*, 27-08-2026). Het getal dat Bob terugkrijgt, vertelt hem
+--    hoeveel badges Alice zojuist verdiend had; herhaald aanroepen vertelt hem
+--    wánneer ze iets bereikt.
+--
+-- ⚠️ De schrijfactie zelf is goedaardig — hij kent alleen badges toe die de
+--    ander écht verdiend heeft. **Het lek zit in het getal.** Wie alleen naar het
+--    effect kijkt, sluit dit gat niet.
+--
+-- ---------------------------------------------------------------------------
+-- ⚠️ Waar het vandaan komt: onwrikbare regel 4, in het echt
+-- ---------------------------------------------------------------------------
+--
+-- `0113_badges_die_nooit_verdwijnen.sql:227`:
+--
+--   revoke all on function public.verdien_badges(uuid) from public, anon;
+--
+-- `authenticated` ontbreekt daar. Dat is exact de val die regel 4 beschrijft:
+-- *"`revoke ... from public, anon` ziet eruit als 'van iedereen' en houdt precies
+-- de rol over waaronder iedere ingelogde gebruiker draait."*
+--
+-- ⚠️ **En de grendel van 0115 kon dit niet zien.** Regel 235 van 0113 gaf het
+--    recht daarna expliciet weg (`grant execute ... to authenticated,
+--    service_role`), dus `tests/rls/functiegrants.test.ts` zag een *besloten*
+--    recht en geen geërfd recht. Die controle toetst of een recht bewust is
+--    gegeven — niet of het nodig is. Dat is geen defect in die controle; het is
+--    de grens ervan, en die staat nu opgeschreven.
+--
+-- ---------------------------------------------------------------------------
+-- ⚠️ Waarom een revoke en niet een toets binnenin
+-- ---------------------------------------------------------------------------
+--
+-- Gemeten: de app roept `verdien_badges` **nul keer** aan vanuit de client —
+-- alleen `src/lib/database.types.ts` kent hem, en dat bestand is gegenereerd.
+-- De enige echte aanroeper is de trigger `badge_na_gebeurtenis`, en die is
+-- `SECURITY DEFINER` met eigenaar `postgres`. Die draait dus niet onder het
+-- recht van `authenticated` en breekt hier niet op.
+--
+-- ⚠️ **Een `auth.uid() = p_user_id`-toets binnenín zou juist wél breken**, en dat
+--    is nagegaan: die trigger roept de functie aan met de **eigenaar van het
+--    doel**, terwijl de handelende gebruiker een goedkeurende buddy kan zijn.
+--    Een toets op gelijkheid zou de legitieme interne weg dichtzetten en het
+--    orakel alsnog openlaten voor je eigen id. Het uitvoerrecht is de juiste
+--    plek.
+--
+-- ---------------------------------------------------------------------------
+-- Idempotent: een `revoke` op een recht dat er niet meer is, is een no-op.
+-- ---------------------------------------------------------------------------
+
+revoke execute on function public.verdien_badges(uuid) from authenticated;
+
+comment on function public.verdien_badges(uuid) is
+  'Kent verdiende badges toe. ⚠️ Sinds 0165 NIET uitvoerbaar door authenticated: '
+  'de functie neemt een willekeurig gebruikers-id aan en heeft geen auth.uid(), '
+  'dus hij was een schrijfweg naar andermans badges én een orakel op hun '
+  'voortgang (QS8-287). Enige aanroeper is de trigger badge_na_gebeurtenis, die '
+  'security definer is en het recht dus niet nodig heeft.';
