@@ -3,14 +3,34 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 06-09-2026. Er is die dag veel geland uit twee
-> sessies; `git log origin/main` is de betrouwbare lijst en niet deze zin.
-> Uit deze sessie: **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en
-> **QS8-302**. Open en niet door een agent af te maken: **QS8-197** (wacht op
+> **Laatst bijgewerkt:** 07-09-2026. Er landt veel uit twee sessies tegelijk;
+> `git log origin/main` is de betrouwbare lijst en niet deze zin.
+> Uit deze sessie op 07-09: **QS8-304** en **QS8-191**. Daarvóór op 06-09:
+> **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en **QS8-302**.
+> Open en niet door een agent af te maken: **QS8-197** (wacht op
 > Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
-> Lees eerst de vijf punten van 06-09 — het eerste is de duurste van de dag —
-> dan de drie van 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna
-> die van 02-09.
+> Lees eerst de twee punten van 07-09, dan de vijf van 06-09 — het eerste
+> daarvan is de duurste van die dag — dan de drie van 05-09, dan de twee van
+> 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **07-09, punt A: twee nummers voor één defect, en de claim ving dat niet.**
+> `npm run claim` matcht op **issuenummer**, en dat werkt tegen twee sessies die
+> hetzelfde issue pakken. QS8-303 en QS8-304 waren twee verschillende nummers
+> voor dezelfde bug — `order by created_at` over twee rijen uit één transactie —
+> dus beide claims slaagden en er is twee keer aan gebouwd. ⚠️ **De rem tegen
+> dít geval is niet technisch**: lees vóór je begint de recent gesloten issues
+> en de open PR's op wat ze *beschrijven*, niet op welk nummer ze dragen.
+> Hun reparatie was bovendien beter dan de mijne (0176, een `seq`-kolom in
+> plaats van een eerlijker assertie), en ze vonden wat ik gemist had: de app
+> sorteerde net zo. **Bij een botsing verlies je niet automatisch — maar lees
+> hun werk vóór je het jouwe verdedigt.**
+>
+> **07-09, punt B: een poortrun op de achtergrond meet de wérkboom.** Ik liet
+> tien ijkingsruns draaien en wisselde ondertussen van branch; vanaf run 4 mat
+> de poort een branch zónder de reparatie die hij zou bevestigen, en niets in de
+> uitvoer zei dat. ⚠️ **Draai je een poort op de achtergrond, print dan de
+> branchnaam in elke regel** — en wissel niet van branch zolang hij loopt. Een
+> meting die niet zegt wát hij gemeten heeft, is niet na te rekenen.
 >
 > **06-09, punt 0 — doe dit vóór alles: `npm run claim -- <branchnaam van
 > Linear>`.** Dat fetcht, kijkt of het issuenummer al ergens op de remote staat,
