@@ -1,3 +1,4 @@
+import type { RisicoStand } from '../standen';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,7 +6,6 @@ import {
   risicoTeken,
   risicoToon,
   risicoUitleg,
-  type RisicoStand,
 } from './risico';
 
 const ALLE: readonly RisicoStand[] = ['on_track', 'at_risk', 'behind', 'unreachable'];

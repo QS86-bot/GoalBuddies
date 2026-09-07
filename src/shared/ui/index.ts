@@ -20,7 +20,6 @@ export { TeBeoordelenKaart } from './TeBeoordelenKaart';
 export {
   beoordeelkopSleutel,
   toonBeoordeelkaart,
-  type Beoordeelstand,
 } from './tebeoordelen';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
@@ -93,8 +92,6 @@ export {
   risicoTeken,
   risicoToon,
   risicoUitleg,
-  type RisicoReden,
-  type RisicoStand,
 } from './risico';
 
 export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
@@ -124,10 +121,8 @@ export {
   weekpasReddeDezeCyclus,
   weekpasVoortgang,
   type Achieved,
-  type KettingStand,
   type RangeState,
   type Tone,
   type Viewer,
-  type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';

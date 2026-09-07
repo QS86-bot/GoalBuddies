@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { WeekpasStand } from '../../shared/ui';
+import type { WeekpasStand } from '../../shared/standen';
 
 /**
  * Weekpassen — QS8-81.

@@ -1,3 +1,4 @@
+import type { KettingStand, WeekpasStand } from '../standen';
 import { getal, t } from '../i18n';
 
 /**
@@ -277,24 +278,6 @@ export function ledenrijLabel(input: {
 // ---------------------------------------------------------------------------
 
 /**
- * De stand van De Ketting in één groepsperiode, zoals `ketting_stand()` hem
- * teruggeeft.
- *
- * ⚠️ Aantallen, nooit namen. Wie er ontbreekt staat er met opzet niet in en mag
- *    er ook nooit bij komen: dat zou van deze teller een presentielijst maken,
- *    en dan is een ontbrekende schakel een publieke gemiste week (domeinregel
- *    7). De databasefunctie geeft die namen niet eens terug.
- */
-export interface KettingStand {
-  /** Hoeveel leden deze periode een schakel legden. */
-  readonly schakels: number;
-  /** Hoeveel leden er deze periode meetellen. Zie `kettingLabel`. */
-  readonly inAanmerking: number;
-  /** Heeft iedereen die meetelt zijn schakel gelegd? */
-  readonly voltallig: boolean;
-}
-
-/**
  * Hoe De Ketting heet in de UI.
  *
  * ⚠️ De toon is het hele punt van dit component. "1 van 3" leest als een
@@ -332,30 +315,6 @@ export function kettingVulling(stand: KettingStand): number {
 // ---------------------------------------------------------------------------
 // Weekpassen — QS8-81
 // ---------------------------------------------------------------------------
-
-/**
- * De weekpasstand van één doel, zoals `weekpas_stand()` hem teruggeeft.
- *
- * ⚠️ `maximum` komt uit de database mee en staat hier bewust níét als
- *    constante. Zou de app een eigen kopie van dat getal houden, dan zijn er
- *    twee waarheden en gaat er ooit één schuiven zonder dat iets rood wordt.
- *
- * ⚠️ Dit is privégegeven. Een verbruikte pas is het bewijs van een gemiste week
- *    (domeinregel 7), dus deze stand hoort nooit in een groepscomponent. De
- *    database geeft hem alleen aan de eigenaar van het doel.
- */
-export interface WeekpasStand {
-  /** Hoeveel passen er nu klaarliggen. */
-  readonly voorraad: number;
-  /** De bovengrens. Boven dit aantal vervalt een verdiende pas. */
-  readonly maximum: number;
-  /** Voltooide cycli op dit doel. */
-  readonly voltooideCycli: number;
-  /** Hoeveel voltooide cycli er nog nodig zijn voor de volgende pas. */
-  readonly totVolgende: number;
-  /** De cyclus die het laatst door een pas gered is, of `null`. */
-  readonly laatstVerbruikt: string | null;
-}
 
 /**
  * Hoe de voorraad heet in de UI.

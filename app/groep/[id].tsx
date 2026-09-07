@@ -1,3 +1,4 @@
+import type { KettingStand } from '@/shared/standen';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -53,7 +54,6 @@ import {
   MilestoneProgress,
   Screen,
   Subheading,
-  type KettingStand,
 } from '@/shared/ui';
 
 /**

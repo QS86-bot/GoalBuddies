@@ -1,9 +1,10 @@
+import type { RisicoStand } from '../standen';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { t } from '../i18n';
 import { radius, space, useTheme, type Theme } from '../theme';
 
-import { risicoLabel, risicoTeken, risicoToon, type RisicoStand } from './risico';
+import { risicoLabel, risicoTeken, risicoToon } from './risico';
 import { Caption } from './Text';
 
 /**
