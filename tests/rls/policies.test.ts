@@ -3318,20 +3318,30 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
         });
         expect(groep.error).toBeNull();
 
+        // ⚠️ **Op id en niet op naam, en dat is een gemeten reparatie (QS8-329).**
+        //    Deze fixture is met opzet een groep zonder oprichter, en hij werd
+        //    op náám opgezocht en op náám verwijderd. 📏 Draaien er twee suites
+        //    tegen dezelfde database, dan dragen ze allebei een groep met deze
+        //    naam: het `toHaveLength(1)` hieronder ziet er dan twee, en de
+        //    `delete` van de één haalt de fixture van de ánder weg. Gemeten met
+        //    twee gelijktijdige runs: er bleven twee `SETNULL proefgroep`-rijen
+        //    staan die béíde runs vervolgens als wees meldden. Een naam is geen
+        //    identiteit.
+        const gemaakt = (groep.data as unknown as { group?: { id: string } }).group;
+        expect(gemaakt?.id).toBeDefined();
+        const groepId = gemaakt?.id ?? '';
+
         const verwijderd = await verwijderAuthGebruiker(weg.id);
         expect(verwijderd).toBeNull();
 
         // De groep staat er nog, zonder oprichter — dat is wat set null belooft.
-        const na = await admin
-          .from('groups')
-          .select('id, created_by')
-          .eq('name', 'SETNULL proefgroep');
+        const na = await admin.from('groups').select('id, created_by').eq('id', groepId);
 
         expect(na.error).toBeNull();
         expect(na.data ?? []).toHaveLength(1);
         expect((na.data ?? [])[0]?.created_by).toBeNull();
 
-        await admin.from('groups').delete().eq('name', 'SETNULL proefgroep');
+        await admin.from('groups').delete().eq('id', groepId);
       },
       SETUP_TIMEOUT,
     );
