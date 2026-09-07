@@ -637,6 +637,26 @@ kunnen beginnen — maar noemt hij hoe oud het beeld is. **Het verschil tussen "
 net" en "van eergisteren" ís het risico**; één tekst voor beide gevallen leest als
 een disclaimer, en die leer je overslaan.
 
+⚠️⚠️ **En dragen twee PR's toch hetzelfde nummer: wie als tweede merget,
+hernummert.** Dat is sinds QS8-318 een regel en geen gewoonte. Het venster tussen
+de laatste groene CI en de merge is er per definitie — het nummer wás vrij toen
+het uitgedeeld werd — en het wordt breder naarmate er meer parallel gewerkt
+wordt. 📏 Op 07-09-2026 landden er zo twee migraties `0182` op `main`, acht
+seconden na elkaar.
+
+Wat je daarvoor terugkrijgt is een melding en geen verhindering: `main` wordt
+rood zodra de tweede landt. Controleer dus vlak vóór het mergen opnieuw of jouw
+nummer nog vrij is, en hernummer erna als je te laat was. `migratie:hernummer`
+neemt de verwijzingen mee; de kale die hij niet aanraakt print hij, en die lees
+je stuk voor stuk — een blinde `sed` heeft daar al eens de dossierrij van een
+ánder issue mee overschreven.
+
+⚠️ **Een run op `main` wordt nooit afgebroken**, en dat is de andere helft van
+diezelfde reparatie. `cancel-in-progress` geldt op elke branch behalve `main`:
+daar is elke commit een toestand die uitgerold wordt, en een afgebroken run laat
+die zonder uitslag achter — niet groen, niet rood, er niet. `hoofdrun:controle`
+bewaakt dat. Uitleg in `docs/decisions/2026-09-07-de-uitslag-die-er-niet-was.md`.
+
 ⚠️ Beide kanten staan onder test in `tests/scripts/migratie-fetch.test.ts`, met
 een echte remote op schijf — niet met een zelfgevoerd object, want dan is "klopt
 dat object" niet te stellen. Vraag 3 in zijn zuiverste vorm.

@@ -20,9 +20,27 @@ on:
 
 # Een nieuwe push op dezelfde branch maakt de vorige run overbodig. Scheelt
 # wachttijd en minuten, en de uitkomst van een verouderde commit zegt niets.
+#
+# ⚠️⚠️ **Behalve op `main`, en dat is de reparatie van QS8-318.** Daar is elke
+#    commit een toestand die uitgerold wordt, en niet een tussenstand die door de
+#    volgende push achterhaald raakt. Afbreken betekent dan dat een toestand op
+#    `main` nooit een uitslag krijgt — en juist bij snel achter elkaar mergen,
+#    precies wanneer twee migraties hetzelfde nummer kunnen dragen.
+#
+#    📏 Gemeten op 07-09-2026, het venster waarin twee migraties `0182` op `main`
+#    landden:
+#
+#      09:07:34  #259  run 1247  CANCELLED
+#      09:07:46  #260  run 1248  CANCELLED   <- de eerste 0182 landt hier
+#      09:07:54  #261  run 1249  FAILURE     <- de tweede; main wordt rood
+#
+#    De controle dééd zijn werk: run 1249 werd rood binnen drie minuten. Maar de
+#    run over de commit ertussen is nooit afgerond, en van de 24 main-runs die dag
+#    zijn er vijf op deze manier afgebroken. Een uitslag die er niet is, is geen
+#    groen en geen rood — hij is er niet.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
