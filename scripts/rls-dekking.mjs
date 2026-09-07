@@ -247,6 +247,24 @@ export function oordeel(policy, uitkomst) {
  * De sleutel is `tabel.policynaam.helft`.
  */
 export const NIET_PER_HELFT_TE_METEN = {
+  'groups.groups_update.using': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `groups` (📏 gemeten: name, tz, ' +
+      'huddle_day, categorie en zeven andere wél, `id` niet). Er bestaat dus geen rij die ' +
+      'de ene helft passeert en de andere niet. 📏 Gemeten: elke helft los = nul rood, ' +
+      'béide helften tegelijk = 3 rood. De grendel is het paar.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan een beheerder zijn groep naar een ander id schrijven en is `check` in ' +
+      'zijn eentje de grendel.',
+    staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
+  },
+  'groups.groups_update.check': {
+    reden: 'Zelfde paar als `groups.groups_update.using`; zie daar voor de meting.',
+    wordtToetsbaarAls: 'zie `groups.groups_update.using`.',
+    staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
+  },
   'user_blocks.user_blocks_delete.using': {
     reden:
       'PostgREST stuurt een DELETE als `DELETE … RETURNING`, en met een RETURNING moet ' +
