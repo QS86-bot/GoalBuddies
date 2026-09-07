@@ -396,7 +396,7 @@ describe.skipIf(!rlsTestsConfigured)('het weekplan', () => {
    * ⚠️⚠️ **Die drie kolommen stonden er, en niets toetste ze.** Gemeten bij
    *    QS8-147: de `order by` terugbrengen tot alleen `order_index` liet deze
    *    hele suite groen. Dat is precies het risico dat CLAUDE.md aan een
-   *    verhuizing hangt — 0182 moest deze functie droppen en opnieuw maken voor
+   *    verhuizing hangt — 0185 moest deze functie droppen en opnieuw maken voor
    *    een handtekeningwijziging, en een grendel die je blind overneemt, neem je
    *    ook blind weg.
    *

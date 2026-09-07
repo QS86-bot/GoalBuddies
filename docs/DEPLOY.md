@@ -288,7 +288,7 @@ functie `PGRST202` — de functie staat niet in de schemacache. De drie jobs van
 hun fouten zacht af en geven een 200 terug (zie §"Foutrapportage vanuit de Edge
 Functions"), dus **het valt stil zonder dat iets rood wordt**.
 
-⚠️ Dat is geen theoretisch geval. `0182` dropt `activeer_weekplanstap(uuid, date,
+⚠️ Dat is geen theoretisch geval. `0185` dropt `activeer_weekplanstap(uuid, date,
 integer)` en zet er `(uuid, date)` neer; de rollover die vandáág draait roept de
 driearguments vorm aan. Tussen het toepassen van de migratie en het opnieuw
 deployen schuift er geen enkele weekplanstap meer in — elk uur, voor iedereen —

@@ -11,22 +11,26 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
-drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
-uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
-persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
-`0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
-dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
-`0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
-meldingsoort), `0179` (een bovengrens op een pushtoken), `0180` (de bevestigingsstand voor de
-eigenaar), `0181` (de allowlist van `goal_events` bewaakt) en `0182`
-(`cycle_index` weg) staan er nog niet op. ⚠️ **`0182` moet in hetzelfde venster
-landen als `npx supabase functions deploy rollover`** — hij dropt een
-RPC-handtekening die de gedeployde rollover nog aanroept, en die valt daartussen
-stil zonder dat iets rood wordt (`docs/DEPLOY.md` §2.3a). `0164` moet
-in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
-waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
-dit document.
+⚠️ **Productie staat op `0183`.** 📏 Gemeten op 07-09 aan het echte project:
+`list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
+06-09 is ingelopen; van deze branch staat alleen `0185` (`cycle_index` weg) er
+nog niet op.
+
+⚠️⚠️ **`0185` moet in hetzelfde venster landen als
+`npx supabase functions deploy rollover`.** Hij dropt
+`activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
+gedeployde rollover roept de driearguments vorm aan. Daartussen geeft PostgREST
+`PGRST202`, vangt de rollover dat zacht af met `continue`, en schuift er elk uur
+voor iedereen geen weekplanstap meer in terwijl het afschrijven van gemiste weken
+doorloopt. Zie `docs/DEPLOY.md` §2.3a.
+
+⚠️ **En de edge-functies staan sowieso achter.** `list_edge_functions` geeft voor
+alle drie `updated_at = 2026-09-06T09:07:56Z`, terwijl `0173` t/m `0183` op 07-09
+zijn toegepast. Daardoor is `0178` wél toegepast maar krijgt de persoon-getuige
+zijn melding niet: de gedeployde `notificaties` kent `getuigenissen_voor()` niet.
+Staat als QS8-320.
+
+Vraag de database welke migraties er staan, niet dit document.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -167,9 +171,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0183` staan in de map: **186 bestanden**,
+Migraties `0001` t/m `0185` staan in de map: **187 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-De nummering is aaneengesloten.
+⚠️ **Er ontbreken nummers: 0184.** Zie `migraties:controle`.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot

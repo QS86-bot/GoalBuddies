@@ -14,7 +14,7 @@ import { MAX_DAGEN_PER_WEEK } from './schemas';
  *    week-startdag.
  *
  * ⚠️ Hier stond ook `cycle_index` naast. Die kolom is met QS8-147 verdwenen
- *    (migratie 0182): niemand las hem, en het vullen kostte een extra query per
+ *    (migratie 0185): niemand las hem, en het vullen kostte een extra query per
  *    weekdoel.
  */
 

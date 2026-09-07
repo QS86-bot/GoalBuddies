@@ -64,7 +64,7 @@ interface Profiel {
  * Eén rij uit `weekplan_kandidaten()` — migratie 0137.
  *
  * ⚠️ De RPC geeft ook `eerste_cyclus` terug. Die kolom bestond om er een
- *    `cycle_index` mee uit te rekenen, en die kolom is met 0182 verdwenen; hier
+ *    `cycle_index` mee uit te rekenen, en die kolom is met 0185 verdwenen; hier
  *    staat hij daarom niet meer. De RPC berekent hem nog wel — zie de rij in
  *    `docs/ENGINEER-REVIEW.md` van 07-09.
  */

@@ -1,4 +1,4 @@
--- 0182_cycle_index_wordt_door_niemand_gelezen.sql — een kolom die alleen geschreven werd, en de client een extra query per weekdoel kostte (QS8-147)
+-- 0185_cycle_index_wordt_door_niemand_gelezen.sql — een kolom die alleen geschreven werd, en de client een extra query per weekdoel kostte (QS8-147)
 --
 -- ⚠️⚠️ **DEPLOY DE ROLLOVER IN DEZELFDE RONDE ALS DEZE MIGRATIE.**
 --   Deze migratie dropt `activeer_weekplanstap(uuid, date, integer)` en zet er

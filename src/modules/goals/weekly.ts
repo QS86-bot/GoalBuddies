@@ -149,7 +149,7 @@ export async function fetchMijlpalen(goalId: string): Promise<readonly Mijlpaal[
  * ⚠️ **Er stond hier ook een `cycle_index`, en die is met QS8-147 weg.** Om hem
  *    te vullen deed elke aanroeper eerst `eersteCyclusVanDoel()` — één extra
  *    query vóór élk aanmaken — voor een kolom die nergens gelezen werd. Migratie
- *    0182 heeft hem laten vallen; de onderbouwing staat in die kop en in
+ *    0185 heeft hem laten vallen; de onderbouwing staat in die kop en in
  *    `docs/decisions/2026-09-07-een-kolom-die-alleen-geschreven-werd.md`.
  */
 export async function maakWeekdoel(
