@@ -123,7 +123,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
         goal_id: doel.data.id,
         title: 'KETTINGWEEKDOEL',
         cycle_start_date: cycle.startDate,
-        cycle_index: 1,
       })
       .select('id')
       .single();
@@ -855,7 +854,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
             goal_id: doelId,
             title: 'doorgeschoven',
             cycle_start_date: cyclusOverWeken(-9),
-            cycle_index: 1,
             status: 'carried',
             points_miss: -1,
           })
@@ -919,7 +917,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
             goal_id: doelId,
             title: 'ingetrokken',
             cycle_start_date: cyclusOverWeken(-11),
-            cycle_index: 1,
             status: 'cancelled',
             points_miss: -1,
           })
@@ -997,7 +994,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
             goal_id: doelId,
             title: 'gemiste week',
             cycle_start_date: cyclusOverWeken(-4),
-            cycle_index: 1,
             status: 'missed',
             points_miss: -1,
           })
@@ -1084,7 +1080,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
             goal_id: doelId,
             title: `week ${index}`,
             cycle_start_date: cyclusOverWeken(w.weken),
-            cycle_index: index,
             status: w.status,
             points_miss: -1,
           });
@@ -1172,7 +1167,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
               goal_id: doelId,
               title: `gemist weekdoel ${index}`,
               cycle_start_date: cyclus,
-              cycle_index: index,
               status: 'missed',
               points_miss: -1,
             })
@@ -1248,7 +1242,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
             goal_id: doelId,
             title: 'gemist zonder beoordelaar',
             cycle_start_date: cyclusOverWeken(-6),
-            cycle_index: 1,
             status: 'missed',
             points_miss: -1,
           })

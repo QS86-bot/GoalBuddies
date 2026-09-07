@@ -35,7 +35,6 @@ import {
   ARGUMENT_MAX,
   ARGUMENT_MIN,
   categorieLabels,
-  eersteCyclusVanDoel,
   fetchAdempauzes,
   fetchDoel,
   fetchLaatsteBesluit,
@@ -2326,10 +2325,6 @@ function WeekdoelToevoegen({
     setBezig(true);
     setFout(null);
 
-    // ⚠️ Zonder dit wordt élk weekdoel "week 1" van dit doel en klopt
-    //    `cycle_index` niet meer — daar hangt de weekteller aan.
-    const eerste = await eersteCyclusVanDoel(doel.id, klok);
-
     const uitkomst = await maakWeekdoel(
       klok,
       {
@@ -2347,7 +2342,6 @@ function WeekdoelToevoegen({
         floor_days: dagenVloer,
         ceiling_days: dagenPlafond,
       },
-      eerste,
     );
 
     if (!uitkomst.ok) {

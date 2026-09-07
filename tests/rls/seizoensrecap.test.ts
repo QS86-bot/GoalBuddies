@@ -124,7 +124,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-79 — de seizoensrecap', () => {
         goal_id: doelId,
         title: `week ${i}`,
         cycle_start_date: start,
-        cycle_index: Number(i),
         status: 'approved',
       });
       if (w.error) throw new Error(`weekdoel ${i}: ${w.error.message}`);

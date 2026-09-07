@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-299 en QS8-303; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-147, QS8-174, QS8-297, QS8-298, QS8-299 en QS8-303; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -18,8 +18,8 @@ persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
 `0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
 dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
 `0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
-meldingsoort), `0179` (een bovengrens op een pushtoken) en `0180` (de
-bevestigingsstand voor de eigenaar) staan
+meldingsoort), `0179` (een bovengrens op een pushtoken), `0180` (de bevestigingsstand voor de
+eigenaar) en `0181` (`cycle_index` weg) staan
 er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
@@ -164,7 +164,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0180` staan in de map: **183 bestanden**,
+Migraties `0001` t/m `0181` staan in de map: **184 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

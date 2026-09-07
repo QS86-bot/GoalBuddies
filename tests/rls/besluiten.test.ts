@@ -175,7 +175,6 @@ async function buildFixture(): Promise<Fixture> {
         title: 'Week van alice',
         ceiling_text: 'Het plafond',
         cycle_start_date: cycle.startDate,
-        cycle_index: 1,
       })
       .select('id')
       .single(),
@@ -220,7 +219,6 @@ async function buildFixture(): Promise<Fixture> {
         title: 'Tweede week van alice',
         ceiling_text: 'Ook een plafond',
         cycle_start_date: cycle.startDate,
-        cycle_index: 2,
       })
       .select('id')
       .single(),
@@ -699,7 +697,6 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
               title: 'Week met twee goedkeurders',
               ceiling_text: 'Plafond',
               cycle_start_date: f.cycleStart,
-              cycle_index: 3,
             })
             .select('id')
             .single(),
@@ -804,7 +801,6 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
               title: 'Week voor de uitgezette beoordelaar',
               ceiling_text: 'Plafond',
               cycle_start_date: f.cycleStart,
-              cycle_index: 4,
             })
             .select('id')
             .single(),
@@ -1419,7 +1415,6 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
             goal_id: f.goalId,
             title: 'Weekdoel met een vraag eronder',
             cycle_start_date: f.cycleStart,
-            cycle_index: 9,
           })
           .select('id')
           .single(),

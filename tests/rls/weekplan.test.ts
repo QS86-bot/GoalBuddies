@@ -256,7 +256,6 @@ describe.skipIf(!rlsTestsConfigured)('het weekplan', () => {
       const eerste = await adminDb().rpc('activeer_weekplanstap', {
         p_goal_id: f.goalId,
         p_cycle_start_date: CYCLUS,
-        p_cycle_index: 1,
       });
       expect(eerste.error).toBeNull();
       expect((eerste.data as { ok?: boolean } | null)?.ok).toBe(true);
@@ -264,7 +263,6 @@ describe.skipIf(!rlsTestsConfigured)('het weekplan', () => {
       const tweede = await adminDb().rpc('activeer_weekplanstap', {
         p_goal_id: f.goalId,
         p_cycle_start_date: CYCLUS,
-        p_cycle_index: 1,
       });
       expect(tweede.error).toBeNull();
       expect((tweede.data as { ok?: boolean; reason?: string } | null)?.ok).toBe(false);
@@ -293,7 +291,6 @@ describe.skipIf(!rlsTestsConfigured)('het weekplan', () => {
       const uit = await adminDb().rpc('activeer_weekplanstap', {
         p_goal_id: f.goalId,
         p_cycle_start_date: ANDERE_CYCLUS,
-        p_cycle_index: 2,
       });
       expect((uit.data as { ok?: boolean } | null)?.ok).toBe(true);
 
@@ -355,14 +352,12 @@ describe.skipIf(!rlsTestsConfigured)('het weekplan', () => {
       const laatste = await adminDb().rpc('activeer_weekplanstap', {
         p_goal_id: f.goalId,
         p_cycle_start_date: '2024-01-15',
-        p_cycle_index: 3,
       });
       expect((laatste.data as { ok?: boolean } | null)?.ok).toBe(true);
 
       const leeg = await adminDb().rpc('activeer_weekplanstap', {
         p_goal_id: f.goalId,
         p_cycle_start_date: '2024-01-22',
-        p_cycle_index: 4,
       });
       expect((leeg.data as { reason?: string } | null)?.reason).toBe('geen_stap');
     },
@@ -386,6 +381,87 @@ describe.skipIf(!rlsTestsConfigured)('het weekplan', () => {
 
       // Drie stappen zijn ingeschoven, elk als weekdoel met plafond 2.
       expect(doel.data?.max_points).toBe(6);
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **De sorteervolgorde van `activeer_weekplanstap()`, en waarom die een test
+   *    verdient.** Die functie kiest de volgende stap met
+   *    `order by order_index asc, created_at asc, id asc` — drie kolommen, want
+   *    `order_index` is niet uniek en bij een gelijkspel kiest het queryplan
+   *    anders. Dat is de fout van QS8-56, daar met `groepen[0]` uit een lijst
+   *    zonder `order by`.
+   *
+   * ⚠️⚠️ **Die drie kolommen stonden er, en niets toetste ze.** Gemeten bij
+   *    QS8-147: de `order by` terugbrengen tot alleen `order_index` liet deze
+   *    hele suite groen. Dat is precies het risico dat CLAUDE.md aan een
+   *    verhuizing hangt — 0181 moest deze functie droppen en opnieuw maken voor
+   *    een handtekeningwijziging, en een grendel die je blind overneemt, neem je
+   *    ook blind weg.
+   *
+   * IJKING: `order by order_index asc` in plaats van de drie kolommen
+   *   → deze test rood, en als enige.
+   */
+  it(
+    'kiest bij een gelijk order_index de oudste stap en niet zomaar een',
+    async () => {
+      const doel = await adminDb()
+        .from('goals')
+        .insert({
+          owner_id: f.eigenaar.id,
+          title: 'GELIJKSPEL',
+          target_date: '2030-01-01',
+        })
+        .select('id')
+        .single();
+      if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+      // ⚠️⚠️ **De jongste gaat er als eerste in, en dat is de hele opstelling.**
+      //    Zet je ze in de voor de hand liggende volgorde neer, dan geeft een
+      //    seq scan op twee rijen toevallig het goede antwoord en blijft de
+      //    mutatie groen — nagemeten. Door de fysieke volgorde tégengesteld te
+      //    maken aan de bedoelde, is er verschil tussen "wat er toevallig
+      //    uitkomt" en "wat de `order by` belooft".
+      const jongste = await maakStap(doel.data.id, 5, 'JONGSTE');
+      const oudste = await maakStap(doel.data.id, 5, 'OUDSTE');
+
+      // ⚠️ `created_at` met de hand terug in de tijd. In één statement deelt
+      //    Postgres dezelfde `now()` uit en knoopt ook die kolom — de les van
+      //    QS8-303 — dus het verschil moet expliciet.
+      const ouder = await adminDb()
+        .from('weekly_plan_steps')
+        .update({ created_at: '2020-01-01T00:00:00Z' })
+        .eq('id', oudste);
+      if (ouder.error) throw new Error(`terugdateren: ${ouder.error.message}`);
+
+      const tijden = await adminDb()
+        .from('weekly_plan_steps')
+        .select('created_at')
+        .eq('goal_id', doel.data.id);
+      expect(
+        new Set((tijden.data ?? []).map((r) => r.created_at)).size,
+        'de twee stappen delen hun created_at — dan toetst dit niets',
+      ).toBe(2);
+      expect(jongste, 'de opstelling heeft twee verschillende stappen nodig').not.toBe(oudste);
+
+      const { data, error } = await adminDb().rpc('activeer_weekplanstap', {
+        p_goal_id: doel.data.id,
+        p_cycle_start_date: '2024-02-05',
+      });
+      expect(error).toBeNull();
+      expect((data as unknown as { ok?: boolean }).ok).toBe(true);
+
+      const verbruikt = await adminDb()
+        .from('weekly_plan_steps')
+        .select('id')
+        .eq('goal_id', doel.data.id)
+        .not('activated_cycle', 'is', null);
+
+      expect(
+        (verbruikt.data ?? []).map((r) => r.id),
+        'bij gelijkspel hoort de oudste stap als eerste te gaan',
+      ).toEqual([oudste]);
     },
     TEST_TIMEOUT,
   );

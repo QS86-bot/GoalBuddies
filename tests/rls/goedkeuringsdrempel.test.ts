@@ -103,7 +103,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-65 — de goedkeuringsdrempel', () => 
         goal_id: goalId,
         title: `week ${index}`,
         cycle_start_date: start,
-        cycle_index: index,
       })
       .select('id')
       .single();

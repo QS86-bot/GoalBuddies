@@ -126,7 +126,6 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
     if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
 
     const ids = {} as Fixture['ids'];
-    let index = 400;
 
     for (const status of ['todo', 'approved', 'pending', 'cancelled'] as const) {
       const rij = await admin
@@ -135,7 +134,6 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
           goal_id: doel.data.id,
           title: `WEEKSTART ${status}`,
           cycle_start_date: oudeStart,
-          cycle_index: (index += 1),
           status,
         })
         .select('id')
@@ -155,7 +153,6 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         goal_id: doel.data.id,
         title: 'WEEKSTART oud todo',
         cycle_start_date: oudeCyclus,
-        cycle_index: 399,
         status: 'todo',
       })
       .select('id')
@@ -193,7 +190,6 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         goal_id: bramDoel.data.id,
         title: 'WEEKSTART todo van Bram',
         cycle_start_date: oudeStart,
-        cycle_index: 500,
         status: 'todo',
       })
       .select('id')
@@ -245,7 +241,6 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         goal_id: carlaDoel.data.id,
         title: 'WEEKSTART todo van Carla',
         cycle_start_date: oudeStart,
-        cycle_index: 501,
         status: 'todo',
       })
       .select('id')

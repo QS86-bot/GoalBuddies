@@ -120,7 +120,6 @@ describe.skipIf(!rlsTestsConfigured)('de leesgrenzen van domeinregel 7', () => {
         points_floor: 1,
         points_miss: -1,
         cycle_start_date: vandaag,
-        cycle_index: 1,
       })
       .select('id')
       .single();
@@ -151,7 +150,6 @@ describe.skipIf(!rlsTestsConfigured)('de leesgrenzen van domeinregel 7', () => {
         points_floor: 1,
         points_miss: -1,
         cycle_start_date: vandaag,
-        cycle_index: 1,
       })
       .select('id')
       .single();

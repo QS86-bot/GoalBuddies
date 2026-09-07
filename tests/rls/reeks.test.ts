@@ -58,7 +58,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-127 — één gehaald weekdoel redt de
         goal_id: doel.id,
         title: `schone week -${i}`,
         cycle_start_date: addDays(basis.startDate, -7 * i),
-        cycle_index: 200 - i,
         status: 'approved',
       });
       if (error) throw new Error(`weekdoel aanmaken: ${error.message}`);
@@ -78,7 +77,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-127 — één gehaald weekdoel redt de
         goal_id: doel.id,
         title: titel,
         cycle_start_date: gemengd,
-        cycle_index: 199,
         status,
       });
       if (error) throw new Error(`gemengd weekdoel: ${error.message}`);
@@ -229,7 +227,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-127 — één gehaald weekdoel redt de
           goal_id: f.goalId,
           title: titel,
           cycle_start_date: f.gemengd,
-          cycle_index: 199,
           status,
         });
         if (error) throw new Error(`omgekeerd invoegen: ${error.message}`);
@@ -257,7 +254,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-127 — één gehaald weekdoel redt de
         goal_id: f.goalId,
         title: 'alleen gemist',
         cycle_start_date: f.gemengd,
-        cycle_index: 199,
         status: 'missed',
       });
       if (error) throw new Error(`gemist weekdoel: ${error.message}`);

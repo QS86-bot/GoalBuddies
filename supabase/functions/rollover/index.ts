@@ -458,12 +458,9 @@ async function draaiRollover(auth: string): Promise<Response> {
                 kandidaat.eerste_cyclus,
               );
 
-        const index = eerste === null ? 1 : cyclesBetween(eerste, huidige) + 1;
-
         const { data: uitkomst, error: stapFout } = await db.rpc('activeer_weekplanstap', {
           p_goal_id: kandidaat.goal_id,
           p_cycle_start_date: huidige.startDate,
-          p_cycle_index: index,
         });
 
         if (stapFout) {

@@ -101,7 +101,6 @@ describe.skipIf(!rlsTestsConfigured)('De statuscache tegen de gebeurtenissen', (
         goal_id: doel.data.id,
         title: 'CACHEWEEKDOEL',
         cycle_start_date: cyclus.startDate,
-        cycle_index: 1,
       })
       .select('id')
       .single();

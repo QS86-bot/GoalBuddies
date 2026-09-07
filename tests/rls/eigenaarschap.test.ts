@@ -262,7 +262,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
           points_floor: 1,
           points_miss: -1,
           cycle_start_date: vandaag,
-          cycle_index: 1,
         })
         .select('id')
         .single();

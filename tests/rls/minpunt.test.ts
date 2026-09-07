@@ -85,7 +85,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
         goal_id: goalId,
         title: `week ${teller}`,
         cycle_start_date: addDays(f.basis, -7),
-        cycle_index: teller,
         status: 'todo',
       })
       .select('id, beoordeelbaar')

@@ -21,7 +21,7 @@
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
-import { localDateIn, now, type Cycle, type UserClock } from '../../shared/time';
+import { localDateIn, now, type UserClock } from '../../shared/time';
 
 import type { PlanRijen } from './plan-rijen';
 
@@ -56,7 +56,6 @@ export async function pasPlanToe(
   userId: string,
   rijen: PlanRijen,
   klok: UserClock,
-  eersteCyclus: Cycle | null,
 ): Promise<Uitkomst<PlanUitkomst>> {
   const { maakDoel } = await import('../goals');
 
@@ -86,7 +85,7 @@ export async function pasPlanToe(
 
   const goalId = doel.waarde.id;
   const mijlpaalIds = await schrijfMijlpalen(goalId, rijen);
-  const weekdoel = await schrijfWeekdoel(goalId, rijen, mijlpaalIds, klok, eersteCyclus);
+  const weekdoel = await schrijfWeekdoel(goalId, rijen, mijlpaalIds, klok);
 
   return {
     ok: true,
@@ -141,7 +140,6 @@ async function schrijfWeekdoel(
   rijen: PlanRijen,
   mijlpaalIds: readonly string[],
   klok: UserClock,
-  eersteCyclus: Cycle | null,
 ): Promise<boolean> {
   const voorstel = rijen.weekdoel;
   if (voorstel === null) return false;
@@ -160,7 +158,6 @@ async function schrijfWeekdoel(
       floor_text: voorstel.floor_text,
       ceiling_text: voorstel.ceiling_text,
     },
-    eersteCyclus,
   );
 
   return uit.ok;

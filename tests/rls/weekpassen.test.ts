@@ -146,7 +146,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         goal_id: aliceGoalId,
         title: `week -${i}`,
         cycle_start_date: start,
-        cycle_index: 100 - i,
         status: 'approved',
       });
       if (error) throw new Error(`weekdoel aanmaken: ${error.message}`);
@@ -165,7 +164,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       goal_id: aliceGoalId,
       title: 'gemiste week',
       cycle_start_date: gemisteCyclus,
-      cycle_index: 101,
       status: 'missed',
     });
     if (gemist.error) throw new Error(`gemist weekdoel: ${gemist.error.message}`);
@@ -577,7 +575,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         goal_id: f.bobGoalId,
         title: 'zelf goedgekeurd',
         cycle_start_date: '2026-03-02',
-        cycle_index: 900,
         status: 'approved',
       });
 
@@ -603,7 +600,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           floor_text: 'de slechte week',
           ceiling_text: 'de goede week',
           cycle_start_date: '2026-03-16',
-          cycle_index: 902,
         })
         .select('id, status')
         .single();
@@ -638,7 +634,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'gemist en doorgeschoven',
           cycle_start_date: cyclus,
-          cycle_index: 910,
           status: 'missed',
         })
         .select('id')
@@ -652,7 +647,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'wel gehaald',
           cycle_start_date: '2026-05-11',
-          cycle_index: 911,
           status: 'approved',
         })
         .select('id')
@@ -665,7 +659,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const doorgeschoven = await f.bob.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: gemist.data.id,
         p_cycle_start_date: '2026-05-18',
-        p_cycle_index: 913,
       });
       expect(doorgeschoven.error).toBeNull();
       expect(uitkomst(doorgeschoven.data).ok).toBe(true);
@@ -701,7 +694,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'nog open',
           cycle_start_date: '2026-05-18',
-          cycle_index: 912,
           status: 'todo',
         })
         .select('id')
@@ -711,7 +703,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const poging = await f.bob.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: open.data.id,
         p_cycle_start_date: '2026-05-25',
-        p_cycle_index: 914,
       });
 
       expect(poging.error).toBeNull();
@@ -735,7 +726,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'toch maar niet',
           cycle_start_date: '2026-05-25',
-          cycle_index: 913,
           status: 'todo',
         })
         .select('id')
@@ -772,7 +762,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.aliceGoalId,
           title: 'van alice',
           cycle_start_date: '2026-06-01',
-          cycle_index: 914,
           status: 'todo',
         })
         .select('id')
@@ -839,7 +828,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
             goal_id: f.aliceGoalId,
             title: `${status} week van alice`,
             cycle_start_date: `2026-06-${String(index - 907).padStart(2, '0')}`,
-            cycle_index: index,
             status,
           })
           .select('id')
@@ -855,7 +843,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.aliceGoalId,
           title: 'gehaalde week van alice',
           cycle_start_date: '2026-06-22',
-          cycle_index: index,
           status: 'approved',
         })
         .select('id')
@@ -903,7 +890,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'dubbel ingevoerd',
           cycle_start_date: '2026-07-06',
-          cycle_index: 920,
           status: 'todo',
         })
         .select('id')
@@ -941,7 +927,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'staat er al een week',
           cycle_start_date: '2026-07-13',
-          cycle_index: 921,
           status: 'todo',
           // `created_at` is niet client-schrijfbaar; via de admin-client wél, en
           // dat is precies hoe je "deze rij is oud" nabootst zonder te wachten.
@@ -1010,7 +995,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         goal_id: metHistorie.data.id,
         title: 'er is aan gewerkt',
         cycle_start_date: '2026-07-20',
-        cycle_index: 922,
         status: 'todo',
       });
       if (weekdoel.error) throw new Error(`opbouw: ${weekdoel.error.message}`);
@@ -1119,7 +1103,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'gemiste week van bob',
           cycle_start_date: '2026-03-09',
-          cycle_index: 901,
           status: 'missed',
         })
         .select('id')
@@ -1158,7 +1141,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         goal_id: f.bobGoalId,
         title: 'gratis missen',
         cycle_start_date: '2026-04-06',
-        cycle_index: 905,
         points_miss: 0,
       });
 
@@ -1178,7 +1160,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
         goal_id: f.aliceGoalId,
         title: 'op andermans doel',
         cycle_start_date: '2026-04-13',
-        cycle_index: 906,
       });
 
       expect(error).not.toBeNull();
@@ -1196,7 +1177,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.aliceGoalId,
           title: 'open week van alice',
           cycle_start_date: '2026-04-20',
-          cycle_index: 907,
           status: 'todo',
         })
         .select('id')
@@ -1234,7 +1214,6 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           goal_id: f.bobGoalId,
           title: 'per ongeluk',
           cycle_start_date: '2026-03-23',
-          cycle_index: 903,
           status: 'todo',
         })
         .select('id')

@@ -218,7 +218,6 @@ async function buildFixture(): Promise<Fixture> {
           goal_id: goalId,
           title: GEHEIM.weektitel,
           cycle_start_date: cycle.startDate,
-          cycle_index: 1,
         })
         .select('id')
         .single(),

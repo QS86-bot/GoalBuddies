@@ -164,7 +164,6 @@ describe.skipIf(!rlsTestsConfigured)('het klassement van een groep', () => {
         floor_text: 'Eén keer',
         ceiling_text: 'Drie keer',
         cycle_start_date: CYCLUS,
-        cycle_index: 1,
       })
       .select('id')
       .single();
@@ -212,7 +211,6 @@ describe.skipIf(!rlsTestsConfigured)('het klassement van een groep', () => {
         floor_text: 'Eén keer',
         ceiling_text: 'Drie keer',
         cycle_start_date: CYCLUS_OPEN_EIND,
-        cycle_index: 2,
       })
       .select('id')
       .single();

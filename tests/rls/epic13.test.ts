@@ -155,7 +155,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       goal_id: doel.data.id,
       title: `${titel}-GEPLAND`,
       cycle_start_date: cycleStart,
-      cycle_index: 1,
     });
     if (gepland.error) throw new Error(`gepland weekdoel ${titel}: ${gepland.error.message}`);
 
@@ -165,7 +164,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         goal_id: doel.data.id,
         title: `${titel}-GEMIST`,
         cycle_start_date: cycleStart,
-        cycle_index: 2,
       })
       .select('id')
       .single();
@@ -182,7 +180,17 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
     return doel.data.id;
   }
 
-  /** De titels van de weekdoelen die deze gebruiker van dit doel te zien krijgt. */
+  /**
+   * De titels van de weekdoelen die deze gebruiker van dit doel te zien krijgt.
+   *
+   * ⚠️ **Op `title` en niet op de cyclus.** Beide rijen van de opstelling delen
+   *    dezelfde `cycle_start_date`, dus sorteren daarop is een knoop en dan
+   *    kiest Postgres — precies de fout die QS8-303 in het auditspoor vond, hier
+   *    in een testhelper. Tot QS8-147 hing de volgorde aan `cycle_index`, en dat
+   *    was geen sorteerbedoeling maar een toevallige tweede sleutel. Wat deze
+   *    test wil weten is *wélke titels* zichtbaar zijn; een alfabetische
+   *    volgorde zegt dat zonder te kunnen knopen.
+   */
   async function zichtbareWeekdoelen(
     gebruiker: TestUser,
     doelId: string,
@@ -191,7 +199,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       .from('weekly_goals')
       .select('title')
       .eq('goal_id', doelId)
-      .order('cycle_index', { ascending: true });
+      .order('title', { ascending: true });
 
     if (error) throw new Error(`weekdoelen lezen: ${error.message}`);
     return (data ?? []).map((r) => r.title);
@@ -412,8 +420,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       'toont een gemiste week in een open groep',
       async () => {
         expect(await zichtbareWeekdoelen(f.bob, f.doelOpen)).toEqual([
-          'OPEN-GEPLAND',
           'OPEN-GEMIST',
+          'OPEN-GEPLAND',
         ]);
       },
       TEST_TIMEOUT,
@@ -423,12 +431,12 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
       'laat de eigenaar in beide standen alles zien',
       async () => {
         expect(await zichtbareWeekdoelen(f.alice, f.doelBeschermd)).toEqual([
-          'BESCHERMD-GEPLAND',
           'BESCHERMD-GEMIST',
+          'BESCHERMD-GEPLAND',
         ]);
         expect(await zichtbareWeekdoelen(f.alice, f.doelOpen)).toEqual([
-          'OPEN-GEPLAND',
           'OPEN-GEMIST',
+          'OPEN-GEPLAND',
         ]);
       },
       TEST_TIMEOUT,
@@ -453,8 +461,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         //    níét. Zou de policy "hangt dit doel aan een open groep?" vragen, dan
         //    kregen ze allebei alles — en dan lekt de beschermde groep.
         expect(await zichtbareWeekdoelen(f.bob, f.doelGemengd)).toEqual([
-          'GEMENGD-GEPLAND',
           'GEMENGD-GEMIST',
+          'GEMENGD-GEPLAND',
         ]);
         expect(await zichtbareWeekdoelen(f.carol, f.doelGemengd)).toEqual(['GEMENGD-GEPLAND']);
       },
@@ -585,8 +593,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
         // De hele reden dat de kolom bestaat. Bob zag de gemiste week van dit
         // doel niet, en ziet hem nu wel — zonder dat er één rij herschreven is.
         expect(await zichtbareWeekdoelen(f.bob, f.doelSchakel)).toEqual([
-          'SCHAKEL-GEPLAND',
           'SCHAKEL-GEMIST',
+          'SCHAKEL-GEPLAND',
         ]);
       },
       TEST_TIMEOUT,

@@ -148,7 +148,7 @@ describe.runIf(rlsTestsConfigured)('de doorloop met twee accounts', () => {
   it(
     'Anna zet een weekdoel neer en rondt het af met bewijs',
     async () => {
-      const { maakWeekdoel, eersteCyclusVanDoel, huidigeCyclus } = await import('../../src/modules/goals');
+      const { maakWeekdoel, huidigeCyclus } = await import('../../src/modules/goals');
       const { rondAf } = await import('../../src/modules/completions');
       // ⚠️ Uit het bronbestand en niet uit de barrel: `modules/auth/index.ts`
       //    trekt de provider mee en dus react-native, en dat is Flow-syntax die
@@ -163,12 +163,6 @@ describe.runIf(rlsTestsConfigured)('de doorloop met twee accounts', () => {
       if (profiel.error || profiel.data === null) throw new Error(`profiel: ${profiel.error?.message}`);
       const klok = userClock(profiel.data);
 
-      // ⚠️ Mét de klok, en dat is geen formaliteit: zonder tweede argument komt
-      //    hier `undefined` binnen waar een `UserClock` hoort, en dan rekent de
-      //    cyclusbepaling met een andere week-startdag dan de gebruiker heeft.
-      //    Typecheck ving dit; de test was er groen op.
-      const eerste = await als(anna, () => eersteCyclusVanDoel(pad.doelId as string, klok));
-
       const weekdoel = await als(anna, () =>
         maakWeekdoel(
           klok,
@@ -179,7 +173,6 @@ describe.runIf(rlsTestsConfigured)('de doorloop met twee accounts', () => {
             floor_text: 'Eén keer twintig minuten',
             ceiling_text: 'Drie keer twintig minuten',
           },
-          eerste,
         ),
       );
       expect(weekdoel.ok, `weekdoel: ${weekdoel.ok ? '' : weekdoel.melding}`).toBe(true);

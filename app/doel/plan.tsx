@@ -137,7 +137,6 @@ export default function PlanUitEenZin() {
       userId,
       rijenUitPlan(plan, datum.trim()),
       userClock(profiel),
-      null,
     );
 
     setBevestigen(false);

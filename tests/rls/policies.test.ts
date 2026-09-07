@@ -224,7 +224,6 @@ async function buildFixture(): Promise<Fixture> {
         goal_id: sharedGoalId,
         title: 'Weekdoel',
         cycle_start_date: cycle.startDate,
-        cycle_index: 1,
       })
       .select('id')
       .single(),
@@ -1197,7 +1196,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           title: 'Gratis punten',
           points_ceiling: 100_000,
           cycle_start_date: f.cycleStart,
-          cycle_index: 2,
         });
 
         expect(error).not.toBeNull();
@@ -1722,7 +1720,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
                 goal_id: g.gekoppeldDoelId,
                 title: 'Week die niet gelukt is',
                 cycle_start_date: cycle.startDate,
-                cycle_index: 9,
                 status: 'missed',
               })
               .select('id')
@@ -1802,7 +1799,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
                     goal_id: g.gekoppeldDoelId,
                     title: `Week met status ${status}`,
                     cycle_start_date: addDays(basis.startDate, -7 * (i + 2)),
-                    cycle_index: 20 + i,
                     status,
                   })
                   .select('id')
@@ -1883,7 +1879,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
                     goal_id: g.gekoppeldDoelId,
                     title: `Onzichtbaar ${status}`,
                     cycle_start_date: addDays(basis.startDate, -7 * (i + 30)),
-                    cycle_index: 40 + i,
                     status,
                   })
                   .select('id')
@@ -2292,7 +2287,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
     /**
      * Een vers doel met een weekdoel en een ingediende voltooiing, in de gedeelde
-     * groep. `cycle_index` is willekeurig uniek zodat twee tests elkaar niet in
+     * groep. Elke aanroep krijgt een eigen doel, zodat twee tests elkaar niet in
      * de weg zitten.
      */
     async function bouwBeoordeling(naam: string): Promise<Beoordeling> {
@@ -2326,7 +2321,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             goal_id: goalId,
             title: 'Week van de test',
             cycle_start_date: cycle.startDate,
-            cycle_index: 1,
           })
           .select('id')
           .single(),
@@ -2770,7 +2764,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
               goal_id: b.goalId,
               title: 'Week zonder notitie',
               cycle_start_date: cycle.startDate,
-              cycle_index: 2,
             })
             .select('id')
             .single(),
@@ -3183,7 +3176,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             goal_id: doel.data.id,
             title: 'GRENS ruim onder de grens',
             cycle_start_date: basis.startDate,
-            cycle_index: 1,
           });
           expect(mag.error).toBeNull();
 
@@ -3194,7 +3186,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             goal_id: doel.data.id,
             title: `GRENS voorraad ${i}`,
             cycle_start_date: basis.startDate,
-            cycle_index: 1,
           }));
           const gevuld = await admin.from('weekly_goals').insert(voorraad);
           expect(gevuld.error).toBeNull();
@@ -3203,7 +3194,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             goal_id: doel.data.id,
             title: 'GRENS over de grens',
             cycle_start_date: basis.startDate,
-            cycle_index: 1,
           });
           expect(teveel.error).not.toBeNull();
 
@@ -3214,7 +3204,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             goal_id: doel.data.id,
             title: 'GRENS andere week',
             cycle_start_date: addDays(basis.startDate, 7),
-            cycle_index: 2,
           });
           expect(andereWeek.error).not.toBeNull();
         } finally {
@@ -3250,7 +3239,6 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             goal_id: doel.data.id,
             title: `GRENS rollover ${i}`,
             cycle_start_date: basis.startDate,
-            cycle_index: 1,
           }));
 
           expect((await admin.from('weekly_goals').insert(voorraad)).error).toBeNull();

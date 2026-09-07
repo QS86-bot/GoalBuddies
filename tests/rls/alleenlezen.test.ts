@@ -283,7 +283,6 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
         points_floor: 1,
         points_miss: -1,
         cycle_start_date: vandaag,
-        cycle_index: 1,
       })
       .select('id')
       .single();
@@ -338,7 +337,6 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
         points_floor: 1,
         points_miss: -1,
         cycle_start_date: addDays(vandaag, 7),
-        cycle_index: 2,
       })
       .select('id')
       .single();

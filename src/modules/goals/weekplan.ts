@@ -3,11 +3,10 @@ import { t } from '../../shared/i18n';
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { cyclesBetween, type Cycle, type UserClock } from '../../shared/time';
+import { type Cycle, type UserClock } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
 import { huidigeCyclus } from './cycles';
-import { eersteCyclusVanDoel } from './weekly';
 
 import {
   meldingBijReden,
@@ -300,13 +299,10 @@ export async function startWeekplanstapNu(
   klok: UserClock,
 ): Promise<Resultaat<true>> {
   const cyclus = huidigeCyclus(klok);
-  const eerste = await eersteCyclusVanDoel(goalId, klok);
-  const index = eerste === null ? 1 : cyclesBetween(eerste, cyclus) + 1;
 
   const { data, error } = await supabase().rpc('start_weekplanstap', {
     p_step_id: stepId,
     p_cycle_start_date: cyclus.startDate,
-    p_cycle_index: index,
   });
 
   if (error) {

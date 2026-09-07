@@ -68,7 +68,6 @@ async function maakRitmeWeek(
       goal_id: goalId,
       title: titel,
       cycle_start_date: CYCLUS,
-      cycle_index: 1,
       floor_days: vloer,
       ceiling_days: plafond,
     })
@@ -201,7 +200,6 @@ describe.skipIf(!rlsTestsConfigured)('het ritme van een doel', () => {
           goal_id: f.goalId,
           title: 'RITME gewone week',
           cycle_start_date: CYCLUS,
-          cycle_index: 1,
         })
         .select('id')
         .single();
