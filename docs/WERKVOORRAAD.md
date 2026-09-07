@@ -172,6 +172,49 @@ en de acht functies uit die drie migraties komen **ruw** overeen — commentaar 
 al. Genormaliseerd over alle 168 functies is de sómhash aan beide kanten
 `0cba586b0747e69cc2c305912bac7d36`.
 
+✅ **`0150` t/m `0172` zijn op 06-09 toegepast — drieëntwintig in één ronde, met
+een `pg_dump` van Quintens machine vooraf.** Zelfde werkwijze als de twee rondes
+hiervoor: `execute_sql` per migratie, in volgorde, met een handmatige registerrij
+erbij. Het register staat op **175 rijen van `0001` tot `0172`**, nul
+tijdstempels, nul dubbele versies — gelijk aan de 175 bestanden die er voor dat
+bereik liggen.
+
+⚠️ **De transcriptie is de zwakke plek van deze route en die is deze keer
+gemeten in plaats van aangenomen.** De SQL gaat door een sessie heen en niet
+door een pipe; QS8-220 bestaat omdat een eerdere ronde functies met een
+ingekorte body toepaste. Daarom na élke migratie `md5(pg_get_functiondef())`
+naast de lokale stack gelegd, die uit dezelfde bestanden is opgebouwd. **Alle
+vierentwintig functies uit deze ronde komen byte voor byte overeen.**
+
+📏 En de catalogi ernaast, over het hele schema:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 360 | 360 |
+| constraints | 240 | 240 |
+| indexen | 140 | 140 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `5fb73f48…` | `5fb73f48…` |
+
+Twee dingen wijken af, en allebei zijn ze verklaard door migratie `0175`, die
+**niet** is toegepast omdat `0173` en `0174` nog op hun eigen branch staan: de
+foreign key `ai_jobs_goal_id_fkey` (productie `on delete cascade` uit `0001`,
+lokaal `set null` sinds `0175`) en het functieaantal (179 op productie, 184
+lokaal = 179 + de drie nieuwe uit `0175` + `shim_maak_gebruiker` en
+`shim_verwijder_gebruiker`, die alleen in de teststack bestaan).
+
+✅ **De vijf bewakingsfuncties geven op productie nul bezwaren**:
+`archiefleesgat()`, `barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`
+en `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+
+⚠️ **Er staat nog één gat en dat is er met opzet.** `0173` (QS8-295) en `0174`
+(QS8-176) liggen op hun eigen branches; `0175` (QS8-296) wacht daarop. De
+landingsvolgorde is QS8-295 → QS8-176 → QS8-296, en pas dán mag `0173` t/m `0175`
+naar productie. Eén nummer overslaan zou het register een gat geven, en dan bouwt
+de map het schema nergens anders meer op.
+
 ⚠️ **En schrijf hier geen getal op als stand.** Dit blok zei een uur lang "de map
 en productie lopen gelijk", en dat was achterhaald voordat de PR die het schreef
 geland was. Drie keer op één dag verschoof het getal. De map loopt per definitie
