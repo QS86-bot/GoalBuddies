@@ -1,4 +1,4 @@
--- 0176_een_goedgekeurde_verschuiving_zet_de_straf_terug.sql — een straf bleef verschuldigd terwijl zijn deadline weer in de toekomst lag (QS8-308)
+-- 0177_een_goedgekeurde_verschuiving_zet_de_straf_terug.sql — een straf bleef verschuldigd terwijl zijn deadline weer in de toekomst lag (QS8-308)
 --
 -- ROLLBACK-PAD:
 --   `create or replace` op `beslis_deadline_verzoek()` zonder het terugzetblok

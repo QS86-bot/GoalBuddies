@@ -1,6 +1,6 @@
 /**
  * Een straf komt terug zodra zijn deadline weer in de toekomst ligt — QS8-308,
- * migratie 0176.
+ * migratie 0177.
  *
  * ⚠️ **De toestand die 0174 overliet.** Die migratie houdt een straf tegen
  *    zolang er een open deadline-verzoek staat, met een grens van een week op
