@@ -297,8 +297,15 @@ wat dat betekent: *"een plan dat niet inschuift, is een week waarin de gebruiker
 niets te doen heeft zonder dat iemand dat besloten heeft."*
 
 **Dus: migratie en `npx supabase functions deploy <functie>` in dezelfde ronde.**
-Wil je het gat helemaal wegnemen, laat de oude handtekening dan één release als
-dunne wrapper staan en drop hem in een volgmigratie. `npm run edge:gedeployd`
+
+⚠️ **Of beter: neem de volgorde-eis wég in plaats van hem op te schrijven.** Laat
+de oude handtekening één release als dunne wrapper staan die zijn verdwenen
+argument negeert en doorgeeft aan de nieuwe vorm; drop hem in een volgmigratie
+zodra de deploy gedraaid heeft. Dan is de deploy weer een gewone deploy in plaats
+van een race die je stil verliest. `0186` doet dat voor `activeer_weekplanstap`
+(QS8-324) en is het model om na te volgen — inclusief de revoke, want een verse
+`create` krijgt van Supabase execute voor `anon` en `authenticated` en dan is de
+wrapper zelf het gat. `npm run edge:gedeployd`
 ziet het achteraf, en alleen met een `SUPABASE_ACCESS_TOKEN` — dat is een
 controle, geen volgordegarantie.
 

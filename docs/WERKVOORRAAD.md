@@ -11,27 +11,27 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0183`, maar de edge-functies zijn van de dag ervoor.**
-📏 Gemeten op 07-09 aan het echte project, niet aan dit document:
-`list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
-06-09 is daarmee ingelopen; `0184` (een open straf laat de deadline niet vooruit
-schuiven, QS8-317) en `0185` (`cycle_index` weg, QS8-147) staan nog niet op
-productie.
+⚠️ **Productie staat op `0185`.** 📏 Gemeten op 07-09 aan het echte project, ná
+het toepassen: `list_migrations` geeft `0001` t/m `0185`, aaneengesloten, en de
+functies zijn byte-identiek aan de lokale stack (md5 per functie vergeleken, niet
+op het oog). `cycle_index` is weg, er staan geen driearguments varianten meer, en
+`weekplanstap_naar_weekdoel` staat op `svc=f` — de stille verruiming die bij een
+drop-en-opnieuw ontstaat, is dus niet teruggekomen.
 
-⚠️⚠️ **Wat er wél nog openstaat is een deploy, en die is stiller dan een
-migratie.** `list_edge_functions` geeft voor alle drie de functies
-`updated_at = 2026-09-06T09:07:56Z`, terwijl de migraties `0173` t/m `0183`
-op 07-09 zijn toegepast. Gevolg: `0178` staat op productie, de code die
-`getuigenissen_voor()` aanroept staat in de map (toegevoegd 07-09 04:34), en de
-gedeployde `notificaties` weet er niets van — **de persoon-getuige krijgt zijn
-melding niet**. Er is geen kapot onderdeel, dus niets wordt er rood van. Staat
-als QS8-320, met het commando erbij.
+⚠️⚠️ **De edge-functies zijn nog van 06-09 en dat is wél een gat.**
+`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`.
+Gevolg: `0178` staat op productie, de code die `getuigenissen_voor()` aanroept
+staat in de map, en de gedeployde `notificaties` weet er niets van — **de
+persoon-getuige krijgt zijn melding niet**. Er is geen kapot onderdeel, dus niets
+wordt er rood van. QS8-320, met het commando erbij.
 
-⚠️ **En let op de volgorde bij `0185`.** Die migratie dropt
-`activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
-gedeployde rollover roept de driearguments vorm aan. Zonder deploy in dezelfde
-ronde geeft PostgREST `PGRST202`, vangt de rollover dat zacht af, en schuift er
-elk uur voor iedereen geen weekplanstap meer in. Zie `docs/DEPLOY.md` §2.3a.
+⚠️ **De rollover is een apart geval en `0186` neemt de scherpte eruit.** `0185`
+dropte `activeer_weekplanstap(uuid, date, integer)`, en de gedeployde rollover
+roept die vorm nog aan. 📏 Vandaag inert — `weekly_plan_steps` is leeg, dus de
+RPC wordt nooit bereikt — maar het scherpt zichzelf zodra er een weekplan komt.
+`0186` zet de oude handtekening terug als afgeschreven wrapper, zodat de deploy
+een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
+`supabase functions deploy rollover` gedraaid heeft.
 
 Vraag de database welke migraties er staan, niet dit document.
 
@@ -174,7 +174,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0185` staan in de map: **188 bestanden**,
+Migraties `0001` t/m `0186` staan in de map: **189 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
