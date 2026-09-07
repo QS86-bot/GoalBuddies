@@ -200,6 +200,78 @@ describe.skipIf(!rlsTestsConfigured)('een verzoek dat niemand kan beslissen', ()
   });
 
   // -------------------------------------------------------------------------
+  describe('de doodlopende weg — QS8-311', () => {
+    /**
+     * ⚠️ **Deze tests toetsen niet een functie maar een tóestand**, en dat is de
+     *    hele reden dat ze bestaan. Beide RPC's hierboven zijn los van elkaar
+     *    correct: `zet_streefdatum()` dwingt A7 af en `vraag_deadline_verschuiving()`
+     *    weigert een verzoek dat niemand kan beslissen. De belofte — *je kunt je
+     *    streefdatum verzetten* — breekt op de naad: wie alleen in zijn enige
+     *    gekoppelde groep zit, staat op beide wegen stil.
+     *
+     * ⚠️ **En dat blijft zo, met opzet.** Het alternatief is `zet_streefdatum()`
+     *    laten doorlopen zodra geen enkele gekoppelde groep een ander actief lid
+     *    heeft, en dat maakt een gat in A7 dat sneller is dan ontkoppelen: de
+     *    zeven dagen van 0110 bestaan juist om die omweg dicht te houden. De
+     *    uitweg loopt daarom via de mélding, niet via de grens. Zie
+     *    `docs/decisions/2026-09-07-de-doodlopende-weg-van-een-groep-van-een.md`.
+     *
+     *    Wordt dat besluit ooit teruggedraaid, dan wordt deze test rood — en dat
+     *    hóórt: het is een besluit en geen gevolg.
+     */
+    it(
+      'beide wegen naar een nieuwe streefdatum lopen dood in een groep van één',
+      async () => {
+        const doelId = await doelIn('DOODLOPEND solo', [w.soloGroep]);
+
+        const zelf = await w.alice.db.rpc('zet_streefdatum', {
+          p_goal_id: doelId,
+          p_date: addDays(w.vandaag, 60),
+        });
+        const verzoek = await w.alice.db.rpc('vraag_deadline_verschuiving', {
+          p_goal_id: doelId,
+          p_group_id: w.soloGroep,
+          p_new_date: addDays(w.vandaag, 60),
+          p_reason: 'Ik ben twee weken ziek geweest en kwam aan niets toe.',
+        });
+
+        expect({
+          zelf: uit(zelf.data).reason,
+          verzoek: uit(verzoek.data).reason,
+        }).toEqual({ zelf: 'needs_group_approval', verzoek: 'geen_beslisser' });
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'en met een buddy erin loopt precies één ervan door',
+      async () => {
+        // ⚠️ **De must-allow, en hij toetst allebei de helften.** Zonder hem is
+        //    "beide wegen lopen dood" ook groen bij een grens die álles weigert;
+        //    en zonder de `zelf`-helft is niet te zien dat A7 nog staat.
+        const doelId = await doelIn('DOODLOPEND buddy', [w.buddyGroep]);
+
+        const zelf = await w.alice.db.rpc('zet_streefdatum', {
+          p_goal_id: doelId,
+          p_date: addDays(w.vandaag, 60),
+        });
+        const verzoek = await w.alice.db.rpc('vraag_deadline_verschuiving', {
+          p_goal_id: doelId,
+          p_group_id: w.buddyGroep,
+          p_new_date: addDays(w.vandaag, 60),
+          p_reason: 'Ik ben twee weken ziek geweest en kwam aan niets toe.',
+        });
+
+        expect({
+          zelf: uit(zelf.data).reason,
+          verzoek: uit(verzoek.data).ok,
+        }).toEqual({ zelf: 'needs_group_approval', verzoek: true });
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
   describe('en houdt geen straf tegen', () => {
     /**
      * Een doel met een verlopen streefdatum, een straf erop, en een open
