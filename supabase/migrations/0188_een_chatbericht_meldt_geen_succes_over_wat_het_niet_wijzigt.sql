@@ -1,7 +1,13 @@
--- 0187_een_chatbericht_meldt_geen_succes_over_wat_het_niet_wijzigt.sql — stille terugzetting op chat_messages (QS8-326)
+-- 0188_een_chatbericht_meldt_geen_succes_over_wat_het_niet_wijzigt.sql — stille terugzetting op chat_messages (QS8-326)
 --
 -- ROLLBACK-PAD:
---   `stamp_chat_message()` terugzetten uit `0086_onveranderlijkheid_botst_met_set_null.sql`.
+--   `stamp_chat_message()` terugzetten uit
+--   `0060_subject_id_mag_leeglopen.sql` — dat is de laatste definitie vóór deze
+--   migratie. ⚠️ Hier stond eerst `0086`, en dat is onwaar: 📏 dat bestand noemt
+--   `stamp_chat_message` geen enkele keer (het definieert
+--   `onveranderlijkheid_bewaking()` en `guard_group_update()`). Het zou zonder
+--   fout draaien en niets terugzetten — een rollback die succes meldt en niets
+--   herstelt, precies de klasse die deze migratie komt repareren.
 --   `create or replace` zonder handtekeningwijziging, dus er hoeven geen grants
 --   opnieuw uitgedeeld te worden en de trigger blijft staan zoals hij staat.
 --   Deze migratie raakt geen gegevens: ze schrijft geen enkele rij.
@@ -54,6 +60,21 @@
 -- met een rechtstreeks PostgREST-verzoek te bereiken. Werpen kan hier dus geen
 -- bestaande stroom breken, en dát is gemeten en niet aangenomen.
 --
+-- ⚠️⚠️ **`id` staat er sinds de security-review bij, en dat was geen sluitpost.**
+-- 📏 Gemeten als `authenticated` afzender binnen het bewerkvenster:
+-- `update chat_messages set id = '…0002' where id = '…0001'` gaf `UPDATE 1` — de
+-- primaire sleutel van een eigen bericht was te herschrijven. `authenticated`
+-- heeft er sinds 0173 een UPDATE-kolomgrant op en geen enkele client schrijft
+-- hem. `guard_group_update()` pint `new.id := old.id` op `groups` wél.
+--
+-- Vandaag is de schade klein: `groepschat()` pagineert op `(created_at, id)`, dus
+-- een wisseling kan een bericht tussen twee pagina's laten overslaan, en
+-- `reports.message_id` staat op `ON UPDATE NO ACTION` zodat een gemeld bericht
+-- niet weg te draaien is. Maar dit is de lijst die zegt wát er vastligt, en de
+-- identiteit van een bericht hoort er als eerste in — elke toekomstige feature
+-- die op een berichts-id sleutelt (reacties, leesbevestiging, een thread) erft
+-- anders een sleutel die de afzender kan verplaatsen.
+--
 -- ⚠️ `body` en `attachment_url` blijven vrij bewerkbaar. De toets hangt aan
 -- `is distinct from` per kolom en niet aan een rol, dus een verzoek dat alleen de
 -- tekst wijzigt blijft een gewone update — zelfde vorm als bij `group_members`.
@@ -74,7 +95,7 @@ begin
     return new;
   end if;
 
-  -- ⚠️⚠️ **Eerst melden, dan pas pinnen** (QS8-326). Tot 0187 werd hieronder
+  -- ⚠️⚠️ **Eerst melden, dan pas pinnen** (QS8-326). Tot 0188 werd hieronder
   --    stilzwijgend teruggezet en kreeg de beller HTTP 200 over een wijziging
   --    die niet gebeurd is.
   --
@@ -83,7 +104,8 @@ begin
   --    `actor_id` en `subject_id` laat Postgres zélf een UPDATE doen als een
   --    profiel verdwijnt. Alleen gevuld → NULL is dus toegestaan; dat is de
   --    foreign key en geen client. Alles anders is een poging.
-  if new.group_id     is distinct from old.group_id
+  if new.id           is distinct from old.id
+     or new.group_id     is distinct from old.group_id
      or new.type         is distinct from old.type
      or new.system_event is distinct from old.system_event
      or new.created_at   is distinct from old.created_at
@@ -94,9 +116,10 @@ begin
   then
     raise exception 'Aan een chatbericht zijn alleen de tekst en de bijlage te wijzigen'
       using errcode = 'check_violation',
-            hint = 'group_id, type, system_event, created_at, payload en de drie persoonskolommen liggen vast zodra het bericht er staat.';
+            hint = 'id, group_id, type, system_event, created_at, payload en de drie persoonskolommen liggen vast zodra het bericht er staat.';
   end if;
 
+  new.id           := old.id;
   new.group_id     := old.group_id;
   new.type         := old.type;
   new.system_event := old.system_event;
@@ -110,7 +133,7 @@ begin
   --    correctie van 0059: alleen van gevuld naar NULL mag erdoor, want dat is
   --    precies wat `on delete set null` doet. Alles anders wordt teruggedraaid.
   --
-  --    ⚠️ Sinds 0187 is dit een vangnet en niet meer de grendel: wat hier nog
+  --    ⚠️ Sinds 0188 is dit een vangnet en niet meer de grendel: wat hier nog
   --    teruggezet zou worden, is hierboven al geworpen. Het blijft staan omdat
   --    een pin die niets meer doet goedkoper is dan een pin die je weghaalt en
   --    later mist — en omdat de gevuld→NULL-tak wél nog werk doet.
@@ -132,6 +155,6 @@ $$;
 
 comment on function public.stamp_chat_message() is
   'Zet created_at bij INSERT en houdt de metagegevens van een chatbericht vast bij '
-  'UPDATE. Sinds 0187 (QS8-326) werpt hij op een poging in plaats van stil terug te '
+  'UPDATE. Sinds 0188 (QS8-326) werpt hij op een poging in plaats van stil terug te '
   'zetten; alleen gevuld naar NULL op sender_id, actor_id en subject_id gaat door, '
   'want dat is on delete set null en geen client.';

@@ -1,6 +1,6 @@
 /**
  * Een chatbericht meldt geen succes over wat het niet wijzigt — QS8-326,
- * migratie 0187.
+ * migratie 0188.
  *
  * ⚠️ **De belofte is niet "de metagegevens liggen vast" maar "de server liegt
  *    niet over wat hij gedaan heeft".** Vastliggen deden ze al: `stamp_chat_message()`
@@ -70,7 +70,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
     it(
       'een verzoek dat alleen een vastliggende kolom wijzigt, meldt geen succes',
       async () => {
-        // ⚠️ Dit was vóór 0187 HTTP 200 met een ongewijzigde rij. Gemeten.
+        // ⚠️ Dit was vóór 0188 HTTP 200 met een ongewijzigde rij. Gemeten.
         const id = await versBericht('payload-poging');
 
         const uit = await w.alice.db.from('chat_messages').update({ payload: { x: 1 } }).eq('id', id);
@@ -86,13 +86,20 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
     it(
       'een verzoek dat de tekst wél en het type niet mag wijzigen, wijzigt geen van beide',
       async () => {
-        // ⚠️ De halve vorm: vóór 0187 veranderde `body` en bleef `type` staan, met
+        // ⚠️ De halve vorm: vóór 0188 veranderde `body` en bleef `type` staan, met
         //    succes erop. Half doen en heel melden is de ergste van de twee.
+        //
+        // ⚠️⚠️ **`photo` en niet `system`, en dat verschil is de hele test.** De
+        //    `with check` van `chat_messages_update` eist `type <> 'system'`, dus
+        //    een poging met `system` wordt al door de policy geweigerd en bereikt
+        //    deze trigger nooit. De eerste versie deed dat wél en was groen om de
+        //    verkeerde reden — gevonden doordat `type` uit de toets halen niets
+        //    rood maakte. `photo` staat de policy toe; alleen de trigger stopt hem.
         const id = await versBericht('half-poging');
 
         const uit = await w.alice.db
           .from('chat_messages')
-          .update({ body: 'nieuw', type: 'system' })
+          .update({ body: 'nieuw', type: 'photo' })
           .eq('id', id);
 
         expect(uit.error, 'een type-wijziging kwam er stil doorheen').not.toBeNull();
@@ -100,6 +107,105 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         const na = await adminDb().from('chat_messages').select('body, type').eq('id', id).single();
         expect(na.data?.body, 'de body is half doorgevoerd').toBe('half-poging');
         expect(na.data?.type).toBe('text');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('elke gepinde kolom heeft zijn eigen ijking', () => {
+    // ⚠️⚠️ **Deze vier stonden er niet, en dat kwam uit de security-review.** De
+    //    eerste versie ijkte drie grendels van de acht: `payload`, `type` en de
+    //    FK-uitzondering. 📏 Gemeten dat `group_id`, `system_event`, `created_at`
+    //    en `id` stuk voor stuk uit toets én pin te halen waren met vijf groene
+    //    tests als uitslag — met een `pg_get_functiondef`-controle erbij dat de
+    //    mutatie de database echt gehaald had.
+    //
+    //    `group_id` is de scherpste: zonder die grendel verplaatst een afzender
+    //    zijn eigen bericht binnen het venster naar een andere groep waar hij lid
+    //    van is, en `groepschat()` toont het daar woordelijk. Domeinregel 7.
+
+    it(
+      'de groep van een bericht ligt vast',
+      async () => {
+        const tweede = await w.alice.db.rpc('create_group', { group_name: 'Tweede groep' });
+        const td = tweede.data as unknown as { ok?: boolean; group?: { id: string } };
+        expect(td.ok, `tweede groep: ${JSON.stringify(tweede.data)}`).toBe(true);
+
+        const id = await versBericht('groep-poging');
+        const uit = await w.alice.db
+          .from('chat_messages')
+          .update({ group_id: td.group!.id })
+          .eq('id', id);
+
+        expect(uit.error, 'een bericht is naar een andere groep verplaatst').not.toBeNull();
+
+        const na = await adminDb().from('chat_messages').select('group_id').eq('id', id).single();
+        expect(na.data?.group_id).toBe(w.groupId);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'het systeemgebeurtenisveld ligt vast',
+      async () => {
+        // ⚠️ Via `adminDb()` en niet via de client, en dat is geen gemak. De
+        //    `with check` eist `system_event is null`, dus een client wordt al
+        //    door de policy gestopt en raakt deze grendel niet. Wie hem alsnog
+        //    langs de client toetst, meet de policy en denkt de trigger te meten —
+        //    precies wat de eerste versie van dit bestand deed.
+        const id = await versBericht('systeem-poging');
+        const uit = await adminDb()
+          .from('chat_messages')
+          .update({ system_event: 'member_joined' })
+          .eq('id', id);
+
+        expect(uit.error, 'system_event is stil doorgekomen').not.toBeNull();
+
+        const na = await adminDb()
+          .from('chat_messages')
+          .select('system_event')
+          .eq('id', id)
+          .single();
+        expect(na.data?.system_event).toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'het tijdstip ligt vast, ook voor de rol die er wél een grant op heeft',
+      async () => {
+        // ⚠️ `authenticated` heeft sinds 0173 geen UPDATE-grant op `created_at`,
+        //    dus dit pad loopt via `adminDb()`. Dat is met opzet: de trigger geldt
+        //    óók voor de rol die om de kolomgrant heen komt, en juist daar is het
+        //    de enige grendel. Zonder deze test is die kolom ongeijkt.
+        const id = await versBericht('tijd-poging');
+        const uit = await adminDb()
+          .from('chat_messages')
+          .update({ created_at: '2020-01-01T00:00:00Z' })
+          .eq('id', id);
+
+        expect(uit.error, 'created_at is stil teruggezet in plaats van geweigerd').not.toBeNull();
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de identiteit van een bericht ligt vast',
+      async () => {
+        // ⚠️ Gevonden in de security-review: `authenticated` heeft een
+        //    UPDATE-kolomgrant op `id` en de trigger pinde hem niet. 📏 Gemeten
+        //    dat een afzender het id van zijn eigen bericht herschreef.
+        const id = await versBericht('id-poging');
+        const uit = await w.alice.db
+          .from('chat_messages')
+          .update({ id: '00000000-0000-0000-0000-0000000000ff' })
+          .eq('id', id);
+
+        expect(uit.error, 'de primaire sleutel is herschreven').not.toBeNull();
+
+        const na = await adminDb().from('chat_messages').select('id').eq('id', id).maybeSingle();
+        expect(na.data?.id, 'het bericht staat niet meer op zijn eigen id').toBe(id);
       },
       TEST_TIMEOUT,
     );
