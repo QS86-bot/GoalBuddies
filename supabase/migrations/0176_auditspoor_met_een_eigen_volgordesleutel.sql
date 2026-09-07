@@ -1,4 +1,4 @@
--- 0175_auditspoor_met_een_eigen_volgordesleutel.sql — het auditspoor van een commitment had geen sleutel die twee gebeurtenissen uit één transactie uit elkaar houdt (QS8-303)
+-- 0176_auditspoor_met_een_eigen_volgordesleutel.sql — het auditspoor van een commitment had geen sleutel die twee gebeurtenissen uit één transactie uit elkaar houdt (QS8-303)
 --
 -- ROLLBACK-PAD:
 --   drop index if exists public.commitment_events_volgorde_idx;
@@ -345,4 +345,4 @@ revoke execute on function public.volgorde_bewaking() from public, anon, authent
 
 comment on function public.volgorde_bewaking() is
   'Meldt elke tabel uit volgorde_register() waarvan de volgordesleutel zijn '
-  'belofte niet meer kan waarmaken. Zie 0175 en QS8-303.';
+  'belofte niet meer kan waarmaken. Zie 0176 en QS8-303.';

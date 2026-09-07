@@ -188,7 +188,7 @@ export const BEWAAKT_BUITEN_DE_APP = {
   volgorde_bewaking:
     'De volgordesleutel van een auditspoor: bestaat de kolom, is hij ' +
     '`generated always as identity`, staat de unieke sorteerindex er nog, en ' +
-    'heeft geen client er schrijfrecht op (0175). Zonder die sleutel knoopt ' +
+    'heeft geen client er schrijfrecht op (0176). Zonder die sleutel knoopt ' +
     '`created_at` — `now()` is binnen een transactie constant — en ligt de ' +
     'volgorde van het spoor niet vast. Aanroeper is ' +
     '`tests/rls/auditspoor-volgorde.test.ts`.',

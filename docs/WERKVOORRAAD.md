@@ -15,8 +15,9 @@ productie in twee rondes)
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
 uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
 persoon-getuige), `0173` (geen servertijdstempel in handen van de client) en
-`0174` (een open deadline-verzoek houdt de straf tegen) en `0175` (een
-volgordesleutel op het auditspoor) staan
+`0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
+dat niemand kan beslissen) en `0176` (een volgordesleutel op het auditspoor)
+staan
 er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
@@ -156,7 +157,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0175` staan in de map: **178 bestanden**,
+Migraties `0001` t/m `0176` staan in de map: **179 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

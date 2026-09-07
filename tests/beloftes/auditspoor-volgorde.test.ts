@@ -15,7 +15,7 @@ const WORTEL = join(__dirname, '..', '..');
  *
  *    `commitment_events.created_at` knoopt: aan één UPDATE van `commitments`
  *    hangen twee AFTER-triggers die allebei schrijven, en `now()` is binnen een
- *    transactie constant. Migratie 0175 gaf de tabel daarom `seq`, een
+ *    transactie constant. Migratie 0176 gaf de tabel daarom `seq`, een
  *    identity-kolom. Deze test bewaakt dat niemand teruggaat naar de klok.
  *
  * ⚠️ **Waarom uit de bron afgeleid en niet met een vaste bestandsnaam.** Regel 18
@@ -153,7 +153,7 @@ describe('wie het auditspoor leest, sorteert op de volgordesleutel', () => {
 
     expect(
       fout,
-      `${TABEL} krijgt twee rijen per transactie en now() knoopt; sorteer op seq (migratie 0175, QS8-303)`,
+      `${TABEL} krijgt twee rijen per transactie en now() knoopt; sorteer op seq (migratie 0176, QS8-303)`,
     ).toEqual([]);
   });
 });
