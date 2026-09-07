@@ -1932,7 +1932,7 @@ bovenliggende secties — en dat is precies hoe een openstaand punt stil sterft.
   Twee gescheiden potten zijn beter voor de gebruiker maar brengen het plafond naar
   dertien calls per dag. Onderbouwing in
   `docs/decisions/2026-08-27-de-doelcoachtip-per-mijlpaal.md` §5.
-  ⚠️ **Sinds 06-09 is die vraag van vorm veranderd** (QS8-296, migratie 0175):
+  ⚠️ **Sinds 06-09 is die vraag van vorm veranderd** (QS8-296, migratie 0182):
   het dagquotum telt geen jobs meer maar weegt **dollarcent**, en het plafond is
   `ai_dag_limiet() × ai_job_voorschot_cent()`. Twee gescheiden potten is dus niet
   langer "dertien calls" maar "hoeveel cent per pot", en dat is een andere en

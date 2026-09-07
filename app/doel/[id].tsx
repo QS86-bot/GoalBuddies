@@ -1750,7 +1750,7 @@ function Mijlpalen({
 
                   ⚠️ Niet bij een gehaalde mijlpaal. Weekstappen laten bedenken
                      voor iets wat al af is, is een AI-call weggooien — en elke
-                     call gaat van hetzelfde dagbudget af (0175).
+                     call gaat van hetzelfde dagbudget af (0182).
                 */}
                 {m.status === 'done' ? null : (
                   <Button

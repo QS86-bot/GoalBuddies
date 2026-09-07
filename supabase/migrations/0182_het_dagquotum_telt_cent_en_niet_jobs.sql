@@ -1,4 +1,4 @@
--- 0175_het_dagquotum_telt_cent_en_niet_jobs.sql — het dagquotum weegt wat een job
+-- 0182_het_dagquotum_telt_cent_en_niet_jobs.sql — het dagquotum weegt wat een job
 -- kost in plaats van hem te tellen (QS8-296)
 --
 -- ROLLBACK-PAD:
@@ -158,7 +158,7 @@ alter table public.ai_jobs add constraint ai_jobs_goal_id_fkey
   foreign key (goal_id) references public.goals(id) on delete set null;
 
 comment on constraint ai_jobs_goal_id_fkey on public.ai_jobs is
-  'set null en niet cascade sinds 0175: een verbruiksrij overleeft het doel waar '
+  'set null en niet cascade sinds 0182: een verbruiksrij overleeft het doel waar '
   'hij bij hoorde, anders is het dagbudget te resetten door het doel weg te '
   'gooien binnen bedenktijd() (QS8-296).';
 
@@ -237,7 +237,7 @@ grant execute on function public.ai_jobkosten_cent(numeric) to service_role;
 -- leest dat dit "de poort" is, bouwt de count-poort terug.
 
 comment on function public.ai_dag_limiet() is
-  'Het aantal gewone AI-jobs per gebruiker per dag. ⚠️ Sinds 0175 geen poort meer '
+  'Het aantal gewone AI-jobs per gebruiker per dag. ⚠️ Sinds 0182 geen poort meer '
   'maar een van de twee getallen waar ai_dag_budget_cent() uit volgt — de poort '
   'telt cent. Enige bron van waarheid voor het aantal (QS8-42, QS8-296).';
 
@@ -312,7 +312,7 @@ begin
   end if;
 
   -- 0120: tien jobs per dag is pas een quotum als één job begrensd is.
-  -- 0175: en een budget per dag is pas een budget als die grens er nog staat —
+  -- 0182: en een budget per dag is pas een budget als die grens er nog staat —
   --       hij begrenst wat de láátste toegelaten job er nog overheen kan doen.
   if p_input is null or char_length(p_input::text) > ai_invoer_max() then
     return jsonb_build_object(
@@ -403,13 +403,13 @@ begin
   --    De lock is per gebruiker (`auth.uid()` gehasht) en valt vrij bij commit,
   --    dus er is geen wachtrij tussen gebruikers en niets om op te ruimen.
   --
-  -- ⚠️ Dit was géén regressie — de `count(*)`-poort van vóór 0175 was even
+  -- ⚠️ Dit was géén regressie — de `count(*)`-poort van vóór 0182 was even
   --    raceable — maar het is wél precies de belofte die deze migratie doet, en
   --    een eerdere versie van deze kop beweerde dat een burst er niet langs kwam.
   --    Gevonden door de security-review, en de zin is rechtgezet.
   perform pg_advisory_xact_lock(hashtextextended(auth.uid()::text, 0));
 
-  -- 0175: het quotum weegt cent en telt geen rijen.
+  -- 0182: het quotum weegt cent en telt geen rijen.
   select coalesce(sum(ai_jobkosten_cent(j.cost_cents)), 0) into gebruikt_cent
   from ai_jobs j
   where j.user_id = auth.uid()
@@ -437,7 +437,7 @@ $function$;
 
 comment on function public.vraag_ai_job(text, uuid, jsonb) is
   'De poort voor elke AI-job: budget, dedup, invoergrens en eigendom. ⚠️ Het '
-  'quotum weegt sinds 0175 dollarcent (ai_dag_budget_cent()) en telt geen rijen; '
+  'quotum weegt sinds 0182 dollarcent (ai_dag_budget_cent()) en telt geen rijen; '
   'quota_reached geeft daarom geen getal terug — cent hoort niet op het scherm en '
   'een aantal jobs zegt niets meer. Zie ai_verbruik(). ⚠️ Vier '
   'soorten sinds 0136: milestones, weekly_goals, milestone_tip en plan. Een soort '

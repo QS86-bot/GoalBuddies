@@ -409,7 +409,7 @@ export function zonderDefinities(sql) {
   //    een puntkomma binnen de tekst, `[^;]*;` stopt daar, en de rest van de zin
   //    blijft in de romp staan — inclusief elke andere functienaam mét haakjes
   //    die erin genoemd wordt. Gevolg: die functie heet levend terwijl niemand
-  //    hem aanroept. Gevonden doordat een nieuwe comment-regel in 0175 er één
+  //    hem aanroept. Gevonden doordat een nieuwe comment-regel in 0182 er één
   //    bevatte; `ai_verbruik()` werd daardoor als aangeroepen gelezen.
   //
   //    `zonderStatement()` zoekt de afsluitende puntkomma buiten tekstliteralen,

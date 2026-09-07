@@ -163,7 +163,7 @@ async function vraagJob(
 function aanvraagMelding(reden: string | undefined): string {
   switch (reden) {
     case 'quota_reached':
-      // ⚠️ **Deze zin noemt sinds 0175 geen getal meer, en dat is de reparatie
+      // ⚠️ **Deze zin noemt sinds 0182 geen getal meer, en dat is de reparatie
       //    en niet een verschraling.** Hij gaf het dagplafond door dat de database
       //    meestuurde — tien — zodat de tekst niet de tweede plek werd waar dat
       //    getal stond. Maar de poort weegt nu dollarcent: wie grote prompts

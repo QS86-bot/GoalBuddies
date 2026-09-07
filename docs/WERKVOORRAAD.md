@@ -164,9 +164,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0181` staan in de map: **184 bestanden**,
+Migraties `0001` t/m `0182` staan in de map: **185 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-⚠️ **Er ontbreken nummers: 0173, 0174.** Zie `migraties:controle`.
+De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot
@@ -214,22 +214,32 @@ vierentwintig functies uit deze ronde komen byte voor byte overeen.**
 | tabellen met RLS | 40 | 40 |
 | **sómhash over alle policy-expressies** | `5fb73f48…` | `5fb73f48…` |
 
-Twee dingen wijken af, en allebei zijn ze verklaard door migratie `0175`, die
-**niet** is toegepast omdat `0173` en `0174` nog op hun eigen branch staan: de
-foreign key `ai_jobs_goal_id_fkey` (productie `on delete cascade` uit `0001`,
-lokaal `set null` sinds `0175`) en het functieaantal (179 op productie, 184
-lokaal = 179 + de drie nieuwe uit `0175` + `shim_maak_gebruiker` en
-`shim_verwijder_gebruiker`, die alleen in de teststack bestaan).
+Wat er die ronde afweek, was verklaard door migratie `0182` (toen `0175`), die
+op dat moment nog niet was toegepast: de foreign key `ai_jobs_goal_id_fkey` —
+productie `on delete cascade` uit `0001`, lokaal `set null` — en het
+functieaantal (179 op productie, 184 lokaal = 179 + drie nieuwe + de twee shims
+die alleen in de teststack bestaan).
 
 ✅ **De vijf bewakingsfuncties geven op productie nul bezwaren**:
 `archiefleesgat()`, `barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`
 en `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
 
-⚠️ **Er staat nog één gat en dat is er met opzet.** `0173` (QS8-295) en `0174`
-(QS8-176) liggen op hun eigen branches; `0175` (QS8-296) wacht daarop. De
-landingsvolgorde is QS8-295 → QS8-176 → QS8-296, en pas dán mag `0173` t/m `0175`
-naar productie. Eén nummer overslaan zou het register een gat geven, en dan bouwt
-de map het schema nergens anders meer op.
+⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
+hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog
+moesten. 📏 Nagemeten op 07-09:
+
+* **QS8-295 is ingehaald** door QS8-299 — het bredere vervolgissue dat er zelf
+  uit voortkwam. Main's `0173` dekt alle vier tabellen met identieke
+  kolomlijsten, en `tijdstempel_bewaking()` bewaakt de klasse in plaats van de
+  vier gevallen. Die branch is niet geland; het issue staat op Done met de
+  meting eronder.
+* **QS8-176 is geland** als `0181`, na een tweede hernummering.
+* **QS8-296 is `0182`** geworden, na dezelfde behandeling.
+
+⚠️ **Main liep er in één nacht tweemaal overheen.** Dat is geen slordigheid van
+één sessie maar de vorm: een branch die een nummer draagt en blijft liggen,
+botst met alles wat er daarna landt. `npm run claim` dekt het issue, niet het
+migratienummer — QS8-310 gaat daar overheen.
 
 ⚠️ **En schrijf hier geen getal op als stand.** Dit blok zei een uur lang "de map
 en productie lopen gelijk", en dat was achterhaald voordat de PR die het schreef
@@ -847,10 +857,10 @@ bestanden, niet tegen dit document.
   **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
   tegendeel schrijft.**
 
-✅ **De laatste is op 06-09-2026 gesloten (QS8-296, migratie 0175):**
+✅ **De laatste is op 06-09-2026 gesloten (QS8-296, migratie 0182):**
 
 - ~~**Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
-  doet `count(*)`.~~ De poort weegt sinds 0175 **dollarcent** en telt geen rijen:
+  doet `count(*)`.~~ De poort weegt sinds 0182 **dollarcent** en telt geen rijen:
   `ai_dag_budget_cent()` = `ai_dag_limiet()` × `ai_job_voorschot_cent()`, en elke
   job kost `greatest(coalesce(cost_cents, 0), voorschot)`. De bodem is de helft
   die de invoerkant dekt — een job zonder bedrag (queued, running, failed, of een

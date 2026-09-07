@@ -1,6 +1,6 @@
 # Een quotum dat telt, weegt niets
 
-**06-09-2026 — QS8-296, migratie 0175**
+**06-09-2026 — QS8-296, migratie 0182**
 
 De poort voor AI-jobs deed `count(*)`. Tien jobs per dag, ongeacht hun omvang.
 De gegevens om het beter te doen stonden er al: `ai_jobs` draagt sinds 0001
@@ -87,7 +87,7 @@ Drie gevolgen, alle drie bedoeld:
    rijen er staan.
 2. **Een `failed` job houdt het voorschot.** Het commentaar in
    `doelcoach/index.ts` zegt het al: *"een call die halverwege afbreekt is al
-   betaald."* Tot 0175 stond dat er als voornemen; nu telt het.
+   betaald."* Tot 0182 stond dat er als voornemen; nu telt het.
 3. **Een job die op `cost_cents = 0` uitkomt, telt alsnog.** Dat gat is echt:
    `doelcoach/index.ts` doet `data.usage?.input_tokens ?? 0`, dus een antwoord
    zonder usage-blok boekt een gratis job. **Nul is geen bedrag maar een
@@ -102,8 +102,8 @@ dus niet losser dan het was.
 
 |  | plafond per gebruiker per dag | poort weigert bij |
 |---|---|---|
-| vóór 0175 | 10 × 13,2 = **132 cent** | de 11e job, hoe duur ook |
-| na 0175 | budget 30 cent + hoogstens één job overschot ≈ **43 cent** | de 3e maximale job |
+| vóór 0182 | 10 × 13,2 = **132 cent** | de 11e job, hoe duur ook |
+| na 0182 | budget 30 cent + hoogstens één job overschot ≈ **43 cent** | de 3e maximale job |
 
 📏 Beide met de hand nagemeten op de lokale stack met jobs à 13,2 cent, en
 daarnaast de variant waarin het budget níét uit `limiet × voorschot` volgt maar
@@ -140,7 +140,7 @@ Cent in de melding zetten is geen optie: dat is Quintens rekening en niet iets
 waar een gebruiker mee lastiggevallen hoort te worden. Dus noemt de zin niets, en
 geeft `vraag_ai_job()` bij `quota_reached` ook geen getal meer terug. Wie de
 cijfers nodig heeft, roept `ai_verbruik()` aan — die is er precies voor, en
-rapporteert sinds 0175 in dezelfde eenheid als de poort weegt.
+rapporteert sinds 0182 in dezelfde eenheid als de poort weegt.
 
 ## 6. De naad, en waarom de eerste versie van die test niets bewees
 
@@ -191,7 +191,7 @@ belooft.*
 staat. De rest van de zin bleef staan, en elke functienaam mét haakjes die daarin
 genoemd werd, heette daarna aangeroepen.
 
-Gevonden doordat één nieuwe comment-regel in 0175 een puntkomma bevatte en
+Gevonden doordat één nieuwe comment-regel in 0182 een puntkomma bevatte en
 `ai_verbruik()` daardoor opeens "levend" was. Met de reparatie erin meldde de
 controle twee functies die er al maanden onder zaten:
 
@@ -227,7 +227,7 @@ dan hier om."* Op 06-09 stond hij nog op 200 / 1000. Zes dagen lang zou elke
 `failed`, geen enkele met een bedrag. Er is niets fout geboekt.
 
 De constante staat nu op 300 / 1500, en de bedragen in dit document en in de kop
-van 0175 zijn daarop herrekend. Dat is geen detail: een budget in cent is precies
+van 0182 zijn daarop herrekend. Dat is geen detail: een budget in cent is precies
 zo goed als de prijs waarmee die cent geboekt wordt.
 
 ⚠️ **Een datum in een commentaarregel is geen grendel.** Dat is de les die blijft
@@ -302,7 +302,7 @@ eigen transactie, dus gelijktijdige verzoeken zien allemaal hetzelfde oude getal
 toegelaten waar er 10 passen**, drie runs achter elkaar. Bij vijftig verbindingen
 is het budget vijftig keer zo groot.
 
-Dat was géén regressie — de `count(*)`-poort van vóór 0175 was even raceable —
+Dat was géén regressie — de `count(*)`-poort van vóór 0182 was even raceable —
 maar het ís de belofte die deze wijziging doet, en de eerste versie van de
 migratiekop en van §3 hierboven zei letterlijk dat een burst er niet langs kwam.
 **Een verkeerde geruststelling in de documentatie is erger dan geen

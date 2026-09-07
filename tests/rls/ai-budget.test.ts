@@ -1,5 +1,5 @@
 /**
- * Het AI-dagbudget — de poort weegt dollarcent en telt geen rijen (QS8-296, 0175).
+ * Het AI-dagbudget — de poort weegt dollarcent en telt geen rijen (QS8-296, 0182).
  *
  * ⚠️ **De belofte is niet "er is een limiet" maar "een grote job eet meer op dan
  *    een kleine".** Dat verschil is de hele reden dat dit bestand bestaat: de
@@ -355,7 +355,7 @@ describe.skipIf(!rlsTestsConfigured)('het AI-dagbudget telt cent', () => {
      *    allebei door. Bij N tegelijk is het budget N keer zo groot.
      *
      *    ⚠️ Dit is geen regressie — de oude `count(*)`-poort was even raceable —
-     *    maar het ís de belofte die deze wijziging doet. De kop van 0175 zei
+     *    maar het ís de belofte die deze wijziging doet. De kop van 0182 zei
      *    letterlijk dat een burst er niet langs komt, en dat was aantoonbaar
      *    onwaar. Een verkeerde geruststelling in de documentatie is erger dan
      *    geen geruststelling.
