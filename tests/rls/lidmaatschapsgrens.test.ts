@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { psql } from './psql-stack';
 
 /**
  * Wie mag een lidmaatschapsrij aanraken — QS8-262, ronde 6.
@@ -38,11 +39,27 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  *    een lege groep, een verlopen token. De beheerder die dezelfde rij wél raakt,
  *    is het bewijs dat de opstelling deugt.
  *
- * ⚠️ **Wat dit bestand níet toetst: `group_members_update.check`.** Die helft
- *    staat als vraag in QS8-262 — de trigger pint `user_id` en `group_id` vóórdat
- *    de `with check` aan de nieuwe rij toekomt, dus er is mogelijk geen rij te
- *    bouwen die de ene helft passeert en de andere niet. Dat is gemeten noch
- *    weerlegd, en het hoort dus niet als vastgelegd te worden opgeschreven.
+ * ## De `check`-helft is het tweede slot, en alleen te zien met het eerste uit
+ *
+ * Ronde 6 liet deze helft als vraag open: *de trigger pint `user_id` en
+ * `group_id` vóórdat de `with check` aan de nieuwe rij toekomt, dus mogelijk is
+ * er geen rij te bouwen die de ene helft passeert en de andere niet.* 📏 In ronde
+ * 7 gemeten, en het antwoord is tweeledig:
+ *
+ * | | uitkomst |
+ * |---|---|
+ * | bob verplaatst zijn eigen rij naar alice, trigger **aan** | geen fout, één rij, `user_id` onveranderd |
+ * | idem, trigger **uit** | **`42501`** — de `check`-helft weigert |
+ *
+ * De helft is dus wél falsifieerbaar, alleen niet in de wereld waarin de app
+ * draait. Dat is precies de vorm van de zelfgetuige-opstelling in
+ * `getuigemelding.test.ts`: **twee sloten op één belofte, en de vraag is of het
+ * tweede standhoudt als het eerste ooit lekt.** Vandaar de test hieronder, met
+ * `group_members_guard` even uit — geen kunstgreep, maar de enige manier om bij
+ * het slot te komen dat je wilt toetsen.
+ *
+ * ⚠️ Daarmee gaat deze helft **níet** in `NIET_PER_HELFT_TE_METEN`. Hij is te
+ *    meten; er was alleen een opstelling voor nodig die niemand geprobeerd had.
  *
  * ## `groups_update` staat hier ook, en die is per hélft niet te scheiden
  *
@@ -84,6 +101,8 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  *      → 1 rood: 'een gewoon lid raakt de rij van een ander niet'
  *   B  beide helften op `true`
  *      → 1 rood, plus de structurele telling in `hulpfuncties`
+ *   C  de `check`-helft op `true`
+ *      → 1 rood: 'de check-helft houdt de rij tegen als de trigger hem niet pint'
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -194,6 +213,50 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
         .single();
 
       expect(na.data?.role, 'de trigger zet het beheerderschap terug').toBe('member');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'de check-helft houdt de rij tegen als de trigger hem niet pint',
+    async () => {
+      // ⚠️ **Het tweede slot, en de reden dat de trigger hier even uit gaat.**
+      //    Met `group_members_guard` aan is deze helft onbereikbaar: hij pint
+      //    `new.user_id := old.user_id`, dus de nieuwe rij is altijd dezelfde als
+      //    de oude en wat `using` doorlaat, laat `check` ook door. 📏 Gemeten:
+      //    trigger aan → geen fout en `user_id` onveranderd; trigger uit →
+      //    `42501`.
+      //
+      // ⚠️ Zelfde opstelling en zelfde reden als de zelfgetuige-test in
+      //    `getuigemelding.test.ts`: twee sloten op één belofte, en dit toetst of
+      //    het tweede standhoudt als het eerste ooit lekt. Zonder de trigger uit
+      //    te zetten is er geen wereld waarin deze helft iets doet — en een test
+      //    die zo'n wereld niet kan bouwen, bewaakt niets.
+      psql('alter table public.group_members disable trigger group_members_guard;');
+
+      try {
+        const poging = await w.bob.db
+          .from('group_members')
+          .update({ user_id: w.alice.id })
+          .eq('group_id', w.groupId)
+          .eq('user_id', w.bob.id)
+          .select('user_id');
+
+        expect(
+          poging.error?.code,
+          'de nieuwe rij hoort de check niet te passeren: hij zou van alice zijn',
+        ).toBe('42501');
+      } finally {
+        psql('alter table public.group_members enable trigger group_members_guard;');
+      }
+
+      // En de rij staat er nog zoals hij stond.
+      const na = await adminDb()
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', w.groupId)
+        .eq('user_id', w.bob.id);
+      expect(na.data ?? []).toHaveLength(1);
     },
     TEST_TIMEOUT,
   );
