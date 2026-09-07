@@ -5,6 +5,7 @@ import { t } from '../../shared/i18n';
 import type { IsoDate } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
+import { beslisRedenen, intrekRedenen, vraagRedenen } from './deadline-redenen';
 import {
   deadlineVerzoekSchema,
   type DeadlineVerzoekInvoer,
@@ -66,31 +67,17 @@ export interface DeadlineVerzoek {
  *    de zes meldingentabellen in dit project.
  */
 function vraagMelding(reden: string | undefined): string {
-  const tabel: Readonly<Record<string, string>> = {
-    not_owner: t('doel.niet_van_jou'),
-    not_member: t('deadline.geen_lid'),
-    not_linked: t('deadline.niet_gekoppeld'),
-    same_date: t('deadline.zelfde_datum'),
-    reason_too_short: t('deadline.argument_leeg'),
-    reason_too_long: t('deadline.argument_lang'),
-    already_open: t('deadline.al_open'),
-  };
-
-  return tabel[reden ?? ''] ?? t('deadline.versturen_mislukt_kort');
+  return vraagRedenen()[reden ?? ''] ?? t('deadline.versturen_mislukt_kort');
 }
 
-/** Zie `vraagMelding()`. */
 function beslisMelding(reden: string | undefined): string {
-  const tabel: Readonly<Record<string, string>> = {
-    not_found: t('deadline.bestaat_niet'),
-    already_decided: t('deadline.al_beslist'),
-    own_request: t('deadline.niet_zelf'),
-    not_member: t('deadline.geen_lid'),
-    note_too_long: t('deadline.argument_lang'),
-  };
-
-  return tabel[reden ?? ''] ?? t('deadline.beslissen_mislukt_kort');
+  return beslisRedenen()[reden ?? ''] ?? t('deadline.beslissen_mislukt_kort');
 }
+
+function intrekMelding(reden: string | undefined): string {
+  return intrekRedenen()[reden ?? ''] ?? t('deadline.intrekken_mislukt_kort');
+}
+
 
 /**
  * Dient een verzoek in — Q-TODO A7.
@@ -194,13 +181,10 @@ export async function trekDeadlineVerzoekIn(verzoekId: string): Promise<Resultaa
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
 
   if (uitkomst.ok !== true) {
-    return {
-      ok: false,
-      melding:
-        uitkomst.reason === 'already_decided'
-          ? t('deadline.intussen_beslist')
-          : t('deadline.intrekken_mislukt_kort'),
-    };
+    // ⚠️ **Dit was één `if` op `already_decided` en verder de algemene melding —
+    //    QS8-311.** `not_yours` en `not_found` lazen daardoor als een storing,
+    //    terwijl het allebei regels zijn met een eigen uitleg.
+    return { ok: false, melding: intrekMelding(uitkomst.reason) };
   }
 
   return { ok: true, waarde: true };

@@ -43,9 +43,8 @@ module.exports = [
     },
   },
   {
-    // ⚠️ **De datalaag wijst niet naar de presentatielaag.** `modules/` mag een
-    //    tÿpe uit `shared/ui` lenen, maar geen wáárde: dan draait de datalaag op
-    //    code uit de schermlaag en is de architectuur uit `CLAUDE.md` omgekeerd.
+    // ⚠️ **De datalaag wijst niet naar de presentatielaag.** `modules/`
+    //    importeert niets uit `shared/ui` — sinds QS8-207 ook geen type meer.
     //
     // ⚠️ **Dit is de "wordt zwaarder als" van een bevinding van 19-08, en die
     //    gold stil.** Die rij zei: het is vandaag een `import type` en dus geen
@@ -55,13 +54,26 @@ module.exports = [
     //    rood werd — precies de klasse waar dit project vier keer voor betaald
     //    heeft.
     //
-    // ⚠️ **`allowTypeImports` staat aan, en dat is geen halve maatregel.** Vier
-    //    plekken lenen vandaag een type (`KettingStand`, `RisicoReden`,
-    //    `RisicoStand`, `WeekpasStand`) en `verbatimModuleSyntax` zorgt dat een
-    //    `import type` niets in de bundel achterlaat. Of die vier types daar
-    //    thuishoren is een conventievraag voor de engineer-review; deze regel
-    //    beantwoordt hem niet, hij houdt alleen tegen dat het stilletjes erger
-    //    wordt.
+    // ⚠️ **`allowTypeImports` stond aan tot 06-09-2026, en dat is nu dicht —
+    //    QS8-207.** Die uitzondering bestond omdat de conventievraag openstond:
+    //    vier plekken leenden een type uit `shared/ui` en niemand had besloten
+    //    of dat mocht. De regel hield toen alleen tegen dat het erger werd.
+    //
+    //    Het wérd erger: het waren er twee bij de bevinding (19-08), vier bij
+    //    het nameten (28-08) en vijf bij het bouwen (06-09, `Beoordeelstand`).
+    //    De voorwaarde onder die dossierrij — *"wordt zwaarder als er een vijfde
+    //    type bijkomt"* — was dus vervuld voordat iemand hem opsloeg.
+    //
+    //    De vijf standen wonen sinds QS8-207 in `shared/standen`, een map zonder
+    //    één import. Beide lagen wijzen daar omláág naar, precies zoals
+    //    `shared/api` dat sinds 25-08 voor `Resultaat` en `Pagina` doet. Er is
+    //    daarmee geen reden meer om een type uit de schermlaag te lenen, en dus
+    //    ook geen uitzondering meer.
+    //
+    // ⚠️ **Dit is de grendel van dit issue en niet de verhuizing.** Een
+    //    verhuizing zonder deze regel is een opruimactie die over drie maanden
+    //    terug is; met deze regel wordt de zesde rood op de regel waar hij
+    //    geschreven wordt.
     files: ['src/modules/**/*.ts', 'src/modules/**/*.tsx'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     plugins: { '@typescript-eslint': tseslint.plugin },
@@ -72,9 +84,8 @@ module.exports = [
           patterns: [
             {
               group: ['**/shared/ui', '**/shared/ui/*'],
-              allowTypeImports: true,
               message:
-                'De datalaag mag uit shared/ui alleen een type lenen (`import type`), geen waarde. Anders wijst modules/ naar de schermlaag. Zie de rij van 19-08 in docs/ENGINEER-REVIEW.md.',
+                'De datalaag importeert niets uit shared/ui — ook geen type. De standen die de database teruggeeft staan in shared/standen; labels en toon blijven in shared/ui. Zie QS8-207.',
             },
           ],
         },
@@ -158,11 +169,12 @@ module.exports = [
     //    werd alleen door niets bewaakt — het goedkoopste soort grendel dat er
     //    is, en precies daarom stond hij er niet.
     //
-    // ⚠️ `scripts/` staat er niet bij, en dat is gemeten en geen vergeetpost:
-    //    daar zijn er elf, allemaal in controlescripts die over geneste
-    //    datastructuren lopen. Die horen in hun eigen ronde; zie de rij van
-    //    05-09 in `docs/ENGINEER-REVIEW.md`.
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx'],
+    // ⚠️ **`scripts/` staat er sinds 06-09-2026 wél bij** (QS8-291). De elf
+    //    overtredingen die de rij van 05-09 noemde, zijn in die ronde gesplitst;
+    //    het waren allemaal controlescripts die over geneste datastructuren
+    //    lopen, en de reparatie was elke keer dezelfde: de binnenste lus naar een
+    //    functie met een naam.
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx', 'scripts/**/*.mjs'],
     rules: { 'max-depth': ['error', 3] },
   },
   {
@@ -205,6 +217,36 @@ module.exports = [
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'max-lines-per-function': ['error', { max: 75, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // ⚠️ **`scripts/` viel structureel buiten de linter** (QS8-291, dossierrij
+    //    01-09). `eslint.config.js` dekte alleen `**/*.ts(x)`, en deze map is
+    //    `.mjs` — dus 57 bestanden en 14.170 regels zagen geen enkele coderegel.
+    //
+    //    📏 Gemeten vóór deze ronde: `npx eslint scripts/` gaf geen enkele regel
+    //    uitvoer. **En dat is precies de map waar de grendels van dit project
+    //    wonen**: elke `*:controle` staat hier, dus de regels die de rest van de
+    //    codebase moet volgen golden niet voor de code die ze afdwingt.
+    //
+    // ⚠️ **De vijftig staat hier bewust níét als lintregel.** 📏 Vijftien
+    //    functies zitten erboven, en een regel die vijftien keer rood staat leer
+    //    je uitzetten — dezelfde afweging die hierboven voor `app/` gemaakt is.
+    //    Wat hier bindt is de rátel in `scripts/regel15-controle.mjs`, die telt
+    //    hoevéél functies erboven zitten en dat getal alleen laat dalen.
+    //
+    //    `max-depth` kan wél hard, want vertakking is waar regel 15 echt over
+    //    gaat en die elf zijn gesplitst — zie het blok hierboven.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: { process: 'readonly', console: 'readonly', URL: 'readonly', TextDecoder: 'readonly' },
+    },
+    rules: {
+      // CLAUDE.md, coderegel 14: geen lege catch.
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 ];

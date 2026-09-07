@@ -11,7 +11,6 @@ export {
 export {
   bewijseisVoorDoel,
   fetchDagzetten,
-  fetchVoltooiing,
   rondAf,
   zetDagzet,
   type Bewijseis,
@@ -25,6 +24,7 @@ export {
   beoordeel,
   dienOpnieuwIn,
   fetchBeoordelingen,
+  fetchBevestigingsstanden,
   fetchBuddyBijdrage,
   fetchVragen,
   INTREKVENSTER_MINUTEN,
@@ -41,8 +41,7 @@ export {
 export {
   fetchAfgevinktOp,
   fetchAfvinkdagen,
-  fetchAfvinkingen,
-  fetchAfvinktellingen,
+  fetchAfvinkingenPerWeekdoel,
   maakAfvinkingOngedaan,
   meldingBijAfvinkfout,
   vinkDagAf,

@@ -7,8 +7,32 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 03-09-2026 (na QS8-266, QS8-202 en QS8-196; daarvóór QS8-261 en
-het toepassen van `0139` t/m `0149` op productie in twee rondes)
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-299, QS8-303, QS8-304 en QS8-191; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
+productie in twee rondes)
+
+⚠️ **Productie staat op `0183`, maar de edge-functies zijn van de dag ervoor.**
+📏 Gemeten op 07-09 aan het echte project, niet aan dit document:
+`list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
+06-09 is daarmee ingelopen; alleen `0184` (een open straf laat de deadline niet
+vooruit schuiven, QS8-317) staat nog niet op productie.
+
+⚠️⚠️ **Wat er wél nog openstaat is een deploy, en die is stiller dan een
+migratie.** `list_edge_functions` geeft voor alle drie de functies
+`updated_at = 2026-09-06T09:07:56Z`, terwijl de migraties `0173` t/m `0183`
+op 07-09 zijn toegepast. Gevolg: `0178` staat op productie, de code die
+`getuigenissen_voor()` aanroept staat in de map (toegevoegd 07-09 04:34), en de
+gedeployde `notificaties` weet er niets van — **de persoon-getuige krijgt zijn
+melding niet**. Er is geen kapot onderdeel, dus niets wordt er rood van. Staat
+als QS8-320, met het commando erbij.
+
+⚠️ **En let op de volgorde zodra QS8-147 landt.** Die migratie dropt
+`activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
+gedeployde rollover roept de driearguments vorm aan. Zonder deploy in dezelfde
+ronde geeft PostgREST `PGRST202`, vangt de rollover dat zacht af, en schuift er
+elk uur voor iedereen geen weekplanstap meer in. Zie `docs/DEPLOY.md` §2.3a.
+
+Vraag de database welke migraties er staan, niet dit document.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -41,6 +65,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ⚠️ **Wat er dan nóg openstaat vraagt Quintens machine:** drie Edge Functions
    deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
    in het dashboard. Migraties alleen zijn de feature niet.
+   ⚠️ **`notificaties` is er sinds QS8-298 een met een naam erbij:** die deploy
+   ís de vijfde meldingsoort. Migratie `0178` verruimt de CHECK en `regels.ts`
+   draagt de tekst, maar zolang de oude functie draait stelt niemand de vraag
+   `getuigenissen_voor()` — dan staat er een feature die niets doet. Zelfde vorm
+   als QS8-292 en QS8-124.
 3. ✅ **Het migratieregister kent nog één nummering** en de map bouwt het schema
    aantoonbaar op. **QS8-122 is af** en QS8-119 is daarmee vrij. De bestanden
    spelen op een lege database precies het schema van productie af — negen
@@ -53,21 +82,26 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **978 geslaagd, 1 overgeslagen** over 79 bestanden (06-09, ongewijzigd door QS8-273 en QS8-216; daarvóór QS8-275, QS8-276, QS8-146, QS8-278 t/m QS8-283, QS8-198 en QS8-199).
-   ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
+   **Ruim duizend tests** in de RLS-suite en **ruim drieduizend** in de hele
+   suite, over zo'n 250 bestanden.
+   ✅ **En dat geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
-   870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3383 geslaagd en 1 overgeslagen** over
-   242 bestanden.
-   ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
-   geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
-   legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
-   ná een volledige run juist beslechten. **Meet ze dus, tel ze niet op:** bij
-   het samengaan met `main` is het antwoord `npm run poort`, niet het hoogste
-   van de twee getallen. Zie de dossierrij van 06-09.
+   870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug.
+   ⚠️⚠️ **Hier stond tot 06-09-2026 het exacte getal, en dat is er met QS8-302
+   uitgehaald.** 📏 Die regel is op één dag **bij zeven van de zeven merges** een
+   conflict geweest. De oorzaak is niet dat hij met de hand bijgewerkt werd —
+   QS8-284 had gelijk dat een generator dat niet oplost, want een gegenereerd
+   blok botst net zo hard en het getal is pas juist ná een volledige run. De
+   oorzaak is dat een **exact** getal verandert bij elke test die erbij komt, en
+   dus bij vrijwel elke merge. Een orde van grootte verandert zelden, en voor de
+   overdracht is dat genoeg: §2 is de stand en niet het archief.
+   **Wil je het exacte getal, draai dan `npm run tellers`** — dan heb je het
+   bovendien van nú in plaats van van de laatste keer dat iemand het opschreef.
+   **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
+   `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 35 controlescripts groen;
-`npm run poort` meldt 39 stappen.
+Typecheck, lint en alle 41 controlescripts groen;
+`npm run poort` meldt 45 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -139,7 +173,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0164` staan in de map: **167 bestanden**,
+Migraties `0001` t/m `0184` staan in de map: **187 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -162,6 +196,92 @@ Zelfde werkwijze, en opnieuw zeven catalogi nagemeten: zes byte-voor-byte gelijk
 en de acht functies uit die drie migraties komen **ruw** overeen — commentaar en
 al. Genormaliseerd over alle 168 functies is de sómhash aan beide kanten
 `0cba586b0747e69cc2c305912bac7d36`.
+
+✅ **`0150` t/m `0172` zijn op 06-09 toegepast — drieëntwintig in één ronde, met
+een `pg_dump` van Quintens machine vooraf.** Zelfde werkwijze als de twee rondes
+hiervoor: `execute_sql` per migratie, in volgorde, met een handmatige registerrij
+erbij. Het register staat op **175 rijen van `0001` tot `0172`**, nul
+tijdstempels, nul dubbele versies — gelijk aan de 175 bestanden die er voor dat
+bereik liggen.
+
+⚠️ **De transcriptie is de zwakke plek van deze route en die is deze keer
+gemeten in plaats van aangenomen.** De SQL gaat door een sessie heen en niet
+door een pipe; QS8-220 bestaat omdat een eerdere ronde functies met een
+ingekorte body toepaste. Daarom na élke migratie `md5(pg_get_functiondef())`
+naast de lokale stack gelegd, die uit dezelfde bestanden is opgebouwd. **Alle
+vierentwintig functies uit deze ronde komen byte voor byte overeen.**
+
+📏 En de catalogi ernaast, over het hele schema:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 360 | 360 |
+| constraints | 240 | 240 |
+| indexen | 140 | 140 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `5fb73f48…` | `5fb73f48…` |
+
+Wat er die ronde afweek, was verklaard door migratie `0182` (toen `0175`), die
+op dat moment nog niet was toegepast: de foreign key `ai_jobs_goal_id_fkey` —
+productie `on delete cascade` uit `0001`, lokaal `set null` — en het
+functieaantal (179 op productie, 184 lokaal = 179 + drie nieuwe + de twee shims
+die alleen in de teststack bestaan).
+
+✅ **De vijf bewakingsfuncties geven op productie nul bezwaren**:
+`archiefleesgat()`, `barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`
+en `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+
+✅ **Productie staat op 07-09 op `0183`.** Elf migraties in één ronde — `0173`
+t/m `0183` — met dezelfde werkwijze en dezelfde verificatie als de ronde
+ervoor: `execute_sql` per migratie, handmatige registerrij, en na afloop
+`md5(pg_get_functiondef())` naast de lokale stack.
+
+📏 **Alle twintig functies uit deze ronde komen byte voor byte overeen.** En de
+catalogi:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 361 | 361 |
+| constraints | 242 | 242 |
+| indexen | 142 | 142 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `609fcd17…` | `609fcd17…` |
+| **sómhash over alle constraintdefinities** | `f720824c…` | `f720824c…` |
+
+Het register telt **186 rijen tot `0183`**, gelijk aan de 186 bestanden in de
+map. Nul tijdstempels, nul dubbele nummers, geen gat.
+
+⚠️ **De sómhash over álle functies wijkt nog steeds af, en dat is de oude
+QS8-220-drift** — functies van vóór `0139` die een eerdere sessie met een
+ingekorte body heeft toegepast. Niets uit deze ronde zit erin; dat is per functie
+nagemeten en niet afgeleid uit het totaal.
+
+✅ **Acht bewakingsfuncties geven nul bezwaren op productie**: `archiefleesgat()`,
+`barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`,
+`tijdstempel_bewaking()`, `volgorde_bewaking()`, `goal_events_bewaking()` en
+`realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+`ai_dag_budget_cent()` geeft 30.
+
+⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
+hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog
+moesten. 📏 Nagemeten op 07-09:
+
+* **QS8-295 is ingehaald** door QS8-299 — het bredere vervolgissue dat er zelf
+  uit voortkwam. Main's `0173` dekt alle vier tabellen met identieke
+  kolomlijsten, en `tijdstempel_bewaking()` bewaakt de klasse in plaats van de
+  vier gevallen. Die branch is niet geland; het issue staat op Done met de
+  meting eronder.
+* **QS8-176 is geland** als `0181`, na een tweede hernummering.
+* **QS8-296 is `0182`** geworden, na dezelfde behandeling.
+
+⚠️ **Main liep er in één nacht tweemaal overheen.** Dat is geen slordigheid van
+één sessie maar de vorm: een branch die een nummer draagt en blijft liggen,
+botst met alles wat er daarna landt. `npm run claim` dekt het issue, niet het
+migratienummer — QS8-310 gaat daar overheen.
 
 ⚠️ **En schrijf hier geen getal op als stand.** Dit blok zei een uur lang "de map
 en productie lopen gelijk", en dat was achterhaald voordat de PR die het schreef
@@ -751,24 +871,73 @@ kan een sessie **niet** zelf oppakken:
 opgeleverd dan de backlog. Zeven agents over ~99.500 regels; de vijf blokkerende
 bevindingen zijn gerepareerd (PR #85 t/m #90), de rest staat als rij in
 `docs/ENGINEER-REVIEW.md` met per rij de voorwaarde waaronder hij zwaarder wordt.
-**Begin daar, niet in Linear.** De zwaarste die nog open staan:
+**Begin daar, niet in Linear.**
 
-- Elf tabellen dragen schrijfgrants zonder bijbehorende policy. Vandaag inert —
-  RLS weigert bij een ontbrekende policy — maar `schrijfrechten_bewaking()` (0101)
-  kent een **hardgecodeerde lijst van vier tabelnamen** en ziet de andere zeven
-  niet. Dat is precies de vorm die 0101 kwam voorkomen.
-- `te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test. De job
-  roept hem aan als `service_role`, dus RLS kijkt niet mee; de functie ís de
-  grens. De groepsjoin met de hand losknippen liet de hele RLS-suite groen.
-- 49 policies over 30 tabellen evalueren `auth.uid()` per rij in plaats van via
-  `(select auth.uid())`. Nul van de 58 doet het vandaag goed.
-- Zes tekstkolommen zonder lengtegrens en het AI-dagquotum dat jobs telt in
-  plaats van tokens — allebei opslag- respectievelijk kostenmisbruik op een
-  gratis tier zonder backups.
-- Vijf onbereikbare features: een doel en een mijlpaal zijn na aanmaken niet meer
-  te wijzigen, het auditspoor van een commitment is nergens te zien, ledenbeheer
-  (`group_members.status`) heeft geen knop, en `ai_kosten_per_week()` draait
-  nergens.
+⚠️ **Deze lijst stond tot 06-09-2026 vijf bevindingen te noemen die grotendeels
+al af waren.** Dat is de gevaarlijkste vorm die een overdrachtsdocument kan
+hebben: een sessie die hem gehoorzaam volgt, begint aan werk dat er niet meer is,
+en de rest van het bestand verliest daarmee zijn geloofwaardigheid. Elke regel
+hieronder is op 06-09 opnieuw **gemeten** — tegen de draaiende database en de
+bestanden, niet tegen dit document.
+
+✅ **Drie zijn helemaal dicht:**
+
+- ~~Elf tabellen dragen schrijfgrants zonder bijbehorende policy en
+  `schrijfrechten_bewaking()` kent een hardgecodeerde lijst van vier.~~
+  📏 `schrijfrechten_bewaking()` geeft **nul rijen** en is generiek sinds `0118`
+  (QS8-151).
+- ~~`te_beoordelen_voor()` is een autorisatiegrens zonder inhoudelijke test.~~
+  Die test staat er: `tests/rls/beoordelingsgrens.test.ts`.
+- ~~49 policies evalueren `auth.uid()` per rij in plaats van via
+  `(select auth.uid())`.~~ 📏 **Nul van de 61** doet het vandaag per rij; alle 61
+  gaan via een InitPlan sinds `0122` (QS8-153).
+
+  ⚠️ **Bij die laatste heb ik mezelf eerst voor de gek gehouden**, en dat hoort
+  hier omdat het een meetfout is die iedereen hier kan maken: mijn eerste query
+  gebruikte `~` in plaats van `~*` terwijl `pg_get_expr()` `SELECT` in kapitalen
+  teruggeeft. Uitkomst: "61 van de 61 fout" waar het "61 van de 61 goed" is.
+  **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
+  tegendeel schrijft.**
+
+✅ **De laatste is op 06-09-2026 gesloten (QS8-296, migratie 0182):**
+
+- ~~**Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
+  doet `count(*)`.~~ De poort weegt sinds 0182 **dollarcent** en telt geen rijen:
+  `ai_dag_budget_cent()` = `ai_dag_limiet()` × `ai_job_voorschot_cent()`, en elke
+  job kost `greatest(coalesce(cost_cents, 0), voorschot)`. De bodem is de helft
+  die de invoerkant dekt — een job zonder bedrag (queued, running, failed, of een
+  meting die op nul uitkwam) eet meteen budget, dus een burst komt er niet langs.
+  📏 Plafond per gebruiker per dag: van ≈88 cent naar 30 cent plus hoogstens één
+  job overschot. Tien gewone jobs passen nog steeds; tien máximale worden er drie.
+  Zie `docs/decisions/2026-09-06-een-quotum-dat-telt-weegt-niets.md`.
+  📏 De tekstkolommen daarentegen zijn wél begrensd sinds QS8-118: `commitments.body`,
+  `week_review_replies.body`, `milestone_tips.body` en `deadline_requests.reason`
+  dragen allemaal een `char_length`-CHECK. Twee `text`-kolommen hebben er geen —
+  `ai_jobs.error` (door de server geschreven) en **`push_tokens.token`**. ⚠️ Dat laatste heb ik
+  eerst verkeerd samengevat als *"een client schrijft hem zelf"*; dat klopt niet
+  — `authenticated` heeft geen INSERT of UPDATE op die tabel, en de enige
+  schrijver is `registreer_push_token()`. Wat de client wél doet is de wáárde
+  meegeven, en dáár ontbreekt de bovengrens. Opgepakt als **QS8-297**.
+- **Van de vijf "onbereikbare features" zijn ze inmiddels alle vijf beantwoord.**
+  📏 Gemeten: een doel bewerken kan via `app/doel/bewerk/[id].tsx`, een mijlpaal
+  via `/doel/weekdoelen/[id]?mijlpaal=`, ledenbeheer heeft `app/groep/leden` en
+  `app/groep/beheer`, en `commitment_events` wordt gelezen in `app/doel/[id].tsx`.
+  ⚠️ **En de vijfde was helemaal geen bevinding — die correctie is van 06-09.**
+  Ik schreef hier eerst dat `ai_kosten_per_week()` overbleef omdat hij geen
+  aanroeper heeft. 📏 Nagemeten: hij bestáát wél (`ai_kosten_per_week(p_weken
+  integer default 8)`), en hij is `service_role=true`, `authenticated=false`.
+  Dat is geen dode code maar een **ops-functie**, en `keten:controle` draagt de
+  reden woordelijk: *"wat de Doelcoach kost, over álle gebruikers samen — bewust
+  niet voor `authenticated`: het totaal verraadt hoeveel anderen de coach
+  gebruiken."* Een functie met een register-verdict is beantwoord, niet
+  vergeten.
+
+⚠️ **De les die blijft.** Deze vijf regels zijn niet verouderd doordat iemand
+slordig was, maar doordat een reparatie werd geland zonder dat dit blok
+meebewoog — de rij in `docs/ENGINEER-REVIEW.md` werd wél doorgestreept. **Sluit
+je een dossierrij, grep dan op dat feit in dit bestand voordat je klaar bent**;
+dat is dezelfde afspraak die bovenaan `CLAUDE.md` staat, en hier is hij vijf keer
+overgeslagen.
 
 ✅ **De twee blinde vlekken in de controlescripts zijn dicht (28-08).**
 `keten:controle` telde een `grant`-regel, SQL-commentaar én geen `drop function`

@@ -109,7 +109,7 @@ export function niveauUitDagen(
 
 /**
  * De twaalf gebieden waar een doel over kan gaan — QS8-224, migratie 0142, en
- * teruggebracht van vijftien naar twaalf door besluit A58 (migratie 0156).
+ * teruggebracht van vijftien naar twaalf door besluit A58 (migratie 0164).
  *
  * ⚠️ **De lijst zelf staat sinds QS8-231 in `shared/categorieen`**, want een
  *    groep deelt hem sindsdien (0144) en `modules/buddies` kan hem hier niet
@@ -177,21 +177,6 @@ export function groepLabels(): Readonly<Record<CategorieGroep, string>> {
     softskills: t('categoriegroep.softskills'),
     ambitie: t('categoriegroep.ambitie'),
   };
-}
-
-/**
- * In welke groep dit gebied valt.
- *
- * ⚠️ Geeft `null` bij een onbekende waarde in plaats van een terugval op een
- *    willekeurige groep.
- *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
- *    er iets in hebben staan wat deze build niet kent, en dan is "ik weet het
- *    niet" het eerlijke antwoord. Een stille terugval zou zo'n doel in een
- *    groep tonen waar het niet in hoort.
- */
-export function categorieGroep(categorie: string): CategorieGroep | null {
-  const groep = CATEGORIE_GROEPEN.find((g) => (g.leden as readonly string[]).includes(categorie));
-  return groep?.sleutel ?? null;
 }
 
 /**

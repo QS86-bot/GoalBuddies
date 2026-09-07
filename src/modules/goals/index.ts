@@ -67,9 +67,14 @@ export {
   annuleerAdempauze,
   fetchAdempauzes,
   planAdempauze,
-  planbareCycli,
   type Adempauze,
 } from './adempauze';
+
+export {
+  MAX_ADEMPAUZE_CYCLI,
+  periodeUitDatums,
+  type AdempauzePeriode,
+} from './adempauze-periode';
 
 export {
   fetchMijlpaalTips,
@@ -136,7 +141,6 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 export {
   CATEGORIEEN,
   CATEGORIE_GROEPEN,
-  categorieGroep,
   categorieKeuzegroepen,
   groepLabels,
   DOELGEBEURTENISSEN,
@@ -192,7 +196,6 @@ export {
 } from './overzicht-stand';
 
 export {
-  heeftVragenlijstAntwoorden,
   LEGE_VRAGENLIJST,
   MAX_FOCUSGEBIEDEN,
   MINUTEN_OPTIES,
@@ -214,6 +217,10 @@ export {
 export {
   PROFIELCONTEXT,
   PROFIELSPIEGELING,
+  vulVoorInterview,
   vulVoorUitProfiel,
+  type Interviewvulling,
+  type ProfielContextVeld,
   type ProfielVoorvulling,
+  type Voorvulbron,
 } from './interview-schemas';

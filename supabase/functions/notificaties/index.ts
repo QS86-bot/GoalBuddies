@@ -53,9 +53,14 @@ import {
  *    afgewezen bij de rolloverplanning. Voor een app met een weekritme is een
  *    uur vertraging de goedkopere kant van die ruil.
  *
- * ⚠️ **Domeinregel 7.** Er zijn vier soorten en geen ervan gaat over de
- *    tegenslag van een ander; de CHECK op `notifications_sent.kind` dwingt dat
- *    af. Zie `_shared/notificaties/regels.ts` voor de onderbouwing.
+ * ⚠️ **Domeinregel 7.** Er zijn vijf soorten en vier ervan gaan over jezelf; de
+ *    CHECK op `notifications_sent.kind` dwingt af dat er niet stil een zesde
+ *    bijkomt. De vijfde — `commitment_witness` — is de énige die over een ander
+ *    gaat, en dat kan op precies één grond: de uitzondering die domeinregel 7
+ *    zelf noemt, *een straf die de gebruiker zelf vooraf heeft ingesteld en
+ *    bevestigd*. Zie `_shared/notificaties/regels.ts` en migratie 0178 voor de
+ *    onderbouwing, en sectie 5 hieronder voor de drie dingen die die grond
+ *    dragen.
  */
 
 interface Profiel {
@@ -169,13 +174,21 @@ async function draaiNotificaties(auth: string): Promise<Response> {
     .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale');
 
   if (profielFout) {
-    // ⚠️ Zie de rollover: de melding van Postgres wordt geschoond voor verzending.
-    await meld(
-      new Error(`profielen ophalen mislukte: ${profielFout.message}`),
-      'notificaties.profielen',
-      { code: 'profielen_ophalen_mislukt' },
-    );
-    return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
+    // ⚠️ **Zie de rollover — en hier stond dezelfde onjuiste geruststelling
+    //    (QS8-315).** De dossierrij van 04-09 noemde twee plekken in de
+    //    rollover; dit is de derde, in een functie die de rij niet noemde.
+    //    Zelfde vorm als QS8-206, waar de rij twee `console.error` telde en het
+    //    er elf in twee functies bleken: de klasse is groter dan de aanleiding,
+    //    en dáárom staat er nu een grendel onder (`meldtekst:controle`).
+    console.error(`profielen ophalen mislukte: ${profielFout.message}`);
+    await meld(new Error('profielen ophalen mislukte'), 'notificaties.profielen', {
+      code: 'profielen_ophalen_mislukt',
+      sqlstate: profielFout.code,
+    });
+    // ⚠️ Een slug en niet de melding, om dezelfde gemeten reden als in de
+    //    rollover: `notificaties.yml:70` doet `cat` op deze body vóór de
+    //    statuscontrole, en dat runlog staat publiek.
+    return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
 
   for (const profiel of (profielen ?? []) as Profiel[]) {
@@ -386,6 +399,44 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       );
       await meld(fout, 'notificaties.cyclus', { code: 'cyclus_onbepaalbaar', userId: profiel.id });
     }
+
+    // -----------------------------------------------------------------------
+    // 5. Je bent getuige — een straf van een ander is verschuldigd geworden
+    // -----------------------------------------------------------------------
+    //
+    // ⚠️ **De enige soort die over een ander gaat, en dat is een uitzondering
+    //    met een naam.** Domeinregel 7 noemt er precies één: een straf die de
+    //    gebruiker zelf vooraf heeft ingesteld en bevestigd. De eigenaar heeft
+    //    deze getuige zélf aangewezen, de melding gaat pas af bij `due`
+    //    (domeinregel 11), en er gaat niets naar de groep. Uitgeschreven in
+    //    migratie 0178 en in `docs/decisions/2026-09-07-de-getuige-hoort-het-...`.
+    //
+    // ⚠️ **Niet via de groepschat**, ook niet als de getuige toevallig in een
+    //    groep van de eigenaar zit. Dan zou de hele groep horen wat expliciet
+    //    naar één persoon ging — de verruiming die QS8-228 níét maakte.
+    //
+    // ⚠️ Eén melding per commitment (`ref_id`) en niet één per dag, zelfde vorm
+    //    als het goedkeuringsverzoek: twee straffen waarvan je getuige bent zijn
+    //    twee dingen om te weten. De grens staat in `getuigenissen_voor()`
+    //    (limiet 50) en niet hier.
+    const getuigenissen = await openGetuigenissen(db, profiel.id);
+
+    for (const rij of getuigenissen) {
+      if (await alVerstuurd(db, profiel.id, 'commitment_witness', lokaleDatum, rij.commitmentId)) {
+        continue;
+      }
+
+      const gelukt = await stuur(db, {
+        userId: profiel.id,
+        apparaten,
+        nu,
+        soort: 'commitment_witness',
+        bericht: berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
+        lokaleDatum,
+        refId: rij.commitmentId,
+      });
+      if (gelukt) verstuurd += 1;
+    }
   }
 
   return new Response(
@@ -587,6 +638,53 @@ async function verseGoedkeuringen(
   return ((data ?? []) as { id: string }[]).map((r) => ({ approvalId: r.id, naam: '' }));
 }
 
+/**
+ * De verschuldigde straffen waarvan deze gebruiker de getuige is — QS8-298.
+ *
+ * ⚠️ Via `getuigenissen_voor()` (migratie 0178) en **niet** via `getuigenissen()`.
+ *    Die laatste leest `auth.uid()` en is voor de app; deze job draait als
+ *    `service_role` en heeft daar geen. Dezelfde reden waarom `openBeoordelingen`
+ *    op `te_beoordelen_voor()` leunt en niet op `openstaande_beoordelingen()`:
+ *    de autorisatiegrens hoort in de functie en niet in de aanroeper.
+ */
+async function openGetuigenissen(
+  db: Db,
+  userId: string,
+): Promise<{ commitmentId: string; naam: string }[]> {
+  const { data, error } = await db.rpc('getuigenissen_voor', { p_user_id: userId });
+
+  if (error) {
+    console.error(`getuigenissen ophalen mislukte voor een gebruiker: ${error.message}`);
+    return [];
+  }
+
+  const rijen = (data ?? []) as unknown as {
+    commitment_id: string;
+    eigenaar_naam: string | null;
+  }[];
+
+  return rijen.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
+}
+
+/**
+ * Waar `ref_id` naar wijst — QS8-298.
+ *
+ * ⚠️ **Hier stond `'completion'` voor élke soort met een `ref_id`.** Voor
+ *    `approval_request` klopt dat, voor `approval_received` wees het al naar de
+ *    verkeerde tabel, en met `commitment_witness` erbij zou de rij zeggen dat
+ *    een commitment-id een voltooiing is. Er is geen CHECK op
+ *    `notifications_sent.ref_type` die dat vangt, en vandaag leest niets die
+ *    kolom — dus niets werd er rood van. Precies de vorm waar regel 18 over
+ *    gaat: de volgende die er een join op bouwt, krijgt het verkeerde id.
+ */
+function refTypeVoor(soort: Melding, refId: string | null): string | null {
+  if (refId === null) return null;
+  if (soort === 'approval_request') return 'completion';
+  if (soort === 'approval_received') return 'approval';
+  if (soort === 'commitment_witness') return 'commitment';
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Versturen
 // ---------------------------------------------------------------------------
@@ -750,7 +848,7 @@ async function stuur(
       user_id: opdracht.userId,
       kind: opdracht.soort,
       local_date: opdracht.lokaleDatum,
-      ref_type: opdracht.refId === null ? null : 'completion',
+      ref_type: refTypeVoor(opdracht.soort, opdracht.refId),
       ref_id: opdracht.refId,
     })
     .select('id')

@@ -10,6 +10,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "build": "expo export --platform web",
+    "claim": "node scripts/claim.mjs",
     "stand": "node scripts/stand.mjs",
     "stand:controle": "node scripts/stand.mjs --controle",
     "poort": "node scripts/poort.mjs",
@@ -17,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "tellers": "node scripts/tellers.mjs",
     "test:watch": "vitest",
     "types:db": "node scripts/db-types.mjs",
     "db:dump": "node scripts/db-dump.mjs",
@@ -29,8 +31,10 @@
     "vapid:genereer": "node scripts/vapid-genereer.mjs",
     "docs:controle": "node scripts/docs-controle.mjs",
     "emoji:controle": "node scripts/emoji-controle.mjs",
+    "exports:controle": "node scripts/dode-exports-controle.mjs",
     "streepje:controle": "node scripts/streepje-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
+    "meldtekst:controle": "node scripts/meldtekst-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
     "catalogus:controle": "node scripts/catalogus-controle.mjs",
     "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
@@ -38,6 +42,7 @@
     "logboek:controle": "node scripts/logboek-controle.mjs",
     "edge:gedeployd": "node scripts/edge-gedeployd.mjs",
     "tekst:controle": "node scripts/tekst-controle.mjs",
+    "tijdzones:controle": "node scripts/tijdzones-controle.mjs",
     "uitgang:controle": "node scripts/uitgang-controle.mjs",
     "json:controle": "node scripts/json-controle.mjs",
     "poort:proef:overgeslagen": "node -e \"console.error('proef-controle: OVERGESLAGEN — geen sleutel'); process.exit(0)\"",
@@ -53,6 +58,7 @@
     "markeringen:controle": "node scripts/conflictmarkeringen-controle.mjs",
     "storage:controle": "node scripts/storage-controle.mjs",
     "avatar:controle": "node scripts/avatar-controle.mjs",
+    "audit:controle": "node scripts/audit-controle.mjs",
     "pwa:controle": "node scripts/pwa-controle.mjs",
     "levend:controle": "node scripts/levend-controle.mjs",
     "regel15:controle": "node scripts/regel15-controle.mjs",
@@ -71,7 +77,9 @@
     "rls:dekking": "node scripts/rls-dekking.mjs",
     "definers:controle": "node scripts/definers-controle.mjs",
     "poortstand": "node scripts/poortstand.mjs",
-    "poortstand:controle": "node scripts/poortstand.mjs --controle"
+    "poortstand:controle": "node scripts/poortstand.mjs --controle",
+    "edge:types:controle": "node scripts/edge-typecheck.mjs",
+    "pgversie:controle": "node scripts/pg-versie.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -98,6 +106,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "deno": "2.9.6",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "^57.0.1",

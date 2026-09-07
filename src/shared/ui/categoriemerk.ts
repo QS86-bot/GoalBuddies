@@ -3,8 +3,8 @@
  *
  * ⚠️ **De ontwerpregel in één tabel: de kleur codeert de familie, het pictogram
  *    codeert het gebied.** Er passen precies drie kleuren op navy (zie
- *    `kleurafstand.test.ts`), en er zijn vijftien gebieden. Vijftien kleuren
- *    bestaan niet; vijftien pictogrammen wel. Zo doet Habit Huddle het ook.
+ *    `kleurafstand.test.ts`), en er zijn twaalf gebieden. Twaalf kleuren
+ *    bestaan niet; twaalf pictogrammen wel. Zo doet Habit Huddle het ook.
  *
  * ⚠️ **Een kopie van `CATEGORIEEN` uit `modules/goals`, en met opzet geen
  *    import.** `shared` mag niet van een module afhangen. De prijs is een naad,
@@ -13,7 +13,7 @@
  *    pictogram heeft. Zelfde vorm en zelfde reden als `TIPSET_PER_CATEGORIE`.
  *
  * ⚠️ **De familie hier moet gelijk zijn aan `CATEGORIE_GROEPEN`**, en ook dát
- *    staat onder test. Twee indelingen van dezelfde vijftien woorden is precies
+ *    staat onder test. Twee indelingen van dezelfde twaalf woorden is precies
  *    de fout die dit bestand anders introduceert: de keuzelijst groepeert dan
  *    anders dan de kleur.
  *
@@ -26,7 +26,12 @@
  *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
  *    een waarde bevatten die deze build niet kent, en dan is "geen familie" het
  *    eerlijke antwoord. Een terugval op een wíllekeurige familie zou zo'n doel in
- *    de verkeerde kleur zetten — dezelfde redenering als bij `categorieGroep()`.
+ *    de verkeerde kleur zetten.
+
+ *    ⚠️ Deze redenering stond ook in `categorieGroep()` in `modules/goals`, een
+ *    derde plek die de indeling categorie-naar-familie kende. Die functie is bij
+ *    QS8-301 weggehaald omdat geen enkel scherm hem aanriep; `categoriemerk()`
+ *    hieronder en `CATEGORIE_GROEPEN` zijn wat overblijft.
  */
 
 import type { Categoriekleuren } from '../theme/tokens';

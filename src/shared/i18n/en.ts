@@ -97,10 +97,20 @@ export const en: Record<Sleutel, string> = {
   'commitment.penalty.cancelled.uitleg':
     'You finished your goal, so this stake will not come into effect.',
 
+  'getuigenis.titel': 'You are the witness',
+  'getuigenis.uitleg':
+    'These people named you as the witness to their stake. Their target date has ' +
+    'passed.',
+  'getuigenis.van': "{naam}'s stake",
+  'getuigenis.afgehandeld': 'Settled',
+  'getuigenis.verschuldigd': 'Due',
+
   'commitment.onbekend.titel': 'Unknown',
   'commitment.onbekend.uitleg': 'The state of this arrangement cannot be determined.',
 
-  'commitment.fout.geen_groep': 'Choose a group that benefits if it does not work out.',
+  'commitment.fout.geen_begunstigde':
+    'First pick who the witness is: a group or one person.',
+  'commitment.begunstigde.naamloos': 'A group member',
   'commitment.fout.invoer': 'Check what you entered.',
   'commitment.fout.vastleggen': 'Saving did not work. Please try again.',
   'commitment.fout.intrekken': 'Withdrawing did not work.',
@@ -207,6 +217,7 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.vloer_gehaald': 'Floor reached',
   'weekdoel.gehaald': 'Done',
   'weekdoel.wacht_op_buddy': '{wat}: waiting for your buddy',
+  'weekdoel.wacht_op_bevestigingen': '{wat}: {gedaan} of {nodig} confirmed',
 
   'reeks.geen': 'No streak yet',
   'reeks.een': '1 week in a row',
@@ -250,6 +261,12 @@ export const en: Record<Sleutel, string> = {
 
   'mijlpalen.geen': 'No milestones yet',
   'mijlpalen.voortgang': '{done} of {total} milestones',
+
+  'datumkeuze.kies': 'Pick a date',
+  'datumkeuze.niets_gekozen': 'no date yet',
+  'datumkeuze.wissen': 'No date',
+  'datumkeuze.vorige_maand': 'Previous month',
+  'datumkeuze.volgende_maand': 'Next month',
 
   'weekstart.label': 'My week starts on',
   'weekstart.hint':
@@ -681,7 +698,7 @@ export const en: Record<Sleutel, string> = {
     'Your goal is saved, but the steps are not. Add them yourself, or let the coach try again.',
   'coach.plan_zonder_weekdoel':
     'Your goal and steps are saved. Only the weekly goal is missing. Pick what you will do this week.',
-  'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow. In the meantime you can add milestones yourself.',
+  'coach.daglimiet': 'The Goal Coach has done enough for you today. It resets tomorrow. In the meantime you can add milestones yourself.',
   'coach.eyebrow': 'SIX QUESTIONS',
   'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you, but skipping works fine.',
   'coach.alleen_voor_jou': 'Your answers are only for you and the Goal Coach. Your group never sees them.',
@@ -904,7 +921,13 @@ export const en: Record<Sleutel, string> = {
   'doel.groepsakkoord_nodig':
     'You share this goal with a group, so you do not move the date on your own. ' +
     'Ask your buddies to agree, with a short explanation.',
+  'doel.straf_staat_open':
+    'You set a penalty on this goal yourself, so you cannot push the deadline ' +
+    'back. Bringing it forward is fine. If you no longer want the penalty, ' +
+    'you can withdraw it.',
 
+  'doel.recent_ontkoppeld':
+    'You just unlinked this goal from a group. You can set the date yourself seven days after that.',
   'doel.afronden_mislukt': 'Completing did not work. Please try again.',
   'doel.al_afgerond': 'This goal is already completed.',
   'doel.gearchiveerd': 'This goal is archived. Bring it back first.',
@@ -962,12 +985,24 @@ export const en: Record<Sleutel, string> = {
   'deadline.argument_lang': 'Keep it short: at most 1000 characters.',
   'deadline.geen_lid': 'You are not a member of this group.',
   'deadline.niet_gekoppeld': 'This goal is not linked to this group.',
-  'deadline.zelfde_datum': 'Choose a date other than the one that is set now.',
   'deadline.argument_leeg': 'Write one sentence about what changed.',
+  'deadline.geen_beslisser':
+    'You are the only member of this group, so nobody can approve this request. ' +
+    'Invite someone first, or pick a group with a buddy in it. ' +
+    'If you unlink this goal, you can set the date yourself seven days later.',
+  'deadline.datum_in_verleden': 'That date is in the past. Pick today or later.',
   'deadline.al_open': 'There is already a request for this goal. Wait for that one first.',
   'deadline.bestaat_niet': 'This request no longer exists.',
   'deadline.al_beslist': 'This has already been decided.',
   'deadline.niet_zelf': 'You cannot approve your own request.',
+  'deadline.datum_onleesbaar':
+    'We cannot read that date. Please pick it again.',
+  'deadline.te_veel_verzoeken':
+    'You have filed five requests today. Another one is possible tomorrow.',
+  'deadline.verzoek_verlopen':
+    'The requested date is now in the past. Ask the requester for a new one.',
+  'deadline.niet_van_jou':
+    'This request is not yours.',
   'deadline.versturen_mislukt': 'Sending your request did not work. Please try again.',
   'deadline.versturen_mislukt_kort': 'Sending your request did not work.',
   'deadline.beslissen_mislukt': 'Deciding did not work. Please try again.',
@@ -980,10 +1015,9 @@ export const en: Record<Sleutel, string> = {
 
   'adempauze.laden_mislukt': 'Your breathers could not be loaded.',
   'adempauze.inplannen_mislukt': 'The breather could not be scheduled.',
-  'adempauze.te_laat':
-    'You announce a breather in advance. The week that is running cannot be used. Pick the week ahead.',
-  'adempauze.te_lang': 'A breather lasts at most two weeks.',
   'adempauze.overlap': 'There is already a breather over these weeks.',
+  'adempauze.te_lang': 'A breather lasts at most {max} weeks.',
+  'adempauze.datum_ongeldig': 'Enter a date as yyyy-mm-dd.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
   'adempauze.eind_voor_start': 'The end date is before the start date.',
   'adempauze.annuleren_mislukt': 'Cancelling did not work.',
@@ -1154,8 +1188,12 @@ export const en: Record<Sleutel, string> = {
   'straf.intrekken': 'Withdraw',
   'straf.kop': 'Penalty',
   'straf.geen_groep':
-    'A penalty goes to one of your groups. You are not in one yet, so this is only possible ' +
-    'once you have a buddy group.',
+    'A penalty needs a witness: a group, or one person you share a group with. You are not ' +
+    'in any group yet, so start there.',
+  'straf.naar_groepen': 'To your groups',
+  'straf.datum_voorbij':
+    'This goal\u2019s target date has passed, so a penalty would apply straight away. Move your ' +
+    'target date first if you still want to work on it.',
   'straf.zeker': 'Are you sure?',
   'straf.bevestig_uitleg':
     'If {groep} gets to see this, it is because your target date passed without your goal ' +
@@ -1175,6 +1213,13 @@ export const en: Record<Sleutel, string> = {
   'straf.veld': 'My penalty',
   'straf.voorbeeld': 'I treat the group to dinner',
   'straf.welke_groep': 'Which group benefits?',
+  'straf.wie_getuige': 'Who is the witness?',
+  'straf.een_groep': 'A whole group',
+  'straf.een_persoon': 'One person',
+  'straf.welke_persoon': 'Who benefits?',
+  'straf.persoon_uitleg':
+    'Until your target date passes, this person sees nothing. After that they may read your ' +
+    'penalty. Do tell them yourself, because the app does not message them yet.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 
@@ -1356,23 +1401,29 @@ export const en: Record<Sleutel, string> = {
 
   'adempauze.kop': 'Breather',
   'adempauze.uitleg':
-    'Going on holiday, ill, or just a strange month? Then pause one or two weeks. Those weeks ' +
-    'cost you no point and your streak stays where it is; it just does not grow.',
+    'Going on holiday, ill, or just a strange month? Then pause those weeks. They cost you no ' +
+    'point and your streak stays where it is; it just does not grow. You pick how long, you may ' +
+    'have several side by side, and a week that is already over is allowed too.',
   'adempauze.groep_ziet':
-    'Your group sees that you have a breather and from when to when. They do not see which ' +
-    'weekly goals you did or did not reach.',
+    'Your group sees that you have a breather and from when to when, including one you place ' +
+    'over weeks that are already past. They do not see which weekly goals you did or did not ' +
+    'reach.',
   'adempauze.week_van': 'Week of {datum}',
   'adempauze.tot_en_met': ' up to and including the week of {datum}',
   'adempauze.voorbij': 'Over',
   'adempauze.loopt': 'Running now',
   'adempauze.ingepland': 'Scheduled',
   'adempauze.annuleren': 'Cancel',
-  'adempauze.vanaf': 'From which week?',
-  'adempauze.vanaf_hint':
-    'You announce a breather in advance, so the week that is running now is no longer possible.',
-  'adempauze.hoe_lang': 'How long?',
-  'adempauze.een_week': 'One week',
-  'adempauze.twee_weken': 'Two weeks',
+  'adempauze.vanaf': 'From',
+  'adempauze.vanaf_hint': 'As yyyy-mm-dd. Any date works, including one that is already past.',
+  'adempauze.tot': 'Up to and including',
+  'adempauze.tot_hint': 'Leaving this empty means one week.',
+  'adempauze.wordt_een_week': 'This becomes the week of {van}.',
+  'adempauze.wordt_meer_weken':
+    'This becomes {weken} weeks: from {van} up to and including the week of {tot}.',
+  'adempauze.terugwerkend':
+    'These weeks are already over. Missed weeks inside them are excused after all and the ' +
+    'minus point is reversed.',
   'adempauze.inplannen': 'Schedule',
   'adempauze.inplannen_knop': 'Schedule a breather',
 
@@ -1398,7 +1449,7 @@ export const en: Record<Sleutel, string> = {
   'beoordelen.meer_laden': 'Load more',
   'groepscherm.wie_meedoen': 'Who is taking part',
   'groepscherm.meer_tijd': 'A buddy is asking for more time',
-  'coach.poging_telt': 'Every attempt counts towards your ten per day.',
+  'coach.poging_telt': 'Every attempt counts towards what the Goal Coach can still do for you today.',
   'weekafsluiting.wat_gedeeld': 'What the group shared',
 
   // ---------------------------------------------------------------------------
@@ -1594,6 +1645,14 @@ export const en: Record<Sleutel, string> = {
   'weekplan.start_nu': 'Start this one now',
   'weekplan.start_nu_label': 'Start "{titel}" this week',
   'weekplan.verwijder': 'Remove from plan',
+  'weekplan.bijstellen': 'Adjust',
+  'weekplan.bijstellen_label': 'Adjust "{titel}"',
+  'weekplan.bewerken_kop': 'Adjust this step',
+  'weekplan.titel': 'What are you going to do?',
+  'weekplan.vloer': 'The floor: what you still manage on your worst week',
+  'weekplan.plafond': 'The ceiling: what you are aiming for',
+  'weekplan.bewaren': 'Save',
+  'weekplan.annuleren': 'Never mind',
   'weekplan.verwijder_label': 'Remove "{titel}" from the plan',
   'weekplan.omhoog': 'Earlier',
   'weekplan.omhoog_label': 'Move "{titel}" earlier in the plan',
@@ -1621,6 +1680,9 @@ export const en: Record<Sleutel, string> = {
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
   'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
+  'coach.uit_vragenlijst':
+    'This comes from your questionnaire, converted from minutes per day to hours per week; you can adjust it here.',
+  'coach.eerder_genoemd': 'In the questionnaire you mentioned: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // A goal's rhythm — decision A53, migration 0140
@@ -1639,6 +1701,8 @@ export const en: Record<Sleutel, string> = {
   'ritme.vloer_gehaald': "Your floor is met. This week counts.",
   'ritme.vloer_nog_niet': '{aantal} more days to your floor.',
   'ritme.plafond_gehaald': 'Ceiling reached.',
+  'ritme.strook_af': '{datum}: checked off',
+  'ritme.strook_open': '{datum}: not checked off yet',
   'ritme.vink_af': 'Tick off today',
   'ritme.vink_af_label': 'Tick off today for "{titel}"',
   'ritme.maak_ongedaan': 'Undo',

@@ -46,7 +46,18 @@ describe('laagVan', () => {
 
   it('laat code buiten de gemeten lagen met rust', () => {
     expect(laagVan('src/modules/auth/useAvatarKeuze.ts')).toBeNull();
-    expect(laagVan('scripts/poort.mjs')).toBeNull();
+  });
+
+  /**
+   * ⚠️ **Deze regel stond hier tot 06-09-2026 omgekeerd in** — `scripts/poort.mjs`
+   *    hoorde `null` te geven, want die map viel buiten de linter. QS8-291 heeft
+   *    hem erin gebracht, en dat deze test daarop rood werd is precies waarvoor
+   *    hij bestaat: de grens van de ratel staat vast in een test en niet alleen
+   *    in het script.
+   */
+  it('rekent een controlescript tot de laag `scripts/`', () => {
+    expect(laagVan('scripts/poort.mjs')).toBe('scripts/');
+    expect(laagVan('scripts/regel15-controle.mjs')).toBe('scripts/');
   });
 
   it('leest ook een pad met backslashes, want Windows draait mee in CI', () => {
@@ -72,9 +83,10 @@ describe('tel', () => {
       { pad: 'app/a.tsx', regels: 90 },
       { pad: 'src/shared/ui/B.tsx', regels: 90 },
       { pad: 'src/shared/ui/C.tsx', regels: 90 },
+      { pad: 'scripts/x-controle.mjs', regels: 90 },
     ]);
 
-    expect(perLaag).toEqual({ 'app/': 1, 'src/shared/ui/': 2 });
+    expect(perLaag).toEqual({ 'app/': 1, 'src/shared/ui/': 2, 'scripts/': 1 });
   });
 
   it('meldt apart wat boven de grens zit maar buiten elke laag valt', () => {
@@ -87,7 +99,7 @@ describe('tel', () => {
   });
 
   it('overleeft een lege lijst', () => {
-    expect(tel([]).perLaag).toEqual({ 'app/': 0, 'src/shared/ui/': 0 });
+    expect(tel([]).perLaag).toEqual({ 'app/': 0, 'src/shared/ui/': 0, 'scripts/': 0 });
     expect(tel(undefined).buiten).toEqual([]);
   });
 });

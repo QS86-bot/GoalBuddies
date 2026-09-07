@@ -4,11 +4,13 @@ import { StyleSheet, View } from 'react-native';
 
 import { vraagMijlpaalTip, werkJobAf } from '@/modules/ai';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
+import { fetchGetuigenissen, type Getuigenis } from '@/modules/commitments';
 import {
   bewijseisVoorDoel,
   dienOpnieuwIn,
   fetchAfgevinktOp,
-  fetchAfvinktellingen,
+  fetchAfvinkingenPerWeekdoel,
+  fetchBevestigingsstanden,
   fetchDagzetten,
   fetchVragen,
   maakAfvinkingOngedaan,
@@ -49,7 +51,7 @@ import {
 } from '@/modules/goals';
 import { opmaaktaal, t, taal, vergelijkTekst } from '@/shared/i18n';
 import { space } from '@/shared/theme';
-import { localDateIn, now, toonDatum, type UserClock } from '@/shared/time';
+import { localDateIn, now, toonDatum, type IsoDate, type UserClock } from '@/shared/time';
 import {
   AsyncView,
   bevestigingen,
@@ -63,6 +65,7 @@ import {
   Field,
   FloorCeiling,
   magVieren,
+  Ritmestrook,
   Screen,
   Subheading,
   useAsync,
@@ -86,6 +89,7 @@ import {
  */
 const GEEN_WEEKDOELEN: readonly Weekdoel[] = [];
 const GEEN_VRAGEN: readonly Vraag[] = [];
+const GEEN_DAGEN: readonly string[] = [];
 const STANDAARD_BEWIJSEIS: Bewijseis = 'note_required';
 
 /**
@@ -286,6 +290,16 @@ export default function Vandaag() {
    */
   const { data: badges } = useAsync(userId ? () => fetchBadges() : null, [userId, ronde]);
 
+  /**
+   * De straffen waarvan jij persoonlijk de getuige bent — QS8-292.
+   *
+   * ⚠️ Apart geladen en niet in de `Promise.all` hierboven, om dezelfde reden
+   *    als het stand-blok: een storing hier hoort je eigen week niet mee te
+   *    slepen. `fetchGetuigenissen()` wérpt bovendien niet maar geeft een lege
+   *    lijst, dus het blok verdwijnt stil in plaats van het scherm te breken.
+   */
+  const { data: getuigenissen } = useAsync(userId ? () => fetchGetuigenissen() : null, [userId, ronde]);
+
   // Gemiste weken uit eerdere cycli. Apart opgehaald en apart falend, om
   // dezelfde reden als het stand-blok: dit is een blok onder de lijst, en een
   // storing hier hoort je week van vandaag niet mee te slepen.
@@ -326,18 +340,35 @@ export default function Vandaag() {
   );
 
   /**
-   * De afvinktellingen van deze cyclus — QS8-253.
+   * Welke dagen van deze cyclus al afgevinkt zijn, per weekdoel — QS8-253, en
+   * sinds QS8-301 de dagen zelf in plaats van alleen hun aantal.
    *
-   * ⚠️ Eén verzoek voor alle weekdoelen samen. Een telling per kaart is de
+   * ⚠️ Eén verzoek voor alle weekdoelen samen. Een vraag per kaart is de
    *    klassieke N+1 (onwrikbare regel 12), en dit scherm toont er standaard vijf.
    *
-   * ⚠️ Apart falend: `fetchAfvinktellingen()` vangt zijn eigen fout af en geeft
-   *    dan een lege telling. Een teller die "0 van 5" toont is beter dan een
+   * ⚠️ Apart falend: `fetchAfvinkingenPerWeekdoel()` vangt zijn eigen fout af en
+   *    geeft dan een lege map. Een teller die "0 van 5" toont is beter dan een
    *    hoofdscherm dat niet opkomt — en het afvinken zelf blijft werken.
    */
   const { data: afvinkingen } = useAsync(
-    cyclus ? () => fetchAfvinktellingen(cyclus) : null,
+    cyclus ? () => fetchAfvinkingenPerWeekdoel(cyclus) : null,
     [cyclusStart, ronde],
+  );
+
+  /**
+   * Hoeveel bevestigingen elke week nog nodig heeft — QS8-174.
+   *
+   * ⚠️ Eén verzoek voor alle weekdoelen samen, om dezelfde reden als hierboven:
+   *    per week los ophalen is de N+1 uit onwrikbare regel 12.
+   *
+   * ⚠️ `fetchBevestigingsstanden()` vangt zijn eigen fout af en geeft dan een
+   *    lege map. Het bijschrift valt dan terug op "wacht op je buddy" — de tekst
+   *    van vóór dit issue. Een bijschrift hoort een hoofdscherm nooit om te
+   *    trekken.
+   */
+  const { data: bevestigingsstanden } = useAsync(
+    weekdoelen.length === 0 ? null : () => fetchBevestigingsstanden(weekdoelen.map((w) => w.id)),
+    [weekdoelen, ronde],
   );
 
   /**
@@ -416,7 +447,9 @@ export default function Vandaag() {
                 weekdoel={weekdoel}
                 categorie={doelcategorieen.get(weekdoel.goal_id) ?? ''}
                 mijlpaaltip={mijlpaaltips?.get(weekdoel.goal_id) ?? null}
-                afgevinkt={afvinkingen?.get(weekdoel.id) ?? 0}
+                afgevinkteDagen={afvinkingen?.get(weekdoel.id) ?? GEEN_DAGEN}
+                cyclusStart={cyclus?.startDate ?? null}
+                bevestigingsstand={bevestigingsstanden?.get(weekdoel.id)}
                 vandaagAfgevinkt={(vandaagAf ?? new Set()).has(weekdoel.id)}
                 localDate={vandaagLokaal}
                 userId={userId ?? ''}
@@ -459,6 +492,8 @@ export default function Vandaag() {
         afgeslotenCyclus={geslotenStart}
         loading={loading}
       />
+
+      <GetuigenisBlok getuigenissen={getuigenissen ?? []} />
 
       <BadgeBlok badges={badges ?? []} />
 
@@ -504,6 +539,47 @@ export default function Vandaag() {
  *    beeld dat dit product bij de groep verbiedt, en er is geen reden om het bij
  *    jezelf wél te doen.
  */
+/**
+ * De straffen waarvan jij persoonlijk de getuige bent — QS8-292.
+ *
+ * ⚠️ **Dit blok bestond niet terwijl het recht er sinds 0168 wél was.** De
+ *    getuige kreeg leesrecht op het moment dat een straf verschuldigd werd, maar
+ *    er was geen enkele plek waar hij het tegenkwam: de énige lezing van
+ *    `commitments` vraagt per doel en staat op het scherm van de eigenaar, dat
+ *    de getuige niet eens kan openen. Regel 18 vraag 5 — elk schakeltje af, de
+ *    keten onderbroken.
+ *
+ * ⚠️ **Leeg betekent wég, en dat is anders dan bij `BadgeBlok`.** Getuige zijn
+ *    is de uitzondering en niet de regel; een kop "Jij bent getuige" met
+ *    daaronder "nog niets" zou op bijna elk scherm staan en niets betekenen.
+ *
+ * ⚠️ **Geen doeltitel, en dat is geen omissie.** 0168 sluit het doel voor de
+ *    getuige af — titel, streefdatum en voortgang gaan hem niet aan. Wat hij ziet
+ *    is de inzet die de ander zichzelf oplegde, en van wie. Zie migratie 0169.
+ */
+function GetuigenisBlok({ getuigenissen }: { readonly getuigenissen: readonly Getuigenis[] }) {
+  if (getuigenissen.length === 0) return null;
+
+  return (
+    <Card>
+      <Subheading>{t('getuigenis.titel')}</Subheading>
+      <Body muted>{t('getuigenis.uitleg')}</Body>
+
+      {getuigenissen.map((g) => (
+        <Card nested key={g.id}>
+          <Subheading>
+            {t('getuigenis.van', { naam: g.eigenaar_naam || t('commitment.begunstigde.naamloos') })}
+          </Subheading>
+          <Body>{g.body}</Body>
+          <Caption>
+            {g.status === 'resolved' ? t('getuigenis.afgehandeld') : t('getuigenis.verschuldigd')}
+          </Caption>
+        </Card>
+      ))}
+    </Card>
+  );
+}
+
 function BadgeBlok({ badges }: { readonly badges: readonly VerdiendeBadge[] }) {
   const namen = badgeLabels();
   const uitleg = badgeUitleg();
@@ -736,7 +812,9 @@ function WeekdoelKaart({
   weekdoel,
   categorie,
   mijlpaaltip,
-  afgevinkt,
+  afgevinkteDagen,
+  cyclusStart,
+  bevestigingsstand,
   vandaagAfgevinkt,
   localDate,
   userId,
@@ -763,13 +841,33 @@ function WeekdoelKaart({
    */
   readonly mijlpaaltip: Mijlpaaltip | null;
   /**
-   * Het aantal dagen dat deze week al is afgevinkt — QS8-253.
+   * Hoeveel bevestigingen deze week al heeft en hoeveel er nodig zijn — QS8-174.
+   *
+   * ⚠️ `undefined` is de normale stand en geen storing: een week die niet op
+   *    bevestiging wacht staat er niet in, en een mislukte ophaal ook niet. Het
+   *    bijschrift valt dan terug op "wacht op je buddy".
+   */
+  readonly bevestigingsstand: { readonly gedaan: number; readonly nodig: number } | undefined;
+  /**
+   * Wélke dagen deze week al zijn afgevinkt — QS8-253, en sinds QS8-301 de
+   * dagen zelf in plaats van alleen hun aantal.
    *
    * ⚠️ Komt van de ouder en wordt hier niet opgehaald. Het hoofdscherm toont
    *    alle weekdoelen, dus een verzoek per kaart is de klassieke N+1
-   *    (onwrikbare regel 12). `fetchAfvinktellingen()` haalt ze in één keer.
+   *    (onwrikbare regel 12). `fetchAfvinkingenPerWeekdoel()` haalt ze in één keer.
+   *
+   * ⚠️ De teller eronder is een afleiding hiervan en geen tweede gegeven. Twee
+   *    tellingen die uiteen kunnen lopen zijn er één te veel.
    */
-  readonly afgevinkt: number;
+  readonly afgevinkteDagen: readonly string[];
+  /**
+   * De eerste dag van de cyclus van deze gebruiker, uit `shared/time`.
+   *
+   * ⚠️ `null` zolang het profiel nog niet geladen is. Dan is er geen week om te
+   *    tekenen — en niet een week die op maandag begint. Welke dag de week
+   *    begint is een voorkeur (domeinregel 1) en nooit een aanname.
+   */
+  readonly cyclusStart: IsoDate | null;
   readonly vandaagAfgevinkt: boolean;
   /** Vandaag in de tijdzone van de gebruiker, uit `shared/time`. */
   readonly localDate: string | null;
@@ -799,6 +897,7 @@ function WeekdoelKaart({
    *    in `tests/rls/ritme.test.ts` legt de twee naast elkaar.
    */
   const telDagen = weekdoel.ceiling_days !== null;
+  const afgevinkt = afgevinkteDagen.length;
   const afgeleidNiveau = telDagen
     ? niveauUitDagen(afgevinkt, weekdoel.floor_days, weekdoel.ceiling_days ?? 0)
     : null;
@@ -952,6 +1051,7 @@ function WeekdoelKaart({
         status={weekdoel.status as WeeklyGoalStatus}
         achieved="none"
         viewer="owner"
+        bevestigingen={bevestigingsstand}
       />
 
       {/*
@@ -972,6 +1072,21 @@ function WeekdoelKaart({
               plafond: weekdoel.ceiling_days ?? 0,
             })}
           </Body>
+
+          {/*
+            ⚠️ **De strook zegt wat de teller niet kan** — QS8-301. "3 van 5" is
+               een getal zonder vorm: je ziet er niet aan of die drie achter
+               elkaar zaten en of vandaag er al bij zit. De dagen kwamen al mee
+               met dezelfde cyclusquery die de teller voedt, dus dit kost geen
+               enkel extra verzoek.
+
+            ⚠️ Alleen mét een cyclus. Zonder profiel is er geen week om te
+               tekenen, en zeven vakjes vanaf een verzonnen maandag zijn erger
+               dan geen vakjes (domeinregel 1).
+          */}
+          {cyclusStart === null ? null : (
+            <Ritmestrook startDatum={cyclusStart} afgevinkt={afgevinkteDagen} />
+          )}
 
           {/*
             ⚠️ De regel eronder zegt waar je staat ten opzichte van je vlóér, en
@@ -1242,7 +1357,7 @@ const styles = StyleSheet.create({
  *    nodig. De prijs is dat een laadfunctie een neveneffect heeft, en die staat
  *    hier opgeschreven zodat de volgende lezer hem niet per ongeluk weghaalt.
  *
- * ⚠️ **De aanvraag is stilzwijgend en kost uit het gedeelde dagquotum van tien**,
+ * ⚠️ **De aanvraag is stilzwijgend en kost uit het gedeelde dagbudget**,
  *    hetzelfde quotum als het opsplitsen van een doel en de weekstappen. Dat is
  *    aanvaardbaar omdat het per mijlpaal één keer gebeurt en niet per week — de
  *    grendel daarvoor staat in `vraag_ai_job()` (migratie 0103) en niet hier.

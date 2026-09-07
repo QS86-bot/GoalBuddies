@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { fetchBeoordelingen, volgBeoordelingen } from './approvals';
 
-import type { Beoordeelstand } from '../../shared/ui';
+import type { Beoordeelstand } from '../../shared/standen';
 
 /**
  * Hoeveel voltooiingen er op jouw oordeel wachten, live — QS8-148.

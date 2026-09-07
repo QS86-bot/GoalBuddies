@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { addDays, localDateIn, now, type IsoDate, type TimeZone } from '../../src/shared/time';
+import {
+  addDays,
+  localDateIn,
+  now,
+  userCycle,
+  type IsoDate,
+  type TimeZone,
+} from '../../src/shared/time';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
@@ -784,6 +791,453 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
 
         const na = await adminDb().from('goals').select('id').eq('id', w.eigenWisGoalId);
         expect(na.data ?? [], 'en dan is het ook echt weg').toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  // ---------------------------------------------------------------------------
+  describe('plan_adempauze — je vrijstelt de gemiste week van een ander niet', () => {
+    /**
+     * ⚠️ **De negende, en hij kwam uit `definers:controle` en niet uit een
+     *    sweep.** QS8-227 gaf `plan_adempauze()` een schrijfactie op
+     *    `weekly_goals` én `points_ledger` die hij daarvoor niet had: een
+     *    adempauze over een al afgesloten week zet die op `excused` en boekt het
+     *    minpunt terug. Daarmee stapte de functie de klasse van dit bestand in.
+     *
+     * ⚠️ **Een eigen doel en een eigen weekdoel, en dat is de les van QS8-283.**
+     *    `epic8.test.ts` heeft al een test die `not_owner` verwacht, maar die
+     *    toetst een fóutreden: haal de poort weg en de weekdagtoets erachter
+     *    geeft `geen_cyclusstart` op de datum die daar gebruikt wordt, en dan is
+     *    de test rood zonder dat er iets over het effect gezegd is. Hier valt de
+     *    cyclusstart met opzet samen met de gemiste week, zodat er ná de poort
+     *    niets meer tussen zit.
+     */
+    let doelId = '';
+    let weekId = '';
+
+    beforeAll(async () => {
+      const admin = adminDb();
+      const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate;
+
+      const groep = await admin
+        .from('goal_group_links')
+        .select('group_id')
+        .eq('goal_id', w.groepsGoalId)
+        .single();
+      if (groep.error) throw new Error(`groep: ${groep.error.message}`);
+
+      const doel = await admin
+        .from('goals')
+        .insert({
+          owner_id: w.eigenaar.id,
+          title: 'DEFPAUZE',
+          target_date: addDays(cyclus, 120),
+        })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+      doelId = doel.data.id as string;
+
+      const koppel = await admin
+        .from('goal_group_links')
+        .insert({ goal_id: doelId, group_id: groep.data.group_id });
+      if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
+
+      const week = await admin
+        .from('weekly_goals')
+        .insert({
+          goal_id: doelId,
+          title: 'DEFPAUZE-GEMIST',
+          points_ceiling: 2,
+          points_floor: 1,
+          points_miss: -1,
+          cycle_start_date: cyclus,
+          cycle_index: 1,
+          status: 'missed',
+        })
+        .select('id, beoordeelbaar')
+        .single();
+      if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+      // Zonder beoordelaar slaat de trigger van QS8-110 het minpunt over, en dan
+      // valt er niets te stelen.
+      expect(week.data.beoordeelbaar).toBe(true);
+      weekId = week.data.id as string;
+
+      const punt = await admin.from('points_ledger').insert({
+        user_id: w.eigenaar.id,
+        goal_id: doelId,
+        delta: -1,
+        reason: 'cycle_missed',
+        ref_type: 'weekly_goal',
+        ref_id: weekId,
+      });
+      if (punt.error) throw new Error(`minpunt: ${punt.error.message}`);
+    }, SETUP_TIMEOUT);
+
+    it(
+      'een groepsgenoot krijgt not_owner en de gemiste week blijft gemist',
+      async () => {
+        const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate;
+
+        const poging = await w.groepsgenoot.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclus,
+          p_ends_cycle: cyclus,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        // ⚠️ **Het effect wordt vóór de reden getoetst, en dat is de hele les van
+        //    QS8-283.** Zou `reason` eerst staan, dan valt deze test bij een
+        //    weggehaalde poort om op een veranderde fóutreden en zegt hij nog
+        //    steeds niets over wat er met de week van een ander gebeurde.
+        const admin = adminDb();
+
+        const na = await admin.from('weekly_goals').select('status').eq('id', weekId).single();
+        expect(
+          na.data?.status,
+          'de week van een ander is vrijgesteld door iemand die er niets over te zeggen heeft',
+        ).toBe('missed');
+
+        const rijen = await admin.from('points_ledger').select('delta').eq('ref_id', weekId);
+        expect(
+          (rijen.data ?? []).reduce((som, r) => som + (r.delta as number), 0),
+          'het minpunt van een ander is teruggedraaid',
+        ).toBe(-1);
+
+        const pauzes = await admin.from('breathers').select('id').eq('goal_id', doelId);
+        expect(pauzes.data ?? [], 'er staat een adempauze op het doel van een ander').toHaveLength(
+          0,
+        );
+
+        expect(uitslag(poging.data).reason).toBe('not_owner');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar plant hem wél, en dan gaat de week op excused',
+      async () => {
+        // ⚠️ De must-allow. Zonder deze helft bewijst het geval hierboven ook een
+        //    functie die het voor niemand doet.
+        const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate;
+
+        const poging = await w.eigenaar.db.rpc('plan_adempauze', {
+          p_goal_id: doelId,
+          p_starts_cycle: cyclus,
+          p_ends_cycle: cyclus,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen adempauze plannen hoort te lukken, kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        const na = await adminDb().from('weekly_goals').select('status').eq('id', weekId).single();
+        expect(na.data?.status).toBe('excused');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+  // ---------------------------------------------------------------------------
+  // QS8-286 — de drie groeps-RPC's waarvan de poort niets bewaakte
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Deze drie stonden buiten élk register, en dat was geen toeval maar de
+  //    grens van het gereedschap.** `definers-controle.mjs` keek tot 06-09-2026
+  //    alleen naar schrijfacties op `goals`, `weekly_goals`, `milestones`,
+  //    `completions` en `points_ledger`. Wie aan `weekly_plan_steps` of
+  //    `deadline_requests` schrijft, viel er buiten — en dus ook uit de sweep die
+  //    dit bestand voedt.
+  //
+  //    **Dezelfde vorm als de bevinding die dit bestand deed ontstaan, één laag
+  //    hoger.** Daar deed een sweep zich voor als inventarisatie; hier trok het
+  //    gereedschap dat de klasse telt zijn eigen grens, en niemand mat waar die
+  //    grens langs liep. De lijst is uitgebreid, en dat is de eigenlijke
+  //    reparatie van QS8-286 — dit testblok dicht de drie gaten die eronder
+  //    lagen.
+  //
+  // ⚠️ **De acteur is de groepsgenoot en niet een wildvreemde**, om dezelfde
+  //    reden als bij de blokken hierboven: een vreemde wordt al door
+  //    `goals_select` tegengehouden, en dan bewijst rood niets over de poort in
+  //    de functie.
+  describe('herorden_weekplan — je herordent het weekplan van een ander niet', () => {
+    let planGoalId = '';
+    let stapEen = '';
+    let stapTwee = '';
+
+    beforeAll(async () => {
+      const admin = adminDb();
+      const groep = await admin
+        .from('goal_group_links')
+        .select('group_id')
+        .eq('goal_id', w.groepsGoalId)
+        .single();
+      if (groep.error) throw new Error(`groep: ${groep.error.message}`);
+
+      const doel = await admin
+        .from('goals')
+        .insert({ owner_id: w.eigenaar.id, title: 'DEF-WEEKPLAN', target_date: addDays(w.vandaag, 90) })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+      planGoalId = doel.data.id as string;
+
+      const koppel = await admin
+        .from('goal_group_links')
+        .insert({ goal_id: planGoalId, group_id: groep.data.group_id });
+      if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
+
+      const maakStap = async (order: number, titel: string): Promise<string> => {
+        const r = await admin
+          .from('weekly_plan_steps')
+          .insert({ goal_id: planGoalId, order_index: order, title: titel })
+          .select('id')
+          .single();
+        if (r.error) throw new Error(`stap ${order}: ${r.error.message}`);
+        return r.data.id as string;
+      };
+
+      stapEen = await maakStap(1, 'DEF-PLAN-EEN');
+      stapTwee = await maakStap(2, 'DEF-PLAN-TWEE');
+    }, SETUP_TIMEOUT);
+
+    it(
+      'de groepsgenoot ziet het doel maar niet de stappen — en dat maakt het geval scherper',
+      async () => {
+        // ⚠️⚠️ **Deze assertie stond er eerst andersom, en dat was fout op een
+        //    manier die het onderwerp van dit issue raakt.** Ze verwachtte dat
+        //    de groepsgenoot de stappen kón lezen — "anders is hij niet de
+        //    sterke acteur". Gemeten: hij ziet er nul.
+        //    `weekly_plan_steps_select` is eigenaar-only.
+        //
+        //    **Voor een `SECURITY DEFINER`-functie is dat geen verzwakking maar
+        //    het hele punt.** Zo'n functie draait als zijn eigenaar en komt
+        //    langs geen enkele policy. Bob mag deze rijen niet eens zíen, en kon
+        //    ze zonder de poort in de functie wél herordenen — dat is precies de
+        //    klasse waar dit bestand over gaat, en de reden dat `rls:dekking`
+        //    hier niets over zegt.
+        //
+        // ⚠️ Wat hier wél getoetst hoort te worden is dat hij geen wildvreemde
+        //    is: hij ziet het dóél, dus hij komt langs `goals_select`. Zou hij
+        //    dat niet zien, dan werd het geval hieronder al door een éérdere
+        //    grendel afgevangen en bewees het niets over de poort.
+        const doel = await w.groepsgenoot.db.from('goals').select('id').eq('id', planGoalId);
+        expect(
+          doel.data ?? [],
+          'de groepsgenoot is geen echt medelid van dit doel, en dan toetst het geval ' +
+            'hieronder een zwakkere acteur dan het beweert',
+        ).toHaveLength(1);
+
+        const stappen = await w.groepsgenoot.db
+          .from('weekly_plan_steps')
+          .select('id')
+          .eq('goal_id', planGoalId);
+        expect(
+          stappen.data ?? [],
+          'het weekplan van een ander hoort dicht te zijn — staat het open, dan is dat ' +
+            'een lek dat losstaat van de poort hieronder',
+        ).toHaveLength(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot krijgt not_owner en de volgorde blijft staan',
+      async () => {
+        const poging = await w.groepsgenoot.db.rpc('herorden_weekplan', {
+          p_goal_id: planGoalId,
+          p_ids: [stapTwee, stapEen],
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        // ⚠️ Het effect vóór de reden, en dat is de les van QS8-285: bij een
+        //    weggehaalde poort valt een test die met `reason` begint om op een
+        //    veranderde fóutreden, en zegt hij nog steeds niets over de volgorde.
+        const na = await adminDb()
+          .from('weekly_plan_steps')
+          .select('id, order_index')
+          .eq('goal_id', planGoalId)
+          .order('order_index', { ascending: true });
+
+        expect(
+          (na.data ?? []).map((r) => r.id),
+          'de groepsgenoot heeft het weekplan van een ander omgegooid',
+        ).toEqual([stapEen, stapTwee]);
+
+        expect(uitslag(poging.data).reason).toBe('not_owner');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar herordent zijn eigen weekplan wél',
+      async () => {
+        // ⚠️ De must-allow. Zonder haar bewijst het geval hierboven ook een
+        //    functie die het voor niemand doet.
+        const poging = await w.eigenaar.db.rpc('herorden_weekplan', {
+          p_goal_id: planGoalId,
+          p_ids: [stapTwee, stapEen],
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen weekplan herordenen hoort te lukken, kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        const na = await adminDb()
+          .from('weekly_plan_steps')
+          .select('id, order_index')
+          .eq('goal_id', planGoalId)
+          .order('order_index', { ascending: true });
+
+        expect((na.data ?? []).map((r) => r.id)).toEqual([stapTwee, stapEen]);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // ---------------------------------------------------------------------------
+  describe('de twee deadline-RPCs — je vraagt en trekt niet namens een ander', () => {
+    /**
+     * ⚠️⚠️ **`vraag_deadline_verschuiving` draagt een argument dat elders is
+     *    gebruikt om een ándere functie veilig te noemen.** QS8-282 verklaarde
+     *    `beslis_deadline_verzoek` veilig met de redenering: die heeft geen
+     *    eigenaarstoets, maar dat hoeft niet, want een verzoek kán alleen door
+     *    de eigenaar aangemaakt zijn — `vraag_deadline_verschuiving()` toetst
+     *    `g.owner_id = auth.uid()` en `deadline_requests_insert` heeft
+     *    `check false`.
+     *
+     *    Die redenering klopt. **Maar de schakel waar hij op rust was door niets
+     *    bewaakt.** Valt die poort weg, dan maakt een groepsgenoot een verzoek
+     *    voor jouw doel en keurt een derde lid het goed: je streefdatum
+     *    verschuift zonder dat je het weet. Dat is voor de derde ronde op rij
+     *    dezelfde vorm — een argument dat leunt op een grendel die niets
+     *    bewaakt, is een aanname.
+     *
+     * ⚠️ **De volgorde van deze drie gevallen is met opzet en niet toevallig.**
+     *    Een doel draagt hoogstens één open verzoek (`already_open`), dus de
+     *    weigering moet vóór het verzoek van de eigenaar komen, en het intrekken
+     *    erna. In één opstelling is dat de hele levensloop; los van elkaar zou
+     *    elk geval zijn eigen doel en zijn eigen groep nodig hebben.
+     */
+    let verzoekGoalId = '';
+    let verzoekId = '';
+    let groupId = '';
+
+    beforeAll(async () => {
+      const admin = adminDb();
+      const groep = await admin
+        .from('goal_group_links')
+        .select('group_id')
+        .eq('goal_id', w.groepsGoalId)
+        .single();
+      if (groep.error) throw new Error(`groep: ${groep.error.message}`);
+      groupId = groep.data.group_id as string;
+
+      const doel = await admin
+        .from('goals')
+        .insert({ owner_id: w.eigenaar.id, title: 'DEF-DEADLINE', target_date: addDays(w.vandaag, 90) })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+      verzoekGoalId = doel.data.id as string;
+
+      const koppel = await admin
+        .from('goal_group_links')
+        .insert({ goal_id: verzoekGoalId, group_id: groupId });
+      if (koppel.error) throw new Error(`koppeling: ${koppel.error.message}`);
+    }, SETUP_TIMEOUT);
+
+    it(
+      'een groepsgenoot krijgt not_owner en er komt geen verzoek',
+      async () => {
+        const poging = await w.groepsgenoot.db.rpc('vraag_deadline_verschuiving', {
+          p_goal_id: verzoekGoalId,
+          p_group_id: groupId,
+          p_new_date: addDays(w.vandaag, 200),
+          p_reason: 'Ik vind dat deze datum voor iemand anders verschoven moet worden.',
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        const na = await adminDb()
+          .from('deadline_requests')
+          .select('id')
+          .eq('goal_id', verzoekGoalId);
+
+        expect(
+          na.data ?? [],
+          'een groepsgenoot heeft namens de eigenaar een deadline-verschuiving ingediend',
+        ).toHaveLength(0);
+
+        expect(uitslag(poging.data).reason).toBe('not_owner');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de eigenaar dient het verzoek wél in',
+      async () => {
+        const poging = await w.eigenaar.db.rpc('vraag_deadline_verschuiving', {
+          p_goal_id: verzoekGoalId,
+          p_group_id: groupId,
+          p_new_date: addDays(w.vandaag, 200),
+          p_reason: 'Het project op mijn werk is met zes weken uitgelopen en dat loopt door.',
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen verzoek indienen hoort te lukken, kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        verzoekId = (poging.data as { request_id?: string } | null)?.request_id ?? '';
+        expect(verzoekId).not.toBe('');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een groepsgenoot krijgt not_yours en het verzoek blijft open',
+      async () => {
+        const poging = await w.groepsgenoot.db.rpc('trek_deadline_verzoek_in', {
+          p_request_id: verzoekId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+
+        const na = await adminDb()
+          .from('deadline_requests')
+          .select('status')
+          .eq('id', verzoekId)
+          .single();
+
+        expect(
+          na.data?.status,
+          'een groepsgenoot heeft het openstaande verzoek van een ander ingetrokken',
+        ).toBe('open');
+
+        expect(uitslag(poging.data).reason).toBe('not_yours');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'de aanvrager trekt zijn eigen verzoek wél in',
+      async () => {
+        const poging = await w.eigenaar.db.rpc('trek_deadline_verzoek_in', {
+          p_request_id: verzoekId,
+        });
+        if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
+        expect(
+          uitslag(poging.data).ok,
+          `je eigen verzoek intrekken hoort te lukken, kreeg ${uitslag(poging.data).reason}`,
+        ).toBe(true);
+
+        const na = await adminDb()
+          .from('deadline_requests')
+          .select('status')
+          .eq('id', verzoekId)
+          .single();
+
+        expect(na.data?.status).toBe('withdrawn');
       },
       TEST_TIMEOUT,
     );

@@ -1,3 +1,4 @@
+import type { KettingStand, WeekpasStand } from '../standen';
 import { getal, t } from '../i18n';
 
 /**
@@ -72,8 +73,21 @@ export function rangeState(input: {
   readonly achieved: Achieved;
   readonly hasFloor: boolean;
   readonly viewer: Viewer;
+  /**
+   * Hoeveel bevestigingen deze week al heeft en hoeveel er nodig zijn — QS8-174.
+   *
+   * ⚠️ **Alleen zinvol voor de eigenaar, en dat wordt hier afgedwongen.** De
+   *    beoordelaar ziet dit al in zijn wachtrij; een groepslid dat toekijkt hoort
+   *    het niet te zien. Voor élk nieuw oppervlak is beschermd het antwoord tot
+   *    iemand het tegendeel besluit.
+   *
+   * ⚠️ Ontbreekt hij, dan valt het bijschrift terug op "wacht op je buddy" — de
+   *    tekst van vóór dit issue. Dat is met opzet: dit is een bijschrift en geen
+   *    grendel, en wegvallen mag nooit een leeg scherm opleveren.
+   */
+  readonly bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined;
 }): RangeState {
-  const { status, achieved, hasFloor, viewer } = input;
+  const { status, achieved, hasFloor, viewer, bevestigingen } = input;
 
   const positive = status === 'approved' || status === 'pending';
 
@@ -98,7 +112,7 @@ export function rangeState(input: {
       hidden: false,
       tone: status === 'pending' ? 'pending' : 'progress',
       fill: ceiling ? 1 : hasFloor ? FLOOR_MARK : 1,
-      label: labelFor(ceiling, hasFloor, status === 'pending'),
+      label: labelFor(ceiling, hasFloor, status === 'pending', viewer === 'owner' ? bevestigingen : undefined),
       awaitingApproval: status === 'pending',
     };
   }
@@ -147,14 +161,33 @@ export function rangeState(input: {
   };
 }
 
-function labelFor(ceiling: boolean, hasFloor: boolean, pending: boolean): string {
+function labelFor(
+  ceiling: boolean,
+  hasFloor: boolean,
+  pending: boolean,
+  bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined,
+): string {
   const wat = ceiling
     ? t('weekdoel.plafond_gehaald')
     : hasFloor
       ? t('weekdoel.vloer_gehaald')
       : t('weekdoel.gehaald');
 
-  return pending ? t('weekdoel.wacht_op_buddy', { wat }) : wat;
+  if (!pending) return wat;
+
+  // ⚠️ **Alleen tellen als er iets te tellen valt.** Staat de drempel op één —
+  //    en dat is de standaard `any` — dan is "0 van de 1" ruis die precies
+  //    hetzelfde zegt als "wacht op je buddy", maar met meer woorden. Dit
+  //    bijschrift bestaat voor de meerderheids- en quorumgroepen.
+  if (bevestigingen !== undefined && bevestigingen.nodig > 1) {
+    return t('weekdoel.wacht_op_bevestigingen', {
+      wat,
+      gedaan: String(bevestigingen.gedaan),
+      nodig: String(bevestigingen.nodig),
+    });
+  }
+
+  return t('weekdoel.wacht_op_buddy', { wat });
 }
 
 /**
@@ -245,24 +278,6 @@ export function ledenrijLabel(input: {
 // ---------------------------------------------------------------------------
 
 /**
- * De stand van De Ketting in één groepsperiode, zoals `ketting_stand()` hem
- * teruggeeft.
- *
- * ⚠️ Aantallen, nooit namen. Wie er ontbreekt staat er met opzet niet in en mag
- *    er ook nooit bij komen: dat zou van deze teller een presentielijst maken,
- *    en dan is een ontbrekende schakel een publieke gemiste week (domeinregel
- *    7). De databasefunctie geeft die namen niet eens terug.
- */
-export interface KettingStand {
-  /** Hoeveel leden deze periode een schakel legden. */
-  readonly schakels: number;
-  /** Hoeveel leden er deze periode meetellen. Zie `kettingLabel`. */
-  readonly inAanmerking: number;
-  /** Heeft iedereen die meetelt zijn schakel gelegd? */
-  readonly voltallig: boolean;
-}
-
-/**
  * Hoe De Ketting heet in de UI.
  *
  * ⚠️ De toon is het hele punt van dit component. "1 van 3" leest als een
@@ -300,30 +315,6 @@ export function kettingVulling(stand: KettingStand): number {
 // ---------------------------------------------------------------------------
 // Weekpassen — QS8-81
 // ---------------------------------------------------------------------------
-
-/**
- * De weekpasstand van één doel, zoals `weekpas_stand()` hem teruggeeft.
- *
- * ⚠️ `maximum` komt uit de database mee en staat hier bewust níét als
- *    constante. Zou de app een eigen kopie van dat getal houden, dan zijn er
- *    twee waarheden en gaat er ooit één schuiven zonder dat iets rood wordt.
- *
- * ⚠️ Dit is privégegeven. Een verbruikte pas is het bewijs van een gemiste week
- *    (domeinregel 7), dus deze stand hoort nooit in een groepscomponent. De
- *    database geeft hem alleen aan de eigenaar van het doel.
- */
-export interface WeekpasStand {
-  /** Hoeveel passen er nu klaarliggen. */
-  readonly voorraad: number;
-  /** De bovengrens. Boven dit aantal vervalt een verdiende pas. */
-  readonly maximum: number;
-  /** Voltooide cycli op dit doel. */
-  readonly voltooideCycli: number;
-  /** Hoeveel voltooide cycli er nog nodig zijn voor de volgende pas. */
-  readonly totVolgende: number;
-  /** De cyclus die het laatst door een pas gered is, of `null`. */
-  readonly laatstVerbruikt: string | null;
-}
 
 /**
  * Hoe de voorraad heet in de UI.

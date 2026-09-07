@@ -3,12 +3,135 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 05-09-2026. Op 04 en 05-09 landden uit deze sessie
-> **QS8-268, QS8-270, QS8-212, QS8-171, QS8-146, QS8-276 en QS8-277**; uit een
-> parallelle sessie **QS8-267, QS8-269, QS8-271, QS8-272, QS8-273, QS8-274 en
-> QS8-275**.
-> Lees eerst de drie punten van 05-09 — het eerste verandert hóé je begint — dan
-> de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
+> **Laatst bijgewerkt:** 07-09-2026. Er landt veel uit twee sessies tegelijk;
+> `git log origin/main` is de betrouwbare lijst en niet deze zin.
+> Uit deze sessie op 07-09: **QS8-304**, **QS8-191** en **QS8-315**. Daarvóór op 06-09:
+> **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en **QS8-302**.
+> Open en niet door een agent af te maken: **QS8-197** (wacht op
+> Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
+> Lees eerst de vier punten van 07-09, dan de vijf van 06-09 — het eerste
+> daarvan is de duurste van die dag — dan de drie van 05-09, dan de twee van
+> 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **07-09, punt C (QS8-315): "het blijft binnen systeem X" is een bewering over
+> een route, en een route lees je na.** Ik repareerde drie plekken die de rúwe
+> Postgres-melding naar Sentry stuurden, en schreef in het beslisdocument dat de
+> `Response`-body de melding wél mocht dragen *"want die verlaat Supabase niet"*.
+> De security-review noemde dat blokkerend, en terecht: `rollover.yml:67` doet
+> `cat` op die body **vóór** de statuscontrole, en `curl` geeft exitcode 0 op een
+> 500. Elke mislukte uurrun drukt hem dus af in het GitHub Actions-runlog — en
+> 📏 de GitHub-API geeft voor deze repo `visibility: public`, dus dat log is
+> wereldleesbaar. ⚠️ **Er lekte niets** (het zijn `select`-fouten op `profiles`,
+> en een SELECT vuurt geen triggers) — **het gevaar zat in de premisse**: een
+> beslisdocument dat vastlegt dat een pad veilig is, is wat de volgende auteur
+> leest voordat hij er wél iets gevaarlijks bij zet. Eén `grep` op de aanroeper
+> was genoeg geweest. **Schrijf nooit "dit blijft binnen X" zonder de aanroeper
+> te hebben opengeslagen.**
+>
+> **07-09, punt D (QS8-315): een mutatie die niets rood maakt, is een bevinding —
+> en de val zit in wélk pad je geval neemt.** Zes grendels, zes mutaties, vijf
+> rood. De zesde — de lookbehind van `AANROEPEN` — bleef groen, want mijn
+> ijkgeval was `log.meld(fout)`, en `meld(fout)` geeft een object door en wordt
+> sowieso niet gemeld. Het geval werd dus door een éérdere grendel afgevangen en
+> bewaakte niets van wat het beloofde. ⚠️ Dat staat als regel al in CLAUDE.md;
+> dit is hoe het er in het echt uitziet. **Vraag bij elk ijkgeval: kan dit langs
+> een andere grendel groen blijven?** Idem de tegenkant: bij een controle die
+> uitgezet kan worden is *te veel melden* net zo goed een defect, dus mutéér ook
+> de smalheid (`FOUTOBJECT` matcht élke identifier → moet rood worden).
+>
+> ⚠️ **En een dossierrij is een momentopname, geen inventaris.** De rij van 04-09
+> telde twee plekken in één functie en noemde er één verkeerd; nagemeten waren
+> het er drie, in twee functies. Zelfde vorm als QS8-206 (twee geteld, elf
+> gevonden). **Wie een rij afwerkt, telt opnieuw — met een instrument, niet met
+> zijn ogen.** Mijn éérste instrument telde er trouwens ook maar twee: de regex
+> `\$\{[^}]*\.message[^}]*\}` struikelt over `${(x as { message: string }).message}`.
+>
+> **07-09, punt A: twee nummers voor één defect, en de claim ving dat niet.**
+> `npm run claim` matcht op **issuenummer**, en dat werkt tegen twee sessies die
+> hetzelfde issue pakken. QS8-303 en QS8-304 waren twee verschillende nummers
+> voor dezelfde bug — `order by created_at` over twee rijen uit één transactie —
+> dus beide claims slaagden en er is twee keer aan gebouwd. ⚠️ **De rem tegen
+> dít geval is niet technisch**: lees vóór je begint de recent gesloten issues
+> en de open PR's op wat ze *beschrijven*, niet op welk nummer ze dragen.
+> Hun reparatie was bovendien beter dan de mijne (0176, een `seq`-kolom in
+> plaats van een eerlijker assertie), en ze vonden wat ik gemist had: de app
+> sorteerde net zo. **Bij een botsing verlies je niet automatisch — maar lees
+> hun werk vóór je het jouwe verdedigt.**
+>
+> **07-09, punt B: een poortrun op de achtergrond meet de wérkboom.** Ik liet
+> tien ijkingsruns draaien en wisselde ondertussen van branch; vanaf run 4 mat
+> de poort een branch zónder de reparatie die hij zou bevestigen, en niets in de
+> uitvoer zei dat. ⚠️ **Draai je een poort op de achtergrond, print dan de
+> branchnaam in elke regel** — en wissel niet van branch zolang hij loopt. Een
+> meting die niet zegt wát hij gemeten heeft, is niet na te rekenen.
+>
+> **06-09, punt 0 — doe dit vóór alles: `npm run claim -- <branchnaam van
+> Linear>`.** Dat fetcht, kijkt of het issuenummer al ergens op de remote staat,
+> en zet anders een lege claim-commit neer. Vindt hij een botsing, bouw dat issue
+> dan niet. Sinds QS8-294, en de aanleiding staat in punt I hieronder.
+>
+> ⚠️ **Het issue op In Progress zetten is géén claim gebleken** — dat is
+> geprobeerd en het hielp niet. Doe het wel, maar vertrouw er niet op.
+>
+> **06-09, punt I: ik heb drie keer een issue gebouwd dat de andere sessie al
+> gebouwd hád** (QS8-287, QS8-286, QS8-214), **en bij de laatste wezen alle
+> signalen die ik had het aan voordat ik begon.** QS8-287 stond op *In
+> Progress*, er lag een branch mét migratie 0165, en er lag een PR. Ik zag PR
+> #224 pas toen mijn eigen werk al af was — en las hem toen als *mijn* PR,
+> omdat het issuenummer klopte. Het was een ándere branch met een ándere 0165.
+> ⚠️ **De rem die werkt is niet "kijk of het issue op Backlog staat" en ook niet
+> "zet hem op In Progress" — het is de claim uit punt 0.** Punt I van 05-09 zei
+> dit al voor de status; dit is dezelfde les twee stappen verder. Twee dingen die
+> daarbij horen: **een PR met jouw issuenummer erin is niet automatisch jouw PR**
+> (kijk naar de branchnaam — bij QS8-287 stonden er twee slugs voor één issue),
+> en **een botsing is geen reden om je werk weg te gooien**: kijk wat er in de
+> ander zijn versie ontbreekt en maak daar een vervolgissue van. Zo zijn QS8-290
+> en de opmerking bij QS8-214 ontstaan.
+>
+> ⚠️ Wat daar wél uit kwam en de moeite waard was: een tweede review op hún
+> werk. #224 loste het gat correct op en liet op drie plekken de oude
+> rechtvaardiging staan, waaronder het beslisdocument dat de ingetrokken grant
+> nog verdedigde. Dat is QS8-290 geworden. **Dubbel werk is niet altijd nul
+> waarde — maar reken er niet op.**
+>
+> **06-09, punt II: een oppervlak is niet alleen een tabel, maar ook wat een
+> functie teruggeeft (QS8-287).** `verdien_badges(p_user_id)` was definer,
+> uitvoerbaar door `authenticated` voor een wíllekeurig id, en gaf terug hoevéél
+> badges hij toekende. De tábel bleef dicht — `badges_select` is eigenaar-only —
+> en het getal vertelde het toch. In `badges.test.ts` stond een test die dat gat
+> vastlegde als bedóeld gedrag, met een kop die uitlegde waarom het veilig was.
+> ⚠️ **Vraag bij elke definer-functie: wat leert de aanroeper uit de
+> retourwaarde, los van wat hij mag lézen?** Er staan er nog zeven van die vorm;
+> dat is QS8-289, en `uitnodigingscode_bewaking()` daaruit vertelt iedereen die
+> is ingelogd hoe je uitnodigingscodes zijn opgebouwd.
+>
+> **06-09, punt III: een mutatie waarvan de ópzet stil faalt, leest als een
+> geslaagde ijking van het tegendeel.** Bij QS8-290 plantte ik een badge om te
+> toetsen of een nieuwe assertie bijt; de insert gebruikte `badge_key` in plaats
+> van `badge`, gaf een fout die ik niet las, en de test bleef groen. Dat zag er
+> exact uit als "die assertie bewaakt niets" — het omgekeerde van wat er aan de
+> hand was. ⚠️ **Laat een mutatie hard falen als zijn eigen opzet mislukt**
+> (`if (error) throw`), anders ijk je de mutatie en niet de grendel. Dit is de
+> tegenhanger van de regel die al in CLAUDE.md staat over ijken per grendel.
+>
+> **06-09, punt IV: een *"wordt zwaarder als"* zonder meter meet niets, en dat
+> is nu aantoonbaar.** De dossierrij over de tabelblinde schrijverstoets telde op
+> 27-08 **veertien** gedeelde CHECK-waarden en sloot af met *"wordt zwaarder als
+> er een vijftiende bijkomt"*. 📏 Op 06-09 waren het er **zesentwintig** — niet
+> één erbij maar twaalf, vrijwel allemaal in één keer met migratie 0142, en
+> niemand had het gemerkt. ⚠️ **Zo'n zin is een aantekening en geen grendel.**
+> Zet er een meter op zodra de voorwaarde te tellen valt; kan dat niet, schrijf
+> dan op waaróm niet. QS8-175 heeft er voor dit geval een register met een
+> drievoudige ratel van gemaakt.
+>
+> **06-09, punt V: twee grendels waarvan er één ongetoetst is, is er één te
+> veel.** Bij QS8-302 bestond de reparatie uit een regelanker én "neem de laatste
+> treffer". Elk van de twee alleen dekte al alle gevallen die ik geschreven had,
+> dus geen van beide werd rood onder zijn eigen mutatie — twee mechanismen, nul
+> bewijs. ⚠️ **Merk je dat een mutatie niets rood maakt, dan is dat geen
+> geruststelling maar een bevinding:** je hebt code zonder geval, en dan is hij
+> óf overbodig óf onbewaakt. Beide antwoorden zijn goed; hem laten staan zonder
+> te kiezen is dat niet.
 >
 > **05-09, punt I: er werkt een tweede sessie in deze repo, en dat is twee keer
 > dubbel werk geweest.** Bij QS8-270 lag er al een PR (#198 tegen mijn #199); bij
@@ -1862,9 +1985,12 @@ bovenliggende secties — en dat is precies hoe een openstaand punt stil sterft.
   Twee gescheiden potten zijn beter voor de gebruiker maar brengen het plafond naar
   dertien calls per dag. Onderbouwing in
   `docs/decisions/2026-08-27-de-doelcoachtip-per-mijlpaal.md` §5.
-  ⚠️ **En sinds 28-08 weegt die vraag zwaarder:** het dagquotum telt jobs en niet
-  tokens, en een invoer van 450.000 tekens werd geaccepteerd. Wie het plafond
-  verhoogt zonder eerst de invoer te begrenzen, vermenigvuldigt een gat.
+  ⚠️ **Sinds 06-09 is die vraag van vorm veranderd** (QS8-296, migratie 0182):
+  het dagquotum telt geen jobs meer maar weegt **dollarcent**, en het plafond is
+  `ai_dag_limiet() × ai_job_voorschot_cent()`. Twee gescheiden potten is dus niet
+  langer "dertien calls" maar "hoeveel cent per pot", en dat is een andere en
+  eerlijkere vraag. De invoer was al begrensd sinds 0123. Wat blijft: het antwoord
+  raakt grens 1 en is niet aan Claude.
 - ⚠️ **De wisselende reeks in `tests/rls/reeks.test.ts` is nog steeds niet
   verklaard.** De suite draait sinds PR #54 sequentieel over `tests/rls/`, wat de
   kans erop wegneemt maar niet de oorzaak. PR #60 heeft er twee plausibele

@@ -20,7 +20,6 @@ export { TeBeoordelenKaart } from './TeBeoordelenKaart';
 export {
   beoordeelkopSleutel,
   toonBeoordeelkaart,
-  type Beoordeelstand,
 } from './tebeoordelen';
 export { Bevestiging } from './Bevestiging';
 export { Avatar } from './Avatar';
@@ -31,7 +30,10 @@ export { Card } from './Card';
 export { ChatRegel } from './ChatRegel';
 export { Choice, type Optie } from './Choice';
 export { CategorieMerk } from './CategorieMerk';
+export { DatumKeuze } from './DatumKeuze';
 export { Kalender, type KalenderDag } from './Kalender';
+export { Ritmestrook } from './Ritmestrook';
+export { DAGEN_IN_STROOK, ritmestrook, type Strookdag } from './ritmestrook';
 export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
@@ -92,8 +94,6 @@ export {
   risicoTeken,
   risicoToon,
   risicoUitleg,
-  type RisicoReden,
-  type RisicoStand,
 } from './risico';
 
 export { useHulpvraagVerborgen, useVieringenAan } from './voorkeuren';
@@ -123,10 +123,8 @@ export {
   weekpasReddeDezeCyclus,
   weekpasVoortgang,
   type Achieved,
-  type KettingStand,
   type RangeState,
   type Tone,
   type Viewer,
-  type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';

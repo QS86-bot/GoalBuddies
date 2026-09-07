@@ -14,7 +14,14 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { beoordeel, controlesUit, draai, HEEFT_DATABASE_NODIG, STAPPEN } from '../../scripts/poort.mjs';
+import {
+  beoordeel,
+  controlesUit,
+  draai,
+  HEEFT_DATABASE_NODIG,
+  meldUitslag,
+  STAPPEN,
+} from '../../scripts/poort.mjs';
 
 describe('controlesUit', () => {
   it('pikt élk script op dat op :controle eindigt', () => {
@@ -309,5 +316,57 @@ describe('alleen een controle mag zichzelf overslaan', () => {
         soort: 'suite',
       }),
     ).toBe('ongemeten');
+  });
+});
+
+/**
+ * `meldUitslag` — losgetrokken uit `hoofd()` op 07-09-2026.
+ *
+ * ⚠️ **De belofte is de exitcode, niet de tekst.** Een poort die groen afsluit
+ *    terwijl er iets ongemeten is, is precies de fout waar QS8-270 over ging —
+ *    en die kan niemand zien zolang deze code alleen bereikbaar is door de
+ *    hele poort te draaien.
+ */
+describe('meldUitslag', () => {
+  const stil = <T>(werk: () => T): [T, string] => {
+    let uit = '';
+    const o = process.stdout.write.bind(process.stdout);
+    const e = process.stderr.write.bind(process.stderr);
+    process.stdout.write = ((m: string) => ((uit += m), true)) as typeof process.stdout.write;
+    process.stderr.write = ((m: string) => ((uit += m), true)) as typeof process.stderr.write;
+    try {
+      return [werk(), uit];
+    } finally {
+      process.stdout.write = o;
+      process.stderr.write = e;
+    }
+  };
+
+  it('geeft 0 als alles groen en gemeten is', () => {
+    const [code] = stil(() => meldUitslag([{ naam: 'a', oordeel: 'groen', uitvoer: '' }], 1));
+    expect(code).toBe(0);
+  });
+
+  it('geeft 1 als er iets rood is', () => {
+    const [code] = stil(() => meldUitslag([{ naam: 'a', oordeel: 'rood', uitvoer: '✗ mis' }], 1));
+    expect(code).toBe(1);
+  });
+
+  it('geeft 1 als er niets rood is maar wel iets ongemeten', () => {
+    // ⚠️ De hele reden dat deze functie een code teruggeeft in plaats van
+    //    alleen te printen: ongemeten is geen groen.
+    const [code] = stil(() => meldUitslag([{ naam: 'a', oordeel: 'ongemeten', uitvoer: '' }], 1));
+    expect(code).toBe(1);
+  });
+
+  it('stuurt bij een ongemeten controle niet naar één oorzaak', () => {
+    // 📏 De melding zei tot 07-09 "zonder database" en adviseerde
+    //    `npm run rls:stack` — ook voor `adviseur:controle` (een
+    //    productiesleutel) en `audit:controle` (het npm-register).
+    const [, uit] = stil(() =>
+      meldUitslag([{ naam: 'audit:controle', oordeel: 'ongemeten', uitvoer: '' }], 1),
+    );
+    expect(uit).toContain('hebben niets gemeten');
+    expect(uit).not.toContain('controle(s) zonder database');
   });
 });

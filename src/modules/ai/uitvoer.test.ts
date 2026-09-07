@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { haalbaarheidUit, mijlpalenUit, planUit, weekdoelenUit } from './uitvoer';
+import {
+  CATEGORIEEN_UIT_HET_SCHEMA,
+  haalbaarheidUit,
+  mijlpalenUit,
+  planUit,
+  weekdoelenUit,
+} from './uitvoer';
 
 /**
  * ⚠️ Dit is modeluitvoer, en dat is de reden dat deze tests bestaan. De Edge
@@ -319,11 +325,29 @@ describe('planUit', () => {
 });
 
 describe('de categorielijst in uitvoer.ts', () => {
-  it('loopt gelijk met het schema van goals', async () => {
-    // ⚠️ `uitvoer.ts` importeert met opzet niets uit een module die de
-    //    Supabase-client meetrekt, dus de lijst staat daar in kopie. Deze test
-    //    is de grendel daarop: verschuift `CATEGORIEEN` (QS8-224 wil dat), dan
-    //    valt hij om en niet stilletjes de categoriekeuze van de Doelcoach.
+  /**
+   * ⚠️ **Hier stond alleen de lus hieronder, en die toetst insluiting en geen
+   *    gelijkheid.** Elke waarde uit `CATEGORIEEN` overleeft `planUit()` — dat
+   *    vangt een gebied dat érbij komt. Het vangt niet het omgekeerde: een woord
+   *    dat in de kópie blijft staan nadat het uit `CATEGORIEEN` verdween. Dan
+   *    laat `planUit()` het dóór naar de database in plaats van het op `other`
+   *    te laten vallen, en de insert valt om op `23514` — precies het geval
+   *    waarvoor dat vangnet bestaat.
+   *
+   *    Gevonden in de security-review van A58 (QS8-288), toen vier gebieden
+   *    tegelijk vervielen. De kop van `uitvoer.ts` beloofde toen al gelijkheid.
+   *    CLAUDE.md noemt de vorm bij naam: twee insluitingen zijn geen gelijkheid.
+   */
+  it('loopt in beide richtingen gelijk met het schema van goals', async () => {
+    const { CATEGORIEEN } = await import('../goals/schemas');
+
+    expect([...CATEGORIEEN_UIT_HET_SCHEMA].sort()).toEqual([...CATEGORIEEN].sort());
+  });
+
+  it('en elke waarde overleeft planUit()', async () => {
+    // ⚠️ De tweede helft blijft staan: gelijkheid van de twee lijsten zegt niets
+    //    over wat `categorieUit()` ermee doet. Een lijst die klopt en een
+    //    terugval die alles op `other` zet, is nog steeds stuk.
     const { CATEGORIEEN } = await import('../goals/schemas');
 
     for (const categorie of CATEGORIEEN) {

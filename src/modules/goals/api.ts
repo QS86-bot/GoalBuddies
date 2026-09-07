@@ -1,10 +1,11 @@
-import { t } from '../../shared/i18n';
-
 import type { Json, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import type { IsoDate } from '../../shared/time';
+import { t } from '../../shared/i18n';
 import { invoerfout, type Pagina, type Resultaat } from '../../shared/api';
+
+import { streefdatumRedenen } from './deadline-redenen';
 
 import {
   datumLigtInDeToekomst,
@@ -343,15 +344,16 @@ export async function zetStreefdatum(
   return { ok: true, waarde: true };
 }
 
-/** Zie `meldingen()` in `buddies/api.ts`: een functie, om dezelfde reden. */
+/**
+ * Zie `meldingen()` in `buddies/api.ts`: een functie, om dezelfde reden.
+ *
+ * ⚠️ De tabel zelf staat in `deadline-redenen.ts`, samen met die van de drie
+ *    andere streefdatum-RPC's — daar kan de grendel erbij die ze naast de
+ *    gedeployde functies legt (QS8-311), en dat kan hier niet: dit bestand trekt
+ *    via `lib/supabase` React Native mee.
+ */
 function streefdatumMelding(reden: string | undefined): string {
-  const tabel: Readonly<Record<string, string>> = {
-    not_owner: t('doel.niet_van_jou'),
-    bad_date: t('doel.datum_ongeldig'),
-    needs_group_approval: t('doel.groepsakkoord_nodig'),
-  };
-
-  return tabel[reden ?? ''] ?? t('doel.actie_mislukt_kort');
+  return streefdatumRedenen()[reden ?? ''] ?? t('doel.actie_mislukt_kort');
 }
 
 /**

@@ -64,13 +64,43 @@ import { pathToFileURL } from 'node:url';
 
 import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
 
-/** De tabellen waar een schrijfactie een autorisatievraag oproept. */
+/**
+ * De tabellen waar een schrijfactie een autorisatievraag oproept.
+ *
+ * ⚠️⚠️ **Deze lijst wás de grens van het register, en daarmee de grens van wat
+ *    er geteld werd.** Tot 06-09-2026 stonden er vijf tabellen in, allemaal over
+ *    een dóél. Daarbuiten schreven **veertien** definer-RPC's die
+ *    `authenticated` mag aanroepen aan `groups`, `group_members`,
+ *    `deadline_requests`, `approval_withdrawals`, `weekly_plan_steps` en
+ *    `badges` — en die stonden in geen enkel rapport. Drie ervan bleken hun
+ *    eigenaarspoort ongedekt te hebben (QS8-286).
+ *
+ *    **Dat is precies het oppervlak waar domeinregel 7 aan hangt.** Wie mag
+ *    lezen wat er over een ánder zichtbaar is, wordt bepaald door
+ *    groepslidmaatschap — en dat is `group_members`. Een register dat alleen
+ *    naar doelen keek, keek langs de helft van het probleem heen.
+ *
+ * ⚠️ **De les is niet "vijf was te weinig" maar "de lijst is zelf een
+ *    aanname".** Dezelfde vorm als de sweep die zich voordeed als
+ *    inventarisatie, één laag hoger: het gereedschap dat de klasse telt, trok
+ *    zijn eigen grens en niemand mat waar die grens langs liep. Komt er een
+ *    tabel bij waar een schrijfactie een autorisatievraag oproept, dan hoort hij
+ *    hier — en anders valt de volgende RPC weer buiten élk rapport.
+ */
 export const KERNTABELLEN = [
+  // Over een doel
   'goals',
   'weekly_goals',
   'milestones',
   'completions',
   'points_ledger',
+  'weekly_plan_steps',
+  'deadline_requests',
+  // Over een groep en wie erin zit
+  'groups',
+  'group_members',
+  'approval_withdrawals',
+  'badges',
 ];
 
 /**
@@ -110,6 +140,17 @@ const REGISTER = new Map([
       'De eerste vorm wordt toetsbaar zodra `gedeeld_met_groep` verdwijnt of naar achteren schuift.',
   ],
   ['herorden_mijlpalen', 'Toetst `g.owner_id = v_uid` en pint `m.goal_id`. Gemeten: poort weg → één rode test.'],
+  [
+    'plan_adempauze',
+    'Eigenaarspoort. ⚠️ Stapte deze klasse pas in met QS8-227: sindsdien zet een adempauze '
+      + 'over een al afgesloten week die week op `excused` en boekt hij het minpunt terug in '
+      + '`points_ledger`. Daarvóór schreef de functie alleen in `breathers`. Bewaakt door '
+      + '`definerpoorten.test.ts`. ⚠️ Met een eigen doel en een cyclusstart die samenvalt met '
+      + 'de gemiste week, want de weekdagtoets zit achter de poort: de bestaande test in '
+      + '`epic8.test.ts` zou bij een weggehaalde poort omvallen op `geen_cyclusstart` en dus '
+      + 'op een fóutreden. Gemeten: poort weg → de groepsgenoot zet de gemiste week van de '
+      + 'eigenaar op `excused` (`expected \'excused\' to be \'missed\'`).',
+  ],
   ['dien_opnieuw_in', 'Eigenaarspoort. Gemeten bij de review op ronde 5: poort weg → één rode test.'],
   [
     'zet_week_startdag',
@@ -124,10 +165,77 @@ const REGISTER = new Map([
       'Bewaakt door `tests/rls/weekstart.test.ts`, met zowel een wildvreemde als een buddy.',
   ],
 
+  // --- Groeps-RPC's: gemeten in de sweep van QS8-286 -------------------------
+  //
+  // ⚠️ Alle getallen hieronder zijn zelf nagemeten op 06-09-2026: eerste
+  //    autorisatiepoort geneutraliseerd (`if false then`), volledige RLS-suite,
+  //    daarna byte-identiek teruggezet en dat gecontroleerd.
+  ['archiveer_groep', 'Beheerderspoort (`not_admin`) plus een expliciete bevestiging. Gemeten: poort weg → 2 rood.'],
+  ['beslis_lidmaatschapsverzoek', 'Beheerderspoort. Gemeten: poort weg → 2 rood.'],
+  [
+    'heropen_groep',
+    'Beheerderspoort. Gemeten: poort weg → 3 rood. ⚠️ De dossierrij van QS8-286 zette hem ' +
+      'bij de drie waarvan "de poort niet automatisch herkend" werd; dat was een beperking ' +
+      'van dát sweep-script en niet van de functie. Hij heeft een gewone `not_admin`-poort ' +
+      'en die is gedekt.',
+  ],
+  ['rotate_invite_code', 'Beheerderspoort. Gemeten: poort weg → 7 rood. De uitnodigingscode is de enige route naar binnen, dus dit is de zwaarste van de reeks.'],
+  ['set_invite_revoked', 'Beheerderspoort. Gemeten: poort weg → 7 rood.'],
+  ['verlaat_groep', 'Lidmaatschapspoort (`not_member`) plus een bevestiging. Gemeten: poort weg → 2 rood.'],
+  ['verwijder_lid', 'Beheerderspoort. Gemeten: poort weg → 5 rood.'],
+  ['zet_groepsontdekbaarheid', 'Beheerderspoort. Gemeten: poort weg → 3 rood.'],
+  ['zet_groepszichtbaarheid', 'Beheerderspoort (besluit A41). Gemeten: poort weg → 5 rood.'],
+  [
+    'herorden_weekplan',
+    'Eigenaarspoort. ⚠️ **Was ongedekt tot QS8-286: nul rood van 995.** Elke bestaande test ' +
+      'riep hem aan als de eigenaar op zijn eigen doel, dus de poort weghalen veranderde ' +
+      'niets. Gemeten: mét het nieuwe blok in `definerpoorten.test.ts` → 2 rood, met een ' +
+      'effectassertie op de volgorde en niet op de foutreden.',
+  ],
+  [
+    'vraag_deadline_verschuiving',
+    'Eigenaarspoort. ⚠️⚠️ **De zwaarste van QS8-286, want een ander argument leunde erop.** ' +
+      'QS8-282 verklaarde `beslis_deadline_verzoek` veilig met: die functie heeft geen ' +
+      'eigenaarstoets, maar een verzoek kán alleen door de eigenaar aangemaakt zijn — díe ' +
+      'toets staat hier. Die redenering klopt en de schakel was door niets bewaakt: nul rood ' +
+      'van 995. Valt de poort weg, dan maakt een groepsgenoot een verzoek voor jouw doel en ' +
+      'keurt een derde lid het goed. Gemeten met het nieuwe blok → 5 rood.',
+  ],
+  [
+    'trek_deadline_verzoek_in',
+    'Aanvragerspoort (`not_yours`). ⚠️ **Was ongedekt tot QS8-286: nul rood van 995.** ' +
+      'Gemeten met het nieuwe blok → 3 rood, met een effectassertie op de status.',
+  ],
+  [
+    'create_group',
+    'Géén losse poort, en dat is hier geen tekort: alles wat de functie schrijft is op de ' +
+      'aanroeper gescopeerd (`created_by = auth.uid()`, en de beheerdersrij gaat naar ' +
+      '`auth.uid()`). Er is geen slachtoffer om voor te schrijven. ⚠️ **De vorm die hier wél ' +
+      'iets zegt is niet "haal de poort weg" maar "schrijf voor iemand anders"** — dezelfde ' +
+      'les als bij `zet_week_startdag` (QS8-282), waar "zo niet te meten" stilletjes "niet ' +
+      'gemeten" werd. Gemeten door de beheerdersrij naar een ánder profiel te laten wijzen: ' +
+      '**66 rood**. De scoping is dus wél gedekt, alleen niet door de vorm die bij de andere ' +
+      'RPCs werkt.',
+  ],
+  [
+    'join_group_with_code',
+    'Idem: de code is de sleutel en de lidmaatschapsrij gaat naar `auth.uid()`. Zelfde ' +
+      'mutatievorm en zelfde meting als `create_group`: **109 rood**.',
+  ],
+
   // --- RPC's die `authenticated` níét mag aanroepen --------------------------
   ['herstel_weekdoelstatus', 'Geen EXECUTE voor `authenticated`; de grant is de grendel. Bewaakt door `tests/rls/functiegrants.test.ts`.'],
   ['keur_vastgelopen_goedkeuringen_goed', 'Idem: rollover-functie zonder EXECUTE voor `authenticated`.'],
   ['weekplanstap_naar_weekdoel', 'Idem. ⚠️ De naam suggereert een gebruikershandeling; het recht zegt van niet. Verandert dat, dan hoort hij naar het blok hierboven en heeft hij een test nodig.'],
+
+  ['slaap_stille_groepen', 'Geen EXECUTE voor `authenticated`; de grant is de grendel. Rollover-functie. Bewaakt door `tests/rls/functiegrants.test.ts`.'],
+  [
+    'verdien_badges',
+    'Idem. ⚠️ Er staat een tweede grendel naast, en die is er niet voor niets: ' +
+      '`tests/rls/badges.test.ts` toetst dat een ingelogde gebruiker hem voor niemand kan ' +
+      'aanroepen — ook niet voor zichzelf. Zou het recht ooit terugkomen, dan is dat daar ' +
+      'rood en niet stil.',
+  ],
 
   // --- Triggerfuncties: geen eigen poort ------------------------------------
   ['award_points_on_approval', 'Triggerfunctie. Autorisatie is de policy op de goedkeuring die hem aftrapt.'],
@@ -143,6 +251,14 @@ const REGISTER = new Map([
   ],
   ['noteer_beoordelaar_weg_groep', 'Triggerfunctie op `groups`; autorisatie is de policy en de pin op die tabel.'],
   ['noteer_beoordelaar_weg_lid', 'Triggerfunctie op `group_members`; idem.'],
+  [
+    'wek_groep',
+    'Triggerfunctie op `chat_messages`, `week_reviews` en `chain_links`. Zet een slapende ' +
+      'groep terug op `active`; de waarden zijn hardgecodeerd en de rij komt uit ' +
+      '`new.group_id`, die door `is_group_member()` in de INSERT-policy van elke brontabel ' +
+      'begrensd is. Staat met dezelfde reden in `scripts/pinuitzonderingen-controle.mjs`.',
+  ],
+  ['wek_groep_via_review', 'Idem, op `week_review_replies`.'],
 ]);
 
 /**

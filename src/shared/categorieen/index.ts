@@ -1,5 +1,6 @@
 /**
- * De vijftien gebieden waar dit product over praat — QS8-224, migratie 0142.
+ * De twaalf gebieden waar dit product over praat — QS8-224, migratie 0142, en
+ * teruggebracht van vijftien naar twaalf door besluit A58 (migratie 0164).
  *
  * ⚠️ **Deze lijst stond tot QS8-231 in `modules/goals/schemas.ts`, en dat kon
  *    niet blijven.** Een groep krijgt sinds 0144 dezelfde categorie als
@@ -31,7 +32,7 @@
  *
  *    Vervallen: `helping`, `learning`, `organization` en `resilience`. Nieuw:
  *    `building`. Dat is een gegevenswijziging en geen hernoeming — zie migratie
- *    0156 en `docs/decisions/2026-09-04-drie-families-en-de-kleuren-die-niet-kunnen.md`.
+ *    0164 en `docs/decisions/2026-09-04-drie-families-en-de-kleuren-die-niet-kunnen.md`.
  */
 export const CATEGORIEEN = [
   // Gezondheid
