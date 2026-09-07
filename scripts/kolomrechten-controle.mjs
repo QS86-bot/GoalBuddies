@@ -147,18 +147,29 @@ export function beoordeel(selecties, rechten) {
   return fouten;
 }
 
-const VRAAG = `
+// ⚠️ **`has_column_privilege()` en geen filter op `grantee` — QS8-334.**
+//    Hier stond een join op `information_schema.column_privileges` met
+//    `p.grantee = 'authenticated'`, en die had een gat: een recht dat via
+//    `grant … to public` is uitgedeeld geldt voor élke rol, `authenticated`
+//    incluis, maar staat in die view op de rij `grantee = 'PUBLIC'`. 📏 Gemeten
+//    op de lokale stack: `grant update (goal_id) on public.commitments to public`
+//    liet deze controle groen terwijl `has_column_privilege` `t` gaf.
+//
+//    Spiegelbeeld van onwrikbare regel 4: daar leest `revoke … from public, anon`
+//    als "van iedereen" en houdt precies `authenticated` over; hier leest
+//    `grant … to public` als onschuldig en is hij onzichtbaar. **Het effectieve
+//    recht is de waarheid, niet de boekhouding erover** — en `has_column_privilege`
+//    vouwt PUBLIC, rolovererving en directe grants vanzelf samen.
+//
+// ⚠️ De join is daarmee ook wég, en dat is geen bijzaak: zonder de
+//    grantee-filter zou hij meer dan één rij per kolom kunnen opleveren en dan
+//    tellen `count(*)` en `string_agg` dubbel.
+export const VRAAG = `
 select c.table_name,
-       count(*) filter (where p.grantee = 'authenticated'),
+       count(*) filter (where has_column_privilege('authenticated', format('%I.%I', c.table_schema, c.table_name)::regclass, c.column_name, 'SELECT')),
        count(*),
-       coalesce(string_agg(c.column_name, ',') filter (where p.grantee = 'authenticated'), '')
+       coalesce(string_agg(c.column_name, ',') filter (where has_column_privilege('authenticated', format('%I.%I', c.table_schema, c.table_name)::regclass, c.column_name, 'SELECT')), '')
 from information_schema.columns c
-left join information_schema.column_privileges p
-  on p.table_schema = c.table_schema
- and p.table_name   = c.table_name
- and p.column_name  = c.column_name
- and p.grantee      = 'authenticated'
- and p.privilege_type = 'SELECT'
 where c.table_schema = 'public'
 group by c.table_name
 order by c.table_name;
@@ -613,20 +624,15 @@ export function schrijfIn(pad, inhoud, schemas = {}) {
   return uit;
 }
 
-const SCHRIJFVRAAG = `
+// ⚠️ Zelfde omzetting als bij `VRAAG` hierboven, en om dezelfde reden (QS8-334).
+export const SCHRIJFVRAAG = `
 select c.table_name,
        pr.privilege_type,
        count(*),
-       count(*) filter (where p.column_name is not null),
-       coalesce(string_agg(c.column_name, ',') filter (where p.column_name is not null), '')
+       count(*) filter (where has_column_privilege('authenticated', format('%I.%I', c.table_schema, c.table_name)::regclass, c.column_name, pr.privilege_type)),
+       coalesce(string_agg(c.column_name, ',') filter (where has_column_privilege('authenticated', format('%I.%I', c.table_schema, c.table_name)::regclass, c.column_name, pr.privilege_type)), '')
 from information_schema.columns c
 cross join (values ('INSERT'), ('UPDATE')) as pr(privilege_type)
-left join information_schema.column_privileges p
-  on p.table_schema = c.table_schema
- and p.table_name   = c.table_name
- and p.column_name  = c.column_name
- and p.grantee      = 'authenticated'
- and p.privilege_type = pr.privilege_type
 where c.table_schema = 'public'
 group by c.table_name, pr.privilege_type
 order by c.table_name, pr.privilege_type;

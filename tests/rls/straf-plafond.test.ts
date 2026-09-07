@@ -650,13 +650,22 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
      *    verandert, leer je bij te werken zonder te lezen. Dit zijn de twee
      *    kolommen waar een grens aan hangt.
      */
+    /**
+     * ⚠️ **`has_column_privilege()` en geen filter op `grantee` — QS8-334.**
+     *    Hier stond `information_schema.column_privileges` met
+     *    `grantee = 'authenticated'`, en dat is voor een must-deny de verkeerde
+     *    bron: een recht dat via `grant … to public` is uitgedeeld geldt óók voor
+     *    `authenticated`, maar staat op de rij `grantee = 'PUBLIC'`. 📏 Gemeten:
+     *    de kolom is dan schrijfbaar terwijl deze test groen blijft — precies de
+     *    stille doorlaat die de tests hierboven moeten uitsluiten.
+     *
+     *    Het effectieve recht is de waarheid, niet de boekhouding erover.
+     */
     function magSchrijven(tabel: string, kolom: string, recht: 'INSERT' | 'UPDATE'): boolean {
       const uit = psql(
-        `select count(*) from information_schema.column_privileges ` +
-          `where grantee = 'authenticated' and table_name = '${tabel}' ` +
-          `and column_name = '${kolom}' and privilege_type = '${recht}'`,
+        `select has_column_privilege('authenticated', 'public.${tabel}', '${kolom}', '${recht}')`,
       );
-      return uit.trim() !== '0';
+      return uit.trim() === 't';
     }
 
     function magBijwerken(tabel: string, kolom: string): boolean {
