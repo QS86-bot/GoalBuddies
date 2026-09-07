@@ -5,13 +5,46 @@
 >
 > **Laatst bijgewerkt:** 07-09-2026. Er landt veel uit twee sessies tegelijk;
 > `git log origin/main` is de betrouwbare lijst en niet deze zin.
-> Uit deze sessie op 07-09: **QS8-304** en **QS8-191**. Daarvóór op 06-09:
+> Uit deze sessie op 07-09: **QS8-304**, **QS8-191** en **QS8-315**. Daarvóór op 06-09:
 > **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en **QS8-302**.
 > Open en niet door een agent af te maken: **QS8-197** (wacht op
 > Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
-> Lees eerst de twee punten van 07-09, dan de vijf van 06-09 — het eerste
+> Lees eerst de vier punten van 07-09, dan de vijf van 06-09 — het eerste
 > daarvan is de duurste van die dag — dan de drie van 05-09, dan de twee van
 > 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **07-09, punt C (QS8-315): "het blijft binnen systeem X" is een bewering over
+> een route, en een route lees je na.** Ik repareerde drie plekken die de rúwe
+> Postgres-melding naar Sentry stuurden, en schreef in het beslisdocument dat de
+> `Response`-body de melding wél mocht dragen *"want die verlaat Supabase niet"*.
+> De security-review noemde dat blokkerend, en terecht: `rollover.yml:67` doet
+> `cat` op die body **vóór** de statuscontrole, en `curl` geeft exitcode 0 op een
+> 500. Elke mislukte uurrun drukt hem dus af in het GitHub Actions-runlog — en
+> 📏 de GitHub-API geeft voor deze repo `visibility: public`, dus dat log is
+> wereldleesbaar. ⚠️ **Er lekte niets** (het zijn `select`-fouten op `profiles`,
+> en een SELECT vuurt geen triggers) — **het gevaar zat in de premisse**: een
+> beslisdocument dat vastlegt dat een pad veilig is, is wat de volgende auteur
+> leest voordat hij er wél iets gevaarlijks bij zet. Eén `grep` op de aanroeper
+> was genoeg geweest. **Schrijf nooit "dit blijft binnen X" zonder de aanroeper
+> te hebben opengeslagen.**
+>
+> **07-09, punt D (QS8-315): een mutatie die niets rood maakt, is een bevinding —
+> en de val zit in wélk pad je geval neemt.** Zes grendels, zes mutaties, vijf
+> rood. De zesde — de lookbehind van `AANROEPEN` — bleef groen, want mijn
+> ijkgeval was `log.meld(fout)`, en `meld(fout)` geeft een object door en wordt
+> sowieso niet gemeld. Het geval werd dus door een éérdere grendel afgevangen en
+> bewaakte niets van wat het beloofde. ⚠️ Dat staat als regel al in CLAUDE.md;
+> dit is hoe het er in het echt uitziet. **Vraag bij elk ijkgeval: kan dit langs
+> een andere grendel groen blijven?** Idem de tegenkant: bij een controle die
+> uitgezet kan worden is *te veel melden* net zo goed een defect, dus mutéér ook
+> de smalheid (`FOUTOBJECT` matcht élke identifier → moet rood worden).
+>
+> ⚠️ **En een dossierrij is een momentopname, geen inventaris.** De rij van 04-09
+> telde twee plekken in één functie en noemde er één verkeerd; nagemeten waren
+> het er drie, in twee functies. Zelfde vorm als QS8-206 (twee geteld, elf
+> gevonden). **Wie een rij afwerkt, telt opnieuw — met een instrument, niet met
+> zijn ogen.** Mijn éérste instrument telde er trouwens ook maar twee: de regex
+> `\$\{[^}]*\.message[^}]*\}` struikelt over `${(x as { message: string }).message}`.
 >
 > **07-09, punt A: twee nummers voor één defect, en de claim ving dat niet.**
 > `npm run claim` matcht op **issuenummer**, en dat werkt tegen twee sessies die

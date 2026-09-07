@@ -1,4 +1,5 @@
 import { getal, t, type Sleutel } from '../i18n';
+import type { RisicoReden, RisicoStand } from '../standen';
 
 /**
  * De Risico-radar in gewone taal — QS8-93, QS8-94.
@@ -18,29 +19,6 @@ import { getal, t, type Sleutel } from '../i18n';
  *    labels nooit naar een groepsscherm — een risicostand is een afgeleide van
  *    gemiste weken, en dat is het soort signaal waar domeinregel 7 over gaat.
  */
-
-/** Zoals `goal_risk.status` in de database. */
-export type RisicoStand = 'on_track' | 'at_risk' | 'behind' | 'unreachable';
-
-/**
- * De onderbouwing die `herbereken_risico()` meeschrijft in `goal_risk.reason`.
- *
- * ⚠️ Alles optioneel, en dat is geen slordigheid. De database schrijft `null`
- *    voor een tempo dat niet te berekenen is (geen geschiedenis) en laat het
- *    hele blok weg bij een niet-actief doel. Een scherm dat aanneemt dat de
- *    getallen er zijn, toont "NaN weken" op het moment dat iemand net begint.
- */
-export interface RisicoReden {
-  readonly weken_over?: number | null;
-  readonly open_mijlpalen?: number | null;
-  readonly mijlpalen_af?: number | null;
-  readonly cycli_bekeken?: number | null;
-  readonly cycli_gehaald?: number | null;
-  readonly cycli_deels?: number | null;
-  readonly tempo?: number | null;
-  readonly benodigd_tempo?: number | null;
-  readonly vloeraandeel?: number | null;
-}
 
 /** Het label op de kaart. Kort — de uitleg staat achter "waarom?". */
 export function risicoLabel(stand: RisicoStand): string {

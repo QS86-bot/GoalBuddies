@@ -1,3 +1,4 @@
+import type { KettingStand } from '../standen';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { t } from '../i18n';
@@ -5,7 +6,7 @@ import { radius, useTheme } from '../theme';
 
 import { useReducedMotion } from './a11y';
 import { bewegingsStijl } from './beweging';
-import { kettingLabel, kettingVulling, type KettingStand } from './metrics';
+import { kettingLabel, kettingVulling } from './metrics';
 import { Caption, Subheading } from './Text';
 
 /**

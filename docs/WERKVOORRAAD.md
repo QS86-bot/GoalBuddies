@@ -11,24 +11,27 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0183`.** 📏 Gemeten op 07-09 aan het echte project:
+⚠️ **Productie staat op `0183`, maar de edge-functies zijn van de dag ervoor.**
+📏 Gemeten op 07-09 aan het echte project, niet aan dit document:
 `list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
-06-09 is ingelopen; van deze branch staat alleen `0185` (`cycle_index` weg) er
-nog niet op.
+06-09 is daarmee ingelopen; `0184` (een open straf laat de deadline niet vooruit
+schuiven, QS8-317) en `0185` (`cycle_index` weg, QS8-147) staan nog niet op
+productie.
 
-⚠️⚠️ **`0185` moet in hetzelfde venster landen als
-`npx supabase functions deploy rollover`.** Hij dropt
+⚠️⚠️ **Wat er wél nog openstaat is een deploy, en die is stiller dan een
+migratie.** `list_edge_functions` geeft voor alle drie de functies
+`updated_at = 2026-09-06T09:07:56Z`, terwijl de migraties `0173` t/m `0183`
+op 07-09 zijn toegepast. Gevolg: `0178` staat op productie, de code die
+`getuigenissen_voor()` aanroept staat in de map (toegevoegd 07-09 04:34), en de
+gedeployde `notificaties` weet er niets van — **de persoon-getuige krijgt zijn
+melding niet**. Er is geen kapot onderdeel, dus niets wordt er rood van. Staat
+als QS8-320, met het commando erbij.
+
+⚠️ **En let op de volgorde bij `0185`.** Die migratie dropt
 `activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
-gedeployde rollover roept de driearguments vorm aan. Daartussen geeft PostgREST
-`PGRST202`, vangt de rollover dat zacht af met `continue`, en schuift er elk uur
-voor iedereen geen weekplanstap meer in terwijl het afschrijven van gemiste weken
-doorloopt. Zie `docs/DEPLOY.md` §2.3a.
-
-⚠️ **En de edge-functies staan sowieso achter.** `list_edge_functions` geeft voor
-alle drie `updated_at = 2026-09-06T09:07:56Z`, terwijl `0173` t/m `0183` op 07-09
-zijn toegepast. Daardoor is `0178` wél toegepast maar krijgt de persoon-getuige
-zijn melding niet: de gedeployde `notificaties` kent `getuigenissen_voor()` niet.
-Staat als QS8-320.
+gedeployde rollover roept de driearguments vorm aan. Zonder deploy in dezelfde
+ronde geeft PostgREST `PGRST202`, vangt de rollover dat zacht af, en schuift er
+elk uur voor iedereen geen weekplanstap meer in. Zie `docs/DEPLOY.md` §2.3a.
 
 Vraag de database welke migraties er staan, niet dit document.
 
@@ -98,8 +101,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 38 controlescripts groen;
-`npm run poort` meldt 42 stappen.
+Typecheck, lint en alle 41 controlescripts groen;
+`npm run poort` meldt 45 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -171,9 +174,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0185` staan in de map: **187 bestanden**,
+Migraties `0001` t/m `0185` staan in de map: **188 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-⚠️ **Er ontbreken nummers: 0184.** Zie `migraties:controle`.
+De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot

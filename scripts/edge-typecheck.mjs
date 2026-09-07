@@ -1,0 +1,255 @@
+/**
+ * `deno check` en `deno lint` over `supabase/functions/`, lokaal — QS8-214.
+ *
+ * ⚠️ **Waarom dit bestaat.** CI draait `deno check supabase/functions/`, en op
+ *    een werkplek kán dat niet: de functies importeren
+ *    `jsr:@supabase/supabase-js@2`, en `jsr.io` en `npm.jsr.io` geven hier 403.
+ *    Het gevolg was dat de enige plek waar deze code getypecheckt werd, CI was —
+ *    en dat kostte bij de eerste twee rondes vier fouten, waarvan er één
+ *    (`db` in plaats van `alsSysteem` in de doelcoach) élke AI-job stil liet
+ *    omvallen met HTTP 200 erop.
+ *
+ * ⚠️ **De omweg was al bekend en stond als commentaar in de workflow: het
+ *    jsr-pakket is dezelfde broncode als het npm-pakket, en `registry.npmjs.org`
+ *    is wél bereikbaar.** Dat was precies het probleem — het was een handeling
+ *    die je moest onthouden en die niets kapotmaakte als je hem oversloeg.
+ *    Dezelfde vorm als het migratieregister vóór QS8-122. Hier wordt hij, net
+ *    als toen, een commando.
+ *
+ * ⚠️ **De kopie is verbatim op één specifier na, en dat is de hele
+ *    correctheidsvraag van dit script.** Wordt er méér herschreven dan die ene
+ *    regel, dan typecheckt dit iets anders dan wat er gepusht wordt en is groen
+ *    hier geen uitspraak over daar. Vandaar `herschrijf()` als losse, geëxporteerde
+ *    functie met een eigen test die hem élke vorm aanbiedt — de vormen die hij
+ *    moet raken én de vormen die hij met rust moet laten.
+ *
+ * ⚠️ **Nul treffers is rood en niet groen.** Verdwijnt de jsr-specifier ooit uit
+ *    de bron, dan is de aanname onder dit script weg en checkt het iets waar het
+ *    niets over beweert. Dat is het scenario waarin een controle stil ophoudt te
+ *    bewaken — en daar is dit project al een paar keer op gaan zitten.
+ */
+import { spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+/** De wortel van de repo, zelfde vorm als in de andere controlescripts. */
+export const WORTEL = fileURLToPath(new URL('..', import.meta.url));
+
+/** De map die CI ook meegeeft aan `deno check`. */
+export const FUNCTIEMAP = 'supabase/functions';
+
+/**
+ * De specifier die hier niet op te halen is, en waar hij naartoe moet.
+ *
+ * ⚠️ Op de **volledige specifier inclusief versie** en niet op de scope alleen:
+ *    `jsr:@supabase/supabase-js@2` en `npm:@supabase/supabase-js@2` moeten
+ *    dezelfde broncode zijn, en dat is precies wat het versienummer vastlegt.
+ *    Een herschrijving die de versie laat vallen, checkt een ander pakket.
+ */
+const JSR = /\bjsr:@supabase\/supabase-js@(\d[\w.-]*)/g;
+
+/**
+ * Herschrijft de jsr-specifier naar zijn npm-tweelingbroer.
+ *
+ * @param {string} bron
+ * @returns {{ tekst: string, treffers: number }}
+ */
+export function herschrijf(bron) {
+  let treffers = 0;
+  const tekst = bron.replace(JSR, (_heel, versie) => {
+    treffers += 1;
+    return `npm:@supabase/supabase-js@${versie}`;
+  });
+  return { tekst, treffers };
+}
+
+/**
+ * Zet een pad uit de werkkopie terug naar het pad in de repo.
+ *
+ * ⚠️ Zonder dit wijst elke fout naar `/tmp/...`, en dan moet de lezer zelf
+ *    vertalen naar het bestand dat hij open heeft staan. Een foutmelding die je
+ *    eerst moet decoderen, leest niemand twee keer.
+ *
+ * @param {string} regel
+ * @param {string} werkmap
+ */
+export function naarRepoPad(regel, werkmap) {
+  return regel
+    .split(pathToFileURL(werkmap).href)
+    .join(FUNCTIEMAP)
+    .split(werkmap)
+    .join(FUNCTIEMAP);
+}
+
+/**
+ * Zoekt de Deno-binary.
+ *
+ * ⚠️ **`node_modules/.bin` vóór `PATH`**, zodat de versie uit `package.json`
+ *    wint van wat er toevallig op de machine staat. Een controle die per
+ *    werkplek een andere compiler gebruikt, meet per werkplek iets anders.
+ */
+export function zoekDeno(wortel = WORTEL, omgeving = process.env) {
+  if (omgeving.DENO_BIN) return omgeving.DENO_BIN;
+
+  // ⚠️ **De volgorde is platformafhankelijk, en dat is gemeten en niet bedacht**
+  //    — QS8-214, nawerk van 07-09.
+  //
+  //    npm zet in `node_modules/.bin` op Windows **drie** bestanden neer:
+  //    `deno.cmd`, `deno.ps1` én een extensieloze `deno`. Die laatste is géén
+  //    binary maar een sh-script voor git-bash, en `CreateProcess` kan er niets
+  //    mee. Een eerdere versie hiervan zocht eerst naar de extensieloze naam,
+  //    vond dus dat sh-script, en `spawnSync` gaf een fout zonder uitvoer — een
+  //    rode controle met een lege melding.
+  //
+  //    ⚠️⚠️ **Dat is gevonden doordat deze controle aan de Windows-job is
+  //    toegevoegd, in dezelfde wijziging.** De reparatie was tot dat moment een
+  //    redenering, en de redenering had het mis. Op Windows dus eerst de
+  //    uitvoerbare vormen, elders de extensieloze.
+  const namen =
+    process.platform === 'win32' ? ['deno.exe', 'deno.cmd', 'deno'] : ['deno', 'deno.cmd', 'deno.exe'];
+  for (const naam of namen) {
+    const lokaal = join(wortel, 'node_modules', '.bin', naam);
+    if (existsSync(lokaal)) return lokaal;
+  }
+
+  // ⚠️ **De meegegeven omgeving en niet `process.env`.** Zonder dit zoekt
+  //    `spawnSync` langs de PATH van het proces, en dan is de parameter een
+  //    leugen: een test die "er is geen Deno" nabootst, vindt er tóch een en
+  //    wordt groen zonder iets te bewijzen. Die test heeft dit gevonden.
+  const uit = spawnSync('deno', ['--version'], { encoding: 'utf8', env: omgeving });
+  return uit.error || uit.status !== 0 ? null : 'deno';
+}
+
+function draai(deno, argumenten, werkmap) {
+  // ⚠️ **`shell` alleen voor een `.cmd`-shim.** Node ≥20 weigert die zonder
+  //    shell sinds de mitigatie van CVE-2024-27980, en dan valt de controle op
+  //    Windows in de OVERGESLAGEN-tak. De argumenten zijn een vast commando en
+  //    een pad dat dit script zelf aanmaakt, dus er valt niets in te
+  //    injecteren; het pad wordt aangehaald omdat `shell` de argv samenvoegt.
+  const viaShell = deno.toLowerCase().endsWith('.cmd');
+  const uit = spawnSync(viaShell ? `"${deno}"` : deno, viaShell ? argumenten.map((a) => `"${a}"`) : argumenten, {
+    encoding: 'utf8',
+    shell: viaShell,
+    // ⚠️ Dezelfde vlag als CI. Zonder hem loopt Deno omhoog, vindt de
+    //    `package.json` van de app, en gaat de hele Node-dependencyboom
+    //    installeren om drie Edge Functions te typechecken.
+    env: { ...process.env, DENO_NO_PACKAGE_JSON: '1' },
+  });
+  // ⚠️ **`uit.error` hoort in de tekst.** Start het proces niet — een shim die
+  //    `CreateProcess` niet kan uitvoeren, een ontbrekend bestand — dan zijn
+  //    stdout en stderr leeg en is `status` null. Zonder deze regel geeft de
+  //    controle dan `✗ edge-typecheck` met een lege melding, en dat is een
+  //    rode uitslag waar niemand iets aan heeft. Gemeten in de Windows-job.
+  const foutregel = uit.error ? `kon ${deno} niet starten: ${uit.error.message}\n` : '';
+  const tekst = `${foutregel}${uit.stdout ?? ''}${uit.stderr ?? ''}`;
+  return { code: uit.status ?? 1, tekst: naarRepoPad(tekst, werkmap) };
+}
+
+export function controleer(wortel = WORTEL) {
+  const deno = zoekDeno(wortel);
+  if (deno === null) {
+    return {
+      soort: /** @type {const} */ ('overgeslagen'),
+      melding:
+        'geen Deno gevonden. `npm ci` haalt hem binnen; anders `DENO_BIN=/pad/naar/deno`. ' +
+        'Zonder Deno is deze controle niet groen maar ongemeten.',
+    };
+  }
+
+  const bronmap = join(wortel, FUNCTIEMAP);
+  const werkmap = mkdtempSync(join(tmpdir(), 'goalbuddies-edge-'));
+
+  try {
+    cpSync(bronmap, werkmap, { recursive: true });
+
+    let treffers = 0;
+    for (const pad of bestandenIn(werkmap)) {
+      const { tekst, treffers: n } = herschrijf(readFileSync(pad, 'utf8'));
+      if (n > 0) writeFileSync(pad, tekst);
+      treffers += n;
+    }
+
+    if (treffers === 0) {
+      return {
+        soort: /** @type {const} */ ('rood'),
+        melding:
+          `Geen enkele jsr-specifier gevonden in ${FUNCTIEMAP}. Dit script bestaat om die ` +
+          'ene regel te herschrijven; is hij weg, dan checkt het iets waar het niets over ' +
+          'belooft. Werk de specifier in dit script bij, of haal het script weg.',
+      };
+    }
+
+    const check = draai(deno, ['check', werkmap], werkmap);
+    const lint = draai(deno, ['lint', werkmap], werkmap);
+
+    if (check.code !== 0 || lint.code !== 0) {
+      return {
+        soort: /** @type {const} */ ('rood'),
+        melding: [check.code !== 0 ? check.tekst : '', lint.code !== 0 ? lint.tekst : '']
+          .filter((t) => t.trim().length > 0)
+          .join('\n'),
+      };
+    }
+
+    return {
+      soort: /** @type {const} */ ('groen'),
+      melding: `${treffers} specifier(s) herschreven; deno check en deno lint groen.`,
+    };
+  } finally {
+    rmSync(werkmap, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Alle `.ts`-bestanden onder een map.
+ *
+ * ⚠️ **Met `readdirSync` en niet met `find`** — QS8-214, nawerk van 07-09.
+ *    `find` is op Windows een héél ander programma: `find.exe` zoekt tekst in
+ *    bestanden en kent `-name` niet. Deze functie gaf daar dus nul paden, en
+ *    nul paden betekent nul specifiers, en dat is de `rood`-tak hierboven — met
+ *    een melding die zegt dat de specifier uit de bron verdwenen is. Een
+ *    mislukking die zich voordoet als een uitspraak, en over precies de
+ *    verkeerde oorzaak. Node kan dit zelf, zonder subproces en sneller.
+ */
+function bestandenIn(map) {
+  /** @type {string[]} */
+  const uit = [];
+  for (const item of readdirSync(map, { withFileTypes: true })) {
+    const pad = join(map, item.name);
+    if (item.isDirectory()) uit.push(...bestandenIn(pad));
+    else if (item.isFile() && item.name.endsWith('.ts')) uit.push(pad);
+  }
+  return uit;
+}
+
+// ⚠️ De URL-vergelijking en niet `resolve()`, want dat is de vorm die
+//    `tests/scripts/padvormen.test.ts` eist — een padvergelijking op strings
+//    valt op Windows uit elkaar. Die grendel heeft deze regel gevonden.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const uitkomst = controleer();
+
+  if (uitkomst.soort === 'overgeslagen') {
+    // ⚠️ Naar stderr en met dit woord, want op stdout leest "overgeslagen" als
+    //    "gelukt". `npm run poort` herkent deze regelvorm en telt de stap als
+    //    ongemeten in plaats van groen.
+    console.error(`⚠ edge-typecheck: OVERGESLAGEN — ${uitkomst.melding}`);
+    process.exit(0);
+  }
+
+  if (uitkomst.soort === 'rood') {
+    console.error(`✗ edge-typecheck\n\n${uitkomst.melding}`);
+    process.exit(1);
+  }
+
+  console.log(`edge-typecheck: ${uitkomst.melding}`);
+}

@@ -85,4 +85,13 @@ for bestand in "$WORTEL"/supabase/migrations/*.sql; do
   aantal=$((aantal + 1))
 done
 
-echo "✓ ${aantal} migraties afgespeeld op een lege database"
+# ⚠️ **De major staat er met opzet bij — QS8-177.** Deze opstelling gebruikt de
+#    Postgres van het besturingssysteem, en dat hoeft niet de major van productie
+#    te zijn. Stond dat er niet, dan is "170 migraties afgespeeld" een regel die
+#    net zo groen leest op een versie waar de suite niets over bewijst.
+#    `npm run pgversie:controle` legt hem naast productie; deze regel zorgt dat
+#    je hem ook ziet zonder die controle te draaien.
+major="$("${PSQL[@]}" -At -d "$DB" -c 'show server_version_num' 2>/dev/null | head -1)"
+major="${major:0:2}"
+
+echo "✓ ${aantal} migraties afgespeeld op een lege database (Postgres ${major:-?})"
