@@ -11,8 +11,8 @@ deadline.* `maak_straffen_verschuldigd()` toetst daarvoor precies één ding:
 and g.target_date < p_vandaag
 ```
 
-Die regel is alleen een belofte als de gestrafte die datum niet zelf kan
-verzetten. Het commentaar ernaast zei dat dat zo was:
+Eén van de voorwaarden waaronder die regel een belofte is, is dat de gestrafte
+die datum niet zelf kan verzetten. Het commentaar ernaast zei dat dat zo was:
 
 > `goals.target_date` staat niet in de UPDATE-grant van `authenticated` en
 > beweegt alleen met het akkoord van een buddy.
@@ -83,9 +83,14 @@ een ontsnapping, en blokkeren zou de gebruiker beletten strenger voor zichzelf t
 zijn dan hij beloofd had.
 
 **Alleen `status = 'set'`.** Dat is de enige stand die de job nog omzet. Vanaf
-`due` zet alleen `beslis_deadline_verzoek()` de straf terug (0177), en dat vraagt
-een buddy — daar valt dus niets te ontsnappen. Blokkeren op `due` zou iemand die
-zijn straf al gehad heeft beletten opnieuw te plannen.
+`due` zet alleen `beslis_deadline_verzoek()` de straf terug (0177). Blokkeren op
+`due` zou iemand die zijn straf al gehad heeft beletten opnieuw te plannen.
+
+⚠️ Hier stond *"en dat vraagt een buddy — daar valt dus niets te ontsnappen"*, en
+dat is te sterk. 📏 Gemeten: die functie eist alleen `r.requester_id <> auth.uid()`
+plus actief lidmaatschap, dus een tweede eigen account in je eigen groep voldoet
+en zet ook een `due`-straf terug naar `set`. Het kost geen buddy maar een tweede
+account. Dat sybil-punt is breder dan deze migratie en staat als dossierrij.
 
 **En de tak staat ná `needs_group_approval`.** Bij een gekoppeld doel bestáát de
 route via `vraag_deadline_verschuiving()`, en die hoort de gebruiker aangeboden
@@ -103,19 +108,54 @@ hij belooft.
 | de hele tak eruit | 2 — beide belofte-tests |
 | `p_date > g.target_date` eruit | 1 — de must-allow op naar voren halen |
 | ook `due` blokkeren | 1 — de must-allow op opnieuw plannen |
+| `c.type = 'penalty'` eruit | 1 — de must-allow op een doel met alleen een beloning |
 | de tak vóór `needs_group_approval` | 1 — de melding bij een gekoppeld doel |
 
-Daarna alles hersteld: 6 van de 6 groen. De eerste mutatie diende bovendien als
+Daarna alles hersteld: 7 van de 7 groen. De eerste mutatie diende bovendien als
 bewijs dát de suite meet — zes tests in ruim een seconde is snel genoeg om je af
 te vragen of er wel iets draait.
+
+⚠️⚠️ **De vierde rij ontbrak, en de tabel claimde volledigheid.** De eerste versie
+telde vier mutaties bij vijf grendels: `c.type = 'penalty'` had er geen. 📏 In de
+security-ronde gemeten door die grendel te slopen — alle zes tests bleven groen.
+Zonder ijking kan hij stil wegvallen, en dan leest iemand met alléén een beloning
+op zijn doel *"Je hebt zelf een straf aan dit doel gehangen"*: een onware bewering
+aan de gebruiker, zonder dat iets rood wordt. De must-allow staat er nu, en de
+ijking hierboven is opnieuw gedraaid met vijf.
+
+**De les is niet "ik was er één vergeten" maar dat de tabel zei dat ze compleet
+was.** Een ijkingstabel is zelf een bewering; tel de grendels in de code en niet
+de mutaties die je toevallig bedacht hebt.
 
 ## Wat de test toetst, en wat niet
 
 De suite toetst de **keten** — straf → verstreken deadline → poging → job →
 `due` — en niet de weigering. Een test die alleen `straf_staat_open` afleest,
-blijft groen zodra iemand de job aan een andere datum ophangt. Dat is regel 18
-vraag 2: "de melding is duidelijk" is het onderdeel, "je koopt je niet uit je
-eigen straf" is de belofte.
+blijft groen zodra iemand de job aan een andere datum ophangt.
+
+⚠️⚠️ **Maar de belofte stond hier eerst te breed, en dat is de duurste fout in dit
+document geweest.** Er stond: *"je koopt je niet uit je eigen straf"*, en zo heette
+de `describe` ook. 📏 In de security-ronde weerlegd, als `authenticated` eigenaar
+en direct ná een geslaagde weigering:
+
+```
+zet_streefdatum(doel, +30d)                   → {"ok": false, "reason": "straf_staat_open"}
+update commitments set status = 'cancelled'   → gelukt
+maak_straffen_verschuldigd                    → 0
+```
+
+Eén handeling, geen buddy, en de begunstigde krijgt geen bericht. Dat is de knop
+`trekIn()` uit 0057, en de melding die déze migratie toevoegt verwijst er zelf
+naar: *"Wil je de straf niet meer, dan kun je hem intrekken."*
+
+Wat 0184 waarmaakt is smaller: **de deadline van een doel met een openstaande
+straf beweegt niet vooruit zonder buddy.** Dat is wat de kop, dit document en de
+`describe` nu zeggen.
+
+⚠️ **Een te brede belofte is erger dan geen belofte**, want ze laat de volgende
+lezer stoppen met zoeken. Dat is dezelfde klasse als de vier onware beweringen in
+de kop van 0182, één dag eerder in dezelfde sessie — en toen was de les al dat
+proza net zo nagemeten hoort te worden als code. Een `describe`-naam is proza.
 
 ## Rechten
 
@@ -133,6 +173,16 @@ rechten ná de drop gemeten zijn viel dat op.
 
 ## Wat er open blijft staan
 
+* **QS8-321 — een straf is vrijwillig tot hij `due` is.** `trekIn()` neemt hem
+  weg zonder buddy en zonder bericht aan de begunstigde. Gemeten hierboven.
+  Grens 1: mag je een straf die je jezelf oplegde op elk moment weer intrekken?
+* **QS8-322 — te laat afronden laat de straf vervallen.** 📏 `wikkel_commitments_af()`
+  toetst de belóning op `v_op_tijd` maar annuleert de **straf** onvoorwaardelijk,
+  ook bij een verstreken deadline. De eigenaar zet zijn eigen mijlpalen op `done`
+  en rondt af. Ouder dan deze migratie, ook grens 1.
+* **Samen met QS8-317 zijn dat drie routes naar dezelfde uitkomst.** 0184 sluit er
+  één. Domeinregel 11 is pas een belofte als alle drie beantwoord zijn, en twee
+  ervan zijn een productbeslissing en geen conjunct.
 * **QS8-317 optie 2 en 3** — de vraag of de begunstigde het verschuiven hoort te
   zien, en of de straf een eigen deadline verdient. Grens 1, dus aan Quinten.
 * **`recent_ontkoppeld` heeft geen eigen melding.** 📏 `streefdatumMelding()` in

@@ -2,12 +2,23 @@
  * Een openstaande straf laat de deadline niet vooruit schuiven — QS8-317,
  * migratie 0184.
  *
- * ⚠️ **De belofte is domeinregel 11 en niet een tak in een functie.** "Een straf
- *    treedt alleen in werking bij een verstreken deadline" is leeg zodra de
- *    gestrafte die deadline zelf kan verzetten. Deze suite toetst daarom de
- *    keten en niet de weigering: straf → verstreken deadline → poging → job →
- *    `due`. Een test die alleen `straf_staat_open` afleest, blijft groen zodra
- *    iemand de job aan iets anders ophangt.
+ * ⚠️ **Wat deze suite wél belooft, en wat niet.** Ze toetst de keten achter één
+ *    route: straf → verstreken deadline → poging tot vooruitschuiven → job →
+ *    `due`. Een test die alleen `straf_staat_open` afleest blijft groen zodra
+ *    iemand de job aan iets anders ophangt, dus de job hoort erin.
+ *
+ * ⚠️⚠️ **Ze bewijst níét dat je je niet uit je eigen straf kunt kopen, en de
+ *    eerste versie van deze kop beweerde dat wel.** 📏 Gemeten in de
+ *    security-ronde van 07-09, als `authenticated` eigenaar, direct ná een
+ *    geslaagde weigering: `update commitments set status = 'cancelled'` lukt
+ *    (`commitments_update` staat `set`→`cancelled` toe en de kolomgrant op
+ *    `status` is `true`), waarna de job 0 telt. Een straf is dus vrijwillig tot
+ *    hij `due` is. Dat is bewust zo gebouwd in 0057 — het is de knop
+ *    `trekIn()` — en het staat als eigen vraag in QS8-321.
+ *
+ *    De les die blijft: **een suite die de belofte te breed opschrijft, laat de
+ *    volgende lezer stoppen met zoeken.** De naam van een `describe` is een
+ *    bewering, en die hoort net zo nagemeten te worden als een test.
  *
  * ⚠️ **De naad zat tussen twee correcte onderdelen** (regel 18, vraag 1).
  *    `commitments_insert` eist een begunstigde, en dat klopt.
@@ -124,7 +135,7 @@ describe.skipIf(!rlsTestsConfigured)('een openstaande straf en de streefdatum', 
   }
 
   // -------------------------------------------------------------------------
-  describe('de belofte: je koopt je niet uit je eigen straf', () => {
+  describe('de belofte: de deadline beweegt niet vooruit zonder buddy', () => {
     it(
       'de eigenaar kan zijn verschuldigd-worden niet vooruit schuiven, en de job maakt de straf alsnog verschuldigd',
       async () => {
@@ -244,6 +255,40 @@ describe.skipIf(!rlsTestsConfigured)('een openstaande straf en de streefdatum', 
         expect(uit(poging.data).ok, `opnieuw plannen geweigerd: ${JSON.stringify(poging.data)}`).toBe(
           true,
         );
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een doel met alleen een beloning schuift gewoon vooruit',
+      async () => {
+        // ⚠️ **De grendel op `c.type` had geen eigen ijking**, en dat kwam uit
+        //    de security-ronde: `and c.type = 'penalty'` weghalen liet alle zes
+        //    de tests groen. Zonder deze must-allow kan die grendel stil
+        //    wegvallen en leest iemand met alléén een beloning "Je hebt zelf een
+        //    straf aan dit doel gehangen" — een onware bewering aan de
+        //    gebruiker, zonder dat iets rood wordt.
+        const doelId = await losDoel('VOORUIT alleen beloning', addDays(w.vandaag, 10));
+        const beloning = await adminDb()
+          .from('commitments')
+          .insert({
+            goal_id: doelId,
+            type: 'reward',
+            body: 'Ik trakteer mezelf',
+            beneficiary_group_id: w.groupId,
+            confirmed_at: new Date().toISOString(),
+          });
+        expect(beloning.error, `beloning: ${beloning.error?.message}`).toBeNull();
+
+        const poging = await w.alice.db.rpc('zet_streefdatum', {
+          p_goal_id: doelId,
+          p_date: addDays(w.vandaag, 40),
+        });
+        expect(
+          uit(poging.data).ok,
+          `een beloning blokkeerde de datum: ${JSON.stringify(poging.data)}`,
+        ).toBe(true);
+        expect(await datumVan(doelId)).toBe(addDays(w.vandaag, 40));
       },
       TEST_TIMEOUT,
     );

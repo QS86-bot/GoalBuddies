@@ -14,8 +14,24 @@
 --
 -- Domeinregel 11 zegt: een straf treedt in werking bij een verstreken deadline.
 -- `maak_straffen_verschuldigd()` toetst daarvoor uitsluitend
--- `g.target_date < p_vandaag`. Die belofte houdt alleen stand als de gestrafte
--- zijn eigen deadline niet kan verzetten, en dat kon hij.
+-- `g.target_date < p_vandaag`. Eén van de voorwaarden waaronder die belofte
+-- standhoudt, is dat de gestrafte zijn eigen deadline niet kan verzetten — en
+-- dat kon hij. Deze migratie sluit díé route.
+--
+-- ⚠️⚠️ **En sluit daarmee niet domeinregel 11 als geheel, wat de eerste versie
+-- van deze kop wél beweerde ("die belofte houdt alleen stand als …").** 📏
+-- Gemeten in de security-ronde, als `authenticated` eigenaar en direct ná een
+-- geslaagde weigering: `update commitments set status = 'cancelled'` lukt — dat
+-- is de knop `trekIn()` uit 0057, `commitments_update` staat `set`→`cancelled`
+-- toe en de kolomgrant op `status` is `true` — en de job telt daarna 0. Een
+-- straf is dus vrijwillig tot hij `due` is. Ook `rond_doel_af()` laat hem
+-- vervallen, óók wanneer het doel te láát wordt afgerond.
+--
+-- Die twee routes zijn ouder dan deze migratie en raken wat er aan de gebruiker
+-- als consequentie beloofd is (grens 1). Ze staan als QS8-321 en QS8-322 en
+-- worden hier bewust niet meegenomen. **Wat hier telt is dat de kop ze noemt**:
+-- zonder die zin leest de volgende sessie "0184 maakt domeinregel 11 waar" en
+-- stopt met zoeken.
 --
 -- 📏 **Gemeten op de lokale stack, end-to-end, als `authenticated` met echte
 -- claims** — niet uit de bestanden gelezen:
@@ -54,9 +70,17 @@
 --
 -- ⚠️ **Alleen `status = 'set'`.** Dat is de enige stand die
 -- `maak_straffen_verschuldigd()` nog kan omzetten. Een straf die al `due` is,
--- gaat door het verschuiven niet terug — alleen `beslis_deadline_verzoek()` zet
--- hem terug (0177), en dat vraagt het akkoord van een buddy. Blokkeren op `due`
--- zou iemand die zijn straf al gehad heeft beletten opnieuw te plannen.
+-- gaat door het verschuiven niet terug; alleen `beslis_deadline_verzoek()` zet
+-- hem terug (0177). Blokkeren op `due` zou iemand die zijn straf al gehad heeft
+-- beletten opnieuw te plannen.
+--
+-- ⚠️ **Hier stond "en dat vraagt het akkoord van een buddy — daar valt dus
+-- niets te ontsnappen", en dat is te sterk.** 📏 Gemeten: `beslis_deadline_
+-- verzoek()` eist alleen `r.requester_id <> auth.uid()` plus actief
+-- lidmaatschap, dus een tweede eigen account in je eigen groep voldoet en zet
+-- ook een `due`-straf terug naar `set`. Het kost dus geen buddy maar een tweede
+-- account. Dat sybil-punt is breder dan deze migratie — het raakt peer-
+-- goedkeuring als geheel (domeinregel 3) — en staat als dossierrij.
 --
 -- ⚠️ **De tak staat ná `needs_group_approval`.** Bij een gekoppeld doel hoort de
 -- gebruiker "vraag het je groep" te lezen en niet "er staat een straf open" —
@@ -247,10 +271,14 @@ begin
          --    verschuldigd-worden dus onbeperkt vooruit. 📏 Gemeten: straf op
          --    `set`, deadline 30 dagen vooruit, job telt 0.
          --
-         --    Sinds 0184 klopt de zin wél, en scherper: een doel met een
-         --    openstaande straf laat zijn deadline niet **vooruit** schuiven
-         --    zonder buddy. Achteruit mag altijd — dat maakt de straf eerder
-         --    verschuldigd en is dus geen ontsnapping.
+         --    Sinds 0184 klopt de zin over **deze kolom**: een doel met een
+         --    openstaande straf laat zijn deadline niet vooruit schuiven zonder
+         --    buddy. Achteruit mag altijd, want dat maakt de straf eerder
+         --    verschuldigd.
+         --
+         --    ⚠️ Als uitspraak over domeinregel 11 klopt hij nog steeds niet:
+         --    de straf zelf is intrekbaar (`trekIn()`, QS8-321) en vervalt bij
+         --    afronden (QS8-322). De datum staat vast; de straf niet.
          --
          -- ⚠️ **Bínnen de `not exists` en niet ernaast**, en dat is geen
          --    stijlkeuze: ernaast zou het een voorwaarde op élke straf zijn en
