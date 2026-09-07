@@ -80,7 +80,12 @@ const SETS = [
     // ⚠️ `webpush-verzenden.ts` staat hier sinds 25-08-2026 — het verzendpad dat
     //    er nooit was. Zelfde reden als hierboven: hij hoort in `src/` te staan
     //    omdat daar vitest draait, en hier omdat de Edge Function hem aanroept.
-    alleen: ['regels.ts', 'webpush-crypto.ts', 'webpush-verzenden.ts'],
+    // ⚠️ `nudge-besluit.ts` staat hier sinds 07-09-2026 (QS8-341). Hij bevat de
+    //    beslissing mét de gratis poort ervoor; hij staat in `src/` omdat de
+    //    belofte — *een profiel dat de poort niet haalt, stelt nul
+    //    databasevragen* — alleen te toetsen is door hem uit te vóeren, en daar
+    //    draait vitest.
+    alleen: ['regels.ts', 'nudge-besluit.ts', 'webpush-crypto.ts', 'webpush-verzenden.ts'],
   },
   {
     bron: join('src', 'lib', 'observability'),
