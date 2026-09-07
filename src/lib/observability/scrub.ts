@@ -54,6 +54,24 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 const FOUTCODE = /^(?:[0-9A-Z]{5}|PGRST\d{3})$/;
 
+/**
+ * De codevorm van de niet-Postgres-onderdelen van Supabase: `invalid_credentials`
+ * bij auth, `NoSuchKey` bij storage. Eén woord, geen spaties, geen leestekens.
+ *
+ * ⚠️ **Een tweede vorm en geen verruiming van de eerste.** `FOUTCODE` bewaakt de
+ *    `sqlstate`-sleutel, en die grens is smal met een reden; hier gaat het om
+ *    een ánder veld met een andere catalogus. Twee smalle vormen naast elkaar
+ *    zijn eerlijker dan één brede die allebei moet dekken.
+ *
+ * ⚠️ **Waarom dit veilig genoeg is en waar de grens ligt.** Een Postgres-melding
+ *    (`Europe/Bogus is geen bekende tijdzone`) heeft spaties, een e-mailadres
+ *    heeft `@` en een punt; allebei vallen ze af. Wat er wél doorheen zou komen
+ *    is één enkel woord dat een gebruiker heeft ingetypt — maar dit veld wordt
+ *    niet door een aanroeper gevuld: het wordt van het foutobject van de
+ *    bibliotheek gelezen, en die vult het uit zijn eigen vaste lijst.
+ */
+const SYMBOOLCODE = /^[A-Za-z][A-Za-z0-9_]{2,40}$/;
+
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 /** JWT's en Supabase-keys beginnen allemaal met `eyJ`. */
 const TOKEN = /eyJ[\w-]+\.[\w-]+(\.[\w-]+)?/g;
@@ -149,10 +167,19 @@ export function scrubStack(
   stack: string | undefined,
   name: string,
   geschoondeMelding: string,
+  ruweMelding?: string,
 ): string | undefined {
   if (stack === undefined) return undefined;
 
-  const frames = stack
+  // ⚠️ **De kop wordt exact afgeknipt als we hem kennen, en niet weggefilterd.**
+  //    Een melding mag meerdere regels hebben, en `STACKFRAME` kijkt per regel:
+  //    een tweede meldingsregel die met `at ` begint (`ik werk\nat home met …`)
+  //    leest als frame en ging zo alsnog mee. Dat is het lek van 24-08 in een
+  //    nieuwe jas — dezelfde vorm, één regel lager.
+  const kop = ruweMelding === undefined ? undefined : `${name}: ${ruweMelding}`;
+  const romp = kop !== undefined && stack.startsWith(kop) ? stack.slice(kop.length) : stack;
+
+  const frames = romp
     .split('\n')
     .filter((regel) => STACKFRAME.test(regel))
     .map((regel) => regel.replace(EMAIL, '[e-mail]').replace(TOKEN, '[token]'));
@@ -192,4 +219,173 @@ export function scrubContext(extra: Readonly<Record<string, unknown>>): Record<s
   }
 
   return out;
+}
+
+/**
+ * ⚠️ **De vaste zin die in de plaats komt van een servermelding — QS8-319.**
+ *
+ * `scrubMessage()` haalt geciteerde waarden en de `Key (col)=(val)`-vorm uit een
+ * melding, maar **niet** een `%`-interpolatie, en dát is de vorm waarin PL/pgSQL
+ * interpoleert. 📏 Gemeten met de échte functie: `Europe/Bogus is geen bekende
+ * tijdzone` en `Te veel avatars voor deze gebruiker (12).` komen er onveranderd
+ * uit, terwijl de constraintnáám — schemametadata, en juist wat je bij het
+ * opzoeken nodig hebt — wél geschoond wordt. De veilige helft beschermd, de
+ * gevaarlijke doorgelaten.
+ *
+ * ⚠️ **Dat gat is niet met een bezem te dichten**, en dat is gemeten en geen
+ *    indruk: zonder het formaatsjabloon is `Europe/Bogus` niet van de rest van
+ *    de zin te onderscheiden. Wat wél kan is de melding wegnemen van de
+ *    fóutsoort die hem interpoleert.
+ */
+export const SERVERMELDING_WEGGELATEN = 'Servermelding weggelaten';
+
+/**
+ * De markers die de Supabase-bibliotheken zelf op hun foutobjecten zetten.
+ *
+ * ⚠️ **Een marker weegt zwaarder dan een klassenaam, want subklassen hernoemen
+ *    zich.** `AuthApiError`, `AuthWeakPasswordError` en `StorageApiError` zetten
+ *    alle drie hun eigen `name`, maar dragen deze vlag onveranderd. Een lijst
+ *    van klassenamen zou bij elke nieuwe subklasse stil open gaan staan.
+ */
+const SERVERMARKERS = ['__isAuthError', '__isStorageError'] as const;
+
+/**
+ * De klassenamen van Supabase-fouten, als vangnet naast de markers.
+ *
+ * ⚠️ Bewust een vórm en geen opsomming: `PostgrestError` en `FunctionsHttpError`
+ *    dragen geen marker, en een volgende `FunctionsXError` hoort er meteen onder
+ *    te vallen zonder dat iemand deze regel bijwerkt. Te ruim is hier de veilige
+ *    kant — wat er onterecht onder valt, verliest leesbaarheid en lekt niets.
+ */
+const SERVERFOUTNAAM = /^(?:Postgrest|Auth|Storage|Functions|Realtime)\w*Error$/;
+
+function leesString(bron: Readonly<Record<string, unknown>>, sleutel: string): string | undefined {
+  const waarde = bron[sleutel];
+  return typeof waarde === 'string' ? waarde : undefined;
+}
+
+/**
+ * Is deze fout door een server samengesteld, en draagt zijn melding daarom een
+ * waarde die wij niet geschreven hebben?
+ *
+ * ⚠️ **Dit kijkt naar de wáárde en niet naar het type, en dat is precies waarom
+ *    deze richting gekozen is.** 📏 Van de 160 aanroepen in `src/` en `app/`
+ *    typeert de compiler er 136 als een Supabase-fout; de overige 24 zijn
+ *    `unknown`, `any` of een handgeschreven `Error`, en juist bij die eerste
+ *    twee kán er alsnog een `PostgrestError` landen. Een grens op het statische
+ *    type zou die elf niet dekken; deze wel.
+ *
+ * ⚠️ **Waar hij níét bij kan, en dat is eerlijk op te schrijven:** een melding
+ *    die met de hand is overgeschreven in een eigen `Error`
+ *    (``new Error(`x: ${fout.message}`)``) is aan het object niet meer te zien.
+ *    `meldtekst:controle` vangt daarvan de vormen die **in het eerste argument
+ *    van de aanroep zelf** staan; staat de interpolatie eerder — in een
+ *    tussenvariabele, of in een `throw` die verderop gevangen wordt — dan ziet
+ *    geen van beide grendels hem. Dat vraagt dataflow, en het staat als open rij
+ *    van 07-09 in `docs/ENGINEER-REVIEW.md`. **De twee grendels dekken elkaars
+ *    gat maar sluiten samen niet alles**, en dat hier "afgevangen" laten staan
+ *    zou de volgende schrijver op een grendel laten vertrouwen die er niet is.
+ */
+export function isServerfout(fout: unknown): boolean {
+  if (typeof fout !== 'object' || fout === null) return false;
+
+  const bron = fout as Readonly<Record<string, unknown>>;
+  if (SERVERMARKERS.some((marker) => bron[marker] === true)) return true;
+
+  // ⚠️ **Op de aanwezigheid van de sleutels en niet op hun type, en dat is
+  //    gemeten tegen een échte PostgREST.** Voor een kale `raise exception` —
+  //    en 84 van de 87 in dit project zijn kaal, zonder `using detail` of
+  //    `using hint` — stuurt PostgREST letterlijk:
+  //
+  //      {"code":"42501","details":null,"hint":null,"message":"permission denied…"}
+  //
+  //    Een toets die drie strings eist, slaat op de meest voorkomende vorm dus
+  //    níet aan. Hier stond die toets, en de test die hem groen hield voedde een
+  //    `PostgrestError` met alle vier de velden gevuld — een vorm die deze app
+  //    nergens maakt. Zelfde fout als de fixture van 28-08 die `=('zomer-2026')`
+  //    mét aanhalingstekens schreef: de test toetste mijn aanname over de vorm,
+  //    niet de vorm.
+  if ('code' in bron && 'details' in bron && 'hint' in bron) return true;
+
+  const naam = leesString(bron, 'name');
+  return naam !== undefined && SERVERFOUTNAAM.test(naam);
+}
+
+/**
+ * De foutcode van een servermelding, als hij als code leest.
+ *
+ * ⚠️ **Dezelfde vormtoets als bij de `sqlstate`-sleutel, en om dezelfde reden:
+ *    een veld dat als vervanging van een lek wordt ingevoerd, mag niet het
+ *    volgende lek zijn.** Wat niet als code leest, komt er niet in — ook niet
+ *    als `scrubMessage()` het ongemoeid zou laten.
+ */
+export function foutcodeVan(fout: unknown): string | undefined {
+  if (typeof fout !== 'object' || fout === null) return undefined;
+
+  const bron = fout as Readonly<Record<string, unknown>>;
+
+  // ⚠️ **Eén veld, en een lege `code` telt als geen code.** Hier stond een
+  //    terugval op `statusCode`, gebouwd op een verkeerde meting: ik riep
+  //    `new StorageApiError(melding, 404, 'NoSuchKey')` aan en concludeerde
+  //    daaruit dat storage zijn dienstcode in `statusCode` zet. De bibliotheek
+  //    vult die velden anders — `statusCode` is de HTTP-code als string
+  //    (`'404'`) en `code` de dienstcode (`NoSuchKey`) — dus die terugval had
+  //    nooit iets kunnen opleveren: `'404'` valt op beide vormtoetsen af.
+  //    **Een aanroep met de hand in elkaar zetten is geen meting van hoe hij
+  //    gevuld wordt**, en een terugval waar geen geval bij hoort, is code die
+  //    niets bewaakt.
+  //
+  //    ⚠️ De lege string heeft om dezelfde reden géén eigen regel: de
+  //    netwerkfoutvorm van postgrest-js zet `code` op `''`, en die valt op
+  //    beide vormtoetsen hieronder al af. Een extra `!== ''` leest als een
+  //    grendel maar is er geen — een mutatie erop bleef groen.
+  const code = leesString(bron, 'code');
+  if (code === undefined) return undefined;
+
+  return FOUTCODE.test(code) || SYMBOOLCODE.test(code) ? code : undefined;
+}
+
+/** Wat er van een fout overblijft nadat hij de deur uit mag. */
+export interface Foutbeschrijving {
+  readonly naam: string;
+  readonly melding: string;
+  readonly stack?: string | undefined;
+}
+
+function servermelding(fout: unknown): string {
+  const code = foutcodeVan(fout);
+  return code === undefined ? SERVERMELDING_WEGGELATEN : `${SERVERMELDING_WEGGELATEN} (${code})`;
+}
+
+/**
+ * Zet een gevangen fout om in wat er verstuurd mag worden.
+ *
+ * ⚠️ **Dit staat hier en niet bij de twee aanroepers, en dat is de naad die dit
+ *    issue eigenlijk repareert.** `describe()` in `index.ts` en `beschrijf()` in
+ *    `edge-rapport.ts` deden hetzelfde werk in twee bestanden — de app en de
+ *    jobs, met dezelfde belofte en twee plekken om hem te breken. Sinds QS8-319
+ *    is er één, en gaat hij via `edge:sync` mee naar Deno.
+ *
+ * ⚠️ **De stack gaat door `scrubStack()` mét de al bepaalde melding.** De eerste
+ *    regel van een stack ís de melding; die opnieuw opbouwen in plaats van
+ *    opnieuw schonen is de reparatie van 24-08, en een servermelding zou er
+ *    anders langs die weg alsnog uitgaan.
+ */
+export function beschrijfFout(fout: unknown): Foutbeschrijving {
+  if (fout instanceof Error) {
+    const melding = isServerfout(fout) ? servermelding(fout) : scrubMessage(fout.message);
+    return {
+      naam: fout.name,
+      melding,
+      stack: scrubStack(fout.stack, fout.name, melding, fout.message),
+    };
+  }
+
+  // ⚠️ Een servervorm zonder `Error` eromheen — PostgREST geeft er een terug
+  //    zodra hij een JSON-heenreis heeft gemaakt. `String(fout)` zou hier
+  //    `[object Object]` geven en dus niets lekken, maar ook niets zeggen; de
+  //    code is het enige stukje dat er veilig uit kan.
+  if (isServerfout(fout)) return { naam: 'NonError', melding: servermelding(fout) };
+
+  return { naam: 'NonError', melding: scrubMessage(String(fout)) };
 }

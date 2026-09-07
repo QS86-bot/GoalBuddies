@@ -428,8 +428,10 @@ staat en niet gedaan is: `types:db` heeft én een productietoken én een draaien
 Docker-daemon nodig, óók met `--db-url`. Dit is dus een regel voor §6.
 
 ⚠️ **Wat nog wél moet: de Edge Functions opnieuw deployen.** De
-`scrubMessage()`-reparatie van 28-08 zit in `supabase/functions/_shared/`, maar
-een gedeployde bundel verandert daar niet van. Doe dat met
+`scrubMessage()`-reparatie van 28-08 zit in `supabase/functions/_shared/`, en
+sinds 07-09 (QS8-319) ook `beschrijfFout()` — de plek waar besloten wordt dat de
+melding van een serverfout níét meegaat. Een gedeployde bundel verandert daar
+niet van. Doe dat met
 `npx supabase functions deploy` vanaf de machine met `SUPABASE_ACCESS_TOKEN` —
 niet met de hand overtypen: acht bestanden in die payload dragen backslashes,
 `scrub.ts` alleen al zes regels regex, en `edge:gedeployd` vergelijkt de
