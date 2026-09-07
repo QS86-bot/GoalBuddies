@@ -164,7 +164,7 @@ export async function fetchBeoordelingen(
   const { data, error } = await supabase().rpc('openstaande_beoordelingen', argumenten);
 
   if (error) {
-    reportError(error, 'approvals.queue', { pgcode: error.code });
+    reportError(error, 'approvals.queue');
     throw new Error(t('beoordeling.laden_mislukt'));
   }
 
@@ -269,7 +269,7 @@ export async function beoordeel(
     .single();
 
   if (error) {
-    reportError(error, 'approvals.create', { completion_id: completionId, pgcode: error.code });
+    reportError(error, 'approvals.create', { completion_id: completionId });
 
     // ⚠️ De unieke index op (voltooiing, beoordelaar) is de gebruikelijke
     //    afloop als iemand twee keer op de knop drukt of het scherm oud is. Dat
@@ -333,7 +333,7 @@ export async function dienOpnieuwIn(
   });
 
   if (error) {
-    reportError(error, 'approvals.resubmit', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
+    reportError(error, 'approvals.resubmit', { weekly_goal_id: weeklyGoalId });
     return { ok: false, melding: t('opnieuw.mislukt') };
   }
 
@@ -389,7 +389,7 @@ export async function trekGoedkeuringIn(approvalId: string): Promise<Resultaat<b
   });
 
   if (error) {
-    reportError(error, 'approvals.withdraw', { approval_id: approvalId, pgcode: error.code });
+    reportError(error, 'approvals.withdraw', { approval_id: approvalId });
     return { ok: false, melding: t('intrekken.mislukt') };
   }
 
@@ -437,7 +437,7 @@ export async function fetchVragen(weeklyGoalId: string): Promise<readonly Vraag[
     .limit(10);
 
   if (error) {
-    reportError(error, 'approvals.questions', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
+    reportError(error, 'approvals.questions', { weekly_goal_id: weeklyGoalId });
     return [];
   }
 
@@ -470,7 +470,7 @@ export async function fetchBuddyBijdrage(userId: string): Promise<number> {
   //    maken, betekent dat de app tegen iemand liegt die veertig weken heeft
   //    beoordeeld. Precies het soort demotivatie waar deze teller tegen is.
   if (error) {
-    reportError(error, 'approvals.contribution', { pgcode: error.code });
+    reportError(error, 'approvals.contribution');
     throw new Error(t('beoordeling.bijdrage_laden'));
   }
 
@@ -540,7 +540,7 @@ export async function fetchBevestigingsstanden(
   });
 
   if (error) {
-    reportError(error, 'approvals.standen', { pgcode: error.code });
+    reportError(error, 'approvals.standen');
     return new Map();
   }
 

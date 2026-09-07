@@ -307,7 +307,7 @@ export async function schuifDoor(
   });
 
   if (error) {
-    reportError(error, 'weekly.carry', { pgcode: error.code });
+    reportError(error, 'weekly.carry');
     return { ok: false, melding: t('weekdoel.doorschuiven_mislukt') };
   }
 

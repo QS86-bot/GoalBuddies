@@ -102,7 +102,7 @@ async function fetchReeksen(userId: string): Promise<readonly Reeks[]> {
     .limit(200);
 
   if (error) {
-    reportError(error, 'stand.reeksen', { user_id: userId, pgcode: error.code });
+    reportError(error, 'stand.reeksen', { user_id: userId });
     throw new Error(t('doel.reeks_laden'));
   }
 

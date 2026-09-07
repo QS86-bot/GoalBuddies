@@ -94,7 +94,7 @@ async function stuurMelding(argumenten: {
   if (error) {
     // ⚠️ Geen `subject_id` in de context. Een melding is stil, en een sink is
     //    een plek waar iemand anders meeleest.
-    reportError(error, 'safety.report', { group_id: argumenten.p_group_id, pgcode: error.code });
+    reportError(error, 'safety.report', { group_id: argumenten.p_group_id });
     return { ok: false, melding: t('melden.mislukt') };
   }
 
@@ -109,7 +109,7 @@ export async function fetchMeldingenOver(): Promise<number | null> {
   const { data, error } = await supabase().rpc('meldingen_over');
 
   if (error) {
-    reportError(error, 'safety.reports_left', { pgcode: error.code });
+    reportError(error, 'safety.reports_left');
     return null;
   }
 
@@ -128,7 +128,7 @@ export async function blokkeer(userId: string): Promise<Resultaat<true>> {
   const { data, error } = await supabase().rpc('blokkeer', { p_user: userId });
 
   if (error) {
-    reportError(error, 'safety.block', { pgcode: error.code });
+    reportError(error, 'safety.block');
     return { ok: false, melding: t('melden.mislukt') };
   }
 
@@ -142,7 +142,7 @@ export async function deblokkeer(userId: string): Promise<Resultaat<true>> {
   const { error } = await supabase().rpc('deblokkeer', { p_user: userId });
 
   if (error) {
-    reportError(error, 'safety.unblock', { pgcode: error.code });
+    reportError(error, 'safety.unblock');
     return { ok: false, melding: t('melden.mislukt') };
   }
 
@@ -169,7 +169,7 @@ export async function fetchBlokkades(): Promise<readonly Blokkade[]> {
   const { data, error } = await supabase().rpc('mijn_blokkades');
 
   if (error) {
-    reportError(error, 'safety.blocks', { pgcode: error.code });
+    reportError(error, 'safety.blocks');
     throw new Error(t('melden.blokkades_mislukt'));
   }
 
@@ -199,7 +199,7 @@ export async function verwijderLid(
   });
 
   if (error) {
-    reportError(error, 'safety.remove_member', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'safety.remove_member', { group_id: groupId });
     return { ok: false, melding: t('melden.mislukt') };
   }
 

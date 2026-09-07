@@ -87,7 +87,7 @@ export async function fetchWeekafsluiting(
   });
 
   if (error) {
-    reportError(error, 'weekreview.list', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'weekreview.list', { group_id: groupId });
     throw new Error(t('weekafsluiting.laden_mislukt'));
   }
 
@@ -159,7 +159,7 @@ export async function fetchWeekafsluitingReacties(
   });
 
   if (error) {
-    reportError(error, 'weekreview.replies', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'weekreview.replies', { group_id: groupId });
     throw new Error(t('weekafsluiting.reacties_laden'));
   }
 
@@ -239,7 +239,7 @@ export async function bewaarWeekafsluiting(
     );
 
   if (error) {
-    reportError(error, 'weekreview.save', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'weekreview.save', { group_id: groupId });
     return {
       ok: false,
       melding: t('weekafsluiting.opslaan_mislukt'),
@@ -273,7 +273,7 @@ export async function verwijderWeekafsluiting(
     .eq('group_period_start', periode.startDate);
 
   if (error) {
-    reportError(error, 'weekreview.delete', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'weekreview.delete', { group_id: groupId });
     return { ok: false, melding: t('weekafsluiting.weghalen_mislukt') };
   }
 
@@ -305,7 +305,7 @@ export async function reageerOpAntwoord(
   });
 
   if (error) {
-    reportError(error, 'weekreview.reply', { pgcode: error.code });
+    reportError(error, 'weekreview.reply');
 
     // ⚠️ Zelfde reden als bij een chatbericht: 42501 zegt niet waaróm.
     if (await budgetOp('weekreacties_over')) {
@@ -329,7 +329,7 @@ export async function verwijderReactie(reactieId: string): Promise<Resultaat<tru
   const { error } = await supabase().from('week_review_replies').delete().eq('id', reactieId);
 
   if (error) {
-    reportError(error, 'weekreview.reply.delete', { pgcode: error.code });
+    reportError(error, 'weekreview.reply.delete');
     return { ok: false, melding: t('weekafsluiting.weghalen_mislukt') };
   }
 

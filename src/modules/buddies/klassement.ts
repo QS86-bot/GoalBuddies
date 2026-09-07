@@ -96,7 +96,7 @@ export async function fetchKlassement(
   });
 
   if (error) {
-    reportError(error, 'groups.leaderboard', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.leaderboard', { group_id: groupId });
     throw new Error(t('klassement.laden_mislukt'));
   }
 
@@ -131,7 +131,7 @@ export async function fetchGroepsteller(groupId: string): Promise<Groepsteller |
   const { data, error } = await supabase().rpc('groep_teller', { p_group_id: groupId });
 
   if (error) {
-    reportError(error, 'groups.counter', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.counter', { group_id: groupId });
     throw new Error(t('klassement.teller_mislukt'));
   }
 

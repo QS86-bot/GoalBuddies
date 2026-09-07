@@ -55,7 +55,7 @@ export async function fetchWeekpasStanden(goalIds?: readonly string[]): Promise<
   );
 
   if (error) {
-    reportError(error, 'weekpas.standen', { aantal: goalIds?.length ?? 0, pgcode: error.code });
+    reportError(error, 'weekpas.standen', { aantal: goalIds?.length ?? 0 });
     throw new Error(t('doel.weekpassen_laden'));
   }
 

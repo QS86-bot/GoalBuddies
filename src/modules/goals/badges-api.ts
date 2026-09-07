@@ -34,7 +34,7 @@ export async function fetchBadges(): Promise<readonly VerdiendeBadge[]> {
     .limit(50);
 
   if (error) {
-    reportError(error, 'badges.list', { pgcode: error.code });
+    reportError(error, 'badges.list');
     throw new Error(t('badge.laden_mislukt'));
   }
 

@@ -89,7 +89,7 @@ export async function fetchOntdekteGroepen(
   });
 
   if (error) {
-    reportError(error, 'groups.discover', { pgcode: error.code });
+    reportError(error, 'groups.discover');
     throw new Error(t('ontdek.laden_mislukt'));
   }
 
@@ -126,7 +126,7 @@ export async function vraagLidmaatschapAan(
   });
 
   if (error) {
-    reportError(error, 'groups.join_request', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.join_request', { group_id: groupId });
     return { ok: false, melding: t('ontdek.mislukt') };
   }
 
@@ -152,7 +152,7 @@ export async function fetchVerzoekenOver(): Promise<number | null> {
   const { data, error } = await supabase().rpc('lidmaatschapsverzoeken_over');
 
   if (error) {
-    reportError(error, 'groups.join_requests_left', { pgcode: error.code });
+    reportError(error, 'groups.join_requests_left');
     return null;
   }
 
@@ -188,7 +188,7 @@ export async function fetchOpenstaandeVerzoeken(
     .limit(50);
 
   if (error) {
-    reportError(error, 'groups.join_requests', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.join_requests', { group_id: groupId });
     throw new Error(t('ontdek.verzoeken_mislukt'));
   }
 
@@ -214,7 +214,7 @@ export async function beslisVerzoek(
   });
 
   if (error) {
-    reportError(error, 'groups.decide_request', { pgcode: error.code });
+    reportError(error, 'groups.decide_request');
     return { ok: false, melding: t('ontdek.mislukt') };
   }
 
@@ -243,7 +243,7 @@ export async function zetOntdekbaar(
   });
 
   if (error) {
-    reportError(error, 'groups.set_discoverable', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.set_discoverable', { group_id: groupId });
     return { ok: false, melding: t('ontdek.mislukt') };
   }
 

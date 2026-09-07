@@ -29,7 +29,7 @@ export async function budgetOp(teller: 'berichten_over' | 'weekreacties_over'): 
   const { data, error } = await supabase().rpc(teller);
 
   if (error) {
-    reportError(error, 'rem.budget', { teller, pgcode: error.code });
+    reportError(error, 'rem.budget', { teller });
     return false;
   }
 

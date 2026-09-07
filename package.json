@@ -36,6 +36,7 @@
     "streepje:controle": "node scripts/streepje-controle.mjs",
     "review:controle": "node scripts/review-controle.mjs",
     "meldtekst:controle": "node scripts/meldtekst-controle.mjs",
+    "foutsleutel:controle": "node scripts/foutsleutel-controle.mjs",
     "migraties:controle": "node scripts/migraties-controle.mjs",
     "catalogus:controle": "node scripts/catalogus-controle.mjs",
     "persoon:controle": "node scripts/persoon-in-jsonb-controle.mjs",
