@@ -96,3 +96,74 @@ koppeling blijft staan en de pauzerende eigenaar zijn openstaande week blijft op
 het lijstje van de anderen. Of dat fout is, hangt ervan af wat "gepauzeerd"
 straks moet betekenen — vandaag is er geen knop die het doet en dus ook geen
 belofte om te breken. Dat is een ontwerpvraag en geen defect.
+
+---
+
+## Naschrift 07-09-2026 — dezelfde klasse op `chat_messages` (QS8-326, migratie 0187)
+
+Het zoeken naar de **klasse** in plaats van het geval leverde één andere
+BEFORE-UPDATE-trigger op die kolommen terugzet zonder te werpen:
+`stamp_chat_message()`, acht terugzettingen. 📏 Gevraagd aan `pg_trigger` en
+`pg_get_functiondef()`, niet aan de migratiebestanden.
+
+### Het besluit: werpen
+
+📏 Gemeten als `authenticated` afzender binnen het bewerkvenster, vóór de
+wijziging:
+
+```
+alleen `body`               body verandert                      (bedoeld)
+`body` + `type = 'system'`  body verandert, type blijft `text`  (half stil)
+alleen `payload`            succes, en er verandert niets       (volledig stil)
+```
+
+Die derde is de zuivere vorm van QS8-314. De keuze is dus dezelfde: melden in
+plaats van stil terugzetten, met de toets aan `is distinct from` per kolom zodat
+een verzoek dat alleen de tekst wijzigt een gewone update blijft.
+
+### Waarom het hier tóch anders lag dan bij `group_members`
+
+Bij `group_members` waren álle kolommen gepind en had de niet-beheerderstak
+precies één mogelijke uitkomst. Hier niet: `body` en `attachment_url` zijn
+bedoeld bewerkbaar, en `chat_messages_update` staat dat toe binnen vijftien
+minuten na plaatsing. De pin houdt de rij dus schrijfbaar voor wat mag.
+
+⚠️⚠️ **En er is een uitzondering die bij `group_members` niet bestond.**
+`chat_messages` heeft drie foreign keys naar `profiles` met `on delete set null`
+(`sender_id`, `actor_id`, `subject_id`). Een verwijderd account laat Postgres
+zélf een UPDATE doen dwars door deze trigger. 📏 Nagemeten: `delete from profiles`
+zet alle drie op NULL en het bericht blijft staan — precies wat 0033 belooft.
+
+**Een kale `is distinct from` zou daarop afgaan en het verwijderen van een account
+breken.** Dat is de naad van dit issue: de trigger is correct, de foreign key is
+correct, en ze raken elkaar op precies één overgang — gevuld naar NULL op die
+drie kolommen. Die gaat door; élke andere verandering werpt.
+
+De ijking bevestigt dat de test dáár op staat en niet ernaast:
+
+| Mutatie | Wat er rood werd |
+|---|---|
+| de hele `raise` eruit | 2 — beide belofte-tests |
+| de FK-uitzondering eruit (kale `is distinct from`) | 1 — **precies de test op het verwijderde account** |
+| `body` meepakken in de toets | 1 — de must-allow op de gewone bewerking |
+
+Elke mutatie is vooraf met een `grep` bevestigd, want een mutatie die het bestand
+niet raakt geeft een groene uitslag die niets betekent.
+
+### Wat de weging lichter maakte dan gedacht
+
+📏 Er is **geen enkele client-update op `chat_messages`**: `chat.ts` doet een
+insert en een delete en verder niets, en geen functie in het schema werkt de tabel
+bij. Het bewerkvenster van vijftien minuten heeft dus vandaag geen aanroeper, en
+de stille weg was alleen met een rechtstreeks PostgREST-verzoek te bereiken.
+Werpen kan hier dus geen bestaande stroom breken — gemeten, niet aangenomen.
+
+⚠️ Dat het venster geen aanroeper heeft is zelf een halve toestand, van dezelfde
+soort als QS8-325. Het staat als eigen issue en is hier bewust niet meegenomen.
+
+### De realtime-afweging
+
+`chat_messages` staat in `supabase_realtime`. Dat was een reden om te meten en
+niet om over te slaan: een `raise` in een BEFORE-trigger breekt het statement af,
+dus er is geen rijwijziging en dus ook geen realtime-gebeurtenis. Zwijgen liet
+juist een rij door die de client anders dacht te hebben.
