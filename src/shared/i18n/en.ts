@@ -1661,6 +1661,9 @@ export const en: Record<Sleutel, string> = {
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
   'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
+  'coach.uit_vragenlijst':
+    'This comes from your questionnaire, converted from minutes per day to hours per week; you can adjust it here.',
+  'coach.eerder_genoemd': 'In the questionnaire you mentioned: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // A goal's rhythm — decision A53, migration 0140
