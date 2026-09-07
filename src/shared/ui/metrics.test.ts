@@ -412,3 +412,57 @@ describe('ledenrijLabel — de rij die over iemand anders gaat', () => {
     expect(hoger).toContain(besteReeksLabel(9));
   });
 });
+
+/**
+ * Het bijschrift met de bevestigingsstand — QS8-174.
+ *
+ * ⚠️ **De belofte is niet "er staat een teller".** De belofte is dat de eigenaar
+ *    van een week met een meerderheids- of quorumdrempel ziet hoe ver hij is, en
+ *    dat niemand anders dat ziet.
+ *
+ * IJKING — met de hand gedraaid op 07-09-2026:
+ *
+ *   A  `viewer === 'owner' ? bevestigingen : undefined` vervangen door
+ *      `bevestigingen` → rood: de groep ziet de telling
+ *   B  `bevestigingen.nodig > 1` vervangen door `>= 1`
+ *      → rood: "0 van de 1" onder een gewone groep
+ */
+describe('de bevestigingsstand onder een weekdoel', () => {
+  const basis = { status: 'pending', achieved: 'ceiling', hasFloor: false } as const;
+
+  it('telt mee zodra er meer dan één bevestiging nodig is', () => {
+    const state = rangeState({ ...basis, viewer: 'owner', bevestigingen: { gedaan: 1, nodig: 2 } });
+
+    expect(state.label).toContain('1');
+    expect(state.label).toContain('2');
+  });
+
+  it('telt niet bij een drempel van één, want dan valt er niets te tellen', () => {
+    // ⚠️ `any` is de standaard en dus verreweg het meest voorkomende geval.
+    //    "0 van de 1" zegt precies hetzelfde als "wacht op je buddy", met meer
+    //    woorden — en een bijschrift dat niets toevoegt, leer je overslaan.
+    const state = rangeState({ ...basis, viewer: 'owner', bevestigingen: { gedaan: 0, nodig: 1 } });
+    const zonder = rangeState({ ...basis, viewer: 'owner' });
+
+    expect(state.label).toBe(zonder.label);
+  });
+
+  it('laat de groep de telling niet zien', () => {
+    // ⚠️ Domeinregel 7 in zijn gewone vorm: voor élk nieuw oppervlak is beschermd
+    //    het antwoord tot iemand het tegendeel besluit. De beoordelaar ziet dit
+    //    al in zijn eigen wachtrij; een groepslid dat toekijkt hoort het niet.
+    const groep = rangeState({ ...basis, viewer: 'group', bevestigingen: { gedaan: 1, nodig: 2 } });
+    const zonder = rangeState({ ...basis, viewer: 'group' });
+
+    expect(groep.label).toBe(zonder.label);
+  });
+
+  it('valt terug op de oude tekst als de stand ontbreekt', () => {
+    // Een mislukte ophaal is geen leeg scherm: dit is een bijschrift en geen
+    // grendel, en wegvallen is de toestand van vóór dit issue.
+    const state = rangeState({ ...basis, viewer: 'owner' });
+
+    expect(state.label.length).toBeGreaterThan(0);
+    expect(state.awaitingApproval).toBe(true);
+  });
+});
