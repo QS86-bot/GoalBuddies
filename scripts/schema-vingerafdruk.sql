@@ -62,7 +62,19 @@ with kolommen as (
     select table_name, column_name, grantee, privilege_type
     from information_schema.column_privileges where table_schema = 'public'
   ) g
-  where grantee in ('anon', 'authenticated', 'service_role')
+  -- ⚠️ **`PUBLIC` staat er sinds QS8-337 bij, en dat is geen uitbreiding maar een
+  --    reparatie.** Een recht dat via `grant … to public` is uitgedeeld geldt voor
+  --    élke rol, maar staat op zijn eigen grantee-rij; zonder deze naam was de
+  --    vingerafdruk er blind voor. 📏 Gemeten: de md5 was identiek vóór en ná
+  --    `grant update (goal_id) on commitments to public`, en veranderde wél bij
+  --    dezelfde grant aan `authenticated`.
+  --
+  -- ⚠️ Hier blijft het een grantee-lijst en wordt het géén `has_*_privilege`,
+  --    anders dan in de bewakingen van 0191. Een vingerafdruk vergelijkt de vórm
+  --    van twee schema's; wie de rechten tot een effectief recht platslaat, ziet
+  --    niet meer dát de grant ergens anders vandaan komt — en juist dat verschil
+  --    is drift.
+  where grantee in ('anon', 'authenticated', 'service_role', 'PUBLIC')
 ), publicatie as (
   select 'publicatie|' || pubname || '|' || tablename as regel
   from pg_publication_tables where schemaname = 'public'
