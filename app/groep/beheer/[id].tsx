@@ -11,6 +11,7 @@ import {
   goedkeuringsregelLabels,
   goedkeuringsregelUitleg,
   leesGoedkeuringsregel,
+  leesVoertaal,
   leesSeizoenscadans,
   QUORUM_MAX,
   QUORUM_MIN,
@@ -166,11 +167,11 @@ export default function GroepBeheer() {
             : 'geen',
         );
         setOmschrijving(gevonden?.omschrijving ?? '');
-        setVoertaal(
-          VOERTALEN.includes(gevonden?.voertaal as Voertaal)
-            ? (gevonden?.voertaal as Voertaal)
-            : 'geen',
-        );
+        // ⚠️ `leesVoertaal()` en geen `as Voertaal` (QS8-301). De twee regels
+        //    hierboven doen het al goed met `leesGoedkeuringsregel()` en
+        //    `leesSeizoenscadans()`; deze was de enige die de gegenereerde
+        //    `string` met een cast wegmoffelde in plaats van hem te lezen.
+        setVoertaal(leesVoertaal(gevonden?.voertaal) ?? 'geen');
         setError(null);
       })
       .catch((f: unknown) => {

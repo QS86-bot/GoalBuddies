@@ -181,22 +181,6 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
   return 'optional';
 }
 
-export async function fetchVoltooiing(weeklyGoalId: string): Promise<Voltooiing | null> {
-  const { data, error } = await supabase()
-    .from('completions')
-    .select('*')
-    .eq('weekly_goal_id', weeklyGoalId)
-    .is('superseded_by', null)
-    .maybeSingle();
-
-  if (error) {
-    reportError(error, 'completions.get', { weekly_goal_id: weeklyGoalId, code: error.code });
-    return null;
-  }
-
-  return data;
-}
-
 // ---------------------------------------------------------------------------
 // De Dagzet — QS8-50
 // ---------------------------------------------------------------------------
