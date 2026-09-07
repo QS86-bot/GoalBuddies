@@ -1952,9 +1952,12 @@ bovenliggende secties — en dat is precies hoe een openstaand punt stil sterft.
   Twee gescheiden potten zijn beter voor de gebruiker maar brengen het plafond naar
   dertien calls per dag. Onderbouwing in
   `docs/decisions/2026-08-27-de-doelcoachtip-per-mijlpaal.md` §5.
-  ⚠️ **En sinds 28-08 weegt die vraag zwaarder:** het dagquotum telt jobs en niet
-  tokens, en een invoer van 450.000 tekens werd geaccepteerd. Wie het plafond
-  verhoogt zonder eerst de invoer te begrenzen, vermenigvuldigt een gat.
+  ⚠️ **Sinds 06-09 is die vraag van vorm veranderd** (QS8-296, migratie 0182):
+  het dagquotum telt geen jobs meer maar weegt **dollarcent**, en het plafond is
+  `ai_dag_limiet() × ai_job_voorschot_cent()`. Twee gescheiden potten is dus niet
+  langer "dertien calls" maar "hoeveel cent per pot", en dat is een andere en
+  eerlijkere vraag. De invoer was al begrensd sinds 0123. Wat blijft: het antwoord
+  raakt grens 1 en is niet aan Claude.
 - ⚠️ **De wisselende reeks in `tests/rls/reeks.test.ts` is nog steeds niet
   verklaard.** De suite draait sinds PR #54 sequentieel over `tests/rls/`, wat de
   kans erop wegneemt maar niet de oorzaak. PR #60 heeft er twee plausibele

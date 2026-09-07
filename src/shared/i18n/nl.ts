@@ -1004,7 +1004,7 @@ export const nl = {
     'Je doel staat, maar de stappen zijn niet opgeslagen. Voeg ze zelf toe of laat de coach het opnieuw proberen.',
   'coach.plan_zonder_weekdoel':
     'Je doel en je stappen staan. Alleen het weekdoel is niet opgeslagen. Kies zelf wat je deze week doet.',
-  'coach.daglimiet': 'Je hebt vandaag al {limiet} keer de Doelcoach gebruikt. Morgen kan het weer. Je kunt intussen zelf mijlpalen toevoegen.',
+  'coach.daglimiet': 'De Doelcoach heeft vandaag genoeg voor je gedaan. Morgen kan het weer. Je kunt intussen zelf mijlpalen toevoegen.',
   'coach.eyebrow': 'ZES VRAGEN',
   'coach.zes_vragen': 'Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de mijlpalen bij jou passen, maar overslaan werkt gewoon.',
   'coach.alleen_voor_jou': 'Je antwoorden zijn alleen voor jou en de Doelcoach. Je groep ziet ze nooit.',
@@ -1917,7 +1917,7 @@ export const nl = {
   'beoordelen.meer_laden': 'Meer laden',
   'groepscherm.wie_meedoen': 'Wie er meedoen',
   'groepscherm.meer_tijd': 'Een buddy vraagt om meer tijd',
-  'coach.poging_telt': 'Elke poging telt mee in je tien per dag.',
+  'coach.poging_telt': 'Elke poging telt mee in wat de Doelcoach vandaag nog voor je kan doen.',
   'weekafsluiting.wat_gedeeld': 'Wat de groep deelde',
 
   // ---------------------------------------------------------------------------

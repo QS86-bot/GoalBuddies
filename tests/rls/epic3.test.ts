@@ -36,8 +36,9 @@ function uitkomst(data: unknown): {
   reason?: string;
   job_id?: string;
   hergebruikt?: boolean;
-  limiet?: number;
-  gebruikt?: number;
+  gebruikt_cent?: number;
+  budget_cent?: number;
+  jobs?: number;
 } {
   return (data ?? {}) as Record<string, never>;
 }
@@ -209,7 +210,10 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 3 — de poort voor AI-jobs', () => {
       'weigert zodra de dagelijkse grens bereikt is, en telt ook mislukte jobs mee',
       async () => {
         // ⚠️ Mislukte jobs tellen mee, en dat is met opzet: een kapotte prompt
-        //    die twintig keer faalt, kost twintig keer geld.
+        //    die twintig keer faalt, kost twintig keer geld. Sinds 0182 is dat
+        //    geen aparte regel meer maar een gevolg van het voorschot: een job
+        //    zonder `cost_cents` kost de bodem. Zie `tests/rls/ai-budget.test.ts`
+        //    voor wat er dan precies geteld wordt.
         const admin = adminDb();
         const rijen = Array.from({ length: 10 }, (_, i) => ({
           user_id: f.bob.id,
@@ -230,7 +234,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 3 — de poort voor AI-jobs', () => {
 
         expect(uitkomst(data).ok).toBe(false);
         expect(uitkomst(data).reason).toBe('quota_reached');
-        expect(uitkomst(data).limiet).toBe(10);
       },
       TEST_TIMEOUT,
     );
@@ -241,10 +244,23 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 3 — de poort voor AI-jobs', () => {
         const vanBob = await f.bob.db.rpc('ai_verbruik');
         const vanAlice = await f.alice.db.rpc('ai_verbruik');
 
-        expect(uitkomst(vanBob.data).gebruikt).toBeGreaterThanOrEqual(10);
-        expect(uitkomst(vanAlice.data).gebruikt).toBeLessThan(10);
+        // ⚠️ In dollarcent sinds 0182, dezelfde eenheid als de poort weegt. Bob
+        //    heeft er tien staan uit de test hierboven; Alice hooguit één.
+        expect(Number(uitkomst(vanBob.data).gebruikt_cent)).toBeGreaterThanOrEqual(
+          Number(uitkomst(vanBob.data).budget_cent),
+        );
+        expect(Number(uitkomst(vanAlice.data).gebruikt_cent)).toBeLessThan(
+          Number(uitkomst(vanAlice.data).budget_cent),
+        );
       },
       TEST_TIMEOUT,
     );
   });
+
+  // -------------------------------------------------------------------------
+  // ⚠️ **Het gewicht van een job wordt in `tests/rls/ai-budget.test.ts` getoetst**
+  //    en niet hier. Dit bestand gaat over de poort van EPIC 3 — mag je een job
+  //    aanvragen, en van wie is hij. Dat een dúre job meer van het budget opeet
+  //    dan een goedkope is een eigenschap van 0182 en verdient zijn eigen
+  //    bestand, met de ijkingen erbij.
 });

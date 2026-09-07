@@ -2410,8 +2410,11 @@ export type Database = {
         }
         Returns: Json
       }
+      ai_dag_budget_cent: { Args: never; Returns: number }
       ai_dag_limiet: { Args: never; Returns: number }
       ai_invoer_max: { Args: never; Returns: number }
+      ai_job_voorschot_cent: { Args: never; Returns: number }
+      ai_jobkosten_cent: { Args: { p_cost_cents: number }; Returns: number }
       ai_kosten_per_week: {
         Args: { p_weken?: number }
         Returns: {
