@@ -247,6 +247,24 @@ export function oordeel(policy, uitkomst) {
  * De sleutel is `tabel.policynaam.helft`.
  */
 export const NIET_PER_HELFT_TE_METEN = {
+  'profiles.profiles_update.using': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `id = auth.uid()` — ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `profiles` (📏 gemeten: veertien ' +
+      'kolommen wél, `id` niet). Er bestaat dus geen rij die de ene helft passeert en de ' +
+      'andere niet. Het páár is wél bewaakt: `schrijfgrenzen.test.ts` wordt rood zodra ' +
+      'béide helften verruimd worden met `or shares_group_with_user(id)`, de verruiming ' +
+      'die iemand realistisch schrijft.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen — bijvoorbeeld als een beheerder ooit ' +
+      "andermans profiel mag lezen maar niet schrijven — of `id` in de UPDATE-kolomgrant komt.",
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+  'profiles.profiles_update.check': {
+    reden: 'Zelfde paar als `profiles.profiles_update.using`; zie daar voor de meting.',
+    wordtToetsbaarAls: 'zie `profiles.profiles_update.using`.',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
   'groups.groups_update.using': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +

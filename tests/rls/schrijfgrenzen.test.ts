@@ -46,7 +46,14 @@ import {
  *
  *    1. **`profiles_update` — `using` en `check` zijn letterlijk dezelfde
  *       uitdrukking** (`id = auth.uid()`), op dezelfde kolom, en `id` staat niet
- *       in de UPDATE-kolomgrant. Er bestáát geen rij die de ene helft passeert
+ *       in de UPDATE-kolomgrant.
+ *
+ *       ⚠️ **Hermeten op 07-09-2026 (ronde 7) en nog steeds waar** — 📏 beide
+ *       helften komen los uit `rls:dekking` als onbewaakt, en de kolomgrant
+ *       geeft veertien kolommen zonder `id`. Beide staan sindsdien in
+ *       `NIET_PER_HELFT_TE_METEN` in `scripts/rls-dekking.mjs`, zodat het
+ *       instrument ze niet elke run opnieuw als gat meldt. **Deze kop blijft de
+ *       plek waar de meting staat; het register verwijst hierheen.** Er bestáát geen rij die de ene helft passeert
  *       en de andere niet. Het páár is bewaakt — beide open zetten maakt *"je
  *       past de naam van een ander niet aan"* rood — maar de helften zijn niet
  *       te scheiden. **Wordt toetsbaar zodra de twee uitdrukkingen uit elkaar
