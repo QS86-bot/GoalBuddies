@@ -23,7 +23,7 @@
  */
 import { clientEnv } from '../env';
 
-import { scrubContext, scrubMessage, scrubStack } from './scrub';
+import { beschrijfFout, scrubContext } from './scrub';
 
 /** Wat er daadwerkelijk verstuurd wordt. Nooit iets anders dan dit. */
 export interface ErrorEvent {
@@ -54,22 +54,15 @@ export function observabilityConfigured(): boolean {
   return Boolean(clientEnv().sentryDsn);
 }
 
-function describe(
-  error: unknown,
-): { name: string; message: string; stack?: string | undefined } {
-  if (error instanceof Error) {
-    const message = scrubMessage(error.message);
-
-    return {
-      name: error.name,
-      message,
-      // ⚠️ Niet `error.stack` zelf. De eerste regel daarvan ís de ruwe melding,
-      //    dus dat gaf alles terug wat `scrubMessage()` er net uit had gehaald.
-      //    Zie de kop van `scrubStack()`.
-      stack: scrubStack(error.stack, error.name, message),
-    };
-  }
-  return { name: 'NonError', message: scrubMessage(String(error)) };
+/**
+ * ⚠️ **Eén regel, en dat is sinds QS8-319 het punt.** Hier stond het spiegelbeeld
+ *    van `beschrijf()` in `edge-rapport.ts`: dezelfde belofte, twee bestanden,
+ *    twee plekken om hem te breken. De app en de jobs horen niet uit elkaar te
+ *    kunnen lopen over wat er van een fout overblijft.
+ */
+function describe(error: unknown): { name: string; message: string; stack?: string | undefined } {
+  const { naam, melding, stack } = beschrijfFout(error);
+  return { name: naam, message: melding, stack };
 }
 
 /**
@@ -100,7 +93,17 @@ export function reportError(
   }
 }
 
-export { REDACTED, scrubContext, scrubMessage, scrubStack } from './scrub';
+export {
+  beschrijfFout,
+  foutcodeVan,
+  isServerfout,
+  REDACTED,
+  scrubContext,
+  scrubMessage,
+  scrubStack,
+  SERVERMELDING_WEGGELATEN,
+  type Foutbeschrijving,
+} from './scrub';
 
 export { maakSentrySink, type SinkOpties } from './sentry-sink';
 

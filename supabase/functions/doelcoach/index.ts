@@ -908,7 +908,20 @@ Deno.serve(metCors(async (verzoek: Request) => {
           { onConflict: 'milestone_id', ignoreDuplicates: true },
         );
 
-      if (tipfout) throw new Error(`De tip kon niet opgeslagen worden: ${tipfout.message}`);
+      if (tipfout) {
+        // ⚠️ **De melding van de database gaat niet mee in de tekst van de
+        //    `Error`, en dat is geen stijlkeuze — QS8-319.** Deze `throw` wordt
+        //    onderaan gevangen en gaat dan naar `meld()`; de grens daar kijkt
+        //    naar het foutóbject, en een melding die hier met de hand is
+        //    overgeschreven is aan dat object niet meer te zien. `%`-vormen
+        //    komen er dan onveranderd uit. `meldtekst:controle` ziet het ook
+        //    niet: die leest het eerste argument van de aanroep, en dat is hier
+        //    de variabele `fout`. De volledige tekst gaat naar het functielog —
+        //    een ander systeem, met een andere bewaartermijn, dat Supabase niet
+        //    verlaat. Zelfde splitsing als in de rollover (0158, QS8-171).
+        console.error(`De tip kon niet opgeslagen worden: ${tipfout.message}`);
+        throw new Error('De tip kon niet opgeslagen worden');
+      }
     }
 
     await alsSysteem

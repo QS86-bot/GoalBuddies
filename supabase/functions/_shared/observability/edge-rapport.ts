@@ -53,7 +53,7 @@
  * ⚠️ En juist die 403 legde een gat bloot dat de tests niet konden zien: deze
  *    laag meldde `'verstuurd'`. Zie de kop van `Vervoer` hieronder.
  */
-import { scrubContext, scrubMessage, scrubStack } from './scrub.ts';
+import { beschrijfFout, scrubContext } from './scrub.ts';
 
 /** Wat er uit een DSN te halen valt. */
 export interface Dsn {
@@ -213,26 +213,18 @@ export function maakVerzending(
  * ⚠️ Dit is de naad die ertoe doet, en de reden dat `rapport.test.ts` voor de
  *    app bestaat: `scrubMessage()` los toetsen zei niets, want `reportError()`
  *    zette de rúwe stack ernaast en de eerste regel van een stack ís de melding.
- *    Hier gaat de stack daarom door `scrubStack()` met de al geschoonde melding
- *    ernaast, precies zoals in `index.ts`.
+ *
+ * ⚠️ **Het besluit erover staat sinds QS8-319 in `beschrijfFout()` en niet meer
+ *    hier.** Hier stond een eigen kopie van dezelfde afweging — de app en de
+ *    jobs, twee bestanden, één belofte. Wat er van deze functie overblijft is de
+ *    context erbij zetten; wat er van een fout overblijft, wordt op één plek
+ *    bepaald en gaat via `edge:sync` mee naar Deno.
  */
 export function beschrijf(
   fout: unknown,
   extra: Readonly<Record<string, unknown>>,
 ): { naam: string; melding: string; stack?: string | undefined; context: Record<string, unknown> } {
-  const context = scrubContext(extra);
-
-  if (fout instanceof Error) {
-    const melding = scrubMessage(fout.message);
-    return {
-      naam: fout.name,
-      melding,
-      stack: scrubStack(fout.stack, fout.name, melding),
-      context,
-    };
-  }
-
-  return { naam: 'NonError', melding: scrubMessage(String(fout)), context };
+  return { ...beschrijfFout(fout), context: scrubContext(extra) };
 }
 
 /**
