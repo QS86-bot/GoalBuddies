@@ -2043,7 +2043,6 @@ export type Database = {
           ceiling_days: number | null
           ceiling_text: string | null
           created_at: string
-          cycle_index: number
           cycle_start_date: string
           floor_days: number | null
           floor_text: string | null
@@ -2062,7 +2061,6 @@ export type Database = {
           ceiling_days?: number | null
           ceiling_text?: string | null
           created_at?: string
-          cycle_index: number
           cycle_start_date: string
           floor_days?: number | null
           floor_text?: string | null
@@ -2081,7 +2079,6 @@ export type Database = {
           ceiling_days?: number | null
           ceiling_text?: string | null
           created_at?: string
-          cycle_index?: number
           cycle_start_date?: string
           floor_days?: number | null
           floor_text?: string | null
@@ -2404,7 +2401,6 @@ export type Database = {
       }
       activeer_weekplanstap: {
         Args: {
-          p_cycle_index: number
           p_cycle_start_date: string
           p_goal_id: string
         }
@@ -2791,7 +2787,6 @@ export type Database = {
       }
       schuif_weekdoel_door: {
         Args: {
-          p_cycle_index: number
           p_cycle_start_date: string
           p_weekly_goal_id: string
         }
@@ -2824,7 +2819,6 @@ export type Database = {
       sluit_weekdoel_af: { Args: { p_weekly_goal_id: string }; Returns: Json }
       start_weekplanstap: {
         Args: {
-          p_cycle_index: number
           p_cycle_start_date: string
           p_step_id: string
         }

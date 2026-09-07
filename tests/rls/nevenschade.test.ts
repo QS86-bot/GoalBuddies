@@ -128,7 +128,6 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         goal_id: buurDoel.data.id,
         title: `vreemde schone week -${i}`,
         cycle_start_date: addDays(cyclus.startDate, -7 * i),
-        cycle_index: 300 - i,
         status: 'approved',
       });
       if (error) throw new Error(`vreemd weekdoel: ${error.message}`);
@@ -144,7 +143,6 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         goal_id: buurDoel.data.id,
         title: titel,
         cycle_start_date: addDays(cyclus.startDate, -7),
-        cycle_index: 299,
         status,
       });
       if (error) throw new Error(`vreemd gemengd weekdoel: ${error.message}`);
@@ -188,7 +186,6 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         goal_id: buurDoel.data.id,
         title: 'vreemd wachtend',
         cycle_start_date: cyclus.startDate,
-        cycle_index: 301,
         status: 'todo',
       })
       .select('id')
@@ -244,7 +241,6 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
         goal_id: eigenDoel.data.id,
         title: 'eigen drift',
         cycle_start_date: cyclus.startDate,
-        cycle_index: 299,
         status: 'approved',
       })
       .select('id')

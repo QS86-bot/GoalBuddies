@@ -24,7 +24,6 @@ import {
 } from '@/modules/completions';
 import {
   afsluitbareCyclus,
-  eersteCyclusVanDoel,
   fetchDoelnamen,
   badgeLabels,
   badgeUitleg,
@@ -749,18 +748,13 @@ function DoorschuifKaart({
     setBezig(true);
     setFout(null);
 
-    // ⚠️ De eerste cyclus van het doel bepaalt `cycle_index` van de nieuwe rij.
-    //    Zonder deze opzoeking wordt elke doorgeschoven week "week 1" van dat
-    //    doel, en dan telt de weekteller in het doeloverzicht niet meer mee.
-    const eerste = await eersteCyclusVanDoel(weekdoel.goal_id, klok);
-
     // ⚠️ `schuifDoor()` was tot 0091 twee aanroepen zonder transactie eromheen,
     //    en viel de verbinding daartussen weg dan stond de oude week op `carried`
     //    zonder opvolger — weg uit dit blok, want `fetchDoorschuifbaar()` haalt
     //    alleen `missed` op. Sinds 0091 doet één RPC beide, dus dat gat is dicht.
     //    De cyclus wordt nog steeds hier uitgerekend en meegegeven: de database
     //    kent de week-startdag van deze gebruiker niet (correctheidsregel 7).
-    const uitkomst = await schuifDoor(weekdoel, klok, eerste);
+    const uitkomst = await schuifDoor(weekdoel, klok);
 
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);

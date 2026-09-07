@@ -280,6 +280,28 @@ Uit `CLAUDE.md`, procesregel 20 — elk bestand in `supabase/migrations/`:
    op het moment dat je hem nodig hebt, heb je geen tijd om te verzinnen.
 3. **Dump vooraf** zodra er data in staat.
 
+#### ⚠️ 2.3a Verandert de migratie een RPC-handtekening? Dan hoort er een deploy bij
+
+Een edge-functie roept een RPC aan via PostgREST, op naam **en argumentnamen**.
+Dropt een migratie de oude handtekening, dan geeft PostgREST de gedeployde
+functie `PGRST202` — de functie staat niet in de schemacache. De drie jobs vangen
+hun fouten zacht af en geven een 200 terug (zie §"Foutrapportage vanuit de Edge
+Functions"), dus **het valt stil zonder dat iets rood wordt**.
+
+⚠️ Dat is geen theoretisch geval. `0185` dropt `activeer_weekplanstap(uuid, date,
+integer)` en zet er `(uuid, date)` neer; de rollover die vandáág draait roept de
+driearguments vorm aan. Tussen het toepassen van de migratie en het opnieuw
+deployen schuift er geen enkele weekplanstap meer in — elk uur, voor iedereen —
+terwijl het afschrijven van gemiste weken gewoon doorloopt. De rollover zegt zelf
+wat dat betekent: *"een plan dat niet inschuift, is een week waarin de gebruiker
+niets te doen heeft zonder dat iemand dat besloten heeft."*
+
+**Dus: migratie en `npx supabase functions deploy <functie>` in dezelfde ronde.**
+Wil je het gat helemaal wegnemen, laat de oude handtekening dan één release als
+dunne wrapper staan en drop hem in een volgmigratie. `npm run edge:gedeployd`
+ziet het achteraf, en alleen met een `SUPABASE_ACCESS_TOKEN` — dat is een
+controle, geen volgordegarantie.
+
 ### 2.4 Volgorde van de bestaande migraties
 
 | Bestand | Wat | Toegepast |

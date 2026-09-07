@@ -141,7 +141,6 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
         goal_id: doel,
         title: 'Deze week ging niet door',
         cycle_start_date: cycle.startDate,
-        cycle_index: 1,
         status: 'missed',
       })
       .select('id')
@@ -757,7 +756,6 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
           goal_id: doel,
           title: 'Week die goedgekeurd wordt',
           cycle_start_date: cycle.startDate,
-          cycle_index: 1,
         })
         .select('id')
         .single();
@@ -896,7 +894,6 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
           goal_id: doel,
           title: 'Week die nog loopt',
           cycle_start_date: cycle.startDate,
-          cycle_index: 1,
         })
         .select('id, beoordeelbaar')
         .single();
@@ -986,7 +983,6 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
           goal_id: doel,
           title: 'Week die blijft bestaan',
           cycle_start_date: cycle.startDate,
-          cycle_index: 1,
         })
         .select('id')
         .single();

@@ -153,7 +153,6 @@ describe.skipIf(!rlsTestsConfigured)('Domeinregel 3 — de trigger overschrijft'
           goal_id: doel.data.id,
           title: `Vervalsingsweek ${index}`,
           cycle_start_date: cycle.startDate,
-          cycle_index: index,
         })
         .select('id')
         .single();

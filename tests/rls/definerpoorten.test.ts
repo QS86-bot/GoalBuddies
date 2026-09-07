@@ -257,7 +257,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           points_floor: 1,
           points_miss: -1,
           cycle_start_date: vandaag,
-          cycle_index: 1,
           status: 'missed',
         })
         .select('id')
@@ -279,7 +278,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           points_floor: 1,
           points_miss: -1,
           cycle_start_date: addDays(vandaag, 14),
-          cycle_index: 3,
         })
         .select('id')
         .single();
@@ -513,7 +511,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
         const poging = await w.groepsgenoot.db.rpc('schuif_weekdoel_door', {
           p_weekly_goal_id: w.gemistWeekId,
           p_cycle_start_date: addDays(w.vandaag, 7),
-          p_cycle_index: 2,
         });
         if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
 
@@ -547,7 +544,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
         const poging = await w.eigenaar.db.rpc('schuif_weekdoel_door', {
           p_weekly_goal_id: w.eigenGemistWeekId,
           p_cycle_start_date: nieuweStart,
-          p_cycle_index: 2,
         });
         if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
         expect(
@@ -572,13 +568,19 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           .single();
         expect(oud.data?.status, 'het oude weekdoel is niet op `carried` gezet').toBe('carried');
 
+        // ⚠️ Op `status` en niet meer op `cycle_index` — die kolom is met
+        //    QS8-147 verdwenen. `cycle_start_date` staat al in de `eq()`, dus
+        //    wat deze regel moet bewijzen is dát de rij er is en dat hij vers
+        //    is: een doorgeschoven weekdoel begint op `todo`.
         const nieuw = await adminDb()
           .from('weekly_goals')
-          .select('cycle_index')
+          .select('status')
           .eq('goal_id', w.soloGoalId)
           .eq('cycle_start_date', nieuweStart)
           .single();
-        expect(nieuw.data?.cycle_index, 'er staat geen doorgeschoven weekdoel in de nieuwe cyclus').toBe(2);
+        expect(nieuw.data?.status, 'er staat geen doorgeschoven weekdoel in de nieuwe cyclus').toBe(
+          'todo',
+        );
       },
       TEST_TIMEOUT,
     );
@@ -852,7 +854,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
           points_floor: 1,
           points_miss: -1,
           cycle_start_date: cyclus,
-          cycle_index: 1,
           status: 'missed',
         })
         .select('id, beoordeelbaar')

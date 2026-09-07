@@ -7,11 +7,15 @@ import { MAX_DAGEN_PER_WEEK } from './schemas';
 /**
  * De invoer van een weekdoel.
  *
- * ⚠️ `cycle_start_date` en `cycle_index` staan er bewust NIET in. Die worden
- *    berekend uit de klok van de gebruiker in `weekly.ts`. Zou de client ze
- *    mogen meesturen, dan is "deze week" iets dat een formulier bepaalt in
- *    plaats van `shared/time` — en dan klopt de hele cyclus niet meer voor
- *    iemand met een andere week-startdag.
+ * ⚠️ `cycle_start_date` staat er bewust NIET in. Die wordt berekend uit de klok
+ *    van de gebruiker in `weekly.ts`. Zou de client hem mogen meesturen, dan is
+ *    "deze week" iets dat een formulier bepaalt in plaats van `shared/time` — en
+ *    dan klopt de hele cyclus niet meer voor iemand met een andere
+ *    week-startdag.
+ *
+ * ⚠️ Hier stond ook `cycle_index` naast. Die kolom is met QS8-147 verdwenen
+ *    (migratie 0185): niemand las hem, en het vullen kostte een extra query per
+ *    weekdoel.
  */
 
 export const weekdoelSchema = z.object({

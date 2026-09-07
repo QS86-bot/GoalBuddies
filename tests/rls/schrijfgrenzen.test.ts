@@ -232,7 +232,6 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
         points_floor: 1,
         points_miss: -1,
         cycle_start_date: vandaag,
-        cycle_index: 1,
       })
       .select('id')
       .single();

@@ -75,7 +75,7 @@ beforeEach(() => {
 
 describe('pasPlanToe — alles lukt', () => {
   it('telt wat er staat en noemt het volledig', async () => {
-    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(uit.ok).toBe(true);
     if (!uit.ok) return;
@@ -92,7 +92,7 @@ describe('pasPlanToe — alles lukt', () => {
     //    schrijft dan — twee rondes per stuk. Bij twaalf mijlpalen zijn dat er
     //    vierentwintig op het moment dat de gebruiker net bevestigd heeft. Dat is
     //    de N+1 uit schaalbaarheidsregel 12, precies waar hij het meest opvalt.
-    await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(insert).toHaveBeenCalledTimes(1);
     expect(insert.mock.calls[0]?.[0]).toHaveLength(2);
@@ -107,7 +107,7 @@ describe('pasPlanToe — alles lukt', () => {
       { id: 'm-1', order_index: 1 },
     ]);
 
-    await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(maakWeekdoel.mock.calls[0]?.[1]).toMatchObject({ milestone_id: 'm-1' });
   });
@@ -117,7 +117,7 @@ describe('pasPlanToe — het gaat halverwege mis', () => {
   it('geeft de fout van het doel door en schrijft niets anders', async () => {
     maakDoel.mockResolvedValue({ ok: false, melding: 'doel.opslaan_mislukt' });
 
-    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(uit).toEqual({ ok: false, melding: 'doel.opslaan_mislukt' });
     expect(insert).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe('pasPlanToe — het gaat halverwege mis', () => {
       select: () => Promise.resolve({ data: null, error: { code: '42501' } }),
     });
 
-    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(uit.ok).toBe(true);
     if (!uit.ok) return;
@@ -143,7 +143,7 @@ describe('pasPlanToe — het gaat halverwege mis', () => {
       select: () => Promise.resolve({ data: null, error: { code: '42501' } }),
     });
 
-    await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(maakWeekdoel).not.toHaveBeenCalled();
   });
@@ -151,7 +151,7 @@ describe('pasPlanToe — het gaat halverwege mis', () => {
   it('noemt het onvolledig als alleen het weekdoel faalt', async () => {
     maakWeekdoel.mockResolvedValue({ ok: false, melding: 'weekdoel.mislukt' });
 
-    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK, null);
+    const uit = await pasPlanToe('gebruiker-1', rijen(), KLOK);
 
     expect(uit.ok).toBe(true);
     if (!uit.ok) return;
@@ -162,7 +162,7 @@ describe('pasPlanToe — het gaat halverwege mis', () => {
     // ⚠️ Het verschil tussen "er was niets voorgesteld" en "het is niet gelukt".
     //    Zonder dat onderscheid krijgt elke gebruiker zonder eerste week een
     //    foutmelding over iets dat nooit beloofd is.
-    const uit = await pasPlanToe('gebruiker-1', rijen({ weekdoel: null }), KLOK, null);
+    const uit = await pasPlanToe('gebruiker-1', rijen({ weekdoel: null }), KLOK);
 
     expect(uit.ok).toBe(true);
     if (!uit.ok) return;
@@ -171,7 +171,7 @@ describe('pasPlanToe — het gaat halverwege mis', () => {
   });
 
   it('doet geen insert als het plan geen mijlpalen had', async () => {
-    const uit = await pasPlanToe('gebruiker-1', rijen({ mijlpalen: [], weekdoel: null }), KLOK, null);
+    const uit = await pasPlanToe('gebruiker-1', rijen({ mijlpalen: [], weekdoel: null }), KLOK);
 
     expect(insert).not.toHaveBeenCalled();
     expect(uit.ok).toBe(true);

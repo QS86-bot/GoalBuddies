@@ -129,7 +129,6 @@ describe('weekdoelSchema', () => {
     //    mogen meesturen, dan bepaalt een formulier wat "deze week" is in plaats
     //    van shared/time.
     expect(Object.keys(weekdoelSchema.shape)).not.toContain('cycle_start_date');
-    expect(Object.keys(weekdoelSchema.shape)).not.toContain('cycle_index');
   });
 
   it('weigert een doel-id dat geen uuid is', () => {

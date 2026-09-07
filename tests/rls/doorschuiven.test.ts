@@ -38,7 +38,7 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
   let doelId: string;
 
   /** Een gemist weekdoel, klaar om doorgeschoven te worden. */
-  async function gemisteWeek(titel: string, start: string, index: number): Promise<string> {
+  async function gemisteWeek(titel: string, start: string): Promise<string> {
     const { data, error } = await adminDb()
       .from('weekly_goals')
       .insert({
@@ -47,7 +47,6 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
         floor_text: 'de vloer van ' + titel,
         ceiling_text: 'het plafond van ' + titel,
         cycle_start_date: start,
-        cycle_index: index,
         status: 'missed',
       })
       .select('id')
@@ -81,12 +80,11 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
   it(
     'zet de oude week op carried en levert de opvolger in één antwoord',
     async () => {
-      const oud = await gemisteWeek('Eerste', '2026-06-01', 1);
+      const oud = await gemisteWeek('Eerste', '2026-06-01');
 
       const { data, error } = await alice.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: oud,
         p_cycle_start_date: '2026-06-08',
-        p_cycle_index: 2,
       });
 
       expect(error).toBeNull();
@@ -98,7 +96,6 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
       //    tweede aanroep voor doen, en juist tússen die twee zat het gat.
       expect(u.weekdoel?.status).toBe('todo');
       expect(u.weekdoel?.cycle_start_date).toBe('2026-06-08');
-      expect(u.weekdoel?.cycle_index).toBe(2);
     },
     TEST_TIMEOUT,
   );
@@ -111,12 +108,11 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
       //    hoorden bij de rij die werd doorgeschoven. De RPC heeft die parameters
       //    niet meer — dus dit kán niet meer afwijken, en deze test bewaakt dat
       //    de inhoud er wél is en niet leeg meekomt.
-      const oud = await gemisteWeek('Tweede', '2026-06-15', 3);
+      const oud = await gemisteWeek('Tweede', '2026-06-15');
 
       const { data } = await alice.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: oud,
         p_cycle_start_date: '2026-06-22',
-        p_cycle_index: 4,
       });
 
       const nieuw = uitkomst(data).weekdoel;
@@ -138,12 +134,11 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
       //    Onder de oude opzet waren dit twee losse RPC-aanroepen en dus twee
       //    transacties: de eerste was dan al gecommit en deze test was rood. Zo
       //    ziet een test op de náád eruit in plaats van op de onderdelen.
-      const oud = await gemisteWeek('Derde', '2026-07-01', 5);
+      const oud = await gemisteWeek('Derde', '2026-07-01');
 
       const { error } = await alice.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: oud,
         p_cycle_start_date: null as unknown as string,
-        p_cycle_index: 6,
       });
 
       expect(error).not.toBeNull();
@@ -161,7 +156,6 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
           goal_id: doelId,
           title: 'Nog open',
           cycle_start_date: '2026-07-08',
-          cycle_index: 7,
           status: 'todo',
         })
         .select('id')
@@ -171,7 +165,6 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
       const { data } = await alice.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: open.id,
         p_cycle_start_date: '2026-07-15',
-        p_cycle_index: 8,
       });
 
       expect(uitkomst(data).ok).toBe(false);
@@ -200,7 +193,6 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
         goal_id: doelId,
         title: `opvulling ${i}`,
         cycle_start_date: '2026-08-03',
-        cycle_index: 1000 + i,
         status: 'todo',
       }));
       for (let i = 0; i < opvulling.length; i += 100) {
@@ -210,11 +202,10 @@ describe.skipIf(!rlsTestsConfigured)('0091 — doorschuiven in één keer', () =
 
       expect(await alice.db.rpc('weekdoelen_over').then((r) => r.data)).toBe(0);
 
-      const oud = await gemisteWeek('Over de grens', '2026-08-10', 9);
+      const oud = await gemisteWeek('Over de grens', '2026-08-10');
       const { data } = await alice.db.rpc('schuif_weekdoel_door', {
         p_weekly_goal_id: oud,
         p_cycle_start_date: '2026-08-17',
-        p_cycle_index: 10,
       });
 
       expect(uitkomst(data).ok).toBe(false);

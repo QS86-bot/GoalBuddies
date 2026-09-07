@@ -200,7 +200,6 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       //    meestuurt krijgt "permission denied for table weekly_goals", en dat
       //    leest als een policyweigering terwijl het een kolomgrant is.
       cycle_start_date: vroegste,
-      cycle_index: 1,
     });
     if (weekdoel.error) throw new Error(`weekdoel: ${weekdoel.error.message}`);
 
@@ -252,7 +251,6 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
       points_ceiling: 2,
       points_floor: 1,
       cycle_start_date: randDag,
-      cycle_index: 1,
     });
     if (randWeekdoel.error) throw new Error(`randweekdoel: ${randWeekdoel.error.message}`);
 

@@ -92,7 +92,6 @@ async function zetCyclus(
       goal_id: goalId,
       title: titel,
       cycle_start_date: dag,
-      cycle_index: 1,
       status: 'todo',
     })
     .select('id')
@@ -125,7 +124,7 @@ async function zetCyclusMetStatus(
   const admin = adminDb();
   const week = await admin
     .from('weekly_goals')
-    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, cycle_index: 1, status: 'todo' })
+    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, status: 'todo' })
     .select('id')
     .single();
   if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
@@ -152,7 +151,7 @@ async function zetCyclusInAfwachting(
 
   const week = await admin
     .from('weekly_goals')
-    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, cycle_index: 1, status: 'todo' })
+    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, status: 'todo' })
     .select('id')
     .single();
   if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
@@ -195,7 +194,7 @@ async function zetCyclusGecorrigeerd(
 
   const week = await admin
     .from('weekly_goals')
-    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, cycle_index: 1, status: 'todo' })
+    .insert({ goal_id: goalId, title: titel, cycle_start_date: dag, status: 'todo' })
     .select('id')
     .single();
   if (week.error || week.data === null) throw new Error(`weekdoel ${titel}: ${week.error?.message}`);
@@ -409,7 +408,6 @@ describe.skipIf(!rlsTestsConfigured)('De vloerverhouding van de Risico-radar', (
         goal_id: goalId,
         title: 'lopende week',
         cycle_start_date: addDays(eigenDatum, -3),
-        cycle_index: 1,
         status: 'todo',
       });
       if (lopend.error) throw new Error(`lopend weekdoel: ${lopend.error.message}`);

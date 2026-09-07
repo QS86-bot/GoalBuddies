@@ -123,7 +123,6 @@ describe.skipIf(!rlsTestsConfigured)('openstaande_beoordelingen — bladeren sla
           goal_id: doel.data.id,
           title: `Week ${n}`,
           cycle_start_date: cyclus.startDate,
-          cycle_index: 1,
         })
         .select('id')
         .single();

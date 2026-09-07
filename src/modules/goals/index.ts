@@ -116,7 +116,6 @@ export {
 } from './interview-schemas';
 
 export {
-  eersteCyclusVanDoel,
   fetchDoorschuifbaar,
   fetchMijlpalen,
   fetchWeekdoelen,

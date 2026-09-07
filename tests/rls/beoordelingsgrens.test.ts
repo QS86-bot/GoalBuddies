@@ -170,7 +170,6 @@ describe.skipIf(!rlsTestsConfigured)('te_beoordelen_voor — de grens zit in de 
           goal_id: doel.data.id,
           title: `Week van ${titel}`,
           cycle_start_date: cyclus.startDate,
-          cycle_index: 1,
         })
         .select('id')
         .single();

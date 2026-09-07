@@ -5,7 +5,6 @@ import { StyleSheet, View } from 'react-native';
 import { fetchJob, vraagWeekdoelen, weekdoelenUit, werkJobAf, type VoorstelWeekdoel } from '@/modules/ai';
 import { useProfiel, userClock } from '@/modules/auth';
 import {
-  eersteCyclusVanDoel,
   fetchDoel,
   fetchInterview,
   fetchMijlpalen,
@@ -262,7 +261,6 @@ function Genereren({
     }
     const rest = voorstellen.slice(1);
 
-    const eerste = await eersteCyclusVanDoel(doel.id, klok);
     const weekdoel = await maakWeekdoel(
       klok,
       {
@@ -272,7 +270,6 @@ function Genereren({
         floor_text: eersteStap.floor_text,
         ceiling_text: eersteStap.ceiling_text,
       },
-      eerste,
     );
 
     if (!weekdoel.ok) {
@@ -316,7 +313,6 @@ function Genereren({
     // ⚠️ De cyclus wordt hier **niet** berekend. `maakWeekdoel()` doet dat uit de
     //    klok van de gebruiker (correctheidsregel 7); dit scherm stuurt hem
     //    nooit mee.
-    const eerste = await eersteCyclusVanDoel(doel.id, klok);
 
     const uitkomst = await maakWeekdoel(
       klok,
@@ -327,7 +323,6 @@ function Genereren({
         floor_text: voorstel.floor_text,
         ceiling_text: voorstel.ceiling_text,
       },
-      eerste,
     );
 
     setBezig(null);

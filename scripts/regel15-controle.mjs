@@ -61,7 +61,7 @@ export const GRENS = 50;
  * @type {Readonly<Record<string, number>>}
  */
 export const PLAFOND = Object.freeze({
-  'app/': 66,
+  'app/': 65,
   'src/shared/ui/': 8,
   // ⚠️ **`scripts/` telt mee sinds 06-09-2026** (QS8-291). Die map viel
   //    structureel buiten de linter — 57 bestanden, 14.170 regels — en de

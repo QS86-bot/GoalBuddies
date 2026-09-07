@@ -377,7 +377,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
             goal_id: f.opTijdGoalId,
             title: 'COMMITMENT gemiste week',
             cycle_start_date: f.cycleStart,
-            cycle_index: 1,
           })
           .select('id')
           .single();

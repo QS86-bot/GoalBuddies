@@ -70,7 +70,6 @@ describe.skipIf(!rlsTestsConfigured)('A51 — één reviewpunt per buddy per cyc
         goal_id: goalId,
         title: `Week ${index}`,
         cycle_start_date: start,
-        cycle_index: index,
       })
       .select('id')
       .single();

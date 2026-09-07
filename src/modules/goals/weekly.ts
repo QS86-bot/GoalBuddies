@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { cyclesBetween, userCycleOn, type Cycle, type UserClock } from '../../shared/time';
+import { type Cycle, type UserClock } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
 import { huidigeCyclus } from './cycles';
@@ -138,56 +138,23 @@ export async function fetchMijlpalen(goalId: string): Promise<readonly Mijlpaal[
   return data ?? [];
 }
 
-/**
- * De cyclus waarin het eerste weekdoel van dit doel viel — QS8-106.
- *
- * ⚠️ `maakWeekdoel()` en `schuifDoor()` hebben dit nodig om `cycle_index` te
- *    bepalen: de hoeveelste week van dít doel is dit? Geef je `null` mee, dan
- *    wordt elke nieuwe week week 1, en dan telt de teller in het doeloverzicht
- *    niet meer mee met de werkelijkheid.
- *
- * ⚠️ Bewust een aparte query in plaats van rekenen met `cycle_index` van het
- *    weekdoel dat je al hebt. Dat zou kloppen zolang die kolom klopt, en dan
- *    vermenigvuldigt een fout in één rij zich stil door in alle volgende. De
- *    vroegste rij is de bron; dit is een enkele geïndexeerde lookup op een
- *    handeling die zelden voorkomt.
- *
- * Geeft `null` terug als dit doel nog geen enkel weekdoel heeft — dan is de week
- * die je nu maakt per definitie de eerste.
- */
-export async function eersteCyclusVanDoel(
-  goalId: string,
-  klok: UserClock,
-): Promise<Cycle | null> {
-  const { data, error } = await supabase()
-    .from('weekly_goals')
-    .select('cycle_start_date')
-    .eq('goal_id', goalId)
-    .order('cycle_start_date', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    reportError(error, 'weekly.firstCycle', { goal_id: goalId, code: error.code });
-    return null;
-  }
-
-  const start = data?.cycle_start_date;
-  return start === undefined || start === null ? null : userCycleOn(klok, start);
-}
 
 /**
  * Voegt een weekdoel toe — QS8-43 en QS8-44.
  *
- * ⚠️ `cycle_start_date` en `cycle_index` worden hier berekend uit de klok van de
- *    gebruiker, niet door de aanroeper meegegeven. Dat is het hele punt van deze
- *    functie: er is precies één plek waar een weekdoel aan een cyclus wordt
- *    gekoppeld.
+ * ⚠️ `cycle_start_date` wordt hier berekend uit de klok van de gebruiker, niet
+ *    door de aanroeper meegegeven. Dat is het hele punt van deze functie: er is
+ *    precies één plek waar een weekdoel aan een cyclus wordt gekoppeld.
+ *
+ * ⚠️ **Er stond hier ook een `cycle_index`, en die is met QS8-147 weg.** Om hem
+ *    te vullen deed elke aanroeper eerst `eersteCyclusVanDoel()` — één extra
+ *    query vóór élk aanmaken — voor een kolom die nergens gelezen werd. Migratie
+ *    0185 heeft hem laten vallen; de onderbouwing staat in die kop en in
+ *    `docs/decisions/2026-09-07-een-kolom-die-alleen-geschreven-werd.md`.
  */
 export async function maakWeekdoel(
   klok: UserClock,
   invoer: WeekdoelInvoer,
-  eersteCyclusVanDoel: Cycle | null,
 ): Promise<Resultaat<Weekdoel>> {
   const gevalideerd = weekdoelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
@@ -195,7 +162,6 @@ export async function maakWeekdoel(
   }
 
   const cyclus = huidigeCyclus(klok);
-  const index = eersteCyclusVanDoel === null ? 1 : cyclesBetween(eersteCyclusVanDoel, cyclus) + 1;
 
   const { data, error } = await supabase()
     .from('weekly_goals')
@@ -220,7 +186,6 @@ export async function maakWeekdoel(
       floor_days: gevalideerd.data.floor_days,
       ceiling_days: gevalideerd.data.ceiling_days,
       cycle_start_date: cyclus.startDate,
-      cycle_index: index,
     })
     .select('*')
     .single();
@@ -333,15 +298,12 @@ export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
 export async function schuifDoor(
   doel: Weekdoel,
   klok: UserClock,
-  eersteCyclusVanDoel: Cycle | null,
 ): Promise<Resultaat<Weekdoel>> {
   const cyclus = huidigeCyclus(klok);
-  const index = eersteCyclusVanDoel === null ? 1 : cyclesBetween(eersteCyclusVanDoel, cyclus) + 1;
 
   const { data, error } = await supabase().rpc('schuif_weekdoel_door', {
     p_weekly_goal_id: doel.id,
     p_cycle_start_date: cyclus.startDate,
-    p_cycle_index: index,
   });
 
   if (error) {

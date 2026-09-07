@@ -7,15 +7,16 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-299, QS8-303, QS8-304 en QS8-191; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie staat op `0183`, maar de edge-functies zijn van de dag ervoor.**
 📏 Gemeten op 07-09 aan het echte project, niet aan dit document:
 `list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
-06-09 is daarmee ingelopen; alleen `0184` (een open straf laat de deadline niet
-vooruit schuiven, QS8-317) staat nog niet op productie.
+06-09 is daarmee ingelopen; `0184` (een open straf laat de deadline niet vooruit
+schuiven, QS8-317) en `0185` (`cycle_index` weg, QS8-147) staan nog niet op
+productie.
 
 ⚠️⚠️ **Wat er wél nog openstaat is een deploy, en die is stiller dan een
 migratie.** `list_edge_functions` geeft voor alle drie de functies
@@ -26,7 +27,7 @@ gedeployde `notificaties` weet er niets van — **de persoon-getuige krijgt zijn
 melding niet**. Er is geen kapot onderdeel, dus niets wordt er rood van. Staat
 als QS8-320, met het commando erbij.
 
-⚠️ **En let op de volgorde zodra QS8-147 landt.** Die migratie dropt
+⚠️ **En let op de volgorde bij `0185`.** Die migratie dropt
 `activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
 gedeployde rollover roept de driearguments vorm aan. Zonder deploy in dezelfde
 ronde geeft PostgREST `PGRST202`, vangt de rollover dat zacht af, en schuift er
@@ -173,7 +174,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0184` staan in de map: **187 bestanden**,
+Migraties `0001` t/m `0185` staan in de map: **188 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

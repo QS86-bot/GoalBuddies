@@ -175,7 +175,6 @@ describe.skipIf(!rlsTestsConfigured)('note_required wordt echt afgedwongen', () 
         goal_id: doelId,
         title: `Bewijseisweek ${volgendeIndex}`,
         cycle_start_date: cyclusStart,
-        cycle_index: volgendeIndex,
       })
       .select('id')
       .single();
