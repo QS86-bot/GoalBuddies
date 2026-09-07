@@ -3,6 +3,11 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
+
+const SCHADUW_EEN = proefId(1);
+const SCHADUW_TWEE = proefId(2);
+const SCHADUW_GROEP = proefId(10);
 
 /**
  * Een tijdelijke tabel mag geen enkele functie kunnen sturen — QS8-269.
@@ -111,15 +116,15 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
       const uitkomst = inEenSessieOfFout(`
         begin;
         insert into auth.users (id, email, raw_user_meta_data)
-          values ('9e1d0000-0000-4000-8000-000000000001', 'schaduw@voorbeeld.test', '{}'::jsonb);
+          values ('${SCHADUW_EEN}', 'schaduw@voorbeeld.test', '{}'::jsonb);
         update profiles set tz = 'UTC'
-          where id = '9e1d0000-0000-4000-8000-000000000001';
+          where id = '${SCHADUW_EEN}';
 
         create temp table profiles (id uuid, tz text);
         insert into profiles values
-          ('9e1d0000-0000-4000-8000-000000000001', '${ONBESTAANDE_ZONE}');
+          ('${SCHADUW_EEN}', '${ONBESTAANDE_ZONE}');
 
-        select 'datum=' || eigenaarsdatum('9e1d0000-0000-4000-8000-000000000001');
+        select 'datum=' || eigenaarsdatum('${SCHADUW_EEN}');
         rollback;
       `);
 
@@ -158,16 +163,16 @@ describe.skipIf(!beschikbaar)('een tijdelijke tabel stuurt geen enkele functie',
       const uitkomst = inEenSessieOfFout(`
         begin;
         insert into auth.users (id, email, raw_user_meta_data)
-          values ('9e1d0000-0000-4000-8000-000000000002', 'schaduw2@voorbeeld.test', '{}'::jsonb);
+          values ('${SCHADUW_TWEE}', 'schaduw2@voorbeeld.test', '{}'::jsonb);
         insert into groups (id, name, created_by, invite_code, tz)
-          values ('9e1d0000-0000-4000-8000-00000000000a', 'Schaduwgroep',
-                  '9e1d0000-0000-4000-8000-000000000002', 'SCHAD1', 'UTC');
+          values ('${SCHADUW_GROEP}', 'Schaduwgroep',
+                  '${SCHADUW_TWEE}', 'SCHAD1', 'UTC');
 
         create temp table groups (id uuid, tz text);
         insert into groups values
-          ('9e1d0000-0000-4000-8000-00000000000a', '${ONBESTAANDE_ZONE}');
+          ('${SCHADUW_GROEP}', '${ONBESTAANDE_ZONE}');
 
-        select 'datum=' || groepsdatum('9e1d0000-0000-4000-8000-00000000000a');
+        select 'datum=' || groepsdatum('${SCHADUW_GROEP}');
         rollback;
       `);
 

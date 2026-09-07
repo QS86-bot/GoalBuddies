@@ -204,6 +204,13 @@ jobs:
       - name: Geen persoon in jsonb
         run: npm run persoon:controle
 
+      # ⚠️ Geen vaste uuid in een fixture die geschreven wordt. Draaien er twee
+      #    suites tegen dezelfde stack — sinds er parallel gewerkt wordt de
+      #    gewone toestand — dan is zo'n uuid geen identiteit maar een gedeelde
+      #    sleutel, en ruimt de één de rij van de ánder op.
+      - name: Geen gedeelde identiteit in een fixture
+        run: npm run gedeelde-identiteit:controle
+
       # ⚠️ De gratis tier heeft 60 verbindingen voor de héle database. Deze
       #    controle wordt rood zodra er een Postgres-driver of een
       #    verbindingsstring bij komt — vandaag klopt de regel omdat alles via

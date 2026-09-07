@@ -9,6 +9,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { proefId } from './proefid';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
@@ -257,8 +258,8 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 11 — meldingen', () => {
         // De tegentest bij de vorige. Twee buddy's die op je wachten zijn twee
         // verzoeken; samenvoegen tot één zou de melding onbruikbaar maken.
         const admin = adminDb();
-        const een = '11111111-1111-1111-1111-111111111111';
-        const twee = '22222222-2222-2222-2222-222222222222';
+        const een = proefId(1);
+        const twee = proefId(2);
 
         const a = await admin.from('notifications_sent').insert({
           user_id: f.alice.id,

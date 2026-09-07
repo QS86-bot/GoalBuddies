@@ -22,6 +22,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { addDays, localDateIn, now, type IsoDate, type TimeZone } from '../../src/shared/time';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './harness';
+import { proefId } from './proefid';
 
 const TEST_TIMEOUT = 30_000;
 
@@ -51,7 +52,7 @@ const SCENARIOS: readonly Scenario[] = [
     //    "onbekend". Iemand die net begint hoort geen waarschuwing te zien over
     //    een patroon dat nog niet bestaat.
     naam: 'nieuw doel zonder geschiedenis',
-    goalId: '00000000-0000-0000-0000-00000000c001',
+    goalId: proefId(1),
     deadlineOverDagen: 200,
     openMijlpalen: 5,
     cycli: [],
@@ -59,7 +60,7 @@ const SCENARIOS: readonly Scenario[] = [
   },
   {
     naam: 'streefdatum binnen een week met open werk',
-    goalId: '00000000-0000-0000-0000-00000000c002',
+    goalId: proefId(2),
     deadlineOverDagen: 2,
     openMijlpalen: 1,
     cycli: [],
@@ -67,7 +68,7 @@ const SCENARIOS: readonly Scenario[] = [
   },
   {
     naam: 'meer mijlpalen dan weken',
-    goalId: '00000000-0000-0000-0000-00000000c003',
+    goalId: proefId(3),
     deadlineOverDagen: 21,
     openMijlpalen: 9,
     cycli: [],
@@ -76,7 +77,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     // tempo 1/4 = 0,25 · benodigd 8/20 = 0,4 · 0,4 > 0,25 × 1,5
     naam: 'tempo te laag voor wat er ligt',
-    goalId: '00000000-0000-0000-0000-00000000c004',
+    goalId: proefId(4),
     deadlineOverDagen: 145,
     openMijlpalen: 8,
     cycli: ['missed', 'missed', 'missed', 'approved'],
@@ -84,7 +85,7 @@ const SCENARIOS: readonly Scenario[] = [
   },
   {
     naam: 'vier cycli stil met open werk',
-    goalId: '00000000-0000-0000-0000-00000000c005',
+    goalId: proefId(5),
     deadlineOverDagen: 300,
     openMijlpalen: 1,
     cycli: ['missed', 'missed', 'missed', 'missed'],
@@ -93,7 +94,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     // tempo 1,0 · benodigd 2/20 = 0,1
     naam: 'ruim op tempo',
-    goalId: '00000000-0000-0000-0000-00000000c006',
+    goalId: proefId(6),
     deadlineOverDagen: 145,
     openMijlpalen: 2,
     cycli: ['approved', 'approved', 'approved', 'approved'],
@@ -105,7 +106,7 @@ const SCENARIOS: readonly Scenario[] = [
     //    plafond steeds verder weg. Dit is precies het geval dat je zonder
     //    radar pas ziet als het te laat is.
     naam: 'alles gehaald maar structureel op de vloer',
-    goalId: '00000000-0000-0000-0000-00000000c007',
+    goalId: proefId(7),
     deadlineOverDagen: 145,
     openMijlpalen: 2,
     cycli: ['approved', 'approved', 'approved', 'approved'],
@@ -301,7 +302,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-93 — de haalbaarheidsberekening', ()
 
       try {
         for (const [i, variant] of varianten.entries()) {
-          const goalId = `00000000-0000-0000-0000-0000000000e${i}`;
+          const goalId = proefId(100 + i);
           gebouwd.push(goalId);
 
           await bouwScenario({

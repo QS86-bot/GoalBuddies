@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
 
 /**
  * Eén stukke groep kost de rest geen recap — QS8-171, migratie 0158.
@@ -44,9 +45,17 @@ const beschikbaar = stackBeschikbaarOfFaal(
 /** 1 oktober 2026 om 08:30 in Amsterdam — de eerste dag van Q4, zoals 0112 hem wil. */
 const EERSTE_DAG_Q4 = '2026-10-01T06:30:00Z';
 
-const EIGENAAR = '00000000-0000-4000-8000-000000000171';
-const GEZOND = '00000000-0000-4000-8000-00000000a171';
-const STUK = '00000000-0000-4000-8000-00000000b171';
+/**
+ * ⚠️ **Ook de uitnodigingscode en het e-mailadres zijn per run uniek** —
+ *    QS8-336. Hier stonden `'RECAPG01'`, `'RECAPS01'` en `recap171@x.nl` vast,
+ *    en `groups.invite_code` en `auth.users.email` dragen allebei een
+ *    UNIQUE-constraint. 📏 Bij twee gelijktijdige suites viel de tweede insert
+ *    om met 23505 en had dit bestand geen opstelling meer. Een uuid is niet de
+ *    enige gedeelde identiteit; élke waarde onder een unieke sleutel is er een.
+ */
+const EIGENAAR = proefId(1);
+const GEZOND = proefId(2);
+const STUK = proefId(3);
 
 /**
  * Twee groepen die allebei een recap verdienen: elk een schakel in Q3, zodat
@@ -55,11 +64,11 @@ const STUK = '00000000-0000-4000-8000-00000000b171';
 const OPSTELLING = `
   create temp table t as select
     '${EIGENAAR}'::uuid eig, '${GEZOND}'::uuid goed, '${STUK}'::uuid stuk;
-  insert into auth.users (id, email) select eig, 'recap171@x.nl' from t;
+  insert into auth.users (id, email) select eig, '${EIGENAAR}@recap.test' from t;
   insert into groups (id, name, created_by, status, invite_code, categorie, tz, season_cadence)
-    select goed, 'Gezond', eig, 'active', 'RECAPG01', 'other', 'Europe/Amsterdam', 'quarterly' from t;
+    select goed, 'Gezond', eig, 'active', 'G${GEZOND}', 'other', 'Europe/Amsterdam', 'quarterly' from t;
   insert into groups (id, name, created_by, status, invite_code, categorie, tz, season_cadence)
-    select stuk, 'Stuk', eig, 'active', 'RECAPS01', 'other', 'Europe/Amsterdam', 'quarterly' from t;
+    select stuk, 'Stuk', eig, 'active', 'S${STUK}', 'other', 'Europe/Amsterdam', 'quarterly' from t;
   insert into group_members (group_id, user_id, role, status) select goed, eig, 'admin', 'active' from t;
   insert into group_members (group_id, user_id, role, status) select stuk, eig, 'admin', 'active' from t;
   insert into chain_links (group_id, user_id, group_period_start) select goed, eig, '2026-07-01'::date from t;

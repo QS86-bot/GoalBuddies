@@ -15,6 +15,7 @@ import {
   type TestDb,
   type TestUser,
 } from './harness';
+import { proefId } from './proefid';
 
 /**
  * Wat de client alleen mag lézen, blijft alleen te lezen — QS8-262, migratie 0148.
@@ -539,7 +540,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
         poger: eigenaar,
         sleutel: { id: groupId },
         wijziging: { name: 'Omgedoopt' },
-        nieuweRij: { name: 'Rechtstreeks', created_by: eigenaar.id, invite_code: 'ALZ12345' },
+        nieuweRij: { name: 'Rechtstreeks', created_by: eigenaar.id, invite_code: `ALZ${proefId(1).slice(0, 8)}` },
       },
       {
         tabel: 'reports',

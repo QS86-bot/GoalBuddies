@@ -19,6 +19,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { proefId } from './proefid';
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 60_000;
@@ -34,9 +35,17 @@ let groupId: string;
 let periode: string;
 let reviewId: string;
 
-/** De ids van vier reacties, oplopend in tijd. */
-const REACTIE_EEN = 'aaaaaaaa-0000-0000-0000-000000000001';
-const REACTIES = [REACTIE_EEN, ...[2, 3, 4].map((i) => `aaaaaaaa-0000-0000-0000-00000000000${i}`)];
+/**
+ * De ids van vier reacties, oplopend in tijd.
+ *
+ * ⚠️ **De volgorde zit in het volgnummer en niet in de tekst** — QS8-336. Hier
+ *    stond een vaste `aaaaaaaa-…`-reeks, en de cursor van 0121 sorteert op
+ *    `(created_at, id)`: de id's moesten dus in dezelfde volgorde staan als de
+ *    tijden. `proefId()` houdt die eigenschap (gelijke prefix, volgnummer
+ *    achteraan) en botst niet meer met een tweede suite-run.
+ */
+const REACTIES = [1, 2, 3, 4].map((i) => proefId(i));
+const REACTIE_EEN = REACTIES[0] ?? '';
 
 async function pagina(limit: number, na: Rij | null): Promise<Rij[]> {
   const { data, error } = await eigenaar.db.rpc('weekafsluiting_reacties', {

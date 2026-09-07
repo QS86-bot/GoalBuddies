@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
 
 /**
  * Een uitgezet lid is geen groepsgenoot meer — QS8-146, migratie 0160.
@@ -52,9 +53,9 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
-const ALICE = '00000000-0000-4000-8000-00000000a146';
-const BOB = '00000000-0000-4000-8000-00000000b146';
-const GROEP = '00000000-0000-4000-8000-00000000e146';
+const ALICE = proefId(1);
+const BOB = proefId(2);
+const GROEP = proefId(3);
 
 /** Alice en Bob in één groep, Bob met een avatar. */
 const OPSTELLING = `
@@ -179,9 +180,9 @@ describe.skipIf(!beschikbaar)('en wie er nog wél bij hoort, blijft zichtbaar', 
  *    voor iedereen hetzelfde is.
  */
 
-const CAROL = '00000000-0000-4000-8000-00000000c146';
-const DAVE = '00000000-0000-4000-8000-00000000d146';
-const GROEP_B = '00000000-0000-4000-8000-00000000f146';
+const CAROL = proefId(4);
+const DAVE = proefId(5);
+const GROEP_B = proefId(6);
 
 /** Groep A met vier leden; Carol deelt daarnaast groep B met Bob, Dave niet. */
 const TWEE_GROEPEN = `

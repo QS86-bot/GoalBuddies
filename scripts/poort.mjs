@@ -59,6 +59,7 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'functies:controle',
   'kolomrechten:controle',
   'pin:controle',
+  'gedeelde-identiteit:controle',
   'logboek:controle',
   'zichtbaarheid:controle',
   'register:controle',

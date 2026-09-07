@@ -81,6 +81,8 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
   const alice = randomUUID();
   const bob = randomUUID();
   const vreemde = randomUUID();
+  let groepId = '';
+  const code = `AV${alice.slice(0, 8)}`;
 
   beforeAll(() => {
     // Drie profielen, en Alice en Bob in dezelfde groep. `shares_group_with_user`
@@ -103,10 +105,18 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
       );
     }
 
+    // ⚠️ **De uitnodigingscode is per run uniek, en dat is een gemeten
+    //    reparatie (QS8-336).** Hier stond `'AVTST1'`, en `invite_code` draagt
+    //    een UNIQUE-constraint: draaien er twee suites tegen dezelfde stack, dan
+    //    valt de tweede insert om met 23505 en heeft dit bestand geen groep. Het
+    //    gevolg landde niet op deze regel maar drie tests verderop, waar Bob de
+    //    avatar van Alice ineens niet meer mocht zien — `shares_group_with_user`
+    //    is dan onwaar omdat de groep er niet is.
     const groep = psql(
       `insert into public.groups (name, created_by, invite_code)
-       values ('Avatartest', '${alice}', 'AVTST1') returning id`,
+       values ('Avatartest', '${alice}', '${code}') returning id`,
     );
+    groepId = groep;
     for (const id of [alice, bob]) {
       psql(
         `insert into public.group_members (group_id, user_id, role, status)
@@ -124,7 +134,10 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
   afterAll(() => {
     psql(`delete from storage.objects where bucket_id = 'avatars' and name like '${alice}/%'`);
     psql(`delete from public.group_members where user_id in ('${alice}', '${bob}')`);
-    psql(`delete from public.groups where name = 'Avatartest'`);
+    // ⚠️ **Op id en niet op naam.** Op naam haalt deze opruiming de groep van
+    //    een gelijktijdige run weg — dezelfde fout als in `policies.test.ts`,
+    //    daar gerepareerd in QS8-329. Een naam is geen identiteit.
+    psql(`delete from public.groups where id = '${groepId}'`);
     psql(`delete from public.profiles where id in ('${alice}', '${bob}', '${vreemde}')`);
     psql(`delete from auth.users where id in ('${alice}', '${bob}', '${vreemde}')`);
   });
@@ -356,7 +369,7 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
 
     const uit = als(
       vreemde,
-      `select jsonb_path_query_array(invite_preview('AVTST1'), '$.members[*].avatar_url')::text`,
+      `select jsonb_path_query_array(invite_preview('${code}'), '$.members[*].avatar_url')::text`,
     );
 
     // Twee leden in deze groep, dus twee posities — en beide leeg.

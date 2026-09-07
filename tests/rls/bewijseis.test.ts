@@ -35,6 +35,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { BEWIJSEISEN } from '../../src/modules/buddies/schemas';
 import { userCycle } from '../../src/shared/time';
+import { proefId } from './proefid';
 import {
   adminDb,
   createTestProfile,
@@ -81,7 +82,7 @@ describe.skipIf(!rlsTestsConfigured)('de bewijseis van een groep — QS8-261', (
         .insert({
           name: 'Bewijseis-allowlist',
           created_by: eigenaar.id,
-          invite_code: 'BEWIJSEISJAJA',
+          invite_code: `BEWIJSJA${proefId(1).slice(0, 8)}`,
         })
         .select('id')
         .single();
@@ -119,7 +120,7 @@ describe.skipIf(!rlsTestsConfigured)('de bewijseis van een groep — QS8-261', (
         .insert({
           name: 'Bewijseis-geweigerd',
           created_by: eigenaar.id,
-          invite_code: 'BEWIJSEISNEEE',
+          invite_code: `BEWIJSNEE${proefId(2).slice(0, 8)}`,
         })
         .select('id')
         .single();

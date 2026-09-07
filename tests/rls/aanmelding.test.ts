@@ -37,6 +37,7 @@ import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
 import { PSQL_DB, PSQL_OMGEVING, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
 
 const TEST_TIMEOUT = 30_000;
 
@@ -131,7 +132,7 @@ function meldAan(
 /** Telt codepunten, niet UTF-16-eenheden. */
 const codepunten = (s: string): number => [...s].length;
 
-const ID = (n: number): string => `00000000-0000-4000-8000-00000000f2${n.toString().padStart(2, '0')}`;
+const ID = (n: number): string => proefId(n);
 
 describe.skipIf(!beschikbaar)('een aanmelding wordt een profiel', () => {
   it(

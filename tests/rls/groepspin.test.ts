@@ -38,6 +38,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
 
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -46,7 +47,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
 );
 
 /** Een vaste eigenaar-id, zodat `created_by` exact te asserteren is. */
-const EIGENAAR = '00000000-0000-4000-8000-000000000264';
+const EIGENAAR = proefId(1);
 
 /**
  * Elke kolom die `guard_group_update()` vastpint, met een waarde die er
