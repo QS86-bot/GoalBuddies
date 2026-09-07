@@ -526,7 +526,7 @@ export function volgBeoordelingen(opWijziging: () => void): () => void {
  *    verkeerde ruil — zelfde afweging als bij `fetchGetuigenissen()`.
  *
  * ⚠️ De telling zelf staat in de database en wordt hier **niet** nagebouwd.
- *    `bevestigingsstand()` (migratie 0174) is de enige plek waar bevestigingen
+ *    `bevestigingsstand()` (migratie 0180) is de enige plek waar bevestigingen
  *    geteld worden; een tweede teller is een tweede opvatting van wanneer een
  *    week rond is.
  */

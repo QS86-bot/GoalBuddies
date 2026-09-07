@@ -74,6 +74,13 @@ function vraagMelding(reden: string | undefined): string {
     reason_too_short: t('deadline.argument_leeg'),
     reason_too_long: t('deadline.argument_lang'),
     already_open: t('deadline.al_open'),
+    // ⚠️ QS8-309. Zonder deze regel valt hij op de algemene melding terug, en
+    //    die zegt "het versturen lukte niet" — dat is precies de verkeerde
+    //    uitleg: er is niets misgegaan, er is alleen niemand die ja kan zeggen.
+    geen_beslisser: t('deadline.geen_beslisser'),
+    // ⚠️ Deze stond er niet sinds 0170 hem toevoegde (QS8-293), dus een datum
+    //    in het verleden las als een technische storing.
+    datum_in_verleden: t('deadline.datum_in_verleden'),
   };
 
   return tabel[reden ?? ''] ?? t('deadline.versturen_mislukt_kort');

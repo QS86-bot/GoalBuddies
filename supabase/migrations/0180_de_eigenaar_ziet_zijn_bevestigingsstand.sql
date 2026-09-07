@@ -1,4 +1,4 @@
--- 0174_de_eigenaar_ziet_zijn_bevestigingsstand.sql — de eigenaar zag dát zijn week op bevestiging wachtte, niet hoeveel er nog nodig waren (QS8-174)
+-- 0180_de_eigenaar_ziet_zijn_bevestigingsstand.sql — de eigenaar zag dát zijn week op bevestiging wachtte, niet hoeveel er nog nodig waren (QS8-174)
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.mijn_bevestigingsstanden(uuid[]);
@@ -127,7 +127,7 @@ revoke execute on function public.bevestigingsstand(uuid) from public, anon, aut
 comment on function public.bevestigingsstand(uuid) is
   'De enige plek waar bevestigingen geteld worden — per groep, met de bevroren '
   'drempel. Bewust `security invoker`: vanuit een definer ziet hij alles, vanuit '
-  'een invoker filtert RLS. Zie 0174 en QS8-174.';
+  'een invoker filtert RLS. Zie 0180 en QS8-174.';
 
 -- ---------------------------------------------------------------------------
 -- 2. De bestaande lezer, nu zonder eigen telling
@@ -193,4 +193,4 @@ grant  execute on function public.mijn_bevestigingsstanden(uuid[]) to authentica
 comment on function public.mijn_bevestigingsstanden(uuid[]) is
   'Hoeveel bevestigingen de eigen weken nog nodig hebben, per weekdoel. Een '
   'array en geen enkel id: het dashboard toont een hele cyclus, en per week los '
-  'ophalen is een N+1. Zie 0174 en QS8-174.';
+  'ophalen is een N+1. Zie 0180 en QS8-174.';

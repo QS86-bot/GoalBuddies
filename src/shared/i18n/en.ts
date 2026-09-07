@@ -981,6 +981,9 @@ export const en: Record<Sleutel, string> = {
   'deadline.niet_gekoppeld': 'This goal is not linked to this group.',
   'deadline.zelfde_datum': 'Choose a date other than the one that is set now.',
   'deadline.argument_leeg': 'Write one sentence about what changed.',
+  'deadline.geen_beslisser':
+    'You are the only member of this group, so nobody can approve this request. Invite someone first, or pick a group with a buddy in it.',
+  'deadline.datum_in_verleden': 'That date is in the past. Pick today or later.',
   'deadline.al_open': 'There is already a request for this goal. Wait for that one first.',
   'deadline.bestaat_niet': 'This request no longer exists.',
   'deadline.al_beslist': 'This has already been decided.',

@@ -497,7 +497,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-65 — de goedkeuringsdrempel', () => 
    *    plek waar bevestigingen geteld worden* onwaar maken, en dan zijn er twee
    *    opvattingen over wanneer een week rond is.
    *
-   *    Migratie 0174 haalde de telling daarom uit `goedkeuringsdrempel_gehaald()`
+   *    Migratie 0180 haalde de telling daarom uit `goedkeuringsdrempel_gehaald()`
    *    en zette hem in `bevestigingsstand()`. Deze test toetst niet dát er één
    *    teller is — dat is een eigenschap van de bron — maar dat de twee lezers
    *    hetzelfde zeggen op elk punt van de weg ernaartoe.
