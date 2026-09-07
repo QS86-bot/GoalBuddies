@@ -96,12 +96,22 @@ toetst hij een rij die toch al `member` was, en dan bewaakt hij niets.
 De verleiding was om `teruggekeerd` in `group_events.new_value` te zetten, zodat
 de groep ziet dat hier iemand terugkomt. Niet gedaan.
 
-⚠️ `group_events` is **groepszichtbaar en append-only**. Dat veld zou een nieuw
-oppervlak zijn waarop élk lid kan lezen dat iemand ooit uit de groep is gezet —
-en CLAUDE.md is daar eenduidig over: *voor élk nieuw oppervlak is beschermd het
-antwoord tot iemand het tegendeel besluit*, en bij twijfel is het antwoord nee.
-Het signaal zit daarom in het antwoord van de RPC, dat alleen de beheerder leest
-die de knop indrukt.
+⚠️ **De eerste onderbouwing hiervoor was onjuist, en de security-review heeft hem
+gemeten.** Er stond dat zo'n veld een *nieuw* oppervlak zou zijn waarop élk lid
+kan lezen dat iemand ooit uit de groep is gezet. Dat oppervlak bestáát al:
+`meld_uitzetting()` schrijft een rij `member_removed` mét `subject_id`, en
+`group_events_select` is `mag_groep_lezen(group_id)` zonder filter op
+`event_type`. De rij blijft ongewijzigd om een saaiere reden: **er is niemand die
+het veld leest**, en dit project heeft een eigen issue over backend-werk zonder
+aanroeper (QS8-194).
+
+⚠️ **Om diezelfde reden is `teruggekeerd` ook uit het ántwoord gehaald.** Het
+stond er als signaal voor de beslissende beheerder — maar `beslisVerzoek()` in
+`src/modules/buddies/ontdekken.ts` gooit alles behalve `ok` en `reason` weg, en
+het scherm toont in beide gevallen dezelfde zin. Regel 18 vraag 5: elk schakeltje
+af en de keten loopt nergens heen. Dat de beheerder bij het beslissen niet ziet
+dat het om een oud-lid gaat, is een echte tekortkoming — maar een van het scherm,
+en die staat als QS8-331.
 
 ## De ijking
 
@@ -135,3 +145,114 @@ onder een race getoetst is — en de kop van de migratie zegt dat erbij.
 - `paused` blijft een halve toestand die niemand schrijft (QS8-325). De tak
   hierboven behandelt hem alvast als `inactive`, wat de enige zinnige lezing is
   zolang niemand hem zet.
+
+
+## Wat de security-review vond, en wat de meting ervan zei
+
+Oordeel: **blokkerend**, en op drie punten terecht op een manier die deze
+wijziging zonder die ronde slechter had gemaakt dan wat er stond. Elke bevinding
+is zelf nagemeten voordat hij verwerkt werd.
+
+### 1 — Kritiek: de nieuwe `for update` gaf een deadlock die er niet was
+
+De eerste versie nam `for update` op de lidmaatschapsrij en schreef daarná in
+`group_events` — en die insert neemt via zijn foreign key een `FOR KEY SHARE` op
+de **groepsrij**. De slotvolgorde was dus lidmaatschap → groep, terwijl
+`verwijder_lid()` en `verlaat_groep()` het andersom doen.
+
+📏 Zelf uitgelokt met twee gelijktijdige psql-sessies tegen de lokale stack:
+
+```
+ERROR:  deadlock detected
+CONTEXT: while locking tuple (0,8) in relation "group_members"
+```
+
+Het scenario is niet exotisch: twee beheerders die het oneens zijn over hetzelfde
+lid — precies het geval waarin dit pad gebruikt wordt. Eén van de twee krijgt
+40P01, via PostgREST een HTTP 500.
+
+Gerepareerd door de **groepsrij als eerste** te vergrendelen, gelijk aan de twee
+buurfuncties. 📏 Daarna dezelfde opstelling opnieuw gedraaid: geen deadlock. En
+nagemeten dat de volgorde `group_join_requests` → `groups` veilig is: van de zes
+functies die de groepsrij vergrendelen raakt er geen enkele
+`group_join_requests` aan.
+
+⚠️ **De les zit in wat de eerste versie dacht te doen.** Het `for update` was er
+juist bijgezet om een race te sluiten. Een slot toevoegen is nooit gratis: het
+verandert de volgorde waarin sloten genomen worden, en die volgorde is een
+eigenschap van het gehéél — niet van de functie waar je in zit.
+
+### 2 — Kritiek: `for update` op een rij die niet bestaat vergrendelt niets
+
+De kop beloofde dat de tak niet op een verouderde toestand gekozen kon worden.
+Voor de null-tak klopt dat niet: `select … for update` dat nul rijen oplevert
+neemt geen enkel slot. En ik had in diezelfde versie `on conflict do nothing` van
+de insert gehaald — dus een aanvrager die intussen via een uitnodigingslink
+binnenkomt, laat de hele transactie omvallen met 23505, waarna het verzoek op
+`pending` blijft staan en de beheerder een serverfout ziet. Dat was een
+regressie: de oude code hád die clausule. Teruggezet.
+
+### 3 — Kritiek: beide grenzen werden op dit pad niet geteld
+
+📏 Het plafond van 12 actieve leden en de grens van 10 groepen per gebruiker
+staan uitsluitend in `join_group_with_code()` en `create_group()` — geen CHECK,
+geen trigger. Gemeten: een groep met 12 actieve leden groeide via dit pad naar
+13.
+
+Dat gold al voor de invoegtak sinds 0144, maar de terugkeertak verbreedt het:
+een uitgezet lid telt in `status <> 'inactive'` **niet** mee, dus zijn terugkeer
+duwt de groep er per definitie overheen. Beide grenzen worden nu geteld met
+precies dezelfde predicaten als in `join_group_with_code()`, en beide staan onder
+test — de tweede met tien groepen die rechtstreeks ingevoegd worden, want
+`create_group()` zou bij de elfde zelf al weigeren.
+
+### 4 — De scherpste: de terugkeer was stil, en de stilte is zelf het signaal
+
+`group_members_systeembericht` stond op **AFTER INSERT**. Een eerste toetreder
+werd aangekondigd, een teruggekeerd lid niet.
+
+⚠️ Dat is precies de constructie die beslisdocument 002 rij 22 vermijdt bij een
+vertrek, in spiegelbeeld. Die rij zegt letterlijk: *"dan wordt **de afwezigheid
+van het bericht het signaal**"*. Een naam die in de ledenlijst verschijnt zónder
+regel in de chat is per constructie iemand die er eerder al was, en élk lid kan
+dat aflezen.
+
+De trigger vuurt nu ook op de overgang `inactive` → `active`, met precies
+hetzelfde bericht — geen letter meer. `member_joined` staat al in de CHECK en in
+`chat-schemas.ts`, dus er komt geen nieuw type systeembericht bij.
+
+⚠️ De `paused`-overgang krijgt bewust géén bericht: zo iemand telt al mee in
+`status <> 'inactive'` en staat dus al in de ledenlijst. Daar is geen gat om te
+vullen, en een bericht zou er juist iets zeggen wat de lijst niet zegt.
+
+### 5 — Het rollback-pad rolde meer terug dan de wijziging
+
+De kop wees naar `0145_melden_en_blokkeren.sql`. Dat bestand herdefinieert óók
+`join_group_with_code()` — en 0187 heeft die functie vier dagen geleden
+gerepareerd. Wie dit pad onder tijdsdruk zou volgen, zet die reparatie terug en
+herstelt daarmee een beveiligingsdefect.
+
+Het pad noemt nu de **functie** die teruggezet moet worden, met de waarschuwing
+erbij om 0145 niet als geheel af te spelen. ⚠️ Een rollback-pad dat naar een
+bestand wijst in plaats van naar een object is een belofte over iets grovers dan
+wat je hebt gewijzigd.
+
+### Wat er als agendarij of issue blijft staan
+
+- Terugkeer geeft met terugwerkende kracht volledig leesrecht op de chat over de
+  periode van uitsluiting, en één beheerder volstaat zonder bevestigingsstap.
+  Agendarij; dit is een productbeslissing en geen defect.
+- Niets ruimt een openstaand verzoek op wanneer het lidmaatschap langs een andere
+  weg hersteld wordt. Agendarij.
+- `joined_at` blijft staan bij een terugkeer — bewust, het is de datum waarop
+  iemand voor het eerst lid werd. Bijeffect: `group_overview()` pagineert op
+  `(joined_at, user_id)`, dus een teruggekeerd lid verschijnt midden in een
+  lopende cursor. Agendarij.
+- De beslissende beheerder ziet in het scherm niet dat hij een oud-lid terughaalt
+  (QS8-331).
+
+### Wat de review meldde en de meting niet droeg
+
+Niets van betekenis — op één na: de onderbouwing die ik zélf in de kop had gezet
+over `group_events` was onjuist, en de review wees dat aan met een meting. Dat
+staat hierboven bij *Waarom de auditrij ongewijzigd blijft*.
