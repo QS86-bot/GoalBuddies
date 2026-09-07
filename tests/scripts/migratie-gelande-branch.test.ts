@@ -37,18 +37,44 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  *      3. de **stam** blijft meetellen — `origin/main` zit trivialiter in
  *         zichzelf, dus een filter die niet oppast neemt hem mee en dan verdwijnt
  *         de melding *main draagt migraties die jij mist*, het nuttigste geval
- *         van stap 4.
+ *         van stap 4;
+ *      4. een zuster die `main` nog niet binnengehaald heeft, draagt mijn
+ *         migratie onder haar oude nummer — daar valt niets te hernummeren.
  *
- * IJKING — met de hand gedraaid op 07-09-2026, mutatie per grendel:
+ * ⚠️⚠️ **De eerste versie van deze ijking bewaakte haar eigen grendel niet, en
+ *    dat is met QS8-323 rechtgezet.** De kop beweerde dat mutatie A één rood
+ *    gaf; 📏 letterlijk uitgevoerd gaf hij er **nul**. Twee onafhankelijke
+ *    oorzaken, allebei het onthouden waard:
  *
- *   A  `remoteTakken()` de filter laten overslaan (`return branches`)
- *      → 1 rood: 'een gelande zusterbranch'
- *   B  de uitzondering `ref === stam` eruit
- *      → 1 rood: 'de stam blijft meetellen'
- *   C  de filter alles laten wegnemen (`=> false`)
- *      → 1 rood: 'een open zusterbranch'
+ *      · `expect(controle()).not.toContain(...)` is tevreden met élke uitvoer
+ *        die die naam niet noemt — ook een lege, ook een stacktrace. Een
+ *        kanarie bewees het: `remoteTakken()` laten werpen maakte test 2 en 3
+ *        rood en test 1 **groen**. Vandaar `heeftGedraaid()` naast elke
+ *        `not.toContain`.
+ *      · De opstelling voerde het geval door een grendel die er al eerder lag.
+ *        De gelande zuster draagt een romp die hier ook staat, dus
+ *        `botsendPerBranch()` zweeg er al over — grendel 1 werd nergens geraakt.
+ *        Vandaar de zuster die hernummerd landde (raakt alleen grendel 1, via
+ *        stap 4) en de zuster die achterloopt (raakt alleen grendel 2).
  *
- * Drie mutaties, drie verschillende rode tests: de helften bewaken elkaar niet.
+ *    `CLAUDE.md`: *breek de grendel die de ijking nóemt, niet zomaar iets —
+ *    anders is de ijking zelf de aanname.*
+ *
+ * IJKING — met de hand gedraaid op 07-09-2026, gemeten en niet beoogd:
+ *
+ *   A  de filter overslaan (`return branches`)
+ *      → 1 rood: 'meldt een gelande zuster met een hier onbekend nummer niet…'
+ *   B  de `romps`-check uit `botsendPerBranch()`
+ *      → 1 rood: 'zwijgt over een zuster die mijn migratie … oude nummer draagt'
+ *   C  de uitzondering `ref === stam` eruit
+ *      → 1 rood: 'en de stam blijft meetellen'
+ *   D  de filter alles laten wegnemen (`=> false`)
+ *      → 2 rood: 'een open zusterbranch' en 'de stam blijft meetellen'
+ *   E  `remoteTakken()` laten werpen (de kanarie)
+ *      → 5 rood: álles, want geen enkele test mag een stille controle overleven
+ *
+ * Vijf mutaties; A, B en C raken elk een ándere test. De helften bewaken elkaar
+ * niet, en dát is wat er eerst niet klopte.
  */
 
 const HULPSCRIPTS = [
@@ -142,9 +168,59 @@ beforeAll(() => {
   git(bron, 'commit', '-m', 'hernummerd naar 0003');
   git(bron, 'push', 'origin', 'main');
 
+  // ── De gelande zuster met een nummer dat hier niet bestaat ─────────────
+  //
+  // ⚠️ **Deze zuster bestaat om grendel 1 alléén te raken** (QS8-323). De
+  //    zuster hierboven wordt óók al door grendel 2 gedekt — haar romp staat
+  //    hier immers, als 0003 — dus een mutatie op grendel 1 bleef daar groen.
+  //
+  //    Deze claimde 0006, landde, en werd hernummerd naar 0004. De werkkopie
+  //    kloont `main` en heeft dus 0004; **0006 bestaat hier nergens**. Stap 4
+  //    zou daarom melden dat deze branch een migratie draagt die hier
+  //    ontbreekt — en stap 4 loopt niet langs `botsendPerBranch()`, dus alleen
+  //    de filter in `remoteTakken()` houdt die melding tegen.
+  git(bron, 'checkout', 'main');
+  git(bron, 'checkout', '-b', 'zuster-hernummerd');
+  migratie(bron, '0006_van_de_hernummerde_zuster');
+  git(bron, 'add', '-A');
+  git(bron, 'commit', '-m', 'hernummerde zuster');
+  git(bron, 'push', '-u', 'origin', 'zuster-hernummerd');
+
+  git(bron, 'checkout', 'main');
+  git(bron, 'merge', '--no-ff', '-m', 'hernummerde zuster geland', 'zuster-hernummerd');
+  git(
+    bron,
+    'mv',
+    join('supabase', 'migrations', '0006_van_de_hernummerde_zuster.sql'),
+    join('supabase', 'migrations', '0004_van_de_hernummerde_zuster.sql'),
+  );
+  git(bron, 'commit', '-m', 'hernummerd naar 0004');
+  git(bron, 'push', 'origin', 'main');
+
+  // ── De zuster die main nog niet binnengehaald heeft ────────────────────
+  //
+  // ⚠️ **Deze bestaat om grendel 2 alléén te raken** (QS8-323). Ze vertakt van
+  //    `zuster-geland` en heeft daarna een eigen commit, dus ze is géén
+  //    voorouder van `main` — grendel 1 laat haar door. Ze draagt
+  //    `0002_van_de_zuster.sql`, en diezelfde romp staat hier als 0003.
+  //
+  //    Er valt daar niets te hernummeren: zij heeft mijn hernummering alleen
+  //    nog niet opgehaald. Alleen `botsendPerBranch()` kan daarover zwijgen.
+  git(bron, 'checkout', 'zuster-geland');
+  git(bron, 'checkout', '-b', 'zuster-achter');
+  // ⚠️ **Geen eigen migratie**, met opzet: dan is de enige melding die deze
+  //    branch kán opleveren de botsing op 0002, en die moet grendel 2 wegnemen.
+  //    Een eigen migratie erbij zou een terechte stap-4-melding geven en de
+  //    test onscherp maken — dat is bij het bouwen ook echt gebeurd.
+  writeFileSync(join(bron, 'zuster-achter.txt'), 'werk dat geen migratie is\n');
+  git(bron, 'add', '-A');
+  git(bron, 'commit', '-m', 'zuster loopt achter maar werkt door');
+  git(bron, 'push', '-u', 'origin', 'zuster-achter');
+
   // ── De open zuster ─────────────────────────────────────────────────────
   //
   // Zelfde vorm, maar niet geland. Deze móet gemeld blijven worden.
+  git(bron, 'checkout', 'main');
   git(bron, 'checkout', '-b', 'zuster-open');
   migratie(bron, '0002_van_de_open_zuster');
   git(bron, 'add', '-A');
@@ -168,7 +244,7 @@ beforeAll(() => {
   //    verdween die melding — en dat is precies het geval waarvoor stap 4
   //    gebouwd is (QS8-238).
   git(bron, 'checkout', 'main');
-  migratie(bron, '0004_van_main');
+  migratie(bron, '0005_van_main');
   git(bron, 'add', '-A');
   git(bron, 'commit', '-m', 'main loopt vooruit');
   git(bron, 'push', 'origin', 'main');
@@ -180,13 +256,75 @@ afterAll(() => {
   if (werkmap !== '') rmSync(werkmap, { recursive: true, force: true });
 });
 
+/**
+ * ⚠️ **Elke `not.toContain` staat naast een positief anker, en dat is QS8-323.**
+ *
+ * De eerste versie van deze suite toetste alleen `not.toContain(...)`. Zo'n
+ * assertie is tevreden met élke uitvoer die die naam niet noemt — een lege
+ * string, een stacktrace, een controle die helemaal niet draait. 📏 Bewezen met
+ * een kanarie: `remoteTakken()` een `throw` geven maakte test 2 en 3 rood en
+ * test 1 **groen**. De test die de reparatie bewaakte, overleefde het
+ * uitschakelen van de functie die hij bewaakte.
+ *
+ * Dit anker is dat bewijs, als toets in plaats van als anekdote: crasht de
+ * controle, dan ontbreekt deze regel en is élke test in dit bestand rood.
+ */
+function heeftGedraaid(uit: string): void {
+  // Beide uitgangen van het script beginnen hun regel met deze naam — de groene
+  // (`… migraties, aaneengesloten …`) en de rode (`… de migratiemap klopt niet`).
+  // Een crash, een lege uitvoer of een stacktrace heeft hem niet.
+  expect(uit, `de controle heeft niet gedraaid; uitvoer was:\n${uit}`).toContain(
+    'migraties-controle:',
+  );
+}
+
 describe('een gelande branch is geen botsing', () => {
   it('meldt een gelande zusterbranch niet meer', () => {
     // ⚠️ `origin/zuster-geland` draagt `0002_van_de_zuster.sql` en deze map
     //    draagt `0002_van_mij.sql`. Op de naam is dat een botsing; op de
     //    geschiedenis is het er geen, want die zuster zit volledig in
     //    `origin/main` en haar migratie staat hier gewoon, als 0003.
-    expect(controle()).not.toContain('origin/zuster-geland');
+    //
+    // ⚠️ **Dit geval wordt óók door grendel 2 gedekt** (`botsendPerBranch()`
+    //    zwijgt over een romp die hier al staat), dus het onderscheidt de twee
+    //    grendels niet. Daarvoor is de test hieronder over de hernummerde
+    //    zuster. Deze blijft staan omdat hij de andere grendel bewaakt.
+    const uit = controle();
+    heeftGedraaid(uit);
+    expect(uit).not.toContain('origin/zuster-geland');
+  });
+
+  it('meldt een gelande zuster met een hier onbekend nummer niet als ontbrekend', () => {
+    // ⚠️⚠️ **Dit is de test die grendel 1 alléén raakt** — QS8-323.
+    //
+    //    `origin/zuster-hernummerd` draagt 0006; die landde en werd hernummerd
+    //    naar 0007. De werkkopie kloont `main` en heeft dus 0007, en **0006
+    //    bestaat hier nergens**. Stap 4 zou daarom melden dat deze branch een
+    //    migratie draagt die hier ontbreekt — en stap 4 loopt niet langs
+    //    `botsendPerBranch()`, dus alleen de filter in `remoteTakken()` houdt
+    //    hem tegen.
+    //
+    //    📏 Zonder deze test bleef mutatie A (de filter overslaan) groen,
+    //    terwijl de kop van dit bestand beweerde dat hij één rood gaf.
+    const uit = controle();
+    heeftGedraaid(uit);
+    expect(uit).not.toContain('origin/zuster-hernummerd');
+  });
+
+  it('zwijgt over een zuster die mijn migratie onder haar oude nummer draagt', () => {
+    // ⚠️⚠️ **Dit is de test die grendel 2 alléén raakt** — QS8-323.
+    //
+    //    `origin/zuster-achter` is niet geland, dus grendel 1 laat haar door.
+    //    Ze draagt `0002_van_de_zuster.sql` terwijl die romp hier als 0003
+    //    staat: zij heeft mijn hernummering alleen nog niet opgehaald. Er valt
+    //    daar niets te hernummeren, dus een melding zou verkeerd advies zijn.
+    //
+    //    📏 Zonder deze test bleef mutatie B (de `romps`-check eruit) groen,
+    //    omdat grendel 1 hetzelfde geval al wegfilterde. Twee grendels waar er
+    //    één getest is, is er één te veel — de les van QS8-302.
+    const uit = controle();
+    heeftGedraaid(uit);
+    expect(uit).not.toContain('origin/zuster-achter');
   });
 
   it('maar meldt een open zusterbranch nog steeds', () => {
@@ -194,6 +332,7 @@ describe('een gelande branch is geen botsing', () => {
     //    Zonder deze regel is de reparatie niet van "de controle uitzetten" te
     //    onderscheiden. Dit is de belofte waar `migraties:controle` voor bestaat.
     const uit = controle();
+    heeftGedraaid(uit);
 
     expect(uit).toContain('origin/zuster-open');
     expect(uit).toContain('0002_van_mij.sql');
@@ -207,7 +346,8 @@ describe('een gelande branch is geen botsing', () => {
     //    stap 4 en de reden dat die stap bestaat (QS8-238): je branch loopt
     //    achter en moet `main` binnenhalen.
     const uit = controle();
+    heeftGedraaid(uit);
 
-    expect(uit).toContain('origin/main draagt 1 migratie(s) die hier ontbreken: 0004');
+    expect(uit).toContain('origin/main draagt 1 migratie(s) die hier ontbreken: 0005');
   });
 });
