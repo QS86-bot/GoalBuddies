@@ -659,11 +659,21 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .update({ created_at: LANG_GELEDEN })
           .eq('id', straf.data.id);
 
-        // Zolang de straf nog `set` is, mag weggooien gewoon: hij is nooit
-        // buiten het eigen scherm geweest.
+        // ⚠️⚠️ **Hier stond tot 0190 het tegenovergestelde**, met als reden
+        //    *"zolang de straf nog `set` is, mag weggooien gewoon: hij is nooit
+        //    buiten het eigen scherm geweest"*. Dat was de grens van 0058, en
+        //    QS8-331 heeft hem verlegd: de vraag is niet wie de straf gezien
+        //    heeft maar of hij gebeurd is. 📏 `commitments.confirmed_at` is
+        //    `NOT NULL`, dus een straf op `set` is een vastgelegde afspraak met
+        //    een auditregel van `noteer_commitment()` erbij — en die regel
+        //    cascadeerde mee bij een DELETE op het doel.
+        //
+        //    Weggooien geeft daarom nu `heeft_commitment`. Zie
+        //    `docs/decisions/2026-09-07-een-straf-die-spoorloos-verdween.md`.
         const vroeg = await f.alice.db.rpc('verwijder_doel', { p_goal_id: doel.data.id });
         if (vroeg.error) throw new Error(`vroeg weggooien: ${vroeg.error.message}`);
-        expect(uitkomst(vroeg.data).ok).toBe(true);
+        expect(uitkomst(vroeg.data).ok).toBe(false);
+        expect(uitkomst(vroeg.data).reason).toBe('heeft_commitment');
 
         // En nu hetzelfde, maar nadat de straf is afgegaan.
         const tweede = await f.alice.db

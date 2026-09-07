@@ -550,6 +550,11 @@ function doelVerwijderMelding(reden: string | undefined): string {
     // wissen die niet meer alleen van jou is (domeinregel 6 en 11).
     case 'commitment_in_werking':
       return t('doel.commitment_in_werking');
+    // Migratie 0190. Elke commitment telt, ook een ingetrokken: `confirmed_at`
+    // is NOT NULL, dus elke rij is een vastgelegde afspraak met een auditregel.
+    // Weggooien zou dat spoor meecascaderen (domeinregel 5 en 6).
+    case 'heeft_commitment':
+      return t('doel.heeft_commitment');
     default:
       return t('doel.verwijderen_mislukt');
   }
