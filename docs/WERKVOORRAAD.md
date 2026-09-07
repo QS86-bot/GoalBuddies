@@ -224,6 +224,39 @@ die alleen in de teststack bestaan).
 `archiefleesgat()`, `barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`
 en `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
 
+✅ **Productie staat op 07-09 op `0183`.** Elf migraties in één ronde — `0173`
+t/m `0183` — met dezelfde werkwijze en dezelfde verificatie als de ronde
+ervoor: `execute_sql` per migratie, handmatige registerrij, en na afloop
+`md5(pg_get_functiondef())` naast de lokale stack.
+
+📏 **Alle twintig functies uit deze ronde komen byte voor byte overeen.** En de
+catalogi:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 361 | 361 |
+| constraints | 242 | 242 |
+| indexen | 142 | 142 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `609fcd17…` | `609fcd17…` |
+| **sómhash over alle constraintdefinities** | `f720824c…` | `f720824c…` |
+
+Het register telt **186 rijen tot `0183`**, gelijk aan de 186 bestanden in de
+map. Nul tijdstempels, nul dubbele nummers, geen gat.
+
+⚠️ **De sómhash over álle functies wijkt nog steeds af, en dat is de oude
+QS8-220-drift** — functies van vóór `0139` die een eerdere sessie met een
+ingekorte body heeft toegepast. Niets uit deze ronde zit erin; dat is per functie
+nagemeten en niet afgeleid uit het totaal.
+
+✅ **Acht bewakingsfuncties geven nul bezwaren op productie**: `archiefleesgat()`,
+`barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`,
+`tijdstempel_bewaking()`, `volgorde_bewaking()`, `goal_events_bewaking()` en
+`realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+`ai_dag_budget_cent()` geeft 30.
+
 ⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
 hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog
 moesten. 📏 Nagemeten op 07-09:
