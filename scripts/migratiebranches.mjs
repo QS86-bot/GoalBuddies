@@ -128,6 +128,24 @@ export function namenPerSleutel(bestandsnamen) {
  *    bij `ontbrekendPerBranch()`: een branch zonder migratiemap telt als nul, en
  *    een lege werkkopie heeft geen map om iets over te zeggen.
  *
+ * ⚠️ **En dezelfde migratie onder een ánder nummer is óók geen bevinding —
+ *    QS8-313.** Landt jouw migratie en hernummert `main` hem van 0182 naar 0183,
+ *    dan draagt elke zusterbranch die `main` nog niet binnengehaald heeft nog
+ *    steeds `0182_jouw_migratie.sql`. Op nummer én naam is dat een botsing; in
+ *    werkelijkheid kijk je naar je eigen bestand onder zijn oude nummer, en er
+ *    is niets te hernummeren — die branch hoeft alleen `main` binnen te halen.
+ *
+ *    📏 Het geval deed zich meteen voor: `qs8-317` vertakte vóór de hernummering
+ *    van 0182 naar 0183 en meldde daarna een botsing met een migratie die van
+ *    mij was. Vandaar dat de romp van de naam meetelt: draag ik dat bestand al
+ *    onder een ander nummer, dan is het hetzelfde bestand en geen tweede claim
+ *    op dat nummer.
+ *
+ *    ⚠️ Dit is een **tweede** grendel naast de gelande-branchfilter in
+ *    `remoteTakken()`, en ze vangen verschillende gevallen: die filter kijkt of
+ *    de bránch geland is, deze of het béstand hier al staat. Een open branch met
+ *    een oud nummer voor mijn bestand is geland noch afwezig.
+ *
  * ⚠️ **Hier stond een `lokaal is leeg`-wacht zoals `ontbrekendPerBranch()` die
  *    heeft, en die is er bij het ijken uitgehaald.** Daar is hij dragend: die
  *    functie meldt wat híer ontbreekt, dus zonder wacht telt bij een lege map
@@ -138,18 +156,35 @@ export function namenPerSleutel(bestandsnamen) {
  *    grendels waarvan er één niets doet, is er één te veel (QS8-302).
  */
 export function botsendPerBranch({ lokaal, perBranch }) {
+  const romps = new Set(Object.values(lokaal).map(romp));
+
   const uit = [];
   for (const [branch, namen] of Object.entries(perBranch)) {
     const botsingen = [];
     for (const [sleutel, daar] of Object.entries(namen)) {
       const hier = lokaal[sleutel];
-      if (hier !== undefined && hier !== daar) botsingen.push({ nummer: sleutel, hier, daar });
+      if (hier === undefined || hier === daar) continue;
+      if (romps.has(romp(daar))) continue;
+      botsingen.push({ nummer: sleutel, hier, daar });
     }
     if (botsingen.length > 0) {
       uit.push({ branch, botsingen: botsingen.sort((a, b) => a.nummer.localeCompare(b.nummer)) });
     }
   }
   return uit.sort((a, b) => a.branch.localeCompare(b.branch));
+}
+
+/**
+ * De naam van een migratie zonder zijn nummer — `0182_het_oppervlak.sql` wordt
+ * `het_oppervlak.sql`.
+ *
+ * ⚠️ Bewust ruim: wat er niet uitziet als een genummerde migratie komt
+ *    ongewijzigd terug. Een naam die de vorm mist wordt elders al als onleesbaar
+ *    gemeld, en hier een tweede oordeel vellen levert twee meldingen op voor één
+ *    fout.
+ */
+function romp(naam) {
+  return String(naam).replace(/^\d{4}[a-z]?_/, '');
 }
 
 /** Vier cijfers, zoals de bestandsnamen ze schrijven. */
@@ -162,14 +197,69 @@ function git(...argumenten) {
 }
 
 /**
- * Elke remote branch met de migratienummers die hij draagt.
+ * De hoofdbranch op de remote, of `null` als die niet te vinden is — QS8-313.
  *
- * ⚠️ Werkt op `refs/remotes/origin` en niet op de werkkopie: de vraag is juist
- *    wat er élders staat. Zonder `git fetch` is dit beeld zo oud als je laatste
- *    fetch — daarom noemt de melding dat met zoveel woorden in plaats van te
- *    doen alsof hij de waarheid kent.
+ * ⚠️ **Eerst `origin/main`, dan pas `origin/HEAD`.** Dit project heeft `main` als
+ *    hoofdbranch (CLAUDE.md), en 📏 in een cloudcheckout is `origin/HEAD` gemeten
+ *    géén symbolische ref (`fatal: ref refs/remotes/origin/HEAD is not a
+ *    symbolic ref`) — alleen daarop leunen zou de filter uitzetten op precies de
+ *    machines waar de poort draait.
  */
-export function nummersPerBranch() {
+function hoofdtak() {
+  try {
+    git('rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main');
+    return 'refs/remotes/origin/main';
+  } catch {
+    /* geen main; probeer HEAD */
+  }
+  try {
+    const ref = git('symbolic-ref', 'refs/remotes/origin/HEAD').trim();
+    return ref === '' ? null : ref;
+  } catch {
+    return null;
+  }
+}
+
+/** Zit `ref` volledig in `doel`? */
+function zitIn(ref, doel) {
+  try {
+    git('merge-base', '--is-ancestor', ref, doel);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * De remote branches waar een oordeel over te vellen valt — QS8-313.
+ *
+ * ⚠️ **Een gelande branch telt niet mee, en dat is geen zuinigheid maar de
+ *    reparatie zelf.** Zit een branch volledig in `origin/main`, dan staan zijn
+ *    migraties al in de map die deze controle als *hier* leest — alleen mogelijk
+ *    onder een ander nummer, want wie als tweede mergede heeft hernummerd. Elke
+ *    melding over zo'n branch is per definitie vals alarm.
+ *
+ * ⚠️ **En die klasse groeit bij elke merge.** 📏 Gemeten op `origin/main`
+ *    (16b7c16) op 07-09-2026: zes meldingen, alle zes over branches die al
+ *    geland waren — de poort stond dus rood op een schone `main`. Dat is de vorm
+ *    die dit project bij QS8-304 duur betaald heeft: *een rode uitslag die niet
+ *    over jouw wijziging gaat, leert je de uitslag te negeren*, en die gewoonte
+ *    vangt de volgende échte rode op als ruis. Hoe beter het project draait, hoe
+ *    luider deze controle loog.
+ *
+ * ⚠️ **De hoofdbranch zelf blíjft meetellen, en dat is de smalle helft van de
+ *    filter.** `origin/main` zit trivialiter in zichzelf; zou hij eruit vallen,
+ *    dan verdween de melding *main draagt migraties die hier ontbreken* — en dat
+ *    is juist het nuttigste geval van stap 4: je branch loopt achter en moet
+ *    `main` binnenhalen. De filter gaat over gelande zíjtakken, niet over de stam.
+ *
+ * ⚠️ **Zonder hoofdbranch geen filter.** Is er geen `origin/main` en geen
+ *    bruikbare `origin/HEAD`, dan wordt er niets weggelaten: liever een melding
+ *    te veel dan een controle die stil is om een reden die niemand gemeten heeft.
+ *
+ * Geeft `null` bij afwezigheid van git of remote, zoals de aanroepers verwachten.
+ */
+function remoteTakken() {
   let branches = [];
   try {
     branches = git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin')
@@ -179,6 +269,24 @@ export function nummersPerBranch() {
     // Geen git, geen remote, geen oordeel.
     return null;
   }
+
+  const stam = hoofdtak();
+  if (stam === null) return branches;
+
+  return branches.filter((ref) => ref === stam || !zitIn(ref, stam));
+}
+
+/**
+ * Elke remote branch met de migratienummers die hij draagt.
+ *
+ * ⚠️ Werkt op `refs/remotes/origin` en niet op de werkkopie: de vraag is juist
+ *    wat er élders staat. Zonder `git fetch` is dit beeld zo oud als je laatste
+ *    fetch — daarom noemt de melding dat met zoveel woorden in plaats van te
+ *    doen alsof hij de waarheid kent.
+ */
+export function nummersPerBranch() {
+  const branches = remoteTakken();
+  if (branches === null) return null;
 
   const perBranch = {};
   for (const ref of branches) {
@@ -223,14 +331,8 @@ function eigenRemoteTak() {
  * als die functie, zodat de aanroeper één manier heeft om te zwijgen.
  */
 export function namenPerBranch() {
-  let branches = [];
-  try {
-    branches = git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin')
-      .split('\n')
-      .filter((r) => r.trim() !== '' && !r.endsWith('/HEAD'));
-  } catch {
-    return null;
-  }
+  const branches = remoteTakken();
+  if (branches === null) return null;
 
   const eigen = eigenRemoteTak();
   const perBranch = {};
