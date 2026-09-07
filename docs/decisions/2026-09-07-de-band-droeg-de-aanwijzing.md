@@ -1,7 +1,8 @@
 # De band droeg de aanwijzing — QS8-306
 
 **Datum:** 07-09-2026
-**Migratie:** `0181_het_oppervlak_van_de_getuige_volgt_de_groepsband.sql`
+**Migratie:** `0183_het_oppervlak_van_de_getuige_volgt_de_groepsband.sql`
+*(begonnen als 0181, onderweg twee keer hernummerd — zie de laatste sectie)*
 **Komt uit:** de security-review op QS8-298
 **Raakt:** domeinregel 7 (falen is nooit publiek), domeinregel 11 (een straf treedt
 alleen in werking bij een verstreken deadline), onwrikbare regel 2
@@ -192,3 +193,28 @@ Drie dingen, alle drie overgenomen:
 wél klopt: **gaat de eigenaar weg in plaats van de getuige, dan sluit het
 oppervlak ook** — `shares_group_with_user()` is symmetrisch. De eigenaar zelf
 blijft zijn eigen commitment gewoon zien, via de eerste tak van de policy.
+
+## Twee hernummeringen, en een sed-val die dit project al kende
+
+Deze migratie heeft drie nummers gehad, en dat is het opschrijven waard omdat de
+tweede keer een fout opleverde die precies in `CLAUDE.md` staat.
+
+* **0181 → 0182.** QS8-176 landde als 0181 terwijl deze in aanbouw was.
+* **0182 → 0183.** PR [#260](https://github.com/QS86-bot/GoalBuddies/pull/260)
+  (QS8-296) landde een eigen `0182` tússen mijn hernummering en mijn merge. Git
+  zag geen conflict — twee verschillende bestandsnamen — dus stonden er even
+  twee migraties 0182 op `main`. Wie als tweede merget hernummert, en dat was
+  ik.
+
+⚠️ **Bij de eerste hernummering bleef deze kopregel op 0181 staan, en de reden
+is de val van QS8-241.** Ik heb hem met `sed -i 's/\b0181\b/0182/g'` willen
+meeverhuizen, en `_` is in GNU sed een woordteken: in `0181_het_oppervlak` staat
+er géén woordgrens achter de `1`. De kale verwijzingen in de lopende tekst
+verhuisden dus wel en de bestandsnaam in de kop niet — precies het geval dat
+`migraties:controle` stap 5 voor de migratiekop bewaakt, maar dan in een
+document waar geen controle op staat.
+
+**De les is niet "gebruik een betere regexp".** Het is: `migratie:hernummer`
+drukt de kale verwijzingen af die hij níet aanraakt, en die lijst is er om
+nagelopen te worden. De 43 regels van de tweede ronde zijn stuk voor stuk
+bekeken; negen hoorden bij deze migratie.

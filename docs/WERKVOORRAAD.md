@@ -11,24 +11,28 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
-drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
-uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
-persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
-`0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
-dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
-`0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
-meldingsoort), `0179` (een bovengrens op een pushtoken), `0180` (de
-bevestigingsstand voor de eigenaar), `0181` (de allowlist van `goal_events`
-bewaakt), de twee migraties die vandaag als `0182` op `main` staan en `0184`
-(een open straf laat de deadline niet vooruit schuiven) staan er nog niet op.
-⚠️ **`main` draagt op dit moment twee migraties met nummer `0182`** — de
-zusterbranches van QS8-296 en QS8-306 zijn allebei zonder hernummeren geland en
-`migraties:controle` is daardoor rood op `main` zelf; er loopt een hotfix die er
-één naar `0183` brengt. Vraag dus zeker hier de database en niet dit document. `0164` moet
-in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
-waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
-dit document.
+⚠️ **Productie staat op `0183`, maar de edge-functies zijn van de dag ervoor.**
+📏 Gemeten op 07-09 aan het echte project, niet aan dit document:
+`list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
+06-09 is daarmee ingelopen; alleen `0184` (een open straf laat de deadline niet
+vooruit schuiven, QS8-317) staat nog niet op productie.
+
+⚠️⚠️ **Wat er wél nog openstaat is een deploy, en die is stiller dan een
+migratie.** `list_edge_functions` geeft voor alle drie de functies
+`updated_at = 2026-09-06T09:07:56Z`, terwijl de migraties `0173` t/m `0183`
+op 07-09 zijn toegepast. Gevolg: `0178` staat op productie, de code die
+`getuigenissen_voor()` aanroept staat in de map (toegevoegd 07-09 04:34), en de
+gedeployde `notificaties` weet er niets van — **de persoon-getuige krijgt zijn
+melding niet**. Er is geen kapot onderdeel, dus niets wordt er rood van. Staat
+als QS8-320, met het commando erbij.
+
+⚠️ **En let op de volgorde zodra QS8-147 landt.** Die migratie dropt
+`activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
+gedeployde rollover roept de driearguments vorm aan. Zonder deploy in dezelfde
+ronde geeft PostgREST `PGRST202`, vangt de rollover dat zacht af, en schuift er
+elk uur voor iedereen geen weekplanstap meer in. Zie `docs/DEPLOY.md` §2.3a.
+
+Vraag de database welke migraties er staan, niet dit document.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -171,7 +175,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
 Migraties `0001` t/m `0184` staan in de map: **187 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-⚠️ **Er ontbreken nummers: 0183.** Zie `migraties:controle`.
+De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot
@@ -228,6 +232,39 @@ die alleen in de teststack bestaan).
 ✅ **De vijf bewakingsfuncties geven op productie nul bezwaren**:
 `archiefleesgat()`, `barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`
 en `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+
+✅ **Productie staat op 07-09 op `0183`.** Elf migraties in één ronde — `0173`
+t/m `0183` — met dezelfde werkwijze en dezelfde verificatie als de ronde
+ervoor: `execute_sql` per migratie, handmatige registerrij, en na afloop
+`md5(pg_get_functiondef())` naast de lokale stack.
+
+📏 **Alle twintig functies uit deze ronde komen byte voor byte overeen.** En de
+catalogi:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 361 | 361 |
+| constraints | 242 | 242 |
+| indexen | 142 | 142 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `609fcd17…` | `609fcd17…` |
+| **sómhash over alle constraintdefinities** | `f720824c…` | `f720824c…` |
+
+Het register telt **186 rijen tot `0183`**, gelijk aan de 186 bestanden in de
+map. Nul tijdstempels, nul dubbele nummers, geen gat.
+
+⚠️ **De sómhash over álle functies wijkt nog steeds af, en dat is de oude
+QS8-220-drift** — functies van vóór `0139` die een eerdere sessie met een
+ingekorte body heeft toegepast. Niets uit deze ronde zit erin; dat is per functie
+nagemeten en niet afgeleid uit het totaal.
+
+✅ **Acht bewakingsfuncties geven nul bezwaren op productie**: `archiefleesgat()`,
+`barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`,
+`tijdstempel_bewaking()`, `volgorde_bewaking()`, `goal_events_bewaking()` en
+`realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+`ai_dag_budget_cent()` geeft 30.
 
 ⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
 hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog

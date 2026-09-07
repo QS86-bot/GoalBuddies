@@ -11,7 +11,7 @@ import {
 } from './harness';
 
 /**
- * Het oppervlak van de getuige volgt de groepsband — QS8-306, migratie 0182.
+ * Het oppervlak van de getuige volgt de groepsband — QS8-306, migratie 0183.
  *
  * ⚠️ **De belofte is niet "`getuigenissen()` filtert op lidmaatschap".** Dat is
  *    een eigenschap van een ónderdeel. De belofte is: *wie de groep verlaat,
@@ -21,7 +21,7 @@ import {
  *      1. `getuigenissen()` (0169), het scherm;
  *      2. de derde tak van `commitments_select` (0168), de rij eronder.
  *
- *    📏 Gemeten op de draaiende database vóór 0182, met Bob als getuige die de
+ *    📏 Gemeten op de draaiende database vóór 0183, met Bob als getuige die de
  *    groep verlaat:
  *
  *    ```
@@ -38,7 +38,7 @@ import {
  *    lekte.
  *
  * ⚠️ **De must-allow staat vóór de must-deny, en dat is geen volgorde maar een
- *    grendel.** De eerste versie van 0182 rekende de band ín de policy uit, met
+ *    grendel.** De eerste versie van 0183 rekende de band ín de policy uit, met
  *    een join op `goals`. Die subquery draait ónder RLS en de getuige mag het
  *    doel van de eigenaar niet lezen, dus 📏 `bob leest de rij = 0` terwijl hij
  *    gewoon lid was. Een suite die alleen het vertrek toetst, was daar groen op
@@ -58,7 +58,7 @@ import {
  *   B  `and deelt_groep_met_eigenaar(goal_id)` uit `commitments_select`
  *      → 1 rood: 'laat een vertrokken getuige de rij ook niet meer lezen'
  *   C  de helper zijn `select owner_id from goals` vervangen door de
- *      policy-eigen join (de eerste versie van 0182)
+ *      policy-eigen join (de eerste versie van 0183)
  *      → 1 rood op de must-allow: een lid dat er gewoon is, ziet zijn rij niet
  *   D  `deelt_groep_met_eigenaar()` naar de verkeerde buurman laten delegeren
  *      (`shares_group_with_goal(g)` in plaats van `shares_group_with_user()`)
@@ -198,7 +198,7 @@ describe.skipIf(!rlsTestsConfigured)('het oppervlak van de getuige volgt de groe
     async () => {
       // ⚠️ **Het tweede slot, en het slot dat ertoe doet.** Dit gaat langs
       //    `getuigenissen()` heen: PostgREST kent `commitments` en de derde tak
-      //    van `commitments_select` besliste tot 0182 zonder naar lidmaatschap te
+      //    van `commitments_select` besliste tot 0183 zonder naar lidmaatschap te
       //    kijken. Een reparatie in alleen de functie maakt het blok leeg en laat
       //    het leesrecht staan.
       await zetLidmaatschap('inactive');
@@ -216,7 +216,7 @@ describe.skipIf(!rlsTestsConfigured)('het oppervlak van de getuige volgt de groe
       //    staan: `bewaak_begunstigde()` (0168) weigert `beneficiary_user_id =
       //    null` met *"De begunstigde van een commitment is niet weg te halen
       //    zolang hij bestaat"*, en zichzelf aanwijzen met *"Je kunt niet je
-      //    eigen getuige zijn"*. Zou 0182 de kolom leeghalen in plaats van het
+      //    eigen getuige zijn"*. Zou 0183 de kolom leeghalen in plaats van het
       //    oppervlak af te knijpen, dan was deze test rood — en dan was het een
       //    veel zwaarder besluit geweest dan het is.
       await zetLidmaatschap('inactive');

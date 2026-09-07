@@ -97,7 +97,23 @@ function git(argumenten) {
   return execFileSync('git', argumenten, { cwd: WORTEL, encoding: 'utf8' });
 }
 
-/** Alle branchnamen die de remote kent. */
+/**
+ * Alle branchnamen die de remote kent.
+ *
+ * ⚠️ **Ook de gelande, en dat is een besluit — QS8-313.** `migraties:controle`
+ *    slaat een branch die volledig in `origin/main` zit sinds die datum wél
+ *    over, want daar is de vraag *"botst dit migratienummer met de map van nu"*
+ *    en die map draagt zo'n migratie allang, onder zijn nieuwe nummer.
+ *
+ *    Hier is de vraag een ándere: *"heeft iemand dit issue al gebouwd"*. Op die
+ *    vraag is een gelande branch juist het sterkste ja dat er is. 📏 Gemeten:
+ *    `npm run claim -- QS8-306` weigert nadat dat issue gemerged en op Done
+ *    gezet is, en dat hóórt. Blijkt er iets aan dat werk te ontbreken, dan is
+ *    dat een vervolgissue en geen tweede branch op hetzelfde issue — zo is
+ *    QS8-290 ontstaan.
+ *
+ *    Uitleg in `docs/decisions/2026-09-07-een-gelande-branch-is-geen-botsing.md`.
+ */
 function remoteRefs() {
   return git(['ls-remote', '--heads', 'origin'])
     .split('\n')
