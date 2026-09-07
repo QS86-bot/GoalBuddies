@@ -104,5 +104,10 @@ export function streefdatumRedenen(): Readonly<Record<string, string>> {
     //    datum wil tonen, geeft hem apart door — een tabel die een parameter
     //    nodig heeft, is geen tabel meer.
     recent_ontkoppeld: t('doel.recent_ontkoppeld'),
+    // ⚠️ Sinds 0184 (QS8-317): een doel met een openstaande straf laat zijn
+    //    deadline niet vooruit schuiven. Naar vóren halen mag wel, dus de zin
+    //    zegt allebei — anders leest de gebruiker een verbod waar een grens
+    //    staat.
+    straf_staat_open: t('doel.straf_staat_open'),
   };
 }
