@@ -68,6 +68,25 @@ const AANROEPEN = /(?<![.\w])(?:meld|reportError)\s*\(/g;
 export const MELDINGSVORMEN = [/\.message\b/, /\.details\b/, /\.hint\b/, /\bsqlerrm\b/];
 
 /**
+ * Een kale verwijzing naar een foutobject, geïnterpoleerd in de tekst.
+ *
+ * ⚠️ **`${fout}` lekt net zo hard als `${fout.message}`**, en dat is niet
+ *    vanzelfsprekend: een sjabloonliteral roept `String()` aan, en
+ *    `String(new Error('Europe/Bogus is geen bekende tijdzone'))` geeft
+ *    `Error: Europe/Bogus is geen bekende tijdzone`. De melding gaat dus
+ *    voluit mee zónder dat het woord `message` in de code voorkomt.
+ *
+ * ⚠️ **Op de náám afgaan is hier de juiste maat, en dat is een besluit.**
+ *    Of een identifier een fout draagt is niet uit de tekst af te lezen; wat
+ *    wél kan is de conventie van dit project toetsen, en die is consequent
+ *    `fout`, `error` of `…Fout`. Een controle die élke geïnterpoleerde
+ *    identifier meldt, meldt ook `${aantal}` en `${groepId}` — en dan leer je
+ *    hem te negeren. Zelfde stelregel als de `_id`-grens in
+ *    `logboek-controle`.
+ */
+const FOUTOBJECT = /^(?:[a-z_$][\w$]*)?(?:fout|error|err)$/i;
+
+/**
  * Waar het haakjespaar dat op `open` begint, sluit — de index ná het sluithaakje.
  * `null` als het niet sluit.
  *
@@ -156,16 +175,28 @@ export function meldAanroepen(bron) {
   return uit;
 }
 
+/**
+ * De vorm waarmee dit argument een rúwe melding meesmokkelt, of `undefined`.
+ *
+ * ⚠️ **`MELDINGSVORMEN` gaat over het héle argument en niet alleen over de
+ *    interpolaties.** Anders glipt `'mislukt: ' + fout.message` erdoor — geen
+ *    sjabloonliteral, wel dezelfde melding. Gemeten in de review op QS8-315:
+ *    die vorm gaf nul treffers tegen één voor de sjabloonvariant.
+ */
+function smokkelvorm(arg) {
+  const rechtstreeks = MELDINGSVORMEN.find((r) => r.test(arg));
+  if (rechtstreeks !== undefined) return String(rechtstreeks);
+
+  const kaal = interpolaties(arg).find((inhoud) => FOUTOBJECT.test(inhoud.trim()));
+  return kaal === undefined ? undefined : `kaal foutobject: \${${kaal.trim()}}`;
+}
+
 /** De aanroepen die een rúwe foutmelding in de Sentry-tekst zetten. */
 export function beoordeel(bron) {
   return meldAanroepen(bron)
     .map((aanroep) => {
-      const arg = eersteArgument(aanroep.tekst);
-      const vorm = interpolaties(arg)
-        .flatMap((inhoud) => MELDINGSVORMEN.filter((r) => r.test(inhoud)))
-        .at(0);
-
-      return vorm === undefined ? null : { ...aanroep, vorm: String(vorm) };
+      const vorm = smokkelvorm(eersteArgument(aanroep.tekst));
+      return vorm === undefined ? null : { ...aanroep, vorm };
     })
     .filter((t) => t !== null);
 }

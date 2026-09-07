@@ -102,6 +102,14 @@ want die is nuttig op het moment dat je hem schrijft. Daarom
 `npm run meldtekst:controle` — geëxporteerd, tweezijdig geijkt, en meedraaiend in
 de poort.
 
+⚠️ **Hij ving in zijn eerste vorm twee omzeilingen niet, en de security-review
+heeft ze gemeten.** ``meld(new Error(`x: ${fout}`))`` is de gemeenste: er staat
+geen `message` in de code, maar een sjabloonliteral roept `String()` aan en
+`String(new Error('Europe/Bogus …'))` geeft `Error: Europe/Bogus …`. De tweede is
+`'x: ' + fout.message` — dezelfde melding, geen sjabloon. Allebei gedicht, allebei
+onder test. Wat er niet mee te vangen is, staat als dossierrij: een tussenvariabele
+vraagt dataflow, en dat kan een tekstscan niet.
+
 ⚠️ **Hij is smal gehouden, en dat is een besluit.** Hij meldt niet dat een
 foutobject rechtstreeks wordt doorgegeven (`meld(fout, …)`). Dat zijn er 173, en
 een controle die 173 dingen meldt leert je hem te negeren — dezelfde stelregel als
@@ -120,7 +128,20 @@ issue in §5.
 | `AANROEPEN` lookbehind | `(?<![.\w])` weggehaald | **eerst groen** |
 | `FOUTCODE` in `scrub.ts` | vormtoets weggehaald | rood |
 
-⚠️ **Die ene groene is de opbrengst van deze ronde.** Het ijkgeval zette
+En na de security-review drie erbij, op de twee grendels die daar zijn
+bijgekomen:
+
+| Grendel | Mutatie | Uitslag |
+|---|---|---|
+| `FOUTOBJECT` | de tak weg, dus `${fout}` glipt erdoor | rood |
+| `MELDINGSVORMEN` over het hele argument | weer alleen over de interpolaties, dus `+`-concatenatie glipt erdoor | rood |
+| de **smalheid** van `FOUTOBJECT` | matcht élke identifier, dus `${goalId}` wordt gemeld | rood |
+
+⚠️ Die laatste is er met opzet: bij deze controle is *te veel melden* net zo goed
+een defect als te weinig, want dan wordt hij uitgezet. Een mutatie die alleen de
+strengheid toetst, laat die kant onbewaakt.
+
+⚠️ **Die ene groene is de opbrengst van de eerste ronde.** Het ijkgeval zette
 `log.meld(fout)` naast een echte treffer — maar `meld(fout)` geeft een object door
 en wordt sowieso niet gemeld, dus de lookbehind viel weg zonder dat er iets rood
 werd. De ijking voerde zijn geval door een pad dat een éérdere grendel al afving,
@@ -150,10 +171,69 @@ edge-helft daadwerkelijk de deur uit), of zodra de eerste echte gebruiker zich
 aanmeldt — vandaag is de database leeg en lekt het naar een Sentry-project van de
 eigenaar zelf.
 
-## 6. Wat er niet gebeurd is, en waarom
+## 6. De `Response`-body, en een alinea die hier eerst het tegendeel beweerde
 
-De `Response`-body van beide functies draagt de volledige melding nog wél
-(`{ error: fout.message }`). Dat is bewust gelaten: die body gaat naar de
-aanroeper van de job — de planner, met de service-role — en niet naar Sentry. Hij
-verlaat Supabase niet, net zomin als het functielog. Het meeverhuizen zou de
-diagnose van een mislukte job weghalen zonder dat er een lek mee dichtgaat.
+⚠️ **Dit hoofdstuk stond er eerst andersom in, en de security-review heeft het
+omgedraaid.** Er stond dat de `Response`-body de volledige melding mócht dragen,
+*"want die body gaat naar de aanroeper van de job — de planner, met de
+service-role … Hij verlaat Supabase niet, net zomin als het functielog."*
+
+Dat is onwaar, en het is met twee regels na te meten:
+
+```
+.github/workflows/rollover.yml:67       echo "HTTP ${status}"
+                                        cat /tmp/rollover.json
+.github/workflows/notificaties.yml:70   idem
+```
+
+De `cat` staat **vóór** de statuscontrole, en `curl` geeft exitcode 0 op een 500.
+Bij elke mislukte run wordt de body dus letterlijk in het **GitHub
+Actions-runlog** afgedrukt — een derde systeem, buiten Supabase, met een eigen
+bewaartermijn en een eigen lezersgroep.
+
+📏 **En die lezersgroep is iedereen.** De GitHub-API geeft voor
+`QS86-bot/GoalBuddies` `"visibility": "public"` en `"private": false`. Het runlog
+van een uurlijkse job is wereldleesbaar.
+
+**Beide bodies geven daarom nu een slug terug** (`profielen_ophalen_mislukt`),
+precies zoals de vangnettakken bovenaan dezelfde bestanden het al deden. De
+volledige tekst staat in de `console.error` ernaast, waar hij hoort.
+
+⚠️ **Waarom dit de zwaarste bevinding van de ronde was, terwijl er vandaag niets
+lekt.** De twee bodies dragen `select`-fouten op `profiles`, en een SELECT vuurt
+geen triggers — er is geen gebruikerswaarde die er vandaag in terechtkomt. Het
+gevaar zat in de **premisse**: een beslisdocument dat vastlegt dat dit pad veilig
+is, is precies wat de volgende auteur leest voordat hij er een `.rpc()`-fout bij
+zet die wél een `%`-vorm draagt. In dezelfde functie staat er al zo een
+(`termijnFout`). Dat is de vorm waarvan het dossier van dit project zegt dat hij
+rot: niet de regel code, maar de goedkeuring eronder.
+
+⚠️ **De les die blijft: "het blijft binnen systeem X" is een bewering over een
+route, en een route lees je na.** Ik had de aanroeper niet opengeslagen. Eén
+`grep` op de workflow was genoeg geweest, en die kostte de review negen minuten
+en mij een blokkerende bevinding.
+
+## 7. Wat vandaag de verkeerde kant op staat, en dat hoort erbij
+
+Zolang `SENTRY_DSN` niet gezet is, ging er hiervoor **niets** naar Sentry — en
+gaat er nu **twee `console.error`-regels méér** rúwe tekst naar het
+Supabase-functielog dan voorheen: `rollover.profielen` en
+`notificaties.profielen` hadden er geen.
+
+Netto is deze wijziging vandaag dus een **toename** van blootstelling, en pas een
+afname op de dag dat de DSN aan gaat. Dat is een verdedigbare ruil — het functielog
+is een smaller publiek dan Sentry, en de DSN staat op het punt aan te gaan — maar
+het is er een, en hij hoort opgeschreven te staan in plaats van weggelaten.
+
+⚠️ Daar komt bij dat `logboek:controle` deze twee regels **structureel niet kan
+zien**. 📏 Zelf nagemeten door de controle te voeden:
+
+| Gevoerd | `beoordeel()` |
+|---|---|
+| ``console.error(`x: ${fout.message}`)`` | **0** |
+| ``console.error(`x: ${profiel.id}`)`` | 1 |
+| ``console.error(`Key (user_id)=(3f2b)`)`` | 1 |
+
+Die controle matcht broncode-identifiers, niet runtime-inhoud. De belofte "geen
+persoon in de functielogs" is dus smaller dan zijn naam suggereert. Staat als
+dossierrij.

@@ -537,7 +537,20 @@ async function draaiRollover(auth: string): Promise<Response> {
       //    `23514` een constraint. Geen van drieën draagt gebruikerstekst.
       sqlstate: fout.code,
     });
-    return new Response(JSON.stringify({ error: fout.message }), { status: 500 });
+    // ⚠️ **Een slug en niet de melding — en dat is een gemeten reparatie, geen
+    //    voorzorg (security-review op QS8-315).** Hier stond `fout.message`, met
+    //    als verdediging dat de body "Supabase niet verlaat". Dat is onwaar: de
+    //    aanroeper is `.github/workflows/rollover.yml`, en die doet op regel 67
+    //    `cat /tmp/rollover.json` — vóór de statuscontrole, en `curl` geeft
+    //    exitcode 0 op een 500. De melding landt dus in het GitHub
+    //    Actions-runlog: een derde systeem, met een eigen bewaartermijn.
+    //
+    //    📏 En de repository staat op `visibility: public`, nagekeken via de
+    //    GitHub-API. Dat runlog is wereldleesbaar.
+    //
+    //    Dezelfde vorm als de vangnettak bovenaan dit bestand, die dit al goed
+    //    deed. De volledige tekst staat in de `console.error` hierboven.
+    return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
 
   // Slapende groepen — QS8-60.

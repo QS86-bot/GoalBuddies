@@ -123,6 +123,13 @@ describe('beoordeel — de vormen die hij moet vinden', () => {
     ['de DETAIL-regel', 'meld(new Error(`mislukt: ${fout.details}`), "w");'],
     ['de hint', 'meld(new Error(`mislukt: ${fout.hint}`), "w");'],
     ['sqlerrm uit een RPC', 'meld(new Error(`mislukt: ${rij.sqlerrm}`), "w");'],
+    // ⚠️ De drie hieronder komen uit de security-review op QS8-315, die ze alle
+    //    drie als omzeiling heeft gemeten: nul treffers tegen één voor de
+    //    referentievorm. De eerste is de gemeenste — er staat geen `message` in
+    //    de code, maar `String(new Error(x))` geeft `Error: x`.
+    ['een kaal foutobject', 'meld(new Error(`mislukt: ${fout}`), "w");'],
+    ['een kaal foutobject onder een andere naam', 'meld(new Error(`x: ${profielFout}`), "w");'],
+    ['concatenatie in plaats van een sjabloon', "meld(new Error('mislukt: ' + fout.message), 'w');"],
   ];
 
   it.each(moetenRoodWorden)('vindt %s', (_naam, bron) => {
@@ -142,6 +149,11 @@ describe('beoordeel — de vormen die hij met rust moet laten', () => {
     ['de reparatie zelf', "meld(new Error('vast'), 'w', { code: 'x', sqlstate: fout.code });"],
     // `message` als eigen woord in de tekst is geen `.message`.
     ['het woord message in de zin', "meld(new Error('geen message ontvangen'), 'w');"],
+    // ⚠️ De tegenhanger van de kaal-foutobject-gevallen hierboven: een gewone
+    //    geïnterpoleerde waarde is geen fout, en die moet groen blijven —
+    //    anders meldt hij het recap-pad en leer je hem te negeren.
+    ['een geïnterpoleerd id', 'meld(new Error(`mislukt voor ${goalId}`), "w");'],
+    ['een geïnterpoleerde reden-slug', 'meld(new Error(`geweigerd: ${reden}`), "w");'],
   ];
 
   it.each(moetenGroenBlijven)('laat %s met rust', (_naam, bron) => {

@@ -185,7 +185,10 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       code: 'profielen_ophalen_mislukt',
       sqlstate: profielFout.code,
     });
-    return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
+    // ⚠️ Een slug en niet de melding, om dezelfde gemeten reden als in de
+    //    rollover: `notificaties.yml:70` doet `cat` op deze body vóór de
+    //    statuscontrole, en dat runlog staat publiek.
+    return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
 
   for (const profiel of (profielen ?? []) as Profiel[]) {
