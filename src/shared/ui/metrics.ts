@@ -72,8 +72,21 @@ export function rangeState(input: {
   readonly achieved: Achieved;
   readonly hasFloor: boolean;
   readonly viewer: Viewer;
+  /**
+   * Hoeveel bevestigingen deze week al heeft en hoeveel er nodig zijn — QS8-174.
+   *
+   * ⚠️ **Alleen zinvol voor de eigenaar, en dat wordt hier afgedwongen.** De
+   *    beoordelaar ziet dit al in zijn wachtrij; een groepslid dat toekijkt hoort
+   *    het niet te zien. Voor élk nieuw oppervlak is beschermd het antwoord tot
+   *    iemand het tegendeel besluit.
+   *
+   * ⚠️ Ontbreekt hij, dan valt het bijschrift terug op "wacht op je buddy" — de
+   *    tekst van vóór dit issue. Dat is met opzet: dit is een bijschrift en geen
+   *    grendel, en wegvallen mag nooit een leeg scherm opleveren.
+   */
+  readonly bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined;
 }): RangeState {
-  const { status, achieved, hasFloor, viewer } = input;
+  const { status, achieved, hasFloor, viewer, bevestigingen } = input;
 
   const positive = status === 'approved' || status === 'pending';
 
@@ -98,7 +111,7 @@ export function rangeState(input: {
       hidden: false,
       tone: status === 'pending' ? 'pending' : 'progress',
       fill: ceiling ? 1 : hasFloor ? FLOOR_MARK : 1,
-      label: labelFor(ceiling, hasFloor, status === 'pending'),
+      label: labelFor(ceiling, hasFloor, status === 'pending', viewer === 'owner' ? bevestigingen : undefined),
       awaitingApproval: status === 'pending',
     };
   }
@@ -147,14 +160,33 @@ export function rangeState(input: {
   };
 }
 
-function labelFor(ceiling: boolean, hasFloor: boolean, pending: boolean): string {
+function labelFor(
+  ceiling: boolean,
+  hasFloor: boolean,
+  pending: boolean,
+  bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined,
+): string {
   const wat = ceiling
     ? t('weekdoel.plafond_gehaald')
     : hasFloor
       ? t('weekdoel.vloer_gehaald')
       : t('weekdoel.gehaald');
 
-  return pending ? t('weekdoel.wacht_op_buddy', { wat }) : wat;
+  if (!pending) return wat;
+
+  // ⚠️ **Alleen tellen als er iets te tellen valt.** Staat de drempel op één —
+  //    en dat is de standaard `any` — dan is "0 van de 1" ruis die precies
+  //    hetzelfde zegt als "wacht op je buddy", maar met meer woorden. Dit
+  //    bijschrift bestaat voor de meerderheids- en quorumgroepen.
+  if (bevestigingen !== undefined && bevestigingen.nodig > 1) {
+    return t('weekdoel.wacht_op_bevestigingen', {
+      wat,
+      gedaan: String(bevestigingen.gedaan),
+      nodig: String(bevestigingen.nodig),
+    });
+  }
+
+  return t('weekdoel.wacht_op_buddy', { wat });
 }
 
 /**
