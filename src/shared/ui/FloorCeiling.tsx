@@ -30,6 +30,11 @@ interface Props {
   readonly achieved: Achieved;
   /** Wie kijkt er mee. Bepaalt wat er getoond mág worden (domeinregel 7). */
   readonly viewer: Viewer;
+  /**
+   * Hoeveel bevestigingen deze week al heeft — QS8-174. Alleen voor de eigenaar,
+   * en `rangeState()` dwingt dat af in plaats van dit scherm.
+   */
+  readonly bevestigingen?: { readonly gedaan: number; readonly nodig: number } | undefined;
 }
 
 function toneColor(theme: Theme, tone: Tone): string {
@@ -50,12 +55,13 @@ export function FloorCeiling({
   status,
   achieved,
   viewer,
+  bevestigingen,
 }: Props) {
   const theme = useTheme();
   const reduced = useReducedMotion();
 
   const hasFloor = Boolean(floorText);
-  const state = rangeState({ status, achieved, hasFloor, viewer });
+  const state = rangeState({ status, achieved, hasFloor, viewer, bevestigingen });
 
   // ⚠️ Niets renderen, niet "leeg renderen". Een lege plek naast drie gevulde
   //    plekken is óók een mededeling over iemands week.

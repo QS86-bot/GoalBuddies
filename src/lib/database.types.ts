@@ -373,6 +373,7 @@ export type Database = {
           event_type: string
           id: string
           payload: Json | null
+          seq: number
         }
         Insert: {
           actor_id?: string | null
@@ -2409,8 +2410,11 @@ export type Database = {
         }
         Returns: Json
       }
+      ai_dag_budget_cent: { Args: never; Returns: number }
       ai_dag_limiet: { Args: never; Returns: number }
       ai_invoer_max: { Args: never; Returns: number }
+      ai_job_voorschot_cent: { Args: never; Returns: number }
+      ai_jobkosten_cent: { Args: { p_cost_cents: number }; Returns: number }
       ai_kosten_per_week: {
         Args: { p_weken?: number }
         Returns: {
@@ -2468,6 +2472,7 @@ export type Database = {
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
+      deelt_groep_met_eigenaar: { Args: { g: string }; Returns: boolean }
       dagafvinkingen_over: { Args: never; Returns: number }
       definer_bewaking: {
         Args: never
@@ -2536,6 +2541,25 @@ export type Database = {
           punten: number
           total_members: number
           user_id: string
+        }[]
+      }
+      getuigenissen: {
+        Args: never
+        Returns: {
+          body: string
+          confirmed_at: string
+          created_at: string
+          eigenaar_naam: string
+          id: string
+          status: string
+          type: string
+        }[]
+      }
+      getuigenissen_voor: {
+        Args: { p_user_id: string }
+        Returns: {
+          commitment_id: string
+          eigenaar_naam: string
         }[]
       }
       groep_teller: { Args: { p_group_id: string }; Returns: Json }
@@ -2812,6 +2836,14 @@ export type Database = {
         Returns: {
           kolom: string
           tabel: string
+        }[]
+      }
+      mijn_bevestigingsstanden: {
+        Args: { p_weekly_goal_ids: string[] }
+        Returns: {
+          weekly_goal_id: string
+          gedaan: number
+          nodig: number
         }[]
       }
       te_beoordelen_voor: {

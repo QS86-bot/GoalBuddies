@@ -54,6 +54,9 @@ import { fileURLToPath } from 'node:url';
 
 import {
   alsNummer,
+  botsendPerBranch,
+  namenPerBranch,
+  namenPerSleutel,
   nummersPerBranch,
   nummersUit,
   ontbrekendPerBranch,
@@ -190,6 +193,46 @@ if (perBranch !== null) {
       `${branch} draagt ${ontbreekt.length} migratie(s) die hier ontbreken: ` +
         `${ontbreekt.map(alsNummer).join(', ')}. ` +
         'Deze map kan het schema dus niet opbouwen zoals het elders al staat.',
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4b. Hetzelfde nummer, een ander bestand — QS8-310
+// ---------------------------------------------------------------------------
+//
+// ⚠️ **Stap 4 kan dit per constructie niet zien, en op precies de verkeerde
+//    manier.** Die vergelijkt nummers: draagt de zusterbranch 0175 en draag ik
+//    ook een 0175, dan ontbreekt er niets en zwijgt hij. Zolang mijn map het
+//    nummer nog níet had, meldde hij het wél — als "0175 ontbreekt hier". De
+//    melding verdween dus op het moment dat de botsing ontstond.
+//
+// ⚠️ **Dit is de fout waar `migratie:nieuw` (QS8-247) en `migratie:hernummer`
+//    (QS8-241) voor gebouwd zijn**, en volgens CLAUDE.md al vier keer gebeurd.
+//    `migratie:nieuw` deelt een nummer uit dat élders vrij is; de eis dat de
+//    eigen map aaneengesloten is, duwt je daarna terug naar het botsende nummer.
+//    De werkwijze eromheen — wie als tweede merget, hernummert — werkt, maar
+//    leunde tot nu toe op een mens die eraan denkt.
+//
+// ⚠️ Zelfde zwijgen als stap 4 zonder git of remote, en om dezelfde reden.
+
+const namenElders = namenPerBranch();
+
+if (namenElders !== null) {
+  const botsingen = botsendPerBranch({
+    lokaal: namenPerSleutel(bestanden),
+    perBranch: namenElders,
+  });
+
+  for (const { branch, botsingen: rijen } of botsingen) {
+    const opsomming = rijen
+      .map(({ nummer, hier, daar }) => `${nummer}: hier ${hier}, daar ${daar}`)
+      .join('; ');
+
+    fouten.push(
+      `${branch} draagt ${rijen.length} migratienummer(s) onder een andere naam: ` +
+        `${opsomming}. Wie als tweede merget, hernummert — met ` +
+        '`npm run migratie:hernummer -- <bestandsnaam> <nieuw nummer>`.',
     );
   }
 }

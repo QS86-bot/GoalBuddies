@@ -26,7 +26,12 @@
  *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
  *    een waarde bevatten die deze build niet kent, en dan is "geen familie" het
  *    eerlijke antwoord. Een terugval op een wíllekeurige familie zou zo'n doel in
- *    de verkeerde kleur zetten — dezelfde redenering als bij `categorieGroep()`.
+ *    de verkeerde kleur zetten.
+
+ *    ⚠️ Deze redenering stond ook in `categorieGroep()` in `modules/goals`, een
+ *    derde plek die de indeling categorie-naar-familie kende. Die functie is bij
+ *    QS8-301 weggehaald omdat geen enkel scherm hem aanriep; `categoriemerk()`
+ *    hieronder en `CATEGORIE_GROEPEN` zijn wat overblijft.
  */
 
 import type { Categoriekleuren } from '../theme/tokens';

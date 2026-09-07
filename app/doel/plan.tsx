@@ -14,12 +14,13 @@ import {
 import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { categorieLabels } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
-import { toonDatum } from '@/shared/time';
+import { addDays, localDateIn, now, toonDatum, type Weekday } from '@/shared/time';
 import {
   Body,
   Button,
   Caption,
   Card,
+  DatumKeuze,
   Field,
   Screen,
   Subheading,
@@ -177,15 +178,19 @@ export default function PlanUitEenZin() {
               numberOfLines={2}
             />
 
-            <Field
-              label={t('plan.wanneer')}
-              hint={t('plan.wanneer_hint')}
-              value={datum}
-              onChangeText={setDatum}
-              placeholder="2027-06-01"
-              autoCapitalize="none"
-              inputMode="numeric"
-            />
+            {/* ⚠️ Zie `app/doel/nieuw.tsx`: kalender, morgen als ondergrens. */}
+            {profiel === null ? null : (
+              <DatumKeuze
+                label={t('plan.wanneer')}
+                hint={t('plan.wanneer_hint')}
+                waarde={datum}
+                onKies={setDatum}
+                startDag={profiel.week_start_day as Weekday}
+                vandaag={localDateIn(profiel.tz, now())}
+                min={addDays(localDateIn(profiel.tz, now()), 1)}
+                optioneel
+              />
+            )}
           </Card>
 
           {/*

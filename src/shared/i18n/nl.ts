@@ -179,6 +179,14 @@ export const nl = {
   'commitment.penalty.cancelled.uitleg':
     'Je hebt je doel afgerond, dus deze inzet gaat niet meer in werking.',
 
+  'getuigenis.titel': 'Jij bent getuige',
+  'getuigenis.uitleg':
+    'Deze mensen hebben jou aangewezen als getuige van hun inzet. Hun streefdatum ' +
+    'is verstreken.',
+  'getuigenis.van': 'De inzet van {naam}',
+  'getuigenis.afgehandeld': 'Afgehandeld',
+  'getuigenis.verschuldigd': 'Verschuldigd',
+
   'commitment.onbekend.titel': 'Onbekend',
   'commitment.onbekend.uitleg': 'De stand van deze afspraak is niet te bepalen.',
 
@@ -345,6 +353,7 @@ export const nl = {
   'weekdoel.vloer_gehaald': 'Vloer gehaald',
   'weekdoel.gehaald': 'Gehaald',
   'weekdoel.wacht_op_buddy': '{wat}: wacht op je buddy',
+  'weekdoel.wacht_op_bevestigingen': '{wat}: {gedaan} van de {nodig} bevestigd',
 
   // ---------------------------------------------------------------------------
   // Reeks, Ketting en weekpassen — QS8-75, QS8-80, QS8-81
@@ -403,6 +412,20 @@ export const nl = {
 
   'mijlpalen.geen': 'Nog geen mijlpalen',
   'mijlpalen.voortgang': '{done} van {total} mijlpalen',
+
+  // ---------------------------------------------------------------------------
+  // De datumkiezer — QS8-223
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️ Geen enkele sleutel hier draagt een datumnotatie. Wat de knop toont komt
+  //    uit `toonDatum()` en wat de kop toont uit `toonMaand()`; een voorbeeld als
+  //    "JJJJ-MM-DD" in de tekst zou precies de eis terugzetten die dit component
+  //    weghaalt.
+  'datumkeuze.kies': 'Kies een datum',
+  'datumkeuze.niets_gekozen': 'nog geen datum',
+  'datumkeuze.wissen': 'Geen datum',
+  'datumkeuze.vorige_maand': 'Vorige maand',
+  'datumkeuze.volgende_maand': 'Volgende maand',
 
   'weekstart.label': 'Mijn week begint op',
   'weekstart.hint':
@@ -981,7 +1004,7 @@ export const nl = {
     'Je doel staat, maar de stappen zijn niet opgeslagen. Voeg ze zelf toe of laat de coach het opnieuw proberen.',
   'coach.plan_zonder_weekdoel':
     'Je doel en je stappen staan. Alleen het weekdoel is niet opgeslagen. Kies zelf wat je deze week doet.',
-  'coach.daglimiet': 'Je hebt vandaag al {limiet} keer de Doelcoach gebruikt. Morgen kan het weer. Je kunt intussen zelf mijlpalen toevoegen.',
+  'coach.daglimiet': 'De Doelcoach heeft vandaag genoeg voor je gedaan. Morgen kan het weer. Je kunt intussen zelf mijlpalen toevoegen.',
   'coach.eyebrow': 'ZES VRAGEN',
   'coach.zes_vragen': 'Zes vragen, en je mag ze allemaal overslaan. Hoe meer je invult, hoe beter de mijlpalen bij jou passen, maar overslaan werkt gewoon.',
   'coach.alleen_voor_jou': 'Je antwoorden zijn alleen voor jou en de Doelcoach. Je groep ziet ze nooit.',
@@ -1334,6 +1357,9 @@ export const nl = {
   'deadline.niet_gekoppeld': 'Dit doel is niet aan deze groep gekoppeld.',
   'deadline.zelfde_datum': 'Kies een andere datum dan de datum die er nu staat.',
   'deadline.argument_leeg': 'Schrijf één zin over wat er veranderd is.',
+  'deadline.geen_beslisser':
+    'Je bent het enige lid van deze groep, dus niemand kan dit verzoek goedkeuren. Nodig eerst iemand uit, of kies een groep waar een buddy in zit.',
+  'deadline.datum_in_verleden': 'Die datum ligt in het verleden. Kies vandaag of later.',
   'deadline.al_open': 'Er loopt al een verzoek voor dit doel. Wacht daar eerst op.',
   'deadline.bestaat_niet': 'Dit verzoek bestaat niet meer.',
   'deadline.al_beslist': 'Hier is al over beslist.',
@@ -1559,6 +1585,14 @@ export const nl = {
     'Een straf heeft een getuige nodig: een groep, of één iemand met wie je een groep deelt. ' +
     'Je zit nog nergens in, dus begin daar.',
   'straf.naar_groepen': 'Naar je groepen',
+  // ⚠️ **Ook hier: uitleg in plaats van een knop die de server afwijst.** Sinds
+  //    migratie 0170 weigert `commitments_insert` een straf op een doel waarvan
+  //    de streefdatum al voorbij is — die zou bij de eerstvolgende rollover
+  //    meteen verschuldigd zijn, en dat was de spamvector van QS8-293. De uitweg
+  //    is de streefdatum, en die staat een kaart hoger op ditzelfde scherm.
+  'straf.datum_voorbij':
+    'De streefdatum van dit doel is voorbij, dus een straf zou meteen gelden. Verzet eerst je ' +
+    'streefdatum als je er nog aan wilt werken.',
   'straf.zeker': 'Weet je het zeker?',
   'straf.bevestig_uitleg':
     'Als {groep} dit te zien krijgt, is dat omdat je streefdatum verstreken is zonder dat ' +
@@ -1883,7 +1917,7 @@ export const nl = {
   'beoordelen.meer_laden': 'Meer laden',
   'groepscherm.wie_meedoen': 'Wie er meedoen',
   'groepscherm.meer_tijd': 'Een buddy vraagt om meer tijd',
-  'coach.poging_telt': 'Elke poging telt mee in je tien per dag.',
+  'coach.poging_telt': 'Elke poging telt mee in wat de Doelcoach vandaag nog voor je kan doen.',
   'weekafsluiting.wat_gedeeld': 'Wat de groep deelde',
 
   // ---------------------------------------------------------------------------
@@ -2034,6 +2068,14 @@ export const nl = {
   'weekplan.start_nu': 'Start deze nu',
   'weekplan.start_nu_label': 'Start "{titel}" deze week',
   'weekplan.verwijder': 'Weg uit het plan',
+  'weekplan.bijstellen': 'Bijstellen',
+  'weekplan.bijstellen_label': 'Stel "{titel}" bij',
+  'weekplan.bewerken_kop': 'Deze stap bijstellen',
+  'weekplan.titel': 'Wat ga je doen?',
+  'weekplan.vloer': 'De vloer: wat je op je slechtste week nog haalt',
+  'weekplan.plafond': 'Het plafond: wat je wilt halen',
+  'weekplan.bewaren': 'Bewaren',
+  'weekplan.annuleren': 'Laat maar',
   'weekplan.verwijder_label': 'Haal "{titel}" uit het plan',
   'weekplan.omhoog': 'Eerder',
   'weekplan.omhoog_label': 'Zet "{titel}" eerder in het plan',
@@ -2061,6 +2103,9 @@ export const nl = {
   'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
   'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
   'coach.al_ingevuld': 'Dit had je al ingevuld bij je doel; je kunt het hier bijstellen.',
+  'coach.uit_vragenlijst':
+    'Dit komt uit je vragenlijst, omgerekend van minuten per dag naar uren per week; je kunt het hier bijstellen.',
+  'coach.eerder_genoemd': 'Bij de vragenlijst noemde je: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // Het ritme van een doel — besluit A53, migratie 0140

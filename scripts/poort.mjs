@@ -55,6 +55,7 @@ export function controlesUit(scripts) {
 /** Welke controles een opgebouwde database nodig hebben om iets te bewijzen. */
 export const HEEFT_DATABASE_NODIG = new Set([
   'klokgrens:controle',
+  'tijdzones:controle',
   'functies:controle',
   'kolomrechten:controle',
   'pin:controle',
@@ -195,25 +196,63 @@ export function draai(commando) {
 }
 
 /**
- * De zin onder een ronde waarin niets rood stond maar niet alles gemeten is.
+ * De uitslag naar het scherm, en de exitcode die erbij hoort.
  *
- * ⚠️ **Hij noemt de oorzaak niet meer als vaststaand, en dat is QS8-177.** Tot
- *    dan zei deze regel "zonder database — start de stack", en dat was voor élke
- *    ongemeten controle waar. Sinds `pgversie:controle` is dat niet meer zo: die
- *    bereikt de database wél en meldt zich ongemeten omdat de lokale major een
- *    andere is dan die van productie. "Start de stack" is dan verkeerd advies op
- *    het moment dat de stack draait — en verkeerd advies leer je negeren.
+ * ⚠️ **Losgetrokken uit `hoofd()` en niet omdat de vijftig knelde.** Deze functie
+ *    beantwoordt één vraag — *wat zeg je tegen de lezer* — en `hoofd()` de
+ *    andere: *wat draai je*. Ze veranderen ook om verschillende redenen: de
+ *    ene als er een stap bijkomt, de andere als een melding de lezer naar de
+ *    verkeerde oorzaak stuurt. Dat laatste is op 07-09-2026 twee keer gebeurd.
  *
- * @param {{ naam: string }[]} ongemeten
+ * @returns de exitcode: 0 alleen als alles groen én gemeten is.
  */
-function ongemetenZin(ongemeten) {
-  return (
-    `· ${ongemeten.length} controle(s) hebben niets gemeten: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
-    '  Waaróm staat bij de controle zelf. Meestal is er geen database — start de\n' +
-    '  stack met `npm run rls:stack` en draai opnieuw. Maar niet altijd:\n' +
-    '  `pgversie:controle` bereikt de database wél en meldt zich ongemeten als de\n' +
-    '  lokale major een andere is dan die van productie (QS8-177).\n\n'
-  );
+export function meldUitslag(uitkomsten, aantalStappen) {
+  const rood = uitkomsten.filter((u) => u.oordeel === 'rood');
+  const ongemeten = uitkomsten.filter((u) => u.oordeel === 'ongemeten');
+
+  for (const u of rood) {
+    process.stderr.write(`\n──── ${u.naam} ────\n${u.uitvoer.trimEnd()}\n`);
+  }
+
+  process.stdout.write('\n');
+  if (ongemeten.length > 0) {
+    // ⚠️ **Niet "zonder database".** Dat was één advies voor vier oorzaken, en
+    //    het stuurde de lezer naar `npm run rls:stack` terwijl `adviseur:` en
+    //    `register:controle` een productiesleutel missen, `audit:controle` het
+    //    npm-register, en `pgversie:controle` de database juist wél bereikt —
+    //    die meldt zich ongemeten omdat de lokale major een andere is dan die
+    //    van productie. Zelfde klasse als QS8-268: een melding die stelliger is
+    //    dan wat er gemeten is.
+    //
+    //    ⚠️⚠️ **Twee sessies vonden dit op dezelfde dag los van elkaar**, via
+    //    QS8-191 en QS8-177, en allebei omdat ze een controle toevoegden die
+    //    niet in het ene verhaal paste. Een zin die maar één oorzaak kent,
+    //    wordt onwaar zodra de tweede erbij komt — en er komt er altijd een.
+    process.stdout.write(
+      `· ${ongemeten.length} controle(s) hebben niets gemeten: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
+        '  Lees per controle de reden die hij zelf noemt — een database, een\n' +
+        '  productiesleutel, het npm-register, of een Postgres-major die niet die\n' +
+        '  van productie is. Niet elke ongemeten controle wacht op\n' +
+        '  `npm run rls:stack`, en één advies voor alle gevallen stuurt de lezer\n' +
+        '  naar de verkeerde oorzaak.\n\n',
+    );
+  }
+
+  if (rood.length > 0) {
+    process.stderr.write(`✗ ${rood.length} van de ${aantalStappen} staan rood.\n`);
+    return 1;
+  }
+
+  if (ongemeten.length > 0) {
+    process.stderr.write(
+      `✗ Niets staat rood, maar ${ongemeten.length} controle(s) hebben niets gemeten.\n` +
+        '  Dat is geen groene poort. Zie hierboven.\n',
+    );
+    return 1;
+  }
+
+  process.stdout.write(`poort: ${aantalStappen} stappen, allemaal groen en allemaal gemeten.\n`);
+  return 0;
 }
 
 async function hoofd() {
@@ -247,30 +286,7 @@ async function hoofd() {
     process.stdout.write(`${teken} ${stap.naam}\n`);
   }
 
-  const rood = uitkomsten.filter((u) => u.oordeel === 'rood');
-  const ongemeten = uitkomsten.filter((u) => u.oordeel === 'ongemeten');
-
-  for (const u of rood) {
-    process.stderr.write(`\n──── ${u.naam} ────\n${u.uitvoer.trimEnd()}\n`);
-  }
-
-  process.stdout.write('\n');
-  if (ongemeten.length > 0) process.stdout.write(ongemetenZin(ongemeten));
-
-  if (rood.length > 0) {
-    process.stderr.write(`✗ ${rood.length} van de ${stappen.length} staan rood.\n`);
-    process.exit(1);
-  }
-
-  if (ongemeten.length > 0) {
-    process.stderr.write(
-      `✗ Niets staat rood, maar ${ongemeten.length} controle(s) hebben niets gemeten.\n` +
-        '  Dat is geen groene poort. Zie hierboven.\n',
-    );
-    process.exit(1);
-  }
-
-  process.stdout.write(`poort: ${stappen.length} stappen, allemaal groen en allemaal gemeten.\n`);
+  process.exit(meldUitslag(uitkomsten, stappen.length));
 }
 
 // ⚠️ `pathToFileURL` en geen sjabloonstring: op Windows levert `file://${...}`
