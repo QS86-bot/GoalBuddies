@@ -7,14 +7,15 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 06-09-2026 (na QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-174; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
 uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
-persoon-getuige) en `0173` (geen servertijdstempel in handen van de client) staan
+persoon-getuige), `0173` (geen servertijdstempel in handen van de client) en
+`0174` (de bevestigingsstand voor de eigenaar) staan
 er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
@@ -154,7 +155,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0173` staan in de map: **176 bestanden**,
+Migraties `0001` t/m `0174` staan in de map: **177 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

@@ -2826,6 +2826,14 @@ export type Database = {
           tabel: string
         }[]
       }
+      mijn_bevestigingsstanden: {
+        Args: { p_weekly_goal_ids: string[] }
+        Returns: {
+          weekly_goal_id: string
+          gedaan: number
+          nodig: number
+        }[]
+      }
       te_beoordelen_voor: {
         Args: { p_user_id: string }
         Returns: {

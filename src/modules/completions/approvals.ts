@@ -507,3 +507,44 @@ export function volgBeoordelingen(opWijziging: () => void): () => void {
     void supabase().removeChannel(kanaal);
   };
 }
+
+/**
+ * Hoeveel bevestigingen elke eigen week nog nodig heeft — QS8-174.
+ *
+ * ⚠️ **Eén verzoek voor de hele cyclus en niet één per week.** Het dashboard toont
+ *    alle weekdoelen van de cyclus; per week los ophalen is de N+1 uit
+ *    onwrikbare regel 12, en dat is precies waarom deze rij zo lang op de
+ *    dossierlijst stond.
+ *
+ * ⚠️ **Een lege lijst gaat de deur niet uit.** Zonder deze tak stuurt elk scherm
+ *    zonder weekdoelen bij elke render een RPC met een lege array — een verzoek
+ *    waarvan het antwoord op voorhand bekend is.
+ *
+ * ⚠️ **Werpt niet bij een fout.** Dit is een bijschrift onder een weekdoel; valt
+ *    het weg, dan staat er wat er vóór dit issue stond ("wacht op je buddy") en
+ *    verder niets. Een lijstscherm laten omvallen voor een bijschrift is de
+ *    verkeerde ruil — zelfde afweging als bij `fetchGetuigenissen()`.
+ *
+ * ⚠️ De telling zelf staat in de database en wordt hier **niet** nagebouwd.
+ *    `bevestigingsstand()` (migratie 0174) is de enige plek waar bevestigingen
+ *    geteld worden; een tweede teller is een tweede opvatting van wanneer een
+ *    week rond is.
+ */
+export async function fetchBevestigingsstanden(
+  weekdoelIds: readonly string[],
+): Promise<ReadonlyMap<string, { gedaan: number; nodig: number }>> {
+  if (weekdoelIds.length === 0) return new Map();
+
+  const { data, error } = await supabase().rpc('mijn_bevestigingsstanden', {
+    p_weekly_goal_ids: [...weekdoelIds],
+  });
+
+  if (error) {
+    reportError(error, 'approvals.standen', { pgcode: error.code });
+    return new Map();
+  }
+
+  return new Map(
+    (data ?? []).map((rij) => [rij.weekly_goal_id, { gedaan: rij.gedaan, nodig: rij.nodig }]),
+  );
+}

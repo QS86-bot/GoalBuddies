@@ -217,6 +217,7 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.vloer_gehaald': 'Floor reached',
   'weekdoel.gehaald': 'Done',
   'weekdoel.wacht_op_buddy': '{wat}: waiting for your buddy',
+  'weekdoel.wacht_op_bevestigingen': '{wat}: {gedaan} of {nodig} confirmed',
 
   'reeks.geen': 'No streak yet',
   'reeks.een': '1 week in a row',
