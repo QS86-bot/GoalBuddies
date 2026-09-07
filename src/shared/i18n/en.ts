@@ -948,6 +948,9 @@ export const en: Record<Sleutel, string> = {
     'Points have already been booked on this goal. Archive it instead of deleting it.',
   'doel.commitment_in_werking':
     'Your reward or penalty has already come into effect. Archive this goal instead of deleting it.',
+  'doel.heeft_commitment':
+    'You attached a reward or penalty to this goal. That stays in your history, ' +
+    'even if you withdraw it. Archive this goal instead of deleting it.',
 
   'doel.reeks_laden': 'Your streak could not be loaded.',
   'doel.weekpassen_laden': 'Your week passes could not be loaded.',

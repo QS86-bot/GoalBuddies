@@ -1310,6 +1310,10 @@ export const nl = {
     'Er zijn al punten op dit doel geboekt. Archiveer het in plaats van het te verwijderen.',
   'doel.commitment_in_werking':
     'Je beloning of straf is al in werking getreden. Archiveer dit doel in plaats van het te verwijderen.',
+  'doel.heeft_commitment':
+    'Je hebt een beloning of straf aan dit doel gehangen. Die blijft in je ' +
+    'geschiedenis staan, ook als je hem intrekt. Archiveer dit doel in plaats ' +
+    'van het te verwijderen.',
 
   'doel.reeks_laden': 'Je reeks kon niet geladen worden.',
   'doel.weekpassen_laden': 'Je weekpassen konden niet geladen worden.',
