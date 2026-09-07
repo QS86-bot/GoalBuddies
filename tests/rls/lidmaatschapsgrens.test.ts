@@ -185,16 +185,23 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
   );
 
   it(
-    'een lid raakt zijn eigen rij wél, en de trigger beslist wat ervan overblijft',
+    'een lid raakt zijn eigen rij wél, en de trigger weigert hoorbaar',
     async () => {
       // ⚠️ **Deze test legt de tweede grendel vast en verwart hem niet met de
       //    eerste.** De `using`-helft laat je je eigen rij raken — daar staat
       //    `user_id = auth.uid()` voor. Dat je jezelf daarmee géén beheerder maakt,
       //    is het werk van `guard_group_member_update()` en niet van de policy.
       //
-      // 📏 Gemeten: de update geeft één rij terug, zonder fout, en `role` staat er
-      //    daarna nog steeds op `member`. Dat de trigger dat stil doet, is een
-      //    eigen bevinding — QS8-314.
+      // ⚠️ **Sinds 0187 is dat verschil ook aan de uitkomst te zien, en dat is de
+      //    hele winst van QS8-314.** Hiervóór stond hier `expect(error).toBeNull()`
+      //    met één rij terug: de trigger zette `role` stil op `member` en de
+      //    aanroeper kreeg 200 met de oude rij. Beide mechanismen — een rij die de
+      //    `using` wegfiltert en een trigger die de wijziging weggooit — gaven toen
+      //    hetzelfde antwoord, en deze test kon dus niet zeggen wélk slot dichtzat.
+      //
+      // 📏 Gemeten: `P0001 geen_groepsbeheerder`. Dát bewijst allebei de helften
+      //    tegelijk — een rij die de `using` niet doorlaat, geeft geen fout en nul
+      //    rijen, dus de trigger is bereikt en dus was de rij bereikbaar.
       const poging = await w.bob.db
         .from('group_members')
         .update({ role: 'admin' })
@@ -202,8 +209,8 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
         .eq('user_id', w.bob.id)
         .select('role');
 
-      expect(poging.error).toBeNull();
-      expect(poging.data ?? [], 'je eigen rij is wél bereikbaar').toHaveLength(1);
+      expect(poging.error?.code, 'je eigen rij is wél bereikbaar — de trigger sprak').toBe('P0001');
+      expect(poging.error?.message).toContain('geen_groepsbeheerder');
 
       const na = await adminDb()
         .from('group_members')
@@ -212,7 +219,7 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
         .eq('user_id', w.bob.id)
         .single();
 
-      expect(na.data?.role, 'de trigger zet het beheerderschap terug').toBe('member');
+      expect(na.data?.role, 'en het beheerderschap is er niet gekomen').toBe('member');
     },
     TEST_TIMEOUT,
   );
@@ -221,11 +228,12 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
     'de check-helft houdt de rij tegen als de trigger hem niet pint',
     async () => {
       // ⚠️ **Het tweede slot, en de reden dat de trigger hier even uit gaat.**
-      //    Met `group_members_guard` aan is deze helft onbereikbaar: hij pint
-      //    `new.user_id := old.user_id`, dus de nieuwe rij is altijd dezelfde als
-      //    de oude en wat `using` doorlaat, laat `check` ook door. 📏 Gemeten:
-      //    trigger aan → geen fout en `user_id` onveranderd; trigger uit →
-      //    `42501`.
+      //    Met `group_members_guard` aan is deze helft onbereikbaar, en sinds 0187
+      //    om een andere reden dan daarvoor: de trigger pinde `new.user_id :=
+      //    old.user_id` en liet de rij dan door, en werpt nu `lidmaatschap_verplaatst`
+      //    vóórdat de check-helft aan bod komt. In beide gevallen komt deze policy
+      //    er niet aan te pas. 📏 Gemeten: trigger aan → `P0001
+      //    lidmaatschap_verplaatst`; trigger uit → `42501`.
       //
       // ⚠️ Zelfde opstelling en zelfde reden als de zelfgetuige-test in
       //    `getuigemelding.test.ts`: twee sloten op één belofte, en dit toetst of

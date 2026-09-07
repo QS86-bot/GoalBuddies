@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -34,6 +34,12 @@ een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
 `supabase functions deploy rollover` gedraaid heeft.
 
 Vraag de database welke migraties er staan, niet dit document.
+
+⚠️ **`0187` staat sinds 07-09 in de map en nog niet op productie** (QS8-314).
+`guard_group_member_update()` werpt daar in plaats van gewijzigde kolommen stil
+terug te zetten, en `join_group_with_code()` krijgt er één regel bij. 📏 Wat
+daarvóór stil kapot was: een lid op `paused` dat toetrad met een geldige code
+kreeg `{"ok": true}` en bleef op `paused`. Dat pad is vandaag dormant — QS8-325.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -174,7 +180,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0186` staan in de map: **189 bestanden**,
+Migraties `0001` t/m `0187` staan in de map: **190 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

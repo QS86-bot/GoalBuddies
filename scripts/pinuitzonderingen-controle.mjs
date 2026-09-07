@@ -41,6 +41,21 @@
  *    dan een register. Komt er ooit een zesde uitzondering bij, dan is dát het
  *    moment om die afweging opnieuw te maken.
  *
+ * ⚠️⚠️ **Eén argument uit die afweging is op 07-09-2026 vervallen, en dat hoort
+ *    hier te staan voordat iemand hem overneemt.** "Een functie die de vlag
+ *    vergeet faalt stíl" gold omdat de pin-triggers zwegen. Migratie 0187
+ *    (QS8-314) laat `guard_group_member_update()` wérpen in plaats van stil
+ *    terugzetten, en gebruikt daarbij zelf zo'n vlag: `join_group_with_code()`
+ *    zet `app.hervat_lidmaatschap` voor precies één overgang. 📏 Geijkt met
+ *    mutatie 4 in `tests/rls/stille-weigering.test.ts`: laat je die regel weg,
+ *    dan valt de functie hoorbaar om.
+ *
+ *    De ruil is dus niet meer "register versus stille fout" maar "register
+ *    versus hoorbare fout", en dat is een andere som. Hij is hier niet gemaakt:
+ *    `guard_group_update()` zwijgt nog steeds en dit register bewaakt hem nog
+ *    steeds. Wie die herbouw ooit oppakt, begint bij deze alinea en niet bij de
+ *    vorige.
+ *
  * ⚠️ Twee latere pin-triggers — `guard_group_member_update()` en
  *    `archief_blijft_archief()` — gelden voor élke rol en kennen deze
  *    uitzondering niet. Het patroon heeft zich dus niet verspreid, en dat is de
