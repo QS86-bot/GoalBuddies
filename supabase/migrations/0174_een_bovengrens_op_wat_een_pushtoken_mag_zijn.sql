@@ -3,6 +3,10 @@
 -- ROLLBACK-PAD:
 --   alter table public.push_tokens drop constraint if exists push_tokens_token_len;
 --   alter table public.push_tokens drop constraint if exists push_tokens_sleutels_len;
+--   plus `create or replace` op `registreer_push_token(text, text, text, text)`
+--   met de body uit 0117 — deze migratie herschrijft die functie ook, en zonder
+--   die stap blijft de RPC `token_te_lang` teruggeven terwijl er geen CHECK meer
+--   is.
 --   ⚠️ Voegt alleen weigeringen toe; een terugzet verliest niets behalve de
 --   bescherming zelf.
 --
@@ -63,6 +67,30 @@
 -- de crypto meeverandert.
 --
 -- ---------------------------------------------------------------------------
+-- ⚠️ `octet_length` en niet `char_length`, en dat is geen stijlkeuze
+-- ---------------------------------------------------------------------------
+--
+-- CLAUDE.md schrijft codepunten voor, en dat is juist — **voor gebruikerstekst**.
+-- Een pushtoken is geen gebruikerstekst maar een ondoorzichtige,
+-- machinegegenereerde sleutel, en daar is de byte de betekenisvolle eenheid.
+--
+-- 📏 En er ligt een tweede grens onder, die wél in bytes rekent:
+-- `push_tokens_token_uniek` is een btree-index, en die kapt af op 2704 bytes per
+-- rij. Gemeten met duizend willekeurige (dus onsamendrukbare) CJK-codepunten:
+--
+--   tekens=1000 bytes=3000
+--   ERROR: index row size 3016 exceeds btree version 4 maximum 2704 (54000)
+--
+-- Met `char_length` komt die waarde dus dóór de CHECK en knalt hij daarna alsnog,
+-- met een ruwe Postgres-fout waar de client niets mee kan — precies de klacht
+-- die 0067 voor `geen_websleutels` oploste en die deze migratie wil wegnemen.
+-- Bereikbaar is het: `platform = 'android'` kent geen enkele vormtoets, en de
+-- padregex in `is_pushdienst()` (`[^[:space:]]*`) laat meerbyte-tekens toe.
+--
+-- Gevonden in de security-review van 07-09-2026, en nagemeten voordat het
+-- verwerkt werd.
+--
+-- ---------------------------------------------------------------------------
 -- ⚠️ Wat dit níét repareert
 -- ---------------------------------------------------------------------------
 --
@@ -87,19 +115,27 @@
 -- schrijver, en `service_role` loopt overal langsheen. Een CHECK op de kolom
 -- niet.
 
+-- ⚠️ `add constraint … check` valideert bestaande rijen en breekt de migratie af
+--    bij één te lange rij. 📏 Op de lokale opbouw is de tabel leeg; op productie
+--    stond hij dat op 28-08 ook (0117 meldde nul webrijen, en
+--    `expo-notifications` staat nog niet in de app). **Tel het opnieuw vóór je
+--    dit toepast:**
+--
+--      select count(*) filter (where octet_length(token) > 1000) from push_tokens;
+
 alter table public.push_tokens
   drop constraint if exists push_tokens_token_len;
 
 alter table public.push_tokens
-  add constraint push_tokens_token_len check (char_length(token) <= 1000);
+  add constraint push_tokens_token_len check (octet_length(token) <= 1000);
 
 alter table public.push_tokens
   drop constraint if exists push_tokens_sleutels_len;
 
 alter table public.push_tokens
   add constraint push_tokens_sleutels_len check (
-    (p256dh is null or char_length(p256dh) <= 255)
-    and (auth is null or char_length(auth) <= 255)
+    (p256dh is null or octet_length(p256dh) <= 255)
+    and (auth is null or octet_length(auth) <= 255)
   );
 
 comment on constraint push_tokens_token_len on public.push_tokens is
@@ -153,7 +189,7 @@ begin
 
   -- ⚠️ QS8-297. Boven de grens van `push_tokens_token_len`, dus dit is een
   --    nette weigering van iets dat de CHECK sowieso zou tegenhouden.
-  if char_length(trim(p_token)) > 1000 then
+  if octet_length(trim(p_token)) > 1000 then
     return jsonb_build_object('ok', false, 'reason', 'token_te_lang');
   end if;
 
@@ -174,7 +210,7 @@ begin
     end if;
 
     -- ⚠️ QS8-297, en dezelfde reden als hierboven bij de token.
-    if char_length(v_p256dh) > 255 or char_length(v_auth) > 255 then
+    if octet_length(v_p256dh) > 255 or octet_length(v_auth) > 255 then
       return jsonb_build_object('ok', false, 'reason', 'sleutel_te_lang');
     end if;
 

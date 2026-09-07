@@ -48,6 +48,10 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      → 1 rood op de sleutelkant van de RPC-test
  *   E  de grens op 10 zetten in plaats van 1000
  *      → 3 rood, alle drie must-allows; de grens ligt dan onder elke echte token
+ *   G  de RPC-tak op 2000 zetten terwijl de CHECK op 1000 blijft
+ *      → 1 rood: de twee lagen zijn uit elkaar gelopen
+ *   H  `octet_length` terug naar `char_length`
+ *      → 1 rood: duizend meerbyte-tekens komen door de grens heen
  *
  * ⚠️ **A ging eerst niet rood maar "no tests", en dat is de leerzame helft.** De
  *    beschikbaarheidsvraag bovenaan noemde `push_tokens_token_len` — precies de
@@ -57,16 +61,29 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *
  * ⚠️ **En B was eerst te grof:** de hele web-tak eruit maakte drie tests rood.
  *    Mutatie per grendel betekent ook: muteer één tak, niet het blok eromheen.
+ *
+ * ⚠️⚠️ **G en H kwamen uit de security-review en niet uit deze suite.** Zonder G
+ *    konden de twee lagen uit elkaar lopen zonder dat er iets rood werd: de
+ *    over-grens-gevallen gebruikten 5000 en de must-allows 41 tot 188, dus alles
+ *    tussen 1001 en 4999 was onbewaakt. En H is het geval waar de grens zélf de
+ *    verkeerde eenheid telde — zie de kop van 0174.
  */
 
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
 
-/** Een echte Expo-pushtoken heeft deze vorm en is 41 tekens. */
-const ECHTE_NATIVE_TOKEN = 'ExponentPushToken[aBcDeFgHiJkLmNoPqRsTuV]';
+/**
+ * Een echte Expo-pushtoken heeft deze vorm en is 41 tekens.
+ *
+ * ⚠️ Met een run-suffix, want `push_tokens.token` is uniek. Breekt een run af
+ *    vóór `removeTestUsers()`, dan zou een vaste literal de vólgende run laten
+ *    vallen op een 23505 die eruitziet alsof de grens verkeerd ligt.
+ */
+const RUN = Math.random().toString(36).slice(2, 10);
+const ECHTE_NATIVE_TOKEN = `ExponentPushToken[aBcDeFgHiJk${RUN}]`;
 
 /** Een web-endpoint zoals FCM hem uitdeelt, met een hostnaam uit de allowlist. */
-const ECHTE_WEB_ENDPOINT = `https://fcm.googleapis.com/fcm/send/${'c'.repeat(152)}`;
+const ECHTE_WEB_ENDPOINT = `https://fcm.googleapis.com/fcm/send/${RUN}${'c'.repeat(144)}`;
 
 /** 65 octetten base64url, zoals RFC 8291 voorschrijft. */
 const ECHTE_P256DH = 'B'.repeat(87);
@@ -97,7 +114,7 @@ function lukt(sql: string): boolean {
  *    Hij vraagt daarom naar de tábel, die er los van deze migratie is.
  */
 const kolomgrensMeetbaar = stackBeschikbaarOfFaal(
-  "select count(*) from pg_class where relname = 'push_tokens' and relkind = 'r'",
+  "select count(*) from pg_class where relname = 'push_tokens' and relkind = 'r' and relnamespace = 'public'::regnamespace",
   import.meta.url,
 );
 
@@ -177,6 +194,89 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
     TEST_TIMEOUT,
   );
 
+  it(
+    'legt de RPC-grens op precies dezelfde plek als de CHECK',
+    async () => {
+      // ⚠️ **Zonder deze test kunnen de twee lagen uit elkaar lopen zonder dat
+      //    er iets rood wordt.** De over-grens-gevallen hierboven gebruiken 5000
+      //    en de must-allows 41 tot 188; zet iemand de RPC-tak op 2000 terwijl de
+      //    CHECK op 1000 blijft, dan blijft alles groen en krijgt een gebruiker
+      //    met een token van 1500 alsnog een ruwe 23514. De migratiekop
+      //    waarschuwt daarvoor; dit is de assertie die het vastpint.
+      //
+      // ⚠️ De grens telt bytes en niet tekens, dus deze literalen zijn ASCII —
+      //    daar vallen de twee samen. Waarom bytes: zie de kop van 0174.
+      const opDeGrens = `https://fcm.googleapis.com/fcm/send/${'g'.repeat(1000 - 36)}`;
+      expect(opDeGrens.length, 'precies op de grens').toBe(1000);
+
+      const past = await alice.db.rpc('registreer_push_token', {
+        p_token: opDeGrens,
+        p_platform: 'web',
+        p_p256dh: ECHTE_P256DH,
+        p_auth: ECHTE_AUTH,
+      });
+      expect(uit(past.data), 'duizend bytes hoort er nog door').toEqual({ ok: true });
+
+      const eroverheen = await alice.db.rpc('registreer_push_token', {
+        p_token: `${opDeGrens}h`,
+        p_platform: 'web',
+        p_p256dh: ECHTE_P256DH,
+        p_auth: ECHTE_AUTH,
+      });
+      expect(eroverheen.error, 'geen ruwe 23514').toBeNull();
+      expect(uit(eroverheen.data).reason, 'duizend-en-een niet').toBe('token_te_lang');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'legt de sleutelgrens op precies dezelfde plek als de CHECK',
+    async () => {
+      const opDeGrens = 'B'.repeat(255);
+
+      const past = await alice.db.rpc('registreer_push_token', {
+        p_token: `${ECHTE_WEB_ENDPOINT}-sleutelgrens`,
+        p_platform: 'web',
+        p_p256dh: opDeGrens,
+        p_auth: ECHTE_AUTH,
+      });
+      expect(uit(past.data), '255 hoort er nog door').toEqual({ ok: true });
+
+      const eroverheen = await alice.db.rpc('registreer_push_token', {
+        p_token: `${ECHTE_WEB_ENDPOINT}-sleutelgrens2`,
+        p_platform: 'web',
+        p_p256dh: `${opDeGrens}B`,
+        p_auth: ECHTE_AUTH,
+      });
+      expect(eroverheen.error).toBeNull();
+      expect(uit(eroverheen.data).reason, '256 niet').toBe('sleutel_te_lang');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'weigert een token die in tekens past maar in bytes niet',
+    async () => {
+      // ⚠️ **Dit is het geval dat de security-review vond.** Met `char_length`
+      //    kwam duizend meerbyte-codepunten (3000 bytes) door de CHECK heen en
+      //    knalde de insert daarna op `push_tokens_token_uniek`, een btree die
+      //    op 2704 bytes afkapt:
+      //
+      //      index row size 3016 exceeds btree version 4 maximum 2704 (54000)
+      //
+      //    Een ruwe Postgres-fout waar de client niets mee kan — precies de
+      //    klacht die 0067 oploste en die deze migratie wil wegnemen.
+      const { data, error } = await alice.db.rpc('registreer_push_token', {
+        p_token: '漢'.repeat(1000),
+        p_platform: 'android',
+      });
+
+      expect(error, 'geen ruwe 54000').toBeNull();
+      expect(uit(data).reason, 'duizend tekens is drieduizend bytes').toBe('token_te_lang');
+    },
+    TEST_TIMEOUT,
+  );
+
   it.skipIf(!kolomgrensMeetbaar)(
     'houdt een te lange token ook tegen bij een schrijver die de RPC overslaat',
     () => {
@@ -213,7 +313,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
       //    weigert net zo groen staan als een die de grens goed legt.
       const past = lukt(`
         insert into public.push_tokens (user_id, token, platform)
-        values ('${alice.id}', 'ExponentPushToken[kolomkant-must-allow]', 'ios')
+        values ('${alice.id}', 'ExponentPushToken[kolomkant-${RUN}]', 'ios')
       `);
       expect(past, 'een token van normale lengte hoort er gewoon in te mogen').toBe(true);
     },
