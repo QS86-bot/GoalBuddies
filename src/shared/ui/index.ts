@@ -32,6 +32,8 @@ export { Choice, type Optie } from './Choice';
 export { CategorieMerk } from './CategorieMerk';
 export { DatumKeuze } from './DatumKeuze';
 export { Kalender, type KalenderDag } from './Kalender';
+export { Ritmestrook } from './Ritmestrook';
+export { DAGEN_IN_STROOK, ritmestrook, type Strookdag } from './ritmestrook';
 export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';

@@ -84,10 +84,6 @@ export const BEKENDE_ONBEREIKBAAR = {
     'dat hem naast `commitment_zichtbaar_voor_groep()` legt. ⚠️ Dat is een ' +
     'geldige reden om te bestaan en geen reden om bereikbaar te zijn: hij is een ' +
     'kopie van een databaseregel die onder test staat. Weghalen breekt die toets.',
-  fetchAfvinkingen:
-    'Haalt de dagafvinkingen van een weekdoel op. ⚠️ De schrijfkant (afvinken) ' +
-    'heeft wél een knop; de leeskant hangt erbuiten. Hier hoort een scherm bij en ' +
-    'dat is eigen werk — QS8-301 groep 1.',
 };
 
 /** De mappen waar een mens de app binnenkomt: een scherm of een geplande taak. */
