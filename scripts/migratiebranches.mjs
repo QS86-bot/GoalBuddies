@@ -82,6 +82,76 @@ export function ontbrekendPerBranch({ lokaal, perBranch }) {
   return uit.sort((a, b) => a.branch.localeCompare(b.branch));
 }
 
+/**
+ * Bestandsnaam per nummer, uit een lijst bestandsnamen — QS8-310.
+ *
+ * ⚠️ **De sleutel is het nummer mét zijn letter** (`0052a` naast `0052`), en dat
+ *    is dezelfde afspraak als de dubbelcheck in `migraties-controle.mjs`. Zou de
+ *    letter wegvallen, dan zou een deelmigratie als botsing met haar eigen
+ *    hoofdnummer gelden.
+ *
+ * ⚠️ **Waarom dit náást `nummersUit()` staat en die niet vervangt.** Die functie
+ *    beantwoordt "welke nummers draagt deze branch"; deze beantwoordt "welk
+ *    bestand draagt dit nummer daar". Voor het gat aan de bovenkant is de eerste
+ *    genoeg en is een naam ruis; voor een botsing is juist de naam het hele
+ *    verschil.
+ */
+export function namenPerSleutel(bestandsnamen) {
+  const uit = {};
+  for (const naam of bestandsnamen) {
+    const kaal = naam.split('/').pop() ?? '';
+    const m = /^(\d{4})([a-z]?)_[a-z0-9_]+\.sql$/.exec(kaal);
+    if (m !== null) uit[`${m[1]}${m[2]}`] = kaal;
+  }
+  return uit;
+}
+
+/**
+ * Welke nummers een branch draagt onder een ándere naam dan hier — QS8-310.
+ *
+ * `lokaal` en elke waarde in `perBranch` zijn objecten van sleutel naar
+ * bestandsnaam, zoals `namenPerSleutel()` ze maakt.
+ *
+ * ⚠️ **Dit is het gat dat `ontbrekendPerBranch()` per constructie niet ziet.**
+ *    Die vergelijkt nummers: draagt de zusterbranch 0175 en draag ik ook een
+ *    0175, dan ontbreekt er niets en zwijgt hij — ongeacht of het hetzelfde
+ *    bestand is. Erger nog, hij meldde het wél zolang mijn map het nummer nog
+ *    niet had ("0175 ontbreekt hier"), en viel stil op het moment dat de
+ *    botsing ontstónd. De melding verdween precies toen ze nodig werd.
+ *
+ * ⚠️ **Dezelfde naam is géén bevinding.** Elke branch die van `main` afstamt
+ *    draagt al zijn migraties; die allemaal melden zou de controle waardeloos
+ *    maken, en dat is de vorm waarvan CLAUDE.md zegt dat je hem leert negeren.
+ *    Alleen een ándere naam onder hetzelfde nummer is een botsing.
+ *
+ * ⚠️ **Beide kanten op leeg is geen bevinding**, om dezelfde reden als hierboven
+ *    bij `ontbrekendPerBranch()`: een branch zonder migratiemap telt als nul, en
+ *    een lege werkkopie heeft geen map om iets over te zeggen.
+ *
+ * ⚠️ **Hier stond een `lokaal is leeg`-wacht zoals `ontbrekendPerBranch()` die
+ *    heeft, en die is er bij het ijken uitgehaald.** Daar is hij dragend: die
+ *    functie meldt wat híer ontbreekt, dus zonder wacht telt bij een lege map
+ *    élk nummer als ontbrekend. Hier draait het om, want een botsing vraagt een
+ *    naam aan béide kanten — bij een lege map is `hier` altijd `undefined` en
+ *    valt de lus vanzelf leeg uit. De mutatie bewees het: met de wacht eruit
+ *    bleven alle tests groen, ook de test die beweerde hem te bewaken. Twee
+ *    grendels waarvan er één niets doet, is er één te veel (QS8-302).
+ */
+export function botsendPerBranch({ lokaal, perBranch }) {
+  const uit = [];
+  for (const [branch, namen] of Object.entries(perBranch)) {
+    const botsingen = [];
+    for (const [sleutel, daar] of Object.entries(namen)) {
+      const hier = lokaal[sleutel];
+      if (hier !== undefined && hier !== daar) botsingen.push({ nummer: sleutel, hier, daar });
+    }
+    if (botsingen.length > 0) {
+      uit.push({ branch, botsingen: botsingen.sort((a, b) => a.nummer.localeCompare(b.nummer)) });
+    }
+  }
+  return uit.sort((a, b) => a.branch.localeCompare(b.branch));
+}
+
 /** Vier cijfers, zoals de bestandsnamen ze schrijven. */
 export function alsNummer(n) {
   return String(n).padStart(4, '0');
@@ -112,13 +182,62 @@ export function nummersPerBranch() {
 
   const perBranch = {};
   for (const ref of branches) {
-    let namen = [];
-    try {
-      namen = git('ls-tree', '-r', '--name-only', ref, `${MAP}/`).split('\n');
-    } catch {
-      // Een branch zonder migratiemap telt gewoon als nul.
-    }
-    perBranch[ref.replace('refs/remotes/', '')] = nummersUit(namen);
+    perBranch[ref.replace('refs/remotes/', '')] = nummersUit(bestandenVan(ref));
+  }
+  return perBranch;
+}
+
+/** De migratiebestanden die een ref draagt; een ref zonder map telt als nul. */
+function bestandenVan(ref) {
+  try {
+    return git('ls-tree', '-r', '--name-only', ref, `${MAP}/`).split('\n');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * De remote kopie van de branch waar je zélf op staat, of `null` — QS8-310.
+ *
+ * ⚠️ **Die telt niet als zusterbranch, en dat is een gemeten noodzaak.** Tussen
+ *    het hernummeren van je eigen migratie en het pushen ervan draagt je remote
+ *    kopie nog het oude nummer, terwijl je werkkopie het nieuwe draagt en `main`
+ *    het oude onder een andere naam. De botsingscontrole zou dan naar jóuw eigen
+ *    achtergebleven push wijzen, precies op het moment dat je de poort draait om
+ *    te mogen pushen. Dat is de melding die je leert wegklikken.
+ */
+function eigenRemoteTak() {
+  try {
+    const tak = git('rev-parse', '--abbrev-ref', 'HEAD').trim();
+    return tak === '' || tak === 'HEAD' ? null : `origin/${tak}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Elke remote branch met de bestandsnaam per migratienummer — QS8-310.
+ *
+ * Zelfde scan als `nummersPerBranch()`, maar met de namen erbij: voor een
+ * botsing is de naam het hele verschil. Geeft `null` zonder git of remote, net
+ * als die functie, zodat de aanroeper één manier heeft om te zwijgen.
+ */
+export function namenPerBranch() {
+  let branches = [];
+  try {
+    branches = git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin')
+      .split('\n')
+      .filter((r) => r.trim() !== '' && !r.endsWith('/HEAD'));
+  } catch {
+    return null;
+  }
+
+  const eigen = eigenRemoteTak();
+  const perBranch = {};
+  for (const ref of branches) {
+    const naam = ref.replace('refs/remotes/', '');
+    if (naam === eigen) continue;
+    perBranch[naam] = namenPerSleutel(bestandenVan(ref));
   }
   return perBranch;
 }
