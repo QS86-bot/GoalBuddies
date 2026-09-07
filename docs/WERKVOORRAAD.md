@@ -7,14 +7,15 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 06-09-2026 (na QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-298; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
 uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
-persoon-getuige) en `0173` (geen servertijdstempel in handen van de client) staan
+persoon-getuige), `0173` (geen servertijdstempel in handen van de client) en
+`0174` (de vijfde meldingsoort) staan
 er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
@@ -51,6 +52,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ⚠️ **Wat er dan nóg openstaat vraagt Quintens machine:** drie Edge Functions
    deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
    in het dashboard. Migraties alleen zijn de feature niet.
+   ⚠️ **`notificaties` is er sinds QS8-298 een met een naam erbij:** die deploy
+   ís de vijfde meldingsoort. Migratie `0174` verruimt de CHECK en `regels.ts`
+   draagt de tekst, maar zolang de oude functie draait stelt niemand de vraag
+   `getuigenissen_voor()` — dan staat er een feature die niets doet. Zelfde vorm
+   als QS8-292 en QS8-124.
 3. ✅ **Het migratieregister kent nog één nummering** en de map bouwt het schema
    aantoonbaar op. **QS8-122 is af** en QS8-119 is daarmee vrij. De bestanden
    spelen op een lege database precies het schema van productie af — negen
@@ -63,12 +69,12 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **1063 geslaagd, 1 overgeslagen** over 85 bestanden (06-09, na QS8-299; daarvóór QS8-150; daarvóór QS8-223 en QS8-293; daarvóór QS8-294, QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
+   **1072 geslaagd, 1 overgeslagen** over 87 bestanden (07-09, na QS8-298; daarvóór QS8-299; daarvóór QS8-150; daarvóór QS8-223 en QS8-293; daarvóór QS8-294, QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
    ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
    870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3551 geslaagd en 1 overgeslagen** over
-   255 bestanden.
+   suite geeft met de stack **3561 geslaagd en 1 overgeslagen** over
+   257 bestanden.
    ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
    geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
    legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
@@ -149,7 +155,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0173` staan in de map: **176 bestanden**,
+Migraties `0001` t/m `0174` staan in de map: **177 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

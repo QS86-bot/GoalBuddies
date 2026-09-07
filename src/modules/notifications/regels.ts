@@ -8,21 +8,58 @@
  * de antwoorden.
  *
  * ⚠️ **Domeinregel 7 is hier geen bijzaak maar de begrenzing.** Er zijn precies
- *    vier soorten, ze staan als CHECK in de database (migratie 0053), en geen
- *    van vieren gaat over de tegenslag van een ander:
+ *    vijf soorten, ze staan als CHECK in de database (0053, uitgebreid in 0174),
+ *    en vier ervan gaan over jezelf:
  *
  *    - `nudge` — over jezelf, en alleen als je vandaag nog niets deed
  *    - `approval_request` — iemand vraagt jóú om een oordeel
  *    - `approval_received` — goed nieuws over jezelf
  *    - `cycle_summary` — je eigen week, privé
+ *    - `commitment_witness` — ⚠️ **de enige die over een ander gaat**
  *
- *    Er is geen soort die zegt dat een ander iets gemist heeft, en die mag er
- *    ook niet komen. Zie Q-TODO A34: zelfs "je weekpas heeft je reeks gered"
- *    hoort strikt persoonlijk te zijn en nooit in een groepsmelding.
+ * ⚠️ **Die vijfde is een uitzondering met een naam en geen verruiming.**
+ *    Domeinregel 7 noemt er zelf precies één: *een straf die de gebruiker zelf
+ *    vooraf heeft ingesteld en bevestigd.* Drie dingen dragen dat hier, en geen
+ *    ervan mag weg — de eigenaar heeft deze getuige zélf aangewezen en het
+ *    commitment bevestigd, de melding gaat pas af bij `status = 'due'`
+ *    (domeinregel 11), en er gaat niets naar de groep. Volledig uitgeschreven in
+ *    migratie 0174 en in
+ *    `docs/decisions/2026-09-07-de-getuige-hoort-het-zonder-dat-de-groep-het-hoort.md`.
+ *
+ *    Een soort die zegt dat een ander een week gemist heeft, zijn reeks kwijt is
+ *    of achterloopt, mag er nog steeds niet komen: daar zit geen vooraf
+ *    bevestigde afspraak onder. Zie Q-TODO A34 — zelfs "je weekpas heeft je
+ *    reeks gered" hoort strikt persoonlijk te zijn en nooit in een groepsmelding.
  */
 
-/** Zoals `notifications_sent.kind` in de database. */
-export type Melding = 'nudge' | 'approval_request' | 'approval_received' | 'cycle_summary';
+/**
+ * Zoals `notifications_sent.kind` in de database.
+ *
+ * ⚠️ **Deze unie is een kopie van de CHECK `notifications_sent_kind_bekend`, en
+ *    sinds QS8-298 staat die naad onder test.** `tests/rls/meldingsoorten.test.ts`
+ *    legt de twee naast elkaar. Ze liepen niet uit de pas — maar er was ook
+ *    niets dat het gemerkt zou hebben, en dat is dezelfde vorm als bij
+ *    `SYSTEEM_GEBEURTENISSEN` in `chat-schemas.ts`.
+ */
+export type Melding =
+  | 'nudge'
+  | 'approval_request'
+  | 'approval_received'
+  | 'cycle_summary'
+  | 'commitment_witness';
+
+/**
+ * De soorten, als waarde — zodat een test ze kan opsommen zonder ze over te
+ * typen. Een lijst die je met de hand naast een andere lijst legt, is precies
+ * de fout van 0032/0034.
+ */
+export const MELDINGSOORTEN: readonly Melding[] = [
+  'nudge',
+  'approval_request',
+  'approval_received',
+  'cycle_summary',
+  'commitment_witness',
+] as const;
 
 /** Zoals `profiles.reminder_tone`. */
 export type Toon = 'gentle' | 'firm';
@@ -181,6 +218,12 @@ export function nudgeBericht(toon: Toon, taal?: Taalcode | null): Bericht {
  *    melding is een kopie die de autorisatie overleeft waaronder hij gemaakt is,
  *    en een pushmelding staat bovendien op een vergrendeld scherm dat iemand
  *    anders kan meelezen. De doeltitel hoort daar niet.
+ *
+ * ⚠️ **`commitment_witness` gebruikt letterlijk de zin die `meld_commitment()`
+ *    al in de groepschat zet**, en dat is met opzet: het is dezelfde
+ *    gebeurtenis, en twee formuleringen voor één ding is hoe een toon uit elkaar
+ *    loopt. Ook hier geen doeltitel en geen bedrag — de persoon en de
+ *    gebeurtenis, verder niets.
  */
 interface SoortTekst {
   readonly titel: string;
@@ -234,6 +277,12 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
       zonderNaam: 'Je reeks loopt gewoon door. Voor die week is er wel één punt afgegaan.',
       pad: '/',
     },
+    commitment_witness: {
+      titel: 'Je bent getuige',
+      metNaam: (naam) => `De inzet die ${naam} zelf heeft ingesteld, is verschuldigd geworden.`,
+      zonderNaam: 'Een inzet waarvan jij getuige bent, is verschuldigd geworden.',
+      pad: '/',
+    },
   },
   en: {
     approval_request: {
@@ -258,6 +307,12 @@ const SOORTEN: Readonly<Record<Taalcode, Readonly<Record<Tekstsleutel, SoortTeks
       titel: 'A week pass saved your streak',
       metNaam: () => 'Your streak continues. One point did come off for that week.',
       zonderNaam: 'Your streak continues. One point did come off for that week.',
+      pad: '/',
+    },
+    commitment_witness: {
+      titel: 'You are a witness',
+      metNaam: (naam) => `The stake ${naam} set for themselves has come due.`,
+      zonderNaam: 'A stake you are a witness to has come due.',
       pad: '/',
     },
   },
