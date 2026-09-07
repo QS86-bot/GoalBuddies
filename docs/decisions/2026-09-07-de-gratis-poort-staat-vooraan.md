@@ -108,6 +108,34 @@ maar een herschrijving** — en hij begraaft de wijziging die je wilt laten
 beoordelen. De echte diff is 85 regels; de rest van wat de PR toont, is de twee
 spaties die de genestte lus kost.
 
+### En de derde: ik liet CI meten wat ik zelf kon meten
+
+De poort meldde `edge:types:controle` als **OVERGESLAGEN — geen Deno gevonden**,
+en ik schreef in de PR dat CI die wel zou meten. CI mat, en vond **drie** fouten
+in precies dat bestand:
+
+```
+TS2339  Property 'message' does not exist on type 'never'.
+TS2339  Property 'code' does not exist on type 'never'.
+TS2304  Cannot find name 'profielen'.
+```
+
+De derde is een kale vergissing: de samenvatting onderaan telde nog `profielen`,
+de variabele die met het pagineren verdween. ⚠️ **Mijn eigen `npx tsc --noEmit`
+zag dat niet**, want `supabase/functions/` valt buiten `tsconfig.json` — dat is
+juist de reden dát `edge:types:controle` bestaat. De eerste twee komen doordat
+TypeScript een toekenning in een closure niet volgt en `profielFout` daarna tot
+`never` versmalt; de rollover heeft daar op r.512 al een cast voor staan, en die
+staat er nu ook hier.
+
+⚠️ **Wat hier de les is en niet de fout:** "geen Deno in deze container" was geen
+gegeven. 📏 `npm i --no-save deno@2.9.6` haalt hem gewoon binnen — dezelfde versie
+als CI — en daarna is `edge:types:controle` in twintig seconden groen te krijgen.
+De devDependency stond al in `package.json`; hij was in deze omgeving alleen niet
+geïnstalleerd. **Een controle die "ongemeten" meldt, is een vraag en geen
+uitslag**, en dit project schrijft dat zelf op bij `npm run poort` — ik heb hem
+als uitslag gelezen.
+
 ## Wat hierna nog open staat
 
 De job heeft nog steeds geen watermerk: raakt hij zijn tijdslimiet van 120

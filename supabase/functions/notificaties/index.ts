@@ -209,8 +209,11 @@ async function draaiNotificaties(auth: string): Promise<Response> {
   // ⚠️ **Per pagina verwerken en niet eerst alles inlezen.** Alle profielen in
   //    het geheugen zetten lost de stille afkapping wél op, maar houdt de kosten
   //    lineair in het tótale aantal gebruikers — precies wat dit issue aanwijst.
+  let profielenGezien = 0;
+
   for await (const pagina of paginas(haalProfielen, PROFIELEN_PER_PAGINA)) {
-    if (profielFout) break;
+    if (profielFout !== null) break;
+    profielenGezien += pagina.length;
 
     for (const profiel of pagina) {
       // ⚠️ In een try, om dezelfde reden als in de rollover: `profiles.tz` is
@@ -477,17 +480,24 @@ async function draaiNotificaties(auth: string): Promise<Response> {
   // ⚠️ **De foutcontrole staat ná de lus, want daar wordt hij pas gezet.**
   //    Hij stond eerst vóór de query-definitie, en dan kan hij per constructie
   //    nooit vuren — de vorm van een grendel die er wel staat en niets bewaakt.
-  if (profielFout) {
+  if (profielFout !== null) {
+    // ⚠️ **De cast staat hier om dezelfde reden als in de rollover (r.512).**
+    //    TypeScript volgt geen toekenning die in een closure gebeurt, dus na de
+    //    declaratie op `null` versmalt hij dit type tot `never` — en dan bestaat
+    //    `.message` niet meer. Deno's typecheck is daar strenger in dan die van
+    //    de app, en dít bestand valt buiten `tsconfig.json`: `npx tsc --noEmit`
+    //    keek er dus nooit naar.
+    const fout = profielFout as { message: string; code?: string };
     // ⚠️ **Zie de rollover — en hier stond dezelfde onjuiste geruststelling
     //    (QS8-315).** De dossierrij van 04-09 noemde twee plekken in de
     //    rollover; dit is de derde, in een functie die de rij niet noemde.
     //    Zelfde vorm als QS8-206, waar de rij twee `console.error` telde en het
     //    er elf in twee functies bleken: de klasse is groter dan de aanleiding,
     //    en dáárom staat er nu een grendel onder (`meldtekst:controle`).
-    console.error(`profielen ophalen mislukte: ${profielFout.message}`);
+    console.error(`profielen ophalen mislukte: ${fout.message}`);
     await meld(new Error('profielen ophalen mislukte'), 'notificaties.profielen', {
       code: 'profielen_ophalen_mislukt',
-      sqlstate: profielFout.code,
+      sqlstate: fout.code,
     });
     // ⚠️ Een slug en niet de melding, om dezelfde gemeten reden als in de
     //    rollover: `notificaties.yml:70` doet `cat` op deze body vóór de
@@ -501,7 +511,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       verstuurd,
       overgeslagen,
       zonderToken,
-      profielen: (profielen ?? []).length,
+      profielen: profielenGezien,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
