@@ -659,7 +659,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .update({ created_at: LANG_GELEDEN })
           .eq('id', straf.data.id);
 
-        // ⚠️⚠️ **Hier stond tot 0189 het tegenovergestelde**, met als reden
+        // ⚠️⚠️ **Hier stond tot 0190 het tegenovergestelde**, met als reden
         //    *"zolang de straf nog `set` is, mag weggooien gewoon: hij is nooit
         //    buiten het eigen scherm geweest"*. Dat was de grens van 0058, en
         //    QS8-331 heeft hem verlegd: de vraag is niet wie de straf gezien

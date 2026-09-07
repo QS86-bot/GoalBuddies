@@ -1,4 +1,4 @@
--- 0189_een_bevestigde_straf_houdt_zijn_spoor.sql — een doel verwijderen wiste een bevestigde straf én zijn auditspoor (QS8-331)
+-- 0190_een_bevestigde_straf_houdt_zijn_spoor.sql — een doel verwijderen wiste een bevestigde straf én zijn auditspoor (QS8-331)
 --
 -- ROLLBACK-PAD:
 --   `verwijder_doel(uuid)` terugzetten uit
@@ -131,7 +131,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'commitment_in_werking');
   end if;
 
-  -- ⚠️⚠️ **Elke commitment, en niet alleen een zichtbare** (QS8-331). Tot 0189
+  -- ⚠️⚠️ **Elke commitment, en niet alleen een zichtbare** (QS8-331). Tot 0190
   --    stond hier `c.status = any (commitment_zichtbaar_voor_groep())` — dus
   --    `unlocked`, `due` en `resolved`. Een straf op `set` hield niets tegen, en
   --    die is wél bevestigd: `commitments.confirmed_at` is `NOT NULL`, dus elke
@@ -157,6 +157,6 @@ $$;
 
 comment on function public.verwijder_doel(uuid) is
   'Verwijdert een eigen doel binnen de bedenktijd (0046). Weigert bij een groepskoppeling, '
-  'weekdoelen, geboekte punten en — sinds 0189 (QS8-331) — bij elke commitment aan het doel, '
+  'weekdoelen, geboekte punten en — sinds 0190 (QS8-331) — bij elke commitment aan het doel, '
   'ongeacht status: die is per constructie bevestigd en draagt een auditspoor dat anders '
   'meecascadeert. Voor alles daarbuiten is archiveren de weg.';

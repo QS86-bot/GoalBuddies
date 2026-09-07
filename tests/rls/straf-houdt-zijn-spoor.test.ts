@@ -1,5 +1,5 @@
 /**
- * Een bevestigde straf overleeft `verwijder_doel()` — QS8-331, migratie 0189.
+ * Een bevestigde straf overleeft `verwijder_doel()` — QS8-331, migratie 0190.
  *
  * ⚠️⚠️ **De titel noemt de route met opzet, en dat is een correctie.** Hier
  *    stond "verdwijnt niet zonder spoor", en die belofte is groter dan wat dit
@@ -94,7 +94,7 @@ describe.skipIf(!rlsTestsConfigured)('een bevestigde straf en het spoor dat blij
       'een doel met een bevestigde straf is niet te verwijderen, en de auditregel blijft staan',
       async () => {
         // ⚠️ Dit is de keten en niet de tak: straf → auditregel → poging →
-        //    weigering → de auditregel staat er nog. Vóór 0189 gaf dit
+        //    weigering → de auditregel staat er nog. Vóór 0190 gaf dit
         //    `{ok:true}` en waren beide rijen weg.
         const doelId = await versDoel('SPOOR met straf');
         await strafOp(doelId);
@@ -124,7 +124,7 @@ describe.skipIf(!rlsTestsConfigured)('een bevestigde straf en het spoor dat blij
       async () => {
         // ⚠️ De omweg die een smallere poort zou openlaten. Een ingetrokken straf
         //    is `cancelled` en blijft als rij staan; zou die niet meetellen, dan
-        //    is intrekken-dan-weggooien precies het gat dat 0189 sluit.
+        //    is intrekken-dan-weggooien precies het gat dat 0190 sluit.
         const doelId = await versDoel('SPOOR ingetrokken');
         await strafOp(doelId);
 
