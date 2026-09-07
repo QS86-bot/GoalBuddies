@@ -873,4 +873,323 @@ describe.skipIf(!rlsTestsConfigured)('het plafond op straffen', () => {
       TEST_TIMEOUT,
     );
   });
+
+  // -------------------------------------------------------------------------
+  describe('een straf wacht op de groep, maar niet eeuwig', () => {
+    /**
+     * ⚠️ **De belofte is dat een straf niet verschuldigd wordt terwijl de groep
+     *    nog over de streefdatum beslist** — QS8-307, migratie 0174. Gemeten
+     *    voordat er iets veranderde, in één transactie op de lokale stack, met
+     *    een doel waarvan de datum gisteren lag en een straf van tien dagen oud:
+     *
+     *      A open verzoek op het doel | 1
+     *      B verschuldigd gemaakt     | 1
+     *      C status van de straf      | due
+     *      D verzoek nog open         | 1
+     *
+     *    `deadline_requests` kwam in `maak_straffen_verschuldigd()` niet voor.
+     *    Sinds QS8-298 stuurt dat de getuige een pushmelding die niet terug te
+     *    nemen is, en door de ontdubbeling op `ref_id` krijgt hij bij de échte
+     *    verschuldiging niets meer.
+     *
+     * ⚠️⚠️ **Deze tests lopen door de RPC's en niet langs de tabel, en dat is
+     *    een reparatie uit de security-ronde.** De eerste versie zette elke rij
+     *    met `adminDb()` in `deadline_requests` — status en ouderdom met de
+     *    hand — en was daarmee blind voor de enige vraag die hier telt: welke
+     *    knoppen heeft de eigenaar? Er zitten er twee, *intrekken* en *opnieuw
+     *    vragen*, en met die twee was de eerste versie van de grens te
+     *    verzetten. Regel 18 vraag 5, en de tests hadden hem niet gesteld.
+     *
+     * ⚠️ **De grens op het uitstel hangt daarom aan `goals.target_date`.** Die
+     *    kolom staat niet in de UPDATE-grant van `authenticated` en beweegt
+     *    alleen met het akkoord van een buddy; alles in `deadline_requests`
+     *    kan de eigenaar zelf vernieuwen. Een straf wacht dus hooguit een week
+     *    op de groep, ongeacht hoeveel verzoeken er langskomen.
+     *
+     * ⚠️ **Met de hand rood gemaakt, grendel voor grendel**, door de functie in
+     *    de draaiende database te vervangen door een variant zonder die ene
+     *    regel:
+     *
+     *      1. de hele `not exists` eruit            → 'een open verzoek houdt
+     *                                                  de straf tegen' rood
+     *      2. `r.new_date >= p_vandaag` eruit       → 'niets meer kan
+     *                                                  verschuiven' rood
+     *      3. de weekgrens eruit                    → 'intrekken en opnieuw
+     *                                                  vragen' rood
+     *      4. de geneste afwijzingstak eruit        → 'na een afwijzing' rood
+     *      5. de weekgrens náást de `not exists`    → 'deadline al lang
+     *         in plaats van erin                       voorbij' rood (én 3)
+     *
+     *    Elke mutatie maakte precies de test rood die hem noemt. Eén mutatie
+     *    voor de hele conjunct zou 2, 3 en 4 niet hebben geraakt: die vallen
+     *    allemaal binnen het geval dat 1 al afvangt.
+     *
+     * ⚠️ **Wat hier níét in zit — twee dingen, allebei gemeten en allebei een
+     *    eigen issue.** Een verzoek mag ingediend worden in élke groep waar de
+     *    eigenaar lid van is, ook een groep van één waar de begunstigde het
+     *    niet ziet (QS8-309; de weekgrens kapt de schade af, de onzichtbaarheid
+     *    niet). En wordt een verzoek ná die week alsnog goedgekeurd, dan staat
+     *    de straf al op `due` en zet `beslis_deadline_verzoek()` hem niet terug
+     *    (QS8-308).
+     */
+
+    /** Een doel met een straf erop, waarvan de streefdatum al voorbij is. */
+    async function wereldMetStraf(
+      titel: string,
+      dagenOverTijd: number,
+    ): Promise<{ doelId: string; strafId: string }> {
+      const doel = await adminDb()
+        .from('goals')
+        .insert({ owner_id: w.alice.id, title: titel, target_date: addDays(w.vandaag, 30) })
+        .select('id')
+        .single();
+      if (doel.error) throw new Error(`doel ${titel}: ${doel.error.message}`);
+      const doelId = doel.data.id as string;
+
+      const koppel = await adminDb()
+        .from('goal_group_links')
+        .insert({ goal_id: doelId, group_id: w.groupId });
+      if (koppel.error) throw new Error(`koppelen ${titel}: ${koppel.error.message}`);
+
+      const straf = await w.alice.db
+        .from('commitments')
+        .insert({
+          goal_id: doelId,
+          type: 'penalty',
+          body: `${titel} straf`,
+          beneficiary_user_id: w.bob.id,
+          confirmed_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+      if (straf.error) throw new Error(`straf ${titel}: ${straf.error.message}`);
+
+      // ⚠️ Ouder dan een dag, anders houdt de grendel van 0171 hem al tegen en
+      //    meet geen van deze tests wat hij belooft te meten. Dat is de fout
+      //    waar CLAUDE.md voor waarschuwt: een ijking die zijn geval door een
+      //    pad voert dat een éérdere grendel al afvangt.
+      const ouder = await adminDb()
+        .from('commitments')
+        .update({ created_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString() })
+        .eq('id', straf.data.id as string);
+      if (ouder.error) throw new Error(`ouder maken: ${ouder.error.message}`);
+
+      // En dan verstrijkt de tijd. Via `adminDb()`, want dat is het verlopen
+      // van tijd en niet een handeling die getoetst wordt.
+      const verzet = await adminDb()
+        .from('goals')
+        .update({ target_date: addDays(w.vandaag, -dagenOverTijd) })
+        .eq('id', doelId);
+      if (verzet.error) throw new Error(`verzetten: ${verzet.error.message}`);
+
+      return { doelId, strafId: straf.data.id as string };
+    }
+
+    /**
+     * Alice vraagt om een verschuiving — langs de knop die er echt is.
+     *
+     * ⚠️ De dagteller van `vraag_deadline_verschuiving()` staat op vijf per
+     *    etmaal en deze suite dient er meer in dan dat. De álréeds afgesloten
+     *    verzoeken worden daarom eerst teruggedateerd. Dat raakt niets van wat
+     *    hier getoetst wordt: sinds de security-ronde hangt de grens op het
+     *    uitstel aan `goals.target_date` en niet meer aan `created_at`.
+     */
+    async function vraagVerschuiving(doelId: string, nieuweDatum: string): Promise<string> {
+      const ruimte = await adminDb()
+        .from('deadline_requests')
+        .update({ created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() })
+        .eq('requester_id', w.alice.id);
+      if (ruimte.error) throw new Error(`dagteller: ${ruimte.error.message}`);
+
+      const antwoord = await w.alice.db.rpc('vraag_deadline_verschuiving', {
+        p_goal_id: doelId,
+        p_group_id: w.groupId,
+        p_new_date: nieuweDatum,
+        p_reason: 'Ik ben twee weken ziek geweest en kwam aan niets toe.',
+      });
+      const d = (antwoord.data ?? {}) as { ok?: boolean; request_id?: string; reason?: string };
+      if (d.ok !== true || !d.request_id) throw new Error(`verzoek: ${JSON.stringify(antwoord.data)}`);
+      return d.request_id;
+    }
+
+    async function rollover(): Promise<void> {
+      const uitkomst = await adminDb().rpc('maak_straffen_verschuldigd', {
+        p_owner_id: w.alice.id,
+        p_vandaag: w.vandaag,
+      });
+      if (uitkomst.error) throw new Error(`rollover: ${uitkomst.error.message}`);
+    }
+
+    async function standVan(strafId: string): Promise<string> {
+      const rij = await adminDb().from('commitments').select('status').eq('id', strafId).single();
+      if (rij.error) throw new Error(`status: ${rij.error.message}`);
+      return rij.data.status as string;
+    }
+
+    it(
+      'een open verzoek houdt de straf tegen',
+      async () => {
+        const { doelId, strafId } = await wereldMetStraf('VERZOEK open', 1);
+        await vraagVerschuiving(doelId, addDays(w.vandaag, 30));
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('set');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'zonder verzoek gaat diezelfde straf gewoon af',
+      async () => {
+        // ⚠️ De must-allow. Zonder haar is de conjunct "straffen gaan nooit af",
+        //    en dat is groen op precies dezelfde manier.
+        const { strafId } = await wereldMetStraf('VERZOEK geen', 1);
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('due');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'ook een straf waarvan de deadline al lang voorbij is, gaat gewoon af',
+      async () => {
+        // ⚠️ **De tweede must-allow, en die staat er omdat de eerste versie van
+        //    deze grens er níet was.** De weekgrens stond eerst náást de
+        //    `not exists` in plaats van erin, en dan is hij een voorwaarde op
+        //    élke straf: een deadline van langer dan een week geleden zou dan
+        //    nooit meer tot een straf leiden, ook zonder dat er ooit een
+        //    verzoek was. Geen van de andere tests ziet dat, want die zetten de
+        //    datum allemaal op gisteren.
+        const { strafId } = await wereldMetStraf('VERZOEK oude deadline', 40);
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('due');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Dit is de naad, en niet "een verlopen verzoek telt niet mee".**
+     *    `beslis_deadline_verzoek()` weigert sinds 0171 een akkoord zodra
+     *    `new_date` voorbij is, en laat de rij `open` staan. Zou alleen
+     *    `status = 'open'` de straf tegenhouden, dan bestaat er een toestand
+     *    waarin het verzoek de datum niet meer kán verschuiven en de straf
+     *    tóch blijft wachten — twee correcte onderdelen, en een geheel dat
+     *    vastloopt. Deze test toetst allebei de kanten in één geval, want dát
+     *    is de belofte.
+     */
+    it(
+      'een verzoek dat niets meer kan verschuiven, houdt de straf ook niet meer tegen',
+      async () => {
+        const { doelId, strafId } = await wereldMetStraf('VERZOEK verlopen', 1);
+        const verzoekId = await vraagVerschuiving(doelId, addDays(w.vandaag, 2));
+
+        // De gevraagde datum verstrijkt. Via `adminDb()`: dat is het verlopen
+        // van tijd, en de RPC weigert een datum in het verleden bij het
+        // indienen — daar staat 0170 voor.
+        const verlopen = await adminDb()
+          .from('deadline_requests')
+          .update({ new_date: addDays(w.vandaag, -1) })
+          .eq('id', verzoekId);
+        expect(verlopen.error, `verlopen laten: ${verlopen.error?.message}`).toBeNull();
+
+        const beslissing = await w.bob.db.rpc('beslis_deadline_verzoek', {
+          p_request_id: verzoekId,
+          p_akkoord: true,
+        });
+        expect(uit(beslissing.data).reason, 'de verlooptak van 0171 hoort te weigeren').toBe(
+          'verzoek_verlopen',
+        );
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('due');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De uitkoopknop, en hij was er echt.** De eerste versie van deze
+     *    grens stond op `deadline_requests.created_at`. Gemeten als gewone
+     *    gebruiker, op een doel waarvan de streefdatum zestig dagen achter ons
+     *    lag: intrekken → opnieuw vragen → de straf staat weer stil. Twee
+     *    knoppen die allebei al in `src/modules/goals/deadline.ts` zitten, geen
+     *    akkoord van wie dan ook nodig, en de dagteller van vijf verzoeken bijt
+     *    niet bij één vernieuwing per week. Dat is precies de fout die QS8-293
+     *    drie rondes lang maakte: een grens leggen op iets dat de eigenaar zelf
+     *    kan verzetten.
+     */
+    it(
+      'intrekken en opnieuw vragen rekt het uitstel niet op',
+      async () => {
+        const { doelId, strafId } = await wereldMetStraf('VERZOEK vernieuwd', 9);
+        const eerste = await vraagVerschuiving(doelId, addDays(w.vandaag, 30));
+
+        const ingetrokken = await w.alice.db.rpc('trek_deadline_verzoek_in', {
+          p_request_id: eerste,
+        });
+        expect(uit(ingetrokken.data).ok, 'intrekken hoort te mogen').toBe(true);
+
+        await vraagVerschuiving(doelId, addDays(w.vandaag, 30));
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('due');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **Een nee van de groep blijft een nee.** Gemeten in dezelfde ronde: de
+     *    groep wijst af, de eigenaar dient meteen een nieuw verzoek in, en de
+     *    straf staat weer stil. De groep doet dan precies wat de bedoeling is
+     *    en houdt er niets aan over.
+     */
+    it(
+      'na een afwijzing houdt een nieuw verzoek de straf niet opnieuw tegen',
+      async () => {
+        const { doelId, strafId } = await wereldMetStraf('VERZOEK afgewezen', 2);
+        const eerste = await vraagVerschuiving(doelId, addDays(w.vandaag, 30));
+
+        const afwijzing = await w.bob.db.rpc('beslis_deadline_verzoek', {
+          p_request_id: eerste,
+          p_akkoord: false,
+        });
+        expect(uit(afwijzing.data).ok, 'afwijzen hoort te mogen').toBe(true);
+
+        await vraagVerschuiving(doelId, addDays(w.vandaag, 30));
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('due');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'en een goedgekeurde verschuiving laat de straf gewoon met rust',
+      async () => {
+        // ⚠️ De must-allow op de afwijzingsconjunct: die kijkt naar
+        //    `old_date = g.target_date`, dus een goedkeuring hoort niets te
+        //    blokkeren en niets te laten afgaan.
+        const { doelId, strafId } = await wereldMetStraf('VERZOEK goedgekeurd', 1);
+        const verzoekId = await vraagVerschuiving(doelId, addDays(w.vandaag, 30));
+
+        const akkoord = await w.bob.db.rpc('beslis_deadline_verzoek', {
+          p_request_id: verzoekId,
+          p_akkoord: true,
+        });
+        expect(uit(akkoord.data).ok, `goedkeuren: ${JSON.stringify(akkoord.data)}`).toBe(true);
+
+        await rollover();
+
+        expect(await standVan(strafId)).toBe('set');
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
