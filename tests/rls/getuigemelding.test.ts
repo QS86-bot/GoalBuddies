@@ -43,6 +43,12 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      → 1 rood op de kolomverzameling
  *   D  `grant execute … to authenticated`
  *      → 1 rood op de rechtentest
+ *   E  de anti-join op `notifications_sent` eruit
+ *      → 1 rood: hij levert een commitment op waar al over gemeld is
+ *   F  het dagplafond op 50 zetten in plaats van 5
+ *      → 1 rood op de plafondtest
+ *   G  de lidmaatschapsconjunct eruit
+ *      → 1 rood: een vertrokken lid krijgt nog meldingen
  *
  * ⚠️ **B werkte eerst niet, en dat heeft deze suite een test opgeleverd.** De
  *    eerste versie toetste alleen dat alice niets krijgt, en dat bleef groen met
@@ -56,6 +62,12 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    mutatie is stil niet toegepast en de test bleef groen. Met een `drop`
  *    ervoor werd hij rood. Zelfde valkuil als bij QS8-292; zie ook de
  *    drop-uitzondering bij onwrikbare regel 20.
+ *
+ * ⚠️ **E, F en G komen uit de security-review van 07-09-2026** en niet uit deze
+ *    suite — de eerste versie had ze geen van drieën. Ze staan hier omdat de
+ *    functie ze nu draagt: zonder anti-join komt melding 51 nooit aan, zonder
+ *    dagplafond kan één groepsgenoot er vijftig tegelijk laten landen, en zonder
+ *    lidmaatschapstoets blijft een vertrokken lid ze krijgen.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -68,6 +80,7 @@ interface Wereld {
   bob: TestUser;
   /** Deelt geen enkele groep met alice en is nergens getuige van. */
   carol: TestUser;
+  groupId: string;
   goalId: string;
   /** Een tweede doel van alice, zonder straf — voor de zelfgetuige-opstelling. */
   goal2Id: string;
@@ -164,6 +177,7 @@ describe.skipIf(!rlsTestsConfigured)('getuigenissen_voor() — wat hij teruggeef
       alice,
       bob,
       carol,
+      groupId: gd.group.id,
       goalId: doel.data.id,
       goal2Id: doel2.data.id,
       strafId: straf.data.id,
@@ -227,6 +241,103 @@ describe.skipIf(!rlsTestsConfigured)('getuigenissen_voor() — wat hij teruggeef
       // Alice ziet haar eigen inzet op haar doelscherm. Zou zij hier rijen
       // krijgen, dan kreeg ze een melding dat ze getuige is van zichzelf.
       expect(await getuigenissenVoor(w.alice.id)).toEqual([]);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'meldt niets meer over een commitment waar al een melding over uitging',
+    async () => {
+      // ⚠️ **De anti-join, en de reden dat hij er is.** Zonder deze conjunct
+      //    levert de functie elke ronde dezelfde oudste rijen op en slaat de job
+      //    ze allemaal over — melding 51 komt dan nooit aan. En dat heelt zich
+      //    niet: 📏 geen enkele functie zet `status = 'resolved'`, en
+      //    `commitments_update` heeft `using (status = 'set' …)`, dus een `due`
+      //    blijft `due`. Het venster zou voor altijd vastzitten.
+      const gemeld = await adminDb()
+        .from('notifications_sent')
+        .insert({
+          user_id: w.bob.id,
+          kind: 'commitment_witness',
+          local_date: new Date().toISOString().slice(0, 10),
+          ref_type: 'commitment',
+          ref_id: w.strafId,
+        })
+        .select('id')
+        .single();
+      if (gemeld.error) throw new Error(`melding vastleggen: ${gemeld.error.message}`);
+
+      try {
+        expect(await getuigenissenVoor(w.bob.id)).toEqual([]);
+      } finally {
+        await adminDb().from('notifications_sent').delete().eq('id', gemeld.data.id);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'levert niets meer zodra het dagplafond van vijf bereikt is',
+    async () => {
+      // ⚠️ **Onwrikbare regel 5, en geen zuinigheid.** Deze meldingsoort tilt een
+      //    leesoppervlak naar een pushkanaal, en er is 📏 géén dagquotum op
+      //    `goals` — dus één groepsgenoot kan vijftig doelen met elk één straf
+      //    aanmaken en er de dag erna vijftig laten landen op een
+      //    vergrendelscherm. De ontvanger kan de rol niet weigeren en heeft geen
+      //    opt-out per soort.
+      //
+      // ⚠️ De vijf rijen wijzen naar ándere commitments dan `strafId`, anders
+      //    zou de anti-join hierboven de uitkomst al verklaren en toetst deze
+      //    test niets eigens.
+      const rijen = Array.from({ length: 5 }, () => ({
+        user_id: w.bob.id,
+        kind: 'commitment_witness',
+        local_date: new Date().toISOString().slice(0, 10),
+        ref_type: 'commitment',
+        ref_id: crypto.randomUUID(),
+      }));
+      const gezet = await adminDb().from('notifications_sent').insert(rijen).select('id');
+      if (gezet.error) throw new Error(`plafond vullen: ${gezet.error.message}`);
+
+      try {
+        expect(
+          await getuigenissenVoor(w.bob.id),
+          'vijf meldingen in 24 uur is het plafond',
+        ).toEqual([]);
+      } finally {
+        await adminDb()
+          .from('notifications_sent')
+          .delete()
+          .in('id', (gezet.data ?? []).map((r) => r.id));
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'meldt niets meer aan een getuige die de groep verlaten heeft',
+    async () => {
+      // ⚠️ De grond onder deze melding is dat de eigenaar deze persoon zélf heeft
+      //    aangewezen, en dat kon alleen omdat er een groepsband was
+      //    (`commitments_insert` eist `shares_group_with_user`). Verdwijnt die
+      //    band, dan verdwijnt de grond. Zelfde vorm als `te_beoordelen_voor()`
+      //    (0054), dat dit al doet.
+      const weg = await adminDb()
+        .from('group_members')
+        .update({ status: 'inactive' })
+        .eq('group_id', w.groupId)
+        .eq('user_id', w.bob.id);
+      if (weg.error) throw new Error(`vertrek: ${weg.error.message}`);
+
+      try {
+        expect(await getuigenissenVoor(w.bob.id)).toEqual([]);
+      } finally {
+        await adminDb()
+          .from('group_members')
+          .update({ status: 'active' })
+          .eq('group_id', w.groupId)
+          .eq('user_id', w.bob.id);
+      }
     },
     TEST_TIMEOUT,
   );

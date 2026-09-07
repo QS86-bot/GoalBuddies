@@ -658,6 +658,25 @@ async function openGetuigenissen(
   return rijen.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
 }
 
+/**
+ * Waar `ref_id` naar wijst — QS8-298.
+ *
+ * ⚠️ **Hier stond `'completion'` voor élke soort met een `ref_id`.** Voor
+ *    `approval_request` klopt dat, voor `approval_received` wees het al naar de
+ *    verkeerde tabel, en met `commitment_witness` erbij zou de rij zeggen dat
+ *    een commitment-id een voltooiing is. Er is geen CHECK op
+ *    `notifications_sent.ref_type` die dat vangt, en vandaag leest niets die
+ *    kolom — dus niets werd er rood van. Precies de vorm waar regel 18 over
+ *    gaat: de volgende die er een join op bouwt, krijgt het verkeerde id.
+ */
+function refTypeVoor(soort: Melding, refId: string | null): string | null {
+  if (refId === null) return null;
+  if (soort === 'approval_request') return 'completion';
+  if (soort === 'approval_received') return 'approval';
+  if (soort === 'commitment_witness') return 'commitment';
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Versturen
 // ---------------------------------------------------------------------------
@@ -821,7 +840,7 @@ async function stuur(
       user_id: opdracht.userId,
       kind: opdracht.soort,
       local_date: opdracht.lokaleDatum,
-      ref_type: opdracht.refId === null ? null : 'completion',
+      ref_type: refTypeVoor(opdracht.soort, opdracht.refId),
       ref_id: opdracht.refId,
     })
     .select('id')

@@ -20,10 +20,19 @@ streefdatum niet gehaald heeft.
 
 ## Drie dingen dragen die grond, en geen ervan mag weg
 
-1. **De eigenaar heeft deze getuige zélf aangewezen** en het commitment
-   bevestigd (`confirmed_at`, domeinregel 5). Er is geen pad waarlangs iemand
-   ongevraagd getuige wordt — `bewaak_begunstigde()` (0168) bewaakt dat, ook
-   tegen `service_role`.
+1. **De eigenaar heeft deze getuige zélf aangewezen**, en er is geen pad
+   waarlangs iemand daar ongevraagd in belandt: `commitments_insert` eist
+   `shares_group_with_user(beneficiary_user_id)`, `bewaak_begunstigde()` (0168)
+   verbiedt zelfgetuige én het leeghalen van de kolom en bindt ook
+   `service_role`, en de kolomgrant laat `authenticated` na de insert alleen
+   `body`, `image_url` en `status` bijwerken.
+
+   ⚠️ **Hier stond eerst "en het commitment bevestigd (`confirmed_at`)", en dat
+   was een grendel die niet bestaat.** 📏 `confirmed_at` is `not null` zonder
+   default — de kolom ís altijd gevuld, dus de conjunct die erop toetste kon
+   nooit onwaar zijn en dus ook nooit rood worden. De echte bevestiging leeft in
+   de UI. Conjunct eruit, zin eruit. Een opgeschreven grendel die niet bestaat is
+   duurder dan geen grendel: de volgende lezer bouwt erop.
 2. **De melding gaat pas af bij `status = 'due'`.** Dezelfde grens als
    `commitment_zichtbaar_voor_persoon()` en als domeinregel 11. Vóór dat moment
    weet de getuige van niets, en dat blijft zo — anders is de inzet zélf al een
@@ -95,6 +104,76 @@ QS8-292 en dezelfde als de drop-uitzondering bij onwrikbare regel 20.
 de beschikbaarheidsvraag, waarop de suite zich netjes oversloeg in plaats van
 rood te worden. Een ijking die zijn geval door een eerdere grendel voert, bewaakt
 niets van wat hij belooft.
+
+## Wat de security-review erbij zette
+
+De eerste versie ging niet door de review, en de drie bevindingen zijn alle drie
+zelf nagemeten voordat ze verwerkt werden (onwrikbare regel 19).
+
+### Het venster schoof niet op, en zou dat nooit gaan doen
+
+`getuigenissen_voor()` had alleen `limit 50`, met in de migratiekop de zin
+*"zelfde vorm als `te_beoordelen_voor()`"*. Dat was onwaar: 0054 heeft een
+`not exists (… completion_approvals …)` en dáárdoor schuift zijn venster op.
+Zonder die conjunct levert de functie elke ronde dezelfde vijftig oudste rijen,
+slaat de job ze allemaal over, en komt nummer 51 nooit aan.
+
+📏 En dat heelt zichzelf niet: geen enkele functie in `public` zet
+`status = 'resolved'` — `wikkel_commitments_af()` raakt alleen `set`, en
+`commitments_update` heeft `using (status = 'set' …)`. Een straf die eenmaal
+verschuldigd is blijft dat, dus het venster zou voor altijd vastzitten.
+
+⚠️ **De duurste regel stond niet in de code maar in de kop.** Een zin die zegt
+dat iets "dezelfde vorm heeft als" iets anders, is een bewering die niemand
+toetst. Zelfde les als bij 0172, waar een testcommentaar een invariant beweerde
+die niet klopte.
+
+### Vijftig meldingen die de ontvanger niet kan weigeren
+
+📏 Gemeten: er is een dagquotum op groepen, toetredingen, AI-jobs en weekdoelen,
+maar **niet op `goals`** — `goals_insert` telt niet en geen van de drie triggers
+op die tabel telt. `commitments_een_open_per_soort` is per doel, dus één
+groepsgenoot kan vijftig doelen aanmaken met elk één straf en de dag erna
+vijftig pushmeldingen op andermans vergrendelscherm laten landen.
+
+De ontvanger kan er niets tegen doen: de getuigenrol weigeren kan niet
+(`bewaak_begunstigde()` verbiedt het leeghalen en hij heeft geen UPDATE-recht),
+er is geen opt-out per meldingsoort, en `reminder_enabled` geldt alleen voor de
+nudge. Zijn enige uitweg is álle meldingen uitzetten.
+
+Dat is onwrikbare regel 5 in dezelfde vorm als spam-uitnodigingen. **Vijf per
+etmaal per ontvanger**, in de functie en niet in de job — dezelfde plek als waar
+0054 zijn grenzen zet. Een legitieme achterstand druppelt eruit, want de
+anti-join laat het venster nu opschuiven.
+
+⚠️ **Repareer die twee nooit los van elkaar.** Zonder de anti-join begrenst het
+ontbreken van het venster deze aanval per ongeluk op vijftig; met alleen de
+anti-join wordt hij onbegrensd.
+
+### De groepsband moet er nog zijn
+
+`te_beoordelen_voor()` toetst lidmaatschap, `getuigenissen_voor()` deed dat niet.
+Wie de groep verliet bleef pushmeldingen krijgen over de verstreken deadlines van
+iemand die hij achter zich had gelaten.
+
+De grond onder deze melding is *"de eigenaar heeft deze persoon zélf
+aangewezen"*, en die aanwijzing kon alleen omdat er een groepsband was. Verdwijnt
+die band, dan verdwijnt de grond — dus de toets erbij. Voor een nieuw oppervlak
+is beschermd het antwoord tot iemand het tegendeel besluit.
+
+⚠️ **De eerste versie van die toets was strenger dan de invariant en dus fout.**
+Hij keek naar `goal_group_links`, omdat 0054 dat doet — maar dáár slaat het op de
+voltooiing die de groep beoordeelt. Hier is de invariant
+`shares_group_with_user()`, en die eist alleen dat eigenaar en getuige één groep
+delen; een doel hóéft aan geen enkele groep te hangen. De testopstelling viel er
+meteen over, en dat was terecht: de conjunct sloot een geldige getuigenis uit.
+Overgenomen van `shares_group_with_user()` staat er nu ook `<> 'inactive'` en
+niet `= 'active'` — een lid met een adempauze is nog steeds een groepsgenoot.
+
+⚠️ **`getuigenissen()` (0169) toetst dit niet**, dus wie vertrekt ziet zijn
+getuigenis nog wél als hij de app opent. Dat is het oppervlak van QS8-292 en niet
+van dit issue; het staat als QS8-306. De richting klopt wel: niet duwen is minder
+dan niet tonen, dus de kant die hier gekozen is, is de veilige.
 
 ## De keten is pas rond na een deploy
 
