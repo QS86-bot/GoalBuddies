@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `levend-controle.test.ts`.
 import {
+  SCHRIJFVRAAG,
+  VRAAG,
   argumentNa,
   bronbestanden,
   GEEN_SCHRIJFPAD,
@@ -971,5 +973,36 @@ describe('de echte codebase', () => {
     expect(bronnaam(join(WORTEL, 'src', 'modules', 'goals', 'interview.ts'))).toBe(
       'src/modules/goals/interview.ts',
     );
+  });
+});
+
+describe('de vragen lezen het effectieve recht en niet de boekhouding — QS8-334', () => {
+  // ⚠️ **Dit is een tekstuele grendel, en dat is hier met opzet.** De SQL is niet
+  //    te voeden zoals de ontleders hierboven: hij draait tegen een database of
+  //    hij draait niet. Wat wél vast te leggen valt is de vórm, en precies die
+  //    vorm was het defect: een filter op `grantee = 'authenticated'` mist een
+  //    recht dat via `grant … to public` is uitgedeeld, want dat staat op de rij
+  //    `grantee = 'PUBLIC'` terwijl het wél voor `authenticated` geldt.
+  //
+  // 📏 Gemeten op de lokale stack vóór de reparatie:
+  //    `grant update (goal_id) on public.commitments to public` liet deze
+  //    controle groen terwijl `has_column_privilege` `t` gaf.
+  //
+  // ⚠️ Spiegelbeeld van onwrikbare regel 4: daar leest `revoke … from public,
+  //    anon` als "van iedereen" en houdt precies `authenticated` over; hier leest
+  //    `grant … to public` als onschuldig en is hij onzichtbaar. Wie deze test
+  //    rood ziet omdat hij een grantee-filter terugzet, leest eerst QS8-334.
+  it.each([
+    ['de leeskant', VRAAG],
+    ['de schrijfkant', SCHRIJFVRAAG],
+  ])('%s vraagt has_column_privilege', (_naam, vraag) => {
+    expect(vraag).toContain('has_column_privilege');
+  });
+
+  it.each([
+    ['de leeskant', VRAAG],
+    ['de schrijfkant', SCHRIJFVRAAG],
+  ])('%s filtert niet op een grantee-naam', (_naam, vraag) => {
+    expect(vraag).not.toMatch(/grantee\s*=/);
   });
 });

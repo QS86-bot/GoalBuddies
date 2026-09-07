@@ -15,6 +15,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database } from '../../src/lib/database.types';
+import { beoordeelWezen, wezentekst, type VerseGroep } from './wezen';
 
 export type TestDb = SupabaseClient<Database>;
 
@@ -283,6 +284,17 @@ const createdGroups = new Set<string>();
  *    te verwijderen. Een tijdstempel is geen eigendomsbewijs.
  */
 const RUN_START = new Date().toISOString();
+
+/**
+ * Is er tijdens deze run een ándere suite aan deze database geweest? — QS8-329.
+ *
+ * ⚠️ **Een grendel en geen momentopname.** `removeTestUsers()` draait na élk
+ *    testbestand, dus de vraag wordt ruim honderd keer gesteld; de bevolking van
+ *    de andere run knippert daartussen naar nul. Eén keer zien is genoeg om te
+ *    weten dat een lege groep zónder aanmaker vanaf dat moment niet meer met
+ *    zekerheid van ons is.
+ */
+let andereRunGezien = false;
 
 /**
  * Meld dat deze run een groep heeft aangemaakt, zodat het opruimen hem terugvindt
@@ -766,11 +778,11 @@ export async function removeTestUsers(): Promise<void> {
     }
   }
 
-  await meldAchtergeblevenGroepen();
+  await meldAchtergeblevenGroepen(new Set(groepen), new Set(ids));
 }
 
 /**
- * De bewaker onder het opruimen — QS8-281.
+ * De bewaker onder het opruimen — QS8-281, verbouwd in QS8-329.
  *
  * ⚠️ **De belofte is "een run laat niets achter", en die stond nergens onder
  *    test.** Er stond machinerie: een wezen-lus met een uitgeschreven kop over
@@ -779,25 +791,71 @@ export async function removeTestUsers(): Promise<void> {
  *    Regel 18 in het klein: de test toetste de ónderdelen, de belofte was van het
  *    geheel.
  *
- * ⚠️ **Deze functie verwijdert niets.** Hij kijkt of er groepen van ná
- *    `RUN_START` zonder leden zijn blijven staan en gooit als dat zo is. Dat
+ * ⚠️ **Deze functie verwijdert niets.** Hij kijkt of er lege groepen van ná
+ *    `RUN_START` zijn blijven staan en gooit als die van ons zijn. Dat
  *    onderscheid is het hele punt: een tijdstempel zegt "dit is van vandaag" en
  *    niet "dit is van ons", en op dat verschil hoort geen `delete` te leunen.
  *    Wat weg mag, gaat via de boekhouding hierboven.
  *
- * ⚠️ **De vensterkeuze leunt op `fileParallelism: false` voor deze groep**
- *    (`vitest.config.mts`). Eén bestand tegelijk betekent dat een groep van een
- *    ánder bestand op dit moment óf nog leden heeft óf al opgeruimd is; een lege
- *    groep van ná `RUN_START` is dus van dit bestand. Draait deze groep ooit
- *    parallel, dan is dit een valse rode en hoort deze bewaker mee verbouwd te
- *    worden.
+ * ⚠️ **De oude vensterkeuze leunde op `fileParallelism: false`, en die aanname
+ *    hield binnen één run maar niet tússen twee runs.** De kop hier voorspelde
+ *    dat met zoveel woorden — *"Draait deze groep ooit parallel, dan is dit een
+ *    valse rode en hoort deze bewaker mee verbouwd te worden"* — en 📏 op
+ *    07-09-2026 gebeurde het: twee sessies tegen dezelfde lokale stack gaven
+ *    **zes rode bestanden bij nul gefaalde tests**, elk los meteen weer groen.
+ *
+ * ⚠️ **Het oordeel zelf staat in `wezen.ts` en is importvrij**, zodat het te
+ *    voeden is zonder database. De harness doet hier alleen de drie vragen aan
+ *    de database en geeft het antwoord door. Dat is dezelfde vorm als de
+ *    `*-controle`-scripts: een controle die je niet kunt voeden, kun je niet
+ *    ijken.
  */
-async function meldAchtergeblevenGroepen(): Promise<void> {
+/**
+ * Hoeveel profielen zijn er ná het begin van dit bestand aangemaakt die niet van
+ * ons zijn?
+ *
+ * ⚠️ **Het bewijs dat er een tweede suite bezig is, en niet een vermoeden.**
+ *    Achtergebleven rommel van een gecrashte run van gisteren telt hier niet
+ *    mee — die is ouder dan `RUN_START`, en dan hoort de bewaker juist wél om te
+ *    vallen.
+ */
+async function verseVreemdeProfielenTellen(onzeGebruikers: ReadonlySet<string>): Promise<number> {
+  const { data } = await adminDb().from('profiles').select('id').gte('created_at', RUN_START);
+
+  return (data ?? []).filter((rij) => !onzeGebruikers.has(rij.id as string)).length;
+}
+
+/**
+ * Draait er aantoonbaar een tweede suite tegen deze database? — QS8-329.
+ *
+ * ⚠️ **Geëxporteerd omdat één test hem nodig heeft om exact te kunnen zijn.**
+ *    `opruiming.test.ts` maakt met opzet een wees die niet toe te wijzen is, en
+ *    de uitkomst daarvan verschilt per omstandigheid: alleen op de stack hoort
+ *    de run om te vallen, gedeeld hoort er een luide `ONGEMETEN` te komen. Zonder
+ *    deze vraag zou die test een `of/of` moeten beweren, en dat is precies de
+ *    slappe vorm die dit project elders afkeurt. Eén implementatie, twee
+ *    lezers — de bewaker en zijn test kunnen niet uit elkaar lopen.
+ */
+export async function andereSuiteBezig(onzeGebruikers: ReadonlySet<string>): Promise<boolean> {
+  if ((await verseVreemdeProfielenTellen(onzeGebruikers)) > 0) return true;
+
+  const { data } = await adminDb().from('groups').select('created_by').gte('created_at', RUN_START);
+
+  return (data ?? []).some((rij) => {
+    const maker = rij.created_by as string | null;
+    return maker !== null && !onzeGebruikers.has(maker);
+  });
+}
+
+async function meldAchtergeblevenGroepen(
+  onzeGroepen: ReadonlySet<string>,
+  onzeGebruikers: ReadonlySet<string>,
+): Promise<void> {
   const admin = adminDb();
 
   const { data: verse, error } = await admin
     .from('groups')
-    .select('id, name, status')
+    .select('id, name, status, created_by')
     .gte('created_at', RUN_START);
 
   if (error) {
@@ -805,32 +863,44 @@ async function meldAchtergeblevenGroepen(): Promise<void> {
     return;
   }
 
-  const wezen: string[] = [];
+  const metLeden: VerseGroep[] = [];
   for (const groep of verse ?? []) {
     const { count } = await admin
       .from('group_members')
       .select('group_id', { count: 'exact', head: true })
       .eq('group_id', groep.id as string);
 
-    if ((count ?? 0) === 0) {
-      wezen.push(`${groep.id as string} — "${groep.name as string}" (${groep.status as string})`);
-    }
+    metLeden.push({
+      id: groep.id as string,
+      naam: groep.name as string,
+      status: groep.status as string,
+      createdBy: (groep.created_by as string | null) ?? null,
+      leden: count ?? 0,
+    });
   }
 
-  if (wezen.length === 0) return;
+  const verseVreemdeProfielen = await verseVreemdeProfielenTellen(onzeGebruikers);
 
-  throw new Error(
-    [
-      `Deze run laat ${wezen.length} groep(en) zonder leden achter:`,
-      '',
-      ...wezen.map((w) => `  ${w}`),
-      '',
-      '⚠️ Het opruimen vindt een groep via de lidmaatschappen van de gebruikers',
-      '   die het verwijdert. Verdwijnt een lidmaatschap eerder — bijvoorbeeld',
-      '   doordat een test `verwijder_mijn_account()` aanroept — dan is die weg',
-      '   dicht. Roep `registreerGroep(id)` aan waar de groep wordt aangemaakt.',
-    ].join('\n'),
-  );
+  const oordeel = beoordeelWezen({
+    verse: metLeden,
+    onzeGroepen,
+    onzeGebruikers,
+    verseVreemdeProfielen,
+    andereRunGezien,
+  });
+
+  andereRunGezien = andereRunGezien || oordeel.andereRunActief;
+
+  if (oordeel.soort === 'schoon') return;
+
+  // ⚠️ Geen stilte bij `ongemeten`: dit project heeft er een eigen issue over
+  //    (QS8-268, QS8-270). Wie hier iets afzwakt, hoort het te horen.
+  if (oordeel.soort === 'ongemeten') {
+    console.warn(wezentekst(oordeel));
+    return;
+  }
+
+  throw new Error(wezentekst(oordeel));
 }
 
 /**
@@ -889,10 +959,17 @@ interface Schrijfuitkomst {
  * @param schrijf de poging, met de client van de gebruiker die hem niet mag doen
  * @param lees de rij zoals `adminDb()` hem ziet — vóór en ná
  */
+/**
+ * @returns de foutmelding als er een fout kwam, en anders de lege string — voor
+ *   de enkele test die wil vastleggen *welk* slot er dichtzat. ⚠️ Een lege
+ *   string betekent "stil geweigerd" en niet "gelukt"; de uitkomsttoets
+ *   hieronder is wat het slot bewijst. Toegevoegd bij QS8-312, dat hier anders
+ *   een tweede kopie van deze helper naast had gezet.
+ */
 export async function magNietLanden(
   schrijf: () => PromiseLike<Schrijfuitkomst>,
   lees: () => PromiseLike<{ data: unknown }>,
-): Promise<void> {
+): Promise<string> {
   const voorData = (await lees()).data ?? null;
 
   // ⚠️ **Eerst bewijzen dat er iets te veranderen vált.** Zonder deze toets is
@@ -928,4 +1005,6 @@ export async function magNietLanden(
           : `Er kwam ${error.code}, maar de rij veranderde alsnog.`),
     );
   }
+
+  return error?.message ?? '';
 }

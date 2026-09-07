@@ -135,7 +135,48 @@ describe.skipIf(!rlsTestsConfigured)('Het opruimen van de RLS-suite laat niets a
 
       await eigenaarVertrokken(groep.id);
 
-      await expect(removeTestUsers()).rejects.toThrow(/zonder leden achter/);
+      // ⚠️ **De belofte is dat de bewaker hier nóóit zwijgt**, en dat is sinds
+      //    QS8-329 de precieze formulering. Deze opstelling maakt met opzet een
+      //    wees die niet toe te wijzen is: geen lidmaatschap, geen `created_by`,
+      //    niet aangemeld. Draait er een tweede suite tegen dezelfde database,
+      //    dan kán zo'n rij ook van háár zijn, en dan is de eerlijke uitslag
+      //    `ONGEMETEN` in plaats van rood.
+      //
+      // ⚠️ **Dit is geen slappe `of/of`.** De uitgesloten uitkomst is de enige
+      //    die ertoe doet: stilte. Een bewaker die afzwakt hoort dat te zeggen —
+      //    de les van QS8-268 (controles die "OVERGESLAGEN" printen en daarna
+      //    exitcode 0 geven) en QS8-270 (een suite die zichzelf stil oversloeg).
+      //    Wélke van de twee luide uitkomsten het wordt hangt af van wie er nog
+      //    meer aan deze database zit, en dát staat exact onder test in
+      //    `tests/wezen.test.ts` — daar is de omstandigheid een parameter en
+      //    geen toevalligheid.
+      //
+      // ⚠️ Hier stond eerst een meting vooraf, met daarna één geëiste uitkomst.
+      //    📏 Dat viel om in de praktijk: de test en de bewaker bemonsteren op
+      //    twee verschillende momenten, en tussen die twee door verscheen er een
+      //    vreemde aanmaker. Twee metingen van hetzelfde feit lopen uit elkaar;
+      //    één belofte doet dat niet.
+      const gewaarschuwd: string[] = [];
+      const eerder = console.warn;
+      console.warn = (...args: unknown[]) => void gewaarschuwd.push(args.join(' '));
+
+      let gegooid = '';
+      try {
+        await removeTestUsers();
+      } catch (fout) {
+        gegooid = fout instanceof Error ? fout.message : String(fout);
+      } finally {
+        console.warn = eerder;
+      }
+
+      const rood = /zonder leden achter/.test(gegooid);
+      const ongemeten = /ONGEMETEN/.test(gewaarschuwd.join('\n'));
+
+      expect(
+        rood || ongemeten,
+        `de bewaker zweeg over ${groep.id}; dat is de enige uitkomst die hier niet mag`,
+      ).toBe(true);
+      expect(rood && ongemeten, 'één uitslag per run, niet allebei').toBe(false);
 
       expect(
         await groepBestaatNog(groep.id),
