@@ -175,7 +175,7 @@ getuigenis nog wél als hij de app opende. Dat was het oppervlak van QS8-292 en
 niet van dit issue; het stond als QS8-306. De richting klopte wel: niet duwen is
 minder dan niet tonen, dus de kant die hier gekozen is, was de veilige.
 
-⚠️ **Opgelost op 07-09-2026 met migratie 0182 (QS8-306), en niet alleen in de
+⚠️ **Opgelost op 07-09-2026 met migratie 0183 (QS8-306), en niet alleen in de
 functie.** Het leesrecht zelf komt uit de policy van 0168 en die keek evenmin
 naar lidmaatschap; een reparatie in alleen `getuigenissen()` had het blok
 leeggemaakt en de rij open gelaten. Waarom deze kant gekozen is, wat er níet
