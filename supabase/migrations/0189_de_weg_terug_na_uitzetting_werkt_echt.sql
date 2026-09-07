@@ -1,4 +1,4 @@
--- 0188_de_weg_terug_na_uitzetting_werkt_echt.sql — een aangenomen verzoek maakt de
+-- 0189_de_weg_terug_na_uitzetting_werkt_echt.sql — een aangenomen verzoek maakt de
 -- aanvrager ook echt lid, ook als er nog een uitgezette rij van hem ligt (QS8-328).
 --
 -- ROLLBACK-PAD:

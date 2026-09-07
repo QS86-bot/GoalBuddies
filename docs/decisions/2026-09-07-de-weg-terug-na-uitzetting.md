@@ -1,6 +1,6 @@
 # Een aangenomen verzoek maakt je ook echt lid
 
-**Datum:** 07-09-2026 · **Issue:** QS8-328 · **Migratie:** 0188 ·
+**Datum:** 07-09-2026 · **Issue:** QS8-328 · **Migratie:** 0189 ·
 **Volgt op:** QS8-314 (0187), en op 0102
 
 ## Wat er stond
@@ -23,7 +23,7 @@ daarna **onvoorwaardelijk**.
 te concluderen**, en dat is hier gedaan: een lokale stack, echte JWT's, een echte
 fixture. Anna zet Cor uit de groep, Cor vraagt lidmaatschap aan, Anna neemt aan.
 
-| Wat | Vóór 0188 |
+| Wat | Vóór 0189 |
 | -- | -- |
 | `beslis_lidmaatschapsverzoek` | `{"ok": true, "status": "accepted"}` |
 | `group_members.status` van Cor | `inactive` — **onveranderd** |
