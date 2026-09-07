@@ -5,7 +5,9 @@
 >
 > **Laatst bijgewerkt:** 07-09-2026. Er landt veel uit twee sessies tegelijk;
 > `git log origin/main` is de betrouwbare lijst en niet deze zin.
-> Uit deze sessie op 07-09: **QS8-304**, **QS8-191** en **QS8-315**. Daarvóór op 06-09:
+> Uit deze sessie op 07-09: **QS8-304**, **QS8-191** en **QS8-315**; uit de
+> parallelle sessie diezelfde dag: **QS8-301, QS8-306, QS8-311, QS8-313** en
+> **QS8-262** (rondes 6 t/m 8). Daarvóór op 06-09:
 > **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en **QS8-302**.
 > Open en niet door een agent af te maken: **QS8-197** (wacht op
 > Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
@@ -64,6 +66,39 @@
 > uitvoer zei dat. ⚠️ **Draai je een poort op de achtergrond, print dan de
 > branchnaam in elke regel** — en wissel niet van branch zolang hij loopt. Een
 > meting die niet zegt wát hij gemeten heeft, is niet na te rekenen.
+>
+> **07-09, punt E: een migratienummer kan botsen tússen de laatste groene CI en
+> de merge, en geen enkele grendel kan dat zien.** Mijn 0182 was met
+> `migratie:hernummer` op een vrij nummer gezet en CI was groen; daarna landde
+> een ándere PR een eigen 0182, en mijn merge maakte er twee. Git ziet geen
+> conflict — het zijn twee verschillende bestandsnamen in dezelfde map.
+> ⚠️ **Alle drie de bestaande grendels draaien op de bránch en de botsing
+> ontstaat pas bij de tweede merge.** Kijk dus vlak vóór het mergen nog een keer
+> of jouw nummer nog vrij is. Wie als tweede merget, hernummert. Staat als
+> QS8-318, met vier richtingen waarvan er één een repository-instelling is.
+>
+> **07-09, punt F: een mutatie die groen blijft omdat je bewerking het bestand
+> nooit raakte, leest als een geslaagde ijking.** Ik draaide een ijking waarvan
+> de `sed` niets veranderde; de test bleef groen en ik schreef bijna op dat die
+> grendel niets bewaakte. ⚠️ **Grep na élke mutatie of hij er stáát vóór je de
+> uitslag gelooft.** Dit is punt III van 06-09 in een andere vermomming — daar
+> faalde de ópzet stil, hier de bewerking zelf.
+>
+> ⚠️ **De tegenhanger kwam dezelfde dag langs en is leerzamer:** een nieuwe test
+> was rood *om de verkeerde reden*, en dat heeft hem gered. Ik zette
+> `chat_messages.created_at` terug met `adminDb()` om een oud bericht te maken,
+> en `stamp_chat_message()` draaide dat terug — óók voor `service_role`, want
+> een trigger is geen policy. Was hij groen geweest, dan had hij een
+> bewerkvenster "bewaakt" dat nooit gesloten was. **Vraag bij een test die
+> onverwacht rood is eerst wát er rood is, en pas daarna hoe je hem groen krijgt.**
+>
+> **07-09, punt G: ik heb geforcedpusht over een commit van de andere sessie.**
+> Bij het herstarten van een branch na een merge gebruikte ik
+> `--force-with-lease`, en die accepteerde het omdat mijn remote-tracking-ref
+> hun commit al gezien had. 📏 Nagemeten viel het mee — de bomen waren identiek
+> en hun werk zat al in `main` — maar CLAUDE.md verbiedt dit en de meting was
+> geluk, geen zorgvuldigheid. ⚠️ **Herstart een branch na een merge met een
+> nieuwe naam, of fetch en kijk wíé er op staat vóór je forceert.**
 >
 > **06-09, punt 0 — doe dit vóór alles: `npm run claim -- <branchnaam van
 > Linear>`.** Dat fetcht, kijkt of het issuenummer al ergens op de remote staat,
@@ -373,6 +408,72 @@
 > ⚠️ **Allebei waren onzichtbaar omdat de controle die ze moest vinden zelf een
 > blinde vlek had.** Lees de twee nieuwe valkuilen onderaan die sectie vóór je
 > een controle vertrouwt die je niet met de hand rood hebt gekregen.
+
+## Werk je als tweede sessie parallel? Plak dán dit, en niet de prompt hieronder
+
+De prompt onder de streep is voor de sessie die de werkvoorraad in volgorde
+afwerkt. Draait die al, en wil je er een tweede naast zetten, gebruik dan het
+blok hieronder: het gaat uit van twee sessies en zet de claim vooraan.
+
+⚠️ **De bezet-lijst erin is een momentopname en de claim is de echte rem.**
+Ververs hem vóór je hem plakt met `git ls-remote --heads origin`. Hij staat er
+alleen omdat een sessie die meteen een bezet issue kiest, dat anders pas merkt
+ná het lezen van het issue.
+
+```text
+Je werkt aan GoalBuddies (/home/user/GoalBuddies). Lees eerst CLAUDE.md en
+docs/WERKVOORRAAD.md sectie 0 — die twee zijn de grondwet en de stand.
+
+Er draait een TWEEDE sessie in deze backlog. Werk daarom strikt zo, per issue,
+en niet anders:
+
+1. CLAIM EERST, BOUW DAARNA.
+   npm run claim -- <de branchnaam die Linear voorstelt>
+   Weigert hij, dan bouw je dat issue NIET. Ontbreekt er iets aan het werk van
+   de ander, dan is dat een vervolgissue en geen tweede branch op hetzelfde
+   issue.
+2. Kies een issue dat NIET In Progress staat en waarvan geen branch op de
+   remote staat. Sla alles met label `wacht-op-Quinten` over.
+3. Bouw tegen de acceptatiecriteria. Verbreed de branch niet: vind je onderweg
+   iets anders, maak er een Linear-issue van met de meting erin.
+4. Tests die de belofte toetsen, niet het onderdeel. Beantwoord de zes vragen
+   van onwrikbare regel 18 expliciet, vooral: waar knopen twee correcte
+   onderdelen aan elkaar?
+5. IJK ELKE GRENDEL APART. Breek de belofte met de hand, per slot, en kijk of
+   juist de test rood wordt die hem noemt. Blijft een mutatie groen, dan is dat
+   geen uitslag maar een vraag. Controleer met een grep dát je mutatie in het
+   bestand staat vóór je de uitslag gelooft.
+6. npm run poort — volledig, geen greep eruit. "OVERGESLAGEN" is ongemeten en
+   niet groen.
+7. Commit in het Nederlands: eerste regel wat er verandert, daarna waaróm.
+8. Push, PR, wacht op groene CI, merge MET EEN MERGE-COMMIT (nooit squash).
+9. Linear op Done, en vink alleen af wat echt af is.
+10. Pas daarna het volgende issue. NOOIT twee branches tegelijk open.
+
+Raakt het issue auth, RLS, punten, goedkeuring, commitments of een nieuw
+groepszichtbaar oppervlak: draai de security-reviewer vóór de PR en verifieer
+elke bevinding zelf tegen de bestanden. Ze hebben het ook mis.
+
+Loopt een issue vast op iets dat Quintens hand vraagt (een sleutel, een
+dashboardinstelling, een betaalde tier): label het `wacht-op-Quinten`, laat het
+op Todo staan en ga door. Bouw geen work-around.
+
+BEZET OP DIT MOMENT — ververs met `git ls-remote --heads origin`:
+QS8-122, QS8-252, QS8-261, QS8-270, QS8-284, QS8-287, QS8-295, QS8-296, QS8-324.
+
+VIJF VALLEN DIE OP 07-09 ECHT ZIJN OPGETREDEN:
+- Migratienummers botsen tussen de laatste groene CI en de merge. Begin met
+  `npm run migratie:nieuw -- "naam"` en controleer vlak vóór het mergen opnieuw
+  of jouw nummer nog vrij is. Wie als tweede merget, hernummert.
+- `migraties:controle` meldt botsingen op ándere branches. Dat rood is niet van
+  jou; de melding noemt de branchnaam en die naam is het antwoord.
+- Force-push nooit over een branch waar een andere sessie aan zat, ook niet met
+  --force-with-lease.
+- De lokale stack wordt door de container opgeruimd. Herstart met
+  `PGHOST=127.0.0.1 PGPASSWORD=postgres npm run rls:stack`. Ziet een meting er
+  raar uit, bouw hem dan eerst opnieuw op.
+- Meten, niet redeneren. "Niet te breken" is hier een meting en geen conclusie.
+```
 
 ---
 
