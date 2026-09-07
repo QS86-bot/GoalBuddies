@@ -11,7 +11,6 @@ export {
 export {
   bewijseisVoorDoel,
   fetchDagzetten,
-  fetchVoltooiing,
   rondAf,
   zetDagzet,
   type Bewijseis,

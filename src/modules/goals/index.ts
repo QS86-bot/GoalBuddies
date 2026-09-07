@@ -141,7 +141,6 @@ export { fetchRisico, fetchRisicos, type Risico } from './risico';
 export {
   CATEGORIEEN,
   CATEGORIE_GROEPEN,
-  categorieGroep,
   categorieKeuzegroepen,
   groepLabels,
   DOELGEBEURTENISSEN,
@@ -197,7 +196,6 @@ export {
 } from './overzicht-stand';
 
 export {
-  heeftVragenlijstAntwoorden,
   LEGE_VRAGENLIJST,
   MAX_FOCUSGEBIEDEN,
   MINUTEN_OPTIES,

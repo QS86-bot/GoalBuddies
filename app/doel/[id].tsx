@@ -57,6 +57,7 @@ import {
   ritmeLabels,
   ritmeUitleg,
   trekDeadlineVerzoekIn,
+  stelWeekplanstapBij,
   startWeekplanstapNu,
   verplaats,
   verwijderDoel,
@@ -74,6 +75,7 @@ import {
   type DeadlineVerzoek,
   type DoelMetVoortgang,
   type Mijlpaal,
+  type Weekplanstap,
   type Risico,
   type Ritme,
 } from '@/modules/goals';
@@ -2028,6 +2030,89 @@ function MijlpaalBewerken({
  * ⚠️ De cyclus wordt hier niet berekend. `startWeekplanstapNu()` haalt hem uit
  *    de klok van de gebruiker (correctheidsregel 7).
  */
+/**
+ * Eén geplande stap bijstellen — de knop die bij `stelWeekplanstapBij()` ontbrak
+ * (QS8-301, gevonden door `exports:controle`).
+ *
+ * ⚠️ **Alle drie de velden staan erin, en dat is dezelfde grendel als bij
+ *    `MijlpaalBewerken`.** `stelWeekplanstapBij()` stuurt titel, vloer én
+ *    plafond in één UPDATE. Zou dit formulier de vloer niet kennen, dan wiste
+ *    elke titelcorrectie hem stilzwijgend — precies de val die bij de mijlpalen
+ *    al een keer is opgeschreven.
+ *
+ * ⚠️ De opslag staat als losse functie hierónder en niet in dit component. Dat
+ *    is geen stijl maar coderegel 15: `app/` staat op zijn plafond van lange
+ *    functies, en dit component moet eronder blijven.
+ */
+function WeekplanstapBewerken({
+  stap,
+  onKlaar,
+  onAnnuleer,
+}: {
+  readonly stap: Weekplanstap;
+  readonly onKlaar: () => void;
+  readonly onAnnuleer: () => void;
+}) {
+  const [titel, setTitel] = useState(stap.title);
+  const [vloer, setVloer] = useState(stap.floor_text ?? '');
+  const [plafond, setPlafond] = useState(stap.ceiling_text ?? '');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const bewaar = async (): Promise<void> => {
+    setBezig(true);
+    setFout(null);
+    const melding = await bewaarWeekplanstap(stap.id, { titel, vloer, plafond });
+    setBezig(false);
+    setFout(melding);
+    if (melding === null) onKlaar();
+  };
+
+  return (
+    <View style={styles.pauzeForm}>
+      <Subheading>{t('weekplan.bewerken_kop')}</Subheading>
+      <Field label={t('weekplan.titel')} value={titel} onChangeText={setTitel} />
+      <Field label={t('weekplan.vloer')} value={vloer} onChangeText={setVloer} multiline />
+      <Field label={t('weekplan.plafond')} value={plafond} onChangeText={setPlafond} multiline />
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <View style={styles.knoppen}>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={titel.trim().length < 3}
+          onPress={() => void bewaar()}
+        >
+          {t('weekplan.bewaren')}
+        </Button>
+        <Button variant="stil" disabled={bezig} onPress={onAnnuleer}>
+          {t('weekplan.annuleren')}
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Slaat een bijgestelde stap op en geeft de foutmelding terug, of `null`.
+ *
+ * ⚠️ Een lege vloer of plafond gaat als `null` de deur uit en niet als lege
+ *    string: `weekplanstapSchema` laat beide toe, maar een lege string is in de
+ *    database iets anders dan "niet ingevuld", en het scherm toont die regel dan
+ *    als een vloer zonder tekst.
+ */
+async function bewaarWeekplanstap(
+  id: string,
+  velden: { readonly titel: string; readonly vloer: string; readonly plafond: string },
+): Promise<string | null> {
+  const uitkomst = await stelWeekplanstapBij(id, {
+    title: velden.titel,
+    floor_text: velden.vloer.trim() === '' ? null : velden.vloer,
+    ceiling_text: velden.plafond.trim() === '' ? null : velden.plafond,
+  });
+
+  return uitkomst.ok ? null : uitkomst.melding;
+}
+
 function Weekplan({
   doel,
   klok,
@@ -2049,6 +2134,7 @@ function Weekplan({
 
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
+  const [bewerkt, setBewerkt] = useState<string | null>(null);
 
   async function startNu(id: string) {
     if (klok === null) return;
@@ -2134,15 +2220,28 @@ function Weekplan({
     );
   }
 
+  const teBewerken = (stappen ?? []).find((stap) => stap.id === bewerkt);
+
   return (
     <Card nested>
       <Weekplanblok
         stappen={stappen ?? []}
         bezig={bezig}
         onStartNu={(id) => void startNu(id)}
+        onBewerk={setBewerkt}
         onVerwijder={(id) => void verwijder(id)}
         onSchuif={(id, richting) => void schuif(id, richting)}
       />
+      {teBewerken === undefined ? null : (
+        <WeekplanstapBewerken
+          stap={teBewerken}
+          onKlaar={() => {
+            setBewerkt(null);
+            laad();
+          }}
+          onAnnuleer={() => setBewerkt(null)}
+        />
+      )}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );

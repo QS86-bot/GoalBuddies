@@ -13,8 +13,9 @@ productie in twee rondes)
 
 ⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
-uitvoerrecht voor `authenticated` kwijtraakten) en `0169` (het oppervlak van de
-persoon-getuige) staan er nog niet op. `0164` moet
+uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
+persoon-getuige) en `0173` (geen servertijdstempel in handen van de client) staan
+er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
 dit document.
@@ -80,8 +81,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 36 controlescripts groen;
-`npm run poort` meldt 40 stappen.
+Typecheck, lint en alle 37 controlescripts groen;
+`npm run poort` meldt 41 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -153,7 +154,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0172` staan in de map: **175 bestanden**,
+Migraties `0001` t/m `0173` staan in de map: **176 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
