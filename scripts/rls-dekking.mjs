@@ -209,6 +209,126 @@ export function oordeel(policy, uitkomst) {
   };
 }
 
+/* ---------------------------------------------------------------------------
+ * Het register van helften die per hélft niet te meten zijn — QS8-262, ronde 6
+ * ------------------------------------------------------------------------- */
+
+/**
+ * ⚠️ **Waarom dit register er is.** Dit script zet één helft tegelijk open, en
+ *    dat is de juiste meting — behalve als een ánder slot die ene helft
+ *    afdekt. Dan komt hij uit de meting als "onbewaakt" terwijl het paar wél
+ *    bewaakt is, en die melding komt élke run terug.
+ *
+ *    Zo'n uitslag stond tot nu toe uitgeschreven in de kop van het testbestand
+ *    dat het gemeten had — `eigenaarschap.test.ts`, `schrijfgrenzen.test.ts`,
+ *    `blokkades.test.ts`. Prima leesbaar voor een mens, onzichtbaar voor dit
+ *    script. **Dus meldde het instrument ze eeuwig als gat, en dat is de vorm
+ *    waar `CLAUDE.md` voor waarschuwt: een controle die altijd hetzelfde meldt,
+ *    leer je overslaan.** Zelfde reparatie als `BEKENDE_ONBEREIKBAAR` in
+ *    `dode-exports-controle.mjs`.
+ *
+ * ⚠️ **De ratel slaat twee kanten op.** Een rij die hier staat terwijl de helft
+ *    intussen wél bewaakt wordt, is een lijst die liegt — dat maakt dit script
+ *    rood. En een rij zonder terugkeervoorwaarde ook: QS8-262 laat "niet te
+ *    toetsen" alleen toe *mét* de voorwaarde waaronder het weer wel kan, precies
+ *    zoals `review:controle` dat voor de Laag-rijen eist.
+ *
+ * ⚠️ **Alleen wat gemeten is.** Geen enkele rij hieronder is er op grond van een
+ *    redenering. `schrijfgrenzen.test.ts` draagt de les die dat afdwingt: *"niet
+ *    te breken" is een meting en geen conclusie* — daar stond een half jaar een
+ *    redenering die bij meting onjuist bleek, en die conjunct staat sinds
+ *    QS8-280 gewoon onder test.
+ *
+ * ⚠️ **Een gefilterde run oordeelt niet over wat hij niet gemeten heeft.** Draai
+ *    je `rls:dekking -- goals`, dan zegt dat niets over de rij van
+ *    `user_blocks`. `verzoenRegister()` kijkt daarom alleen naar helften die in
+ *    déze run langs de meetlat zijn geweest.
+ *
+ * De sleutel is `tabel.policynaam.helft`.
+ */
+export const NIET_PER_HELFT_TE_METEN = {
+  'user_blocks.user_blocks_delete.using': {
+    reden:
+      'PostgREST stuurt een DELETE als `DELETE … RETURNING`, en met een RETURNING moet ' +
+      'de rij óók door de SELECT-policy. `user_blocks_select` is letterlijk dezelfde ' +
+      'uitdrukking als deze policy, dus een vreemde ziet de rij niet en komt nooit tot ' +
+      'de delete-policy. 📏 Gemeten: alleen deze helft open = 4 groen, alleen ' +
+      '`user_blocks_select` open = 4 groen, allebei tegelijk = 1 rood en het is de ' +
+      'juiste test. De grendel is dus het paar.',
+    wordtToetsbaarAls:
+      'de uitdrukkingen van `user_blocks_select` en `user_blocks_delete` uit elkaar ' +
+      'lopen — bijvoorbeeld als een groepsbeheerder ooit blokkades van anderen mag lezen.',
+    staatIn: 'tests/rls/blokkades.test.ts',
+  },
+};
+
+/**
+ * Klachten over de vórm van het register, los van welke database dan ook.
+ *
+ * ⚠️ Een rij zonder terugkeervoorwaarde is een rij die nooit meer weggaat. Dat
+ *    is dezelfde eis die `review:controle` aan een Laag-bevinding stelt, en om
+ *    dezelfde reden: wat je wegzet, zegt wanneer het terugkomt.
+ */
+export function registervormKlachten(register) {
+  const uit = [];
+  for (const [sleutel, rij] of Object.entries(register)) {
+    if (sleutel.split('.').length !== 3) {
+      uit.push(`\`${sleutel}\` is geen \`tabel.policy.helft\``);
+      continue;
+    }
+    const helft = sleutel.split('.')[2];
+    if (helft !== 'using' && helft !== 'check') {
+      uit.push(`\`${sleutel}\` noemt helft \`${helft}\` en niet \`using\` of \`check\``);
+    }
+    for (const veld of ['reden', 'wordtToetsbaarAls', 'staatIn']) {
+      if (typeof rij?.[veld] !== 'string' || rij[veld].trim() === '') {
+        uit.push(`\`${sleutel}\` mist \`${veld}\``);
+      }
+    }
+  }
+  return uit;
+}
+
+/** De sleutel waaronder een bevinding in het register staat. */
+export function registersleutel(bevinding) {
+  return `${bevinding.tabel}.${bevinding.naam}.${bevinding.helft}`;
+}
+
+/**
+ * Legt de bevindingen van deze run naast het register.
+ *
+ * `alle` is de volledige policylijst — óók buiten het filter — zodat een rij die
+ * naar een policy wijst die niet meer bestaat opvalt, ook in een gefilterde run.
+ *
+ * @returns `verklaard` (onbewaakt én bekend), `onbekend` (onbewaakt en nieuw),
+ *          `verouderd` (bekend maar intussen bewaakt) en `verdwenen` (bekend
+ *          maar de policy bestaat niet meer).
+ */
+export function verzoenRegister({ bevindingen, register, alle }) {
+  const verklaard = [];
+  const onbekend = [];
+  const verouderd = [];
+
+  for (const b of bevindingen) {
+    if (b.status !== 'onbewaakt' && b.status !== 'bewaakt') continue;
+    const sleutel = registersleutel(b);
+    const bekend = sleutel in register;
+
+    if (b.status === 'onbewaakt') (bekend ? verklaard : onbekend).push({ ...b, sleutel });
+    else if (bekend) verouderd.push({ ...b, sleutel });
+  }
+
+  // ⚠️ Over `alle` en niet over de gemeten bevindingen: of een policy nog
+  //    bestáát, is geen vraag die van het filter afhangt.
+  const bestaand = new Set(alle.map((p) => `${p.tabel}.${p.naam}`));
+  const verdwenen = Object.keys(register).filter((sleutel) => {
+    const stukken = sleutel.split('.');
+    return !bestaand.has(`${stukken[0]}.${stukken[1]}`);
+  });
+
+  return { verklaard, onbekend, verouderd, verdwenen };
+}
+
 const HERSTELBESTAND = join(WORTEL, '.rls-dekking-herstel.json');
 
 /**
@@ -611,9 +731,16 @@ function hoofd() {
     return 1;
   }
 
-  const onbewaakt = bevindingen.filter((b) => b.status === 'onbewaakt');
   const gemeten = bevindingen.filter((b) => b.status === 'bewaakt' || b.status === 'onbewaakt');
   const zonderRecht = bevindingen.filter((b) => b.status === 'geen-recht');
+
+  const vormklachten = registervormKlachten(NIET_PER_HELFT_TE_METEN);
+  const { verklaard, onbekend, verouderd, verdwenen } = verzoenRegister({
+    bevindingen,
+    register: NIET_PER_HELFT_TE_METEN,
+    alle,
+  });
+  const onbewaakt = onbekend;
 
   console.log(
     `\n${gemeten.filter((b) => b.status === 'bewaakt').length} van de ${gemeten.length} ` +
@@ -634,8 +761,43 @@ function hoofd() {
     console.log(
       '\nEen policy die je wagenwijd kunt openzetten zonder dat een test het merkt,\n' +
         'bewaakt niets. Schrijf er een test bij, of leg vast waarom hij niet te\n' +
-        'toetsen is — zie QS8-185.',
+        'toetsen is — zie QS8-185, en `NIET_PER_HELFT_TE_METEN` in dit bestand.',
     );
+  }
+
+  // ⚠️ **Bekend en vastgelegd is iets anders dan bewaakt, en het hoort er
+  //    zichtbaar te staan.** Zou deze lijst zwijgen, dan leek een helft die een
+  //    ander slot afdekt op een helft die niemand ooit gemeten heeft.
+  if (verklaard.length > 0) {
+    console.log(
+      `\n· ${verklaard.length} helft(en) zijn per hélft niet te meten, en dat is vastgelegd:\n`,
+    );
+    for (const b of verklaard) {
+      console.log(`    ${b.sleutel} — zie ${NIET_PER_HELFT_TE_METEN[b.sleutel].staatIn}`);
+    }
+  }
+
+  // ⚠️ **De ratel, en hij slaat twee kanten op.** Een register dat blijft staan
+  //    terwijl de helft intussen wél bewaakt wordt, is een lijst die liegt — en
+  //    een lijst die liegt is erger dan geen lijst, want hij onderdrukt precies
+  //    de melding waar hij voor bestond.
+  const klachten = [
+    ...vormklachten,
+    ...verouderd.map(
+      (b) =>
+        `\`${b.sleutel}\` staat in het register maar wordt intussen wél bewaakt — haal de rij weg`,
+    ),
+    ...verdwenen.map((sleutel) => `\`${sleutel}\` wijst naar een policy die niet meer bestaat`),
+  ];
+
+  if (klachten.length > 0) {
+    console.error(
+      `\n✗ ${klachten.length} klacht(en) over \`NIET_PER_HELFT_TE_METEN\`:\n\n` +
+        klachten.map((k) => `    ${k}`).join('\n') +
+        '\n\nDat register onderdrukt meldingen, dus het hoort te kloppen. Zie de kop\n' +
+        'ervan in dit bestand.',
+    );
+    return 1;
   }
 
   return 0;

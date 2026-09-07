@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `letterversies.test.ts`.
 import {
   bestandenVoor,
+  NIET_PER_HELFT_TE_METEN,
+  registersleutel,
+  registervormKlachten,
+  verzoenRegister,
   kloptDeBestemming,
   leesUitkomst,
   magHierDraaien,
@@ -350,5 +354,103 @@ describe('leesUitkomst', () => {
         json({ numTotalTests: 813, numPendingTests: 0, numFailedTests: 3, numFailedTestSuites: 2 }),
       ).uitkomst,
     ).toBe('rood');
+  });
+});
+
+describe('het register van helften die per helft niet te meten zijn — QS8-262', () => {
+  const bevinding = (tabel: string, naam: string, helft: string, status: string) => ({
+    tabel,
+    naam,
+    helft,
+    status,
+  });
+
+  const register = {
+    'a.a_delete.using': { reden: 'r', wordtToetsbaarAls: 'v', staatIn: 'tests/rls/x.test.ts' },
+  };
+  const alle = [{ tabel: 'a', naam: 'a_delete' }];
+
+  it('houdt een bekende helft uit de bevindingen', () => {
+    // ⚠️ **De hele reden dat dit register bestaat.** Zonder deze regel meldt het
+    //    instrument élke run dezelfde helft als gat, en een controle die altijd
+    //    hetzelfde meldt leer je overslaan.
+    const uit = verzoenRegister({
+      bevindingen: [bevinding('a', 'a_delete', 'using', 'onbewaakt')],
+      register,
+      alle,
+    });
+
+    expect(uit.onbekend).toEqual([]);
+    expect(uit.verklaard.map((b) => b.sleutel)).toEqual(['a.a_delete.using']);
+  });
+
+  it('meldt een helft die níet in het register staat gewoon als bevinding', () => {
+    // ⚠️ De must-allow. Zonder deze regel is het register niet van "de controle
+    //    uitzetten" te onderscheiden.
+    const uit = verzoenRegister({
+      bevindingen: [bevinding('a', 'a_delete', 'check', 'onbewaakt')],
+      register,
+      alle,
+    });
+
+    expect(uit.onbekend.map((b) => b.sleutel)).toEqual(['a.a_delete.check']);
+    expect(uit.verklaard).toEqual([]);
+  });
+
+  it('meldt een rij die intussen wél bewaakt wordt', () => {
+    // ⚠️ De ratel de andere kant op: een register dat blijft staan terwijl de
+    //    helft bewaakt wordt, onderdrukt precies de melding waar hij voor bestond.
+    const uit = verzoenRegister({
+      bevindingen: [bevinding('a', 'a_delete', 'using', 'bewaakt')],
+      register,
+      alle,
+    });
+
+    expect(uit.verouderd.map((b) => b.sleutel)).toEqual(['a.a_delete.using']);
+  });
+
+  it('meldt een rij die naar een verdwenen policy wijst', () => {
+    expect(verzoenRegister({ bevindingen: [], register, alle: [] }).verdwenen).toEqual([
+      'a.a_delete.using',
+    ]);
+  });
+
+  it('oordeelt niet over een helft die deze run niet gemeten heeft', () => {
+    // ⚠️ **Een gefilterde run mag niets zeggen over wat buiten het filter valt.**
+    //    `rls:dekking -- goals` zegt niets over `user_blocks`, en zou hij die rij
+    //    als verouderd melden, dan haalde je een terechte aantekening weg op
+    //    grond van een meting die nooit gedaan is.
+    const uit = verzoenRegister({ bevindingen: [], register, alle });
+
+    expect(uit.verouderd).toEqual([]);
+    expect(uit.verdwenen).toEqual([]);
+  });
+
+  it('eist een terugkeervoorwaarde bij elke rij', () => {
+    // Zelfde eis als `review:controle` aan een Laag-bevinding stelt, en om
+    // dezelfde reden: wat je wegzet, zegt wanneer het terugkomt.
+    const klachten = registervormKlachten({
+      'a.a_delete.using': { reden: 'r', staatIn: 'tests/rls/x.test.ts' },
+    });
+
+    expect(klachten).toEqual(['`a.a_delete.using` mist `wordtToetsbaarAls`']);
+  });
+
+  it('weigert een sleutel die geen helft noemt', () => {
+    expect(registervormKlachten({ 'a.a_delete': {} })).toContain(
+      '`a.a_delete` is geen `tabel.policy.helft`',
+    );
+  });
+
+  it('en het echte register klopt van vorm', () => {
+    // ⚠️ Deze staat er zodat een nieuwe rij die een veld vergeet meteen opvalt,
+    //    en niet pas bij de volgende run van een script dat minuten kost.
+    expect(registervormKlachten(NIET_PER_HELFT_TE_METEN)).toEqual([]);
+  });
+
+  it('bouwt de sleutel uit tabel, policy en helft', () => {
+    expect(registersleutel({ tabel: 'a', naam: 'a_delete', helft: 'using' })).toBe(
+      'a.a_delete.using',
+    );
   });
 });
