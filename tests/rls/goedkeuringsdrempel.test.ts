@@ -136,6 +136,26 @@ describe.skipIf(!rlsTestsConfigured)('QS8-65 — de goedkeuringsdrempel', () => 
     if (error) throw new Error(`bevestigen: ${error.message}`);
   }
 
+  async function standVan(
+    wie: TestUser,
+    weekIds: readonly string[],
+  ): Promise<{ gedaan: number; nodig: number } | null> {
+    const { data, error } = await wie.db.rpc('mijn_bevestigingsstanden', {
+      p_weekly_goal_ids: [...weekIds],
+    });
+    if (error) throw new Error(`stand lezen: ${error.message}`);
+    const rij = (data ?? [])[0];
+    return rij ? { gedaan: rij.gedaan, nodig: rij.nodig } : null;
+  }
+
+  async function drempelGehaald(completionId: string): Promise<boolean> {
+    const { data, error } = await adminDb().rpc('goedkeuringsdrempel_gehaald', {
+      p_completion_id: completionId,
+    });
+    if (error) throw new Error(`drempel_gehaald: ${error.message}`);
+    return data as unknown as boolean;
+  }
+
   async function weekstatus(weekId: string): Promise<string | null> {
     const { data, error } = await adminDb()
       .from('weekly_goals')
@@ -465,6 +485,134 @@ describe.skipIf(!rlsTestsConfigured)('QS8-65 — de goedkeuringsdrempel', () => 
 
       await bevestig(carol, vol, groepVeel);
       expect(await tel(), 'de chat meldde de gehaalde week niet').toBe(voor + 1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **De naad die QS8-174 erbij zette, en waarom hij hier staat.** Er zijn nu
+   *    twee lezers van dezelfde telling: `goedkeuringsdrempel_gehaald()` maakt er
+   *    een oordeel van, `mijn_bevestigingsstanden()` laat de getallen zien. De
+   *    voor de hand liggende vorm — allebei hun eigen som — zou de zin *de enige
+   *    plek waar bevestigingen geteld worden* onwaar maken, en dan zijn er twee
+   *    opvattingen over wanneer een week rond is.
+   *
+   *    Migratie 0180 haalde de telling daarom uit `goedkeuringsdrempel_gehaald()`
+   *    en zette hem in `bevestigingsstand()`. Deze test toetst niet dát er één
+   *    teller is — dat is een eigenschap van de bron — maar dat de twee lezers
+   *    hetzelfde zeggen op elk punt van de weg ernaartoe.
+   *
+   * IJKING — met de hand gedraaid op 07-09-2026:
+   *
+   *   A  `bevestigingsstand()` de ingetrokken bevestigingen weer laten meetellen
+   *      → rood: `gedaan` loopt uit de pas met het oordeel
+   *   B  in `mijn_bevestigingsstanden()` `order by` omdraaien naar de vérste groep
+   *      → rood: de stand hoort de dichtstbijzijnde te zijn
+   */
+  it(
+    'laat de stand van de eigenaar en het oordeel hetzelfde zeggen',
+    async () => {
+      const { week, vol } = await ingediend(doelVeel, 7);
+      expect(await drempel(vol, groepVeel), 'meerderheid van drie is twee').toBe(2);
+
+      expect(await standVan(alice, [week]), 'nog niemand bevestigd').toEqual({
+        gedaan: 0,
+        nodig: 2,
+      });
+      expect(await drempelGehaald(vol)).toBe(false);
+
+      await bevestig(bob, vol, groepVeel);
+      expect(await standVan(alice, [week]), 'één van de twee').toEqual({ gedaan: 1, nodig: 2 });
+      expect(await drempelGehaald(vol), 'één is de drempel niet').toBe(false);
+
+      await bevestig(carol, vol, groepVeel);
+      expect(await drempelGehaald(vol), 'twee is de drempel wel').toBe(true);
+      expect(await weekstatus(week)).toBe('approved');
+
+      // ⚠️ En dan is de week niet meer `pending`, dus de stand hoort te
+      //    verdwijnen. Een bijschrift "2 van de 2 bevestigd" onder een week die
+      //    al goedgekeurd is, zegt niets meer.
+      expect(await standVan(alice, [week]), 'een goedgekeurde week wacht nergens op').toBeNull();
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **Het enige slot op deze functie, en daarom een eigen test.**
+   *    `mijn_bevestigingsstanden()` is een definer — de teller is voor een client
+   *    niet uitvoerbaar, dus een invoker-vorm werpt 42501 — en dan filtert RLS
+   *    hier niet mee. De grens is `g.owner_id = (select auth.uid())` en verder
+   *    niets.
+   *
+   *    Dat het geen theorie is: `weekly_goals` laat in een open groep ook
+   *    andermans weken zien (besluit A41), dus een groepsgenoot kán aan zo'n id
+   *    komen.
+   *
+   * IJKING: de eigenaarsconjunct uit de functie halen → deze test rood, en als
+   * enige.
+   */
+  it(
+    'geeft een groepsgenoot niets terug voor andermans weekdoel',
+    async () => {
+      const { week, vol } = await ingediend(doelVeel, 8);
+      await bevestig(bob, vol, groepVeel);
+
+      // Bob heeft deze week zelf bevestigd en ziet hem in zijn wachtrij — dit
+      // gaat er niet over of hij ervan wéét, maar of hij hem hier op mag halen.
+      expect(await standVan(bob, [week])).toBeNull();
+      expect(await standVan(alice, [week]), 'de eigenaar ziet hem wél').toEqual({
+        gedaan: 1,
+        nodig: 2,
+      });
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ **De keuze tussen twee groepen, en waarom die er een is.** Een doel kan
+   *    aan meerdere groepen hangen, en elke groep oordeelt met zijn eigen regel;
+   *    één groep die zijn drempel haalt is genoeg (`goedkeuringsdrempel_gehaald()`
+   *    doet `exists`). Er zijn dus net zoveel standen als groepen, en de eerlijke
+   *    om te tonen is de dichtstbijzijnde.
+   *
+   * IJKING: `order by (b.nodig - b.gedaan) asc` omdraaien naar `desc`
+   *   → deze test rood, en als enige.
+   */
+  it(
+    'toont de dichtstbijzijnde groep als een doel er aan twee hangt',
+    async () => {
+      const admin = adminDb();
+      const doel = await maakDoel('twee groepen', groepVeel);
+
+      // ⚠️ Via `adminDb()` en niet via alice: `goal_group_links_insert` eist dat
+      //    de eigenaar lid is van de groep, en dat is ze — maar de tweede
+      //    koppeling is opstelling en geen gedrag dat deze test toetst.
+      const tweede = await admin
+        .from('goal_group_links')
+        .insert({ goal_id: doel, group_id: groepEen.id });
+      if (tweede.error) throw new Error(`tweede koppeling: ${tweede.error.message}`);
+
+      const { week, vol } = await ingediend(doel, 9);
+
+      // groepEen staat op `any` (drempel 1), groepVeel op `majority` (drempel 2).
+      expect(await drempel(vol, groepEen), 'any is één').toBe(1);
+      expect(await drempel(vol, groepVeel), 'meerderheid van drie is twee').toBe(2);
+
+      expect(
+        await standVan(alice, [week]),
+        'de dichtstbijzijnde groep is die met de laagste drempel',
+      ).toEqual({ gedaan: 0, nodig: 1 });
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'geeft een lege lijst terug voor een lege invoer',
+    async () => {
+      // ⚠️ De datalaag stuurt bij een lege lijst helemaal geen verzoek, maar de
+      //    functie hoort er ook zelf tegen te kunnen: een `= any(array[])` dat
+      //    per ongeluk alles teruggeeft, is precies de fout die je niet ziet.
+      expect(await standVan(alice, [])).toBeNull();
     },
     TEST_TIMEOUT,
   );

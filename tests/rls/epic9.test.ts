@@ -32,6 +32,16 @@ import {
 } from './harness';
 
 const SETUP_TIMEOUT = 180_000;
+
+/**
+ * Een `created_at` ver genoeg terug voor het wachtvenster van migratie 0171.
+ *
+ * ⚠️ Een straf gaat nooit af binnen 24 uur na het vastleggen — dat is de grendel
+ *    tegen de tijdzonetruc uit de tweede security-ronde op QS8-293. Elke
+ *    opstelling die een straf wil laten afgaan, moet dus een straf bouwen die er
+ *    al stond. Dertig dagen, ruim genoeg om nooit tegen een randgeval te lopen.
+ */
+const LANG_GELEDEN = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 const TEST_TIMEOUT = 30_000;
 
 interface Fixture {
@@ -68,13 +78,32 @@ async function statusVan(commitmentId: string): Promise<string> {
   return rij.data.status;
 }
 
+/**
+ * Het auditspoor in schrijfvolgorde.
+ *
+ * ⚠️ **Sorteren op `seq` en niet op `created_at`** — QS8-303. Deze functie sórteerde
+ *    op de klok, en dat is precies waar deze suite op 06-09-2026 twee keer rood
+ *    van ging: `commitments_audit` en `commitments_systeembericht` hangen allebei
+ *    aan dezelfde UPDATE, en `now()` is binnen een transactie constant. Beide
+ *    rijen kregen dus dezelfde `created_at` en Postgres mocht kiezen. Migratie
+ *    0176 gaf de tabel `seq`, een identity-kolom die niet kan knopen.
+ *
+ * ⚠️ Dit was geen testfout. `fetchCommitmentSpoor()` sorteerde net zo, dus de
+ *    eigenaar zag hetzelfde in zijn scherm.
+ */
 async function spoorVan(commitmentId: string): Promise<readonly string[]> {
   const rijen = await adminDb()
     .from('commitment_events')
-    .select('event_type, created_at')
+    .select('event_type, seq')
     .eq('commitment_id', commitmentId)
-    .order('created_at', { ascending: true });
+    .order('seq', { ascending: true });
   if (rijen.error) throw new Error(`auditspoor: ${rijen.error.message}`);
+
+  const seqs = (rijen.data ?? []).map((r) => r.seq);
+  if (new Set(seqs).size !== seqs.length) {
+    throw new Error(`auditspoor: dubbele volgordesleutel in ${JSON.stringify(seqs)}`);
+  }
+
   return (rijen.data ?? []).map((r) => r.event_type);
 }
 
@@ -134,14 +163,6 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
     const opTijdGoalId = await maakDoel('COMMITMENT op tijd', addDays(cycle.startDate, 30));
     const teLaatGoalId = await maakDoel('COMMITMENT te laat', addDays(cycle.startDate, 30));
 
-    // ⚠️ Via de admin-client. `zet_streefdatum()` weigert een datum in het
-    //    verleden, en terecht — dat is opbouw en niet wat hier getest wordt.
-    const verzetten = await admin
-      .from('goals')
-      .update({ target_date: addDays(vandaag(), -3) })
-      .eq('id', teLaatGoalId);
-    if (verzetten.error) throw new Error(`streefdatum verzetten: ${verzetten.error.message}`);
-
     const mijlpaal = await alice.db
       .from('milestones')
       .insert({ goal_id: opTijdGoalId, title: 'COMMITMENT mijlpaal', order_index: 1 })
@@ -155,8 +176,39 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
       goalId: string,
       type: 'reward' | 'penalty',
       body: string,
+      /**
+       * Een `created_at` in het verleden, voor een straf die al moet kúnnen
+       * afgaan.
+       *
+       * ⚠️ **Meegegeven bij de insert en niet achteraf gezet, en dat is geen
+       *    smaak.** `commitments_audit` schrijft bij elke UPDATE een `edited` in
+       *    het spoor, dus een straf die je ná het aanmaken ouder maakt, draagt
+       *    een gebeurtenis die in het verhaal niet gebeurd is — en de test op
+       *    het auditspoor werd daar terecht rood van. Een straf die dertig dagen
+       *    geleden is vastgelegd, hoort een spoor van precies één regel te
+       *    hebben.
+       */
+      ouderdom?: string,
     ): Promise<string> {
-      const rij = await alice.db
+      // ⚠️⚠️ **Deze opmerking heeft hier een ronde lang gestaan als vaststelling
+      //    terwijl hij onwaar was, en dat is de duurste regel van QS8-293.** Er
+      //    stond: "die kolom staat niet in de UPDATE- of INSERT-grant van
+      //    `authenticated`". De UPDATE-helft klopte (0057); de INSERT-helft was
+      //    de geërfde Supabase-standaard en deelde élke kolom uit, `created_at`
+      //    incluis — waarmee het wachtvenster van 0171 met één veld in de
+      //    POST-body op nul stond.
+      //
+      //    De invariant was goed bedacht en nooit gemeten. **Een zin over een
+      //    grant is pas waar als er een query naast staat.** Die staat er nu:
+      //    `tests/rls/straf-plafond.test.ts`, "een gebruiker kan
+      //    `commitments.created_at` niet meesturen bij het aanmaken". Sinds 0172
+      //    klopt de zin dus, en is hij bovendien getoetst.
+      //
+      //    Met een eigen `created_at` gaat het daarom via de admin-client: die
+      //    rol slaat grants en policies over, en dat is precies waarom een
+      //    opstelling hem mag gebruiken en een gebruiker niet.
+      const client = ouderdom === undefined ? alice.db : adminDb();
+      const rij = await client
         .from('commitments')
         .insert({
           goal_id: goalId,
@@ -164,12 +216,35 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           body,
           beneficiary_group_id: type === 'penalty' ? groupId : null,
           confirmed_at: now().toISOString(),
+          ...(ouderdom === undefined ? {} : { created_at: ouderdom }),
         })
         .select('id')
         .single();
       if (rij.error || rij.data === null) throw new Error(`${body}: ${rij.error?.message}`);
       return rij.data.id;
     }
+
+    const beloningId = await maakCommitment(opTijdGoalId, 'reward', 'COMMITMENT beloning');
+    const strafOpTijdId = await maakCommitment(opTijdGoalId, 'penalty', 'COMMITMENT straf op tijd');
+    const strafTeLaatId = await maakCommitment(
+      teLaatGoalId,
+      'penalty',
+      'COMMITMENT straf te laat',
+      LANG_GELEDEN,
+    );
+
+    // ⚠️ **Pas hier, en dat is sinds QS8-293 geen volgorde meer maar de enige
+    //    volgorde die klopt.** `commitments_insert` weigert een straf op een doel
+    //    waarvan de streefdatum al verstreken is, dus terugdateren vóór de straf
+    //    zou de opbouw laten omvallen. Belangrijker: dit ís het echte pad — de
+    //    straf werd vastgelegd toen het doel nog liep, en de datum verstreek
+    //    daarna. Via de admin-client, want `zet_streefdatum()` weigert een datum
+    //    in het verleden en dat is opbouw, niet wat hier getoetst wordt.
+    const verzetten = await admin
+      .from('goals')
+      .update({ target_date: addDays(vandaag(), -3) })
+      .eq('id', teLaatGoalId);
+    if (verzetten.error) throw new Error(`streefdatum verzetten: ${verzetten.error.message}`);
 
     f = {
       alice,
@@ -178,9 +253,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
       opTijdGoalId,
       teLaatGoalId,
       milestoneId: mijlpaal.data.id,
-      beloningId: await maakCommitment(opTijdGoalId, 'reward', 'COMMITMENT beloning'),
-      strafOpTijdId: await maakCommitment(opTijdGoalId, 'penalty', 'COMMITMENT straf op tijd'),
-      strafTeLaatId: await maakCommitment(teLaatGoalId, 'penalty', 'COMMITMENT straf te laat'),
+      beloningId,
+      strafOpTijdId,
+      strafTeLaatId,
       cycleStart: cycle.startDate,
     };
   }, SETUP_TIMEOUT);
@@ -537,12 +612,19 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         //    Bewust géén groepskoppeling op dit doel: anders slaat
         //    `gedeeld_met_groep` eerder toe en bewijst de test iets anders dan
         //    hij zegt.
+        // ⚠️ **Vooruit aanmaken en dan terugzetten via `adminDb()`**, sinds
+        //    migratie 0170. `goals_insert` weigert een streefdatum in het
+        //    verleden, en dat is precies de bedoeling — zonder die grens is een
+        //    doel met `current_date - 30` de kortste weg naar een straf die
+        //    meteen verschuldigd is (QS8-293). Deze test gaat niet over
+        //    aanmaken maar over een straf die al afgegaan is, dus de opstelling
+        //    verhuist naar de rol die de policy overslaat.
         const doel = await f.alice.db
           .from('goals')
           .insert({
             owner_id: f.alice.id,
             title: 'COMMITMENT weggooidoel',
-            target_date: addDays(vandaag(), -2),
+            target_date: addDays(vandaag(), 30),
           })
           .select('id')
           .single();
@@ -561,6 +643,23 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .single();
         if (straf.error || straf.data === null) throw new Error(`straf: ${straf.error?.message}`);
 
+        // ⚠️ **Terugdateren pas ná de straf**, en dat is sinds de derde grens van
+        //    0170 de enige volgorde die klopt: `commitments_insert` weigert een
+        //    straf op een doel waarvan de deadline al voorbij is. Het is
+        //    bovendien het echte pad — de straf stond er toen het doel nog liep.
+        //    De straf zelf krijgt een oude `created_at`, want sinds 0171 gaat een
+        //    straf nooit af binnen 24 uur na het vastleggen. Hier mag dat met een
+        //    UPDATE en in de opbouw van de suite niet: deze test kijkt niet naar
+        //    het auditspoor, en daar schrijft die UPDATE een `edited` in.
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(vandaag(), -2) })
+          .eq('id', doel.data.id);
+        await adminDb()
+          .from('commitments')
+          .update({ created_at: LANG_GELEDEN })
+          .eq('id', straf.data.id);
+
         // Zolang de straf nog `set` is, mag weggooien gewoon: hij is nooit
         // buiten het eigen scherm geweest.
         const vroeg = await f.alice.db.rpc('verwijder_doel', { p_goal_id: doel.data.id });
@@ -573,20 +672,34 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
           .insert({
             owner_id: f.alice.id,
             title: 'COMMITMENT weggooidoel 2',
-            target_date: addDays(vandaag(), -2),
+            target_date: addDays(vandaag(), 30),
           })
           .select('id')
           .single();
         if (tweede.error || tweede.data === null) throw new Error(`doel 2: ${tweede.error?.message}`);
 
-        const straf2 = await f.alice.db.from('commitments').insert({
-          goal_id: tweede.data.id,
-          type: 'penalty',
-          body: 'COMMITMENT straf die afgaat',
-          beneficiary_group_id: f.groupId,
-          confirmed_at: now().toISOString(),
-        });
+        const straf2 = await f.alice.db
+          .from('commitments')
+          .insert({
+            goal_id: tweede.data.id,
+            type: 'penalty',
+            body: 'COMMITMENT straf die afgaat',
+            beneficiary_group_id: f.groupId,
+            confirmed_at: now().toISOString(),
+          })
+          .select('id')
+          .single();
         if (straf2.error) throw new Error(`straf 2: ${straf2.error.message}`);
+
+        // Zie de opmerking hierboven: eerst de straf, dán terugdateren.
+        await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(vandaag(), -2) })
+          .eq('id', tweede.data.id);
+        await adminDb()
+          .from('commitments')
+          .update({ created_at: LANG_GELEDEN })
+          .eq('id', straf2.data?.id ?? '');
 
         await adminDb().rpc('maak_straffen_verschuldigd', {
           p_owner_id: f.alice.id,

@@ -180,21 +180,6 @@ export function groepLabels(): Readonly<Record<CategorieGroep, string>> {
 }
 
 /**
- * In welke groep dit gebied valt.
- *
- * ⚠️ Geeft `null` bij een onbekende waarde in plaats van een terugval op een
- *    willekeurige groep.
- *    `Doel.category` is in de gegenereerde typen een `string`: de database kan
- *    er iets in hebben staan wat deze build niet kent, en dan is "ik weet het
- *    niet" het eerlijke antwoord. Een stille terugval zou zo'n doel in een
- *    groep tonen waar het niet in hoort.
- */
-export function categorieGroep(categorie: string): CategorieGroep | null {
-  const groep = CATEGORIE_GROEPEN.find((g) => (g.leden as readonly string[]).includes(categorie));
-  return groep?.sleutel ?? null;
-}
-
-/**
  * De twaalf gebieden als drie groepen met vertaalde labels, klaar voor
  * `GegroepeerdeKeuze`.
  *

@@ -47,6 +47,25 @@ const EDGE = 'supabase/functions/_shared/time';
  * @param {string} bron
  * @returns {Map<string, string>}
  */
+/**
+ * Waar het accoladeblok dat op `open` begint, sluit. `-1` als het niet sluit.
+ *
+ * ⚠️ Staat los omdat de teller anders vier niveaus diep zit (coderegel 15,
+ *    QS8-291). Het is bovendien de enige plek in dit bestand die van accolades
+ *    weet — de rest werkt op namen.
+ */
+function accoladeBlokEinde(bron, open) {
+  let diepte = 0;
+  for (let i = open; i < bron.length; i += 1) {
+    if (bron[i] === '{') diepte += 1;
+    if (bron[i] === '}') {
+      diepte -= 1;
+      if (diepte === 0) return i;
+    }
+  }
+  return -1;
+}
+
 export function functiesIn(bron) {
   const gevonden = new Map();
   const patroon = /export\s+function\s+([A-Za-z0-9_]+)\s*(?:<[^>]*>)?\s*\(/g;
@@ -57,18 +76,7 @@ export function functiesIn(bron) {
     const open = bron.indexOf('{', match.index);
     if (open === -1) continue;
 
-    let diepte = 0;
-    let eind = -1;
-    for (let i = open; i < bron.length; i += 1) {
-      if (bron[i] === '{') diepte += 1;
-      if (bron[i] === '}') {
-        diepte -= 1;
-        if (diepte === 0) {
-          eind = i;
-          break;
-        }
-      }
-    }
+    const eind = accoladeBlokEinde(bron, open);
     if (eind === -1) continue;
 
     gevonden.set(naam, normaliseer(bron.slice(match.index, eind + 1)));

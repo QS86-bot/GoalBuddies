@@ -42,11 +42,25 @@ interface Props {
   /** De stap waar nu een handeling op loopt; alle knoppen gaan dan op slot. */
   readonly bezig?: string | null;
   readonly onStartNu: (id: string) => void;
+  /**
+   * ⚠️ Bijstellen en niet alleen weghalen (QS8-301). Zonder deze knop moet een
+   *    tikfout in een geplande stap via verwijderen-en-opnieuw-typen, en dan is
+   *    de volgorde ook nog kwijt. `stelWeekplanstapBij()` bestond al; er zat
+   *    alleen geen knop aan.
+   */
+  readonly onBewerk: (id: string) => void;
   readonly onVerwijder: (id: string) => void;
   readonly onSchuif: (id: string, richting: 'omhoog' | 'omlaag') => void;
 }
 
-export function Weekplanblok({ stappen, bezig = null, onStartNu, onVerwijder, onSchuif }: Props) {
+export function Weekplanblok({
+  stappen,
+  bezig = null,
+  onStartNu,
+  onBewerk,
+  onVerwijder,
+  onSchuif,
+}: Props) {
   return (
     <View style={styles.blok}>
       <Subheading>{t('weekplan.kop')}</Subheading>
@@ -76,54 +90,16 @@ export function Weekplanblok({ stappen, bezig = null, onStartNu, onVerwijder, on
                 <Caption>{t('weekdoel.plafond_regel', { tekst: stap.ceiling_text })}</Caption>
               )}
 
-              <View style={styles.knoppen}>
-                {/*
-                  ⚠️ "Start deze nu" op elke stap en niet alleen op de bovenste.
-                     Het plan is een voorstel van de coach, geen dienstregeling —
-                     wie deze week zin heeft in stap 4, hoort daar niet drie weken
-                     op te hoeven wachten. De rest schuift niet op; alleen deze
-                     rij is verbruikt.
-                */}
-                <Button
-                  variant="stil"
-                  disabled={bezig !== null}
-                  accessibilityLabel={t('weekplan.start_nu_label', { titel: stap.title })}
-                  onPress={() => onStartNu(stap.id)}
-                >
-                  {t('weekplan.start_nu')}
-                </Button>
-
-                {i === 0 ? null : (
-                  <Button
-                    variant="stil"
-                    disabled={bezig !== null}
-                    accessibilityLabel={t('weekplan.omhoog_label', { titel: stap.title })}
-                    onPress={() => onSchuif(stap.id, 'omhoog')}
-                  >
-                    {t('weekplan.omhoog')}
-                  </Button>
-                )}
-
-                {i === stappen.length - 1 ? null : (
-                  <Button
-                    variant="stil"
-                    disabled={bezig !== null}
-                    accessibilityLabel={t('weekplan.omlaag_label', { titel: stap.title })}
-                    onPress={() => onSchuif(stap.id, 'omlaag')}
-                  >
-                    {t('weekplan.omlaag')}
-                  </Button>
-                )}
-
-                <Button
-                  variant="stil"
-                  disabled={bezig !== null}
-                  accessibilityLabel={t('weekplan.verwijder_label', { titel: stap.title })}
-                  onPress={() => onVerwijder(stap.id)}
-                >
-                  {t('weekplan.verwijder')}
-                </Button>
-              </View>
+              <Stapknoppen
+                stap={stap}
+                eerste={i === 0}
+                laatste={i === stappen.length - 1}
+                bezig={bezig !== null}
+                onStartNu={onStartNu}
+                onBewerk={onBewerk}
+                onVerwijder={onVerwijder}
+                onSchuif={onSchuif}
+              />
             </View>
           ))}
 
@@ -144,3 +120,91 @@ const styles = StyleSheet.create({
   stap: { gap: 3 },
   knoppen: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 });
+
+/**
+ * De knoppen bij één geplande stap.
+ *
+ * ⚠️ Een eigen component en geen blok in `Weekplanblok`, sinds er een vierde
+ *    knop bij kwam (QS8-301). Coderegel 15: `src/shared/ui` staat op zijn
+ *    plafond, en een rij van vier knoppen met twee voorwaarden erin is precies
+ *    het soort blok dat je apart wilt kunnen lezen.
+ */
+function Stapknoppen({
+  stap,
+  eerste,
+  laatste,
+  bezig,
+  onStartNu,
+  onBewerk,
+  onVerwijder,
+  onSchuif,
+}: {
+  readonly stap: WeekplanRegel;
+  readonly eerste: boolean;
+  readonly laatste: boolean;
+  readonly bezig: boolean;
+  readonly onStartNu: (id: string) => void;
+  readonly onBewerk: (id: string) => void;
+  readonly onVerwijder: (id: string) => void;
+  readonly onSchuif: (id: string, richting: 'omhoog' | 'omlaag') => void;
+}) {
+  return (
+      <View style={styles.knoppen}>
+        {/*
+          ⚠️ "Start deze nu" op elke stap en niet alleen op de bovenste.
+             Het plan is een voorstel van de coach, geen dienstregeling —
+             wie deze week zin heeft in stap 4, hoort daar niet drie weken
+             op te hoeven wachten. De rest schuift niet op; alleen deze
+             rij is verbruikt.
+        */}
+        <Button
+          variant="stil"
+          disabled={bezig}
+          accessibilityLabel={t('weekplan.start_nu_label', { titel: stap.title })}
+          onPress={() => onStartNu(stap.id)}
+        >
+          {t('weekplan.start_nu')}
+        </Button>
+
+        {eerste ? null : (
+          <Button
+            variant="stil"
+            disabled={bezig}
+            accessibilityLabel={t('weekplan.omhoog_label', { titel: stap.title })}
+            onPress={() => onSchuif(stap.id, 'omhoog')}
+          >
+            {t('weekplan.omhoog')}
+          </Button>
+        )}
+
+        {laatste ? null : (
+          <Button
+            variant="stil"
+            disabled={bezig}
+            accessibilityLabel={t('weekplan.omlaag_label', { titel: stap.title })}
+            onPress={() => onSchuif(stap.id, 'omlaag')}
+          >
+            {t('weekplan.omlaag')}
+          </Button>
+        )}
+
+        <Button
+          variant="stil"
+          disabled={bezig}
+          accessibilityLabel={t('weekplan.bijstellen_label', { titel: stap.title })}
+          onPress={() => onBewerk(stap.id)}
+        >
+          {t('weekplan.bijstellen')}
+        </Button>
+
+        <Button
+          variant="stil"
+          disabled={bezig}
+          accessibilityLabel={t('weekplan.verwijder_label', { titel: stap.title })}
+          onPress={() => onVerwijder(stap.id)}
+        >
+          {t('weekplan.verwijder')}
+        </Button>
+      </View>
+  );
+}

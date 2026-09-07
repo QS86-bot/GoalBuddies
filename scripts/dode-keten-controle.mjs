@@ -180,11 +180,45 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'achteraan, open voor `anon`, of open voor `authenticated` zonder de ' +
     'aanroeper te toetsen (0106, 0114, 0156, 0167). De vijfde tak meldt een ' +
     'uitzondering in het eigen register die geen bezwaar meer dekt.',
+  goal_events_bewaking:
+    'De allowlist van `goal_events.event_type` naast de vier die tegen ' +
+    'domeinregel 7 gewogen zijn — oppervlak 24 volgt het doel en niet de groep, ' +
+    'dus een vijfde type verbreedt wat elke gekoppelde groep leest (0181). ' +
+    'Meldt ook als de CHECK niet meer de verwachte vorm heeft: onherkenbaar ' +
+    'moet een alarm zijn en geen stilte.',
+  tijdstempel_bewaking:
+    'Kolommen van type timestamptz met een now()-default die anon of ' +
+    'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
+    'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
+    'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
+  volgorde_bewaking:
+    'De volgordesleutel van een auditspoor: bestaat de kolom, is hij ' +
+    '`generated always as identity`, staat de unieke sorteerindex er nog, en ' +
+    'heeft geen client er schrijfrecht op (0176). Zonder die sleutel knoopt ' +
+    '`created_at` — `now()` is binnen een transactie constant — en ligt de ' +
+    'volgorde van het spoor niet vast. Aanroeper is ' +
+    '`tests/rls/auditspoor-volgorde.test.ts`.',
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',
   domeinregel3_bewaking:
     'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+  // ⚠️ Deze twee zijn op 06-09-2026 boven water gekomen doordat
+  //    `zonderDefinities()` een puntkomma binnen een `comment on`-tekst als einde
+  //    van het statement las (QS8-296). De rest van die zin bleef in de romp
+  //    staan, en dáár werden ze allebei genoemd. Ze stonden dus niet op deze
+  //    lijst omdat niemand ze miste, maar omdat de controle ze levend noemde.
+  realtime_bewaking:
+    'Welke tabellen in de realtime-publicatie staan en welke `replica identity` ' +
+    'ze dragen (0027). De grendel onder het `REPLICA IDENTITY FULL`-verbod uit ' +
+    'CLAUDE.md: met `full` gaat bij een DELETE de volledige oude rij over de lijn, ' +
+    'en Supabase past daar geen RLS op toe. Aanroepers zijn ' +
+    '`tests/rls/epic7.test.ts` en `tests/rls/epic13.test.ts`.',
+  systeembericht_allowlist:
+    'De waarden uit de CHECK `chat_messages_system_event_bekend` (0026). Zelfde ' +
+    'vorm en dezelfde reden als `bewijseis_allowlist`: zonder zo\'n functie legt ' +
+    'de test zijn eigen lijst naast zichzelf. Aanroepers zijn ' +
+    '`tests/rls/epic7.test.ts` en `tests/rls/definer-aanroepertoets.test.ts`.',
   bewijseis_allowlist:
     'De waarden uit de CHECK `groups_evidence_policy_valid` (0150). Aanroeper is ' +
     '`tests/rls/bewijseis.test.ts`, dat `BEWIJSEISEN` ernaast legt — een ' +
@@ -256,6 +290,19 @@ export const WACHT_OP_EEN_BESLUIT = {
 
 /** Bestanden waarin een aanroep als "productie" telt. Tests en scripts niet. */
 const PRODUCTIEMAPPEN = ['src', 'app', 'supabase/functions'];
+
+/**
+ * Haalt elke CHECK op (`tabel`, `kolom`) uit het register.
+ *
+ * ⚠️ Staat los omdat de lus erbinnen anders vier niveaus diep zit (coderegel 15,
+ *    QS8-291). Een naam erbij maakt bovendien leesbaar wát die binnenste lus
+ *    doet: vergeten, niet verzamelen.
+ */
+function vergeetConstraintsOpKolom(huidig, tabel, kolom) {
+  for (const [cnaam, c] of huidig) {
+    if (c.tabel === tabel && c.kolom === kolom) huidig.delete(cnaam);
+  }
+}
 
 function bronbestanden(dir, uit = [], vorm = /\.(ts|tsx)$/) {
   for (const naam of readdirSync(dir)) {
@@ -337,7 +384,7 @@ export function functiesIn(sql) {
  *    één aanroeper vond terwijl dit script groen stond.
  */
 export function zonderDefinities(sql) {
-  return sql
+  let romp = sql
     // ⚠️ **Commentaar eerst, en dat is op 28-08 gemeten.** Een migratiekop legt
     //    uit wát een functie doet en noemt hem daarbij mét haakjes — en dan
     //    telde de uitleg als de aanroeper. Het overkwam deze sessie zelf: een
@@ -352,14 +399,97 @@ export function zonderDefinities(sql) {
     //    `functiesIn()` hieronder.
     .replace(/--[^\n]*/g, ' ')
     .replace(/\bpublic\./gi, '')
-    .replace(/create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_]+)\s*\(/gi, ' ')
-    .replace(/drop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+[^;]*;/gi, ' ')
-    // ⚠️ Alles wat een recht of een toelichting op een functie zet. `[^;]*`
-    //    stopt bij de eerste puntkomma, en die staat in geen van deze vier
-    //    vormen binnenin.
-    .replace(/\b(?:grant|revoke)\b[^;]*?\bon\s+function\b[^;]*;/gi, ' ')
-    .replace(/comment\s+on\s+function\b[^;]*;/gi, ' ')
-    .replace(/alter\s+function\b[^;]*;/gi, ' ');
+    .replace(/create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_]+)\s*\(/gi, ' ');
+
+  // ⚠️ Alles wat een recht of een toelichting op een functie zet.
+  //
+  // ⚠️ **Deze vier liepen tot 06-09-2026 op `[^;]*;` en dát was een gat**, met
+  //    dezelfde vorm als het commentaargat hierboven: de tekst óver een functie
+  //    telde als gebruik ervan. `comment on function f() is '… rijen; …';` heeft
+  //    een puntkomma binnen de tekst, `[^;]*;` stopt daar, en de rest van de zin
+  //    blijft in de romp staan — inclusief elke andere functienaam mét haakjes
+  //    die erin genoemd wordt. Gevolg: die functie heet levend terwijl niemand
+  //    hem aanroept. Gevonden doordat een nieuwe comment-regel in 0182 er één
+  //    bevatte; `ai_verbruik()` werd daardoor als aangeroepen gelezen.
+  //
+  //    `zonderStatement()` zoekt de afsluitende puntkomma buiten tekstliteralen,
+  //    en dat is het verschil tussen "de eerste puntkomma" en "het einde van het
+  //    statement".
+  for (const start of [
+    /\b(?:grant|revoke)\b[^;']*?\bon\s+function\b/gi,
+    // ⚠️ Élk `comment on` en niet alleen die op een functie: een toelichting op
+    //    een tabel, kolom, constraint of policy is net zo min een aanroep, en die
+    //    vier stonden er niet in.
+    /\bcomment\s+on\b/gi,
+    /\balter\s+function\b/gi,
+    /\bdrop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+/gi,
+  ]) {
+    romp = zonderStatement(romp, start);
+  }
+
+  return romp;
+}
+
+/**
+ * Haalt elk statement weg dat op `start` begint, tot en met de puntkomma die het
+ * afsluit.
+ *
+ * ⚠️ **Een puntkomma binnen een tekstliteraal sluit niets af.** Dat is de hele
+ *    reden dat dit geen `[^;]*;` is. `''` binnen een literaal is een ontsnapte
+ *    apostrof en geen einde; opeenvolgende literalen aan elkaar geplakt (de vorm
+ *    die elke `comment on` in dit project gebruikt) worden zo elk apart gelezen.
+ *
+ * ⚠️ Loopt het statement zonder puntkomma af — een afgekapt bestand — dan gaat
+ *    de rest weg. Dat is de behoedzame kant: liever een naam te veel als dood
+ *    gemeld dan een dode functie die levend heet.
+ *
+ * ⚠️ **Dit is geen SQL-parser, en dat hoort de volgende lezer te weten.** Hij kent
+ *    geen dollar-quoting (`$$…$$`), en `zonderDefinities()` haalt bovendien de
+ *    `--`-regels weg vóórdat hier naar apostrofs gekeken wordt. Een `--` binnen
+ *    een tekstliteraal kan de apostrofs dus onbalanceren en deze scanner de rest
+ *    van het bestand laten opeten. De richting daarvan is fail-loud — er worden
+ *    dan functies ten onrechte als dood gemeld en de controle wordt rood — dus
+ *    het is geen gat. Gemeld door de security-review op QS8-296.
+ *
+ * @param {string} sql
+ * @param {RegExp} start globale regex die het begin van het statement vindt
+ * @returns {string}
+ */
+export function zonderStatement(sql, start) {
+  const stukken = [];
+  let gelezen = 0;
+  start.lastIndex = 0;
+
+  for (let m = start.exec(sql); m !== null; m = start.exec(sql)) {
+    stukken.push(sql.slice(gelezen, m.index), ' ');
+    gelezen = eindeVanStatement(sql, m.index + m[0].length);
+    start.lastIndex = gelezen;
+  }
+
+  stukken.push(sql.slice(gelezen));
+  return stukken.join('');
+}
+
+/**
+ * De plek ná de puntkomma die het statement dat op `vanaf` loopt afsluit.
+ *
+ * ⚠️ Een apostrof zet de tekstmodus aan of uit, en een verdubbelde apostrof gaat
+ *    daardoor vanzelf goed: sluiten en meteen weer openen komt op hetzelfde neer.
+ *    Ontbreekt de puntkomma — een afgekapt bestand — dan is dat het einde.
+ *
+ * @param {string} sql
+ * @param {number} vanaf
+ * @returns {number}
+ */
+function eindeVanStatement(sql, vanaf) {
+  let inTekst = false;
+
+  for (let i = vanaf; i < sql.length; i += 1) {
+    if (sql[i] === "'") inTekst = !inTekst;
+    else if (sql[i] === ';' && !inTekst) return i + 1;
+  }
+
+  return sql.length;
 }
 
 /** De namen die `src/`, `app/` en `supabase/functions/` via `.rpc()` aanroepen. */
@@ -422,10 +552,7 @@ export function checksIn(bestanden) {
     for (const m of sql.matchAll(
       /alter\s+table\s+(?:only\s+)?(?:public\.)?([a-z0-9_]+)[\s\S]*?drop\s+column\s+(?:if\s+exists\s+)?([a-z0-9_]+)/gi,
     )) {
-      const [, tabel, kolom] = [m[0], m[1].toLowerCase(), m[2].toLowerCase()];
-      for (const [cnaam, c] of huidig) {
-        if (c.tabel === tabel && c.kolom === kolom) huidig.delete(cnaam);
-      }
+      vergeetConstraintsOpKolom(huidig, m[1].toLowerCase(), m[2].toLowerCase());
     }
 
     for (const m of sql.matchAll(/constraint\s+([a-z0-9_]+)\s+check\s*\(/gi)) {
@@ -490,6 +617,113 @@ export function zonderChecks(sql) {
     re.lastIndex = i;
   }
   return uit + sql.slice(i);
+}
+
+/**
+ * Elke CHECK-waarde die in méér dan één tabel voorkomt, met de tabellen erbij.
+ *
+ * ⚠️⚠️ **Dit register bestaat omdat de tekstzoektocht van
+ *    `waardenZonderSchrijver()` tabelblind is.** Die beslist of een waarde ooit
+ *    geschreven wordt door `'waarde'` in álle bronbestanden te zoeken — zonder
+ *    te weten bij wélke tabel de treffer hoort. Komt dezelfde naam in twee
+ *    tabellen voor, dan dekt een schrijver van de ene de andere af en zwijgt de
+ *    controle over een dode waarde. Dat is één keer echt gebeurd
+ *    (`points_ledger.reason = 'milestone_done'`, gedekt door
+ *    `chat_messages.system_event`) en het heeft een verkeerd argument in twee
+ *    documenten gezet.
+ *
+ * ⚠️ **De echte reparatie is een tabelbewuste toets, en die kan niet:** de bron
+ *    zegt niet bij welke tabel een stringliteraal hoort. Dit register is de
+ *    tweede keus — het maakt niet onmogelijk dat het opnieuw gebeurt, maar het
+ *    maakt zichtbaar wannéér het risico groeit.
+ *
+ * ⚠️⚠️ **En dat het nodig is, is gemeten en niet bedacht.** De dossierrij van
+ *    27-08 telde er **veertien** en zei: *"wordt zwaarder als er een vijftiende
+ *    bijkomt."* 📏 Op 06-09-2026 zijn het er **zesentwintig**. Er kwam er niet
+ *    één bij maar twaalf, vrijwel allemaal in één keer met migratie 0142, die
+ *    dezelfde vijftien categorienamen op `goals`, `groups` én `profiles` zette.
+ *    Niemand heeft dat gemerkt, want er was niets dat kón melden — en dat is
+ *    precies wat dit register nu doet.
+ *
+ * De ratel slaat twee kanten op, net als bij `BEWUST_ONGESCHREVEN`: een waarde
+ * die erbij komt is rood, en een waarde die hier staat maar niet meer gedeeld
+ * is, is óók rood. Anders wordt dit een lijst met namen uit het verleden.
+ *
+ * @type {Record<string, string[]>}
+ */
+export const GEDEELDE_WAARDEN = {
+  active: ['goals', 'group_members', 'groups'],
+  approved: ['completion_approvals', 'deadline_requests', 'weekly_goals'],
+  archived: ['goal_events', 'goals', 'groups'],
+  building: ['goals', 'groups', 'profiles'],
+  business: ['goals', 'groups', 'profiles'],
+  cancelled: ['commitment_events', 'commitments', 'weekly_goals'],
+  completed: ['goal_events', 'goals'],
+  connection: ['goals', 'groups', 'profiles'],
+  created: ['commitment_events', 'goal_events'],
+  creativity: ['goals', 'groups', 'profiles'],
+  done: ['ai_jobs', 'milestones'],
+  en: ['groups', 'milestone_tips', 'profiles'],
+  fitness: ['goals', 'groups', 'profiles'],
+  milestone_done: ['chat_messages', 'points_ledger'],
+  mindfulness: ['goals', 'groups', 'profiles'],
+  nl: ['groups', 'milestone_tips', 'profiles'],
+  nutrition: ['goals', 'groups', 'profiles'],
+  open: ['deadline_requests', 'groups', 'reports'],
+  other: ['goals', 'groups', 'profiles', 'reports'],
+  pending: ['group_join_requests', 'weekly_goals'],
+  productivity: ['goals', 'groups', 'profiles'],
+  resolved: ['commitment_events', 'commitments'],
+  self_care: ['goals', 'groups', 'profiles'],
+  skills: ['goals', 'groups', 'profiles'],
+  study: ['goals', 'groups', 'profiles'],
+  todo: ['milestones', 'weekly_goals'],
+};
+
+/**
+ * Welke CHECK-waarden vandaag in meer dan één tabel staan.
+ *
+ * @param {{ naam: string, sql: string }[]} bestanden
+ * @returns {Record<string, string[]>}
+ */
+export function gedeeldeWaarden(bestanden) {
+  const perWaarde = new Map();
+  for (const [, c] of checksIn(bestanden)) {
+    if (c.tabel === null || c.tabel === undefined) continue;
+    for (const waarde of c.waarden) {
+      if (!perWaarde.has(waarde)) perWaarde.set(waarde, new Set());
+      perWaarde.get(waarde).add(c.tabel);
+    }
+  }
+  const uit = {};
+  for (const [waarde, tabellen] of [...perWaarde].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (tabellen.size > 1) uit[waarde] = [...tabellen].sort();
+  }
+  return uit;
+}
+
+/**
+ * Het verschil tussen wat er gemeten is en wat er in het register staat.
+ *
+ * ⚠️ **Ook de tabellen tellen mee en niet alleen de naam.** Komt er bij `done`
+ *    een derde tabel bij, dan is het risico gegroeid terwijl de náám al in het
+ *    register stond — en dan zou een vergelijking op namen alleen zwijgen. Dat
+ *    is dezelfde vorm als de fout die dit hele issue veroorzaakte: kijken naar
+ *    het ding en niet naar waar het bij hoort.
+ */
+export function gedeeldVerschil(gemeten, register = GEDEELDE_WAARDEN) {
+  const nieuw = [];
+  const veranderd = [];
+  const verdwenen = [];
+  for (const [waarde, tabellen] of Object.entries(gemeten)) {
+    const bekend = register[waarde];
+    if (bekend === undefined) nieuw.push({ waarde, tabellen });
+    else if (bekend.join(',') !== tabellen.join(',')) veranderd.push({ waarde, tabellen, bekend });
+  }
+  for (const waarde of Object.keys(register)) {
+    if (!(waarde in gemeten)) verdwenen.push(waarde);
+  }
+  return { nieuw, veranderd, verdwenen };
 }
 
 /** CHECK-waarden die geen enkel pad ooit schrijft. */
@@ -581,6 +815,12 @@ export function controleer({
 
   return {
     functies,
+    // ⚠️ **De ratel onder de tekstzoektocht.** Zolang een waarde bij één tabel
+    //    hoort, bewijst een treffer in de bron dat híj geschreven wordt. Zodra
+    //    hij gedeeld is, bewijst diezelfde treffer dat niet meer — en dat is
+    //    precies de stilte waar dit issue over gaat. Het register kan dat niet
+    //    voorkomen; het maakt zichtbaar wanneer het risico groeit.
+    gedeeld: gedeeldVerschil(gedeeldeWaarden(bestanden)),
     beloofdMaarOngetest,
     bewaaktVerouderd,
     beslistVerouderd,
@@ -626,6 +866,7 @@ function hoofd() {
     beslistVerouderd,
     waarden,
     verouderd,
+    gedeeld,
   } = controleer({
     bestanden,
     prodBron,
@@ -638,7 +879,10 @@ function hoofd() {
     bewaaktVerouderd.length === 0 &&
     beslistVerouderd.length === 0 &&
     waarden.length === 0 &&
-    verouderd.length === 0
+    verouderd.length === 0 &&
+    gedeeld.nieuw.length === 0 &&
+    gedeeld.veranderd.length === 0 &&
+    gedeeld.verdwenen.length === 0
   ) {
     const aantal = functiesIn(bestanden.map((b) => b.sql).join('\n')).size;
     const buiten = Object.keys(BEWAAKT_BUITEN_DE_APP).length;
@@ -651,7 +895,9 @@ function hoofd() {
         `${aantal - buiten - wachtend} met een pad door de app, ${buiten} bewakingen ` +
         `en ops-functies met een aanroeper in tests/ of scripts/, en ${wachtend} ` +
         `zonder pad waar het verdict een productvraag is. Elke CHECK-waarde ` +
-        `wordt ergens geschreven of staat met reden op de lijst.`,
+        `wordt ergens geschreven of staat met reden op de lijst; ` +
+        `${Object.keys(GEDEELDE_WAARDEN).length} waarden staan in meer dan één tabel ` +
+        `en maken de schrijverstoets daar blind.`,
     );
     return 0;
   }
@@ -710,7 +956,48 @@ function hoofd() {
         'stand van zaken, leest dan iets dat niet meer klopt.',
     );
   }
+
+  meldGedeeld(gedeeld);
   return 1;
+}
+
+/**
+ * De uitslag over `GEDEELDE_WAARDEN` — apart, want de uitleg is langer dan de
+ * logica en `hoofd()` zit al tegen de vijftig regels aan.
+ */
+function meldGedeeld({ nieuw, veranderd, verdwenen }) {
+  for (const { waarde, tabellen } of nieuw) {
+    console.error(
+      `✗ '${waarde}' staat nu in meer dan één tabel (${tabellen.join(', ')}) en niet ` +
+        'in GEDEELDE_WAARDEN.',
+    );
+  }
+  for (const { waarde, tabellen, bekend } of veranderd) {
+    console.error(
+      `✗ '${waarde}' staat in andere tabellen dan het register zegt: ` +
+        `${tabellen.join(', ')} tegen ${bekend.join(', ')}.`,
+    );
+  }
+  for (const waarde of verdwenen) {
+    console.error(`✗ GEDEELDE_WAARDEN noemt '${waarde}', maar die staat nog maar in één tabel.`);
+  }
+
+  if (nieuw.length > 0 || veranderd.length > 0) {
+    console.error(
+      '\nEen gedeelde waarde maakt de schrijverstoets hierboven blind: een treffer in\n' +
+        'de bron kan van de ándere tabel komen, en dan zwijgt de controle over een dode\n' +
+        'waarde. Ga per tabel na of de waarde daar écht geschreven wordt — met de hand,\n' +
+        'want automatisch kan het niet — en zet hem daarna in GEDEELDE_WAARDEN. Is hij\n' +
+        'in één van de tabellen dood, dan hoort hij óók in BEWUST_ONGESCHREVEN of\n' +
+        'TREFFER_HOORT_ELDERS.',
+    );
+  }
+  if (verdwenen.length > 0) {
+    console.error(
+      '\nDat is goed nieuws en toch rood, om dezelfde reden als bij BEWUST_ONGESCHREVEN:\n' +
+        'een register dat achterloopt, beschrijft een risico dat er niet meer is.',
+    );
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());

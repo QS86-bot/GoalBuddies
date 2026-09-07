@@ -126,12 +126,23 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 13 — open of beschermde groepen', (
   ): Promise<string> {
     const admin = adminDb();
 
+    // ⚠️ **Vooruit aanmaken en dan terugzetten**, sinds migratie 0170:
+    //    `goals_insert` weigert een streefdatum in het verleden, en `cycleStart`
+    //    is hier per definitie een week die al gemist ís. Deze opstelling gaat
+    //    over `weekly_goals.status` en niet over het aanmaken van een doel, dus
+    //    de omweg hoort in de ópbouw — net als het zetten van `missed` hierboven.
     const doel = await f.alice.db
       .from('goals')
-      .insert({ owner_id: f.alice.id, title: titel, target_date: cycleStart })
+      .insert({ owner_id: f.alice.id, title: titel, target_date: addDays(cycleStart, 365) })
       .select('id')
       .single();
     if (doel.error || doel.data === null) throw new Error(`doel ${titel}: ${doel.error?.message}`);
+
+    const terug = await admin
+      .from('goals')
+      .update({ target_date: cycleStart })
+      .eq('id', doel.data.id);
+    if (terug.error) throw new Error(`streefdatum ${titel}: ${terug.error.message}`);
 
     for (const groep of groepen) {
       const koppeling = await f.alice.db

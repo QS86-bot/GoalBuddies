@@ -12,6 +12,7 @@ import {
   tekstsleutelVoor,
   tijdVoorInvoer,
   uurUit,
+  MELDINGSOORTEN,
   type Melding,
   type NudgeSituatie,
 } from './regels';
@@ -132,17 +133,51 @@ describe('de teksten', () => {
   });
 
   it('werkt ook zonder naam', () => {
-    for (const soort of ['approval_request', 'approval_received', 'cycle_summary'] as const) {
+    for (const soort of [
+      'approval_request',
+      'approval_received',
+      'cycle_summary',
+      'commitment_witness',
+    ] as const) {
       const bericht = berichtVoor(soort, {});
       expect(bericht.body, soort).not.toContain('undefined');
       expect(bericht.titel.length, soort).toBeGreaterThan(0);
     }
   });
 
+  /**
+   * ⚠️ **De enige soort die over een ander gaat — QS8-298.** Dezelfde eis als bij
+   *    het goedkeuringsverzoek en om dezelfde reden: een pushmelding staat op een
+   *    vergrendeld scherm dat iemand anders kan meelezen. De persoon en de
+   *    gebeurtenis, verder niets — geen doeltitel, geen bedrag, geen wat-hij-
+   *    misliep.
+   *
+   * ⚠️ **En geen verwijt.** De ontvanger is niet degene die iets misging, maar
+   *    de melding gáát wel over iemand die iets misging. Precies daarom hoort de
+   *    formulering hier bij de gemaakte afspraak te blijven ("de inzet die hij
+   *    zelf heeft ingesteld") en niet bij wat er misliep.
+   */
+  it('noemt bij een getuigenmelding de persoon en de afspraak, en verwijt niets', () => {
+    for (const taal of ['nl', 'en'] as const) {
+      const bericht = berichtVoor('commitment_witness', { naam: 'Sanne' }, taal);
+      const heel = `${bericht.titel} ${bericht.body}`.toLowerCase();
+
+      expect(bericht.body, taal).toContain('Sanne');
+      for (const verboden of ['doel:', 'weekdoel:', 'gefaald', 'mislukt', 'gemist', 'failed', 'missed']) {
+        expect(heel, `${taal}/${verboden}`).not.toContain(verboden);
+      }
+    }
+  });
+
   /** QS8-91: elk type een diepe link naar de juiste plek. */
   it('geeft elke soort een pad', () => {
     const paden: string[] = [nudgeBericht('gentle').pad];
-    for (const soort of ['approval_request', 'approval_received', 'cycle_summary'] as const) {
+    for (const soort of [
+      'approval_request',
+      'approval_received',
+      'cycle_summary',
+      'commitment_witness',
+    ] as const) {
       paden.push(berichtVoor(soort, {}).pad);
     }
 
@@ -156,17 +191,30 @@ describe('de teksten', () => {
   });
 
   /**
-   * ⚠️ De vier soorten zijn de grens. Er is er geen die over de tegenslag van
-   *    een ander gaat, en die mag er ook niet bij komen zonder migratie — de
-   *    CHECK in 0053 dwingt dat af. Deze test is de kopie aan de codekant,
-   *    zoals `SYSTEEM_GEBEURTENISSEN` dat is voor de chat.
+   * ⚠️ **De soorten zijn de grens, en sinds QS8-298 zijn het er vijf.** De
+   *    vijfde — `commitment_witness` — gaat wél over een ander, en dat kan op
+   *    precies één grond: de uitzondering die domeinregel 7 zelf noemt, *een
+   *    straf die de gebruiker zelf vooraf heeft ingesteld en bevestigd*.
+   *    Onderbouwing in migratie 0178.
+   *
+   * ⚠️ **Wat hier verboden blijft, blijft verboden.** Een soort over een gemiste
+   *    week, een verbroken reeks of een achterstand heeft geen vooraf bevestigde
+   *    afspraak onder zich. Deze lijst is de grendel aan de codekant; de CHECK
+   *    `notifications_sent_kind_bekend` is die aan de databasekant, en sinds
+   *    QS8-298 legt `tests/rls/meldingsoorten.test.ts` de twee naast elkaar.
+   *
+   * ⚠️ **Het getal staat hier met opzet.** Zonder is dit een test die met elke
+   *    nieuwe soort vanzelf meegroeit, en dan meldt hij niets meer. Wie er een
+   *    toevoegt, komt hier langs — en dat is de bedoeling.
    */
-  it('kent precies vier soorten, geen ervan over een ander', () => {
-    const soorten: Melding[] = ['nudge', 'approval_request', 'approval_received', 'cycle_summary'];
-    expect(soorten).toHaveLength(4);
+  it('kent precies vijf soorten, en maar één ervan gaat over een ander', () => {
+    expect(MELDINGSOORTEN).toHaveLength(5);
+
+    const overEenAnder: Melding[] = ['commitment_witness'];
+    expect(overEenAnder).toHaveLength(1);
 
     for (const verboden of ['missed_week', 'buddy_missed', 'streak_broken', 'behind']) {
-      expect(soorten as string[]).not.toContain(verboden);
+      expect(MELDINGSOORTEN as readonly string[]).not.toContain(verboden);
     }
   });
 });
