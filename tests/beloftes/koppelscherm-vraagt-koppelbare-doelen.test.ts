@@ -61,6 +61,35 @@ describe('het koppelscherm vraagt de koppelbare doelen', () => {
     ).toBe(false);
   });
 
+  it('haalt de lijst opnieuw op na een geslaagde koppeling', () => {
+    // ⚠️ **Criterium 3 van QS8-342, en het is een náád — regel 18 vraag 1.**
+    //    `koppelDoelAanGroep` klopt (de rij landt) en `fetchKoppelbareDoelen`
+    //    klopt (de vraag sluit uit). Wat ertussen zat was niets: `onGekoppeld` is
+    //    de `herlaad` van het gróepsscherm, en de lijst hangt aan een eigen
+    //    `useAsync` met `[userId, groupId]` als deps. Die veranderen daar niet
+    //    van, en `AsyncView` houdt zijn kinderen staan zolang er data is — dus
+    //    bleef het zojuist gekoppelde doel in de lijst staan. Tikken gaf succes
+    //    en veranderde niets zichtbaars; nog eens tikken gaf opnieuw succes, want
+    //    `ignoreDuplicates` maakt van de tweede poging een stille no-op.
+    const koppelFunctie = code.slice(code.indexOf('async function koppel('));
+    const totHetEinde = koppelFunctie.slice(0, koppelFunctie.indexOf('\n  }'));
+
+    expect(
+      totHetEinde,
+      'na een geslaagde koppeling hoort de koppelbare lijst zichzelf opnieuw op te halen — anders meldt het scherm succes zonder dat er iets verandert',
+    ).toContain('herlaadLijst()');
+  });
+
+  it('heeft die herlaadfunctie van zijn eigen `useAsync`', () => {
+    // ⚠️ Zonder deze regel is `herlaadLijst` de `herlaad` van het gróepsscherm
+    //    onder een andere naam, en dan bewaakt de test hierboven niets: die
+    //    herlaadt de stand van de groep en niet de lijst met koppelbare doelen.
+    expect(
+      code,
+      'de lijst hoort zijn eigen `herlaad` te gebruiken, niet die van het groepsscherm',
+    ).toMatch(/herlaad:\s*herlaadLijst\s*}\s*=\s*useAsync\(/);
+  });
+
   it('trekt de gekoppelde doelen niet meer in het scherm zelf af', () => {
     // ⚠️ De aftrekking wás de fout: hij werkt alleen op de doelen die je toevallig
     //    al had opgehaald. Serverzijdig uitsluiten is wat de lege staat waar maakt.

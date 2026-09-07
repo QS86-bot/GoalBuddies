@@ -745,7 +745,7 @@ function KoppelDoel({
   //    "Nieuw doel" eronder en geen weg terug. `fetchKoppelbareDoelen()` sluit de
   //    gekoppelde doelen in de query uit, dus `leeg` betekent hier weer wat het
   //    zegt.
-  const { data: doelen, loading, error } = useAsync(
+  const { data: doelen, loading, error, herlaad: herlaadLijst } = useAsync(
     userId && groupId !== ''
       ? async () => (await fetchKoppelbareDoelen(userId, groupId)).rijen
       : null,
@@ -764,6 +764,19 @@ function KoppelDoel({
       return;
     }
 
+    // ⚠️ **Deze lijst herlaadt zichzelf, en dat is niet dubbelop — QS8-342
+    //    criterium 3.** `onGekoppeld` is de `herlaad` van het gróepsscherm, en die
+    //    telt daar een ronde op. Deze lijst hangt aan een eigen `useAsync` met
+    //    `[userId, groupId]` als deps, en die veranderen er niet van; `AsyncView`
+    //    houdt zijn kinderen bovendien staan zolang er data is, dus dit blok
+    //    wordt niet opnieuw opgebouwd. Zonder deze regel bleef het zojuist
+    //    gekoppelde doel gewoon in de lijst staan: je tikt, je krijgt succes, en
+    //    er verandert niets zichtbaars. Tik je dan nog eens, dan meldt
+    //    `koppelDoelAanGroep` opnieuw succes — `ignoreDuplicates` maakt van de
+    //    tweede poging een stille no-op. Dat is de klasse "succes dat er geen is",
+    //    en de reparatie is dat het scherm de werkelijkheid ophaalt in plaats van
+    //    dat de melding hem beschrijft.
+    herlaadLijst();
     onGekoppeld();
   }
 
