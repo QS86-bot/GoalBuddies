@@ -1626,6 +1626,14 @@ export const en: Record<Sleutel, string> = {
   'weekplan.start_nu': 'Start this one now',
   'weekplan.start_nu_label': 'Start "{titel}" this week',
   'weekplan.verwijder': 'Remove from plan',
+  'weekplan.bijstellen': 'Adjust',
+  'weekplan.bijstellen_label': 'Adjust "{titel}"',
+  'weekplan.bewerken_kop': 'Adjust this step',
+  'weekplan.titel': 'What are you going to do?',
+  'weekplan.vloer': 'The floor: what you still manage on your worst week',
+  'weekplan.plafond': 'The ceiling: what you are aiming for',
+  'weekplan.bewaren': 'Save',
+  'weekplan.annuleren': 'Never mind',
   'weekplan.verwijder_label': 'Remove "{titel}" from the plan',
   'weekplan.omhoog': 'Earlier',
   'weekplan.omhoog_label': 'Move "{titel}" earlier in the plan',
@@ -1653,6 +1661,9 @@ export const en: Record<Sleutel, string> = {
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
   'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
+  'coach.uit_vragenlijst':
+    'This comes from your questionnaire, converted from minutes per day to hours per week; you can adjust it here.',
+  'coach.eerder_genoemd': 'In the questionnaire you mentioned: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // A goal's rhythm — decision A53, migration 0140

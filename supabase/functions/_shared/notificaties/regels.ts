@@ -14,7 +14,7 @@
  * de antwoorden.
  *
  * ⚠️ **Domeinregel 7 is hier geen bijzaak maar de begrenzing.** Er zijn precies
- *    vijf soorten, ze staan als CHECK in de database (0053, uitgebreid in 0174),
+ *    vijf soorten, ze staan als CHECK in de database (0053, uitgebreid in 0175),
  *    en vier ervan gaan over jezelf:
  *
  *    - `nudge` — over jezelf, en alleen als je vandaag nog niets deed
@@ -29,7 +29,7 @@
  *    ervan mag weg — de eigenaar heeft deze getuige zélf aangewezen en het
  *    commitment bevestigd, de melding gaat pas af bij `status = 'due'`
  *    (domeinregel 11), en er gaat niets naar de groep. Volledig uitgeschreven in
- *    migratie 0174 en in
+ *    migratie 0175 en in
  *    `docs/decisions/2026-09-07-de-getuige-hoort-het-zonder-dat-de-groep-het-hoort.md`.
  *
  *    Een soort die zegt dat een ander een week gemist heeft, zijn reeks kwijt is

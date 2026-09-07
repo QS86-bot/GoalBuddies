@@ -2064,6 +2064,14 @@ export const nl = {
   'weekplan.start_nu': 'Start deze nu',
   'weekplan.start_nu_label': 'Start "{titel}" deze week',
   'weekplan.verwijder': 'Weg uit het plan',
+  'weekplan.bijstellen': 'Bijstellen',
+  'weekplan.bijstellen_label': 'Stel "{titel}" bij',
+  'weekplan.bewerken_kop': 'Deze stap bijstellen',
+  'weekplan.titel': 'Wat ga je doen?',
+  'weekplan.vloer': 'De vloer: wat je op je slechtste week nog haalt',
+  'weekplan.plafond': 'Het plafond: wat je wilt halen',
+  'weekplan.bewaren': 'Bewaren',
+  'weekplan.annuleren': 'Laat maar',
   'weekplan.verwijder_label': 'Haal "{titel}" uit het plan',
   'weekplan.omhoog': 'Eerder',
   'weekplan.omhoog_label': 'Zet "{titel}" eerder in het plan',
@@ -2091,6 +2099,9 @@ export const nl = {
   'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
   'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
   'coach.al_ingevuld': 'Dit had je al ingevuld bij je doel; je kunt het hier bijstellen.',
+  'coach.uit_vragenlijst':
+    'Dit komt uit je vragenlijst, omgerekend van minuten per dag naar uren per week; je kunt het hier bijstellen.',
+  'coach.eerder_genoemd': 'Bij de vragenlijst noemde je: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // Het ritme van een doel — besluit A53, migratie 0140
