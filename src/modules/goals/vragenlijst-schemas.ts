@@ -81,16 +81,6 @@ export const LEGE_VRAGENLIJST: Required<VragenlijstInvoer> = {
   what_breaks_it: [],
 };
 
-/** Heeft deze vragenlijst iets opgeleverd? */
-export function heeftVragenlijstAntwoorden(invoer: VragenlijstInvoer): boolean {
-  return (
-    (invoer.focus_areas ?? []).length > 0 ||
-    (invoer.minutes_per_day ?? null) !== null ||
-    (invoer.when_i_do_it ?? null) !== null ||
-    (invoer.what_breaks_it ?? []).length > 0
-  );
-}
-
 /**
  * Wat er van de vragenlijst naar `profiles` gaat.
  *

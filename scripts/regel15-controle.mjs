@@ -62,7 +62,7 @@ export const GRENS = 50;
  */
 export const PLAFOND = Object.freeze({
   'app/': 66,
-  'src/shared/ui/': 9,
+  'src/shared/ui/': 8,
   // ⚠️ **`scripts/` telt mee sinds 06-09-2026** (QS8-291). Die map viel
   //    structureel buiten de linter — 57 bestanden, 14.170 regels — en de
   //    vijftig kan er om dezelfde reden als in `app/` geen lintregel zijn:

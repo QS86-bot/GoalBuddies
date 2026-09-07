@@ -180,6 +180,11 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'achteraan, open voor `anon`, of open voor `authenticated` zonder de ' +
     'aanroeper te toetsen (0106, 0114, 0156, 0167). De vijfde tak meldt een ' +
     'uitzondering in het eigen register die geen bezwaar meer dekt.',
+  tijdstempel_bewaking:
+    'Kolommen van type timestamptz met een now()-default die anon of ' +
+    'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
+    'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
+    'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',

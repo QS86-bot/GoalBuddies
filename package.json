@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "tellers": "node scripts/tellers.mjs",
     "test:watch": "vitest",
     "types:db": "node scripts/db-types.mjs",
     "db:dump": "node scripts/db-dump.mjs",
