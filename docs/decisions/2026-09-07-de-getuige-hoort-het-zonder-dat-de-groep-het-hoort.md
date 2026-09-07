@@ -1,6 +1,6 @@
 # De getuige hoort het, zonder dat de groep het hoort — QS8-298
 
-**07-09-2026.** Migratie 0177. Deel 2 van QS8-292, dat bewust bij het
+**07-09-2026.** Migratie 0178. Deel 2 van QS8-292, dat bewust bij het
 leesoppervlak stopte.
 
 ## De vijfde meldingsoort gaat over een ander, en dat is nieuw
