@@ -19,8 +19,8 @@ persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
 dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
 `0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
 meldingsoort), `0179` (een bovengrens op een pushtoken), `0180` (de bevestigingsstand voor de
-eigenaar) en `0181` (`cycle_index` weg) staan
-er nog niet op. `0164` moet
+eigenaar), `0181` (de allowlist van `goal_events` bewaakt) en `0182`
+(`cycle_index` weg) staan er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
 dit document.
@@ -164,7 +164,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0181` staan in de map: **184 bestanden**,
+Migraties `0001` t/m `0182` staan in de map: **185 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

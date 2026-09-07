@@ -1,4 +1,4 @@
--- 0181_cycle_index_wordt_door_niemand_gelezen.sql — een kolom die alleen geschreven werd, en de client een extra query per weekdoel kostte (QS8-147)
+-- 0182_cycle_index_wordt_door_niemand_gelezen.sql — een kolom die alleen geschreven werd, en de client een extra query per weekdoel kostte (QS8-147)
 --
 -- ROLLBACK-PAD:
 --   alter table public.weekly_goals add column cycle_index integer;

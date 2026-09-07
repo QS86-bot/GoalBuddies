@@ -187,7 +187,7 @@ export function isWithinCycle(cycle: Cycle, at: Date): boolean {
  * `to` eerder valt.
  *
  * ⚠️ Hiervoor werd `weekly_goals.cycle_index` berekend, en dat was tot QS8-147
- *    de enige aanroeper in de app. Die kolom is met migratie 0181 verdwenen;
+ *    de enige aanroeper in de app. Die kolom is met migratie 0182 verdwenen;
  *    deze functie blijft omdat `shared/time` de plek is waar zo'n som hoort te
  *    staan, en omdat de tests hem gebruiken. Komt er nooit een tweede lezer,
  *    dan is dat een vraag voor de opruimronde en niet voor dit issue.
