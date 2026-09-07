@@ -180,6 +180,12 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'achteraan, open voor `anon`, of open voor `authenticated` zonder de ' +
     'aanroeper te toetsen (0106, 0114, 0156, 0167). De vijfde tak meldt een ' +
     'uitzondering in het eigen register die geen bezwaar meer dekt.',
+  goal_events_bewaking:
+    'De allowlist van `goal_events.event_type` naast de vier die tegen ' +
+    'domeinregel 7 gewogen zijn — oppervlak 24 volgt het doel en niet de groep, ' +
+    'dus een vijfde type verbreedt wat elke gekoppelde groep leest (0181). ' +
+    'Meldt ook als de CHECK niet meer de verwachte vorm heeft: onherkenbaar ' +
+    'moet een alarm zijn en geen stilte.',
   tijdstempel_bewaking:
     'Kolommen van type timestamptz met een now()-default die anon of ' +
     'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
@@ -197,6 +203,22 @@ export const BEWAAKT_BUITEN_DE_APP = {
     '(0101, generiek sinds 0118).',
   domeinregel3_bewaking:
     'De drie sloten op peer-goedkeuring: policy, constraint en trigger (0093).',
+  // ⚠️ Deze twee zijn op 06-09-2026 boven water gekomen doordat
+  //    `zonderDefinities()` een puntkomma binnen een `comment on`-tekst als einde
+  //    van het statement las (QS8-296). De rest van die zin bleef in de romp
+  //    staan, en dáár werden ze allebei genoemd. Ze stonden dus niet op deze
+  //    lijst omdat niemand ze miste, maar omdat de controle ze levend noemde.
+  realtime_bewaking:
+    'Welke tabellen in de realtime-publicatie staan en welke `replica identity` ' +
+    'ze dragen (0027). De grendel onder het `REPLICA IDENTITY FULL`-verbod uit ' +
+    'CLAUDE.md: met `full` gaat bij een DELETE de volledige oude rij over de lijn, ' +
+    'en Supabase past daar geen RLS op toe. Aanroepers zijn ' +
+    '`tests/rls/epic7.test.ts` en `tests/rls/epic13.test.ts`.',
+  systeembericht_allowlist:
+    'De waarden uit de CHECK `chat_messages_system_event_bekend` (0026). Zelfde ' +
+    'vorm en dezelfde reden als `bewijseis_allowlist`: zonder zo\'n functie legt ' +
+    'de test zijn eigen lijst naast zichzelf. Aanroepers zijn ' +
+    '`tests/rls/epic7.test.ts` en `tests/rls/definer-aanroepertoets.test.ts`.',
   bewijseis_allowlist:
     'De waarden uit de CHECK `groups_evidence_policy_valid` (0150). Aanroeper is ' +
     '`tests/rls/bewijseis.test.ts`, dat `BEWIJSEISEN` ernaast legt — een ' +
@@ -362,7 +384,7 @@ export function functiesIn(sql) {
  *    één aanroeper vond terwijl dit script groen stond.
  */
 export function zonderDefinities(sql) {
-  return sql
+  let romp = sql
     // ⚠️ **Commentaar eerst, en dat is op 28-08 gemeten.** Een migratiekop legt
     //    uit wát een functie doet en noemt hem daarbij mét haakjes — en dan
     //    telde de uitleg als de aanroeper. Het overkwam deze sessie zelf: een
@@ -377,14 +399,97 @@ export function zonderDefinities(sql) {
     //    `functiesIn()` hieronder.
     .replace(/--[^\n]*/g, ' ')
     .replace(/\bpublic\./gi, '')
-    .replace(/create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_]+)\s*\(/gi, ' ')
-    .replace(/drop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+[^;]*;/gi, ' ')
-    // ⚠️ Alles wat een recht of een toelichting op een functie zet. `[^;]*`
-    //    stopt bij de eerste puntkomma, en die staat in geen van deze vier
-    //    vormen binnenin.
-    .replace(/\b(?:grant|revoke)\b[^;]*?\bon\s+function\b[^;]*;/gi, ' ')
-    .replace(/comment\s+on\s+function\b[^;]*;/gi, ' ')
-    .replace(/alter\s+function\b[^;]*;/gi, ' ');
+    .replace(/create\s+(?:or\s+replace\s+)?function\s+([a-z0-9_]+)\s*\(/gi, ' ');
+
+  // ⚠️ Alles wat een recht of een toelichting op een functie zet.
+  //
+  // ⚠️ **Deze vier liepen tot 06-09-2026 op `[^;]*;` en dát was een gat**, met
+  //    dezelfde vorm als het commentaargat hierboven: de tekst óver een functie
+  //    telde als gebruik ervan. `comment on function f() is '… rijen; …';` heeft
+  //    een puntkomma binnen de tekst, `[^;]*;` stopt daar, en de rest van de zin
+  //    blijft in de romp staan — inclusief elke andere functienaam mét haakjes
+  //    die erin genoemd wordt. Gevolg: die functie heet levend terwijl niemand
+  //    hem aanroept. Gevonden doordat een nieuwe comment-regel in 0182 er één
+  //    bevatte; `ai_verbruik()` werd daardoor als aangeroepen gelezen.
+  //
+  //    `zonderStatement()` zoekt de afsluitende puntkomma buiten tekstliteralen,
+  //    en dat is het verschil tussen "de eerste puntkomma" en "het einde van het
+  //    statement".
+  for (const start of [
+    /\b(?:grant|revoke)\b[^;']*?\bon\s+function\b/gi,
+    // ⚠️ Élk `comment on` en niet alleen die op een functie: een toelichting op
+    //    een tabel, kolom, constraint of policy is net zo min een aanroep, en die
+    //    vier stonden er niet in.
+    /\bcomment\s+on\b/gi,
+    /\balter\s+function\b/gi,
+    /\bdrop\s+function\s+(?:if\s+exists\s+)?[a-z0-9_]+/gi,
+  ]) {
+    romp = zonderStatement(romp, start);
+  }
+
+  return romp;
+}
+
+/**
+ * Haalt elk statement weg dat op `start` begint, tot en met de puntkomma die het
+ * afsluit.
+ *
+ * ⚠️ **Een puntkomma binnen een tekstliteraal sluit niets af.** Dat is de hele
+ *    reden dat dit geen `[^;]*;` is. `''` binnen een literaal is een ontsnapte
+ *    apostrof en geen einde; opeenvolgende literalen aan elkaar geplakt (de vorm
+ *    die elke `comment on` in dit project gebruikt) worden zo elk apart gelezen.
+ *
+ * ⚠️ Loopt het statement zonder puntkomma af — een afgekapt bestand — dan gaat
+ *    de rest weg. Dat is de behoedzame kant: liever een naam te veel als dood
+ *    gemeld dan een dode functie die levend heet.
+ *
+ * ⚠️ **Dit is geen SQL-parser, en dat hoort de volgende lezer te weten.** Hij kent
+ *    geen dollar-quoting (`$$…$$`), en `zonderDefinities()` haalt bovendien de
+ *    `--`-regels weg vóórdat hier naar apostrofs gekeken wordt. Een `--` binnen
+ *    een tekstliteraal kan de apostrofs dus onbalanceren en deze scanner de rest
+ *    van het bestand laten opeten. De richting daarvan is fail-loud — er worden
+ *    dan functies ten onrechte als dood gemeld en de controle wordt rood — dus
+ *    het is geen gat. Gemeld door de security-review op QS8-296.
+ *
+ * @param {string} sql
+ * @param {RegExp} start globale regex die het begin van het statement vindt
+ * @returns {string}
+ */
+export function zonderStatement(sql, start) {
+  const stukken = [];
+  let gelezen = 0;
+  start.lastIndex = 0;
+
+  for (let m = start.exec(sql); m !== null; m = start.exec(sql)) {
+    stukken.push(sql.slice(gelezen, m.index), ' ');
+    gelezen = eindeVanStatement(sql, m.index + m[0].length);
+    start.lastIndex = gelezen;
+  }
+
+  stukken.push(sql.slice(gelezen));
+  return stukken.join('');
+}
+
+/**
+ * De plek ná de puntkomma die het statement dat op `vanaf` loopt afsluit.
+ *
+ * ⚠️ Een apostrof zet de tekstmodus aan of uit, en een verdubbelde apostrof gaat
+ *    daardoor vanzelf goed: sluiten en meteen weer openen komt op hetzelfde neer.
+ *    Ontbreekt de puntkomma — een afgekapt bestand — dan is dat het einde.
+ *
+ * @param {string} sql
+ * @param {number} vanaf
+ * @returns {number}
+ */
+function eindeVanStatement(sql, vanaf) {
+  let inTekst = false;
+
+  for (let i = vanaf; i < sql.length; i += 1) {
+    if (sql[i] === "'") inTekst = !inTekst;
+    else if (sql[i] === ';' && !inTekst) return i + 1;
+  }
+
+  return sql.length;
 }
 
 /** De namen die `src/`, `app/` en `supabase/functions/` via `.rpc()` aanroepen. */

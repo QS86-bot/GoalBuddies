@@ -170,10 +170,18 @@ meteen over, en dat was terecht: de conjunct sloot een geldige getuigenis uit.
 Overgenomen van `shares_group_with_user()` staat er nu ook `<> 'inactive'` en
 niet `= 'active'` — een lid met een adempauze is nog steeds een groepsgenoot.
 
-⚠️ **`getuigenissen()` (0169) toetst dit niet**, dus wie vertrekt ziet zijn
-getuigenis nog wél als hij de app opent. Dat is het oppervlak van QS8-292 en niet
-van dit issue; het staat als QS8-306. De richting klopt wel: niet duwen is minder
-dan niet tonen, dus de kant die hier gekozen is, is de veilige.
+⚠️ **`getuigenissen()` (0169) toetste dit niet**, dus wie vertrok zag zijn
+getuigenis nog wél als hij de app opende. Dat was het oppervlak van QS8-292 en
+niet van dit issue; het stond als QS8-306. De richting klopte wel: niet duwen is
+minder dan niet tonen, dus de kant die hier gekozen is, was de veilige.
+
+⚠️ **Opgelost op 07-09-2026 met migratie 0183 (QS8-306), en niet alleen in de
+functie.** Het leesrecht zelf komt uit de policy van 0168 en die keek evenmin
+naar lidmaatschap; een reparatie in alleen `getuigenissen()` had het blok
+leeggemaakt en de rij open gelaten. Waarom deze kant gekozen is, wat er níet
+gebeurt (de aanwijzing wordt opgeschort, niet vernietigd) en waarom er een
+`security definer`-helper bij hoort, staat in
+`docs/decisions/2026-09-07-de-band-droeg-de-aanwijzing.md`.
 
 ## De keten is pas rond na een deploy
 

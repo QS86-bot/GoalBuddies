@@ -698,7 +698,7 @@ export const en: Record<Sleutel, string> = {
     'Your goal is saved, but the steps are not. Add them yourself, or let the coach try again.',
   'coach.plan_zonder_weekdoel':
     'Your goal and steps are saved. Only the weekly goal is missing. Pick what you will do this week.',
-  'coach.daglimiet': 'You have used the Goal Coach {limiet} times today. It resets tomorrow. In the meantime you can add milestones yourself.',
+  'coach.daglimiet': 'The Goal Coach has done enough for you today. It resets tomorrow. In the meantime you can add milestones yourself.',
   'coach.eyebrow': 'SIX QUESTIONS',
   'coach.zes_vragen': 'Six questions, and you may skip every one of them. The more you fill in, the better the milestones fit you, but skipping works fine.',
   'coach.alleen_voor_jou': 'Your answers are only for you and the Goal Coach. Your group never sees them.',
@@ -922,6 +922,8 @@ export const en: Record<Sleutel, string> = {
     'You share this goal with a group, so you do not move the date on your own. ' +
     'Ask your buddies to agree, with a short explanation.',
 
+  'doel.recent_ontkoppeld':
+    'You just unlinked this goal from a group. You can set the date yourself seven days after that.',
   'doel.afronden_mislukt': 'Completing did not work. Please try again.',
   'doel.al_afgerond': 'This goal is already completed.',
   'doel.gearchiveerd': 'This goal is archived. Bring it back first.',
@@ -979,15 +981,24 @@ export const en: Record<Sleutel, string> = {
   'deadline.argument_lang': 'Keep it short: at most 1000 characters.',
   'deadline.geen_lid': 'You are not a member of this group.',
   'deadline.niet_gekoppeld': 'This goal is not linked to this group.',
-  'deadline.zelfde_datum': 'Choose a date other than the one that is set now.',
   'deadline.argument_leeg': 'Write one sentence about what changed.',
   'deadline.geen_beslisser':
-    'You are the only member of this group, so nobody can approve this request. Invite someone first, or pick a group with a buddy in it.',
+    'You are the only member of this group, so nobody can approve this request. ' +
+    'Invite someone first, or pick a group with a buddy in it. ' +
+    'If you unlink this goal, you can set the date yourself seven days later.',
   'deadline.datum_in_verleden': 'That date is in the past. Pick today or later.',
   'deadline.al_open': 'There is already a request for this goal. Wait for that one first.',
   'deadline.bestaat_niet': 'This request no longer exists.',
   'deadline.al_beslist': 'This has already been decided.',
   'deadline.niet_zelf': 'You cannot approve your own request.',
+  'deadline.datum_onleesbaar':
+    'We cannot read that date. Please pick it again.',
+  'deadline.te_veel_verzoeken':
+    'You have filed five requests today. Another one is possible tomorrow.',
+  'deadline.verzoek_verlopen':
+    'The requested date is now in the past. Ask the requester for a new one.',
+  'deadline.niet_van_jou':
+    'This request is not yours.',
   'deadline.versturen_mislukt': 'Sending your request did not work. Please try again.',
   'deadline.versturen_mislukt_kort': 'Sending your request did not work.',
   'deadline.beslissen_mislukt': 'Deciding did not work. Please try again.',
@@ -1434,7 +1445,7 @@ export const en: Record<Sleutel, string> = {
   'beoordelen.meer_laden': 'Load more',
   'groepscherm.wie_meedoen': 'Who is taking part',
   'groepscherm.meer_tijd': 'A buddy is asking for more time',
-  'coach.poging_telt': 'Every attempt counts towards your ten per day.',
+  'coach.poging_telt': 'Every attempt counts towards what the Goal Coach can still do for you today.',
   'weekafsluiting.wat_gedeeld': 'What the group shared',
 
   // ---------------------------------------------------------------------------

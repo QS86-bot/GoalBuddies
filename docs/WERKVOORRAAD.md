@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-299 en QS8-303; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-299, QS8-303, QS8-304 en QS8-191; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -91,8 +91,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 38 controlescripts groen;
-`npm run poort` meldt 42 stappen.
+Typecheck, lint en alle 41 controlescripts groen;
+`npm run poort` meldt 45 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -164,7 +164,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0180` staan in de map: **183 bestanden**,
+Migraties `0001` t/m `0183` staan in de map: **186 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -187,6 +187,92 @@ Zelfde werkwijze, en opnieuw zeven catalogi nagemeten: zes byte-voor-byte gelijk
 en de acht functies uit die drie migraties komen **ruw** overeen — commentaar en
 al. Genormaliseerd over alle 168 functies is de sómhash aan beide kanten
 `0cba586b0747e69cc2c305912bac7d36`.
+
+✅ **`0150` t/m `0172` zijn op 06-09 toegepast — drieëntwintig in één ronde, met
+een `pg_dump` van Quintens machine vooraf.** Zelfde werkwijze als de twee rondes
+hiervoor: `execute_sql` per migratie, in volgorde, met een handmatige registerrij
+erbij. Het register staat op **175 rijen van `0001` tot `0172`**, nul
+tijdstempels, nul dubbele versies — gelijk aan de 175 bestanden die er voor dat
+bereik liggen.
+
+⚠️ **De transcriptie is de zwakke plek van deze route en die is deze keer
+gemeten in plaats van aangenomen.** De SQL gaat door een sessie heen en niet
+door een pipe; QS8-220 bestaat omdat een eerdere ronde functies met een
+ingekorte body toepaste. Daarom na élke migratie `md5(pg_get_functiondef())`
+naast de lokale stack gelegd, die uit dezelfde bestanden is opgebouwd. **Alle
+vierentwintig functies uit deze ronde komen byte voor byte overeen.**
+
+📏 En de catalogi ernaast, over het hele schema:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 360 | 360 |
+| constraints | 240 | 240 |
+| indexen | 140 | 140 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `5fb73f48…` | `5fb73f48…` |
+
+Wat er die ronde afweek, was verklaard door migratie `0182` (toen `0175`), die
+op dat moment nog niet was toegepast: de foreign key `ai_jobs_goal_id_fkey` —
+productie `on delete cascade` uit `0001`, lokaal `set null` — en het
+functieaantal (179 op productie, 184 lokaal = 179 + drie nieuwe + de twee shims
+die alleen in de teststack bestaan).
+
+✅ **De vijf bewakingsfuncties geven op productie nul bezwaren**:
+`archiefleesgat()`, `barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`
+en `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+
+✅ **Productie staat op 07-09 op `0183`.** Elf migraties in één ronde — `0173`
+t/m `0183` — met dezelfde werkwijze en dezelfde verificatie als de ronde
+ervoor: `execute_sql` per migratie, handmatige registerrij, en na afloop
+`md5(pg_get_functiondef())` naast de lokale stack.
+
+📏 **Alle twintig functies uit deze ronde komen byte voor byte overeen.** En de
+catalogi:
+
+| Wat | Lokaal | Productie |
+|---|---|---|
+| kolommen | 361 | 361 |
+| constraints | 242 | 242 |
+| indexen | 142 | 142 |
+| policies | 92 | 92 |
+| triggers | 47 | 47 |
+| tabellen met RLS | 40 | 40 |
+| **sómhash over alle policy-expressies** | `609fcd17…` | `609fcd17…` |
+| **sómhash over alle constraintdefinities** | `f720824c…` | `f720824c…` |
+
+Het register telt **186 rijen tot `0183`**, gelijk aan de 186 bestanden in de
+map. Nul tijdstempels, nul dubbele nummers, geen gat.
+
+⚠️ **De sómhash over álle functies wijkt nog steeds af, en dat is de oude
+QS8-220-drift** — functies van vóór `0139` die een eerdere sessie met een
+ingekorte body heeft toegepast. Niets uit deze ronde zit erin; dat is per functie
+nagemeten en niet afgeleid uit het totaal.
+
+✅ **Acht bewakingsfuncties geven nul bezwaren op productie**: `archiefleesgat()`,
+`barrierelezers()`, `sleutelzetters()`, `definer_bewaking()`,
+`tijdstempel_bewaking()`, `volgorde_bewaking()`, `goal_events_bewaking()` en
+`realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
+`ai_dag_budget_cent()` geeft 30.
+
+⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
+hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog
+moesten. 📏 Nagemeten op 07-09:
+
+* **QS8-295 is ingehaald** door QS8-299 — het bredere vervolgissue dat er zelf
+  uit voortkwam. Main's `0173` dekt alle vier tabellen met identieke
+  kolomlijsten, en `tijdstempel_bewaking()` bewaakt de klasse in plaats van de
+  vier gevallen. Die branch is niet geland; het issue staat op Done met de
+  meting eronder.
+* **QS8-176 is geland** als `0181`, na een tweede hernummering.
+* **QS8-296 is `0182`** geworden, na dezelfde behandeling.
+
+⚠️ **Main liep er in één nacht tweemaal overheen.** Dat is geen slordigheid van
+één sessie maar de vorm: een branch die een nummer draagt en blijft liggen,
+botst met alles wat er daarna landt. `npm run claim` dekt het issue, niet het
+migratienummer — QS8-310 gaat daar overheen.
 
 ⚠️ **En schrijf hier geen getal op als stand.** Dit blok zei een uur lang "de map
 en productie lopen gelijk", en dat was achterhaald voordat de PR die het schreef
@@ -804,11 +890,17 @@ bestanden, niet tegen dit document.
   **Een regex over catalogusuitvoer is hoofdlettergevoelig tenzij je het
   tegendeel schrijft.**
 
-⚠️ **Eén staat er nog, en smaller dan de regel suggereerde:**
+✅ **De laatste is op 06-09-2026 gesloten (QS8-296, migratie 0182):**
 
-- **Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
-  doet `count(*)`. Dat is kostenmisbruik op een gratis tier: één job met een
-  enorme prompt telt als één.
+- ~~**Het AI-dagquotum telt nog steeds jobs en geen tokens** — `ai_verbruik()`
+  doet `count(*)`.~~ De poort weegt sinds 0182 **dollarcent** en telt geen rijen:
+  `ai_dag_budget_cent()` = `ai_dag_limiet()` × `ai_job_voorschot_cent()`, en elke
+  job kost `greatest(coalesce(cost_cents, 0), voorschot)`. De bodem is de helft
+  die de invoerkant dekt — een job zonder bedrag (queued, running, failed, of een
+  meting die op nul uitkwam) eet meteen budget, dus een burst komt er niet langs.
+  📏 Plafond per gebruiker per dag: van ≈88 cent naar 30 cent plus hoogstens één
+  job overschot. Tien gewone jobs passen nog steeds; tien máximale worden er drie.
+  Zie `docs/decisions/2026-09-06-een-quotum-dat-telt-weegt-niets.md`.
   📏 De tekstkolommen daarentegen zijn wél begrensd sinds QS8-118: `commitments.body`,
   `week_review_replies.body`, `milestone_tips.body` en `deadline_requests.reason`
   dragen allemaal een `char_length`-CHECK. Twee `text`-kolommen hebben er geen —

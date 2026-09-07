@@ -2410,8 +2410,11 @@ export type Database = {
         }
         Returns: Json
       }
+      ai_dag_budget_cent: { Args: never; Returns: number }
       ai_dag_limiet: { Args: never; Returns: number }
       ai_invoer_max: { Args: never; Returns: number }
+      ai_job_voorschot_cent: { Args: never; Returns: number }
+      ai_jobkosten_cent: { Args: { p_cost_cents: number }; Returns: number }
       ai_kosten_per_week: {
         Args: { p_weken?: number }
         Returns: {
@@ -2469,6 +2472,7 @@ export type Database = {
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
+      deelt_groep_met_eigenaar: { Args: { g: string }; Returns: boolean }
       dagafvinkingen_over: { Args: never; Returns: number }
       definer_bewaking: {
         Args: never
