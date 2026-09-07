@@ -353,6 +353,7 @@ export const nl = {
   'weekdoel.vloer_gehaald': 'Vloer gehaald',
   'weekdoel.gehaald': 'Gehaald',
   'weekdoel.wacht_op_buddy': '{wat}: wacht op je buddy',
+  'weekdoel.wacht_op_bevestigingen': '{wat}: {gedaan} van de {nodig} bevestigd',
 
   // ---------------------------------------------------------------------------
   // Reeks, Ketting en weekpassen — QS8-75, QS8-80, QS8-81

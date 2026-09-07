@@ -24,6 +24,7 @@ export {
   beoordeel,
   dienOpnieuwIn,
   fetchBeoordelingen,
+  fetchBevestigingsstanden,
   fetchBuddyBijdrage,
   fetchVragen,
   INTREKVENSTER_MINUTEN,
