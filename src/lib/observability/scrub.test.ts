@@ -160,6 +160,42 @@ describe('scrubContext', () => {
       expect(scrubContext({ sqlstate: undefined })).toEqual({ sqlstate: REDACTED });
       expect(scrubContext({ sqlstate: 23514 })).toEqual({ sqlstate: REDACTED });
     });
+
+    /**
+     * ⚠️ **De belofte, en niet de tak — QS8-330.** `code` stond op
+     *    `ALLOWED_KEYS` en ging dus ongetoetst naar buiten, terwijl 74 aanroepen
+     *    hem vullen met `error.code`. Een sleutel die een foutcode heet, hoort een
+     *    foutcodevorm te hebben; anders is het een gat met een geruststellende
+     *    naam. Deze tests worden rood zodra iemand hem terugzet op de allowlist.
+     *
+     * ⚠️ **Breder dan `sqlstate` en met opzet:** `code` draagt óók de auth- en
+     *    storagecatalogus (`invalid_credentials`, `NoSuchKey`). Wat hij níét mag
+     *    doorlaten is een zin — en dat is precies wat er langskwam.
+     */
+    describe('de code-sleutel', () => {
+      it.each([
+        ['een SQLSTATE', '42501'],
+        ['een PostgREST-code', 'PGRST202'],
+        ['een authcode', 'invalid_credentials'],
+        ['een storagecode', 'NoSuchKey'],
+      ])('laat %s door', (_naam, code) => {
+        expect(scrubContext({ code })).toEqual({ code });
+      });
+
+      it.each([
+        ['een hele servermelding', 'permission denied for table goals'],
+        ['een melding met een waarde erin', 'Europe/Bogus is geen bekende tijdzone'],
+        ['een e-mailadres', 'sanne@voorbeeld.nl'],
+        ['een naam met een spatie', 'Sanne de Vries'],
+      ])('vervangt %s', (_naam, waarde) => {
+        expect(scrubContext({ code: waarde })).toEqual({ code: REDACTED });
+      });
+
+      it('vervangt een code die geen string is', () => {
+        expect(scrubContext({ code: undefined })).toEqual({ code: REDACTED });
+        expect(scrubContext({ code: 42501 })).toEqual({ code: REDACTED });
+      });
+    });
   });
 
   it('is standaard dicht: een onbekend veld gaat niet mee', () => {

@@ -18,7 +18,6 @@
 const ALLOWED_KEYS: ReadonlySet<string> = new Set([
   'where',
   'name',
-  'code',
   'status',
   'httpStatus',
   'table',
@@ -65,12 +64,46 @@ const FOUTCODE = /^(?:[0-9A-Z]{5}|PGRST\d{3})$/;
  *
  * ⚠️ **Waarom dit veilig genoeg is en waar de grens ligt.** Een Postgres-melding
  *    (`Europe/Bogus is geen bekende tijdzone`) heeft spaties, een e-mailadres
- *    heeft `@` en een punt; allebei vallen ze af. Wat er wél doorheen zou komen
- *    is één enkel woord dat een gebruiker heeft ingetypt — maar dit veld wordt
- *    niet door een aanroeper gevuld: het wordt van het foutobject van de
- *    bibliotheek gelezen, en die vult het uit zijn eigen vaste lijst.
+ *    heeft `@` en een punt; allebei vallen ze af. Wat er wél doorheen komt is
+ *    één enkel woord.
+ *
+ * ⚠️⚠️ **En dat is sinds QS8-330 een scherpere grens dan hier stond.** Er stond
+ *    dat dit veld "niet door een aanroeper gevuld wordt" maar van het foutobject
+ *    van de bibliotheek gelezen. Dat gold toen `SYMBOOLCODE` alleen
+ *    `foutcodeVan()` bediende. Sinds deze vorm óók de `code`-sléútel bewaakt, is
+ *    het onwaar: 📏 tien plekken in `supabase/functions/rollover` en
+ *    `notificaties` schrijven met de hand `{ code: 'profielen_ophalen_mislukt' }`
+ *    en dergelijke, via `_shared/melden.ts` naar dezelfde `scrubContext()`.
+ *
+ *    Vandaag zijn dat constanten en lekt er niets — nagemeten. Maar de rem is
+ *    dan ook enkel deze vormtoets, en die laat elk enkel woord door:
+ *    `{ code: groep.naam }` of `{ code: profiel.voornaam }` komt er onveranderd
+ *    uit. Wie hier een variabele neerzet in plaats van een constante, zet een
+ *    gebruikersnaam naast `waar: 'weekafsluiting.…'` in een foutrapport, en dat
+ *    is domeinregel 7 via een omweg. `foutsleutel:controle` scant daarom sinds
+ *    QS8-330 ook `supabase/functions/`, maar hij leest namen en geen waarden —
+ *    hij ziet een constante niet van een variabele te onderscheiden.
  */
 const SYMBOOLCODE = /^[A-Za-z][A-Za-z0-9_]{2,40}$/;
+
+/**
+ * Leest deze waarde als een foutcode — van welke van de twee catalogi dan ook?
+ *
+ * ⚠️ **Sinds QS8-330 draagt óók de `code`-sleutel deze toets.** Hij stond tot
+ *    dan op `ALLOWED_KEYS` en ging dus ongetoetst de deur uit: 74 aanroepen
+ *    geven `code: error.code` mee, en een allowlist-sleutel is een kanaal. Wie
+ *    zijn eigen veld `code` noemde, duwde er alles doorheen wat `scrubMessage()`
+ *    ongemoeid laat — precies het gat dat de kop van `FOUTCODE` hierboven
+ *    beschrijft, één sleutel verderop en vier maanden onopgemerkt.
+ *
+ * ⚠️ **Twee vormen en niet één, want `code` draagt allebei de catalogi.**
+ *    PostgREST zet er `42501` of `PGRST202` in, auth `invalid_credentials`,
+ *    storage `NoSuchKey`. `sqlstate` houdt met opzet alleen de eerste: die
+ *    sleutel is smaller omdat hij smaller mág zijn.
+ */
+function leestAlsFoutcode(waarde: string): boolean {
+  return FOUTCODE.test(waarde) || SYMBOOLCODE.test(waarde);
+}
 
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 /** JWT's en Supabase-keys beginnen allemaal met `eyJ`. */
@@ -194,17 +227,32 @@ function scrubValue(value: unknown): string | number | boolean {
 }
 
 /**
- * Houdt alleen wat op de allowlist staat, plus `sqlstate` als hij als foutcode
- * leest en id-velden die er als uuid uitzien. De rest wordt vervangen, niet
- * weggelaten — dat een veld bestond is zelf nuttige informatie bij het
+ * Houdt alleen wat op de allowlist staat, plus `sqlstate` en `code` als ze als
+ * foutcode lezen en id-velden die er als uuid uitzien. De rest wordt vervangen,
+ * niet weggelaten — dat een veld bestond is zelf nuttige informatie bij het
  * uitzoeken.
+ *
+ * ⚠️ **`code` staat sinds QS8-330 niet meer op `ALLOWED_KEYS` maar in de
+ *    getoetste tak.** Daar ging hij ongetoetst doorheen terwijl hij hetzelfde
+ *    veld draagt als `sqlstate`. Een sleutel die een foutcode heet, heeft een
+ *    foutcodevorm — anders is het een gat met een geruststellende naam.
  */
 export function scrubContext(extra: Readonly<Record<string, unknown>>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(extra)) {
+    // ⚠️ **Twee takken en niet één, en dat is een gerepareerde verruiming.**
+    //    Hier stond één tak met `FOUTCODE || SYMBOOLCODE` voor allebei, en die
+    //    zette `sqlstate` open voor `pgrst202` — kleine letters, geen geldige
+    //    PostgREST-code. `scrub.test.ts` werd er terecht rood van. `sqlstate` is
+    //    smal met een reden (zie de kop van `FOUTCODE`); `code` draagt daarnaast
+    //    de auth- en storagecatalogus. Ze delen een doel, geen vorm.
     if (key === 'sqlstate') {
       out[key] = typeof value === 'string' && FOUTCODE.test(value) ? value : REDACTED;
+      continue;
+    }
+    if (key === 'code') {
+      out[key] = typeof value === 'string' && leestAlsFoutcode(value) ? value : REDACTED;
       continue;
     }
     if (ALLOWED_KEYS.has(key)) {

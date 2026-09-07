@@ -101,7 +101,7 @@ export async function rondAf(
     .single();
 
   if (error) {
-    reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId, pgcode: error.code });
+    reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId });
 
     // ⚠️ 23514 is de check_violation van `enforce_evidence_policy`, maar hij
     //    dekt óók `completions_level_valid` en `completions_note_length`. De
@@ -144,10 +144,7 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
     .limit(20);
 
   if (koppelingen.error) {
-    reportError(koppelingen.error, 'completions.policy', {
-      goal_id: goalId,
-      pgcode: koppelingen.error.code,
-    });
+    reportError(koppelingen.error, 'completions.policy', { goal_id: goalId });
     // Bij twijfel de strengste die haalbaar is: liever een notitie te veel
     // gevraagd dan een afronding die de server alsnog weigert.
     return 'note_required';
@@ -166,7 +163,7 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
     .in('id', groepIds);
 
   if (error) {
-    reportError(error, 'completions.policy', { goal_id: goalId, pgcode: error.code });
+    reportError(error, 'completions.policy', { goal_id: goalId });
     return 'note_required';
   }
 

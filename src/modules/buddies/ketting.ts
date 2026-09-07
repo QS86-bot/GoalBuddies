@@ -50,7 +50,7 @@ export async function fetchKettingStand(
   });
 
   if (error) {
-    reportError(error, 'ketting.stand', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'ketting.stand', { group_id: groupId });
     throw new Error(t('ketting.laden_mislukt'));
   }
 

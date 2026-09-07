@@ -166,7 +166,7 @@ export async function fetchChat(
   });
 
   if (error) {
-    reportError(error, 'chat.list', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'chat.list', { group_id: groupId });
     throw new Error(t('chat.laden_mislukt'));
   }
 
@@ -222,7 +222,7 @@ export async function stuurBericht(
     .single();
 
   if (error) {
-    reportError(error, 'chat.send', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'chat.send', { group_id: groupId });
 
     // ⚠️ Een policyweigering is voor élke reden dezelfde 42501, dus zonder deze
     //    vraag krijgt iemand die tegen de rem van 0090 aanloopt "versturen
@@ -252,7 +252,7 @@ export async function verwijderBericht(berichtId: string): Promise<Resultaat<tru
   const { error } = await supabase().from('chat_messages').delete().eq('id', berichtId);
 
   if (error) {
-    reportError(error, 'chat.delete', { pgcode: error.code });
+    reportError(error, 'chat.delete');
     return { ok: false, melding: t('chat.weghalen_mislukt') };
   }
 

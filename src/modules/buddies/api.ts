@@ -179,7 +179,7 @@ export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
     .limit(50);
 
   if (error) {
-    reportError(error, 'groups.mine', { pgcode: error.code });
+    reportError(error, 'groups.mine');
     throw new Error(t('groep.groepen_laden'));
   }
 
@@ -201,7 +201,7 @@ export async function fetchGroep(groupId: string): Promise<Groep | null> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'groups.get', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.get', { group_id: groupId });
     throw new Error(t('groep.groep_laden'));
   }
 
@@ -228,7 +228,7 @@ export async function fetchMijnLidmaatschap(
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'groups.membership', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.membership', { group_id: groupId });
     throw new Error(t('groep.lidmaatschap_laden'));
   }
 
@@ -418,7 +418,7 @@ export async function fetchGroepsoverzicht(
   const { data, error } = await supabase().rpc('group_overview', argumenten);
 
   if (error) {
-    reportError(error, 'groups.overview', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.overview', { group_id: groupId });
     throw new Error(t('groep.overzicht_laden'));
   }
 
@@ -514,7 +514,7 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
   });
 
   if (error) {
-    reportError(error, 'groups.create', { pgcode: error.code });
+    reportError(error, 'groups.create');
     return { ok: false, melding: t('groep.aanmaken_mislukt_kort') };
   }
 
@@ -596,7 +596,7 @@ export async function wijzigGroep(
     .single();
 
   if (error) {
-    reportError(error, 'groups.update', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.update', { group_id: groupId });
     return { ok: false, melding: t('groep.opslaan_mislukt') };
   }
 
@@ -608,7 +608,7 @@ export async function vernieuwUitnodiging(groupId: string): Promise<Resultaat<st
   const { data, error } = await supabase().rpc('rotate_invite_code', { p_group_id: groupId });
 
   if (error) {
-    reportError(error, 'groups.rotate', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.rotate', { group_id: groupId });
     return { ok: false, melding: t('groep.link_vernieuwen_mislukt') };
   }
 
@@ -631,7 +631,7 @@ export async function zetUitnodigingIngetrokken(
   });
 
   if (error) {
-    reportError(error, 'groups.revoke', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.revoke', { group_id: groupId });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
@@ -672,7 +672,7 @@ export async function zetGroepszichtbaarheid(
   });
 
   if (error) {
-    reportError(error, 'groups.visibility', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.visibility', { group_id: groupId });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
@@ -718,7 +718,7 @@ export async function archiveerGroep(
   });
 
   if (error) {
-    reportError(error, 'groups.archive', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.archive', { group_id: groupId });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
@@ -759,7 +759,7 @@ export async function heropenGroep(
   });
 
   if (error) {
-    reportError(error, 'groups.reopen', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.reopen', { group_id: groupId });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
@@ -819,7 +819,7 @@ export async function verlaatGroep(
   });
 
   if (error) {
-    reportError(error, 'groups.leave', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.leave', { group_id: groupId });
     return { ok: false, melding: t('groep.actie_mislukt') };
   }
 
@@ -865,7 +865,7 @@ export async function neemDeel(code: string): Promise<Resultaat<string>> {
   });
 
   if (error) {
-    reportError(error, 'groups.join', { pgcode: error.code });
+    reportError(error, 'groups.join');
     return { ok: false, melding: t('groep.deelnemen_mislukt') };
   }
 
@@ -953,7 +953,7 @@ export async function fetchUitnodiging(code: string): Promise<Uitnodiging | null
   const { data, error } = await supabase().rpc('invite_preview', { code: schoon });
 
   if (error) {
-    reportError(error, 'groups.preview', { pgcode: error.code });
+    reportError(error, 'groups.preview');
     throw new Error(t('groep.uitnodiging_laden'));
   }
 
@@ -1017,7 +1017,7 @@ export async function koppelDoelAanGroep(
     );
 
   if (error) {
-    reportError(error, 'groups.link', { group_id: groupId, goal_id: goalId, pgcode: error.code });
+    reportError(error, 'groups.link', { group_id: groupId, goal_id: goalId });
     return { ok: false, melding: t('groep.koppelen_mislukt') };
   }
 
@@ -1043,7 +1043,7 @@ export async function ontkoppelDoelVanGroep(
     .eq('group_id', groupId);
 
   if (error) {
-    reportError(error, 'groups.unlink', { group_id: groupId, goal_id: goalId, pgcode: error.code });
+    reportError(error, 'groups.unlink', { group_id: groupId, goal_id: goalId });
     return { ok: false, melding: t('groep.ontkoppelen_mislukt') };
   }
 
@@ -1079,7 +1079,7 @@ export async function fetchGroepenVanDoel(goalId: string): Promise<readonly Doel
     .limit(20);
 
   if (error) {
-    reportError(error, 'groups.ofGoal', { goal_id: goalId, pgcode: error.code });
+    reportError(error, 'groups.ofGoal', { goal_id: goalId });
     throw new Error(t('groep.gekoppelde_groepen_laden'));
   }
 
@@ -1099,7 +1099,7 @@ export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly 
     .limit(50);
 
   if (error) {
-    reportError(error, 'groups.links', { group_id: groupId, pgcode: error.code });
+    reportError(error, 'groups.links', { group_id: groupId });
     throw new Error(t('groep.gekoppelde_doelen_laden'));
   }
 
