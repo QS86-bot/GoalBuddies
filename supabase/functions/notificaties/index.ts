@@ -174,12 +174,17 @@ async function draaiNotificaties(auth: string): Promise<Response> {
     .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale');
 
   if (profielFout) {
-    // ⚠️ Zie de rollover: de melding van Postgres wordt geschoond voor verzending.
-    await meld(
-      new Error(`profielen ophalen mislukte: ${profielFout.message}`),
-      'notificaties.profielen',
-      { code: 'profielen_ophalen_mislukt' },
-    );
+    // ⚠️ **Zie de rollover — en hier stond dezelfde onjuiste geruststelling
+    //    (QS8-315).** De dossierrij van 04-09 noemde twee plekken in de
+    //    rollover; dit is de derde, in een functie die de rij niet noemde.
+    //    Zelfde vorm als QS8-206, waar de rij twee `console.error` telde en het
+    //    er elf in twee functies bleken: de klasse is groter dan de aanleiding,
+    //    en dáárom staat er nu een grendel onder (`meldtekst:controle`).
+    console.error(`profielen ophalen mislukte: ${profielFout.message}`);
+    await meld(new Error('profielen ophalen mislukte'), 'notificaties.profielen', {
+      code: 'profielen_ophalen_mislukt',
+      sqlstate: profielFout.code,
+    });
     return new Response(JSON.stringify({ error: profielFout.message }), { status: 500 });
   }
 

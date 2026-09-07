@@ -516,17 +516,28 @@ async function draaiRollover(auth: string): Promise<Response> {
   //    profielen die al afgehandeld zijn onvermeld laten; nu is het werk gedaan
   //    en meldt de job dat hij niet compleet was.
   if (profielFout !== null) {
-    // ⚠️ De melding van Postgres gaat door `scrubMessage()` heen voordat er iets
-    //    verstuurd wordt; een geciteerde waarde uit een constraint blijft hier.
-    await meld(
-      new Error(`profielen ophalen mislukte: ${(profielFout as { message: string }).message}`),
-      'rollover.profielen',
-      { code: 'profielen_ophalen_mislukt' },
-    );
-    return new Response(
-      JSON.stringify({ error: (profielFout as { message: string }).message }),
-      { status: 500 },
-    );
+    const fout = profielFout as { message: string; code?: string };
+
+    // ⚠️ **Hier stond dat `scrubMessage()` de melding schoonmaakt vóór verzending,
+    //    en dat was maar de halve waarheid — QS8-315.** Hij haalt geciteerde
+    //    waarden en de `Key (col)=(val)`-vorm eruit, maar níét een
+    //    `%`-interpolatie, en dat is precies de vorm die onze eigen wachters
+    //    gooien: `Europe/Bogus is geen bekende tijdzone` komt er onveranderd uit.
+    //    Gemeten met de échte functie, niet beredeneerd.
+    //
+    //    Dus dezelfde splitsing als in het recap-pad hieronder en in de kop van
+    //    0158: de volledige tekst gaat naar het functielog — een ander systeem,
+    //    met een andere bewaartermijn, dat de database niet verlaat — en Sentry
+    //    krijgt een vaste zin plus de foutcode.
+    console.error(`profielen ophalen mislukte: ${fout.message}`);
+    await meld(new Error('profielen ophalen mislukte'), 'rollover.profielen', {
+      code: 'profielen_ophalen_mislukt',
+      // ⚠️ De SQLSTATE is wat er ván de fout overblijft, en dat is genoeg om hem
+      //    te plaatsen: `42501` is een recht, `PGRST202` een verdwenen route,
+      //    `23514` een constraint. Geen van drieën draagt gebruikerstekst.
+      sqlstate: fout.code,
+    });
+    return new Response(JSON.stringify({ error: fout.message }), { status: 500 });
   }
 
   // Slapende groepen — QS8-60.
@@ -649,10 +660,15 @@ async function draaiRollover(auth: string): Promise<Response> {
   );
 
   if (termijnFout) {
+    // ⚠️ De volledige tekst blijft in deze regel; Sentry krijgt hem niet meer
+    //    (QS8-315). `keur_vastgelopen_goedkeuringen_goed()` gooit onder andere
+    //    `p_termijn_dagen moet minstens 1 zijn, kreeg %` — een `%`-vorm, en die
+    //    laat `scrubMessage()` ongemoeid.
     console.error(`vastgelopen goedkeuringen afhandelen mislukte: ${termijnFout.message}`);
     await meld(
-      new Error(`vastgelopen goedkeuringen afhandelen mislukte: ${termijnFout.message}`),
+      new Error('vastgelopen goedkeuringen afhandelen mislukte'),
       'rollover.goedkeuringstermijn',
+      { code: 'goedkeuringstermijn_mislukt', sqlstate: termijnFout.code },
     );
   }
 
