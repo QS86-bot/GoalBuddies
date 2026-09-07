@@ -1,4 +1,4 @@
--- 0174_een_bovengrens_op_wat_een_pushtoken_mag_zijn.sql — drie kolommen op push_tokens droegen een waarde die de client kiest en die onbegrensd mocht groeien (QS8-297)
+-- 0179_een_bovengrens_op_wat_een_pushtoken_mag_zijn.sql — drie kolommen op push_tokens droegen een waarde die de client kiest en die onbegrensd mocht groeien (QS8-297)
 --
 -- ROLLBACK-PAD:
 --   alter table public.push_tokens drop constraint if exists push_tokens_token_len;
@@ -141,12 +141,12 @@ alter table public.push_tokens
 comment on constraint push_tokens_token_len on public.push_tokens is
   'De client kiest deze waarde en geeft hem als RPC-argument mee. 1000 is de '
   'grens die dit project voor elke URL gebruikt en ruim vier keer de langste '
-  'echte token. Zie 0174 en QS8-297.';
+  'echte token. Zie 0179 en QS8-297.';
 
 comment on constraint push_tokens_sleutels_len on public.push_tokens is
   'p256dh is 65 octetten en auth 16 (RFC 8291); 255 is bijna drie keer de '
   'langste. Zonder deze grens verplaatst de grens op `token` het lek alleen. '
-  'Zie 0174 en QS8-297.';
+  'Zie 0179 en QS8-297.';
 
 -- ---------------------------------------------------------------------------
 -- En een net antwoord ernaast — twee sloten, en ze doen niet hetzelfde

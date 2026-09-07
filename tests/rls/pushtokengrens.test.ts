@@ -66,7 +66,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    konden de twee lagen uit elkaar lopen zonder dat er iets rood werd: de
  *    over-grens-gevallen gebruikten 5000 en de must-allows 41 tot 188, dus alles
  *    tussen 1001 en 4999 was onbewaakt. En H is het geval waar de grens zélf de
- *    verkeerde eenheid telde — zie de kop van 0174.
+ *    verkeerde eenheid telde — zie de kop van 0179.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -205,7 +205,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
       //    waarschuwt daarvoor; dit is de assertie die het vastpint.
       //
       // ⚠️ De grens telt bytes en niet tekens, dus deze literalen zijn ASCII —
-      //    daar vallen de twee samen. Waarom bytes: zie de kop van 0174.
+      //    daar vallen de twee samen. Waarom bytes: zie de kop van 0179.
       const opDeGrens = `https://fcm.googleapis.com/fcm/send/${'g'.repeat(1000 - 36)}`;
       expect(opDeGrens.length, 'precies op de grens').toBe(1000);
 

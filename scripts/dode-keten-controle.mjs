@@ -185,6 +185,13 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
     'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
     'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
+  volgorde_bewaking:
+    'De volgordesleutel van een auditspoor: bestaat de kolom, is hij ' +
+    '`generated always as identity`, staat de unieke sorteerindex er nog, en ' +
+    'heeft geen client er schrijfrecht op (0176). Zonder die sleutel knoopt ' +
+    '`created_at` — `now()` is binnen een transactie constant — en ligt de ' +
+    'volgorde van het spoor niet vast. Aanroeper is ' +
+    '`tests/rls/auditspoor-volgorde.test.ts`.',
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',
@@ -507,6 +514,113 @@ export function zonderChecks(sql) {
   return uit + sql.slice(i);
 }
 
+/**
+ * Elke CHECK-waarde die in méér dan één tabel voorkomt, met de tabellen erbij.
+ *
+ * ⚠️⚠️ **Dit register bestaat omdat de tekstzoektocht van
+ *    `waardenZonderSchrijver()` tabelblind is.** Die beslist of een waarde ooit
+ *    geschreven wordt door `'waarde'` in álle bronbestanden te zoeken — zonder
+ *    te weten bij wélke tabel de treffer hoort. Komt dezelfde naam in twee
+ *    tabellen voor, dan dekt een schrijver van de ene de andere af en zwijgt de
+ *    controle over een dode waarde. Dat is één keer echt gebeurd
+ *    (`points_ledger.reason = 'milestone_done'`, gedekt door
+ *    `chat_messages.system_event`) en het heeft een verkeerd argument in twee
+ *    documenten gezet.
+ *
+ * ⚠️ **De echte reparatie is een tabelbewuste toets, en die kan niet:** de bron
+ *    zegt niet bij welke tabel een stringliteraal hoort. Dit register is de
+ *    tweede keus — het maakt niet onmogelijk dat het opnieuw gebeurt, maar het
+ *    maakt zichtbaar wannéér het risico groeit.
+ *
+ * ⚠️⚠️ **En dat het nodig is, is gemeten en niet bedacht.** De dossierrij van
+ *    27-08 telde er **veertien** en zei: *"wordt zwaarder als er een vijftiende
+ *    bijkomt."* 📏 Op 06-09-2026 zijn het er **zesentwintig**. Er kwam er niet
+ *    één bij maar twaalf, vrijwel allemaal in één keer met migratie 0142, die
+ *    dezelfde vijftien categorienamen op `goals`, `groups` én `profiles` zette.
+ *    Niemand heeft dat gemerkt, want er was niets dat kón melden — en dat is
+ *    precies wat dit register nu doet.
+ *
+ * De ratel slaat twee kanten op, net als bij `BEWUST_ONGESCHREVEN`: een waarde
+ * die erbij komt is rood, en een waarde die hier staat maar niet meer gedeeld
+ * is, is óók rood. Anders wordt dit een lijst met namen uit het verleden.
+ *
+ * @type {Record<string, string[]>}
+ */
+export const GEDEELDE_WAARDEN = {
+  active: ['goals', 'group_members', 'groups'],
+  approved: ['completion_approvals', 'deadline_requests', 'weekly_goals'],
+  archived: ['goal_events', 'goals', 'groups'],
+  building: ['goals', 'groups', 'profiles'],
+  business: ['goals', 'groups', 'profiles'],
+  cancelled: ['commitment_events', 'commitments', 'weekly_goals'],
+  completed: ['goal_events', 'goals'],
+  connection: ['goals', 'groups', 'profiles'],
+  created: ['commitment_events', 'goal_events'],
+  creativity: ['goals', 'groups', 'profiles'],
+  done: ['ai_jobs', 'milestones'],
+  en: ['groups', 'milestone_tips', 'profiles'],
+  fitness: ['goals', 'groups', 'profiles'],
+  milestone_done: ['chat_messages', 'points_ledger'],
+  mindfulness: ['goals', 'groups', 'profiles'],
+  nl: ['groups', 'milestone_tips', 'profiles'],
+  nutrition: ['goals', 'groups', 'profiles'],
+  open: ['deadline_requests', 'groups', 'reports'],
+  other: ['goals', 'groups', 'profiles', 'reports'],
+  pending: ['group_join_requests', 'weekly_goals'],
+  productivity: ['goals', 'groups', 'profiles'],
+  resolved: ['commitment_events', 'commitments'],
+  self_care: ['goals', 'groups', 'profiles'],
+  skills: ['goals', 'groups', 'profiles'],
+  study: ['goals', 'groups', 'profiles'],
+  todo: ['milestones', 'weekly_goals'],
+};
+
+/**
+ * Welke CHECK-waarden vandaag in meer dan één tabel staan.
+ *
+ * @param {{ naam: string, sql: string }[]} bestanden
+ * @returns {Record<string, string[]>}
+ */
+export function gedeeldeWaarden(bestanden) {
+  const perWaarde = new Map();
+  for (const [, c] of checksIn(bestanden)) {
+    if (c.tabel === null || c.tabel === undefined) continue;
+    for (const waarde of c.waarden) {
+      if (!perWaarde.has(waarde)) perWaarde.set(waarde, new Set());
+      perWaarde.get(waarde).add(c.tabel);
+    }
+  }
+  const uit = {};
+  for (const [waarde, tabellen] of [...perWaarde].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (tabellen.size > 1) uit[waarde] = [...tabellen].sort();
+  }
+  return uit;
+}
+
+/**
+ * Het verschil tussen wat er gemeten is en wat er in het register staat.
+ *
+ * ⚠️ **Ook de tabellen tellen mee en niet alleen de naam.** Komt er bij `done`
+ *    een derde tabel bij, dan is het risico gegroeid terwijl de náám al in het
+ *    register stond — en dan zou een vergelijking op namen alleen zwijgen. Dat
+ *    is dezelfde vorm als de fout die dit hele issue veroorzaakte: kijken naar
+ *    het ding en niet naar waar het bij hoort.
+ */
+export function gedeeldVerschil(gemeten, register = GEDEELDE_WAARDEN) {
+  const nieuw = [];
+  const veranderd = [];
+  const verdwenen = [];
+  for (const [waarde, tabellen] of Object.entries(gemeten)) {
+    const bekend = register[waarde];
+    if (bekend === undefined) nieuw.push({ waarde, tabellen });
+    else if (bekend.join(',') !== tabellen.join(',')) veranderd.push({ waarde, tabellen, bekend });
+  }
+  for (const waarde of Object.keys(register)) {
+    if (!(waarde in gemeten)) verdwenen.push(waarde);
+  }
+  return { nieuw, veranderd, verdwenen };
+}
+
 /** CHECK-waarden die geen enkel pad ooit schrijft. */
 /**
  * @param {{
@@ -596,6 +710,12 @@ export function controleer({
 
   return {
     functies,
+    // ⚠️ **De ratel onder de tekstzoektocht.** Zolang een waarde bij één tabel
+    //    hoort, bewijst een treffer in de bron dat híj geschreven wordt. Zodra
+    //    hij gedeeld is, bewijst diezelfde treffer dat niet meer — en dat is
+    //    precies de stilte waar dit issue over gaat. Het register kan dat niet
+    //    voorkomen; het maakt zichtbaar wanneer het risico groeit.
+    gedeeld: gedeeldVerschil(gedeeldeWaarden(bestanden)),
     beloofdMaarOngetest,
     bewaaktVerouderd,
     beslistVerouderd,
@@ -641,6 +761,7 @@ function hoofd() {
     beslistVerouderd,
     waarden,
     verouderd,
+    gedeeld,
   } = controleer({
     bestanden,
     prodBron,
@@ -653,7 +774,10 @@ function hoofd() {
     bewaaktVerouderd.length === 0 &&
     beslistVerouderd.length === 0 &&
     waarden.length === 0 &&
-    verouderd.length === 0
+    verouderd.length === 0 &&
+    gedeeld.nieuw.length === 0 &&
+    gedeeld.veranderd.length === 0 &&
+    gedeeld.verdwenen.length === 0
   ) {
     const aantal = functiesIn(bestanden.map((b) => b.sql).join('\n')).size;
     const buiten = Object.keys(BEWAAKT_BUITEN_DE_APP).length;
@@ -666,7 +790,9 @@ function hoofd() {
         `${aantal - buiten - wachtend} met een pad door de app, ${buiten} bewakingen ` +
         `en ops-functies met een aanroeper in tests/ of scripts/, en ${wachtend} ` +
         `zonder pad waar het verdict een productvraag is. Elke CHECK-waarde ` +
-        `wordt ergens geschreven of staat met reden op de lijst.`,
+        `wordt ergens geschreven of staat met reden op de lijst; ` +
+        `${Object.keys(GEDEELDE_WAARDEN).length} waarden staan in meer dan één tabel ` +
+        `en maken de schrijverstoets daar blind.`,
     );
     return 0;
   }
@@ -725,7 +851,48 @@ function hoofd() {
         'stand van zaken, leest dan iets dat niet meer klopt.',
     );
   }
+
+  meldGedeeld(gedeeld);
   return 1;
+}
+
+/**
+ * De uitslag over `GEDEELDE_WAARDEN` — apart, want de uitleg is langer dan de
+ * logica en `hoofd()` zit al tegen de vijftig regels aan.
+ */
+function meldGedeeld({ nieuw, veranderd, verdwenen }) {
+  for (const { waarde, tabellen } of nieuw) {
+    console.error(
+      `✗ '${waarde}' staat nu in meer dan één tabel (${tabellen.join(', ')}) en niet ` +
+        'in GEDEELDE_WAARDEN.',
+    );
+  }
+  for (const { waarde, tabellen, bekend } of veranderd) {
+    console.error(
+      `✗ '${waarde}' staat in andere tabellen dan het register zegt: ` +
+        `${tabellen.join(', ')} tegen ${bekend.join(', ')}.`,
+    );
+  }
+  for (const waarde of verdwenen) {
+    console.error(`✗ GEDEELDE_WAARDEN noemt '${waarde}', maar die staat nog maar in één tabel.`);
+  }
+
+  if (nieuw.length > 0 || veranderd.length > 0) {
+    console.error(
+      '\nEen gedeelde waarde maakt de schrijverstoets hierboven blind: een treffer in\n' +
+        'de bron kan van de ándere tabel komen, en dan zwijgt de controle over een dode\n' +
+        'waarde. Ga per tabel na of de waarde daar écht geschreven wordt — met de hand,\n' +
+        'want automatisch kan het niet — en zet hem daarna in GEDEELDE_WAARDEN. Is hij\n' +
+        'in één van de tabellen dood, dan hoort hij óók in BEWUST_ONGESCHREVEN of\n' +
+        'TREFFER_HOORT_ELDERS.',
+    );
+  }
+  if (verdwenen.length > 0) {
+    console.error(
+      '\nDat is goed nieuws en toch rood, om dezelfde reden als bij BEWUST_ONGESCHREVEN:\n' +
+        'een register dat achterloopt, beschrijft een risico dat er niet meer is.',
+    );
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(hoofd());

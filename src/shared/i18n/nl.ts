@@ -1356,6 +1356,9 @@ export const nl = {
   'deadline.niet_gekoppeld': 'Dit doel is niet aan deze groep gekoppeld.',
   'deadline.zelfde_datum': 'Kies een andere datum dan de datum die er nu staat.',
   'deadline.argument_leeg': 'Schrijf één zin over wat er veranderd is.',
+  'deadline.geen_beslisser':
+    'Je bent het enige lid van deze groep, dus niemand kan dit verzoek goedkeuren. Nodig eerst iemand uit, of kies een groep waar een buddy in zit.',
+  'deadline.datum_in_verleden': 'Die datum ligt in het verleden. Kies vandaag of later.',
   'deadline.al_open': 'Er loopt al een verzoek voor dit doel. Wacht daar eerst op.',
   'deadline.bestaat_niet': 'Dit verzoek bestaat niet meer.',
   'deadline.al_beslist': 'Hier is al over beslist.',
@@ -2099,6 +2102,9 @@ export const nl = {
   'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
   'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
   'coach.al_ingevuld': 'Dit had je al ingevuld bij je doel; je kunt het hier bijstellen.',
+  'coach.uit_vragenlijst':
+    'Dit komt uit je vragenlijst, omgerekend van minuten per dag naar uren per week; je kunt het hier bijstellen.',
+  'coach.eerder_genoemd': 'Bij de vragenlijst noemde je: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // Het ritme van een doel — besluit A53, migratie 0140

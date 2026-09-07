@@ -7,15 +7,18 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-297; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-299 en QS8-303; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
 uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
-persoon-getuige), `0173` (geen servertijdstempel in handen van de client) en
-`0174` (een bovengrens op een pushtoken) staan
+persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
+`0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
+dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor) en
+`0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
+meldingsoort) en `0179` (een bovengrens op een pushtoken) staan
 er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
@@ -52,6 +55,11 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    ⚠️ **Wat er dan nóg openstaat vraagt Quintens machine:** drie Edge Functions
    deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
    in het dashboard. Migraties alleen zijn de feature niet.
+   ⚠️ **`notificaties` is er sinds QS8-298 een met een naam erbij:** die deploy
+   ís de vijfde meldingsoort. Migratie `0178` verruimt de CHECK en `regels.ts`
+   draagt de tekst, maar zolang de oude functie draait stelt niemand de vraag
+   `getuigenissen_voor()` — dan staat er een feature die niets doet. Zelfde vorm
+   als QS8-292 en QS8-124.
 3. ✅ **Het migratieregister kent nog één nummering** en de map bouwt het schema
    aantoonbaar op. **QS8-122 is af** en QS8-119 is daarmee vrij. De bestanden
    spelen op een lege database precies het schema van productie af — negen
@@ -64,18 +72,23 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
 4. ✅ **De RLS-suite draait sinds 24-08 lokaal** (QS8-119): `npm run rls:stack`
    en `npm run rls:lokaal`, tegen een echte PostgREST op een database uit
    `supabase/migrations/`. Geen credentials, geen productie, vijf seconden.
-   **1070 geslaagd, 1 overgeslagen** over 86 bestanden (07-09, na QS8-297; daarvóór QS8-299; daarvóór QS8-150; daarvóór QS8-223 en QS8-293; daarvóór QS8-294, QS8-292, QS8-291, QS8-228; daarvóór QS8-289; daarvóór QS8-286, QS8-290, QS8-287, QS8-288, QS8-227; daarvóór QS8-275, QS8-276, QS8-146, QS8-278, QS8-279, QS8-280, QS8-281, QS8-282, QS8-283, QS8-198, QS8-199, QS8-222, QS8-246 en QS8-285).
-   ✅ **En dat getal geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
+   **Ruim duizend tests** in de RLS-suite en **ruim drieduizend** in de hele
+   suite, over zo'n 250 bestanden.
+   ✅ **En dat geldt sinds QS8-270 zonder dat je `PGPORT` hoeft te zetten.**
    Drie bestanden stonden op de verkeerde poort en sloegen zichzelf stil over:
-   870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug. De hele
-   suite geeft met de stack **3559 geslaagd en 1 overgeslagen** over
-   256 bestanden.
-   ⚠️ **Die twee testtellers staan er met de hand en dat is een keuze.** Ze zijn
-   geen eigenschap van de repo maar van een dráaiende suite, en ze verschillen
-   legitiem per branch — een generator zou de botsing niet wegnemen maar alleen
-   ná een volledige run juist beslechten. **Meet ze dus, tel ze niet op:** bij
-   het samengaan met `main` is het antwoord `npm run poort`, niet het hoogste
-   van de twee getallen. Zie de dossierrij van 06-09.
+   870 geslaagd en 31 overgeslagen, met exitcode 0. Dertig tests terug.
+   ⚠️⚠️ **Hier stond tot 06-09-2026 het exacte getal, en dat is er met QS8-302
+   uitgehaald.** 📏 Die regel is op één dag **bij zeven van de zeven merges** een
+   conflict geweest. De oorzaak is niet dat hij met de hand bijgewerkt werd —
+   QS8-284 had gelijk dat een generator dat niet oplost, want een gegenereerd
+   blok botst net zo hard en het getal is pas juist ná een volledige run. De
+   oorzaak is dat een **exact** getal verandert bij elke test die erbij komt, en
+   dus bij vrijwel elke merge. Een orde van grootte verandert zelden, en voor de
+   overdracht is dat genoeg: §2 is de stand en niet het archief.
+   **Wil je het exacte getal, draai dan `npm run tellers`** — dan heb je het
+   bovendien van nú in plaats van van de laatste keer dat iemand het opschreef.
+   **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
+   `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
 Typecheck, lint en alle 37 controlescripts groen;
 `npm run poort` meldt 41 stappen.
@@ -150,7 +163,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0174` staan in de map: **177 bestanden**,
+Migraties `0001` t/m `0179` staan in de map: **182 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
