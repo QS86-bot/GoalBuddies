@@ -183,7 +183,7 @@ export const BEWAAKT_BUITEN_DE_APP = {
   goal_events_bewaking:
     'De allowlist van `goal_events.event_type` naast de vier die tegen ' +
     'domeinregel 7 gewogen zijn — oppervlak 24 volgt het doel en niet de groep, ' +
-    'dus een vijfde type verbreedt wat elke gekoppelde groep leest (0174). ' +
+    'dus een vijfde type verbreedt wat elke gekoppelde groep leest (0181). ' +
     'Meldt ook als de CHECK niet meer de verwachte vorm heeft: onherkenbaar ' +
     'moet een alarm zijn en geen stilte.',
   tijdstempel_bewaking:
