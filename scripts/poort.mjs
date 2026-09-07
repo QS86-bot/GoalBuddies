@@ -195,6 +195,58 @@ export function draai(commando) {
   };
 }
 
+/**
+ * De uitslag naar het scherm, en de exitcode die erbij hoort.
+ *
+ * ⚠️ **Losgetrokken uit `hoofd()` en niet omdat de vijftig knelde.** Deze functie
+ *    beantwoordt één vraag — *wat zeg je tegen de lezer* — en `hoofd()` de
+ *    andere: *wat draai je*. Ze veranderen ook om verschillende redenen: de
+ *    ene als er een stap bijkomt, de andere als een melding de lezer naar de
+ *    verkeerde oorzaak stuurt. Dat laatste is hier op 07-09-2026 gebeurd.
+ *
+ * @returns de exitcode: 0 alleen als alles groen én gemeten is.
+ */
+export function meldUitslag(uitkomsten, aantalStappen) {
+  const rood = uitkomsten.filter((u) => u.oordeel === 'rood');
+  const ongemeten = uitkomsten.filter((u) => u.oordeel === 'ongemeten');
+
+  for (const u of rood) {
+    process.stderr.write(`\n──── ${u.naam} ────\n${u.uitvoer.trimEnd()}\n`);
+  }
+
+  process.stdout.write('\n');
+  if (ongemeten.length > 0) {
+    // ⚠️ **Niet "zonder database".** Dat was één advies voor drie oorzaken, en
+    //    het stuurde de lezer naar `npm run rls:stack` terwijl `adviseur:` en
+    //    `register:controle` een productiesleutel missen en `audit:controle`
+    //    het npm-register. Zelfde klasse als QS8-268: een melding die stelliger
+    //    is dan wat er gemeten is.
+    process.stdout.write(
+      `· ${ongemeten.length} controle(s) hebben niets gemeten: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
+        '  Lees per controle de reden die hij zelf noemt — een database, een\n' +
+        '  productiesleutel of het npm-register. Niet elke ongemeten controle wacht\n' +
+        '  op `npm run rls:stack`, en één advies voor alle gevallen stuurt de lezer\n' +
+        '  naar de verkeerde oorzaak.\n\n',
+    );
+  }
+
+  if (rood.length > 0) {
+    process.stderr.write(`✗ ${rood.length} van de ${aantalStappen} staan rood.\n`);
+    return 1;
+  }
+
+  if (ongemeten.length > 0) {
+    process.stderr.write(
+      `✗ Niets staat rood, maar ${ongemeten.length} controle(s) hebben niets gemeten.\n` +
+        '  Dat is geen groene poort. Zie hierboven.\n',
+    );
+    return 1;
+  }
+
+  process.stdout.write(`poort: ${aantalStappen} stappen, allemaal groen en allemaal gemeten.\n`);
+  return 0;
+}
+
 async function hoofd() {
   const snel = process.argv.includes('--snel');
   // ⚠️ Met `readFileSync` en niet met een import-attribuut: die syntax slikt de
@@ -226,35 +278,7 @@ async function hoofd() {
     process.stdout.write(`${teken} ${stap.naam}\n`);
   }
 
-  const rood = uitkomsten.filter((u) => u.oordeel === 'rood');
-  const ongemeten = uitkomsten.filter((u) => u.oordeel === 'ongemeten');
-
-  for (const u of rood) {
-    process.stderr.write(`\n──── ${u.naam} ────\n${u.uitvoer.trimEnd()}\n`);
-  }
-
-  process.stdout.write('\n');
-  if (ongemeten.length > 0) {
-    process.stdout.write(
-      `· ${ongemeten.length} controle(s) zonder database: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
-        '  Die hebben niets gemeten. Start de stack met `npm run rls:stack` en draai opnieuw.\n\n',
-    );
-  }
-
-  if (rood.length > 0) {
-    process.stderr.write(`✗ ${rood.length} van de ${stappen.length} staan rood.\n`);
-    process.exit(1);
-  }
-
-  if (ongemeten.length > 0) {
-    process.stderr.write(
-      `✗ Niets staat rood, maar ${ongemeten.length} controle(s) hebben niets gemeten.\n` +
-        '  Dat is geen groene poort. Zie hierboven.\n',
-    );
-    process.exit(1);
-  }
-
-  process.stdout.write(`poort: ${stappen.length} stappen, allemaal groen en allemaal gemeten.\n`);
+  process.exit(meldUitslag(uitkomsten, stappen.length));
 }
 
 // ⚠️ `pathToFileURL` en geen sjabloonstring: op Windows levert `file://${...}`

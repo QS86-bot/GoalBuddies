@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { NAGEKEKEN, verschil, wortelsUit } from '../../scripts/audit-controle.mjs';
+import {
+  NAGEKEKEN,
+  hoofd,
+  isBruikbaarRapport,
+  reparatieSoort,
+  verschil,
+  wortelsUit,
+} from '../../scripts/audit-controle.mjs';
 
 /**
  * `npm run audit:controle` — QS8-191.
@@ -29,29 +36,156 @@ describe('wortelsUit', () => {
         expo: { severity: 'moderate', via: ['metro'] },
       },
     };
-    expect(wortelsUit(rapport)).toEqual({ 'image-size': 'high' });
+    expect(Object.keys(wortelsUit(rapport))).toEqual(['image-size']);
+    expect(wortelsUit(rapport)['image-size'].ernst).toBe('high');
   });
 
   it('geeft een lege verzameling bij een schoon rapport', () => {
     expect(wortelsUit({ vulnerabilities: {} })).toEqual({});
     expect(wortelsUit({})).toEqual({});
   });
+
+  it('draagt de advisorynummers mee, gesorteerd', () => {
+    // ⚠️ Dít is wat een naam plus een ernst niet kan: twee van de vier huidige
+    //    wortels dragen al twee advisories, dus stapelen is hier het normale
+    //    patroon en geen randgeval.
+    const rapport = {
+      vulnerabilities: {
+        'image-size': {
+          severity: 'high',
+          via: [{ source: 1138809, title: 'b' }, 'metro', { source: 1138808, title: 'a' }],
+        },
+      },
+    };
+    expect(wortelsUit(rapport)['image-size'].advisories).toEqual([1138808, 1138809]);
+  });
+
+  it('ziet een wortel die `__proto__` heet', () => {
+    // 📏 Gemeten op de eerste versie: met een object-literal werd deze wortel
+    //    stilzwijgend verzwolgen en bleef de controle groen. De invoer komt van
+    //    buiten deze repo, dus dat is niet gratis.
+    const vulnerabilities = JSON.parse(
+      '{"__proto__":{"severity":"critical","via":[{"source":1}]}}',
+    ) as Record<string, unknown>;
+    expect(Object.keys(wortelsUit({ vulnerabilities }))).toEqual(['__proto__']);
+  });
+});
+
+describe('reparatieSoort', () => {
+  it('houdt een brekende reparatie uit een gratis reparatie', () => {
+    // ⚠️ Een boolean maakt deze vier gelijk, en dan heeft de voorwaarde in de
+    //    dossierrij ("dan is de override gratis") opnieuw geen meter: die noemt
+    //    de overgang brekend → gratis, niet geen → wel.
+    expect(reparatieSoort(false)).toBe('geen');
+    expect(reparatieSoort(true)).toBe('gratis');
+    expect(reparatieSoort({ name: 'expo-router', isSemVerMajor: true })).toBe('brekend');
+    expect(reparatieSoort({ name: 'expo-router', isSemVerMajor: false })).toBe('gratis');
+  });
+});
+
+describe('isBruikbaarRapport', () => {
+  it('weigert een rapport zonder `vulnerabilities`', () => {
+    // 📏 Dit is de vorm die een onbereikbaar npm-register teruggeeft — geldige
+    //    JSON, geen kwetsbaarheden, en dus niet te onderscheiden van "schoon"
+    //    zonder deze toets.
+    expect(isBruikbaarRapport({ message: 'connect ECONNREFUSED', error: {} })).toBe(false);
+    expect(isBruikbaarRapport(null)).toBe(false);
+    expect(isBruikbaarRapport({})).toBe(false);
+    expect(isBruikbaarRapport({ vulnerabilities: null })).toBe(false);
+  });
+
+  it('laat een leeg maar echt rapport door', () => {
+    // ⚠️ Nul kwetsbaarheden is een méting en geen mislukking. Die twee mogen
+    //    hier niet op één hoop: het verschil is de hele bevinding.
+    expect(isBruikbaarRapport({ vulnerabilities: {} })).toBe(true);
+  });
+});
+
+describe('hoofd', () => {
+  it('slaat zichzelf over in plaats van alles verdwenen te melden', () => {
+    // 📏 Op de eerste versie gaf dit vier regels "NAGEKEKEN noemt X, maar npm
+    //    audit meldt hem niet meer" — een uitnodiging om het register leeg te
+    //    maken. Gemeten met `npm_config_registry=http://127.0.0.1:1/`.
+    const regels: string[] = [];
+    const echt = console.error;
+    console.error = (m: unknown) => regels.push(String(m));
+    try {
+      expect(hoofd(() => ({ message: 'connect ECONNREFUSED' }))).toBe(1);
+    } finally {
+      console.error = echt;
+    }
+    expect(regels.join('\n')).toContain('OVERGESLAGEN');
+    expect(regels.join('\n')).not.toContain('meldt hem niet meer');
+  });
+
+  it('meldt wél verdwenen wortels bij een écht leeg rapport', () => {
+    // De andere kant van diezelfde grendel: een gemeten nul is geen overslaan.
+    const regels: string[] = [];
+    const echt = console.error;
+    console.error = (m: unknown) => regels.push(String(m));
+    try {
+      expect(hoofd(() => ({ vulnerabilities: {} }))).toBe(1);
+    } finally {
+      console.error = echt;
+    }
+    expect(regels.join('\n')).toContain('meldt hem niet meer');
+    expect(regels.join('\n')).not.toContain('OVERGESLAGEN');
+  });
 });
 
 describe('verschil', () => {
-  const register = { a: { ernst: 'high', in_bundel: false, marker: 'x', reden: 'r' } };
+  const register = {
+    a: {
+      ernst: 'high',
+      advisories: [100, 200],
+      reparatie: 'brekend',
+      in_bundel: false,
+      marker: 'x',
+      reden: 'r',
+    },
+  };
+  const meting = (over = {}) => ({
+    a: { ernst: 'high', advisories: [100, 200], reparatie: 'brekend', ...over },
+  });
 
   it('meldt een wortel die er nieuw bij komt', () => {
-    expect(verschil({ a: 'high', b: 'moderate' }, register).nieuw).toEqual([
-      { naam: 'b', ernst: 'moderate' },
-    ]);
+    const gemeten = {
+      ...meting(),
+      b: { ernst: 'moderate', advisories: [300], reparatie: 'geen' },
+    };
+    expect(verschil(gemeten, register).nieuw).toEqual([{ naam: 'b', ernst: 'moderate' }]);
   });
 
   it('meldt een wortel die van ernst verandert', () => {
     // Dezelfde naam, zwaardere advisory: de bouw-meting is dan net zo goed
     // verlopen, want de vraag "haalt dit de bundel" is opnieuw te stellen.
-    expect(verschil({ a: 'critical' }, register).anders).toEqual([
-      { naam: 'a', ernst: 'critical', was: 'high' },
+    expect(verschil(meting({ ernst: 'critical' }), register).anders).toEqual([
+      { naam: 'a', redenen: ['ernst high → critical'] },
+    ]);
+  });
+
+  it('meldt een advisory die erbij komt zonder dat de ernst stijgt', () => {
+    // ⚠️⚠️ **Dit is de bevinding waar de tweede versie voor bestaat.** In de
+    //    eerste bleef dit groen: naam gelijk, ernst gelijk, dus geen verschil.
+    //    Terwijl de `reden` in het register een DoS in build-tooling afweegt en
+    //    de nieuwe advisory RCE kan zijn. De motivering blijft dan staan voor
+    //    een gebeurtenis die niet meer dezelfde is.
+    expect(verschil(meting({ advisories: [100, 200, 999] }), register).anders).toEqual([
+      { naam: 'a', redenen: ['advisories 100,200 → 100,200,999'] },
+    ]);
+  });
+
+  it('meldt een advisory die door een ándere van gelijke ernst vervangen wordt', () => {
+    expect(verschil(meting({ advisories: [777] }), register).anders).toEqual([
+      { naam: 'a', redenen: ['advisories 100,200 → 777'] },
+    ]);
+  });
+
+  it('meldt dat een reparatie van brekend naar gratis gaat', () => {
+    // Dat moment is precies de voorwaarde die de dossierrij bij
+    // `decode-uri-component` noemt, en hij had tot nu toe geen meter.
+    expect(verschil(meting({ reparatie: 'gratis' }), register).anders).toEqual([
+      { naam: 'a', redenen: ['reparatie brekend → gratis'] },
     ]);
   });
 
@@ -61,8 +195,15 @@ describe('verschil', () => {
     expect(verschil({}, register).verdwenen).toEqual(['a']);
   });
 
+  it('noemt een wortel die `toString` heet nieuw en niet bekend', () => {
+    // ⚠️ Met `register[naam] === undefined` vindt zo'n naam een geërfde methode
+    //    en heet hij bekend. `Object.hasOwn` is de grendel.
+    const gemeten = { toString: { ernst: 'critical', advisories: [1], reparatie: 'geen' } };
+    expect(verschil(gemeten, register).nieuw).toEqual([{ naam: 'toString', ernst: 'critical' }]);
+  });
+
   it('zwijgt als meting en register gelijk zijn', () => {
-    expect(verschil({ a: 'high' }, register)).toEqual({ nieuw: [], anders: [], verdwenen: [] });
+    expect(verschil(meting(), register)).toEqual({ nieuw: [], anders: [], verdwenen: [] });
   });
 });
 
@@ -73,6 +214,16 @@ describe('NAGEKEKEN', () => {
       expect(v.marker.length, `${naam}: de marker mag niet leeg zijn`).toBeGreaterThan(3);
       expect(v.reden.length, `${naam} hoort een reden te dragen`).toBeGreaterThan(30);
       expect(typeof v.in_bundel, `${naam}: in_bundel is gemeten en geen gok`).toBe('boolean');
+      expect(Array.isArray(v.advisories), `${naam} hoort advisorynummers te dragen`).toBe(true);
+      expect(v.advisories.length, `${naam}: minstens één advisory`).toBeGreaterThan(0);
+      expect(
+        [...v.advisories].sort((a: number, b: number) => a - b),
+        `${naam}: advisories horen gesorteerd te staan, anders botst de vergelijking`,
+      ).toEqual(v.advisories);
+      expect(
+        ['geen', 'brekend', 'gratis'],
+        `${naam}: reparatie is een van de drie soorten`,
+      ).toContain(v.reparatie);
     }
   });
 
