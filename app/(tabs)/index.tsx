@@ -10,6 +10,7 @@ import {
   dienOpnieuwIn,
   fetchAfgevinktOp,
   fetchAfvinktellingen,
+  fetchBevestigingsstanden,
   fetchDagzetten,
   fetchVragen,
   maakAfvinkingOngedaan,
@@ -352,6 +353,22 @@ export default function Vandaag() {
   );
 
   /**
+   * Hoeveel bevestigingen elke week nog nodig heeft — QS8-174.
+   *
+   * ⚠️ Eén verzoek voor alle weekdoelen samen, om dezelfde reden als hierboven:
+   *    per week los ophalen is de N+1 uit onwrikbare regel 12.
+   *
+   * ⚠️ `fetchBevestigingsstanden()` vangt zijn eigen fout af en geeft dan een
+   *    lege map. Het bijschrift valt dan terug op "wacht op je buddy" — de tekst
+   *    van vóór dit issue. Een bijschrift hoort een hoofdscherm nooit om te
+   *    trekken.
+   */
+  const { data: bevestigingsstanden } = useAsync(
+    weekdoelen.length === 0 ? null : () => fetchBevestigingsstanden(weekdoelen.map((w) => w.id)),
+    [weekdoelen, ronde],
+  );
+
+  /**
    * Welke weekdoelen vandáág zijn afgevinkt.
    *
    * ⚠️ Een aparte verzameling en niet af te leiden uit de telling: bij drie van
@@ -428,6 +445,7 @@ export default function Vandaag() {
                 categorie={doelcategorieen.get(weekdoel.goal_id) ?? ''}
                 mijlpaaltip={mijlpaaltips?.get(weekdoel.goal_id) ?? null}
                 afgevinkt={afvinkingen?.get(weekdoel.id) ?? 0}
+                bevestigingsstand={bevestigingsstanden?.get(weekdoel.id)}
                 vandaagAfgevinkt={(vandaagAf ?? new Set()).has(weekdoel.id)}
                 localDate={vandaagLokaal}
                 userId={userId ?? ''}
@@ -791,6 +809,7 @@ function WeekdoelKaart({
   categorie,
   mijlpaaltip,
   afgevinkt,
+  bevestigingsstand,
   vandaagAfgevinkt,
   localDate,
   userId,
@@ -816,6 +835,14 @@ function WeekdoelKaart({
    *    het hele punt van de gefaseerde volgorde in besluit A48.
    */
   readonly mijlpaaltip: Mijlpaaltip | null;
+  /**
+   * Hoeveel bevestigingen deze week al heeft en hoeveel er nodig zijn — QS8-174.
+   *
+   * ⚠️ `undefined` is de normale stand en geen storing: een week die niet op
+   *    bevestiging wacht staat er niet in, en een mislukte ophaal ook niet. Het
+   *    bijschrift valt dan terug op "wacht op je buddy".
+   */
+  readonly bevestigingsstand: { readonly gedaan: number; readonly nodig: number } | undefined;
   /**
    * Het aantal dagen dat deze week al is afgevinkt — QS8-253.
    *
@@ -1006,6 +1033,7 @@ function WeekdoelKaart({
         status={weekdoel.status as WeeklyGoalStatus}
         achieved="none"
         viewer="owner"
+        bevestigingen={bevestigingsstand}
       />
 
       {/*

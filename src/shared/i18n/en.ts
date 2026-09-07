@@ -217,6 +217,7 @@ export const en: Record<Sleutel, string> = {
   'weekdoel.vloer_gehaald': 'Floor reached',
   'weekdoel.gehaald': 'Done',
   'weekdoel.wacht_op_buddy': '{wat}: waiting for your buddy',
+  'weekdoel.wacht_op_bevestigingen': '{wat}: {gedaan} of {nodig} confirmed',
 
   'reeks.geen': 'No streak yet',
   'reeks.een': '1 week in a row',
@@ -260,6 +261,12 @@ export const en: Record<Sleutel, string> = {
 
   'mijlpalen.geen': 'No milestones yet',
   'mijlpalen.voortgang': '{done} of {total} milestones',
+
+  'datumkeuze.kies': 'Pick a date',
+  'datumkeuze.niets_gekozen': 'no date yet',
+  'datumkeuze.wissen': 'No date',
+  'datumkeuze.vorige_maand': 'Previous month',
+  'datumkeuze.volgende_maand': 'Next month',
 
   'weekstart.label': 'My week starts on',
   'weekstart.hint':
@@ -974,6 +981,9 @@ export const en: Record<Sleutel, string> = {
   'deadline.niet_gekoppeld': 'This goal is not linked to this group.',
   'deadline.zelfde_datum': 'Choose a date other than the one that is set now.',
   'deadline.argument_leeg': 'Write one sentence about what changed.',
+  'deadline.geen_beslisser':
+    'You are the only member of this group, so nobody can approve this request. Invite someone first, or pick a group with a buddy in it.',
+  'deadline.datum_in_verleden': 'That date is in the past. Pick today or later.',
   'deadline.al_open': 'There is already a request for this goal. Wait for that one first.',
   'deadline.bestaat_niet': 'This request no longer exists.',
   'deadline.al_beslist': 'This has already been decided.',
@@ -1620,6 +1630,14 @@ export const en: Record<Sleutel, string> = {
   'weekplan.start_nu': 'Start this one now',
   'weekplan.start_nu_label': 'Start "{titel}" this week',
   'weekplan.verwijder': 'Remove from plan',
+  'weekplan.bijstellen': 'Adjust',
+  'weekplan.bijstellen_label': 'Adjust "{titel}"',
+  'weekplan.bewerken_kop': 'Adjust this step',
+  'weekplan.titel': 'What are you going to do?',
+  'weekplan.vloer': 'The floor: what you still manage on your worst week',
+  'weekplan.plafond': 'The ceiling: what you are aiming for',
+  'weekplan.bewaren': 'Save',
+  'weekplan.annuleren': 'Never mind',
   'weekplan.verwijder_label': 'Remove "{titel}" from the plan',
   'weekplan.omhoog': 'Earlier',
   'weekplan.omhoog_label': 'Move "{titel}" earlier in the plan',
@@ -1647,6 +1665,9 @@ export const en: Record<Sleutel, string> = {
   'validatie.weekplan_leeg': 'A plan without steps is not a plan.',
   'validatie.weekplan_lang': 'A plan reaches at most a year ahead.',
   'coach.al_ingevuld': "You already filled this in on your goal; you can adjust it here.",
+  'coach.uit_vragenlijst':
+    'This comes from your questionnaire, converted from minutes per day to hours per week; you can adjust it here.',
+  'coach.eerder_genoemd': 'In the questionnaire you mentioned: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // A goal's rhythm — decision A53, migration 0140

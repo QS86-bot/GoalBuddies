@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { roeptAan } from './roept-aan';
+
 const WORTEL = join(__dirname, '..', '..');
 
 /**
@@ -55,6 +57,40 @@ const MOET_EEN_SCHERM_HEBBEN: Readonly<Record<string, string>> = {
   fetchCommitmentSpoor:
     'Domeinregel 5 eist dat een commitment auditeerbaar is. Een spoor dat ' +
     'niemand kan opvragen is precies zo goed als geen spoor.',
+  stelWeekplanstapBij:
+    'Een geplande stap was aan te maken, te herordenen, te starten en weg te ' +
+    'gooien — alleen niet bij te stellen. Een tikfout in de titel kostte je de ' +
+    'hele stap én zijn plek in de volgorde. ⚠️ **Deze rij staat er sinds ' +
+    'QS8-301, en hij is niet met de hand gevonden**: `exports:controle` (QS8-150) ' +
+    'meldde hem als functie zonder pad naar een mens. Dat is precies waar die ' +
+    'detector voor gebouwd is, en dit is het eerste gat dat hij heeft opgeleverd ' +
+    'in plaats van bevestigd. ' +
+    '⚠️ **En wat déze rij níét bewaakt, is dat er een knóp is.** Gemeten bij het ' +
+    'ijken: haal de knop uit `Weekplanblok` en deze test blijft groen, want het ' +
+    'scherm roept de functie nog steeds aan — alleen kan niemand er meer bij. ' +
+    'Wat dat wél vindt is `catalogus:controle`: zonder knop staan ' +
+    '`weekplan.bijstellen` en `weekplan.bijstellen_label` nergens meer en wordt ' +
+    'die rood. Twee controles, twee helften van dezelfde keten, en geen van ' +
+    'beide dekt hem alleen.',
+  vulVoorInterview:
+    'De onboarding vraagt hoeveel minuten per dag je hebt en wat je gewoontes ' +
+    'normaal laat stuklopen, en de Doelcoach stelde die twee vragen daarna ' +
+    'blanco opnieuw. De functie die dat oplost stond er, onder test, en werd ' +
+    'door geen enkel scherm aangeroepen — dan is de vragenlijst een formulier ' +
+    'waar niets mee gebeurt. ⚠️ **Tweede rij uit `exports:controle` (QS8-150), ' +
+    'en het tweede gat van QS8-301 groep 1.** ' +
+    '⚠️ **De rij staat op de samenstelling en niet op `vulVoorUitProfiel` zelf**, ' +
+    'want die is sinds QS8-301 een schakel in `vulVoorInterview()` — de twee ' +
+    'vullingen zijn daar samengevoegd omdat hun naad in een component-effect ' +
+    'voor geen enkele test bereikbaar was. `exports:controle` loopt de ' +
+    'aanroepen transitief na en ziet hem dus nog steeds; deze lijst kijkt ' +
+    'alleen naar de eerste schakel (zie `useAvatarKeuze` hierboven). ' +
+    '⚠️ **Wat déze rij níét bewaakt, is de contextkant.** Gemeten bij het ' +
+    'ijken: haal de valkuilen uit `toelichtingBij()` en deze test blijft groen, ' +
+    'want het scherm roept de functie nog steeds aan voor de uren. Wat dat wél ' +
+    'vindt is `catalogus:controle` — `coach.eerder_genoemd` staat dan nergens ' +
+    'meer. Zelfde tweedeling als bij `stelWeekplanstapBij` hierboven: twee ' +
+    'controles, twee helften van dezelfde keten.',
 };
 
 /**
@@ -158,32 +194,4 @@ function schermbestanden(
     else if (/\.tsx?$/.test(naam)) uit.push({ pad, bron: readFileSync(pad, 'utf8') });
   }
   return uit;
-}
-
-/**
- * Of `bron` de functie daadwerkelijk aanroept — niet alleen noemt.
- *
- * ⚠️ **Blokcommentaar gaat er als blok af en niet per regel, en dat is een
- *    reparatie.** De eerste versie filterde regels die met `//`, `*` of `/*`
- *    beginnen. Dat dekt JSDoc, maar niet de JSX-vorm die dit project overal
- *    gebruikt:
- *
- *      {** De knop bij `wijzigMijlpaal()`, die tot 28-08 ontbrak. **}
- *
- *    Zo'n regel begint met een waarschuwingsteken en niet met een sterretje, dus
- *    hij bleef staan — en dan telde de tóelichting op de knop als de knop. Bij
- *    het ijken bleven twee van de drie gevallen groen terwijl de aanroep eruit
- *    was. **Precies de fout die deze test moet vangen, in de test zelf.**
- */
-export function roeptAan(bron: string, naam: string): boolean {
-  const zonderCommentaar = bron
-    // Eerst blokken: /* … */ dekt zowel JSDoc als de JSX-vorm {/* … */}.
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .split('\n')
-    .filter((regel) => !regel.trimStart().startsWith('//'))
-    .join('\n');
-
-  // ⚠️ De haakjes horen erbij: een `import { wijzigDoel }` is geen knop. En de
-  //    negatieve vooruitblik houdt `wijzigDoelStatus` buiten de deur.
-  return new RegExp(`(?<![a-zA-Z0-9_])${naam}\\s*\\(`).test(zonderCommentaar);
 }

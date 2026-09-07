@@ -35,6 +35,7 @@ export {
   toonDatum,
   toonDatumKort,
   toonDatumLang,
+  toonMaand,
   toonKlokTijd,
   toonMoment,
   toonTijd,
@@ -54,3 +55,12 @@ export {
   weekdagPeildatum,
   weekdayOf,
 } from './zoned';
+
+export {
+  dagIsTeKiezen,
+  eersteVanDeMaand,
+  maandErbij,
+  maandraster,
+  type Maanddag,
+  type Maandraster,
+} from './maandraster';

@@ -10,7 +10,7 @@ import {
   werkJobAf,
   type VoorstelMijlpaal,
 } from '@/modules/ai';
-import { useSession } from '@/modules/auth';
+import { useProfiel, useSession } from '@/modules/auth';
 import {
   ANTWOORD_MAX,
   bewaarInterview,
@@ -20,11 +20,14 @@ import {
   interviewStappen,
   LEEG_INTERVIEW,
   maakMijlpaal,
+  urenPerWeekUitMinuten,
   urenUitTekst,
-  vulVoorUitDoel,
+  valkuilLabels,
+  vulVoorInterview,
   type DoelMetVoortgang,
-  type GespiegeldVeld,
   type InterviewInvoer,
+  type Interviewvulling,
+  type ProfielContextVeld,
 } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { toonDatum } from '@/shared/time';
@@ -40,6 +43,49 @@ import {
   Subheading,
   Wachtbalk,
 } from '@/shared/ui';
+
+type Voorgevuld = Interviewvulling['voorgevuld'];
+
+/**
+ * De toelichting onder een vraag, met erbij wat de app al over dit veld weet.
+ *
+ * ⚠️ **Eén regel en geen tweede regel eronder.** Twee hints onder één invoerveld
+ *    leest als twee eisen, en dit zijn er geen: het is uitleg waar de tekst
+ *    vandaan komt, en wat je eerder aangevinkt hebt.
+ *
+ * ⚠️ De twee sluiten elkaar niet uit — het profiel geeft context bij vraag 6 en
+ *    vult vraag 4 voor, en dat zijn andere velden. Ze staan hier los van elkaar
+ *    zodat een derde bron er niets aan hoeft te verbouwen.
+ */
+function toelichtingBij(
+  stap: { readonly veld: string; readonly toelichting: string },
+  voorgevuld: Voorgevuld,
+  context: Readonly<Partial<Record<ProfielContextVeld, readonly string[]>>>,
+): string {
+  const delen = [stap.toelichting];
+
+  const uit = voorgevuld[stap.veld];
+  if (uit === 'doel') delen.push(t('coach.al_ingevuld'));
+  if (uit === 'vragenlijst') delen.push(t('coach.uit_vragenlijst'));
+
+  const eerder = context[stap.veld as ProfielContextVeld];
+  if (eerder !== undefined && eerder.length > 0) {
+    delen.push(t('coach.eerder_genoemd', { valkuilen: valkuilenTekst(eerder) }));
+  }
+
+  return delen.join(' ');
+}
+
+/**
+ * ⚠️ `what_breaks_it` is aan de profielkant `string[]` en geen `Valkuil[]` — de
+ *    allowlist is een CHECK in migratie 0143 en wordt aan de doelenkant getoetst,
+ *    niet nog een derde keer in het profielschema. Een waarde zonder label mag
+ *    hier dus niet als lege ruimte eindigen.
+ */
+function valkuilenTekst(valkuilen: readonly string[]): string {
+  const labels: Readonly<Record<string, string | undefined>> = valkuilLabels();
+  return valkuilen.map((valkuil) => labels[valkuil] ?? valkuil).join(' · ');
+}
 
 /**
  * De Doelcoach — QS8-37 (het interview) en QS8-38 (mijlpalen genereren).
@@ -78,9 +124,33 @@ export default function Doelcoach() {
    *    komt. En het is de helft van de belofte: de vraag wordt niet opnieuw
    *    gesteld, maar hij is nog wel bij te stellen.
    */
-  const [voorgevuld, setVoorgevuld] = useState<readonly GespiegeldVeld[]>([]);
+  const [voorgevuld, setVoorgevuld] = useState<Voorgevuld>({});
+  /**
+   * Wat het profiel al wéét zonder het in te vullen — vandaag alleen de
+   * valkuilen uit de onboarding (`PROFIELCONTEXT`).
+   *
+   * ⚠️ **Context en geen voorvulling, en dat onderscheid is het hele ontwerp van
+   *    QS8-257.** Aan de ene kant staan aangevinkte valkuilen, aan de andere
+   *    vrije tekst. Die omzetten zou betekenen dat de app een zin schrijft en
+   *    hem opslaat alsof de gebruiker hem getypt heeft. Dus: tonen wat er ligt,
+   *    en het veld leeg laten voor wat iemand wil toevoegen.
+   */
+  const [context, setContext] = useState<
+    Readonly<Partial<Record<ProfielContextVeld, readonly string[]>>>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
+  const { profiel, loading: profielLaadt } = useProfiel();
+  /**
+   * Is er al voorgevuld?
+   *
+   * ⚠️ **Eén keer, en niet één keer per keer dat het profiel binnenkomt.** De
+   *    vulling leest het interview zoals het uit de database komt, dus een
+   *    tweede ronde gooit weg wat de gebruiker intussen getypt heeft. Het
+   *    profiel arriveert bij een diepe link ná dit scherm, dus die tweede ronde
+   *    is het normale pad en niet het randgeval.
+   */
+  const gevuld = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -93,13 +163,29 @@ export default function Doelcoach() {
 
         // ⚠️ Ook als er nog géén interview is. Dat is juist het normale geval bij
         //    een vers doel, en precies dan staan de twee antwoorden al op
-        //    `goals` — dat is waar QS8-205 over gaat.
-        if (gevonden !== null) {
-          const vulling = vulVoorUitDoel(interview?.antwoorden ?? LEEG_INTERVIEW, gevonden);
+        //    `goals` en in het profiel — dat is waar QS8-205 en QS8-301 over
+        //    gaan. De volgorde van de twee bronnen en het doorgeven van de
+        //    tussenuitkomst zitten in de gedeelde vulling en niet hier: een
+        //    naad in een effect is een naad die geen test kan bereiken.
+        //
+        // ⚠️ **Pas als het profiel er is**, want anders vult de eerste ronde
+        //    alleen uit het doel en is de vragenlijst alsnog voor niets
+        //    ingevuld. Zolang dat niet zo is blijft het scherm op laden staan —
+        //    zie de `finally` hieronder — zodat er geen invoerveld verschijnt
+        //    dat een tel later overschreven wordt.
+        if (!profielLaadt) {
+          gevuld.current = true;
+
+          const vulling = vulVoorInterview(
+            interview?.antwoorden ?? LEEG_INTERVIEW,
+            gevonden,
+            profiel,
+            urenPerWeekUitMinuten,
+          );
+
           setAntwoorden(vulling.antwoorden);
           setVoorgevuld(vulling.voorgevuld);
-        } else if (interview !== null) {
-          setAntwoorden(interview.antwoorden);
+          setContext(vulling.context);
         }
 
         setError(null);
@@ -108,13 +194,13 @@ export default function Doelcoach() {
         if (levend) setError(fout);
       })
       .finally(() => {
-        if (levend) setLoading(false);
+        if (levend && gevuld.current) setLoading(false);
       });
 
     return () => {
       levend = false;
     };
-  }, [id]);
+  }, [id, profiel, profielLaadt]);
 
   return (
     <Screen title={t('coach.titel')} eyebrow={t('coach.eyebrow')} terug={{ naar: `/doel/${id}` }}>
@@ -142,6 +228,7 @@ export default function Doelcoach() {
               userId={userId}
               antwoorden={antwoorden}
               voorgevuld={voorgevuld}
+              context={context}
               onWijzig={setAntwoorden}
             />
 
@@ -176,12 +263,14 @@ function Interview({
   userId,
   antwoorden,
   voorgevuld,
+  context,
   onWijzig,
 }: {
   readonly goalId: string;
   readonly userId: string | null;
   readonly antwoorden: InterviewInvoer;
-  readonly voorgevuld: readonly GespiegeldVeld[];
+  readonly voorgevuld: Voorgevuld;
+  readonly context: Readonly<Partial<Record<ProfielContextVeld, readonly string[]>>>;
   readonly onWijzig: (nieuw: InterviewInvoer) => void;
 }) {
   const [bezig, setBezig] = useState(false);
@@ -210,12 +299,7 @@ function Interview({
       {interviewStappen().map((stap) => {
         const waarde = antwoorden[stap.veld];
 
-        // ⚠️ De toelichting krijgt er een zin bij in plaats van dat er een tweede
-        //    regel onder het veld komt. Twee hints onder één invoerveld leest als
-        //    twee eisen, en dit is er geen.
-        const toelichting = (voorgevuld as readonly string[]).includes(stap.veld)
-          ? `${stap.toelichting} ${t('coach.al_ingevuld')}`
-          : stap.toelichting;
+        const toelichting = toelichtingBij(stap, voorgevuld, context);
 
         // ⚠️ Vraag 4 is een getal en de rest tekst. Dat verschil is er niet voor
         //    de vorm: de Risico-radar rékent met de uren, en een tekstveld
