@@ -4,7 +4,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //    re-exporteert ook clock.ts, en dat bestand leest process.env om freezeNow()
 //    in productie te weigeren — op Deno is dat een valkuil die je pas merkt als
 //    de job 's nachts stilvalt.
-import { closableUserCycle, cyclesBetween, userCycle, userCycleOn } from '../_shared/time/cycle.ts';
+import { closableUserCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
@@ -60,10 +60,16 @@ interface Profiel {
   tz: string;
 }
 
-/** Eén rij uit `weekplan_kandidaten()` — migratie 0137. */
+/**
+ * Eén rij uit `weekplan_kandidaten()` — migratie 0137.
+ *
+ * ⚠️ De RPC geeft ook `eerste_cyclus` terug. Die kolom bestond om er een
+ *    `cycle_index` mee uit te rekenen, en die kolom is met 0182 verdwenen; hier
+ *    staat hij daarom niet meer. De RPC berekent hem nog wel — zie de rij in
+ *    `docs/ENGINEER-REVIEW.md` van 07-09.
+ */
 interface Kandidaat {
   goal_id: string;
-  eerste_cyclus: string | null;
 }
 
 interface OpenWeekdoel {
@@ -448,16 +454,6 @@ async function draaiRollover(auth: string): Promise<Response> {
       console.error(`weekplan-kandidaten ophalen mislukte voor een profiel: ${kandidaatFout.message}`);
     } else {
       for (const kandidaat of (kandidaten ?? []) as Kandidaat[]) {
-        // ⚠️ Geen rekenwerk in SQL: het cyclusnummer komt uit `shared/time`,
-        //    net als in `maakWeekdoel()` (correctheidsregel 7).
-        const eerste =
-          kandidaat.eerste_cyclus === null
-            ? null
-            : userCycleOn(
-                { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
-                kandidaat.eerste_cyclus,
-              );
-
         const { data: uitkomst, error: stapFout } = await db.rpc('activeer_weekplanstap', {
           p_goal_id: kandidaat.goal_id,
           p_cycle_start_date: huidige.startDate,

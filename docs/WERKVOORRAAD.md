@@ -20,7 +20,10 @@ dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
 `0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
 meldingsoort), `0179` (een bovengrens op een pushtoken), `0180` (de bevestigingsstand voor de
 eigenaar), `0181` (de allowlist van `goal_events` bewaakt) en `0182`
-(`cycle_index` weg) staan er nog niet op. `0164` moet
+(`cycle_index` weg) staan er nog niet op. ⚠️ **`0182` moet in hetzelfde venster
+landen als `npx supabase functions deploy rollover`** — hij dropt een
+RPC-handtekening die de gedeployde rollover nog aanroept, en die valt daartussen
+stil zonder dat iets rood wordt (`docs/DEPLOY.md` §2.3a). `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
 dit document.

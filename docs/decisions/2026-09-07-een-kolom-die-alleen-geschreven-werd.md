@@ -86,6 +86,54 @@ onbereikbaar.
 ⚠️ **De not-null van de kolom ís de grendel.** Een extra toets die netter voelt
 en een naad-test blind maakt, is duurder dan de ruwe fout die hij vervangt.
 
+⚠️⚠️ **En de premisse klopte óók niet** — nagemeten in de security-ronde van
+07-09, nadat de kop van de migratie de weggehaalde tak nog steeds als "bewust
+bijgekomen" beschreef. `0091` toetst alleen `p_cycle_index` (r.177), dus een
+null-datum mét een geldige index viel ook vóór deze migratie al door naar de
+insert en gaf exact dezelfde ruwe `23502`. Er liftte niets mee en er ging niets
+verloren. De tak was dus niet alleen schadelijk, hij repareerde ook niets.
+
+Dat is de tweede helft van de les: **ik had een verlies aangenomen in plaats van
+het te meten**, en daarna een grendel gebouwd om dat aangenomen verlies te
+dekken. De correctie in het lichaam kwam van een rode test; de correctie in de
+kop moest van een reviewer komen, want een kop wordt door niets getoetst.
+
+### 2a. Een kop is geen commentaar maar het rollback-pad
+
+Drie beweringen in de kop van deze migratie waren onwaar en geen ervan werd
+ergens rood van:
+
+| Bewering | Meting |
+|---|---|
+| de null-tak is bewust bijgekomen | het lichaam 30 regels lager zegt met zoveel woorden van niet |
+| de kolomgrant komt uit `0173/0180` | 📏 0173 noemt `weekly_goals` niet één keer; 0180 gunt alleen een functie. Hij komt uit `0043` (r.95) en `0044` (r.64) |
+| "zolang een van de vier hem nog noemt, weigert de drop" | 📏 een plpgsql-functie die een kolom leest, houdt `alter table … drop column` **niet** tegen — de drop slaagt en de functie klapt pas bij aanroep |
+
+De derde is de gevaarlijkste, want hij beschrijft een vangnet dat niet bestaat.
+Postgres registreert geen afhankelijkheden voor plpgsql-lichamen; wie bij de
+volgende kolomverwijdering op die volgorde vertrouwt en de grep overslaat, zet
+een RPC in productie die klapt zodra een gebruiker hem raakt.
+
+**Wat hier telt is niet dat er fouten in een kop stonden, maar dat niets ze kon
+vinden.** De poort toetst code; een kop toetst niemand. In dit project is de kop
+het rollback-pad en het geheugen — hij hoort dus dezelfde behandeling te krijgen
+als een test: elke bewering die iets belooft, met de hand nameten. Dat is
+regel 18 vraag 3, toegepast op proza.
+
+### 2b. Een handtekening droppen breekt wat er gedeployd staat
+
+`activeer_weekplanstap` gaat van drie naar twee argumenten. De edge-functie die
+hem aanroept staat gedeployd en verandert niet mee: PostgREST geeft `PGRST202`,
+de rollover vangt dat zacht af met `continue`, en er schuift stil geen enkele
+weekplanstap meer in — elk uur, voor iedereen — terwijl het afschrijven van
+gemiste weken doorloopt.
+
+⚠️ **Dat is precies de vorm die niemand ziet**: geen exceptie, geen rode test,
+een HTTP 200. De volgorde staat nu in de kop, in `docs/DEPLOY.md` §2.3a en in
+WERKVOORRAAD, maar dat is een afspraak en geen grendel — de duurzame vorm is de
+oude handtekening één release als dunne wrapper laten staan en hem in een
+volgmigratie droppen. Als dossierrij weggelegd.
+
 ### 3. Een sorteersleutel vervangen door een die knoopt
 
 `tests/rls/epic13.test.ts` sorteerde zijn weekdoelen op `cycle_index`. Bij het

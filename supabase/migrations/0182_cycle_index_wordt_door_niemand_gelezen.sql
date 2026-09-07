@@ -1,12 +1,24 @@
 -- 0182_cycle_index_wordt_door_niemand_gelezen.sql — een kolom die alleen geschreven werd, en de client een extra query per weekdoel kostte (QS8-147)
 --
+-- ⚠️⚠️ **DEPLOY DE ROLLOVER IN DEZELFDE RONDE ALS DEZE MIGRATIE.**
+--   Deze migratie dropt `activeer_weekplanstap(uuid, date, integer)` en zet er
+--   `(uuid, date)` neer. De gedeployde rollover roept nog de driearguments vorm
+--   aan en krijgt van PostgREST `PGRST202`; die fout wordt zacht afgevangen met
+--   `continue`, dus er schuift stil geen enkele weekplanstap meer in — elk uur,
+--   voor iedereen — terwijl het afschrijven van gemiste weken doorloopt.
+--   `npx supabase functions deploy rollover`. Zie `docs/DEPLOY.md` §2.3a.
+--
 -- ROLLBACK-PAD:
 --   alter table public.weekly_goals add column cycle_index integer;
 --   update public.weekly_goals set cycle_index = 1 where cycle_index is null;
 --   alter table public.weekly_goals alter column cycle_index set not null;
 --   plus de vier functies terugzetten uit 0091 (`schuif_weekdoel_door`) en 0138
 --   (`weekplanstap_naar_weekdoel`, `activeer_weekplanstap`, `start_weekplanstap`),
---   en de kolomgrant uit 0173/0180 op `cycle_index` opnieuw uitdelen.
+--   en de kolomgrant op `cycle_index` opnieuw uitdelen — die komt uit
+--   `0043` (r.95, INSERT) en `0044` (r.64), niet uit 0173 of 0180: 📏 0173 noemt
+--   `weekly_goals` niet één keer en 0180 gunt alleen een functie. Draai die twee
+--   migraties niet in hun geheel opnieuw; dat revoked en hergrant een stuk of
+--   twaalf andere tabellen. Neem alleen `cycle_index` in de kolomlijst mee.
 --   ⚠️⚠️ **De wáárden komen niet terug.** Dit is de destructieve helft van deze
 --   migratie en de reden dat hij expliciet is afgestemd (07-09-2026): het
 --   antwoord was "helemaal weg, ga uit van leeg". De kolom draagt een afgeleide
@@ -80,17 +92,34 @@
 --   start_weekplanstap          not_logged_in · het orakel-antwoord (onbekend en
 --                               niet-van-jou geven hetzelfde) · `weekdoelen_over()`
 --
--- ⚠️ **Eén ding is er bewust bíj gekomen.** `schuif_weekdoel_door()` toetste
--- `p_cycle_start_date` nooit op null — die controle liftte mee op
--- `p_cycle_index is null`. Zonder vervanging zou een null-datum nu een ruwe
--- not-null-schending geven in plaats van `ongeldige_cyclus`. De tak staat er dus
--- expliciet, zoals hij in `weekplanstap_naar_weekdoel()` al stond.
+-- ⚠️ **Er is niets bijgekomen, en de eerste versie van deze kop beweerde het
+-- tegendeel.** Die zei dat de null-toets op `p_cycle_start_date` meeliftte op
+-- `p_cycle_index is null` en dus vervangen moest worden. 📏 Allebei nagemeten en
+-- allebei onwaar: 0091 toetst alleen `p_cycle_index` (r.177), dus een null-datum
+-- mét een geldige index viel ook toen al door naar de insert en gaf dezelfde ruwe
+-- `23502`. De test op `main` stuurde precies dat — `p_cycle_start_date: null` bij
+-- `p_cycle_index: 6` — en verwachtte een ruwe fout, geen `ongeldige_cyclus`.
+--
+-- ⚠️⚠️ **De not-null van de kolom ís hier de grendel, en dat moet zo blijven.**
+-- Een nette null-tak erbij maakt `tests/rls/doorschuiven.test.ts` blind; de
+-- uitleg staat in de functie zelf, bij de aantekening die daar met zoveel
+-- woorden zegt waarom er géén toets staat. Wie deze kop leest en de tak alsnog
+-- toevoegt, sloopt die naad-test zonder dat iets rood wordt.
 --
 -- ⚠️ De grants worden per functie opnieuw uitgedeeld en zijn nagemeten vóór de
 -- drop: `schuif_weekdoel_door` en `start_weekplanstap` voor `authenticated` én
 -- `service_role`, `activeer_weekplanstap` alleen `service_role` (de rollover),
 -- en `weekplanstap_naar_weekdoel` voor niemand — die is intern.
 -- Onwrikbare regel 4: elke revoke noemt `authenticated` met zoveel woorden.
+--
+-- ⚠️ **Bij `schuif_weekdoel_door` en `start_weekplanstap` is `service_role` een
+-- erfenis die hier tot besluit wordt verheven, en dat hoort erbij te staan.**
+-- 📏 `0091:227` en `0138:542` gunnen alléén `authenticated`; de `svc=true` die
+-- vóór de drop gemeten is, kwam dus uit `alter default privileges` en niet uit
+-- een regel die iemand geschreven heeft. Het resultaat is één-op-één gelijk
+-- gehouden — dat was hier de bedoeling, want een handtekeningwijziging is niet
+-- het moment om ook rechten te verschuiven — maar wie dit recht ooit wil
+-- weghalen, moet weten dat er nooit iemand ja tegen gezegd heeft.
 
 -- ---------------------------------------------------------------------------
 -- 1. schuif_weekdoel_door
@@ -366,7 +395,18 @@ grant  execute on function public.start_weekplanstap(uuid, date)
 -- 5. En dan pas de kolom
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ Ná de functies, want zolang een van de vier hem nog noemt, weigert de drop.
---    Die volgorde is meteen de vangst als er hierboven iets vergeten is.
+-- ⚠️⚠️ **De drop vangt niets, en de eerste versie van deze kop beweerde van
+--    wel** ("zolang een van de vier hem nog noemt, weigert de drop"). 📏 Nagedaan
+--    op een wegwerptabel: een plpgsql-functie die `select b from tst` doet,
+--    daarna `alter table tst drop column b` → `ALTER TABLE`, geen weigering, de
+--    functie blijft staan en klapt pas bij aanroep met `column "b" does not
+--    exist`. Postgres registreert geen afhankelijkheden voor plpgsql-lichamen,
+--    en alle vier deze functies zijn plpgsql.
+--
+--    **Dat is de duurzame les van deze migratie**: bij het weghalen van een
+--    kolom is er geen vangnet in de database. Wat het hier wél gevangen heeft is
+--    de grep over `src/`, `app/`, `supabase/` en `tests/`, plus
+--    `npm run keten:controle`. De volgorde hieronder is nog steeds de juiste —
+--    eerst de functies, dan de kolom — maar als hygiëne en niet als grendel.
 
 alter table public.weekly_goals drop column if exists cycle_index;
