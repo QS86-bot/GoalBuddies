@@ -88,10 +88,6 @@ export const BEKENDE_ONBEREIKBAAR = {
     'Haalt de dagafvinkingen van een weekdoel op. ⚠️ De schrijfkant (afvinken) ' +
     'heeft wél een knop; de leeskant hangt erbuiten. Hier hoort een scherm bij en ' +
     'dat is eigen werk — QS8-301 groep 1.',
-  vulVoorUitProfiel:
-    'Vult een interview voor uit het profiel. Staat onder test in ' +
-    '`vragenlijst-schemas.test.ts`, maar geen enkel scherm roept hem aan — dus ' +
-    'de voorvulling die dit belooft, gebeurt niet. QS8-301 groep 1.',
 };
 
 /** De mappen waar een mens de app binnenkomt: een scherm of een geplande taak. */

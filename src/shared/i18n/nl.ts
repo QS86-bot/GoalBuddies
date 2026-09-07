@@ -2099,6 +2099,9 @@ export const nl = {
   'validatie.weekplan_leeg': 'Een plan zonder stappen is geen plan.',
   'validatie.weekplan_lang': 'Een plan reikt hoogstens een jaar vooruit.',
   'coach.al_ingevuld': 'Dit had je al ingevuld bij je doel; je kunt het hier bijstellen.',
+  'coach.uit_vragenlijst':
+    'Dit komt uit je vragenlijst, omgerekend van minuten per dag naar uren per week; je kunt het hier bijstellen.',
+  'coach.eerder_genoemd': 'Bij de vragenlijst noemde je: {valkuilen}.',
 
   // ---------------------------------------------------------------------------
   // Het ritme van een doel — besluit A53, migratie 0140

@@ -327,3 +327,64 @@ export function vulVoorUitProfiel(
     context: valkuilen.length > 0 ? { stuck_before: valkuilen } : {},
   };
 }
+
+
+/** Waar een voorgevuld antwoord vandaan komt. */
+export type Voorvulbron = 'doel' | 'vragenlijst';
+
+export interface Interviewvulling {
+  readonly antwoorden: InterviewInvoer;
+  /** Per veld de bron, zodat het scherm kan zeggen waar de tekst vandaan komt. */
+  readonly voorgevuld: Readonly<Partial<Record<string, Voorvulbron>>>;
+  /** Velden waar het profiel iets over weet, zonder het in te vullen. */
+  readonly context: Readonly<Partial<Record<ProfielContextVeld, readonly string[]>>>;
+}
+
+/**
+ * De twee vullingen achter elkaar — QS8-301.
+ *
+ * ⚠️ **Dit stond in het effect van het coachscherm, en dáár was de naad niet te
+ *    toetsen.** Elk onderdeel klopte: beide vullingen laten een bestaand
+ *    antwoord met rust, en beide melden netjes wat ze gevuld hebben. Het geheel
+ *    hangt aan de volgorde en aan het doorgeven van de tussenuitkomst, en dat
+ *    zijn precies de twee dingen die een component-effect voor elke test
+ *    verbergt. Regel 18, vraag 1: waar twee correcte onderdelen aan elkaar
+ *    knopen, hoort een test — en dan moet de knoop ergens staan waar een test
+ *    bij kan.
+ *
+ * ⚠️ **Het doel vult eerst en dat is geen willekeur.** Beide laten een eerder
+ *    antwoord staan, dus de volgorde bepaalt alleen wie er vult als geen van
+ *    beide iets had — en dan is het doel de specifiekere bron. Het profiel zegt
+ *    "ik heb meestal een half uur per dag"; het doel zegt wat je vóór dít doel
+ *    hebt opgegeven. Draai je ze om, dan staat er een profielwaarde in het veld
+ *    met "dit had je al ingevuld bij je doel" eronder.
+ *
+ * ⚠️ **Eén kaart en geen twee lijsten**, om dezelfde reden als hierboven: het
+ *    scherm moet per veld de bron kunnen noemen, en twee lijsten naast elkaar
+ *    laten die vraag onbeantwoord zodra ze allebei een veld noemen.
+ */
+export function vulVoorInterview(
+  antwoorden: InterviewInvoer,
+  doel: DoelVoorvulling | null,
+  profiel: ProfielVoorvulling | null,
+  urenUitMinuten: (minuten: number | null) => number | null,
+): Interviewvulling {
+  const uitDoel =
+    doel === null ? { antwoorden, voorgevuld: [] as readonly GespiegeldVeld[] } : vulVoorUitDoel(antwoorden, doel);
+
+  const uitProfiel =
+    profiel === null ? null : vulVoorUitProfiel(uitDoel.antwoorden, profiel, urenUitMinuten);
+
+  return {
+    antwoorden: uitProfiel?.antwoorden ?? uitDoel.antwoorden,
+    voorgevuld: {
+      ...bron(uitDoel.voorgevuld, 'doel'),
+      ...bron(uitProfiel?.voorgevuld ?? [], 'vragenlijst'),
+    },
+    context: uitProfiel?.context ?? {},
+  };
+}
+
+function bron(velden: readonly string[], uit: Voorvulbron): Record<string, Voorvulbron> {
+  return Object.fromEntries(velden.map((veld) => [veld, uit]));
+}
