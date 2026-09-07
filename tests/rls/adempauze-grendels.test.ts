@@ -35,14 +35,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MAX_ADEMPAUZE_CYCLI } from '../../src/modules/goals/adempauze-periode';
 
 import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
 
 const beschikbaar = stackBeschikbaarOfFaal(
   "select count(*) from pg_proc where proname = 'plan_adempauze'",
   import.meta.url,
 );
 
-const GEBRUIKER = '00000000-0000-4000-8000-0000000002a7';
-const DOEL = '00000000-0000-4000-8000-0000000002a8';
+const GEBRUIKER = proefId(1);
+const DOEL = proefId(2);
 
 /** De cyclusstart die deze test gebruikt: een maandag ver in de toekomst. */
 const START = '2031-01-06';
@@ -162,7 +163,7 @@ describe.skipIf(!beschikbaar)('twee adempauzes tegelijk', () => {
       // ⚠️ **De must-allow, en zonder hem bewijst de test hierboven ook een
       //    functie die iedereen laat wachten.** Het slot hangt aan het doel;
       //    twee verschillende doelen horen langs elkaar heen te kunnen.
-      const ander = '00000000-0000-4000-8000-0000000002a9';
+      const ander = proefId(3);
       psql(
         `insert into goals (id, owner_id, title, target_date) ` +
           `values ('${ander}', '${GEBRUIKER}', 'GELIJKTIJDIG-ANDER', '2032-01-01') ` +
