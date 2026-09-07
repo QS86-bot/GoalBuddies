@@ -58,35 +58,74 @@ export const CODESLEUTEL = 'sqlstate';
  * Namen die een aanroeper verzint als hij een foutcode bedoelt.
  *
  * ⚠️ **Een vorm en geen opsomming.** `pgcode`, `errcode`, `error_code`,
- *    `sqlcode`, `pgerror`, `statusCode` — wie een nieuwe verzint, valt er
- *    meestal ook onder. Te ruim is hier de veilige kant: wat er onterecht onder
- *    valt, hernoem je naar `sqlstate` en dan klopt het alsnog.
+ *    `sqlcode`, `errstate` — wie een nieuwe verzint, valt er meestal ook onder.
+ *    Te ruim is hier de veilige kant: wat er onterecht onder valt, hernoem je
+ *    naar `sqlstate` en dan klopt het alsnog.
+ *
+ * ⚠️ **`statusCode` en `httpStatus` vallen er met opzet búiten**, en dat stond
+ *    hier eerst verkeerd: de kop noemde `statusCode` als gedekt terwijl
+ *    `CODEACHTIG.test('statusCode')` gewoon `false` is. Ze zijn ook geen
+ *    foutcode — `StorageApiError.statusCode` is de HTTP-code als string
+ *    (`'404'`), en die hoort niet in hetzelfde kanaal als een SQLSTATE. Zie de
+ *    kop van `foutcodeVan()` in `scrub.ts`, waar dezelfde verwarring al een keer
+ *    tot een terugval leidde die nooit iets kon opleveren.
  */
 export const CODEACHTIG = /^(?:pg|sql|err(?:or)?)_?(?:code|state|error)$/i;
 
-/**
- * Sleutels die als foutcode lézen maar het niet zijn, met de reden erbij.
+/*
+ * ⚠️ **Hier stond een uitzonderingslijst `GEEN_FOUTCODE`, en die is weggehaald
+ *    omdat hij niets deed.** Zijn enige regel was `httpStatus`, en die matcht
+ *    `CODEACHTIG` niet en is niet `code` — beide grendels sloegen hem dus al
+ *    over vóór de uitzondering aan bod kwam. 📏 Gemeten door hem weg te muteren:
+ *    nul tests werden er rood van, en de testinvoer die hem zogenaamd ijkte gaf
+ *    mét en zónder de lijst exact dezelfde uitslag.
  *
- * ⚠️ **Redenen en geen namen**, zelfde vorm als `GEEN_UITGANG_NODIG` in
- *    `uitgang-controle.mjs`. Wie hier een naam neerzet zonder op te schrijven
- *    waarom hij geen foutcode draagt, heeft de controle het zwijgen opgelegd in
- *    plaats van een uitzondering vastgelegd.
+ *    Een uitzonderingsmechanisme dat nooit bereikt wordt, is gevaarlijker dan
+ *    geen: de volgende schrijver zet er een naam in, denkt dat hij iets heeft
+ *    vastgelegd, en legt niets vast. Komt er ooit een sleutel die `CODEACHTIG`
+ *    wél matcht en tóch geen foutcode draagt, dan komt de lijst terug — mét een
+ *    ijking die aantoont dát hij afgaat.
  */
-export const GEEN_FOUTCODE = {
-  httpStatus: 'Een HTTP-status is een getal van de transportlaag, geen SQLSTATE.',
-};
 
 /**
- * Welke sleutels in een `reportError`-context noemt dit bestand?
+ * De functies die een fout mét een context-object melden.
  *
- * ⚠️ **Alleen het derde argument, en alleen sleutels op het eerste niveau.**
- *    Verder gaan vraagt een parser; wat deze controle belooft is dat een
- *    letterlijk opgeschreven sleutel gezien wordt, en dat is de vorm waarin alle
- *    57 stonden.
+ * ⚠️⚠️ **`meld` hoort hier, en dat is een gerepareerde valse groene.** De eerste
+ *    versie zocht alleen op `reportError` terwijl de scan wél al over
+ *    `supabase/functions/` liep. 📏 Geijkt door `pgcode: fout.code` in een echte
+ *    edge-job te zetten: de controle telde 204 bestanden en meldde niets. De map
+ *    toevoegen zonder de aanroepnaam is een uitbreiding op papier — het bestand
+ *    wordt gelezen en er wordt niet naar gekeken, en dat is erger dan hem niet
+ *    scannen, want de tellerstand suggereert dekking.
+ *
+ * ⚠️ `meld(fout, waar, extra)` in `_shared/melden.ts` heeft dezelfde vorm als
+ *    `reportError(error, where, extra)` en komt via `meldEdgeFout()` op dezelfde
+ *    `scrubContext()` uit. Eén lijst dus, en niet twee controles.
+ */
+export const MELDERS = ['reportError', 'meldEdgeFout', 'meld'];
+
+/**
+ * Welke sleutels in een `reportError`-aanroep noemt dit bestand?
+ *
+ * ⚠️ **Elk object-argument, op elk niveau — en dat is ruimer dan hier eerst
+ *    stond.** De kop beweerde "alleen het derde argument, alleen het eerste
+ *    niveau"; 📏 nagemeten klopt geen van beide: `reportError(e, { pgcode: c })`
+ *    en `{ meta: { pgcode: c } }` worden allebei gezien. Ruimer is hier de
+ *    veilige kant, en een kop die minder belooft dan de code doet, laat de
+ *    volgende lezer denken dat er een gat zit waar er geen is.
+ *
+ * ⚠️⚠️ **Twee vormen ziet hij écht niet, en die horen hier te staan.** Een
+ *    spread (`{ ...extra }`) en de verkorte schrijfwijze (`{ pgcode }`, zonder
+ *    dubbele punt). Die tweede is een échte blinde vlek en geen theorie: de vorm
+ *    komt in de boom voor (`src/modules/buddies/rem.ts:32` schrijft
+ *    `{ teller }`). Wie zijn variabele `pgcode` noemt en hem zo meegeeft, komt
+ *    er langs. Dichten vraagt dataflow — dezelfde grens als bij
+ *    `meldtekst:controle` — en zolang dat er niet is, is opschrijven dat hij er
+ *    is het enige eerlijke.
  */
 export function contextsleutels(bron) {
   const gevonden = [];
-  const aanroep = /reportError\s*\(/g;
+  const aanroep = new RegExp(`\\b(${MELDERS.join('|')})\\s*\\(`, 'g');
 
   let m;
   while ((m = aanroep.exec(bron)) !== null) {
@@ -105,7 +144,11 @@ export function contextsleutels(bron) {
     if (opening === -1) continue;
 
     for (const sleutel of argumenten.slice(opening).matchAll(/(?:^|[{,\s])([A-Za-z_$][\w$]*)\s*:/g)) {
-      gevonden.push({ sleutel: sleutel[1], regel: bron.slice(0, m.index).split('\n').length });
+      gevonden.push({
+        sleutel: sleutel[1],
+        melder: m[1],
+        regel: bron.slice(0, m.index).split('\n').length,
+      });
     }
   }
   return gevonden;
@@ -127,12 +170,11 @@ export function beoordeel({ bestanden, scrub }) {
   const bevindingen = [];
 
   for (const { pad, bron } of bestanden) {
-    for (const { sleutel, regel } of contextsleutels(bron)) {
+    for (const { sleutel, melder, regel } of contextsleutels(bron)) {
       if (sleutel === CODESLEUTEL) continue;
-      if (Object.hasOwn(GEEN_FOUTCODE, sleutel)) continue;
       if (!CODEACHTIG.test(sleutel)) continue;
       bevindingen.push(
-        `${pad}:${regel} geeft \`${sleutel}\` mee aan reportError(). ` +
+        `${pad}:${regel} geeft \`${sleutel}\` mee aan ${melder}(). ` +
           `Alleen \`${CODESLEUTEL}\` heeft een vormtoets; al het andere wordt ` +
           `[weggelaten] en komt nooit aan. Hernoem hem, of haal hem weg — sinds ` +
           `QS8-319 rijdt de foutcode al in de melding mee.`,
@@ -150,7 +192,6 @@ export function beoordeel({ bestanden, scrub }) {
   } else {
     for (const sleutel of sleutels) {
       if (!CODEACHTIG.test(sleutel) && sleutel !== 'code') continue;
-      if (Object.hasOwn(GEEN_FOUTCODE, sleutel)) continue;
       if (heeftVormtoets(scrub, sleutel)) continue;
       bevindingen.push(
         `\`${sleutel}\` staat op ALLOWED_KEYS zonder eigen vormtoets in ` +
@@ -181,8 +222,28 @@ function bronbestanden(map) {
   return uit;
 }
 
+/**
+ * ⚠️ **Ook `supabase/functions/`, en dat is een gerepareerd gat.** De eerste
+ *    versie scande alleen `src/` en `app/`, terwijl de edge-jobs via
+ *    `_shared/melden.ts` op dezelfde `scrubContext()` uitkomen én daar met de
+ *    hand een `code:` invullen (📏 tien plekken in `rollover` en
+ *    `notificaties`). De bug-klasse die dit script bestaat om te vangen — een
+ *    sleutel die stil `[weggelaten]` wordt — kon daar dus opnieuw ontstaan
+ *    zonder dat iets rood werd: de helft van het huis onbewaakt.
+ *
+ * ⚠️ De gesynchroniseerde kopie in `_shared/observability/` valt erbuiten. Die
+ *    ís `src/lib/observability/`, en hem twee keer beoordelen levert twee
+ *    meldingen op voor één regel.
+ */
+const SCANMAPPEN = ['src', 'app', 'supabase/functions'];
+
+/** De kopie die `npm run edge:sync` neerzet — dezelfde bron, ander pad. */
+const GESYNCT = 'supabase/functions/_shared/';
+
 function hoofd() {
-  const bestanden = [join(WORTEL, 'src'), join(WORTEL, 'app')].flatMap(bronbestanden);
+  const bestanden = SCANMAPPEN.map((m) => join(WORTEL, m))
+    .flatMap(bronbestanden)
+    .filter(({ pad }) => !pad.startsWith(GESYNCT));
   const scrub = readFileSync(join(WORTEL, 'src/lib/observability/scrub.ts'), 'utf8');
   const bevindingen = beoordeel({ bestanden, scrub });
 

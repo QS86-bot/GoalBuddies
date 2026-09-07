@@ -64,10 +64,25 @@ const FOUTCODE = /^(?:[0-9A-Z]{5}|PGRST\d{3})$/;
  *
  * ⚠️ **Waarom dit veilig genoeg is en waar de grens ligt.** Een Postgres-melding
  *    (`Europe/Bogus is geen bekende tijdzone`) heeft spaties, een e-mailadres
- *    heeft `@` en een punt; allebei vallen ze af. Wat er wél doorheen zou komen
- *    is één enkel woord dat een gebruiker heeft ingetypt — maar dit veld wordt
- *    niet door een aanroeper gevuld: het wordt van het foutobject van de
- *    bibliotheek gelezen, en die vult het uit zijn eigen vaste lijst.
+ *    heeft `@` en een punt; allebei vallen ze af. Wat er wél doorheen komt is
+ *    één enkel woord.
+ *
+ * ⚠️⚠️ **En dat is sinds QS8-330 een scherpere grens dan hier stond.** Er stond
+ *    dat dit veld "niet door een aanroeper gevuld wordt" maar van het foutobject
+ *    van de bibliotheek gelezen. Dat gold toen `SYMBOOLCODE` alleen
+ *    `foutcodeVan()` bediende. Sinds deze vorm óók de `code`-sléútel bewaakt, is
+ *    het onwaar: 📏 tien plekken in `supabase/functions/rollover` en
+ *    `notificaties` schrijven met de hand `{ code: 'profielen_ophalen_mislukt' }`
+ *    en dergelijke, via `_shared/melden.ts` naar dezelfde `scrubContext()`.
+ *
+ *    Vandaag zijn dat constanten en lekt er niets — nagemeten. Maar de rem is
+ *    dan ook enkel deze vormtoets, en die laat elk enkel woord door:
+ *    `{ code: groep.naam }` of `{ code: profiel.voornaam }` komt er onveranderd
+ *    uit. Wie hier een variabele neerzet in plaats van een constante, zet een
+ *    gebruikersnaam naast `waar: 'weekafsluiting.…'` in een foutrapport, en dat
+ *    is domeinregel 7 via een omweg. `foutsleutel:controle` scant daarom sinds
+ *    QS8-330 ook `supabase/functions/`, maar hij leest namen en geen waarden —
+ *    hij ziet een constante niet van een variabele te onderscheiden.
  */
 const SYMBOOLCODE = /^[A-Za-z][A-Za-z0-9_]{2,40}$/;
 

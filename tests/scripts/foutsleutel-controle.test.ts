@@ -20,8 +20,8 @@ import {
   CODEACHTIG,
   CODESLEUTEL,
   contextsleutels,
-  GEEN_FOUTCODE,
   heeftVormtoets,
+  MELDERS,
 } from '../../scripts/foutsleutel-controle.mjs';
 
 /** Een `scrub.ts` in het klein: een allowlist en de takken met een vormtoets. */
@@ -80,6 +80,23 @@ describe('foutsleutel-controle', () => {
       expect(bevindingen[0]).toContain('ALLOWED_KEYS');
     });
 
+    /**
+     * ⚠️⚠️ **De edge-vorm hoort hier, en dit is een gerepareerde valse groene.**
+     *    De controle liep al over `supabase/functions/` maar zocht alleen op
+     *    `reportError` — 📏 een echte edge-job met `pgcode: fout.code` erin gaf
+     *    204 gelezen bestanden en nul bevindingen. De map toevoegen zonder de
+     *    aanroepnaam is dekking op papier: de tellerstand suggereert dat er
+     *    gekeken is.
+     */
+    it.each(MELDERS)('ziet een context bij %s()', (melder) => {
+      const bevindingen = beoordeel({
+        bestanden: bestand(`await ${melder}(fout, 'rollover', { code: 'x', pgcode: fout.code });`),
+        scrub: GEZOND,
+      });
+      expect(bevindingen).toHaveLength(1);
+      expect(bevindingen[0]).toContain(`${melder}()`);
+    });
+
     it('vindt de sleutel ook in een meerregelig context-object', () => {
       const bevindingen = beoordeel({
         bestanden: bestand(
@@ -101,13 +118,27 @@ describe('foutsleutel-controle', () => {
       ).toEqual([]);
     });
 
+    /**
+     * ⚠️⚠️ **Deze test bewees eerst niets, en dat is precies de val die CLAUDE.md
+     *    bij regel 18 beschrijft.** Hij heette hetzelfde maar voedde
+     *    `GEZOND` — een allowlist zónder `code` — en een aanroep met `code`,
+     *    die `CODEACHTIG` niet matcht. 📏 Gemeten: mét én zónder de vormtoets in
+     *    de gevoede bron gaf hij `[]`. Beide grendels sloegen het geval al over,
+     *    dus de conditie in zijn eigen titel kon hij niet waarnemen.
+     *
+     *    De discriminerende vorm zet `code` wél op de gevoede allowlist. Dan is
+     *    de áánwezigheid van de tak het enige verschil, en dat is wat de titel
+     *    belooft — zie de tegenhanger hieronder, die dezelfde bron zonder tak
+     *    voedt en dan wél een bevinding geeft.
+     */
     it('laat `code` staan zolang hij een eigen vormtoets heeft', () => {
-      expect(
-        beoordeel({
-          bestanden: bestand(`reportError(error, 'x.y', { code: error.code });`),
-          scrub: GEZOND,
-        }),
-      ).toEqual([]);
+      const metToets = scrubBron({ sleutels: ['where', 'code'], getoetst: ['sqlstate', 'code'] });
+      const zonderToets = scrubBron({ sleutels: ['where', 'code'], getoetst: ['sqlstate'] });
+      const aanroep = bestand(`reportError(error, 'x.y', { code: error.code });`);
+
+      expect(beoordeel({ bestanden: aanroep, scrub: metToets })).toEqual([]);
+      // en zonder de tak wél een bevinding — anders meet deze test de tak niet
+      expect(beoordeel({ bestanden: aanroep, scrub: zonderToets })).toHaveLength(1);
     });
 
     it('laat gewone contextsleutels staan', () => {
@@ -121,22 +152,26 @@ describe('foutsleutel-controle', () => {
       ).toEqual([]);
     });
 
-    it('laat de vastgelegde uitzonderingen staan, mét hun reden', () => {
-      for (const [sleutel, reden] of Object.entries(GEEN_FOUTCODE)) {
-        expect(reden).toMatch(/\S/);
-        expect(
-          beoordeel({
-            bestanden: bestand(`reportError(error, 'x.y', { ${sleutel}: 404 });`),
-            scrub: scrubBron({ sleutels: ['where', sleutel] }),
-          }),
-        ).toEqual([]);
-      }
+    it('laat httpStatus en statusCode staan — dat is transport, geen SQLSTATE', () => {
+      expect(
+        beoordeel({
+          bestanden: bestand(`reportError(error, 'x.y', { httpStatus: 404, statusCode: '404' });`),
+          scrub: scrubBron({ sleutels: ['where', 'httpStatus'] }),
+        }),
+      ).toEqual([]);
     });
 
+    /**
+     * ⚠️ **Met een dubbele punt en niet verkort, en dat is een reparatie.** Hier
+     *    stond `logger.debug({ pgcode })`, en die slaagde door de verkorte
+     *    schrijfwijze — een blinde vlek van `contextsleutels` — in plaats van
+     *    doordat de aanroep geen `reportError` is. Een test die om de verkeerde
+     *    reden groen staat, bewaakt niet wat zijn titel zegt.
+     */
     it('kijkt niet naar een codesleutel buiten een reportError-aanroep', () => {
       expect(
         beoordeel({
-          bestanden: bestand('const pgcode = fout.code;\nlogger.debug({ pgcode });'),
+          bestanden: bestand("logger.debug('x', { pgcode: fout.code });"),
           scrub: GEZOND,
         }),
       ).toEqual([]);
@@ -150,11 +185,24 @@ describe('foutsleutel-controle', () => {
   });
 
   describe('de onderdelen los', () => {
-    it('contextsleutels leest alleen het context-object', () => {
-      const sleutels = contextsleutels(
+    it('contextsleutels leest het context-object en noemt de melder', () => {
+      const gevonden = contextsleutels(
         `reportError(error, 'groups.mine', { group_id: g, pgcode: error.code });`,
-      ).map((s) => s.sleutel);
-      expect(sleutels).toEqual(['group_id', 'pgcode']);
+      );
+      expect(gevonden.map((s) => s.sleutel)).toEqual(['group_id', 'pgcode']);
+      expect(gevonden.every((s) => s.melder === 'reportError')).toBe(true);
+    });
+
+    /**
+     * ⚠️ De blinde vlekken staan als test, niet alleen als zin in de kop. Een
+     *    grens die je opschrijft maar niet vastlegt, verschuift ongemerkt — en
+     *    dan is de kop van het script een bewering die niemand meer naleest.
+     */
+    it.each([
+      ['de verkorte schrijfwijze', `reportError(e, 'x', { pgcode });`],
+      ['een spread', `reportError(e, 'x', { ...extra });`],
+    ])('ziet %s niet — vastgelegde blinde vlek', (_naam, bron) => {
+      expect(contextsleutels(bron)).toEqual([]);
     });
 
     it('contextsleutels stopt bij het juiste sluithaakje', () => {

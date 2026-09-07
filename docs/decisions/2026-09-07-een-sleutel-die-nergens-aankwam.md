@@ -124,6 +124,66 @@ dat de **belofte** onder test staat (een sleutel zonder codevorm komt er niet
 uit), de vierde dat de **controle** hem in de echte boom vindt. Een van de twee
 alleen laat de andere helft onbewaakt.
 
+## Wat de security-review erop aanmerkte
+
+Zes bevindingen, alle zes zelf nagemeten en alle zes terecht. Geen ervan was een
+lek; vijf gingen over **de grendel die niet bewaakte wat hij beweerde**, en dat
+is in dit project de duurdere soort.
+
+**1. De uitbreiding naar de edge-jobs was dekking op papier.** De controle scande
+`supabase/functions/` wél, maar zocht alleen op `reportError` — en de edge-jobs
+melden met `meld()`. 📏 Geijkt door `pgcode: fout.code` in een echte job te
+zetten: **204 bestanden gelezen, nul bevindingen.** Een map toevoegen zonder de
+aanroepnaam is erger dan hem niet scannen, want de tellerstand suggereert dat er
+gekeken is. `MELDERS` kent nu alle drie de namen, en de melding noemt de functie
+die er écht staat.
+
+⚠️ Dit is het geval waar de ijking zichzelf verdiende: het bestandsaantal ging
+omhoog, de controle bleef groen, en zonder de mutatie had ik dat "geregeld"
+genoemd.
+
+**2. Een must-allow die niets bewees.** De test heette *"laat `code` staan zolang
+hij een eigen vormtoets heeft"* en voedde een allowlist zónder `code`. 📏 Mét en
+zónder de vormtoets in de gevoede bron: allebei `[]`. Beide grendels sloegen het
+geval al over, dus de conditie in zijn eigen titel kon hij niet waarnemen —
+precies de val die CLAUDE.md bij regel 18 beschrijft, en dezelfde die op de
+branch ernaast (QS8-331) net was rechtgezet. De vorm die het wél meet, zet `code`
+op de gevoede allowlist en toetst beide kanten in één test.
+
+**3. `GEEN_FOUTCODE` was dode code.** De enige regel was `httpStatus`, en die
+matcht `CODEACHTIG` niet en is niet `code`. 📏 Weggemuteerd: nul tests rood. Een
+uitzonderingsmechanisme dat nooit bereikt wordt is gevaarlijker dan geen — de
+volgende schrijver zet er een naam in en legt niets vast. Weggehaald, met de
+reden in het script.
+
+**4. De kop van `CODEACHTIG` noemde `statusCode` als gedekt.** 📏
+`CODEACHTIG.test('statusCode')` is `false`. En hij hóórt er niet onder te vallen:
+`StorageApiError.statusCode` is de HTTP-code als string, geen SQLSTATE — dezelfde
+verwarring die in `foutcodeVan()` al eens tot een terugval leidde die nooit iets
+kon opleveren. Kop gecorrigeerd.
+
+**5. Twee onjuistheden in de kop van `contextsleutels`, allebei de veilige kant
+op.** Hij beweerde "alleen het derde argument, alleen het eerste niveau"; 📏
+`reportError(e, { pgcode: c })` en `{ meta: { pgcode: c } }` worden allebei
+gezien. Een kop die mínder belooft dan de code doet, laat de lezer een gat
+vermoeden waar er geen is.
+
+**6. De verkorte schrijfwijze is een echte blinde vlek.** `{ pgcode }` zonder
+dubbele punt ziet hij niet, en die vorm komt in de boom voor
+(`src/modules/buddies/rem.ts:32` schrijft `{ teller }`). De test die zogenaamd
+toetste dat hij *buiten* een `reportError` niet kijkt, slaagde door deze vlek en
+niet door de bedoelde grendel. Beide blinde vlekken staan nu als test vastgelegd
+en niet alleen als zin in de kop — een grens die je opschrijft maar niet
+vastlegt, verschuift ongemerkt.
+
+⚠️ **En één bevinding raakte de code zelf.** De veiligheidsredenering onder
+`SYMBOOLCODE` zei dat het veld *"niet door een aanroeper gevuld wordt"*. Dat gold
+toen die vorm alleen `foutcodeVan()` bediende; sinds hij óók de `code`-**sleutel**
+bewaakt is het onwaar — 📏 tien plekken in `rollover` en `notificaties` schrijven
+met de hand `{ code: 'profielen_ophalen_mislukt' }`. Vandaag constanten, dus geen
+lek, maar de rem is dan ook enkel de vormtoets en die laat elk enkel woord door.
+De kop zegt nu wat waar is; de rij staat in `docs/ENGINEER-REVIEW.md`.
+
 ## Wat hier niet in zit
 
 * **De 74 aanroepen met `code: error.code` zijn ook duplicatie.** Ze werken en ze
