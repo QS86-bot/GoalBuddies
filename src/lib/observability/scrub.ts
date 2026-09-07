@@ -34,6 +34,26 @@ const ALLOWED_KEYS: ReadonlySet<string> = new Set([
 const ID_KEY = /(?:^|_)id$|Id$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * De foutcode van een mislukte databaseaanroep: een SQLSTATE (`23514`, `42501`)
+ * of een PostgREST-code (`PGRST202`). PostgREST zet allebei in hetzelfde veld.
+ *
+ * ⚠️ **Deze sleutel staat bewust niet in `ALLOWED_KEYS`, en dat is de hele
+ *    reden dat hij bestaat.** Hij is er gekomen als vervanging voor de rúwe
+ *    Postgres-melding die tot QS8-315 mee de deur uit ging: zonder iets van de
+ *    fout is een gebeurtenis in Sentry niet te plaatsen, maar de melding zelf
+ *    mag niet mee — die draagt bij een `%`-interpolatie de waarde die de fout
+ *    veroorzaakte, en `scrubMessage()` haalt die vorm er níét uit (gemeten).
+ *
+ * ⚠️ **Een allowlist-sleutel is een kanaal, dus deze heeft een vórmtoets in
+ *    plaats van een schoonmaakbeurt.** Alles wat niet als foutcode leest wordt
+ *    `[weggelaten]`, ook een string die `scrubMessage()` ongemoeid zou laten.
+ *    Zo kan een volgende aanroeper er geen gebruikerstekst doorheen duwen door
+ *    hem simpelweg `sqlstate` te noemen — het verschil tussen een grens die
+ *    afdwingt en een afspraak die je moet onthouden.
+ */
+const FOUTCODE = /^(?:[0-9A-Z]{5}|PGRST\d{3})$/;
+
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 /** JWT's en Supabase-keys beginnen allemaal met `eyJ`. */
 const TOKEN = /eyJ[\w-]+\.[\w-]+(\.[\w-]+)?/g;
@@ -147,14 +167,19 @@ function scrubValue(value: unknown): string | number | boolean {
 }
 
 /**
- * Houdt alleen wat op de allowlist staat, plus id-velden die er als uuid
- * uitzien. De rest wordt vervangen, niet weggelaten — dat een veld bestond is
- * zelf nuttige informatie bij het uitzoeken.
+ * Houdt alleen wat op de allowlist staat, plus `sqlstate` als hij als foutcode
+ * leest en id-velden die er als uuid uitzien. De rest wordt vervangen, niet
+ * weggelaten — dat een veld bestond is zelf nuttige informatie bij het
+ * uitzoeken.
  */
 export function scrubContext(extra: Readonly<Record<string, unknown>>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(extra)) {
+    if (key === 'sqlstate') {
+      out[key] = typeof value === 'string' && FOUTCODE.test(value) ? value : REDACTED;
+      continue;
+    }
     if (ALLOWED_KEYS.has(key)) {
       out[key] = scrubValue(value);
       continue;

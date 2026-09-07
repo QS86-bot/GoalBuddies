@@ -1283,6 +1283,10 @@ export const nl = {
   'doel.groepsakkoord_nodig':
     'Dit doel deel je met een groep, dus de datum verschuif je niet alleen. ' +
     'Vraag je buddy’s om akkoord met een korte uitleg erbij.',
+  'doel.straf_staat_open':
+    'Je hebt zelf een straf aan dit doel gehangen, dus de deadline schuif je ' +
+    'niet vooruit. Naar voren halen mag wel. Wil je de straf niet meer, dan ' +
+    'kun je hem intrekken.',
 
   'doel.recent_ontkoppeld':
     'Je hebt dit doel net losgekoppeld van een groep. De datum zelf zetten kan zeven dagen daarna.',

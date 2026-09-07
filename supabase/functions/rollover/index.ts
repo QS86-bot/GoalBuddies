@@ -516,17 +516,41 @@ async function draaiRollover(auth: string): Promise<Response> {
   //    profielen die al afgehandeld zijn onvermeld laten; nu is het werk gedaan
   //    en meldt de job dat hij niet compleet was.
   if (profielFout !== null) {
-    // ⚠️ De melding van Postgres gaat door `scrubMessage()` heen voordat er iets
-    //    verstuurd wordt; een geciteerde waarde uit een constraint blijft hier.
-    await meld(
-      new Error(`profielen ophalen mislukte: ${(profielFout as { message: string }).message}`),
-      'rollover.profielen',
-      { code: 'profielen_ophalen_mislukt' },
-    );
-    return new Response(
-      JSON.stringify({ error: (profielFout as { message: string }).message }),
-      { status: 500 },
-    );
+    const fout = profielFout as { message: string; code?: string };
+
+    // ⚠️ **Hier stond dat `scrubMessage()` de melding schoonmaakt vóór verzending,
+    //    en dat was maar de halve waarheid — QS8-315.** Hij haalt geciteerde
+    //    waarden en de `Key (col)=(val)`-vorm eruit, maar níét een
+    //    `%`-interpolatie, en dat is precies de vorm die onze eigen wachters
+    //    gooien: `Europe/Bogus is geen bekende tijdzone` komt er onveranderd uit.
+    //    Gemeten met de échte functie, niet beredeneerd.
+    //
+    //    Dus dezelfde splitsing als in het recap-pad hieronder en in de kop van
+    //    0158: de volledige tekst gaat naar het functielog — een ander systeem,
+    //    met een andere bewaartermijn, dat de database niet verlaat — en Sentry
+    //    krijgt een vaste zin plus de foutcode.
+    console.error(`profielen ophalen mislukte: ${fout.message}`);
+    await meld(new Error('profielen ophalen mislukte'), 'rollover.profielen', {
+      code: 'profielen_ophalen_mislukt',
+      // ⚠️ De SQLSTATE is wat er ván de fout overblijft, en dat is genoeg om hem
+      //    te plaatsen: `42501` is een recht, `PGRST202` een verdwenen route,
+      //    `23514` een constraint. Geen van drieën draagt gebruikerstekst.
+      sqlstate: fout.code,
+    });
+    // ⚠️ **Een slug en niet de melding — en dat is een gemeten reparatie, geen
+    //    voorzorg (security-review op QS8-315).** Hier stond `fout.message`, met
+    //    als verdediging dat de body "Supabase niet verlaat". Dat is onwaar: de
+    //    aanroeper is `.github/workflows/rollover.yml`, en die doet op regel 67
+    //    `cat /tmp/rollover.json` — vóór de statuscontrole, en `curl` geeft
+    //    exitcode 0 op een 500. De melding landt dus in het GitHub
+    //    Actions-runlog: een derde systeem, met een eigen bewaartermijn.
+    //
+    //    📏 En de repository staat op `visibility: public`, nagekeken via de
+    //    GitHub-API. Dat runlog is wereldleesbaar.
+    //
+    //    Dezelfde vorm als de vangnettak bovenaan dit bestand, die dit al goed
+    //    deed. De volledige tekst staat in de `console.error` hierboven.
+    return new Response(JSON.stringify({ error: 'profielen_ophalen_mislukt' }), { status: 500 });
   }
 
   // Slapende groepen — QS8-60.
@@ -649,10 +673,15 @@ async function draaiRollover(auth: string): Promise<Response> {
   );
 
   if (termijnFout) {
+    // ⚠️ De volledige tekst blijft in deze regel; Sentry krijgt hem niet meer
+    //    (QS8-315). `keur_vastgelopen_goedkeuringen_goed()` gooit onder andere
+    //    `p_termijn_dagen moet minstens 1 zijn, kreeg %` — een `%`-vorm, en die
+    //    laat `scrubMessage()` ongemoeid.
     console.error(`vastgelopen goedkeuringen afhandelen mislukte: ${termijnFout.message}`);
     await meld(
-      new Error(`vastgelopen goedkeuringen afhandelen mislukte: ${termijnFout.message}`),
+      new Error('vastgelopen goedkeuringen afhandelen mislukte'),
       'rollover.goedkeuringstermijn',
+      { code: 'goedkeuringstermijn_mislukt', sqlstate: termijnFout.code },
     );
   }
 

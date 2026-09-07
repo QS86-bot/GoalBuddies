@@ -116,7 +116,7 @@ const FUNCTIES = [
    *    weet welke; een uitleg die op drie ervan klopt, is er een die op de
    *    vierde ontbreekt.
    */
-  { naam: 'zet_streefdatum', tabel: streefdatumRedenen, minstens: 6 },
+  { naam: 'zet_streefdatum', tabel: streefdatumRedenen, minstens: 7 },
 ] as const;
 
 describe.skipIf(!beschikbaar)('de deadline-RPCs en hun meldingen', () => {

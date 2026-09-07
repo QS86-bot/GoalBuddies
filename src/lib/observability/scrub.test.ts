@@ -126,6 +126,42 @@ describe('scrubContext', () => {
     });
   });
 
+  describe('sqlstate — de sleutel met een vormtoets (QS8-315)', () => {
+    /**
+     * ⚠️ Deze sleutel is de vervanging voor de rúwe Postgres-melding die tot
+     *    QS8-315 mee de deur uit ging. Hij staat bewust níét in `ALLOWED_KEYS`:
+     *    een allowlist-sleutel is een kanaal, en dit kanaal is zo smal gemaakt
+     *    dat er alleen een foutcode doorheen past. De helft hieronder die
+     *    `[weggelaten]` verwacht is dus geen randgeval maar het punt.
+     */
+    it.each([
+      ['een SQLSTATE', '23514'],
+      ['een rechtenfout', '42501'],
+      ['een letterklasse', 'P0001'],
+      ['een PostgREST-code', 'PGRST202'],
+    ])('laat %s door', (_naam, code) => {
+      expect(scrubContext({ sqlstate: code })).toEqual({ sqlstate: code });
+    });
+
+    it.each([
+      ['een hele foutmelding', 'Europe/Bogus is geen bekende tijdzone'],
+      ['een melding die scrubMessage ongemoeid laat', 'Te veel avatars (12).'],
+      ['een e-mailadres', 'sanne@voorbeeld.nl'],
+      ['iets te kort', '2351'],
+      ['iets te lang', '235141'],
+      ['kleine letters', 'pgrst202'],
+    ])('vervangt %s', (_naam, waarde) => {
+      expect(scrubContext({ sqlstate: waarde })).toEqual({ sqlstate: REDACTED });
+    });
+
+    it('vervangt een sqlstate die geen string is', () => {
+      // ⚠️ `undefined` hoort hier: `PostgrestError.code` is optioneel, en een
+      //    aanroeper geeft hem door zonder te kijken.
+      expect(scrubContext({ sqlstate: undefined })).toEqual({ sqlstate: REDACTED });
+      expect(scrubContext({ sqlstate: 23514 })).toEqual({ sqlstate: REDACTED });
+    });
+  });
+
   it('is standaard dicht: een onbekend veld gaat niet mee', () => {
     expect(scrubContext({ ietsNieuws: 'wat dan ook' })).toEqual({ ietsNieuws: REDACTED });
   });

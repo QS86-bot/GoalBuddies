@@ -921,6 +921,10 @@ export const en: Record<Sleutel, string> = {
   'doel.groepsakkoord_nodig':
     'You share this goal with a group, so you do not move the date on your own. ' +
     'Ask your buddies to agree, with a short explanation.',
+  'doel.straf_staat_open':
+    'You set a penalty on this goal yourself, so you cannot push the deadline ' +
+    'back. Bringing it forward is fine. If you no longer want the penalty, ' +
+    'you can withdraw it.',
 
   'doel.recent_ontkoppeld':
     'You just unlinked this goal from a group. You can set the date yourself seven days after that.',

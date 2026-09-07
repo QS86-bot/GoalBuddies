@@ -11,19 +11,28 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie loopt sinds 06-09 achter op de map.** `0164` (twaalf gebieden in
-drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
-uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
-persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
-`0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
-dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
-`0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
-meldingsoort), `0179` (een bovengrens op een pushtoken) en `0180` (de
-bevestigingsstand voor de eigenaar) staan
-er nog niet op. `0164` moet
-in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
-waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
-dit document.
+⚠️ **Productie staat op `0183`, maar de edge-functies zijn van de dag ervoor.**
+📏 Gemeten op 07-09 aan het echte project, niet aan dit document:
+`list_migrations` geeft `0001` t/m `0183`, aaneengesloten. De achterstand van
+06-09 is daarmee ingelopen; alleen `0184` (een open straf laat de deadline niet
+vooruit schuiven, QS8-317) staat nog niet op productie.
+
+⚠️⚠️ **Wat er wél nog openstaat is een deploy, en die is stiller dan een
+migratie.** `list_edge_functions` geeft voor alle drie de functies
+`updated_at = 2026-09-06T09:07:56Z`, terwijl de migraties `0173` t/m `0183`
+op 07-09 zijn toegepast. Gevolg: `0178` staat op productie, de code die
+`getuigenissen_voor()` aanroept staat in de map (toegevoegd 07-09 04:34), en de
+gedeployde `notificaties` weet er niets van — **de persoon-getuige krijgt zijn
+melding niet**. Er is geen kapot onderdeel, dus niets wordt er rood van. Staat
+als QS8-320, met het commando erbij.
+
+⚠️ **En let op de volgorde zodra QS8-147 landt.** Die migratie dropt
+`activeer_weekplanstap(uuid, date, integer)` en zet er `(uuid, date)` neer; de
+gedeployde rollover roept de driearguments vorm aan. Zonder deploy in dezelfde
+ronde geeft PostgREST `PGRST202`, vangt de rollover dat zacht af, en schuift er
+elk uur voor iedereen geen weekplanstap meer in. Zie `docs/DEPLOY.md` §2.3a.
+
+Vraag de database welke migraties er staan, niet dit document.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -91,8 +100,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 40 controlescripts groen;
-`npm run poort` meldt 44 stappen.
+Typecheck, lint en alle 41 controlescripts groen;
+`npm run poort` meldt 45 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -164,7 +173,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0183` staan in de map: **186 bestanden**,
+Migraties `0001` t/m `0184` staan in de map: **187 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
