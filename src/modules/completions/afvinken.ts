@@ -5,6 +5,8 @@ import { t } from '../../shared/i18n';
 import type { Cycle } from '../../shared/time';
 import type { Resultaat } from '../../shared/api';
 
+import { groepeerPerWeekdoel } from './afvinkvorm';
+
 /**
  * Dagafvinkingen bij een ritme-weekdoel — QS8-253, migratie 0140.
  *
@@ -26,45 +28,34 @@ import type { Resultaat } from '../../shared/api';
 export type Dagafvinking = Tables<'day_checkins'>;
 
 /**
- * De afgevinkte dagen van één weekdoel.
- *
- * ⚠️ Geen `limit` op zeven maar op de query zelf: de unieke index
- *    `day_checkins_een_per_dag` maakt meer dan zeven rijen per weekdoel
- *    onmogelijk, en een grens die al door de database wordt afgedwongen nog eens
- *    in de client zetten, verbergt hooguit een defect.
- */
-export async function fetchAfvinkingen(weeklyGoalId: string): Promise<readonly string[]> {
-  const { data, error } = await supabase()
-    .from('day_checkins')
-    .select('local_date')
-    .eq('weekly_goal_id', weeklyGoalId)
-    .order('local_date', { ascending: true });
-
-  if (error) {
-    reportError(error, 'checkins.list', { weekly_goal_id: weeklyGoalId, code: error.code });
-    throw new Error(t('ritme.afvinken_mislukt'));
-  }
-
-  return (data ?? []).map((rij) => rij.local_date);
-}
-
-/**
- * De afgevinkte dagen van álle ritme-weekdoelen in één cyclus.
+ * Wélke dagen er afgevinkt zijn, per ritme-weekdoel, in één cyclus.
  *
  * ⚠️ Eén query en geen lus over weekdoelen. Het hoofdscherm toont de hele week
  *    van alle doelen, dus een verzoek per weekdoel is hier de klassieke N+1
  *    (onwrikbare regel 12).
  *
- * @returns per `weekly_goal_id` het aantal afgevinkte dagen.
+ * ⚠️ **Dit gaf tot QS8-301 alleen een áántal terug, en daarnaast stond
+ *    `fetchAfvinkingen(weeklyGoalId)` die de dagen van één weekdoel gaf en die
+ *    door geen enkel scherm werd aangeroepen.** Die twee samen waren de vorm
+ *    waar dit project vaker in loopt: de dure vraag was al gesteld, het antwoord
+ *    werd weggegooid, en de functie die het wél gaf was per weekdoel — dus
+ *    onbruikbaar op precies het scherm dat het nodig had. De rijen zijn
+ *    dezelfde; er komt één kolom bij en er gaat een functie af.
+ *
+ * ⚠️ De teller is nu een afleiding (`.length`) en geen tweede vraag aan de
+ *    database. Twee tellingen die uiteen kunnen lopen zijn er één te veel.
+ *
+ * @returns per `weekly_goal_id` de afgevinkte dagen, oplopend.
  */
-export async function fetchAfvinktellingen(
+export async function fetchAfvinkingenPerWeekdoel(
   cyclus: Cycle,
-): Promise<ReadonlyMap<string, number>> {
+): Promise<ReadonlyMap<string, readonly string[]>> {
   const { data, error } = await supabase()
     .from('day_checkins')
-    .select('weekly_goal_id')
+    .select('weekly_goal_id, local_date')
     .gte('local_date', cyclus.startDate)
     .lte('local_date', cyclus.endDate)
+    .order('local_date', { ascending: true })
     // Zeven dagen maal een ruim aantal doelen. RLS beperkt dit al tot de eigen
     // rijen; deze grens is er voor onwrikbare regel 10 en niet voor de veiligheid.
     .limit(700);
@@ -77,13 +68,9 @@ export async function fetchAfvinktellingen(
     return new Map();
   }
 
-  const tellingen = new Map<string, number>();
-  for (const rij of data ?? []) {
-    tellingen.set(rij.weekly_goal_id, (tellingen.get(rij.weekly_goal_id) ?? 0) + 1);
-  }
-
-  return tellingen;
+  return groepeerPerWeekdoel(data ?? []);
 }
+
 
 /**
  * Vinkt een dag af.
@@ -186,7 +173,7 @@ export async function fetchAfvinkdagen(
     .limit(1000);
 
   if (error) {
-    // ⚠️ Zacht, net als `fetchAfvinktellingen()`: dit voedt één blok op een
+    // ⚠️ Zacht, net als `fetchAfvinkingenPerWeekdoel()`: dit voedt één blok op een
     //    scherm met meer blokken. Een lege kalender is beter dan een overzicht
     //    dat niet opkomt.
     reportError(error, 'checkins.range', { code: error.code });
@@ -204,7 +191,7 @@ export async function fetchAfvinkdagen(
 /**
  * Welke weekdoelen op één specifieke dag zijn afgevinkt.
  *
- * ⚠️ Bestaat naast `fetchAfvinktellingen()` en is er geen afleiding van: bij
+ * ⚠️ Bestaat naast `fetchAfvinkingenPerWeekdoel()` en is er geen afleiding van: bij
  *    drie van de vijf dagen weet je niet óf vandaag erbij zat, en dat is precies
  *    wat de knop moet weten. Twee lichte queries zijn hier goedkoper dan één
  *    zware die alle datums teruggeeft.

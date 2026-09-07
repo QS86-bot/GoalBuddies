@@ -1,10 +1,11 @@
+import type { WeekpasStand } from '../standen';
 import { StyleSheet, View } from 'react-native';
 
 import { t } from '../i18n';
 
 import { space, useTheme } from '../theme';
 
-import { puntenUitleg, streakLabel, weekpasReddeDezeCyclus, type WeekpasStand } from './metrics';
+import { puntenUitleg, streakLabel, weekpasReddeDezeCyclus } from './metrics';
 import { StreakCounter } from './StreakCounter';
 import { Caption, Subheading } from './Text';
 import { Weekpas } from './Weekpas';

@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import type { Cycle } from '../../shared/time';
-import type { KettingStand } from '../../shared/ui';
+import type { KettingStand } from '../../shared/standen';
 
 /**
  * De Ketting — QS8-80.

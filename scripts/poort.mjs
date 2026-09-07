@@ -202,7 +202,7 @@ export function draai(commando) {
  *    beantwoordt één vraag — *wat zeg je tegen de lezer* — en `hoofd()` de
  *    andere: *wat draai je*. Ze veranderen ook om verschillende redenen: de
  *    ene als er een stap bijkomt, de andere als een melding de lezer naar de
- *    verkeerde oorzaak stuurt. Dat laatste is hier op 07-09-2026 gebeurd.
+ *    verkeerde oorzaak stuurt. Dat laatste is op 07-09-2026 twee keer gebeurd.
  *
  * @returns de exitcode: 0 alleen als alles groen én gemeten is.
  */
@@ -216,16 +216,24 @@ export function meldUitslag(uitkomsten, aantalStappen) {
 
   process.stdout.write('\n');
   if (ongemeten.length > 0) {
-    // ⚠️ **Niet "zonder database".** Dat was één advies voor drie oorzaken, en
+    // ⚠️ **Niet "zonder database".** Dat was één advies voor vier oorzaken, en
     //    het stuurde de lezer naar `npm run rls:stack` terwijl `adviseur:` en
-    //    `register:controle` een productiesleutel missen en `audit:controle`
-    //    het npm-register. Zelfde klasse als QS8-268: een melding die stelliger
-    //    is dan wat er gemeten is.
+    //    `register:controle` een productiesleutel missen, `audit:controle` het
+    //    npm-register, en `pgversie:controle` de database juist wél bereikt —
+    //    die meldt zich ongemeten omdat de lokale major een andere is dan die
+    //    van productie. Zelfde klasse als QS8-268: een melding die stelliger is
+    //    dan wat er gemeten is.
+    //
+    //    ⚠️⚠️ **Twee sessies vonden dit op dezelfde dag los van elkaar**, via
+    //    QS8-191 en QS8-177, en allebei omdat ze een controle toevoegden die
+    //    niet in het ene verhaal paste. Een zin die maar één oorzaak kent,
+    //    wordt onwaar zodra de tweede erbij komt — en er komt er altijd een.
     process.stdout.write(
       `· ${ongemeten.length} controle(s) hebben niets gemeten: ${ongemeten.map((u) => u.naam).join(', ')}.\n` +
         '  Lees per controle de reden die hij zelf noemt — een database, een\n' +
-        '  productiesleutel of het npm-register. Niet elke ongemeten controle wacht\n' +
-        '  op `npm run rls:stack`, en één advies voor alle gevallen stuurt de lezer\n' +
+        '  productiesleutel, het npm-register, of een Postgres-major die niet die\n' +
+        '  van productie is. Niet elke ongemeten controle wacht op\n' +
+        '  `npm run rls:stack`, en één advies voor alle gevallen stuurt de lezer\n' +
         '  naar de verkeerde oorzaak.\n\n',
     );
   }

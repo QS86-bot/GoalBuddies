@@ -76,7 +76,9 @@
     "rls:dekking": "node scripts/rls-dekking.mjs",
     "definers:controle": "node scripts/definers-controle.mjs",
     "poortstand": "node scripts/poortstand.mjs",
-    "poortstand:controle": "node scripts/poortstand.mjs --controle"
+    "poortstand:controle": "node scripts/poortstand.mjs --controle",
+    "edge:types:controle": "node scripts/edge-typecheck.mjs",
+    "pgversie:controle": "node scripts/pg-versie.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -103,6 +105,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "deno": "2.9.6",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "^57.0.1",

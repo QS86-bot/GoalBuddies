@@ -41,8 +41,7 @@ export {
 export {
   fetchAfgevinktOp,
   fetchAfvinkdagen,
-  fetchAfvinkingen,
-  fetchAfvinktellingen,
+  fetchAfvinkingenPerWeekdoel,
   maakAfvinkingOngedaan,
   meldingBijAfvinkfout,
   vinkDagAf,

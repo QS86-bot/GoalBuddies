@@ -377,8 +377,13 @@ jobs:
       #    hier blind te pushen: `registry.npmjs.org` is wél bereikbaar, en het
       #    jsr-pakket is dezelfde broncode als het npm-pakket. Een kopie van deze
       #    map waarin de specifier `npm:@supabase/supabase-js@<zelfde versie>`
-      #    wordt, typecheckt daarom volledig op een werkplek — het versienummer
-      #    staat in de eerste CI-uitslag. Doe dat vóór je pusht.
+      #    wordt, typecheckt daarom volledig op een werkplek.
+      #
+      #    ⚠️ **Sinds QS8-214 hoef je dat niet meer met de hand te doen:**
+      #    `npm run edge:types:controle` maakt die kopie, herschrijft precies
+      #    die ene specifier en draait check én lint met dezelfde vlag als
+      #    hieronder. Hij draait mee in `npm run poort`. Zonder Deno meldt hij
+      #    OVERGESLAGEN en telt de poort hem als ongemeten — niet als groen.
       #
       #    Deze stap kostte bij de eerste twee rondes vier fouten, en alle vier
       #    waren ze onzichtbaar in het groen:
@@ -533,6 +538,36 @@ jobs:
       #    of hij slaagt maar of hij überhaupt aan het woord komt: vóór 26-08
       #    eindigde `npm run deploy` op Windows stil met exit 0, en dat is een
       #    deploy die zegt dat hij gelukt is terwijl er niets gebeurd is.
+      # ⚠️ **Apart van de lus hierboven**, want dit script heet niet `*-controle.mjs`
+      #    en het duurt langer: het kopieert de functiemap en draait `deno check`
+      #    plus `deno lint`.
+      #
+      #    ⚠️⚠️ **En het staat hier omdat het op Windows twee keer stil kon
+      #    zwijgen** (QS8-214, nawerk 07-09): `find` is er een tekstzoeker en geen
+      #    bestandszoeker, en npm zet er `deno.cmd` neer in plaats van `deno`. In
+      #    beide gevallen mat de controle niets op precies de machine waar hij met
+      #    de hand gedraaid wordt. Die twee reparaties zijn een redenering zolang
+      #    er geen Windows onder staat — deze stap maakt er een meting van.
+      #
+      #    ⚠️⚠️ **En hier moet OVERGESLAGEN rood zijn.** Het script exit 0 als het
+      #    geen Deno vindt — terecht, want in de poort telt die regel als
+      #    ongemeten. Maar deze stap bestáát om te meten dat het op Windows
+      #    wérkt, en dan is "ik kon niet meten" precies de uitslag die hier niet
+      #    door mag. Zonder deze eis zou een teruggedraaide reparatie hier weer
+      #    groen worden.
+      - name: De Edge-typecheck draait ook op Windows
+        run: |
+          set +e
+          uitvoer="$(npm run edge:types:controle 2>&1)"
+          code=$?
+          echo "$uitvoer"
+          if [ "$code" -ne 0 ]; then exit "$code"; fi
+          if echo "$uitvoer" | grep -q "OVERGESLAGEN"; then
+            echo "✗ De controle sloeg zichzelf over. Deze stap bestaat om te meten"
+            echo "  dat hij op Windows draait; overgeslagen is hier geen groen."
+            exit 1
+          fi
+
       - name: De deploy komt aan het woord
         # ⚠️ `always()`, want anders verbergt één fout de andere. In de eerste
         #    echte run viel de stap hierboven om op `tekst-controle` en werd deze

@@ -1288,6 +1288,8 @@ export const nl = {
     'niet vooruit. Naar voren halen mag wel. Wil je de straf niet meer, dan ' +
     'kun je hem intrekken.',
 
+  'doel.recent_ontkoppeld':
+    'Je hebt dit doel net losgekoppeld van een groep. De datum zelf zetten kan zeven dagen daarna.',
   'doel.afronden_mislukt': 'Afronden lukte niet. Probeer het opnieuw.',
   'doel.al_afgerond': 'Dit doel is al afgerond.',
   'doel.gearchiveerd': 'Dit doel is gearchiveerd. Haal het eerst terug.',
@@ -1359,15 +1361,24 @@ export const nl = {
   'deadline.argument_lang': 'Hou het kort: maximaal 1000 tekens.',
   'deadline.geen_lid': 'Je bent geen lid van deze groep.',
   'deadline.niet_gekoppeld': 'Dit doel is niet aan deze groep gekoppeld.',
-  'deadline.zelfde_datum': 'Kies een andere datum dan de datum die er nu staat.',
   'deadline.argument_leeg': 'Schrijf één zin over wat er veranderd is.',
   'deadline.geen_beslisser':
-    'Je bent het enige lid van deze groep, dus niemand kan dit verzoek goedkeuren. Nodig eerst iemand uit, of kies een groep waar een buddy in zit.',
+    'Je bent het enige lid van deze groep, dus niemand kan dit verzoek goedkeuren. ' +
+    'Nodig eerst iemand uit, of kies een groep waar een buddy in zit. ' +
+    'Koppel je dit doel los, dan kun je de datum zeven dagen later zelf zetten.',
   'deadline.datum_in_verleden': 'Die datum ligt in het verleden. Kies vandaag of later.',
   'deadline.al_open': 'Er loopt al een verzoek voor dit doel. Wacht daar eerst op.',
   'deadline.bestaat_niet': 'Dit verzoek bestaat niet meer.',
   'deadline.al_beslist': 'Hier is al over beslist.',
   'deadline.niet_zelf': 'Je eigen verzoek kun je niet zelf goedkeuren.',
+  'deadline.datum_onleesbaar':
+    'Die datum kunnen we niet lezen. Kies hem opnieuw.',
+  'deadline.te_veel_verzoeken':
+    'Je hebt vandaag vijf verzoeken ingediend. Morgen kan er weer een.',
+  'deadline.verzoek_verlopen':
+    'De gevraagde datum ligt inmiddels in het verleden. Vraag de aanvrager om een nieuwe datum.',
+  'deadline.niet_van_jou':
+    'Dit verzoek is niet van jou.',
   'deadline.versturen_mislukt': 'Je verzoek versturen lukte niet. Probeer het opnieuw.',
   'deadline.versturen_mislukt_kort': 'Je verzoek versturen lukte niet.',
   'deadline.beslissen_mislukt': 'Beslissen lukte niet. Probeer het opnieuw.',
@@ -2132,6 +2143,8 @@ export const nl = {
   'ritme.vloer_gehaald': 'Je vloer is gehaald. Deze week telt.',
   'ritme.vloer_nog_niet': 'Nog {aantal} dagen tot je vloer.',
   'ritme.plafond_gehaald': 'Plafond gehaald.',
+  'ritme.strook_af': '{datum}: afgevinkt',
+  'ritme.strook_open': '{datum}: nog niet afgevinkt',
   'ritme.vink_af': 'Vink vandaag af',
   'ritme.vink_af_label': 'Vink vandaag af voor "{titel}"',
   'ritme.maak_ongedaan': 'Toch niet',
