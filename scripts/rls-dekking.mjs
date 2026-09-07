@@ -265,6 +265,29 @@ export const NIET_PER_HELFT_TE_METEN = {
     wordtToetsbaarAls: 'zie `profiles.profiles_update.using`.',
     staatIn: 'tests/rls/schrijfgrenzen.test.ts',
   },
+  'day_checkins.day_checkins_delete.using': {
+    reden:
+      'PostgREST stuurt een DELETE als `DELETE … RETURNING`, dus de rij moet óók door ' +
+      '`day_checkins_select` — en dat is letterlijk dezelfde uitdrukking (de eigenaarstoets ' +
+      'via `weekly_goals` en `goals`). 📏 Gemeten met bob die aan de afvinking van alice ' +
+      'komt: alleen deze helft open = de rij blijft staan; delete én select samen open = ' +
+      '1 rood, en het is de juiste test. De grendel is het paar.',
+    wordtToetsbaarAls:
+      'de uitdrukkingen van `day_checkins_select` en `day_checkins_delete` uit elkaar lopen — ' +
+      'bijvoorbeeld als een groepsgenoot ooit afvinkingen mag lezen. ⚠️ Dat zou domeinregel 7 ' +
+      'raken: een rooster met gaten is fijnmaziger tegenslag dan een gemiste week (A41).',
+    staatIn: 'tests/rls/afvinkgrens.test.ts',
+  },
+  'push_tokens.push_tokens_delete.using': {
+    reden:
+      'Zelfde vorm als `day_checkins_delete`: `push_tokens_select` draagt letterlijk dezelfde ' +
+      'uitdrukking (`user_id = auth.uid()`), en een DELETE gaat als `DELETE … RETURNING`. ' +
+      '📏 Gemeten: alleen deze helft open = het token blijft staan; delete én select samen ' +
+      'open = 1 rood.',
+    wordtToetsbaarAls:
+      'de uitdrukkingen van `push_tokens_select` en `push_tokens_delete` uit elkaar lopen.',
+    staatIn: 'tests/rls/afvinkgrens.test.ts',
+  },
   'groups.groups_update.using': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
