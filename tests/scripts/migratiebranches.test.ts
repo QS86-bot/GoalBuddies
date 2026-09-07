@@ -252,6 +252,46 @@ describe('botsendPerBranch — wat er met rust gelaten moet worden', () => {
 
     expect(uit).toEqual([]);
   });
+
+  it('zwijgt over mijn eigen migratie onder haar oude nummer', () => {
+    // ⚠️ **De tweede grendel van QS8-313, en hij vangt een ánder geval dan de
+    //    gelande-branchfilter.** Landt mijn migratie en hernummert `main` hem van
+    //    0175 naar 0176, dan draagt elke zusterbranch die `main` nog niet
+    //    binnengehaald heeft nog steeds `0175_nog_een.sql`. Op nummer én naam is
+    //    dat een botsing; in werkelijkheid kijk ik naar mijn eigen bestand onder
+    //    zijn oude nummer, en er valt niets te hernummeren.
+    //
+    // 📏 Het geval deed zich meteen voor op `qs8-317`, die vertakte vóór de
+    //    hernummering van 0182 naar 0183.
+    const uit = botsendPerBranch({
+      lokaal: namenPerSleutel(['0175_van_een_ander.sql', '0176_nog_een.sql']),
+      perBranch: { 'origin/zuster': namenPerSleutel(['0175_nog_een.sql']) },
+    });
+
+    expect(uit).toEqual([]);
+  });
+
+  it('maar meldt een échte botsing die toevallig naast zo\'n verhuizing staat', () => {
+    // ⚠️ **Zonder deze regel is de vorige niet van "alles zwijgen" te
+    //    onderscheiden.** De zuster draagt hier twee bestanden op genomen
+    //    nummers: één dat hier onder een ander nummer staat (mijn verhuizing) en
+    //    één dat hier helemaal niet voorkomt. Alleen de tweede is een botsing.
+    const uit = botsendPerBranch({
+      lokaal: namenPerSleutel(['0175_van_een_ander.sql', '0176_nog_een.sql']),
+      perBranch: {
+        'origin/zuster': namenPerSleutel(['0175_nog_een.sql', '0176_iets_nieuws.sql']),
+      },
+    });
+
+    expect(uit).toEqual([
+      {
+        branch: 'origin/zuster',
+        botsingen: [
+          { nummer: '0176', hier: '0176_nog_een.sql', daar: '0176_iets_nieuws.sql' },
+        ],
+      },
+    ]);
+  });
 });
 
 describe('namenPerSleutel', () => {
