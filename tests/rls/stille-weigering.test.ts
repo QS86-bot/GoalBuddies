@@ -171,7 +171,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   }
 
   it(
-    'de sleutel van een lidmaatschap verandert voor niemand — ook niet voor de beheerder',
+    'de sleutel van een lidmaatschap verandert niet voor een beheerder',
     async () => {
       // ⚠️ De beheerderstak pinde `group_id` en `user_id` net zo stil terug als
       //    de andere tak. Dat is dezelfde belofte en dus dezelfde toets; hij
@@ -186,6 +186,38 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
           beheerder.db
             .from('group_members')
             .update({ group_id: g2.group!.id })
+            .eq('group_id', groupId)
+            .eq('user_id', lid.id),
+        leesRij(lid.id),
+      );
+      expect(melding).toContain('lidmaatschap_verplaatst');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'ook `service_role` verplaatst een lidmaatschap niet',
+    async () => {
+      // ⚠️ **De sleuteltoets staat vóór de vroege uitgang bij `auth.uid() is
+      //    null`, en dat is de helft die de eerste versie van 0187 miste.** Stond
+      //    hij erna, dan gold "voor niemand" alleen voor ingelogde aanroepers en
+      //    verplaatste `service_role` een lidmaatschap met HTTP 200 en de
+      //    verplaatste rij terug — aangewezen door de security-ronde en hier
+      //    nagemeten.
+      //
+      //    Dit is dezelfde keuze die `archief_blijft_archief()` (0153) maakt, en
+      //    om dezelfde reden: een rolfilter is geen grendel, want élke SECURITY
+      //    DEFINER-functie komt er langs.
+      const tweede = await beheerder.db.rpc('create_group', { group_name: 'Stille weigering III' });
+      const g3 = (tweede.data ?? {}) as { group?: { id: string } };
+      if (!g3.group) throw new Error(`derde groep: ${JSON.stringify(tweede.data)}`);
+      registreerGroep(g3.group.id);
+
+      const melding = await weigertHoorbaar(
+        () =>
+          adminDb()
+            .from('group_members')
+            .update({ group_id: g3.group!.id })
             .eq('group_id', groupId)
             .eq('user_id', lid.id),
         leesRij(lid.id),
@@ -346,6 +378,32 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
         .update({ status: 'active' })
         .eq('group_id', groupId)
         .eq('user_id', lid.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'geen derde functie kent de ontgrendelsleutel — en geen enkele sleutel is ongeteld',
+    async () => {
+      // ⚠️ **De uitzondering van 0187 is een tweede loper-sleutel, en die kwam er
+      //    bijna zonder teller in.** 0153 bouwde voor de eerste sleutel
+      //    `sleutelzetters()` met de reden erbij: een nieuw bypass-mechanisme
+      //    zonder eigen teller zou de uitzondering zijn. Deze migratie máákt zo'n
+      //    mechanisme.
+      //
+      // ⚠️ **Zonder deze test bewaakt niets het.** 📏 Gemeten door een derde
+      //    functie te planten die `app.hervat_lidmaatschap` zet en élke
+      //    projectregel volgt: de volledige suite bleef groen. Een deur die
+      //    alleen dichtzit omdat er verderop een `if` staat.
+      //
+      // ⚠️ De teller dekt sinds 0187 drie gevallen, en ze zijn los geijkt: een
+      //    derde functie op de sleutel van 0187, een derde op die van 0153, en
+      //    een functie met een `app.`-instelling die nergens geregistreerd staat.
+      //    Dat laatste is de tak die de vólgende sleutel vangt.
+      const { data, error } = await adminDb().rpc('sleutelzetters');
+      if (error) throw new Error(`sleutelzetters: ${error.message}`);
+
+      expect(data ?? [], 'elke rij hier is een tweede sleutel op een slot').toEqual([]);
     },
     TEST_TIMEOUT,
   );

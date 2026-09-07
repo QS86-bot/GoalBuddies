@@ -213,9 +213,51 @@ mutatie in het bestand stond vóórdat de uitslag geloofd werd. De suite is
 | 4 — `join_group_with_code()` vergeet de instelling | de uitzondering | terugkomen uit `paused` |
 | 5 — de uitzondering toetst de instelling niet | de must-deny eronder | een lid schuift zichzelf niet vrij |
 | 6 — ook de beheerder wordt geweigerd | de tegenhanger (valkuil 10) | beheerder zet status + de overdracht |
+| 7 — derde functie zet `app.hervat_lidmaatschap` | de teller onder de nieuwe sleutel | `sleutelzetters()` is niet leeg |
+| 8 — derde functie leest `app.heropent_groep` | de teller onder de óude sleutel | idem — de belofte van 0153 staat nog |
+| 9 — functie met een ongeregistreerde `app.`-sleutel | de derde tak van de teller | idem |
+| 10 — sleuteltoets weer ná `auth.uid() is null` | de sleutel geldt voor élke rol | `service_role` verplaatst een lidmaatschap |
 
 ⚠️ Mutatie 3 is de leerzaamste: hij maakt zichtbaar dat de no-op-test geen
 nettigheid bewaakt maar de keten van toetreden overeind houdt.
+
+## Wat de security-ronde eraan toevoegde
+
+Twee dingen die deze migratie zonder die ronde fout had gedaan, en allebei zijn
+ze nagemeten voordat ze verwerkt werden.
+
+**1. De tweede sleutel had geen teller — mutaties 7 t/m 9.** 0153 bouwde voor
+`app.heropent_groep` `sleutelzetters()`, met deze reden erbij: *"Een nieuw
+bypass-mechanisme zonder eigen teller zou de uitzondering zijn."* 0187 máákte
+zo'n mechanisme en liet die teller weg. 📏 Gemeten door een derde functie te
+planten die `app.hervat_lidmaatschap` zet en élke projectregel volgt: de
+volledige suite bleef groen. Precies de deur die alleen dichtzit omdat er
+verderop een `if` staat — de zin die in deze codebase al twee keer eerder is
+opgeschreven.
+
+⚠️ **Uitgebreid en niet gekloond, en met een derde tak erbij.** Twee losse
+tellers zijn twee lijsten die uit elkaar lopen (de fout van 0032/0034), en een
+teller per sleutel dekt alleen de sleutels die iemand erin heeft gezet — de
+dérde sleutel die ooit bedacht wordt, zou door beide heen glippen. De teller
+meldt daarom ook elke functie die een `app.`-instelling noemt die nergens
+geregistreerd staat. 📏 Vandaag twee sleutels en vijf functies, gemeten aan
+`pg_proc`, dus die derde tak meldt niets en is geen ruis.
+
+**2. "Voor niemand" gold alleen voor ingelogde aanroepers — mutatie 10.** De
+sleuteltoets stond ná de vroege uitgang bij `auth.uid() is null`. 📏 Gemeten:
+`service_role` verplaatste een lidmaatschap naar een andere groep, HTTP 200 met
+de verplaatste rij terug. Geen gat — `service_role` is vertrouwd — maar wel een
+belofte die zichzelf niet waarmaakte, en 0153 koos bij `archief_blijft_archief()`
+bewust de andere kant: élke rol, juist omdat definer-functies langs een rolfilter
+komen. De toets staat nu vooraan.
+
+⚠️ **En één bevinding is bewust níét verwerkt maar doorgeschoven:**
+`beslis_lidmaatschapsverzoek()` doet `insert … on conflict do nothing` en schrijft
+de `group_events`-rij en het `ok: true` onvoorwaardelijk. Bestaat de rij al als
+`inactive`, dan staat er een acceptatie in de onveranderlijke groepsgeschiedenis
+die niet gebeurd is — dezelfde klasse, andere functie, en een INSERT waar deze
+trigger niet op vuurt. Dat is QS8-328, en het is uit de bron gelezen en niet
+gemeten; dat laatste hoort er eerst te gebeuren.
 
 ## Wat er bewust níét is gebeurd
 

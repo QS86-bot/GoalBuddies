@@ -57,9 +57,19 @@
  *    vorige.
  *
  * ⚠️ Twee latere pin-triggers — `guard_group_member_update()` en
- *    `archief_blijft_archief()` — gelden voor élke rol en kennen deze
- *    uitzondering niet. Het patroon heeft zich dus niet verspreid, en dat is de
- *    reden dat dit script maar over één trigger gaat.
+ *    `archief_blijft_archief()` — gelden voor élke rol en kennen de
+ *    `current_user`-uitzondering van dit script niet. Dát patroon heeft zich dus
+ *    niet verspreid, en dat is de reden dat dit script maar over één trigger
+ *    gaat.
+ *
+ * ⚠️⚠️ **Maar het vlagpatroon wél, en sinds 07-09-2026 naar een tweede trigger.**
+ *    `archief_blijft_archief()` had er al één (`app.heropent_groep`, 0153) en
+ *    `guard_group_member_update()` heeft er sinds 0187 ook één
+ *    (`app.hervat_lidmaatschap`, QS8-314). Geen van beide leunt op een rolnaam —
+ *    het zijn genoemde sessie-instellingen voor één genoemde overgang — maar wie
+ *    hierboven leest "het patroon heeft zich niet verspreid" en daar "er is maar
+ *    één ontsnappingsroute" van maakt, heeft het mis. De teller over allebei die
+ *    sleutels is `sleutelzetters()`, uitgebreid in 0187.
  */
 
 import { execFileSync } from 'node:child_process';

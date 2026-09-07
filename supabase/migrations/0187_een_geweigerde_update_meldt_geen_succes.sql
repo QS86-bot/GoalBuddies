@@ -152,6 +152,26 @@ as $$
 declare
   v_toegestaan boolean := false;
 begin
+  -- ⚠️ **Deze toets staat vóór de vroege uitgang en geldt dus voor élke rol,
+  --    `service_role` inbegrepen.** Dat is de keuze die `archief_blijft_archief()`
+  --    (0153) ook maakt, en om dezelfde reden: een rolfilter is geen grendel,
+  --    want élke SECURITY DEFINER-functie komt er langs. 📏 Stond hij ná de
+  --    uitgang, dan verplaatste `service_role` een lidmaatschap naar een andere
+  --    groep met HTTP 200 en de verplaatste rij terug — gemeten, en het is de
+  --    reden dat hij hier staat en niet drie regels lager.
+  --
+  --    `group_id` en `user_id` vormen de sleutel van de rij. Er is geen rol en
+  --    geen functie die een lidmaatschap verplaatst: dat is verlaten en opnieuw
+  --    toetreden. 📏 Nagemeten dat geen enkele schrijver ze aanraakt —
+  --    `verlaat_groep()` en `verwijder_lid()` zetten alleen `role` en `status`.
+  if new.group_id is distinct from old.group_id
+     or new.user_id is distinct from old.user_id
+  then
+    raise exception 'lidmaatschap_verplaatst'
+      using hint = 'group_id en user_id vormen de sleutel van een lidmaatschap. '
+                   'Verlaat de ene groep en treed toe tot de andere.';
+  end if;
+
   if auth.uid() is null then
     return new;
   end if;
@@ -173,18 +193,6 @@ begin
   then
     raise exception 'last_admin'
       using hint = 'Draag het beheer over via verlaat_groep() of promoveer eerst een ander lid.';
-  end if;
-
-  -- ⚠️ **De sleutel van de rij verandert nooit, voor niemand.** Dit stond in de
-  --    beheerderstak als stille pin en gold daarmee alleen voor beheerders; de
-  --    niet-beheerderstak pinde hem een tweede keer, even stil. Eén toets vooraan
-  --    is niet alleen korter maar ook waar voor élke rol.
-  if new.group_id is distinct from old.group_id
-     or new.user_id is distinct from old.user_id
-  then
-    raise exception 'lidmaatschap_verplaatst'
-      using hint = 'group_id en user_id vormen de sleutel van een lidmaatschap. '
-                   'Verlaat de ene groep en treed toe tot de andere.';
   end if;
 
   -- ⚠️ Rechtstreeks op de tabel en niet via `is_group_admin()`: die geeft sinds
@@ -365,6 +373,109 @@ comment on function public.join_group_with_code(text) is
   'Toetreden met een uitnodigingscode. Zet sinds 0187 `app.hervat_lidmaatschap` '
   'zodat guard_group_member_update() de overgang paused->active van de eigen rij '
   'doorlaat in plaats van hem stil terug te zetten (QS8-314).';
+
+-- ---------------------------------------------------------------------------
+-- 3. De teller onder de tweede sleutel
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **`app.hervat_lidmaatschap` is de tweede ontgrendelsleutel van dit project,
+--    en hij kwam er bijna zonder teller in.** 0153 bouwde voor de eerste
+--    (`app.heropent_groep`) `sleutelzetters()` met deze reden erbij: *"Een nieuw
+--    bypass-mechanisme zonder eigen teller zou de uitzondering zijn."* Deze
+--    migratie máákte zo'n mechanisme; de teller hoort er dus bij.
+--
+-- 📏 Aangewezen door de security-ronde en zelf nagemeten: een derde functie die
+--    `set_config('app.hervat_lidmaatschap', …)` doet en élke projectregel volgt
+--    (definer, `search_path`, `revoke … from public, anon, authenticated`, alleen
+--    `service_role`) liet de volledige suite groen. Niets werd er rood van.
+--    Precies de deur die alleen dichtzit omdat er verderop een `if` staat.
+--
+-- ⚠️ **Uitgebreid en niet gekloond, en met een derde tak erbij.** Twee losse
+--    tellers zijn twee lijsten die uit elkaar lopen — de fout van 0032/0034
+--    (QS8-261). En een teller per sleutel dekt alleen de sleutels die iemand
+--    erin heeft gezet: de derde sleutel die ooit bedacht wordt, staat in geen
+--    enkel register en zou door beide tellers heen glippen. Daarom meldt deze
+--    functie óók élke functie die een `app.`-instelling noemt die hier niet
+--    geregistreerd staat.
+--
+-- 📏 Vandaag zijn het er precies twee sleutels en vijf functies, gemeten aan
+--    `pg_proc` en niet aan de bestanden — dus de derde tak meldt vandaag niets
+--    en is geen ruis:
+--
+--      archief_blijft_archief     app.heropent_groep
+--      heropen_groep              app.heropent_groep
+--      sleutelzetters             app.heropent_groep   (de teller zelf)
+--      guard_group_member_update  app.hervat_lidmaatschap
+--      join_group_with_code       app.hervat_lidmaatschap
+--
+-- ⚠️ De handtekening blijft `returns table (naam text, bezwaar text)`, dus dit is
+--    een `create or replace` zonder drop en `tests/rls/archief-leesbaar.test.ts`
+--    en `scripts/dode-keten-controle.mjs` blijven werken zoals ze zijn.
+
+create or replace function public.sleutelzetters()
+  returns table (naam text, bezwaar text)
+  language sql
+  stable
+  security definer
+  set search_path = public, pg_temp
+as $$
+  with sleutel(instelling, toegestaan) as (
+    values
+      ('app.heropent_groep',      array['heropen_groep', 'archief_blijft_archief']),
+      ('app.hervat_lidmaatschap', array['join_group_with_code', 'guard_group_member_update'])
+  ),
+  bekend as (
+    select p.proname::text as naam, s.instelling, s.toegestaan
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    cross join sleutel s
+    where n.nspname = 'public'
+      and p.prosrc like '%' || s.instelling || '%'
+      and p.proname <> 'sleutelzetters'
+  )
+  select naam,
+         'noemt ' || instelling || '; alleen ' ||
+         array_to_string(toegestaan, '() en ') || '() horen die sleutel te kennen'
+    from bekend
+   where naam <> all (toegestaan)
+
+  union all
+
+  -- ⚠️ De derde tak: een `app.`-instelling die in geen enkel register hierboven
+  --    staat. Zonder deze tak dekt de teller alleen de sleutels die iemand er al
+  --    in heeft gezet, en is de vólgende sleutel weer ongeteld.
+  select p.proname::text,
+         -- ⚠️ De naam van deze functie staat met opzet niet in deze tekst.
+         --    `keten:controle` telt een naam in de bron als een aanroeper, en
+         --    strippen doet hij alleen commentaar — niet een tekenreeks. Een
+         --    functie die zichzelf in een melding noemt, meldt zichzelf dus
+         --    levend. Dezelfde klasse als het commentaargeval dat dat script in
+         --    zijn eigen kop beschrijft: de tekst óver een functie is geen
+         --    gebruik ervan.
+         'noemt een app.-sessiesleutel die in geen enkel register van deze '
+         'teller staat; een nieuwe sleutel hoort er met zijn eigen regel in '
+         'te komen'
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname <> 'sleutelzetters'
+     and p.prosrc ~ 'app\.[a-z_]+'
+     and not exists (
+       select 1 from sleutel s where p.prosrc like '%' || s.instelling || '%'
+     )
+
+   order by 1;
+$$;
+
+comment on function public.sleutelzetters() is
+  'Functies die een ontgrendelsleutel van dit project noemen. Hoort leeg te zijn. '
+  'Sinds 0187 twee sleutels in plaats van een: app.heropent_groep (0153) en '
+  'app.hervat_lidmaatschap (0187), plus een derde tak die elke ongeregistreerde '
+  'app.-instelling meldt. Een functie te veel is een tweede sleutel op een slot '
+  'dat voor iedereen dichtzit.';
+
+revoke all on function public.sleutelzetters() from public, anon, authenticated;
+grant execute on function public.sleutelzetters() to service_role;
 
 -- ⚠️ De grants staan al op deze functie (0011 en verder) en `create or replace`
 --    zonder handtekeningwijziging laat ze staan. Toch opnieuw uitgeschreven,
