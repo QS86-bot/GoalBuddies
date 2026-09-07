@@ -153,16 +153,24 @@ describe('zoekDeno — welke binary er gekozen wordt', () => {
     );
   });
 
-  it('kiest de extensieloze `deno` boven de `.cmd` als beide er staan', () => {
-    // ⚠️ De volgorde is niet willekeurig: op een Unix-machine met allebei is de
-    //    extensieloze de echte binary en de `.cmd` hooguit een restant.
+  it('kiest bij drie shims de vorm die dit platform kan uitvoeren', () => {
+    // 📏 **Deze test stond er eerst andersom in, en de Windows-job heeft dat
+    //    weerlegd.** npm zet daar drie bestanden neer — `deno.cmd`, `deno.ps1`
+    //    en een extensieloze `deno` — en die laatste is géén binary maar een
+    //    sh-script voor git-bash. `CreateProcess` kan er niets mee: `spawnSync`
+    //    gaf een fout zonder uitvoer, en de controle een rood met een lege
+    //    melding.
+    //
+    //    ⚠️ Op Unix is het precies omgekeerd: daar ís de extensieloze de echte
+    //    binary. Vandaar een volgorde per platform en niet één lijst.
     const wortel = mkdtempSync(join(tmpdir(), 'gb-denobeide-'));
     mkdirSync(join(wortel, 'node_modules', '.bin'), { recursive: true });
     writeFileSync(join(wortel, 'node_modules', '.bin', 'deno'), '');
     writeFileSync(join(wortel, 'node_modules', '.bin', 'deno.cmd'), '');
 
+    const verwacht = process.platform === 'win32' ? 'deno.cmd' : 'deno';
     expect(zoekDeno(wortel, { PATH: '', NODE_ENV: 'test' })).toBe(
-      join(wortel, 'node_modules', '.bin', 'deno'),
+      join(wortel, 'node_modules', '.bin', verwacht),
     );
   });
 

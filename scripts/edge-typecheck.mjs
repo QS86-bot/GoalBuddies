@@ -101,12 +101,23 @@ export function naarRepoPad(regel, werkmap) {
 export function zoekDeno(wortel = WORTEL, omgeving = process.env) {
   if (omgeving.DENO_BIN) return omgeving.DENO_BIN;
 
-  // ⚠️ **Ook `.cmd` en `.exe`** — QS8-214, nawerk van 07-09. npm zet op Windows
-  //    geen extensieloze `deno` in `node_modules/.bin` maar `deno.cmd` (plus
-  //    een `.ps1`). Zonder deze twee namen vond `existsSync` daar niets, viel
-  //    de zoektocht terug op PATH, en meldde de controle zich OVERGESLAGEN op
-  //    de énige machine waar hij met de hand gedraaid wordt.
-  for (const naam of ['deno', 'deno.cmd', 'deno.exe']) {
+  // ⚠️ **De volgorde is platformafhankelijk, en dat is gemeten en niet bedacht**
+  //    — QS8-214, nawerk van 07-09.
+  //
+  //    npm zet in `node_modules/.bin` op Windows **drie** bestanden neer:
+  //    `deno.cmd`, `deno.ps1` én een extensieloze `deno`. Die laatste is géén
+  //    binary maar een sh-script voor git-bash, en `CreateProcess` kan er niets
+  //    mee. Een eerdere versie hiervan zocht eerst naar de extensieloze naam,
+  //    vond dus dat sh-script, en `spawnSync` gaf een fout zonder uitvoer — een
+  //    rode controle met een lege melding.
+  //
+  //    ⚠️⚠️ **Dat is gevonden doordat deze controle aan de Windows-job is
+  //    toegevoegd, in dezelfde wijziging.** De reparatie was tot dat moment een
+  //    redenering, en de redenering had het mis. Op Windows dus eerst de
+  //    uitvoerbare vormen, elders de extensieloze.
+  const namen =
+    process.platform === 'win32' ? ['deno.exe', 'deno.cmd', 'deno'] : ['deno', 'deno.cmd', 'deno.exe'];
+  for (const naam of namen) {
     const lokaal = join(wortel, 'node_modules', '.bin', naam);
     if (existsSync(lokaal)) return lokaal;
   }
@@ -134,7 +145,13 @@ function draai(deno, argumenten, werkmap) {
     //    installeren om drie Edge Functions te typechecken.
     env: { ...process.env, DENO_NO_PACKAGE_JSON: '1' },
   });
-  const tekst = `${uit.stdout ?? ''}${uit.stderr ?? ''}`;
+  // ⚠️ **`uit.error` hoort in de tekst.** Start het proces niet — een shim die
+  //    `CreateProcess` niet kan uitvoeren, een ontbrekend bestand — dan zijn
+  //    stdout en stderr leeg en is `status` null. Zonder deze regel geeft de
+  //    controle dan `✗ edge-typecheck` met een lege melding, en dat is een
+  //    rode uitslag waar niemand iets aan heeft. Gemeten in de Windows-job.
+  const foutregel = uit.error ? `kon ${deno} niet starten: ${uit.error.message}\n` : '';
+  const tekst = `${foutregel}${uit.stdout ?? ''}${uit.stderr ?? ''}`;
   return { code: uit.status ?? 1, tekst: naarRepoPad(tekst, werkmap) };
 }
 
