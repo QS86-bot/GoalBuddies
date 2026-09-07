@@ -185,6 +185,13 @@ export const BEWAAKT_BUITEN_DE_APP = {
     'authenticated mag schrijven (0173). Elke teller en elk venster dat op zo\'n ' +
     'kolom rekent is dan te omzeilen. Aanroeper is `tests/rls/tijdstempels.test.ts`. ' +
     'Bewust niet voor `authenticated`: de uitkomst is een kaart van het schema.',
+  volgorde_bewaking:
+    'De volgordesleutel van een auditspoor: bestaat de kolom, is hij ' +
+    '`generated always as identity`, staat de unieke sorteerindex er nog, en ' +
+    'heeft geen client er schrijfrecht op (0174). Zonder die sleutel knoopt ' +
+    '`created_at` — `now()` is binnen een transactie constant — en ligt de ' +
+    'volgorde van het spoor niet vast. Aanroeper is ' +
+    '`tests/rls/auditspoor-volgorde.test.ts`.',
   schrijfrechten_bewaking:
     'Schrijfrechten voor `anon` of `authenticated` waar geen policy bij hoort ' +
     '(0101, generiek sinds 0118).',

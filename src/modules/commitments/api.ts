@@ -303,6 +303,13 @@ export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
  * Alleen voor de eigenaar leesbaar (`commitment_events_select`). De begunstigde
  * groep ziet het spoor niet, ook niet nadat een straf verschuldigd is geworden:
  * die groep krijgt de straf zélf te lezen en verder niets.
+ *
+ * ⚠️ **Sorteren op `seq` en niet op `created_at`** — QS8-303. Aan één UPDATE van
+ *    een commitment hangen twee triggers die allebei een gebeurtenis schrijven,
+ *    en `now()` is binnen een transactie constant. Die twee rijen kregen dus
+ *    exact dezelfde `created_at`, en dan mag Postgres de volgorde kiezen: de
+ *    eigenaar kon "geplaatst in de groep" bóven "verschuldigd geworden" zien
+ *    staan. `seq` is een identity-kolom (migratie 0174) en kan niet knopen.
  */
 export async function fetchCommitmentSpoor(
   commitmentId: string,
@@ -311,7 +318,8 @@ export async function fetchCommitmentSpoor(
     .from('commitment_events')
     .select('*')
     .eq('commitment_id', commitmentId)
-    .order('created_at', { ascending: true });
+    // ⚠️ Hier stond .order('created_at', { ascending: true }) tot QS8-303.
+    .order('seq', { ascending: true });
 
   if (error) {
     reportError(error, 'commitments.trail', { code: error.code });

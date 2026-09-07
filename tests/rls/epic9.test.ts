@@ -78,13 +78,32 @@ async function statusVan(commitmentId: string): Promise<string> {
   return rij.data.status;
 }
 
+/**
+ * Het auditspoor in schrijfvolgorde.
+ *
+ * ⚠️ **Sorteren op `seq` en niet op `created_at`** — QS8-303. Deze functie sórteerde
+ *    op de klok, en dat is precies waar deze suite op 06-09-2026 twee keer rood
+ *    van ging: `commitments_audit` en `commitments_systeembericht` hangen allebei
+ *    aan dezelfde UPDATE, en `now()` is binnen een transactie constant. Beide
+ *    rijen kregen dus dezelfde `created_at` en Postgres mocht kiezen. Migratie
+ *    0174 gaf de tabel `seq`, een identity-kolom die niet kan knopen.
+ *
+ * ⚠️ Dit was geen testfout. `fetchCommitmentSpoor()` sorteerde net zo, dus de
+ *    eigenaar zag hetzelfde in zijn scherm.
+ */
 async function spoorVan(commitmentId: string): Promise<readonly string[]> {
   const rijen = await adminDb()
     .from('commitment_events')
-    .select('event_type, created_at')
+    .select('event_type, seq')
     .eq('commitment_id', commitmentId)
-    .order('created_at', { ascending: true });
+    .order('seq', { ascending: true });
   if (rijen.error) throw new Error(`auditspoor: ${rijen.error.message}`);
+
+  const seqs = (rijen.data ?? []).map((r) => r.seq);
+  if (new Set(seqs).size !== seqs.length) {
+    throw new Error(`auditspoor: dubbele volgordesleutel in ${JSON.stringify(seqs)}`);
+  }
+
   return (rijen.data ?? []).map((r) => r.event_type);
 }
 
