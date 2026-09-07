@@ -76,7 +76,8 @@
     "rls:dekking": "node scripts/rls-dekking.mjs",
     "definers:controle": "node scripts/definers-controle.mjs",
     "poortstand": "node scripts/poortstand.mjs",
-    "poortstand:controle": "node scripts/poortstand.mjs --controle"
+    "poortstand:controle": "node scripts/poortstand.mjs --controle",
+    "pgversie:controle": "node scripts/pg-versie.mjs"
   },
   "engines": {
     "node": ">=22"
