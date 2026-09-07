@@ -79,55 +79,32 @@ async function statusVan(commitmentId: string): Promise<string> {
 }
 
 /**
- * Het auditspoor van een commitment, **gegroepeerd per tijdstip**.
+ * Het auditspoor in schrijfvolgorde.
  *
- * ⚠️⚠️ **Waarom groepen en geen platte lijst — QS8-304.** Deze functie gaf een
- *    platte lijst terug, gesorteerd op `created_at`, en twee tests eisten daar
- *    de volgorde `['confirmed', 'triggered', 'posted']` van. Die volgorde is
- *    niet vast te stellen: `created_at` staat op `now()`, en `now()` is in
- *    Postgres de **transactietijd**. `triggered` en `posted` worden allebei
- *    geschreven door een trigger op dezelfde UPDATE, dus ze dragen exact
- *    dezelfde tijd.
+ * ⚠️ **Sorteren op `seq` en niet op `created_at`** — QS8-303. Deze functie sórteerde
+ *    op de klok, en dat is precies waar deze suite op 06-09-2026 twee keer rood
+ *    van ging: `commitments_audit` en `commitments_systeembericht` hangen allebei
+ *    aan dezelfde UPDATE, en `now()` is binnen een transactie constant. Beide
+ *    rijen kregen dus dezelfde `created_at` en Postgres mocht kiezen. Migratie
+ *    0176 gaf de tabel `seq`, een identity-kolom die niet kan knopen.
  *
- *    📏 Gemeten op 07-09-2026 met een probe in deze functie:
- *
- *    ```
- *    confirmed  2026-09-07T05:10:08.771696+00:00
- *    triggered  2026-09-07T05:10:08.826702+00:00
- *    posted     2026-09-07T05:10:08.826702+00:00   <- gelijk, tot de microseconde
- *    ```
- *
- *    `order by created_at` kan die twee dus niet uit elkaar houden, en welke er
- *    eerst terugkomt is aan de planner. De twee tests waren een muntworp die
- *    meestal goed viel: los groen, in de poort wisselend rood.
- *
- * ⚠️ **Dit is dezelfde oorzaak als A47 op 24-08** (*"twee aankondigingen uit
- *    dezelfde transactie dragen dezelfde `created_at`, en de test sorteerde
- *    daarop"*). Toen is één plek gerepareerd; dit was de tweede, en niets hield
- *    hem tegen. Vandaar dat de vórm nu verandert en niet alleen de assertie:
- *    een platte lijst nodigt uit tot een volgorde-eis die er niet is, groepen
- *    maken de onzekerheid zichtbaar in wat je terugkrijgt.
- *
- * ⚠️ **Binnen een groep alfabetisch**, zodat de uitkomst stabiel is zonder te
- *    doen alsof er een echte volgorde bestaat.
+ * ⚠️ Dit was geen testfout. `fetchCommitmentSpoor()` sorteerde net zo, dus de
+ *    eigenaar zag hetzelfde in zijn scherm.
  */
-async function spoorVan(commitmentId: string): Promise<readonly (readonly string[])[]> {
+async function spoorVan(commitmentId: string): Promise<readonly string[]> {
   const rijen = await adminDb()
     .from('commitment_events')
-    .select('event_type, created_at')
+    .select('event_type, seq')
     .eq('commitment_id', commitmentId)
-    .order('created_at', { ascending: true });
+    .order('seq', { ascending: true });
   if (rijen.error) throw new Error(`auditspoor: ${rijen.error.message}`);
 
-  const perTijd = new Map<string, string[]>();
-  for (const rij of rijen.data ?? []) {
-    const bestaand = perTijd.get(rij.created_at);
-    if (bestaand === undefined) perTijd.set(rij.created_at, [rij.event_type]);
-    else bestaand.push(rij.event_type);
+  const seqs = (rijen.data ?? []).map((r) => r.seq);
+  if (new Set(seqs).size !== seqs.length) {
+    throw new Error(`auditspoor: dubbele volgordesleutel in ${JSON.stringify(seqs)}`);
   }
-  return [...perTijd.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, soorten]) => [...soorten].sort());
+
+  return (rijen.data ?? []).map((r) => r.event_type);
 }
 
 async function systeemberichten(groupId: string): Promise<readonly string[]> {
@@ -298,7 +275,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         // ⚠️ Tot 0057 stond deze tabel op nul rijen: RLS aan, alleen een
         //    SELECT-policy, en `logCommitmentEvent()` slikte de 42501 op. Deze
         //    test wordt rood zodra iemand het schrijven weer naar de client haalt.
-        expect(await spoorVan(f.beloningId)).toEqual([['confirmed']]);
+        expect(await spoorVan(f.beloningId)).toEqual(['confirmed']);
       },
       TEST_TIMEOUT,
     );
@@ -483,7 +460,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
     it(
       'legt trigger én bericht vast in het auditspoor',
       async () => {
-        expect(await spoorVan(f.strafTeLaatId)).toEqual([['confirmed'], ['posted', 'triggered']]);
+        expect(await spoorVan(f.strafTeLaatId)).toEqual(['confirmed', 'triggered', 'posted']);
       },
       TEST_TIMEOUT,
     );
@@ -582,7 +559,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
         expect(uitkomst(rond.data).ok).toBe(true);
 
         expect(await statusVan(f.beloningId)).toBe('unlocked');
-        expect(await spoorVan(f.beloningId)).toEqual([['confirmed'], ['posted', 'triggered']]);
+        expect(await spoorVan(f.beloningId)).toEqual(['confirmed', 'triggered', 'posted']);
 
         const berichten = await systeemberichten(f.groupId);
         expect(berichten).toContain('commitment_unlocked');
