@@ -20,14 +20,7 @@
  *    voor te laden.
  */
 import type { Sleutel } from '../i18n';
-
-/** Wat de kaart van de buitenwereld weet. */
-export interface Beoordeelstand {
-  /** Hoeveel voltooiingen er op jouw oordeel wachten. */
-  readonly aantal: number;
-  /** Is het tellen mislukt? Dan is `aantal` niets waard. */
-  readonly mislukt: boolean;
-}
+import type { Beoordeelstand } from '../standen';
 
 /**
  * Moet de kaart getoond worden?

@@ -1,3 +1,4 @@
+import type { WeekpasStand } from '../standen';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -13,7 +14,6 @@ import {
   weekpasReddeDezeCyclus,
   weekpasVoortgang,
   weekpasUitleg,
-  type WeekpasStand,
   type WeeklyGoalStatus,
 } from './metrics';
 

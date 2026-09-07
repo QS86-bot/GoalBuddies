@@ -1,6 +1,6 @@
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { RisicoReden, RisicoStand } from '../../shared/ui';
+import type { RisicoReden, RisicoStand } from '../../shared/standen';
 
 /**
  * De Risico-radar ophalen — QS8-93, QS8-94.
