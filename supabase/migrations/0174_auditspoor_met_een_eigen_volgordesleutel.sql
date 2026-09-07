@@ -5,6 +5,9 @@
 --   alter table public.commitment_events drop column if exists seq;
 --   drop function if exists public.volgorde_bewaking();
 --   drop function if exists public.volgorde_register();
+--   plus de regels `volgorde_bewaking` uit BEWAAKT_BUITEN_DE_APP in
+--   `scripts/dode-keten-controle.mjs` — anders wijst dat register naar een
+--   functie die niet meer bestaat en wordt `keten:controle` rood zonder uitleg.
 --   plus `create or replace` op de leesvolgorde in `src/modules/commitments/api.ts`
 --   terug naar `created_at`.
 --   ⚠️ De kolom draagt geen gegevens die ergens anders vandaan komen — hij is
@@ -93,8 +96,21 @@
 -- ⚠️ **`generated always`, niet `by default`.** De client heeft vandaag geen
 -- INSERT-recht op deze tabel (alleen SELECT en REFERENCES; er wordt uitsluitend
 -- via definer-functies geschreven), maar dat is een toestand en geen grendel —
--- zie 0172, waar precies dat verschil de belofte kostte. `always` maakt het een
--- grendel: ook een toekomstige grant kan de kolom niet zetten.
+-- zie 0172, waar precies dat verschil de belofte kostte.
+--
+-- ⚠️⚠️ **Hier stond dat `always` betekent dat "ook een toekomstige grant de kolom
+-- niet kan zetten", en dat is onwaar.** Gemeten met een echte `set role
+-- authenticated` en alleen INSERT+SELECT:
+--
+--   insert into t (seq, x) overriding system value values (99, 'gespooft');
+--   INSERT 0 1   -- seq = 99
+--
+-- `OVERRIDING SYSTEM VALUE` zet de kolom gewoon; `always` blokkeert alleen de
+-- kále insert en elke UPDATE. **De dragende grendel is tak 4** — geen client mag
+-- een schrijfrecht op deze kolom hebben. `always` is de tweede laag en niet de
+-- eerste. Twee tegenstrijdige uitspraken in één bestand over welke grendel de
+-- belofte draagt, is precies hoe een tak later als overbodig wordt opgeruimd.
+-- Gevonden in de security-review van 07-09-2026.
 --
 -- ---------------------------------------------------------------------------
 
@@ -110,15 +126,21 @@
 alter table public.commitment_events
   add column if not exists seq bigint;
 
-with genummerd as (
-  select ctid, row_number() over (order by created_at, ctid) as n
-  from public.commitment_events
-  where seq is null
-)
-update public.commitment_events e
-   set seq = g.n
-  from genummerd g
- where e.ctid = g.ctid;
+-- ⚠️⚠️ **De vulling staat bínnen de grendel, en de eerste versie niet.** Toen
+--    stond de UPDATE erbuiten, en dat maakte deze migratie niet-idempotent:
+--    zodra `seq` een identity is, weigert Postgres het statement **bij het
+--    plannen** — ook als het nul rijen raakt. Gemeten op de tweede ronde:
+--
+--      ERROR: column "seq" can only be updated to DEFAULT
+--      DETAIL: Column "seq" is an identity column defined as GENERATED ALWAYS.
+--
+--    Dat valt niet in de tweede klasse die onwrikbare regel 20 met rust laat
+--    (een botsing met een *latere* migratie); deze botste met zichzelf.
+--
+-- ⚠️ **En de grendel in `tests/migraties/idempotentie.ts` kon het niet zien:**
+--    die leest de tekst van een migratie en kent regels voor `create`-statements,
+--    niet voor een `update` op een identity-kolom. Gevonden in de
+--    security-review van 07-09-2026, niet door een test.
 
 do $$
 declare
@@ -133,6 +155,16 @@ begin
     return;  -- al gedraaid
   end if;
 
+  with genummerd as (
+    select ctid, row_number() over (order by created_at, ctid) as n
+    from public.commitment_events
+    where seq is null
+  )
+  update public.commitment_events e
+     set seq = g.n
+    from genummerd g
+   where e.ctid = g.ctid;
+
   alter table public.commitment_events alter column seq set not null;
 
   select coalesce(max(seq), 0) + 1 into v_start from public.commitment_events;
@@ -142,6 +174,37 @@ begin
     v_start
   );
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- 1b. De sequence eronder — de eerste in dit schema
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **`public` had tot deze migratie nul sequences, en dat is precies waarom
+--    dit misging.** Onwrikbare regel 4 bestaat omdat Supabase's
+--    `alter default privileges` élk nieuw ding in `public` uitdeelt aan `anon`,
+--    `authenticated` én `service_role`. Tot nu toe ging die regel over tabellen
+--    en functies. Een identity-kolom brengt een *sequence* mee, en die krijgt
+--    dezelfde behandeling. Gemeten vlak na de eerste versie van deze migratie:
+--
+--      commitment_events_seq_seq | anon USAGE=t | auth USAGE=t
+--                                | auth UPDATE=t | anon SELECT=t
+--
+--    `UPDATE` op een sequence is `setval()`. Wie de teller terugzet, laat de
+--    volgende triggerschrijving botsen op `commitment_events_volgorde_idx` óf
+--    een lagere `seq` hergebruiken — en dan draait het auditspoor om. Dat is
+--    exact de belofte die deze migratie komt vestigen. Sequences kennen geen
+--    RLS, dus `commitment_events_select` doet hier niets.
+--
+--    Er is vandaag geen pad van een REST-client naar `setval()` — PostgREST
+--    exposeert sequences niet en `setval` staat in `pg_catalog`. **Maar dat is
+--    een toestand en geen grendel**, en dat is letterlijk het argument waarmee
+--    deze migratie `generated always` boven `by default` koos. Dezelfde
+--    redenering hoort te gelden voor het onderdeel dat ze zelf introduceert.
+--
+--    Gevonden in de security-review van 07-09-2026. Tak 5 van
+--    `volgorde_bewaking()` maakt er een grendel van in plaats van een regel.
+
+revoke all on sequence public.commitment_events_seq_seq from public, anon, authenticated;
 
 comment on column public.commitment_events.seq is
   'De schrijfvolgorde van het auditspoor. `created_at` kan knopen — `now()` is '
@@ -179,10 +242,11 @@ create unique index if not exists commitment_events_volgorde_idx
 --      leeg blijven of door een client gezet worden
 --   3. de unieke index is weg — dan kan de sleutel binnen één commitment
 --      dubbel voorkomen
---   4. een client heeft er schrijfrecht op — vandaag weigert Postgres dat recht
---      te gebruiken omdat de kolom `always` is, maar de grant is het signaal dat
---      iemand het geprobeerd heeft, en tak 2 en tak 4 samen zijn wat de kolom
---      buiten handen van de client houdt
+--   4. een client heeft er schrijfrecht op — en dit is de tak die de belofte
+--      dráágt, niet `always`: met `OVERRIDING SYSTEM VALUE` zet een INSERT-grant
+--      de kolom alsnog (gemeten, zie hierboven)
+--   5. een client heeft rechten op de sequence eronder — `USAGE` is `nextval`,
+--      `UPDATE` is `setval`, en dat laatste zet de teller terug
 --
 -- ⚠️ **Vier takken in één functie en niet vier losse tests, en dat is een keuze
 --    die één ijking gekost heeft.** De grantcontrole stond eerst als losse test
@@ -257,6 +321,23 @@ as $$
    where k.attidentity is not null
      and cp.grantee in ('anon', 'authenticated')
      and cp.privilege_type in ('INSERT', 'UPDATE')
+  union all
+  -- ⚠️ Tak 5. De sequence onder een identity-kolom is een eigen object met eigen
+  --    rechten, en Supabase deelt hem net zo goed uit als een tabel. `USAGE` is
+  --    `nextval`, `UPDATE` is `setval` — en `setval` zet de teller terug.
+  select k.tabel,
+         'sequence ' || s.relname || ' is ' || p.recht || ' voor ' || p.rol
+    from kolom k
+    join pg_attribute a on a.attrelid = ('public.' || k.tabel)::regclass
+                       and a.attname  = k.kolom
+    join pg_depend    d on d.refobjid = a.attrelid
+                       and d.refobjsubid = a.attnum
+                       and d.deptype  = 'i'
+    join pg_class     s on s.oid = d.objid and s.relkind = 'S'
+    cross join (values ('anon', 'USAGE'), ('anon', 'UPDATE'), ('anon', 'SELECT'),
+                       ('authenticated', 'USAGE'), ('authenticated', 'UPDATE'),
+                       ('authenticated', 'SELECT')) as p(rol, recht)
+   where has_sequence_privilege(p.rol, s.oid, p.recht)
   order by 1, 2;
 $$;
 

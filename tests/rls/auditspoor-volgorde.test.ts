@@ -57,11 +57,22 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      → 1 rood: "volgordekolom seq staat in een INSERT-grant van authenticated"
  *   E  de rij uit `volgorde_register()` halen
  *      → 1 rood op de ondergrens hieronder
+ *   F  `grant usage on sequence commitment_events_seq_seq to authenticated`
+ *      → 1 rood: "sequence … is USAGE voor authenticated"
  *
  * ⚠️ B is de tak die het makkelijkst als overbodig voelt en het meest doet: met
  *    `by default` mag een INSERT-grant de kolom alsnog zetten, en dan is de
  *    volgorde weer iets dat een client kiest. Zie 0172 — daar kostte precies
  *    dat verschil de belofte.
+ *
+ * ⚠️⚠️ **Tak 5 (F) kwam uit de security-review en niet uit deze suite**, en hij
+ *    is de belangrijkste van de vijf. `public` had tot migratie 0174 **nul**
+ *    sequences; een identity-kolom brengt de eerste mee, en Supabase's
+ *    `alter default privileges` deelt hem net zo hard uit als een tabel. 📏
+ *    Gemeten vóór de reparatie: `anon USAGE=t, auth USAGE=t, auth UPDATE=t,
+ *    anon SELECT=t`. `UPDATE` op een sequence is `setval()` — de teller
+ *    terugzetten en het spoor draait om. Onwrikbare regel 4 in een objectsoort
+ *    die deze codebase nog niet kende.
  */
 
 const TEST_TIMEOUT = 30_000;

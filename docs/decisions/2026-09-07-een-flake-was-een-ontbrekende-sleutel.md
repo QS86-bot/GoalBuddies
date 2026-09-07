@@ -68,6 +68,69 @@ draagt de volgorde. Twee dingen, twee kolommen.
 op deze tabel, maar dat is een toestand en geen grendel — zie 0172, waar precies
 dat verschil de belofte kostte.
 
+## Wat de security-review erbij zette
+
+Drie bevindingen, alle drie zelf nagemeten voordat ze verwerkt werden
+(onwrikbare regel 19).
+
+### De eerste sequence in dit schema kwam open binnen
+
+📏 `public` had tot deze migratie **nul** sequences. Een identity-kolom brengt de
+eerste mee, en Supabase's `alter default privileges` deelt hem net zo hard uit
+als een tabel of een functie. Gemeten vlak na de eerste versie:
+
+```
+commitment_events_seq_seq | anon USAGE=t | auth USAGE=t
+                          | auth UPDATE=t | anon SELECT=t
+```
+
+`UPDATE` op een sequence is `setval()`. Wie de teller terugzet, laat de volgende
+triggerschrijving botsen op de unieke index óf een lagere `seq` hergebruiken — en
+dan draait het auditspoor om. Precies de belofte die deze migratie komt vestigen.
+Sequences kennen geen RLS, dus de policy doet hier niets.
+
+⚠️ **Onwrikbare regel 4 in een objectsoort die deze codebase nog niet kende.** Er
+is vandaag geen pad van een REST-client naar `setval()` — maar dat is een
+toestand en geen grendel, en dat is letterlijk het argument waarmee deze migratie
+`always` boven `by default` koos. Dezelfde redenering hoort te gelden voor het
+onderdeel dat ze zelf introduceert. Tak 5 van `volgorde_bewaking()` maakt er een
+grendel van.
+
+### De migratie botste met zichzelf
+
+📏 De vulling stond buiten de `do`-grendel, en zodra `seq` een identity is
+weigert Postgres een `update` op die kolom **bij het plannen** — ook bij nul
+rijen:
+
+```
+ERROR:  column "seq" can only be updated to DEFAULT
+DETAIL:  Column "seq" is an identity column defined as GENERATED ALWAYS.
+```
+
+Dat valt niet in de tweede klasse die onwrikbare regel 20 met rust laat (een
+botsing met een *latere* migratie). En de grendel in
+`tests/migraties/idempotentie.ts` kon het niet zien: die leest de tekst van een
+migratie en kent regels voor `create`-statements, niet voor een `update` op een
+identity-kolom.
+
+### `always` doet minder dan de kop beweerde
+
+📏 Gemeten met een echte `set role authenticated` en alleen INSERT+SELECT:
+
+```sql
+insert into t (seq, x) overriding system value values (99, 'gespooft');
+-- INSERT 0 1, seq = 99
+```
+
+`OVERRIDING SYSTEM VALUE` zet de kolom gewoon. `always` blokkeert alleen de kale
+insert en elke UPDATE. **De dragende grendel is tak 4** — geen client mag een
+schrijfrecht op deze kolom hebben — en `always` is de tweede laag.
+
+⚠️ Twee tegenstrijdige uitspraken in één bestand over welke grendel de belofte
+draagt, is precies hoe een tak later als overbodig wordt opgeruimd. Dit is de
+derde keer vandaag dat de duurste fout niet in de code stond maar in de kop
+ernaast.
+
 ## Waarom alleen deze tabel
 
 `src/` sorteert op negen plekken op `created_at`. Acht dragen deze fout niet, en
