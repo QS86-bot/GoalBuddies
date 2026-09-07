@@ -6,7 +6,6 @@ import { StyleSheet, View } from 'react-native';
 import { clientEnv } from '@/lib/env';
 import { useSession } from '@/modules/auth';
 import {
-  fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepsoverzicht,
   fetchGroepsteller,
@@ -30,7 +29,7 @@ import {
 } from '@/modules/buddies';
 import {
   beslisDeadlineVerzoek,
-  fetchDoelen,
+  fetchKoppelbareDoelen,
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
 } from '@/modules/goals';
@@ -738,15 +737,17 @@ function KoppelDoel({
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
+  // ⚠️ **Eén vraag die serverzijdig uitsluit, en geen aftrekking op pagina 0 —
+  //    QS8-342.** Hier stond `fetchDoelen(userId)` met de gekoppelde doelen
+  //    eraf gestreept. Die functie geeft twintig doelen; had je er eenentwintig
+  //    waarvan de eerste twintig al gekoppeld waren, dan bleef er niets over en
+  //    concludeerde dit scherm "Je hebt nog geen doel om te delen" — met een knop
+  //    "Nieuw doel" eronder en geen weg terug. `fetchKoppelbareDoelen()` sluit de
+  //    gekoppelde doelen in de query uit, dus `leeg` betekent hier weer wat het
+  //    zegt.
   const { data: doelen, loading, error } = useAsync(
     userId && groupId !== ''
-      ? async () => {
-          const [mijn, gekoppeld] = await Promise.all([
-            fetchDoelen(userId),
-            fetchGekoppeldeDoelIds(groupId),
-          ]);
-          return mijn.rijen.filter((doel) => !gekoppeld.includes(doel.id));
-        }
+      ? async () => (await fetchKoppelbareDoelen(userId, groupId)).rijen
       : null,
     [userId, groupId],
   );

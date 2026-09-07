@@ -23,6 +23,7 @@ export { fetchBadges } from './badges-api';
 export {
   fetchDoel,
   fetchDoelen,
+  fetchKoppelbareDoelen,
   fetchDoelnamen,
   maakDoel,
   PER_PAGINA,

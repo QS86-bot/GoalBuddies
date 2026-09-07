@@ -147,6 +147,109 @@ export async function fetchDoelen(
   return { rijen, totaal, meer: van + rijen.length < totaal };
 }
 
+/**
+ * De doelen die jij aan déze groep kunt koppelen — QS8-342.
+ *
+ * ⚠️ **Waarom dit bestaat en een aftrekking in het scherm niet volstond.** Het
+ *    koppelscherm deed `fetchDoelen(userId)` en streepte daar de al gekoppelde
+ *    doelen vanaf. `fetchDoelen()` geeft **pagina 0** — twintig doelen op
+ *    `target_date` — dus met eenentwintig doelen waarvan de eerste twintig al
+ *    gekoppeld waren, bleef er niets over en zei het scherm *"Je hebt nog geen
+ *    doel om te delen"*, met een knop "Nieuw doel" eronder. Doodlopend: eruit kwam
+ *    je alleen door doelen te archiveren of streefdata te verzetten.
+ *
+ *    Dat is woordelijk QS8-226, één scherm verderop. De reparatie stond hier al
+ *    uitgeschreven in `fetchDoelnamen()` hieronder, en ze hing aan de plek en niet
+ *    aan de belofte — onwrikbare regel 18, vraag 4.
+ *
+ * ⚠️ **Serverzijdig uitsluiten en niet bladeren-met-aftrekken.** Wie de pagina's
+ *    afloopt en onderweg aftrekt, kan nog steeds een lege pagina teruggeven
+ *    terwijl er verderop wél een koppelbaar doel staat — dan liegt de lege staat
+ *    opnieuw, alleen zeldzamer. Met `not.in` klopt `count`, en dus ook `meer`, en
+ *    is "leeg" per constructie hetzelfde als "er is er geen".
+ *
+ * ⚠️ **Dit hoort hier en niet in `modules/buddies`, waar `koppelbareGroepen()`
+ *    de omgekeerde richting doet.** Die functie is een pure aftrekking op data
+ *    die het scherm toch al had; deze stelt een vraag over `goal_dashboard` en
+ *    leunt op `naarDoel()` en `PER_PAGINA`. Daar een kopie van maken in een
+ *    andere module is precies de duplicatie die uit elkaar gaat lopen.
+ *
+ * ⚠️ **Dit is gebruiksgemak en geen grens**, net als `koppelbareGroepen()`. De
+ *    controle is `goal_group_links_insert`: lid van de groep én eigenaar van het
+ *    doel. Gebruik deze functie nooit om een recht te bepalen.
+ */
+export async function fetchKoppelbareDoelen(
+  userId: string,
+  groupId: string,
+  opties: { readonly pagina?: number } = {},
+): Promise<Pagina<DoelMetVoortgang>> {
+  const alGekoppeld = await mijnGekoppeldeDoelIds(userId, groupId);
+  const pagina = opties.pagina ?? 0;
+  const van = pagina * PER_PAGINA;
+
+  let vraag = supabase()
+    .from('goal_dashboard')
+    .select('*', { count: 'exact' })
+    .eq('owner_id', userId)
+    .eq('status', 'active');
+
+  if (alGekoppeld.length > 0) {
+    vraag = vraag.not('id', 'in', `(${alGekoppeld.join(',')})`);
+  }
+
+  const { data, error, count } = await vraag
+    .order('target_date', { ascending: true })
+    .range(van, van + PER_PAGINA - 1);
+
+  if (error) {
+    reportError(error, 'goals.koppelbaar', { group_id: groupId, code: error.code });
+    throw new Error(t('doel.doelen_laden'));
+  }
+
+  const rijen = (data ?? []).map(naarDoel).filter((d): d is DoelMetVoortgang => d !== null);
+  const totaal = count ?? rijen.length;
+
+  return { rijen, totaal, meer: van + rijen.length < totaal };
+}
+
+/**
+ * De id's van jóuw doelen die al aan deze groep hangen.
+ *
+ * ⚠️ **Zonder plafond, en dat is de tweede helft van QS8-342.**
+ *    `fetchGekoppeldeDoelIds()` in `modules/buddies` kapte af op `.limit(50)`
+ *    zónder teller: doelen daarboven lazen als "nog niet gekoppeld" en werden
+ *    opnieuw aangeboden. Een onvolledige uitsluitlijst maakt het scherm onwaar op
+ *    precies de manier die dit issue repareert, dus hier bladeren we door tot de
+ *    lijst op is.
+ *
+ * ⚠️ **Alleen jóuw doelen.** `goal_group_links` bevat de doelen van élk groepslid;
+ *    wij trekken alleen de jouwe af. Dat begrenst de lijst door je eigen
+ *    doelental in plaats van dat van de hele groep.
+ */
+async function mijnGekoppeldeDoelIds(userId: string, groupId: string): Promise<readonly string[]> {
+  const uit: string[] = [];
+  const stap = 200;
+
+  for (let van = 0; ; van += stap) {
+    const { data, error } = await supabase()
+      .from('goal_group_links')
+      .select('goal_id, goals!inner(owner_id)')
+      .eq('group_id', groupId)
+      .eq('goals.owner_id', userId)
+      .order('goal_id', { ascending: true })
+      .range(van, van + stap - 1);
+
+    if (error) {
+      reportError(error, 'goals.koppelbaar.links', { group_id: groupId, code: error.code });
+      throw new Error(t('doel.doelen_laden'));
+    }
+
+    const rijen = data ?? [];
+    for (const rij of rijen) uit.push(rij.goal_id);
+    if (rijen.length < stap) return uit;
+  }
+}
+
 /** De titel en het gebied van één doel, voor een lijst die er naar verwijst. */
 export interface Doelnaam {
   readonly title: string;

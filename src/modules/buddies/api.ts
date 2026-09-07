@@ -1090,13 +1090,39 @@ export async function fetchGroepenVanDoel(goalId: string): Promise<readonly Doel
   }));
 }
 
-/** De doelen die aan deze groep gekoppeld zijn en die jij mag zien. */
+/**
+ * Het plafond op wat één groep aan gekoppelde doelen teruggeeft.
+ *
+ * ⚠️ **Een genoemd plafond en geen kale `.limit(50)`.** Een grens met een naam is
+ *    te vinden en te verantwoorden; een getal in een queryregel is een stille
+ *    afkapping. Twaalf leden maal tien doelen is ruim binnen dit getal, dus in de
+ *    praktijk kapt hij niets af — en zodra dat verandert, is dit de plek.
+ */
+const GEKOPPELDE_DOELEN_MAX = 200;
+
+/**
+ * De doelen die aan deze groep gekoppeld zijn en die jij mag zien.
+ *
+ * ⚠️ **Geen scherm gebruikt hem meer sinds QS8-342**, en hij staat met die reden
+ *    in `BEKENDE_ONBEREIKBAAR`. Wat hij nog wél doet is het groepsoppervlak
+ *    meten: `tests/rls/doorloop.test.ts` toetst er mee dat een ánder groepslid
+ *    het gekoppelde doel ziet. Dat is een leesrecht van een groepsgenoot, en
+ *    `fetchKoppelbareDoelen()` kan het niet uitdrukken — die is op je eigen
+ *    doelen gescopet.
+ *
+ * ⚠️ **De `.limit(50)` van hiervoor is weg.** Die kapte stil af zonder teller:
+ *    doelen daarboven lazen als "niet gekoppeld". Dat was onschuldig zolang het
+ *    koppelscherm de uitkomst alleen aftrok, maar het was nooit waar — en een
+ *    stille afkapping in een functie die zegt "de doelen die gekoppeld zijn" is
+ *    precies de vorm die dit project drie keer heeft betaald.
+ */
 export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly string[]> {
   const { data, error } = await supabase()
     .from('goal_group_links')
     .select('goal_id')
     .eq('group_id', groupId)
-    .limit(50);
+    .order('goal_id', { ascending: true })
+    .range(0, GEKOPPELDE_DOELEN_MAX - 1);
 
   if (error) {
     reportError(error, 'groups.links', { group_id: groupId });

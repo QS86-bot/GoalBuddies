@@ -49,7 +49,7 @@
  * De vorm: een ratel met redenen
  * ---------------------------------------------------------------------------
  *
- * Er staan er vandaag negen. Die zijn niet in één ronde te repareren — elk van
+ * Er staan er vandaag twee. Die zijn niet in één ronde te repareren — elk van
  * de negen is óf een scherm dat er niet is, óf een functie die weg kan, en dat
  * is per geval een aparte afweging (QS8-300). Tot die tijd staan ze hieronder
  * **met een reden**, en het aantal mag alleen dalen.
@@ -79,6 +79,17 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
  *    parkeert een naam in plaats van een bevinding vast te leggen.
  */
 export const BEKENDE_ONBEREIKBAAR = {
+  fetchGekoppeldeDoelIds:
+    'Verloor zijn scherm bij QS8-342: het koppelscherm trok de gekoppelde doelen ' +
+    'van pagina 0 af, en dat gaf een lege lijst bij eenentwintig doelen. Dat pad ' +
+    'is vervangen door `fetchKoppelbareDoelen()`, dat serverzijdig uitsluit. ' +
+    '⚠️ Deze functie blijft omdat `tests/rls/doorloop.test.ts` er iets ánders mee ' +
+    'toetst: dat **Bram** het doel van Anna in de groep ziet — een leesrecht van ' +
+    'een groepsgenoot, niet van de eigenaar. `fetchKoppelbareDoelen()` kan dat ' +
+    'niet uitdrukken, want die is op je eigen doelen gescopet. ' +
+    '⚠️ Wie hem alsnog weghaalt, vervangt die assertie eerst — anders verdwijnt ' +
+    'de enige plek waar het groepsoppervlak van een gekoppeld doel end-to-end ' +
+    'gemeten wordt.',
   isAfgegaan:
     'Wordt niet door een scherm gebruikt maar wél door `tests/rls/epic9.test.ts`, ' +
     'dat hem naast `commitment_zichtbaar_voor_groep()` legt. ⚠️ Dat is een ' +
