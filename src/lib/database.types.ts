@@ -2472,6 +2472,7 @@ export type Database = {
       }
       ddl_rechten_van_service_role: { Args: never; Returns: boolean }
       deelt_open_groep_met_doel: { Args: { g: string }; Returns: boolean }
+      deelt_groep_met_eigenaar: { Args: { g: string }; Returns: boolean }
       dagafvinkingen_over: { Args: never; Returns: number }
       definer_bewaking: {
         Args: never
