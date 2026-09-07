@@ -1,4 +1,4 @@
--- 0182_het_oppervlak_van_de_getuige_volgt_de_groepsband.sql — wie de groep verliet, bleef zijn getuigenis zien (QS8-306)
+-- 0183_het_oppervlak_van_de_getuige_volgt_de_groepsband.sql — wie de groep verliet, bleef zijn getuigenis zien (QS8-306)
 --
 -- ROLLBACK-PAD:
 --   1. `create or replace` op `getuigenissen()` zonder de conjunct
@@ -216,6 +216,6 @@ comment on function deelt_groep_met_eigenaar(uuid) is
   'doel hoeft aan geen enkele groep te hangen. Delegeert naar shares_group_with_user() '
   'zodat er een opvatting van groepsgenoot is en niet twee; gearchiveerde groepen tellen '
   'mee, want dit is de leeskant. Bestaat voor commitments_select, die de band niet zelf '
-  'kan uitrekenen: een subquery in een policy leest goals onder RLS. QS8-306, 0182.';
+  'kan uitrekenen: een subquery in een policy leest goals onder RLS. QS8-306, 0183.';
 
 commit;
