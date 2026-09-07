@@ -62,6 +62,13 @@ Een regex op `.min(` pakt de verkeerde zodra iemand de volgorde wijzigt, en dan
 bewaakt de controle stil een ánder getal dan het formulier gebruikt. Dat is geen
 kapotte controle maar een liegende, en die is erger.
 
+
+> ⚠️ **Het getal is op 06-09-2026 acht geworden (QS8-216).** Deze alinea blijft
+> staan zoals hij was — het gaat hier om het anker en niet om zijn waarde, en
+> die redenering geldt onverkort. Wat er sindsdien bij hoort: de grens telt
+> codepunten via `telTekens()` en niet langer UTF-16-eenheden, en er staat een
+> naadtest op die de catalogusteksten naast de constante legt.
+
 Vandaar `export const WACHTWOORD_MINIMUM = 12;` als stabiel anker, en een
 controle die wérpt als dat anker verdwijnt in plaats van door te gaan met een
 verzonnen getal.

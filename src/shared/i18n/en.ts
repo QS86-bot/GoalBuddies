@@ -67,7 +67,7 @@ export const en: Record<Sleutel, string> = {
   'profiel.laden_mislukt': 'Your profile could not be loaded.',
   'profiel.opslaan_mislukt': 'Saving did not work. Please try again.',
 
-  'validatie.wachtwoord_kort': 'Use at least 12 characters. A short phrase works fine.',
+  'validatie.wachtwoord_kort': 'Use at least 8 characters. A short phrase works fine.',
   'validatie.wachtwoord_lang': 'More than 72 characters is not possible; bcrypt cuts off after that.',
   'validatie.email': 'This does not look like an email address.',
   'validatie.wachtwoord_leeg': 'Enter your password.',
@@ -309,7 +309,7 @@ export const en: Record<Sleutel, string> = {
   'aanmelden.email': 'Email address',
   'aanmelden.email_hint': 'you@example.com',
   'aanmelden.wachtwoord': 'Password',
-  'aanmelden.wachtwoord_hint': 'At least 12 characters. A short sentence works well and is easier to remember.',
+  'aanmelden.wachtwoord_hint': 'At least 8 characters. A short sentence works well and is easier to remember.',
   'aanmelden.knop_nieuw': 'Create account',
   'aanmelden.knop_inloggen': 'Sign in',
   'aanmelden.heb_al_account': 'I already have an account',

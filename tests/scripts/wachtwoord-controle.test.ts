@@ -8,8 +8,8 @@ import { WACHTWOORD_MINIMUM } from '../../src/modules/auth/schemas';
 /**
  * `wachtwoord:controle` legt het formulier naast de server — QS8-234.
  *
- * ⚠️ **De belofte is niet "het schema eist twaalf" maar "een wachtwoord ís hier
- *    minstens twaalf tekens".** Het eerste is een eigenschap van een onderdeel
+ * ⚠️ **De belofte is niet "het schema eist een getal" maar "een wachtwoord ís hier
+ *    minstens zoveel tekens".** Het eerste is een eigenschap van een onderdeel
  *    en stond al onder test. Het tweede hangt aan een naad tussen Zod in de
  *    browser en `password_min_length` in het Supabase-dashboard, en daar stond
  *    tot 31-08-2026 niets.

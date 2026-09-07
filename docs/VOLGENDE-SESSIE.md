@@ -1922,7 +1922,7 @@ beschrijven is precies QS8-125.
 ⚠️ **En één ding dat geen deploy is maar een schakelaar** (QS8-234): zet
 `password_min_length` in het Supabase-dashboard onder Authentication → Policies
 gelijk aan `WACHTWOORD_MINIMUM` uit `src/modules/auth/schemas.ts`. Tot dat
-gebeurd is, is het minimum van twaalf tekens **alleen Zod in de browser** — één
+gebeurd is, is dat minimum **alleen Zod in de browser** — één
 POST naar `/auth/v1/signup` met de anon-sleutel, die per definitie in elke bundel
 zit, omzeilt hem. Draai daarna `npm run wachtwoord:controle` met een
 `SUPABASE_ACCESS_TOKEN` in de omgeving. Doe hem in dezelfde ronde als de

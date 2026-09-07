@@ -2,16 +2,16 @@
 /**
  * Zegt de server hetzelfde over wachtwoorden als het formulier? — QS8-234.
  *
- * ⚠️ **Waarom dit bestaat.** `src/modules/auth/schemas.ts` eist twaalf tekens.
+ * ⚠️ **Waarom dit bestaat.** `src/modules/auth/schemas.ts` eist `WACHTWOORD_MINIMUM` tekens (sinds QS8-216: acht).
  *    Dat is Zod, in de browser. Supabase Auth heeft zijn éígen
  *    `password_min_length` in het dashboard, standaard **6**. Staat die lager
- *    dan het schema, dan is die twaalf een suggestie: één POST naar
+ *    dan het schema, dan is dat getal een suggestie: één POST naar
  *    `/auth/v1/signup` met de anon-sleutel — die per definitie in elke bundel
  *    zit — maakt een account met zes tekens aan.
  *
  * ⚠️ **Regel 18 in zijn zuiverste vorm.** Het onderdeel klopte: het schema is
  *    getest, de melding is vertaald, de teller telt codepunten. De belófte —
- *    "een wachtwoord is hier minstens twaalf tekens" — hangt aan een naad tussen
+ *    "een wachtwoord is hier minstens zoveel tekens" — hangt aan een naad tussen
  *    client en server waar tot 31-08-2026 niets stond. Er was geen test die
  *    groen bleef terwijl de belofte brak; er was geen test die de belofte kón
  *    raken.
@@ -81,7 +81,7 @@ export function vergelijk({ schema, server }) {
       soort: 'server-lager',
       melding:
         `Het formulier eist ${schema} tekens, de server accepteert er ${server}. ` +
-        'Die twaalf is dan een suggestie: een POST rechtstreeks naar /auth/v1/signup ' +
+        'Dat getal is dan een suggestie: een POST rechtstreeks naar /auth/v1/signup ' +
         'met de publieke anon-sleutel omzeilt hem. Zet password_min_length in het ' +
         `Supabase-dashboard op ${schema} (Authentication → Policies).`,
     };
