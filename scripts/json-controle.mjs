@@ -74,20 +74,9 @@ function* tekens(tekst) {
     }
 
     if (c === '"') {
-      // ⚠️ Escapes overslaan als paar, anders eindigt de string bij een `\"`.
-      let j = i + 1;
-      let ruw = '';
-      while (j < tekst.length && tekst[j] !== '"') {
-        if (tekst[j] === '\\') {
-          ruw += tekst[j] + tekst[j + 1];
-          j += 2;
-          continue;
-        }
-        ruw += tekst[j];
-        j += 1;
-      }
+      const { ruw, eind } = leesString(tekst, i);
       yield { soort: 'string', waarde: JSON.parse(`"${ruw}"`) };
-      i = j + 1;
+      i = eind + 1;
       continue;
     }
 
@@ -116,6 +105,42 @@ function* tekens(tekst) {
  *    objecten is doodgewoon — `"version"` staat in `package.json` op vier
  *    plekken. Alleen twee keer dezelfde naam in hetzelfde object is de fout.
  */
+/**
+ * Leest een JSON-string vanaf het openingsaanhalingsteken op `i`.
+ *
+ * ⚠️ Escapes gaan als paar mee, anders eindigt de string bij een `\"`. Staat
+ *    los omdat de lus anders vier niveaus diep zit (coderegel 15, QS8-291).
+ *
+ * @returns `ruw` zonder de aanhalingstekens, en de index van het sluitteken.
+ */
+function leesString(tekst, i) {
+  let j = i + 1;
+  let ruw = '';
+  while (j < tekst.length && tekst[j] !== '"') {
+    if (tekst[j] === '\\') {
+      ruw += tekst[j] + tekst[j + 1];
+      j += 2;
+      continue;
+    }
+    ruw += tekst[j];
+    j += 1;
+  }
+  return { ruw, eind: j };
+}
+
+/**
+ * Onthoudt een sleutel op dit niveau en meldt hem als hij er al stond.
+ *
+ * ⚠️ Staat los omdat de dubbele `if` anders vier niveaus diep zit (coderegel 15,
+ *    QS8-291). `set` mag `undefined` zijn: dan staan we niet in een object en
+ *    valt er niets te onthouden.
+ */
+function noteerSleutel(set, waarde, pad, treffers) {
+  if (!set) return;
+  if (set.has(waarde)) treffers.push([...pad.filter((p) => p !== null), waarde].join('.'));
+  set.add(waarde);
+}
+
 export function dubbeleSleutels(tekst) {
   const treffers = [];
   const houders = []; // '{' of '['
@@ -154,14 +179,7 @@ export function dubbeleSleutels(tekst) {
     }
 
     if (t.soort === 'string' && verwachtSleutel) {
-      const set = gezien[gezien.length - 1];
-      if (set) {
-        if (set.has(t.waarde)) {
-          const segmenten = [...pad.filter((p) => p !== null), t.waarde];
-          treffers.push(segmenten.join('.'));
-        }
-        set.add(t.waarde);
-      }
+      noteerSleutel(gezien[gezien.length - 1], t.waarde, pad, treffers);
       laatsteSleutel = t.waarde;
       verwachtSleutel = false;
       continue;

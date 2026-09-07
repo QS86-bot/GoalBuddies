@@ -252,6 +252,25 @@ export function weekdagNaam(weekdag: number): string {
 }
 
 /**
+ * De afgekorte weekdag voor een kolomkop: `ma`, `Mon`, `Mo`.
+ *
+ * ⚠️ **Zelfde bron en zelfde peildatum als `weekdagNaam()`.** Zeven afkortingen
+ *    per taal overtypen is zeven kansen op een tikfout in een taal die hier
+ *    niemand leest, en `Intl` kent bovendien de afkorting die die taal echt
+ *    gebruikt — het Nederlands kort "woensdag" af tot "wo" en niet tot "woe".
+ */
+export function weekdagKort(weekdag: number): string {
+  const peil = weekdagPeildatum(weekdag);
+
+  try {
+    const naam = new Intl.DateTimeFormat(huidig, { weekday: 'short', timeZone: 'UTC' }).format(peil);
+    return naam.charAt(0).toUpperCase() + naam.slice(1);
+  } catch {
+    return String(weekdag);
+  }
+}
+
+/**
  * De naam van een taal, geschreven in díé taal — QS8-115.
  *
  * ⚠️ **In de taal zelf en niet in de huidige taal**, en dat is de hele reden dat

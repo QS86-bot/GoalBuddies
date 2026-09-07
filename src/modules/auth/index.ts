@@ -25,7 +25,7 @@ export {
   verwijderAvatar,
 } from './avatar';
 
-export { SessionProvider, useRequiredUserId, useSession } from './SessionProvider';
+export { SessionProvider, useSession } from './SessionProvider';
 export { ProfielProvider, useProfiel } from './ProfielProvider';
 export { useAvatarKeuze, type Avatarkeuze } from './useAvatarKeuze';
 

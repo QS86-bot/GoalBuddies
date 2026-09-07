@@ -8,6 +8,15 @@ on:
     branches: ['**']
   pull_request:
     branches: [main]
+  # ⚠️ **De wekelijkse run bestaat voor één controle: `audit:controle`** — QS8-191.
+  #    Elke andere controle hier meet de repo, en die verandert alleen als iemand
+  #    pusht. Kwetsbaarheden niet: de aanleiding voor QS8-191 was géén wijziging
+  #    in dit project. `decode-uri-component@0.2.2` zat er al maanden; de advisory
+  #    kwam erbij. Een meter die alleen op een push draait, vindt dat pas bij de
+  #    volgende push — en dat is hetzelfde "je moet eraan denken" dat dit issue
+  #    juist wilde afschaffen, één laag hoger.
+  schedule:
+    - cron: '17 6 * * 1'
 
 # Een nieuwe push op dezelfde branch maakt de vorige run overbodig. Scheelt
 # wachttijd en minuten, en de uitkomst van een verouderde commit zegt niets.
@@ -190,6 +199,18 @@ jobs:
       #    voor `shared/time` alleen doet.
       - name: Alle gedeelde Edge-kopieën gelijk aan src/
         run: npm run edge:sync:controle
+
+      # ⚠️ **Deze heeft wél een netwerkaanroep nodig, en dat is hier geen bezwaar.**
+      #    `functies:` en `register:controle` staan niet in CI omdat ze een
+      #    **productieverbinding** vragen; `audit:controle` praat alleen met het
+      #    openbare npm-register, waar `npm ci` hierboven al mee praat.
+      #
+      #    Valt dat register weg, dan meldt de controle `OVERGESLAGEN` en geeft
+      #    exitcode 1 — ongemeten is hier geen groen. Dat is een bewuste keuze:
+      #    liever een rode run die zegt dat er niets gemeten is, dan een groene
+      #    die dat verzwijgt.
+      - name: npm audit langs het register van nagekeken kwetsbaarheden
+        run: npm run audit:controle
 
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
@@ -483,6 +504,7 @@ jobs:
           set +e
           mislukt=0
           for script in \
+            audit-controle \
             docs-controle \
             dode-keten-controle \
             edge-tijd-controle \
@@ -516,6 +538,19 @@ jobs:
       #    of hij slaagt maar of hij überhaupt aan het woord komt: vóór 26-08
       #    eindigde `npm run deploy` op Windows stil met exit 0, en dat is een
       #    deploy die zegt dat hij gelukt is terwijl er niets gebeurd is.
+      # ⚠️ **Apart van de lus hierboven**, want dit script heet niet `*-controle.mjs`
+      #    en het duurt langer: het kopieert de functiemap en draait `deno check`
+      #    plus `deno lint`.
+      #
+      #    ⚠️⚠️ **En het staat hier omdat het op Windows twee keer stil kon
+      #    zwijgen** (QS8-214, nawerk 07-09): `find` is er een tekstzoeker en geen
+      #    bestandszoeker, en npm zet er `deno.cmd` neer in plaats van `deno`. In
+      #    beide gevallen mat de controle niets op precies de machine waar hij met
+      #    de hand gedraaid wordt. Die twee reparaties zijn een redenering zolang
+      #    er geen Windows onder staat — deze stap maakt er een meting van.
+      - name: De Edge-typecheck draait ook op Windows
+        run: npm run edge:types:controle
+
       - name: De deploy komt aan het woord
         # ⚠️ `always()`, want anders verbergt één fout de andere. In de eerste
         #    echte run viel de stap hierboven om op `tekst-controle` en werd deze

@@ -136,6 +136,36 @@ describe('zoekDeno — welke binary er gekozen wordt', () => {
     expect(zoekDeno(wortel, { PATH: '', NODE_ENV: 'test' })).toBe(join(wortel, 'node_modules', '.bin', 'deno'));
   });
 
+  it('vindt ook de `deno.cmd` die npm op Windows neerzet', () => {
+    // 📏 **Dit was een gat, geen hypothese** (QS8-214, nawerk 07-09). npm zet op
+    //    Windows geen extensieloze `deno` in `node_modules/.bin` maar `deno.cmd`
+    //    plus een `.ps1`. `existsSync` op alleen `deno` vond daar dus niets, de
+    //    zoektocht viel terug op PATH, en de controle meldde zich OVERGESLAGEN
+    //    op precies de machine waar hij met de hand gedraaid wordt — een
+    //    gereedschap dat bestaat om een vergeten handeling te voorkomen, dat
+    //    zelf niets doet.
+    const wortel = mkdtempSync(join(tmpdir(), 'gb-denocmd-'));
+    mkdirSync(join(wortel, 'node_modules', '.bin'), { recursive: true });
+    writeFileSync(join(wortel, 'node_modules', '.bin', 'deno.cmd'), '');
+
+    expect(zoekDeno(wortel, { PATH: '', NODE_ENV: 'test' })).toBe(
+      join(wortel, 'node_modules', '.bin', 'deno.cmd'),
+    );
+  });
+
+  it('kiest de extensieloze `deno` boven de `.cmd` als beide er staan', () => {
+    // ⚠️ De volgorde is niet willekeurig: op een Unix-machine met allebei is de
+    //    extensieloze de echte binary en de `.cmd` hooguit een restant.
+    const wortel = mkdtempSync(join(tmpdir(), 'gb-denobeide-'));
+    mkdirSync(join(wortel, 'node_modules', '.bin'), { recursive: true });
+    writeFileSync(join(wortel, 'node_modules', '.bin', 'deno'), '');
+    writeFileSync(join(wortel, 'node_modules', '.bin', 'deno.cmd'), '');
+
+    expect(zoekDeno(wortel, { PATH: '', NODE_ENV: 'test' })).toBe(
+      join(wortel, 'node_modules', '.bin', 'deno'),
+    );
+  });
+
   it('geeft null als er geen Deno is — dan is de controle ongemeten en niet groen', () => {
     expect(zoekDeno('/bestaat/niet', { PATH: '/bestaat/niet', NODE_ENV: 'test' })).toBeNull();
   });

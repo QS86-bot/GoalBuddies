@@ -29,7 +29,15 @@
  *    bewaken — en daar is dit project al een paar keer op gaan zitten.
  */
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -93,8 +101,15 @@ export function naarRepoPad(regel, werkmap) {
 export function zoekDeno(wortel = WORTEL, omgeving = process.env) {
   if (omgeving.DENO_BIN) return omgeving.DENO_BIN;
 
-  const lokaal = join(wortel, 'node_modules', '.bin', 'deno');
-  if (existsSync(lokaal)) return lokaal;
+  // ⚠️ **Ook `.cmd` en `.exe`** — QS8-214, nawerk van 07-09. npm zet op Windows
+  //    geen extensieloze `deno` in `node_modules/.bin` maar `deno.cmd` (plus
+  //    een `.ps1`). Zonder deze twee namen vond `existsSync` daar niets, viel
+  //    de zoektocht terug op PATH, en meldde de controle zich OVERGESLAGEN op
+  //    de énige machine waar hij met de hand gedraaid wordt.
+  for (const naam of ['deno', 'deno.cmd', 'deno.exe']) {
+    const lokaal = join(wortel, 'node_modules', '.bin', naam);
+    if (existsSync(lokaal)) return lokaal;
+  }
 
   // ⚠️ **De meegegeven omgeving en niet `process.env`.** Zonder dit zoekt
   //    `spawnSync` langs de PATH van het proces, en dan is de parameter een
@@ -105,8 +120,15 @@ export function zoekDeno(wortel = WORTEL, omgeving = process.env) {
 }
 
 function draai(deno, argumenten, werkmap) {
-  const uit = spawnSync(deno, argumenten, {
+  // ⚠️ **`shell` alleen voor een `.cmd`-shim.** Node ≥20 weigert die zonder
+  //    shell sinds de mitigatie van CVE-2024-27980, en dan valt de controle op
+  //    Windows in de OVERGESLAGEN-tak. De argumenten zijn een vast commando en
+  //    een pad dat dit script zelf aanmaakt, dus er valt niets in te
+  //    injecteren; het pad wordt aangehaald omdat `shell` de argv samenvoegt.
+  const viaShell = deno.toLowerCase().endsWith('.cmd');
+  const uit = spawnSync(viaShell ? `"${deno}"` : deno, viaShell ? argumenten.map((a) => `"${a}"`) : argumenten, {
     encoding: 'utf8',
+    shell: viaShell,
     // ⚠️ Dezelfde vlag als CI. Zonder hem loopt Deno omhoog, vindt de
     //    `package.json` van de app, en gaat de hele Node-dependencyboom
     //    installeren om drie Edge Functions te typechecken.
@@ -171,13 +193,26 @@ export function controleer(wortel = WORTEL) {
   }
 }
 
-/** Alle `.ts`-bestanden onder een map. */
+/**
+ * Alle `.ts`-bestanden onder een map.
+ *
+ * ⚠️ **Met `readdirSync` en niet met `find`** — QS8-214, nawerk van 07-09.
+ *    `find` is op Windows een héél ander programma: `find.exe` zoekt tekst in
+ *    bestanden en kent `-name` niet. Deze functie gaf daar dus nul paden, en
+ *    nul paden betekent nul specifiers, en dat is de `rood`-tak hierboven — met
+ *    een melding die zegt dat de specifier uit de bron verdwenen is. Een
+ *    mislukking die zich voordoet als een uitspraak, en over precies de
+ *    verkeerde oorzaak. Node kan dit zelf, zonder subproces en sneller.
+ */
 function bestandenIn(map) {
-  const uit = spawnSync('find', [map, '-name', '*.ts', '-type', 'f'], { encoding: 'utf8' });
-  return (uit.stdout ?? '')
-    .split('\n')
-    .map((r) => r.trim())
-    .filter((r) => r.length > 0);
+  /** @type {string[]} */
+  const uit = [];
+  for (const item of readdirSync(map, { withFileTypes: true })) {
+    const pad = join(map, item.name);
+    if (item.isDirectory()) uit.push(...bestandenIn(pad));
+    else if (item.isFile() && item.name.endsWith('.ts')) uit.push(pad);
+  }
+  return uit;
 }
 
 // ⚠️ De URL-vergelijking en niet `resolve()`, want dat is de vorm die

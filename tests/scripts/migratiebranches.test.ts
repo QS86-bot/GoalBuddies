@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   alsNummer,
+  botsendPerBranch,
+  namenPerSleutel,
   nummersUit,
   ontbrekendPerBranch,
   ouderdomInWoorden,
@@ -123,6 +125,153 @@ describe('ontbrekendPerBranch — wat er met rust gelaten moet worden', () => {
 
   it('zwijgt zonder branches', () => {
     expect(ontbrekendPerBranch({ lokaal: [1, 2], perBranch: {} })).toEqual([]);
+  });
+});
+
+/**
+ * Hetzelfde nummer, een ander bestand — QS8-310.
+ *
+ * ⚠️ **Waarom dit een tweede oordeel is en geen uitbreiding van het eerste.**
+ *    `ontbrekendPerBranch()` vergelijkt nummers. Draagt de zusterbranch 0175 en
+ *    draag ik ook een 0175, dan ontbreekt er niets en zwijgt hij — ongeacht of
+ *    het hetzelfde bestand is. En zolang mijn map het nummer nog níet had,
+ *    meldde hij het wél: als "0175 ontbreekt hier". **De melding verdween dus
+ *    precies op het moment dat de botsing ontstond.**
+ *
+ *    Gemeten op 07-09-2026, met twee branches die allebei een 0175 droegen:
+ *
+ *      migraties-controle: 178 migraties, aaneengesloten en elk met een
+ *      rollback-pad. Geen branch draagt een nummer dat hier ontbreekt.
+ *
+ * ⚠️ Dit is de fout waar `migratie:nieuw` (QS8-247) en `migratie:hernummer`
+ *    (QS8-241) voor gebouwd zijn, en volgens CLAUDE.md al vier keer gebeurd.
+ *
+ * ⚠️ **Met de hand rood gemaakt, grendel voor grendel:**
+ *
+ *      1. `hier !== daar` eruit (meldt élke gedeelde migratie)
+ *         → 'zwijgt over dezelfde bestandsnaam' rood
+ *      2. `hier !== undefined` eruit (meldt een gat als botsing)
+ *         → 'zwijgt over een nummer dat hier niet ligt' rood
+ *      3. de letter uit de sleutel
+ *         → 'ziet een deelmigratie als een eigen nummer' rood
+ *
+ *    ⚠️ **En een vierde mutatie bleef groen, en dat was de nuttigste.** Er stond
+ *    een `lokaal is leeg`-wacht in de functie, overgenomen van
+ *    `ontbrekendPerBranch()` waar hij dragend is. Hem eruit halen maakte niets
+ *    rood — ook niet de test die beweerde hem te bewaken — want een botsing
+ *    vraagt een naam aan béide kanten. De wacht is weg. Twee grendels waarvan
+ *    er één niets doet, is er één te veel (QS8-302).
+ */
+describe('botsendPerBranch — wat er gevonden moet worden', () => {
+  const hier = namenPerSleutel(['0174_mijn_migratie.sql', '0175_nog_een.sql']);
+
+  it('meldt een zusterbranch met hetzelfde nummer onder een andere naam', () => {
+    const uit = botsendPerBranch({
+      lokaal: hier,
+      perBranch: { 'origin/zuster': namenPerSleutel(['0175_iets_heel_anders.sql']) },
+    });
+
+    expect(uit).toEqual([
+      {
+        branch: 'origin/zuster',
+        botsingen: [
+          { nummer: '0175', hier: '0175_nog_een.sql', daar: '0175_iets_heel_anders.sql' },
+        ],
+      },
+    ]);
+  });
+
+  it('meldt elke botsing van dezelfde branch, op nummer gesorteerd', () => {
+    const uit = botsendPerBranch({
+      lokaal: hier,
+      perBranch: {
+        'origin/zuster': namenPerSleutel(['0175_anders.sql', '0174_ook_anders.sql']),
+      },
+    });
+
+    expect(uit[0]?.botsingen.map((b) => b.nummer)).toEqual(['0174', '0175']);
+  });
+
+  it('ziet een deelmigratie als een eigen nummer', () => {
+    // ⚠️ `0052a` is een ander bestand dan `0052` en botst dus niet met zichzelf.
+    //    Zou de letter wegvallen, dan meldde elke deelmigratie een botsing met
+    //    haar eigen hoofdnummer — een melding die altijd staat en dus niets zegt.
+    const uit = botsendPerBranch({
+      lokaal: namenPerSleutel(['0052_eerste.sql', '0052a_tweede.sql']),
+      perBranch: { 'origin/zuster': namenPerSleutel(['0052_eerste.sql', '0052a_derde.sql']) },
+    });
+
+    expect(uit[0]?.botsingen).toEqual([
+      { nummer: '0052a', hier: '0052a_tweede.sql', daar: '0052a_derde.sql' },
+    ]);
+  });
+});
+
+describe('botsendPerBranch — wat er met rust gelaten moet worden', () => {
+  const hier = namenPerSleutel(['0174_mijn_migratie.sql', '0175_nog_een.sql']);
+
+  it('zwijgt over dezelfde bestandsnaam', () => {
+    // ⚠️ **Dit is de helft die de controle bruikbaar houdt.** Elke branch die
+    //    van `main` afstamt draagt al zijn migraties; die allemaal melden zou
+    //    de controle waardeloos maken. Alleen een ándere naam is een botsing.
+    const uit = botsendPerBranch({
+      lokaal: hier,
+      perBranch: { 'origin/zuster': namenPerSleutel(['0174_mijn_migratie.sql']) },
+    });
+
+    expect(uit).toEqual([]);
+  });
+
+  it('zwijgt over een nummer dat hier niet ligt', () => {
+    // Dat is een gat aan de bovenkant en geen botsing; `ontbrekendPerBranch()`
+    // gaat daarover. Twee meldingen voor één toestand is er een te veel.
+    const uit = botsendPerBranch({
+      lokaal: hier,
+      perBranch: { 'origin/zuster': namenPerSleutel(['0176_van_later.sql']) },
+    });
+
+    expect(uit).toEqual([]);
+  });
+
+  it('zwijgt over een branch zonder migratiemap', () => {
+    expect(botsendPerBranch({ lokaal: hier, perBranch: { 'origin/docs': {} } })).toEqual([]);
+  });
+
+  it('zwijgt als deze map zelf leeg is', () => {
+    // ⚠️ **Dit is een gedragstest en geen grendeltest, en dat verschil is bij
+    //    het ijken gebleken.** Er stond een `lokaal is leeg`-wacht in de
+    //    functie, overgenomen van `ontbrekendPerBranch()` waar hij dragend is.
+    //    Hem eruit halen maakte géén enkele test rood: een botsing vraagt een
+    //    naam aan beide kanten, dus bij een lege map valt de lus vanzelf leeg
+    //    uit. De wacht is weg; dit geval blijft staan omdat het gedrag klopt en
+    //    hoort te blijven kloppen.
+    const uit = botsendPerBranch({
+      lokaal: {},
+      perBranch: { 'origin/zuster': namenPerSleutel(['0175_anders.sql']) },
+    });
+
+    expect(uit).toEqual([]);
+  });
+});
+
+describe('namenPerSleutel', () => {
+  it('houdt de letter in de sleutel', () => {
+    expect(namenPerSleutel(['0052_a.sql', '0052a_b.sql'])).toEqual({
+      '0052': '0052_a.sql',
+      '0052a': '0052a_b.sql',
+    });
+  });
+
+  it('laat een naam die niet aan de vorm voldoet buiten beschouwing', () => {
+    // ⚠️ Die wordt elders al als onleesbaar gemeld; hier twee keer klagen
+    //    levert twee meldingen op voor één fout.
+    expect(namenPerSleutel(['leesmij.md', '17_te_kort.sql', '0180_Goed.sql'])).toEqual({});
+  });
+
+  it('accepteert volledige paden', () => {
+    expect(namenPerSleutel(['supabase/migrations/0180_iets.sql'])).toEqual({
+      '0180': '0180_iets.sql',
+    });
   });
 });
 

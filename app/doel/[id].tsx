@@ -19,13 +19,16 @@ import {
 import {
   fetchCommitments,
   fetchCommitmentSpoor,
+  fetchMogelijkeBegunstigden,
   isOpenstaand,
+  magStrafVastleggen,
   spoorLabels,
   tekstVoor,
   trekIn,
   zetBeloning,
   zetStraf,
   type Commitment,
+  type MogelijkeBegunstigde,
 } from '@/modules/commitments';
 import {
   annuleerAdempauze,
@@ -54,6 +57,7 @@ import {
   ritmeLabels,
   ritmeUitleg,
   trekDeadlineVerzoekIn,
+  stelWeekplanstapBij,
   startWeekplanstapNu,
   verplaats,
   verwijderDoel,
@@ -71,6 +75,7 @@ import {
   type DeadlineVerzoek,
   type DoelMetVoortgang,
   type Mijlpaal,
+  type Weekplanstap,
   type Risico,
   type Ritme,
 } from '@/modules/goals';
@@ -78,6 +83,7 @@ import { opmaaktaal, t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
 import { space } from '@/shared/theme';
 import {
+  addDays,
   apparaatTijdzone,
   localDateIn,
   now,
@@ -85,6 +91,7 @@ import {
   toonMoment,
   type IsoDate,
   type UserClock,
+  type Weekday,
 } from '@/shared/time';
 import {
   AsyncView,
@@ -96,6 +103,7 @@ import {
   CategorieMerk,
   Card,
   Choice,
+  DatumKeuze,
   Field,
   HULPVRAAG_MAX,
   hulpvraagVoorstel,
@@ -118,6 +126,9 @@ import {
  *    en dan hoort de waarde ook echt constant te zijn.
  */
 const LEGE_MIJLPALEN: readonly Mijlpaal[] = [];
+
+/** Zelfde reden als hierboven: `useAsyncMetTerugval` houdt de terugval buiten `deps`. */
+const GEEN_BEGUNSTIGDEN: readonly MogelijkeBegunstigde[] = [];
 
 /**
  * ⚠️ De waarde die "geen mijlpaal" betekent in de keuzelijst. Een lege string
@@ -261,10 +272,11 @@ export default function DoelDetail() {
               onKlaar={herlaad}
             />
 
-            {vandaag ? (
+            {vandaag && klok ? (
               <DeadlineVerzetten
                 doel={d}
                 vandaag={vandaag}
+                startDag={klok.weekStartDay}
                 groepen={doelGroepen}
                 verzoek={verzoek}
                 besluit={besluit}
@@ -318,6 +330,7 @@ export default function DoelDetail() {
               goalId={d.id}
               groepen={groepen}
               bestaand={commitments.find((c) => c.type === 'penalty')}
+              streefdatumVoorbij={!magStrafVastleggen(d.target_date, vandaag)}
               onKlaar={herlaad}
             />
 
@@ -367,6 +380,7 @@ export default function DoelDetail() {
 function DeadlineVerzetten({
   doel,
   vandaag,
+  startDag,
   groepen,
   verzoek,
   besluit,
@@ -374,6 +388,8 @@ function DeadlineVerzetten({
 }: {
   readonly doel: DoelMetVoortgang;
   readonly vandaag: IsoDate;
+  /** De week-startdag uit het profiel — `DatumKeuze` verzint hem nooit zelf. */
+  readonly startDag: Weekday;
   readonly groepen: readonly DoelGroep[];
   readonly verzoek: DeadlineVerzoek | null;
   readonly besluit: DeadlineVerzoek | null;
@@ -525,11 +541,19 @@ function DeadlineVerzetten({
   return (
     <Card nested>
       <Subheading>{t('deadline.nieuwe_datum')}</Subheading>
-      <Field
+      {/*
+        ⚠️ Een kalender en geen tekstveld — QS8-223. `min` is morgen en niet
+           vandaag: `zetStreefdatum()` eist een datum in de toekomst, en die
+           grens hoort een dag te zijn die je niet kunt aantikken in plaats van
+           een melding achteraf.
+      */}
+      <DatumKeuze
         label={t('deadline.datum_label')}
-        value={datum}
-        onChangeText={setDatum}
-        placeholder="2027-03-01"
+        waarde={datum}
+        onKies={setDatum}
+        startDag={startDag}
+        vandaag={vandaag}
+        min={addDays(vandaag, 1)}
       />
 
       {kiesbaar ? (
@@ -804,25 +828,43 @@ function GedeeldMet({
  *    staat. Eén knop die meteen vastlegt zou de regel technisch halen en
  *    inhoudelijk breken.
  *
- * ⚠️ De keuzelijst toont alleen groepen waar je lid van bent. Dat is
- *    gebruiksgemak — de echte grens ligt in `commitments_insert` (migratie 0006).
+ * ⚠️ De keuzelijst toont alleen groepen waar je lid van bent en mensen met wie
+ *    je een groep deelt. Dat is gebruiksgemak — de echte grens ligt in
+ *    `commitments_insert` (migratie 0006, uitgebreid in 0168).
+ *
+ * ⚠️ **Een persoon als getuige is een kleinere kring, geen lege kring** (QS8-228).
+ *    Domeinregel 11 verandert niet: de getuige krijgt leesrecht op het moment
+ *    dat de straf verschuldigd wordt, en geen seconde eerder. Wat verandert is
+ *    hoevéél mensen dat zijn.
  */
 function Straf({
   goalId,
   groepen,
   bestaand,
+  streefdatumVoorbij,
   onKlaar,
 }: {
   readonly goalId: string;
   readonly groepen: readonly Groep[];
   readonly bestaand: Commitment | undefined;
+  readonly streefdatumVoorbij: boolean;
   readonly onKlaar: () => void;
 }) {
+  const router = useRouter();
   const [tekst, setTekst] = useState('');
+  const [soort, setSoort] = useState<'groep' | 'persoon'>('groep');
   const [groepId, setGroepId] = useState(groepen[0]?.id ?? '');
+  const [gekozenPersoon, setGekozenPersoon] = useState('');
   const [bevestigen, setBevestigen] = useState(false);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+
+  const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
+
+  // ⚠️ De keuze is afgeleid en niet in state gezet vanuit de lading. Twee
+  //    plekken die hetzelfde weten gaan uit de pas lopen, en dan verstuurt het
+  //    scherm een andere persoon dan het toont.
+  const persoonId = gekozenPersoon !== '' ? gekozenPersoon : (mensen[0]?.id ?? '');
 
   if (bestaand) {
     const stand = tekstVoor(bestaand);
@@ -855,21 +897,47 @@ function Straf({
     );
   }
 
-  if (groepen.length === 0) {
+  // ⚠️ **Dezelfde reden als bij de intrekknop hierboven: geen knop tonen die de
+  //    server afwijst.** Sinds migratie 0170 weigert `commitments_insert` een
+  //    straf op een doel waarvan de streefdatum al voorbij is — die zou bij de
+  //    eerstvolgende rollover meteen verschuldigd zijn, en dat was de
+  //    spamvector van QS8-293. Uitleg én een uitweg: de streefdatum verzetten
+  //    staat een kaart hoger op ditzelfde scherm.
+  if (streefdatumVoorbij) {
+    return (
+      <Card nested>
+        <Subheading>{t('straf.kop')}</Subheading>
+        <Body muted>{t('straf.datum_voorbij')}</Body>
+      </Card>
+    );
+  }
+
+  // ⚠️ Uitleg én een uitweg, geen dood veld. Zonder groep is er ook geen
+  //    groepsgenoot om als getuige te kiezen — de band lóópt via de groep.
+  if (groepen.length === 0 && mensen.length === 0) {
     return (
       <Card nested>
         <Subheading>{t('straf.kop')}</Subheading>
         <Body muted>{t('straf.geen_groep')}</Body>
+        <Button onPress={() => router.push('/(tabs)/groep')}>{t('straf.naar_groepen')}</Button>
       </Card>
     );
   }
 
   const gekozenGroep = groepen.find((g) => g.id === groepId);
+  const persoon = mensen.find((m) => m.id === persoonId);
+  const getuige = soort === 'groep' ? gekozenGroep?.name : persoon?.naam;
+  const kanVerder =
+    tekst.trim().length >= 3 && (soort === 'groep' ? groepId !== '' : persoonId !== '');
 
   async function bewaar() {
     setBezig(true);
     setFout(null);
-    const uitkomst = await zetStraf(goalId, { body: tekst, image_url: null }, groepId);
+    const uitkomst = await zetStraf(
+      goalId,
+      { body: tekst, image_url: null },
+      soort === 'groep' ? { soort: 'groep', id: groepId } : { soort: 'persoon', id: persoonId },
+    );
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setBevestigen(false);
@@ -884,7 +952,7 @@ function Straf({
         <Subheading>{t('straf.zeker')}</Subheading>
         <Body>
           {t('straf.bevestig_uitleg', {
-            groep: gekozenGroep?.name ?? t('straf.jouw_groep'),
+            groep: getuige ?? t('straf.jouw_groep'),
           })}
         </Body>
         <Body muted>{t('straf.dan_geldt', { tekst })}</Body>
@@ -915,14 +983,45 @@ function Straf({
         placeholder={t('straf.voorbeeld')}
       />
 
-      <Choice
-        label={t('straf.welke_groep')}
-        opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
-        waarde={groepId}
-        onKies={setGroepId}
-      />
+      {/*
+        ⚠️ De keuze tussen groep en persoon staat er alleen als er ook echt wat te
+           kiezen valt. Eén optie aanbieden is een vraag stellen waarvan het
+           antwoord al vaststaat.
+      */}
+      {groepen.length > 0 && mensen.length > 0 ? (
+        <Choice
+          label={t('straf.wie_getuige')}
+          opties={[
+            { waarde: 'groep', label: t('straf.een_groep') },
+            { waarde: 'persoon', label: t('straf.een_persoon') },
+          ]}
+          waarde={soort}
+          onKies={setSoort}
+        />
+      ) : null}
 
-      <Button disabled={tekst.trim().length < 3} onPress={() => setBevestigen(true)}>
+      {soort === 'groep' && groepen.length > 0 ? (
+        <Choice
+          label={t('straf.welke_groep')}
+          opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
+          waarde={groepId}
+          onKies={setGroepId}
+        />
+      ) : null}
+
+      {soort === 'persoon' && mensen.length > 0 ? (
+        <>
+          <Choice
+            label={t('straf.welke_persoon')}
+            opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
+            waarde={persoonId}
+            onKies={setGekozenPersoon}
+          />
+          <Caption>{t('straf.persoon_uitleg')}</Caption>
+        </>
+      ) : null}
+
+      <Button disabled={!kanVerder} onPress={() => setBevestigen(true)}>
         {t('straf.verder')}
       </Button>
     </Card>
@@ -1484,6 +1583,9 @@ function Mijlpalen({
   readonly onCoach: () => void;
 }) {
   const router = useRouter();
+  const { profiel } = useProfiel();
+  const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
+  const startDag = profiel ? (profiel.week_start_day as Weekday) : null;
   const [open, setOpen] = useState(false);
   const [titel, setTitel] = useState('');
   /**
@@ -1648,7 +1750,7 @@ function Mijlpalen({
 
                   ⚠️ Niet bij een gehaalde mijlpaal. Weekstappen laten bedenken
                      voor iets wat al af is, is een AI-call weggooien — en elke
-                     call telt mee in dezelfde tien per dag.
+                     call gaat van hetzelfde dagbudget af (0182).
                 */}
                 {m.status === 'done' ? null : (
                   <Button
@@ -1740,10 +1842,9 @@ function Mijlpalen({
                tonen, is hoe je een veld kwijtraakt bij de eerste correctie —
                precies wat de kop van dat component beschrijft.
 
-            ⚠️ Een gewoon veld en geen kalender, ondanks wat QS8-225 voorstelt:
-               `Kalender` in `shared/ui` is een leesbare heatmap voor het
-               overzicht en geen datumkiezer. Er ís er geen; er een bouwen is
-               eigen werk en niet iets om hier langs de zijlijn te doen.
+            ⚠️ **Hier stond dat er geen datumkiezer wás.** Dat klopte tot
+               03-09: `Kalender` in `shared/ui` is een leesbare heatmap voor het
+               overzicht en geen kiezer. `DatumKeuze` is die kiezer wél — QS8-223.
           */}
           <Field
             label={t('mijlpaalbewerken.omschrijving')}
@@ -1754,15 +1855,32 @@ function Mijlpalen({
             numberOfLines={3}
           />
 
-          <Field
-            label={t('mijlpaalbewerken.streefdatum')}
-            hint={t('mijlpaalbewerken.streefdatum_hint')}
-            value={datum}
-            onChangeText={setDatum}
-            placeholder="2027-03-31"
-            autoCapitalize="none"
-            inputMode="numeric"
-          />
+          {/*
+            ⚠️ **Een kalender en geen tekstveld — QS8-223.** De aantekening die
+               hier stond ("er ís geen datumkiezer; er een bouwen is eigen werk")
+               klopte tot vandaag; `DatumKeuze` in `shared/ui` is die kiezer.
+
+            ⚠️ **Alleen mét profiel, net als `DeadlineVerzetten` hierboven.** De
+               kalender heeft twee dingen uit het profiel nodig die hij nooit zelf
+               mag verzinnen: vandaag in jóuw tijdzone, en jouw week-startdag
+               (domeinregel 1). Is het profiel niet geladen — de routewacht
+               wacht daarop, dus in de praktijk alleen na een mislukte ophaling —
+               dan is de mijlpaal nog steeds aan te maken, zonder datum.
+
+            ⚠️ Geen `min`: een mijlpaal in het verleden afvinken is een normale
+               handeling, anders dan een streefdatum verzetten.
+          */}
+          {vandaag === null || startDag === null ? null : (
+            <DatumKeuze
+              label={t('mijlpaalbewerken.streefdatum')}
+              hint={t('mijlpaalbewerken.streefdatum_hint')}
+              waarde={datum}
+              onKies={setDatum}
+              startDag={startDag}
+              vandaag={vandaag}
+              optioneel
+            />
+          )}
 
           <View style={styles.knoppen}>
             <Button
@@ -1818,6 +1936,9 @@ function MijlpaalBewerken({
   readonly onKlaar: () => void;
   readonly onAnnuleer: () => void;
 }) {
+  const { profiel } = useProfiel();
+  const vandaag = profiel ? localDateIn(profiel.tz, now()) : null;
+  const startDag = profiel ? (profiel.week_start_day as Weekday) : null;
   const [titel, setTitel] = useState(mijlpaal.title);
   const [omschrijving, setOmschrijving] = useState(mijlpaal.description ?? '');
   const [datum, setDatum] = useState(mijlpaal.target_date ?? '');
@@ -1860,15 +1981,18 @@ function MijlpaalBewerken({
         numberOfLines={3}
       />
 
-      <Field
-        label={t('mijlpaalbewerken.streefdatum')}
-        hint={t('mijlpaalbewerken.streefdatum_hint')}
-        value={datum}
-        onChangeText={setDatum}
-        placeholder="2027-03-31"
-        autoCapitalize="none"
-        inputMode="numeric"
-      />
+      {/* ⚠️ Zie de kalender bij het aanmaken: zelfde grens, zelfde reden. */}
+      {vandaag === null || startDag === null ? null : (
+        <DatumKeuze
+          label={t('mijlpaalbewerken.streefdatum')}
+          hint={t('mijlpaalbewerken.streefdatum_hint')}
+          waarde={datum}
+          onKies={setDatum}
+          startDag={startDag}
+          vandaag={vandaag}
+          optioneel
+        />
+      )}
 
       {fout === null ? null : <Caption danger>{fout}</Caption>}
 
@@ -1906,6 +2030,89 @@ function MijlpaalBewerken({
  * ⚠️ De cyclus wordt hier niet berekend. `startWeekplanstapNu()` haalt hem uit
  *    de klok van de gebruiker (correctheidsregel 7).
  */
+/**
+ * Eén geplande stap bijstellen — de knop die bij `stelWeekplanstapBij()` ontbrak
+ * (QS8-301, gevonden door `exports:controle`).
+ *
+ * ⚠️ **Alle drie de velden staan erin, en dat is dezelfde grendel als bij
+ *    `MijlpaalBewerken`.** `stelWeekplanstapBij()` stuurt titel, vloer én
+ *    plafond in één UPDATE. Zou dit formulier de vloer niet kennen, dan wiste
+ *    elke titelcorrectie hem stilzwijgend — precies de val die bij de mijlpalen
+ *    al een keer is opgeschreven.
+ *
+ * ⚠️ De opslag staat als losse functie hierónder en niet in dit component. Dat
+ *    is geen stijl maar coderegel 15: `app/` staat op zijn plafond van lange
+ *    functies, en dit component moet eronder blijven.
+ */
+function WeekplanstapBewerken({
+  stap,
+  onKlaar,
+  onAnnuleer,
+}: {
+  readonly stap: Weekplanstap;
+  readonly onKlaar: () => void;
+  readonly onAnnuleer: () => void;
+}) {
+  const [titel, setTitel] = useState(stap.title);
+  const [vloer, setVloer] = useState(stap.floor_text ?? '');
+  const [plafond, setPlafond] = useState(stap.ceiling_text ?? '');
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const bewaar = async (): Promise<void> => {
+    setBezig(true);
+    setFout(null);
+    const melding = await bewaarWeekplanstap(stap.id, { titel, vloer, plafond });
+    setBezig(false);
+    setFout(melding);
+    if (melding === null) onKlaar();
+  };
+
+  return (
+    <View style={styles.pauzeForm}>
+      <Subheading>{t('weekplan.bewerken_kop')}</Subheading>
+      <Field label={t('weekplan.titel')} value={titel} onChangeText={setTitel} />
+      <Field label={t('weekplan.vloer')} value={vloer} onChangeText={setVloer} multiline />
+      <Field label={t('weekplan.plafond')} value={plafond} onChangeText={setPlafond} multiline />
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <View style={styles.knoppen}>
+        <Button
+          variant="primair"
+          busy={bezig}
+          disabled={titel.trim().length < 3}
+          onPress={() => void bewaar()}
+        >
+          {t('weekplan.bewaren')}
+        </Button>
+        <Button variant="stil" disabled={bezig} onPress={onAnnuleer}>
+          {t('weekplan.annuleren')}
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Slaat een bijgestelde stap op en geeft de foutmelding terug, of `null`.
+ *
+ * ⚠️ Een lege vloer of plafond gaat als `null` de deur uit en niet als lege
+ *    string: `weekplanstapSchema` laat beide toe, maar een lege string is in de
+ *    database iets anders dan "niet ingevuld", en het scherm toont die regel dan
+ *    als een vloer zonder tekst.
+ */
+async function bewaarWeekplanstap(
+  id: string,
+  velden: { readonly titel: string; readonly vloer: string; readonly plafond: string },
+): Promise<string | null> {
+  const uitkomst = await stelWeekplanstapBij(id, {
+    title: velden.titel,
+    floor_text: velden.vloer.trim() === '' ? null : velden.vloer,
+    ceiling_text: velden.plafond.trim() === '' ? null : velden.plafond,
+  });
+
+  return uitkomst.ok ? null : uitkomst.melding;
+}
+
 function Weekplan({
   doel,
   klok,
@@ -1927,6 +2134,7 @@ function Weekplan({
 
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
+  const [bewerkt, setBewerkt] = useState<string | null>(null);
 
   async function startNu(id: string) {
     if (klok === null) return;
@@ -2012,15 +2220,28 @@ function Weekplan({
     );
   }
 
+  const teBewerken = (stappen ?? []).find((stap) => stap.id === bewerkt);
+
   return (
     <Card nested>
       <Weekplanblok
         stappen={stappen ?? []}
         bezig={bezig}
         onStartNu={(id) => void startNu(id)}
+        onBewerk={setBewerkt}
         onVerwijder={(id) => void verwijder(id)}
         onSchuif={(id, richting) => void schuif(id, richting)}
       />
+      {teBewerken === undefined ? null : (
+        <WeekplanstapBewerken
+          stap={teBewerken}
+          onKlaar={() => {
+            setBewerkt(null);
+            laad();
+          }}
+          onAnnuleer={() => setBewerkt(null)}
+        />
+      )}
       {fout === null ? null : <Caption danger>{fout}</Caption>}
     </Card>
   );

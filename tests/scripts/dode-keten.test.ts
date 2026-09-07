@@ -8,7 +8,11 @@ import {
   functiesZonderAanroeper,
   genoemdIn,
   waardenZonderSchrijver,
+  zonderStatement,
+  gedeeldeWaarden,
+  gedeeldVerschil,
   BEWUST_ONGESCHREVEN,
+  GEDEELDE_WAARDEN,
   TREFFER_HOORT_ELDERS,
 } from '../../scripts/dode-keten-controle.mjs';
 
@@ -79,6 +83,51 @@ describe('functies zonder aanroeper — wat de controle moet vinden', () => {
     expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['spookfunctie']);
   });
 
+  /**
+   * ⚠️ **De vorm die op 06-09-2026 twee functies verborgen hield** (QS8-296).
+   *    `comment on function … is '…';` werd tot dan weggehaald met `[^;]*;`, en
+   *    dat stopt bij de eerste puntkomma — óók een die binnen de tekst staat. De
+   *    rest van de zin bleef in de romp, en elke functienaam mét haakjes die daar
+   *    genoemd werd, heette daarna levend.
+   *
+   *    Gemeten met het echte register: `realtime_bewaking()` en
+   *    `systeembericht_allowlist()` kwamen zo alle twee als aangeroepen door,
+   *    terwijl alleen tests ze aanroepen.
+   */
+  it('een functie die alleen genoemd wordt in een comment-tekst mét puntkomma', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      'create or replace function public.andere() returns void as $$ begin end $$;',
+      "comment on function public.andere() is 'eerst dit; en spookfunctie() hoort erbij';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['andere', 'spookfunctie']);
+  });
+
+  it('een functie die alleen genoemd wordt in een comment-tekst mét apostrof', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      'create or replace function public.andere() returns void as $$ begin end $$;',
+      "comment on function public.andere() is 'zo''n geval; spookfunctie() staat erin';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['andere', 'spookfunctie']);
+  });
+
+  /**
+   * ⚠️ Niet alleen `comment on function`. Een toelichting op een tabel, kolom,
+   *    constraint of policy is net zo min een aanroep, en die vier stonden niet
+   *    in het patroon.
+   */
+  it('een functie die alleen genoemd wordt in een comment op een kolom', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      "comment on column public.doelen.titel is 'zie spookfunctie() hiernaast';",
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['spookfunctie']);
+  });
+
   it('een functie die alleen in zijn eigen grant- en revoke-regels voorkomt', () => {
     const sql = [
       'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
@@ -92,6 +141,23 @@ describe('functies zonder aanroeper — wat de controle moet vinden', () => {
 });
 
 describe('functies zonder aanroeper — wat hij met rust moet laten', () => {
+  /**
+   * ⚠️ **De andere kant van de puntkomma-reparatie, en die is even belangrijk.**
+   *    Een statementverwijderaar die te vér doorleest, eet de aanroep op die
+   *    erna staat — en dan is een levende functie opeens dood. Dat is dezelfde
+   *    controle die je leert uitzetten, alleen met de melding aan de andere kant.
+   */
+  it('een aanroep die ná een comment-regel met puntkomma staat, telt gewoon', () => {
+    const sql = [
+      'create or replace function public.spookfunctie() returns void as $$ begin end $$;',
+      "comment on function public.spookfunctie() is 'let op; dit is een zin';",
+      'create or replace function public.roeper() returns void as ' +
+        '$$ begin perform spookfunctie(); end $$;',
+    ].join('\n');
+
+    expect(functiesZonderAanroeper({ sql, prodBron: '' })).toEqual(['roeper']);
+  });
+
   it('een triggerfunctie die met `public.` wordt aangehangen', () => {
     // ⚠️ Dit is de vorm die de eerste versie acht keer verkeerd meldde.
     const sql = [
@@ -667,5 +733,153 @@ describe('WACHT_OP_EEN_BESLUIT — een agenda en geen parkeerplaats', () => {
     // gemeld: een test is geen pad door de app.
     expect(uit.functies).toEqual([]);
     expect(uit.beslistVerouderd).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️ **De losse vorm van de puntkomma-reparatie** (QS8-296). Hij staat hier apart
+ *    omdat `functiesZonderAanroeper()` er nog vier andere stappen omheen doet, en
+ *    dan is niet te zeggen wélke stap een geval afving. Zelfde reden als bij
+ *    `psqlArgumenten()`: één grendel per ijking.
+ */
+describe('zonderStatement — de puntkomma die het statement afsluit', () => {
+  it('leest door een puntkomma binnen een tekstliteraal heen', () => {
+    const uit = zonderStatement(
+      "comment on function f() is 'een; twee'; select g();",
+      /\bcomment\s+on\b/gi,
+    );
+
+    expect(uit.trim()).toBe('select g();');
+  });
+
+  it('behandelt een verdubbelde apostrof als tekst en niet als einde', () => {
+    const uit = zonderStatement(
+      "comment on function f() is 'zo''n; geval'; select g();",
+      /\bcomment\s+on\b/gi,
+    );
+
+    expect(uit.trim()).toBe('select g();');
+  });
+
+  it('haalt meerdere statements achter elkaar weg', () => {
+    const uit = zonderStatement(
+      "comment on table t is 'een;'; select g(); comment on column t.c is 'twee;';",
+      /\bcomment\s+on\b/gi,
+    );
+
+    expect(uit.replace(/\s+/g, ' ').trim()).toBe('select g();');
+  });
+
+  it('laat tekst zonder treffer ongemoeid', () => {
+    const bron = 'select g(); select h();';
+
+    expect(zonderStatement(bron, /\bcomment\s+on\b/gi)).toBe(bron);
+  });
+
+  /**
+   * ⚠️ De behoedzame kant: loopt het statement zonder puntkomma af, dan gaat de
+   *    rest weg. Liever een naam te veel als dood gemeld dan een dode functie die
+   *    levend heet.
+   */
+  it('slikt de rest als de puntkomma ontbreekt', () => {
+    const uit = zonderStatement("select g(); comment on table t is 'afgekapt", /\bcomment\s+on\b/gi);
+
+    expect(uit.trim()).toBe('select g();');
+  });
+});
+
+
+/**
+ * De ratel onder de tabelblinde schrijverstoets — QS8-175.
+ *
+ * ⚠️ **De belofte is niet "het register klopt".** Die is: *de controle zwijgt
+ *    nooit stilletjes over een dode CHECK-waarde omdat een ándere tabel
+ *    dezelfde naam kent*. `waardenZonderSchrijver()` zoekt `'waarde'` in álle
+ *    bronbestanden zonder te weten bij welke tabel de treffer hoort, dus zodra
+ *    een naam gedeeld wordt, bewijst een treffer niets meer.
+ *
+ * ⚠️⚠️ **Een tabelbewuste toets kán niet** — de bron zegt niet bij welke tabel
+ *    een stringliteraal hoort — dus dit register is de tweede keus. Het
+ *    voorkomt niets; het maakt zichtbaar wannéér het risico groeit. Die grens
+ *    staat hier omdat een lezer anders denkt dat het gat dicht is.
+ *
+ * 📏 **En dat het nodig was, is gemeten:** de dossierrij van 27-08 telde er
+ *    veertien en zei "wordt zwaarder als er een vijftiende bijkomt". Op
+ *    06-09-2026 waren het er **zesentwintig** — twaalf erbij, vrijwel allemaal
+ *    in één keer met migratie 0142 (dezelfde vijftien categorienamen op `goals`,
+ *    `groups` en `profiles`). Niemand had het gemerkt, want er was niets dat
+ *    kón melden.
+ */
+describe('gedeeldeWaarden', () => {
+  const bestanden = [
+    {
+      naam: '0001.sql',
+      sql: `create table goals (status text, constraint goals_status_valid check (status in ('active','done')));
+            create table milestones (status text, constraint milestones_status_valid check (status in ('todo','done')));`,
+    },
+  ];
+
+  it('vindt de waarde die in twee tabellen staat, met beide tabellen erbij', () => {
+    expect(gedeeldeWaarden(bestanden)).toEqual({ done: ['goals', 'milestones'] });
+  });
+
+  it('zwijgt over een waarde die maar bij één tabel hoort', () => {
+    // ⚠️ De helft die de controle bruikbaar houdt: `active` en `todo` staan elk
+    //    in één tabel, en daar is de tekstzoektocht gewoon geldig.
+    const uit = gedeeldeWaarden(bestanden);
+    expect(uit).not.toHaveProperty('active');
+    expect(uit).not.toHaveProperty('todo');
+  });
+});
+
+describe('gedeeldVerschil', () => {
+  it('meldt een waarde die gedeeld raakt en nog niet in het register staat', () => {
+    const uit = gedeeldVerschil({ done: ['a', 'b'] }, {});
+    expect(uit.nieuw).toEqual([{ waarde: 'done', tabellen: ['a', 'b'] }]);
+    expect(uit.veranderd).toEqual([]);
+    expect(uit.verdwenen).toEqual([]);
+  });
+
+  it('meldt een derde tabel bij een naam die het register al kent', () => {
+    // ⚠️ Ook de tabellen tellen mee en niet alleen de naam. Zou dit op namen
+    //    vergelijken, dan groeit het risico terwijl de controle zwijgt — precies
+    //    de vorm van de fout die dit issue veroorzaakte: kijken naar het ding en
+    //    niet naar waar het bij hoort.
+    const uit = gedeeldVerschil({ done: ['a', 'b', 'c'] }, { done: ['a', 'b'] });
+    expect(uit.veranderd).toEqual([{ waarde: 'done', tabellen: ['a', 'b', 'c'], bekend: ['a', 'b'] }]);
+    expect(uit.nieuw).toEqual([]);
+  });
+
+  it('meldt een register dat achterloopt op een waarde die niet meer gedeeld is', () => {
+    // De andere kant van de ratel, om dezelfde reden als bij BEWUST_ONGESCHREVEN:
+    // een register dat blijft staan, beschrijft een risico dat er niet meer is.
+    expect(gedeeldVerschil({}, { web: ['a', 'b'] }).verdwenen).toEqual(['web']);
+  });
+
+  it('zwijgt als meting en register gelijk zijn', () => {
+    const zelfde = { done: ['a', 'b'] };
+    expect(gedeeldVerschil(zelfde, zelfde)).toEqual({ nieuw: [], veranderd: [], verdwenen: [] });
+  });
+});
+
+describe('GEDEELDE_WAARDEN', () => {
+  it('noemt bij elke waarde minstens twee tabellen', () => {
+    for (const [waarde, tabellen] of Object.entries(GEDEELDE_WAARDEN)) {
+      expect(tabellen.length, `${waarde} hoort in meer dan één tabel te staan`).toBeGreaterThan(1);
+    }
+  });
+
+  it('houdt de tabellen gesorteerd, zodat de vergelijking stabiel is', () => {
+    for (const [waarde, tabellen] of Object.entries(GEDEELDE_WAARDEN)) {
+      expect([...tabellen].sort(), `${waarde} staat ongesorteerd in het register`).toEqual(tabellen);
+    }
+  });
+
+  it('kent `milestone_done`, het geval dat dit hele issue veroorzaakte', () => {
+    // `points_ledger.reason = 'milestone_done'` wordt nergens geboekt, maar
+    // `chat_messages.system_event` kent dezelfde naam — en dáárdoor zweeg de
+    // controle. Zie TREFFER_HOORT_ELDERS.
+    expect(GEDEELDE_WAARDEN['milestone_done']).toEqual(['chat_messages', 'points_ledger']);
+    expect(Object.keys(TREFFER_HOORT_ELDERS)).toContain('points_ledger.reason=milestone_done');
   });
 });
