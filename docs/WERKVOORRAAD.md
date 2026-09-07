@@ -18,9 +18,14 @@ persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
 `0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
 dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor),
 `0177` (een goedgekeurde verschuiving zet de straf terug), `0178` (de vijfde
-meldingsoort), `0179` (een bovengrens op een pushtoken) en `0180` (de
-bevestigingsstand voor de eigenaar) staan
-er nog niet op. `0164` moet
+meldingsoort), `0179` (een bovengrens op een pushtoken), `0180` (de
+bevestigingsstand voor de eigenaar), `0181` (de allowlist van `goal_events`
+bewaakt), de twee migraties die vandaag als `0182` op `main` staan en `0184`
+(een open straf laat de deadline niet vooruit schuiven) staan er nog niet op.
+⚠️ **`main` draagt op dit moment twee migraties met nummer `0182`** — de
+zusterbranches van QS8-296 en QS8-306 zijn allebei zonder hernummeren geland en
+`migraties:controle` is daardoor rood op `main` zelf; er loopt een hotfix die er
+één naar `0183` brengt. Vraag dus zeker hier de database en niet dit document. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
 dit document.
@@ -164,9 +169,9 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0182` staan in de map: **185 bestanden**,
+Migraties `0001` t/m `0184` staan in de map: **187 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
-De nummering is aaneengesloten.
+⚠️ **Er ontbreken nummers: 0183.** Zie `migraties:controle`.
 <!-- STAND:EINDE -->
 
 ⚠️ **Dat blok is gegenereerd; met de hand bijwerken heeft geen zin.** Het was tot

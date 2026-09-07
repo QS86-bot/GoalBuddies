@@ -349,6 +349,7 @@ function streefdatumMelding(reden: string | undefined): string {
     not_owner: t('doel.niet_van_jou'),
     bad_date: t('doel.datum_ongeldig'),
     needs_group_approval: t('doel.groepsakkoord_nodig'),
+    straf_staat_open: t('doel.straf_staat_open'),
   };
 
   return tabel[reden ?? ''] ?? t('doel.actie_mislukt_kort');
