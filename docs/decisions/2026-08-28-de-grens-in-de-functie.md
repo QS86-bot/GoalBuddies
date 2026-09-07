@@ -267,3 +267,113 @@ probleem zat tussen de trigger en wat de aanroeper terugkreeg.
 En de `paused`-toestand zelf is niet gebouwd. Er is nog steeds geen knop die hem
 zet. 0187 zorgt er alleen voor dat de weg terug werkt op de dag dat die knop er
 komt, in plaats van stil niets te doen.
+
+## Naschrift 07-09-2026 — dezelfde klasse op `chat_messages` (QS8-326, migratie 0188)
+
+Het zoeken naar de **klasse** in plaats van het geval leverde
+`stamp_chat_message()` op, acht terugzettingen. 📏 Gevraagd aan `pg_trigger` en
+`pg_get_functiondef()`, niet aan de migratiebestanden.
+
+⚠️⚠️ **Hier stond "één andere", en dat was onwaar.** Dezelfde vraag aan dezelfde
+catalogus geeft er drie:
+
+| tabel | trigger | pins | werpt |
+|---|---|---|---|
+| `chat_messages` | `stamp_chat_message` | 8 | ja, sinds 0188 |
+| `groups` | `guard_group_update` | 9 | **nee** |
+| `groups` | `archief_blijft_archief` | 1 | **nee** |
+
+De twee op `groups` zijn vandaag onschadelijk, en dát is gemeten en niet
+geredeneerd: `authenticated` heeft op `groups` geen UPDATE-kolomgrant op `id`,
+`created_at`, `invite_code`, `invite_revoked`, `status`, `last_activity_at`,
+`zichtbaarheid` of `created_by`, dus de stille tak is voor een client niet te
+bereiken. **Wordt zwaarder als:** er een kolomgrant bij komt op een van die
+kolommen — dan is het dezelfde bug als deze, op een tabel die de groep draagt.
+
+Dat de eerste versie van dit naschrift "één andere" zei, is zelf de les: een
+bewering met 📏 ervoor is een meting en geen indruk, en deze was met dezelfde
+query in tien seconden te weerleggen.
+
+### Het besluit: werpen
+
+📏 Gemeten als `authenticated` afzender binnen het bewerkvenster, vóór de
+wijziging:
+
+```
+alleen `body`               body verandert                      (bedoeld)
+`body` + `type = 'system'`  body verandert, type blijft `text`  (half stil)
+alleen `payload`            succes, en er verandert niets       (volledig stil)
+```
+
+Die derde is de zuivere vorm van QS8-314. De keuze is dus dezelfde: melden in
+plaats van stil terugzetten, met de toets aan `is distinct from` per kolom zodat
+een verzoek dat alleen de tekst wijzigt een gewone update blijft.
+
+### Waarom het hier tóch anders lag dan bij `group_members`
+
+Bij `group_members` waren álle kolommen gepind en had de niet-beheerderstak
+precies één mogelijke uitkomst. Hier niet: `body` en `attachment_url` zijn
+bedoeld bewerkbaar, en `chat_messages_update` staat dat toe binnen vijftien
+minuten na plaatsing. De pin houdt de rij dus schrijfbaar voor wat mag.
+
+⚠️⚠️ **En er is een uitzondering die bij `group_members` niet bestond.**
+`chat_messages` heeft drie foreign keys naar `profiles` met `on delete set null`
+(`sender_id`, `actor_id`, `subject_id`). Een verwijderd account laat Postgres
+zélf een UPDATE doen dwars door deze trigger. 📏 Nagemeten: `delete from profiles`
+zet alle drie op NULL en het bericht blijft staan — precies wat 0033 belooft.
+
+**Een kale `is distinct from` zou daarop afgaan en het verwijderen van een account
+breken.** Dat is de naad van dit issue: de trigger is correct, de foreign key is
+correct, en ze raken elkaar op precies één overgang — gevuld naar NULL op die
+drie kolommen. Die gaat door; élke andere verandering werpt.
+
+De ijking staat per grendel, en dat is een correctie op de eerste versie: die
+ijkte er drie van de acht en noemde dat compleet.
+
+| Mutatie | Wat er rood werd |
+|---|---|
+| de hele `raise` eruit | 6 |
+| `id` uit toets en pin | 1 — de identiteitstest |
+| `group_id` | 1 — de groepstest |
+| `type` | 1 — de halve-vorm-test |
+| `system_event` | 1 — de systeemgebeurtenistest |
+| `created_at` | 1 — de tijdstiptest |
+| `payload` | 1 — de belofte-test |
+| de FK-uitzondering eruit (kale `is distinct from`) | 1 — **de test op het verwijderde account** |
+| `body` meepakken in de toets | 1 — de must-allow |
+
+⚠️⚠️ **Twee dingen uit die ronde zijn de moeite van het opschrijven waard.**
+
+**Een test kan groen zijn omdat een éérdere grendel hem afvangt.** De eerste versie
+toetste `type` door `'system'` te sturen en `system_event` door er een waarde in te
+zetten. Allebei worden al door de `with check` van `chat_messages_update` geweigerd
+(`type <> 'system'`, `system_event is null`), dus die twee tests bereikten deze
+trigger nooit en waren groen om de verkeerde reden. 📏 Gevonden doordat `type` uit
+de toets halen niets rood maakte. `photo` staat de policy toe, en `system_event` is
+voor een client sowieso onbereikbaar — die grendel is alleen langs `service_role`
+te ijken.
+
+**En een bewerking die niet landt, geeft een uitslag die niets betekent.** Eén
+bewerking van het testbestand brak halverwege af op een assertie en schreef daardoor
+niets weg; de bijbehorende toelichting was wél al blijven staan, zodat het bestand
+een keuze beschreef die er niet in stond. Vandaar dat elke mutatie hier met een
+`grep` op het bestand **en** een `pg_get_functiondef`-controle op de database
+bevestigd is voordat de uitslag geteld werd.
+
+### Wat de weging lichter maakte dan gedacht
+
+📏 Er is **geen enkele client-update op `chat_messages`**: `chat.ts` doet een
+insert en een delete en verder niets, en geen functie in het schema werkt de tabel
+bij. Het bewerkvenster van vijftien minuten heeft dus vandaag geen aanroeper, en
+de stille weg was alleen met een rechtstreeks PostgREST-verzoek te bereiken.
+Werpen kan hier dus geen bestaande stroom breken — gemeten, niet aangenomen.
+
+⚠️ Dat het venster geen aanroeper heeft is zelf een halve toestand, van dezelfde
+soort als QS8-325. Het staat als eigen issue en is hier bewust niet meegenomen.
+
+### De realtime-afweging
+
+`chat_messages` staat in `supabase_realtime`. Dat was een reden om te meten en
+niet om over te slaan: een `raise` in een BEFORE-trigger breekt het statement af,
+dus er is geen rijwijziging en dus ook geen realtime-gebeurtenis. Zwijgen liet
+juist een rij door die de client anders dacht te hebben.
