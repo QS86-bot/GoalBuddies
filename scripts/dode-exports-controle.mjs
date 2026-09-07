@@ -88,11 +88,6 @@ export const BEKENDE_ONBEREIKBAAR = {
     'Haalt de dagafvinkingen van een weekdoel op. ⚠️ De schrijfkant (afvinken) ' +
     'heeft wél een knop; de leeskant hangt erbuiten. Hier hoort een scherm bij en ' +
     'dat is eigen werk — QS8-301 groep 1.',
-  stelWeekplanstapBij:
-    '⚠️ **De zwaarste van de negen.** Een schrijffunctie op de datalaag: een ' +
-    'weekplanstap bijstellen. Zonder scherm kan een gebruiker een stap wel ' +
-    'aanmaken en herordenen maar niet bijstellen — precies de vorm van QS8-112. ' +
-    'Hier hoort een scherm bij — QS8-301 groep 1.',
   vulVoorUitProfiel:
     'Vult een interview voor uit het profiel. Staat onder test in ' +
     '`vragenlijst-schemas.test.ts`, maar geen enkel scherm roept hem aan — dus ' +

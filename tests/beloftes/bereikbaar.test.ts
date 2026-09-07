@@ -55,6 +55,21 @@ const MOET_EEN_SCHERM_HEBBEN: Readonly<Record<string, string>> = {
   fetchCommitmentSpoor:
     'Domeinregel 5 eist dat een commitment auditeerbaar is. Een spoor dat ' +
     'niemand kan opvragen is precies zo goed als geen spoor.',
+  stelWeekplanstapBij:
+    'Een geplande stap was aan te maken, te herordenen, te starten en weg te ' +
+    'gooien — alleen niet bij te stellen. Een tikfout in de titel kostte je de ' +
+    'hele stap én zijn plek in de volgorde. ⚠️ **Deze rij staat er sinds ' +
+    'QS8-301, en hij is niet met de hand gevonden**: `exports:controle` (QS8-150) ' +
+    'meldde hem als functie zonder pad naar een mens. Dat is precies waar die ' +
+    'detector voor gebouwd is, en dit is het eerste gat dat hij heeft opgeleverd ' +
+    'in plaats van bevestigd. ' +
+    '⚠️ **En wat déze rij níét bewaakt, is dat er een knóp is.** Gemeten bij het ' +
+    'ijken: haal de knop uit `Weekplanblok` en deze test blijft groen, want het ' +
+    'scherm roept de functie nog steeds aan — alleen kan niemand er meer bij. ' +
+    'Wat dat wél vindt is `catalogus:controle`: zonder knop staan ' +
+    '`weekplan.bijstellen` en `weekplan.bijstellen_label` nergens meer en wordt ' +
+    'die rood. Twee controles, twee helften van dezelfde keten, en geen van ' +
+    'beide dekt hem alleen.',
 };
 
 /**
