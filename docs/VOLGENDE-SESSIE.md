@@ -3,10 +3,12 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 06-09-2026. Op 06-09 landden **QS8-284, QS8-287,
-> QS8-288, QS8-227 en QS8-290**; open staan **QS8-286** (branch ligt klaar),
-> **QS8-289** en **QS8-197**.
-> Lees eerst de drie punten van 06-09 — het eerste is de duurste van de dag —
+> **Laatst bijgewerkt:** 06-09-2026. Er is die dag veel geland uit twee
+> sessies; `git log origin/main` is de betrouwbare lijst en niet deze zin.
+> Uit deze sessie: **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en
+> **QS8-302**. Open en niet door een agent af te maken: **QS8-197** (wacht op
+> Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
+> Lees eerst de vijf punten van 06-09 — het eerste is de duurste van de dag —
 > dan de drie van 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna
 > die van 02-09.
 >
@@ -58,6 +60,25 @@
 > hand was. ⚠️ **Laat een mutatie hard falen als zijn eigen opzet mislukt**
 > (`if (error) throw`), anders ijk je de mutatie en niet de grendel. Dit is de
 > tegenhanger van de regel die al in CLAUDE.md staat over ijken per grendel.
+>
+> **06-09, punt IV: een *"wordt zwaarder als"* zonder meter meet niets, en dat
+> is nu aantoonbaar.** De dossierrij over de tabelblinde schrijverstoets telde op
+> 27-08 **veertien** gedeelde CHECK-waarden en sloot af met *"wordt zwaarder als
+> er een vijftiende bijkomt"*. 📏 Op 06-09 waren het er **zesentwintig** — niet
+> één erbij maar twaalf, vrijwel allemaal in één keer met migratie 0142, en
+> niemand had het gemerkt. ⚠️ **Zo'n zin is een aantekening en geen grendel.**
+> Zet er een meter op zodra de voorwaarde te tellen valt; kan dat niet, schrijf
+> dan op waaróm niet. QS8-175 heeft er voor dit geval een register met een
+> drievoudige ratel van gemaakt.
+>
+> **06-09, punt V: twee grendels waarvan er één ongetoetst is, is er één te
+> veel.** Bij QS8-302 bestond de reparatie uit een regelanker én "neem de laatste
+> treffer". Elk van de twee alleen dekte al alle gevallen die ik geschreven had,
+> dus geen van beide werd rood onder zijn eigen mutatie — twee mechanismen, nul
+> bewijs. ⚠️ **Merk je dat een mutatie niets rood maakt, dan is dat geen
+> geruststelling maar een bevinding:** je hebt code zonder geval, en dan is hij
+> óf overbodig óf onbewaakt. Beide antwoorden zijn goed; hem laten staan zonder
+> te kiezen is dat niet.
 >
 > **05-09, punt I: er werkt een tweede sessie in deze repo, en dat is twee keer
 > dubbel werk geweest.** Bij QS8-270 lag er al een PR (#198 tegen mijn #199); bij
