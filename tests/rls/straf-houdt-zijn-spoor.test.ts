@@ -1,5 +1,16 @@
 /**
- * Een bevestigde straf verdwijnt niet zonder spoor — QS8-331, migratie 0189.
+ * Een bevestigde straf overleeft `verwijder_doel()` — QS8-331, migratie 0189.
+ *
+ * ⚠️⚠️ **De titel noemt de route met opzet, en dat is een correctie.** Hier
+ *    stond "verdwijnt niet zonder spoor", en die belofte is groter dan wat dit
+ *    bestand bewaakt: `verwijder_mijn_account()` wist elke straf én zijn
+ *    `commitment_events` via de cascade `auth.users → profiles → goals →
+ *    commitments → commitment_events`, zonder poort en zonder bedenktijd. 📏
+ *    Gemeten op de lokale stack: 1 straf en 1 auditregel vooraf, `{"ok": true}`,
+ *    0 en 0 erna. Alle tests hieronder blijven daarbij groen — regel 18 vraag 3
+ *    in zuivere vorm, en gevonden door de security-reviewer op deze branch.
+ *    Die route is QS8-335 en wordt hier niet gedicht; wat hier wél gebeurt is
+ *    dat de belofte niet langer meer belooft dan ze waarmaakt.
  *
  * ⚠️ **De belofte is het spoor en niet de tak.** Domeinregel 5 zegt dat een
  *    commitment device auditeerbaar moet zijn; domeinregel 6 dat geschiedenis
@@ -78,7 +89,7 @@ describe.skipIf(!rlsTestsConfigured)('een bevestigde straf en het spoor dat blij
   }
 
   // -------------------------------------------------------------------------
-  describe('de belofte: geen straf verdwijnt zonder spoor', () => {
+  describe('de belofte: `verwijder_doel()` laat geen straf spoorloos verdwijnen', () => {
     it(
       'een doel met een bevestigde straf is niet te verwijderen, en de auditregel blijft staan',
       async () => {

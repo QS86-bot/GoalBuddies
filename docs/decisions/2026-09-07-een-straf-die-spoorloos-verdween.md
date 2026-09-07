@@ -70,16 +70,27 @@ onderscheid introduceren dat de tabel zelf niet maakt.
 ## De ijking
 
 Drie mutaties, elk op een verse stack en elk vooraf met een `grep` op het bestand
-en een `pg_get_functiondef`-controle op de database bevestigd:
+en een `pg_get_functiondef`-controle op de database bevestigd. Het bereik is
+`straf-houdt-zijn-spoor.test.ts` **plus** `epic9.test.ts` — samen 25 tests:
 
 | Mutatie | Wat er rood werd |
 |---|---|
-| de nieuwe poort helemaal weg | 3 — alle belofte-tests |
-| terug naar de smalle poort van 0058 | 3 — dezelfde drie, en de must-allow blijft groen |
+| de nieuwe poort helemaal weg | 4 — de 3 belofte-tests **plus** `epic9 › laat een doel met een afgegaan commitment niet meer weggooien` |
 | de poort altijd waar (`if true`) | 1 — **precies de must-allow** |
+| de `commitment_in_werking`-tak weg | 1 — **precies de epic9-test** |
 
-⚠️ De tweede is de belangrijkste: hij bewijst dat de tests het *verschil* tussen
-de oude en de nieuwe poort meten, en niet alleen dát er een poort is.
+⚠️ De derde is de belangrijkste: hij bewijst dat de specifieke melding van 0058
+nog steeds onder test staat en niet is opgeslokt door de bredere poort erboven.
+
+⚠️⚠️ **Hier stonden drie andere mutaties, en één ervan bewees niets** — gevonden
+door de security-reviewer en daarna zelf nagemeten. Twee dingen waren mis. De
+tabel zei "3 rood" waar er 4 zijn: de `epic9`-test valt binnen het bereik van
+deze wijziging en telt mee, en de commit-boodschap zei dat wél goed. En de rij
+"terug naar de smalle poort van 0058" was **niet te onderscheiden** van de rij
+erboven: de `commitment_in_werking`-tak staat al bóven de nieuwe poort, dus die
+mutatie levert dezelfde functie op als hem weghalen — hij voert zijn geval door
+een pad dat een eerdere grendel al afvangt, precies de val die CLAUDE.md bij
+regel 18 beschrijft. De vervanger is de mutatie die het verschil wél maakt.
 
 ⚠️ **Elke ijking draait op een opnieuw opgebouwde stack.** Dat is geen
 voorzichtigheid maar een les van dezelfde dag: bij QS8-326 gaf een ronde een
@@ -92,6 +103,21 @@ halverwege afbrak en niets wegschreef terwijl de toelichting wél bleef staan.
   straf stuurloos achter. Dat is het tweede geval waarin een verwijdering een
   straf raakt, en het is een andere weging: daar verdwijnt de *getuige* en niet
   het *spoor*.
+* **QS8-335 — de eigenaar die zijn eigen account verwijdert.** Gevonden door de
+  security-reviewer op deze branch en daarna zelf nagemeten:
+  `verwijder_mijn_account()` eindigt op `delete from auth.users`, en daarachter
+  cascadeert `profiles → goals → commitments → commitment_events` — vier keer
+  `confdeltype = 'c'`, gemeten in `pg_constraint`. De functie noemt `commitment`
+  nul keer, dus er is geen poort, geen bedenktijd en geen statustoets. 📏 Op de
+  verse stack: 1 straf en 1 auditregel vooraf, `{"ok": true}`, 0 en 0 erna.
+
+  ⚠️⚠️ **Dit is de reden dat de kop van het testbestand versmald is.** Die zei
+  "een bevestigde straf verdwijnt niet zonder spoor", en alle vier de tests
+  bleven groen terwijl díé zin via deze route breekt — regel 18 vraag 3, en
+  precies de fout waar dit project zeven keer aan betaald heeft. De reparatie
+  hier is niet de route dichtzetten (dat is QS8-335 en het vraagt een besluit
+  over het wisrecht) maar de belofte niet groter laten zijn dan wat ze
+  waarmaakt.
 * **QS8-321 en QS8-322** — of een straf überhaupt intrekbaar hoort te zijn, en of
   te laat afronden hem hoort te laten vervallen. Allebei grens 1, en allebei
   gelabeld `wacht-op-Quinten`. Deze migratie verandert daar niets aan: ze zorgt
