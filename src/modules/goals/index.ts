@@ -217,6 +217,10 @@ export {
 export {
   PROFIELCONTEXT,
   PROFIELSPIEGELING,
+  vulVoorInterview,
   vulVoorUitProfiel,
+  type Interviewvulling,
+  type ProfielContextVeld,
   type ProfielVoorvulling,
+  type Voorvulbron,
 } from './interview-schemas';

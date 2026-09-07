@@ -66,7 +66,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    dat verschil de belofte.
  *
  * ⚠️⚠️ **Tak 5 (F) kwam uit de security-review en niet uit deze suite**, en hij
- *    is de belangrijkste van de vijf. `public` had tot migratie 0174 **nul**
+ *    is de belangrijkste van de vijf. `public` had tot migratie 0175 **nul**
  *    sequences; een identity-kolom brengt de eerste mee, en Supabase's
  *    `alter default privileges` deelt hem net zo hard uit als een tabel. 📏
  *    Gemeten vóór de reparatie: `anon USAGE=t, auth USAGE=t, auth UPDATE=t,

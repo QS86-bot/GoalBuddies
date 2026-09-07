@@ -86,7 +86,7 @@ async function statusVan(commitmentId: string): Promise<string> {
  *    van ging: `commitments_audit` en `commitments_systeembericht` hangen allebei
  *    aan dezelfde UPDATE, en `now()` is binnen een transactie constant. Beide
  *    rijen kregen dus dezelfde `created_at` en Postgres mocht kiezen. Migratie
- *    0174 gaf de tabel `seq`, een identity-kolom die niet kan knopen.
+ *    0175 gaf de tabel `seq`, een identity-kolom die niet kan knopen.
  *
  * ⚠️ Dit was geen testfout. `fetchCommitmentSpoor()` sorteerde net zo, dus de
  *    eigenaar zag hetzelfde in zijn scherm.
