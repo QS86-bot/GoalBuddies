@@ -889,10 +889,17 @@ interface Schrijfuitkomst {
  * @param schrijf de poging, met de client van de gebruiker die hem niet mag doen
  * @param lees de rij zoals `adminDb()` hem ziet — vóór en ná
  */
+/**
+ * @returns de foutmelding als er een fout kwam, en anders de lege string — voor
+ *   de enkele test die wil vastleggen *welk* slot er dichtzat. ⚠️ Een lege
+ *   string betekent "stil geweigerd" en niet "gelukt"; de uitkomsttoets
+ *   hieronder is wat het slot bewijst. Toegevoegd bij QS8-312, dat hier anders
+ *   een tweede kopie van deze helper naast had gezet.
+ */
 export async function magNietLanden(
   schrijf: () => PromiseLike<Schrijfuitkomst>,
   lees: () => PromiseLike<{ data: unknown }>,
-): Promise<void> {
+): Promise<string> {
   const voorData = (await lees()).data ?? null;
 
   // ⚠️ **Eerst bewijzen dat er iets te veranderen vált.** Zonder deze toets is
@@ -928,4 +935,6 @@ export async function magNietLanden(
           : `Er kwam ${error.code}, maar de rij veranderde alsnog.`),
     );
   }
+
+  return error?.message ?? '';
 }

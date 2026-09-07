@@ -22,16 +22,25 @@ import { WEIGERCODES, magNietLanden } from './harness';
 const eenRij = () => Promise.resolve({ data: [{ id: 1, event: 'spent' }] });
 
 describe('magNietLanden laat door', () => {
+  // ⚠️ **De helper geeft sinds QS8-312 de foutmelding terug in plaats van niets.**
+  //    Dat is voor de enkele test die wil vastleggen wélk slot er dichtzat; zonder
+  //    die mogelijkheid zette QS8-312 er een tweede kopie van deze helper naast,
+  //    en een gevorkte helper die zijn eigen bevinding in zijn docblock draagt is
+  //    precies wat CLAUDE.md bij verhuizingen ontraadt.
+  //
+  // ⚠️ **De lege string is de stille weigering en betekent niet "gelukt".** Dat
+  //    onderscheid is de hele reden dat deze helper bestaat, dus het staat hier
+  //    als eigen geval en niet als detail van het geval eronder.
   it('een stille weigering: geen fout, en de rij is onveranderd', async () => {
     await expect(
       magNietLanden(() => Promise.resolve({ error: null }), eenRij),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('');
   });
 
   it.each(WEIGERCODES)('een luide weigering met %s', async (code) => {
     await expect(
       magNietLanden(() => Promise.resolve({ error: { code, message: 'nee' } }), eenRij),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe('nee');
   });
 });
 

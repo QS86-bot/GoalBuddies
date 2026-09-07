@@ -1,119 +1,145 @@
-# De getuige blijft de getuige — geen schrijfweg naar `beneficiary_user_id` (QS8-312)
+# Een straf in werking verandert niet meer — en in de bedenktijd juist wel (QS8-312)
 
 **Datum:** 07-09-2026
-**Status:** besloten — er wordt niets opengezet
+**Status:** besloten — er gaat geen nieuwe schrijfweg open, en het bestaande pad wordt erkend
 **Aanleiding:** vervolgvraag uit criterium 3 van QS8-306, scherper geworden met 0183
 
 ## De vraag
 
 0183 laat het oppervlak van de persoon-getuige de groepsband volgen: verlaat de
 getuige de groep, dan valt zowel `getuigenissen()` als zijn leesrecht op de rij
-weg. Zolang hij weg is ziet niemand die straf behalve de eigenaar — de lege kring
-waar `bewaak_begunstigde()` (0168) voor bestaat.
+weg. Zolang hij weg is ziet niemand die straf behalve de eigenaar.
 
 Mag de eigenaar er dan een ander op zetten?
 
-## Wat er eerst gecorrigeerd moet worden aan de meting
+## Het antwoord is ja, en dat pad bestond al
 
-QS8-312 en de dossierrij van 07-09 zeggen allebei dat een vervanger aanwijzen
-niet kan **omdat de trigger het weigert** — `beneficiary_user_id = null` en
-zichzelf aanwijzen, allebei nagemeten. Die twee weigeringen bestaan, maar een
-gewone client bereikt ze nooit.
-
-📏 Gemeten als `authenticated` eigenaar met echte claims, via PostgREST:
+📏 Gemeten als `authenticated` eigenaar via PostgREST, zonder één grant aan te
+raken:
 
 ```
-set + getuige lid          → permission denied for table commitments
-set + getuige vertrokken   → permission denied for table commitments
-due + getuige vertrokken   → permission denied for table commitments
+straf aanmaken met bob   → {"status":"set","beneficiary_user_id":<bob>}
+intrekken                → GELUKT, 1 rij
+nieuwe straf met carol   → {"status":"set","beneficiary_user_id":<carol>}
 ```
 
-De grendel is de **kolomgrant** van 0057 — `grant update (body, image_url,
-status) on public.commitments to authenticated` — en die staat vóór de trigger.
-De metingen in het issue zijn met `service_role` gedaan, en die gaat langs
-kolomgrants heen. Beide beschrijvingen klopten dus over de uitkomst en niet over
-het mechanisme, en dat verschil is precies wat dit besluit draagt.
+`trekIn()` en `maakCommitment()` (0057) staan allebei in
+`src/modules/commitments/index.ts` en op het doelscherm. `commitments_update`
+staat `set → cancelled` toe en `commitments_een_open_per_soort` telt alleen
+`set`, `unlocked` en `due` — dus zodra de oude rij `cancelled` is, past er een
+nieuwe naast.
 
-⚠️ **Want het tweede slot dekt de belofte niet.** `bewaak_begunstigde()` verbiedt
-alleen leeghalen en jezelf aanwijzen. **Wisselen naar een ánder groepslid laat
-hij door** — `commitments_update` heeft daar zelfs een `with check` voor staan
-(`beneficiary_user_id is null or shares_group_with_user(...)`), een clausule die
-vandaag een kolom bewaakt die niemand kan schrijven.
+⚠️ **Dat is het juiste antwoord en geen gat.** Het loopt via de
+bevestigingsstap in de UI, waar de consequentie letterlijk uitgeschreven staat,
+en het laat een `cancelled`-rij in `commitment_events` achter. Expliciet,
+bevestigd en auditeerbaar — precies wat domeinregel 5 vraagt. Er hoefde dus
+niets gebouwd te worden; er moest iets **opgeschreven** worden.
 
-📏 Aangetoond met mutatie 1 hieronder: één `grant update (beneficiary_user_id)`
-erbij en het wisselen lukt gewoon.
+## ⚠️ Wat de eerste versie van dit document beweerde, en waarom dat erger was dan een fout
 
-📏 Ter vergelijking, mutatie 2: `goal_id` in de grant zetten laat het verhuizen
-níét toe — daar vangt de `with check` van `commitments_update` het af
-(`g.owner_id = auth.uid()`). `goal_id` heeft dus twee sloten en
-`beneficiary_user_id` één. Die asymmetrie is de kern van dit document.
+De eerste versie besloot "er gaat niets open" op grond van: *de getuige kán niet
+vervangen worden, dus er valt niets te beslissen.* De security-ronde mat na dat
+dat onwaar is, en het testbestand zette die onwaarheid als **de belofte** in zijn
+kop:
 
-## Het besluit: er gaat niets open
+> ~~Er is geen opstelling waarin een straf van eigenaar verandert, zichzelf als
+> getuige krijgt, of stilzwijgend verdwijnt.~~
 
-Van de drie richtingen uit het issue wordt richting 1 gekozen: **niets
-veranderen aan het schrijfpad, en opschrijven waarom.**
+Negen groene tests onder een zin die niet houdt. Dat is regel 18 vraag 3 een laag
+hoger dan gebruikelijk: de tests klopten stuk voor stuk, en de zin eronder niet.
+De volgende lezer bouwt op die zin.
 
-**1. Het is grens 1 en niet aan een sessie.** Wie de getuige van een straf is,
-hoort bij wat de gebruiker als consequentie beloofd is. Domeinregel 5 zegt dat
-alles wat een consequentie oplegt expliciet bevestigd en auditeerbaar moet zijn
-en nooit stilzwijgend geactiveerd; het issue stelt zelf vast dat *wie de nieuwe
-getuige mag worden en wie dat bevestigt* een weging op zichzelf is. Dat is de
-beslisbevoegdheid van Quinten.
+⚠️ **De les die blijft:** *"er is geen opstelling waarin X"* is een uitspraak over
+álle routes, en die schrijf je pas op nadat je de routes geteld hebt — niet nadat
+je één kolom hebt zien weigeren. Ik had de kolomgrant gemeten en daaruit een
+uitspraak over de féature afgeleid.
 
-**2. De toestand schort op, hij vernietigt niet.** 📏 De aanwijzing blijft in
-`beneficiary_user_id` staan terwijl de getuige weg is, en zowel de melding als
-`getuigenissen()` komen terug zodra hij terugkomt. Er gaat niets verloren; er is
-alleen tijdelijk niemand die meekijkt.
+## Wat er wél houdt, en wat de tests nu bewaken
 
-**3. Richting 3 is aantoonbaar schadelijk en valt af.** Een straf die vervalt als
-de getuige lang genoeg weg is, maakt *vertrekken* tot een manier om andermans
-straf te laten verdampen. Dat is een prikkel die niemand bedoeld heeft, en het
-issue markeert hem zelf als de gevaarlijkste van de drie.
+> Een straf die in werking is (`status = 'due'`) verandert niet meer van getuige,
+> niet van eigenaar, en verdwijnt niet.
 
-**4. Er is vandaag geen schade.** De database is leeg en er staat geen straf met
-echte inzet. De prijs van wachten is nul; de prijs van een verkeerd schrijfrecht
-op een commitment device is dat niet.
+📏 Alle vier de routes dichtgemeten voor `due`:
 
-## Wat er wél gebouwd is
+```
+DUE: intrekken                → UPDATE 0        (commitments_update.using eist status='set')
+DUE: tweede straf op het doel → duplicate key   commitments_een_open_per_soort
+DUE: verwijder_doel           → {"ok": false, "reason": "commitment_in_werking"}
+DUE: rond_doel_af             → raakt alleen 'set'
+```
 
-Geen migratie. `tests/rls/getuige-blijft.test.ts` legt de belofte vast:
+Voor `set` is het tegendeel waar, en met opzet: dat is de bedenktijd. Een straf
+is een voornemen tot hij verschuldigd wordt.
 
-> Er is geen opstelling waarin een straf van eigenaar verandert, zichzelf als
-> getuige krijgt, of stilzwijgend verdwijnt.
+## Wat de kolomgrant dan nog doet
 
-⚠️ **De belangrijkste test is de registertest onderaan dat bestand**, en die is
-er precies om wat hierboven staat: de belofte rust op één kolomgrant, en er was
-geen enkele test die iets zei als iemand die grant verbreedde. Hij vergelijkt de
-UPDATE-grant op `commitments` met `body, image_url, status` — rechtstreeks aan
-`information_schema` gevraagd, want grants staan niet in de code — en zijn
-commentaar vertelt de lezer wat hij op het punt staat te besluiten.
+`beneficiary_user_id` blijft voor geen enkele client schrijfbaar. Dat is geen
+verbod op wisselen — §"Het antwoord" laat zien dat wisselen mag — maar een eis
+aan de **vorm**: een wisseling loopt via intrekken en laat dus altijd een rij in
+`commitment_events` achter. Rechtstreeks de kolom overschrijven zou dezelfde
+uitkomst geven zonder spoor.
 
-Dat is dezelfde vorm als `sleutelzetters()` (0153) en `functiegrants.test.ts`
-(0115): een impliciet slot expliciet en telbaar maken zonder het gedrag te
-veranderen.
+⚠️ **En dat is één slot, niet twee.** `bewaak_begunstigde()` verbiedt alleen
+leeghalen en jezelf aanwijzen; **wisselen naar een ander groepslid laat hij
+door**. 📏 Aangetoond: één `grant update (beneficiary_user_id)` erbij en het
+rechtstreeks wisselen lukt. Ter vergelijking heeft `goal_id` wél een tweede slot
+— de `with check` van `commitments_update` eist `g.owner_id = auth.uid()` — al is
+dat smaller dan het lijkt: het blokkeert verhuizen naar **andermans** doel, niet
+naar een ánder eigen doel.
+
+Daarom staat er een registertest op de grant zelf.
+
+⚠️ **Die test vraagt `has_column_privilege` en niet `information_schema` met
+`grantee = 'authenticated'`.** Dat laatste stond er eerst en het had een gat: 📏
+gemeten dat `grant update (goal_id) … to public` het recht wél geeft
+(`has_column_privilege` = `t`) terwijl de grantee-filter niets ziet en de hele
+suite groen blijft. Spiegelbeeld van onwrikbare regel 4 — daar leest `revoke …
+from public, anon` als "van iedereen", hier leest `grant … to public` als
+onschuldig. **Het effectieve recht is de waarheid, niet de boekhouding erover.**
+Vandaag doet geen enkele migratie dit (0× `to public` tegen 175× `to
+authenticated`), dus het was geen live gat — wel een blinde grendel.
+
+⚠️ `scripts/kolomrechten-controle.mjs` heeft diezelfde filter en dus hetzelfde
+gat, projectbreed. Dat is een eigen issue (QS8-334) en niet hier gerepareerd.
+
+## Wat er níet klopte aan "er was geen enkele grendel"
+
+De eerste versie schreef dat niets zou melden als iemand de grant verbreedde. 📏
+Onwaar: `kolomrechten:controle` vangt het al via de dode-hout-richting van
+QS8-258 (*een grant die niemand gebruikt*). Zwakker — hij wordt weer groen zodra
+één scherm die kolom schrijft — en het is geen beveiligingsgrendel, maar de
+bewering "er was niets" was fout.
+
+## Twee gaten die hier gemeten zijn en bewust niet gedicht
+
+Allebei buiten QS8-312, allebei met een dossierrij en een issue.
+
+**1. `verwijder_doel()` wist een bevestigde `set`-straf én zijn auditspoor**
+(QS8-331). 📏 Gemeten: `{"ok": true}`, straf weg, `commitment_events` van 1 naar
+0. Beide foreign keys zijn `on delete cascade`. Binnen de bedenktijd kan een
+eigenaar dus een straf laten zien en daarna elk spoor ervan verwijderen. Botst
+met domeinregel 5 (auditeerbaar) en 6 (append-only).
+
+**2. `verwijder_mijn_account()` van de getuige laat een `due`-straf stuurloos
+achter** (QS8-333). 📏 Gemeten: `beneficiary_user_id` wordt `NULL` (de foreign
+key is `on delete set null`), de straf blijft `due`, en
+`commitments_update.using` maakt hem daarna permanent onaanraakbaar.
+
+⚠️ **Dat tweede geval haalde een argument onder de eerste versie van dit besluit
+weg.** Die schreef: *"de toestand schort op, hij vernietigt niet"* — dragend voor
+"we doen niets". Voor déze variant van "de getuige vertrok" vernietigt hij wél.
+Het besluit staat nog steeds, maar op de drie andere gronden en niet op deze.
 
 ## De ijking
 
-Drie mutaties, elk apart, elk met een meting van de grant vóórdat de uitslag
-geloofd werd.
-
 | Mutatie | Wat er stukging | Wat er rood werd |
 |---|---|---|
-| 1 — `grant update (beneficiary_user_id)` | het enige slot onder de getuige | de twee wisseltests **en** de registertest |
-| 2 — `grant update (goal_id)` | het eerste van twee sloten onder het doel | alleen de registertest — de policy vangt het verhuizen af |
-| 3 — `grant delete` + een ruime DELETE-policy | de straf kan verdwijnen | de verwijdertest |
+| 1 — `grant update (beneficiary_user_id)` to `authenticated` | het enige slot onder de vorm | de stille-wisseltest en de registertest |
+| 2 — `grant update (goal_id)` | het eerste van twee sloten onder het doel | alleen de registertest |
+| 3 — `grant delete` + ruime DELETE-policy | de straf kan verdwijnen | de verwijdertest |
+| 4 — `grant update (beneficiary_user_id)` to **`PUBLIC`** | de blinde vlek van de grantee-filter | beide, sinds `has_column_privilege` |
+| 5 — idem aan `authenticated`, na de herschrijving | idem | beide |
+| 6 — `commitments_update.using` zonder `status = 'set'` | de hele `due`-belofte | alle zes de `due`-tests |
 
-⚠️ Mutatie 2 is de leerzaamste: hij laat zien dat de registertest méér bewaakt
-dan de gedragstests. `goal_id` heeft een tweede slot en `beneficiary_user_id`
-niet, en zonder die test zou je dat verschil pas ontdekken op de dag dat het ertoe
-doet.
-
-## Wat er open blijft staan
-
-De dossierrij in `docs/ENGINEER-REVIEW.md` van 07-09 blijft staan en is
-bijgewerkt: zijn *Wordt zwaarder als* noemde het openen van een schrijfweg al,
-en daar is nu bij gezet dat het mechanisme de kolomgrant is en niet de trigger.
-
-Komt die schrijfweg er ooit, dan hoort er bij (criterium 2 van QS8-312): dezelfde
-groepsband-eis als `commitments_insert`, geen leeghalen, en een regel in
-`commitment_events` — `noteer_commitment()` kent sinds 0177 al `reverted`.
+⚠️ Mutatie 4 is de reden dat de registertest herschreven is: met de oude
+grantee-filter bleef hij groen terwijl het recht er wél was.
