@@ -373,6 +373,7 @@ export type Database = {
           event_type: string
           id: string
           payload: Json | null
+          seq: number
         }
         Insert: {
           actor_id?: string | null

@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-298; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 07-09-2026 (na QS8-299 en QS8-303; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -15,8 +15,9 @@ productie in twee rondes)
 drie families), `0165` en `0167` (twee rondes waarin definer-functies hun
 uitvoerrecht voor `authenticated` kwijtraakten) `0169` (het oppervlak van de
 persoon-getuige), `0173` (geen servertijdstempel in handen van de client),
-`0174` (een open deadline-verzoek houdt de straf tegen) en `0175` (de vijfde
-meldingsoort) staan
+`0174` (een open deadline-verzoek houdt de straf tegen), `0175` (een verzoek
+dat niemand kan beslissen), `0176` (een volgordesleutel op het auditspoor) en
+`0177` (de vijfde meldingsoort) staan
 er nog niet op. `0164` moet
 in hetzelfde venster landen als de deploy van `doelcoach` — er is geen volgorde
 waarin de tussenstap veilig is. Vraag de database welke migraties er staan, niet
@@ -54,7 +55,7 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    deployen (`doelcoach`, `rollover`, `notificaties`) en `password_min_length`
    in het dashboard. Migraties alleen zijn de feature niet.
    ⚠️ **`notificaties` is er sinds QS8-298 een met een naam erbij:** die deploy
-   ís de vijfde meldingsoort. Migratie `0175` verruimt de CHECK en `regels.ts`
+   ís de vijfde meldingsoort. Migratie `0177` verruimt de CHECK en `regels.ts`
    draagt de tekst, maar zolang de oude functie draait stelt niemand de vraag
    `getuigenissen_voor()` — dan staat er een feature die niets doet. Zelfde vorm
    als QS8-292 en QS8-124.
@@ -161,7 +162,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0175` staan in de map: **178 bestanden**,
+Migraties `0001` t/m `0177` staan in de map: **180 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

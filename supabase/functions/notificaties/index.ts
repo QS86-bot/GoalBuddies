@@ -58,7 +58,7 @@ import {
  *    bijkomt. De vijfde — `commitment_witness` — is de énige die over een ander
  *    gaat, en dat kan op precies één grond: de uitzondering die domeinregel 7
  *    zelf noemt, *een straf die de gebruiker zelf vooraf heeft ingesteld en
- *    bevestigd*. Zie `_shared/notificaties/regels.ts` en migratie 0175 voor de
+ *    bevestigd*. Zie `_shared/notificaties/regels.ts` en migratie 0177 voor de
  *    onderbouwing, en sectie 5 hieronder voor de drie dingen die die grond
  *    dragen.
  */
@@ -401,7 +401,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
     //    gebruiker zelf vooraf heeft ingesteld en bevestigd. De eigenaar heeft
     //    deze getuige zélf aangewezen, de melding gaat pas af bij `due`
     //    (domeinregel 11), en er gaat niets naar de groep. Uitgeschreven in
-    //    migratie 0175 en in `docs/decisions/2026-09-07-de-getuige-hoort-het-...`.
+    //    migratie 0177 en in `docs/decisions/2026-09-07-de-getuige-hoort-het-...`.
     //
     // ⚠️ **Niet via de groepschat**, ook niet als de getuige toevallig in een
     //    groep van de eigenaar zit. Dan zou de hele groep horen wat expliciet
@@ -633,7 +633,7 @@ async function verseGoedkeuringen(
 /**
  * De verschuldigde straffen waarvan deze gebruiker de getuige is — QS8-298.
  *
- * ⚠️ Via `getuigenissen_voor()` (migratie 0175) en **niet** via `getuigenissen()`.
+ * ⚠️ Via `getuigenissen_voor()` (migratie 0177) en **niet** via `getuigenissen()`.
  *    Die laatste leest `auth.uid()` en is voor de app; deze job draait als
  *    `service_role` en heeft daar geen. Dezelfde reden waarom `openBeoordelingen`
  *    op `te_beoordelen_voor()` leunt en niet op `openstaande_beoordelingen()`:

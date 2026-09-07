@@ -1,4 +1,4 @@
--- 0175_de_getuige_krijgt_een_melding.sql — de persoon-getuige van een straf hoorde pas dat hij getuige was als hij de app zelf opende (QS8-298)
+-- 0177_de_getuige_krijgt_een_melding.sql — de persoon-getuige van een straf hoorde pas dat hij getuige was als hij de app zelf opende (QS8-298)
 --
 -- ROLLBACK-PAD:
 --   alter table public.notifications_sent drop constraint notifications_sent_kind_bekend;
@@ -235,4 +235,4 @@ grant  execute on function public.getuigenissen_voor(uuid) to service_role;
 comment on function public.getuigenissen_voor(uuid) is
   'De verschuldigde straffen waarvan deze gebruiker de getuige is, voor de '
   'meldingenjob. Alleen `service_role`: de functie toetst haar aanroeper niet '
-  'maar krijgt de gebruiker als argument. Zie 0175 en QS8-298.';
+  'maar krijgt de gebruiker als argument. Zie 0177 en QS8-298.';

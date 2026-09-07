@@ -195,7 +195,7 @@ describe('de teksten', () => {
    *    vijfde — `commitment_witness` — gaat wél over een ander, en dat kan op
    *    precies één grond: de uitzondering die domeinregel 7 zelf noemt, *een
    *    straf die de gebruiker zelf vooraf heeft ingesteld en bevestigd*.
-   *    Onderbouwing in migratie 0175.
+   *    Onderbouwing in migratie 0177.
    *
    * ⚠️ **Wat hier verboden blijft, blijft verboden.** Een soort over een gemiste
    *    week, een verbroken reeks of een achterstand heeft geen vooraf bevestigde
