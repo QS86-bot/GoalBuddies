@@ -2139,6 +2139,8 @@ export const nl = {
   'ritme.vloer_gehaald': 'Je vloer is gehaald. Deze week telt.',
   'ritme.vloer_nog_niet': 'Nog {aantal} dagen tot je vloer.',
   'ritme.plafond_gehaald': 'Plafond gehaald.',
+  'ritme.strook_af': '{datum}: afgevinkt',
+  'ritme.strook_open': '{datum}: nog niet afgevinkt',
   'ritme.vink_af': 'Vink vandaag af',
   'ritme.vink_af_label': 'Vink vandaag af voor "{titel}"',
   'ritme.maak_ongedaan': 'Toch niet',

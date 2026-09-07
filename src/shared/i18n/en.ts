@@ -1697,6 +1697,8 @@ export const en: Record<Sleutel, string> = {
   'ritme.vloer_gehaald': "Your floor is met. This week counts.",
   'ritme.vloer_nog_niet': '{aantal} more days to your floor.',
   'ritme.plafond_gehaald': 'Ceiling reached.',
+  'ritme.strook_af': '{datum}: checked off',
+  'ritme.strook_open': '{datum}: not checked off yet',
   'ritme.vink_af': 'Tick off today',
   'ritme.vink_af_label': 'Tick off today for "{titel}"',
   'ritme.maak_ongedaan': 'Undo',
