@@ -769,23 +769,60 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
       //    vraagt, want de `delete` weghalen mag verder niets veranderen.
       const naOvername = await rijVan(GEDEELD);
       expect(naOvername?.user_id, 'de overname landde niet').toBe(tweede.id);
+
+      // ⚠️ **De telling hoort hier en niet in een eigen test.** Ze leunt op de
+      //    opstelling van deze test — twee registraties van hetzelfde token — en
+      //    losgetrokken was ze volgordeafhankelijk. `push_tokens_token_uniek`
+      //    draagt haar; die droppen breekt `on conflict (token)` met `42P10` en
+      //    dus alles hier, dus als losse test ijkt ze niets van wat ze belooft.
+      const { data: alle, error } = await adminDb()
+        .from('push_tokens')
+        .select('id')
+        .eq('token', GEDEELD);
+      expect(error, JSON.stringify(error)).toBeNull();
+      expect(alle ?? [], 'de overname liet een tweede rij achter').toHaveLength(1);
     },
     TEST_TIMEOUT,
   );
 
   it(
-    'laat er precies één rij van over',
+    'laat geen ongetrimde rij bestaan, ook niet onder service_role',
     async () => {
-      // ⚠️ De helft die de vorige test niet dekt: `maybeSingle()` zou bij twee
-      //    rijen werpen, maar dat is een eigenschap van de helper en niet van de
-      //    belofte. `push_tokens_token_uniek` maakt twee rijen onmogelijk — deze
-      //    test zegt dat we dáárop leunen en niet op de `delete`.
-      const { data, error } = await adminDb()
+      // ⚠️⚠️ **Dit is de grendel onder 0211, en hij is er omdat de security-review
+      //    de premisse brak.** Het besluit om de `delete` weg te halen leunt erop
+      //    dat elke rij getrimd is: de `on conflict (token)` matcht op de exacte
+      //    string, dus een ongetrimde rij zou een tweede rij voor hetzelfde
+      //    apparaat opleveren en dan blijft de vorige eigenaar meldingen krijgen.
+      //
+      // ⚠️ **Voor native droeg `push_tokens_native_vorm` dat al** — die roept het
+      //    geankerde `is_expo_pushtoken()` aan. Voor **web** toetste niets de
+      //    kolom (`platform = 'web' or is_expo_pushtoken(token)`), en
+      //    `is_pushdienst()` staat alléén in de RPC. Daar kwam een ongetrimde
+      //    endpoint-URL dus gewoon binnen. `push_tokens_token_getrimd` sluit dat.
+      //
+      // ⚠️ **De vorige test hier telde de rijen na een overname en bewaakte
+      //    niets** (QS8-367, security-review). Twee rijen zijn onmogelijk door
+      //    `push_tokens_token_uniek`, en die droppen laat `on conflict (token)`
+      //    afgaan met `42P10` — dan wordt élke test in dit blok rood, dus de
+      //    ijking liep door een eerdere grendel. Bovendien leunde hij op de
+      //    opstelling van de test ervóór. Hij is vervangen door dit geval, dat
+      //    zijn eigen grendel noemt en los ijkbaar is.
+      const ongetrimd = `  https://fcm.googleapis.com/fcm/send/getrimd-${RUN}  `;
+
+      const { error } = await adminDb()
         .from('push_tokens')
-        .select('id')
-        .eq('token', GEDEELD);
-      expect(error, JSON.stringify(error)).toBeNull();
-      expect(data ?? []).toHaveLength(1);
+        .insert({
+          user_id: eerste.id,
+          token: ongetrimd,
+          platform: 'web',
+          p256dh: 'p256dh-meet',
+          auth: 'auth-meet',
+        });
+
+      expect(error?.code, `service_role kreeg de ongetrimde rij erin: ${JSON.stringify(error)}`).toBe(
+        '23514',
+      );
+      expect(error?.message ?? '').toContain('push_tokens_token_getrimd');
     },
     TEST_TIMEOUT,
   );

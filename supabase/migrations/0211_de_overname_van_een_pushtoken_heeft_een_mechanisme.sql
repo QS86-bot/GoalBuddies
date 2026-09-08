@@ -6,7 +6,13 @@
 --   Zet `registreer_push_token()` terug naar de vorm van 0209, dat wil zeggen
 --   met `delete from push_tokens where token = p_token and user_id <> v_uid;`
 --   vóór de insert. Het is een `create or replace`, dus grants en
---   `comment on function` blijven staan en er valt verder niets terug te draaien.
+--   `comment on function` blijven staan. Daarnaast:
+--     alter table public.push_tokens drop constraint push_tokens_token_getrimd;
+--
+--   ⚠️ Draai die twee samen terug of geen van beide. De constraint bestaat
+--      precies om te dragen wat het weghalen van de `delete` aanneemt; laat je
+--      hem staan zonder de `delete`, dan klopt het nog steeds — laat je hem
+--      wég mét de `delete` terug, dan sta je weer waar 0209 stond.
 --
 --   ⚠️ Wat níét terug te draaien is: de `id` en `created_at` van rijen die
 --      tussen deze migratie en de rollback van eigenaar gewisseld zijn. Die
@@ -43,15 +49,46 @@
 -- **Weghalen**, en de reden is meetbaar: er is geen bereikbaar geval waarin de
 -- `delete` iets doet dat de `on conflict` niet doet.
 --
--- 📏 `authenticated` heeft op `push_tokens` alléén SELECT — geen INSERT, geen
---    UPDATE — en er is geen insert-policy. Deze `SECURITY DEFINER`-functie is de
---    enige schrijver, en ze trimt altijd. Er kán dus geen rij bestaan met
---    spaties eromheen, en daarmee vervalt het enige geval waarin de twee
---    mechanismen uit elkaar zouden lopen.
+-- 📏 `authenticated` heeft op `push_tokens` SELECT, DELETE en REFERENCES — geen
+--    INSERT en geen UPDATE — en er is geen insert-policy. Deze
+--    `SECURITY DEFINER`-functie is de enige weg naar binnen, en ze trimt altijd.
 --
 -- Trimmen zou het verschil ook wegnemen, maar laat twee mechanismen staan die
 -- voor altijd hetzelfde moeten blijven doen. Dat is een naad (onwrikbare regel
 -- 18) op een plek waar er geen hoeft te zijn.
+--
+-- ---------------------------------------------------------------------------
+-- De premisse is nu een grendel en niet langer een toestand
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ De eerste versie van deze migratie schreef "er kán dus geen rij bestaan
+--    met spaties eromheen". 📏 Dat was voor **native** waar en voor **web**
+--    niet, en de security-review heeft het nagespeeld: `push_tokens_native_vorm`
+--    roept `is_expo_pushtoken()` aan en die is geankerd, dus zelfs
+--    `service_role` krijgt `23514` op `'  ExponentPushToken[x]  '`. Maar die
+--    CHECK luidt `platform = 'web' or is_expo_pushtoken(token)` — voor web toetst
+--    hij niets, en `is_pushdienst()` staat alléén in de RPC. `service_role` kon
+--    er dus `'  https://fcm.googleapis.com/fcm/send/…  '` in zetten, en dán
+--    maakte deze functie er twee rijen van waar de oude `delete` er één van
+--    maakte. Beide adressen werken bij `fetch()`; het slachtoffer bleef
+--    meldingen krijgen op een overgenomen toestel.
+--
+-- Vandaag is dat onbereikbaar — er bestaat geen enkele `service_role`-schrijver,
+-- de meldingenjob doet alleen `select` en `delete`. Maar 0209 schreef zelf op
+-- waarom dat te weinig is: **dat is een toestand en geen grendel.** Daarom staat
+-- de constraint hieronder. Hij kost niets, hij maakt de onderbouwing van deze
+-- migratie waar in plaats van waarschijnlijk, en hij hoort bij dit besluit —
+-- niet bij een volgend.
+--
+-- 📏 `btrim(x)` en `trim(x)` doen in Postgres exact hetzelfde: allebei strippen
+--    ze alléén spaties, geen tabs en geen regeleindes. De constraint is dus
+--    precies de normalisatie die de functie zelf toepast, en de RPC kan geen
+--    waarde produceren die hij weigert. Een token mét een tab komt sowieso niet
+--    binnen: `is_expo_pushtoken()` en `is_pushdienst()` zijn allebei geankerd én
+--    sluiten `[:space:]` uit.
+--
+-- 📏 Op productie (`wehgocadxehottiiyvsc`) staan 0 rijen in `push_tokens`, dus
+--    er valt niets te normaliseren voordat dit erop staat.
 --
 -- ⚠️ **De dossierrij van 21-08 is nagelopen, zoals het issue vraagt.** Die
 --    beschrijft de overname als "haalt een token weg bij de vorige eigenaar en
@@ -62,6 +99,31 @@
 -- Volledige afweging: docs/decisions/2026-09-08-een-tweede-mechanisme-is-geen-slot.md
 --
 -- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- De grendel onder de premisse
+-- ---------------------------------------------------------------------------
+
+do $migratie$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.push_tokens'::regclass
+      and conname  = 'push_tokens_token_getrimd'
+  ) then
+    alter table public.push_tokens
+      add constraint push_tokens_token_getrimd check (token = btrim(token));
+  end if;
+end
+$migratie$;
+
+comment on constraint push_tokens_token_getrimd on public.push_tokens is
+  'QS8-367. Draagt de aanname onder 0211: de overname loopt sinds die migratie '
+  'alleen nog via `on conflict (token)`, en die matcht op de exacte string. Een '
+  'ongetrimde rij zou een tweede rij voor hetzelfde apparaat opleveren, en dan '
+  'blijft de vorige eigenaar meldingen ontvangen. `registreer_push_token()` '
+  'trimt zelf, dus deze CHECK raakt alleen een schrijver die daarbuiten om gaat.';
 
 create or replace function public.registreer_push_token(p_token text, p_platform text, p_p256dh text DEFAULT NULL::text, p_auth text DEFAULT NULL::text)
  RETURNS jsonb
@@ -143,10 +205,11 @@ begin
   --    een tweede mechanisme naast een mechanisme dat het werk al deed.
   --
   -- ⚠️ **Weghalen kan omdat deze tabel één schrijver heeft, en dat is gemeten.**
-  --    `authenticated` heeft op `push_tokens` alléén SELECT — geen INSERT, geen
-  --    UPDATE — en er is geen insert-policy. Deze functie is de enige weg naar
-  --    binnen en trimt altijd, dus er kán geen rij met spaties staan waar de
-  --    `delete` wél op zou matchen en de `on conflict` niet.
+  --    `authenticated` heeft op `push_tokens` geen INSERT en geen UPDATE (wel
+  --    SELECT, DELETE en REFERENCES) en er is geen insert-policy. Deze functie
+  --    is de enige weg naar binnen en trimt altijd. Dat er dan ook langs geen
+  --    enkele ándere weg een rij met spaties komt, is sinds deze migratie geen
+  --    aanname meer maar `push_tokens_token_getrimd` — zie de kop.
   --
   -- ⚠️ Wat er verandert is één waarneembaar ding: bij een overname houdt de rij
   --    nu haar `id` en `created_at` in plaats van dat er een verse rij komt.
