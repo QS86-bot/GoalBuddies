@@ -33,18 +33,24 @@ import { psql } from './psql-stack';
  *    de handhaver dode code, en is de melding die de app toont een andere — zonder
  *    dat er iets rood wordt. Vandaar de derde test hieronder.
  *
+ * ⚠️⚠️ **De rem telt de rijen van dít verzoek en niet het venster van een
+ *    etmaal, en dat is een gerepareerde fout.** De eerste versie telde het
+ *    venster, net als de teller van 0192 — maar dat venster is gedeeld: de
+ *    rollover schrijft weekdoelen als `service_role`, die tellen mee voor de
+ *    eigenaar, en dan ging de noodstop af op een handeling van één rij. 📏 Met
+ *    450 rollover-weekdoelen gaf één eigen weekdoel `23514 (450 …)` in plaats van
+ *    de `42501` van de policy: de verkeerde grendel sprak, met een melding die
+ *    "in één verzoek" zei bij een verzoek van één rij. Gevonden in de
+ *    security-review van 08-09; de derde test hieronder bewaakt het.
+ *
  * IJKING — met de hand gedraaid op 08-09-2026, per grendel apart:
  *
  *   A  `drop trigger doelen_rem on goals`
  *      → 1 rood: 'een geweigerde bulk-POST laat de tabel niet volschrijven'
- *   B  de noodgrens van `rem_doelen()` op `>= doelen_plafond()` zetten
+ *   B  `rem_weekdoelen()` het venster laten tellen in plaats van dit verzoek
+ *      → 1 rood: 'de rem telt dit verzoek en niet het gedeelde venster'
+ *   C  de noodgrens van `rem_doelen()` op `> doelen_plafond()` zetten
  *      → 1 rood: 'de noodstop overstemt de handhaver niet'
- *
- * ⚠️ **B moet `>=` zijn en niet `>`, en dat verschil ís de ijking.** Met
- *    `> plafond` laat de rem er `plafond + 1` door en zwijgt hij bij precies deze
- *    batch — de handhaver komt dan gewoon aan het woord en er wordt niets rood.
- *    Een mutatie die het geval door een grens voert die het al afvangt, bewaakt
- *    niets; zie CLAUDE.md bij regel 18.
  */
 
 const SETUP_TIMEOUT = 240_000;
@@ -133,6 +139,52 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       const { error } = await alice.db.from('milestones').insert(mijlpalen);
 
       expect(error, `twaalf mijlpalen in één keer hoort te lukken: ${error?.message}`).toBeNull();
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'de rem telt dit verzoek en niet het gedeelde venster',
+    async () => {
+      // ⚠️⚠️ **De naad tussen de rem en een schrijver die niet de gebruiker is.**
+      //    De rollover zet weekdoelen neer als `service_role`. Die rijen staan in
+      //    hetzelfde etmaalvenster als die van de eigenaar, dus een rem die het
+      //    vénster telt, gaat af op een handeling van één rij die de gebruiker
+      //    zelf doet — en overstemt daarmee de policy.
+      //
+      //    De belofte is dus niet "de rem weigert grote batches" (dat is de
+      //    eerste test) maar: *de rem raakt niets aan wat een ánder in het
+      //    venster heeft gezet.* Vandaar dat deze toets op de foutcode zit: de
+      //    rij wordt allebei de keren geweigerd, alleen door een andere grendel.
+      const carla = await createTestUser('bulk-carla');
+      const doel = await adminDb()
+        .from('goals')
+        .insert({ owner_id: carla.id, title: 'BULK-VENSTER', target_date: streefdatum })
+        .select('id')
+        .single();
+      if (doel.error || doel.data === null) throw new Error(`doel: ${doel.error?.message}`);
+
+      // Ruim boven de noodgrens van 2 × 200, geschreven door service_role.
+      const rollover = Array.from({ length: 450 }, (_, i) => ({
+        goal_id: doel.data.id,
+        title: `rollover ${i}`,
+        cycle_start_date: cyclus,
+      }));
+      const gezet = await adminDb().from('weekly_goals').insert(rollover);
+      if (gezet.error) throw new Error(`opbouw: ${gezet.error.message}`);
+
+      const { error } = await carla.db.from('weekly_goals').insert({
+        goal_id: doel.data.id,
+        title: 'eigen weekdoel',
+        cycle_start_date: cyclus,
+      });
+
+      expect(error, 'het venster staat boven het plafond, dus dit hoort geweigerd').not.toBeNull();
+      expect(
+        error?.code,
+        `42501 is de policy — die hoort dit te weigeren. 23514 betekent dat de rem het ` +
+          `venster telt in plaats van dit verzoek (kreeg "${error?.message}")`,
+      ).toBe('42501');
     },
     TEST_TIMEOUT,
   );
