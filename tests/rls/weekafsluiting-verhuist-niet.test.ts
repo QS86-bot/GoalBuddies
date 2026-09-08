@@ -26,6 +26,15 @@
  *      blijven groen.
  *   B  de NULL-uitzondering uit de pin halen  -> 1 rood: alléén het opruimpad van
  *      een verwijderd profiel. Die uitzondering draagt dus echt iets.
+ *   C  `revoke select on week_review_replies from authenticated` -> was groen,
+ *      is nu rood. De belofte-test keek naar een leeg lijstje en niet naar de
+ *      fout, dus "niemand ziet iets" las als "Carol ziet niets".
+ *   D  `new.did_text := old.did_text` aan de pin toevoegen (een stille
+ *      terugzetting) -> was groen, is nu rood. De must-allow toetste HTTP 200
+ *      en niet of de wijziging geland was.
+ *
+ *   C en D komen uit de security-review op deze branch: twee mutaties die de
+ *   belofte breken en waar niets rood van werd.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -105,16 +114,38 @@ describe.runIf(rlsTestsConfigured)('een weekafsluiting verhuist niet naar een an
    * ⚠️ **De belofte is niet "de update faalt" maar "Carol ziet Bob niet".** Een
    *    test op alleen de foutcode blijft groen als er ooit een tweede weg naar
    *    dezelfde verhuizing bijkomt.
+   *
+   * ⚠️⚠️ **Een lege uitkomst is hier niet genoeg, en dat is een gemeten
+   *    reparatie.** De eerste versie deed alleen `expect(data ?? []).toEqual([])`
+   *    en keek nooit naar `error`. 📏 Geijkt door
+   *    `revoke select on week_review_replies from authenticated`: de hele suite
+   *    bleef groen. Die test kon dus niet zien of Carol terecht buitengesloten
+   *    was of dat níémand de reacties meer kon lezen — twee heel verschillende
+   *    werelden met hetzelfde lege lijstje. Aangewezen door de security-review.
+   *
+   *    Daarom nu drie dingen in één test: Carols verzoek slaagt, Carol ziet
+   *    niets, en Bob — die wél in groep A zit — ziet de reactie wél. Die derde
+   *    is de positieve controle die "niemand ziet iets" van "Carol ziet niets"
+   *    onderscheidt.
    */
   it(
-    'en Carol ziet de reactie van Bob nog steeds niet',
+    'en Carol ziet de reactie van Bob nog steeds niet, terwijl Bob hem wél ziet',
     async () => {
-      const { data } = await carol.db
+      const vanCarol = await carol.db
         .from('week_review_replies')
         .select('body')
         .eq('week_review_id', reviewId);
 
-      expect(data ?? []).toEqual([]);
+      expect(uitkomst(vanCarol.error)).toBe('toegelaten');
+      expect(vanCarol.data ?? []).toEqual([]);
+
+      const vanBob = await bob.db
+        .from('week_review_replies')
+        .select('body')
+        .eq('week_review_id', reviewId);
+
+      expect(uitkomst(vanBob.error)).toBe('toegelaten');
+      expect((vanBob.data ?? []).map((r) => r.body)).toEqual(['Bob zijn prive reactie in groep A']);
     },
     TIMEOUT,
   );
@@ -189,6 +220,23 @@ describe.runIf(rlsTestsConfigured)('een weekafsluiting verhuist niet naar een an
         { onConflict: 'group_id,user_id,group_period_start' },
       );
       expect(uitkomst(tweede.error)).toBe('toegelaten');
+
+      // ⚠️⚠️ **HTTP 200 is niet hetzelfde als "het staat er", en dat is precies de
+      //    klasse waar 0188/QS8-326 voor bestaat — de kop van 0205 schrijft er
+      //    zelf over.** 📏 Geijkt door `new.did_text := old.did_text` aan de pin
+      //    toe te voegen, dus een stille terugzetting: alle vijf tests bleven
+      //    groen, en 54 tests eromheen ook. Zonder deze terugleesregel bewaakt de
+      //    must-allow alleen dat de server niet klaagt.
+      const na = await alice.db
+        .from('week_reviews')
+        .select('did_text')
+        .eq('group_id', groepB)
+        .eq('user_id', alice.id)
+        .eq('group_period_start', periode)
+        .single();
+
+      expect(uitkomst(na.error)).toBe('toegelaten');
+      expect(na.data?.did_text).toBe('bijgewerkt');
     },
     TIMEOUT,
   );
