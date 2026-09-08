@@ -276,39 +276,92 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
   }
 
   describe('profiles — een profiel is van jou en van niemand anders', () => {
+    /**
+     * ⚠️⚠️ **Deze test heette "je mag je eigen profiel invoegen" en dat mag sinds
+     *    migratie 0197 niet meer** (QS8-351). 📏 Nagemeten vóór de intrekking:
+     *    geen enkel bestand in `src/` of `app/` voegt een profiel in — de rij
+     *    komt van de trigger `handle_new_user()`, en die is `SECURITY DEFINER`.
+     *    De grant had dus geen aanroeper.
+     *
+     *    ⚠️ De opzet zei dat trouwens al: de test moest zijn eigen profiel eerst
+     *    met `adminDb()` wéghalen om iets te kunnen invoegen. Een must-allow die
+     *    een toestand met beheerdersrechten moet fabriceren om te kunnen slagen,
+     *    bewaakt geen pad dat een gebruiker kan lopen.
+     *
+     *    Wat er nu getoetst wordt is de nieuwe waarheid, met de gehandhaafde
+     *    must-allow eronder: het profiel is er, en de eigenaar kan het bewerken.
+     */
     it(
-      'je mag je eigen profiel invoegen',
+      'je maakt je eigen profiel niet — dat doet de trigger',
       async () => {
-        const weg = await adminDb().from('profiles').delete().eq('id', w.profielA.id);
-        if (weg.error) throw new Error(`profiel weghalen: ${weg.error.message}`);
-
         const { error } = await w.profielA.db
           .from('profiles')
           .insert({ id: w.profielA.id, display_name: 'Profiel A' });
-        expect(error, 'je eigen profiel invoegen hoort te lukken').toBeNull();
+
+        expect(error?.code, 'een client mocht een profielrij maken').toBe('42501');
       },
       TEST_TIMEOUT,
     );
 
     it(
-      'je mag het profiel van een ander niet invoegen',
+      'en het profiel dat de trigger maakte, is er en is van jou',
       async () => {
-        // ⚠️ Eerst weg, anders ketst de insert af op de primaire sleutel en niet
-        //    op de policy — zie de kop van dit bestand.
-        const weg = await adminDb().from('profiles').delete().eq('id', w.profielB.id);
-        if (weg.error) throw new Error(`profiel weghalen: ${weg.error.message}`);
-
-        await insertMagNiet(
-          () =>
-            w.profielA.db.from('profiles').insert({ id: w.profielB.id, display_name: 'Gekaapt' }),
-          'profiles_insert',
-        );
-
-        // Terugzetten, zodat `removeTestUsers()` hem netjes opruimt.
-        const terug = await adminDb()
+        const { data, error } = await w.profielA.db
           .from('profiles')
-          .insert({ id: w.profielB.id, display_name: 'Profiel B' });
-        if (terug.error) throw new Error(`profiel terugzetten: ${terug.error.message}`);
+          .select('id')
+          .eq('id', w.profielA.id)
+          .maybeSingle();
+
+        expect(error, 'je eigen profiel lezen hoort te lukken').toBeNull();
+        expect(data?.id, 'de trigger maakte geen profielrij').toBe(w.profielA.id);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Deze test heette "je mag het profiel van een ander niet invoegen" en
+     *    toetste `profiles_insert`. Sinds 0197 doet hij dat niet meer, en dat is
+     *    van buitenaf niet te zien — aangewezen door de security-review op
+     *    QS8-351 en zelf nagemeten.**
+     *
+     *    📏 Hetzelfde verzoek, één verschil:
+     *
+     *      na 0197:            permission denied for table profiles
+     *      met de grant terug: new row violates row-level security policy
+     *
+     *    **Allebei `42501`**, en allebei in `WEIGERCODES`. De test bleef dus
+     *    groen terwijl hij van grendel wisselde. Het `adminDb()`-dansje eromheen
+     *    was er juist om te zorgen dat de pólicy weigerde en niet de primaire
+     *    sleutel — en dat is nu zinloos geworden, want de policy komt niet meer
+     *    aan de beurt.
+     *
+     *    ⚠️ `profiles_insert` (`with check id = auth.uid()`) is daarmee vanaf een
+     *    client onbereikbaar en volledig ongetoetst. Dat staat in het
+     *    beslisdocument als wat de intrekking kost. Deze test toetst nu de
+     *    weigering die er wél is, met de melding erbij zodat een volgende lezer
+     *    hem niet voor policybewijs aanziet.
+     */
+    it(
+      'je maakt ook het profiel van een ander niet — en dat weigert het recht, niet de policy',
+      async () => {
+        const { error } = await w.profielA.db
+          .from('profiles')
+          .insert({ id: w.profielB.id, display_name: 'Gekaapt' });
+
+        expect(error?.code, 'het INSERT-recht staat weer open').toBe('42501');
+        expect(
+          error?.message ?? '',
+          'dit is een policyweigering — dan is de grant terug en meet deze test iets anders',
+        ).toContain('permission denied');
+
+        const na = await adminDb()
+          .from('profiles')
+          .select('display_name')
+          .eq('id', w.profielB.id)
+          .maybeSingle();
+        expect(na.data?.display_name, 'het profiel van een ander is overschreven').not.toBe(
+          'Gekaapt',
+        );
       },
       TEST_TIMEOUT,
     );
