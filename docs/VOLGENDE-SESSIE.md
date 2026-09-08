@@ -660,18 +660,27 @@ is bijgewerkt.
 halverwege omvalt: een paar bestanden rood, de rest "skipped". Dat leest als een
 kapotte policy, en je gaat in de verkeerde richting zoeken.
 
-⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform.**
+⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform — en geen van
+beide is nog een ontbrekende bibliotheek.**
 
-* **Web** — de bibliotheek is niet nodig; web push is op 23-08 van nul gebouwd.
-  De registratie is er sinds **QS8-124**; wat ontbreekt is het bewijs dat er
-  een melding aankomt.
-* **Native** — `expo-notifications` ontbreekt, en dat is een dependency die
-  eerst toestemming vraagt (**Q-TODO B4**). Denk daarbij aan een Expo-project
-  met FCM- en APNs-sleutels voor een echt toestel.
+* **Web** — web push is op 23-08 van nul gebouwd en de registratie is er sinds
+  **QS8-124**. Wat ontbreekt is het VAPID-sleutelpaar en het bewijs dat er een
+  melding aankomt; allebei vragen ze Quintens hand.
+* **Native** — er is **geen build uitgerold**. Productie is de webbundel op
+  Hostinger, dus daar loopt `Platform.OS === 'web'` en komt `expoPush` niet aan
+  bod. Een echt toestel vraagt een Expo-project met FCM- en APNs-sleutels.
+
+⚠️⚠️ **Hier stond bij "Native" dat `expo-notifications` ontbrak, en dat sprak
+deze zelfde nota twee secties verderop tegen** (QS8-366). 📏 De bibliotheek staat
+in `package.json` (~57.0.13), `expo-bron.ts` gebruikt hem, en `app/_layout.tsx`
+plugt hem in. **Q-TODO B4 is af.** Het onderscheid doet ertoe omdat de twee
+voorwaarden op verschillende momenten vervallen: een bibliotheek is er zodra
+iemand hem toevoegt, een build zodra iemand hem uitrolt.
 
 Zolang geen van beide rond is, blijft `push_tokens` leeg en stuurt de job niets.
-De rand eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
-`PushBron`-interface met een lege standaard, en aanzetten is één
+📏 Nagemeten op 08-09-2026 tegen productie: nul rijen, op élk platform. De rand
+eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
+`PushBron`-interface met een standaard die niets doet, en aanzetten is één
 `zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
 
 Die sleutels zitten in de build, niet in de server; de Edge Function heeft er
@@ -743,9 +752,9 @@ intrekken). A37 staat er ook nog.
 **A47 is af** — dat was "de testsuite past niet meer twee keer in een uur", en
 dat probleem bestaat niet meer sinds de suite niet meer inlogt (QS8-116).
 
-En **B4** — `expo-notifications` — is geen besluit maar een dependency. Hij
-blokkeert nu alleen nog **native** push; de web-kant is gebouwd en heeft die
-bibliotheek niet nodig. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
+En **B4** — `expo-notifications` — is geen besluit maar een dependency, en hij
+is **af**: de bibliotheek staat erin en `_layout` plugt hem in. Wat native nog
+tegenhoudt is een uitgerolde build, niet de bibliotheek. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
 met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
