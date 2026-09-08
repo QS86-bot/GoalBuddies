@@ -1,4 +1,4 @@
--- 0201_de_tien_tabellen_zonder_dagteller_krijgen_er_een.sql — zes van de tien
+-- 0203_de_tien_tabellen_zonder_dagteller_krijgen_er_een.sql — zes van de tien
 -- tabellen die een client zonder enige rem kon vullen, krijgen het dagplafond
 -- van 0192; de andere vier zijn al begrensd en krijgen er met opzet geen (QS8-344)
 --
@@ -26,7 +26,7 @@
 --   De vijf indexen mogen blijven staan; ze kosten niets en breken niets.
 --
 --   ⚠️ Deze migratie voegt alléén toe. Er wordt geen bestaande functie, policy
---      of constraint gewijzigd, dus het pad hierboven zet niets van vóór 0201
+--      of constraint gewijzigd, dus het pad hierboven zet niets van vóór 0203
 --      terug — er is niets om terug te zetten.
 --
 -- ---------------------------------------------------------------------------
