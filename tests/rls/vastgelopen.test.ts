@@ -482,12 +482,19 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         //    stilzwijgend terug; een meting die dat niet naleest, concludeert
         //    ten onrechte dat deze route dicht zit. Hier is de eigenaar de
         //    beheerder van zijn eigen groep.
-        const { error } = await o.eigenaar.db
-          .from('group_members')
-          .update({ status: 'inactive' })
-          .eq('group_id', o.groupId)
-          .eq('user_id', o.beoordelaar.id);
-        expect(error).toBeNull();
+        //
+        // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0199 sloot de kale
+        //    PATCH-uitzetting. Dat maakt deze route niet dicht — de beheerder kan
+        //    zijn enige beoordelaar nog steeds uitzetten — maar hij loopt nu langs
+        //    de weg die ook opruimt. De vraag die deze test stelt, verandert er
+        //    niet door: blijft de week achter zonder iemand die mag oordelen?
+        const weg = await o.eigenaar.db.rpc('verwijder_lid', {
+          p_group_id: o.groupId,
+          p_user_id: o.beoordelaar.id,
+          p_bevestigd: true,
+        });
+        expect(weg.error).toBeNull();
+        expect((weg.data ?? {}) as { ok?: boolean }).toMatchObject({ ok: true });
 
         const na = await adminDb()
           .from('group_members')
@@ -677,12 +684,15 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       'route 6 — je enige beoordelaar op inactive zetten',
       () =>
         routeBlijftDicht('route6', true, async (o) => {
-          const { error } = await o.eigenaar.db
-            .from('group_members')
-            .update({ status: 'inactive' })
-            .eq('group_id', o.groupId)
-            .eq('user_id', o.beoordelaar.id);
-          if (error) throw new Error(`deactiveren: ${error.message}`);
+          // ⚠️ Via `verwijder_lid()` sinds QS8-356 — zie route 3 hierboven.
+          const weg = await o.eigenaar.db.rpc('verwijder_lid', {
+            p_group_id: o.groupId,
+            p_user_id: o.beoordelaar.id,
+            p_bevestigd: true,
+          });
+          if (weg.error) throw new Error(`deactiveren: ${weg.error.message}`);
+          const uit = (weg.data ?? {}) as { ok?: boolean; reason?: string };
+          if (uit.ok !== true) throw new Error(`deactiveren: ${uit.reason ?? '-'}`);
         }),
       SETUP_TIMEOUT,
     );
