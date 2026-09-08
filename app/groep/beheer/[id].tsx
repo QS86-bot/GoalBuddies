@@ -21,11 +21,13 @@ import {
   type Seizoenscadans,
   fetchMijnLidmaatschap,
   huddledagen,
+  huddledagLabel,
   type Bewijseis,
   toonCode,
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetHuddledag,
   archiveerGroep,
   heropenGroep,
   beslisVerzoek,
@@ -133,6 +135,12 @@ export default function GroepBeheer() {
    */
   const [zichtVraag, setZichtVraag] = useState(false);
   /**
+   * ⚠️ Zelfde vorm als `zichtVraag`, en zwaarder dan hij lijkt: de huddledag
+   *    verzetten schuift de lopende week van álle leden, en kan hem tot vandaag
+   *    inkorten. De database weigert zonder `p_bevestigd`; dit is de tweede rem.
+   */
+  const [huddleVraag, setHuddleVraag] = useState(false);
+  /**
    * ⚠️ Zelfde vorm als `zichtVraag`, en met meer reden. Archiveren vervangt sinds
    *    0092 het verwijderen van een groep — het neemt de groep weg bij álle leden
    *    en is vanuit de app niet terug te draaien.
@@ -207,6 +215,24 @@ export default function GroepBeheer() {
 
   async function slaOp() {
     if (!id) return;
+    setFout(null);
+    setMelding(null);
+
+    // ⚠️ **De huddledag vraagt eerst een bevestiging, en dan pas slaat alles op.**
+    //    Domeinregel 5: de prijs van deze knop wordt door de ánderen betaald —
+    //    hun lopende week schuift mee en kan eerder aflopen. De bevestiging
+    //    noemt die prijs; de RPC weigert zonder.
+    if (groep !== null && huddledag !== groep.huddle_day) {
+      setHuddleVraag(true);
+      return;
+    }
+
+    await bewaar();
+  }
+
+  async function bewaar() {
+    if (!id) return;
+    setHuddleVraag(false);
     setBezig('opslaan');
     setFout(null);
     setMelding(null);
@@ -214,9 +240,30 @@ export default function GroepBeheer() {
     // ⚠️ Het quorum gaat alleen mee als de regel erom vraagt, en dan als getal.
     //    Bij elke andere regel stuurt `wijzigGroep()` zelf `null` — de CHECK
     //    `groups_quorum_bij_regel` eist dat de twee bij elkaar horen.
+    // ⚠️⚠️ **De huddledag gaat langs een eigen weg, en dat is sinds QS8-360 een
+    //    grendel en geen stijlkeuze.** Hij verschuift de groepsperiode; een kale
+    //    PATCH liet een openstaande weekafsluiting onbereikbaar achter. Zie
+    //    `zetHuddledag()` en migratie 0208.
+    //
+    // ⚠️ **Eerst de dag, dan de rest.** Weigert de RPC — het scherm rekent met
+    //    een groep waarvan de week intussen opgeschoven is — dan stopt deze
+    //    handeling hier, en is er nog niets anders veranderd. Andersom zou de
+    //    beheerder een half opgeslagen scherm overhouden met een melding over de
+    //    huddledag.
+    let verzet = false;
+    if (groep !== null && huddledag !== groep.huddle_day) {
+      const dag = await zetHuddledag(groep, huddledag, true);
+      if (!dag.ok) {
+        setBezig(null);
+        setFout(dag.melding);
+        return;
+      }
+      setGroep((huidig) => (huidig === null ? huidig : { ...huidig, huddle_day: dag.waarde }));
+      verzet = true;
+    }
+
     const uitkomst = await wijzigGroep(id, {
       name: naam,
-      huddle_day: huddledag,
       evidence_policy: bewijseis,
       approval_rule: regel,
       ...(regel === 'quorum' ? { approval_quorum: Number(quorum.trim()) } : {}),
@@ -236,7 +283,14 @@ export default function GroepBeheer() {
     }
 
     setGroep(uitkomst.waarde);
-    setMelding(t('beheer.melding_opgeslagen'));
+    // ⚠️ Twee meldingen, want er zijn twee handelingen geweest. Wie de huddledag
+    //    verzet heeft, hoort te lezen wat er met de lopende week gebeurd is —
+    //    dat is het enige gevolg dat hij niet op dit scherm ziet.
+    setMelding(
+      verzet
+        ? t('beheer.melding_huddledag', { dag: huddledagLabel(huddledag) })
+        : t('beheer.melding_opgeslagen'),
+    );
   }
 
   async function vernieuw() {
@@ -564,15 +618,24 @@ export default function GroepBeheer() {
                   onKies={(gekozen) => setVoertaal(gekozen as Voertaal | 'geen')}
                 />
 
-                <Button
-                  variant="primair"
-                  block
-                  busy={bezig === 'opslaan'}
-                  disabled={telTekens(omschrijving) > OMSCHRIJVING_MAX}
-                  onPress={() => void slaOp()}
-                >
-                  {t('beheer.opslaan')}
-                </Button>
+                {huddleVraag ? (
+                  <Bevestiging
+                    tekst={bevestigingen().huddledagVerzetten}
+                    bezig={bezig === 'opslaan'}
+                    onBevestig={() => void bewaar()}
+                    onAnnuleer={() => setHuddleVraag(false)}
+                  />
+                ) : (
+                  <Button
+                    variant="primair"
+                    block
+                    busy={bezig === 'opslaan'}
+                    disabled={telTekens(omschrijving) > OMSCHRIJVING_MAX}
+                    onPress={() => void slaOp()}
+                  >
+                    {t('beheer.opslaan')}
+                  </Button>
+                )}
               </Card>
 
               {/*
