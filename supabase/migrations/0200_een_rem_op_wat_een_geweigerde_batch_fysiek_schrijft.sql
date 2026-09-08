@@ -1,4 +1,4 @@
--- 0199_een_rem_op_wat_een_geweigerde_batch_fysiek_schrijft.sql — een geweigerde
+-- 0200_een_rem_op_wat_een_geweigerde_batch_fysiek_schrijft.sql — een geweigerde
 -- bulk-insert schrijft de rijen eerst en gooit ze daarna weg; deze rem begrenst
 -- hoeveel er fysiek geschreven wordt (QS8-347).
 --
@@ -21,8 +21,8 @@
 --   drop function if exists public.rem_mijlpalen();
 --   drop function if exists public.rem_doelgebeurtenissen();
 --   drop function if exists public.rem_goedkeuringen();
---   -- en `sleutelzetters()` terugzetten op de definitie uit 0187:
---   -- die versie kent alleen `app.heropent_groep` en `app.hervat_lidmaatschap`.
+--   -- en `sleutelzetters()` terugzetten op de definitie uit 0199 (QS8-356):
+--   -- die versie kent de vijf sleutels zonder de negen tellers hieronder.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -419,7 +419,7 @@ create trigger goedkeuringen_rem before insert on public.completion_approvals
   for each row execute function public.rem_goedkeuringen();
 
 comment on function public.rem_doelen() is
-  'Rem op de fysieke schrijfactie van een te grote batch (QS8-347, 0199). De '
+  'Rem op de fysieke schrijfactie van een te grote batch (QS8-347, 0200). De '
   'handhaver is begrens_doelen(); deze functie telt alleen de rijen van dit ene '
   'verzoek en begrenst wat er onderweg naar een weigering op schijf terechtkomt.';
 
@@ -456,7 +456,21 @@ as $$
     values
       ('app.heropent_groep',      array['heropen_groep', 'archief_blijft_archief']),
       ('app.hervat_lidmaatschap', array['join_group_with_code', 'guard_group_member_update']),
-      -- De tellers van 0199. Elke rem mag alleen zijn eigen instelling zetten.
+      -- ⚠️ **Deze drie komen uit 0199 (QS8-356) en staan hier omdat een
+      --    `create or replace` het hele register vervangt.** Ze zijn er bij het
+      --    samenvoegen bijna uit gevallen: de RLS-suite meldde na de merge drie
+      --    ongeregistreerde sleutels — `verlaat_groep`,
+      --    `beslis_lidmaatschapsverzoek` en `verwijder_lid` — omdat mijn versie
+      --    het register van vóór die migratie kopieerde.
+      --
+      --    Dat is de val van een teller die zijn eigen register in zijn lichaam
+      --    draagt: twee branches breiden hem uit, de laatste `replace` wint, en
+      --    de ander verdwijnt zonder een woord. Hier ving de teller zichzelf op
+      --    doordat hij de weggevallen sleutels meteen als ongeregistreerd meldde.
+      ('app.beheer_overgedragen',   array['verlaat_groep', 'guard_group_member_update']),
+      ('app.lidmaatschap_besloten', array['beslis_lidmaatschapsverzoek', 'guard_group_member_update']),
+      ('app.lid_uitgezet',          array['verwijder_lid', 'guard_group_member_update']),
+      -- De tellers van 0200. Elke rem mag alleen zijn eigen instelling zetten.
       ('app.rem_weekdoelen',         array['rem_weekdoelen']),
       ('app.rem_berichten',          array['rem_berichten']),
       ('app.rem_dagafvinkingen',     array['rem_dagafvinkingen']),

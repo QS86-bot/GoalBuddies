@@ -1,6 +1,6 @@
 # Een rem is geen tweede plafond
 
-**08-09-2026 — QS8-347, migratie 0199**
+**08-09-2026 — QS8-347, migratie 0200**
 
 ## Waar dit over gaat
 
@@ -139,7 +139,7 @@ constante nodig heeft.
 | Grendel | Vorm | Telt | Taak |
 | -- | -- | -- | -- |
 | `begrens_*()` (0192) | `AFTER INSERT ... FOR EACH STATEMENT` met transitietabel | het venster van een etmaal | handhaaft het dagplafond en noemt het aantal uit dit verzoek |
-| `rem_*()` (0199) | `BEFORE INSERT ... FOR EACH ROW` | de rijen van dít verzoek | noodstop op tweemaal het plafond; begrenst wat er fysiek geschreven wordt |
+| `rem_*()` (0200) | `BEFORE INSERT ... FOR EACH ROW` | de rijen van dít verzoek | noodstop op tweemaal het plafond; begrenst wat er fysiek geschreven wordt |
 
 ⚠️ **Een grendel die altijd als eerste afgaat, maakt de grendel erachter dode
 code die je kunt slopen zonder dat er iets rood wordt.** Daarom staat er een

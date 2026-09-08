@@ -6,7 +6,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
 import { psql } from './psql-stack';
 
 /**
- * Een geweigerde bulk-POST schrijft eerst — QS8-347, migratie 0199.
+ * Een geweigerde bulk-POST schrijft eerst — QS8-347, migratie 0200.
  *
  * ⚠️ **De belofte is niet "de rijen blijven niet staan".** Dat deed 0192 al, en
  *    het is een eigenschap van het onderdeel. De belofte is: *één gebruiker kan
@@ -28,7 +28,7 @@ import { psql } from './psql-stack';
  *
  * ⚠️ **De naad die dit bestand bewaakt zit tussen twee grendels die allebei
  *    kloppen** (regel 18, vraag 1). 0192 handhaaft het dagplafond en noemt in zijn
- *    melding het aantal uit dit verzoek; 0199 is de noodstop op tweemaal dat
+ *    melding het aantal uit dit verzoek; 0200 is de noodstop op tweemaal dat
  *    plafond. Zet iemand de noodstop lager, dan gaat die altijd als eerste af, is
  *    de handhaver dode code, en is de melding die de app toont een andere — zonder
  *    dat er iets rood wordt. Vandaar de derde test hieronder.
@@ -114,7 +114,7 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       const groei = tabelbytes('goals') - vooraf;
       expect(
         groei,
-        `de tabel groeide met ${Math.round(groei / 1024)} kB; zonder de rem van 0199 is dat ` +
+        `de tabel groeide met ${Math.round(groei / 1024)} kB; zonder de rem van 0200 is dat ` +
           `een veelvoud daarvan, en die ruimte komt pas terug bij een vacuum full`,
       ).toBeLessThan(800 * 1024);
     },
@@ -194,7 +194,7 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
     async () => {
       // ⚠️⚠️ **Dit is de naadtoets.** Een batch van precies `plafond + 1` hoort
       //    door de handhaver van 0192 geweigerd te worden en niet door de
-      //    noodstop van 0199 — die zit op tweemaal het plafond. Het verschil is
+      //    noodstop van 0200 — die zit op tweemaal het plafond. Het verschil is
       //    zichtbaar in de melding: de handhaver noemt het aantal uit dit
       //    verzoek ('% erbij'), de noodstop niet.
       //

@@ -190,7 +190,7 @@ belooft. De must-allows hebben nu een eigen gebruiker.
   ~~⚠️ **Dit is niet in de database op te lossen** — een transitietabel bestaat
   alleen in `AFTER`, dus de trigger komt per definitie ná het schrijven.~~
 
-  ⚠️⚠️ **Deze conclusie was fout, en ze is bij QS8-347 (migratie 0199)
+  ⚠️⚠️ **Deze conclusie was fout, en ze is bij QS8-347 (migratie 0200)
   weerlegd.** De eerste zin klopt — een transitietabel bestaat alleen in `AFTER` —
   maar de tweede volgt er niet uit. 📏 Gemeten: een
   `BEFORE INSERT ... FOR EACH ROW`-trigger **ziet de rijen die eerder in hetzelfde
