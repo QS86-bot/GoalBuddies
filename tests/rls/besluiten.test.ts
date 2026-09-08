@@ -462,7 +462,7 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
     );
 
     // ⚠️ **Hier stond de tegenhanger: een lid op `paused` houdt wél toegang, want
-    //    dat is een pauze en geen moderatie.** Die stand bestaat sinds 0203 niet
+    //    dat is een pauze en geen moderatie.** Die stand bestaat sinds 0204 niet
     //    meer (QS8-325): `group_members.status` kent alleen nog `active` en
     //    `inactive`, en dit A18-blok gaat over wat een uitgezet lid kwijtraakt.
     //    De positieve tegenhanger — wat een áctief lid houdt — staat elders in de

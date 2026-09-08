@@ -39,7 +39,7 @@ Vraag de database welke migraties er staan, niet dit document.
 `guard_group_member_update()` werpt daar in plaats van gewijzigde kolommen stil
 terug te zetten.
 
-⚠️ **De uitzondering die 0187 daarnaast invoerde is met `0203` weer weg**
+⚠️ **De uitzondering die 0187 daarnaast invoerde is met `0204` weer weg**
 (QS8-325, 08-09): `group_members.status` kent alleen nog `active` en `inactive`.
 `paused` had geen schrijver en vier lezers, en de adempauze die het product
 bedoelt zit per doel in `breathers`. Waarom hij weggaat en niet een schrijver
@@ -185,7 +185,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0203` staan in de map: **206 bestanden**,
+Migraties `0001` t/m `0204` staan in de map: **206 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

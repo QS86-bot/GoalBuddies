@@ -134,7 +134,7 @@ describe.skipIf(!beschikbaar)('en wie er nog wél bij hoort, blijft zichtbaar', 
   // ⚠️ **Hier stond "een adempauze is geen uitzetting", en die stand bestaat
   //    niet meer.** 0029 schreef: "wie even niet meedoet, hoort zijn groep gewoon
   //    te kunnen lezen"; dat werd gemeten door een lidmaatschap op `paused` te
-  //    zetten. 0203 haalt die waarde uit de CHECK (QS8-325), dus het geval is
+  //    zetten. 0204 haalt die waarde uit de CHECK (QS8-325), dus het geval is
   //    niet meer te maken — niet door deze test en door niemand anders.
   //
   // ⚠️ **De tweezijdigheid uit de kop van dit bestand blijft staan**: het geval

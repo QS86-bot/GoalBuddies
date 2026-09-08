@@ -148,7 +148,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   const alsGewoonLid = [
     { wat: 'role op admin', patch: { role: 'admin' } },
     { wat: 'status op inactive', patch: { status: 'inactive' } },
-    // ⚠️ Hier stond `status op paused` als derde geval. 0203 haalde die waarde
+    // ⚠️ Hier stond `status op paused` als derde geval. 0204 haalde die waarde
     //    uit de CHECK (QS8-325); de vorm die overblijft — een gewoon lid dat een
     //    kolom zet die hij niet mag zetten — staat er met de twee hierboven al.
   ] as const;
@@ -328,7 +328,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   );
 
   // ⚠️⚠️ **Hier stonden de twee tests over de uitzondering van 0187, en ze zijn
-  //    met 0203 vervallen** (QS8-325). De must-allow — een lid op `paused` dat de
+  //    met 0204 vervallen** (QS8-325). De must-allow — een lid op `paused` dat de
   //    code aanbiedt komt terug op `active` — en de must-deny ernaast — zonder de
   //    code schuift niemand zichzelf terug — gingen allebei over een stand die
   //    `group_members.status` niet meer kent.
@@ -336,7 +336,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   // ⚠️ **De keten die ze bewaakten is niet weg maar korter geworden.** Wat er van
   //    over is, staat in `tests/rls/pauze-bestaat-niet.test.ts`: een actief lid
   //    dat de code nog eens aanbiedt blijft gewoon lid, en een uitgezet lid komt
-  //    er niet mee in. Dat zijn sinds 0203 de enige twee gevallen die de
+  //    er niet mee in. Dat zijn sinds 0204 de enige twee gevallen die de
   //    `on conflict` van `join_group_with_code()` nog kan tegenkomen.
 
   it(
@@ -357,7 +357,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
       //    `app.`-instelling die er níét in staat. Dat laatste is de tak die de
       //    vólgende sleutel vangt.
       //
-      // ⚠️ **De sleutel van 0187 is er met 0203 uit gegaan** (QS8-325) en dat is
+      // ⚠️ **De sleutel van 0187 is er met 0204 uit gegaan** (QS8-325) en dat is
       //    zichtbaar in het register en niet alleen in de code: zou iemand hem
       //    opnieuw zetten zonder regel, dan meldt de derde tak hem — dezelfde weg
       //    waarlangs 0199 zijn eigen weggevallen sleutels terugvond.

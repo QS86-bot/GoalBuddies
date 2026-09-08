@@ -1079,7 +1079,7 @@ export const GEEN_AANROEPER = [
       '⚠️⚠️ **Ná die vroege `return new` toetst hij niets meer, en dat is breder dan één ' +
       'geval.** 📏 Gemeten als beheerder, elk in een teruggedraaide transactie: een ánder lid tot ' +
       '`admin` promoveren, een mede-beheerder — óók de oprichter — naar `member` degraderen, ' +
-      'iemand anders op `paused` zetten (📏 die stand bestaat sinds 0203 niet meer — QS8-325 — ' +
+      'iemand anders op `paused` zetten (📏 die stand bestaat sinds 0204 niet meer — QS8-325 — ' +
       'en een onbekende stand ketst nu af op `onbekende_lidstatus`), en een uitgezet lid terug ' +
       'op `active`. Van die vier ' +
       'schrijft alleen de laatste een spoor: `meld_uitzetting` vuurt op `status → inactive` en ' +

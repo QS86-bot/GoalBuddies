@@ -47,7 +47,7 @@
  *    (QS8-314) laat `guard_group_member_update()` wérpen in plaats van stil
  *    terugzetten, en gebruikte daarbij zelf zo'n vlag.
  *
- * ⚠️ **Dat voorbeeld is met 0203 vervallen en het argument niet** (QS8-325). De
+ * ⚠️ **Dat voorbeeld is met 0204 vervallen en het argument niet** (QS8-325). De
  *    vlag was `app.hervat_lidmaatschap`, voor de overgang `paused → active`; die
  *    stand bestaat niet meer, dus de vlag en de twee tests die hem ijkten zijn
  *    weg. Wat blijft is dat de trigger wérpt — dát was het argument. Levende

@@ -272,7 +272,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
   // ⚠️ M1 uit dezelfde review. `kan_beoordeeld_worden` telde alleen `active`,
   //    terwijl de policy die goedkeuring toestaat `<> 'inactive'` gebruikt.
   //
-  // ⚠️⚠️ **De helft die dat verschil mat, is met 0203 vacuüm geworden** en staat
+  // ⚠️⚠️ **De helft die dat verschil mat, is met 0204 vacuüm geworden** en staat
   //    er daarom niet meer. Hij zette een buddy op `paused` en toetste dat het
   //    minpunt tóch telde — de enige stand waarin die twee grenzen uiteenliepen.
   //    `group_members.status` kent er sinds QS8-325 nog twee, dus `= 'active'` en
@@ -291,7 +291,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
       });
       expect(kan, 'de opstelling klopt niet: bob telt vooraf al niet mee').toBe(true);
 
-      // ⚠️ Het herstel onderaan loopt sinds 0203 via `inactive → active` in
+      // ⚠️ Het herstel onderaan loopt sinds 0204 via `inactive → active` in
       //    plaats van `paused → active`, en dát is de enige overgang waarop
       //    `meld_nieuw_lid` vuurt. Deze test laat dus een `member_joined`-bericht
       //    achter in de gedeelde groepschat. Geen test in dit bestand telt
