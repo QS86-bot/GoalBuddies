@@ -250,7 +250,7 @@ describe.skipIf(!rlsTestsConfigured)('melden, blokkeren en uitzetten', () => {
       expect(alsLid.data ?? [], 'als gewoon lid').toHaveLength(0);
 
       // ⚠️ Met `adminDb()` sinds QS8-356: promoveren is geen beheerdershandeling
-      //    meer (0198). Deze test gaat over wie een melding mág lezen, en het
+      //    meer (0199). Deze test gaat over wie een melding mág lezen, en het
       //    beheerderschap is er de opstelling voor.
       const promoveer = await adminDb()
         .from('group_members')
@@ -693,7 +693,7 @@ describe.skipIf(!rlsTestsConfigured)('melden, blokkeren en uitzetten', () => {
 
       // ⚠️⚠️ **Hier stond het contrast, en dat is vervallen — QS8-356.** Deze test
       //    bewees het punt met een tweede route: eerst de RPC, dan een kále PATCH
-      //    door een beheerder, en beide lieten een spoor na. Migratie 0198 heeft
+      //    door een beheerder, en beide lieten een spoor na. Migratie 0199 heeft
       //    die tweede route gesloten, want een kale PATCH slaat de opruiming over
       //    en laat een openstaand deadline-verzoek van een ex-lid leven.
       //
@@ -746,7 +746,7 @@ describe.skipIf(!rlsTestsConfigured)('melden, blokkeren en uitzetten', () => {
       //    toe en toetst dit geval die in plaats van de trigger.
       //
       // ⚠️⚠️ **Met `adminDb()` en niet met een PATCH van anna, sinds QS8-356.**
-      //    Migratie 0198 weigert een beheerder die de rol van een ánder lid
+      //    Migratie 0199 weigert een beheerder die de rol van een ánder lid
       //    verandert; promoveren bestaat niet meer als handeling. Dat is hier
       //    opzet en geen bewijsvoering — deze test gaat over `meld_uitzetting()`
       //    en niet over wie mag promoveren.

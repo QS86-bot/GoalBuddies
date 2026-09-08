@@ -257,7 +257,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   it(
     'een beheerder zet de status van een lid en dat landt gewoon',
     async () => {
-      // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0198 sloot de kale
+      // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0199 sloot de kale
       //    PATCH-uitzetting, want die slaat de opruiming over die de RPC wél
       //    doet (`goal_group_links`, openstaande `deadline_requests`). De
       //    belofte van déze test staat los daarvan: een beheerder komt er wél

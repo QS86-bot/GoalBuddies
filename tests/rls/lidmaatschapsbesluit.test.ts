@@ -148,7 +148,7 @@ describe.skipIf(!rlsTestsConfigured)('een besluit op een lidmaatschapsverzoek', 
     //    grendel die door een eerdere grendel wordt afgevangen.
     //
     // ⚠️⚠️ **Met `adminDb()` en niet met een PATCH van anna, sinds QS8-356.**
-    //    Migratie 0198 weigert een beheerder die de rol van een ánder lid
+    //    Migratie 0199 weigert een beheerder die de rol van een ánder lid
     //    verandert (`rol_van_een_ander`); promoveren bestaat niet meer als
     //    handeling. Dat raakt deze test niet inhoudelijk — de promotie is hier
     //    opstelling en geen bewijs — maar het moest wél langs een weg die nog

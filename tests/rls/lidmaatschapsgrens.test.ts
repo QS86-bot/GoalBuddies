@@ -170,8 +170,8 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
       //    Deze test gaat over het *bereik*: komt de beheerder bij de rij van een
       //    ander, of is "nul rijen" hierboven gratis omdat het filter nergens op
       //    past? Hij bewees dat eerst door die ander op `paused` te zetten, en na
-      //    migratie 0198 door hem uit te zetten. Allebei worden nu geweigerd —
-      //    0198 sloot óók de kale uitzetting, want die slaat de opruiming van
+      //    migratie 0199 door hem uit te zetten. Allebei worden nu geweigerd —
+      //    0199 sloot óók de kale uitzetting, want die slaat de opruiming van
       //    `verwijder_lid()` over.
       //
       //    Wat overblijft is beter dan allebei: `guard_group_member_update()` is

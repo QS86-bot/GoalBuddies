@@ -483,7 +483,7 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         //    ten onrechte dat deze route dicht zit. Hier is de eigenaar de
         //    beheerder van zijn eigen groep.
         //
-        // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0198 sloot de kale
+        // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0199 sloot de kale
         //    PATCH-uitzetting. Dat maakt deze route niet dicht — de beheerder kan
         //    zijn enige beoordelaar nog steeds uitzetten — maar hij loopt nu langs
         //    de weg die ook opruimt. De vraag die deze test stelt, verandert er

@@ -1,4 +1,4 @@
--- 0198_de_beheerderstak_toetst_wat_er_verandert.sql — een beheerder raakt de rol
+-- 0199_de_beheerderstak_toetst_wat_er_verandert.sql — een beheerder raakt de rol
 -- of de status van een ánder lid niet meer aan buiten de RPC's om (QS8-356)
 --
 -- ROLLBACK-PAD:
@@ -762,7 +762,7 @@ begin
   select count(*) into v_ontkoppeld from weg;
 
   -- ⚠️ **De benoemde uitzondering voor `guard_group_member_update()`** —
-  --    QS8-356. Die guard weigert sinds 0198 ook `* → inactive` van een ánder
+  --    QS8-356. Die guard weigert sinds 0199 ook `* → inactive` van een ánder
   --    lid, want een kale PATCH slaat de opruiming hierboven over: de
   --    `goal_group_links` blijven staan en een openstaand `deadline_requests`
   --    blijft `open`, waarna een lid dat nog wél in de groep zit het kan
@@ -854,7 +854,7 @@ AS $function$
     --    en dat pleit een functie in zijn geheel vrij zodra hij één geregistreerde
     --    sleutel noemt. 📏 Geijkt met een mutatie: een vijfde, ongeregistreerde
     --    sleutel ín `guard_group_member_update()` met een `return new` erachter —
-    --    een volledige bypass van de grendel die 0198 juist bouwt — gaf **nul
+    --    een volledige bypass van de grendel die 0199 juist bouwt — gaf **nul
     --    rijen** en liet beide tellertests groen.
     --
     --    De blinde vlek lag precies op de zeven functies die ertoe doen: dat zijn

@@ -652,7 +652,7 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
       // ⚠️ De tegenhanger. De grendel hierboven mag alleen de eigen rij raken;
       //    zou hij breder zijn, dan is uitzetten kapot en merkt niemand het tot
       //    er iemand uitgezet moet worden.
-      // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** 0198 sloot de kale PATCH; de
+      // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** 0199 sloot de kale PATCH; de
       //    belofte hier is dat de grendel niet te breed is en uitzetten niet
       //    kapot maakt, en die staat los van de weg waarlangs het gebeurt.
       const poging = await o.beheerder.db.rpc('verwijder_lid', {

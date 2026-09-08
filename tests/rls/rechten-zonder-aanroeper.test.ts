@@ -292,7 +292,7 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
      *
      *    Bij QS8-351 stond hier dat een actieve beheerder een uitgezet lid met
      *    één PATCH terugzette, met de melding *"de PATCH werd geweigerd — dan is
-     *    het gat dicht en mag deze test weg"*. Migratie 0198 (QS8-356) heeft dat
+     *    het gat dicht en mag deze test weg"*. Migratie 0199 (QS8-356) heeft dat
      *    gedaan: terugkomen loopt via `beslis_lidmaatschapsverzoek()`, waar het
      *    lid er zélf om vraagt.
      *
