@@ -31,6 +31,21 @@
  *    dat zeggen. `npm run tijdzones:controle` bewaakt sinds QS8-170 allebei de
  *    richtingen, dus dit is geen afspraak meer maar een grendel.
  *
+ * ⚠️⚠️ **`groups.tz` heeft sinds QS8-355 (0201) geen cliëntzijdig schrijfpad
+ *    meer**, en de twee gevallen hieronder gaan daarom via `adminDb()`. Dat is
+ *    geen verzwakking: `bewaak_tijdzone()` is een integriteitstrigger zonder
+ *    rolonderscheid — hij weigert een onbekende zone voor élke schrijver — en de
+ *    schrijver die na 0201 nog bestaat is `service_role` (de rollover,
+ *    `maak_seizoensrecaps`). Dat is precies de aanroeper waar dit geval over gaat.
+ *
+ *    ⚠️ **Het weigergeval stond op het punt stil te verschuiven.** Na 0201 gaf de
+ *    cliëntzijdige PATCH `42501` van de kolomgrant in plaats van `22023` van de
+ *    trigger, en de assertie las alleen "er is een fout" — hij bleef dus groen
+ *    terwijl hij `bewaak_tijdzone()` niet meer raakte. Regel 18 vraag 4: een test
+ *    die naar een plek grijpt in plaats van naar de belofte, verhuist niet mee.
+ *    Dát een client er niet meer bij kan staat nu in
+ *    `tests/rls/groepsklok.test.ts`; hier staat wat er van de wáárde geldt.
+ *
  * ⚠️ **De getallen in de rij van 28-08 klopten niet helemaal.** 📏 Nagemeten op
  *    de draaiende productiedatabase: 1196 is inclusief 598 `posix/`-spiegels, dus
  *    de echte vergelijking is 499 tegen 598 — 99 namen verschil en niet 697. Zie
@@ -114,12 +129,20 @@ describe.runIf(rlsTestsConfigured)('een tz-waarde die geen tijdzone is (0119)', 
   it(
     'weigert een onzinzone in groups.tz, en de seizoensrecap blijft draaien',
     async () => {
-      const { error } = await eigenaar.db
+      // ⚠️ Via `adminDb()` sinds 0201 — zie de kop. Een client heeft hier geen
+      //    schrijfpad meer, en de foutcode hieronder legt vast dat het de
+      //    trigger is die weigert en niet een kolomrecht.
+      const { error } = await adminDb()
         .from('groups')
         .update({ tz: 'Bogus/Zone' })
         .eq('id', groupId);
 
       expect(error, 'Bogus/Zone landde in groups.tz').not.toBeNull();
+      expect(
+        error?.code,
+        `22023 is bewaak_tijdzone(). Iets anders betekent dat een ándere grendel ` +
+          `dit afvangt en deze test de trigger niet meer raakt (kreeg ${error?.code})`,
+      ).toBe('22023');
 
       // `maak_seizoensrecaps()` loopt in één lus over álle groepen: één kapotte
       // zone zette de recap voor iedereen stil. Daarom draait hij hier echt.
@@ -140,7 +163,9 @@ describe.runIf(rlsTestsConfigured)('een tz-waarde die geen tijdzone is (0119)', 
         .eq('id', eigenaar.id);
       expect(profiel.error, `${ECHTE_ZONE} werd geweigerd in profiles.tz`).toBeNull();
 
-      const groep = await eigenaar.db
+      // ⚠️ Ook deze via `adminDb()`: na 0201 is `service_role` de enige schrijver
+      //    van `groups.tz`, dus dit is de must-allow die er nog toe doet.
+      const groep = await adminDb()
         .from('groups')
         .update({ tz: ECHTE_ZONE_TWEE })
         .eq('id', groupId);

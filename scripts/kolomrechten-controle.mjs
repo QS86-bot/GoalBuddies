@@ -879,15 +879,22 @@ export const GEEN_SCHRIJFPAD = [
     kolom: 'icon',
     reden: '0019 geeft het recht; het groepsinstellingenscherm raakt het icoon nog niet aan.',
   },
-  {
-    tabel: 'groups',
-    soort: 'UPDATE',
-    kolom: 'tz',
-    reden:
-      'idem. ⚠️ En hier hangt meer aan: 0123 wijst erop dat een beheerder via ' +
-      'deze grant de tijdzone van de groep kan verzetten. Zolang geen scherm hem ' +
-      'gebruikt, is het een recht zonder pad.',
-  },
+  /*
+   * ⚠️⚠️ **Hier stond `groups.tz`, en die rij hield een gat open** (QS8-355). De
+   *    reden luidde: *"0123 wijst erop dat een beheerder via deze grant de
+   *    tijdzone van de groep kan verzetten. Zolang geen scherm hem gebruikt, is
+   *    het een recht zonder pad."*
+   *
+   *    Het gevolg stond er dus al in — alleen de conclusie ontbrak. "Zolang geen
+   *    scherm hem gebruikt" beschrijft wat de client vandaag dóet en niet wat hem
+   *    tegenhoudt, en dat is precies de vorm die QS8-352 duur maakte. 📏 Eén
+   *    PATCH van een beheerder zette `tz` op `Pacific/Kiritimati` en
+   *    `groepsdatum()` sprong een dag vooruit — de weekgrens van élk lid.
+   *
+   *    Migratie 0201 haalt het recht weg en pint de kolom in
+   *    `guard_group_update()`. De rij hoeft hier dus niet herschreven te worden;
+   *    hij hoort weg, want er is geen recht meer om uit te leggen.
+   */
   {
     tabel: 'weekly_goals',
     soort: 'INSERT',
