@@ -187,12 +187,21 @@ belooft. De must-allows hebben nu een eigen gebruiker.
   vector: een handvol gelijktijdige grote POSTs vult de schijf, vanaf één account
   met de anon-key die per ontwerp in de bundel zit.
 
-  ⚠️ **Dit is niet in de database op te lossen** — een transitietabel bestaat
-  alleen in `AFTER`, dus de trigger komt per definitie ná het schrijven. Het hoort
-  op de PostgREST- of proxylaag (een grens op de bodygrootte, of `max-rows`) en
-  staat als **QS8-347**, met een rij in `docs/ENGINEER-REVIEW.md` — gevonden door de
-  security-review, die er terecht op wees dat de kop van dit document de vector
-  opent en dat je hem dan niet half dicht mag achterlaten zonder het te zeggen.
+  ~~⚠️ **Dit is niet in de database op te lossen** — een transitietabel bestaat
+  alleen in `AFTER`, dus de trigger komt per definitie ná het schrijven.~~
+
+  ⚠️⚠️ **Deze conclusie was fout, en ze is bij QS8-347 (migratie 0199)
+  weerlegd.** De eerste zin klopt — een transitietabel bestaat alleen in `AFTER` —
+  maar de tweede volgt er niet uit. 📏 Gemeten: een
+  `BEFORE INSERT ... FOR EACH ROW`-trigger **ziet de rijen die eerder in hetzelfde
+  statement zijn ingevoegd**, zonder transitietabel; hij telt gewoon de tabel en
+  die rijen staan er al in. Op de echte `goals`-tabel met een batch van 50.000
+  zakte de aangroei van 9,6 MB naar 136 kB.
+
+  De fout was een redenering waar een meting hoorde: *"een `BEFORE`-trigger kan de
+  batch niet tellen"* is waar in de vorm van 0192 (via een transitietabel) en niet
+  in het algemeen. Uitgewerkt in
+  `docs/decisions/2026-09-08-een-rem-is-geen-tweede-plafond.md`.
 
 * **Een grens op het aantal rijen per verzoek in het algemeen.** PostgREST kent
   geen maximum op de bodygrootte in dit project; dat is een aparte laag en een
