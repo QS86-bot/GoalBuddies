@@ -96,7 +96,7 @@ export const nl = {
     '{naam} heeft deze groep vindbaar gemaakt. Mensen die je nog niet kent zien de naam, het onderwerp, de omschrijving en het aantal leden. Verder niets.',
 
   /**
-   * ⚠️ De veertiende, migratie 0209 (QS8-360). Noemt de beheerder en de
+   * ⚠️ De veertiende, migratie 0208 (QS8-360). Noemt de beheerder en de
    *    gebeurtenis — geen aantallen. Uit "twee van de vijf zijn meeverhuisd" is
    *    af te leiden wie er nog niet had afgesloten, en dat is domeinregel 7 op
    *    een plek waar je hem makkelijk mist: de gebeurtenis zelf is geen

@@ -130,7 +130,7 @@ function meldingen(): Readonly<Record<string, string>> {
     // rotate_invite_code, set_invite_revoked en zet_huddledag
     not_admin: t('groep.geen_beheerder'),
 
-    // zet_huddledag (QS8-360, migratie 0209)
+    // zet_huddledag (QS8-360, migratie 0208)
     //
     // ⚠️ De drie periodefouten hieronder zijn geen gebruikersfout maar een
     //    scherm dat met een verouderde groep rekent: de client stuurt de oude en
@@ -636,10 +636,10 @@ export async function wijzigGroep(
 }
 
 /**
- * Verzet de huddledag van een groep — QS8-360, migratie 0209.
+ * Verzet de huddledag van een groep — QS8-360, migratie 0208.
  *
  * ⚠️ **Waarom dit geen kolom in `wijzigGroep()` meer is.** De huddledag bepaalt
- *    waar de groepsperiode begint. 📏 Gemeten vóór 0209: na een kale PATCH kon
+ *    waar de groepsperiode begint. 📏 Gemeten vóór 0208: na een kale PATCH kon
  *    een lid zijn openstaande weekafsluiting nooit meer afronden
  *    (`bewaak_week_review_periode()` gaf 22023), bleef het groepsoverzicht daar
  *    `closed_this_period = false` melden — een gemiste week van iemand anders,

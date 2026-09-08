@@ -186,7 +186,7 @@ const REGISTER = new Map([
   ['zet_groepsontdekbaarheid', 'Beheerderspoort. Gemeten: poort weg → 3 rood.'],
   [
     'zet_huddledag',
-    'Beheerderspoort (QS8-360, migratie 0209). Gemeten: poort weg → 7 rood. ' +
+    'Beheerderspoort (QS8-360, migratie 0208). Gemeten: poort weg → 7 rood. ' +
       'Schrijft `groups.huddle_day` en verhuist de `chain_links` en ' +
       '`week_reviews` van de lopende periode mee — dat laatste is de reden dat ' +
       'hij bestaat: een kale PATCH liet een openstaande weekafsluiting ' +

@@ -243,7 +243,7 @@ export default function GroepBeheer() {
     // ⚠️⚠️ **De huddledag gaat langs een eigen weg, en dat is sinds QS8-360 een
     //    grendel en geen stijlkeuze.** Hij verschuift de groepsperiode; een kale
     //    PATCH liet een openstaande weekafsluiting onbereikbaar achter. Zie
-    //    `zetHuddledag()` en migratie 0209.
+    //    `zetHuddledag()` en migratie 0208.
     //
     // ⚠️ **Eerst de dag, dan de rest.** Weigert de RPC — het scherm rekent met
     //    een groep waarvan de week intussen opgeschoven is — dan stopt deze

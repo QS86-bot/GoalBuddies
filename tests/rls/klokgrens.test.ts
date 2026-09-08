@@ -300,7 +300,7 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
   describe('het groepsoverzicht', () => {
     beforeAll(async () => {
       // ⚠️⚠️ **De huddledag gaat hier op de klok van de gróép, en dat is een
-      //    reparatie uit QS8-360.** Sinds migratie 0209 geeft `group_overview()`
+      //    reparatie uit QS8-360.** Sinds migratie 0208 geeft `group_overview()`
       //    binnen de lopende band alleen antwoord over een datum die écht een
       //    periodestart is. De dag die het blok hierboven zet, hangt aan de
       //    *serverdatum* — want die grendel vergelijkt met `current_date` — en
@@ -320,7 +320,7 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
 
       // ⚠️ **`+1` en `+8` en niet `+1` en `+2`.** Allebei zijn het échte
       //    periodestarts — de lopende en de volgende — en dat is wat de tweede
-      //    test weer op de vénsterrand zet. Met `+2` zou hij sinds 0209 afketsen
+      //    test weer op de vénsterrand zet. Met `+2` zou hij sinds 0208 afketsen
       //    op "geen periodestart" en niet meer op `groepsdatum + 1`, en dan
       //    bewaakt hij iets anders dan hij belooft.
       const vandaag = groepsdatum();
