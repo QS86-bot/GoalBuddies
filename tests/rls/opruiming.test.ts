@@ -111,7 +111,8 @@ const DAGEN_OUD = 69;
 function verwijderNaOpbouw(dagenOud: number): string {
   return psql(`
     begin;
-    create temp table o (uid uuid, buddy uuid, gid uuid, goal uuid, wg uuid, comp uuid);
+    create temp table o (uid uuid, buddy uuid, gid uuid, goal uuid, wg uuid, comp uuid,
+                        buddy_goal uuid, buddy_wg uuid, buddy_comp uuid, buddy_appr uuid);
     grant select, insert, update on o to authenticated;
     insert into o (uid, buddy) values (
       shim_maak_gebruiker('opruiming@proef.test', 'Opruiming'),
@@ -145,6 +146,34 @@ function verwijderNaOpbouw(dagenOud: number): string {
     update o set comp = (select id from completions where weekly_goal_id = (select wg from o) limit 1);
     insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
       select comp, buddy, uid, gid, 'approved' from o;
+
+    -- ⚠️⚠️ **De vertrekker is óók intrekker, en dat ontbrak hier** (QS8-371).
+    --    De veeg hierboven laat hem overal rijen achterlaten als *onderwerp* van
+    --    een goedkeuring, en nooit als degene die er een introk. Precies die rol
+    --    hield zijn profiel vast: approval_withdrawals.approver_id stond op
+    --    NO ACTION. 📏 Zonder deze vier statements is deze test groen met de
+    --    kapotte foreign key erin.
+    insert into goals (owner_id, title, target_date)
+      select buddy, 'Buddydoel', current_date + 90 from o;
+    update o set buddy_goal = (select id from goals where owner_id = (select buddy from o) limit 1);
+    insert into weekly_goals (goal_id, title, cycle_start_date)
+      select buddy_goal, 'Buddyweek', date_trunc('week', current_date)::date from o;
+    update o set buddy_wg =
+      (select id from weekly_goals where goal_id = (select buddy_goal from o) limit 1);
+    insert into completions (weekly_goal_id, user_id, achieved_level, note)
+      select buddy_wg, buddy, 'ceiling', 'af' from o;
+    update o set buddy_comp =
+      (select id from completions where weekly_goal_id = (select buddy_wg from o) limit 1);
+    insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+      select buddy_comp, uid, buddy, gid, 'approved' from o;
+    update o set buddy_appr =
+      (select id from completion_approvals where completion_id = (select buddy_comp from o) limit 1);
+
+    select set_config('request.jwt.claims',
+      json_build_object('sub', (select uid from o), 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select trek_goedkeuring_in((select buddy_appr from o));
+    reset role;
 
     select set_config('request.jwt.claims',
       json_build_object('sub', (select uid from o), 'role', 'authenticated')::text, true);
@@ -240,5 +269,119 @@ describe.skipIf(!beschikbaar)('een account is te verwijderen, hoe oud zijn rijen
     // De keerzijde. Zonder deze helft zou een grendel die álles weigert ook
     // groen zijn zodra de test alleen naar de oude rij keek.
     expect(verwijderNaOpbouw(0)).toContain('"ok": true');
+  }, 120_000);
+});
+
+/**
+ * Geen enkele verwijzing naar een persoon mag zijn verwijdering kunnen blokkeren
+ * — QS8-371, migratie 0212.
+ *
+ * ⚠️⚠️ **Dit is de helft die de veeg hierboven niet kan geven, en dat is de kern
+ *    van het issue.** Die veeg toetst de belofte voor de tabellen die de
+ *    opstelling toevallig aanraakt. `approval_withdrawals` zat er niet bij, dus
+ *    de belofte was al twee weken kapot terwijl alles groen stond. Voeg morgen
+ *    een tabel toe met `references profiles (id)` zonder `on delete`, en dezelfde
+ *    veeg blijft opnieuw groen.
+ *
+ *    Deze test kijkt daarom niet naar rijen maar naar het **schema**: elke
+ *    foreign key die naar een persoon wijst, moet bij een verwijdering iets
+ *    kunnen. Hij vindt de volgende omissie op de dag dat ze gemaakt wordt, en
+ *    hij noemt haar bij naam.
+ *
+ * ⚠️ **`set null` op een `not null`-kolom telt niet mee als opgelost**, en dat is
+ *    geen muggenzifterij: Postgres schrijft dan een `null` die de kolom weigert,
+ *    en de verwijdering strandt net zo hard als bij NO ACTION — alleen met een
+ *    andere foutcode. Precies daarom toetst deze test de kolom en niet alleen de
+ *    `confdeltype`.
+ *
+ * ⚠️ **Beide kanten van de ketting.** `verwijder_mijn_account()` doet
+ *    `delete from auth.users`, en `profiles` cascadeert daaruit. Een blokkerende
+ *    verwijzing kan dus aan `profiles` hangen óf rechtstreeks aan `auth.users`;
+ *    de test kijkt naar allebei. 📏 Vandaag: 37 naar `profiles`, 1 naar
+ *    `auth.users` (die van `profiles` zelf), alle op cascade of set-null.
+ */
+describe.skipIf(!beschikbaar)('niets houdt een vertrekkende gebruiker vast', () => {
+  /**
+   * Verwijzingen die met opzet mogen blijven staan. Leeg, en dat hoort zo — komt
+   * er ooit een bij, dan staat de reden hier en niet in iemands hoofd.
+   *
+   * ⚠️ Een uitzondering is hier duurder dan elders: hij betekent dat één
+   *    gebruiker zijn account niet kan verwijderen, en dat is een AVG-verplichting
+   *    (art. 17) en geen smaakkwestie.
+   */
+  const TOEGESTAAN: readonly string[] = [];
+
+  it('elke verwijzing naar een persoon laat los bij een verwijdering', () => {
+    const gevonden = psql(`
+      select coalesce(string_agg(t.regel, ' / ' order by t.regel), '')
+      from (
+        select c.conrelid::regclass::text || '.' || c.conname ||
+               ' (delete=' || c.confdeltype::text || ')' as regel
+          from pg_constraint c
+         where c.contype = 'f'
+           and c.confrelid in ('public.profiles'::regclass, 'auth.users'::regclass)
+           and (
+             -- NO ACTION en RESTRICT blokkeren altijd.
+             c.confdeltype not in ('c', 'n', 'd')
+             -- set null / set default op een kolom die geen null verdraagt ook.
+             or (c.confdeltype in ('n', 'd') and exists (
+                   select 1
+                     from unnest(c.conkey) k
+                     join pg_attribute a
+                       on a.attrelid = c.conrelid and a.attnum = k
+                    where a.attnotnull
+                 ))
+           )
+      ) t
+    `).trim();
+
+    const open = gevonden === '' ? [] : gevonden.split(' / ');
+    const onverwacht = open.filter((r) => !TOEGESTAAN.some((t) => r.startsWith(t)));
+
+    expect(
+      onverwacht,
+      `deze verwijzing(en) blokkeren een accountverwijdering: ${onverwacht.join(', ')}`,
+    ).toEqual([]);
+  }, 120_000);
+
+  it('MUST-FIND: hij ziet een set null op een kolom die geen null toestaat', () => {
+    // ⚠️⚠️ **De ijking van de tweede helft, en die is nodig omdat ze anders
+    //    ongemeten blijft.** De eerste helft (NO ACTION) is geijkt door 0212 terug
+    //    te draaien. Maar de subtielere vorm — `on delete set null` op een
+    //    `not null`-kolom — komt in dit schema nergens voor, dus de tak die hem
+    //    zoekt zou nooit gedraaid hebben. Zonder dit geval is dat een tak die
+    //    belooft en niet meet.
+    //
+    //    Het geval wordt hier gemáákt, binnen een transactie die terugrolt: een
+    //    eigen tabel met precies die vorm. De query eronder is dezelfde als in de
+    //    test hierboven.
+    const gevonden = psql(`
+      begin;
+      create table proef_371 (
+        id uuid primary key default gen_random_uuid(),
+        wie uuid not null references public.profiles (id) on delete set null
+      );
+      select coalesce(string_agg(c.conrelid::regclass::text, ','), 'NIETS GEVONDEN')
+        from pg_constraint c
+       where c.contype = 'f'
+         and c.confrelid in ('public.profiles'::regclass, 'auth.users'::regclass)
+         and c.confdeltype in ('n', 'd')
+         and exists (
+               select 1 from unnest(c.conkey) k
+                 join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k
+                where a.attnotnull
+             );
+      rollback;
+    `)
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r !== '')
+      .at(-1);
+
+    // ⚠️ `toContain` en niet `toBe`: dat het schema verder schoon is, is de taak
+    //    van de test hierboven. Deze zegt alleen dat de tak zijn eigen geval
+    //    vindt — anders zouden beide rood worden om dezelfde reden, en dan meet
+    //    de tweede niets bovenop de eerste.
+    expect(gevonden ?? '', 'de nullable-toets vindt zijn eigen geval niet').toContain('proef_371');
   }, 120_000);
 });
