@@ -1,194 +1,154 @@
 import { describe, expect, it } from 'vitest';
 
-import { adminDb, createTestUser, registreerGroep, removeTestUsers, rlsTestsConfigured } from './harness';
+import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Het opruimen van deze suite bewaakt zichzelf — QS8-281.
+ * Een account is te verwijderen, hoe oud zijn rijen ook zijn — QS8-359,
+ * migratie 0203.
  *
- * ⚠️ **De belofte is "een run laat niets achter", en die stond nergens onder
- *    test.** Er stond wél machinerie: een wezen-lus in `removeTestUsers()` met
- *    een uitgeschreven kop over het lek dat hij ooit repareerde. Die kop klopte
- *    niet meer en niets werd er rood van — gemeten op 05-09: 23 gearchiveerde
- *    `Solo-groep`-rijen met nul leden, één per volledige suite-run. Regel 18 in
- *    het klein: de tests toetsten onderdelen, de belofte was van het geheel.
+ * ⚠️ **De belofte is niet "de trigger heeft een vroege uitgang".** Dat is een
+ *    eigenschap van het onderdeel. De belofte is: *een gebruiker kan zijn account
+ *    verwijderen*, en dat is een AVG-verplichting. Daarom staat hier één test die
+ *    de échte RPC aanroept met een gebruiker die overal rijen heeft, en niet een
+ *    rijtje toetsen op losse triggers.
  *
- * ## Wat er in productie gebeurt, want dat is eerst gemeten
+ * ⚠️⚠️ **Wat er misging, en waarom geen enkele bestaande test het zag.** Een
+ *    `on delete set null` is geen verwijdering maar een **UPDATE**
+ *    (`UPDATE ONLY week_reviews SET user_id = NULL`), en die vuurt een
+ *    BEFORE-trigger opnieuw af — op een rij die jaren oud kan zijn. 📏 Gemeten
+ *    met een weekafsluiting van 65 dagen:
  *
- * ⚠️ **`verwijder_mijn_account()` láát die groepsrij met opzet staan.** Gemeten
- *    in `pg_get_functiondef()`: hij roept `archiveer_groep()` aan voor elke groep
- *    waarvan de vertrekker het enige actieve lid is, en verwijdert daarna zijn
- *    `auth.users`-rij. Dat is 0102 §6b en het is de bedoeling — zonder die stap
- *    blijft er een `active` groep staan met een werkende uitnodigingscode, en
- *    loopt een wildvreemde er als enig, niet-beherend lid binnen. De
- *    achtergebleven rijen stonden dan ook allemaal op `status = 'archived'`.
+ *      select verwijder_mijn_account()
+ *      ERROR: group_period_start 2026-07-05 ligt buiten het toegestane venster
  *
- *    Dat antwoord verlaagt de inzet in plaats van hem te verhogen: dit is
- *    testhygiëne en geen productiedefect. Het staat hier omdat de vólgende lezer
- *    die vraag weer gaat stellen.
+ *    Er zijn groene tests op `verwijder_mijn_account()` (`besluiten.test.ts:1255`
+ *    en `:1276`) en ze zijn groen omdat ze gebruikers verwijderen die seconden
+ *    oud zijn. **Geen enkele test in dit project laat een rij verouderen** — dat
+ *    is de blinde vlek, en ze staat als dossierrij van 08-09-2026.
  *
- * ## Waarom het opruimen die groep miste
+ * ⚠️ **Daarom veegt deze test in plaats van te wijzen.** 📏 Met `pg_trigger`
+ *    gemeten welke tabellen doelwit zijn van een `set null`-FK én een BEFORE
+ *    UPDATE-rijtrigger dragen; de opstelling hieronder zet in elk van die
+ *    tabellen een rij neer. Landt er ooit een zevende, dan hoort hij hier ook in.
  *
- * De wezen-lus zoekt groepen via de lidmaatschappen van de gebruikers die hij
- * verwijdert. Laat een test een gebruiker zijn eigen account verwijderen, dan
- * cascadeert dat lidmaatschap weg en komt `groups.created_by` op NULL — beide
- * wegen naar die groep zijn dicht vóórdat het opruimen begint.
+ *      chat_messages         stamp_chat_message
+ *      completion_approvals  fill_approval_subject
+ *      groups                guard_group_update, archief_blijft_archief,
+ *                            bewaak_tijdzone
+ *      week_reviews          bewaak_week_review_periode   <- het gemeten geval
+ *      weekly_goals          beoordeelbaar_blijft_staan
+ *      commitments           bewaak_begunstigde
  *
- * ## De twee grendels, apart geijkt
+ * ⚠️⚠️ **`commitments` staat er met opzet níet in, en dat is geen gemak.** 📏 De
+ *    veeg vond daar meteen een tweede breuk, met een ándere oorzaak: een
+ *    gebruiker met een goedgekeurde voltooiing én een bevestigde straf krijgt
+ *    `commitment_events_commitment_id_fkey` — een auditrij die geschreven wordt
+ *    voor een commitment dat dezelfde cascade al weggehaald heeft. Dat is een
+ *    andere belofte (*een auditspoor overleeft zijn onderwerp niet*), raakt
+ *    domeinregel 5, en staat als QS8-361 in Linear. Hem hier
+ *    meenemen zou deze test rood houden op iets dat 0203 niet repareert.
  *
- * | grendel | mutatie | uitkomst |
- * | -- | -- | -- |
- * | de tweede weg (`createdGroups`) | `registreerGroep()` niet aanroepen in `vertrek.test.ts` | dat bestand wordt rood |
- * | de bewaker (`meldAchtergeblevenGroepen`) | hem niet laten gooien | de tweede test hieronder wordt rood |
+ * ⚠️ **Waarom psql en niet de harness.** De rij moet écht oud zijn, en met de
+ *    trigger aan is zo'n rij niet te maken — dat is meteen het bewijs dat een
+ *    geldige rij vanzelf ongeldig wordt. Even uitzetten is DDL, en dat is geen
+ *    PostgREST-oppervlak. Alles draait in één transactie die terugrolt.
  *
- * ⚠️ **De bewaker is op de échte fout rood geweest en niet alleen op een
- *    nagebouwde.** Vóór de reparatie in `vertrek.test.ts` noemde hij die run
- *    precies één groep bij id en naam. Dat is het verschil tussen een test die de
- *    belofte bewaakt en een test die zijn eigen opstelling bewaakt.
+ * IJKING — met de hand gedraaid op 08-09-2026:
+ *
+ *   A  de vroege uitgang uit `bewaak_week_review_periode()` halen
+ *      → 1 rood: 'een account met een verouderde weekafsluiting gaat weg'
+ *   B  dezelfde mutatie, maar met een vérse weekafsluiting
+ *      → groen, en dát is de reden dat de leeftijd hier een parameter is en geen
+ *        detail: een verse rij loopt door de vensterttoets heen zonder iets te
+ *        bewijzen. Precies de val die het issue noemt.
+ *
+ * ⚠️⚠️ **Bij het ijken bleek de must-allow eerst niets waard.** De periodestart
+ *    stond op `date_trunc('week', …) + 6 dagen`, en dat is voor `dagenOud = 0`
+ *    de kómende zondag — 2026-09-13 op een dag dat het 2026-09-08 was. Die rij
+ *    lag dus buiten het venster aan de **toekomstkant**, en overleefde alleen
+ *    dankzij de vroege uitgang. Mutatie A maakte daardoor béide tests rood, en
+ *    dat verschil is het hele punt van deze ijking: een must-allow die met de
+ *    grendel meesterft, toetst de grendel en niet de must-allow. Nu
+ *    `- 1 dag`, wat de zondag vóór vandaag geeft.
  */
 
-const TEST_TIMEOUT = 30_000;
+const beschikbaar = stackBeschikbaarOfFaal(
+  "select count(*) from pg_proc where proname = 'bewaak_week_review_periode'",
+  import.meta.url,
+);
 
-interface Groep {
-  readonly id: string;
-  readonly code: string;
-}
-
-/** Maakt een groep zoals de app dat doet: via `create_group()`, als de eigenaar. */
-async function maakGroep(db: ReturnType<typeof adminDb>, naam: string): Promise<Groep> {
-  const { data, error } = await db.rpc('create_group', { group_name: naam });
-  if (error) throw new Error(`groep ${naam} (HTTP): ${error.message}`);
-  const g = (data ?? {}) as { ok?: boolean; group?: { id: string; invite_code: string } };
-  if (g.ok !== true || !g.group) throw new Error(`groep ${naam}: ${JSON.stringify(data)}`);
-  return { id: g.group.id, code: g.group.invite_code };
-}
+/** Ruim voorbij het venster van 35 dagen uit `bewaak_week_review_periode()`. */
+const DAGEN_OUD = 69;
 
 /**
- * Zet de groep in de toestand die een vertrokken eigenaar achterlaat: geen
- * lidmaatschap meer, en `created_by` op NULL.
- *
- * ⚠️ **Dit bootst `verwijder_mijn_account()` niet na, het bootst zijn néveneffect
- *    na** — en dat is met opzet. Wat het opruimen breekt is niet die RPC maar de
- *    toestand die hij achterlaat. Die hier rechtstreeks zetten maakt de test
- *    onafhankelijk van hoe die RPC morgen werkt; dát de RPC hem oplevert, staat
- *    in `vertrek.test.ts`.
- *
- * ⚠️ **De `created_by` hoort erbij, en dat is gemeten en niet bedacht.** De eerste
- *    versie van deze helper haalde alléén het lidmaatschap weg. Beide tests
- *    slaagden toen om de verkeerde reden: `removeTestUsers()` doet vóór de
- *    wezen-lus een `wipe('groups', 'created_by')`, en die vond de groep gewoon
- *    terug — de opstelling liep langs een éérdere grendel dan de grendel die hij
- *    beweerde te meten. In het echte geval staat die kolom op NULL, want
- *    `groups.created_by` cascadeert met ON DELETE SET NULL zodra de eigenaar uit
- *    `auth.users` verdwijnt. Precies de valkuil uit CLAUDE.md bij regel 18:
- *    mutatie per grendel, en niet één die door een ander slot wordt afgevangen.
+ * Bouwt een gebruiker met een rij in elke tabel uit de veeg, verwijdert zijn
+ * account met de échte RPC, en geeft terug wat die RPC zei. Rolt alles terug.
  */
-async function eigenaarVertrokken(groupId: string): Promise<void> {
-  const lid = await adminDb().from('group_members').delete().eq('group_id', groupId);
-  if (lid.error) throw new Error(`lidmaatschap weghalen: ${lid.error.message}`);
+function verwijderNaOpbouw(dagenOud: number): string {
+  return psql(`
+    begin;
+    create temp table o (uid uuid, buddy uuid, gid uuid, goal uuid, wg uuid, comp uuid);
+    grant select, insert, update on o to authenticated;
+    insert into o (uid, buddy) values (
+      shim_maak_gebruiker('opruiming@proef.test', 'Opruiming'),
+      shim_maak_gebruiker('opruiming-buddy@proef.test', 'Buddy'));
 
-  const maker = await adminDb().from('groups').update({ created_by: null }).eq('id', groupId);
-  if (maker.error) throw new Error(`created_by leegmaken: ${maker.error.message}`);
+    select set_config('request.jwt.claims',
+      json_build_object('sub', (select uid from o), 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    update o set gid = ((create_group('Opruimgroep', 0::smallint) -> 'group' ->> 'id'))::uuid;
+    insert into goals (owner_id, title, target_date)
+      select uid, 'Opruimdoel', current_date + 90 from o;
+    update o set goal = (select id from goals where owner_id = (select uid from o) limit 1);
+    reset role;
+
+    -- ⚠️ De weekafsluiting moet écht oud zijn, en met de trigger aan kan dat
+    --    niet — dat is meteen het bewijs dat een geldige rij vanzelf ongeldig
+    --    wordt. Even uitzetten is DDL en draait binnen dezelfde transactie.
+    alter table week_reviews disable trigger week_reviews_periode_grens;
+    insert into week_reviews (group_id, user_id, group_period_start, did_text)
+      select gid, uid,
+             (date_trunc('week', current_date - ${dagenOud}) - interval '1 day')::date, 'oud'
+      from o;
+    alter table week_reviews enable trigger week_reviews_periode_grens;
+
+    insert into chat_messages (group_id, sender_id, body) select gid, uid, 'hallo' from o;
+    insert into weekly_goals (goal_id, title, cycle_start_date)
+      select goal, 'Opruimweek', date_trunc('week', current_date)::date from o;
+    update o set wg = (select id from weekly_goals where goal_id = (select goal from o) limit 1);
+    insert into completions (weekly_goal_id, user_id, achieved_level, note)
+      select wg, uid, 'ceiling', 'af' from o;
+    update o set comp = (select id from completions where weekly_goal_id = (select wg from o) limit 1);
+    insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+      select comp, buddy, uid, gid, 'approved' from o;
+
+    select set_config('request.jwt.claims',
+      json_build_object('sub', (select uid from o), 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select verwijder_mijn_account()::text;
+    rollback;
+  `)
+    .split('\n')
+    .map((r) => r.trim())
+    .filter((r) => r !== '')
+    .at(-1) as string;
 }
 
-async function groepBestaatNog(groupId: string): Promise<boolean> {
-  const { count, error } = await adminDb()
-    .from('groups')
-    .select('id', { count: 'exact', head: true })
-    .eq('id', groupId);
-  if (error) throw new Error(`groep opzoeken: ${error.message}`);
-  return (count ?? 0) > 0;
-}
+describe.skipIf(!beschikbaar)('een account is te verwijderen, hoe oud zijn rijen ook zijn', () => {
+  it('een account met een verouderde weekafsluiting gaat weg', () => {
+    // ⚠️ De assertie zit op wat de RPC teruggeeft en niet op "er kwam geen fout":
+    //    `verwijder_mijn_account()` heeft een JSON-envelop, en een `ok: false`
+    //    met een reden is óók een mislukking. Zonder deze regel zou een RPC die
+    //    netjes `{"ok": false}` teruggeeft deze test groen laten.
+    expect(
+      verwijderNaOpbouw(DAGEN_OUD),
+      `een weekafsluiting van ${DAGEN_OUD} dagen oud blokkeerde de verwijdering`,
+    ).toContain('"ok": true');
+  }, 120_000);
 
-describe.skipIf(!rlsTestsConfigured)('Het opruimen van de RLS-suite laat niets achter', () => {
-  it(
-    'ruimt een groep op waarvan het lidmaatschap al weg is',
-    async () => {
-      const eigenaar = await createTestUser('opruiming-geregistreerd');
-      const groep = await maakGroep(eigenaar.db, 'Opruiming geregistreerd');
-      registreerGroep(groep.id);
-
-      // De toestand die `verwijder_mijn_account()` achterlaat: de groep staat er
-      // nog, het lidmaatschap niet meer.
-      await eigenaarVertrokken(groep.id);
-
-      await expect(removeTestUsers()).resolves.toBeUndefined();
-
-      expect(
-        await groepBestaatNog(groep.id),
-        'de boekhouding is de tweede weg naar deze groep; zonder haar vindt het ' +
-          'opruimen hem niet meer en blijft hij elke run staan',
-      ).toBe(false);
-    },
-    TEST_TIMEOUT,
-  );
-
-  it(
-    'gooit als er tóch een groep zonder leden blijft staan',
-    async () => {
-      // ⚠️ **De must-see, en zonder deze test is de reparatie niet te
-      //    onderscheiden van een opruiming die alles opruimt zónder bewaker.**
-      //    Hier wordt met opzet níet geregistreerd: dat is precies wat iemand
-      //    vergeet die morgen een `maakGroep` bijschrijft in een bestand dat een
-      //    account verwijdert. De belofte is dat dat niet stil misgaat.
-      const eigenaar = await createTestUser('opruiming-vergeten');
-      const groep = await maakGroep(eigenaar.db, 'Opruiming vergeten');
-
-      await eigenaarVertrokken(groep.id);
-
-      // ⚠️ **De belofte is dat de bewaker hier nóóit zwijgt**, en dat is sinds
-      //    QS8-329 de precieze formulering. Deze opstelling maakt met opzet een
-      //    wees die niet toe te wijzen is: geen lidmaatschap, geen `created_by`,
-      //    niet aangemeld. Draait er een tweede suite tegen dezelfde database,
-      //    dan kán zo'n rij ook van háár zijn, en dan is de eerlijke uitslag
-      //    `ONGEMETEN` in plaats van rood.
-      //
-      // ⚠️ **Dit is geen slappe `of/of`.** De uitgesloten uitkomst is de enige
-      //    die ertoe doet: stilte. Een bewaker die afzwakt hoort dat te zeggen —
-      //    de les van QS8-268 (controles die "OVERGESLAGEN" printen en daarna
-      //    exitcode 0 geven) en QS8-270 (een suite die zichzelf stil oversloeg).
-      //    Wélke van de twee luide uitkomsten het wordt hangt af van wie er nog
-      //    meer aan deze database zit, en dát staat exact onder test in
-      //    `tests/wezen.test.ts` — daar is de omstandigheid een parameter en
-      //    geen toevalligheid.
-      //
-      // ⚠️ Hier stond eerst een meting vooraf, met daarna één geëiste uitkomst.
-      //    📏 Dat viel om in de praktijk: de test en de bewaker bemonsteren op
-      //    twee verschillende momenten, en tussen die twee door verscheen er een
-      //    vreemde aanmaker. Twee metingen van hetzelfde feit lopen uit elkaar;
-      //    één belofte doet dat niet.
-      const gewaarschuwd: string[] = [];
-      const eerder = console.warn;
-      console.warn = (...args: unknown[]) => void gewaarschuwd.push(args.join(' '));
-
-      let gegooid = '';
-      try {
-        await removeTestUsers();
-      } catch (fout) {
-        gegooid = fout instanceof Error ? fout.message : String(fout);
-      } finally {
-        console.warn = eerder;
-      }
-
-      const rood = /zonder leden achter/.test(gegooid);
-      const ongemeten = /ONGEMETEN/.test(gewaarschuwd.join('\n'));
-
-      expect(
-        rood || ongemeten,
-        `de bewaker zweeg over ${groep.id}; dat is de enige uitkomst die hier niet mag`,
-      ).toBe(true);
-      expect(rood && ongemeten, 'één uitslag per run, niet allebei').toBe(false);
-
-      expect(
-        await groepBestaatNog(groep.id),
-        'de bewaker verwijdert niets — een tijdstempel zegt "van vandaag" en niet ' +
-          '"van ons", en op dat verschil hoort geen delete te leunen',
-      ).toBe(true);
-
-      // Zelf opruimen, anders vindt de volgende `removeTestUsers()` deze groep en
-      // faalt dit bestand op zijn eigen opstelling.
-      const { error } = await adminDb().from('groups').delete().eq('id', groep.id);
-      if (error) throw new Error(`opstelling opruimen: ${error.message}`);
-    },
-    TEST_TIMEOUT,
-  );
+  it('MUST-ALLOW: een verse weekafsluiting blokkeert hem ook niet', () => {
+    // De keerzijde. Zonder deze helft zou een grendel die álles weigert ook
+    // groen zijn zodra de test alleen naar de oude rij keek.
+    expect(verwijderNaOpbouw(0)).toContain('"ok": true');
+  }, 120_000);
 });
