@@ -54,10 +54,25 @@
 --   `authenticated` (die draagt `ceiling_text`, `floor_text`, `milestone_id`,
 --   `title`), dus een client komt er rechtstreeks niet bij. `zet_week_startdag()`
 --   is de enige schrijver.
--- * De trigger van 0198 toetst óók een **venster** rond vandaag. Bij een update
---   is dat verkeerd: de rollover en `schuif_weekdoel_door()` raken rijen die
---   ouder zijn dan dat venster, en een trigger die op elke update vuurt zou die
---   weigeren. Dan is de reparatie duurder dan het gat.
+-- * ⚠️⚠️ **`schuif_weekdoel_door()` zou breken, en niet om de reden die hier
+--   eerst stond.** De eerste versie schreef dat *"de rollover en
+--   `schuif_weekdoel_door()` rijen raken die ouder zijn dan dat venster"*. 📏 De
+--   rollover niet: die draait als `service_role`, `auth.uid()` is dan NULL, en
+--   `weekdoel_cyclus_klopt()` doet daar zijn vroege `return new`. Nagemeten met
+--   een `before update`-trigger in een teruggedraaide transactie: de
+--   rolloverpositie komt er gewoon doorheen.
+--
+--   Wat wél breekt is `schuif_weekdoel_door()`, en de reden is scherper dan het
+--   venster: het is de **dagtoets**. 📏 Gemeten — een eigenaar die zijn
+--   week-startdag ooit verzet heeft, houdt historierijen op de óude dag, en dan
+--   geeft de RPC `23514 'Een cyclus begint op je eigen week-startdag'` op zijn
+--   eigen `update weekly_goals set status = 'carried'`. Dat is geen randgeval
+--   maar de gewone toestand na één druk op die knop.
+--
+--   ⚠️ De conclusie blijft dus staan, met een andere onderbouwing. Dat verschil
+--   is de moeite waard omdat déze zin met een 📏 in twee documenten stond: wie
+--   hem over drie maanden herleest, verwerpt de tabelvariant anders op een reden
+--   die er niet is.
 --
 -- ⚠️ Een toets in de RPC is dus geen zwakkere keuze maar de smalle: hij zit op de
 --   énige plek waar het gat is, en hij houdt de vorm van 0198 aan
@@ -156,12 +171,28 @@ begin
   --
   -- ⚠️ Dit moet vóór de `update profiles` staan. Erna is `week_start_day` al de
   --    níeuwe dag en toetst deze regel zichzelf.
-  select p.week_start_day into v_oude_dag from profiles p where p.id = v_uid;
+  -- ⚠️⚠️ **`for update`, en dat is geen overdaad — het is de reparatie van een
+  --    gemeten race.** Zonder rijvergrendeling lezen twee gelijktijdige
+  --    aanroepen dezelfde oude dag, komen ze allebei door beide toetsen heen, en
+  --    schrijven ze daarna in willekeurige volgorde. 📏 Nagemeten met twaalf keer
+  --    twee parallelle verzoeken: **elf keer** eindigde het met
+  --    `week_start_day` ≠ `dow(cycle_start_date)` — precies de toestand die deze
+  --    migratie zegt te sluiten.
+  --
+  --    Met de vergrendeling leest de tweede aanroeper de níeuwe dag en wordt hij
+  --    correct geweigerd met `oude_cyclus_valt_niet_op_startdag`.
+  --
+  -- ⚠️ De race bestond al vóór deze migratie. Hij staat hier omdat dít de
+  --    migratie is die beweert dat het gat dicht is, en een bewering die maar
+  --    voor één verzoek tegelijk geldt, is geen grendel.
+  select p.week_start_day into v_oude_dag
+    from profiles p where p.id = v_uid
+     for update;
 
-  -- ⚠️ Geen dag bekend: dan valt er niets te toetsen. Een ontbrekend profiel is
-  --    hierboven al afgevangen op `v_vandaag`, dus dit is de rest — en die laat
-  --    de oude toets aan de venstergrens, zoals `weekdoel_cyclus_klopt()` dat
-  --    ook doet bij een ontbrekende `week_start_day`.
+  -- ⚠️ `week_start_day` is `not null` met default 1, en een ontbrekend profiel is
+  --    hierboven al afgevangen op `v_vandaag`. Deze `is not null` kán vandaag dus
+  --    niet vuren; hij staat er defensief, en dat is met zoveel woorden gezegd in
+  --    plaats van dat de tekst gedrag beschrijft dat niet bestaat.
   if v_oude_dag is not null
      and extract(dow from p_oude_start)::smallint <> v_oude_dag then
     return jsonb_build_object('ok', false, 'reason', 'oude_cyclus_valt_niet_op_startdag');
@@ -188,3 +219,11 @@ begin
   return jsonb_build_object('ok', true, 'verzet', v_verzet);
 end;
 $function$;
+
+-- ⚠️ Het commentaar noemde alleen de venstergrendel. In een project waar
+--    `pg_get_functiondef()` de waarheid is, hoort de tweede erin.
+comment on function public.zet_week_startdag(smallint, date, date) is
+  'Zet de week-startdag en verhuist de todo-weekdoelen van de lopende cyclus mee. '
+  'Beide cycli moeten vandaag bevatten (0139, QS8-138) én op de bijbehorende '
+  'week-startdag vallen — de nieuwe op p_dag, de oude op de dag die nog in het '
+  'profiel staat (0200, QS8-357). Zie migratie 0139 en 0200.';

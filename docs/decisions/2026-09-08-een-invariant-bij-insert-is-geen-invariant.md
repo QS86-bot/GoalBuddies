@@ -54,10 +54,20 @@ klinkt sterker. Twee metingen wijzen de andere kant op:
   `authenticated` — die draagt `ceiling_text`, `floor_text`, `milestone_id` en
   `title`. Een client komt er rechtstreeks niet bij; `zet_week_startdag()` is de
   enige schrijver.
-* De trigger van 0198 toetst óók een **venster** rond vandaag. Bij een update is
-  dat verkeerd: de rollover en `schuif_weekdoel_door()` raken rijen die ouder
-  zijn dan dat venster, en een trigger die op elke update vuurt zou die weigeren.
-  Dan is de reparatie duurder dan het gat.
+* ⚠️⚠️ **`schuif_weekdoel_door()` zou breken — en niet om de reden die hier
+  eerst stond.** De eerste versie schreef dat *"de rollover en
+  `schuif_weekdoel_door()` rijen raken die ouder zijn dan dat venster"*. 📏 De
+  rollover niet: die draait als `service_role`, `auth.uid()` is dan NULL, en
+  `weekdoel_cyclus_klopt()` doet daar zijn vroege `return new`. Nagemeten met een
+  `before update`-trigger in een teruggedraaide transactie — de rolloverpositie
+  komt er gewoon doorheen.
+
+  Wat wél breekt is `schuif_weekdoel_door()`, en scherper dan het venster: het is
+  de **dagtoets**. 📏 Gemeten: een eigenaar die zijn week-startdag ooit verzet
+  heeft, houdt historierijen op de óude dag, en dan geeft de RPC
+  `23514 'Een cyclus begint op je eigen week-startdag'` op zijn eigen
+  `update weekly_goals set status = 'carried'`. Dat is geen randgeval maar de
+  gewone toestand na één druk op die knop.
 
 ⚠️ Een toets in de RPC is dus geen zwakkere keuze maar de **smalle**: hij zit op
 de enige plek waar het gat is, en hij houdt de vorm van 0198 aan
@@ -79,15 +89,85 @@ hoorde, en verhuist het naar de nieuwe.
 ⚠️ Hij moet vóór de `update profiles` staan. Erna is `week_start_day` al de
 níeuwe dag, en dan toetst de regel zichzelf.
 
-## De ijking — twee grendels, twee mutaties
+## Wat de security-review hierop vond
 
-📏 Elke toets apart uitgeschakeld, de suite gedraaid, teruggezet. Vóór en na: 16
+Vier dingen, alle vier zelf nagemeten. Twee ervan waren fouten van mij.
+
+**1. Het ijkgeval liep twee dagen per week door de verkeerde grendel.** De helper
+`scheefMaarBinnenVandaag()` schoof altijd één dag terug, met een tak die dat had
+moeten opvangen — maar die tak vergeleek `userCycle(...).startDate` met **zichzelf**
+en was dus altijd onwaar. Dode code, en precies de tak die nodig was.
+
+📏 Met `X = start - 1` valt vandaag op `X + 7` zodra vandaag de laatste dag van
+de cyclus is, en dan weigert de RPC met `cyclus_bevat_vandaag_niet` in plaats van
+met de dagtoets. De twee tests waren daarmee rood op elke **woensdag**
+respectievelijk **zondag**.
+
+⚠️⚠️ **Het gevaar is niet de rode CI maar wat er daarna gebeurt.** Wie hem
+"oplost" door de assertie te verzwakken naar `expect(uit.ok).toBe(false)`,
+bewaakt daarna alleen dát er geweigerd wordt en niet dóór welke grendel — exact
+de val die de kop van dat blok zelf beschrijft. Een test die twee dagen per week
+rood is, wordt uiteindelijk zwakker gemaakt en niet gerepareerd.
+
+De helper kiest de richting nu op basis van waar vandaag in de cyclus zit, en hij
+**asserteert zijn eigen ijkgeval**: valt het buiten `[scheef, scheef+7)`, dan
+wordt hij rood met de dagpositie erbij. 📏 Nagemeten over veertien
+opeenvolgende dagen × zeven startdagen: alle 98 combinaties leveren een geval op
+dat scheef is én vandaag bevat. Met de oude helper erin faalt precies
+`dag 6, offset 7` — de laatste dag van de cyclus.
+
+**2. De 📏-meting die de trigger-op-UPDATE afwees, klopte niet.** Zie hierboven.
+De conclusie blijft staan met een andere onderbouwing, en dat verschil telt: die
+zin stond met een meetteken in twee documenten, en dit project gaat ervan uit dat
+een meting waar is.
+
+**3. Twee gelijktijdige aanroepen kwamen allebei door de nieuwe toets heen.** De
+tweede toets leest `profiles.week_start_day` en schrijft hem daarna, zonder
+vergrendeling. 📏 Zelf gemeten met tien rondes van twee parallelle verzoeken:
+**zeven keer** gaven ze allebei `ok: true`, en dan lopen `week_start_day` en
+`dow(cycle_start_date)` uit elkaar — de toestand die deze migratie zegt te
+sluiten. Met `for update` op de profielrij: 📏 **nul** van de tien.
+
+⚠️ De race bestond al vóór 0200. Hij hoort hier omdat dít de migratie is die
+beweert dat het gat dicht is, en **een bewering die maar voor één verzoek
+tegelijk geldt, is geen grendel.**
+
+**4. Het restrisico was smaller opgeschreven dan het is.** Zie de sectie
+hieronder.
+
+## Wat er ná deze reparatie nog steeds niet klopt
+
+📏 Na één volledig legitieme wissel maandag → donderdag (`{ok: true, verzet: 1}`)
+staan **drie van de vier** rijen van die gebruiker nog op de oude dag:
+
+```
+ title | status   | cycle_start_date | dow | week_start_day
+ w1    | missed   | 2026-08-24       |   1 |              4
+ w2    | approved | 2026-08-31       |   1 |              4
+ w3    | todo     | 2026-09-03       |   4 |              4
+ w4    | pending  | 2026-09-07       |   1 |              4
+```
+
+Alleen `todo` uit de lopende cyclus verhuist mee, en dat is met opzet: `approved`
+verhuizen zou geschiedenis herschrijven (domeinregel 6).
+
+⚠️⚠️ **De invariant is dus niet alleen niet tabelbreed afgedwongen — hij is
+structureel onwaar zodra iemand zijn week-startdag ooit verzet.** Dat is een
+wezenlijk andere uitspraak dan "op `service_role` na is hij waar", en het is de
+uitspraak die in `docs/ENGINEER-REVIEW.md` hoort te staan. De aanname die
+daadwerkelijk stukgaat is de alledaagse: een join op `cycle_start_date`, een
+groepering per cyclus, of een tweede grendel die deze als gegeven neemt.
+
+## De ijking — drie grendels, drie mutaties
+
+📏 Elke toets apart uitgeschakeld, de suite gedraaid, teruggezet. Vóór en na: 17
 groen.
 
 | Mutatie | Uitslag |
 |---|---|
 | de toets op `p_nieuwe_start` uit | 📏 1 rood |
 | de toets op `p_oude_start` uit | 📏 1 rood |
+| `for update` op de profielrij weg | 📏 1 rood, drie runs achter elkaar |
 
 ⚠️⚠️ **Het ijkgeval moest lángs de bestaande grendel komen**, en dat is de val uit
 QS8-352. `zet_week_startdag()` weigert al zodra vandaag niet in béide cycli valt;

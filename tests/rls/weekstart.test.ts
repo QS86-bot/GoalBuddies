@@ -1,6 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { addDays, now, userCycle, type IsoDate, type Weekday } from '../../src/shared/time';
+import {
+  addDays,
+  daysBetween,
+  localDateIn,
+  now,
+  userCycle,
+  type IsoDate,
+  type Weekday,
+} from '../../src/shared/time';
 import {
   adminDb,
   createTestUser,
@@ -54,6 +62,8 @@ const TEST_TIMEOUT = 30_000;
 /** De dag waarop de gebruiker begint, en de dag waar hij naartoe gaat. */
 const OUDE_DAG: Weekday = 1; // maandag
 const NIEUWE_DAG: Weekday = 4; // donderdag
+/** ⚠️ Een derde dag voor de gelijktijdigheidstest — zie QS8-357. */
+const DERDE_DAG: Weekday = 3; // woensdag
 const ZONE = 'Europe/Amsterdam';
 
 interface Fixture {
@@ -338,6 +348,11 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
     });
     if (uit.error) throw new Error(`zet_week_startdag: ${uit.error.message}`);
     return uit.data as unknown as { ok?: boolean; reason?: string; verzet?: number };
+  }
+
+  /** De cyclusstart van `DERDE_DAG` die vandaag bevat. */
+  function derdeStart(): IsoDate {
+    return userCycle({ weekStartDay: DERDE_DAG, tz: ZONE }, now()).startDate;
   }
 
   async function cyclusVan(id: string): Promise<string | null> {
@@ -640,15 +655,44 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
   describe('QS8-357 — de RPC schrijft geen cyclus die naast de startdag valt', () => {
     /**
      * Een datum die vandaag bevat maar níét op `dag` valt: de cyclusstart van
-     * `dag`, één dag opgeschoven. Blijft binnen het venster zolang de
-     * verschuiving kleiner is dan de resterende dagen van de cyclus.
+     * `dag`, één dag opgeschoven.
+     *
+     * ⚠️⚠️ **De richting hángt van de weekdag af, en de eerste versie deed dat
+     *    niet.** Die schoof altijd één dag terug, met een tak die dat had moeten
+     *    opvangen — maar die tak vergeleek `userCycle(...).startDate` met
+     *    zichzelf en was dus altijd onwaar. 📏 Aangewezen in de security-review
+     *    en nagemeten: met `X = start - 1` valt vandaag op `X + 7` zodra vandaag
+     *    de **laatste** dag van de cyclus is, en dan weigert de RPC met
+     *    `cyclus_bevat_vandaag_niet` in plaats van met de dagtoets. Deze twee
+     *    tests waren daarmee rood op elke woensdag respectievelijk zondag —
+     *    twee dagen per week een rode `main` zonder dat er iets stuk is.
+     *
+     * ⚠️ **En dat is het echte gevaar, niet de rode CI.** Wie hem "oplost" door
+     *    de assertie te verzwakken naar `expect(uit.ok).toBe(false)`, bewaakt
+     *    daarna alleen dát er geweigerd wordt en niet dóór welke grendel — exact
+     *    de val die de kop van dit blok beschrijft.
+     *
+     * Terug is fout op de laatste dag van de cyclus, vooruit op de eerste. De
+     * assertie eronder is er zodat de helper zelf rood wordt als hij ooit een
+     * geval buiten het venster oplevert.
      */
     function scheefMaarBinnenVandaag(dag: Weekday): IsoDate {
       const start = userCycle({ weekStartDay: dag, tz: ZONE }, now()).startDate;
-      const vandaag = userCycle({ weekStartDay: dag, tz: ZONE }, now());
-      // ⚠️ Eén dag terug in plaats van vooruit: vooruit kan vandaag buiten de
-      //    nieuwe cyclus duwen, en dan meet de bestaande venstertoets mee.
-      return addDays(start, -1) === vandaag.startDate ? addDays(start, 1) : addDays(start, -1);
+      const vandaag = localDateIn(ZONE, now());
+      const dagInCyclus = daysBetween(start, vandaag);
+
+      const scheef = dagInCyclus === 6 ? addDays(start, 1) : addDays(start, -1);
+
+      // ⚠️ De ijking van de ijking: vandaag moet binnen [scheef, scheef+7) vallen,
+      //    anders vangt `cyclus_bevat_vandaag_niet` het geval af en meet de test
+      //    een andere grendel dan hij noemt.
+      const offset = daysBetween(scheef, vandaag);
+      expect(
+        offset >= 0 && offset < 7,
+        `het ijkgeval ligt buiten het venster (dag ${dagInCyclus} van de cyclus, offset ${offset})`,
+      ).toBe(true);
+
+      return scheef;
     }
 
     it(
@@ -688,6 +732,56 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
         expect(uit.reason, 'geweigerd, maar door de verkeerde grendel').toBe(
           'oude_cyclus_valt_niet_op_startdag',
         );
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **Twee gelijktijdige aanroepen, en dat is een bevinding uit de
+     *    security-review op deze branch.**
+     *
+     *    De tweede toets leest `profiles.week_start_day` en schrijft hem daarna.
+     *    Zonder rijvergrendeling lezen twee parallelle aanroepen dezelfde oude
+     *    dag, komen ze allebei door beide toetsen heen, en schrijven ze in
+     *    willekeurige volgorde. 📏 Gemeten met tien rondes van twee parallelle
+     *    verzoeken: **zeven keer** gaven ze allebei `ok: true`, en dan lopen
+     *    `week_start_day` en `dow(cycle_start_date)` uit elkaar — precies de
+     *    toestand die 0200 zegt te sluiten.
+     *
+     *    Met `for update` op de profielrij: 📏 nul van de tien.
+     *
+     * ⚠️ **De belofte is "hoogstens één slaagt" en niet "welke".** Wie er wint
+     *    hangt van de planner af; wat vast moet liggen is dat de verliezer een
+     *    weigering krijgt en niet stilzwijgend over de winnaar heen schrijft.
+     */
+    it(
+      'laat van twee gelijktijdige wissels er hoogstens één slagen',
+      async () => {
+        const [a, b] = await Promise.all([
+          verzet(NIEUWE_DAG, f.oudeStart, f.nieuweStart),
+          verzet(DERDE_DAG, f.oudeStart, derdeStart()),
+        ]);
+
+        const geslaagd = [a, b].filter((u) => u.ok === true).length;
+        expect(
+          geslaagd,
+          `beide slaagden: ${JSON.stringify(a)} / ${JSON.stringify(b)}`,
+        ).toBeLessThanOrEqual(1);
+
+        // ⚠️ En de uitkomst is consistent: de dag in het profiel hoort bij de
+        //    cyclus die op het weekdoel staat. Dat is de eigenschap waar het om
+        //    gaat; "hoogstens één ok" is er het middel voor.
+        const profiel = await adminDb()
+          .from('profiles')
+          .select('week_start_day')
+          .eq('id', f.alice.id)
+          .single();
+        const cyclus = await cyclusVan(f.ids.todo);
+        const dowVanCyclus = new Date(`${cyclus}T00:00:00Z`).getUTCDay();
+        expect(
+          dowVanCyclus,
+          `week_start_day ${profiel.data?.week_start_day} hoort niet bij cyclus ${cyclus}`,
+        ).toBe(profiel.data?.week_start_day);
       },
       TEST_TIMEOUT,
     );
