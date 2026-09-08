@@ -3,17 +3,73 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 07-09-2026. Er landt veel uit twee sessies tegelijk;
+> **Laatst bijgewerkt:** 08-09-2026. Er landt veel uit twee sessies tegelijk;
 > `git log origin/main` is de betrouwbare lijst en niet deze zin.
-> Uit deze sessie op 07-09: **QS8-304**, **QS8-191** en **QS8-315**; uit de
-> parallelle sessie diezelfde dag: **QS8-301, QS8-306, QS8-311, QS8-313** en
-> **QS8-262** (rondes 6 t/m 8). Daarvóór op 06-09:
-> **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en **QS8-302**.
+> Op 08-09 landden er **dertien** PR's (#293 t/m #306), uit deze sessie
+> **QS8-352, QS8-351** en **QS8-356**; uit de parallelle sessie
+> **QS8-341, QS8-342, QS8-343, QS8-327, QS8-340, QS8-339, QS8-348, QS8-349,
+> QS8-353** en **QS8-354**. Daarvóór op 07-09: **QS8-304, QS8-191, QS8-315**
+> en uit de parallelle sessie **QS8-301, QS8-306, QS8-311, QS8-313, QS8-262**.
 > Open en niet door een agent af te maken: **QS8-197** (wacht op
 > Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
-> Lees eerst de vier punten van 07-09, dan de vijf van 06-09 — het eerste
-> daarvan is de duurste van die dag — dan de drie van 05-09, dan de twee van
-> 04-09, dan de vier van 03-09, en daarna die van 02-09.
+> Lees eerst de vijf punten van 08-09 — de eerste twee zijn de duurste van de
+> hele week — dan de vier van 07-09, dan de vijf van 06-09, dan de drie van
+> 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **08-09, punt A: een `revoke` verandert wélke grendel als eerste weigert — en
+> dat is drie keer op één dag misgegaan.** Bij QS8-352 werd de CHECK uit 0007
+> onbereikbaar: 📏 die gedropt, en de test die hem bewaakte bleef groen, want de
+> ontbrekende kolomgrant weigert eerder. Bij QS8-351 gebeurde hetzelfde met
+> `user_blocks_insert` en met de `with check` op `profiles` — en dáár wisselde
+> een must-deny in `schrijfgrenzen.test.ts` **ongemerkt** van slot, omdat
+> `permission denied for table` en `new row violates row-level security policy`
+> allebei `42501` geven en allebei in `WEIGERCODES` staan.
+>
+> ⚠️ **De regel die eruit volgt: loop bij elke intrekking élke bestaande
+> must-deny op die tabel na, óók als hij groen blijft.** Groen blijven is hier
+> het symptoom en niet het bewijs. En schrijf op wát de intrekking kost: twee
+> policies zijn nu dode grendels achter een dichte deur, en dat staat in de
+> beslisdocumenten in plaats van weggelaten.
+>
+> **08-09, punt B: een mutatie die niets rood maakt is een bevinding, geen
+> opluchting.** Bij QS8-356 bleef de vroege `return new` voor de eigen rij van
+> de beheerder groen onder mutatie. 📏 Niet omdat die regel overbodig was, maar
+> omdat níets toetste wat hij doorlaat: een beheerder die zijn eigen
+> beheerderschap opgeeft terwijl er een tweede is — wat `last_admin` juist
+> toestaat. Er staat nu een must-allow op, en de mutatie geeft 1 rood.
+>
+> ⚠️ **En één ijking was zelf een valse groene.** De eerste ronde bij QS8-351 gaf
+> zes keer "0 rood". Het script draaide vanuit een map waar het testpad niet
+> bestond; de grep op `N failed` vond niets en de shell-default drukte
+> `0 failed` af. **Een lege grep leest identiek aan een groene run.** Druk de
+> hele `Tests …`-regel af en meld `GEEN RUN` als die ontbreekt.
+>
+> **08-09, punt C: "geen aanroeper in `src/` en `app/`" is niet hetzelfde als
+> "geen doel".** Bij QS8-351 stond `group_members` UPDATE op de intreklijst —
+> elke schrijver definer, de client roept het niet aan, tekstboekgeval. 📏 Die
+> revoke maakte **21 bestaande tests in zeven bestanden rood**, en alleen die
+> ene grant teruggeven maakte alle 100 weer groen. 0102 en 0187 zijn juist vóór
+> dat pad gebouwd, en de audittrigger schrijft een spoor "ook bij een uitzetting
+> buiten de RPC om". **De meting keek naar de clienthelft van een systeem waarvan
+> de andere helft in de database zit.** Vraag per rij: is er een trigger, guard
+> of policy die dit pad politieert? Een grep met `pg_get_functiondef()` op de
+> tabelnaam is de goedkoopste tegenvraag.
+>
+> **08-09, punt D: het migratienummer botste twee keer op één dag, en de tweede
+> keer ving CI het.** Bij QS8-351 nam QS8-353 `0196`, bij QS8-356 nam QS8-354
+> `0198`. Beide keren hernummerd, en de tweede keer liet `migratie:hernummer`
+> **38 kale verwijzingen** staan — met twee migraties op hetzelfde nummer kán hij
+> niet zien welke bij welke hoort. ⚠️ **Die lees je stuk voor stuk.** Het script
+> print ze mét context; alles over `cycle_start_date` was van hen, alles over de
+> beheerderstak van mij. Een blinde `sed` had daar de dossierrij van een ánder
+> issue overschreven.
+>
+> **08-09, punt E: mijn eigen meting was een keer het artefact.**
+> `npx vitest run <bestand> -t "spoor"` slaat de tests over die de fixture
+> opbouwen. Ik las nul rijen waar er in een volle run één stond, en was daar
+> bijna een conclusie op gaan bouwen. **Een filter dat de opzet overslaat, meet
+> iets anders dan de suite.** Draai het hele bestand voordat je een getal
+> gelooft.
 >
 > **07-09, punt C (QS8-315): "het blijft binnen systeem X" is een bewering over
 > een route, en een route lees je na.** Ik repareerde drie plekken die de rúwe
