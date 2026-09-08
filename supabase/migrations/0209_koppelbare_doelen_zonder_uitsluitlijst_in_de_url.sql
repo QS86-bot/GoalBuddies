@@ -1,10 +1,10 @@
--- 0208_koppelbare_doelen_zonder_uitsluitlijst_in_de_url.sql — de uitsluitlijst
+-- 0209_koppelbare_doelen_zonder_uitsluitlijst_in_de_url.sql — de uitsluitlijst
 -- van het koppelscherm ging mee in de URL, en die heeft een grens (QS8-345)
 --
 -- ROLLBACK-PAD:
 --   drop function if exists public.koppelbare_doelen(uuid);
 --
---   ⚠️ Voegt alléén toe. Geen policy, view of grant van vóór 0208 wordt
+--   ⚠️ Voegt alléén toe. Geen policy, view of grant van vóór 0209 wordt
 --      gewijzigd, dus er is niets terug te zetten. De client-kant valt terug op
 --      de `not.in`-vorm zodra deze functie weg is — met de grens die dit issue
 --      beschrijft.
