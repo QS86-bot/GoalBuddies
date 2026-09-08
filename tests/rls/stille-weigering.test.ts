@@ -148,7 +148,9 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   const alsGewoonLid = [
     { wat: 'role op admin', patch: { role: 'admin' } },
     { wat: 'status op inactive', patch: { status: 'inactive' } },
-    { wat: 'status op paused', patch: { status: 'paused' } },
+    // ⚠️ Hier stond `status op paused` als derde geval. 0204 haalde die waarde
+    //    uit de CHECK (QS8-325); de vorm die overblijft — een gewoon lid dat een
+    //    kolom zet die hij niet mag zetten — staat er met de twee hierboven al.
   ] as const;
 
   for (const { wat, patch } of alsGewoonLid) {
@@ -325,87 +327,40 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
     TEST_TIMEOUT,
   );
 
-  it(
-    'een lid op `paused` dat de code aanbiedt, komt terug op `active`',
-    async () => {
-      // ⚠️ **Dit is de keten die vóór 0187 stil onderbroken was (regel 18,
-      //    vraag 5).** `join_group_with_code()` gaf `{"ok": true}` en de status
-      //    bleef `paused`, want de niet-beheerderstak pinde hem terug. Er was
-      //    geen kapot onderdeel, dus geen enkele test kon er rood van worden.
-      //
-      // ⚠️ `paused` wordt vandaag door geen enkele functie geschreven, dus deze
-      //    toestand wordt hier met `adminDb()` gemaakt. Dat is geen omweg om een
-      //    grendel heen: de grendel die deze test bewaakt zit op het pad van het
-      //    lid, en dat pad loopt hieronder wél volledig als het lid zelf.
-      await adminDb()
-        .from('group_members')
-        .update({ status: 'paused' })
-        .eq('group_id', groupId)
-        .eq('user_id', lid.id);
-
-      const toe = await lid.db.rpc('join_group_with_code', { code });
-      expect(toe.error).toBeNull();
-      expect((toe.data as { ok?: boolean }).ok).toBe(true);
-
-      const na = await leesRij(lid.id)();
-      expect((na.data as Rij).status).toBe('active');
-    },
-    TEST_TIMEOUT,
-  );
-
-  it(
-    'de uitzondering geldt alleen mét de code — een lid schuift zichzelf niet van `paused` naar `active`',
-    async () => {
-      // ⚠️ **De must-deny naast de must-allow hierboven.** De uitzondering hangt
-      //    aan `app.hervat_lidmaatschap`, en die zet alleen
-      //    `join_group_with_code()`. Zonder die instelling is dit een gewone
-      //    statuswijziging door een niet-beheerder en hoort hij hoorbaar te
-      //    weigeren — anders is de uitzondering een open deur die iedereen kan
-      //    nemen zonder ooit een code te hebben gezien.
-      await adminDb()
-        .from('group_members')
-        .update({ status: 'paused' })
-        .eq('group_id', groupId)
-        .eq('user_id', lid.id);
-
-      const melding = await weigertHoorbaar(
-        () =>
-          lid.db
-            .from('group_members')
-            .update({ status: 'active' })
-            .eq('group_id', groupId)
-            .eq('user_id', lid.id),
-        leesRij(lid.id),
-      );
-      expect(melding).toContain('geen_groepsbeheerder');
-
-      await adminDb()
-        .from('group_members')
-        .update({ status: 'active' })
-        .eq('group_id', groupId)
-        .eq('user_id', lid.id);
-    },
-    TEST_TIMEOUT,
-  );
+  // ⚠️⚠️ **Hier stonden de twee tests over de uitzondering van 0187, en ze zijn
+  //    met 0204 vervallen** (QS8-325). De must-allow — een lid op `paused` dat de
+  //    code aanbiedt komt terug op `active` — en de must-deny ernaast — zonder de
+  //    code schuift niemand zichzelf terug — gingen allebei over een stand die
+  //    `group_members.status` niet meer kent.
+  //
+  // ⚠️ **De keten die ze bewaakten is niet weg maar korter geworden.** Wat er van
+  //    over is, staat in `tests/rls/pauze-bestaat-niet.test.ts`: een actief lid
+  //    dat de code nog eens aanbiedt blijft gewoon lid, en een uitgezet lid komt
+  //    er niet mee in. Dat zijn sinds 0204 de enige twee gevallen die de
+  //    `on conflict` van `join_group_with_code()` nog kan tegenkomen.
 
   it(
     'geen derde functie kent de ontgrendelsleutel — en geen enkele sleutel is ongeteld',
     async () => {
-      // ⚠️ **De uitzondering van 0187 is een tweede loper-sleutel, en die kwam er
-      //    bijna zonder teller in.** 0153 bouwde voor de eerste sleutel
-      //    `sleutelzetters()` met de reden erbij: een nieuw bypass-mechanisme
-      //    zonder eigen teller zou de uitzondering zijn. Deze migratie máákt zo'n
-      //    mechanisme.
+      // ⚠️ **Een sessiesleutel is een loper op een slot, en die kwamen er bijna
+      //    zonder teller in.** 0153 bouwde `sleutelzetters()` voor de eerste, met
+      //    de reden erbij: een nieuw bypass-mechanisme zonder eigen teller zou de
+      //    uitzondering zijn.
       //
       // ⚠️ **Zonder deze test bewaakt niets het.** 📏 Gemeten door een derde
-      //    functie te planten die `app.hervat_lidmaatschap` zet en élke
+      //    functie te planten die een geregistreerde sleutel zet en élke
       //    projectregel volgt: de volledige suite bleef groen. Een deur die
       //    alleen dichtzit omdat er verderop een `if` staat.
       //
-      // ⚠️ De teller dekt sinds 0187 drie gevallen, en ze zijn los geijkt: een
-      //    derde functie op de sleutel van 0187, een derde op die van 0153, en
-      //    een functie met een `app.`-instelling die nergens geregistreerd staat.
-      //    Dat laatste is de tak die de vólgende sleutel vangt.
+      // ⚠️ De teller dekt twee gevallen, en ze zijn los geijkt: een derde functie
+      //    op een sleutel die al in het register staat, en een functie met een
+      //    `app.`-instelling die er níét in staat. Dat laatste is de tak die de
+      //    vólgende sleutel vangt.
+      //
+      // ⚠️ **De sleutel van 0187 is er met 0204 uit gegaan** (QS8-325) en dat is
+      //    zichtbaar in het register en niet alleen in de code: zou iemand hem
+      //    opnieuw zetten zonder regel, dan meldt de derde tak hem — dezelfde weg
+      //    waarlangs 0199 zijn eigen weggevallen sleutels terugvond.
       const { data, error } = await adminDb().rpc('sleutelzetters');
       if (error) throw new Error(`sleutelzetters: ${error.message}`);
 
