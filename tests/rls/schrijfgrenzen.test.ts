@@ -276,16 +276,44 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
   }
 
   describe('profiles — een profiel is van jou en van niemand anders', () => {
+    /**
+     * ⚠️⚠️ **Deze test heette "je mag je eigen profiel invoegen" en dat mag sinds
+     *    migratie 0196 niet meer** (QS8-351). 📏 Nagemeten vóór de intrekking:
+     *    geen enkel bestand in `src/` of `app/` voegt een profiel in — de rij
+     *    komt van de trigger `handle_new_user()`, en die is `SECURITY DEFINER`.
+     *    De grant had dus geen aanroeper.
+     *
+     *    ⚠️ De opzet zei dat trouwens al: de test moest zijn eigen profiel eerst
+     *    met `adminDb()` wéghalen om iets te kunnen invoegen. Een must-allow die
+     *    een toestand met beheerdersrechten moet fabriceren om te kunnen slagen,
+     *    bewaakt geen pad dat een gebruiker kan lopen.
+     *
+     *    Wat er nu getoetst wordt is de nieuwe waarheid, met de gehandhaafde
+     *    must-allow eronder: het profiel is er, en de eigenaar kan het bewerken.
+     */
     it(
-      'je mag je eigen profiel invoegen',
+      'je maakt je eigen profiel niet — dat doet de trigger',
       async () => {
-        const weg = await adminDb().from('profiles').delete().eq('id', w.profielA.id);
-        if (weg.error) throw new Error(`profiel weghalen: ${weg.error.message}`);
-
         const { error } = await w.profielA.db
           .from('profiles')
           .insert({ id: w.profielA.id, display_name: 'Profiel A' });
-        expect(error, 'je eigen profiel invoegen hoort te lukken').toBeNull();
+
+        expect(error?.code, 'een client mocht een profielrij maken').toBe('42501');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'en het profiel dat de trigger maakte, is er en is van jou',
+      async () => {
+        const { data, error } = await w.profielA.db
+          .from('profiles')
+          .select('id')
+          .eq('id', w.profielA.id)
+          .maybeSingle();
+
+        expect(error, 'je eigen profiel lezen hoort te lukken').toBeNull();
+        expect(data?.id, 'de trigger maakte geen profielrij').toBe(w.profielA.id);
       },
       TEST_TIMEOUT,
     );
