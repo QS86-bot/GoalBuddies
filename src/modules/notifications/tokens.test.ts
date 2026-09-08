@@ -132,9 +132,10 @@ describe('registreerPushToken', () => {
   });
 
   it('doet niets zonder bron, en valt daar niet over', async () => {
-    // ⚠️ `geenPush` is de stand zolang `expo-notifications` er niet is. Een app
-    //    die bij het opstarten omvalt omdat er geen pushbibliotheek is, is erger
-    //    dan een app zonder meldingen.
+    // ⚠️ `geenPush` is de stand vóórdat `_layout` een bron gezet heeft — niet
+    //    meer "zolang `expo-notifications` er niet is", want die staat er sinds
+    //    Q-TODO B4 (QS8-366). Een app die bij het opstarten omvalt omdat er geen
+    //    pushbron is, is erger dan een app zonder meldingen.
     zetPushBron(geenPush);
 
     await expect(registreerPushToken('gebruiker-1')).resolves.toBeUndefined();
