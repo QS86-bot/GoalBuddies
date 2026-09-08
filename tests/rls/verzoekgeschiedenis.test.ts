@@ -15,16 +15,22 @@
  *    Wie vertrok laat dus geen rij achter en wie weggestuurd werd juist wél.
  *    Daarom leest 0206 er twee: de rij én de `group_events`-gebeurtenis.
  *
- * ⚠️⚠️ **En daarmee staat er een leesbaar signaal dat ouder is dan dit issue.**
+ * ⚠️⚠️ **En daarnaast staat er een leesbaar signaal dat ouder is dan dit issue.**
  *    Omdat vertrekken de rij wíst en uitgezet worden hem op `inactive` zet, is
  *    het bestáán van een inactieve rij precies gelijk aan "deze persoon is uit de
  *    groep gezet" — en `group_members_select` staat op `mag_groep_lezen()`, dus
- *    élk lid leest dat met één API-verzoek. Dat is de rij van 04-09 in
- *    `docs/ENGINEER-REVIEW.md`, en hij is met deze meting scherper dan hij stond.
- *    Het laatste acceptatiecriterium van QS8-332 ("langs geen enkele weg") is
- *    daarmee **niet** gehaald, en dat is een productbeslissing en geen omissie
- *    van deze migratie: de test hieronder legt de stand vast in plaats van hem
- *    te verzwijgen.
+ *    élk lid leest dat met één API-verzoek.
+ *
+ *    ✅ **Besluit van Quinten, 08-09-2026: dat blijft zo.** Een groep die iemand
+ *    wegstuurt, weet dat zelf; uitzetten is een handeling ván de groep en niet
+ *    een tegenslag ván de uitgezette, en dat is de grens die domeinregel 7
+ *    trekt. Het besluit staat als oppervlak 31 in
+ *    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+ *
+ *    ⚠️ **Het derde blok hieronder is daarmee geen "wat er nog openstaat" meer
+ *    maar de tóets op dat besluit**, en dat is precies waarom het blijft staan:
+ *    een besluit zonder test is een zin, en deze wordt rood zodra een van beide
+ *    paden dichtgaat — dan is het geen besluit meer maar een verandering.
  *
  * IJKING — met de hand, 08-09-2026, door de functie in de dráaiende database te
  * vervangen door een variant zonder die ene tak. Eén mutatie per grendel.
@@ -219,16 +225,17 @@ describe.skipIf(!rlsTestsConfigured)('de geschiedenis van een aanvrager', () => 
 
   // -------------------------------------------------------------------------
   /**
-   * ⚠️ **Dit blok legt vast wat er níét dicht is, en dat is met opzet.** Het
-   *    laatste acceptatiecriterium van QS8-332 vroeg dat een gewoon lid dit
-   *    gegeven langs géén enkele weg kan uitlezen. Dat is vandaag niet zo, en de
-   *    oorzaak is ouder dan deze migratie. Een test die dat verzwijgt, laat de
-   *    volgende lezer denken dat het dicht is.
+   * ⚠️ **Dit blok toetst een besluit en niet een gebrek** — 08-09-2026. Een
+   *    gewoon lid kán lezen wie er uit de groep gezet is, en dat mag: een groep
+   *    die iemand wegstuurt weet dat zelf. Zonder deze twee gevallen is dat
+   *    besluit een zin in een document, en de volgende lezer weet niet of het zo
+   *    bedoeld is of dat het niemand opgevallen was.
    *
-   *    Wordt dit ooit gerepareerd, dan wordt dít blok rood — en dat is precies
-   *    het moment waarop de rij in `docs/ENGINEER-REVIEW.md` gesloten kan worden.
+   * ⚠️ **Wordt een van beide paden ooit dichtgezet, dan wordt dit blok rood.**
+   *    Dat is geen defect maar een uitnodiging: dan is het besluit veranderd en
+   *    hoort oppervlak 31 in beslisdocument 002 mee te bewegen.
    */
-  describe('wat er nog steeds openstaat, en dat is een besluit en geen defect', () => {
+  describe('en wat een gewoon lid bewust wél kan lezen', () => {
     it(
       'een gewoon lid leest de uitzetting rechtstreeks uit group_members',
       async () => {
@@ -241,7 +248,7 @@ describe.skipIf(!rlsTestsConfigured)('de geschiedenis van een aanvrager', () => 
         expect(rijen.error).toBeNull();
         expect(
           (rijen.data ?? []).map((r) => r.user_id),
-          'als dit leeg is, is de rij van 04-09 in ENGINEER-REVIEW gesloten — werk hem bij',
+          'dit pad is dichtgezet; dan is oppervlak 31 in beslisdocument 002 veranderd en hoort het mee te bewegen',
         ).toContain(w.uitgezet.id);
       },
       TEST_TIMEOUT,
@@ -259,7 +266,7 @@ describe.skipIf(!rlsTestsConfigured)('de geschiedenis van een aanvrager', () => 
         expect(rijen.error).toBeNull();
         expect(
           (rijen.data ?? []).map((r) => r.subject_id),
-          'als dit leeg is, is de rij van 04-09 in ENGINEER-REVIEW gesloten — werk hem bij',
+          'dit pad is dichtgezet; dan is oppervlak 31 in beslisdocument 002 veranderd en hoort het mee te bewegen',
         ).toContain(w.uitgezet.id);
       },
       TEST_TIMEOUT,
