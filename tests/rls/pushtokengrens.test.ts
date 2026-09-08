@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { readFileSync } from 'node:fs';
+
+import { proefId } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -826,6 +829,117 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
     },
     TEST_TIMEOUT,
   );
+
+  /**
+   * Leest de normalisatie **uit migratie 0211 zelf**, en dat is het hele punt.
+   *
+   * ⚠️⚠️ **Een test die een kopie van die twee statements draagt, bewaakt de
+   *    kopie.** Verandert iemand de volgorde in de migratie, of haalt hij de
+   *    `delete` eruit, dan blijft zo'n test groen — hij toetst wat er in het
+   *    testbestand staat en niet wat de migratie belóóft. Dat is regel 18 vraag
+   *    4, en dit project heeft hem twee keer bij een verhuizing betaald.
+   *
+   * De snede loopt van het eerste statement tot aan het `do $migratie$`-blok dat
+   * de constraint zet; alles ertussen is de normalisatie.
+   */
+  function normalisatieUit0211(): string {
+    const bestand = readFileSync(
+      'supabase/migrations/0211_de_overname_van_een_pushtoken_heeft_een_mechanisme.sql',
+      'utf8',
+    );
+    const begin = bestand.indexOf('delete from push_tokens dubbel');
+    const eind = bestand.indexOf('do $migratie$', begin);
+
+    expect(begin, 'de normalisatie staat niet meer in 0211').toBeGreaterThan(-1);
+    expect(eind, 'het grendelblok staat niet meer ná de normalisatie').toBeGreaterThan(begin);
+
+    return bestand.slice(begin, eind);
+  }
+
+  /**
+   * ⚠️⚠️ **De normalisatie die 0211 vóór de grendel zet, en waarom die er is.**
+   *
+   * De eerste versie van deze migratie onderbouwde de CHECK met "📏 op productie
+   * staan 0 rijen, dus er valt niets te normaliseren". `src/modules/notifications/
+   * tokens.ts` waarschuwt sinds QS8-366 met zoveel woorden tegen precies die
+   * redenering — *"wie op deze leegte een besluit baseert, telt hem opnieuw"* —
+   * en terecht: productie staat op 0186, deze migratie draait pas bij een
+   * volgende deploy, en de redenen dat de tabel leeg is vervallen per platform op
+   * verschillende momenten. Dus normaliseert de migratie zelf.
+   *
+   * ⚠️ **Deze test voert hem de twee soorten die hij moet kunnen**, want een
+   *    normalisatie die je niet kunt voeden, kun je niet ijken. Op de lokale
+   *    stack ís de tabel schoon en zou dit pad nooit gedraaid worden — dan
+   *    bewaakt "de migratie liep groen" niets van wat ze belooft.
+   */
+  it('knipt bestaande rijen bij en gooit alleen de dubbele weg', () => {
+    const oud = proefId(367);
+    const nieuw = proefId(368);
+
+    const uitslag = psql(`
+      begin;
+      insert into auth.users (id, email) values
+        ('${oud}', 'norm-oud367@x.nl'), ('${nieuw}', 'norm-nieuw367@x.nl');
+
+      -- ⚠️ De grendel gaat er even af, want anders is de toestand die de
+      --    migratie moet opruimen niet te máken. Alles rolt terug.
+      alter table push_tokens drop constraint push_tokens_token_getrimd;
+
+      insert into push_tokens (user_id, token, platform, p256dh, auth) values
+        -- dubbel: de ongetrimde rij hoort bij de vórige eigenaar
+        ('${oud}',   '  https://fcm.googleapis.com/fcm/send/d367  ', 'web', 'p', 'a'),
+        ('${nieuw}', 'https://fcm.googleapis.com/fcm/send/d367',     'web', 'p', 'a'),
+        -- los: alleen de ongetrimde vorm bestaat
+        ('${oud}',   '  https://fcm.googleapis.com/fcm/send/l367  ', 'web', 'p', 'a');
+
+      -- De normalisatie, letterlijk zoals ze in 0211 staat.
+      ${normalisatieUit0211()}
+
+      -- ⚠️ **En dit is de eigenlijke assertie**: de grendel moet er daarna weer
+      --    op kunnen. Laat de normalisatie ook maar één rij ongetrimd staan, dan
+      --    faalt deze regel en breekt de hele aanroep af.
+      alter table push_tokens add constraint push_tokens_token_getrimd
+        check (token = btrim(token));
+
+      select string_agg(
+               btrim(t.token) || '=' ||
+               case t.user_id when '${oud}'::uuid then 'oud' else 'nieuw' end,
+               ' | ' order by t.token)
+        from push_tokens t
+       where t.token like '%fcm/send/_367%';
+      rollback;
+    `).trim();
+
+    // De dubbele is bij de geldige eigenaar gebleven, de losse bij de zijne.
+    expect(uitslag).toBe(
+      'https://fcm.googleapis.com/fcm/send/d367=nieuw | https://fcm.googleapis.com/fcm/send/l367=oud',
+    );
+  });
+
+  /**
+   * ⚠️ **De volgorde ís het gedrag, en dat is apart geijkt.** Knip je eerst bij,
+   *    dan botst de dubbele soort op `push_tokens_token_uniek` en faalt de
+   *    migratie halverwege. Deze test speelt die omgekeerde volgorde na en eist
+   *    dat hij stukloopt — anders zegt de volgorde in 0211 niets.
+   */
+  it('loopt stuk als de bijknip vóór de opruiming komt', () => {
+    const oud = proefId(369);
+    const nieuw = proefId(370);
+
+    expect(() =>
+      psql(`
+        begin;
+        insert into auth.users (id, email) values
+          ('${oud}', 'norm-oud369@x.nl'), ('${nieuw}', 'norm-nieuw369@x.nl');
+        alter table push_tokens drop constraint push_tokens_token_getrimd;
+        insert into push_tokens (user_id, token, platform, p256dh, auth) values
+          ('${oud}',   '  https://fcm.googleapis.com/fcm/send/v369  ', 'web', 'p', 'a'),
+          ('${nieuw}', 'https://fcm.googleapis.com/fcm/send/v369',     'web', 'p', 'a');
+        update push_tokens set token = btrim(token) where token <> btrim(token);
+        rollback;
+      `),
+    ).toThrow(/push_tokens_token_uniek/);
+  });
 
   it(
     'houdt de rij dezelfde: id en created_at overleven de overname',

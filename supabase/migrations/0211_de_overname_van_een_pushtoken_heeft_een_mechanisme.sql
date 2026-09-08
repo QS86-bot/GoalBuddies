@@ -14,6 +14,12 @@
 --      hem staan zonder de `delete`, dan klopt het nog steeds — laat je hem
 --      wég mét de `delete` terug, dan sta je weer waar 0209 stond.
 --
+--   ⚠️ Ook niet terug te draaien: de normalisatie hieronder. Een ongetrimde rij
+--      die dubbel stond is weg, en een losse is bijgeknipt. Beide komen vanzelf
+--      terug — `Pushwacht` registreert bij elke start opnieuw — maar de oude
+--      waarde is er niet meer. 📏 Op productie staan vandaag 0 rijen, dus vandaag
+--      raakt het niets; de migratie leunt daar bewust niet op.
+--
 --   ⚠️ Wat níét terug te draaien is: de `id` en `created_at` van rijen die
 --      tussen deze migratie en de rollback van eigenaar gewisseld zijn. Die
 --      dragen dan de waarden van de eerste registreerder in plaats van van de
@@ -87,8 +93,17 @@
 --    binnen: `is_expo_pushtoken()` en `is_pushdienst()` zijn allebei geankerd én
 --    sluiten `[:space:]` uit.
 --
--- 📏 Op productie (`wehgocadxehottiiyvsc`) staan 0 rijen in `push_tokens`, dus
---    er valt niets te normaliseren voordat dit erop staat.
+-- ⚠️⚠️ **En de leegte van productie is hier bewust géén argument.** 📏 Er staan
+--    vandaag 0 rijen in `push_tokens` op `wehgocadxehottiiyvsc`, maar `tokens.ts`
+--    waarschuwt sinds QS8-366 met zoveel woorden tegen precies deze redenering:
+--    *"Wie op deze leegte een besluit baseert — 'een nieuwe CHECK kan geen
+--    bestaande rij breken' bijvoorbeeld — telt hem opnieuw."* Terecht. Productie
+--    staat op 0186; deze migratie draait pas bij een volgende deploy, en de
+--    redenen dat de tabel leeg is vervallen per platform op verschillende
+--    momenten (geen native build uitgerold; web wacht op VAPID, QS8-124).
+--
+--    Daarom normaliseert deze migratie zélf, en leunt hij nergens op een telling
+--    van vandaag. Zie het blok hieronder.
 --
 -- ⚠️ **De dossierrij van 21-08 is nagelopen, zoals het issue vraagt.** Die
 --    beschrijft de overname als "haalt een token weg bij de vorige eigenaar en
@@ -103,6 +118,40 @@
 -- ---------------------------------------------------------------------------
 -- De grendel onder de premisse
 -- ---------------------------------------------------------------------------
+
+-- ⚠️ **Eerst normaliseren, dan grendelen.** Een ongetrimde rij is per definitie
+--    de rij die hier niet had moeten staan, en er zijn twee soorten:
+--
+--      dubbel   de getrimde vorm bestáát al. Dat is precies de divergentie die
+--               deze migratie sluit: twee rijen voor één apparaat, waarvan de
+--               ongetrimde bij de vórige eigenaar hoort en hem meldingen blijft
+--               bezorgen. Die gaat weg — de getrimde rij is de geldige.
+--      los      de getrimde vorm bestaat niet. Dan is het gewoon dezelfde rij met
+--               spaties eromheen; die wordt bijgeknipt en houdt zijn eigenaar.
+--
+--    ⚠️ De volgorde is niet vrij: knip je eerst bij, dan botst de dubbele soort
+--       op `push_tokens_token_uniek` en faalt de migratie. Weggooien komt dus
+--       eerst, en pas daarna de `update`.
+--
+--    ⚠️ **Waarom een `delete` hier verantwoord is** (beslisbevoegdheid, grens 2):
+--       een rij in `push_tokens` is geen geschiedenis maar het adres van een
+--       apparaat, en hij komt vanzelf terug — `Pushwacht` in `app/_layout.tsx`
+--       registreert bij elke start opnieuw. De rij die weggaat is bovendien de
+--       rij waarvan dit hele issue zegt dat hij niet had moeten bestaan.
+--       Terugdraaien hoeft niet: de eigenaar krijgt hem bij de eerstvolgende
+--       start terug, ditmaal als één rij.
+
+delete from push_tokens dubbel
+where dubbel.token <> btrim(dubbel.token)
+  and exists (
+    select 1
+    from push_tokens geldig
+    where geldig.token = btrim(dubbel.token)
+  );
+
+update push_tokens
+   set token = btrim(token)
+ where token <> btrim(token);
 
 do $migratie$
 begin
