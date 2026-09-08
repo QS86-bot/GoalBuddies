@@ -785,8 +785,12 @@ function HerinneringInstelling({
  *    op `denied` — alleen nog terug te draaien in de browserinstellingen. Eén
  *    ongevraagde prompt kost je het kanaal permanent.
  *
- * ⚠️ **Alleen op web.** Native wacht op `expo-notifications` (Q-TODO B4); een
- *    knop tonen die daar niets doet is erger dan geen knop.
+ * ⚠️ **Alleen op web**, en de reden is sinds QS8-366 een andere dan hier stond.
+ *    Niet `expo-notifications` — die staat er sinds Q-TODO B4 en `_layout` plugt
+ *    op native `expoPush` in. Wat native mist is de tóestemmingsknop: `expoPush`
+ *    vraagt zelf om toestemming bij het ophalen van een token, dus een tweede
+ *    knop hier zou hetzelfde twee keer doen. Deze knop hoort bij web push, waar
+ *    de toestemming per RFC uit een echte klik moet komen.
  */
 function Meldingen({ userId }: { readonly userId: string }) {
   const sleutel = clientEnv().vapidPublicKey;

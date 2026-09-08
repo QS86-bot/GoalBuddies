@@ -4,17 +4,40 @@ import { supabase } from '../../lib/supabase';
 /**
  * Het pushtoken van dit apparaat — EPIC 11, QS8-91.
  *
- * ⚠️ **`expo-notifications` is nog niet toegevoegd**, en dat is een dependency
- *    die volgens `CLAUDE.md` eerst Quintens toestemming vraagt (Q-TODO B4).
- *    Zolang die er niet is, kan de app geen token ophalen en blijft
- *    `push_tokens` leeg — de hele keten erachter is gebouwd, getest en
- *    gedeployd, maar er gaat niets uit.
+ * ⚠️⚠️ **Hier stond dat `expo-notifications` nog niet toegevoegd was, en dat is
+ *    sinds Q-TODO B4 niet meer waar** (QS8-366). 📏 Nagekeken: de bibliotheek
+ *    staat in `package.json` (~57.0.13), `expo-bron.ts` roept
+ *    `getExpoPushTokenAsync()` aan, en `app/_layout.tsx` zet met één
+ *    `zetPushBron()` de web- óf de native-bron aan. Béíde implementaties van
+ *    `PushBron` bestaan; de rand hieronder is niet meer leeg.
  *
- *    Dit bestand is de rand eromheen, in dezelfde vorm als `reportError` voor
- *    Sentry (Q-TODO B1): één aanroeppunt en één interface. Toestemming krijgen
- *    betekent één implementatie van `PushBron` schrijven en hem hier
- *    inpluggen — geen wijziging in schermen, in de datalaag of in de Edge
- *    Function.
+ * ⚠️ **`push_tokens` is op productie tóch leeg — 📏 nul rijen op élk platform,
+ *    gemeten op 08-09-2026 — en de reden is per platform een andere.** Dat
+ *    verschil doet ertoe, want ze vervallen op verschillende momenten:
+ *
+ *      native   er is geen build uitgerold. Productie is de webbundel op
+ *               Hostinger, en daar loopt `Platform.OS === 'web'`.
+ *      web      de registratie is gebouwd en ingeplugd, maar er is nog geen
+ *               VAPID-sleutelpaar gezet en niemand heeft de knop in Profiel
+ *               ingedrukt. Dat is QS8-124, en dat wacht op Quintens hand.
+ *
+ *    Wie op deze leegte een besluit baseert — "een nieuwe CHECK kan geen
+ *    bestaande rij breken" bijvoorbeeld — telt hem opnieuw. Deze kop is er niet
+ *    voor.
+ *
+ *    Dit bestand blijft de rand eromheen, in dezelfde vorm als `reportError`
+ *    voor Sentry (Q-TODO B1): één aanroeppunt en één interface. Een dérde bron
+ *    erbij is één implementatie van `PushBron` en één `zetPushBron()` — geen
+ *    wijziging in schermen, in de datalaag of in de Edge Function.
+ *
+ * ⚠️ **Waarom hier geen controle onder staat, en dat is een besluit.** De
+ *    verleiding is een script dat commentaar afspeurt op "X ontbreekt" terwijl X
+ *    in `package.json` staat. 📏 Geprobeerd: de énige regel in `src/`, `app/` en
+ *    `supabase/functions/` die op zo'n patroon matcht is de regel hierboven, die
+ *    juist zégt dat de bewering niet meer geldt. Het onderscheid zit in de tijd
+ *    van het werkwoord, en dat is met een grep niet te maken — een controle die
+ *    zijn eigen correctie meldt, leer je uitzetten. Zie de eis in `CLAUDE.md`
+ *    dat een controle die alles meldt erger is dan geen controle.
  *
  * ⚠️ Het token is geen geheim maar wel een identificator van een apparaat. Het
  *    hoort daarom niet in logboeken; `reportError` krijgt hieronder alleen de
@@ -53,10 +76,15 @@ export interface PushBron {
 }
 
 /**
- * De bron zolang er geen `expo-notifications` is.
+ * De bron vóórdat `_layout` er een gezet heeft.
+ *
+ * ⚠️ **Niet meer "de stand zolang er geen bibliotheek is"** (QS8-366): die is er
+ *    sinds Q-TODO B4 wél. Dit is nu de standaard tussen het laden van deze
+ *    module en de eerste `zetPushBron()` — plus het vangnet voor een omgeving
+ *    waar `_layout` niet draait, zoals een test.
  *
  * ⚠️ Geeft `null` en gooit niet. Een app die bij het opstarten omvalt omdat er
- *    geen pushbibliotheek is, is erger dan een app zonder meldingen.
+ *    geen pushbron is, is erger dan een app zonder meldingen.
  */
 export const geenPush: PushBron = {
   haalToken: () => Promise.resolve(null),
@@ -64,7 +92,7 @@ export const geenPush: PushBron = {
 
 let bron: PushBron = geenPush;
 
-/** Zet de echte bron zodra `expo-notifications` er is. Eén aanroep, in `_layout`. */
+/** Zet de bron die bij dit platform hoort. Eén aanroep, in `_layout`. */
 export function zetPushBron(nieuw: PushBron): void {
   bron = nieuw;
 }
