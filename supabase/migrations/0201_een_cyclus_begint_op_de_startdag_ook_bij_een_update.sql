@@ -1,4 +1,4 @@
--- 0200_een_cyclus_begint_op_de_startdag_ook_bij_een_update.sql — de invariant
+-- 0201_een_cyclus_begint_op_de_startdag_ook_bij_een_update.sql — de invariant
 -- van 0198 gold bij INSERT en niet voor de tabel (QS8-357)
 --
 -- ROLLBACK-PAD:
@@ -226,4 +226,4 @@ comment on function public.zet_week_startdag(smallint, date, date) is
   'Zet de week-startdag en verhuist de todo-weekdoelen van de lopende cyclus mee. '
   'Beide cycli moeten vandaag bevatten (0139, QS8-138) én op de bijbehorende '
   'week-startdag vallen — de nieuwe op p_dag, de oude op de dag die nog in het '
-  'profiel staat (0200, QS8-357). Zie migratie 0139 en 0200.';
+  'profiel staat (0201, QS8-357). Zie migratie 0139 en 0201.';

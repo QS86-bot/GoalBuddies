@@ -1,6 +1,6 @@
 # Een invariant bij INSERT is geen invariant
 
-**08-09-2026.** QS8-357. Migratie `0200`.
+**08-09-2026.** QS8-357. Migratie `0201`.
 
 ## Wat er stuk was
 
@@ -128,7 +128,7 @@ vergrendeling. 📏 Zelf gemeten met tien rondes van twee parallelle verzoeken:
 `dow(cycle_start_date)` uit elkaar — de toestand die deze migratie zegt te
 sluiten. Met `for update` op de profielrij: 📏 **nul** van de tien.
 
-⚠️ De race bestond al vóór 0200. Hij hoort hier omdat dít de migratie is die
+⚠️ De race bestond al vóór 0201. Hij hoort hier omdat dít de migratie is die
 beweert dat het gat dicht is, en **een bewering die maar voor één verzoek
 tegelijk geldt, is geen grendel.**
 

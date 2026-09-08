@@ -630,7 +630,7 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
 
   /**
    * ⚠️⚠️ **Een cyclus begint op de week-startdag — óók als een RPC hem verzet.**
-   *    QS8-357, migratie 0200.
+   *    QS8-357, migratie 0201.
    *
    *    0198 vestigt die invariant met een `before insert`-trigger op
    *    `weekly_goals`, en de kop van die migratie zegt met zoveel woorden dat
@@ -746,7 +746,7 @@ describe.skipIf(!rlsTestsConfigured)('de week-startdag verzetten', () => {
      *    willekeurige volgorde. 📏 Gemeten met tien rondes van twee parallelle
      *    verzoeken: **zeven keer** gaven ze allebei `ok: true`, en dan lopen
      *    `week_start_day` en `dow(cycle_start_date)` uit elkaar — precies de
-     *    toestand die 0200 zegt te sluiten.
+     *    toestand die 0201 zegt te sluiten.
      *
      *    Met `for update` op de profielrij: 📏 nul van de tien.
      *
