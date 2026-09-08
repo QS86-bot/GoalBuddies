@@ -320,7 +320,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-78 — badges', () => {
     async () => {
       const mijlpaal = await alice.db
         .from('milestones')
-        .insert({ goal_id: doelId, title: 'Badge via de trigger', order_index: 99, status: 'todo' })
+        .insert({ goal_id: doelId, title: 'Badge via de trigger', order_index: 99 })
         .select('id')
         .single();
       if (mijlpaal.error || mijlpaal.data === null) {
