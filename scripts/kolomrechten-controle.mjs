@@ -1037,54 +1037,65 @@ export const GEEN_AANROEPER = [
       'de policy is `using false` én `with check false`: een reactie op een weekafsluiting ligt vast zodra hij staat. Geen RPC doet het. De grant is puur restant.',
   },
   {
-    tabel: 'group_members',
-    soort: 'INSERT',
-    kolommen: ['group_id', 'role', 'status', 'user_id'],
-    reden:
-      'het schrijven loopt via `create_group()`, `join_group_with_code()` en `beslis_lidmaatschapsverzoek()`. ⚠️ **Vandaag onbereikbaar, en om een reden die nergens anders staat:** de `EXISTS (select 1 from groups …)` ín de policy wordt zélf door `groups_select` = `mag_groep_lezen(id)` gefilterd. Ben je nog lid, dan botst de primaire sleutel; ben je vertrokken, dan zie je de groep niet meer en faalt de EXISTS. **Wordt zwaarder als:** `groups_select` verbreedt — `groups.ontdekbaar` bestaat al als kolom. Dan kan een vertrokken oprichter zichzelf met één POST terugzetten als `role: admin`, zonder uitnodiging. Zie QS8-351.',
-  },
-  {
-    tabel: 'group_members',
-    soort: 'UPDATE',
-    kolommen: ['group_id', 'role', 'status', 'user_id'],
-    reden:
-      'het schrijven loopt via `verlaat_groep()`, `verwijder_lid()`, `beslis_lidmaatschapsverzoek()` en `join_group_with_code()`. ⚠️ Voor een **gewoon lid** is dit dicht: `guard_group_member_update()` (0187) werpt `geen_groepsbeheerder`, en Postgres weegt bij een `UPDATE … WHERE` ook de SELECT-policy mee — een uitgezet lid ziet zijn eigen rij niet eens. ⚠️⚠️ **Maar voor een áctieve beheerder doet die guard een vroege `return new`, en dan is er niets meer.** 📏 Gemeten: een beheerder zet een uitgezet lid rechtstreeks terug op `active` (204), en het eerder gedeelde doel is meteen weer groepszichtbaar. Geen enkele RPC doet dat; `verwijder_lid()` ruimt naast de status ook `goal_group_links` en openstaande `deadline_requests` op, en de rechtstreekse PATCH slaat dat over. Dit is dus geen opruimwerk maar een lid dat zonder toestemming terugkomt — de zwaarste van de zeven in QS8-351.',
-  },
-  {
-    tabel: 'profiles',
-    soort: 'INSERT',
-    kolommen: ['avatar_url', 'display_name', 'focus_areas', 'id', 'locale', 'minutes_per_day', 'onboarded_at', 'reminder_enabled', 'reminder_time', 'reminder_tone', 'share_moves_by_default', 'tz', 'wants_own_goal', 'week_start_day', 'what_breaks_it', 'when_i_do_it'],
-    reden:
-      'de rij komt van de trigger `handle_new_user()`; geen scherm maakt er een. De grendel is niet de policy maar de **primaire sleutel**: `profiles_pkey` op `id`, gecombineerd met `id = auth.uid()` in de `with check`, laat maar één rij per gebruiker bestaan en die staat er al. 📏 Gemeten: een POST geeft `409 23505`. Er is dus niets te winnen, ook niet een tweede rij.',
-  },
-  {
-    tabel: 'user_blocks',
-    soort: 'INSERT',
-    kolommen: ['blocked_id', 'blocker_id'],
-    reden:
-      'het schrijven loopt via `blokkeer()`; de policy eist `blocker_id = auth.uid()`. ⚠️⚠️ **En hier valt een grendel door de grant heen.** `blokkeer()` geeft met opzet `ok: true` voor een profiel dat niet bestaat — de functie zegt er zelf bij dat één antwoord voor beide gevallen voorkomt dat je ermee kunt toetsen óf een account bestaat. Het rechtstreekse pad heeft die gelijkmaker niet: 📏 gemeten geeft een INSERT met een onbestaand id `409 23503` en met een bestaand id `201`. Dat is precies het bestaansorakel dat de RPC dichtzet. Zie QS8-351.',
-  },
-  {
     tabel: 'weekly_goals',
     soort: 'UPDATE',
     kolommen: ['ceiling_text', 'floor_text', 'milestone_id', 'title'],
     reden:
-      'het schrijven loopt via `sluit_weekdoel_af()`, `plan_adempauze()`, `mark_weekly_goal_pending()` en `schuif_weekdoel_door()`; de policy staat de eigenaar toe. ⚠️ De grant staat wél open voor een rechtstreeks verzoek — zie QS8-351.',
+      'het schrijven loopt via `sluit_weekdoel_af()`, `plan_adempauze()`, ' +
+      '`mark_weekly_goal_pending()` en `schuif_weekdoel_door()`; de policy staat de eigenaar toe. ' +
+      '⚠️ **Blijft bewust staan — QS8-351, en dat is een besluit en geen restant.** De vier ' +
+      'kolommen zijn inhoud en geen besluit. 📏 De grendel is de kolomlijst zelf: `status` zit er ' +
+      'níét in, dus een client die `status: \'approved\'` PATCHt krijgt `42501` en kan de ' +
+      'puntenlogica van `sluit_weekdoel_af()` niet omzeilen — gemeten in ' +
+      '`tests/rls/rechten-zonder-aanroeper.test.ts`. Het ergste geval is dat je je eigen week ' +
+      'hernoemt, en een bewerkscherm is aannemelijk (`app/doel/bewerk/` bestaat al voor doelen). ' +
+      '⚠️ Deze regel is pas een grendel doordat déze controle een kolom meldt die er later bij ' +
+      'komt; zonder dat zou hij een gewoonte beschrijven — de vorm die QS8-352 duur maakte.',
   },
   {
-    tabel: 'daily_moves',
+    tabel: 'group_members',
     soort: 'UPDATE',
-    kolommen: ['body', 'id', 'local_date', 'user_id', 'visibility', 'weekly_goal_id'],
+    kolommen: ['group_id', 'role', 'status', 'user_id'],
     reden:
-      '📏 **Niemand schrijft dit, en dat is de zuiverste vorm van deze klasse.** De client doet alleen `insert` en `select` (`modules/completions/api.ts:207` en `:232`) en geen enkele functie in het schema updatet de tabel — nagemeten met `pg_get_functiondef()`. De policy `daily_moves_write` staat de eigenaar wél toe. Zes kolommen, geen aanroeper. Zie QS8-351.',
+      '⚠️⚠️ **Blijft staan, en dat is een omgekeerd besluit — QS8-351.** Deze rij stond in de ' +
+      'eerste opzet van 0197 op de intreklijst, met de gebruikelijke redenering: het schrijven ' +
+      'loopt via `verlaat_groep()`, `verwijder_lid()`, `beslis_lidmaatschapsverzoek()` en ' +
+      '`join_group_with_code()`, allemaal `SECURITY DEFINER`. 📏 Die revoke maakte **21 bestaande ' +
+      'tests in zeven bestanden** rood, en alleen deze ene grant teruggeven maakte alle 100 weer ' +
+      'groen. **Dit pad heeft wél een doel:** 0102 en 0187 zijn er juist voor gebouwd — ' +
+      '`guard_group_member_update()` politieert het, en de audittrigger schrijft een spoor "ook ' +
+      'bij een uitzetting buiten de RPC om". Intrekken maakt die guard onbereikbaar vanaf een ' +
+      'client en heel QS8-314 inhoudsloos. ' +
+      '⚠️ **De grendel is dus de guard en niet de grant**, en dat is wat deze reden noemt. Voor ' +
+      'een gewoon lid werpt hij `geen_groepsbeheerder`; voor een uitgezet lid weegt Postgres bij ' +
+      'een `UPDATE … WHERE` ook de SELECT-policy mee, en dat lid ziet zijn eigen rij niet. ' +
+      '⚠️⚠️ **Ná die vroege `return new` toetst hij niets meer, en dat is breder dan één ' +
+      'geval.** 📏 Gemeten als beheerder, elk in een teruggedraaide transactie: een ánder lid tot ' +
+      '`admin` promoveren, een mede-beheerder — óók de oprichter — naar `member` degraderen, ' +
+      'iemand anders op `paused` zetten, en een uitgezet lid terug op `active`. Van die vier ' +
+      'schrijft alleen de laatste een spoor: `meld_uitzetting` vuurt op `status → inactive` en ' +
+      '`meld_nieuw_lid` op `inactive → active`; **een rolwijziging laat niets achter**. En er is ' +
+      'geen weg terug: 📏 één treffer op `set role` in alle functiedefinities, en die zit in de ' +
+      'overdracht van `verlaat_groep()`. ' +
+      '⚠️ Wat er bij het terugzetten níét gebeurt, en dat is nagemeten in plaats van aangenomen: ' +
+      'de gedeelde doelen komen niet mee. `verwijder_lid()` heeft `goal_group_links` al ' +
+      'opgeruimd (📏 `na-rpc links 0`), dus die overleven alléén als óók de uitzetting een ' +
+      'rechtstreekse PATCH was. Dat is een gat in de guard en geen losse grant; het staat als ' +
+      'QS8-356 en ligt vast in `tests/rls/rechten-zonder-aanroeper.test.ts`.',
   },
-  {
-    tabel: 'goal_interviews',
-    soort: 'UPDATE',
-    kolommen: ['answers', 'goal_id', 'id'],
-    reden:
-      '📏 **Idem: geen enkele schrijver.** De client doet alleen `insert` en `select` (`modules/goals/interview.ts:99` en `:55`), en geen functie updatet de tabel. `goal_interviews_all` staat de eigenaar toe. Drie kolommen, geen aanroeper. Zie QS8-351.',
-  },
+  /*
+   * ⚠️⚠️ **Hier stonden vijf rijen, en die zijn met migratie 0197 vervallen**
+   *    (QS8-351): `group_members` INSERT, `profiles` INSERT, `user_blocks`
+   *    INSERT, `daily_moves` UPDATE en `goal_interviews` UPDATE. De rechten zijn
+   *    ingetrokken, dus er valt niets meer uit te zonderen — `verlopenRegels()`
+   *    meldde ze alle vijf zodra de migratie was toegepast, en dat is precies
+   *    waarvoor die tak in QS8-349 gebouwd is.
+   *
+   *    ⚠️ Twee van de vijf stonden hier met een reden die een **gevolg**
+   *    beschreef en geen slot: "de primaire sleutel botst", "de EXISTS wordt
+   *    zelf gefilterd". Allebei waar, allebei geen besluit, en allebei weg zodra
+   *    er elders iets verandert. Dát is waarom ze weg zijn en niet herschreven.
+   */
 ];
 
 export const NIET_TE_LEZEN = [
