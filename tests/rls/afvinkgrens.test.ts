@@ -118,7 +118,10 @@ describe.skipIf(!rlsTestsConfigured)('de grens om je eigen afvinkingen', () => {
       .from('push_tokens')
       .insert({
         user_id: alice.id,
-        token: `afvinkgrens-${crypto.randomUUID()}`.padEnd(64, 'x'),
+        // ⚠️ Mét de Expo-vorm sinds 0208 (QS8-305): `push_tokens_native_vorm`
+        //    geldt ook voor `adminDb()`, want de CHECK zit op de kolom en niet
+        //    in de RPC. Een verzonnen string kwam er tot die migratie door.
+        token: `ExponentPushToken[afvinkgrens-${crypto.randomUUID()}]`,
         platform: 'android',
       })
       .select('id')
