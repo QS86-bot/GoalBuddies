@@ -17,8 +17,9 @@
  *
  * IJKING — met de hand gedraaid op 08-09-2026, één mutatie per grendel:
  *
- *   A  een `.not('id','in',…)` terugzetten in de vraag  → 1 rood: "bouwt geen
- *      uitsluitlijst in de vraag"
+ *   A  een `.not('id','in',…)` terugzetten in de vraag  → 1 rood
+ *   A2 hetzelfde met `.filter('id','not.in',…)`         → 1 rood (was groen vóór
+ *      de verbreding hieronder)
  *   B  een tweede `await supabase()` in de functie      → 1 rood: "stelt één vraag
  *      en niet twee"
  *   C  de functie hernoemen                             → 2 rood: "vindt de functie
@@ -59,11 +60,33 @@ describe('de koppelbare doelen worden serverzijdig uitgesloten', () => {
     );
   });
 
-  it('bouwt geen uitsluitlijst in de vraag', () => {
+  /**
+   * ⚠️⚠️ **Op de vórm en niet op één methodenaam, en dat is een gemeten
+   *    reparatie.** De eerste versie wees alleen `.not(` af. 📏 De security-review
+   *    op deze branch zette de uitsluiting terug met
+   *    `.filter('id', 'not.in', …)` — functioneel identiek, één woord anders — en
+   *    de grendel bleef groen; tegen de echte PostgREST gaf diezelfde mutatie bij
+   *    420 id's weer `TypeError: fetch failed`. Ik heb dat zelf nagedraaid en het
+   *    klopt. Een grendel die je op één woord zet, loop je met een ander woord om.
+   *
+   *    Wat de belofte werkelijk zegt is: **in deze vraag zit geen lijst die met
+   *    de data meegroeit.** Vandaar de vier filtervormen die zo'n lijst kunnen
+   *    dragen, plus `join(` — het teken dat er überhaupt een lijst tot string
+   *    gemaakt wordt.
+   */
+  it('bouwt geen uitsluitlijst in de vraag, in welke vorm dan ook', () => {
+    // ⚠️ **De aanhalingsteken hoort erbij, en dat is meteen misgegaan.** Zonder
+    //    hem meldde deze grendel `.filter((d): d is DoelMetVoortgang => …)` —
+    //    het opruimen van de uitkomst, geen vraagfilter. Een PostgREST-filter
+    //    neemt een kolomnaam als string; een array-filter neemt een functie. Die
+    //    ene letter is het verschil tussen een grendel en een valse melding.
+    const vormen = [/\.not\(['"`]/, /\.filter\(['"`]/, /\.or\(['"`]/, /\.in\(['"`]/, /\.join\(/];
+    const gevonden = vormen.filter((vorm) => vorm.test(lichaam())).map((v) => v.source);
+
     expect(
-      lichaam(),
-      'een `not(...)` hier betekent dat de id-lijst weer over de URL gaat — zie QS8-345',
-    ).not.toMatch(/\.not\(/);
+      gevonden,
+      'een lijst in de vraag gaat over de URL mee, en die klift rond de 410 id\'s — zie QS8-345',
+    ).toEqual([]);
   });
 
   /**
