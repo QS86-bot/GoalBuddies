@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  alleAsyncExportsIn,
   asyncBeloftesIn,
   beloftefunctiesIn,
   lichaamVanaf,
   lokaleFunctiesIn,
+  parameterEinde,
   uitkomsttypenIn,
   voidTreffersIn,
   zonderCommentaar,
@@ -64,19 +66,86 @@ describe('uitkomsttypenIn', () => {
   });
 });
 
+describe('parameterEinde', () => {
+  it('vindt de sluitende haak van een gewone parameterlijst', () => {
+    const bron = 'f(a, b) rest';
+    expect(bron.slice(parameterEinde(bron, 1))).toBe(' rest');
+  });
+
+  /** ⚠️ Het geval waar de eerste versie op stukliep — de security-review op QS8-340. */
+  it('leest door de haakjes van een pijltype in een parameter heen', () => {
+    const bron = 'f(verwijderRij: () => Promise<void>): Promise<Uitzetresultaat> {}';
+    expect(bron.slice(parameterEinde(bron, 1))).toBe(': Promise<Uitzetresultaat> {}');
+  });
+});
+
 describe('asyncBeloftesIn', () => {
   it('leest naam en beloofd type', () => {
     const bron = 'export async function maakDoel(a: string): Promise<Resultaat<Doel>> {}';
-    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'maakDoel', soort: 'Resultaat' }]);
+    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'maakDoel', soort: 'Resultaat', gelezen: true }]);
   });
 
   it('telt ook een lezer mee — dat is de noemer van de fractie', () => {
     const bron = 'export async function fetchDoelen(): Promise<Pagina<Doel>> {}';
-    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'fetchDoelen', soort: 'Pagina' }]);
+    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'fetchDoelen', soort: 'Pagina', gelezen: true }]);
+  });
+
+  /**
+   * ⚠️ 📏 Dit is `zetMeldingenUit()`, en hij viel op 08-09-2026 uit de zeef: de
+   *    haakjes van het pijltype beëindigden de parameterlijst te vroeg.
+   */
+  it('leest een parameter die zelf haakjes draagt', () => {
+    const bron =
+      'export async function zetMeldingenUit(\n  verwijderRij: () => Promise<void>,\n): Promise<Uitzetresultaat> {}';
+    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'zetMeldingenUit', soort: 'Uitzetresultaat', gelezen: true }]);
+  });
+
+  it('leest een generieke functie', () => {
+    const bron = 'export async function metAvatars<T, K extends keyof T>(r: T[]): Promise<Resultaat<T>> {}';
+    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'metAvatars', soort: 'Resultaat', gelezen: true }]);
+  });
+
+  /**
+   * ⚠️ **Twee verschillende dingen die allebei `soort: null` geven, en het verschil
+   *    ís de grendel.** `Promise<{ ... }>` is geen benoemd type — dat is een geldige
+   *    uitkomst. Een handtekening waar de lezer de draad in kwijtraakt is dat niet,
+   *    en die moet luid zijn. 📏 Van het eerste soort staan er twee in
+   *    `src/modules/notifications/webpush-crypto.ts`.
+   */
+  it('leest een Promise<{ ... }> wel, maar noemt het geen benoemd type', () => {
+    const bron = 'export async function paar(): Promise<{ a: string }> {}';
+    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'paar', soort: null, gelezen: true }]);
+  });
+
+  it('meldt gelezen: false zodra de lezer de draad kwijtraakt', () => {
+    const bron = 'export async function los(f: () =>';
+    expect(asyncBeloftesIn(bron)).toEqual([{ naam: 'los', soort: null, gelezen: false }]);
+  });
+
+  it('geeft soort null bij een functie zonder returnannotatie — geen stille verdwijning', () => {
+    expect(asyncBeloftesIn('export async function los(a: string) {}')).toEqual([
+      { naam: 'los', soort: null, gelezen: true },
+    ]);
   });
 
   it('laat een niet-geëxporteerde functie met rust', () => {
     expect(asyncBeloftesIn('async function intern(): Promise<Resultaat<true>> {}')).toEqual([]);
+  });
+});
+
+describe('alleAsyncExportsIn', () => {
+  /**
+   * ⚠️ **De noemer telt kaal en met opzet met een ándere greep.** Deelden teller
+   *    en noemer hun parser, dan viel een ongelezen functie uit allebei weg en
+   *    bewoog de fractie niet — de blinde vlek die zichzelf niet kan meten.
+   */
+  it('telt ook een functie die de signatuurlezer niet zou lezen', () => {
+    const bron = 'export async function zetMeldingenUit(f: () => Promise<void>) {}';
+    expect(alleAsyncExportsIn(bron)).toEqual(['zetMeldingenUit']);
+  });
+
+  it('laat een niet-geëxporteerde functie met rust', () => {
+    expect(alleAsyncExportsIn('async function intern() {}')).toEqual([]);
   });
 });
 
@@ -140,6 +209,22 @@ describe('lokaleFunctiesIn', () => {
 
   it('vindt een const met een pijlfunctie', () => {
     expect(lokaleFunctiesIn('const bewaar = async () => {};')).toEqual(['bewaar']);
+  });
+
+  /** ⚠️ 📏 Negen van deze vorm staan er in `app/` — security-review op QS8-340. */
+  it('vindt een handler in een useCallback', () => {
+    expect(lokaleFunctiesIn('const beoordeel = useCallback(async () => {}, []);')).toEqual([
+      'beoordeel',
+    ]);
+  });
+
+  it('vindt een functie-expressie', () => {
+    expect(lokaleFunctiesIn('const blokkeer = async function () {};')).toEqual(['blokkeer']);
+  });
+
+  it('laat een gewone const met rust — alleen functies tellen', () => {
+    expect(lokaleFunctiesIn("const titel = 'iets';")).toEqual([]);
+    expect(lokaleFunctiesIn('const aantal = mensen.length;')).toEqual([]);
   });
 
   it('laat een aanroep met rust — alleen declaraties tellen', () => {

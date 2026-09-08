@@ -90,12 +90,60 @@ export function uitkomsttypenIn(bron: string): string[] {
   return [...namen].sort();
 }
 
-/** Elke geëxporteerde async-functie in `bron` met een `Promise<X>` als belofte. */
-export function asyncBeloftesIn(bron: string): { naam: string; soort: string }[] {
-  const uit: { naam: string; soort: string }[] = [];
+/**
+ * De plek ná de parameterlijst die op `vanaf` opent — de bijpassende `)`.
+ *
+ * ⚠️ **Een `[^)]*` volstaat hier niet, en dat is bij de security-review op
+ *    QS8-340 aangewezen.** Een parameter mag zelf haakjes dragen:
+ *    `zetMeldingenUit(verwijderRij: () => Promise<void>): Promise<Uitzetresultaat>`
+ *    stopt zo'n greep al bij de `()` van het pijltype, en dan staat er achter de
+ *    "parameterlijst" geen `: Promise<` meer. 📏 Zes van de 150 geëxporteerde
+ *    async-functies in `src/modules/` vielen er zo uit, waaronder die ene — die
+ *    wél een uitkomsttype belooft. Dezelfde klasse als het issue zelf, één laag
+ *    dieper: de zeef zag minder dan ze beloofde.
+ */
+export function parameterEinde(bron: string, vanaf: number): number {
+  let diepte = 0;
 
-  for (const m of bron.matchAll(/export\s+async\s+function\s+(\w+)\s*\([^)]*\)\s*:\s*Promise<\s*(\w+)/g)) {
-    uit.push({ naam: m[1] as string, soort: m[2] as string });
+  for (let i = vanaf; i < bron.length; i += 1) {
+    if (bron[i] === '(') diepte += 1;
+    else if (bron[i] === ')') {
+      diepte -= 1;
+      if (diepte === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Elke geëxporteerde async-functie in `bron`, met het type dat ze belooft.
+ *
+ * `soort` is `null` als de belofte geen benoemd type is — `Promise<{ ... }>`
+ * bijvoorbeeld. Dat is een geldige uitkomst en geen leesfout.
+ *
+ * ⚠️ **`gelezen` is het verschil tussen die twee, en dat verschil is de grendel.**
+ *    Raakt de lezer halverwege een handtekening de draad kwijt, dan valt de
+ *    functie stil buiten élke controle hierboven — en zolang teller en noemer
+ *    dezelfde lezer deelden, bewóóg de fractie daar niet van. Na de parameterlijst
+ *    hoort een `:` (een returnannotatie) of een `{` (het lichaam) te staan; staat
+ *    er iets anders, dan is de lezer de draad kwijt en niet de code raar.
+ */
+export function asyncBeloftesIn(
+  bron: string,
+): { naam: string; soort: string | null; gelezen: boolean }[] {
+  const uit: { naam: string; soort: string | null; gelezen: boolean }[] = [];
+
+  // De `<...>` is de typeparameterlijst van een generieke functie — zonder dit
+  //    valt `metGetekendeAvatars<T, K extends keyof T>(...)` buiten de lezer.
+  for (const m of bron.matchAll(/export\s+async\s+function\s+(\w+)\s*(?:<[^(]*>)?\s*(?=\()/g)) {
+    const eind = parameterEinde(bron, (m.index ?? 0) + m[0].length);
+    const staart = eind === -1 ? '' : bron.slice(eind, eind + 200);
+    const belofte = /^\s*:\s*Promise<\s*(\w+)/.exec(staart);
+    uit.push({
+      naam: m[1] as string,
+      soort: belofte === null ? null : (belofte[1] as string),
+      gelezen: eind !== -1 && /^\s*[:{]/.test(staart),
+    });
   }
   return uit;
 }
@@ -103,8 +151,20 @@ export function asyncBeloftesIn(bron: string): { naam: string; soort: string }[]
 /** Elke geëxporteerde async-functie in `bron` die een van `soorten` teruggeeft. */
 export function beloftefunctiesIn(bron: string, soorten: ReadonlySet<string>): string[] {
   return asyncBeloftesIn(bron)
-    .filter((f) => soorten.has(f.soort))
+    .filter((f) => f.soort !== null && soorten.has(f.soort))
     .map((f) => f.naam);
+}
+
+/**
+ * Elke `export async function` in `bron`, kaal geteld — de noemer van de fractie.
+ *
+ * ⚠️ **Met opzet een ándere greep dan `asyncBeloftesIn()`.** Deelden teller en
+ *    noemer hun parser, dan zou een functie die de parser níét leest uit allebei
+ *    wegvallen en bewoog de fractie niet — precies het gat dat de security-review
+ *    op QS8-340 aanwees. Een grendel die zijn eigen blinde vlek meet, meet niets.
+ */
+export function alleAsyncExportsIn(bron: string): string[] {
+  return [...bron.matchAll(/export\s+async\s+function\s+(\w+)/g)].map((m) => m[1] as string);
 }
 
 /**
@@ -137,7 +197,14 @@ export function lokaleFunctiesIn(bron: string): string[] {
   for (const m of schoon.matchAll(/(?:^|\n)\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(/g)) {
     namen.add(m[1] as string);
   }
-  for (const m of schoon.matchAll(/(?:^|\n)\s*(?:const|let)\s+(\w+)\s*=\s*(?:async\s*)?\(/g)) {
+  // ⚠️ **Drie rechterkanten en niet één** — aangewezen in de security-review op
+  //    QS8-340. `const x = async () => {}` was gedekt, maar
+  //    `const x = useCallback(async () => {})` en `const x = async function () {}`
+  //    niet, en 📏 van de eerste vorm staan er negen in `app/`. Een schaduw in die
+  //    vorm zou de zeef hiernaast een válse melding laten geven op de lokale
+  //    aanroep, in plaats van een schaduwmelding op de declaratie.
+  const rechts = /(?:^|\n)\s*(?:const|let)\s+(\w+)\s*=\s*(?:async\s+)?(?:\(|function\b|use[A-Z]\w*\s*\()/g;
+  for (const m of schoon.matchAll(rechts)) {
     namen.add(m[1] as string);
   }
   return [...namen].sort();

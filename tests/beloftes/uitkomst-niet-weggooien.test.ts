@@ -4,6 +4,7 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  alleAsyncExportsIn,
   asyncBeloftesIn,
   beloftefunctiesIn,
   lokaleFunctiesIn,
@@ -72,6 +73,9 @@ const WORTEL = join(__dirname, '..', '..');
  *      aanroep. Dat tweede is waarom de schaduw weg moest en niet weggefilterd.
  *   J  de vormtoets op `ok: true`/`ok: false` uitgezet     → 1 rood: de afleiding zelf,
  *      vóór de fractie erover valt
+ *   K  de parameterlezer terug op `\([^)]*\)`               → 1 rood: de leesgrendel,
+ *      met `zetMeldingenUit()` en vijf andere bij naam. De fractie blijft daarbij
+ *      groen — en dát is waarom die grendel er los naast staat.
  */
 
 function bestanden(map: string, exts: readonly string[]): string[] {
@@ -107,11 +111,32 @@ function uitkomstFuncties(soorten: ReadonlySet<string>): string[] {
   return [...namen].sort();
 }
 
-/** Élke geëxporteerde async-functie in `src/modules/` — de noemer van de fractie. */
-function alleAsyncBeloftes(): number {
-  let totaal = 0;
-  for (const pad of modulebestanden()) totaal += asyncBeloftesIn(readFileSync(pad, 'utf8')).length;
-  return totaal;
+/**
+ * Élke `export async function` in `src/modules/` — de noemer van de fractie.
+ *
+ * ⚠️ Kaal geteld, met een ándere greep dan de zeef zelf. Zie `alleAsyncExportsIn()`.
+ */
+function alleAsyncExports(): string[] {
+  const uit: string[] = [];
+  for (const pad of modulebestanden()) uit.push(...alleAsyncExportsIn(readFileSync(pad, 'utf8')));
+  return uit;
+}
+
+/** Elke functie waarvan de signatuurlezer de draad kwijtraakte. */
+function ongelezen(): string[] {
+  const uit: string[] = [];
+  for (const pad of modulebestanden()) {
+    const bron = readFileSync(pad, 'utf8');
+    const gezien = asyncBeloftesIn(bron);
+
+    for (const f of gezien.filter((x) => !x.gelezen)) {
+      uit.push(`${relative(WORTEL, pad)} — ${f.naam}() (handtekening niet gelezen)`);
+    }
+    for (const naam of alleAsyncExportsIn(bron)) {
+      if (!gezien.some((f) => f.naam === naam)) uit.push(`${relative(WORTEL, pad)} — ${naam}()`);
+    }
+  }
+  return uit;
 }
 
 describe('geen enkel scherm gooit een uitkomst weg', () => {
@@ -136,18 +161,37 @@ describe('geen enkel scherm gooit een uitkomst weg', () => {
    *    `toBeGreaterThan(3)` stond groen op 12 van de 74. Daarom meet deze het
    *    aandeel van de bron dat de zeef daadwerkelijk ziet.
    *
-   * 📏 Vandaag 78 van de 144 (54%). De rest is bijna helemaal `fetch*` — lezers,
+   * 📏 Vandaag 79 van de 150 (53%). De rest is bijna helemaal `fetch*` — lezers,
    *    die per definitie geen uitkomst beloven. Zakt dit onder de 40%, dan is er
    *    een schrijvende laag bijgekomen die de zeef niet ziet, of is de afleiding
    *    zelf iets kwijtgeraakt.
    */
   it('ziet een reëel deel van de bron en niet een restje', () => {
-    const totaal = alleAsyncBeloftes();
-    expect(totaal, 'geen enkele export-async met Promise<X> in src/modules').toBeGreaterThan(0);
+    const totaal = alleAsyncExports().length;
+    expect(totaal, 'geen enkele export-async in src/modules').toBeGreaterThan(0);
     expect(
       functies.length / totaal,
       `de zeef ziet ${functies.length} van de ${totaal} async-functies — welk type mist ze?`,
     ).toBeGreaterThan(0.4);
+  });
+
+  /**
+   * ⚠️ **Een functie die de signatuurlezer niet léést, valt stil buiten alles.**
+   *    Hij staat niet in de lijst hierboven, dus de zeef kijkt er nooit naar — en
+   *    zolang teller én noemer dezelfde lezer deelden, bewóóg de fractie er ook
+   *    niet van. 📏 Dat gold op 08-09-2026 voor zes van de 150 functies, waaronder
+   *    `zetMeldingenUit(verwijderRij: () => Promise<void>)`, die wél een
+   *    uitkomsttype belooft: zijn pijltype-parameter draagt haakjes, en de lezer
+   *    greep tot de eerste `)`. Aangewezen in de security-review op QS8-340.
+   *
+   *    Vandaar deze grendel én de losse noemer hierboven: een gat in de lezer is
+   *    voortaan luid, en niet een percentage dat toevallig gelijk blijft.
+   */
+  it('leest élke export-async in src/modules, ook met haakjes in de parameters', () => {
+    expect(
+      ongelezen(),
+      'de signatuurlezer slaat deze functies over; ze vallen daarmee buiten élke grendel hierboven',
+    ).toEqual([]);
   });
 
   /**
