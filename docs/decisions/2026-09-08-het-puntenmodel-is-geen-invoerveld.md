@@ -50,6 +50,13 @@ diende niets. Dat is wat het zo lang onzichtbaar hield.
   mee, dus het puntenplafond van het hele doel klopt daarna ook niet meer.
 * Punten zijn append-only (domeinregel 6): een verkeerde boeking corrigeer je
   met een correctie-record, niet door hem weg te halen.
+* **En het plantte zich voort.** 📏 `schuif_weekdoel_door()` maakt de opvolger
+  met `values (… w.points_ceiling, w.points_floor, w.points_miss …)` — hij
+  kopieert de puntenkolommen van het weekdoel dat je doorschuift. Eén keer een
+  plafond van 5 zetten gaf dus geen incident maar een **reeks**: elke
+  doorgeschoven week nam het mee, zonder dat de client daarna nog iets hoefde
+  te sturen. Dat is de reparatie aan de bron waard in plaats van een controle
+  op de boeking.
 
 📏 Nagemeten op **allebei** de databases — lokaal én het echte project — omdat
 "er is nog niets" een aanname is zodra je hem niet stelt. Rijen met een

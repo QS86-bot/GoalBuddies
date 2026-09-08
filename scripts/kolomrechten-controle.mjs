@@ -863,7 +863,9 @@ export const GEEN_SCHRIJFPAD = [
   },
   /*
    * ⚠️⚠️ **Hier stonden `points_floor` en `points_ceiling`, en die twee rijen
-   *    hielden vier maanden een gat open** (QS8-352). De reden luidde: *"de
+   *    hielden een gat open** (QS8-352) — het recht zelf staat er sinds
+   *    `0001_schema.sql` (20-08-2026), de uitzondering sinds 01-09-2026, de
+   *    commit die deze controle de schrijfkant gaf. De reden luidde: *"de
    *    puntenwaarden komen uit domeinregel 10 en staan als default op de kolom.
    *    Dat de client ze mág overschrijven is een oud recht en geen pad."*
    *

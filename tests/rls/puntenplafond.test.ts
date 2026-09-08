@@ -242,5 +242,37 @@ describe.runIf(rlsTestsConfigured)('het model bepaalt de punten, niet de client'
       },
       TEST_TIMEOUT,
     );
+
+    /**
+     * ⚠️ `sluit_weekdoel_af()` schrijft alleen `status` en raakt de
+     *    puntenkolommen niet aan — maar hij is óók `SECURITY DEFINER` en staat
+     *    met naam in de acceptatiecriteria, dus hij wordt gemeten en niet
+     *    beredeneerd. Een must-allow die je overslaat omdat hij "logisch niet
+     *    geraakt kan worden" is precies de aanname waar dit issue over gaat.
+     */
+    it(
+      'laat sluit_weekdoel_af() een open weekdoel nog afsluiten',
+      async () => {
+        const week = await anna.db
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'af te sluiten',
+            cycle_start_date: addDays(cyclus.startDate, -42),
+          })
+          .select('id')
+          .single();
+        if (week.error) throw new Error(`weekdoel: ${week.error.message}`);
+
+        const sluit = await anna.db.rpc('sluit_weekdoel_af', {
+          p_weekly_goal_id: week.data.id,
+        });
+
+        expect(sluit.error, 'de RPC hoort nog te werken').toBeNull();
+        const uit = (sluit.data ?? {}) as { ok?: boolean; reason?: string };
+        expect(uit.ok, `afsluiten mislukte: ${uit.reason ?? '-'}`).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
   });
 });

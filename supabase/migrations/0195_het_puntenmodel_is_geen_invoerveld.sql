@@ -49,6 +49,10 @@
 --   klopt daarna ook niet meer.
 -- * Punten zijn append-only (domeinregel 6): corrigeren kan alleen met een
 --   correctie-record.
+-- * **Het plantte zich voort.** 📏 `schuif_weekdoel_door()` maakt de opvolger
+--   met `w.points_ceiling, w.points_floor, w.points_miss` uit het weekdoel dat
+--   je doorschuift. Eén keer een plafond van 5 zetten gaf dus geen incident
+--   maar een reeks: elke doorgeschoven week nam het mee.
 --
 -- 📏 Rijen met een afwijkend plafond, een afwijkende vloer of een afwijkend
 --    minpunt: **0** — zowel lokaal als op het echte project (1 weekdoel in
