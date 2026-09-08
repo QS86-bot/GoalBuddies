@@ -249,7 +249,10 @@ describe.skipIf(!rlsTestsConfigured)('melden, blokkeren en uitzetten', () => {
       const alsLid = await f.bram.db.from('reports').select('*');
       expect(alsLid.data ?? [], 'als gewoon lid').toHaveLength(0);
 
-      const promoveer = await f.anna.db
+      // ⚠️ Met `adminDb()` sinds QS8-356: promoveren is geen beheerdershandeling
+      //    meer (0198). Deze test gaat over wie een melding mág lezen, en het
+      //    beheerderschap is er de opstelling voor.
+      const promoveer = await adminDb()
         .from('group_members')
         .update({ role: 'admin' })
         .eq('group_id', f.groep.id)
@@ -736,7 +739,13 @@ describe.skipIf(!rlsTestsConfigured)('melden, blokkeren en uitzetten', () => {
       // ⚠️ Beheerder, want alleen die komt langs `guard_group_member_update()`.
       //    Anna blijft de tweede beheerder, anders slaat de `last_admin`-grendel
       //    toe en toetst dit geval die in plaats van de trigger.
-      const promoveer = await f.anna.db
+      //
+      // ⚠️⚠️ **Met `adminDb()` en niet met een PATCH van anna, sinds QS8-356.**
+      //    Migratie 0198 weigert een beheerder die de rol van een ánder lid
+      //    verandert; promoveren bestaat niet meer als handeling. Dat is hier
+      //    opzet en geen bewijsvoering — deze test gaat over `meld_uitzetting()`
+      //    en niet over wie mag promoveren.
+      const promoveer = await adminDb()
         .from('group_members')
         .update({ role: 'admin' })
         .eq('group_id', f.vindbaar.id)

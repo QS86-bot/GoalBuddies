@@ -146,7 +146,14 @@ describe.skipIf(!rlsTestsConfigured)('een besluit op een lidmaatschapsverzoek', 
     //    `role = 'admin'`. Zonder deze stap toetst de roltest hieronder een rij
     //    die toch al 'member' was, en dan bewaakt hij niets — de vorm van een
     //    grendel die door een eerdere grendel wordt afgevangen.
-    const gepromoveerd = await anna.db
+    //
+    // ⚠️⚠️ **Met `adminDb()` en niet met een PATCH van anna, sinds QS8-356.**
+    //    Migratie 0198 weigert een beheerder die de rol van een ánder lid
+    //    verandert (`rol_van_een_ander`); promoveren bestaat niet meer als
+    //    handeling. Dat raakt deze test niet inhoudelijk — de promotie is hier
+    //    opstelling en geen bewijs — maar het moest wél langs een weg die nog
+    //    bestaat.
+    const gepromoveerd = await adminDb()
       .from('group_members')
       .update({ role: 'admin' })
       .eq('group_id', vindbaar.id)

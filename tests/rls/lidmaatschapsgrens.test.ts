@@ -164,9 +164,15 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
       //    "Nul rijen" is gratis zodra het filter nergens op past. Deze test toont
       //    dat de rij bestaat, dat het filter klopt en dat de weg open is voor wie
       //    hem mag nemen.
+      // ⚠️ **`inactive` en niet `paused`, sinds QS8-356.** Deze test gaat over
+      //    het *bereik* — komt de beheerder bij de rij van een ander? — en niet
+      //    over wélke waarde hij zet. Migratie 0198 weigert een beheerder die een
+      //    ánder op `paused` zet, want niemand schrijft die stand (QS8-325).
+      //    Uitzetten blijft wél een beheerdershandeling, dus dat toont hetzelfde
+      //    bereik zonder een handeling te gebruiken die nergens ontworpen is.
       const poging = await w.alice.db
         .from('group_members')
-        .update({ status: 'paused' })
+        .update({ status: 'inactive' })
         .eq('group_id', w.groupId)
         .eq('user_id', w.bob.id)
         .select('user_id, status');

@@ -23,6 +23,7 @@ const TEST_TIMEOUT = 60_000;
 
 let anna: TestUser;
 let bram: TestUser;
+let carol: TestUser;
 let doelId: string;
 let weekdoelId: string;
 let dagzetId: string;
@@ -36,6 +37,7 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
   beforeAll(async () => {
     anna = await createTestUser('zonderaanroeper-anna');
     bram = await createTestUser('zonderaanroeper-bram');
+    carol = await createTestUser('zonderaanroeper-carol');
 
     const g = await anna.db.rpc('create_group', { group_name: 'Zonder aanroeper' });
     if (g.error) throw new Error(`groep: ${g.error.message}`);
@@ -43,8 +45,10 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
     if (uit.ok !== true || !uit.group) throw new Error(`groep: ${JSON.stringify(g.data)}`);
     groepId = uit.group.id;
 
-    const mee = await bram.db.rpc('join_group_with_code', { code: uit.group.invite_code });
-    if (mee.error) throw new Error(`meedoen: ${mee.error.message}`);
+    for (const wie of [bram, carol]) {
+      const mee = await wie.db.rpc('join_group_with_code', { code: uit.group.invite_code });
+      if (mee.error) throw new Error(`meedoen: ${mee.error.message}`);
+    }
 
     const doel = await anna.db
       .from('goals')
@@ -283,37 +287,34 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
    */
   describe('wat er nog wél rechtstreeks kan, en wat niet meer', () => {
     /**
-     * ⚠️⚠️ **Deze test stond hier eerst als weigering, en dat was fout — hij
-     *    documenteert nu een gat dat blíjft staan.**
+     * ⚠️⚠️ **Deze test legde een gat vast en is nu een weigering — precies zoals
+     *    hij in zijn eigen assertiebericht aankondigde.**
      *
-     *    De eerste opzet van 0197 trok óók `group_members` UPDATE in. 📏 Dat
-     *    maakte 21 bestaande tests in zeven bestanden rood, en alleen die ene
-     *    grant teruggeven maakte ze alle 100 weer groen. **Dat is het antwoord
-     *    op de vraag en niet een lastige suite:** dit recht heeft wél een doel.
-     *    0102 en 0187 zijn er juist voor gebouwd, en de audittrigger schrijft een
-     *    spoor "ook bij een uitzetting buiten de RPC om". Intrekken maakt
-     *    `guard_group_member_update()` onbereikbaar en heel QS8-314 inhoudsloos.
+     *    Bij QS8-351 stond hier dat een actieve beheerder een uitgezet lid met
+     *    één PATCH terugzette, met de melding *"de PATCH werd geweigerd — dan is
+     *    het gat dicht en mag deze test weg"*. Migratie 0198 (QS8-356) heeft dat
+     *    gedaan: terugkomen loopt via `beslis_lidmaatschapsverzoek()`, waar het
+     *    lid er zélf om vraagt.
      *
-     *    ⚠️ **De "geen aanroeper"-meting keek naar `src/` en `app/`, en dat is de
-     *    verkeerde helft.** De client roept het niet aan; de database heeft er
-     *    drie grendels voor. Een recht zonder aanroeper in de app is iets anders
-     *    dan een recht zonder doel.
-     *
-     *    Het gat dat de review op QS8-349 aanwees blijft dus openstaan, en deze
-     *    test legt het vast als **huidige toestand** in plaats van als belofte:
-     *    een actieve beheerder zet een uitgezet lid met één PATCH terug op
-     *    `active`, terwijl `verwijder_lid()` ook `goal_group_links` en
-     *    openstaande `deadline_requests` opruimt. Dat is een gat in de guard en
-     *    geen losse grant; het staat als eigen issue.
+     *    ⚠️ Hij is hier **niet** weggehaald maar omgedraaid, want de belofte van
+     *    dít bestand blijft dezelfde: wat er nog rechtstreeks kan en wat niet.
+     *    De volledige toetsing van de nieuwe grendel staat in
+     *    `beheerdersgrens.test.ts`, met zijn vier gevallen en zijn must-allows.
      */
     it(
-      'legt vast dat een beheerder een uitgezet lid nog rechtstreeks terugzet',
+      'weigert een beheerder die een uitgezet lid rechtstreeks terugzet',
       async () => {
+        // ⚠️ **Carol en niet bram, en dat is een gerepareerde opzet.** Deze test
+        //    zet zijn onderwerp uit de groep, en een uitgezet lid ziet zijn eigen
+        //    rij niet meer. 📏 Gemeten: met bram als onderwerp raakte de roltest
+        //    hieronder daarna nul rijen, kreeg géén fout, en was groen om precies
+        //    de verkeerde reden.
+        //
         // ⚠️ `p_bevestigd` is verplicht: een lid verwijderen is een handeling met
         //    gevolgen (de gedeelde doelen gaan mee), dus de RPC vraagt erom.
         const weg = await anna.db.rpc('verwijder_lid', {
           p_group_id: groepId,
-          p_user_id: bram.id,
+          p_user_id: carol.id,
           p_bevestigd: true,
         });
         if (weg.error) throw new Error(`uitzetten: ${weg.error.message}`);
@@ -324,20 +325,20 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
           .from('group_members')
           .update({ status: 'active' })
           .eq('group_id', groepId)
-          .eq('user_id', bram.id);
+          .eq('user_id', carol.id);
 
-        expect(error, 'de PATCH werd geweigerd — dan is het gat dicht en mag deze test weg').toBeNull();
+        expect(error, 'de beheerder zette het lid rechtstreeks terug').not.toBeNull();
 
         const na = await adminDb()
           .from('group_members')
           .select('status')
           .eq('group_id', groepId)
-          .eq('user_id', bram.id)
+          .eq('user_id', carol.id)
           .single();
         // ⚠️ De statusvocabulaire is `active | inactive | paused` — uitgezet heet
         //    `inactive` en niet `removed`. Nagemeten op
         //    `group_members_status_valid`, niet aangenomen.
-        expect(na.data?.status, 'het lid kwam niet terug — het gat is dicht').toBe('active');
+        expect(na.data?.status, 'het lid stond alsnog weer actief').toBe('inactive');
       },
       TEST_TIMEOUT,
     );
