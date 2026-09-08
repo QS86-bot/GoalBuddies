@@ -64,6 +64,18 @@ afwijkend plafond, een afwijkende vloer of een afwijkend minpunt: **0** (het
 project heeft één weekdoel in totaal). Deze migratie sluit de deur; er valt
 niets te repareren dat al geboekt is.
 
+⚠️⚠️ **En op het echte project staat het gat vandaag nog open.** 📏 Gemeten:
+`has_column_privilege('authenticated','public.weekly_goals','points_ceiling',
+'INSERT')` is daar **true**, en het migratieregister staat op `0186` — 0187 t/m
+0195 zijn nog niet toegepast. Dat is de bekende achterstand uit
+`docs/WERKVOORRAAD.md` §2 en geen nieuw feit, maar het hoort hier te staan in
+plaats van dat dit document de indruk wekt dat de deur overal dicht is.
+
+Alleen 0195 vooruit toepassen kan niet: het register kent één nummering, en een
+migratie overslaan maakt de volgende toepassing een gok. Het gaat mee in de
+volgende ronde, en tot dan is de rem dat er 📏 één weekdoel op dat project staat
+en nul afwijkende rijen.
+
 ## De reparatie
 
 Eén statement.
@@ -127,12 +139,46 @@ plafondmutatie niet.
 verkeerde reden rood is, is niet minder misleidend dan een test die om de
 verkeerde reden groen is — hij bewijst alleen dat er *iets* weigert.
 
-## Waarom niemand het zag
+## Waarom niemand het zag — en de correctie die dat antwoord kreeg
 
-📏 Het recht staat er sinds `0001_schema.sql` (20-08-2026) — de kolommen zijn
-nooit uit de INSERT-grant gehaald die de tabel bij zijn aanmaak kreeg. Negentien
-dagen, en in die tijd is er een kolomrechtencontrole bijgekomen die er langs
-keek.
+⚠️⚠️ **Hier stond eerst dat het recht sinds `0001_schema.sql` was ingeslopen en
+dat niemand er ooit naar gekeken had. Dat was onjuist, en de security-review op
+deze branch mat het na.** 📏 `grep -c "^grant" supabase/migrations/0001_schema.sql`
+geeft **0**: die migratie deelt geen enkel recht uit. Het INSERT-recht kwam uit
+Supabase's `alter default privileges` — de val van onwrikbare regel 4.
+
+**Iemand heeft er wél naar gekeken, en de kolommen met naam opgeschreven.**
+📏 `0043_weekly_goals_aanmaken_en_verwijderen_op_slot.sql` (20-08-2026) trekt de
+tabelbrede grant in en zet er een kolomlijst voor terug — met `points_ceiling`,
+`points_floor` en `points_miss` er letterlijk in.
+
+**En `0044` is zélf de nakomer op een security-review van 0043.** Die review
+vond `points_miss = 0` ("missen gratis"), haalde die kolom uit de grant, en liet
+de andere twee bewust staan. De motivering staat in zijn eigen kop:
+
+> *"0043 liet de punten-kolommen bewust insertable met als argument dat de CHECK
+> uit 0007 ze begrenst. Voor `points_ceiling` en `points_floor` klopt dat (0 t/m
+> 5 is begrensde variatie in je eigen nadeel)."*
+
+⚠️⚠️ **"In je eigen nadeel" is precies omgekeerd.** Een plafond van 5 is 2,5× het
+model in je eigen vóórdeel. En de redenering die 0044 voor `points_miss` wél
+maakte — *"de rollover boekt letterlijk `delta: weekdoel.points_miss`"* — geldt
+één regel hoger woord voor woord voor het plafond: `award_points_on_approval()`
+boekt `punten := w.points_ceiling`. **Het mechanisme was gevonden, op één van de
+drie kolommen toegepast, en voor de andere twee weggeredeneerd.**
+
+**Dat maakt de les een andere en een scherpere.** Niet "een oude default glipte
+erdoor" maar: *een onderbouwing in een migratiekop wordt door de volgende lezer
+als gezag gelezen.* De `GEEN_SCHRIJFPAD`-regel van 01-09-2026 is een afgeleide
+van die ene zin uit 0044 — dezelfde gedachte, anders geformuleerd, drie weken
+later. En daarmee een concrete vervolgvraag die niemand nog gesteld heeft: **welke
+ándere kolommen heeft 0044 met dezelfde motivering laten staan?** Dat staat als
+rij in `docs/ENGINEER-REVIEW.md`.
+
+⚠️ Dit was in dit document, in de kop van 0195 én in `kolomrechten-controle.mjs`
+met een 📏 ernaast opgeschreven zonder dat de grep gedraaid was. Dat is de
+zwaardere helft van de fout: een verkeerd getal is te herkennen, een verkeerd
+getal met een meetteken erbij niet.
 
 ⚠️⚠️ Want dit paar stond in `scripts/kolomrechten-controle.mjs` in
 `GEEN_SCHRIJFPAD` — 📏 sinds 01-09-2026 (QS8-258, `09b49b9`), de commit die die
@@ -163,3 +209,54 @@ voor deze twee en niet voor alle, en het staat als rij in
 * **Geen correctie van geboekte punten.** Er zijn er geen die correctie nodig
   hebben (📏 0 afwijkende rijen), en zouden ze er zijn, dan liep dat via een
   correctie-record (domeinregel 6) en niet via deze migratie.
+
+## Wat de security-review hierop vond
+
+Drie dingen, en alle drie zelf nagemeten voordat ze verwerkt zijn.
+
+**1. Deze migratie maakte een bestaande test blind — en dat is de zwaarste.**
+`tests/rls/policies.test.ts:1189` bewaakte de CHECK uit 0007 door als échte
+gebruiker `points_ceiling: 100_000` te proberen en te eisen dat er *íets*
+weigerde. Vóór 0195 was dat `23514`, de CHECK. Erna is het `42501`, de
+ontbrekende kolomgrant — en die komt eerder.
+
+📏 Zelf nagemeten: `alter table weekly_goals drop constraint
+weekly_goals_points_bounded`, daarna die test draaien → **groen**. De test las
+als bewijs voor 0007 en was dat niet meer.
+
+⚠️⚠️ **Dit is exact regel 18 vraag 3, toegepast op een test die niet in de diff
+stond.** Ik heb die vraag voor mijn eigen nieuwe tests gesteld en beantwoord —
+en niet voor de test die door mijn wijziging van betekenis veranderde. **Een
+revoke verandert wélke grendel als eerste weigert, en daarmee wat elke
+bestaande must-deny op die kolom nog toetst.** Dat is een vraag die bij elke
+intrekking hoort en die nergens opgeschreven stond.
+
+De CHECK is bovendien niet overbodig geworden maar juist eenzijdig: hij is
+vanaf nu de énige rem voor de schrijvers die er wél bij kunnen — `service_role`,
+de rollover, en `schuif_weekdoel_door()` die de kolommen kopieert. Opgelost door
+hem te toetsen op een schrijver die hem nog kán raken (`adminDb()`, verwacht
+`23514`), en `policies.test.ts` de nieuwe waarheid te laten stellen (`42501`)
+in plaats van "niet null".
+
+⚠️ **En die nieuwe CHECK-test moest zelf ook gerepareerd worden.** Het tweede
+geval stond op `points_miss: 3`, en 📏 dat bleef groen mét de CHECK gedropt:
+`points_miss <= 0` is een éigen, oudere CHECK (`weekly_goals_miss_not_positive`)
+die het geval al afving. `-100` valt alleen op de ondergrens uit 0007. Dezelfde
+val als bij de vloertest hierboven, twee keer op één dag — het is de
+standaardfout bij een tabel met meerdere CHECKs.
+
+**2. De herkomst die ik opschreef, klopte niet.** Zie de sectie hierboven; dat
+is met de correctie erin herschreven in plaats van vervangen, want de fout is
+het punt.
+
+**3. Het plafond is dicht, het volume niet.** `cycle_start_date` staat nog in de
+INSERT-kolomgrant en draagt **geen enkele CHECK** — 📏 zelf nagemeten, nul rijen
+in `pg_constraint`. De boeking neemt de datum over, en op `completion_approvals`
+staat 📏 geen dagteller. Twee accounts in één open groep kunnen daarmee het
+klassement volpompen zonder één recht te overtreden. Dat is een eigen grens en
+niet deze; het staat als **QS8-354** en niet als extra commit op deze branch.
+`groups.tz` — waar een beheerder met één PATCH de groepsklok van domeinregel 1
+verzet — staat als **QS8-355**.
+
+⚠️ Wat de review als **niet** gemeten meldde en wat hierna alsnog gemeten is:
+het echte project. Zie de vorige sectie.

@@ -183,6 +183,72 @@ describe.runIf(rlsTestsConfigured)('het model bepaalt de punten, niet de client'
     );
   });
 
+  /**
+   * ⚠️⚠️ **Deze suite staat hier omdat 0195 een bestaande test blind maakte, en
+   *    dat is een bevinding uit de security-review op dit issue.**
+   *
+   *    `policies.test.ts` bewaakte `weekly_goals_points_bounded` (0007) door als
+   *    échte gebruiker `points_ceiling: 100_000` te proberen en te eisen dat er
+   *    *iets* weigerde. Vóór 0195 was dat de CHECK (`23514`); erna is het de
+   *    ontbrekende kolomgrant (`42501`), en die komt eerder. 📏 Nagemeten door de
+   *    CHECK met de hand te droppen: die test bleef groen.
+   *
+   *    De CHECK is daarmee niet overbodig geworden maar juist eenzijdig: hij is
+   *    vanaf nu de énige rem voor de schrijvers die er wél bij kunnen —
+   *    `service_role`, de rollover-job en de definer-functies die de kolommen
+   *    kopiëren. Dat is precies het pad waarlangs een importeur of een latere
+   *    migratie hem sloopt zonder dat er iets rood wordt.
+   *
+   *    Dus toetst deze suite hem op een schrijver die hem nog kán raken.
+   */
+  describe('de CHECK uit 0007 blijft de rem voor wie er wél bij kan', () => {
+    it(
+      'weigert een plafond boven de vijf, ook voor service_role',
+      async () => {
+        const { error } = await adminDb()
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'absurd plafond',
+            cycle_start_date: addDays(cyclus.startDate, -49),
+            points_ceiling: 100_000,
+          });
+
+        expect(error?.code, 'weekly_goals_points_bounded hangt er niet meer').toBe('23514');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **De waarde is `-100` en niet `3`, en dat is een gerepareerde ijking.**
+     *    Hier stond eerst een *positief* minpunt, en 📏 dat bleef groen toen
+     *    `weekly_goals_points_bounded` gedropt werd: `points_miss <= 0` is een
+     *    éigen, oudere CHECK (`weekly_goals_miss_not_positive`), en die ving het
+     *    geval al af. De test meldde dus een grendel die hij niet raakte.
+     *
+     *    `-100` valt alleen op de ondergrens (`points_miss >= -5`), en die staat
+     *    nergens anders. Zelfde reden dat het plafond op 100.000 staat en niet
+     *    onder de vloer: `weekly_goals_points_ordered` zou dat laatste al
+     *    weigeren.
+     */
+    it(
+      'weigert een minpunt onder de vijf, ook voor service_role',
+      async () => {
+        const { error } = await adminDb()
+          .from('weekly_goals')
+          .insert({
+            goal_id: doelId,
+            title: 'minpunt te diep',
+            cycle_start_date: addDays(cyclus.startDate, -56),
+            points_miss: -100,
+          });
+
+        expect(error?.code, 'de ondergrens op points_miss hangt er niet meer').toBe('23514');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('de must-allows', () => {
     it(
       'laat een gewoon weekdoel gewoon aanmaken, met het model uit de defaults',

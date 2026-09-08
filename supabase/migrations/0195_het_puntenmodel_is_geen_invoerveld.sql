@@ -63,8 +63,28 @@
 -- Waarom niemand het zag
 -- ---------------------------------------------------------------------------
 --
--- 📏 Het recht staat er sinds `0001_schema.sql` (20-08-2026): de kolommen zijn
---    nooit uit de INSERT-grant gehaald die de tabel bij zijn aanmaak kreeg.
+-- ⚠️⚠️ **Hier stond eerst dat het recht sinds `0001_schema.sql` was ingeslopen.
+--    Dat is onjuist, en de security-review op deze branch mat het na.** 📏 0001
+--    deelt geen enkel recht uit (nul `grant`-regels); het INSERT-recht kwam uit
+--    Supabase's `alter default privileges`.
+--
+--    📏 `0043` trekt die tabelbrede grant in en zet er een kolomlijst voor
+--    terug, met `points_ceiling`, `points_floor` en `points_miss` er letterlijk
+--    in. En `0044` is zélf de nakomer op een security-review van 0043: die
+--    haalde `points_miss` eruit ("missen was gratis te maken") en liet de andere
+--    twee bewust staan, met deze motivering in zijn kop:
+--
+--      "0043 liet de punten-kolommen bewust insertable met als argument dat de
+--       CHECK uit 0007 ze begrenst. Voor `points_ceiling` en `points_floor`
+--       klopt dat (0 t/m 5 is begrensde variatie in je eigen nadeel)."
+--
+-- ⚠️⚠️ **"In je eigen nadeel" is precies omgekeerd** — een plafond van 5 is 2,5×
+--    het model in je eigen vóórdeel. En de redenering die 0044 voor
+--    `points_miss` wél maakte ("de rollover boekt letterlijk
+--    `delta: weekdoel.points_miss`") geldt woord voor woord voor het plafond:
+--    `award_points_on_approval()` boekt `punten := w.points_ceiling`. Het
+--    mechanisme was gevonden, op één van de drie kolommen toegepast, en voor de
+--    andere twee weggeredeneerd.
 --
 -- ⚠️⚠️ En in `scripts/kolomrechten-controle.mjs` stond dit paar sinds
 --    01-09-2026 in `GEEN_SCHRIJFPAD`, met als reden: *"Dat de client ze mág

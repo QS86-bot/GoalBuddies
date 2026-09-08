@@ -1184,8 +1184,23 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
       TEST_TIMEOUT,
     );
 
-    // ⚠️ Gedicht in 0007. De enige constraints waren `ceiling >= floor` en
-    //    `miss <= 0`, dus een weekdoel met 100.000 punten mocht gewoon.
+    /**
+     * ⚠️⚠️ **Deze test toetst sinds QS8-352 iets ánders dan waarvoor hij
+     *    geschreven is, en dat staat hier omdat het bijna stil gebeurde.**
+     *
+     *    Hij is gemaakt voor de CHECK uit 0007 (`weekly_goals_points_bounded`)
+     *    en eiste alleen dat er *íets* weigerde. Migratie 0195 haalde
+     *    `points_ceiling` uit de INSERT-kolomgrant van `authenticated`, en die
+     *    weigering komt eerder: `42501` in plaats van `23514`. 📏 Nagemeten door
+     *    de CHECK met de hand te droppen — deze test bleef groen, dus hij
+     *    bewaakte 0007 niet meer.
+     *
+     *    Hij staat er nog omdat de belofte *"een client kiest zijn eigen plafond
+     *    niet"* het waard is om vanuit de policysuite te bewaken, maar dan wel
+     *    met de foutcode erbij: een assertie op "niet null" laat elke volgende
+     *    verschuiving opnieuw ongemerkt passeren. De CHECK zelf wordt getoetst
+     *    in `puntenplafond.test.ts`, op een schrijver die er nog bij kan.
+     */
     it(
       'laat geen absurd puntenplafond op een weekdoel zetten',
       async () => {
@@ -1198,7 +1213,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           cycle_start_date: f.cycleStart,
         });
 
-        expect(error).not.toBeNull();
+        expect(error?.code, 'de kolomgrant uit 0195 weigert dit vóór de CHECK').toBe('42501');
       },
       TEST_TIMEOUT,
     );
