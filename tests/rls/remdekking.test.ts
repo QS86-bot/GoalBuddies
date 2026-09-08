@@ -32,12 +32,42 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    wordt hier rood — en dat is de bedoeling: dan is de afspraak zichtbaar
  *    verbroken in plaats van stil.
  *
+ * ⚠️⚠️ **Maar de naam alleen is niet genoeg, en de eerste versie van deze test
+ *    keek alleen daarnaar.** Een rem die `AFTER` is, of `FOR EACH STATEMENT`, of
+ *    uitgezet, remt niets — hij staat er alleen. 📏 De security-review van 08-09
+ *    heeft vijf van die vormen gemeten en ze waren alle vijf groen; met
+ *    `doelinterviews_rem` als `after insert … for each statement` kostte een
+ *    geweigerde batch van 20.000 weer 3008 kB bij nul overgebleven rijen.
+ *
+ *    ⚠️ **En dat is de waarschijnlijkste fout van allemaal**, want de dagteller
+ *    ernaast *is* `after insert … for each statement`. Wie de volgende rem
+ *    schrijft door de vorm van zijn buurman te kopiëren, landt er precies op.
+ *    Vandaar dat de query nu `tgtype` en `tgenabled` leest.
+ *
  * IJKING — met de hand gedraaid op 08-09-2026:
  *
  *   A  `drop trigger dagzetten_rem on daily_moves`
  *      → 1 rood: 'elke dagteller heeft een rem', met `daily_moves` in de melding
  *   B  een teller zonder rem toevoegen (`create trigger proef_dagplafond …`)
  *      → 1 rood, met die tabel erbij
+ *   C  de rem `for each statement` maken in plaats van `for each row`
+ *      → 1 rood
+ *   D  de rem `after insert` maken in plaats van `before insert`
+ *      → 1 rood
+ *   E  `alter table … disable trigger` op de rem
+ *      → 1 rood
+ *   F  `dagzetten_rem` naar `rem_doelinterviews()` laten wijzen — goede naam,
+ *      goede vorm, verkeerde tabel
+ *      → 1 rood
+ *
+ *   ⚠️ C t/m F waren vóór de reparatie alle vier **groen**. Regel 18 vraag 3:
+ *      de eerste ijking brak de aanwézigheid van de rem, en dat is niet de as
+ *      waarlangs deze fout binnenkomt.
+ *
+ *   ⚠️ F kwam pas boven bij het náschrijven van deze tabel: hij stond er als
+ *      resultaat terwijl hij niet gemeten was, en bleek groen. Dat is dezelfde
+ *      fout een laag hoger — een ijkingstabel die je invult uit wat je denkt
+ *      dat de query doet, is zelf een aanname.
  */
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -58,6 +88,20 @@ function tellersZonderRem(): string[] {
           where r.tgrelid = t.tgrelid
             and not r.tgisinternal
             and r.tgname = replace(t.tgname, '_dagplafond', '_rem')
+            -- ⚠️⚠️ **De vorm telt, niet alleen de naam.** Zie de kop: een rem die
+            --    AFTER of FOR EACH STATEMENT is, remt niets — en dat is precies
+            --    de vorm van de dagtellers ernaast, dus de meest waarschijnlijke
+            --    fout van wie er een bijschrijft.
+            and (r.tgtype & 2) = 2   -- BEFORE
+            and (r.tgtype & 1) = 1   -- FOR EACH ROW
+            and (r.tgtype & 4) = 4   -- INSERT
+            and r.tgenabled = 'O'    -- en hij staat aan
+            -- ⚠️ En het is de rem van *deze* tabel. Een trigger dagzetten_rem
+            --    die rem_doelinterviews() aanroept heeft de goede naam en de
+            --    goede vorm, en telt in de sleutel van een andere tabel tegen
+            --    een ander plafond. 📏 Zonder deze regel bleef die mutatie groen.
+            and r.tgfoid::regproc::text
+                  = 'rem_' || replace(t.tgname, '_dagplafond', '')
        )
      order by 1
   `);
@@ -88,6 +132,10 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
               where not tgisinternal and tgname like '%\\_dagplafond'`).trim(),
     );
 
-    expect(aantal, 'er is geen enkele dagteller gevonden; de query zoekt iets verkeerds').toBeGreaterThan(10);
+    // ⚠️ Een exact getal en geen ondergrens. Er stond `> 10` bij veertien
+    //    tellers: vier hadden kunnen verdwijnen zonder dat deze zelftoets
+    //    aansloeg. Komt er een teller bij, dan hoort dit getal mee te bewegen —
+    //    en dan kijkt er iemand naar of er ook een rem bij hoort.
+    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(14);
   }, 60_000);
 });

@@ -13,8 +13,10 @@
 --   drop function if exists public.rem_dagzetten();
 --   drop function if exists public.rem_doelkoppelingen();
 --   drop function if exists public.rem_doelinterviews();
---   -- en `sleutelzetters()` terugzetten op de definitie uit 0200:
---   -- die versie kent de vijf sleutels en de negen tellers, niet deze vijf.
+--   -- en `sleutelzetters()` terugzetten op de definitie uit **0204**, niet 0200:
+--   -- die van 0200 draagt `app.hervat_lidmaatschap` nog, en die sleutel is met
+--   -- 0204 vervallen. Zie het blok onderaan; dit rollbackpad wees eerst naar
+--   -- precies de versie waar die waarschuwing over gaat.
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
