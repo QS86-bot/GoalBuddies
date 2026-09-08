@@ -142,7 +142,7 @@ async function vraagJob(
   });
 
   if (error) {
-    reportError(error, 'ai.vraag', { goal_id: goalId, kind, code: error.code });
+    reportError(error, 'ai.vraag', { goal_id: goalId, kind });
     return { ok: false, melding: t('coach.starten_mislukt') };
   }
 
@@ -231,7 +231,7 @@ export async function fetchJob(jobId: string): Promise<Job | null> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'ai.job', { job_id: jobId, code: error.code });
+    reportError(error, 'ai.job', { job_id: jobId });
     return null;
   }
 

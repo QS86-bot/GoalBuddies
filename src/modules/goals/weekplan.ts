@@ -68,7 +68,7 @@ export async function fetchWeekplan(goalId: string): Promise<readonly Weekplanst
     .limit(100);
 
   if (error) {
-    reportError(error, 'weekplan.list', { goal_id: goalId, code: error.code });
+    reportError(error, 'weekplan.list', { goal_id: goalId });
     throw new Error(t('weekplan.laden_mislukt'));
   }
 
@@ -103,7 +103,7 @@ export async function fetchIngeschovenDezeCyclus(
     // ⚠️ Zacht: dit is een melding bovenop het hoofdscherm en geen gegeven dat
     //    het scherm nodig heeft. Een lege verzameling betekent "geen melding",
     //    en dat is beter dan een hoofdscherm dat niet laadt.
-    reportError(error, 'weekplan.ingeschoven', { code: error.code });
+    reportError(error, 'weekplan.ingeschoven');
     return new Set();
   }
 
@@ -150,7 +150,7 @@ export async function maakWeekplan(
   const { data, error } = await supabase().from('weekly_plan_steps').insert(rijen).select('*');
 
   if (error) {
-    reportError(error, 'weekplan.create', { goal_id: goalId, code: error.code });
+    reportError(error, 'weekplan.create', { goal_id: goalId });
     return { ok: false, melding: t('weekplan.opslaan_mislukt') };
   }
 
@@ -170,7 +170,7 @@ async function hoogsteVolgnummer(goalId: string): Promise<number> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'weekplan.hoogste', { goal_id: goalId, code: error.code });
+    reportError(error, 'weekplan.hoogste', { goal_id: goalId });
     return 0;
   }
 
@@ -210,7 +210,7 @@ export async function stelWeekplanstapBij(
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'weekplan.update', { code: error.code });
+    reportError(error, 'weekplan.update');
     return { ok: false, melding: t('weekplan.opslaan_mislukt') };
   }
 
@@ -234,7 +234,7 @@ export async function verwijderWeekplanstap(id: string): Promise<Resultaat<true>
     .select('id');
 
   if (error) {
-    reportError(error, 'weekplan.delete', { code: error.code });
+    reportError(error, 'weekplan.delete');
     return { ok: false, melding: t('weekplan.verwijderen_mislukt') };
   }
 
@@ -267,7 +267,7 @@ export async function herordenWeekplan(
   });
 
   if (error) {
-    reportError(error, 'weekplan.reorder', { goal_id: goalId, code: error.code });
+    reportError(error, 'weekplan.reorder', { goal_id: goalId });
     return { ok: false, melding: t('weekplan.opslaan_mislukt') };
   }
 
@@ -306,7 +306,7 @@ export async function startWeekplanstapNu(
   });
 
   if (error) {
-    reportError(error, 'weekplan.start', { goal_id: goalId, code: error.code });
+    reportError(error, 'weekplan.start', { goal_id: goalId });
     return { ok: false, melding: t('weekplan.starten_mislukt') };
   }
 

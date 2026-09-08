@@ -56,7 +56,7 @@ export async function fetchRisico(goalId: string): Promise<Risico | null> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'goals.risk', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.risk', { goal_id: goalId });
     return null;
   }
 
@@ -81,7 +81,7 @@ export async function fetchRisicos(
     .in('goal_id', [...goalIds]);
 
   if (error) {
-    reportError(error, 'goals.risks', { code: error.code });
+    reportError(error, 'goals.risks');
     return new Map();
   }
 

@@ -120,7 +120,7 @@ export async function registreerPushToken(userId: string): Promise<void> {
   });
 
   if (error) {
-    reportError(error, 'push.register', { code: error.code });
+    reportError(error, 'push.register');
     return;
   }
 
@@ -145,5 +145,5 @@ export async function verwijderPushToken(): Promise<void> {
 
   const { error } = await supabase().from('push_tokens').delete().eq('token', gevonden.token);
 
-  if (error) reportError(error, 'push.unregister', { code: error.code });
+  if (error) reportError(error, 'push.unregister');
 }
