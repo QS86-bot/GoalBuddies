@@ -55,6 +55,19 @@ interface Fixture {
   groupId: string;
   /** De cyclus die alice gemist heeft en die door een pas gered is. */
   gemisteCyclus: IsoDate;
+  /**
+   * De lopende cyclus van beide gebruikers.
+   *
+   * ⚠️ **Bestaat sinds QS8-354, en de aanleiding is dat de cliëntzijdige
+   *    inserts hieronder op vaste datums in maart en april 2026 stonden.**
+   *    Migratie 0197 laat een client alleen nog een cyclus binnen 52 cycli rond
+   *    vandaag schrijven, dus zo'n vaste datum werkt vandaag en niet meer over
+   *    een jaar — een test die op een willekeurige dag in de toekomst rood
+   *    wordt, en dan op iets dat met zijn onderwerp niets te maken heeft. De
+   *    opbouw die via `adminDb()` loopt houdt zijn vaste datums: die valt buiten
+   *    de grendel en kan dus niet verlopen.
+   */
+  cyclus: IsoDate;
 }
 
 interface Stand {
@@ -176,7 +189,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
     if (verbruikt.error) throw new Error(`verbruiken: ${verbruikt.error.message}`);
     if (verbruikt.data !== true) throw new Error('opbouw: de pas werd niet verbruikt');
 
-    f = { alice, bob, aliceGoalId, bobGoalId, groupId, gemisteCyclus };
+    f = { alice, bob, aliceGoalId, bobGoalId, groupId, gemisteCyclus, cyclus: basis.startDate };
   }, SETUP_TIMEOUT);
 
   afterAll(async () => {
@@ -574,7 +587,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const { error } = await f.bob.db.from('weekly_goals').insert({
         goal_id: f.bobGoalId,
         title: 'zelf goedgekeurd',
-        cycle_start_date: '2026-03-02',
+        cycle_start_date: addDays(f.cyclus, -7 * 3),
         status: 'approved',
       });
 
@@ -599,7 +612,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
           title: 'gewoon weekdoel',
           floor_text: 'de slechte week',
           ceiling_text: 'de goede week',
-          cycle_start_date: '2026-03-16',
+          cycle_start_date: addDays(f.cyclus, -7 * 4),
         })
         .select('id, status')
         .single();
@@ -1140,7 +1153,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const { error } = await f.bob.db.from('weekly_goals').insert({
         goal_id: f.bobGoalId,
         title: 'gratis missen',
-        cycle_start_date: '2026-04-06',
+        cycle_start_date: addDays(f.cyclus, -7 * 5),
         points_miss: 0,
       });
 
@@ -1159,7 +1172,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-81 — Weekpassen', () => {
       const { error } = await f.bob.db.from('weekly_goals').insert({
         goal_id: f.aliceGoalId,
         title: 'op andermans doel',
-        cycle_start_date: '2026-04-13',
+        cycle_start_date: addDays(f.cyclus, -7 * 6),
       });
 
       expect(error).not.toBeNull();

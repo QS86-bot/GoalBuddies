@@ -22,14 +22,25 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { groepsperiodeVan } from '../../src/modules/buddies/periods';
-import { now } from '../../src/shared/time';
+import { now, userCycle, type TimeZone } from '../../src/shared/time';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 const SETUP_TIMEOUT = 240_000;
 
-/** De cyclus waarin alle weekdoelen in dit bestand staan. */
-const CYCLUS_START = '2026-09-07';
+/**
+ * De cyclus waarin alle weekdoelen in dit bestand staan — de lopende.
+ *
+ * ⚠️ **Stond tot QS8-354 op `'2026-09-07'`.** Migratie 0197 laat een client
+ *    alleen nog een cyclus binnen 52 cycli rond vandaag schrijven, en de inserts
+ *    hieronder gaan via gewone accounts. Een vaste datum werkt dan vandaag en
+ *    niet meer over een jaar — een test die op een willekeurige dag in de
+ *    toekomst rood wordt op iets dat met zijn onderwerp niets te maken heeft.
+ */
+const CYCLUS_START = userCycle(
+  { weekStartDay: 1, tz: 'Europe/Amsterdam' as TimeZone },
+  now(),
+).startDate;
 
 /** Dag 0..6 van die cyclus — `afvinking_binnen_de_cyclus` laat alleen die zeven toe. */
 function dagInCyclus(dag: number): string {

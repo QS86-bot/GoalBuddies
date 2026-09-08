@@ -193,6 +193,17 @@ interface Wereld {
   wisGoalId: string;
   eigenWisGoalId: string;
   vandaag: IsoDate;
+  /**
+   * De eerstvolgende cyclusstart van de eigenaar.
+   *
+   * ⚠️ **`schuif_weekdoel_door()` krijgt hem sinds QS8-354 en niet meer
+   *    `vandaag + 7`.** Migratie 0197 weigert een `cycle_start_date` die niet op
+   *    de week-startdag van de eigenaar valt, en zeven dagen na vandaag is dat
+   *    zes van de zeven dagen niet. De app geeft de RPC ook een echte
+   *    cyclusstart mee (`weekly.ts:306`), dus dit is bovendien de getrouwere
+   *    fixture.
+   */
+  volgendeCyclus: IsoDate;
 }
 
 let w: Wereld;
@@ -203,6 +214,10 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
     const groepsgenoot = await createTestUser('def-genoot');
     const admin = adminDb();
     const vandaag = localDateIn('UTC' as TimeZone, now()) as IsoDate;
+    const volgendeCyclus = addDays(
+      userCycle({ weekStartDay: 1, tz: 'UTC' as TimeZone }, now()).startDate,
+      7,
+    );
 
     const groep = await eigenaar.db.rpc('create_group', { group_name: 'Definerpoorten' });
     const gd = groep.data as unknown as { ok?: boolean; group?: { id: string; invite_code: string } };
@@ -304,6 +319,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
       wisGoalId,
       eigenWisGoalId,
       vandaag,
+      volgendeCyclus,
     };
   }, SETUP_TIMEOUT);
 
@@ -510,7 +526,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
 
         const poging = await w.groepsgenoot.db.rpc('schuif_weekdoel_door', {
           p_weekly_goal_id: w.gemistWeekId,
-          p_cycle_start_date: addDays(w.vandaag, 7),
+          p_cycle_start_date: w.volgendeCyclus,
         });
         if (poging.error) throw new Error(`aanroep: ${poging.error.message}`);
 
@@ -540,7 +556,7 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarspoort van de definer-RPCs', ()
     it(
       'de eigenaar schuift zijn eigen gemiste weekdoel wél door',
       async () => {
-        const nieuweStart = addDays(w.vandaag, 7);
+        const nieuweStart = w.volgendeCyclus;
         const poging = await w.eigenaar.db.rpc('schuif_weekdoel_door', {
           p_weekly_goal_id: w.eigenGemistWeekId,
           p_cycle_start_date: nieuweStart,

@@ -188,7 +188,20 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     //    nergens mee en bewijst deze test niets.
     const vroegste = addDays(eigenDatum, richting > 0 ? -7 : -6);
 
-    const weekdoel = await eigenaar.db.from('weekly_goals').insert({
+    // ⚠️ **Deze insert gaat sinds QS8-354 via `adminDb()` en niet meer via
+    //    `eigenaar.db`.** Migratie 0197 weigert een `cycle_start_date` die niet
+    //    op de week-startdag van de eigenaar valt, en `vroegste` ligt daar per
+    //    ontwerp naast: hij is uit de twee klokken afgeleid en niet uit de
+    //    kalender van de gebruiker. In de `richting > 0`-tak valt hij toevallig
+    //    wél goed (zeven dagen terug is dezelfde weekdag), in de andere tak
+    //    nooit — dan zou deze suite de helft van de tijd rood zijn op een
+    //    grendel die met de radar niets te maken heeft.
+    //
+    //    Dat de opbouw hier de rol van de server aanneemt is precies wat 0197
+    //    bedoelt: de aanvalsvector is de client, en dát die kant dicht zit staat
+    //    onder test in `tests/rls/cyclusgrens.test.ts`. Deze test gaat over de
+    //    klok waarop `herbereken_risico()` rekent, niet over wie de rij schrijft.
+    const weekdoel = await adminDb().from('weekly_goals').insert({
       goal_id: vensterDoel.data.id,
       title: 'RISICOKLOK-WEEKDOEL',
       // ⚠️ **Geen enkele puntenkolom staat in deze insert, en sinds QS8-352 kán
@@ -247,7 +260,13 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     //      richting -1: precies andersom, met de cyclus op eigenDatum-28.
     const randDag = addDays(eigenDatum, richting > 0 ? -29 : -28);
 
-    const randWeekdoel = await eigenaar.db.from('weekly_goals').insert({
+    // ⚠️ **Via `adminDb()`, om dezelfde reden als het weekdoel hierboven.**
+    //    `randDag` is uit de twee klokken afgeleid en niet uit de kalender van de
+    //    eigenaar, dus hij valt zes van de zeven dagen naast diens week-startdag —
+    //    en migratie 0197 weigert dat aan de clientkant. Deze insert was
+    //    afwisselend groen en rood naar de zone die deze suite die dag koos; de
+    //    grendel maakte dat zichtbaar.
+    const randWeekdoel = await adminDb().from('weekly_goals').insert({
       goal_id: randDoel.data.id,
       title: 'RISICOKLOK-RANDWEEKDOEL',
       // ⚠️ Zelfde reden als hierboven: de puntenkolommen komen uit de defaults.
