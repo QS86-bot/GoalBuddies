@@ -70,6 +70,15 @@ enige weg is. 0205 is diezelfde vorm, één laag hoger.
 * toetst dat de aanroeper een actieve beheerder is, en vergrendelt de groepsrij
   (`for update`) — twee beheerders die tegelijk een andere dag kiezen, verzetten
   anders allebei vanaf dezelfde oude start;
+
+  📏 Nagemeten met tien paren gelijktijdige aanroepen, elk paar in een eigen
+  groep en met een `pg_sleep` binnen de transactie om ze te laten overlappen:
+  **0 van de 10** gaven twee keer `ok: true`. De tweede aanroeper komt na de
+  eerste binnen, leest de dag die er dan staat, en ketst af op
+  `oude_periode_valt_niet_op_huddledag` — zijn oude start hoort bij de dag die
+  net vervangen is. Dat is de goede weigering: hij rekende met een groep die
+  intussen veranderd is.
+
 * toetst **beide** periodestarts: elk op zijn eigen huddledag (de oude op de dag
   die er nú staat, de nieuwe op de dag die gevraagd wordt) en beide vensters op
   `groepsdatum(p_group_id)`;
