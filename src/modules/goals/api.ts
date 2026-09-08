@@ -471,13 +471,20 @@ export async function zetArchief(
  * ⚠️ **Onomkeerbaar, en het scherm moet dat zeggen vóórdat je klikt.** Afronden
  *    plaatst "X heeft een doel afgerond" in elke gekoppelde groep, en een
  *    chatbericht is een onveranderlijke kopie — terugzetten haalt hem niet weg.
- *    Daarnaast wikkelt het je commitments af: de beloning komt vrij, de straf
- *    vervalt.
+ *    Daarnaast wikkelt het je commitments af.
  *
- * ⚠️ **Er mag geen mijlpaal meer openstaan.** Afronden is de enige handeling die
- *    je eigen straf laat vervallen, dus zonder die eis is elk commitment device
+ * ⚠️⚠️ **Sinds 0211 hangt dát af van of je op tijd bent** — QS8-322, besluit van
+ *    Quinten 08-09-2026. Op tijd (t/m de respijtdag): de beloning komt vrij en
+ *    de straf vervalt, zoals hiervoor. Te laat: de beloning verloopt én de straf
+ *    blijft staan, en wordt verschuldigd zodra de job hem oppakt. `blijft_staan`
+ *    telt dat laatste; de bevestigingstekst noemt het vóóraf, want een straf
+ *    treedt nooit stilzwijgend in werking (domeinregel 5).
+ *
+ * ⚠️ **Er mag geen mijlpaal meer openstaan.** Afronden was de enige handeling die
+ *    je eigen straf liet vervallen, dus zonder die eis is elk commitment device
  *    te ontlopen met één druk op de knop. Een mijlpaal laten vallen kan wel, maar
- *    dat is een aparte, zichtbare handeling. Besluit van Quinten, 21-08-2026.
+ *    dat is een aparte, zichtbare handeling. Besluit van Quinten, 21-08-2026 —
+ *    en sinds 0211 werkt die ontsnapping alleen nog binnen de respijtdag.
  */
 export async function rondDoelAf(goalId: string, actorId: string): Promise<Resultaat<Afronding>> {
   const { data, error } = await supabase().rpc('rond_doel_af', { p_goal_id: goalId });
@@ -502,18 +509,27 @@ export async function rondDoelAf(goalId: string, actorId: string): Promise<Resul
 
   return {
     ok: true,
-    waarde: uitkomst.commitments ?? { vrijgespeeld: 0, verlopen: 0, vervallen: 0 },
+    waarde: uitkomst.commitments ?? { vrijgespeeld: 0, verlopen: 0, vervallen: 0, blijft_staan: 0 },
   };
 }
 
-/** Wat het afronden met je commitments deed. Alle drie kunnen nul zijn. */
+/** Wat het afronden met je commitments deed. Alle vier kunnen nul zijn. */
 export interface Afronding {
   /** Beloningen die zijn vrijgekomen, en dus in je groepen gemeld zijn. */
   readonly vrijgespeeld: number;
   /** Beloningen die vervielen omdat de streefdatum al gepasseerd was. */
   readonly verlopen: number;
-  /** Straffen die vervielen omdat het doel af is. */
+  /** Straffen die vervielen omdat het doel op tíjd af is. */
   readonly vervallen: number;
+  /**
+   * Straffen die bléven staan omdat er te laat afgerond is — QS8-322, 0211.
+   *
+   * ⚠️ **Dit veld bestaat voor domeinregel 5.** Een commitment device treedt
+   *    nooit stilzwijgend in werking, en sinds 0211 is te laat afronden precies
+   *    zo'n moment: de straf vervalt niet meer maar wordt verschuldigd. Zonder
+   *    een teller heeft het scherm niets om dat mee te zeggen.
+   */
+  readonly blijft_staan: number;
 }
 
 function afrondMelding(reden: string | undefined, aantal: number | undefined): string {

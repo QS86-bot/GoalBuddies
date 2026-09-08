@@ -1,0 +1,131 @@
+# Wat een straf overleeft — vier besluiten van Quinten, 08-09-2026
+
+QS8-321, QS8-322, QS8-333 en QS8-335 stelden dezelfde vraag vanuit vier hoeken:
+**wat overleeft een straf?** Ze zijn alle vier grens 1 uit de beslisbevoegdheid —
+een straf is wat de gebruiker als consequentie beloofd is — en ze zijn op één
+beslispagina in één ronde beantwoord.
+
+Dit document draagt de vier besluiten en hun prijs. Elk besluit krijgt hieronder
+een eigen sectie; de secties komen binnen met de branch die ze bouwt, in de
+volgorde waarin ze op elkaar leunen.
+
+| Issue | Besluit | Volgt mijn voorstel |
+|---|---|---|
+| QS8-322 | Te laat afronden laat de straf staan | ja |
+| QS8-321 | De getuige krijgt bericht, intrekken blijft vrij | ja |
+| QS8-333 | Een RPC die een nieuwe getuige aanwijst **én** mag afwikkelen | nee — ik stelde alleen het eerste voor |
+| QS8-335 | Het wisrecht wint helemaal | nee — ik stelde een auditstomp voor |
+
+⚠️ **Twee besluiten wijken af van wat ik aanraadde, en dat staat hier met zoveel
+woorden.** Niet als voorbehoud, maar omdat de volgende lezer moet kunnen zien
+welke afweging er gemaakt is en waartegen. Het bezwaar staat bij de sectie; het
+besluit staat erboven.
+
+---
+
+## 0. Wat er níet uit deze ronde volgt
+
+De hypothese in `docs/BACKLOG-PLAN.md` §5a was dat één zin alle vier zou
+beantwoorden: *een straf is vrijwillig tot hij verschuldigd is, en daarna niet
+meer.* Bij het uitwerken bleek dat voor de helft te kloppen.
+
+Voor QS8-322 en QS8-321 werkt hij: die gaan over de periode vóór `due`, en daar
+is "vrijwillig" precies het antwoord. Voor QS8-333 en QS8-335 is de zin *al* waar
+en is dat juist het probleem — de verschuldigde straf is dan onaanraakbaar, of hij
+verdwijnt alsnog langs een accountverwijdering. Vier besluiten dus, en geen één.
+
+---
+
+## 1. QS8-322 — te laat afronden laat de straf staan
+
+**Besluit:** de straf volgt dezelfde tijdigheidstoets als de beloning. Rond je af
+binnen de streefdatum plus de respijtdag, dan vervalt je straf zoals hiervoor.
+Rond je later af, dan blijft hij staan en wordt hij verschuldigd.
+
+### Waar het vandaan kwam
+
+📏 Gelezen uit `pg_get_functiondef('wikkel_commitments_af')`:
+
+```
+v_op_tijd := v_vandaag <= v_doel.target_date + 1;
+
+if v_op_tijd then    reward   set → unlocked
+else                 reward   set → cancelled
+(buiten de if/else)  penalty  set → cancelled
+```
+
+De beloning hing aan `v_op_tijd`, de straf niet. Eén dag te laat afronden kostte
+je dus je beloning en bespaarde je je straf. Dat is de prikkel precies verkeerd
+om: wie op de streefdatum ziet dat hij het niet redt, was beter af door een dag
+later af te ronden dan door het te laten staan.
+
+### De prijs, en die is echt
+
+Dit maakt de app **strenger** dan hij was. Iemand die zijn doel drie dagen te laat
+afrondt, krijgt nu een straf die hij eerder niet kreeg. Van de vier besluiten in
+deze ronde is dit de enige waarbij een gebruiker er ná de wijziging op achteruit
+gaat.
+
+Dat is verdedigbaar omdat hij die straf zelf heeft ingesteld en bevestigd, maar
+het is geen gratis reparatie, en daarom staat het hier.
+
+⚠️ **Domeinregel 5 maakt er één ding bij verplicht.** Een commitment device treedt
+nooit stilzwijgend in werking. Te laat afronden ís nu zo'n moment, dus het moet
+gezegd worden vóórdat de gebruiker op de knop drukt. `wikkel_commitments_af()`
+geeft daarom `blijft_staan` terug, en `bevestiging.doel_afronden.uitleg` noemt
+beide gevallen. Zonder die twee zou het besluit kloppen en het product niet.
+
+### Waarom het drie wijzigingen werden
+
+Migratie 0211 raakt drie objecten, en dat is geen bundeling maar één ondeelbare
+wijziging:
+
+1. **`wikkel_commitments_af()`** — de penalty-annulering gaat de `if v_op_tijd`-tak
+   in.
+2. **`maak_straffen_verschuldigd()`** — de regel `and g.status <> 'completed'`
+   gaat eruit. Zonder dit repareert stap 1 niets: `rond_doel_af()` zet het doel op
+   `completed` en dáárna pas wikkelt het de commitments af, dus de straf zou op
+   `set` blijven staan en de job zou hem nooit oppakken. Het issue waarschuwde
+   ervoor; de meting bevestigde het.
+3. **`commitments_insert`** — een straf hoort bij een doel met `status = 'active'`.
+
+Stap 3 is er alleen omdat stap 2 hem nodig maakt. 📏 Gemeten als gewone ingelogde
+eigenaar: een straf hángen aan een doel dat al `completed` is, lukte gewoon — de
+policy toetste de eigenaar en de streefdatum, maar niet of het doel nog liep. Dat
+was onschadelijk zolang zo'n straf toch nergens heen kon; met stap 2 erbij wordt
+hij verschuldigd op een doel dat al af is. Die deur gaat in dezelfde migratie
+dicht, want dezelfde migratie opent hem.
+
+### Wat er bewust níet gebeurd is
+
+**§1 zet de straf niet zelf op `due`.** Dat had gekund en het was korter geweest,
+maar `maak_straffen_verschuldigd()` draagt twee grendels die dan nagebouwd hadden
+moeten worden: het wachtvenster van 24 uur (0171/0172) en het open
+deadline-verzoek (0174/QS8-307). Een tweede kopie van die logica is precies hoe
+elke definer-functie in dit project een kopie van de vorige werd.
+
+**De respijtdag verandert niet.** `target_date + 1` staat er sinds 0173 en blijft.
+
+### Hoe het bewaakt wordt
+
+`tests/rls/straf-blijft-bij-te-laat.test.ts` toetst de **keten** en niet de tak:
+doel met verstreken deadline → afronden → de job → `due`. Een test die bij "de
+straf staat nog op `set`" was gestopt, had de reparatie voor de helft gemeten.
+
+Met de hand rood gemaakt, één mutatie per grendel:
+
+| Mutatie | Wat er rood wordt |
+|---|---|
+| de penalty-update terug buiten de if/else | §1 (beide), §2 en §3 blijven groen |
+| `and g.status <> 'completed'` terug in de job | alleen de kétentest — de straf blíjft netjes staan, de job pakt hem alleen nooit op |
+| `and g.status = 'active'` uit de insert-policy | alleen §3 |
+
+De tweede is de interessantste: daar klopt elk onderdeel los, en alleen de keten
+is stuk. Dat is de vorm die dit project zeven keer duur heeft betaald.
+
+### Relatie met QS8-321
+
+Dat zijn twee routes naar dezelfde uitkomst — je straf kwijtraken zonder hem te
+dragen — en ze krijgen hetzelfde antwoord: het mag, maar niet stilletjes. Bij
+QS8-322 is de rem de tijdigheidstoets; bij QS8-321 is het een bericht aan de
+getuige. Zie sectie 2.

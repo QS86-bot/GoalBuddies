@@ -158,8 +158,9 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.doel_afronden.titel': 'Complete this goal?',
   'bevestiging.doel_afronden.uitleg':
     'Every group this goal is linked to gets a message that you completed it, and a chat ' +
-    'message cannot be taken back. Your reward is released and announced too; a penalty ' +
-    'you had set expires. This cannot be undone.',
+    'message cannot be taken back. Finish on time and your reward is released and a penalty ' +
+    'you had set expires. Finish after the target date and your reward lapses while your ' +
+    'penalty stands: it becomes due. This cannot be undone.',
   'bevestiging.doel_afronden.knop': 'Complete',
 
   'viering.weekdoel.titel': 'Your week is confirmed',
