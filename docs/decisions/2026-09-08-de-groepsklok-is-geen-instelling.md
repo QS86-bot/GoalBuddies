@@ -48,10 +48,27 @@ vraagt een nieuw type systeembericht (en dus een migratie op de allowlist
 wat er zichtbaar wordt als de weekgrens verspringt terwijl een week nog loopt. Dat
 is een feature, geen reparatie.
 
-📏 Er breekt niets: `tz` wordt client-zijdig alleen bij het **aanmaken** gezet —
-`api.ts` geeft `apparaatTijdzone()` mee aan `create_group()` — en de updatehelper
-schrijft aantoonbaar alleen `huddle_day` en `name`. Dat staat zelfs al onder test
-in `src/modules/buddies/wijzigen.test.ts`.
+📏 Er breekt niets. `tz` wordt client-zijdig alleen bij het **aanmaken** gezet —
+`api.ts` geeft `apparaatTijdzone()` mee aan `create_group()` — en `wijzigGroep()`
+schrijft negen kolommen waar `tz` niet bij zit: `name`, `huddle_day`,
+`evidence_policy`, `approval_rule`, `approval_quorum`, `season_cadence`,
+`categorie`, `omschrijving`, `voertaal`.
+
+⚠️ **Deze meting is de tweede versie.** De eerste zei "aantoonbaar alleen
+`huddle_day` en `name`, dat staat zelfs onder test". Dat waren er negen, en die
+twee kwamen uit een **fixture**: `wijzigen.test.ts:54` voert een verzonnen
+bronstring aan `geschrevenKolommen()` om díe helper te toetsen. Ik las een
+testvoorbeeld als een meting aan de echte bron; de security-review van 08-09 wees
+het aan.
+
+De conclusie hield stand, maar dat is hier niet het punt. **Een 📏 in dit project
+is dragend bewijs**, en een verkeerd getal eronder kost precies zoveel als een
+verkeerde conclusie zodra iemand er de volgende beslissing op bouwt.
+
+Wat er wél onder test staat is bovendien sterker dan wat ik beweerde:
+`wijzigen.test.ts` legt `groepSchema` en de updatelijst in **beide richtingen**
+naast elkaar. Een `tz` die niet in het schema zit, kan dus ook niet stil in de
+updatelijst verschijnen.
 
 ## Twee grendels, en de tweede is niet overbodig
 

@@ -50,10 +50,28 @@
 --    besluit over wat er zichtbaar wordt als de weekgrens verspringt terwijl een
 --    week nog loopt. Dat is een feature, geen reparatie.
 --
--- 📏 Er breekt niets: `tz` wordt client-zijdig alleen bij het aanmaken gezet
---    (`api.ts` geeft `apparaatTijdzone()` mee aan `create_group`), en de
---    updatehelper schrijft aantoonbaar alleen `huddle_day` en `name` — dat staat
---    zelfs onder test in `src/modules/buddies/wijzigen.test.ts`.
+-- 📏 Er breekt niets, en deze meting is de tweede versie — de eerste was fout en
+--    dat is de moeite van het opschrijven waard.
+--
+--    `tz` wordt client-zijdig alleen bij het **aanmaken** gezet: `api.ts` geeft
+--    `apparaatTijdzone()` mee aan `create_group()`. De updatehelper
+--    `wijzigGroep()` schrijft negen kolommen — `name`, `huddle_day`,
+--    `evidence_policy`, `approval_rule`, `approval_quorum`, `season_cadence`,
+--    `categorie`, `omschrijving`, `voertaal` — en `tz` staat daar niet bij, en
+--    ook niet in `groepSchema`.
+--
+--    ⚠️ **Hier stond eerst "aantoonbaar alleen `huddle_day` en `name`, dat staat
+--    zelfs onder test in `wijzigen.test.ts`".** Dat waren er negen, en die twee
+--    kwamen uit een **fixture**: `wijzigen.test.ts:54` voert een verzonnen
+--    bronstring aan `geschrevenKolommen()` om díe helper te toetsen. Ik las een
+--    testvoorbeeld als een meting aan de echte bron. Gevonden in de
+--    security-review van 08-09.
+--
+--    Wat er wél onder test staat is beter dan wat ik beweerde: `wijzigen.test.ts`
+--    legt `groepSchema` en de updatelijst in **beide richtingen** naast elkaar
+--    ("laat geen veld dood in de update-lijst" en "schrijft geen kolom die het
+--    schema niet kent"). Een `tz` die niet in het schema zit, kan dus ook niet
+--    stil in de updatelijst verschijnen.
 --
 -- ---------------------------------------------------------------------------
 -- Twee grendels, en de tweede is niet overbodig
