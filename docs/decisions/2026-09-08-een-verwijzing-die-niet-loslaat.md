@@ -106,19 +106,92 @@ schema nergens voor. Daarom maakt een MUST-FIND-geval hem zelf aan in een
 transactie die terugrolt. Een controle die je niet kunt voeden, kun je niet
 ijken.
 
-## 4. IJking
+### 3a. En die MUST-FIND bewaakte eerst een kopie
+
+⚠️⚠️ **De eerste versie van dit document beweerde dat de ijking klopte. Ze klopte
+niet, en de security-ronde op deze branch heeft dat gemeten.** De MUST-FIND droeg
+zijn eigen exemplaar van de query in plaats van de query van de toets aan te
+roepen. 📏 Knip de `n`-tak uit de toets en alle vijf de tests bleven groen — de
+tak die de test zei te bewaken, kon verdwijnen zonder één rood.
+
+Dat is precies de regel uit `CLAUDE.md`: *breek de grendel die de ijking nóemt,
+anders is de ijking zelf de aanname.* De vraag staat nu één keer opgeschreven,
+als `BLOKKERENDE_VERWIJZINGEN_SQL`, en beide tests roepen hem aan. 📏 Diezelfde
+mutatie is nu 1 rood.
+
+**De les is niet "ik was slordig".** De ijking wás gedraaid en wás rood — alleen
+op de éérste tak, en die mutatie kwam nooit langs de tweede. Eén mutatie voor een
+controle met twee takken meet één tak. Dat staat in de grondwet als *mutatie per
+grendel*, en dit is hoe het er in de praktijk uitziet.
+
+## 4. De weiger-kant van dezelfde nul
+
+⚠️⚠️ **Ook uit de security-ronde, en het is de reden dat deze migratie een tweede
+helft heeft.** §2a hierboven zegt dat een `null` op de toesta-kant sluit. Dat
+klopt voor `approval_withdrawals_select`. Maar `trek_goedkeuring_in()` toetst
+eigendom met `if a.approver_id <> auth.uid()`, en `completion_approvals
+.approver_id` stond al langer op `on delete set null`. Zodra de goedkeurder
+vertrekt is die waarde `null`, is `null <> uid` gelijk aan `null`, en slaat
+plpgsql de `then`-tak over. De eigendomstoets weigert dan niemand meer.
+
+📏 Gemeten met Mallory als willekeurig ander actief lid van dezelfde groep. Ze
+komt langs `not_yours`, langs de lidmaatschapstoets, langs het venster en langs
+`already_withdrawn`. Waar ze strandde hing af van déze migratie:
+
+| Toestand | Waar het strandt |
+|---|---|
+| vóór 0212 | `23502` op `approval_withdrawals.approver_id` |
+| na 0212 (zonder de tweede helft) | `23502` op `points_ledger.user_id` |
+
+Er was geen toestandswijziging mogelijk — nul intrekkingen, beide keren. Maar 0212
+haalt de eerste van twee muren weg, en de overgebleven muur hoort bij de
+puntenboeking en niet bij deze belofte. Wordt `points_ledger.user_id` ooit
+nullable of verhuist die boeking, dan kan een willekeurig groepslid de bevestigde
+week van een ander terugzetten naar `pending` — domeinregel 3 en 10.
+
+`is distinct from` in plaats van `<>`. 📏 Alle definer-functies gescand op een
+`<>` tegen een persoonskolom: zestien treffers, en dit is de enige waar de
+linkerkant nullable is.
+
+⚠️ **Dit hoort in dezelfde migratie als de kolom.** De nul die de intrekker laat
+vertrekken en de vergelijking die er niet tegen kan, zijn één besluit. Ze
+scheiden zou een venster achterlaten waarin het schema de nul toestaat en de
+functie hem verkeerd leest.
+
+## 5. IJking
 
 | Mutatie | Rood |
 |---|---|
 | de foreign key terug op NO ACTION | 3 — beide veegtests + de schema-toets, die hem bij naam noemt |
 | `on delete set null` op een `not null`-kolom | 3 — dezelfde drie |
-| de vier statements van de intrekking uit de veeg | 0 op de veeg (dat ís de blinde vlek), 1 op de schema-toets |
+| de statements van de intrekking uit de veeg | 0 op de veeg (dat ís de blinde vlek), 1 op de schema-toets |
+| de `n`-tak uit `BLOKKERENDE_VERWIJZINGEN_SQL` | 1 — de MUST-FIND. Vóór §3a: **0** |
+| de recursieve stap uit diezelfde query | 2 — de toets en de diepe MUST-FIND |
+| `<>` terug in `trek_goedkeuring_in()` | 2 — beide tests over de vertrokken goedkeurder |
+| de constraint hernoemen vóór 0212 draait | de migratie werpt nu, in plaats van stilzwijgend niets te doen |
 
 De derde rij is de reden dat de schema-toets er staat: de veeg alleen kan een
 gemiste rol niet vinden.
 
-## 5. Wat er niet in zit
+## 6. Wat er niet in zit
 
-`push_tokens` en de andere cascade-verwijzingen zijn onaangeroerd. De enige
-NO ACTION in het schema was deze; na 0212 zijn het er 21 op cascade en 16 op set
-null, en de schema-toets houdt dat zo.
+- **De triggerklasse.** Een trigger die werpt tijdens de opruiming blokkeert net
+  zo goed als een foreign key, en daar staat vandaag een geval open: QS8-361 /
+  QS8-333, `commitments` met drie triggers, met opzet buiten de veeg gehouden.
+  Daarom heet de nieuwe describe *geen foreign key houdt een vertrekkende
+  gebruiker vast* en niet *niets*. Groen is bewijs voor de FK-klasse en voor
+  niets anders.
+- **`completions.completions_superseded_by_fkey`.** NO ACTION binnen het
+  cascadebereik, gevonden door de recursieve stap. 📏 Vandaag onbereikbaar:
+  `dien_opnieuw_in()` koppelt alleen twee voltooiingen van dezelfde `auth.uid()`,
+  dus ze verdwijnen in hetzelfde statement — nagemeten met een echte ketting via
+  de RPC, `{"ok": true}`. Staat als uitzondering in `TOEGESTAAN`, mét die meting,
+  en de toets wordt rood zodra die uitzondering overbodig is.
+- **`on delete set default`.** De toets keurt hem af in plaats van hem te
+  beoordelen: zo'n FK schrijft de kolomdefault, en is dat een literale uuid of een
+  profiel dat er niet meer is, dan blokkeert hij alsnog. 📏 Vandaag nul in het
+  schema, dus dat kost niets — en zo blijft die tak een toets in plaats van een
+  belofte.
+- `push_tokens` en de andere cascade-verwijzingen zijn onaangeroerd. De enige
+  NO ACTION naar `profiles` was deze; na 0212 zijn het er 23 op cascade en 16 op
+  set null.

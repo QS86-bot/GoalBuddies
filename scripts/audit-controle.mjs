@@ -101,15 +101,21 @@ export const NAGEKEKEN = {
       'in de bundel staat is Expo\'s eigen implementatie (`expo-modules-core/src/uuid/`).',
   },
   '@xmldom/xmldom': {
-    ernst: 'moderate',
-    advisories: [1158517, 1158518],
+    ernst: 'high',
+    advisories: [1158517, 1158518, 1193671],
     reparatie: 'gratis',
     in_bundel: false,
     marker: 'Only one doctype is allowed',
     reden:
       '⚠️ Vals alarm van dezelfde soort als `imageSize`: `XML/1998/namespace` staat drie keer ' +
       'in dist/, maar dat is React DOM (`xmlLang`, `xmlSpace`, `xmlBase`). Alle drie de ' +
-      'xmldom-eigen foutteksten geven nul.',
+      'xmldom-eigen foutteksten geven nul. ' +
+      '⚠️ **Hermeten op 08-09-2026** omdat GHSA-6mj3-qw4j-hgrw (1193671, high — output ' +
+      'amplification door een sluittag met afwijkende kapitalisatie in raw text) erbij kwam en ' +
+      'de ernst van moderate naar high tilde. 📏 Verse `npm run build` met dummy-EXPO_PUBLIC-' +
+      'waarden, daarna gegrept op zes xmldom-eigen stringliteralen plus de pakketnaam: ' +
+      'allemaal nul treffers in dist/. Het pakket komt de bundel niet in, dus de nieuwe ' +
+      'advisory verandert niets aan de weging — alleen aan wat hier geregistreerd staat.',
   },
   'decode-uri-component': {
     ernst: 'moderate',
