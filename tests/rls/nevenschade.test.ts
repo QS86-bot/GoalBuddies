@@ -483,4 +483,117 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
     },
     TEST_TIMEOUT,
   );
+
+  /**
+   * ## De grens die de aanroeper meegeeft — QS8-339, migratie 0193
+   *
+   * ⚠️ **De drie tests hierboven leunen op een grens die de job zélf trekt:** een
+   *    seizoensgrens, een ouderdomsgrens, een termijn. Dat werkt zolang die
+   *    grens toevallig níet openstaat op het moment dat een ander bestand
+   *    draait. 📏 Bij QS8-336 verviel die aanname: twee gelijktijdige runs gaven
+   *    run B 105/105 groen en run A drie rode tests in `seizoensrecap.test.ts`,
+   *    want dát bestand kiest met opzet een moment waarop de grens wél open
+   *    staat.
+   *
+   * ⚠️ Sinds 0193 dragen alle drie een **optioneel bereik**, en dat is een
+   *    andere belofte dan de grenzen hierboven: *een job schrijft niet buiten
+   *    het bereik dat zijn aanroeper meegaf* — ook niet op een moment waarop de
+   *    eigen grens hem zou laten schrijven. Dat is wat hieronder getoetst wordt,
+   *    en daarom staan de momenten hier op "wél open" in plaats van "dicht".
+   *
+   * ⚠️ `null` blijft "alle groepen", want dat is wat de rollover doet. Deze
+   *    tests bewaken de begrensde vorm; de ongegrensde staat hierboven.
+   */
+  describe('een job schrijft niet buiten het bereik dat zijn aanroeper meegaf', () => {
+    it(
+      'maak_seizoensrecaps slaat een vreemde groep over als hij er niet bij staat',
+      async () => {
+        // ⚠️ **Een moment waarop de seizoensgrens wél openstaat**, anders meet
+        //    deze test de grens hierboven en niet het bereik. `2026-10-01T06:30Z`
+        //    is 08:30 in Amsterdam op de eerste dag van Q4 — hetzelfde moment
+        //    waarop `seizoensrecap.test.ts` recaps ziet ontstaan.
+        const { error } = await adminDb().rpc('maak_seizoensrecaps', {
+          p_op: '2026-10-01T06:30:00Z',
+          p_group_ids: [],
+        });
+        expect(error).toBeNull();
+
+        const { count } = await adminDb()
+          .from('season_recaps')
+          .select('group_id', { count: 'exact', head: true })
+          .eq('group_id', vreemd.groepId);
+
+        expect(count ?? 0, 'een groep buiten het bereik kreeg toch een recap').toBe(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'slaap_stille_groepen slaat een vreemde groep over als hij er niet bij staat',
+      async () => {
+        // ⚠️⚠️ **De groep wordt eerst terúggezet, en dat is de helft van de
+        //    test.** 📏 Met een verse groep is deze test groen zónder dat het
+        //    bereik iets doet: `last_activity_at` staat op `now()`, en de functie
+        //    rekent met `greatest(1, coalesce(p_dagen, 30))` — `p_dagen: 0` is
+        //    dus gewoon één dag, en die is nog niet om. Gemeten door de grens uit
+        //    de gedeployde functie te halen: nul tests rood. De ouderdom hield
+        //    hem tegen, niet het bereik.
+        const terug = await adminDb()
+          .from('groups')
+          .update({ last_activity_at: '2026-01-01T00:00:00Z' })
+          .eq('id', vreemd.groepId);
+        expect(terug.error).toBeNull();
+
+        const { error } = await adminDb().rpc('slaap_stille_groepen', {
+          p_dagen: 1,
+          p_group_ids: [],
+        });
+        expect(error).toBeNull();
+
+        const { data } = await adminDb()
+          .from('groups')
+          .select('status')
+          .eq('id', vreemd.groepId)
+          .single();
+
+        expect(data?.status, 'een groep buiten het bereik is toch in slaap gezet').not.toBe(
+          'sleeping',
+        );
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'keur_vastgelopen_goedkeuringen_goed slaat een vreemde eigenaar over',
+      async () => {
+        // ⚠️⚠️ **De voltooiing wordt eerst terúggezet, en dat is de helft van de
+        //    test.** De functie eist `p_termijn_dagen >= 1` en de fixture is
+        //    vers, dus met élke geldige termijn houdt de térmijn hem al tegen —
+        //    en dan is deze test groen zonder dat het bereik ook maar
+        //    aangeroepen is. Precies de val uit de tabel hierboven.
+        const terug = await adminDb()
+          .from('completions')
+          .update({ submitted_at: '2026-01-01T00:00:00Z' })
+          .eq('weekly_goal_id', vreemd.wachtendWeekdoelId);
+        expect(terug.error).toBeNull();
+
+        const { error } = await adminDb().rpc('keur_vastgelopen_goedkeuringen_goed', {
+          p_termijn_dagen: 1,
+          p_owner_ids: [],
+        });
+        expect(error).toBeNull();
+
+        const { data } = await adminDb()
+          .from('weekly_goals')
+          .select('status')
+          .eq('id', vreemd.wachtendWeekdoelId)
+          .single();
+
+        expect(data?.status, 'een week van een vreemde eigenaar is toch goedgekeurd').toBe(
+          'pending',
+        );
+      },
+      TEST_TIMEOUT,
+    );
+  });
 });
