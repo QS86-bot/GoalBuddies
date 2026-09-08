@@ -2950,6 +2950,28 @@ export type Database = {
           user_id: string
         }[]
       }
+      koppelbare_doelen: {
+        Args: { p_group_id: string }
+        Returns: {
+          available_hours_per_week: number | null
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          identity_statement: string | null
+          max_points: number
+          milestones_done: number
+          milestones_total: number
+          owner_id: string
+          ritme: string | null
+          status: string
+          target_date: string
+          title: string
+          updated_at: string
+          weekly_approved: number
+          weekly_total: number
+        }[]
+      }
       weekafsluiting_reacties: {
         Args: {
           p_group_id: string
