@@ -54,6 +54,7 @@
     "wachtwoord:controle": "node scripts/wachtwoord-controle.mjs",
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
+    "registerdrift:controle": "node scripts/registerdrift-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",
     "functies:controle": "node scripts/functies-controle.mjs",
     "keten:controle": "node scripts/dode-keten-controle.mjs",
