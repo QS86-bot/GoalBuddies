@@ -726,6 +726,10 @@ export const en: Record<Sleutel, string> = {
   'coach.neem_over': 'Take them over and adjust them afterwards however you like: deleting, rewriting and reordering can all be done on the goal screen.',
   'coach.toch_niet': 'Never mind',
   'coach.al_mijlpalen': 'You already have milestones on this goal. Taking these over adds them and does not replace them. Delete what you do not want to keep first.',
+  'coach.geen_overgenomen':
+    'No milestone was created. {melding} Try again in a moment, or add them yourself on the goal screen.',
+  'coach.deels_overgenomen':
+    'The first {gelukt} of the {totaal} milestones are there; the rest were not created. {melding} Close this window to see what is there and add the rest yourself.',
   'coach.laten_voorstellen': 'Have milestones suggested',
   'coach.wat_hij_doet': 'The Goal Coach cuts your goal into milestones with target dates, based on what you filled in above. You can change everything afterwards.',
   'coach.tien_per_dag': 'You can do this ten times a day. The same question within a day does not cost a new turn.',
