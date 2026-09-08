@@ -298,11 +298,21 @@ async function bouwOpstelling(label: string, metVoltooiing = true): Promise<Opst
   if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
 
   // ⚠️ Via de beheerdersclient, en de réden stond hier fout tot 02-09.
-  //    `authenticated` heeft wél degelijk een INSERT-recht op `weekly_goals` —
-  //    twaalf kolommen en een `weekly_goals_insert`-policy. Wat hij niet mag is
-  //    `points_miss`, en die zet deze opstelling. Gemeten; de oude tekst
-  //    ("geen insert-recht, loopt via een RPC") was onwaar en zou een lezer
-  //    laten denken dat deze fixture een slot omzeilt dat er niet is.
+  //    `authenticated` heeft wél degelijk een INSERT-recht op `weekly_goals` en
+  //    een `weekly_goals_insert`-policy. Wat hij niet mag zijn de puntenkolommen,
+  //    en die zet deze opstelling. De oude tekst ("geen insert-recht, loopt via
+  //    een RPC") was onwaar en zou een lezer laten denken dat deze fixture een
+  //    slot omzeilt dat er niet is.
+  //
+  // ⚠️⚠️ **Hier stond "twaalf kolommen", en dat getal is twee keer verouderd
+  //    zonder dat iemand het merkte** — het was al fout vóór QS8-352 (elf) en
+  //    daarna nog een keer (negen, sinds 0195 `points_ceiling` en `points_floor`
+  //    intrekt). Een geteld getal in een commentaarregel veroudert stil; het
+  //    aantal staat er daarom niet meer. Wie het wil weten, meet:
+  //    `select count(*) from information_schema.column_privileges where
+  //     table_name='weekly_goals' and grantee='authenticated'
+  //     and privilege_type='INSERT'` — en `kolomrechten:controle` bewaakt de
+  //    lijst zelf, wat een getal in proza nooit doet.
   const weekdoel = await admin
     .from('weekly_goals')
     .insert({
