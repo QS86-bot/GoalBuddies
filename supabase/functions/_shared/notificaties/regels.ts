@@ -92,22 +92,43 @@ export interface NudgeSituatie {
 }
 
 /**
- * Krijgt deze gebruiker nu een nudge?
+ * Wat er van een profiel bekend is zónder ook maar één databasevraag.
  *
- * De volgorde is van goedkoop naar duur, maar inhoudelijk maakt dat niets uit:
- * elke reden is op zichzelf genoeg om níét te sturen. Ze staan als losse takken
- * en niet als één samengestelde voorwaarde, zodat `nudgeReden()` kan zeggen
- * wélke het was — dat scheelt raden als iemand meldt dat hij niets krijgt.
+ * ⚠️ Alle drie de velden komen uit de profielrij die de job toch al ophaalt, of
+ *    uit de klok. Er zit met opzet niets in wat een query kost.
  */
-export function magNudgen(s: NudgeSituatie): boolean {
-  return nudgeReden(s) === null;
+export interface Nudgevoorpoort {
+  readonly herinneringAan: boolean;
+  readonly herinneringUur: number | null;
+  readonly lokaalUur: number;
+}
+
+/**
+ * De drie redenen die niets kosten om te beantwoorden — QS8-341.
+ *
+ * ⚠️ **Waarom dit een eigen functie is en niet gewoon de eerste drie regels van
+ *    `nudgeReden()`.** De uurjob stelde per profiel zes databasevragen en gaf ze
+ *    daarna aan `magNudgen()`, die op precies deze drie al kortsluit. Voor de 23
+ *    van de 24 uren waarin een gebruiker sowieso niets krijgt — en voor iedereen
+ *    met `reminder_enabled = false` — was dat allemaal weggegooid werk.
+ *
+ * ⚠️ **De job roept déze functie aan en niet een eigen kopie van de drie
+ *    voorwaarden**, en `nudgeReden()` roept hem óók aan. Zo kan de poort niet uit
+ *    de pas lopen met de beslissing: het is dezelfde code, in dezelfde volgorde.
+ *    Een tweede plek met dezelfde drie regels zou precies de naad zijn waar dit
+ *    project regel 18 voor heeft.
+ */
+export function nudgeVoorpoortReden(s: Nudgevoorpoort): string | null {
+  if (!s.herinneringAan) return 'herinnering staat uit';
+  if (s.herinneringUur === null) return 'geen tijdstip ingesteld';
+  if (s.lokaalUur !== s.herinneringUur) return 'nog niet het ingestelde uur';
+  return null;
 }
 
 /** Waarom er géén nudge gaat, of `null` als hij wél gaat. */
 export function nudgeReden(s: NudgeSituatie): string | null {
-  if (!s.herinneringAan) return 'herinnering staat uit';
-  if (s.herinneringUur === null) return 'geen tijdstip ingesteld';
-  if (s.lokaalUur !== s.herinneringUur) return 'nog niet het ingestelde uur';
+  const voorpoort = nudgeVoorpoortReden(s);
+  if (voorpoort !== null) return voorpoort;
 
   // ⚠️ Acceptatiecriterium van QS8-77: "slaat over als er al een Dagzet of
   //    afronding is". Wie vandaag iets gedaan heeft, hoort geen herinnering te

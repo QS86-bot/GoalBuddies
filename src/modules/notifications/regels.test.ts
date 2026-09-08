@@ -4,7 +4,6 @@ import {
   berichtVoor,
   herinneringStandaard,
   herinneringVelden,
-  magNudgen,
   nudgeBericht,
   nudgeReden,
   overzichtsuur,
@@ -30,36 +29,36 @@ const MAG: NudgeSituatie = {
   alVerstuurd: false,
 };
 
-describe('magNudgen', () => {
+describe('nudgeReden — mag deze gebruiker een nudge?', () => {
   /**
    * ⚠️ De positieve controle staat vooraan, en met opzet. Alle tests hieronder
    *    zijn weigeringen; zonder deze zouden ze allemaal groen blijven als
-   *    `magNudgen()` domweg altijd `false` teruggeeft — en dan stuurt de app
+   *    `nudgeReden()` domweg altijd een reden teruggeeft — en dan stuurt de app
    *    nooit iets, wat je pas merkt als een gebruiker het meldt.
    */
   it('stuurt een nudge als alles klopt', () => {
-    expect(magNudgen(MAG)).toBe(true);
+    expect(nudgeReden(MAG)).toBeNull();
     expect(nudgeReden(MAG)).toBeNull();
   });
 
   it('stuurt niets als de herinnering uitstaat', () => {
-    expect(magNudgen({ ...MAG, herinneringAan: false })).toBe(false);
+    expect(nudgeReden({ ...MAG, herinneringAan: false })).not.toBeNull();
   });
 
   it('stuurt alleen op het ingestelde uur', () => {
-    expect(magNudgen({ ...MAG, lokaalUur: 19 })).toBe(false);
-    expect(magNudgen({ ...MAG, lokaalUur: 21 })).toBe(false);
-    expect(magNudgen({ ...MAG, herinneringUur: null })).toBe(false);
+    expect(nudgeReden({ ...MAG, lokaalUur: 19 })).not.toBeNull();
+    expect(nudgeReden({ ...MAG, lokaalUur: 21 })).not.toBeNull();
+    expect(nudgeReden({ ...MAG, herinneringUur: null })).not.toBeNull();
   });
 
   /** Acceptatiecriterium van QS8-77: slaat over als er al iets gebeurd is. */
   it('slaat over als er vandaag al een Dagzet of afronding is', () => {
-    expect(magNudgen({ ...MAG, heeftDagzet: true })).toBe(false);
-    expect(magNudgen({ ...MAG, heeftAfronding: true })).toBe(false);
+    expect(nudgeReden({ ...MAG, heeftDagzet: true })).not.toBeNull();
+    expect(nudgeReden({ ...MAG, heeftAfronding: true })).not.toBeNull();
   });
 
   it('stuurt niets als er niets openstaat om aan te werken', () => {
-    expect(magNudgen({ ...MAG, heeftOpenWeekdoel: false })).toBe(false);
+    expect(nudgeReden({ ...MAG, heeftOpenWeekdoel: false })).not.toBeNull();
   });
 
   /**
@@ -68,17 +67,17 @@ describe('magNudgen', () => {
    *    (domeinregel 10). QS8-91 noemt het met naam.
    */
   it('stuurt niets tijdens een adempauze', () => {
-    expect(magNudgen({ ...MAG, inAdempauze: true })).toBe(false);
+    expect(nudgeReden({ ...MAG, inAdempauze: true })).not.toBeNull();
     expect(nudgeReden({ ...MAG, inAdempauze: true })).toBe('adempauze');
   });
 
   it('stuurt niets vanuit alleen slapende groepen', () => {
-    expect(magNudgen({ ...MAG, alleenSlapendeGroepen: true })).toBe(false);
+    expect(nudgeReden({ ...MAG, alleenSlapendeGroepen: true })).not.toBeNull();
   });
 
   /** "Maximaal één per dag, ook bij meerdere doelen." */
   it('stuurt niet twee keer op dezelfde dag', () => {
-    expect(magNudgen({ ...MAG, alVerstuurd: true })).toBe(false);
+    expect(nudgeReden({ ...MAG, alVerstuurd: true })).not.toBeNull();
   });
 
   it('geeft per weigering een eigen reden', () => {
