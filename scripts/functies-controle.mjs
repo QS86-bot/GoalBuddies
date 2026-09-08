@@ -37,7 +37,7 @@ import process from 'node:process';
 import { config } from 'dotenv';
 
 import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
-import { isFout, vergelijkFuncties } from './functies-vergelijk.mjs';
+import { bouwRapport, isFout, vergelijkFuncties } from './functies-vergelijk.mjs';
 
 config({ path: '.env', quiet: true });
 
@@ -122,40 +122,19 @@ try {
 
 const uitslag = vergelijkFuncties(productie, lokaal);
 
-if (uitslag.logica.length > 0) {
-  console.error(`✗ ${uitslag.logica.length} functie(s) hebben op productie een ándere logica:\n`);
-  for (const naam of uitslag.logica) console.error(`    ${naam}()`);
-  console.error(
-    '\nDe migratiebestanden bouwen dus niet meer wat er draait. Een lokale stack of\n' +
-      'een tweede project toetst daarmee een ánder schema dan productie — groen\n' +
-      'zonder iets te bewijzen. Zie stap 20 van /audit.',
-  );
-}
-
-for (const [lijst, zin] of [
-  [uitslag.alleenProductie, 'staan alleen op productie (uit de migraties verdwenen, nooit gedropt)'],
-  [uitslag.alleenLokaal, 'staan alleen lokaal (een migratie die nooit is toegepast)'],
-]) {
-  if (lijst.length > 0) {
-    console.error(`\n✗ ${lijst.length} functie(s) ${zin}:\n`);
-    for (const naam of lijst) console.error(`    ${naam}()`);
-  }
+// ⚠️⚠️ **Eerst álles afdrukken, dan pas afsluiten** — QS8-220. Hier stond de
+//    commentaarmelding ná `process.exit(1)`, en dus was hij onbereikbaar zodra er
+//    óók een logicaverschil was. 📏 Met productie op 0186 en de map op 0213 zijn
+//    dat er 75, dus de 21 functies zonder commentaar zijn nooit afgedrukt terwijl
+//    de vergelijking ze al die tijd teruggaf. De volgorde staat nu vast in
+//    `bouwRapport()` en onder test in `tests/scripts/functies-vergelijk.test.ts`.
+for (const blok of bouwRapport(uitslag)) {
+  console.error(`${blok.tekst}\n`);
+  for (const naam of blok.namen) console.error(`    ${naam}()`);
+  if (blok.uitleg !== undefined) console.error(`\n${blok.uitleg}\n`);
 }
 
 if (isFout(uitslag)) process.exit(1);
-
-if (uitslag.commentaar.length > 0) {
-  console.error(
-    `⚠ ${uitslag.commentaar.length} functie(s) draaien met dezelfde logica maar zonder hun commentaar:\n`,
-  );
-  for (const naam of uitslag.commentaar) console.error(`    ${naam}()`);
-  console.error(
-    '\nGeen fout — de logica klopt. Wel de moeite: CLAUDE.md zegt dat\n' +
-      '`pg_get_functiondef()` de waarheid is, en wie die leest zonder het commentaar\n' +
-      'mist de redenering die zegt waaróm er iets staat. Pas de functie opnieuw toe\n' +
-      'met de volledige body uit het migratiebestand.',
-  );
-}
 
 console.log(
   `functies-controle: ${productie.length} functies, logica overal gelijk` +

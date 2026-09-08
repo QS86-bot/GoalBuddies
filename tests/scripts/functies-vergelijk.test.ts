@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isFout, vergelijkFuncties } from '../../scripts/functies-vergelijk.mjs';
+import { bouwRapport, isFout, vergelijkFuncties } from '../../scripts/functies-vergelijk.mjs';
 
 /**
  * Bouwen de migraties nog wat er draait? — de vergelijking, geijkt.
@@ -93,5 +93,82 @@ describe('vergelijkFuncties', () => {
     // De omgeving waarin niets gemeten is, hoort geen groen vinkje te geven én
     // geen valse melding. Het script zelf stopt eerder als er geen bron is.
     expect(isFout(vergelijkFuncties([], []))).toBe(false);
+  });
+});
+
+
+/**
+ * De vólgorde van het rapport — QS8-220.
+ *
+ * ⚠️⚠️ **Dit blok bestaat omdat de commentaarmelding onbereikbaar was.** Hij
+ *    stond in `functies-controle.mjs` ná `process.exit(1)`, dus zodra er óók een
+ *    logicaverschil was, werd hij nooit afgedrukt — terwijl `vergelijkFuncties()`
+ *    hem al die tijd wél teruggaf.
+ *
+ *    📏 En dat is precies de toestand van vandaag: productie staat op migratie
+ *    0186 en de map op 0213, dus 75 functies verschillen van logica en 48 staan
+ *    alleen lokaal. De 21 functies die op productie hun commentaar kwijt zijn —
+ *    waaronder `domeinregel3_bewaking`, `onveranderlijkheid_bewaking` en
+ *    `is_pushdienst` — kwamen er dus niet uit. De controle die dit issue moest
+ *    vinden, kon het niet melden.
+ *
+ * ⚠️ Regel 18 vraag 3 op een script: de melding stond er, was juist, en werd
+ *    nooit bereikt. Een test op `vergelijkFuncties()` alleen bleef daar groen bij,
+ *    want die functie deed niets fout.
+ *
+ * IJKING — met de hand gedraaid op 08-09-2026:
+ *
+ *   A  het commentaarblok uit `bouwRapport()` halen (de vorm van vóór deze branch)
+ *      → 4 rood
+ *   B  het commentaarblok ná de foutblokken zetten
+ *      → 1 rood: 'zet de melding vóór de fouten'
+ */
+describe('bouwRapport — de melding gaat niet verloren achter een fout', () => {
+  const uitslag = {
+    logica: ['group_overview'],
+    commentaar: ['domeinregel3_bewaking', 'is_pushdienst'],
+    alleenProductie: ['oude_functie'],
+    alleenLokaal: ['nieuwe_functie'],
+  };
+
+  it('noemt de commentaarfuncties óók als er een logicaverschil is', () => {
+    const namen = bouwRapport(uitslag).flatMap((b: { namen: string[] }) => b.namen);
+
+    expect(namen, 'de commentaarmelding hoort niet weg te vallen').toContain(
+      'domeinregel3_bewaking',
+    );
+    expect(namen).toContain('is_pushdienst');
+  });
+
+  it('zet de melding vóór de fouten, want een lezer kapt af bij de eerste fout', () => {
+    const soorten = bouwRapport(uitslag).map((b: { soort: string }) => b.soort);
+
+    expect(soorten[0], 'de melding staat bovenaan').toBe('melding');
+    expect(soorten.slice(1).every((s: string) => s === 'fout')).toBe(true);
+  });
+
+  it('houdt de vier categorieën uit elkaar', () => {
+    // ⚠️ Vier blokken en niet één lijst: "andere logica", "alleen op productie",
+    //    "alleen lokaal" en "commentaar weg" zijn vier problemen met vier
+    //    antwoorden. Ze samenvoegen is de controle leren negeren.
+    expect(bouwRapport(uitslag)).toHaveLength(4);
+  });
+
+  it('zwijgt volledig als er niets aan de hand is', () => {
+    expect(
+      bouwRapport({ logica: [], commentaar: [], alleenProductie: [], alleenLokaal: [] }),
+    ).toEqual([]);
+  });
+
+  it('meldt alleen het commentaar als dát het enige verschil is', () => {
+    const alleen = bouwRapport({
+      logica: [],
+      commentaar: ['is_pushdienst'],
+      alleenProductie: [],
+      alleenLokaal: [],
+    });
+
+    expect(alleen).toHaveLength(1);
+    expect(alleen[0]?.soort).toBe('melding');
   });
 });
