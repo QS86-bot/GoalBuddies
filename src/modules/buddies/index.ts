@@ -19,6 +19,7 @@ export {
   verlaatGroep,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetHuddledag,
   zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   type Groep,

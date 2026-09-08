@@ -1561,15 +1561,28 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
     // -----------------------------------------------------------------------
 
     describe('de huddledag', () => {
+      // ⚠️⚠️ **Hier stonden twee tests over een PATCH op `huddle_day`, en die
+      //    weg bestaat sinds migratie 0208 niet meer** (QS8-360). De kolom heeft
+      //    geen grant meer voor `authenticated` en `guard_group_update()` pint
+      //    hem; de weg is `zet_huddledag()`, die de lopende periode meeneemt.
+      //
+      // ⚠️ **Ze zijn verhuisd en niet vervallen.** Beide beloften — een
+      //    beheerder verzet de dag wél, een gewoon lid niet — staan in
+      //    `tests/rls/huddledag.test.ts`, daar mét de foutcode en met de
+      //    gevolgen voor de lopende week erbij. Dit blok gaat over policies, en
+      //    dit is er geen meer.
       it(
-        'is door een beheerder te wijzigen',
+        'is voor een beheerder geen kolom meer om te PATCHen',
         async () => {
           const { error } = await g.eigenaar.db
             .from('groups')
-            .update({ huddle_day: 4, name: 'Buddygroep' })
+            .update({ huddle_day: 4 })
             .eq('id', g.groupId);
 
-          expect(error).toBeNull();
+          // ⚠️ 42501 is de kolomgrant. Iets anders betekent dat de grant terug
+          //    is en alleen de pin in de trigger het werk doet — en die zwijgt.
+          expect(error, 'de PATCH hoort geweigerd te worden').not.toBeNull();
+          expect(error?.code, `kreeg ${error?.code}: ${error?.message}`).toBe('42501');
 
           const { data } = await adminDb()
             .from('groups')
@@ -1577,23 +1590,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
             .eq('id', g.groupId)
             .single();
 
-          expect(data?.huddle_day).toBe(4);
-        },
-        TEST_TIMEOUT,
-      );
-
-      it(
-        'is door een gewoon lid niet te wijzigen',
-        async () => {
-          await g.lid.db.from('groups').update({ huddle_day: 2 }).eq('id', g.groupId);
-
-          const { data } = await adminDb()
-            .from('groups')
-            .select('huddle_day')
-            .eq('id', g.groupId)
-            .single();
-
-          expect(data?.huddle_day).toBe(4);
+          expect(data?.huddle_day, 'de dag is alsnog verzet').toBe(0);
         },
         TEST_TIMEOUT,
       );
