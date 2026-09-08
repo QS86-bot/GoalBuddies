@@ -861,20 +861,23 @@ export const GEEN_SCHRIJFPAD = [
       'herkomst wordt bij een weekdoel niet door de client gezet — zie de kop van ' +
       '`mijlpalen.ts`. Bij `weekly_plan_steps` wél, en daar staat het recht dus terecht.',
   },
-  {
-    tabel: 'weekly_goals',
-    soort: 'INSERT',
-    kolom: 'points_floor',
-    reden:
-      'de puntenwaarden komen uit domeinregel 10 en staan als default op de kolom. ' +
-      'Dat de client ze mág overschrijven is een oud recht en geen pad.',
-  },
-  {
-    tabel: 'weekly_goals',
-    soort: 'INSERT',
-    kolom: 'points_ceiling',
-    reden: 'idem — zelfde default op de kolom, zelfde domeinregel 10.',
-  },
+  /*
+   * ⚠️⚠️ **Hier stonden `points_floor` en `points_ceiling`, en die twee rijen
+   *    hielden vier maanden een gat open** (QS8-352). De reden luidde: *"de
+   *    puntenwaarden komen uit domeinregel 10 en staan als default op de kolom.
+   *    Dat de client ze mág overschrijven is een oud recht en geen pad."*
+   *
+   *    Dat is precies de vorm die dit bestand verbiedt: **de reden noemde de
+   *    gewoonte en niet de grendel.** Er wás geen grendel. 📏 Gemeten met echte
+   *    JWT's: een weekdoel met `points_ceiling=5`, een voltooiing, een
+   *    goedkeuring door een buddy — en `points_ledger` boekte `delta=5` waar
+   *    domeinregel 10 er twee voorschrijft.
+   *
+   *    Sinds migratie 0195 staat het recht er niet meer, dus is er ook geen
+   *    uitzondering meer nodig. Dezelfde formulering hield eerder
+   *    `chat_messages_update` overeind (QS8-327) — wie hier een rij toevoegt,
+   *    schrijve op wat het schrijven tégenhoudt en niet wie het vandaag laat.
+   */
 ];
 
 /**

@@ -192,13 +192,16 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     const weekdoel = await eigenaar.db.from('weekly_goals').insert({
       goal_id: vensterDoel.data.id,
       title: 'RISICOKLOK-WEEKDOEL',
-      points_ceiling: 2,
-      points_floor: 1,
-      // ⚠️ `points_miss` staat bewust níet in deze insert: de kolom zit niet in
-      //    de INSERT-grant van `authenticated` (hij hoort bij het puntenmodel en
-      //    niet bij de invoer) en de standaardwaarde is al `-1`. Wie hem toch
-      //    meestuurt krijgt "permission denied for table weekly_goals", en dat
-      //    leest als een policyweigering terwijl het een kolomgrant is.
+      // ⚠️ **Geen enkele puntenkolom staat in deze insert, en sinds QS8-352 kán
+      //    dat ook niet meer.** `points_miss` zat al buiten de INSERT-grant van
+      //    `authenticated`; migratie 0195 haalde `points_ceiling` en
+      //    `points_floor` er alsnog bij weg, want de client kon zijn eigen
+      //    plafond kiezen en dat werd geboekt. De defaults zíjn het model
+      //    (2/1/−1, domeinregel 10), dus deze test verandert er niets van.
+      //
+      //    Wie er tóch een meestuurt krijgt "permission denied for table
+      //    weekly_goals" — dat leest als een policyweigering terwijl het een
+      //    kolomgrant is.
       cycle_start_date: vroegste,
     });
     if (weekdoel.error) throw new Error(`weekdoel: ${weekdoel.error.message}`);
@@ -248,8 +251,7 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     const randWeekdoel = await eigenaar.db.from('weekly_goals').insert({
       goal_id: randDoel.data.id,
       title: 'RISICOKLOK-RANDWEEKDOEL',
-      points_ceiling: 2,
-      points_floor: 1,
+      // ⚠️ Zelfde reden als hierboven: de puntenkolommen komen uit de defaults.
       cycle_start_date: randDag,
     });
     if (randWeekdoel.error) throw new Error(`randweekdoel: ${randWeekdoel.error.message}`);
