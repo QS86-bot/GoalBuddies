@@ -1,4 +1,4 @@
--- 0205_een_weekafsluiting_hoort_bij_een_groep_en_verhuist_niet.sql — één PATCH
+-- 0206_een_weekafsluiting_hoort_bij_een_groep_en_verhuist_niet.sql — één PATCH
 -- van `group_id` nam de reacties van andere leden mee naar een groep waar de
 -- schrijvers ervan nooit in gezeten hebben (QS8-362)
 --
@@ -7,7 +7,7 @@
 --   drop function if exists public.pin_week_review();
 --
 --   ⚠️ Deze migratie voegt alléén toe: geen policy, grant of constraint van vóór
---      0205 wordt gewijzigd. Er is dus niets terug te zetten.
+--      0206 wordt gewijzigd. Er is dus niets terug te zetten.
 --
 -- ---------------------------------------------------------------------------
 -- Wat er stuk was

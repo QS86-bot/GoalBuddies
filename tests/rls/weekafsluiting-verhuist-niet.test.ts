@@ -17,7 +17,7 @@
  *    `bewaarWeekafsluiting()` is een upsert, PostgREST maakt daar
  *    `on conflict do update set …` van met álle body-kolommen erin, en Postgres
  *    toetst het UPDATE-recht op die kolommen sowieso. "Verandert de kolom nooit"
- *    en "schrijft de kolom nooit" zijn niet hetzelfde. Uitleg in 0205.
+ *    en "schrijft de kolom nooit" zijn niet hetzelfde. Uitleg in 0206.
  *
  * 📏 IJKING, gedraaid 08-09-2026, één mutatie per grendel:
  *
@@ -222,7 +222,7 @@ describe.runIf(rlsTestsConfigured)('een weekafsluiting verhuist niet naar een an
       expect(uitkomst(tweede.error)).toBe('toegelaten');
 
       // ⚠️⚠️ **HTTP 200 is niet hetzelfde als "het staat er", en dat is precies de
-      //    klasse waar 0188/QS8-326 voor bestaat — de kop van 0205 schrijft er
+      //    klasse waar 0188/QS8-326 voor bestaat — de kop van 0206 schrijft er
       //    zelf over.** 📏 Geijkt door `new.did_text := old.did_text` aan de pin
       //    toe te voegen, dus een stille terugzetting: alle vijf tests bleven
       //    groen, en 54 tests eromheen ook. Zonder deze terugleesregel bewaakt de
