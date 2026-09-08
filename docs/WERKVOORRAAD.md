@@ -828,6 +828,10 @@ november, als er een echte tweede lezer is.
 Er zijn vier milestones in Linear. Deze volgorde is geen suggestie — de
 afhankelijkheden zitten er echt in.
 
+Dit gaat over het **productwerk**. Hoe de losse voorraad in de Linear-backlog
+eromheen afgehandeld wordt — in welke banen die uiteenvalt en wat er op
+Quinten wacht — staat in `docs/BACKLOG-PLAN.md`.
+
 ### Milestone: Fase 1 — MVP
 
 Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
