@@ -1,6 +1,6 @@
 /**
  * Het dagplafond van 0192 op de zes tabellen die er nog geen hadden — QS8-344,
- * migratie 0195.
+ * migratie 0201.
  *
  * ⚠️ **Elk geval biedt plafond + 1 rijen in één verzoek aan, vanaf nul.** Dat is
  *    het scherpst mogelijke geval: elke rij afzonderlijk mag, alleen het totaal
@@ -26,13 +26,13 @@
  *    doordat een ándere grendel de batch al afving.
  *
  * ⚠️ **`week_reviews` staat hier met opzet niet bij, en dat is de vondst van dit
- *    issue.** Er zat een plafond van 100 in de eerste versie van 0195. 📏 Maar
+ *    issue.** Er zat een plafond van 100 in de eerste versie van 0201. 📏 Maar
  *    `week_reviews_periode_grens` laat maar vijf periodestarts per groep toe en
  *    `week_reviews_one_per_period` maakt er één rij per stuk van, dus je komt met
  *    tien groepen niet boven de ~50 rijen — ooit, niet per dag. Honderdéén rijen
  *    aanbieden vraagt honderdéén periodestarts, en dan weigert de periodetrigger
  *    met `22007`. Die test zou groen zijn geweest zonder het plafond ooit aan te
- *    raken. Het plafond is eruit; de meting staat in 0195.
+ *    raken. Het plafond is eruit; de meting staat in 0201.
  *
  * ⚠️ **De opbouw draait als `service_role` en dat is nodig, niet gemakzucht.** Om
  *    201 commitments te kunnen aanbieden moeten er 201 doelen staan, en `goals`
@@ -272,7 +272,7 @@ describe.runIf(rlsTestsConfigured)('het dagplafond op de zes tabellen van QS8-34
    *    1000 tekens, maar dat is de cliënt. 📏 Tweehonderd rijen — precies bínnen
    *    het plafond — waren samen 40 MB, acht procent van de gratis tier, zonder
    *    dat het dagplafond één keer afging. Gevonden door de security-review op
-   *    deze branch; migratie 0195 zet er `goal_interviews_answers_len` op.
+   *    deze branch; migratie 0201 zet er `goal_interviews_answers_len` op.
    *
    * 📏 IJKING, gedraaid 08-09-2026: `alter table goal_interviews drop constraint
    *    goal_interviews_answers_len` → 1 rood (deze test), 9 groen. Terug erop →
