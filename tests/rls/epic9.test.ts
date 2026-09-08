@@ -547,7 +547,7 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 9 — commitment device', () => {
     it(
       'speelt de beloning vrij, meldt hem in de groep en laat de straf vervallen',
       async () => {
-        // ⚠️ `completed_at` gaat niet meer mee — migratie 0195 (QS8-353) zet hem
+        // ⚠️ `completed_at` gaat niet meer mee — migratie 0196 (QS8-353) zet hem
         //    in `stempel_mijlpaal()` en `authenticated` heeft er geen
         //    UPDATE-recht meer op. Meesturen geeft 42501 op de héle rij.
         const afvinken = await f.alice.db

@@ -117,7 +117,7 @@ export async function zetMijlpaalStatus(
   id: string,
   status: MijlpaalStatus,
 ): Promise<Resultaat<true>> {
-  // ⚠️ **`completed_at` gaat hier niet meer mee — migratie 0195 (QS8-353).**
+  // ⚠️ **`completed_at` gaat hier niet meer mee — migratie 0196 (QS8-353).**
   //    Hij werd hiervoor door de client gezet, en dan is het geen tijdstempel
   //    maar invoer: 📏 gemeten dat een PATCH met `completed_at: '2019-05-05'`
   //    gewoon landde. De trigger `stempel_mijlpaal()` zet hem nu op de overgang

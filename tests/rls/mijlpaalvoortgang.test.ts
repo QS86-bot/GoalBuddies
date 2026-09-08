@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * Voortgang komt van het afvinken en niet van de invoer — QS8-353, migratie 0195.
+ * Voortgang komt van het afvinken en niet van de invoer — QS8-353, migratie 0196.
  *
  * ⚠️ **De belofte is niet "de kolom staat niet in de grant".** Dat is een
  *    eigenschap van het onderdeel en die verhuist niet mee. De belofte is wat een
@@ -33,9 +33,9 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  *
  * IJKING — met de hand gedraaid op 08-09-2026, per grendel apart:
  *
- *   A  `revoke insert (id, status, completed_at)` uit 0195 halen
+ *   A  `revoke insert (id, status, completed_at)` uit 0196 halen
  *      → 1 rood: 'een mijlpaal begint op todo, wat de client ook meestuurt'
- *   B  `revoke update (completed_at)` uit 0195 halen
+ *   B  `revoke update (completed_at)` uit 0196 halen
  *      → 1 rood: 'het tijdstempel komt van de server en niet uit de body'
  *   C2 de twee `raise exception`-takken uit de trigger halen (stil pinnen)
  *      → 1 rood: 'weigert een tijdstempel ook voor de rol die om de kolomgrant

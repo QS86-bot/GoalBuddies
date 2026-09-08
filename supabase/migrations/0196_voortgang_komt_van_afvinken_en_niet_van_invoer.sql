@@ -1,4 +1,4 @@
--- 0195_voortgang_komt_van_afvinken_en_niet_van_invoer.sql — een mijlpaal wordt
+-- 0196_voortgang_komt_van_afvinken_en_niet_van_invoer.sql — een mijlpaal wordt
 -- afgevinkt en niet ingevoerd: de client zet `id`, `status` en `completed_at`
 -- niet meer zelf (QS8-353).
 --
@@ -14,7 +14,7 @@
 --   ⚠️⚠️ **Na deze migratie is `completed_at` door niemand meer te zetten — ook
 --      niet als `postgres`.** De trigger werpt voor élke rol; dat is opzet, maar
 --      het betekent dat een correctie op bestaande rijen (een teruggedateerde
---      waarde van vóór 0195) langs de trigger heen moet:
+--      waarde van vóór 0196) langs de trigger heen moet:
 --
 --        alter table milestones disable trigger mijlpaal_stempel;
 --        -- de correctie
