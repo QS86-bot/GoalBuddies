@@ -712,7 +712,24 @@ AS $function$
       ('app.rem_doelen',             array['rem_doelen']),
       ('app.rem_mijlpalen',          array['rem_mijlpalen']),
       ('app.rem_doelgebeurtenissen', array['rem_doelgebeurtenissen']),
-      ('app.rem_goedkeuringen',      array['rem_goedkeuringen'])
+      ('app.rem_goedkeuringen',      array['rem_goedkeuringen']),
+      -- ⚠️⚠️ **Deze vijf komen uit 0207 (QS8-361) en waren er bij het samenvoegen
+      --    uit gevallen.** Mijn versie kopieerde het register van vóór die
+      --    migratie, precies zoals de aantekening bij de drie sleutels van 0199
+      --    hierboven beschrijft — de val van een teller die zijn eigen register in
+      --    zijn lichaam draagt: twee branches breiden hem uit, de laatste
+      --    `replace` wint, en de ander verdwijnt zonder een woord.
+      --
+      -- 📏 De teller ving zichzelf opnieuw op: `rem_commitments`, `rem_dagzetten`,
+      --    `rem_doelinterviews`, `rem_doelkoppelingen` en `rem_voltooiingen`
+      --    stonden meteen als ongeregistreerd in de uitslag, en twee RLS-tests
+      --    werden er rood van. Dat is de tweede keer op vier dagen; het staat als
+      --    QS8-358.
+      ('app.rem_commitments',        array['rem_commitments']),
+      ('app.rem_voltooiingen',       array['rem_voltooiingen']),
+      ('app.rem_dagzetten',          array['rem_dagzetten']),
+      ('app.rem_doelkoppelingen',    array['rem_doelkoppelingen']),
+      ('app.rem_doelinterviews',     array['rem_doelinterviews'])
   ),
   bekend as (
     select p.proname::text as naam, s.instelling, s.toegestaan
