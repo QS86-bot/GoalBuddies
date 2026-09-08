@@ -1474,6 +1474,11 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.open_uitleg':
     'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, and each other’s point totals in this group. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
+  'bevestiging.huddledag_verzetten.titel': 'Move the huddle day?',
+  'bevestiging.huddledag_verzetten.uitleg':
+    'The week that is running moves along to the new day. Anything already closed stays closed. For the others the running week may end sooner, sometimes today. You can do this once a day.',
+  'bevestiging.huddledag_verzetten.knop': 'Yes, move the huddle day',
+
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
     'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group, including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
@@ -1569,6 +1574,7 @@ export const en: Record<Sleutel, string> = {
   'coach.n_voorgesteld': '{aantal} milestones suggested',
   'beheer.melding_opgeslagen': 'Saved. Chain links already earned stay exactly where they are.',
   'beheer.melding_huddledag': 'The huddle day is now {{dag}}. The week that is running moved along with it; anything already closed stays closed.',
+  'beheer.huddledag_te_snel': 'The huddle day was already moved today. You can do it again tomorrow.',
   'beheer.huddledag_ongeldig': 'That is not a valid weekday.',
   'beheer.huddledag_verlopen': 'The week has moved on in the meantime. Refresh the screen and try again.',
   'beheer.melding_nieuwe_link': 'New link. The old one stops working from now on.',

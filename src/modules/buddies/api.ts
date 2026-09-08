@@ -137,6 +137,11 @@ function meldingen(): Readonly<Record<string, string>> {
     //    de nieuwe periodestart mee, en de database toetst ze allebei. Eén
     //    melding voor alle drie — de gebruiker kan alleen verversen.
     ongeldige_dag: t('beheer.huddledag_ongeldig'),
+    // ⚠️ `too_soon` staat hier níét, en `not_confirmed` ook niet: die twee
+    //    bestaan al voor `zet_groepszichtbaarheid()` en zeggen daar iets over de
+    //    zichtbaarheid. Eén reden met twee betekenissen hoort niet in één
+    //    tabel — `zetHuddledag()` vertaalt hem bij de aanroep, waar bekend is
+    //    wélke handeling er geweigerd is.
     ongeldige_periode: t('beheer.huddledag_verlopen'),
     periode_valt_niet_op_huddledag: t('beheer.huddledag_verlopen'),
     oude_periode_valt_niet_op_huddledag: t('beheer.huddledag_verlopen'),
@@ -650,10 +655,18 @@ export async function wijzigGroep(
  * ⚠️ De aanroeper geeft de groep mee zoals hij hem heeft — de oude huddledag en
  *    de tijdzone staan erin. Ze opnieuw ophalen zou een tweede bron maken voor
  *    iets waar de aanroeper al mee op het scherm rekent.
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit.** 📏 Een verzetting kan de lopende week
+ *    van de ánderen tot vandaag inkorten — gemeten: `09-08 .. 09-14` werd
+ *    `09-02 .. 09-08`. Dat is niet te verbieden, want élke verzetting maakt de
+ *    week korter of langer; het hoort een bewuste handeling te zijn
+ *    (domeinregel 5). De RPC weigert zonder, en remt bovendien op één
+ *    wisseling per dag.
  */
 export async function zetHuddledag(
   groep: { readonly id: string; readonly huddle_day: number; readonly tz: string },
   nieuweDag: Weekday,
+  bevestigd: boolean,
 ): Promise<Resultaat<number>> {
   const oude = huidigeGroepsperiode(groep);
   const nieuwe = groupPeriod({ huddleDay: nieuweDag, tz: normaliseerZone(groep.tz) }, now());
@@ -663,6 +676,7 @@ export async function zetHuddledag(
     p_dag: nieuweDag,
     p_oude_start: oude.startDate,
     p_nieuwe_start: nieuwe.startDate,
+    p_bevestigd: bevestigd,
   });
 
   if (error) {
@@ -672,6 +686,11 @@ export async function zetHuddledag(
 
   const uit = data as unknown as { ok?: boolean; reason?: string; huddle_day?: number };
   if (uit.ok !== true) {
+    // ⚠️ `too_soon` betekent hier iets anders dan in de gedeelde tabel, waar hij
+    //    over de zichtbaarheidsrem gaat. Zelfde woord, andere handeling.
+    if (uit.reason === 'too_soon') {
+      return { ok: false, melding: t('beheer.huddledag_te_snel') };
+    }
     return { ok: false, melding: melding(uit.reason, t('groep.opslaan_mislukt')) };
   }
 

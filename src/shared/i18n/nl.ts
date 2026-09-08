@@ -713,6 +713,11 @@ export const nl = {
   'beheer.zichtbaarheid_nu': 'Nu ingesteld: {stand}',
   'beheer.zichtbaarheid_waarschuwing':
     'Openzetten werkt met terugwerkende kracht: de groep ziet vanaf dat moment ook de gemiste weken die er al staan. Iedereen krijgt er een bericht van, zodat wie dat niet wil zijn doel kan ontkoppelen.',
+  'bevestiging.huddledag_verzetten.titel': 'De huddledag verzetten?',
+  'bevestiging.huddledag_verzetten.uitleg':
+    'De week die nu loopt schuift mee naar de nieuwe dag. Wat er al afgesloten is blijft afgesloten. Voor de anderen kan de lopende week hierdoor eerder aflopen, soms al vandaag. Je kunt dit een keer per dag doen.',
+  'bevestiging.huddledag_verzetten.knop': 'Ja, verzet de huddledag',
+
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
     'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, en een klassement met elkaars puntentotaal in deze groep, ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
@@ -1989,6 +1994,7 @@ export const nl = {
   'coach.n_voorgesteld': '{aantal} mijlpalen voorgesteld',
   'beheer.melding_opgeslagen': 'Opgeslagen. Lopende kettingschakels blijven staan waar ze staan.',
   'beheer.melding_huddledag': 'De huddledag staat nu op {{dag}}. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
+  'beheer.huddledag_te_snel': 'De huddledag is vandaag al verzet. Morgen kan het weer.',
   'beheer.huddledag_ongeldig': 'Dat is geen geldige weekdag.',
   'beheer.huddledag_verlopen': 'De week is intussen opgeschoven. Ververs het scherm en probeer het opnieuw.',
   'beheer.melding_nieuwe_link': 'Nieuwe link. De oude werkt vanaf nu niet meer.',

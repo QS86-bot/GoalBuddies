@@ -61,7 +61,9 @@ const EIGENAAR = proefId(1);
  *
  * ⚠️ **Alle negen, en niet vijf.** De eerste versie van dit bestand beloofde in
  *    zijn kop negen kolommen en toetste er vijf; `last_activity_at` viel tussen
- *    de lijst en de uitzonderingsnotitie door en werd door niets bewaakt.
+ *    de lijst en de uitzonderingsnotitie door en werd door niets bewaakt. En bij
+ *    0205 gebeurde het opnieuw met `huddle_day`, zie de regel onderaan: een
+ *    kolom die in dezelfde migratie gepind wordt, komt hier niet vanzelf bij.
  *    `id` en `created_at` staan er niet bij omdat een client ze niet kán
  *    aanwijzen zonder de rij kwijt te raken — die twee zijn de sleutel zelf.
  */
@@ -79,6 +81,16 @@ const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[
   //    beheerder zette hem op `Pacific/Kiritimati` en `groepsdatum()` sprong een
   //    dag vooruit. Sinds 0202 is het recht weg én pint de trigger hem.
   { kolom: 'tz', nieuw: "'Pacific/Kiritimati'", hoortTeBlijven: 'Europe/Amsterdam' },
+  // ⚠️⚠️ **De huddledag, sinds QS8-360 (0205), en hij kwam er bijna niet bij.**
+  //    Hij bepaalt waar de groepsperiode begint. Tot 0205 had hij een kolomrecht
+  //    en géén pin; sinds 0205 is het recht ingetrokken én pint de trigger hem.
+  //
+  //    📏 Gevonden door de security-review op die branch, en zelf nagemeten: met
+  //    `new.huddle_day := old.huddle_day` uit de gedeployde trigger gehaald bleef
+  //    de hele suite groen — 118 bestanden, 1332 tests. Het tweede slot was
+  //    alleen mét de kolomgrant erbij geijkt, met de hand, en dat is een grendel
+  //    die nooit rood is geweest. Precies de reden dat dít bestand bestaat.
+  { kolom: 'huddle_day', nieuw: '3', hoortTeBlijven: '0' },
   // ⚠️ De tak van 0060 liet `not-null → null` door, en dat is precies wat een
   //    beheerder wil om zijn eigen oprichterschap te wissen. Sinds 0149 pint de
   //    regel onvoorwaardelijk; het verwijderen van een account loopt niet langs

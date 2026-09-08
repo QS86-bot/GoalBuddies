@@ -5,7 +5,7 @@
 -- ROLLBACK-PAD:
 --   grant update (huddle_day) on table public.groups to authenticated;
 --   en zet `guard_group_update()` terug naar de vorm van 0201 (zonder de
---   `new.huddle_day := old.huddle_day`-regel). `drop function public.zet_huddledag(uuid, smallint, date, date);`
+--   `new.huddle_day := old.huddle_day`-regel). `drop function public.zet_huddledag(uuid, smallint, date, date, boolean);`
 --   De twee allowlists mogen blijven staan — een waarde die niemand meer
 --   schrijft is onschadelijk — maar horen er strikt genomen ook uit:
 --     alter table public.chat_messages drop constraint chat_messages_system_event_bekend;
@@ -212,7 +212,8 @@ create or replace function public.zet_huddledag(
   p_group_id     uuid,
   p_dag          smallint,
   p_oude_start   date,
-  p_nieuwe_start date
+  p_nieuwe_start date,
+  p_bevestigd    boolean default false
 )
 returns jsonb
 language plpgsql
@@ -223,6 +224,7 @@ declare
   v_oude_dag     smallint;
   v_status       text;
   v_vandaag      date;
+  v_recent       integer := 0;
   v_schakels     integer := 0;
   v_afsluitingen integer := 0;
 begin
@@ -289,6 +291,44 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'periode_bevat_vandaag_niet');
   end if;
 
+  -- ⚠️⚠️ **Bevestiging en rem, en die zijn er niet voor de netheid.** Dit kwam
+  --    uit de security-review op deze branch en het is zelf nagemeten: de
+  --    venstertoets hierboven laat élke periodestart in
+  --    `[groepsdatum - 6, groepsdatum]` toe, dus een beheerder kan de lopende
+  --    week van de anderen **tot vandaag inkorten**.
+  --
+  -- 📏 Gemeten op een verse groep met huddledag = vandaag:
+  --
+  --      lopende periode   2026-09-08 .. 2026-09-14
+  --      zet_huddledag(g, dow(vandaag - 6), '2026-09-08', '2026-09-02') -> ok
+  --      nieuwe periode    2026-09-02 .. 2026-09-08
+  --
+  --    Wie nog niet had afgesloten, houdt dan de rest van vandaag over in plaats
+  --    van zes dagen. Dat is niet meer het gat van dit issue — afsluiten kán nog
+  --    — maar het is wél nog steeds "één persoon bepaalt of jouw week telt".
+  --
+  -- ⚠️ **Verbieden kan niet en hoort ook niet.** Elke verzetting maakt de
+  --    lopende week korter of langer; dat is wat een huddledag verzetten ís. Wat
+  --    er ontbrak is dat het een bewuste handeling is: domeinregel 5 vraagt
+  --    expliciete bevestiging, auditeerbaar en nooit stilzwijgend. Dezelfde twee
+  --    remmen als `zet_groepszichtbaarheid()` (0076), en om dezelfde reden.
+  if p_bevestigd is not true then
+    return jsonb_build_object('ok', false, 'reason', 'not_confirmed');
+  end if;
+
+  -- ⚠️ De rem leest de auditrij die deze functie zelf schrijft — er is geen
+  --    tweede plek waar dit geteld wordt. 📏 Zonder rem gaven elf wisselingen
+  --    achter elkaar elf systeemberichten in de groepschat.
+  select count(*) into v_recent
+  from group_events e
+  where e.group_id = p_group_id
+    and e.event_type = 'huddle_day_changed'
+    and e.created_at > now() - interval '1 day';
+
+  if v_recent > 0 then
+    return jsonb_build_object('ok', false, 'reason', 'too_soon');
+  end if;
+
   -- ⚠️ **De dag eerst, de rijen daarna, en die volgorde is dwingend.**
   --    `bewaak_week_review_periode()` toetst een `week_reviews`-rij tegen de
   --    huddledag die op dát moment in `groups` staat. Andersom weigert hij de
@@ -309,7 +349,13 @@ begin
      and not exists (
        select 1 from chain_links x
        where x.group_id = c.group_id
-         and x.user_id  = c.user_id
+         -- ⚠️ `is not distinct from` en niet `=`, gelijk aan de clausule
+         --    hieronder. `chain_links.user_id` is vandaag `not null`, dus de twee
+         --    kunnen hier niet verschillen — maar `week_reviews.user_id` wordt
+         --    door `on delete set null` wél genuld, en twee clausules die
+         --    hetzelfde bedoelen en verschillend geschreven zijn, zijn een
+         --    uitnodiging om de verkeerde te kopiëren.
+         and x.user_id  is not distinct from c.user_id
          and x.group_period_start = p_nieuwe_start
      );
   get diagnostics v_schakels = row_count;
@@ -359,17 +405,19 @@ begin
 end;
 $$;
 
-comment on function public.zet_huddledag(uuid, smallint, date, date) is
+comment on function public.zet_huddledag(uuid, smallint, date, date, boolean) is
   'Verzet de huddledag van een groep en neemt de lopende periode mee: '
   'chain_links en week_reviews verhuizen van de oude naar de nieuwe '
   'periodestart, zodat een openstaande weekafsluiting afgerond kan worden en '
   'een afgesloten week niet twee keer geteld wordt. De twee periodestarts komen '
   'van de client, want de groepsklok hoort in shared/time (correctheidsregel 7); '
   'beide worden getoetst op hun eigen huddledag en op vandaag. Enige weg naar '
-  'groups.huddle_day sinds 0205 — QS8-360.';
+  'groups.huddle_day sinds 0205 — QS8-360. Vraagt een bevestiging en remt op '
+  'een wisseling per dag: de verzetting kort de lopende week van de anderen in '
+  'of verlengt hem, en dat is een gevolg dat bij hén landt (domeinregel 5).';
 
-revoke all on function public.zet_huddledag(uuid, smallint, date, date) from public, anon, authenticated;
-grant execute on function public.zet_huddledag(uuid, smallint, date, date) to authenticated;
+revoke all on function public.zet_huddledag(uuid, smallint, date, date, boolean) from public, anon, authenticated;
+grant execute on function public.zet_huddledag(uuid, smallint, date, date, boolean) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 4. group_overview() geeft geen antwoord op een periode die er niet is

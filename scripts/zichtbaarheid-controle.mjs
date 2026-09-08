@@ -136,6 +136,17 @@ export const GEEN_OPPERVLAK = new Map([
       'uitleg draagt in plaats van een streepje.',
   ],
   ['functie:zet_groepszichtbaarheid', 'De setter (0076). Zet de stand, leest niets van een lid.'],
+  [
+    'functie:zet_huddledag',
+    '⚠️ **De tweede valse positief op een naam, en de eerste sinds `sleutelzetters` ' +
+      'hierboven.** Deze functie (0205, QS8-360) verzet de huddledag en de lopende ' +
+      'periode; hij leest `zichtbaarheid` niet en varieert niets op de stand van de ' +
+      'groep. Hij komt hier terecht omdat zijn commentaar `zet_groepszichtbaarheid()` ' +
+      'noemt — hij spiegelt de bevestiging en de dagrem van die functie, en die reden ' +
+      'hoort in de body te staan. Dat de teller daarop aanslaat is geen defect maar ' +
+      'de prijs van een zoekterm die liever te veel meldt dan te weinig; het is wél ' +
+      'de tweede keer, en daarmee een patroon in plaats van een incident.',
+  ],
   ['functie:guard_group_update', 'Pint de kolom vast; een client mag hem niet schrijven.'],
   ['functie:create_group', 'Zet de beginstand. Nieuwe groepen zijn beschermd.'],
   [

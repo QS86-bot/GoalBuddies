@@ -3019,6 +3019,7 @@ export type Database = {
       }
       zet_huddledag: {
         Args: {
+          p_bevestigd?: boolean
           p_dag: number
           p_group_id: string
           p_nieuwe_start: string

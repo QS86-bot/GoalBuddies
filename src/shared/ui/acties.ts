@@ -168,6 +168,14 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    ENGINEER-REVIEW), is één tik zonder bevestiging te goedkoop voor wat
     //    het kost.
     weekStartVerzetten: bouw('bevestiging.weekstart_verzetten'),
+    // ⚠️ QS8-360, migratie 0205. De groepstegenhanger van de regel hierboven, en
+    //    zwaarder: de weekstart verzet je voor jezelf, de huddledag voor iedereen.
+    //    📏 Gemeten: een verzetting kan de lopende week van de anderen tot
+    //    vandaag inkorten (`09-08 .. 09-14` werd `09-02 .. 09-08`). Dat is niet
+    //    te verbieden — élke verzetting maakt de week korter of langer, dat is
+    //    wat hij ís — dus is de prijs iets om te noemen en niet om weg te nemen.
+    //    De database weigert zonder `p_bevestigd`; dit scherm is de tweede rem.
+    huddledagVerzetten: bouw('bevestiging.huddledag_verzetten'),
   };
 }
 
@@ -186,4 +194,5 @@ export type BevestigingsNaam =
   | 'groepVerlaten'
   | 'doelVerwijderen'
   | 'doelAfronden'
-  | 'weekStartVerzetten';
+  | 'weekStartVerzetten'
+  | 'huddledagVerzetten';

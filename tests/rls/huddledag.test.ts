@@ -191,6 +191,7 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
         p_dag: DAG.nieuw,
         p_oude_start: startVan(DAG.oud),
         p_nieuwe_start: startVan(DAG.nieuw),
+        p_bevestigd: true,
       });
       expect(antwoord.error).toBeNull();
       expect(antwoord.data as Uitkomst).toMatchObject({ ok: false, reason: 'not_admin' });
@@ -237,6 +238,7 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
           p_dag: DAG.nieuw,
           p_oude_start: startVan(DAG.oud),
           p_nieuwe_start: startVan(DAG.nieuw),
+          p_bevestigd: true,
           ...geval.patch(),
         });
         expect(antwoord.error).toBeNull();
@@ -270,6 +272,7 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
         p_dag: DAG.nieuw,
         p_oude_start: vorige,
         p_nieuwe_start: startVan(DAG.nieuw),
+        p_bevestigd: true,
       });
       expect(antwoord.error).toBeNull();
       expect(antwoord.data as Uitkomst).toMatchObject({
@@ -303,6 +306,7 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
           p_dag: DAG.nieuw,
           p_oude_start: oudeStart,
           p_nieuwe_start: nieuweStart,
+          p_bevestigd: true,
         });
         expect(antwoord.error, JSON.stringify(antwoord.error)).toBeNull();
         expect(antwoord.data as Uitkomst).toMatchObject({ ok: true, huddle_day: DAG.nieuw });
@@ -393,6 +397,53 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
   );
 
   it(
+    'weigert zonder bevestiging, en dat is domeinregel 5 en geen formaliteit',
+    async () => {
+      // ⚠️ 📏 De reden dat deze bevestiging er is: de venstertoets laat élke
+      //    periodestart in `[groepsdatum - 6, groepsdatum]` toe, dus een
+      //    verzetting kan de lopende week van de ánderen tot vandaag inkorten
+      //    (gemeten: `09-08 .. 09-14` werd `09-02 .. 09-08`). Verbieden kan niet
+      //    — élke verzetting maakt de week korter of langer — dus is de prijs
+      //    iets om te noemen. Gevonden in de security-review op deze branch.
+      const antwoord = await open.beheerder.db.rpc('zet_huddledag', {
+        p_group_id: open.id,
+        p_dag: DAG.oud,
+        p_oude_start: startVan(DAG.nieuw),
+        p_nieuwe_start: startVan(DAG.oud),
+      });
+      expect(antwoord.error).toBeNull();
+      expect(antwoord.data as Uitkomst).toMatchObject({ ok: false, reason: 'not_confirmed' });
+
+      const na = await adminDb().from('groups').select('huddle_day').eq('id', open.id).single();
+      expect(na.data?.huddle_day, 'de dag is alsnog verzet').toBe(DAG.nieuw);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'remt op één wisseling per dag',
+    async () => {
+      // ⚠️ De open groep heeft hierboven al één keer gewisseld, dus deze tweede
+      //    hoort af te ketsen. 📏 Zonder rem gaven elf wisselingen achter elkaar
+      //    elf systeemberichten in de groepschat — onwrikbare regel 5, en
+      //    dezelfde rem als `zet_groepszichtbaarheid()` (0076).
+      const antwoord = await open.beheerder.db.rpc('zet_huddledag', {
+        p_group_id: open.id,
+        p_dag: DAG.oud,
+        p_oude_start: startVan(DAG.nieuw),
+        p_nieuwe_start: startVan(DAG.oud),
+        p_bevestigd: true,
+      });
+      expect(antwoord.error).toBeNull();
+      expect(antwoord.data as Uitkomst).toMatchObject({ ok: false, reason: 'too_soon' });
+
+      const na = await adminDb().from('groups').select('huddle_day').eq('id', open.id).single();
+      expect(na.data?.huddle_day).toBe(DAG.nieuw);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
     'weigert dezelfde dag nog een keer — dat is geen wijziging',
     async () => {
       const antwoord = await beschermd.beheerder.db.rpc('zet_huddledag', {
@@ -400,6 +451,7 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
         p_dag: DAG.nieuw,
         p_oude_start: startVan(DAG.nieuw),
         p_nieuwe_start: startVan(DAG.nieuw),
+        p_bevestigd: true,
       });
       expect(antwoord.error).toBeNull();
       expect(antwoord.data as Uitkomst).toMatchObject({ ok: false, reason: 'unchanged' });

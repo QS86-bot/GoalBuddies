@@ -128,6 +128,20 @@ naadtest om — het overzicht zweeg over een historische periode die de tabel w�
 toonde. Inhoudelijk klopt het ook: buiten de band is `false` de geschiedenis
 zoals hij is opgeschreven, en in een open groep mág die zichtbaar zijn (A41).
 
+⚠️ **Wat die grens kost, en dat hoort er met zoveel woorden bij te staan.** Zes
+dagen na een wissel zakt de verlaten periodestart onder `groepsdatum - 6`, en dan
+antwoordt `group_overview()` in een **open** groep daar weer `false` — voor een
+periode die nooit bestaan heeft. 📏 Gemeten door de security-review op deze
+branch: `group_overview(g, '2026-08-27')` gaf `f/f` voor een datum die geen
+periodestart was.
+
+Dat is geen domeinregel-7-breuk: het is `false` voor **alle** leden gelijk, dus er
+valt geen individuele gemiste week uit af te leiden — anders dan bij het geval
+waar dit issue over gaat, waar de één `true` en de ander `false` stond. Het is een
+antwoord over een periode die niet bestaat, en dat is lelijk. De kop van 0205
+claimt dus niet dat de open groep helemaal gerepareerd is; hij claimt dat de
+lopende week dat is. Er staat een rij over in `docs/ENGINEER-REVIEW.md`.
+
 ## 5. Wat de groep te horen krijgt
 
 Eén systeembericht, `huddle_day_changed` — een nieuw type, dus een migratie, want

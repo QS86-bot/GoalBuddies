@@ -135,6 +135,12 @@ export default function GroepBeheer() {
    */
   const [zichtVraag, setZichtVraag] = useState(false);
   /**
+   * ⚠️ Zelfde vorm als `zichtVraag`, en zwaarder dan hij lijkt: de huddledag
+   *    verzetten schuift de lopende week van álle leden, en kan hem tot vandaag
+   *    inkorten. De database weigert zonder `p_bevestigd`; dit is de tweede rem.
+   */
+  const [huddleVraag, setHuddleVraag] = useState(false);
+  /**
    * ⚠️ Zelfde vorm als `zichtVraag`, en met meer reden. Archiveren vervangt sinds
    *    0092 het verwijderen van een groep — het neemt de groep weg bij álle leden
    *    en is vanuit de app niet terug te draaien.
@@ -209,6 +215,24 @@ export default function GroepBeheer() {
 
   async function slaOp() {
     if (!id) return;
+    setFout(null);
+    setMelding(null);
+
+    // ⚠️ **De huddledag vraagt eerst een bevestiging, en dan pas slaat alles op.**
+    //    Domeinregel 5: de prijs van deze knop wordt door de ánderen betaald —
+    //    hun lopende week schuift mee en kan eerder aflopen. De bevestiging
+    //    noemt die prijs; de RPC weigert zonder.
+    if (groep !== null && huddledag !== groep.huddle_day) {
+      setHuddleVraag(true);
+      return;
+    }
+
+    await bewaar();
+  }
+
+  async function bewaar() {
+    if (!id) return;
+    setHuddleVraag(false);
     setBezig('opslaan');
     setFout(null);
     setMelding(null);
@@ -228,7 +252,7 @@ export default function GroepBeheer() {
     //    huddledag.
     let verzet = false;
     if (groep !== null && huddledag !== groep.huddle_day) {
-      const dag = await zetHuddledag(groep, huddledag);
+      const dag = await zetHuddledag(groep, huddledag, true);
       if (!dag.ok) {
         setBezig(null);
         setFout(dag.melding);
@@ -594,15 +618,24 @@ export default function GroepBeheer() {
                   onKies={(gekozen) => setVoertaal(gekozen as Voertaal | 'geen')}
                 />
 
-                <Button
-                  variant="primair"
-                  block
-                  busy={bezig === 'opslaan'}
-                  disabled={telTekens(omschrijving) > OMSCHRIJVING_MAX}
-                  onPress={() => void slaOp()}
-                >
-                  {t('beheer.opslaan')}
-                </Button>
+                {huddleVraag ? (
+                  <Bevestiging
+                    tekst={bevestigingen().huddledagVerzetten}
+                    bezig={bezig === 'opslaan'}
+                    onBevestig={() => void bewaar()}
+                    onAnnuleer={() => setHuddleVraag(false)}
+                  />
+                ) : (
+                  <Button
+                    variant="primair"
+                    block
+                    busy={bezig === 'opslaan'}
+                    disabled={telTekens(omschrijving) > OMSCHRIJVING_MAX}
+                    onPress={() => void slaOp()}
+                  >
+                    {t('beheer.opslaan')}
+                  </Button>
+                )}
               </Card>
 
               {/*
