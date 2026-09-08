@@ -679,3 +679,164 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
     TEST_TIMEOUT,
   );
 });
+
+// ---------------------------------------------------------------------------
+// QS8-367 — de overname heeft één mechanisme
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️⚠️ **De belofte is niet "de `delete` is weg".** Dat is de regel. De belofte
+ *    is een eigenschap van het geheel:
+ *
+ *      Wie een token registreert dat al bij een ander staat, neemt het over —
+ *      en dat gebeurt langs precies één mechanisme.
+ *
+ * ⚠️ Tot 0211 waren het er twee: een `delete` die met een **ongetrimde** waarde
+ *    vergeleek, en de `on conflict` van de insert. De eerste las als het slot op
+ *    het gedeelde-apparaatgeval — zo staat hij ook in de dossierrij van 21-08 —
+ *    en de tweede deed het werk. 📏 Gemeten dat weghalen veilig is: `authenticated`
+ *    heeft op deze tabel alléén SELECT en er is geen insert-policy, dus deze RPC
+ *    is de enige schrijver en ze trimt altijd.
+ *
+ * ⚠️ **Wat hier voor het eerst onder test staat is `id` en `created_at`.** Dat
+ *    was het énige waarneembare verschil tussen de twee paden — langs de
+ *    `delete` kwam er een verse rij, langs de `on conflict` blijft de bestaande
+ *    staan — en niets toetste het. Een test die alleen `user_id` bekijkt, blijft
+ *    groen welk pad je ook kiest.
+ */
+describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
+  /**
+   * ⚠️ **Eigen gebruikers, en dat is een gerepareerde opzet.** De eerste versie
+   *    leende `alice` van het blok hierboven, en 📏 dat gaf meteen een
+   *    `push_tokens_user_id_fkey`: het `afterAll` van dát blok draait wanneer
+   *    díé describe klaar is, dus vóór deze begint. `removeTestUsers()` had haar
+   *    al weggehaald. Een fixture die over een blokgrens heen leent, leunt op de
+   *    volgorde waarin vitest zijn haken draait.
+   */
+  let eerste: TestUser;
+  let tweede: TestUser;
+  const GEDEELD = `ExponentPushToken[gedeeld-${RUN}]`;
+
+  interface Rij {
+    id: string;
+    user_id: string;
+    created_at: string;
+    token: string;
+  }
+
+  /** De rij zoals `service_role` hem ziet — `push_tokens_select` is eigenaar-only. */
+  async function rijVan(token: string): Promise<Rij | null> {
+    const { data } = await adminDb()
+      .from('push_tokens')
+      .select('id, user_id, created_at, token')
+      .eq('token', token)
+      .maybeSingle();
+    return (data ?? null) as Rij | null;
+  }
+
+  async function registreer(wie: TestUser, token: string) {
+    const { data, error } = await wie.db.rpc('registreer_push_token', {
+      p_token: token,
+      p_platform: 'ios',
+    });
+    if (error) throw new Error(`registreren: ${error.message}`);
+    return uit(data);
+  }
+
+  beforeAll(async () => {
+    if (!rlsTestsConfigured) return;
+    eerste = await createTestUser('pushovername-eerste');
+    tweede = await createTestUser('pushovername-tweede');
+  }, SETUP_TIMEOUT);
+
+  afterAll(async () => {
+    if (!rlsTestsConfigured) return;
+    await removeTestUsers();
+  }, SETUP_TIMEOUT);
+
+  it(
+    'zet het token om naar de laatste registreerder',
+    async () => {
+      expect(await registreer(eerste, GEDEELD)).toEqual({ ok: true });
+      const vanAlice = await rijVan(GEDEELD);
+      expect(vanAlice?.user_id, 'de opstelling klopt niet').toBe(eerste.id);
+
+      expect(await registreer(tweede, GEDEELD)).toEqual({ ok: true });
+
+      // ⚠️ **Dit is de pin op de `on conflict`**, en sinds 0211 is dat het enige
+      //    mechanisme. Haal `user_id = excluded.user_id` uit de conflicttak weg
+      //    en deze test wordt rood — dat is de ijking die acceptatiecriterium 3
+      //    vraagt, want de `delete` weghalen mag verder niets veranderen.
+      const naOvername = await rijVan(GEDEELD);
+      expect(naOvername?.user_id, 'de overname landde niet').toBe(tweede.id);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat er precies één rij van over',
+    async () => {
+      // ⚠️ De helft die de vorige test niet dekt: `maybeSingle()` zou bij twee
+      //    rijen werpen, maar dat is een eigenschap van de helper en niet van de
+      //    belofte. `push_tokens_token_uniek` maakt twee rijen onmogelijk — deze
+      //    test zegt dat we dáárop leunen en niet op de `delete`.
+      const { data, error } = await adminDb()
+        .from('push_tokens')
+        .select('id')
+        .eq('token', GEDEELD);
+      expect(error, JSON.stringify(error)).toBeNull();
+      expect(data ?? []).toHaveLength(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'houdt de rij dezelfde: id en created_at overleven de overname',
+    async () => {
+      const token = `ExponentPushToken[identiteit-${RUN}]`;
+
+      expect(await registreer(eerste, token)).toEqual({ ok: true });
+      const voor = await rijVan(token);
+      expect(voor, 'de opstelling klopt niet').not.toBeNull();
+
+      expect(await registreer(tweede, token)).toEqual({ ok: true });
+      const na = await rijVan(token);
+
+      // ⚠️ **Dit is acceptatiecriterium 2, en het is een besluit en geen
+      //    bijvangst.** Langs de oude `delete` kwam hier een verse rij met een
+      //    nieuwe `id` en een nieuwe `created_at`. 📏 Niets leest die twee — geen
+      //    foreign key wijst naar `push_tokens.id`, geen andere functie noemt de
+      //    tabel, en de meldingenjob selecteert `token, platform, p256dh, auth` —
+      //    dus de keuze is vrij, en hij ligt hier vast in plaats van in een
+      //    implementatiedetail.
+      expect(na?.user_id).toBe(tweede.id);
+      expect(na?.id, 'de rij is vervangen in plaats van omgezet').toBe(voor?.id);
+      expect(na?.created_at, 'created_at hoort van de rij te zijn en niet van de eigenaar').toBe(
+        voor?.created_at,
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'neemt ook over als de aanroeper er spaties omheen zet',
+    async () => {
+      // ⚠️⚠️ **Dit is het geval waarop de twee mechanismen uit elkaar liepen.**
+      //    De `delete` vergeleek met `p_token` en miste hier, terwijl de insert
+      //    `trim(p_token)` wegschreef en dus alsnog botste. Nu is er één pad, en
+      //    deze test zegt dat het langs dezelfde rij loopt: zelfde `id`.
+      const token = `ExponentPushToken[spaties-${RUN}]`;
+
+      expect(await registreer(eerste, token)).toEqual({ ok: true });
+      const voor = await rijVan(token);
+
+      expect(await registreer(tweede, `   ${token}   `)).toEqual({ ok: true });
+      const na = await rijVan(token);
+
+      expect(na?.user_id, 'de overname landde niet').toBe(tweede.id);
+      expect(na?.id, 'er is een tweede rij ontstaan in plaats van een overname').toBe(voor?.id);
+      expect(na?.token, 'de opgeslagen waarde hoort getrimd te zijn').toBe(token);
+    },
+    TEST_TIMEOUT,
+  );
+});
