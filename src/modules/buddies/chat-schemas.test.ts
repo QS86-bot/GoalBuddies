@@ -93,7 +93,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
     }
   });
 
-  it('bevat uitsluitend de veertien gebeurtenissen van 0025, 0032, 0070, 0076, 0112, 0144 en 0205', () => {
+  it('bevat uitsluitend de veertien gebeurtenissen van 0025, 0032, 0070, 0076, 0112, 0144 en 0207', () => {
     // ⚠️ Een exacte lijst en geen `toContain`-reeks. Zo is een tóevoeging óók een
     //    rode test, en niet alleen een verkeerde toevoeging. Wie hier een naam
     //    bijzet, komt eerst langs de vraag: kan hieruit iemands gemiste week
@@ -140,7 +140,7 @@ describe('domeinregel 7: falen is nooit publiek', () => {
       //    groep krijgt geen bericht dat het stil was), en er staat geen
       //    ranglijst in — die zou ook een lijst zijn van wie onderaan staat.
       'season_recap',
-      // ⚠️ QS8-360 (migratie 0205). Gaat over de gróép — de huddledag is verzet —
+      // ⚠️ QS8-360 (migratie 0207). Gaat over de gróép — de huddledag is verzet —
       //    en noemt geen mislukking en geen aantallen. Dat laatste is hier de
       //    scherpe rand: `zet_huddledag()` weet hoeveel afsluitingen er mee zijn
       //    verhuisd, en uit dat getal is af te leiden wie er nog niet had

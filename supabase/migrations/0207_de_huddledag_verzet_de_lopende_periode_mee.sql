@@ -1,4 +1,4 @@
--- 0205_de_huddledag_verzet_de_lopende_periode_mee.sql — de huddledag verzetten
+-- 0207_de_huddledag_verzet_de_lopende_periode_mee.sql — de huddledag verzetten
 -- loopt voortaan via `zet_huddledag()`, die de lopende periode meeneemt in
 -- plaats van hem onbereikbaar achter te laten (QS8-360)
 --
@@ -175,7 +175,7 @@ begin
   --    Gemeten met een tijdelijk `grant update (created_by)`: **NULL**, de pin
   --    hield hem niet tegen. Met deze regel onvoorwaardelijk blijft de oprichter
   --    staan, én loopt het verwijderen van een account nog gewoon door.
-  -- ⚠️⚠️ **Nieuw in 0205 (QS8-360), en om dezelfde reden als `tz` erboven.**
+  -- ⚠️⚠️ **Nieuw in 0207 (QS8-360), en om dezelfde reden als `tz` erboven.**
   --    De huddledag verschuift de groepsperiode. 📏 Gemeten vóór deze migratie:
   --    na een kale PATCH kon een lid zijn openstaande weekafsluiting nooit meer
   --    afronden, bleef het groepsoverzicht daar `false` melden — een gemiste
@@ -412,7 +412,7 @@ comment on function public.zet_huddledag(uuid, smallint, date, date, boolean) is
   'een afgesloten week niet twee keer geteld wordt. De twee periodestarts komen '
   'van de client, want de groepsklok hoort in shared/time (correctheidsregel 7); '
   'beide worden getoetst op hun eigen huddledag en op vandaag. Enige weg naar '
-  'groups.huddle_day sinds 0205 — QS8-360. Vraagt een bevestiging en remt op '
+  'groups.huddle_day sinds 0207 — QS8-360. Vraagt een bevestiging en remt op '
   'een wisseling per dag: de verzetting kort de lopende week van de anderen in '
   'of verlengt hem, en dat is een gevolg dat bij hén landt (domeinregel 5).';
 
@@ -469,7 +469,7 @@ AS $function$
             p_period_start >= groepsdatum(m.group_id) - 6
             or lid_van_open_groep(m.group_id)
           )
-          -- ⚠️ **Derde eis, nieuw in 0205 (QS8-360): binnen de lopende
+          -- ⚠️ **Derde eis, nieuw in 0207 (QS8-360): binnen de lopende
           --    periode moet de gevraagde datum een échte periodestart zijn.**
           --    Verzet een beheerder de huddledag, dan is de oude start dat niet
           --    meer, en gaf deze functie daar `false` terug — "niet afgesloten",

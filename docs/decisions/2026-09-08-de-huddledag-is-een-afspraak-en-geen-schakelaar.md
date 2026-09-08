@@ -1,6 +1,6 @@
 # De huddledag is een afspraak en geen schakelaar
 
-**Datum:** 08-09-2026 · **Issue:** QS8-360 · **Migratie:** 0205
+**Datum:** 08-09-2026 · **Issue:** QS8-360 · **Migratie:** 0207
 
 Een beheerder kon met één PATCH op `groups.huddle_day` de weekafsluiting van een
 ander lid onbereikbaar maken, en de groep zag dat als een gemiste week. Dit
@@ -61,7 +61,7 @@ must-allow.
 **Het precedent stond er al.** `zet_week_startdag()` (QS8-357, migratie 0201)
 doet voor de persoonlijke weekstart precies dit: de dag zetten **én** de
 openstaande rijen mee verzetten, met de kolom eronder ingetrokken zodat de RPC de
-enige weg is. 0205 is diezelfde vorm, één laag hoger.
+enige weg is. 0207 is diezelfde vorm, één laag hoger.
 
 ## 3. Wat er nu gebeurt
 
@@ -111,11 +111,11 @@ commit over iets anders, als geruststelling bij `wijzigGroep()`. Er hangt geen
 beslisdocument aan en geen meting.
 
 En hij blijft staan voor wat hij beschrijft. **Afgelopen perioden worden niet
-herberekend.** Wat 0205 verhuist is uitsluitend de periode die op dat moment
+herberekend.** Wat 0207 verhuist is uitsluitend de periode die op dat moment
 loopt — en dat is geen geschiedenis: hij is nog niet afgelopen, en zijn start
 ís de afspraak die verzet wordt.
 
-Diezelfde grens loopt door in `group_overview()`. De derde eis die 0205 aan de
+Diezelfde grens loopt door in `group_overview()`. De derde eis die 0207 aan de
 venstertoets toevoegt — *binnen de lopende band moet de gevraagde datum een échte
 periodestart zijn* — geldt alleen vanaf `groepsdatum - 6`. Daarbuiten niet, en
 dat is geen voorzichtigheid maar een naad:
@@ -138,7 +138,7 @@ periodestart was.
 Dat is geen domeinregel-7-breuk: het is `false` voor **alle** leden gelijk, dus er
 valt geen individuele gemiste week uit af te leiden — anders dan bij het geval
 waar dit issue over gaat, waar de één `true` en de ander `false` stond. Het is een
-antwoord over een periode die niet bestaat, en dat is lelijk. De kop van 0205
+antwoord over een periode die niet bestaat, en dat is lelijk. De kop van 0207
 claimt dus niet dat de open groep helemaal gerepareerd is; hij claimt dat de
 lopende week dat is. Er staat een rij over in `docs/ENGINEER-REVIEW.md`.
 

@@ -115,7 +115,7 @@ export const SYSTEEM_GEBEURTENISSEN = [
    */
   'season_recap',
   /**
-   * ⚠️ **Toegevoegd in migratie 0205 (QS8-360).** De huddledag van de groep is
+   * ⚠️ **Toegevoegd in migratie 0207 (QS8-360).** De huddledag van de groep is
    *    verzet, en de lopende week is meeverhuisd naar de nieuwe periodestart.
    *
    *    ⚠️ Het bericht noemt de beheerder en de gebeurtenis — geen aantallen.

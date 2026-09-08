@@ -139,7 +139,7 @@ export const GEEN_OPPERVLAK = new Map([
   [
     'functie:zet_huddledag',
     '⚠️ **De tweede valse positief op een naam, en de eerste sinds `sleutelzetters` ' +
-      'hierboven.** Deze functie (0205, QS8-360) verzet de huddledag en de lopende ' +
+      'hierboven.** Deze functie (0207, QS8-360) verzet de huddledag en de lopende ' +
       'periode; hij leest `zichtbaarheid` niet en varieert niets op de stand van de ' +
       'groep. Hij komt hier terecht omdat zijn commentaar `zet_groepszichtbaarheid()` ' +
       'noemt — hij spiegelt de bevestiging en de dagrem van die functie, en die reden ' +

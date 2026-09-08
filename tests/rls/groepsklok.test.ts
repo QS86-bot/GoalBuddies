@@ -100,7 +100,7 @@ describe.skipIf(!rlsTestsConfigured)('de groepsklok is geen instelling van een b
       //    aanval.
       //
       // ⚠️ **`huddle_day` stond hier tot QS8-360 bij**, en dat is geen
-      //    versoepeling maar een verhuizing: hij loopt sinds migratie 0205 over
+      //    versoepeling maar een verhuizing: hij loopt sinds migratie 0207 over
       //    `zet_huddledag()`, omdat een kale PATCH de lopende periode
       //    onbereikbaar achterliet. De must-allow eronder toetst dat die weg
       //    werkt; dat een PATCH hem níét meer zet, staat in

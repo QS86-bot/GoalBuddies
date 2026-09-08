@@ -1562,7 +1562,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
 
     describe('de huddledag', () => {
       // ⚠️⚠️ **Hier stonden twee tests over een PATCH op `huddle_day`, en die
-      //    weg bestaat sinds migratie 0205 niet meer** (QS8-360). De kolom heeft
+      //    weg bestaat sinds migratie 0207 niet meer** (QS8-360). De kolom heeft
       //    geen grant meer voor `authenticated` en `guard_group_update()` pint
       //    hem; de weg is `zet_huddledag()`, die de lopende periode meeneemt.
       //
