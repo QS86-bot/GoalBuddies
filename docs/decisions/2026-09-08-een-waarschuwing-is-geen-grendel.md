@@ -1,6 +1,6 @@
 # Een waarschuwing is geen grendel
 
-**08-09-2026 — QS8-363, migratie 0206**
+**08-09-2026 — QS8-363, migratie 0207**
 
 ## Wat er gebeurde, in volgorde
 

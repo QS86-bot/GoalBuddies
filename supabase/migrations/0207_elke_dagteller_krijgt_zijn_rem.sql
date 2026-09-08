@@ -1,4 +1,4 @@
--- 0206_elke_dagteller_krijgt_zijn_rem.sql — de vijf dagtellers uit 0203 kregen
+-- 0207_elke_dagteller_krijgt_zijn_rem.sql — de vijf dagtellers uit 0203 kregen
 -- geen rem, waardoor het defect van QS8-347 opnieuw op vijf tabellen stond
 -- (QS8-363).
 --
@@ -251,7 +251,7 @@ AS $function$
       ('app.rem_mijlpalen',          array['rem_mijlpalen']),
       ('app.rem_doelgebeurtenissen', array['rem_doelgebeurtenissen']),
       ('app.rem_goedkeuringen',      array['rem_goedkeuringen']),
-      -- De vijf tellers van 0206, bij de dagtellers die 0203 zonder rem liet.
+      -- De vijf tellers van 0207, bij de dagtellers die 0203 zonder rem liet.
       ('app.rem_commitments',        array['rem_commitments']),
       ('app.rem_voltooiingen',       array['rem_voltooiingen']),
       ('app.rem_dagzetten',          array['rem_dagzetten']),

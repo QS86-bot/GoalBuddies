@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Elke dagteller heeft een rem — QS8-363, migratie 0206.
+ * Elke dagteller heeft een rem — QS8-363, migratie 0207.
  *
  * ⚠️ **Deze test bestaat omdat een waarschuwing in een dossier geen grendel is.**
  *    0200 (QS8-347) mat dat een geweigerde bulk-insert de rijen éérst schrijft:

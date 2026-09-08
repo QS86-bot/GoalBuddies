@@ -129,7 +129,7 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       //    `tests/rls/remdekking.test.ts` bewaakt dát elke dagteller een rem
       //    heeft; die blijft groen bij een rem waarvan de drempel per ongeluk
       //    astronomisch staat. Deze test meet de belofte zelf, op een van de vijf
-      //    tabellen die 0203 zonder rem liet en 0206 er een gaf.
+      //    tabellen die 0203 zonder rem liet en 0207 er een gaf.
       //
       // 📏 Zonder de rem kostte deze batch 2,9 MB op een tabel waar nul rijen
       //    bleven staan; met de rem 184 kB.
@@ -148,7 +148,7 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
       const groei = tabelbytes('daily_moves') - vooraf;
       expect(
         groei,
-        `daily_moves groeide met ${Math.round(groei / 1024)} kB; zonder de rem van 0206 ` +
+        `daily_moves groeide met ${Math.round(groei / 1024)} kB; zonder de rem van 0207 ` +
           `is dat een veelvoud daarvan`,
       ).toBeLessThan(800 * 1024);
     },
