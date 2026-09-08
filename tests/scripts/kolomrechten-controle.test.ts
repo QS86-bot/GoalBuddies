@@ -881,7 +881,16 @@ describe('een grant zonder aanroeper — QS8-349', () => {
   const lijsten = {
     geenSchrijfpad: [],
     nietTeLezen: [],
-    geenAanroeper: [{ tabel: 'reports', soort: 'INSERT', reden: 'de policy weigert elke rij' }],
+    // ⚠️ Mét `kolommen`, want een registerrij dekt kolommen en geen tabel — zie
+    //    het geval 'meldt een kolom die er later bij komt' hieronder.
+    geenAanroeper: [
+      {
+        tabel: 'reports',
+        soort: 'INSERT',
+        kolommen: ['reason', 'body'],
+        reden: 'de policy weigert elke rij',
+      },
+    ],
   };
 
   it('meldt een kolomgrant op een tabel waar niets naartoe schrijft', () => {
@@ -941,6 +950,41 @@ describe('een grant zonder aanroeper — QS8-349', () => {
     expect(oordeel.ongeschreven).toEqual([{ tabel: 'reports', soort: 'INSERT', kolommen: ['body'] }]);
   });
 
+  it('meldt een kolom die er later bij komt op een geregistreerd paar', () => {
+    // ⚠️⚠️ **Het gat dat de security-review op deze PR mat.** Het register stond
+    //    eerst per `tabel|soort`, dus één rij dekte élke kolom die er later bij
+    //    kwam. 📏 Gemeten met precies de gevaarlijke kolom — `grant update
+    //    (status) on weekly_goals` — en de controle bleef groen, terwijl een
+    //    client daarmee zijn weekdoel op `approved` kan zetten.
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { reports: { INSERT: { breed: false, kolommen: ['reason', 'body', 'status'] } } },
+    });
+
+    const uit = meldingen(oordeel, lijsten);
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('status');
+    expect(uit[0], 'de melding hoort te zeggen dat de rij bestáát maar niet dekt').toContain(
+      'niet beoordeeld',
+    );
+  });
+
+  it('meldt een tabelbrede grant, ook als het paar geregistreerd is', () => {
+    // ⚠️ **De controle zweeg het hardst bij de ergste fout.** 📏 `grant insert on
+    //    points_ledger to authenticated` — tabelbreed op het puntenboek — gaf
+    //    geen enkele melding. Een tabelbrede grant dekt élke kolom die de tabel
+    //    ooit krijgt en is dus niet per kolom te beoordelen; een registerrij mag
+    //    hem daarom niet afdekken.
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { reports: { INSERT: { breed: true, kolommen: [] } } },
+    });
+
+    const uit = meldingen(oordeel, lijsten);
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('tabelbrede');
+  });
+
   it('meldt een regel in `GEEN_AANROEPER` die geen bevinding meer is', () => {
     // ⚠️ De ratel de andere kant op. Zonder deze lus is registreren een deur die
     //    maar één kant op gaat, en dekt een verlopen rij de vólgende bevinding op
@@ -952,7 +996,7 @@ describe('een grant zonder aanroeper — QS8-349', () => {
 
     const uit = verlopenRegels(oordeel, lijsten);
     expect(uit).toHaveLength(1);
-    expect(uit[0]).toContain('wórdt inmiddels geschreven');
+    expect(uit[0]).toContain('er is een schrijfpad bijgekomen');
   });
 
   it('zegt bij een verlopen regel wélke van de twee redenen het is', () => {

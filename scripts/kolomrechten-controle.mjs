@@ -766,8 +766,24 @@ export function beoordeelSchrijven({ acties, rechten }) {
     for (const [soort, r] of Object.entries(per)) {
       const sleutel = `${tabel}|${soort}`;
 
+      // ⚠️ De toets staat vóór de `if`-tak en niet erin, zodat de nesting op drie
+      //    blijft (onwrikbare regel 15, `max-depth`).
+      if (r.breed && geschreven[sleutel] === undefined) {
+        zonderAanroeper.push({ tabel, soort, kolommen: [], breed: true });
+      }
+
       if (r.breed) {
         ongemeten[sleutel] = 'de grant is tabelbreed';
+
+        // ⚠️⚠️ **Ook hier een bevinding, en dit is de bréédste vorm** — de
+        //    reparatie na de review op deze PR. De controle zweeg het hardst bij
+        //    de ergste fout: 📏 `grant insert on points_ledger to authenticated`
+        //    — een tabelbrede grant op het púntenboek — gaf geen enkele melding.
+        //
+        //    Een tabelbrede grant is niet per kolom te beoordelen en dus ook niet
+        //    per kolom te registreren: hij dekt élke kolom die de tabel ooit
+        //    krijgt. Een registerrij kan hem daarom niet afdekken, en deze
+        //    bevinding wordt met opzet ook gemeld als het paar geregistreerd is.
         continue;
       }
       if (r.kolommen.length === 0) {
@@ -885,8 +901,15 @@ export const GEEN_SCHRIJFPAD = [
     soort: 'INSERT',
     kolom: 'points_floor',
     reden:
-      'de puntenwaarden komen uit domeinregel 10 en staan als default op de kolom. ' +
-      'Dat de client ze mág overschrijven is een oud recht en geen pad.',
+      '⚠️⚠️ **DIT IS GEEN GRENDEL EN DE REDEN HIERONDER WAS FOUT — QS8-352.** Er stond: ' +
+      '"de puntenwaarden komen uit domeinregel 10 en staan als default op de kolom; dat de ' +
+      'client ze mág overschrijven is een oud recht en geen pad." Dat is de gewoonte en niet ' +
+      'de grendel — precies de vorm waar `GEEN_AANROEPER` hierboven voor waarschuwt. 📏 Volledig ' +
+      'nagespeeld met twee gewone accounts: een weekdoel met `points_ceiling: 5` landt (201), ' +
+      'afvinken landt, een buddy keurt goed, en `points_ledger` boekt **delta=5** waar het model ' +
+      'er 2 voorschrijft. `award_points_on_approval()` leest de waarde uit de rij. De rij blijft ' +
+      'hier alleen staan zodat de controle groen is tot QS8-352 de grant intrekt; ' +
+      'zij verklaart niets veilig.',
   },
   {
     tabel: 'weekly_goals',
@@ -931,108 +954,126 @@ export const GEEN_AANROEPER = [
   {
     tabel: 'approval_withdrawals',
     soort: 'INSERT',
+    kolommen: ['approval_id', 'approver_id', 'completion_id', 'id'],
     reden:
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `trek_goedkeuring_in()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'approval_withdrawals',
     soort: 'UPDATE',
+    kolommen: ['approval_id', 'approver_id', 'completion_id', 'id'],
     reden:
       'de policy is `using false` én `with check false`: aan een ingetrokken goedkeuring valt niets bij te werken. Er is ook geen RPC die het doet. De grant is puur restant.',
   },
   {
     tabel: 'deadline_requests',
     soort: 'INSERT',
+    kolommen: ['decided_at', 'decided_by', 'decision_note', 'goal_id', 'group_id', 'id', 'new_date', 'old_date', 'reason', 'requester_id', 'status'],
     reden:
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `vraag_deadline_verschuiving()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'deadline_requests',
     soort: 'UPDATE',
+    kolommen: ['decided_at', 'decided_by', 'decision_note', 'goal_id', 'group_id', 'id', 'new_date', 'old_date', 'reason', 'requester_id', 'status'],
     reden:
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `beslis_deadline_verzoek()`, `trek_deadline_verzoek_in()`, `verlaat_groep()` en `verwijder_lid()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'group_join_requests',
     soort: 'INSERT',
+    kolommen: ['bericht', 'decided_at', 'decided_by', 'group_id', 'id', 'status', 'user_id'],
     reden:
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `vraag_lidmaatschap_aan()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'group_join_requests',
     soort: 'UPDATE',
+    kolommen: ['bericht', 'decided_at', 'decided_by', 'group_id', 'id', 'status', 'user_id'],
     reden:
-      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `beslis_lidmaatschapsverzoek()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+      'de policy is `using false` (en `with check` is NULL, niet `false` — het effect is hetzelfde: er is geen rij zichtbaar om bij te werken). Het schrijven gebeurt in `beslis_lidmaatschapsverzoek()`. ⚠️ Wordt hij niet meer inert zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'groups',
     soort: 'INSERT',
+    kolommen: ['approval_quorum', 'approval_rule', 'categorie', 'created_by', 'evidence_policy', 'huddle_day', 'icon', 'id', 'invite_code', 'invite_revoked', 'name', 'omschrijving', 'ontdekbaar', 'season_cadence', 'status', 'tz', 'voertaal', 'zichtbaarheid'],
     reden:
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `create_group()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'reports',
     soort: 'INSERT',
+    kolommen: ['bericht_kopie', 'group_id', 'id', 'message_id', 'reden', 'reporter_id', 'status', 'subject_id', 'toelichting'],
     reden:
       'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `meld()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
   },
   {
     tabel: 'reports',
     soort: 'UPDATE',
+    kolommen: ['bericht_kopie', 'group_id', 'id', 'message_id', 'reden', 'reporter_id', 'status', 'subject_id', 'toelichting'],
     reden:
       'de policy is `using false`: een melding is niet bij te werken, ook niet door de melder. Geen RPC doet het. De grant is puur restant.',
   },
   {
     tabel: 'user_blocks',
     soort: 'UPDATE',
+    kolommen: ['blocked_id', 'blocker_id'],
     reden:
       'de policy is `using false`: een blokkade zet je of hef je op, je werkt hem niet bij. Geen RPC doet het. De grant is puur restant.',
   },
   {
     tabel: 'week_review_replies',
     soort: 'UPDATE',
+    kolommen: ['author_id', 'body', 'id', 'week_review_id'],
     reden:
       'de policy is `using false` én `with check false`: een reactie op een weekafsluiting ligt vast zodra hij staat. Geen RPC doet het. De grant is puur restant.',
   },
   {
     tabel: 'group_members',
     soort: 'INSERT',
+    kolommen: ['group_id', 'role', 'status', 'user_id'],
     reden:
-      'de policy staat de oprichter toe, maar het schrijven loopt via `create_group()`, `join_group_with_code()` en `beslis_lidmaatschapsverzoek()`. ⚠️ De grant staat dus wél open voor een rechtstreeks verzoek — zie QS8-351.',
+      'het schrijven loopt via `create_group()`, `join_group_with_code()` en `beslis_lidmaatschapsverzoek()`. ⚠️ **Vandaag onbereikbaar, en om een reden die nergens anders staat:** de `EXISTS (select 1 from groups …)` ín de policy wordt zélf door `groups_select` = `mag_groep_lezen(id)` gefilterd. Ben je nog lid, dan botst de primaire sleutel; ben je vertrokken, dan zie je de groep niet meer en faalt de EXISTS. **Wordt zwaarder als:** `groups_select` verbreedt — `groups.ontdekbaar` bestaat al als kolom. Dan kan een vertrokken oprichter zichzelf met één POST terugzetten als `role: admin`, zonder uitnodiging. Zie QS8-351.',
   },
   {
     tabel: 'group_members',
     soort: 'UPDATE',
+    kolommen: ['group_id', 'role', 'status', 'user_id'],
     reden:
-      'de policy staat je eigen rij en een beheerder toe, maar het schrijven loopt via `verlaat_groep()`, `verwijder_lid()`, `beslis_lidmaatschapsverzoek()` en `join_group_with_code()`; `guard_group_member_update()` (0187) werpt op alles wat daarbuiten valt. ⚠️ De grant staat wél open — zie QS8-351.',
+      'het schrijven loopt via `verlaat_groep()`, `verwijder_lid()`, `beslis_lidmaatschapsverzoek()` en `join_group_with_code()`. ⚠️ Voor een **gewoon lid** is dit dicht: `guard_group_member_update()` (0187) werpt `geen_groepsbeheerder`, en Postgres weegt bij een `UPDATE … WHERE` ook de SELECT-policy mee — een uitgezet lid ziet zijn eigen rij niet eens. ⚠️⚠️ **Maar voor een áctieve beheerder doet die guard een vroege `return new`, en dan is er niets meer.** 📏 Gemeten: een beheerder zet een uitgezet lid rechtstreeks terug op `active` (204), en het eerder gedeelde doel is meteen weer groepszichtbaar. Geen enkele RPC doet dat; `verwijder_lid()` ruimt naast de status ook `goal_group_links` en openstaande `deadline_requests` op, en de rechtstreekse PATCH slaat dat over. Dit is dus geen opruimwerk maar een lid dat zonder toestemming terugkomt — de zwaarste van de zeven in QS8-351.',
   },
   {
     tabel: 'profiles',
     soort: 'INSERT',
+    kolommen: ['avatar_url', 'display_name', 'focus_areas', 'id', 'locale', 'minutes_per_day', 'onboarded_at', 'reminder_enabled', 'reminder_time', 'reminder_tone', 'share_moves_by_default', 'tz', 'wants_own_goal', 'week_start_day', 'what_breaks_it', 'when_i_do_it'],
     reden:
-      'de rij komt van de trigger `handle_new_user()` bij het aanmaken van een account; geen scherm maakt er een. De policy eist `id = auth.uid()`, dus een tweede rij voor jezelf is het ergste wat erin kan. ⚠️ Zie QS8-351.',
+      'de rij komt van de trigger `handle_new_user()`; geen scherm maakt er een. De grendel is niet de policy maar de **primaire sleutel**: `profiles_pkey` op `id`, gecombineerd met `id = auth.uid()` in de `with check`, laat maar één rij per gebruiker bestaan en die staat er al. 📏 Gemeten: een POST geeft `409 23505`. Er is dus niets te winnen, ook niet een tweede rij.',
   },
   {
     tabel: 'user_blocks',
     soort: 'INSERT',
+    kolommen: ['blocked_id', 'blocker_id'],
     reden:
-      'het schrijven loopt via `blokkeer()`; de policy eist `blocker_id = auth.uid()`. ⚠️ De grant staat wél open voor een rechtstreeks verzoek — zie QS8-351.',
+      'het schrijven loopt via `blokkeer()`; de policy eist `blocker_id = auth.uid()`. ⚠️⚠️ **En hier valt een grendel door de grant heen.** `blokkeer()` geeft met opzet `ok: true` voor een profiel dat niet bestaat — de functie zegt er zelf bij dat één antwoord voor beide gevallen voorkomt dat je ermee kunt toetsen óf een account bestaat. Het rechtstreekse pad heeft die gelijkmaker niet: 📏 gemeten geeft een INSERT met een onbestaand id `409 23503` en met een bestaand id `201`. Dat is precies het bestaansorakel dat de RPC dichtzet. Zie QS8-351.',
   },
   {
     tabel: 'weekly_goals',
     soort: 'UPDATE',
+    kolommen: ['ceiling_text', 'floor_text', 'milestone_id', 'title'],
     reden:
       'het schrijven loopt via `sluit_weekdoel_af()`, `plan_adempauze()`, `mark_weekly_goal_pending()` en `schuif_weekdoel_door()`; de policy staat de eigenaar toe. ⚠️ De grant staat wél open voor een rechtstreeks verzoek — zie QS8-351.',
   },
   {
     tabel: 'daily_moves',
     soort: 'UPDATE',
+    kolommen: ['body', 'id', 'local_date', 'user_id', 'visibility', 'weekly_goal_id'],
     reden:
       '📏 **Niemand schrijft dit, en dat is de zuiverste vorm van deze klasse.** De client doet alleen `insert` en `select` (`modules/completions/api.ts:207` en `:232`) en geen enkele functie in het schema updatet de tabel — nagemeten met `pg_get_functiondef()`. De policy `daily_moves_write` staat de eigenaar wél toe. Zes kolommen, geen aanroeper. Zie QS8-351.',
   },
   {
     tabel: 'goal_interviews',
     soort: 'UPDATE',
+    kolommen: ['answers', 'goal_id', 'id'],
     reden:
       '📏 **Idem: geen enkele schrijver.** De client doet alleen `insert` en `select` (`modules/goals/interview.ts:99` en `:55`), en geen functie updatet de tabel. `goal_interviews_all` staat de eigenaar toe. Drie kolommen, geen aanroeper. Zie QS8-351.',
   },
@@ -1124,6 +1165,66 @@ const LIJSTEN = {
  *    iets dat niets met hun onderwerp te maken heeft, en is de goedkoopste
  *    reparatie een andere willekeurige rij invullen.
  */
+/**
+ * De meldingen over een grant waar niets naartoe schrijft — QS8-349.
+ *
+ * ⚠️ **Apart van `meldingen()` omdat het een eigen klasse met een eigen register
+ *    is**, en omdat die functie er anders over de vijftig regels heen gaat
+ *    (onwrikbare regel 15). De drie takken hieronder vragen elk iets anders van
+ *    de lezer, en dat is de reden dat ze niet één melding zijn.
+ *
+ * @param {{tabel: string, soort: string, kolommen: string[], breed?: boolean}[]} zonderAanroeper
+ * @param {{tabel: string, soort: string, kolommen?: string[], reden: string}[]} register
+ * @returns {string[]}
+ */
+function zonderAanroeperMeldingen(zonderAanroeper, register) {
+  const beoordeeld = new Map(
+    register.map((r) => [paarSleutel(r.tabel, r.soort), new Set(r.kolommen ?? [])]),
+  );
+  const uit = [];
+
+  for (const z of zonderAanroeper) {
+    // ⚠️ **Een tabelbrede grant is niet per kolom te beoordelen en dus ook niet
+    //    per kolom te registreren** — hij dekt élke kolom die de tabel ooit
+    //    krijgt. Een registerrij mag hem daarom niet afdekken, en deze melding
+    //    komt met opzet ook als het paar geregistreerd is. 📏 De controle zweeg
+    //    hier het hardst bij de ergste fout: `grant insert on points_ledger`,
+    //    tabelbreed op het puntenboek, gaf geen enkele melding.
+    if (z.breed === true) {
+      uit.push(
+        `\`${z.tabel}\` heeft een **tabelbrede** ${z.soort}-grant en niets in \`src/\` of ` +
+          '`app/` schrijft naar deze tabel. Een tabelbrede grant dekt élke kolom die de tabel ' +
+          'ooit krijgt en is daarom niet per kolom te beoordelen — een registerrij kan hem niet ' +
+          'afdekken. Maak er kolomgrants van, of trek hem in.',
+      );
+      continue;
+    }
+
+    // ⚠️⚠️ **Per kolom en niet per paar.** Eerst stond hier alleen "staat dit
+    //    paar in het register?". Dan dekt één rij élke kolom die er later bij
+    //    komt. 📏 Gemeten met precies de gevaarlijke kolom — `grant update
+    //    (status) on weekly_goals` — en de controle bleef groen, terwijl een
+    //    client daarmee zijn weekdoel op `approved` zou kunnen zetten.
+    const gedekt = beoordeeld.get(paarSleutel(z.tabel, z.soort));
+    const nieuweKolommen = z.kolommen.filter((k) => !(gedekt?.has(k) ?? false));
+    if (gedekt !== undefined && nieuweKolommen.length === 0) continue;
+
+    uit.push(
+      gedekt === undefined
+        ? `\`${z.tabel}\` heeft ${z.kolommen.length} ${z.soort}-kolomgrant(s) en niets in ` +
+            '`src/` of `app/` schrijft naar deze tabel — trek de grant in, of zet het paar met ' +
+            'een reden in `GEEN_AANROEPER`. Noem daarin de grendel (weigert de policy het?) en ' +
+            'niet de gewoonte ("dat doet een RPC"): zie QS8-327.'
+        : `\`${z.tabel}\` (${z.soort}) staat in \`GEEN_AANROEPER\`, maar heeft kolommen die ` +
+            `daar niet beoordeeld zijn: ${nieuweKolommen.join(', ')}. Er schrijft nog steeds ` +
+            'niets naar deze tabel — beoordeel de nieuwe kolommen en vul ze aan, of trek de ' +
+            'grant in.',
+    );
+  }
+
+  return uit;
+}
+
 export function meldingen(
   { ontbrekend, ongeschreven, onleesbaar, zonderAanroeper = GEEN_ZONDER_AANROEPER },
   lijsten = LIJSTEN,
@@ -1150,16 +1251,7 @@ export function meldingen(
   // ⚠️ `?? []` en niet `lijsten.geenAanroeper` kaal: de ijkingen geven bewust hun
   //    eigen lijsten mee, en die hoeven niet elke sleutel te dragen. Een
   //    ontbrekende lijst is "niets geregistreerd", niet een crash.
-  const zonder = new Set((lijsten.geenAanroeper ?? []).map((r) => paarSleutel(r.tabel, r.soort)));
-  for (const z of zonderAanroeper) {
-    if (zonder.has(paarSleutel(z.tabel, z.soort))) continue;
-    uit.push(
-      `\`${z.tabel}\` heeft ${z.kolommen.length} ${z.soort}-kolomgrant(s) en niets in ` +
-        '`src/` of `app/` schrijft naar deze tabel — trek de grant in, of zet het paar met ' +
-        'een reden in `GEEN_AANROEPER`. Noem daarin de grendel (weigert de policy het?) en ' +
-        'niet de gewoonte ("dat doet een RPC"): zie QS8-327.',
-    );
-  }
+  uit.push(...zonderAanroeperMeldingen(zonderAanroeper, lijsten.geenAanroeper ?? []));
 
   const gelezen = new Set(lijsten.nietTeLezen.map((r) => leesSleutel(r.pad, r.tabel)));
   for (const o of onleesbaar) {
@@ -1231,8 +1323,10 @@ export function verlopenRegels(
     const reden = ongemeten[paarSleutel(r.tabel, r.soort)];
     uit.push(
       reden === undefined
-        ? `\`${r.tabel}\` (${r.soort}) staat in \`GEEN_AANROEPER\` maar wórdt inmiddels ` +
-            'geschreven — haal de regel weg'
+        ? `\`${r.tabel}\` (${r.soort}) staat in \`GEEN_AANROEPER\` maar is geen bevinding meer — ` +
+            'er is een schrijfpad bijgekomen, of `zonderAanroeper` bereikt deze functie niet. ' +
+            'Controleer eerst welke van die twee het is: bij het tweede is de regel niet verlopen ' +
+            'maar de meting stuk.'
         : `\`${r.tabel}\` (${r.soort}) staat in \`GEEN_AANROEPER\`, maar ${reden} — er valt ` +
             'niets meer te dekken; haal de regel weg',
     );
