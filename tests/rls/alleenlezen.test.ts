@@ -655,8 +655,23 @@ describe.skipIf(!rlsTestsConfigured)('wat de client alleen mag lezen, blijft all
           );
         }
 
+        // ⚠️⚠️ **Tellen op de rij zelf en niet op de tabel (QS8-348).** Hier
+        //    stond een `count` over de héle tabel, en die is bij twee
+        //    gelijktijdige suite-runs onbruikbaar: 📏 gemeten `expected 3 to be
+        //    6` op `groups`, puur doordat de ándere run intussen groepen
+        //    aanmaakte. De test meldde dan een lek dat er niet was.
+        //
+        // ⚠️ En filteren op de rij zelf is niet alleen run-veilig maar ook een
+        //    scherpere belofte: het toetst dat **déze** rij niet geland is, in
+        //    plaats van dat de tabel toevallig even groot bleef. Elke
+        //    `nieuweRij` in dit bestand is opgebouwd uit id's van deze run, dus
+        //    hij wijst nooit naar een rij van iemand anders.
         const tel = async (): Promise<number | null | undefined> => {
-          const uit = await bouwer(adminDb(), d.tabel).select('*', { count: 'exact', head: true });
+          let vraag = bouwer(adminDb(), d.tabel).select('*', { count: 'exact', head: true });
+          for (const [kolom, waarde] of Object.entries(d.nieuweRij ?? {})) {
+            vraag = vraag.eq(kolom, waarde);
+          }
+          const uit = await vraag;
           if (uit.error) throw new Error(`${d.tabel} tellen: ${uit.error.message}`);
           return uit.count;
         };

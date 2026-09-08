@@ -60,3 +60,37 @@ export function proefId(volgnummer: number): string {
     `00000000${staart}`,
   ].join('-');
 }
+
+/**
+ * Een korte tekstcode die vaststaat binnen dit testbestand en nooit botst met
+ * een andere run — QS8-348.
+ *
+ * ⚠️ **Waarom naast `proefId`.** Niet elke gedeelde identiteit is een uuid.
+ *    📏 `lidmaatschapsbesluit.test.ts` zette tien groepen neer met een vaste
+ *    `invite_code` (`BF0000` t/m `BF0009`), en `groups_invite_code_key` is uniek
+ *    over de héle tabel:
+ *
+ *      Error: groep voor frits: duplicate key value violates unique constraint
+ *             "groups_invite_code_key"
+ *
+ *    Twee gelijktijdige runs botsten daar deterministisch op, in de opbouw, dus
+ *    het hele bestand viel om.
+ *
+ * ⚠️ **Dit is géén botsing in `generate_invite_code()`**, en dat verschil is de
+ *    moeite waard: die trekt twaalf tekens uit een alfabet van dertig
+ *    (30¹² ≈ 5·10¹⁷) met `gen_random_bytes`, dus een toevallige botsing tussen
+ *    twee runs is geen redelijke verklaring. De code hier kwam niet uit die
+ *    functie maar uit de fixture. Een eerdere lezing van deze meting noemde het
+ *    wél een generatorbotsing; dat was onjuist.
+ *
+ * @param label   Een kort voorvoegsel dat de fixture herkenbaar maakt.
+ * @param volgnummer Onderscheidt de codes binnen dit bestand.
+ */
+export function proefCode(label: string, volgnummer: number): string {
+  if (!Number.isInteger(volgnummer) || volgnummer < 0) {
+    throw new Error(`proefCode: volgnummer buiten bereik: ${volgnummer}`);
+  }
+
+  // ⚠️ `groups_invite_code_len` eist 1..64 tekens; dit blijft ruim daaronder.
+  return `${label}${PREFIX}${volgnummer}`;
+}

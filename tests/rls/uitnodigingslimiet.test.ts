@@ -157,15 +157,30 @@ describe.skipIf(!rlsTestsConfigured)('invite_preview heeft een limiet (0131)', (
   it(
     'schrijft geen rij voor een code die niet bestaat',
     async () => {
+      // ⚠️⚠️ **Tellen op de eigen groep en niet op de hele tabel (QS8-348).**
+      //    Hier stond een `count` zonder filter, en die is bij twee
+      //    gelijktijdige suite-runs onbruikbaar: 📏 gemeten `expected 1 to be 2`,
+      //    puur doordat de ándere run intussen een preview deed.
+      //
+      // ⚠️ **En de belofte blijft overeind, want de tabel kán geen rij voor een
+      //    onbekende code dragen.** 📏 Nagemeten: `group_id` is de primaire
+      //    sleutel, `not null`, met een foreign key naar `groups`. Zou
+      //    `invite_preview()` zijn `insert` vóór de bestaanstoets doen, dan werpt
+      //    hij op die `not null` — en dan valt de assertie hieronder op de
+      //    foutmelding van `bekijk()`, niet op een teller.
       const voor = await adminDb()
         .from('invite_preview_limits')
-        .select('group_id', { count: 'exact', head: true });
+        .select('group_id', { count: 'exact', head: true })
+        .eq('group_id', groep.id);
 
-      for (let i = 0; i < 5; i += 1) await bekijk(onbekendeCode());
+      for (let i = 0; i < 5; i += 1) {
+        expect(await bekijk(onbekendeCode()), 'een onbekende code geeft geen groep').toBeNull();
+      }
 
       const na = await adminDb()
         .from('invite_preview_limits')
-        .select('group_id', { count: 'exact', head: true });
+        .select('group_id', { count: 'exact', head: true })
+        .eq('group_id', groep.id);
 
       // ⚠️ Dit is de groeivector en niet een netheidstoets. Een tabel die per
       //    aanroep een rij krijgt, is bij een oningelogd eindpunt de tweede helft

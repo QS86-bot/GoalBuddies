@@ -69,8 +69,24 @@ describe.skipIf(!rlsTestsConfigured)('QS8-79 — de seizoensrecap', () => {
     return count ?? 0;
   }
 
+  /**
+   * ⚠️⚠️ **Met de eigen groepen erbij, en dat is de hele reden dat 0194 bestaat**
+   *    (QS8-339). De job liep over élke niet-gearchiveerde groep, dus draaide
+   *    run A hem, dan schreef hij recaps in de groepen van run B — en dan telt
+   *    dít bestand berichten die het niet zelf veroorzaakt heeft. 📏 Gemeten bij
+   *    QS8-336: run B 105/105 groen, run A drie rode tests in precies dit
+   *    bestand, met tellingen die te hoog of te laag uitkwamen.
+   *
+   * ⚠️ De grens is optioneel en `null` betekent "alle groepen" — dat is wat de
+   *    rollover doet en wat deze tests dus **niet** moeten meten. Wie hier de
+   *    `p_group_ids` weghaalt, krijgt de kruisbesmetting terug zodra er twee
+   *    suites tegelijk draaien, en niet daarvoor.
+   */
   async function draai(op: string): Promise<{ recaps: number; stil: number }> {
-    const { data, error } = await adminDb().rpc('maak_seizoensrecaps', { p_op: op });
+    const { data, error } = await adminDb().rpc('maak_seizoensrecaps', {
+      p_op: op,
+      p_group_ids: [groep.id, stilleGroep.id],
+    });
     if (error) throw new Error(`recaps draaien: ${error.message}`);
     return data as unknown as { recaps: number; stil: number };
   }
