@@ -61,6 +61,18 @@ const STUK = proefId(3);
  * Twee groepen die allebei een recap verdienen: elk een schakel in Q3, zodat
  * `seizoensrecap_cijfers()` niet op nul uitkomt en de job dus niet zwijgt.
  */
+/**
+ * ⚠️⚠️ **Elke aanroep hieronder geeft zijn eigen twee groepen mee (QS8-348).**
+ *    `maak_seizoensrecaps()` liep tot 0194 over élke niet-gearchiveerde groep;
+ *    QS8-339 gaf hem een optioneel bereik en scoopte `seizoensrecap.test.ts`,
+ *    maar dít bestand bleef ongescopeerd achter. 📏 Gemeten bij twee
+ *    gelijktijdige runs: twee tests hier vielen om op tellingen die de groepen
+ *    van de ándere run meetelden.
+ *
+ * ⚠️ De opstelling draait binnen `begin … rollback`, maar dat isoleert alleen
+ *    wat déze transactie schrijft — niet wat de functie in de rijen van een
+ *    andere run aanricht. Een transactie is geen bereik.
+ */
 const OPSTELLING = `
   create temp table t as select
     '${EIGENAAR}'::uuid eig, '${GEZOND}'::uuid goed, '${STUK}'::uuid stuk;
@@ -109,7 +121,8 @@ function draai(breuk: string): Uitslag {
     ${OPSTELLING}
     ${breuk}
     select set_config('recap.uit',
-      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz)::text, true) from t;
+      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz,
+        array[(select goed from t), (select stuk from t)])::text, true) from t;
     select current_setting('recap.uit')
       || '|' || (select count(*) from chat_messages
                   where group_id = (select goed from t) and system_event = 'season_recap')
@@ -218,7 +231,8 @@ function metGeforceerdeFout(sqlstate: string): { afgebroken: boolean; melding: s
       raise exception 'nagespeelde afbreking' using errcode = '${sqlstate}';
     end;
     $stub$;
-    select maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz)::text;
+    select maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz,
+        array[(select goed from t), (select stuk from t)])::text;
     rollback;
   `;
 
@@ -325,11 +339,13 @@ function tweeRondes(storing: string, opheffen: string): { met: Ronde; zonder: Ro
     ${OPSTELLING}
     ${storing}
     select set_config('recap.uit',
-      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz)::text, true) from t;
+      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz,
+        array[(select goed from t), (select stuk from t)])::text, true) from t;
     ${meting('met')}
     ${opheffen}
     select set_config('recap.uit',
-      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz)::text, true) from t;
+      maak_seizoensrecaps('${EERSTE_DAG_Q4}'::timestamptz,
+        array[(select goed from t), (select stuk from t)])::text, true) from t;
     ${meting('zonder')}
     rollback;
   `)
