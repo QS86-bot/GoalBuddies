@@ -57,6 +57,14 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  */
 export const REGISTER = new Map([
   [
+    'weekdoel_cyclus_klopt :: v_vandaag := coalesce(eigenaarsdatum(v_owner), current_date);',
+    'Geen grens maar een terugval — QS8-354, migratie 0198. De grens zelf rekent op ' +
+      '`eigenaarsdatum()`, precies zoals 0155 het in `herbereken_risico()` deed; ' +
+      '`current_date` staat er alleen voor het geval dat er geen profiel is, en dan ' +
+      'valt er ook niets in de eigen zone te rekenen. Het venster is 52 cycli breed, ' +
+      'dus een dag verschuiving verandert er niets aan.',
+  ],
+  [
     'bewaak_week_review_periode :: if new.group_period_start > current_date + 1',
     'Bovengrens op een datum die de client aanlevert. De `+ 1` van 0037 is de dag ' +
       'die een zone vóór UTC kan lopen.',
