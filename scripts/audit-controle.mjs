@@ -102,7 +102,10 @@ export const NAGEKEKEN = {
   },
   '@xmldom/xmldom': {
     ernst: 'high',
-    advisories: [1158517, 1158518, 1193671],
+    advisories: [
+      1158517, 1158518, 1193671, 1193695, 1193696, 1193697, 1193699, 1193700, 1193701, 1193702,
+      1193704, 1193705, 1193707, 1193708, 1193709, 1193711, 1193712, 1193714, 1193715,
+    ],
     reparatie: 'gratis',
     in_bundel: false,
     marker: 'Only one doctype is allowed',
@@ -110,12 +113,15 @@ export const NAGEKEKEN = {
       '⚠️ Vals alarm van dezelfde soort als `imageSize`: `XML/1998/namespace` staat drie keer ' +
       'in dist/, maar dat is React DOM (`xmlLang`, `xmlSpace`, `xmlBase`). Alle drie de ' +
       'xmldom-eigen foutteksten geven nul. ' +
-      '⚠️ **Hermeten op 08-09-2026** omdat GHSA-6mj3-qw4j-hgrw (1193671, high — output ' +
-      'amplification door een sluittag met afwijkende kapitalisatie in raw text) erbij kwam en ' +
-      'de ernst van moderate naar high tilde. 📏 Verse `npm run build` met dummy-EXPO_PUBLIC-' +
-      'waarden, daarna gegrept op zes xmldom-eigen stringliteralen plus de pakketnaam: ' +
-      'allemaal nul treffers in dist/. Het pakket komt de bundel niet in, dus de nieuwe ' +
-      'advisory verandert niets aan de weging — alleen aan wat hier geregistreerd staat.',
+      '⚠️ **Hermeten op 08-09-2026**, en die dag kwamen er in één keer zeventien advisories ' +
+      'bij: van twee naar negentien, ernst van moderate naar high. Allemaal parse- en ' +
+      'serialisatiefouten in xmldom zelf — ReDoS, kwadratisch geheugen, en een reeks ' +
+      '`requireWellFormed`-omzeilingen. 📏 Verse `npm run build` met dummy-EXPO_PUBLIC-waarden, ' +
+      'daarna gegrept op zes xmldom-eigen stringliteralen plus de pakketnaam: allemaal nul ' +
+      'treffers in dist/. Het pakket komt de bundel niet in, dus geen van de zeventien ' +
+      'verandert iets aan de weging — alleen aan wat hier geregistreerd staat. ' +
+      '⚠️ De lijst groeide tússen de lokale poort en CI door, dus een rode CI op nóg een ' +
+      'nummer is hier geen nieuwe bevinding maar dezelfde: hermeet de bundel en pin opnieuw.',
   },
   'decode-uri-component': {
     ernst: 'moderate',
