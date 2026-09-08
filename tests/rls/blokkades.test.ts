@@ -101,7 +101,7 @@ describe.skipIf(!rlsTestsConfigured)('Een blokkade is van de blokkeerder', () =>
       .eq('blocked_id', blocked);
 
   /**
-   * ⚠️⚠️ **Deze must-allow liep tot 0196 langs een rechtstreekse INSERT, en dat
+   * ⚠️⚠️ **Deze must-allow liep tot 0197 langs een rechtstreekse INSERT, en dat
    *    was niet de knop die hij zei te bewaken.** 📏 Nagemeten: geen enkel
    *    bestand in `src/` of `app/` schrijft naar `user_blocks`; de knop roept
    *    `blokkeer()` aan. De test toetste dus een grant die niemand gebruikte —
@@ -136,7 +136,7 @@ describe.skipIf(!rlsTestsConfigured)('Een blokkade is van de blokkeerder', () =>
    *    Dezelfde vorm als de CHECK uit 0007 bij QS8-352, en om dezelfde reden hier
    *    genoteerd: **een intrekking verandert wélke grendel als eerste weigert**,
    *    en daarmee wat elke bestaande must-deny in dit bestand nog toetst. De twee
-   *    weigertoetsen hieronder meten sinds 0196 het récht en niet meer de policy.
+   *    weigertoetsen hieronder meten sinds 0197 het récht en niet meer de policy.
    *    Ze staan er nog omdat de belofte ("een blokkade is van de blokkeerder")
    *    blijft gelden; wat ze bewijzen is smaller geworden.
    */

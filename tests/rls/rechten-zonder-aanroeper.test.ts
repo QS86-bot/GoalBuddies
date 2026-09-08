@@ -17,7 +17,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { addDays, now, userCycle } from '../../src/shared/time';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
-import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 60_000;
@@ -32,17 +31,6 @@ let groepId: string;
 
 const cyclus = userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now());
 
-/**
- * ⚠️ **De poortwachter staat hier en niet in de test.** `stackBeschikbaarOfFaal()`
- *    werpt zodra `RLS_DOEL` gezet is (QS8-270): wie zegt dat hij meet, mag niet
- *    stil overslaan. Hij neemt `import.meta.url` als bron — een pad in plaats van
- *    een URL geeft `TypeError: Invalid URL`, en dat is geen meting maar een
- *    kapotte test.
- */
-const stackBeschikbaar = stackBeschikbaarOfFaal(
-  "select count(*) from pg_class where relname = 'group_members' and relnamespace = 'public'::regnamespace",
-  import.meta.url,
-);
 
 describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
   beforeAll(async () => {
@@ -150,6 +138,62 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
     );
   });
 
+  /**
+   * ⚠️⚠️ **Deze twee tests zijn er ná de security-review bij gekomen, en ze
+   *    wijzen op een fout in de eerste opzet van dit issue.**
+   *
+   *    De drie tests hierboven toetsen de PATCH-vórm, en de migratiekop beloofde
+   *    de uitkomst ("een Dagzet dertig dagen terugdateren"). Die twee zijn niet
+   *    hetzelfde: 📏 `authenticated` had **tabelbrede DELETE** op `daily_moves`
+   *    en `goal_interviews`, en `daily_moves_write` is een `FOR ALL`-policy op
+   *    `user_id = auth.uid()`. Weghalen-en-opnieuw-invoegen was dus een tweede
+   *    weg naar exact dezelfde uitkomst, en geen van de tests zag hem.
+   *
+   *    **Regel 18 vraag 2, op deze branch zelf van toepassing.** Daarom toetst
+   *    dit blok de uitkomst: is de rij er na afloop nog, en ongewijzigd.
+   */
+  describe('en weghalen-en-opnieuw is geen omweg om hetzelfde te bereiken', () => {
+    it(
+      'weigert het weghalen van de eigen Dagzet',
+      async () => {
+        const weg = await anna.db.from('daily_moves').delete().eq('id', dagzetId);
+        expect(weg.error?.code, 'de Dagzet was weg te halen').toBe('42501');
+
+        // ⚠️ De foutcode alléén is hier niet genoeg: een DELETE die op de
+        //    `using` afketst raakt nul rijen en geeft géén fout. Dus ook nakijken
+        //    dát de rij er nog is, en onveranderd.
+        const na = await adminDb()
+          .from('daily_moves')
+          .select('id, body, visibility, local_date')
+          .eq('id', dagzetId)
+          .maybeSingle();
+
+        expect(na.data?.id, 'de Dagzet is alsnog verdwenen').toBe(dagzetId);
+        expect(na.data?.body).toBe('een dagboekregel');
+        expect(na.data?.visibility, 'de zichtbaarheid is alsnog omgezet').toBe('private');
+        expect(na.data?.local_date, 'de datum is alsnog verschoven').toBe(cyclus.startDate);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert het weghalen van het eigen interview',
+      async () => {
+        const weg = await anna.db.from('goal_interviews').delete().eq('id', interviewId);
+        expect(weg.error?.code, 'het interview was weg te halen').toBe('42501');
+
+        const na = await adminDb()
+          .from('goal_interviews')
+          .select('id')
+          .eq('id', interviewId)
+          .maybeSingle();
+
+        expect(na.data?.id, 'het interview is alsnog verdwenen').toBe(interviewId);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('een interviewantwoord is niet achteraf te herschrijven', () => {
     it(
       'weigert een rechtstreekse PATCH op het eigen interview',
@@ -242,7 +286,7 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
      * ⚠️⚠️ **Deze test stond hier eerst als weigering, en dat was fout — hij
      *    documenteert nu een gat dat blíjft staan.**
      *
-     *    De eerste opzet van 0196 trok óók `group_members` UPDATE in. 📏 Dat
+     *    De eerste opzet van 0197 trok óók `group_members` UPDATE in. 📏 Dat
      *    maakte 21 bestaande tests in zeven bestanden rood, en alleen die ene
      *    grant teruggeven maakte ze alle 100 weer groen. **Dat is het antwoord
      *    op de vraag en niet een lastige suite:** dit recht heeft wél een doel.
@@ -316,7 +360,7 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
 
     /**
      * ⚠️⚠️ **De grendel die hier eerst stond was de primaire sleutel, en dat is
-     *    precies waarom deze test verhuisd is.** Vóór 0196 gaf een POST op
+     *    precies waarom deze test verhuisd is.** Vóór 0197 gaf een POST op
      *    `profiles` 📏 `23505`: `handle_new_user()` had de enige rij al gemaakt
      *    en `id = auth.uid()` liet er geen tweede toe. Dat is een gevólg en geen
      *    slot — het houdt op te werken zodra er een pad ontstaat waarin de rij
@@ -354,42 +398,35 @@ describe.runIf(rlsTestsConfigured)('een schrijfrecht zonder aanroeper', () => {
     );
 
     /**
-     * ⚠️⚠️ **Deze test is met opzet anders van vorm dan alle andere hier, en dat
-     *    is een bevinding en geen uitzondering.**
+     * ⚠️⚠️ **Deze test las eerst het recht rechtstreeks met `psql`, met als
+     *    onderbouwing dat een clienttest hier niet kon discrimineren. Dat was
+     *    onjuist, aangewezen door de security-review en zelf nagemeten.**
      *
-     *    📏 Bij het ijken bleek de intrekking van `group_members` INSERT als
-     *    énige van de zes **geen enkele test rood te maken**: de grant
-     *    terugzetten liet alle dertien groen. De reden staat in QS8-349 en is
-     *    nagemeten: dat pad is vandaag al onbereikbaar langs een tweede weg. De
-     *    `EXISTS (select 1 from groups …)` ín de INSERT-policy wordt zélf door
-     *    `groups_select` gefilterd — ben je nog lid, dan botst de primaire
-     *    sleutel; ben je vertrokken, dan zie je de groep niet meer. Wélk slot
-     *    weigert, is van buitenaf niet te zien.
+     *    📏 Dezelfde POST, oprichter nog lid, alleen de grant verschilt:
      *
-     *    **Een test langs de client kan hier dus niet discrimineren**, en een
-     *    test die dat wél lijkt te doen zou groen zijn om de verkeerde reden —
-     *    precies de val die QS8-352 twee keer opleverde. Daarom leest deze het
-     *    recht rechtstreeks. Dat toetst de grendel en niet de belofte, en dat is
-     *    hier het eerlijkste dat er te toetsen valt.
+     *      mét grant:     `23505` duplicate key … group_members_pkey
+     *      zónder grant:  `42501` permission denied for table group_members
      *
-     *    ⚠️ Wat de belofte draagt is de reden dat de intrekking er staat: elke
-     *    schrijver van `group_members` is `SECURITY DEFINER`, dus er is niets
-     *    dat dit recht nodig heeft. En het maakt het toekomstige geval
-     *    onmogelijk in plaats van onwaarschijnlijk: verbreedt `groups_select`
-     *    ooit — `groups.ontdekbaar` bestaat al als kolom — dan zou een vertrokken
-     *    oprichter zichzelf met één POST als `role: admin` kunnen terugzetten.
+     *    Twee verschillende SQLSTATE's, dus twee verschillende `error.code`'s bij
+     *    PostgREST. De redenering was dat het pad langs een tweede weg al dicht
+     *    zat en dat je daardoor niet kunt zien wélk slot weigert — maar die twee
+     *    sloten geven een verschillende code, en de migratiekop gebruikt dat
+     *    onderscheid zelf al voor `profiles`.
+     *
+     *    ⚠️ **Een grendel die je niet kunt onderscheiden en een grendel die je
+     *    niet hebt gemeten, zien er identiek uit.** Hier was het het tweede.
      */
-    it.runIf(stackBeschikbaar)(
-      'heeft geen INSERT-recht meer op group_members voor authenticated',
-      () => {
-        const rechten = psql(
-          `select coalesce(string_agg(column_name, ',' order by column_name), '-')
-             from information_schema.column_privileges
-            where table_schema = 'public' and table_name = 'group_members'
-              and grantee = 'authenticated' and privilege_type = 'INSERT'`,
-        ).trim();
+    it(
+      'weigert een rechtstreekse INSERT in group_members',
+      async () => {
+        const { error } = await anna.db.from('group_members').insert({
+          group_id: groepId,
+          user_id: anna.id,
+          role: 'admin',
+          status: 'active',
+        });
 
-        expect(rechten, 'authenticated mag weer in group_members invoegen').toBe('-');
+        expect(error?.code, 'het INSERT-recht staat weer open').toBe('42501');
       },
       TEST_TIMEOUT,
     );

@@ -1,6 +1,6 @@
 # Een recht zonder aanroeper gaat weg
 
-**08-09-2026.** QS8-351. Migratie `0196`.
+**08-09-2026.** QS8-351. Migratie `0197`.
 
 ## De klasse
 
@@ -35,8 +35,34 @@ grant die niemand had ingetrokken.
 Aangewezen in de review op QS8-349, hier nagemeten: `guard_group_member_update()`
 (0187) doet voor een **actieve beheerder** een vroege `return new` en toetst
 daarna niets meer. Een beheerder zet daarmee een uitgezet lid met één PATCH terug
-op `active` — terwijl `verwijder_lid()` naast de status óók `goal_group_links` en
-openstaande `deadline_requests` opruimt.
+op `active`.
+
+⚠️⚠️ **En dat is niet het enige, wat de security-review op deze branch aanwees en
+ik daarna zelf nagemeten heb.** Ná die vroege `return new` toetst de guard
+níéts meer. 📏 Als beheerder, elk in een teruggedraaide transactie:
+
+| Handeling | Uitkomst | Spoor |
+|---|---|---|
+| een ánder lid tot `admin` promoveren | `admin` | **geen** |
+| een mede-beheerder — óók de oprichter — naar `member` degraderen | `member` | **geen** |
+| iemand anders op `paused` zetten | `paused` | **geen** |
+| een uitgezet lid terug op `active` | `active` | `member_removed` (van de úitzetting) |
+
+De `last_admin`-grendel in de guard toetst `old.user_id = auth.uid()` — alléén
+jezelf. En er is geen weg terug: 📏 één treffer op `set role` in alle
+functiedefinities, en die zit in de overdracht van `verlaat_groep()`. Er is geen
+RPC en geen scherm dat rollen zet.
+
+⚠️ **Wat er bij dat terugzetten níét gebeurt, en dat had ik verkeerd
+opgeschreven.** Hier stond dat het lid terugkomt *"mét zijn eerder gedeelde
+doel"*. 📏 Nagemeten: `verwijder_lid()` verwijdert `goal_group_links` (regel 66
+van de gedeployde functie), dus na de RPC staat de teller op nul en een PATCH
+terug brengt niets mee. De koppelingen overleven **alléén** als óók de uitzetting
+een rechtstreekse PATCH was — en dan zijn ze nog slapend zolang het lid uit
+staat, want `shares_group_with_goal()` eist `status <> 'inactive'`.
+
+Dat verschil telt: de zin stond in het register dat de volgende lezer als gemeten
+feit leest.
 
 ⚠️⚠️ **Dat gat is hier níét gedicht, en dat is de belangrijkste beslissing van dit
 issue.** Zie "De meting die het besluit omkeerde" hieronder.
@@ -67,7 +93,7 @@ raakt geen van zeven.
 
 ## De meting die het besluit omkeerde
 
-De eerste opzet van 0196 trok **zes** grants in, `group_members` UPDATE erbij.
+De eerste opzet van 0197 trok **zes** grants in, `group_members` UPDATE erbij.
 De poort zei iets anders.
 
 📏 Met die revoke erbij vielen **21 bestaande tests in zeven bestanden** om:
@@ -168,21 +194,76 @@ grep leest identiek aan een groene run.** De tweede versie drukt de hele
 `Tests …`-regel af en meldt `GEEN RUN` als die ontbreekt — sindsdien is te zien
 dát er gedraaid is.
 
-## De ijking die anders van vorm moest
+## De ijking die anders van vorm leek te moeten — en dat niet hoefde
 
 📏 In die tweede ronde bleek `group_members` INSERT als énige van de vijf **geen
-enkele test rood te maken**. Dat is geen slordigheid maar het gevolg hierboven: het pad is
-langs een tweede weg al dicht, en wélk slot weigert is van buitenaf niet te zien.
+enkele test rood te maken**. Mijn conclusie was dat het pad langs een tweede weg
+al dicht zat en dat een clienttest daardoor niet kan zien wélk slot weigert. Die
+test las het recht daarom rechtstreeks met `psql`.
 
-**Een test langs de client kan hier dus niet discrimineren**, en een test die dat
-wél lijkt te doen zou groen zijn om de verkeerde reden — precies de val die
-QS8-352 twee keer opleverde. Daarom leest die ene test het recht rechtstreeks met
-`psql`. Dat toetst de grendel en niet de belofte, en het staat er met die
-beperking erbij in plaats van als gewone test tussen de andere dertien.
+⚠️⚠️ **Dat was onjuist, aangewezen door de security-review en zelf nagemeten.**
+Dezelfde POST, oprichter nog lid, alleen de grant verschilt:
 
-⚠️ Wat de belofte draagt is de reden dat de intrekking er staat: er is geen
-schrijver die dit recht nodig heeft, en het toekomstige geval wordt er
-onmogelijk van in plaats van onwaarschijnlijk.
+```
+mét grant:     23505  duplicate key value violates unique constraint "group_members_pkey"
+zónder grant:  42501  permission denied for table group_members
+```
+
+Twee verschillende SQLSTATE's, dus twee verschillende `error.code`'s bij
+PostgREST. Een gewone clienttest discrimineert hier prima — en de kop van deze
+migratie gebruikt datzelfde onderscheid al voor `profiles` (*"📏 een POST geeft
+`409 23505`"*). De test is een gewone clienttest geworden.
+
+⚠️ **De les is de vorm van de fout en niet het gemis.** *Een grendel die je niet
+kunt onderscheiden en een grendel die je niet hebt gemeten, zien er identiek
+uit.* Ik had het tweede en schreef het eerste op — mét een uitzonderingsregel en
+een dossierrij erbij, wat de fout duurzamer maakte dan een gewone vergissing.
+
+## Wat de security-review hierop vond
+
+Vijf dingen, alle vijf zelf nagemeten voordat ze verwerkt zijn. Drie ervan waren
+**onjuiste beweringen van mij**, en dat is de rode draad.
+
+**1. Het migratienummer botste.** QS8-353 landde tijdens het bouwen en nam 0196.
+📏 Productie staat op `0186`, dus 0196 was nergens toegepast en hernummeren is
+veilig. `migratie:hernummer` deed het en noemde de veertien kale verwijzingen;
+die zijn stuk voor stuk nagelopen. Precies het venster dat CLAUDE.md beschrijft:
+het nummer wás vrij toen het uitgedeeld werd.
+
+**2. De UPDATE-revoke sloot de uitkomst niet.** Zie de sectie hierboven — er lag
+een tabelbrede DELETE naast, en DELETE + INSERT is dezelfde uitkomst. Dat is
+regel 18 vraag 2 op deze branch zelf: de tests toetsten de PATCH-vórm terwijl de
+kop de uitkomst beloofde. Twee DELETE-revokes erbij, twee tests die de rij
+achteraf nákijken, en de kop zegt nu wat er open blijft.
+
+**3. Een must-deny in `schrijfgrenzen.test.ts` wisselde ongemerkt van grendel.**
+📏 Hetzelfde verzoek: `permission denied for table profiles` na de revoke,
+`new row violates row-level security policy` met de grant terug — **allebei
+`42501`**, allebei in `WEIGERCODES`. De test bleef dus groen terwijl hij van
+slot wisselde, inclusief het `adminDb()`-dansje eromheen dat er juist was om de
+pólicy te laten weigeren.
+
+⚠️⚠️ **Dit is de derde keer op één dag dat een intrekking een bestaande test van
+betekenis veranderde** — na de CHECK uit 0007 bij QS8-352 en de vloertest daar.
+Het patroon is inmiddels scherp genoeg om op te schrijven als regel: **een
+`revoke` verandert wélke grendel als eerste weigert, dus loop élke bestaande
+must-deny op die tabel na, ook als hij groen blijft.** Groen blijven is hier het
+symptoom en niet het bewijs.
+
+**4. "Mét zijn eerder gedeelde doel" klopte niet.** Zie de correctie hierboven.
+De zin stond in `GEEN_AANROEPER`, het register dat de volgende lezer als gemeten
+feit leest.
+
+**5. "Een clienttest kan hier niet discrimineren" klopte ook niet.** Zie de
+sectie hierboven. Van de drie onjuiste beweringen is deze de leerzaamste, want
+hij had een uitzonderingsregel en een dossierrij gekregen — de fout was
+duurzamer gemaakt dan een gewone vergissing.
+
+⚠️ En de review vond het gat achter `group_members` UPDATE **breder** dan ik het
+had opgeschreven: niet alleen een uitgezet lid dat terugkomt, maar een beheerder
+die een mede-beheerder degradeert, zonder spoor en zonder weg terug. QS8-356 is
+daarop herschreven en van High naar Urgent gegaan, met de waarschuwing erbij om
+niet de smalle versie te bouwen.
 
 ## Wat de intrekking kostte, en dat is niet gratis
 
@@ -194,7 +275,7 @@ dode grendels achter een dichte deur.
 Dat is dezelfde vorm als de CHECK uit 0007 bij QS8-352, en om dezelfde reden hier
 genoteerd in plaats van weggelaten: **een intrekking verandert wélke grendel als
 eerste weigert**, en daarmee wat elke bestaande must-deny op die tabel nog
-toetst. In `blokkades.test.ts` meten de twee weigertoetsen sinds 0196 het récht
+toetst. In `blokkades.test.ts` meten de twee weigertoetsen sinds 0197 het récht
 en niet meer de policy. Ze staan er nog omdat de belofte ("een blokkade is van de
 blokkeerder") blijft gelden; wat ze bewíjzen is smaller geworden, en dat staat er
 nu bij.

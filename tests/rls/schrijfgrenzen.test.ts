@@ -278,7 +278,7 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
   describe('profiles — een profiel is van jou en van niemand anders', () => {
     /**
      * ⚠️⚠️ **Deze test heette "je mag je eigen profiel invoegen" en dat mag sinds
-     *    migratie 0196 niet meer** (QS8-351). 📏 Nagemeten vóór de intrekking:
+     *    migratie 0197 niet meer** (QS8-351). 📏 Nagemeten vóór de intrekking:
      *    geen enkel bestand in `src/` of `app/` voegt een profiel in — de rij
      *    komt van de trigger `handle_new_user()`, en die is `SECURITY DEFINER`.
      *    De grant had dus geen aanroeper.
@@ -318,25 +318,50 @@ describe.skipIf(!rlsTestsConfigured)('de schrijfgrenzen van profiel, weekplan en
       TEST_TIMEOUT,
     );
 
+    /**
+     * ⚠️⚠️ **Deze test heette "je mag het profiel van een ander niet invoegen" en
+     *    toetste `profiles_insert`. Sinds 0197 doet hij dat niet meer, en dat is
+     *    van buitenaf niet te zien — aangewezen door de security-review op
+     *    QS8-351 en zelf nagemeten.**
+     *
+     *    📏 Hetzelfde verzoek, één verschil:
+     *
+     *      na 0197:            permission denied for table profiles
+     *      met de grant terug: new row violates row-level security policy
+     *
+     *    **Allebei `42501`**, en allebei in `WEIGERCODES`. De test bleef dus
+     *    groen terwijl hij van grendel wisselde. Het `adminDb()`-dansje eromheen
+     *    was er juist om te zorgen dat de pólicy weigerde en niet de primaire
+     *    sleutel — en dat is nu zinloos geworden, want de policy komt niet meer
+     *    aan de beurt.
+     *
+     *    ⚠️ `profiles_insert` (`with check id = auth.uid()`) is daarmee vanaf een
+     *    client onbereikbaar en volledig ongetoetst. Dat staat in het
+     *    beslisdocument als wat de intrekking kost. Deze test toetst nu de
+     *    weigering die er wél is, met de melding erbij zodat een volgende lezer
+     *    hem niet voor policybewijs aanziet.
+     */
     it(
-      'je mag het profiel van een ander niet invoegen',
+      'je maakt ook het profiel van een ander niet — en dat weigert het recht, niet de policy',
       async () => {
-        // ⚠️ Eerst weg, anders ketst de insert af op de primaire sleutel en niet
-        //    op de policy — zie de kop van dit bestand.
-        const weg = await adminDb().from('profiles').delete().eq('id', w.profielB.id);
-        if (weg.error) throw new Error(`profiel weghalen: ${weg.error.message}`);
-
-        await insertMagNiet(
-          () =>
-            w.profielA.db.from('profiles').insert({ id: w.profielB.id, display_name: 'Gekaapt' }),
-          'profiles_insert',
-        );
-
-        // Terugzetten, zodat `removeTestUsers()` hem netjes opruimt.
-        const terug = await adminDb()
+        const { error } = await w.profielA.db
           .from('profiles')
-          .insert({ id: w.profielB.id, display_name: 'Profiel B' });
-        if (terug.error) throw new Error(`profiel terugzetten: ${terug.error.message}`);
+          .insert({ id: w.profielB.id, display_name: 'Gekaapt' });
+
+        expect(error?.code, 'het INSERT-recht staat weer open').toBe('42501');
+        expect(
+          error?.message ?? '',
+          'dit is een policyweigering — dan is de grant terug en meet deze test iets anders',
+        ).toContain('permission denied');
+
+        const na = await adminDb()
+          .from('profiles')
+          .select('display_name')
+          .eq('id', w.profielB.id)
+          .maybeSingle();
+        expect(na.data?.display_name, 'het profiel van een ander is overschreven').not.toBe(
+          'Gekaapt',
+        );
       },
       TEST_TIMEOUT,
     );

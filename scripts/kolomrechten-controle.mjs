@@ -1058,7 +1058,7 @@ export const GEEN_AANROEPER = [
     kolommen: ['group_id', 'role', 'status', 'user_id'],
     reden:
       '⚠️⚠️ **Blijft staan, en dat is een omgekeerd besluit — QS8-351.** Deze rij stond in de ' +
-      'eerste opzet van 0196 op de intreklijst, met de gebruikelijke redenering: het schrijven ' +
+      'eerste opzet van 0197 op de intreklijst, met de gebruikelijke redenering: het schrijven ' +
       'loopt via `verlaat_groep()`, `verwijder_lid()`, `beslis_lidmaatschapsverzoek()` en ' +
       '`join_group_with_code()`, allemaal `SECURITY DEFINER`. 📏 Die revoke maakte **21 bestaande ' +
       'tests in zeven bestanden** rood, en alleen deze ene grant teruggeven maakte alle 100 weer ' +
@@ -1069,15 +1069,22 @@ export const GEEN_AANROEPER = [
       '⚠️ **De grendel is dus de guard en niet de grant**, en dat is wat deze reden noemt. Voor ' +
       'een gewoon lid werpt hij `geen_groepsbeheerder`; voor een uitgezet lid weegt Postgres bij ' +
       'een `UPDATE … WHERE` ook de SELECT-policy mee, en dat lid ziet zijn eigen rij niet. ' +
-      '⚠️⚠️ **Wat de guard níét weigert is `inactive → active` door een áctieve beheerder** — ' +
-      'die krijgt een vroege `return new`. 📏 Gemeten: een uitgezet lid komt met één PATCH terug ' +
-      'op `active`, mét zijn eerder gedeelde doel, terwijl `verwijder_lid()` ook ' +
-      '`goal_group_links` en openstaande `deadline_requests` opruimt. Dat is een gat in de guard ' +
-      'en geen losse grant; het staat als QS8-356 en ligt vast in ' +
-      '`tests/rls/rechten-zonder-aanroeper.test.ts`.',
+      '⚠️⚠️ **Ná die vroege `return new` toetst hij niets meer, en dat is breder dan één ' +
+      'geval.** 📏 Gemeten als beheerder, elk in een teruggedraaide transactie: een ánder lid tot ' +
+      '`admin` promoveren, een mede-beheerder — óók de oprichter — naar `member` degraderen, ' +
+      'iemand anders op `paused` zetten, en een uitgezet lid terug op `active`. Van die vier ' +
+      'schrijft alleen de laatste een spoor: `meld_uitzetting` vuurt op `status → inactive` en ' +
+      '`meld_nieuw_lid` op `inactive → active`; **een rolwijziging laat niets achter**. En er is ' +
+      'geen weg terug: 📏 één treffer op `set role` in alle functiedefinities, en die zit in de ' +
+      'overdracht van `verlaat_groep()`. ' +
+      '⚠️ Wat er bij het terugzetten níét gebeurt, en dat is nagemeten in plaats van aangenomen: ' +
+      'de gedeelde doelen komen niet mee. `verwijder_lid()` heeft `goal_group_links` al ' +
+      'opgeruimd (📏 `na-rpc links 0`), dus die overleven alléén als óók de uitzetting een ' +
+      'rechtstreekse PATCH was. Dat is een gat in de guard en geen losse grant; het staat als ' +
+      'QS8-356 en ligt vast in `tests/rls/rechten-zonder-aanroeper.test.ts`.',
   },
   /*
-   * ⚠️⚠️ **Hier stonden vijf rijen, en die zijn met migratie 0196 vervallen**
+   * ⚠️⚠️ **Hier stonden vijf rijen, en die zijn met migratie 0197 vervallen**
    *    (QS8-351): `group_members` INSERT, `profiles` INSERT, `user_blocks`
    *    INSERT, `daily_moves` UPDATE en `goal_interviews` UPDATE. De rechten zijn
    *    ingetrokken, dus er valt niets meer uit te zonderen — `verlopenRegels()`

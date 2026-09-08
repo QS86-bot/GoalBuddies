@@ -1,5 +1,5 @@
--- 0196_een_recht_zonder_aanroeper_gaat_weg.sql — vijf kolomgrants die geen enkele
--- aanroeper hebben, gaan weg; de RPC wordt de enige weg (QS8-351)
+-- 0197_een_recht_zonder_aanroeper_gaat_weg.sql — vijf kolomgrants en twee
+-- DELETE-rechten die geen enkele aanroeper hebben, gaan weg (QS8-351)
 --
 -- ROLLBACK-PAD:
 --   grant insert (blocked_id, blocker_id) on public.user_blocks to authenticated;
@@ -11,6 +11,8 @@
 --   grant update (body, id, local_date, user_id, visibility, weekly_goal_id)
 --     on public.daily_moves to authenticated;
 --   grant update (answers, goal_id, id) on public.goal_interviews to authenticated;
+--   grant delete on public.daily_moves to authenticated;
+--   grant delete on public.goal_interviews to authenticated;
 --
 --   ⚠️ Er verandert geen policy, geen functie en geen tabel. Terugdraaien is
 --      precies deze zes regels en niets anders.
@@ -109,6 +111,39 @@
 --    POST terugzetten als `role: admin`.
 --
 -- ---------------------------------------------------------------------------
+-- Wat de revoke wél en niet sluit — een correctie uit de security-review
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Hier stond dat die vier gevallen met de UPDATE-revoke gesloten waren.
+--    Dat was te sterk, en het is precies de vorm die dit project verbiedt: de
+--    test toetst de PATCH-vórm en de kop beloofde de uitkomst.**
+--
+--    📏 Nagemeten: `authenticated` heeft **tabelbrede DELETE** op `daily_moves`
+--    én `goal_interviews`, en `daily_moves` INSERT draagt nog `local_date` en
+--    `visibility` (die heeft de app nodig — `zetDagzet()` stuurt ze mee).
+--    `daily_moves_write` is een `FOR ALL`-policy op `user_id = auth.uid()`, dus
+--    weghalen-en-opnieuw-invoegen was gewoon een tweede weg naar dezelfde
+--    uitkomst.
+--
+-- 📏 En DELETE is op allebei die tabellen zélf een recht zonder aanroeper: geen
+--    `.delete()` in `src/` of `app/`, en geen enkele functie in het schema raakt
+--    ze aan. Vandaar dat hij hier meegaat.
+--
+-- **Wat er ná deze migratie dicht is en wat niet:**
+--
+--   dicht   een bestaande Dagzet herschrijven, terugdateren of van
+--           zichtbaarheid wisselen — er is geen UPDATE en geen DELETE meer
+--   dicht   een bestaand interviewantwoord herschrijven of weghalen
+--   OPEN    een **nieuwe** Dagzet invoeren met een willekeurige `local_date`
+--
+-- ⚠️ Dat laatste blijft, en het staat er met zoveel woorden bij in plaats van
+--    dat de kop suggereert dat het weg is. `local_date` moet in de INSERT-grant
+--    omdat de app hem meestuurt, en er staat geen CHECK en geen trigger op —
+--    📏 nagemeten op `pg_constraint` en `pg_trigger`. Dat is dezelfde klasse als
+--    `cycle_start_date` bij QS8-354: een dátumgrens die nergens staat. Het hoort
+--    daar en niet hier.
+--
+-- ---------------------------------------------------------------------------
 -- Wat er níet weggaat, en waarom dat gemeten is
 -- ---------------------------------------------------------------------------
 --
@@ -153,3 +188,13 @@ revoke update (body, id, local_date, user_id, visibility, weekly_goal_id)
 
 revoke update (answers, goal_id, id)
   on public.goal_interviews from public, anon, authenticated;
+
+-- ⚠️⚠️ **En de DELETE erbij, want zonder dat sluit de UPDATE-revoke niets.**
+--    Zie de sectie "Wat de revoke wél en niet sluit" hierboven: met een DELETE
+--    ernaast is bewerken gewoon weghalen-en-opnieuw-invoegen. Postgres kent geen
+--    kolom-DELETE-privilege, dus dit is tabelbreed — en dat is precies waarom
+--    `kolomrechten:controle` deze klasse structureel niet kan zien.
+
+revoke delete on public.daily_moves from public, anon, authenticated;
+
+revoke delete on public.goal_interviews from public, anon, authenticated;
