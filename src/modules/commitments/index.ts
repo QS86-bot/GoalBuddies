@@ -13,6 +13,7 @@ export {
   fetchCommitmentSpoor,
   fetchGetuigenissen,
   fetchMogelijkeBegunstigden,
+  herstelStuurlozeStraf,
   trekIn,
   zetBeloning,
   zetStraf,

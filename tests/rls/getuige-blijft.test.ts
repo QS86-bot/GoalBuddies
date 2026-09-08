@@ -19,7 +19,25 @@
  * **Wat er wél houdt, en wat dit bestand daarom bewaakt:**
  *
  *      Een straf die in werking is (`status = 'due'`) verandert niet meer van
- *      getuige, niet van eigenaar, en verdwijnt niet.
+ *      getuige, niet van eigenaar, en verdwijnt niet — zolang zijn getuige
+ *      bestaat.
+ *
+ * ⚠️⚠️ **Die laatste bijzin is er op 08-09-2026 bij gekomen (QS8-333, migratie
+ *    0212), en de manier waaróp is precies waar regel 18 voor waarschuwt.** De
+ *    belofte hierboven stond zonder uitzondering, en `herstel_stuurloze_straf()`
+ *    maakt daar een uitzondering op: verdwijnt de getuige met zijn account, dan
+ *    wijst de eigenaar een nieuwe aan of wikkelt hij de straf af.
+ *
+ *    **Geen enkele test in dit bestand werd daar rood van.** Ze voeren allemaal
+ *    de directe tabelroute, en die is nog steeds dicht — de kolomgrant en
+ *    `commitments_update` zijn niet aangeraakt. De belofte verschoof dus en de
+ *    bewaking merkte het niet. Daarom is deze kop bijgesteld en niet alleen de
+ *    code: een test die groen blijft terwijl de belofte kleiner wordt, bewaakt
+ *    vanaf dat moment iets anders dan zijn kop zegt.
+ *
+ *    De nieuwe grens staat in `tests/rls/stuurloze-straf.test.ts` §3: de RPC
+ *    weigert met `heeft_nog_een_begunstigde` zolang de getuige er is. Dat is de
+ *    must-deny die de zin hierboven overeind houdt voor het normale geval.
  *
  *    📏 Alle vier de routes dichtgemeten voor `due`: annuleren raakt nul rijen,
  *    een tweede straf op hetzelfde doel botst op
@@ -41,11 +59,14 @@
  *    in `commitment_events` staat en een die nergens staat. §4 bewaakt die grant,
  *    want er was geen test die iets zei als iemand hem verbreedde.
  *
- * ⚠️ Twee gaten die hier níet gedicht worden en die als dossierrij staan:
- *    `verwijder_doel()` cascadeert een bevestigde `set`-straf én zijn
- *    `commitment_events` weg, en `verwijder_mijn_account()` van de getuige laat
- *    een `due`-straf met `beneficiary_user_id = NULL` achter. Allebei gemeten,
- *    allebei buiten dit issue — zie het beslisdocument.
+ * ⚠️ Twee gaten die hier níet gedicht werden en die als dossierrij stonden:
+ *    `verwijder_doel()` cascadeerde een bevestigde `set`-straf én zijn
+ *    `commitment_events` weg, en `verwijder_mijn_account()` van de getuige liet
+ *    een `due`-straf met `beneficiary_user_id = NULL` achter. **Allebei
+ *    inmiddels behandeld** — het eerste door QS8-331/0189, het tweede door
+ *    QS8-333/0212, dat er de RPC hierboven voor bouwde. Wat er van het tweede
+ *    blijft staan is de vraag wat er met het spoor gebeurt als de **eigenaar**
+ *    zijn account verwijdert; dat is QS8-335.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

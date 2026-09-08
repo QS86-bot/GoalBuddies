@@ -119,6 +119,14 @@ export const en: Record<Sleutel, string> = {
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
+  'commitment.fout.herstel': 'That did not work. Please try again.',
+  'commitment.herstel.heeft_getuige':
+    'This stake still has a witness. You can only hand it over once your witness has closed their account.',
+  'commitment.herstel.niet_verschuldigd':
+    'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.geen_groepsgenoot':
+    'You can only pick someone you share a group with.',
+  'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',
   'commitment.fout.spoor': 'The history could not be loaded.',
 
   'validatie.commitment_kort': 'Write down what you are holding yourself to.',

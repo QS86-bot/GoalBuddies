@@ -2617,6 +2617,15 @@ export type Database = {
         Returns: undefined
       }
       herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
+      herstel_stuurloze_straf: {
+        Args: {
+          p_actie: string
+          p_bevestigd?: boolean
+          p_commitment_id: string
+          p_getuige?: string
+        }
+        Returns: Json
+      }
       herorden_mijlpalen: {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json

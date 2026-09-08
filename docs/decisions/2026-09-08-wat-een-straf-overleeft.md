@@ -180,3 +180,111 @@ Dat zijn twee routes naar dezelfde uitkomst — je straf kwijtraken zonder hem t
 dragen — en ze krijgen hetzelfde antwoord: het mag, maar niet stilletjes. Bij
 QS8-322 is de rem de tijdigheidstoets; bij QS8-321 is het een bericht aan de
 getuige. Zie sectie 2.
+
+
+---
+
+## 3. QS8-333 — een stuurloze straf krijgt de eigenaar weer in handen
+
+**Besluit:** een `security definer`-RPC geeft de eigenaar een verschuldigde straf
+terug zodra de getuige verdwenen is. Hij mag een nieuwe getuige aanwijzen **én**
+hem afwikkelen.
+
+⚠️ **Dit wijkt af van wat ik voorstelde, en dat hoort hier te staan.** Mijn
+voorstel was alleen het eerste: zonder getuige is *"ik heb hem afgewikkeld"* een
+verklaring van de gestrafte over zichzelf, en dat is geen commitment device meer.
+Quinten koos voor allebei. De rem die daarvoor in de plaats komt is de expliciete
+bevestiging (`p_bevestigd`), zoals `archiveer_groep()` die ook vraagt —
+domeinregel 5 zegt dat een commitment device nooit stilzwijgend uitgaat, en dit
+ís het uitgaan ervan.
+
+### Waar het vandaan kwam
+
+📏 Straf op `due`, de getuige verwijdert zijn account:
+
+```
+vooraf:   status=due   getuige=<carol>
+verwijder_mijn_account (getuige): {"ok": true}
+na:       status=due   getuige=NULL
+rijen die de eigenaar daarna mag bijwerken: 0
+```
+
+Dat laatste getal is de kern. Niet "lastig", maar **nul**: de rij is in werking en
+buiten `service_role` raakt niemand hem nog aan.
+
+### Waarom een RPC en niet de policy die het issue voorstelt
+
+Het issue stelt voor `commitments_update.using` te verruimen met `status = 'due'
+and beneficiary_user_id is null`. Dat is gebouwd en gemeten, en het doet precies
+het verkeerde:
+
+| Wat de eigenaar dan kan | Uitkomst |
+|---|---|
+| een nieuwe getuige aanwijzen | GEWEIGERD — `permission denied` |
+| zijn eigen due-straf annuleren | **GELUKT** — `status=cancelled` |
+| hem afwikkelen naar `resolved` | GEWEIGERD — policy violation |
+
+📏 De kolomgrant is `grant update (body, image_url, status)`;
+`beneficiary_user_id` staat er niet in, dus geen policy laat een client ooit een
+getuige aanwijzen — "RLS kan geen kolommen beperken", in de omgekeerde richting.
+En `with_check` laat alleen `set`/`cancelled` door. 📏 Sterker nog: géén enkele
+functie in `public` schreef ooit `resolved`; die stand stond in de CHECK en in
+`commitment_zichtbaar_voor_*()` en had geen pad ernaartoe.
+
+De voorgestelde verruiming levert dus één nieuwe bevoegdheid op — de eigenaar mag
+zijn eigen verschuldigde straf annuleren — en dat is het bezwaar waarop richting 2
+sneuvelde, met de slechtst denkbare hand aan de knop.
+
+**Een kolomgrant erbij is evenmin het antwoord:** die geldt voor élke update van
+elke ingelogde gebruiker, en dan staat open wat vandaag dicht zit voor álle
+commitments, met alleen nog een policy ervoor. Eén slot waar er nu twee zijn. De
+RPC houdt de grant dicht en opent één deur.
+
+**Richting 4 (de groep neemt het over) viel af op een meting.**
+📏 `goal_group_links` heeft `primary key (goal_id, group_id)`: een doel kan aan
+meerdere groepen hangen en `goals` heeft geen groepskolom. Er is geen "de groep" —
+er is een lijst, en welke ervan erft is een nieuw besluit. Regel 18 vraag 6.
+
+### De prijs
+
+Dit is geen regel SQL. Het is een functie met zes weigeringen, een `revoke`/`grant`
+in de vorm van onwrikbare regel 4, een eigen auditrij naast die van de trigger, en
+een suite van negen tests. Dat is wat "de RPC in plaats van de policy" kost, en het
+is de reden dat het geen kleine migratie is.
+
+### Wat het aan een bestaande belofte doet
+
+⚠️⚠️ **Dit vernauwt QS8-312, en de bewaking daarvan merkte het niet.** De kop van
+`tests/rls/getuige-blijft.test.ts` beloofde: *een straf die in werking is,
+verandert niet meer van getuige, niet van eigenaar, en verdwijnt niet.* Die zin
+klopt nu alleen nog zolang de getuige bestaat.
+
+**Alle tests in dat bestand bleven groen**, want ze voeren de directe
+tabelroute — en die is nog steeds dicht. De belofte verschoof dus terwijl de
+bewaking stil bleef: precies de vorm waar regel 18 voor bestaat. De kop is daarom
+bijgesteld, en de nieuwe grens staat als must-deny in
+`tests/rls/stuurloze-straf.test.ts` §3: de RPC weigert met
+`heeft_nog_een_begunstigde` zolang er een getuige is.
+
+### Hoe het bewaakt wordt
+
+`tests/rls/stuurloze-straf.test.ts` loopt de keten af — straf op `due`, de getuige
+verwijdert zijn **eigen** account via `verwijder_mijn_account()`, en pas dan de
+RPC. Niet de kolom met de adminclient op `null` zetten: 📏 `bewaak_begunstigde()`
+weigert dat, dus dat zou een toestand meten die geen gebruiker kan maken.
+
+Vier grendels, vier losse mutaties, elk precies één rode test:
+
+| Mutatie | Wat er rood wordt |
+|---|---|
+| `c.status <> 'due'` eruit | 'weigert een straf die nog niet verschuldigd is' |
+| de toets op de begunstigde eruit | 'weigert zolang de getuige er nog is' |
+| `p_bevestigd is not true` eruit | 'wikkelt niet af zonder bevestiging' |
+| `shares_group_with_user()` eruit | 'weigert een getuige buiten je groepen, en jezelf' |
+
+### AC3 — de relatie met QS8-331
+
+QS8-331/0189 is het andere geval waarin een verwijdering een straf onbereikbaar
+maakt: daar wist `verwijder_doel()` een bevestigde straf én zijn spoor. Deze
+issue is de spiegel — niet *het spoor verdwijnt*, maar *de rij blijft en niemand
+kan er nog bij*. Het derde geval van dezelfde klasse is QS8-335, hieronder.

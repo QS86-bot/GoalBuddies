@@ -209,6 +209,14 @@ export const nl = {
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
+  'commitment.fout.herstel': 'Dat lukte niet. Probeer het opnieuw.',
+  'commitment.herstel.heeft_getuige':
+    'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
+  'commitment.herstel.niet_verschuldigd':
+    'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.geen_groepsgenoot':
+    'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
+  'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
   'commitment.fout.spoor': 'De geschiedenis kon niet geladen worden.',
 
   'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
