@@ -189,7 +189,7 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     const vroegste = addDays(eigenDatum, richting > 0 ? -7 : -6);
 
     // ⚠️ **Deze insert gaat sinds QS8-354 via `adminDb()` en niet meer via
-    //    `eigenaar.db`.** Migratie 0197 weigert een `cycle_start_date` die niet
+    //    `eigenaar.db`.** Migratie 0198 weigert een `cycle_start_date` die niet
     //    op de week-startdag van de eigenaar valt, en `vroegste` ligt daar per
     //    ontwerp naast: hij is uit de twee klokken afgeleid en niet uit de
     //    kalender van de gebruiker. In de `richting > 0`-tak valt hij toevallig
@@ -197,7 +197,7 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     //    nooit — dan zou deze suite de helft van de tijd rood zijn op een
     //    grendel die met de radar niets te maken heeft.
     //
-    //    Dat de opbouw hier de rol van de server aanneemt is precies wat 0197
+    //    Dat de opbouw hier de rol van de server aanneemt is precies wat 0198
     //    bedoelt: de aanvalsvector is de client, en dát die kant dicht zit staat
     //    onder test in `tests/rls/cyclusgrens.test.ts`. Deze test gaat over de
     //    klok waarop `herbereken_risico()` rekent, niet over wie de rij schrijft.
@@ -263,7 +263,7 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
     // ⚠️ **Via `adminDb()`, om dezelfde reden als het weekdoel hierboven.**
     //    `randDag` is uit de twee klokken afgeleid en niet uit de kalender van de
     //    eigenaar, dus hij valt zes van de zeven dagen naast diens week-startdag —
-    //    en migratie 0197 weigert dat aan de clientkant. Deze insert was
+    //    en migratie 0198 weigert dat aan de clientkant. Deze insert was
     //    afwisselend groen en rood naar de zone die deze suite die dag koos; de
     //    grendel maakte dat zichtbaar.
     const randWeekdoel = await adminDb().from('weekly_goals').insert({

@@ -1,4 +1,4 @@
--- 0197_de_cyclus_van_een_weekdoel_is_geen_invoerveld.sql — een client kiest niet
+-- 0198_de_cyclus_van_een_weekdoel_is_geen_invoerveld.sql — een client kiest niet
 -- langer op welke dag zijn week begint, en hoeveel goedkeuringen hij per dag
 -- uitdeelt (QS8-354).
 --
@@ -241,7 +241,7 @@ begin
      or new.cycle_start_date > v_vandaag + 7 then
     raise exception 'Deze cyclus ligt buiten het venster waarin je weekdoelen maakt'
       using errcode = 'check_violation',
-            hint = 'Van 52 cycli terug tot de volgende cyclus, op je eigen kalender; zie 0197.';
+            hint = 'Van 52 cycli terug tot de volgende cyclus, op je eigen kalender; zie 0198.';
   end if;
 
   return new;

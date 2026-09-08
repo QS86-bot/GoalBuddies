@@ -58,7 +58,7 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
 export const REGISTER = new Map([
   [
     'weekdoel_cyclus_klopt :: v_vandaag := coalesce(eigenaarsdatum(v_owner), current_date);',
-    'Geen grens maar een terugval — QS8-354, migratie 0197. De grens zelf rekent op ' +
+    'Geen grens maar een terugval — QS8-354, migratie 0198. De grens zelf rekent op ' +
       '`eigenaarsdatum()`, precies zoals 0155 het in `herbereken_risico()` deed; ' +
       '`current_date` staat er alleen voor het geval dat er geen profiel is, en dan ' +
       'valt er ook niets in de eigen zone te rekenen. Het venster is 52 cycli breed, ' +

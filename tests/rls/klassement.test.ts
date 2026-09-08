@@ -43,7 +43,7 @@ const TEST_TIMEOUT = 30_000;
  * ⚠️ **Het profiel wordt hier ook echt op gezet, in `beforeAll`.** Rekenen met
  *    `weekStartDay: 1` terwijl de database iets anders in `profiles` heeft staan,
  *    is een test die op een kolomdefault leunt — verandert die default, dan rekent
- *    de test met een andere cyclus dan de trigger van 0197. Zelfde vorm als
+ *    de test met een andere cyclus dan de trigger van 0198. Zelfde vorm als
  *    `cyclusgrens.test.ts`.
  */
 const STARTDAG = 1;
@@ -55,7 +55,7 @@ const HUIDIGE_CYCLUS = userCycle({ weekStartDay: STARTDAG, tz: ZONE }, now()).st
  * De cyclus waarin Anna haar punten verdient.
  *
  * ⚠️ **Stond tot QS8-354 op een vaste `'2024-03-04'`**, met de reden "ver in het
- *    verleden, zodat niets van deze test elders meetelt". Migratie 0197 laat een
+ *    verleden, zodat niets van deze test elders meetelt". Migratie 0198 laat een
  *    client geen cyclus meer schrijven die buiten het venster rond vandaag valt,
  *    en deze fixture schrijft met Anna's gewone account — dus die datum kan niet
  *    blijven staan.
@@ -170,7 +170,7 @@ describe.skipIf(!rlsTestsConfigured)('het klassement van een groep', () => {
     // ⚠️ De startdag en de zone vastzetten op wat `HUIDIGE_CYCLUS` hierboven
     //    aanneemt. Zonder dit leunt de fixture op de kolomdefaults van
     //    `profiles`, en rekent hij bij een andere default met een andere cyclus
-    //    dan de trigger van 0197 — die de cyclus tegen het profiel legt.
+    //    dan de trigger van 0198 — die de cyclus tegen het profiel legt.
     for (const u of [anna, bram, cor, dirk]) {
       psql(`update profiles set tz = '${ZONE}', week_start_day = ${STARTDAG} where id = '${u.id}'`);
     }

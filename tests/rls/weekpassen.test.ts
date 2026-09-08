@@ -60,7 +60,7 @@ interface Fixture {
    *
    * ⚠️ **Bestaat sinds QS8-354, en de aanleiding is dat de cliëntzijdige
    *    inserts hieronder op vaste datums in maart en april 2026 stonden.**
-   *    Migratie 0197 laat een client alleen nog een cyclus binnen 52 cycli rond
+   *    Migratie 0198 laat een client alleen nog een cyclus binnen 52 cycli rond
    *    vandaag schrijven, dus zo'n vaste datum werkt vandaag en niet meer over
    *    een jaar — een test die op een willekeurige dag in de toekomst rood
    *    wordt, en dan op iets dat met zijn onderwerp niets te maken heeft. De

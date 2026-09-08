@@ -5,7 +5,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
 import { psql } from './psql-stack';
 
 /**
- * De cyclus van een weekdoel is geen invoerveld — QS8-354, migratie 0197.
+ * De cyclus van een weekdoel is geen invoerveld — QS8-354, migratie 0198.
  *
  * ⚠️ **De belofte is niet "er staat een CHECK op de kolom".** Dat is een
  *    eigenschap van het onderdeel. De belofte is: *je punten komen uit de weken

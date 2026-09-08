@@ -1,6 +1,6 @@
 # Een venster begrenst geen volume
 
-**08-09-2026 — QS8-354, migratie 0197**
+**08-09-2026 — QS8-354, migratie 0198**
 
 ## Waar dit over gaat
 
@@ -15,7 +15,7 @@ en — belangrijker — waarom het venster het aangevallen volume **niet** begre
 
 ## De meting die de eerste versie omdraaide
 
-De eerste versie van 0197 had een venster van 56 dagen terug, met "acht cycli"
+De eerste versie van 0198 had een venster van 56 dagen terug, met "acht cycli"
 als onderbouwing en met een kop die hem presenteerde als de grendel tegen het
 scenario uit het issue: A maakt 200 weekdoelen per dag met steeds een andere
 `cycle_start_date`, B keurt ze goed, allebei boeken ze in `groep_klassement()`.

@@ -31,7 +31,7 @@ const SETUP_TIMEOUT = 240_000;
 /**
  * De cyclus waarin alle weekdoelen in dit bestand staan — de lopende.
  *
- * ⚠️ **Stond tot QS8-354 op `'2026-09-07'`.** Migratie 0197 laat een client
+ * ⚠️ **Stond tot QS8-354 op `'2026-09-07'`.** Migratie 0198 laat een client
  *    alleen nog een cyclus binnen 52 cycli rond vandaag schrijven, en de inserts
  *    hieronder gaan via gewone accounts. Een vaste datum werkt dan vandaag en
  *    niet meer over een jaar — een test die op een willekeurige dag in de

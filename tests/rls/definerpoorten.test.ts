@@ -197,7 +197,7 @@ interface Wereld {
    * De eerstvolgende cyclusstart van de eigenaar.
    *
    * ⚠️ **`schuif_weekdoel_door()` krijgt hem sinds QS8-354 en niet meer
-   *    `vandaag + 7`.** Migratie 0197 weigert een `cycle_start_date` die niet op
+   *    `vandaag + 7`.** Migratie 0198 weigert een `cycle_start_date` die niet op
    *    de week-startdag van de eigenaar valt, en zeven dagen na vandaag is dat
    *    zes van de zeven dagen niet. De app geeft de RPC ook een echte
    *    cyclusstart mee (`weekly.ts:306`), dus dit is bovendien de getrouwere
