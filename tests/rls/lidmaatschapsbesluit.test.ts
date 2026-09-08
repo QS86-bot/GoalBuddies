@@ -9,6 +9,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { proefCode } from './proefid';
 
 /**
  * Wat `beslis_lidmaatschapsverzoek()` belóóft tegenover wat er gebeurt — QS8-328.
@@ -251,7 +252,7 @@ describe.skipIf(!rlsTestsConfigured)('een besluit op een lidmaatschapsverzoek', 
         .from('groups')
         .insert({
           name: `BESLUIT vol-frits ${i}`,
-          invite_code: `BF${String(i).padStart(4, '0')}`,
+          invite_code: proefCode('BF', i),
           created_by: anna.id,
         })
         .select('id')
