@@ -37,9 +37,14 @@ Vraag de database welke migraties er staan, niet dit document.
 
 ⚠️ **`0187` staat sinds 07-09 in de map en nog niet op productie** (QS8-314).
 `guard_group_member_update()` werpt daar in plaats van gewijzigde kolommen stil
-terug te zetten, en `join_group_with_code()` krijgt er één regel bij. 📏 Wat
-daarvóór stil kapot was: een lid op `paused` dat toetrad met een geldige code
-kreeg `{"ok": true}` en bleef op `paused`. Dat pad is vandaag dormant — QS8-325.
+terug te zetten.
+
+⚠️ **De uitzondering die 0187 daarnaast invoerde is met `0204` weer weg**
+(QS8-325, 08-09): `group_members.status` kent alleen nog `active` en `inactive`.
+`paused` had geen schrijver en vier lezers, en de adempauze die het product
+bedoelt zit per doel in `breathers`. Waarom hij weggaat en niet een schrijver
+krijgt, staat in
+`docs/decisions/2026-09-08-paused-was-de-adempauze-op-de-verkeerde-plek.md`.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
