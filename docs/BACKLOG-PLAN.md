@@ -165,11 +165,14 @@ eigen milestone of status in Linear (`Engineer-review november`), zodat de
 Backlog laat zien wat er te bouwen valt. Veertien van de 44 verdwijnen daarmee
 uit het zicht zonder dat er iets weggegooid of afgevinkt wordt dat niet af is.
 
-⚠️ **Twee ervan zijn wél goedkoop echt te sluiten en horen apart bekeken:**
-QS8-182 is op 27-08 hermeten en de vrees in de rij ("stilletjes") klopt
-aantoonbaar niet meer, en QS8-220 heeft sinds `apply_migration` met volledige
-body geen open handeling meer. Meet ze na en sluit ze als de meting het draagt;
-laat ze anders in de baan staan.
+⚠️ **Twee ervan leken goedkoop echt te sluiten; bij het nalezen is dat er één.**
+QS8-182 is op 27-08 hermeten en de vrees in de rij ("stilletjes") klopt niet meer
+— maar het issue eindigt met *"wat een reviewer moet wegen is of een CHECK op een
+gedenormaliseerde kolom hier de juiste vorm is. Dat is een oordeel en geen
+meting."* Dat is precies een gespreksvraag, dus hij blijft staan. Bij QS8-220 is
+de vraag wél een meting: staat het `--`-commentaar vandaag nog steeds niet in de
+gedeployde functies? Meet dat tegen productie en sluit hem als de meting het
+draagt.
 
 ### Baan E — epics en Fase 2/3 (12)
 
@@ -205,6 +208,19 @@ regels dragen niets dat vandaag gebouwd wordt.
 5. De epics QS8-200, QS8-230 en QS8-252 uit de Backlog naar hun eigen milestone.
 
 📏 Na dag 0 staat er **26** in de Backlog waarvan er **12** vandaag te bouwen zijn.
+
+✅ **Dag 0 is uitgevoerd op 08-09-2026.** Wat er staat: QS8-353 staat op In
+Review, QS8-108 is duplicaat van QS8-250 (het veldenlijstje en de voorkeur voor
+herkenning op het apparaat zijn overgezet vóór het sluiten), de veertien rijen
+van baan D dragen het nieuwe label **`review:november`**, QS8-252 draagt nu ook
+`epic`, en op QS8-335 staat waarom zijn claim leeg is.
+
+⚠️ **Twee dingen die anders liepen dan het plan zei.** De claim op QS8-345 is
+van 03:54 UTC vandaag en dus niet oud — die is met rust gelaten; alleen die van
+QS8-335 (veertien uur, leeg) is aangesproken. En het team kent geen status
+tussen Backlog en Todo in, dus baan D is een **label** geworden en geen status:
+de bouwbare voorraad is de Backlog met `-label:review:november -label:epic
+-label:phase:v2 -label:phase:v3`.
 
 **Dag 1 — baan A en de kop van baan B, parallel.**
 
