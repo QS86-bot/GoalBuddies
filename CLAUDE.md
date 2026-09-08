@@ -489,6 +489,21 @@ worden gekopieerd (elke definer-functie is een kopie van de vorige), en de
 database is nu leeg — wat tijdelijk is. Uitgewerkt in
 `docs/decisions/2026-09-02-de-geschiedenis-achter-de-grondwet.md` §2.
 
+⚠️⚠️ **Een bevinding van dezélfde klasse landt op de branch waar hij gevonden
+is** — besluit van 08-09-2026. Vindt de security-ronde naast je opdracht nog een
+instantie van hetzelfde probleem, dan repareer je die daar, in plaats van er een
+issue van te maken. Een bevinding van een **andere** klasse blijft een eigen
+issue. 📏 De aanleiding: dertien branches leverden in twee dagen zestien nieuwe
+backlog-issues op, in zeven klassen — vier keer dezelfde kolomrechten-redenering,
+vier keer dezelfde vraag over wat een straf overleeft.
+
+Dit botst niet met de bundelregel hierboven: die verbiedt bestáánde issues
+samenvoegen, dit voorkomt dat er een tweede ontstaat. Wat blijft gelden: de
+bevinding wordt met zoveel woorden genoemd in de commit én het issue, de poort
+geldt onverkort voor elke instantie erbij, en wordt de PR groter dan in één keer
+te beoordelen is, dan is het alsnog een tweede issue. Redenering in
+`docs/decisions/2026-09-08-een-bevinding-van-dezelfde-klasse.md`.
+
 ⚠️ **Verifieer elke bevinding zelf voordat je hem verwerkt.** Ze hebben het ook
 mis: in één ronde was de zwaarste bevinding aantoonbaar onjuist — ze las een
 migratiebestand waar de gedéployde functie strenger was — terwijl twee andere

@@ -82,11 +82,13 @@ in dit project de grootste kostenpost, niet het denkwerk.
    issues, en dit voorkomt dat er een tweede issue ontstaat. Een bevinding van
    een ándere klasse blijft een eigen issue.
 
-   ⚠️ **Dit is een voorstel en nog geen regel.** Het verandert hoe de
-   security-ronde uit onwrikbare regel 19 haar bevindingen wegschrijft, dus het
-   hoort met een besluitnummer in `docs/decisions/` en pas daarna in `CLAUDE.md`.
-   Zolang dat niet gebeurd is, blijft de instroom staan waar hij staat en is elk
-   dagplan hieronder een momentopname.
+   ✅ **Besloten op 08-09-2026 en vastgelegd.** Het staat als regel in
+   `CLAUDE.md` bij onwrikbare regel 19, met de redenering in
+   `docs/decisions/2026-09-08-een-bevinding-van-dezelfde-klasse.md`. Drie dingen
+   blijven gelden en zonder die drie is het een gat: de bevinding wordt met
+   zoveel woorden genoemd in de commit én het issue, de poort geldt onverkort
+   voor elke instantie erbij, en wordt de PR groter dan in één keer te
+   beoordelen is, dan is het alsnog een tweede issue.
 
 ---
 
@@ -279,7 +281,20 @@ dit project daarover gemeten heeft:
 
 ---
 
-## 5. Wat Quinten moet beantwoorden — één ronde
+## 5. De beslisronde — gehouden op 08-09-2026
+
+⚠️ **Drie van de vier vragen zijn beantwoord; hieronder staat wat er besloten is
+en wat er nog ligt.** De vraagstelling blijft staan omdat de meting eronder de
+onderbouwing is van het besluit.
+
+| Vraag | Uitkomst |
+| -- | -- |
+| Wat overleeft een straf? | **Per geval beslissen.** Vier losse voorstellen, elk met de meting en de afweging, staan als comment bij QS8-321, QS8-322, QS8-333 en QS8-335. Dit is het enige dat nog op Quinten wacht |
+| Mag een gewoon lid zien wie er uit de groep gezet is? | **Ja — laten zoals het is, en vastleggen.** Oppervlak 31 in beslisdocument 002 draagt het besluit; de agendarij in `docs/ENGINEER-REVIEW.md` is ermee gesloten |
+| Mag een bevinding van dezelfde klasse op de branch landen? | **Ja.** Zie §1 en `docs/decisions/2026-09-08-een-bevinding-van-dezelfde-klasse.md` |
+| Welke v2-issues zijn vrij? | **QS8-250, QS8-92, QS8-71 en QS8-72.** QS8-109 (de mascotte) blijft liggen tot Quinten een vormgeving kiest |
+
+## 5a. De vraagstelling, met de metingen
 
 ### Vraag 1 — wat overleeft een straf? (QS8-321, QS8-322, QS8-333, QS8-335)
 
@@ -315,11 +330,11 @@ haalt vijf regels uit de Backlog die er nu bij elke telling in meelopen.
 
 ## 6. Wat dit plan niet oplost
 
-- **De instroom.** Zonder de tweede hefboom uit §1 komen er per gebouwd issue
-  ongeveer 1,2 nieuwe bij. Twaalf issues bouwen levert dan veertien nieuwe op, en
-  dag 3 eindigt met een langere backlog dan dag 0 begon. **Dit is het enige punt
-  in dit plan waar de rekensom tegen werkt, en het is ook het enige punt dat met
-  één besluit te draaien is.**
+- ~~**De instroom.**~~ ✅ **Gedraaid op 08-09-2026.** Zonder de tweede hefboom uit
+  §1 kwamen er per gebouwd issue ongeveer 1,2 nieuwe bij. Die hefboom is nu een
+  regel. ⚠️ **Hij maakt de instroom niet nul:** van de zestien issues die de
+  meting telde zouden er met deze regel ongeveer negen niet ontstaan zijn — de
+  zeven klassen blijven. Dat is de orde van grootte en geen belofte.
 - **De epics.** QS8-200 staat op Urgent en is de enige Urgent in de hele Backlog.
   Hem opsplitsen is echt productwerk en hoort niet in een opruimplan.
 - **Wat op productie achterloopt.** De drie Edge Functions en de laatste

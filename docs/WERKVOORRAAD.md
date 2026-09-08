@@ -866,7 +866,20 @@ een agent alleen kan afmaken:
 | 2 | **QS8-114 — web push** | `expo-notifications` staat erin, maar de app draait alleen op het web en web push is een ánder mechanisme (VAPID, service worker, `PushSubscription`). Vandaag komt er dus geen enkele melding aan | besluit over opslag + werk |
 | 3 | **Supabase Auth-URL's** | Bevestigingsmail wijst naar het oude adres. Dashboardhandeling van een minuut, §0a | Quinten |
 
-#### ⚠️ De `phase:v2`-voorraad die een agent alleen kan bouwen, is leeg (28-08)
+#### De `phase:v2`-voorraad — vier zijn er op 08-09-2026 vrijgegeven
+
+⚠️ **Dit blok zei tot 08-09 dat er niets van te bouwen viel, en dat klopt niet
+meer.** In de beslisronde van die dag zijn **QS8-250** (spraak naar tekst, waar
+QS8-108 als duplicaat in opgegaan is), **QS8-92** (notificatietypes aan en uit) en
+**QS8-71 en QS8-72** (bijlagen in de chat) vrijgegeven. Alleen **QS8-109** (de
+mascotte) blijft liggen: die vraagt een vormgeving en dat is Quintens keuze.
+
+⚠️ Vrijgegeven betekent "mag opgepakt worden", niet "de reden is verdwenen". Bij
+QS8-71/72 staat de betaalde tier er nog steeds, en het bijlagenoppervlak vraagt
+eerst een rij in `docs/decisions/002-domeinregel7-oppervlakken.md` — dat is
+domeinregel 7, tweede vraag, en die geldt onverkort.
+
+#### ⚠️ Wat er tot 28-08 stond
 
 Alle vier de `phase:v2`-issues die zonder overleg te bouwen waren, zijn op 27/28-08
 gebouwd en geland: QS8-56, QS8-65, QS8-79 en QS8-78. Wat er in Backlog overblijft,
@@ -874,10 +887,10 @@ kan een sessie **niet** zelf oppakken:
 
 | Issue | Waarom niet |
 |---|---|
-| QS8-71, QS8-72 | Vragen een betaalde tier en een nieuw groepszichtbaar oppervlak. ⚠️ Sinds `0126` is de bucket-helft er wél (voor avatars), maar dat maakt deze twee niet vrij: bijlagen bij voltooiingen en chatberichten zijn iets anders dan een profielfoto. Overleg met Quinten |
+| ~~QS8-71, QS8-72~~ ✅ **vrijgegeven 08-09-2026** | Vragen een betaalde tier en een nieuw groepszichtbaar oppervlak. ⚠️ Sinds `0126` is de bucket-helft er wél (voor avatars), maar dat maakt deze twee niet vrij: bijlagen bij voltooiingen en chatberichten zijn iets anders dan een profielfoto. Overleg met Quinten |
 | QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
-| QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
-| QS8-108 | Vraagt een nieuwe dependency |
+| ~~QS8-92~~ ✅ **vrijgegeven 08-09-2026** | Zat in `src/modules/notifications/`, het werkgebied van een parallelle sessie. Die is klaar; er is geen betaalde tier en geen dependency nodig |
+| ~~QS8-108~~ → **QS8-250**, ✅ **vrijgegeven 08-09-2026** | QS8-108 is op 08-09 duplicaat van QS8-250 geworden — dezelfde feature, twee formuleringen. ⚠️ Vrijgegeven mét een grens: op **web** kan het met de browser-API en zonder dependency, en dáár zit het gat (native heeft al een dicteerknop op het toetsenbord). De audio gaat in Chrome naar Google, en dat moet de gebruiker weten vóór de eerste opname |
 | QS8-109 | **Alleen de vórmgeving nog** — die vraagt een illustrator, en Quinten onderzoekt zelf wat hij wil (28-08). Niet oppakken in een `/verder`-ronde; niet nodig voor de MVP. **Het gedrág is wél gebouwd:** de coach moedigt ongevraagd aan bij een tegenvallende stand (variant B, besluit 28-08), met de toon onder test. Zie `docs/GROENE-NOTITIES.md` §3b |
 
 **Wat er wél ligt is de controleronde van 28-08**, en die heeft meer werk
