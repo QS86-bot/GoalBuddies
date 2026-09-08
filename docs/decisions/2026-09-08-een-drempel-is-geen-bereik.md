@@ -1,6 +1,6 @@
 # Een drempel is geen bereik
 
-**08-09-2026.** QS8-339, migratie 0193.
+**08-09-2026.** QS8-339, migratie 0194.
 
 ## Wat er stuk was
 
@@ -181,7 +181,7 @@ telwijze (12, 18 of 36); de conclusie bleef staan, het getal is eruit.
 ## Wat hier niet in zit
 
 * **QS8-348 — drie andere oorzaken van kruisbesmetting.** 📏 Twee gelijktijdige
-  volledige runs ná 0193: de `seizoensrecap`-fouten zijn weg, maar er blijven er
+  volledige runs ná 0194: de `seizoensrecap`-fouten zijn weg, maar er blijven er
   drie over met andere oorzaken — een botsende `groups_invite_code_key`, een
   gedeelde rij in `lidmaatschapsgrens.test.ts` en een gedeelde teller in
   `uitnodigingslimiet.test.ts`.
@@ -198,7 +198,7 @@ telwijze (12, 18 of 36); de conclusie bleef staan, het getal is eruit.
 
 * **De gegenereerde types.** `src/lib/database.types.ts` kent `p_group_ids` en
   `p_owner_ids` nog niet: `npm run types:db` genereert uit **productie**, en daar
-  staat 0193 nog niet. Ze volgen bij de eerstvolgende generatie ná de deploy.
+  staat 0194 nog niet. Ze volgen bij de eerstvolgende generatie ná de deploy.
   ⚠️ Opgemerkt onderweg: `typecheck` accepteerde de nieuwe argumenten tóch, dus
   de types bewaken deze aanroep niet.
 

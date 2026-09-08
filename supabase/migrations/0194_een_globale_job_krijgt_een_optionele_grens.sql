@@ -1,4 +1,4 @@
--- 0193_een_globale_job_krijgt_een_optionele_grens.sql — drie jobs schreven over
+-- 0194_een_globale_job_krijgt_een_optionele_grens.sql — drie jobs schreven over
 -- élke groep, ongeacht wie ze aanriep (QS8-339)
 --
 -- ROLLBACK-PAD:
@@ -17,7 +17,7 @@
 --   `svc=t auth=f <GEEN COMMENT>`.
 --
 --   ⚠️ 📏 Per functie nageteld met
---   `grep -ln 'function \(public\.\)\?<naam>(' supabase/migrations/*.sql | grep -v 0193 | tail -1`
+--   `grep -ln 'function \(public\.\)\?<naam>(' supabase/migrations/*.sql | grep -v 0194 | tail -1`
 --   en niet uit het hoofd — bij 0192 stond hier twee keer een verkeerd nummer
 --   mét een meetmarkering ervoor, en dat is precies de fout die een rollback
 --   onbruikbaar maakt op het moment dat je hem nodig hebt.
@@ -415,17 +415,17 @@ comment on function public.maak_seizoensrecaps(timestamptz, uuid[]) is
   'Sinds 0158 (QS8-171) staat elke groep in een eigen blok: wat op één groepsrij '
   'stukgaat kost alleen die groep zijn recap, wordt geteld in `mislukt` en '
   'benoemd in `fouten` (group_id en sqlstate, nooit de melding zelf). '
-  'Sinds 0193 (QS8-339) begrenst `p_group_ids` optioneel waarover hij mag '
+  'Sinds 0194 (QS8-339) begrenst `p_group_ids` optioneel waarover hij mag '
   'schrijven; null is alle groepen en dat is wat de rollover meegeeft.';
 
 comment on function public.slaap_stille_groepen(integer, uuid[]) is
   'Zet stilgevallen groepen op sleeping met één afscheidsbericht (5.9). Alleen '
-  'voor het systeem: draait mee met de rollover-job. Sinds 0193 (QS8-339) '
+  'voor het systeem: draait mee met de rollover-job. Sinds 0194 (QS8-339) '
   'begrenst `p_group_ids` optioneel waarover hij mag schrijven; null is alle '
   'groepen.';
 
 comment on function public.keur_vastgelopen_goedkeuringen_goed(integer, uuid[]) is
   'Keurt weken goed die na de goedkeuringstermijn nog op een beoordelaar wachten '
   'die er niet meer is. Beslisdocument 001 §2.6b.3, gebouwd in QS8-178. '
-  'Alleen voor de rollover; nooit voor een client. Sinds 0193 (QS8-339) begrenst '
+  'Alleen voor de rollover; nooit voor een client. Sinds 0194 (QS8-339) begrenst '
   '`p_owner_ids` optioneel welke eigenaars hij aanraakt; null is alle eigenaars.';

@@ -70,7 +70,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-79 — de seizoensrecap', () => {
   }
 
   /**
-   * ⚠️⚠️ **Met de eigen groepen erbij, en dat is de hele reden dat 0193 bestaat**
+   * ⚠️⚠️ **Met de eigen groepen erbij, en dat is de hele reden dat 0194 bestaat**
    *    (QS8-339). De job liep over élke niet-gearchiveerde groep, dus draaide
    *    run A hem, dan schreef hij recaps in de groepen van run B — en dan telt
    *    dít bestand berichten die het niet zelf veroorzaakt heeft. 📏 Gemeten bij

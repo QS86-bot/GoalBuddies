@@ -42,7 +42,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './
  * migraties. Voor de rollover en de audit is dat precies de bedoeling; in een
  * gedeelde testdatabase is het een `update` zonder `where` op eigenaar.
  *
- * ⚠️ **Sinds 0193 (QS8-339) dragen ze alle vijf een bereik.** Twee kregen het in
+ * ⚠️ **Sinds 0194 (QS8-339) dragen ze alle vijf een bereik.** Twee kregen het in
  *    0137 (`p_goal_id`), de andere drie nu (`p_group_ids` en `p_owner_ids`),
  *    telkens optioneel met `null` = alles, want dat is wat de rollover doet. De
  *    tests hieronder komen daarmee in twee soorten: de eerste vijf toetsen de
@@ -544,7 +544,7 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
   );
 
   /**
-   * ## De grens die de aanroeper meegeeft — QS8-339, migratie 0193
+   * ## De grens die de aanroeper meegeeft — QS8-339, migratie 0194
    *
    * ⚠️ **De drie tests hierboven leunen op een grens die de job zélf trekt:** een
    *    seizoensgrens, een ouderdomsgrens, een termijn. Dat werkt zolang die
@@ -554,7 +554,7 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
    *    want dát bestand kiest met opzet een moment waarop de grens wél open
    *    staat.
    *
-   * ⚠️ Sinds 0193 dragen alle drie een **optioneel bereik**, en dat is een
+   * ⚠️ Sinds 0194 dragen alle drie een **optioneel bereik**, en dat is een
    *    andere belofte dan de grenzen hierboven: *een job schrijft niet buiten
    *    het bereik dat zijn aanroeper meegaf* — ook niet op een moment waarop de
    *    eigen grens hem zou laten schrijven. Dat is wat hieronder getoetst wordt,
