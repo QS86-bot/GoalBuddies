@@ -142,6 +142,40 @@ antwoord over een periode die niet bestaat, en dat is lelijk. De kop van 0207
 claimt dus niet dat de open groep helemaal gerepareerd is; hij claimt dat de
 lopende week dat is. Er staat een rij over in `docs/ENGINEER-REVIEW.md`.
 
+## 4a. De pin van 0206, en de uitzondering erop
+
+⚠️⚠️ **Dit stond niet in het plan en kwam er bij de merge bij.** Terwijl deze
+branch gebouwd werd landde 0206 (QS8-362): een pin op `week_reviews` die
+`group_id`, `user_id` én `group_period_start` vastzet. De aanleiding daar was
+zwaar — 📏 één PATCH van `group_id` nam de reacties van andere leden mee naar een
+groep waar de schrijvers ervan nooit in zaten.
+
+Die pin raakt precies de kolom die deze migratie moet verzetten. De uitslag was
+meteen zichtbaar: zes tests rood met `23514, Een weekafsluiting hoort bij één
+groep, één lid en één periode`.
+
+**De pin heeft gelijk en blijft staan.** Wat hier gebeurt is smaller dan wat 0206
+tegenhoudt: de groep blijft dezelfde, het lid blijft hetzelfde, en alleen de
+periodestart gaat van de oude naar de nieuwe start van dezelfde lopende week.
+Vandaar één genoemde sleutel voor één genoemde overgang — `app.huddledag_verzet`,
+gezet door `zet_huddledag()` en nergens anders, in de vorm die 0153 en 0199 al
+gebruiken. `group_id` en `user_id` blijven mét die sleutel onvoorwaardelijk
+gepind.
+
+📏 **Beide kanten geijkt, en dat is hier het punt:**
+
+| Mutatie | Wat er rood werd |
+|---|---|
+| de uitzondering eruit | zes tests in `huddledag.test.ts` — de verhuizing is dan geweigerd |
+| de uitzondering **onvoorwaardelijk** (dus zonder de sleutel te eisen) | `tests/rls/weekafsluiting-verhuist-niet.test.ts` — 0206's eigen must-deny |
+
+Die tweede is het bewijs dat de uitzondering geen gat is: haal je de voorwaarde
+weg, dan valt de belofte van 0206 om, en dat wordt gezien.
+
+⚠️ `sleutelzetters()` meldde `zet_huddledag` en `pin_week_review` als
+ongeregistreerd zodra de sleutel er stond en vóór het register bijgewerkt was.
+Die teller heeft zichzelf hier bewezen.
+
 ## 5. Wat de groep te horen krijgt
 
 Eén systeembericht, `huddle_day_changed` — een nieuw type, dus een migratie, want

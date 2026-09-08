@@ -360,6 +360,23 @@ begin
      );
   get diagnostics v_schakels = row_count;
 
+  -- ⚠️⚠️ **De benoemde uitzondering, en die is er pas bij de merge bij gekomen.**
+  --    Terwijl deze branch gebouwd werd landde 0206 (QS8-362): een pin op
+  --    `week_reviews` die `group_id`, `user_id` én `group_period_start`
+  --    vastzet, omdat één PATCH van `group_id` de reacties van andere leden
+  --    meenam naar een groep waar de schrijvers ervan nooit in zaten.
+  --
+  --    Die pin heeft gelijk en blijft staan. Wat hier gebeurt is smaller: de
+  --    groep blijft dezelfde, het lid blijft hetzelfde, en de periodestart gaat
+  --    van de oude naar de níeuwe start van dezelfde lopende week. Vandaar één
+  --    genoemde sleutel voor één genoemde overgang, in de vorm die 0153 en 0199
+  --    al gebruiken — en niet een gat in de pin.
+  --
+  -- ⚠️ `set_config(..., true)` is `set local`: de instelling valt weg aan het
+  --    eind van deze transactie en lekt niet naar een volgend verzoek op
+  --    dezelfde verbinding uit de pool.
+  perform set_config('app.huddledag_verzet', p_group_id::text, true);
+
   update week_reviews w
      set group_period_start = p_nieuwe_start
    where w.group_id = p_group_id
@@ -371,6 +388,13 @@ begin
          and x.group_period_start = p_nieuwe_start
      );
   get diagnostics v_afsluitingen = row_count;
+
+  -- ⚠️ Weer uit, meteen na de enige `update` die hem nodig heeft. `set local`
+  --    zou hem aan het eind van de transactie sowieso laten vallen, maar dan
+  --    staat hij nog aan tijdens het systeembericht en de auditrij eronder — en
+  --    een sleutel die langer openstaat dan zijn ene statement, is een sleutel
+  --    waarvan de reikwijdte niet meer uit de code te lezen is.
+  perform set_config('app.huddledag_verzet', '', true);
 
   insert into group_events (group_id, actor_id, event_type, old_value, new_value)
   values (
@@ -569,3 +593,168 @@ $function$;
 --    precies staan.
 revoke all on function public.group_overview(uuid, date, integer, timestamptz, uuid) from public, anon, authenticated;
 grant execute on function public.group_overview(uuid, date, integer, timestamptz, uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 7. De pin van 0206 krijgt één genoemde uitzondering
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Woordelijk 0206, op de uitzondering na.** Zie de uitleg in het lichaam:
+--    `group_id` en `user_id` blijven onvoorwaardelijk gepind, dus het lek dat
+--    0206 dichtte kan hier niet langs.
+create or replace function public.pin_week_review()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  -- ⚠️⚠️ **Eén genoemde uitzondering, toegevoegd in 0207 (QS8-360).** De
+  --    huddledag verzetten verschuift de start van de lópende periode, en dan
+  --    hoort de weekafsluiting die erbij hoort mee te gaan — anders kan het lid
+  --    dat al afgesloten had een tweede afsluiting maken voor materieel dezelfde
+  --    week, en telt De Ketting hem twee keer.
+  --
+  --    Wat deze uitzondering **niet** doet: `group_id` en `user_id` blijven
+  --    onvoorwaardelijk gepind, ook mét de sleutel. Het lek dat 0206 dichtte —
+  --    een weekafsluiting die naar een ándere groep verhuist en de reacties van
+  --    anderen meeneemt — kan hier dus niet langs. Alleen de periodestart
+  --    beweegt, binnen dezelfde groep en hetzelfde lid.
+  --
+  --    `zet_huddledag()` zet `app.huddledag_verzet` op het groeps-id; niemand
+  --    anders doet dat, en `sleutelzetters()` telt dat. De instelling geldt
+  --    alleen binnen die transactie (`set local`).
+  --
+  -- ⚠️ Deze uitdrukking staat aan de *toelaat*-kant, dus een ongezette sleutel
+  --    (`null`) betekent "niet toegelaten" en er is geen `coalesce` nodig. Aan de
+  --    weiger-kant zou dat precies andersom liggen — zie 0199.
+  if new.group_id is distinct from old.group_id
+     or (
+       new.group_period_start is distinct from old.group_period_start
+       and nullif(current_setting('app.huddledag_verzet', true), '') is distinct from old.group_id::text
+     )
+     or (new.user_id is distinct from old.user_id and new.user_id is not null)
+  then
+    raise exception 'Een weekafsluiting hoort bij één groep, één lid en één periode'
+      using errcode = 'check_violation',
+            hint = 'group_id, user_id en group_period_start liggen vast zodra de weekafsluiting er staat; de tekstvelden zijn wel te wijzigen.';
+  end if;
+
+  new.group_id := old.group_id;
+
+  -- ⚠️ De pin op de periodestart geldt overal behalve op de doorgelaten
+  --    overgang hierboven; anders zou de `raise` hem toestaan en deze regel hem
+  --    alsnog terugzetten — de stille terugzet van QS8-314.
+  if nullif(current_setting('app.huddledag_verzet', true), '') is distinct from old.group_id::text then
+    new.group_period_start := old.group_period_start;
+  end if;
+
+  -- ⚠️ **Deze vorm is de vorm die `onveranderlijkheid_bewaking()` herkent, en dat
+  --    is geen toeval maar een gemeten reparatie.** Mijn eerste versie stond er
+  --    als `if new.user_id is not null then …` — semantisch hetzelfde voor dit
+  --    geval, en tóch rood: die bewaking eist letterlijk
+  --    `old.<kolom> is null or new.<kolom> is not null`, precies zodat er één
+  --    herkenbare vorm is voor de val die 0031, 0033 en 0059 alle drie maakten.
+  --    Een eigen variant is hier dus een variant te veel.
+  if old.user_id is null or new.user_id is not null then
+    new.user_id := old.user_id;
+  end if;
+
+  return new;
+end $function$
+
+;
+
+-- ---------------------------------------------------------------------------
+-- 8. Het sleutelregister kent de nieuwe sleutel
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Het register draagt zichzelf in zijn lichaam, dus een `replace` vervangt
+--    het geheel** — dat is de val die 0199 in zijn eigen commentaar beschrijft en
+--    die bij het samenvoegen van 0204 opnieuw langskwam. Hieronder staat het
+--    register zoals het op dit moment gedeployd is, mét de regel van 0207 erbij.
+--
+-- 📏 En de teller heeft zichzelf hier bewezen: hij meldde `zet_huddledag` en
+--    `pin_week_review` als ongeregistreerd zodra de sleutel er was, vóór deze
+--    sectie bestond.
+create or replace function public.sleutelzetters()
+ RETURNS TABLE(naam text, bezwaar text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  with sleutel(instelling, toegestaan) as (
+    values
+      ('app.heropent_groep',      array['heropen_groep', 'archief_blijft_archief']),
+      -- ⚠️ Uit 0207 (QS8-360). De huddledag verzetten schuift de start van de
+      --    lopende periode, en dan gaat de weekafsluiting die erbij hoort mee —
+      --    langs de pin van 0206, die `group_id` en `user_id` onverkort gepind
+      --    houdt.
+      ('app.huddledag_verzet',    array['zet_huddledag', 'pin_week_review']),
+      -- ⚠️ **Deze drie komen uit 0199 (QS8-356) en staan hier omdat een
+      --    `create or replace` het hele register vervangt.** Ze zijn er bij het
+      --    samenvoegen bijna uit gevallen: de RLS-suite meldde na de merge drie
+      --    ongeregistreerde sleutels — `verlaat_groep`,
+      --    `beslis_lidmaatschapsverzoek` en `verwijder_lid` — omdat mijn versie
+      --    het register van vóór die migratie kopieerde.
+      --
+      --    Dat is de val van een teller die zijn eigen register in zijn lichaam
+      --    draagt: twee branches breiden hem uit, de laatste `replace` wint, en
+      --    de ander verdwijnt zonder een woord. Hier ving de teller zichzelf op
+      --    doordat hij de weggevallen sleutels meteen als ongeregistreerd meldde.
+      ('app.beheer_overgedragen',   array['verlaat_groep', 'guard_group_member_update']),
+      ('app.lidmaatschap_besloten', array['beslis_lidmaatschapsverzoek', 'guard_group_member_update']),
+      ('app.lid_uitgezet',          array['verwijder_lid', 'guard_group_member_update']),
+      -- De tellers van 0200. Elke rem mag alleen zijn eigen instelling zetten.
+      ('app.rem_weekdoelen',         array['rem_weekdoelen']),
+      ('app.rem_berichten',          array['rem_berichten']),
+      ('app.rem_dagafvinkingen',     array['rem_dagafvinkingen']),
+      ('app.rem_weekreacties',       array['rem_weekreacties']),
+      ('app.rem_weekplanstappen',    array['rem_weekplanstappen']),
+      ('app.rem_doelen',             array['rem_doelen']),
+      ('app.rem_mijlpalen',          array['rem_mijlpalen']),
+      ('app.rem_doelgebeurtenissen', array['rem_doelgebeurtenissen']),
+      ('app.rem_goedkeuringen',      array['rem_goedkeuringen'])
+  ),
+  bekend as (
+    select p.proname::text as naam, s.instelling, s.toegestaan
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    cross join sleutel s
+    where n.nspname = 'public'
+      and p.prosrc like '%' || s.instelling || '%'
+      and p.proname <> 'sleutelzetters'
+  )
+  select naam,
+         'noemt ' || instelling || '; alleen ' ||
+         array_to_string(toegestaan, '() en ') || '() horen die sleutel te kennen'
+    from bekend
+   where naam <> all (toegestaan)
+
+  union all
+
+  -- ⚠️ De derde tak: een `app.`-instelling die in geen enkel register hierboven
+  --    staat. Zonder deze tak dekt de teller alleen de sleutels die iemand er al
+  --    in heeft gezet, en is de vólgende sleutel weer ongeteld.
+  select p.proname::text,
+         -- ⚠️ De naam van deze functie staat met opzet niet in deze tekst.
+         --    `keten:controle` telt een naam in de bron als een aanroeper, en
+         --    strippen doet hij alleen commentaar — niet een tekenreeks. Een
+         --    functie die zichzelf in een melding noemt, meldt zichzelf dus
+         --    levend. Dezelfde klasse als het commentaargeval dat dat script in
+         --    zijn eigen kop beschrijft: de tekst óver een functie is geen
+         --    gebruik ervan.
+         'noemt een app.-sessiesleutel die in geen enkel register van deze '
+         'teller staat; een nieuwe sleutel hoort er met zijn eigen regel in '
+         'te komen'
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname <> 'sleutelzetters'
+     and p.prosrc ~ 'app\.[a-z_]+'
+     and not exists (
+       select 1 from sleutel s where p.prosrc like '%' || s.instelling || '%'
+     )
+
+   order by 1;
+$function$
+
+;
