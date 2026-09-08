@@ -298,11 +298,21 @@ async function bouwOpstelling(label: string, metVoltooiing = true): Promise<Opst
   if (koppeling.error) throw new Error(`koppeling: ${koppeling.error.message}`);
 
   // ⚠️ Via de beheerdersclient, en de réden stond hier fout tot 02-09.
-  //    `authenticated` heeft wél degelijk een INSERT-recht op `weekly_goals` —
-  //    twaalf kolommen en een `weekly_goals_insert`-policy. Wat hij niet mag is
-  //    `points_miss`, en die zet deze opstelling. Gemeten; de oude tekst
-  //    ("geen insert-recht, loopt via een RPC") was onwaar en zou een lezer
-  //    laten denken dat deze fixture een slot omzeilt dat er niet is.
+  //    `authenticated` heeft wél degelijk een INSERT-recht op `weekly_goals` en
+  //    een `weekly_goals_insert`-policy. Wat hij niet mag zijn de puntenkolommen,
+  //    en die zet deze opstelling. De oude tekst ("geen insert-recht, loopt via
+  //    een RPC") was onwaar en zou een lezer laten denken dat deze fixture een
+  //    slot omzeilt dat er niet is.
+  //
+  // ⚠️⚠️ **Hier stond "twaalf kolommen", en dat getal is twee keer verouderd
+  //    zonder dat iemand het merkte** — het was al fout vóór QS8-352 (elf) en
+  //    daarna nog een keer (negen, sinds 0195 `points_ceiling` en `points_floor`
+  //    intrekt). Een geteld getal in een commentaarregel veroudert stil; het
+  //    aantal staat er daarom niet meer. Wie het wil weten, meet:
+  //    `select count(*) from information_schema.column_privileges where
+  //     table_name='weekly_goals' and grantee='authenticated'
+  //     and privilege_type='INSERT'` — en `kolomrechten:controle` bewaakt de
+  //    lijst zelf, wat een getal in proza nooit doet.
   const weekdoel = await admin
     .from('weekly_goals')
     .insert({
@@ -472,12 +482,19 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
         //    stilzwijgend terug; een meting die dat niet naleest, concludeert
         //    ten onrechte dat deze route dicht zit. Hier is de eigenaar de
         //    beheerder van zijn eigen groep.
-        const { error } = await o.eigenaar.db
-          .from('group_members')
-          .update({ status: 'inactive' })
-          .eq('group_id', o.groupId)
-          .eq('user_id', o.beoordelaar.id);
-        expect(error).toBeNull();
+        //
+        // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0199 sloot de kale
+        //    PATCH-uitzetting. Dat maakt deze route niet dicht — de beheerder kan
+        //    zijn enige beoordelaar nog steeds uitzetten — maar hij loopt nu langs
+        //    de weg die ook opruimt. De vraag die deze test stelt, verandert er
+        //    niet door: blijft de week achter zonder iemand die mag oordelen?
+        const weg = await o.eigenaar.db.rpc('verwijder_lid', {
+          p_group_id: o.groupId,
+          p_user_id: o.beoordelaar.id,
+          p_bevestigd: true,
+        });
+        expect(weg.error).toBeNull();
+        expect((weg.data ?? {}) as { ok?: boolean }).toMatchObject({ ok: true });
 
         const na = await adminDb()
           .from('group_members')
@@ -667,12 +684,15 @@ describe.skipIf(!rlsTestsConfigured)('een week die zijn beoordelaars kwijtraakt'
       'route 6 — je enige beoordelaar op inactive zetten',
       () =>
         routeBlijftDicht('route6', true, async (o) => {
-          const { error } = await o.eigenaar.db
-            .from('group_members')
-            .update({ status: 'inactive' })
-            .eq('group_id', o.groupId)
-            .eq('user_id', o.beoordelaar.id);
-          if (error) throw new Error(`deactiveren: ${error.message}`);
+          // ⚠️ Via `verwijder_lid()` sinds QS8-356 — zie route 3 hierboven.
+          const weg = await o.eigenaar.db.rpc('verwijder_lid', {
+            p_group_id: o.groupId,
+            p_user_id: o.beoordelaar.id,
+            p_bevestigd: true,
+          });
+          if (weg.error) throw new Error(`deactiveren: ${weg.error.message}`);
+          const uit = (weg.data ?? {}) as { ok?: boolean; reason?: string };
+          if (uit.ok !== true) throw new Error(`deactiveren: ${uit.reason ?? '-'}`);
         }),
       SETUP_TIMEOUT,
     );

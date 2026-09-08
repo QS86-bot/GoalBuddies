@@ -100,21 +100,54 @@ describe.skipIf(!rlsTestsConfigured)('Een blokkade is van de blokkeerder', () =>
       .eq('blocker_id', blocker)
       .eq('blocked_id', blocked);
 
+  /**
+   * ⚠️⚠️ **Deze must-allow liep tot 0197 langs een rechtstreekse INSERT, en dat
+   *    was niet de knop die hij zei te bewaken.** 📏 Nagemeten: geen enkel
+   *    bestand in `src/` of `app/` schrijft naar `user_blocks`; de knop roept
+   *    `blokkeer()` aan. De test toetste dus een grant die niemand gebruikte —
+   *    de klasse van QS8-351.
+   *
+   *    Hij loopt nu langs de RPC, en dat is strenger dan het lijkt: `blokkeer()`
+   *    geeft met opzet hetzelfde antwoord voor een bestaand en een onbestaand
+   *    profiel-id, zodat je er niet mee kunt toetsen óf een account bestaat. Het
+   *    rechtstreekse pad miste die gelijkmaker (📏 `23503` tegen `201`), en dat
+   *    is de reden dat het weg is en niet alleen dat het ongebruikt was.
+   */
   it(
-    'laat een gebruiker zijn eigen blokkade zetten',
+    'laat een gebruiker zijn eigen blokkade zetten, langs blokkeer()',
     async () => {
-      // ⚠️ De must-allow, en hij staat vooraan met opzet. Zonder haar is elke
-      //    weigering hieronder net zo groen met een policy die iedereen
-      //    tegenhoudt — en dan is de knop waarmee iemand zich beschermt stuk
-      //    zonder dat één test het merkt.
-      const { error } = await f.alice.db
-        .from('user_blocks')
-        .insert({ blocker_id: f.alice.id, blocked_id: f.carol.id });
+      const uit = await f.alice.db.rpc('blokkeer', { p_user: f.carol.id });
 
-      expect(error).toBeNull();
+      expect(uit.error, 'de RPC hoort te werken').toBeNull();
+      expect((uit.data ?? {}) as { ok?: boolean }).toMatchObject({ ok: true });
 
       const na = await rij(f.alice.id, f.carol.id)();
       expect(na.data ?? []).toHaveLength(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️⚠️ **En dit is wat de intrekking kost, opgeschreven in plaats van
+   *    weggelaten.** `user_blocks_insert` (`blocker_id = auth.uid()`) is vanaf nu
+   *    niet meer vanaf een client te bereiken: het ontbrekende INSERT-recht
+   *    weigert eerder. De policy is daarmee dode grendel achter een dichte deur.
+   *
+   *    Dezelfde vorm als de CHECK uit 0007 bij QS8-352, en om dezelfde reden hier
+   *    genoteerd: **een intrekking verandert wélke grendel als eerste weigert**,
+   *    en daarmee wat elke bestaande must-deny in dit bestand nog toetst. De twee
+   *    weigertoetsen hieronder meten sinds 0197 het récht en niet meer de policy.
+   *    Ze staan er nog omdat de belofte ("een blokkade is van de blokkeerder")
+   *    blijft gelden; wat ze bewijzen is smaller geworden.
+   */
+  it(
+    'weigert een rechtstreekse INSERT, ook op je eigen naam',
+    async () => {
+      const { error } = await f.alice.db
+        .from('user_blocks')
+        .insert({ blocker_id: f.alice.id, blocked_id: f.bob.id });
+
+      expect(error?.code, 'het rechtstreekse pad staat weer open').toBe('42501');
     },
     TEST_TIMEOUT,
   );

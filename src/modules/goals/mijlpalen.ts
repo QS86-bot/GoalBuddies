@@ -2,7 +2,6 @@ import { t } from '../../shared/i18n';
 
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { now } from '../../shared/time';
 
 import { mijlpaalSchema, type MijlpaalInvoer, type MijlpaalStatus } from './mijlpaal-schemas';
 import type { Mijlpaal, Resultaat } from './weekly';
@@ -118,16 +117,14 @@ export async function zetMijlpaalStatus(
   id: string,
   status: MijlpaalStatus,
 ): Promise<Resultaat<true>> {
-  const { error } = await supabase()
-    .from('milestones')
-    .update({
-      status,
-      // ⚠️ `now()` uit `shared/time` en niet `new Date()`. De lint-regel vangt
-      //    dat af, en terecht: één klok in het project betekent ook dat tests
-      //    hem met `freezeNow()` stil kunnen zetten.
-      completed_at: status === 'done' ? now().toISOString() : null,
-    })
-    .eq('id', id);
+  // ⚠️ **`completed_at` gaat hier niet meer mee — migratie 0196 (QS8-353).**
+  //    Hij werd hiervoor door de client gezet, en dan is het geen tijdstempel
+  //    maar invoer: 📏 gemeten dat een PATCH met `completed_at: '2019-05-05'`
+  //    gewoon landde. De trigger `stempel_mijlpaal()` zet hem nu op de overgang
+  //    naar `done` en wist hem bij elke andere status; `authenticated` heeft er
+  //    geen UPDATE-recht meer op, dus meesturen zou hier een 42501 op de héle
+  //    rij geven. Zelfde reden als bij `created_at` in QS8-295.
+  const { error } = await supabase().from('milestones').update({ status }).eq('id', id);
 
   if (error) {
     reportError(error, 'milestones.status', { code: error.code, name: status });

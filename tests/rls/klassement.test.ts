@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { addDays, now, userCycle, type TimeZone } from '../../src/shared/time';
+
 import {
   adminDb,
   createTestUser,
@@ -7,6 +9,7 @@ import {
   rlsTestsConfigured,
   type TestUser,
 } from './harness';
+import { psql } from './psql-stack';
 
 /**
  * Het klassement per lid — QS8-254, besluit A54, migratie 0141.
@@ -34,11 +37,45 @@ import {
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 30_000;
 
-/** Ver in het verleden, zodat niets van deze test elders meetelt. */
-const CYCLUS = '2024-03-04';
+/**
+ * De week-startdag en de tijdzone waarop de cycli hieronder gerekend worden.
+ *
+ * ⚠️ **Het profiel wordt hier ook echt op gezet, in `beforeAll`.** Rekenen met
+ *    `weekStartDay: 1` terwijl de database iets anders in `profiles` heeft staan,
+ *    is een test die op een kolomdefault leunt — verandert die default, dan rekent
+ *    de test met een andere cyclus dan de trigger van 0198. Zelfde vorm als
+ *    `cyclusgrens.test.ts`.
+ */
+const STARTDAG = 1;
+const ZONE = 'Europe/Amsterdam' as TimeZone;
+
+const HUIDIGE_CYCLUS = userCycle({ weekStartDay: STARTDAG, tz: ZONE }, now()).startDate;
+
+/**
+ * De cyclus waarin Anna haar punten verdient.
+ *
+ * ⚠️ **Stond tot QS8-354 op een vaste `'2024-03-04'`**, met de reden "ver in het
+ *    verleden, zodat niets van deze test elders meetelt". Migratie 0198 laat een
+ *    client geen cyclus meer schrijven die buiten het venster rond vandaag valt,
+ *    en deze fixture schrijft met Anna's gewone account — dus die datum kan niet
+ *    blijven staan.
+ *
+ *    De isolatie hing er ook niet aan: de harness maakt per run verse
+ *    gebruikers aan en `groep_klassement()` telt per lid, dus wat er elders in
+ *    de suite gebeurt raakt deze rijen sowieso niet. Wat de datum wél moest
+ *    doen, doet hij nog steeds — een echte cyclus zijn die op Anna's
+ *    week-startdag begint.
+ */
+const CYCLUS = addDays(HUIDIGE_CYCLUS, -7);
 
 /**
  * Een tweede week, die wél wordt ingediend maar níét goedgekeurd.
+ *
+ * ⚠️ **Sinds QS8-354 is dit de lópende cyclus en `CYCLUS` de vorige**, waar het
+ *    eerder twee vaste weken in maart 2024 waren. De volgorde is dezelfde
+ *    gebleven — de goedgekeurde week ligt vóór de open week — en de toestand is
+ *    er getrouwer van geworden: een week die nog geen oordeel heeft, is in de app
+ *    de week die nu loopt.
  *
  * ⚠️ **Deze week bestaat om een ijking mogelijk te maken en niet om iets extra's
  *    te toetsen.** Zonder hem stond er in de fixture precies één weekdoel en dat
@@ -47,7 +84,7 @@ const CYCLUS = '2024-03-04';
  *    kapotte teller: geen test die groen bleef terwijl de belofte brak, maar een
  *    test die de belofte niet kón raken (CLAUDE.md, regel 18 vraag 3).
  */
-const CYCLUS_OPEN_EIND = '2024-03-11';
+const CYCLUS_OPEN_EIND = HUIDIGE_CYCLUS;
 
 interface Groep {
   id: string;
@@ -129,6 +166,14 @@ describe.skipIf(!rlsTestsConfigured)('het klassement van een groep', () => {
     const bram = await createTestUser('klassement-bram');
     const cor = await createTestUser('klassement-cor');
     const dirk = await createTestUser('klassement-dirk');
+
+    // ⚠️ De startdag en de zone vastzetten op wat `HUIDIGE_CYCLUS` hierboven
+    //    aanneemt. Zonder dit leunt de fixture op de kolomdefaults van
+    //    `profiles`, en rekent hij bij een andere default met een andere cyclus
+    //    dan de trigger van 0198 — die de cyclus tegen het profiel legt.
+    for (const u of [anna, bram, cor, dirk]) {
+      psql(`update profiles set tz = '${ZONE}', week_start_day = ${STARTDAG} where id = '${u.id}'`);
+    }
 
     const open = await maakGroep(anna, 'Klassement-open', 'open');
     const dicht = await maakGroep(anna, 'Klassement-dicht', 'beschermd');

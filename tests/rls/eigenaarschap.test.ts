@@ -703,7 +703,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
               goal_id: w.soloGoalId,
               title: 'INGESLOPEN MIJLPAAL',
               order_index: volgendeIndex(),
-              status: 'todo',
             }),
           'een mijlpaal op andermans doel',
         );
@@ -811,7 +810,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
               goal_id: w.groepsGoalId,
               title: 'INGESLOPEN DOOR BUDDY',
               order_index: volgendeIndex(),
-              status: 'todo',
             }),
           'een mijlpaal van een groepsgenoot op jouw doel',
         );
@@ -841,7 +839,6 @@ describe.skipIf(!rlsTestsConfigured)('de eigenaarsketen van doel tot voltooiing'
           goal_id: w.soloGoalId,
           title: 'EIGEN MIJLPAAL',
           order_index: volgendeIndex(),
-          status: 'todo',
         });
         expect(error, 'je eigen mijlpaal aanmaken hoort te lukken').toBeNull();
       },

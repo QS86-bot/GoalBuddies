@@ -1,0 +1,113 @@
+-- 0195_het_puntenmodel_is_geen_invoerveld.sql — de client koos zijn eigen
+-- puntenplafond en boekte het (QS8-352)
+--
+-- ROLLBACK-PAD:
+--   grant insert (points_ceiling, points_floor) on public.weekly_goals to authenticated;
+--
+--   ⚠️ Dat zet het gat terug en niets anders. Er is geen functie of policy
+--   gewijzigd, dus er valt verder niets terug te draaien.
+--
+-- ---------------------------------------------------------------------------
+-- Wat er stuk was
+-- ---------------------------------------------------------------------------
+--
+-- 📏 Gemeten met echte JWT's tegen de lokale stack — drie gewone verzoeken van
+--    twee gewone accounts, zonder enige truc:
+--
+--      weekdoel aanmaken met points_ceiling=5   -> 201
+--      voltooiing (achieved_level='ceiling')    -> 201
+--      goedkeuring door de buddy                -> 201
+--      points_ledger: delta=5, reason=completion_approved_ceiling
+--
+-- **Vijf punten waar domeinregel 10 er twee voorschrijft**, geboekt langs de
+-- normale goedkeuring van een buddy.
+--
+-- De keten, schakel voor schakel:
+--
+--   * `authenticated` had `points_ceiling` en `points_floor` in zijn
+--     INSERT-kolomgrant — 📏 `has_column_privilege(...) = true`;
+--   * `points_miss` en `status` stonden wél dicht;
+--   * `award_points_on_approval()` boekt wat er in de rij staat
+--     (`punten := w.points_ceiling`), niet wat het model zegt;
+--   * `weekly_goals_points_bounded` begrenst alleen het bereik (0..5), dus hij
+--     houdt 100.000 tegen maar niet 5 in plaats van 2.
+--
+-- ⚠️ **De defaults zíjn het domeinmodel** (`points_ceiling default 2`,
+--    `points_floor default 1`, `points_miss default -1`). De client hoeft die
+--    kolommen dus helemaal niet te sturen — en 📏 doet dat ook nergens: geen
+--    enkel bestand in `src/` of `app/` noemt ze buiten de gegenereerde types.
+--
+-- ---------------------------------------------------------------------------
+-- Waarom dit zwaar is
+-- ---------------------------------------------------------------------------
+--
+-- * **Domeinregel 10 is het puntenmodel.** Dit maakte het plafond een invoerveld.
+-- * In een **open** groep telt het mee in `groep_klassement()` (A54, 0141). Dat
+--   klassement is per ontwerp een teller die alleen optelt, dus een opgeblazen
+--   plafond is daar niet aan te zien en niet te corrigeren.
+-- * `goals.max_points` schuift mee, dus het puntenplafond van het hele doel
+--   klopt daarna ook niet meer.
+-- * Punten zijn append-only (domeinregel 6): corrigeren kan alleen met een
+--   correctie-record.
+-- * **Het plantte zich voort.** 📏 `schuif_weekdoel_door()` maakt de opvolger
+--   met `w.points_ceiling, w.points_floor, w.points_miss` uit het weekdoel dat
+--   je doorschuift. Eén keer een plafond van 5 zetten gaf dus geen incident
+--   maar een reeks: elke doorgeschoven week nam het mee.
+--
+-- 📏 Rijen met een afwijkend plafond, een afwijkende vloer of een afwijkend
+--    minpunt: **0** — zowel lokaal als op het echte project (1 weekdoel in
+--    totaal). Deze migratie sluit de deur; ze corrigeert geen boekingen, want
+--    er valt niets te corrigeren.
+--
+-- ---------------------------------------------------------------------------
+-- Waarom niemand het zag
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Hier stond eerst dat het recht sinds `0001_schema.sql` was ingeslopen.
+--    Dat is onjuist, en de security-review op deze branch mat het na.** 📏 0001
+--    deelt geen enkel recht uit (nul `grant`-regels); het INSERT-recht kwam uit
+--    Supabase's `alter default privileges`.
+--
+--    📏 `0043` trekt die tabelbrede grant in en zet er een kolomlijst voor
+--    terug, met `points_ceiling`, `points_floor` en `points_miss` er letterlijk
+--    in. En `0044` is zélf de nakomer op een security-review van 0043: die
+--    haalde `points_miss` eruit ("missen was gratis te maken") en liet de andere
+--    twee bewust staan, met deze motivering in zijn kop:
+--
+--      "0043 liet de punten-kolommen bewust insertable met als argument dat de
+--       CHECK uit 0007 ze begrenst. Voor `points_ceiling` en `points_floor`
+--       klopt dat (0 t/m 5 is begrensde variatie in je eigen nadeel)."
+--
+-- ⚠️⚠️ **"In je eigen nadeel" is precies omgekeerd** — een plafond van 5 is 2,5×
+--    het model in je eigen vóórdeel. En de redenering die 0044 voor
+--    `points_miss` wél maakte ("de rollover boekt letterlijk
+--    `delta: weekdoel.points_miss`") geldt woord voor woord voor het plafond:
+--    `award_points_on_approval()` boekt `punten := w.points_ceiling`. Het
+--    mechanisme was gevonden, op één van de drie kolommen toegepast, en voor de
+--    andere twee weggeredeneerd.
+--
+-- ⚠️⚠️ En in `scripts/kolomrechten-controle.mjs` stond dit paar sinds
+--    01-09-2026 in `GEEN_SCHRIJFPAD`, met als reden: *"Dat de client ze mág
+--    overschrijven is een oud recht en geen pad."*
+--
+--    Dat is de vorm die dit project met naam verbiedt: **de reden noemt de
+--    gewoonte en niet de grendel.** Er wás geen grendel — de app stuurde ze
+--    toevallig niet mee. Diezelfde formulering hield `chat_messages_update`
+--    overeind tot QS8-327. De twee rijen zijn vervállen: er is nu een grendel,
+--    dus er valt niets meer weg te schrijven.
+--
+-- ---------------------------------------------------------------------------
+-- De reparatie
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **`revoke` noemt `public`, `anon` én `authenticated` met zoveel woorden**
+--    (onwrikbare regel 4). `from public, anon` ziet eruit als "van iedereen" en
+--    houdt juist de rol over waaronder iedere ingelogde gebruiker draait.
+--
+-- ⚠️ **De definer-RPC's worden hier niet door geraakt**, en dat is nagemeten en
+--    niet aangenomen: `schuif_weekdoel_door()` en `sluit_weekdoel_af()` zijn
+--    `SECURITY DEFINER` en draaien dus met de rechten van de eigenaar. Er staat
+--    een must-allow op in `tests/rls/puntenplafond.test.ts` die dat aantoont in
+--    plaats van het te beweren.
+
+revoke insert (points_ceiling, points_floor) on public.weekly_goals from public, anon, authenticated;
