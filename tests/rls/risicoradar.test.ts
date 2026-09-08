@@ -164,6 +164,7 @@ async function bouwScenario(s: Scenario): Promise<void> {
           goal_id: s.goalId,
           title: `Mijlpaal ${i + 1}`,
           order_index: i + 1,
+          status: 'todo',
         })),
       );
     }
@@ -183,6 +184,7 @@ async function bouwScenario(s: Scenario): Promise<void> {
           goal_id: s.goalId,
           title: `Week ${i + 1}`,
           cycle_start_date: datumOver(-7 * wekenTerug),
+          status: 'todo',
         })
         .select('id')
         .single();

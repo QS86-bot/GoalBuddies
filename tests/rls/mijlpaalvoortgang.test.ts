@@ -37,6 +37,9 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  *      → 1 rood: 'een mijlpaal begint op todo, wat de client ook meestuurt'
  *   B  `revoke update (completed_at)` uit 0195 halen
  *      → 1 rood: 'het tijdstempel komt van de server en niet uit de body'
+ *   C2 de twee `raise exception`-takken uit de trigger halen (stil pinnen)
+ *      → 1 rood: 'weigert een tijdstempel ook voor de rol die om de kolomgrant
+ *        heen komt'
  *   C  de trigger `mijlpaal_stempel` droppen
  *      → 1 rood: 'MUST-ALLOW: afvinken werkt en stempelt zelf'.
  *        ⚠️ Ik verwachtte er twee en dat was fout, en de reden is het opschrijven
@@ -121,6 +124,39 @@ describe.skipIf(!rlsTestsConfigured)('een mijlpaal wordt afgevinkt, niet ingevoe
 
       const na = await adminDb().from('milestones').select('status').eq('id', id).single();
       expect(na.data?.status, 'de rij is toch veranderd').toBe('todo');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'weigert een tijdstempel ook voor de rol die om de kolomgrant heen komt',
+    async () => {
+      // ⚠️⚠️ **De rot-kant, en dit was de eerste versie van deze trigger fout.**
+      //    Hij zette de waarde van de beller stilzwijgend terug: 📏 gemeten als
+      //    `service_role` gaven een INSERT met `completed_at = '2015-06-06'` en
+      //    een UPDATE naar `'2014-01-01'` allebei géén fout, terwijl de rij
+      //    `now()` droeg. Dat is het patroon dat 0188 (QS8-326) heeft
+      //    afgeschaft — de beller hoort "gelukt" over iets dat niet gebeurde.
+      //
+      // ⚠️ Via `adminDb()` en niet via de client, en dat is geen gemak: een
+      //    gewone gebruiker ketst al op de kolom-revoke af (42501) en bereikt
+      //    deze grendel nooit. Wie hem langs de client toetst, meet het
+      //    kolomrecht en denkt de trigger te meten.
+      const gemaakt = await maak();
+      if (gemaakt.error) throw new Error(`mijlpaal: ${gemaakt.error.message}`);
+      const id = gemaakt.data?.[0]?.id as string;
+
+      const poging = await adminDb()
+        .from('milestones')
+        .update({ status: 'done', completed_at: '2014-01-01T00:00:00Z' })
+        .eq('id', id)
+        .select('id');
+
+      expect(poging.error, 'de trigger hoort te wérpen en niet stil te pinnen').not.toBeNull();
+      expect(poging.error?.code, 'check_violation').toBe('23514');
+
+      const na = await adminDb().from('milestones').select('status').eq('id', id).single();
+      expect(na.data?.status, 'er is toch iets gewijzigd').toBe('todo');
     },
     TEST_TIMEOUT,
   );

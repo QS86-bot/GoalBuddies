@@ -11,6 +11,20 @@
 --   ⚠️ En zet dan `src/modules/goals/mijlpalen.ts` terug: die stuurt sinds deze
 --      migratie geen `completed_at` meer mee.
 --
+--   ⚠️⚠️ **Na deze migratie is `completed_at` door niemand meer te zetten — ook
+--      niet als `postgres`.** De trigger werpt voor élke rol; dat is opzet, maar
+--      het betekent dat een correctie op bestaande rijen (een teruggedateerde
+--      waarde van vóór 0195) langs de trigger heen moet:
+--
+--        alter table milestones disable trigger mijlpaal_stempel;
+--        -- de correctie
+--        alter table milestones enable trigger mijlpaal_stempel;
+--
+--      📏 Tel vóór het uitrollen of zulke rijen bestaan:
+--        select count(*) from milestones
+--         where (completed_at is not null and completed_at < created_at)
+--            or (status <> 'done' and completed_at is not null);
+--
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
 -- ---------------------------------------------------------------------------
@@ -73,6 +87,34 @@ language plpgsql
 set search_path to 'public', 'pg_temp'
 as $$
 begin
+  -- ⚠️⚠️ **Eerst weigeren, dan pas stempelen — de les van 0188 (QS8-326).**
+  --    De eerste versie van deze trigger zette de waarde van de beller
+  --    stilzwijgend terug, en dat is precies het patroon dat dit project zeven
+  --    migraties geleden heeft afgeschaft: de beller krijgt "gelukt" te horen
+  --    over iets dat niet gebeurd is. 📏 Gemeten als `service_role`: een INSERT
+  --    met `completed_at = '2015-06-06'` en daarna een UPDATE naar `'2014-01-01'`
+  --    gaven allebei geen fout, terwijl de rij `now()` droeg.
+  --
+  --    Een gewone gebruiker merkt daar niets van — die ketst al op de
+  --    kolom-revoke af met 42501. Dit is de rot-kant: een backfill of
+  --    herstelscript dat ooit als `service_role` een datum goedzet, krijgt
+  --    `UPDATE 1` terug en verandert niets.
+  --
+  -- ⚠️ `is distinct from old` en niet "is de kolom meegestuurd": bij
+  --    `update … set status = 'done'` stuurt PostgREST `completed_at` niet mee,
+  --    dus `new.completed_at = old.completed_at` en het afvinken loopt door.
+  if tg_op = 'INSERT' and new.completed_at is not null then
+    raise exception 'completed_at wordt door de server gezet, niet door de beller'
+      using errcode = 'check_violation',
+            hint = 'Laat de kolom weg; `stempel_mijlpaal()` zet hem op de overgang naar done.';
+  end if;
+
+  if tg_op = 'UPDATE' and new.completed_at is distinct from old.completed_at then
+    raise exception 'completed_at wordt door de server gezet, niet door de beller'
+      using errcode = 'check_violation',
+            hint = 'Zet alleen `status`; het tijdstempel volgt uit de overgang.';
+  end if;
+
   -- ⚠️ **De overgang bepaalt het tijdstempel, niet de waarde.** Blijft een
   --    mijlpaal `done` (iemand werkt de titel bij), dan blijft `completed_at`
   --    staan waar hij stond; dat is wanneer het gebeurde. Alleen de overgang
