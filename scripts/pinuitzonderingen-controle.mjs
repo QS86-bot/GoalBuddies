@@ -45,10 +45,14 @@
  *    hier te staan voordat iemand hem overneemt.** "Een functie die de vlag
  *    vergeet faalt stíl" gold omdat de pin-triggers zwegen. Migratie 0187
  *    (QS8-314) laat `guard_group_member_update()` wérpen in plaats van stil
- *    terugzetten, en gebruikt daarbij zelf zo'n vlag: `join_group_with_code()`
- *    zet `app.hervat_lidmaatschap` voor precies één overgang. 📏 Geijkt met
- *    mutatie 4 in `tests/rls/stille-weigering.test.ts`: laat je die regel weg,
- *    dan valt de functie hoorbaar om.
+ *    terugzetten, en gebruikte daarbij zelf zo'n vlag.
+ *
+ * ⚠️ **Dat voorbeeld is met 0204 vervallen en het argument niet** (QS8-325). De
+ *    vlag was `app.hervat_lidmaatschap`, voor de overgang `paused → active`; die
+ *    stand bestaat niet meer, dus de vlag en de twee tests die hem ijkten zijn
+ *    weg. Wat blijft is dat de trigger wérpt — dát was het argument. Levende
+ *    voorbeelden van hetzelfde patroon staan in `sleutelzetters()`:
+ *    `app.heropent_groep` (0153) en de drie sleutels van 0199.
  *
  *    De ruil is dus niet meer "register versus stille fout" maar "register
  *    versus hoorbare fout", en dat is een andere som. Hij is hier niet gemaakt:

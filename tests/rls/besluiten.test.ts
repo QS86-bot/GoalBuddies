@@ -461,20 +461,16 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
       TEST_TIMEOUT,
     );
 
-    it(
-      'een lid op `paused` houdt wél toegang — dat is een pauze, geen moderatie',
-      async () => {
-        await zetLidStatus(f.groupId, f.carol.id, 'paused');
-
-        const { data, error } = await f.carol.db.from('groups').select('id').eq('id', f.groupId);
-
-        expect(error).toBeNull();
-        expect(data ?? []).toHaveLength(1);
-
-        await zetLidStatus(f.groupId, f.carol.id, 'inactive');
-      },
-      TEST_TIMEOUT,
-    );
+    // ⚠️ **Hier stond de tegenhanger: een lid op `paused` houdt wél toegang, want
+    //    dat is een pauze en geen moderatie.** Die stand bestaat sinds 0204 niet
+    //    meer (QS8-325): `group_members.status` kent alleen nog `active` en
+    //    `inactive`, en dit A18-blok gaat over wat een uitgezet lid kwijtraakt.
+    //    De positieve tegenhanger — wat een áctief lid houdt — staat elders in de
+    //    suite en niet hier; deze regel wees eerder naar de test er direct boven,
+    //    en die gaat over de geschiedenis van een uitgezet lid.
+    //
+    //    Dat er geen weg is om die stand alsnog te schrijven, staat onder test in
+    //    `tests/rls/pauze-bestaat-niet.test.ts`.
   });
 
   // -------------------------------------------------------------------------
