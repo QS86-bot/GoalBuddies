@@ -123,6 +123,57 @@ Met de hand rood gemaakt, één mutatie per grendel:
 De tweede is de interessantste: daar klopt elk onderdeel los, en alleen de keten
 is stuk. Dat is de vorm die dit project zeven keer duur heeft betaald.
 
+### Wat de security-ronde erbij vond, en waarom het hier landde
+
+De reparatie hierboven deed de voordeur op slot en er bleek een achterdeur naast
+te zitten die niemand gebouwd had. 📏 Zelf nagemeten, als gewone ingelogde
+eigenaar, in één transactie:
+
+```
+s1. rond_doel_af (5 dagen te laat)   straf=set   doel=completed    ← §1 werkt
+s2. zet_doelstatus(doel, false)      {"ok": true}   doel=active
+s3. rond_doel_af opnieuw             straf=cancelled
+```
+
+`zet_doelstatus()` schreef onvoorwaardelijk `case when p_gearchiveerd then
+'archived' else 'active' end` en keek nooit naar de stand die er stond. Een
+afgerond doel ging dus weer open, en met een streefdatum vooruit is de tweede
+afronding "op tijd" — waarna §1 de straf alsnog annuleert via de op-tijd-tak.
+
+**Twee dingen maken dit erger dan een omweg.** De tweede stap in de volledige
+client-route is een deadline-verschuiving die een gróepslid goedkeurt, en dat lid
+kan een straf op `set` helemaal niet zien: `commitment_zichtbaar_voor_groep()` is
+`unlocked, due, resolved`. Je buddy drukt op "akkoord" en heft zonder het te
+weten je straf op. En de route loopt niet langs de intrek-knop maar langs "keurig
+op tijd afgerond", dus elke mitigatie die aan intrekken hangt — zoals het
+getuigebericht dat bij QS8-321 op tafel ligt — zit dan op de ene deur terwijl de
+andere openstaat.
+
+**Daarom §4, en daarom hier.** Het is dezelfde klasse als QS8-322 zelf — *afronden
+laat je straf vervallen terwijl de afspraak niet gehaald is* — en het besluit van
+08-09-2026 zegt dat een bevinding van dezelfde klasse landt op de branch waar hij
+gevonden is. Een issue ervan maken zou betekenen dat 0211 merget met een gat waar
+precies zijn eigen belofte doorheen loopt.
+
+De weigering geldt in **beide** richtingen en dat is ruimer dan het lek: alleen
+het terughalen weigeren laat de route open via archiveren en weer terughalen.
+Zonder een kolom die de vorige stand onthoudt is "een afgerond doel is af" de
+enige toets die beide dekt — en dat is wat de app al beloofde, want
+`bevestiging.doel_afronden.uitleg` zegt met zoveel woorden *"Terugzetten kan
+niet"*. De RPC sprak die belofte tegen.
+
+⚠️ **Twee bevindingen uit dezelfde ronde zijn níet gerepareerd maar weggezet**,
+allebei met hun terugkeervoorwaarde in `docs/ENGINEER-REVIEW.md`: `v_op_tijd`
+rekent met een tijdzone die de gestrafte zelf mag zetten (één extra dag), en §3
+weigert sinds deze migratie ook een straf op een gearchiveerd doel — strenger dan
+de kop beweert.
+
+⚠️ **En één is een eigen issue geworden**, want hij is van een andere klasse:
+`beslis_deadline_verzoek()` draagt de `straf_staat_open`-redenering van
+`zet_streefdatum()` niet. Met §4 erbij is de keten gebroken, dus het is geen
+ontsnapping meer — maar het blijft een verschuiving die langs een grendel gaat
+die er voor bedoeld is.
+
 ### Relatie met QS8-321
 
 Dat zijn twee routes naar dezelfde uitkomst — je straf kwijtraken zonder hem te

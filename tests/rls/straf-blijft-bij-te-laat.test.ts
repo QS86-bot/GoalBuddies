@@ -265,6 +265,72 @@ describe.skipIf(!rlsTestsConfigured)('te laat afronden laat de straf staan', () 
     );
   });
 
+  describe('4. een afgerond doel gaat niet meer open', () => {
+    it(
+      'heropenen en opnieuw afronden krijgt de straf niet alsnog weg',
+      async () => {
+        const doelId = await doelMetStraf('Heropenen', addDays(w.vandaag, -5));
+
+        const af = await w.alice.db.rpc('rond_doel_af', { p_goal_id: doelId });
+        expect(uit(af.data).ok, JSON.stringify(af.data)).toBe(true);
+        expect(await strafstand(doelId)).toBe('set');
+
+        // De achterdeur: `zet_doelstatus()` zette vóór 0211 §4 onvoorwaardelijk
+        // `active`, ook vanaf `completed`.
+        const open = await w.alice.db.rpc('zet_doelstatus', {
+          p_goal_id: doelId,
+          p_gearchiveerd: false,
+        });
+        expect(
+          (open.data as { reason?: string } | null)?.reason,
+          'een afgerond doel hoort niet meer open te gaan; lukt dit wél, dan is de ' +
+            'tweede afronding "op tijd" zodra de streefdatum vooruit staat en vervalt ' +
+            'de straf alsnog via de op-tijd-tak',
+        ).toBe('already_completed');
+
+        // En de streefdatum vooruit zetten helpt dan ook niet meer.
+        const verzet = await adminDb()
+          .from('goals')
+          .update({ target_date: addDays(w.vandaag, 30) })
+          .eq('id', doelId);
+        if (verzet.error) throw new Error(`streefdatum: ${verzet.error.message}`);
+
+        const nogmaals = await w.alice.db.rpc('rond_doel_af', { p_goal_id: doelId });
+        expect((nogmaals.data as { reason?: string } | null)?.reason).toBe('already_completed');
+
+        expect(
+          await strafstand(doelId),
+          'de straf hoort de hele keten door op `set` te blijven',
+        ).toBe('set');
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'archiveren en terughalen blijft gewoon werken op een lopend doel (must-allow)',
+      async () => {
+        const doelId = await doelMetStraf('Archiveerbaar', addDays(w.vandaag, 30));
+
+        const heen = await w.alice.db.rpc('zet_doelstatus', {
+          p_goal_id: doelId,
+          p_gearchiveerd: true,
+        });
+        expect((heen.data as { ok?: boolean } | null)?.ok, JSON.stringify(heen.data)).toBe(true);
+
+        const terug = await w.alice.db.rpc('zet_doelstatus', {
+          p_goal_id: doelId,
+          p_gearchiveerd: false,
+        });
+        expect(
+          (terug.data as { ok?: boolean } | null)?.ok,
+          'de weigering van §4 hoort alleen een afgerond doel te raken, niet het ' +
+            'archief waar deze functie voor bestaat (QS8-32)',
+        ).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('3. een straf hoort bij een doel dat nog loopt', () => {
     it(
       'een straf hangen aan een afgerond doel wordt geweigerd',

@@ -8,7 +8,9 @@
 --       if/else, en een returnwaarde zonder `blijft_staan`;
 --     - `maak_straffen_verschuldigd(uuid, date)` uit **0184** — mét de regel
 --       `and g.status <> 'completed'`;
---     - policy `commitments_insert` uit 0172 — zonder de eis `g.status = 'active'`.
+--     - policy `commitments_insert` uit 0172 — zonder de eis `g.status = 'active'`;
+--     - `zet_doelstatus(uuid, boolean)` uit 0035 — zonder de weigering op een
+--       afgerond doel.
 --   Er verandert geen enkele kolom en geen enkele rij; terugdraaien is dus
 --   `create or replace` plus `drop policy` / `create policy`, en verder niets.
 --   Grants hoeven daarbij niet opnieuw uitgedeeld te worden — `create or
@@ -233,3 +235,76 @@ create policy commitments_insert on commitments
     and created_at between now() - interval '5 minutes' and now() + interval '5 minutes'
     and confirmed_at between now() - interval '5 minutes' and now() + interval '5 minutes'
   );
+
+-- ---------------------------------------------------------------------------
+-- 4. Een afgerond doel gaat niet meer open
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit is de achterdeur naast de voordeur die §1 dichtdeed, en hij komt
+--    uit de security-ronde op deze branch.** Zelf nagemeten, als gewone
+--    ingelogde eigenaar, in één transactie:
+--
+--      s1. rond_doel_af (5 dagen te laat)   straf=set   doel=completed   ← §1 werkt
+--      s2. zet_doelstatus(doel, false)      {"ok": true}   doel=active
+--      s3. rond_doel_af opnieuw             straf=cancelled
+--
+--    `zet_doelstatus()` schreef onvoorwaardelijk
+--    `case when p_gearchiveerd then 'archived' else 'active' end` en keek nooit
+--    naar de stand die er stond. Een afgerond doel ging daarmee weer open, en
+--    dan is de tweede afronding "op tijd" zodra de streefdatum vooruit staat —
+--    waarna §1 de straf alsnog annuleert via de op-tijd-tak.
+--
+-- ⚠️ **Waarom dit hier landt en geen eigen issue wordt.** Het is dezelfde
+--    klasse als QS8-322 zelf — *afronden laat je straf vervallen terwijl de
+--    afspraak niet gehaald is* — en het besluit van 08-09-2026 zegt dat een
+--    bevinding van dezelfde klasse op de branch landt waar hij gevonden is.
+--    Een issue ervan maken zou betekenen dat 0211 merget met een gat waar
+--    precies zijn eigen belofte doorheen loopt.
+--
+-- ⚠️ **De weigering geldt in béide richtingen, en dat is met opzet ruimer dan
+--    het lek.** Alleen het terughálen weigeren laat de route open via twee
+--    stappen: een afgerond doel archiveren en het daarna uit het archief halen
+--    levert `active` op. Zonder een kolom die onthoudt wat de vorige stand was,
+--    is "een afgerond doel is af" de enige toets die beide dekt.
+--
+--    Dat is bovendien wat de app al belóófde: `bevestiging.doel_afronden.uitleg`
+--    zegt met zoveel woorden *"Terugzetten kan niet"*, en `rond_doel_af()`
+--    weigert zelf al met `already_completed`. De RPC sprak die belofte tegen.
+--    Het scherm toont de archiveerkaart daarom niet meer op een afgerond doel.
+--
+-- ⚠️ **Archiveren en terughalen blijven verder ongemoeid**, want dat is waar
+--    deze functie voor bestaat (QS8-32) — alleen een `completed` doel valt
+--    erbuiten.
+
+create or replace function public.zet_doelstatus(p_goal_id uuid, p_gearchiveerd boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  g goals%rowtype;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_signed_in');
+  end if;
+
+  select * into g from goals where id = p_goal_id;
+
+  if g.id is null or g.owner_id <> auth.uid() then
+    return jsonb_build_object('ok', false, 'reason', 'not_owner');
+  end if;
+
+  -- ⚠️ Zie de kop, §4. Dezelfde reden als `rond_doel_af()` teruggeeft, zodat het
+  --    scherm er één melding voor heeft en niet twee.
+  if g.status = 'completed' then
+    return jsonb_build_object('ok', false, 'reason', 'already_completed');
+  end if;
+
+  update goals
+     set status = case when p_gearchiveerd then 'archived' else 'active' end
+   where id = p_goal_id;
+
+  return jsonb_build_object('ok', true);
+end;
+$$;

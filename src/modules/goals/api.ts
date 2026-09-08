@@ -418,6 +418,21 @@ function streefdatumMelding(reden: string | undefined): string {
  *    groepsoverzichten maar houdt zijn hele geschiedenis: voltooiingen,
  *    goedkeuringen en punten blijven staan (domeinregel 6).
  */
+/**
+ * De melding bij een geweigerde archiefwissel.
+ *
+ * ⚠️ `already_completed` kwam erbij met 0211 §4: een afgerond doel gaat niet meer
+ *    open, want anders is de tweede afronding "op tijd" en vervalt de straf die
+ *    QS8-322 juist laat staan. Het scherm toont de kaart niet meer op een
+ *    afgerond doel, dus dit is de vangnetmelding en niet de gebruikelijke weg —
+ *    maar een generieke "Dat lukte niet" zou hier een raadsel zijn.
+ */
+function archiefMelding(reden: string | undefined): string {
+  if (reden === 'not_owner') return t('doel.niet_van_jou');
+  if (reden === 'already_completed') return t('doel.al_afgerond');
+  return t('doel.actie_mislukt_kort');
+}
+
 export async function zetArchief(
   goalId: string,
   actorId: string,
@@ -445,8 +460,7 @@ export async function zetArchief(
   if (uitkomst.ok !== true) {
     return {
       ok: false,
-      melding:
-        uitkomst.reason === 'not_owner' ? t('doel.niet_van_jou') : t('doel.actie_mislukt_kort'),
+      melding: archiefMelding(uitkomst.reason),
     };
   }
 
