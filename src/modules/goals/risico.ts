@@ -1,5 +1,6 @@
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import { brokken } from '../../shared/idlijst';
 import type { RisicoReden, RisicoStand } from '../../shared/standen';
 
 /**
@@ -64,26 +65,60 @@ export async function fetchRisico(goalId: string): Promise<Risico | null> {
 }
 
 /**
- * De risicostanden van een lijst doelen, in één verzoek.
+ * De risicostanden van een lijst doelen, in zo min mogelijk verzoeken.
  *
  * ⚠️ Eén query voor de hele lijst en niet één per doel — de N+1 die het
- *    beslisdocument met naam noemt (CLAUDE.md, regel 12). Het doelenoverzicht
- *    toont er tot twintig tegelijk.
+ *    beslisdocument met naam noemt (CLAUDE.md, regel 12).
+ *
+ * ⚠️⚠️ **Maar niet per se één verzoek, en dat is QS8-368.** De kop hier zei
+ *    *"in één verzoek"* en erbij *"het doelenoverzicht toont er tot twintig
+ *    tegelijk"* — en dat tweede klopte niet. `app/(tabs)/doelen.tsx` stápelt de
+ *    opgehaalde pagina's (`[...eerdere, ...pagina.rijen]`), dus na elf keer
+ *    "meer laden" staan er 220 id's in deze lijst en na eenentwintig keer 420.
+ *    📏 Boven de 415 valt het verzoek om met `TypeError: fetch failed` — geen
+ *    HTTP-status, geen PostgREST-fout, alleen een lege radar. De klif en de
+ *    meting staan in `shared/idlijst`.
+ *
+ * ⚠️ **Afkappen was hier het verkeerde antwoord.** Een `.slice()` is goedkoper
+ *    en maakt het scherm ónwaar op precies de manier van QS8-342: doelen voorbij
+ *    de grens krijgen geen badge en zien er daarmee uit als "nog niet berekend",
+ *    wat een betekenisvolle stand ís (zie `fetchRisico()` hierboven). Brokken
+ *    kosten één extra verzoek per 200 doelen en liegen niet.
+ *
+ * ⚠️ **Achter elkaar en niet met `Promise.all`.** De gratis tier deelt 60
+ *    verbindingen over de héle database (CLAUDE.md, Supabase gratis tier); een
+ *    lijst die vandaag twee brokken is, is bij een gebruiker met vierduizend
+ *    doelen er twintig, en dat zijn dan twintig gelijktijdige verzoeken van één
+ *    scherm. De winst is een fractie van een seconde voor iemand die toch al aan
+ *    het bladeren is.
  */
 export async function fetchRisicos(
   goalIds: readonly string[],
 ): Promise<ReadonlyMap<string, Risico>> {
-  if (goalIds.length === 0) return new Map();
+  const kaart = new Map<string, Risico>();
 
-  const { data, error } = await supabase()
-    .from('goal_risk')
-    .select('goal_id, status, reason, computed_at')
-    .in('goal_id', [...goalIds]);
+  for (const brok of brokken(goalIds)) {
+    const { data, error } = await supabase()
+      .from('goal_risk')
+      .select('goal_id, status, reason, computed_at')
+      .in('goal_id', [...brok]);
 
-  if (error) {
-    reportError(error, 'goals.risks', { code: error.code });
-    return new Map();
+    // ⚠️ Stoppen en teruggeven wat er ís, niet alles weggooien. Een halve radar
+    //    is bruikbaar; het scherm toont niets bij een ontbrekende stand en dat
+    //    is dezelfde uitkomst als vóór deze functie bestond.
+    if (error) {
+      // ⚠️ `hint` en niet alleen `code`: bij de klif uit `shared/idlijst` is
+      //    `code` een lege string en staat de hele diagnose in de hint.
+      reportError(error, 'goals.risks', {
+        code: error.code,
+        hint: error.hint,
+        opgehaald: kaart.size,
+      });
+      return kaart;
+    }
+
+    for (const rij of data ?? []) kaart.set(rij.goal_id, naarRisico(rij));
   }
 
-  return new Map((data ?? []).map((rij) => [rij.goal_id, naarRisico(rij)]));
+  return kaart;
 }

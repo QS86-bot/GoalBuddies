@@ -229,6 +229,11 @@ export async function fetchMijlpaalTips(
 ): Promise<ReadonlyMap<string, Mijlpaaltip>> {
   if (milestoneIds.length === 0) return new Map();
 
+  // ⚠️ **Begrensd door de aanroeper, en dat is nagemeten** (QS8-368). Deze
+  //    lijst komt uit `fetchVolgendeMijlpalen()` hieronder, en die draagt
+  //    `.limit(200)`. Boven de ~415 id's valt een GET om op de 16 KB-klif in de
+  //    `Content-Location`-responseheader; zie `shared/idlijst`. Verdwijnt die
+  //    limiet daar, dan hóórt hier een `brokken()`-lus te komen.
   const { data, error } = await supabase()
     .from('milestone_tips')
     .select('milestone_id, body, locale')
@@ -255,6 +260,10 @@ export async function fetchVolgendeMijlpalen(
 ): Promise<ReadonlyMap<string, Mijlpaal>> {
   if (goalIds.length === 0) return new Map();
 
+  // ⚠️ **Begrensd door de aanroeper, en dat is nagemeten** (QS8-368).
+  //    `app/(tabs)/index.tsx` voedt hier de doelen met een goedgekeurde week uit
+  //    `fetchWeekdoelen()`, en die draagt `.limit(100)` — ontdubbeld dus hoogstens
+  //    honderd id's. De klif ligt op ~415; zie `shared/idlijst`.
   const { data, error } = await supabase()
     .from('milestones')
     .select('id, title, status, order_index, target_date, description, goal_id')
