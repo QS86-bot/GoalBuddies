@@ -705,6 +705,9 @@ describe('meldingen', () => {
     nietTeLezen: [
       { pad: 'src/modules/goals/interview.ts', tabel: 'goals', reden: 'een functie, geen literaal' },
     ],
+    // ⚠️ Leeg en niet weggelaten — QS8-349: het type eist alle drie de registers.
+    //    Een register dat je kunt vergeten, dekt stilzwijgend niets.
+    geenAanroeper: [],
   };
 
   it('zwijgt als er niets te melden valt', () => {
@@ -774,6 +777,9 @@ describe('verlopenRegels', () => {
     const lijsten = {
       geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'x' }],
       nietTeLezen: [{ pad: 'src/a.ts', tabel: 'goals', reden: 'x' }],
+      // ⚠️ Leeg en niet weggelaten — QS8-349: het type eist alle drie de registers.
+      //    Een register dat je kunt vergeten, dekt stilzwijgend niets.
+      geenAanroeper: [],
     };
     const uit = verlopenRegels({ ongeschreven: [], onleesbaar: [], ongemeten: {} }, lijsten);
 
@@ -799,6 +805,9 @@ describe('verlopenRegels', () => {
     const lijsten = {
       geenSchrijfpad: [{ tabel: 'chat_messages', soort: 'INSERT', kolom: 'system_event', reden: 'x' }],
       nietTeLezen: [],
+      // ⚠️ Leeg en niet weggelaten — QS8-349: het type eist alle drie de registers.
+      //    Een register dat je kunt vergeten, dekt stilzwijgend niets.
+      geenAanroeper: [],
     };
     const uit = verlopenRegels(
       {
@@ -819,6 +828,9 @@ describe('verlopenRegels', () => {
     const lijsten = {
       geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'x' }],
       nietTeLezen: [],
+      // ⚠️ Leeg en niet weggelaten — QS8-349: het type eist alle drie de registers.
+      //    Een register dat je kunt vergeten, dekt stilzwijgend niets.
+      geenAanroeper: [],
     };
     const uit = verlopenRegels({ ongeschreven: [], onleesbaar: [], ongemeten: {} }, lijsten);
 
@@ -829,6 +841,9 @@ describe('verlopenRegels', () => {
     const lijsten = {
       geenSchrijfpad: [{ tabel: 'groups', soort: 'UPDATE', kolom: 'icon', reden: 'x' }],
       nietTeLezen: [],
+      // ⚠️ Leeg en niet weggelaten — QS8-349: het type eist alle drie de registers.
+      //    Een register dat je kunt vergeten, dekt stilzwijgend niets.
+      geenAanroeper: [],
     };
     const uit = verlopenRegels(
       { ongeschreven: [{ tabel: 'groups', soort: 'UPDATE', kolommen: ['icon'] }], onleesbaar: [], ongemeten: {} },
@@ -849,6 +864,111 @@ describe('verlopenRegels', () => {
  *    van de schrijfkant: welke kolommen de codebase volgens deze controle
  *    schrijft, en waar ze niet te lezen zijn.
  */
+describe('een grant zonder aanroeper — QS8-349', () => {
+  /**
+   * ⚠️ **Waarom dit blok bestaat, en het is een meting.** Tot 08-09-2026 zweeg
+   *    deze controle over precies deze klasse: geen schrijfpad ⇒ `ongemeten` ⇒
+   *    geen melding. 📏 Gevoed met de tien UPDATE-kolomgrants die
+   *    `chat_messages` tot migratie 0193 had, en de schrijfpaden van de app
+   *    ongewijzigd, gaf `meldingen()` een **lege lijst**. Dat is het mechanisme
+   *    waardoor dat recht vier maanden bleef staan zonder aanroeper — gevonden
+   *    door een mens die het schema las en niet door de controle die er precies
+   *    voor bestaat (QS8-327).
+   *
+   * ⚠️ Eigen lijsten, om dezelfde reden als hierboven: `GEEN_AANROEPER` draagt
+   *    achttien echte rijen, en die veranderen zodra iemand een scherm bouwt.
+   */
+  const lijsten = {
+    geenSchrijfpad: [],
+    nietTeLezen: [],
+    geenAanroeper: [{ tabel: 'reports', soort: 'INSERT', reden: 'de policy weigert elke rij' }],
+  };
+
+  it('meldt een kolomgrant op een tabel waar niets naartoe schrijft', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { chat_messages: { UPDATE: { breed: false, kolommen: ['body', 'attachment_url'] } } },
+    });
+
+    expect(oordeel.zonderAanroeper).toEqual([
+      { tabel: 'chat_messages', soort: 'UPDATE', kolommen: ['body', 'attachment_url'] },
+    ]);
+    expect(meldingen(oordeel, lijsten)).toHaveLength(1);
+    expect(meldingen(oordeel, lijsten)[0]).toContain('chat_messages');
+  });
+
+  /** ⚠️ De must-allow: een beoordeeld paar hoort niet elke dag te piepen. */
+  it('laat een paar met rust dat in `GEEN_AANROEPER` staat', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { reports: { INSERT: { breed: false, kolommen: ['reason', 'body'] } } },
+    });
+
+    expect(oordeel.zonderAanroeper).toHaveLength(1);
+    expect(meldingen(oordeel, lijsten)).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De tweede must-allow, en die is er om de grens scherp te houden.** Geen
+   *    kolomgrant is geen bevinding maar een lege verzameling: er valt niets dood
+   *    te zijn. Zonder deze regel zou "meld alles zonder schrijfpad" ook groen
+   *    zijn, en dan meldt de controle 46 tabellen die niets uitdelen — precies de
+   *    ruis die je hem leert negeren.
+   */
+  it('zwijgt over een tabel die helemaal geen kolomgrant heeft', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { points_ledger: { INSERT: { breed: false, kolommen: [] } } },
+    });
+
+    expect(oordeel.zonderAanroeper).toEqual([]);
+    expect(meldingen(oordeel, lijsten)).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De derde must-allow: mét een schrijfpad is dit een ándere bevinding.**
+   *    Dan gaat de kolom door `ongeschreven` en niet door `zonderAanroeper` —
+   *    twee klassen die niet mogen samenvallen, want de opdracht verschilt
+   *    ("trek de kolom in" tegen "trek de grant in of registreer het paar").
+   */
+  it('rekent een dode kolom mét schrijfpad niet tot deze klasse', () => {
+    const oordeel = beoordeelSchrijven({
+      acties: schrijfIn('a.ts', `.from('reports').insert({ reason: r })`),
+      rechten: { reports: { INSERT: { breed: false, kolommen: ['reason', 'body'] } } },
+    });
+
+    expect(oordeel.zonderAanroeper, 'er is een schrijfpad, dus dit is deze klasse niet').toEqual([]);
+    expect(oordeel.ongeschreven).toEqual([{ tabel: 'reports', soort: 'INSERT', kolommen: ['body'] }]);
+  });
+
+  it('meldt een regel in `GEEN_AANROEPER` die geen bevinding meer is', () => {
+    // ⚠️ De ratel de andere kant op. Zonder deze lus is registreren een deur die
+    //    maar één kant op gaat, en dekt een verlopen rij de vólgende bevinding op
+    //    diezelfde plek af.
+    const oordeel = beoordeelSchrijven({
+      acties: schrijfIn('a.ts', `.from('reports').insert({ reason: r })`),
+      rechten: { reports: { INSERT: { breed: false, kolommen: ['reason'] } } },
+    });
+
+    const uit = verlopenRegels(oordeel, lijsten);
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('wórdt inmiddels geschreven');
+  });
+
+  it('zegt bij een verlopen regel wélke van de twee redenen het is', () => {
+    // ⚠️ Grant ingetrokken is iets anders dan "er is een schrijfpad bijgekomen",
+    //    en de tekst moet dat zeggen — anders zoekt de lezer de verkeerde kant op.
+    const oordeel = beoordeelSchrijven({
+      acties: [],
+      rechten: { reports: { INSERT: { breed: false, kolommen: [] } } },
+    });
+
+    const uit = verlopenRegels(oordeel, lijsten);
+    expect(uit).toHaveLength(1);
+    expect(uit[0]).toContain('er is geen kolomgrant');
+  });
+});
+
 describe('de echte codebase', () => {
   const WORTEL = join(__dirname, '..', '..');
 

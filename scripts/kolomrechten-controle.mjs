@@ -760,6 +760,7 @@ export function beoordeelSchrijven({ acties, rechten }) {
   //    en een controle die alles meldt leer je te negeren.
   const ongeschreven = [];
   const ongemeten = {};
+  const zonderAanroeper = [];
 
   for (const [tabel, per] of Object.entries(rechten)) {
     for (const [soort, r] of Object.entries(per)) {
@@ -776,7 +777,25 @@ export function beoordeelSchrijven({ acties, rechten }) {
 
       const g = geschreven[sleutel];
       if (g === undefined) {
+        // ⚠️⚠️ **Dit is een bevinding en niet een overslag, en dat is de
+        //    reparatie van QS8-349.** Hier stond alleen
+        //    `ongemeten[sleutel] = 'niets schrijft naar deze tabel'`, en
+        //    `ongemeten` wordt niet gemeld. Deze controle bestaat om een grant te
+        //    vinden die niemand gebruikt, en zweeg dus precies over de zuiverste
+        //    vorm ervan: er ís een kolomgrant, en er is helemaal geen schrijfpad.
+        //
+        //    📏 Gemeten toen `chat_messages_update` nog bestond: de tien
+        //    UPDATE-kolomgrants terug, `meldingen()` gaf `[]`. Dat recht heeft
+        //    vier maanden gestaan zonder aanroeper en is uiteindelijk door een
+        //    mens gevonden die het schema las (QS8-327).
+        //
+        // ⚠️ `ongemeten` houdt zijn regel, want `verlopenRegels()` leest hem: een
+        //    uitzondering op een tabel zonder schrijfpad is níét verlopen maar
+        //    ongemeten, en de opdracht blijft "herzie hem" in plaats van "haal
+        //    hem weg". Dat onderscheid is de reparatie van de review op PR #140
+        //    en die blijft staan.
         ongemeten[sleutel] = 'niets in `src/` of `app/` schrijft naar deze tabel';
+        zonderAanroeper.push({ tabel, soort, kolommen: r.kolommen });
         continue;
       }
       if (!g.volledig) {
@@ -789,7 +808,7 @@ export function beoordeelSchrijven({ acties, rechten }) {
     }
   }
 
-  return { ontbrekend, ongeschreven, onleesbaar, ongemeten };
+  return { ontbrekend, ongeschreven, onleesbaar, ongemeten, zonderAanroeper };
 }
 
 // ---------------------------------------------------------------------------
@@ -887,6 +906,138 @@ export const GEEN_SCHRIJFPAD = [
  *    staan — anders groeit het stil door tot de controle nog maar over de helft
  *    van de codebase iets zegt.
  */
+/**
+ * Tabellen waar `authenticated` een kolomgrant heeft en niets in `src/` of `app/`
+ * naartoe schrijft — QS8-349.
+ *
+ * ⚠️ **Waarom deze lijst bestaat.** Tot 08-09-2026 zweeg deze controle over
+ *    precies deze klasse: geen schrijfpad ⇒ `ongemeten` ⇒ geen melding. Dat is
+ *    het mechanisme waardoor `chat_messages_update` vier maanden bleef staan met
+ *    tien kolomgrants en nul aanroepers (QS8-327). Een grant die niemand gebruikt
+ *    is de bevinding waar dit script voor bestaat, en de vorm zonder énig
+ *    schrijfpad was er onzichtbaar in.
+ *
+ * ⚠️ **De reden noemt de grendel en niet de gewoonte.** "Dat doet een RPC" is
+ *    geen reden; "de policy weigert élke rij van een client, het schrijven
+ *    gebeurt in `meld()`" wel. Het verschil is of het recht dicht is of alleen
+ *    ongebruikt — en dat is precies wat QS8-327 duur maakte.
+ *
+ * ⚠️ **Elf van deze achttien zijn inert** omdat hun policy `false` draagt. De
+ *    overige zeven staan wél open voor een rechtstreeks verzoek en zijn dus
+ *    dezelfde klasse als QS8-327; die staan als **QS8-351** en dragen dat hier
+ *    per rij. Deze lijst maakt ze zichtbaar; hij lost ze niet op.
+ */
+export const GEEN_AANROEPER = [
+  {
+    tabel: 'approval_withdrawals',
+    soort: 'INSERT',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `trek_goedkeuring_in()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'approval_withdrawals',
+    soort: 'UPDATE',
+    reden:
+      'de policy is `using false` én `with check false`: aan een ingetrokken goedkeuring valt niets bij te werken. Er is ook geen RPC die het doet. De grant is puur restant.',
+  },
+  {
+    tabel: 'deadline_requests',
+    soort: 'INSERT',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `vraag_deadline_verschuiving()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'deadline_requests',
+    soort: 'UPDATE',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `beslis_deadline_verzoek()`, `trek_deadline_verzoek_in()`, `verlaat_groep()` en `verwijder_lid()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'group_join_requests',
+    soort: 'INSERT',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `vraag_lidmaatschap_aan()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'group_join_requests',
+    soort: 'UPDATE',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `beslis_lidmaatschapsverzoek()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'groups',
+    soort: 'INSERT',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `create_group()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'reports',
+    soort: 'INSERT',
+    reden:
+      'de policy weigert élke rij van een client (`with check false`); het schrijven gebeurt in `meld()`. De grant is daarmee inert. ⚠️ Wordt hij dat niet meer zodra iemand die `false` versoepelt — dan ligt het recht er al.',
+  },
+  {
+    tabel: 'reports',
+    soort: 'UPDATE',
+    reden:
+      'de policy is `using false`: een melding is niet bij te werken, ook niet door de melder. Geen RPC doet het. De grant is puur restant.',
+  },
+  {
+    tabel: 'user_blocks',
+    soort: 'UPDATE',
+    reden:
+      'de policy is `using false`: een blokkade zet je of hef je op, je werkt hem niet bij. Geen RPC doet het. De grant is puur restant.',
+  },
+  {
+    tabel: 'week_review_replies',
+    soort: 'UPDATE',
+    reden:
+      'de policy is `using false` én `with check false`: een reactie op een weekafsluiting ligt vast zodra hij staat. Geen RPC doet het. De grant is puur restant.',
+  },
+  {
+    tabel: 'group_members',
+    soort: 'INSERT',
+    reden:
+      'de policy staat de oprichter toe, maar het schrijven loopt via `create_group()`, `join_group_with_code()` en `beslis_lidmaatschapsverzoek()`. ⚠️ De grant staat dus wél open voor een rechtstreeks verzoek — zie QS8-351.',
+  },
+  {
+    tabel: 'group_members',
+    soort: 'UPDATE',
+    reden:
+      'de policy staat je eigen rij en een beheerder toe, maar het schrijven loopt via `verlaat_groep()`, `verwijder_lid()`, `beslis_lidmaatschapsverzoek()` en `join_group_with_code()`; `guard_group_member_update()` (0187) werpt op alles wat daarbuiten valt. ⚠️ De grant staat wél open — zie QS8-351.',
+  },
+  {
+    tabel: 'profiles',
+    soort: 'INSERT',
+    reden:
+      'de rij komt van de trigger `handle_new_user()` bij het aanmaken van een account; geen scherm maakt er een. De policy eist `id = auth.uid()`, dus een tweede rij voor jezelf is het ergste wat erin kan. ⚠️ Zie QS8-351.',
+  },
+  {
+    tabel: 'user_blocks',
+    soort: 'INSERT',
+    reden:
+      'het schrijven loopt via `blokkeer()`; de policy eist `blocker_id = auth.uid()`. ⚠️ De grant staat wél open voor een rechtstreeks verzoek — zie QS8-351.',
+  },
+  {
+    tabel: 'weekly_goals',
+    soort: 'UPDATE',
+    reden:
+      'het schrijven loopt via `sluit_weekdoel_af()`, `plan_adempauze()`, `mark_weekly_goal_pending()` en `schuif_weekdoel_door()`; de policy staat de eigenaar toe. ⚠️ De grant staat wél open voor een rechtstreeks verzoek — zie QS8-351.',
+  },
+  {
+    tabel: 'daily_moves',
+    soort: 'UPDATE',
+    reden:
+      '📏 **Niemand schrijft dit, en dat is de zuiverste vorm van deze klasse.** De client doet alleen `insert` en `select` (`modules/completions/api.ts:207` en `:232`) en geen enkele functie in het schema updatet de tabel — nagemeten met `pg_get_functiondef()`. De policy `daily_moves_write` staat de eigenaar wél toe. Zes kolommen, geen aanroeper. Zie QS8-351.',
+  },
+  {
+    tabel: 'goal_interviews',
+    soort: 'UPDATE',
+    reden:
+      '📏 **Idem: geen enkele schrijver.** De client doet alleen `insert` en `select` (`modules/goals/interview.ts:99` en `:55`), en geen functie updatet de tabel. `goal_interviews_all` staat de eigenaar toe. Drie kolommen, geen aanroeper. Zie QS8-351.',
+  },
+];
+
 export const NIET_TE_LEZEN = [
   {
     pad: 'src/modules/ai/plan-toepassen.ts',
@@ -930,9 +1081,32 @@ export function schrijfacties(paden, lees) {
 
 const dodeSleutel = (tabel, soort, kolom) => `${tabel}|${soort}|${kolom}`;
 const leesSleutel = (pad, tabel) => `${pad}|${tabel}`;
+const paarSleutel = (tabel, soort) => `${tabel}|${soort}`;
+
+/**
+ * De lege standaard voor `zonderAanroeper` — QS8-349.
+ *
+ * ⚠️ **Een getypeerde constante en niet `= []` in de destructuring.** Dat laatste
+ *    laat TypeScript `never[]` afleiden, en dan weigert hij élke echte
+ *    bevindingenlijst die je erin stopt. Met een geannoteerde constante is de
+ *    sleutel optioneel én bruikbaar.
+ *
+ * ⚠️ Optioneel, terwijl `geenAanroeper` in `LIJSTEN` juist verplicht is. Dat
+ *    verschil is opzet: een vergeten **register** dekt stilzwijgend niets af, en
+ *    dat is de faalvorm die dit project blijft betalen. Een vergeten sleutel in
+ *    een handgemaakte bevindingenlijst betekent alleen dat díe ijking deze klasse
+ *    niet aanraakt — en dat is precies wat de oudere ijkingen bedoelen.
+ *
+ * @type {{tabel: string, soort: string, kolommen: string[]}[]}
+ */
+const GEEN_ZONDER_AANROEPER = [];
 
 /** De lijsten waartegen `meldingen()` en `verlopenRegels()` afwegen. */
-const LIJSTEN = { geenSchrijfpad: GEEN_SCHRIJFPAD, nietTeLezen: NIET_TE_LEZEN };
+const LIJSTEN = {
+  geenSchrijfpad: GEEN_SCHRIJFPAD,
+  nietTeLezen: NIET_TE_LEZEN,
+  geenAanroeper: GEEN_AANROEPER,
+};
 
 /**
  * De bevindingen die niet op een uitzonderingslijst staan, als tekst.
@@ -950,7 +1124,10 @@ const LIJSTEN = { geenSchrijfpad: GEEN_SCHRIJFPAD, nietTeLezen: NIET_TE_LEZEN };
  *    iets dat niets met hun onderwerp te maken heeft, en is de goedkoopste
  *    reparatie een andere willekeurige rij invullen.
  */
-export function meldingen({ ontbrekend, ongeschreven, onleesbaar }, lijsten = LIJSTEN) {
+export function meldingen(
+  { ontbrekend, ongeschreven, onleesbaar, zonderAanroeper = GEEN_ZONDER_AANROEPER },
+  lijsten = LIJSTEN,
+) {
   const uit = [];
 
   for (const f of ontbrekend) uit.push(`${f.pad}  —  ${f.reden}`);
@@ -964,6 +1141,24 @@ export function meldingen({ ontbrekend, ongeschreven, onleesbaar }, lijsten = LI
           'schrijfpad erbij, trek de grant in, of zet hem met een reden in `GEEN_SCHRIJFPAD`',
       );
     }
+  }
+
+  // ⚠️ **Een tabel zonder énig schrijfpad — QS8-349.** Per `tabel|soort` en niet
+  //    per kolom: er is geen schrijfpad, dus élke gegunde kolom is dood en ze
+  //    dragen allemaal dezelfde reden. Eén melding met het aantal erbij is
+  //    bruikbaar; achttien losse regels over dezelfde tabel leer je overslaan.
+  // ⚠️ `?? []` en niet `lijsten.geenAanroeper` kaal: de ijkingen geven bewust hun
+  //    eigen lijsten mee, en die hoeven niet elke sleutel te dragen. Een
+  //    ontbrekende lijst is "niets geregistreerd", niet een crash.
+  const zonder = new Set((lijsten.geenAanroeper ?? []).map((r) => paarSleutel(r.tabel, r.soort)));
+  for (const z of zonderAanroeper) {
+    if (zonder.has(paarSleutel(z.tabel, z.soort))) continue;
+    uit.push(
+      `\`${z.tabel}\` heeft ${z.kolommen.length} ${z.soort}-kolomgrant(s) en niets in ` +
+        '`src/` of `app/` schrijft naar deze tabel — trek de grant in, of zet het paar met ' +
+        'een reden in `GEEN_AANROEPER`. Noem daarin de grendel (weigert de policy het?) en ' +
+        'niet de gewoonte ("dat doet een RPC"): zie QS8-327.',
+    );
   }
 
   const gelezen = new Set(lijsten.nietTeLezen.map((r) => leesSleutel(r.pad, r.tabel)));
@@ -994,7 +1189,10 @@ export function meldingen({ ontbrekend, ongeschreven, onleesbaar }, lijsten = LI
  *    onderscheid gaf één onleesbare insert op `chat_messages` de opdracht om de
  *    rij voor `system_event` te verwijderen, de kolom met drie sloten.
  */
-export function verlopenRegels({ ongeschreven, onleesbaar, ongemeten = {} }, lijsten = LIJSTEN) {
+export function verlopenRegels(
+  { ongeschreven, onleesbaar, ongemeten = {}, zonderAanroeper = GEEN_ZONDER_AANROEPER },
+  lijsten = LIJSTEN,
+) {
   const dood = new Set();
   for (const o of ongeschreven) {
     for (const kolom of o.kolommen) dood.add(dodeSleutel(o.tabel, o.soort, kolom));
@@ -1012,6 +1210,31 @@ export function verlopenRegels({ ongeschreven, onleesbaar, ongemeten = {} }, lij
             'geschreven — haal de regel weg'
         : `\`${r.tabel}.${r.kolom}\` (${r.soort}) staat in \`GEEN_SCHRIJFPAD\`, maar ${reden} — ` +
             'de uitzondering is niet verlopen maar ongemeten; herzie hem, haal hem niet weg',
+    );
+  }
+
+  // ⚠️ **De ratel slaat ook hier twee kanten op — QS8-349.** Een rij in
+  //    `GEEN_AANROEPER` die geen bevinding meer is, is een leugen in een grendel:
+  //    hij zegt "dit is beoordeeld" over een toestand die niet meer bestaat, en
+  //    dekt daarna de volgende bevinding op diezelfde plek af. Zonder deze lus
+  //    was registreren een deur die maar één kant op gaat.
+  //
+  // ⚠️ Twee redenen waarom een rij vervalt, en ze vragen het tegenovergestelde:
+  //    er is een schrijfpad bijgekomen (dan is het paar gewoon gedekt en mag de
+  //    rij weg), of de grant is ingetrokken (dan is er niets meer te dekken).
+  //    Beide zijn "haal hem weg", maar de tekst moet zeggen wélke — anders gaat
+  //    de lezer de verkeerde kant op zoeken.
+  const zonder = new Set(zonderAanroeper.map((z) => paarSleutel(z.tabel, z.soort)));
+  for (const r of lijsten.geenAanroeper ?? []) {
+    if (zonder.has(paarSleutel(r.tabel, r.soort))) continue;
+
+    const reden = ongemeten[paarSleutel(r.tabel, r.soort)];
+    uit.push(
+      reden === undefined
+        ? `\`${r.tabel}\` (${r.soort}) staat in \`GEEN_AANROEPER\` maar wórdt inmiddels ` +
+            'geschreven — haal de regel weg'
+        : `\`${r.tabel}\` (${r.soort}) staat in \`GEEN_AANROEPER\`, maar ${reden} — er valt ` +
+            'niets meer te dekken; haal de regel weg',
     );
   }
 
