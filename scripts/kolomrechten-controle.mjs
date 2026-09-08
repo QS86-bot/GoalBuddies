@@ -896,27 +896,35 @@ export const GEEN_SCHRIJFPAD = [
       'herkomst wordt bij een weekdoel niet door de client gezet — zie de kop van ' +
       '`mijlpalen.ts`. Bij `weekly_plan_steps` wél, en daar staat het recht dus terecht.',
   },
-  {
-    tabel: 'weekly_goals',
-    soort: 'INSERT',
-    kolom: 'points_floor',
-    reden:
-      '⚠️⚠️ **DIT IS GEEN GRENDEL EN DE REDEN HIERONDER WAS FOUT — QS8-352.** Er stond: ' +
-      '"de puntenwaarden komen uit domeinregel 10 en staan als default op de kolom; dat de ' +
-      'client ze mág overschrijven is een oud recht en geen pad." Dat is de gewoonte en niet ' +
-      'de grendel — precies de vorm waar `GEEN_AANROEPER` hierboven voor waarschuwt. 📏 Volledig ' +
-      'nagespeeld met twee gewone accounts: een weekdoel met `points_ceiling: 5` landt (201), ' +
-      'afvinken landt, een buddy keurt goed, en `points_ledger` boekt **delta=5** waar het model ' +
-      'er 2 voorschrijft. `award_points_on_approval()` leest de waarde uit de rij. De rij blijft ' +
-      'hier alleen staan zodat de controle groen is tot QS8-352 de grant intrekt; ' +
-      'zij verklaart niets veilig.',
-  },
-  {
-    tabel: 'weekly_goals',
-    soort: 'INSERT',
-    kolom: 'points_ceiling',
-    reden: 'idem — zelfde default op de kolom, zelfde domeinregel 10.',
-  },
+  /*
+   * ⚠️⚠️ **Hier stonden `points_floor` en `points_ceiling`, en die twee rijen
+   *    hielden een gat open** (QS8-352). De reden luidde: *"de puntenwaarden
+   *    komen uit domeinregel 10 en staan als default op de kolom. Dat de client
+   *    ze mág overschrijven is een oud recht en geen pad."*
+   *
+   *    Dat is precies de vorm waar `GEEN_AANROEPER` hierboven voor waarschuwt:
+   *    **de reden noemde de gewoonte en niet de grendel.** Er wás geen grendel.
+   *    📏 Gemeten met echte JWT's: een weekdoel met `points_ceiling=5`, een
+   *    voltooiing, een goedkeuring door een buddy — en `points_ledger` boekte
+   *    `delta=5` waar domeinregel 10 er twee voorschrijft.
+   *
+   *    QS8-349 herschreef de twee rijen tot een expliciete niet-grendel, met de
+   *    zin *"blijft hier alleen staan zodat de controle groen is tot QS8-352 de
+   *    grant intrekt"*. Migratie 0195 heeft dat gedaan, dus de rijen zijn weg —
+   *    er is geen recht meer om uit te zonderen.
+   *
+   *    ⚠️⚠️ En de herkomst is niet "een default die erin sloop". 📏 `0001`
+   *    deelt geen enkel recht uit; `0043` schreef de drie puntenkolommen met
+   *    naam in een kolomgrant, en `0044` — zelf de nakomer op een
+   *    security-review van 0043 — haalde alleen `points_miss` eruit met als
+   *    motivering dat "0 t/m 5 begrensde variatie in je eigen nadeel" is. Dat
+   *    is omgekeerd. Deze uitzonderingsregel van 01-09-2026 was een afgeleide
+   *    van díe zin, drie weken later.
+   *
+   *    Dezelfde formulering hield eerder `chat_messages_update` overeind
+   *    (QS8-327) — wie hier een rij toevoegt, schrijve op wat het schrijven
+   *    tégenhoudt en niet wie het vandaag laat.
+   */
 ];
 
 /**
