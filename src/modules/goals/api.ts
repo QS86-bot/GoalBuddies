@@ -179,26 +179,14 @@ export async function fetchDoelen(
  *    doel. Gebruik deze functie nooit om een recht te bepalen.
  */
 export async function fetchKoppelbareDoelen(
-  userId: string,
   groupId: string,
   opties: { readonly pagina?: number } = {},
 ): Promise<Pagina<DoelMetVoortgang>> {
-  const alGekoppeld = await mijnGekoppeldeDoelIds(userId, groupId);
   const pagina = opties.pagina ?? 0;
   const van = pagina * PER_PAGINA;
 
-  let vraag = supabase()
-    .from('goal_dashboard')
-    .select('*', { count: 'exact' })
-    .eq('owner_id', userId)
-    .eq('status', 'active');
-
-  if (alGekoppeld.length > 0) {
-    vraag = vraag.not('id', 'in', `(${alGekoppeld.join(',')})`);
-  }
-
-  const { data, error, count } = await vraag
-    .order('target_date', { ascending: true })
+  const { data, error, count } = await supabase()
+    .rpc('koppelbare_doelen', { p_group_id: groupId }, { count: 'exact' })
     .range(van, van + PER_PAGINA - 1);
 
   if (error) {
@@ -212,73 +200,6 @@ export async function fetchKoppelbareDoelen(
   return { rijen, totaal, meer: van + rijen.length < totaal };
 }
 
-/** Hoeveel koppelingen er per verzoek opgehaald worden. */
-const STAP = 200;
-
-/**
- * De id's van jóuw doelen die al aan deze groep hangen.
- *
- * ⚠️ **Zonder plafond, en dat is de tweede helft van QS8-342.**
- *    `fetchGekoppeldeDoelIds()` in `modules/buddies` kapte af op `.limit(50)`
- *    zónder teller: doelen daarboven lazen als "nog niet gekoppeld" en werden
- *    opnieuw aangeboden. Een onvolledige uitsluitlijst maakt het scherm onwaar op
- *    precies de manier die dit issue repareert, dus hier bladeren we door tot de
- *    lijst op is.
- *
- * ⚠️ **Alleen jóuw doelen, en `!inner` draagt daar de helft van.** `goal_group_links`
- *    bevat de doelen van élk groepslid; wij trekken alleen de jouwe af. Dat
- *    begrenst de lijst door je eigen doelental in plaats van dat van de hele
- *    groep. 📏 Gemeten op de lokale PostgREST (07-09-2026, één groep, twee leden
- *    met elk twee gekoppelde doelen): mét `goals!inner(owner_id)` geeft
- *    `goals.owner_id=eq.<jij>` twee rijen, zónder `!inner` geeft dezelfde vraag
- *    er vier — de rijen van de ánder komen mee met `goals: null`, en hun
- *    `goal_id` staat er gewoon in. Een filter op een ingebedde kolom beperkt de
- *    bovenliggende tabel niet tenzij de embed inner is. `uitsluitlijst-is-alleen-van-jezelf`
- *    is de grendel op allebei de helften.
- *
- * ⚠️ **De uitgang is de teller en niet "een korte pagina".** Die laatste is de
- *    voor de hand liggende lus, en hij is stil fout zodra de server minder rijen
- *    teruggeeft dan gevraagd: staat `db-max-rows` onder `STAP`, dan is de eerste
- *    pagina al kort, stopt de lus meteen en is de uitsluitlijst onvolledig —
- *    precies de bug van dit issue, terug via de achterdeur. `count: 'exact'`
- *    zegt hoeveel er zijn; we bladeren tot we die hebben.
- */
-async function mijnGekoppeldeDoelIds(userId: string, groupId: string): Promise<readonly string[]> {
-  const uit: string[] = [];
-
-  for (let van = 0; ; van = uit.length) {
-    const { data, error, count } = await supabase()
-      .from('goal_group_links')
-      .select('goal_id, goals!inner(owner_id)', { count: 'exact' })
-      .eq('group_id', groupId)
-      .eq('goals.owner_id', userId)
-      .order('goal_id', { ascending: true })
-      .range(van, van + STAP - 1);
-
-    if (error) {
-      reportError(error, 'goals.koppelbaar.links', { group_id: groupId, code: error.code });
-      throw new Error(t('doel.doelen_laden'));
-    }
-
-    const rijen = data ?? [];
-    for (const rij of rijen) uit.push(rij.goal_id);
-
-    if (count === null || uit.length >= count) return uit;
-
-    // ⚠️ **Een lege pagina terwijl de teller zegt dat er meer zijn.** Dan komen we
-    //    er nooit, en doorgaan is een oneindige lus. Werpen is hier het eerlijke
-    //    antwoord: een onvolledige uitsluitlijst biedt je doelen aan die al
-    //    gekoppeld zijn, en dat is de fout die dit issue repareert.
-    if (rijen.length === 0) {
-      reportError(new Error('lege pagina onder de teller'), 'goals.koppelbaar.links', {
-        group_id: groupId,
-        gelezen: uit.length,
-        count,
-      });
-      throw new Error(t('doel.doelen_laden'));
-    }
-  }
-}
 
 /** De titel en het gebied van één doel, voor een lijst die er naar verwijst. */
 export interface Doelnaam {

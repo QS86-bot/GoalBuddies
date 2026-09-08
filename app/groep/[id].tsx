@@ -747,7 +747,7 @@ function KoppelDoel({
   //    zegt.
   const { data: doelen, loading, error, herlaad: herlaadLijst } = useAsync(
     userId && groupId !== ''
-      ? async () => (await fetchKoppelbareDoelen(userId, groupId)).rijen
+      ? async () => (await fetchKoppelbareDoelen(groupId)).rijen
       : null,
     [userId, groupId],
   );
