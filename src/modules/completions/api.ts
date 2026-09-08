@@ -158,7 +158,7 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
   //    niet — en dat zou een cast kosten op precies het veld dat bepaalt hoeveel
   //    bewijs iemand moet leveren.
   // ⚠️ **Begrensd door de vraag erboven**: die draagt `.limit(20)`, dus deze
-  //    lijst is er hoogstens twintig (QS8-368). De klif op een GET ligt op ~415
+  //    lijst is er hoogstens twintig (QS8-368). De klif op een GET ligt boven ~400
   //    id's, in de `Content-Location`-responseheader; zie `shared/idlijst`.
   const { data, error } = await supabase()
     .from('groups')

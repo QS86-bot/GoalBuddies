@@ -50,21 +50,27 @@ const MAPPEN = ['src', 'app'];
  *    verschuift bij elke bewerking erboven, en dan bewaakt dit register de
  *    volgende maand iets anders dan het zegt.
  *
- * ⚠️ **De klif ligt op 416 id's** (📏 gemeten, zie `src/shared/idlijst`). Alles
- *    hieronder met een grens boven ~400 hoort door `brokken()` te gaan.
+ * ⚠️ **De klif ligt ergens boven de 400** — 📏 413 tot 415 afhankelijk van de
+ *    `select`, en dat is de grens van undici; de browser, Hermes en de proxy
+ *    vóór productie zijn ongemeten. Zie `src/shared/idlijst`. Alles hieronder
+ *    met een grens boven de 100 hoort door `brokken()` te gaan.
  */
 export const GRENZEN = {
   'src/modules/goals/api.ts#id':
     '20 — `fetchDoelnamen()` kapt zelf af met `.slice(0, PER_PAGINA)`, ter ' +
     'plekke zichtbaar. Dit is het patroon om te kopiëren.',
   'src/modules/goals/deadline.ts#status':
-    'twee — een literal `[\'approved\', \'rejected\']`. Kan per definitie niet groeien.',
+    '2 — een literal `[\'approved\', \'rejected\']` in `deadline.ts`. Kan per ' +
+    'definitie niet groeien; er is geen aanroeper die er iets aan toevoegt.',
   'src/modules/goals/mijlpalen.ts#milestone_id':
     '200 — komt uit `fetchVolgendeMijlpalen()` in ditzelfde bestand, en die ' +
     'draagt `.limit(200)`.',
   'src/modules/goals/mijlpalen.ts#goal_id':
-    '100 — `app/(tabs)/index.tsx` voedt de doelen met een goedgekeurde week uit ' +
-    '`fetchWeekdoelen()`, en die draagt `.limit(100)`.',
+    'IDS_PER_VERZOEK — `fetchVolgendeMijlpalen()` kapt zelf af met ' +
+    '`.slice(0, IDS_PER_VERZOEK)`. Stond hier eerst als "100, want ' +
+    '`fetchWeekdoelen()` draagt `.limit(100)`": dat klopte en het was geen ' +
+    'grens, want die woonde in een schermbestand terwijl de functie publiek ' +
+    'geëxporteerd is. Correctie uit de security-review op QS8-368.',
   'src/modules/goals/risico.ts#goal_id':
     'IDS_PER_VERZOEK — de enige die geen bovengrens hád: `doelen.tsx` stapelt ' +
     'de pagina\'s. Gaat sinds QS8-368 door `brokken()`, dus de grens staat hier ' +
@@ -72,7 +78,8 @@ export const GRENZEN = {
   'src/modules/completions/api.ts#id':
     '20 — de vraag erboven in `bewijseisVoorDoel()` draagt `.limit(20)`.',
   'src/modules/commitments/api.ts#group_id':
-    '20 — de vraag erboven draagt `.limit(MAX_GROEPEN)`, en die staat op 20.',
+    '20 — de vraag erboven in `fetchMogelijkeBegunstigden()` draagt ' +
+    '`.limit(MAX_GROEPEN)`, en die constante staat op 20.',
 };
 
 /**
@@ -124,15 +131,44 @@ export function zonderCommentaar(bron) {
 }
 
 /**
- * Elke `.in('<kolom>', …)` in deze bron, als kolomnaam.
+ * Elke filter in deze bron die een lijst in de querystring zet, als kolomnaam.
  *
- * ⚠️ Een `.in()` met een berekende kolomnaam (`.in(kolom, …)`) valt hier buiten
- *    en dat is met opzet zichtbaar gemaakt: die vorm bestaat vandaag niet, en
- *    zou hij ontstaan, dan is dit register de verkeerde grendel ervoor — dan
- *    hoort de grens bij de aanroeper te staan en niet in een lijst op naam.
+ * ⚠️⚠️ **Drie vormen en niet één, en dat is een correctie uit de security-review.**
+ *    De eerste versie zocht alleen `.in('kolom', …)`. 📏 Gemeten dat twee andere
+ *    vormen exact hetzelfde verzoek opleveren en tóch op exitcode 0 langskwamen:
+ *
+ *      db.filter('goal_id', 'in', `(${ids.join(',')})`)   → zweeg
+ *      db.or(ids.map((i) => `goal_id.eq.${i}`).join(','))  → zweeg
+ *
+ *    En `.or()` is de gevaarlijkste van de drie: 📏 op `goals?select=id` valt
+ *    `.in()` om bij 416 id's en `.or()` al bij **361** — een `id.eq.` per id is
+ *    nu eenmaal langer dan een komma. Vandaag bestaat geen van beide vormen in
+ *    `src/` of `app/`; dit is de opening dichtzetten vóór de eerste er is.
+ *
+ * ⚠️ Bij `.or()` is er geen kolomnaam om op te registreren — één aanroep kan er
+ *    tien noemen. Die krijgt daarom de sleutel `#or`: het register zegt dan iets
+ *    over die aanroep en niet over een kolom.
+ *
+ * ⚠️ Een filter met een berekende kolomnaam (`.in(kolom, …)`) valt hier buiten,
+ *    en dat is met opzet: die vorm bestaat vandaag niet, en zou hij ontstaan,
+ *    dan is een register op naam er de verkeerde grendel voor — dan hoort de
+ *    grens bij de aanroeper te staan.
  */
 export function inFilters(bron) {
-  return [...zonderCommentaar(bron).matchAll(/\.in\(\s*['"`]([^'"`]+)['"`]/g)].map((m) => m[1]);
+  const schoon = zonderCommentaar(bron);
+
+  const kolommen = [
+    // `.in('kolom', …)`
+    ...[...schoon.matchAll(/\.in\(\s*['"`]([^'"`]+)['"`]/g)].map((m) => m[1]),
+    // `.filter('kolom', 'in', …)` — hetzelfde verzoek, andere schrijfwijze.
+    ...[...schoon.matchAll(/\.filter\(\s*['"`]([^'"`]+)['"`]\s*,\s*['"`]in['"`]/g)].map(
+      (m) => m[1],
+    ),
+  ];
+
+  if (/\.or\(/.test(schoon)) kolommen.push('or');
+
+  return kolommen;
 }
 
 /**
@@ -150,8 +186,8 @@ export function beoordeelBestand({ pad, bron, grenzen = GRENZEN }) {
     if (Object.hasOwn(grenzen, sleutel)) continue;
 
     fouten.push(
-      `${sleutel} filtert met \`.in()\` en staat niet in GRENZEN. Een GET met ` +
-        'meer dan ~415 id\'s valt om op de 16 KB-klif in de ' +
+      `${sleutel} zet een lijst in de querystring en staat niet in GRENZEN. Een GET met ` +
+        'meer dan ~400 id\'s valt om op de 16 KB-klif in de ' +
         '`Content-Location`-responseheader (zie `src/shared/idlijst`), en dat ' +
         'komt terug als een lege lijst zonder foutcode. Meet de bovengrens van ' +
         'deze lijst en zet hem met zijn herkomst in het register — of laat hem ' +

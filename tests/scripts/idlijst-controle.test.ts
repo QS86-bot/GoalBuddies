@@ -30,6 +30,28 @@ function beoordeel(bron: string, pad = 'src/proef.ts'): string[] {
   return beoordeelBestand({ pad, bron, grenzen: REGISTER } as never) as string[];
 }
 
+describe('idlijst-controle — de vormen die hetzelfde verzoek opleveren', () => {
+  it('vindt `.filter(kolom, \'in\', …)`, dezelfde GET in een andere schrijfwijze', () => {
+    // 📏 Gemeten in de security-review: deze vorm kwam op exitcode 0 langs.
+    const fouten = beoordeel(`db.filter('milestone_id', 'in', lijst);`);
+
+    expect(fouten).toHaveLength(1);
+    expect(fouten[0]).toContain('#milestone_id');
+  });
+
+  it('vindt `.or()`, die het nóg eerder begeeft', () => {
+    // 📏 `goals?select=id`: `.in()` valt om bij 416 id's, `.or()` al bij 361.
+    const fouten = beoordeel(`db.or(ids.map((i) => \`goal_id.eq.\${i}\`).join(','));`);
+
+    expect(fouten).toHaveLength(1);
+    expect(fouten[0]).toContain('#or');
+  });
+
+  it('laat een `.or()` in commentaar met rust', () => {
+    expect(beoordeel(`// vroeger: db.or(…)\nconst x = 1;`)).toEqual([]);
+  });
+});
+
 describe('idlijst-controle — wat hij moet vinden', () => {
   it('meldt een `.in()` die niet in het register staat', () => {
     const fouten = beoordeel(`db.from('milestones').select('id').in('milestone_id', ids);`);
@@ -108,12 +130,26 @@ describe('zonderCommentaar()', () => {
 });
 
 describe('het echte register', () => {
-  it('draagt bij elke regel een grens en niet alleen een pad', () => {
-    // ⚠️ Een lege of nietszeggende reden is het register het zwijgen opleggen.
-    //    Zelfde eis als `review:controle` aan een Laag-rij stelt.
+  it('draagt bij elke regel een gemeten grens en niet alleen tekst', () => {
+    // ⚠️⚠️ **De eerste versie eiste alleen `length > 30`, en dat was te weinig.**
+    //    📏 Gemeten in de security-review: met de reden `'ok ok ok ok ok ok ok ok
+    //    ok ok ok ok ok ok ok'` bleef zowel de controle als deze test groen —
+    //    het register was dus met eenendertig nietszeggende tekens het zwijgen
+    //    op te leggen, precies wat zijn eigen kop verbiedt.
+    //
+    //    `review:controle` eist een lítterale zin (`**Wordt zwaarder als:**`) en
+    //    geen lengte, en om dezelfde reden staat hier nu een eis op de ínhoud:
+    //    een getal of een naam van het mechanisme dat de grens afdwingt.
+    const AFDWINGERS = /\d|brokken\(|IDS_PER_VERZOEK|\.limit\(|\.slice\(/;
+
     for (const [sleutel, reden] of Object.entries(GRENZEN as Record<string, string>)) {
       expect(sleutel, 'de sleutel is <pad>#<kolom>').toMatch(/^[^#]+#[a-z_]+$/);
       expect(reden.length, `${sleutel} heeft een te korte reden`).toBeGreaterThan(30);
+      expect(reden, `${sleutel} noemt geen grens en geen mechanisme`).toMatch(AFDWINGERS);
+      expect(
+        reden,
+        `${sleutel} noemt niet waar de grens vandaan komt`,
+      ).toMatch(/\.ts|\(\)|literal/);
     }
   });
 

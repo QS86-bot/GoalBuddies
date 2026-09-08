@@ -34,8 +34,14 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
  * ⚠️ **En `error.code` is leeg.** `reportError(…, { code: error.code })` legt
  *    hier dus een lege string vast; de bruikbare informatie zit in `hint`.
  *
- * 📏 Binair gezocht op 08-09-2026, `goal_risk`, UUID's van 36 tekens:
+ * 📏 Binair gezocht op 08-09-2026, `goals?select=id`, UUID's van 36 tekens:
  *    415 id's lukt (headers samen ~16390 bytes), 416 niet. 16 KB is 16384.
+ *
+ * ⚠️ **Eén getal is er geen.** Met een langere `select` schuift de klif mee —
+ *    📏 413 tot 415 over drie varianten van dezelfde tabel. En dit is de grens
+ *    van undici; de browser, Hermes en de proxy vóór productie zijn ongemeten.
+ *    `IDS_PER_VERZOEK` staat daarom op 100 en niet tegen de klif aan; de
+ *    redenering staat in `shared/idlijst`.
  *
  * ⚠️⚠️ **Wat dit bestand níét bewaakt, en dat is met de hand gemeten.** De
  *    eerste versie bouwde de brokkenlus hier zélf op en raakte `fetchRisicos()`
@@ -137,9 +143,11 @@ describe.skipIf(!rlsTestsConfigured)('een id-lijst boven de 16 KB-klif', () => {
       //    `IDS_PER_VERZOEK` op 500 zetten, waarna de test hierboven één brok
       //    maakt die net zo hard omvalt — maar dan met een melding die naar de
       //    verkeerde oorzaak wijst.
-      expect(IDS_PER_VERZOEK, 'de klif is gemeten op 416; 200 laat de helft vrij').toBeLessThan(
-        400,
-      );
+      expect(
+        IDS_PER_VERZOEK,
+        'de klif ligt boven de 400 en de verzoekregel bijt bij 200; 100 houdt op ' +
+          'allebei een factor twee marge',
+      ).toBeLessThanOrEqual(100);
     },
     TEST_TIMEOUT,
   );

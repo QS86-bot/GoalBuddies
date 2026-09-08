@@ -4,8 +4,8 @@
  * ⚠️ **De klif zit in het antwoord en niet in het verzoek, en dat is de hele
  *    reden dat dit bestand bestaat.** PostgREST echoot bij een GET de volledige
  *    querystring terug in een `Content-Location`-responseheader, percent-gecodeerd.
- *    Undici — de fetch van Node en van de webbundel — kapt af zodra álle
- *    responseheaders samen boven 16 KB uitkomen, met `UND_ERR_HEADERS_OVERFLOW`.
+ *    Undici — de fetch van Node — kapt af zodra álle responseheaders samen boven
+ *    16 KB uitkomen, met `UND_ERR_HEADERS_OVERFLOW`.
  *
  * ⚠️ **Wat er dan terugkomt is een gewoon `{ error }` en geen uitzondering**, en
  *    dat is nagemeten toen een test die het tegendeel aannam rood werd.
@@ -16,18 +16,27 @@
  *    blijft. Bij de Risico-radar leest dat als "nog niet berekend", en dat is een
  *    betekenisvolle stand.
  *
- * 📏 Gemeten op de lokale PostgREST (08-09-2026, `goal_risk` met UUID's van 36
+ * 📏 Gemeten op de lokale PostgREST (08-09-2026, `goals` met UUID's van 36
  *    tekens), binair gezocht naar de kantelrand:
  *
  *      200 id's   url= 7445   content-location= 7826    HTTP 200
  *      400 id's   url=14845   content-location=15626    HTTP 200
  *      415 id's                headers samen ~16390      HTTP 200   ← laatste
  *      416 id's                                          UND_ERR_HEADERS_OVERFLOW
- *      500 id's   url=18545                              UND_ERR_HEADERS_OVERFLOW
  *
  *    16 KB is 16384 bytes; de laatste die lukt zit daar tegenaan. **Dus niet de
  *    URL-lengte is de grens maar de teruggekaatste querystring**, en die is door
  *    het percent-coderen van `(`, `)` en `,` ongeveer 5% lánger dan de URL.
+ *
+ * ⚠️ **Eén getal is er geen, want de klif schuift met de rest van het verzoek.**
+ *    📏 Zelfde tabel, andere `select`: `select=id` → 415, `select=id,title,category`
+ *    → 414, met een `neq`, een `order` en een `limit` erbij → 413. Alles wat
+ *    mee-echoot in `Content-Location` eet van hetzelfde budget. Reken dus op
+ *    "ergens boven de 400" en niet op een grens.
+ *
+ * ⚠️ **En `.or()` valt eerder om dan `.in()`**: 📏 op `goals?select=id` haalt
+ *    `.in()` er 415 en `.or()` er 360 — een `id.eq.` per id is nu eenmaal langer
+ *    dan een komma. `scripts/idlijst-controle.mjs` kent alle drie de vormen.
  *
  * ⚠️ **Dat verklaart een verschil dat anders onverklaarbaar is.** Een `.rpc()`
  *    met een even lange URL komt er wél door: dat is een POST, en daar zet
@@ -35,16 +44,33 @@
  *    16506 lukte — de conclusie "de URL is te lang" was daarmee bijna
  *    onvermijdelijk en fout.
  *
- * ⚠️ **Waarom 200 en niet 400.** De klif is een budget over álle headers samen,
- *    dus hij verschuift met wat er verder nog in het antwoord staat: een langere
- *    `select`, een extra filter, een `Preference-Applied`. 200 laat de helft van
- *    het budget vrij, en het is hetzelfde getal als `STAP` in `goals/api.ts`,
- *    dat om dezelfde reden bestaat.
+ * ⚠️⚠️ **Er zijn twee muren en niet één, en dat is de reden dat hier 100 staat
+ *    en niet 200.** De 16 KB hierboven is de héénweg terug; er is ook een
+ *    heenweg. Een proxy vóór PostgREST — nginx en Kong staan standaard op
+ *    `large_client_header_buffers … 8k` — kapt de **verzoekregel** af, en die is
+ *    percent-gecodeerd langer dan hij eruitziet. 📏 Gemeten met de echte
+ *    queries van dit project:
  *
- * ⚠️ **Wat hier niet in zit.** Of Hermes' fetch op een echt toestel dezelfde
- *    16 KB kent. Deze meting is in Node gedaan; op een toestel kan de klif hoger
- *    of lager liggen. 200 is ruim genoeg dat dat verschil niet uitmaakt — maar
- *    wie het getal verhoogt, meet eerst dáár.
+ *      100 id's   verzoekregel 3983 – 4061 bytes
+ *      200 id's   verzoekregel 7883 – 7961 bytes   ← ~230 bytes onder de 8192
+ *
+ *    Bij 200 is de marge dus ongeveer zes id's, niet "de helft van het budget"
+ *    zoals hier eerst stond. Bij 100 is het op allebei de muren een factor twee.
+ *    Gevonden in de security-review op QS8-368.
+ *
+ * ⚠️⚠️ **Wat hier níét gemeten is, en dat is precies de muur die telt.** Deze
+ *    metingen zijn tegen de lokale PostgREST gedaan, met undici. 📏 Nagekeken
+ *    welke fetch er in productie draait: `src/lib/supabase.ts` geeft
+ *    `fetchMetTimeout` mee, en die roept de globále `fetch` aan — op web is dat
+ *    de browser, op native react-native's XHR-implementatie. **Undici draait hier
+ *    alleen in tests en scripts.** De grens van de browser, van Hermes en van
+ *    de proxy vóór `<ref>.supabase.co` zijn geen van drieën gemeten; een poging
+ *    daartoe liep vast op de uitgaande proxy van de bouwomgeving.
+ *
+ *    Daarom 100 en geen 200: het is niet de grens opzoeken maar er ruim onder
+ *    blijven. Wie hem wíl verhogen, meet eerst op een echt toestel én tegen
+ *    productie — de dossierrij van 08-09 in `docs/ENGINEER-REVIEW.md` zegt dat
+ *    ook.
  */
 
 /**
@@ -55,14 +81,15 @@
  *    horen niet dezelfde constante te zijn, om dezelfde reden als in de kop van
  *    `shared/api`: dan verandert het bijstellen van de een stilletjes de ander.
  */
-export const IDS_PER_VERZOEK = 200;
+export const IDS_PER_VERZOEK = 100;
 
 /**
  * Hakt een lijst in brokken van hoogstens `grootte`.
  *
  * ⚠️ **Een lege lijst geeft nul brokken en niet één lege.** Dat scheelt de
- *    aanroeper een verzoek dat gegarandeerd niets oplevert — en `.in('x', [])`
- *    is bovendien een vorm waar PostgREST zelf over struikelt.
+ *    aanroeper een verzoek dat gegarandeerd niets oplevert. (Hier stond erbij
+ *    dat PostgREST over `in.()` struikelt; dat is een bewering die ik niet
+ *    gemeten heb en hij is eruit. De eerste reden staat op zichzelf.)
  *
  * ⚠️ **Ontdubbelt niet.** Dat is een keuze van de aanroeper: `fetchDoelnamen()`
  *    doet het wél (`[...new Set(ids)]`) omdat zijn lijst uit twee bronnen komt,

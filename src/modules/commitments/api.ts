@@ -154,7 +154,7 @@ export async function fetchMogelijkeBegunstigden(): Promise<readonly MogelijkeBe
   if (groepIds.length === 0) return [];
 
   // ⚠️ **Begrensd door `MAX_GROEPEN` in de vraag erboven** — hoogstens twintig
-  //    id's (QS8-368). De klif op een GET ligt op ~415, in de
+  //    id's (QS8-368). De klif op een GET ligt boven ~400, in de
   //    `Content-Location`-responseheader; zie `shared/idlijst`.
   const leden = await db
     .from('group_members')

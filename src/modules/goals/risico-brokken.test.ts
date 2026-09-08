@@ -32,13 +32,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /** Elke `.in()`-aanroep die de datalaag doet, met de lijst die hij meestuurde. */
 const inAanroepen: (readonly string[])[] = [];
 
+/** Bij welke aanroep (nul-gebaseerd) de mock een fout teruggeeft. `null` = nooit. */
+let faalBij: number | null = null;
+
+/** Rijen die de mock teruggeeft, per aanroep. Leeg als er niets voor is gezet. */
+const rijenPerAanroep: { goal_id: string; status: string; reason: null; computed_at: string }[][] =
+  [];
+
 vi.mock('../../lib/supabase', () => ({
   supabase: () => ({
     from: () => ({
       select: () => ({
         in: (_kolom: string, ids: readonly string[]) => {
+          const nummer = inAanroepen.length;
           inAanroepen.push([...ids]);
-          return Promise.resolve({ data: [], error: null });
+
+          if (faalBij === nummer) {
+            return Promise.resolve({
+              // De vorm die postgrest-js van een headers-overflow maakt: geen
+              // code, de diagnose in de hint. Zie `shared/idlijst`.
+              data: null,
+              error: { message: 'TypeError: fetch failed', code: '', hint: 'headers exceeded' },
+            });
+          }
+
+          return Promise.resolve({ data: rijenPerAanroep[nummer] ?? [], error: null });
         },
       }),
     }),
@@ -55,7 +73,14 @@ const ids = (n: number): string[] =>
 
 beforeEach(() => {
   inAanroepen.length = 0;
+  rijenPerAanroep.length = 0;
+  faalBij = null;
 });
+
+/** Eén rij zoals `goal_risk` hem teruggeeft. */
+function rij(goalId: string) {
+  return { goal_id: goalId, status: 'on_track', reason: null, computed_at: '2026-09-08T00:00:00Z' };
+}
 
 describe('fetchRisicos() en de 16 KB-klif', () => {
   it('doet één verzoek voor een lijst die past', async () => {
@@ -68,7 +93,7 @@ describe('fetchRisicos() en de 16 KB-klif', () => {
   });
 
   it('stuurt nooit meer dan de gemeten brokgrootte in één verzoek', async () => {
-    // ⚠️ **De belofte.** 📏 De klif ligt op 416 id's (zie `shared/idlijst`);
+    // ⚠️ **De belofte.** 📏 De klif ligt ergens boven de 400 (zie `shared/idlijst`);
     //    `doelen.tsx` stapelt zijn pagina's, dus 500 is bereikbaar met
     //    vijfentwintig keer "meer laden".
     await fetchRisicos(ids(500));
@@ -93,5 +118,44 @@ describe('fetchRisicos() en de 16 KB-klif', () => {
     await fetchRisicos([]);
 
     expect(inAanroepen).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️⚠️ **Dit blok bestaat omdat de security-review het gat vond.** 📏 Gemeten:
+ *    `return kaart` in het foutpad vervangen door `continue` — dus dóórvragen na
+ *    een fout — liet 14 van de 14 tests groen, en de volledige suite ook. Het
+ *    besluit dat deze branch invoert (teruggeven wat je hebt, in plaats van
+ *    niets) had daarmee geen enkele grendel. Regel 18 vraag 3, op een tak die op
+ *    deze branch nieuw is.
+ */
+describe('fetchRisicos() als een brok mislukt', () => {
+  it('houdt wat er vóór de fout binnenkwam', async () => {
+    const alle = ids(500);
+    const [eerste, tweede] = alle as [string, string];
+    rijenPerAanroep[0] = [rij(eerste), rij(tweede)];
+    faalBij = 1;
+
+    const uit = await fetchRisicos(alle);
+
+    expect(uit.size, 'het eerste brok hoort niet weggegooid te worden').toBe(2);
+    expect(uit.get(eerste)?.stand).toBe('on_track');
+  });
+
+  it('stopt na de fout en vuurt geen gedoemde verzoeken meer af', async () => {
+    // ⚠️ De andere helft, en de gevaarlijkste mutatie: bij een echte storing
+    //    zou `continue` hier ⌈n/200⌉ verzoeken achter elkaar afvuren, elk met de
+    //    timeout van `fetchMetTimeout()` eronder.
+    faalBij = 0;
+
+    await fetchRisicos(ids(1000));
+
+    expect(inAanroepen, 'na de eerste fout hoort er niets meer uit te gaan').toHaveLength(1);
+  });
+
+  it('geeft een lege kaart als het éérste brok al mislukt', async () => {
+    faalBij = 0;
+
+    expect((await fetchRisicos(ids(500))).size).toBe(0);
   });
 });

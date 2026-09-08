@@ -103,9 +103,17 @@ export async function fetchRisicos(
       .select('goal_id, status, reason, computed_at')
       .in('goal_id', [...brok]);
 
-    // ⚠️ Stoppen en teruggeven wat er ís, niet alles weggooien. Een halve radar
-    //    is bruikbaar; het scherm toont niets bij een ontbrekende stand en dat
-    //    is dezelfde uitkomst als vóór deze functie bestond.
+    // ⚠️⚠️ **Stoppen en teruggeven wat er ís, en dat is níét hetzelfde als het
+    //    afkappen dat hierboven afgewezen wordt.** Die vraag kwam uit de
+    //    security-review op deze branch en hij is terecht: allebei laten ze een
+    //    doel zonder badge achter. Het verschil zit in wat eraan voorafging.
+    //    Afkappen gebeurt op een gelúkt verzoek en is stil — niets in het
+    //    systeem weet dat er iets ontbreekt. Dit gebeurt na een gemelde fout,
+    //    met `opgehaald` erbij in het rapport, dus de leegte heeft een spoor.
+    //
+    // ⚠️ En dóórvragen na een fout is de slechtste van de drie: bij een echte
+    //    storing vuurt het scherm dan ⌈n/200⌉ gedoemde verzoeken achter elkaar
+    //    af, elk met de timeout van `fetchMetTimeout()` eronder.
     if (error) {
       // ⚠️ `hint` en niet alleen `code`: bij de klif uit `shared/idlijst` is
       //    `code` een lege string en staat de hele diagnose in de hint.
