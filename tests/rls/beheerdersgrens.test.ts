@@ -27,13 +27,14 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 60_000;
 
-let anna: TestUser;
 let bram: TestUser;
 let carol: TestUser;
 
 interface Groep {
   id: string;
   code: string;
+  /** De oprichter, en dus de actieve beheerder van deze groep. */
+  beheerder: TestUser;
 }
 
 /**
@@ -48,7 +49,14 @@ interface Groep {
  *    per test heeft die volgorde niet nodig.
  */
 async function verseGroep(naam: string, leden: readonly TestUser[]): Promise<Groep> {
-  const g = await anna.db.rpc('create_group', { group_name: naam });
+  // ⚠️⚠️ **Een eigen beheerder per groep, en dat is geen netheid maar een
+  //    gerepareerde opzet.** `create_group()` staat er 📏 tien per gebruiker per
+  //    dag toe (`daily_limit`), en dit bestand maakt er meer. Met één vaste
+  //    oprichter viel de elfde test om op die limiet — een rode test met een
+  //    melding die niets met deze guard te maken heeft.
+  const beheerder = await createTestUser(`beheersgrens-${naam.toLowerCase().replace(/[^a-z]/g, '')}`);
+
+  const g = await beheerder.db.rpc('create_group', { group_name: naam });
   if (g.error) throw new Error(`groep: ${g.error.message}`);
   const uit = (g.data ?? {}) as { ok?: boolean; group?: { id: string; invite_code: string } };
   if (uit.ok !== true || !uit.group) throw new Error(`groep: ${JSON.stringify(g.data)}`);
@@ -57,7 +65,7 @@ async function verseGroep(naam: string, leden: readonly TestUser[]): Promise<Gro
     const mee = await wie.db.rpc('join_group_with_code', { code: uit.group.invite_code });
     if (mee.error) throw new Error(`meedoen: ${mee.error.message}`);
   }
-  return { id: uit.group.id, code: uit.group.invite_code };
+  return { id: uit.group.id, code: uit.group.invite_code, beheerder };
 }
 
 /** De rij zoals `service_role` hem ziet — buiten elke policy om. */
@@ -73,7 +81,6 @@ async function lid(groepId: string, userId: string) {
 
 describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander niet aan', () => {
   beforeAll(async () => {
-    anna = await createTestUser('beheersgrens-anna');
     bram = await createTestUser('beheersgrens-bram');
     carol = await createTestUser('beheersgrens-carol');
   }, SETUP_TIMEOUT);
@@ -88,7 +95,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Promotie', [bram]);
 
-        const { error } = await anna.db
+        const { error } = await groep.beheerder.db
           .from('group_members')
           .update({ role: 'admin' })
           .eq('group_id', groep.id)
@@ -112,7 +119,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Degradatie', [bram]);
 
-        // ⚠️ Met `adminDb()` en niet met een PATCH van anna: dát pad is precies
+        // ⚠️ Met `adminDb()` en niet met een PATCH van de beheerder: dát pad is precies
         //    wat de test hierboven afsluit, en een opzet die daarop leunt meet
         //    niets meer zodra die reparatie werkt.
         const promotie = await adminDb()
@@ -126,10 +133,10 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
           .from('group_members')
           .update({ role: 'member' })
           .eq('group_id', groep.id)
-          .eq('user_id', anna.id);
+          .eq('user_id', groep.beheerder.id);
 
         expect(error, 'de degradatie landde').not.toBeNull();
-        expect((await lid(groep.id, anna.id))?.role, 'de oprichter is gedegradeerd').toBe('admin');
+        expect((await lid(groep.id, groep.beheerder.id))?.role, 'de oprichter is gedegradeerd').toBe('admin');
       },
       TEST_TIMEOUT,
     );
@@ -139,7 +146,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Pauze', [carol]);
 
-        const { error } = await anna.db
+        const { error } = await groep.beheerder.db
           .from('group_members')
           .update({ status: 'paused' })
           .eq('group_id', groep.id)
@@ -156,7 +163,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Terugzetten', [carol]);
 
-        const weg = await anna.db.rpc('verwijder_lid', {
+        const weg = await groep.beheerder.db.rpc('verwijder_lid', {
           p_group_id: groep.id,
           p_user_id: carol.id,
           p_bevestigd: true,
@@ -165,7 +172,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
         const wegUit = (weg.data ?? {}) as { ok?: boolean; reason?: string };
         if (wegUit.ok !== true) throw new Error(`uitzetten: ${wegUit.reason ?? '-'}`);
 
-        const { error } = await anna.db
+        const { error } = await groep.beheerder.db
           .from('group_members')
           .update({ status: 'active' })
           .eq('group_id', groep.id)
@@ -173,6 +180,98 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
 
         expect(error, 'het terugzetten landde').not.toBeNull();
         expect((await lid(groep.id, carol.id))?.status, 'carol is terug').toBe('inactive');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  /**
+   * ⚠️⚠️ **Deze twee zijn er ná de security-review op deze branch bij gekomen.**
+   *    De eerste opzet liet `* → inactive` van een ander bewust staan, met als
+   *    reden "uitzetten blijft een beheerdershandeling". Dat was te snel: het is
+   *    een handeling die méér doet dan de status zetten, en een kale PATCH doet
+   *    alleen het laatste.
+   */
+  describe('uitzetten loopt óók maar langs één weg', () => {
+    it(
+      'weigert een beheerder die een lid rechtstreeks uitzet',
+      async () => {
+        const groep = await verseGroep('Kale kick', [bram]);
+
+        const { error } = await groep.beheerder.db
+          .from('group_members')
+          .update({ status: 'inactive' })
+          .eq('group_id', groep.id)
+          .eq('user_id', bram.id);
+
+        expect(error, 'de kale uitzetting landde').not.toBeNull();
+        expect((await lid(groep.id, bram.id))?.status, 'bram is alsnog uitgezet').toBe('active');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️⚠️ **De belofte is de opruiming en niet de weigering**, en dat is het
+     *    verschil tussen deze test en de vorige. 📏 Gemeten met de kale PATCH:
+     *    het openstaande deadline-verzoek bleef `open`, en
+     *    `beslis_deadline_verzoek()` toetst alleen het lidmaatschap van de
+     *    **beslisser** — dus een lid dat nog wél in de groep zit kon de
+     *    streefdatum van een ex-lid verzetten en een verschuldigde straf
+     *    terugzetten. Domeinregel 5 en 11.
+     *
+     *    Deze test toetst daarom wat er ná het uitzetten in de database staat en
+     *    niet welke foutcode de PATCH gaf. Een latere reparatie die de weigering
+     *    verplaatst maar de opruiming laat vallen, wordt hier rood.
+     */
+    it(
+      'ruimt bij verwijder_lid() het openstaande deadline-verzoek op',
+      async () => {
+        const groep = await verseGroep('Opruiming', [bram]);
+
+        const doel = await bram.db
+          .from('goals')
+          .insert({ owner_id: bram.id, title: 'Opruimdoel', target_date: '2026-11-07' })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(`doel: ${doel.error.message}`);
+
+        const link = await bram.db
+          .from('goal_group_links')
+          .insert({ goal_id: doel.data.id, group_id: groep.id });
+        if (link.error) throw new Error(`koppeling: ${link.error.message}`);
+
+        const vraag = await bram.db.rpc('vraag_deadline_verschuiving', {
+          p_goal_id: doel.data.id,
+          p_group_id: groep.id,
+          p_new_date: '2027-01-06',
+          // ⚠️ `reason_too_short` — de RPC eist een echte toelichting. 📏 De eerste
+          //    poging gaf die melding en niet een fout over de guard.
+          p_reason: 'Ik heb meer tijd nodig omdat het project is uitgelopen.',
+        });
+        if (vraag.error) throw new Error(`verzoek: ${vraag.error.message}`);
+        const vUit = (vraag.data ?? {}) as { ok?: boolean; reason?: string };
+        if (vUit.ok !== true) throw new Error(`verzoek: ${vUit.reason ?? '-'}`);
+
+        const weg = await groep.beheerder.db.rpc('verwijder_lid', {
+          p_group_id: groep.id,
+          p_user_id: bram.id,
+          p_bevestigd: true,
+        });
+        if (weg.error) throw new Error(`uitzetten: ${weg.error.message}`);
+
+        const verzoek = await adminDb()
+          .from('deadline_requests')
+          .select('status')
+          .eq('goal_id', doel.data.id)
+          .maybeSingle();
+        expect(verzoek.data?.status, 'het verzoek bleef open na het uitzetten').not.toBe('open');
+
+        const koppeling = await adminDb()
+          .from('goal_group_links')
+          .select('goal_id')
+          .eq('goal_id', doel.data.id)
+          .eq('group_id', groep.id);
+        expect(koppeling.data ?? [], 'de koppeling bleef staan').toHaveLength(0);
       },
       TEST_TIMEOUT,
     );
@@ -191,7 +290,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Uitzetten', [bram]);
 
-        const weg = await anna.db.rpc('verwijder_lid', {
+        const weg = await groep.beheerder.db.rpc('verwijder_lid', {
           p_group_id: groep.id,
           p_user_id: bram.id,
           p_bevestigd: true,
@@ -209,7 +308,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Toelaten', [bram]);
 
-        const weg = await anna.db.rpc('verwijder_lid', {
+        const weg = await groep.beheerder.db.rpc('verwijder_lid', {
           p_group_id: groep.id,
           p_user_id: bram.id,
           p_bevestigd: true,
@@ -253,7 +352,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
           .single();
         if (rij.error) throw new Error(`verzoek lezen: ${rij.error.message}`);
 
-        const besluit = await anna.db.rpc('beslis_lidmaatschapsverzoek', {
+        const besluit = await groep.beheerder.db.rpc('beslis_lidmaatschapsverzoek', {
           p_request_id: rij.data.id,
           p_naar: 'accepted',
         });
@@ -276,7 +375,7 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
         //    die niets met de guard te maken had. De overdracht is juist het
         //    geval dat de nieuwe grendel moet doorlaten: `verlaat_groep()` zet
         //    de rol van een ánder lid, precies wat er hierboven geweigerd wordt.
-        const weg = await anna.db.rpc('verlaat_groep', {
+        const weg = await groep.beheerder.db.rpc('verlaat_groep', {
           p_group_id: groep.id,
           p_bevestigd: true,
           p_nieuwe_beheerder: bram.id,
@@ -319,14 +418,14 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
           .eq('user_id', bram.id);
         if (tweede.error) throw new Error(`tweede beheerder: ${tweede.error.message}`);
 
-        const { error } = await anna.db
+        const { error } = await groep.beheerder.db
           .from('group_members')
           .update({ role: 'member' })
           .eq('group_id', groep.id)
-          .eq('user_id', anna.id);
+          .eq('user_id', groep.beheerder.id);
 
         expect(error, 'de eigen degradatie werd geweigerd').toBeNull();
-        expect((await lid(groep.id, anna.id))?.role, 'de rol is niet gewijzigd').toBe('member');
+        expect((await lid(groep.id, groep.beheerder.id))?.role, 'de rol is niet gewijzigd').toBe('member');
       },
       TEST_TIMEOUT,
     );
@@ -341,11 +440,11 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
       async () => {
         const groep = await verseGroep('Noop', [bram]);
 
-        const { error } = await anna.db
+        const { error } = await groep.beheerder.db
           .from('group_members')
           .update({ role: 'admin', status: 'active' })
           .eq('group_id', groep.id)
-          .eq('user_id', anna.id);
+          .eq('user_id', groep.beheerder.id);
 
         expect(error, 'een no-op hoort geen fout te geven').toBeNull();
       },

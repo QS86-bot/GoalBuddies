@@ -98,6 +98,7 @@ declare
   v_toegestaan boolean := false;
   v_overdracht boolean := false;
   v_besluit    boolean := false;
+  v_uitzetting boolean := false;
 begin
   -- ⚠️ **Deze toets staat vóór de vroege uitgang en geldt dus voor élke rol,
   --    `service_role` inbegrepen.** Dat is de keuze die `archief_blijft_archief()`
@@ -197,6 +198,10 @@ begin
       nullif(current_setting('app.lidmaatschap_besloten', true), '') = old.group_id::text,
       false
     );
+    v_uitzetting := coalesce(
+      nullif(current_setting('app.lid_uitgezet', true), '') = old.group_id::text,
+      false
+    );
 
     -- ⚠️ **Een rolwijziging van een ander loopt alleen via `verlaat_groep()`.**
     --    Er is geen scherm en geen andere RPC die een rol zet — 📏 nagemeten met
@@ -218,6 +223,29 @@ begin
       raise exception 'lid_teruggezet'
         using hint = 'Een uitgezet lid komt terug via een lidmaatschapsverzoek, '
                      'dat het lid zelf indient en een beheerder toewijst.';
+    end if;
+
+    -- ⚠️⚠️ **Uitzetten loopt óók maar langs één weg, en dat is een correctie uit
+    --    de security-review op deze branch.** Hier stond eerst dat `* → inactive`
+    --    een gewone beheerdershandeling blijft. Dat klopte niet: `verwijder_lid()`
+    --    doet méér dan de status zetten — het ruimt `goal_group_links` op en zet
+    --    openstaande `deadline_requests` op `withdrawn`. Een kale PATCH slaat dat
+    --    over.
+    --
+    -- 📏 Gemeten wat er dan blijft staan: het openstaande deadline-verzoek van
+    --    het uitgezette lid blijft `open`, en `beslis_deadline_verzoek()` toetst
+    --    alleen het lidmaatschap van de **beslisser** en niet van de aanvrager.
+    --    Een lid dat nog wél in de groep zit, verzet daarmee de streefdatum van
+    --    het doel van iemand die er niet meer in zit — en zet via
+    --    `update commitments … set status = 'set' where status = 'due'` een
+    --    verschuldigde straf terug. Dat raakt domeinregel 5 en 11.
+    if new.status = 'inactive' and old.status is distinct from 'inactive'
+       and not v_uitzetting
+    then
+      raise exception 'lid_uitgezet_buiten_de_rpc'
+        using hint = 'Een lid uitzetten loopt via verwijder_lid(). Die ruimt ook de '
+                     'gedeelde doelen en openstaande verzoeken op; een rechtstreekse '
+                     'PATCH doet dat niet.';
     end if;
 
     -- ⚠️ **`paused` schrijft niemand** (QS8-325 gaat over de vraag of die stand
@@ -400,6 +428,16 @@ begin
        set role = 'admin'
      where group_id = p_group_id
        and user_id  = p_nieuwe_beheerder;
+
+    -- ⚠️⚠️ **Meteen weer leeg, en dat is een correctie uit de security-review.**
+    --    `set_config(..., true)` is transactie-lokaal en niet functie-lokaal:
+    --    📏 gemeten dat de sleutel ná de RPC nog steeds gezet is, en dat een
+    --    tweede UPDATE in dezelfde transactie er dus onder valt. Vandaag is dat
+    --    niet client-bereikbaar — PostgREST voert één verzoek als één transactie
+    --    uit — maar "er is nooit een tweede schrijver in dezelfde transactie" is
+    --    een aanname en geen grendel, en de stack-keuze van dit project is een
+    --    langdraaiende Node-server die wél in expliciete transacties schrijft.
+    perform set_config('app.beheer_overgedragen', '', true);
 
     insert into group_events (group_id, actor_id, subject_id, event_type)
     values (p_group_id, auth.uid(), p_nieuwe_beheerder, 'admin_transferred');
@@ -628,6 +666,9 @@ begin
          set status = 'active',
              role   = 'member'
        where group_id = r.group_id and user_id = r.user_id;
+
+      -- ⚠️ Meteen weer leeg — zelfde reden als bij `verlaat_groep()`.
+      perform set_config('app.lidmaatschap_besloten', '', true);
     end if;
     -- v_bestaand = 'active': de gewenste toestand is al bereikt. Niets te doen,
     -- en het verzoek is terecht als aangenomen afgehandeld.
@@ -643,6 +684,100 @@ begin
   );
 
   return jsonb_build_object('ok', true, 'status', p_naar);
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.verwijder_lid(p_group_id uuid, p_user_id uuid, p_bevestigd boolean DEFAULT false)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_status     text;
+  v_rol        text;
+  v_ontkoppeld integer := 0;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Niet ingelogd';
+  end if;
+
+  -- Zelfde reden als in `verlaat_groep()`: de beslissing gaat over de rijen van
+  -- ánderen, dus de gróép is wat vergrendeld moet worden.
+  perform 1 from groups where id = p_group_id for update;
+
+  if not is_group_admin(p_group_id) then
+    return jsonb_build_object('ok', false, 'reason', 'not_admin');
+  end if;
+
+  if p_bevestigd is not true then
+    return jsonb_build_object('ok', false, 'reason', 'not_confirmed');
+  end if;
+
+  -- ⚠️ Jezelf uitzetten is vertrekken, en dat heeft zijn eigen functie met een
+  --    overdracht erin. Zou dit het toelaten, dan is er een tweede route naar
+  --    hetzelfde effect die de overdracht overslaat.
+  if p_user_id = (select auth.uid()) then
+    return jsonb_build_object('ok', false, 'reason', 'self');
+  end if;
+
+  select m.status, m.role into v_status, v_rol
+  from group_members m
+  where m.group_id = p_group_id and m.user_id = p_user_id
+  for update;
+
+  if v_status is null then
+    return jsonb_build_object('ok', false, 'reason', 'not_member');
+  end if;
+
+  if v_status = 'inactive' then
+    return jsonb_build_object('ok', false, 'reason', 'already_removed');
+  end if;
+
+  if v_rol = 'admin' and not exists (
+    select 1 from group_members m
+    where m.group_id = p_group_id
+      and m.user_id  not in (p_user_id)
+      and m.role     = 'admin'
+      and m.status  <> 'inactive'
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'last_admin');
+  end if;
+
+  update deadline_requests
+     set status     = 'withdrawn',
+         decided_at = now()
+   where group_id     = p_group_id
+     and requester_id = p_user_id
+     and status       = 'open';
+
+  with weg as (
+    delete from goal_group_links l
+    using goals d
+    where l.goal_id  = d.id
+      and l.group_id = p_group_id
+      and d.owner_id = p_user_id
+    returning 1
+  )
+  select count(*) into v_ontkoppeld from weg;
+
+  -- ⚠️ **De benoemde uitzondering voor `guard_group_member_update()`** —
+  --    QS8-356. Die guard weigert sinds 0198 ook `* → inactive` van een ánder
+  --    lid, want een kale PATCH slaat de opruiming hierboven over: de
+  --    `goal_group_links` blijven staan en een openstaand `deadline_requests`
+  --    blijft `open`, waarna een lid dat nog wél in de groep zit het kan
+  --    goedkeuren en de streefdatum van een ex-lid verzet.
+  perform set_config('app.lid_uitgezet', p_group_id::text, true);
+
+  update group_members
+     set status = 'inactive'
+   where group_id = p_group_id
+     and user_id  = p_user_id;
+
+  -- ⚠️ Meteen weer leeg: `set local` is transactie-lokaal, niet functie-lokaal.
+  perform set_config('app.lid_uitgezet', '', true);
+
+  return jsonb_build_object('ok', true, 'ontkoppelde_doelen', v_ontkoppeld);
 end;
 $function$;
 
@@ -677,7 +812,8 @@ AS $function$
       --    deze teller ze niet als ongeregistreerd meldt — en zodat een vierde
       --    functie die ze zet, wél gemeld wordt.
       ('app.beheer_overgedragen',   array['verlaat_groep', 'guard_group_member_update']),
-      ('app.lidmaatschap_besloten', array['beslis_lidmaatschapsverzoek', 'guard_group_member_update'])
+      ('app.lidmaatschap_besloten', array['beslis_lidmaatschapsverzoek', 'guard_group_member_update']),
+      ('app.lid_uitgezet',          array['verwijder_lid', 'guard_group_member_update'])
   ),
   bekend as (
     select p.proname::text as naam, s.instelling, s.toegestaan
@@ -712,11 +848,26 @@ AS $function$
          'te komen'
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
+    -- ⚠️⚠️ **Per sleutel en niet per functie, en dat is een correctie uit de
+    --    security-review op QS8-356.** Hier stond
+    --    `not exists (select 1 from sleutel s where p.prosrc like '%'||s.instelling||'%')`,
+    --    en dat pleit een functie in zijn geheel vrij zodra hij één geregistreerde
+    --    sleutel noemt. 📏 Geijkt met een mutatie: een vijfde, ongeregistreerde
+    --    sleutel ín `guard_group_member_update()` met een `return new` erachter —
+    --    een volledige bypass van de grendel die 0198 juist bouwt — gaf **nul
+    --    rijen** en liet beide tellertests groen.
+    --
+    --    De blinde vlek lag precies op de zeven functies die ertoe doen: dat zijn
+    --    de plekken waar een bypass-sleutel realistisch terechtkomt. Nu wordt elke
+    --    `app.*` in de bron los tegen het register gelegd.
+    cross join lateral (
+      select distinct m[1] as instelling
+        from regexp_matches(p.prosrc, '(app\.[a-z_]+)', 'g') as m
+    ) gevonden
    where n.nspname = 'public'
      and p.proname <> 'sleutelzetters'
-     and p.prosrc ~ 'app\.[a-z_]+'
      and not exists (
-       select 1 from sleutel s where p.prosrc like '%' || s.instelling || '%'
+       select 1 from sleutel s where s.instelling = gevonden.instelling
      )
 
    order by 1;

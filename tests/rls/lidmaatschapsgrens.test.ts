@@ -164,12 +164,22 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
       //    "Nul rijen" is gratis zodra het filter nergens op past. Deze test toont
       //    dat de rij bestaat, dat het filter klopt en dat de weg open is voor wie
       //    hem mag nemen.
-      // ⚠️ **`inactive` en niet `paused`, sinds QS8-356.** Deze test gaat over
-      //    het *bereik* — komt de beheerder bij de rij van een ander? — en niet
-      //    over wélke waarde hij zet. Migratie 0198 weigert een beheerder die een
-      //    ánder op `paused` zet, want niemand schrijft die stand (QS8-325).
-      //    Uitzetten blijft wél een beheerdershandeling, dus dat toont hetzelfde
-      //    bereik zonder een handeling te gebruiken die nergens ontworpen is.
+      // ⚠️⚠️ **Het bewijs is de hóórbare weigering, en dat is een gerepareerde
+      //    opzet — twee keer, sinds QS8-356.**
+      //
+      //    Deze test gaat over het *bereik*: komt de beheerder bij de rij van een
+      //    ander, of is "nul rijen" hierboven gratis omdat het filter nergens op
+      //    past? Hij bewees dat eerst door die ander op `paused` te zetten, en na
+      //    migratie 0198 door hem uit te zetten. Allebei worden nu geweigerd —
+      //    0198 sloot óók de kale uitzetting, want die slaat de opruiming van
+      //    `verwijder_lid()` over.
+      //
+      //    Wat overblijft is beter dan allebei: `guard_group_member_update()` is
+      //    een BEFORE-trigger, dus hij vúúrt alleen als er een rij geraakt is.
+      //    Een `P0001` bewijst het bereik dus scherper dan een geslaagde update,
+      //    en zonder een handeling te gebruiken die nergens ontworpen is. De
+      //    tegenstelling met de test hierboven blijft precies staan: een gewoon
+      //    lid raakt nul rijen en krijgt géén fout.
       const poging = await w.alice.db
         .from('group_members')
         .update({ status: 'inactive' })
@@ -177,8 +187,9 @@ describe.skipIf(!rlsTestsConfigured)('group_members_update — wie raakt welke r
         .eq('user_id', w.bob.id)
         .select('user_id, status');
 
-      expect(poging.error).toBeNull();
-      expect(poging.data ?? []).toHaveLength(1);
+      expect(poging.error?.code, 'de trigger vuurde niet — dan is de rij niet geraakt').toBe(
+        'P0001',
+      );
 
       const terug = await adminDb()
         .from('group_members')

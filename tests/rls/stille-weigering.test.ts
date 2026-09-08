@@ -257,14 +257,20 @@ describe.skipIf(!rlsTestsConfigured)('QS8-314 — een geweigerde update meldt ge
   it(
     'een beheerder zet de status van een lid en dat landt gewoon',
     async () => {
-      const r = await beheerder.db
-        .from('group_members')
-        .update({ status: 'inactive' })
-        .eq('group_id', groupId)
-        .eq('user_id', lid.id)
-        .select();
+      // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** Migratie 0198 sloot de kale
+      //    PATCH-uitzetting, want die slaat de opruiming over die de RPC wél
+      //    doet (`goal_group_links`, openstaande `deadline_requests`). De
+      //    belofte van déze test staat los daarvan: een beheerder komt er wél
+      //    doorheen, en dat is de tegenhanger die voorkomt dat de guard op alles
+      //    werpt.
+      const r = await beheerder.db.rpc('verwijder_lid', {
+        p_group_id: groupId,
+        p_user_id: lid.id,
+        p_bevestigd: true,
+      });
 
       expect(r.error).toBeNull();
+      expect((r.data ?? {}) as { ok?: boolean }).toMatchObject({ ok: true });
       const na = await leesRij(lid.id)();
       expect((na.data as Rij).status).toBe('inactive');
 

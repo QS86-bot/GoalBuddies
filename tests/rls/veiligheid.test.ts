@@ -673,39 +673,44 @@ describe.skipIf(!rlsTestsConfigured)('melden, blokkeren en uitzetten', () => {
   );
 
   /**
-   * ⚠️ **De audit hangt aan de tabel en niet aan de RPC**, want een beheerder kan
-   *    sinds 0029 met één kaal verzoek aan PostgREST `status = 'inactive'` zetten.
-   *    Zou het spoor in `verwijder_lid()` staan, dan is het precies zo
-   *    betrouwbaar als de belofte dat niemand die route gebruikt.
+   * ⚠️ **De audit hangt aan de tabel en niet aan de RPC.** Zou het spoor in
+   *    `verwijder_lid()` staan, dan is het precies zo betrouwbaar als de belofte
+   *    dat niemand een andere route gebruikt.
    *
    * Rood gemaakt door de trigger `group_members_uitzetting` te droppen: dan
    * schrijft de RPC-weg nog steeds niets — er stond immers nooit een insert in de
    * functie — en verdwijnt het spoor volledig.
    */
   it(
-    'schrijft een spoor, ook bij een uitzetting buiten de RPC om',
+    'schrijft het spoor van een uitzetting vanuit de tabel en niet vanuit de RPC',
     async () => {
       const viaRpc = await adminDb()
         .from('group_events')
-        .select('subject_id')
+        .select('subject_id, actor_id')
         .eq('group_id', f.groep.id)
         .eq('event_type', 'member_removed');
       expect(viaRpc.data ?? [], 'de RPC liet geen spoor na').toHaveLength(1);
 
-      // Nu de kale weg: Cor eruit met een gewone UPDATE.
-      const kaal = await f.anna.db
-        .from('group_members')
-        .update({ status: 'inactive' })
-        .eq('group_id', f.groep.id)
-        .eq('user_id', f.cor.id);
-      expect(kaal.error).toBeNull();
-
-      const naKaal = await adminDb()
-        .from('group_events')
-        .select('subject_id')
-        .eq('group_id', f.groep.id)
-        .eq('event_type', 'member_removed');
-      expect(naKaal.data ?? [], 'de kale UPDATE liet geen spoor na').toHaveLength(2);
+      // ⚠️⚠️ **Hier stond het contrast, en dat is vervallen — QS8-356.** Deze test
+      //    bewees het punt met een tweede route: eerst de RPC, dan een kále PATCH
+      //    door een beheerder, en beide lieten een spoor na. Migratie 0198 heeft
+      //    die tweede route gesloten, want een kale PATCH slaat de opruiming over
+      //    en laat een openstaand deadline-verzoek van een ex-lid leven.
+      //
+      // 📏 En hij is niet te vervangen door `adminDb()`: `meld_uitzetting()` eist
+      //    `auth.uid() is not null`, en `service_role` heeft die niet. Gemeten:
+      //    de kale UPDATE langs de beheerdersclient gaf één rij in plaats van
+      //    twee. Er ís geen tweede route meer om het contrast mee te tonen.
+      //
+      // ⚠️ **Wat er nog wél bewaakt wordt is het punt zelf**, en dat is genoeg:
+      //    `verwijder_lid()` bevat geen enkele `insert into group_events` voor
+      //    `member_removed`, dus die rij komt van de trigger. Droppen van
+      //    `group_members_uitzetting` maakt daarom ook deze overgebleven helft
+      //    rood — dat is de mutatie waarmee hij geijkt is, en die is onveranderd.
+      expect(viaRpc.data?.[0]?.subject_id, 'het spoor wijst niet naar de uitgezette').toBe(
+        f.bram.id,
+      );
+      expect(viaRpc.data?.[0]?.actor_id, 'het spoor noemt niet wie het deed').toBe(f.anna.id);
     },
     TEST_TIMEOUT,
   );
