@@ -265,6 +265,55 @@ describe.runIf(rlsTestsConfigured)('het dagplafond op de zes tabellen van QS8-34
     );
   });
 
+  /**
+   * ⚠️⚠️ **Een plafond telt rijen en geen bytes, en dat is hier de scherpste
+   *    les van dit issue.** `goal_interviews` had nul CHECK-constraints en
+   *    `answers` is vrije `jsonb`; `interviewSchema` begrenst elk antwoord op
+   *    1000 tekens, maar dat is de cliënt. 📏 Tweehonderd rijen — precies bínnen
+   *    het plafond — waren samen 40 MB, acht procent van de gratis tier, zonder
+   *    dat het dagplafond één keer afging. Gevonden door de security-review op
+   *    deze branch; migratie 0194 zet er `goal_interviews_answers_len` op.
+   *
+   * 📏 IJKING, gedraaid 08-09-2026: `alter table goal_interviews drop constraint
+   *    goal_interviews_answers_len` → 1 rood (deze test), 9 groen. Terug erop →
+   *    10 groen.
+   */
+  describe('de bytes, niet alleen de rijen', () => {
+    it(
+      'weigert één interview dat groter is dan de grens',
+      async () => {
+        const { error } = await alice.db
+          .from('goal_interviews')
+          .insert({ goal_id: aliceDoel, answers: { measurable: 'x'.repeat(25_000) } });
+
+        expect(uitkomst(error)).toBe('geweigerd 23514');
+      },
+      TEST_TIMEOUT,
+    );
+
+    /** ⚠️ De must-allow ernaast: het grootste geldige interview past ruim. */
+    it(
+      'laat een volledig ingevuld interview gewoon door',
+      async () => {
+        const antwoord = 'a'.repeat(1000);
+        const { error } = await alice.db.from('goal_interviews').insert({
+          goal_id: aliceDoel,
+          answers: {
+            measurable: antwoord,
+            identity: antwoord,
+            deadline_reason: antwoord,
+            already_done: antwoord,
+            stuck_before: antwoord,
+            hours_per_week: 10,
+          },
+        });
+
+        expect(uitkomst(error)).toBe('toegelaten');
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
   describe('de must-allows', () => {
     /**
      * ⚠️ Zonder deze is "niemand kan meer iets invoegen" ook groen. Bob heeft zijn

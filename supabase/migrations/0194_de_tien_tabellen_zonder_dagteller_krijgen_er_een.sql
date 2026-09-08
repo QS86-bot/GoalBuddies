@@ -21,6 +21,7 @@
 --   drop function if exists public.dagzetten_plafond();
 --   drop function if exists public.doelinterviews_plafond();
 --   drop function if exists public.doelkoppelingen_plafond();
+--   alter table public.goal_interviews drop constraint if exists goal_interviews_answers_len;
 --
 --   De vijf indexen mogen blijven staan; ze kosten niets en breken niets.
 --
@@ -67,25 +68,47 @@
 --   INSERT-kolommen maken hem de breedste van de tien en dat leest als de
 --   grootste vector; hij is de enige die er helemaal geen is.
 --
--- **`group_members` — al begrensd op tien per dag, één laag hoger.**
---   📏 `group_members_insert_founder` eist `user_id = auth.uid()` **én** dat de
---   groep door jou is aangemaakt, en de PK is `(group_id, user_id)`. Je kunt dus
---   alleen jezelf toevoegen, aan een groep die je zelf maakte, één keer. En
---   groepen maken kan alleen via `create_group()`, die op zijn beurt weigert bij
---   tien groepen in het laatste etmaal (`daily_limit`) of tien actieve
---   lidmaatschappen (`too_many_groups`). Het plafond is dus tien rijen per dag,
---   en dat staat er al.
---   ⚠️ `groups_insert` heeft `with_check = false` — de tabel is RPC-only, dus er
---      is geen tweede weg naar een groep die deze redenering omzeilt.
+-- **`group_members` — al begrensd, maar niet door de policy alleen.**
+--   ⚠️⚠️ **Hier stond eerst "tien rijen per dag, want de policy laat alleen jezelf
+--   toe in een groep die je zelf maakte". Dat was de policy náméten en de rest
+--   vergeten** — aangewezen door de security-review op deze branch. 📏 Er zijn
+--   **drie** functies die in `group_members` schrijven, alle drie
+--   `SECURITY DEFINER` en alle drie uitvoerbaar door `authenticated`, dus alle
+--   drie lopen ze langs de policy heen:
+--
+--     create_group()                 weigert bij 10 groepen in het laatste etmaal
+--                                    (`daily_limit`) of 10 actieve lidmaatschappen
+--     join_group_with_code()         weigert bij 20 codepogingen in het venster
+--                                    (`rate_limited`), 12 leden (`group_full`) of
+--                                    10 lidmaatschappen (`too_many_groups`)
+--     beslis_lidmaatschapsverzoek()  weigert bij 12 leden of 10 groepen (QS8-328)
+--
+--   Het echte dagtempo voor eigen rijen is dus de som van de eerste twee, zo'n
+--   dertig, en de derde voegt alleen leden toe die zélf een verzoek deden. Ook
+--   dat is een orde van grootte onder elk plafond dat hier zou passen, dus de
+--   conclusie blijft staan — maar ze rust nu op de meting en niet op de policy.
+--
+--   ⚠️ De policy is dus niet de grens, en dat is precies het soort aanname dat
+--      hier duur is: een `with_check` lezen zegt niets over wat een definer-RPC
+--      ernaast mag. `groups_insert` heeft `with_check = false` en is RPC-only —
+--      ook dát is een pad dat je alleen ziet als je naar de functies kijkt.
 --
 -- **`week_reviews` — al begrensd op ~50 rijen ooit, niet per dag.**
 --   ⚠️⚠️ **Hier stond een plafond van 100, en dat was een getal dat liegt.**
---   `week_reviews_periode_grens` eist dat `group_period_start` binnen
+--   `week_reviews_periode_grens` (een `BEFORE INSERT OR UPDATE`-trigger, geen
+--   constraint) eist dat `group_period_start` binnen
 --   `[current_date - 35, current_date + 1]` valt **én** op de huddledag van de
---   groep. 📏 Gemeten: dat zijn **vijf** geldige periodestarts per groep. Met
---   `week_reviews_one_per_period` (uniek op groep, gebruiker, periodestart) en
---   het lidmaatschapsplafond van tien groepen is het maximum dus zo'n vijftig
---   rijen per gebruiker — en dat is een totaal, geen dagtempo.
+--   groep. 📏 Gemeten per huddledag: **vijf** geldige periodestarts voor de dagen
+--   0, 1, 4, 5 en 6, en **zes** voor 2 en 3 — het hangt af van hoe het venster van
+--   37 dagen valt. Met `week_reviews_one_per_period` (uniek op groep, gebruiker,
+--   periodestart) en het lidmaatschapsplafond van tien groepen is het maximum dus
+--   vijftig tot zestig rijen per venster.
+--
+--   ⚠️ **En dat is geen totaal-voor-altijd, want het venster schuift mee met
+--   `current_date`.** Hier stond "ooit, niet per dag", en dat was te sterk: er
+--   komt per groep elke week een nieuwe geldige periodestart bij. Het juiste getal
+--   is zo'n zestig in de eerste vijf weken en daarna ongeveer één per groep per
+--   week — een tempo waar geen dagplafond iets aan toevoegt.
 --
 --   ⚠️ **En een test ervoor zou groen zijn geweest om de verkeerde reden**, wat
 --   erger is dan geen test. Honderdéén rijen aanbieden vraagt honderdéén
@@ -144,12 +167,47 @@
 -- notificatiejob er niet door geraakt worden — de tak beslist op de aanwezigheid
 -- van een sessie en niet op een rolnaam, precies zoals 0083 eiste. De drie
 -- redenen waarom die tak geen achterdeur is, staan uitgeschreven in 0192; 📏 de
--- eerste ervan is voor deze zeven opnieuw nagemeten: `anon` heeft op geen van
+-- eerste ervan is voor deze zes opnieuw nagemeten: `anon` heeft op geen van
 -- hen ook maar één INSERT-kolomgrant.
 --
 -- `after insert ... for each statement` met een transitietabel: één vensterquery
 -- per verzoek in plaats van één per rij. `nieuw` wordt alleen gebruikt om de
 -- melding te kunnen invullen, niet om te beslissen — de telling is absoluut.
+
+-- ---------------------------------------------------------------------------
+-- 0. Een plafond telt rijen en geen bytes — `goal_interviews` had geen van beide
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Gevonden door de security-review op deze branch, en het is de reden dat
+--    een rijplafond alléén hier niet genoeg was.** 📏 `goal_interviews` heeft
+--    **nul** CHECK-constraints en `answers` is vrije `jsonb`. `interviewSchema`
+--    in `src/modules/goals/interview-schemas.ts` begrenst elk antwoord op 1000
+--    tekens — maar dat is de cliënt, en een vijandige POST gaat rechtstreeks naar
+--    PostgREST met de anon-key die per ontwerp in de bundel zit.
+--
+--    📏 Gemeten: 200 rijen met onsamendrukbare inhoud, precies **binnen** het
+--    plafond van 200, waren samen 40 MB — acht procent van de 500 MB gratis tier,
+--    vanaf één gewoon account, zónder dat de nieuwe grendel één keer afging.
+--
+--    Dat is de vorm waar dit project een naam voor heeft: een deur die alleen
+--    dichtzit omdat er verderop een `if` staat. Een rijplafond op een tabel met
+--    ongebonden rijen begrenst niets wat er toe doet.
+--
+-- ⚠️ De grens staat op de hele `answers` en niet per veld, want de server kent de
+--    vorm van dat object niet — alleen de cliënt doet dat. 20.000 tekens is ruim
+--    het viervoudige van het grootste geldige interview (vijf antwoorden van
+--    1000 tekens plus de sleutels, samen zo'n 5200) en laat ruimte voor een
+--    zevende vraag, terwijl het het misbruikgeval met een factor tien terugbrengt.
+--
+-- ⚠️ `char_length` en niet `octet_length`: dat is de eenheid die dit project
+--    overal gebruikt (CLAUDE.md, Emoji) en dezelfde die `commitments_body_len` en
+--    `daily_moves_body_len` al hanteren.
+
+alter table public.goal_interviews
+  drop constraint if exists goal_interviews_answers_len;
+alter table public.goal_interviews
+  add constraint goal_interviews_answers_len
+  check (char_length(answers::text) <= 20000);
 
 -- ---------------------------------------------------------------------------
 -- 1. De plafonds, op één plek
@@ -202,8 +260,29 @@ revoke all on function public.doelkoppelingen_plafond() from public, anon, authe
 -- 2. De indexen die de telling per statement dragen (schaalbaarheidsregel 11)
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ De trigger telt bij élke insert het venster van een etmaal. Zonder index is
---    dat een seq scan over de hele tabel, en dan is de rem zelf de vertraging.
+-- ⚠️ De trigger telt bij élke insert het venster van een etmaal. Zonder index
+--    leest die telling meer dan ze hoeft, en dan is de rem zelf de vertraging.
+--
+-- 📏 **Gemeten, niet aangenomen** — de security-review op deze branch meldde dat
+--    de drie indexen langs een join (`commitments`, `goal_interviews`,
+--    `goal_group_links`) hun venster niet zouden dragen omdat `goal_id` er geen
+--    predicaat is maar een joinsleutel. Nagemeten op `goal_interviews` met 10.500
+--    rijen, één gebruiker met twintig doelen:
+--
+--      mét goal_interviews_vers_idx   Index Only Scan   47 buffers   1,94 ms
+--      zonder                         Bitmap Heap Scan  175 buffers  3,49 ms
+--
+--    De planner kiest hem dus wél, en hij scheelt bijna een factor vier aan
+--    buffers. De bevinding klopte niet, en de reden dat ze zo overtuigend leek is
+--    het noemen waard: op een **lege** tabel geeft élke query een seq scan, en dan
+--    lijkt elke index nutteloos. Twee eerdere pogingen van mij liepen op precies
+--    die val — een plan van een lege tabel is geen meting.
+--
+--    ⚠️ Voor `commitments` en `goal_group_links` is dit niet op volume nagemeten
+--       (de eerste heeft `commitments_een_open_per_soort`, één open commitment per
+--       doel en soort, dus die rijen zijn niet in bulk te maken). De queryvorm is
+--       identiek aan die van `goal_interviews`, dus het mechanisme is hetzelfde —
+--       maar dat is een redenering en geen meting, en zo staat het hier.
 --
 -- ⚠️ **`completion_approvals` krijgt er géén, en dat is nagemeten en geen
 --    vergeetachtigheid:** `completion_approvals_approver_idx (approver_id,
