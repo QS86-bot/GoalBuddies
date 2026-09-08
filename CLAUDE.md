@@ -625,6 +625,19 @@ fetch. **Een gereedschap dat bestaat om een botsing te voorkomen, mag zijn
 juistheid niet laten afhangen van een handeling die het zelf niet doet** — dan is
 de waarschuwing een disclaimer en verplaats je het probleem naar de lezer.
 
+⚠️⚠️ **Wat die branches bepalen is sinds 08-09-2026 de wáárschuwing en niet het
+nummer** (QS8-365). Het nummer sluit aan op je eigen map; deed het dat niet, dan
+staat er een gat, en CI ziet de branch die dat gat vult niet — `actions/checkout@v4`
+haalt één branch op. 📏 Drie keer op één dag gaf de tool een nummer dat CI
+weigerde, en drie keer is dat met de hand teruggezet. **Het gat is erger dan de
+botsing:** een gat is onverwerkt (CI meteen rood, de map bouwt het schema niet op),
+een botsing is verwerkt — wie als tweede merget, hernummert. Uitleg in
+`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
+
+Er komen drie signalen uit, en ze vragen om verschillende handelingen: het nummer,
+de branches die datzelfde nummer dragen (een afspraak, geen fout), en — apart, want
+dit is de énige echte fout — dat `origin/main` vóórloopt en je moet pullen.
+
 De grens loopt tussen twee soorten scripts, en die is er een om aan te houden:
 
 | Soort | Fetcht | Waarom |

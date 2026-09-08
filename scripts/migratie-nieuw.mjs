@@ -63,26 +63,82 @@ export function hoogsteIn(bestandsnamen) {
 }
 
 /**
- * Het eerste vrije nummer, gegeven wat er lokaal staat en wat elke branch draagt.
+ * Het volgende nummer: aansluitend op de éigen map, en niets anders.
  *
- * ⚠️ Het maximum over **alles**, en niet het eerste gat. Een gat vullen ziet er
- *    zuinig uit en is het niet: `migraties:controle` wordt rood van een gat, dus
- *    een gat betekent dat er ergens een bestand ontbreekt dat nog moet landen.
- *    Ga daar niet bovenop zitten.
+ * ⚠️⚠️ **Dit was tot QS8-365 het maximum over álle branches, en dat gaf een
+ *    nummer dat CI weigert.** De redenering was "een gat betekent dat er nog
+ *    iets moet landen, ga daar niet bovenop zitten". Die klopt over de intentie
+ *    en niet over het gevolg: `migraties:controle` telt de gaten in de **eigen
+ *    map**, en CI checkt met `actions/checkout@v4` één branch uit — daar zijn
+ *    geen `origin/…`-refs, dus ook geen verzachting van de soort "branch X
+ *    draagt 0208".
+ *
+ * 📏 Twee keer op één dag gemeten (QS8-363 en QS8-305), en op 08-09 nog een
+ *    derde keer bij QS8-360: `main` op 0207, een branch op 0208, werkkopie op
+ *    0207. Dit script gaf 0209, en met 0209 in de map is CI rood op een gat van
+ *    één — vóór er ook maar iets aan de migratie mis was.
+ *
+ * ⚠️ **Het gat is erger dan de botsing, en dat is het hele besluit.** Een gat is
+ *    onverwerkt: CI is meteen rood, op elke push, en de map kan het schema niet
+ *    opbouwen. Een botsing is verwérkt — sinds QS8-318 hernummert wie als tweede
+ *    merget, en dat is een handeling van een paar minuten op een moment dat je
+ *    er toch bent. En het maximum-over-alles vóórkwam de botsing niet eens: het
+ *    keek naar de branches die er nú zijn, terwijl de volgende branch morgen
+ *    ontstaat.
+ *
+ * De branches verdwijnen niet uit beeld — ze bepalen alleen niet langer het
+ * nummer maar de wáárschuwing. Zie `botsendeBranches()` hieronder.
  */
-export function volgendVrijNummer({ lokaal, perBranch }) {
-  const hoogste = Math.max(hoogsteIn(lokaal), ...Object.values(perBranch).map((n) => n ?? 0), 0);
-  return hoogste + 1;
+export function volgendVrijNummer({ lokaal }) {
+  return hoogsteIn(lokaal) + 1;
 }
 
-/** Welke branches een hóger nummer dragen dan de werkkopie — die zijn het gevaar. */
-export function branchesVoorOp({ lokaal, perBranch }) {
-  const hier = hoogsteIn(lokaal);
-  return Object.entries(perBranch)
-    .filter(([, n]) => (n ?? 0) > hier)
-    .map(([branch, n]) => ({ branch, hoogste: n }))
-    .sort((a, b) => b.hoogste - a.hoogste);
+/**
+ * De branches die het nummer dragen dat dit script gaat uitdelen.
+ *
+ * ⚠️ Dit is de botsing waar je vanaf nu zelf naar kijkt: het nummer klopt met de
+ *    eigen map, en of iemand anders het óók heeft, is een aparte vraag met een
+ *    ander antwoord (QS8-318: wie als tweede merget, hernummert).
+ */
+export function botsendeBranches({ volledig, nummer }) {
+  return Object.entries(volledig)
+    .filter(([, nummers]) => nummers.includes(nummer))
+    .map(([branch]) => branch)
+    .sort();
 }
+
+/**
+ * Loopt de hoofdbranch vóór op deze werkkopie?
+ *
+ * ⚠️ **Dit is de énige toestand waarin het nieuwe nummer echt fout is**, en hij
+ *    ziet er van buiten hetzelfde uit als een botsing. Staat `origin/main` op
+ *    0210 en je werkkopie op 0207, dan geeft dit script 0208 — een nummer dat op
+ *    `main` al bezet is, en dat na een merge meteen dubbel staat. Er is niets te
+ *    hernummeren: je werkkopie is verouderd, en `git pull` is het antwoord.
+ *
+ * ⚠️ Een féature-branch die vooroploopt is iets anders: die is niet geland en
+ *    zijn nummer is nog geen feit. Vandaar twee meldingen en niet één met een
+ *    lijstje — een lezer die ze op één hoop krijgt, leert ze allebei overslaan.
+ */
+export function hoofdbranchVoorop({ lokaal, perBranch, hoofd = 'origin/main' }) {
+  const opMain = perBranch[hoofd] ?? 0;
+  const hier = hoogsteIn(lokaal);
+  return opMain > hier ? { hoofd, hoogste: opMain, hier } : null;
+}
+
+/*
+ * ⚠️ **Hier stond `branchesVoorOp()`, en die is met QS8-365 vervallen.** Hij
+ *    beantwoordde "welke branches zitten hoger dan deze werkkopie", en dat was
+ *    één vraag voor twee gevallen die om verschillende handelingen vragen: een
+ *    feature-branch die vooroploopt (een botsing, zie `botsendeBranches()`) en
+ *    een hoofdbranch die vooroploopt (een verouderde werkkopie, zie
+ *    `hoofdbranchVoorop()`).
+ *
+ *    Toen het nummer niet langer van de branches afhing, hield hij nul
+ *    aanroepers over buiten zijn eigen test — de vorm die dit project als schuld
+ *    telt (QS8-351). Weggehaald in plaats van bewaard "voor als het nog eens van
+ *    pas komt".
+ */
 
 /**
  * Per branch het hoogste nummer, afgeleid uit de gedeelde scan.
@@ -139,16 +195,36 @@ function hoofd() {
   }
 
   const lokaal = readdirSync(join(WORTEL, MAP)).filter((n) => n.endsWith('.sql'));
+  const volledig = nummersPerBranchVolledig() ?? {};
   const perBranch = nummersPerBranch();
-  const nummer = volgendVrijNummer({ lokaal, perBranch });
-  const voorop = branchesVoorOp({ lokaal, perBranch });
+  const nummer = volgendVrijNummer({ lokaal });
 
-  if (voorop.length > 0) {
+  // ⚠️ **De verouderde werkkopie eerst, want dat is de enige echte fout.** Zie
+  //    `hoofdbranchVoorop()`: hier valt niets te hernummeren, er valt te pullen.
+  const achter = hoofdbranchVoorop({ lokaal, perBranch });
+  if (achter !== null) {
     process.stdout.write(
-      `⚠ ${voorop.length} branch(es) dragen een hoger nummer dan deze werkkopie (${hoogsteIn(lokaal)}):\n`,
+      `⚠ ${achter.hoofd} staat op ${String(achter.hoogste).padStart(4, '0')} en deze werkkopie op ` +
+        `${String(achter.hier).padStart(4, '0')}.\n` +
+        `  ${String(nummer).padStart(4, '0')} is daar al bezet. Haal eerst binnen:\n` +
+        '      git pull origin main\n\n',
     );
-    for (const v of voorop) process.stdout.write(`    ${String(v.hoogste).padStart(4, '0')}  ${v.branch}\n`);
-    process.stdout.write('\n');
+  }
+
+  // ⚠️ **En dan pas de botsing, die geen fout is maar een afspraak.** Een
+  //    feature-branch is niet geland, dus zijn nummer is nog geen feit; QS8-318
+  //    zegt wie er hernummert als jullie allebei landen.
+  const botsend = botsendeBranches({ volledig, nummer });
+  if (botsend.length > 0) {
+    process.stdout.write(
+      `⚠ ${String(nummer).padStart(4, '0')} staat ook op ${botsend.length} nog niet gelande branch(es):\n`,
+    );
+    for (const b of botsend) process.stdout.write(`    ${b}\n`);
+    process.stdout.write(
+      '  Dat is geen reden om een hoger nummer te nemen: een gat naar `main` maakt\n' +
+        '  `migraties:controle` meteen rood, en CI ziet die branches niet. Wie als\n' +
+        '  tweede merget, hernummert (QS8-318).\n\n',
+    );
   }
 
   if (naam === '') {
