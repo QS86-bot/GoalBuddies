@@ -49,15 +49,24 @@
  * De vorm: een ratel met redenen
  * ---------------------------------------------------------------------------
  *
- * Er staan er vandaag negen. Die zijn niet in één ronde te repareren — elk van
- * de negen is óf een scherm dat er niet is, óf een functie die weg kan, en dat
- * is per geval een aparte afweging (QS8-300). Tot die tijd staan ze hieronder
- * **met een reden**, en het aantal mag alleen dalen.
+ * Er staan er vandaag twee. Die zijn niet in één ronde te repareren — elk ervan
+ * is óf een scherm dat er niet is, óf een functie die weg kan, en dat is per
+ * geval een aparte afweging (QS8-300). Tot die tijd staan ze hieronder **met een
+ * reden**, en de bedoeling is dat het aantal alleen daalt.
  *
- * ⚠️ Zelfde ratel als `regel15:controle` en `levend:controle`: rood als er een
- *    bij komt, én rood als er een af gaat zonder dat het register meezakt. Een
- *    register dat blijft staan terwijl de functie verdwenen is, is een lijst die
- *    liegt.
+ * ⚠️ **"De bedoeling", want dit script telt niet — en dat is minder dan de kop
+ *    hier tot 07-09-2026 beweerde.** Er stond dat dit dezelfde ratel is als
+ *    `regel15:controle` en `levend:controle`. Dat is hij niet: `nieuw` is
+ *    `gevonden.filter((n) => !(n in BEKENDE_ONBEREIKBAAR))`, dus een onbereikbare
+ *    export maakt hem rood tót je hem registreert, en dáárna is hij groen. Er is
+ *    geen getal dat meezakt. Omhoog is dus onbewaakt, en deze branch liep er
+ *    zelf tegenaan: QS8-342 bracht het register van één op twee.
+ *
+ *    Wat er wél bewaakt is, is de andere richting: een rij die blijft staan
+ *    terwijl de functie bereikbaar of verdwenen is, is rood. Een register dat
+ *    blijft staan terwijl de functie verdwenen is, is een lijst die liegt.
+ *
+ *    Een echte teller erbij staat in QS8-345.
  *
  * Draaien: `npm run exports:controle`. Hoort mee in de poort.
  */
@@ -79,6 +88,17 @@ const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
  *    parkeert een naam in plaats van een bevinding vast te leggen.
  */
 export const BEKENDE_ONBEREIKBAAR = {
+  fetchGekoppeldeDoelIds:
+    'Verloor zijn scherm bij QS8-342: het koppelscherm trok de gekoppelde doelen ' +
+    'van pagina 0 af, en dat gaf een lege lijst bij eenentwintig doelen. Dat pad ' +
+    'is vervangen door `fetchKoppelbareDoelen()`, dat serverzijdig uitsluit. ' +
+    '⚠️ Deze functie blijft omdat `tests/rls/doorloop.test.ts` er iets ánders mee ' +
+    'toetst: dat **Bram** het doel van Anna in de groep ziet — een leesrecht van ' +
+    'een groepsgenoot, niet van de eigenaar. `fetchKoppelbareDoelen()` kan dat ' +
+    'niet uitdrukken, want die is op je eigen doelen gescopet. ' +
+    '⚠️ Wie hem alsnog weghaalt, vervangt die assertie eerst — anders verdwijnt ' +
+    'de enige plek waar het groepsoppervlak van een gekoppeld doel end-to-end ' +
+    'gemeten wordt.',
   isAfgegaan:
     'Wordt niet door een scherm gebruikt maar wél door `tests/rls/epic9.test.ts`, ' +
     'dat hem naast `commitment_zichtbaar_voor_groep()` legt. ⚠️ Dat is een ' +

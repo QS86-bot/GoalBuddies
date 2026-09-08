@@ -1090,16 +1090,58 @@ export async function fetchGroepenVanDoel(goalId: string): Promise<readonly Doel
   }));
 }
 
-/** De doelen die aan deze groep gekoppeld zijn en die jij mag zien. */
+/**
+ * Het plafond op wat één groep aan gekoppelde doelen teruggeeft.
+ *
+ * ⚠️ **Een genoemd plafond en geen kale `.limit(50)`.** Een grens met een naam is
+ *    te vinden en te verantwoorden; een getal in een queryregel is een stille
+ *    afkapping. Twaalf leden maal tien doelen is ruim binnen dit getal, dus in de
+ *    praktijk kapt hij niets af — en zodra dat verandert, is dit de plek.
+ */
+const GEKOPPELDE_DOELEN_MAX = 200;
+
+/**
+ * De doelen die aan deze groep gekoppeld zijn en die jij mag zien.
+ *
+ * ⚠️ **Geen scherm gebruikt hem meer sinds QS8-342**, en hij staat met die reden
+ *    in `BEKENDE_ONBEREIKBAAR`. Wat hij nog wél doet is het groepsoppervlak
+ *    meten: `tests/rls/doorloop.test.ts` toetst er mee dat een ánder groepslid
+ *    het gekoppelde doel ziet. Dat is een leesrecht van een groepsgenoot, en
+ *    `fetchKoppelbareDoelen()` kan het niet uitdrukken — die is op je eigen
+ *    doelen gescopet.
+ *
+ * ⚠️ **De `.limit(50)` van hiervoor is weg, en het plafond is niet stil meer.**
+ *    Die `limit` kapte af zonder teller: doelen daarboven lazen als "niet
+ *    gekoppeld". Een genoemd plafond alleen repareert dat níet — dan heet het
+ *    getal 200 in plaats van 50 en kapt het even stil af. Daarom vraagt deze
+ *    functie `count: 'exact'` en werpt hij zodra er meer zijn dan hij teruggeeft.
+ *    Een halve lijst onder de naam "de doelen die gekoppeld zijn" is de leugen;
+ *    een fout is dat niet.
+ */
 export async function fetchGekoppeldeDoelIds(groupId: string): Promise<readonly string[]> {
-  const { data, error } = await supabase()
+  const { data, error, count } = await supabase()
     .from('goal_group_links')
-    .select('goal_id')
+    .select('goal_id', { count: 'exact' })
     .eq('group_id', groupId)
-    .limit(50);
+    .order('goal_id', { ascending: true })
+    .range(0, GEKOPPELDE_DOELEN_MAX - 1);
 
   if (error) {
     reportError(error, 'groups.links', { group_id: groupId });
+    throw new Error(t('groep.gekoppelde_doelen_laden'));
+  }
+
+  // ⚠️ **Liever een fout dan een halve lijst.** Deze functie belooft "de doelen
+  //    die gekoppeld zijn"; geeft ze er 200 van de 250, dan lezen de andere 50 als
+  //    niet-gekoppeld en biedt de aanroeper ze opnieuw aan. Dat is de klasse
+  //    "succes dat er geen is" — dezelfde die QS8-342 op het koppelscherm
+  //    repareerde. Een teller kost hier één header en maakt het plafond hoorbaar.
+  if (count !== null && count > GEKOPPELDE_DOELEN_MAX) {
+    reportError(new Error('gekoppelde doelen boven het plafond'), 'groups.links', {
+      group_id: groupId,
+      count,
+      plafond: GEKOPPELDE_DOELEN_MAX,
+    });
     throw new Error(t('groep.gekoppelde_doelen_laden'));
   }
 

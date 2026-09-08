@@ -6,7 +6,6 @@ import { StyleSheet, View } from 'react-native';
 import { clientEnv } from '@/lib/env';
 import { useSession } from '@/modules/auth';
 import {
-  fetchGekoppeldeDoelIds,
   fetchGroep,
   fetchGroepsoverzicht,
   fetchGroepsteller,
@@ -30,7 +29,7 @@ import {
 } from '@/modules/buddies';
 import {
   beslisDeadlineVerzoek,
-  fetchDoelen,
+  fetchKoppelbareDoelen,
   fetchOpenVerzoekenVoorGroep,
   type DeadlineVerzoek,
 } from '@/modules/goals';
@@ -738,15 +737,17 @@ function KoppelDoel({
   const [bezig, setBezig] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
-  const { data: doelen, loading, error } = useAsync(
+  // ⚠️ **Eén vraag die serverzijdig uitsluit, en geen aftrekking op pagina 0 —
+  //    QS8-342.** Hier stond `fetchDoelen(userId)` met de gekoppelde doelen
+  //    eraf gestreept. Die functie geeft twintig doelen; had je er eenentwintig
+  //    waarvan de eerste twintig al gekoppeld waren, dan bleef er niets over en
+  //    concludeerde dit scherm "Je hebt nog geen doel om te delen" — met een knop
+  //    "Nieuw doel" eronder en geen weg terug. `fetchKoppelbareDoelen()` sluit de
+  //    gekoppelde doelen in de query uit, dus `leeg` betekent hier weer wat het
+  //    zegt.
+  const { data: doelen, loading, error, herlaad: herlaadLijst } = useAsync(
     userId && groupId !== ''
-      ? async () => {
-          const [mijn, gekoppeld] = await Promise.all([
-            fetchDoelen(userId),
-            fetchGekoppeldeDoelIds(groupId),
-          ]);
-          return mijn.rijen.filter((doel) => !gekoppeld.includes(doel.id));
-        }
+      ? async () => (await fetchKoppelbareDoelen(userId, groupId)).rijen
       : null,
     [userId, groupId],
   );
@@ -763,6 +764,19 @@ function KoppelDoel({
       return;
     }
 
+    // ⚠️ **Deze lijst herlaadt zichzelf, en dat is niet dubbelop — QS8-342
+    //    criterium 3.** `onGekoppeld` is de `herlaad` van het gróepsscherm, en die
+    //    telt daar een ronde op. Deze lijst hangt aan een eigen `useAsync` met
+    //    `[userId, groupId]` als deps, en die veranderen er niet van; `AsyncView`
+    //    houdt zijn kinderen bovendien staan zolang er data is, dus dit blok
+    //    wordt niet opnieuw opgebouwd. Zonder deze regel bleef het zojuist
+    //    gekoppelde doel gewoon in de lijst staan: je tikt, je krijgt succes, en
+    //    er verandert niets zichtbaars. Tik je dan nog eens, dan meldt
+    //    `koppelDoelAanGroep` opnieuw succes — `ignoreDuplicates` maakt van de
+    //    tweede poging een stille no-op. Dat is de klasse "succes dat er geen is",
+    //    en de reparatie is dat het scherm de werkelijkheid ophaalt in plaats van
+    //    dat de melding hem beschrijft.
+    herlaadLijst();
     onGekoppeld();
   }
 
