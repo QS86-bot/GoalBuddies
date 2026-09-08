@@ -270,24 +270,26 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
   );
 
   // ⚠️ M1 uit dezelfde review. `kan_beoordeeld_worden` telde alleen `active`,
-  //    terwijl de policy die goedkeuring toestaat `<> 'inactive'` gebruikt. Een
-  //    buddy op `paused` mág dus goedkeuren; dan hoort het minpunt ook te tellen.
+  //    terwijl de policy die goedkeuring toestaat `<> 'inactive'` gebruikt.
+  //
+  // ⚠️⚠️ **De helft die dat verschil mat, is met 0202 vacuüm geworden** en staat
+  //    er daarom niet meer. Hij zette een buddy op `paused` en toetste dat het
+  //    minpunt tóch telde — de enige stand waarin die twee grenzen uiteenliepen.
+  //    `group_members.status` kent er sinds QS8-325 nog twee, dus `= 'active'` en
+  //    `<> 'inactive'` vallen samen en er valt niets meer uiteen te laten lopen.
+  //    Wat blijft, is de helft die nog wél een echte toestand heeft: een uitgezet
+  //    lid telt niet mee. Komt er ooit een derde stand bij, dan is M1 weer een
+  //    vraag — er staat een rij over in `docs/ENGINEER-REVIEW.md`.
   it(
-    'telt een buddy op pauze mee als beoordelaar',
+    'telt een uitgezette buddy niet mee als beoordelaar',
     async () => {
       const admin = adminDb();
-
-      await admin
-        .from('group_members')
-        .update({ status: 'paused' })
-        .eq('group_id', f.groupId)
-        .eq('user_id', f.bob.id);
 
       const { data: kan } = await roepKanBeoordeeldWorden(admin, {
         p_goal_id: f.aliceGoalId,
         p_owner_id: f.alice.id,
       });
-      expect(kan).toBe(true);
+      expect(kan, 'de opstelling klopt niet: bob telt vooraf al niet mee').toBe(true);
 
       await admin
         .from('group_members')

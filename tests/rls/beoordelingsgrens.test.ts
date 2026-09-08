@@ -373,11 +373,14 @@ describe.skipIf(!rlsTestsConfigured)('te_beoordelen_voor — de grens zit in de 
    *    ertussenin van niemand.
    *
    * ⚠️ **De toestand is wél bereikbaar, dus dit is geen hypothetische toets.**
-   *    `authenticated` heeft een kolomgrant op `group_members.status`, de policy
-   *    `group_members_update` laat `is_group_admin(group_id)` door, en
-   *    `guard_group_member_update()` (0029) pint voor een beheerder alleen
-   *    `group_id` en `user_id` vast. Een beheerder kan een lid dus vandaag op
-   *    `paused` zetten; deze test neemt dezelfde weg.
+   *    `verwijder_lid()` (0145) zet een uitgezet lid op `inactive` en laat de rij
+   *    staan — die rij ís het slot dat heraansluiten met dezelfde code
+   *    tegenhoudt. Precies daar komt de clausule aan te pas.
+   *
+   * ⚠️ **Deze test stond tot 0202 op `paused`**, want dat was toen de enige
+   *    niet-actieve stand die de rij liet staan. Die stand bestaat niet meer
+   *    (QS8-325) en `inactive` neemt zijn plaats in — dezelfde belofte, langs een
+   *    weg die een echte handeling produceert in plaats van alleen een PATCH.
    */
   it(
     'zwijgt tegen een lid dat niet actief is',
@@ -387,7 +390,7 @@ describe.skipIf(!rlsTestsConfigured)('te_beoordelen_voor — de grens zit in de 
 
       const pauze = await admin
         .from('group_members')
-        .update({ status: 'paused' })
+        .update({ status: 'inactive' })
         .eq('group_id', f.groepA)
         .eq('user_id', f.dave.id);
       expect(pauze.error, JSON.stringify(pauze.error)).toBeNull();
