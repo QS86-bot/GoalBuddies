@@ -26,18 +26,40 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    oud zijn. **Geen enkele test in dit project laat een rij verouderen** — dat
  *    is de blinde vlek, en ze staat als dossierrij van 08-09-2026.
  *
- * ⚠️ **Daarom veegt deze test in plaats van te wijzen.** 📏 Met `pg_trigger`
- *    gemeten welke tabellen doelwit zijn van een `set null`-FK én een BEFORE
- *    UPDATE-rijtrigger dragen; de opstelling hieronder zet in elk van die
- *    tabellen een rij neer. Landt er ooit een zevende, dan hoort hij hier ook in.
+ * ⚠️ **Daarom veegt deze test in plaats van te wijzen**: de opstelling zet rijen
+ *    neer in alles wat bij een accountverwijdering meegaat, en roept dan de échte
+ *    RPC aan.
  *
- *      chat_messages         stamp_chat_message
- *      completion_approvals  fill_approval_subject
- *      groups                guard_group_update, archief_blijft_archief,
- *                            bewaak_tijdzone
- *      week_reviews          bewaak_week_review_periode   <- het gemeten geval
- *      weekly_goals          beoordeelbaar_blijft_staan
- *      commitments           bewaak_begunstigde
+ * ⚠️⚠️ **De dekking hieronder is gemeten en niet afgeleid, want de eerste versie
+ *    klopte niet.** Die noemde zes tabellen op grond van "doelwit van een
+ *    `set null`-FK én een BEFORE UPDATE-rijtrigger". 📏 De security-review heeft
+ *    elke triggerfunctie om beurten vergiftigd en geteld welke er tijdens
+ *    `verwijder_mijn_account()` daadwerkelijk vuren — **7 van de 62**:
+ *
+ *      archief_blijft_archief      bewaak_week_review_periode  <- het gemeten geval
+ *      guard_group_update          noteer_beoordelaar_weg_lid
+ *      noteer_ontkoppeling         recalc_goal_max_points
+ *      stamp_chat_message
+ *
+ *    Drie van de zes uit die eerste lijst vuren dus **niet**, en kúnnen dat ook
+ *    niet voor de vertrekkende gebruiker: `fill_approval_subject` vuurt pas als de
+ *    **beoordelaar** vertrekt (`subject_id` is CASCADE, alleen `approver_id` is
+ *    set-null), `bewaak_begunstigde` pas als de **getuige** vertrekt, en
+ *    `beoordeelbaar_blijft_staan` alleen als een mijlpaal sterft terwijl het
+ *    weekdoel blijft — bij een accountverwijdering cascaderen die samen.
+ *    `bewaak_tijdzone` stond er helemaal ten onrechte in: die trigger is
+ *    `BEFORE INSERT OR UPDATE **OF tz**` en kan op een `created_by`-set-null niet
+ *    afgaan.
+ *
+ *    Het criterium was bovendien te smal: een `AFTER`-trigger breekt een
+ *    verwijdering even hard als een `BEFORE`. Drie die wél vuren
+ *    (`recalc_goal_max_points`, `noteer_ontkoppeling`,
+ *    `noteer_beoordelaar_weg_lid`) zijn `AFTER DELETE` en vielen buiten de lijst.
+ *    Ze doen vandaag alleen `update goals`, dus geen van drieën kan werpen — maar
+ *    ze zaten wel in de blast radius.
+ *
+ *    De **beoordelaar** vertrekt hieronder in een eigen geval. De getuige zit in
+ *    QS8-361 en staat daarom buiten deze veeg.
  *
  * ⚠️⚠️ **`commitments` staat er met opzet níet in, en dat is geen gemak.** 📏 De
  *    veeg vond daar meteen een tweede breuk, met een ándere oorzaak: een
@@ -57,7 +79,9 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *
  *   A  de vroege uitgang uit `bewaak_week_review_periode()` halen
  *      → 1 rood: 'een account met een verouderde weekafsluiting gaat weg'
- *   B  dezelfde mutatie, maar met een vérse weekafsluiting
+ *   B  de uitgang verruimen tot alleen de periode en de groep (de eerste versie)
+ *      → 1 rood: 'een oude weekafsluiting is niet meer te herschrijven'
+ *   C  dezelfde mutatie als A, maar met een vérse weekafsluiting
  *      → groen, en dát is de reden dat de leeftijd hier een parameter is en geen
  *        detail: een verse rij loopt door de vensterttoets heen zonder iets te
  *        bewijzen. Precies de val die het issue noemt.
@@ -134,6 +158,51 @@ function verwijderNaOpbouw(dagenOud: number): string {
     .at(-1) as string;
 }
 
+/**
+ * Zet een weekafsluiting van 69 dagen oud neer en laat de eigenaar hem
+ * herschrijven. Geeft de foutcode terug, of 'GELUKT' als het gelukt is.
+ */
+function herschrijfOudeAfsluiting(): string {
+  return psql(`
+    begin;
+    create temp table v (uid uuid, gid uuid);
+    create temp table uitslag (code text);
+    grant select, insert, update on v to authenticated;
+    grant insert, select on uitslag to authenticated;
+    insert into v (uid) values (shim_maak_gebruiker('opruiming-vries@proef.test', 'Vries'));
+    select set_config('request.jwt.claims',
+      json_build_object('sub', (select uid from v), 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    update v set gid = ((create_group('Vriesgroep', 0::smallint) -> 'group' ->> 'id'))::uuid;
+    reset role;
+
+    alter table week_reviews disable trigger week_reviews_periode_grens;
+    insert into week_reviews (group_id, user_id, group_period_start, did_text)
+      select gid, uid, (date_trunc('week', current_date - ${DAGEN_OUD}) - interval '1 day')::date,
+             'oorspronkelijk'
+      from v;
+    alter table week_reviews enable trigger week_reviews_periode_grens;
+
+    select set_config('request.jwt.claims',
+      json_build_object('sub', (select uid from v), 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    -- ⚠️ De uitslag via een temp-tabel en niet via raise notice: een notice gaat
+    --    naar stderr en de psql-helper leest alleen stdout — die test was groen
+    --    noch rood maar leeg.
+    do $$
+    begin
+      update week_reviews set did_text = 'HERSCHREVEN'
+       where user_id = (select uid from v);
+      insert into uitslag values ('GELUKT');
+    exception when others then
+      insert into uitslag values (sqlstate);
+    end $$;
+    reset role;
+    select code from uitslag;
+    rollback;
+  `);
+}
+
 describe.skipIf(!beschikbaar)('een account is te verwijderen, hoe oud zijn rijen ook zijn', () => {
   it('een account met een verouderde weekafsluiting gaat weg', () => {
     // ⚠️ De assertie zit op wat de RPC teruggeeft en niet op "er kwam geen fout":
@@ -144,6 +213,27 @@ describe.skipIf(!beschikbaar)('een account is te verwijderen, hoe oud zijn rijen
       verwijderNaOpbouw(DAGEN_OUD),
       `een weekafsluiting van ${DAGEN_OUD} dagen oud blokkeerde de verwijdering`,
     ).toContain('"ok": true');
+  }, 120_000);
+
+  it('een oude weekafsluiting is niet meer te herschrijven', () => {
+    // ⚠️⚠️ **Dit slot verdween bijna stilzwijgend met deze reparatie.** De eerste
+    //    versie van de vroege uitgang eiste alleen dat de periode en de groep
+    //    gelijk bleven — en liet daarmee een UPDATE van de tékst door op een rij
+    //    die het venster eerder weigerde. 📏 Gemeten: de eigenaar herschreef zijn
+    //    weekafsluiting van 69 dagen oud. In een accountability-app is dat de rij
+    //    waar zijn buddies onder gereageerd hebben.
+    //
+    //    Niemand had dat slot bewust opengezet, en niets werd er rood van. Dat is
+    //    precies de vorm die dit project duur betaalt, dus staat hij hier nu.
+    //    Gevonden in de security-review van 08-09-2026.
+    expect(
+      herschrijfOudeAfsluiting()
+        .split('\n')
+        .map((r) => r.trim())
+        .filter((r) => r !== '')
+        .at(-1),
+      'de tekst van een weekafsluiting van 69 dagen oud was te wijzigen',
+    ).toContain('22007');
   }, 120_000);
 
   it('MUST-ALLOW: een verse weekafsluiting blokkeert hem ook niet', () => {

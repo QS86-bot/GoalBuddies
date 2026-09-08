@@ -4,7 +4,8 @@
 -- (QS8-359).
 --
 -- ROLLBACK-PAD:
---   -- `bewaak_week_review_periode()` terugzetten op de definitie uit 0122:
+--   -- `bewaak_week_review_periode()` terugzetten op de definitie uit 0108
+--   -- (`0108_weekafsluiting_op_de_huddledag.sql`, regel 77):
 --   -- die versie heeft de vroege uitgang hieronder niet.
 --
 -- ---------------------------------------------------------------------------
@@ -62,9 +63,11 @@
 --    periodestart; verandert die niet, dan is er niets nieuws te beoordelen —
 --    wie de UPDATE ook doet en om welke reden dan ook.
 --
--- ⚠️ **`is not distinct from` en niet `=`.** `null = null` is `null` en niet
---    `true`, dus met `=` zou de uitgang nooit genomen worden zodra een van beide
---    kolommen leeg is. Dezelfde val als in QS8-356.
+-- ⚠️ **Hier stond een rechtvaardiging van `is not distinct from` die niet
+--    dragend was:** `group_id` en `group_period_start` zijn allebei `not null`,
+--    dus `=` en `is not distinct from` konden daar nooit verschillen. De
+--    vergelijking op `to_jsonb` heeft dat probleem sowieso niet — `-` op een
+--    jsonb-object vergelijkt NULL's gewoon als gelijk.
 --
 -- ---------------------------------------------------------------------------
 -- Wat er niet verandert
@@ -134,11 +137,21 @@ declare
 begin
   -- ⚠️⚠️ **Een opruimactie is geen nieuwe weekafsluiting.** `on delete set null`
   --    op `week_reviews.user_id` is een UPDATE, dus deze trigger vuurt opnieuw
-  --    op een rij die jaren oud kan zijn. Verandert de beoordeelde periode niet,
-  --    dan valt er ook niets te beoordelen. Zie de kop voor de meting.
+  --    op een rij die jaren oud kan zijn. Zie de kop voor de meting.
+  --
+  -- ⚠️⚠️ **De uitgang eist dat er níets anders veranderd is dan `user_id`, en
+  --    dat is een gerepareerde versie.** Er stond eerst alleen dat de periode en
+  --    de groep gelijk moesten blijven — en dat haalde ongemerkt een slot weg:
+  --    📏 gemeten dat de eigenaar daarmee de tekst van een weekafsluiting van 69
+  --    dagen oud kon herschrijven, waar het venster dat eerder weigerde. In een
+  --    accountability-app is dat de rij waar je buddies onder gereageerd hebben.
+  --
+  --    `to_jsonb(new) - 'user_id'` vergelijkt de hele rij op één kolom na. Dat is
+  --    exact wat er bedoeld wordt — *er is niets gebeurd behalve dat de eigenaar
+  --    losgekoppeld is* — en het blijft kloppen als er een kolom bij komt, waar
+  --    een lijstje van kolomvergelijkingen die stil zou doorlaten.
   if tg_op = 'UPDATE'
-     and new.group_period_start is not distinct from old.group_period_start
-     and new.group_id is not distinct from old.group_id then
+     and to_jsonb(new) - 'user_id' = to_jsonb(old) - 'user_id' then
     return new;
   end if;
 
