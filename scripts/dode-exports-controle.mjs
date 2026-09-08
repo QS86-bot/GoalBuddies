@@ -49,15 +49,24 @@
  * De vorm: een ratel met redenen
  * ---------------------------------------------------------------------------
  *
- * Er staan er vandaag twee. Die zijn niet in één ronde te repareren — elk van
- * de negen is óf een scherm dat er niet is, óf een functie die weg kan, en dat
- * is per geval een aparte afweging (QS8-300). Tot die tijd staan ze hieronder
- * **met een reden**, en het aantal mag alleen dalen.
+ * Er staan er vandaag twee. Die zijn niet in één ronde te repareren — elk ervan
+ * is óf een scherm dat er niet is, óf een functie die weg kan, en dat is per
+ * geval een aparte afweging (QS8-300). Tot die tijd staan ze hieronder **met een
+ * reden**, en de bedoeling is dat het aantal alleen daalt.
  *
- * ⚠️ Zelfde ratel als `regel15:controle` en `levend:controle`: rood als er een
- *    bij komt, én rood als er een af gaat zonder dat het register meezakt. Een
- *    register dat blijft staan terwijl de functie verdwenen is, is een lijst die
- *    liegt.
+ * ⚠️ **"De bedoeling", want dit script telt niet — en dat is minder dan de kop
+ *    hier tot 07-09-2026 beweerde.** Er stond dat dit dezelfde ratel is als
+ *    `regel15:controle` en `levend:controle`. Dat is hij niet: `nieuw` is
+ *    `gevonden.filter((n) => !(n in BEKENDE_ONBEREIKBAAR))`, dus een onbereikbare
+ *    export maakt hem rood tót je hem registreert, en dáárna is hij groen. Er is
+ *    geen getal dat meezakt. Omhoog is dus onbewaakt, en deze branch liep er
+ *    zelf tegenaan: QS8-342 bracht het register van één op twee.
+ *
+ *    Wat er wél bewaakt is, is de andere richting: een rij die blijft staan
+ *    terwijl de functie bereikbaar of verdwenen is, is rood. Een register dat
+ *    blijft staan terwijl de functie verdwenen is, is een lijst die liegt.
+ *
+ *    Een echte teller erbij staat in QS8-345.
  *
  * Draaien: `npm run exports:controle`. Hoort mee in de poort.
  */
