@@ -43,7 +43,7 @@ interface Props {
    *    eerlijker: dan is de regel weg en niet stil anders.
    *
    * ⚠️ **Tot 08-09-2026 stond hier "ook al staat de policy het 15 minuten toe",
-   *    en dát is met migratie 0192 rechtgezet** (QS8-327). Die policy bestond
+   *    en dát is met migratie 0193 rechtgezet** (QS8-327). Die policy bestond
    *    sinds 0003 en had nooit een aanroeper; de app besloot hierboven dat de
    *    knop er niet komt, en de database zei vier maanden lang het
    *    tegenovergestelde. 📏 Gemeten: een bewerking van je eigen verse bericht

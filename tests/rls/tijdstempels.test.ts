@@ -56,7 +56,7 @@ describe.skipIf(!beschikbaar)('de client zet geen servertijdstempel', () => {
       //    die horen open te blijven.
       //
       // ⚠️ **De UPDATE-helft was tot 08-09 `chat_messages.body`, en die is met
-      //    0192 ingetrokken** (QS8-327): een chatbericht is niet meer te
+      //    0193 ingetrokken** (QS8-327): een chatbericht is niet meer te
       //    bewerken, dus die kolom is geen must-allow meer maar precies het
       //    tegenovergestelde. Vervangen door `goals.title`, dat wél een echt
       //    schrijfpad heeft — `src/modules/goals/api.ts:410` zet hem in de

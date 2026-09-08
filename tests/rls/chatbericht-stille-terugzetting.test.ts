@@ -21,7 +21,7 @@
  *    Een grendel die ook de bedoelde bewerking tegenhoudt, is geen grendel maar
  *    een storing.
  *
- * ⚠️⚠️ **Sinds 0192 (QS8-327) loopt élke UPDATE hier via `adminDb()`, en dat is
+ * ⚠️⚠️ **Sinds 0193 (QS8-327) loopt élke UPDATE hier via `adminDb()`, en dat is
  *    geen gemak maar de enige manier waarop dit bestand nog meet wat het zegt.**
  *    Die migratie haalde `chat_messages_update` en de tien UPDATE-kolomrechten
  *    weg, want het bewerkrecht had nooit een knop. Gevolg: een client krijgt
@@ -36,7 +36,7 @@
  *
  *    Een trigger is geen policy: `stamp_chat_message()` vuurt óók voor
  *    `service_role` en voor de referentiële actie van de foreign key. Dat is na
- *    0192 het enige overgebleven pad ernaartoe, en dus het pad waarlangs deze
+ *    0193 het enige overgebleven pad ernaartoe, en dus het pad waarlangs deze
  *    tests hem moeten benaderen. De redenering stond hier al bij `system_event`
  *    en `created_at`; ze geldt nu voor het hele bestand.
  */
@@ -73,7 +73,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
     await removeTestUsers();
   }, SETUP_TIMEOUT);
 
-  /** Een vers bericht van Alice — binnen het bewerkvenster van vijftien minuten. */
+  /** Een vers bericht van Alice. Er is geen bewerkvenster meer; zie de kop. */
   async function versBericht(tekst: string): Promise<string> {
     const rij = await adminDb()
       .from('chat_messages')
@@ -115,7 +115,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         //    wél en was groen om de verkeerde reden — gevonden doordat `type` uit
         //    de toets halen niets rood maakte.
         //
-        //    Sinds 0192 is die policy weg en loopt dit geval via `adminDb()`, dus
+        //    Sinds 0193 is die policy weg en loopt dit geval via `adminDb()`, dus
         //    het onderscheid doet er technisch niet meer toe. `photo` blijft
         //    staan omdat het de zuiverste vorm is: één kolom die alleen de
         //    trigger tegenhoudt, zonder een tweede reden waarom het misgaat.
@@ -146,7 +146,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
     //    mutatie de database echt gehaald had.
     //
     //    `group_id` is de scherpste: zonder die grendel verplaatst een afzender
-    //    zijn eigen bericht binnen het venster naar een andere groep waar hij lid
+    //    zijn eigen bericht naar een andere groep waar hij lid
     //    van is, en `groepschat()` toont het daar woordelijk. Domeinregel 7.
 
     it(
@@ -278,9 +278,9 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
   });
 
   // -------------------------------------------------------------------------
-  describe('de must-allows: de bedoelde bewerking blijft werken', () => {
+  describe('de must-allows: de trigger houdt niet álles tegen', () => {
     it(
-      'de tekst wijzigen binnen het venster gaat gewoon door',
+      'de tekst wijzigen laat de trigger gewoon door',
       async () => {
         const id = await versBericht('voor');
 

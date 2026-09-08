@@ -4,7 +4,7 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type Test
 import { psql } from './psql-stack';
 
 /**
- * Een chatbericht is niet te bewerken — QS8-327, migratie 0192.
+ * Een chatbericht is niet te bewerken — QS8-327, migratie 0193.
  *
  * ⚠️ **Dit bestand toetste tot 08-09-2026 het tegenovergestelde**, en dat is
  *    geen koerswijziging maar het sluiten van een tegenspraak. Er stond een
@@ -19,15 +19,15 @@ import { psql } from './psql-stack';
  *    gesprek van drie mensen is een gesprek waarvan de helft achteraf kan
  *    veranderen. Weghalen is eerlijker: dan is de regel weg en niet stil
  *    anders."* De app had de vraag dus al beantwoord; alleen de database wist
- *    het niet. 0192 laat ze hetzelfde zeggen.
+ *    het niet. 0193 laat ze hetzelfde zeggen.
  *
  * ⚠️ **Wat de weigering nu is, en waarom dat beter is dan wat het was.**
- *    📏 Gemeten op 08-09-2026, vóór en na 0192, met een echt JWT tegen de lokale
+ *    📏 Gemeten op 08-09-2026, vóór en na 0193, met een echt JWT tegen de lokale
  *    PostgREST:
  *
- *      vóór 0192, eigen vers bericht      HTTP 200  — de bewerking landde
- *      vóór 0192, bericht van een ánder   HTTP 200  []  — stille weigering
- *      ná  0192, eigen vers bericht       HTTP 403  42501 permission denied
+ *      vóór 0193, eigen vers bericht      HTTP 200  — de bewerking landde
+ *      vóór 0193, bericht van een ánder   HTTP 200  []  — stille weigering
+ *      ná  0193, eigen vers bericht       HTTP 403  42501 permission denied
  *
  *    Een `using` die niet past filtert de rij weg en levert `200` met een lege
  *    lijst op: niets mis, niets gebeurd. Een ontbrekend kolomrecht weigert
@@ -40,30 +40,38 @@ import { psql } from './psql-stack';
  *    en weghalen, én de referentiële actie.
  *
  * ⚠️⚠️ **Die laatste is de reden dat `stamp_chat_message()` niet is opgeruimd.**
- *    Zijn UPDATE-tak lijkt na 0192 dood en is dat niet: `sender_id`, `actor_id`
+ *    Zijn UPDATE-tak lijkt na 0193 dood en is dat niet: `sender_id`, `actor_id`
  *    en `subject_id` dragen `on delete set null`, en dat is een UPDATE die
  *    Postgres zélf doet als een profiel verdwijnt. Een trigger is geen policy —
  *    hij vuurt ook daarvoor. Zonder de laatste test hieronder is dat een
  *    aanname; mét hem is het gemeten.
  *
- * IJKING — met de hand gedraaid op 08-09-2026, per grendel apart, en de uitslag
- * zegt iets dat de moeite van het opschrijven waard is:
+ * IJKING — met de hand gedraaid op 08-09-2026, per grendel apart. De eerste twee
+ * ronden legden een gat bloot dat de security-review op deze branch mat, en de
+ * derde regel hieronder is de reparatie:
  *
  *   A  het kolomrecht terugzetten (policy blijft weg)
- *      → 1 rood, en alléén op de audibiliteit:
- *        *"een ontbrekend kolomrecht hoort hóórbaar te weigeren: expected null
- *        not to be null"*. De bewerking landde dus nog steeds niet — zonder
- *        UPDATE-policy weigert Postgres hem — maar PostgREST gaf er `200` met
- *        een lege lijst op.
+ *      → 1 rood: 'een eigen vers bericht is niet te bewerken', en alléén op de
+ *        audibiliteit. De bewerking landde niet — zonder UPDATE-policy weigert
+ *        Postgres hem — maar PostgREST gaf er `200` met een lege lijst op.
  *   B  de policy terugzetten (kolomrecht blijft ingetrokken)
- *      → alles groen, want 42501 komt vóór de policy.
+ *      → 1 rood: 'er bestaat geen UPDATE-policy meer op chat_messages'.
+ *        ⚠️ **Vóór die test was dit 0 rood**: `42501` komt vóór de policy, dus
+ *        de `drop policy`-helft van 0193 had geen enkele bewaker.
+ *   C  béide terugzetten — de volledige rollback uit de kop van 0193
+ *      → 2 rood, en de eerste melding is nu
+ *        *'het bericht is herschreven — bewerken is niet dicht'*.
+ *        ⚠️ **Vóór de herordening hieronder was dat de melding over het
+ *        kolomrecht**, terwijl het de policy was die de herschrijving toeliet.
+ *        Wie die melding leest, gaat bij de grants zoeken.
  *
  * ⚠️ **De twee helften doen dus verschillend werk en geen van beide is opsmuk.**
  *    De `drop policy` sluit het oppervlak; de `revoke` maakt de weigering
  *    hoorbaar. Alleen droppen laat precies het stille-weigerpad staan waar dit
  *    project al drie issues aan besteed heeft (QS8-314, QS8-326, QS8-342), en
  *    alleen revoken laat een policy staan die iets toestaat wat niemand meer kan
- *    aanroepen. Wie er één van de twee weghaalt, haalt geen dubbeling weg.
+ *    aanroepen. Wie er één van de twee weghaalt, haalt geen dubbeling weg — en
+ *    sinds ronde B heeft elke helft zijn eigen rode test.
  */
 
 const SETUP_TIMEOUT = 180_000;
@@ -103,7 +111,7 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
     'een eigen vers bericht is niet te bewerken',
     async () => {
       // ⚠️ **Vers en van jezelf is met opzet het gunstigste geval.** Precies dit
-      //    bericht was vóór 0192 wél te bewerken (HTTP 200, gemeten). Lukt het
+      //    bericht was vóór 0193 wél te bewerken (HTTP 200, gemeten). Lukt het
       //    hier niet, dan lukt het nergens: elk ander geval faalde al op de oude
       //    `using`.
       const poging = await w.alice.db
@@ -112,13 +120,43 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
         .eq('id', w.berichtId)
         .select('id, body');
 
+      // ⚠️⚠️ **De rij eerst, de foutcode daarna, en die volgorde is een
+      //    reparatie** (security-review op deze branch). Andersom faalt bij een
+      //    volledige terugzetting van 0193 alleen de assertie over het
+      //    kolomrecht, terwijl het bericht gewoon herschreven is — dan leest
+      //    Quinten "een ontbrekend kolomrecht hoort hóórbaar te weigeren" en gaat
+      //    hij bij de grants zoeken naar een fout die bij de policy zit. Wat er
+      //    het ergst is, hoort het eerst gemeld te worden.
+      const na = await adminDb().from('chat_messages').select('body').eq('id', w.berichtId).single();
+      expect(na.data?.body, 'het bericht is herschreven — bewerken is niet dicht').toBe('VERS');
+
       expect(poging.error, 'een ontbrekend kolomrecht hoort hóórbaar te weigeren').not.toBeNull();
       expect(poging.error?.code, 'permission denied for table chat_messages').toBe('42501');
+    },
+    TEST_TIMEOUT,
+  );
 
-      // ⚠️ En de rij zelf, buiten de policy om gelezen: het gaat erom dat er
-      //    niets veranderd is, niet alleen dat er een fout terugkwam.
-      const na = await adminDb().from('chat_messages').select('body').eq('id', w.berichtId).single();
-      expect(na.data?.body).toBe('VERS');
+  it(
+    'er bestaat geen UPDATE-policy meer op chat_messages',
+    () => {
+      // ⚠️ **De `drop policy`-helft van 0193 had geen eigen grendel, en dat is de
+      //    security-review op deze branch die dat mat.** De test hierboven bijt op
+      //    het kolomrecht: zet je alléén de policy terug, dan blijft alles groen.
+      //    Zet je álles terug — de rollback uit de kop van 0193 — dan landt de
+      //    bewerking weer, en zonder deze assertie is de enige melding er een over
+      //    grants terwijl het de policy is die het toeliet.
+      //
+      // ⚠️ `polcmd = 'w'` is UPDATE in `pg_policy`. Dit leest het schema en niet
+      //    een migratiebestand: wat er draait is de waarheid.
+      const aantal = psql(`
+        select count(*) from pg_policy
+        where polrelid = 'public.chat_messages'::regclass and polcmd = 'w'
+      `);
+
+      expect(
+        Number(aantal.trim()),
+        'er staat weer een UPDATE-policy op chat_messages — zie 0193 en QS8-327',
+      ).toBe(0);
     },
     TEST_TIMEOUT,
   );
@@ -141,7 +179,7 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
     'MUST-ALLOW: je eigen bericht weghalen kan gewoon',
     async () => {
       // ⚠️ Dit is het alternatief dat `ChatRegel` noemt: niet stil anders, maar
-      //    weg. Valt deze om, dan heeft 0192 meer meegenomen dan bedoeld.
+      //    weg. Valt deze om, dan heeft 0193 meer meegenomen dan bedoeld.
       const gemaakt = await w.alice.db
         .from('chat_messages')
         .insert({ group_id: w.groupId, sender_id: w.alice.id, type: 'text', body: 'WEG HIERMEE' })
@@ -165,7 +203,7 @@ describe.skipIf(!rlsTestsConfigured)('chat_messages — bewerken bestaat niet', 
     'MUST-ALLOW: `on delete set null` werkt nog, met het UPDATE-recht ingetrokken',
     async () => {
       // ⚠️ **De referentiële actie is een UPDATE, en die moet blijven werken.**
-      //    Zou 0192 hem geraakt hebben, dan werpt het verwijderen van een account
+      //    Zou 0193 hem geraakt hebben, dan werpt het verwijderen van een account
       //    op het eerste chatbericht dat de vertrekker ooit stuurde — en dat is
       //    precies het soort gevolg dat je pas ziet als iemand het doet.
       //

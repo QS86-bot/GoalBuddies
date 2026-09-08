@@ -2,7 +2,7 @@
 
 **Datum:** 08-09-2026
 **Issue:** QS8-327
-**Migratie:** 0192
+**Migratie:** 0193
 **Besluit:** het bewerkrecht op `chat_messages` gaat weg. De knop komt er niet.
 
 ---
@@ -75,7 +75,7 @@ database maandenlang het tegenovergestelde te zeggen.
 ⚠️ **De vijf migraties op deze policy waren allemaal insnoerend.** 0010 pinde de
 onveranderlijke velden, 0059 en 0060 regelden de persoonskolommen, 0071 haalde
 `system_event` bij de client weg, 0188 maakte de weigering eerlijk. Vijf keer
-"hou dit ongevaarlijk", nul keer "zet dit aan". 0192 is de zesde stap in
+"hou dit ongevaarlijk", nul keer "zet dit aan". 0193 is de zesde stap in
 diezelfde richting en de laatste die er te zetten is.
 
 ### Waarom niet de knop bouwen
@@ -123,12 +123,12 @@ nu `403 / 42501`.
 ## Wat er blijft staan, en waarom
 
 ⚠️⚠️ **`stamp_chat_message()` blijft ongewijzigd, inclusief zijn UPDATE-tak.**
-Die lijkt na 0192 dood en is dat niet: `sender_id`, `actor_id` en `subject_id`
+Die lijkt na 0193 dood en is dat niet: `sender_id`, `actor_id` en `subject_id`
 dragen `on delete set null`, en dat is een UPDATE die Postgres zélf uitvoert als
 een profiel verdwijnt. Een trigger is geen policy — hij vuurt ook voor de
 referentiële actie en ook voor `service_role`.
 
-📏 Nagemeten ná 0192: een profiel verwijderen zet `sender_id` op NULL, het bericht
+📏 Nagemeten ná 0193: een profiel verwijderen zet `sender_id` op NULL, het bericht
 blijft staan, en er wordt niets geworpen. De must-allow staat in
 `tests/rls/bewerkvenster.test.ts`.
 
@@ -137,5 +137,5 @@ blijft staan, en er wordt niets geworpen. De must-allow staat in
 - `tests/rls/bewerkvenster.test.ts` toetst nu het tegenovergestelde van wat hij
   toetste. De geschiedenis staat in zijn kop; het bestand is niet weggegooid,
   want de vraag die het bewaakt is dezelfde gebleven.
-- De rollback staat in de kop van 0192, met de waarschuwing dat hij alleen
+- De rollback staat in de kop van 0193, met de waarschuwing dat hij alleen
   sámen met een knop terug hoort.

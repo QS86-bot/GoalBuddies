@@ -1,4 +1,4 @@
--- 0192_chat_bewerken_is_een_recht_zonder_knop.sql — haalt het bewerkrecht op een
+-- 0193_chat_bewerken_is_een_recht_zonder_knop.sql — haalt het bewerkrecht op een
 -- chatbericht weg, want de app besloot al dat die knop er niet komt (QS8-327).
 --
 -- ROLLBACK-PAD:
@@ -58,7 +58,7 @@
 --
 -- ⚠️ **Geen policy is hier geen gat maar de strengste vorm.** Zonder policy
 --    weigert Postgres élke UPDATE op een tabel met RLS. Twintig tabellen in dit
---    schema doen het al zo — `completions`, `points_ledger`, `approvals`,
+--    schema doen het al zo — `completions`, `points_ledger`, `completion_approvals`,
 --    `goal_group_links` — en onwrikbare regel 1 is daarmee gediend en niet
 --    geschonden: de opdracht is bestuurd, en weigeren ís het bestuur.
 --
