@@ -51,9 +51,18 @@ describe.skipIf(!beschikbaar)('de client zet geen servertijdstempel', () => {
   it(
     'laat de kolommen die de client wél hoort te schrijven met rust',
     async () => {
-      // ⚠️ De must-allow. `title` op een mijlpaal, `body` op een chatbericht en
+      // ⚠️ De must-allow. `title` op een mijlpaal, `title` op een doel en
       //    `did_text` op een weekafsluiting zijn wat de gebruiker zélf invult;
       //    die horen open te blijven.
+      //
+      // ⚠️ **De UPDATE-helft was tot 08-09 `chat_messages.body`, en die is met
+      //    0193 ingetrokken** (QS8-327): een chatbericht is niet meer te
+      //    bewerken, dus die kolom is geen must-allow meer maar precies het
+      //    tegenovergestelde. Vervangen door `goals.title`, dat wél een echt
+      //    schrijfpad heeft — `src/modules/goals/api.ts:410` zet hem in de
+      //    `update`-patch. Zonder een levende UPDATE-kolom hier zou een migratie
+      //    die álle updaterechten intrekt gewoon groen staan, en dat is de reden
+      //    dat deze helft bestaat.
       //
       // ⚠️ Hier stond eerst `week_reviews.id`, en die viel om — terecht: dat is
       //    één van de 23 kolommen zonder schrijfpad die 0173 níét meer uitdeelt.
@@ -71,7 +80,7 @@ describe.skipIf(!beschikbaar)('de client zet geen servertijdstempel', () => {
       const uit = psql(`
         select
           has_column_privilege('authenticated', 'public.milestones',     'title',      'INSERT')::text || ' ' ||
-          has_column_privilege('authenticated', 'public.chat_messages',  'body',       'UPDATE')::text || ' ' ||
+          has_column_privilege('authenticated', 'public.goals',          'title',      'UPDATE')::text || ' ' ||
           has_column_privilege('authenticated', 'public.week_reviews',   'did_text',   'INSERT')::text
       `);
 
