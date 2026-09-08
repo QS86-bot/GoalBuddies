@@ -157,7 +157,6 @@ describe.skipIf(!rlsTestsConfigured)('De Risico-radar rekent op de eigen klok', 
         goal_id: grensDoel.data.id,
         title: 'RISICOKLOK-MIJLPAAL',
         order_index: 1,
-        status: 'todo',
       });
     if (mijlpaal.error) throw new Error(`mijlpaal: ${mijlpaal.error.message}`);
 
