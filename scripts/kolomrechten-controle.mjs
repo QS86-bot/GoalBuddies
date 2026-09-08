@@ -1085,8 +1085,19 @@ export const NIET_TE_LEZEN = [
     tabel: 'milestones',
     reden:
       '`rijen.mijlpalen.map((m) => ({ ...m, goal_id }))` spreidt een rij die in ' +
-      '`rijenUitPlan()` is opgebouwd. `milestones` heeft een tabelbrede ' +
-      'INSERT-grant, dus er valt hier niets te missen zolang dat zo blijft.',
+      '`rijenUitPlan()` is opgebouwd, dus de kolommen zijn hier niet te lezen. ' +
+      '⚠️⚠️ **De reden hieronder stond hier tot 08-09-2026 en was feitelijk ' +
+      'onjuist — QS8-353.** Er stond: "`milestones` heeft een tabelbrede ' +
+      'INSERT-grant, dus er valt hier niets te missen zolang dat zo blijft." 📏 ' +
+      'Gemeten: de tabel-ACL van `authenticated` op `milestones` is ' +
+      '`SELECT,DELETE,REFERENCES` — er ís geen tabelbrede INSERT-grant, hij is ' +
+      'kolomgescopet. Er viel dus wél iets te missen, en dat is precies wat er ' +
+      'gebeurde: `id`, `status` en `completed_at` stonden in de grant zonder dat ' +
+      'enig pad ze schreef, en een client kon een mijlpaal aanmaken die al `done` ' +
+      'was met een teruggedateerde datum. 0195 heeft die drie ingetrokken. ' +
+      '⚠️ Wat blijft staan is de echte beperking: zolang dit pad onleesbaar is, ' +
+      'valt `milestones|INSERT` in de tak `!g.volledig` en zwijgt de controle over ' +
+      'álle kolommen van dat paar — de derde blinde tak, die QS8-349 niet dichtte.',
   },
   {
     pad: 'src/modules/goals/interview.ts',
