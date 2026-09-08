@@ -1,4 +1,4 @@
--- 0208_een_native_pushtoken_heeft_ook_een_vorm.sql — is_pushdienst() draaide alleen voor web, dus een ios- of android-token had acht tekens nodig en verder niets (QS8-305)
+-- 0209_een_native_pushtoken_heeft_ook_een_vorm.sql — is_pushdienst() draaide alleen voor web, dus een ios- of android-token had acht tekens nodig en verder niets (QS8-305)
 --
 -- ROLLBACK-PAD:
 --   alter table public.push_tokens drop constraint if exists push_tokens_native_vorm;
@@ -128,7 +128,7 @@ $$;
 
 comment on function public.is_expo_pushtoken(text) is
   'Of een string de vorm van een Expo-pushtoken heeft. Bewust ruim: alleen de '
-  'haken, niet het alfabet of de lengte van de romp. Zie 0208 en QS8-305.';
+  'haken, niet het alfabet of de lengte van de romp. Zie 0209 en QS8-305.';
 
 -- ⚠️ Onwrikbare regel 4: `authenticated` staat er met zoveel woorden bij. In
 --    Supabase deelt `alter default privileges` élke nieuwe functie in `public`
@@ -183,7 +183,7 @@ alter table public.push_tokens
 comment on constraint push_tokens_native_vorm on public.push_tokens is
   'Een ios- of android-token gaat naar Expo en moet dus Expo''s vorm hebben; '
   'anders staat er een rij die nooit iets ontvangt en er wel goed uitziet. '
-  'Web draagt een endpoint-URL en heeft zijn eigen toets in de RPC. Zie 0208 '
+  'Web draagt een endpoint-URL en heeft zijn eigen toets in de RPC. Zie 0209 '
   'en QS8-305.';
 
 -- ---------------------------------------------------------------------------
@@ -265,7 +265,7 @@ begin
       return jsonb_build_object('ok', false, 'reason', 'geen_pushdienst');
     end if;
   else
-    -- ⚠️ QS8-305. Dit is de tak die tot 0208 leeg was op alles behalve het op
+    -- ⚠️ QS8-305. Dit is de tak die tot 0209 leeg was op alles behalve het op
     --    NULL zetten van de sleutels: acht tekens was genoeg om een rij te
     --    krijgen die er goed uitziet en nooit iets ontvangt. De vorm is die van
     --    `push_tokens_native_vorm`; loopt deze regel weg bij die constraint, dan

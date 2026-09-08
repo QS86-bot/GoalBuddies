@@ -7,7 +7,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  * Een pushtoken heeft een bovengrens — QS8-297 — en een vorm — QS8-305.
  *
  * ⚠️ **Twee issues in één bestand, en dat is geen bundeling.** Het onderwerp is
- *    dezelfde RPC, dezelfde kolom en dezelfde twee lagen; 0208 vult de tak die
+ *    dezelfde RPC, dezelfde kolom en dezelfde twee lagen; 0209 vult de tak die
  *    0179 hier leeg liet staan. Ze uit elkaar trekken zou betekenen dat de
  *    volgorde van de takken — die wél uitmaakt, zie hieronder — in geen van
  *    beide bestanden te toetsen is.
@@ -74,12 +74,12 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    tussen 1001 en 4999 was onbewaakt. En H is het geval waar de grens zélf de
  *    verkeerde eenheid telde — zie de kop van 0179.
  *
- * ## De vorm erbij — QS8-305, migratie 0208
+ * ## De vorm erbij — QS8-305, migratie 0209
  *
  * `is_pushdienst()` draaide alleen in de web-tak. Voor `ios` en `android` was
  * acht tekens genoeg: een rij die nooit iets kan ontvangen zag er precies zo uit
  * als een goede rij, en de meldingenjob stuurde er elke ronde een verzoek voor
- * naar Expo. 0208 zet er dezelfde twee lagen op als 0179 voor de lengte: een tak
+ * naar Expo. 0209 zet er dezelfde twee lagen op als 0179 voor de lengte: een tak
  * in de RPC met een `reason`, en `push_tokens_native_vorm` op de kolom.
  *
  * ⚠️⚠️ **Twee ijkingen van QS8-297 zijn hier meeverbouwd, en dát is de
@@ -126,7 +126,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *        `token_te_lang`
  *
  * ⚠️⚠️ **N bleef eerst 17 van de 17 groen, en dat is de tweede les van deze
- *    ijking.** De kop van 0208 zegt dat die volgorde vastligt, met een reden die
+ *    ijking.** De kop van 0209 zegt dat die volgorde vastligt, met een reden die
  *    de gebruiker leest — en er was geen enkele test die hem kon breken, omdat
  *    élke fixture inmiddels de Expo-vorm droeg en dus niet meer door beide
  *    takken liep. Het repareren van de ene ijking had de andere onmogelijk
@@ -155,7 +155,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *         die in `push_tokens` schrijft. 📏 Zonder de expliciete grant werkte
  *         dat tóch, omdat `service_role` EXECUTE érft uit Supabase's
  *         `alter default privileges` — onwrikbare regel 4 in zijn zuiverste
- *         vorm. 0208 geeft het recht nu met zoveel woorden.
+ *         vorm. 0209 geeft het recht nu met zoveel woorden.
  *      ⚠️ De review mat hier "20/20 groen" op twee bestanden. 📏 Zelf
  *         nagemeten over de héle RLS-suite: dan vallen `notificaties.test.ts`
  *         en `afvinkgrens.test.ts` wél om, want die schrijven met `adminDb()`
@@ -180,7 +180,7 @@ const ECHTE_NATIVE_TOKEN = `ExponentPushToken[aBcDeFgHiJk${RUN}]`;
 /** Een web-endpoint zoals FCM hem uitdeelt, met een hostnaam uit de allowlist. */
 const ECHTE_WEB_ENDPOINT = `https://fcm.googleapis.com/fcm/send/${RUN}${'c'.repeat(144)}`;
 
-/** Expo deelt beide vormen uit en accepteert ze allebei. Zie de kop van 0208. */
+/** Expo deelt beide vormen uit en accepteert ze allebei. Zie de kop van 0209. */
 const ECHTE_NATIVE_TOKEN_KORT = `ExpoPushToken[lMnOpQrStUv${RUN}]`;
 
 /**
@@ -195,7 +195,7 @@ const APNS_DEVICE_TOKEN = 'a1b2c3d4'.repeat(8);
 /**
  * Te lang, maar mét de Expo-vorm.
  *
- * ⚠️ **Dit was `'x'.repeat(5000)` en dat was na 0208 geen ijking meer.** Zo'n
+ * ⚠️ **Dit was `'x'.repeat(5000)` en dat was na 0209 geen ijking meer.** Zo'n
  *    token valt op de lengte én op de vorm, dus `push_tokens_token_len` droppen
  *    liet hem alsnog weigeren door `push_tokens_native_vorm`. Zie de kop.
  */
@@ -257,7 +257,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
   it(
     'weigert een token boven de grens met een reden, niet met een ruwe fout',
     async () => {
-      // ⚠️ Mét de Expo-vorm, sinds 0208. Een kale `'x'.repeat(5000)` valt óók op
+      // ⚠️ Mét de Expo-vorm, sinds 0209. Een kale `'x'.repeat(5000)` valt óók op
       //    de vormtoets, en dan gaat deze test niet meer over de lengte.
       expect(TE_LANG_MAAR_GOEDE_VORM.length, 'ruim over de grens').toBeGreaterThan(1000);
 
@@ -268,7 +268,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
 
       expect(error, 'de gebruiker hoort een antwoord te krijgen, geen 23514').toBeNull();
       expect(uit(data).ok).toBe(false);
-      expect(uit(data).reason, 'de lengte gaat vóór de vorm, zie 0208').toBe('token_te_lang');
+      expect(uit(data).reason, 'de lengte gaat vóór de vorm, zie 0209').toBe('token_te_lang');
     },
     TEST_TIMEOUT,
   );
@@ -397,7 +397,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
       //
       //    Een ruwe Postgres-fout waar de client niets mee kan — precies de
       //    klacht die 0067 oploste en die deze migratie wil wegnemen.
-      // ⚠️ Ook dit geval draagt sinds 0208 de Expo-vorm, en de maat luistert
+      // ⚠️ Ook dit geval draagt sinds 0209 de Expo-vorm, en de maat luistert
       //    nauw: precies duizend tékens, bijna drieduizend bytes.
       expect(PAST_IN_TEKENS_NIET_IN_BYTES.length, 'precies op de tekengrens').toBe(1000);
 
@@ -413,7 +413,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
   );
 
   // -------------------------------------------------------------------------
-  // De vorm — QS8-305, migratie 0208
+  // De vorm — QS8-305, migratie 0209
   // -------------------------------------------------------------------------
 
   it(
@@ -489,7 +489,7 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
     'noemt de lengte en niet de vorm als een token op allebei valt',
     async () => {
       // ⚠️⚠️ **Deze test bestaat omdat mutatie N zónder hem groen bleef.** De kop
-      //    van 0208 zegt dat de lengtetak vóór de vormtak hoort te staan, met
+      //    van 0209 zegt dat de lengtetak vóór de vormtak hoort te staan, met
       //    een reden die de gebruiker leest: een token van vijfduizend tekens
       //    heet `token_te_lang` en niet `geen_expotoken`. 📏 Gemeten dat die
       //    volgorde omdraaien 17 van de 17 tests groen liet — élke fixture droeg

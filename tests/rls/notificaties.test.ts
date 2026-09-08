@@ -62,18 +62,18 @@ const WEBSLEUTELS = {
 };
 
 /**
- * Een native token van de vorm die Expo uitdeelt — QS8-305, migratie 0208.
+ * Een native token van de vorm die Expo uitdeelt — QS8-305, migratie 0209.
  *
  * ⚠️ **Dezelfde les als bij `WEBSLEUTELS` hierboven, en als bij de endpoint-URL
  *    in de test over het gedeelde apparaat.** Een verzonnen string als
- *    `tok-alice-…` kwam er tot 0208 gewoon door: voor `ios` en `android` was
+ *    `tok-alice-…` kwam er tot 0209 gewoon door: voor `ios` en `android` was
  *    acht tekens de enige eis. Sinds die migratie toetst `registreer_push_token()`
  *    de vórm, en `push_tokens_native_vorm` doet dat óók voor een schrijver die
  *    de RPC overslaat — zoals `adminDb()` hieronder.
  *
  *    Dit is de derde keer dat een fixture in dit bestand van "iets dat op een
  *    token lijkt" naar "iets dat een token ís" moest: 0067 voor de websleutels,
- *    0117 voor het endpoint, 0208 voor de native vorm. De grenzen van deze
+ *    0117 voor het endpoint, 0209 voor de native vorm. De grenzen van deze
  *    tabel staan onder test in `tests/rls/pushtokengrens.test.ts`; hier is een
  *    echte waarde alleen nog maar decor.
  */
