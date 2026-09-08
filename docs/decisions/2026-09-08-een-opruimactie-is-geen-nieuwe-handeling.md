@@ -1,6 +1,6 @@
 # Een opruimactie is geen nieuwe handeling
 
-**08-09-2026 — QS8-359, migratie 0203**
+**08-09-2026 — QS8-359, migratie 0204**
 
 ## Waar dit over gaat
 
@@ -129,7 +129,7 @@ heeft. Geen zelfbedieningspad, wél precies wat een bulk- of retentieverwijderin
 doet. Staat als **QS8-361**, met de correctie erin.
 
 `commitments` blijft daarom bewust buiten de veeg: meenemen zou deze test rood
-houden op iets dat 0203 niet repareert.
+houden op iets dat 0204 niet repareert.
 
 **Dat de veeg binnen een minuut iets vond, blijft het argument voor de veeg** —
 ook al bleek het iets anders te zijn dan ik dacht. Een losse toets op
@@ -158,7 +158,7 @@ dat het ijkgeval oud genoeg moet zijn.
 * **QS8-361**, hierboven.
 * **QS8-360** — de tweede variant van dit defect heeft wél een veroorzaker: na een
   `huddle_day`-PATCH van een beheerder faalt dezelfde verwijdering met *"is geen
-  periodestart van deze groep"*. Migratie 0203 repareert ook die kant (de vroege
+  periodestart van deze groep"*. Migratie 0204 repareert ook die kant (de vroege
   uitgang kijkt naar `group_id` én de periodestart), maar het onderliggende
   probleem — dat een beheerder de lopende periode van een ander kan ongeldig
   maken — blijft en staat apart.

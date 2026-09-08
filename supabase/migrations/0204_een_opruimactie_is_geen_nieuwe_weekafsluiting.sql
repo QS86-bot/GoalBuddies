@@ -1,4 +1,4 @@
--- 0203_een_opruimactie_is_geen_nieuwe_weekafsluiting.sql — een `on delete set
+-- 0204_een_opruimactie_is_geen_nieuwe_weekafsluiting.sql — een `on delete set
 -- null` is een UPDATE, en die vuurde de periodetoets opnieuw af op een
 -- historische rij; daardoor was een account na 35 dagen niet meer te verwijderen
 -- (QS8-359).

@@ -4,7 +4,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Een account is te verwijderen, hoe oud zijn rijen ook zijn — QS8-359,
- * migratie 0203.
+ * migratie 0204.
  *
  * ⚠️ **De belofte is niet "de trigger heeft een vroege uitgang".** Dat is een
  *    eigenschap van het onderdeel. De belofte is: *een gebruiker kan zijn account
@@ -68,7 +68,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    voor een commitment dat dezelfde cascade al weggehaald heeft. Dat is een
  *    andere belofte (*een auditspoor overleeft zijn onderwerp niet*), raakt
  *    domeinregel 5, en staat als QS8-361 in Linear. Hem hier
- *    meenemen zou deze test rood houden op iets dat 0203 niet repareert.
+ *    meenemen zou deze test rood houden op iets dat 0204 niet repareert.
  *
  * ⚠️ **Waarom psql en niet de harness.** De rij moet écht oud zijn, en met de
  *    trigger aan is zo'n rij niet te maken — dat is meteen het bewijs dat een
