@@ -6,14 +6,29 @@
 --   drop function if exists public.slaap_stille_groepen(integer, uuid[]);
 --   drop function if exists public.keur_vastgelopen_goedkeuringen_goed(integer, uuid[]);
 --   en de drie terugzetten uit hun laatste definitie vóór deze migratie:
---   `maak_seizoensrecaps()` uit 0158, `slaap_stille_groepen()` uit **0016** en
---   `keur_vastgelopen_goedkeuringen_goed()` uit **0147**.
+--   `maak_seizoensrecaps()` uit 0158, `slaap_stille_groepen()` uit 0016 en
+--   `keur_vastgelopen_goedkeuringen_goed()` uit 0147 — **maar voor die laatste
+--   óók 0135**: 0147 draagt alleen de `revoke`, terwijl de
+--   `grant execute … to service_role` en de `comment` in 0135 staan. Wie alleen
+--   0147 terugzet, houdt een functie over die `service_role` via de default
+--   privileges mag aanroepen in plaats van via een besloten grant — precies de
+--   klasse die onwrikbare regel 4 wil uitsluiten. 📏 Het pad is letterlijk
+--   uitgevoerd op een herbouwde main-database; zonder 0135 komt hij terug als
+--   `svc=t auth=f <GEEN COMMENT>`.
 --
 --   ⚠️ 📏 Per functie nageteld met
---   `grep -ln 'create or replace function public.<naam>' supabase/migrations/*.sql | grep -v 0193 | tail -1`
+--   `grep -ln 'function \(public\.\)\?<naam>(' supabase/migrations/*.sql | grep -v 0193 | tail -1`
 --   en niet uit het hoofd — bij 0192 stond hier twee keer een verkeerd nummer
 --   mét een meetmarkering ervoor, en dat is precies de fout die een rollback
 --   onbruikbaar maakt op het moment dat je hem nodig hebt.
+--
+--   ⚠️⚠️ **Let op de `public.`-prefix in dat recept, en dat is een gerepareerde
+--   valse uitslag.** Hier stond eerst `create or replace function public.<naam>`,
+--   en dat geeft voor `slaap_stille_groepen` **nul** treffers: 0016 schrijft hem
+--   zonder schemaprefix. Wie het recept naspeelde, concludeerde "geen eerdere
+--   definitie" — een recept dat zijn eigen antwoord mist, is erger dan geen
+--   recept. De drie antwoorden hierboven kloppen wél; ze zijn met de ruimere
+--   vorm nagemeten.
 --
 -- ---------------------------------------------------------------------------
 -- Wat er stuk was
@@ -54,10 +69,17 @@
 --    de andere **drie** het nog. Alleen dit geval repareren zou de volgende
 --    ronde precies dezelfde meting opleveren op een andere functie.
 --
--- ⚠️ **Wat er níét bij hoort en waarom.** De 21 functies zonder enige parameter
---    die ook schrijven, zijn op één na allemaal triggerfuncties: die draaien per
---    rij en zijn dus door de rij zelf begrensd. De uitzondering is
+-- ⚠️ **Wat er níét bij hoort en waarom.** De parameterloze functies die ook
+--    schrijven, zijn op één na allemaal triggerfuncties: die draaien per rij en
+--    zijn dus door de rij zelf begrensd. De uitzondering is
 --    `verwijder_mijn_account()`, en die is begrensd door `auth.uid()`.
+--
+--    ⚠️ **Hier stond "de 21 functies", en dat getal reproduceert onder geen
+--    enkele telwijze** — 12, 18 of 36 naargelang je commentaar meetelt en hoe
+--    ruim je "schrijft" leest. De conclusie is wél nagemeten en verandert niet:
+--    onder de strikte telling is `verwijder_mijn_account()` de enige
+--    niet-trigger parameterloze schrijver. Een getal dat niemand kan naspelen
+--    hoort er niet te staan; de eigenschap wel.
 --
 -- ---------------------------------------------------------------------------
 -- De vorm: optioneel, en standaard precies wat er nu gebeurt
@@ -368,3 +390,42 @@ revoke all on function public.keur_vastgelopen_goedkeuringen_goed(integer, uuid[
 grant execute on function public.maak_seizoensrecaps(timestamptz, uuid[]) to service_role;
 grant execute on function public.slaap_stille_groepen(integer, uuid[]) to service_role;
 grant execute on function public.keur_vastgelopen_goedkeuringen_goed(integer, uuid[]) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- En het commentaar, want een `drop` neemt dát óók mee
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ Dezelfde val als bij de grants, één laag dieper: `pg_get_functiondef()`
+--    geeft het lichaam terug maar niet de `comment on function`, dus wie een
+--    functie uit die uitvoer herbouwt, verliest hem stilzwijgend. 📏 Gemeten na
+--    het eerste afspelen: alle drie `<GEEN COMMENT>`, terwijl `main` er drie had.
+--
+-- ⚠️ **En het zijn juist de zinnen die de autorisatie-intentie uitspreken**
+--    ("Alleen voor de rollover; nooit voor een client"). `functies:controle` is
+--    de enige controle die commentaar met productie vergelijkt, en die stond in
+--    de poort op OVERGESLAGEN wegens een ontbrekende productiesleutel — er was
+--    dus niets dat dit kón melden.
+--
+-- De teksten hieronder zijn letterlijk die van 0158, 0016 en 0135, met alleen de
+-- handtekening aangepast.
+
+comment on function public.maak_seizoensrecaps(timestamptz, uuid[]) is
+  'Plaatst één seizoensrecap per groep, op de eerste dag van het nieuwe seizoen '
+  'om 08:00 in de tijdzone van de groep. Draait elk uur vanuit de rollover — QS8-79. '
+  'Sinds 0158 (QS8-171) staat elke groep in een eigen blok: wat op één groepsrij '
+  'stukgaat kost alleen die groep zijn recap, wordt geteld in `mislukt` en '
+  'benoemd in `fouten` (group_id en sqlstate, nooit de melding zelf). '
+  'Sinds 0193 (QS8-339) begrenst `p_group_ids` optioneel waarover hij mag '
+  'schrijven; null is alle groepen en dat is wat de rollover meegeeft.';
+
+comment on function public.slaap_stille_groepen(integer, uuid[]) is
+  'Zet stilgevallen groepen op sleeping met één afscheidsbericht (5.9). Alleen '
+  'voor het systeem: draait mee met de rollover-job. Sinds 0193 (QS8-339) '
+  'begrenst `p_group_ids` optioneel waarover hij mag schrijven; null is alle '
+  'groepen.';
+
+comment on function public.keur_vastgelopen_goedkeuringen_goed(integer, uuid[]) is
+  'Keurt weken goed die na de goedkeuringstermijn nog op een beoordelaar wachten '
+  'die er niet meer is. Beslisdocument 001 §2.6b.3, gebouwd in QS8-178. '
+  'Alleen voor de rollover; nooit voor een client. Sinds 0193 (QS8-339) begrenst '
+  '`p_owner_ids` optioneel welke eigenaars hij aanraakt; null is alle eigenaars.';

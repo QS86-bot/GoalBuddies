@@ -37,10 +37,18 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './
  *
  * ## De vorm van het gevaar
  *
- * Vijf functies in dit schema schrijven **zonder een grens die de aanroeper
+ * Vijf functies in dit schema schreven **zonder een grens die de aanroeper
  * meegeeft** — gemeten met `pg_get_functiondef()`, niet met een grep over de
  * migraties. Voor de rollover en de audit is dat precies de bedoeling; in een
  * gedeelde testdatabase is het een `update` zonder `where` op eigenaar.
+ *
+ * ⚠️ **Sinds 0193 (QS8-339) dragen ze alle vijf een bereik.** Twee kregen het in
+ *    0137 (`p_goal_id`), de andere drie nu (`p_group_ids` en `p_owner_ids`),
+ *    telkens optioneel met `null` = alles, want dat is wat de rollover doet. De
+ *    tests hieronder komen daarmee in twee soorten: de eerste vijf toetsen de
+ *    grens die de fúnctie zelf trekt (een seizoen, een ouderdom, een termijn),
+ *    de laatste drie de grens die de **aanroeper** meegeeft. Dat zijn twee
+ *    verschillende beloftes en ze hebben allebei hun eigen mutatie.
  *
  * Deze suite zet daarom een **vreemde fixture** neer — een gebruiker, een doel
  * en een groep waar geen enkele aanroep hieronder op wijst — en toetst na elke
@@ -65,6 +73,14 @@ import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured } from './
  * | B | de ouderdomsgrens uit `slaap_stille_groepen()` | test 3 |
  * | C | alléén de seizoensgrens uit `maak_seizoensrecaps()` | test 5 |
  * | D | de termijncontrole uit `keur_vastgelopen_goedkeuringen_goed()` | test 4 |
+ * | E | het bereik uit `maak_seizoensrecaps()` | de bereikstest ervan |
+ * | F | het bereik uit `slaap_stille_groepen()` | de bereikstest ervan |
+ * | G | het bereik uit `keur_vastgelopen_goedkeuringen_goed()` | de bereikstest ervan |
+ *
+ * ⚠️ **E–G maakten er elk precies één rood en geen andere** — maar F en G pas
+ *    nadat hun fixture teruggezet werd. Daarvóór hielden de ouderdom en de
+ *    termijn het geval al tegen en bleven ze groen onder hun eigen mutatie:
+ *    dezelfde val als bij A, één laag verderop. Zie de aantekening bij elke test.
  *
  * ⚠️ **Mutatie A maakte test 2 aanvankelijk níét rood**, en dat was de
  *    leerzaamste van de vier: test 1 had de vreemde rijen dan al "gerepareerd",
@@ -289,6 +305,37 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
       .update({ status: 'approved' })
       .eq('id', eigen.weekdoelId);
     if (error) throw new Error(`eigen drift terugzetten: ${error.message}`);
+
+    // ⚠️⚠️ **Ook de twee tijdstempels, en dat is een gerepareerd gat in dit
+    //    bestand zelf.** De bereikstests hieronder zetten `last_activity_at` en
+    //    `submitted_at` ver terug om hun eigen grens open te zetten. Zonder deze
+    //    twee regels blijven ze zo staan, en dan zien de tests *"slaap_stille_
+    //    groepen laat een verse groep wakker"* en *"keur_vastgelopen_
+    //    goedkeuringen_goed laat een verse voltooiing met rust"* geen verse
+    //    fixture meer — die twee leunen er juist op dat hij vers is.
+    //
+    //    📏 Gemeten met geschudde testvolgorde: in vijf van zes seeds vielen
+    //    precies die twee om. Op de geschreven volgorde is alles groen, dus het
+    //    was latent — en dit bestand is uitgerekend het bestand dat moet
+    //    bewaken dat de ene test de andere niet vervuilt.
+    //
+    // ⚠️ **En het stond hierboven al opgeschreven.** Beide tests dragen een
+    //    "Wordt zwaarder als"-regel die exact dit scenario noemt. CLAUDE.md
+    //    vraagt bij elke nieuwe beslissing die op een bestaande primitieve
+    //    handeling leunt: staat daar een weggelegde bevinding over? Hier stond
+    //    er een, en de eerste versie van deze branch liep er dwars doorheen.
+    const stempels = await admin
+      .from('groups')
+      .update({ last_activity_at: new Date().toISOString() })
+      .eq('id', vreemd.groepId);
+    if (stempels.error) throw new Error(`groepsstempel terugzetten: ${stempels.error.message}`);
+
+    const ingediend = await admin
+      .from('completions')
+      .update({ submitted_at: new Date().toISOString() })
+      .eq('weekly_goal_id', vreemd.wachtendWeekdoelId);
+    if (ingediend.error)
+      throw new Error(`voltooiingsstempel terugzetten: ${ingediend.error.message}`);
   });
 
   afterAll(async () => {
@@ -386,6 +433,12 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
    *    ongescopeerd laat slapen. `policies.test.ts` doet het eerste al (regel
    *    2174, terug naar 2026-01-01) en roept daarna `slaap_stille_groepen(30)`
    *    aan; dat gaat vandaag goed omdat alle ándere groepen op `now()` staan.
+   *
+   * ⚠️⚠️ **Die voorwaarde is één keer ingetreden, in dit bestand zelf.** De
+   *    bereikstest onderaan zet `last_activity_at` terug om zijn eigen grens
+   *    open te zetten, en de eerste versie daarvan zette hem niet terug: 📏 met
+   *    geschudde testvolgorde viel déze test in vijf van zes seeds om. De
+   *    `beforeEach` herstelt de kolom nu, en dat is de reden dat hij daar staat.
    */
   it(
     'slaap_stille_groepen laat een verse groep wakker',
@@ -415,6 +468,12 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
    *    wél een geldige beoordelaar is, en `vastgelopen_goedkeuringen()` daarop
    *    filtert. Vervalt die tweede voorwaarde, dan keurt deze functie de weken
    *    van een ander bestand goed en boekt er punten bij.
+   *
+   * ⚠️⚠️ **Ook déze voorwaarde is één keer ingetreden, in dit bestand zelf.** De
+   *    bereikstest onderaan zet `submitted_at` terug om zijn eigen termijn open
+   *    te zetten, op precies het weekdoel dat hier `pending` moet blijven — de
+   *    twee voorwaarden tegelijk. 📏 Met geschudde testvolgorde viel déze test
+   *    in vijf van zes seeds om. De `beforeEach` herstelt het tijdstempel nu.
    */
   it(
     'keur_vastgelopen_goedkeuringen_goed laat een verse voltooiing met rust',
@@ -508,12 +567,43 @@ describe.skipIf(!rlsTestsConfigured)('een globale schrijver raakt geen vreemde f
     it(
       'maak_seizoensrecaps slaat een vreemde groep over als hij er niet bij staat',
       async () => {
-        // ⚠️ **Een moment waarop de seizoensgrens wél openstaat**, anders meet
-        //    deze test de grens hierboven en niet het bereik. `2026-10-01T06:30Z`
-        //    is 08:30 in Amsterdam op de eerste dag van Q4 — hetzelfde moment
-        //    waarop `seizoensrecap.test.ts` recaps ziet ontstaan.
+        // ⚠️⚠️ **De test bewijst eerst zijn eigen voorwaarde, en dat is met
+        //    opzet geen vaste datum.** Om iets te betekenen moet de seizoensgrens
+        //    op dit moment openstaan; staat hij dicht, dan schrijft de functie
+        //    sowieso niets en is de test groen zonder dat het bereik iets deed.
+        //
+        //    Een vaste `p_op` kán dat niet garanderen: de fixture is
+        //    `now()`-relatief (`addDays(cyclus.startDate, -7 * i)`), dus hij
+        //    schuift elke week op en valt vanaf begin november 2026 buiten het
+        //    seizoen dat een vaste datum in Q4 aanwijst. Dan is deze test stil
+        //    nutteloos — precies wat de buurtest hierboven al een keer
+        //    overkwam ("Hier stond eerst 2026-05-13").
+        //
+        //    Dus: eerst mét de vreemde groep in het bereik, en dán pas de echte
+        //    toets. Slaat de eerste helft niet aan, dan valt de test luid om in
+        //    plaats van stilzwijgend te slagen.
+        const MOMENT = '2026-10-01T06:30:00Z';
+
+        const open = await adminDb().rpc('maak_seizoensrecaps', {
+          p_op: MOMENT,
+          p_group_ids: [vreemd.groepId],
+        });
+        expect(open.error).toBeNull();
+        expect(
+          (open.data as unknown as { recaps: number }).recaps,
+          'de seizoensgrens staat dicht op dit moment — deze test bewaakt dan niets',
+        ).toBeGreaterThan(0);
+
+        // ⚠️ De recap van die voorwaardetoets weer weg, anders meet de echte
+        //    toets hieronder een rij die hij zelf heeft laten maken.
+        const opgeruimd = await adminDb()
+          .from('season_recaps')
+          .delete()
+          .eq('group_id', vreemd.groepId);
+        expect(opgeruimd.error).toBeNull();
+
         const { error } = await adminDb().rpc('maak_seizoensrecaps', {
-          p_op: '2026-10-01T06:30:00Z',
+          p_op: MOMENT,
           p_group_ids: [],
         });
         expect(error).toBeNull();
