@@ -289,7 +289,7 @@ onderbouwing is van het besluit.
 
 | Vraag | Uitkomst |
 | -- | -- |
-| Wat overleeft een straf? | **Per geval beslissen.** Vier losse voorstellen, elk met de meting en de afweging, staan als comment bij QS8-321, QS8-322, QS8-333 en QS8-335. Dit is het enige dat nog op Quinten wacht |
+| Wat overleeft een straf? | **Per geval beslissen.** Alle vier de voorstellen staan er, elk met zijn eigen meting: QS8-321, QS8-322, QS8-333 en QS8-335. Dit is het enige dat nog op Quinten wacht |
 | Mag een gewoon lid zien wie er uit de groep gezet is? | **Ja — laten zoals het is, en vastleggen.** Oppervlak 31 in beslisdocument 002 draagt het besluit; de agendarij in `docs/ENGINEER-REVIEW.md` is ermee gesloten |
 | Mag een bevinding van dezelfde klasse op de branch landen? | **Ja.** Zie §1 en `docs/decisions/2026-09-08-een-bevinding-van-dezelfde-klasse.md` |
 | Welke v2-issues zijn vrij? | **QS8-250, QS8-92, QS8-71 en QS8-72.** QS8-109 (de mascotte) blijft liggen tot Quinten een vormgeving kiest |
@@ -308,10 +308,18 @@ een straf is wat de gebruiker als consequentie beloofd is.
 | Getuige verwijdert zijn account | De verschuldigde straf blijft stuurloos en onaanraakbaar achter | Vervalt de straf, of krijgt hij een nieuwe getuige? |
 | Eigenaar verwijdert zijn account | Elke straf en zijn auditspoor worden gewist, zonder poort | Mag je jezelf uit een verschuldigde straf verwijderen? |
 
-⚠️ **Er zit een gemeenschappelijk antwoord onder**: een straf is vrijwillig tot
-hij verschuldigd is, en daarna niet meer. Wie dat als uitgangspunt bevestigt,
-beantwoordt alle vier de gezichten in één zin — en dan is het één reparatieronde
-in plaats van vier issues.
+⚠️ **Er leek een gemeenschappelijk antwoord onder te zitten**: een straf is
+vrijwillig tot hij verschuldigd is, en daarna niet meer. Dat stond hier als
+hypothese, en het opstellen van de vier voorstellen op 08-09-2026 heeft hem voor
+de helft weerlegd — daarom staat hij er nog, met de weerlegging erbij.
+
+Voor de eerste twee gezichten klopt hij. Voor de laatste twee is het al waar
+*en juist dáárom het probleem*: bij QS8-333 kan niemand de verschuldigde straf
+nog aanraken — 📏 gemeten: de eigenaar mag er **0** rijen van bijwerken — en bij
+QS8-335 wist de accountverwijdering hem alsnog, terwijl het systeembericht in de
+groep blijft staan. Eén zin bevestigen lost die twee niet op; ze vragen elk een
+eigen besluit met een eigen prijs. **Dat is de reden dat "per geval beslissen"
+het juiste antwoord op vraag 1 was en niet de dure.**
 
 ### Vraag 2 — twee dashboardhandelingen (QS8-197, QS8-240)
 
