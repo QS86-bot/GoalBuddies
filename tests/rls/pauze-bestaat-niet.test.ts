@@ -1,5 +1,5 @@
 /**
- * `paused` is geen lidmaatschapstoestand meer — QS8-325, migratie 0202.
+ * `paused` is geen lidmaatschapstoestand meer — QS8-325, migratie 0203.
  *
  * ⚠️ **De belofte is niet "de CHECK kent twee waarden".** Dat is de kolom. De
  *    belofte is een eigenschap van het geheel:
@@ -21,7 +21,7 @@
  *    `docs/decisions/2026-09-08-paused-was-de-adempauze-op-de-verkeerde-plek.md`.
  *
  * ⚠️⚠️ **Twee must-denies verhuizen van slot, en dat staat hier met zoveel
- *    woorden.** Vóór 0202 weigerde de trigger een beheerder die een ánder op
+ *    woorden.** Vóór 0203 weigerde de trigger een beheerder die een ánder op
  *    pauze zette (`pauze_van_een_ander`, P0001); nu doet de CHECK dat (23514).
  *    De weigering blijft, de foutcode niet — en een must-deny die stil van slot
  *    wisselt, is precies hoe een test iets anders gaat bewaken dan hij belooft.
@@ -153,7 +153,7 @@ describe('paused bestaat niet meer als lidmaatschapstoestand', () => {
   // 2. Toetreden met een code houdt dezelfde uitkomst
   // -------------------------------------------------------------------------
   //
-  // ⚠️ 0202 haalde de `paused`-tak uit de upsert van `join_group_with_code()` en
+  // ⚠️ 0203 haalde de `paused`-tak uit de upsert van `join_group_with_code()` en
   //    maakte er `on conflict do nothing` van. Dat raakt twee gevallen die wél
   //    blijven bestaan, en die staan hier omdat de wijziging ze had kunnen
   //    veranderen zonder dat iemand het zag.
@@ -238,7 +238,7 @@ describe.skipIf(!beschikbaar)('en er is geen lezer voor de waarde achtergebleven
   });
 
   it('en geen enkele policy weegt hem mee', () => {
-    // ⚠️ De policies noemden hem vóór 0202 al niet — 📏 gemeten. Deze toets
+    // ⚠️ De policies noemden hem vóór 0203 al niet — 📏 gemeten. Deze toets
     //    staat er omdat een lezer terugkomen kan langs een weg die de vorige
     //    toets niet ziet: een policy is geen `pg_proc`-rij.
     const treffers = psql(

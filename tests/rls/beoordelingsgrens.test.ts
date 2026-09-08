@@ -377,7 +377,7 @@ describe.skipIf(!rlsTestsConfigured)('te_beoordelen_voor — de grens zit in de 
    *    staan — die rij ís het slot dat heraansluiten met dezelfde code
    *    tegenhoudt. Precies daar komt de clausule aan te pas.
    *
-   * ⚠️ **Deze test stond tot 0202 op `paused`**, want dat was toen de enige
+   * ⚠️ **Deze test stond tot 0203 op `paused`**, want dat was toen de enige
    *    niet-actieve stand die de rij liet staan. Die stand bestaat niet meer
    *    (QS8-325) en `inactive` neemt zijn plaats in — dezelfde belofte, langs een
    *    weg die een echte handeling produceert in plaats van alleen een PATCH.

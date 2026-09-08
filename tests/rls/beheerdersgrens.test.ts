@@ -143,12 +143,12 @@ describe.runIf(rlsTestsConfigured)('een beheerder raakt de rol van een ander nie
 
     // ⚠️⚠️ **Hier stond "weigert een beheerder die een ander op paused zet", en
     //    die test is verhuisd omdat zijn slót verhuisd is.** 0199 hield dat geval
-    //    tegen met een `raise pauze_van_een_ander` in deze guard; 0202 haalde de
+    //    tegen met een `raise pauze_van_een_ander` in deze guard; 0203 haalde de
     //    waarde uit de CHECK (QS8-325), dus wat hem nu weigert is
     //    `group_members_status_valid` en niet meer deze trigger.
     //
     // ⚠️ **Een must-deny die stil van slot wisselt, bewaakt iets anders dan hij
-    //    belooft.** 📏 Deze test bléév groen na 0202 — hij toetste alleen dát er
+    //    belooft.** 📏 Deze test bléév groen na 0203 — hij toetste alleen dát er
     //    een fout kwam, niet welke. Hij staat nu in
     //    `tests/rls/pauze-bestaat-niet.test.ts`, mét de foutcode erbij, naast het
     //    geval dat de belofte draagt: ook `service_role` schrijft die stand niet.

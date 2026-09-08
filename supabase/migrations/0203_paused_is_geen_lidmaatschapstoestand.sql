@@ -1,4 +1,4 @@
--- 0202_paused_is_geen_lidmaatschapstoestand.sql — `paused` gaat uit de CHECK op
+-- 0203_paused_is_geen_lidmaatschapstoestand.sql — `paused` gaat uit de CHECK op
 -- `group_members.status` en uit de drie functies die hem lazen (QS8-325)
 --
 -- ROLLBACK-PAD:
@@ -279,7 +279,7 @@ comment on function public.join_group_with_code(text) is
   'Toetreden met een uitnodigingscode. Een bestaand actief lidmaatschap is een '
   'no-op (on conflict do nothing) en een uitgezet lid krijgt reason = removed. '
   'De uitzondering van 0187 (app.hervat_lidmaatschap, voor de overgang '
-  'paused -> active) is met 0202 vervallen: die stand bestaat niet meer — '
+  'paused -> active) is met 0203 vervallen: die stand bestaat niet meer — '
   'QS8-325.';
 
 revoke all on function public.join_group_with_code(text) from public, anon, authenticated;
@@ -379,7 +379,7 @@ begin
     --    echte JWT's: een beheerder promoveerde een ander tot `admin`,
     --    degradeerde een mede-beheerder — óók de oprichter — zette iemand op
     --    `paused`, en zette een uitgezet lid terug op `active`. Van die vier
-    --    schreef alleen de uitzetting een spoor. De derde kan sinds 0202 niet
+    --    schreef alleen de uitzetting een spoor. De derde kan sinds 0203 niet
     --    meer bestaan; de andere drie worden hieronder geweigerd.
     --
     -- ⚠️ **De trigger vuurt óók voor `SECURITY DEFINER`-functies**, want
@@ -452,7 +452,7 @@ begin
                      'PATCH doet dat niet.';
     end if;
 
-    -- ⚠️ Hier stond `pauze_van_een_ander`. Met 0202 kent
+    -- ⚠️ Hier stond `pauze_van_een_ander`. Met 0203 kent
     --    `group_members_status_valid` de waarde niet meer, dus deze weigering
     --    komt nu uit de CHECK en niet uit een tak die de trigger zelf draagt.
 
@@ -465,7 +465,7 @@ begin
   --
   -- ⚠️ Hier stond de uitzondering van 0187: je eigen rij van `paused` terug naar
   --    `active` mocht, mits `join_group_with_code()` `app.hervat_lidmaatschap`
-  --    op het groeps-id had gezet. Met 0202 bestaat `paused` niet meer, dus is
+  --    op het groeps-id had gezet. Met 0203 bestaat `paused` niet meer, dus is
   --    er niets om door te laten en zet niemand die sleutel nog.
   --
   -- ⚠️ **`is distinct from` en niet "je bent geen beheerder".** Een update die
@@ -585,7 +585,7 @@ comment on function public.shares_group_with_user(uuid) is
   'Deelt de huidige gebruiker een groep met deze persoon? Beide kanten moeten '
   'er nog bij horen: een uitgezet lid (status inactive) is geen groepsgenoot '
   'meer, in geen van beide richtingen — 0160, QS8-146. De grens staat op '
-  '<> inactive en niet op = active; sinds 0202 (QS8-325) vallen die twee samen, '
+  '<> inactive en niet op = active; sinds 0203 (QS8-325) vallen die twee samen, '
   'want group_members.status kent nog maar twee waarden. Een gearchiveerde '
   'groep telt óók mee: deze functie staat aan de leeskant, net als '
   'mag_groep_lezen() (0153). SECURITY DEFINER tegen RLS-recursie. Het volledige '

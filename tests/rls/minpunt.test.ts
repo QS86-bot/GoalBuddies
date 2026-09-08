@@ -272,7 +272,7 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
   // ⚠️ M1 uit dezelfde review. `kan_beoordeeld_worden` telde alleen `active`,
   //    terwijl de policy die goedkeuring toestaat `<> 'inactive'` gebruikt.
   //
-  // ⚠️⚠️ **De helft die dat verschil mat, is met 0202 vacuüm geworden** en staat
+  // ⚠️⚠️ **De helft die dat verschil mat, is met 0203 vacuüm geworden** en staat
   //    er daarom niet meer. Hij zette een buddy op `paused` en toetste dat het
   //    minpunt tóch telde — de enige stand waarin die twee grenzen uiteenliepen.
   //    `group_members.status` kent er sinds QS8-325 nog twee, dus `= 'active'` en

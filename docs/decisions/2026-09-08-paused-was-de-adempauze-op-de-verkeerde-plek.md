@@ -1,6 +1,6 @@
 # `paused` was de adempauze op de verkeerde korrel
 
-**Datum:** 08-09-2026 · **Issue:** QS8-325 · **Migratie:** 0202
+**Datum:** 08-09-2026 · **Issue:** QS8-325 · **Migratie:** 0203
 
 `group_members.status` kende drie waarden. Eén ervan, `paused`, had geen enkele
 schrijver en vier lezers. Dit document legt vast waarom hij weggaat in plaats van
@@ -65,7 +65,7 @@ er een dat dit issue niet kan nemen:
    issue zou de halve toestand dan met de andere helft naar voren verplaatsen.
 
 Komt die feature er ooit, dan komt de stand terug mét zijn schrijver, zijn
-antwoord op punt 2 en zijn RLS. Dat is één migratie werk — 0202 is precies zo
+antwoord op punt 2 en zijn RLS. Dat is één migratie werk — 0203 is precies zo
 klein.
 
 ## 4. Wat dit besluit níét is
@@ -128,6 +128,6 @@ krijgen.
 aangeraakt, en dat is een regel en geen vergeetpunt: **een functie wordt
 vervangen als haar lichaam verandert, en een commentaar erin wordt bijgewerkt bij
 de eerstvolgende vervanging.** `verlaat_groep()` is 263 regels; die overschrijven
-om één zin te wijzigen begraaft de echte wijzigingen van 0202 in kopieerwerk, en
+om één zin te wijzigen begraaft de echte wijzigingen van 0203 in kopieerwerk, en
 dat kost een security-review meer dan de zin oplevert. Er staat een rij over in
 `docs/ENGINEER-REVIEW.md`.
