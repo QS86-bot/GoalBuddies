@@ -423,7 +423,13 @@ function DeadlineVerzetten({
   const kiesbaar = groepen.length > 1;
   const magVersturen = !gedeeld || groep !== undefined;
 
-  async function trekIn() {
+  // ⚠️ **`trekVerzoekIn` en niet `trekIn`, en dat is geen smaak** (QS8-340). Dit
+  //    scherm importeert óók `trekIn()` uit `@/modules/commitments` — een straf
+  //    intrekken, een heel andere handeling — en die lokale naam schaduwde de
+  //    import. Twee handelingen met één naam in één bestand is de plek waar een
+  //    bug zich verstopt, en hier was dat ook zo: de geïmporteerde `trekIn()`
+  //    gooide zijn uitkomst weg en de grendel kon de twee niet uit elkaar houden.
+  async function trekVerzoekIn() {
     if (verzoek === null) return;
     setBezig(true);
     setFout(null);
@@ -488,7 +494,7 @@ function DeadlineVerzetten({
           <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
         </Card>
         <Caption>{t('deadline.buddy_beslist')}</Caption>
-        <Button variant="stil" busy={bezig} onPress={() => void trekIn()}>
+        <Button variant="stil" busy={bezig} onPress={() => void trekVerzoekIn()}>
           {t('deadline.verzoek_intrekken')}
         </Button>
         {fout === null ? null : <Caption danger>{fout}</Caption>}
@@ -868,6 +874,35 @@ function Straf({
   if (bestaand) {
     const stand = tekstVoor(bestaand);
     const magIntrekken = isOpenstaand(bestaand);
+    const straf = bestaand;
+
+    /**
+     * ⚠️ **Hier stond `void trekIn(bestaand.id).then(onKlaar)`** — QS8-340. Dat
+     *    gooide de uitkomst weg, en `trekIn()` heeft er een die de gebruiker
+     *    moet zien: `commitment.fout.al_afgegaan`, *"dit commitment is al in
+     *    werking getreden en kan niet meer worden ingetrokken"*. Die melding was
+     *    geschreven, vertaald en getest, en bereikte niemand. Werd de straf net
+     *    `due` tussen het renderen en de tik in — precies het geval waarvoor de
+     *    knop hierboven verdwijnt — dan ververste het scherm, stond de straf er
+     *    nog, en was er geen woord uitleg.
+     *
+     * ⚠️ En mét een `busy`-stand, want zonder stuurde twee keer tikken twee
+     *    verzoeken.
+     */
+    async function trekStrafIn() {
+      setBezig(true);
+      setFout(null);
+
+      const uitkomst = await trekIn(straf.id);
+      setBezig(false);
+
+      if (!uitkomst.ok) {
+        setFout(uitkomst.melding);
+        return;
+      }
+
+      onKlaar();
+    }
 
     return (
       <Card>
@@ -882,15 +917,11 @@ function Straf({
              dat je er niet meer onderuit komt.
         */}
         {magIntrekken ? (
-          <Button
-            variant="stil"
-            onPress={() => {
-              void trekIn(bestaand.id).then(onKlaar);
-            }}
-          >
+          <Button variant="stil" busy={bezig} onPress={() => void trekStrafIn()}>
             {t('straf.intrekken')}
           </Button>
         ) : null}
+        {fout === null ? null : <Caption danger>{fout}</Caption>}
         <Spoor commitmentId={bestaand.id} />
       </Card>
     );
