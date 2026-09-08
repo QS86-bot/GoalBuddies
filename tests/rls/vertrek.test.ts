@@ -652,12 +652,16 @@ describe.skipIf(!rlsTestsConfigured)('0102 — een groep verlaten', () => {
       // ⚠️ De tegenhanger. De grendel hierboven mag alleen de eigen rij raken;
       //    zou hij breder zijn, dan is uitzetten kapot en merkt niemand het tot
       //    er iemand uitgezet moet worden.
-      const poging = await o.beheerder.db
-        .from('group_members')
-        .update({ status: 'inactive' })
-        .eq('group_id', o.groep.id)
-        .eq('user_id', o.lid.id);
+      // ⚠️ **Via `verwijder_lid()` sinds QS8-356.** 0199 sloot de kale PATCH; de
+      //    belofte hier is dat de grendel niet te breed is en uitzetten niet
+      //    kapot maakt, en die staat los van de weg waarlangs het gebeurt.
+      const poging = await o.beheerder.db.rpc('verwijder_lid', {
+        p_group_id: o.groep.id,
+        p_user_id: o.lid.id,
+        p_bevestigd: true,
+      });
       expect(poging.error).toBeNull();
+      expect((poging.data ?? {}) as { ok?: boolean }).toMatchObject({ ok: true });
 
       const { data: na } = await adminDb()
         .from('group_members')
