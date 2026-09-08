@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { clientEnv } from '@/lib/env';
-import { useSession } from '@/modules/auth';
+import { useProfiel, useSession } from '@/modules/auth';
 import {
   bewijseisLabels,
   BEWIJSEISEN,
@@ -40,13 +40,14 @@ import {
   zichtbaarheidLabels,
   zichtbaarheidUitleg,
   type Groep,
+  type Verleden,
   type Zichtbaarheid,
 } from '@/modules/buddies';
 import { categorieLabels } from '@/modules/goals';
 import { CATEGORIEEN, type Categorie } from '@/shared/categorieen';
-import { t } from '@/shared/i18n';
+import { opmaaktaal, t } from '@/shared/i18n';
 import { telTekens } from '@/shared/tekst';
-import type { Weekday } from '@/shared/time';
+import { toonKlokDatum, type TimeZone, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Bevestiging,
@@ -82,6 +83,11 @@ export default function GroepBeheer() {
   const router = useRouter();
   const terug = useTerug(`/groep/${id}`);
   const { userId } = useSession();
+  // ⚠️ Alleen voor de zone waarin een datum getoond wordt. Zonder profiel valt
+  //    `EerderLid` terug op de zin zónder datum — dat is beter dan een dag die
+  //    voor de lezer een dag naast kan zitten (onwrikbare regel 7).
+  const { profiel } = useProfiel();
+  const tz = profiel?.tz ?? null;
 
   const [groep, setGroep] = useState<Groep | null>(null);
   const [beheerder, setBeheerder] = useState(false);
@@ -681,6 +687,7 @@ export default function GroepBeheer() {
                     verzoeken.map((verzoek) => (
                       <Card key={verzoek.id}>
                         <Body>{verzoek.naam}</Body>
+                        <EerderLid eerder={verzoek.eerder} tz={tz} />
                         <Body muted>{verzoek.bericht ?? t('ontdek.zonder_bericht')}</Body>
                         <Button
                           variant="primair"
@@ -809,5 +816,42 @@ export default function GroepBeheer() {
         {t('beheer.terug')}
       </Button>
     </Screen>
+  );
+}
+
+/**
+ * Was deze aanvrager eerder lid van deze groep — QS8-332.
+ *
+ * ⚠️ **Nuchter en geen `danger`.** Dit is een feit over een geschiedenis en geen
+ *    fout van de aanvrager; rood eromheen maakt van de beslislijst een oordeel.
+ *    Wat de beheerder nodig heeft is dat het er stáát, en de regel is in een
+ *    kaart van vier regels niet te missen.
+ *
+ * ⚠️ **`null` betekent "nooit lid geweest" en levert niets op.** Zou hier een
+ *    regel staan bij élke aanvrager, dan zegt hij niets meer; zou hij er alleen
+ *    staan bij een uitzetting, dan ís zijn aanwezigheid het oordeel. Zie de kop
+ *    van migratie 0206.
+ */
+function EerderLid({
+  eerder,
+  tz,
+}: {
+  readonly eerder: Verleden | null;
+  readonly tz: TimeZone | null;
+}) {
+  if (eerder === null) return null;
+
+  const datum = eerder.op !== null && tz !== null ? toonKlokDatum(eerder.op, tz, opmaaktaal()) : '';
+
+  if (datum === '' || eerder.soort === 'eerder_lid') {
+    return <Caption>{t('ontdek.eerder_lid')}</Caption>;
+  }
+
+  return (
+    <Caption>
+      {eerder.soort === 'verwijderd'
+        ? t('ontdek.eerder_verwijderd', { datum })
+        : t('ontdek.eerder_vertrokken', { datum })}
+    </Caption>
   );
 }
