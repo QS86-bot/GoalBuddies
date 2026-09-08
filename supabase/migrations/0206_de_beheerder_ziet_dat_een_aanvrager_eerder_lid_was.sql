@@ -1,4 +1,4 @@
--- 0204_de_beheerder_ziet_dat_een_aanvrager_eerder_lid_was.sql — een beheerder die
+-- 0206_de_beheerder_ziet_dat_een_aanvrager_eerder_lid_was.sql — een beheerder die
 -- een lidmaatschapsverzoek beoordeelt, ziet of die persoon eerder lid was (QS8-332)
 --
 -- ROLLBACK-PAD:
