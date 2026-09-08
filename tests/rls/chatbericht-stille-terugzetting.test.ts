@@ -20,6 +20,25 @@
  *    bewerkbaar, en een verzoek dat niets verandert blijft een gewone update.
  *    Een grendel die ook de bedoelde bewerking tegenhoudt, is geen grendel maar
  *    een storing.
+ *
+ * ⚠️⚠️ **Sinds 0192 (QS8-327) loopt élke UPDATE hier via `adminDb()`, en dat is
+ *    geen gemak maar de enige manier waarop dit bestand nog meet wat het zegt.**
+ *    Die migratie haalde `chat_messages_update` en de tien UPDATE-kolomrechten
+ *    weg, want het bewerkrecht had nooit een knop. Gevolg: een client krijgt
+ *    `42501` vóór de trigger ook maar draait.
+ *
+ *    Twee gevallen hieronder vielen daardoor om — de must-allows, die een
+ *    geslaagde bewerking eisen. **De andere vier bleven groen, en dát was het
+ *    gevaar:** ze toetsen `error not toBeNull()`, en `42501` is ook een fout. Ze
+ *    zouden dus zijn blijven staan als bewijs voor een trigger die ze niet meer
+ *    aanraakten. Precies de valstrik die dit bestand bij `type: 'photo'` al een
+ *    keer opleverde — groen om de verkeerde reden.
+ *
+ *    Een trigger is geen policy: `stamp_chat_message()` vuurt óók voor
+ *    `service_role` en voor de referentiële actie van de foreign key. Dat is na
+ *    0192 het enige overgebleven pad ernaartoe, en dus het pad waarlangs deze
+ *    tests hem moeten benaderen. De redenering stond hier al bij `system_event`
+ *    en `created_at`; ze geldt nu voor het hele bestand.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -73,7 +92,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         // ⚠️ Dit was vóór 0188 HTTP 200 met een ongewijzigde rij. Gemeten.
         const id = await versBericht('payload-poging');
 
-        const uit = await w.alice.db.from('chat_messages').update({ payload: { x: 1 } }).eq('id', id);
+        const uit = await adminDb().from('chat_messages').update({ payload: { x: 1 } }).eq('id', id);
 
         expect(uit.error, 'een payload-wijziging kwam er stil doorheen').not.toBeNull();
 
@@ -89,15 +108,20 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         // ⚠️ De halve vorm: vóór 0188 veranderde `body` en bleef `type` staan, met
         //    succes erop. Half doen en heel melden is de ergste van de twee.
         //
-        // ⚠️⚠️ **`photo` en niet `system`, en dat verschil is de hele test.** De
-        //    `with check` van `chat_messages_update` eist `type <> 'system'`, dus
-        //    een poging met `system` wordt al door de policy geweigerd en bereikt
-        //    deze trigger nooit. De eerste versie deed dat wél en was groen om de
-        //    verkeerde reden — gevonden doordat `type` uit de toets halen niets
-        //    rood maakte. `photo` staat de policy toe; alleen de trigger stopt hem.
+        // ⚠️⚠️ **`photo` en niet `system`, en dat verschil was ooit de hele test.**
+        //    Zolang `chat_messages_update` bestond, eiste zijn `with check`
+        //    `type <> 'system'`: een poging met `system` werd al door de policy
+        //    geweigerd en bereikte deze trigger nooit. De eerste versie deed dat
+        //    wél en was groen om de verkeerde reden — gevonden doordat `type` uit
+        //    de toets halen niets rood maakte.
+        //
+        //    Sinds 0192 is die policy weg en loopt dit geval via `adminDb()`, dus
+        //    het onderscheid doet er technisch niet meer toe. `photo` blijft
+        //    staan omdat het de zuiverste vorm is: één kolom die alleen de
+        //    trigger tegenhoudt, zonder een tweede reden waarom het misgaat.
         const id = await versBericht('half-poging');
 
-        const uit = await w.alice.db
+        const uit = await adminDb()
           .from('chat_messages')
           .update({ body: 'nieuw', type: 'photo' })
           .eq('id', id);
@@ -133,7 +157,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         expect(td.ok, `tweede groep: ${JSON.stringify(tweede.data)}`).toBe(true);
 
         const id = await versBericht('groep-poging');
-        const uit = await w.alice.db
+        const uit = await adminDb()
           .from('chat_messages')
           .update({ group_id: td.group!.id })
           .eq('id', id);
@@ -197,7 +221,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         //    UPDATE-kolomgrant op `id` en de trigger pinde hem niet. 📏 Gemeten
         //    dat een afzender het id van zijn eigen bericht herschreef.
         const id = await versBericht('id-poging');
-        const uit = await w.alice.db
+        const uit = await adminDb()
           .from('chat_messages')
           .update({ id: '00000000-0000-0000-0000-0000000000ff' })
           .eq('id', id);
@@ -260,7 +284,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
       async () => {
         const id = await versBericht('voor');
 
-        const uit = await w.alice.db.from('chat_messages').update({ body: 'na' }).eq('id', id);
+        const uit = await adminDb().from('chat_messages').update({ body: 'na' }).eq('id', id);
         expect(uit.error, `een gewone bewerking werd geweigerd: ${uit.error?.message}`).toBeNull();
 
         const na = await adminDb().from('chat_messages').select('body').eq('id', id).single();
@@ -276,7 +300,7 @@ describe.skipIf(!rlsTestsConfigured)('een chatbericht en zijn stille terugzettin
         //    de hele rij terugstuurt, verandert niets en hoort niets te merken.
         const id = await versBericht('gelijk');
 
-        const uit = await w.alice.db.from('chat_messages').update({ body: 'gelijk' }).eq('id', id);
+        const uit = await adminDb().from('chat_messages').update({ body: 'gelijk' }).eq('id', id);
         expect(uit.error, `een no-op werd geweigerd: ${uit.error?.message}`).toBeNull();
       },
       TEST_TIMEOUT,
