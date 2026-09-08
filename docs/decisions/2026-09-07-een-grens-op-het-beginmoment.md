@@ -89,14 +89,52 @@ bevestigen dát de mutatie in de database stond.
 | Mutatie | Wat er rood werd |
 |---|---|
 | elk van de **acht** triggers los weggehaald | telkens **precies één** test — die van díé tabel |
-| de `auth.uid()`-tak weg | **1** — precies de must-allow dat `service_role` erlangs mag |
 | `weekdoelen_plafond()` op 5000 | **1** — precies de weekdoelentest; de trigger leest dus de gedeelde bron |
 | de trigger altijd laten werpen | de suite valt om in de opbouw, **exitcode 1** |
+| alléén de `auth.uid() is null`-regel weg | **0** — zie hieronder |
+| alléén de eigenaarsfilter uit de vensterquery | **0** — zie hieronder |
+| **allebei** weg, dus de trigger geldt voor iedereen | **1** — precies de must-allow dat `service_role` erlangs mag |
 
-⚠️ Die laatste is eerlijk opgeschreven en niet mooier gemaakt: de tests melden
+⚠️ De rij *"de trigger altijd laten werpen"* is eerlijk opgeschreven en niet
+mooier gemaakt: de tests melden
 zich dan als **overgeslagen** en niet als rood, want de `beforeAll` komt niet door
 zijn eigen invoeging heen. De exitcode is 1, dus de poort vangt het — maar
 "overgeslagen" is niet "rood", en dat verschil is in dit project uitgevochten.
+
+### Een ijking die niet was wat ze zei
+
+⚠️⚠️ **Hier stond "de `auth.uid()`-tak weg → 1 rood", en dat is niet wat er
+gemeten is.** De mutatie die gedraaid werd verving de eigenaarsfilter door
+`coalesce((select auth.uid()), g.owner_id)` — die haalt de tak wég én laat de
+telling over álle eigenaars lopen. Dat is een sterkere mutatie dan de regel
+beweert, en de uitslag hoort dus bij de eigenaarsfilter en niet bij de tak.
+
+📏 Nagemeten, elk apart en daarna samen:
+
+* alléén de `auth.uid() is null`-regel weg → **10 passed, nul rood**
+* alléén de eigenaarsfilter weg → **10 passed, nul rood**
+* allebei weg → **1 rood**, precies de `service_role`-must-allow
+
+⚠️ **`service_role` wordt door twee dingen onafhankelijk beschermd**, en dat is
+de reden dat géén mutatie van één regel die must-allow rood krijgt: de vroege
+`return` vangt het geval af, en zou die weg zijn dan matcht
+`where owner_id = NULL` alsnog nul rijen. Dat is diepte en geen dubbeling — maar
+het betekent wél dat **deze must-allow niet regel-voor-regel te ijken is**, en dat
+hoort hier te staan in plaats van een tabelrij die het tegendeel suggereert.
+
+⚠️ **Het gevolg voor de volgende schrijver:** wie de tak vervangt door een toets
+op een rólnaam — precies waar 0083 voor waarschuwde — krijgt daar geen rode test
+van, want de eigenaarsfilter dekt het geval nog af. Het staat als rij in
+`docs/ENGINEER-REVIEW.md`.
+
+⚠️ De les is niet "een verkeerd getal opgeschreven" maar: **de mutatie die je
+draait en de zin die je erover schrijft moeten dezelfde zijn.** Wijkt de mutatie
+af, dan bewaakt de ijking iets anders dan de lezer denkt — en dan is elke andere
+📏 in hetzelfde document ook maar een bewering.
+
+⚠️ Deze rij is twee keer fout geweest: eerst een stérkere mutatie dan beschreven,
+daarna — bij de reparatie — een zwákkere die nul rood gaf terwijl er 1 stond.
+Beide keren was de uitweg opnieuw meten en niet de zin bijstellen.
 
 ### Twee tests die groen waren om de verkeerde reden
 
@@ -137,6 +175,24 @@ belooft. De must-allows hebben nu een eigen gebruiker.
   opschrijven waard:** filteren op `cmd = 'INSERT'` in `pg_policies` mist elke
   `ALL`-policy. De eerste telling zei daardoor dat `milestones` geen INSERT-policy
   had, terwijl `milestones_write` (`ALL`) er gewoon een is.
+
+* **⚠️ Een geweigerde batch wordt eerst geschreven.** De trigger is `AFTER` —
+  een transitietabel bestaat niet in `BEFORE` — dus de rijen staan fysiek in de
+  tabel vóór de weigering, en de teruggedraaide ruimte blijft toegewezen. 📏
+  Zelf gemeten met één `authenticated`-sessie en één statement van 50.000 doelen:
+  geweigerd, nul rijen erna, en `goals` groeide van 40 kB naar **9704 kB**.
+
+  0192 zorgt dus dat de rijen niet **blijven**, niet dat ze niet **geschreven**
+  worden. Op een gratis tier van 500 MB zónder backups is dat nog steeds een
+  vector: een handvol gelijktijdige grote POSTs vult de schijf, vanaf één account
+  met de anon-key die per ontwerp in de bundel zit.
+
+  ⚠️ **Dit is niet in de database op te lossen** — een transitietabel bestaat
+  alleen in `AFTER`, dus de trigger komt per definitie ná het schrijven. Het hoort
+  op de PostgREST- of proxylaag (een grens op de bodygrootte, of `max-rows`) en
+  staat als **QS8-347**, met een rij in `docs/ENGINEER-REVIEW.md` — gevonden door de
+  security-review, die er terecht op wees dat de kop van dit document de vector
+  opent en dat je hem dan niet half dicht mag achterlaten zonder het te zeggen.
 
 * **Een grens op het aantal rijen per verzoek in het algemeen.** PostgREST kent
   geen maximum op de bodygrootte in dit project; dat is een aparte laag en een

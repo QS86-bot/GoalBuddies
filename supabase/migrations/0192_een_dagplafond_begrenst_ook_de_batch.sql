@@ -6,10 +6,22 @@
 --   drop function if exists public.begrens_<naam>();
 --   drop function if exists public.<naam>_plafond();
 --   en de vijf `*_over()` terugzetten uit hun laatste definitie vóór deze
---   migratie: `weekdoelen_over()` uit 0083, `berichten_over()` uit 0090,
---   `dagafvinkingen_over()` uit 0122, `weekreacties_over()` uit 0090 en
---   `weekplanstappen_over()` uit 0138. 📏 Nagemeten met een grep over de map:
---   dat zijn de laatste `create or replace` van elk.
+--   migratie: `weekdoelen_over()` uit **0091**, `berichten_over()` uit 0090,
+--   `dagafvinkingen_over()` uit **0140**, `weekreacties_over()` uit 0090 en
+--   `weekplanstappen_over()` uit 0138.
+--
+--   ⚠️⚠️ **Hier stonden 0083 en 0122, en dat was fout — met een 📏 ervoor.**
+--   0083 definieert `weekdoelen_vandaag()`, een ándere functie; `weekdoelen_over()`
+--   kwam pas in 0091. En 0122 raakt `dagafvinkingen_over()` niet: de laatste
+--   definitie daarvan staat in 0140. Wie dit pad zou volgen, vindt de functie niet
+--   of zet een verkeerde terug terwijl vijf policies hem aanroepen.
+--
+--   De 📏 stond er terwijl de grep niet gedraaid was. **Dat is de duurdere fout
+--   van de twee**: een meting die niet gemeten is, maakt elke andere meting in
+--   hetzelfde document onbetrouwbaar. Gevonden door de security-review op deze
+--   branch. De echte laatste definities zijn nu wél nageteld, per functie:
+--
+--     grep -ln 'create or replace function public.<naam>' supabase/migrations/*.sql | grep -v 0192 | tail -1
 --   De vier indexen mogen blijven staan; ze kosten niets en breken niets.
 --
 -- ---------------------------------------------------------------------------
@@ -42,17 +54,35 @@
 --    een sessie: `auth.uid() is null` betekent overslaan.
 --
 -- ⚠️ **En die tak kan niet als achterdeur dienen, wat de kern van het bezwaar
---    was.** Voor een client mét sessie slaat de trigger toe. Voor een client
---    zónder sessie is `auth.uid()` leeg — en dan weigert de policy hem al, want
---    élke `*_over()` geeft bij een lege `auth.uid()` nul terug en de policy eist
---    `> 0`. De enige aanroeper die de lege tak bereikt, is er een die RLS
---    sowieso omzeilt: `service_role`. 📏 Gemeten: `set role service_role` zonder
---    JWT-claims geeft `auth.uid() = NULL`, en dat is hoe de rollover en de
---    notificatiejob verbinden.
+--    was.** Er zijn drie onafhankelijke redenen, en dat is er één meer dan hier
+--    eerst stond:
 --
---    Anders gezegd: de trigger faalt niet open, want wie langs de lege tak komt,
---    was al langs de policy gekomen. Dezelfde vorm die
---    `guard_group_member_update()` gebruikt.
+--    1. 📏 **`anon` heeft op geen van de acht tabellen ook maar één
+--       INSERT-kolomgrant.** Een bezoeker zonder sessie komt niet aan de tabel,
+--       ongeacht wat de trigger doet.
+--    2. **De vensterquery filtert op de eigenaar.** Bij een lege `auth.uid()`
+--       is dat `where owner_id = NULL`, en dat matcht nul rijen — dus zelfs
+--       zónder de vroege `return` telt de trigger niets en werpt hij nooit.
+--    3. Voor de vijf tabellen mét een `*_over()`-policy weigert die policy al
+--       bij een lege `auth.uid()`, want elke teller geeft dan nul en de policy
+--       eist `> 0`.
+--
+--    📏 Gemeten: `set role service_role` zonder JWT-claims geeft
+--    `auth.uid() = NULL`, en zo verbinden de rollover en de notificatiejob.
+--
+-- ⚠️⚠️ **Hier stond alleen reden 3, en die dekt drie van de acht tabellen niet.**
+--    `goals`, `milestones` en `goal_events` hebben géén `*_over()`-policy — dat
+--    is nota bene de reden dat ze in deze migratie zitten. De conclusie klopte,
+--    de onderbouwing niet, en een onderbouwing die voor drie van de acht niet
+--    geldt leest als bewijs terwijl ze dat niet is. Gevonden door de
+--    security-review op deze branch.
+--
+-- ⚠️ **De vroege `return` is daarmee defensief en niet dragend, en dat hoort
+--    hier te staan.** 📏 Gemeten: haal alléén die regel weg en er wordt geen
+--    enkele test rood — reden 2 vangt het geval al af. Hij blijft staan omdat
+--    hij de bedoeling uitspreekt en het geval afvangt vóór er een query loopt,
+--    maar wie hem ooit vervangt door een toets op een rólnaam krijgt daar geen
+--    rode test van, en dát is precies waar 0083 voor waarschuwde.
 --
 -- ---------------------------------------------------------------------------
 -- De vorm van de grens
@@ -211,7 +241,7 @@ create or replace function public.weekplanstappen_over() returns integer
 $$;
 
 -- ---------------------------------------------------------------------------
--- 3. De indexen die de telling per statement draagt (schaalbaarheidsregel 11)
+-- 3. De vijf indexen die de telling per statement dragen (schaalbaarheidsregel 11)
 -- ---------------------------------------------------------------------------
 --
 -- ⚠️ De trigger telt bij élke insert het venster van een etmaal. Zonder index is
@@ -223,6 +253,15 @@ create index if not exists goals_owner_vers_idx on public.goals (owner_id, creat
 create index if not exists milestones_vers_idx on public.milestones (goal_id, created_at desc);
 create index if not exists day_checkins_vers_idx on public.day_checkins (weekly_goal_id, created_at desc);
 create index if not exists weekly_plan_steps_vers_idx on public.weekly_plan_steps (goal_id, created_at desc);
+
+-- ⚠️ **En `goal_events`, want die telling stond zonder dekking.** Er is wél een
+--    `goal_events_actor_idx (actor_id)`, maar die draagt het venster niet: bij
+--    één actor met veel gebeurtenissen leest Postgres al zijn rijen en filtert
+--    daarna op `created_at`. 📏 Gemeten door de security-review bij 60k events
+--    voor één actor: 1381 buffers / 10,3 ms zonder de composiet, 29 buffers /
+--    0,47 ms met. Die kosten worden bij élke insert betaald en groeien met de
+--    levensduur van het account.
+create index if not exists goal_events_actor_vers_idx on public.goal_events (actor_id, created_at desc);
 
 -- ---------------------------------------------------------------------------
 -- 4. De grens die de batch wél telt
