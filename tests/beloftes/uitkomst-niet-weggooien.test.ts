@@ -3,10 +3,19 @@ import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  alleAsyncExportsIn,
+  asyncBeloftesIn,
+  beloftefunctiesIn,
+  lokaleFunctiesIn,
+  uitkomsttypenIn,
+  voidTreffersIn,
+} from './uitkomsttypen';
+
 const WORTEL = join(__dirname, '..', '..');
 
 /**
- * Een functie die een `Uitkomst` teruggeeft, mag niet weggegooid worden — QS8-245.
+ * Een functie die een uitkomst teruggeeft, mag niet weggegooid worden — QS8-245.
  *
  * ⚠️ **De belofte is niet "signOut wordt afgehandeld".** Dat is het geval. De
  *    belofte is: *als een handeling faalt, ziet de gebruiker dat.* Op het
@@ -14,7 +23,7 @@ const WORTEL = join(__dirname, '..', '..');
  *
  *      <Button onPress={() => void signOut()}>
  *
- *    en `void` gooit de `Uitkomst` weg. `signOut()` bouwt netjes
+ *    en `void` gooit de uitkomst weg. `signOut()` bouwt netjes
  *    `auth.fout.uitloggen` op, die melding staat in beide catalogi en is op
  *    inhoud getest — en werd door geen enkel scherm getoond. Mislukte het
  *    uitloggen, dan gebeurde er zichtbaar niets.
@@ -25,26 +34,25 @@ const WORTEL = join(__dirname, '..', '..');
  *
  * ⚠️ **De lijst wordt uit de bron áfgeleid en niet met de hand bijgehouden.** Dat
  *    is de fout van 0032/0034: twee lijsten die uit elkaar lopen, waarbij de
- *    test de app-lijst met zichzelf vergeleek. Komt er een nieuwe functie met
- *    `Promise<Uitkomst>` bij, dan valt die hier automatisch onder.
+ *    test de app-lijst met zichzelf vergeleek.
  *
- * ⚠️ **`void` op een lokale handler is juist góed en wordt met rust gelaten.**
- *    `onPress={() => void bewaar()}` waarbij `bewaar()` de uitkomst zelf
- *    afhandelt, is het patroon dat overal in dit project staat — een controle
- *    die dát meldt, leer je uitzetten. De grens loopt bij een dátalaagfunctie
- *    die rechtstreeks in een `void` belandt.
+ * ⚠️⚠️ **En die afleiding is één keer stil verlopen — QS8-340.** Ze zocht
+ *    letterlijk naar `Promise<Uitkomst`, terwijl de codebase intussen op de
+ *    gedeelde alias `Resultaat` uit `src/shared/api` was overgegaan. 📏 Op
+ *    07-09-2026 dekte deze grendel daardoor **12 van de 74** functies die een
+ *    uitkomst beloven, en de bug die hij daardoor liet lopen stond in
+ *    `app/doel/[id].tsx`: `void trekIn(bestaand.id)`, waardoor
+ *    `commitment.fout.al_afgegaan` de gebruiker nooit bereikte.
  *
- * ⚠️ **En hij knipt commentaar weg vóór hij telt — dat is hier meteen misgegaan.**
- *    De eerste versie las de kale bron en meldde prompt een treffer: het
- *    commentaar in het profielscherm dat de oude bug cíteert. Precies de les van
- *    `tekst:controle`, twee keer op één dag. Een controle die zijn eigen uitleg
- *    als bevinding meldt, leer je uitzetten.
+ *    De kop van dit bestand vóórspelde dat woordelijk — *"verandert de signatuur
+ *    ooit van vorm, dan vindt de afleiding nul functies"* — en er stónd een
+ *    ondergrens tegen dat geval: `toBeGreaterThan(3)`. **Die ving nul en niet
+ *    "bijna alles", en op 12 was hij gewoon groen.** Daarom staan er nu twee
+ *    grendels op de afleiding zelf, en meet de tweede een fráctie van de bron.
  *
- *    Het wegknippen behoudt de nieuwe regels, want de melding noemt het
- *    regelnummer — en een controle die naar de verkeerde regel wijst, kost een
- *    lezer meer tijd dan hij bespaart.
- *
- * IJKING — met de hand gedraaid op 01-09-2026:
+ * IJKING — met de hand gedraaid, A t/m E op 01-09-2026, F t/m J op 08-09-2026.
+ * Eén mutatie per grendel, want een ijking die door een éérdere grendel wordt
+ * afgevangen, bewaakt niets van wat ze belooft.
  *
  *   A  `void signOut()` terugzetten in het profielscherm   → 1 rood, met naam en regel
  *   B  de afleiding uit de bron leeg maken                 → 1 rood ("vindt geen enkele")
@@ -52,54 +60,23 @@ const WORTEL = join(__dirname, '..', '..');
  *      is het commentaar in `profiel.tsx` dat de oude bug citeert
  *   D  `<Uitloggen />` terug naar plek twaalf              → 1 rood
  *   E  `<AccountVerwijderen />` naar boven halen           → 1 rood
- *
- * ⚠️ B is de grendel die telt en de makkelijkste om te vergeten: een controle die
- *    niets meer te toetsen vindt, is groen om de verkeerde reden. Vandaar de
- *    ondergrens hieronder.
+ *   F  `void trekIn(straf.id).then(onKlaar)` terugzetten   → 1 rood: de void-grendel,
+ *      met bestand en regelnummer. Alléén die grendel.
+ *   G  de must-allow ernaast: 📏 er staan 105 `void`-aanroepen in `app/`, en er
+ *      wordt er géén van gemeld — `void lokaleHandler()` is hier het normale patroon
+ *   H  de afleiding terug op een `[^;]*`-greep van het typelichaam → 1 rood: de
+ *      fractie, op **12 van de 144**. Dat is exact de stand van 07-09-2026, en de
+ *      oude ondergrens `toBeGreaterThan(3)` stond daar groen op. De vorm van deze
+ *      grendel is dus het hele punt, niet zijn aanwezigheid.
+ *   I  de lokale `trekVerzoekIn` terug naar `trekIn`       → 2 rood: de schaduwgrendel
+ *      noemt het bestand, én de void-grendel geeft de válse melding op de lokale
+ *      aanroep. Dat tweede is waarom de schaduw weg moest en niet weggefilterd.
+ *   J  de vormtoets op `ok: true`/`ok: false` uitgezet     → 1 rood: de afleiding zelf,
+ *      vóór de fractie erover valt
+ *   K  de parameterlezer terug op `\([^)]*\)`               → 1 rood: de leesgrendel,
+ *      met `zetMeldingenUit()` en vijf andere bij naam. De fractie blijft daarbij
+ *      groen — en dát is waarom die grendel er los naast staat.
  */
-
-/**
- * Commentaar eruit, regelnummers erin. Blokcommentaar wordt per regel geleegd
- * zodat de telling verderop nog naar de goede regel wijst.
- */
-function zonderCommentaar(bron: string): string {
-  const uit: string[] = [];
-  let inBlok = false;
-
-  for (const regel of bron.split('\n')) {
-    let schoon = regel;
-    if (inBlok) {
-      const eind = schoon.indexOf('*/');
-      if (eind === -1) {
-        uit.push('');
-        continue;
-      }
-      schoon = schoon.slice(eind + 2);
-      inBlok = false;
-    }
-    schoon = schoon.replace(/\/\*.*?\*\//g, ' ');
-    const start = schoon.indexOf('/*');
-    if (start !== -1) {
-      schoon = schoon.slice(0, start);
-      inBlok = true;
-    }
-    uit.push(schoon.replace(/(^|[^:])\/\/.*$/, '$1'));
-  }
-  return uit.join('\n');
-}
-
-/** Elke geëxporteerde functie in `src/modules/` die een `Uitkomst` belooft. */
-function uitkomstFuncties(): string[] {
-  const namen = new Set<string>();
-  for (const pad of bestanden(join(WORTEL, 'src', 'modules'), ['.ts'])) {
-    if (pad.endsWith('.test.ts')) continue;
-    const bron = readFileSync(pad, 'utf8');
-    for (const m of bron.matchAll(/export\s+async\s+function\s+(\w+)\s*\([^)]*\)\s*:\s*Promise<Uitkomst/g)) {
-      namen.add(m[1] as string);
-    }
-  }
-  return [...namen].sort();
-}
 
 function bestanden(map: string, exts: readonly string[]): string[] {
   const uit: string[] = [];
@@ -111,35 +88,149 @@ function bestanden(map: string, exts: readonly string[]): string[] {
   return uit;
 }
 
-describe('geen enkel scherm gooit een Uitkomst weg', () => {
-  const functies = uitkomstFuncties();
+function modulebestanden(): string[] {
+  return bestanden(join(WORTEL, 'src', 'modules'), ['.ts']).filter((p) => !p.endsWith('.test.ts'));
+}
+
+/** Elk type in `src/` met een `ok: true`- en een `ok: false`-tak. */
+function uitkomsttypen(): ReadonlySet<string> {
+  const namen = new Set<string>();
+  for (const pad of bestanden(join(WORTEL, 'src'), ['.ts'])) {
+    if (pad.endsWith('.test.ts')) continue;
+    for (const naam of uitkomsttypenIn(readFileSync(pad, 'utf8'))) namen.add(naam);
+  }
+  return namen;
+}
+
+/** Elke geëxporteerde functie in `src/modules/` die een uitkomst belooft. */
+function uitkomstFuncties(soorten: ReadonlySet<string>): string[] {
+  const namen = new Set<string>();
+  for (const pad of modulebestanden()) {
+    for (const naam of beloftefunctiesIn(readFileSync(pad, 'utf8'), soorten)) namen.add(naam);
+  }
+  return [...namen].sort();
+}
+
+/**
+ * Élke `export async function` in `src/modules/` — de noemer van de fractie.
+ *
+ * ⚠️ Kaal geteld, met een ándere greep dan de zeef zelf. Zie `alleAsyncExportsIn()`.
+ */
+function alleAsyncExports(): string[] {
+  const uit: string[] = [];
+  for (const pad of modulebestanden()) uit.push(...alleAsyncExportsIn(readFileSync(pad, 'utf8')));
+  return uit;
+}
+
+/** Elke functie waarvan de signatuurlezer de draad kwijtraakte. */
+function ongelezen(): string[] {
+  const uit: string[] = [];
+  for (const pad of modulebestanden()) {
+    const bron = readFileSync(pad, 'utf8');
+    const gezien = asyncBeloftesIn(bron);
+
+    for (const f of gezien.filter((x) => !x.gelezen)) {
+      uit.push(`${relative(WORTEL, pad)} — ${f.naam}() (handtekening niet gelezen)`);
+    }
+    for (const naam of alleAsyncExportsIn(bron)) {
+      if (!gezien.some((f) => f.naam === naam)) uit.push(`${relative(WORTEL, pad)} — ${naam}()`);
+    }
+  }
+  return uit;
+}
+
+describe('geen enkel scherm gooit een uitkomst weg', () => {
+  const soorten = uitkomsttypen();
+  const functies = uitkomstFuncties(soorten);
 
   /**
-   * ⚠️ **Zonder deze regel is de rest van dit bestand groen om niets.** Verandert
-   *    de signatuur ooit van vorm (`Promise<Uitkomst>` naar een alias), dan vindt
-   *    de afleiding hierboven nul functies en meldt hij vrolijk niets.
+   * ⚠️ **Zonder deze regel is de rest van dit bestand groen om niets.** Vindt de
+   *    afleiding geen enkel uitkomsttype, dan vindt ze ook geen enkele functie en
+   *    meldt ze vrolijk niets.
    */
-  it('vindt de functies die een Uitkomst beloven', () => {
-    expect(functies.length, 'geen enkele Promise<Uitkomst> gevonden in src/modules').toBeGreaterThan(3);
+  it('vindt de uitkomsttypen in de bron', () => {
+    expect(
+      [...soorten].sort(),
+      'geen enkel type met een ok:true- en een ok:false-tak gevonden in src/',
+    ).not.toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Dit is de grendel die op 07-09-2026 ontbrak, en de vorm ervan is de les.**
+   *    Een vaste ondergrens vangt "nul" en niet "een fractie": de oude
+   *    `toBeGreaterThan(3)` stond groen op 12 van de 74. Daarom meet deze het
+   *    aandeel van de bron dat de zeef daadwerkelijk ziet.
+   *
+   * 📏 Vandaag 79 van de 150 (53%). De rest is bijna helemaal `fetch*` — lezers,
+   *    die per definitie geen uitkomst beloven. Zakt dit onder de 40%, dan is er
+   *    een schrijvende laag bijgekomen die de zeef niet ziet, of is de afleiding
+   *    zelf iets kwijtgeraakt.
+   */
+  it('ziet een reëel deel van de bron en niet een restje', () => {
+    const totaal = alleAsyncExports().length;
+    expect(totaal, 'geen enkele export-async in src/modules').toBeGreaterThan(0);
+    expect(
+      functies.length / totaal,
+      `de zeef ziet ${functies.length} van de ${totaal} async-functies — welk type mist ze?`,
+    ).toBeGreaterThan(0.4);
+  });
+
+  /**
+   * ⚠️ **Een functie die de signatuurlezer niet léést, valt stil buiten alles.**
+   *    Hij staat niet in de lijst hierboven, dus de zeef kijkt er nooit naar — en
+   *    zolang teller én noemer dezelfde lezer deelden, bewóóg de fractie er ook
+   *    niet van. 📏 Dat gold op 08-09-2026 voor zes van de 150 functies, waaronder
+   *    `zetMeldingenUit(verwijderRij: () => Promise<void>)`, die wél een
+   *    uitkomsttype belooft: zijn pijltype-parameter draagt haakjes, en de lezer
+   *    greep tot de eerste `)`. Aangewezen in de security-review op QS8-340.
+   *
+   *    Vandaar deze grendel én de losse noemer hierboven: een gat in de lezer is
+   *    voortaan luid, en niet een percentage dat toevallig gelijk blijft.
+   */
+  it('leest élke export-async in src/modules, ook met haakjes in de parameters', () => {
+    expect(
+      ongelezen(),
+      'de signatuurlezer slaat deze functies over; ze vallen daarmee buiten élke grendel hierboven',
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De must-allow-helft, en hier is de valse melding de duurste faalvorm.**
+   *    Declareert een scherm zélf een functie met de naam van een modulefunctie,
+   *    dan kan de zeef hierboven niet zien welke van de twee er in de `void`
+   *    belandt. 📏 Dat was op 07-09-2026 precies het geval in `app/doel/[id].tsx`:
+   *    een lokale `trekIn()` (een deadline-verzoek, die zijn fout wél opving) naast
+   *    de geïmporteerde `trekIn()` (een commitment, die hem weggooide). Wie de zeef
+   *    alleen verbreedt, maakt van de eerste een valse melding — en een controle
+   *    die valse meldingen geeft, leer je uitzetten.
+   */
+  it('laat geen enkel scherm een modulenaam opnieuw gebruiken', () => {
+    const schaduwen: string[] = [];
+
+    for (const pad of bestanden(join(WORTEL, 'app'), ['.tsx', '.ts'])) {
+      const eigen = lokaleFunctiesIn(readFileSync(pad, 'utf8'));
+      for (const naam of eigen.filter((n) => functies.includes(n))) {
+        schaduwen.push(`${relative(WORTEL, pad)} — lokale ${naam}() schaduwt de modulefunctie`);
+      }
+    }
+
+    expect(
+      schaduwen,
+      'hernoem de lokale functie; anders kan de grendel hieronder niet zien welke van de twee je aanroept',
+    ).toEqual([]);
   });
 
   it('roept er geen enkele aan met void, want dan is de melding onzichtbaar', () => {
     const gevonden: string[] = [];
 
     for (const pad of bestanden(join(WORTEL, 'app'), ['.tsx', '.ts'])) {
-      const regels = zonderCommentaar(readFileSync(pad, 'utf8')).split('\n');
-      regels.forEach((regel, i) => {
-        for (const naam of functies) {
-          if (new RegExp(`void\\s+${naam}\\s*\\(`).test(regel)) {
-            gevonden.push(`${relative(WORTEL, pad)}:${i + 1} — void ${naam}()`);
-          }
-        }
-      });
+      const treffers = voidTreffersIn(readFileSync(pad, 'utf8'), functies);
+      for (const t of treffers) gevonden.push(`${relative(WORTEL, pad)}:${t}`);
     }
 
     expect(
       gevonden,
-      'vang de Uitkomst op en toon de melding; `void` maakt een mislukking onzichtbaar',
+      'vang de uitkomst op en toon de melding; `void` maakt een mislukking onzichtbaar',
     ).toEqual([]);
   });
 });
