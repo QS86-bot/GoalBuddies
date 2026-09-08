@@ -1,0 +1,95 @@
+-- 0193_chat_bewerken_is_een_recht_zonder_knop.sql — haalt het bewerkrecht op een
+-- chatbericht weg, want de app besloot al dat die knop er niet komt (QS8-327).
+--
+-- ROLLBACK-PAD:
+--   create policy chat_messages_update on chat_messages for update to authenticated
+--     using (sender_id = (select auth.uid()) and created_at > now() - interval '15 minutes')
+--     with check (sender_id = (select auth.uid()) and is_group_member(group_id)
+--                 and type <> 'system' and system_event is null);
+--   grant update (id, group_id, sender_id, type, system_event, body,
+--                 attachment_url, subject_id, actor_id, payload)
+--     on chat_messages to authenticated;
+--
+--   ⚠️ Zet hem alleen terug sámen met de knop. Het recht zonder aanroeper is
+--      precies wat deze migratie opruimt; terugzetten "voor als het ooit nodig
+--      is" maakt het oppervlak opnieuw.
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- 📏 Gemeten op 07/08-09-2026, tegen de lokale stack met echte JWT's:
+--
+--   Anna bewerkt haar eigen tekstbericht (binnen 15 min)   HTTP 200  — lukt
+--   Anna zet subject_id naar Bram                          HTTP 400  23514
+--   Anna bewerkt het systeembericht (draagt subject_id)    HTTP 200  []
+--   Bram bewerkt Anna's bericht                            HTTP 200  []
+--
+-- 📏 En over de hele codebase en het schema:
+--
+--   .update() op chat_messages in src/ of app/             geen
+--   functies die chat_messages UPDATEN                     geen
+--
+-- Het recht is dus live en bereikbaar — langs een rechtstreeks PostgREST-verzoek
+-- en langs geen enkele knop.
+--
+-- ---------------------------------------------------------------------------
+-- Waarom weghalen en niet de knop bouwen
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Omdat de app die vraag al beantwoord heeft.** In `src/shared/ui/ChatRegel.tsx`
+--    staat het bij de plek waar de knop zou komen, met zoveel woorden:
+--
+--      "Bewerken zit er niet, ook al staat de policy het 15 minuten toe. Een
+--       bewerkte regel in een gesprek van drie mensen is een gesprek waarvan de
+--       helft achteraf kan veranderen. Weghalen is eerlijker: dan is de regel weg
+--       en niet stil anders."
+--
+--    De ontbrekende aanroeper is dus geen vergeten schakel maar een besluit. Wat
+--    er niet bij gebeurde, is het recht opruimen — en daardoor stonden de app en
+--    de database vier maanden lang het tegenovergestelde te zeggen.
+--
+-- ⚠️ **De vijf migraties op deze policy waren allemaal insnoerend, niet
+--    inschakelend.** 0010 pinde de onveranderlijke velden, 0059 en 0060 regelden
+--    de persoonskolommen, 0071 haalde `system_event` bij de client weg, 0188
+--    maakte de weigering eerlijk. Vijf keer "hou dit ongevaarlijk", nul keer
+--    "zet dit aan". Deze migratie is de zesde stap in diezelfde richting en de
+--    laatste die er te zetten is.
+--
+-- ⚠️ **Geen policy is hier geen gat maar de strengste vorm.** Zonder policy
+--    weigert Postgres élke UPDATE op een tabel met RLS. Twintig tabellen in dit
+--    schema doen het al zo — `completions`, `points_ledger`, `completion_approvals`,
+--    `goal_group_links` — en onwrikbare regel 1 is daarmee gediend en niet
+--    geschonden: de opdracht is bestuurd, en weigeren ís het bestuur.
+--
+-- ---------------------------------------------------------------------------
+-- Wat er blijft staan, en waarom
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **`stamp_chat_message()` blijft ongewijzigd, inclusief zijn UPDATE-tak.**
+--    Die tak lijkt na deze migratie dood en is dat niet: `sender_id`, `actor_id`
+--    en `subject_id` dragen alle drie `on delete set null`, en dat is een UPDATE
+--    die Postgres zélf uitvoert wanneer een profiel verdwijnt. Een trigger is
+--    geen policy — hij vuurt ook voor de referentiële actie en voor
+--    `service_role`. Haal je hem weg, dan werpt het verwijderen van een account
+--    op het eerste chatbericht dat de vertrekker ooit stuurde.
+--
+--    Dat is nagemeten na deze migratie en niet aangenomen; de test staat in
+--    `tests/rls/bewerkvenster.test.ts` als must-allow.
+--
+-- ---------------------------------------------------------------------------
+
+-- ⚠️ `drop policy if exists` en niet `drop policy`: idempotent tegen de toestand
+--    waarvoor deze migratie geschreven is (onwrikbare regel 20).
+drop policy if exists chat_messages_update on chat_messages;
+
+-- ⚠️ **`from public, anon, authenticated` en niet `from authenticated`.** In
+--    Supabase deelt `alter default privileges` elk nieuw object in `public` uit
+--    aan alle drie; een revoke die er één overslaat laat precies de rol staan
+--    waaronder iedere ingelogde gebruiker draait. Zie onwrikbare regel 4 en
+--    `docs/decisions/2026-08-28-revoke-from-public-is-niet-van-iedereen.md`.
+--
+-- ⚠️ Kolomloos, dus het hele UPDATE-recht op de tabel. De tien kolomgrants van
+--    hiervoor (id, group_id, sender_id, type, system_event, body, attachment_url,
+--    subject_id, actor_id, payload) vallen daar alle tien onder.
+revoke update on chat_messages from public, anon, authenticated;

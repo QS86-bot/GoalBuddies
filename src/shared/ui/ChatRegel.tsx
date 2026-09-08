@@ -38,10 +38,22 @@ interface Props {
   /**
    * Weghalen van je eigen bericht. Alleen doorgeven bij `vanMij`.
    *
-   * ⚠️ Bewerken zit er niet, ook al staat de policy het 15 minuten toe. Een
-   *    bewerkte regel in een gesprek van drie mensen is een gesprek waarvan de
-   *    helft achteraf kan veranderen. Weghalen is eerlijker: dan is de regel weg
-   *    en niet stil anders.
+   * ⚠️ Bewerken zit er niet. Een bewerkte regel in een gesprek van drie mensen
+   *    is een gesprek waarvan de helft achteraf kan veranderen. Weghalen is
+   *    eerlijker: dan is de regel weg en niet stil anders.
+   *
+   * ⚠️ **Tot 08-09-2026 stond hier "ook al staat de policy het 15 minuten toe",
+   *    en dát is met migratie 0193 rechtgezet** (QS8-327). Die policy bestond
+   *    sinds 0003 en had nooit een aanroeper; de app besloot hierboven dat de
+   *    knop er niet komt, en de database zei vier maanden lang het
+   *    tegenovergestelde. 📏 Gemeten: een bewerking van je eigen verse bericht
+   *    gaf `HTTP 200` en landde gewoon, langs een rechtstreeks verzoek.
+   *
+   *    Nu is er geen recht meer om níet te gebruiken. Wie de knop alsnog wil,
+   *    zet de policy terug én bouwt hem — en leest eerst
+   *    `docs/decisions/2026-09-08-een-recht-zonder-knop.md`, want zonder een
+   *    `edited_at`-markering is een bewerkt bericht precies het "stil anders"
+   *    waar de regel hierboven tegen argumenteert.
    */
   readonly onWeghalen?: (() => void) | undefined;
   /**
