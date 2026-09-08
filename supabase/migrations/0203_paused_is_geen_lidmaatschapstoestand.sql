@@ -86,11 +86,18 @@
 -- ---------------------------------------------------------------------------
 --
 -- ⚠️ `paused` telde overal mee als lidmaatschap (`status <> 'inactive'`), dus
---    `active` is de vertaling die niets wegneemt. De drie triggers op deze tabel
---    raken hier niet: `meld_nieuw_lid` eist `inactive → active`,
---    `meld_uitzetting` eist `→ inactive`, en `noteer_beoordelaar_weg_lid`
---    keert vroeg terug zodra `auth.uid()` NULL is — en dat is hij in een
---    migratie. 📏 Nagemeten in `pg_get_functiondef()` van alle drie.
+--    `active` is de vertaling die niets wegneemt. Er staan **vier** triggers op
+--    deze tabel en geen ervan houdt deze `update` tegen: `meld_nieuw_lid` eist
+--    `inactive → active`, `meld_uitzetting` eist `→ inactive`,
+--    `noteer_beoordelaar_weg_lid` keert vroeg terug zodra `auth.uid()` NULL is,
+--    en `group_members_guard` — de BEFORE-trigger die hem wél had kunnen
+--    weigeren — doet dat op dezelfde voorwaarde. In een migratie is `auth.uid()`
+--    NULL. 📏 Nagemeten in `pg_get_functiondef()` van alle vier, en met een
+--    echte rij in een teruggedraaide transactie.
+--
+-- ⚠️ Dat het er vier zijn en niet drie, is een correctie uit de security-review
+--    op deze branch. De drie claims klopten; de telling niet, en de vierde was
+--    net de enige die had kunnen tegenhouden.
 update public.group_members set status = 'active' where status = 'paused';
 
 -- ---------------------------------------------------------------------------
@@ -294,11 +301,19 @@ grant execute on function public.join_group_with_code(text) to authenticated;
 --     handeling die de CHECK vanaf nu zelf afwijst;
 --   * de `v_toegestaan`-uitzondering onderaan (0187) plus de declaratie ervan.
 --
--- ⚠️ **Beide waren must-denies, en ze worden hier niet opgeheven maar naar een
---    stréngere grendel verplaatst.** Een PATCH met `status = 'paused'` ketst nu
---    op `group_members_status_valid` (23514) in plaats van op een `raise` uit
---    deze trigger (P0001). De weigering blijft; de foutcode verandert, en de
---    tests die hem toetsten weten dat.
+-- ⚠️ **Beide waren must-denies, en ze worden hier niet opgeheven maar door een
+--    bredere grendel vervangen.** In plaats van `pauze_van_een_ander` staat er
+--    een restweigering: élke statuswaarde buiten `active` en `inactive` wordt
+--    geweigerd met `onbekende_lidstatus`. Een PATCH met `status = 'paused'`
+--    ketst daar dus nog steeds op af — met een andere naam en een bredere
+--    belofte.
+--
+-- ⚠️ **Voor `service_role` ligt het anders, en dat is waar de CHECK het
+--    overneemt.** Die rol loopt door de guard heen op `auth.uid() is null`, dus
+--    daar is `group_members_status_valid` (23514) het enige slot. 📏 Beide
+--    gevallen staan met hun foutcode in `tests/rls/pauze-bestaat-niet.test.ts`:
+--    een must-deny die stil van slot wisselt, bewaakt iets anders dan hij
+--    belooft — dat is op deze branch twee keer gebeurd.
 create or replace function public.guard_group_member_update()
 returns trigger
 language plpgsql
@@ -364,6 +379,35 @@ begin
       and m.role     = 'admin'
       and m.status  <> 'inactive'
   ) then
+    -- ⚠️⚠️ **De restweigering, en die is er omdat 0203 er een weghaalt.** Tot
+    --    hier stond `pauze_van_een_ander` als expliciete tak; die kon weg omdat
+    --    de CHECK de waarde niet meer kent. Wat daarmee ook wegviel is het
+    --    vángnet: de beheerderstak verbiedt een rolwijziging, een terugzetting
+    --    en een uitzetting, en liet élke andere statuswaarde door.
+    --
+    -- 📏 Gemeten, en dit is een bevinding van de security-review op deze branch:
+    --    met een derde waarde in de CHECK schreef een beheerder die stand op de
+    --    rij van een ánder — zonder fout en zonder spoor. `meld_uitzetting`
+    --    vuurt alleen op `→ inactive` en `meld_nieuw_lid` alleen op
+    --    `inactive → active`, dus er blijft niets van over.
+    --
+    -- ⚠️ Vandaag onbereikbaar, morgen het slot. Drie rijen in
+    --    `docs/ENGINEER-REVIEW.md` noemen "er komt een derde lidstatus bij" als
+    --    reëel scenario; dan is dit de regel die er vanaf dag één staat in
+    --    plaats van de regel die er dan bij had gemoeten.
+    --
+    -- ⚠️ Hij staat vóór de vroege uitgang voor de eigen rij, want die uitgang
+    --    laat een beheerder ook zijn éígen stand vrij zetten. De twee bekende
+    --    waarden komen er niet aan: de overgangen daartussen worden hieronder
+    --    ieder apart getoetst.
+    if new.status is distinct from old.status
+       and new.status not in ('active', 'inactive')
+    then
+      raise exception 'onbekende_lidstatus'
+        using hint = 'group_members.status kent active en inactive. Een nieuwe stand '
+                     'krijgt zijn eigen weg en zijn eigen spoor, niet een PATCH.';
+    end if;
+
     -- ⚠️ De eigen rij van de beheerder is hierboven al afgehandeld: de
     --    `last_admin`-grendel is de enige regel die daarover gaat, en die staat
     --    er sinds 0102 ongewijzigd.

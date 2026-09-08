@@ -291,6 +291,12 @@ describe.skipIf(!rlsTestsConfigured)('QS8-110 — Geen minpunt zonder beoordelaa
       });
       expect(kan, 'de opstelling klopt niet: bob telt vooraf al niet mee').toBe(true);
 
+      // ⚠️ Het herstel onderaan loopt sinds 0203 via `inactive → active` in
+      //    plaats van `paused → active`, en dát is de enige overgang waarop
+      //    `meld_nieuw_lid` vuurt. Deze test laat dus een `member_joined`-bericht
+      //    achter in de gedeelde groepschat. Geen test in dit bestand telt
+      //    berichten, maar wie er een bijschrijft die dat wél doet, weet nu
+      //    waarom er één extra staat.
       await admin
         .from('group_members')
         .update({ status: 'inactive' })

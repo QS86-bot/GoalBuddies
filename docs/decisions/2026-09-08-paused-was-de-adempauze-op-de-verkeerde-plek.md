@@ -77,10 +77,19 @@ staat. Zeven hulpfuncties trekken hem op `<> 'inactive'` (0029, 0066/M1, 0102,
 verschil weer een verschil, en dan hoort de code er al naar geschreven te zijn.
 
 ⚠️ **Geen verruiming van wat een beheerder mag.** De `pauze_van_een_ander`-tak
-uit 0199 is uit de guard gehaald omdat de CHECK het geval nu weigert, niet omdat
-het geval mag. 📏 De must-deny is in `tests/rls/pauze-bestaat-niet.test.ts`
-opnieuw gemeten, mét de foutcode erbij: `23514` en
-`group_members_status_valid`.
+uit 0199 is niet zomaar weggehaald maar vervangen door een bredere: een
+restweigering die élke statuswaarde buiten `active` en `inactive` afwijst met
+`onbekende_lidstatus`.
+
+📏 Die kwam uit de security-review op deze branch, en hij had gelijk om een reden
+die ik zelf gemeten heb: mét een derde waarde in de CHECK landde de PATCH van een
+beheerder op de rij van een ánder **zonder fout en zonder spoor** —
+`meld_uitzetting` vuurt alleen op `→ inactive` en `meld_nieuw_lid` alleen op
+`inactive → active`. De tak van 0199 verbood één waarde; wat eronder wegviel was
+het vangnet voor alle andere. Dat vangnet staat er nu, en het is geijkt op een
+schema dat vandaag niet bestaat: de toets verruimt de CHECK binnen een
+teruggedraaide transactie, want een grendel die nooit rood is geweest is een
+aanname.
 
 ## 5. Wat het opruimde
 
@@ -110,11 +119,12 @@ documentatie en geen lezer; `ketting_stand()` draagt zo'n regel. Zou de toets di
 meetellen, dan leert hij je de geschiedenis uit de code te halen om hem groen te
 krijgen.
 
-📏 **Zeven mutaties, één per grendel, elk apart gemeten:**
+📏 **Acht mutaties, één per grendel, elk apart gemeten:**
 
 | Mutatie | Wat er rood werd |
 |---|---|
-| `paused` terug in de CHECK | de beheerderstest, de `service_role`-test, de CHECK-toets — **niet** de test op de guard, en dat is het bewijs dat die de guard meet |
+| `paused` terug in de CHECK | de `service_role`-test en de CHECK-toets — **niet** de test op de guard, en dat is het bewijs dat die de guard meet |
+| de restweigering uitgezet | de toets op de onbekende stand **en** de beheerderstest — die valt dan terug op de CHECK (23514) en niet op `onbekende_lidstatus` |
 | een functie met de literal in haar lichaam | de bronscan |
 | dezelfde literal alleen in commentaar | niets — zoals bedoeld |
 | een policy die `paused` noemt | de policyscan |

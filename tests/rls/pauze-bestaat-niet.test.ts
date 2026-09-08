@@ -31,6 +31,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
 
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 60_000;
@@ -107,7 +108,7 @@ describe('paused bestaat niet meer als lidmaatschapstoestand', () => {
   );
 
   it.runIf(rlsTestsConfigured)(
-    'weigert een beheerder die een ander op pauze zet — en dat is nu de CHECK',
+    'weigert een beheerder die een ander op pauze zet — nu als onbekende stand',
     async () => {
       const { error } = await anna.db
         .from('group_members')
@@ -117,12 +118,19 @@ describe('paused bestaat niet meer als lidmaatschapstoestand', () => {
 
       const fout = (error ?? {}) as Fout;
       expect(error, 'de pauze landde').not.toBeNull();
-      // ⚠️⚠️ **Hier zat `pauze_van_een_ander` (0199) en die tak is weg.** De
-      //    beheerderstak laat een statuswijziging die geen uitzetting is door,
-      //    dus wat hem nu tegenhoudt is `group_members_status_valid`. Deze
-      //    assertie is de reden dat het weghalen van die tak geen gat is.
-      expect(fout.code, JSON.stringify(error)).toBe('23514');
-      expect(fout.message ?? '').toContain('group_members_status_valid');
+      // ⚠️⚠️ **Hier zat `pauze_van_een_ander` (0199), en die tak is vervangen
+      //    door een bredere: `onbekende_lidstatus`.** Dat is geen naamswijziging
+      //    maar een andere belofte — de oude tak verbood één waarde, deze
+      //    verbiedt élke waarde buiten `active` en `inactive`.
+      //
+      // ⚠️ 📏 Een tussenversie van deze branch had hier `23514` staan, want
+      //    zónder de restweigering is de CHECK het eerste slot dat de beheerder
+      //    tegenkomt. Toen de weigering erbij kwam, verschoof het slot opnieuw —
+      //    en dat is precies waarom deze test de fóutcode noemt en niet alleen
+      //    dát er een fout kwam. De CHECK blijft gemeten in de test hieronder,
+      //    langs `service_role`, dat door de trigger heen loopt.
+      expect(fout.code, JSON.stringify(error)).toBe('P0001');
+      expect(fout.message ?? '').toContain('onbekende_lidstatus');
       expect((await lid(carol.id))?.status).toBe('active');
     },
     TEST_TIMEOUT,
@@ -225,7 +233,11 @@ describe.skipIf(!beschikbaar)('en er is geen lezer voor de waarde achtergebleven
     //
     // ⚠️ 📏 Geijkt door in de lokale stack een functie te maken die de literal
     //    in háár lichaam draagt: dan noemt deze toets haar bij naam. Alleen in
-    //    commentaar zetten laat hem terecht met rust.
+    //    `--`-commentaar zetten laat hem terecht met rust.
+    //
+    // ⚠️ Blokcommentaar (`/* … */`) wordt niet gestript, dus een literal daarin
+    //    meldt hij wél. 📏 Gemeten in de security-review. Dat is de strenge kant
+    //    en dus geen gat; deze codebase schrijft `--`.
     const treffers = psql(
       `select coalesce(string_agg(p.proname, ', ' order by p.proname), '')
          from pg_proc p
@@ -235,6 +247,68 @@ describe.skipIf(!beschikbaar)('en er is geen lezer voor de waarde achtergebleven
     ).trim();
 
     expect(treffers, `deze functies wegen 'paused' nog mee: ${treffers}`).toBe('');
+  });
+
+  /**
+   * ⚠️⚠️ **De restweigering, en die is er omdat 0203 er een weghaalt.**
+   *    `pauze_van_een_ander` kon uit de beheerderstak omdat de CHECK de waarde
+   *    niet meer kent. Wat daarmee wegviel is het vangnet: de tak verbiedt een
+   *    rolwijziging, een terugzetting en een uitzetting, en liet élke andere
+   *    statuswaarde door.
+   *
+   * ⚠️ **Deze toets maakt met opzet een schema dat vandaag niet bestaat.** Dat
+   *    is de enige manier om een grendel te ijken die pas de dag ná een derde
+   *    lidstatus iets doet — en een grendel die nooit rood is geweest, is een
+   *    aanname (regel 18, vraag 3). 📏 Zonder de weigering meldt dit geval
+   *    `GELAND`, gemeten vóór hij er stond. Alles loopt in één transactie die
+   *    terugrolt, dus de CHECK staat na afloop weer op twee waarden.
+   */
+  it('weigert een beheerder een status die het model niet kent', () => {
+    const anna = proefId(1);
+    const bob = proefId(2);
+    const groep = proefId(3);
+
+    const uitslag = psql(`
+      begin;
+      insert into auth.users (id, email) values
+        ('${anna}', 'anna325@x.nl'), ('${bob}', 'bob325@x.nl');
+      insert into groups (id, name, created_by, status, invite_code, categorie)
+        values ('${groep}', 'Restweigering', '${anna}', 'active', 'REST325', 'other');
+      insert into group_members (group_id, user_id, role, status) values
+        ('${groep}', '${anna}', 'admin', 'active'),
+        ('${groep}', '${bob}', 'member', 'active');
+
+      -- De derde stand die er vandaag niet is, maar waar drie rijen in
+      -- ENGINEER-REVIEW.md rekening mee houden.
+      alter table group_members drop constraint group_members_status_valid;
+      alter table group_members add constraint group_members_status_valid
+        check (status in ('active', 'inactive', 'ietsnieuws'));
+
+      -- ⚠️ De uitslag gaat via een tijdelijke tabel en niet via de foutuitvoer:
+      --    een mislukt statement breekt anders de hele psql-aanroep af, en dan
+      --    is "geweigerd" niet te onderscheiden van "de opstelling klopte niet".
+      create temp table uitslag(t text);
+      grant insert on uitslag to authenticated;
+
+      select set_config('request.jwt.claims',
+        '{"sub":"${anna}","role":"authenticated"}', true);
+      set local role authenticated;
+      do $$
+      begin
+        update public.group_members set status = 'ietsnieuws'
+         where group_id = '${groep}' and user_id = '${bob}';
+        insert into uitslag values ('GELAND');
+      exception when others then
+        insert into uitslag values ('GEWEIGERD: ' || sqlerrm);
+      end
+      $$;
+      reset role;
+      select t from uitslag;
+      rollback;
+    `).trim();
+
+    expect(uitslag).toContain('GEWEIGERD');
+    expect(uitslag).toContain('onbekende_lidstatus');
   });
 
   it('en geen enkele policy weegt hem mee', () => {
