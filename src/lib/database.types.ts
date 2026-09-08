@@ -100,21 +100,21 @@ export type Database = {
       approval_withdrawals: {
         Row: {
           approval_id: string
-          approver_id: string
+          approver_id: string | null
           completion_id: string
           created_at: string
           id: string
         }
         Insert: {
           approval_id: string
-          approver_id: string
+          approver_id?: string | null
           completion_id: string
           created_at?: string
           id?: string
         }
         Update: {
           approval_id?: string
-          approver_id?: string
+          approver_id?: string | null
           completion_id?: string
           created_at?: string
           id?: string
