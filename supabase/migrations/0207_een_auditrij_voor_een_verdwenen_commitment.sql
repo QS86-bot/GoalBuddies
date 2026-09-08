@@ -1,4 +1,4 @@
--- 0205_een_auditrij_voor_een_verdwenen_commitment.sql — `noteer_commitment()`
+-- 0207_een_auditrij_voor_een_verdwenen_commitment.sql — `noteer_commitment()`
 -- schrijft geen spoorregel meer voor een commitment dat in dezelfde statement al
 -- weggecascadeerd is (QS8-361)
 --
