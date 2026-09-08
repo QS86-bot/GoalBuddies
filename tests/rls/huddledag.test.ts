@@ -1,5 +1,5 @@
 /**
- * De huddledag is een afspraak en geen schakelaar — QS8-360, migratie 0207.
+ * De huddledag is een afspraak en geen schakelaar — QS8-360, migratie 0209.
  *
  * ⚠️ **De belofte is niet "de kolom zit op slot".** Dat is de kolom, en het zou
  *    bovendien het verkeerde antwoord zijn: de huddledag ís per ontwerp iets dat
@@ -10,7 +10,7 @@
  *      lopende weekafsluiting door verliest, en zonder dat de groep een gemiste
  *      week van iemand anders te zien krijgt die er niet is.
  *
- * ⚠️ 📏 **Wat er gemeten is vóór 0207** — beschermde groep, huddledag zondag,
+ * ⚠️ 📏 **Wat er gemeten is vóór 0209** — beschermde groep, huddledag zondag,
  *    lopende periode `2026-09-06`, de beheerder had afgesloten en het lid niet:
  *
  *      VOOR   group_overview(gid, '2026-09-06')   adm=true   lid=false
@@ -329,7 +329,7 @@ describe.skipIf(!rlsTestsConfigured)('de huddledag verzet de lopende periode mee
         expect(oud[groep.lid.id], `${stand}: de oude periode geeft nog antwoord`).toBeNull();
 
         // ⚠️ **AC1, langs de weg die het lid zelf loopt.** Zijn weekafsluiting
-        //    kon vóór 0207 nooit meer landen; nu wel, op de nieuwe start.
+        //    kon vóór 0209 nooit meer landen; nu wel, op de nieuwe start.
         const afsluiten = await adminDb().from('week_reviews').insert({
           group_id: groep.id,
           user_id: groep.lid.id,

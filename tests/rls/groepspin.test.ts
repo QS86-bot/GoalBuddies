@@ -62,7 +62,7 @@ const EIGENAAR = proefId(1);
  * ⚠️ **Alle negen, en niet vijf.** De eerste versie van dit bestand beloofde in
  *    zijn kop negen kolommen en toetste er vijf; `last_activity_at` viel tussen
  *    de lijst en de uitzonderingsnotitie door en werd door niets bewaakt. En bij
- *    0207 gebeurde het opnieuw met `huddle_day`, zie de regel onderaan: een
+ *    0209 gebeurde het opnieuw met `huddle_day`, zie de regel onderaan: een
  *    kolom die in dezelfde migratie gepind wordt, komt hier niet vanzelf bij.
  *    `id` en `created_at` staan er niet bij omdat een client ze niet kán
  *    aanwijzen zonder de rij kwijt te raken — die twee zijn de sleutel zelf.
@@ -81,9 +81,9 @@ const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[
   //    beheerder zette hem op `Pacific/Kiritimati` en `groepsdatum()` sprong een
   //    dag vooruit. Sinds 0202 is het recht weg én pint de trigger hem.
   { kolom: 'tz', nieuw: "'Pacific/Kiritimati'", hoortTeBlijven: 'Europe/Amsterdam' },
-  // ⚠️⚠️ **De huddledag, sinds QS8-360 (0207), en hij kwam er bijna niet bij.**
-  //    Hij bepaalt waar de groepsperiode begint. Tot 0207 had hij een kolomrecht
-  //    en géén pin; sinds 0207 is het recht ingetrokken én pint de trigger hem.
+  // ⚠️⚠️ **De huddledag, sinds QS8-360 (0209), en hij kwam er bijna niet bij.**
+  //    Hij bepaalt waar de groepsperiode begint. Tot 0209 had hij een kolomrecht
+  //    en géén pin; sinds 0209 is het recht ingetrokken én pint de trigger hem.
   //
   //    📏 Gevonden door de security-review op die branch, en zelf nagemeten: met
   //    `new.huddle_day := old.huddle_day` uit de gedeployde trigger gehaald bleef

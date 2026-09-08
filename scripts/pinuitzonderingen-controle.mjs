@@ -144,7 +144,7 @@ export const REGISTER = new Map([
   ],
   [
     'zet_huddledag',
-    'Zet `huddle_day` (QS8-360, migratie 0207). Zelfde vorm en zelfde reden als ' +
+    'Zet `huddle_day` (QS8-360, migratie 0209). Zelfde vorm en zelfde reden als ' +
       'de twee regels hieronder: de kolom heeft géén kolomgrant meer en wordt ' +
       'door `guard_group_update()` teruggezet, dus dit is de enige route — en ' +
       'die toetst zelf op actieve beheerder, vergrendelt de groepsrij en ' +

@@ -330,7 +330,7 @@ export function leesSeizoenscadans(waarde: unknown): Seizoenscadans {
  *    code-critic-ronde van 24-08.
  */
 /**
- * ⚠️ **`huddle_day` staat er sinds 0207 níét meer bij** (QS8-360), en om
+ * ⚠️ **`huddle_day` staat er sinds 0209 níét meer bij** (QS8-360), en om
  *    dezelfde reden als `zichtbaarheid` en `ontdekbaar`: het is geen gegeven
  *    over de groep maar een handeling met gevolgen. De huddledag verschuift de
  *    groepsperiode, en een kale PATCH liet de lopende periode onbereikbaar

@@ -168,7 +168,7 @@ export function bevestigingen(): Record<BevestigingsNaam, BevestigingsTekst> {
     //    ENGINEER-REVIEW), is één tik zonder bevestiging te goedkoop voor wat
     //    het kost.
     weekStartVerzetten: bouw('bevestiging.weekstart_verzetten'),
-    // ⚠️ QS8-360, migratie 0207. De groepstegenhanger van de regel hierboven, en
+    // ⚠️ QS8-360, migratie 0209. De groepstegenhanger van de regel hierboven, en
     //    zwaarder: de weekstart verzet je voor jezelf, de huddledag voor iedereen.
     //    📏 Gemeten: een verzetting kan de lopende week van de anderen tot
     //    vandaag inkorten (`09-08 .. 09-14` werd `09-02 .. 09-08`). Dat is niet
