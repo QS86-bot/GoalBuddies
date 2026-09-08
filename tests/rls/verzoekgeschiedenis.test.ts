@@ -1,5 +1,5 @@
 /**
- * Wie mag zien dat een aanvrager eerder lid was — QS8-332, migratie 0204.
+ * Wie mag zien dat een aanvrager eerder lid was — QS8-332, migratie 0206.
  *
  * ⚠️ **De belofte is niet "de RPC geeft de goede rijen terug".** De belofte is:
  *    *alleen een beheerder van díé groep ziet dat een aanvrager eerder lid was,
@@ -13,7 +13,7 @@
  *      `verlaat_groep()`  is de énige die de lidmaatschapsrij **verwijdert**
  *
  *    Wie vertrok laat dus geen rij achter en wie weggestuurd werd juist wél.
- *    Daarom leest 0204 er twee: de rij én de `group_events`-gebeurtenis.
+ *    Daarom leest 0206 er twee: de rij én de `group_events`-gebeurtenis.
  *
  * ⚠️⚠️ **En daarmee staat er een leesbaar signaal dat ouder is dan dit issue.**
  *    Omdat vertrekken de rij wíst en uitgezet worden hem op `inactive` zet, is
@@ -157,7 +157,7 @@ describe.skipIf(!rlsTestsConfigured)('de geschiedenis van een aanvrager', () => 
     /**
      * ⚠️ De must-allow-helft. Zou élke aanvrager een rij krijgen, dan zegt de
      *    regel niets meer — en zou alleen een uitzetting een rij krijgen, dan ís
-     *    de aanwezigheid van de regel het oordeel. Zie de kop van 0204.
+     *    de aanwezigheid van de regel het oordeel. Zie de kop van 0206.
      */
     it(
       'laat een aanvrager die nooit lid was helemaal weg',

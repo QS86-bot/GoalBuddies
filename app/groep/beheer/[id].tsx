@@ -830,7 +830,7 @@ export default function GroepBeheer() {
  * ⚠️ **`null` betekent "nooit lid geweest" en levert niets op.** Zou hier een
  *    regel staan bij élke aanvrager, dan zegt hij niets meer; zou hij er alleen
  *    staan bij een uitzetting, dan ís zijn aanwezigheid het oordeel. Zie de kop
- *    van migratie 0204.
+ *    van migratie 0206.
  */
 function EerderLid({
   eerder,
