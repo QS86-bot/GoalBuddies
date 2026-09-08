@@ -2382,6 +2382,9 @@ export const nl = {
   'ontdek.afwijzen': 'Afwijzen',
   'ontdek.aangenomen': 'Aangenomen.',
   'ontdek.afgewezen': 'Afgewezen.',
+  'ontdek.eerder_lid': 'Was eerder lid van deze groep.',
+  'ontdek.eerder_verwijderd': 'Was eerder lid van deze groep en is op {datum} uit de groep gezet.',
+  'ontdek.eerder_vertrokken': 'Was eerder lid van deze groep en is op {datum} zelf vertrokken.',
   'ontdek.zonder_bericht': 'Zonder bericht',
 
   'voertaal.nl': 'Nederlands',

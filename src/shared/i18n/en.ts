@@ -1893,6 +1893,9 @@ export const en: Record<Sleutel, string> = {
   'ontdek.afwijzen': 'Decline',
   'ontdek.aangenomen': 'Accepted.',
   'ontdek.afgewezen': 'Declined.',
+  'ontdek.eerder_lid': 'Was a member of this group before.',
+  'ontdek.eerder_verwijderd': 'Was a member of this group before and was removed on {datum}.',
+  'ontdek.eerder_vertrokken': 'Was a member of this group before and left on {datum}.',
   'ontdek.zonder_bericht': 'No message',
 
   'voertaal.nl': 'Dutch',

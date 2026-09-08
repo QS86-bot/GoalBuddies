@@ -233,6 +233,34 @@ export function toonKlokTijd(timestamp: string, tz: TimeZone, locale: string): s
 }
 
 /**
+ * De kalenderdag van een tijdstempel, in de zone en de notatie van de lezer.
+ *
+ * ⚠️ **Naast `toonMoment()` en niet in plaats daarvan** — QS8-332. Bij een spoor
+ *    of een logregel is het tijdstip het antwoord; bij "wanneer is dit gebeurd"
+ *    op een beslislijst is het ruis, en een tijdstip erbij nodigt uit tot een
+ *    precisie die de vraag niet heeft.
+ *
+ * ⚠️ **En niet `timestamp.slice(0, 10)`.** Dat is de UTC-dag, en die is voor een
+ *    lezer ten oosten of westen van de meridiaan de verkeerde — precies de fout
+ *    die `toonMoment()` in zijn eigen kop beschrijft, één veld korter.
+ */
+export function toonKlokDatum(timestamp: string, tz: TimeZone, locale: string): string {
+  const gelezen = moment(timestamp);
+  if (gelezen === null) return '';
+
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: tz,
+    }).format(gelezen);
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Een tijdstempel als datum én tijd, in de zone en de notatie van de lezer.
  *
  * ⚠️ Voor een spoor of een logregel, waar het antwoord op "wanneer" zowel de dag
