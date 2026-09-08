@@ -95,6 +95,16 @@ export const nl = {
   'systeembericht.group_discoverable':
     '{naam} heeft deze groep vindbaar gemaakt. Mensen die je nog niet kent zien de naam, het onderwerp, de omschrijving en het aantal leden. Verder niets.',
 
+  /**
+   * ⚠️ De veertiende, migratie 0205 (QS8-360). Noemt de beheerder en de
+   *    gebeurtenis — geen aantallen. Uit "twee van de vijf zijn meeverhuisd" is
+   *    af te leiden wie er nog niet had afgesloten, en dat is domeinregel 7 op
+   *    een plek waar je hem makkelijk mist: de gebeurtenis zelf is geen
+   *    tegenslag.
+   */
+  'systeembericht.huddle_day_changed':
+    '{naam} heeft de huddledag verzet. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
   // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
@@ -1978,6 +1988,9 @@ export const nl = {
     'Het duurde te lang. Probeer het zo nog eens, of voeg je mijlpalen zelf toe.',
   'coach.n_voorgesteld': '{aantal} mijlpalen voorgesteld',
   'beheer.melding_opgeslagen': 'Opgeslagen. Lopende kettingschakels blijven staan waar ze staan.',
+  'beheer.melding_huddledag': 'De huddledag staat nu op {{dag}}. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
+  'beheer.huddledag_ongeldig': 'Dat is geen geldige weekdag.',
+  'beheer.huddledag_verlopen': 'De week is intussen opgeschoven. Ververs het scherm en probeer het opnieuw.',
   'beheer.melding_nieuwe_link': 'Nieuwe link. De oude werkt vanaf nu niet meer.',
   'beheer.leeg_titel': 'Deze groep is er niet, of niet voor jou',
   'beheer.leeg_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer.',

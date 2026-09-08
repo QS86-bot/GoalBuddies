@@ -91,15 +91,23 @@ describe.skipIf(!rlsTestsConfigured)('de groepsklok is geen instelling van een b
   );
 
   it(
-    'MUST-ALLOW: naam en huddledag blijven gewoon te wijzigen',
+    'MUST-ALLOW: de naam blijft gewoon te wijzigen',
     async () => {
-      // ⚠️ Dit is wat het groepsinstellingenscherm werkelijk schrijft — zie
-      //    `src/modules/buddies/wijzigen.test.ts`, die vastlegt dat de helper
-      //    alleen `huddle_day` en `name` meestuurt. Zou de `revoke` van 0202 te
-      //    breed zijn geweest, dan breekt hier het scherm en niet de aanval.
+      // ⚠️ Dit is wat het groepsinstellingenscherm nog rechtstreeks schrijft —
+      //    zie `src/modules/buddies/wijzigen.test.ts`, die de update-lijst van
+      //    `wijzigGroep()` naast `groepPatchSchema` legt. Zou de `revoke` van
+      //    0202 te breed zijn geweest, dan breekt hier het scherm en niet de
+      //    aanval.
+      //
+      // ⚠️ **`huddle_day` stond hier tot QS8-360 bij**, en dat is geen
+      //    versoepeling maar een verhuizing: hij loopt sinds migratie 0205 over
+      //    `zet_huddledag()`, omdat een kale PATCH de lopende periode
+      //    onbereikbaar achterliet. De must-allow eronder toetst dat die weg
+      //    werkt; dat een PATCH hem níét meer zet, staat in
+      //    `tests/rls/huddledag.test.ts`.
       const { error } = await beheerder.db
         .from('groups')
-        .update({ name: 'Klokgroep hernoemd', huddle_day: 3 })
+        .update({ name: 'Klokgroep hernoemd' })
         .eq('id', groupId);
 
       expect(error, `het instellingenscherm hoort te blijven werken: ${error?.message}`).toBeNull();
@@ -110,7 +118,6 @@ describe.skipIf(!rlsTestsConfigured)('de groepsklok is geen instelling van een b
         .eq('id', groupId)
         .single();
       expect(na.data?.name).toBe('Klokgroep hernoemd');
-      expect(na.data?.huddle_day).toBe(3);
       expect(na.data?.tz, 'de klok is meegeschoven met een ándere wijziging').toBe(EIGEN_ZONE);
     },
     TEST_TIMEOUT,

@@ -184,6 +184,16 @@ const REGISTER = new Map([
   ['verlaat_groep', 'Lidmaatschapspoort (`not_member`) plus een bevestiging. Gemeten: poort weg → 2 rood.'],
   ['verwijder_lid', 'Beheerderspoort. Gemeten: poort weg → 5 rood.'],
   ['zet_groepsontdekbaarheid', 'Beheerderspoort. Gemeten: poort weg → 3 rood.'],
+  [
+    'zet_huddledag',
+    'Beheerderspoort (QS8-360, migratie 0205). Gemeten: poort weg → 7 rood. ' +
+      'Schrijft `groups.huddle_day` en verhuist de `chain_links` en ' +
+      '`week_reviews` van de lopende periode mee — dat laatste is de reden dat ' +
+      'hij bestaat: een kale PATCH liet een openstaande weekafsluiting ' +
+      'onbereikbaar achter. Naast de beheerderspoort toetst hij beide ' +
+      'periodestarts op hun eigen huddledag en op vandaag; die komen van de ' +
+      'client, want de groepsklok hoort in `shared/time`.',
+  ],
   ['zet_groepszichtbaarheid', 'Beheerderspoort (besluit A41). Gemeten: poort weg → 5 rood.'],
   [
     'herorden_weekplan',

@@ -143,6 +143,14 @@ export const REGISTER = new Map([
       'systeembericht en een rem van 24 uur (0076).',
   ],
   [
+    'zet_huddledag',
+    'Zet `huddle_day` (QS8-360, migratie 0205). Zelfde vorm en zelfde reden als ' +
+      'de twee regels hieronder: de kolom heeft géén kolomgrant meer en wordt ' +
+      'door `guard_group_update()` teruggezet, dus dit is de enige route — en ' +
+      'die toetst zelf op actieve beheerder, vergrendelt de groepsrij en ' +
+      'weegt beide periodestarts. ⚠️ Hij raakt de gepinde kolommen niet aan.',
+  ],
+  [
     'zet_groepsontdekbaarheid',
     'Zet `ontdekbaar` (QS8-231, migratie 0144). Zelfde vorm en zelfde reden ' +
       'als de regel hierboven: de kolom heeft géén kolomgrant en wordt door ' +

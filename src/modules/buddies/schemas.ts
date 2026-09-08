@@ -329,9 +329,19 @@ export function leesSeizoenscadans(waarde: unknown): Seizoenscadans {
  *    `zet_groepszichtbaarheid()` is de enige route. Gevonden door de
  *    code-critic-ronde van 24-08.
  */
+/**
+ * ⚠️ **`huddle_day` staat er sinds 0205 níét meer bij** (QS8-360), en om
+ *    dezelfde reden als `zichtbaarheid` en `ontdekbaar`: het is geen gegeven
+ *    over de groep maar een handeling met gevolgen. De huddledag verschuift de
+ *    groepsperiode, en een kale PATCH liet de lopende periode onbereikbaar
+ *    achter — de weg is `zetHuddledag()`, die de openstaande weekafsluitingen
+ *    meeneemt. `authenticated` heeft er ook geen kolomgrant meer op en
+ *    `guard_group_update()` zet hem terug, dus dit schema is de derde rem en
+ *    niet de enige.
+ */
 export const groepPatchSchema = groepSchema
   .partial()
-  .omit({ zichtbaarheid: true })
+  .omit({ zichtbaarheid: true, huddle_day: true })
   .extend({
     evidence_policy: z.enum(BEWIJSEISEN).optional(),
     approval_rule: z.enum(GOEDKEURINGSREGELS).optional(),

@@ -36,6 +36,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group protected again. Other people’s setbacks are no longer visible.',
   'systeembericht.group_discoverable':
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
+  'systeembericht.huddle_day_changed':
+    '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
 
   'algemeen.oud_lid': 'A former member',
   'algemeen.en': 'and',
@@ -1566,6 +1568,9 @@ export const en: Record<Sleutel, string> = {
     'That took too long. Try again in a moment, or add your milestones yourself.',
   'coach.n_voorgesteld': '{aantal} milestones suggested',
   'beheer.melding_opgeslagen': 'Saved. Chain links already earned stay exactly where they are.',
+  'beheer.melding_huddledag': 'The huddle day is now {{dag}}. The week that is running moved along with it; anything already closed stays closed.',
+  'beheer.huddledag_ongeldig': 'That is not a valid weekday.',
+  'beheer.huddledag_verlopen': 'The week has moved on in the meantime. Refresh the screen and try again.',
   'beheer.melding_nieuwe_link': 'New link. The old one stops working from now on.',
   'beheer.leeg_titel': 'This group is not here, or not for you',
   'beheer.leeg_tekst': 'You are not a member of this group, or it no longer exists.',

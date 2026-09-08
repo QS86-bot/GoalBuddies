@@ -114,6 +114,18 @@ export const SYSTEEM_GEBEURTENISSEN = [
    *    zonder namen. Een ranglijst zou ook een lijst zijn van wie onderaan staat.
    */
   'season_recap',
+  /**
+   * ⚠️ **Toegevoegd in migratie 0205 (QS8-360).** De huddledag van de groep is
+   *    verzet, en de lopende week is meeverhuisd naar de nieuwe periodestart.
+   *
+   *    ⚠️ Het bericht noemt de beheerder en de gebeurtenis — geen aantallen.
+   *    `zet_huddledag()` geeft de beheerder terug hoeveel schakels en
+   *    afsluitingen er mee zijn gegaan, en dát getal hoort niet in de chat: uit
+   *    "twee van de vijf" is af te leiden wie er nog niet had afgesloten. Dat is
+   *    domeinregel 7 op een plek waar hij makkelijk over het hoofd te zien is,
+   *    want de gebeurtenis zelf is geen tegenslag.
+   */
+  'huddle_day_changed',
 ] as const;
 
 export type SysteemGebeurtenis = (typeof SYSTEEM_GEBEURTENISSEN)[number];

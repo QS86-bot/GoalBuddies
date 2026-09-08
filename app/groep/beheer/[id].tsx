@@ -21,11 +21,13 @@ import {
   type Seizoenscadans,
   fetchMijnLidmaatschap,
   huddledagen,
+  huddledagLabel,
   type Bewijseis,
   toonCode,
   uitnodigingsLink,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetHuddledag,
   archiveerGroep,
   heropenGroep,
   beslisVerzoek,
@@ -214,9 +216,30 @@ export default function GroepBeheer() {
     // ⚠️ Het quorum gaat alleen mee als de regel erom vraagt, en dan als getal.
     //    Bij elke andere regel stuurt `wijzigGroep()` zelf `null` — de CHECK
     //    `groups_quorum_bij_regel` eist dat de twee bij elkaar horen.
+    // ⚠️⚠️ **De huddledag gaat langs een eigen weg, en dat is sinds QS8-360 een
+    //    grendel en geen stijlkeuze.** Hij verschuift de groepsperiode; een kale
+    //    PATCH liet een openstaande weekafsluiting onbereikbaar achter. Zie
+    //    `zetHuddledag()` en migratie 0205.
+    //
+    // ⚠️ **Eerst de dag, dan de rest.** Weigert de RPC — het scherm rekent met
+    //    een groep waarvan de week intussen opgeschoven is — dan stopt deze
+    //    handeling hier, en is er nog niets anders veranderd. Andersom zou de
+    //    beheerder een half opgeslagen scherm overhouden met een melding over de
+    //    huddledag.
+    let verzet = false;
+    if (groep !== null && huddledag !== groep.huddle_day) {
+      const dag = await zetHuddledag(groep, huddledag);
+      if (!dag.ok) {
+        setBezig(null);
+        setFout(dag.melding);
+        return;
+      }
+      setGroep((huidig) => (huidig === null ? huidig : { ...huidig, huddle_day: dag.waarde }));
+      verzet = true;
+    }
+
     const uitkomst = await wijzigGroep(id, {
       name: naam,
-      huddle_day: huddledag,
       evidence_policy: bewijseis,
       approval_rule: regel,
       ...(regel === 'quorum' ? { approval_quorum: Number(quorum.trim()) } : {}),
@@ -236,7 +259,14 @@ export default function GroepBeheer() {
     }
 
     setGroep(uitkomst.waarde);
-    setMelding(t('beheer.melding_opgeslagen'));
+    // ⚠️ Twee meldingen, want er zijn twee handelingen geweest. Wie de huddledag
+    //    verzet heeft, hoort te lezen wat er met de lopende week gebeurd is —
+    //    dat is het enige gevolg dat hij niet op dit scherm ziet.
+    setMelding(
+      verzet
+        ? t('beheer.melding_huddledag', { dag: huddledagLabel(huddledag) })
+        : t('beheer.melding_opgeslagen'),
+    );
   }
 
   async function vernieuw() {

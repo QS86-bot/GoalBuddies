@@ -299,12 +299,36 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
    */
   describe('het groepsoverzicht', () => {
     beforeAll(async () => {
+      // ⚠️⚠️ **De huddledag gaat hier op de klok van de gróép, en dat is een
+      //    reparatie uit QS8-360.** Sinds migratie 0205 geeft `group_overview()`
+      //    binnen de lopende band alleen antwoord over een datum die écht een
+      //    periodestart is. De dag die het blok hierboven zet, hangt aan de
+      //    *serverdatum* — want die grendel vergelijkt met `current_date` — en
+      //    die twee klokken staan in dit bestand met opzet een dag uit elkaar.
+      //    Zonder deze regel vraagt dit blok dus naar een datum die geen
+      //    periodestart is, en dan zwijgt de functie terecht.
+      //
+      // ⚠️ Dit blok draait ná het `week_reviews`-blok, dus die dag is daar al
+      //    gebruikt. Het blok hierónder toetst `chain_links_select` en leest de
+      //    huddledag niet.
+      const morgenGroepsDow = new Date(`${addDays(groepsdatum(), 1)}T00:00:00Z`).getUTCDay();
+      const huddle = await adminDb()
+        .from('groups')
+        .update({ huddle_day: morgenGroepsDow })
+        .eq('id', f.groupId);
+      if (huddle.error) throw new Error(`huddledag zetten: ${huddle.error.message}`);
+
+      // ⚠️ **`+1` en `+8` en niet `+1` en `+2`.** Allebei zijn het échte
+      //    periodestarts — de lopende en de volgende — en dat is wat de tweede
+      //    test weer op de vénsterrand zet. Met `+2` zou hij sinds 0205 afketsen
+      //    op "geen periodestart" en niet meer op `groepsdatum + 1`, en dan
+      //    bewaakt hij iets anders dan hij belooft.
       const vandaag = groepsdatum();
       const { error } = await adminDb()
         .from('chain_links')
         .insert([
           { group_id: f.groupId, user_id: f.bob.id, group_period_start: addDays(vandaag, 1) },
-          { group_id: f.groupId, user_id: f.bob.id, group_period_start: addDays(vandaag, 2) },
+          { group_id: f.groupId, user_id: f.bob.id, group_period_start: addDays(vandaag, 8) },
         ]);
       if (error) throw new Error(`schakels zetten: ${error.message}`);
     }, SETUP_TIMEOUT);
@@ -335,9 +359,9 @@ describe.skipIf(!rlsTestsConfigured)('De klokgrens rond middernacht UTC', () => 
     );
 
     it(
-      'toont die van overmorgen niet, ook al staat hij in de tabel',
+      'toont die van de volgende periode niet, ook al staat hij in de tabel',
       async () => {
-        const uitkomst = await geslotenVoor(addDays(groepsdatum(), 2));
+        const uitkomst = await geslotenVoor(addDays(groepsdatum(), 8));
 
         // ⚠️ De belofte is "onthult geen aanwezigheid", en die staat voorop:
         //    wat er ook uitkomt, `true` mag het niet zijn.

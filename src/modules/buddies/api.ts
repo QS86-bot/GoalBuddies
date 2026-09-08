@@ -10,10 +10,18 @@ import { metGetekendeAvatars } from '../auth/avatar';
 import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { apparaatTijdzone, type Cycle } from '../../shared/time';
+import {
+  apparaatTijdzone,
+  groupPeriod,
+  normaliseerZone,
+  now,
+  type Cycle,
+  type Weekday,
+} from '../../shared/time';
 import { invoerfout, type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 
 import type { DoelGroep } from './deling';
+import { huidigeGroepsperiode } from './periods';
 import {
   codeSchema,
   groepPatchSchema,
@@ -119,8 +127,20 @@ function meldingen(): Readonly<Record<string, string>> {
     bad_huddle_day: t('groep.slechte_huddledag'),
     daily_limit: t('groep.daglimiet'),
 
-    // rotate_invite_code en set_invite_revoked
+    // rotate_invite_code, set_invite_revoked en zet_huddledag
     not_admin: t('groep.geen_beheerder'),
+
+    // zet_huddledag (QS8-360, migratie 0205)
+    //
+    // ⚠️ De drie periodefouten hieronder zijn geen gebruikersfout maar een
+    //    scherm dat met een verouderde groep rekent: de client stuurt de oude en
+    //    de nieuwe periodestart mee, en de database toetst ze allebei. Eén
+    //    melding voor alle drie — de gebruiker kan alleen verversen.
+    ongeldige_dag: t('beheer.huddledag_ongeldig'),
+    ongeldige_periode: t('beheer.huddledag_verlopen'),
+    periode_valt_niet_op_huddledag: t('beheer.huddledag_verlopen'),
+    oude_periode_valt_niet_op_huddledag: t('beheer.huddledag_verlopen'),
+    periode_bevat_vandaag_niet: t('beheer.huddledag_verlopen'),
 
     // verlaat_groep (QS8-57, migratie 0102)
     not_member: t('verlaten.geen_lid'),
@@ -537,9 +557,17 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
  *    geen UPDATE-recht op die kolom, en de trigger `groups_guard` zet hem
  *    bovendien terug. Wie de link wil vervangen, gebruikt `vernieuwUitnodiging()`.
  *
- * ⚠️ De huddledag wijzigen breekt geen lopende ketting: een `chain_links`-rij
- *    draagt de `group_period_start` waarmee hij gelegd is, en niets herberekent
- *    die achteraf.
+ * ⚠️ **De huddledag gaat hier sinds QS8-360 niet meer doorheen.** Hij verschuift
+ *    de groepsperiode, en een kale PATCH liet de lopende periode onbereikbaar
+ *    achter: een lid met een openstaande weekafsluiting kon die nooit meer
+ *    afronden, en het groepsoverzicht bleef daar `false` melden — een gemiste
+ *    week van iemand anders, veroorzaakt door een derde. De weg is
+ *    `zetHuddledag()` hieronder.
+ *
+ * ⚠️ Wat er níét verandert: de geschiedenis wordt niet herberekend. Een
+ *    `chain_links`-rij van een afgelopen periode draagt de `group_period_start`
+ *    waarmee hij gelegd is. Alleen de periode die nú loopt verhuist mee, want
+ *    zijn start ís de afspraak die verzet wordt.
  */
 export async function wijzigGroep(
   groupId: string,
@@ -558,7 +586,6 @@ export async function wijzigGroep(
   //    naast elkaar, zodat een volgend veld niet stilletjes doodvalt.
   const update: TablesUpdate<'groups'> = {};
   if (gevalideerd.data.name !== undefined) update.name = gevalideerd.data.name;
-  if (gevalideerd.data.huddle_day !== undefined) update.huddle_day = gevalideerd.data.huddle_day;
   if (gevalideerd.data.evidence_policy !== undefined) {
     update.evidence_policy = gevalideerd.data.evidence_policy;
   }
@@ -601,6 +628,54 @@ export async function wijzigGroep(
   }
 
   return { ok: true, waarde: data };
+}
+
+/**
+ * Verzet de huddledag van een groep — QS8-360, migratie 0205.
+ *
+ * ⚠️ **Waarom dit geen kolom in `wijzigGroep()` meer is.** De huddledag bepaalt
+ *    waar de groepsperiode begint. 📏 Gemeten vóór 0205: na een kale PATCH kon
+ *    een lid zijn openstaande weekafsluiting nooit meer afronden
+ *    (`bewaak_week_review_periode()` gaf 22023), bleef het groepsoverzicht daar
+ *    `closed_this_period = false` melden — een gemiste week van iemand anders,
+ *    zichtbaar voor de groep — en telde de schakel van wie wél had afgesloten
+ *    niet meer mee, zodat hij een tweede kon leggen voor dezelfde week.
+ *
+ * ⚠️ **De twee periodestarts komen hiervandaan en niet uit de database**, want
+ *    de groepsklok hoort in `shared/time` (correctheidsregel 7). De database
+ *    toetst ze allebei: elk op zijn eigen huddledag, en beide vensters moeten
+ *    vandaag bevatten. Rekent dit scherm met een verouderde groep, dan is dat
+ *    een weigering en geen stille verschuiving.
+ *
+ * ⚠️ De aanroeper geeft de groep mee zoals hij hem heeft — de oude huddledag en
+ *    de tijdzone staan erin. Ze opnieuw ophalen zou een tweede bron maken voor
+ *    iets waar de aanroeper al mee op het scherm rekent.
+ */
+export async function zetHuddledag(
+  groep: { readonly id: string; readonly huddle_day: number; readonly tz: string },
+  nieuweDag: Weekday,
+): Promise<Resultaat<number>> {
+  const oude = huidigeGroepsperiode(groep);
+  const nieuwe = groupPeriod({ huddleDay: nieuweDag, tz: normaliseerZone(groep.tz) }, now());
+
+  const { data, error } = await supabase().rpc('zet_huddledag', {
+    p_group_id: groep.id,
+    p_dag: nieuweDag,
+    p_oude_start: oude.startDate,
+    p_nieuwe_start: nieuwe.startDate,
+  });
+
+  if (error) {
+    reportError(error, 'groups.set_huddle_day', { group_id: groep.id });
+    return { ok: false, melding: t('groep.opslaan_mislukt') };
+  }
+
+  const uit = data as unknown as { ok?: boolean; reason?: string; huddle_day?: number };
+  if (uit.ok !== true) {
+    return { ok: false, melding: melding(uit.reason, t('groep.opslaan_mislukt')) };
+  }
+
+  return { ok: true, waarde: uit.huddle_day ?? nieuweDag };
 }
 
 /** Nieuwe uitnodigingscode. De oude link werkt daarna niet meer — QS8-52. */
