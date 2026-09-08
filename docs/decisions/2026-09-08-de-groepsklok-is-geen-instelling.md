@@ -1,6 +1,6 @@
 # De groepsklok is geen instelling
 
-**08-09-2026 — QS8-355, migratie 0201**
+**08-09-2026 — QS8-355, migratie 0202**
 
 ## Waar dit over gaat
 

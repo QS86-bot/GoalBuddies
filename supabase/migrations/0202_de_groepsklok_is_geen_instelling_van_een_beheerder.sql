@@ -1,4 +1,4 @@
--- 0201_de_groepsklok_is_geen_instelling_van_een_beheerder.sql — `groups.tz` is de
+-- 0202_de_groepsklok_is_geen_instelling_van_een_beheerder.sql — `groups.tz` is de
 -- tweede klok van domeinregel 1 en niet een veld dat een beheerder met één PATCH
 -- verzet (QS8-355).
 --

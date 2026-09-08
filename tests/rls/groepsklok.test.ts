@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
 
 /**
- * De groepsklok is geen instelling van een beheerder — QS8-355, migratie 0201.
+ * De groepsklok is geen instelling van een beheerder — QS8-355, migratie 0202.
  *
  * ⚠️ **De belofte is niet "er staat geen kolomrecht meer op `tz`".** Dat is een
  *    eigenschap van het onderdeel. De belofte is: *één beheerder verschuift de
@@ -95,7 +95,7 @@ describe.skipIf(!rlsTestsConfigured)('de groepsklok is geen instelling van een b
     async () => {
       // ⚠️ Dit is wat het groepsinstellingenscherm werkelijk schrijft — zie
       //    `src/modules/buddies/wijzigen.test.ts`, die vastlegt dat de helper
-      //    alleen `huddle_day` en `name` meestuurt. Zou de `revoke` van 0201 te
+      //    alleen `huddle_day` en `name` meestuurt. Zou de `revoke` van 0202 te
       //    breed zijn geweest, dan breekt hier het scherm en niet de aanval.
       const { error } = await beheerder.db
         .from('groups')

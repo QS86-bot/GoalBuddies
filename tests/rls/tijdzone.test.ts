@@ -31,14 +31,14 @@
  *    dat zeggen. `npm run tijdzones:controle` bewaakt sinds QS8-170 allebei de
  *    richtingen, dus dit is geen afspraak meer maar een grendel.
  *
- * ⚠️⚠️ **`groups.tz` heeft sinds QS8-355 (0201) geen cliëntzijdig schrijfpad
+ * ⚠️⚠️ **`groups.tz` heeft sinds QS8-355 (0202) geen cliëntzijdig schrijfpad
  *    meer**, en de twee gevallen hieronder gaan daarom via `adminDb()`. Dat is
  *    geen verzwakking: `bewaak_tijdzone()` is een integriteitstrigger zonder
  *    rolonderscheid — hij weigert een onbekende zone voor élke schrijver — en de
- *    schrijver die na 0201 nog bestaat is `service_role` (de rollover,
+ *    schrijver die na 0202 nog bestaat is `service_role` (de rollover,
  *    `maak_seizoensrecaps`). Dat is precies de aanroeper waar dit geval over gaat.
  *
- *    ⚠️ **Het weigergeval stond op het punt stil te verschuiven.** Na 0201 gaf de
+ *    ⚠️ **Het weigergeval stond op het punt stil te verschuiven.** Na 0202 gaf de
  *    cliëntzijdige PATCH `42501` van de kolomgrant in plaats van `22023` van de
  *    trigger, en de assertie las alleen "er is een fout" — hij bleef dus groen
  *    terwijl hij `bewaak_tijdzone()` niet meer raakte. Regel 18 vraag 4: een test
@@ -129,7 +129,7 @@ describe.runIf(rlsTestsConfigured)('een tz-waarde die geen tijdzone is (0119)', 
   it(
     'weigert een onzinzone in groups.tz, en de seizoensrecap blijft draaien',
     async () => {
-      // ⚠️ Via `adminDb()` sinds 0201 — zie de kop. Een client heeft hier geen
+      // ⚠️ Via `adminDb()` sinds 0202 — zie de kop. Een client heeft hier geen
       //    schrijfpad meer, en de foutcode hieronder legt vast dat het de
       //    trigger is die weigert en niet een kolomrecht.
       const { error } = await adminDb()
@@ -163,7 +163,7 @@ describe.runIf(rlsTestsConfigured)('een tz-waarde die geen tijdzone is (0119)', 
         .eq('id', eigenaar.id);
       expect(profiel.error, `${ECHTE_ZONE} werd geweigerd in profiles.tz`).toBeNull();
 
-      // ⚠️ Ook deze via `adminDb()`: na 0201 is `service_role` de enige schrijver
+      // ⚠️ Ook deze via `adminDb()`: na 0202 is `service_role` de enige schrijver
       //    van `groups.tz`, dus dit is de must-allow die er nog toe doet.
       const groep = await adminDb()
         .from('groups')

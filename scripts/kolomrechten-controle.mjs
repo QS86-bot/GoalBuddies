@@ -891,7 +891,7 @@ export const GEEN_SCHRIJFPAD = [
    *    PATCH van een beheerder zette `tz` op `Pacific/Kiritimati` en
    *    `groepsdatum()` sprong een dag vooruit — de weekgrens van élk lid.
    *
-   *    Migratie 0201 haalt het recht weg en pint de kolom in
+   *    Migratie 0202 haalt het recht weg en pint de kolom in
    *    `guard_group_update()`. De rij hoeft hier dus niet herschreven te worden;
    *    hij hoort weg, want er is geen recht meer om uit te leggen.
    */

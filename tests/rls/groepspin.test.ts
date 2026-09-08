@@ -11,7 +11,7 @@
  *    kolommen hier zijn "wat als er ooit een grant bij glipt"; bij `tz` was dat
  *    geen hypothese. 📏 Eén PATCH van een beheerder zette de groepsklok op
  *    `Pacific/Kiritimati` en `groepsdatum()` sprong een dag vooruit — de
- *    weekgrens van élk lid. Migratie 0201 haalt het recht weg én zet de pin.
+ *    weekgrens van élk lid. Migratie 0202 haalt het recht weg én zet de pin.
  *
  * ⚠️⚠️ **Waarom dit bestand bestaat: er waren twee grendels en er werkte er één.**
  *    `guard_group_update()` besliste op `current_user not in ('authenticated',
@@ -72,12 +72,12 @@ const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[
   { kolom: 'invite_code', nieuw: "'GEKAAPT1'", hoortTeBlijven: 'PINCODE1' },
   { kolom: 'invite_revoked', nieuw: 'true', hoortTeBlijven: 'false' },
   { kolom: 'last_activity_at', nieuw: 'now()', hoortTeBlijven: '2020-01-01' },
-  // ⚠️ **De groepsklok, sinds QS8-355 (0201).** `groups.tz` is de tweede klok van
+  // ⚠️ **De groepsklok, sinds QS8-355 (0202).** `groups.tz` is de tweede klok van
   //    domeinregel 1 — `currentGroupPeriod()` leest hem, en dus hangen de
   //    huddledag, de weekafsluiting en De Ketting eraan, voor élk lid. Hij stond
   //    hier niet bij, en hij had wél een kolomrecht: 📏 één PATCH van een
   //    beheerder zette hem op `Pacific/Kiritimati` en `groepsdatum()` sprong een
-  //    dag vooruit. Sinds 0201 is het recht weg én pint de trigger hem.
+  //    dag vooruit. Sinds 0202 is het recht weg én pint de trigger hem.
   { kolom: 'tz', nieuw: "'Pacific/Kiritimati'", hoortTeBlijven: 'Europe/Amsterdam' },
   // ⚠️ De tak van 0060 liet `not-null → null` door, en dat is precies wat een
   //    beheerder wil om zijn eigen oprichterschap te wissen. Sinds 0149 pint de
