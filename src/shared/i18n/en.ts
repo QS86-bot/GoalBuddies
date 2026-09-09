@@ -1008,8 +1008,8 @@ export const en: Record<Sleutel, string> = {
     'Put the things you do not want to forget here. A task does not count ' +
     'towards your points or your streak; that stays the week.',
   'lijst.prive_uitleg':
-    'Everything on this list is private: nobody in your group sees your tasks. ' +
-    'Sharing is not possible yet.',
+    'A task is private until you share it yourself. Nobody in your group sees ' +
+    'what you do not share.',
   'lijst.van_totaal': '{aantal} of {totaal}',
   'lijst.meer_laden': 'Load more',
   'lijst.afvinken': 'Tick off',
@@ -1026,6 +1026,19 @@ export const en: Record<Sleutel, string> = {
   'lijst.verzetten_gelijk':
     'These two tasks share the same spot in the list. Move another one out from ' +
     'between them first.',
+  'lijst.delen_mislukt': 'Sharing failed.',
+  'lijst.geen_groepsgenoot': 'You are no longer a member of that group.',
+  'lijst.deel_aan': 'Shared with {groep}',
+  'lijst.deel_aan_onbekend': 'Shared with a group that is no longer in your list',
+  'lijst.deel_uit': 'Not shared',
+  'lijst.deel_knop': 'Share',
+  'lijst.deel_terug': 'Stop sharing',
+  'lijst.deel_kies': 'With which group?',
+  'lijst.deel_geen_groep':
+    'You are not in any group yet, so there is nobody to share anything with.',
+  'lijst.deel_uitleg':
+    'Only the group you pick sees what you share. The rest of your list stays ' +
+    'private, and you can always undo it.',
   'lijst.invoer': 'Check what you filled in.',
   'bevestiging.taak_verwijderen.titel': 'Throw this task away?',
   'bevestiging.taak_verwijderen.uitleg':

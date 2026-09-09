@@ -29,7 +29,7 @@ import {
 
 export type Taak = Pick<
   Tables<'todo_items'>,
-  'id' | 'body' | 'done_at' | 'order_index' | 'created_at'
+  'id' | 'body' | 'done_at' | 'order_index' | 'created_at' | 'visibility' | 'shared_group_id'
 >;
 
 /**
@@ -39,7 +39,7 @@ export type Taak = Pick<
  */
 export const TAKEN_PER_PAGINA = 20;
 
-const KOLOMMEN = 'id, body, done_at, order_index, created_at';
+const KOLOMMEN = 'id, body, done_at, order_index, created_at, visibility, shared_group_id';
 
 /**
  * Eén pagina van je eigen lijst: open taken eerst, afgevinkte eronder.
@@ -258,6 +258,53 @@ function naSchrijf(
   }
 
   return { ok: true, waarde: data };
+}
+
+/**
+ * Deelt één taak met één groep, of zet hem terug op prive — QS8-381, 0220.
+ *
+ * ⚠️ **Een RPC en geen PATCH, en dat is de kern van dit issue.** `visibility` en
+ *    `shared_group_id` staan in geen enkele kolomgrant en `pin_taak()` weigert ze
+ *    bovendien; `zet_taakzichtbaarheid()` is het enige pad. Een deelknop die een
+ *    kolom schrijft, is geen deelknop maar een lek dat er goed uitziet — de les
+ *    van EPIC 5 die in CLAUDE.md bij domeinregel 7 staat.
+ *
+ * ⚠️ **`groupId` is `null` om terug te zetten**, en dat is geen randgeval maar
+ *    het halve doel. 📏 Bij `daily_moves` trok 0197 UPDATE en DELETE in, en
+ *    sindsdien is de zichtbaarheid van een Dagzet onveranderlijk: een lijst die
+ *    je openbaar maakt en nooit meer prive kunt zetten, is geen keuze maar een val.
+ */
+export async function deelTaak(id: string, groupId: string | null): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('zet_taakzichtbaarheid', {
+    p_taak: id,
+    p_group_id: groupId,
+  });
+
+  if (error) {
+    reportError(error, 'todos.share', { code: error.code });
+    return { ok: false, melding: t('lijst.delen_mislukt') };
+  }
+
+  const uit = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uit.ok !== true) {
+    return { ok: false, melding: deelmelding(uit.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/**
+ * De reden uit de RPC als zin.
+ *
+ * ⚠️ **Elke reden krijgt zijn eigen tekst en niet één terugval**, want de twee
+ *    die een gebruiker kan raken zeggen iets anders: de taak bestaat niet meer,
+ *    of je bent geen lid meer van die groep. Een enkele melding zou hem laten
+ *    zoeken naar de verkeerde oorzaak.
+ */
+function deelmelding(reden: string | undefined): string {
+  if (reden === 'not_found') return t('lijst.bestaat_niet');
+  if (reden === 'geen_groepsgenoot') return t('lijst.geen_groepsgenoot');
+  return t('lijst.delen_mislukt');
 }
 
 /**

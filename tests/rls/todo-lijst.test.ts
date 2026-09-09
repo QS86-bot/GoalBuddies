@@ -741,13 +741,23 @@ describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar 
     () => {
       const uit = psql(`
         begin;
-        create temp table t as select gen_random_uuid() eig, gen_random_uuid() tid;
+        create temp table t as
+          select gen_random_uuid() eig, gen_random_uuid() tid, gen_random_uuid() grp;
         grant select on t to authenticated;
         insert into auth.users (id, email) select eig, 'lijst-gedeeld@x.nl' from t;
-        -- Alleen een bevoorrechte schrijver komt hier vandaag aan; QS8-381 maakt
-        -- er een RPC voor. De pin staat op UPDATE, dus een INSERT mag dit.
-        insert into todo_items (id, user_id, body, visibility)
-          select tid, eig, 'gedeelde taak', 'group' from t;
+        -- ⚠️ De groep hoort er sinds 0220 bij: de CHECK
+        --    todo_items_groep_hoort_bij_gedeeld is daar een biconditionaal
+        --    geworden, dus 'group' zonder groep is geen stand meer. Dat maakt
+        --    deze opstelling realistischer en niet losser: zo ziet een gedeelde
+        --    taak er in productie uit.
+        insert into groups (id, name, created_by, status, invite_code)
+          select grp, 'Bewerkbaar', eig, 'active', 'BEWERKB1' from t;
+        insert into group_members (group_id, user_id, role, status)
+          select grp, eig, 'admin', 'active' from t;
+        -- Alleen een bevoorrechte schrijver komt hier vandaag aan; 0220 maakt er
+        -- een RPC voor. De pin staat op UPDATE, dus een INSERT mag dit.
+        insert into todo_items (id, user_id, body, visibility, shared_group_id)
+          select tid, eig, 'gedeelde taak', 'group', grp from t;
         select set_config('request.jwt.claims',
           json_build_object('sub', eig, 'role', 'authenticated')::text, true) from t;
         do $proef$

@@ -2,8 +2,10 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
+import { fetchMijnGroepen, type Groep } from '@/modules/buddies';
 import {
   TAAK_MAX,
+  deelTaak,
   fetchTaken,
   maakTaak,
   verwijderTaak,
@@ -22,10 +24,12 @@ import {
   Button,
   Caption,
   Card,
+  Choice,
   Field,
   Screen,
   bevestigingen,
   useAsync,
+  useAsyncMetTerugval,
 } from '@/shared/ui';
 
 /**
@@ -51,6 +55,11 @@ export default function Lijst() {
   const { userId } = useSession();
   const { profiel } = useProfiel();
   const lijst = useTaken(userId);
+
+  // ⚠️ Apart van de lijst, en met een terugval op een lege reeks: een lijst
+  //    zonder groepen is bruikbaar (je deelt dan niets), een lijst die helemaal
+  //    niet laadt niet. Zelfde afweging als de risicostanden op het doelenscherm.
+  const groepen = useAsyncMetTerugval(userId ? () => fetchMijnGroepen() : null, [], [userId]);
   const [melding, setMelding] = useState<string | null>(null);
 
   return (
@@ -72,6 +81,7 @@ export default function Lijst() {
         {() => (
           <Takenlijst
             rijen={lijst.rijen}
+            groepen={groepen}
             tz={profiel?.tz ?? null}
             totaal={lijst.pagina?.totaal ?? lijst.rijen.length}
             meer={lijst.pagina?.meer ?? false}
@@ -193,6 +203,7 @@ function Invoer({
  */
 function Takenlijst({
   rijen,
+  groepen,
   tz,
   totaal,
   meer,
@@ -201,6 +212,7 @@ function Takenlijst({
   onMeer,
 }: {
   readonly rijen: readonly Taak[];
+  readonly groepen: readonly Groep[];
   /** De tijdzone van de gebruiker; `null` zolang het profiel nog laadt. */
   readonly tz: TimeZone | null;
   readonly totaal: number;
@@ -217,6 +229,7 @@ function Takenlijst({
         <TaakRegel
           key={taak.id}
           taak={taak}
+          groepen={groepen}
           tz={tz}
           vorige={buur(open, taak, -1)}
           volgende={buur(open, taak, +1)}
@@ -282,6 +295,7 @@ async function voerUit(
  */
 function TaakRegel({
   taak,
+  groepen,
   tz,
   vorige,
   volgende,
@@ -289,6 +303,7 @@ function TaakRegel({
   onFout,
 }: {
   readonly taak: Taak;
+  readonly groepen: readonly Groep[];
   readonly tz: TimeZone | null;
   readonly vorige: Taak | null;
   readonly volgende: Taak | null;
@@ -308,6 +323,7 @@ function TaakRegel({
         {taak.body}
       </Body>
       <Afgerond doneAt={taak.done_at} tz={tz} />
+      <Deelblok taak={taak} groepen={groepen} bezig={bezig} onDeel={(g) => voer(() => deelTaak(taak.id, g))} />
 
       {vraagt ? (
         <Bevestiging
@@ -323,8 +339,7 @@ function TaakRegel({
           vorige={vorige}
           volgende={volgende}
           onAfvinken={() => voer(() => zetAfgevinkt(taak.id, !af))}
-          onOmhoog={() => voer(() => verzetTaak(taak, vorige as Taak))}
-          onOmlaag={() => voer(() => verzetTaak(taak, volgende as Taak))}
+          onVerzet={(buurman) => voer(() => verzetTaak(taak, buurman))}
           onWeg={() => setVraagt(true)}
         />
       )}
@@ -350,6 +365,115 @@ function Afgerond({ doneAt, tz }: { readonly doneAt: string | null; readonly tz:
   return <Caption>{t('lijst.afgerond_op', { datum: toonMoment(doneAt, tz, opmaaktaal()) })}</Caption>;
 }
 
+/**
+ * Wat er over deze taak naar de groep gaat, en de knop die dat omzet.
+ *
+ * ⚠️⚠️ **Delen is per taak en met één gekozen groep** — besluit van Quinten,
+ *    09-09-2026, variant B2 van QS8-378. Niet "iedereen met wie je een groep
+ *    deelt": zit er een leidinggevende in één van je gezelschappen, dan ziet die
+ *    anders je boodschappenlijst. CLAUDE.md waarschuwt daar bij domeinregel 7
+ *    met zoveel woorden voor.
+ *
+ * ⚠️ **Bij één groep vraagt de app niets**, en dat is dezelfde afweging die
+ *    `beslissendeGroep()` in `modules/buddies/deling.ts` maakte: een keuze
+ *    stellen die er niet is, is een stille keuze onder een andere naam. Pas bij
+ *    twee of meer verschijnt de lijst.
+ *
+ * ⚠️ **De knop schrijft geen kolom maar roept een RPC aan.** `visibility` en
+ *    `shared_group_id` staan in geen enkele kolomgrant; de grendel is de
+ *    database en niet dit scherm.
+ */
+function Deelblok({
+  taak,
+  groepen,
+  bezig,
+  onDeel,
+}: {
+  readonly taak: Taak;
+  readonly groepen: readonly Groep[];
+  readonly bezig: boolean;
+  readonly onDeel: (groupId: string | null) => void;
+}) {
+  const [kiest, setKiest] = useState(false);
+  const gedeeldMet = groepen.find((g) => g.id === taak.shared_group_id);
+
+  if (taak.shared_group_id !== null) {
+    return (
+      <View style={styles.knoppen}>
+        {/*
+          ⚠️ **De naamloze tak is bereikbaar, en dat was hij stil.** `Gedeeld met `
+             zonder naam stond er tot de security-ronde op QS8-381: `gedeeldMet`
+             komt uit `fetchMijnGroepen()`, en die laat een gearchiveerde groep
+             met opzet weg (0153) terwijl de taak daar wél gedeeld blijft — een
+             archief blijft leesbaar, dat is de lees/schrijf-splitsing. De
+             eigenaar las dan dat hij deelde en niet met wie.
+
+             De andere twee routes hierheen zijn dicht gemaakt in plaats van
+             opgevangen: een ex-lid deelt niet door (migratie 0220 §5) en een
+             verwijderde groep laat geen `('group', null)` achter (de CHECK
+             daar). Wat overblijft is het archief, en dat krijgt een zin.
+        */}
+        <Caption>
+          {gedeeldMet
+            ? t('lijst.deel_aan', { groep: gedeeldMet.name })
+            : t('lijst.deel_aan_onbekend')}
+        </Caption>
+        <Button variant="stil" disabled={bezig} onPress={() => onDeel(null)}>
+          {t('lijst.deel_terug')}
+        </Button>
+      </View>
+    );
+  }
+
+  if (groepen.length === 0) return <Caption>{t('lijst.deel_geen_groep')}</Caption>;
+
+  if (groepen.length === 1 || !kiest) {
+    return (
+      <View style={styles.knoppen}>
+        <Caption>{t('lijst.deel_uit')}</Caption>
+        <Button
+          variant="stil"
+          disabled={bezig}
+          onPress={() => (groepen.length === 1 ? onDeel(groepen[0]?.id ?? null) : setKiest(true))}
+        >
+          {t('lijst.deel_knop')}
+        </Button>
+      </View>
+    );
+  }
+
+  return <Groepskeuze groepen={groepen} bezig={bezig} onKies={onDeel} />;
+}
+
+/** De keuzelijst die alleen verschijnt bij twee of meer groepen. */
+function Groepskeuze({
+  groepen,
+  bezig,
+  onKies,
+}: {
+  readonly groepen: readonly Groep[];
+  readonly bezig: boolean;
+  readonly onKies: (groupId: string) => void;
+}) {
+  const [keuze, setKeuze] = useState(groepen[0]?.id ?? '');
+
+  return (
+    <Card nested>
+      <Caption>{t('lijst.deel_uitleg')}</Caption>
+      <Choice
+        label={t('lijst.deel_kies')}
+        opties={groepen.map((g) => ({ waarde: g.id, label: g.name }))}
+        waarde={keuze}
+        onKies={setKeuze}
+        disabled={bezig}
+      />
+      <Button variant="secundair" busy={bezig} disabled={keuze === ''} onPress={() => onKies(keuze)}>
+        {t('lijst.deel_knop')}
+      </Button>
+    </Card>
+  );
+}
+
 /** De vier knoppen onder een regel. Apart, want vier knoppen is geen regel. */
 function Regelknoppen({
   af,
@@ -357,8 +481,7 @@ function Regelknoppen({
   vorige,
   volgende,
   onAfvinken,
-  onOmhoog,
-  onOmlaag,
+  onVerzet,
   onWeg,
 }: {
   readonly af: boolean;
@@ -366,8 +489,7 @@ function Regelknoppen({
   readonly vorige: Taak | null;
   readonly volgende: Taak | null;
   readonly onAfvinken: () => void;
-  readonly onOmhoog: () => void;
-  readonly onOmlaag: () => void;
+  readonly onVerzet: (buurman: Taak) => void;
   readonly onWeg: () => void;
 }) {
   return (
@@ -375,10 +497,23 @@ function Regelknoppen({
       <Button variant="secundair" busy={bezig} onPress={onAfvinken}>
         {af ? t('lijst.ontvinken') : t('lijst.afvinken')}
       </Button>
-      <Button variant="stil" disabled={bezig || vorige === null} onPress={onOmhoog}>
+      {/*
+        ⚠️ De buur gaat mee in de aanroep en niet als vlag ernaast. Zo kan een
+           knop die aan staat geen buur missen: `disabled` en `onPress` lezen
+           dezelfde waarde.
+      */}
+      <Button
+        variant="stil"
+        disabled={bezig || vorige === null}
+        onPress={() => vorige !== null && onVerzet(vorige)}
+      >
         {t('lijst.omhoog')}
       </Button>
-      <Button variant="stil" disabled={bezig || volgende === null} onPress={onOmlaag}>
+      <Button
+        variant="stil"
+        disabled={bezig || volgende === null}
+        onPress={() => volgende !== null && onVerzet(volgende)}
+      >
         {t('lijst.omlaag')}
       </Button>
       <Button variant="stil" disabled={bezig} onPress={onWeg}>

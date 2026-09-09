@@ -101,6 +101,8 @@ const TAAK: Taak = {
   done_at: null,
   order_index: 3,
   created_at: '2026-09-09T08:00:00.000Z',
+  visibility: 'private',
+  shared_group_id: null,
 };
 
 beforeEach(() => {
