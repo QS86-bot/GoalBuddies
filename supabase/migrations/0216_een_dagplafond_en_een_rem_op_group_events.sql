@@ -6,6 +6,8 @@
 --   drop function if exists public.rem_groepsgebeurtenissen();
 --   drop function if exists public.begrens_groepsgebeurtenissen();
 --   drop function if exists public.groepsgebeurtenissen_plafond();
+--   drop function if exists public.groepsgebeurtenissen_telt_mee(text);
+--   drop index if exists public.group_events_actor_vers_idx;
 --   -- en `sleutelzetters()` terugzetten op de definitie uit **0214**: die kent
 --   -- `app.rem_groepsgebeurtenissen` niet. Lees hem uit de dráaiende database en
 --   -- kopieer hem niet uit een migratiebestand — zie QS8-358 en het blok onderaan.
@@ -69,16 +71,21 @@
 -- ontdekbaarheid, archiveren, heropenen, verlaten) — een handvol per groep — en
 -- de weigeringen, want ook een afgewezen verzoek is een rij.
 --
--- ⚠️ **Die weigeringen zijn de reden dat het plafond ruim moet.** Een
--- ontdekbare groep kan verzoeken krijgen van willekeurig veel vreemden;
--- `lidmaatschapsverzoeken_over()` begrenst tien per **aanvrager** per dag, niet
--- het aantal aanvragers. Vijfhonderd weigeringen op één dag vraagt vijfhonderd
--- verschillende mensen, en voor een app met buddy-groepen van drie tot twaalf is
--- dat geen drukke dag maar een gebeurtenis op zichzelf.
+-- ⚠️⚠️ **Hier stond dat vijfhonderd weigeringen vijfhonderd verschillende mensen
+-- vragen, en dat was een factor tien mis.** 📏 De security-review op deze branch
+-- mat het na: `lidmaatschapsverzoeken_over()` begrenst tien verzoeken per
+-- **aanvrager** per dag, en ná een weigering mag dezelfde persoon opnieuw
+-- aanvragen. Eén account levert dus tien rijen op naam van de beheerder op, en
+-- vijftig accounts vullen een plafond van 500.
 --
--- 500 is dus ruim vier keer de gemeten bovenkant en past in de bestaande reeks
--- (`berichten` 500, `dagzetten` 500, `voltooiingen` 500). Het snijdt de
--- onbegrensde flip-flop terug tot 500 rijen per gebruiker per etmaal.
+-- Dat is de reden dat `join_request_decided` sinds die review **niet meetelt** —
+-- zie het blok hieronder. Weigeringen zijn daarmee geen argument meer voor de
+-- hoogte van dit plafond; wat overblijft zijn de vier instellingen die je zelf
+-- heen en weer kunt zetten, en daarvoor is 500 ruim.
+--
+-- 500 past in de bestaande reeks (`berichten` 500, `dagzetten` 500,
+-- `voltooiingen` 500) en snijdt de onbegrensde flip-flop terug tot 500 rijen per
+-- gebruiker per etmaal.
 --
 -- ⚠️ **Wat dit plafond niet is: een grens op het totaal.** Het telt het laatste
 -- etmaal, net als de vijftien ervoor. Wie elke dag vijfhonderd gebeurtenissen
@@ -131,6 +138,73 @@ comment on function public.groepsgebeurtenissen_plafond() is
 revoke execute on function public.groepsgebeurtenissen_plafond()
   from public, anon, authenticated;
 
+-- ⚠️⚠️ **Welke gebeurtenissen meetellen, en waarom dat een denylist is.**
+--
+-- Een nieuw `event_type` telt **wél** mee tenzij het hieronder staat. Dat is met
+-- opzet dezelfde kant op als domeinregel 7: beschermd is het antwoord tot iemand
+-- het tegendeel besluit. Wie een type vrijstelt, schrijft de reden erbij.
+--
+-- 📏 De vrijstellingen komen uit de security-review op deze branch, en alle drie
+-- de schakels zijn nagemeten:
+--
+--   1. Eén aanvallersaccount levert **10** rijen op naam van de beheerder per
+--      etmaal op: `lidmaatschapsverzoeken_over()` staat tien verzoeken per
+--      aanvrager per dag toe, en ná een weigering mag dezelfde persoon opnieuw
+--      aanvragen. Tien verzoek/weigering-cycli met één account gaven tien rijen.
+--      Vijftig nepaccounts vullen dus een plafond van 500 — niet vijfhonderd
+--      mensen, zoals de eerste versie van deze kop beweerde.
+--   2. Op het plafond valt `verlaat_groep()` om met een exception die de hele
+--      transactie terugdraait, óók voor een gewoon lid:
+--      `Te veel groepsgebeurtenissen in één dag (1 erbij, 501 …)`.
+--   3. En voor de énige beheerder loopt dat pad via `archiveer_groep()` — zie
+--      `verlaat_groep()`, waar de sluitregel `archiveer_groep(p_group_id, true)`
+--      aanroept. `group_archived` ligt dus óók op de uitgang.
+--
+-- ⚠️ **De groep verlaten is in deze app de manier waarop iemand zijn toestemming
+-- intrekt.** De onderbouwing van domeinregel 7 noemt met zoveel woorden de
+-- leidinggevende die in de groep zit. Iemand die eruit wil en er een etmaal lang
+-- niet uit kán, is precies het geval waarvoor die regel bestaat — en dat slot
+-- bestond vóór deze migratie niet. Een plafond dat de uitgang meebegrenst, is
+-- erger dan het lek dat het dicht.
+--
+-- ⚠️ En `join_request_decided` is de énige soort waarvan een **ánder** het aantal
+-- bepaalt. Meetellen maakt het plafond een wapen in handen van wie de
+-- verzoeken stuurt, in plaats van een grens op wie de rijen veroorzaakt.
+--
+-- ⚠️ `member_removed` is begrensd door de groepsgrootte (twaalf per groep, tien
+-- groepen) en een uitgezet lid komt alleen terug via een nieuw verzoek — dat is
+-- zíjn quotum. Een beheerder die zijn ledenlijst beheert, hoort daar niet op te
+-- stuiten.
+--
+-- Wat er dus wél meetelt zijn de vier instellingen die je onbeperkt heen en weer
+-- kunt zetten — en dat is precies wat de meting van 200 flips deed.
+
+create or replace function public.groepsgebeurtenissen_telt_mee(p_type text)
+returns boolean
+language sql
+immutable
+set search_path = public, pg_temp
+as $$
+  -- ⚠️ `coalesce` en `<> all`, en niet `is distinct from all` — dat laatste is
+  --    geen geldige SQL (`syntax error at or near "all"`). `event_type` is
+  --    `not null`, dus de coalesce is defensief: zou hij ooit null kunnen zijn,
+  --    dan geeft een kale `<> all` null en telt de rij stil níet mee.
+  select coalesce(p_type, '') <> all (array[
+    'member_left',           -- de uitgang zelf
+    'admin_transferred',     -- de uitgang van de laatste beheerder
+    'group_archived',        -- verlaat_groep() loopt hierlangs bij één beheerder
+    'join_request_decided',  -- een ánder bepaalt het aantal
+    'member_removed'         -- begrensd door de groepsgrootte
+  ])
+$$;
+
+comment on function public.groepsgebeurtenissen_telt_mee(text) is
+  'Of een groepsgebeurtenis meetelt in het dagplafond. Een nieuw type telt mee '
+  'tenzij het hier vrijgesteld wordt, met een reden. Zie 0216 en QS8-374.';
+
+revoke execute on function public.groepsgebeurtenissen_telt_mee(text)
+  from public, anon, authenticated;
+
 create or replace function public.begrens_groepsgebeurtenissen()
 returns trigger
 language plpgsql
@@ -141,7 +215,13 @@ declare v_totaal integer; v_batch integer;
 begin
   if (select auth.uid()) is null then return null; end if;
 
-  select count(*) into v_batch from nieuw;
+  -- ⚠️⚠️ **Alleen wat de actor zélf herhaalbaar maakt telt mee.** Zie het blok
+  --    "Wat er níet meetelt" in de kop: `groepsgebeurtenissen_telt_mee()` sluit
+  --    de uitgang en de lidmaatschapsbeslissing uit. Zonder die filter sluit dit
+  --    plafond iemand een etmaal lang op in zijn eigen groepen, en kan een
+  --    derde het voor hem volschrijven.
+  select count(*) into v_batch from nieuw n
+   where groepsgebeurtenissen_telt_mee(n.event_type);
 
   -- ⚠️ **Een statement dat niets toevoegde, kan het plafond niet doorbroken
   --    hebben** — de les van QS8-369, zie de kop van 0214. Hier is er vandaag
@@ -154,7 +234,9 @@ begin
   --    één `auth.uid()`; een plafond per groep zou hem tien keer zoveel ruimte
   --    geven en precies de flip-flop uit de kop onbegrensd laten.
   select count(*) into v_totaal from group_events e
-   where e.actor_id = (select auth.uid()) and e.created_at > now() - interval '1 day';
+   where e.actor_id = (select auth.uid())
+     and e.created_at > now() - interval '1 day'
+     and groepsgebeurtenissen_telt_mee(e.event_type);
 
   if v_totaal > groepsgebeurtenissen_plafond() then
     raise exception 'Te veel groepsgebeurtenissen in één dag (% erbij, % in het laatste etmaal, plafond %)',
@@ -194,6 +276,15 @@ end $$;
 
 revoke execute on function public.rem_groepsgebeurtenissen()
   from public, anon, authenticated;
+
+-- ⚠️ **De teller draait deze query bij élk insert-statement, dus hij hoort een
+--    index te hebben** — onwrikbare regel 11. 📏 Zonder deze index geeft het plan
+--    `Seq Scan on group_events`, en de kop hierboven rekent voor dat één
+--    gebruiker er 182.500 per jaar kan opbouwen. De structurele tweelingtabel
+--    heeft hem al voor exact dezelfde teller: `goal_events_actor_vers_idx`.
+--    Gevonden in de security-review op deze branch.
+create index if not exists group_events_actor_vers_idx
+  on public.group_events (actor_id, created_at desc);
 
 drop trigger if exists groepsgebeurtenissen_dagplafond on public.group_events;
 create trigger groepsgebeurtenissen_dagplafond

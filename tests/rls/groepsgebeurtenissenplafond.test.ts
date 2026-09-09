@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import {
+  createTestUser,
+  registreerGroep,
+  removeTestUsers,
+  rlsTestsConfigured,
+  type TestUser,
+} from './harness';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -48,8 +54,14 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    📏 De zwaarste legitieme dag is daarom gemeten en niet geschat: **110**.
  *    Tien groepen aanmaken is het maximum (`create_group()` weigert bij tien per
  *    etmaal én bij tien lidmaatschappen), en elk tot de rand van twaalf leden
- *    vullen is 10 × 11 = 110 beslissingen. Het plafond staat op 500, ruim vier
- *    keer die bovenkant.
+ *    vullen is 10 × 11 = 110 beslissingen.
+ *
+ * ⚠️ **Sinds de security-review telt die 110 niet eens meer mee.**
+ *    `join_request_decided` is vrijgesteld, want een ánder bepaalt dat aantal —
+ *    zie de twee tests hieronder. Wat er nog telt zijn de vier instellingen die
+ *    je zélf heen en weer kunt zetten, en daarvoor is 500 zeer ruim. De
+ *    zwaarste-dag-test blijft staan omdat hij bewijst dat de héle keten werkt,
+ *    niet omdat 110 nog tegen het plafond aan zit.
  *
  * IJKING — met de hand gedraaid op 09-09-2026, mutatie per grendel, en elke keer
  * eerst met `pg_get_functiondef()` of `pg_trigger` nagekeken dat de mutatie er
@@ -69,6 +81,11 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *   E  `if v_batch = 0 then return null; end if;` eruit
  *      → 1 rood: 'laat een statement dat niets toevoegt door, ook bóven het
  *        plafond'
+ *   F  `groepsgebeurtenissen_telt_mee()` overal `true` laten geven — de
+ *      vrijstellingen weg, dus de eerste versie van deze migratie
+ *      → 2 rood: 'sluit niemand op' en 'een ánder kan je plafond niet
+ *        volschrijven'. Precies de twee gevallen die de security-review vond,
+ *        en ze zijn met deze mutatie exact te reproduceren.
  *
  * ⚠️⚠️ **E was eerst groen, en dat was de leerzaamste van de vijf.** De tak is
  *    overgenomen uit 0214, waar hij een echte gebruiker uit zijn app sloot. Hier
@@ -154,6 +171,7 @@ describe.skipIf(!rlsTestsConfigured)('group_events heeft een dagplafond', () => 
         from (select set_config('request.jwt.claims',
                                 json_build_object('sub', '${alice.id}')::text, true)) x
     `).trim();
+    registreerGroep(groep);
     psql(`delete from public.group_events where actor_id = '${alice.id}'`);
   }, SETUP_TIMEOUT);
 
@@ -209,6 +227,8 @@ describe.skipIf(!rlsTestsConfigured)('group_events heeft een dagplafond', () => 
           from (select set_config('request.jwt.claims',
                                   json_build_object('sub', '${alice.id}')::text, true)) x
       `).trim();
+
+      registreerGroep(tweede);
 
       let fout: string | null = null;
       try {
@@ -315,6 +335,157 @@ describe.skipIf(!rlsTestsConfigured)('group_events heeft een dagplafond', () => 
   );
 
   it.skipIf(!meetbaar)(
+    'sluit niemand op: verlaten, overdragen en archiveren blijven werken op het plafond',
+    () => {
+      // ⚠️⚠️ **De zwaarste bevinding van de security-review op deze branch, en de
+      //    reden dat `groepsgebeurtenissen_telt_mee()` bestaat.** De eerste
+      //    versie telde élk event_type mee, en dan valt `verlaat_groep()` op het
+      //    plafond om met een exception die de hele transactie terugdraait —
+      //    ook voor een gewoon lid.
+      //
+      //    De groep verlaten is in deze app de manier waarop iemand zijn
+      //    toestemming intrekt; de onderbouwing van domeinregel 7 noemt met
+      //    zoveel woorden de leidinggevende die in de groep zit. Iemand die
+      //    eruit wil en er een etmaal lang niet uit kán, is precies het geval
+      //    waarvoor die regel bestaat — en dat slot bestond vóór deze migratie
+      //    niet. **Een plafond dat de uitgang meebegrenst is erger dan het lek
+      //    dat het dicht.**
+      //
+      // ⚠️ Twee uitgangen, want de énige beheerder loopt langs een ánder pad:
+      //    `verlaat_groep()` roept dan `archiveer_groep()` aan, en dát schrijft
+      //    `group_archived`. Een test die alleen het gewone lid draait, mist de
+      //    helft — precies de vorm van regel 18 vraag 1.
+      const admin = psql(
+        `select public.shim_maak_gebruiker('uitgang-admin-${RUN}@example.com', 'geheim123')`,
+      ).trim();
+      const lid = psql(
+        `select public.shim_maak_gebruiker('uitgang-lid-${RUN}@example.com', 'geheim123')`,
+      ).trim();
+      try {
+        const grens = grensUitDeDatabase();
+        const eigenGroep = psql(`
+          select (public.create_group('Uitgangsgroep ${RUN}') -> 'group' ->> 'id')
+            from (select set_config('request.jwt.claims',
+                                    json_build_object('sub', '${admin}')::text, true)) x
+        `).trim();
+        registreerGroep(eigenGroep);
+        psql(`update public.groups set categorie = 'fitness', ontdekbaar = true
+               where id = '${eigenGroep}'`);
+
+        // het lid treedt toe langs de gewone weg
+        psql(`
+          select set_config('request.jwt.claims',
+                            json_build_object('sub', '${lid}')::text, true);
+          select public.vraag_lidmaatschap_aan('${eigenGroep}'::uuid, null);
+        `);
+        psql(`
+          select set_config('request.jwt.claims',
+                            json_build_object('sub', '${admin}')::text, true);
+          select public.beslis_lidmaatschapsverzoek(
+                   (select id from public.group_join_requests
+                     where group_id = '${eigenGroep}' and user_id = '${lid}'), 'accepted');
+        `);
+
+        // allebei op het plafond, met een schrijver zonder claim
+        for (const wie of [lid, admin]) {
+          psql(`insert into public.group_events (group_id, actor_id, event_type)
+                select '${eigenGroep}'::uuid, '${wie}'::uuid, '${GELDIG_TYPE}'
+                  from generate_series(1, ${grens})`);
+        }
+
+        // ⚠️ De grendel moet nog wél bijten — anders is deze hele test ook groen
+        //    met een plafond dat niets doet.
+        expect(schrijfAls(admin, 1), 'een instelling erbij hoort nog steeds te stuiten').not.toBeNull();
+
+        // het gewone lid eruit
+        const lidEruit = psql(`
+          select (public.verlaat_groep('${eigenGroep}'::uuid, true, null) ->> 'ok')
+            from (select set_config('request.jwt.claims',
+                                    json_build_object('sub', '${lid}')::text, true)) x
+        `).trim();
+        expect(lidEruit, 'een lid hoort op het plafond nog steeds weg te kunnen').toBe('true');
+
+        // en de énige beheerder, die via archiveer_groep loopt
+        const adminEruit = psql(`
+          select (public.verlaat_groep('${eigenGroep}'::uuid, true, null) ->> 'gearchiveerd')
+            from (select set_config('request.jwt.claims',
+                                    json_build_object('sub', '${admin}')::text, true)) x
+        `).trim();
+        expect(
+          adminEruit,
+          'de énige beheerder hoort eruit te kunnen, en dat archiveert de groep',
+        ).toBe('true');
+      } finally {
+        psql(`select public.shim_verwijder_gebruiker('${lid}')`);
+        psql(`select public.shim_verwijder_gebruiker('${admin}')`);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
+  it.skipIf(!meetbaar)(
+    'een ánder kan je plafond niet volschrijven met lidmaatschapsverzoeken',
+    () => {
+      // ⚠️⚠️ **De tweede helft van diezelfde bevinding.** `join_request_decided`
+      //    is de énige soort waarvan een ánder het aantal bepaalt: elke keer dat
+      //    je een verzoek weigert, ging dat van jóuw quotum af.
+      //
+      //    📏 Gemeten: één aanvallersaccount levert **tien** rijen op naam van de
+      //    beheerder per etmaal — `lidmaatschapsverzoeken_over()` staat tien
+      //    verzoeken per aanvrager toe, en ná een weigering mag dezelfde persoon
+      //    opnieuw aanvragen. Vijftig nepaccounts vulden dus een plafond van 500,
+      //    en de beheerder zat daarna een etmaal vast in al zijn groepen.
+      //
+      // ⚠️ De test toetst de belófte en niet de vrijstellingslijst: een beheerder
+      //    op zijn plafond kan nog steeds beslissen. Verhuist die vrijstelling
+      //    ooit naar een andere plek, dan blijft deze test kloppen.
+      const admin = psql(
+        `select public.shim_maak_gebruiker('spam-admin-${RUN}@example.com', 'geheim123')`,
+      ).trim();
+      const spammer = psql(
+        `select public.shim_maak_gebruiker('spam-vreemde-${RUN}@example.com', 'geheim123')`,
+      ).trim();
+      try {
+        const grens = grensUitDeDatabase();
+        const g = psql(`
+          select (public.create_group('Spamgroep ${RUN}') -> 'group' ->> 'id')
+            from (select set_config('request.jwt.claims',
+                                    json_build_object('sub', '${admin}')::text, true)) x
+        `).trim();
+        registreerGroep(g);
+        psql(`update public.groups set categorie = 'fitness', ontdekbaar = true where id = '${g}'`);
+
+        psql(`insert into public.group_events (group_id, actor_id, event_type)
+              select '${g}'::uuid, '${admin}'::uuid, '${GELDIG_TYPE}'
+                from generate_series(1, ${grens})`);
+
+        psql(`
+          select set_config('request.jwt.claims',
+                            json_build_object('sub', '${spammer}')::text, true);
+          select public.vraag_lidmaatschap_aan('${g}'::uuid, null);
+        `);
+        const besluit = psql(`
+          select (public.beslis_lidmaatschapsverzoek(
+                   (select id from public.group_join_requests
+                     where group_id = '${g}' and user_id = '${spammer}'), 'declined') ->> 'ok')
+            from (select set_config('request.jwt.claims',
+                                    json_build_object('sub', '${admin}')::text, true)) x
+        `).trim();
+
+        expect(
+          besluit,
+          'een beheerder op zijn plafond hoort een verzoek nog te kunnen weigeren — ' +
+            'anders bepaalt de spammer wanneer hij vastzit',
+        ).toBe('true');
+      } finally {
+        psql(`select public.shim_verwijder_gebruiker('${spammer}')`);
+        psql(`select public.shim_verwijder_gebruiker('${admin}')`);
+      }
+    },
+    TEST_TIMEOUT,
+  );
+
+  it.skipIf(!meetbaar)(
     'raakt een achtergrondschrijver zonder ingelogde gebruiker niet',
     () => {
       // ⚠️ De tweede must-allow, dezelfde afweging als bij de vijftien tellers
@@ -411,6 +582,28 @@ describe.skipIf(!rlsTestsConfigured)('de zwaarste legitieme dag past er nog in',
       expect(Number(gemeten), 'de zwaarste legitieme dag hoort 110 gebeurtenissen te geven').toBe(
         110,
       );
+
+      // ⚠️⚠️ **Dit blok ruimt zichzelf op, en dat is geen netheid maar een
+      //    meting.** De 111 gebruikers en 10 groepen worden met
+      //    `shim_maak_gebruiker` in een `do`-blok gemaakt, en `removeTestUsers()`
+      //    kent alleen wat via `createTestUser()` liep. 📏 De security-review op
+      //    deze branch mat het residu na drie runs: **333 gebruikers, 30 groepen
+      //    en 330 `group_events`**. Elke volgende run legt er 111 bij, en dan
+      //    gaat een test die iets over aantallen zegt op een dag om op iets dat
+      //    niets met zijn onderwerp te maken heeft.
+      psql(`
+        do $op$
+        declare v_id uuid;
+        begin
+          for v_id in
+            select id from auth.users where email like 'zwaarste-${RUN}-%'
+                                         or email = 'zwaarste-${RUN}@example.com'
+          loop
+            perform public.shim_verwijder_gebruiker(v_id);
+          end loop;
+          delete from public.groups where name like 'Zwaarste dag ${RUN}-%';
+        end $op$;
+      `);
     },
     600_000,
   );
