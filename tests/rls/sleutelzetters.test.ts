@@ -55,7 +55,8 @@ function tellerNa(opstelling: string): string {
  *    een kopie zou verouderen zodra iemand die rem aanpast, en dan ijkt dit geval
  *    een functie die niet meer bestaat.
  */
-const REM_DOELEN_MET_EXTRA = `
+function remDoelenMetExtraSleutel(sleutel: string): string {
+  return `
   do $ijking$
   declare v_def text;
   begin
@@ -67,14 +68,19 @@ const REM_DOELEN_MET_EXTRA = `
       raise exception 'rem_doelen() bestaat niet meer; dit ijkgeval wijst nergens naar';
     end if;
 
+    -- ⚠️ \`replace\` vervangt élk voorkomen. rem_doelen() heeft vandaag precies één
+    --    \`begin\`; krijgt hij ooit een genest blok, dan injecteert dit meerdere
+    --    keren. Onschadelijk voor de uitkomst, maar het is een aanname en die
+    --    hoort opgeschreven.
     execute replace(
       v_def,
       'begin',
-      'begin' || chr(10) || '  perform set_config(''app.stiekeme_ijksleutel'', ''1'', true);'
+      'begin' || chr(10) || '  perform set_config(''app.${sleutel}'', ''1'', true);'
     );
   end
   $ijking$;
 `;
+}
 
 describe.skipIf(!beschikbaar)('de sleutelteller vangt elke vorm', () => {
   it('MUST-FIND: de eigenaar van een sleutel zet er ongezien een onbekende bij', () => {
@@ -82,10 +88,57 @@ describe.skipIf(!beschikbaar)('de sleutelteller vangt elke vorm', () => {
     //    📏 Vóór 0214 gaf dit geval `NIETS`: tak 1 zwijgt terecht (de functie mag
     //    haar eigen sleutel noemen) en tak 3 zweeg omdat de functie een
     //    geregistreerde sleutel noemt.
-    const gemeld = tellerNa(REM_DOELEN_MET_EXTRA);
+    const gemeld = tellerNa(remDoelenMetExtraSleutel('stiekeme_ijksleutel'));
 
     expect(gemeld, 'de onbekende sleutel werd niet gemeld').toContain('app.stiekeme_ijksleutel');
     expect(gemeld, 'de melding wijst niet naar de functie die hem zet').toContain('rem_doelen');
+  }, 120_000);
+
+  it('MUST-FIND: de eigenaar zet er een sleutel bij die op de zijne lijkt', () => {
+    // ⚠️⚠️ **Het gat dat ná de eerste reparatie nog openstond**, gevonden in de
+    //    security-ronde. `app.rem_doelen2` ontsnapte omdat de regex `[a-z_]+`
+    //    greedy afkapt op het cijfer: er blijft `app.rem_doelen` over, en dát
+    //    staat in het register. Tak 1 zweeg omdat `rem_doelen` de toegestane
+    //    eigenaar is. Twee correcte onderdelen, gat op de naad.
+    //
+    //    En het is geen verzonnen naam — zo heet een tweede teller op dezelfde
+    //    tabel.
+    const gemeld = tellerNa(remDoelenMetExtraSleutel('rem_doelen2'));
+
+    expect(gemeld, 'een sleutel met een cijfersuffix bleef ongemeld').toContain(
+      'app.rem_doelen2',
+    );
+  }, 120_000);
+
+  it('MUST-FIND: de eigenaar zet er een sleutel met hoofdletters bij', () => {
+    // ⚠️⚠️ **Een GUC-naam is in Postgres hoofdletterongevoelig**, en dat maakt dit
+    //    meer dan een vormkwestie. 📏 Gemeten:
+    //
+    //      select set_config('app.REM_DOELEN', 'ja', true);
+    //      select current_setting('app.rem_doelen', true);   →  ja
+    //
+    //    Een functie die de hoofdlettervariant zet, schrijft dus de échte teller.
+    //    De oude regex matchte na de punt geen hoofdletter, dus er was niet eens
+    //    een treffer om te vergelijken.
+    const gemeld = tellerNa(remDoelenMetExtraSleutel('REM_NIEUW'));
+
+    expect(gemeld, 'een sleutel met hoofdletters bleef ongemeld').toContain('app.REM_NIEUW');
+  }, 120_000);
+
+  it('MUST-FIND: een vreemde functie zet de hoofdlettervariant van een bekende sleutel', () => {
+    // De andere helft van dezelfde zaak, en de gevaarlijkste: dit is niet een
+    // nieuwe sleutel maar een tweede zetter op een bestáánde rem, vermomd als
+    // iets anders. Tak 1 vangt hem nu doordat de vergelijking `ilike` is.
+    const gemeld = tellerNa(`
+      create or replace function public.proef_hoofdlettervariant() returns void
+        language plpgsql as $proef$
+        begin perform set_config('app.REM_DOELEN', '1', true); end
+      $proef$;
+    `);
+
+    expect(gemeld, 'de hoofdlettervariant van een bekende sleutel bleef ongemeld').toContain(
+      'proef_hoofdlettervariant',
+    );
   }, 120_000);
 
   it('MUST-FIND: een vreemde functie zet een sleutel die van een ander is', () => {
@@ -138,8 +191,12 @@ describe.skipIf(!beschikbaar)('de sleutelteller vangt elke vorm', () => {
   }, 120_000);
 
   it('MUST-ALLOW: een rem die alleen zijn eigen sleutel zet, blijft ongemoeid', () => {
-    // Zonder deze helft zou een tak die élke `app.`-sleutel meldt ook groen zijn
-    // bij de drie must-finds hierboven.
+    // ⚠️ **Deze is gesubsumeerd, en dat hoort erbij te staan.** De
+    //    security-ronde zocht een mutatie die alléén dit geval rood maakt en vond
+    //    er geen: een tak die élke `app.`-sleutel meldt, maakt de must-allow
+    //    hierboven net zo goed rood. Hij blijft staan omdat hij een ánder geval
+    //    beschrijft — een rem die zijn eigen sleutel zet is de normale toestand,
+    //    en die expliciet toetsen is goedkoop — maar hij voegt geen dekking toe.
     const gemeld = tellerNa(`
       do $herzet$
       declare v_def text;

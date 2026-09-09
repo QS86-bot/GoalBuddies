@@ -66,6 +66,40 @@
 --    `keten:controle` telt een functienaam in de bron als een aanroeper, en
 --    strippen doet hij alleen commentaar. Die eis is ongewijzigd.
 --
+-- ---------------------------------------------------------------------------
+-- Hoofdletters en cijfers, en waarom die erbij horen
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **De eerste versie van deze migratie sloot het gat alleen voor
+--    kleine letters, en wat er overbleef had precies dezelfde vorm.** Gevonden in
+--    de security-ronde op deze branch.
+--
+-- 📏 **Een GUC-naam is in Postgres hoofdletterongevoelig**, en dat is de kern:
+--
+--      select set_config('app.REM_DOELEN', 'ja', true);
+--      select current_setting('app.rem_doelen', true);   →  ja
+--
+--    Een vreemde functie die `app.REM_DOELEN` zet, schrijft dus de échte
+--    rem-teller van `rem_doelen()`. Tak 1 zag dat niet, want `like` is
+--    hoofdlettergevoelig; tak 3 zag het niet, want `[a-z_]+` matcht na de punt
+--    geen `R` — er was niet eens een treffer. Dat is de klasse waar tak 1 juist
+--    voor bestaat.
+--
+-- 📏 En een cijfersuffix ontsnapte op de naad tussen de twee takken:
+--
+--      app.rem_doelen2  gezet door rem_doelen() zelf  →  NIETS
+--
+--    `[a-z_]+` kapt greedy af op de `2`, houdt `app.rem_doelen` over, en dát
+--    staat in het register — dus `not in` is onwaar. Tak 1 zwijgt omdat
+--    `rem_doelen` de toegestane eigenaar is. Twee correcte onderdelen, gat op de
+--    naad; onwrikbare regel 18 in het klein, en `app.rem_doelen2` is precies hoe
+--    iemand een tweede teller op dezelfde tabel zou noemen.
+--
+-- Daarom `[A-Za-z0-9_]+`, een vergelijking op `lower()`, en `ilike` in tak 1.
+-- 📏 Nul valse meldingen op een schoon schema: de meldtekst schrijft zelf
+--    `app.-sessiesleutel`, en die streep valt buiten de tekenklasse — laat hem dus
+--    staan waar hij staat.
+--
 -- ⚠️ **`guard_group_member_update()` gaat mee, en dat is geen bijvangst.**
 --    📏 Er is vandaag precies één `app.`-sleutel die nergens geregistreerd staat:
 --    `app.hervat_lidmaatschap`, in commentaar in die functie, bewust vervallen met
@@ -137,7 +171,7 @@ AS $function$
     join pg_namespace n on n.oid = p.pronamespace
     cross join sleutel s
     where n.nspname = 'public'
-      and p.prosrc like '%' || s.instelling || '%'
+      and p.prosrc ilike '%' || s.instelling || '%'
       and p.proname <> 'sleutelzetters'
   )
   select naam,
@@ -164,10 +198,10 @@ AS $function$
          'met zijn eigen regel in te komen'
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
-    cross join lateral regexp_matches(p.prosrc, 'app\.[a-z_]+', 'g') as m(gevonden)
+    cross join lateral regexp_matches(p.prosrc, 'app\.[A-Za-z0-9_]+', 'g') as m(gevonden)
    where n.nspname = 'public'
      and p.proname <> 'sleutelzetters'
-     and m.gevonden[1] not in (select s.instelling from sleutel s)
+     and lower(m.gevonden[1]) not in (select s.instelling from sleutel s)
 
    order by 1;
 $function$
