@@ -58,6 +58,7 @@
     "register:controle": "node scripts/migratieregister-controle.mjs",
     "functies:controle": "node scripts/functies-controle.mjs",
     "keten:controle": "node scripts/dode-keten-controle.mjs",
+    "schermingang:controle": "node scripts/schermingang-controle.mjs",
     "rpc:controle": "node scripts/rpc-argumenten-controle.mjs",
     "markeringen:controle": "node scripts/conflictmarkeringen-controle.mjs",
     "storage:controle": "node scripts/storage-controle.mjs",
