@@ -1024,6 +1024,7 @@ export const en: Record<Sleutel, string> = {
   'adempauze.te_lang': 'A breather lasts at most {max} weeks.',
   'adempauze.datum_ongeldig': 'Enter a date as yyyy-mm-dd.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
+  'adempauze.buiten_venster': 'Pick a week within a year back or a year ahead.',
   'adempauze.eind_voor_start': 'The end date is before the start date.',
   'adempauze.annuleren_mislukt': 'Cancelling did not work.',
   'adempauze.al_begonnen': 'This breather has already started and stays.',
