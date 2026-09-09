@@ -123,6 +123,35 @@ export const NAGEKEKEN = {
       '⚠️ De lijst groeide tússen de lokale poort en CI door, dus een rode CI op nóg een ' +
       'nummer is hier geen nieuwe bevinding maar dezelfde: hermeet de bundel en pin opnieuw.',
   },
+  'js-yaml': {
+    ernst: 'high',
+    advisories: [1193727],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'duplicated mapping key',
+    reden:
+      'GHSA-2883-xcg3-v3hh (CVSS 7.5, CWE-400/407): `maxTotalMergeKeys` begrenst het ' +
+      'CPU-gebruik niet voor lége merge-bronnen, dus een YAML-document met veel lege merges ' +
+      'laat de parser hangen. Bereik `>=4.0.0 <4.3.2`; in de map staat 4.3.1. ' +
+      'Twee ouders, allebei tooling: `eslint@9.39.5 → @eslint/eslintrc` en ' +
+      '`expo@57.0.13 → @expo/cli → @expo/xcpretty`. ' +
+      '📏 **Gemeten op 09-09-2026** met een verse `npm run build` (dummy-`EXPO_PUBLIC_*`), ' +
+      'daarna gegrept op vijf js-yaml-eigen stringliteralen — `duplicated mapping key`, ' +
+      '`unacceptable kind of an object to dump`, `expected a single document in the stream`, ' +
+      '`end of the stream or a document separator is expected` en `unknown escape sequence` — ' +
+      'plus `js-yaml` en `YAMLException`: allemaal **nul** treffers in dist/. ' +
+      '⚠️ **En de grep is zelf geijkt, want zeven keer nul is ook wat een kapotte grep geeft.** ' +
+      'Dezelfde aanroep over dezelfde dist/ vindt `dummy.supabase.co` (1), ' +
+      '`Minified React error` (1) en `supabase` (1), en geeft nul op een verzonnen string. ' +
+      'De nul is dus een meting en geen stilte. ' +
+      '⚠️ `reparatie: \'gratis\'` is wat npm zégt; hier is het niet eens dry-run te toetsen. ' +
+      '📏 `npm audit fix --dry-run` valt om met ' +
+      '`Cannot read properties of null (reading \'edgesOut\')`. Zie de waarschuwing bij ' +
+      '`image-size` hierboven: dit veld meldt een verándering, het is geen advies. ' +
+      'De YAML die deze twee ouders parsen komt uit deze repo zelf (eslint-config, ' +
+      'app-manifest) en niet van een gebruiker, dus er is geen invoerpad van buiten. ' +
+      'QS8-375.',
+  },
   'decode-uri-component': {
     ernst: 'moderate',
     advisories: [1147955],
