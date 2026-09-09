@@ -47,7 +47,7 @@ export async function fetchWeekdoelen(
     .limit(100);
 
   if (error) {
-    reportError(error, 'weekly.list', { user_id: userId, code: error.code });
+    reportError(error, 'weekly.list', { user_id: userId });
     throw new Error(t('weekdoel.laden_mislukt'));
   }
 
@@ -87,7 +87,7 @@ export async function fetchDoorschuifbaar(
     .limit(20);
 
   if (error) {
-    reportError(error, 'weekly.carryable', { user_id: userId, code: error.code });
+    reportError(error, 'weekly.carryable', { user_id: userId });
     throw new Error(t('weekdoel.open_laden'));
   }
 
@@ -131,7 +131,7 @@ export async function fetchMijlpalen(goalId: string): Promise<readonly Mijlpaal[
     .limit(50);
 
   if (error) {
-    reportError(error, 'goals.milestones', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.milestones', { goal_id: goalId });
     throw new Error(t('weekdoel.mijlpalen_laden'));
   }
 
@@ -191,7 +191,7 @@ export async function maakWeekdoel(
     .single();
 
   if (error) {
-    reportError(error, 'weekly.create', { goal_id: gevalideerd.data.goal_id, code: error.code });
+    reportError(error, 'weekly.create', { goal_id: gevalideerd.data.goal_id });
     return { ok: false, melding: t('weekdoel.opslaan_mislukt') };
   }
 
@@ -218,7 +218,7 @@ export async function verwijderWeekdoel(id: string): Promise<Resultaat<true>> {
   });
 
   if (error) {
-    reportError(error, 'weekly.delete', { code: error.code });
+    reportError(error, 'weekly.delete');
     return { ok: false, melding: t('weekdoel.verwijderen_mislukt') };
   }
 
@@ -263,7 +263,7 @@ export async function sluitWeekdoelAf(id: string): Promise<Resultaat<true>> {
   });
 
   if (error) {
-    reportError(error, 'weekly.cancel', { code: error.code });
+    reportError(error, 'weekly.cancel');
     return { ok: false, melding: t('weekdoel.afsluiten_mislukt') };
   }
 

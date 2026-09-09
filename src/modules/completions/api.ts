@@ -219,7 +219,7 @@ export async function zetDagzet(
     .single();
 
   if (error) {
-    reportError(error, 'moves.create', { user_id: userId, code: error.code });
+    reportError(error, 'moves.create', { user_id: userId });
     return { ok: false, melding: t('voltooiing.opslaan_mislukt') };
   }
 
@@ -241,7 +241,7 @@ export async function fetchDagzetten(
     .limit(50);
 
   if (error) {
-    reportError(error, 'moves.list', { user_id: userId, code: error.code });
+    reportError(error, 'moves.list', { user_id: userId });
     throw new Error(t('voltooiing.dagzet_laden'));
   }
 

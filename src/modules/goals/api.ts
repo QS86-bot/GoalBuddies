@@ -137,7 +137,7 @@ export async function fetchDoelen(
     .range(van, van + PER_PAGINA - 1);
 
   if (error) {
-    reportError(error, 'goals.list', { user_id: userId, code: error.code });
+    reportError(error, 'goals.list', { user_id: userId });
     throw new Error(t('doel.doelen_laden'));
   }
 
@@ -190,7 +190,7 @@ export async function fetchKoppelbareDoelen(
     .range(van, van + PER_PAGINA - 1);
 
   if (error) {
-    reportError(error, 'goals.koppelbaar', { group_id: groupId, code: error.code });
+    reportError(error, 'goals.koppelbaar', { group_id: groupId });
     throw new Error(t('doel.doelen_laden'));
   }
 
@@ -239,7 +239,7 @@ export async function fetchDoelnamen(
     .in('id', uniek);
 
   if (error) {
-    reportError(error, 'goals.namen', { aantal: uniek.length, code: error.code });
+    reportError(error, 'goals.namen', { aantal: uniek.length });
     return new Map();
   }
 
@@ -260,7 +260,7 @@ export async function fetchDoel(goalId: string): Promise<DoelMetVoortgang | null
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'goals.get', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.get', { goal_id: goalId });
     throw new Error(t('doel.doel_laden'));
   }
 
@@ -294,7 +294,7 @@ export async function maakDoel(
     .single();
 
   if (error) {
-    reportError(error, 'goals.create', { user_id: userId, code: error.code });
+    reportError(error, 'goals.create', { user_id: userId });
     return { ok: false, melding: t('doel.opslaan_mislukt') };
   }
 
@@ -350,7 +350,7 @@ export async function wijzigDoel(
     .single();
 
   if (error) {
-    reportError(error, 'goals.update', { goal_id: doelId, code: error.code });
+    reportError(error, 'goals.update', { goal_id: doelId });
     return { ok: false, melding: t('doel.wijzigen_mislukt') };
   }
 
@@ -385,7 +385,7 @@ export async function zetStreefdatum(
   });
 
   if (error) {
-    reportError(error, 'goals.target_date', { goal_id: doelId, code: error.code });
+    reportError(error, 'goals.target_date', { goal_id: doelId });
     return { ok: false, melding: t('doel.streefdatum_mislukt') };
   }
 
@@ -436,7 +436,7 @@ export async function zetArchief(
   });
 
   if (error) {
-    reportError(error, 'goals.archive', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.archive', { goal_id: goalId });
     return { ok: false, melding: t('doel.actie_mislukt') };
   }
 
@@ -483,7 +483,7 @@ export async function rondDoelAf(goalId: string, actorId: string): Promise<Resul
   const { data, error } = await supabase().rpc('rond_doel_af', { p_goal_id: goalId });
 
   if (error) {
-    reportError(error, 'goals.complete', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.complete', { goal_id: goalId });
     return { ok: false, melding: t('doel.afronden_mislukt') };
   }
 
@@ -577,7 +577,7 @@ export async function verwijderDoel(goalId: string): Promise<Resultaat<true>> {
   const { data, error } = await supabase().rpc('verwijder_doel', { p_goal_id: goalId });
 
   if (error) {
-    reportError(error, 'goals.delete', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.delete', { goal_id: goalId });
     return { ok: false, melding: t('doel.verwijderen_mislukt') };
   }
 
