@@ -23,6 +23,7 @@ export {
   zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   type Groep,
+  type Lijstgroep,
   type Groepslid,
   type Lidmaatschap,
   type Pagina,

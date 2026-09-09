@@ -13,7 +13,7 @@ import {
   stuurBericht,
   zichtbaarheidLabels,
   type DoelGroep,
-  type Groep,
+  type Lijstgroep,
   type Resultaat,
 } from '@/modules/buddies';
 import {
@@ -153,7 +153,8 @@ export default function DoelDetail() {
 
   const [doel, setDoel] = useState<DoelMetVoortgang | null>(null);
   const [commitments, setCommitments] = useState<readonly Commitment[]>([]);
-  const [groepen, setGroepen] = useState<readonly Groep[]>([]);
+  // ⚠️ `Lijstgroep`: wat `fetchMijnGroepen()` écht oplevert (QS8-387).
+  const [groepen, setGroepen] = useState<readonly Lijstgroep[]>([]);
   const [doelGroepen, setDoelGroepen] = useState<readonly DoelGroep[]>([]);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
@@ -767,7 +768,7 @@ function GedeeldMet({
 }: {
   readonly goalId: string;
   readonly gekoppeld: readonly DoelGroep[];
-  readonly mijnGroepen: readonly Groep[];
+  readonly mijnGroepen: readonly Lijstgroep[];
   readonly onKlaar: () => void;
 }) {
   const [bezig, setBezig] = useState<string | null>(null);
@@ -887,7 +888,7 @@ function Straf({
   onKlaar,
 }: {
   readonly goalId: string;
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   readonly bestaand: Commitment | undefined;
   readonly streefdatumVoorbij: boolean;
   readonly onKlaar: () => void;
