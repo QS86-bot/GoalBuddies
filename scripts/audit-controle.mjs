@@ -123,6 +123,20 @@ export const NAGEKEKEN = {
       '⚠️ De lijst groeide tússen de lokale poort en CI door, dus een rode CI op nóg een ' +
       'nummer is hier geen nieuwe bevinding maar dezelfde: hermeet de bundel en pin opnieuw.',
   },
+  'js-yaml': {
+    ernst: 'high',
+    advisories: [1193727],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'maxTotalMergeKeys',
+    reden:
+      'Nieuw op 09-09-2026: GHSA voor `maxTotalMergeKeys`, dat de CPU niet begrenst bij lege ' +
+      'merge-bronnen — een DoS op wie er onvertrouwde YAML mee parseert. 📏 Dit project parseert ' +
+      'geen YAML: `npm ls` zet hem onder `expo > @expo/cli > @expo/xcpretty`, de opmaak van ' +
+      'Xcode-uitvoer, dus bouw-tooling en geen app-code. Verse `npm run build` met dummy-' +
+      'EXPO_PUBLIC-waarden en gegrept op drie js-yaml-eigen foutteksten plus de pakketnaam: ' +
+      'nul treffers in dist/. Zelfde klasse als `image-size`.',
+  },
   'decode-uri-component': {
     ernst: 'moderate',
     advisories: [1147955],

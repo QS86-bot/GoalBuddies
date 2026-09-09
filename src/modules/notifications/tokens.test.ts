@@ -138,7 +138,16 @@ describe('registreerPushToken', () => {
     //    pushbron is, is erger dan een app zonder meldingen.
     zetPushBron(geenPush);
 
-    await expect(registreerPushToken('gebruiker-1')).resolves.toBeUndefined();
+    // ⚠️ **Geen bron is geen mislukking**, en sinds QS8-377 is dat een uitspraak
+    //    en niet meer de afwezigheid van een returnwaarde. De functie gaf `void`
+    //    terug; nu geeft ze een `Resultaat`, en op een platform zonder pushbron
+    //    valt er niets te registreren en dus ook niets te melden. Zou dit
+    //    `ok: false` geven, dan kreeg de gebruiker in Profiel een weigering te
+    //    zien voor iets dat nooit geprobeerd is.
+    await expect(registreerPushToken('gebruiker-1')).resolves.toEqual({
+      ok: true,
+      waarde: true,
+    });
     expect(RPC).not.toHaveBeenCalled();
   });
 });
