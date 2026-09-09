@@ -427,6 +427,11 @@ export const en: Record<Sleutel, string> = {
   'deadlineverzoek.toch_niet': 'Never mind',
   'deadlineverzoek.akkoord': 'Agreed',
   'deadlineverzoek.liever_niet': 'Rather not',
+  'deadlineverzoek.straf_staat_erop':
+    'This goal carries a penalty its owner set for themselves. If you agree, the date on '+
+    'which it falls due moves along with it.',
+  'deadlineverzoek.straf_onbekend':
+    'We could not check whether this goal carries a penalty.',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
   'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress. Not your notes, not your weeks and not your points. You can always undo it.',
@@ -1176,6 +1181,10 @@ export const en: Record<Sleutel, string> = {
     'The project at work has run six weeks over and it is eating my evenings.',
   'deadline.nog_tekens': '{aantal} characters to go.',
   'deadline.lang_genoeg': 'Long enough.',
+  'deadline.straf_wordt_zichtbaar':
+    'Your group sees that this goal carries a penalty as soon as you send this request, and '+
+    'keeps seeing that for as long as you share the goal with them. What the penalty says is '+
+    'not shared by this request.',
   'deadline.versturen': 'Send request',
   'deadline.vastleggen': 'Save',
   'deadline.annuleren': 'Cancel',

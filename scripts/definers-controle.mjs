@@ -250,6 +250,18 @@ const REGISTER = new Map([
   // --- Triggerfuncties: geen eigen poort ------------------------------------
   ['award_points_on_approval', 'Triggerfunctie. Autorisatie is de policy op de goedkeuring die hem aftrapt.'],
   ['mark_weekly_goal_pending', 'Triggerfunctie. Autorisatie is `completions_insert`.'],
+  [
+    'ontkoppelen_trekt_verzoek_in',
+    'Triggerfunctie. Autorisatie is `goal_group_links_delete` — alleen de eigenaar van het ' +
+      'doel of een beheerder van de groep mag die rij weghalen, en dat is precies wie het ' +
+      'verzoek mag laten vervallen. ⚠️ Schrijft in `deadline_requests`, en dat is een ' +
+      'kerntabel: zet uitsluitend een openstaand verzoek op `withdrawn` en raakt een beslist ' +
+      'verzoek niet aan (`status = \'open\'` in de `where`), zodat geschiedenis blijft staan. ' +
+      'Bestaat omdat ontkoppelen anders wél de strafwaarschuwing van QS8-370 sloot en níet de ' +
+      'goedkeurknop; gemeten in de security-ronde van 09-09-2026, en bewaakt door ' +
+      '`tests/rls/uitstelbeslisser-ziet-de-straf.test.ts` — de trigger weghalen maakt "en ' +
+      'ontkoppelen sluit ook de knop" rood.',
+  ],
   ['recalc_goal_max_points', 'Triggerfunctie. Rekent af op `weekly_goals`; autorisatie is de policy op die schrijfactie.'],
   ['koppeling_zet_beoordeelbaar_om', 'Triggerfunctie op `goal_group_links`; autorisatie is de policy op die tabel.'],
   [

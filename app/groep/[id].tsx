@@ -27,6 +27,7 @@ import {
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
+import { fetchStrafDoelen } from '@/modules/commitments';
 import {
   beslisDeadlineVerzoek,
   fetchKoppelbareDoelen,
@@ -481,6 +482,22 @@ function DeadlineVerzoeken({
   readonly onBeslist: () => void;
 }) {
   const [verzoeken, setVerzoeken] = useState<readonly DeadlineVerzoek[] | null>(null);
+  /**
+   * De doelen uit deze lijst waar een straf op staat — QS8-370.
+   *
+   * ⚠️ **Drie toestanden en geen twee.** `null` is "we weten het nog niet of we
+   *    konden het niet ophalen"; een lege verzameling is de mededeling "op geen
+   *    van deze doelen staat een straf". Die twee door elkaar halen laat de
+   *    waarschuwing stilzwijgend verdwijnen als de vraag mislukt, en dan drukt
+   *    iemand op "Akkoord" terwijl het scherm zegt dat er niets aan de hand is.
+   *    Uit de security-ronde van 09-09-2026.
+   *
+   * ⚠️ De knop wacht niet op deze uitkomst: een verzoek dat onbeslisbaar wordt
+   *    omdat een extra vraag hapert, is erger dan een waarschuwing die een tel
+   *    later verschijnt. Vandaar de regel "dit konden we niet ophalen" en geen
+   *    blokkade.
+   */
+  const [strafDoelen, setStrafDoelen] = useState<ReadonlySet<string> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [bezig, setBezig] = useState<string | null>(null);
@@ -493,10 +510,16 @@ function DeadlineVerzoeken({
     let levend = true;
 
     fetchOpenVerzoekenVoorGroep(groupId, userId)
-      .then((rijen) => {
+      .then(async (rijen) => {
         if (!levend) return;
         setVerzoeken(rijen);
         setError(null);
+        // ⚠️ Eén query voor de hele lijst (regel 12), en pas nadat de lijst er
+        //    is: zonder verzoeken is er niets om naar te vragen.
+        const straffen = await fetchStrafDoelen(rijen.map((r) => r.goal_id));
+        if (levend) setStrafDoelen(straffen);
+        // ⚠️ `straffen` mag `null` zijn — dat is "onbekend" en geen "geen". De
+        //    weergave hieronder maakt dat verschil zichtbaar.
       })
       .catch((f: unknown) => {
         if (levend) setError(f);
@@ -564,6 +587,30 @@ function DeadlineVerzoeken({
                   })}
                 </Body>
                 <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
+                {/*
+                  ⚠️ **De kern van QS8-370, en niet een extraatje.** Zonder deze
+                     regel maakt het lid dat "Akkoord" indrukt een commitment
+                     device losser zonder te weten dat het er staat: de rem van
+                     0184 houdt de eigenaar tegen, en langs deze route wordt hij
+                     opgeheven door iemand die hem niet ziet. Domeinregel 5 wil
+                     dat een consequentie nooit stilzwijgend aan gaat; de
+                     spiegelzijde is dat hij ook nooit stilzwijgend uit gaat.
+
+                     Wat erachter zit is `straffen_bij_uitstelverzoek()`
+                     (migratie 0218) — een RPC met één kolom en géén tak op
+                     `commitments_select`, want RLS kan geen kolommen beperken.
+                     Deze regel is het enige wat er in de app iets mee doet:
+                     zonder haar is de keten af op elk schakeltje en onderbroken
+                     als geheel.
+
+                     ⚠️ Geen `muted`: dit is het zwaarste wat op deze kaart
+                        staat, en het staat vóór de knoppen en niet erna.
+                */}
+                {strafDoelen === null ? (
+                  <Body muted>{t('deadlineverzoek.straf_onbekend')}</Body>
+                ) : strafDoelen.has(verzoek.goal_id) ? (
+                  <Body>{t('deadlineverzoek.straf_staat_erop')}</Body>
+                ) : null}
                 {/*
                   ⚠️ Allebei `secundair`, net als op het beoordeelscherm. Geen
                      primair/secundair-verhouding, want die maakt van de ene knop

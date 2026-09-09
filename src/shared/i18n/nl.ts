@@ -601,6 +601,18 @@ export const nl = {
   'deadlineverzoek.toch_niet': 'Toch niet',
   'deadlineverzoek.akkoord': 'Akkoord',
   'deadlineverzoek.liever_niet': 'Liever niet',
+  // ⚠️ QS8-370. Nuchter en zonder oordeel over de aanvrager: de zin zegt wat
+  //    er staat en wat je beslissing doet, en verder niets. Geen "let op",
+  //    geen uitroepteken — dit is informatie die je nodig hebt, geen
+  //    waarschuwing tégen de persoon die het vraagt.
+  'deadlineverzoek.straf_staat_erop':
+    'Op dit doel staat een straf die de eigenaar zichzelf heeft opgelegd. Ga je akkoord, '+
+    'dan schuift de datum waarop die verschuldigd wordt mee.',
+  // ⚠️ De derde toestand: onbekend is niet hetzelfde als geen. Zwijgen zou
+  //    hier "er is niets aan de hand" betekenen, en dat mag je niet zeggen als
+  //    je het niet weet.
+  'deadlineverzoek.straf_onbekend':
+    'We konden niet ophalen of er een straf op dit doel staat.',
   'koppel.ontkoppel': 'Niet meer delen met deze groep',
   'koppel.titel': 'Je doel delen met deze groep',
   /**
@@ -1591,6 +1603,12 @@ export const nl = {
     'Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op.',
   'deadline.nog_tekens': 'Nog {aantal} tekens te gaan.',
   'deadline.lang_genoeg': 'Lang genoeg.',
+  // ⚠️ QS8-370. Staat vlak boven de verzendknop. Het verzoek opent een
+  //    oppervlak dat niet meer sluit, en dat hoor je te weten vóór je drukt.
+  'deadline.straf_wordt_zichtbaar':
+    'Je groep ziet dat er een straf op dit doel staat zodra je dit verzoek verstuurt, en '+
+    'blijft dat zien zolang je het doel met ze deelt. Wat er in je straf staat, deelt dit '+
+    'verzoek niet.',
   'deadline.versturen': 'Verzoek versturen',
   'deadline.vastleggen': 'Vastleggen',
   'deadline.annuleren': 'Annuleren',
