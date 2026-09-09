@@ -130,6 +130,75 @@ de fixture nergens in een systeembericht mag terugvinden, houdt de keuze vast
 (`tests/rls/epic7.test.ts`). Wil je het toch ruimer, dan is dat een productbeslissing
 en geen bugfix — zet hem in `docs/Q-TODO.docx`.
 
+### 3a. En de persoon staat er sinds 0213 als verwijzing, niet als tekst (QS8-372)
+
+De regel hierboven — *een bericht meldt de persoon en de gebeurtenis* — blijft
+staan. Wat verandert is **hoe** de persoon erin zit.
+
+⚠️⚠️ Tot 0213 bakten acht functies de weergavenaam als **platte tekst** in
+`chat_messages.body`, op het moment van plaatsen. Het scherm was netjes: sinds
+0059 rendert `systeemberichtTekst()` uit de catalogus met `naam(subject_name)`, en
+na een accountverwijdering is `subject_name` `null` — dus daar staat "Een oud-lid".
+
+📏 De database niet. `groepschat()` geeft `body` terug, `authenticated` heeft
+kolom-SELECT op `body`, en één verzoek volstond:
+
+```
+supabase.from('chat_messages').select('body').eq('group_id', …)
+→ "Alice heeft een doel afgerond."
+```
+
+De naam die volgens het scherm gewist was, stond er nog. **Dit is de tweede vraag
+uit domeinregel 7 in het klein:** kan iemand dat met één API-verzoek uitlezen
+buiten de UI om? De les van EPIC 5, opnieuw.
+
+**Sinds 0213 draagt de body geen naam meer.** Er staat een neutrale terugvalzin
+("Een lid doet mee."); de persoon zit in `subject_id` en `actor_id`, en die zijn
+foreign keys die bij een accountverwijdering op `null` gaan. Het scherm joint de
+naam vers en toont hem zolang de persoon bestaat — 📏 nagemeten dat
+`groepschat().subject_name` gewoon "Alice" teruggeeft zolang ze er is.
+
+⚠️ **Waarom niet de leesroute dichtzetten.** Dat sluit maar één deur:
+`groepschat()` de body laten inhouden laat een kale `select body from
+chat_messages` open staan. En die tweede deur is niet met een kolomgrant te
+sluiten zonder de autorisatie te verbouwen — 📏 `groepschat()` is
+`SECURITY INVOKER` en leunt op `chat_messages_select` voor het lidmaatschap, dus
+`authenticated` het SELECT-recht op `body` afnemen breekt de functie zelf. Er
+`SECURITY DEFINER` van maken zou de lidmaatschapstoets met de hand in de functie
+leggen, en dat is precies waar QS8-181 al over gaat.
+
+De naam uit de body halen sluit ze allebei, plus elke route die morgen bedacht
+wordt — en het is een echte wissing in plaats van een afscherming.
+
+⚠️ **Dit raakt de onveranderlijkheid uit §3 hierboven niet.** Die gaat over wát er
+gebeurd is: wie, wat, wanneer. `system_event`, `subject_id`, `actor_id`, `payload`
+en `created_at` blijven ongemoeid. Wat herschreven wordt is de **terugvalzin**, en
+die is machinaal gemaakt en wordt in het normale pad niet eens getoond. Er worden
+niemands woorden herschreven.
+
+⚠️⚠️ **De naad die dit blootlegde, en die had niets met privacy te maken.**
+`trek_goedkeuring_in()` zocht het bericht van een ingetrokken bevestiging terug met
+`m.body = tekst` — het bouwde de zin opnieuw op uit twee weergavenamen. **De zin
+wás de sleutel.** Zonder naam dragen twee bevestigingen van dezelfde beoordelaar
+voor dezelfde persoon in dezelfde groep exact dezelfde tekst.
+
+📏 Nagespeeld met precies dat geval: met de oude sleutel bleven er na het intrekken
+**2** berichten staan — `treffers` telt er twee, de `if` slaat over, en er blijft
+een bericht staan dat zegt dat een week bevestigd is terwijl de bevestiging is
+ingetrokken. Het bericht draagt daarom nu zijn `completion_id` in `payload`, en
+daar wordt op gezocht: **1** over, en dat is de andere voltooiing.
+
+Dat is onwrikbare regel 18 vraag 6 — *tilt dit een aanname van "er is er altijd
+precies één" naar "er kunnen er meer zijn"?* — en het antwoord was ja.
+
+⚠️ Een voltooiing is geen persoon, dus die mag in `payload`. De regel uit 0059 is
+dat er nóóit een **persoon** in gaat: een uuid in jsonb heeft geen foreign key en
+overleeft dus een accountverwijdering. Een `completion_id` cascadeert juist mee.
+
+⚠️ **Wat het issue niet zag:** het noemde vijf functies; 📏 een scan over
+`pg_proc.prosrc` gaf er acht. Een lijst in een issue is geen dekking — de toets in
+`tests/rls/naam-in-de-body.test.ts` is dat wel, en die vangt de negende.
+
 ---
 
 ## 4. Wat vandaag nog lekt
