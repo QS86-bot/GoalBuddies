@@ -16,8 +16,11 @@ export {
   type Toon,
 } from './regels';
 
+export { PUSH_WEIGERGRONDEN, pushWeigerMelding, type PushWeigergrond } from './push-redenen';
+
 export {
   geenPush,
+  laatstePushWeigering,
   registreerPushToken,
   verwijderPushToken,
   zetPushBron,
