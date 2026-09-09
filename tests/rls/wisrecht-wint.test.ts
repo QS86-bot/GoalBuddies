@@ -1,5 +1,5 @@
 /**
- * Het wisrecht wint helemaal — QS8-335, migratie 0213.
+ * Het wisrecht wint helemaal — QS8-335, migratie 0221.
  *
  * **De belofte die dit bestand bewaakt:**
  *
@@ -8,7 +8,7 @@
  *      niets ánders dan dat gaat mee.
  *
  * ⚠️⚠️ **Waarom dit issue er was: het was een halve wissing en de verkeerde helft
- *    overleefde.** 📏 Gemeten vóór 0213, met de groep als begunstigde:
+ *    overleefde.** 📏 Gemeten vóór 0221, met de groep als begunstigde:
  *
  *      vooraf:  commitment 1   auditregels 3   systeemberichten 2
  *      verwijder_mijn_account (eigenaar): {"ok": true}
@@ -313,7 +313,7 @@ describe.skipIf(!rlsTestsConfigured)('het wisrecht wint helemaal', () => {
         expect(
           (na.data ?? []).length,
           '`goal_completed` gaat over een doel en niet over een consequentie; ' +
-            'de grens van 0213 loopt daar, en verleggen is een besluit',
+            'de grens van 0221 loopt daar, en verleggen is een besluit',
         ).toBe(1);
       },
       TEST_TIMEOUT,

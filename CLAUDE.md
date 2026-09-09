@@ -264,7 +264,7 @@ Voordat er één feature gebouwd wordt:
      autorisatie overleeft waaronder hij gemaakt is; ontkoppelen trekt de
      toestemming in, maar wist geen chat. Uitleg in beslisdocument 002 §3.
 
-     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0213):
+     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0221):
      accountverwijdering.** Wie zijn account opzegt, neemt de systeemberichten
      over zijn eigen **commitments** mee — `commitment_due` en
      `commitment_unlocked` waarvan hij het onderwerp is. Verder niets: zijn
