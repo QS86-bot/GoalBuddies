@@ -4,7 +4,7 @@ import { createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } fr
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * `push_tokens` heeft een dagplafond — QS8-369, migratie 0213.
+ * `push_tokens` heeft een dagplafond — QS8-369, migratie 0214.
  *
  * ⚠️ **De rij ís begrensd, de tabel niet — en dat is onwrikbare regel 18 in het
  *    klein.** `push_tokens_token_len` (0179), `push_tokens_sleutels_len` (0179)
@@ -96,7 +96,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    naar jou via de `on conflict … do update`. Op het plafond gaf dat een ruwe
  *    23514 in precies het geval waarvoor de tak bestaat, én een bestaansorakel —
  *    `te_veel_tokens` betekende "bestaat niet", een 23514 betekende "bestaat".
- *    De hele redenering staat in de kop van 0213.
+ *    De hele redenering staat in de kop van 0214.
  *
  * ⚠️ Bij elke mutatie is eerst in de dráaiende database nagekeken dat hij er
  *    écht in stond (`select prosrc like '%…%' from pg_proc`, `tgtype` uit
@@ -107,7 +107,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 const SETUP_TIMEOUT = 180_000;
 const TEST_TIMEOUT = 60_000;
 
-/** Het plafond uit 0213. Staat hier als getal, niet als functieaanroep — zie de gepaarde test. */
+/** Het plafond uit 0214. Staat hier als getal, niet als functieaanroep — zie de gepaarde test. */
 const PLAFOND = 20;
 
 const RUN = Math.random().toString(36).slice(2, 10);

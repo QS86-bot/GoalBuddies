@@ -1,4 +1,4 @@
--- 0213_een_dagplafond_en_een_rem_op_push_tokens.sql — veertien tabellen kregen in 0200/0203/0207 een dagplafond en push_tokens is er als enige langs geglipt (QS8-369)
+-- 0214_een_dagplafond_en_een_rem_op_push_tokens.sql — veertien tabellen kregen in 0200/0203/0207 een dagplafond en push_tokens is er als enige langs geglipt (QS8-369)
 --
 -- ROLLBACK-PAD:
 --   drop trigger if exists pushtokens_rem on public.push_tokens;
@@ -14,7 +14,7 @@
 --   -- ⚠️⚠️ **0211 en niet 0209, en dat is bijna misgegaan.** Deze migratie is
 --   -- geschreven toen 0211 (QS8-367) nog niet geland was, en droeg dus de body
 --   -- van 0209 mee — mét de `delete` die 0211 er net uit had gehaald. Bij het
---   -- hernummeren naar 0213 is de body opnieuw uit de dráaiende database
+--   -- hernummeren naar 0214 is de body opnieuw uit de dráaiende database
 --   -- gelezen, ná 0211 en 0212. Dezelfde val als bij `sleutelzetters()`
 --   -- hieronder (QS8-358), maar dan op een functie die er niet om bekend staat:
 --   -- elke `create or replace` draagt een momentopname van het hele lichaam.
@@ -106,7 +106,7 @@ as $$ select 20 $$;
 comment on function public.pushtokens_plafond() is
   'Hoeveel nieuwe pushtokens één gebruiker per etmaal mag registreren. 20 is '
   'ruim vijf keer een echt apparatenpark; herregistratie van hetzelfde apparaat '
-  'loopt via de on-conflict-tak en telt niet mee. Zie 0213 en QS8-369.';
+  'loopt via de on-conflict-tak en telt niet mee. Zie 0214 en QS8-369.';
 
 -- ⚠️ Onwrikbare regel 4: `authenticated` staat er met zoveel woorden bij. Deze
 --    drie worden alleen aangeroepen vanuit een trigger of een definer-functie,
@@ -427,7 +427,7 @@ AS $function$
       ('app.rem_dagzetten',          array['rem_dagzetten']),
       ('app.rem_doelkoppelingen',    array['rem_doelkoppelingen']),
       ('app.rem_doelinterviews',     array['rem_doelinterviews']),
-      -- ⚠️ Uit 0213 (QS8-369). `push_tokens` is de vijftiende tabel met een
+      -- ⚠️ Uit 0214 (QS8-369). `push_tokens` is de vijftiende tabel met een
       --    dagplafond en de enige die er nooit een kreeg; deze sleutel hoort bij
       --    zijn rem. Het register hieronder komt uit de dráaiende database en
       --    niet uit een oudere migratie — zie de twee aantekeningen hierboven en

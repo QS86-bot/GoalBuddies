@@ -202,7 +202,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
       onbewaakt,
       `deze tabellen kan een ingelogde gebruiker laten groeien en er staat geen ` +
         `dagplafond op: ${onbewaakt.join(', ')}. Zet er een plafond op (zie ` +
-        `migratie 0213 voor de vorm), of zet ze met een gemeten reden in ` +
+        `migratie 0214 voor de vorm), of zet ze met een gemeten reden in ` +
         `REGISTER bovenaan dit bestand.`,
     ).toEqual([]);
   }, 60_000);
@@ -233,7 +233,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     const push = groeibareTabellen().find((t) => t.naam === 'push_tokens');
 
     expect(push, 'push_tokens hoort groeibaar te zijn via registreer_push_token()').toBeDefined();
-    expect(push?.plafond, 'pushtokens_dagplafond hoort er te staan — zie 0213').toBe(true);
+    expect(push?.plafond, 'pushtokens_dagplafond hoort er te staan — zie 0214').toBe(true);
   }, 60_000);
 
   it('het register bevat geen regel die niets meer bewaakt', () => {
