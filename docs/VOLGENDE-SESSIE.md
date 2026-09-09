@@ -1921,11 +1921,12 @@ dat is er niet. Kies bewust één van deze drie:
 2. **Een doorloop.** De vorige keer dat deze voorraad leeg leek, liep er een mens
    door de app en kwamen er veertien issues bij, vier op Urgent. Dat is de
    goedkoopste manier om te ontdekken wat er werkelijk stuk is.
-3. **De achterstand op productie.** ⚠️ **Hier stond "productie staat op `0186`
-   en de map op 0216 — dertig migraties", en dat was op 09-09 niet meer waar.**
-   📏 Gemeten met `list_migrations`: productie staat op **`0219`**, de map op
-   `0221`, dus het gat is **twee** bestanden. De stand staat in
-   `docs/WERKVOORRAAD.md` §0 en niet hier — dit document bezit hem niet.
+3. **De achterstand op productie.** ⚠️⚠️ **Hier heeft twee keer een getal
+   gestaan en het was twee keer verouderd** — eerst "productie staat op `0186`,
+   de map op 0216", daarna de gemeten stand van 09-09 om 14:40 die diezelfde
+   middag alwéér niet meer klopte. **Dit document bezit die stand niet;
+   `docs/WERKVOORRAAD.md` §0 bezit hem.** Kijk daar, en vertrouw ook dát getal
+   niet blind: vraag het aan de database.
 
    ⚠️⚠️ **Wat wél een gat is en blijft: de edge-functies.** Die zijn van 06-09,
    en er is sindsdien aan `supabase/functions/` gewerkt. Dat vraagt Quintens hand
