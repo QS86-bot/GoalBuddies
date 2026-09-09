@@ -18,7 +18,7 @@
 >
 > **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
 > losse to-do's, getypt of ingesproken, privé of gedeeld. Deel 1 (**QS8-379**,
-> migratie `0215`) is af: de tabel `todo_items`, eigenaar-only, met een
+> migratie `0219`) is af: de tabel `todo_items`, eigenaar-only, met een
 > dagplafond en een `visibility` die voor geen enkele client schrijfbaar is.
 > **QS8-380** (scherm en spraak) en **QS8-381** (delen) staan open, net als twee
 > beslispunten op QS8-378 die bij Quinten liggen.

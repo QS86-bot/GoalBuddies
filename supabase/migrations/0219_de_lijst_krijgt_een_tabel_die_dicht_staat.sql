@@ -1,4 +1,4 @@
--- 0215_de_lijst_krijgt_een_tabel_die_dicht_staat.sql — de tabel voor De Lijst:
+-- 0219_de_lijst_krijgt_een_tabel_die_dicht_staat.sql — de tabel voor De Lijst:
 -- losse taken, eigenaar-only, met een dagplafond en een zichtbaarheidskolom die
 -- nog niemand kan schrijven (QS8-379, deel 1 van QS8-378).
 --
@@ -13,9 +13,10 @@
 --   drop function if exists public.taken_plafond();
 --   drop index if exists public.todo_items_afgevinkt_idx;
 --   drop table if exists public.todo_items;
---   -- en `sleutelzetters()` terugzetten op de definitie uit **0214**, dus zonder
---   -- de rij `app.rem_taken` maar mét `app.rem_pushtokens`. Zie de waarschuwing
---   -- bij §5.
+--   -- en `sleutelzetters()` terugzetten op de definitie uit **0217**, dus zonder
+--   -- de rij `app.rem_taken` maar mét `app.rem_pushtokens` en
+--   -- `app.rem_groepsgebeurtenissen`, én met de derde tak van 0215. Zie de
+--   -- waarschuwing bij §5.
 --
 -- ⚠️ De tabel is nieuw en dus leeg; `drop table` valt hier niet onder grens 2 van
 --    de beslisbevoegdheid. Wordt hij ooit teruggedraaid nádat er taken in staan,
@@ -417,14 +418,26 @@ create trigger taken_dagplafond
 --    duur geworden.** Twee branches die allebei `create or replace` doen,
 --    geven git geen conflict: de laatste wint en het register van de ander
 --    verdwijnt zonder een woord (QS8-358). Het lichaam hieronder is daarom
---    gekopieerd uit **0214 op `main`** — de laatste definitie die er is — en
+--    gekopieerd uit **0217 op `main`** — de laatste definitie die er is — en
 --    de enige toevoeging is de rij `app.rem_taken`.
 --
---    📏 Dat is niet theoretisch gebleven: tot het hernummeren stond hier het
---    lichaam van 0208, en `app.rem_pushtokens` uit 0214 ontbrak. Zie de
---    aantekening bij die rij hieronder.
+--    📏 **Dat is niet theoretisch gebleven, en het is hier twee keer bijna
+--    misgegaan — één keer per hernummering.** De eerste keer stond hier het
+--    lichaam van 0208 en ontbrak `app.rem_pushtokens` uit 0214. De tweede keer
+--    stond hier het lichaam van 0214, en dat kostte méér dan een sleutel: main
+--    kreeg er 0215 (QS8-376) bij, die de **derde tak** herschreef van "per
+--    functie" naar "per sleutel", en 0217 met `app.rem_groepsgebeurtenissen`.
+--    Deze migratie draait ná allebei, dus ze had die reparatie ongemerkt
+--    teruggedraaid.
+--
+--    ⚠️ **De les die dit oplevert staat niet in CLAUDE.md en hoort er wel:**
+--    hernummeren is geen administratieve handeling. Een migratie die naar
+--    achteren schuift, draait ná migraties waar ze eerst vóór stond, en elke
+--    `create or replace` in haar lichaam wordt daarmee een terugzetting. Kijk
+--    bij élke hernummering welke functies je herdefinieert en of `main` ze
+--    intussen heeft aangeraakt.
 
-create or replace function public.sleutelzetters()
+CREATE OR REPLACE FUNCTION public.sleutelzetters()
  RETURNS TABLE(naam text, bezwaar text)
  LANGUAGE sql
  STABLE SECURITY DEFINER
@@ -479,23 +492,42 @@ AS $function$
       ('app.rem_dagzetten',          array['rem_dagzetten']),
       ('app.rem_doelkoppelingen',    array['rem_doelkoppelingen']),
       ('app.rem_doelinterviews',     array['rem_doelinterviews']),
-      -- ⚠️ Uit 0214 (QS8-369). `push_tokens` is de vijftiende tabel met een
-      --    dagplafond en de enige die er nooit een kreeg; deze sleutel hoort bij
-      --    zijn rem.
+      -- ⚠️⚠️ **Uit 0214 (QS8-369), en deze regel is er bijna uit gevallen.**
+      --    Die migratie landde op `main` terwijl deze branch openstond en
+      --    hernummerde mij van 0214 naar 0215 — dus deze `create or replace`
+      --    draait er nu áchteraan. Het register dat ik kopieerde was van vóór hun
+      --    migratie, en zonder deze regel had ik `app.rem_pushtokens` er stil
+      --    weer uit gehaald.
       --
-      -- ⚠️⚠️ **En hier viel hij bijna uit, precies zoals de aantekening bij de
-      --    vijf sleutels van 0207 hierboven beschrijft.** Deze migratie heette
-      --    zelf 0214 tot `main` er eentje met dat nummer kreeg; het register
-      --    hieronder was toen gekopieerd uit **0208**, want dat was de laatste
-      --    definitie die deze branch kende. Bij het samenvoegen gaf git geen
-      --    conflict — twee `create or replace` op dezelfde functie in
-      --    verschillende bestanden botsen nergens — en `app.rem_pushtokens` was
-      --    weg geweest zonder een woord. Derde keer in acht dagen; het staat als
-      --    QS8-358.
+      --    Dat is exact de val van QS8-358, en de derde keer dat hij toeslaat: een
+      --    teller die zijn eigen register in zijn lichaam draagt, twee branches
+      --    die hem uitbreiden, en de laatste `replace` wint. 📏 Gevonden door na
+      --    het samenvoegen te grepen op wat hún 0214 registreert en dat naast het
+      --    mijne te leggen.
+      --
+      --    ⚠️ **En de teller had zichzelf ook opgevangen**, net als bij 0199 en
+      --    0207: `rem_pushtokens()` zet die sleutel nog steeds, dus zonder deze
+      --    regel meldt hij hem meteen als ongeregistreerd — 📏 nagemeten, de regel
+      --    weghalen geeft `rem_pushtokens: noemt app.rem_pushtokens`. Dat is de
+      --    hele reden dat deze grendel bestaat, en het is de derde keer dat hij
+      --    zijn eigen register redt.
       ('app.rem_pushtokens',         array['rem_pushtokens']),
-      -- ⚠️ Uit 0215 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn
-      --    eigen sleutel.
-      ('app.rem_taken',              array['rem_taken'])
+      -- ⚠️ Uit 0217 (QS8-374). De zestiende dagteller, en de eerste op een
+      --    tabel die niemand rechtstreeks beschrijft: `group_events` is bij
+      --    alle zeven schrijvers een neveneffect.
+      --
+      -- ⚠️⚠️ **En dit register is voor de tweede keer op rij opnieuw uitgelezen
+      --    in plaats van gekopieerd.** Toen deze migratie geschreven werd stond
+      --    hij op 0215; QS8-376 landde ondertussen op `main` met een 0215 die
+      --    déze functie herschrijft — `ilike` in plaats van `like`, en een derde
+      --    tak die per sleutel kijkt in plaats van per functie. 📏 Het verschil
+      --    is nagemeten met een `diff` tussen wat ik meedroeg en wat er ná hun
+      --    migratie in de database stond: mijn kopie had hun hele reparatie
+      --    stilzwijgend teruggedraaid. Dat is QS8-358 voor de vierde keer.
+      ('app.rem_groepsgebeurtenissen', array['rem_groepsgebeurtenissen']),
+      -- ⚠️ Uit 0219 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn eigen
+      --    sleutel.
+      ('app.rem_taken',                array['rem_taken'])
   ),
   bekend as (
     select p.proname::text as naam, s.instelling, s.toegestaan
@@ -503,7 +535,7 @@ AS $function$
     join pg_namespace n on n.oid = p.pronamespace
     cross join sleutel s
     where n.nspname = 'public'
-      and p.prosrc like '%' || s.instelling || '%'
+      and p.prosrc ilike '%' || s.instelling || '%'
       and p.proname <> 'sleutelzetters'
   )
   select naam,
@@ -517,7 +549,7 @@ AS $function$
   -- ⚠️ De derde tak: een `app.`-instelling die in geen enkel register hierboven
   --    staat. Zonder deze tak dekt de teller alleen de sleutels die iemand er al
   --    in heeft gezet, en is de vólgende sleutel weer ongeteld.
-  select p.proname::text,
+  select distinct p.proname::text,
          -- ⚠️ De naam van deze functie staat met opzet niet in deze tekst.
          --    `keten:controle` telt een naam in de bron als een aanroeper, en
          --    strippen doet hij alleen commentaar — niet een tekenreeks. Een
@@ -525,17 +557,15 @@ AS $function$
          --    levend. Dezelfde klasse als het commentaargeval dat dat script in
          --    zijn eigen kop beschrijft: de tekst óver een functie is geen
          --    gebruik ervan.
-         'noemt een app.-sessiesleutel die in geen enkel register van deze '
-         'teller staat; een nieuwe sleutel hoort er met zijn eigen regel in '
-         'te komen'
+         'noemt ' || m.gevonden[1] || ', een app.-sessiesleutel die in geen '
+         'enkel register van deze teller staat; een nieuwe sleutel hoort er '
+         'met zijn eigen regel in te komen'
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
+    cross join lateral regexp_matches(p.prosrc, 'app\.[A-Za-z0-9_]+', 'g') as m(gevonden)
    where n.nspname = 'public'
      and p.proname <> 'sleutelzetters'
-     and p.prosrc ~ 'app\.[a-z_]+'
-     and not exists (
-       select 1 from sleutel s where p.prosrc like '%' || s.instelling || '%'
-     )
+     and lower(m.gevonden[1]) not in (select s.instelling from sleutel s)
 
    order by 1;
 $function$

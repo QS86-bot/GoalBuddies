@@ -218,7 +218,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    de zelftoets in `remdekking.test.ts`: bij `> 10` hadden er negentien
     //    kunnen wegvallen zonder dat hier iets aansloeg.
     //
-    // ⚠️ Negenentwintig werd dertig met `todo_items` (0215, QS8-379). Die tabel
+    // ⚠️ Negenentwintig werd dertig met `todo_items` (0219, QS8-379). Die tabel
     //    draagt zijn eigen plafond — `taken_dagplafond` met `taken_rem`
     //    ernaast — dus hij komt hier binnen als bewaakt en niet als bevinding.
     const gevonden = groeibareTabellen();
@@ -227,7 +227,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     expect(
       gevonden.filter((t) => t.plafond).length,
       'het aantal groeibare tabellen mét plafond is veranderd',
-    ).toBe(16);
+    ).toBe(17);
   }, 60_000);
 
   it('en push_tokens zit er met een plafond bij — de aanleiding van dit bestand', () => {
