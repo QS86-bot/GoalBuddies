@@ -428,6 +428,11 @@ export const en: Record<Sleutel, string> = {
   'deadlineverzoek.toch_niet': 'Never mind',
   'deadlineverzoek.akkoord': 'Agreed',
   'deadlineverzoek.liever_niet': 'Rather not',
+  'deadlineverzoek.straf_staat_erop':
+    'This goal carries a penalty its owner set for themselves. If you agree, the date on '+
+    'which it falls due moves along with it.',
+  'deadlineverzoek.straf_onbekend':
+    'We could not check whether this goal carries a penalty.',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
   'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress. Not your notes, not your weeks and not your points. You can always undo it.',
@@ -488,6 +493,7 @@ export const en: Record<Sleutel, string> = {
   'doelen.leeg_tekst': 'Start with one goal with a date on it. The Goal Coach then cuts it into milestones, and those milestones become your weekly goals.',
   'doelen.van_totaal': '{aantal} of {totaal} goals.',
   'doelen.nieuw': 'New goal',
+  'doelen.zelf_invullen': 'Rather fill it in myself',
   'doelen.meer_laden': 'Load more goals',
   'doelen.doel': 'Goal',
   'doelen.streefdatum': 'Target date {datum}',
@@ -564,6 +570,10 @@ export const en: Record<Sleutel, string> = {
   'profiel.meldingen_uit_gelukt': 'Notifications are off on this device.',
   'profiel.meldingen_uit_mislukt': 'Turning them off did not work. Try again in a moment.',
   'profiel.meldingen_mislukt': 'Turning it on did not work. Please try again in a moment.',
+  'push.geen_websleutels': 'Your browser did not pass on a complete subscription. Turn notifications on again.',
+  'push.te_veel_tokens': 'You have registered too many devices today. Try again tomorrow.',
+  'push.niet_ingelogd': 'You are no longer signed in. Sign in again and try once more.',
+  'push.apparaat_niet_bruikbaar': 'This device could not be registered for notifications. Try again or use another device.',
   'profiel.meldingen_aan': 'Notifications are on. You get a message when a buddy approves your week or when your wrap-up is ready.',
   'profiel.meldingen_uit': 'Get a message when a buddy approves your week or when your wrap-up is ready. We ask your browser for permission once.',
   'profiel.meldingen_geweigerd': 'You refused notifications earlier. That can only be undone in your browser settings; we cannot ask again.',
@@ -1025,6 +1035,7 @@ export const en: Record<Sleutel, string> = {
   'adempauze.te_lang': 'A breather lasts at most {max} weeks.',
   'adempauze.datum_ongeldig': 'Enter a date as yyyy-mm-dd.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
+  'adempauze.buiten_venster': 'Pick a week within a year back or a year ahead.',
   'adempauze.eind_voor_start': 'The end date is before the start date.',
   'adempauze.annuleren_mislukt': 'Cancelling did not work.',
   'adempauze.al_begonnen': 'This breather has already started and stays.',
@@ -1172,6 +1183,10 @@ export const en: Record<Sleutel, string> = {
     'The project at work has run six weeks over and it is eating my evenings.',
   'deadline.nog_tekens': '{aantal} characters to go.',
   'deadline.lang_genoeg': 'Long enough.',
+  'deadline.straf_wordt_zichtbaar':
+    'Your group sees that this goal carries a penalty as soon as you send this request, and '+
+    'keeps seeing that for as long as you share the goal with them. What the penalty says is '+
+    'not shared by this request.',
   'deadline.versturen': 'Send request',
   'deadline.vastleggen': 'Save',
   'deadline.annuleren': 'Cancel',

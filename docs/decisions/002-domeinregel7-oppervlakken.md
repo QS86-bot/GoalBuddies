@@ -85,6 +85,7 @@ vraag 2 hierboven: wat houdt het tegen als iemand de UI overslaat?
 | 28 | **Het puntenklassement** | `groep_klassement()`, `groep_teller()`, `app/groep/[id].tsx` | In een **open** groep: per lid een naam, een totaal en een plek. In een **beschermde** groep: niets — alleen de optelteller zonder namen | ⚠️ **Toegevoegd 01-09-2026 (QS8-254, besluit A54, migratie 0141), en dit is de eerste rij die een besluit terúgdraait.** Punten stonden sinds A42 in §6b als bewust dicht, óók in een open groep. **Kan hieruit iemands gemiste week worden afgeleid?** Nee, en dat is een eigenschap van het cijfer en niet van het scherm: het klassement toont het **groepstotaal** (`points_ledger.group_id = deze groep`), en `cycle_missed` wordt door de rollover zónder `group_id` geboekt — een gemiste week is niet aan één groep toe te rekenen. Een laag getal betekent "hier weinig verdiend", niet "hier weken gemist". ⚠️ **Die eigenschap was een toevalligheid en is nu een grendel:** `points_ledger_gemist_is_niet_van_een_groep`. Wie die CHECK weghaalt, verandert dit oppervlak in een tegenslagmeter — en tot 0141 zou geen enkele test daar rood van worden. ⚠️ **Kan iemand het buiten de UI om uitlezen?** Nee: `groep_klassement()` is SECURITY DEFINER met `lid_van_open_groep()`, dus een beschermde groep krijgt nul rijen ook bij een rechtstreeks verzoek aan PostgREST. DEFINER is hier geen gemak maar noodzaak — `points_ledger_select` is `user_id = auth.uid()`, dus een INVOKER-functie zou een klassement van één persoon opleveren. ⚠️ **Er is geen delta en geen datum**, en dat staat in de handtekening en niet in een component: de kolommen bestaan niet. ⚠️ **Wat er wél afleidbaar werd:** een ingetrokken goedkeuring (oppervlak 17) laat het totaal dalen. Aanvaard — het venster is vijftien minuten en dezelfde functie verwíjdert de aankondiging uit de chat, wat een luider signaal is dan een getal dat terugveert. ⚠️ **De teller (`groep_teller()`) staat in béide standen open** en telt zoals `seizoensrecap_cijfers()` telt: één telwijze, anders geeft dezelfde groep twee getallen. Getest in `tests/rls/klassement.test.ts` |
 | 29 | **De zoeklijst** | `ontdek_groepen()`, `group_join_requests`, `app/groep/ontdek.tsx` | Aan een **vreemde**: naam, categorie, omschrijving, voertaal, huddledag en ledental. Aan de groep zelf: één systeembericht dat hij vindbaar is geworden | ⚠️ **Toegevoegd 01-09-2026 (QS8-231, migratie 0144), en dit is het eerste oppervlak dat iemand van búiten de groep bedient.** Alle 28 rijen hierboven gaan over wat een *lid* ziet; deze gaat over wat een onbekende ziet, en dat maakt de twee vragen scherper in plaats van anders. **Kan hieruit iemands gemiste week worden afgeleid?** Nee, en dat is geen keuze van het scherm maar van de handtekening: `ontdek_groepen()` is SECURITY DEFINER met een **expliciete kolomlijst** en geeft niets per persoon terug. Er staat geen enkele naam in, geen reeks, geen activiteit en geen "deze groep is stil" — dat laatste was de verleidelijke, want het helpt de zoeker en het is een uitspraak over drie mensen die er niets over te zeggen hebben gehad. **Kan iemand het buiten de UI om uitlezen?** Nee: `groups_select` blijft `is_group_member(id)` en is niet aangeraakt, dus het gevonden groeps-id is geen sleutel — een vreemde leest er geen leden, doelen, chat, reeksen of `invite_code` mee. Dat is precies waarom hier een DEFINER-functie staat en geen extra tak in de policy: **RLS kan geen kolommen beperken**, dus een policy die "iedereen mag een ontdekbare groep lezen" zegt, geeft de héle rij weg. ⚠️ **Een vindbare groep is altijd beschermd, als CHECK** (`groups_ontdekbaar_is_beschermd`). Zou een **open** groep vindbaar kunnen zijn, dan zien onbekenden elkaars tegenslag zodra ze binnen zijn, en dan is besluit A41 geen verruiming meer maar een afschaffing via een omweg. De CHECK werkt in beide richtingen. ⚠️ **`ontdekbaar` is een toestemming en geen instelling:** geen kolomgrant, `guard_group_update()` zet hem terug, en de enige route is `zet_groepsontdekbaarheid()` — actieve beheerder, expliciet bevestigd, een rij in `group_events` en een systeembericht. Niemand mag er achteraf achter komen dat zijn groep vindbaar is geworden. ⚠️ **Een aanvraag krijgt géén systeembericht en een afwijzing al helemaal niet.** "X wilde erbij en mocht niet" is een uitspraak over een ander die niets positiefs draagt; het spoor staat in `group_events`. Zelfs binnen de groep is de aanvraag beperkt: `group_join_requests_select` noemt de aanvrager en de beheerder, en een gewoon lid ziet niet wie er heeft aangeklopt. Getest in `tests/rls/ontdekken.test.ts` — per kolom, niet beredeneerd |
 | 30 | **Meldingen en blokkades** | `reports`, `user_blocks`, `app/groep/leden/[id].tsx` | **Niets.** De groep ziet geen melding, geen blokkade en geen uitzetting — in geen enkele stand | ⚠️ **Toegevoegd 01-09-2026 (QS8-232, migratie 0145), en dit is het eerste oppervlak dat de regel de ándere kant op moet dragen.** Alle rijen hierboven gaan over wat er te veel gedeeld wordt; hier is de vraag wat er te weinig verborgen blijft. **Kan hieruit iemands gemiste week worden afgeleid?** Nee — er staat niets over weken in. Maar de eigenlijke vraag is een zwaardere: **kan de gemelde persoon merken dat hij gemeld is?** Dat is dezelfde soort schade als domeinregel 7 voorkomt, en in een groep van drie zelfs erger: wie weet dát hij gemeld is, weet ook dóór wie. `reports_select` noemt daarom de melder en de beheerder van de groep, **en sluit de gemelde met zoveel woorden uit** (`subject_id <> auth.uid()`) — ook als die beheerder is. Zonder die derde voorwaarde leest een beheerder die zelf gemeld wordt zijn eigen melding, en dat is precies het geval waarin het gevaarlijk is. Een melding over een beheerder is dan alleen voor de melder en voor Quinten zichtbaar, en dat is de juiste uitkomst en geen gat. ⚠️ **`user_blocks_select` noemt alleen de blokkeerder.** Niet `or blocked_id = auth.uid()`: dat leest als symmetrie en is een mededeling. De blokkade wérkt wel twee kanten op (`blokkade_met_groep()`), maar hij is voor één kant zichtbaar. ⚠️ **Er komt geen systeembericht en geen `group_events`-rij van een melding.** Het spoor van een melding is de melding zelf. Een uitzetting krijgt wél een `group_events`-rij — leden mogen weten dat de samenstelling veranderd is — maar géén systeembericht: "X is uit de groep gezet" is een uitspraak over een ander die niets positiefs draagt, en waar de uitgezette niet meer op kan reageren omdat hij de chat niet meer kan openen. ⚠️ **De audit hangt aan een trigger en niet aan de RPC**, want een beheerder kan sinds 0029 met één kaal verzoek `status = 'inactive'` zetten. Getest in `tests/rls/veiligheid.test.ts` |
+| 31 | **De straf bij een uitstelverzoek** | `straffen_bij_uitstelverzoek()`, `app/groep/[id].tsx`, `app/doel/[id].tsx` | Aan de groep die om uitstel gevráágd is: **dát** er een straf op dat doel staat. Niet de tekst, niet de foto, niet de getuige en niet de stand. Aan elke andere groep: niets | ⚠️ **Toegevoegd 09-09-2026 (QS8-370, migratie 0218), en dit is een verruiming die Quinten zelf besloten heeft: *"Iedereen van de groep mag de straf zien"*.** De aanleiding is een gat en geen wens. `zet_streefdatum()` weigert sinds 0184 een straf op `set` vooruit te schuiven; `beslis_deadline_verzoek()` doet dat met opzet niet, want 0184 wijst de groepsroute zelf aan als de weg die openblijft. 📏 Gemeten: het lid dat goedkeurt zag de straf niet — nul rijen bij `set`, voor allebei de vormen. Het akkoord was dus blind, en dáármee werd een commitment device stilzwijgend losser gemaakt: de spiegelzijde van domeinregel 5. ⚠️⚠️ **Dit is géén policy en dat is de kern van deze rij.** De eerste versie zette een vierde tak op `commitments_select`. 📏 De security-ronde van 09-09-2026 mat drie dingen na en alle drie zijn ze zelf geverifieerd: (1) een lid van de gevraagde groep las met één `select *` de `body`, de `image_url` én het id van de aangewezen getuige, terwijl het scherm er één zin van toont — **RLS kan geen kolommen beperken**; (2) datzelfde lid las de straf op stand **`due`**, en `due` betekent letterlijk *deze persoon heeft zijn streefdatum niet gehaald* — tegenslag over een derde, in een beschermde groep, buiten de drie routes om, en zónder dat de eigenaar er nog iets voor doet; (3) na `delete from goal_group_links` las hij het dóél niet meer (= 0) en de straf nog wél (= 1). ⚠️ **De eerste versie van deze rij beweerde het tegendeel van (2)** — *"de tegenslagkant is `due`, en die was voor de begunstigde al zichtbaar"*. Dat klopt voor rij 20 en niet voor dit publiek: de gevraagde groep is meestal niet de begunstigde. Wie deze rij als precedent gebruikt, leze dus de zin die er nú staat. ⚠️ **De reparatie is de vorm die dit project al had:** `straffen_bij_uitstelverzoek()` is een `security definer`-RPC met één kolom, precies zoals `getuigenissen()` (0169) voor de persoonlijke getuige. `commitments_select` is niet aangeraakt. **Kan hieruit iemands gemiste week worden afgeleid?** Nee, en dat is een eigenschap van wat de functie teruggeeft en niet van een `where`-regel: de uitkomst verandert níet als een straf van `set` naar `due` gaat — dat doel stond er al in. **Kan iemand het buiten de UI om uitlezen?** Alleen wie er recht op heeft; de functie toetst lidmaatschap via `mag_groep_lezen()` en de koppeling via `goal_group_links`. ⚠️ **Het oppervlak heeft randen**, en die zijn stuk voor stuk getoetst: een **ingetrokken verzoek** telt niet (daar heeft niemand iets toegestaan), een **ingetrokken straf** ook niet (er schuift dan niets, en de zin op het scherm zou onwaar zijn), **ontkoppelen** trekt de toestemming in, en de bit leeft nooit langer dan het **doel** waar hij over gaat — `shares_group_with_goal()` draagt daar dezelfde grens als de rest van de leeskant, dus een gearchiveerde groep en een eigenaar die geen lid meer is sluiten hem allebei. Wat er níet ophoudt is de beslissing zelf: ook na `approved` of `rejected` blijft het zichtbaar, anders raakt de beslisser het zicht kwijt op wat hij heeft toegestaan (domeinregel 5). ⚠️⚠️ **En ontkoppelen sluit óók de knop en niet alleen de waarschuwing**, want anders is die rand erger dan geen rand. 📏 Gemeten in de tweede security-ronde: de aanvrager verstuurde het verzoek, drukte daarna op "Niet meer delen met deze groep", en de beslisser zag géén waarschuwing meer — niet "onbekend" maar niets — en verschoof de datum met één klik. Een trigger op `goal_group_links` trekt een openstaand verzoek nu in. Dat is de reparatiekant en niet een toets in `beslis_deadline_verzoek()`: die zou het verzoek `open` laten staan terwijl niemand het meer kan beslissen, en sinds 0174 houdt een open verzoek de straf tegen — precies het onbeslisbare schild dat QS8-309/0175 heeft moeten repareren. ⚠️ **En de eigenaar weet het vooraf**, want anders is dit een consequentie die stilzwijgend aan gaat: het aanvraagscherm zegt vóór de verzendknop dat de groep dit gaat weten, **en dat de tekst van de straf niet meegaat** (`deadline.straf_wordt_zichtbaar`). Dit is dus route 3 uit domeinregel 7 — via de gebruiker zelf — en niet een vierde. ⚠️ **Alleen `type = 'penalty'` en alles behalve `cancelled`**: `wordtZichtbaarBijUitstelverzoek()` in de client draagt exact dezelfde grens, want een waarschuwing die smaller of ruimer is dan het oppervlak is geen waarschuwing. ⚠️⚠️ **En de retourvorm is zélf de belofte, met een eigen grendel.** 📏 De tweede security-ronde legde `body`, `image_url`, `status` en `beneficiary_user_id` bij de uitvoer en alle 1378 RLS-tests bleven groen: de zin *"deze functie geeft één kolom"* stond in drie documenten en in geen enkele test. `pg_get_function_result()` staat nu onder test, plus de kolomsleutels zoals PostgREST ze teruggeeft. Getest in `tests/rls/uitstelbeslisser-ziet-de-straf.test.ts` (twaalf grendels, elk apart met de hand rood gemaakt) en `tests/beloftes/uitstelbeslisser-krijgt-het-te-zien.test.ts` (zes) |
 
 Vet gedrukt is wat in EPIC 7, in de besluitenronde van 18-08 en in EPIC 8 en 9 is
 toegevoegd.
@@ -129,6 +130,117 @@ Drie redenen, in volgorde van gewicht:
 de fixture nergens in een systeembericht mag terugvinden, houdt de keuze vast
 (`tests/rls/epic7.test.ts`). Wil je het toch ruimer, dan is dat een productbeslissing
 en geen bugfix — zet hem in `docs/Q-TODO.docx`.
+
+### 3a. En de persoon staat er sinds 0213 als verwijzing, niet als tekst (QS8-372)
+
+De regel hierboven — *een bericht meldt de persoon en de gebeurtenis* — blijft
+staan. Wat verandert is **hoe** de persoon erin zit.
+
+⚠️⚠️ Tot 0213 bakten acht functies de weergavenaam als **platte tekst** in
+`chat_messages.body`, op het moment van plaatsen. Het scherm was netjes: sinds
+0059 rendert `systeemberichtTekst()` uit de catalogus met `naam(subject_name)`, en
+na een accountverwijdering is `subject_name` `null` — dus daar staat "Een oud-lid".
+
+📏 De database niet. `groepschat()` geeft `body` terug, `authenticated` heeft
+kolom-SELECT op `body`, en één verzoek volstond:
+
+```
+supabase.from('chat_messages').select('body').eq('group_id', …)
+→ "Alice heeft een doel afgerond."
+```
+
+De naam die volgens het scherm gewist was, stond er nog. **Dit is de tweede vraag
+uit domeinregel 7 in het klein:** kan iemand dat met één API-verzoek uitlezen
+buiten de UI om? De les van EPIC 5, opnieuw.
+
+**Sinds 0213 draagt de body geen naam meer.** Er staat een neutrale terugvalzin
+("Een lid doet mee."); de persoon zit in `subject_id` en `actor_id`, en die zijn
+foreign keys die bij een accountverwijdering op `null` gaan. Het scherm joint de
+naam vers en toont hem zolang de persoon bestaat — 📏 nagemeten dat
+`groepschat().subject_name` gewoon "Alice" teruggeeft zolang ze er is.
+
+⚠️ **Waarom niet de leesroute dichtzetten.** Dat sluit maar één deur:
+`groepschat()` de body laten inhouden laat een kale `select body from
+chat_messages` open staan. En die tweede deur is niet met een kolomgrant te
+sluiten zonder de autorisatie te verbouwen — 📏 `groepschat()` is
+`SECURITY INVOKER` en leunt op `chat_messages_select` voor het lidmaatschap, dus
+`authenticated` het SELECT-recht op `body` afnemen breekt de functie zelf. Er
+`SECURITY DEFINER` van maken zou de lidmaatschapstoets met de hand in de functie
+leggen, en dat is precies waar QS8-181 al over gaat.
+
+De naam uit de body halen sluit ze allebei, plus elke route die morgen bedacht
+wordt — en het is een echte wissing in plaats van een afscherming.
+
+⚠️ **Dit raakt de onveranderlijkheid uit §3 hierboven niet.** Die gaat over wát er
+gebeurd is: wie, wat, wanneer. `system_event`, `subject_id`, `actor_id`, `payload`
+en `created_at` blijven ongemoeid. Wat herschreven wordt is de **terugvalzin**, en
+die is machinaal gemaakt en wordt in het normale pad niet eens getoond. Er worden
+niemands woorden herschreven.
+
+⚠️⚠️ **De naad die dit blootlegde, en die had niets met privacy te maken.**
+`trek_goedkeuring_in()` zocht het bericht van een ingetrokken bevestiging terug met
+`m.body = tekst` — het bouwde de zin opnieuw op uit twee weergavenamen. **De zin
+wás de sleutel.** Zonder naam dragen twee bevestigingen van dezelfde beoordelaar
+voor dezelfde persoon in dezelfde groep exact dezelfde tekst.
+
+📏 Nagespeeld met precies dat geval: met de oude sleutel bleven er na het intrekken
+**2** berichten staan — `treffers` telt er twee, de `if` slaat over, en er blijft
+een bericht staan dat zegt dat een week bevestigd is terwijl de bevestiging is
+ingetrokken. Het bericht draagt daarom nu zijn `completion_id` in `payload`, en
+daar wordt op gezocht: **1** over, en dat is de andere voltooiing.
+
+Dat is onwrikbare regel 18 vraag 6 — *tilt dit een aanname van "er is er altijd
+precies één" naar "er kunnen er meer zijn"?* — en het antwoord was ja.
+
+⚠️⚠️ **En de eerste reparatie was zelf te grof, wat de security-ronde op deze
+branch heeft gemeten.** De zin codeerde **twee** dingen: de voltooiing én de
+beoordelaar, want zijn naam stond erin. `completion_id` codeert alleen het eerste,
+en `completion_approvals_one_vote` is `unique (completion_id, approver_id)` — bij
+een drempel boven één bevestigen dus meerdere mensen dezelfde voltooiing, en
+`meld_goedkeuring()` plaatst per bevestiging een bericht.
+
+📏 Twee gevallen nagespeeld, allebei correct vóór 0213 en allebei stuk met alleen
+`completion_id`:
+
+| Geval | Zonder `actor_id` | Met `actor_id` |
+|---|---|---|
+| Alice trekt in nadat Carol de drempel haalde | Alice wist **Carols** bericht, terwijl Carols bevestiging geldig blijft — en dit draait `security definer`, dus langs `chat_messages_delete` heen | Carols bericht blijft staan |
+| Drie beoordelaars, twee trekken in | **2** berichten blijven staan die zeggen dat de week bevestigd is, terwijl hij op `pending` staat | 1 blijft staan, en die is waar |
+
+De sleutel is dus het **paar**: `payload->>'completion_id'` én `actor_id`. Precies
+de onderscheidende kracht die de zin had, zonder de zin terug te halen.
+
+**De les is niet "completion_id was een slechte keuze".** Het is dat een sleutel
+vervangen betekent dat je nagaat wát de oude codeerde — en een zin met twee namen
+erin codeerde twee dingen, ook al zag hij eruit als één.
+
+⚠️ Een voltooiing is geen persoon, dus die mag in `payload`. De regel uit 0059 is
+dat er nóóit een **persoon** in gaat: een uuid in jsonb heeft geen foreign key en
+overleeft dus een accountverwijdering. Een `completion_id` cascadeert juist mee.
+
+⚠️ **Wat het issue niet zag:** het noemde vijf functies; 📏 een scan over
+`pg_proc.prosrc` gaf er acht. Een lijst in een issue is geen dekking.
+
+⚠️⚠️ **Maar een scan op `weergavenaam(` was dat evenmin**, en dat is de tweede
+correctie uit de security-ronde. 📏 Twee mutaties kwamen er ongemerkt langs: een
+eigen `select display_name into v_naam from profiles` gevolgd door concatenatie,
+en `weergavenaam (x)` met een spatie voor het haakje. En erger: `weergavenaam()`
+heeft sinds 0213 **nul** aanroepers, dus de volgende schrijver grijpt er sowieso
+niet naar — een scan op een dode functie bewaakt niets. Regel 18 vraag 2: dat
+toetste het ónderdeel (welke helper), niet de belofte (geen naam in een body).
+
+📏 Een scan op de **vorm** helpt hier ook niet: "een plaatser stelt zijn tekst niet
+samen" vlagt elf functies, want `||` bouwt net zo goed een jsonb-foutenlijst
+(`maak_seizoensrecaps`) of een getal (`meld_ketting_mijlpaal`). Elf uitzonderingen
+is een lijst, geen grendel.
+
+**Wat er nu staat is een gedragstoets:** lok vijf gebeurtenissen uit met één
+zeldzame naam in de groep en kijk of die naam in een body opduikt. Hoe hij er zou
+komen doet niet ter zake. 📏 Geijkt met precies de mutatie die de scan miste — een
+eigen `select display_name` in `meld_mijlpaal()`, een gebeurtenis die de
+routetests niet voeren — en die wordt nu rood. De drie gebeurtenissen die deze
+toets niet uitlokt (`commitment_due`, `commitment_unlocked`, `deadline_requested`)
+staan als rij in `docs/ENGINEER-REVIEW.md`.
 
 ---
 
@@ -281,6 +393,7 @@ oppervlak. Deze tabel is de beoordeling van alle twintig, met de stand van
 | 18 | Verwijderde accounts | Niets. `on delete set null` is geen zichtbaarheidskeuze | ✅ n.v.t. |
 | 19 | Weekpassen | ⚠️ **Bewust dicht.** Een verbruikte pas is een gemiste week plus de handeling om hem te redden; dat is een privé-voorraad, geen groepsgegeven. Bovendien staan de schrijvers op `service_role` en dragen `weekpas_stand()` en `weekpas_standen()` hun eigenaarstoets zélf — dit oppervlak leunt niet op RLS en zou dus een tweede, eigen verruiming vragen | ⛔ **Bewust dicht** |
 | 20 | Commitments | Niets. De beloning en de verschuldigde straf zijn al zichtbaar; het auditspoor blijft eigenaar-only. ⚠️ **Sinds QS8-228 kan de begunstigde ook één persoon zijn**, met dezelfde statusgrens; die tak varieert net zomin op `groups.zichtbaarheid` als de groepstak | ✅ n.v.t. |
+| 31 | De straf bij een uitstelverzoek | Niets. Wat dit oppervlak opent hangt aan het **verzoek** en niet aan `groups.zichtbaarheid`: de gebruiker vraagt het zélf aan, precies als bij 10, 16, 21 en 22, dus het staat in béide standen gelijk. ⚠️ Een **beschermde** groep die om uitstel gevraagd wordt, weet dus óók dát er een straf staat — dat is geen verruiming van A41 maar een verruiming die er los van staat, en wie die twee door elkaar haalt, denkt dat hij hem met een groepsinstelling kan terugdraaien. ⚠️ En het is nadrukkelijk niet zo dat een **open** groep hier méér krijgt: de functie geeft één kolom, in beide standen | ✅ n.v.t. |
 | 21 | Adempauzes | Niets. De gebruiker kondigt zélf aan, dus dit staat in beide standen open (A50). ⚠️ **Sinds QS8-227 geldt dat ook voor een pauze die je achteraf aankondigt**, en dat is een verruiming en geen gelijkblijvende stand — zie rij 21 hierboven en §4a | ✅ n.v.t. |
 | 22 | Vertrek uit een groep | Niets. Vertrekken is de eigen handeling van de gebruiker en het vertrek zelf draagt geen tegenslag, dus dit staat in beide standen gelijk — net als 10, 16 en 21. ⚠️ De reparatie in `shares_group_with_goal()` werkt juist hárder in een open groep: daar lekte een blijvende koppeling ook de gemiste weken van een oud-lid | ✅ n.v.t. |
 | 23 | De Doelcoach-tip per mijlpaal | Niets. Eigenaar-only in béide standen; `groups.zichtbaarheid` raakt deze tabel niet en hoort dat ook nooit te doen | ✅ n.v.t. |
