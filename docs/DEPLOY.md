@@ -149,6 +149,33 @@ Een migratie toepassen gaat zo:
    te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
    `npm run db:push` doet dat zelf.
 
+⚠️⚠️ **Een migratie die `storage.objects` aanraakt, kun je vanuit een
+bouwsessie niet toepassen — en dat is een grens en geen storing.** 📏 Gemeten op
+09-09-2026 bij `0222`:
+
+```
+ERROR: 42501: must be owner of table objects
+```
+
+`storage.objects` is eigendom van `supabase_storage_admin`; de Supabase-MCP
+draait als `postgres`, en `postgres` is **geen lid** van die rol (nagemeten in
+`pg_auth_members`), dus `set role supabase_storage_admin` geeft *permission
+denied*. Een `create policy` of `create trigger` op die tabel vraagt eigendom,
+en daar is geen weg omheen die geen omweg is.
+
+**Wat wél gaat vanuit een bouwsessie:** alles in `public` — tabellen,
+constraints, functies, triggers, policies, indexen, grants. Dat is de reden dat
+`0139` t/m `0221` er langs deze route op gekomen zijn.
+
+⚠️ **En dus: hou de volgorde heel.** Struikelt een migratie hierop, dan stopt de
+hele reeks daar. Wie de volgende wél toepast, slaat een **gat** in het register,
+en een gat is duurder dan wachten: de map bouwt het schema dan nergens meer op
+en een RLS-suite toetst een ánder schema dan productie. Zie
+`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
+
+De storage-helft hoort dus van Quintens machine te komen — de SQL-editor in het
+dashboard of `psql` met de projectcredentials.
+
 ⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
 geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
 diezelfde dag zijn er zes migraties toegepast zonder die UPDATE, terwijl deze

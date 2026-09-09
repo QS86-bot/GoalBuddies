@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 09-09-2026 (na QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 09-09-2026 (na QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -32,6 +32,22 @@ toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
 intussen op `main`. Dat is de vorm van QS8-318 nog een keer: **een regel over de
 achterstand veroudert terwijl je hem opschrijft**, en de enige stand die klopt is
 de gemeten stand.
+
+⚠️⚠️ **Dit gat is niet vanuit een bouwsessie te dichten, en dat is op 09-09
+gemeten in plaats van aangenomen.** `0222` valt om op
+`ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
+`supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
+die rol — `set role` geeft *permission denied*. `0222` en `0225` maken policies
+en een trigger op die tabel; `0223`, `0224` en `0226` zouden op zichzelf wél
+gaan, maar `0222` is de eerste van de vijf, **dus stopt de reeks daar**. Ze
+alsnog toepassen slaat een gat in het register, en dat is de duurdere kant
+(`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`).
+
+⚠️ **Dat corrigeert een regel die sinds 02-09 in QS8-243 stond:** *"een
+bouwsessie kan de drift wel meten maar niet opheffen"* was toen weerlegd omdat de
+MCP `execute_sql` heeft. De grens ligt scherper dan beide beweringen: **alles in
+`public` gaat, alles wat `storage.objects` bezit niet.** De regel staat nu in
+`docs/DEPLOY.md` §2.2, want dit komt terug bij elke volgende opslagmigratie.
 
 ⚠️⚠️ **Hier stond tot 09-09 `0185`, en dat was 34 migraties naast de
 werkelijkheid.** De ronde die `0187` t/m `0219` toepaste is verderop in dit
