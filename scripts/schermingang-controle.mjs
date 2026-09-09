@@ -47,6 +47,10 @@ export const ZONDER_PUSH = {
     '📏 Staat als `<Tabs.Screen name="groep">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
   '/(tabs)/profiel':
     '📏 Staat als `<Tabs.Screen name="profiel">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
+  // ⚠️ Het vijfde tabblad, sinds QS8-380. Beslispunt 1 van QS8-378 draaide de
+  //    regel "vier en niet vijf" om; de kop van `_layout.tsx` legt uit waarom.
+  '/(tabs)/lijst':
+    '📏 Staat als `<Tabs.Screen name="lijst">` in `app/(tabs)/_layout.tsx`: de tabbalk is de ingang.',
 };
 
 /** Alle `.tsx`-bestanden onder een map, recursief. */
