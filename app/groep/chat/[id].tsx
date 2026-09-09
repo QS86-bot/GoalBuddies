@@ -36,7 +36,7 @@ import {
   Body,
   Button,
   Caption,
-  kiesChatfoto,
+  kiesFoto,
   Card,
   ChatRegel,
   Field,
@@ -440,7 +440,7 @@ function Invoer({
 
   async function kies() {
     setFout(null);
-    const keuze = await kiesChatfoto();
+    const keuze = await kiesFoto('chatfoto.kiezen_mislukt');
 
     if (keuze.soort === 'afgebroken') return;
     if (keuze.soort === 'fout') {

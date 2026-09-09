@@ -2480,6 +2480,7 @@ export type Database = {
       dien_opnieuw_in: {
         Args: {
           p_achieved_level: string
+          p_attachment_url?: string
           p_note?: string
           p_weekly_goal_id: string
         }
@@ -2718,6 +2719,7 @@ export type Database = {
           achieved_level: string
           approvals_done: number
           approvals_required: number
+          attachment_url: string
           ceiling_text: string
           completion_id: string
           floor_text: string
