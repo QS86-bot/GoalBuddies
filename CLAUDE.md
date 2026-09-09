@@ -716,6 +716,22 @@ bewaakt dat. Uitleg in `docs/decisions/2026-09-07-de-uitslag-die-er-niet-was.md`
 een echte remote op schijf — niet met een zelfgevoerd object, want dan is "klopt
 dat object" niet te stellen. Vraag 3 in zijn zuiverste vorm.
 
+⚠️⚠️ **Een register in een functielichaam botst op precies dezelfde manier, en
+git ziet dáár geen conflict.** Twee migraties die allebei
+`create or replace function public.f()` doen staan in verschillende bestanden, dus
+de merge is schoon; de hoogste nummer wint en het register van de ander verdwijnt
+zonder een woord. 📏 Op 08-09-2026 verloor `sleutelzetters()` zo bijna drie
+sleutels (QS8-358). **Breid je een register uit, ververs dan eerst je beeld van
+`main` en kopieer het lichaam van dáár** — en `registerdrift:controle` wordt rood
+zodra een herdefinitie een rij laat vallen die er niet bewust uit gehaald is.
+
+Het register blijft met opzet in het functielichaam en verhuist niet naar een
+tabel: daar zou het uitbreiden een `insert` worden en dus conflictvrij, maar een
+register in een tabel is niet meer in één blik naast de code te lezen, vraagt RLS
+en een grant, en kan léég raken zonder dat iemand het merkt. `sleutelzetters()`
+faalt vandaag dicht — een onbekende sleutel wordt gemeld — en dat is de
+eigenschap die het zwaarst weegt.
+
 ## Beslisbevoegdheid — vastgelegd 22-08-2026
 
 **Claude beslist zelf en werkt af.** Er zijn precies twee redenen om te stoppen
