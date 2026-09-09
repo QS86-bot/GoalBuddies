@@ -660,18 +660,27 @@ is bijgewerkt.
 halverwege omvalt: een paar bestanden rood, de rest "skipped". Dat leest als een
 kapotte policy, en je gaat in de verkeerde richting zoeken.
 
-⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform.**
+⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform — en geen van
+beide is nog een ontbrekende bibliotheek.**
 
-* **Web** — de bibliotheek is niet nodig; web push is op 23-08 van nul gebouwd.
-  De registratie is er sinds **QS8-124**; wat ontbreekt is het bewijs dat er
-  een melding aankomt.
-* **Native** — `expo-notifications` ontbreekt, en dat is een dependency die
-  eerst toestemming vraagt (**Q-TODO B4**). Denk daarbij aan een Expo-project
-  met FCM- en APNs-sleutels voor een echt toestel.
+* **Web** — web push is op 23-08 van nul gebouwd en de registratie is er sinds
+  **QS8-124**. Wat ontbreekt is het VAPID-sleutelpaar en het bewijs dat er een
+  melding aankomt; allebei vragen ze Quintens hand.
+* **Native** — er is **geen build uitgerold**. Productie is de webbundel op
+  Hostinger, dus daar loopt `Platform.OS === 'web'` en komt `expoPush` niet aan
+  bod. Een echt toestel vraagt een Expo-project met FCM- en APNs-sleutels.
+
+⚠️⚠️ **Hier stond bij "Native" dat `expo-notifications` ontbrak, en dat sprak
+deze zelfde nota twee secties verderop tegen** (QS8-366). 📏 De bibliotheek staat
+in `package.json` (~57.0.13), `expo-bron.ts` gebruikt hem, en `app/_layout.tsx`
+plugt hem in. **Q-TODO B4 is af.** Het onderscheid doet ertoe omdat de twee
+voorwaarden op verschillende momenten vervallen: een bibliotheek is er zodra
+iemand hem toevoegt, een build zodra iemand hem uitrolt.
 
 Zolang geen van beide rond is, blijft `push_tokens` leeg en stuurt de job niets.
-De rand eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
-`PushBron`-interface met een lege standaard, en aanzetten is één
+📏 Nagemeten op 08-09-2026 tegen productie: nul rijen, op élk platform. De rand
+eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
+`PushBron`-interface met een standaard die niets doet, en aanzetten is één
 `zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
 
 Die sleutels zitten in de build, niet in de server; de Edge Function heeft er
@@ -743,9 +752,9 @@ intrekken). A37 staat er ook nog.
 **A47 is af** — dat was "de testsuite past niet meer twee keer in een uur", en
 dat probleem bestaat niet meer sinds de suite niet meer inlogt (QS8-116).
 
-En **B4** — `expo-notifications` — is geen besluit maar een dependency. Hij
-blokkeert nu alleen nog **native** push; de web-kant is gebouwd en heeft die
-bibliotheek niet nodig. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
+En **B4** — `expo-notifications` — is geen besluit maar een dependency, en hij
+is **af**: de bibliotheek staat erin en `_layout` plugt hem in. Wat native nog
+tegenhoudt is een uitgerolde build, niet de bibliotheek. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
 met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
@@ -1854,6 +1863,60 @@ tijdzonekeuze vond alleen steden mét een eigen IANA-zone), QS8-171 (één stukk
 groep kostte alle groepen hun seizoensrecap), QS8-146 (het model van de tien
 lidmaatschapshulpfuncties, plus: een uitgezet lid is geen groepsgenoot meer),
 QS8-276 en QS8-277. Uit de parallelle sessie: QS8-269, QS8-271 t/m QS8-275.
+
+**Wat er op 08 en 09-09 bij kwam en geland is** — deze sessie, zes issues, elk
+met een groene poort en een merge-commit:
+
+| Issue | Wat het oploste | PR |
+|---|---|---|
+| QS8-367 | de `delete` in `registreer_push_token()` was een tweede mechanisme naast de `on conflict` die het werk al deed; `push_tokens_token_getrimd` maakt de premisse een grendel | #321 |
+| QS8-371 | wie ooit een goedkeuring introk, kon zijn account nooit meer verwijderen (AVG art. 17) — plus een toets die élke blokkerende verwijzing naar een persoon vangt | #322 |
+| QS8-372 | de naam van een verwijderd account stond nog in `chat_messages.body`; het scherm zei "Een oud-lid", een kale select zei de naam | #324 |
+| QS8-376 | de derde tak van `sleutelzetters()` keek per functie in plaats van per sleutel, en GUC-namen zijn hoofdletterongevoelig | #326 |
+| QS8-373 | `plan_adempauze()` begrensde niet hoe ver vooruit een pauze mag beginnen; `breathers` groeide onbeperkt | #327 |
+| QS8-377 | een geweigerde pushtokenregistratie bereikte de gebruiker nooit — en het scherm zei intussen dat meldingen aanstonden | #329 |
+
+⚠️⚠️ **Vier van die zes zijn gevonden doordat een security-ronde iets vond in
+werk dat af leek, en drie keer zat de fout in wat er bij de reparatie omheen
+gebouwd was** — niet in de reparatie zelf. Twee keer bleek een ijking de tékst te
+meten in plaats van het gedrag, waardoor de reparatie meer leek te repareren dan
+ze deed. Als je één ding uit deze sessie meeneemt: **breek de grendel die de
+ijking noemt, en kijk dan of het rood dat je krijgt over het gedrag gaat.**
+
+⚠️ **En de lijst in een issue is geen dekking.** Drie keer op rij noemde een issue
+minder gevallen dan er waren: vijf functies bleken er acht (QS8-372), zes redenen
+bleken er negen (QS8-377), en één ontbrekende grens bleek er twee (QS8-376).
+Meten met `pg_get_functiondef()` vond ze; de opsomming overnemen niet.
+
+**Wat er uit een parallelle sessie landde:** QS8-369 (het dagplafond op
+`push_tokens`), QS8-374, QS8-375 en QS8-366.
+
+### ⚠️ De reactieve voorraad is op 09-09 leeg
+
+Dit is opnieuw de stand van 31-08, en punt 0 hierboven legt uit waarom dat de
+vorige keer misleidend was. Wat er ná deze sessie in de backlog overblijft, valt
+in vier soorten en géén daarvan is "pak het volgende issue":
+
+| Soort | Wat het vraagt |
+|---|---|
+| `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
+| `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
+| feature-epics (QS8-200, QS8-230, QS8-252) | opsplitsen in deelissues vóór er iets te bouwen valt |
+| De Lijst (QS8-378 t/m 381) | de parallelle sessie zit erin; QS8-380 leunt op QS8-379 |
+
+**Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
+dat is er niet. Kies bewust één van deze drie:
+
+1. **Een epic opsplitsen.** QS8-200 staat op Urgent en heeft geen
+   `wacht-op-Quinten`. Dat is `spec-planner`-werk en levert de voorraad op waar de
+   sessie daarna uit put — precies wat de parallelle sessie met QS8-378 deed.
+2. **Een doorloop.** De vorige keer dat deze voorraad leeg leek, liep er een mens
+   door de app en kwamen er veertien issues bij, vier op Urgent. Dat is de
+   goedkoopste manier om te ontdekken wat er werkelijk stuk is.
+3. **De achterstand op productie.** 📏 Productie staat op migratie **0186** en de
+   map op 0216 — dertig migraties. Zolang dat gat er is, meet `functies:controle`
+   en `register:controle` niets en is elke uitspraak over "wat er draait" een
+   uitspraak over de map. Dat vraagt Quintens hand (QS8-243).
 
 **Waar je nu begint, in deze volgorde:**
 

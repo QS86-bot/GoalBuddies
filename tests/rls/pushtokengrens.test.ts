@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDb, createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } from './harness';
+import { readFileSync } from 'node:fs';
+
+import { proefId } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
@@ -675,6 +678,315 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en zijn grenzen', 
         values ('${alice.id}', 'ExponentPushToken[kolomkant-${RUN}]', 'ios')
       `);
       expect(past, 'een token van normale lengte hoort er gewoon in te mogen').toBe(true);
+    },
+    TEST_TIMEOUT,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// QS8-367 — de overname heeft één mechanisme
+// ---------------------------------------------------------------------------
+
+/**
+ * ⚠️⚠️ **De belofte is niet "de `delete` is weg".** Dat is de regel. De belofte
+ *    is een eigenschap van het geheel:
+ *
+ *      Wie een token registreert dat al bij een ander staat, neemt het over —
+ *      en dat gebeurt langs precies één mechanisme.
+ *
+ * ⚠️ Tot 0211 waren het er twee: een `delete` die met een **ongetrimde** waarde
+ *    vergeleek, en de `on conflict` van de insert. De eerste las als het slot op
+ *    het gedeelde-apparaatgeval — zo staat hij ook in de dossierrij van 21-08 —
+ *    en de tweede deed het werk. 📏 Gemeten dat weghalen veilig is: `authenticated`
+ *    heeft op deze tabel alléén SELECT en er is geen insert-policy, dus deze RPC
+ *    is de enige schrijver en ze trimt altijd.
+ *
+ * ⚠️ **Wat hier voor het eerst onder test staat is `id` en `created_at`.** Dat
+ *    was het énige waarneembare verschil tussen de twee paden — langs de
+ *    `delete` kwam er een verse rij, langs de `on conflict` blijft de bestaande
+ *    staan — en niets toetste het. Een test die alleen `user_id` bekijkt, blijft
+ *    groen welk pad je ook kiest.
+ */
+describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
+  /**
+   * ⚠️ **Eigen gebruikers, en dat is een gerepareerde opzet.** De eerste versie
+   *    leende `alice` van het blok hierboven, en 📏 dat gaf meteen een
+   *    `push_tokens_user_id_fkey`: het `afterAll` van dát blok draait wanneer
+   *    díé describe klaar is, dus vóór deze begint. `removeTestUsers()` had haar
+   *    al weggehaald. Een fixture die over een blokgrens heen leent, leunt op de
+   *    volgorde waarin vitest zijn haken draait.
+   */
+  let eerste: TestUser;
+  let tweede: TestUser;
+  const GEDEELD = `ExponentPushToken[gedeeld-${RUN}]`;
+
+  interface Rij {
+    id: string;
+    user_id: string;
+    created_at: string;
+    token: string;
+  }
+
+  /** De rij zoals `service_role` hem ziet — `push_tokens_select` is eigenaar-only. */
+  async function rijVan(token: string): Promise<Rij | null> {
+    const { data } = await adminDb()
+      .from('push_tokens')
+      .select('id, user_id, created_at, token')
+      .eq('token', token)
+      .maybeSingle();
+    return (data ?? null) as Rij | null;
+  }
+
+  async function registreer(wie: TestUser, token: string) {
+    const { data, error } = await wie.db.rpc('registreer_push_token', {
+      p_token: token,
+      p_platform: 'ios',
+    });
+    if (error) throw new Error(`registreren: ${error.message}`);
+    return uit(data);
+  }
+
+  beforeAll(async () => {
+    if (!rlsTestsConfigured) return;
+    eerste = await createTestUser('pushovername-eerste');
+    tweede = await createTestUser('pushovername-tweede');
+  }, SETUP_TIMEOUT);
+
+  afterAll(async () => {
+    if (!rlsTestsConfigured) return;
+    await removeTestUsers();
+  }, SETUP_TIMEOUT);
+
+  it(
+    'zet het token om naar de laatste registreerder',
+    async () => {
+      expect(await registreer(eerste, GEDEELD)).toEqual({ ok: true });
+      const vanAlice = await rijVan(GEDEELD);
+      expect(vanAlice?.user_id, 'de opstelling klopt niet').toBe(eerste.id);
+
+      expect(await registreer(tweede, GEDEELD)).toEqual({ ok: true });
+
+      // ⚠️ **Dit is de pin op de `on conflict`**, en sinds 0211 is dat het enige
+      //    mechanisme. Haal `user_id = excluded.user_id` uit de conflicttak weg
+      //    en deze test wordt rood — dat is de ijking die acceptatiecriterium 3
+      //    vraagt, want de `delete` weghalen mag verder niets veranderen.
+      const naOvername = await rijVan(GEDEELD);
+      expect(naOvername?.user_id, 'de overname landde niet').toBe(tweede.id);
+
+      // ⚠️ **De telling hoort hier en niet in een eigen test.** Ze leunt op de
+      //    opstelling van deze test — twee registraties van hetzelfde token — en
+      //    losgetrokken was ze volgordeafhankelijk. `push_tokens_token_uniek`
+      //    draagt haar; die droppen breekt `on conflict (token)` met `42P10` en
+      //    dus alles hier, dus als losse test ijkt ze niets van wat ze belooft.
+      const { data: alle, error } = await adminDb()
+        .from('push_tokens')
+        .select('id')
+        .eq('token', GEDEELD);
+      expect(error, JSON.stringify(error)).toBeNull();
+      expect(alle ?? [], 'de overname liet een tweede rij achter').toHaveLength(1);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat geen ongetrimde rij bestaan, ook niet onder service_role',
+    async () => {
+      // ⚠️⚠️ **Dit is de grendel onder 0211, en hij is er omdat de security-review
+      //    de premisse brak.** Het besluit om de `delete` weg te halen leunt erop
+      //    dat elke rij getrimd is: de `on conflict (token)` matcht op de exacte
+      //    string, dus een ongetrimde rij zou een tweede rij voor hetzelfde
+      //    apparaat opleveren en dan blijft de vorige eigenaar meldingen krijgen.
+      //
+      // ⚠️ **Voor native droeg `push_tokens_native_vorm` dat al** — die roept het
+      //    geankerde `is_expo_pushtoken()` aan. Voor **web** toetste niets de
+      //    kolom (`platform = 'web' or is_expo_pushtoken(token)`), en
+      //    `is_pushdienst()` staat alléén in de RPC. Daar kwam een ongetrimde
+      //    endpoint-URL dus gewoon binnen. `push_tokens_token_getrimd` sluit dat.
+      //
+      // ⚠️ **De vorige test hier telde de rijen na een overname en bewaakte
+      //    niets** (QS8-367, security-review). Twee rijen zijn onmogelijk door
+      //    `push_tokens_token_uniek`, en die droppen laat `on conflict (token)`
+      //    afgaan met `42P10` — dan wordt élke test in dit blok rood, dus de
+      //    ijking liep door een eerdere grendel. Bovendien leunde hij op de
+      //    opstelling van de test ervóór. Hij is vervangen door dit geval, dat
+      //    zijn eigen grendel noemt en los ijkbaar is.
+      const ongetrimd = `  https://fcm.googleapis.com/fcm/send/getrimd-${RUN}  `;
+
+      const { error } = await adminDb()
+        .from('push_tokens')
+        .insert({
+          user_id: eerste.id,
+          token: ongetrimd,
+          platform: 'web',
+          p256dh: 'p256dh-meet',
+          auth: 'auth-meet',
+        });
+
+      expect(error?.code, `service_role kreeg de ongetrimde rij erin: ${JSON.stringify(error)}`).toBe(
+        '23514',
+      );
+      expect(error?.message ?? '').toContain('push_tokens_token_getrimd');
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * Leest de normalisatie **uit migratie 0211 zelf**, en dat is het hele punt.
+   *
+   * ⚠️⚠️ **Een test die een kopie van die twee statements draagt, bewaakt de
+   *    kopie.** Verandert iemand de volgorde in de migratie, of haalt hij de
+   *    `delete` eruit, dan blijft zo'n test groen — hij toetst wat er in het
+   *    testbestand staat en niet wat de migratie belóóft. Dat is regel 18 vraag
+   *    4, en dit project heeft hem twee keer bij een verhuizing betaald.
+   *
+   * De snede loopt van het eerste statement tot aan het `do $migratie$`-blok dat
+   * de constraint zet; alles ertussen is de normalisatie.
+   */
+  function normalisatieUit0211(): string {
+    const bestand = readFileSync(
+      'supabase/migrations/0211_de_overname_van_een_pushtoken_heeft_een_mechanisme.sql',
+      'utf8',
+    );
+    const begin = bestand.indexOf('delete from push_tokens dubbel');
+    const eind = bestand.indexOf('do $migratie$', begin);
+
+    expect(begin, 'de normalisatie staat niet meer in 0211').toBeGreaterThan(-1);
+    expect(eind, 'het grendelblok staat niet meer ná de normalisatie').toBeGreaterThan(begin);
+
+    return bestand.slice(begin, eind);
+  }
+
+  /**
+   * ⚠️⚠️ **De normalisatie die 0211 vóór de grendel zet, en waarom die er is.**
+   *
+   * De eerste versie van deze migratie onderbouwde de CHECK met "📏 op productie
+   * staan 0 rijen, dus er valt niets te normaliseren". `src/modules/notifications/
+   * tokens.ts` waarschuwt sinds QS8-366 met zoveel woorden tegen precies die
+   * redenering — *"wie op deze leegte een besluit baseert, telt hem opnieuw"* —
+   * en terecht: productie staat op 0186, deze migratie draait pas bij een
+   * volgende deploy, en de redenen dat de tabel leeg is vervallen per platform op
+   * verschillende momenten. Dus normaliseert de migratie zelf.
+   *
+   * ⚠️ **Deze test voert hem de twee soorten die hij moet kunnen**, want een
+   *    normalisatie die je niet kunt voeden, kun je niet ijken. Op de lokale
+   *    stack ís de tabel schoon en zou dit pad nooit gedraaid worden — dan
+   *    bewaakt "de migratie liep groen" niets van wat ze belooft.
+   */
+  it('knipt bestaande rijen bij en gooit alleen de dubbele weg', () => {
+    const oud = proefId(367);
+    const nieuw = proefId(368);
+
+    const uitslag = psql(`
+      begin;
+      insert into auth.users (id, email) values
+        ('${oud}', 'norm-oud367@x.nl'), ('${nieuw}', 'norm-nieuw367@x.nl');
+
+      -- ⚠️ De grendel gaat er even af, want anders is de toestand die de
+      --    migratie moet opruimen niet te máken. Alles rolt terug.
+      alter table push_tokens drop constraint push_tokens_token_getrimd;
+
+      insert into push_tokens (user_id, token, platform, p256dh, auth) values
+        -- dubbel: de ongetrimde rij hoort bij de vórige eigenaar
+        ('${oud}',   '  https://fcm.googleapis.com/fcm/send/d367  ', 'web', 'p', 'a'),
+        ('${nieuw}', 'https://fcm.googleapis.com/fcm/send/d367',     'web', 'p', 'a'),
+        -- los: alleen de ongetrimde vorm bestaat
+        ('${oud}',   '  https://fcm.googleapis.com/fcm/send/l367  ', 'web', 'p', 'a');
+
+      -- De normalisatie, letterlijk zoals ze in 0211 staat.
+      ${normalisatieUit0211()}
+
+      -- ⚠️ **En dit is de eigenlijke assertie**: de grendel moet er daarna weer
+      --    op kunnen. Laat de normalisatie ook maar één rij ongetrimd staan, dan
+      --    faalt deze regel en breekt de hele aanroep af.
+      alter table push_tokens add constraint push_tokens_token_getrimd
+        check (token = btrim(token));
+
+      select string_agg(
+               btrim(t.token) || '=' ||
+               case t.user_id when '${oud}'::uuid then 'oud' else 'nieuw' end,
+               ' | ' order by t.token)
+        from push_tokens t
+       where t.token like '%fcm/send/_367%';
+      rollback;
+    `).trim();
+
+    // De dubbele is bij de geldige eigenaar gebleven, de losse bij de zijne.
+    expect(uitslag).toBe(
+      'https://fcm.googleapis.com/fcm/send/d367=nieuw | https://fcm.googleapis.com/fcm/send/l367=oud',
+    );
+  });
+
+  /**
+   * ⚠️ **De volgorde ís het gedrag, en dat is apart geijkt.** Knip je eerst bij,
+   *    dan botst de dubbele soort op `push_tokens_token_uniek` en faalt de
+   *    migratie halverwege. Deze test speelt die omgekeerde volgorde na en eist
+   *    dat hij stukloopt — anders zegt de volgorde in 0211 niets.
+   */
+  it('loopt stuk als de bijknip vóór de opruiming komt', () => {
+    const oud = proefId(369);
+    const nieuw = proefId(370);
+
+    expect(() =>
+      psql(`
+        begin;
+        insert into auth.users (id, email) values
+          ('${oud}', 'norm-oud369@x.nl'), ('${nieuw}', 'norm-nieuw369@x.nl');
+        alter table push_tokens drop constraint push_tokens_token_getrimd;
+        insert into push_tokens (user_id, token, platform, p256dh, auth) values
+          ('${oud}',   '  https://fcm.googleapis.com/fcm/send/v369  ', 'web', 'p', 'a'),
+          ('${nieuw}', 'https://fcm.googleapis.com/fcm/send/v369',     'web', 'p', 'a');
+        update push_tokens set token = btrim(token) where token <> btrim(token);
+        rollback;
+      `),
+    ).toThrow(/push_tokens_token_uniek/);
+  });
+
+  it(
+    'houdt de rij dezelfde: id en created_at overleven de overname',
+    async () => {
+      const token = `ExponentPushToken[identiteit-${RUN}]`;
+
+      expect(await registreer(eerste, token)).toEqual({ ok: true });
+      const voor = await rijVan(token);
+      expect(voor, 'de opstelling klopt niet').not.toBeNull();
+
+      expect(await registreer(tweede, token)).toEqual({ ok: true });
+      const na = await rijVan(token);
+
+      // ⚠️ **Dit is acceptatiecriterium 2, en het is een besluit en geen
+      //    bijvangst.** Langs de oude `delete` kwam hier een verse rij met een
+      //    nieuwe `id` en een nieuwe `created_at`. 📏 Niets leest die twee — geen
+      //    foreign key wijst naar `push_tokens.id`, geen andere functie noemt de
+      //    tabel, en de meldingenjob selecteert `token, platform, p256dh, auth` —
+      //    dus de keuze is vrij, en hij ligt hier vast in plaats van in een
+      //    implementatiedetail.
+      expect(na?.user_id).toBe(tweede.id);
+      expect(na?.id, 'de rij is vervangen in plaats van omgezet').toBe(voor?.id);
+      expect(na?.created_at, 'created_at hoort van de rij te zijn en niet van de eigenaar').toBe(
+        voor?.created_at,
+      );
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'neemt ook over als de aanroeper er spaties omheen zet',
+    async () => {
+      // ⚠️⚠️ **Dit is het geval waarop de twee mechanismen uit elkaar liepen.**
+      //    De `delete` vergeleek met `p_token` en miste hier, terwijl de insert
+      //    `trim(p_token)` wegschreef en dus alsnog botste. Nu is er één pad, en
+      //    deze test zegt dat het langs dezelfde rij loopt: zelfde `id`.
+      const token = `ExponentPushToken[spaties-${RUN}]`;
+
+      expect(await registreer(eerste, token)).toEqual({ ok: true });
+      const voor = await rijVan(token);
+
+      expect(await registreer(tweede, `   ${token}   `)).toEqual({ ok: true });
+      const na = await rijVan(token);
+
+      expect(na?.user_id, 'de overname landde niet').toBe(tweede.id);
+      expect(na?.id, 'er is een tweede rij ontstaan in plaats van een overname').toBe(voor?.id);
+      expect(na?.token, 'de opgeslagen waarde hoort getrimd te zijn').toBe(token);
     },
     TEST_TIMEOUT,
   );

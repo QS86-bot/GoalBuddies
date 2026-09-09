@@ -323,6 +323,39 @@ Voordat er één feature gebouwd wordt:
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
     commitment op het moment dat het verschuldigd wordt.
 
+    ⚠️ **Eén benoemde verruiming, en die hangt aan een handeling en niet aan een
+    stand (QS8-370, 09-09-2026, migratie 0218).** Vraag je je groep om je
+    streefdatum te verschuiven, dan weet **díé** groep dát er een straf op dat
+    doel staat — vanaf `set`, en ook nadat er beslist is. De reden is de
+    spiegelzijde van domeinregel 5: `beslis_deadline_verzoek()` mag een straf
+    vooruit schuiven (dat is de route die 0184 met zoveel woorden openlaat), en
+    dan mag het akkoord niet blind zijn. Een commitment device gaat nooit
+    stilzwijgend aan, en dus ook nooit stilzwijgend losser.
+
+    ⚠️⚠️ **De verruiming is "dát" en niet "wat", en dat verschil is een RPC en
+    geen policy.** `straffen_bij_uitstelverzoek()` geeft één kolom terug:
+    `goal_id`. De tekst van de straf, de foto en de aangewezen getuige gaan niet
+    mee, en de stand ook niet. Een vierde tak op `commitments_select` gaf dat
+    alles wél weg — **RLS kan geen kolommen beperken** — en gaf bovendien de
+    stand `due` weg aan een groep die de begunstigde niet is, en `due` betekent
+    "de streefdatum niet gehaald". Dat is precies het schaamtemoment waar
+    domeinregel 7 voor bestaat. Zelfde vorm en zelfde reden als
+    `getuigenissen()` (0169). Wil je de tekst zélf ooit delen, dan is dat een
+    eigen besluit onder grens 1 en niet iets dat een policy erbij geeft.
+
+    ⚠️ **Wat die verruiming verder níet is.** Geen verruiming van
+    `commitment_zichtbaar_voor_groep()` — die lijst gaat over de **begunstigde**
+    groep en blijft `unlocked, due, resolved`. Geen oppervlak dat op
+    `groups.zichtbaarheid` varieert: een beschermde groep die gevraagd wordt,
+    weet het óók. Geen oppervlak dat je overkomt: de eigenaar leest vóór de
+    verzendknop wat er opengaat en wat niet. En geen oppervlak zonder randen —
+    een ingetrokken verzoek telt niet, een ingetrokken straf ook niet,
+    ontkoppelen trekt de toestemming in (en sluit dan óók de goedkeurknop, niet
+    alleen de waarschuwing), en de bit leeft nooit langer dan het doel waar hij
+    over gaat. Onderbouwing in
+    `docs/decisions/2026-09-08-de-groepsroute-is-geen-uitweg.md`, rij 31 in
+    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+
 ## Emoji — vastgelegd 22-08-2026 (QS8-111)
 
 **De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,
@@ -521,6 +554,15 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    zonder kapot onderdeel, en dus de variant die geen enkele test vindt. Vraag bij
    een feature die "klaar" heet: kan een gebruiker hier daadwerkelijk bij, en langs
    welke knop?
+
+   ⚠️ **Voor schermen is dit sinds 09-09-2026 een controle** (QS8-383):
+   `npm run schermingang:controle` wordt rood zodra een route in `app/` nergens
+   vandaan geopend wordt. Aanleiding is dat `/doel/plan` — de kérn van een
+   Urgent epic — af en gemerged in de codebase lag terwijl beide knoppen nog naar
+   het formulier wezen dat dat epic juist wilde wegnemen. `keten:controle` dekt
+   deze klasse niet: die kijkt naar databasefuncties zonder aanroeper, één laag
+   lager. Een route die er met reden geen ingang heeft, staat met zijn meting in
+   `ZONDER_PUSH` in dat script — en dat register is smal bedoeld.
 6. **Tilt deze feature een aanname van "er is er altijd precies één" naar "er
    kunnen er meer zijn"?** Dan staat de fout er waarschijnlijk al en heeft niemand
    hem kunnen zien — er is dan geen test die de belofte kón raken. Grep op `[0]`,

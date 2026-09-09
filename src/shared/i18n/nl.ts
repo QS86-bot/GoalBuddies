@@ -623,6 +623,18 @@ export const nl = {
   'deadlineverzoek.toch_niet': 'Toch niet',
   'deadlineverzoek.akkoord': 'Akkoord',
   'deadlineverzoek.liever_niet': 'Liever niet',
+  // ⚠️ QS8-370. Nuchter en zonder oordeel over de aanvrager: de zin zegt wat
+  //    er staat en wat je beslissing doet, en verder niets. Geen "let op",
+  //    geen uitroepteken — dit is informatie die je nodig hebt, geen
+  //    waarschuwing tégen de persoon die het vraagt.
+  'deadlineverzoek.straf_staat_erop':
+    'Op dit doel staat een straf die de eigenaar zichzelf heeft opgelegd. Ga je akkoord, '+
+    'dan schuift de datum waarop die verschuldigd wordt mee.',
+  // ⚠️ De derde toestand: onbekend is niet hetzelfde als geen. Zwijgen zou
+  //    hier "er is niets aan de hand" betekenen, en dat mag je niet zeggen als
+  //    je het niet weet.
+  'deadlineverzoek.straf_onbekend':
+    'We konden niet ophalen of er een straf op dit doel staat.',
   'koppel.ontkoppel': 'Niet meer delen met deze groep',
   'koppel.titel': 'Je doel delen met deze groep',
   /**
@@ -814,6 +826,7 @@ export const nl = {
   'doelen.leeg_tekst': 'Begin met één doel met een datum erop. De Doelcoach hakt het daarna in mijlpalen, en die mijlpalen worden je weekdoelen.',
   'doelen.van_totaal': '{aantal} van {totaal} doelen.',
   'doelen.nieuw': 'Nieuw doel',
+  'doelen.zelf_invullen': 'Liever zelf invullen',
   'doelen.meer_laden': 'Meer doelen laden',
   'doelen.doel': 'Doel',
   'doelen.streefdatum': 'Streefdatum {datum}',
@@ -893,6 +906,10 @@ export const nl = {
   'profiel.meldingen_uit_gelukt': 'Meldingen staan uit op dit apparaat.',
   'profiel.meldingen_uit_mislukt': 'Uitzetten lukte niet. Probeer het zo nog eens.',
   'profiel.meldingen_mislukt': 'Aanzetten lukte niet. Probeer het zo nog eens.',
+  'push.geen_websleutels': 'Je browser gaf geen volledige aanmelding door. Zet meldingen opnieuw aan.',
+  'push.te_veel_tokens': 'Je hebt vandaag te veel apparaten aangemeld. Probeer het morgen opnieuw.',
+  'push.niet_ingelogd': 'Je bent niet meer ingelogd. Log opnieuw in en probeer het nog eens.',
+  'push.apparaat_niet_bruikbaar': 'Dit apparaat kon niet worden aangemeld voor meldingen. Probeer het opnieuw of gebruik een ander apparaat.',
   'profiel.meldingen_aan': 'Meldingen staan aan. Je krijgt bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat.',
   'profiel.meldingen_uit': 'Krijg bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat. We vragen je browser eenmalig om toestemming.',
   'profiel.meldingen_geweigerd': 'Je hebt meldingen eerder geweigerd. Dat kan alleen in de instellingen van je browser terug; wij kunnen er niet opnieuw om vragen.',
@@ -1439,6 +1456,7 @@ export const nl = {
   'adempauze.te_lang': 'Een adempauze duurt hoogstens {max} weken.',
   'adempauze.datum_ongeldig': 'Vul een datum in als jjjj-mm-dd.',
   'adempauze.geen_hele_week': 'Kies een hele week, die begint op jouw eigen startdag.',
+  'adempauze.buiten_venster': 'Kies een week binnen een jaar terug of een jaar vooruit.',
   'adempauze.eind_voor_start': 'De einddatum ligt vóór de startdatum.',
   'adempauze.annuleren_mislukt': 'Annuleren lukte niet.',
   'adempauze.al_begonnen': 'Deze adempauze is al begonnen en blijft staan.',
@@ -1608,6 +1626,12 @@ export const nl = {
     'Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op.',
   'deadline.nog_tekens': 'Nog {aantal} tekens te gaan.',
   'deadline.lang_genoeg': 'Lang genoeg.',
+  // ⚠️ QS8-370. Staat vlak boven de verzendknop. Het verzoek opent een
+  //    oppervlak dat niet meer sluit, en dat hoor je te weten vóór je drukt.
+  'deadline.straf_wordt_zichtbaar':
+    'Je groep ziet dat er een straf op dit doel staat zodra je dit verzoek verstuurt, en '+
+    'blijft dat zien zolang je het doel met ze deelt. Wat er in je straf staat, deelt dit '+
+    'verzoek niet.',
   'deadline.versturen': 'Verzoek versturen',
   'deadline.vastleggen': 'Vastleggen',
   'deadline.annuleren': 'Annuleren',
