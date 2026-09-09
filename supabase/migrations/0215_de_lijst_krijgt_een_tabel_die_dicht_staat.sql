@@ -238,6 +238,26 @@ declare v_totaal integer; v_batch integer;
 begin
   if (select auth.uid()) is null then return null; end if;
   select count(*) into v_batch from nieuw;
+  -- ⚠️⚠️ **Een statement dat niets toevoegde, kan het plafond niet doorbroken
+  --    hebben.** Deze trigger is `after insert … for each statement` en vuurt
+  --    óók als de transitietabel leeg is: een `insert … on conflict do nothing`
+  --    die volledig op de conflicttak landt, ís een INSERT-statement. Zonder
+  --    deze regel telt hij dan de tabel en niet de toevoeging, en krijgt een
+  --    gebruiker die al boven zijn plafond staat `23514` op een verzoek dat
+  --    niets schreef. 📏 Dat is op `push_tokens` gemeten en gerepareerd (QS8-369,
+  --    0214): élke herregistratie viel om, met `(0 erbij, 21 in het laatste
+  --    etmaal)` als diagnose in de melding zelf.
+  --
+  -- ⚠️ **Hier is dat pad vandaag niet te bereiken, en de regel staat er tóch.**
+  --    `todo_items` heeft één unieke sleutel — de primaire — en `id` staat niet
+  --    in de INSERT-kolomgrant, dus een client kán geen conflict maken. Maar de
+  --    veertien tellers vóór 0214 dragen deze vorm zonder de regel, en de open
+  --    vraag in `docs/ENGINEER-REVIEW.md` is of hij er overal bij hoort. Voor een
+  --    níeuwe tabel is het antwoord ja: een bekend defect opnieuw neerzetten is
+  --    hoe het zich verspreidt (CLAUDE.md, regel 19 — fouten worden gekopieerd).
+  --    De grendel is geijkt door `id` in een terugrollende transactie tijdelijk
+  --    wél uit te delen; zie `tests/rls/todo-lijst.test.ts`.
+  if v_batch = 0 then return null; end if;
   select count(*) into v_totaal from todo_items t
    where t.user_id = (select auth.uid()) and t.created_at > now() - interval '1 day';
   if v_totaal > taken_plafond() then

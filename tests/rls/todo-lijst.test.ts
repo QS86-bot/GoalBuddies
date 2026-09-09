@@ -70,6 +70,8 @@
  *      -> 'weigert 201 taken in één verzoek — plafond 200'
  *   K  `drop trigger taken_rem on todo_items`
  *      -> 'een verzoek ver boven het plafond loopt op de noodstop, niet op de handhaver'
+ *   L  `if v_batch = 0 then return null; end if;` uit `begrens_taken()`
+ *      -> 'een statement dat niets toevoegt breekt niet op het plafond'
  *
  * ⚠️ De must-allows staan er even hard in. Zonder die is "niemand kan iets met
  *    deze tabel" ook groen, en dan is de hele feature dood in plaats van dicht.
@@ -90,6 +92,9 @@ const TEST_TIMEOUT = 240_000;
 
 /** Zoals in 0215. Staat hier als spiegel; de laatste tests toetsen het gedrag. */
 const TAKEN_PLAFOND = 200;
+
+/** Eén boven het plafond — de opvulling die de grendel van §4 moet voeden. */
+const TAKEN_PLAFOND_PLUS = TAKEN_PLAFOND + 1;
 
 let alice: TestUser;
 let bob: TestUser;
@@ -531,6 +536,77 @@ function metOpenSelect(schrijf: string): string {
 
   return uit.trim();
 }
+
+/**
+ * Zet een gebruiker boven zijn dagplafond, geeft `authenticated` tijdelijk het
+ * kolomrecht op `id`, en laat hem een `on conflict do nothing` doen die volledig
+ * op de conflicttak landt. Rolt alles terug.
+ *
+ * ⚠️ **Zonder die grant is dit pad niet te bereiken**, en dat is precies waarom
+ *    de grendel erin zit: `todo_items` heeft één unieke sleutel en `id` staat
+ *    niet in de INSERT-kolomgrant, dus een client kán vandaag geen conflict
+ *    maken. De regel staat er omdat een níeuwe tabel geen bekend defect hoort te
+ *    kopiëren (QS8-369, 0214) — en een grendel die je niet kunt voeden, kun je
+ *    niet ijken. Deze opstelling voedt hem.
+ */
+function metLegeToevoeging(): string {
+  const uit = psql(`
+    begin;
+    create temp table t as select gen_random_uuid() uid, gen_random_uuid() tid;
+    grant select on t to authenticated;
+    insert into auth.users (id, email) select uid, 'lijst-legebatch@x.nl' from t;
+
+    -- Boven het plafond gezet door een bevoorrechte schrijver: \`auth.uid()\` is
+    -- hier null, dus de teller en de rem nemen allebei hun vroege uitgang.
+    insert into todo_items (user_id, body)
+      select uid, 'opvulling ' || g from t, generate_series(1, ${TAKEN_PLAFOND_PLUS}) g;
+    insert into todo_items (id, user_id, body) select tid, uid, 'bestaat al' from t;
+
+    grant insert (id) on todo_items to authenticated;
+
+    select set_config('request.jwt.claims',
+      json_build_object('sub', uid, 'role', 'authenticated')::text, true) from t;
+
+    do $proef$
+    declare v_uid uuid; v_tid uuid;
+    begin
+      select uid, tid into v_uid, v_tid from t;
+      set local role authenticated;
+      insert into todo_items (id, user_id, body) values (v_tid, v_uid, 'nog een keer')
+        on conflict (id) do nothing;
+      reset role;
+      perform set_config('proef.uitslag', 'GELAND', true);
+    exception when others then
+      reset role;
+      perform set_config('proef.uitslag', 'GEWEIGERD ' || sqlstate, true);
+    end $proef$;
+
+    select current_setting('proef.uitslag');
+    rollback;
+  `)
+    .split('\n')
+    .filter((r) => r.trim() !== '')
+    .at(-1) as string;
+
+  return uit.trim();
+}
+
+describe.skipIf(!stackErbij)('een statement zonder toevoeging telt niet mee', () => {
+  /**
+   * ⚠️ **De must-allow van het dagplafond, en op `push_tokens` was hij het
+   *    defect.** 📏 Daar viel élke herregistratie om zodra een gebruiker boven
+   *    zijn plafond stond, met `(0 erbij, 21 in het laatste etmaal)` als
+   *    diagnose in de melding zelf — de transitietabel wás leeg en de teller
+   *    telde de tabel. Zie de rij van 09-09 in `docs/ENGINEER-REVIEW.md`.
+   */
+  it('een statement dat niets toevoegt breekt niet op het plafond', () => {
+    expect(
+      metLegeToevoeging(),
+      'de gebruiker staat boven zijn plafond en dit verzoek schreef nul rijen; ' +
+        'dan hoort er geen 23514 te komen',
+    ).toBe('GELAND');
+  }, 60_000);
+});
 
 describe.skipIf(!stackErbij)('de using-helft van UPDATE en DELETE, apart gemeten', () => {
   it(
