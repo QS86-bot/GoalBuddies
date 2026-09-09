@@ -1,4 +1,4 @@
--- 0208_een_grendel_die_alleen_in_commentaar_staat_is_geen_grendel.sql —
+-- 0221_een_grendel_die_alleen_in_commentaar_staat_is_geen_grendel.sql —
 -- `onveranderlijkheid_bewaking()` leest de code en niet de uitleg erboven (QS8-364)
 --
 -- ROLLBACK-PAD:
@@ -96,7 +96,7 @@ as $function$
                     || s.kolom || '\s+is\s+not\s+null')
   from before_update b
   join set_null s on s.tabel = b.tabel
-  -- Alleen de kolommen die de trigger daadwerkelijk terugzet. Leest sinds 0208
+  -- Alleen de kolommen die de trigger daadwerkelijk terugzet. Leest sinds 0221
   -- dezelfde gestripte bron als de grendeltoets hierboven.
   where b.bron ~* ('new\.' || s.kolom || '\s*:=\s*old\.' || s.kolom)
   order by b.tabel, s.kolom;
