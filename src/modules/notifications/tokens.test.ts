@@ -1,16 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { geenPush, registreerPushToken, zetPushBron, type PushBron } from './tokens';
+import {
+  geenPush,
+  registreerPushToken,
+  verwijderPushToken,
+  zetPushBron,
+  type PushBron,
+} from './tokens';
 
 /**
  * De herregistratie bij elke start — en waarom dat een beveiligingseigenschap is.
  *
  * ⚠️ **Deze test bewaakt een argument, niet een functie.** De bevinding van
  *    21-08-2026 zegt dat wie een pushtoken van een ander kent, dat token naar
- *    zich toe kan trekken: `registreer_push_token()` (migratie 0055) doet
- *    `delete from push_tokens where token = ... and user_id <> auth.uid()` en
- *    zet hem daarna op de aanroeper. Dat moet ook — zonder die overname blijft
- *    de vorige gebruiker van een gedeeld apparaat meldingen krijgen.
+ *    zich toe kan trekken: `registreer_push_token()` zet de rij om naar de
+ *    aanroeper. Dat moet ook — zonder die overname blijft de vorige gebruiker
+ *    van een gedeeld apparaat meldingen krijgen.
+ *
+ * ⚠️ **Hier stond het mechanisme erbij, en dat was per 0211 een verwijzing naar
+ *    een regel die er niet meer is** (QS8-367). Het luidde
+ *    `delete from push_tokens where token = ... and user_id <> auth.uid()`. Die
+ *    `delete` is weg; het overnamemechanisme is de
+ *    `on conflict (token) do update set user_id = excluded.user_id` van de
+ *    insert, en dat was het al — de `delete` deed er niets naast. Zie
+ *    `docs/decisions/2026-09-08-een-tweede-mechanisme-is-geen-slot.md`.
+ *
+ *    **De les van QS8-367 in het klein, één laag hoger:** dit commentaar draagt
+ *    het beveiligingsargument, en het noemde een grendel die er niet was. Noem
+ *    hier dus de belofte en niet de regel — regels verhuizen, beloftes niet.
  *
  * ⚠️ **Wat de bevinding niet zei, en op 27-08 is nagemeten: de kaping heelt
  *    zichzelf.** `Pushwacht` in `app/_layout.tsx` roept `registreerPushToken()`
@@ -27,6 +44,7 @@ import { geenPush, registreerPushToken, zetPushBron, type PushBron } from './tok
  */
 
 const RPC = vi.fn();
+const VERWIJDERD = vi.fn();
 
 vi.mock('../../lib/supabase', () => ({
   supabase: () => ({
@@ -34,6 +52,14 @@ vi.mock('../../lib/supabase', () => ({
       RPC(naam, argumenten);
       return Promise.resolve({ data: { ok: true }, error: null });
     },
+    from: (tabel: string) => ({
+      delete: () => ({
+        eq: (kolom: string, waarde: unknown) => {
+          VERWIJDERD(tabel, kolom, waarde);
+          return Promise.resolve({ error: null });
+        },
+      }),
+    }),
   }),
 }));
 
@@ -54,6 +80,7 @@ const zelfdeWebtoken: PushBron = {
 
 beforeEach(() => {
   RPC.mockClear();
+  VERWIJDERD.mockClear();
 });
 
 afterEach(() => {
@@ -113,5 +140,75 @@ describe('registreerPushToken', () => {
 
     await expect(registreerPushToken('gebruiker-1')).resolves.toBeUndefined();
     expect(RPC).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * De andere kant van QS8-367: de `delete` bij uitloggen moet trimmen zoals de
+ * RPC trimt, anders raakt hij nul rijen en blijft de vorige gebruiker van een
+ * gedeeld apparaat meldingen krijgen — zonder `error` en dus zonder spoor.
+ *
+ * ⚠️ **Dit toetst de belofte en niet de regel.** Wat er moet gelden is "de
+ *    waarde die de delete meestuurt, is dezelfde waarde die de RPC wegschrijft".
+ *    Daarom staan de twee aanroepen in één test naast elkaar en vergelijkt de
+ *    assertie ze met elkaar, in plaats van allebei met een letterlijke string.
+ *    Verandert de normalisatie ooit aan één kant, dan wordt dit rood — ook als
+ *    iemand hier een nieuwe letterlijke waarde zou invullen.
+ */
+describe('verwijderPushToken', () => {
+  /** Een bron met spaties eromheen, zoals een slordige native-integratie geeft. */
+  const metSpaties: PushBron = {
+    haalToken: () =>
+      Promise.resolve({
+        token: '  ExponentPushToken[uitloggen]  ',
+        platform: 'ios' as const,
+      }),
+  };
+
+  it('verwijdert de rij die de registratie wegschreef, spaties of niet', async () => {
+    zetPushBron(metSpaties);
+
+    await registreerPushToken('gebruiker-die-uitlogt');
+    await verwijderPushToken();
+
+    const [, argumenten] = RPC.mock.calls[0] as [string, { p_token: string }];
+    const [tabel, kolom, waarde] = VERWIJDERD.mock.calls[0] as [string, string, string];
+
+    expect(tabel).toBe('push_tokens');
+    expect(kolom).toBe('token');
+
+    // ⚠️ De database schrijft `trim(p_token)` weg en `push_tokens_token_getrimd`
+    //    dwingt dat af. De delete moet dus op díé waarde matchen — niet op wat
+    //    het apparaat toevallig teruggaf.
+    expect(waarde).toBe(argumenten.p_token.trim());
+    expect(waarde).toBe('ExponentPushToken[uitloggen]');
+  });
+
+  it('strookt alleen spaties, want dat is wat Postgres strookt', async () => {
+    // ⚠️ `String.prototype.trim()` haalt ook tabs en regeleindes weg; Postgres'
+    //    `trim()` niet. Ruimer strooken bouwt de asymmetrie terug die QS8-367
+    //    wegnam, alleen aan de andere kant. Zo'n token komt de tabel overigens
+    //    niet in — `is_expo_pushtoken()` sluit `[:space:]` uit — maar de
+    //    normalisatie hier hoort die van de database te zijn en niet ruimer.
+    zetPushBron({
+      haalToken: () =>
+        Promise.resolve({
+          token: ' \tExponentPushToken[tab]\t ',
+          platform: 'ios' as const,
+        }),
+    });
+
+    await verwijderPushToken();
+
+    const [, , waarde] = VERWIJDERD.mock.calls[0] as [string, string, string];
+    expect(waarde).toBe('\tExponentPushToken[tab]\t');
+  });
+
+  it('doet geen verzoek als het apparaat geen token heeft', async () => {
+    zetPushBron(geenPush);
+
+    await verwijderPushToken();
+
+    expect(VERWIJDERD).not.toHaveBeenCalled();
   });
 });
