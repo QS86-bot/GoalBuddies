@@ -84,6 +84,42 @@ tweede is er zodat de nullen in de eerste iets betekenen.
 (`completions_attachment_url_idx`): hij draait op het leespad van élke
 ondertekening.
 
+### 2a. ⚠️⚠️ Dezelfde overerving werkt óók de andere kant op — A41
+
+**Dit stond hier eerst niet, en de eerste versie van dit document beweerde het
+tegenovergestelde.** Er stond in dossier 002 bij rij 33: *"`completions_select`
+heeft géén open-groepstak, dus een open groep krijgt hier niets extra's."*
+
+Dat is dezelfde denkfout als §2 hierboven repareert, één laag hoger. Als
+`completions_select` het **statusfilter** erft van `weekly_goals_select`, dan erft
+hij ook de **open-groepstak** — het is één en dezelfde subquery.
+
+📏 Gemeten met dezelfde kijker, hetzelfde doel en dezelfde **gemiste** week, en
+alleen `groups.zichtbaarheid` omgezet:
+
+```
+BESCHERMD  Eve: weekdoel=0  voltooiing=0  OBJECT=0
+OPEN       Eve: weekdoel=1  voltooiing=1  OBJECT=1
+```
+
+⚠️ **Het gedrag is juist en het is geen lek.** Een open groep ziet tegenslag —
+dat is besluit A41, en het is de hele reden dat die stand bestaat. En het object
+is nergens ruimer dan de rij: het erft precies dezelfde tak, wat is wat §2
+belooft.
+
+⚠️ **Wat wél fout was, is dat het nergens als besluit stond.** CLAUDE.md is
+expliciet: *"Voor élk níeuw oppervlak is beschermd het antwoord tot iemand het
+tegendeel besluit."* Hier was "open ziet het ook" een **erfenis** en geen keuze,
+en het register waar de volgende lezer op afgaat zei het omgekeerde. Dat is
+precies de klasse fout die dit dossier bestaat om te voorkomen.
+
+⚠️ **En geen enkele controle kón het vinden.** `zichtbaarheid:controle` zoekt
+tekstueel naar `open_groep` of `zichtbaarheid` in policies en functielichamen;
+`bewijsfotos_select` noemt geen van beide — hij erft ze via twee lagen.
+**Een geërfde verruiming is voor een grep onzichtbaar.** Vandaar dat
+`tests/rls/een-bewijsfoto-volgt-zijn-voltooiing.test.ts` er sinds 09-09 een
+must-allow én een must-deny op draagt: die toetst het gedrag en niet de tekst.
+
 ### 2a. De eigenaarstak is geen `or`-gat
 
 `(storage.foldername(name))[2] = auth.uid()` staat erbij, want tussen de upload

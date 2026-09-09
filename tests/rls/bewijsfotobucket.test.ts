@@ -255,6 +255,75 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
       });
     });
 
+    it('telt een object dat de bucket in verhuisd wordt ook mee', () => {
+      // ⚠️⚠️ **Gevonden in de securityronde op QS8-391.** Met een trigger die
+      //    alleen op INSERT vuurt, parkeer je objecten in een andere bucket en
+      //    zet je ze daarna met één `update` om. 📏 Gemeten vóór de reparatie:
+      //    **veertig objecten bij een plafond van tien**, en dat getal is
+      //    willekeurig op te schroeven. Eén gebruiker kon zo de gratis tier
+      //    vullen die het hele project deelt.
+      const eigen = randomUUID();
+      psql(
+        `insert into auth.users (id, email) values ('${eigen}', '${eigen}@verhuis.local')
+         on conflict (id) do nothing`,
+      );
+      const eigenDoel = psql(
+        `insert into public.goals (owner_id, title, target_date)
+         values ('${eigen}', 'Verhuisdoel', current_date + 30) returning id`,
+      );
+      const eigenWeek = psql(
+        `insert into public.weekly_goals (goal_id, title, cycle_start_date)
+         values ('${eigenDoel}', 'Verhuisweek', current_date) returning id`,
+      );
+
+      // Het plafond vol maken, en er daarna eentje omheen proberen te schuiven.
+      for (let i = 0; i < 10; i += 1) {
+        psql(
+          `insert into storage.objects (bucket_id, name, owner)
+           values ('bewijsfotos', '${eigenWeek}/${eigen}/vol${i}.jpg', '${eigen}')`,
+        );
+      }
+      psql(
+        `insert into storage.buckets (id, name, public) values ('verhuisstop', 'verhuisstop', false)
+         on conflict (id) do nothing`,
+      );
+      psql(
+        `insert into storage.objects (bucket_id, name, owner)
+         values ('verhuisstop', 'geparkeerd.jpg', '${eigen}')`,
+      );
+
+      let verhuizing = 'OK';
+      try {
+        psql(
+          `update storage.objects
+              set bucket_id = 'bewijsfotos', name = '${eigenWeek}/${eigen}/verhuisd.jpg'
+            where bucket_id = 'verhuisstop' and name = 'geparkeerd.jpg'`,
+        );
+      } catch (fout) {
+        const tekst = fout instanceof Error ? fout.message : String(fout);
+        verhuizing = /Te veel bewijsfoto/.test(tekst) ? '23514' : 'ANDERE_FOUT';
+      }
+
+      // ⚠️ En een gewone update bínnen de bucket moet er wél doorheen — anders
+      //    breekt het metadata-onderhoud van de storage-dienst na elke upload.
+      let binnen = 'OK';
+      try {
+        psql(
+          `update storage.objects set owner = '${eigen}'
+            where bucket_id = 'bewijsfotos' and name = '${eigenWeek}/${eigen}/vol0.jpg'`,
+        );
+      } catch {
+        binnen = 'GEWEIGERD';
+      }
+
+      psql(`delete from storage.objects where name like '${eigenWeek}/%' or bucket_id = 'verhuisstop'`);
+      psql(`delete from storage.buckets where id = 'verhuisstop'`);
+      psql(`delete from public.goals where id = '${eigenDoel}'`);
+      psql(`delete from auth.users where id = '${eigen}'`);
+
+      expect({ verhuizing, binnen }).toEqual({ verhuizing: '23514', binnen: 'OK' });
+    });
+
     it('draagt de index waar die telling op leunt', () => {
       // Onwrikbare regel 11: deze query draait op het schrijfpad van élke upload.
       const idx = psql(

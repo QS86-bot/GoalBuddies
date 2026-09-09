@@ -241,6 +241,53 @@ describe.runIf(beschikbaar)('een bewijsfoto volgt zijn voltooiing', () => {
     });
   });
 
+  it('geeft een open groep hetzelfde als de rij — óók bij een gemiste week (A41)', () => {
+    // ⚠️⚠️ **Gevonden in de securityronde, en het was een fout in het register en
+    //    niet in de policy.** Dossier 002 zei bij dit oppervlak: "een open groep
+    //    krijgt hier niets extra's, want `completions_select` heeft geen
+    //    open-groepstak". Dat is dezelfde denkfout als de definer-versie die
+    //    0227 §3 repareert, één laag hoger: erft `completions_select` het
+    //    statusfilter van `weekly_goals_select`, dan erft hij ook
+    //    `deelt_open_groep_met_doel()` — het is één en dezelfde subquery.
+    //
+    // ⚠️ Het gedrag is juist (A41: een open groep ziet tegenslag) en het object
+    //    is nergens ruimer dan de rij. Wat er ontbrak was dat iemand het besloten
+    //    had. Deze test houdt beide standen naast elkaar, zodat de volgende
+    //    wijziging aan A41 hier langskomt in plaats van langs een grep — en
+    //    `zichtbaarheid:controle` kán dit niet vinden, want deze policy noemt
+    //    `zichtbaarheid` niet: hij erft hem.
+    const eve = randomUUID();
+    psql(
+      `insert into auth.users (id, email) values ('${eve}', '${eve}@open.local')
+       on conflict (id) do nothing`,
+    );
+    psql(
+      `insert into public.group_members (group_id, user_id, role, status)
+       values ('${groepA}', '${eve}', 'member', 'active') on conflict do nothing`,
+    );
+
+    const lees = () =>
+      [
+        als(eve, `select count(*) from public.weekly_goals where id = '${weekGemist}'`),
+        als(eve, `select count(*) from public.completions where attachment_url = '${padGemist}'`),
+        als(eve, `select count(*) from storage.objects where name = '${padGemist}'`),
+      ].join('/');
+
+    const beschermd = lees();
+    psql(`update public.groups set zichtbaarheid = 'open' where id = '${groepA}'`);
+    const open = lees();
+    psql(`update public.groups set zichtbaarheid = 'beschermd' where id = '${groepA}'`);
+
+    psql(`delete from public.group_members where group_id = '${groepA}' and user_id = '${eve}'`);
+    psql(`delete from public.profiles where id = '${eve}'`);
+    psql(`delete from auth.users where id = '${eve}'`);
+
+    // ⚠️ De must-deny (beschermd) en de must-allow (open) staan hier bewust in
+    //    één assertie: uit elkaar getrokken zou een opstelling die volledig stuk
+    //    is als "beschermd houdt" kunnen lezen.
+    expect({ beschermd, open }).toEqual({ beschermd: '0/0/0', open: '1/1/1' });
+  });
+
   it('sluit het object op hetzelfde moment als de rij, zodra het lidmaatschap eindigt', () => {
     // ⚠️ De twee autorisaties mogen niet uit elkaar lopen over tijd. Dat is de
     //    derde reden dat het pad niet op een groep gesleuteld is: een pad ligt

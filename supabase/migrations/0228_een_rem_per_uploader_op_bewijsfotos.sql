@@ -3,6 +3,7 @@
 --
 -- ROLLBACK-PAD:
 --   drop trigger if exists bewijsfotos_aantal_begrensd on storage.objects;
+--   drop trigger if exists bewijsfotos_aantal_begrensd_verhuisd on storage.objects;
 --   drop function if exists public.bewaak_bewijsfoto_aantal();
 --   drop index if exists storage.objects_bewijsfotos_uploader_dag_idx;
 --
@@ -27,6 +28,26 @@
 -- ⚠️ **Het is een trigger en geen policy**, en dat is niet te kiezen: een
 --    subquery op `storage.objects` in een policy óp `storage.objects` geeft
 --    `infinite recursion detected in policy`. Gemeten in 0130.
+--
+-- ⚠️⚠️ **Hij vuurt op INSERT én op een verhuizing de bucket ín, en dat is geen
+--    volledigheidsdrang.** 📏 Gevonden in de securityronde op QS8-391 en zelf
+--    nagemeten: met een trigger die alleen op INSERT vuurt, parkeer je dertig
+--    objecten in een andere bucket en zet je ze daarna met één `update` om —
+--    **veertig objecten bij een plafond van tien**, en dat getal is willekeurig
+--    op te schroeven. Een rij die de bucket ín beweegt is voor de opslag
+--    hetzelfde als een nieuwe rij, dus hij hoort ook langs de teller.
+--
+--    De `when`-clausule houdt hem smal: een gewone `update` binnen de bucket —
+--    de storage-dienst werkt metadata bij na een upload — telt níet mee, want
+--    dan verandert `bucket_id` niet. Alleen het moment van binnenkomen telt.
+--
+-- ⚠️ **Wat deze migratie NIET repareert: wissen zet de teller terug.** 📏 Tien
+--    plaatsen, één wissen, opnieuw plaatsen — dat gaat er doorheen, want de
+--    teller telt de objecten die er *staan* en niet de uploads die er *waren*.
+--    Dat is de vorm van élke dagteller in dit project (`begrens_pushtokens()`,
+--    `bewaak_chatfoto_aantal()`, `bewaak_avatar_aantal()`), dus repareren hoort
+--    op één plek voor alle drie te gebeuren en niet hier alleen — een halve
+--    familie is erger dan een hele. Staat als rij in `docs/ENGINEER-REVIEW.md`.
 --
 -- ⚠️ **De index staat op segment 2 en niet op segment 1**, anders dan die van
 --    0222. Deze teller telt per uploader, en die staat in het tweede segment.
@@ -74,10 +95,27 @@ $$;
 revoke execute on function public.bewaak_bewijsfoto_aantal() from public, anon, authenticated;
 
 drop trigger if exists bewijsfotos_aantal_begrensd on storage.objects;
+drop trigger if exists bewijsfotos_aantal_begrensd_verhuisd on storage.objects;
 
+-- ⚠️ **Twee triggers en één functie, en dat is geen keuze maar een beperking.**
+--    Een `when`-clausule kent `tg_op` niet, en `old` bestaat niet bij een
+--    INSERT. Één trigger voor beide gevallen zou de toets dus in het lichaam
+--    moeten doen, en dan draait de teller óók bij elke metadata-update die de
+--    storage-dienst doet.
 create trigger bewijsfotos_aantal_begrensd
   before insert on storage.objects
   for each row
+  when (new.bucket_id = 'bewijsfotos')
+  execute function public.bewaak_bewijsfoto_aantal();
+
+-- ⚠️ Alleen het moment van binnenkomen: `update of bucket_id` beperkt hem al tot
+--    statements die die kolom aanraken, en de `when` daarbovenop tot de
+--    verhuizingen die er werkelijk een zijn. Een gewone update binnen de bucket
+--    telt dus niet mee.
+create trigger bewijsfotos_aantal_begrensd_verhuisd
+  before update of bucket_id on storage.objects
+  for each row
+  when (new.bucket_id = 'bewijsfotos' and old.bucket_id is distinct from new.bucket_id)
   execute function public.bewaak_bewijsfoto_aantal();
 
 create index if not exists objects_bewijsfotos_uploader_dag_idx
