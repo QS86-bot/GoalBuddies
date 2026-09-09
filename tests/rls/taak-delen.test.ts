@@ -80,6 +80,8 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      -> 'een groep verwijderen lukt, en de taak valt terug op prive'
  *   N  de CHECK terug naar zijn halve vorm
  *      -> 'een taak kan niet gedeeld heten zonder groep'
+ *   O  de normalisatie terug naar zijn brede vorm (`if new.shared_group_id is null`)
+ *      -> 'een halve deel-actie valt op de CHECK en niet op een stille terugzetting'
  *
  * ⚠️ **J en K zijn twee mutaties op één trigger, en dat is geen dubbeling.**
  *    De eerste toetst dat hij vuurt, de tweede dat hij niet te breed vuurt. Een
@@ -688,6 +690,38 @@ describe.skipIf(!stackErbij)('de pin laat alleen de RPC door', () => {
       `);
 
       expect(uit).toBe('GERAAKT 1');
+    },
+    60_000,
+  );
+
+  /**
+   * ⚠️⚠️ **Een half geschreven deel-actie wordt geweigerd en niet stil
+   *    rechtgezet, en dat is de smalle vorm van de normalisatie.** De brede vorm
+   *    (`if new.shared_group_id is null`) ving twee gevallen: de foreign key die
+   *    een verdwenen groep achterlaat, én een bevoorrechte schrijver die
+   *    `visibility = 'group'` zet zonder groep erbij. Die tweede kreeg dan geen
+   *    fout maar een terugzetting naar `('private', null)` — en dan zijn *"ik
+   *    heb gedeeld"* en *"er is niets gebeurd"* niet uit elkaar te houden.
+   *
+   *    De security-ronde vroeg hier om een `raise warning`; dit is dezelfde
+   *    reparatie een stap verder, want een waarschuwing was ook afgegaan op het
+   *    legitieme pad. Nu normaliseert de trigger alleen wat de foreign key
+   *    achterlaat en loopt de rest door naar de CHECK, die luid weigert.
+   *
+   * ⚠️ De assertie noemt de constraint en niet alleen `23514`: de pin geeft
+   *    datzelfde nummer, en het hele punt is dat hier een ánder slot dichtvalt.
+   */
+  it(
+    'een halve deel-actie valt op de CHECK en niet op een stille terugzetting',
+    () => {
+      const uit = metKolomgrant(`
+        perform set_config('app.taak_gedeeld', v_tid::text, true);
+        update todo_items set visibility = 'group' where id = v_tid;
+      `);
+
+      expect(uit, 'de trigger zette een halve schrijfactie stil recht').toContain(
+        'violates check constraint "todo_items_groep_hoort_bij_gedeeld"',
+      );
     },
     60_000,
   );

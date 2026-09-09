@@ -269,7 +269,22 @@ begin
   --    biconditionaal haalbaar in plaats van dat hij erop stukloopt. Zonder deze
   --    regel is een groepsverwijdering een constraintfout in een tabel die er
   --    niets mee te maken heeft — precies het bezwaar dat §1 citeert.
-  if new.shared_group_id is null then
+  --
+  -- ⚠️⚠️ **`old.shared_group_id is not null` is de smalle vorm, en de brede is
+  --    afgewezen na de security-ronde.** `if new.shared_group_id is null` alleen
+  --    dekt hetzelfde geval én een tweede: een bevoorrechte schrijver — en
+  --    `service_role` hééft de kolomgrant — die `visibility = 'group'` zet
+  --    zonder groep erbij. Die kreeg dan geen fout maar een stille terugzetting
+  --    naar `('private', null)`, en dan zijn *"ik heb gedeeld"* en *"er is niets
+  --    gebeurd"* niet uit elkaar te houden.
+  --
+  --    De smalle vorm normaliseert alleen wat de foreign key achterlaat — een
+  --    groep die er wás en er niet meer is — en laat die tweede doorlopen naar
+  --    `todo_items_groep_hoort_bij_gedeeld`, die luid weigert met de naam van de
+  --    constraint erbij. Stil naar de veilige kant is nog steeds stil, en de
+  --    review vroeg om een `raise warning`; dít is dezelfde reparatie een stap
+  --    verder, want een waarschuwing had ook op het legitieme pad afgegaan.
+  if old.shared_group_id is not null and new.shared_group_id is null then
     new.visibility := 'private';
   end if;
 

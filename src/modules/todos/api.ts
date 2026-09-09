@@ -55,10 +55,28 @@ const KOLOMMEN = 'id, body, done_at, order_index, created_at, visibility, shared
  *    hetzelfde `order_index` niet vastgelegd, en dan springt de lijst tussen
  *    twee ronden.
  *
- * ⚠️ **`eq('user_id', …)` is er voor de index en niet voor de autorisatie.** Die
- *    doet `todo_items_select`. Zonder deze regel leest de query nog steeds
- *    precies jouw rijen, maar dan zonder `todo_items_volgorde_idx` te kunnen
- *    gebruiken. Wie hem ooit weghaalt, verandert de snelheid en niet de grens.
+ * ⚠️⚠️ **`eq('user_id', …)` is dragend, en tot 0220 stond hier het tegendeel.**
+ *    De oude aantekening zei *"er voor de index en niet voor de autorisatie —
+ *    wie hem ooit weghaalt, verandert de snelheid en niet de grens."* Dat klopte
+ *    zolang `todo_items` eigenaar-only was; sinds De Lijst deelbaar is, geeft
+ *    `todo_items_select` je óók de gedeelde taken van je groepsgenoten.
+ *
+ * 📏 Gemeten als Bob, zonder deze filter: `ALICE deelt dit | bob eigen taak`.
+ *    Weghalen zet dus andermans taken tússen je eigen taken, telt ze mee in
+ *    `count: 'exact'` — waarmee de paginering scheefloopt — en laat
+ *    `verzetTaak()` op een buurtaak van een ánder mikken.
+ *
+ * ⚠️ De grens die `todo_items_select` trekt is een **ándere** dan deze: die zegt
+ *    *wat je mag lezen* (je eigen rijen plus de gedeelde rijen van je
+ *    groepsgenoten), deze zegt *wat op jouw lijst hoort*. De policy kan die
+ *    tweede niet trekken — hij weet niet welk scherm het vraagt. `todo_items_
+ *    volgorde_idx` bedient hem daarnaast nog steeds; dat was en blijft waar.
+ *
+ *    Onder test: 'haalt precies de taken van de opgegeven gebruiker op'.
+ *    Gevonden door de security-ronde op QS8-381, en het is de klasse van
+ *    onwrikbare regel 18 vraag 4 met de wereld eronder verschoven in plaats van
+ *    de code: een aantekening die een grendel *ontkracht* is gevaarlijker dan
+ *    geen aantekening, want zij is precies wat iemand overtuigt hem weg te halen.
  */
 export async function fetchTaken(
   userId: string,

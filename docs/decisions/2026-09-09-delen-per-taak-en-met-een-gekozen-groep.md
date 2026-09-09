@@ -152,6 +152,19 @@ terug naar `private`, en een BEFORE ROW-trigger draait vóór de constraint. Wat
 halve vorm toeliet was `('group', null)` — een taak die zégt gedeeld te zijn
 terwijl er niemand meeleest. De policy sloot die netjes af, het scherm niet.
 
+⚠️⚠️ **En die normalisatie is smal en niet breed, en dat verschil komt uit de
+tweede security-ronde.** `if new.shared_group_id is null` dekte twee gevallen:
+de foreign key die een verdwenen groep achterlaat, én een bevoorrechte schrijver
+— `service_role` hééft de kolomgrant — die `visibility = 'group'` zet zonder
+groep erbij. Die tweede kreeg dan geen fout maar een stille terugzetting, en dan
+zijn *"ik heb gedeeld"* en *"er is niets gebeurd"* niet uit elkaar te houden. De
+vorm is nu `old.shared_group_id is not null and new.shared_group_id is null`: hij
+normaliseert alleen wat de foreign key achterlaat, en de rest loopt door naar de
+CHECK. 📏 Gemeten: `GEWEIGERD 23514 … violates check constraint
+"todo_items_groep_hoort_bij_gedeeld"`. De review vroeg om een `raise warning`;
+dit is dezelfde reparatie een stap verder, want een waarschuwing was ook afgegaan
+op het legitieme pad.
+
 ## 6. Wat er onderweg gemeten en gerepareerd is
 
 **De pin blokkeerde de foreign key.** 📏 Gevonden doordat het opruimen van de
@@ -187,6 +200,21 @@ altijd `true`) weigerde de CHECK het halve dichtdoen met precies datzelfde
 nummer, dus een assertie op `sqlstate` alleen bleef groen met een volledig
 kapotte pin. De uitslag draagt nu de melding erbij, en die is van niemand anders
 dan de pin.
+
+**Een aantekening bij een grendel was onwaar geworden, en dat is gevaarlijker dan
+geen aantekening.** Bij `fetchTaken()` stond *"`eq('user_id', …)` is er voor de
+index en niet voor de autorisatie — wie hem ooit weghaalt, verandert de snelheid
+en niet de grens."* Dat klopte zolang `todo_items` eigenaar-only was; sinds deze
+migratie geeft `todo_items_select` je óók de gedeelde taken van je groepsgenoten.
+📏 Gemeten als Bob zonder die filter: `ALICE deelt dit | bob eigen taak`.
+
+⚠️ **Dit is regel 18 vraag 4 met de wereld eronder verschoven in plaats van de
+code.** De zin verhuisde niet en de test verhuisde niet; wat veranderde was
+waaróm de regel eronder er stond. En de zin was precies het argument dat iemand
+bij een refactor zou overtuigen hem weg te halen — waarna andermans taken tússen
+je eigen taken staan, `count: 'exact'` ze meetelt en `verzetTaak()` op een
+buurtaak van een ánder mikt. Er staat nu een test op ('haalt precies de taken van
+de opgegeven gebruiker op'), want een gecorrigeerde zin is nog steeds een zin.
 
 **De belofte op het scherm was onwaar geworden.** `lijst.prive_uitleg` zei
 *"niemand in je groep ziet je taken. Delen kan nog niet"* — waar op de dag dat
