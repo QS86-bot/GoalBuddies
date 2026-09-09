@@ -34,6 +34,17 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
+/** De laatste regel van een psql-uitvoer, ontdaan van lege regels. */
+function laatsteRegel(uit: string): string {
+  return (
+    uit
+      .split('\n')
+      .map((regel) => regel.trim())
+      .filter((regel) => regel !== '')
+      .at(-1) ?? ''
+  );
+}
+
 /** Zeldzaam genoeg om een `like`-treffer eenduidig te maken. */
 const NAAM = 'ZeldzameNaamAlice';
 
@@ -145,31 +156,92 @@ describe.skipIf(!beschikbaar)('de naam van een vertrokken lid staat niet in de b
     expect(naam, 'het scherm kan de naam niet meer tonen van iemand die er nog is').toBe(NAAM);
   }, 120_000);
 
-  it('geen enkele functie bouwt nog een berichttekst uit een weergavenaam', () => {
-    // ⚠️⚠️ **Dit is de grendel die de vólgende functie vangt.** Het issue noemde
-    //    vijf functies; 📏 een scan over `pg_proc.prosrc` gaf er acht — twee in
-    //    `meld_commitment()` en één in `vraag_deadline_verschuiving()` stonden er
-    //    niet bij, en `trek_goedkeuring_in()` bouwde de zin zelfs opnieuw op om
-    //    er een bericht mee terug te zoeken. Een lijst in een issue is geen
-    //    dekking; deze toets is dat wel.
+  it('vijf gebeurtenissen op rij, en in geen enkele body staat de naam', () => {
+    // ⚠️⚠️ **Hier stond een scan op `weergavenaam(`, en die bewaakte de verkeerde
+    //    kant.** 📏 De security-ronde brak hem met twee mutaties die er allebei
+    //    ongemerkt langs kwamen: `select display_name into v_naam from profiles`
+    //    gevolgd door `v_naam || ' doet mee.'`, en `weergavenaam (x)` met een
+    //    spatie voor het haakje. Erger nog: `weergavenaam()` heeft sinds 0213
+    //    **nul** aanroepers, dus de volgende schrijver grijpt er sowieso niet
+    //    naar. Een scan op een dode functie bewaakt niets — regel 18 vraag 2.
     //
-    // ⚠️ **Commentaar wordt eruit gestript, en dat is geen slordigheid maar een
-    //    besluit.** 0213 schrijft in `trek_goedkeuring_in()` op wat er wég is
-    //    ("hier stond `weergavenaam(approver) || …`"), en dat is documentatie en
-    //    geen aanroep. Zelfde vorm en zelfde reden als de `paused`-scan in
-    //    `pauze-bestaat-niet.test.ts`.
-    const treffers = psql(
-      `select coalesce(string_agg(p.proname, ', ' order by p.proname), '')
-         from pg_proc p
-         join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname = 'public'
-          and regexp_replace(p.prosrc, '--[^\\n]*', '', 'g') like '%weergavenaam(%'`,
-    ).trim();
+    // ⚠️ **Een scan op de vórm werkt hier ook niet.** 📏 Geprobeerd: "een plaatser
+    //    mag zijn tekst niet samenstellen" vlagt elf functies, want `||` wordt
+    //    net zo goed gebruikt voor een jsonb-foutenlijst of een getal. Een
+    //    controle met elf uitzonderingen is een lijst en geen grendel.
+    //
+    // **Dus toetst dit de belofte op echte rijen:** lok vijf gebeurtenissen uit
+    // met één zeldzame naam in de groep, en kijk of die naam ergens in een body
+    // opduikt. Hoe de naam er zou komen doet er niet toe — via `weergavenaam()`,
+    // via een eigen select of via een derde manier die nog niet bedacht is.
+    //
+    // ⚠️ **Wat dit níét dekt, en dat hoort erbij:** `commitment_due`,
+    //    `commitment_unlocked` en `deadline_requested`. Die vragen een commitment-
+    //    of deadline-opstelling; ze staan als rij in `docs/ENGINEER-REVIEW.md`.
+    //    De andere zeven gebeurtenissen uit de CHECK dragen geen persoon.
+    const gevonden = laatsteRegel(
+      psql(`
+        begin;
+        create temp table r (alice uuid, bob uuid, gid uuid, goal uuid, wg uuid,
+                             comp uuid, mijl uuid);
+        grant select, insert, update on r to authenticated;
+        insert into r (alice, bob) values (
+          shim_maak_gebruiker('vijf-alice@proef.test', '${NAAM}'),
+          shim_maak_gebruiker('vijf-bob@proef.test', 'Bob'));
 
-    expect(
-      treffers,
-      `deze functies bouwen nog tekst uit een weergavenaam: ${treffers}`,
-    ).toBe('');
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select bob from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        update r set gid = ((create_group('Vijfgroep', 0::smallint) -> 'group' ->> 'id'))::uuid;
+        reset role;
+
+        -- 1. member_joined
+        insert into group_members (group_id, user_id, role, status)
+          select gid, alice, 'member', 'active' from r;
+
+        insert into goals (owner_id, title, target_date)
+          select alice, 'Doel van Alice', current_date + 90 from r;
+        update r set goal = (select id from goals where owner_id = (select alice from r) limit 1);
+        insert into goal_group_links (goal_id, group_id) select goal, gid from r;
+
+        insert into weekly_goals (goal_id, title, cycle_start_date)
+          select goal, 'Week', date_trunc('week', current_date)::date from r;
+        update r set wg = (select id from weekly_goals where goal_id = (select goal from r) limit 1);
+
+        -- 2. completion_pending
+        insert into completions (weekly_goal_id, user_id, achieved_level, note)
+          select wg, alice, 'ceiling', 'af' from r;
+        update r set comp = (select id from completions
+                              where weekly_goal_id = (select wg from r) limit 1);
+
+        -- 3. completion_approved
+        insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+          select comp, bob, alice, gid, 'approved' from r;
+
+        -- 4. milestone_done
+        insert into milestones (goal_id, title, order_index)
+          select goal, 'Mijlpaal', 1 from r;
+        update r set mijl = (select id from milestones where goal_id = (select goal from r) limit 1);
+        update milestones set status = 'done' where id = (select mijl from r);
+
+        -- 5. goal_completed
+        update goals set status = 'completed' where id = (select goal from r);
+
+        select (select count(*) from chat_messages
+                 where group_id = (select gid from r) and type = 'system')
+               || ' berichten, naam gevonden in ' ||
+               (select count(*) from chat_messages
+                 where group_id = (select gid from r) and body like '%${NAAM}%')
+               || ' ervan';
+        rollback;
+      `),
+    );
+
+    // ⚠️ Eerst dat er iets te toetsen viel: nul berichten zou hier ook "geen naam
+    //    gevonden" opleveren, en dan bewaakt deze test niets.
+    const aantal = Number(gevonden.split(' ')[0]);
+    expect(aantal, `er zijn geen systeemberichten geplaatst: ${gevonden}`).toBeGreaterThanOrEqual(4);
+    expect(gevonden, `de naam staat in een body: ${gevonden}`).toContain('in 0 ervan');
   }, 120_000);
 });
 
@@ -278,6 +350,104 @@ describe.skipIf(!beschikbaar)('een ingetrokken bevestiging neemt haar bericht me
     //    bevestiging blijft staan.
     expect(berichten, 'de ingetrokken bevestiging liet haar bericht staan').toBe(1);
     expect(hoortBijDeEerste, 'het verkeerde bericht is weggehaald').toBe(true);
+  }, 120_000);
+});
+
+/**
+ * Een intrekking raakt alleen het bericht van de intrekker zelf — QS8-372,
+ * migratie 0213, tweede ronde.
+ *
+ * ⚠️⚠️ **Dit is de correctie uit de security-ronde op deze branch, en het is de
+ *    reden dat de sleutel een páár is.** De zin die 0213 weghaalt codeerde
+ *    **twee** dingen: de voltooiing én de beoordelaar, want zijn naam stond erin.
+ *    `completion_id` alleen codeert het eerste — en `completion_approvals_one_vote`
+ *    is `unique (completion_id, approver_id)`, dus bij een drempel boven één
+ *    bevestigen meerdere mensen dezelfde voltooiing en plaatst `meld_goedkeuring()`
+ *    per bevestiging een bericht.
+ *
+ * 📏 Zonder `actor_id` gaat dat twee kanten op fout, allebei nagespeeld — en
+ *    allebei waren ze vóór 0213 correct:
+ *      * Alice trekt haar eigen bevestiging in en wist het bericht van Carol,
+ *        wiens bevestiging geldig blijft. Dit draait `security definer`, dus
+ *        langs `chat_messages_delete` (`sender_id = auth.uid()`) heen.
+ *      * Bij drie beoordelaars blijven er twee berichten staan die zeggen dat een
+ *        week bevestigd is, terwijl de week op `pending` staat.
+ */
+describe.skipIf(!beschikbaar)('een intrekking raakt alleen het eigen bericht', () => {
+  /** Drempel twee. Alice bevestigt eerst, Carol haalt de drempel en plaatst het bericht. */
+  function alicetrektInNaCarol(): string {
+    return laatsteRegel(
+      psql(`
+        begin;
+        create temp table r (bob uuid, alice uuid, carol uuid, gid uuid, goal uuid,
+                             wg uuid, comp uuid, aAlice uuid);
+        grant select, insert, update on r to authenticated;
+        insert into r (bob, alice, carol) values (
+          shim_maak_gebruiker('paar-bob@proef.test', 'Bob'),
+          shim_maak_gebruiker('paar-alice@proef.test', 'Alice'),
+          shim_maak_gebruiker('paar-carol@proef.test', 'Carol'));
+
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select bob from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        update r set gid = ((create_group('Paargroep', 0::smallint) -> 'group' ->> 'id'))::uuid;
+        insert into goals (owner_id, title, target_date)
+          select bob, 'Bobdoel', current_date + 90 from r;
+        update r set goal = (select id from goals where owner_id = (select bob from r) limit 1);
+        reset role;
+
+        -- De drempel op twee: dit hele geval bestaat alleen boven één.
+        update groups set approval_rule = 'quorum', approval_quorum = 2
+         where id = (select gid from r);
+        insert into group_members (group_id, user_id, role, status)
+          select gid, alice, 'member', 'active' from r;
+        insert into group_members (group_id, user_id, role, status)
+          select gid, carol, 'member', 'active' from r;
+        insert into goal_group_links (goal_id, group_id) select goal, gid from r;
+
+        insert into weekly_goals (goal_id, title, cycle_start_date)
+          select goal, 'Week', date_trunc('week', current_date)::date from r;
+        update r set wg = (select id from weekly_goals where goal_id = (select goal from r) limit 1);
+        insert into completions (weekly_goal_id, user_id, achieved_level, note)
+          select wg, bob, 'ceiling', 'af' from r;
+        update r set comp = (select id from completions
+                              where weekly_goal_id = (select wg from r) limit 1);
+
+        insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+          select comp, alice, bob, gid, 'approved' from r;
+        update r set aAlice = (select id from completion_approvals
+                                where completion_id = (select comp from r)
+                                  and approver_id = (select alice from r));
+        update completion_approvals set created_at = now() - interval '5 minutes'
+         where id = (select aAlice from r);
+        insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+          select comp, carol, bob, gid, 'approved' from r;
+
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select alice from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        select trek_goedkeuring_in((select aAlice from r));
+        reset role;
+
+        select (select count(*) from chat_messages
+                 where system_event = 'completion_approved' and group_id = (select gid from r))
+               || ' van carol: ' ||
+               coalesce((select (m.actor_id = (select carol from r))::text
+                           from chat_messages m
+                          where m.system_event = 'completion_approved'
+                            and m.group_id = (select gid from r) limit 1), 'geen');
+        rollback;
+      `),
+    );
+  }
+
+  it('wist niet het bericht van een ander wiens bevestiging blijft staan', () => {
+    // 📏 Zonder `and m.actor_id = a.approver_id` staat hier '0 van carol: geen':
+    //    Alice wist het bericht van Carol, en Carols bevestiging is nog geldig.
+    expect(
+      alicetrektInNaCarol(),
+      'de intrekking van Alice raakte het bericht van Carol',
+    ).toBe('1 van carol: true');
   }, 120_000);
 });
 

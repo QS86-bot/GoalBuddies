@@ -191,13 +191,55 @@ daar wordt op gezocht: **1** over, en dat is de andere voltooiing.
 Dat is onwrikbare regel 18 vraag 6 — *tilt dit een aanname van "er is er altijd
 precies één" naar "er kunnen er meer zijn"?* — en het antwoord was ja.
 
+⚠️⚠️ **En de eerste reparatie was zelf te grof, wat de security-ronde op deze
+branch heeft gemeten.** De zin codeerde **twee** dingen: de voltooiing én de
+beoordelaar, want zijn naam stond erin. `completion_id` codeert alleen het eerste,
+en `completion_approvals_one_vote` is `unique (completion_id, approver_id)` — bij
+een drempel boven één bevestigen dus meerdere mensen dezelfde voltooiing, en
+`meld_goedkeuring()` plaatst per bevestiging een bericht.
+
+📏 Twee gevallen nagespeeld, allebei correct vóór 0213 en allebei stuk met alleen
+`completion_id`:
+
+| Geval | Zonder `actor_id` | Met `actor_id` |
+|---|---|---|
+| Alice trekt in nadat Carol de drempel haalde | Alice wist **Carols** bericht, terwijl Carols bevestiging geldig blijft — en dit draait `security definer`, dus langs `chat_messages_delete` heen | Carols bericht blijft staan |
+| Drie beoordelaars, twee trekken in | **2** berichten blijven staan die zeggen dat de week bevestigd is, terwijl hij op `pending` staat | 1 blijft staan, en die is waar |
+
+De sleutel is dus het **paar**: `payload->>'completion_id'` én `actor_id`. Precies
+de onderscheidende kracht die de zin had, zonder de zin terug te halen.
+
+**De les is niet "completion_id was een slechte keuze".** Het is dat een sleutel
+vervangen betekent dat je nagaat wát de oude codeerde — en een zin met twee namen
+erin codeerde twee dingen, ook al zag hij eruit als één.
+
 ⚠️ Een voltooiing is geen persoon, dus die mag in `payload`. De regel uit 0059 is
 dat er nóóit een **persoon** in gaat: een uuid in jsonb heeft geen foreign key en
 overleeft dus een accountverwijdering. Een `completion_id` cascadeert juist mee.
 
 ⚠️ **Wat het issue niet zag:** het noemde vijf functies; 📏 een scan over
-`pg_proc.prosrc` gaf er acht. Een lijst in een issue is geen dekking — de toets in
-`tests/rls/naam-in-de-body.test.ts` is dat wel, en die vangt de negende.
+`pg_proc.prosrc` gaf er acht. Een lijst in een issue is geen dekking.
+
+⚠️⚠️ **Maar een scan op `weergavenaam(` was dat evenmin**, en dat is de tweede
+correctie uit de security-ronde. 📏 Twee mutaties kwamen er ongemerkt langs: een
+eigen `select display_name into v_naam from profiles` gevolgd door concatenatie,
+en `weergavenaam (x)` met een spatie voor het haakje. En erger: `weergavenaam()`
+heeft sinds 0213 **nul** aanroepers, dus de volgende schrijver grijpt er sowieso
+niet naar — een scan op een dode functie bewaakt niets. Regel 18 vraag 2: dat
+toetste het ónderdeel (welke helper), niet de belofte (geen naam in een body).
+
+📏 Een scan op de **vorm** helpt hier ook niet: "een plaatser stelt zijn tekst niet
+samen" vlagt elf functies, want `||` bouwt net zo goed een jsonb-foutenlijst
+(`maak_seizoensrecaps`) of een getal (`meld_ketting_mijlpaal`). Elf uitzonderingen
+is een lijst, geen grendel.
+
+**Wat er nu staat is een gedragstoets:** lok vijf gebeurtenissen uit met één
+zeldzame naam in de groep en kijk of die naam in een body opduikt. Hoe hij er zou
+komen doet niet ter zake. 📏 Geijkt met precies de mutatie die de scan miste — een
+eigen `select display_name` in `meld_mijlpaal()`, een gebeurtenis die de
+routetests niet voeren — en die wordt nu rood. De drie gebeurtenissen die deze
+toets niet uitlokt (`commitment_due`, `commitment_unlocked`, `deadline_requested`)
+staan als rij in `docs/ENGINEER-REVIEW.md`.
 
 ---
 

@@ -106,30 +106,48 @@
 -- ---------------------------------------------------------------------------
 -- De bestaande voorraad
 -- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Alleen op `system_event` en niet ook op `type`, en dat is een besluit.**
+--    De security-ronde merkte op dat niets die twee aan elkaar bindt: er is geen
+--    CHECK, dus `service_role` kan een rij maken met een `system_event` en een
+--    ander `type`. Zo'n CHECK erbij zetten lag voor de hand — maar 📏 hij botst
+--    met `tests/rls/epic7.test.ts`, dat met opzet een vervalste rij plaatst
+--    (`type = 'text'` mét `system_event = 'chain_milestone'`) om te bewijzen dat
+--    `meld_ketting_mijlpaal()` juist telt óngeacht wat er in de tabel staat. Die
+--    toets is een echte grendel; hem verzwakken voor een nieuwe is een slechte
+--    ruil.
+--
+--    Dus andersom: de opruiming leunt niet op `type`. Dan pakt hij zo'n rij juist
+--    ook mee, en dat is precies wat je wilt als er ergens een oude of vervalste
+--    rij met een naam erin staat.
+--
+-- 📏 Op productie (`wehgocadxehottiiyvsc`) staan 0 rijen in `chat_messages`, dus
+--    daar raakt dit vandaag niets — het is er voor elke andere omgeving en voor
+--    alles wat er tot de uitrol nog bij komt.
 
 update chat_messages set body = 'Een lid heeft een doel afgerond.'
- where type = 'system' and system_event = 'goal_completed';
+ where system_event = 'goal_completed';
 
 update chat_messages set body = 'Een lid doet mee.'
- where type = 'system' and system_event = 'member_joined';
+ where system_event = 'member_joined';
 
 update chat_messages set body = 'Een lid heeft een mijlpaal gehaald.'
- where type = 'system' and system_event = 'milestone_done';
+ where system_event = 'milestone_done';
 
 update chat_messages set body = 'Een lid heeft een week afgerond en wacht op bevestiging.'
- where type = 'system' and system_event = 'completion_pending';
+ where system_event = 'completion_pending';
 
 update chat_messages set body = 'Een lid bevestigde de week van een ander.'
- where type = 'system' and system_event = 'completion_approved';
+ where system_event = 'completion_approved';
 
 update chat_messages set body = 'Een lid heeft een beloning vrijgespeeld.'
- where type = 'system' and system_event = 'commitment_unlocked';
+ where system_event = 'commitment_unlocked';
 
 update chat_messages set body = 'De inzet die een lid zelf heeft ingesteld, is verschuldigd geworden.'
- where type = 'system' and system_event = 'commitment_due';
+ where system_event = 'commitment_due';
 
 update chat_messages set body = 'Een lid vraagt de groep om een streefdatum te verschuiven.'
- where type = 'system' and system_event = 'deadline_requested';
+ where system_event = 'deadline_requested';
 
 -- ---------------------------------------------------------------------------
 -- De acht functies
@@ -601,8 +619,27 @@ begin
   --    bevestigd is terwijl de bevestiging is ingetrokken.
   --
   -- ⚠️ **Een zin is geen sleutel.** Het bericht draagt sinds 0213 de
-  --    `completion_id` in zijn `payload`, en dáár wordt nu op gezocht. Dat is
-  --    exact één rij per voltooiing, ongeacht wat er in de zin staat.
+  --    `completion_id` in zijn `payload`, en dáár wordt op gezocht.
+  --
+  -- ⚠️⚠️ **Plus `actor_id`, en dat is een reparatie uit de security-ronde op deze
+  --    branch.** De zin codeerde twee dingen: de voltooiing én de beoordelaar
+  --    (zijn naam stond erin). `completion_id` codeert alleen het eerste, en
+  --    `completion_approvals_one_vote` is `unique (completion_id, approver_id)` —
+  --    bij een drempel boven één bevestigen dus meerdere mensen dezelfde
+  --    voltooiing, en `meld_goedkeuring()` plaatst een bericht bij élke
+  --    bevestiging die de drempel haalt.
+  --
+  -- 📏 Zonder `actor_id` gaat dat twee kanten op fout, allebei nagespeeld:
+  --      * Alice trekt haar eigen bevestiging in en wist daarmee het bericht van
+  --        Carol, wiens bevestiging gewoon geldig blijft. Dit draait als
+  --        `security definer`, dus langs `chat_messages_delete` heen: een
+  --        gebruiker wist een rij die aan een ander is toegeschreven.
+  --      * Bij drie beoordelaars blijven na het intrekken twéé berichten staan
+  --        die zeggen dat een week bevestigd is, terwijl de week op `pending`
+  --        staat — precies de uitkomst die deze migratie zegt te repareren.
+  --
+  --    De sleutel is dus het paar, net als de zin dat was: `completion_id` uit
+  --    `payload` én `actor_id`. Zie `completion_approvals_one_vote`.
   --
   -- ⚠️ De telling blijft staan en blijft `= 1` eisen: liever een bericht laten
   --    staan dan er twee weghalen. `treffers` is nu wel een bewering die kan
@@ -613,6 +650,7 @@ begin
     and m.type         = 'system'
     and m.system_event = 'completion_approved'
     and m.payload->>'completion_id' = a.completion_id::text
+    and m.actor_id     = a.approver_id
     and m.created_at  >= a.created_at;
 
   if treffers = 1 then
@@ -621,6 +659,7 @@ begin
       and m.type         = 'system'
       and m.system_event = 'completion_approved'
       and m.payload->>'completion_id' = a.completion_id::text
+      and m.actor_id     = a.approver_id
       and m.created_at  >= a.created_at;
   end if;
 
