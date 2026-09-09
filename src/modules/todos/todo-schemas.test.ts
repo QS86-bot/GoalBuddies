@@ -42,14 +42,14 @@ import {
  *      -> 1 rood: 'TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0215'
  *   O  de schema's op `loose()` in plaats van strippend
  *      -> 1 rood: 'laat visibility niet door'
+ *   P  de `refine` op een lege patch weg
+ *      -> 2 rood: 'weigert een patch zonder één veld' en de visibility-patch,
+ *         die op diezelfde weigering leunt
  *   Q  `VOLGORDE_MAX` op 999_999
  *      -> 1 rood: 'VOLGORDE_MAX komt letterlijk uit de CHECK van 0215'
  *   R  `.max(VOLGORDE_MAX)` van `order_index` af
  *      -> 1 rood: 'weigert een volgordenummer boven de grens en laat de grens
  *         zelf door'
- *   P  de `refine` op een lege patch weg
- *      -> 2 rood: 'weigert een patch zonder één veld' en de visibility-patch,
- *         die op diezelfde weigering leunt
  */
 const MIGRATIE = readFileSync(
   'supabase/migrations/0215_de_lijst_krijgt_een_tabel_die_dicht_staat.sql',
