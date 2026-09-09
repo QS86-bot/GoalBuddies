@@ -17,11 +17,29 @@
 > 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
 >
 > **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
-> losse to-do's, getypt of ingesproken, privé of gedeeld. Deel 1 (**QS8-379**,
-> migratie `0219`) is af: de tabel `todo_items`, eigenaar-only, met een
-> dagplafond en een `visibility` die voor geen enkele client schrijfbaar is.
-> **QS8-380** (scherm en spraak) en **QS8-381** (delen) staan open, net als twee
-> beslispunten op QS8-378 die bij Quinten liggen.
+> losse to-do's, getypt of ingesproken, privé of gedeeld. **Alle drie de delen
+> zijn af**: QS8-379 (`0219`, de tabel `todo_items`, eigenaar-only, met een
+> dagplafond en een `visibility` die voor geen enkele client schrijfbaar is),
+> QS8-380 (het vijfde tabblad en het scherm) en QS8-381 (`0220`, delen per taak
+> met één gekozen groep). Quinten heeft op 09-09 beide beslispunten beslist: een
+> vijfde tabblad, en aanvinken **per taak** — bewust niet per lijst.
+>
+> **09-09, punt 0: een grendel hangt aan het feit en niet aan de functies die dat
+> feit vandaag veroorzaken.** Een gedeelde taak leunt op het lidmaatschap van
+> zijn eigenaar, en die bleef staan als het lidmaatschap eindigde: 📏
+> `verwijder_lid()` gaf `{"ok": true}`, het lidmaatschap werd `inactive`, en de
+> beheerder las de taak van het ex-lid gewoon terug. `verwijder_lid()` en
+> `verlaat_groep()` trekken de ándere groepszichtbare oppervlakken van een
+> vertrekker wél in — De Lijst stond niet in die opruiming, want die functies zijn
+> ouder dan zij. ⚠️ De reparatie is een trigger op `group_members` en niet een
+> regel in die twee, om drie redenen die je bij elke volgende opruiming opnieuw
+> hebt: een kaal PATCH-verzoek slaat een RPC over, de twee routes eindigen
+> **verschillend** (`inactive` tegenover een verwijderde rij), en het lichaam van
+> `verlaat_groep()` telt 263 regels — zulke lichamen kopiëren is de val van
+> QS8-358. **Vraag bij elk nieuw groepszichtbaar oppervlak: staat het in de
+> opruiming van een vertrek?** Het zijn er drie: een openstaand
+> `deadline_requests` gaat naar `withdrawn`, de `goal_group_links` van de
+> vertrekker gaan weg, en sinds `0220` sluiten zijn gedeelde taken.
 >
 > **09-09, punt A: een `with check` bevriest de rij, een pin houdt de kolom
 > vast — en dat verschil is een val en geen smaak.** De tweede grendel op
@@ -1944,7 +1962,7 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 | `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
 | `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
 | feature-epics (QS8-200, QS8-230, QS8-252) | opsplitsen in deelissues vóór er iets te bouwen valt |
-| De Lijst (QS8-378 t/m 381) | de parallelle sessie zit erin; QS8-380 leunt op QS8-379 |
+| ~~De Lijst (QS8-378 t/m 381)~~ | ✅ alle drie af op 09-09; alleen QS8-386 (het ongebruikte `body`-schrijfrecht) staat nog open |
 
 **Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
 dat is er niet. Kies bewust één van deze drie:
