@@ -1,5 +1,9 @@
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
+import type { Resultaat } from '../../shared/api';
+import { t } from '../../shared/i18n';
+
+import { pushWeigerMelding } from './push-redenen';
 
 /**
  * Het pushtoken van dit apparaat — EPIC 11, QS8-91.
@@ -98,6 +102,29 @@ export function zetPushBron(nieuw: PushBron): void {
 }
 
 /**
+ * De laatste weigering van een registratie die niemand gevraagd heeft.
+ *
+ * ⚠️⚠️ **Dit bestaat voor de stille weg, en die is de helft van QS8-377.** Bij
+ *    elke start registreert `Pushwacht` opnieuw; daar staat geen gebruiker op te
+ *    wachten en er is geen scherm om iets op te tonen. Een melding bij elke start
+ *    is erger dan geen melding — maar hem wegwerpen is precies de fout die dit
+ *    issue repareert.
+ *
+ *    Dus onthoudt de module hem, en toont het meldingenblok in Profiel hem
+ *    wanneer de gebruiker dáár kijkt. Eén plek, en alleen als er iets te melden
+ *    valt.
+ *
+ * ⚠️ Een geslaagde registratie wist hem. Anders blijft een oude weigering staan
+ *    nadat het probleem verholpen is, en dan liegt het scherm de andere kant op.
+ */
+let laatsteWeigering: string | null = null;
+
+/** De laatste mislukte registratie, of `null` als de laatste poging slaagde. */
+export function laatstePushWeigering(): string | null {
+  return laatsteWeigering;
+}
+
+/**
  * Registreert het token van dit apparaat op de ingelogde gebruiker.
  *
  * ⚠️ Bij elke start opnieuw, en dat is geen verspilling. `push_tokens.token` is
@@ -110,11 +137,14 @@ export function zetPushBron(nieuw: PushBron): void {
  *    hiervan af, en een foutmelding over pushtokens bij het opstarten is voor de
  *    gebruiker betekenisloos.
  */
-export async function registreerPushToken(userId: string): Promise<void> {
+export async function registreerPushToken(userId: string): Promise<Resultaat<true>> {
   void userId;
 
   const gevonden = await bron.haalToken();
-  if (gevonden === null) return;
+  // ⚠️ Geen bron betekent niet "mislukt": op een platform zonder pushbron is er
+  //    niets te registreren en valt er ook niets te melden. Dat is de stille weg
+  //    die stil hoort te blijven.
+  if (gevonden === null) return { ok: true, waarde: true };
 
   // ⚠️ Via een RPC en niet via een upsert, en dat is een correctie op de eerste
   //    opzet — een test haalde hem eruit. De client had insert- en
@@ -149,7 +179,8 @@ export async function registreerPushToken(userId: string): Promise<void> {
 
   if (error) {
     reportError(error, 'push.register', { code: error.code });
-    return;
+    laatsteWeigering = t('push.apparaat_niet_bruikbaar');
+    return { ok: false, melding: laatsteWeigering };
   }
 
   const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
@@ -157,7 +188,18 @@ export async function registreerPushToken(userId: string): Promise<void> {
     // ⚠️ De token zelf gaat níét mee de logboeken in. Hij is geen geheim, maar
     //    hij is wel het adres van een apparaat.
     reportError(new Error(`pushtoken registreren geweigerd: ${uitkomst.reason ?? 'onbekend'}`), 'push.register', {});
+    // ⚠️⚠️ **En hij gaat nu ook terug naar de aanroeper** (QS8-377). Tot hier
+    //    eindigde de functie: `void`, en `Meldingen` zette daarna onvoorwaardelijk
+    //    `stand = 'aan'`. De gebruiker zag dus "meldingen staan aan" terwijl er
+    //    geen token geregistreerd was, en wie later klaagde dat hij niets kreeg,
+    //    kreeg van niemand het antwoord waarom. Regel 16: een error-staat die er
+    //    niet was.
+    laatsteWeigering = pushWeigerMelding(uitkomst.reason);
+    return { ok: false, melding: laatsteWeigering };
   }
+
+  laatsteWeigering = null;
+  return { ok: true, waarde: true };
 }
 
 /**
