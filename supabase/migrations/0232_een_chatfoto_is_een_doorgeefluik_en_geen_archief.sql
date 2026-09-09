@@ -13,7 +13,8 @@
 --   --   exists-tak op chat_messages; bewaak_chatfoto_aantal() terug naar de
 --   --   vorm uit 0226, dus tellend op storage.objects;
 --   --   wis_chatfotos_van_vertrekker() terug naar de vorm uit 0224, dus mét de
---   --   `delete from storage.objects` als eerste stap.
+--   --   `delete from storage.objects` als eerste stap;
+--   --   chatfotos_update terug in de vorm uit 0222.
 --
 -- ⚠️ **Wat een rollback niet terughaalt: de bytes.** Alles wat de opruimpas
 --    inmiddels met `storage.remove()` heeft weggehaald, is weg — er is geen
@@ -101,11 +102,63 @@ create policy chatfotos_select on storage.objects
               then ((storage.foldername(name))[1])::uuid
           end
         )
-    and exists (
-      select 1 from public.chat_messages m
-      where m.attachment_url = storage.objects.name
+    and (
+      exists (
+        select 1 from public.chat_messages m
+        where m.attachment_url = storage.objects.name
+      )
+      -- ⚠️⚠️ **Het eigenaarsbeen is geen verzachting maar een gemeten noodzaak.**
+      --    Postgres past de SELECT-policy óók toe op `delete … where`. Zonder deze
+      --    tak kan de plaatser zijn eigen wees niet meer opruimen, en dan sterven
+      --    allebei de compenserende opruimingen in `chat.ts` — stil, want
+      --    `remove()` geeft geen fout op nul rijen. 📏 Gemeten, dezelfde delete
+      --    als eigenaar: mét de tak `DELETE 1`, zonder `DELETE 0`.
+      --
+      --    Dat maakt de reparatie eróger dan de bug die hij sluit: vóór 0232 was
+      --    de foto na "verwijderen" meteen weg, daarna zou hij tot de volgende
+      --    opruimronde blijven staan — en een ondertekende URL van vóór dat
+      --    moment blijft zijn volle uur werken (`CHATFOTO_GELDIGHEID_S`).
+      --
+      -- ⚠️ Het lek dat de kop noemt, blijft dicht: dat ging over **elk ánder
+      --    lid** dat het bestand opsomde. De plaatser leest hier zijn eigen bytes,
+      --    en die heeft hij zelf gekozen.
+      or (storage.foldername(name))[2] = (select auth.uid())::text
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- 1b. Een chatfoto wordt niet bijgewerkt, dus er is geen UPDATE-recht
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Zonder dit is het plafond van §2 met één vlag te omzeilen.** 📏 Gemeten
+--    als `authenticated`, op een pad dat wél een bericht heeft:
+--
+--      nette upload            -> tellerrijen: 1
+--      50x upsert op dat pad   -> tellerrijen: 1
+--
+--    `insert … on conflict do update` vuurt de BEFORE INSERT-trigger (die slaagt,
+--    want de teller groeit niet mee) maar niet de AFTER **INSERT**-trigger, dus
+--    er komt geen tellerrij bij. `upload(..., { upsert: true })` is dan
+--    ongelimiteerde ingress én egress op een tier die 5 GB per maand meet —
+--    precies de lus die §2 zegt te sluiten.
+--
+-- ⚠️ **De teller óók op UPDATE laten tellen was het alternatief en is het niet
+--    geworden.** Dan zou élke metadata-update van de opslagdienst quota kosten,
+--    en acht downloads zouden je een etmaal buitensluiten. Het onderscheid dat je
+--    daarvoor nodig hebt (`version` verandert wel, `last_accessed_at` niet) is op
+--    de lokale steiger niet te meten: die tabel heeft vijf kolommen. Een grendel
+--    die je niet kunt ijken, is een aanname.
+--
+-- ⚠️ **Het recht had sowieso geen reden.** 📏 Nagelopen in de hele app: alle drie
+--    de buckets uploaden met `upsert: false`, er is geen `.move()` en geen
+--    `.copy()`. `chatfotos_update` stond er sinds 0222 als vorm, niet als
+--    behoefte. Geen recht zonder reden.
+--
+-- ⚠️ Het restrisico staat in `docs/ENGINEER-REVIEW.md`: of de Storage-API bij een
+--    gewone upload of download zélf een rij bijwerkt namens `authenticated`, is
+--    hier niet te meten. Zo ja, dan faalt het versturen zichtbaar en is dit één
+--    regel terug.
+drop policy if exists chatfotos_update on storage.objects;
 
 -- ---------------------------------------------------------------------------
 -- 2. Het plafond telt handelingen en geen voorraad
@@ -160,7 +213,20 @@ declare
   v_groep    text := (storage.foldername(new.name))[1];
   v_uploader text := (storage.foldername(new.name))[2];
 begin
-  if new.bucket_id <> 'chatfotos' or v_groep is null or v_uploader is null then
+  -- ⚠️⚠️ **De uuid-vorm wordt getoetst en niet aangenomen, precies zoals in gat 1
+  --    van 0130.** 📏 Gemeten zonder deze wacht:
+  --      insert … values ('chatfotos','mijnmap/submap/x.jpg');
+  --      ERROR: invalid input syntax for type uuid: "mijnmap"
+  --    Voor `authenticated` is dat pad onbereikbaar — `chatfotos_insert` pint
+  --    beide segmenten — maar alles wat RLS passeert komt er wél langs: de
+  --    Storage-browser in Studio, een script als `service_role`, een latere
+  --    migratie. Een teller die de insert laat omvallen, is erger dan een teller
+  --    die niet telt.
+  if new.bucket_id <> 'chatfotos'
+     or v_groep is null or v_uploader is null
+     or v_groep !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+     or v_uploader !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  then
     return new;
   end if;
 
@@ -186,12 +252,19 @@ create trigger chatfotos_teller
 --    meldingen blijven letterlijk hetzelfde — dit is een reparatie van waaróp
 --    geteld wordt en niet van hoevéél.
 --
--- ⚠️⚠️ **De volgorde binnen dezelfde INSERT is hier gratis.** Beide triggers
---    zijn `after insert for each row`, en Postgres draait ze op alfabetische
---    naam: `chatfotos_plafond` vóór `chatfotos_teller`. De rij van de huidige
---    upload telt dus nog niet mee, precies zoals bij 0226 — daar telde
---    `storage.objects` de nieuwe rij óók al mee omdat de trigger na de insert
---    draait. 📏 Nagemeten: de negende weigert, de achtste niet.
+-- ⚠️⚠️ **De volgorde binnen dezelfde INSERT is hier gratis, maar niet om de reden
+--    die hier eerst stond.** Hier stond dat beide triggers `after insert` zijn en
+--    dat Postgres ze op alfabetische naam draait — dat klopte niet. 📏 Nagemeten
+--    in `pg_trigger`: `chatfotos_aantal_begrensd` is **BEFORE** INSERT (0222) en
+--    `chatfotos_teller` is AFTER INSERT. BEFORE gaat altijd vóór AFTER, dus de
+--    conclusie hield; de reden niet, en die reden is precies waar de omzeilroute
+--    van §1b op leunt. 📏 De uitkomst zelf: de negende weigert, de achtste niet.
+--
+-- ⚠️ **`security definer` en dat is een omgekeerd besluit.** 0222 legde met
+--    zoveel woorden vast dat deze functie invoker bleef ("een definer zou meer
+--    recht uitdelen dan de telling nodig heeft"). Die reden vervalt hier: de
+--    teller staat in een tabel die deny-all is voor élke client, dus een invoker
+--    kan hem niet lezen. `definer_bewaking()` geeft geen bezwaar.
 create or replace function public.bewaak_chatfoto_aantal()
 returns trigger
 language plpgsql

@@ -54,6 +54,17 @@ import { metCors } from '../_shared/cors.ts';
  *    gemist — een trage buddy mag jou geen minpunt bezorgen.
  */
 
+/**
+ * Hoeveel chatfoto's één ronde van de opruimpas maximaal ophaalt — QS8-396.
+ *
+ * ⚠️ Onwrikbare regel 10 in de vorm die hier telt: een ongepagineerde lijst is op
+ *    een job zonder scherm een verzoek dat omvalt op de dag dat het uitmaakt. De
+ *    pas draait elk uur, dus 500 per ronde is 12.000 per dag — ruim boven wat
+ *    deze groepsgroottes kunnen produceren. Wordt hij tóch geraakt, dan meldt de
+ *    functie dat; zie de tak hieronder.
+ */
+const CHATFOTO_PAS_LIMIET = 500;
+
 interface Profiel {
   id: string;
   week_start_day: number;
@@ -705,7 +716,7 @@ async function draaiRollover(auth: string): Promise<Response> {
   let fotosMislukt = 0;
 
   const { data: verlopenFotos, error: verlopenFout } = await db.rpc('verlopen_chatfotos', {
-    p_limiet: 500,
+    p_limiet: CHATFOTO_PAS_LIMIET,
   });
 
   if (verlopenFout) {
@@ -716,6 +727,19 @@ async function draaiRollover(auth: string): Promise<Response> {
     });
   } else {
     const paden = ((verlopenFotos as { pad: string }[] | null) ?? []).map((rij) => rij.pad);
+
+    // ⚠️⚠️ **De aftopping moet zichzelf melden, anders wijst het signaal de
+    //    verkeerde kant op.** Komen er 500 terug, dan waren het er waarschijnlijk
+    //    méér, en groeit de achterstand elk uur: de bewaartermijn wordt dan stil
+    //    onwaar terwijl `fotosOpgeruimd` juist hóóg staat. Zonder deze tak is een
+    //    volle emmer niet van een geslaagde ronde te onderscheiden.
+    if (paden.length >= CHATFOTO_PAS_LIMIET) {
+      console.error(`chatfoto-opruimpas zat aan zijn limiet (${paden.length})`);
+      await meld(new Error("chatfoto-opruimpas zat aan zijn limiet"), 'rollover.chatfotos', {
+        code: 'chatfotos_limiet_geraakt',
+        count: paden.length,
+      });
+    }
 
     if (paden.length > 0) {
       // ⚠️ **In blokken van honderd, en dat is geen netheid.** `remove()` zet elk

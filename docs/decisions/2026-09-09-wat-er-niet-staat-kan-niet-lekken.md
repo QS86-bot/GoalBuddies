@@ -138,6 +138,52 @@ belofte. Hij stond groen terwijl de bytes bleven staan. Dat is regel 18 vraag 2 
 zijn zuiverste vorm, en de reparatie is de bewering veranderen en niet het getal:
 de rij staat er nog, niemand kan hem lezen, en de pas wijst hem aan.
 
+## 7a. Wat de securityronde erop vond — en waarom drie ervan nieuw waren
+
+De reviewagent draaide op de afgeronde migratie en vond drie gaten die 0232
+**zelf had gemaakt**. Alle drie stonden groen op een suite van 53 tests, en dat
+is regel 18 vraag 3 in het echt: de belofte brak zonder dat één test rood werd.
+
+1. **Het plafond was met één vlag te omzeilen.** 📏 Als `authenticated`, op een
+   pad dat een bericht heeft: één nette upload gaf één tellerrij, en vijftig
+   `insert … on conflict do update` daarna óók één. Die vorm vuurt de BEFORE
+   INSERT-trigger (die slaagt, want de teller groeit niet mee) maar niet de AFTER
+   **INSERT**-trigger. `upload(..., { upsert: true })` was daarmee precies de lus
+   die §6 zegt te sluiten.
+
+   ⚠️ **De teller óók op UPDATE laten tellen was het alternatief.** Dan zou élke
+   metadata-update van de opslagdienst quota kosten en zouden acht downloads je
+   een etmaal buitensluiten. Het onderscheid dat je daarvoor nodig hebt is op de
+   lokale steiger niet te meten — die `storage.objects` heeft vijf kolommen. Een
+   grendel die je niet kunt ijken, is een aanname. Vandaar het UPDATE-recht weg:
+   📏 nagelopen dat geen enkele bucket in deze app ooit een object bijwerkt.
+
+2. **De leesgrens sloot de plaatser buiten zijn eigen opruiming.** Postgres past
+   de SELECT-policy óók toe op `delete … where`. 📏 Dezelfde delete als eigenaar:
+   mét de eigenaarstak `DELETE 1`, zonder `DELETE 0`. Beide compenserende
+   opruimingen in `chat.ts` stierven daarmee stil — `remove()` geeft geen fout op
+   nul rijen.
+
+   ⚠️ **Dat werkte de verkeerde kant op.** Vóór 0232 was een "verwijderde" foto
+   meteen weg; met de eerste vorm bleef hij tot de volgende opruimronde staan, en
+   een ondertekende URL van vóór dat moment blijft zijn volle uur werken. Precies
+   het spijtmoment waar dit issue voor begon.
+
+3. **Een uuid-cast zonder vormtoets**, dezelfde klasse als gat 1 van 0130. Niet
+   bereikbaar voor `authenticated`, wél voor alles wat RLS passeert — de
+   Storage-browser in Studio, een script als `service_role`, een latere migratie.
+
+Twee bevindingen waren **onjuist of achterhaald** en zijn niet verwerkt maar
+rechtgezet: de aantekening over de triggervolgorde noemde een trigger die niet
+bestaat (de conclusie klopte, de reden niet), en de dossierrij zei dat er nog geen
+planning voor de rollover was terwijl `.github/workflows/rollover.yml` hem sinds
+19-08-2026 elk uur draait.
+
+⚠️ **De les die blijft:** een reparatie die een leesgrens versmalt, versmalt hem
+ook voor de handelingen die diezelfde code zélf nodig heeft. Vraag bij elke
+policy die strenger wordt niet alleen *wie ziet er nu minder*, maar ook *welke
+van onze eigen handelingen leest hier stiekem doorheen*.
+
 ## 8. Wat hier bewust níet in zit
 
 * **Versleuteling** — QS8-397. Deze stap maakt die goedkoper maar loopt er niet

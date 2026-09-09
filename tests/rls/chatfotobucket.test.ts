@@ -38,6 +38,15 @@
  *    | C | `bewaak_chatfoto_aantal()` telt weer `storage.objects` (de vorm van 0226) | "geeft geen nieuwe ruimte terug als je je foto's weer weghaalt" |
  *    | D | `and u.created_at > now() - interval '1 day'` uit diezelfde teller | "geeft de ruimte wél terug zodra het etmaal voorbij is" |
  *    | E | `grant select on chatfoto_uploads to authenticated` | "houdt de teller weg bij elke client" |
+ *    | N | `chatfotos_update` terug in de vorm uit 0222 | "weigert een upsert op een pad dat je zelf verstuurd hebt" |
+ *    | O | idem | "weigert een hernoeming binnen je eigen map" |
+ *    | P | het eigenaarsbeen uit `chatfotos_select` | "laat de plaatser zijn eigen wees wél zien, en dus opruimen" |
+ *    | Q | de uuid-wacht uit `tel_chatfoto_upload()` | "valt niet om op een pad waarvan het eerste segment geen uuid is" |
+ *
+ *    ⚠️ N t/m Q komen uit de securityronde van 09-09-2026 op deze migratie. Drie
+ *       van de vier waren gaten die de eerste vorm van 0232 zélf maakte, en geen
+ *       van de vier werd door de eerste dertien mutaties geraakt — de suite stond
+ *       groen op alle drie. Regel 18 vraag 3, in het echt.
  */
 import { randomUUID } from 'node:crypto';
 
@@ -256,20 +265,40 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     expect(gezien).toBe('0');
   });
 
-  it('houdt een object zonder chatbericht óók weg bij wie het zelf uploadde', () => {
-    // ⚠️ **De eigenaar en niet alleen de groepsgenoot, en dat is geen extra
-    //    strengheid maar dezelfde regel.** Een object zonder bericht heeft geen
-    //    bestaansrecht; wie het uploadde heeft de bytes zelf gekozen en heeft ze
-    //    dus niet van de server nodig. 📏 Nagelopen in `chat.ts`: de client maakt
-    //    géén ondertekende URL vóór de insert, dus dit breekt het verzenden niet.
+  it('laat de plaatser zijn eigen wees wél zien, en dus opruimen', () => {
+    // ⚠️⚠️ **Hier stond het omgekeerde, en dat was een gemeten regressie.** De
+    //    eerste vorm van deze policy hing de leesgrens uitsluitend aan het
+    //    bericht — óók voor de plaatser. Postgres past de SELECT-policy echter
+    //    óók toe op `delete … where`, en dan kan de plaatser zijn eigen wees niet
+    //    meer opruimen: allebei de compenserende opruimingen in `chat.ts` sterven
+    //    stil, want `remove()` geeft geen fout op nul rijen.
+    //
+    //    Het gevolg werkte de verkeerde kant op. Vóór 0232 was een "verwijderde"
+    //    foto meteen weg; met die eerste vorm bleef hij tot de volgende
+    //    opruimronde staan, en een ondertekende URL van vóór dat moment blijft
+    //    zijn volle uur werken. Precies het spijtmoment waar dit issue voor
+    //    begon.
+    //
+    //    Het lek dat de policy sluit, gaat over **elk ánder lid** — dat geval
+    //    staat hierboven en hieronder. Deze test is de must-allow ernaast.
+    // ⚠️⚠️ **Het aantal gewiste rijen en niet een foutcode, en dat is een gemeten
+    //    val.** Een `delete` die door RLS niets ziet, geeft géén 42501 — hij
+    //    raakt nul rijen en meldt niets. Een test die op een SQLSTATE let, staat
+    //    dan groen terwijl er niets gebeurt. Vandaar `returning` binnen dezelfde
+    //    transactie: `als()` rolt terug, dus een telling áchteraf meet niets.
     const wees = `${groepA}/${alice}/eigen-wees.jpg`;
     psql(
       `insert into storage.objects (bucket_id, name, owner)
        values ('chatfotos', '${wees}', '${alice}') on conflict do nothing`,
     );
     const gezien = als(alice, `select count(*) from storage.objects where name = '${wees}'`);
+    const gewist = als(
+      alice,
+      `with weg as (delete from storage.objects where name = '${wees}' returning 1)
+       select count(*) from weg`,
+    );
     psql(`delete from storage.objects where name = '${wees}'`);
-    expect(gezien).toBe('0');
+    expect({ gezien, gewist }).toEqual({ gezien: '1', gewist: '1' });
   });
 
   it('sluit het object zodra het bericht weg is', () => {
@@ -373,6 +402,88 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     const uit = alsMetFout(bob, `select count(*) from storage.objects where bucket_id = 'chatfotos'`);
     psql(`delete from storage.objects where name = '.emptyFolderPlaceholder'`);
     expect(uit).toMatch(/^ok:/);
+  });
+
+  // -------------------------------------------------------------------------
+  // Er is geen UPDATE-recht — 0232 §1b
+  // -------------------------------------------------------------------------
+
+  it('weigert een upsert op een pad dat je zelf verstuurd hebt', () => {
+    // ⚠️⚠️ **Dit is de omzeilroute van het plafond, en hij is gemeten.**
+    //    `insert … on conflict do update` vuurt de BEFORE INSERT-trigger (die
+    //    slaagt) maar niet de AFTER **INSERT**-trigger, dus er komt geen
+    //    tellerrij bij. 📏 Met `chatfotos_update` erin: één nette upload gaf
+    //    één tellerrij, en vijftig upserts daarna óók één. Dat is
+    //    `upload(..., { upsert: true })` als ongelimiteerde ingress én egress.
+    // ⚠️ De opstelling gaat met `psql` en niet met `als()`: die laatste rolt terug,
+    //    en dan is er bij de tweede aanroep niets om mee te botsen — de `on
+    //    conflict` wordt dan een gewone insert en de test staat groen op niets.
+    const pad = `${groepA}/${bob}/upsert.jpg`;
+    const eerste = alsMetFout(
+      bob,
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}')`,
+    );
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}') on conflict do nothing`,
+    );
+    psql(
+      `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url)
+       values ('${groepA}', '${bob}', 'x', 'photo', '${pad}')`,
+    );
+    const tweede = alsMetFout(
+      bob,
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}')
+       on conflict (bucket_id, name) do update set owner = excluded.owner`,
+    );
+    psql(`delete from public.chat_messages where attachment_url = '${pad}'`);
+    psql(`delete from storage.objects where name = '${pad}'`);
+    psql(`delete from public.chatfoto_uploads where group_id = '${groepA}'`);
+
+    // ⚠️ De must-allow zit ernaast: de eerste, gewone upload moet gewoon slagen.
+    //    Een policy die álles weigert, staat groen op de must-deny alleen.
+    expect([eerste.slice(0, 3), tweede]).toEqual(['ok:', '42501']);
+  });
+
+  it('weigert een hernoeming binnen je eigen map', () => {
+    // ⚠️ De andere kant van hetzelfde ontbrekende recht. Een hernoeming is voor
+    //    de opslagdienst nieuwe bytes op een nieuw pad en zou dus moeten tellen —
+    //    en telt niet, want de teller hangt aan INSERT.
+    const pad = `${groepA}/${bob}/hernoem.jpg`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}') on conflict do nothing`,
+    );
+    // ⚠️ Ook hier het aantal geraakte rijen: zonder UPDATE-policy ziet de `update`
+    //    niets en meldt hij niets. Nul is de weigering.
+    const uit = als(
+      bob,
+      `with bij as (
+         update storage.objects set name = '${groepA}/${bob}/hernoemd.jpg'
+         where name = '${pad}' returning 1
+       ) select count(*) from bij`,
+    );
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepA}/${bob}/hernoem%'`);
+    psql(`delete from public.chatfoto_uploads where group_id = '${groepA}'`);
+    expect(uit).toBe('0');
+  });
+
+  it('valt niet om op een pad waarvan het eerste segment geen uuid is', () => {
+    // ⚠️ Gat 1 van 0130, nu aan de tellerkant. `tel_chatfoto_upload()` castte
+    //    naar `uuid` zonder vormtoets. 📏 Gemeten zonder de wacht:
+    //    `ERROR: invalid input syntax for type uuid: "mijnmap"` — de héle insert
+    //    viel om. Onbereikbaar voor `authenticated`, maar niet voor de
+    //    Storage-browser in Studio of een script als `service_role`, en dat zijn
+    //    precies de rollen die RLS passeren.
+    expect(() =>
+      psql(
+        `insert into storage.objects (bucket_id, name)
+         values ('chatfotos', 'mijnmap/submap/x.jpg') on conflict do nothing`,
+      ),
+    ).not.toThrow();
+    psql(`delete from storage.objects where name = 'mijnmap/submap/x.jpg'`);
   });
 
   // -------------------------------------------------------------------------
