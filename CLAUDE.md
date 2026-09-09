@@ -554,6 +554,15 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    zonder kapot onderdeel, en dus de variant die geen enkele test vindt. Vraag bij
    een feature die "klaar" heet: kan een gebruiker hier daadwerkelijk bij, en langs
    welke knop?
+
+   ⚠️ **Voor schermen is dit sinds 09-09-2026 een controle** (QS8-383):
+   `npm run schermingang:controle` wordt rood zodra een route in `app/` nergens
+   vandaan geopend wordt. Aanleiding is dat `/doel/plan` — de kérn van een
+   Urgent epic — af en gemerged in de codebase lag terwijl beide knoppen nog naar
+   het formulier wezen dat dat epic juist wilde wegnemen. `keten:controle` dekt
+   deze klasse niet: die kijkt naar databasefuncties zonder aanroeper, één laag
+   lager. Een route die er met reden geen ingang heeft, staat met zijn meting in
+   `ZONDER_PUSH` in dat script — en dat register is smal bedoeld.
 6. **Tilt deze feature een aanname van "er is er altijd precies één" naar "er
    kunnen er meer zijn"?** Dan staat de fout er waarschijnlijk al en heeft niemand
    hem kunnen zien — er is dan geen test die de belofte kón raken. Grep op `[0]`,

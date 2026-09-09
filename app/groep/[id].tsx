@@ -861,8 +861,13 @@ function KoppelDoel({
         )}
       </AsyncView>
 
+      {/*
+        ⚠️ Naar `/doel/plan` en niet naar `/doel/nieuw` (QS8-383): anders hangt het
+           van je vertrekpunt af welk pad je krijgt, en dan is "de nieuwe weg" een
+           toevalligheid in plaats van de weg.
+      */}
       {doelen !== undefined && doelen.length === 0 ? (
-        <Button variant="secundair" block onPress={() => router.push('/doel/nieuw')}>
+        <Button variant="secundair" block onPress={() => router.push('/doel/plan')}>
           {t('koppel.nieuw_doel')}
         </Button>
       ) : null}

@@ -804,6 +804,7 @@ export const nl = {
   'doelen.leeg_tekst': 'Begin met één doel met een datum erop. De Doelcoach hakt het daarna in mijlpalen, en die mijlpalen worden je weekdoelen.',
   'doelen.van_totaal': '{aantal} van {totaal} doelen.',
   'doelen.nieuw': 'Nieuw doel',
+  'doelen.zelf_invullen': 'Liever zelf invullen',
   'doelen.meer_laden': 'Meer doelen laden',
   'doelen.doel': 'Doel',
   'doelen.streefdatum': 'Streefdatum {datum}',

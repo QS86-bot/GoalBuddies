@@ -492,6 +492,7 @@ export const en: Record<Sleutel, string> = {
   'doelen.leeg_tekst': 'Start with one goal with a date on it. The Goal Coach then cuts it into milestones, and those milestones become your weekly goals.',
   'doelen.van_totaal': '{aantal} of {totaal} goals.',
   'doelen.nieuw': 'New goal',
+  'doelen.zelf_invullen': 'Rather fill it in myself',
   'doelen.meer_laden': 'Load more goals',
   'doelen.doel': 'Goal',
   'doelen.streefdatum': 'Target date {datum}',
