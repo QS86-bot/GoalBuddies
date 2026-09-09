@@ -1,4 +1,4 @@
--- 0207_een_auditrij_voor_een_verdwenen_commitment.sql — `noteer_commitment()`
+-- 0220_een_auditrij_voor_een_verdwenen_commitment.sql — `noteer_commitment()`
 -- schrijft geen spoorregel meer voor een commitment dat in dezelfde statement al
 -- weggecascadeerd is (QS8-361)
 --
@@ -56,6 +56,20 @@
 --    heeft `on delete cascade`: verdwijnt het commitment, dan verdwijnt zijn hele
 --    spoor. Een rij schrijven op weg naar buiten is werk dat niemand ooit leest —
 --    het enige dat het doet is de verwijdering laten omvallen.
+
+--
+-- ⚠️ **Deze migratie heette `0207` op zijn branch, en vier gelande migraties
+--    verwijzen nog naar dat nummer.** In het `sleutelzetters()`-register van
+--    0208, 0214, 0215 en 0217 staat de zin *"deze vijf komen uit 0207
+--    (QS8-361)"*. Die staat er terecht: op het moment van schrijven dróég deze
+--    migratie dat nummer op zijn branch, en het is een verhaal over een
+--    merge-moment en niet een verwijzing naar een bestand.
+--
+--    ⚠️ **Ze zijn met opzet niet meegehernummerd.** Die vier staan al op `main`
+--    en hun tekst zit ín een `create or replace function`-lichaam; een gelande
+--    migratie herschrijven om een kruisverwijzing recht te zetten is een groter
+--    risico dan een nummer dat naar het verleden wijst. Wie vanaf die kant zoekt,
+--    komt via deze regel hier uit.
 
 create or replace function public.noteer_commitment()
 returns trigger

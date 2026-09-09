@@ -4,7 +4,7 @@ import { createTestUser, removeTestUsers, rlsTestsConfigured, type TestUser } fr
 import { psql } from './psql-stack';
 
 /**
- * Een auditrij voor een verdwenen commitment — QS8-361, migratie 0207.
+ * Een auditrij voor een verdwenen commitment — QS8-361, migratie 0220.
  *
  * ⚠️ **De belofte is niet "`noteer_commitment()` schrijft de goede rijen".** Dat
  *    is het onderdeel. De belofte is: *een verwijdering valt niet om over een
