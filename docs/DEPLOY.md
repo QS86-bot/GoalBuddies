@@ -403,8 +403,20 @@ noemt.
 ## 2.6a Storage — vier regels bij de eerste bucket
 
 Sinds migratie `0126` heeft dit project een bucket **`avatars`** (privé, 2 MB,
-`image/jpeg|png|webp`), en sinds `0222` een tweede: **`chatfotos`** (privé, 1 MB,
-dezelfde drie types). Wat bij de eerste geldt, geldt bij elke volgende.
+`image/jpeg|png|webp`), sinds `0222` een tweede — **`chatfotos`** (privé, 1 MB,
+dezelfde drie types) — en sinds `0227` een derde: **`bewijsfotos`** (privé, 1 MB,
+idem). Wat bij de eerste geldt, geldt bij elke volgende.
+
+⚠️ **Drie buckets delen één gratis tier van 1 GB.** Dat is geen detail meer bij
+drie: loopt er één vol, dan liggen de profielfoto's er ook uit. Elke bucket heeft
+daarom een dagteller met `// TODO(paid-tier)` erboven.
+
+⚠️ **En ze delen bewust géén code.** `AVATAR_BUCKET`, `CHATFOTO_BUCKET` en
+`BEWIJSFOTO_BUCKET` zijn drie letterlijke constanten in drie bestanden, en de
+padbouwers zijn dat ook. `scripts/storage-controle.mjs` vindt alleen letterlijke
+strings in `.storage.from(...)`; één gedeelde variabele maakt álle drie
+onzichtbaar voor die controle. De duplicatie is de prijs en die is bewust
+betaald — zie de kop van `src/modules/completions/bewijsfoto.ts`.
 
 1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
    die met de hand gemaakt is, staat nergens in deze repository — en dan kan
@@ -436,10 +448,17 @@ het raakt het hele AVG-verwijderpad:
 
 - **een bericht verwijderen** ruimt het bestand wél op — `verwijderBericht()`
   roept de Storage-API aan, na de rij;
-- **een account verwijderen** ruimt de metadata-rijen op (migratie `0224`), maar
-  de blobs blijven staan;
+- **een account verwijderen** ruimt de metadata-rijen op (migratie `0224` voor de
+  chat, `0230` voor het bewijs), maar de blobs blijven staan;
 - **een groep verwijderen** laat de objecten volledig als wees achter: de cascade
-  raakt alleen `chat_messages`.
+  raakt alleen `chat_messages`;
+- **een weekdoel of doel verwijderen** doet hetzelfde voor `bewijsfotos`:
+  `completions` cascadeert weg en de objecten hangen daar niet aan.
+
+⚠️ **Bij `bewijsfotos` weegt dat zwaarder dan bij de chat.** Een bewijsfoto is
+vaker een portret in een beoordelingscontext, en artikel 17 AVG telt
+"onbereikbaar" niet als "gewist". Zie de Laag-rij van 09-09 in
+`docs/ENGINEER-REVIEW.md`, en `docs/decisions/2026-09-09-een-foto-als-bewijs.md` §4.
 
 Een opruimpas over wezen hoort een eigen issue te zijn — een `delete` over
 `storage.objects` valt onder grens 2 van de beslisbevoegdheid en verdient een
