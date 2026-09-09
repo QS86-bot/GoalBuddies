@@ -1375,11 +1375,47 @@ export const nl = {
   // Deadline verschuiven met akkoord — A7
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
-  // De Lijst — losse taken (QS8-379)
+  // De Lijst — losse taken (QS8-379/380)
   // ---------------------------------------------------------------------------
   'lijst.taak_leeg': 'Schrijf op wat je wilt doen.',
   'lijst.taak_lang': 'Hou het kort: maximaal 500 tekens.',
   'lijst.patch_leeg': 'Er is niets gewijzigd.',
+  'lijst.titel': 'De Lijst',
+  'lijst.veld_label': 'Nieuwe taak',
+  'lijst.veld_hint': 'Iets kleins dat je vandaag wilt afvinken.',
+  'lijst.veld_plaats': 'Bellen met de tandarts',
+  'lijst.toevoegen': 'Toevoegen',
+  'lijst.teller': '{n} van {max} tekens',
+  'lijst.leeg_titel': 'Je lijst is nog leeg',
+  'lijst.leeg_tekst':
+    'Zet hier de dingen neer die je niet wilt vergeten. Een taak telt niet mee ' +
+    'voor je punten of je reeks; dat blijft de week.',
+  'lijst.prive_uitleg':
+    'Alles op deze lijst is prive: niemand in je groep ziet je taken. Delen kan ' +
+    'nog niet.',
+  'lijst.van_totaal': '{aantal} van {totaal}',
+  'lijst.meer_laden': 'Meer laden',
+  'lijst.afvinken': 'Afvinken',
+  'lijst.ontvinken': 'Weer openzetten',
+  'lijst.omhoog': 'Naar boven',
+  'lijst.omlaag': 'Naar beneden',
+  'lijst.verwijderen': 'Verwijderen',
+  'lijst.afgerond_op': 'Afgerond op {datum}',
+  'lijst.laden_mislukt': 'De lijst laden lukte niet.',
+  'lijst.toevoegen_mislukt': 'De taak toevoegen lukte niet.',
+  'lijst.opslaan_mislukt': 'De wijziging opslaan lukte niet.',
+  'lijst.verwijderen_mislukt': 'De taak verwijderen lukte niet.',
+  'lijst.bestaat_niet': 'Deze taak bestaat niet meer.',
+  'lijst.verzetten_gelijk':
+    'Deze twee taken staan op dezelfde plek in de lijst. Verplaats er eerst een ' +
+    'andere tussenuit.',
+  'lijst.invoer': 'Controleer wat je hebt ingevuld.',
+  'bevestiging.taak_verwijderen.titel': 'Deze taak weggooien?',
+  'bevestiging.taak_verwijderen.uitleg':
+    'De taak verdwijnt en komt niet terug. Wil je hem alleen uit je zicht, vink ' +
+    'hem dan af. Dan zakt hij naar onderen en blijft hij staan.',
+  'bevestiging.taak_verwijderen.knop': 'Weggooien',
+  'tab.lijst': 'Lijst',
 
   'deadline.argument_kort':
     'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +

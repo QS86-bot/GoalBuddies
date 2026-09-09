@@ -987,6 +987,42 @@ export const en: Record<Sleutel, string> = {
   'lijst.taak_leeg': 'Write down what you want to do.',
   'lijst.taak_lang': 'Keep it short: at most 500 characters.',
   'lijst.patch_leeg': 'Nothing was changed.',
+  'lijst.titel': 'The List',
+  'lijst.veld_label': 'New task',
+  'lijst.veld_hint': 'Something small you want to tick off today.',
+  'lijst.veld_plaats': 'Call the dentist',
+  'lijst.toevoegen': 'Add',
+  'lijst.teller': '{n} of {max} characters',
+  'lijst.leeg_titel': 'Your list is still empty',
+  'lijst.leeg_tekst':
+    'Put the things you do not want to forget here. A task does not count ' +
+    'towards your points or your streak; that stays the week.',
+  'lijst.prive_uitleg':
+    'Everything on this list is private: nobody in your group sees your tasks. ' +
+    'Sharing is not possible yet.',
+  'lijst.van_totaal': '{aantal} of {totaal}',
+  'lijst.meer_laden': 'Load more',
+  'lijst.afvinken': 'Tick off',
+  'lijst.ontvinken': 'Reopen',
+  'lijst.omhoog': 'Move up',
+  'lijst.omlaag': 'Move down',
+  'lijst.verwijderen': 'Delete',
+  'lijst.afgerond_op': 'Done on {datum}',
+  'lijst.laden_mislukt': 'Loading the list failed.',
+  'lijst.toevoegen_mislukt': 'Adding the task failed.',
+  'lijst.opslaan_mislukt': 'Saving the change failed.',
+  'lijst.verwijderen_mislukt': 'Deleting the task failed.',
+  'lijst.bestaat_niet': 'This task no longer exists.',
+  'lijst.verzetten_gelijk':
+    'These two tasks share the same spot in the list. Move another one out from ' +
+    'between them first.',
+  'lijst.invoer': 'Check what you filled in.',
+  'bevestiging.taak_verwijderen.titel': 'Throw this task away?',
+  'bevestiging.taak_verwijderen.uitleg':
+    'The task disappears and does not come back. If you only want it out of ' +
+    'sight, tick it off. Then it sinks to the bottom and stays.',
+  'bevestiging.taak_verwijderen.knop': 'Throw away',
+  'tab.lijst': 'List',
 
   'deadline.argument_kort':
     'Write one sentence about what changed. Your buddies decide on this, ' +
