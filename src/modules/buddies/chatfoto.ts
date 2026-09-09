@@ -108,10 +108,16 @@ export async function uploadChatfoto(
 
   if (gezet.error) {
     reportError(gezet.error, 'chatfoto.upload', { group_id: groupId });
-    // ⚠️ Het dagplafond van 0222 komt hier ook binnen. De melding blijft
+    // ⚠️ Het dagplafond van 0222/0226 komt hier ook binnen, en sinds 0232 is het
+    //    te onderscheiden van een netwerkfout. De melding blijft verder
     //    algemeen: een storage-fout draagt soms het pad, en dat pad noemt twee
     //    uuid's.
-    return { ok: false, melding: t('chatfoto.uploaden_mislukt') };
+    //
+    // ⚠️ `Te veel foto` dekt beide remmen van deze emmer — die van de groep en
+    //    die van het lid. Het onderscheid is voor de gebruiker geen verschil:
+    //    vandaag kan het niet meer, morgen weer.
+    const rem = /Te veel foto/.test(gezet.error.message ?? '');
+    return { ok: false, melding: t(rem ? 'chatfoto.rem_bereikt' : 'chatfoto.uploaden_mislukt') };
   }
 
   return { ok: true, waarde: pad };

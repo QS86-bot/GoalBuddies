@@ -1,5 +1,5 @@
 /**
- * De bewaartermijn van een chatfoto — migratie 0232 (QS8-396, deel 2 van QS8-394).
+ * De bewaartermijn van een chatfoto — migratie 0233 (QS8-396, deel 2 van QS8-394).
  *
  * ⚠️⚠️ **De belofte is niet "er staat een functie". Die is: wat de server niet
  *    meer nodig heeft, staat er niet meer.** Het WhatsApp-model dat Quinten op
@@ -28,9 +28,8 @@
  *    | H | de weestak weg — alleen de termijn | "wijst een wees aan die het respijtuur voorbij is" |
  *    | I | de `limit` weg | "houdt zich aan het limiet dat je meegeeft" |
  *    | J | `grant execute on verlopen_chatfotos to authenticated` | "houdt verlopen_chatfotos weg bij een ingelogde gebruiker" |
- *    | K | `snoei_chatfoto_teller()` zonder venster — wist alles | "snoeit tellerrijen die het venster uit zijn en laat de verse staan" |
- *    | L | `wis_chatfotos_van_vertrekker()` terug naar 0224, dus mét de `delete from storage.objects` | "laat de foto van een verwijderd account als wees staan in plaats van als blob" |
- *    | M | `chatfoto_bewaartermijn()` op 30 dagen terwijl de app 21 zegt | "noemt in de app dezelfde termijn als de database aanhoudt" |
+ *    | K | `wis_chatfotos_van_vertrekker()` terug naar 0224, dus mét de `delete from storage.objects` | "laat de foto van een verwijderd account als wees staan in plaats van als blob" |
+ *    | L | `chatfoto_bewaartermijn()` op 30 dagen terwijl de app 21 zegt | "noemt in de app dezelfde termijn als de database aanhoudt" |
  *
  *    ⚠️ **G en H zijn twee mutaties en geen een.** De RPC heeft twee redenen, en
  *       een ijking die er één weghaalt terwijl de ander het geval ook vindt, ijkt
@@ -74,7 +73,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0232)', () => {
+describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0233)', () => {
   const alice = randomUUID();
   let groep = '';
 
@@ -142,7 +141,6 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0232)', () => {
 
   afterAll(() => {
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groep}/%'`);
-    psql(`delete from public.chatfoto_uploads where group_id = '${groep}'`);
     psql(`delete from public.chat_messages where group_id = '${groep}'`);
     psql(`delete from public.group_members where group_id = '${groep}'`);
     psql(`delete from public.groups where id = '${groep}'`);
@@ -250,7 +248,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0232)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // De vertrekker — 0224 gerepareerd in §4 van 0232
+  // De vertrekker — 0224 gerepareerd in §4 van 0233
   // -------------------------------------------------------------------------
 
   it('laat de foto van een verwijderd account als wees staan in plaats van als blob', () => {
@@ -311,30 +309,12 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0232)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // De teller snoeien
-  // -------------------------------------------------------------------------
-
-  it('snoeit tellerrijen die het venster uit zijn en laat de verse staan', () => {
-    psql(`delete from public.chatfoto_uploads where group_id = '${groep}'`);
-    psql(
-      `insert into public.chatfoto_uploads (group_id, uploader, created_at) values
-         ('${groep}', '${alice}', now() - interval '3 days'),
-         ('${groep}', '${alice}', now() - interval '5 hours')`,
-    );
-    psql('select public.snoei_chatfoto_teller()');
-    // ⚠️ De must-allow in dezelfde test: een snoei die álles wist, zet elk
-    //    dagplafond terug op nul en is dan de ratel van §2 kwijt.
-    expect(psql(`select count(*) from public.chatfoto_uploads where group_id = '${groep}'`)).toBe('1');
-  });
-
-  // -------------------------------------------------------------------------
   // De rechten
   // -------------------------------------------------------------------------
 
   it.each([
     ['verlopen_chatfotos', 'select * from public.verlopen_chatfotos(1)'],
     ['chatfoto_bewaartermijn', 'select public.chatfoto_bewaartermijn()'],
-    ['snoei_chatfoto_teller', 'select public.snoei_chatfoto_teller()'],
   ])('houdt %s weg bij een ingelogde gebruiker', (_naam, sql) => {
     // ⚠️ Onwrikbare regel 4: `revoke ... from public, anon` houdt precies de rol
     //    over waaronder iedere ingelogde gebruiker draait. Dit zijn `security

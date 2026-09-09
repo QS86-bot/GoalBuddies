@@ -1,20 +1,19 @@
--- 0232_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql — de leesgrens gaat
+-- 0233_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql — de leesgrens gaat
 -- aan het bericht hangen, de bucket krijgt een bewaartermijn, en het plafond
 -- telt handelingen in plaats van voorraad (QS8-396, deel 2 van QS8-394).
 --
 -- ROLLBACK-PAD:
---   drop trigger if exists chatfotos_teller on storage.objects;
---   drop function if exists public.tel_chatfoto_upload();
 --   drop function if exists public.verlopen_chatfotos(integer);
 --   drop function if exists public.chatfoto_bewaartermijn();
---   drop table if exists public.chatfoto_uploads;
 --   drop index if exists public.chat_messages_bijlage_idx;
 --   -- en chatfotos_select terug naar de vorm uit 0225, dus zonder de
---   --   exists-tak op chat_messages; bewaak_chatfoto_aantal() terug naar de
---   --   vorm uit 0226, dus tellend op storage.objects;
+--   --   exists-tak op chat_messages en zonder het eigenaarsbeen;
 --   --   wis_chatfotos_van_vertrekker() terug naar de vorm uit 0224, dus mét de
 --   --   `delete from storage.objects` als eerste stap;
 --   --   chatfotos_update terug in de vorm uit 0222.
+--   --
+--   -- ⚠️ Het plafond staat níét in deze migratie — dat is `opslag_dagtellers`
+--   --    uit de migratie ervóór (QS8-399). Deze rollback raakt het niet.
 --
 -- ⚠️ **Wat een rollback niet terughaalt: de bytes.** Alles wat de opruimpas
 --    inmiddels met `storage.remove()` heeft weggehaald, is weg — er is geen
@@ -114,7 +113,7 @@ create policy chatfotos_select on storage.objects
       --    `remove()` geeft geen fout op nul rijen. 📏 Gemeten, dezelfde delete
       --    als eigenaar: mét de tak `DELETE 1`, zonder `DELETE 0`.
       --
-      --    Dat maakt de reparatie eróger dan de bug die hij sluit: vóór 0232 was
+      --    Dat maakt de reparatie eróger dan de bug die hij sluit: vóór 0233 was
       --    de foto na "verwijderen" meteen weg, daarna zou hij tot de volgende
       --    opruimronde blijven staan — en een ondertekende URL van vóór dat
       --    moment blijft zijn volle uur werken (`CHATFOTO_GELDIGHEID_S`).
@@ -161,155 +160,34 @@ create policy chatfotos_select on storage.objects
 drop policy if exists chatfotos_update on storage.objects;
 
 -- ---------------------------------------------------------------------------
--- 2. Het plafond telt handelingen en geen voorraad
+-- 2. Het plafond — niet hier, en dat is een samenvoeging
 -- ---------------------------------------------------------------------------
 --
--- 📏 Gemeten in de doorlichting, met de teller van 0226:
+-- ⚠️⚠️ **Deze migratie had zijn eigen teller (`chatfoto_uploads`) en die is
+--    vervallen.** Op dezelfde dag bouwde QS8-399 dezelfde reparatie generiek
+--    voor alle drie de emmers: `opslag_dagtellers` + `tel_opslag_upload()`, met
+--    één rij per emmer, soort en sleutel in plaats van een rij per upload.
 --
---      1..8: ok    9: GEWEIGERD: Te veel foto's van deze persoon vandaag (8).
---      A wiste 8 rijen
---      A opnieuw 1..8: ok    9: GEWEIGERD
+--    Twee tellers voor één regel is een halve familie, en die is erger dan een
+--    hele. De generieke vorm wint: hij dekt ook `avatars` en `bewijsfotos`, hij
+--    is geen groeivector, en hij geeft de gebruiker een melding die van een
+--    netwerkfout te onderscheiden is. `bewaak_chatfoto_aantal()` staat daarom in
+--    de migratie ervóór en niet hier.
 --
---    Onwrikbare regel 5 vraagt een limiet **per gebruiker per dag**; dat is een
---    limiet op de *voorraad*. `upload → remove → upload` is onbegrensd:
---    ongelimiteerde ingress én egress op een gratis tier die 5 GB per maand meet.
+-- ⚠️⚠️ **Wat déze migratie eraan toevoegt, staat in §1b en is niet cosmetisch.**
+--    De teller van QS8-399 hangt aan INSERT (plus een trigger op verhuizingen),
+--    en een `insert … on conflict do update` op hetzelfde pad is geen van beide.
+--    📏 Gemeten met die teller: één nette upload gaf één tel, en vijftig upserts
+--    daarna telden niet mee. Het ingetrokken UPDATE-recht is wat die route sluit.
 --
--- ⚠️⚠️ **En dit wordt érger van §3, niet beter.** Hoe agressiever de opruimpas,
---    hoe vaker er ruimte vrijkomt onder een plafond dat levende rijen telt. De
---    twee moesten dus samen, en dat is de reden dat ze in één migratie zitten.
+-- ⚠️ **En de teller overleeft de opruimpas van §3, want hij hangt niet aan
+--    `storage.objects`.** Dat is precies de eigenschap die deze twee migraties
+--    aan elkaar knoopt: hoe agressiever de pas, hoe vaker er ruimte vrijkomt
+--    onder een plafond dat levende rijen telt. `opslag_dagtellers` telt die niet.
 --
--- ⚠️ De teller is een eigen tabel en niet een kolom op `storage.objects`: die
---    laatste is van Supabase en wordt door de opruimpas juist leeggehaald. Een
---    teller die meegewist wordt, telt niets.
-create table if not exists public.chatfoto_uploads (
-  id         uuid primary key default gen_random_uuid(),
-  group_id   uuid not null,
-  uploader   uuid not null,
-  created_at timestamptz not null default now()
-);
-
-comment on table public.chatfoto_uploads is
-  'Append-only teller van foto-uploads (QS8-396, 0232). Telt hándelingen, niet '
-  'voorraad: verwijderen geeft geen nieuwe ruimte. Geen client raakt hem aan.';
-
-create index if not exists chatfoto_uploads_lid_vers_idx
-  on public.chatfoto_uploads (uploader, created_at desc);
-create index if not exists chatfoto_uploads_groep_vers_idx
-  on public.chatfoto_uploads (group_id, created_at desc);
-
--- ⚠️ RLS aan en géén enkele policy: dat is deny-all voor elke client. De tabel
---    wordt uitsluitend door de trigger hieronder geschreven en door de opruimpas
---    gesnoeid, allebei `security definer`. Zelfde vorm als `invite_events` en
---    `invite_preview_limits`.
-alter table public.chatfoto_uploads enable row level security;
-revoke all on table public.chatfoto_uploads from public, anon, authenticated;
-
-create or replace function public.tel_chatfoto_upload() returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_catalog, pg_temp
-as $$
-declare
-  v_groep    text := (storage.foldername(new.name))[1];
-  v_uploader text := (storage.foldername(new.name))[2];
-begin
-  -- ⚠️⚠️ **De uuid-vorm wordt getoetst en niet aangenomen, precies zoals in gat 1
-  --    van 0130.** 📏 Gemeten zonder deze wacht:
-  --      insert … values ('chatfotos','mijnmap/submap/x.jpg');
-  --      ERROR: invalid input syntax for type uuid: "mijnmap"
-  --    Voor `authenticated` is dat pad onbereikbaar — `chatfotos_insert` pint
-  --    beide segmenten — maar alles wat RLS passeert komt er wél langs: de
-  --    Storage-browser in Studio, een script als `service_role`, een latere
-  --    migratie. Een teller die de insert laat omvallen, is erger dan een teller
-  --    die niet telt.
-  if new.bucket_id <> 'chatfotos'
-     or v_groep is null or v_uploader is null
-     or v_groep !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-     or v_uploader !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-  then
-    return new;
-  end if;
-
-  insert into chatfoto_uploads (group_id, uploader)
-  values (v_groep::uuid, v_uploader::uuid);
-
-  return new;
-end $$;
-
-comment on function public.tel_chatfoto_upload() is
-  'Schrijft één rij per upload, zodat het plafond handelingen telt en niet '
-  'levende rijen (QS8-396, 0232).';
-
-revoke all on function public.tel_chatfoto_upload() from public, anon, authenticated;
-
-drop trigger if exists chatfotos_teller on storage.objects;
-create trigger chatfotos_teller
-  after insert on storage.objects
-  for each row execute function public.tel_chatfoto_upload();
-
--- ⚠️ De teller van 0226 leest nu `chatfoto_uploads` in plaats van
---    `storage.objects`. De grenzen (20 per groep, 8 per lid per etmaal) en de
---    meldingen blijven letterlijk hetzelfde — dit is een reparatie van waaróp
---    geteld wordt en niet van hoevéél.
---
--- ⚠️⚠️ **De volgorde binnen dezelfde INSERT is hier gratis, maar niet om de reden
---    die hier eerst stond.** Hier stond dat beide triggers `after insert` zijn en
---    dat Postgres ze op alfabetische naam draait — dat klopte niet. 📏 Nagemeten
---    in `pg_trigger`: `chatfotos_aantal_begrensd` is **BEFORE** INSERT (0222) en
---    `chatfotos_teller` is AFTER INSERT. BEFORE gaat altijd vóór AFTER, dus de
---    conclusie hield; de reden niet, en die reden is precies waar de omzeilroute
---    van §1b op leunt. 📏 De uitkomst zelf: de negende weigert, de achtste niet.
---
--- ⚠️ **`security definer` en dat is een omgekeerd besluit.** 0222 legde met
---    zoveel woorden vast dat deze functie invoker bleef ("een definer zou meer
---    recht uitdelen dan de telling nodig heeft"). Die reden vervalt hier: de
---    teller staat in een tabel die deny-all is voor élke client, dus een invoker
---    kan hem niet lezen. `definer_bewaking()` geeft geen bezwaar.
-create or replace function public.bewaak_chatfoto_aantal()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_catalog, pg_temp
-as $$
-declare
-  -- ⚠️ `v_`-prefix en dat is geen smaak: de tabel heeft zélf een kolom
-  --    `uploader`, en een plpgsql-variabele met die naam maakt de verwijzing in
-  --    de `filter` dubbelzinnig. 📏 Gemeten: `42702 column reference "uploader"
-  --    is ambiguous` — élke upload viel om. 0226 had dit niet omdat het toen op
-  --    `storage.objects` telde, en díe tabel heeft die kolom niet.
-  v_groep    text := (storage.foldername(new.name))[1];
-  v_uploader text := (storage.foldername(new.name))[2];
-  van_groep  integer;
-  van_lid    integer;
-begin
-  if new.bucket_id <> 'chatfotos' or v_groep is null then
-    return new;
-  end if;
-
-  select
-    count(*),
-    count(*) filter (where u.uploader::text = v_uploader)
-  into van_groep, van_lid
-  from chatfoto_uploads u
-  where u.group_id::text = v_groep
-    and u.created_at > now() - interval '1 day';
-
-  -- TODO(paid-tier): twintig per groep per etmaal is een rem tegen het vollopen
-  -- van de gratis tier en geen productkeuze.
-  if van_groep >= 20 then
-    raise exception 'Te veel foto''s in deze groep vandaag (%).', van_groep
-      using errcode = 'check_violation';
-  end if;
-
-  if van_lid >= 8 then
-    raise exception 'Te veel foto''s van deze persoon vandaag (%).', van_lid
-      using errcode = 'check_violation';
-  end if;
-
-  return new;
-end $$;
-
-revoke all on function public.bewaak_chatfoto_aantal() from public, anon, authenticated;
+-- ⚠️ Snoeien hoeft niet: het is één rij per sleutel die ter plekke bijgewerkt
+--    wordt, geen rij per upload. De `snoei_chatfoto_teller()` die hier stond, is
+--    daarmee vervallen.
 
 -- ---------------------------------------------------------------------------
 -- 3. De bewaartermijn — en waarom deze functie niets wist
@@ -372,34 +250,12 @@ $$;
 comment on function public.verlopen_chatfotos(integer) is
   'De paden die weg mogen: ouder dan de bewaartermijn, of een wees zonder '
   'chatbericht (met een uur respijt). Wist zelf niets — een delete op '
-  'storage.objects haalt de rij weg en het bestand niet. QS8-396, 0232.';
+  'storage.objects haalt de rij weg en het bestand niet. QS8-396, 0233.';
 
 -- ⚠️ Onwrikbare regel 4: de `revoke` noemt `authenticated` met zoveel woorden.
 --    Alleen de rollover-functie roept dit aan, en die draait als `service_role`.
 revoke all on function public.verlopen_chatfotos(integer) from public, anon, authenticated;
 revoke all on function public.chatfoto_bewaartermijn() from public, anon, authenticated;
-
--- ⚠️ En de teller wordt mee gesnoeid: rijen ouder dan een etmaal doen niets meer
---    voor het plafond, en een append-only tabel die nooit krimpt is op de gratis
---    tier zijn eigen probleem.
-create or replace function public.snoei_chatfoto_teller()
-returns integer
-language plpgsql
-security definer
-set search_path = public, pg_catalog, pg_temp
-as $$
-declare v_weg integer;
-begin
-  delete from chatfoto_uploads where created_at < now() - interval '2 days';
-  get diagnostics v_weg = row_count;
-  return v_weg;
-end $$;
-
-comment on function public.snoei_chatfoto_teller() is
-  'Ruimt tellerrijen op die het dagvenster uit zijn (QS8-396, 0232). Twee dagen '
-  'en niet een: het venster is een etmaal, en een marge kost hier niets.';
-
-revoke all on function public.snoei_chatfoto_teller() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 4. Een vertrekker laat geen onbereikbare blob achter
@@ -452,7 +308,7 @@ end $$;
 
 comment on function public.wis_chatfotos_van_vertrekker() is
   'Knipt de chatfoto''s van een vertrekker los van hun berichten (0224), maar '
-  'laat de objecten staan zodat de opruimpas van 0232 de bytes daadwerkelijk '
+  'laat de objecten staan zodat de opruimpas van 0233 de bytes daadwerkelijk '
   'kan weghalen. Een gewiste metadata-rij laat de blob onbereikbaar achter.';
 
 revoke all on function public.wis_chatfotos_van_vertrekker() from public, anon, authenticated;

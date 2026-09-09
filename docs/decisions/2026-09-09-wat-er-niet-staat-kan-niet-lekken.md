@@ -2,7 +2,7 @@
 
 **Datum:** 09-09-2026
 **Issue:** QS8-396 (deel 2 van QS8-394)
-**Migratie:** 0232
+**Migratie:** 0233
 **Besluit van Quinten:** 21 dagen
 
 ---
@@ -104,7 +104,21 @@ maar uitsluitend als **opslagkosten**. Dat het intussen leesbaar was, stond er
 niet. Dat verschil ís de bevinding, en het is de reden dat een kostenpost en een
 privacylek uit elkaar gehouden moeten worden ook als ze dezelfde oorzaak hebben.
 
-## 6. Het plafond telde voorraad (deel C)
+## 6. Het plafond telde voorraad (deel C) — en staat in de migratie ervóór
+
+⚠️⚠️ **Deze migratie had een eigen teller en die is vervallen.** Op dezelfde dag
+bouwde QS8-399 dezelfde reparatie generiek voor alle drie de opslagemmers:
+`opslag_dagtellers` + `tel_opslag_upload()`, één rij per emmer, soort en sleutel.
+Twee tellers voor één regel is een halve familie, en die is erger dan een hele —
+dus die vorm wint, en `chatfoto_uploads` is weg. De meting hieronder is de reden
+dat er überhaupt een teller moest komen; hij geldt onverkort voor beide vormen.
+
+⚠️ **Wat déze migratie er wél aan toevoegt, is het ingetrokken UPDATE-recht** —
+zie §7a punt 1. De teller van QS8-399 hangt aan INSERT plus een trigger op
+verhuizingen, en een `insert … on conflict do update` op hetzelfde pad is geen van
+beide.
+
+
 
 ```
 1..8: ok    9: GEWEIGERD: Te veel foto's van deze persoon vandaag (8).
@@ -121,15 +135,16 @@ tier die 5 GB per maand meet.
 opruimpas, hoe vaker er ruimte vrijkomt onder een plafond dat levende rijen telt.
 Dat is de reden dat de twee in één migratie zitten en niet in twee.
 
-De teller is een eigen tabel (`chatfoto_uploads`) en geen kolom op
-`storage.objects`: die laatste wordt door de opruimpas juist leeggehaald, en een
-teller die meegewist wordt telt niets. RLS aan, geen policy, en de tabelgrant
-weg — de vorm van `invite_events`.
+De teller staat in een eigen tabel en niet in een kolom op `storage.objects`:
+die laatste wordt door de opruimpas juist leeggehaald, en een teller die
+meegewist wordt telt niets. Dat geldt voor `opslag_dagtellers` net zo goed — hij
+hangt niet aan de objecten, dus de bewaartermijn zet de rem niet terug. RLS aan,
+geen policy, en de tabelgrant weg — de vorm van `invite_events`.
 
 ## 7. Een vertrekker laat geen onbereikbare blob achter
 
 `wis_chatfotos_van_vertrekker()` (0224) deed precies het ene dat de opruimpas
-onmogelijk maakt: hij wiste de metadata-rij. Sinds 0232 §4 laat hij de rij staan
+onmogelijk maakt: hij wiste de metadata-rij. Sinds 0233 §4 laat hij de rij staan
 en knipt hij alleen de koppeling door. Dan is de foto **meteen** onleesbaar (§5
 hangt de leesgrens aan het bericht) en **binnen het uur** echt weg.
 
@@ -140,7 +155,7 @@ de rij staat er nog, niemand kan hem lezen, en de pas wijst hem aan.
 
 ## 7a. Wat de securityronde erop vond — en waarom drie ervan nieuw waren
 
-De reviewagent draaide op de afgeronde migratie en vond drie gaten die 0232
+De reviewagent draaide op de afgeronde migratie en vond drie gaten die 0233
 **zelf had gemaakt**. Alle drie stonden groen op een suite van 53 tests, en dat
 is regel 18 vraag 3 in het echt: de belofte brak zonder dat één test rood werd.
 
@@ -150,6 +165,9 @@ is regel 18 vraag 3 in het echt: de belofte brak zonder dat één test rood werd
    INSERT-trigger (die slaagt, want de teller groeit niet mee) maar niet de AFTER
    **INSERT**-trigger. `upload(..., { upsert: true })` was daarmee precies de lus
    die §6 zegt te sluiten.
+
+   ⚠️ Ook de verhuizingstrigger van QS8-399 vangt dit niet: een upsert houdt
+   hetzelfde pad en dezelfde bucket, dus er verhuist niets.
 
    ⚠️ **De teller óók op UPDATE laten tellen was het alternatief.** Dan zou élke
    metadata-update van de opslagdienst quota kosten en zouden acht downloads je
@@ -164,7 +182,7 @@ is regel 18 vraag 3 in het echt: de belofte brak zonder dat één test rood werd
    opruimingen in `chat.ts` stierven daarmee stil — `remove()` geeft geen fout op
    nul rijen.
 
-   ⚠️ **Dat werkte de verkeerde kant op.** Vóór 0232 was een "verwijderde" foto
+   ⚠️ **Dat werkte de verkeerde kant op.** Vóór 0233 was een "verwijderde" foto
    meteen weg; met de eerste vorm bleef hij tot de volgende opruimronde staan, en
    een ondertekende URL van vóór dat moment blijft zijn volle uur werken. Precies
    het spijtmoment waar dit issue voor begon.
@@ -194,3 +212,21 @@ van onze eigen handelingen leest hier stiekem doorheen*.
 * **Een alarm op een opruimpas die stilvalt.** `fotosOpgeruimd` staat in de
   uitvoer van de rollover; niets ziet erop toe dat het getal ooit boven nul komt.
   Ook een rij.
+
+## 9. Nagekomen: samengevoegd met QS8-399
+
+Deze migratie heette eerst 0232 en is 0233 geworden. Op dezelfde dag, drie
+minuten na de claim van dit issue, claimde een tweede sessie QS8-399 en bouwde
+dezelfde defectklasse generiek op voor alle drie de emmers — óók met een
+migratie 0232, en óók met een `create or replace` van `bewaak_chatfoto_aantal()`.
+
+⚠️⚠️ **Git zag dat niet.** De twee herdefinities stonden in verschillende
+bestanden, dus de merge was schoon en de hoogste migratie zou stil gewonnen
+hebben. Dat is de klasse van QS8-358, en het is erger dan een botsend
+migratienummer: dát wordt gemeld. Vastgelegd in QS8-402.
+
+De samenvoeging: de generieke teller wint, `chatfoto_uploads` en
+`tel_chatfoto_upload()` vervallen, `snoei_chatfoto_teller()` vervalt (één rij per
+sleutel hoeft niet gesnoeid), en wat hier overblijft is wat níét over tellen
+gaat — de leesgrens, de bewaartermijn, de vertrekker en het ingetrokken
+UPDATE-recht.

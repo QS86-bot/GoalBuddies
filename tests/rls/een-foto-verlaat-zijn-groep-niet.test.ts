@@ -157,7 +157,7 @@ describe.runIf(beschikbaar)('een foto verlaat zijn groep niet', () => {
     //    weg. Een lege bubbel kán bovendien niet — `chat_messages_inhoud_vereist`
     //    eist tekst óf een bijlage.
     //
-    // ⚠️⚠️ **Dit geval toetste tot 0232 het mechanisme en niet de belofte, en
+    // ⚠️⚠️ **Dit geval toetste tot 0233 het mechanisme en niet de belofte, en
     //    het mechanisme was fout.** Het eiste `objecten: '0'` — de metadata-rijen
     //    weg — en dat is precies wat 0224 deed. Alleen: een `delete from
     //    storage.objects` haalt de **rij** weg en niet de **bytes**, en zonder rij
@@ -197,7 +197,7 @@ describe.runIf(beschikbaar)('een foto verlaat zijn groep niet', () => {
        values ('${groepA}', '${vertrekker}', '', 'photo', '${alleenFoto}')`,
     );
 
-    // ⚠️ Het respijtuur van 0232 geldt ook voor déze wezen; zonder deze regel
+    // ⚠️ Het respijtuur van 0233 geldt ook voor déze wezen; zonder deze regel
     //    toetst het laatste veld hieronder het respijtuur en niet de trigger.
     psql(
       `update storage.objects set created_at = now() - interval '3 hours'

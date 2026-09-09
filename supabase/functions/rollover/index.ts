@@ -690,7 +690,7 @@ async function draaiRollover(auth: string): Promise<Response> {
   }
 
   // ---------------------------------------------------------------------------
-  // De chatfoto's opruimen — QS8-396, migratie 0232
+  // De chatfoto's opruimen — QS8-396, migratie 0233
   // ---------------------------------------------------------------------------
   //
   // ⚠️⚠️ **Dit is de helft die SQL níet kan doen, en dat is de hele reden dat het
@@ -773,15 +773,6 @@ async function draaiRollover(auth: string): Promise<Response> {
       code: 'chatfotos_wissen_mislukt',
       count: fotosMislukt,
     });
-  }
-
-  // ⚠️ De teller van 0232 is append-only en telt een venster van een etmaal; zonder
-  //    snoei groeit hij eeuwig op een gratis tier. Hij hangt aan dezelfde pas omdat
-  //    hij dezelfde reden heeft: wat er niet meer hoeft te staan, staat er niet.
-  const { error: snoeiFout } = await db.rpc('snoei_chatfoto_teller');
-
-  if (snoeiFout) {
-    console.error(`chatfototeller snoeien mislukte: ${snoeiFout.message}`);
   }
 
   return new Response(

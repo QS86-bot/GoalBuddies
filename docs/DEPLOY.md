@@ -621,7 +621,7 @@ cache vangt herhaalde vragen af.
 
 ## 2.9 De bewaartermijn van chatfoto's — en wat een rollback níet terugdraait
 
-Sinds migratie 0232 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
+Sinds migratie 0233 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
 De rollover-functie haalt elk uur op wat weg mag en wist het:
 
 ```sql
@@ -653,17 +653,17 @@ regel TypeScript, of anders een rode poort.
 
 ### ⚠️⚠️ Wat een rollback wél en niet terugdraait
 
-Het ROLLBACK-PAD in de kop van 0232 zet de leesgrens, de teller en de
+Het ROLLBACK-PAD in de kop van 0233 zet de leesgrens, de teller en de
 opruimfuncties terug. **Het zet geen foto's terug.**
 
 - **De bytes zijn weg.** `storage.remove()` heeft ze verwijderd; er is geen
   prullenbak, en op de gratis tier zijn er geen automatische backups. Alles wat
-  de pas heeft opgehaald in de tijd dat 0232 draaide, is onherroepelijk weg.
+  de pas heeft opgehaald in de tijd dat 0233 draaide, is onherroepelijk weg.
 - **`pg_dump` helpt hier niet.** Die dumpt de metadata-rijen in
   `storage.objects`, niet de blobs. Een teruggezette dump geeft dus rijen die
   naar bestanden wijzen die er niet meer zijn — en de app toont daar netjes
   *"Deze foto staat er niet meer"*.
-- **Wil je de pas alleen stilzetten** zonder de rest van 0232 terug te draaien,
+- **Wil je de pas alleen stilzetten** zonder de rest van 0233 terug te draaien,
   dan is dat de veiligste stap en hij is één regel: zet de bewaartermijn
   belachelijk hoog (`interval '3650 days'`). De weestak blijft dan draaien — die
   ruimt alleen op wat sowieso onleesbaar is — en er verdwijnt niets wat nog in

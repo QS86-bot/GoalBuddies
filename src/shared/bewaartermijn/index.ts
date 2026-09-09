@@ -1,5 +1,5 @@
 /**
- * Hoe lang de server een gedeelde foto bewaart — QS8-396, migratie 0232.
+ * Hoe lang de server een gedeelde foto bewaart — QS8-396, migratie 0233.
  *
  * **Besluit van Quinten, 09-09-2026: 21 dagen.**
  *

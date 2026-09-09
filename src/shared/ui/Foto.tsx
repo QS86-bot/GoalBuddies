@@ -109,7 +109,7 @@ export const CHATFOTO_TEKSTEN = {
   },
   get afwezigtekst() {
     // ⚠️ De termijn komt uit `CHATFOTO_BEWAARDAGEN` en staat niet als getal in de
-    //    zin: het scherm en de opruimpas van 0232 moeten dezelfde termijn noemen.
+    //    zin: het scherm en de opruimpas van 0233 moeten dezelfde termijn noemen.
     return t('chatfoto.niet_beschikbaar', { dagen: CHATFOTO_BEWAARDAGEN });
   },
 };
