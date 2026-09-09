@@ -1928,10 +1928,14 @@ dat is er niet. Kies bewust één van deze drie:
    `docs/WERKVOORRAAD.md` §0 bezit hem.** Kijk daar, en vertrouw ook dát getal
    niet blind: vraag het aan de database.
 
-   ⚠️⚠️ **Wat wél een gat is en blijft: de edge-functies.** Die zijn van 06-09,
-   en er is sindsdien aan `supabase/functions/` gewerkt. Dat vraagt Quintens hand
-   (QS8-243, QS8-320) — en het is de stap die de doorloop van QS8-200 nodig
-   heeft, want de Doelcoach ís een edge-functie.
+   ✅ **En het edge-gat is op 09-09 om 18:19 UTC gedicht.** 📏 Nagemeten met
+   `list_edge_functions`: alle drie op `2026-09-09T18:19:06Z`, nieuwe sha256,
+   versies 20→24, 17→19 en 15→19. Daarmee is de doorloop van QS8-200 vrij — de
+   Doelcoach ís een edge-functie, en die draaide tot vandaag op code van drie
+   dagen oud.
+
+   ⚠️ Wat blijft staan is het **signaal**, niet het gat: `edge:gedeployd` ziet
+   dit achteraf en alleen als iemand hem draait. Criterium 2 van QS8-320.
 
 **Waar je nu begint, in deze volgorde:**
 
