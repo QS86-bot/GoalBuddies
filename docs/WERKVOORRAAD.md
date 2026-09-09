@@ -11,21 +11,38 @@
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0185`.** 📏 Gemeten op 07-09 aan het echte project, ná
-het toepassen: `list_migrations` geeft `0001` t/m `0185`, aaneengesloten, en de
-functies zijn byte-identiek aan de lokale stack (md5 per functie vergeleken, niet
-op het oog). `cycle_index` is weg, er staan geen driearguments varianten meer, en
-`weekplanstap_naar_weekdoel` staat op `svc=f` — de stille verruiming die bij een
-drop-en-opnieuw ontstaat, is dus niet teruggekomen.
+⚠️ **Productie staat op `0219`.** 📏 Hermeten op 09-09 om 14:40 UTC met
+`list_migrations` tegen `wehgocadxehottiiyvsc`: **222 registerrijen**, `0001` t/m
+`0219` aaneengesloten, inclusief de drie letterversies. De map telt er **224**.
+
+**Het gat is daarmee precies twee bestanden**, allebei van 09-09:
+
+| | |
+| -- | -- |
+| `0220_een_auditrij_voor_een_verdwenen_commitment.sql` | QS8-361 |
+| `0221_een_grendel_die_alleen_in_commentaar_staat_is_geen_grendel.sql` | QS8-364 |
+
+⚠️⚠️ **Hier stond tot 09-09 `0185`, en dat was 34 migraties naast de
+werkelijkheid.** De ronde die `0187` t/m `0219` toepaste is verderop in dit
+document wél opgeschreven (zie de vingerafdruktabel), maar deze regel — de eerste
+die een nieuwe sessie leest — bleef staan. **Dat is QS8-125 binnen één bestand:
+dezelfde stand op twee plekken, en de bovenste liep achter.** `docs:controle`
+ving het niet, want hij vergelijkt de drie documenten met elkáár en niet met de
+database.
+
+De les die eronder staat, staat er niet voor niets: **vraag het aan de database.**
 
 ⚠️⚠️ **De edge-functies zijn nog van 06-09 en dat is wél een gat.**
-`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`.
+`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`
+— 📏 hermeten op 09-09 om 14:40 UTC en nog steeds zo. 📏 En sindsdien is er wél
+aan gewerkt: `git log --since=2026-09-06T09:07:56Z -- supabase/functions/` geeft
+commits, dus de gedeployde code is niet meer die van de map.
 Gevolg: `0178` staat op productie, de code die `getuigenissen_voor()` aanroept
 staat in de map, en de gedeployde `notificaties` weet er niets van — **de
 persoon-getuige krijgt zijn melding niet**. Er is geen kapot onderdeel, dus niets
 wordt er rood van. QS8-320, met het commando erbij.
 
-⚠️ **De rollover is een apart geval en `0186` neemt de scherpte eruit.** `0185`
+⚠️ **De rollover is een apart geval, en `0186` staat er inmiddels op.** `0185`
 dropte `activeer_weekplanstap(uuid, date, integer)`, en de gedeployde rollover
 roept die vorm nog aan. 📏 Vandaag inert — `weekly_plan_steps` is leeg, dus de
 RPC wordt nooit bereikt — maar het scherpt zichzelf zodra er een weekplan komt.
@@ -35,9 +52,10 @@ een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
 
 Vraag de database welke migraties er staan, niet dit document.
 
-⚠️ **`0187` staat sinds 07-09 in de map en nog niet op productie** (QS8-314).
-`guard_group_member_update()` werpt daar in plaats van gewijzigde kolommen stil
-terug te zetten.
+⚠️ ~~**`0187` staat sinds 07-09 in de map en nog niet op productie**~~ —
+✅ **toegepast in de ronde van 09-09** (QS8-314).
+`guard_group_member_update()` werpt daar nu in plaats van gewijzigde kolommen
+stil terug te zetten.
 
 ⚠️ **De uitzondering die 0187 daarnaast invoerde is met `0204` weer weg**
 (QS8-325, 08-09): `group_members.status` kent alleen nog `active` en `inactive`.
