@@ -44,7 +44,7 @@ describe('registersIn — de vormen die hij moet vinden', () => {
   });
 
   /**
-   * ⚠️ Dezelfde reden als in `onveranderlijkheid_bewaking()` sinds 0208: een rij
+   * ⚠️ Dezelfde reden als in `onveranderlijkheid_bewaking()` sinds 0221: een rij
    *    die alleen in een uitleg staat, staat niet in het register. Hij hóórt dus
    *    als verlies te tellen.
    */
