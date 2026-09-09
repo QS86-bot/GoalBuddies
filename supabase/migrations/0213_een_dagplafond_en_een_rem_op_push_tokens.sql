@@ -86,6 +86,15 @@
 -- Op productie staat `push_tokens` op **0 rijen**, op elk platform (gemeten
 -- 08-09-2026). Er is dus niets op te ruimen voordat het plafond erop kan, en
 -- niemand die er vandaag overheen zit.
+--
+-- ---------------------------------------------------------------------------
+-- Verder lezen
+-- ---------------------------------------------------------------------------
+--
+-- `docs/decisions/2026-09-09-een-test-die-maar-een-kant-op-kijkt.md` — waarom
+-- `remdekking.test.ts` deze tabel niet kón zien, waarom de meting van de
+-- groeibare tabellen bijna op `has_table_privilege` strandde, en het
+-- bestaansorakel dat de eerste versie van de RPC-tak zelf binnenbracht.
 
 create or replace function public.pushtokens_plafond()
 returns integer
@@ -116,6 +125,29 @@ begin
   if (select auth.uid()) is null then return null; end if;
 
   select count(*) into v_batch from nieuw;
+
+  -- ⚠️⚠️ **Een statement dat niets toevoegde, kan het plafond niet doorbroken
+  --    hebben.** Zonder deze regel telt de trigger de tabel ook als de
+  --    transitietabel leeg is, en dat is niet theoretisch: een `insert … on
+  --    conflict do update` die volledig op de UPDATE-tak landt, ís een
+  --    INSERT-statement en vuurt deze `after insert … for each statement`-trigger
+  --    dus gewoon af — met nul rijen in `nieuw`.
+  --
+  -- 📏 Gemeten: zet een gebruiker met een bevoorrechte schrijver op 21 rijen, en
+  --    daarna valt élke herregistratie van een bestaand apparaat om met
+  --    `Te veel pushtokens in één dag (0 erbij, 21 in het laatste etmaal,
+  --    plafond 20)`. Die `0 erbij` is de hele diagnose.
+  --
+  -- ⚠️ Dat is precies de must-allow waar dit plafond op rust: `Pushwacht` in
+  --    `app/_layout.tsx` herregistreert bij élke start, dus zo iemand zit
+  --    blijvend zonder meldingen op een fout die hij zelf niet kan opheffen. De
+  --    RPC-tak houdt hem via de gewone weg op 20, maar een backfill, een tweede
+  --    schrijver of een later verlaagd plafond brengt hem er alsnog boven.
+  --
+  -- ⚠️ En hij verzwakt de grendel niet: nul toegevoegde rijen betekent dat de
+  --    telling van deze gebruiker door dit statement niet gestegen is.
+  if v_batch = 0 then return null; end if;
+
   select count(*) into v_totaal from push_tokens t
    where t.user_id = (select auth.uid()) and t.created_at > now() - interval '1 day';
 

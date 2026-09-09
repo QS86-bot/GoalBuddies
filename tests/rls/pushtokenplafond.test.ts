@@ -85,6 +85,9 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *   G  `and user_id = v_uid` uit de RPC-tak halen — de eerste versie van deze
  *      migratie, die over de héle tabel toetste
  *      → 1 rood: de orakeltest, met de 23514 in de melding
+ *   H  `if v_batch = 0 then return null; end if;` uit `begrens_pushtokens()`
+ *      halen
+ *      → 1 rood: de must-allow bóven het plafond, met de 23514 in de melding
  *
  * ⚠️⚠️ **G is er niet bij verzonnen maar bij gemeten, en hij haalde de eerste
  *    versie van deze migratie onderuit.** Die vroeg `not exists (… where token =
@@ -339,6 +342,59 @@ describe.skipIf(!rlsTestsConfigured)('registreer_push_token() en het dagplafond'
 
       expect(error).toBeNull();
       expect(uit(data).ok, 'herregistratie hoort nooit op het plafond te stuiten').toBe(true);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'laat herregistreren ook doorgaan als de gebruiker al bóven het plafond zit',
+    async () => {
+      // ⚠️⚠️ **De must-allow die de hele opzet draagt, in zijn scherpste vorm.**
+      //    `Pushwacht` in `app/_layout.tsx` herregistreert bij élke start. Zit
+      //    iemand boven het plafond, dan mag dat nog steeds werken — anders zit
+      //    hij blijvend zonder meldingen op een fout die hij zelf niet kan
+      //    opheffen, en er is geen knop die hem eruit haalt.
+      //
+      // 📏 Zonder de `v_batch = 0`-tak viel dit om met
+      //    `Te veel pushtokens in één dag (0 erbij, 21 in het laatste etmaal,
+      //    plafond 20)`. Die `0 erbij` is de diagnose: een
+      //    `insert … on conflict do update` die volledig op de UPDATE-tak landt,
+      //    ís een INSERT-statement en vuurt de `after insert … for each
+      //    statement`-trigger dus af — met een lége transitietabel.
+      //
+      // ⚠️ Bóven het plafond is via de RPC niet te bereiken, dus de opstelling
+      //    gebruikt een schrijver zonder claim. Dat is geen kunstgreep: een
+      //    backfill, een tweede schrijver of een later verláágd plafond brengt
+      //    een echte gebruiker er net zo goed boven.
+      const dave = await createTestUser('pushplafond-dave');
+      const grens = grensUitDeDatabase();
+
+      psql(`insert into public.push_tokens (user_id, token, platform)
+            select '${dave.id}'::uuid,
+                   'ExponentPushToken[${RUN}-dave-' || g || ']',
+                   'android'
+              from generate_series(1, ${grens + 1}) g`);
+
+      const opnieuw = await dave.db.rpc('registreer_push_token', {
+        p_token: `ExponentPushToken[${RUN}-dave-1]`,
+        p_platform: 'android',
+      });
+      expect(opnieuw.error, 'geen ruwe 23514 op een herregistratie').toBeNull();
+      expect(
+        uit(opnieuw.data).ok,
+        'hetzelfde apparaat opnieuw aanmelden hoort te blijven werken, ook hierboven',
+      ).toBe(true);
+
+      // ⚠️ En de grendel bijt nog wél: een échte nieuwe token gaat er niet in.
+      //    Zonder deze helft zou `return null` bovenaan de trigger deze test ook
+      //    groen maken.
+      const nieuweToken = await dave.db.rpc('registreer_push_token', {
+        p_token: `ExponentPushToken[${RUN}-dave-echt-nieuw]`,
+        p_platform: 'android',
+      });
+      expect(uit(nieuweToken.data).reason, 'een nieuwe token hoort nog steeds te stuiten').toBe(
+        'te_veel_tokens',
+      );
     },
     TEST_TIMEOUT,
   );
