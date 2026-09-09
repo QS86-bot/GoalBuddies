@@ -2188,15 +2188,33 @@ export type Database = {
       }
     }
     Views: {
-      goal_dashboard: {
+      mijn_doelvelden: {
         Row: {
           available_hours_per_week: number | null
+          id: string | null
+          identity_statement: string | null
+          max_points: number | null
+        }
+        Insert: {
+          available_hours_per_week?: number | null
+          id?: string | null
+          identity_statement?: string | null
+          max_points?: number | null
+        }
+        Update: {
+          available_hours_per_week?: number | null
+          id?: string | null
+          identity_statement?: string | null
+          max_points?: number | null
+        }
+        Relationships: []
+      }
+      goal_dashboard: {
+        Row: {
           category: string | null
           created_at: string | null
           description: string | null
           id: string | null
-          identity_statement: string | null
-          max_points: number | null
           milestones_done: number | null
           milestones_total: number | null
           owner_id: string | null
@@ -2209,13 +2227,10 @@ export type Database = {
           weekly_total: number | null
         }
         Insert: {
-          available_hours_per_week?: number | null
           category?: string | null
           created_at?: string | null
           description?: string | null
           id?: string | null
-          identity_statement?: string | null
-          max_points?: number | null
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
@@ -2227,13 +2242,10 @@ export type Database = {
           weekly_total?: never
         }
         Update: {
-          available_hours_per_week?: number | null
           category?: string | null
           created_at?: string | null
           description?: string | null
           id?: string | null
-          identity_statement?: string | null
-          max_points?: number | null
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
