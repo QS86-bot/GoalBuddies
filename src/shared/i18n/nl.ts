@@ -1083,6 +1083,10 @@ export const nl = {
   'coach.neem_over': 'Neem ze over en pas ze daarna aan wat je wilt: schrappen, herschrijven en herordenen kan allemaal op het doelscherm.',
   'coach.toch_niet': 'Toch niet',
   'coach.al_mijlpalen': 'Je hebt al mijlpalen bij dit doel. Overnemen zet deze erbij en vervangt ze niet. Schrap eerst wat je niet wilt houden.',
+  'coach.geen_overgenomen':
+    'Er is geen enkele mijlpaal aangemaakt. {melding} Probeer het zo nog eens, of voeg ze zelf toe op het doelscherm.',
+  'coach.deels_overgenomen':
+    'De eerste {gelukt} van de {totaal} mijlpalen staan er; de rest is niet aangemaakt. {melding} Sluit dit venster om te zien wat er staat en vul de rest zelf aan.',
   'coach.laten_voorstellen': 'Mijlpalen laten voorstellen',
   'coach.wat_hij_doet': 'De Doelcoach knipt je doel op in mijlpalen met streefdata, op basis van wat je hierboven hebt ingevuld. Je kunt daarna alles aanpassen.',
   'coach.tien_per_dag': 'Je kunt dit tien keer per dag doen. Dezelfde vraag binnen een dag kost geen nieuwe beurt.',
