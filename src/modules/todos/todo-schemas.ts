@@ -25,6 +25,17 @@ export const TAAK_MIN = 1;
 export const TAAK_MAX = 500;
 
 /**
+ * Bovengrens uit de CHECK `todo_items_order_bereik`.
+ *
+ * ⚠️ **Een bovengrens omdat "achteraan toevoegen" `max + 1` is.** `order_index`
+ *    is een `integer`; zonder grens zet een verzoek er `2147483647` in en valt
+ *    de eerstvolgende taak om met `22003 integer out of range` — op een
+ *    berekening die nergens fout lijkt. Gevonden in de security-review op
+ *    QS8-379. De database is de grendel (onwrikbare regel 3); dit is de melding.
+ */
+export const VOLGORDE_MAX = 1_000_000;
+
+/**
  * ⚠️ **`telTekens()` en niet `.min()`/`.max()` — QS8-118.** Zod telt
  *    UTF-16-eenheden en `char_length` in Postgres telt codepunten. Eén emoji
  *    kost twee UTF-16-eenheden en één codepunt, een samengesteld gezin elf tegen
@@ -48,7 +59,7 @@ const taakTekst = z
 /** Een nieuwe taak. `order_index` is optioneel; de database zet hem anders op 0. */
 export const taakInvoerSchema = z.object({
   body: taakTekst,
-  order_index: z.number().int().min(0).optional(),
+  order_index: z.number().int().min(0).max(VOLGORDE_MAX).optional(),
 });
 
 /**
@@ -62,7 +73,7 @@ export const taakPatchSchema = z
   .object({
     body: taakTekst,
     done_at: z.string().datetime().nullable(),
-    order_index: z.number().int().min(0),
+    order_index: z.number().int().min(0).max(VOLGORDE_MAX),
   })
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, {

@@ -62,8 +62,11 @@
  *      -> 'de client noemt visibility niet bij een PATCH'
  *   G  `alter policy todo_items_insert … with check (user_id = (select auth.uid()))`
  *      -> 'de INSERT-policy laat ook mét de kolomgrant niets anders dan privé toe'
- *   H  `alter policy todo_items_update … with check (user_id = (select auth.uid()))`
- *      -> 'de UPDATE-policy laat ook mét de kolomgrant niets anders dan privé toe'
+ *   H  `drop trigger todo_items_pin on todo_items`
+ *      -> 'de pin laat ook mét de kolomgrant niets anders dan privé toe'
+ *   H2 `alter policy todo_items_update … with check (… and visibility = 'private')`
+ *      — de conjunct die hier stond, terug
+ *      -> 'een gedeelde taak blijft voor zijn eigenaar bewerkbaar'
  *   I  `grant insert (created_at) on todo_items to authenticated`
  *      -> 'de client zet created_at niet zelf — daar hangt het dagplafond aan'
  *   J  `drop trigger taken_dagplafond on todo_items`
@@ -679,7 +682,7 @@ describe.skipIf(!stackErbij)('de using-helft van UPDATE en DELETE, apart gemeten
   );
 });
 
-describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar — de policy', () => {
+describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar — de tweede grendel', () => {
   it(
     'de INSERT-policy laat ook mét de kolomgrant niets anders dan privé toe',
     () => {
@@ -698,15 +701,80 @@ describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar 
     60_000,
   );
 
+  /**
+   * ⚠️ **Bij een UPDATE is de tweede grendel een pin en geen policy, en dat is
+   *    een gerepareerde keuze.** Hier stond `and visibility = 'private'` in de
+   *    `with check` van `todo_items_update`, en die toetst de *resulterende* rij:
+   *    zodra een taak op `'group'` staat — wat QS8-381 per ontwerp gaat doen —
+   *    kon de eigenaar hem niet meer afvinken. De test hieronder ('een gedeelde
+   *    taak blijft voor zijn eigenaar bewerkbaar') is de regressie daarvan.
+   *
+   *    Vandaar `23514` en niet `42501`: dat is `pin_taak()` die weigert, niet de
+   *    policy. Verandert die code, dan hoort er iemand naar te kijken.
+   */
   it(
-    'de UPDATE-policy laat ook mét de kolomgrant niets anders dan privé toe',
+    'de pin laat ook mét de kolomgrant niets anders dan privé toe',
     () => {
       const uitslag = metKolomgrant(
         'update',
         `update todo_items set visibility = 'group' where id = v_tid;`,
       );
 
-      expect(uitslag).toBe('GEWEIGERD 42501');
+      expect(uitslag).toBe('GEWEIGERD 23514');
+    },
+    60_000,
+  );
+
+  /**
+   * ⚠️⚠️ **De must-allow van de pin, en hij is de reden dat de pin bestaat.**
+   *    📏 Gemeten met de oude conjunct in de policy: een taak op `'group'` gaf
+   *    de eigenaar `42501` op `set done_at = now()` en `GERAAKT 1` op een
+   *    `delete` — zijn eigen gedeelde taak was alleen nog weg te gooien.
+   *
+   *    Vandaag is dat pad niet te bereiken zonder een bevoorrechte schrijver,
+   *    en dáárom staat deze test er nu: bij QS8-381 wórdt het bereikbaar, en dan
+   *    is dit de test die zegt dat het werkt in plaats van de gebruiker die het
+   *    zegt.
+   */
+  it(
+    'een gedeelde taak blijft voor zijn eigenaar bewerkbaar',
+    () => {
+      const uit = psql(`
+        begin;
+        create temp table t as select gen_random_uuid() eig, gen_random_uuid() tid;
+        grant select on t to authenticated;
+        insert into auth.users (id, email) select eig, 'lijst-gedeeld@x.nl' from t;
+        -- Alleen een bevoorrechte schrijver komt hier vandaag aan; QS8-381 maakt
+        -- er een RPC voor. De pin staat op UPDATE, dus een INSERT mag dit.
+        insert into todo_items (id, user_id, body, visibility)
+          select tid, eig, 'gedeelde taak', 'group' from t;
+        select set_config('request.jwt.claims',
+          json_build_object('sub', eig, 'role', 'authenticated')::text, true) from t;
+        do $proef$
+        declare v_tid uuid; v_n integer;
+        begin
+          select tid into v_tid from t;
+          set local role authenticated;
+          update todo_items set done_at = now() where id = v_tid;
+          get diagnostics v_n = row_count;
+          reset role;
+          perform set_config('proef.uitslag', 'GERAAKT ' || v_n, true);
+        exception when others then
+          reset role;
+          perform set_config('proef.uitslag', 'GEWEIGERD ' || sqlstate, true);
+        end $proef$;
+        select current_setting('proef.uitslag');
+        rollback;
+      `)
+        .split('\n')
+        .filter((r) => r.trim() !== '')
+        .at(-1) as string;
+
+      expect(
+        uit.trim(),
+        'de eigenaar kan zijn eigen gedeelde taak niet meer afvinken — dat is de ' +
+          'val waar de conjunct in de policy voor zorgde',
+      ).toBe('GERAAKT 1');
     },
     60_000,
   );

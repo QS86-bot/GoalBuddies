@@ -155,6 +155,19 @@ export const GEEN_OPPERVLAK = new Map([
       'het is het feit dat iemand nodig heeft om te besluiten of hij meedoet.',
   ],
   [
+    'functie:pin_taak',
+    '⚠️ **De derde valse positief op een naam** (0215, QS8-379), en hij komt uit een ' +
+      'andere hoek dan de twee hiervoor: het woord staat hier in de ' +
+      'foutmelding — "De zichtbaarheid en de herkomst van een taak liggen vast". ' +
+      'Deze trigger pint `todo_items.visibility`, en dat is een kolom van De Lijst ' +
+      'en niet `groups.zichtbaarheid`; hij leest de stand van geen enkele groep en ' +
+      'varieert niets op wat een lid van een ánder ziet. Sterker: hij houdt de kolom ' +
+      'juist vast, zodat er niets opengaat. ⚠️ Kijk hier opnieuw bij QS8-381 — dat ' +
+      'issue geeft `todo_items.visibility` een deelpad, en dán is de vraag of een ' +
+      'gedeelde taak een groepsoppervlak is. Vandaag is hij dat niet, want er is geen ' +
+      'enkele weg om de kolom van `private` af te krijgen.',
+  ],
+  [
     'functie:zet_groepsontdekbaarheid',
     'Leest `zichtbaarheid` om te wéigeren (QS8-231, migratie 0144): een open groep kan ' +
       'niet vindbaar zijn, want dan zouden onbekenden elkaars tegenslag zien. Hij geeft ' +

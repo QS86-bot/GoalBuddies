@@ -6,6 +6,8 @@
 --   drop trigger if exists taken_dagplafond on public.todo_items;
 --   drop trigger if exists taken_rem on public.todo_items;
 --   drop trigger if exists todo_items_updated on public.todo_items;
+--   drop trigger if exists todo_items_pin on public.todo_items;
+--   drop function if exists public.pin_taak();
 --   drop function if exists public.begrens_taken();
 --   drop function if exists public.rem_taken();
 --   drop function if exists public.taken_plafond();
@@ -79,7 +81,20 @@ create table if not exists public.todo_items (
   -- ⚠️ Dezelfde waarden als `daily_moves.visibility` (0001), zodat er niet twee
   --    woordenschatten voor hetzelfde begrip ontstaan.
   constraint todo_items_visibility_valid
-    check (visibility in ('private', 'group'))
+    check (visibility in ('private', 'group')),
+
+  -- ⚠️ **Een bovengrens, want "achteraan toevoegen" is `max + 1`.** Zonder deze
+  --    CHECK mag een client `2147483647` zetten — de kolom is `integer` — en dan
+  --    valt de eerstvolgende taak om met `22003 integer out of range` op een
+  --    berekening die nergens fout lijkt. Geen lek, wel een scherm dat vastloopt
+  --    op een waarde die een ánder verzoek erin gezet heeft. Gevonden in de
+  --    security-review op dit issue.
+  --
+  --    Een miljoen is ruim: dat is een miljoen taken bij een dichte nummering,
+  --    of duizend taken bij een nummering met gaten van duizend. `weekly_plan_steps`
+  --    doet hetzelfde met 1..52, waar dat de natuurlijke grens was.
+  constraint todo_items_order_bereik
+    check (order_index between 0 and 1000000)
 );
 
 comment on table public.todo_items is
@@ -147,14 +162,29 @@ create policy todo_items_insert on public.todo_items
     and visibility = 'private'
   );
 
+-- ⚠️⚠️ **Hier stond `and visibility = 'private'` in de `with check`, en dat was
+--    een grendel die zijn eigen eigenaar buitensloot.** Een `with check` toetst
+--    de *resulterende* rij en niet of een kolom onveranderd bleef. 📏 Gemeten in
+--    de security-review op dit issue, en nagemeten: staat een taak eenmaal op
+--    `'group'` — wat QS8-381 per ontwerp gaat doen — dan geeft `update … set
+--    done_at = now()` van de eigenaar zélf `42501 new row violates row-level
+--    security policy`. Zijn gedeelde taak is dan niet meer af te vinken, niet te
+--    hernoemen en niet te verplaatsen; alleen nog weg te gooien (`delete` gaf
+--    `GERAAKT 1`).
+--
+--    ⚠️ **En dat is niet alleen een bug maar een val.** Wie dat bij QS8-381
+--    tegenkomt, leest een melding die naar precies deze regel wijst, en de
+--    goedkoopste reparatie onder tijdsdruk is hem schrappen — waarmee grendel 2
+--    van de kolom die deze migratie kwam beschermen, verdwijnt.
+--
+--    De tweede grendel staat daarom in §3b als pin, de vorm die dit schema al
+--    gebruikt (`pin_week_review`, `guard_group_update`): die kijkt naar `old` en
+--    `new` en houdt de kolom vast in plaats van de rij te bevriezen.
 drop policy if exists todo_items_update on public.todo_items;
 create policy todo_items_update on public.todo_items
   for update to authenticated
   using (user_id = (select auth.uid()))
-  with check (
-    user_id = (select auth.uid())
-    and visibility = 'private'
-  );
+  with check (user_id = (select auth.uid()));
 
 drop policy if exists todo_items_delete on public.todo_items;
 create policy todo_items_delete on public.todo_items
@@ -189,6 +219,71 @@ grant select                                      on table public.todo_items to 
 grant insert (user_id, body, order_index)         on table public.todo_items to authenticated;
 grant update (body, done_at, order_index)         on table public.todo_items to authenticated;
 grant delete                                      on table public.todo_items to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 3b. De pin — de tweede grendel op `visibility`, en op drie kolommen erbij
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Waarom een pin en geen conjunct in de policy:** zie de aantekening bij
+--    `todo_items_update` hierboven. Een `with check` kent `old` niet en bevriest
+--    daarom de hele rij zodra de waarde ooit verandert.
+--
+-- ⚠️ **Hij weigert luid en zet niet stil terug.** Dat is de les van QS8-314: een
+--    stille terugzetting geeft de client een 200 op een verzoek dat niets deed,
+--    en dan zoekt niemand verder. De toewijzingen eronder zijn de vangnetregel
+--    voor het geval de weigering ooit versmald wordt — dezelfde volgorde als in
+--    `pin_week_review()`.
+--
+-- ⚠️ **Vier kolommen en niet één.** `visibility`, `user_id`, `created_at` en
+--    `id` staan geen van alle in de UPDATE-kolomgrant, dus een client kán ze
+--    vandaag niet noemen. Dit is de grendel voor het geval er ooit een grant bij
+--    glipt — precies de reden die `groepspin.test.ts` in zijn kop uitschrijft,
+--    en die daar geen hypothese bleek: `groups.tz` hád het recht.
+--
+-- ⚠️⚠️ **QS8-381 loopt hier tegenaan, en dat is met opzet.** Het deelpad krijgt
+--    een `security definer`-RPC, en een trigger geldt óók voor die. De vorm die
+--    dit schema daarvoor kent is een sessiesleutel die alléén die RPC zet, met
+--    een rij in `sleutelzetters()` erbij — zoals `app.huddledag_verzet` in 0208.
+--    Die sleutel staat hier bewust nog niet: een register dat een functie noemt
+--    die niet bestaat, is een lijst die liegt. **Wie QS8-381 bouwt, voegt de
+--    uitzondering hier toe en niet in de policy.**
+--
+-- ⚠️ `updated_at` wordt met opzet niet gepind: die zet `touch_updated_at()` een
+--    trigger later. Triggers vuren op naam, en `todo_items_pin` komt vóór
+--    `todo_items_updated`.
+
+create or replace function public.pin_taak() returns trigger
+ language plpgsql set search_path to 'public', 'pg_temp' as $$
+begin
+  if new.visibility is distinct from old.visibility
+     or new.user_id is distinct from old.user_id
+     or new.created_at is distinct from old.created_at
+     or new.id is distinct from old.id
+  then
+    raise exception 'De zichtbaarheid en de herkomst van een taak liggen vast'
+      using errcode = 'check_violation',
+            hint = 'visibility, user_id, created_at en id liggen vast zodra de taak er staat; body, done_at en order_index zijn wel te wijzigen.';
+  end if;
+
+  new.visibility := old.visibility;
+  new.user_id    := old.user_id;
+  new.created_at := old.created_at;
+  new.id         := old.id;
+
+  return new;
+end $$;
+
+comment on function public.pin_taak() is
+  'Houdt visibility, user_id, created_at en id van een taak vast bij een UPDATE '
+  '(QS8-379). De kolomgrant is de eerste grendel; dit is de tweede, voor het '
+  'geval er ooit een recht bij glipt.';
+
+revoke all on function public.pin_taak() from public, anon, authenticated;
+
+drop trigger if exists todo_items_pin on public.todo_items;
+create trigger todo_items_pin
+  before update on public.todo_items
+  for each row execute function public.pin_taak();
 
 drop trigger if exists todo_items_updated on public.todo_items;
 create trigger todo_items_updated

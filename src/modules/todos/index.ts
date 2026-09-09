@@ -9,6 +9,7 @@
 export {
   TAAK_MAX,
   TAAK_MIN,
+  VOLGORDE_MAX,
   taakInvoerSchema,
   taakPatchSchema,
   type TaakInvoer,

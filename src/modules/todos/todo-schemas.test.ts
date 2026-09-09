@@ -7,6 +7,7 @@ import { telTekens } from '../../shared/tekst';
 import {
   TAAK_MAX,
   TAAK_MIN,
+  VOLGORDE_MAX,
   taakInvoerSchema,
   taakPatchSchema,
 } from './todo-schemas';
@@ -41,6 +42,11 @@ import {
  *      -> 1 rood: 'TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0215'
  *   O  de schema's op `loose()` in plaats van strippend
  *      -> 1 rood: 'laat visibility niet door'
+ *   Q  `VOLGORDE_MAX` op 999_999
+ *      -> 1 rood: 'VOLGORDE_MAX komt letterlijk uit de CHECK van 0215'
+ *   R  `.max(VOLGORDE_MAX)` van `order_index` af
+ *      -> 1 rood: 'weigert een volgordenummer boven de grens en laat de grens
+ *         zelf door'
  *   P  de `refine` op een lege patch weg
  *      -> 2 rood: 'weigert een patch zonder één veld' en de visibility-patch,
  *         die op diezelfde weigering leunt
@@ -93,6 +99,31 @@ describe('de grenzen staan in de database én in het schema, en ze zijn gelijk',
   it('weigert wat na trimmen niets overhoudt, net als btrim in de CHECK', () => {
     expect(taakInvoerSchema.safeParse({ body: '   ' }).success).toBe(false);
     expect(taakInvoerSchema.safeParse({ body: '' }).success).toBe(false);
+  });
+
+  /**
+   * ⚠️ **Ook een bovengrens op `order_index`, en om dezelfde reden als de
+   *    tekstgrens: wat het schema doorlaat, hoort de database ook door te
+   *    laten.** 📏 De security-review op dit issue mat dat een client hier
+   *    `2147483647` in kon zetten, waarna "achteraan toevoegen" (`max + 1`)
+   *    omvalt met `22003 integer out of range`.
+   */
+  it('VOLGORDE_MAX komt letterlijk uit de CHECK van 0215', () => {
+    const uitMigratie = /order_index\s+between\s+(\d+)\s+and\s+(\d+)/i.exec(MIGRATIE);
+    expect(uitMigratie, 'geen todo_items_order_bereik in 0215').not.toBeNull();
+
+    expect(Number(uitMigratie?.[1])).toBe(0);
+    expect(Number(uitMigratie?.[2])).toBe(VOLGORDE_MAX);
+  });
+
+  it('weigert een volgordenummer boven de grens en laat de grens zelf door', () => {
+    expect(
+      taakInvoerSchema.safeParse({ body: 'Taak', order_index: VOLGORDE_MAX }).success,
+    ).toBe(true);
+    expect(
+      taakInvoerSchema.safeParse({ body: 'Taak', order_index: VOLGORDE_MAX + 1 }).success,
+    ).toBe(false);
+    expect(taakPatchSchema.safeParse({ order_index: 2_147_483_647 }).success).toBe(false);
   });
 
   it('MUST-ALLOW: een gewone taak komt er gewoon door', () => {
