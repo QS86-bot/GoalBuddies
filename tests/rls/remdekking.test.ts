@@ -136,6 +136,10 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
     //    tellers: vier hadden kunnen verdwijnen zonder dat deze zelftoets
     //    aansloeg. Komt er een teller bij, dan hoort dit getal mee te bewegen —
     //    en dan kijkt er iemand naar of er ook een rem bij hoort.
-    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(14);
+    //
+    // ⚠️ Veertien werd vijftien met `taken_dagplafond` op `todo_items` (0214,
+    //    QS8-379). Er is naar gekeken: `taken_rem` staat ernaast, en de test
+    //    hierboven zou zonder die rem rood zijn geworden.
+    expect(aantal, 'het aantal dagtellers is veranderd; hoort er een rem bij?').toBe(15);
   }, 60_000);
 });

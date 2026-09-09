@@ -984,6 +984,10 @@ export const en: Record<Sleutel, string> = {
   'validatie.identiteit_lang': 'Keep it short: one sentence works best.',
   'validatie.uren_max': 'A week has 168 hours.',
 
+  'lijst.taak_leeg': 'Write down what you want to do.',
+  'lijst.taak_lang': 'Keep it short: at most 500 characters.',
+  'lijst.patch_leeg': 'Nothing was changed.',
+
   'deadline.argument_kort':
     'Write one sentence about what changed. Your buddies decide on this, ' +
     'so "no time" is too little to say yes to.',

@@ -1374,6 +1374,13 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Deadline verschuiven met akkoord — A7
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // De Lijst — losse taken (QS8-379)
+  // ---------------------------------------------------------------------------
+  'lijst.taak_leeg': 'Schrijf op wat je wilt doen.',
+  'lijst.taak_lang': 'Hou het kort: maximaal 500 tekens.',
+  'lijst.patch_leeg': 'Er is niets gewijzigd.',
+
   'deadline.argument_kort':
     'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
     'dus "geen tijd" is te weinig om ja op te zeggen.',

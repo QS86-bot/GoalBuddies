@@ -1060,6 +1060,32 @@ export const GEEN_AANROEPER = [
       'komt; zonder dat zou hij een gewoonte beschrijven — de vorm die QS8-352 duur maakte.',
   },
   {
+    tabel: 'todo_items',
+    soort: 'INSERT',
+    kolommen: ['body', 'order_index', 'user_id'],
+    reden:
+      '⚠️ **Hier is géén grendel, en dat staat er met zoveel woorden — QS8-379.** De policy ' +
+      'staat de eigenaar toe (`user_id = (select auth.uid())`) en de grant is open; wat ontbreekt ' +
+      'is niet een slot maar een scherm. De Lijst landt in drie delen en dit is deel 1: de tabel, ' +
+      'de RLS en het dagplafond. Het scherm dat hiernaartoe schrijft is **QS8-380**. ' +
+      '⚠️ Deze rij is dus een uitstel en geen besluit, en hij hoort binnen één milestone weg te ' +
+      'zijn: landt QS8-380, dan meldt `verlopenRegels()` hem vanzelf. Blijft QS8-380 liggen, dan ' +
+      'is dit een grant zonder aanroeper en horen de rechten ingetrokken te worden tot het scherm ' +
+      'er is. Wat wél dicht staat, staat in de grant zelf: `visibility` en `created_at` zitten er ' +
+      'níét in — dat zijn de twee kolommen waar een client iets mee zou kunnen, en die zijn van de ' +
+      'server (`tests/rls/todo-lijst.test.ts`).',
+  },
+  {
+    tabel: 'todo_items',
+    soort: 'UPDATE',
+    kolommen: ['body', 'done_at', 'order_index'],
+    reden:
+      'Zelfde geval als de INSERT hierboven (QS8-379): geen grendel, een ontbrekend scherm. ' +
+      'Afvinken is `done_at` en dat is precies waar QS8-380 voor komt. `visibility` staat ook ' +
+      'hier niet in de grant — het deelpad krijgt in QS8-381 een eigen RPC en hoort geen kolom te ' +
+      'zijn die toevallig schrijfbaar is.',
+  },
+  {
     tabel: 'group_members',
     soort: 'UPDATE',
     kolommen: ['group_id', 'role', 'status', 'user_id'],
