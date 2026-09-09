@@ -56,6 +56,8 @@ export {
   vraagLidmaatschapAan,
   zetOntdekbaar,
   type Lidmaatschapsverzoek,
+  type Verleden,
+  type Verledensoort,
   type OntdekteGroep,
 } from './ontdekken';
 
