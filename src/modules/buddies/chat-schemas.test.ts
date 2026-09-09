@@ -32,6 +32,7 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     sender_avatar: null,
     body: 'iets',
     type: 'text',
+    attachment_url: null,
     system_event: null,
     getallen: null,
     subject_name: null,

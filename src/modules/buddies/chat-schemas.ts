@@ -23,13 +23,23 @@ export const BERICHT_MAX = 4000;
 /** Eén pagina geschiedenis. Gelijk aan de bovengrens van `groepschat()`. */
 export const BERICHTEN_PER_PAGINA = 30;
 
-export const berichtSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1, { error: () => t('chat.leeg') })
-    .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
-});
+/**
+ * ⚠️ **`heeftFoto` spiegelt `chat_messages_inhoud_vereist` uit migratie 0024:**
+ *    een niet-lege tekst **of** een bijlage. Een foto zonder onderschrift is een
+ *    volwaardig bericht; een lege invoer zonder foto is dat niet.
+ */
+export const berichtSchema = z
+  .object({
+    body: z
+      .string()
+      .trim()
+      .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
+    heeftFoto: z.boolean().default(false),
+  })
+  .refine((v) => v.body !== '' || v.heeftFoto, {
+    error: () => t('chat.leeg'),
+    path: ['body'],
+  });
 
 export type BerichtInvoer = z.infer<typeof berichtSchema>;
 
@@ -168,6 +178,15 @@ export interface ChatBericht {
    */
   readonly body: string;
   readonly type: string;
+  /**
+   * Het opslagpad van de bijlage, of — ná `metGetekendeChatfotos()` — een
+   * ondertekende URL. `null` als er geen foto is, én als het tekenen mislukte.
+   *
+   * ⚠️ **Een kaal pad hoort nooit in een `<Image>` te belanden.** De realtime-
+   *    payload draagt het pad ongetekend; het scherm haalt daarom bij een signaal
+   *    de nieuwste pagina op in plaats van de payload in te voegen.
+   */
+  readonly attachment_url: string | null;
   readonly system_event: string | null;
   /** Over wie het systeembericht gaat. `null` bij een mensbericht. */
   readonly subject_name: string | null;
@@ -268,7 +287,7 @@ export interface ChatCache {
  *    mee" tot de eerste verversing: geen storing, wel een naam die een paar
  *    seconden onwaar is.
  */
-export const CACHE_VERSIE = 2;
+export const CACHE_VERSIE = 3;
 
 /** Hoeveel berichten er bewaard worden. Eén pagina is genoeg om iets te zien. */
 export const CACHE_MAX = BERICHTEN_PER_PAGINA;
@@ -289,11 +308,11 @@ export function isCacheGeldig(cache: ChatCache | null, periodStart: string): boo
  */
 export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly ChatBericht[] {
   const gesneden = berichten.length <= CACHE_MAX ? berichten : berichten.slice(-CACHE_MAX);
-  return gesneden.map(zonderAvatar);
+  return gesneden.map(zonderVerlopendeUrls);
 }
 
 /**
- * Haalt de avatar uit een bericht dat de cache in gaat — migratie 0126.
+ * Haalt élke verlopende URL uit een bericht dat de cache in gaat — 0126 en 0221.
  *
  * ⚠️ **Een ondertekende URL verloopt na een uur; de cache leeft een week.** Sinds
  *    0126 is de avatar-bucket privé, dus `sender_avatar` draagt in een geladen
@@ -305,7 +324,14 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  *    URL is erger dan geen URL, want hij ziet er goed uit en doet het niet. De
  *    cache is er voor een slechte verbinding, en dan is een initiaal precies
  *    genoeg.
+ *
+ * ⚠️⚠️ **Hij heette `zonderAvatar`, en die naam was de val.** Toen `chatfotos`
+ *    erbij kwam (QS8-71) ontstond exact dezelfde naad op een tweede veld, en een
+ *    functie die "zonder avatar" heet nodigt de volgende schrijver niet uit om
+ *    daaraan te denken. De naam noemt nu de eigenschap — *verlopend* — en niet
+ *    het veld van toen. Komt er een derde bij, dan hoort hij hier.
  */
-function zonderAvatar(bericht: ChatBericht): ChatBericht {
-  return bericht.sender_avatar === null ? bericht : { ...bericht, sender_avatar: null };
+export function zonderVerlopendeUrls(bericht: ChatBericht): ChatBericht {
+  if (bericht.sender_avatar === null && bericht.attachment_url === null) return bericht;
+  return { ...bericht, sender_avatar: null, attachment_url: null };
 }

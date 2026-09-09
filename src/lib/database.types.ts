@@ -2515,6 +2515,7 @@ export type Database = {
         Returns: {
           actor_id: string
           actor_name: string
+          attachment_url: string
           body: string
           created_at: string
           id: string

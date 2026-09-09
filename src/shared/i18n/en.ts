@@ -874,6 +874,17 @@ export const en: Record<Sleutel, string> = {
   'chat.laden_mislukt': 'The messages could not be loaded.',
   'chat.controleer': 'Check your message.',
   'chat.leeg': 'There is nothing in your message yet.',
+
+  // ⚠️ See nl.ts: photos in the chat (QS8-71).
+  'chatfoto.knop': 'Add a photo',
+  'chatfoto.gekozen': 'Photo ready to send',
+  'chatfoto.weghalen': 'Remove photo',
+  'chatfoto.type_niet_toegestaan': 'Pick a JPG, PNG or WebP.',
+  'chatfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
+  'chatfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
+  'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
+  'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
+  'chatfoto.laden': 'Loading photo',
   'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
   'chat.rem_bereikt':
     'You have posted the maximum number of messages for today. You can continue again later.',

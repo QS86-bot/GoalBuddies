@@ -38,6 +38,17 @@ export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {
+  CHATFOTO_BUCKET,
+  CHATFOTO_MAX_BYTES,
+  CHATFOTO_TYPES,
+  chatfotoPad,
+  keurChatfoto,
+  metGetekendeChatfotos,
+} from './chatfoto';
+
+export { kiesChatfoto, type Chatfotokeuze } from './kiesChatfoto';
+
+export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
