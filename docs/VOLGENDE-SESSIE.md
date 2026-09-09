@@ -1901,15 +1901,23 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 |---|---|
 | `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
 | `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
-| feature-epics (QS8-200, QS8-230, QS8-252) | opsplitsen in deelissues vóór er iets te bouwen valt |
+| feature-epics (QS8-200, QS8-230, QS8-252) | ⚠️ **niet meer "opsplitsen" — ze zijn af.** 📏 Op 09-09 nagelopen: 15 van de 16 kinderen Done. QS8-252 is gesloten, QS8-200 en QS8-230 dragen nu `wacht-op-Quinten` |
 | De Lijst (QS8-378 t/m 381) | de parallelle sessie zit erin; QS8-380 leunt op QS8-379 |
 
 **Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
 dat is er niet. Kies bewust één van deze drie:
 
-1. **Een epic opsplitsen.** QS8-200 staat op Urgent en heeft geen
-   `wacht-op-Quinten`. Dat is `spec-planner`-werk en levert de voorraad op waar de
-   sessie daarna uit put — precies wat de parallelle sessie met QS8-378 deed.
+1. ~~**Een epic opsplitsen.**~~ ⚠️ **Vervallen op 09-09-2026 — er is geen epic
+   meer om op te splitsen.** Alle drie waren al opgesplitst en vrijwel afgebouwd;
+   ze lazen alleen als onbegonnen omdat hun eigen status in Backlog bleef staan
+   terwijl hun kinderen Done gingen. QS8-252 is gesloten na een meting per besluit
+   (A53 t/m A56), QS8-200 staat op Todo met `wacht-op-Quinten` omdat zijn meetlat
+   een **doorloop met een vers account** vraagt en niet een telling, en QS8-230
+   wacht op zijn laatste kind (QS8-233, `wacht-op-Quinten`).
+
+   ⚠️ **De les die blijft:** een epic dat in Backlog blijft staan terwijl zijn
+   kinderen aflopen, leest als voorraad die er niet is. Sluit hem, of geef hem het
+   label dat zegt waar hij op wacht.
 2. **Een doorloop.** De vorige keer dat deze voorraad leeg leek, liep er een mens
    door de app en kwamen er veertien issues bij, vier op Urgent. Dat is de
    goedkoopste manier om te ontdekken wat er werkelijk stuk is.
@@ -1934,7 +1942,7 @@ dat is er niet. Kies bewust één van deze drie:
    de branch:** de migratie op productie toepassen en daarna `npm run types:db`.
    Zonder dat kent `database.types.ts` de nieuwe RPC niet en is hij niet
    type-veilig aan te roepen. De SQL is af en staat in het issue.
-2. **QS8-252 — de epic van 01-09**, als die branch geland is of hem niet raakt.
+2. ~~**QS8-252 — de epic van 01-09**~~ — ✅ **af en gesloten op 09-09-2026.** Alle zes kinderen Done en alle vier de besluiten in de code nagemeten; de verantwoording staat als reactie bij het issue. Wat hieronder over A53 t/m A56 staat, is daarmee geschiedenis en geen opdracht meer.
    Vier besluiten (A53 t/m A56) uit een nieuwe Habit Huddle-ronde: een doel
    krijgt een **ritme** (`daily`, `times_per_week`, `weekly`), er komt een
    **klassement per lid**, **kleur waar hij iets codeert**, en de vragenlijst
