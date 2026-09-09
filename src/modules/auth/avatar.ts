@@ -103,7 +103,7 @@ export async function uploadAvatar(
   });
   if (gezet.error) {
     reportError(gezet.error, 'avatar.upload', { user_id: userId });
-    // ⚠️ **Het dagplafond van 0232 komt hier ook binnen, en het is nieuw.** Tot
+    // ⚠️ **Het dagplafond van 0233 komt hier ook binnen, en het is nieuw.** Tot
     //    die migratie ging de grens van 0130 in de praktijk nooit af — deze
     //    functie schrijft een vers pad en wist het oude, dus er stond er altijd
     //    één. De dagteller telt wél elke wisseling, en zonder deze tak leest de

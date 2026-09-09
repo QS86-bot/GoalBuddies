@@ -1,5 +1,5 @@
 /**
- * De chatfoto-bucket en de kolomgrens — migraties 0222, 0223, 0232 en 0233.
+ * De chatfoto-bucket en de kolomgrens — migraties 0222, 0223, 0233 en 0235.
  *
  * ⚠️⚠️ **Sinds 0233 hangt de leesgrens aan het bericht en niet aan de map**, en
  *    het plafond telt hándelingen en geen voorraad. Dat verandert twee dingen aan
@@ -37,9 +37,9 @@
  *    | B | die `exists` op `attachment_url is not null` in plaats van `= name` | "laat een groepsgenoot niet met andermans bericht binnen" |
  *    | C | `bewaak_chatfoto_aantal()` telt weer `storage.objects` (de vorm van 0226) | "geeft geen nieuwe ruimte terug als je je foto's weer weghaalt" |
  *    | D | het venster uit `tel_opslag_upload()` — de teller vergeet nooit meer | "geeft de ruimte wél terug zodra het etmaal voorbij is" |
- *    | E | `grant select on opslag_dagtellers to authenticated` | "houdt de teller weg bij elke client" |
+ *    | E | `grant select on dagtellers to authenticated` | "houdt de teller weg bij elke client" |
  *
- *    ⚠️ **C, D en E gaan over de teller van 0232 en niet van 0233.** Deze
+ *    ⚠️ **C, D en E gaan over de teller van 0233 en niet van 0235.** Deze
  *       migratie had eerst een eigen teller (`chatfoto_uploads`); die is
  *       vervallen toen QS8-399 dezelfde reparatie generiek voor alle drie de
  *       emmers bouwde. De drie gevallen bleven staan omdat ze de belofte voor
@@ -447,7 +447,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     );
     psql(`delete from public.chat_messages where attachment_url = '${pad}'`);
     psql(`delete from storage.objects where name = '${pad}'`);
-    psql(`delete from public.opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
 
     // ⚠️ De must-allow zit ernaast: de eerste, gewone upload moet gewoon slagen.
     //    Een policy die álles weigert, staat groen op de must-deny alleen.
@@ -473,7 +473,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
        ) select count(*) from bij`,
     );
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepA}/${bob}/hernoem%'`);
-    psql(`delete from public.opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
     expect(uit).toBe('0');
   });
 
@@ -501,7 +501,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
   // Het dagplafond
   // -------------------------------------------------------------------------
   //
-  // ⚠️⚠️ **Sinds 0232 telt het plafond `opslag_dagtellers` en niet
+  // ⚠️⚠️ **Sinds 0233 telt het plafond `dagtellers` en niet
   //    `storage.objects`.** Objecten wissen zet de teller dus níet terug — dat is
   //    de hele reparatie, en het geval dat hem bewaakt staat onderaan deze
   //    sectie. Een plafondtest die een schone teller nodig heeft, zegt dat met
@@ -516,7 +516,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
    *    teller wissen laat objecten staan die de leestests verstoren.
    */
   function zetTellerTerug(groep: string) {
-    psql(`delete from public.opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groep}/%'`);
   }
 
@@ -556,8 +556,8 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    uur stil, en de anderen krijgen "probeer het zo nog eens" — niet te
     //    onderscheiden van een netwerkfout. Onwrikbare regel 5 vraagt letterlijk
     //    om een limiet per gebruiker per dag.
-    // ⚠️⚠️ **De teller moet er sinds 0232 apart bij, en dat is precies wat die
-    //    migratie repareert.** `opslag_dagtellers` overleeft een `delete` op
+    // ⚠️⚠️ **De teller moet er sinds 0233 apart bij, en dat is precies wat die
+    //    migratie repareert.** `dagtellers` overleeft een `delete` op
     //    `storage.objects` met opzet — wissen zette de rem anders terug. 📏
     //    Gemeten toen alleen de objecten gewist werden: de vorige test liet de
     //    teller op twintig staan, dus de eerste van deze acht viel al om op het
@@ -594,7 +594,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     ).toMatch(/^ok:/);
 
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%mijn-%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatfotos'`);
+    zetTellerTerug(groepB);
   });
 
   it('laat de twintigste er nog wél door', () => {
@@ -674,8 +674,8 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    per emmer, soort en sleutel, en het venster schuift pas als het
     //    verstreken is. Een etmaal terugzetten is dus precies "morgen".
     psql(
-      `update public.opslag_dagtellers set venster_start = now() - interval '25 hours'
-       where bucket_id = 'chatfotos'`,
+      `update public.dagtellers set venster_start = now() - interval '25 hours'
+       where domein = 'chatfotos'`,
     );
 
     const uit = alsMetFout(
@@ -691,7 +691,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     // ⚠️ RLS aan en géén policy is deny-all, maar alleen als de tabelgrant ook
     //    weg is — anders leest `authenticated` hem met de rechten die
     //    `alter default privileges` uitdeelde. Onwrikbare regel 4.
-    expect(alsMetFout(alice, 'select count(*) from public.opslag_dagtellers')).toBe('42501');
+    expect(alsMetFout(alice, 'select count(*) from public.dagtellers')).toBe('42501');
   });
 
   // -------------------------------------------------------------------------

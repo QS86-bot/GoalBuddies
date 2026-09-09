@@ -1929,10 +1929,15 @@ dat is er niet. Kies bewust één van deze drie:
    `docs/WERKVOORRAAD.md` §0 bezit hem.** Kijk daar, en vertrouw ook dát getal
    niet blind: vraag het aan de database.
 
-   ⚠️⚠️ **Wat wél een gat is en blijft: de edge-functies.** Die zijn van 06-09,
-   en er is sindsdien aan `supabase/functions/` gewerkt. Dat vraagt Quintens hand
-   (QS8-243, QS8-320) — en het is de stap die de doorloop van QS8-200 nodig
-   heeft, want de Doelcoach ís een edge-functie.
+   ✅ **En het edge-gat is op 09-09 om 18:19 UTC gedicht.** 📏 Nagemeten met
+   `list_edge_functions`: alle drie op `2026-09-09T18:19:06Z`, nieuwe sha256,
+   versies 20→24, 17→19 en 15→19. Daarmee is de doorloop van QS8-200 vrij — de
+   Doelcoach ís een edge-functie, en die draaide tot vandaag op code van drie
+   dagen oud.
+
+   ✅ **En het signaal is er inmiddels ook** — criterium 2 van QS8-320, gebouwd
+   in PR #356. `edge:gedeployd` draait mee in de poort en slaat zichzelf
+   zichtbaar over als het token ontbreekt: *ongemeten*, niet groen.
 
 **Waar je nu begint, in deze volgorde:**
 
@@ -2023,10 +2028,12 @@ lopen. Wat daarbij geleerd is:
 - ⚠️ **Wat er níét was, is een `pg_dump`.** Zie §2 van de werkvoorraad; het is
   een afwijking van een regel uit `CLAUDE.md` en geen detail.
 
-**De andere helft van QS8-243 staat nog open** en vraagt echt Quintens machine:
-`npx supabase functions deploy doelcoach rollover notificaties`, en
-`password_min_length` in het dashboard. Een migratie zonder de functie die hem
-aanroept is een halve feature.
+**De andere helft van QS8-243 staat nog open** en vraagt echt Quintens machine.
+✅ De edge-deploy is er op 09-09 om 18:19 UTC af gegaan — wat blijft is de
+migratieachterstand (`0222`+, en `0222` valt om op het eigendom van
+`storage.objects`), het planpad op een vers account, en `password_min_length` in
+het dashboard. Een migratie zonder de functie die hem aanroept is een halve
+feature.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.
@@ -2181,15 +2188,19 @@ dat is waarom de migratie is toegepast in plaats van tot de deploy te wachten. Z
 er wél data staan, dan was de volgorde andersom geweest.
 
 
-⚠️ **De `rollover`-functie op productie kent `maak_seizoensrecaps()` niet.**
-Gemeten op 28-08 tegen de gedeployde bron: `verbruik_weekpas`,
-`maak_straffen_verschuldigd` en `slaap_stille_groepen` staan erin,
-`maak_seizoensrecaps` **nul keer**. De migratie (0112) staat wél op productie en
-de RPC bestaat, maar niets roept hem aan.
+✅ ~~**De `rollover`-functie op productie kent `maak_seizoensrecaps()` niet.**~~
+**Opgelost op 09-09-2026 (QS8-140).** Gemeten op 28-08 tegen de gedeployde bron
+stonden `verbruik_weekpas`, `maak_straffen_verschuldigd` en
+`slaap_stille_groepen` erin en `maak_seizoensrecaps` **nul keer**: de migratie
+(0112) stond wél op productie en de RPC bestond, maar niets riep hem aan. De
+seizoensrecap van QS8-79 draaide daardoor niet, en dat zou pas op de volgende
+kwartaalgrens gebleken zijn.
 
-**Gevolg: de seizoensrecap van QS8-79 draait vandaag niet, en dat merk je pas bij
-de volgende kwartaalgrens** — en dan weet niemand meer dat het aan de deploy lag.
-Eén `supabase functions deploy rollover` lost het op.
+📏 Dezelfde meting herhaald op 09-09 om 20:38 UTC tegen de gedeployde bundel —
+niet tegen de deploy-uitvoer, want die slaagt ook als de aanroep ontbreekt:
+`verbruik_weekpas` 3 · `maak_straffen_verschuldigd` 2 · `slaap_stille_groepen` 1
+· **`maak_seizoensrecaps` 3**. Alle vier aanwezig als echte aanroepplek
+(`await db.rpc('maak_seizoensrecaps')`), niet als commentaar.
 
 ⚠️ **Wat wél goed staat, en dat was een openstaande vraag uit de review:**
 `verify_jwt` is `true` op alle drie de functies (`rollover`, `doelcoach`,

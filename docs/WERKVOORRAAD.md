@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 09-09-2026 (na QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 09-09-2026 (na QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -59,23 +59,52 @@ database.
 
 De les die eronder staat, staat er niet voor niets: **vraag het aan de database.**
 
-⚠️⚠️ **De edge-functies zijn nog van 06-09 en dat is wél een gat.**
-`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`
-— 📏 hermeten op 09-09 om 14:40 UTC en nog steeds zo. 📏 En sindsdien is er wél
-aan gewerkt: `git log --since=2026-09-06T09:07:56Z -- supabase/functions/` geeft
-commits, dus de gedeployde code is niet meer die van de map.
-Gevolg: `0178` staat op productie, de code die `getuigenissen_voor()` aanroept
-staat in de map, en de gedeployde `notificaties` weet er niets van — **de
-persoon-getuige krijgt zijn melding niet**. Er is geen kapot onderdeel, dus niets
-wordt er rood van. QS8-320, met het commando erbij.
+✅ **De edge-functies zijn op 09-09 om 18:19 UTC gedeployd — het gat is dicht.**
+📏 Nagemeten met `list_edge_functions` en niet overgenomen uit de deploy-uitvoer:
+alle drie staan op `updated_at = 2026-09-09T18:19:06Z`, 81 uur na de vorige, en
+alle drie hebben een nieuwe `ezbr_sha256`. De versies gingen rollover 20 → 24,
+doelcoach 17 → 19 en notificaties 15 → 19.
 
-⚠️ **De rollover is een apart geval, en `0186` staat er inmiddels op.** `0185`
+Daarmee is **de getuigemelding van QS8-298 voor het eerst aangesloten**: `0178`
+stond al op productie, de code die `getuigenissen_voor()` aanroept stond in de
+map, en de gedeployde `notificaties` wist er niets van. Er was geen kapot
+onderdeel, dus niets werd er rood van — regel 18 vraag 5 in zijn zuiverste vorm.
+
+⚠️ **Dat het gat dicht is, is niet hetzelfde als dat het gesignaleerd wordt.**
+`edge:gedeployd` zag dit achteráf en alleen als iemand hem draaide; hij vraagt
+een `SUPABASE_ACCESS_TOKEN` en draaide daarom nergens automatisch. ✅ **Dat is
+criterium 2 van QS8-320 en het is gebouwd** (PR #356): hij slaat zichzelf nu
+zichtbaar over — OVERGESLAGEN naar stderr, en de poort telt hem als *ongemeten*
+in plaats van als groen. Zelfde onderscheid als `functies:controle` en
+`register:controle`. Met `--streng` is een ontbrekend token wél een fout.
+
+⚠️ **De rollover was een apart geval, en `0186` staat er inmiddels op.** `0185`
 dropte `activeer_weekplanstap(uuid, date, integer)`, en de gedeployde rollover
-roept die vorm nog aan. 📏 Vandaag inert — `weekly_plan_steps` is leeg, dus de
-RPC wordt nooit bereikt — maar het scherpt zichzelf zodra er een weekplan komt.
-`0186` zet de oude handtekening terug als afgeschreven wrapper, zodat de deploy
-een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
-`supabase functions deploy rollover` gedraaid heeft.
+riep tot 09-09 die vorm nog aan. `0186` zet de oude handtekening terug als
+afgeschreven wrapper, zodat de deploy een gewone deploy is in plaats van een
+race (QS8-324).
+
+✅ **Die deploy is op 09-09 gedraaid, en de vraag die eraan vastzat is
+beantwoord.** Hier stond: *vraag vóór het droppen opnieuw of de gedéployde
+rollover de tweearguments vorm aanroept — de gedeployde code, niet de map.*
+📏 Gedaan op 09-09 om 20:38 UTC (QS8-403), tegen de bundel zelf en niet tegen de
+map, opgehaald met `get_edge_function` op `wehgocadxehottiiyvsc`:
+
+```
+await db.rpc('activeer_weekplanstap', {
+  p_goal_id: kandidaat.goal_id,
+  p_cycle_start_date: huidige.startDate,
+});
+```
+
+Eén aanroep, twee argumenten, geen `p_cycle_index`. **De wrapper heeft geen
+aanroeper meer en mag weg** — en dat is geen opruimwerk maar een grendel die
+anders verwatert: zolang de driearguments vorm bestaat, blijft een aanroeper die
+hem gebruikt onzichtbaar.
+
+⚠️ Dat droppen is een eigen migratie en staat nog open. Meet vlak vóór die
+migratie nog één keer — er kan intussen opnieuw gedeployd zijn, en dán is deze
+regel een aanname in plaats van een meting.
 
 Vraag de database welke migraties er staan, niet dit document.
 
@@ -230,7 +259,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0233` staan in de map: **236 bestanden**,
+Migraties `0001` t/m `0234` staan in de map: **237 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -412,28 +441,34 @@ die "de achterstand inhaalt" heeft geen eindpunt zolang `main` doorloopt. De
 enige stand die klopt is de gemeten stand, niet het getal dat je aan het begin
 opschreef.
 
-**De drie Edge Functions lopen nog achter, en dat is de rest van QS8-243.**
-📏 Per bestand gemeten tegen `main` met `get_edge_function`:
+✅ **De drie Edge Functions liepen achter; sinds 09-09 om 18:19 UTC niet meer.**
+Dat was de ene helft van QS8-243 en die is eraf — zie §0 voor de meting. **De
+rest van dat issue is de migratieachterstand en het planpad**, en die staan nog
+open.
+
+📏 Wat er stond toen ze wél achterliepen, per bestand gemeten tegen `main` met
+`get_edge_function` — bewaard omdat het laat zien hoe ver zoiets wegloopt
+voordat iemand ernaar kijkt:
 
 | Functie | Gedeployde bestanden | Anders dan de repo |
 |---|---|---|
-| `rollover` | 8 | 6 — en `_shared/bladeren/index.ts` ontbreekt er helemaal |
+| `rollover` | 8 | 6 — en `_shared/bladeren/index.ts` ontbrak er helemaal |
 | `doelcoach` | 6 | 4 |
 | `notificaties` | 11 | 7 |
 
-`_shared/melden.ts` en `_shared/time/types.ts` zijn de enige die overal gelijk
-liepen. `npm run edge:sync:controle` is groen, dus de veertien gedeelde kopieën
-in `supabase/functions/` lopen wél gelijk met `src/` — de achterstand zit
+`_shared/melden.ts` en `_shared/time/types.ts` waren de enige die overal gelijk
+liepen. `npm run edge:sync:controle` was groen, dus de veertien gedeelde kopieën
+in `supabase/functions/` liepen wél gelijk met `src/` — de achterstand zat
 uitsluitend tussen de repo en het project.
 
-⚠️ **Dit deel vraagt Quintens hand en er is bewust géén omweg voor gebouwd.**
+⚠️ **Deployen vraagt Quintens hand en er is bewust géén omweg voor gebouwd.**
 `npm run edge:gedeployd` en `npx supabase functions deploy` vragen allebei een
 `SUPABASE_ACCESS_TOKEN`, en dat is een personal access token en niet de
 service-role-key. De MCP heeft wél een `deploy_edge_function`, maar die vraagt
 elk bestand van de importsluiting inline: 108 KB voor `rollover`, 104 KB voor
 `doelcoach` en 164 KB voor `notificaties`. Dat met de hand overtypen is precies
 de transcriptieroute die QS8-220 heeft opgeleverd, en dan op de job die beslist
-of iemands week telt.
+of iemands week telt. **Dat blijft gelden voor de volgende keer.**
 
 ⚠️ En het is alles of niets: `rollover` en `notificaties` delen
 `_shared/time/cycle.ts`. Eén van de twee bijwerken zet twee jobs op verschillende

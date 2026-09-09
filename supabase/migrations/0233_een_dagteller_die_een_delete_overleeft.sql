@@ -1,4 +1,4 @@
--- 0232_een_dagteller_die_een_delete_overleeft.sql — de drie opslagtellers tellen
+-- 0233_een_dagteller_die_een_delete_overleeft.sql — de drie opslagtellers tellen
 -- voortaan de uploads die er wáren, niet de objecten die er stáán.
 --
 -- ROLLBACK-PAD:
@@ -91,7 +91,7 @@ create table if not exists opslag_dagtellers (
 
 comment on table opslag_dagtellers is
   'Eén rij per emmer, soort en sleutel: hoeveel uploads er in het lopende '
-  'venster wáren. Alleen geschreven door tel_opslag_upload() (0232). '
+  'venster wáren. Alleen geschreven door tel_opslag_upload() (0233). '
   '⚠️ Bewust géén rij per upload: dat zou de teller zelf een groeivector maken '
   '— zelfde afweging als invite_preview_limits (0131).';
 

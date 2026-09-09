@@ -1,6 +1,6 @@
 # Een teller die een delete overleeft
 
-**Datum:** 09-09-2026 · **Issue:** QS8-399 · **Migratie:** 0232 · **Status:** gebouwd
+**Datum:** 09-09-2026 · **Issue:** QS8-399 · **Migratie:** 0233 · **Status:** gebouwd
 
 Vijf keuzes die niet vanzelf spreken, met de reden erbij. De acceptatiecriteria
 staan in Linear.
@@ -19,7 +19,7 @@ er weer doorheen. Voor alle drie de emmers.
 ⚠️ **De vorm is niet nieuw en is bewust niet opnieuw bedacht.**
 `invite_preview_limits` (0131) doet precies dit: één rij per sleutel, een venster
 dat in dezelfde uitdrukking meeschuift, opgehoogd met één
-`insert … on conflict do update`. 0232 deelt die vorm in plaats van hem een
+`insert … on conflict do update`. 0233 deelt die vorm in plaats van hem een
 vierde keer te kopiëren — en het kopiëren *is* hoe deze bug zich verspreid heeft:
 `bewijsfotos` (0228) nam de vorm van `chatfotos` (0226), die hem van `avatars`
 (0130) nam, inclusief de `count(*)`.
@@ -120,7 +120,10 @@ uuid's, en een foutmelding reist naar plekken waar de autorisatie niet meereist.
 
 ## Wat dit niet is
 
-* **Geen reparatie van `begrens_pushtokens`.** Die telt óók zijn eigen tabel,
+* ~~**Geen reparatie van `begrens_pushtokens`.**~~ ✅ **Alsnog gedaan in QS8-401,
+  migratie 0234** — zie §6 hieronder. De reden om hem eerst buiten te laten blijft
+  kloppen; hij was alleen kleiner dan hij leek zodra de vorm er eenmaal stond.
+  Wat er hieronder stond: Die telt óók zijn eigen tabel,
   maar er valt niets te winnen met één token minder: het is een snelheidsrem en
   geen opslagrem, en de rij ís het adres. Omzetten raakt bovendien de must-allow
   van `registreer_push_token()` — `Pushwacht` herregistreert bij élke start — en
@@ -134,3 +137,50 @@ uuid's, en een foutmelding reist naar plekken waar de autorisatie niet meereist.
 * **Geen nieuw groepszichtbaar oppervlak.** De tellertabel is deny-all en de
   meldingen noemen niemand. Domeinregel 7 komt niet in het geding, en
   `docs/decisions/002-domeinregel7-oppervlakken.md` hoeft niet bij.
+
+---
+
+## 6. Nagekomen: `push_tokens` volgt de vorm alsnog — QS8-401, migratie 0234
+
+⚠️ **De tabel heet niet meer naar zijn eerste gebruiker.** `opslag_dagtellers`
+werd `dagtellers`, `bucket_id` werd `domein`, en `tel_opslag_upload()` werd
+`tel_dagteller()`. Een naam die één gebruiker noemt, is precies hoe een vorm
+*niet* gedeeld wordt: wie er een teller voor iets anders dan opslag bij wil
+zetten, leest die naam en bouwt een tweede tabel. Dat is de fout die §1 beschrijft,
+één laag hoger. Het kon nog gratis — 0233 stond op `main` maar niet op productie,
+dus er was geen gevulde tabel om te verhuizen.
+
+⚠️ **Twee functies en niet één.** `tel_dagteller()` hoogt op; `dagteller_stand()`
+kijkt alleen. Die tweede bestaat omdat `registreer_push_token()` een nette
+`{ok:false, reason}` wil geven in plaats van de gebruiker een ruwe 23514 te laten
+zien — en met alleen een ophoogfunctie zou die voorcontrole zijn eigen telling
+moeten doen, wat dit issue nu juist opheft.
+
+### ⚠️⚠️ De voorcontrole leest de teller *en* de werkelijkheid
+
+Dit is de vondst van deze ronde, en hij kwam van een bestaande test.
+
+📏 `pushtokenplafond.test.ts` zet een gebruiker met een bevoorrechte schrijver op
+`plafond + 1` rijen. Die komen binnen zónder claim, dus `begrens_pushtokens()`
+keert bovenaan om en de blijvende teller weet er niets van. Met alleen
+`dagteller_stand()` liet `registreer_push_token()` daarna een échte nieuwe token
+door — precies de grendel die die test bewaakt, en ik had hem gesloopt.
+
+**Een blijvende teller weet alleen wat híj geteld heeft.** Een `count(*)` weet wat
+er ís. Ze dekken elkaars gat:
+
+| | een `delete` | een backfill |
+|---|---|---|
+| `dagteller_stand()` | ziet er doorheen ✅ | ziet hem niet ❌ |
+| `count(*)` | wordt gereset ❌ | ziet hem ✅ |
+| `greatest` van beide | ✅ | ✅ |
+
+⚠️ En de richting klopt: de voorcontrole is daarmee nooit sóépeler dan de trigger.
+Hij weigert eerder, dus de gebruiker krijgt een `reason` en nooit een ruwe 23514.
+Andersom zou het een gat zijn.
+
+⚠️ **De lege-batchtak blijft.** Een `insert … on conflict do update` die volledig
+op de UPDATE-tak landt is een INSERT-statement met nul rijen, en `Pushwacht`
+herregistreert bij élke start. Zonder die tak loopt een dagelijkse gebruiker
+vanzelf zijn plafond in — de uitsluiting die 0214 opschreef. 📏 Geijkt: hem
+weghalen maakt precies dat geval rood.
