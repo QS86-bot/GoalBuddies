@@ -201,6 +201,14 @@ function aanvraagMelding(reden: string | undefined): string {
  *    Het resultaat lees je uit de job zelf, want de functie schrijft het daar
  *    weg. Zo is een onderbroken verbinding niet hetzelfde als een verloren
  *    antwoord: de job staat er nog.
+ *
+ * @uitkomst-optioneel De aanroeper mag deze uitkomst laten vallen: hij gaat
+ *    daarna met `kijk()` de job zelf bevragen, en die onderscheidt `done` van
+ *    `failed` en meldt het aan de gebruiker. Mislukt de aanroep hier, dan blijft
+ *    de job staan en loopt `kijk()` af op `coach.te_lang` — er verdwijnt dus
+ *    niets stil. Dit is de enige vrijstelling in dit project; de grendel in
+ *    `tests/beloftes/uitkomst-niet-weggooien.test.ts` somt ze op en wordt rood
+ *    zodra er een tweede bij komt.
  */
 export async function werkJobAf(jobId: string): Promise<Uitkomst<true>> {
   const { error } = await supabase().functions.invoke('doelcoach', {

@@ -772,8 +772,15 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doel.data?.id ?? '',
-          p_starts_cycle: cyclusOverWeken(60),
-          p_ends_cycle: cyclusOverWeken(60 + 52),
+          // ⚠️ Startte op 60 cycli vooruit; dat kan sinds 0216 niet meer, want een
+          //    adempauze moet beginnen binnen 52 cycli terug tot 52 vooruit
+          //    (QS8-373) — anders kan `breathers` onbeperkt groeien. Op 60 kwam
+          //    hier `buiten_venster` uit en toetste dit geval de lengtegrens niet
+          //    meer. 30 ligt ruim binnen het venster en ruim weg van de andere
+          //    gevallen hierboven (10, 20 en -9); de **einddatum** valt buiten het
+          //    venster en dat mag, want de grens gaat over waar een pauze begint.
+          p_starts_cycle: cyclusOverWeken(30),
+          p_ends_cycle: cyclusOverWeken(30 + 52),
         });
 
         expect(uitkomst(antwoord.data).ok).toBe(false);
@@ -798,8 +805,9 @@ describe.skipIf(!rlsTestsConfigured)('EPIC 8 — De Ketting', () => {
 
         const antwoord = await f.alice.db.rpc('plan_adempauze', {
           p_goal_id: doel.data?.id ?? '',
-          p_starts_cycle: cyclusOverWeken(70),
-          p_ends_cycle: cyclusOverWeken(70 + 51),
+          // Zelfde reden als hierboven: 70 lag buiten het venster van 0216.
+          p_starts_cycle: cyclusOverWeken(40),
+          p_ends_cycle: cyclusOverWeken(40 + 51),
         });
 
         expect(uitkomst(antwoord.data).ok, JSON.stringify(antwoord.data)).toBe(true);

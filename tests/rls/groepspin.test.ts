@@ -3,9 +3,15 @@
  *
  * ⚠️ **De belofte is niet "de trigger staat er".** Die is: *een client kan
  *    `status`, `zichtbaarheid`, `ontdekbaar`, `invite_code`, `invite_revoked`,
- *    `last_activity_at`, `id`, `created_at` en `created_by` niet wijzigen* — ook
- *    niet met één verzoek buiten de UI om, en ook niet als er ooit per ongeluk
- *    een kolomrecht bij glipt.
+ *    `last_activity_at`, `tz`, `id`, `created_at` en `created_by` niet wijzigen* —
+ *    ook niet met één verzoek buiten de UI om, en ook niet als er ooit per
+ *    ongeluk een kolomrecht bij glipt.
+ *
+ * ⚠️ **`tz` kwam er met QS8-355 bij, en die had wél een kolomrecht.** De andere
+ *    kolommen hier zijn "wat als er ooit een grant bij glipt"; bij `tz` was dat
+ *    geen hypothese. 📏 Eén PATCH van een beheerder zette de groepsklok op
+ *    `Pacific/Kiritimati` en `groepsdatum()` sprong een dag vooruit — de
+ *    weekgrens van élk lid. Migratie 0202 haalt het recht weg én zet de pin.
  *
  * ⚠️⚠️ **Waarom dit bestand bestaat: er waren twee grendels en er werkte er één.**
  *    `guard_group_update()` besliste op `current_user not in ('authenticated',
@@ -55,7 +61,9 @@ const EIGENAAR = proefId(1);
  *
  * ⚠️ **Alle negen, en niet vijf.** De eerste versie van dit bestand beloofde in
  *    zijn kop negen kolommen en toetste er vijf; `last_activity_at` viel tussen
- *    de lijst en de uitzonderingsnotitie door en werd door niets bewaakt.
+ *    de lijst en de uitzonderingsnotitie door en werd door niets bewaakt. En bij
+ *    0208 gebeurde het opnieuw met `huddle_day`, zie de regel onderaan: een
+ *    kolom die in dezelfde migratie gepind wordt, komt hier niet vanzelf bij.
  *    `id` en `created_at` staan er niet bij omdat een client ze niet kán
  *    aanwijzen zonder de rij kwijt te raken — die twee zijn de sleutel zelf.
  */
@@ -66,6 +74,23 @@ const GEPIND: readonly { kolom: string; nieuw: string; hoortTeBlijven: string }[
   { kolom: 'invite_code', nieuw: "'GEKAAPT1'", hoortTeBlijven: 'PINCODE1' },
   { kolom: 'invite_revoked', nieuw: 'true', hoortTeBlijven: 'false' },
   { kolom: 'last_activity_at', nieuw: 'now()', hoortTeBlijven: '2020-01-01' },
+  // ⚠️ **De groepsklok, sinds QS8-355 (0202).** `groups.tz` is de tweede klok van
+  //    domeinregel 1 — `currentGroupPeriod()` leest hem, en dus hangen de
+  //    huddledag, de weekafsluiting en De Ketting eraan, voor élk lid. Hij stond
+  //    hier niet bij, en hij had wél een kolomrecht: 📏 één PATCH van een
+  //    beheerder zette hem op `Pacific/Kiritimati` en `groepsdatum()` sprong een
+  //    dag vooruit. Sinds 0202 is het recht weg én pint de trigger hem.
+  { kolom: 'tz', nieuw: "'Pacific/Kiritimati'", hoortTeBlijven: 'Europe/Amsterdam' },
+  // ⚠️⚠️ **De huddledag, sinds QS8-360 (0208), en hij kwam er bijna niet bij.**
+  //    Hij bepaalt waar de groepsperiode begint. Tot 0208 had hij een kolomrecht
+  //    en géén pin; sinds 0208 is het recht ingetrokken én pint de trigger hem.
+  //
+  //    📏 Gevonden door de security-review op die branch, en zelf nagemeten: met
+  //    `new.huddle_day := old.huddle_day` uit de gedeployde trigger gehaald bleef
+  //    de hele suite groen — 118 bestanden, 1332 tests. Het tweede slot was
+  //    alleen mét de kolomgrant erbij geijkt, met de hand, en dat is een grendel
+  //    die nooit rood is geweest. Precies de reden dat dít bestand bestaat.
+  { kolom: 'huddle_day', nieuw: '3', hoortTeBlijven: '0' },
   // ⚠️ De tak van 0060 liet `not-null → null` door, en dat is precies wat een
   //    beheerder wil om zijn eigen oprichterschap te wissen. Sinds 0149 pint de
   //    regel onvoorwaardelijk; het verwijderen van een account loopt niet langs
@@ -99,8 +124,8 @@ function naClientUpdate(kolom: string, nieuw: string): { geraakt: number; waarde
     -- categorie staat er meteen in, want groups_ontdekbaar_heeft_categorie
     -- weigert een ontdekbare groep zonder categorie. Zonder die waarde wordt de
     -- test rood op een CHECK in plaats van op de pin.
-    insert into groups (id, name, created_by, status, invite_code, categorie, last_activity_at)
-      select grp, 'Pin', eig, 'active', 'PINCODE1', 'other', '2020-01-01' from t;
+    insert into groups (id, name, created_by, status, invite_code, categorie, last_activity_at, tz)
+      select grp, 'Pin', eig, 'active', 'PINCODE1', 'other', '2020-01-01', 'Europe/Amsterdam' from t;
     insert into group_members (group_id, user_id, role, status)
       select grp, eig, 'admin', 'active' from t;
 
