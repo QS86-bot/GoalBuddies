@@ -67,6 +67,7 @@
     "audit:controle": "node scripts/audit-controle.mjs",
     "bundel:controle": "node scripts/bundel-controle.mjs",
     "branches:stand": "node scripts/branches-controle.mjs",
+    "hoofdrun:stand": "node scripts/hoofdrun-stand.mjs",
     "pwa:controle": "node scripts/pwa-controle.mjs",
     "levend:controle": "node scripts/levend-controle.mjs",
     "regel15:controle": "node scripts/regel15-controle.mjs",
