@@ -1022,6 +1022,25 @@ export const nl = {
   'plan.geen_plan': 'De coach kwam er niet uit met deze zin. Probeer het iets concreter te zeggen.',
   'plan.terugval_uitleg': 'Je kunt je doel ook zelf invullen. Wat je hierboven typte, nemen we mee.',
   'plan.zelf_invullen': 'Zelf invullen',
+
+  // ⚠️ De uitnodigingsstap aan het eind van de doelroute — QS8-229. `deling.*`
+  //    en `koppel.*` worden hergebruikt waar de zin al bestaat; dezelfde belofte
+  //    hoort niet in twee bewoordingen te bestaan.
+  'samen.titel': 'Wie gaat dit met je meemaken?',
+  'samen.eyebrow': 'Je doel staat',
+  'samen.uitleg': 'Een doel dat iemand anders kent, haal je vaker. Koppel het aan een groep, of sla over. Je kunt het later altijd nog doen.',
+  'samen.leeg_titel': 'Je hebt nog geen groep',
+  'samen.leeg_tekst': 'Maak er een aan en stuur de link naar wie je erbij wilt. Of sla over: de app werkt ook prima alleen.',
+  'samen.nieuwe_groep': 'Nieuwe groep maken',
+  'samen.overslaan': 'Nu even niet',
+  'samen.klaar': 'Klaar',
+  'samen.gekoppeld': 'Gedeeld met {naam}',
+  'samen.gekoppeld_tekst': 'Stuur de uitnodigingslink naar wie je erbij wilt. Wie hem opent, komt in deze groep terecht.',
+  'samen.deel': 'Uitnodigingslink delen',
+  'samen.deel_titel': 'Doe je mee in {groep}?',
+  'samen.link_gesloten': 'De uitnodigingslink van deze groep staat dicht. In het groepsbeheer zet je hem weer open.',
+  'samen.groep_weg_titel': 'Deze groep is er niet meer',
+  'samen.groep_weg_tekst': 'Je doel blijft staan. Koppel het aan een andere groep vanaf het doel zelf.',
   'plan.haalbaarheid': 'Even eerlijk',
   'plan.stappen': 'Je stappen',
   'plan.stap_regel': '{nummer}. {titel} {datum}',
@@ -1064,6 +1083,10 @@ export const nl = {
   'coach.neem_over': 'Neem ze over en pas ze daarna aan wat je wilt: schrappen, herschrijven en herordenen kan allemaal op het doelscherm.',
   'coach.toch_niet': 'Toch niet',
   'coach.al_mijlpalen': 'Je hebt al mijlpalen bij dit doel. Overnemen zet deze erbij en vervangt ze niet. Schrap eerst wat je niet wilt houden.',
+  'coach.geen_overgenomen':
+    'Er is geen enkele mijlpaal aangemaakt. {melding} Probeer het zo nog eens, of voeg ze zelf toe op het doelscherm.',
+  'coach.deels_overgenomen':
+    'De eerste {gelukt} van de {totaal} mijlpalen staan er; de rest is niet aangemaakt. {melding} Sluit dit venster om te zien wat er staat en vul de rest zelf aan.',
   'coach.laten_voorstellen': 'Mijlpalen laten voorstellen',
   'coach.wat_hij_doet': 'De Doelcoach knipt je doel op in mijlpalen met streefdata, op basis van wat je hierboven hebt ingevuld. Je kunt daarna alles aanpassen.',
   'coach.tien_per_dag': 'Je kunt dit tien keer per dag doen. Dezelfde vraag binnen een dag kost geen nieuwe beurt.',
