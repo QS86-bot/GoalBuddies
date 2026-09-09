@@ -36,14 +36,21 @@
 --    commentaarregels — geen tabel, geen module, geen scherm.
 --
 -- ---------------------------------------------------------------------------
--- Twee aannames die hier vastgelegd worden, want de epic staat nog open
+-- Twee aannames die hier vastgelegd zijn — en allebei bevestigd
 -- ---------------------------------------------------------------------------
+--
+-- ✅ **Beslispunt 2 van QS8-378 is beslist op 09-09-2026, ná deze migratie:
+--    variant B, per taak aanvinken wat de groep ziet.** Dat bevestigt allebei de
+--    aannames hieronder in plaats van er een om te gooien — de vorm blijft zoals
+--    hij hier staat. Wat het besluit wél doet, staat bij §3b: het deelpad van
+--    QS8-381 werkt per taak, gaat door de pin heen met een sessiesleutel, en
+--    versoepelt de policy niet.
 --
 -- ⚠️ **Eén lijst per gebruiker, geen `todo_lists`-tabel.** De wens zegt "een
 --    to-do lijst", enkelvoud, en dat is de conservatiefste lezing. Meerdere
 --    lijsten kan later zonder de rijen te verhuizen: een `list_id` erbij waarin
---    `null` "de standaardlijst" betekent. Beslispunt 2 van QS8-378 kan dit nog
---    omgooien; dan is dat een migratie erbij en geen herbouw.
+--    `null` "de standaardlijst" betekent. ✅ Bevestigd door beslispunt 2: bij
+--    "per taak aanvinken" hoeft een lijst geen ding te zijn dat je aanzet.
 --
 -- ⚠️ **`visibility` staat er wél in en is voor niemand schrijfbaar.** De waarden
 --    volgen `daily_moves` (`private`/`group`), maar er is nog geen enkele policy
@@ -55,6 +62,12 @@
 --
 --    De test bij deze migratie legt vast dat hij dicht is. Die hoort er **nu** te
 --    staan en niet pas bij QS8-381, want anders is de kolom tot dan toe stil open.
+--
+--    ✅ Beslispunt 2 koos variant B — per taak aanvinken — dus deze kolom per rij
+--    is precies de vorm die QS8-381 nodig heeft. ⚠️ Eén vraag laat dat besluit
+--    open en hij hoort in QS8-381: "openbaar voor zijn groep" — wélke groep, als
+--    iemand er in meer dan één zit? Er is hier geen `group_id`, en dat is
+--    onwrikbare regel 18 vraag 6.
 --
 -- ---------------------------------------------------------------------------
 -- 1. De tabel
@@ -102,8 +115,9 @@ comment on table public.todo_items is
   'punten, een reeks of peer-goedkeuring op: de week blijft de enige eenheid die '
   'telt, net als bij De Dagzet (domeinregel 9).';
 comment on column public.todo_items.visibility is
-  'Standaard privé. Er is nog geen pad dat hem verandert — delen is QS8-381, en '
-  'tot dat besluit er is, hoort deze kolom dicht te staan.';
+  'Standaard privé. Er is nog geen pad dat hem verandert: QS8-381 bouwt het, per '
+  'taak, via een RPC die door pin_taak() heen komt met een sessiesleutel. Tot die '
+  'RPC er is, hoort deze kolom voor elke client dicht te staan.';
 
 -- ⚠️ **Niet in de realtime-publicatie, en dat is een keuze.** Elke tabel die
 --    erin zit draagt het `REPLICA IDENTITY FULL`-risico mee: Supabase past RLS
