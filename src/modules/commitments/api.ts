@@ -95,6 +95,61 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
 }
 
 /**
+ * De doelen uit deze lijst waar een straf op staat — QS8-370.
+ *
+ * ⚠️ **Een RPC en geen `.from('commitments')`, en dat is de kern van dit issue.**
+ *    De eerste versie zette een vierde tak op `commitments_select`. De
+ *    security-ronde van 09-09-2026 wees hem af en de meting droeg dat: een lid
+ *    van de gevraagde groep las met één `select *` de `body`, de `image_url` en
+ *    het id van de aangewezen getuige — terwijl dit scherm er één generieke zin
+ *    van laat zien. **RLS kan geen kolommen beperken** (CLAUDE.md domeinregel
+ *    7), dus een policy is hier per constructie te veel.
+ *
+ *    `straffen_bij_uitstelverzoek()` (migratie 0218) geeft daarom alleen
+ *    `goal_id` terug. Zelfde vorm en zelfde reden als `getuigenissen()` uit
+ *    0169, waar dit project deze afweging al eens gemaakt heeft.
+ *
+ * ⚠️ **En daarmee is `due` per constructie onzichtbaar.** Een straf die van
+ *    `set` naar `due` gaat, verandert niets aan wat deze functie teruggeeft — hij
+ *    stond er al in. Een statuslijst om synchroon te houden is er dus niet, en
+ *    er is geen moment waarop dit oppervlak iets nieuws vertelt. Dat is precies
+ *    wat de policyversie fout deed: die gaf de rij op `due` gewoon weg, aan een
+ *    groep die de begunstigde niet is, en `due` betekent "de streefdatum niet
+ *    gehaald".
+ *
+ * ⚠️ **`null` betekent "we weten het niet" en is niet hetzelfde als leeg.** Een
+ *    lege verzameling zegt "er staat op geen van deze doelen een straf", en dat
+ *    is precies de mededeling die je niet mag doen als de vraag mislukt is: dan
+ *    verdwijnt de waarschuwing en blijft de knop staan. Uit de security-ronde;
+ *    het scherm toont bij `null` dat het dit niet heeft kunnen ophalen.
+ *
+ * ⚠️ Geen filter op eigenaar, groep of verzoek: de functie is `security definer`
+ *    en toetst dat zelf. Een `.eq()` erbij zou suggereren dat de beveiliging
+ *    hier zit.
+ *
+ * ⚠️ **Eén aanroep voor de hele lijst en geen N+1** (regel 12) — dit hangt onder
+ *    een lijst met verzoeken, precies het groepsoverzicht-patroon. De bovengrens
+ *    staat in de functie zelf (100) en niet hier: een grens die in een scherm
+ *    woont, is geen grens.
+ */
+export async function fetchStrafDoelen(
+  goalIds: readonly string[],
+): Promise<ReadonlySet<string> | null> {
+  if (goalIds.length === 0) return new Set();
+
+  const { data, error } = await supabase().rpc('straffen_bij_uitstelverzoek', {
+    p_goal_ids: [...goalIds],
+  });
+
+  if (error) {
+    reportError(error, 'commitments.strafdoelen', { aantal: goalIds.length, code: error.code });
+    return null;
+  }
+
+  return new Set((data ?? []).map((rij) => rij.goal_id));
+}
+
+/**
  * Legt een beloning vast — QS8-34.
  *
  * Geen begunstigde groep: een beloning is voor jezelf.
@@ -334,7 +389,7 @@ export async function fetchCommitmentSpoor(
 
 /**
  * Een verschuldigde straf weer bedienbaar maken nadat de getuige verdween —
- * QS8-333, migratie 0212.
+ * QS8-333, migratie 0220.
  *
  * ⚠️ **Waarom dit een RPC is en geen update.** De getuige staat in
  *    `beneficiary_user_id`, en die kolom zit voor geen enkele client in de

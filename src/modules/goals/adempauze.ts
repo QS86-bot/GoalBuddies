@@ -116,6 +116,12 @@ function planMelding(reden: string | undefined): string {
       return t('adempauze.overlap');
     case 'geen_cyclusstart':
       return t('adempauze.geen_hele_week');
+    // ⚠️ Sinds 0216 (QS8-373): een pauze moet beginnen binnen een jaar terug tot
+    //    een jaar vooruit. Zonder deze tak valt hij in `default` en krijgt de
+    //    gebruiker "inplannen mislukt" zonder te weten waaróm — en dit is een
+    //    weigering die je zelf kunt oplossen door een andere datum te kiezen.
+    case 'buiten_venster':
+      return t('adempauze.buiten_venster');
     case 'omgekeerde_periode':
       return t('adempauze.eind_voor_start');
     case 'not_owner':

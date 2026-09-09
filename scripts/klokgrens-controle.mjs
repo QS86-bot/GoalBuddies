@@ -57,6 +57,17 @@ import { psqlArgumenten, verbindingsmelding } from './psql.mjs';
  */
 export const REGISTER = new Map([
   [
+    'plan_adempauze :: v_vandaag := coalesce(eigenaarsdatum(v_uid), current_date);',
+    'Geen grens maar een terugval, en dezelfde vorm als in `weekdoel_cyclus_klopt` — ' +
+      'QS8-373, migratie 0216. Het venster waarbinnen een adempauze mag beginnen ' +
+      'rekent op `eigenaarsdatum()`; `current_date` staat er alleen voor het geval ' +
+      'dat er geen profiel is. ⚠️ Die terugval is hier onbereikbaar: `plan_adempauze()` ' +
+      'geeft twintig regels eerder `geen_profiel` terug als `profiles.tz` leeg is, en ' +
+      '`eigenaarsdatum()` is `(now() at time zone p.tz)::date` op diezelfde rij — dus ' +
+      'staat de rij er, dan komt er een datum uit. En het venster is 52 cycli breed ' +
+      'naar beide kanten, dus een dag verschuiving verandert er niets aan.',
+  ],
+  [
     'weekdoel_cyclus_klopt :: v_vandaag := coalesce(eigenaarsdatum(v_owner), current_date);',
     'Geen grens maar een terugval — QS8-354, migratie 0198. De grens zelf rekent op ' +
       '`eigenaarsdatum()`, precies zoals 0155 het in `herbereken_risico()` deed; ' +
