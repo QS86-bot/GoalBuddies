@@ -706,6 +706,25 @@ neemt de verwijzingen mee; de kale die hij niet aanraakt print hij, en die lees
 je stuk voor stuk — een blinde `sed` heeft daar al eens de dossierrij van een
 ánder issue mee overschreven.
 
+⚠️⚠️ **Na élke merge: `npm run hoofdrun:stand`.** Het venster van QS8-318 geldt
+niet alleen voor migratienummers — het geldt voor álles wat een eigenschap van
+het gehéél toetst. 📏 Op 09-09-2026 landden twee PR's twee minuten na elkaar: de
+ene voegde een kale `await` toe, de andere liet de grendel juist die vorm
+herkennen. Allebei terecht groen, samen rood, en `main` stond vijfentwintig
+minuten rood.
+
+Detectie was er al en was gratis — CI meldde het om 11:51. Wat ontbrak was dat
+iemand keek. **Rood op `main` is werk nu, en het is van wie als laatste merde**,
+dezelfde afspraak als bij een migratienummer. Draait de run nog, dan ben je niet
+klaar: het commando zegt dat, en je draait hem zo nog eens.
+
+⚠️ Wat dit *niet* is: preventie. Vóór het mergen nog eens verifiëren versmalt het
+venster maar sluit het niet — op dit geval had het verloren, want er zat één
+minuut tussen de twee merges. De enige echte grendel is GitHub's *"Require
+branches to be up to date"*, en die is een dashboardinstelling met serialisatie
+als prijs; de afweging staat in
+`docs/decisions/2026-09-09-twee-groene-prs-samen-rood.md`.
+
 ⚠️ **Een run op `main` wordt nooit afgebroken**, en dat is de andere helft van
 diezelfde reparatie. `cancel-in-progress` geldt op elke branch behalve `main`:
 daar is elke commit een toestand die uitgerold wordt, en een afgebroken run laat
