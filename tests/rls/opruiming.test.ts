@@ -41,10 +41,17 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *      noteer_ontkoppeling         recalc_goal_max_points
  *      stamp_chat_message
  *
- *    Drie van de zes uit die eerste lijst vuren dus **niet**, en kúnnen dat ook
- *    niet voor de vertrekkende gebruiker: `fill_approval_subject` vuurt pas als de
- *    **beoordelaar** vertrekt (`subject_id` is CASCADE, alleen `approver_id` is
- *    set-null), `bewaak_begunstigde` pas als de **getuige** vertrekt, en
+ *    ⚠️⚠️ **Sinds QS8-371 zijn het er acht, en dat is deze veeg zelf.** De
+ *    vertrekker is er nu ook intrekker, dus ook **beoordelaar** — en daarmee
+ *    vuurt `fill_approval_subject` wél. 📏 Nagemeten: `completion_approvals
+ *    _subject` is `BEFORE INSERT OR UPDATE`, en de `set null` op `approver_id` is
+ *    een UPDATE. De alinea hieronder zei het omgekeerde en klopte tot die rol
+ *    erbij kwam; hij blijft staan omdat de rédenering nog geldt voor de twee
+ *    andere gevallen.
+ *
+ *    Twee van de zes uit die eerste lijst vuren dus **niet**, en kúnnen dat ook
+ *    niet voor de vertrekkende gebruiker: `bewaak_begunstigde` vuurt pas als de
+ *    **getuige** vertrekt, en
  *    `beoordeelbaar_blijft_staan` alleen als een mijlpaal sterft terwijl het
  *    weekdoel blijft — bij een accountverwijdering cascaderen die samen.
  *    `bewaak_tijdzone` stond er helemaal ten onrechte in: die trigger is
@@ -111,7 +118,8 @@ const DAGEN_OUD = 69;
 function verwijderNaOpbouw(dagenOud: number): string {
   return psql(`
     begin;
-    create temp table o (uid uuid, buddy uuid, gid uuid, goal uuid, wg uuid, comp uuid);
+    create temp table o (uid uuid, buddy uuid, gid uuid, goal uuid, wg uuid, comp uuid,
+                        buddy_goal uuid, buddy_wg uuid, buddy_comp uuid, buddy_appr uuid);
     grant select, insert, update on o to authenticated;
     insert into o (uid, buddy) values (
       shim_maak_gebruiker('opruiming@proef.test', 'Opruiming'),
@@ -145,6 +153,34 @@ function verwijderNaOpbouw(dagenOud: number): string {
     update o set comp = (select id from completions where weekly_goal_id = (select wg from o) limit 1);
     insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
       select comp, buddy, uid, gid, 'approved' from o;
+
+    -- ⚠️⚠️ **De vertrekker is óók intrekker, en dat ontbrak hier** (QS8-371).
+    --    De veeg hierboven laat hem overal rijen achterlaten als *onderwerp* van
+    --    een goedkeuring, en nooit als degene die er een introk. Precies die rol
+    --    hield zijn profiel vast: approval_withdrawals.approver_id stond op
+    --    NO ACTION. 📏 Zonder deze vier statements is deze test groen met de
+    --    kapotte foreign key erin.
+    insert into goals (owner_id, title, target_date)
+      select buddy, 'Buddydoel', current_date + 90 from o;
+    update o set buddy_goal = (select id from goals where owner_id = (select buddy from o) limit 1);
+    insert into weekly_goals (goal_id, title, cycle_start_date)
+      select buddy_goal, 'Buddyweek', date_trunc('week', current_date)::date from o;
+    update o set buddy_wg =
+      (select id from weekly_goals where goal_id = (select buddy_goal from o) limit 1);
+    insert into completions (weekly_goal_id, user_id, achieved_level, note)
+      select buddy_wg, buddy, 'ceiling', 'af' from o;
+    update o set buddy_comp =
+      (select id from completions where weekly_goal_id = (select buddy_wg from o) limit 1);
+    insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+      select buddy_comp, uid, buddy, gid, 'approved' from o;
+    update o set buddy_appr =
+      (select id from completion_approvals where completion_id = (select buddy_comp from o) limit 1);
+
+    select set_config('request.jwt.claims',
+      json_build_object('sub', (select uid from o), 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    select trek_goedkeuring_in((select buddy_appr from o));
+    reset role;
 
     select set_config('request.jwt.claims',
       json_build_object('sub', (select uid from o), 'role', 'authenticated')::text, true);
@@ -240,5 +276,306 @@ describe.skipIf(!beschikbaar)('een account is te verwijderen, hoe oud zijn rijen
     // De keerzijde. Zonder deze helft zou een grendel die álles weigert ook
     // groen zijn zodra de test alleen naar de oude rij keek.
     expect(verwijderNaOpbouw(0)).toContain('"ok": true');
+  }, 120_000);
+});
+
+/**
+ * De vraag die beide tests hieronder stellen, één keer opgeschreven.
+ *
+ * ⚠️⚠️ **Hij stond eerst twee keer, en toen bewaakte de MUST-FIND een kopie.**
+ *    📏 Gemeten in de security-ronde op QS8-371: knip de `n`/`d`-tak uit de
+ *    query van de eerste test en alle vijf de tests blijven groen — inclusief de
+ *    MUST-FIND die volgens drie documenten juist dáárvoor bestond. Dat is
+ *    letterlijk *"breek de grendel die de ijking nóemt, anders is de ijking zelf
+ *    de aanname"* uit `CLAUDE.md`. Eén constante, twee aanroepers.
+ *
+ * **Wat de query zoekt:** een foreign key die een accountverwijdering tegenhoudt.
+ *
+ * ⚠️ **Het bereik is transitief en niet alleen `profiles`.**
+ *    `verwijder_mijn_account()` doet `delete from auth.users`; daaruit cascadeert
+ *    `profiles`, daaruit `completions`, en zo verder. Een blokkerende verwijzing
+ *    naar élke tabel in dat bereik houdt de verwijdering even hard tegen. 📏 De
+ *    recursieve stap komt op 33 tabellen, en hij vindt er precies één geval mee
+ *    dat een toets op alleen `profiles` niet ziet — zie `TOEGESTAAN`.
+ *
+ * ⚠️ **`set null` op een `not null`-kolom telt niet als opgelost.** Postgres
+ *    schrijft dan een `null` die de kolom weigert, en de verwijdering strandt net
+ *    zo hard als bij NO ACTION, alleen met een andere foutcode.
+ *
+ * ⚠️ **`set default` wordt hier afgekeurd, ook op een nullable kolom.** Die
+ *    schrijft de kolomdefault, en is dat een literale uuid of een profiel dat er
+ *    niet meer is, dan faalt de foreign key alsnog. 📏 Vandaag staan er nul in het
+ *    schema (23 cascade, 16 set null), dus dit kost niets — en zo blijft de tak
+ *    een toets in plaats van een belofte.
+ */
+const BLOKKERENDE_VERWIJZINGEN_SQL = `
+  with recursive bereik as (
+    select 'public.profiles'::regclass as rel
+    union
+    select 'auth.users'::regclass
+    union
+    select c.conrelid
+      from pg_constraint c
+      join bereik b on c.confrelid = b.rel
+     where c.contype = 'f' and c.confdeltype = 'c'
+  )
+  select coalesce(string_agg(t.regel, ' / ' order by t.regel), '')
+  from (
+    select c.conrelid::regclass::text || '.' || c.conname ||
+           ' (delete=' || c.confdeltype::text || ')' as regel
+      from pg_constraint c
+     where c.contype = 'f'
+       and c.confrelid in (select rel from bereik)
+       and (
+         -- NO ACTION en RESTRICT blokkeren altijd; set default keuren we af.
+         c.confdeltype not in ('c', 'n')
+         -- set null op een kolom die geen null verdraagt ook.
+         or (c.confdeltype = 'n' and exists (
+               select 1
+                 from unnest(c.conkey) k
+                 join pg_attribute a
+                   on a.attrelid = c.conrelid and a.attnum = k
+                where a.attnotnull
+             ))
+       )
+  ) t
+`;
+
+/** De laatste regel van een psql-uitvoer, ontdaan van lege regels. */
+function laatsteRegel(uit: string): string {
+  return (
+    uit
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r !== '')
+      .at(-1) ?? ''
+  );
+}
+
+/**
+ * Geen enkele **foreign key** houdt een vertrekkende gebruiker vast — QS8-371,
+ * migratie 0212.
+ *
+ * ⚠️ **De naam noemt met opzet "foreign key" en niet "niets".** Deze describe
+ *    dekt één klasse: de referentiële actie van een verwijzing. Een trigger die
+ *    werpt tijdens de opruiming blokkeert net zo goed, en dáár staat vandaag een
+ *    bekend geval open — QS8-361/QS8-333, `commitments` met drie triggers, met
+ *    opzet buiten de veeg hierboven gehouden (zie regels 64-71). Er is dus
+ *    vandaag een gebruiker die zijn account niet kan verwijderen. Groen hier is
+ *    bewijs voor de FK-klasse en voor niets anders; een bredere naam zou dat
+ *    verschil wegpoetsen.
+ *
+ * ⚠️⚠️ **Dit is de helft die de veeg hierboven niet kan geven.** Die toetst de
+ *    belofte voor de tabellen die de opstelling toevallig aanraakt. 📏 Gemeten:
+ *    12 van de 39 persoonskolommen krijgen een rij; 27 blijven leeg.
+ *    `approval_withdrawals` zat er niet bij, en dáárom stond die veeg groen
+ *    terwijl de belofte kapot was. Voeg morgen een tabel toe met
+ *    `references profiles (id)` zonder `on delete`, en dezelfde veeg blijft
+ *    opnieuw groen. Deze toets niet.
+ */
+describe.skipIf(!beschikbaar)('geen foreign key houdt een vertrekkende gebruiker vast', () => {
+  /**
+   * Verwijzingen die met opzet mogen blijven staan, met de meting erbij.
+   *
+   * ⚠️ Een uitzondering is hier duurder dan elders: hij kan betekenen dat één
+   *    gebruiker zijn account niet kan verwijderen, en dat is een AVG-verplichting
+   *    (art. 17) en geen smaakkwestie. Vandaar de reden per regel.
+   */
+  const TOEGESTAAN: readonly { readonly fk: string; readonly waarom: string }[] = [
+    {
+      fk: 'completions.completions_superseded_by_fkey',
+      waarom:
+        'NO ACTION binnen het cascadebereik, en vandaag onbereikbaar: dien_opnieuw_in() ' +
+        'koppelt alleen twee voltooiingen van dezelfde auth.uid(), dus beide verdwijnen in ' +
+        'hetzelfde `delete from completions where user_id = …` en de toets aan het eind van ' +
+        'dat statement is tevreden. 📏 Nagemeten met een echte ketting via de RPC: ' +
+        'verwijder_mijn_account() geeft {"ok": true}. Wordt een probleem zodra superseded_by ' +
+        'ooit twee voltooiingen van verschillende eigenaren koppelt.',
+    },
+  ];
+
+  it('elke verwijzing naar het cascadebereik laat los bij een verwijdering', () => {
+    const gevonden = psql(BLOKKERENDE_VERWIJZINGEN_SQL).trim();
+    const open = gevonden === '' ? [] : gevonden.split(' / ');
+    const onverwacht = open.filter((r) => !TOEGESTAAN.some((t) => r.startsWith(t.fk)));
+
+    expect(
+      onverwacht,
+      `deze verwijzing(en) blokkeren een accountverwijdering: ${onverwacht.join(', ')}`,
+    ).toEqual([]);
+
+    // ⚠️ De keerzijde: een uitzondering die er niet meer is, hoort uit de lijst.
+    //    Anders groeit `TOEGESTAAN` tot hij alles toestaat.
+    const verouderd = TOEGESTAAN.filter((t) => !open.some((r) => r.startsWith(t.fk)));
+    expect(
+      verouderd.map((t) => t.fk),
+      'deze uitzondering is niet meer nodig en hoort uit TOEGESTAAN',
+    ).toEqual([]);
+  }, 120_000);
+
+  it('MUST-FIND: hij ziet een set null op een kolom die geen null toestaat', () => {
+    // ⚠️⚠️ **De ijking van de tweede tak, en die roept nu de échte query aan.**
+    //    De vorm — `on delete set null` op een `not null`-kolom — komt in dit
+    //    schema nergens voor, dus die tak zou anders nooit gedraaid hebben. Het
+    //    geval wordt hier gemaakt in een transactie die terugrolt.
+    //
+    //    📏 Knip de `n`-tak uit `BLOKKERENDE_VERWIJZINGEN_SQL` en deze test wordt
+    //    rood. Dat was vóór QS8-371 niet zo: toen droeg deze test een eigen kopie
+    //    van de query en bewaakte hij die kopie.
+    const gevonden = laatsteRegel(
+      psql(`
+        begin;
+        create table proef_371 (
+          id uuid primary key default gen_random_uuid(),
+          wie uuid not null references public.profiles (id) on delete set null
+        );
+        ${BLOKKERENDE_VERWIJZINGEN_SQL};
+        rollback;
+      `),
+    );
+
+    // ⚠️ `toContain` en niet `toBe`: dat het schema verder schoon is, is de taak
+    //    van de test hierboven. Deze zegt alleen dat de tak zijn eigen geval
+    //    vindt — anders worden beide rood om dezelfde reden.
+    expect(gevonden, 'de nullable-tak vindt zijn eigen geval niet').toContain('proef_371');
+  }, 120_000);
+
+  it('MUST-FIND: hij ziet een NO ACTION diep in het cascadebereik', () => {
+    // ⚠️⚠️ **De ijking van het transitieve bereik.** Een tabel die niet naar
+    //    `profiles` wijst maar naar `completions` — en `completions` cascadeert
+    //    zelf uit `profiles`, dus een NO ACTION hierheen blokkeert de verwijdering
+    //    net zo goed. 📏 Zonder de recursieve stap in de query vindt deze test
+    //    niets, en dan is `completions.completions_superseded_by_fkey` onzichtbaar
+    //    — precies het geval dat de security-ronde vond.
+    const gevonden = laatsteRegel(
+      psql(`
+        begin;
+        create table proef_371_diep (
+          id uuid primary key default gen_random_uuid(),
+          waarvan uuid references public.completions (id)
+        );
+        ${BLOKKERENDE_VERWIJZINGEN_SQL};
+        rollback;
+      `),
+    );
+
+    expect(gevonden, 'het cascadebereik reikt niet verder dan de eerste stap').toContain(
+      'proef_371_diep',
+    );
+  }, 120_000);
+});
+
+/**
+ * Een vertrokken goedkeurder laat zijn goedkeuring niet aan een ander na —
+ * QS8-371, migratie 0212, tweede helft.
+ *
+ * ⚠️⚠️ **Dit is de weiger-kant van dezelfde nul.** De migratie maakt
+ *    `approval_withdrawals.approver_id` nullable zodat een intrekker weg kan. Op
+ *    de toesta-kant sluit zo'n nul: `approval_withdrawals_select` laat de rij
+ *    alleen nog aan de doeleigenaar zien. Maar `trek_goedkeuring_in()` toetste
+ *    eigendom met `a.approver_id <> auth.uid()`, en `completion_approvals
+ *    .approver_id` stond al langer op `on delete set null`. `null <> uid` is
+ *    `null`, dus die `then`-tak vuurde niet en de toets weigerde niemand meer.
+ *
+ * 📏 **Gemeten waar het strandde, en dat verschoof mét deze migratie:**
+ *
+ *      vóór 0212   23502 op approval_withdrawals.approver_id
+ *      na 0212     23502 op points_ledger.user_id
+ *
+ *    Twee muren werden er één, en de overgebleven muur hoort bij de puntenboeking
+ *    en niet bij deze belofte. Er was geen toestandswijziging mogelijk — nul
+ *    intrekkingen, beide keren — maar een toevallige `not null` in een andere
+ *    tabel is geen autorisatie.
+ *
+ * ⚠️ **De test toetst het antwoord en niet de afwezigheid van een fout.** Vóór de
+ *    reparatie kwam er een exception; erna een nette `{"ok": false}`. Een test die
+ *    alleen kijkt of er iets geworpen wordt, keurt de kapotte versie goed én de
+ *    gerepareerde af.
+ */
+describe.skipIf(!beschikbaar)('een vertrokken goedkeurder laat niets na', () => {
+  /**
+   * Zet Bob (doeleigenaar), Alice (goedkeurder) en Mallory (ander lid) neer,
+   * laat Alice bevestigen en vertrekken, en geeft terug wat `wie` daarna van
+   * `trek_goedkeuring_in()` krijgt. Rolt alles terug.
+   */
+  function naVertrekVanAlice(wie: 'mallory' | 'bob'): string {
+    return laatsteRegel(
+      psql(`
+        begin;
+        create temp table r (alice uuid, bob uuid, mallory uuid, gid uuid,
+                             goal uuid, wg uuid, comp uuid, appr uuid);
+        create temp table uitslag (t text);
+        grant select, insert, update on r to authenticated;
+        grant insert, select on uitslag to authenticated;
+        insert into r (alice, bob, mallory) values (
+          shim_maak_gebruiker('vertrek-alice@proef.test', 'Alice'),
+          shim_maak_gebruiker('vertrek-bob@proef.test', 'Bob'),
+          shim_maak_gebruiker('vertrek-mallory@proef.test', 'Mallory'));
+
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select bob from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        update r set gid = ((create_group('Vertrekgroep', 0::smallint) -> 'group' ->> 'id'))::uuid;
+        reset role;
+        insert into group_members (group_id, user_id, role, status)
+          select gid, alice, 'member', 'active' from r;
+        insert into group_members (group_id, user_id, role, status)
+          select gid, mallory, 'member', 'active' from r;
+
+        insert into goals (owner_id, title, target_date)
+          select bob, 'Bobdoel', current_date + 90 from r;
+        update r set goal = (select id from goals where owner_id = (select bob from r) limit 1);
+        insert into weekly_goals (goal_id, title, cycle_start_date)
+          select goal, 'Bobweek', date_trunc('week', current_date)::date from r;
+        update r set wg = (select id from weekly_goals where goal_id = (select goal from r) limit 1);
+        insert into completions (weekly_goal_id, user_id, achieved_level, note)
+          select wg, bob, 'ceiling', 'af' from r;
+        update r set comp =
+          (select id from completions where weekly_goal_id = (select wg from r) limit 1);
+        insert into completion_approvals (completion_id, approver_id, subject_id, group_id, status)
+          select comp, alice, bob, gid, 'approved' from r;
+        update r set appr =
+          (select id from completion_approvals where completion_id = (select comp from r) limit 1);
+
+        -- Alice vertrekt. Dit is wat 0212 mogelijk maakt.
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select alice from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        select verwijder_mijn_account();
+        reset role;
+
+        select set_config('request.jwt.claims',
+          json_build_object('sub', (select ${wie} from r), 'role', 'authenticated')::text, true);
+        set local role authenticated;
+        -- ⚠️ Via een temp-tabel: een exception zou anders de hele psql-aanroep
+        --    afbreken, en dan is "geweigerd" niet te onderscheiden van "de
+        --    opstelling klopte niet". Precies het verschil dat hier gemeten wordt.
+        do $$
+        declare u jsonb;
+        begin
+          u := trek_goedkeuring_in((select appr from r));
+          insert into uitslag values (u::text);
+        exception when others then
+          insert into uitslag values ('WERPT ' || sqlstate);
+        end $$;
+        reset role;
+        select t from uitslag;
+        rollback;
+      `),
+    );
+  }
+
+  it('een ander groepslid kan zijn goedkeuring niet overnemen', () => {
+    expect(
+      naVertrekVanAlice('mallory'),
+      'de eigendomstoets liet een willekeurig groepslid door',
+    ).toContain('not_yours');
+  }, 120_000);
+
+  it('ook de doeleigenaar zelf niet — het is niet zijn goedkeuring', () => {
+    // De keerzijde, en geen bijvangst: Bob heeft er het meeste belang bij dat de
+    // bevestiging van zijn eigen week blijft staan. Een toets die alleen "niet
+    // Mallory" zegt, laat hem er wél door.
+    expect(naVertrekVanAlice('bob')).toContain('not_yours');
   }, 120_000);
 });

@@ -161,17 +161,40 @@ export async function registreerPushToken(userId: string): Promise<void> {
 }
 
 /**
+ * Strookt precies wat `trim()` in Postgres strookt: spaties, en niets anders.
+ *
+ * ⚠️ **Niet `String.prototype.trim()`**, en dat is geen muggenzifterij.
+ *    JavaScript strookt élke witruimte — tabs, regeleindes, `\u00a0` — en
+ *    Postgres' `trim()`/`btrim()` alleen `' '`. `registreer_push_token()` schrijft
+ *    `trim(p_token)` weg en `push_tokens_token_getrimd` (0211) dwingt dat af, dus
+ *    de waarde in de tabel is op de Postgres-manier getrimd. Wie hier ruimer
+ *    strookt, bouwt de asymmetrie terug die QS8-367 net wegnam — alleen aan de
+ *    andere kant.
+ */
+function getrimdAlsPostgres(token: string): string {
+  return token.replace(/^ +| +$/g, '');
+}
+
+/**
  * Haalt het token van dit apparaat weg. Hoort bij uitloggen.
  *
  * ⚠️ Zonder dit blijft een gedeeld apparaat meldingen krijgen voor iemand die
  *    er niet meer op zit — en die meldingen kunnen over zijn week gaan. Dat is
  *    geen datalek via de database maar wel via het vergrendelscherm.
+ *
+ * ⚠️ **De `delete` trimt, en dat is de andere kant van QS8-367.** Draagt het
+ *    apparaattoken spaties, dan schrijft de RPC hem getrimd weg en raakte deze
+ *    `delete` nul rijen — zonder `error`, dus ook zonder `reportError`. Precies
+ *    het gevaar dat hierboven staat, stil.
  */
 export async function verwijderPushToken(): Promise<void> {
   const gevonden = await bron.haalToken();
   if (gevonden === null) return;
 
-  const { error } = await supabase().from('push_tokens').delete().eq('token', gevonden.token);
+  const { error } = await supabase()
+    .from('push_tokens')
+    .delete()
+    .eq('token', getrimdAlsPostgres(gevonden.token));
 
   if (error) reportError(error, 'push.unregister', { code: error.code });
 }
