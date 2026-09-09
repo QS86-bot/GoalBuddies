@@ -1921,10 +1921,16 @@ dat is er niet. Kies bewust één van deze drie:
 2. **Een doorloop.** De vorige keer dat deze voorraad leeg leek, liep er een mens
    door de app en kwamen er veertien issues bij, vier op Urgent. Dat is de
    goedkoopste manier om te ontdekken wat er werkelijk stuk is.
-3. **De achterstand op productie.** 📏 Productie staat op migratie **0186** en de
-   map op 0216 — dertig migraties. Zolang dat gat er is, meet `functies:controle`
-   en `register:controle` niets en is elke uitspraak over "wat er draait" een
-   uitspraak over de map. Dat vraagt Quintens hand (QS8-243).
+3. **De achterstand op productie.** ⚠️ **Hier stond "productie staat op `0186`
+   en de map op 0216 — dertig migraties", en dat was op 09-09 niet meer waar.**
+   📏 Gemeten met `list_migrations`: productie staat op **`0219`**, de map op
+   `0221`, dus het gat is **twee** bestanden. De stand staat in
+   `docs/WERKVOORRAAD.md` §0 en niet hier — dit document bezit hem niet.
+
+   ⚠️⚠️ **Wat wél een gat is en blijft: de edge-functies.** Die zijn van 06-09,
+   en er is sindsdien aan `supabase/functions/` gewerkt. Dat vraagt Quintens hand
+   (QS8-243, QS8-320) — en het is de stap die de doorloop van QS8-200 nodig
+   heeft, want de Doelcoach ís een edge-functie.
 
 **Waar je nu begint, in deze volgorde:**
 
