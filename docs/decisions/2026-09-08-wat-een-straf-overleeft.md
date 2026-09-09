@@ -351,6 +351,35 @@ over de lijn. Stond die op `FULL`, dan zou dit blok de body van elk gewist beric
 naar iedere abonnee sturen. Het verbod op `REPLICA IDENTITY FULL` stond er al;
 dit is het eerste blok dat er daadwerkelijk op leunt.
 
+### Wat er ná dit besluit alsnog aan de belofte ontbreekt
+
+⚠️⚠️ **"Het wisrecht wint helemaal" klopt nog niet voor iedereen, en dat is met
+deze migratie niet opgelost.** De security-ronde wees erop en het is daarna
+end-to-end gereproduceerd: wie ooit een goedkeuring introk, kan zijn account
+**helemaal niet** verwijderen.
+
+```
+verwijder_mijn_account (Alice)
+ERROR:  update or delete on table "profiles" violates foreign key constraint
+        "approval_withdrawals_approver_id_fkey" on table "approval_withdrawals"
+```
+
+📏 `approval_withdrawals.approver_id -> profiles` staat op `delete=a` (NO ACTION),
+terwijl de twee andere foreign keys van die tabel op `cascade` staan — maar die
+wijzen naar de voltooiing van de ánder, dus ze ruimen niets op. Dat is een andere
+klasse dan dit besluit (het gaat niet over wat een straf overleeft maar over een
+verwijdering die vastloopt) en staat als **QS8-371** met prioriteit Urgent.
+
+Het hoort hier omdat het de kop van deze sectie relativeert: het besluit is
+genomen en gebouwd, en voor een deel van de gebruikers is de deur ernaartoe
+dicht. Wie deze sectie leest en denkt dat accountverwijdering nu af is, leest te
+snel.
+
+Twee kleinere gaten in dezelfde belofte staan als dossierrij in
+`docs/ENGINEER-REVIEW.md`: de weergavenaam blijft in de body van élk ánder
+systeembericht staan (en `groepschat()` geeft die body gewoon terug), en er is
+geen poort op een lopend commitment bij accountverwijdering.
+
 ### Hoe het bewaakt wordt — en de fout die de ijking vond
 
 `tests/rls/wisrecht-wint.test.ts` toetst de belofte: na de verwijdering is er over

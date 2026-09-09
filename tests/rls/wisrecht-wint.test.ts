@@ -46,6 +46,14 @@
  *    Twee mutaties voor twee grendels: de eerste bewaakt dat er genóeg weggaat,
  *    de tweede dat er niet te véél weggaat. Eén mutatie zou de tweede helft niet
  *    kunnen aantonen.
+ *
+ * ⚠️ **§3 bewaakt geen gedrag maar een aanname**, en die staat nergens anders
+ *    vast. Het delete-blok selecteert op `subject_id = mij`, en dat klopt alleen
+ *    zolang een `commitment_*`-bericht altijd de doel-eigenaar als onderwerp
+ *    heeft. Sinds QS8-333 kan een straf een persoon-getuige hebben die nog geen
+ *    oppervlak heeft; zodra iemand dat bouwt, is "het bericht gaat over de
+ *    getuige" de voor de hand liggende keuze — en dan wist die getuige bij zijn
+ *    vertrek het bericht over andermans straf. De security-ronde wees erop.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -210,6 +218,33 @@ describe.skipIf(!rlsTestsConfigured)('het wisrecht wint helemaal', () => {
           'blijft hier een groepsbericht staan, dan is het weer een halve wissing: ' +
             'de bewering blijft en de administratie gaat',
         ).toEqual({ commitmentrijen: 0, auditregels: 0, groepsberichten: 0 });
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  describe('3. de aanname waar het delete-blok op leunt', () => {
+    it(
+      'een commitment-systeembericht heeft altijd de doel-eigenaar als onderwerp',
+      async () => {
+        const { eigenaar, berichtId } = await eigenaarMetVerschuldigdeStraf('wisrecht-alice-5');
+
+        const bericht = await adminDb()
+          .from('chat_messages')
+          .select('subject_id, system_event')
+          .eq('id', berichtId)
+          .single();
+        if (bericht.error) throw new Error(bericht.error.message);
+
+        expect(
+          bericht.data.subject_id,
+          'het blok in `verwijder_mijn_account()` selecteert op `subject_id = mij`. ' +
+            'Komt er ooit een `commitment_*`-bericht met de **getuige** als onderwerp — ' +
+            'de natuurlijke keuze zodra die een oppervlak krijgt — dan wist die getuige ' +
+            'met zijn accountverwijdering stilletjes het bericht over de straf van een ' +
+            'ánder. Geen enkele andere test hier wordt daar rood van, want ze zetten ' +
+            'allemaal de eigenaar. Regel 18 vraag 1 en vraag 6.',
+        ).toBe(eigenaar.id);
       },
       TEST_TIMEOUT,
     );
