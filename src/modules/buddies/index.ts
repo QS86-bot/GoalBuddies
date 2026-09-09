@@ -34,6 +34,8 @@ export {
 
 export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
 
+export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
+
 export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
