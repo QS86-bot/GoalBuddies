@@ -3,17 +3,73 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 07-09-2026. Er landt veel uit twee sessies tegelijk;
+> **Laatst bijgewerkt:** 08-09-2026. Er landt veel uit twee sessies tegelijk;
 > `git log origin/main` is de betrouwbare lijst en niet deze zin.
-> Uit deze sessie op 07-09: **QS8-304**, **QS8-191** en **QS8-315**; uit de
-> parallelle sessie diezelfde dag: **QS8-301, QS8-306, QS8-311, QS8-313** en
-> **QS8-262** (rondes 6 t/m 8). Daarvóór op 06-09:
-> **QS8-284, QS8-287, QS8-290, QS8-294, QS8-170, QS8-175** en **QS8-302**.
+> Op 08-09 landden er **dertien** PR's (#293 t/m #306), uit deze sessie
+> **QS8-352, QS8-351** en **QS8-356**; uit de parallelle sessie
+> **QS8-341, QS8-342, QS8-343, QS8-327, QS8-340, QS8-339, QS8-348, QS8-349,
+> QS8-353** en **QS8-354**. Daarvóór op 07-09: **QS8-304, QS8-191, QS8-315**
+> en uit de parallelle sessie **QS8-301, QS8-306, QS8-311, QS8-313, QS8-262**.
 > Open en niet door een agent af te maken: **QS8-197** (wacht op
 > Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
-> Lees eerst de vier punten van 07-09, dan de vijf van 06-09 — het eerste
-> daarvan is de duurste van die dag — dan de drie van 05-09, dan de twee van
-> 04-09, dan de vier van 03-09, en daarna die van 02-09.
+> Lees eerst de vijf punten van 08-09 — de eerste twee zijn de duurste van de
+> hele week — dan de vier van 07-09, dan de vijf van 06-09, dan de drie van
+> 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **08-09, punt A: een `revoke` verandert wélke grendel als eerste weigert — en
+> dat is drie keer op één dag misgegaan.** Bij QS8-352 werd de CHECK uit 0007
+> onbereikbaar: 📏 die gedropt, en de test die hem bewaakte bleef groen, want de
+> ontbrekende kolomgrant weigert eerder. Bij QS8-351 gebeurde hetzelfde met
+> `user_blocks_insert` en met de `with check` op `profiles` — en dáár wisselde
+> een must-deny in `schrijfgrenzen.test.ts` **ongemerkt** van slot, omdat
+> `permission denied for table` en `new row violates row-level security policy`
+> allebei `42501` geven en allebei in `WEIGERCODES` staan.
+>
+> ⚠️ **De regel die eruit volgt: loop bij elke intrekking élke bestaande
+> must-deny op die tabel na, óók als hij groen blijft.** Groen blijven is hier
+> het symptoom en niet het bewijs. En schrijf op wát de intrekking kost: twee
+> policies zijn nu dode grendels achter een dichte deur, en dat staat in de
+> beslisdocumenten in plaats van weggelaten.
+>
+> **08-09, punt B: een mutatie die niets rood maakt is een bevinding, geen
+> opluchting.** Bij QS8-356 bleef de vroege `return new` voor de eigen rij van
+> de beheerder groen onder mutatie. 📏 Niet omdat die regel overbodig was, maar
+> omdat níets toetste wat hij doorlaat: een beheerder die zijn eigen
+> beheerderschap opgeeft terwijl er een tweede is — wat `last_admin` juist
+> toestaat. Er staat nu een must-allow op, en de mutatie geeft 1 rood.
+>
+> ⚠️ **En één ijking was zelf een valse groene.** De eerste ronde bij QS8-351 gaf
+> zes keer "0 rood". Het script draaide vanuit een map waar het testpad niet
+> bestond; de grep op `N failed` vond niets en de shell-default drukte
+> `0 failed` af. **Een lege grep leest identiek aan een groene run.** Druk de
+> hele `Tests …`-regel af en meld `GEEN RUN` als die ontbreekt.
+>
+> **08-09, punt C: "geen aanroeper in `src/` en `app/`" is niet hetzelfde als
+> "geen doel".** Bij QS8-351 stond `group_members` UPDATE op de intreklijst —
+> elke schrijver definer, de client roept het niet aan, tekstboekgeval. 📏 Die
+> revoke maakte **21 bestaande tests in zeven bestanden rood**, en alleen die
+> ene grant teruggeven maakte alle 100 weer groen. 0102 en 0187 zijn juist vóór
+> dat pad gebouwd, en de audittrigger schrijft een spoor "ook bij een uitzetting
+> buiten de RPC om". **De meting keek naar de clienthelft van een systeem waarvan
+> de andere helft in de database zit.** Vraag per rij: is er een trigger, guard
+> of policy die dit pad politieert? Een grep met `pg_get_functiondef()` op de
+> tabelnaam is de goedkoopste tegenvraag.
+>
+> **08-09, punt D: het migratienummer botste twee keer op één dag, en de tweede
+> keer ving CI het.** Bij QS8-351 nam QS8-353 `0196`, bij QS8-356 nam QS8-354
+> `0198`. Beide keren hernummerd, en de tweede keer liet `migratie:hernummer`
+> **38 kale verwijzingen** staan — met twee migraties op hetzelfde nummer kán hij
+> niet zien welke bij welke hoort. ⚠️ **Die lees je stuk voor stuk.** Het script
+> print ze mét context; alles over `cycle_start_date` was van hen, alles over de
+> beheerderstak van mij. Een blinde `sed` had daar de dossierrij van een ánder
+> issue overschreven.
+>
+> **08-09, punt E: mijn eigen meting was een keer het artefact.**
+> `npx vitest run <bestand> -t "spoor"` slaat de tests over die de fixture
+> opbouwen. Ik las nul rijen waar er in een volle run één stond, en was daar
+> bijna een conclusie op gaan bouwen. **Een filter dat de opzet overslaat, meet
+> iets anders dan de suite.** Draai het hele bestand voordat je een getal
+> gelooft.
 >
 > **07-09, punt C (QS8-315): "het blijft binnen systeem X" is een bewering over
 > een route, en een route lees je na.** Ik repareerde drie plekken die de rúwe
@@ -604,18 +660,27 @@ is bijgewerkt.
 halverwege omvalt: een paar bestanden rood, de rest "skipped". Dat leest als een
 kapotte policy, en je gaat in de verkeerde richting zoeken.
 
-⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform.**
+⚠️ **Er zijn twee dingen die hem tegenhouden, één per platform — en geen van
+beide is nog een ontbrekende bibliotheek.**
 
-* **Web** — de bibliotheek is niet nodig; web push is op 23-08 van nul gebouwd.
-  De registratie is er sinds **QS8-124**; wat ontbreekt is het bewijs dat er
-  een melding aankomt.
-* **Native** — `expo-notifications` ontbreekt, en dat is een dependency die
-  eerst toestemming vraagt (**Q-TODO B4**). Denk daarbij aan een Expo-project
-  met FCM- en APNs-sleutels voor een echt toestel.
+* **Web** — web push is op 23-08 van nul gebouwd en de registratie is er sinds
+  **QS8-124**. Wat ontbreekt is het VAPID-sleutelpaar en het bewijs dat er een
+  melding aankomt; allebei vragen ze Quintens hand.
+* **Native** — er is **geen build uitgerold**. Productie is de webbundel op
+  Hostinger, dus daar loopt `Platform.OS === 'web'` en komt `expoPush` niet aan
+  bod. Een echt toestel vraagt een Expo-project met FCM- en APNs-sleutels.
+
+⚠️⚠️ **Hier stond bij "Native" dat `expo-notifications` ontbrak, en dat sprak
+deze zelfde nota twee secties verderop tegen** (QS8-366). 📏 De bibliotheek staat
+in `package.json` (~57.0.13), `expo-bron.ts` gebruikt hem, en `app/_layout.tsx`
+plugt hem in. **Q-TODO B4 is af.** Het onderscheid doet ertoe omdat de twee
+voorwaarden op verschillende momenten vervallen: een bibliotheek is er zodra
+iemand hem toevoegt, een build zodra iemand hem uitrolt.
 
 Zolang geen van beide rond is, blijft `push_tokens` leeg en stuurt de job niets.
-De rand eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
-`PushBron`-interface met een lege standaard, en aanzetten is één
+📏 Nagemeten op 08-09-2026 tegen productie: nul rijen, op élk platform. De rand
+eromheen is voor allebei dezelfde vorm als bij Sentry: er is een
+`PushBron`-interface met een standaard die niets doet, en aanzetten is één
 `zetPushBron(...)` in `_layout` — geen epic opnieuw bouwen.
 
 Die sleutels zitten in de build, niet in de server; de Edge Function heeft er
@@ -687,9 +752,9 @@ intrekken). A37 staat er ook nog.
 **A47 is af** — dat was "de testsuite past niet meer twee keer in een uur", en
 dat probleem bestaat niet meer sinds de suite niet meer inlogt (QS8-116).
 
-En **B4** — `expo-notifications` — is geen besluit maar een dependency. Hij
-blokkeert nu alleen nog **native** push; de web-kant is gebouwd en heeft die
-bibliotheek niet nodig. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
+En **B4** — `expo-notifications` — is geen besluit maar een dependency, en hij
+is **af**: de bibliotheek staat erin en `_layout` plugt hem in. Wat native nog
+tegenhoudt is een uitgerolde build, niet de bibliotheek. Alles staat in `docs/Q-TODO.docx`, secties H, I en J,
 met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## WERKAFSPRAKEN — houd deze aan
@@ -1798,6 +1863,60 @@ tijdzonekeuze vond alleen steden mét een eigen IANA-zone), QS8-171 (één stukk
 groep kostte alle groepen hun seizoensrecap), QS8-146 (het model van de tien
 lidmaatschapshulpfuncties, plus: een uitgezet lid is geen groepsgenoot meer),
 QS8-276 en QS8-277. Uit de parallelle sessie: QS8-269, QS8-271 t/m QS8-275.
+
+**Wat er op 08 en 09-09 bij kwam en geland is** — deze sessie, zes issues, elk
+met een groene poort en een merge-commit:
+
+| Issue | Wat het oploste | PR |
+|---|---|---|
+| QS8-367 | de `delete` in `registreer_push_token()` was een tweede mechanisme naast de `on conflict` die het werk al deed; `push_tokens_token_getrimd` maakt de premisse een grendel | #321 |
+| QS8-371 | wie ooit een goedkeuring introk, kon zijn account nooit meer verwijderen (AVG art. 17) — plus een toets die élke blokkerende verwijzing naar een persoon vangt | #322 |
+| QS8-372 | de naam van een verwijderd account stond nog in `chat_messages.body`; het scherm zei "Een oud-lid", een kale select zei de naam | #324 |
+| QS8-376 | de derde tak van `sleutelzetters()` keek per functie in plaats van per sleutel, en GUC-namen zijn hoofdletterongevoelig | #326 |
+| QS8-373 | `plan_adempauze()` begrensde niet hoe ver vooruit een pauze mag beginnen; `breathers` groeide onbeperkt | #327 |
+| QS8-377 | een geweigerde pushtokenregistratie bereikte de gebruiker nooit — en het scherm zei intussen dat meldingen aanstonden | #329 |
+
+⚠️⚠️ **Vier van die zes zijn gevonden doordat een security-ronde iets vond in
+werk dat af leek, en drie keer zat de fout in wat er bij de reparatie omheen
+gebouwd was** — niet in de reparatie zelf. Twee keer bleek een ijking de tékst te
+meten in plaats van het gedrag, waardoor de reparatie meer leek te repareren dan
+ze deed. Als je één ding uit deze sessie meeneemt: **breek de grendel die de
+ijking noemt, en kijk dan of het rood dat je krijgt over het gedrag gaat.**
+
+⚠️ **En de lijst in een issue is geen dekking.** Drie keer op rij noemde een issue
+minder gevallen dan er waren: vijf functies bleken er acht (QS8-372), zes redenen
+bleken er negen (QS8-377), en één ontbrekende grens bleek er twee (QS8-376).
+Meten met `pg_get_functiondef()` vond ze; de opsomming overnemen niet.
+
+**Wat er uit een parallelle sessie landde:** QS8-369 (het dagplafond op
+`push_tokens`), QS8-374, QS8-375 en QS8-366.
+
+### ⚠️ De reactieve voorraad is op 09-09 leeg
+
+Dit is opnieuw de stand van 31-08, en punt 0 hierboven legt uit waarom dat de
+vorige keer misleidend was. Wat er ná deze sessie in de backlog overblijft, valt
+in vier soorten en géén daarvan is "pak het volgende issue":
+
+| Soort | Wat het vraagt |
+|---|---|
+| `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
+| `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
+| feature-epics (QS8-200, QS8-230, QS8-252) | opsplitsen in deelissues vóór er iets te bouwen valt |
+| De Lijst (QS8-378 t/m 381) | de parallelle sessie zit erin; QS8-380 leunt op QS8-379 |
+
+**Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
+dat is er niet. Kies bewust één van deze drie:
+
+1. **Een epic opsplitsen.** QS8-200 staat op Urgent en heeft geen
+   `wacht-op-Quinten`. Dat is `spec-planner`-werk en levert de voorraad op waar de
+   sessie daarna uit put — precies wat de parallelle sessie met QS8-378 deed.
+2. **Een doorloop.** De vorige keer dat deze voorraad leeg leek, liep er een mens
+   door de app en kwamen er veertien issues bij, vier op Urgent. Dat is de
+   goedkoopste manier om te ontdekken wat er werkelijk stuk is.
+3. **De achterstand op productie.** 📏 Productie staat op migratie **0186** en de
+   map op 0216 — dertig migraties. Zolang dat gat er is, meet `functies:controle`
+   en `register:controle` niets en is elke uitspraak over "wat er draait" een
+   uitspraak over de map. Dat vraagt Quintens hand (QS8-243).
 
 **Waar je nu begint, in deze volgorde:**
 

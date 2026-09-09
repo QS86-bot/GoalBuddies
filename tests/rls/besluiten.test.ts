@@ -461,20 +461,16 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
       TEST_TIMEOUT,
     );
 
-    it(
-      'een lid op `paused` houdt wél toegang — dat is een pauze, geen moderatie',
-      async () => {
-        await zetLidStatus(f.groupId, f.carol.id, 'paused');
-
-        const { data, error } = await f.carol.db.from('groups').select('id').eq('id', f.groupId);
-
-        expect(error).toBeNull();
-        expect(data ?? []).toHaveLength(1);
-
-        await zetLidStatus(f.groupId, f.carol.id, 'inactive');
-      },
-      TEST_TIMEOUT,
-    );
+    // ⚠️ **Hier stond de tegenhanger: een lid op `paused` houdt wél toegang, want
+    //    dat is een pauze en geen moderatie.** Die stand bestaat sinds 0204 niet
+    //    meer (QS8-325): `group_members.status` kent alleen nog `active` en
+    //    `inactive`, en dit A18-blok gaat over wat een uitgezet lid kwijtraakt.
+    //    De positieve tegenhanger — wat een áctief lid houdt — staat elders in de
+    //    suite en niet hier; deze regel wees eerder naar de test er direct boven,
+    //    en die gaat over de geschiedenis van een uitgezet lid.
+    //
+    //    Dat er geen weg is om die stand alsnog te schrijven, staat onder test in
+    //    `tests/rls/pauze-bestaat-niet.test.ts`.
   });
 
   // -------------------------------------------------------------------------
@@ -604,18 +600,33 @@ describe.runIf(rlsTestsConfigured)('Q-TODO besluiten', () => {
       async () => {
         const { data } = await adminDb()
           .from('chat_messages')
-          .select('id, body')
+          .select('id, payload')
           .eq('group_id', f.groupId)
           .eq('system_event', 'completion_approved');
 
-        // ⚠️ Op naam en niet op aantal. De goedkeuring van dave staat er nog en
-        //    hóórt er te staan; alleen die van bob moet verdwenen zijn. Tellen
-        //    zou hier ook groen worden als de verkeerde was weggehaald.
-        const vanBob = (data ?? []).filter((m) => (m.body ?? '').includes('bs-bob'));
-        expect(vanBob).toHaveLength(0);
+        // ⚠️ Niet op aantal. De goedkeuring van dave staat er nog en hóórt er te
+        //    staan; alleen die van bob moet verdwenen zijn. Tellen zou hier ook
+        //    groen worden als de verkeerde was weggehaald.
+        //
+        // ⚠️⚠️ **Dit stond op de naam in de body, en dat kon niet blijven**
+        //    (QS8-372, migratie 0213). De body draagt geen weergavenaam meer —
+        //    dat was een lek — dus `body.includes('bs-bob')` toetst sindsdien
+        //    niets. Het is dezelfde fout als in `trek_goedkeuring_in()` zelf: de
+        //    zin werd als sleutel gebruikt. Deze test grijpt nu naar de sleutel
+        //    die het bericht écht draagt.
+        const vanCompletion = (id: string) =>
+          (data ?? []).filter(
+            (m) => (m.payload as { completion_id?: string } | null)?.completion_id === id,
+          );
 
-        const vanDave = (data ?? []).filter((m) => (m.body ?? '').includes('bs-dave'));
-        expect(vanDave.length).toBeGreaterThan(0);
+        expect(vanCompletion(f.completionId), 'de ingetrokken aankondiging staat er nog').toHaveLength(
+          0,
+        );
+
+        const vanEenAnder = (data ?? []).filter(
+          (m) => (m.payload as { completion_id?: string } | null)?.completion_id !== f.completionId,
+        );
+        expect(vanEenAnder.length, 'de aankondiging van dave is ook weggehaald').toBeGreaterThan(0);
       },
       TEST_TIMEOUT,
     );

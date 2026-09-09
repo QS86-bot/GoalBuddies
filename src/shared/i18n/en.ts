@@ -36,6 +36,8 @@ export const en: Record<Sleutel, string> = {
     '{naam} made this group protected again. Other people’s setbacks are no longer visible.',
   'systeembericht.group_discoverable':
     '{naam} made this group discoverable. People you don’t know yet can see the name, the topic, the description and the number of members. Nothing else.',
+  'systeembericht.huddle_day_changed':
+    '{naam} moved the huddle day. The week that is running moved along with it; anything already closed stays closed.',
 
   'algemeen.oud_lid': 'A former member',
   'algemeen.en': 'and',
@@ -425,6 +427,11 @@ export const en: Record<Sleutel, string> = {
   'deadlineverzoek.toch_niet': 'Never mind',
   'deadlineverzoek.akkoord': 'Agreed',
   'deadlineverzoek.liever_niet': 'Rather not',
+  'deadlineverzoek.straf_staat_erop':
+    'This goal carries a penalty its owner set for themselves. If you agree, the date on '+
+    'which it falls due moves along with it.',
+  'deadlineverzoek.straf_onbekend':
+    'We could not check whether this goal carries a penalty.',
   'koppel.ontkoppel': 'Stop sharing with this group',
   'koppel.titel': 'Share your goal with this group',
   'koppel.uitleg_beschermd': 'As long as you link nothing, nobody here sees what you are working on. Linking shares the title and your milestone progress. Not your notes, not your weeks and not your points. You can always undo it.',
@@ -485,6 +492,7 @@ export const en: Record<Sleutel, string> = {
   'doelen.leeg_tekst': 'Start with one goal with a date on it. The Goal Coach then cuts it into milestones, and those milestones become your weekly goals.',
   'doelen.van_totaal': '{aantal} of {totaal} goals.',
   'doelen.nieuw': 'New goal',
+  'doelen.zelf_invullen': 'Rather fill it in myself',
   'doelen.meer_laden': 'Load more goals',
   'doelen.doel': 'Goal',
   'doelen.streefdatum': 'Target date {datum}',
@@ -561,6 +569,10 @@ export const en: Record<Sleutel, string> = {
   'profiel.meldingen_uit_gelukt': 'Notifications are off on this device.',
   'profiel.meldingen_uit_mislukt': 'Turning them off did not work. Try again in a moment.',
   'profiel.meldingen_mislukt': 'Turning it on did not work. Please try again in a moment.',
+  'push.geen_websleutels': 'Your browser did not pass on a complete subscription. Turn notifications on again.',
+  'push.te_veel_tokens': 'You have registered too many devices today. Try again tomorrow.',
+  'push.niet_ingelogd': 'You are no longer signed in. Sign in again and try once more.',
+  'push.apparaat_niet_bruikbaar': 'This device could not be registered for notifications. Try again or use another device.',
   'profiel.meldingen_aan': 'Notifications are on. You get a message when a buddy approves your week or when your wrap-up is ready.',
   'profiel.meldingen_uit': 'Get a message when a buddy approves your week or when your wrap-up is ready. We ask your browser for permission once.',
   'profiel.meldingen_geweigerd': 'You refused notifications earlier. That can only be undone in your browser settings; we cannot ask again.',
@@ -1026,6 +1038,7 @@ export const en: Record<Sleutel, string> = {
   'adempauze.te_lang': 'A breather lasts at most {max} weeks.',
   'adempauze.datum_ongeldig': 'Enter a date as yyyy-mm-dd.',
   'adempauze.geen_hele_week': 'Pick a whole week, starting on your own start day.',
+  'adempauze.buiten_venster': 'Pick a week within a year back or a year ahead.',
   'adempauze.eind_voor_start': 'The end date is before the start date.',
   'adempauze.annuleren_mislukt': 'Cancelling did not work.',
   'adempauze.al_begonnen': 'This breather has already started and stays.',
@@ -1173,6 +1186,10 @@ export const en: Record<Sleutel, string> = {
     'The project at work has run six weeks over and it is eating my evenings.',
   'deadline.nog_tekens': '{aantal} characters to go.',
   'deadline.lang_genoeg': 'Long enough.',
+  'deadline.straf_wordt_zichtbaar':
+    'Your group sees that this goal carries a penalty as soon as you send this request, and '+
+    'keeps seeing that for as long as you share the goal with them. What the penalty says is '+
+    'not shared by this request.',
   'deadline.versturen': 'Send request',
   'deadline.vastleggen': 'Save',
   'deadline.annuleren': 'Cancel',
@@ -1476,6 +1493,11 @@ export const en: Record<Sleutel, string> = {
   'zichtbaarheid.open_uitleg':
     'The group also sees what does not work out: each other’s missed and carried weeks, each other’s best streak, who took part in which week, and each other’s point totals in this group. Only pick this if everyone wants it.',
   'zichtbaarheid.niet_bevestigd': 'Confirm first: this changes what the group sees about other people.',
+  'bevestiging.huddledag_verzetten.titel': 'Move the huddle day?',
+  'bevestiging.huddledag_verzetten.uitleg':
+    'The week that is running moves along to the new day. Anything already closed stays closed. For the others the running week may end sooner, sometimes today. You can do this once a day.',
+  'bevestiging.huddledag_verzetten.knop': 'Yes, move the huddle day',
+
   'bevestiging.groep_openzetten.titel': 'Open up this group?',
   'bevestiging.groep_openzetten.uitleg':
     'From now on everyone in this group also sees each other’s missed and carried weeks, each other’s best streak ever, who took part in each week, and a leaderboard of each other’s point totals in this group, including the weeks already there. So this is not only about you. Everyone gets a message in the group chat, so anyone who would rather not can unlink their goal. You can switch back at any time, immediately.',
@@ -1570,6 +1592,10 @@ export const en: Record<Sleutel, string> = {
     'That took too long. Try again in a moment, or add your milestones yourself.',
   'coach.n_voorgesteld': '{aantal} milestones suggested',
   'beheer.melding_opgeslagen': 'Saved. Chain links already earned stay exactly where they are.',
+  'beheer.melding_huddledag': 'The huddle day is now {{dag}}. The week that is running moved along with it; anything already closed stays closed.',
+  'beheer.huddledag_te_snel': 'The huddle day was already moved today. You can do it again tomorrow.',
+  'beheer.huddledag_ongeldig': 'That is not a valid weekday.',
+  'beheer.huddledag_verlopen': 'The week has moved on in the meantime. Refresh the screen and try again.',
   'beheer.melding_nieuwe_link': 'New link. The old one stops working from now on.',
   'beheer.leeg_titel': 'This group is not here, or not for you',
   'beheer.leeg_tekst': 'You are not a member of this group, or it no longer exists.',
