@@ -175,10 +175,21 @@ group by c.table_name
 order by c.table_name;
 `;
 
-/** Zet de uitvoer van `psql -At -F'|'` om in een rechtentabel. */
+/**
+ * Zet de uitvoer van `psql -At -F'|'` om in een rechtentabel.
+ *
+ * ⚠️ **Splitsen op `\r?\n` en niet op `\n`, en dat is een reparatie die alleen
+ *    op Windows omviel.** psql schrijft daar `\r\n` als regeleinde; een split op
+ *    `\n` laat de `\r` aan het láátste veld van elke regel plakken. Dat veld is
+ *    de kolomlijst, dus de laatste kolom van elke tabel werd `id\r` in plaats
+ *    van `id` — en dan meldt de controle "geen leesrecht op `id`" voor élke
+ *    `.select('id')` die precies die laatste kolom terugvraagt. Twaalf valse
+ *    meldingen op een schema waar niets aan mankeerde. Op Linux/CI bestond het
+ *    probleem niet, dus het bleef verborgen tot de stack lokaal op Windows liep.
+ */
 export function ontleedRechten(uitvoer) {
   const rechten = {};
-  for (const regel of uitvoer.split('\n')) {
+  for (const regel of uitvoer.split(/\r?\n/)) {
     if (regel.trim().length === 0) continue;
     const [tabel, mag, totaal, kolommen] = regel.split('|');
     if (Number(mag) === 0) continue;

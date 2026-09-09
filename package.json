@@ -82,7 +82,7 @@
     "schema:opbouwen": "bash scripts/schema-opbouwen.sh",
     "rls:stack": "bash scripts/lokale-stack.sh",
     "rls:stack:stop": "bash scripts/lokale-stack.sh --stop",
-    "rls:lokaal": "RLS_DOEL=lokaal vitest run tests/rls",
+    "rls:lokaal": "cross-env RLS_DOEL=lokaal vitest run tests/rls",
     "migratie:hernummer": "node scripts/migratie-hernummer.mjs",
     "rls:dekking": "node scripts/rls-dekking.mjs",
     "definers:controle": "node scripts/definers-controle.mjs",
@@ -116,6 +116,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "cross-env": "7.0.3",
     "deno": "2.9.6",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.5",

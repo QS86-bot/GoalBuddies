@@ -177,10 +177,24 @@ const OVERGESLAGEN = /^[^\n]*\b[\w-]+(?:-controle|:controle)?:\s*OVERGESLAGEN\b/
  *    Zie QS8-239.
  */
 export function draai(commando) {
-  const uitkomst = spawnSync('npm', ['run', '--silent', commando], {
+  // ⚠️ **`shell: true` met de opdracht als één string, en dat is een reparatie
+  //    waar de héle poort op Windows op omviel.** `npm` is daar `npm.cmd`, en
+  //    Node weigert sinds de mitigatie van CVE-2024-27980 (24.x) een `.cmd` te
+  //    spawnen zonder shell: `spawnSync('npm', …)` geeft ENOENT, `npm.cmd` geeft
+  //    EINVAL. Elke stap viel dus om met "kon niet starten" — niet rood om wat
+  //    hij mat, maar omdat hij nooit draaide. Op Linux/CI werkte het, dus het
+  //    bleef verborgen.
+  //
+  //    De opdracht gaat als één string en niet als (commando, args): met een
+  //    args-array plús `shell: true` waarschuwt Node (DEP0190) dat argumenten
+  //    niet ge-escaped worden, en die waarschuwing zou 33 keer door de uitvoer
+  //    lopen. `commando` is een vaste scriptnaam uit `package.json` (hooguit met
+  //    een `:` erin), geen gebruikersinvoer, dus er valt niets te injecteren.
+  const uitkomst = spawnSync(`npm run --silent ${commando}`, {
     cwd: WORTEL,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
+    shell: true,
   });
 
   // ⚠️ Ging het spawnen zelf mis (npm niet gevonden), dan is er geen exitcode.
