@@ -35,9 +35,19 @@
  *         → §3 'wikkelt niet af zonder bevestiging' rood
  *      4. de toets `shares_group_with_user()` eruit
  *         → §3 'weigert een getuige buiten je groepen' rood
+ *      5. `or c.beneficiary_group_id is not null` uit dezelfde toets
+ *         → §3 'weigert een straf waarvan de groep begunstigde is' rood
  *
- *    Vier mutaties voor vier grendels. Eén mutatie voor de hele functie zou
+ *    Vijf mutaties voor vijf grendels. Eén mutatie voor de hele functie zou
  *    niets zeggen over welke toets welk geval afvangt.
+ *
+ * ⚠️⚠️ **De vijfde stond hier eerst niet, en dat was de gevaarlijkste van de
+ *    vijf.** De poort is één `if` met twee disjuncten; élk testgeval had een
+ *    persoon als begunstigde, dus de groeps-disjunct kon weg zonder dat er iets
+ *    rood werd. De security-ronde mat het: `beneficiary_group_id` kwam nul keer
+ *    voor in dit bestand. Sneuvelt die disjunct ooit bij een refactor, dan wikkelt
+ *    een eigenaar een straf af waar zijn hele groep naar kijkt — het commitment
+ *    device dat zichzelf uitzet, domeinregel 5.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -367,6 +377,61 @@ describe.skipIf(!rlsTestsConfigured)('een stuurloze straf', () => {
         ).toBe('niet_jezelf');
 
         expect(await lees(strafId)).toEqual({ status: 'due', getuige: null });
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'weigert een straf waarvan de groep begunstigde is',
+      async () => {
+        const doel = await adminDb()
+          .from('goals')
+          .insert({
+            owner_id: w.alice.id,
+            title: 'Groep als begunstigde',
+            target_date: addDays(w.vandaag, 30),
+          })
+          .select('id')
+          .single();
+        if (doel.error) throw new Error(doel.error.message);
+
+        const c = await w.alice.db
+          .from('commitments')
+          .insert({
+            goal_id: doel.data.id as string,
+            type: 'penalty',
+            body: 'Ik trakteer de hele groep',
+            beneficiary_group_id: w.groupId,
+            confirmed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (c.error) throw new Error(c.error.message);
+
+        const due = await adminDb()
+          .from('commitments')
+          .update({ status: 'due' })
+          .eq('id', c.data.id as string);
+        if (due.error) throw new Error(due.error.message);
+
+        const poging = await w.alice.db.rpc('herstel_stuurloze_straf', {
+          p_commitment_id: c.data.id as string,
+          p_actie: 'afwikkelen',
+          p_bevestigd: true,
+        });
+        expect(
+          uit(poging.data).reason,
+          'een groep verdwijnt niet — `groups_delete` staat op false — dus deze straf ' +
+            'is nooit stuurloos, en hem laten afwikkelen zou de eigenaar zijn eigen ' +
+            'straf laten opheffen voor het oog van zijn groep',
+        ).toBe('heeft_nog_een_begunstigde');
+
+        const na = await adminDb()
+          .from('commitments')
+          .select('status')
+          .eq('id', c.data.id as string)
+          .single();
+        expect(na.data?.status).toBe('due');
       },
       TEST_TIMEOUT,
     );

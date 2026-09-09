@@ -83,11 +83,25 @@
 --    uitgaan ervan.
 --
 -- ⚠️ **De poort is `beneficiary_user_id is null and beneficiary_group_id is
---    null`, en niet "de getuige bestaat niet meer".** Die twee vallen samen,
---    want `bewaak_begunstigde()` laat de kolom alléén leeg worden als het profiel
---    weg is en niemand kan hem leeg schrijven. De toets op de lege kolom is
---    daarmee de toets op de verdwenen getuige, en hij is niet te omzeilen door
---    er zelf een te maken.
+--    null`, en niet "de getuige is onvrijwillig verdwenen".** Dat verschil is
+--    kleiner dan het lijkt en tegelijk echt, en de security-ronde wees erop.
+--
+--    Wat er wél geldt: **niemand kan die kolommen leeg schríjven.**
+--    `beneficiary_user_id` staat niet in de UPDATE-kolomgrant,
+--    `bewaak_begunstigde()` weigert leeghalen zolang het profiel bestaat (ook
+--    voor `service_role`), en 📏 nagemeten: `verwijder_lid()`, `blokkeer()` en
+--    `archiveer_groep()` raken de kolom geen van drieën. De groepsvariant is
+--    helemaal niet stuurloos te máken — `groups_delete` staat op `using false`
+--    en géén van de functies in `public` verwijdert een `groups`-rij.
+--
+--    Wat er **niet** geldt is dat de toestand onbereikbaar is. Wie zijn eigen
+--    getuige regisseert — een tweede account, in je eigen groep, als getuige
+--    aangewezen en daarna opgezegd — komt er wél. De schade is begrensd omdat
+--    zo'n straf voor niemand anders zichtbaar is: `commitments_select` geeft
+--    leesrecht aan de eigenaar, de begunstigde groep of de begunstigde persoon,
+--    en die zijn hier allemaal dezelfde persoon. Er is dus geen straf te
+--    ontsnappen waar een ander mens naar kijkt. Dat staat als dossierrij in
+--    `docs/ENGINEER-REVIEW.md`, met de voorwaarde waaronder het zwaarder wordt.
 --
 -- ⚠️ **`status = 'due'` en niets anders.** Een straf op `set` is nog gewoon in te
 --    trekken en opnieuw aan te maken (QS8-312, §2 van
@@ -164,9 +178,24 @@ begin
       return jsonb_build_object('ok', false, 'reason', 'geen_groepsgenoot');
     end if;
 
+    -- ⚠️ **De voorwaarden staan hier nóg een keer, en dat is geen dubbelop.**
+    --    Tussen het lezen van `c` en deze update ziet elk statement onder READ
+    --    COMMITTED verse gegevens. Twee keer tikken — of een retry van de client —
+    --    zag anders allebei `null`, schreef allebei een `edited`-auditrij met een
+    --    andere getuige, en dan noemt het spoor twee overdrachten waar er één was.
+    --    In een tabel die append-only is (domeinregel 6) is dat niet te
+    --    corrigeren. Onwrikbare regel 9 doet hetzelfde voor goedkeuringen, daar
+    --    met een unieke constraint.
     update commitments
        set beneficiary_user_id = p_getuige
-     where id = p_commitment_id;
+     where id = p_commitment_id
+       and status = 'due'
+       and beneficiary_user_id is null
+       and beneficiary_group_id is null;
+
+    if not found then
+      return jsonb_build_object('ok', false, 'reason', 'intussen_veranderd');
+    end if;
 
     -- ⚠️ **Een tweede rij naast die van de trigger, en met opzet.**
     --    `noteer_commitment()` schrijft bij een wijziging zonder statuswissel een
@@ -195,9 +224,18 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'niet_bevestigd');
   end if;
 
+  -- ⚠️ Zelfde reden als hierboven: de voorwaarde hoort in de `where` en niet
+  --    alleen in de toets ervoor.
   update commitments
      set status = 'resolved'
-   where id = p_commitment_id;
+   where id = p_commitment_id
+     and status = 'due'
+     and beneficiary_user_id is null
+     and beneficiary_group_id is null;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'intussen_veranderd');
+  end if;
 
   -- Hier schrijft `noteer_commitment()` zelf een `resolved`-rij met `van` en
   -- `naar`, en die is volledig: de statuswissel ís de gebeurtenis.
