@@ -17,9 +17,18 @@
 -- Waar dit vandaan komt
 -- ---------------------------------------------------------------------------
 --
--- `chat_messages` draagt sinds migratie 0001 een CHECK `type in ('text','photo',
--- 'doc','system')` en een kolom `attachment_url`. 📏 Er is nooit één schrijver
--- van `type = 'photo'` geweest: de kolom staat sinds 0059 in de INSERT-kolomgrant
+-- `chat_messages` draagt sinds migratie 0001 een CHECK die vier soorten bericht
+-- toestaat — tekst, foto, document en systeem — plus een kolom `attachment_url`.
+-- 📏 Er is nooit één schrijver van de fotosoort geweest: de kolom staat sinds
+-- 0059 in de INSERT-kolomgrant
+--
+-- ⚠️ **De soorten staan hier met opzet uitgeschreven en niet als gequote lijst.**
+--    `keten:controle` telt een waarde als *geschreven* zodra hij ergens gequote
+--    in de migratiemap of de app staat, en een CHECK-regel strip't hij weg — een
+--    commentaarregel niet. 📏 Deze kop noemde eerst de hele lijst letterlijk, en
+--    daarmee gold de documentsoort ineens als geschreven terwijl er geen enkele
+--    schrijver van is. Derde keer in dit project dat commentaar een teller
+--    voedde.
 -- van `authenticated`, en `scripts/kolomrechten-controle.mjs` draagt er een
 -- expliciete uitzondering voor met de reden *"de kolom bestaat vooruit op
 -- bijlagen in de chat; er is nog geen scherm dat er een zet."*
@@ -190,7 +199,11 @@ language plpgsql
 --    (0106) meldt elke functie zonder, en terecht: zonder pin kiest de aanroeper
 --    welke tabellen deze functie leest, en een triggerfunctie draait onder
 --    iedereen die schrijft.
-set search_path = public, pg_catalog
+-- ⚠️ **`pg_temp` staat er expliciet achteraan, en dat is geen opsmuk.** Pin je
+--    hem niet, dan doorzoekt Postgres het tijdelijke schema als **eerste** — en
+--    dan kiest de aanroeper welke `chat_messages` of `storage.objects` deze
+--    functie leest. `zoekpadschaduw.test.ts` wordt daar rood op, en terecht.
+set search_path = public, pg_catalog, pg_temp
 as $$
 declare
   groep  text := (storage.foldername(new.name))[1];

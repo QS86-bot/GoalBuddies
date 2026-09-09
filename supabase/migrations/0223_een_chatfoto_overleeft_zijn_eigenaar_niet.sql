@@ -68,7 +68,11 @@ security definer
 --    gebruiker zelf gestart wordt, en `storage.objects` is voor `authenticated`
 --    alleen langs de policies benaderbaar — die kennen deze gebruiker op dat
 --    moment niet meer als lid van iets.
-set search_path = public, pg_catalog
+-- ⚠️ **`pg_temp` staat er expliciet achteraan, en dat is geen opsmuk.** Pin je
+--    hem niet, dan doorzoekt Postgres het tijdelijke schema als **eerste** — en
+--    dan kiest de aanroeper welke `chat_messages` of `storage.objects` deze
+--    functie leest. `zoekpadschaduw.test.ts` wordt daar rood op, en terecht.
+set search_path = public, pg_catalog, pg_temp
 as $$
 begin
   -- 1. De metadata-rijen van zijn foto's. Het tweede padsegment is de afzender.

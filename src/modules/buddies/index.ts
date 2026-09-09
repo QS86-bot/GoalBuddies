@@ -46,8 +46,6 @@ export {
   metGetekendeChatfotos,
 } from './chatfoto';
 
-export { kiesChatfoto, type Chatfotokeuze } from './kiesChatfoto';
-
 export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,

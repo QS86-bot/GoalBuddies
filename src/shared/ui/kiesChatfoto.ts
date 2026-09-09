@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 
-import { base64NaarBytes } from '../auth';
+import { base64NaarBytes } from '../../modules/auth';
 
 /**
  * Een foto kiezen voor de groepschat — QS8-71.
@@ -10,6 +10,17 @@ import { base64NaarBytes } from '../auth';
  *    geen bruikbare data, en gelukt — en dat is de enige vorm waarin ze los te
  *    toetsen zijn. Zelfde reden en zelfde vorm als `kiesAfbeelding()` in
  *    `src/modules/auth/useAvatarKeuze.ts`.
+ *
+ * ⚠️⚠️ **Hij staat in `shared/ui` en niet in `modules/buddies`, en dat is een
+ *    gemeten reparatie.** `expo-image-picker` sleept react-native mee, en de
+ *    barrel van een module wordt door tests geïmporteerd die geen RN-omgeving
+ *    hebben. 📏 Met dit bestand in `modules/buddies/index.ts` viel
+ *    `tests/rls/doorloop.test.ts` om op `ReferenceError: __DEV__ is not
+ *    defined` — die test importeert `modules/buddies` uit de barrel, en
+ *    schrijft bij `modules/auth` al met zoveel woorden op dat hij dáár het
+ *    bronbestand pakt om precies deze reden. Een fotokiezer is bovendien geen
+ *    module-communicatie maar een platformvermogen; hij hoort in de laag die
+ *    het platform al kent.
  *
  * ⚠️ De foutsleutels staan in het type en niet als losse strings: een sleutel
  *    die niet in de catalogus bestaat, is dan een typefout en geen lege melding.
