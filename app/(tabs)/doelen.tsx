@@ -114,8 +114,31 @@ export default function Doelen() {
            kan. Buiten `AsyncView`, zodat hij er ook staat terwijl de lijst nog
            laadt of stukliep.
       */}
-      <Button variant="primair" block onPress={() => router.push('/doel/nieuw')}>
+      {/*
+        ⚠️⚠️ **Deze knop wees naar `/doel/nieuw` en dat was de hele epic waard**
+           (QS8-383). `/doel/plan` — twee velden, de Doelcoach doet de rest — was
+           af en gemerged als QS8-201, de kern van epic QS8-200, en er verwees
+           **niets** naar. 📏 Gegrept over `app/`, `src/` en `tests/`: nul
+           treffers buiten het bestand zelf. Elke nieuwe gebruiker liep dus nog
+           steeds het formulier van zes velden in dat dat epic bestond om weg te
+           halen.
+
+           Regel 18 vraag 5: *kan een gebruiker hier daadwerkelijk bij, en langs
+           welke knop?* Elk schakeltje was af en de keten was los.
+      */}
+      <Button variant="primair" block onPress={() => router.push('/doel/plan')}>
         {t('doelen.nieuw')}
+      </Button>
+
+      {/*
+        ⚠️ **Het formulier blijft, als bewuste tweede keuze.** De kop van
+           `plan.tsx` schrijft het zelf voor: *"`/doel/nieuw` blijft bestaan als
+           'ik doe het liever zelf'"* — en onwrikbare regel 16 wil een uitweg als
+           de AI uitvalt. Secundair, dus de plan-route is de weg die je vanzelf
+           neemt.
+      */}
+      <Button variant="secundair" block onPress={() => router.push('/doel/nieuw')}>
+        {t('doelen.zelf_invullen')}
       </Button>
 
       <AsyncView

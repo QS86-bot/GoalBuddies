@@ -19,9 +19,11 @@ export {
   verlaatGroep,
   vernieuwUitnodiging,
   wijzigGroep,
+  zetHuddledag,
   zetGroepszichtbaarheid,
   zetUitnodigingIngetrokken,
   type Groep,
+  type Lijstgroep,
   type Groepslid,
   type Lidmaatschap,
   type Pagina,
@@ -32,6 +34,8 @@ export {
 } from './api';
 
 export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
+
+export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {
   bewaarOpenstaandeUitnodiging,

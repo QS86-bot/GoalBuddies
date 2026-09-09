@@ -53,7 +53,7 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'profile.fetch', { user_id: userId, code: error.code });
+    reportError(error, 'profile.fetch', { user_id: userId });
     throw new Error(t('profiel.laden_mislukt'));
   }
 
@@ -144,7 +144,7 @@ export async function updateProfiel(
     .single();
 
   if (error) {
-    reportError(error, 'profile.update', { user_id: userId, code: error.code });
+    reportError(error, 'profile.update', { user_id: userId });
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
@@ -195,7 +195,7 @@ export async function rondOnboardingAf(
     .single();
 
   if (error) {
-    reportError(error, 'profile.onboarded', { user_id: userId, code: error.code });
+    reportError(error, 'profile.onboarded', { user_id: userId });
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 
@@ -263,7 +263,7 @@ export async function zetWeekStartdag(
   });
 
   if (error) {
-    reportError(error, 'profile.week_start', { user_id: userId, code: error.code });
+    reportError(error, 'profile.week_start', { user_id: userId });
     return { ok: false, melding: t('profiel.opslaan_mislukt') };
   }
 

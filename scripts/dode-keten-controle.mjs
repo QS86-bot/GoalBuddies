@@ -665,6 +665,7 @@ export const GEDEELDE_WAARDEN = {
   done: ['ai_jobs', 'milestones'],
   en: ['groups', 'milestone_tips', 'profiles'],
   fitness: ['goals', 'groups', 'profiles'],
+  huddle_day_changed: ['chat_messages', 'group_events'],
   milestone_done: ['chat_messages', 'points_ledger'],
   mindfulness: ['goals', 'groups', 'profiles'],
   nl: ['groups', 'milestone_tips', 'profiles'],
