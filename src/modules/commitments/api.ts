@@ -95,6 +95,59 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
 }
 
 /**
+ * De doelen uit deze lijst waar een straf op staat — QS8-370.
+ *
+ * ⚠️ **Dit is de leeskant van de vierde tak van `commitments_select`** (migratie
+ *    0213): een groep die om uitstel op een doel gevraagd is, leest de straffen
+ *    op dat doel. De bedoeling is dat het lid dat "Akkoord" indrukt, wéét dat
+ *    hij een commitment device losser maakt. Zonder deze query is dat leesrecht
+ *    er wel en gebeurt er niets mee — de vorm waar CLAUDE.md voor waarschuwt:
+ *    de keten is af op elk schakeltje en onderbroken als geheel.
+ *
+ * ⚠️ **Geen filter op eigenaar, groep of verzoek.** De policy laat uitsluitend
+ *    door wat je mag zien; een `.eq()` erbij zou suggereren dat de beveiliging
+ *    hier zit. Wat er wél staat is `type = 'penalty'`, en dat is dezelfde
+ *    conjunct als in de policy: dit is geen grens maar de vraag zelf.
+ *
+ * ⚠️ **Geen statusfilter, en dat loopt gelijk op met de policy.** Die kent geen
+ *    statuslijst, dus een filter hier zou een doel stil uit deze verzameling
+ *    houden terwijl de groep de rij gewoon kan lezen — en dan waarschuwt het
+ *    scherm niet voor iets dat wél zichtbaar wordt.
+ *
+ * ⚠️ **Eén query voor de hele lijst en geen N+1** (regel 12) — dit hangt onder
+ *    een lijst met verzoeken, precies het groepsoverzicht-patroon. De lijst is
+ *    begrensd door de aanroeper (`VERZOEKEN_PER_PAGINA`); `STRAFDOELEN_MAX`
+ *    kapt hem hier alsnog af, zodat de URL van de `in()`-filter niet met het
+ *    scherm mee kan groeien.
+ *
+ * ⚠️ Faalt de query, dan is het antwoord een lege verzameling en geen exceptie:
+ *    dit is een waarschuwing bij een lijst en niet de lijst zelf. Wel via
+ *    `reportError`, want een waarschuwing die stil wegvalt is precies het soort
+ *    fout dat niemand ziet.
+ */
+export const STRAFDOELEN_MAX = 50;
+
+export async function fetchStrafDoelen(
+  goalIds: readonly string[],
+): Promise<ReadonlySet<string>> {
+  const ids = goalIds.slice(0, STRAFDOELEN_MAX);
+  if (ids.length === 0) return new Set();
+
+  const { data, error } = await supabase()
+    .from('commitments')
+    .select('goal_id')
+    .eq('type', 'penalty')
+    .in('goal_id', ids);
+
+  if (error) {
+    reportError(error, 'commitments.strafdoelen', { aantal: ids.length, code: error.code });
+    return new Set();
+  }
+
+  return new Set((data ?? []).map((rij) => rij.goal_id));
+}
+
+/**
  * Legt een beloning vast — QS8-34.
  *
  * Geen begunstigde groep: een beloning is voor jezelf.

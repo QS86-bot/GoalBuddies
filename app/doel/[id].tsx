@@ -25,6 +25,7 @@ import {
   spoorLabels,
   tekstVoor,
   trekIn,
+  wordtZichtbaarBijUitstelverzoek,
   zetBeloning,
   zetStraf,
   type Commitment,
@@ -279,6 +280,16 @@ export default function DoelDetail() {
                 groepen={doelGroepen}
                 verzoek={verzoek}
                 besluit={besluit}
+                /*
+                  ⚠️ **Elke straf telt, ook een ingetrokken** — en dat is met
+                     opzet ruimer dan de `heeftStraf` van `Herplannen`
+                     hieronder. De vierde tak van `commitments_select` (0213)
+                     kent geen statuslijst, dus zodra dit verzoek bestaat leest
+                     de groep élke straf op dit doel. Een waarschuwing die
+                     smaller is dan het oppervlak dat hij aankondigt, is geen
+                     waarschuwing.
+                */
+                heeftStraf={commitments.some(wordtZichtbaarBijUitstelverzoek)}
                 onKlaar={herlaad}
               />
             ) : null}
@@ -383,6 +394,7 @@ function DeadlineVerzetten({
   groepen,
   verzoek,
   besluit,
+  heeftStraf,
   onKlaar,
 }: {
   readonly doel: DoelMetVoortgang;
@@ -392,6 +404,8 @@ function DeadlineVerzetten({
   readonly groepen: readonly DoelGroep[];
   readonly verzoek: DeadlineVerzoek | null;
   readonly besluit: DeadlineVerzoek | null;
+  /** Staat er een straf op dit doel? Bepaalt de waarschuwing hieronder (QS8-370). */
+  readonly heeftStraf: boolean;
   readonly onKlaar: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -600,6 +614,21 @@ function DeadlineVerzetten({
               ? t('deadline.nog_tekens', { aantal: ARGUMENT_MIN - telTekens(argument.trim()) })
               : t('deadline.lang_genoeg')}
           </Caption>
+          {/*
+            ⚠️ **Vóór de verzendknop en niet erna** — QS8-370. Dit verzoek opent
+               een oppervlak: vanaf het moment dat het bestaat, leest de groep de
+               straf die op dit doel staat (migratie 0213, vierde tak van
+               `commitments_select`). Dat is zelf een consequentie, en domeinregel
+               5 verbiedt een stilzwijgende. Je hoort het dus te weten vóórdat je
+               verstuurt, niet erna.
+
+               ⚠️ Het oppervlak sluit niet weer. Ook nadat er beslist is, blijft
+                  de straf voor die groep leesbaar — anders raakt de beslisser
+                  het zicht kwijt op wat hij heeft toegestaan. De tekst zegt dat
+                  met zoveel woorden, want een verruiming die je terugleest als
+                  tijdelijk is een verruiming die niemand besloten heeft.
+          */}
+          {heeftStraf ? <Body>{t('deadline.straf_wordt_zichtbaar')}</Body> : null}
         </>
       ) : null}
 

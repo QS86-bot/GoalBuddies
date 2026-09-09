@@ -13,6 +13,8 @@ export {
   fetchCommitmentSpoor,
   fetchGetuigenissen,
   fetchMogelijkeBegunstigden,
+  fetchStrafDoelen,
+  STRAFDOELEN_MAX,
   trekIn,
   zetBeloning,
   zetStraf,
@@ -32,5 +34,6 @@ export {
   spoorLabels,
   statusTeksten,
   tekstVoor,
+  wordtZichtbaarBijUitstelverzoek,
   type CommitmentTekst,
 } from './stand';

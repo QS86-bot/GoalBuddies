@@ -131,6 +131,38 @@ export function isAfgegaan(commitment: { readonly status: string }): boolean {
 }
 
 /**
+ * Wordt dit commitment zichtbaar voor de groep zodra je om uitstel vraagt?
+ *
+ * ⚠️ **De clientkant van de vierde tak van `commitments_select`** (migratie
+ *    0213, QS8-370), en de grens is met opzet exact dezelfde: `type = 'penalty'`
+ *    en geen statuslijst. Wie om uitstel vraagt, opent voor die groep élke straf
+ *    op dat doel — ook een ingetrokken.
+ *
+ * ⚠️ **Daarom is dit ruimer dan `isAfgegaan()` en ruimer dan de `heeftStraf` van
+ *    `Herplannen`**, die allebei `cancelled` buitensluiten. Een waarschuwing die
+ *    smaller is dan het oppervlak dat hij aankondigt, is geen waarschuwing: dan
+ *    ziet de groep iets waarvoor het scherm niet gewaarschuwd heeft, en dat is
+ *    precies wat domeinregel 5 verbiedt.
+ *
+ * ⚠️ **Waarom dit een geëxporteerde functie is en geen `===` in de JSX.** Zolang
+ *    de vergelijking in een scherm staat, is de enige test die haar kan raken een
+ *    test die in dát bestand zoekt — en die verhuist niet mee (regel 18 vraag 4).
+ *    Zelfde reden als bij `magStrafVastleggen()` hieronder.
+ *
+ * ⚠️ **De stand staat wél in de handtekening en wordt met opzet niet gebruikt.**
+ *    Dat is de plek waar deze eigenschap zichtbaar hoort te zijn: wie hier ooit
+ *    een `status`-vergelijking bij zet, ziet hem al staan en leest de zin
+ *    hierboven. Een parameter die er niet is, kan die vraag niet stellen. Een
+ *    test kan er bovendien elk type en elke stand langs halen zonder een rij te
+ *    verzinnen — en dus zonder een cast die de toets zou uithollen.
+ */
+export function wordtZichtbaarBijUitstelverzoek(
+  commitment: { readonly type: string; readonly status: string },
+): boolean {
+  return commitment.type === 'penalty';
+}
+
+/**
  * Staat dit commitment nog open — en is het dus nog in te trekken?
  *
  * Alleen `set`. Dat is dezelfde grens als in `commitments_update`; staat het

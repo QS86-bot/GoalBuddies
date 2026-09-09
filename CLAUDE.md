@@ -323,6 +323,24 @@ Voordat er één feature gebouwd wordt:
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
     commitment op het moment dat het verschuldigd wordt.
 
+    ⚠️ **Eén benoemde verruiming, en die hangt aan een handeling en niet aan een
+    stand (QS8-370, 09-09-2026, migratie 0213).** Vraag je je groep om je
+    streefdatum te verschuiven, dan leest **díé** groep de straffen op dat doel —
+    vanaf `set` en ook nadat er beslist is. De reden is de spiegelzijde van
+    domeinregel 5: `beslis_deadline_verzoek()` mag een straf vooruit schuiven (dat
+    is de route die 0184 met zoveel woorden openlaat), en dan mag het akkoord niet
+    blind zijn. Een commitment device gaat nooit stilzwijgend aan, en dus ook nooit
+    stilzwijgend losser.
+
+    ⚠️ **Wat die verruiming níet is.** Geen verruiming van
+    `commitment_zichtbaar_voor_groep()` — die lijst gaat over de **begunstigde**
+    groep en blijft `unlocked, due, resolved`. Geen oppervlak dat op
+    `groups.zichtbaarheid` varieert: een beschermde groep die gevraagd wordt, ziet
+    hem óók. En geen oppervlak dat je overkomt: de eigenaar leest vóór de
+    verzendknop dat dit gebeurt. Onderbouwing in
+    `docs/decisions/2026-09-08-de-groepsroute-is-geen-uitweg.md`, rij 31 in
+    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+
 ## Emoji — vastgelegd 22-08-2026 (QS8-111)
 
 **De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,

@@ -27,6 +27,7 @@ import {
   verlaatGroep,
   zichtbaarheidLabels,
 } from '@/modules/buddies';
+import { fetchStrafDoelen } from '@/modules/commitments';
 import {
   beslisDeadlineVerzoek,
   fetchKoppelbareDoelen,
@@ -481,6 +482,16 @@ function DeadlineVerzoeken({
   readonly onBeslist: () => void;
 }) {
   const [verzoeken, setVerzoeken] = useState<readonly DeadlineVerzoek[] | null>(null);
+  /**
+   * De doelen uit deze lijst waar een straf op staat — QS8-370.
+   *
+   * ⚠️ Leeg zolang de lijst laadt, en leeg als de query faalt. Dat is de goede
+   *    kant om op te falen voor een lijst en de verkeerde voor een
+   *    waarschuwing, en daarom staat de knop hieronder niet op de uitkomst te
+   *    wachten: een verzoek dat onbeslisbaar wordt omdat een extra query hapert,
+   *    is erger dan een waarschuwing die een tel later verschijnt.
+   */
+  const [strafDoelen, setStrafDoelen] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [bezig, setBezig] = useState<string | null>(null);
@@ -493,10 +504,14 @@ function DeadlineVerzoeken({
     let levend = true;
 
     fetchOpenVerzoekenVoorGroep(groupId, userId)
-      .then((rijen) => {
+      .then(async (rijen) => {
         if (!levend) return;
         setVerzoeken(rijen);
         setError(null);
+        // ⚠️ Eén query voor de hele lijst (regel 12), en pas nadat de lijst er
+        //    is: zonder verzoeken is er niets om naar te vragen.
+        const straffen = await fetchStrafDoelen(rijen.map((r) => r.goal_id));
+        if (levend) setStrafDoelen(straffen);
       })
       .catch((f: unknown) => {
         if (levend) setError(f);
@@ -564,6 +579,26 @@ function DeadlineVerzoeken({
                   })}
                 </Body>
                 <Body muted>&ldquo;{verzoek.reason}&rdquo;</Body>
+                {/*
+                  ⚠️ **De kern van QS8-370, en niet een extraatje.** Zonder deze
+                     regel maakt het lid dat "Akkoord" indrukt een commitment
+                     device losser zonder te weten dat het er staat: de rem van
+                     0184 houdt de eigenaar tegen, en langs deze route wordt hij
+                     opgeheven door iemand die hem niet ziet. Domeinregel 5 wil
+                     dat een consequentie nooit stilzwijgend aan gaat; de
+                     spiegelzijde is dat hij ook nooit stilzwijgend uit gaat.
+
+                     Het leesrecht erachter is de vierde tak van
+                     `commitments_select` (migratie 0213). Deze regel is het
+                     enige wat er in de app iets mee doet — zonder haar is de
+                     keten af op elk schakeltje en onderbroken als geheel.
+
+                     ⚠️ Geen `muted`: dit is het zwaarste wat op deze kaart
+                        staat, en het staat vóór de knoppen en niet erna.
+                */}
+                {strafDoelen.has(verzoek.goal_id) ? (
+                  <Body>{t('deadlineverzoek.straf_staat_erop')}</Body>
+                ) : null}
                 {/*
                   ⚠️ Allebei `secundair`, net als op het beoordeelscherm. Geen
                      primair/secundair-verhouding, want die maakt van de ene knop
