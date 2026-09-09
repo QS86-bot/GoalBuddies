@@ -1,4 +1,4 @@
--- 0214_de_sleutelteller_kijkt_per_sleutel.sql — de derde tak van
+-- 0215_de_sleutelteller_kijkt_per_sleutel.sql — de derde tak van
 -- `sleutelzetters()` keek per functie in plaats van per sleutel, en liet daarmee
 -- de meest waarschijnlijke route ongemoeid (QS8-376)
 --
@@ -163,7 +163,27 @@ AS $function$
       ('app.rem_voltooiingen',       array['rem_voltooiingen']),
       ('app.rem_dagzetten',          array['rem_dagzetten']),
       ('app.rem_doelkoppelingen',    array['rem_doelkoppelingen']),
-      ('app.rem_doelinterviews',     array['rem_doelinterviews'])
+      ('app.rem_doelinterviews',     array['rem_doelinterviews']),
+      -- ⚠️⚠️ **Uit 0214 (QS8-369), en deze regel is er bijna uit gevallen.**
+      --    Die migratie landde op `main` terwijl deze branch openstond en
+      --    hernummerde mij van 0214 naar 0215 — dus deze `create or replace`
+      --    draait er nu áchteraan. Het register dat ik kopieerde was van vóór hun
+      --    migratie, en zonder deze regel had ik `app.rem_pushtokens` er stil
+      --    weer uit gehaald.
+      --
+      --    Dat is exact de val van QS8-358, en de derde keer dat hij toeslaat: een
+      --    teller die zijn eigen register in zijn lichaam draagt, twee branches
+      --    die hem uitbreiden, en de laatste `replace` wint. 📏 Gevonden door na
+      --    het samenvoegen te grepen op wat hún 0214 registreert en dat naast het
+      --    mijne te leggen.
+      --
+      --    ⚠️ **En de teller had zichzelf ook opgevangen**, net als bij 0199 en
+      --    0207: `rem_pushtokens()` zet die sleutel nog steeds, dus zonder deze
+      --    regel meldt hij hem meteen als ongeregistreerd — 📏 nagemeten, de regel
+      --    weghalen geeft `rem_pushtokens: noemt app.rem_pushtokens`. Dat is de
+      --    hele reden dat deze grendel bestaat, en het is de derde keer dat hij
+      --    zijn eigen register redt.
+      ('app.rem_pushtokens',         array['rem_pushtokens'])
   ),
   bekend as (
     select p.proname::text as naam, s.instelling, s.toegestaan
@@ -407,7 +427,7 @@ begin
   --    om door te laten en zet niemand die sleutel nog.
   --
   -- ⚠️ **De naam van die vervallen sleutel staat hier met opzet niet meer**
-  --    (QS8-376). De sleutelteller kijkt sinds 0214 per sleutel in plaats van per
+  --    (QS8-376). De sleutelteller kijkt sinds 0215 per sleutel in plaats van per
   --    functie, en hij leest `prosrc` inclusief commentaar — net als zijn eerste
   --    tak altijd al deed. Een sleutel die nergens meer geregistreerd staat maar
   --    hier nog bij naam genoemd wordt, is dan een terechte melding. De

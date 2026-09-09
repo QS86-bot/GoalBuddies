@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * De sleutelteller kijkt per sleutel — QS8-376, migratie 0214.
+ * De sleutelteller kijkt per sleutel — QS8-376, migratie 0215.
  *
  * ⚠️⚠️ **`sleutelzetters()` is een grendel, en een grendel die je niet kunt
  *    voeden, kun je niet ijken.** `stille-weigering.test.ts` toetst dat de teller
@@ -85,7 +85,7 @@ function remDoelenMetExtraSleutel(sleutel: string): string {
 describe.skipIf(!beschikbaar)('de sleutelteller vangt elke vorm', () => {
   it('MUST-FIND: de eigenaar van een sleutel zet er ongezien een onbekende bij', () => {
     // ⚠️⚠️ **Dit is het gat van QS8-376, en het is de belangrijkste van de drie.**
-    //    📏 Vóór 0214 gaf dit geval `NIETS`: tak 1 zwijgt terecht (de functie mag
+    //    📏 Vóór 0215 gaf dit geval `NIETS`: tak 1 zwijgt terecht (de functie mag
     //    haar eigen sleutel noemen) en tak 3 zweeg omdat de functie een
     //    geregistreerde sleutel noemt.
     const gemeld = tellerNa(remDoelenMetExtraSleutel('stiekeme_ijksleutel'));
@@ -168,7 +168,7 @@ describe.skipIf(!beschikbaar)('de sleutelteller vangt elke vorm', () => {
     //    oude vorm — niet omdat het geval gemist werd, maar omdat de oude
     //    meldtekst de sleutel niet noemde. Dan meet de ijking de tekst en niet het
     //    gedrag, en lijkt de reparatie meer te repareren dan ze doet. Dat de
-    //    melding de sleutel noemt is winst van 0214 en staat in het geval
+    //    melding de sleutel noemt is winst van 0215 en staat in het geval
     //    hierboven.
     const gemeld = tellerNa(`
       create or replace function public.proef_losse_sleutel() returns void
