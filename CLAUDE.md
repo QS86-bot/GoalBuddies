@@ -324,7 +324,7 @@ Voordat er één feature gebouwd wordt:
     commitment op het moment dat het verschuldigd wordt.
 
     ⚠️ **Eén benoemde verruiming, en die hangt aan een handeling en niet aan een
-    stand (QS8-370, 09-09-2026, migratie 0213).** Vraag je je groep om je
+    stand (QS8-370, 09-09-2026, migratie 0218).** Vraag je je groep om je
     streefdatum te verschuiven, dan weet **díé** groep dát er een straf op dat
     doel staat — vanaf `set`, en ook nadat er beslist is. De reden is de
     spiegelzijde van domeinregel 5: `beslis_deadline_verzoek()` mag een straf

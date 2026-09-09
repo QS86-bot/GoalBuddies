@@ -283,7 +283,7 @@ export default function DoelDetail() {
                 /*
                   ⚠️ **Elke straf telt, ook een ingetrokken** — en dat is met
                      opzet ruimer dan de `heeftStraf` van `Herplannen`
-                     hieronder. `straffen_bij_uitstelverzoek()` (0213) kent geen
+                     hieronder. `straffen_bij_uitstelverzoek()` (0218) kent geen
                      statuslijst, dus zodra dit verzoek bestaat weet de groep van
                      élke straf op dit doel. Een waarschuwing die smaller is dan
                      het oppervlak dat hij aankondigt, is geen waarschuwing.
@@ -616,7 +616,7 @@ function DeadlineVerzetten({
           {/*
             ⚠️ **Vóór de verzendknop en niet erna** — QS8-370. Dit verzoek opent
                een oppervlak: vanaf het moment dat het bestaat, weet de groep dát
-               er een straf op dit doel staat (migratie 0213,
+               er een straf op dit doel staat (migratie 0218,
                `straffen_bij_uitstelverzoek()`). Dat is zelf een consequentie, en
                domeinregel 5 verbiedt een stilzwijgende. Je hoort het dus te weten
                vóórdat je verstuurt, niet erna.

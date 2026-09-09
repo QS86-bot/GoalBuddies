@@ -597,7 +597,7 @@ function DeadlineVerzoeken({
                      spiegelzijde is dat hij ook nooit stilzwijgend uit gaat.
 
                      Wat erachter zit is `straffen_bij_uitstelverzoek()`
-                     (migratie 0213) — een RPC met één kolom en géén tak op
+                     (migratie 0218) — een RPC met één kolom en géén tak op
                      `commitments_select`, want RLS kan geen kolommen beperken.
                      Deze regel is het enige wat er in de app iets mee doet:
                      zonder haar is de keten af op elk schakeltje en onderbroken

@@ -105,7 +105,7 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
  *    van laat zien. **RLS kan geen kolommen beperken** (CLAUDE.md domeinregel
  *    7), dus een policy is hier per constructie te veel.
  *
- *    `straffen_bij_uitstelverzoek()` (migratie 0213) geeft daarom alleen
+ *    `straffen_bij_uitstelverzoek()` (migratie 0218) geeft daarom alleen
  *    `goal_id` terug. Zelfde vorm en zelfde reden als `getuigenissen()` uit
  *    0169, waar dit project deze afweging al eens gemaakt heeft.
  *

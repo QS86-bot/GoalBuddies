@@ -1,4 +1,4 @@
--- 0213_de_groep_die_om_uitstel_gevraagd_wordt_ziet_de_straf.sql — een blind akkoord op een commitment device (QS8-370)
+-- 0218_de_groep_die_om_uitstel_gevraagd_wordt_ziet_de_straf.sql — een blind akkoord op een commitment device (QS8-370)
 --
 -- ROLLBACK-PAD:
 --   begin;
@@ -153,7 +153,7 @@ create index if not exists deadline_requests_goal_idx
 --      de datum is verschoven                 = true
 --
 --    Eén knop — "Niet meer delen met deze groep" — en het akkoord is weer
---    blind, precies wat dit issue bestrijdt. En blinder dan vóór 0213: er staat
+--    blind, precies wat dit issue bestrijdt. En blinder dan vóór 0218: er staat
 --    dan niet "onbekend" maar niets, want de vraag lukt en zegt "geen straf".
 --
 -- ⚠️ **De reparatie zit aan de kant van het verzoek en niet aan die van de
@@ -192,7 +192,7 @@ comment on function public.ontkoppelen_trekt_verzoek_in() is
   'Trekt een openstaand uitstelverzoek in zodra het doel niet meer met die groep gedeeld '
   'wordt. Koppelen is de toestemming en ontkoppelen is het intrekken ervan (beslisdocument '
   '002); zonder deze trigger verdwijnt de strafwaarschuwing van QS8-370 terwijl de '
-  'goedkeurknop blijft staan, en dat is het blinde akkoord dat 0213 juist sluit.';
+  'goedkeurknop blijft staan, en dat is het blinde akkoord dat 0218 juist sluit.';
 
 drop trigger if exists goal_group_links_verzoek_intrekken on public.goal_group_links;
 create trigger goal_group_links_verzoek_intrekken
@@ -284,7 +284,7 @@ comment on function public.straffen_bij_uitstelverzoek(uuid[]) is
   'Welke van deze doelen dragen een straf die nog staat, gezien door een groep die om uitstel '
   'op dat doel gevraagd is? Geeft uitsluitend `goal_id` terug — geen tekst, geen foto, geen '
   'getuige en geen stand, want RLS kan geen kolommen beperken en de beslisser hoeft alleen te '
-  'weten dát er een afspraak aan hangt (QS8-370, 0213). Zelfde vorm en zelfde reden als '
+  'weten dát er een afspraak aan hangt (QS8-370, 0218). Zelfde vorm en zelfde reden als '
   'getuigenissen() uit 0169. De retourvorm is zelf de belofte en staat onder test in '
   'tests/rls/uitstelbeslisser-ziet-de-straf.test.ts: een kolom erbij is daar een rode test. '
   'Elk verzoek telt behalve een ingetrokken, het doel moet nog met die groep gedeeld worden, '

@@ -1,6 +1,6 @@
 # De groepsroute is geen uitweg, maar het akkoord was blind
 
-**08-09-2026, besloten en gebouwd 09-09-2026.** QS8-370, migratie 0213.
+**08-09-2026, besloten en gebouwd 09-09-2026.** QS8-370, migratie 0218.
 
 ## De bevinding
 
@@ -155,7 +155,7 @@ gereedschap — en dat is precies waarom `getuigenissen()` bestaat.
 
 ### Wat er nu staat
 
-`straffen_bij_uitstelverzoek(uuid[])` (migratie 0213): een
+`straffen_bij_uitstelverzoek(uuid[])` (migratie 0218): een
 `security definer`-functie die van een lijst doelen teruggeeft **welke ervan een
 straf dragen** — `goal_id` en verder niets. `commitments_select` is niet
 aangeraakt. Plus een index op `deadline_requests (goal_id)`.
@@ -190,7 +190,7 @@ bob beslist(akkoord)              -> {"ok": true, "moved": true}
 ```
 
 Eén knop, geen truc, en het akkoord is weer blind — precies wat dit issue
-bestrijdt. Blinder zelfs dan vóór 0213: er staat dan niet "onbekend" maar niets,
+bestrijdt. Blinder zelfs dan vóór 0218: er staat dan niet "onbekend" maar niets,
 want de vraag lukt en zegt "geen straf". **De rand was zonder deze helft erger
 dan geen rand.**
 

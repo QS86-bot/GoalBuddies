@@ -84,7 +84,7 @@ describe('de beslisser krijgt de straf te zien', () => {
   it('het groepsscherm vraagt de straffen bij de verzoeken op', () => {
     expect(
       groepscherm,
-      'zonder deze vraag bestaat het leesrecht van 0213 wel en gebeurt er niets mee',
+      'zonder deze vraag bestaat het leesrecht van 0218 wel en gebeurt er niets mee',
     ).toContain('fetchStrafDoelen(');
   });
 
