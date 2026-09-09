@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 
 import { base64NaarBytes } from '../../modules/auth';
+import { ontdoeVanMetadata } from '../afbeelding';
 
 /**
  * Een foto kiezen voor de groepschat — QS8-71.
@@ -38,6 +39,18 @@ export type Chatfotokeuze =
  * ⚠️ `quality` staat laag omdat de bucket op 1 MB dicht zit (migratie 0222). Dat
  *    is een gemak en geen grendel — de keuring in `keurChatfoto()` en de bucket
  *    zelf zijn dat wél.
+ *
+ * ⚠️⚠️ **`ontdoeVanMetadata()` staat hier en niet in `uploadChatfoto()`, en dat
+ *    is een keuze.** De bytes die deze functie teruggeeft, gaan naar het scherm
+ *    (voor de voorvertoning) én naar de upload. Knippen we pas bij het uploaden,
+ *    dan bestaat er een moment waarop de app een afbeelding mét coördinaten in
+ *    handen heeft en doorgeeft. Hier is de enige plek waar de bytes de app
+ *    binnenkomen, en dus de enige plek waar "ze zijn nooit ongeknipt geweest"
+ *    een ware zin is.
+ *
+ * ⚠️ **Mislukt het knippen, dan is er geen foto.** Niet een foto zonder
+ *    voorvertoning, niet een foto die het toch probeert: de faalstand valt dicht
+ *    (QS8-395).
  */
 export async function kiesChatfoto(): Promise<Chatfotokeuze> {
   const toestemming = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -56,5 +69,9 @@ export async function kiesChatfoto(): Promise<Chatfotokeuze> {
   const bytes = base64 === null ? null : base64NaarBytes(base64);
   if (bytes === null) return { soort: 'fout', sleutel: 'chatfoto.kiezen_mislukt' };
 
-  return { soort: 'gekozen', data: bytes, mime: gekozen.mimeType ?? 'image/jpeg' };
+  const mime = gekozen.mimeType ?? 'image/jpeg';
+  const schoon = ontdoeVanMetadata(bytes, mime);
+  if (!schoon.ok) return { soort: 'fout', sleutel: 'chatfoto.kiezen_mislukt' };
+
+  return { soort: 'gekozen', data: schoon.data, mime };
 }
