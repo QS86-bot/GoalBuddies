@@ -19,6 +19,7 @@ import {
   systeemberichtTekst,
   vouwSysteemberichten,
   type ChatRegelItem,
+  heeftBijlage,
   keurChatfoto,
   stuurBericht,
   verwijderBericht,
@@ -367,7 +368,9 @@ export default function GroepChat() {
                 ) : (
                   <ChatRegel
                     body={regel.bericht.body}
-                    fotoUrl={regel.bericht.attachment_url}
+                    {...(heeftBijlage(regel.bericht)
+                      ? { fotoUrl: regel.bericht.attachment_url }
+                      : {})}
                     senderName={regel.bericht.sender_name}
                     senderAvatar={regel.bericht.sender_avatar}
                     vanMij={regel.bericht.sender_id === userId}

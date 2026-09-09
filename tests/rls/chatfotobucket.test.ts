@@ -82,6 +82,17 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
 
   const padA = () => `${groepA}/${alice}/foto.jpg`;
 
+  /**
+   * Genoeg verschillende uploaders om het **groeps**plafond te kunnen raken
+   * zonder eerst tegen het **lid**plafond van 0225 te lopen.
+   *
+   * ⚠️ Het zijn geen echte accounts, en dat hoeft ook niet: de teller leest het
+   *    tweede padsegment, en deze rijen worden door de tabeleigenaar geplaatst.
+   *    Wat hier getoetst wordt is de teller, niet de policy — die heeft zijn
+   *    eigen gevallen hierboven.
+   */
+  const uploaders = Array.from({ length: 4 }, () => randomUUID());
+
   beforeAll(() => {
     for (const [id, naam] of [
       [alice, 'Alice'],
@@ -261,10 +272,17 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
     //    plafond dan tijdens het klaarzetten aan, en dan valt de test om vóór
     //    zijn eigen bewering. Een teller toets je in een groep waarvan je het
     //    aantal kent.
+    // ⚠️⚠️ **Gespreid over uploaders, en dat is geen opsmuk.** Sinds 0225 is er
+    //    óók een plafond per lid (8), en twintig foto's van één persoon lopen
+    //    dáár tegenaan in plaats van tegen het groepsplafond. Dan zou dit geval
+    //    groen staan op de verkeerde teller. Een groep die tegen zijn
+    //    groepsplafond loopt, is per definitie een groep waarin meer mensen
+    //    geplaatst hebben.
     for (let i = 0; i < 20; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
-         values ('chatfotos', '${groepB}/${alice}/vol-${i}.jpg', '${alice}') on conflict do nothing`,
+         values ('chatfotos', '${groepB}/${uploaders[i % uploaders.length]}/vol-${i}.jpg', '${alice}')
+         on conflict do nothing`,
       );
     }
 
@@ -277,6 +295,45 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
     ).toBe('23514');
   });
 
+  it('weigert de negende foto van dezelfde persoon op één dag', () => {
+    // ⚠️ **Het lidplafond naast dat van de groep** (0225). Zonder deze tweede
+    //    teller legt één lid met twintig uploads de foto's van de hele groep 24
+    //    uur stil, en de anderen krijgen "probeer het zo nog eens" — niet te
+    //    onderscheiden van een netwerkfout. Onwrikbare regel 5 vraagt letterlijk
+    //    om een limiet per gebruiker per dag.
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%'`);
+    for (let i = 0; i < 8; i += 1) {
+      psql(
+        `insert into storage.objects (bucket_id, name, owner)
+         values ('chatfotos', '${groepB}/${alice}/mijn-${i}.jpg', '${alice}') on conflict do nothing`,
+      );
+    }
+
+    expect(
+      alsMetFout(
+        alice,
+        `insert into storage.objects (bucket_id, name)
+         values ('chatfotos', '${groepB}/${alice}/negen.jpg')`,
+      ),
+    ).toBe('23514');
+  });
+
+  it('laat een ánder lid daarna nog wél plaatsen', () => {
+    // ⚠️ De must-allow die het verschil tússen de twee tellers vastlegt. Zonder
+    //    dit geval is een lidplafond niet te onderscheiden van een groepsplafond
+    //    dat toevallig lager staat — en dan bewaakt de test de asymmetrie niet
+    //    die hij belooft.
+    expect(
+      alsMetFout(
+        carol,
+        `insert into storage.objects (bucket_id, name)
+         values ('chatfotos', '${groepB}/${carol}/van-carol.jpg')`,
+      ),
+    ).toMatch(/^ok:/);
+
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%mijn-%'`);
+  });
+
   it('laat de twintigste er nog wél door', () => {
     // ⚠️ De must-allow naast de must-deny. Een plafond dat álles weigert, is
     //    groen op deze suite en stuk voor de gebruiker.
@@ -284,7 +341,8 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
     for (let i = 0; i < 19; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
-         values ('chatfotos', '${groepB}/${alice}/rand-${i}.jpg', '${alice}') on conflict do nothing`,
+         values ('chatfotos', '${groepB}/${uploaders[i % uploaders.length]}/rand-${i}.jpg', '${alice}')
+         on conflict do nothing`,
       );
     }
 
@@ -323,15 +381,32 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
   });
 
   it('laat een systeembericht zonder bijlage met rust', () => {
-    // ⚠️ `sender_id is null` maakt het patroon `null`, en dan slaagt de CHECK —
-    //    het goede antwoord, maar het moet uit de expliciete tak komen en niet
-    //    bij toeval.
-    expect(
-      alsMetFout(
-        alice,
+    // ⚠️⚠️ **Niet als `authenticated`, en dat is een gemeten reparatie.** 📏 Deze
+    //    ijking liep eerst via `als(alice, …)` en viel dan om op **42501**:
+    //    `chat_messages_insert` eist `type <> 'system'`, dus de CHECK van 0222
+    //    werd nooit geëvalueerd. De test was groen om een reden die niets met
+    //    deze grendel te maken had — precies wat CLAUDE.md beschrijft als *"een
+    //    ijking die zijn geval door een pad voert dat een éérdere grendel al
+    //    afvangt"*. Gevonden in de securityronde van 09-09-2026.
+    //
+    //    Vandaar de tabeleigenaar: die staat buiten RLS, en dan is de CHECK het
+    //    enige wat er nog tussen zit.
+    expect(() =>
+      psql(
         `insert into public.chat_messages (group_id, sender_id, body, type, system_event)
          values ('${groepA}', null, 'x', 'system', 'member_joined')`,
       ),
-    ).not.toBe('23514');
+    ).not.toThrow();
+  });
+
+  it('weigert een systeembericht mét bijlage', () => {
+    // ⚠️ De andere helft van diezelfde tak. Zonder dit geval zegt de vorige test
+    //    alleen dat er íets doorheen komt, en niet dat de tak iets tegenhoudt.
+    expect(() =>
+      psql(
+        `insert into public.chat_messages (group_id, sender_id, body, type, system_event, attachment_url)
+         values ('${groepA}', null, 'x', 'system', 'member_joined', '${padA()}')`,
+      ),
+    ).toThrow(/23514/);
   });
 });

@@ -127,6 +127,7 @@ export {
   voegSamen,
   type BerichtInvoer,
   type SysteemGebeurtenis,
+  heeftBijlage,
 } from './chat-schemas';
 
 export {

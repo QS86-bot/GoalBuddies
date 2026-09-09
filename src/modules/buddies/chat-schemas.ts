@@ -331,6 +331,28 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  *    daaraan te denken. De naam noemt nu de eigenschap — *verlopend* — en niet
  *    het veld van toen. Komt er een derde bij, dan hoort hij hier.
  */
+/**
+ * Draagt dit bericht een bijlage-plek?
+ *
+ * ⚠️⚠️ **Waarom dit een functie is en geen `!== null` in het scherm.** `null` op
+ *    `attachment_url` betekent twee verschillende dingen: *dit bericht heeft geen
+ *    foto* én *er was een foto maar hij kon niet getekend worden*. Het scherm
+ *    hoort het eerste stil te negeren en het tweede te melden, en met alleen die
+ *    ene waarde kan het die twee niet uit elkaar houden.
+ *
+ *    📏 Dat is precies misgegaan: `ChatRegel` kreeg `fotoUrl={attachment_url}`,
+ *    en omdat `null !== undefined` rende hij zijn fotoblok voor **elk** bericht —
+ *    met de zin "Deze foto is niet meer beschikbaar" onder iedere gewone
+ *    tekstbubbel. Gevonden in de securityronde van 09-09-2026; niets werd er rood
+ *    van, want er is geen enkele test die dit component tekent.
+ *
+ *    `type` is wél eenduidig: die zegt wat het bericht ís, en die waarde komt uit
+ *    een CHECK op de tabel.
+ */
+export function heeftBijlage(bericht: Pick<ChatBericht, 'type'>): boolean {
+  return bericht.type === 'photo';
+}
+
 export function zonderVerlopendeUrls(bericht: ChatBericht): ChatBericht {
   if (bericht.sender_avatar === null && bericht.attachment_url === null) return bericht;
   return { ...bericht, sender_avatar: null, attachment_url: null };
