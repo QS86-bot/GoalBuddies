@@ -50,10 +50,15 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  * een grens in de RPC zelf. De reden staat erbij, met het getal of de constraint
  * die hem draagt.
  *
- * ⚠️ **Twee regels dragen `QS8-` en dat is met opzet.** Waar geen gemeten grens
+ * ⚠️ **Een regel draagt `QS8-` en dat is met opzet.** Waar geen gemeten grens
  *    is, staat er geen mooie reden maar een issuenummer. Zo is het verschil
  *    tussen "dit kan niet groeien" en "dit is nog niet af" leesbaar in het
  *    register zelf, in plaats van weggeschreven in een zin die als beide leest.
+ *
+ *    📏 Dat werkte: het waren er twee, en `group_events` (QS8-374) is er in
+ *    0217 uit verdwenen doordat de tabel een echt dagplafond kreeg. De test
+ *    'het register bevat geen regel die niets meer bewaakt' was het enige dat
+ *    daarover begon — die regel had anders blijven staan als een besluit.
  *
  * ⚠️ En het register wordt ook de ándere kant op getoetst: een regel voor een
  *    tabel die niet meer te laten groeien is, of die inmiddels wél een plafond
@@ -95,15 +100,12 @@ const REGISTER: Readonly<Record<string, string>> = {
     'UNIQUE (approval_id) — hoogstens één intrekking per goedkeuring, en ' +
     'completion_approvals draagt zelf goedkeuringen_dagplafond.',
   breathers:
-    'QS8-373 — geen gemeten grens. plan_adempauze() begrenst de lengte van een ' +
-    'pauze (52 cycli) en overlap op hetzelfde doel, maar niet hoe ver vooruit ' +
-    'een pauze mag beginnen. 📏 200 niet-overlappende pauzes op één doel gingen ' +
-    'er alle 200 in.',
+    'plan_adempauze() eist sinds 0216 dat een pauze begint binnen 52 cycli terug ' +
+    'tot 52 cycli vooruit, op de kalender van de eigenaar. Dat zijn hoogstens 105 ' +
+    'cyclusstarts, en omdat pauzes elkaar niet mogen overlappen is dat meteen de ' +
+    'bovengrens per doel. 📏 Dezelfde 200 aanroepen die er vóór 0216 alle 200 in ' +
+    'gingen, leveren er nu 53 op (QS8-373).',
   deadline_requests: 'vraag_deadline_verschuiving() weigert vanaf 5 verzoeken in het laatste etmaal.',
-  group_events:
-    'QS8-374 — geen gemeten grens. Elke schrijver heeft een `unchanged`-toets, ' +
-    'maar heen en weer zetten verandert elke keer wél iets. 📏 200 keer ' +
-    'zet_groepsontdekbaarheid() heen en weer gaf 200 rijen.',
   group_join_requests: 'vraag_lidmaatschap_aan() weigert zodra lidmaatschapsverzoeken_over() op nul staat.',
   group_members:
     'PRIMARY KEY (group_id, user_id) — één rij per groep per lid; en de twee ' +

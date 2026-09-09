@@ -2872,6 +2872,12 @@ export type Database = {
         }
         Returns: Json
       }
+      straffen_bij_uitstelverzoek: {
+        Args: { p_goal_ids: string[] }
+        Returns: {
+          goal_id: string
+        }[]
+      }
       systeembericht_allowlist: { Args: never; Returns: string[] }
       tekstgrenzen_bewaking: {
         Args: never

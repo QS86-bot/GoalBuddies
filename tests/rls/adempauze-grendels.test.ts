@@ -45,9 +45,24 @@ const beschikbaar = stackBeschikbaarOfFaal(
 const GEBRUIKER = proefId(1);
 const DOEL = proefId(2);
 
-/** De cyclusstart die deze test gebruikt: een maandag ver in de toekomst. */
-const START = '2031-01-06';
-const OVERLAPPEND_BEGIN = '2031-01-13';
+/**
+ * De cyclusstarts die deze test gebruikt: de maandag van volgende week en die
+ * daarna, als SQL-uitdrukking.
+ *
+ * ⚠️⚠️ **Hier stonden twee vaste datums in 2031, en die kunnen sinds 0216 niet
+ *    meer** (QS8-373). `plan_adempauze()` eist nu dat een pauze begint binnen 52
+ *    cycli terug tot 52 cycli vooruit — anders kan `breathers` onbeperkt groeien.
+ *    Een pauze in 2031 valt daarbuiten en wordt geweigerd met `buiten_venster`,
+ *    en dan toetsten deze twee gevallen niets meer over gelijktijdigheid.
+ *
+ * ⚠️ **Relatief en niet opnieuw vast**, want een vaste datum in 2027 zou hetzelfde
+ *    probleem over een jaar teruggeven. `date_trunc('week', …)` geeft in Postgres
+ *    de maandag van de ISO-week, en de proefgebruiker staat op `week_start_day =
+ *    1` — dus dit ís een cyclusstart voor hem. De isolatie die de vaste datum
+ *    gaf, komt van de eigen gebruiker en het eigen doel en niet van het jaartal.
+ */
+const START = "(date_trunc('week', current_date) + interval '7 days')::date";
+const OVERLAPPEND_BEGIN = "(date_trunc('week', current_date) + interval '14 days')::date";
 
 /**
  * De sleutel die `plan_adempauze()` neemt. Dezelfde uitdrukking als in de
@@ -132,7 +147,7 @@ describe.skipIf(!beschikbaar)('twee adempauzes tegelijk', () => {
             `set statement_timeout = '3s'; ` +
             `select set_config('request.jwt.claims', ` +
             `json_build_object('sub','${GEBRUIKER}','role','authenticated')::text, false); ` +
-            `select plan_adempauze('${DOEL}', '${OVERLAPPEND_BEGIN}', '${OVERLAPPEND_BEGIN}');`,
+            `select plan_adempauze('${DOEL}', ${OVERLAPPEND_BEGIN}, ${OVERLAPPEND_BEGIN});`,
         });
       } catch (fout) {
         const tekst = fout instanceof Error ? `${fout.message}` : String(fout);
@@ -173,7 +188,7 @@ describe.skipIf(!beschikbaar)('twee adempauzes tegelijk', () => {
       try {
         const uit = alsGebruiker(
           `set statement_timeout = '5s'; ` +
-            `select plan_adempauze('${ander}', '${START}', '${START}');`,
+            `select plan_adempauze('${ander}', ${START}, ${START});`,
         );
         expect(uit, `een ander doel hoorde er gewoon door te kunnen: ${uit}`).toContain(
           '"ok": true',
