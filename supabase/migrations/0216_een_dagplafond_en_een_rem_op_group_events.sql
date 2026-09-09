@@ -24,15 +24,25 @@
 --
 -- Alle 200 geaccepteerd, alle 200 een rij, in één transactie.
 --
--- ⚠️ **Alle zeven schrijvers hebben een `unchanged`-toets en die doet precies
--- wat hij belooft.** Dezelfde waarde nóg een keer zetten geeft
--- `{"ok": false, "reason": "unchanged"}` en schrijft niets. Waar hij niet over
--- gaat is heen en weer: A → B is een verandering, B → A ook, en elke flip is
--- dus een geldige gebeurtenis die terecht geregistreerd wordt. De toets bewaakt
--- de herhaling; het aantal bewaakt hij niet. Onwrikbare regel 18: elk onderdeel
--- klopt en het geheel lekt.
+-- ⚠️ **Elke schrijver heeft een toets tegen herhaling en die doet precies wat
+-- hij belooft.** Dezelfde waarde nóg een keer zetten geeft
+-- `{"ok": false, "reason": "unchanged"}` en schrijft niets. Waar die toets niet
+-- over gaat is heen en weer: A → B is een verandering, B → A ook, en elke flip
+-- is dus een geldige gebeurtenis die terecht geregistreerd wordt. De toets
+-- bewaakt de herhaling; het aantal bewaakt hij niet. Onwrikbare regel 18: elk
+-- onderdeel klopt en het geheel lekt.
 --
--- ⚠️ Eén van de zeven hééft er iets tegen, en dat is geen toeval:
+-- ⚠️ 📏 **Het zijn er acht en niet zeven.** Het issue noemde de zeven RPC's die
+-- `authenticated` mag aanroepen; een scan over `pg_proc.prosrc` geeft er acht.
+-- De achtste is `meld_uitzetting()`, een `after update`-trigger op
+-- `group_members` die via `guard_group_member_update()` loopt — `authenticated`
+-- mag hem niet uitvoeren, maar hij schrijft wél een rij zodra een beheerder een
+-- lid op `inactive` zet. Zijn toets is geen `unchanged` maar
+-- `new.status = 'inactive' and old.status <> 'inactive'`; dezelfde vorm, andere
+-- woorden. Ook hij telt dus mee in dit plafond, en dat hóórt: het is dezelfde
+-- beheerder die de handeling doet.
+--
+-- ⚠️ Eén van de acht hééft er iets tegen, en dat is geen toeval:
 -- `zet_groepszichtbaarheid()` draagt een `too_soon`-afkoeling, omdat een
 -- omzetting daar met terugwerkende kracht verandert wat er over ándere leden
 -- zichtbaar wordt (domeinregel 7, besluit A41). Daar had iemand er al over

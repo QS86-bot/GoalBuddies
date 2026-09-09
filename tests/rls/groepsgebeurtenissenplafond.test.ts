@@ -6,12 +6,18 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 /**
  * `group_events` heeft een dagplafond — QS8-374, migratie 0216.
  *
- * ⚠️ **De `unchanged`-toets bewaakt de herhaling en niet het aantal.** Alle zeven
- *    schrijvers naar deze tabel hebben er een, en alle zeven doen ze precies wat
- *    ze beloven: dezelfde waarde nóg een keer zetten geeft
- *    `{"ok": false, "reason": "unchanged"}` en schrijft niets. Waar geen van
- *    zevenen over gaat is héén en weer — A → B is een verandering, B → A ook, en
- *    elke flip is dus een geldige gebeurtenis die terecht geregistreerd wordt.
+ * ⚠️ **De `unchanged`-toets bewaakt de herhaling en niet het aantal.** Elke
+ *    schrijver naar deze tabel heeft er een, en ze doen allemaal precies wat ze
+ *    beloven: dezelfde waarde nóg een keer zetten geeft
+ *    `{"ok": false, "reason": "unchanged"}` en schrijft niets. Waar geen van ze
+ *    over gaat is héén en weer — A → B is een verandering, B → A ook, en elke
+ *    flip is dus een geldige gebeurtenis die terecht geregistreerd wordt.
+ *
+ * ⚠️ 📏 **Het zijn er acht en niet zeven.** Het issue noemde de zeven RPC's die
+ *    `authenticated` mag aanroepen; een scan over `pg_proc.prosrc` geeft er
+ *    acht. De achtste is `meld_uitzetting()`, een `after update`-trigger op
+ *    `group_members`. Hij schrijft ook op `auth.uid()`, dus hij valt onder
+ *    hetzelfde plafond als de handeling die hem afvuurt.
  *
  *    📏 Gemeten bij QS8-369: 200 aanroepen van `zet_groepsontdekbaarheid()` die
  *    telkens de andere kant op zetten gaven **200 rijen**, door één beheerder op
@@ -22,7 +28,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    `zet_groepszichtbaarheid()` draagt een `too_soon`-afkoeling, omdat een
  *    omzetting dáár met terugwerkende kracht verandert wat er over ándere leden
  *    zichtbaar wordt (domeinregel 7, besluit A41). Daar had iemand er al over
- *    nagedacht; bij de andere zes niet.
+ *    nagedacht; bij de andere zeven niet.
  *
  * ## Waarom dit meer is dan bytes
  *
