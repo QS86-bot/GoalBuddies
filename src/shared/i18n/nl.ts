@@ -95,6 +95,16 @@ export const nl = {
   'systeembericht.group_discoverable':
     '{naam} heeft deze groep vindbaar gemaakt. Mensen die je nog niet kent zien de naam, het onderwerp, de omschrijving en het aantal leden. Verder niets.',
 
+  /**
+   * ⚠️ De veertiende, migratie 0208 (QS8-360). Noemt de beheerder en de
+   *    gebeurtenis — geen aantallen. Uit "twee van de vijf zijn meeverhuisd" is
+   *    af te leiden wie er nog niet had afgesloten, en dat is domeinregel 7 op
+   *    een plek waar je hem makkelijk mist: de gebeurtenis zelf is geen
+   *    tegenslag.
+   */
+  'systeembericht.huddle_day_changed':
+    '{naam} heeft de huddledag verzet. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
+
   /** Iemand die er niet meer is. Zie oppervlak 18 in beslisdocument 002. */
   'algemeen.oud_lid': 'Een oud-lid',
   // Het voegwoord van een opsomming. Staat hier omdat het per taal verschilt.
@@ -591,6 +601,18 @@ export const nl = {
   'deadlineverzoek.toch_niet': 'Toch niet',
   'deadlineverzoek.akkoord': 'Akkoord',
   'deadlineverzoek.liever_niet': 'Liever niet',
+  // ⚠️ QS8-370. Nuchter en zonder oordeel over de aanvrager: de zin zegt wat
+  //    er staat en wat je beslissing doet, en verder niets. Geen "let op",
+  //    geen uitroepteken — dit is informatie die je nodig hebt, geen
+  //    waarschuwing tégen de persoon die het vraagt.
+  'deadlineverzoek.straf_staat_erop':
+    'Op dit doel staat een straf die de eigenaar zichzelf heeft opgelegd. Ga je akkoord, '+
+    'dan schuift de datum waarop die verschuldigd wordt mee.',
+  // ⚠️ De derde toestand: onbekend is niet hetzelfde als geen. Zwijgen zou
+  //    hier "er is niets aan de hand" betekenen, en dat mag je niet zeggen als
+  //    je het niet weet.
+  'deadlineverzoek.straf_onbekend':
+    'We konden niet ophalen of er een straf op dit doel staat.',
   'koppel.ontkoppel': 'Niet meer delen met deze groep',
   'koppel.titel': 'Je doel delen met deze groep',
   /**
@@ -703,6 +725,11 @@ export const nl = {
   'beheer.zichtbaarheid_nu': 'Nu ingesteld: {stand}',
   'beheer.zichtbaarheid_waarschuwing':
     'Openzetten werkt met terugwerkende kracht: de groep ziet vanaf dat moment ook de gemiste weken die er al staan. Iedereen krijgt er een bericht van, zodat wie dat niet wil zijn doel kan ontkoppelen.',
+  'bevestiging.huddledag_verzetten.titel': 'De huddledag verzetten?',
+  'bevestiging.huddledag_verzetten.uitleg':
+    'De week die nu loopt schuift mee naar de nieuwe dag. Wat er al afgesloten is blijft afgesloten. Voor de anderen kan de lopende week hierdoor eerder aflopen, soms al vandaag. Je kunt dit een keer per dag doen.',
+  'bevestiging.huddledag_verzetten.knop': 'Ja, verzet de huddledag',
+
   'bevestiging.groep_openzetten.titel': 'Deze groep openzetten?',
   'bevestiging.groep_openzetten.uitleg':
     'Vanaf nu ziet iedereen in deze groep ook elkaars gemiste en doorgeschoven weken, elkaars beste reeks ooit, van elke week wie er meedeed, en een klassement met elkaars puntentotaal in deze groep, ook de weken die er al staan. Dit gaat dus niet alleen over jou. Iedereen krijgt een bericht in de groepschat, zodat wie dat niet wil zijn doel kan ontkoppelen. Terugzetten kan altijd en meteen.',
@@ -777,6 +804,7 @@ export const nl = {
   'doelen.leeg_tekst': 'Begin met één doel met een datum erop. De Doelcoach hakt het daarna in mijlpalen, en die mijlpalen worden je weekdoelen.',
   'doelen.van_totaal': '{aantal} van {totaal} doelen.',
   'doelen.nieuw': 'Nieuw doel',
+  'doelen.zelf_invullen': 'Liever zelf invullen',
   'doelen.meer_laden': 'Meer doelen laden',
   'doelen.doel': 'Doel',
   'doelen.streefdatum': 'Streefdatum {datum}',
@@ -856,6 +884,10 @@ export const nl = {
   'profiel.meldingen_uit_gelukt': 'Meldingen staan uit op dit apparaat.',
   'profiel.meldingen_uit_mislukt': 'Uitzetten lukte niet. Probeer het zo nog eens.',
   'profiel.meldingen_mislukt': 'Aanzetten lukte niet. Probeer het zo nog eens.',
+  'push.geen_websleutels': 'Je browser gaf geen volledige aanmelding door. Zet meldingen opnieuw aan.',
+  'push.te_veel_tokens': 'Je hebt vandaag te veel apparaten aangemeld. Probeer het morgen opnieuw.',
+  'push.niet_ingelogd': 'Je bent niet meer ingelogd. Log opnieuw in en probeer het nog eens.',
+  'push.apparaat_niet_bruikbaar': 'Dit apparaat kon niet worden aangemeld voor meldingen. Probeer het opnieuw of gebruik een ander apparaat.',
   'profiel.meldingen_aan': 'Meldingen staan aan. Je krijgt bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat.',
   'profiel.meldingen_uit': 'Krijg bericht als een buddy je week goedkeurt of als je weekafsluiting klaarstaat. We vragen je browser eenmalig om toestemming.',
   'profiel.meldingen_geweigerd': 'Je hebt meldingen eerder geweigerd. Dat kan alleen in de instellingen van je browser terug; wij kunnen er niet opnieuw om vragen.',
@@ -1402,6 +1434,7 @@ export const nl = {
   'adempauze.te_lang': 'Een adempauze duurt hoogstens {max} weken.',
   'adempauze.datum_ongeldig': 'Vul een datum in als jjjj-mm-dd.',
   'adempauze.geen_hele_week': 'Kies een hele week, die begint op jouw eigen startdag.',
+  'adempauze.buiten_venster': 'Kies een week binnen een jaar terug of een jaar vooruit.',
   'adempauze.eind_voor_start': 'De einddatum ligt vóór de startdatum.',
   'adempauze.annuleren_mislukt': 'Annuleren lukte niet.',
   'adempauze.al_begonnen': 'Deze adempauze is al begonnen en blijft staan.',
@@ -1571,6 +1604,12 @@ export const nl = {
     'Het project op mijn werk is met zes weken uitgelopen en dat eet mijn avonden op.',
   'deadline.nog_tekens': 'Nog {aantal} tekens te gaan.',
   'deadline.lang_genoeg': 'Lang genoeg.',
+  // ⚠️ QS8-370. Staat vlak boven de verzendknop. Het verzoek opent een
+  //    oppervlak dat niet meer sluit, en dat hoor je te weten vóór je drukt.
+  'deadline.straf_wordt_zichtbaar':
+    'Je groep ziet dat er een straf op dit doel staat zodra je dit verzoek verstuurt, en '+
+    'blijft dat zien zolang je het doel met ze deelt. Wat er in je straf staat, deelt dit '+
+    'verzoek niet.',
   'deadline.versturen': 'Verzoek versturen',
   'deadline.vastleggen': 'Vastleggen',
   'deadline.annuleren': 'Annuleren',
@@ -1978,6 +2017,10 @@ export const nl = {
     'Het duurde te lang. Probeer het zo nog eens, of voeg je mijlpalen zelf toe.',
   'coach.n_voorgesteld': '{aantal} mijlpalen voorgesteld',
   'beheer.melding_opgeslagen': 'Opgeslagen. Lopende kettingschakels blijven staan waar ze staan.',
+  'beheer.melding_huddledag': 'De huddledag staat nu op {{dag}}. De week die nu loopt is meeverhuisd; wat er al afgesloten was blijft afgesloten.',
+  'beheer.huddledag_te_snel': 'De huddledag is vandaag al verzet. Morgen kan het weer.',
+  'beheer.huddledag_ongeldig': 'Dat is geen geldige weekdag.',
+  'beheer.huddledag_verlopen': 'De week is intussen opgeschoven. Ververs het scherm en probeer het opnieuw.',
   'beheer.melding_nieuwe_link': 'Nieuwe link. De oude werkt vanaf nu niet meer.',
   'beheer.leeg_titel': 'Deze groep is er niet, of niet voor jou',
   'beheer.leeg_tekst': 'Je bent geen lid van deze groep, of hij bestaat niet meer.',

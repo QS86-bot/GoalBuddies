@@ -247,8 +247,10 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       const apparaten = (tokens ?? []) as Token[];
 
       if (apparaten.length === 0) {
-        // Geen apparaat geregistreerd. Vandaag geldt dat voor iedereen, want
-        // `expo-notifications` staat nog niet in de app.
+        // Geen apparaat geregistreerd. Vandaag geldt dat voor iedereen, en de
+        // reden is per platform een andere (QS8-366): native heeft geen build
+        // uitgerold, en op web wacht de registratie op een VAPID-sleutelpaar en
+        // op de knop in Profiel — QS8-124.
         zonderToken += 1;
         continue;
       }

@@ -15,7 +15,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  branchesVoorOp,
+  botsendeBranches,
+  hoofdbranchVoorop,
   hoogsteIn,
   nummerUit,
   sjabloon,
@@ -57,48 +58,83 @@ describe('hoogsteIn', () => {
 });
 
 describe('volgendVrijNummer', () => {
-  it('telt door op de werkkopie als die het hoogst is', () => {
-    expect(volgendVrijNummer({ lokaal: ['0121_a.sql'], perBranch: { 'origin/main': 118 } })).toBe(122);
+  it('telt door op de werkkopie', () => {
+    expect(volgendVrijNummer({ lokaal: ['0121_a.sql'] })).toBe(122);
   });
 
-  // ⚠️ Dit is het geval waar het script voor gemaakt is. Zonder de branches zou
-  //    dit 122 geven — en dat is precies het nummer dat op 28-08 botste.
-  it('slaat een nummer over dat op een ándere branch al geclaimd is', () => {
-    expect(
-      volgendVrijNummer({
-        lokaal: ['0121_a.sql'],
-        perBranch: { 'origin/main': 123, 'origin/fix/iets': 118 },
-      }),
-    ).toBe(124);
-  });
-
-  it('telt ook een branch mee die nog niet geland is', () => {
-    expect(
-      volgendVrijNummer({
-        lokaal: ['0117_a.sql'],
-        perBranch: { 'origin/main': 117, 'origin/fix/nog-open': 118 },
-      }),
-    ).toBe(119);
+  /**
+   * ⚠️⚠️ **Deze twee eisten tot QS8-365 het tegenovergestelde**, en dat is de
+   *    kern van dat issue: ze lazen een branch mee in het nummer, en dan staat er
+   *    een gat in de eigen map. `migraties:controle` wordt daar rood van, en in
+   *    CI is de branch die het gat vult niet te zien — `actions/checkout@v4`
+   *    haalt er één op. 📏 Drie keer op één dag gemeten en drie keer met de hand
+   *    teruggezet; `docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
+   *
+   *    Ze staan er nog, omgedraaid, omdat dít de gevallen zijn waar iemand naar
+   *    zoekt als hij zich afvraagt of de branches meetellen.
+   */
+  // ⚠️ De branches staan niet meer in de handtekening, en dat is de reparatie
+  //    zelf: er valt niets meer mee te geven dat het nummer kan verschuiven.
+  //    Dát een échte branch het nummer niet verschuift, staat end-to-end in
+  //    `migratie-fetch.test.ts` — daar is er een, op een echte remote.
+  it('kijkt alleen naar het hoogste dat er lokaal staat', () => {
+    expect(volgendVrijNummer({ lokaal: ['0117_a.sql', '0003_b.sql'] })).toBe(118);
   });
 
   it('werkt op een lege map', () => {
-    expect(volgendVrijNummer({ lokaal: [], perBranch: {} })).toBe(1);
+    expect(volgendVrijNummer({ lokaal: [] })).toBe(1);
   });
 });
 
-describe('branchesVoorOp', () => {
-  it('noemt alleen de branches die hóger zitten dan de werkkopie', () => {
-    const voorop = branchesVoorOp({
-      lokaal: ['0121_a.sql'],
-      perBranch: { 'origin/main': 123, 'origin/oud': 4, 'origin/gelijk': 121 },
-    });
-    expect(voorop).toEqual([{ branch: 'origin/main', hoogste: 123 }]);
+describe('botsendeBranches', () => {
+  it('noemt de branches die precies dit nummer dragen', () => {
+    expect(
+      botsendeBranches({
+        volledig: { 'origin/a': [117, 118], 'origin/b': [119], 'origin/c': [118] },
+        nummer: 118,
+      }),
+    ).toEqual(['origin/a', 'origin/c']);
   });
 
-  it('zegt niets als de werkkopie voorloopt — dan is er niets aan de hand', () => {
-    expect(branchesVoorOp({ lokaal: ['0130_a.sql'], perBranch: { 'origin/main': 123 } })).toEqual([]);
+  // ⚠️ Op het hóógste nummer kijken zou `origin/a` hier missen: die draagt 118
+  //    én 119. Vandaar de volledige verzameling en niet het maximum per branch.
+  it('vindt ook een branch die het nummer niet als hoogste draagt', () => {
+    expect(botsendeBranches({ volledig: { 'origin/a': [118, 119] }, nummer: 118 })).toEqual([
+      'origin/a',
+    ]);
+  });
+
+  it('zwijgt als niemand het draagt', () => {
+    expect(botsendeBranches({ volledig: { 'origin/a': [117] }, nummer: 118 })).toEqual([]);
   });
 });
+
+describe('hoofdbranchVoorop', () => {
+  // ⚠️ De énige toestand waarin het nieuwe nummer écht fout is: `main` heeft het
+  //    al, en er valt niets te hernummeren maar te pullen.
+  it('meldt het als origin/main hoger staat dan de werkkopie', () => {
+    expect(hoofdbranchVoorop({ lokaal: ['0117_a.sql'], perBranch: { 'origin/main': 120 } })).toEqual(
+      { hoofd: 'origin/main', hoogste: 120, hier: 117 },
+    );
+  });
+
+  it('zwijgt als de werkkopie bij is', () => {
+    expect(hoofdbranchVoorop({ lokaal: ['0120_a.sql'], perBranch: { 'origin/main': 120 } })).toBeNull();
+  });
+
+  // ⚠️ Een feature-branch die vooroploopt is géén verouderde werkkopie. Zou deze
+  //    functie die meetellen, dan krijgt de lezer "ga pullen" op een branch die
+  //    nergens heen te pullen is.
+  it('kijkt niet naar feature-branches', () => {
+    expect(
+      hoofdbranchVoorop({
+        lokaal: ['0117_a.sql'],
+        perBranch: { 'origin/main': 117, 'origin/iets': 130 },
+      }),
+    ).toBeNull();
+  });
+});
+
 
 describe('sjabloon', () => {
   // Onwrikbare regel 20: een migratie zonder rollback-pad in de kop is rood bij
