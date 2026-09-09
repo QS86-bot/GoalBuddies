@@ -131,14 +131,16 @@ describe.skipIf(!beschikbaar)('wie uit de groep gezet is, is niet meer zichtbaar
 });
 
 describe.skipIf(!beschikbaar)('en wie er nog wél bij hoort, blijft zichtbaar', () => {
-  it('een adempauze is geen uitzetting', () => {
-    // 0029: "wie even niet meedoet, hoort zijn groep gewoon te kunnen lezen.
-    // Zou `paused` hier meelopen, dan is een adempauze nemen hetzelfde als
-    // eruit gezet worden."
-    const pauze = `update group_members set status = 'paused'
-                    where group_id = '${GROEP}' and user_id = '${BOB}';`;
-    expect(zicht(pauze)).toEqual({ profiel: 1, avatar: 1 });
-  });
+  // ⚠️ **Hier stond "een adempauze is geen uitzetting", en die stand bestaat
+  //    niet meer.** 0029 schreef: "wie even niet meedoet, hoort zijn groep gewoon
+  //    te kunnen lezen"; dat werd gemeten door een lidmaatschap op `paused` te
+  //    zetten. 0204 haalt die waarde uit de CHECK (QS8-325), dus het geval is
+  //    niet meer te maken — niet door deze test en door niemand anders.
+  //
+  // ⚠️ **De tweezijdigheid uit de kop van dit bestand blijft staan**: het geval
+  //    hieronder (een gearchiveerde groep blijft leesbaar) is het tweede dat
+  //    open moet blijven, en het draagt dezelfde belofte. De adempauze die het
+  //    product wél kent, zit per doel in `breathers` en raakt deze functie niet.
 
   it('een gearchiveerde groep blijft leesbaar', () => {
     // 0153: een archief is leesbaar. Deze functie staat aan de leeskant, dus de

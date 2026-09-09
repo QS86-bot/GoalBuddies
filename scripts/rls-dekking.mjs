@@ -291,8 +291,9 @@ export const NIET_PER_HELFT_TE_METEN = {
   'groups.groups_update.using': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
-      'en `id` staat níet in de UPDATE-kolomgrant van `groups` (📏 gemeten: name, tz, ' +
-      'huddle_day, categorie en zeven andere wél, `id` niet). Er bestaat dus geen rij die ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `groups` (📏 gemeten na 0202: ' +
+      'name, huddle_day, categorie en zeven andere wél — tien in totaal — `id` niet. ' +
+      '`tz` stond hier tot QS8-355 bij en is er met 0202 uit). Er bestaat dus geen rij die ' +
       'de ene helft passeert en de andere niet. 📏 Gemeten: elke helft los = nul rood, ' +
       'béide helften tegelijk = 3 rood. De grendel is het paar.',
     wordtToetsbaarAls:

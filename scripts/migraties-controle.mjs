@@ -36,6 +36,24 @@
  *    Het is bij toeval gevonden: een nieuwe migratie sprong over het gat heen en
  *    toen zat het er ineens wél tússen. Stap 4 hieronder maakt dat een meting.
  *
+ * ⚠️⚠️ **Welke van de twee je volgt als ze het oneens zijn — QS8-365.** Deze
+ *    controle en `migratie:nieuw` beantwoorden dezelfde vraag, en tot 08-09-2026
+ *    gaven ze een tegengesteld antwoord: dit script wil geen gat in de eigen map,
+ *    dat script nam het maximum over álle branches en gaf dus een nummer boven
+ *    een nog niet gelande branch.
+ *
+ *    **Dit script heeft gelijk, en `migratie:nieuw` is aangepast.** De reden is
+ *    het verschil tussen verwerkte en onverwerkte schade: een gat is onverwerkt
+ *    — CI is meteen rood, op elke push, en de map kan het schema niet opbouwen —
+ *    terwijl een botsend nummer sinds QS8-318 een afspraak heeft: wie als tweede
+ *    merget, hernummert.
+ *
+ * ⚠️ **En dit script kán dat verschil niet zelf maken.** Stap 2 telt de gaten in
+ *    de eigen map, en in CI ís er niets anders: `actions/checkout@v4` haalt één
+ *    branch op, zonder `origin/…`-refs. Een gat "dat een openstaande branch nog
+ *    vult" is daar niet van een echt gat te onderscheiden. Vandaar dat de
+ *    aanpassing aan de andere kant zit.
+ *
  * Wat hij níét kan: toetsen of de repo gelijkloopt met
  * `supabase_migrations.schema_migrations` op het echte project. Dat vraagt een
  * service-role-key, en die hoort niet in een controle die op elke machine draait

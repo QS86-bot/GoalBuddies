@@ -879,15 +879,22 @@ export const GEEN_SCHRIJFPAD = [
     kolom: 'icon',
     reden: '0019 geeft het recht; het groepsinstellingenscherm raakt het icoon nog niet aan.',
   },
-  {
-    tabel: 'groups',
-    soort: 'UPDATE',
-    kolom: 'tz',
-    reden:
-      'idem. ⚠️ En hier hangt meer aan: 0123 wijst erop dat een beheerder via ' +
-      'deze grant de tijdzone van de groep kan verzetten. Zolang geen scherm hem ' +
-      'gebruikt, is het een recht zonder pad.',
-  },
+  /*
+   * ⚠️⚠️ **Hier stond `groups.tz`, en die rij hield een gat open** (QS8-355). De
+   *    reden luidde: *"0123 wijst erop dat een beheerder via deze grant de
+   *    tijdzone van de groep kan verzetten. Zolang geen scherm hem gebruikt, is
+   *    het een recht zonder pad."*
+   *
+   *    Het gevolg stond er dus al in — alleen de conclusie ontbrak. "Zolang geen
+   *    scherm hem gebruikt" beschrijft wat de client vandaag dóet en niet wat hem
+   *    tegenhoudt, en dat is precies de vorm die QS8-352 duur maakte. 📏 Eén
+   *    PATCH van een beheerder zette `tz` op `Pacific/Kiritimati` en
+   *    `groepsdatum()` sprong een dag vooruit — de weekgrens van élk lid.
+   *
+   *    Migratie 0202 haalt het recht weg en pint de kolom in
+   *    `guard_group_update()`. De rij hoeft hier dus niet herschreven te worden;
+   *    hij hoort weg, want er is geen recht meer om uit te leggen.
+   */
   {
     tabel: 'weekly_goals',
     soort: 'INSERT',
@@ -1072,7 +1079,9 @@ export const GEEN_AANROEPER = [
       '⚠️⚠️ **Ná die vroege `return new` toetst hij niets meer, en dat is breder dan één ' +
       'geval.** 📏 Gemeten als beheerder, elk in een teruggedraaide transactie: een ánder lid tot ' +
       '`admin` promoveren, een mede-beheerder — óók de oprichter — naar `member` degraderen, ' +
-      'iemand anders op `paused` zetten, en een uitgezet lid terug op `active`. Van die vier ' +
+      'iemand anders op `paused` zetten (📏 die stand bestaat sinds 0204 niet meer — QS8-325 — ' +
+      'en een onbekende stand ketst nu af op `onbekende_lidstatus`), en een uitgezet lid terug ' +
+      'op `active`. Van die vier ' +
       'schrijft alleen de laatste een spoor: `meld_uitzetting` vuurt op `status → inactive` en ' +
       '`meld_nieuw_lid` op `inactive → active`; **een rolwijziging laat niets achter**. En er is ' +
       'geen weg terug: 📏 één treffer op `set role` in alle functiedefinities, en die zit in de ' +

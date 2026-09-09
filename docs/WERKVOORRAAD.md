@@ -37,9 +37,14 @@ Vraag de database welke migraties er staan, niet dit document.
 
 ⚠️ **`0187` staat sinds 07-09 in de map en nog niet op productie** (QS8-314).
 `guard_group_member_update()` werpt daar in plaats van gewijzigde kolommen stil
-terug te zetten, en `join_group_with_code()` krijgt er één regel bij. 📏 Wat
-daarvóór stil kapot was: een lid op `paused` dat toetrad met een geldige code
-kreeg `{"ok": true}` en bleef op `paused`. Dat pad is vandaag dormant — QS8-325.
+terug te zetten.
+
+⚠️ **De uitzondering die 0187 daarnaast invoerde is met `0204` weer weg**
+(QS8-325, 08-09): `group_members.status` kent alleen nog `active` en `inactive`.
+`paused` had geen schrijver en vier lezers, en de adempauze die het product
+bedoelt zit per doel in `breathers`. Waarom hij weggaat en niet een schrijver
+krijgt, staat in
+`docs/decisions/2026-09-08-paused-was-de-adempauze-op-de-verkeerde-plek.md`.
 
 ⚠️ **QS8-261 haalde een instelling weg die niets deed**, en de reden staat in
 `docs/decisions/2026-09-02-een-instelling-die-niets-deed.md`. Het patroon is er
@@ -107,8 +112,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 44 controlescripts groen;
-`npm run poort` meldt 48 stappen.
+Typecheck, lint en alle 47 controlescripts groen;
+`npm run poort` meldt 51 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -180,7 +185,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0200` staan in de map: **203 bestanden**,
+Migraties `0001` t/m `0218` staan in de map: **221 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -727,6 +732,34 @@ zette een CHECK op `push_tokens` die websleutels verplicht stelt en wijzigde
 `registreer_push_token()` niet mee; elke aanroep met `platform = 'web'` liep op
 een ongevangen 23514 stuk. De tabel was leeg, dus de migratie slaagde en er ging
 niets zichtbaar stuk — web push was dood zodra hij aangezet werd.
+
+### 2b. Tien branches zonder PR — 09-09-2026, en dit is de derde keer
+
+📏 Gemeten op 09-09 om 10:35 UTC, met `main` op `fc78e1f`: **tien issues staan op
+`In Review`, hebben een gepushte branch met afgerond werk, en er is nooit een pull
+request voor geopend** — niet open, niet gesloten, niet gemerged. Zes ervan dragen
+een migratienummer dat `main` intussen aan iets anders vergeven heeft.
+
+De volledige tabel — leeftijd, commits buiten `main`, migraties, en het besluit
+per branch met de nummers waarheen ze hernummerd moeten worden — staat bij
+**QS8-384**. Hier staat alleen de stand, want die tabel verandert bij elke merge.
+
+⚠️ **Twee stapels, en de volgorde ligt vast:** QS8-322 → QS8-333 → QS8-335, en
+QS8-332 → QS8-361 → QS8-364. Elke branch bevat de vorige, dus hernummeren van de
+onderste laag trekt de bovenliggende mee. De vier zonder migratie (QS8-338,
+QS8-346, QS8-350, QS8-358) kunnen los en zonder hernummeren.
+
+⚠️ **`In Review` liegt hier twee kanten op**, en dat is de scherpste les van deze
+ronde. Tien issues stonden erop zónder PR; QS8-353 stond erop terwijl PR #302
+gewoon gemerged was en het werk in `main` stond. De status volgt de werkelijkheid
+in geen van beide richtingen vanzelf. Op 09-09 rechtgezet: de acht inactieve naar
+`In Progress`, QS8-353 naar `Done`, en QS8-333 en QS8-335 met opzet ongemoeid —
+die zijn 4,7 uur oud en mogelijk in de lucht.
+
+⚠️ **Dit is dezelfde vorm als §2a hierboven** (QS8-131, 24-08) en als QS8-237.
+Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maar
+alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
+afgesplitst omdat de meting en het gereedschap twee dingen zijn.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 

@@ -51,27 +51,24 @@ let doelIds: string[] = [];
 /**
  * De vraag die `fetchKoppelbareDoelen()` stelt, met de client van de harnas.
  *
- * ⚠️ De `not.in` staat hier met opzet in dezelfde vorm als in de module: dat is
- *    wat er getoetst wordt.
+ * ⚠️⚠️ **Sinds QS8-345 is dat de RPC en niet meer een `not.in`.** De uitsluitlijst
+ *    ging als id-lijst mee in de URL, en die heeft een grens: 📏 rond de 410 id's
+ *    (≈15,3 KB) geeft `fetch` een harde `Headers Overflow Error`. Deze helper
+ *    neemt daarom geen `uitsluiten` meer aan — er valt niets meer uit te sluiten
+ *    aan deze kant, en dát is de reparatie.
+ *
+ * ⚠️ `count: 'exact'` met een `range` erop: één verzoek, en de telling blijft
+ *    exact. `koppelbare_doelen()` pagineert met opzet niet zelf — zou hij dat
+ *    doen, dan telt PostgREST wat er terugkomt en liegt `meer` opnieuw.
  */
-async function koppelbaar(uitsluiten: readonly string[]): Promise<number> {
-  let vraag = alice.db
-    .from('goal_dashboard')
-    .select('*', { count: 'exact' })
-    .eq('owner_id', alice.id)
-    .eq('status', 'active');
-
-  if (uitsluiten.length > 0) {
-    vraag = vraag.not('id', 'in', `(${uitsluiten.join(',')})`);
-  }
-
-  const { data, error, count } = await vraag
-    .order('target_date', { ascending: true })
+async function koppelbaar(): Promise<{ rijen: number; totaal: number }> {
+  const { data, error, count } = await alice.db
+    .rpc('koppelbare_doelen', { p_group_id: groupId }, { count: 'exact' })
     .range(0, PER_PAGINA - 1);
 
   if (error) throw new Error(`koppelbaar: ${error.message}`);
   expect(count).not.toBeNull();
-  return (data ?? []).length;
+  return { rijen: (data ?? []).length, totaal: count ?? -1 };
 }
 
 describe.skipIf(!rlsTestsConfigured)('QS8-342 — de lege staat van het koppelscherm is waar', () => {
@@ -110,7 +107,9 @@ describe.skipIf(!rlsTestsConfigured)('QS8-342 — de lege staat van het koppelsc
     async () => {
       // ⚠️ De must-allow. Zonder deze is "de lijst is niet leeg" hieronder gratis:
       //    een query die altijd alles teruggeeft, haalt hem ook.
-      expect(await koppelbaar([])).toBe(PER_PAGINA);
+      expect((await koppelbaar()).rijen).toBe(PER_PAGINA);
+      // ⚠️ En de telling is die van de héle verzameling, niet van de pagina.
+      expect((await koppelbaar()).totaal).toBe(PER_PAGINA + 1);
     },
     TEST_TIMEOUT,
   );
@@ -118,8 +117,9 @@ describe.skipIf(!rlsTestsConfigured)('QS8-342 — de lege staat van het koppelsc
   it(
     'met de eerste twintig gekoppeld blijft het eenentwintigste doel over — en dat is precies wat er misging',
     async () => {
-      const eersteTwintig = doelIds.slice(0, PER_PAGINA);
-      const koppelingen = eersteTwintig.map((goal_id) => ({ goal_id, group_id: groupId }));
+      const koppelingen = doelIds
+        .slice(0, PER_PAGINA)
+        .map((goal_id) => ({ goal_id, group_id: groupId }));
 
       const link = await adminDb().from('goal_group_links').insert(koppelingen);
       if (link.error) throw new Error(`koppelen: ${link.error.message}`);
@@ -127,7 +127,8 @@ describe.skipIf(!rlsTestsConfigured)('QS8-342 — de lege staat van het koppelsc
       // ⚠️ **Dit is het getal waar het om gaat.** De oude code vroeg pagina 0 op
       //    (deze twintig) en trok ze eraf: nul over, "je hebt nog geen doel".
       //    Serverzijdig uitsluiten geeft er één.
-      expect(await koppelbaar(eersteTwintig)).toBe(1);
+      expect((await koppelbaar()).rijen).toBe(1);
+      expect((await koppelbaar()).totaal).toBe(1);
     },
     TEST_TIMEOUT,
   );
@@ -145,7 +146,97 @@ describe.skipIf(!rlsTestsConfigured)('QS8-342 — de lege staat van het koppelsc
         .insert([{ goal_id: laatste, group_id: groupId }]);
       if (link.error) throw new Error(`laatste koppelen: ${link.error.message}`);
 
-      expect(await koppelbaar(doelIds)).toBe(0);
+      expect((await koppelbaar()).rijen).toBe(0);
+      expect((await koppelbaar()).totaal).toBe(0);
+    },
+    TEST_TIMEOUT,
+  );
+  /**
+   * ⚠️⚠️ **Verhuisd uit `tests/beloftes/uitsluitlijst-is-alleen-van-jezelf.test.ts`,
+   *    dat met QS8-345 zijn onderwerp verloor.** Die test bewaakte dat
+   *    `mijnGekoppeldeDoelIds()` alleen jóuw koppelingen ophaalde: `goal_group_links`
+   *    bevat de doelen van élk groepslid, en zonder het owner-filter werd de
+   *    uitsluitlijst zo groot als de hele groep. Die functie bestaat niet meer —
+   *    de RPC sluit serverzijdig uit — maar **de belofte staat nog**: de
+   *    koppelingen van een groepsgenoot mogen jouw lijst niet inkorten.
+   *
+   *    Regel 18 waarschuwt precies hiervoor: bij een verhuizing verhuizen de
+   *    tests mee en blijven ze groen, want ze toetsen wat er in het bestand staat
+   *    en niet wat het bestand beloofde. Deze belofte hoort nu hier, tegen de
+   *    échte RPC in plaats van tegen een nagemaakte client.
+   */
+  it(
+    'trekt de koppelingen van een groepsgenoot er niet vanaf',
+    async () => {
+      const bram = await createTestUser('koppelbaar-bram');
+      const lid = await adminDb()
+        .from('group_members')
+        .insert({ group_id: groupId, user_id: bram.id, role: 'member', status: 'active' });
+      if (lid.error) throw new Error(`bram als lid: ${lid.error.message}`);
+
+      const vanBram = await adminDb()
+        .from('goals')
+        .insert({ owner_id: bram.id, title: 'doel van Bram', target_date: '2027-06-01' })
+        .select('id')
+        .single();
+      if (vanBram.error) throw new Error(`doel van Bram: ${vanBram.error.message}`);
+
+      const voor = await koppelbaar();
+
+      const link = await adminDb()
+        .from('goal_group_links')
+        .insert({ goal_id: vanBram.data.id, group_id: groupId });
+      if (link.error) throw new Error(`koppeling van Bram: ${link.error.message}`);
+
+      // ⚠️ Bram koppelt zíjn doel aan dezelfde groep. Alice' lijst hoort daar
+      //    niets van te merken — noch in de rijen, noch in de telling.
+      const na = await koppelbaar();
+      expect(na).toEqual(voor);
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️⚠️ **Dit is de bug van QS8-345 zelf.** 📏 Rond de 410 id's in de `not.in`
+   *    gaf `fetch` een harde `Headers Overflow Error` en stond het koppelblok
+   *    permanent in de foutstaat. Vijfhonderd koppelingen is ruim over die klif;
+   *    met de RPC gaat er niets meer over de URL en is het aantal koppelingen
+   *    niet meer zichtbaar in de vraag.
+   *
+   * ⚠️ De must-allow zit erin: er blijft één los doel over en dát hoort er te
+   *    staan. Zonder die helft is "geen foutmelding" ook groen als het antwoord
+   *    stilletjes leeg is.
+   */
+  it(
+    'blijft antwoorden bij vijfhonderd koppelingen, waar de uitsluitlijst in de URL stukliep',
+    async () => {
+      const veel = await adminDb()
+        .from('goals')
+        .insert(
+          Array.from({ length: 500 }, (_, i) => ({
+            owner_id: alice.id,
+            title: `bulk ${i}`,
+            target_date: '2028-01-01',
+          })),
+        )
+        .select('id');
+      if (veel.error) throw new Error(`bulkdoelen: ${veel.error.message}`);
+
+      const links = await adminDb()
+        .from('goal_group_links')
+        .insert(veel.data.map((d) => ({ goal_id: d.id, group_id: groupId })));
+      if (links.error) throw new Error(`bulkkoppelingen: ${links.error.message}`);
+
+      const los = await adminDb()
+        .from('goals')
+        .insert({ owner_id: alice.id, title: 'nog los', target_date: '2028-06-01' })
+        .select('id')
+        .single();
+      if (los.error) throw new Error(`los doel: ${los.error.message}`);
+
+      const uit = await koppelbaar();
+      expect(uit.rijen).toBe(1);
+      expect(uit.totaal).toBe(1);
     },
     TEST_TIMEOUT,
   );
