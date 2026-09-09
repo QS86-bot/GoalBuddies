@@ -596,10 +596,12 @@ function DeadlineVerzoeken({
                      dat een consequentie nooit stilzwijgend aan gaat; de
                      spiegelzijde is dat hij ook nooit stilzwijgend uit gaat.
 
-                     Het leesrecht erachter is de vierde tak van
-                     `commitments_select` (migratie 0213). Deze regel is het
-                     enige wat er in de app iets mee doet — zonder haar is de
-                     keten af op elk schakeltje en onderbroken als geheel.
+                     Wat erachter zit is `straffen_bij_uitstelverzoek()`
+                     (migratie 0213) — een RPC met één kolom en géén tak op
+                     `commitments_select`, want RLS kan geen kolommen beperken.
+                     Deze regel is het enige wat er in de app iets mee doet:
+                     zonder haar is de keten af op elk schakeltje en onderbroken
+                     als geheel.
 
                      ⚠️ Geen `muted`: dit is het zwaarste wat op deze kaart
                         staat, en het staat vóór de knoppen en niet erna.

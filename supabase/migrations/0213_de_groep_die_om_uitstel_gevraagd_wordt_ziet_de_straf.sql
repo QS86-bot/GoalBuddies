@@ -2,9 +2,16 @@
 --
 -- ROLLBACK-PAD:
 --   begin;
+--   drop trigger if exists goal_group_links_verzoek_intrekken on public.goal_group_links;
+--   drop function if exists public.ontkoppelen_trekt_verzoek_in();
 --   drop function if exists public.straffen_bij_uitstelverzoek(uuid[]);
 --   drop index if exists public.deadline_requests_goal_idx;
 --   commit;
+--
+--   ⚠️ Een terugzet laat verzoeken staan die de trigger al heeft ingetrokken.
+--      Dat is geen verlies van gegevens — `withdrawn` is een bestaande stand die
+--      de aanvrager zelf ook kan zetten — maar het draait niet vanzelf terug, en
+--      dat hoort hier te staan.
 --
 --   ⚠️ `commitments_select` wordt door deze migratie **niet aangeraakt**, dus er
 --      valt aan die kant niets terug te zetten. Dat is geen toeval maar de
@@ -129,22 +136,121 @@ begin;
 create index if not exists deadline_requests_goal_idx
   on public.deadline_requests (goal_id);
 
+-- ---------------------------------------------------------------------------
+-- 1 — Ontkoppelen sluit óók de beslissing, en niet alleen de waarschuwing
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Dit is de tweede bevinding van de security-ronde, en zonder deze helft
+--    is de rand hieronder erger dan geen rand.** 📏 Gemeten, volledig langs
+--    paden die een gewone client kan lopen:
+--
+--      alice verstuurt het verzoek            -> ok
+--      alice ontkoppelt haar eigen doel       -> DELETE 1  (goal_group_links_delete)
+--      bob ziet het doel                      = 0
+--      bob ziet het verzoek                   = 1
+--      bob ziet de straf-bit                  = 0     <- de waarschuwing wég
+--      bob beslist(akkoord)                   -> {"ok": true, "moved": true}
+--      de datum is verschoven                 = true
+--
+--    Eén knop — "Niet meer delen met deze groep" — en het akkoord is weer
+--    blind, precies wat dit issue bestrijdt. En blinder dan vóór 0213: er staat
+--    dan niet "onbekend" maar niets, want de vraag lukt en zegt "geen straf".
+--
+-- ⚠️ **De reparatie zit aan de kant van het verzoek en niet aan die van de
+--    knop.** Een toets in `beslis_deadline_verzoek()` zou het verzoek `open`
+--    laten staan terwijl niemand het meer kan beslissen — en sinds 0174 houdt
+--    een open verzoek de straf tegen, dus dat is een schild dat niemand kan
+--    wegnemen. Dat is exact het geval dat QS8-309/0175 heeft moeten repareren.
+--    Een verzoek waarvan de koppeling weg is, hoort dus dicht en niet dood.
+--
+-- ⚠️ `withdrawn` en niet `rejected`: de aanvrager heeft dit zelf veroorzaakt
+--    door te ontkoppelen. Niemand heeft nee gezegd.
+create or replace function public.ontkoppelen_trekt_verzoek_in()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  update deadline_requests
+     set status = 'withdrawn'
+   where goal_id  = old.goal_id
+     and group_id = old.group_id
+     and status   = 'open';
+
+  return old;
+end;
+$$;
+
+-- ⚠️ Regel 4, en bij een triggerfunctie net zo goed: `alter default privileges`
+--    deelt hem anders uit aan `anon` en `authenticated`, en dan staat er een
+--    definer-functie in de API die niemand hoort aan te roepen.
+--    `triggerfuncties_in_de_api()` wordt daar rood van.
+revoke all on function public.ontkoppelen_trekt_verzoek_in() from public, anon, authenticated;
+
+comment on function public.ontkoppelen_trekt_verzoek_in() is
+  'Trekt een openstaand uitstelverzoek in zodra het doel niet meer met die groep gedeeld '
+  'wordt. Koppelen is de toestemming en ontkoppelen is het intrekken ervan (beslisdocument '
+  '002); zonder deze trigger verdwijnt de strafwaarschuwing van QS8-370 terwijl de '
+  'goedkeurknop blijft staan, en dat is het blinde akkoord dat 0213 juist sluit.';
+
+drop trigger if exists goal_group_links_verzoek_intrekken on public.goal_group_links;
+create trigger goal_group_links_verzoek_intrekken
+  after delete on public.goal_group_links
+  for each row
+  execute function public.ontkoppelen_trekt_verzoek_in();
+
+-- ---------------------------------------------------------------------------
+-- 2 — Welke doelen dragen een straf, gezien door de gevraagde groep
+-- ---------------------------------------------------------------------------
+
 create or replace function public.straffen_bij_uitstelverzoek(p_goal_ids uuid[])
 returns table (goal_id uuid)
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- ⚠️ **Begrensd op 100, en die grens staat hier en niet bij de aanroeper**
-  --    (onwrikbare regel 10). Dit is een POST, dus de 16 KB-klif van
-  --    `src/shared/idlijst` speelt niet — maar een `= any` over een array die
-  --    een client zelf samenstelt, hoort een bovengrens te hebben die niet in
-  --    een scherm woont. Het verzoekenscherm levert er hoogstens twintig.
+begin
+  -- ⚠️ **Werpen en niet afkappen** (onwrikbare regel 10). Een `p_goal_ids[1:100]`
+  --    faalt stíl: 📏 met het doel op positie 120 van 150 kwamen er nul rijen
+  --    terug, zonder fout — en dan verdwijnt de waarschuwing terwijl het scherm
+  --    denkt dat het een antwoord heeft. Een exception wordt in
+  --    `fetchStrafDoelen()` een `null` en op het scherm "dit konden we niet
+  --    ophalen". Fail-closed, zonder één regel schermcode.
+  if coalesce(array_length(p_goal_ids, 1), 0) > 100 then
+    raise exception 'straffen_bij_uitstelverzoek: hoogstens 100 doelen per aanroep'
+      using errcode = 'program_limit_exceeded';
+  end if;
+
+  return query
   select distinct c.goal_id
   from commitments c
   where c.type = 'penalty'
-    and c.goal_id = any (p_goal_ids[1:100])
+    -- ⚠️ **`cancelled` telt niet mee, en dat is een correctie uit de
+    --    security-ronde.** Het scherm zegt *"Ga je akkoord, dan schuift de datum
+    --    waarop die verschuldigd wordt mee"*, en bij een ingetrokken straf is dat
+    --    aantoonbaar onwaar: er schuift niets. Een onjuiste mededeling in een
+    --    beslissing over een commitment device is erger dan geen mededeling.
+    --
+    -- ⚠️ **En dit is de enige stand die eruit mag.** `set`, `due` en `resolved`
+    --    tellen alle drie mee, juist zodat de uitkomst níet verandert als een
+    --    straf verschuldigd wordt: zou `due` eruit vallen, dan is het
+    --    verdwijnen van dit bit het signaal dat iemand zijn streefdatum niet
+    --    gehaald heeft (domeinregel 7). Wat hier wél afleidbaar wordt is dat de
+    --    eigenaar zijn straf heeft ingetrokken — zijn eigen handeling, en geen
+    --    tegenslag.
+    and c.status <> 'cancelled'
+    and c.goal_id = any (p_goal_ids)
+    -- ⚠️ **Dezelfde opvatting van "mag ik dit doel zien" als de rest van de
+    --    leeskant, en niet een derde.** `shares_group_with_goal()` eist dat de
+    --    kíjker nog actief lid is, dat de **eigenaar** dat ook is, en dat de
+    --    groep niet gearchiveerd is. 📏 Zonder deze conjunct las een groepslid
+    --    het bit terwijl het doel zelf onzichtbaar was — in een gearchiveerde
+    --    groep, en ook nadat de eigenaar zichzelf met een kale PATCH op
+    --    `inactive` had gezet. Een oppervlak dat langer leeft dan het doel
+    --    waar het over gaat, is een oppervlak dat niemand besloten heeft.
+    and shares_group_with_goal(c.goal_id)
     and exists (
       select 1
       from deadline_requests r
@@ -156,16 +262,15 @@ as $$
         --    oppervlak is "je hebt deze groep gevraagd je afspraak losser te
         --    maken, dus die mag weten wat eraan hangt". Bij `withdrawn` heeft
         --    niemand ooit iets toegestaan — de aanvrager heeft het zelf
-        --    teruggenomen. Uit de security-ronde van 09-09-2026.
+        --    teruggenomen. `rejected` telt wél mee: daar is over besloten, en
+        --    wie nee heeft gezegd, hoort te kunnen terugzien waarop.
         and r.status <> 'withdrawn'
-        -- ⚠️ **De koppeling moet er nog zijn** (de `join` hierboven).
-        --    Ontkoppelen is het intrekken van de toestemming — beslisdocument
-        --    002 — en de knop heet "Niet meer delen met deze groep". Dit dekt
-        --    meteen het vertrek van de eigenaar: `verlaat_groep()` én
-        --    `verwijder_lid()` gooien zijn `goal_group_links` weg, dus een groep
-        --    die hij verlaten heeft, leest hier niets meer.
+        -- ⚠️ De `join` hierboven eist dat het doel nog mét díe groep gedeeld
+        --    wordt. Samen met de trigger van sectie 1 sluit dat allebei de
+        --    kanten: de waarschuwing én de knop.
         and mag_groep_lezen(r.group_id)
-    )
+    );
+end;
 $$;
 
 -- ⚠️ Regel 4: `authenticated` staat met zoveel woorden in de `revoke`. In
@@ -176,13 +281,15 @@ revoke all on function public.straffen_bij_uitstelverzoek(uuid[]) from public, a
 grant execute on function public.straffen_bij_uitstelverzoek(uuid[]) to authenticated;
 
 comment on function public.straffen_bij_uitstelverzoek(uuid[]) is
-  'Welke van deze doelen dragen een straf, gezien door een groep die om uitstel op dat doel '
-  'gevraagd is? Geeft uitsluitend `goal_id` terug — geen tekst, geen foto, geen getuige en '
-  'geen stand, want RLS kan geen kolommen beperken en de beslisser hoeft alleen te weten dát '
-  'er een afspraak aan hangt (QS8-370, 0213). Zelfde vorm en zelfde reden als getuigenissen() '
-  'uit 0169. Elk verzoek telt behalve een ingetrokken, en de koppeling van doel aan groep moet '
-  'er nog zijn: ontkoppelen trekt de toestemming in. Niet te verwarren met '
-  'commitment_zichtbaar_voor_groep(), die over de BEGUNSTIGDE groep gaat en door dit oppervlak '
-  'niet verruimd wordt.';
+  'Welke van deze doelen dragen een straf die nog staat, gezien door een groep die om uitstel '
+  'op dat doel gevraagd is? Geeft uitsluitend `goal_id` terug — geen tekst, geen foto, geen '
+  'getuige en geen stand, want RLS kan geen kolommen beperken en de beslisser hoeft alleen te '
+  'weten dát er een afspraak aan hangt (QS8-370, 0213). Zelfde vorm en zelfde reden als '
+  'getuigenissen() uit 0169. De retourvorm is zelf de belofte en staat onder test in '
+  'tests/rls/uitstelbeslisser-ziet-de-straf.test.ts: een kolom erbij is daar een rode test. '
+  'Elk verzoek telt behalve een ingetrokken, het doel moet nog met die groep gedeeld worden, '
+  'en shares_group_with_goal() draagt dezelfde grens als de rest van de leeskant. Niet te '
+  'verwarren met commitment_zichtbaar_voor_groep(), die over de BEGUNSTIGDE groep gaat en door '
+  'dit oppervlak niet verruimd wordt.';
 
 commit;

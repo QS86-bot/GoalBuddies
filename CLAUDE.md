@@ -349,8 +349,10 @@ Voordat er één feature gebouwd wordt:
     `groups.zichtbaarheid` varieert: een beschermde groep die gevraagd wordt,
     weet het óók. Geen oppervlak dat je overkomt: de eigenaar leest vóór de
     verzendknop wat er opengaat en wat niet. En geen oppervlak zonder randen —
-    een ingetrokken verzoek telt niet, ontkoppelen trekt de toestemming in, en
-    een uitgezet lid weet niets meer. Onderbouwing in
+    een ingetrokken verzoek telt niet, een ingetrokken straf ook niet,
+    ontkoppelen trekt de toestemming in (en sluit dan óók de goedkeurknop, niet
+    alleen de waarschuwing), en de bit leeft nooit langer dan het doel waar hij
+    over gaat. Onderbouwing in
     `docs/decisions/2026-09-08-de-groepsroute-is-geen-uitweg.md`, rij 31 in
     `docs/decisions/002-domeinregel7-oppervlakken.md`.
 

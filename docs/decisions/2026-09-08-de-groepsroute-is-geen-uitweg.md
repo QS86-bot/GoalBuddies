@@ -165,12 +165,72 @@ afspraak.** De uitkomst verandert niet als een straf van `set` naar `due` gaat:
 dat doel stond er al in. Er is dus geen statuslijst om synchroon te houden en
 geen moment waarop deze functie iets nieuws vertelt.
 
-⚠️ **En het oppervlak heeft randen**, alle drie getoetst: een ingetrokken verzoek
-telt niet, de koppeling van doel aan groep moet er nog zijn (wat meteen het
-vertrek van de eigenaar dekt — `verlaat_groep()` en `verwijder_lid()` gooien zijn
-koppelingen weg), en een uitgezet lid weet niets meer. Wat er níet ophoudt is de
+⚠️ **En het oppervlak heeft randen**, stuk voor stuk getoetst: een ingetrokken
+*verzoek* telt niet, een ingetrokken *straf* ook niet, de koppeling van doel aan
+groep moet er nog zijn, en `shares_group_with_goal()` zorgt dat de bit nooit
+langer leeft dan het doel waar hij over gaat. Wat er níet ophoudt is de
 beslissing zelf: ook na `approved` of `rejected` blijft het zichtbaar, anders
 raakt de beslisser het zicht kwijt op wat hij heeft toegestaan.
+
+### ⚠️⚠️ De tweede ronde: twee dingen die niet mochten landen
+
+De security-ronde op de RPC-versie was opnieuw blokkerend, en allebei de
+bevindingen zijn zelf nagemeten voordat ze verwerkt werden.
+
+**1. Ontkoppelen sloot de waarschuwing en niet de knop.** 📏 Volledig langs
+paden die een gewone client kan lopen:
+
+```
+alice verstuurt het verzoek       -> ok
+alice ontkoppelt haar eigen doel  -> DELETE 1
+bob ziet het doel                 = 0
+bob ziet het verzoek              = 1
+bob ziet de straf-bit             = 0     <- de waarschuwing wég
+bob beslist(akkoord)              -> {"ok": true, "moved": true}
+```
+
+Eén knop, geen truc, en het akkoord is weer blind — precies wat dit issue
+bestrijdt. Blinder zelfs dan vóór 0213: er staat dan niet "onbekend" maar niets,
+want de vraag lukt en zegt "geen straf". **De rand was zonder deze helft erger
+dan geen rand.**
+
+De reparatie zit aan de kant van het verzoek: een trigger op `goal_group_links`
+trekt een openstaand verzoek in. Een toets in `beslis_deadline_verzoek()` zou het
+verzoek `open` laten staan terwijl niemand het meer kan beslissen, en sinds 0174
+houdt een open verzoek de straf tegen — dat is het onbeslisbare schild dat
+QS8-309/0175 heeft moeten repareren.
+
+**2. De belofte "één kolom" had geen enkele grendel.** 📏 De functie is in de
+draaiende database vervangen door dezelfde functie met `body`, `image_url`,
+`status` en `beneficiary_user_id` erbij, en de volledige RLS-suite van 1378 tests
+bleef groen. Het hele argument voor de ombouw stond dus in CLAUDE.md, in rij 31
+en in dit document — en nergens in een test. `pg_get_function_result()` staat nu
+onder test, plus de kolomsleutels zoals PostgREST ze teruggeeft, langs een ander
+pad zodat de twee kunnen uiteenlopen.
+
+⚠️ **En dat is de eigenlijke les van deze twee rondes.** De eerste ronde vond een
+verkeerd gereedschap (een policy voor een kolomvraag); de tweede vond dat de
+reparatie zichzelf niet bewaakte. Een ontwerp dat op één zin rust, hoort een
+grendel op die zin te hebben — anders is de zin een afspraak en geen eigenschap.
+
+### ⚠️ Drie kleinere correcties uit diezelfde ronde
+
+* **`cancelled` telt niet mee.** Het scherm zei *"Ga je akkoord, dan schuift de
+  datum waarop die verschuldigd wordt mee"* bij een straf die de eigenaar had
+  ingetrokken — aantoonbaar onwaar. Een onjuiste mededeling in een beslissing
+  over een commitment device is erger dan geen mededeling. `set`, `due` en
+  `resolved` blijven wél meetellen, juist zodat de uitkomst niet verandert als
+  een straf verschuldigd wordt.
+* **`shares_group_with_goal()` in plaats van een kale join.** 📏 Zonder die
+  conjunct las een groepslid de bit terwijl het doel zelf onzichtbaar was — in
+  een gearchiveerde groep, en ook nadat de eigenaar zichzelf met een kale PATCH
+  op `inactive` had gezet (zonder `verlaat_groep()`, dus met zijn koppelingen
+  intact). Eén opvatting van "mag ik dit doel zien", en niet een derde.
+* **Werpen in plaats van afkappen.** `p_goal_ids[1:100]` faalde stil: 📏 met het
+  doel op positie 120 van 150 kwamen er nul rijen terug zonder fout, en dan
+  verdwijnt de waarschuwing terwijl het scherm denkt dat het een antwoord heeft.
+  Nu een exception, die in `fetchStrafDoelen()` een `null` wordt en op het scherm
+  "dit konden we niet ophalen".
 
 Aan de app-kant twee regels tekst en de vraag die ze voedt: het groepsscherm
 haalt met één aanroep op welke doelen in de verzoekenlijst een straf dragen
