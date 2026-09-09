@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase';
 //    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
 import { metGetekendeAvatars } from '../auth/avatar';
 
+import { schoneBestandsnaam, uploadChatdoc, verwijderChatdoc } from './chatdoc';
 import { metGetekendeChatfotos, uploadChatfoto, verwijderChatfoto } from './chatfoto';
 
 import type { Resultaat } from './api';
@@ -25,6 +26,7 @@ import {
   type ChatBericht,
   type ChatCache,
   type ChatCursor,
+  soortBijlage,
 } from './chat-schemas';
 import { budgetOp } from './rem';
 import { oudLid } from './systeemberichten';
@@ -136,6 +138,7 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
     sender_avatar: rij.sender_avatar,
     body: rij.body ?? '',
     type: rij.type ?? 'text',
+    attachment_name: rij.attachment_name ?? null,
     attachment_url: rij.attachment_url ?? null,
     system_event: rij.system_event,
     // ⚠️ Namen en geen id's, en ze komen uit een `left join` in `groepschat()`
@@ -213,12 +216,25 @@ export async function stuurBericht(
   groupId: string,
   senderId: string,
   body: string,
-  foto?: { readonly data: ArrayBuffer | Uint8Array; readonly mime: string },
+  /**
+   * De bijlage, of niets — QS8-72.
+   *
+   * ⚠️ `naam` bepaalt de soort en niet andersom: staat hij er, dan is dit een
+   *    document en gaat het naar `chatdocs`; staat hij er niet, dan is het een
+   *    foto. Zo is er één plek waar die keuze valt, en die plek is hier.
+   */
+  bijlage?: {
+    readonly data: ArrayBuffer | Uint8Array;
+    readonly mime: string;
+    readonly naam?: string;
+  },
 ): Promise<Resultaat<string>> {
-  const gevalideerd = berichtSchema.safeParse({ body, heeftFoto: foto !== undefined });
+  const gevalideerd = berichtSchema.safeParse({ body, heeftBijlage: bijlage !== undefined });
   if (!gevalideerd.success) {
     return { ok: false, melding: invoerfout(gevalideerd.error, t('chat.controleer')) };
   }
+
+  const isDocument = bijlage !== undefined && typeof bijlage.naam === 'string';
 
   // ⚠️⚠️ **Eerst uploaden, dan invoegen, en die volgorde is verplicht.**
   //    `chat_messages` heeft sinds migratie 0193 geen UPDATE-policy en geen
@@ -226,10 +242,14 @@ export async function stuurBericht(
   //    pad ná te leveren kan niet. Mislukt de upload, dan is er geen bericht en
   //    ook geen wees.
   let pad: string | null = null;
-  if (foto !== undefined) {
-    const gezet = await uploadChatfoto(groupId, senderId, foto);
+  let naam: string | null = null;
+  if (bijlage !== undefined) {
+    const gezet = isDocument
+      ? await uploadChatdoc(groupId, senderId, { ...bijlage, naam: bijlage.naam ?? '' })
+      : await uploadChatfoto(groupId, senderId, bijlage);
     if (!gezet.ok) return gezet;
     pad = gezet.waarde;
+    naam = isDocument ? schoneBestandsnaam(bijlage.naam ?? '') : null;
   }
 
   const { data, error } = await supabase()
@@ -238,8 +258,12 @@ export async function stuurBericht(
       group_id: groupId,
       sender_id: senderId,
       body: gevalideerd.data.body,
-      type: pad === null ? 'text' : 'photo',
+      // ⚠️ De soort en de extensie zijn aan elkaar gepaard in de CHECK van 0236.
+      //    Hier zetten betekent: hier ligt vast tegen welke emmer er straks
+      //    getekend wordt. Zie `soortBijlage()` in `chat-schemas.ts`.
+      type: pad === null ? 'text' : isDocument ? 'doc' : 'photo',
       attachment_url: pad,
+      attachment_name: naam,
     })
     .select('id')
     .single();
@@ -249,7 +273,7 @@ export async function stuurBericht(
     //    Het bestand staat er nu wel en er wijst geen rij naar; zonder dit groeit
     //    de bucket met foto's die niemand ooit opvraagt — en die wél meetellen
     //    voor het dagplafond van 0222.
-    if (pad !== null) await verwijderChatfoto(pad);
+    if (pad !== null) await (isDocument ? verwijderChatdoc(pad) : verwijderChatfoto(pad));
 
     reportError(error, 'chat.send', { group_id: groupId });
 
@@ -282,9 +306,11 @@ export async function verwijderBericht(berichtId: string): Promise<Resultaat<tru
   //    pad niet meer te achterhalen. Levert dit niets op — de rij bestaat niet,
   //    of de policy laat hem niet lezen — dan gaat de delete gewoon door en is
   //    de uitkomst daarvan het antwoord.
+  // ⚠️ `type` gaat mee, want het pad zegt niet in welke emmer het staat: die
+  //    vorm is voor `chatfotos` en `chatdocs` identiek. Zie `soortBijlage()`.
   const vooraf = await supabase()
     .from('chat_messages')
-    .select('attachment_url')
+    .select('attachment_url, type')
     .eq('id', berichtId)
     .maybeSingle();
 
@@ -299,7 +325,10 @@ export async function verwijderBericht(berichtId: string): Promise<Resultaat<tru
   //    de bucket en niet een bericht dat naar een bestand wijst dat weg is. Het
   //    omgekeerde zou een gebroken foto in het gesprek van drie mensen zetten.
   const pad = vooraf.data?.attachment_url ?? null;
-  if (typeof pad === 'string' && pad !== '') await verwijderChatfoto(pad);
+  if (typeof pad === 'string' && pad !== '') {
+    const soort = soortBijlage({ type: vooraf.data?.type ?? '' });
+    await (soort === 'doc' ? verwijderChatdoc(pad) : verwijderChatfoto(pad));
+  }
 
   return { ok: true, waarde: true };
 }

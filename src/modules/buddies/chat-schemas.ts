@@ -34,9 +34,14 @@ export const berichtSchema = z
       .string()
       .trim()
       .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
-    heeftFoto: z.boolean().default(false),
+    // ⚠️ Hernoemd bij QS8-72: er is nu meer dan één soort bijlage, en een veld
+    //    dat `heeftFoto` heet nodigt de volgende schrijver niet uit om aan een
+    //    document te denken. De belofte eronder is ongewijzigd — hij hoort bij
+    //    `chat_messages_inhoud_vereist` (0024): een bericht draagt tekst óf een
+    //    bijlage.
+    heeftBijlage: z.boolean().default(false),
   })
-  .refine((v) => v.body !== '' || v.heeftFoto, {
+  .refine((v) => v.body !== '' || v.heeftBijlage, {
     error: () => t('chat.leeg'),
     path: ['body'],
   });
@@ -187,6 +192,18 @@ export interface ChatBericht {
    *    de nieuwste pagina op in plaats van de payload in te voegen.
    */
   readonly attachment_url: string | null;
+  /**
+   * De oorspronkelijke bestandsnaam van een document — QS8-72, migratie 0236.
+   *
+   * ⚠️ Alleen gevuld bij `type = 'doc'`; een foto heeft er geen. Dit is
+   *    **gebruikerstekst**: emoji mogen erin, dus nooit afkappen met `slice()`
+   *    of `[0]` — gebruik `telTekens()`/`kapAf()` uit `src/shared/tekst`.
+   *
+   * ⚠️ De getoonde **soort** ("PDF") komt niet hieruit maar uit het pad, want dat
+   *    ligt vast in de CHECK van 0236. Zo kunnen naam en soort nooit misleidend
+   *    uit elkaar lopen — de reden dat die CHECK bidi-overrides weigert.
+   */
+  readonly attachment_name: string | null;
   readonly system_event: string | null;
   /** Over wie het systeembericht gaat. `null` bij een mensbericht. */
   readonly subject_name: string | null;
@@ -287,7 +304,10 @@ export interface ChatCache {
  *    mee" tot de eerste verversing: geen storing, wel een naam die een paar
  *    seconden onwaar is.
  */
-export const CACHE_VERSIE = 3;
+// ⚠️ Omhoog bij élke vormwijziging van `ChatBericht`. 4 sinds QS8-72
+//    (`attachment_name` erbij); een oude cache mist dat veld en zou een
+//    documentbubbel zonder naam tonen.
+export const CACHE_VERSIE = 4;
 
 /** Hoeveel berichten er bewaard worden. Eén pagina is genoeg om iets te zien. */
 export const CACHE_MAX = BERICHTEN_PER_PAGINA;
@@ -350,10 +370,35 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  *    een CHECK op de tabel.
  */
 export function heeftBijlage(bericht: Pick<ChatBericht, 'type'>): boolean {
-  return bericht.type === 'photo';
+  return soortBijlage(bericht) !== null;
+}
+
+/**
+ * Welke soort bijlage draagt dit bericht — en dus tegen welke emmer teken je?
+ *
+ * ⚠️⚠️ **`attachment_url` draagt de emmer niet.** Het pad is
+ *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
+ *    identiek. `type` is het enige dat zegt waar dit bestand staat, en migratie
+ *    0236 is wat die twee gekoppeld houdt: de extensie is aan de soort gepaard,
+ *    dus een `photo`-rij kán niet naar een `.pdf` wijzen.
+ *
+ *    Zonder die paring breekt er niets zichtbaars als ze uit elkaar lopen — je
+ *    tekent tegen de verkeerde emmer, krijgt `null`, en de bubbel zegt "niet meer
+ *    beschikbaar". Dat is de reden dat
+ *    `tests/rls/een-document-is-wat-het-zegt.test.ts` bestaat.
+ *
+ * ⚠️ Leid de emmer hier af en nergens anders. Een tweede plek waar dit staat, is
+ *    een tweede plek die kan verlopen.
+ */
+export function soortBijlage(bericht: Pick<ChatBericht, 'type'>): 'foto' | 'doc' | null {
+  if (bericht.type === 'photo') return 'foto';
+  if (bericht.type === 'doc') return 'doc';
+  return null;
 }
 
 export function zonderVerlopendeUrls(bericht: ChatBericht): ChatBericht {
   if (bericht.sender_avatar === null && bericht.attachment_url === null) return bericht;
+  // ⚠️ `attachment_name` blijft staan: die verloopt niet. Alleen wat een
+  //    ondertekening nodig heeft gaat eruit — dat is wat deze functie belooft.
   return { ...bericht, sender_avatar: null, attachment_url: null };
 }

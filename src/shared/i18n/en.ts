@@ -902,6 +902,24 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.laden': 'Loading photo',
   'chatfoto.beeld': 'Photo in this conversation',
 
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Add a document',
+  'chatdoc.gekozen': 'Document ready to send',
+  'chatdoc.weghalen': 'Remove document',
+  'chatdoc.type_niet_toegestaan': 'Pick a PDF.',
+  'chatdoc.te_groot': 'This document is larger than 5 MB. Pick a smaller file.',
+  'chatdoc.naam_leeg': 'This file has no usable name.',
+  'chatdoc.uploaden_mislukt': 'Sending the document did not work. Try again in a moment.',
+  'chatdoc.rem_bereikt': 'Enough documents have been shared in this group today. Tomorrow you can again.',
+  'chatdoc.kiezen_mislukt': 'The file picker did not open.',
+  'chatdoc.niet_beschikbaar': 'This document is no longer available.',
+  'chatdoc.openen': 'Open',
+  'chatdoc.openen_label': 'Open {naam}, PDF, in another app',
+  'chatdoc.openen_mislukt': 'Opening the document did not work.',
+  'chatdoc.laden': 'Opening document',
+  'chatdoc.soort_pdf': 'PDF',
+
   // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
   // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
   // anders dan bij een beoordeling.
