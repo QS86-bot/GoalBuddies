@@ -100,21 +100,21 @@ export type Database = {
       approval_withdrawals: {
         Row: {
           approval_id: string
-          approver_id: string
+          approver_id: string | null
           completion_id: string
           created_at: string
           id: string
         }
         Insert: {
           approval_id: string
-          approver_id: string
+          approver_id?: string | null
           completion_id: string
           created_at?: string
           id?: string
         }
         Update: {
           approval_id?: string
-          approver_id?: string
+          approver_id?: string | null
           completion_id?: string
           created_at?: string
           id?: string
@@ -2828,6 +2828,12 @@ export type Database = {
         }
         Returns: Json
       }
+      straffen_bij_uitstelverzoek: {
+        Args: { p_goal_ids: string[] }
+        Returns: {
+          goal_id: string
+        }[]
+      }
       systeembericht_allowlist: { Args: never; Returns: string[] }
       tekstgrenzen_bewaking: {
         Args: never
@@ -2954,6 +2960,28 @@ export type Database = {
           user_id: string
         }[]
       }
+      koppelbare_doelen: {
+        Args: { p_group_id: string }
+        Returns: {
+          available_hours_per_week: number | null
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          identity_statement: string | null
+          max_points: number
+          milestones_done: number
+          milestones_total: number
+          owner_id: string
+          ritme: string | null
+          status: string
+          target_date: string
+          title: string
+          updated_at: string
+          weekly_approved: number
+          weekly_total: number
+        }[]
+      }
       weekafsluiting_reacties: {
         Args: {
           p_group_id: string
@@ -3019,6 +3047,16 @@ export type Database = {
       }
       zet_week_startdag: {
         Args: { p_dag: number; p_nieuwe_start: string; p_oude_start: string }
+        Returns: Json
+      }
+      zet_huddledag: {
+        Args: {
+          p_bevestigd?: boolean
+          p_dag: number
+          p_group_id: string
+          p_nieuwe_start: string
+          p_oude_start: string
+        }
         Returns: Json
       }
       zonder_initplan_hijs: { Args: { p_uitdrukking: string }; Returns: string }

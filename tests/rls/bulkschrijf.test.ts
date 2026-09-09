@@ -62,6 +62,7 @@ const AANVALSBATCH = 10_000;
 /** Het dagplafond op `goals` uit 0192. */
 const DOELEN_PLAFOND = 200;
 
+
 let alice: TestUser;
 let cyclus: IsoDate;
 /** ⚠️ In de toekomst: `goals_insert` eist `target_date >= mijn_datum()`. */
@@ -116,6 +117,39 @@ describe.skipIf(!rlsTestsConfigured)('een geweigerde bulk-POST schrijft eerst', 
         groei,
         `de tabel groeide met ${Math.round(groei / 1024)} kB; zonder de rem van 0200 is dat ` +
           `een veelvoud daarvan, en die ruimte komt pas terug bij een vacuum full`,
+      ).toBeLessThan(800 * 1024);
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'ook een tabel uit 0203 laat zich niet volschrijven',
+    async () => {
+      // ⚠️⚠️ **`daily_moves` staat hier omdat de structuurtoets niet genoeg is.**
+      //    `tests/rls/remdekking.test.ts` bewaakt dát elke dagteller een rem
+      //    heeft; die blijft groen bij een rem waarvan de drempel per ongeluk
+      //    astronomisch staat. Deze test meet de belofte zelf, op een van de vijf
+      //    tabellen die 0203 zonder rem liet en 0207 er een gaf.
+      //
+      // 📏 Zonder de rem kostte deze batch 2,9 MB op een tabel waar nul rijen
+      //    bleven staan; met de rem 184 kB.
+      const vooraf = tabelbytes('daily_moves');
+
+      const rijen = Array.from({ length: AANVALSBATCH }, () => ({
+        user_id: alice.id,
+        local_date: cyclus,
+        body: 'dagzet',
+      }));
+      const { error } = await alice.db.from('daily_moves').insert(rijen);
+
+      expect(error, 'de bulk-POST hoort geweigerd te worden').not.toBeNull();
+      expect(error?.code).toBe('23514');
+
+      const groei = tabelbytes('daily_moves') - vooraf;
+      expect(
+        groei,
+        `daily_moves groeide met ${Math.round(groei / 1024)} kB; zonder de rem van 0207 ` +
+          `is dat een veelvoud daarvan`,
       ).toBeLessThan(800 * 1024);
     },
     TEST_TIMEOUT,

@@ -10,10 +10,18 @@ import { metGetekendeAvatars } from '../auth/avatar';
 import type { Database, Tables, TablesUpdate } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { apparaatTijdzone, type Cycle } from '../../shared/time';
+import {
+  apparaatTijdzone,
+  groupPeriod,
+  normaliseerZone,
+  now,
+  type Cycle,
+  type Weekday,
+} from '../../shared/time';
 import { invoerfout, type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
 
 import type { DoelGroep } from './deling';
+import { huidigeGroepsperiode } from './periods';
 import {
   codeSchema,
   groepPatchSchema,
@@ -56,6 +64,34 @@ export type { Pagina, Resultaat };
  */
 
 export type Groep = Tables<'groups'>;
+
+/**
+ * Een groep zoals `fetchMijnGroepen()` hem oplevert — QS8-387.
+ *
+ * ⚠️ **De sleutels zijn exact de kolomlijst van die query en geen kolom meer.**
+ *    Ontbreekt `invite_code` hier, dan is dat geen vergeetachtigheid maar de hele
+ *    bedoeling: een lijstquery die overal draait, hoort geen deelbare code op te
+ *    halen. Wie de code nodig heeft, gebruikt `fetchGroep()`.
+ *
+ * ⚠️ **Voeg hier nooit een sleutel toe zonder hem ook aan de `select` toe te
+ *    voegen.** Dat is precies de fout die dit type moest wegnemen — dan liegt
+ *    het type weer, alleen in een nieuwe vorm.
+ *
+ *    Zelfde vorm als `Mijlpaal` in `src/modules/goals/weekly.ts`, dat dit al
+ *    goed deed.
+ */
+export type Lijstgroep = Pick<
+  Groep,
+  | 'id'
+  | 'name'
+  | 'icon'
+  | 'huddle_day'
+  | 'tz'
+  | 'status'
+  | 'created_at'
+  | 'created_by'
+  | 'zichtbaarheid'
+>;
 export type Lidmaatschap = Tables<'group_members'>;
 
 
@@ -119,8 +155,25 @@ function meldingen(): Readonly<Record<string, string>> {
     bad_huddle_day: t('groep.slechte_huddledag'),
     daily_limit: t('groep.daglimiet'),
 
-    // rotate_invite_code en set_invite_revoked
+    // rotate_invite_code, set_invite_revoked en zet_huddledag
     not_admin: t('groep.geen_beheerder'),
+
+    // zet_huddledag (QS8-360, migratie 0208)
+    //
+    // ⚠️ De drie periodefouten hieronder zijn geen gebruikersfout maar een
+    //    scherm dat met een verouderde groep rekent: de client stuurt de oude en
+    //    de nieuwe periodestart mee, en de database toetst ze allebei. Eén
+    //    melding voor alle drie — de gebruiker kan alleen verversen.
+    ongeldige_dag: t('beheer.huddledag_ongeldig'),
+    // ⚠️ `too_soon` staat hier níét, en `not_confirmed` ook niet: die twee
+    //    bestaan al voor `zet_groepszichtbaarheid()` en zeggen daar iets over de
+    //    zichtbaarheid. Eén reden met twee betekenissen hoort niet in één
+    //    tabel — `zetHuddledag()` vertaalt hem bij de aanroep, waar bekend is
+    //    wélke handeling er geweigerd is.
+    ongeldige_periode: t('beheer.huddledag_verlopen'),
+    periode_valt_niet_op_huddledag: t('beheer.huddledag_verlopen'),
+    oude_periode_valt_niet_op_huddledag: t('beheer.huddledag_verlopen'),
+    periode_bevat_vandaag_niet: t('beheer.huddledag_verlopen'),
 
     // verlaat_groep (QS8-57, migratie 0102)
     not_member: t('verlaten.geen_lid'),
@@ -157,8 +210,21 @@ function uitkomstVan(data: unknown): RpcUitkomst {
  * ⚠️ Een expliciete kolomlijst en geen `select('*')`. Het lijstscherm heeft de
  *    uitnodigingscode niet nodig, en een code die je niet ophaalt kan niet in een
  *    cache of een schermafbeelding belanden.
+ *
+ * ⚠️⚠️ **En daarom is het retourtype een `Lijstgroep` en geen `Groep`** — QS8-387.
+ *    Tot 09-09-2026 stond hier `Promise<readonly Groep[]>` met
+ *    `as unknown as Groep[]` eronder, en dan staan `invite_code` en
+ *    `invite_revoked` **wel in het type en niet in de gegevens**. TypeScript
+ *    zwijgt, `groep.invite_code` typecheckt als `string`, is `undefined`, en
+ *    `normaliseerCode(undefined)` doet `.trim()` op undefined: een wit scherm.
+ *    📏 Bij QS8-229 was dat precies de knop waar dat issue over ging — de
+ *    uitnodigingslink delen.
+ *
+ *    De cast wás de enige controle op de kolomkeuze, en een cast controleert
+ *    niets. Nu draagt het type de lijst, en supabase-js leidt de kolommen zelf
+ *    af — dus valt het uit elkaar lopen van beide kanten op.
  */
-export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
+export async function fetchMijnGroepen(): Promise<readonly Lijstgroep[]> {
   const { data, error } = await supabase()
     .from('groups')
     .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid')
@@ -183,7 +249,10 @@ export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
     throw new Error(t('groep.groepen_laden'));
   }
 
-  return (data ?? []) as unknown as Groep[];
+  // ⚠️ Geen cast meer. Klopt de kolomlijst hierboven niet meer met `Lijstgroep`,
+  //    dan is dat hier een compileerfout in plaats van een verrassing op het
+  //    scherm.
+  return data ?? [];
 }
 
 /**
@@ -537,9 +606,17 @@ export async function maakGroep(invoer: GroepInvoer): Promise<Resultaat<Groep>> 
  *    geen UPDATE-recht op die kolom, en de trigger `groups_guard` zet hem
  *    bovendien terug. Wie de link wil vervangen, gebruikt `vernieuwUitnodiging()`.
  *
- * ⚠️ De huddledag wijzigen breekt geen lopende ketting: een `chain_links`-rij
- *    draagt de `group_period_start` waarmee hij gelegd is, en niets herberekent
- *    die achteraf.
+ * ⚠️ **De huddledag gaat hier sinds QS8-360 niet meer doorheen.** Hij verschuift
+ *    de groepsperiode, en een kale PATCH liet de lopende periode onbereikbaar
+ *    achter: een lid met een openstaande weekafsluiting kon die nooit meer
+ *    afronden, en het groepsoverzicht bleef daar `false` melden — een gemiste
+ *    week van iemand anders, veroorzaakt door een derde. De weg is
+ *    `zetHuddledag()` hieronder.
+ *
+ * ⚠️ Wat er níét verandert: de geschiedenis wordt niet herberekend. Een
+ *    `chain_links`-rij van een afgelopen periode draagt de `group_period_start`
+ *    waarmee hij gelegd is. Alleen de periode die nú loopt verhuist mee, want
+ *    zijn start ís de afspraak die verzet wordt.
  */
 export async function wijzigGroep(
   groupId: string,
@@ -558,7 +635,6 @@ export async function wijzigGroep(
   //    naast elkaar, zodat een volgend veld niet stilletjes doodvalt.
   const update: TablesUpdate<'groups'> = {};
   if (gevalideerd.data.name !== undefined) update.name = gevalideerd.data.name;
-  if (gevalideerd.data.huddle_day !== undefined) update.huddle_day = gevalideerd.data.huddle_day;
   if (gevalideerd.data.evidence_policy !== undefined) {
     update.evidence_policy = gevalideerd.data.evidence_policy;
   }
@@ -601,6 +677,68 @@ export async function wijzigGroep(
   }
 
   return { ok: true, waarde: data };
+}
+
+/**
+ * Verzet de huddledag van een groep — QS8-360, migratie 0208.
+ *
+ * ⚠️ **Waarom dit geen kolom in `wijzigGroep()` meer is.** De huddledag bepaalt
+ *    waar de groepsperiode begint. 📏 Gemeten vóór 0208: na een kale PATCH kon
+ *    een lid zijn openstaande weekafsluiting nooit meer afronden
+ *    (`bewaak_week_review_periode()` gaf 22023), bleef het groepsoverzicht daar
+ *    `closed_this_period = false` melden — een gemiste week van iemand anders,
+ *    zichtbaar voor de groep — en telde de schakel van wie wél had afgesloten
+ *    niet meer mee, zodat hij een tweede kon leggen voor dezelfde week.
+ *
+ * ⚠️ **De twee periodestarts komen hiervandaan en niet uit de database**, want
+ *    de groepsklok hoort in `shared/time` (correctheidsregel 7). De database
+ *    toetst ze allebei: elk op zijn eigen huddledag, en beide vensters moeten
+ *    vandaag bevatten. Rekent dit scherm met een verouderde groep, dan is dat
+ *    een weigering en geen stille verschuiving.
+ *
+ * ⚠️ De aanroeper geeft de groep mee zoals hij hem heeft — de oude huddledag en
+ *    de tijdzone staan erin. Ze opnieuw ophalen zou een tweede bron maken voor
+ *    iets waar de aanroeper al mee op het scherm rekent.
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit.** 📏 Een verzetting kan de lopende week
+ *    van de ánderen tot vandaag inkorten — gemeten: `09-08 .. 09-14` werd
+ *    `09-02 .. 09-08`. Dat is niet te verbieden, want élke verzetting maakt de
+ *    week korter of langer; het hoort een bewuste handeling te zijn
+ *    (domeinregel 5). De RPC weigert zonder, en remt bovendien op één
+ *    wisseling per dag.
+ */
+export async function zetHuddledag(
+  groep: { readonly id: string; readonly huddle_day: number; readonly tz: string },
+  nieuweDag: Weekday,
+  bevestigd: boolean,
+): Promise<Resultaat<number>> {
+  const oude = huidigeGroepsperiode(groep);
+  const nieuwe = groupPeriod({ huddleDay: nieuweDag, tz: normaliseerZone(groep.tz) }, now());
+
+  const { data, error } = await supabase().rpc('zet_huddledag', {
+    p_group_id: groep.id,
+    p_dag: nieuweDag,
+    p_oude_start: oude.startDate,
+    p_nieuwe_start: nieuwe.startDate,
+    p_bevestigd: bevestigd,
+  });
+
+  if (error) {
+    reportError(error, 'groups.set_huddle_day', { group_id: groep.id });
+    return { ok: false, melding: t('groep.opslaan_mislukt') };
+  }
+
+  const uit = data as unknown as { ok?: boolean; reason?: string; huddle_day?: number };
+  if (uit.ok !== true) {
+    // ⚠️ `too_soon` betekent hier iets anders dan in de gedeelde tabel, waar hij
+    //    over de zichtbaarheidsrem gaat. Zelfde woord, andere handeling.
+    if (uit.reason === 'too_soon') {
+      return { ok: false, melding: t('beheer.huddledag_te_snel') };
+    }
+    return { ok: false, melding: melding(uit.reason, t('groep.opslaan_mislukt')) };
+  }
+
+  return { ok: true, waarde: uit.huddle_day ?? nieuweDag };
 }
 
 /** Nieuwe uitnodigingscode. De oude link werkt daarna niet meer — QS8-52. */

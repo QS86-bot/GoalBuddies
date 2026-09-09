@@ -155,14 +155,107 @@ function draai(deno, argumenten, werkmap) {
   return { code: uit.status ?? 1, tekst: naarRepoPad(tekst, werkmap) };
 }
 
+/**
+ * De drie feiten waaruit blijkt wáárom er geen Deno is.
+ *
+ * ⚠️ Apart van het oordeel, zodat dat oordeel te voeden is met gevallen die deze
+ *    machine niet heeft — CLAUDE.md, regel 18.
+ */
+export function denoFeiten(wortel = WORTEL) {
+  let versie = null;
+
+  try {
+    const pakket = JSON.parse(readFileSync(join(wortel, 'package.json'), 'utf8'));
+    versie = pakket.devDependencies?.deno ?? pakket.dependencies?.deno ?? null;
+  } catch {
+    // ⚠️ Geen lege catch (onwrikbare regel 14): een onleesbare `package.json`
+    //    betekent hier dat we niet wéten of Deno gevraagd wordt, en dat is
+    //    precies het geval `niet-gevraagd` — de melding zegt dat dan ook.
+    versie = null;
+  }
+
+  const map = join(wortel, 'node_modules', 'deno');
+
+  return {
+    versie,
+    pakketmap: existsSync(map),
+    binary: ['deno', 'deno.exe', 'deno.cmd'].some((naam) => existsSync(join(map, naam))),
+  };
+}
+
+/**
+ * Waaróm `zoekDeno()` niets vond — vier gevallen, met elk een ándere handeling.
+ *
+ * ⚠️ **Dit is de vorm van QS8-268, en om dezelfde reden** — QS8-346. De oude
+ *    melding zei *"`npm ci` haalt hem binnen"*, en in de cloudsessie-container
+ *    was `npm ci` net gedraaid en stond `node_modules/deno` er niet. Een advies
+ *    dat niet werkt in de omgeving waar het gelezen wordt, is erger dan geen
+ *    advies: het laat je concluderen dat meten hier niet kán. 📏 Dat is één keer
+ *    gebeurd — in QS8-341 is op grond van deze melding geschreven dat CI de
+ *    Edge-typecheck wel zou doen, en CI vond er drie fouten in precies het
+ *    bestand dat gewijzigd was.
+ *
+ * ⚠️ **Alle vier blijven OVERGESLAGEN en geen van vier wordt rood.** Anders dan
+ *    bij `psql.mjs`, waar een geweigerde gebruiker rood is omdat de database er
+ *    gewoon ligt, is hier in álle vier de gevallen het gereedschap er niet — en
+ *    dan is er ook niets gemeten. Wat dit oordeel verandert is de hándeling die
+ *    de lezer voorgeschoteld krijgt, niet de uitslag.
+ */
+export function denoOordeel({ versie, pakketmap, binary }) {
+  if (versie === null) return 'niet-gevraagd';
+  if (!pakketmap) return 'onvolledige-install';
+  if (!binary) return 'binary-mist';
+  return 'onbereikbaar';
+}
+
+/** De melding die bij het oordeel hoort, met de gevraagde versie erin. */
+export function denoMelding(oordeel, versie) {
+  const staart = 'Zonder Deno is deze controle niet groen maar ongemeten.';
+  const waarom =
+    'Deze controle leest `supabase/functions/`, en die map valt buiten `tsconfig.json` — ' +
+    '`npx tsc --noEmit` ziet daar niets.';
+
+  if (oordeel === 'niet-gevraagd') {
+    return (
+      'geen Deno gevonden, en `package.json` vraagt er ook niet om. ' +
+      `${waarom} Zet \`deno\` terug als devDependency, of wijs een eigen installatie aan met ` +
+      `\`DENO_BIN=/pad/naar/deno\`. ${staart}`
+    );
+  }
+
+  if (oordeel === 'onvolledige-install') {
+    return (
+      `geen Deno gevonden, en dat is een onvolledige install en geen ontbrekend gereedschap: ` +
+      `\`package.json\` vraagt \`deno@${versie}\` en \`node_modules/deno\` staat er niet. ` +
+      'Draai `npm install`. ⚠️ Niet `npm ci`: die volgt een `omit=dev` uit de omgeving of uit ' +
+      '`.npmrc`, en laat devDependencies dan opnieuw liggen — precies wat hier misging. ' +
+      `${staart}`
+    );
+  }
+
+  if (oordeel === 'binary-mist') {
+    return (
+      'geen Deno gevonden, terwijl `node_modules/deno` er wél staat: het postinstall-script ' +
+      'heeft de binary niet opgehaald, wat gebeurt bij een install met `--ignore-scripts`. ' +
+      `Draai \`npm rebuild deno\`. ${staart}`
+    );
+  }
+
+  return (
+    `\`node_modules/deno\` draagt een binary, maar hij is niet te vinden langs ` +
+    '`node_modules/.bin` of `PATH`. Wijs hem rechtstreeks aan met ' +
+    '`DENO_BIN="$PWD/node_modules/deno/deno"`. ' +
+    `${staart}`
+  );
+}
+
 export function controleer(wortel = WORTEL) {
   const deno = zoekDeno(wortel);
   if (deno === null) {
+    const feiten = denoFeiten(wortel);
     return {
       soort: /** @type {const} */ ('overgeslagen'),
-      melding:
-        'geen Deno gevonden. `npm ci` haalt hem binnen; anders `DENO_BIN=/pad/naar/deno`. ' +
-        'Zonder Deno is deze controle niet groen maar ongemeten.',
+      melding: denoMelding(denoOordeel(feiten), feiten.versie),
     };
   }
 

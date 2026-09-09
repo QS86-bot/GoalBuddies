@@ -101,15 +101,41 @@ export const NAGEKEKEN = {
       'in de bundel staat is Expo\'s eigen implementatie (`expo-modules-core/src/uuid/`).',
   },
   '@xmldom/xmldom': {
-    ernst: 'moderate',
-    advisories: [1158517, 1158518],
+    ernst: 'high',
+    advisories: [
+      1158517, 1158518, 1193671, 1193695, 1193696, 1193697, 1193699, 1193700, 1193701, 1193702,
+      1193704, 1193705, 1193707, 1193708, 1193709, 1193711, 1193712, 1193714, 1193715,
+    ],
     reparatie: 'gratis',
     in_bundel: false,
     marker: 'Only one doctype is allowed',
     reden:
       '⚠️ Vals alarm van dezelfde soort als `imageSize`: `XML/1998/namespace` staat drie keer ' +
       'in dist/, maar dat is React DOM (`xmlLang`, `xmlSpace`, `xmlBase`). Alle drie de ' +
-      'xmldom-eigen foutteksten geven nul.',
+      'xmldom-eigen foutteksten geven nul. ' +
+      '⚠️ **Hermeten op 08-09-2026**, en die dag kwamen er in één keer zeventien advisories ' +
+      'bij: van twee naar negentien, ernst van moderate naar high. Allemaal parse- en ' +
+      'serialisatiefouten in xmldom zelf — ReDoS, kwadratisch geheugen, en een reeks ' +
+      '`requireWellFormed`-omzeilingen. 📏 Verse `npm run build` met dummy-EXPO_PUBLIC-waarden, ' +
+      'daarna gegrept op zes xmldom-eigen stringliteralen plus de pakketnaam: allemaal nul ' +
+      'treffers in dist/. Het pakket komt de bundel niet in, dus geen van de zeventien ' +
+      'verandert iets aan de weging — alleen aan wat hier geregistreerd staat. ' +
+      '⚠️ De lijst groeide tússen de lokale poort en CI door, dus een rode CI op nóg een ' +
+      'nummer is hier geen nieuwe bevinding maar dezelfde: hermeet de bundel en pin opnieuw.',
+  },
+  'js-yaml': {
+    ernst: 'high',
+    advisories: [1193727],
+    reparatie: 'gratis',
+    in_bundel: false,
+    marker: 'maxTotalMergeKeys',
+    reden:
+      'Nieuw op 09-09-2026: GHSA voor `maxTotalMergeKeys`, dat de CPU niet begrenst bij lege ' +
+      'merge-bronnen — een DoS op wie er onvertrouwde YAML mee parseert. 📏 Dit project parseert ' +
+      'geen YAML: `npm ls` zet hem onder `expo > @expo/cli > @expo/xcpretty`, de opmaak van ' +
+      'Xcode-uitvoer, dus bouw-tooling en geen app-code. Verse `npm run build` met dummy-' +
+      'EXPO_PUBLIC-waarden en gegrept op drie js-yaml-eigen foutteksten plus de pakketnaam: ' +
+      'nul treffers in dist/. Zelfde klasse als `image-size`.',
   },
   'decode-uri-component': {
     ernst: 'moderate',

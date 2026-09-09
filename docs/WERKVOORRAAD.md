@@ -112,8 +112,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 44 controlescripts groen;
-`npm run poort` meldt 48 stappen.
+Typecheck, lint en alle 48 controlescripts groen;
+`npm run poort` meldt 52 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -185,7 +185,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0206` staan in de map: **209 bestanden**,
+Migraties `0001` t/m `0218` staan in de map: **221 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -732,6 +732,34 @@ zette een CHECK op `push_tokens` die websleutels verplicht stelt en wijzigde
 `registreer_push_token()` niet mee; elke aanroep met `platform = 'web'` liep op
 een ongevangen 23514 stuk. De tabel was leeg, dus de migratie slaagde en er ging
 niets zichtbaar stuk — web push was dood zodra hij aangezet werd.
+
+### 2b. Tien branches zonder PR — 09-09-2026, en dit is de derde keer
+
+📏 Gemeten op 09-09 om 10:35 UTC, met `main` op `fc78e1f`: **tien issues staan op
+`In Review`, hebben een gepushte branch met afgerond werk, en er is nooit een pull
+request voor geopend** — niet open, niet gesloten, niet gemerged. Zes ervan dragen
+een migratienummer dat `main` intussen aan iets anders vergeven heeft.
+
+De volledige tabel — leeftijd, commits buiten `main`, migraties, en het besluit
+per branch met de nummers waarheen ze hernummerd moeten worden — staat bij
+**QS8-384**. Hier staat alleen de stand, want die tabel verandert bij elke merge.
+
+⚠️ **Twee stapels, en de volgorde ligt vast:** QS8-322 → QS8-333 → QS8-335, en
+QS8-332 → QS8-361 → QS8-364. Elke branch bevat de vorige, dus hernummeren van de
+onderste laag trekt de bovenliggende mee. De vier zonder migratie (QS8-338,
+QS8-346, QS8-350, QS8-358) kunnen los en zonder hernummeren.
+
+⚠️ **`In Review` liegt hier twee kanten op**, en dat is de scherpste les van deze
+ronde. Tien issues stonden erop zónder PR; QS8-353 stond erop terwijl PR #302
+gewoon gemerged was en het werk in `main` stond. De status volgt de werkelijkheid
+in geen van beide richtingen vanzelf. Op 09-09 rechtgezet: de acht inactieve naar
+`In Progress`, QS8-353 naar `Done`, en QS8-333 en QS8-335 met opzet ongemoeid —
+die zijn 4,7 uur oud en mogelijk in de lucht.
+
+⚠️ **Dit is dezelfde vorm als §2a hierboven** (QS8-131, 24-08) en als QS8-237.
+Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maar
+alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
+afgesplitst omdat de meting en het gereedschap twee dingen zijn.
 
 ## 3. Wat een nieuwe sessie als eerste doet
 
