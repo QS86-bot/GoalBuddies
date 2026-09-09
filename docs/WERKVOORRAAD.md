@@ -278,6 +278,85 @@ nagemeten en niet afgeleid uit het totaal.
 `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
 `ai_dag_budget_cent()` geeft 30.
 
+✅ **Productie staat op 09-09 op `0219`, en voor het eerst is de vingerafdruk
+op álle negen regels gelijk.** `0187` t/m `0219` zijn in één ronde toegepast —
+drieëndertig migraties — met dezelfde werkwijze als de rondes ervoor:
+`execute_sql` per migratie, vanaf het eerste uitvoerbare teken en verder
+woordelijk, met een handmatige registerrij als eindmarkering. Die markering doet
+dubbel werk: hij registreert de migratie én hij valt om zodra de tekst onderweg
+is afgekapt.
+
+📏 De vergelijking is deze keer niet per functie gedaan maar met
+`scripts/schema-vingerafdruk.sql`, aan beide kanten, tegen een lokale stack die
+uit dezelfde bestanden is opgebouwd:
+
+| Soort | Aantal | Vingerafdruk (lokaal = productie) |
+|---|---|---|
+| kolommen | 360 | `b057390c…` |
+| constraints | 245 | `169a939d…` |
+| indexen | 154 | `e8b1c5aa…` |
+| policies | 91 | `a7690d7b…` |
+| functies | 249 | `88a0c43b…` |
+| triggers | 83 | `85b8ab10…` |
+| rechten | 3207 | `b8bd0f34…` |
+| publicatie | 3 | `e3bf02a0…` |
+| tabellen met RLS | 40 | `f2457330…` |
+
+Het register telt **222 rijen van `0001` tot `0219`**, gelijk aan de 222
+bestanden in de map: nul tijdstempels, nul dubbele nummers, geen gat.
+
+⚠️⚠️ **De QS8-220-drift is hiermee weg, en dat is de vondst van deze ronde.** De
+twee rondes hiervoor noteerden allebei dat de sómhash over álle functies bleef
+afwijken — functies van vóór `0139` die een eerdere sessie met een ingekorte body
+had toegepast. Die regel klopt niet meer: de functieregel van de vingerafdruk is
+aan beide kanten `88a0c43b…` over alle 249. Omdat die hash commentaar en witruimte
+wegnormaliseert, is dit precies de bewering die telt — een ingekorte body
+overleeft die normalisatie niet.
+
+⚠️ **Wat er níet mee bewezen is:** dat het commentaar ín de functielichamen aan
+beide kanten identiek is. De vingerafdruk strípt dat met opzet, en `0219` is
+langs deze route toegepast en niet met `psql`.
+
+⚠️ **Opnieuw geen `pg_dump` vooraf** — de container heeft geen `SUPABASE_DB_URL`.
+Dat is dezelfde afwijking van onwrikbare regel 20 die de ronde van 02-09 ook
+noteerde, en geen detail. Wat het risico deze keer klein hield is gemeten en niet
+aangenomen: één gebruiker, nul punten-, voltooiings-, chat-, lidmaatschaps- en
+pushtokenrijen, en de drie migraties met DML op tabelniveau (`0204`, `0211`,
+`0213`) raakten alle drie een lege tabel.
+
+⚠️ **`0219` landde op `main` terwijl deze ronde liep** (PR #344) en is er meteen
+achteraan gegaan. Dat is de vorm van QS8-318 in een andere gedaante: een ronde
+die "de achterstand inhaalt" heeft geen eindpunt zolang `main` doorloopt. De
+enige stand die klopt is de gemeten stand, niet het getal dat je aan het begin
+opschreef.
+
+**De drie Edge Functions lopen nog achter, en dat is de rest van QS8-243.**
+📏 Per bestand gemeten tegen `main` met `get_edge_function`:
+
+| Functie | Gedeployde bestanden | Anders dan de repo |
+|---|---|---|
+| `rollover` | 8 | 6 — en `_shared/bladeren/index.ts` ontbreekt er helemaal |
+| `doelcoach` | 6 | 4 |
+| `notificaties` | 11 | 7 |
+
+`_shared/melden.ts` en `_shared/time/types.ts` zijn de enige die overal gelijk
+liepen. `npm run edge:sync:controle` is groen, dus de veertien gedeelde kopieën
+in `supabase/functions/` lopen wél gelijk met `src/` — de achterstand zit
+uitsluitend tussen de repo en het project.
+
+⚠️ **Dit deel vraagt Quintens hand en er is bewust géén omweg voor gebouwd.**
+`npm run edge:gedeployd` en `npx supabase functions deploy` vragen allebei een
+`SUPABASE_ACCESS_TOKEN`, en dat is een personal access token en niet de
+service-role-key. De MCP heeft wél een `deploy_edge_function`, maar die vraagt
+elk bestand van de importsluiting inline: 108 KB voor `rollover`, 104 KB voor
+`doelcoach` en 164 KB voor `notificaties`. Dat met de hand overtypen is precies
+de transcriptieroute die QS8-220 heeft opgeleverd, en dan op de job die beslist
+of iemands week telt.
+
+⚠️ En het is alles of niets: `rollover` en `notificaties` delen
+`_shared/time/cycle.ts`. Eén van de twee bijwerken zet twee jobs op verschillende
+weekgrenzen, en dat is precies wat domeinregel 1 verbiedt.
+
 ⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
 hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog
 moesten. 📏 Nagemeten op 07-09:
@@ -1132,7 +1211,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
 | Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
-| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie staat sinds 02-09 op `0146`, dus dit loopt achter op álles vanaf `0120` |
+| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie is sinds 09-09 bij (zie §2), dus dit loopt achter op álles vanaf `0120` |
 
 ---
 
