@@ -19,6 +19,8 @@ import {
   systeemberichtTekst,
   vouwSysteemberichten,
   type ChatRegelItem,
+  heeftBijlage,
+  keurChatfoto,
   stuurBericht,
   verwijderBericht,
   voegSamen,
@@ -34,6 +36,7 @@ import {
   Body,
   Button,
   Caption,
+  kiesChatfoto,
   Card,
   ChatRegel,
   Field,
@@ -365,6 +368,9 @@ export default function GroepChat() {
                 ) : (
                   <ChatRegel
                     body={regel.bericht.body}
+                    {...(heeftBijlage(regel.bericht)
+                      ? { fotoUrl: regel.bericht.attachment_url }
+                      : {})}
                     senderName={regel.bericht.sender_name}
                     senderAvatar={regel.bericht.sender_avatar}
                     vanMij={regel.bericht.sender_id === userId}
@@ -427,6 +433,31 @@ function Invoer({
   const [tekst, setTekst] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+  // ⚠️ De foto blijft hier tot de server hem heeft aangenomen — zelfde reden als
+  //    bij de tekst hierboven: bij een mislukte verzending is je keuze anders
+  //    weg én is er niets verstuurd.
+  const [foto, setFoto] = useState<{ data: Uint8Array; mime: string } | null>(null);
+
+  async function kies() {
+    setFout(null);
+    const keuze = await kiesChatfoto();
+
+    if (keuze.soort === 'afgebroken') return;
+    if (keuze.soort === 'fout') {
+      setFout(t(keuze.sleutel));
+      return;
+    }
+
+    // ⚠️ Keuren vóór het versturen, zodat de gebruiker de reden leest in plaats
+    //    van een serverfout. De bucket blijft de grendel (onwrikbare regel 3).
+    const bezwaar = keurChatfoto(keuze.data.byteLength, keuze.mime);
+    if (bezwaar !== null) {
+      setFout(bezwaar);
+      return;
+    }
+
+    setFoto({ data: keuze.data, mime: keuze.mime });
+  }
 
   async function verstuur() {
     // ⚠️ Zonder sessie helemaal niet versturen. Een lege afzender liep de server
@@ -441,7 +472,7 @@ function Invoer({
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await stuurBericht(groupId, senderId, tekst);
+    const uitkomst = await stuurBericht(groupId, senderId, tekst, foto ?? undefined);
     setBezig(false);
 
     if (!uitkomst.ok) {
@@ -450,6 +481,7 @@ function Invoer({
     }
 
     setTekst('');
+    setFoto(null);
     onVerstuurd();
   }
 
@@ -464,11 +496,34 @@ function Invoer({
         placeholder={t('chat.invoer_hint')}
         {...(fout === null ? {} : { error: fout })}
       />
+      {/*
+        ⚠️ De knop staat er altijd, ook zonder gekozen foto — een knop die pas
+           verschijnt als je iets gedaan hebt, is geen ingang.
+      */}
+      {/*
+        ⚠️ Een gekozen foto krijgt een zin en niet alleen een veranderde knop.
+           Zonder die bevestiging is de enige aanwijzing dát het gelukt is, dat
+           er iets ánders op de knop staat — en dat leest niemand als "gelukt".
+      */}
+      {foto === null ? null : <Caption>{t('chatfoto.gekozen')}</Caption>}
+
+      {foto === null ? (
+        <Button variant="stil" block onPress={() => void kies()}>
+          {t('chatfoto.knop')}
+        </Button>
+      ) : (
+        <Button variant="stil" block onPress={() => setFoto(null)}>
+          {t('chatfoto.weghalen')}
+        </Button>
+      )}
+
       <Button
         variant="primair"
         block
         busy={bezig}
-        disabled={tekst.trim() === ''}
+        // ⚠️ Een foto zonder onderschrift is een volwaardig bericht — spiegel van
+        //    `chat_messages_inhoud_vereist` (0024) en van `berichtSchema`.
+        disabled={tekst.trim() === '' && foto === null}
         onPress={() => void verstuur()}
       >
         {t('chat.versturen')}

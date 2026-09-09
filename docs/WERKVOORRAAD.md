@@ -7,25 +7,53 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 09-09-2026 (na QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0185`.** 📏 Gemeten op 07-09 aan het echte project, ná
-het toepassen: `list_migrations` geeft `0001` t/m `0185`, aaneengesloten, en de
-functies zijn byte-identiek aan de lokale stack (md5 per functie vergeleken, niet
-op het oog). `cycle_index` is weg, er staan geen driearguments varianten meer, en
-`weekplanstap_naar_weekdoel` staat op `svc=f` — de stille verruiming die bij een
-drop-en-opnieuw ontstaat, is dus niet teruggekomen.
+⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
+`migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
+t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
+**229**.
+
+**Het gat is daarmee vijf bestanden**, alle vijf van 09-09 en alle vijf uit
+QS8-71 (PR #352):
+
+| | |
+| -- | -- |
+| `0222_een_foto_hoort_bij_een_groep.sql` | QS8-71 |
+| `0223_een_bijlage_wijst_naar_deze_groep.sql` | QS8-71 |
+| `0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql` | QS8-71 |
+| `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 |
+| `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 |
+
+⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
+toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
+intussen op `main`. Dat is de vorm van QS8-318 nog een keer: **een regel over de
+achterstand veroudert terwijl je hem opschrijft**, en de enige stand die klopt is
+de gemeten stand.
+
+⚠️⚠️ **Hier stond tot 09-09 `0185`, en dat was 34 migraties naast de
+werkelijkheid.** De ronde die `0187` t/m `0219` toepaste is verderop in dit
+document wél opgeschreven (zie de vingerafdruktabel), maar deze regel — de eerste
+die een nieuwe sessie leest — bleef staan. **Dat is QS8-125 binnen één bestand:
+dezelfde stand op twee plekken, en de bovenste liep achter.** `docs:controle`
+ving het niet, want hij vergelijkt de drie documenten met elkáár en niet met de
+database.
+
+De les die eronder staat, staat er niet voor niets: **vraag het aan de database.**
 
 ⚠️⚠️ **De edge-functies zijn nog van 06-09 en dat is wél een gat.**
-`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`.
+`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`
+— 📏 hermeten op 09-09 om 14:40 UTC en nog steeds zo. 📏 En sindsdien is er wél
+aan gewerkt: `git log --since=2026-09-06T09:07:56Z -- supabase/functions/` geeft
+commits, dus de gedeployde code is niet meer die van de map.
 Gevolg: `0178` staat op productie, de code die `getuigenissen_voor()` aanroept
 staat in de map, en de gedeployde `notificaties` weet er niets van — **de
 persoon-getuige krijgt zijn melding niet**. Er is geen kapot onderdeel, dus niets
 wordt er rood van. QS8-320, met het commando erbij.
 
-⚠️ **De rollover is een apart geval en `0186` neemt de scherpte eruit.** `0185`
+⚠️ **De rollover is een apart geval, en `0186` staat er inmiddels op.** `0185`
 dropte `activeer_weekplanstap(uuid, date, integer)`, en de gedeployde rollover
 roept die vorm nog aan. 📏 Vandaag inert — `weekly_plan_steps` is leeg, dus de
 RPC wordt nooit bereikt — maar het scherpt zichzelf zodra er een weekplan komt.
@@ -35,9 +63,10 @@ een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
 
 Vraag de database welke migraties er staan, niet dit document.
 
-⚠️ **`0187` staat sinds 07-09 in de map en nog niet op productie** (QS8-314).
-`guard_group_member_update()` werpt daar in plaats van gewijzigde kolommen stil
-terug te zetten.
+⚠️ ~~**`0187` staat sinds 07-09 in de map en nog niet op productie**~~ —
+✅ **toegepast in de ronde van 09-09** (QS8-314).
+`guard_group_member_update()` werpt daar nu in plaats van gewijzigde kolommen
+stil terug te zetten.
 
 ⚠️ **De uitzondering die 0187 daarnaast invoerde is met `0204` weer weg**
 (QS8-325, 08-09): `group_members.status` kent alleen nog `active` en `inactive`.
@@ -112,8 +141,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 47 controlescripts groen;
-`npm run poort` meldt 51 stappen.
+Typecheck, lint en alle 48 controlescripts groen;
+`npm run poort` meldt 52 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -192,6 +221,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
+Migraties `0001` t/m `0226` staan in de map: **229 bestanden**,
 Migraties `0001` t/m `0220` staan in de map: **223 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
@@ -284,6 +314,122 @@ nagemeten en niet afgeleid uit het totaal.
 `tijdstempel_bewaking()`, `volgorde_bewaking()`, `goal_events_bewaking()` en
 `realtime_bewaking()` (geen enkele tabel op `REPLICA IDENTITY FULL`).
 `ai_dag_budget_cent()` geeft 30.
+
+✅ **Productie staat op 09-09 op `0219`, en voor het eerst is de vingerafdruk
+op álle negen regels gelijk.** `0187` t/m `0219` zijn in één ronde toegepast —
+drieëndertig migraties — met dezelfde werkwijze als de rondes ervoor:
+`execute_sql` per migratie, vanaf het eerste uitvoerbare teken en verder
+woordelijk, met een handmatige registerrij als eindmarkering. Die markering doet
+dubbel werk: hij registreert de migratie én hij valt om zodra de tekst onderweg
+is afgekapt.
+
+📏 De vergelijking is deze keer niet per functie gedaan maar met
+`scripts/schema-vingerafdruk.sql`, aan beide kanten, tegen een lokale stack die
+uit dezelfde bestanden is opgebouwd:
+
+| Soort | Aantal | Vingerafdruk (lokaal = productie) |
+|---|---|---|
+| kolommen | 360 | `b057390c…` |
+| constraints | 245 | `169a939d…` |
+| indexen | 154 | `e8b1c5aa…` |
+| policies | 91 | `a7690d7b…` |
+| functies | 249 | `88a0c43b…` |
+| triggers | 83 | `85b8ab10…` |
+| rechten | 3207 | `b8bd0f34…` |
+| publicatie | 3 | `e3bf02a0…` |
+| tabellen met RLS | 40 | `f2457330…` |
+
+Het register telt **222 rijen van `0001` tot `0219`**, gelijk aan de 222
+bestanden in de map: nul tijdstempels, nul dubbele nummers, geen gat.
+
+⚠️⚠️ **De QS8-220-drift is hiermee weg, en dat is de vondst van deze ronde.** De
+twee rondes hiervoor noteerden allebei dat de sómhash over álle functies bleef
+afwijken — functies van vóór `0139` die een eerdere sessie met een ingekorte body
+had toegepast. Die regel klopt niet meer: de functieregel van de vingerafdruk is
+aan beide kanten `88a0c43b…` over alle 249. Omdat die hash commentaar en witruimte
+wegnormaliseert, is dit precies de bewering die telt — een ingekorte body
+overleeft die normalisatie niet.
+
+✅ **En dat laatste is op 09-09 alsnog bewezen én rechtgezet — QS8-220 is
+daarmee af.** De regel hierboven zei nog: *"wat er níet mee bewezen is, is dat
+het commentaar ín de functielichamen aan beide kanten identiek is"*, want de
+vingerafdruk strípt dat met opzet. Nagemeten met `functie_vingerafdrukken()` aan
+beide kanten — de RPC die `functies:controle` zelf gebruikt, en die naast de
+genormaliseerde `kaal` ook een rúwe `md5(prosrc)` geeft — tegen een lokale stack
+uit `0001` t/m `0221`, precies het niveau waar productie op staat.
+
+**Vijfentwintig functies zijn hersteld en de twee vingerafdrukken zijn nu aan
+beide kanten over alle 249 gelijk**, per beginletter vergeleken: 23 emmers,
+telling én hash gelijk op `kaal` én op `ruw`. `vergelijkFuncties()` geeft daarmee
+op alle vier zijn lijsten leeg — geen logicaverschil, geen commentaarverschil,
+niets dat maar aan één kant bestaat.
+
+📏 De vijfentwintig vielen in drie klassen, en alleen de eerste is de klasse die
+QS8-220 zelf beschreef:
+
+| Klasse | Aantal | Hoe gevonden |
+|---|---|---|
+| álle `--`-regels kwijt | 18 | het aantal functies mét commentaar: 96 op productie, 114 lokaal |
+| een déél van de regels kwijt | 3 | `badge_na_gebeurtenis` 9↔13, `invite_preview` 16↔20, `meld_ketting_mijlpaal` 2↔19 |
+| ruw anders, commentaar even lang | 4 | drie puur witruimte, en `verdien_badges` met een verouderde formulering |
+
+⚠️⚠️ **De middelste klasse is de vondst.** QS8-220 telde functies zónder
+commentaar, en dat is een controle die functies mist die er wát van kwijt zijn —
+precies de vorm van onwrikbare regel 18. Drie zaten er zo verstopt, en
+`meld_ketting_mijlpaal` hield er 2 van de 19 over. De scherpere meting is het
+áántal `--`-markeringen per functie naast elkaar leggen, niet de vraag of het er
+nul zijn.
+
+⚠️ En de vierde klasse leert iets over `verdien_badges`: `kaal` was gelijk en
+`ruw` niet, terwijl er aan beide kanten acht `--`-regels stonden. Productie droeg
+de óude formulering van de `best_streak`-notitie. Een teller vindt dat nooit;
+alleen een vergelijking van de tekst zelf.
+
+⚠️ **`npm run functies:controle` is niet als script gedraaid** — deze container
+heeft geen `SUPABASE_SERVICE_ROLE_KEY`, dus hij meldt `OVERGESLAGEN`. Wat er
+gedraaid is, is zijn vergelijking: dezelfde RPC aan beide kanten, en een emmer
+per beginletter is voor `vergelijkFuncties()` een volledige rijvergelijking —
+gelijke telling én gelijke hash over `naam|kaal|ruw` laat geen verschil over.
+
+⚠️ **Opnieuw geen `pg_dump` vooraf** — de container heeft geen `SUPABASE_DB_URL`.
+Dat is dezelfde afwijking van onwrikbare regel 20 die de ronde van 02-09 ook
+noteerde, en geen detail. Wat het risico deze keer klein hield is gemeten en niet
+aangenomen: één gebruiker, nul punten-, voltooiings-, chat-, lidmaatschaps- en
+pushtokenrijen, en de drie migraties met DML op tabelniveau (`0204`, `0211`,
+`0213`) raakten alle drie een lege tabel.
+
+⚠️ **`0219` landde op `main` terwijl deze ronde liep** (PR #344) en is er meteen
+achteraan gegaan. Dat is de vorm van QS8-318 in een andere gedaante: een ronde
+die "de achterstand inhaalt" heeft geen eindpunt zolang `main` doorloopt. De
+enige stand die klopt is de gemeten stand, niet het getal dat je aan het begin
+opschreef.
+
+**De drie Edge Functions lopen nog achter, en dat is de rest van QS8-243.**
+📏 Per bestand gemeten tegen `main` met `get_edge_function`:
+
+| Functie | Gedeployde bestanden | Anders dan de repo |
+|---|---|---|
+| `rollover` | 8 | 6 — en `_shared/bladeren/index.ts` ontbreekt er helemaal |
+| `doelcoach` | 6 | 4 |
+| `notificaties` | 11 | 7 |
+
+`_shared/melden.ts` en `_shared/time/types.ts` zijn de enige die overal gelijk
+liepen. `npm run edge:sync:controle` is groen, dus de veertien gedeelde kopieën
+in `supabase/functions/` lopen wél gelijk met `src/` — de achterstand zit
+uitsluitend tussen de repo en het project.
+
+⚠️ **Dit deel vraagt Quintens hand en er is bewust géén omweg voor gebouwd.**
+`npm run edge:gedeployd` en `npx supabase functions deploy` vragen allebei een
+`SUPABASE_ACCESS_TOKEN`, en dat is een personal access token en niet de
+service-role-key. De MCP heeft wél een `deploy_edge_function`, maar die vraagt
+elk bestand van de importsluiting inline: 108 KB voor `rollover`, 104 KB voor
+`doelcoach` en 164 KB voor `notificaties`. Dat met de hand overtypen is precies
+de transcriptieroute die QS8-220 heeft opgeleverd, en dan op de job die beslist
+of iemands week telt.
+
+⚠️ En het is alles of niets: `rollover` en `notificaties` delen
+`_shared/time/cycle.ts`. Eén van de twee bijwerken zet twee jobs op verschillende
+weekgrenzen, en dat is precies wat domeinregel 1 verbiedt.
 
 ⚠️ **De landingsvolgorde van 06-09 is achterhaald en dat is leerzaam.** Er stond
 hier: QS8-295 → QS8-176 → QS8-296, met `0173` t/m `0175` als de drie die nog
@@ -1140,7 +1286,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | ~~Vier productbeslissingen~~ | A15, A17 en A18 zijn beantwoord op 18-08 en uitgevoerd (0029, 0032). Alleen A16 staat nog open | ✅ op A16 na |
 | ~~Twee beslissingen uit EPIC 6~~ | A19 beantwoord en gebouwd (0030); A20 staat in `CLAUDE.md` met een test | ✅ |
 | Vier nieuwe vragen | A27 t/m A30 uit de besluitenronde van 18-08: een `ref_id` op `chat_messages`, chat anonimiseren of cascaderen, de puntenvariant bij A7, en wie over een deadline-verzoek beslist | wachten op Quinten |
-| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie staat sinds 02-09 op `0146`, dus dit loopt achter op álles vanaf `0120` |
+| `npm run types:db` draaien | Regenereert `src/lib/database.types.ts` uit het echte project. Een sessie in de cloudcontainer kán dit niet: het vraagt én een productietoken én een draaiende Docker-daemon, óók met `--db-url`. Tot dat gebeurt staan er handmatige handtekeningen in het bestand (zie §2), en **een handmatige regel die niemand meer als handmatig herkent, is precies hoe de repo en het project uit elkaar gaan lopen** | open — productie is sinds 09-09 bij (zie §2), dus dit loopt achter op álles vanaf `0120` |
 
 ---
 

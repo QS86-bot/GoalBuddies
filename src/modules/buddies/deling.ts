@@ -22,6 +22,18 @@ import type { Tables } from '../../lib/database.types';
 type Groep = Tables<'groups'>;
 
 /**
+ * Wat deze module van een groep nodig heeft — QS8-387.
+ *
+ * ⚠️ **Vier kolommen en geen rij.** `koppelbareGroepen()` leest `id`, `name`,
+ *    `status` en `zichtbaarheid`; dat is wat hij hier moet vrágen. Vroeg hij om
+ *    een hele `Tables<'groups'>`, dan zou elke aanroeper een volledige rij moeten
+ *    hebben — en dan is de smalle lijst uit `fetchMijnGroepen()` opeens "te
+ *    weinig" terwijl hij precies genoeg is. Een functie die meer vraagt dan ze
+ *    gebruikt, duwt haar aanroepers naar een `select('*')`.
+ */
+export type KoppelbaarGroep = Pick<Groep, 'id' | 'name' | 'status' | 'zichtbaarheid'>;
+
+/**
  * Eén groep waar een doel aan gekoppeld is, zoals het doelscherm hem toont.
  *
  * ⚠️ **`zichtbaarheid` hoort erbij en dat is geen luxe.** Vanaf het doelscherm
@@ -52,7 +64,7 @@ export interface DoelGroep {
  *    dus nooit ergens gebruikt worden om een recht te bepálen.
  */
 export function koppelbareGroepen(
-  mijnGroepen: readonly Groep[],
+  mijnGroepen: readonly KoppelbaarGroep[],
   gekoppeld: readonly DoelGroep[],
 ): readonly DoelGroep[] {
   const bezet = new Set(gekoppeld.map((g) => g.group_id));

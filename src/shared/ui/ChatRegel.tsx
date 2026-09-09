@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { t } from '../i18n';
 
@@ -28,6 +29,16 @@ import { Body, Caption } from './Text';
 
 interface Props {
   readonly body: string;
+  /**
+   * De **ondertekende** URL van een bijlage, of `null`.
+   *
+   * ⚠️⚠️ **Nooit een kaal opslagpad.** De datalaag tekent per pagina en zet wat
+   *    niet getekend kon worden op `null`; dit component toont bij `null` een
+   *    zin en geen gebroken beeld. Een kaal pad hier zou een leeg vlak geven —
+   *    en het is de vorm waarin een vreemde URL zou meeliften als de CHECK van
+   *    migratie 0223 er ooit uit valt.
+   */
+  readonly fotoUrl?: string | null | undefined;
   /** `undefined` betekent: systeembericht. */
   readonly senderName?: string | undefined;
   readonly senderAvatar?: string | null | undefined;
@@ -73,6 +84,7 @@ interface Props {
 
 export function ChatRegel({
   body,
+  fotoUrl,
   senderName,
   senderAvatar,
   vanMij = false,
@@ -117,7 +129,8 @@ export function ChatRegel({
               : t('chat.van_ander', { naam: senderName, tekst: body })
           }
         >
-          <Body>{body}</Body>
+          {fotoUrl === undefined ? null : <Foto url={fotoUrl} />}
+          {body === '' ? null : <Body>{body}</Body>}
         </View>
 
         {/* `Caption` neemt met opzet geen `style` aan — de typografie hoort van
@@ -147,6 +160,24 @@ export function ChatRegel({
 }
 
 const styles = StyleSheet.create({
+  foto: {
+    // ⚠️ Een vaste hoogte, want de echte afmeting is pas ná het laden bekend en
+    //    een springende lijst leest als een storing.
+    height: 180,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    marginBottom: space.blokGap - 6,
+  },
+  fotoBeeld: { width: '100%', height: '100%' },
+  fotoOver: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   regel: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   regelRechts: { justifyContent: 'flex-end' },
   kolom: { gap: 3, flexShrink: 1, maxWidth: '86%' },
@@ -172,3 +203,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.shell,
   },
 });
+
+/**
+ * Een bijlage, met de drie staten die onwrikbare regel 16 verplicht stelt.
+ *
+ * ⚠️ **"Geen foto" is hier een eigen uitkomst en geen lege ruimte.** `url` is
+ *    `null` zodra het tekenen niets opleverde — een verwijderd bestand, een
+ *    verlopen cache, of een lid dat de groep uit is. Een gebroken `<Image>` zegt
+ *    de gebruiker niets; deze zin wel.
+ */
+function Foto({ url }: { readonly url: string | null }) {
+  const c = useTheme().colors;
+  const [stand, setStand] = useState<'laadt' | 'klaar' | 'mislukt'>('laadt');
+
+  if (url === null) return <Caption>{t('chatfoto.niet_beschikbaar')}</Caption>;
+
+  return (
+    <View style={styles.foto}>
+      <Image
+        source={{ uri: url }}
+        style={styles.fotoBeeld}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+        // ⚠️ Een vaste omschrijving en niet de laadtekst: dit label blijft staan
+        //    nadat de foto geladen is, en een schermlezer las dan eeuwig "Foto
+        //    laden". Het laden zelf zit in de `progressbar` hieronder, die
+        //    verdwijnt zodra hij klaar is.
+        accessibilityLabel={t('chatfoto.beeld')}
+        onLoad={() => setStand('klaar')}
+        onError={() => setStand('mislukt')}
+      />
+
+      {stand === 'laadt' ? (
+        <View
+          style={styles.fotoOver}
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('chatfoto.laden')}
+        >
+          <ActivityIndicator color={c.accent} />
+        </View>
+      ) : null}
+
+      {stand === 'mislukt' ? (
+        <View style={styles.fotoOver}>
+          <Caption>{t('chatfoto.niet_beschikbaar')}</Caption>
+        </View>
+      ) : null}
+    </View>
+  );
+}

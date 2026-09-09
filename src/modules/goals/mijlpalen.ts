@@ -46,7 +46,7 @@ export async function maakMijlpaal(
     .maybeSingle();
 
   if (leesFout) {
-    reportError(leesFout, 'milestones.next', { goal_id: goalId, code: leesFout.code });
+    reportError(leesFout, 'milestones.next', { goal_id: goalId });
     return { ok: false, melding: t('mijlpaal.toevoegen_mislukt') };
   }
 
@@ -66,7 +66,7 @@ export async function maakMijlpaal(
     .single();
 
   if (error) {
-    reportError(error, 'milestones.create', { goal_id: goalId, code: error.code });
+    reportError(error, 'milestones.create', { goal_id: goalId });
     return { ok: false, melding: t('mijlpaal.toevoegen_mislukt') };
   }
 
@@ -93,7 +93,7 @@ export async function wijzigMijlpaal(
     .eq('id', id);
 
   if (error) {
-    reportError(error, 'milestones.update', { code: error.code });
+    reportError(error, 'milestones.update');
     return { ok: false, melding: t('mijlpaal.wijzigen_mislukt') };
   }
 
@@ -128,7 +128,7 @@ export async function zetMijlpaalStatus(
   const { error } = await supabase().from('milestones').update({ status }).eq('id', id);
 
   if (error) {
-    reportError(error, 'milestones.status', { code: error.code, name: status });
+    reportError(error, 'milestones.status', {  name: status });
     return { ok: false, melding: t('mijlpaal.status_mislukt') };
   }
 
@@ -147,7 +147,7 @@ export async function verwijderMijlpaal(id: string): Promise<Resultaat<true>> {
   const { error } = await supabase().from('milestones').delete().eq('id', id);
 
   if (error) {
-    reportError(error, 'milestones.delete', { code: error.code });
+    reportError(error, 'milestones.delete');
     return { ok: false, melding: t('mijlpaal.verwijderen_mislukt') };
   }
 
@@ -176,7 +176,7 @@ export async function herordenMijlpalen(
   });
 
   if (error) {
-    reportError(error, 'milestones.reorder', { goal_id: goalId, code: error.code });
+    reportError(error, 'milestones.reorder', { goal_id: goalId });
     return { ok: false, melding: t('mijlpaal.volgorde_mislukt') };
   }
 
@@ -241,7 +241,7 @@ export async function fetchMijlpaalTips(
     .in('milestone_id', [...milestoneIds]);
 
   if (error) {
-    reportError(error, 'goals.milestoneTips', { code: error.code });
+    reportError(error, 'goals.milestoneTips');
     return new Map();
   }
 
@@ -285,7 +285,7 @@ export async function fetchVolgendeMijlpalen(
     .limit(200);
 
   if (error) {
-    reportError(error, 'goals.volgendeMijlpalen', { code: error.code });
+    reportError(error, 'goals.volgendeMijlpalen');
     return new Map();
   }
 

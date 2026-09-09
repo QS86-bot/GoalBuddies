@@ -60,7 +60,7 @@ export async function fetchInterview(goalId: string): Promise<Interview | null> 
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'goals.interview.fetch', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.interview.fetch', { goal_id: goalId });
     return null;
   }
 
@@ -102,7 +102,7 @@ export async function bewaarInterview(
     .single();
 
   if (error) {
-    reportError(error, 'goals.interview.save', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.interview.save', { goal_id: goalId });
     return { ok: false, melding: t('interview.opslaan_mislukt') };
   }
 
@@ -135,6 +135,6 @@ async function spiegelNaarDoel(goalId: string, antwoorden: InterviewInvoer): Pro
 
   const { error } = await supabase().from('goals').update(patch).eq('id', goalId);
   if (error) {
-    reportError(error, 'goals.interview.mirror', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.interview.mirror', { goal_id: goalId });
   }
 }

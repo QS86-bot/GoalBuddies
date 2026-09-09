@@ -2573,6 +2573,7 @@ export type Database = {
         Returns: {
           actor_id: string
           actor_name: string
+          attachment_url: string
           body: string
           created_at: string
           id: string
@@ -2638,6 +2639,10 @@ export type Database = {
         }[]
       }
       vraag_lidmaatschap_aan: { Args: { p_bericht?: string | null; p_group_id: string }; Returns: Json }
+      verzoekers_eerder_lid: {
+        Args: { p_group_id: string }
+        Returns: { op: string | null; soort: string; user_id: string }[]
+      }
       zet_groepsontdekbaarheid: {
         Args: { p_bevestigd?: boolean; p_group_id: string; p_naar: boolean }
         Returns: Json

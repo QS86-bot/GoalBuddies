@@ -76,7 +76,7 @@ export async function signUpWithEmail(invoer: AanmeldenInvoer): Promise<Uitkomst
   });
 
   if (error) {
-    reportError(error, 'auth.signUp', { code: error.code ?? 'onbekend' });
+    reportError(error, 'auth.signUp');
     return { ok: false, ...vertaal(error.message) };
   }
 
@@ -99,7 +99,7 @@ export async function signInWithEmail(invoer: InloggenInvoer): Promise<Uitkomst>
   });
 
   if (error) {
-    reportError(error, 'auth.signIn', { code: error.code ?? 'onbekend' });
+    reportError(error, 'auth.signIn');
     return { ok: false, ...vertaal(error.message) };
   }
 
@@ -109,7 +109,7 @@ export async function signInWithEmail(invoer: InloggenInvoer): Promise<Uitkomst>
 export async function signOut(): Promise<Uitkomst> {
   const { error } = await supabase().auth.signOut();
   if (error) {
-    reportError(error, 'auth.signOut', { code: error.code ?? 'onbekend' });
+    reportError(error, 'auth.signOut');
     return { ok: false, melding: t('auth.fout.uitloggen') };
   }
   return { ok: true };
@@ -156,7 +156,7 @@ export async function verwijderMijnAccount(): Promise<Uitkomst> {
   const { data, error } = await supabase().rpc('verwijder_mijn_account');
 
   if (error) {
-    reportError(error, 'auth.deleteAccount', { code: error.code ?? 'onbekend' });
+    reportError(error, 'auth.deleteAccount');
     return { ok: false, melding: t('auth.verwijder.mislukt') };
   }
 
@@ -200,7 +200,7 @@ export async function signInWithOAuth(provider: OAuthProvider): Promise<Uitkomst
   const { error } = await supabase().auth.signInWithOAuth({ provider });
 
   if (error) {
-    reportError(error, 'auth.oauth', { name: provider, code: error.code ?? 'onbekend' });
+    reportError(error, 'auth.oauth', { name: provider });
     return { ok: false, melding: t('auth.oauth.mislukt') };
   }
 

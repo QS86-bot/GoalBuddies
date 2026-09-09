@@ -402,8 +402,9 @@ noemt.
 
 ## 2.6a Storage — vier regels bij de eerste bucket
 
-Sinds migratie `0126` heeft dit project één bucket: **`avatars`**, privé, 2 MB,
-`image/jpeg|png|webp`. Wat daar geldt, geldt bij elke volgende bucket.
+Sinds migratie `0126` heeft dit project een bucket **`avatars`** (privé, 2 MB,
+`image/jpeg|png|webp`), en sinds `0222` een tweede: **`chatfotos`** (privé, 1 MB,
+dezelfde drie types). Wat bij de eerste geldt, geldt bij elke volgende.
 
 1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
    die met de hand gemaakt is, staat nergens in deze repository — en dan kan
@@ -422,6 +423,27 @@ Sinds migratie `0126` heeft dit project één bucket: **`avatars`**, privé, 2 M
    pijn doet. Gebruik `metGetekendeAvatars(rijen, veld)` op het ophaalpad zelf.
    `npm run avatar:controle` wordt rood zodra een ophaalpad een avatar-kolom mapt
    zonder hem te tekenen.
+
+⚠️⚠️ **Een `delete from storage.objects` verwijdert het bestánd niet, en dat is
+het soort feit dat iemand over drie maanden aanneemt.** Die instructie haalt de
+**metadata-rij** weg; de blob blijft in de objectopslag staan. Er is **geen manier
+om vanuit een SQL-migratie te garanderen dat een bestand echt weg is** — dat
+vraagt de Storage-API (`.remove()`) of een Edge Function.
+
+Wat de rij weghalen wél doet: het bestand wordt onbereikbaar, want er is geen pad
+meer om te ondertekenen. Dat is de grens van wat in een migratie haalbaar is, en
+het raakt het hele AVG-verwijderpad:
+
+- **een bericht verwijderen** ruimt het bestand wél op — `verwijderBericht()`
+  roept de Storage-API aan, na de rij;
+- **een account verwijderen** ruimt de metadata-rijen op (migratie `0224`), maar
+  de blobs blijven staan;
+- **een groep verwijderen** laat de objecten volledig als wees achter: de cascade
+  raakt alleen `chat_messages`.
+
+Een opruimpas over wezen hoort een eigen issue te zijn — een `delete` over
+`storage.objects` valt onder grens 2 van de beslisbevoegdheid en verdient een
+dry-run. Onderbouwing in `docs/decisions/2026-09-09-een-foto-in-de-chat.md` §4.
 
 ⚠️ **Toegepast op productie op 28-08-2026: `0126` t/m `0130`.** De laatste drie
 komen uit de reviewronde en horen erbij — `0126` alleen is niet af. Zie
