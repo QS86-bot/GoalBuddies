@@ -1,5 +1,5 @@
 /**
- * Een dagteller telt de uploads die er wáren — QS8-399, migratie 0232.
+ * Een dagteller telt de uploads die er wáren — QS8-399, migratie 0233.
  *
  * ⚠️ **De belofte is niet "de teller telt".** Die is: *wissen en opnieuw
  *    plaatsen komt niet langs de rem*. Dat verschil is de hele bug: de drie
@@ -28,10 +28,10 @@
  *    met opzet: een trigger vuurt ongeacht de rol, en zo staat er geen
  *    groepsopzet tussen de meting en wat hij meet. De rolkant — mag
  *    `authenticated` de teller zélf aanroepen — staat apart onderaan, en dát is
- *    de vraag die de `security definer` van 0232 opwerpt.
+ *    de vraag die de `security definer` van 0233 opwerpt.
  *
  * IJKING — met de hand gedraaid op 09-09-2026, één mutatie per grendel, elke
- * keer rechtstreeks op de stack en daarna 0232 opnieuw afgespeeld:
+ * keer rechtstreeks op de stack en daarna 0233 opnieuw afgespeeld:
  *
  *   A  `bewaak_bewijsfoto_aantal()` terug naar `count(*)`   → 2 rood
  *   B  `chatfotos_aantal_begrensd_verhuisd` gedropt         → 2 rood
@@ -138,7 +138,7 @@ describe.runIf(beschikbaar)('wissen zet de dagteller niet terug', () => {
       expect(plaats(emmer, pad(u, plafond + 1))).toBe('GEWEIGERD');
     });
 
-    /** ⚠️ De grendel die de belofte draagt — dit is het geval dat vóór 0232 doorliet. */
+    /** ⚠️ De grendel die de belofte draagt — dit is het geval dat vóór 0233 doorliet. */
     it(`${emmer}: wissen en opnieuw plaatsen komt er niet langs`, () => {
       for (let i = 1; i <= plafond; i += 1) plaats(emmer, pad(u, i));
       psql(`delete from storage.objects where bucket_id='${emmer}' and name = '${pad(u, 1)}';`);
@@ -269,7 +269,7 @@ describe.runIf(beschikbaar)('elke emmerteller volgt dezelfde vorm', () => {
 /**
  * De teller is niet rechtstreeks aan te roepen.
  *
- * ⚠️⚠️ **Dit is de prijs van de `security definer` in 0232, en hij moet betaald
+ * ⚠️⚠️ **Dit is de prijs van de `security definer` in 0233, en hij moet betaald
  *    worden.** `tel_opslag_upload()` schrijft in een deny-all tabel, dus hij
  *    moet definer zijn. Mag `authenticated` hem dán ook uitvoeren, dan kan
  *    iedereen de teller van een ánder lid ophogen en dat lid zijn dag uit
@@ -295,6 +295,6 @@ describe.runIf(beschikbaar)('tel_opslag_upload() is voor niemand aanroepbaar', (
          'public.tel_opslag_upload(text, text, text, integer, interval, text)', 'EXECUTE');`,
     ).trim();
 
-    expect(mag, `${rol} kan de teller van een ander ophogen — zie de kop van 0232`).toBe('f');
+    expect(mag, `${rol} kan de teller van een ander ophogen — zie de kop van 0233`).toBe('f');
   });
 });

@@ -302,7 +302,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    uur stil, en de anderen krijgen "probeer het zo nog eens" — niet te
     //    onderscheiden van een netwerkfout. Onwrikbare regel 5 vraagt letterlijk
     //    om een limiet per gebruiker per dag.
-    // ⚠️⚠️ **De teller moet er sinds 0232 apart bij, en dat is precies wat die
+    // ⚠️⚠️ **De teller moet er sinds 0233 apart bij, en dat is precies wat die
     //    migratie repareert.** `opslag_dagtellers` overleeft een `delete` op
     //    `storage.objects` met opzet — wissen zette de rem anders terug. Een
     //    fixture die dezelfde sleutel hergebruikt, moet hem dus zelf leegmaken;

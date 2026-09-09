@@ -1,6 +1,6 @@
 # Een teller die een delete overleeft
 
-**Datum:** 09-09-2026 · **Issue:** QS8-399 · **Migratie:** 0232 · **Status:** gebouwd
+**Datum:** 09-09-2026 · **Issue:** QS8-399 · **Migratie:** 0233 · **Status:** gebouwd
 
 Vijf keuzes die niet vanzelf spreken, met de reden erbij. De acceptatiecriteria
 staan in Linear.
@@ -19,7 +19,7 @@ er weer doorheen. Voor alle drie de emmers.
 ⚠️ **De vorm is niet nieuw en is bewust niet opnieuw bedacht.**
 `invite_preview_limits` (0131) doet precies dit: één rij per sleutel, een venster
 dat in dezelfde uitdrukking meeschuift, opgehoogd met één
-`insert … on conflict do update`. 0232 deelt die vorm in plaats van hem een
+`insert … on conflict do update`. 0233 deelt die vorm in plaats van hem een
 vierde keer te kopiëren — en het kopiëren *is* hoe deze bug zich verspreid heeft:
 `bewijsfotos` (0228) nam de vorm van `chatfotos` (0226), die hem van `avatars`
 (0130) nam, inclusief de `count(*)`.

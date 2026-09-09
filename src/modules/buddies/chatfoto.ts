@@ -102,7 +102,7 @@ export async function uploadChatfoto(
 
   if (gezet.error) {
     reportError(gezet.error, 'chatfoto.upload', { group_id: groupId });
-    // ⚠️ Het dagplafond van 0222/0226 komt hier ook binnen, en sinds 0232 is het
+    // ⚠️ Het dagplafond van 0222/0226 komt hier ook binnen, en sinds 0233 is het
     //    te onderscheiden van een netwerkfout. De melding blijft verder
     //    algemeen: een storage-fout draagt soms het pad, en dat pad noemt twee
     //    uuid's.
