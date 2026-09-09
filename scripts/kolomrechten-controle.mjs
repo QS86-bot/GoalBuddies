@@ -858,7 +858,7 @@ export const GEEN_SCHRIJFPAD = [
     soort: 'UPDATE',
     kolom: 'body',
     reden:
-      '0215 geeft de eigenaar het recht zijn eigen taaktekst bij te werken; het ' +
+      '0227 geeft de eigenaar het recht zijn eigen taaktekst bij te werken; het ' +
       'scherm van QS8-380 doet dat niet. Dat scherm levert toevoegen, afvinken, ' +
       'verplaatsen en verwijderen — hernoemen staat niet in zijn ' +
       'acceptatiecriteria, en het er stilletjes bij bouwen is de PR verbreden. ' +

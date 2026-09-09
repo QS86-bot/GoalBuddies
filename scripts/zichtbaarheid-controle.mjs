@@ -157,7 +157,7 @@ export const GEEN_OPPERVLAK = new Map([
   [
     'functie:zet_taakzichtbaarheid',
     '⚠️ **Dit is wél een nieuw groepsoppervlak, maar het varieert niet op** ' +
-      '`groups.zichtbaarheid` (0220, QS8-381). Deze teller gaat over besluit A41: ' +
+      '`groups.zichtbaarheid` (0228, QS8-381). Deze teller gaat over besluit A41: ' +
       'welke oppervlakken laten in een **open** groep meer zien dan in een ' +
       'beschermde. Delen per taak staat daar los van — het is een opt-in van de ' +
       'eigenaar zelf, per regel, en een beschermde groep ziet precies evenveel als ' +
@@ -173,7 +173,7 @@ export const GEEN_OPPERVLAK = new Map([
   ],
   [
     'functie:pin_taak',
-    '⚠️ **De derde valse positief op een naam** (0219, QS8-379), en hij komt uit een ' +
+    '⚠️ **De derde valse positief op een naam** (0227, QS8-379), en hij komt uit een ' +
       'andere hoek dan de twee hiervoor: het woord staat hier in de ' +
       'foutmelding — "De zichtbaarheid en de herkomst van een taak liggen vast". ' +
       'Deze trigger pint `todo_items.visibility`, en dat is een kolom van De Lijst ' +

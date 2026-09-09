@@ -139,7 +139,7 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
     //
     // ⚠️ 📏 **En dat werkte, drie keer op rij.** 0214 (QS8-369) zette de
     //    vijftiende teller op `push_tokens`, 0217 (QS8-374) de zestiende op
-    //    `group_events`, en 0219 (QS8-379) de zeventiende op `todo_items`. Elke
+    //    `group_events`, en 0227 (QS8-379) de zeventiende op `todo_items`. Elke
     //    keer was deze regel het enige dat erover begon — rood op 14 ≠ 15,
     //    15 ≠ 16 en 16 ≠ 17 — terwijl de test hierboven groen bleef omdat de rem
     //    er meteen bij zat. Precies de handeling waar hij voor bedoeld is: een

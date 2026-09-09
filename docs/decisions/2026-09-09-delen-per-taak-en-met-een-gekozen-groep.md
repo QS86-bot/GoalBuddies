@@ -1,6 +1,6 @@
 # Delen per taak, en met één gekozen groep
 
-**Datum:** 09-09-2026 · **Issue:** QS8-381 (epic QS8-378) · **Migratie:** 0220
+**Datum:** 09-09-2026 · **Issue:** QS8-381 (epic QS8-378) · **Migratie:** 0228
 
 De Lijst wordt deelbaar. Dit document legt vast wélke vorm dat kreeg, welke
 varianten afvielen en waarom, en wat er onderweg gemeten is.

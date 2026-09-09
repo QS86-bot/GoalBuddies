@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useProfiel, useSession } from '@/modules/auth';
-import { fetchMijnGroepen, type Groep } from '@/modules/buddies';
+import { fetchMijnGroepen, type Lijstgroep } from '@/modules/buddies';
 import {
   TAAK_MAX,
   deelTaak,
@@ -33,7 +33,7 @@ import {
 } from '@/shared/ui';
 
 /**
- * De Lijst — losse taken, privé — QS8-380, tabel uit migratie 0219.
+ * De Lijst — losse taken, privé — QS8-380, tabel uit migratie 0227.
  *
  * ⚠️ **Een taak telt nooit mee**, en dat staat ook in de lege staat. De app heeft
  *    weekdoelen die punten opleveren en peer-goedkeuring vragen; wie hier iets
@@ -42,7 +42,7 @@ import {
  *
  * ⚠️ **Alles is privé, en dat staat er als zin én als grendel.** De zin hangt in
  *    `beloftes.test.ts` aan een reden; de grendel is `todo_items` zelf, dat sinds
- *    0219 vier eigenaar-only policies draagt. Delen is QS8-381 — en zolang dat
+ *    0227 vier eigenaar-only policies draagt. Delen is QS8-381 — en zolang dat
  *    niet bestaat, hoort er geen schakelaar te staan die niets doet.
  *
  * ⚠️ **Het invoerveld is het gedeelde `Field` en geen eigen `TextInput`.** Dat is
@@ -212,7 +212,7 @@ function Takenlijst({
   onMeer,
 }: {
   readonly rijen: readonly Taak[];
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   /** De tijdzone van de gebruiker; `null` zolang het profiel nog laadt. */
   readonly tz: TimeZone | null;
   readonly totaal: number;
@@ -303,7 +303,7 @@ function TaakRegel({
   onFout,
 }: {
   readonly taak: Taak;
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   readonly tz: TimeZone | null;
   readonly vorige: Taak | null;
   readonly volgende: Taak | null;
@@ -390,7 +390,7 @@ function Deelblok({
   onDeel,
 }: {
   readonly taak: Taak;
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   readonly bezig: boolean;
   readonly onDeel: (groupId: string | null) => void;
 }) {
@@ -409,7 +409,7 @@ function Deelblok({
              eigenaar las dan dat hij deelde en niet met wie.
 
              De andere twee routes hierheen zijn dicht gemaakt in plaats van
-             opgevangen: een ex-lid deelt niet door (migratie 0220 §5) en een
+             opgevangen: een ex-lid deelt niet door (migratie 0228 §5) en een
              verwijderde groep laat geen `('group', null)` achter (de CHECK
              daar). Wat overblijft is het archief, en dat krijgt een zin.
         */}
@@ -451,7 +451,7 @@ function Groepskeuze({
   bezig,
   onKies,
 }: {
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   readonly bezig: boolean;
   readonly onKies: (groupId: string) => void;
 }) {

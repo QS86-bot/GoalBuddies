@@ -1,4 +1,4 @@
--- 0220_een_taak_deel_je_per_stuk_en_met_een_gekozen_groep.sql — De Lijst wordt
+-- 0228_een_taak_deel_je_per_stuk_en_met_een_gekozen_groep.sql — De Lijst wordt
 -- deelbaar: per taak, met één gekozen groep, en uitsluitend via een RPC
 -- (QS8-381, deel 3 van QS8-378).
 --
@@ -9,11 +9,11 @@
 --   drop index if exists public.todo_items_gedeeld_idx;
 --   alter table public.todo_items drop constraint if exists todo_items_groep_hoort_bij_gedeeld;
 --   alter table public.todo_items drop column if exists shared_group_id;
---   -- todo_items_select terug naar de eigenaar-only vorm uit 0219:
+--   -- todo_items_select terug naar de eigenaar-only vorm uit 0227:
 --   --   using (user_id = (select auth.uid()))
---   -- pin_taak() terug naar de versie uit 0219, dus zonder de sleuteltak en
+--   -- pin_taak() terug naar de versie uit 0227, dus zonder de sleuteltak en
 --   --   zonder shared_group_id.
---   -- en sleutelzetters() terug naar de definitie uit 0219, dus zonder de rij
+--   -- en sleutelzetters() terug naar de definitie uit 0227, dus zonder de rij
 --   --   `app.taak_gedeeld`. Zie de waarschuwing bij §6.
 --
 -- ⚠️ De kolom is nieuw en overal `null`; hem droppen valt niet onder grens 2 van
@@ -167,7 +167,7 @@ create policy todo_items_select on public.todo_items
 -- 3. De pin laat één schrijver door, en die schrijver is een RPC
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ **Dit is de uitzondering die 0219 §3b met zoveel woorden aankondigde**, en
+-- ⚠️ **Dit is de uitzondering die 0227 §3b met zoveel woorden aankondigde**, en
 --    hij heeft de vorm die dat commentaar voorschreef: een sessiesleutel die
 --    alléén deze RPC zet, met een rij in `sleutelzetters()` erbij. Niet een
 --    versoepeling van de pin en niet een gat in de policy.
@@ -465,10 +465,10 @@ create trigger group_members_taken_sluiten
 --    keer bijna duur geworden.** Twee branches die allebei `create or replace`
 --    doen, geven git geen conflict: de laatste wint en het register van de ander
 --    verdwijnt zonder een woord (QS8-358). Het lichaam hieronder is daarom
---    gekopieerd uit **0219**, de laatste definitie die er op deze branch is, en
+--    gekopieerd uit **0227**, de laatste definitie die er op deze branch is, en
 --    de enige toevoeging is de rij `app.taak_gedeeld`.
 --
---    📏 Bij het hernummeren van 0219 ging dit bijna mis op een manier die verder
+--    📏 Bij het hernummeren van 0227 ging dit bijna mis op een manier die verder
 --    reikt dan een sleutel: die migratie droeg het lichaam van 0214, en `main`
 --    kreeg er daarna 0215 bij die de **derde tak** herschreef. Hernummeren
 --    verplaatst een migratie naar áchter migraties waar ze eerst vóór stond, en
@@ -563,10 +563,10 @@ AS $function$
       --    migratie in de database stond: mijn kopie had hun hele reparatie
       --    stilzwijgend teruggedraaid. Dat is QS8-358 voor de vierde keer.
       ('app.rem_groepsgebeurtenissen', array['rem_groepsgebeurtenissen']),
-      -- ⚠️ Uit 0219 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn eigen
+      -- ⚠️ Uit 0227 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn eigen
       --    sleutel.
       ('app.rem_taken',                array['rem_taken']),
-      -- ⚠️ Uit 0220 (QS8-381). `zet_taakzichtbaarheid()` zet hem op het id van
+      -- ⚠️ Uit 0228 (QS8-381). `zet_taakzichtbaarheid()` zet hem op het id van
       --    de taak die hij deelt, en `pin_taak()` leest hem om precies díe rij
       --    door te laten. Twee functies, één sleutel: de zetter en de lezer.
       ('app.taak_gedeeld',             array['zet_taakzichtbaarheid', 'pin_taak'])

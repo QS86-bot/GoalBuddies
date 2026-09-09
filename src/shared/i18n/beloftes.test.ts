@@ -76,7 +76,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     '⚠️ **Herschreven op 09-09-2026 toen QS8-381 delen bouwde, en deze test was ' +
     'wat dat afdwong.** De zin luidde *"niemand in je groep ziet je taken. Delen ' +
     'kan nog niet"* — onvoorwaardelijk waar toen `todo_items` eigenaar-only was ' +
-    '(0219), en onwaar op de dag dat er een deelknop kwam. Precies de val die ' +
+    '(0227), en onwaar op de dag dat er een deelknop kwam. Precies de val die ' +
     '`koppel.uitleg` in EPIC 13 was: de policy bewoog en de zin niet. ' +
     'Nu draagt hij de voorwaarde zelf: *een taak is prive tot je hem zelf deelt*. ' +
     '📏 De grendel eronder is `todo_items_select`, die een groepsgenoot alleen ' +

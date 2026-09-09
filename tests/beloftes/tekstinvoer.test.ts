@@ -138,7 +138,7 @@ describe('er is één plek die weet hoe een invoerveld eruitziet', () => {
   /**
    * ⚠️ **Emoji, en de eenheid waarin je ze telt** — CLAUDE.md, Emoji. De teller
    *    onder het veld moet in codepunten tellen, want dat is wat
-   *    `char_length(btrim(body))` in migratie 0219 telt. Met `.length` telt het
+   *    `char_length(btrim(body))` in migratie 0227 telt. Met `.length` telt het
    *    scherm UTF-16-eenheden: één emoji kost er twee, een samengesteld gezin
    *    elf, en dan toont de app een grens die de database niet stelt.
    */

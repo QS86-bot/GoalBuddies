@@ -18,9 +18,9 @@
 >
 > **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
 > losse to-do's, getypt of ingesproken, privé of gedeeld. **Alle drie de delen
-> zijn af**: QS8-379 (`0219`, de tabel `todo_items`, eigenaar-only, met een
+> zijn af**: QS8-379 (`0227`, de tabel `todo_items`, eigenaar-only, met een
 > dagplafond en een `visibility` die voor geen enkele client schrijfbaar is),
-> QS8-380 (het vijfde tabblad en het scherm) en QS8-381 (`0220`, delen per taak
+> QS8-380 (het vijfde tabblad en het scherm) en QS8-381 (`0228`, delen per taak
 > met één gekozen groep). Quinten heeft op 09-09 beide beslispunten beslist: een
 > vijfde tabblad, en aanvinken **per taak** — bewust niet per lijst.
 >
@@ -39,7 +39,7 @@
 > QS8-358. **Vraag bij elk nieuw groepszichtbaar oppervlak: staat het in de
 > opruiming van een vertrek?** Het zijn er drie: een openstaand
 > `deadline_requests` gaat naar `withdrawn`, de `goal_group_links` van de
-> vertrekker gaan weg, en sinds `0220` sluiten zijn gedeelde taken.
+> vertrekker gaan weg, en sinds `0228` sluiten zijn gedeelde taken.
 >
 > **09-09, punt A: een `with check` bevriest de rij, een pin houdt de kolom
 > vast — en dat verschil is een val en geen smaak.** De tweede grendel op
