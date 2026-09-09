@@ -1,5 +1,5 @@
 /**
- * De bewaartermijn van een chatfoto — migratie 0233 (QS8-396, deel 2 van QS8-394).
+ * De bewaartermijn van een chatfoto — migratie 0235 (QS8-396, deel 2 van QS8-394).
  *
  * ⚠️⚠️ **De belofte is niet "er staat een functie". Die is: wat de server niet
  *    meer nodig heeft, staat er niet meer.** Het WhatsApp-model dat Quinten op
@@ -73,7 +73,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0233)', () => {
+describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0235)', () => {
   const alice = randomUUID();
   let groep = '';
 
@@ -248,7 +248,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0233)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // De vertrekker — 0224 gerepareerd in §4 van 0233
+  // De vertrekker — 0224 gerepareerd in §4 van 0235
   // -------------------------------------------------------------------------
 
   it('laat de foto van een verwijderd account als wees staan in plaats van als blob', () => {

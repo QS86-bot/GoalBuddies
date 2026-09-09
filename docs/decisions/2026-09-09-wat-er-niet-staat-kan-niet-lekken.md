@@ -2,7 +2,7 @@
 
 **Datum:** 09-09-2026
 **Issue:** QS8-396 (deel 2 van QS8-394)
-**Migratie:** 0233
+**Migratie:** 0235
 **Besluit van Quinten:** 21 dagen
 
 ---
@@ -108,7 +108,7 @@ privacylek uit elkaar gehouden moeten worden ook als ze dezelfde oorzaak hebben.
 
 ⚠️⚠️ **Deze migratie had een eigen teller en die is vervallen.** Op dezelfde dag
 bouwde QS8-399 dezelfde reparatie generiek voor alle drie de opslagemmers:
-`opslag_dagtellers` + `tel_opslag_upload()`, één rij per emmer, soort en sleutel.
+`dagtellers` + `tel_dagteller()`, één rij per domein, soort en sleutel (0233, breder getrokken in 0234).
 Twee tellers voor één regel is een halve familie, en die is erger dan een hele —
 dus die vorm wint, en `chatfoto_uploads` is weg. De meting hieronder is de reden
 dat er überhaupt een teller moest komen; hij geldt onverkort voor beide vormen.
@@ -137,14 +137,14 @@ Dat is de reden dat de twee in één migratie zitten en niet in twee.
 
 De teller staat in een eigen tabel en niet in een kolom op `storage.objects`:
 die laatste wordt door de opruimpas juist leeggehaald, en een teller die
-meegewist wordt telt niets. Dat geldt voor `opslag_dagtellers` net zo goed — hij
+meegewist wordt telt niets. Dat geldt voor `dagtellers` net zo goed — hij
 hangt niet aan de objecten, dus de bewaartermijn zet de rem niet terug. RLS aan,
 geen policy, en de tabelgrant weg — de vorm van `invite_events`.
 
 ## 7. Een vertrekker laat geen onbereikbare blob achter
 
 `wis_chatfotos_van_vertrekker()` (0224) deed precies het ene dat de opruimpas
-onmogelijk maakt: hij wiste de metadata-rij. Sinds 0233 §4 laat hij de rij staan
+onmogelijk maakt: hij wiste de metadata-rij. Sinds 0235 §4 laat hij de rij staan
 en knipt hij alleen de koppeling door. Dan is de foto **meteen** onleesbaar (§5
 hangt de leesgrens aan het bericht) en **binnen het uur** echt weg.
 
@@ -155,7 +155,7 @@ de rij staat er nog, niemand kan hem lezen, en de pas wijst hem aan.
 
 ## 7a. Wat de securityronde erop vond — en waarom drie ervan nieuw waren
 
-De reviewagent draaide op de afgeronde migratie en vond drie gaten die 0233
+De reviewagent draaide op de afgeronde migratie en vond drie gaten die 0235
 **zelf had gemaakt**. Alle drie stonden groen op een suite van 53 tests, en dat
 is regel 18 vraag 3 in het echt: de belofte brak zonder dat één test rood werd.
 
@@ -182,7 +182,7 @@ is regel 18 vraag 3 in het echt: de belofte brak zonder dat één test rood werd
    opruimingen in `chat.ts` stierven daarmee stil — `remove()` geeft geen fout op
    nul rijen.
 
-   ⚠️ **Dat werkte de verkeerde kant op.** Vóór 0233 was een "verwijderde" foto
+   ⚠️ **Dat werkte de verkeerde kant op.** Vóór 0235 was een "verwijderde" foto
    meteen weg; met de eerste vorm bleef hij tot de volgende opruimronde staan, en
    een ondertekende URL van vóór dat moment blijft zijn volle uur werken. Precies
    het spijtmoment waar dit issue voor begon.
@@ -215,7 +215,7 @@ van onze eigen handelingen leest hier stiekem doorheen*.
 
 ## 9. Nagekomen: samengevoegd met QS8-399
 
-Deze migratie heette eerst 0232 en is 0233 geworden. Op dezelfde dag, drie
+Deze migratie heette eerst 0232 en is 0235 geworden. Op dezelfde dag, drie
 minuten na de claim van dit issue, claimde een tweede sessie QS8-399 en bouwde
 dezelfde defectklasse generiek op voor alle drie de emmers — óók met een
 migratie 0232, en óók met een `create or replace` van `bewaak_chatfoto_aantal()`.

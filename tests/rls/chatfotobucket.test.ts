@@ -1,7 +1,7 @@
 /**
  * De chatfoto-bucket en de kolomgrens — migraties 0222, 0223, 0233 en 0235.
  *
- * ⚠️⚠️ **Sinds 0233 hangt de leesgrens aan het bericht en niet aan de map**, en
+ * ⚠️⚠️ **Sinds 0235 hangt de leesgrens aan het bericht en niet aan de map**, en
  *    het plafond telt hándelingen en geen voorraad. Dat verandert twee dingen aan
  *    deze suite: elk object dat leesbaar hoort te zijn heeft een chatbericht
  *    nodig, en een plafondtest die zijn objecten wist zet zijn teller daarmee
@@ -27,7 +27,7 @@
  * ⚠️ Zonder draaiende stack wordt deze suite overgeslagen, en dat is *ongemeten*
  *    en niet groen. `npm run poort` houdt dat onderscheid vast.
  *
- * 📏 **De ijking van 0233 — één mutatie per grendel, allemaal op 09-09-2026 rood
+ * 📏 **De ijking van 0235 — één mutatie per grendel, allemaal op 09-09-2026 rood
  *    gezien.** Een test die je niet rood hebt gezien, bewaakt niets, en een
  *    mutatie die niet de grendel raakt die de test noemt, ijkt de verkeerde.
  *
@@ -36,22 +36,22 @@
  *    | A | `and exists (… chat_messages …)` uit `chatfotos_select` | "houdt een object zonder chatbericht weg bij een groepsgenoot" |
  *    | B | die `exists` op `attachment_url is not null` in plaats van `= name` | "laat een groepsgenoot niet met andermans bericht binnen" |
  *    | C | `bewaak_chatfoto_aantal()` telt weer `storage.objects` (de vorm van 0226) | "geeft geen nieuwe ruimte terug als je je foto's weer weghaalt" |
- *    | D | het venster uit `tel_opslag_upload()` — de teller vergeet nooit meer | "geeft de ruimte wél terug zodra het etmaal voorbij is" |
+ *    | D | het venster uit `tel_dagteller()` — de teller vergeet nooit meer | "geeft de ruimte wél terug zodra het etmaal voorbij is" |
  *    | E | `grant select on dagtellers to authenticated` | "houdt de teller weg bij elke client" |
  *
- *    ⚠️ **C, D en E gaan over de teller van 0233 en niet van 0235.** Deze
+ *    ⚠️ **C, D en E gaan over de teller van 0233/0234 en niet van 0235.** Deze
  *       migratie had eerst een eigen teller (`chatfoto_uploads`); die is
  *       vervallen toen QS8-399 dezelfde reparatie generiek voor alle drie de
- *       emmers bouwde. De drie gevallen bleven staan omdat ze de belofte voor
- *       **deze** emmer toetsen — de teller eronder is alleen van eigenaar
- *       veranderd.
+ *       emmers bouwde en QS8-401 hem breder trok dan opslag. De drie gevallen
+ *       bleven staan omdat ze de belofte voor **deze** emmer toetsen — de teller
+ *       eronder is alleen van eigenaar veranderd.
  *    | M | `chatfotos_update` terug in de vorm uit 0222 | "weigert een upsert op een pad dat je zelf verstuurd hebt" |
  *    | N | idem | "weigert een hernoeming binnen je eigen map" |
  *    | O | het eigenaarsbeen uit `chatfotos_select` | "laat de plaatser zijn eigen wees wél zien, en dus opruimen" |
  *    | P | een `::uuid`-cast in `bewaak_chatfoto_aantal()` | "valt niet om op een pad waarvan het eerste segment geen uuid is" |
  *
  *    ⚠️ M t/m P komen uit de securityronde van 09-09-2026 op deze migratie. Drie
- *       van de vier waren gaten die de eerste vorm van 0233 zélf maakte, en geen
+ *       van de vier waren gaten die de eerste vorm van 0235 zélf maakte, en geen
  *       van de vier werd door de eerste twaalf mutaties geraakt — de suite stond
  *       groen op alle drie. Regel 18 vraag 3, in het echt.
  */
@@ -180,7 +180,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
        values ('chatfotos', '${groepArchief}/${alice}/foto.jpg', '${alice}') on conflict do nothing`,
     );
 
-    // ⚠️⚠️ **Het bericht hoort bij het object, sinds 0233.** `chatfotos_select`
+    // ⚠️⚠️ **Het bericht hoort bij het object, sinds 0235.** `chatfotos_select`
     //    eist een chatbericht dat naar dit pad wijst; zonder deze twee rijen zijn
     //    de leestests hieronder rood om de goede reden en toetsen ze niets meer
     //    over de mápgrens. Dat de gréns aan het bericht hangt, staat in zijn
@@ -252,12 +252,12 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
   });
 
   // -------------------------------------------------------------------------
-  // De leesgrens hangt aan het bericht — 0233
+  // De leesgrens hangt aan het bericht — 0235
   // -------------------------------------------------------------------------
   //
   // ⚠️⚠️ **Dit is de belofte en niet de policy.** De belofte is: een foto die
   //    nooit verstuurd is, of waarvan het bericht weg is, is geen foto meer. Tot
-  //    0233 hing `chatfotos_select` uitsluitend aan het **pad**, en dan is elk
+  //    0235 hing `chatfotos_select` uitsluitend aan het **pad**, en dan is elk
   //    object in de map van de groep leesbaar — ook een upload waarvan de
   //    `insert` sneuvelde en de compenserende `remove()` niet aankwam.
 
@@ -280,7 +280,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    meer opruimen: allebei de compenserende opruimingen in `chat.ts` sterven
     //    stil, want `remove()` geeft geen fout op nul rijen.
     //
-    //    Het gevolg werkte de verkeerde kant op. Vóór 0233 was een "verwijderde"
+    //    Het gevolg werkte de verkeerde kant op. Vóór 0235 was een "verwijderde"
     //    foto meteen weg; met die eerste vorm bleef hij tot de volgende
     //    opruimronde staan, en een ondertekende URL van vóór dat moment blijft
     //    zijn volle uur werken. Precies het spijtmoment waar dit issue voor
@@ -412,7 +412,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
   });
 
   // -------------------------------------------------------------------------
-  // Er is geen UPDATE-recht — 0233 §1b
+  // Er is geen UPDATE-recht — 0235 §1b
   // -------------------------------------------------------------------------
 
   it('weigert een upsert op een pad dat je zelf verstuurd hebt', () => {
@@ -478,11 +478,11 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
   });
 
   it('valt niet om op een pad waarvan het eerste segment geen uuid is', () => {
-    // ⚠️ Gat 1 van 0130, nu aan de tellerkant. 📏 De eerste vorm van 0233 had een
+    // ⚠️ Gat 1 van 0130, nu aan de tellerkant. 📏 De eerste vorm van 0235 had een
     //    eigen teller die naar `uuid` castte zonder vormtoets, en dan gaf
     //    `chatfotos/mijnmap/submap/x.jpg` een `invalid input syntax for type
     //    uuid` — de héle insert viel om. Die teller is vervallen (zie §2 van
-    //    0233); wat blijft is het geval, want de volgende cast zit er zo weer in.
+    //    0235); wat blijft is het geval, want de volgende cast zit er zo weer in.
     //    📏 Nagemeten met een `::uuid` in `bewaak_chatfoto_aantal()`: rood.
     //
     //    Onbereikbaar voor `authenticated` — `chatfotos_insert` pint beide

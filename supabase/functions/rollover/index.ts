@@ -690,7 +690,7 @@ async function draaiRollover(auth: string): Promise<Response> {
   }
 
   // ---------------------------------------------------------------------------
-  // De chatfoto's opruimen — QS8-396, migratie 0233
+  // De chatfoto's opruimen — QS8-396, migratie 0235
   // ---------------------------------------------------------------------------
   //
   // ⚠️⚠️ **Dit is de helft die SQL níet kan doen, en dat is de hele reden dat het

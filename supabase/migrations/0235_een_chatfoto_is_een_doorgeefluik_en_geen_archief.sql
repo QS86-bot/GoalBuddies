@@ -1,4 +1,4 @@
--- 0233_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql — de leesgrens gaat
+-- 0235_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql — de leesgrens gaat
 -- aan het bericht hangen, de bucket krijgt een bewaartermijn, en het plafond
 -- telt handelingen in plaats van voorraad (QS8-396, deel 2 van QS8-394).
 --
@@ -12,8 +12,8 @@
 --   --   `delete from storage.objects` als eerste stap;
 --   --   chatfotos_update terug in de vorm uit 0222.
 --   --
---   -- ⚠️ Het plafond staat níét in deze migratie — dat is `opslag_dagtellers`
---   --    uit de migratie ervóór (QS8-399). Deze rollback raakt het niet.
+--   -- ⚠️ Het plafond staat níét in deze migratie — dat is `dagtellers` uit 0233
+--   --    en 0234 (QS8-399 en QS8-401). Deze rollback raakt het niet.
 --
 -- ⚠️ **Wat een rollback niet terughaalt: de bytes.** Alles wat de opruimpas
 --    inmiddels met `storage.remove()` heeft weggehaald, is weg — er is geen
@@ -113,7 +113,7 @@ create policy chatfotos_select on storage.objects
       --    `remove()` geeft geen fout op nul rijen. 📏 Gemeten, dezelfde delete
       --    als eigenaar: mét de tak `DELETE 1`, zonder `DELETE 0`.
       --
-      --    Dat maakt de reparatie eróger dan de bug die hij sluit: vóór 0233 was
+      --    Dat maakt de reparatie eróger dan de bug die hij sluit: vóór 0235 was
       --    de foto na "verwijderen" meteen weg, daarna zou hij tot de volgende
       --    opruimronde blijven staan — en een ondertekende URL van vóór dat
       --    moment blijft zijn volle uur werken (`CHATFOTO_GELDIGHEID_S`).
@@ -165,8 +165,9 @@ drop policy if exists chatfotos_update on storage.objects;
 --
 -- ⚠️⚠️ **Deze migratie had zijn eigen teller (`chatfoto_uploads`) en die is
 --    vervallen.** Op dezelfde dag bouwde QS8-399 dezelfde reparatie generiek
---    voor alle drie de emmers: `opslag_dagtellers` + `tel_opslag_upload()`, met
---    één rij per emmer, soort en sleutel in plaats van een rij per upload.
+--    voor alle drie de emmers (0233), en 0234 trok hem daarna breder dan opslag:
+--    `dagtellers` + `tel_dagteller()`, één rij per domein, soort en sleutel in
+--    plaats van een rij per upload.
 --
 --    Twee tellers voor één regel is een halve familie, en die is erger dan een
 --    hele. De generieke vorm wint: hij dekt ook `avatars` en `bewijsfotos`, hij
@@ -175,7 +176,7 @@ drop policy if exists chatfotos_update on storage.objects;
 --    de migratie ervóór en niet hier.
 --
 -- ⚠️⚠️ **Wat déze migratie eraan toevoegt, staat in §1b en is niet cosmetisch.**
---    De teller van QS8-399 hangt aan INSERT (plus een trigger op verhuizingen),
+--    De teller van 0233 hangt aan INSERT (plus een trigger op verhuizingen),
 --    en een `insert … on conflict do update` op hetzelfde pad is geen van beide.
 --    📏 Gemeten met die teller: één nette upload gaf één tel, en vijftig upserts
 --    daarna telden niet mee. Het ingetrokken UPDATE-recht is wat die route sluit.
@@ -183,7 +184,7 @@ drop policy if exists chatfotos_update on storage.objects;
 -- ⚠️ **En de teller overleeft de opruimpas van §3, want hij hangt niet aan
 --    `storage.objects`.** Dat is precies de eigenschap die deze twee migraties
 --    aan elkaar knoopt: hoe agressiever de pas, hoe vaker er ruimte vrijkomt
---    onder een plafond dat levende rijen telt. `opslag_dagtellers` telt die niet.
+--    onder een plafond dat levende rijen telt. `dagtellers` telt die niet.
 --
 -- ⚠️ Snoeien hoeft niet: het is één rij per sleutel die ter plekke bijgewerkt
 --    wordt, geen rij per upload. De `snoei_chatfoto_teller()` die hier stond, is
@@ -250,7 +251,7 @@ $$;
 comment on function public.verlopen_chatfotos(integer) is
   'De paden die weg mogen: ouder dan de bewaartermijn, of een wees zonder '
   'chatbericht (met een uur respijt). Wist zelf niets — een delete op '
-  'storage.objects haalt de rij weg en het bestand niet. QS8-396, 0233.';
+  'storage.objects haalt de rij weg en het bestand niet. QS8-396, 0235.';
 
 -- ⚠️ Onwrikbare regel 4: de `revoke` noemt `authenticated` met zoveel woorden.
 --    Alleen de rollover-functie roept dit aan, en die draait als `service_role`.
@@ -308,7 +309,7 @@ end $$;
 
 comment on function public.wis_chatfotos_van_vertrekker() is
   'Knipt de chatfoto''s van een vertrekker los van hun berichten (0224), maar '
-  'laat de objecten staan zodat de opruimpas van 0233 de bytes daadwerkelijk '
+  'laat de objecten staan zodat de opruimpas van 0235 de bytes daadwerkelijk '
   'kan weghalen. Een gewiste metadata-rij laat de blob onbereikbaar achter.';
 
 revoke all on function public.wis_chatfotos_van_vertrekker() from public, anon, authenticated;
