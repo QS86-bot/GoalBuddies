@@ -678,6 +678,88 @@ async function draaiRollover(auth: string): Promise<Response> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // De chatfoto's opruimen — QS8-396, migratie 0232
+  // ---------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Dit is de helft die SQL níet kan doen, en dat is de hele reden dat het
+  //    hier staat.** `delete from storage.objects` haalt de **metadata-rij** weg
+  //    en laat het bestand op de opslag staan — een bekende bevinding sinds
+  //    QS8-71. De foto zou dan onleesbaar zijn en tóch bewaard, en dat is precies
+  //    de belofte van dit issue, half. Alleen `storage.remove()` haalt rij én blob
+  //    weg.
+  //
+  //    De database bepaalt daarom **wat** er weg mag (`verlopen_chatfotos()`), en
+  //    deze functie voert het uit. Twee redenen, allebei uit de RPC:
+  //      * `verlopen` — ouder dan `chatfoto_bewaartermijn()`, 21 dagen.
+  //      * `wees` — geen chatbericht meer, met een uur respijt zodat een upload
+  //        die op dít moment verstuurd wordt niet onder handen weggewist wordt.
+  //
+  // ⚠️ **Hier en niet in een eigen job**, om dezelfde reden als de slapende
+  //    groepen en de seizoensrecap hierboven: er is één planning, en een tweede
+  //    planner is een tweede plek die stil kan uitvallen (QS8-140).
+  //
+  // ⚠️ Geen cyclusrekenwerk: eenentwintig dagen is een leeftijd en geen week, dus
+  //    dit mag in SQL staan (correctheidsregel 7).
+  let fotosOpgeruimd = 0;
+  let fotosMislukt = 0;
+
+  const { data: verlopenFotos, error: verlopenFout } = await db.rpc('verlopen_chatfotos', {
+    p_limiet: 500,
+  });
+
+  if (verlopenFout) {
+    console.error(`verlopen chatfoto's ophalen mislukte: ${verlopenFout.message}`);
+    await meld(new Error("verlopen chatfoto's ophalen mislukte"), 'rollover.chatfotos', {
+      code: 'chatfotos_ophalen_mislukt',
+      sqlstate: verlopenFout.code,
+    });
+  } else {
+    const paden = ((verlopenFotos as { pad: string }[] | null) ?? []).map((rij) => rij.pad);
+
+    if (paden.length > 0) {
+      // ⚠️ **In blokken van honderd, en dat is geen netheid.** `remove()` zet elk
+      //    pad in de body van één verzoek; vijfhonderd paden van bijna honderd
+      //    tekens is een aanvraag die de gateway mag afkappen, en dan is het
+      //    verschil tussen "deels gelukt" en "mislukt" niet te zien.
+      for (let i = 0; i < paden.length; i += 100) {
+        const blok = paden.slice(i, i + 100);
+        const { data: weg, error: wisFout } = await db.storage.from('chatfotos').remove(blok);
+
+        if (wisFout) {
+          // ⚠️ **Doortellen en niet afbreken.** Eén onwisbaar pad mag de rest van
+          //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
+          //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
+          fotosMislukt += blok.length;
+          console.error(`chatfoto's wissen mislukte (${blok.length} paden): ${wisFout.message}`);
+          continue;
+        }
+
+        // ⚠️ De teruggave van `remove()` en niet `blok.length`: de Storage-API
+        //    geeft de objecten terug die hij daadwerkelijk weghaalde, en een pad
+        //    dat er niet meer was telt dan niet mee. Zonder dit verschil is een
+        //    pas die niets doet niet van een geslaagde te onderscheiden.
+        fotosOpgeruimd += (weg ?? []).length;
+      }
+    }
+  }
+
+  if (fotosMislukt > 0) {
+    await meld(new Error("chatfoto's wissen mislukte"), 'rollover.chatfotos', {
+      code: 'chatfotos_wissen_mislukt',
+      count: fotosMislukt,
+    });
+  }
+
+  // ⚠️ De teller van 0232 is append-only en telt een venster van een etmaal; zonder
+  //    snoei groeit hij eeuwig op een gratis tier. Hij hangt aan dezelfde pas omdat
+  //    hij dezelfde reden heeft: wat er niet meer hoeft te staan, staat er niet.
+  const { error: snoeiFout } = await db.rpc('snoei_chatfoto_teller');
+
+  if (snoeiFout) {
+    console.error(`chatfototeller snoeien mislukte: ${snoeiFout.message}`);
+  }
+
   return new Response(
     JSON.stringify({
       ok: true,
@@ -713,6 +795,14 @@ async function draaiRollover(auth: string): Promise<Response> {
       //    alleen zijn uitvoer. Wat hij niet teruggeeft, is niet gebeurd voor wie
       //    het log leest — en dít getal hoort nul te zijn zolang er niets vastloopt.
       alsnogGoedgekeurd: (alsnogGoedgekeurd as number | null) ?? 0,
+      // ⚠️ Om dezelfde reden als `recaps`: een job zonder scherm heeft alleen zijn
+      //    uitvoer, en de bewaartermijn is een belofte aan de gebruiker. Blijft dit
+      //    getal op nul staan terwijl er wél foto's ouder dan 21 dagen zijn, dan
+      //    draait de pas niet — en dat is niet te zien aan de app.
+      fotosOpgeruimd,
+      // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan zijn er paden die de
+      //    Storage-API niet kwijt wil en blijft er dus meer bewaard dan beloofd.
+      fotosMislukt,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );

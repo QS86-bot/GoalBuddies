@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 
+import { CHATFOTO_BEWAARDAGEN } from '../bewaartermijn';
 import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
@@ -107,7 +108,9 @@ export const CHATFOTO_TEKSTEN = {
     return t('chatfoto.laden');
   },
   get afwezigtekst() {
-    return t('chatfoto.niet_beschikbaar');
+    // ⚠️ De termijn komt uit `CHATFOTO_BEWAARDAGEN` en staat niet als getal in de
+    //    zin: het scherm en de opruimpas van 0232 moeten dezelfde termijn noemen.
+    return t('chatfoto.niet_beschikbaar', { dagen: CHATFOTO_BEWAARDAGEN });
   },
 };
 

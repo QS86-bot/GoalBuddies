@@ -42,6 +42,12 @@ export const CHATFOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 /** De grens die 0222 op de bucket zet: 1 MB. */
 export const CHATFOTO_MAX_BYTES = 1_048_576;
 
+/**
+ * ⚠️ Doorgegeven uit `shared/bewaartermijn` en hier niet opnieuw gedefinieerd —
+ *    zie de kop daar voor waaróm het getal in `shared` woont.
+ */
+export { CHATFOTO_BEWAARDAGEN } from '../../shared/bewaartermijn';
+
 const EXTENSIE: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',

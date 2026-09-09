@@ -896,7 +896,8 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
   'chatfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
   'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
-  'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
+  'chatfoto.niet_beschikbaar': 'This photo is gone. Photos are kept for {dagen} days.',
+  'chatfoto.bewaartermijn': 'Photos stay on the server for {dagen} days and are removed after that.',
   'chatfoto.laden': 'Loading photo',
   'chatfoto.beeld': 'Photo in this conversation',
 
