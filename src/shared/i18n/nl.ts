@@ -1255,6 +1255,21 @@ export const nl = {
   'chat.laden_mislukt': 'De berichten konden niet geladen worden.',
   'chat.controleer': 'Controleer je bericht.',
   'chat.leeg': 'Er staat nog niets in je bericht.',
+
+  // ⚠️ Foto's in de chat — QS8-71. De grenzen hieronder zijn een kopie van de
+  //    bucket uit migratie 0222; de bucket is de grendel, deze zinnen zijn het
+  //    gemak. Noem het getal, niet "te groot": iemand die niet weet hoeveel te
+  //    veel is, probeert het dezelfde foto nog een keer.
+  'chatfoto.knop': 'Foto toevoegen',
+  'chatfoto.gekozen': 'Foto klaar om te versturen',
+  'chatfoto.weghalen': 'Foto weghalen',
+  'chatfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
+  'chatfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
+  'chatfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'chatfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
+  'chatfoto.niet_beschikbaar': 'Deze foto is niet meer beschikbaar.',
+  'chatfoto.laden': 'Foto laden',
+  'chatfoto.beeld': 'Foto in dit gesprek',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
   'chat.rem_bereikt':
     'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',

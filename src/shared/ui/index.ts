@@ -38,6 +38,7 @@ export { Weekbalken, type WeekbalkRegel } from './Weekbalken';
 export { CATEGORIEMERKEN, categoriemerk, type Categoriemerk, type Familie } from './categoriemerk';
 export { GegroepeerdeKeuze, type Keuzegroep } from './GegroepeerdeKeuze';
 export { Deelknop } from './Deelknop';
+export { kiesChatfoto, type Chatfotokeuze } from './kiesChatfoto';
 export { DoelStandKaart } from './DoelStandKaart';
 export { EmptyState } from './EmptyState';
 export { Field } from './Field';
