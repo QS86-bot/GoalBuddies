@@ -70,14 +70,22 @@ export default function NieuweGroep() {
     // ⚠️ **Koppelen mag mislukken zonder dat de groep verdwijnt.** De groep
     //    bestaat op dit punt; hem als niet-aangemaakt behandelen omdat een
     //    tweede verzoek faalde, zou de gebruiker een groep laten maken die hij
-    //    daarna nergens ziet. De uitkomst wordt dus niet als tak behandeld —
-    //    `/doel/samen` leidt zijn stand af uit de kóppelingen en biedt de knop
-    //    gewoon opnieuw aan als er niets geland is.
+    //    daarna nergens ziet. Daarom gaat hij hoe dan ook door naar de
+    //    uitnodigingsstap.
+    //
+    // ⚠️⚠️ **Maar de uitkomst wordt wél gelezen, en dat is een reparatie**
+    //    (QS8-350/QS8-387). Hier stond `await koppelDoelAanGroep(…)` als kaal
+    //    statement, en een kaal await gooit het `Resultaat` net zo hard weg als
+    //    een `void`. Wat het kostte: bij een mislukte koppeling ging `?groep=`
+    //    tóch mee, en dan opende `/doel/samen` in de stand "gedeeld" over een
+    //    koppeling die niet bestond — precies het "succes dat er geen is" waar
+    //    `beginfase()` voor gebouwd is. Nu gaat de parameter alleen mee als er
+    //    echt gekoppeld is, en anders staat de koppelknop er gewoon weer.
     if (heeftDoel) {
-      await koppelDoelAanGroep(doel, uitkomst.waarde.id);
-      router.replace(
-        `/doel/samen?doel=${encodeURIComponent(doel)}&groep=${encodeURIComponent(uitkomst.waarde.id)}`,
-      );
+      const gekoppeld = await koppelDoelAanGroep(doel, uitkomst.waarde.id);
+      const staart = gekoppeld.ok ? `&groep=${encodeURIComponent(uitkomst.waarde.id)}` : '';
+
+      router.replace(`/doel/samen?doel=${encodeURIComponent(doel)}${staart}`);
       return;
     }
 
