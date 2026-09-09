@@ -1417,6 +1417,7 @@ export const nl = {
   'adempauze.te_lang': 'Een adempauze duurt hoogstens {max} weken.',
   'adempauze.datum_ongeldig': 'Vul een datum in als jjjj-mm-dd.',
   'adempauze.geen_hele_week': 'Kies een hele week, die begint op jouw eigen startdag.',
+  'adempauze.buiten_venster': 'Kies een week binnen een jaar terug of een jaar vooruit.',
   'adempauze.eind_voor_start': 'De einddatum ligt vóór de startdatum.',
   'adempauze.annuleren_mislukt': 'Annuleren lukte niet.',
   'adempauze.al_begonnen': 'Deze adempauze is al begonnen en blijft staan.',

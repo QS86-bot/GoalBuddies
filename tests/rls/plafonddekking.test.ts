@@ -100,10 +100,11 @@ const REGISTER: Readonly<Record<string, string>> = {
     'UNIQUE (approval_id) — hoogstens één intrekking per goedkeuring, en ' +
     'completion_approvals draagt zelf goedkeuringen_dagplafond.',
   breathers:
-    'QS8-373 — geen gemeten grens. plan_adempauze() begrenst de lengte van een ' +
-    'pauze (52 cycli) en overlap op hetzelfde doel, maar niet hoe ver vooruit ' +
-    'een pauze mag beginnen. 📏 200 niet-overlappende pauzes op één doel gingen ' +
-    'er alle 200 in.',
+    'plan_adempauze() eist sinds 0216 dat een pauze begint binnen 52 cycli terug ' +
+    'tot 52 cycli vooruit, op de kalender van de eigenaar. Dat zijn hoogstens 105 ' +
+    'cyclusstarts, en omdat pauzes elkaar niet mogen overlappen is dat meteen de ' +
+    'bovengrens per doel. 📏 Dezelfde 200 aanroepen die er vóór 0216 alle 200 in ' +
+    'gingen, leveren er nu 53 op (QS8-373).',
   deadline_requests: 'vraag_deadline_verschuiving() weigert vanaf 5 verzoeken in het laatste etmaal.',
   group_join_requests: 'vraag_lidmaatschap_aan() weigert zodra lidmaatschapsverzoeken_over() op nul staat.',
   group_members:
