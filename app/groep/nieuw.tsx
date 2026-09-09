@@ -10,6 +10,7 @@ import {
   zichtbaarheidUitleg,
   type Zichtbaarheid,
 } from '@/modules/buddies';
+import { reportError } from '@/lib/observability';
 import { t } from '@/shared/i18n';
 import type { Weekday } from '@/shared/time';
 import {
@@ -73,8 +74,21 @@ export default function NieuweGroep() {
     //    daarna nergens ziet. De uitkomst wordt dus niet als tak behandeld —
     //    `/doel/samen` leidt zijn stand af uit de kóppelingen en biedt de knop
     //    gewoon opnieuw aan als er niets geland is.
+    //
+    // ⚠️ **Niet als tak behandelen is iets anders dan weggooien (QS8-388).** De
+    //    uitkomst gaat naar Sentry en niet naar het scherm: de gebruiker heeft er
+    //    niets aan — `/doel/samen` biedt de knop toch opnieuw aan — maar zónder
+    //    melding is een structureel falende koppeling nergens aan te zien. Dat is
+    //    precies wat de grendel van QS8-350 bewaakt.
     if (heeftDoel) {
-      await koppelDoelAanGroep(doel, uitkomst.waarde.id);
+      const koppeling = await koppelDoelAanGroep(doel, uitkomst.waarde.id);
+
+      if (!koppeling.ok) {
+        reportError(new Error(koppeling.melding), 'groep.nieuw.koppelen', {
+          group_id: uitkomst.waarde.id,
+        });
+      }
+
       router.replace(
         `/doel/samen?doel=${encodeURIComponent(doel)}&groep=${encodeURIComponent(uitkomst.waarde.id)}`,
       );
