@@ -847,6 +847,30 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️⚠️ Een controle die op een gegenereerd blok landt, toetst zijn eigen
+  fixture — 09-09, QS8-404.** `docs:controle` had één meetbare tak, en die pakte
+  in `WERKVOORRAAD.md` de eerste treffer: het `STAND`-blok dat `npm run stand`
+  genereert. 📏 Die dag noemde de eerste alinea van dat bestand een maptelling en
+  een achterstand die er allebei acht migraties naast zaten, en de controle was
+  groen. **De getallen staan hier met opzet niet** — `WERKVOORRAAD.md` bezit die
+  stand, en dit document is er twee keer eerder op betrapt hem over te schrijven.
+
+  ⚠️ 📏 Dat is trouwens gemeten en niet bedacht: de eerste versie van déze
+  valkuil citeerde die twee getallen wél, en `docs:controle` werd er meteen rood
+  van — tak B, "dit feit staat ook in VOLGENDE-SESSIE.md".
+
+  **Vraag bij elke controle die tekst leest: staat naast het geschreven exemplaar
+  van dit feit ook een gegenereerd exemplaar?** Zo ja, dan kiest "de eerste
+  treffer" vrijwel altijd het gegenereerde — dat staat in een vast blok en dus op
+  een voorspelbare plek — en bewijst je controle niets over de rest.
+
+  ⚠️ En de tweede helft, die hier een tweede poging kostte: **een ijking die zijn
+  geval door een pad voert dat een éérdere grendel al afvangt, bewaakt niets van
+  wat hij belooft.** De test die een zin uit `CLAUDE.md` met rust moest laten was
+  groen omdat er geen productiestand in de invoer stond — hij bereikte de regex
+  die hij noemde nooit. Uitleg in
+  `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
+
 - **⚠️ Een issue op Backlog betekent niet dat er niemand aan werkt — 04/05-09,
   QS8-269 en QS8-270.** Twee keer op één dag lag er al een branch mét migratie
   terwijl het issue in Linear nog op Backlog stond. De ene keer was het werk al
