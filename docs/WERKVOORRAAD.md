@@ -7,20 +7,31 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 07-09-2026 (na QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 09-09-2026 (na QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
-⚠️ **Productie staat op `0219`.** 📏 Hermeten op 09-09 om 14:40 UTC met
-`list_migrations` tegen `wehgocadxehottiiyvsc`: **222 registerrijen**, `0001` t/m
-`0219` aaneengesloten, inclusief de drie letterversies. De map telt er **224**.
+⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
+`migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
+t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
+**229**.
 
-**Het gat is daarmee precies twee bestanden**, allebei van 09-09:
+**Het gat is daarmee vijf bestanden**, alle vijf van 09-09 en alle vijf uit
+QS8-71 (PR #352):
 
 | | |
 | -- | -- |
-| `0220_een_auditrij_voor_een_verdwenen_commitment.sql` | QS8-361 |
-| `0221_een_grendel_die_alleen_in_commentaar_staat_is_geen_grendel.sql` | QS8-364 |
+| `0222_een_foto_hoort_bij_een_groep.sql` | QS8-71 |
+| `0223_een_bijlage_wijst_naar_deze_groep.sql` | QS8-71 |
+| `0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql` | QS8-71 |
+| `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 |
+| `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 |
+
+⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
+toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
+intussen op `main`. Dat is de vorm van QS8-318 nog een keer: **een regel over de
+achterstand veroudert terwijl je hem opschrijft**, en de enige stand die klopt is
+de gemeten stand.
 
 ⚠️⚠️ **Hier stond tot 09-09 `0185`, en dat was 34 migraties naast de
 werkelijkheid.** De ronde die `0187` t/m `0219` toepaste is verderop in dit
@@ -331,9 +342,46 @@ aan beide kanten `88a0c43b…` over alle 249. Omdat die hash commentaar en witru
 wegnormaliseert, is dit precies de bewering die telt — een ingekorte body
 overleeft die normalisatie niet.
 
-⚠️ **Wat er níet mee bewezen is:** dat het commentaar ín de functielichamen aan
-beide kanten identiek is. De vingerafdruk strípt dat met opzet, en `0219` is
-langs deze route toegepast en niet met `psql`.
+✅ **En dat laatste is op 09-09 alsnog bewezen én rechtgezet — QS8-220 is
+daarmee af.** De regel hierboven zei nog: *"wat er níet mee bewezen is, is dat
+het commentaar ín de functielichamen aan beide kanten identiek is"*, want de
+vingerafdruk strípt dat met opzet. Nagemeten met `functie_vingerafdrukken()` aan
+beide kanten — de RPC die `functies:controle` zelf gebruikt, en die naast de
+genormaliseerde `kaal` ook een rúwe `md5(prosrc)` geeft — tegen een lokale stack
+uit `0001` t/m `0221`, precies het niveau waar productie op staat.
+
+**Vijfentwintig functies zijn hersteld en de twee vingerafdrukken zijn nu aan
+beide kanten over alle 249 gelijk**, per beginletter vergeleken: 23 emmers,
+telling én hash gelijk op `kaal` én op `ruw`. `vergelijkFuncties()` geeft daarmee
+op alle vier zijn lijsten leeg — geen logicaverschil, geen commentaarverschil,
+niets dat maar aan één kant bestaat.
+
+📏 De vijfentwintig vielen in drie klassen, en alleen de eerste is de klasse die
+QS8-220 zelf beschreef:
+
+| Klasse | Aantal | Hoe gevonden |
+|---|---|---|
+| álle `--`-regels kwijt | 18 | het aantal functies mét commentaar: 96 op productie, 114 lokaal |
+| een déél van de regels kwijt | 3 | `badge_na_gebeurtenis` 9↔13, `invite_preview` 16↔20, `meld_ketting_mijlpaal` 2↔19 |
+| ruw anders, commentaar even lang | 4 | drie puur witruimte, en `verdien_badges` met een verouderde formulering |
+
+⚠️⚠️ **De middelste klasse is de vondst.** QS8-220 telde functies zónder
+commentaar, en dat is een controle die functies mist die er wát van kwijt zijn —
+precies de vorm van onwrikbare regel 18. Drie zaten er zo verstopt, en
+`meld_ketting_mijlpaal` hield er 2 van de 19 over. De scherpere meting is het
+áántal `--`-markeringen per functie naast elkaar leggen, niet de vraag of het er
+nul zijn.
+
+⚠️ En de vierde klasse leert iets over `verdien_badges`: `kaal` was gelijk en
+`ruw` niet, terwijl er aan beide kanten acht `--`-regels stonden. Productie droeg
+de óude formulering van de `best_streak`-notitie. Een teller vindt dat nooit;
+alleen een vergelijking van de tekst zelf.
+
+⚠️ **`npm run functies:controle` is niet als script gedraaid** — deze container
+heeft geen `SUPABASE_SERVICE_ROLE_KEY`, dus hij meldt `OVERGESLAGEN`. Wat er
+gedraaid is, is zijn vergelijking: dezelfde RPC aan beide kanten, en een emmer
+per beginletter is voor `vergelijkFuncties()` een volledige rijvergelijking —
+gelijke telling én gelijke hash over `naam|kaal|ruw` laat geen verschil over.
 
 ⚠️ **Opnieuw geen `pg_dump` vooraf** — de container heeft geen `SUPABASE_DB_URL`.
 Dat is dezelfde afwijking van onwrikbare regel 20 die de ronde van 02-09 ook
