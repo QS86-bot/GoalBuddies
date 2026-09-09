@@ -1,4 +1,4 @@
--- 0214_de_lijst_krijgt_een_tabel_die_dicht_staat.sql — de tabel voor De Lijst:
+-- 0215_de_lijst_krijgt_een_tabel_die_dicht_staat.sql — de tabel voor De Lijst:
 -- losse taken, eigenaar-only, met een dagplafond en een zichtbaarheidskolom die
 -- nog niemand kan schrijven (QS8-379, deel 1 van QS8-378).
 --
@@ -11,8 +11,9 @@
 --   drop function if exists public.taken_plafond();
 --   drop index if exists public.todo_items_afgevinkt_idx;
 --   drop table if exists public.todo_items;
---   -- en `sleutelzetters()` terugzetten op de definitie uit **0208**, dus zonder
---   -- de rij `app.rem_taken`. Zie de waarschuwing bij §5.
+--   -- en `sleutelzetters()` terugzetten op de definitie uit **0214**, dus zonder
+--   -- de rij `app.rem_taken` maar mét `app.rem_pushtokens`. Zie de waarschuwing
+--   -- bij §5.
 --
 -- ⚠️ De tabel is nieuw en dus leeg; `drop table` valt hier niet onder grens 2 van
 --    de beslisbevoegdheid. Wordt hij ooit teruggedraaid nádat er taken in staan,
@@ -287,8 +288,12 @@ create trigger taken_dagplafond
 --    duur geworden.** Twee branches die allebei `create or replace` doen,
 --    geven git geen conflict: de laatste wint en het register van de ander
 --    verdwijnt zonder een woord (QS8-358). Het lichaam hieronder is daarom
---    gekopieerd uit **0208 op `main`** en niet uit een oudere migratie, en
+--    gekopieerd uit **0214 op `main`** — de laatste definitie die er is — en
 --    de enige toevoeging is de rij `app.rem_taken`.
+--
+--    📏 Dat is niet theoretisch gebleven: tot het hernummeren stond hier het
+--    lichaam van 0208, en `app.rem_pushtokens` uit 0214 ontbrak. Zie de
+--    aantekening bij die rij hieronder.
 
 create or replace function public.sleutelzetters()
  RETURNS TABLE(naam text, bezwaar text)
@@ -345,10 +350,22 @@ AS $function$
       ('app.rem_dagzetten',          array['rem_dagzetten']),
       ('app.rem_doelkoppelingen',    array['rem_doelkoppelingen']),
       ('app.rem_doelinterviews',     array['rem_doelinterviews']),
-      -- ⚠️ Uit 0214 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn
-      --    eigen sleutel. Dit register is het derde dat hier bijgeschreven
-      --    wordt sinds de val van QS8-358; het lichaam hieronder is
-      --    gekopieerd uit 0208 op `main` en niet uit een oudere migratie.
+      -- ⚠️ Uit 0214 (QS8-369). `push_tokens` is de vijftiende tabel met een
+      --    dagplafond en de enige die er nooit een kreeg; deze sleutel hoort bij
+      --    zijn rem.
+      --
+      -- ⚠️⚠️ **En hier viel hij bijna uit, precies zoals de aantekening bij de
+      --    vijf sleutels van 0207 hierboven beschrijft.** Deze migratie heette
+      --    zelf 0214 tot `main` er eentje met dat nummer kreeg; het register
+      --    hieronder was toen gekopieerd uit **0208**, want dat was de laatste
+      --    definitie die deze branch kende. Bij het samenvoegen gaf git geen
+      --    conflict — twee `create or replace` op dezelfde functie in
+      --    verschillende bestanden botsen nergens — en `app.rem_pushtokens` was
+      --    weg geweest zonder een woord. Derde keer in acht dagen; het staat als
+      --    QS8-358.
+      ('app.rem_pushtokens',         array['rem_pushtokens']),
+      -- ⚠️ Uit 0215 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn
+      --    eigen sleutel.
       ('app.rem_taken',              array['rem_taken'])
   ),
   bekend as (
@@ -395,3 +412,13 @@ AS $function$
 $function$
 
 ;
+
+-- ⚠️ **De `revoke` staat er ook al zou `create or replace` de rechten bewaren.**
+--    Onwrikbare regel 4: `alter default privileges` in Supabase deelt élke
+--    nieuwe functie in `public` uit aan `anon`, `authenticated` én
+--    `service_role`, en `from public, anon` houdt precies de rol over waaronder
+--    iedere ingelogde gebruiker draait. Hem hier herhalen kost niets en maakt de
+--    stand na deze migratie onafhankelijk van wat ervóór stond — 0214 doet
+--    hetzelfde, 0208 deed het niet.
+revoke execute on function public.sleutelzetters()
+  from public, anon, authenticated;

@@ -38,7 +38,7 @@ import {
  *      -> 2 rood: 'weigert wat na trimmen niets overhoudt' en de must-allow, die
  *         de getrimde tekst terugleest
  *   N  `TAAK_MAX` op 400
- *      -> 1 rood: 'TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0214'
+ *      -> 1 rood: 'TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0215'
  *   O  de schema's op `loose()` in plaats van strippend
  *      -> 1 rood: 'laat visibility niet door'
  *   P  de `refine` op een lege patch weg
@@ -46,7 +46,7 @@ import {
  *         die op diezelfde weigering leunt
  */
 const MIGRATIE = readFileSync(
-  'supabase/migrations/0214_de_lijst_krijgt_een_tabel_die_dicht_staat.sql',
+  'supabase/migrations/0215_de_lijst_krijgt_een_tabel_die_dicht_staat.sql',
   'utf8',
 );
 
@@ -56,10 +56,10 @@ function emoji(n: number): string {
 }
 
 describe('de grenzen staan in de database én in het schema, en ze zijn gelijk', () => {
-  it('TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0214', () => {
+  it('TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0215', () => {
     const uitMigratie =
       /char_length\(btrim\(body\)\)\s*between\s*(\d+)\s*and\s*(\d+)/i.exec(MIGRATIE);
-    expect(uitMigratie, 'geen todo_items_body_len in 0214').not.toBeNull();
+    expect(uitMigratie, 'geen todo_items_body_len in 0215').not.toBeNull();
 
     expect(Number(uitMigratie?.[1])).toBe(TAAK_MIN);
     expect(Number(uitMigratie?.[2])).toBe(TAAK_MAX);
@@ -108,7 +108,7 @@ describe('de grenzen staan in de database én in het schema, en ze zijn gelijk',
 describe('het schema biedt geen pad dat de database niet heeft', () => {
   /**
    * ⚠️ **`visibility` is de kolom waar dit issue om draait.** Hij is voor geen
-   *    enkele client schrijfbaar (0214, kolomgrant én policy). Zou hij hier wél
+   *    enkele client schrijfbaar (0215, kolomgrant én policy). Zou hij hier wél
    *    door het schema komen, dan bouwt het scherm van QS8-380 er een veld voor
    *    en loopt de eerste gebruiker op een `42501`.
    */
@@ -125,13 +125,13 @@ describe('het schema biedt geen pad dat de database niet heeft', () => {
   });
 
   /**
-   * ⚠️ De drie velden hieronder zijn precies de UPDATE-kolomgrant van 0214. Komt
+   * ⚠️ De drie velden hieronder zijn precies de UPDATE-kolomgrant van 0215. Komt
    *    er een vierde bij in het schema zonder dat de grant meebeweegt, dan is de
    *    melding die de gebruiker krijgt een Postgres-fout.
    */
-  it('kent in een patch precies de kolommen uit de UPDATE-grant van 0214', () => {
+  it('kent in een patch precies de kolommen uit de UPDATE-grant van 0215', () => {
     const uitMigratie = /grant update \(([^)]+)\)\s+on table public\.todo_items/i.exec(MIGRATIE);
-    expect(uitMigratie, 'geen UPDATE-kolomgrant in 0214').not.toBeNull();
+    expect(uitMigratie, 'geen UPDATE-kolomgrant in 0215').not.toBeNull();
 
     const uitGrant = (uitMigratie?.[1] ?? '')
       .split(',')
