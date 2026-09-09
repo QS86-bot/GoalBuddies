@@ -59,23 +59,34 @@ database.
 
 De les die eronder staat, staat er niet voor niets: **vraag het aan de database.**
 
-⚠️⚠️ **De edge-functies zijn nog van 06-09 en dat is wél een gat.**
-`list_edge_functions` geeft voor alle drie `updated_at = 2026-09-06T09:07:56Z`
-— 📏 hermeten op 09-09 om 14:40 UTC en nog steeds zo. 📏 En sindsdien is er wél
-aan gewerkt: `git log --since=2026-09-06T09:07:56Z -- supabase/functions/` geeft
-commits, dus de gedeployde code is niet meer die van de map.
-Gevolg: `0178` staat op productie, de code die `getuigenissen_voor()` aanroept
-staat in de map, en de gedeployde `notificaties` weet er niets van — **de
-persoon-getuige krijgt zijn melding niet**. Er is geen kapot onderdeel, dus niets
-wordt er rood van. QS8-320, met het commando erbij.
+✅ **De edge-functies zijn op 09-09 om 18:19 UTC gedeployd — het gat is dicht.**
+📏 Nagemeten met `list_edge_functions` en niet overgenomen uit de deploy-uitvoer:
+alle drie staan op `updated_at = 2026-09-09T18:19:06Z`, 81 uur na de vorige, en
+alle drie hebben een nieuwe `ezbr_sha256`. De versies gingen rollover 20 → 24,
+doelcoach 17 → 19 en notificaties 15 → 19.
+
+Daarmee is **de getuigemelding van QS8-298 voor het eerst aangesloten**: `0178`
+stond al op productie, de code die `getuigenissen_voor()` aanroept stond in de
+map, en de gedeployde `notificaties` wist er niets van. Er was geen kapot
+onderdeel, dus niets werd er rood van — regel 18 vraag 5 in zijn zuiverste vorm.
+
+⚠️ **Dat het gat dicht is, is niet hetzelfde als dat het gesignaleerd wordt.**
+`edge:gedeployd` ziet dit achteráf en alleen als iemand hem draait; hij vraagt
+een `SUPABASE_ACCESS_TOKEN` en draait daarom nergens automatisch. Dat is
+criterium 2 van QS8-320 en het staat nog open.
 
 ⚠️ **De rollover is een apart geval, en `0186` staat er inmiddels op.** `0185`
 dropte `activeer_weekplanstap(uuid, date, integer)`, en de gedeployde rollover
 roept die vorm nog aan. 📏 Vandaag inert — `weekly_plan_steps` is leeg, dus de
 RPC wordt nooit bereikt — maar het scherpt zichzelf zodra er een weekplan komt.
 `0186` zet de oude handtekening terug als afgeschreven wrapper, zodat de deploy
-een gewone deploy is in plaats van een race (QS8-324). Die wrapper mag weg zodra
-`supabase functions deploy rollover` gedraaid heeft.
+een gewone deploy is in plaats van een race (QS8-324).
+
+⚠️ **Die deploy is op 09-09 gedraaid, dus de wrapper mag nu weg.** Dat is geen
+opruimwerk maar een grendel die anders verwatert: zolang de driearguments vorm
+bestaat, blijft een aanroeper die hem gebruikt onzichtbaar. Vraag vóór het
+droppen wél opnieuw of de gedéployde rollover de tweearguments vorm aanroept —
+`pg_get_functiondef()` en de gedeployde code, niet de map.
 
 Vraag de database welke migraties er staan, niet dit document.
 
