@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { base64NaarBytes } from '../../modules/auth';
 
 /**
- * Een foto kiezen voor de groepschat — QS8-71.
+ * Een foto kiezen — QS8-71 (groepschat) en QS8-391 (bewijs bij een voltooiing).
  *
  * ⚠️ **Losgetrokken van het scherm, en niet alleen om onder de vijftig regels te
  *    blijven.** Dit stuk kent vier uitgangen — geen toestemming, afgebroken,
@@ -24,10 +24,15 @@ import { base64NaarBytes } from '../../modules/auth';
  *
  * ⚠️ De foutsleutels staan in het type en niet als losse strings: een sleutel
  *    die niet in de catalogus bestaat, is dan een typefout en geen lege melding.
+ *    Vandaar een **unie** en geen `string`: bij QS8-391 kwam er een tweede
+ *    aanroeper bij, en dan is "welke sleutels mogen hier staan" precies de vraag
+ *    die het type hoort te beantwoorden.
  */
-export type Chatfotokeuze =
+export type Fotofoutsleutel = 'chatfoto.kiezen_mislukt' | 'bewijsfoto.kiezen_mislukt';
+
+export type Fotokeuze =
   | { readonly soort: 'afgebroken' }
-  | { readonly soort: 'fout'; readonly sleutel: 'chatfoto.kiezen_mislukt' }
+  | { readonly soort: 'fout'; readonly sleutel: Fotofoutsleutel }
   | { readonly soort: 'gekozen'; readonly data: Uint8Array; readonly mime: string };
 
 /**
@@ -35,13 +40,18 @@ export type Chatfotokeuze =
  *    avatar ís rond; een foto in een gesprek is wat iemand liet zien, en die
  *    bijsnijden verandert wat hij bedoelde.
  *
- * ⚠️ `quality` staat laag omdat de bucket op 1 MB dicht zit (migratie 0222). Dat
- *    is een gemak en geen grendel — de keuring in `keurChatfoto()` en de bucket
- *    zelf zijn dat wél.
+ * ⚠️ `quality` staat laag omdat beide buckets op 1 MB dicht zitten (migratie
+ *    0222 en 0227). Dat is een gemak en geen grendel — de keuring in
+ *    `keurChatfoto()` / `keurBewijsfoto()` en de buckets zelf zijn dat wél.
+ *
+ * ⚠️ **De foutsleutel komt van de aanroeper**, want de melding hoort bij het
+ *    scherm waar je staat en niet bij de kiezer. Alleen de sleutel verschilt;
+ *    de vier uitgangen zijn identiek, en die zijn de reden dat dit een eigen
+ *    bestand is.
  */
-export async function kiesChatfoto(): Promise<Chatfotokeuze> {
+export async function kiesFoto(sleutel: Fotofoutsleutel): Promise<Fotokeuze> {
   const toestemming = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!toestemming.granted) return { soort: 'fout', sleutel: 'chatfoto.kiezen_mislukt' };
+  if (!toestemming.granted) return { soort: 'fout', sleutel };
 
   const keuze = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
@@ -54,7 +64,7 @@ export async function kiesChatfoto(): Promise<Chatfotokeuze> {
 
   const base64 = gekozen.base64 ?? null;
   const bytes = base64 === null ? null : base64NaarBytes(base64);
-  if (bytes === null) return { soort: 'fout', sleutel: 'chatfoto.kiezen_mislukt' };
+  if (bytes === null) return { soort: 'fout', sleutel };
 
   return { soort: 'gekozen', data: bytes, mime: gekozen.mimeType ?? 'image/jpeg' };
 }

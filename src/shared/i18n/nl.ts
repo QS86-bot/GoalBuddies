@@ -977,6 +977,7 @@ export const nl = {
   'opnieuw.al_goedgekeurd': 'Deze week is al goedgekeurd. Er valt niets meer te vervangen.',
   'opnieuw.niets_ingediend': 'Er staat nog niets ingediend voor deze week.',
   'opnieuw.notitie_vereist': 'Deze groep vraagt om een korte notitie bij het afronden.',
+  'opnieuw.bewijs_vereist': 'Deze groep vraagt een foto als bewijs. Stuur er een mee.',
   'opnieuw.mislukt': 'Opnieuw indienen lukte niet. Probeer het zo nog eens.',
   'opnieuw.mislukt_kort': 'Opnieuw indienen lukte niet.',
 
@@ -1162,6 +1163,7 @@ export const nl = {
   //    een duim omhoog op een bewering is een formaliteit, één zin geeft de
   //    goedkeurder iets om op te reageren.
   'bewijseis.note_required': 'Notitie verplicht',
+  'bewijseis.note_and_attachment': 'Notitie én foto',
   'bewijseis.optional': 'Alles optioneel',
 
   // ---------------------------------------------------------------------------
@@ -1270,6 +1272,22 @@ export const nl = {
   'chatfoto.niet_beschikbaar': 'Deze foto is niet meer beschikbaar.',
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
+
+  // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
+  // anders dan bij een beoordeling.
+  'bewijsfoto.knop': 'Foto als bewijs',
+  'bewijsfoto.gekozen': 'Bewijs klaar om mee te sturen',
+  'bewijsfoto.weghalen': 'Foto weghalen',
+  'bewijsfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
+  'bewijsfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
+  'bewijsfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'bewijsfoto.rem_bereikt': 'Je hebt vandaag genoeg foto\u2019s meegestuurd. Morgen kan het weer.',
+  'bewijsfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
+  'bewijsfoto.niet_beschikbaar': 'Dit bewijs is niet meer beschikbaar.',
+  'bewijsfoto.laden': 'Bewijs laden',
+  'bewijsfoto.beeld': 'Foto als bewijs bij deze afronding',
+  'bewijsfoto.vereist': 'Deze groep vraagt een foto als bewijs bij het afronden.',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
   'chat.rem_bereikt':
     'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',

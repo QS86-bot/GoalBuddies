@@ -212,17 +212,24 @@ export type GroepInvoer = z.infer<typeof groepSchema>;
  *    scherm dat een bijlage kan uploaden. Een beheerder die hem koos, kreeg het
  *    gedrag van `note_required` en de gerustheid van iets strengers.
  *
- *    Hij komt terug zodra QS8-196 een uploadpad neerzet. **Verruim deze lijst
- *    niet vooruitlopend** — `tests/rls/bewijseis.test.ts` legt hem naast de CHECK
- *    in de database en wordt rood ongeacht welke kant het eerst verandert.
+ *    Hij komt terug zodra er een uploadpad staat. **Verruim deze lijst niet
+ *    vooruitlopend** — `tests/rls/bewijseis.test.ts` legt hem naast de CHECK in
+ *    de database en wordt rood ongeacht welke kant het eerst verandert.
+ *
+ * ⚠️ **En dat is precies wat er op 09-09-2026 gebeurd is (QS8-391).** 0227 t/m
+ *    0229 zetten het uploadpad neer, 0231 verruimt de CHECK én geeft
+ *    `enforce_evidence_policy()` een tak die de bijlage écht toetst. Pas dáárna
+ *    mag deze lijst mee. De volgorde is de hele les van 0150: de handhaving
+ *    eerst, de keuze daarna.
  */
-export const BEWIJSEISEN = ['note_required', 'optional'] as const;
+export const BEWIJSEISEN = ['note_required', 'note_and_attachment', 'optional'] as const;
 export type Bewijseis = (typeof BEWIJSEISEN)[number];
 
 /** Zie `meldingen()` in `api.ts`: een functie, want de taal ligt niet vast op importtijd. */
 export function bewijseisLabels(): Readonly<Record<Bewijseis, string>> {
   return {
     note_required: t('bewijseis.note_required'),
+    note_and_attachment: t('bewijseis.note_and_attachment'),
     optional: t('bewijseis.optional'),
   };
 }
