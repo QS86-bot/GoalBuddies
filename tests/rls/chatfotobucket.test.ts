@@ -278,7 +278,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    groen staan op de verkeerde teller. Een groep die tegen zijn
     //    groepsplafond loopt, is per definitie een groep waarin meer mensen
     //    geplaatst hebben.
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from dagtellers where domein = 'chatfotos'`);
     for (let i = 0; i < 20; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -303,12 +303,12 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    onderscheiden van een netwerkfout. Onwrikbare regel 5 vraagt letterlijk
     //    om een limiet per gebruiker per dag.
     // ⚠️⚠️ **De teller moet er sinds 0233 apart bij, en dat is precies wat die
-    //    migratie repareert.** `opslag_dagtellers` overleeft een `delete` op
+    //    migratie repareert.** `dagtellers` overleeft een `delete` op
     //    `storage.objects` met opzet — wissen zette de rem anders terug. Een
     //    fixture die dezelfde sleutel hergebruikt, moet hem dus zelf leegmaken;
     //    de objecten weghalen is niet meer genoeg.
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from dagtellers where domein = 'chatfotos'`);
     for (let i = 0; i < 8; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -339,14 +339,14 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     ).toMatch(/^ok:/);
 
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%mijn-%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from dagtellers where domein = 'chatfotos'`);
   });
 
   it('laat de twintigste er nog wél door', () => {
     // ⚠️ De must-allow naast de must-deny. Een plafond dat álles weigert, is
     //    groen op deze suite en stuk voor de gebruiker.
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%vol-%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatfotos'`);
+    psql(`delete from dagtellers where domein = 'chatfotos'`);
     for (let i = 0; i < 19; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
