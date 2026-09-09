@@ -50,10 +50,15 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  * een grens in de RPC zelf. De reden staat erbij, met het getal of de constraint
  * die hem draagt.
  *
- * ⚠️ **Twee regels dragen `QS8-` en dat is met opzet.** Waar geen gemeten grens
+ * ⚠️ **Een regel draagt `QS8-` en dat is met opzet.** Waar geen gemeten grens
  *    is, staat er geen mooie reden maar een issuenummer. Zo is het verschil
  *    tussen "dit kan niet groeien" en "dit is nog niet af" leesbaar in het
  *    register zelf, in plaats van weggeschreven in een zin die als beide leest.
+ *
+ *    📏 Dat werkte: het waren er twee, en `group_events` (QS8-374) is er in
+ *    0215 uit verdwenen doordat de tabel een echt dagplafond kreeg. De test
+ *    'het register bevat geen regel die niets meer bewaakt' was het enige dat
+ *    daarover begon — die regel had anders blijven staan als een besluit.
  *
  * ⚠️ En het register wordt ook de ándere kant op getoetst: een regel voor een
  *    tabel die niet meer te laten groeien is, of die inmiddels wél een plafond
@@ -100,10 +105,6 @@ const REGISTER: Readonly<Record<string, string>> = {
     'een pauze mag beginnen. 📏 200 niet-overlappende pauzes op één doel gingen ' +
     'er alle 200 in.',
   deadline_requests: 'vraag_deadline_verschuiving() weigert vanaf 5 verzoeken in het laatste etmaal.',
-  group_events:
-    'QS8-374 — geen gemeten grens. Elke schrijver heeft een `unchanged`-toets, ' +
-    'maar heen en weer zetten verandert elke keer wél iets. 📏 200 keer ' +
-    'zet_groepsontdekbaarheid() heen en weer gaf 200 rijen.',
   group_join_requests: 'vraag_lidmaatschap_aan() weigert zodra lidmaatschapsverzoeken_over() op nul staat.',
   group_members:
     'PRIMARY KEY (group_id, user_id) — één rij per groep per lid; en de twee ' +
@@ -221,7 +222,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     expect(
       gevonden.filter((t) => t.plafond).length,
       'het aantal groeibare tabellen mét plafond is veranderd',
-    ).toBe(15);
+    ).toBe(16);
   }, 60_000);
 
   it('en push_tokens zit er met een plafond bij — de aanleiding van dit bestand', () => {
