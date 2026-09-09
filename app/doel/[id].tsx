@@ -865,6 +865,92 @@ function GedeeldMet({
  *    server weigert met `niet_bevestigd` als het scherm hem overslaat: een
  *    commitment device gaat nooit stilzwijgend uit (domeinregel 5).
  */
+/**
+ * De bevestiging vóór het afwikkelen van een stuurloze straf — QS8-333.
+ *
+ * ⚠️ **Apart component en niet een tak in `StuurlozeStraf`.** Die functie kwam
+ *    anders boven de vijftig regels uit, en `regel15:controle` telt dat in de
+ *    schermlaag als ratel: het aantal mag alleen dalen. De splitsing is hier
+ *    bovendien inhoudelijk juist — dit is een eigen stap met een eigen vraag.
+ */
+function StuurlozeStrafBevestiging({
+  bezig,
+  fout,
+  onBevestig,
+  onTerug,
+}: {
+  readonly bezig: boolean;
+  readonly fout: string | null;
+  readonly onBevestig: () => void;
+  readonly onTerug: () => void;
+}) {
+  return (
+    <Card nested>
+      <Subheading>{t('stuurloos.zeker')}</Subheading>
+      <Body>{t('stuurloos.afwikkelen_uitleg')}</Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <View style={styles.knoppen}>
+        <Button variant="primair" busy={bezig} onPress={onBevestig}>
+          {t('stuurloos.ja_afwikkelen')}
+        </Button>
+        <Button variant="stil" onPress={onTerug}>
+          {t('stuurloos.terug')}
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * De keuze die een stuurloze straf aanbiedt — QS8-333.
+ *
+ * ⚠️ **Zonder groepsgenoot geen dood veld maar uitleg** (regel 16): staat er
+ *    niemand om aan te wijzen, dan zegt de kaart dat, en blijft afwikkelen over.
+ */
+function StuurlozeStrafKeuze({
+  mensen,
+  gekozen,
+  bezig,
+  fout,
+  onKies,
+  onAanwijzen,
+  onAfwikkelen,
+}: {
+  readonly mensen: readonly MogelijkeBegunstigde[];
+  readonly gekozen: string;
+  readonly bezig: boolean;
+  readonly fout: string | null;
+  readonly onKies: (id: string) => void;
+  readonly onAanwijzen: () => void;
+  readonly onAfwikkelen: () => void;
+}) {
+  return (
+    <Card nested>
+      <Subheading>{t('stuurloos.kop')}</Subheading>
+      <Body muted>{t('stuurloos.uitleg')}</Body>
+      {mensen.length > 0 ? (
+        <>
+          <Choice
+            label={t('stuurloos.wie')}
+            opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
+            waarde={gekozen}
+            onKies={onKies}
+          />
+          <Button variant="primair" busy={bezig} onPress={onAanwijzen}>
+            {t('stuurloos.aanwijzen')}
+          </Button>
+        </>
+      ) : (
+        <Body muted>{t('stuurloos.niemand')}</Body>
+      )}
+      <Button variant="stil" onPress={onAfwikkelen}>
+        {t('stuurloos.afwikkelen')}
+      </Button>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 function StuurlozeStraf({
   straf,
   onKlaar,
@@ -883,13 +969,8 @@ function StuurlozeStraf({
   async function voer(actie: 'nieuwe_getuige' | 'afwikkelen') {
     setBezig(true);
     setFout(null);
-
-    const uitkomst = await herstelStuurlozeStraf(
-      straf.id,
-      actie,
-      actie === 'afwikkelen' ? { bevestigd: true } : { getuige: nieuweGetuige },
-    );
-
+    const opties = actie === 'afwikkelen' ? { bevestigd: true } : { getuige: nieuweGetuige };
+    const uitkomst = await herstelStuurlozeStraf(straf.id, actie, opties);
     setBezig(false);
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
@@ -901,46 +982,25 @@ function StuurlozeStraf({
 
   if (bevestigen) {
     return (
-      <Card nested>
-        <Subheading>{t('stuurloos.zeker')}</Subheading>
-        <Body>{t('stuurloos.afwikkelen_uitleg')}</Body>
-        {fout === null ? null : <Caption danger>{fout}</Caption>}
-        <View style={styles.knoppen}>
-          <Button variant="primair" busy={bezig} onPress={() => void voer('afwikkelen')}>
-            {t('stuurloos.ja_afwikkelen')}
-          </Button>
-          <Button variant="stil" onPress={() => setBevestigen(false)}>
-            {t('stuurloos.terug')}
-          </Button>
-        </View>
-      </Card>
+      <StuurlozeStrafBevestiging
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void voer('afwikkelen')}
+        onTerug={() => setBevestigen(false)}
+      />
     );
   }
 
   return (
-    <Card nested>
-      <Subheading>{t('stuurloos.kop')}</Subheading>
-      <Body muted>{t('stuurloos.uitleg')}</Body>
-      {mensen.length > 0 ? (
-        <>
-          <Choice
-            label={t('stuurloos.wie')}
-            opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
-            waarde={nieuweGetuige}
-            onKies={setGekozen}
-          />
-          <Button variant="primair" busy={bezig} onPress={() => void voer('nieuwe_getuige')}>
-            {t('stuurloos.aanwijzen')}
-          </Button>
-        </>
-      ) : (
-        <Body muted>{t('stuurloos.niemand')}</Body>
-      )}
-      <Button variant="stil" onPress={() => setBevestigen(true)}>
-        {t('stuurloos.afwikkelen')}
-      </Button>
-      {fout === null ? null : <Caption danger>{fout}</Caption>}
-    </Card>
+    <StuurlozeStrafKeuze
+      mensen={mensen}
+      gekozen={nieuweGetuige}
+      bezig={bezig}
+      fout={fout}
+      onKies={setGekozen}
+      onAanwijzen={() => void voer('nieuwe_getuige')}
+      onAfwikkelen={() => setBevestigen(true)}
+    />
   );
 }
 
