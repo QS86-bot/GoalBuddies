@@ -138,7 +138,7 @@ describe.skipIf(!beschikbaar)('elke dagteller heeft een rem', () => {
     //    en dan kijkt er iemand naar of er ook een rem bij hoort.
     //
     // ⚠️ 📏 **En dat werkte, twee keer op rij.** 0214 (QS8-369) zette de
-    //    vijftiende teller op `push_tokens` en 0216 (QS8-374) de zestiende op
+    //    vijftiende teller op `push_tokens` en 0217 (QS8-374) de zestiende op
     //    `group_events`; beide keren was deze regel het enige dat erover begon —
     //    rood op 14 ≠ 15 en op 15 ≠ 16 — terwijl de test hierboven groen bleef
     //    omdat de rem er meteen bij zat. Precies de handeling waar hij voor

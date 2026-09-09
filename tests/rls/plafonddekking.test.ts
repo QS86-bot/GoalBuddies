@@ -56,7 +56,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    register zelf, in plaats van weggeschreven in een zin die als beide leest.
  *
  *    📏 Dat werkte: het waren er twee, en `group_events` (QS8-374) is er in
- *    0216 uit verdwenen doordat de tabel een echt dagplafond kreeg. De test
+ *    0217 uit verdwenen doordat de tabel een echt dagplafond kreeg. De test
  *    'het register bevat geen regel die niets meer bewaakt' was het enige dat
  *    daarover begon — die regel had anders blijven staan als een besluit.
  *

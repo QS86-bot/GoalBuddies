@@ -10,7 +10,7 @@ import {
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * `group_events` heeft een dagplafond — QS8-374, migratie 0216.
+ * `group_events` heeft een dagplafond — QS8-374, migratie 0217.
  *
  * ⚠️ **De `unchanged`-toets bewaakt de herhaling en niet het aantal.** Elke
  *    schrijver naar deze tabel heeft er een, en ze doen allemaal precies wat ze
@@ -90,7 +90,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  * ⚠️⚠️ **E was eerst groen, en dat was de leerzaamste van de vijf.** De tak is
  *    overgenomen uit 0214, waar hij een echte gebruiker uit zijn app sloot. Hier
  *    leek hij dood — geen enkele schrijver op deze tabel doet een `on conflict`,
- *    en de kop van 0216 zegt dat ook met zoveel woorden.
+ *    en de kop van 0217 zegt dat ook met zoveel woorden.
  *
  *    📏 Nagemeten en dat klopte niet. De tak ís bereikbaar: een
  *    `insert … on conflict do nothing` die volledig op het conflict landt, ís
@@ -255,7 +255,7 @@ describe.skipIf(!rlsTestsConfigured)('group_events heeft een dagplafond', () => 
     () => {
       // ⚠️ **De rem en de grendel zijn niet inwisselbaar.** Allebei weigeren ze
       //    deze batch; het verschil is dat de grendel hem éérst fysiek laat
-      //    schrijven. 📏 240 kB tegen 3440 kB, zie de kop van 0216. Dat verschil
+      //    schrijven. 📏 240 kB tegen 3440 kB, zie de kop van 0217. Dat verschil
       //    is met een assertie op "geweigerd" niet te zien, dus deze test kijkt
       //    naar wélke van de twee gesproken heeft.
       const bob = psql(

@@ -1,4 +1,4 @@
--- 0216_een_dagplafond_en_een_rem_op_group_events.sql — de `unchanged`-toets bewaakt de herhaling en niet het aantal, dus heen en weer zetten groeit onbeperkt (QS8-374)
+-- 0217_een_dagplafond_en_een_rem_op_group_events.sql — de `unchanged`-toets bewaakt de herhaling en niet het aantal, dus heen en weer zetten groeit onbeperkt (QS8-374)
 --
 -- ROLLBACK-PAD:
 --   drop trigger if exists groepsgebeurtenissen_rem on public.group_events;
@@ -130,7 +130,7 @@ as $$ select 500 $$;
 comment on function public.groepsgebeurtenissen_plafond() is
   'Hoeveel groepsgebeurtenissen één gebruiker per etmaal mag veroorzaken. 500 is '
   'ruim vier keer de gemeten zwaarste legitieme dag (110: tien groepen tot de '
-  'rand gevuld). Zie 0216 en QS8-374.';
+  'rand gevuld). Zie 0217 en QS8-374.';
 
 -- ⚠️ Onwrikbare regel 4: `authenticated` staat er met zoveel woorden bij. Deze
 --    drie worden alleen aangeroepen vanuit een trigger, dus er komt geen grant
@@ -200,7 +200,7 @@ $$;
 
 comment on function public.groepsgebeurtenissen_telt_mee(text) is
   'Of een groepsgebeurtenis meetelt in het dagplafond. Een nieuw type telt mee '
-  'tenzij het hier vrijgesteld wordt, met een reden. Zie 0216 en QS8-374.';
+  'tenzij het hier vrijgesteld wordt, met een reden. Zie 0217 en QS8-374.';
 
 revoke execute on function public.groepsgebeurtenissen_telt_mee(text)
   from public, anon, authenticated;
@@ -381,7 +381,7 @@ AS $function$
       --    hele reden dat deze grendel bestaat, en het is de derde keer dat hij
       --    zijn eigen register redt.
       ('app.rem_pushtokens',         array['rem_pushtokens']),
-      -- ⚠️ Uit 0216 (QS8-374). De zestiende dagteller, en de eerste op een
+      -- ⚠️ Uit 0217 (QS8-374). De zestiende dagteller, en de eerste op een
       --    tabel die niemand rechtstreeks beschrijft: `group_events` is bij
       --    alle zeven schrijvers een neveneffect.
       --
