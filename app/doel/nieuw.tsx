@@ -5,6 +5,7 @@ import { useProfiel, useSession } from '@/modules/auth';
 import {
   categorieKeuzegroepen,
   maakDoel,
+  naEenNieuwDoel,
   RITMES,
   ritmeLabels,
   ritmeUitleg,
@@ -86,7 +87,12 @@ export default function NieuwDoel() {
       return;
     }
 
-    router.replace(`/doel/${uitkomst.waarde.id}`);
+    // ⚠️ **Dezelfde bestemming als `/doel/plan`, en dat is de hele reden dat
+    //    `naEenNieuwDoel()` bestaat** (QS8-229). Ging dit scherm rechtstreeks
+    //    naar het doel, dan zou het van je vertrekpunt afhangen of je ooit
+    //    gevraagd wordt wie dit met je meemaakt — en een asymmetrie tussen
+    //    precies deze twee schermen was QS8-383.
+    router.replace(naEenNieuwDoel(uitkomst.waarde.id));
   }
 
   return (
