@@ -209,3 +209,91 @@ export function lokaleFunctiesIn(bron: string): string[] {
   }
   return [...namen].sort();
 }
+
+/**
+ * Elke regel in `bron` die een van `namen` als **los `await`-statement** aanroept.
+ *
+ * ⚠️ **`void` is niet de enige manier om een uitkomst weg te gooien** — QS8-350.
+ *    `await zetArchief(...)` op een eigen regel gooit hem net zo hard weg als
+ *    `void zetArchief(...)`, en de vorige versie van deze zeef kende alleen de
+ *    tweede vorm. 📏 Op 08-09-2026 stonden er acht kale `await`-statements in
+ *    `app/`, waarvan twee een uitkomst weggooiden die de gebruiker had moeten
+ *    zien.
+ *
+ * ⚠️ **De grens loopt bij het téken vóór de `await`, en niet bij de regel.** Een
+ *    `await` is alleen weggegooid als hij een statement begint, en dat is precies
+ *    dan zo als het laatste teken ervoor `;`, `{` of `}` is (of er niets staat).
+ *    `const x = await f()`, `return await f()`, `if (await f())` en een `await`
+ *    die na een regeleinde achter een `=` staat, eindigen alle vier op een ánder
+ *    teken en zijn geen weggooiers. Een controle die die meldt, leer je uitzetten
+ *    — en dat is bij deze grendel de duurste faalvorm.
+ */
+export function awaitTreffersIn(bron: string, namen: readonly string[]): string[] {
+  const schoon = zonderCommentaar(bron);
+  const uit: string[] = [];
+
+  for (const m of schoon.matchAll(/await\s+(\w+)\s*\(/g)) {
+    const naam = m[1] as string;
+    if (!namen.includes(naam)) continue;
+
+    const voor = schoon.slice(0, m.index);
+    const laatste = voor.trimEnd().at(-1) ?? '';
+    if (laatste !== '' && laatste !== ';' && laatste !== '{' && laatste !== '}') continue;
+
+    // ⚠️ Het regelnummer komt uit de **ongetrimde** prefix. `trimEnd()` haalt bij
+    //    een ingesprongen regel ook het regeleinde ervóór weg, en dan wijst de
+    //    melding een regel te hoog — precies de vorm die iemand naar het
+    //    verkeerde stuk code stuurt.
+    uit.push(`${voor.split('\n').length} — await ${naam}()`);
+  }
+  return uit;
+}
+
+/** Een functie die zijn uitkomst mag weggooien, met de reden die dat draagt. */
+export interface OptioneleUitkomst {
+  /** De naam van de functie eronder, of `''` als de markering er geen aanwijst. */
+  readonly naam: string;
+  /** Alles wat er in het documentatieblok achter de markering staat. */
+  readonly reden: string;
+}
+
+/**
+ * Elke functie in `bron` die met `@uitkomst-optioneel` van de grendel vrijgesteld is.
+ *
+ * ⚠️ **Waarom de vrijstelling op de declaratie staat en niet op de aanroep** —
+ *    QS8-350. `werkJobAf()` mag zijn uitkomst verliezen omdat `kijk()` de stand
+ *    uit de job zelf leest; dat is een eigenschap van de functie en niet van de
+ *    vier plekken waar hij staat. Een uitzondering per aanroep zou vier keer
+ *    dezelfde reden zijn, en de vijfde zou hem overschrijven zonder dat iemand
+ *    het las.
+ *
+ * ⚠️ **Een markering zónder reden telt niet als reden.** Daarom komt de tekst
+ *    achter de tag hier mee terug: de grendel hiernaast wijst een lege af. En de
+ *    lijst zelf staat als literal in die test, zodat er geen vrijstelling bij
+ *    kan komen zonder dat er een test rood wordt — dat is het verschil met een
+ *    allowlist die stilletjes groeit.
+ *
+ * ⚠️ Leest met opzet de **rúwe** bron: de markering staat in commentaar, en dat
+ *    is precies wat `zonderCommentaar()` weghaalt.
+ */
+export function optioneleUitkomstenIn(bron: string): OptioneleUitkomst[] {
+  const TAG = '@uitkomst-optioneel';
+  const uit: OptioneleUitkomst[] = [];
+
+  for (const m of bron.matchAll(/@uitkomst-optioneel/g)) {
+    const na = bron.slice((m.index ?? 0) + TAG.length);
+    const eind = na.indexOf('*/');
+    if (eind === -1) continue;
+
+    const reden = na
+      .slice(0, eind)
+      .split('\n')
+      .map((regel) => regel.replace(/^\s*\*?/, '').trim())
+      .join(' ')
+      .trim();
+
+    const eronder = /^\s*export\s+async\s+function\s+(\w+)/.exec(na.slice(eind + 2));
+    uit.push({ naam: eronder?.[1] ?? '', reden });
+  }
+  return uit;
+}

@@ -323,6 +323,39 @@ Voordat er één feature gebouwd wordt:
     week kost een minpunt, meer niet. De begunstigde groep krijgt pas leesrecht op het
     commitment op het moment dat het verschuldigd wordt.
 
+    ⚠️ **Eén benoemde verruiming, en die hangt aan een handeling en niet aan een
+    stand (QS8-370, 09-09-2026, migratie 0218).** Vraag je je groep om je
+    streefdatum te verschuiven, dan weet **díé** groep dát er een straf op dat
+    doel staat — vanaf `set`, en ook nadat er beslist is. De reden is de
+    spiegelzijde van domeinregel 5: `beslis_deadline_verzoek()` mag een straf
+    vooruit schuiven (dat is de route die 0184 met zoveel woorden openlaat), en
+    dan mag het akkoord niet blind zijn. Een commitment device gaat nooit
+    stilzwijgend aan, en dus ook nooit stilzwijgend losser.
+
+    ⚠️⚠️ **De verruiming is "dát" en niet "wat", en dat verschil is een RPC en
+    geen policy.** `straffen_bij_uitstelverzoek()` geeft één kolom terug:
+    `goal_id`. De tekst van de straf, de foto en de aangewezen getuige gaan niet
+    mee, en de stand ook niet. Een vierde tak op `commitments_select` gaf dat
+    alles wél weg — **RLS kan geen kolommen beperken** — en gaf bovendien de
+    stand `due` weg aan een groep die de begunstigde niet is, en `due` betekent
+    "de streefdatum niet gehaald". Dat is precies het schaamtemoment waar
+    domeinregel 7 voor bestaat. Zelfde vorm en zelfde reden als
+    `getuigenissen()` (0169). Wil je de tekst zélf ooit delen, dan is dat een
+    eigen besluit onder grens 1 en niet iets dat een policy erbij geeft.
+
+    ⚠️ **Wat die verruiming verder níet is.** Geen verruiming van
+    `commitment_zichtbaar_voor_groep()` — die lijst gaat over de **begunstigde**
+    groep en blijft `unlocked, due, resolved`. Geen oppervlak dat op
+    `groups.zichtbaarheid` varieert: een beschermde groep die gevraagd wordt,
+    weet het óók. Geen oppervlak dat je overkomt: de eigenaar leest vóór de
+    verzendknop wat er opengaat en wat niet. En geen oppervlak zonder randen —
+    een ingetrokken verzoek telt niet, een ingetrokken straf ook niet,
+    ontkoppelen trekt de toestemming in (en sluit dan óók de goedkeurknop, niet
+    alleen de waarschuwing), en de bit leeft nooit langer dan het doel waar hij
+    over gaat. Onderbouwing in
+    `docs/decisions/2026-09-08-de-groepsroute-is-geen-uitweg.md`, rij 31 in
+    `docs/decisions/002-domeinregel7-oppervlakken.md`.
+
 ## Emoji — vastgelegd 22-08-2026 (QS8-111)
 
 **De app zelf gebruikt geen emoji in tekst.** Niet in knoppen, statuslabels,
@@ -521,6 +554,15 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    zonder kapot onderdeel, en dus de variant die geen enkele test vindt. Vraag bij
    een feature die "klaar" heet: kan een gebruiker hier daadwerkelijk bij, en langs
    welke knop?
+
+   ⚠️ **Voor schermen is dit sinds 09-09-2026 een controle** (QS8-383):
+   `npm run schermingang:controle` wordt rood zodra een route in `app/` nergens
+   vandaan geopend wordt. Aanleiding is dat `/doel/plan` — de kérn van een
+   Urgent epic — af en gemerged in de codebase lag terwijl beide knoppen nog naar
+   het formulier wezen dat dat epic juist wilde wegnemen. `keten:controle` dekt
+   deze klasse niet: die kijkt naar databasefuncties zonder aanroeper, één laag
+   lager. Een route die er met reden geen ingang heeft, staat met zijn meting in
+   `ZONDER_PUSH` in dat script — en dat register is smal bedoeld.
 6. **Tilt deze feature een aanname van "er is er altijd precies één" naar "er
    kunnen er meer zijn"?** Dan staat de fout er waarschijnlijk al en heeft niemand
    hem kunnen zien — er is dan geen test die de belofte kón raken. Grep op `[0]`,
@@ -625,6 +667,19 @@ fetch. **Een gereedschap dat bestaat om een botsing te voorkomen, mag zijn
 juistheid niet laten afhangen van een handeling die het zelf niet doet** — dan is
 de waarschuwing een disclaimer en verplaats je het probleem naar de lezer.
 
+⚠️⚠️ **Wat die branches bepalen is sinds 08-09-2026 de wáárschuwing en niet het
+nummer** (QS8-365). Het nummer sluit aan op je eigen map; deed het dat niet, dan
+staat er een gat, en CI ziet de branch die dat gat vult niet — `actions/checkout@v4`
+haalt één branch op. 📏 Drie keer op één dag gaf de tool een nummer dat CI
+weigerde, en drie keer is dat met de hand teruggezet. **Het gat is erger dan de
+botsing:** een gat is onverwerkt (CI meteen rood, de map bouwt het schema niet op),
+een botsing is verwerkt — wie als tweede merget, hernummert. Uitleg in
+`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
+
+Er komen drie signalen uit, en ze vragen om verschillende handelingen: het nummer,
+de branches die datzelfde nummer dragen (een afspraak, geen fout), en — apart, want
+dit is de énige echte fout — dat `origin/main` vóórloopt en je moet pullen.
+
 De grens loopt tussen twee soorten scripts, en die is er een om aan te houden:
 
 | Soort | Fetcht | Waarom |
@@ -651,6 +706,25 @@ neemt de verwijzingen mee; de kale die hij niet aanraakt print hij, en die lees
 je stuk voor stuk — een blinde `sed` heeft daar al eens de dossierrij van een
 ánder issue mee overschreven.
 
+⚠️⚠️ **Na élke merge: `npm run hoofdrun:stand`.** Het venster van QS8-318 geldt
+niet alleen voor migratienummers — het geldt voor álles wat een eigenschap van
+het gehéél toetst. 📏 Op 09-09-2026 landden twee PR's twee minuten na elkaar: de
+ene voegde een kale `await` toe, de andere liet de grendel juist die vorm
+herkennen. Allebei terecht groen, samen rood, en `main` stond vijfentwintig
+minuten rood.
+
+Detectie was er al en was gratis — CI meldde het om 11:51. Wat ontbrak was dat
+iemand keek. **Rood op `main` is werk nu, en het is van wie als laatste merde**,
+dezelfde afspraak als bij een migratienummer. Draait de run nog, dan ben je niet
+klaar: het commando zegt dat, en je draait hem zo nog eens.
+
+⚠️ Wat dit *niet* is: preventie. Vóór het mergen nog eens verifiëren versmalt het
+venster maar sluit het niet — op dit geval had het verloren, want er zat één
+minuut tussen de twee merges. De enige echte grendel is GitHub's *"Require
+branches to be up to date"*, en die is een dashboardinstelling met serialisatie
+als prijs; de afweging staat in
+`docs/decisions/2026-09-09-twee-groene-prs-samen-rood.md`.
+
 ⚠️ **Een run op `main` wordt nooit afgebroken**, en dat is de andere helft van
 diezelfde reparatie. `cancel-in-progress` geldt op elke branch behalve `main`:
 daar is elke commit een toestand die uitgerold wordt, en een afgebroken run laat
@@ -660,6 +734,22 @@ bewaakt dat. Uitleg in `docs/decisions/2026-09-07-de-uitslag-die-er-niet-was.md`
 ⚠️ Beide kanten staan onder test in `tests/scripts/migratie-fetch.test.ts`, met
 een echte remote op schijf — niet met een zelfgevoerd object, want dan is "klopt
 dat object" niet te stellen. Vraag 3 in zijn zuiverste vorm.
+
+⚠️⚠️ **Een register in een functielichaam botst op precies dezelfde manier, en
+git ziet dáár geen conflict.** Twee migraties die allebei
+`create or replace function public.f()` doen staan in verschillende bestanden, dus
+de merge is schoon; de hoogste nummer wint en het register van de ander verdwijnt
+zonder een woord. 📏 Op 08-09-2026 verloor `sleutelzetters()` zo bijna drie
+sleutels (QS8-358). **Breid je een register uit, ververs dan eerst je beeld van
+`main` en kopieer het lichaam van dáár** — en `registerdrift:controle` wordt rood
+zodra een herdefinitie een rij laat vallen die er niet bewust uit gehaald is.
+
+Het register blijft met opzet in het functielichaam en verhuist niet naar een
+tabel: daar zou het uitbreiden een `insert` worden en dus conflictvrij, maar een
+register in een tabel is niet meer in één blik naast de code te lezen, vraagt RLS
+en een grant, en kan léég raken zonder dat iemand het merkt. `sleutelzetters()`
+faalt vandaag dicht — een onbekende sleutel wordt gemeld — en dat is de
+eigenschap die het zwaarst weegt.
 
 ## Beslisbevoegdheid — vastgelegd 22-08-2026
 

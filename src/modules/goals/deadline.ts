@@ -109,7 +109,7 @@ export async function vraagDeadlineVerschuiving(
   });
 
   if (error) {
-    reportError(error, 'deadline.request', { goal_id: goalId, code: error.code });
+    reportError(error, 'deadline.request', { goal_id: goalId });
     return { ok: false, melding: t('deadline.versturen_mislukt') };
   }
 
@@ -147,7 +147,7 @@ export async function beslisDeadlineVerzoek(
   });
 
   if (error) {
-    reportError(error, 'deadline.decide', { request_id: verzoekId, code: error.code });
+    reportError(error, 'deadline.decide', { request_id: verzoekId });
     return { ok: false, melding: t('deadline.beslissen_mislukt') };
   }
 
@@ -174,7 +174,7 @@ export async function trekDeadlineVerzoekIn(verzoekId: string): Promise<Resultaa
   });
 
   if (error) {
-    reportError(error, 'deadline.withdraw', { request_id: verzoekId, code: error.code });
+    reportError(error, 'deadline.withdraw', { request_id: verzoekId });
     return { ok: false, melding: t('deadline.intrekken_mislukt') };
   }
 
@@ -222,7 +222,7 @@ export async function fetchOpenVerzoek(goalId: string): Promise<DeadlineVerzoek 
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'deadline.open', { goal_id: goalId, code: error.code });
+    reportError(error, 'deadline.open', { goal_id: goalId });
     throw new Error(t('deadline.lopend_laden'));
   }
 
@@ -253,7 +253,7 @@ export async function fetchLaatsteBesluit(goalId: string): Promise<DeadlineVerzo
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'deadline.last', { goal_id: goalId, code: error.code });
+    reportError(error, 'deadline.last', { goal_id: goalId });
     // Geen harde fout: dit is een extraatje op het scherm en geen kernfunctie.
     return null;
   }
@@ -284,7 +284,7 @@ export async function fetchOpenVerzoekenVoorGroep(
     .limit(VERZOEKEN_PER_PAGINA);
 
   if (error) {
-    reportError(error, 'deadline.queue', { group_id: groupId, code: error.code });
+    reportError(error, 'deadline.queue', { group_id: groupId });
     throw new Error(t('deadline.verzoeken_laden'));
   }
 

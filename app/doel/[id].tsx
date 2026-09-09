@@ -13,7 +13,7 @@ import {
   stuurBericht,
   zichtbaarheidLabels,
   type DoelGroep,
-  type Groep,
+  type Lijstgroep,
   type Resultaat,
 } from '@/modules/buddies';
 import {
@@ -25,6 +25,7 @@ import {
   spoorLabels,
   tekstVoor,
   trekIn,
+  wordtZichtbaarBijUitstelverzoek,
   zetBeloning,
   zetStraf,
   type Commitment,
@@ -152,7 +153,8 @@ export default function DoelDetail() {
 
   const [doel, setDoel] = useState<DoelMetVoortgang | null>(null);
   const [commitments, setCommitments] = useState<readonly Commitment[]>([]);
-  const [groepen, setGroepen] = useState<readonly Groep[]>([]);
+  // ⚠️ `Lijstgroep`: wat `fetchMijnGroepen()` écht oplevert (QS8-387).
+  const [groepen, setGroepen] = useState<readonly Lijstgroep[]>([]);
   const [doelGroepen, setDoelGroepen] = useState<readonly DoelGroep[]>([]);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
@@ -279,6 +281,15 @@ export default function DoelDetail() {
                 groepen={doelGroepen}
                 verzoek={verzoek}
                 besluit={besluit}
+                /*
+                  ⚠️ **Elke straf telt, ook een ingetrokken** — en dat is met
+                     opzet ruimer dan de `heeftStraf` van `Herplannen`
+                     hieronder. `straffen_bij_uitstelverzoek()` (0218) kent geen
+                     statuslijst, dus zodra dit verzoek bestaat weet de groep van
+                     élke straf op dit doel. Een waarschuwing die smaller is dan
+                     het oppervlak dat hij aankondigt, is geen waarschuwing.
+                */
+                heeftStraf={commitments.some(wordtZichtbaarBijUitstelverzoek)}
                 onKlaar={herlaad}
               />
             ) : null}
@@ -383,6 +394,7 @@ function DeadlineVerzetten({
   groepen,
   verzoek,
   besluit,
+  heeftStraf,
   onKlaar,
 }: {
   readonly doel: DoelMetVoortgang;
@@ -392,6 +404,8 @@ function DeadlineVerzetten({
   readonly groepen: readonly DoelGroep[];
   readonly verzoek: DeadlineVerzoek | null;
   readonly besluit: DeadlineVerzoek | null;
+  /** Staat er een straf op dit doel? Bepaalt de waarschuwing hieronder (QS8-370). */
+  readonly heeftStraf: boolean;
   readonly onKlaar: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -600,6 +614,30 @@ function DeadlineVerzetten({
               ? t('deadline.nog_tekens', { aantal: ARGUMENT_MIN - telTekens(argument.trim()) })
               : t('deadline.lang_genoeg')}
           </Caption>
+          {/*
+            ⚠️ **Vóór de verzendknop en niet erna** — QS8-370. Dit verzoek opent
+               een oppervlak: vanaf het moment dat het bestaat, weet de groep dát
+               er een straf op dit doel staat (migratie 0218,
+               `straffen_bij_uitstelverzoek()`). Dat is zelf een consequentie, en
+               domeinregel 5 verbiedt een stilzwijgende. Je hoort het dus te weten
+               vóórdat je verstuurt, niet erna.
+
+               ⚠️ **De tekst zegt allebei de helften, en dat is geen omhaal.** Wat
+                  er opengaat is het bestáán van de straf; wat erin staat gaat
+                  niet mee. De eerste versie van dit oppervlak gaf de `body`, de
+                  `image_url` en het id van de getuige weg, omdat het een policy
+                  was en RLS geen kolommen kan beperken. Een waarschuwing die
+                  meer belooft dicht te houden dan de database dichthoudt, is
+                  erger dan geen waarschuwing — dus als iemand dit oppervlak ooit
+                  verruimt, hoort deze zin mee te veranderen.
+
+               ⚠️ Het oppervlak sluit weer zodra je het doel niet meer met die
+                  groep deelt: ontkoppelen trekt de toestemming in
+                  (beslisdocument 002). Zolang je het wél deelt, blijft het open,
+                  ook nadat er beslist is — anders raakt de beslisser het zicht
+                  kwijt op wat hij heeft toegestaan.
+          */}
+          {heeftStraf ? <Body>{t('deadline.straf_wordt_zichtbaar')}</Body> : null}
         </>
       ) : null}
 
@@ -730,7 +768,7 @@ function GedeeldMet({
 }: {
   readonly goalId: string;
   readonly gekoppeld: readonly DoelGroep[];
-  readonly mijnGroepen: readonly Groep[];
+  readonly mijnGroepen: readonly Lijstgroep[];
   readonly onKlaar: () => void;
 }) {
   const [bezig, setBezig] = useState<string | null>(null);
@@ -850,7 +888,7 @@ function Straf({
   onKlaar,
 }: {
   readonly goalId: string;
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   readonly bestaand: Commitment | undefined;
   readonly streefdatumVoorbij: boolean;
   readonly onKlaar: () => void;
@@ -1169,12 +1207,28 @@ function Archiveren({
   readonly onKlaar: () => void;
 }) {
   const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
   const gearchiveerd = doel.status === 'archived';
 
+  // ⚠️ **De uitkomst werd hier weggegooid — QS8-350.** Mislukte het archiveren,
+  //    dan stopte de spinner, ververste het scherm, stond het doel onveranderd en
+  //    volgde er geen woord uitleg. `zetArchief()` bóuwde de melding netjes op;
+  //    hij bereikte alleen niemand. Dezelfde vorm als `void signOut()` in QS8-245,
+  //    maar dan met een kaal `await` in plaats van een `void` — en dat is precies
+  //    de vorm die de grendel toen niet kende.
   async function schakel() {
     setBezig(true);
-    await zetArchief(doel.id, userId, !gearchiveerd);
+    setFout(null);
+
+    const uitkomst = await zetArchief(doel.id, userId, !gearchiveerd);
+
     setBezig(false);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
     onKlaar();
   }
 
@@ -1182,6 +1236,7 @@ function Archiveren({
     <Card nested>
       <Subheading>{gearchiveerd ? t('archief.terughalen_kop') : t('archief.kop')}</Subheading>
       <Body muted>{gearchiveerd ? t('archief.terughalen_uitleg') : t('archief.uitleg')}</Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
       <Button busy={bezig} onPress={() => void schakel()}>
         {gearchiveerd ? t('archief.terughalen') : t('archief.archiveren')}
       </Button>

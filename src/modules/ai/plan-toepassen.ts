@@ -121,7 +121,7 @@ async function schrijfMijlpalen(goalId: string, rijen: PlanRijen): Promise<reado
     .select('id, order_index');
 
   if (error !== null || data === null) {
-    reportError(error, 'plan.milestones', { goal_id: goalId, code: error?.code });
+    reportError(error, 'plan.milestones', { goal_id: goalId });
     return [];
   }
 

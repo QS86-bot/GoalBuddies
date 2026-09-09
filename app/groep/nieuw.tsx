@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import {
   huddledagen,
+  koppelDoelAanGroep,
   maakGroep,
   ZICHTBAARHEDEN,
   zichtbaarheidLabels,
@@ -38,6 +39,12 @@ import {
 export default function NieuweGroep() {
   const router = useRouter();
   const terug = useTerug('/groep');
+  // ⚠️ Optioneel, en dat is het punt: dit scherm is er in de eerste plaats om
+  //    een groep te maken. Kom je hier uit de doelroute (QS8-229), dan reist het
+  //    doel mee zodat de gebruiker het niet op het volgende scherm nog eens moet
+  //    koppelen.
+  const { doel } = useLocalSearchParams<{ doel?: string }>();
+  const heeftDoel = typeof doel === 'string' && doel !== '';
 
   const [naam, setNaam] = useState('');
   const [huddledag, setHuddledag] = useState<Weekday>(0);
@@ -57,6 +64,28 @@ export default function NieuweGroep() {
     if (!uitkomst.ok) {
       setFout(uitkomst.melding);
       setBezig(false);
+      return;
+    }
+
+    // ⚠️ **Koppelen mag mislukken zonder dat de groep verdwijnt.** De groep
+    //    bestaat op dit punt; hem als niet-aangemaakt behandelen omdat een
+    //    tweede verzoek faalde, zou de gebruiker een groep laten maken die hij
+    //    daarna nergens ziet. Daarom gaat hij hoe dan ook door naar de
+    //    uitnodigingsstap.
+    //
+    // ⚠️⚠️ **Maar de uitkomst wordt wél gelezen, en dat is een reparatie**
+    //    (QS8-350/QS8-387). Hier stond `await koppelDoelAanGroep(…)` als kaal
+    //    statement, en een kaal await gooit het `Resultaat` net zo hard weg als
+    //    een `void`. Wat het kostte: bij een mislukte koppeling ging `?groep=`
+    //    tóch mee, en dan opende `/doel/samen` in de stand "gedeeld" over een
+    //    koppeling die niet bestond — precies het "succes dat er geen is" waar
+    //    `beginfase()` voor gebouwd is. Nu gaat de parameter alleen mee als er
+    //    echt gekoppeld is, en anders staat de koppelknop er gewoon weer.
+    if (heeftDoel) {
+      const gekoppeld = await koppelDoelAanGroep(doel, uitkomst.waarde.id);
+      const staart = gekoppeld.ok ? `&groep=${encodeURIComponent(uitkomst.waarde.id)}` : '';
+
+      router.replace(`/doel/samen?doel=${encodeURIComponent(doel)}${staart}`);
       return;
     }
 
@@ -103,6 +132,21 @@ export default function NieuweGroep() {
           onKies={setZichtbaarheid}
         />
         <Caption>{zichtbaarheidUitleg()[zichtbaarheid]}</Caption>
+
+        {/*
+          ⚠️ **Twee verschillende zinnen, en dat is geen doublure.**
+             `zichtbaarheidUitleg()` zegt wat de groepsstand betekent;
+             `koppel.uitleg_*` zegt wat kóppelen van dit doel deelt. Kom je hier
+             uit de doelroute (QS8-229), dan doet dit scherm dat koppelen zelf —
+             en een koppelknop die niet zegt wat hij deelt, is precies de
+             "stillere belofte" waar `deling.ts` voor waarschuwt. Hij staat vóór
+             de aanmaakknop, want daarna is de keuze gemaakt.
+        */}
+        {heeftDoel ? (
+          <Caption>
+            {zichtbaarheid === 'open' ? t('koppel.uitleg_open') : t('koppel.uitleg_beschermd')}
+          </Caption>
+        ) : null}
       </Card>
 
       <Card nested>

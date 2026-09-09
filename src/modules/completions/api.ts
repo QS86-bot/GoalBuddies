@@ -157,6 +157,9 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
   //    is hier niet te typeren — PostgREST kent de relatie wel, de generator
   //    niet — en dat zou een cast kosten op precies het veld dat bepaalt hoeveel
   //    bewijs iemand moet leveren.
+  // ⚠️ **Begrensd door de vraag erboven**: die draagt `.limit(20)`, dus deze
+  //    lijst is er hoogstens twintig (QS8-368). De klif op een GET ligt boven ~400
+  //    id's, in de `Content-Location`-responseheader; zie `shared/idlijst`.
   const { data, error } = await supabase()
     .from('groups')
     .select('evidence_policy')
@@ -216,7 +219,7 @@ export async function zetDagzet(
     .single();
 
   if (error) {
-    reportError(error, 'moves.create', { user_id: userId, code: error.code });
+    reportError(error, 'moves.create', { user_id: userId });
     return { ok: false, melding: t('voltooiing.opslaan_mislukt') };
   }
 
@@ -238,7 +241,7 @@ export async function fetchDagzetten(
     .limit(50);
 
   if (error) {
-    reportError(error, 'moves.list', { user_id: userId, code: error.code });
+    reportError(error, 'moves.list', { user_id: userId });
     throw new Error(t('voltooiing.dagzet_laden'));
   }
 

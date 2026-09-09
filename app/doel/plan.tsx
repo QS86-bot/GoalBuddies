@@ -12,7 +12,7 @@ import {
   type VoorstelPlan,
 } from '@/modules/ai';
 import { useProfiel, useSession, userClock } from '@/modules/auth';
-import { categorieLabels } from '@/modules/goals';
+import { categorieLabels, naEenNieuwDoel } from '@/modules/goals';
 import { opmaaktaal, t } from '@/shared/i18n';
 import { addDays, localDateIn, now, toonDatum, type Weekday } from '@/shared/time';
 import {
@@ -146,11 +146,13 @@ export default function PlanUitEenZin() {
       return;
     }
 
-    // ⚠️ **Naar het doel en niet naar het hoofdscherm bij een half plan.** Is er
-    //    iets niet geland, dan moet de gebruiker kunnen zien wát — een
-    //    hoofdscherm dat leger is dan wat hij net bevestigde, verklaart niets.
+    // ⚠️ **Naar het doel en niet naar de uitnodigingsstap bij een half plan.**
+    //    Is er iets niet geland, dan moet de gebruiker eerst kunnen zien wát —
+    //    om een buddy vragen bovenop een half plan is het verkeerde op het
+    //    verkeerde moment. `naEenNieuwDoel()` draagt die keuze sinds QS8-229, in
+    //    plaats van een ternary hier.
     const klacht = onvolledigMelding(uitkomst.waarde);
-    router.replace(klacht === null ? '/' : `/doel/${uitkomst.waarde.goalId}`);
+    router.replace(naEenNieuwDoel(uitkomst.waarde.goalId, klacht === null));
   }
 
   const magVragen = zin.trim().length >= 3 && datum.trim() !== '' && stand.fase !== 'bezig';

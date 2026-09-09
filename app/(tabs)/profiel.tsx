@@ -19,6 +19,7 @@ import {
   huidigeMeldingenstand,
   registreerPushToken,
   tijdVoorInvoer,
+  laatstePushWeigering,
   verwijderPushToken,
   zetMeldingenAan,
   zetMeldingenUit,
@@ -785,13 +786,23 @@ function HerinneringInstelling({
  *    op `denied` — alleen nog terug te draaien in de browserinstellingen. Eén
  *    ongevraagde prompt kost je het kanaal permanent.
  *
- * ⚠️ **Alleen op web.** Native wacht op `expo-notifications` (Q-TODO B4); een
- *    knop tonen die daar niets doet is erger dan geen knop.
+ * ⚠️ **Alleen op web**, en de reden is sinds QS8-366 een andere dan hier stond.
+ *    Niet `expo-notifications` — die staat er sinds Q-TODO B4 en `_layout` plugt
+ *    op native `expoPush` in. Wat native mist is de tóestemmingsknop: `expoPush`
+ *    vraagt zelf om toestemming bij het ophalen van een token, dus een tweede
+ *    knop hier zou hetzelfde twee keer doen. Deze knop hoort bij web push, waar
+ *    de toestemming per RFC uit een echte klik moet komen.
  */
 function Meldingen({ userId }: { readonly userId: string }) {
   const sleutel = clientEnv().vapidPublicKey;
   const [stand, setStand] = useState<Meldingenstand>(() => huidigeMeldingenstand(sleutel));
   const [bezig, setBezig] = useState(false);
+  // ⚠️ **De stille kant van QS8-377.** `Pushwacht` registreert bij elke start
+  //    opnieuw en heeft geen scherm om iets op te tonen; een melding bij elke
+  //    start zou erger zijn dan geen. Mislukte die registratie, dan onthoudt de
+  //    datalaag de reden en leest hij hier mee — dit is de plek waar iemand
+  //    kijkt als hij zich afvraagt waarom hij niets binnenkrijgt.
+  const stilleWeigering = laatstePushWeigering();
   const [fout, setFout] = useState<string | null>(null);
   const [melding, setMelding] = useState<string | null>(null);
 
@@ -805,8 +816,19 @@ function Meldingen({ userId }: { readonly userId: string }) {
     if (uitkomst.ok) {
       // Pas hierna registreren: nu bestaat het abonnement en heeft
       // `haalToken()` iets te lezen.
-      await registreerPushToken(userId);
-      setStand('aan');
+      //
+      // ⚠️⚠️ **Hier stond `await registreerPushToken(userId); setStand('aan');`,
+      //    en dat tweede gebeurde ongeacht de uitkomst** (QS8-377). Het
+      //    abonnement in de browser bestond dan wel, maar zonder geregistreerd
+      //    token krijgt de gebruiker niets — en het scherm zei "meldingen staan
+      //    aan". Dat is de ergste vorm van een ontbrekende error-staat: hij
+      //    liegt in plaats van te zwijgen.
+      const geregistreerd = await registreerPushToken(userId);
+      if (geregistreerd.ok) {
+        setStand('aan');
+      } else {
+        setFout(geregistreerd.melding);
+      }
     } else if (uitkomst.reden === 'mislukt') {
       setFout(t('profiel.meldingen_mislukt'));
     } else {
@@ -854,7 +876,12 @@ function Meldingen({ userId }: { readonly userId: string }) {
         </Button>
       ) : null}
       {melding === null ? null : <Caption muted={false}>{melding}</Caption>}
-      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      {/* ⚠️ De verse fout wint van de onthouden weigering: wie net op de knop
+          drukte, hoort te lezen wat er nét gebeurde en niet wat er bij het
+          opstarten misging. */}
+      {(fout ?? stilleWeigering) === null ? null : (
+        <Caption danger>{fout ?? stilleWeigering}</Caption>
+      )}
       <Beginschermuitleg />
     </Card>
   );

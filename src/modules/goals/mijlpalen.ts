@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { mijlpaalSchema, type MijlpaalInvoer, type MijlpaalStatus } from './mijlpaal-schemas';
 import type { Mijlpaal, Resultaat } from './weekly';
 import { invoerfout } from '../../shared/api';
+import { IDS_PER_VERZOEK } from '../../shared/idlijst';
 
 /**
  * Mijlpalen met de hand beheren — QS8-39, migratie 0049.
@@ -45,7 +46,7 @@ export async function maakMijlpaal(
     .maybeSingle();
 
   if (leesFout) {
-    reportError(leesFout, 'milestones.next', { goal_id: goalId, code: leesFout.code });
+    reportError(leesFout, 'milestones.next', { goal_id: goalId });
     return { ok: false, melding: t('mijlpaal.toevoegen_mislukt') };
   }
 
@@ -65,7 +66,7 @@ export async function maakMijlpaal(
     .single();
 
   if (error) {
-    reportError(error, 'milestones.create', { goal_id: goalId, code: error.code });
+    reportError(error, 'milestones.create', { goal_id: goalId });
     return { ok: false, melding: t('mijlpaal.toevoegen_mislukt') };
   }
 
@@ -92,7 +93,7 @@ export async function wijzigMijlpaal(
     .eq('id', id);
 
   if (error) {
-    reportError(error, 'milestones.update', { code: error.code });
+    reportError(error, 'milestones.update');
     return { ok: false, melding: t('mijlpaal.wijzigen_mislukt') };
   }
 
@@ -127,7 +128,7 @@ export async function zetMijlpaalStatus(
   const { error } = await supabase().from('milestones').update({ status }).eq('id', id);
 
   if (error) {
-    reportError(error, 'milestones.status', { code: error.code, name: status });
+    reportError(error, 'milestones.status', {  name: status });
     return { ok: false, melding: t('mijlpaal.status_mislukt') };
   }
 
@@ -146,7 +147,7 @@ export async function verwijderMijlpaal(id: string): Promise<Resultaat<true>> {
   const { error } = await supabase().from('milestones').delete().eq('id', id);
 
   if (error) {
-    reportError(error, 'milestones.delete', { code: error.code });
+    reportError(error, 'milestones.delete');
     return { ok: false, melding: t('mijlpaal.verwijderen_mislukt') };
   }
 
@@ -175,7 +176,7 @@ export async function herordenMijlpalen(
   });
 
   if (error) {
-    reportError(error, 'milestones.reorder', { goal_id: goalId, code: error.code });
+    reportError(error, 'milestones.reorder', { goal_id: goalId });
     return { ok: false, melding: t('mijlpaal.volgorde_mislukt') };
   }
 
@@ -229,13 +230,18 @@ export async function fetchMijlpaalTips(
 ): Promise<ReadonlyMap<string, Mijlpaaltip>> {
   if (milestoneIds.length === 0) return new Map();
 
+  // ⚠️ **Begrensd door de aanroeper, en dat is nagemeten** (QS8-368). Deze
+  //    lijst komt uit `fetchVolgendeMijlpalen()` hieronder, en die draagt
+  //    `.limit(200)`. Boven ~400 id's valt een GET om op de 16 KB-klif in de
+  //    `Content-Location`-responseheader; zie `shared/idlijst`. Verdwijnt die
+  //    limiet daar, dan hóórt hier een `brokken()`-lus te komen.
   const { data, error } = await supabase()
     .from('milestone_tips')
     .select('milestone_id, body, locale')
     .in('milestone_id', [...milestoneIds]);
 
   if (error) {
-    reportError(error, 'goals.milestoneTips', { code: error.code });
+    reportError(error, 'goals.milestoneTips');
     return new Map();
   }
 
@@ -253,18 +259,33 @@ export async function fetchMijlpaalTips(
 export async function fetchVolgendeMijlpalen(
   goalIds: readonly string[],
 ): Promise<ReadonlyMap<string, Mijlpaal>> {
-  if (goalIds.length === 0) return new Map();
+  // ⚠️⚠️ **De grens staat hier en niet bij de aanroeper, en dat is een correctie
+  //    uit de security-review op QS8-368.** Hij stond eerst als aantekening: de
+  //    enige aanroeper is `app/(tabs)/index.tsx`, die voedt de doelen met een
+  //    goedgekeurde week uit `fetchWeekdoelen()`, en die draagt `.limit(100)`.
+  //    Dat klopt en het is geen grens: deze functie is publiek geëxporteerd
+  //    (`modules/goals/index.ts`), en een tweede scherm dat hem voedt — `doelen.tsx`
+  //    stápelt zijn pagina's tot 420 id's — breekt hem stilzwijgend. 📏 De klif
+  //    ligt ergens boven de 400 en schuift met de `select`; zie `shared/idlijst`.
+  //
+  // ⚠️ Afkappen en niet hakken, anders dan bij `fetchRisicos()`. De `.limit(200)`
+  //    hieronder begrenst de rijen sowieso al, dus meer dan 200 doelen meesturen
+  //    kan per definitie niet meer opleveren — hakken zou hier extra verzoeken
+  //    kosten voor rijen die de limiet toch niet haalt. Vandaag bijt dit niet:
+  //    de enige aanroeper stuurt er hoogstens honderd.
+  const uniek = [...new Set(goalIds)].slice(0, IDS_PER_VERZOEK);
+  if (uniek.length === 0) return new Map();
 
   const { data, error } = await supabase()
     .from('milestones')
     .select('id, title, status, order_index, target_date, description, goal_id')
-    .in('goal_id', [...goalIds])
+    .in('goal_id', uniek)
     .neq('status', 'dropped')
     .order('order_index', { ascending: true })
     .limit(200);
 
   if (error) {
-    reportError(error, 'goals.volgendeMijlpalen', { code: error.code });
+    reportError(error, 'goals.volgendeMijlpalen');
     return new Map();
   }
 
