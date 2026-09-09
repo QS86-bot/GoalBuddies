@@ -403,7 +403,7 @@ noemt.
 ## 2.6a Storage — vier regels bij de eerste bucket
 
 Sinds migratie `0126` heeft dit project een bucket **`avatars`** (privé, 2 MB,
-`image/jpeg|png|webp`), en sinds `0221` een tweede: **`chatfotos`** (privé, 1 MB,
+`image/jpeg|png|webp`), en sinds `0222` een tweede: **`chatfotos`** (privé, 1 MB,
 dezelfde drie types). Wat bij de eerste geldt, geldt bij elke volgende.
 
 1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
@@ -436,7 +436,7 @@ het raakt het hele AVG-verwijderpad:
 
 - **een bericht verwijderen** ruimt het bestand wél op — `verwijderBericht()`
   roept de Storage-API aan, na de rij;
-- **een account verwijderen** ruimt de metadata-rijen op (migratie `0223`), maar
+- **een account verwijderen** ruimt de metadata-rijen op (migratie `0224`), maar
   de blobs blijven staan;
 - **een groep verwijderen** laat de objecten volledig als wees achter: de cascade
   raakt alleen `chat_messages`.

@@ -1,8 +1,8 @@
--- 0225_een_plafond_per_lid_naast_dat_van_de_groep.sql — een tweede, lagere teller
+-- 0226_een_plafond_per_lid_naast_dat_van_de_groep.sql — een tweede, lagere teller
 -- per uploader, zodat één lid de foto's van de hele groep niet kan stilleggen.
 --
 -- ROLLBACK-PAD:
---   `bewaak_chatfoto_aantal()` terug in de vorm van 0221 (dat bestand is
+--   `bewaak_chatfoto_aantal()` terug in de vorm van 0222 (dat bestand is
 --   idempotent en zet de functie opnieuw neer). ⚠️ Daarmee komt ook de
 --   asymmetrie hieronder terug.
 --
@@ -12,7 +12,7 @@
 --
 -- Uit de securityronde op QS8-71.
 --
--- 0221 zette één teller neer: twintig foto's per **groep** per etmaal. Dat houdt
+-- 0222 zette één teller neer: twintig foto's per **groep** per etmaal. Dat houdt
 -- de opslag in toom, maar het legt de rem bij de verkeerde partij. Twintig
 -- uploads van één lid blokkeren álle andere leden voor een etmaal, en die krijgen
 -- `chatfoto.uploaden_mislukt` te zien — "probeer het zo nog eens", niet te
@@ -31,7 +31,7 @@
 --    bij gelijke waarden loopt een groep van twee leden nog steeds tegen de
 --    groepsgrens aan door één iemand.
 --
--- ⚠️ De index van 0221 draagt deze telling al — hij staat op
+-- ⚠️ De index van 0222 draagt deze telling al — hij staat op
 --    `((storage.foldername(name))[1], created_at)`, en het tweede segment komt uit
 --    dezelfde rijen.
 

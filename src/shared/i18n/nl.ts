@@ -1246,7 +1246,7 @@ export const nl = {
   'chat.leeg': 'Er staat nog niets in je bericht.',
 
   // ⚠️ Foto's in de chat — QS8-71. De grenzen hieronder zijn een kopie van de
-  //    bucket uit migratie 0221; de bucket is de grendel, deze zinnen zijn het
+  //    bucket uit migratie 0222; de bucket is de grendel, deze zinnen zijn het
   //    gemak. Noem het getal, niet "te groot": iemand die niet weet hoeveel te
   //    veel is, probeert het dezelfde foto nog een keer.
   'chatfoto.knop': 'Foto toevoegen',
@@ -1258,6 +1258,7 @@ export const nl = {
   'chatfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
   'chatfoto.niet_beschikbaar': 'Deze foto is niet meer beschikbaar.',
   'chatfoto.laden': 'Foto laden',
+  'chatfoto.beeld': 'Foto in dit gesprek',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
   'chat.rem_bereikt':
     'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',

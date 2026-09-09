@@ -1,4 +1,4 @@
--- 0221_een_foto_hoort_bij_een_groep.sql — een privébucket voor chatfoto's, waarvan
+-- 0222_een_foto_hoort_bij_een_groep.sql — een privébucket voor chatfoto's, waarvan
 -- het pad de groep draagt en niet de gebruiker.
 --
 -- ROLLBACK-PAD:

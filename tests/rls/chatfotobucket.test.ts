@@ -1,5 +1,5 @@
 /**
- * De chatfoto-bucket en de kolomgrens — migraties 0221 en 0222.
+ * De chatfoto-bucket en de kolomgrens — migraties 0222 en 0223.
  *
  * ⚠️⚠️ **De belofte is niet "de policy staat er". Die is: een foto verlaat zijn
  *    groep niet** — ook niet met één verzoek buiten de UI om. Dat is de tweede
@@ -63,7 +63,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)', () => {
+describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)', () => {
   const alice = randomUUID();
   const bob = randomUUID();
   const carol = randomUUID();
@@ -84,7 +84,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
 
   /**
    * Genoeg verschillende uploaders om het **groeps**plafond te kunnen raken
-   * zonder eerst tegen het **lid**plafond van 0225 te lopen.
+   * zonder eerst tegen het **lid**plafond van 0226 te lopen.
    *
    * ⚠️ Het zijn geen echte accounts, en dat hoeft ook niet: de teller leest het
    *    tweede padsegment, en deze rijen worden door de tabeleigenaar geplaatst.
@@ -272,7 +272,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
     //    plafond dan tijdens het klaarzetten aan, en dan valt de test om vóór
     //    zijn eigen bewering. Een teller toets je in een groep waarvan je het
     //    aantal kent.
-    // ⚠️⚠️ **Gespreid over uploaders, en dat is geen opsmuk.** Sinds 0225 is er
+    // ⚠️⚠️ **Gespreid over uploaders, en dat is geen opsmuk.** Sinds 0226 is er
     //    óók een plafond per lid (8), en twintig foto's van één persoon lopen
     //    dáár tegenaan in plaats van tegen het groepsplafond. Dan zou dit geval
     //    groen staan op de verkeerde teller. Een groep die tegen zijn
@@ -296,7 +296,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
   });
 
   it('weigert de negende foto van dezelfde persoon op één dag', () => {
-    // ⚠️ **Het lidplafond naast dat van de groep** (0225). Zonder deze tweede
+    // ⚠️ **Het lidplafond naast dat van de groep** (0226). Zonder deze tweede
     //    teller legt één lid met twintig uploads de foto's van de hele groep 24
     //    uur stil, en de anderen krijgen "probeer het zo nog eens" — niet te
     //    onderscheiden van een netwerkfout. Onwrikbare regel 5 vraagt letterlijk
@@ -358,7 +358,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
   });
 
   // -------------------------------------------------------------------------
-  // De kolomgrens (0222)
+  // De kolomgrens (0223)
   // -------------------------------------------------------------------------
 
   const bericht = (pad: string) =>
@@ -383,7 +383,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0221) en de kolomgrens (0222)',
   it('laat een systeembericht zonder bijlage met rust', () => {
     // ⚠️⚠️ **Niet als `authenticated`, en dat is een gemeten reparatie.** 📏 Deze
     //    ijking liep eerst via `als(alice, …)` en viel dan om op **42501**:
-    //    `chat_messages_insert` eist `type <> 'system'`, dus de CHECK van 0222
+    //    `chat_messages_insert` eist `type <> 'system'`, dus de CHECK van 0223
     //    werd nooit geëvalueerd. De test was groen om een reden die niets met
     //    deze grendel te maken had — precies wat CLAUDE.md beschrijft als *"een
     //    ijking die zijn geval door een pad voert dat een éérdere grendel al

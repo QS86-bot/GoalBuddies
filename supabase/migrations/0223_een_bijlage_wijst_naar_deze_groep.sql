@@ -1,4 +1,4 @@
--- 0222_een_bijlage_wijst_naar_deze_groep.sql — een CHECK die afdwingt dat
+-- 0223_een_bijlage_wijst_naar_deze_groep.sql — een CHECK die afdwingt dat
 -- `attachment_url` naar de eigen groep en de eigen afzender wijst, en
 -- `groepschat()` die de bijlage meegeeft.
 --

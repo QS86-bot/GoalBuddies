@@ -248,7 +248,7 @@ export async function stuurBericht(
     // ⚠️ De compenserende handeling, en die staat vóór alle andere afhandeling.
     //    Het bestand staat er nu wel en er wijst geen rij naar; zonder dit groeit
     //    de bucket met foto's die niemand ooit opvraagt — en die wél meetellen
-    //    voor het dagplafond van 0221.
+    //    voor het dagplafond van 0222.
     if (pad !== null) await verwijderChatfoto(pad);
 
     reportError(error, 'chat.send', { group_id: groupId });

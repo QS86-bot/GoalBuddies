@@ -1,6 +1,6 @@
 # Een foto in de chat
 
-**Datum:** 09-09-2026 · **Issue:** QS8-71 (PRD 7.3) · **Migraties:** 0221, 0222, 0223
+**Datum:** 09-09-2026 · **Issue:** QS8-71 (PRD 7.3) · **Migraties:** 0222, 0223, 0224, 0225, 0226
 
 ## 1. Het pad draagt de groep, niet de gebruiker
 
@@ -63,13 +63,13 @@ Vier gebeurtenissen, vier uitkomsten:
 | Gebeurtenis | De rij | Het object |
 |---|---|---|
 | **Bericht verwijderd** door de afzender | weg (`chat_messages_delete`) | weg — `verwijderBericht()` haalt het pad óp vóór de delete en ruimt daarna het bestand op |
-| **Account verwijderd** | fotobericht mét tekst blijft, zónder tekst gaat de rij weg | weg (migratie 0223) |
+| **Account verwijderd** | fotobericht mét tekst blijft, zónder tekst gaat de rij weg | weg (migratie 0224) |
 | **Groep gearchiveerd** | blijft, leesbaar | blijft, leesbaar — een archief is leesbaar en niet beschrijfbaar |
 | **Groep verwijderd** | weg (`on delete cascade` op `group_id`) | ⚠️ **blijft staan als wees** — zie de opruimpas hieronder |
 
 ### 4a. De accountverwijdering was een 23514
 
-📏 Zonder 0223 brak accountverwijdering. Gemeten:
+📏 Zonder 0224 brak accountverwijdering. Gemeten:
 
 ```
 delete from profiles where id = <a>
@@ -79,7 +79,7 @@ delete from profiles where id = <a>
 
 `chat_messages_sender_id_fkey` is sinds 0031 `on delete set null` — het bericht
 blijft zonder naam, want *"een gesprek van drie mensen is ook van de andere
-twee"*. Maar de CHECK van 0222 eist bij een bijlage een `sender_id`.
+twee"*. Maar de CHECK van 0223 eist bij een bijlage een `sender_id`.
 **Dit is de derde keer dat een CHECK op deze tabel een referentiële actie
 blokkeert**; `chat_messages_sender_required` is om precies dezelfde reden in 0031
 herschreven.
@@ -160,6 +160,7 @@ content-type) horen bij de livegang en niet bij deze branch.
 |---|---|---|
 | Bestandsgrootte | **1 MB** (`// TODO(paid-tier)`) | niet de 2 MB van `avatars`: een avatar schaalt met accounts, een chatfoto met gesprekken. De gratis tier geeft 1 GB voor álles samen |
 | Per groep per etmaal | **20** (`// TODO(paid-tier)`) | een rem tegen het vollopen van de gratis tier, geen productkeuze |
+| Per lid per etmaal | **8** (`// TODO(paid-tier)`, migratie 0226) | onwrikbare regel 5 vraagt om een limiet **per gebruiker**; zie §7a |
 | Geldigheid van de link | **1 uur** | zie §5 |
 
 ⚠️ De teller is een **trigger** en geen policy: een subquery op `storage.objects`
@@ -170,6 +171,65 @@ gebruiker en zonder venster telt — een avatar is er één, een groep praat doo
 ⚠️ Er ligt een **partiële index** onder die teller. Hij filtert op een functionele
 expressie en draait op het schrijfpad van élke upload; zonder index is dat een
 scan over de hele objecttabel. 0130 kwam daarmee weg omdat `avatars` klein is.
+
+### 7a. Twee tellers, en geen verplaatste (0226)
+
+De eerste versie had er één: twintig per **groep** per etmaal. Dat houdt de
+opslag in toom, maar het legt de rem bij de verkeerde partij — twintig uploads
+van één lid blokkeerden álle andere leden voor een etmaal, en die kregen
+`chatfoto.uploaden_mislukt` te zien: *"probeer het zo nog eens"*, niet te
+onderscheiden van een netwerkfout.
+
+⚠️ **Onwrikbare regel 5 vraagt letterlijk om een limiet *per gebruiker* per
+dag.** Voor berichten is die er sinds `begrens_berichten()` (per `sender_id`);
+voor foto's was hij er niet.
+
+⚠️ **Twee tellers en geen verplaatste.** Het groepsplafond beschermt de opslag
+(1 GB gedeeld met `avatars`), het lidplafond beschermt de andere leden. Vervang
+je de eerste door de tweede, dan plaatsen twaalf leden samen nog 144 foto's per
+dag en is de opslagbescherming weg.
+
+⚠️ **Het lidplafond ligt lager dan het groepsplafond**, anders is het geen rem:
+bij gelijke waarden loopt een groep van twee leden nog steeds tegen de
+groepsgrens aan door één iemand.
+
+De index van 0222 draagt de tweede telling al — hij staat op
+`((storage.foldername(name))[1], created_at)`, en het tweede segment komt uit
+dezelfde rijen.
+
+### 7b. Het plafond was met hoofdletters te omzeilen (0225)
+
+📏 **De zwaarste bevinding van de securityronde, en hij zat in de rem en niet in
+de leesgrens.** De policies van 0222 lazen het eerste padsegment via
+`[0-9a-fA-F]` en castten het daarna naar `uuid` — hoofdletterongevoelig. De
+teller vergelijkt `text` met `text` en is dat **níet**. Elke hoofdlettervariant
+van hetzelfde uuid was dus een eigen tellerpotje, en een uuid heeft er 2^32.
+
+Gemeten op de lokale stack, met twintig objecten in kleine letters:
+
+```
+kleine letters, 21e:  geweigerd (23514)
+HOOFDLETTERS:         ER DOORHEEN
+```
+
+Wat een aanvaller ermee kan is geen inzage — die grens is langs vier routes
+nagemeten en houdt — maar wél de gratis tier vullen: 1 GB voor het hele project,
+gedeeld met `avatars`, dus de profielfoto's gaan mee onderuit. Na de reparatie:
+42501.
+
+⚠️ **De reparatie zit in de policy en niet in de teller**, en dat is de smalste
+van de twee. De CHECK van 0223 bouwt zijn patroon uit `group_id::text` en
+Postgres schrijft een uuid altijd in kleine letters — die accepteerde dus al
+alleen de canonieke vorm. De policy was het enige van de drie sloten dat ruimer
+stond. Zou je in plaats daarvan de teller op de gecaste uuid laten tellen, dan
+moet de index mee én accepteert de bucket nog steeds paden die nooit in een
+bericht kunnen belanden: onzichtbare ballast die wél opslag kost.
+
+⚠️ **Dezelfde migratie zet het pad op precies twee mappen diep.** 0222 toetste
+alleen segment 1 en 2, dus `<groep>/<eigen uid>/../<andere groep>/x.png` werd
+aangenomen. Er lekt niets — zo'n object is alleen leesbaar voor de eigen groep —
+maar het zet sleutels in de bucket die de vorm niet hebben die 0223 en 0224
+aannemen, en 0224 ruimt op segment twee op.
 
 ## 8. De naad, en wat hem bewaakt
 
@@ -197,7 +257,7 @@ naad per definitie niet zien.
 - **Documenten** (`type = 'doc'`). De CHECK staat het toe sinds 0001; er komt geen
   schrijver bij.
 - **Een foto in een systeembericht.** Nooit: `plaats_systeembericht()` raakt
-  `attachment_url` niet aan, en de CHECK van 0222 sluit `type = 'system'` uit.
+  `attachment_url` niet aan, en de CHECK van 0223 sluit `type = 'system'` uit.
 - **Serverzijdige verkleining of thumbnails.** Vraagt een Edge Function of een
   betaalde transformatie-API.
 - **De opruimpas voor wezen.** Zie §4c.

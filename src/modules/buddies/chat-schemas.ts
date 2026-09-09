@@ -312,7 +312,7 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
 }
 
 /**
- * Haalt élke verlopende URL uit een bericht dat de cache in gaat — 0126 en 0221.
+ * Haalt élke verlopende URL uit een bericht dat de cache in gaat — 0126 en 0222.
  *
  * ⚠️ **Een ondertekende URL verloopt na een uur; de cache leeft een week.** Sinds
  *    0126 is de avatar-bucket privé, dus `sender_avatar` draagt in een geladen

@@ -1,8 +1,8 @@
--- 0224_een_pad_heeft_een_canonieke_vorm.sql — de policy, de CHECK en de teller
+-- 0225_een_pad_heeft_een_canonieke_vorm.sql — de policy, de CHECK en de teller
 -- accepteren voortaan dezelfde vorm van een pad.
 --
 -- ROLLBACK-PAD:
---   De vier policies en de teller terug in de vorm van 0221 (dat bestand is het
+--   De vier policies en de teller terug in de vorm van 0222 (dat bestand is het
 --   rollback-pad: het is idempotent en zet alles opnieuw neer). ⚠️ Daarmee komt
 --   ook de omzeiling hieronder terug.
 --
@@ -13,7 +13,7 @@
 -- Uit de securityronde op QS8-71, en het is een gat in de rem en niet in de
 -- leesgrens.
 --
--- 📏 **Het dagplafond was met hoofdletters te omzeilen.** De policy van 0221
+-- 📏 **Het dagplafond was met hoofdletters te omzeilen.** De policy van 0222
 --    accepteerde het eerste segment via `[0-9a-fA-F]` en castte het daarna naar
 --    `uuid` — hoofdletterongevoelig. De teller vergelijkt `text` met `text` en is
 --    dat níét. Elke hoofdletter-variant van hetzelfde uuid was dus een eigen
@@ -31,7 +31,7 @@
 --    dus niet.
 --
 -- ⚠️ **De reparatie zit in de policy en niet in de teller**, en dat is met opzet
---    de smalste van de twee. De CHECK van 0222 accepteert al uitsluitend kleine
+--    de smalste van de twee. De CHECK van 0223 accepteert al uitsluitend kleine
 --    letters — hij bouwt zijn patroon uit `group_id::text`, en Postgres schrijft
 --    een uuid altijd in kleine letters. De policy was dus de enige van de drie
 --    sloten die ruimer stond dan de rest. Zou je in plaats daarvan de teller op
@@ -39,11 +39,11 @@
 --    nog steeds paden die nooit in een bericht kunnen belanden: onzichtbare
 --    ballast die wél opslag kost.
 --
--- ⚠️ **En het pad is voortaan precies twee mappen diep.** 0221 toetste alleen
+-- ⚠️ **En het pad is voortaan precies twee mappen diep.** 0222 toetste alleen
 --    segment 1 en 2, dus `<groep>/<eigen uid>/../<andere groep>/x.png` werd
 --    aangenomen. Er lekt niets — zo'n object is niet aan een bericht te koppelen
 --    en alleen leesbaar voor de eigen groep — maar het zet sleutels in de bucket
---    die niet de vorm hebben die 0222 en 0223 aannemen, en 0223 ruimt op segment
+--    die niet de vorm hebben die 0223 en 0224 aannemen, en 0224 ruimt op segment
 --    twee op.
 --
 -- ---------------------------------------------------------------------------

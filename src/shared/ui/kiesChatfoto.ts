@@ -35,7 +35,7 @@ export type Chatfotokeuze =
  *    avatar ís rond; een foto in een gesprek is wat iemand liet zien, en die
  *    bijsnijden verandert wat hij bedoelde.
  *
- * ⚠️ `quality` staat laag omdat de bucket op 1 MB dicht zit (migratie 0221). Dat
+ * ⚠️ `quality` staat laag omdat de bucket op 1 MB dicht zit (migratie 0222). Dat
  *    is een gemak en geen grendel — de keuring in `keurChatfoto()` en de bucket
  *    zelf zijn dat wél.
  */

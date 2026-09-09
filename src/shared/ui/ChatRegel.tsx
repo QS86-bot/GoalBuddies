@@ -36,7 +36,7 @@ interface Props {
    *    niet getekend kon worden op `null`; dit component toont bij `null` een
    *    zin en geen gebroken beeld. Een kaal pad hier zou een leeg vlak geven —
    *    en het is de vorm waarin een vreemde URL zou meeliften als de CHECK van
-   *    migratie 0222 er ooit uit valt.
+   *    migratie 0223 er ooit uit valt.
    */
   readonly fotoUrl?: string | null | undefined;
   /** `undefined` betekent: systeembericht. */
@@ -225,13 +225,21 @@ function Foto({ url }: { readonly url: string | null }) {
         style={styles.fotoBeeld}
         resizeMode="contain"
         accessibilityIgnoresInvertColors
-        accessibilityLabel={t('chatfoto.laden')}
+        // ⚠️ Een vaste omschrijving en niet de laadtekst: dit label blijft staan
+        //    nadat de foto geladen is, en een schermlezer las dan eeuwig "Foto
+        //    laden". Het laden zelf zit in de `progressbar` hieronder, die
+        //    verdwijnt zodra hij klaar is.
+        accessibilityLabel={t('chatfoto.beeld')}
         onLoad={() => setStand('klaar')}
         onError={() => setStand('mislukt')}
       />
 
       {stand === 'laadt' ? (
-        <View style={styles.fotoOver} accessibilityRole="progressbar">
+        <View
+          style={styles.fotoOver}
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('chatfoto.laden')}
+        >
           <ActivityIndicator color={c.accent} />
         </View>
       ) : null}

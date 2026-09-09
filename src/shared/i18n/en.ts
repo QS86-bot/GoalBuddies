@@ -885,6 +885,7 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
   'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
   'chatfoto.laden': 'Loading photo',
+  'chatfoto.beeld': 'Photo in this conversation',
   'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
   'chat.rem_bereikt':
     'You have posted the maximum number of messages for today. You can continue again later.',

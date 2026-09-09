@@ -31,7 +31,7 @@ export const CHATFOTO_GELDIGHEID_S = 3600;
 /**
  * De beeldtypes die de bucket accepteert.
  *
- * ⚠️ Een kopie van `allowed_mime_types` in migratie 0221 — de bucket is de
+ * ⚠️ Een kopie van `allowed_mime_types` in migratie 0222 — de bucket is de
  *    grendel (onwrikbare regel 3), deze lijst is het gemak. Een test legt ze in
  *    **beide richtingen** naast elkaar: een type dat hier staat en daar niet
  *    geeft een upload die pas op de server sneuvelt, en andersom een lijst die
@@ -39,7 +39,7 @@ export const CHATFOTO_GELDIGHEID_S = 3600;
  */
 export const CHATFOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
-/** De grens die 0221 op de bucket zet: 1 MB. */
+/** De grens die 0222 op de bucket zet: 1 MB. */
 export const CHATFOTO_MAX_BYTES = 1_048_576;
 
 const EXTENSIE: Readonly<Record<string, string>> = {
@@ -52,7 +52,7 @@ const EXTENSIE: Readonly<Record<string, string>> = {
  * Het pad waar deze foto komt te staan: `<groep>/<afzender>/<naam>.<ext>`.
  *
  * ⚠️⚠️ **Het eerste segment is de groep en niet de gebruiker.** Daar hangen de
- *    policies van 0221 aan, én de CHECK van 0222 die het pad naast de
+ *    policies van 0222 aan, én de CHECK van 0223 die het pad naast de
  *    `group_id` en `sender_id` van de berichtrij legt. Bouw dit pad nooit met de
  *    hand ergens anders: dan bestaat de vorm op twee plekken en loopt er ooit
  *    een uit de pas.
@@ -102,7 +102,7 @@ export async function uploadChatfoto(
 
   if (gezet.error) {
     reportError(gezet.error, 'chatfoto.upload', { group_id: groupId });
-    // ⚠️ Het dagplafond van 0221 komt hier ook binnen. De melding blijft
+    // ⚠️ Het dagplafond van 0222 komt hier ook binnen. De melding blijft
     //    algemeen: een storage-fout draagt soms het pad, en dat pad noemt twee
     //    uuid's.
     return { ok: false, melding: t('chatfoto.uploaden_mislukt') };
@@ -157,7 +157,7 @@ export async function tekenChatfotos(
  *    níéts op, dan ging de lijst ongewijzigd terug met de kále paden erin. Hier
  *    is dat erger dan daar, want een kaal pad in een `<Image>` is niet alleen
  *    kapot — het is de vorm waarin een vreemde URL zou meeliften als de CHECK
- *    van 0222 er ooit uit zou vallen. Twee sloten, en dit is het tweede.
+ *    van 0223 er ooit uit zou vallen. Twee sloten, en dit is het tweede.
  *
  * ⚠️ Één ronde tekenen voor de hele pagina, nooit per bericht. Dertig berichten
  *    is precies de schaal waarop een N+1 pijn doet (schaalbaarheidsregel 12).

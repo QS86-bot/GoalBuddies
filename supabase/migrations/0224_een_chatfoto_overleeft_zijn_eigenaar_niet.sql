@@ -1,4 +1,4 @@
--- 0223_een_chatfoto_overleeft_zijn_eigenaar_niet.sql — wie zijn account verwijdert,
+-- 0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql — wie zijn account verwijdert,
 -- neemt zijn foto's mee; het gesprek blijft.
 --
 -- ROLLBACK-PAD:
@@ -18,7 +18,7 @@
 --
 --    `chat_messages_sender_id_fkey` is sinds 0031 `on delete set null` — het
 --    bericht blijft staan zonder naam, want *"een gesprek van drie mensen is ook
---    van de andere twee"*. Maar de CHECK van 0222 eist bij een bijlage een
+--    van de andere twee"*. Maar de CHECK van 0223 eist bij een bijlage een
 --    `sender_id`, en `null` voldoet daar niet aan. Dit is exact dezelfde vorm als
 --    `chat_messages_sender_required`, die 0031 om precies deze reden heeft moeten
 --    herschrijven — de derde keer dat een CHECK op deze tabel een referentiële
@@ -99,7 +99,7 @@ $$;
 drop trigger if exists profielen_chatfotos_mee on public.profiles;
 
 -- ⚠️ `before delete`, zodat dit gebeurt vóór `chat_messages_sender_id_fkey` zijn
---    `set null` uitvoert. Erna zou de CHECK van 0222 al omgevallen zijn.
+--    `set null` uitvoert. Erna zou de CHECK van 0223 al omgevallen zijn.
 create trigger profielen_chatfotos_mee
   before delete on public.profiles
   for each row

@@ -147,8 +147,8 @@ describe.runIf(beschikbaar)('een foto verlaat zijn groep niet', () => {
   );
 
   it('neemt de foto mee als de plaatser zijn account verwijdert', () => {
-    // ⚠️⚠️ **Dit was een 23514 en geen ontwerp.** 📏 Zonder migratie 0223 valt
-    //    `delete from profiles` om op de CHECK van 0222: het `on delete set null`
+    // ⚠️⚠️ **Dit was een 23514 en geen ontwerp.** 📏 Zonder migratie 0224 valt
+    //    `delete from profiles` om op de CHECK van 0223: het `on delete set null`
     //    van 0031 maakt `sender_id` leeg, en die CHECK eist er een bij een
     //    bijlage. Accountverwijdering brak dus op een fotobericht.
     //
