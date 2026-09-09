@@ -5,7 +5,7 @@ import {
   fetchMijnGroepen,
   huddledagLabel,
   isHuddledagVandaag,
-  type Groep,
+  type Lijstgroep,
 } from '@/modules/buddies';
 import { useTeBeoordelen } from '@/modules/completions';
 import { t } from '@/shared/i18n';
@@ -97,7 +97,17 @@ export default function GroepTab() {
   );
 }
 
-function GroepKaart({ groep, onOpen }: { readonly groep: Groep; readonly onOpen: () => void }) {
+// ⚠️ `Lijstgroep` en niet `Groep`: dit is precies wat `fetchMijnGroepen()`
+//    oplevert (QS8-387). Vroeg deze kaart om een volledige rij, dan zou hij
+//    kolommen kunnen lezen die de query niet ophaalt — en dat was tot 09-09-2026
+//    een `undefined` waar het type een `string` beloofde.
+function GroepKaart({
+  groep,
+  onOpen,
+}: {
+  readonly groep: Lijstgroep;
+  readonly onOpen: () => void;
+}) {
   return (
     <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={groep.name}>
       <Card>
