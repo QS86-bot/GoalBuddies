@@ -37,7 +37,7 @@
  *   B  `chatfotos_aantal_begrensd_verhuisd` gedropt         → 2 rood
  *   C  `grant execute … to authenticated` op de teller      → 1 rood
  *   D  het venster laten staan i.p.v. schuiven              → 3 rood
- *   E  een tweede overload van `tel_opslag_upload`          → 1 rood
+ *   E  een tweede overload van `tel_dagteller`          → 1 rood
  *
  * ⚠️ A en B geven er allebei twee: het gedrág valt om én de vormtest ziet het.
  *    Dat is de bedoeling — de vormtest alleen zou een teller die de juiste
@@ -51,7 +51,7 @@ import { proefId } from './proefid';
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 const beschikbaar = stackBeschikbaarOfFaal(
-  "select count(*) from pg_tables where tablename = 'opslag_dagtellers'",
+  "select count(*) from pg_tables where tablename = 'dagtellers'",
   import.meta.url,
 );
 
@@ -64,7 +64,7 @@ const ALLE_PROEF_IDS = [proefId(1), proefId(2), proefId(3), proefId(10)];
 function leeg(): void {
   // ⚠️⚠️ **Alleen de sleutels van dit bestand, en dat is geen netheid.** Twee
   //    suites tegen dezelfde stack is in dit project de gewone toestand
-  //    (QS8-336). Een kale `delete from opslag_dagtellers` wist dan de teller van
+  //    (QS8-336). Een kale `delete from dagtellers` wist dan de teller van
   //    een ándere suite — en uitgerekend de grendel die hier de belofte draagt
   //    ("wissen komt er niet langs") wordt groen als iemand anders de teller
   //    leeggemaakt heeft. `gedeelde-identiteit:controle` ziet dit niet: het is
@@ -75,7 +75,7 @@ function leeg(): void {
     `delete from storage.objects
       where bucket_id in ('bewijsfotos','chatfotos','avatars')
         and name similar to '%(${mijne})%';
-     delete from opslag_dagtellers
+     delete from dagtellers
       where sleutel similar to '%(${mijne})%';`,
   );
 }
@@ -170,7 +170,7 @@ describe.runIf(beschikbaar)('wissen zet de dagteller niet terug', () => {
       for (let i = 1; i <= plafond; i += 1) plaats(emmer, pad(u, i));
 
       psql(`delete from storage.objects where bucket_id = '${emmer}';`);
-      psql(`update opslag_dagtellers set venster_start = now() - interval '25 hours';`);
+      psql(`update dagtellers set venster_start = now() - interval '25 hours';`);
 
       expect(plaats(emmer, pad(u, plafond + 3))).toBe('OK');
     });
@@ -228,11 +228,11 @@ describe.runIf(beschikbaar)('elke emmerteller volgt dezelfde vorm', () => {
     expect(emmertellers().length).toBeGreaterThanOrEqual(3);
   });
 
-  it('laat elke teller via tel_opslag_upload() tellen en niet via count(*)', () => {
+  it('laat elke teller via tel_dagteller() tellen en niet via count(*)', () => {
     const zonder = emmertellers().filter(
       (naam) =>
         !psql(`select prosrc from pg_proc where proname = '${naam}';`).includes(
-          'tel_opslag_upload',
+          'tel_dagteller',
         ),
     );
 
@@ -270,12 +270,12 @@ describe.runIf(beschikbaar)('elke emmerteller volgt dezelfde vorm', () => {
  * De teller is niet rechtstreeks aan te roepen.
  *
  * ⚠️⚠️ **Dit is de prijs van de `security definer` in 0233, en hij moet betaald
- *    worden.** `tel_opslag_upload()` schrijft in een deny-all tabel, dus hij
+ *    worden.** `tel_dagteller()` schrijft in een deny-all tabel, dus hij
  *    moet definer zijn. Mag `authenticated` hem dán ook uitvoeren, dan kan
  *    iedereen de teller van een ánder lid ophogen en dat lid zijn dag uit
  *    sturen — een griefvector met een schone naam.
  */
-describe.runIf(beschikbaar)('tel_opslag_upload() is voor niemand aanroepbaar', () => {
+describe.runIf(beschikbaar)('tel_dagteller() is voor niemand aanroepbaar', () => {
   /**
    * ⚠️⚠️ **Eerst: bestaat hij onder déze handtekening?** `has_function_privilege`
    *    wérpt op een onbekende functie, maar een tweede overload zou hier stil
@@ -284,7 +284,7 @@ describe.runIf(beschikbaar)('tel_opslag_upload() is voor niemand aanroepbaar', (
    */
   it('bestaat precies één keer', () => {
     expect(
-      psql(`select count(*) from pg_proc where proname = 'tel_opslag_upload';`).trim(),
+      psql(`select count(*) from pg_proc where proname = 'tel_dagteller';`).trim(),
       'een tweede overload betekent dat de rechtentoets hieronder de verkeerde meet',
     ).toBe('1');
   });
@@ -292,7 +292,7 @@ describe.runIf(beschikbaar)('tel_opslag_upload() is voor niemand aanroepbaar', (
   it.each(['authenticated', 'anon'])('%s mag hem niet uitvoeren', (rol) => {
     const mag = psql(
       `select has_function_privilege('${rol}',
-         'public.tel_opslag_upload(text, text, text, integer, interval, text)', 'EXECUTE');`,
+         'public.tel_dagteller(text, text, text, integer, interval, text, integer)', 'EXECUTE');`,
     ).trim();
 
     expect(mag, `${rol} kan de teller van een ander ophogen — zie de kop van 0233`).toBe('f');
