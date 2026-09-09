@@ -133,10 +133,10 @@ export function isAfgegaan(commitment: { readonly status: string }): boolean {
 /**
  * Wordt dit commitment zichtbaar voor de groep zodra je om uitstel vraagt?
  *
- * ⚠️ **De clientkant van de vierde tak van `commitments_select`** (migratie
- *    0213, QS8-370), en de grens is met opzet exact dezelfde: `type = 'penalty'`
- *    en geen statuslijst. Wie om uitstel vraagt, opent voor die groep élke straf
- *    op dat doel — ook een ingetrokken.
+ * ⚠️ **De clientkant van `straffen_bij_uitstelverzoek()`** (migratie 0213,
+ *    QS8-370), en de grens is met opzet exact dezelfde: `type = 'penalty'` en
+ *    geen statuslijst. Wie om uitstel vraagt, laat die groep weten dat er een
+ *    straf op dat doel staat — ook als die ingetrokken is.
  *
  * ⚠️ **Daarom is dit ruimer dan `isAfgegaan()` en ruimer dan de `heeftStraf` van
  *    `Herplannen`**, die allebei `cancelled` buitensluiten. Een waarschuwing die

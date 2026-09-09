@@ -283,11 +283,10 @@ export default function DoelDetail() {
                 /*
                   ⚠️ **Elke straf telt, ook een ingetrokken** — en dat is met
                      opzet ruimer dan de `heeftStraf` van `Herplannen`
-                     hieronder. De vierde tak van `commitments_select` (0213)
-                     kent geen statuslijst, dus zodra dit verzoek bestaat leest
-                     de groep élke straf op dit doel. Een waarschuwing die
-                     smaller is dan het oppervlak dat hij aankondigt, is geen
-                     waarschuwing.
+                     hieronder. `straffen_bij_uitstelverzoek()` (0213) kent geen
+                     statuslijst, dus zodra dit verzoek bestaat weet de groep van
+                     élke straf op dit doel. Een waarschuwing die smaller is dan
+                     het oppervlak dat hij aankondigt, is geen waarschuwing.
                 */
                 heeftStraf={commitments.some(wordtZichtbaarBijUitstelverzoek)}
                 onKlaar={herlaad}
@@ -616,17 +615,26 @@ function DeadlineVerzetten({
           </Caption>
           {/*
             ⚠️ **Vóór de verzendknop en niet erna** — QS8-370. Dit verzoek opent
-               een oppervlak: vanaf het moment dat het bestaat, leest de groep de
-               straf die op dit doel staat (migratie 0213, vierde tak van
-               `commitments_select`). Dat is zelf een consequentie, en domeinregel
-               5 verbiedt een stilzwijgende. Je hoort het dus te weten vóórdat je
-               verstuurt, niet erna.
+               een oppervlak: vanaf het moment dat het bestaat, weet de groep dát
+               er een straf op dit doel staat (migratie 0213,
+               `straffen_bij_uitstelverzoek()`). Dat is zelf een consequentie, en
+               domeinregel 5 verbiedt een stilzwijgende. Je hoort het dus te weten
+               vóórdat je verstuurt, niet erna.
 
-               ⚠️ Het oppervlak sluit niet weer. Ook nadat er beslist is, blijft
-                  de straf voor die groep leesbaar — anders raakt de beslisser
-                  het zicht kwijt op wat hij heeft toegestaan. De tekst zegt dat
-                  met zoveel woorden, want een verruiming die je terugleest als
-                  tijdelijk is een verruiming die niemand besloten heeft.
+               ⚠️ **De tekst zegt allebei de helften, en dat is geen omhaal.** Wat
+                  er opengaat is het bestáán van de straf; wat erin staat gaat
+                  niet mee. De eerste versie van dit oppervlak gaf de `body`, de
+                  `image_url` en het id van de getuige weg, omdat het een policy
+                  was en RLS geen kolommen kan beperken. Een waarschuwing die
+                  meer belooft dicht te houden dan de database dichthoudt, is
+                  erger dan geen waarschuwing — dus als iemand dit oppervlak ooit
+                  verruimt, hoort deze zin mee te veranderen.
+
+               ⚠️ Het oppervlak sluit weer zodra je het doel niet meer met die
+                  groep deelt: ontkoppelen trekt de toestemming in
+                  (beslisdocument 002). Zolang je het wél deelt, blijft het open,
+                  ook nadat er beslist is — anders raakt de beslisser het zicht
+                  kwijt op wat hij heeft toegestaan.
           */}
           {heeftStraf ? <Body>{t('deadline.straf_wordt_zichtbaar')}</Body> : null}
         </>

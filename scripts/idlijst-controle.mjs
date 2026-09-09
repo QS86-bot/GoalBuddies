@@ -80,13 +80,6 @@ export const GRENZEN = {
   'src/modules/commitments/api.ts#group_id':
     '20 — de vraag erboven in `fetchMogelijkeBegunstigden()` draagt ' +
     '`.limit(MAX_GROEPEN)`, en die constante staat op 20.',
-  'src/modules/commitments/api.ts#goal_id':
-    'STRAFDOELEN_MAX — `fetchStrafDoelen()` kapt zelf af met ' +
-    '`.slice(0, STRAFDOELEN_MAX)`, ter plekke zichtbaar, en die constante ' +
-    'staat op 50. De aanroeper levert hoogstens `VERZOEKEN_PER_PAGINA` (20) ' +
-    'doelen aan, maar die grens woont in een ánder bestand; hier staat hij ' +
-    'waar de query staat — dezelfde correctie als bij ' +
-    '`mijlpalen.ts#goal_id`.',
 };
 
 /**

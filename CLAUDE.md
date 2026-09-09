@@ -325,19 +325,32 @@ Voordat er één feature gebouwd wordt:
 
     ⚠️ **Eén benoemde verruiming, en die hangt aan een handeling en niet aan een
     stand (QS8-370, 09-09-2026, migratie 0213).** Vraag je je groep om je
-    streefdatum te verschuiven, dan leest **díé** groep de straffen op dat doel —
-    vanaf `set` en ook nadat er beslist is. De reden is de spiegelzijde van
-    domeinregel 5: `beslis_deadline_verzoek()` mag een straf vooruit schuiven (dat
-    is de route die 0184 met zoveel woorden openlaat), en dan mag het akkoord niet
-    blind zijn. Een commitment device gaat nooit stilzwijgend aan, en dus ook nooit
-    stilzwijgend losser.
+    streefdatum te verschuiven, dan weet **díé** groep dát er een straf op dat
+    doel staat — vanaf `set`, en ook nadat er beslist is. De reden is de
+    spiegelzijde van domeinregel 5: `beslis_deadline_verzoek()` mag een straf
+    vooruit schuiven (dat is de route die 0184 met zoveel woorden openlaat), en
+    dan mag het akkoord niet blind zijn. Een commitment device gaat nooit
+    stilzwijgend aan, en dus ook nooit stilzwijgend losser.
 
-    ⚠️ **Wat die verruiming níet is.** Geen verruiming van
+    ⚠️⚠️ **De verruiming is "dát" en niet "wat", en dat verschil is een RPC en
+    geen policy.** `straffen_bij_uitstelverzoek()` geeft één kolom terug:
+    `goal_id`. De tekst van de straf, de foto en de aangewezen getuige gaan niet
+    mee, en de stand ook niet. Een vierde tak op `commitments_select` gaf dat
+    alles wél weg — **RLS kan geen kolommen beperken** — en gaf bovendien de
+    stand `due` weg aan een groep die de begunstigde niet is, en `due` betekent
+    "de streefdatum niet gehaald". Dat is precies het schaamtemoment waar
+    domeinregel 7 voor bestaat. Zelfde vorm en zelfde reden als
+    `getuigenissen()` (0169). Wil je de tekst zélf ooit delen, dan is dat een
+    eigen besluit onder grens 1 en niet iets dat een policy erbij geeft.
+
+    ⚠️ **Wat die verruiming verder níet is.** Geen verruiming van
     `commitment_zichtbaar_voor_groep()` — die lijst gaat over de **begunstigde**
     groep en blijft `unlocked, due, resolved`. Geen oppervlak dat op
-    `groups.zichtbaarheid` varieert: een beschermde groep die gevraagd wordt, ziet
-    hem óók. En geen oppervlak dat je overkomt: de eigenaar leest vóór de
-    verzendknop dat dit gebeurt. Onderbouwing in
+    `groups.zichtbaarheid` varieert: een beschermde groep die gevraagd wordt,
+    weet het óók. Geen oppervlak dat je overkomt: de eigenaar leest vóór de
+    verzendknop wat er opengaat en wat niet. En geen oppervlak zonder randen —
+    een ingetrokken verzoek telt niet, ontkoppelen trekt de toestemming in, en
+    een uitgezet lid weet niets meer. Onderbouwing in
     `docs/decisions/2026-09-08-de-groepsroute-is-geen-uitweg.md`, rij 31 in
     `docs/decisions/002-domeinregel7-oppervlakken.md`.
 

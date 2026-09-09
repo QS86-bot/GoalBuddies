@@ -28,9 +28,21 @@
  *         → 'en toont ze bij het verzoek' rood
  *      3. de regel met `deadline.straf_wordt_zichtbaar` weg
  *         → 'het doelscherm waarschuwt vóór het versturen' rood
- *      4. `wordtZichtbaarBijUitstelverzoek` vervangen door
- *         `(c) => c.type === 'penalty' && c.status !== 'cancelled'`
+ *      4. `wordtZichtbaarBijUitstelverzoek` vervangen door een eigen
+ *         vergelijking in de JSX
+ *         → 'de grens komt uit de gedeelde functie' rood
+ *      5. `&& commitment.status !== 'cancelled'` erbij in
+ *         `src/modules/commitments/stand.ts` zélf
  *         → 'de waarschuwing is niet smaller dan het oppervlak' rood
+ *      6. de tak `strafDoelen === null` uit `app/groep/[id].tsx`
+ *         → 'onbekend is niet hetzelfde als geen' rood
+ *
+ *    ⚠️⚠️ **Grendel 4 en 5 stonden eerst in één test, en dat was een ijking die
+ *       niets ijkte.** De mutatie in het scherm maakte die test rood via de
+ *       `toContain`-assertie die eróver stond, dus de statuslus eronder is nooit
+ *       rood geweest. Precies wat CLAUDE.md bedoelt met *"mutatie per grendel,
+ *       en niet één mutatie voor de hele controle"*. Gevonden door de
+ *       security-ronde van 09-09-2026, niet door erover na te denken.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -92,25 +104,46 @@ describe('de beslisser krijgt de straf te zien', () => {
     ).toContain('deadline.straf_wordt_zichtbaar');
   });
 
-  it('de waarschuwing is niet smaller dan het oppervlak dat hij aankondigt', () => {
-    // ⚠️ **De naad.** De policy kent geen statuslijst; het scherm mag er dus ook
-    //    geen hebben. Zou het scherm `cancelled` uitsluiten, dan ziet de groep
-    //    een ingetrokken straf waarvoor niemand gewaarschuwd heeft.
+  it('de grens komt uit de gedeelde functie en niet uit de JSX', () => {
+    // ⚠️ Regel 18 vraag 4: een vergelijking in een scherm is alleen te toetsen
+    //    door in dát scherm te zoeken, en zo'n test verhuist niet mee.
     expect(
       doelscherm,
-      'de grens hoort uit de gedeelde functie te komen en niet uit een eigen vergelijking in de JSX',
+      'de grens hoort uit `wordtZichtbaarBijUitstelverzoek()` te komen',
     ).toContain('wordtZichtbaarBijUitstelverzoek');
+  });
 
+  it('de waarschuwing is niet smaller dan het oppervlak dat hij aankondigt', () => {
+    // ⚠️ **De naad.** `straffen_bij_uitstelverzoek()` kent geen statuslijst; de
+    //    client mag er dus ook geen hebben. Zou de client `cancelled`
+    //    uitsluiten, dan weet de groep van een ingetrokken straf waarvoor
+    //    niemand gewaarschuwd heeft.
+    //
+    // ⚠️ **Deze test noemt de functie zelf en niet het scherm**, want anders
+    //    vangt de assertie hierboven de mutatie af en is deze lus nooit rood
+    //    geweest. De ijking is: zet de statusgrens in `stand.ts`.
     for (const status of ['set', 'unlocked', 'due', 'resolved', 'cancelled']) {
       expect(
         wordtZichtbaarBijUitstelverzoek({ type: 'penalty', status }),
-        `een straf op \`${status}\` wordt door de policy zichtbaar en hoort dus te waarschuwen`,
+        `een straf op \`${status}\` telt mee in de RPC en hoort dus te waarschuwen`,
       ).toBe(true);
     }
 
     expect(
       wordtZichtbaarBijUitstelverzoek({ type: 'reward', status: 'set' }),
-      'een beloning wordt niet zichtbaar en hoort dus niet te waarschuwen',
+      'een beloning telt niet mee en hoort dus niet te waarschuwen',
     ).toBe(false);
+  });
+
+  it('onbekend is niet hetzelfde als geen', () => {
+    // ⚠️ **De derde toestand, uit de security-ronde.** Faalt de vraag, dan is
+    //    `strafDoelen` `null` en niet leeg. Zwijgen zou daar "er is niets aan de
+    //    hand" betekenen terwijl niemand dat weet, en dan drukt iemand op
+    //    "Akkoord" op grond van een mededeling die het scherm niet kon doen.
+    expect(
+      groepscherm,
+      'het scherm hoort "we konden dit niet ophalen" te tonen en niet te zwijgen',
+    ).toContain('strafDoelen === null');
+    expect(groepscherm).toContain('deadlineverzoek.straf_onbekend');
   });
 });

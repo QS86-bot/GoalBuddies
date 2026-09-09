@@ -99,22 +99,93 @@ aanvrager en de reden dat het aanvraagscherm het zégt vóór de verzendknop
 (`deadline.straf_wordt_zichtbaar`). Domeinregel 5 verbiedt een consequentie die
 stilzwijgend aan gaat; dit is er een.
 
-### Wat er gebouwd is
+### ⚠️⚠️ Wat er eerst gebouwd is, en waarom dat niet mocht blijven
 
-Een vierde tak in `commitments_select` (migratie 0213): **een groep die om
-uitstel op dit doel gevraagd is, leest de straffen op dat doel.** Plus
-`gevraagd_om_uitstel_op(uuid)`, een `security definer`-helper die de vraag aan
-`mag_groep_lezen()` stelt, en een index op `deadline_requests (goal_id)`.
+De eerste versie was een vierde tak op `commitments_select`:
+`or (type = 'penalty' and gevraagd_om_uitstel_op(goal_id))`. De security-ronde
+van 09-09-2026 heeft hem afgewezen, en de drie metingen die dat dragen zijn alle
+drie zelf nagemeten voordat ze verwerkt werden.
 
-Aan de app-kant twee regels tekst en de query die ze voedt: het groepsscherm
-haalt met één vraag op welke doelen in de verzoekenlijst een straf dragen
+📏 **De tak gaf de hele rij weg.** Bob — lid van de gevraagde groep, níet de
+begunstigde — las met één `select *` op `commitments`:
+
+```
+body                = 'GEHEIME STRAF'
+image_url           = 'https://…'
+beneficiary_user_id = <het id van de getuige>
+```
+
+Het scherm laat daar één generieke zin van zien. **RLS kan geen kolommen
+beperken** — CLAUDE.md domeinregel 7 zegt het met zoveel woorden — dus een policy
+is hier per constructie te veel. En dit project had die afweging al eens gemaakt
+en toen andersom beslist: QS8-292/0169 gaf de persoonlijke getuige geen policy
+maar `getuigenissen()`, een `security definer`-functie met een expliciete
+kolomlijst, precies omdat de getuige mínder hoort te zien dan de eigenaar.
+
+📏 **De tak gaf `due` weg, en dat is tegenslag over een derde.**
+
+```
+straf op status 'due'  ->  bob leest hem = 1     (bob is niet de begunstigde)
+```
+
+`maak_straffen_verschuldigd()` zet een straf op `due` bij
+`g.target_date < p_vandaag`; `due` ís dus letterlijk "deze persoon heeft zijn
+streefdatum niet gehaald". Dat is het schaamtemoment waar domeinregel 7 voor
+bestaat, in een **beschermde** groep, buiten de drie routes om — en het gebeurt
+zónder dat de eigenaar er nog iets voor doet. De eerste versie van dit document
+beweerde het tegendeel ("die was voor de begunstigde al zichtbaar"); dat klopt
+voor oppervlak 20 en niet voor dit publiek, want de gevraagde groep is meestal
+niet de begunstigde.
+
+📏 **De tak hield nergens op.**
+
+```
+na `delete from goal_group_links`:  bob leest het doel = 0,  de straf = 1
+verzoek op `withdrawn`:             bob leest de straf = 1
+```
+
+Beslisdocument 002 legt vast: *"Koppelen is de toestemming (QS8-54) en
+ontkoppelen is het intrekken ervan"*, en de knop heet letterlijk "Niet meer delen
+met deze groep". Bij `withdrawn` heeft bovendien niemand ooit iets toegestaan.
+
+**De les is de vorm en niet het geval.** Een policy is een rij-instrument, en de
+vraag hier was een kolom-vraag. Zodra het antwoord "de groep mag hier íets van
+weten" is en niet "de groep mag deze rij lezen", is een policy het verkeerde
+gereedschap — en dat is precies waarom `getuigenissen()` bestaat.
+
+### Wat er nu staat
+
+`straffen_bij_uitstelverzoek(uuid[])` (migratie 0213): een
+`security definer`-functie die van een lijst doelen teruggeeft **welke ervan een
+straf dragen** — `goal_id` en verder niets. `commitments_select` is niet
+aangeraakt. Plus een index op `deadline_requests (goal_id)`.
+
+⚠️ **En daarmee is `due` per constructie onzichtbaar in plaats van per
+afspraak.** De uitkomst verandert niet als een straf van `set` naar `due` gaat:
+dat doel stond er al in. Er is dus geen statuslijst om synchroon te houden en
+geen moment waarop deze functie iets nieuws vertelt.
+
+⚠️ **En het oppervlak heeft randen**, alle drie getoetst: een ingetrokken verzoek
+telt niet, de koppeling van doel aan groep moet er nog zijn (wat meteen het
+vertrek van de eigenaar dekt — `verlaat_groep()` en `verwijder_lid()` gooien zijn
+koppelingen weg), en een uitgezet lid weet niets meer. Wat er níet ophoudt is de
+beslissing zelf: ook na `approved` of `rejected` blijft het zichtbaar, anders
+raakt de beslisser het zicht kwijt op wat hij heeft toegestaan.
+
+Aan de app-kant twee regels tekst en de vraag die ze voedt: het groepsscherm
+haalt met één aanroep op welke doelen in de verzoekenlijst een straf dragen
 (`fetchStrafDoelen()`, regel 12), en het doelscherm waarschuwt de aanvrager. De
 grens die bepaalt wanneer die waarschuwing verschijnt staat in
 `wordtZichtbaarBijUitstelverzoek()` en niet in de JSX, om dezelfde reden als bij
 `magStrafVastleggen()`: een vergelijking in een scherm is alleen te toetsen door
 in dat scherm te zoeken, en zo'n test verhuist niet mee.
 
-### ⚠️ Waarom dit `commitment_zichtbaar_voor_groep()` níet verruimt
+⚠️ **Drie toestanden in het scherm en niet twee.** Mislukt de vraag, dan is het
+antwoord `null` — "onbekend" — en niet een lege verzameling. Die twee door elkaar
+halen laat de waarschuwing stilzwijgend verdwijnen bij een hapering, en dan drukt
+iemand op "Akkoord" terwijl het scherm zegt dat er niets aan de hand is.
+
+### ⚠️ Waarom dit `commitment_zichtbaar_voor_groep()` óók niet verruimt
 
 Het issue schreef richting 3 op als *"dit verruimt `commitment_zichtbaar_voor_groep()`
 met `set`"*. 📏 De meting zegt dat dat het gat niet dicht doet **en** tegelijk te
@@ -135,18 +206,24 @@ ver gaat:
   melding die iemand krijgt die zijn verse doel weggooit — naar "je straf is al
   in werking getreden", en dat is niet waar.
 
-### ⚠️ Elk verzoek telt, niet alleen een open verzoek
+### ⚠️ Een beslist verzoek telt, een ingetrokken niet
 
 Een oppervlak dat dichtklapt zodra er beslist is, neemt de beslisser het zicht af
 op wat hij zojuist heeft toegestaan — het tegendeel van "auditeerbaar" uit
-domeinregel 5. Vandaar dat `gevraagd_om_uitstel_op()` niet op `status = 'open'`
-filtert. Dat is ook de kant die je bij het bouwen niet vanzelf raakt: elk
-onderdeel klopt op het moment van drukken.
+domeinregel 5. Vandaar dat de functie niet op `status = 'open'` filtert. Dat is
+ook de kant die je bij het bouwen niet vanzelf raakt: elk onderdeel klopt op het
+moment van drukken.
+
+**`withdrawn` is de uitzondering en dat is geen inconsequentie.** De hele
+onderbouwing is "je hebt deze groep gevraagd je afspraak losser te maken, dus die
+mag weten wat eraan hangt". Bij een ingetrokken verzoek heeft de aanvrager die
+vraag zelf teruggenomen vóórdat iemand iets toestond; er is dan niets om zicht op
+te houden. Uit de security-ronde.
 
 ### ⚠️ En geen statuslijst
 
-De tak kent `type = 'penalty'` en verder niets. Wie de straf op `set` mag zien,
-mag hem ook zien nadat hij afgaat of ingetrokken wordt; een tweede lijst om
+De functie kent `type = 'penalty'` en verder niets. Wie weet dat er een straf
+staat, weet dat ook nadat hij afgaat of ingetrokken wordt; een tweede lijst om
 synchroon te houden levert hier niets op. De client draagt exact dezelfde grens,
 en dat is geen netheid maar de naad: een waarschuwing die smaller is dan het
 oppervlak dat hij aankondigt, is geen waarschuwing.

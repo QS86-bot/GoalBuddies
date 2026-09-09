@@ -485,13 +485,19 @@ function DeadlineVerzoeken({
   /**
    * De doelen uit deze lijst waar een straf op staat — QS8-370.
    *
-   * ⚠️ Leeg zolang de lijst laadt, en leeg als de query faalt. Dat is de goede
-   *    kant om op te falen voor een lijst en de verkeerde voor een
-   *    waarschuwing, en daarom staat de knop hieronder niet op de uitkomst te
-   *    wachten: een verzoek dat onbeslisbaar wordt omdat een extra query hapert,
-   *    is erger dan een waarschuwing die een tel later verschijnt.
+   * ⚠️ **Drie toestanden en geen twee.** `null` is "we weten het nog niet of we
+   *    konden het niet ophalen"; een lege verzameling is de mededeling "op geen
+   *    van deze doelen staat een straf". Die twee door elkaar halen laat de
+   *    waarschuwing stilzwijgend verdwijnen als de vraag mislukt, en dan drukt
+   *    iemand op "Akkoord" terwijl het scherm zegt dat er niets aan de hand is.
+   *    Uit de security-ronde van 09-09-2026.
+   *
+   * ⚠️ De knop wacht niet op deze uitkomst: een verzoek dat onbeslisbaar wordt
+   *    omdat een extra vraag hapert, is erger dan een waarschuwing die een tel
+   *    later verschijnt. Vandaar de regel "dit konden we niet ophalen" en geen
+   *    blokkade.
    */
-  const [strafDoelen, setStrafDoelen] = useState<ReadonlySet<string>>(new Set());
+  const [strafDoelen, setStrafDoelen] = useState<ReadonlySet<string> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [bezig, setBezig] = useState<string | null>(null);
@@ -512,6 +518,8 @@ function DeadlineVerzoeken({
         //    is: zonder verzoeken is er niets om naar te vragen.
         const straffen = await fetchStrafDoelen(rijen.map((r) => r.goal_id));
         if (levend) setStrafDoelen(straffen);
+        // ⚠️ `straffen` mag `null` zijn — dat is "onbekend" en geen "geen". De
+        //    weergave hieronder maakt dat verschil zichtbaar.
       })
       .catch((f: unknown) => {
         if (levend) setError(f);
@@ -596,7 +604,9 @@ function DeadlineVerzoeken({
                      ⚠️ Geen `muted`: dit is het zwaarste wat op deze kaart
                         staat, en het staat vóór de knoppen en niet erna.
                 */}
-                {strafDoelen.has(verzoek.goal_id) ? (
+                {strafDoelen === null ? (
+                  <Body muted>{t('deadlineverzoek.straf_onbekend')}</Body>
+                ) : strafDoelen.has(verzoek.goal_id) ? (
                   <Body>{t('deadlineverzoek.straf_staat_erop')}</Body>
                 ) : null}
                 {/*

@@ -4,9 +4,9 @@
  * ⚠️ **De belofte en niet de tak.** Acceptatiecriterium 2 van het issue vraagt
  *    er letterlijk om: *er is geen route waarlangs een straf op `set` vooruit
  *    schuift zonder dat degene die het toestaat weet dat hij dat doet.* Deze
- *    suite toetst dus niet dat `commitments_select` vier takken heeft, maar dat
- *    het lid dat op "Akkoord" drukt de straf kán lezen op het moment dat hij
- *    drukt — en dat hij hem daarna nog steeds kan lezen.
+ *    suite toetst dus niet hoe `straffen_bij_uitstelverzoek()` van binnen
+ *    gebouwd is, maar dat het lid dat op "Akkoord" drukt wéét dat er een straf
+ *    hangt aan wat hij toestaat — op het moment dat hij drukt en daarna.
  *
  * ⚠️ **Waarom de rem van 0184 hier níet bijkomt.** `zet_streefdatum()` weigert
  *    een straf op `set` vooruit te schuiven; `beslis_deadline_verzoek()` doet
@@ -29,24 +29,50 @@
  *    bestaande tak helpt, en precies de vorm die `straf-plafond.test.ts`
  *    gebruikt.
  *
- * ⚠️ **Vijf grendels, elk apart met de hand rood gemaakt** — mutatie per
+ * ⚠️⚠️ **Dit was een policy en is een RPC geworden, en dat is de uitkomst van
+ *    de security-ronde van 09-09-2026.** De eerste versie zette een vierde tak
+ *    op `commitments_select`. 📏 Drie metingen wezen hem af, en alle drie zijn
+ *    ze nagemeten voordat ze verwerkt werden:
+ *
+ *      bob leest body + image_url + beneficiary_user_id   = 1
+ *      bob leest de straf op stand `due`                  = 1
+ *      bob leest de straf na `delete from goal_group_links` = 1  (het doel = 0)
+ *
+ *    De tweede is de zwaarste: `due` betekent "de streefdatum niet gehaald", en
+ *    de gevraagde groep is meestal niet de begunstigde. Dat is het
+ *    schaamtemoment waar domeinregel 7 voor bestaat, in een beschermde groep en
+ *    buiten de drie routes om. `straffen_bij_uitstelverzoek()` geeft daarom
+ *    alleen `goal_id` terug — en dan verandert er bij `due` per constructie
+ *    niets, want dat doel stond er al in.
+ *
+ * ⚠️ **Zeven grendels, elk apart met de hand rood gemaakt** — mutatie per
  *    grendel, want een ijking die zijn geval door een pad voert dat een eerdere
- *    grendel al afvangt, bewaakt niets. Telkens door de policy in de draaiende
- *    database te vervangen:
+ *    grendel al afvangt, bewaakt niets. De eerste zes door de functie in de
+ *    draaiende database te vervangen:
  *
- *      1. de vierde tak helemaal weg
- *         → 'de beslisser leest de straf' rood
- *      2. `gevraagd_om_uitstel_op(goal_id)` vervangen door `true`
- *         → 'een groep zonder verzoek leest de straf niet' rood
- *      3. `type = 'penalty'` weggehaald
- *         → 'en de beloning op datzelfde doel blijft privé' rood
- *      4. de helper begrensd op `r.status = 'open'`
- *         → 'en hij blijft de straf lezen nadat er beslist is' rood
- *      5. `and status <> 'cancelled'` aan de tak toegevoegd
- *         → 'ook een ingetrokken straf blijft leesbaar' rood
+ *      1. `exists (…)` vervangen door `true`
+ *         → vijf tests rood, waaronder 'een groep zonder verzoek weet van niets'
+ *      2. `type = 'penalty'` weggehaald
+ *         → 'en de beloning op datzelfde doel blijft buiten beeld' rood
+ *      3. `r.status <> 'withdrawn'` weggehaald
+ *         → 'een ingetrokken verzoek telt niet' rood
+ *      4. de `join` op `goal_group_links` weggehaald
+ *         → 'ontkoppelen trekt de toestemming in' rood
+ *      5. `mag_groep_lezen(r.group_id)` vervangen door `true`
+ *         → 'een lid dat eruit ligt, weet van niets' rood, én 'een groep zonder
+ *           verzoek weet van niets' — die twee hangen allebei aan deze conjunct
+ *      6. `r.status <> 'withdrawn'` vervangen door `r.status = 'open'`
+ *         → 'en hij blijft het weten nadat er beslist is' rood
  *
- *    Grendel 1 en 2 zijn elkaars must-allow: zonder de tweede is "iedereen leest
- *    alles" groen op precies dezelfde manier als de reparatie.
+ *    Grendel 1 heeft de must-allow van de eerste test naast zich: zonder haar is
+ *    "niemand weet ooit iets" groen op precies dezelfde manier als de reparatie.
+ *
+ * ⚠️ **De zevende zit niet in de functie maar in de policy, en dat is met
+ *    opzet.** 'de tekst van de straf gaat niet mee' is de must-deny die dit hele
+ *    ontwerp draagt. Hij is geijkt door de afgewezen vierde tak terug te zetten
+ *    op `commitments_select` — 📏 en dan wordt precies die ene test rood, en
+ *    geen van de andere zeven. Dat is het bewijs dat de rest van deze suite een
+ *    policyversie níet zou hebben tegengehouden.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -140,7 +166,8 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
   async function doelMetStraf(
     titel: string,
     groepen: readonly string[],
-  ): Promise<{ doelId: string; strafId: string; beloningId: string }> {
+    opties: { readonly straf?: boolean } = {},
+  ): Promise<{ doelId: string; strafId: string | null }> {
     const doel = await adminDb()
       .from('goals')
       .insert({ owner_id: w.alice.id, title: titel, target_date: addDays(w.vandaag, 30) })
@@ -153,6 +180,25 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
       .from('goal_group_links')
       .insert(groepen.map((group_id) => ({ goal_id: doelId, group_id })));
     if (koppel.error) throw new Error(`koppelen ${titel}: ${koppel.error.message}`);
+
+    // ⚠️ **Een beloning op élk doel**, ook op de doelen mét straf. Zonder haar
+    //    is "de beloning blijft buiten beeld" alleen te meten op een doel dat
+    //    verder leeg is, en dan bewijst die test niet dat de conjunct
+    //    `type = 'penalty'` iets doet — een functie die álles teruggeeft zou daar
+    //    net zo goed op falen.
+    const beloning = await adminDb()
+      .from('commitments')
+      .insert({
+        goal_id: doelId,
+        type: 'reward',
+        body: `${titel} beloning`,
+        confirmed_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+    if (beloning.error) throw new Error(`beloning ${titel}: ${beloning.error.message}`);
+
+    if (opties.straf === false) return { doelId, strafId: null };
 
     const straf = await adminDb()
       .from('commitments')
@@ -170,23 +216,7 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
     //    geen van deze tests wat hij belooft te meten.
     expect(straf.data.status, 'een verse straf hoort op `set` te staan').toBe('set');
 
-    const beloning = await adminDb()
-      .from('commitments')
-      .insert({
-        goal_id: doelId,
-        type: 'reward',
-        body: `${titel} beloning`,
-        confirmed_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
-    if (beloning.error) throw new Error(`beloning ${titel}: ${beloning.error.message}`);
-
-    return {
-      doelId,
-      strafId: straf.data.id as string,
-      beloningId: beloning.data.id as string,
-    };
+    return { doelId, strafId: straf.data.id as string };
   }
 
   /** Het verzoek dat de eigenaar zelf indient — de enige route die dit opent. */
@@ -201,17 +231,39 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
     if (d.ok !== true || typeof d.request_id !== 'string') {
       throw new Error(`verzoek: ${JSON.stringify(antwoord.data)}`);
     }
+
+    // ⚠️ **En dan verstrijkt er een dag.** `vraag_deadline_verschuiving()` staat
+    //    vijf verzoeken per aanvrager per etmaal toe (onwrikbare regel 5), en
+    //    deze suite dient er meer in dan dat. Via `adminDb()`, want dit is het
+    //    verlopen van tijd en niet een handeling die getoetst wordt — dezelfde
+    //    vorm als in `straf-plafond.test.ts`. `created_at` speelt verder nergens
+    //    in dit pad mee: `beslis_deadline_verzoek()` kijkt naar `new_date`.
+    const ouder = await adminDb()
+      .from('deadline_requests')
+      .update({ created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() })
+      .eq('id', d.request_id);
+    if (ouder.error) throw new Error(`ouder maken: ${ouder.error.message}`);
+
     return d.request_id;
   }
 
   /**
-   * Wat deze gebruiker van deze commitment leest.
+   * Wat de RPC deze gebruiker over dit doel vertelt.
    *
    * ⚠️ **`error` wordt gecontroleerd en niet alleen de lengte.** Een lege lijst
-   *    is ook wat je krijgt als het leesrecht op de hele tabel wegvalt, en dan
-   *    is élke verwachting hieronder groen om de verkeerde reden. Dat is de
-   *    bevinding uit de security-ronde van QS8-362.
+   *    is ook wat je krijgt als het uitvoerrecht wegvalt, en dan is élke
+   *    verwachting hieronder groen om de verkeerde reden. Dat is de bevinding
+   *    uit de security-ronde van QS8-362.
    */
+  async function weetVan(wie: TestUser, doelId: string): Promise<boolean> {
+    const uitkomst = await wie.db.rpc('straffen_bij_uitstelverzoek', {
+      p_goal_ids: [doelId],
+    });
+    expect(uitkomst.error, `de RPC faalde: ${uitkomst.error?.message}`).toBeNull();
+    return (uitkomst.data ?? []).some((rij) => rij.goal_id === doelId);
+  }
+
+  /** Wat deze gebruiker rechtstreeks uit `commitments` leest. */
   async function leest(wie: TestUser, commitmentId: string): Promise<number> {
     const uitkomst = await wie.db.from('commitments').select('id, body').eq('id', commitmentId);
     expect(uitkomst.error, `lezen mislukte: ${uitkomst.error?.message}`).toBeNull();
@@ -221,33 +273,33 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
   // -------------------------------------------------------------------------
   describe('het akkoord is niet blind', () => {
     it(
-      'de beslisser leest de straf op het doel waarover hij gevraagd wordt',
+      'de beslisser weet van de straf op het doel waarover hij gevraagd wordt',
       async () => {
-        const { doelId, strafId } = await doelMetStraf('UITSTEL gevraagd', [w.gevraagdeGroep]);
+        const { doelId } = await doelMetStraf('UITSTEL gevraagd', [w.gevraagdeGroep]);
 
         expect(
-          await leest(w.bob, strafId),
-          'vóór het verzoek is er niets gevraagd en hoort bob niets te zien',
-        ).toBe(0);
+          await weetVan(w.bob, doelId),
+          'vóór het verzoek is er niets gevraagd en hoort bob niets te weten',
+        ).toBe(false);
 
         await vraagUitstel(doelId, w.gevraagdeGroep);
 
         expect(
-          await leest(w.bob, strafId),
-          'bob wordt gevraagd deze afspraak losser te maken; dan hoort hij te zien wat er staat',
-        ).toBe(1);
+          await weetVan(w.bob, doelId),
+          'bob wordt gevraagd deze afspraak losser te maken; dan hoort hij te weten dat er een is',
+        ).toBe(true);
       },
       TEST_TIMEOUT,
     );
 
     it(
-      'een groep zonder verzoek leest de straf niet',
+      'een groep zonder verzoek weet van niets',
       async () => {
         // ⚠️ **De must-allow van de vorige test, van de andere kant.** Zonder
-        //    deze is "iedereen leest alles" groen op precies dezelfde manier als
+        //    deze is "iedereen weet alles" groen op precies dezelfde manier als
         //    de reparatie. Carol deelt een groep met alice en het doel hangt
         //    erin; wat ontbreekt is uitsluitend het verzoek.
-        const { doelId, strafId } = await doelMetStraf('UITSTEL andere groep', [
+        const { doelId } = await doelMetStraf('UITSTEL andere groep', [
           w.gevraagdeGroep,
           w.andereGroep,
         ]);
@@ -255,60 +307,35 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
         await vraagUitstel(doelId, w.gevraagdeGroep);
 
         expect(
-          await leest(w.carol, strafId),
-          'carols groep is niets gevraagd, dus zij hoort deze straf niet te zien',
-        ).toBe(0);
+          await weetVan(w.carol, doelId),
+          'carols groep is niets gevraagd, dus zij hoort hier niets van te weten',
+        ).toBe(false);
       },
       TEST_TIMEOUT,
     );
 
     it(
-      'en de beloning op datzelfde doel blijft privé',
+      'en de beloning op datzelfde doel blijft buiten beeld',
       async () => {
         // ⚠️ Een beloning heeft geen rem van 0184 en er valt niets aan te
         //    ontsnappen. Hem meenemen zou een verruiming zijn die niemand
         //    gevraagd heeft — en dit is de enige test die dat merkt.
-        const { doelId, beloningId } = await doelMetStraf('UITSTEL beloning', [w.gevraagdeGroep]);
+        const { doelId } = await doelMetStraf('UITSTEL alleen beloning', [w.gevraagdeGroep], {
+          straf: false,
+        });
 
         await vraagUitstel(doelId, w.gevraagdeGroep);
 
         expect(
-          await leest(w.bob, beloningId),
-          'de beloning van een ander gaat de beslisser niets aan',
-        ).toBe(0);
+          await weetVan(w.bob, doelId),
+          'op dit doel staat alleen een beloning, en die gaat de beslisser niets aan',
+        ).toBe(false);
       },
       TEST_TIMEOUT,
     );
 
     it(
-      'ook een ingetrokken straf blijft leesbaar, en dat draagt de waarschuwing',
-      async () => {
-        // ⚠️ **De naad tussen de policy en de tekst op het scherm.** De vierde
-        //    tak kent geen statuslijst, dus `wordtZichtbaarBijUitstelverzoek()`
-        //    in de client mag er ook geen hebben. Zonder deze meting is die
-        //    keuze een aanname: een grens die alleen in een JSDoc staat, is geen
-        //    grens. Zie `tests/beloftes/uitstelbeslisser-krijgt-het-te-zien.test.ts`.
-        const { doelId, strafId } = await doelMetStraf('UITSTEL ingetrokken', [
-          w.gevraagdeGroep,
-        ]);
-        await vraagUitstel(doelId, w.gevraagdeGroep);
-
-        const ingetrokken = await adminDb()
-          .from('commitments')
-          .update({ status: 'cancelled' })
-          .eq('id', strafId);
-        expect(ingetrokken.error, `intrekken: ${ingetrokken.error?.message}`).toBeNull();
-
-        expect(
-          await leest(w.bob, strafId),
-          'het scherm waarschuwt bij élke straf, dus de policy hoort er ook geen uit te sluiten',
-        ).toBe(1);
-      },
-      TEST_TIMEOUT,
-    );
-
-    it(
-      'en hij blijft de straf lezen nadat er beslist is',
+      'en hij blijft het weten nadat er beslist is',
       async () => {
         // ⚠️ **Dit is de naad, en niet "een open verzoek opent het oppervlak".**
         //    Een oppervlak dat dichtklapt zodra er beslist is, neemt de
@@ -316,7 +343,7 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
         //    tegendeel van "auditeerbaar" uit domeinregel 5. En het is de kant
         //    die je bij het bouwen niet vanzelf raakt: elk onderdeel klopt op
         //    het moment van drukken.
-        const { doelId, strafId } = await doelMetStraf('UITSTEL na besluit', [w.gevraagdeGroep]);
+        const { doelId } = await doelMetStraf('UITSTEL na besluit', [w.gevraagdeGroep]);
         const verzoekId = await vraagUitstel(doelId, w.gevraagdeGroep);
 
         const akkoord = await w.bob.db.rpc('beslis_deadline_verzoek', {
@@ -326,9 +353,132 @@ describe.skipIf(!rlsTestsConfigured)('wie om uitstel gevraagd wordt, ziet de str
         expect(uit(akkoord.data).ok, `beslissen: ${JSON.stringify(akkoord.data)}`).toBe(true);
 
         expect(
-          await leest(w.bob, strafId),
+          await weetVan(w.bob, doelId),
           'wat je hebt toegestaan, blijf je zien — anders is het akkoord niet terug te vinden',
-        ).toBe(1);
+        ).toBe(true);
+      },
+      TEST_TIMEOUT,
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  describe('en het oppervlak heeft randen', () => {
+    it(
+      'de tekst van de straf gaat niet mee',
+      async () => {
+        // ⚠️⚠️ **De must-deny, en de reden dat dit een RPC is en geen policy.**
+        //    📏 De eerste versie zette een vierde tak op `commitments_select`, en
+        //    toen las ditzelfde groepslid `body`, `image_url` én het id van de
+        //    aangewezen getuige met één verzoek aan PostgREST. RLS kan geen
+        //    kolommen beperken; deze test is wat die zin afdwingt.
+        const { doelId, strafId } = await doelMetStraf('UITSTEL tekst dicht', [
+          w.gevraagdeGroep,
+        ]);
+        await vraagUitstel(doelId, w.gevraagdeGroep);
+        if (strafId === null) throw new Error('deze opstelling hoort een straf te hebben');
+
+        expect(
+          await weetVan(w.bob, doelId),
+          'hij hoort te weten dát er een straf staat',
+        ).toBe(true);
+
+        expect(
+          await leest(w.bob, strafId),
+          'en hij hoort de rij zelf niet te kunnen lezen — daar staat de tekst in',
+        ).toBe(0);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een ingetrokken verzoek telt niet',
+      async () => {
+        // ⚠️ De onderbouwing van dit oppervlak is "je hebt deze groep gevraagd je
+        //    afspraak losser te maken". Bij `withdrawn` heeft de aanvrager dat
+        //    zelf teruggenomen vóórdat iemand iets toestond. Uit de
+        //    security-ronde van 09-09-2026.
+        const { doelId } = await doelMetStraf('UITSTEL ingetrokken verzoek', [
+          w.gevraagdeGroep,
+        ]);
+        const verzoekId = await vraagUitstel(doelId, w.gevraagdeGroep);
+
+        const trekIn = await w.alice.db.rpc('trek_deadline_verzoek_in', {
+          p_request_id: verzoekId,
+        });
+        expect(uit(trekIn.data).ok, `intrekken: ${JSON.stringify(trekIn.data)}`).toBe(true);
+
+        expect(
+          await weetVan(w.bob, doelId),
+          'wie zijn vraag terugneemt, heeft niets opengezet',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'ontkoppelen trekt de toestemming in',
+      async () => {
+        // ⚠️ Beslisdocument 002: *"Koppelen is de toestemming (QS8-54) en
+        //    ontkoppelen is het intrekken ervan."* De knop heet letterlijk "Niet
+        //    meer delen met deze groep". 📏 De policyversie hield hier het
+        //    leesrecht open terwijl het dóél al onzichtbaar was — de klasse die
+        //    002 "een snapshot die een policy overleeft" noemt.
+        //
+        //    Dit dekt meteen het vertrek van de eigenaar: `verlaat_groep()` en
+        //    `verwijder_lid()` gooien allebei zijn `goal_group_links` weg.
+        const { doelId } = await doelMetStraf('UITSTEL ontkoppeld', [w.gevraagdeGroep]);
+        await vraagUitstel(doelId, w.gevraagdeGroep);
+
+        const los = await adminDb()
+          .from('goal_group_links')
+          .delete()
+          .eq('goal_id', doelId)
+          .eq('group_id', w.gevraagdeGroep);
+        expect(los.error, `ontkoppelen: ${los.error?.message}`).toBeNull();
+
+        expect(
+          await weetVan(w.bob, doelId),
+          'het doel is niet meer met deze groep gedeeld, dus er valt niets meer te weten',
+        ).toBe(false);
+      },
+      TEST_TIMEOUT,
+    );
+
+    it(
+      'een lid dat eruit ligt, weet van niets',
+      async () => {
+        // ⚠️ **De must-deny waarin het lidmaatschap zélf de reden is**, en die
+        //    ontbrak in de eerste versie: carol wordt geweigerd omdat háár groep
+        //    niets gevraagd is, niet omdat zij geen lid is. Zonder dit geval
+        //    blijven alle andere tests groen als `and m.status <> 'inactive'`
+        //    ooit uit `mag_groep_lezen()` verdwijnt. Regel 18 vraag 3, gevonden
+        //    door de security-ronde.
+        const { doelId } = await doelMetStraf('UITSTEL uitgezet lid', [w.gevraagdeGroep]);
+        await vraagUitstel(doelId, w.gevraagdeGroep);
+
+        expect(
+          await weetVan(w.bob, doelId),
+          'zolang hij lid is, hoort hij het te weten',
+        ).toBe(true);
+
+        const eruit = await adminDb()
+          .from('group_members')
+          .update({ status: 'inactive' })
+          .eq('group_id', w.gevraagdeGroep)
+          .eq('user_id', w.bob.id);
+        expect(eruit.error, `uitzetten: ${eruit.error?.message}`).toBeNull();
+
+        expect(
+          await weetVan(w.bob, doelId),
+          'wie niet meer in de groep zit, leest ook niet meer wat die groep gevraagd is',
+        ).toBe(false);
+
+        const terug = await adminDb()
+          .from('group_members')
+          .update({ status: 'active' })
+          .eq('group_id', w.gevraagdeGroep)
+          .eq('user_id', w.bob.id);
+        expect(terug.error, `terugzetten: ${terug.error?.message}`).toBeNull();
       },
       TEST_TIMEOUT,
     );

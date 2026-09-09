@@ -14,7 +14,6 @@ export {
   fetchGetuigenissen,
   fetchMogelijkeBegunstigden,
   fetchStrafDoelen,
-  STRAFDOELEN_MAX,
   trekIn,
   zetBeloning,
   zetStraf,
