@@ -194,9 +194,24 @@ function Pushwacht() {
   useEffect(() => {
     if (userId === null) return;
 
-    // Bewust niet awaiten en bewust stil: geen enkel scherm hangt hiervan af,
-    // en de datalaag meldt een fout al via `reportError`.
-    void registreerPushToken(userId);
+    // ⚠️⚠️ **Hier stond `void registreerPushToken(userId)`, en `void` gooit de
+    //    uitkomst weg** (QS8-377). Sinds die functie een `Resultaat` teruggeeft,
+    //    is dat precies wat `tests/beloftes/uitkomst-niet-weggooien.test.ts`
+    //    verbiedt — en die grendel heeft deze regel ook daadwerkelijk gevangen.
+    //
+    // ⚠️ Er staat hier nog steeds geen melding op het scherm, en dat is een
+    //    besluit: bij elke start registreren we opnieuw, en een foutmelding bij
+    //    elke start is erger dan geen. De weigering wordt onthouden door de
+    //    datalaag en getoond in het meldingenblok in Profiel — de plek waar de
+    //    gebruiker kijkt als hij zich afvraagt waarom hij niets krijgt.
+    void (async () => {
+      const uitkomst = await registreerPushToken(userId);
+      if (!uitkomst.ok) {
+        // De melding staat al in `laatstePushWeigering()`; hier is er niemand om
+        // hem aan te tonen.
+        return;
+      }
+    })();
   }, [userId]);
 
   return null;

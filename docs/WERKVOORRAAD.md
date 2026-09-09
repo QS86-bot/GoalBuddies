@@ -112,8 +112,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 45 controlescripts groen;
-`npm run poort` meldt 49 stappen.
+Typecheck, lint en alle 47 controlescripts groen;
+`npm run poort` meldt 51 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -192,7 +192,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0215` staan in de map: **218 bestanden**,
+Migraties `0001` t/m `0219` staan in de map: **222 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -740,6 +740,34 @@ zette een CHECK op `push_tokens` die websleutels verplicht stelt en wijzigde
 een ongevangen 23514 stuk. De tabel was leeg, dus de migratie slaagde en er ging
 niets zichtbaar stuk — web push was dood zodra hij aangezet werd.
 
+### 2b. Tien branches zonder PR — 09-09-2026, en dit is de derde keer
+
+📏 Gemeten op 09-09 om 10:35 UTC, met `main` op `fc78e1f`: **tien issues staan op
+`In Review`, hebben een gepushte branch met afgerond werk, en er is nooit een pull
+request voor geopend** — niet open, niet gesloten, niet gemerged. Zes ervan dragen
+een migratienummer dat `main` intussen aan iets anders vergeven heeft.
+
+De volledige tabel — leeftijd, commits buiten `main`, migraties, en het besluit
+per branch met de nummers waarheen ze hernummerd moeten worden — staat bij
+**QS8-384**. Hier staat alleen de stand, want die tabel verandert bij elke merge.
+
+⚠️ **Twee stapels, en de volgorde ligt vast:** QS8-322 → QS8-333 → QS8-335, en
+QS8-332 → QS8-361 → QS8-364. Elke branch bevat de vorige, dus hernummeren van de
+onderste laag trekt de bovenliggende mee. De vier zonder migratie (QS8-338,
+QS8-346, QS8-350, QS8-358) kunnen los en zonder hernummeren.
+
+⚠️ **`In Review` liegt hier twee kanten op**, en dat is de scherpste les van deze
+ronde. Tien issues stonden erop zónder PR; QS8-353 stond erop terwijl PR #302
+gewoon gemerged was en het werk in `main` stond. De status volgt de werkelijkheid
+in geen van beide richtingen vanzelf. Op 09-09 rechtgezet: de acht inactieve naar
+`In Progress`, QS8-353 naar `Done`, en QS8-333 en QS8-335 met opzet ongemoeid —
+die zijn 4,7 uur oud en mogelijk in de lucht.
+
+⚠️ **Dit is dezelfde vorm als §2a hierboven** (QS8-131, 24-08) en als QS8-237.
+Drie keer dezelfde klasse, en hij keert terug omdat er geen signaal op staat maar
+alleen een gewoonte. Het signaal wordt gebouwd in **QS8-385**; dat issue is
+afgesplitst omdat de meting en het gereedschap twee dingen zijn.
+
 ## 3. Wat een nieuwe sessie als eerste doet
 
 1. Lees `CLAUDE.md`. Dat is de grondwet en die wint van alles hieronder.
@@ -860,7 +888,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
-| 15 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, prive of gedeeld. Staat naast de kernlus en niet erin: De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | ✅ **Beide beslispunten zijn op 09-09 beslist.** Een **vijfde tabblad** (de kop van `_layout.tsx` zei "vier en niet vijf" en is herschreven met de reden erbij), en **per taak aanvinken** wat de groep ziet — variant B, bewust niet de C die de wens letterlijk vroeg. Daarmee is er géén verruiming van domeinregel 7 nodig. Deel 1 af: **QS8-379**, migratie `0215` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. Deel 2 af: **QS8-380** — het tabblad, het scherm en de datalaag, alles prive. **QS8-381** (delen) staat nog open, met één vraag die dat issue moet beantwoorden: welke groep, als iemand er in meer dan één zit. **QS8-386** is de kleine staart: `todo_items.body` heeft een schrijfrecht dat nog niemand gebruikt |
+| 15 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, privé of gedeeld. Staat naast de kernlus en niet erin: De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | ✅ **Beide beslispunten zijn op 09-09 beslist.** Een **vijfde tabblad** (de kop van `_layout.tsx` zei "vier en niet vijf" en is herschreven met de reden erbij), en **per taak aanvinken** wat de groep ziet — variant B, bewust niet de C die de wens letterlijk vroeg. Daarmee is er géén verruiming van domeinregel 7 nodig. Deel 1 af: **QS8-379**, migratie `0219` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. Deel 2 af: **QS8-380** — het tabblad, het scherm en de datalaag, alles prive. **QS8-381** (delen) staat nog open, met één vraag die dat issue moet beantwoorden: welke groep, als iemand er in meer dan één zit. **QS8-386** is de kleine staart: `todo_items.body` heeft een schrijfrecht dat nog niemand gebruikt |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 

@@ -73,7 +73,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
     'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
   'lijst.prive_uitleg':
-    'De tabel `todo_items` is eigenaar-only sinds 0215: vier policies op ' +
+    'De tabel `todo_items` is eigenaar-only sinds 0219: vier policies op ' +
     '`user_id = (select auth.uid())`, en `visibility` is voor geen enkele client ' +
     'schrijfbaar — kolomgrant én `pin_taak()`. De belofte is vandaag dus ' +
     'onvoorwaardelijk waar, en dat is met een kaal API-verzoek gemeten in ' +

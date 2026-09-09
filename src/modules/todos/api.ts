@@ -13,7 +13,7 @@ import {
 } from './todo-schemas';
 
 /**
- * De datalaag van De Lijst — QS8-380, tabel uit migratie 0215.
+ * De datalaag van De Lijst — QS8-380, tabel uit migratie 0219.
  *
  * ⚠️ **Een taak telt nooit mee.** Geen punten, geen reeks, geen goedkeuring,
  *    geen invloed op een doel. Dat is dezelfde grens die domeinregel 9 voor De
@@ -21,7 +21,7 @@ import {
  *    telt. Er staat hier dus met opzet geen enkele aanroep naar `points_ledger`,
  *    `user_streaks` of `completion_approvals`.
  *
- * ⚠️ **Alles is eigenaar-only.** De RLS-policies van 0215 filteren op
+ * ⚠️ **Alles is eigenaar-only.** De RLS-policies van 0219 filteren op
  *    `user_id = (select auth.uid())`; deze functies leunen daarop en niet op een
  *    filter dat ze zelf meesturen. Het `eq('user_id', …)` in `fetchTaken()` is
  *    er voor de índex en niet voor de autorisatie — zie de aantekening daar.
