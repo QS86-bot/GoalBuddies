@@ -6,6 +6,7 @@ export {
   herinneringStandaard,
   meldingPoortReden,
   meldingsoortVelden,
+  stilleUrenVelden,
   MELDINGSOORTEN,
   VOORKEUR_PER_SOORT,
   herinneringVelden,

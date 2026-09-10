@@ -573,6 +573,15 @@ export const en: Record<Sleutel, string> = {
   'meldingsoort.commitment_witness': "A stake you're a witness to",
   'meldingsoort.getuige_uitleg':
     "You'll still see the stake under Witness statements; you just won't be notified.",
+  'stilteuren.titel': 'Quiet hours',
+  'stilteuren.uitleg':
+    "You get no notifications in this window. Anything that arrives during the quiet " +
+    'hours still comes through afterwards.',
+  'stilteuren.label': 'Quiet hours',
+  'stilteuren.van': 'From',
+  'stilteuren.tot': 'Until',
+  'stilteuren.herinnering_verschoven':
+    'Your {oud} reminder falls inside your quiet hours, so it arrives at {nieuw}.',
   'profiel.aan': 'On',
   'profiel.uit': 'Off',
   'profiel.viering_beweging': 'If your device asks for reduced motion, the app leaves out the animation anyway. The text simply stays.',
