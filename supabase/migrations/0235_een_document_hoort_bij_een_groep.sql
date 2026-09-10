@@ -36,12 +36,34 @@
 -- `<Image>`. Het gaat naar de systeembrowser. Een `text/html` of `image/svg+xml`
 -- die vanaf de storage-origin wordt uitgeleverd, ís dan uitvoerbare code.
 --
--- ⚠️ **De veiligheid is daarmee verhuisd van de consument naar deze ene array,
+-- ⚠️ **De veiligheid is daarmee verhuisd van de consument naar de allowlist,
 --    en dat is fragieler.** Bij een foto kon niemand er per ongeluk aan draaien;
 --    hier is verbreden één regel in een migratie. Vandaar dat er een
 --    **beloftetest** onder ligt (`tests/beloftes/een-document-voert-niets-uit.test.ts`)
 --    en geen commentaarregel — dat laatste is precies wat 0150 heeft geleerd:
 --    een afspraak die alleen in een migratiekop staat, is geen grendel.
+--
+-- ⚠️⚠️ **En het is niet "deze ene array", en dat is op 10-09-2026 gemeten en
+--    niet geredeneerd.** Policies worden over emmers heen ge-OR'd: bij een
+--    `update` die `bucket_id` wijzigt dekt de `using` van de brónemmer de oude
+--    rij en de `with check` van `chatdocs_update` de nieuwe, en op databaseniveau
+--    kijkt niets terug naar het type. 📏 Als `authenticated` gemeten:
+--
+--      update storage.objects set bucket_id = 'chatdocs', name = '<g>/<u>/x.pdf'
+--       where bucket_id = 'chatfotos' and name = '<g>/<u>/x.jpg';   → 1 rij
+--
+--    Vanaf `avatars` net zo. **Het effectieve typebereik van deze emmer is dus
+--    de unie over élke emmer waar een lid vandaan mag verhuizen** — vandaag
+--    {pdf, jpeg, png, webp}, en alle vier inert, dus er staat vandaag niets
+--    open. Wat er wél open staat is de aanname: wie hier over een half jaar een
+--    vijfde emmer naast zet met `image/svg+xml` erin (heel gewoon, voor iconen),
+--    verruimt déze emmer zonder deze migratie te lezen.
+--
+--    Daarom leest de beloftetest sinds 10-09 **elke** `insert into
+--    storage.buckets` in de hele migratiemap en niet alleen die hieronder. De
+--    verhuizing zelf staat als open rij in `docs/ENGINEER-REVIEW.md` — de
+--    reparatie is een UPDATE-recht intrekken op vier emmers tegelijk, en dat is
+--    een eigen meting tegen het echte project (QS8-407).
 --
 -- ---------------------------------------------------------------------------
 -- 2. Waarom precies `application/pdf` en niets anders
@@ -178,6 +200,18 @@ create policy chatdocs_insert on storage.objects
           end
         )
     and (storage.foldername(name))[2] = (select auth.uid())::text
+    -- ⚠️ **De vorm van de bestandsnaam hoort in de policy en niet alleen in
+    --    `chatdocPad()`.** 📏 Gemeten in de securityronde van 10-09-2026: een lid
+    --    plaatste `<groep>/<zelf>/evil.html` in deze emmer. Onbereikbaar vandaag —
+    --    de CHECK van 0237 eist `.pdf`, dus geen bericht kan ernaar wijzen — maar
+    --    "het pad eindigt op .pdf" was daarmee een eigenschap van de cliënt, en dit
+    --    is de laag die dat hoort te weten. `array_length(...) = 2` hierboven pint
+    --    de diepte; deze regel pint de naam.
+    --
+    -- ⚠️ Alleen op de twee schrijfpaden. Op `delete` zou hij een object dat er om
+    --    wat voor reden dan ook al staat, onverwijderbaar maken — een grendel die
+    --    de opruiming tegenhoudt in plaats van de plaatsing.
+    and name ~ '/[A-Za-z0-9._-]{1,80}\.pdf$'
   );
 
 drop policy if exists chatdocs_update on storage.objects;
@@ -205,6 +239,18 @@ create policy chatdocs_update on storage.objects
           end
         )
     and (storage.foldername(name))[2] = (select auth.uid())::text
+    -- ⚠️ **De vorm van de bestandsnaam hoort in de policy en niet alleen in
+    --    `chatdocPad()`.** 📏 Gemeten in de securityronde van 10-09-2026: een lid
+    --    plaatste `<groep>/<zelf>/evil.html` in deze emmer. Onbereikbaar vandaag —
+    --    de CHECK van 0237 eist `.pdf`, dus geen bericht kan ernaar wijzen — maar
+    --    "het pad eindigt op .pdf" was daarmee een eigenschap van de cliënt, en dit
+    --    is de laag die dat hoort te weten. `array_length(...) = 2` hierboven pint
+    --    de diepte; deze regel pint de naam.
+    --
+    -- ⚠️ Alleen op de twee schrijfpaden. Op `delete` zou hij een object dat er om
+    --    wat voor reden dan ook al staat, onverwijderbaar maken — een grendel die
+    --    de opruiming tegenhoudt in plaats van de plaatsing.
+    and name ~ '/[A-Za-z0-9._-]{1,80}\.pdf$'
   );
 
 drop policy if exists chatdocs_delete on storage.objects;

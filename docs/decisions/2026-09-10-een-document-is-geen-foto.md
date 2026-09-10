@@ -21,8 +21,39 @@ naar de systeembrowser, en dáár is een `text/html` vanaf de storage-origin
 uitvoerbare code — met leesrecht op alles wat die origin verder bewaart.
 
 Het hele veiligheidsargument van QS8-71 valt daarmee weg, en er komt één ding
-voor terug: **de allowlist van de emmer.** `allowed_mime_types` staat op
-`array['application/pdf']` en op niets anders.
+voor terug: **de allowlists van de emmers.** `allowed_mime_types` van `chatdocs`
+staat op `array['application/pdf']`.
+
+⚠️⚠️ **Meervoud, en dat is een correctie van de eerste versie van deze
+paragraaf.** Daar stond *"de allowlist van de emmer, en niets anders"*. 📏 De
+securityronde van 10-09-2026 mat het tegendeel, en ik heb het zelf nagemeten:
+
+```sql
+-- als authenticated, lid van <g>
+update storage.objects set bucket_id = 'chatdocs', name = '<g>/<u>/plaatje.pdf'
+ where bucket_id = 'chatfotos' and name = '<g>/<u>/plaatje.jpg';
+→ 1 rij, bucket_id = chatdocs
+```
+
+Policies worden over emmers heen ge-OR'd: de `using` van de brónemmer dekt de
+oude rij, de `with check` van `chatdocs_update` de nieuwe, en op databaseniveau
+kijkt niets terug naar het type of de grootte. **Het effectieve typebereik van
+`chatdocs` is dus de unie over élke emmer waar een lid vandaan mag verhuizen** —
+vandaag `avatars`, `chatfotos`, `bewijsfotos` en `chatdocs` samen, dat is
+{pdf, jpeg, png, webp}, en die zijn alle vier inert. **Er staat vandaag dus
+niets open.**
+
+Wat er wél openstond, was de aanname. De beloftetest toetste de denylist alleen
+tegen de tekst van 0235; wie er over een half jaar een vijfde emmer naast zet met
+`image/svg+xml` (heel gewoon, voor iconen) verruimt déze emmer zonder dit
+document te lezen, en de test blijft groen. Sinds 10-09 leest die test **elke**
+`insert into storage.buckets` in de hele migratiemap.
+
+De verhuizing zelf is niet in deze branch gerepareerd, en dat is een keuze: de
+reparatie is een UPDATE-recht intrekken op **vier** emmers tegelijk, en of de
+Storage-API dat recht bij een gewone upload nodig heeft, is een meting tegen het
+echte project. Een halve familie is erger dan een hele — zelfde afweging als bij
+QS8-399. Het staat als open rij in `docs/ENGINEER-REVIEW.md` en als QS8-407.
 
 De vraag bij elke uitbreiding is daarom niet "is dit formaat gangbaar" maar
 **"routeert een browser dit ooit naar de HTML-parser, direct of via XSLT"**. Bij
@@ -134,6 +165,15 @@ tekens; `schoneBestandsnaam()` zorgt dat de gebruiker die weigering niet te zien
 krijgt. **De twee tekenklassen — één in TypeScript, één in Postgres — staan onder
 test naast elkaar**, want een naad tussen twee reguliere expressies in twee talen
 verloopt zonder een woord.
+
+⚠️ 📏 **De eerste versie van die klasse noemde alleen `\u200E\u200F` en liet drie
+families door** — U+061C (ARABIC LETTER MARK), U+200B–U+200D (zero-width) en
+U+2028/2029 (line/paragraph separator), gemeten in de securityronde van
+10-09-2026. Geen van drieën is een override, dus het geval hierboven bleef dicht;
+wat er fout aan was, is dat twee van de drie bidi-marks geweigerd werden en de
+derde niet. **Een willekeurige grens is er een die de volgende lezer
+verschuift.** De klasse dekt nu de hele Cf-familie die een label kan vervalsen of
+breken.
 
 En om diezelfde reden leest de UI de soort uit het **pad** (`soortUitPad()`) en
 nooit uit de naam: anders stelt `factuur.pdf.exe` zich voor als PDF.

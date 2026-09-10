@@ -279,6 +279,38 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0235) en de twee remmen (0236)', 
     ).toBe('42501');
   });
 
+  it.each([
+    ['een pad dat niet op .pdf eindigt', 'evil.html'],
+    ['een pad met een hoofdletterextensie', 'evil.PDF'],
+    ['een naam met een teken buiten de klasse', 'ver slag.pdf'],
+  ])('weigert %s', (_naam, bestand) => {
+    // ⚠️⚠️ **De vorm van de bestandsnaam staat sinds 10-09-2026 in de policy en
+    //    niet meer alleen in `chatdocPad()`.** 📏 De securityronde mat dat een
+    //    lid `<groep>/<zelf>/evil.html` in deze emmer kon plaatsen. Onbereikbaar
+    //    vandaag — de CHECK van 0237 eist `.pdf`, dus geen bericht kan ernaar
+    //    wijzen — maar "het pad eindigt op .pdf" was daarmee een eigenschap van
+    //    de cliënt, en dit is de laag die dat hoort te weten.
+    expect(
+      alsMetFout(
+        bob,
+        `insert into storage.objects (bucket_id, name)
+         values ('chatdocs', '${groepA}/${bob}/${bestand}')`,
+      ),
+    ).toBe('42501');
+  });
+
+  it('laat een gewoon .pdf-pad daarnaast nog wél door', () => {
+    // ⚠️ De must-allow naast de drie must-denies. Een naamtoets die álles
+    //    weigert, is groen op deze suite en stuk voor de gebruiker.
+    expect(
+      alsMetFout(
+        bob,
+        `insert into storage.objects (bucket_id, name)
+         values ('chatdocs', '${groepA}/${bob}/m9x2q-4kd8.pdf')`,
+      ),
+    ).toMatch(/^ok:/);
+  });
+
   it('valt niet om op een object met een niet-uuid segment', () => {
     // ⚠️ Gat 1 van 0130: staat de uuid-cast achter een `and` in plaats van in een
     //    `case`, dan sloopt één `.emptyFolderPlaceholder` de héle lijstquery.

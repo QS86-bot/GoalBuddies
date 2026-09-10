@@ -21,8 +21,17 @@ import type { Resultaat } from '../goals';
  *    de systeembrowser, en daar ís een `text/html` vanaf de storage-origin
  *    uitvoerbare code.
  *
- *    De veiligheid hangt hier dus aan de allowlist van migratie 0235, en aan
- *    niets anders. Vandaar één type, en vandaar een beloftetest eronder.
+ *    De veiligheid hangt hier dus aan de **allowlists van de emmers** en niet
+ *    aan de consument. Vandaar één type, en vandaar een beloftetest eronder.
+ *
+ * ⚠️⚠️ **Meervoud, en dat is geen slordigheid.** 📏 Op 10-09-2026 gemeten: een
+ *    lid mag een eigen object met één `update` van `chatfotos` (of `avatars`)
+ *    naar `chatdocs` verhuizen — policies worden over emmers heen ge-OR'd en de
+ *    database kijkt daarbij niet terug naar het type. Het effectieve typebereik
+ *    van deze emmer is dus de unie over alle vier, vandaag {pdf, jpeg, png,
+ *    webp} en allemaal inert. `tests/beloftes/een-document-voert-niets-uit.test.ts`
+ *    legt de denylist daarom naast **elke** emmer in de migratiemap; de
+ *    verhuizing zelf staat als open rij in `docs/ENGINEER-REVIEW.md` (QS8-407).
  *
  * ⚠️ **Vier bewuste afwijkingen van `chatfoto.ts`:**
  *    1. één MIME-type in plaats van drie;
@@ -112,7 +121,7 @@ export function schoneBestandsnaam(ruw: string): string {
     // ⚠️ Precies de tekens die de CHECK `chat_messages_attachment_name_vorm`
     //    (0237) weigert — één klasse, twee plekken, en die twee horen gelijk te
     //    blijven. `tests/beloftes/...` legt ze naast elkaar.
-    .replace(/[\u0000-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+    .replace(/[\u0000-\u001F\u007F\u061C\u200B-\u200F\u202A-\u202E\u2028\u2029\u2066-\u2069]/g, '')
     .replace(/\//g, '-')
     .trim();
 

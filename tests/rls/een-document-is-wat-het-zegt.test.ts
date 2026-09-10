@@ -189,6 +189,39 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0237)', () => {
     ).toBe('23514');
   });
 
+  it.each([
+    ['een ARABIC LETTER MARK (U+061C)', 1564],
+    ['een zero-width space (U+200B)', 8203],
+    ['een zero-width joiner (U+200D)', 8205],
+    ['een line separator (U+2028)', 8232],
+  ])('weigert een naam met %s', (_naam, punt) => {
+    // ⚠️⚠️ **Deze vier stonden er tot 10-09-2026 niet in, en dat is een gemeten
+    //    bevinding uit de securityronde.** Geen van vieren is een override, dus
+    //    de spoofing hierboven bleef dicht; wat er fout aan was, is dat twee van
+    //    de drie bidi-marks geweigerd werden (U+200E/200F) en U+061C niet. **Een
+    //    willekeurige grens is er een die de volgende lezer verschuift.**
+    expect(
+      mislukt(
+        `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url, attachment_name)
+         values ('${groep}', '${alice}', 'kijk', 'doc', '${pad('i.pdf')}',
+                 'verslag' || chr(${punt}) || '.pdf')`,
+      ),
+    ).toBe('23514');
+  });
+
+  it('laat een gewone naam met een emoji erin met rust', () => {
+    // ⚠️ De must-allow naast de rij must-denies. Een klasse die te ver reikt, is
+    //    groen op deze suite en weigert precies wat CLAUDE.md uitdrukkelijk
+    //    toestaat: de gebruiker mag overal emoji typen.
+    expect(
+      mislukt(
+        `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url, attachment_name)
+         values ('${groep}', '${alice}', 'kijk', 'doc', '${pad('j.pdf')}',
+                 'verslag ' || chr(128512) || '.pdf')`,
+      ),
+    ).toBe('ok');
+  });
+
   it('telt de naamgrens in codepunten en niet in UTF-16-eenheden', () => {
     // ⚠️⚠️ **De grens is 120 codepunten, en dat is wat `char_length` telt.** Een
     //    client die in `.length` telt, laat door wat Postgres weigert: `.length`

@@ -127,6 +127,19 @@ alter table public.chat_messages
 alter table public.chat_messages
   drop constraint if exists chat_messages_attachment_name_vorm;
 
+-- ⚠️⚠️ **De tekenklasse dekt de hele Cf-familie die een label kan vervalsen of
+--    breken, en niet alleen de overrides.** 📏 De eerste versie noemde
+--    `\u200E\u200F` en liet U+061C (ARABIC LETTER MARK), U+200B–U+200D
+--    (zero-width) en U+2028/2029 (line/paragraph separator) door — gemeten in de
+--    securityronde van 10-09-2026. Geen van drieën is een override, dus
+--    `verslag<RLO>fdp.exe` bleef dicht; wat er fout aan was, is dat twee van de
+--    drie bidi-marks geweigerd werden en de derde niet. Dat is een willekeurige
+--    grens, en een willekeurige grens is er een die de volgende lezer verschuift.
+--
+-- ⚠️ Eén klasse, twee plekken: `schoneBestandsnaam()` in
+--    `src/modules/buddies/chatdoc.ts` draagt dezelfde tekens, en
+--    `tests/beloftes/een-document-voert-niets-uit.test.ts` legt ze naast elkaar.
+--    Verruim je de een, dan is de ander een rode test en geen vergeten regel.
 alter table public.chat_messages
   add constraint chat_messages_attachment_name_vorm check (
     attachment_name is null
@@ -134,7 +147,7 @@ alter table public.chat_messages
       type = 'doc'
       and attachment_url is not null
       and char_length(attachment_name) between 1 and 120
-      and attachment_name !~ '[\u0000-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069/]'
+      and attachment_name !~ '[\u0000-\u001F\u007F\u061C\u200B-\u200F\u202A-\u202E\u2028\u2029\u2066-\u2069/]'
     )
   );
 

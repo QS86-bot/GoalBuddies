@@ -24,7 +24,7 @@
  *    `tests/rls/chatdocbucket.test.ts` en
  *    `tests/rls/een-document-is-wat-het-zegt.test.ts`.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -98,6 +98,55 @@ function typenUit(sql: string): readonly string[] {
   return [...(blok?.[1] ?? '').matchAll(/'([^']+)'/g)].map((m) => m[1] ?? '');
 }
 
+/**
+ * Elke emmer die de migratiemap aanmaakt, met de typen die hij toelaat.
+ *
+ * ⚠️⚠️ **De hele migratiemap en niet één bestand, en dat is de reparatie van een
+ *    gemeten bevinding.** 📏 Op 10-09-2026 gemeten: een lid mag een eigen object
+ *    met één `update` van `chatfotos` (of `avatars`) naar `chatdocs` verhuizen —
+ *    policies worden over emmers heen ge-OR'd, en op databaseniveau kijkt niets
+ *    terug naar het type. **Het effectieve typebereik van `chatdocs` is dus de
+ *    unie over élke emmer waar een lid vandaan mag verhuizen**, en een denylist
+ *    die alleen 0235 leest, blijft groen als iemand `image/svg+xml` aan een
+ *    ándere emmer toevoegt.
+ *
+ *    Dat is regel 18 vraag 2 in zijn zuiverste vorm: de toets ging over een
+ *    eigenschap van het ónderdeel terwijl de belofte over het gehéél gaat. De
+ *    verhuizing zelf staat als open rij in `docs/ENGINEER-REVIEW.md` (QS8-407);
+ *    dit is de helft die een test kan dragen.
+ *
+ * ⚠️ Een `on conflict do update`-vorm telt mee, want die zet de waarde óók.
+ */
+function emmersInDeMigratiemap(): ReadonlyMap<string, readonly string[]> {
+  const uit = new Map<string, readonly string[]>();
+
+  for (const bestand of readdirSync('supabase/migrations').filter((n) => n.endsWith('.sql'))) {
+    /*
+      ⚠️⚠️ **Eerst de `--`-commentaren eruit, en dat is geen netheid.** 📏 Zonder
+         die stap eindigt de niet-gulzige match op de eerste `;` in de tekst, en
+         die staat in 0222 middenin een TODO-regel ("*op een betaalde tier mag
+         dit omhoog;*") — vóór de `array[...]`. Uitkomst: twee van de vier
+         emmers vielen stil buiten de toets, en de suite was groen.
+
+         Precies de vorm die deze reparatie moest wegnemen. `bucketsIn()` in
+         `scripts/storage-controle.mjs` draagt dezelfde regex; dáár valt het niet
+         op omdat die alleen de naam gebruikt, en die staat vóór het commentaar.
+    */
+    const sql = readFileSync(`supabase/migrations/${bestand}`, 'utf8').replace(/--[^\n]*/g, '');
+    for (const m of sql.matchAll(
+      /insert\s+into\s+storage\.buckets[\s\S]*?values\s*\(\s*'([^']+)'[\s\S]*?;/gi,
+    )) {
+      const naam = m[1] ?? '';
+      const array = /allowed_mime_types[\s\S]*?array\[([^\]]+)\]/i.exec(m[0])
+        ?? /array\[([^\]]+)\]/i.exec(m[0]);
+      if (array === null) continue;
+      uit.set(naam, [...(array[1] ?? '').matchAll(/'([^']+)'/g)].map((t) => t[1] ?? ''));
+    }
+  }
+
+  return uit;
+}
+
 // ---------------------------------------------------------------------------
 
 describe('de emmer en de app noemen dezelfde typen', () => {
@@ -141,6 +190,32 @@ describe('geen enkel type dat een browser kan uitvoeren', () => {
     //    belandt in een `<Image>`") houdt niet meer zodra de ondertekende URL
     //    ergens anders heen kan.
     expect(CHATFOTO_TYPES as readonly string[]).not.toContain(type);
+  });
+
+  it.each(NOOIT)('%s staat in géén enkele emmer van de migratiemap — %s', (type) => {
+    // ⚠️⚠️ **Dit is het geval waar de drie hierboven niet bij konden.** Een lid
+    //    verhuist zijn eigen object tussen emmers met één `update`, dus een
+    //    actief type in wélke emmer dan ook is een actief type in `chatdocs`.
+    const emmers = emmersInDeMigratiemap();
+    expect(emmers.size).toBeGreaterThan(1);
+
+    const schuldig = [...emmers.entries()]
+      .filter(([, typen]) => typen.includes(type))
+      .map(([naam]) => naam);
+    expect(schuldig, `${type} staat in ${schuldig.join(', ')}`).toEqual([]);
+  });
+
+  it('kent élke emmer die de migratiemap aanmaakt', () => {
+    // ⚠️ Zonder dit geval is de toets hierboven groen zodra de parser niets
+    //    vindt — de gevaarlijkste vorm van groen die er is. 📏 Vier emmers op
+    //    10-09-2026; komt er een vijfde, dan hoort dit getal mee te bewegen en
+    //    hoort iemand de rij hierboven bewust te lezen.
+    expect([...emmersInDeMigratiemap().keys()].sort()).toEqual([
+      'avatars',
+      'bewijsfotos',
+      'chatdocs',
+      'chatfotos',
+    ]);
   });
 
   it('de emmer serveert terug wat de app declareert, en dat is hard application/pdf', () => {
@@ -211,6 +286,24 @@ describe('schoneBestandsnaam maakt precies wat de CHECK toelaat', () => {
     // vertrouwen van de groep erachter.
     const rlo = String.fromCodePoint(0x202e);
     expect(schoneBestandsnaam(`verslag${rlo}fdp.exe`)).toBe('verslagfdp.exe');
+  });
+
+  it.each([
+    ['een ARABIC LETTER MARK (U+061C)', 0x061c],
+    ['een zero-width space (U+200B)', 0x200b],
+    ['een zero-width joiner (U+200D)', 0x200d],
+    ['een line separator (U+2028)', 0x2028],
+  ])('haalt %s eruit', (_naam, punt) => {
+    // ⚠️ Deze vier stonden er tot 10-09-2026 niet in. Geen van vieren is een
+    //    override, dus het geval hierboven bleef dicht; wat er fout aan was, is
+    //    dat twee van de drie bidi-marks geweigerd werden en U+061C niet.
+    expect(schoneBestandsnaam(`verslag${String.fromCodePoint(punt)}.pdf`)).toBe('verslag.pdf');
+  });
+
+  it('laat een emoji in de naam met rust', () => {
+    // ⚠️ De must-allow. CLAUDE.md staat de gebruiker uitdrukkelijk toe overal
+    //    emoji te typen; een klasse die te ver reikt, weigert precies dat.
+    expect(schoneBestandsnaam('verslag 😀.pdf')).toBe('verslag 😀.pdf');
   });
 
   it('vervangt een padscheider en laat de naam bestaan', () => {
