@@ -269,7 +269,16 @@ export async function zetDagzet(
   return { ok: true, waarde: data };
 }
 
-/** De Dagzetten van deze cyclus, nieuwste eerst. */
+/**
+ * De Dagzetten van deze cyclus, nieuwste eerst.
+ *
+ * ⚠️ **Neemt met opzet een ongemerkt `Cycle` en niet `Gebruikerscyclus`** —
+ *    QS8-180. Hier is een cyclus alleen een datumbereik: het weekafsluitings-
+ *    scherm stopt er de gróepsperiode in, want dat gesprek gaat over de week van
+ *    de groep, en het Dagzet-overzicht stopt er de eigen cyclus in. Beide zijn
+ *    juist. Het merk hoort op de plek waar de klok een belófte doet — hier doet
+ *    hij er geen, en dan is een merk aanmatigen erger dan geen merk.
+ */
 export async function fetchDagzetten(
   userId: string,
   cyclus: Cycle,

@@ -2,7 +2,7 @@ import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
-import type { Cycle } from '../../shared/time';
+import type { Gebruikerscyclus } from '../../shared/time';
 import type { Resultaat } from '../../shared/api';
 
 import { groepeerPerWeekdoel } from './afvinkvorm';
@@ -48,7 +48,7 @@ export type Dagafvinking = Tables<'day_checkins'>;
  * @returns per `weekly_goal_id` de afgevinkte dagen, oplopend.
  */
 export async function fetchAfvinkingenPerWeekdoel(
-  cyclus: Cycle,
+  cyclus: Gebruikerscyclus,
 ): Promise<ReadonlyMap<string, readonly string[]>> {
   const { data, error } = await supabase()
     .from('day_checkins')
