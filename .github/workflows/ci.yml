@@ -85,157 +85,41 @@ jobs:
       - name: Tests
         run: npm test
 
-      # ⚠️ De Edge-kopie van `shared/time` mag niet uit de pas lopen met die in
-      #    `src/`. Twee runtimes betekent twee exemplaren, en dan geldt
-      #    correctheidsregel 7 twee keer terwijl niets ze gelijk houdt. Deze
-      #    controle draait in Node en heeft geen Deno nodig.
-      - name: Edge-tijdmodule gelijk aan die van de app
-        run: npm run edge:controle
-
-      # ⚠️ Dode ketens: een functie die niemand aanroept, of een CHECK-waarde die
-      #    niemand ooit schrijft. Dat is de vorm die dit project vijf keer duur
-      #    betaald heeft — er is niets kapot, dus geen enkele test wordt er rood
-      #    van. Zie de kop van het script voor wat hij wél en niet vindt.
-      - name: Dode ketens
-        run: npm run keten:controle
-
-      # ⚠️ Argumentnamen van `.rpc()`. Typecheck vangt een verkeerd type en een
-      #    ontbrekende verplichte parameter, maar een parameter die niet bestáát
-      #    komt erdoor — los gemeten op 28-08. Dat is precies wat een hernoeming
-      #    oplevert, en het is die dag twee keer gebeurd. De fout verschijnt pas
-      #    als iemand de knop indrukt, als `PGRST202`.
-      - name: RPC-argumenten bestaan echt
-        run: npm run rpc:controle
-
-      # ⚠️ Achtergebleven conflictmarkeringen. Geen theorie: op 28-08 stonden er
-      #    zes in `docs/ENGINEER-REVIEW.md` op `main`, meegegaan door een merge,
-      #    een PR en een volledige CI-run. Elke bestaande controle deed zijn werk;
-      #    er was er geen die dít werk deed.
-      - name: Geen achtergebleven conflictmarkeringen
-        run: npm run markeringen:controle
-
-      # ⚠️ Storage. Vandaag zijn er nul buckets en nul uploads, dus deze stap is
-      #    groen omdat er niets ís — precies het groen waar dit project voor
-      #    waarschuwt. Hij bestaat voor de dag dat de eerste upload gebouwd wordt:
-      #    dán is het een open emmer tenzij iemand eraan denkt, en vanaf nu denkt
-      #    de build mee.
-      - name: Storage-buckets en hun policies
-        run: npm run storage:controle
-
-      # ⚠️ Het manifest tegen `EXPO_PUBLIC_APP_URL`. Verhuist de app ooit van een
-      #    eigen subdomein naar een pad, dan moeten `start_url`, `scope`, `id` en
-      #    de absolute iconen mee — anders werkt alles behalve de meldingen, en
-      #    dat merk je pas als iemand klaagt dat hij niets krijgt.
-      - name: Manifest en servicewormer-scope
-        run: npm run pwa:controle
-
-      # ⚠️ Een ratel en geen verbod: 27 hand-geschreven `levend`-vlaggen mogen
-      #    blijven, er mag er geen bij, en zakt het aantal dan moet het plafond
-      #    mee. Die tweede tak is de belangrijkste — een ratel die niet meezakt,
-      #    houdt ruimte open voor een kopie die niemand ziet terugkomen.
-      - name: Geen nieuwe handmatige levend-vlaggen
-        run: npm run levend:controle
-
-      # ⚠️ Dezelfde vorm, op coderegel 15. ESLint bewaakt de nesting en de
-      #    vijftig regels in de logicalaag; deze ratel bewaakt hoevéél functies
-      #    er in de schermlaag boven de vijftig zitten — en dat getal mag alleen
-      #    dalen. Zonder hem staat regel 15 daar alleen op papier (QS8-190).
-      - name: De schermlaag wordt niet langer
-        run: npm run regel15:controle
-
-      # -----------------------------------------------------------------------
-      # De controles die alleen de repo nodig hebben — toegevoegd 27-08-2026
-      # -----------------------------------------------------------------------
+      # ⚠️⚠️ **Eén stap, en de lijst komt uit `package.json`** — QS8-417. Hier
+      #    stonden twintig stappen met de hand opgesomd, en dat liep de verkeerde
+      #    kant op: `scripts/poort.mjs` pikt élke nieuwe `*:controle` vanzelf op,
+      #    `ci.yml` niet. 📏 Gemeten op 10-09-2026 stonden er **26 van de 52** niet
+      #    in enige workflow — waaronder `schermingang:`, `registerdrift:`,
+      #    `exports:` en `hoofdrun:controle`, precies de grendels die dit project
+      #    betaald heeft. Een nieuwe grendel stond dus automatisch in de poort (een
+      #    commando dat een mens typt) en automatisch niet in CI (dat bij elke push
+      #    draait).
       #
-      # ⚠️ **Deze acht stonden alleen in `/audit`, en dat is een wekelijkse
-      #    handeling.** `CLAUDE.md` zegt bij vier ervan letterlijk "sinds X een
-      #    controle en geen zin meer" — de hele winst is dat je de regel niet
-      #    hoeft te ónthouden. Maar het scrípt draaide alleen als iemand eraan
-      #    dacht, en dan is de regel alsnog iets om te onthouden, één laag hoger.
+      # ⚠️ **De reden per controle staat in de kop van zijn eigen script**, en niet
+      #    meer hier. 📏 Alle 26 die hier stonden dragen een kop van tien regels of
+      #    meer; twee kopieën van dezelfde uitleg is precies wat `docs:controle`
+      #    elders in dit project verbiedt.
       #
-      # ⚠️ **En CI toetste wél dat ze wérken.** De ijkingstests in
-      #    `tests/scripts/` draaien mee in `npm test`, dus de build bewees dat de
-      #    heuristieken kloppen — en liet ze vervolgens niets bewaken. Dat is
-      #    dezelfde vorm als de bevindingen die deze scripts zelf vinden.
-      #
-      # ⚠️ Samen kosten ze ongeveer anderhalve seconde; ze lezen alleen
-      #    bestanden. Wat er níét bij staat heeft een reden: `functies:` en
-      #    `register:controle` vragen een productieverbinding, `vapid:controle`
-      #    een privésleutel, en `zichtbaarheid:controle` een database — die
-      #    laatste hoort in de RLS-job hieronder.
-
-      - name: De overdrachtsdocumenten spreken elkaar niet tegen
-        run: npm run docs:controle
-
-      - name: Geen emoji in app-tekst
-        run: npm run emoji:controle
-
-      - name: Geen hardgecodeerde UI-tekst
-        run: npm run tekst:controle
-
-      # ⚠️ Het enige vangnet dat JSON hier heeft. ESLint leest alleen `.ts` en
-      #    `.tsx`, `tsc` leest geen JSON, en `JSON.parse` houdt bij een dubbele
-      #    sleutel stilzwijgend de láátste — zonder fout, zonder waarschuwing.
-      #    `pwa:controle` beoordeelt het manifest mét `JSON.parse` en erft dus
-      #    die blindheid.
-      - name: Geen dubbele sleutels in JSON
-        run: npm run json:controle
-
-      # ⚠️ De duurste klasse van dit project: elk onderdeel af en getoetst, de
-      #    keten nergens verbonden. Er is niets kapot, dus geen enkele test wordt
-      #    er rood van — de vier gevallen van 26-08 stonden tussen de vijf dagen
-      #    en drie maanden onopgemerkt en zijn alle vier bij toeval gevonden.
-      - name: Elk injectiepunt is ergens aangesloten
-        run: npm run aansluiting:controle
-
-      # ⚠️ Het gat in de nummering is de belangrijkste van de drie toetsen: de
-      #    bestanden zijn de enige manier om dit schema ergens anders op te
-      #    bouwen, en ontbreekt er één, dan toetst de RLS-suite daar een ánder
-      #    schema dan productie — groen zonder iets te bewijzen.
-      - name: Migraties aaneengesloten en met rollback-pad
-        run: npm run migraties:controle
-
-      # ⚠️ Elke open Laag-bevinding zegt wanneer hij zwaarder wordt. Zonder die
-      #    zin is het een lijst die alleen maar groeit.
-      - name: Elke bevinding zegt wanneer hij terugkomt
-        run: npm run review:controle
-
-      # ⚠️ Geen persoonsgegeven in een jsonb-kolom die niemand als zodanig leest.
-      - name: Geen persoon in jsonb
-        run: npm run persoon:controle
-
-      # ⚠️ Geen vaste uuid in een fixture die geschreven wordt. Draaien er twee
-      #    suites tegen dezelfde stack — sinds er parallel gewerkt wordt de
-      #    gewone toestand — dan is zo'n uuid geen identiteit maar een gedeelde
-      #    sleutel, en ruimt de één de rij van de ánder op.
-      - name: Geen gedeelde identiteit in een fixture
-        run: npm run gedeelde-identiteit:controle
-
-      # ⚠️ De gratis tier heeft 60 verbindingen voor de héle database. Deze
-      #    controle wordt rood zodra er een Postgres-driver of een
-      #    verbindingsstring bij komt — vandaag klopt de regel omdat alles via
-      #    PostgREST loopt, en dat is de afwezigheid van iets en geen instelling.
-      - name: Geen directe databaseverbindingen
-        run: npm run verbindingen:controle
-
-      # ⚠️ De gedeelde kopieën in `supabase/functions/_shared/` zijn gegenereerd.
-      #    Loopt er één uit de pas, dan werken de app en de jobs met
-      #    verschillende regels — en dat is precies wat `edge:controle` hierboven
-      #    voor `shared/time` alleen doet.
-      - name: Alle gedeelde Edge-kopieën gelijk aan src/
-        run: npm run edge:sync:controle
-
-      # ⚠️ **Deze heeft wél een netwerkaanroep nodig, en dat is hier geen bezwaar.**
-      #    `functies:` en `register:controle` staan niet in CI omdat ze een
-      #    **productieverbinding** vragen; `audit:controle` praat alleen met het
-      #    openbare npm-register, waar `npm ci` hierboven al mee praat.
-      #
-      #    Valt dat register weg, dan meldt de controle `OVERGESLAGEN` en geeft
-      #    exitcode 1 — ongemeten is hier geen groen. Dat is een bewuste keuze:
-      #    liever een rode run die zegt dat er niets gemeten is, dan een groene
-      #    die dat verzwijgt.
-      - name: npm audit langs het register van nagekeken kwetsbaarheden
-        run: npm run audit:controle
+      # ⚠️ `set +e`, om dezelfde reden als in de Windows-job: zonder dat breekt de
+      #    eerste rode controle de stap af en zie je de rest niet. Eén run hoort
+      #    álle bevindingen te tonen, niet de eerste.
+      - name: Elke controle die alleen de repo leest
+        run: |
+          set +e
+          mislukt=0
+          for naam in $(node scripts/ci-controles.mjs --baan repo); do
+            uitvoer="$(npm run --silent "$naam" 2>&1)"
+            code=$?
+            if [ "$code" -ne 0 ]; then
+              echo "::group::✗ $naam (exit $code)"
+              echo "$uitvoer"
+              echo "::endgroup::"
+              mislukt=1
+            else
+              echo "✓ $naam"
+            fi
+          done
+          exit $mislukt
 
   # ---------------------------------------------------------------------------
   # De RLS-suite — QS8-119
@@ -350,55 +234,37 @@ jobs:
           POSTGREST_BIN: /home/runner/postgrest/postgrest
         run: scripts/lokale-stack.sh
 
-      # ⚠️ Het register van elke `current_date` in het schema. Hoort hier en niet
-      #    in de job hierboven: `pg_get_functiondef()` is de waarheid en een
-      #    migratiebestand niet, dus deze controle heeft een opgebouwde database
-      #    nodig. Een dertiende `current_date` erbij is geen rode test — er is
-      #    niets kapot, er staat alleen een aanname in een grens waar niemand
-      #    hem zoekt. Zie de kop van het script.
-      - name: Klokgrenzen met een reden
-        run: npm run klokgrens:controle
-
-      # ⚠️ Vraagt de app kolommen terug die hij niet mag lezen? Migratie 0089
-      #    versmalde de SELECT-grant op `profiles` — terecht — en brak daarmee
-      #    stil élke profielopslag, want `updateProfiel()` vroeg zijn rij terug
-      #    met `select('*')` en dat is 42501. De policy klopte, de grant klopte,
-      #    de app klopte; alleen de combinatie niet. Deze stap legt elke
-      #    `select()` in `src/` en `app/` naast de échte grants.
-      - name: Kolomrechten tegen wat de app terugvraagt
-        run: npm run kolomrechten:controle
-
-      # ⚠️ `guard_group_update()` stapt opzij voor elke rol die geen client is, en
-      #    een SECURITY DEFINER-functie draait als zijn eigenaar. Vijf functies
-      #    gebruiken die uitzondering met opzet; de zesde erft hem zonder dat
-      #    iemand het merkt. Deze stap houdt de lijst opgesomd.
-      - name: Wie mag er langs de pin op groups
-        run: npm run pin:controle
-
-      # ⚠️ Wat er in een open groep opengaat (besluit A41) staat in vier
-      #    oppervlakken in de database, en de zin die de gebruiker leest somt die
-      #    vier op. Komt er een vijfde bij, dan vertelt die zin een deel van de
-      #    waarheid — en dan is de vraag of hij nog klopt iets voor nu en niet
-      #    voor nadat iemand toestemming gaf voor iets anders dan hij dacht.
-      - name: Wat een open groep laat zien
-        run: npm run zichtbaarheid:controle
-
       # ⚠️ Deze stap is de eigenlijke poort van dit project. Wat hier groen is,
       #    is bewezen; wat hier niet staat, is niet bewezen.
       - name: RLS-policies
         run: npm run rls:lokaal
 
-      # ⚠️⚠️ **Hier en niet in een eigen job** (QS8-413): deze controle bouwt het
-      #    schema van nul op en heeft dus een Postgres nodig, en die staat hier
-      #    al. Een eigen job zou een tweede container starten voor twee seconden
-      #    extra rekenwerk.
+      # ⚠️⚠️ **Dezelfde lijst-uit-`package.json` als in de job hierboven**
+      #    (QS8-417), maar dan de baan die een opgebouwde database nodig heeft:
+      #    `HEEFT_DATABASE_NODIG` in `scripts/poort.mjs` is de bron, zodat de
+      #    poort en CI dezelfde indeling gebruiken en niet twee kunnen krijgen.
       #
-      # ⚠️ **Ná de RLS-suite en niet ervoor.** Hij maakt een éígen database aan
-      #    (`goalbuddies_dubbel`) en laat de stack met rust, maar de volgorde
-      #    houdt de uitslagen uit elkaar: valt dit om, dan weet je dat de suite
-      #    daarvóór wél gemeten heeft.
-      - name: Elke migratie overleeft een tweede run
-        run: npm run idempotent:controle
+      # ⚠️ **Ná `rls:lokaal` en niet ervoor.** Valt hier iets om, dan weet je dat
+      #    de suite daarvóór wél gemeten heeft. `idempotent:controle` zit in deze
+      #    baan en bouwt een éígen database (`goalbuddies_dubbel`); hij laat de
+      #    stack met rust, maar de volgorde houdt de uitslagen uit elkaar.
+      - name: Elke controle die de database nodig heeft
+        run: |
+          set +e
+          mislukt=0
+          for naam in $(node scripts/ci-controles.mjs --baan database); do
+            uitvoer="$(npm run --silent "$naam" 2>&1)"
+            code=$?
+            if [ "$code" -ne 0 ]; then
+              echo "::group::✗ $naam (exit $code)"
+              echo "$uitvoer"
+              echo "::endgroup::"
+              mislukt=1
+            else
+              echo "✓ $naam"
+            fi
+          done
+          exit $mislukt
 
       # Zonder dit is een storing in de opstelling niet te onderscheiden van een
       # policyfout, en dan zoek je in de policies naar iets wat een verbinding was.

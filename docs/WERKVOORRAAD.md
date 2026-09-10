@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 10-09-2026 (na QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 10-09-2026 (na QS8-24; daarvóór QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -221,8 +221,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 52 controlescripts groen;
-`npm run poort` meldt 56 stappen.
+Typecheck, lint en alle 53 controlescripts groen;
+`npm run poort` meldt 57 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -1312,7 +1312,7 @@ beslisbevoegdheid in `CLAUDE.md`.
 |---|---|---|
 | QS8-98 | RLS-testsuite met echte JWT's | ✅ af, plus zeven gaten gedicht |
 | QS8-23 | CI: typecheck, lint, test op elke push | ✅ af — branch protection nog zetten |
-| QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged — open: er is nooit een echte gebeurtenis uít de app aangekomen |
+| QS8-24 | Sentry | ✅ alle vier de criteria gebouwd en gemerged; `SENTRY_DSN` staat sinds 09-09 op het project en de source-maps-upload is op 10-09 voor het eerst gelopen — open: er is nooit een echte gebeurtenis uít de app aangekomen |
 | QS8-22 | Migratie-workflow | ✅ af sinds QS8-119 — dumpscript, docs én een lokale stack. Zie de correctie hieronder |
 
 ⚠️ **Achterhaald sinds QS8-119 (24-08-2026), en dat stond hier tot 27-08 nog

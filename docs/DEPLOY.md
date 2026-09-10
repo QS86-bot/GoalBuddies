@@ -992,7 +992,26 @@ SENTRY_ORG='<je organisatie-slug>'
 SENTRY_PROJECT='<je project-slug>'
 ```
 
-Het token maak je op `https://sentry.io/settings/auth-tokens/`.
+**Waar je die drie vindt — nagelopen op 10-09-2026:**
+
+| Waarde | Waar | Let op |
+|---|---|---|
+| `SENTRY_AUTH_TOKEN` | Settings → Auth Tokens → *Create New Token* (`https://sentry.io/settings/auth-tokens/`) | Scopes `project:releases` en `org:read`. Je ziet hem één keer. |
+| `SENTRY_ORG` | de eerste padcomponent in de URL van je project, en Settings → General Settings → *Organization Slug* | de **slug**, niet het nummer |
+| `SENTRY_PROJECT` | Settings → Projects → je project → *Name* / de URL | idem |
+
+⚠️ **Het zijn de slugs en niet de id's.** Uit de DSN zijn allebei de nummers af
+te lezen — organisatie `4511976142274560`, project `4511976458027088` — en die
+horen hier níét. Het project-id is wél een goede kruiscontrole dat je naar het
+juiste project kijkt: het staat in Settings → General Settings van het project.
+
+✅ **Er is géén `SENTRY_URL` nodig, ook al wijst de DSN naar
+`ingest.de.sentry.io`.** 📏 Gemeten op 10-09-2026: `sentry-cli` uploadde de
+source maps in één keer met alleen die drie variabelen, zonder fout erna. Dit
+staat er met zoveel woorden omdat de EU-regio er precies uitziet als iets dat een
+vierde variabele vraagt, en `sentry-cli` er ook een aanbiedt. Wat hier gemeten is
+is de uitkomst — de upload slaagde — en niet waaróm; ga dus niet op zoek naar een
+instelling die het probleem niet is.
 
 ⚠️ **`SENTRY_AUTH_TOKEN` is wél geheim**, anders dan de twee DSN's. Hij geeft
 schrijftoegang tot je Sentry-organisatie. Hij begint niet met `EXPO_PUBLIC_`, dus
