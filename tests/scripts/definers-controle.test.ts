@@ -129,6 +129,23 @@ describe('schrijftNaarKerntabel', () => {
       expect(KERNTABELLEN, tabel).toContain(tabel);
     }
   });
+
+  /**
+   * ⚠️ **Dezelfde vorm, één laag verder — QS8-181.** De lijst keek naar doelen en
+   *    naar groepen, maar niet naar straffen. `herstel_stuurloze_straf()`
+   *    schrijft `beneficiary_user_id` en `status = 'resolved'` op een commitment
+   *    en stond daardoor alléén in het leesregister, met een reden die alleen de
+   *    leesrichting beschreef. Een commitment device is waar domeinregel 5 over
+   *    gaat: het gaat nooit stilzwijgend aan en dus ook nooit stilzwijgend los.
+   *
+   *    Gevonden in de security-ronde, niet door het gereedschap — precies zoals
+   *    bij QS8-286.
+   */
+  it('houdt de commitment-tabellen erin die QS8-181 heeft toegevoegd', () => {
+    for (const tabel of ['commitments', 'commitment_events']) {
+      expect(KERNTABELLEN, tabel).toContain(tabel);
+    }
+  });
 });
 
 describe('zonderCommentaar', () => {

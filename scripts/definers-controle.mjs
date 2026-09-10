@@ -101,6 +101,18 @@ export const KERNTABELLEN = [
   'group_members',
   'approval_withdrawals',
   'badges',
+  // Over een commitment device
+  //
+  // ⚠️ **Deze twee stonden er niet in tot 10-09-2026, en dat kwam boven in de
+  //    security-ronde van QS8-181** — precies de vorm van QS8-286, één laag
+  //    verder. `herstel_stuurloze_straf()` schrijft `beneficiary_user_id` en
+  //    `status = 'resolved'` op een straf en stond alleen in het léésregister,
+  //    met een reden die alleen de leesrichting beschreef. Een commitment device
+  //    is waar domeinregel 5 over gaat: het mag nooit stilzwijgend aan of los.
+  //    Een register dat naar doelen en groepen keek maar niet naar straffen,
+  //    keek langs de zwaarste tabel van het schema heen.
+  'commitments',
+  'commitment_events',
 ];
 
 /**
@@ -163,6 +175,51 @@ const REGISTER = new Map([
       'toetsbaar zonder enige verhuizing. Wat ontbrak was een fixture met een twéede ' +
       'gebruiker erin. Gemeten: zonder die tweede gebruiker nul rood van 963. ' +
       'Bewaakt door `tests/rls/weekstart.test.ts`, met zowel een wildvreemde als een buddy.',
+  ],
+
+  // --- Straffen en beloningen: het commitment device (QS8-181) ---------------
+  //
+  // ⚠️ **Deze vijf kwamen pas in beeld op 10-09-2026**, toen `commitments` en
+  //    `commitment_events` aan `KERNTABELLEN` werden toegevoegd. Domeinregel 5:
+  //    een commitment device gaat nooit stilzwijgend aan, en dus ook nooit
+  //    stilzwijgend los.
+  [
+    'herstel_stuurloze_straf',
+    'Eigenaarspoort (`not_owner`) plus vier standtoetsen, en een bevestiging voor het afwikkelen. ' +
+      '⚠️ Stond tot 10-09-2026 in het léésregister met een reden die alleen de leesrichting ' +
+      'beschreef — hij schrijft `beneficiary_user_id` en `status = resolved` op een straf. Dat kwam ' +
+      'boven in de security-ronde van QS8-181 en is de reden dat de twee commitment-tabellen nu in ' +
+      '`KERNTABELLEN` staan. De voorwaarden staan óók in de `where` van beide updates, zodat twee ' +
+      'gelijktijdige aanroepen niet allebei een auditrij schrijven.',
+  ],
+  [
+    'maak_straffen_verschuldigd',
+    '`authenticated` mag hem niet aanroepen — gemeten: `anon=false auth=false service=true`. De ' +
+      'grant ís hier de grendel, en die bewaakt `tests/rls/functiegrants.test.ts` (0115). Enige ' +
+      'aanroeper is de rollover-functie, die als `service_role` draait.',
+  ],
+  [
+    'wikkel_commitments_af',
+    'Idem: `anon=false auth=false service=true`, dus de grant is de grendel. Wordt verder alleen ' +
+      'aangeroepen vanuit `rond_doel_af()`, `zet_streefdatum()`, `zet_week_startdag()` en ' +
+      '`herbereken_risico()` — allemaal definer-RPC\'s die hun eigen eigenaarspoort hebben en die ' +
+      'in dit register staan.',
+  ],
+  [
+    'noteer_commitment',
+    'Triggerfunctie op `commitments` (`commitments_audit`). Geen eigen poort: zijn autorisatie is ' +
+      'de policy op de schrijfactie die hem aftrapt. `commitments_insert` en `commitments_update` ' +
+      'eisen allebei `g.owner_id = auth.uid()`, en de UPDATE-policy laat alleen `set → set` of ' +
+      '`set → cancelled` toe. ⚠️ Schrijft alleen in `commitment_events`, dat append-only is ' +
+      '(domeinregel 6).',
+  ],
+  [
+    'meld_commitment',
+    'Triggerfunctie op `commitments` (`commitments_systeembericht`). Zelfde grendel als ' +
+      '`noteer_commitment`: de policy op de schrijfactie. ⚠️ Plaatst een systeembericht, en dat is ' +
+      'een groepszichtbaar oppervlak — de soorten die hij mag gebruiken staan in de CHECK ' +
+      '`chat_messages_system_event_bekend`, die ook voor `service_role` geldt, en het bericht noemt ' +
+      '“een lid” en nooit een titel of een niveau (beslisdocument 002 §3).',
   ],
 
   // --- Groeps-RPC's: gemeten in de sweep van QS8-286 -------------------------
@@ -471,7 +528,7 @@ export function beoordeel(gevonden, register = REGISTER, soort = undefined) {
 const LEESREGISTER = new Map([
   // --- Predicaten: geven een boolean over de aanroeper zélf -----------------
   //
-  // ⚠️ Deze vijf zijn de RLS-hulpfuncties. Ze lezen `group_members` als eigenaar
+  // ⚠️ Deze acht zijn de predicaten. Ze lezen `group_members` als eigenaar
   //    om de recursie te vermijden die policies op die tabel anders veroorzaken,
   //    en ze scopen allemaal hard op `auth.uid()`: de uitkomst gaat over de
   //    aanroeper en over niemand anders. `tests/rls/hulpfuncties.test.ts` pint
@@ -494,11 +551,10 @@ const LEESREGISTER = new Map([
   ['verwijder_mijn_account', 'Alles hangt aan `mij := auth.uid()`; leest `group_members` alleen om de laatste-beheerder-toets te doen.'],
   ['vraag_ai_job', 'Poort op `auth.uid()`, en `p_goal_id` moet van de aanroeper zijn (`not_your_goal`). Leest `goals`/`milestones` alleen daarvoor.'],
   ['start_weekplanstap', 'Eigenaarspoort (`not_owner`) vóór de doorgifte aan `weekplanstap_naar_weekdoel()`.'],
-  ['herstel_stuurloze_straf', 'Eigenaarspoort (`not_owner`), en daarna nog vier standtoetsen. Leest `goals` alleen om de eigenaar te bepalen.'],
 
   // --- Groepsoppervlakken: een lidmaatschapspoort in de functie zelf ---------
   //
-  // ⚠️ Dit is de klasse waar domeinregel 7 aan hangt. Bij élk van deze vijf geldt
+  // ⚠️ Dit is de klasse waar domeinregel 7 aan hangt. Bij élk van deze negen geldt
   //    de vraag uit CLAUDE.md: kan hieruit iemands gemiste week worden afgeleid,
   //    en kan iemand dat met één API-verzoek uitlezen buiten de UI om?
   ['groep_teller', 'Lidmaatschapspoort: `where is_group_member(p_group_id)` — geen lid, nul rijen. Telt alleen omhoog (domeinregel 7).'],
@@ -526,24 +582,30 @@ const LEESREGISTER = new Map([
       'van elk lid draagt (0128). Een niet-ingelogde kijker krijgt alleen voornamen en geen doeltitels.',
   ],
 
-  // --- Zonder poort aan de aanroeperskant, en dat is een bevinding -----------
+  // --- De twee die geen poort hádden, en dat was de opbrengst van deze ronde -
   //
-  // ⚠️⚠️ **Deze twee zijn de opbrengst van deze ronde: ze zijn hulpfuncties
-  //    geworden zonder dat iemand de vraag over ze gesteld heeft.** Ze zijn niet
-  //    dicht te zetten met een `revoke` — `openstaande_beoordelingen()` is
-  //    `SECURITY INVOKER` en roept de eerste aan, en `chain_links_select` roept de
-  //    tweede aan in een policy-expressie, die als de bevragende rol draait. Een
-  //    poort erín is óók niet gratis: allebei worden ze aangeroepen vanuit paden
-  //    waar `auth.uid()` leeg is (de rollover draait als `service_role`), en dan
-  //    zou de grendel een storing worden in plaats van een weigering.
-  //    De dossierrij in `docs/ENGINEER-REVIEW.md` draagt het vervolg.
+  // ⚠️⚠️ **Ze zijn hulpfuncties gewórden zonder dat iemand de vraag over ze
+  //    gesteld heeft** — precies waarvoor dit register bestaat. Geen van beide is
+  //    dicht te zetten met een `revoke`: `bevestigingsstand()` en
+  //    `openstaande_beoordelingen()` zijn `SECURITY INVOKER` en roepen de eerste
+  //    aan, en `chain_links_select` roept de tweede aan in een policy-expressie,
+  //    die als de bevragende rol draait. De eerste heeft sinds 0249 een poort met
+  //    drie takken; de tweede lekt niets over een persoon en staat als Laag-rij
+  //    in `docs/ENGINEER-REVIEW.md`, met de voorwaarde waaronder hij zwaarder
+  //    wordt.
   [
     'vereiste_goedkeuringen',
-    '⚠️ **Geen poort.** Elke ingelogde gebruiker met een groeps-uuid leest hoeveel bevestigingen die groep vraagt, ' +
-      'en daaruit is het aantal actieve leden af te leiden. Waarom dat vandaag draagt: datzelfde ledental staat al in ' +
-      '`ontdek_groepen()` voor elke vindbare groep en in `invite_preview()` voor wie de code heeft, het gaat over ' +
-      'niemand persoonlijk, en er zit geen tegenslag in (domeinregel 7). Wordt zwaarder zodra de uitkomst van een ' +
-      'persoon gaat afhangen in plaats van van de groep.',
+    'Poort sinds 0249 (QS8-181): `auth.uid() is null or auth.uid() = p_owner or mag_groep_lezen(p_group_id)`. ' +
+      '⚠️ **Hij had er geen, en dat was een orakel op `group_members`.** Zijn antwoord hangt van een pérsoon af — ' +
+      '`beoordelaars` telt de actieve leden mínus `p_owner`. 📏 Gemeten met vier leden en `approval_rule = majority`, ' +
+      'als iemand die geen lid is en aan wie `groups` en `group_members` nul rijen geven: 2 voor een lid, 3 voor een ' +
+      'niet-lid. Een weggestuurd lid houdt beide uuid\'s en kon zo blijven volgen wie er nog in de groep zit. ' +
+      '⚠️ De derde tak is geen beleefdheid: `bevries_goedkeuringsdrempel()` schrijft de uitkomst in een ' +
+      '`not null`-kolom bij het insert op `completions`, en `completions_insert` eist géén lidmaatschap. Zonder ' +
+      '`auth.uid() = p_owner` valt de indiening om met 23502. Beide takken apart geijkt in ' +
+      '`tests/rls/goedkeuringsdrempel-verraadt-niets.test.ts`. ' +
+      '⚠️ Een `revoke` kon niet: `bevestigingsstand()` én `openstaande_beoordelingen()` zijn `SECURITY INVOKER` ' +
+      'en roepen hem aan.',
   ],
   [
     'groepsdatum',
@@ -552,6 +614,52 @@ const LEESREGISTER = new Map([
       'aanroepen.',
   ],
 ]);
+
+/**
+ * De uitleg die bij een onbekende schrijver hoort.
+ *
+ * ⚠️ Staat apart van `hoofd()` om coderegel 15: die functie liep over de vijftig
+ *    toen het tweede register erbij kwam, en `scripts/` is sinds QS8-291 een
+ *    ratel — het aantal lange functies mag daar alleen dalen.
+ */
+function meldSchrijvers(namen) {
+  console.error(`✗ ${namen.length} definer-functie(s) schrijven in een kerntabel zonder reden:\n`);
+  for (const f of namen) console.error(`    ${f}()`);
+  console.error(
+    '\nEen SECURITY DEFINER-functie draait als zijn eigenaar, dus geen enkele policy\n' +
+      'houdt hem tegen — zijn poort is de `if` in zijn eigen body, en `rls:dekking`\n' +
+      'ziet die niet.\n\n' +
+      'Mag `authenticated` hem aanroepen? Dan hoort er een test te staan die rood\n' +
+      'wordt als die poort weggehaald wordt — zie tests/rls/definerpoorten.test.ts.\n' +
+      'Is het een triggerfunctie? Dan zit de autorisatie in de policy op de\n' +
+      'schrijfactie die hem aftrapt; schrijf op wélke.\n' +
+      'Zet hem daarna met die reden in REGISTER in scripts/definers-controle.mjs.',
+  );
+}
+
+/**
+ * De uitleg die bij een onbekende lezer hoort — QS8-181.
+ *
+ * ⚠️ Een eigen tekst en niet die van de schrijvers, want de vraag is een andere:
+ *    niet "waar is de poort die dit tegenhoudt" maar "zijn deze rijen van de
+ *    aanroeper om te zien".
+ */
+function meldLezers(namen) {
+  console.error(`✗ ${namen.length} definer-RPC('s) lezen uit een kerntabel zonder reden:\n`);
+  for (const f of namen) console.error(`    ${f}()`);
+  console.error(
+    '\n`SECURITY DEFINER` omzeilt RLS in beide richtingen: ook een `select` komt\n' +
+      'langs elke policy heen. De vraag is hier niet of hij iets mag veranderen\n' +
+      'maar of deze rijen van de aanroeper zijn om te zien.\n\n' +
+      'Twee vragen, uit CLAUDE.md bij domeinregel 7: kan hieruit iemands gemiste\n' +
+      'week worden afgeleid, en kan iemand dat met één API-verzoek uitlezen\n' +
+      'buiten de UI om?\n\n' +
+      'Schrijf op waar de poort zit — een `where is_group_member(...)`, een\n' +
+      '`owner_id = auth.uid()`, of met zoveel woorden dat er geen poort is en\n' +
+      'waarom dat hier mag. Zet dat in LEESREGISTER in\n' +
+      'scripts/definers-controle.mjs.',
+  );
+}
 
 function psql(vraag) {
   return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
@@ -576,40 +684,12 @@ function hoofd() {
   const lezers = beoordeel(gevonden, LEESREGISTER, 'leest');
 
   if (schrijvers.onbekend.length > 0) {
-    console.error(
-      `✗ ${schrijvers.onbekend.length} definer-functie(s) schrijven in een kerntabel zonder reden:\n`,
-    );
-    for (const f of schrijvers.onbekend) console.error(`    ${f}()`);
-    console.error(
-      '\nEen SECURITY DEFINER-functie draait als zijn eigenaar, dus geen enkele policy\n' +
-        'houdt hem tegen — zijn poort is de `if` in zijn eigen body, en `rls:dekking`\n' +
-        'ziet die niet.\n\n' +
-        'Mag `authenticated` hem aanroepen? Dan hoort er een test te staan die rood\n' +
-        'wordt als die poort weggehaald wordt — zie tests/rls/definerpoorten.test.ts.\n' +
-        'Is het een triggerfunctie? Dan zit de autorisatie in de policy op de\n' +
-        'schrijfactie die hem aftrapt; schrijf op wélke.\n' +
-        'Zet hem daarna met die reden in REGISTER in scripts/definers-controle.mjs.',
-    );
+    meldSchrijvers(schrijvers.onbekend);
     return 1;
   }
 
   if (lezers.onbekend.length > 0) {
-    console.error(
-      `✗ ${lezers.onbekend.length} definer-RPC('s) lezen uit een kerntabel zonder reden:\n`,
-    );
-    for (const f of lezers.onbekend) console.error(`    ${f}()`);
-    console.error(
-      '\n`SECURITY DEFINER` omzeilt RLS in beide richtingen: ook een `select` komt\n' +
-        'langs elke policy heen. De vraag is hier niet of hij iets mag veranderen\n' +
-        'maar of deze rijen van de aanroeper zijn om te zien.\n\n' +
-        'Twee vragen, uit CLAUDE.md bij domeinregel 7: kan hieruit iemands gemiste\n' +
-        'week worden afgeleid, en kan iemand dat met één API-verzoek uitlezen\n' +
-        'buiten de UI om?\n\n' +
-        'Schrijf op waar de poort zit — een `where is_group_member(...)`, een\n' +
-        '`owner_id = auth.uid()`, of met zoveel woorden dat er geen poort is en\n' +
-        'waarom dat hier mag. Zet dat in LEESREGISTER in\n' +
-        'scripts/definers-controle.mjs.',
-    );
+    meldLezers(lezers.onbekend);
     return 1;
   }
 
