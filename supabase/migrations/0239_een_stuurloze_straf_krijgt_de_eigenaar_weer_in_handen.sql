@@ -1,4 +1,4 @@
--- 0220_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql — een
+-- 0239_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql — een
 -- verschuldigde straf waarvan de getuige zijn account verwijderde, is weer te
 -- bedienen: een nieuwe getuige aanwijzen of hem afwikkelen (QS8-333, besluit van
 -- Quinten 08-09-2026).

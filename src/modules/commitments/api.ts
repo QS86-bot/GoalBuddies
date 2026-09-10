@@ -389,7 +389,7 @@ export async function fetchCommitmentSpoor(
 
 /**
  * Een verschuldigde straf weer bedienbaar maken nadat de getuige verdween —
- * QS8-333, migratie 0220.
+ * QS8-333, migratie 0239.
  *
  * ⚠️ **Waarom dit een RPC is en geen update.** De getuige staat in
  *    `beneficiary_user_id`, en die kolom zit voor geen enkele client in de
@@ -426,7 +426,12 @@ export async function herstelStuurlozeStraf(
   const { data, error } = await supabase().rpc('herstel_stuurloze_straf', argumenten);
 
   if (error) {
-    reportError(error, 'commitments.herstel', { code: error.code });
+    // ⚠️ **Geen `code: error.code` erbij**, en dat is geen weglating maar de regel
+    //    van `tests/beloftes/foutcode-uit-een-bron.test.ts`: `beschrijfFout()`
+    //    zet de code al in de melding, en een tweede exemplaar in de context is
+    //    dezelfde waarde langs een tweede weg. Deze regel is er tijdens het
+    //    bijtrekken op `main` bij gekomen; hij stond hier al vóór die regel.
+    reportError(error, 'commitments.herstel');
     return { ok: false, melding: t('commitment.fout.herstel') };
   }
 
