@@ -13,6 +13,7 @@ export {
 
 export {
   TAKEN_PER_PAGINA,
+  deelTaak,
   fetchTaken,
   maakTaak,
   verwijderTaak,

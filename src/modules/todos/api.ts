@@ -29,7 +29,7 @@ import {
 
 export type Taak = Pick<
   Tables<'todo_items'>,
-  'id' | 'body' | 'done_at' | 'order_index' | 'created_at'
+  'id' | 'body' | 'done_at' | 'order_index' | 'created_at' | 'visibility' | 'shared_group_id'
 >;
 
 /**
@@ -39,7 +39,7 @@ export type Taak = Pick<
  */
 export const TAKEN_PER_PAGINA = 20;
 
-const KOLOMMEN = 'id, body, done_at, order_index, created_at';
+const KOLOMMEN = 'id, body, done_at, order_index, created_at, visibility, shared_group_id';
 
 /**
  * Eén pagina van je eigen lijst: open taken eerst, afgevinkte eronder.
@@ -55,10 +55,28 @@ const KOLOMMEN = 'id, body, done_at, order_index, created_at';
  *    hetzelfde `order_index` niet vastgelegd, en dan springt de lijst tussen
  *    twee ronden.
  *
- * ⚠️ **`eq('user_id', …)` is er voor de index en niet voor de autorisatie.** Die
- *    doet `todo_items_select`. Zonder deze regel leest de query nog steeds
- *    precies jouw rijen, maar dan zonder `todo_items_volgorde_idx` te kunnen
- *    gebruiken. Wie hem ooit weghaalt, verandert de snelheid en niet de grens.
+ * ⚠️⚠️ **`eq('user_id', …)` is dragend, en tot 0248 stond hier het tegendeel.**
+ *    De oude aantekening zei *"er voor de index en niet voor de autorisatie —
+ *    wie hem ooit weghaalt, verandert de snelheid en niet de grens."* Dat klopte
+ *    zolang `todo_items` eigenaar-only was; sinds De Lijst deelbaar is, geeft
+ *    `todo_items_select` je óók de gedeelde taken van je groepsgenoten.
+ *
+ * 📏 Gemeten als Bob, zonder deze filter: `ALICE deelt dit | bob eigen taak`.
+ *    Weghalen zet dus andermans taken tússen je eigen taken, telt ze mee in
+ *    `count: 'exact'` — waarmee de paginering scheefloopt — en laat
+ *    `verzetTaak()` op een buurtaak van een ánder mikken.
+ *
+ * ⚠️ De grens die `todo_items_select` trekt is een **ándere** dan deze: die zegt
+ *    *wat je mag lezen* (je eigen rijen plus de gedeelde rijen van je
+ *    groepsgenoten), deze zegt *wat op jouw lijst hoort*. De policy kan die
+ *    tweede niet trekken — hij weet niet welk scherm het vraagt. `todo_items_
+ *    volgorde_idx` bedient hem daarnaast nog steeds; dat was en blijft waar.
+ *
+ *    Onder test: 'haalt precies de taken van de opgegeven gebruiker op'.
+ *    Gevonden door de security-ronde op QS8-381, en het is de klasse van
+ *    onwrikbare regel 18 vraag 4 met de wereld eronder verschoven in plaats van
+ *    de code: een aantekening die een grendel *ontkracht* is gevaarlijker dan
+ *    geen aantekening, want zij is precies wat iemand overtuigt hem weg te halen.
  */
 export async function fetchTaken(
   userId: string,
@@ -258,6 +276,53 @@ function naSchrijf(
   }
 
   return { ok: true, waarde: data };
+}
+
+/**
+ * Deelt één taak met één groep, of zet hem terug op prive — QS8-381, 0248.
+ *
+ * ⚠️ **Een RPC en geen PATCH, en dat is de kern van dit issue.** `visibility` en
+ *    `shared_group_id` staan in geen enkele kolomgrant en `pin_taak()` weigert ze
+ *    bovendien; `zet_taakzichtbaarheid()` is het enige pad. Een deelknop die een
+ *    kolom schrijft, is geen deelknop maar een lek dat er goed uitziet — de les
+ *    van EPIC 5 die in CLAUDE.md bij domeinregel 7 staat.
+ *
+ * ⚠️ **`groupId` is `null` om terug te zetten**, en dat is geen randgeval maar
+ *    het halve doel. 📏 Bij `daily_moves` trok 0197 UPDATE en DELETE in, en
+ *    sindsdien is de zichtbaarheid van een Dagzet onveranderlijk: een lijst die
+ *    je openbaar maakt en nooit meer prive kunt zetten, is geen keuze maar een val.
+ */
+export async function deelTaak(id: string, groupId: string | null): Promise<Resultaat<true>> {
+  const { data, error } = await supabase().rpc('zet_taakzichtbaarheid', {
+    p_taak: id,
+    p_group_id: groupId,
+  });
+
+  if (error) {
+    reportError(error, 'todos.share');
+    return { ok: false, melding: t('lijst.delen_mislukt') };
+  }
+
+  const uit = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (uit.ok !== true) {
+    return { ok: false, melding: deelmelding(uit.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/**
+ * De reden uit de RPC als zin.
+ *
+ * ⚠️ **Elke reden krijgt zijn eigen tekst en niet één terugval**, want de twee
+ *    die een gebruiker kan raken zeggen iets anders: de taak bestaat niet meer,
+ *    of je bent geen lid meer van die groep. Een enkele melding zou hem laten
+ *    zoeken naar de verkeerde oorzaak.
+ */
+function deelmelding(reden: string | undefined): string {
+  if (reden === 'not_found') return t('lijst.bestaat_niet');
+  if (reden === 'geen_groepsgenoot') return t('lijst.geen_groepsgenoot');
+  return t('lijst.delen_mislukt');
 }
 
 /**
