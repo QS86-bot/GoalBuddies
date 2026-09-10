@@ -276,6 +276,7 @@ export type Database = {
       chat_messages: {
         Row: {
           actor_id: string | null
+          attachment_name: string | null
           attachment_url: string | null
           body: string | null
           created_at: string
@@ -289,6 +290,7 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          attachment_name?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
@@ -302,6 +304,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          attachment_name?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
@@ -2600,6 +2603,7 @@ export type Database = {
         Returns: {
           actor_id: string
           actor_name: string
+          attachment_name: string
           attachment_url: string
           body: string
           created_at: string
@@ -2707,6 +2711,15 @@ export type Database = {
         Returns: undefined
       }
       herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
+      herstel_stuurloze_straf: {
+        Args: {
+          p_actie: string
+          p_bevestigd?: boolean
+          p_commitment_id: string
+          p_getuige?: string
+        }
+        Returns: Json
+      }
       herorden_mijlpalen: {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json

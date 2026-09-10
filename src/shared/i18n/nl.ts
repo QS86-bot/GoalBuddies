@@ -209,6 +209,27 @@ export const nl = {
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
+  'stuurloos.kop': 'Je getuige is er niet meer',
+  'stuurloos.uitleg':
+    'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
+  'stuurloos.wie': 'Wie let er vanaf nu op?',
+  'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
+  'stuurloos.niemand':
+    'Er is nu niemand in je groepen om aan te wijzen. Zodra er iemand bijkomt, kan het hier.',
+  'stuurloos.afwikkelen': 'Ik heb hem nagekomen',
+  'stuurloos.zeker': 'Deze inzet afwikkelen?',
+  'stuurloos.afwikkelen_uitleg':
+    'Je legt hiermee vast dat je je inzet bent nagekomen. Er is nu geen getuige die dat kan bevestigen, dus dit staat op jouw woord. Terugdraaien kan niet.',
+  'stuurloos.ja_afwikkelen': 'Ja, afwikkelen',
+  'stuurloos.terug': 'Terug',
+  'commitment.fout.herstel': 'Dat lukte niet. Probeer het opnieuw.',
+  'commitment.herstel.heeft_getuige':
+    'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
+  'commitment.herstel.niet_verschuldigd':
+    'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.geen_groepsgenoot':
+    'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
+  'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
   'commitment.fout.spoor': 'De geschiedenis kon niet geladen worden.',
 
   'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
@@ -1298,6 +1319,24 @@ export const nl = {
   'chatfoto.bewaartermijn': 'Foto\u2019s blijven {dagen} dagen op de server staan en gaan daarna weg.',
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
+
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Document toevoegen',
+  'chatdoc.gekozen': 'Document klaar om te versturen',
+  'chatdoc.weghalen': 'Document weghalen',
+  'chatdoc.type_niet_toegestaan': 'Kies een PDF.',
+  'chatdoc.te_groot': 'Dit document is groter dan 5 MB. Kies een kleiner bestand.',
+  'chatdoc.naam_leeg': 'Dit bestand heeft geen bruikbare naam.',
+  'chatdoc.uploaden_mislukt': 'Het document versturen lukte niet. Probeer het zo nog eens.',
+  'chatdoc.rem_bereikt': 'Er zijn vandaag genoeg documenten gedeeld in deze groep. Morgen kan het weer.',
+  'chatdoc.kiezen_mislukt': 'De bestandskiezer ging niet open.',
+  'chatdoc.niet_beschikbaar': 'Dit document is niet meer beschikbaar.',
+  'chatdoc.openen': 'Openen',
+  'chatdoc.openen_label': '{naam} openen, PDF, in een andere app',
+  'chatdoc.openen_mislukt': 'Het document openen lukte niet.',
+  'chatdoc.laden': 'Document openen',
+  'chatdoc.soort_pdf': 'PDF',
 
   // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
   // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
