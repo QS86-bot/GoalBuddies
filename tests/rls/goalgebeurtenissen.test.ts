@@ -1,8 +1,7 @@
-import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, stackBeschikbaarOfFaal } from './psql-stack';
+import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * De allowlist van `goal_events.event_type` is beoordeeld en geen open deur — QS8-176.
@@ -35,11 +34,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
 
 /** Zelfde helper en zelfde reden als in `zoekpadschaduw.test.ts`. */
 function inEenSessie(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w', '-v', 'ON_ERROR_STOP=1', '-tA'],
-    { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
-  ).trim();
+  return psqlMetInvoer(sql).trim();
 }
 
 /** De vier zoals ze vandaag in de CHECK staan. */
