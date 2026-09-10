@@ -7,17 +7,17 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 09-09-2026 (na QS8-404; daarvóór QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 10-09-2026 (na QS8-92; daarvóór QS8-404; daarvóór QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**237**.
+**238**.
 
-**Het gat is daarmee dertien bestanden** — `0222` t/m `0234`, alle dertien van
-09-09 en uit vijf verschillende issues:
+**Het gat is daarmee veertien bestanden** — `0222` t/m `0235`, uit zes
+verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -34,6 +34,7 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0232_de_vingerafdruk_kent_de_handtekening.sql` | QS8-398 | nee |
 | `0233_een_dagteller_die_een_delete_overleeft.sql` | QS8-399 | ja |
 | `0234_een_dagteller_is_niet_alleen_voor_opslag.sql` | QS8-401 | nee |
+| `0235_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -54,7 +55,7 @@ gemeten in plaats van aangenomen.** `0222` valt om op
 `supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
 die rol — `set role` geeft *permission denied*. Vijf van de dertien doen DDL op
 die tabel (`0222`, `0225`, `0227`, `0228` en `0233` — zie de kolom hierboven); de
-andere acht zouden op zichzelf wél gaan, ook `0224` en `0226`, die
+andere negen zouden op zichzelf wél gaan, ook `0224` en `0226`, die
 `storage.objects` alleen ín een functielichaam noemen en hem niet bezitten. Maar
 `0222` is de eerste van de reeks, **dus stopt hij daar**. Ze alsnog toepassen
 slaat een gat in het register, en dat is de duurdere kant
@@ -276,7 +277,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0234` staan in de map: **237 bestanden**,
+Migraties `0001` t/m `0235` staan in de map: **238 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

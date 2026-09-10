@@ -37,13 +37,24 @@ export type Profiel = Tables<'profiles'>;
  * ⚠️ **De cast, en waarom hij hier mag.** De gegenereerde typen maken elke kolom
  *    van een view nullable: Postgres draagt `not null` niet door een view heen, dus
  *    dat is een artefact van de typegeneratie en niet van de gegevens. De view is
- *    letterlijk `select p.* from profiles p where p.id = auth.uid()`, dus wat er
- *    uitkomt is één rij van `profiles` met precies dezelfde garanties.
+ *    geschreven als `select p.* from profiles p where p.id = auth.uid()`, dus wat
+ *    er uitkomt is één rij van `profiles` met precies dezelfde garanties.
  *
- *    Blijft dat zo? Ja, want het staat onder test: `policies.test.ts` toetst dat
- *    de view precies één rij geeft en die van de aanroeper is. Wordt de view ooit
- *    een projectie in plaats van `p.*`, dan is deze cast fout — en dan hoort
- *    `Profiel` mee te veranderen. Zet dat in de kop van die migratie.
+ *    Blijft dat zo? De rij-garantie wel: `policies.test.ts` toetst dat de view
+ *    precies één rij geeft en die van de aanroeper is.
+ *
+ * ⚠️⚠️ **Maar de kolóm-garantie hangt aan een migratie, en hier stond dat fout.**
+ *    Er stond dat deze cast pas fout wordt "wordt de view ooit een projectie in
+ *    plaats van `p.*`". Hij ís al een projectie: Postgres expandeert de ster bij
+ *    het aanmaken tot een vaste kolomlijst. 📏 Nagemeten op 10-09-2026 met
+ *    `pg_get_viewdef()` — achttien kolommen uitgeschreven, terwijl `profiles` er
+ *    toen al meer had kunnen hebben.
+ *
+ *    Gevolg voor wie hierna een kolom toevoegt: **zet `mijn_profiel` opnieuw in
+ *    diezelfde migratie**, anders belooft deze cast een waarde waar `undefined`
+ *    staat en wordt er niets rood van. Dat bewaakt
+ *    `tests/rls/mijn-profiel-is-volledig.test.ts` — als regel en niet als lijst
+ *    kolomnamen, dus hij vuurt ook bij de vólgende kolom. Zie QS8-92.
  */
 export async function fetchProfiel(userId: string): Promise<Profiel | null> {
   const { data, error } = await supabase()
@@ -75,22 +86,21 @@ export async function fetchProfiel(userId: string): Promise<Profiel | null> {
   return { ...profiel, avatar_url: getekend.get(profiel.avatar_url) ?? null };
 }
 
-export type ProfielUitkomst = { ok: true; profiel: Profiel } | { ok: false; melding: string };
-
-export async function updateProfiel(
-  userId: string,
-  patch: ProfielPatch,
-): Promise<ProfielUitkomst> {
-  const gevalideerd = profielPatchSchema.safeParse(patch);
-  if (!gevalideerd.success) {
-    return { ok: false, melding: invoerfout(gevalideerd.error, t('auth.fout.invoer')) };
-  }
-
-  // ⚠️ Veld voor veld, en niet `update(gevalideerd.data)`. Zod maakt van een
-  //    optioneel veld `string | undefined`, en met `exactOptionalPropertyTypes`
-  //    is dat iets anders dan "afwezig". Zou je het toch doorgeven, dan schrijft
-  //    PostgREST `null` in kolommen die de gebruiker niet eens heeft aangeraakt.
-  const velden = gevalideerd.data;
+/**
+ * De gevalideerde patch omzetten naar de kolommen die PostgREST krijgt.
+ *
+ * ⚠️ **Veld voor veld, en niet `update(gevalideerd.data)`.** Zod maakt van een
+ *    optioneel veld `string | undefined`, en met `exactOptionalPropertyTypes` is
+ *    dat iets anders dan "afwezig". Zou je het toch doorgeven, dan schrijft
+ *    PostgREST `null` in kolommen die de gebruiker niet eens heeft aangeraakt.
+ *
+ * ⚠️ **Staat los sinds QS8-92, en niet uit netheid.** Met de vier schakelaars
+ *    erbij liep `updateProfiel()` over de vijftig regels van coderegel 15. Deze
+ *    functie is bovendien de plek waar een vergeten veld zich verstopt: staat een
+ *    kolom hier niet, dan valt hij stil uit elke patch. Zie de aantekening bij de
+ *    `notify_*`-velden.
+ */
+function naarKolommen(velden: ProfielPatch): TablesUpdate<'profiles'> {
   const update: TablesUpdate<'profiles'> = {};
   if (velden.display_name !== undefined) update.display_name = velden.display_name;
   if (velden.tz !== undefined) update.tz = velden.tz;
@@ -102,12 +112,49 @@ export async function updateProfiel(
   }
   if (velden.locale !== undefined) update.locale = velden.locale;
 
+  // De vier schakelaars per meldingsoort — QS8-92. Zelfde regel als hierboven.
+  //
+  // ⚠️ **Deze vier stonden er eerst niet, en dat was stil.** `meldingsoortVelden()`
+  //    leverde het veld netjes aan en `profielPatchSchema` liet het door, maar
+  //    zonder een regel hier viel het uit de patch — en dan bleef `update` leeg,
+  //    nam de "niets gewijzigd"-tak het over, en meldde het scherm succes terwijl
+  //    er niets veranderde. Geen foutmelding, geen rode test. 📏 Gevonden door
+  //    `npm run kolomrechten:controle`: vier UPDATE-grants "die niets gebruikt".
+  if (velden.notify_approval_request !== undefined) {
+    update.notify_approval_request = velden.notify_approval_request;
+  }
+  if (velden.notify_approval_received !== undefined) {
+    update.notify_approval_received = velden.notify_approval_received;
+  }
+  if (velden.notify_cycle_summary !== undefined) {
+    update.notify_cycle_summary = velden.notify_cycle_summary;
+  }
+  if (velden.notify_commitment_witness !== undefined) {
+    update.notify_commitment_witness = velden.notify_commitment_witness;
+  }
+
   // De vier uit de vragenlijst — QS8-257. Zelfde regel als hierboven: alleen wat
   // er echt in de patch zit, want een `undefined` zou hier `null` schrijven.
   if (velden.focus_areas !== undefined) update.focus_areas = [...velden.focus_areas];
   if (velden.minutes_per_day !== undefined) update.minutes_per_day = velden.minutes_per_day;
   if (velden.when_i_do_it !== undefined) update.when_i_do_it = velden.when_i_do_it;
   if (velden.what_breaks_it !== undefined) update.what_breaks_it = [...velden.what_breaks_it];
+
+  return update;
+}
+
+export type ProfielUitkomst = { ok: true; profiel: Profiel } | { ok: false; melding: string };
+
+export async function updateProfiel(
+  userId: string,
+  patch: ProfielPatch,
+): Promise<ProfielUitkomst> {
+  const gevalideerd = profielPatchSchema.safeParse(patch);
+  if (!gevalideerd.success) {
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('auth.fout.invoer')) };
+  }
+
+  const update = naarKolommen(gevalideerd.data);
 
   // ⚠️ **Een lege patch is een geldige patch, en hij mag het net niet halen.**
   //    `patchUitVragenlijst()` geeft met opzet `{}` terug als de gebruiker alle

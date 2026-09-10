@@ -564,6 +564,15 @@ export const en: Record<Sleutel, string> = {
   'profiel.viering_uitleg': 'A short congratulation when a buddy confirms your week, you reach a milestone or your goal is done. Otherwise the app stays quiet.',
   'profiel.viering_aan_label': 'Celebratory moments on',
   'profiel.viering_uit_label': 'Celebratory moments off',
+  'meldingsoort.titel': 'Which notifications do you want?',
+  'meldingsoort.uitleg':
+    'The daily reminder is switched on or off above. These four are separate.',
+  'meldingsoort.approval_request': 'A buddy is waiting on your review',
+  'meldingsoort.approval_received': 'Someone approved your week',
+  'meldingsoort.cycle_summary': 'Your week in review',
+  'meldingsoort.commitment_witness': "A stake you're a witness to",
+  'meldingsoort.getuige_uitleg':
+    "You'll still see the stake under Witness statements; you just won't be notified.",
   'profiel.aan': 'On',
   'profiel.uit': 'Off',
   'profiel.viering_beweging': 'If your device asks for reduced motion, the app leaves out the animation anyway. The text simply stays.',

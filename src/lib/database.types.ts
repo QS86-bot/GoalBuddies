@@ -1681,6 +1681,10 @@ export type Database = {
           locale: string | null
           minutes_per_day: number | null
           onboarded_at: string | null
+          notify_approval_request: boolean
+          notify_approval_received: boolean
+          notify_cycle_summary: boolean
+          notify_commitment_witness: boolean
           reminder_enabled: boolean
           reminder_time: string | null
           reminder_tone: string
@@ -1701,6 +1705,10 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean
+          notify_approval_received?: boolean
+          notify_cycle_summary?: boolean
+          notify_commitment_witness?: boolean
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -1721,6 +1729,10 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean
+          notify_approval_received?: boolean
+          notify_cycle_summary?: boolean
+          notify_commitment_witness?: boolean
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -2310,6 +2322,10 @@ export type Database = {
           locale: string | null
           minutes_per_day: number | null
           onboarded_at: string | null
+          notify_approval_request: boolean | null
+          notify_approval_received: boolean | null
+          notify_cycle_summary: boolean | null
+          notify_commitment_witness: boolean | null
           reminder_enabled: boolean | null
           reminder_time: string | null
           reminder_tone: string | null
@@ -2330,6 +2346,10 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean | null
+          notify_approval_received?: boolean | null
+          notify_cycle_summary?: boolean | null
+          notify_commitment_witness?: boolean | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
@@ -2350,6 +2370,10 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean | null
+          notify_approval_received?: boolean | null
+          notify_cycle_summary?: boolean | null
+          notify_commitment_witness?: boolean | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null

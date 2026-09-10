@@ -847,6 +847,24 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️⚠️ Een kolom toevoegen aan `profiles` is twee handelingen, niet één —
+  10-09, QS8-92.** `mijn_profiel` is de view waarlangs de eigenaar zijn eigen rij
+  leest, en die is een **bevroren projectie**: `select p.*` wordt bij het
+  aanmaken geëxpandeerd tot een vaste kolomlijst. Een nieuwe kolom verschijnt er
+  dus niet vanzelf in.
+
+  **Zet die view opnieuw in dezelfde migratie** (`create or replace view` mag
+  kolommen aan het eind toevoegen). Vergeet je het, dan is er niets kapot en
+  niets rood: de kolom bestaat, de grant staat er, de policy klopt, en de
+  eigenaar kan alleen zijn eigen waarde niet lezen. `tests/rls/mijn-profiel-is-volledig.test.ts`
+  vangt het sindsdien, als regel en niet als lijst namen.
+
+  ⚠️ En de tweede helft: `updateProfiel()` kopieert veld voor veld met
+  letterlijke namen. Staat je kolom daar niet, dan valt hij stil uit élke patch —
+  het scherm meldt succes en er verandert niets. 📏 Dat is niet door een test
+  gevonden maar door `npm run kolomrechten:controle`, die vier UPDATE-grants "die
+  niets gebruikt" meldde. Een controle op rechten die een kapotte keten vindt.
+
 - **⚠️⚠️ Een controle die op een gegenereerd blok landt, toetst zijn eigen
   fixture — 09-09, QS8-404.** `docs:controle` had één meetbare tak, en die pakte
   in `WERKVOORRAAD.md` de eerste treffer: het `STAND`-blok dat `npm run stand`

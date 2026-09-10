@@ -879,6 +879,22 @@ export const nl = {
   'profiel.viering_uitleg': 'Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel af is. Verder blijft de app rustig.',
   'profiel.viering_aan_label': 'Feestelijke momenten aan',
   'profiel.viering_uit_label': 'Feestelijke momenten uit',
+  // ⚠️ De vier soorten die je los kunt uitzetten (QS8-92). `nudge` staat hier
+  //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
+  //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
+  //    incompleet.
+  'meldingsoort.titel': 'Welke meldingen wil je?',
+  'meldingsoort.uitleg':
+    'De dagelijkse herinnering zet je hierboven aan of uit. Deze vier staan los ' +
+    'daarvan.',
+  'meldingsoort.approval_request': 'Een buddy wacht op jouw oordeel',
+  'meldingsoort.approval_received': 'Iemand heeft jouw week goedgekeurd',
+  'meldingsoort.cycle_summary': 'Je weekoverzicht',
+  'meldingsoort.commitment_witness': 'Een inzet waarvan jij getuige bent',
+  // ⚠️ Feitelijk en niet geruststellend: dempen haalt de getuigenis niet weg,
+  //    het haalt alleen de onderbreking weg. Zie domeinregel 5.
+  'meldingsoort.getuige_uitleg':
+    'Je blijft de inzet zien bij Getuigenissen; je krijgt er alleen geen melding meer van.',
   'profiel.aan': 'Aan',
   'profiel.uit': 'Uit',
   'profiel.viering_beweging': 'Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst blijft dan gewoon staan.',
