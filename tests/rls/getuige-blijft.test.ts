@@ -23,7 +23,7 @@
  *      bestaat.
  *
  * ⚠️⚠️ **Die laatste bijzin is er op 08-09-2026 bij gekomen (QS8-333, migratie
- *    0240), en de manier waaróp is precies waar regel 18 voor waarschuwt.** De
+ *    0244), en de manier waaróp is precies waar regel 18 voor waarschuwt.** De
  *    belofte hierboven stond zonder uitzondering, en `herstel_stuurloze_straf()`
  *    maakt daar een uitzondering op: verdwijnt de getuige met zijn account, dan
  *    wijst de eigenaar een nieuwe aan of wikkelt hij de straf af.
@@ -64,7 +64,7 @@
  *    `commitment_events` weg, en `verwijder_mijn_account()` van de getuige liet
  *    een `due`-straf met `beneficiary_user_id = NULL` achter. **Allebei
  *    inmiddels behandeld** — het eerste door QS8-331/0189, het tweede door
- *    QS8-333/0240, dat er de RPC hierboven voor bouwde. Wat er van het tweede
+ *    QS8-333/0244, dat er de RPC hierboven voor bouwde. Wat er van het tweede
  *    blijft staan is de vraag wat er met het spoor gebeurt als de **eigenaar**
  *    zijn account verwijdert; dat is QS8-335.
  */
