@@ -14,10 +14,10 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**242**.
+**243**.
 
-**Het gat is daarmee achttien bestanden** — `0222` t/m `0239`, van 09-09 en
-10-09 en uit tien verschillende issues:
+**Het gat is daarmee negentien bestanden** — `0222` t/m `0240`, van 09-09 en
+10-09 en uit elf verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -58,8 +58,8 @@ zag, staat in `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
 gemeten in plaats van aangenomen.** `0222` valt om op
 `ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
 `supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. Zes van de achttien doen DDL op
-die tabel (`0222`, `0225`, `0227`, `0228`, `0233` en `0235` — zie de kolom
+die rol — `set role` geeft *permission denied*. Zeven van de negentien doen DDL op
+die tabel (`0222`, `0225`, `0227`, `0228`, `0233`, `0235` en `0239` — zie de kolom
 hierboven); de andere twaalf zouden op zichzelf wél gaan, ook `0224` en `0226`, die
 `storage.objects` alleen ín een functielichaam noemen en hem niet bezitten. Maar
 `0222` is de eerste van de reeks, **dus stopt hij daar**. Ze alsnog toepassen
@@ -282,7 +282,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0239` staan in de map: **242 bestanden**,
+Migraties `0001` t/m `0240` staan in de map: **243 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

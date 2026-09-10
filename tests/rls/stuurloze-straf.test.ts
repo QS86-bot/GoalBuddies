@@ -1,5 +1,5 @@
 /**
- * Een stuurloze straf krijgt de eigenaar weer in handen — QS8-333, migratie 0239.
+ * Een stuurloze straf krijgt de eigenaar weer in handen — QS8-333, migratie 0240.
  *
  * **De belofte die dit bestand bewaakt:**
  *
@@ -261,7 +261,7 @@ describe.skipIf(!rlsTestsConfigured)('een stuurloze straf', () => {
           .select('id');
         expect(
           (poging.data ?? []).length,
-          'commitments_update blijft `status = set`; 0239 verruimt die policy niet',
+          'commitments_update blijft `status = set`; 0240 verruimt die policy niet',
         ).toBe(0);
         expect((await lees(strafId)).status).toBe('due');
       },

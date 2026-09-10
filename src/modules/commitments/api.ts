@@ -389,7 +389,7 @@ export async function fetchCommitmentSpoor(
 
 /**
  * Een verschuldigde straf weer bedienbaar maken nadat de getuige verdween —
- * QS8-333, migratie 0239.
+ * QS8-333, migratie 0240.
  *
  * ⚠️ **Waarom dit een RPC is en geen update.** De getuige staat in
  *    `beneficiary_user_id`, en die kolom zit voor geen enkele client in de
