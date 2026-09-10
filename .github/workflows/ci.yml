@@ -303,7 +303,25 @@ jobs:
 
       - name: PostgreSQL-client
         run: |
-          sudo apt-get update -qq
+          # ⚠️⚠️ **Het verversen is best-effort, de installatie niet** — QS8-400.
+          #    `apt-get update` ververst élke bron die op de runnerimage staat,
+          #    ook die van derden waar deze CI niets van nodig heeft, en eindigt
+          #    met exitcode 100 zodra er één inconsistent is. Dan staat `main`
+          #    rood om iets dat niet in deze repo zit, en dat is duur: een
+          #    herstart, plus het vertrouwen in elke volgende rode uitslag.
+          #
+          # 📏 Gemeten op 09-09-2026 na de merge van #356. `dl.google.com` gaf
+          #    een `Packages.gz` van 09:41 bij een `Release` van 17:16 —
+          #    "Hash Sum mismatch" — en dat bleef bij een herstart bytegelijk
+          #    hetzelfde. Het was dus geen tijdelijke hapering maar een mirror
+          #    die zo stond; wachten had niet geholpen.
+          #
+          # ⚠️ **Dit is geen weggemoffelde fout.** APT zegt zelf "they have been
+          #    ignored, or old ones used instead" en gaat door. De vraag die
+          #    ertoe doet is of het pakket er kómt, en die wordt één regel lager
+          #    gesteld — `install` faalt hard, zonder `|| true`. Wat hier wordt
+          #    losgelaten is uitsluitend de eis dat élke bron ververst is.
+          sudo apt-get update -qq || true
           sudo apt-get install -y --no-install-recommends postgresql-client
 
       - name: PostgREST uit de cache

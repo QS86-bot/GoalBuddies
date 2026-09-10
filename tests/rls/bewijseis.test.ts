@@ -20,12 +20,24 @@
  *    verandert: verruimt iemand de CHECK zonder `BEWIJSEISEN`, óf `BEWIJSEISEN`
  *    zonder de CHECK.
  *
+ * ⚠️⚠️ **Bijgewerkt op 09-09-2026 (QS8-391): `note_and_attachment` is terug.**
+ *    0227 t/m 0229 zetten het uploadpad neer dat 0150 miste, en 0231 verruimt de
+ *    CHECK én geeft `enforce_evidence_policy()` een tak die de bijlage écht
+ *    toetst. De test hieronder die zijn afwezigheid bewaakte, is daarom
+ *    omgekeerd — en er staan twee tests bíj, want de hele les van 0150 is dat
+ *    het bestáán van de waarde niets zegt zolang niemand hem afdwingt.
+ *
+ *    ⚠️ Die twee zijn de opdracht die 0150 letterlijk opschreef: *"mét een
+ *    trigger die hem afdwingt en een test die rood wordt als die tak
+ *    verdwijnt."* Haal de bijlagetak uit `enforce_evidence_policy()` en de
+ *    voorlaatste test hieronder wordt rood; dát is het verschil met de vorige
+ *    keer.
+ *
  * ⚠️ **Wat hier bewust níét staat: een toets op de INSERT-kolomgrant van
- *    `completions.attachment_url`.** 0150 trekt dat recht in omdat zijn reden
- *    wegvalt, en dat wordt al bewaakt door `npm run kolomrechten:controle` —
- *    die meldt een grant zonder schrijfpad, en de uitzondering die hem stil
- *    hield is met dit issue verwijderd. Een tweede toets hier zou een tweede
- *    lijst zijn, en dat is precies de fout die dit bestand bewaakt.
+ *    `completions.attachment_url`.** Die wordt bewaakt door
+ *    `npm run kolomrechten:controle` (een grant zonder schrijfpad) en door
+ *    `tests/rls/bewijsfotobucket.test.ts` (het recht zelf). Een derde lijst hier
+ *    zou precies de fout zijn die dit bestand bewaakt.
  *
  * ⚠️ Rechtstreeks uit `schemas.ts` en niet via `modules/buddies/index.ts`. Die
  *    laatste re-exporteert `api.ts`, en die trekt de Supabase-client en
@@ -34,7 +46,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { BEWIJSEISEN } from '../../src/modules/buddies/schemas';
-import { userCycle } from '../../src/shared/time';
+import { now, userCycle } from '../../src/shared/time';
 import { proefId } from './proefid';
 import {
   adminDb,
@@ -107,20 +119,25 @@ describe.skipIf(!rlsTestsConfigured)('de bewijseis van een groep — QS8-261', (
   );
 
   it(
-    'weigert note_and_attachment — die waarde bestaat sinds 0150 niet meer',
+    'laat note_and_attachment weer toe — 0231 heeft de handhaving eronder gezet',
     async () => {
       // ⚠️ Via `adminDb()` en dus onder `service_role`. Een CHECK geldt óók voor
       //    die rol, en dat is het punt: dit is een grens in het schema en niet
-      //    in een policy. Wie de CHECK verruimt, krijgt hier een groene test in
-      //    plaats van een rode — en dan is de test hierboven het slot.
-      const eigenaar = await createTestProfile('bewijseis-nee');
+      //    in een policy.
+      //
+      // ⚠️⚠️ **Deze test stond tot 09-09-2026 andersom**, en dat was terecht:
+      //    tot 0231 was de waarde er wel en de handhaving niet. Hij is
+      //    omgekeerd omdat 0231 die handhaving neerzet — niet omdat de waarde
+      //    weer mocht bestaan. De twee tests hieronder zijn het bewijs daarvan,
+      //    en zonder die twee hoort deze omkering niet te landen.
+      const eigenaar = await createTestProfile('bewijseis-ja');
 
       const groep = await adminDb()
         .from('groups')
         .insert({
-          name: 'Bewijseis-geweigerd',
+          name: 'Bewijseis-bijlage',
           created_by: eigenaar.id,
-          invite_code: `BEWIJSNEE${proefId(2).slice(0, 8)}`,
+          invite_code: `BEWIJSJA${proefId(2).slice(0, 8)}`,
         })
         .select('id')
         .single();
@@ -131,12 +148,165 @@ describe.skipIf(!rlsTestsConfigured)('de bewijseis van een groep — QS8-261', (
         .from('groups')
         .update({ evidence_policy: 'note_and_attachment' })
         .eq('id', groep.data?.id ?? '')
-        .select('id');
+        .select('evidence_policy')
+        .single();
 
-      expect(poging.error).not.toBeNull();
-      expect(poging.error?.code).toBe('23514');
+      expect(poging.error).toBeNull();
+      expect(poging.data?.evidence_policy).toBe('note_and_attachment');
 
       await adminDb().from('groups').delete().eq('id', groep.data?.id ?? '');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'weigert een afronding zónder bijlage in een groep die er wél een vraagt',
+    async () => {
+      // ⚠️⚠️ **Dit is de test die 0150 vroeg en die er de vorige keer niet was.**
+      //    Zonder deze is `note_and_attachment` opnieuw een keuze die het gedrag
+      //    van `note_required` geeft en de gerustheid van iets strengers.
+      const eigenaar = await createTestProfile('bewijseis-afdwingen');
+      const groep = await adminDb()
+        .from('groups')
+        .insert({
+          name: 'Bewijseis-afdwingen',
+          created_by: eigenaar.id,
+          invite_code: `BEWIJSAF${proefId(2).slice(0, 8)}`,
+          evidence_policy: 'note_and_attachment',
+        })
+        .select('id')
+        .single();
+      expect(groep.error, JSON.stringify(groep.error)).toBeNull();
+
+      const doel = await adminDb()
+        .from('goals')
+        .insert({
+          owner_id: eigenaar.id,
+          title: 'Afdwingdoel',
+          target_date: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10),
+        })
+        .select('id')
+        .single();
+      expect(doel.error).toBeNull();
+
+      await adminDb()
+        .from('goal_group_links')
+        .insert({ goal_id: doel.data?.id ?? '', group_id: groep.data?.id ?? '' });
+
+      const week = await adminDb()
+        .from('weekly_goals')
+        .insert({
+          goal_id: doel.data?.id ?? '',
+          title: 'Afdwingweek',
+          cycle_start_date: userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate,
+        })
+        .select('id')
+        .single();
+      expect(week.error).toBeNull();
+
+      // Mét notitie en zónder bijlage: alleen de bijlagetak kan dit weigeren.
+      const zonder = await adminDb()
+        .from('completions')
+        .insert({
+          weekly_goal_id: week.data?.id ?? '',
+          user_id: eigenaar.id,
+          achieved_level: 'ceiling',
+          note: 'wel een notitie, geen foto',
+          cycle_start_date: '1970-01-01',
+        })
+        .select('id');
+
+      // ⚠️ En mét bijlage moet hij er wél door — anders bewijst de weigering
+      //    hierboven alleen dat er íets anders stuk is.
+      const met = await adminDb()
+        .from('completions')
+        .insert({
+          weekly_goal_id: week.data?.id ?? '',
+          user_id: eigenaar.id,
+          achieved_level: 'ceiling',
+          note: 'met foto',
+          attachment_url: `${week.data?.id ?? ''}/${eigenaar.id}/bewijs.jpg`,
+          cycle_start_date: '1970-01-01',
+        })
+        .select('id');
+
+      expect(zonder.error?.code, 'zonder bijlage hoort 23514 te geven').toBe('23514');
+      expect(met.error, 'met bijlage hoort te landen').toBeNull();
+
+      await adminDb().from('goals').delete().eq('id', doel.data?.id ?? '');
+      await adminDb().from('groups').delete().eq('id', groep.data?.id ?? '');
+    },
+    TEST_TIMEOUT,
+  );
+
+  it(
+    'houdt de strengste eis van alle gekoppelde groepen aan',
+    async () => {
+      // ⚠️ Een doel kan aan meerdere groepen hangen (5.5); anders bepaalt de
+      //    lósste groep hoeveel bewijs alle andere krijgen. Met drie sporten op
+      //    de ladder is die volgorde niet meer vanzelfsprekend.
+      const eigenaar = await createTestProfile('bewijseis-strengst');
+      const groepen: string[] = [];
+      for (const [i, eis] of (['optional', 'note_required', 'note_and_attachment'] as const).entries()) {
+        const g = await adminDb()
+          .from('groups')
+          .insert({
+            name: `Strengst ${i}`,
+            created_by: eigenaar.id,
+            invite_code: `STRENG${i}${proefId(2).slice(0, 7)}`,
+            evidence_policy: eis,
+          })
+          .select('id')
+          .single();
+        expect(g.error, JSON.stringify(g.error)).toBeNull();
+        groepen.push(g.data?.id ?? '');
+      }
+
+      const doel = await adminDb()
+        .from('goals')
+        .insert({
+          owner_id: eigenaar.id,
+          title: 'Strengstdoel',
+          target_date: new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10),
+        })
+        .select('id')
+        .single();
+      expect(doel.error).toBeNull();
+
+      for (const g of groepen) {
+        await adminDb()
+          .from('goal_group_links')
+          .insert({ goal_id: doel.data?.id ?? '', group_id: g });
+      }
+
+      const week = await adminDb()
+        .from('weekly_goals')
+        .insert({
+          goal_id: doel.data?.id ?? '',
+          title: 'Strengstweek',
+          cycle_start_date: userCycle({ weekStartDay: 1, tz: 'Europe/Amsterdam' }, now()).startDate,
+        })
+        .select('id')
+        .single();
+      expect(week.error).toBeNull();
+
+      // Eén groep vraagt een bijlage, dus de bijlage is verplicht — ook al staat
+      // er een `optional` naast.
+      const zonder = await adminDb()
+        .from('completions')
+        .insert({
+          weekly_goal_id: week.data?.id ?? '',
+          user_id: eigenaar.id,
+          achieved_level: 'ceiling',
+          note: 'notitie',
+          cycle_start_date: '1970-01-01',
+        })
+        .select('id');
+
+      expect(zonder.error?.code).toBe('23514');
+
+      await adminDb().from('goals').delete().eq('id', doel.data?.id ?? '');
+      for (const g of groepen) await adminDb().from('groups').delete().eq('id', g);
     },
     TEST_TIMEOUT,
   );

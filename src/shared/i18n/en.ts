@@ -654,6 +654,7 @@ export const en: Record<Sleutel, string> = {
   'opnieuw.al_goedgekeurd': 'This week is already approved. There is nothing left to replace.',
   'opnieuw.niets_ingediend': 'Nothing has been submitted for this week yet.',
   'opnieuw.notitie_vereist': 'This group asks for a short note when you submit.',
+  'opnieuw.bewijs_vereist': 'This group asks for a photo as proof. Send one along.',
   'opnieuw.mislukt': 'Resubmitting did not work. Please try again in a moment.',
   'opnieuw.mislukt_kort': 'Resubmitting did not work.',
 
@@ -681,6 +682,7 @@ export const en: Record<Sleutel, string> = {
   'avatar.bezig': 'Uploading',
   'avatar.type_niet_toegestaan': 'Choose a JPG, PNG or WebP.',
   'avatar.te_groot': 'That photo is larger than 2 MB. Choose a smaller one.',
+  'avatar.rem_bereikt': 'You have changed your photo enough times today. Tomorrow you can again.',
   'avatar.uploaden_mislukt': 'The photo could not be saved. Please try again.',
   'avatar.verwijderen_mislukt': 'The photo could not be removed. Please try again.',
   'avatar.geen_toegang': 'Without access to your photos the app cannot pick one.',
@@ -824,6 +826,7 @@ export const en: Record<Sleutel, string> = {
   'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
 
   'bewijseis.note_required': 'Note required',
+  'bewijseis.note_and_attachment': 'Note and photo',
   'bewijseis.optional': 'Everything optional',
   'goedkeuringsregel.any': 'One buddy',
   'goedkeuringsregel.majority': 'A majority',
@@ -892,11 +895,29 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.weghalen': 'Remove photo',
   'chatfoto.type_niet_toegestaan': 'Pick a JPG, PNG or WebP.',
   'chatfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
+  'chatfoto.rem_bereikt': 'Enough photos have been posted in this group today. Tomorrow you can again.',
   'chatfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
   'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
-  'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
+  'chatfoto.niet_beschikbaar': 'This photo is gone. Photos are kept for {dagen} days.',
+  'chatfoto.bewaartermijn': 'Photos stay on the server for {dagen} days and are removed after that.',
   'chatfoto.laden': 'Loading photo',
   'chatfoto.beeld': 'Photo in this conversation',
+
+  // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
+  // anders dan bij een beoordeling.
+  'bewijsfoto.knop': 'Photo as proof',
+  'bewijsfoto.gekozen': 'Proof ready to send',
+  'bewijsfoto.weghalen': 'Remove photo',
+  'bewijsfoto.type_niet_toegestaan': 'Pick a JPG, PNG or WebP.',
+  'bewijsfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
+  'bewijsfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
+  'bewijsfoto.rem_bereikt': 'You have sent enough photos today. Tomorrow you can again.',
+  'bewijsfoto.kiezen_mislukt': 'The photo picker did not open.',
+  'bewijsfoto.niet_beschikbaar': 'This proof is no longer available.',
+  'bewijsfoto.laden': 'Loading proof',
+  'bewijsfoto.beeld': 'Photo as proof for this completion',
+  'bewijsfoto.vereist': 'This group asks for a photo as proof when you finish.',
   'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
   'chat.rem_bereikt':
     'You have posted the maximum number of messages for today. You can continue again later.',

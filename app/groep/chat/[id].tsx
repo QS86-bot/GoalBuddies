@@ -11,6 +11,7 @@ import {
   fetchGroep,
   huidigeGroepsperiode,
   isSysteembericht,
+  CHATFOTO_BEWAARDAGEN,
   meldBericht,
   meldredenLabels,
   MELDREDENEN,
@@ -36,7 +37,7 @@ import {
   Body,
   Button,
   Caption,
-  kiesChatfoto,
+  kiesFoto,
   Card,
   ChatRegel,
   Field,
@@ -440,7 +441,7 @@ function Invoer({
 
   async function kies() {
     setFout(null);
-    const keuze = await kiesChatfoto();
+    const keuze = await kiesFoto('chatfoto.kiezen_mislukt');
 
     if (keuze.soort === 'afgebroken') return;
     if (keuze.soort === 'fout') {
@@ -506,6 +507,17 @@ function Invoer({
            er iets ánders op de knop staat — en dat leest niemand als "gelukt".
       */}
       {foto === null ? null : <Caption>{t('chatfoto.gekozen')}</Caption>}
+
+      {/*
+        ⚠️ **De bewaartermijn staat er vóór het versturen en niet erna** — QS8-396.
+           Een gebruiker die weet dat de server zijn foto na drie weken weggooit,
+           kiest anders dan een gebruiker die dat pas merkt als de foto weg is.
+           Het is bovendien de eerlijke helft van dezelfde belofte: de zin die
+           straks in de plaats van de foto staat, noemt hetzelfde getal.
+      */}
+      {foto === null ? null : (
+        <Caption>{t('chatfoto.bewaartermijn', { dagen: CHATFOTO_BEWAARDAGEN })}</Caption>
+      )}
 
       {foto === null ? (
         <Button variant="stil" block onPress={() => void kies()}>

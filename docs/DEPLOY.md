@@ -149,6 +149,33 @@ Een migratie toepassen gaat zo:
    te zijn — draai hem dan met `--streng` of met `REGISTER_CONTROLE_STRENG=1`.
    `npm run db:push` doet dat zelf.
 
+⚠️⚠️ **Een migratie die `storage.objects` aanraakt, kun je vanuit een
+bouwsessie niet toepassen — en dat is een grens en geen storing.** 📏 Gemeten op
+09-09-2026 bij `0222`:
+
+```
+ERROR: 42501: must be owner of table objects
+```
+
+`storage.objects` is eigendom van `supabase_storage_admin`; de Supabase-MCP
+draait als `postgres`, en `postgres` is **geen lid** van die rol (nagemeten in
+`pg_auth_members`), dus `set role supabase_storage_admin` geeft *permission
+denied*. Een `create policy` of `create trigger` op die tabel vraagt eigendom,
+en daar is geen weg omheen die geen omweg is.
+
+**Wat wél gaat vanuit een bouwsessie:** alles in `public` — tabellen,
+constraints, functies, triggers, policies, indexen, grants. Dat is de reden dat
+`0139` t/m `0221` er langs deze route op gekomen zijn.
+
+⚠️ **En dus: hou de volgorde heel.** Struikelt een migratie hierop, dan stopt de
+hele reeks daar. Wie de volgende wél toepast, slaat een **gat** in het register,
+en een gat is duurder dan wachten: de map bouwt het schema dan nergens meer op
+en een RLS-suite toetst een ánder schema dan productie. Zie
+`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`.
+
+De storage-helft hoort dus van Quintens machine te komen — de SQL-editor in het
+dashboard of `psql` met de projectcredentials.
+
 ⚠️ **Hier stond tot 24-08-2026 dat stap 3 een UPDATE met de hand was**, met als
 geruststelling dat stap 4 het wel zou opmerken. Dat klopte, en het hielp niet:
 diezelfde dag zijn er zes migraties toegepast zonder die UPDATE, terwijl deze
@@ -403,8 +430,20 @@ noemt.
 ## 2.6a Storage — vier regels bij de eerste bucket
 
 Sinds migratie `0126` heeft dit project een bucket **`avatars`** (privé, 2 MB,
-`image/jpeg|png|webp`), en sinds `0222` een tweede: **`chatfotos`** (privé, 1 MB,
-dezelfde drie types). Wat bij de eerste geldt, geldt bij elke volgende.
+`image/jpeg|png|webp`), sinds `0222` een tweede — **`chatfotos`** (privé, 1 MB,
+dezelfde drie types) — en sinds `0227` een derde: **`bewijsfotos`** (privé, 1 MB,
+idem). Wat bij de eerste geldt, geldt bij elke volgende.
+
+⚠️ **Drie buckets delen één gratis tier van 1 GB.** Dat is geen detail meer bij
+drie: loopt er één vol, dan liggen de profielfoto's er ook uit. Elke bucket heeft
+daarom een dagteller met `// TODO(paid-tier)` erboven.
+
+⚠️ **En ze delen bewust géén code.** `AVATAR_BUCKET`, `CHATFOTO_BUCKET` en
+`BEWIJSFOTO_BUCKET` zijn drie letterlijke constanten in drie bestanden, en de
+padbouwers zijn dat ook. `scripts/storage-controle.mjs` vindt alleen letterlijke
+strings in `.storage.from(...)`; één gedeelde variabele maakt álle drie
+onzichtbaar voor die controle. De duplicatie is de prijs en die is bewust
+betaald — zie de kop van `src/modules/completions/bewijsfoto.ts`.
 
 1. **Een bucket ontstaat in een migratie, nooit in het dashboard.** Een bucket
    die met de hand gemaakt is, staat nergens in deze repository — en dan kan
@@ -436,10 +475,17 @@ het raakt het hele AVG-verwijderpad:
 
 - **een bericht verwijderen** ruimt het bestand wél op — `verwijderBericht()`
   roept de Storage-API aan, na de rij;
-- **een account verwijderen** ruimt de metadata-rijen op (migratie `0224`), maar
-  de blobs blijven staan;
+- **een account verwijderen** ruimt de metadata-rijen op (migratie `0224` voor de
+  chat, `0230` voor het bewijs), maar de blobs blijven staan;
 - **een groep verwijderen** laat de objecten volledig als wees achter: de cascade
-  raakt alleen `chat_messages`.
+  raakt alleen `chat_messages`;
+- **een weekdoel of doel verwijderen** doet hetzelfde voor `bewijsfotos`:
+  `completions` cascadeert weg en de objecten hangen daar niet aan.
+
+⚠️ **Bij `bewijsfotos` weegt dat zwaarder dan bij de chat.** Een bewijsfoto is
+vaker een portret in een beoordelingscontext, en artikel 17 AVG telt
+"onbereikbaar" niet als "gewist". Zie de Laag-rij van 09-09 in
+`docs/ENGINEER-REVIEW.md`, en `docs/decisions/2026-09-09-een-foto-als-bewijs.md` §4.
 
 Een opruimpas over wezen hoort een eigen issue te zijn — een `delete` over
 `storage.objects` valt onder grens 2 van de beslisbevoegdheid en verdient een
@@ -572,6 +618,67 @@ Eén generatie van twaalf mijlpalen kostte op 21-08-2026 ongeveer **1,3 cent**
 tien per gebruiker per dag is de bovengrens dus ruwweg dertien cent per
 gebruiker per dag — maar in de praktijk gebruikt niemand zijn plafond, en de
 cache vangt herhaalde vragen af.
+
+## 2.9 De bewaartermijn van chatfoto's — en wat een rollback níet terugdraait
+
+Sinds migratie 0235 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
+De rollover-functie haalt elk uur op wat weg mag en wist het:
+
+```sql
+select * from verlopen_chatfotos(500);   -- als service_role
+select chatfoto_bewaartermijn();          -- 21 days
+```
+
+Twee redenen komen eruit, en ze staan als kolom in de teruggave:
+
+| Reden | Wat het is | Vanaf |
+|---|---|---|
+| `verlopen` | ouder dan `chatfoto_bewaartermijn()` | 21 dagen |
+| `wees` | geen chatbericht meer dat naar dit pad wijst | een uur na de upload |
+
+De termijn verhogen of verlagen is één regel SQL en geen release — zelfde vorm
+als `ai_dag_limiet()` hierboven:
+
+```sql
+create or replace function public.chatfoto_bewaartermijn()
+returns interval language sql immutable set search_path = public, pg_catalog, pg_temp
+as $$ select interval '21 days' $$;
+```
+
+⚠️ **Maar dan ook in de app.** `CHATFOTO_BEWAARDAGEN` in
+`src/shared/bewaartermijn/index.ts` staat in de zin die de gebruiker ziet waar
+zijn foto stónd. `tests/rls/chatfoto-bewaartermijn.test.ts` legt de twee naast
+elkaar en wordt rood zodra ze uiteenlopen — dus dit is één regel SQL **en** één
+regel TypeScript, of anders een rode poort.
+
+### ⚠️⚠️ Wat een rollback wél en niet terugdraait
+
+Het ROLLBACK-PAD in de kop van 0235 zet de leesgrens, de teller en de
+opruimfuncties terug. **Het zet geen foto's terug.**
+
+- **De bytes zijn weg.** `storage.remove()` heeft ze verwijderd; er is geen
+  prullenbak, en op de gratis tier zijn er geen automatische backups. Alles wat
+  de pas heeft opgehaald in de tijd dat 0235 draaide, is onherroepelijk weg.
+- **`pg_dump` helpt hier niet.** Die dumpt de metadata-rijen in
+  `storage.objects`, niet de blobs. Een teruggezette dump geeft dus rijen die
+  naar bestanden wijzen die er niet meer zijn — en de app toont daar netjes
+  *"Deze foto staat er niet meer"*.
+- **Wil je de pas alleen stilzetten** zonder de rest van 0235 terug te draaien,
+  dan is dat de veiligste stap en hij is één regel: zet de bewaartermijn
+  belachelijk hoog (`interval '3650 days'`). De weestak blijft dan draaien — die
+  ruimt alleen op wat sowieso onleesbaar is — en er verdwijnt niets wat nog in
+  een chat staat.
+
+  ```sql
+  create or replace function public.chatfoto_bewaartermijn()
+  returns interval language sql immutable set search_path = public, pg_catalog, pg_temp
+  as $$ select interval '3650 days' $$;
+  ```
+
+⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover draait elk uur;
+tussen "ik ga terugdraaien" en "het is teruggedraaid" past een ronde.
+
+---
 
 ---
 

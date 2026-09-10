@@ -65,6 +65,9 @@ const HULPSCRIPTS = [
   'migratie-nieuw.mjs',
   'migratiebranches.mjs',
   'migraties-controle.mjs',
+  // ⚠️ `migraties-controle` importeert hem sinds QS8-405; zonder deze regel valt
+  //    de kloon om op een ontbrekende module in plaats van op wat je toetst.
+  'rollbackpad.mjs',
   'migratie-hernummer.mjs',
   'migratieregister-omgeving.mjs',
   // ⚠️ **Deze ontbrak tot QS8-365, en dat was niet te zien.** Geen enkele test

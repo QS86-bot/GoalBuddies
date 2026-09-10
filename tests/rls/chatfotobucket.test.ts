@@ -1,5 +1,11 @@
 /**
- * De chatfoto-bucket en de kolomgrens — migraties 0222 en 0223.
+ * De chatfoto-bucket en de kolomgrens — migraties 0222, 0223, 0233 en 0235.
+ *
+ * ⚠️⚠️ **Sinds 0235 hangt de leesgrens aan het bericht en niet aan de map**, en
+ *    het plafond telt hándelingen en geen voorraad. Dat verandert twee dingen aan
+ *    deze suite: elk object dat leesbaar hoort te zijn heeft een chatbericht
+ *    nodig, en een plafondtest die zijn objecten wist zet zijn teller daarmee
+ *    níet terug. Allebei staan ze hieronder met zoveel woorden.
  *
  * ⚠️⚠️ **De belofte is niet "de policy staat er". Die is: een foto verlaat zijn
  *    groep niet** — ook niet met één verzoek buiten de UI om. Dat is de tweede
@@ -20,6 +26,34 @@
  *
  * ⚠️ Zonder draaiende stack wordt deze suite overgeslagen, en dat is *ongemeten*
  *    en niet groen. `npm run poort` houdt dat onderscheid vast.
+ *
+ * 📏 **De ijking van 0235 — één mutatie per grendel, allemaal op 09-09-2026 rood
+ *    gezien.** Een test die je niet rood hebt gezien, bewaakt niets, en een
+ *    mutatie die niet de grendel raakt die de test noemt, ijkt de verkeerde.
+ *
+ *    | Mutatie | Wat er brak | Welk geval rood werd |
+ *    |---|---|---|
+ *    | A | `and exists (… chat_messages …)` uit `chatfotos_select` | "houdt een object zonder chatbericht weg bij een groepsgenoot" |
+ *    | B | die `exists` op `attachment_url is not null` in plaats van `= name` | "laat een groepsgenoot niet met andermans bericht binnen" |
+ *    | C | `bewaak_chatfoto_aantal()` telt weer `storage.objects` (de vorm van 0226) | "geeft geen nieuwe ruimte terug als je je foto's weer weghaalt" |
+ *    | D | het venster uit `tel_dagteller()` — de teller vergeet nooit meer | "geeft de ruimte wél terug zodra het etmaal voorbij is" |
+ *    | E | `grant select on dagtellers to authenticated` | "houdt de teller weg bij elke client" |
+ *
+ *    ⚠️ **C, D en E gaan over de teller van 0233/0234 en niet van 0235.** Deze
+ *       migratie had eerst een eigen teller (`chatfoto_uploads`); die is
+ *       vervallen toen QS8-399 dezelfde reparatie generiek voor alle drie de
+ *       emmers bouwde en QS8-401 hem breder trok dan opslag. De drie gevallen
+ *       bleven staan omdat ze de belofte voor **deze** emmer toetsen — de teller
+ *       eronder is alleen van eigenaar veranderd.
+ *    | M | `chatfotos_update` terug in de vorm uit 0222 | "weigert een upsert op een pad dat je zelf verstuurd hebt" |
+ *    | N | idem | "weigert een hernoeming binnen je eigen map" |
+ *    | O | het eigenaarsbeen uit `chatfotos_select` | "laat de plaatser zijn eigen wees wél zien, en dus opruimen" |
+ *    | P | een `::uuid`-cast in `bewaak_chatfoto_aantal()` | "valt niet om op een pad waarvan het eerste segment geen uuid is" |
+ *
+ *    ⚠️ M t/m P komen uit de securityronde van 09-09-2026 op deze migratie. Drie
+ *       van de vier waren gaten die de eerste vorm van 0235 zélf maakte, en geen
+ *       van de vier werd door de eerste twaalf mutaties geraakt — de suite stond
+ *       groen op alle drie. Regel 18 vraag 3, in het echt.
  */
 import { randomUUID } from 'node:crypto';
 
@@ -145,6 +179,21 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
       `insert into storage.objects (bucket_id, name, owner)
        values ('chatfotos', '${groepArchief}/${alice}/foto.jpg', '${alice}') on conflict do nothing`,
     );
+
+    // ⚠️⚠️ **Het bericht hoort bij het object, sinds 0235.** `chatfotos_select`
+    //    eist een chatbericht dat naar dit pad wijst; zonder deze twee rijen zijn
+    //    de leestests hieronder rood om de goede reden en toetsen ze niets meer
+    //    over de mápgrens. Dat de gréns aan het bericht hangt, staat in zijn
+    //    eigen gevallen verderop.
+    for (const [groep, pad] of [
+      [groepA, padA()],
+      [groepArchief, `${groepArchief}/${alice}/foto.jpg`],
+    ] as const) {
+      psql(
+        `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url)
+         values ('${groep}', '${alice}', 'kijk', 'photo', '${pad}')`,
+      );
+    }
   });
 
   afterAll(() => {
@@ -200,6 +249,106 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     expect(
       als(bob, `select count(*) from storage.objects where name = '${groepArchief}/${alice}/foto.jpg'`),
     ).toBe('1');
+  });
+
+  // -------------------------------------------------------------------------
+  // De leesgrens hangt aan het bericht — 0235
+  // -------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Dit is de belofte en niet de policy.** De belofte is: een foto die
+  //    nooit verstuurd is, of waarvan het bericht weg is, is geen foto meer. Tot
+  //    0235 hing `chatfotos_select` uitsluitend aan het **pad**, en dan is elk
+  //    object in de map van de groep leesbaar — ook een upload waarvan de
+  //    `insert` sneuvelde en de compenserende `remove()` niet aankwam.
+
+  it('houdt een object zonder chatbericht weg bij een groepsgenoot', () => {
+    const wees = `${groepA}/${alice}/nooit-verstuurd.jpg`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${wees}', '${alice}') on conflict do nothing`,
+    );
+    const gezien = als(bob, `select count(*) from storage.objects where name = '${wees}'`);
+    psql(`delete from storage.objects where name = '${wees}'`);
+    expect(gezien).toBe('0');
+  });
+
+  it('laat de plaatser zijn eigen wees wél zien, en dus opruimen', () => {
+    // ⚠️⚠️ **Hier stond het omgekeerde, en dat was een gemeten regressie.** De
+    //    eerste vorm van deze policy hing de leesgrens uitsluitend aan het
+    //    bericht — óók voor de plaatser. Postgres past de SELECT-policy echter
+    //    óók toe op `delete … where`, en dan kan de plaatser zijn eigen wees niet
+    //    meer opruimen: allebei de compenserende opruimingen in `chat.ts` sterven
+    //    stil, want `remove()` geeft geen fout op nul rijen.
+    //
+    //    Het gevolg werkte de verkeerde kant op. Vóór 0235 was een "verwijderde"
+    //    foto meteen weg; met die eerste vorm bleef hij tot de volgende
+    //    opruimronde staan, en een ondertekende URL van vóór dat moment blijft
+    //    zijn volle uur werken. Precies het spijtmoment waar dit issue voor
+    //    begon.
+    //
+    //    Het lek dat de policy sluit, gaat over **elk ánder lid** — dat geval
+    //    staat hierboven en hieronder. Deze test is de must-allow ernaast.
+    // ⚠️⚠️ **Het aantal gewiste rijen en niet een foutcode, en dat is een gemeten
+    //    val.** Een `delete` die door RLS niets ziet, geeft géén 42501 — hij
+    //    raakt nul rijen en meldt niets. Een test die op een SQLSTATE let, staat
+    //    dan groen terwijl er niets gebeurt. Vandaar `returning` binnen dezelfde
+    //    transactie: `als()` rolt terug, dus een telling áchteraf meet niets.
+    const wees = `${groepA}/${alice}/eigen-wees.jpg`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${wees}', '${alice}') on conflict do nothing`,
+    );
+    const gezien = als(alice, `select count(*) from storage.objects where name = '${wees}'`);
+    const gewist = als(
+      alice,
+      `with weg as (delete from storage.objects where name = '${wees}' returning 1)
+       select count(*) from weg`,
+    );
+    psql(`delete from storage.objects where name = '${wees}'`);
+    expect({ gezien, gewist }).toEqual({ gezien: '1', gewist: '1' });
+  });
+
+  it('sluit het object zodra het bericht weg is', () => {
+    // ⚠️⚠️ **De tweede route uit de bevinding, en de ernstigste.**
+    //    `verwijderBericht()` wist eerst de rij en dán het bestand. Sluit de app
+    //    ertussen, dan krijgt wie er spijt van heeft "weg" te zien terwijl elk
+    //    ander lid het bestand nog opsomt met één `storage.list()`.
+    const pad = `${groepA}/${alice}/spijt.jpg`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${alice}') on conflict do nothing`,
+    );
+    psql(
+      `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url)
+       values ('${groepA}', '${alice}', 'oeps', 'photo', '${pad}')`,
+    );
+
+    const voor = als(bob, `select count(*) from storage.objects where name = '${pad}'`);
+    psql(`delete from public.chat_messages where attachment_url = '${pad}'`);
+    const na = als(bob, `select count(*) from storage.objects where name = '${pad}'`);
+    psql(`delete from storage.objects where name = '${pad}'`);
+
+    // ⚠️ De must-allow zit in dezelfde test, en met opzet: zonder `voor` zegt
+    //    `na` alleen dat er niets leesbaar is, en dat is ook waar als de policy
+    //    álles dichtzet.
+    expect([voor, na]).toEqual(['1', '0']);
+  });
+
+  it('laat een groepsgenoot niet met andermans bericht binnen', () => {
+    // ⚠️ **De `exists` mag op het pad matchen en niet op "er bestaat een
+    //    bericht".** Een tak die `attachment_url is not null` had gelezen in
+    //    plaats van `= storage.objects.name`, staat groen op alle gevallen
+    //    hierboven en geeft elk object in de map vrij zodra er érgens één foto in
+    //    de groep hangt.
+    const wees = `${groepA}/${alice}/losse-wees.jpg`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${wees}', '${alice}') on conflict do nothing`,
+    );
+    // `padA()` heeft wél een bericht, en zit in dezelfde groep en dezelfde map.
+    const gezien = als(bob, `select count(*) from storage.objects where name = '${wees}'`);
+    psql(`delete from storage.objects where name = '${wees}'`);
+    expect(gezien).toBe('0');
   });
 
   // -------------------------------------------------------------------------
@@ -263,8 +412,113 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
   });
 
   // -------------------------------------------------------------------------
+  // Er is geen UPDATE-recht — 0235 §1b
+  // -------------------------------------------------------------------------
+
+  it('weigert een upsert op een pad dat je zelf verstuurd hebt', () => {
+    // ⚠️⚠️ **Dit is de omzeilroute van het plafond, en hij is gemeten.**
+    //    `insert … on conflict do update` vuurt de BEFORE INSERT-trigger (die
+    //    slaagt) maar niet de AFTER **INSERT**-trigger, dus er komt geen
+    //    tellerrij bij. 📏 Met `chatfotos_update` erin: één nette upload gaf
+    //    één tellerrij, en vijftig upserts daarna óók één. Dat is
+    //    `upload(..., { upsert: true })` als ongelimiteerde ingress én egress.
+    // ⚠️ De opstelling gaat met `psql` en niet met `als()`: die laatste rolt terug,
+    //    en dan is er bij de tweede aanroep niets om mee te botsen — de `on
+    //    conflict` wordt dan een gewone insert en de test staat groen op niets.
+    const pad = `${groepA}/${bob}/upsert.jpg`;
+    const eerste = alsMetFout(
+      bob,
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}')`,
+    );
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}') on conflict do nothing`,
+    );
+    psql(
+      `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url)
+       values ('${groepA}', '${bob}', 'x', 'photo', '${pad}')`,
+    );
+    const tweede = alsMetFout(
+      bob,
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}')
+       on conflict (bucket_id, name) do update set owner = excluded.owner`,
+    );
+    psql(`delete from public.chat_messages where attachment_url = '${pad}'`);
+    psql(`delete from storage.objects where name = '${pad}'`);
+    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
+
+    // ⚠️ De must-allow zit ernaast: de eerste, gewone upload moet gewoon slagen.
+    //    Een policy die álles weigert, staat groen op de must-deny alleen.
+    expect([eerste.slice(0, 3), tweede]).toEqual(['ok:', '42501']);
+  });
+
+  it('weigert een hernoeming binnen je eigen map', () => {
+    // ⚠️ De andere kant van hetzelfde ontbrekende recht. Een hernoeming is voor
+    //    de opslagdienst nieuwe bytes op een nieuw pad en zou dus moeten tellen —
+    //    en telt niet, want de teller hangt aan INSERT.
+    const pad = `${groepA}/${bob}/hernoem.jpg`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${pad}', '${bob}') on conflict do nothing`,
+    );
+    // ⚠️ Ook hier het aantal geraakte rijen: zonder UPDATE-policy ziet de `update`
+    //    niets en meldt hij niets. Nul is de weigering.
+    const uit = als(
+      bob,
+      `with bij as (
+         update storage.objects set name = '${groepA}/${bob}/hernoemd.jpg'
+         where name = '${pad}' returning 1
+       ) select count(*) from bij`,
+    );
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepA}/${bob}/hernoem%'`);
+    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
+    expect(uit).toBe('0');
+  });
+
+  it('valt niet om op een pad waarvan het eerste segment geen uuid is', () => {
+    // ⚠️ Gat 1 van 0130, nu aan de tellerkant. 📏 De eerste vorm van 0235 had een
+    //    eigen teller die naar `uuid` castte zonder vormtoets, en dan gaf
+    //    `chatfotos/mijnmap/submap/x.jpg` een `invalid input syntax for type
+    //    uuid` — de héle insert viel om. Die teller is vervallen (zie §2 van
+    //    0235); wat blijft is het geval, want de volgende cast zit er zo weer in.
+    //    📏 Nagemeten met een `::uuid` in `bewaak_chatfoto_aantal()`: rood.
+    //
+    //    Onbereikbaar voor `authenticated` — `chatfotos_insert` pint beide
+    //    segmenten — maar niet voor de Storage-browser in Studio of een script
+    //    als `service_role`, en dat zijn precies de rollen die RLS passeren.
+    expect(() =>
+      psql(
+        `insert into storage.objects (bucket_id, name)
+         values ('chatfotos', 'mijnmap/submap/x.jpg') on conflict do nothing`,
+      ),
+    ).not.toThrow();
+    psql(`delete from storage.objects where name = 'mijnmap/submap/x.jpg'`);
+  });
+
+  // -------------------------------------------------------------------------
   // Het dagplafond
   // -------------------------------------------------------------------------
+  //
+  // ⚠️⚠️ **Sinds 0233 telt het plafond `dagtellers` en niet
+  //    `storage.objects`.** Objecten wissen zet de teller dus níet terug — dat is
+  //    de hele reparatie, en het geval dat hem bewaakt staat onderaan deze
+  //    sectie. Een plafondtest die een schone teller nodig heeft, zegt dat met
+  //    `zetTellerTerug()`.
+
+  /**
+   * Zet groep én teller terug — een handeling van de tést, niet van de app.
+   *
+   * ⚠️ **De volgorde van deze twee regels doet er niet toe, maar het paar wél.**
+   *    Alleen de objecten wissen laat de teller staan (en dan loopt de vólgende
+   *    plafondtest tegen een plafond aan dat hij niet gezet heeft); alleen de
+   *    teller wissen laat objecten staan die de leestests verstoren.
+   */
+  function zetTellerTerug(groep: string) {
+    psql(`delete from public.dagtellers where domein = 'chatfotos'`);
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groep}/%'`);
+  }
 
   it('weigert de eenentwintigste foto van dezelfde groep op één dag', () => {
     // ⚠️ **In groep B en niet in groep A, en dat is een gemeten reparatie.**
@@ -278,6 +532,7 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    groen staan op de verkeerde teller. Een groep die tegen zijn
     //    groepsplafond loopt, is per definitie een groep waarin meer mensen
     //    geplaatst hebben.
+    zetTellerTerug(groepB);
     for (let i = 0; i < 20; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -301,7 +556,14 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     //    uur stil, en de anderen krijgen "probeer het zo nog eens" — niet te
     //    onderscheiden van een netwerkfout. Onwrikbare regel 5 vraagt letterlijk
     //    om een limiet per gebruiker per dag.
-    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%'`);
+    // ⚠️⚠️ **De teller moet er sinds 0233 apart bij, en dat is precies wat die
+    //    migratie repareert.** `dagtellers` overleeft een `delete` op
+    //    `storage.objects` met opzet — wissen zette de rem anders terug. 📏
+    //    Gemeten toen alleen de objecten gewist werden: de vorige test liet de
+    //    teller op twintig staan, dus de eerste van deze acht viel al om op het
+    //    **groeps**plafond — een rode test met de goede code en de verkeerde
+    //    oorzaak.
+    zetTellerTerug(groepB);
     for (let i = 0; i < 8; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -332,12 +594,13 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
     ).toMatch(/^ok:/);
 
     psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%mijn-%'`);
+    zetTellerTerug(groepB);
   });
 
   it('laat de twintigste er nog wél door', () => {
     // ⚠️ De must-allow naast de must-deny. Een plafond dat álles weigert, is
     //    groen op deze suite en stuk voor de gebruiker.
-    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%vol-%'`);
+    zetTellerTerug(groepB);
     for (let i = 0; i < 19; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -354,7 +617,81 @@ describe.runIf(beschikbaar)('de chatfoto-bucket (0222) en de kolomgrens (0223)',
       ),
     ).toMatch(/^ok:/);
 
-    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/%rand-%'`);
+    zetTellerTerug(groepB);
+  });
+
+  // -------------------------------------------------------------------------
+  // Het plafond telt handelingen — 0232
+  // -------------------------------------------------------------------------
+
+  it('geeft geen nieuwe ruimte terug als je je foto\'s weer weghaalt', () => {
+    // ⚠️⚠️ **Dit is de belofte, en tot 0232 was hij onwaar.** 📏 Gemeten met de
+    //    teller van 0226:
+    //
+    //      1..8: ok    9: GEWEIGERD: Te veel foto's van deze persoon vandaag (8).
+    //      A wiste 8 rijen
+    //      A opnieuw 1..8: ok    9: GEWEIGERD
+    //
+    //    `upload → remove → upload` was dus onbegrensd: ongelimiteerde ingress én
+    //    egress op een tier die 5 GB per maand meet. Onwrikbare regel 5 vraagt een
+    //    limiet per gebruiker per dag, en een limiet op de vóórraad is dat niet.
+    zetTellerTerug(groepB);
+    for (let i = 0; i < 8; i += 1) {
+      psql(
+        `insert into storage.objects (bucket_id, name, owner)
+         values ('chatfotos', '${groepB}/${alice}/ratel-${i}.jpg', '${alice}')
+         on conflict do nothing`,
+      );
+    }
+
+    // Alleen de objecten weg — precies de handeling die vroeger ruimte gaf.
+    psql(`delete from storage.objects where bucket_id = 'chatfotos' and name like '${groepB}/${alice}/ratel-%'`);
+
+    const uit = alsMetFout(
+      alice,
+      `insert into storage.objects (bucket_id, name)
+       values ('chatfotos', '${groepB}/${alice}/opnieuw.jpg')`,
+    );
+    zetTellerTerug(groepB);
+    expect(uit).toBe('23514');
+  });
+
+  it('geeft de ruimte wél terug zodra het etmaal voorbij is', () => {
+    // ⚠️ **De must-allow naast de ratel, en die is dragend.** Een teller die
+    //    handelingen telt en nooit vergeet, is geen dagplafond maar een
+    //    levenslang quotum: acht foto's en daarna nooit meer. Het venster van een
+    //    etmaal ís het plafond, en zonder dit geval bewaakt niets dat het venster
+    //    er nog is.
+    zetTellerTerug(groepB);
+    for (let i = 0; i < 8; i += 1) {
+      psql(
+        `insert into storage.objects (bucket_id, name, owner)
+         values ('chatfotos', '${groepB}/${alice}/gisteren-${i}.jpg', '${alice}')
+         on conflict do nothing`,
+      );
+    }
+    // ⚠️ `venster_start` en geen rij per upload: de teller van 0232 houdt één rij
+    //    per emmer, soort en sleutel, en het venster schuift pas als het
+    //    verstreken is. Een etmaal terugzetten is dus precies "morgen".
+    psql(
+      `update public.dagtellers set venster_start = now() - interval '25 hours'
+       where domein = 'chatfotos'`,
+    );
+
+    const uit = alsMetFout(
+      alice,
+      `insert into storage.objects (bucket_id, name)
+       values ('chatfotos', '${groepB}/${alice}/vandaag.jpg')`,
+    );
+    zetTellerTerug(groepB);
+    expect(uit).toMatch(/^ok:/);
+  });
+
+  it('houdt de teller weg bij elke client', () => {
+    // ⚠️ RLS aan en géén policy is deny-all, maar alleen als de tabelgrant ook
+    //    weg is — anders leest `authenticated` hem met de rechten die
+    //    `alter default privileges` uitdeelde. Onwrikbare regel 4.
+    expect(alsMetFout(alice, 'select count(*) from public.dagtellers')).toBe('42501');
   });
 
   // -------------------------------------------------------------------------
