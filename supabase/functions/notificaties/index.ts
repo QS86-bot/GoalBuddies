@@ -85,7 +85,7 @@ interface Profiel {
   /** De taalkeuze van de ontvanger. `null` = nog niet gekozen (migratie 0061). */
   locale: string | null;
   /**
-   * De schakelaars per meldingsoort (migratie 0235, QS8-92).
+   * De schakelaars per meldingsoort (migratie 0237, QS8-92).
    *
    * ⚠️ `nudge` staat hier niet bij: die schakelaar ís `reminder_enabled`
    *    hierboven. De vertaling van soort naar veld staat op één plek,

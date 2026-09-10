@@ -23,9 +23,20 @@ import { describe, expect, it } from 'vitest';
  *    de belofte mee via de glob. Hernoemt iemand `notifications_sent`, dan is
  *    dát een migratie en hoort deze test rood te worden.
  *
- * ⚠️ Met de hand rood gemaakt, twee keer apart: een tweede
- *    `.from('notifications_sent').insert(` in de job, en de aanroep van
- *    `meldingPoortReden` uit `stuur()` weghalen.
+ * ⚠️⚠️ **De eerste versie van deze test bewaakte dit níet, en dat is gemeten en
+ *    niet bedacht.** Hij telde *bestanden* met een insert in plaats van
+ *    *voorkomens*, en toetste alleen de positie van de eerste. 📏 Een tweede,
+ *    ongepoortte insert ná de poort in hetzelfde bestand liet hem gewoon groen.
+ *
+ *    De ijking in de kop beweerde toen dat hij daarop rood gemaakt was. Dat was
+ *    hij niet: de mutatie die ik gedraaid had zette de insert vóór de poort, en
+ *    díé wordt door de ordeningsassertie hieronder gevangen — een ánder slot dan
+ *    het slot dat de test belooft te bewaken. Precies de val die CLAUDE.md bij
+ *    regel 18 beschrijft. Gevonden in de securityronde op QS8-92.
+ *
+ * ⚠️ Met de hand rood gemaakt, drie keer apart: een tweede insert **ná** de
+ *    poort, een insert **vóór** de poort, en de aanroep van `meldingPoortReden`
+ *    uit `stuur()` weghalen.
  */
 
 const WORTEL = fileURLToPath(new URL('../..', import.meta.url));
@@ -46,8 +57,19 @@ function bestanden(map: string): string[] {
  * ⚠️ De regex staat los van de aanroepvorm met witruimte ertussen: PostgREST
  *    laat `.from('notifications_sent')\n  .insert(` toe, en een test die alleen
  *    op één regel zoekt, ziet die niet.
+ *
+ * ⚠️ **Een fábriek en geen constante.** Een `/g`-regex houdt `lastIndex` bij
+ *    tussen aanroepen, dus `.test()` in een `filter()` over meerdere bestanden
+ *    slaat er willekeurig eentje over. Elke aanroeper krijgt een verse.
  */
-const INSERT = /\.from\(\s*['"]notifications_sent['"]\s*\)[\s\S]{0,200}?\.insert\(/g;
+function insertRegex(): RegExp {
+  return /\.from\(\s*['"]notifications_sent['"]\s*\)[\s\S]{0,200}?\.insert\(/g;
+}
+
+/** Elke plek waar dit bestand naar `notifications_sent` schrijft, als index. */
+function insertPosities(bron: string): number[] {
+  return [...bron.matchAll(insertRegex())].map((m) => m.index ?? -1);
+}
 
 describe('elke melding gaat langs de poort', () => {
   const alle = bestanden(FUNCTIES);
@@ -58,40 +80,39 @@ describe('elke melding gaat langs de poort', () => {
     expect(alle.length).toBeGreaterThan(3);
   });
 
-  it('schrijft `notifications_sent` op precies één plek', () => {
-    const plekken = alle.filter((pad) => INSERT.test(readFileSync(pad, 'utf8')));
-    INSERT.lastIndex = 0;
-
-    expect(plekken.map((p) => p.slice(WORTEL.length + 1))).toHaveLength(1);
+  /**
+   * ⚠️ **Voorkomens en niet bestanden.** Twee inserts in hetzelfde bestand zijn
+   *    twee schrijvers; een test die bestanden telt ziet dat verschil niet.
+   */
+  it('schrijft `notifications_sent` op precies één plek in de hele boom', () => {
+    const totaal = alle.reduce((n, pad) => n + insertPosities(readFileSync(pad, 'utf8')).length, 0);
+    expect(totaal).toBe(1);
   });
 
   it('doet dat in een bestand dat de poort aanroept', () => {
-    const plekken = alle.filter((pad) => INSERT.test(readFileSync(pad, 'utf8')));
-    INSERT.lastIndex = 0;
-
-    for (const pad of plekken) {
-      expect(readFileSync(pad, 'utf8')).toContain('meldingPoortReden(');
+    for (const pad of alle) {
+      const bron = readFileSync(pad, 'utf8');
+      if (insertPosities(bron).length === 0) continue;
+      expect(bron, pad).toContain('meldingPoortReden(');
     }
   });
 
   /**
-   * ⚠️ De poort moet vóór de insert staan. Erná zou hij de melding onderdrukken
-   *    én de ontdubbeling verbruiken, en dan komt hij nooit meer — ook niet als
-   *    de gebruiker de soort weer aanzet. Dat is stil dataverlies.
+   * ⚠️ De poort moet vóór **elke** insert staan. Erná zou hij de melding
+   *    onderdrukken én de ontdubbeling verbruiken, en dan komt hij nooit meer —
+   *    ook niet als de gebruiker de soort weer aanzet. Dat is stil dataverlies.
    */
-  it('roept de poort aan vóór de rij geschreven wordt', () => {
-    const plekken = alle.filter((pad) => INSERT.test(readFileSync(pad, 'utf8')));
-    INSERT.lastIndex = 0;
-
-    for (const pad of plekken) {
+  it('roept de poort aan vóór élke rij die geschreven wordt', () => {
+    for (const pad of alle) {
       const bron = readFileSync(pad, 'utf8');
-      const poort = bron.indexOf('meldingPoortReden(');
-      INSERT.lastIndex = 0;
-      const insert = INSERT.exec(bron)?.index ?? -1;
-      INSERT.lastIndex = 0;
+      const posities = insertPosities(bron);
+      if (posities.length === 0) continue;
 
-      expect(poort).toBeGreaterThan(-1);
-      expect(insert).toBeGreaterThan(poort);
+      const poort = bron.indexOf('meldingPoortReden(');
+      expect(poort, pad).toBeGreaterThan(-1);
+      for (const positie of posities) {
+        expect(positie, `${pad}: insert op ${positie} ligt niet ná de poort`).toBeGreaterThan(poort);
+      }
     }
   });
 });

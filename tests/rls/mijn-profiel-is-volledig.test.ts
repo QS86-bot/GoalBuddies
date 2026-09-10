@@ -30,10 +30,10 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
  *    terugzetten met `create or replace` weigert Postgres — *cannot drop columns
  *    from view* — dus die mutatie liet de test groen om een reden die niets met
  *    zijn belofte te maken had. Pas `drop view` + `create view` met de achttien
- *    kolommen van vóór 0235 maakte hem rood, mét de vier ontbrekende kolommen bij
+ *    kolommen van vóór 0237 maakte hem rood, mét de vier ontbrekende kolommen bij
  *    naam in de melding.
  *
- *    Dat is meteen de reden dat het rollback-pad van 0235 asymmetrisch is: de
+ *    Dat is meteen de reden dat het rollback-pad van 0237 asymmetrisch is: de
  *    heenweg mag `create or replace`, de terugweg moet droppen en opnieuw
  *    aanmaken, inclusief de grant.
  */

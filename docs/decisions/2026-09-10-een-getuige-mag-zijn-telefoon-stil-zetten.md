@@ -1,6 +1,6 @@
 # Een getuige mag zijn telefoon stil zetten
 
-**10-09-2026 — QS8-92, migratie 0235.** Vier van de vijf meldingsoorten waren
+**10-09-2026 — QS8-92, migratie 0237.** Vier van de vijf meldingsoorten waren
 niet uit te zetten. Dit document draagt de vier keuzes die niet vanzelf spreken.
 
 ## De meting
@@ -125,6 +125,59 @@ gedrag.
 en het was korter, maar dan staat er nergens in `src/` of `app/` nog een
 leesbare kolomnaam, en kan geen mens (en geen controle) zien welke grant waarvoor
 dient. `meldingsoortVelden()` schrijft ze nu uit, exhaustief over het type.
+
+## Wat de securityronde erop vond
+
+Drie bevindingen, alle drie zelf nagemeten vóór ze verwerkt zijn. Geen enkele
+raakte de kern: twaalf aanvalspaden op de kolommen — via de tabel, via een
+filter, via `order by`, via `returning`, via elke functie die `authenticated`
+mag uitvoeren — kwamen alle twaalf uit op *permission denied*. De kolomgrant is
+inderdaad de enige grendel, en hij houdt.
+
+### 1. De grendel op het keelpunt telde bestanden en geen voorkomens
+
+📏 `tests/beloftes/elke-soort-passeert-de-poort.test.ts` bleef **groen** met een
+tweede, ongepoortte `insert` ná de poort in hetzelfde bestand.
+
+⚠️⚠️ **En de ijking in zijn eigen kop loog.** Die beweerde dat hij op precies die
+mutatie rood gemaakt was. Wat er gedraaid was, zette de insert *vóór* de poort —
+en die wordt door de ordeningsassertie gevangen, een ánder slot dan het slot dat
+de test belooft te bewaken. Dat is de val die CLAUDE.md bij regel 18 beschrijft,
+en het is op deze branch het **derde** geval van dezelfde soort. De les die
+blijft staat er inmiddels drie keer: een ijking die zijn geval door een pad
+voert dat een eerdere grendel al afvangt, bewaakt niets van wat hij belooft.
+
+Herschreven naar voorkomens over de hele boom, met de eis dat élke treffer ná de
+poort ligt. Drie mutaties, elk apart rood gezien.
+
+### 2. Mijn eigen migratie trok `security_barrier` in
+
+📏 Ná de eerste versie was `mijn_profiel` de énige view in `public` zonder die
+vlag — terwijl 0089 hem ermee aanmaakte en 0143 hem netjes overnam.
+
+⚠️⚠️ **`create or replace view` zet de opties niet voort.** Ontbreekt de
+`with (…)`-clausule, dan vallen ze weg. Dit was dus geen vergeten grendel maar
+het **intrekken** van een bestaande, en dat is de stillere van de twee.
+
+Geen lek van vandaag — de aanval vraagt een functie in de WHERE, en dat kan
+alleen vanaf een directe SQL-sessie; PostgREST kent geen DDL en `authenticated`
+mag nergens `create`. Maar `docs/DEPLOY.md` §2.7 beschrijft precies de toekomst
+waarin dat verandert. `tests/rls/viewopties.test.ts` bewaakt nu de regel: elke
+view die als eigenaar draait heeft de vlag.
+
+⚠️ Dit is de derde variant van dezelfde vorm op deze branch: **`create or
+replace` neemt meer mee dan je denkt** — de kolomlijst is bevroren, de opties
+vallen weg, en de grants blijven juist wél staan. Drie verschillende antwoorden
+op één ogenschijnlijk eenvoudige opdracht.
+
+### 3. Een belofte over een commitment device die niet meer klopte
+
+`straf.persoon_uitleg` zei *"de app stuurt hem nog geen bericht"*. 📏 Onwaar
+sinds 0178, die `commitment_witness` toevoegde. De richting was veilig — de app
+deed méér dan ze beloofde — maar dit is copy over een commitment device, en
+domeinregel 5 gaat er letterlijk over dat een gebruiker weet wie wat te horen
+krijgt. Beide catalogi zeggen nu wat er gebeurt, inclusief de uitzondering die
+dit issue toevoegt.
 
 ## Wat hier niet in zit
 

@@ -1,4 +1,4 @@
--- 0235_elke_meldingsoort_heeft_een_schakelaar.sql — vier van de vijf soorten
+-- 0237_elke_meldingsoort_heeft_een_schakelaar.sql — vier van de vijf soorten
 -- meldingen waren niet uit te zetten (QS8-92)
 --
 -- ROLLBACK-PAD:
@@ -113,8 +113,26 @@ grant update (
 --
 -- ⚠️ `create or replace` en geen `drop`: droppen zou de eigenaar en de grant
 --    meenemen. Kolommen aan het eind toevoegen mag met `replace`.
+--
+-- ⚠️⚠️ **De `with (…)` moet er letterlijk bij, en die staat hier omdat hij er
+--    eerst níet stond.** `create or replace view` zét de opties niet voort — het
+--    laat ze vallen zodra de clausule ontbreekt. 📏 Gemeten in de securityronde:
+--    `mijn_profiel` was de énige view in `public` zonder `security_barrier`,
+--    terwijl 0089 hem mét die vlag aanmaakte en 0143 hem netjes overnam. Deze
+--    migratie had hem dus wéggehaald — geen nieuw gat, maar het intrekken van
+--    een bestaande grendel, en dat is stiller.
+--
+--    Wat `security_barrier` doet: hij verhindert dat de planner een goedkope
+--    qual van de aanroeper vóór `id = auth.uid()` uitvoert. Zonder die vlag kan
+--    een functie in de WHERE andermans rij te zien krijgen. 📏 Aangetoond in een
+--    testopstelling; niet bereikbaar via PostgREST (dat kent geen DDL en
+--    `authenticated` mag nergens `create`), dus het was geen lek van vandaag —
+--    maar `docs/DEPLOY.md` §2.7 beschrijft precies de toekomst waarin het er wel
+--    een wordt. `tests/rls/viewopties.test.ts` bewaakt de vlag nu.
 
-create or replace view public.mijn_profiel as
+create or replace view public.mijn_profiel
+  with (security_invoker = false, security_barrier = true)
+as
   select
     id,
     display_name,
