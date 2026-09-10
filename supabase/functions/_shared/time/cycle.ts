@@ -4,7 +4,17 @@
 // Bewerk het origineel en draai het script opnieuw; een wijziging hier gaat
 // verloren en, erger, laat de app en de jobs met verschillende regels werken.
 
-import type { Cycle, GroupClock, IsoDate, TimeZone, UserClock, Weekday } from './types.ts';
+import type {
+  Cycle,
+  Gebruikerscyclus,
+  Groepsperiode,
+  GroupClock,
+  IsoDate,
+  Klok,
+  TimeZone,
+  UserClock,
+  Weekday,
+} from './types.ts';
 import { GRACE_HOURS } from './types.ts';
 import {
   addDays,
@@ -22,13 +32,18 @@ import {
  * gedeelde ritme van een groep. Haal ze nooit door elkaar.
  */
 
-interface ClockShape {
+interface ClockShape<K extends Klok> {
   readonly startDay: Weekday;
   readonly tz: TimeZone;
+  /** Welk merk de cyclus krijgt. Zie `Klok` in `types.ts` — QS8-180. */
+  readonly klok: K;
 }
 
 /** Bouwt de cyclus rond een kalenderdatum die al bekend is. */
-function cycleFromDate(clock: ClockShape, dateInCycle: IsoDate): Cycle {
+function cycleFromDate<K extends Klok>(
+  clock: ClockShape<K>,
+  dateInCycle: IsoDate,
+): Cycle<K> {
   const offset = (weekdayOf(dateInCycle) - clock.startDay + 7) % 7;
   const startDate = addDays(dateInCycle, -offset);
   const endDate = addDays(startDate, 6);
@@ -42,10 +57,11 @@ function cycleFromDate(clock: ClockShape, dateInCycle: IsoDate): Cycle {
     startsAt: utcFromZoned(clock.tz, start.year, start.month, start.day),
     endsAt: utcFromZoned(clock.tz, afterEnd.year, afterEnd.month, afterEnd.day),
     tz: clock.tz,
+    klok: clock.klok,
   };
 }
 
-function cycleContaining(clock: ClockShape, at: Date): Cycle {
+function cycleContaining<K extends Klok>(clock: ClockShape<K>, at: Date): Cycle<K> {
   return cycleFromDate(clock, localDateIn(clock.tz, at));
 }
 
@@ -70,7 +86,7 @@ function cycleContaining(clock: ClockShape, at: Date): Cycle {
  *    `parseIsoDate()`, ver van de oorzaak. Dat is dezelfde vorm als Q-TODO A38:
  *    onzin in een kolom hoort te worden opgevangen waar hij binnenkomt.
  */
-export function userCycleOn(clock: UserClock, dateInCycle: string): Cycle | null {
+export function userCycleOn(clock: UserClock, dateInCycle: string): Gebruikerscyclus | null {
   if (!isGeldigeIsoDatum(dateInCycle)) return null;
 
   const datum = dateInCycle.trim() as IsoDate;
@@ -92,12 +108,12 @@ export function userCycleOn(clock: UserClock, dateInCycle: string): Cycle | null
   //    deze marge.
   if (!isGeldigeIsoDatum(addDays(datum, 7))) return null;
 
-  return cycleFromDate({ startDay: clock.weekStartDay, tz: clock.tz }, datum);
+  return cycleFromDate({ startDay: clock.weekStartDay, tz: clock.tz, klok: 'gebruiker' }, datum);
 }
 
 /** De cyclus waarin de gebruiker zich nu bevindt. */
-export function userCycle(clock: UserClock, at: Date): Cycle {
-  return cycleContaining({ startDay: clock.weekStartDay, tz: clock.tz }, at);
+export function userCycle(clock: UserClock, at: Date): Gebruikerscyclus {
+  return cycleContaining({ startDay: clock.weekStartDay, tz: clock.tz, klok: 'gebruiker' }, at);
 }
 
 /**
@@ -113,7 +129,7 @@ export function closableUserCycle(
   clock: UserClock,
   at: Date,
   graceHours: number = GRACE_HOURS,
-): Cycle {
+): Gebruikerscyclus {
   const current = userCycle(clock, at);
   const graceEndsAt = current.startsAt.getTime() + graceHours * 3_600_000;
 
@@ -139,8 +155,8 @@ export function isWithinGrace(
  * persoonlijke cyclus van de leden: sloot jij je week donderdag af en is de
  * huddledag zondag, dan telt jouw afsluiting mee in de periode die zondag begon.
  */
-export function groupPeriod(clock: GroupClock, at: Date): Cycle {
-  return cycleContaining({ startDay: clock.huddleDay, tz: clock.tz }, at);
+export function groupPeriod(clock: GroupClock, at: Date): Groepsperiode {
+  return cycleContaining({ startDay: clock.huddleDay, tz: clock.tz, klok: 'groep' }, at);
 }
 
 // ---------------------------------------------------------------------------
@@ -168,17 +184,17 @@ function startDagVan(cycle: Cycle): Weekday {
  *    de ene klok sijpelt de andere in, en niets wordt er rood van. Nu is het niet
  *    meer op te schrijven.
  */
-export function previousCycle(cycle: Cycle): Cycle {
+export function previousCycle<K extends Klok>(cycle: Cycle<K>): Cycle<K> {
   return cycleFromDate(
-    { startDay: startDagVan(cycle), tz: cycle.tz },
+    { startDay: startDagVan(cycle), tz: cycle.tz, klok: cycle.klok },
     addDays(cycle.startDate, -7),
   );
 }
 
 /** De cyclus ná deze, op dezelfde klok. Zie `previousCycle` voor het waarom. */
-export function nextCycle(cycle: Cycle): Cycle {
+export function nextCycle<K extends Klok>(cycle: Cycle<K>): Cycle<K> {
   return cycleFromDate(
-    { startDay: startDagVan(cycle), tz: cycle.tz },
+    { startDay: startDagVan(cycle), tz: cycle.tz, klok: cycle.klok },
     addDays(cycle.startDate, 7),
   );
 }
@@ -197,8 +213,29 @@ export function isWithinCycle(cycle: Cycle, at: Date): boolean {
  *    deze functie blijft omdat `shared/time` de plek is waar zo'n som hoort te
  *    staan, en omdat de tests hem gebruiken. Komt er nooit een tweede lezer,
  *    dan is dat een vraag voor de opruimronde en niet voor dit issue.
+ *
+ * ⚠️ **Twee overloads en geen generieke parameter, en dat is met opzet** —
+ *    QS8-180. `<K extends Klok>(from: Cycle<K>, to: Cycle<K>)` ziet eruit alsof
+ *    het de klokken uit elkaar houdt, maar dat doet het niet: `K` wordt dan
+ *    afgeleid uit béíde argumenten tegelijk, en bij een gemengde aanroep leidt
+ *    TypeScript hem simpelweg af naar `'gebruiker' | 'groep'`. Dan compileert
+ *    precies het geval dat deze grendel moet tegenhouden. Met twee losse
+ *    overloads is er geen kandidaat die allebei aanvaardt — de implementatie-
+ *    handtekening hieronder is voor de aanroeper niet zichtbaar.
  */
+export function cyclesBetween(from: Gebruikerscyclus, to: Gebruikerscyclus): number;
+export function cyclesBetween(from: Groepsperiode, to: Groepsperiode): number;
 export function cyclesBetween(from: Cycle, to: Cycle): number {
+  // ⚠️ **Dezelfde grendel nog een keer, nu op de draaiende code.** De overloads
+  //    hierboven houden op waar het type ophoudt: een `as`, een `any` uit een
+  //    query, of een aanroep vanuit een Deno-functie waar deze module gekopieerd
+  //    heen gaat, komt hier langs zonder dat TypeScript ooit meekeek. Het
+  //    antwoord op een gemengd paar is er niet — niet nul, niet een getal — dus
+  //    werpt hij.
+  if (from.klok !== to.klok) {
+    throw new Error(`cyclesBetween kreeg twee klokken: ${from.klok} en ${to.klok}`);
+  }
+
   return Math.round(daysBetween(from.startDate, to.startDate) / 7);
 }
 
