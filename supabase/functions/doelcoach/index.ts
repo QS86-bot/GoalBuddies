@@ -55,11 +55,47 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 
 /**
+ * Prijzen per miljoen tokens, in dollarcent, **per model**.
+ *
+ * ⚠️⚠️ **Het model en zijn prijs zijn één feit, en dat is de hele reparatie van
+ *    QS8-187.** Ze stonden hier als twee losse constanten, en dan kan elk van
+ *    beide op zichzelf kloppen terwijl het páár niet klopt. 📏 Zo stond het ook:
+ *    `MODEL` was `claude-sonnet-5` en de prijs was 300/1500 — de prijs van
+ *    Sonnet **4.6**. Precies de vorm van onwrikbare regel 18: elk onderdeel
+ *    klopt en het geheel lekt.
+ *
+ * ⚠️ **Nu is een model zonder prijs een typefout.** `MODEL` draagt het sleuteltype
+ *    van deze tabel, dus wie het model omzet zonder hier een regel bij te zetten,
+ *    krijgt `npm run edge:types:controle` rood — die draait mee in de poort. Dat is de
+ *    grendel die er hiervoor niet was: er stond een dátum in een commentaarregel,
+ *    en een datum wordt vanzelf onwaar zonder dat er iets rood van gaat.
+ *
+ * ⚠️ **Wat de tabel níét kan weten, is of het bedrag nog klopt.** Dat is een feit
+ *    van buiten. `tests/beloftes/doelcoach-prijs.test.ts` legt het vast met de
+ *    datum en de bron van de meting erbij, zodat er iets te herzien valt in
+ *    plaats van iets te geloven.
+ *
+ * 📏 **Gemeten op 10-09-2026** tegen
+ *    `platform.claude.com/docs/en/about-claude/models/overview.md`:
+ *    Claude Sonnet 5 is **$2 per input-MTok en $10 per output-MTok**.
+ */
+const PRIJS_PER_MTOK_CENT = {
+  'claude-sonnet-5': { invoer: 200, uitvoer: 1000 },
+} as const;
+
+/**
  * ⚠️ Sonnet en geen Opus, op verzoek van Quinten (19-08-2026). Mijlpalen
  *    opdelen is gestructureerd werk binnen een strak schema, geen creatief
  *    schrijven — daar is Sonnet sterk in tegen een fractie van de kosten.
+ *
+ * ⚠️ **Het type is de sleutel van `PRIJS_PER_MTOK_CENT` en niet `string`.** Een
+ *    model zonder prijsregel komt daarmee de typecheck niet door. Zie de tabel
+ *    hierboven.
  */
-const MODEL = 'claude-sonnet-5';
+const MODEL: keyof typeof PRIJS_PER_MTOK_CENT = 'claude-sonnet-5';
+
+/** De prijs van het model dat we werkelijk aanroepen. */
+const PRIJS = PRIJS_PER_MTOK_CENT[MODEL];
 
 /**
  * ⚠️ 8000 en niet de 2000 die ik eerst voorstelde. Op Sonnet 5 staat adaptief
@@ -94,28 +130,6 @@ const MAX_TOKENS = 8000;
 
 /** CLAUDE.md coderegel 14: elke externe call heeft een timeout. */
 const TIMEOUT_MS = 30_000;
-
-/**
- * Prijzen per miljoen tokens, in dollarcent.
- *
- * ⚠️ **Bijgewerkt op 06-09-2026 (QS8-296): de introductieprijs is verlopen.**
- *    De vorige regel hier zei het zelf — *"loopt tot en met 31-08-2026; daarna
- *    wordt het 300 / 1500. Zet dat dan hier om"* — en op 06-09 stond hij er nog
- *    steeds op 200 / 1000. Zes dagen lang is elke `cost_cents` dus met ongeveer
- *    de helft te laag geboekt.
- *
- * ⚠️ **Dat is precies waarom dit issue erover gaat.** Sinds 0174 hangt er een
- *    dagbudget in centen aan deze getallen; een prijs die te laag staat, laat
- *    dat budget te ruim zijn zonder dat iemand het merkt. Een `cost_cents` die
- *    stilletjes verouderd is, is erger dan geen bedrag: je baseert er
- *    beslissingen op zonder te weten dat hij niet meer klopt.
- *
- * ⚠️ **Een datum in een commentaarregel is geen grendel.** Dit is dezelfde vorm
- *    als de zin over een grant uit QS8-293: een uitspraak die waar was toen hij
- *    geschreven werd, die vanzelf onwaar wordt, en waar niets rood van gaat. Er
- *    staat een rij over in `docs/ENGINEER-REVIEW.md`.
- */
-const PRIJS_PER_MTOK_CENT = { invoer: 300, uitvoer: 1500 } as const;
 
 /**
  * Het schema waar het antwoord aan moet voldoen.
@@ -321,8 +335,8 @@ function json(body: unknown, status: number): Response {
  *    het antwoord op "wat kost dit" altijd nul totdat het ineens veel is.
  */
 function kostenInCent(verbruik: Verbruik): number {
-  const invoer = (verbruik.input_tokens / 1_000_000) * PRIJS_PER_MTOK_CENT.invoer;
-  const uitvoer = (verbruik.output_tokens / 1_000_000) * PRIJS_PER_MTOK_CENT.uitvoer;
+  const invoer = (verbruik.input_tokens / 1_000_000) * PRIJS.invoer;
+  const uitvoer = (verbruik.output_tokens / 1_000_000) * PRIJS.uitvoer;
   return Math.round((invoer + uitvoer) * 10_000) / 10_000;
 }
 

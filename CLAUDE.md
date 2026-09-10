@@ -632,6 +632,19 @@ precies waar een refactor, een migratie of een tweede schrijver langskomt.
    deze klasse niet: die kijkt naar databasefuncties zonder aanroeper, één laag
    lager. Een route die er met reden geen ingang heeft, staat met zijn meting in
    `ZONDER_PUSH` in dat script — en dat register is smal bedoeld.
+
+   ⚠️ **Er zijn drie sporten en ze dekken elk een andere laag** (QS8-194):
+   `schermingang:controle` de route, `exports:controle` de TypeScript-functie
+   zonder pad naar een scherm of geplande taak, en `keten:controle` de
+   databasefunctie, trigger of CHECK-waarde zonder aanroeper. Alle drie dragen
+   een register met een reden per rij, en alle drie zijn met de hand rood
+   gemaakt — de metingen staan bij de dossierrij van 21-08-2026.
+
+   ⚠️⚠️ **Wat geen van de drie vindt, en dat is de reden dat vraag 5 een vraag
+   blijft:** een keten die op wáárde-niveau bínnen een functie doodloopt. EPIC 9
+   hád een aanroeper — een trigger die netjes aan een tabel hing en wachtte op
+   een status die niets ooit zette. Van de vijf historische gevallen vangen de
+   scripts er vier. **De vijfde is handwerk, en dat blijft zo.**
 6. **Tilt deze feature een aanname van "er is er altijd precies één" naar "er
    kunnen er meer zijn"?** Dan staat de fout er waarschijnlijk al en heeft niemand
    hem kunnen zien — er is dan geen test die de belofte kón raken. Grep op `[0]`,
