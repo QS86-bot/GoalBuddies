@@ -114,7 +114,7 @@ describe('beoordeelStand — de vormen die hij moet vínden', () => {
     const fouten = beoordeelStand({
       inhoud:
         'De map telt er **229**.\n\n' +
-        '<!-- STAND:BEGIN -->\nMigraties `0001` t/m `0238` staan in de map: **237 bestanden**.\n<!-- STAND:EINDE -->',
+        '<!-- STAND:BEGIN -->\nMigraties `0001` t/m `0240` staan in de map: **237 bestanden**.\n<!-- STAND:EINDE -->',
       bestanden: map(237),
     });
     expect(fouten).toHaveLength(1);

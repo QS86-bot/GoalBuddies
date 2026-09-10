@@ -1,5 +1,5 @@
 /**
- * De documentemmer en zijn twee remmen — migraties 0235 en 0236.
+ * De documentemmer en zijn twee remmen — migraties 0237 en 0238.
  *
  * ⚠️⚠️ **De belofte is niet "de policy staat er". Die is: een document verlaat
  *    zijn groep niet** — ook niet met één verzoek buiten de UI om. Zelfde tweede
@@ -58,7 +58,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de chatdoc-emmer (0235) en de twee remmen (0236)', () => {
+describe.runIf(beschikbaar)('de chatdoc-emmer (0237) en de twee remmen (0238)', () => {
   const alice = randomUUID();
   const bob = randomUUID();
   const carol = randomUUID();
@@ -179,14 +179,22 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0235) en de twee remmen (0236)', 
     );
   });
 
-  it('heeft alle vier de policies', () => {
-    // Onwrikbare regel 1: SELECT, INSERT, UPDATE én DELETE.
+  it('heeft drie policies en met opzet geen UPDATE', () => {
+    // ⚠️⚠️ **Drie en niet vier, en dat is een besluit.** Het UPDATE-recht opende
+    //    twee routes die allebei gemeten zijn: een `upsert` omzeilt het
+    //    dagplafond (de teller hangt aan INSERT), en een `update` die
+    //    `bucket_id` wijzigt verhuist een object uit een ándere emmer hierheen —
+    //    waarmee `allowed_mime_types` niet meer de grendel is die de kop van
+    //    0237 belooft. `chatfotos` ging hem op dezelfde dag voor (0235 §1b).
+    //
+    // ⚠️ Onwrikbare regel 1 vraagt vier policies per tabel; `storage.objects` is
+    //    niet onze tabel, en vier policies zijn hier een emmer-conventie.
     expect(
       psql(
         `select string_agg(cmd::text, ',' order by cmd::text) from pg_policies
          where schemaname = 'storage' and tablename = 'objects' and policyname like 'chatdocs\\_%'`,
       ),
-    ).toBe('DELETE,INSERT,SELECT,UPDATE');
+    ).toBe('DELETE,INSERT,SELECT');
   });
 
   // -------------------------------------------------------------------------
@@ -287,7 +295,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0235) en de twee remmen (0236)', 
     // ⚠️⚠️ **De vorm van de bestandsnaam staat sinds 10-09-2026 in de policy en
     //    niet meer alleen in `chatdocPad()`.** 📏 De securityronde mat dat een
     //    lid `<groep>/<zelf>/evil.html` in deze emmer kon plaatsen. Onbereikbaar
-    //    vandaag — de CHECK van 0237 eist `.pdf`, dus geen bericht kan ernaar
+    //    vandaag — de CHECK van 0239 eist `.pdf`, dus geen bericht kan ernaar
     //    wijzen — maar "het pad eindigt op .pdf" was daarmee een eigenschap van
     //    de cliënt, en dit is de laag die dat hoort te weten.
     expect(
@@ -405,6 +413,53 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0235) en de twee remmen (0236)', 
          values ('chatdocs', '${groepB}/${carol}/van-carol.pdf')`,
       ),
     ).toMatch(/^ok:/);
+  });
+
+  it('laat een lid geen object uit een andere emmer hierheen verhuizen', () => {
+    // ⚠️⚠️ **Dit is de reden dat het UPDATE-recht weg is.** 📏 Met
+    //    `chatdocs_update` erin gaf deze `update` één rij: een PNG uit
+    //    `chatfotos` belandde als `.pdf` in `chatdocs`, en dan is
+    //    `allowed_mime_types` niet meer de grendel maar de unie over alle
+    //    emmers. Zonder UPDATE-policy op de doelemmer voldoet de nieuwe rij aan
+    //    geen enkele `with check`.
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatfotos', '${groepA}/${bob}/verhuizer.jpg', '${bob}') on conflict do nothing`,
+    );
+    als(
+      bob,
+      `update storage.objects set bucket_id = 'chatdocs', name = '${groepA}/${bob}/verhuisd.pdf'
+        where bucket_id = 'chatfotos' and name = '${groepA}/${bob}/verhuizer.jpg'`,
+    );
+    expect(
+      psql(`select count(*) from storage.objects where name = '${groepA}/${bob}/verhuisd.pdf'`),
+    ).toBe('0');
+    psql(`delete from storage.objects where name like '${groepA}/${bob}/verhuiz%'`);
+  });
+
+  it('weigert een upsert op een pad dat je zelf verstuurd hebt', () => {
+    // ⚠️⚠️ **De andere route die het UPDATE-recht opende.** `insert … on conflict
+    //    do update` vuurt de BEFORE INSERT-trigger — die slaagt — en de
+    //    verhuistrigger niet, dus er komt geen tel bij. Dat is
+    //    `upload(..., { upsert: true })` als ongelimiteerde ingress.
+    // ⚠️ De opstelling gaat met `psql` en niet met `als()`: die laatste rolt
+    //    terug, en dan is er bij de tweede aanroep niets om mee te botsen — de
+    //    `on conflict` wordt dan een gewone insert en de test staat groen op
+    //    niets. Zelfde val en dezelfde opzet als in `chatfotobucket.test.ts`.
+    const pad = `${groepA}/${bob}/upsert.pdf`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatdocs', '${pad}', '${bob}') on conflict do nothing`,
+    );
+    const tweede = alsMetFout(
+      bob,
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatdocs', '${pad}', '${bob}')
+       on conflict (bucket_id, name) do update set owner = excluded.owner`,
+    );
+    psql(`delete from storage.objects where name = '${pad}'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    expect(tweede).toBe('42501');
   });
 
   it('telt een verhuizing naar een andere groepsmap mee', () => {

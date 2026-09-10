@@ -34,8 +34,8 @@ export type Documentkeuze =
 export async function kiesDocument(): Promise<Documentkeuze> {
   const keuze = await DocumentPicker.getDocumentAsync({
     // ⚠️ Een filter en geen grendel: op sommige platformen is hij te omzeilen.
-    //    De grendels zijn `allowed_mime_types` op de bucket (0235), de
-    //    pad-CHECK (0237) en `keurChatdoc()`.
+    //    De grendels zijn `allowed_mime_types` op de bucket (0237), de
+    //    pad-CHECK (0239) en `keurChatdoc()`.
     type: 'application/pdf',
     copyToCacheDirectory: true,
     multiple: false,

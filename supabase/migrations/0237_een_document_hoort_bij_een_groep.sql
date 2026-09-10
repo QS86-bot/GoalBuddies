@@ -1,4 +1,4 @@
--- 0235_een_document_hoort_bij_een_groep.sql — een eigen bucket voor documenten in
+-- 0237_een_document_hoort_bij_een_groep.sql — een eigen bucket voor documenten in
 -- de groepschat, met een allowlist van precies één type.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
@@ -6,7 +6,6 @@
 -- ROLLBACK-PAD:
 --   drop policy if exists chatdocs_select on storage.objects;
 --   drop policy if exists chatdocs_insert on storage.objects;
---   drop policy if exists chatdocs_update on storage.objects;
 --   drop policy if exists chatdocs_delete on storage.objects;
 --   delete from storage.buckets where id = 'chatdocs';
 --
@@ -43,27 +42,32 @@
 --    en geen commentaarregel — dat laatste is precies wat 0150 heeft geleerd:
 --    een afspraak die alleen in een migratiekop staat, is geen grendel.
 --
--- ⚠️⚠️ **En het is niet "deze ene array", en dat is op 10-09-2026 gemeten en
---    niet geredeneerd.** Policies worden over emmers heen ge-OR'd: bij een
---    `update` die `bucket_id` wijzigt dekt de `using` van de brónemmer de oude
---    rij en de `with check` van `chatdocs_update` de nieuwe, en op databaseniveau
---    kijkt niets terug naar het type. 📏 Als `authenticated` gemeten:
+-- ⚠️⚠️ **En "deze ene array" was het bijna niet, en dat is op 10-09-2026
+--    gemeten en niet geredeneerd.** Policies worden over emmers heen ge-OR'd:
+--    bij een `update` die `bucket_id` wijzigt dekt de `using` van de brónemmer
+--    de oude rij en de `with check` van de dóélemmer de nieuwe, en op
+--    databaseniveau kijkt niets terug naar het type. 📏 Met een `chatdocs_update`
+--    erin, als `authenticated`:
 --
 --      update storage.objects set bucket_id = 'chatdocs', name = '<g>/<u>/x.pdf'
 --       where bucket_id = 'chatfotos' and name = '<g>/<u>/x.jpg';   → 1 rij
 --
---    Vanaf `avatars` net zo. **Het effectieve typebereik van deze emmer is dus
---    de unie over élke emmer waar een lid vandaan mag verhuizen** — vandaag
---    {pdf, jpeg, png, webp}, en alle vier inert, dus er staat vandaag niets
---    open. Wat er wél open staat is de aanname: wie hier over een half jaar een
---    vijfde emmer naast zet met `image/svg+xml` erin (heel gewoon, voor iconen),
---    verruimt déze emmer zonder deze migratie te lezen.
+--    Vanaf `avatars` net zo. Het effectieve typebereik van deze emmer was dus de
+--    unie over élke emmer waar een lid vandaan mag verhuizen — vandaag
+--    {pdf, jpeg, png, webp} en alle vier inert, maar dat is een eigenschap van
+--    de ándere emmers en niet van deze.
 --
---    Daarom leest de beloftetest sinds 10-09 **elke** `insert into
---    storage.buckets` in de hele migratiemap en niet alleen die hieronder. De
---    verhuizing zelf staat als open rij in `docs/ENGINEER-REVIEW.md` — de
---    reparatie is een UPDATE-recht intrekken op vier emmers tegelijk, en dat is
---    een eigen meting tegen het echte project (QS8-407).
+--    ✅ **Die route is dicht: er is geen `chatdocs_update`** — zie het blok
+--    verderop. Zonder UPDATE-policy op de doelemmer voldoet de nieuwe rij aan
+--    geen enkele `with check`, en dan is de verhuizing hierhéén onmogelijk.
+--    📏 Nagemeten na het intrekken: dezelfde `update` geeft nul rijen.
+--
+-- ⚠️ **Wat er wél open blijft is de aanname bij de buurman.** `avatars` en
+--    `bewijsfotos` dragen hun UPDATE-recht nog, dus daartússen kan het nog, en
+--    een vijfde emmer met `image/svg+xml` erin (heel gewoon, voor iconen) is er
+--    één die niemand hier komt lezen. Daarom leest de beloftetest sinds 10-09
+--    **elke** `insert into storage.buckets` in de hele migratiemap en niet
+--    alleen die hieronder, en staat de rest van die klasse als QS8-407 open.
 --
 -- ---------------------------------------------------------------------------
 -- 2. Waarom precies `application/pdf` en niets anders
@@ -214,44 +218,54 @@ create policy chatdocs_insert on storage.objects
     and name ~ '/[A-Za-z0-9._-]{1,80}\.pdf$'
   );
 
-drop policy if exists chatdocs_update on storage.objects;
+-- ---------------------------------------------------------------------------
+-- ⚠️⚠️ GEEN UPDATE-RECHT, EN DAT IS EEN BESLUIT DAT OP 10-09-2026 LANDDE
+-- ---------------------------------------------------------------------------
+--
+-- Hier stond een `chatdocs_update` in de vorm van 0222. Die is er niet meer, om
+-- dezelfde reden als in §1b van 0235 (QS8-396): die migratie trok
+-- `chatfotos_update` in terwijl deze branch openstond, en de nieuwste emmer
+-- hoort niet de losste te zijn.
+--
+-- Twee dingen die het recht opende, allebei gemeten:
+--
+--   1. **Het dagplafond was met één vlag te omzeilen.** `insert … on conflict do
+--      update` vuurt de BEFORE INSERT-trigger — die slaagt, want de teller groeit
+--      niet mee — en de verhuistrigger niet, dus er komt geen tel bij. Dat is
+--      `upload(..., { upsert: true })` als ongelimiteerde ingress op een tier die
+--      5 GB per maand meet. 📏 Gemeten bij 0235 op `chatfotos`: één nette upload
+--      gaf één tellerrij, vijftig upserts daarna óók één.
+--
+--   2. **Een lid kon zijn eigen object naar een ándere emmer verhuizen.** 📏 In
+--      de securityronde van 10-09-2026 gemeten en zelf nageverifieerd, als
+--      `authenticated` met echte claims:
+--
+--        update storage.objects set bucket_id = 'chatdocs', name = '<g>/<u>/x.pdf'
+--         where bucket_id = 'chatfotos' and name = '<g>/<u>/x.jpg';   → 1 rij
+--
+--      Policies worden over emmers heen ge-OR'd — de `using` van de brónemmer
+--      dekt de oude rij en de `with check` van de doelemmer de nieuwe — dus het
+--      effectieve typebereik van deze emmer was de unie over alle vier. Vandaag
+--      inert, morgen niet. Wat er van die klasse overblijft, staat in QS8-407.
+--
+-- ⚠️ **En het recht had sowieso geen reden.** 📏 Nagelopen in de hele app:
+--    `uploadChatdoc()` doet `upsert: false`, en er is geen `.move()` en geen
+--    `.copy()` in `src/` of `app/`. Geen recht zonder reden — zelfde regel als
+--    bij het bewerkrecht op `chat_messages` in 0193.
+--
+-- ⚠️ **Onwrikbare regel 1 vraagt vier policies per tabel, en dit zijn er drie.**
+--    `storage.objects` is niet onze tabel maar die van de opslagdienst; vier
+--    policies zijn hier een emmer-conventie en geen tabelregel, en `chatfotos`
+--    draagt er sinds 0235 ook drie. Een vierde die niemand gebruikt is precies
+--    wat 0193 een *recht zonder knop* noemde.
+--
+-- ⚠️ Het restrisico is hetzelfde als daar, en het staat in
+--    `docs/ENGINEER-REVIEW.md`: of de Storage-API bij een gewone upload zélf een
+--    rij bijwerkt namens `authenticated`, is op de lokale steiger niet te meten —
+--    die tabel is een schil met vijf kolommen. Zo ja, dan faalt het versturen
+--    zichtbaar en is dit één regel terug.
 
-create policy chatdocs_update on storage.objects
-  for update to authenticated
-  using (
-    bucket_id = 'chatdocs'
-    and array_length(storage.foldername(name), 1) = 2
-    and is_group_member(
-          case
-            when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-              then ((storage.foldername(name))[1])::uuid
-          end
-        )
-    and (storage.foldername(name))[2] = (select auth.uid())::text
-  )
-  with check (
-    bucket_id = 'chatdocs'
-    and array_length(storage.foldername(name), 1) = 2
-    and is_group_member(
-          case
-            when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-              then ((storage.foldername(name))[1])::uuid
-          end
-        )
-    and (storage.foldername(name))[2] = (select auth.uid())::text
-    -- ⚠️ **De vorm van de bestandsnaam hoort in de policy en niet alleen in
-    --    `chatdocPad()`.** 📏 Gemeten in de securityronde van 10-09-2026: een lid
-    --    plaatste `<groep>/<zelf>/evil.html` in deze emmer. Onbereikbaar vandaag —
-    --    de CHECK van 0237 eist `.pdf`, dus geen bericht kan ernaar wijzen — maar
-    --    "het pad eindigt op .pdf" was daarmee een eigenschap van de cliënt, en dit
-    --    is de laag die dat hoort te weten. `array_length(...) = 2` hierboven pint
-    --    de diepte; deze regel pint de naam.
-    --
-    -- ⚠️ Alleen op de twee schrijfpaden. Op `delete` zou hij een object dat er om
-    --    wat voor reden dan ook al staat, onverwijderbaar maken — een grendel die
-    --    de opruiming tegenhoudt in plaats van de plaatsing.
-    and name ~ '/[A-Za-z0-9._-]{1,80}\.pdf$'
-  );
+drop policy if exists chatdocs_update on storage.objects;
 
 drop policy if exists chatdocs_delete on storage.objects;
 

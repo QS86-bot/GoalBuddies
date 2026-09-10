@@ -1,6 +1,6 @@
 # Een document is geen foto
 
-**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0235, 0236, 0237, 0238
+**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0237, 0238, 0239, 0240
 
 Dit document is de tegenhanger van
 `docs/decisions/2026-09-09-een-foto-in-de-chat.md`. Wat daar staat over het pad,
@@ -44,16 +44,29 @@ vandaag `avatars`, `chatfotos`, `bewijsfotos` en `chatdocs` samen, dat is
 niets open.**
 
 Wat er wél openstond, was de aanname. De beloftetest toetste de denylist alleen
-tegen de tekst van 0235; wie er over een half jaar een vijfde emmer naast zet met
+tegen de tekst van 0237; wie er over een half jaar een vijfde emmer naast zet met
 `image/svg+xml` (heel gewoon, voor iconen) verruimt déze emmer zonder dit
 document te lezen, en de test blijft groen. Sinds 10-09 leest die test **elke**
 `insert into storage.buckets` in de hele migratiemap.
 
-De verhuizing zelf is niet in deze branch gerepareerd, en dat is een keuze: de
-reparatie is een UPDATE-recht intrekken op **vier** emmers tegelijk, en of de
-Storage-API dat recht bij een gewone upload nodig heeft, is een meting tegen het
-echte project. Een halve familie is erger dan een hele — zelfde afweging als bij
-QS8-399. Het staat als open rij in `docs/ENGINEER-REVIEW.md` en als QS8-407.
+**En de route hierhéén is daarna dichtgegaan.** Terwijl deze branch openstond
+landde QS8-396 op `main`, en §1b van dié migratie trekt `chatfotos_update` in —
+op precies dezelfde meting, van de andere kant: een `upsert` omzeilt het
+dagplafond omdat de teller aan INSERT hangt. Toen dat besluit er eenmaal lag, was
+`chatdocs_update` laten staan de nieuwste emmer de losste maken. Dus is hij hier
+ook weg: **er is geen `chatdocs_update`.** Zonder UPDATE-policy op de doelemmer
+voldoet de nieuwe rij aan geen enkele `with check`, en de verhuizing hierheen is
+onmogelijk. 📏 Nagemeten na het intrekken: dezelfde `update` geeft nul rijen.
+
+Het recht had sowieso geen aanroeper — `upsert: false` overal, geen `.move()` en
+geen `.copy()` in `src/` of `app/`. Geen recht zonder knop, zelfde regel als
+0193.
+
+Wat er **niet** mee gerepareerd is: `avatars` en `bewijsfotos` dragen hun
+UPDATE-recht nog, dus daartússen kan het nog steeds, en de aanname over de
+Storage-API (heeft die het recht nodig bij een gewone upload?) is nog niet tegen
+het echte project gemeten. Dat is QS8-407, met een rij in
+`docs/ENGINEER-REVIEW.md`.
 
 De vraag bij elke uitbreiding is daarom niet "is dit formaat gangbaar" maar
 **"routeert een browser dit ooit naar de HTML-parser, direct of via XSLT"**. Bij
@@ -123,7 +136,7 @@ De grendel daartegen is een prop die er niet is: `Document.tsx` krijgt geen
 
 `attachment_url` draagt de emmer niet. Het pad is `<groep>/<afzender>/<naam>.<ext>`
 en dat is voor `chatfotos` en `chatdocs` identiek. **`type` is het enige dat zegt
-waar dit bestand staat**, en migratie 0237 is wat die twee gekoppeld houdt:
+waar dit bestand staat**, en migratie 0239 is wat die twee gekoppeld houdt:
 
 ```sql
 (type = 'photo' and attachment_url ~ '…\.(jpg|jpeg|png|webp)$')
@@ -180,15 +193,15 @@ nooit uit de naam: anders stelt `factuur.pdf.exe` zich voor als PDF.
 
 ## 6. De botsing tussen twee correcte grendels
 
-De eerste versie van 0237 eiste `type <> 'doc' or attachment_name is not null` —
-een document draagt een naam. Dat botste met de AVG-opruiming van 0238:
+De eerste versie van 0239 eiste `type <> 'doc' or attachment_name is not null` —
+een document draagt een naam. Dat botste met de AVG-opruiming van 0240:
 
 ```
 delete from profiles where id = <a>
 → Aan een chatbericht zijn alleen de tekst en de bijlage te wijzigen
 ```
 
-`stamp_chat_message()` maakt `type` **onveranderlijk**, dus 0238 kon de rij niet
+`stamp_chat_message()` maakt `type` **onveranderlijk**, dus 0240 kon de rij niet
 op `text` terugzetten om van de naam-eis af te komen.
 
 De keuze was: de onveranderlijkheid verruimen, of de CHECK aan de **bijlage**
@@ -208,7 +221,7 @@ opnieuw maakt en misschien de andere kant op valt.
 
 ## 7. `wis_chatfotos_van_vertrekker` heet nu `wis_bijlagen_van_vertrekker`
 
-De functie dekt sinds 0238 `('chatfotos', 'chatdocs')`. De oude naam zou liegen
+De functie dekt sinds 0240 `('chatfotos', 'chatdocs')`. De oude naam zou liegen
 over wat het lichaam doet — hetzelfde geval als `zonderAvatar` →
 `zonderVerlopendeUrls`: **de naam noemt de eigenschap, niet het veld van toen.**
 De trigger heet mee (`profielen_bijlagen_mee`).

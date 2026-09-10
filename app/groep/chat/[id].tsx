@@ -62,7 +62,7 @@ function MELDREDEN_OPTIES(): readonly { readonly waarde: string; readonly label:
  * ⚠️⚠️ **De soort komt uit `type` en niet uit `attachment_url`.** Het pad is
  *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
  *    identiek; `soortBijlage()` is de enige plek waar de emmer wordt afgeleid,
- *    en migratie 0237 is wat de soort aan de extensie gepaard houdt.
+ *    en migratie 0239 is wat de soort aan de extensie gepaard houdt.
  *
  * ⚠️⚠️ **De twee takken doen tegengestelde dingen met `attachment_url`, en dat
  *    is de naad van deze feature.** Bij een foto is het al een **ondertekende
