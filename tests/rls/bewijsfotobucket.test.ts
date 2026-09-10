@@ -324,13 +324,33 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
       expect({ verhuizing, binnen }).toEqual({ verhuizing: '23514', binnen: 'OK' });
     });
 
-    it('draagt de index waar die telling op leunt', () => {
-      // Onwrikbare regel 11: deze query draait op het schrijfpad van élke upload.
+    /**
+     * ⚠️⚠️ **Deze toets is met 0233 van vórm veranderd, en dat is geen
+     *    versoepeling.** Hier stond dat `objects_bewijsfotos_uploader_dag_idx`
+     *    moest bestaan. Die index droeg de `count(*)` over `storage.objects` die
+     *    deze teller deed — en sinds 0233 telt hij in `dagtellers`, op de
+     *    primaire sleutel. De index bediende dus geen enkele query meer en kostte
+     *    wél een schrijfactie per upload; 0233 haalt hem weg.
+     *
+     *    Een test die een index bij náám eist, is dan rood om de verkeerde reden.
+     *    De belofte van onwrikbare regel 11 is niet "deze index bestaat" maar
+     *    *"geen telling over `storage.objects` op het schrijfpad zonder index"* —
+     *    en die is nu getoetst waar hij hoort: bij de énige telling die er nog
+     *    is, die van `avatars` (de gelijktijdigheidsgrens van 0130).
+     */
+    it('laat geen telling over storage.objects zonder index staan', () => {
+      // De enige tellerfunctie die `storage.objects` nog leest sinds 0233.
+      const tellend = psql(
+        `select count(*) from pg_proc
+          where proname like 'bewaak_%_aantal' and prosrc like '%from storage.objects%'`,
+      );
+      expect(tellend, 'er is een telling bij gekomen — dan hoort er ook een index bij').toBe('1');
+
       const idx = psql(
         `select count(*) from pg_indexes
-          where schemaname = 'storage' and indexname = 'objects_bewijsfotos_uploader_dag_idx'`,
+          where schemaname = 'storage' and indexname = 'objects_avatars_map_idx'`,
       );
-      expect(idx).toBe('1');
+      expect(idx, 'de avatartelling draait op het schrijfpad van élke upload').toBe('1');
     });
   });
 
