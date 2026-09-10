@@ -38,7 +38,8 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql` | QS8-392 | nee |
 | `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
 | `0238_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
-| `0239_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
+| `0239_geen_enkele_emmer_heeft_een_update_pad.sql` | QS8-407 | ja |
+| `0240_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
