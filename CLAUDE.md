@@ -263,6 +263,24 @@ Voordat er één feature gebouwd wordt:
      notitie of niveau.** Een bericht is een onveranderlijke kopie die de
      autorisatie overleeft waaronder hij gemaakt is; ontkoppelen trekt de
      toestemming in, maar wist geen chat. Uitleg in beslisdocument 002 §3.
+
+     ⚠️ **Eén benoemde uitzondering sinds 08-09-2026 (QS8-335, migratie 0221):
+     accountverwijdering.** Wie zijn account opzegt, neemt de systeemberichten
+     over zijn eigen **commitments** mee — `commitment_due` en
+     `commitment_unlocked` waarvan hij het onderwerp is. Verder niets: zijn
+     gewone berichten blijven staan met een lege afzender, en `goal_completed`
+     blijft ook staan. Besluit van Quinten; de afweging staat in
+     `docs/decisions/2026-09-08-wat-een-straf-overleeft.md` §4.
+
+     *Waarom die uitzondering er is:* zonder haar was het geen wisrecht maar een
+     halve wissing. De cascade wiste het commitment en zijn auditspoor, en het
+     bericht bleef staan — mét de naam als platte tekst erin, want die wordt bij
+     het plaatsen ingebakken. De groep hield de bewering en verloor de
+     administratie die haar kon staven. 📏 Gemeten in QS8-335.
+
+     **Verleg die grens niet als bijvangst.** Elk ander systeembericht valt
+     onverkort onder de regel hierboven, en er weer een uit halen is een besluit
+     met dezelfde zwaarte als dit.
    - **⚠️ Nooit `REPLICA IDENTITY FULL` op een tabel in de realtime-publicatie**
      (`completions`, `weekly_goals`, `chat_messages`). Supabase past RLS toe op
      INSERT en UPDATE, maar **niet op DELETE**: met `FULL` gaat bij een
