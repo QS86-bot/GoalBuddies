@@ -2,6 +2,8 @@ import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
+
+import { uploadBewijsfoto, verwijderBewijsfoto } from './bewijsfoto';
 import type { Cycle } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 import type { Bewijseis } from '../buddies';
@@ -48,6 +50,35 @@ export type DagZet = Tables<'daily_moves'>;
 export type { Bewijseis };
 
 /**
+ * De melding bij een geweigerde afronding.
+ *
+ * ⚠️ 23514 is de check_violation van `enforce_evidence_policy`, maar hij dekt
+ *    óók `completions_level_valid`, `completions_note_length` en sinds 0229
+ *    `completions_attachment_eigen_pad`. De melding noemt daarom de notitie
+ *    zonder te beweren dat dát het probleem was — een verkeerde diagnose is
+ *    erger dan een vage.
+ *
+ * ⚠️ Op één na, en die gaat niet naar de gebruiker maar naar Sentry.
+ *    `completions_attachment_eigen_pad` betekent altijd dat het pad dat déze
+ *    code opbouwde niet bij deze rij past, en dat is een programmeerfout en geen
+ *    invoerfout. De gebruiker krijgt dezelfde vage zin — hij kan er niets aan
+ *    doen — maar het gaat apart gemeld, zodat het niet ondergaat in de
+ *    notitiefouten.
+ */
+function afrondFout(error: { code: string; message: string }, weeklyGoalId: string): string {
+  reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId });
+
+  if (error.code === '23514') {
+    if (/attachment_eigen_pad/.test(error.message)) {
+      reportError(error, 'completions.pad_klopt_niet', { weekly_goal_id: weeklyGoalId });
+    }
+    return t('voltooiing.geweigerd');
+  }
+
+  return t('voltooiing.afronden_mislukt');
+}
+
+/**
  * Rondt een weekdoel af.
  *
  * ⚠️ De status wordt `pending`, nooit direct `approved`. Ook niet als je alleen
@@ -72,6 +103,7 @@ export async function rondAf(
   userId: string,
   invoer: AfrondInvoer,
   eis: Bewijseis = 'note_required',
+  foto?: { readonly data: ArrayBuffer | Uint8Array; readonly mime: string },
 ): Promise<Resultaat<Voltooiing>> {
   const gevalideerd = afrondSchema.safeParse(invoer);
   if (!gevalideerd.success) {
@@ -86,6 +118,26 @@ export async function rondAf(
     };
   }
 
+  // ⚠️ De vóórcontrole is een gemak en geen grendel: `enforce_evidence_policy()`
+  //    (0231) is dat wél. Hij staat hier zodat de gebruiker niet eerst een foto
+  //    uploadt die daarna door de trigger geweigerd wordt.
+  if (eis === 'note_and_attachment' && foto === undefined) {
+    return { ok: false, melding: t('bewijsfoto.vereist') };
+  }
+
+  // ⚠️⚠️ **Eerst uploaden, dan invoegen — en dat is geen stijlkeuze.**
+  //    `completions` is append-only (domeinregel 6) en heeft geen UPDATE-grant:
+  //    `attachment_url` is alleen bij INSERT te zetten (0229 §2), dus náleveren
+  //    kan niet. Mislukt de insert, dan ruimt de compenserende `verwijder` het
+  //    object weer op — anders groeit de bucket met bestanden waar geen rij naar
+  //    wijst en die wél meetellen voor het dagplafond van 0228.
+  let pad: string | null = null;
+  if (foto !== undefined) {
+    const gezet = await uploadBewijsfoto(weeklyGoalId, userId, foto);
+    if (!gezet.ok) return gezet;
+    pad = gezet.waarde;
+  }
+
   const { data, error } = await supabase()
     .from('completions')
     .insert({
@@ -93,6 +145,7 @@ export async function rondAf(
       user_id: userId,
       achieved_level: gevalideerd.data.achieved_level,
       note: notitie === '' ? null : notitie,
+      attachment_url: pad,
       // De trigger overschrijft dit met de cyclus van het weekdoel. Meesturen is
       // verplicht (NOT NULL); wat je stuurt maakt niet uit.
       cycle_start_date: '1970-01-01',
@@ -101,20 +154,8 @@ export async function rondAf(
     .single();
 
   if (error) {
-    reportError(error, 'completions.create', { weekly_goal_id: weeklyGoalId });
-
-    // ⚠️ 23514 is de check_violation van `enforce_evidence_policy`, maar hij
-    //    dekt óók `completions_level_valid` en `completions_note_length`. De
-    //    melding noemt daarom de notitie zonder te beweren dat dát het probleem
-    //    was — een verkeerde diagnose is erger dan een vage.
-    if (error.code === '23514') {
-      return {
-        ok: false,
-        melding: t('voltooiing.geweigerd'),
-      };
-    }
-
-    return { ok: false, melding: t('voltooiing.afronden_mislukt') };
+    if (pad !== null) await verwijderBewijsfoto(pad);
+    return { ok: false, melding: afrondFout(error, weeklyGoalId) };
   }
 
   // ⚠️ Geen tweede verzoek om de status op `pending` te zetten. Sinds migratie
@@ -176,7 +217,9 @@ export async function bewijseisVoorDoel(goalId: string): Promise<Bewijseis> {
   //    database, en dat moet zo blijven: deze functie vertelt de gebruiker
   //    vooraf wat er van hem verwacht wordt, de trigger weigert achteraf. Zeggen
   //    ze iets anders, dan krijgt hij een foutmelding voor iets waar het scherm
-  //    niet om vroeg. De `note_and_attachment`-tak stond hier tot 0150 (QS8-261).
+  //    niet om vroeg. De `note_and_attachment`-tak stond hier tot 0150 (QS8-261)
+  //    en is met 0231 teruggekomen, nu mét handhaving eronder.
+  if (eisen.includes('note_and_attachment')) return 'note_and_attachment';
   if (eisen.includes('note_required')) return 'note_required';
   return 'optional';
 }
@@ -219,7 +262,7 @@ export async function zetDagzet(
     .single();
 
   if (error) {
-    reportError(error, 'moves.create', { user_id: userId, code: error.code });
+    reportError(error, 'moves.create', { user_id: userId });
     return { ok: false, melding: t('voltooiing.opslaan_mislukt') };
   }
 
@@ -241,7 +284,7 @@ export async function fetchDagzetten(
     .limit(50);
 
   if (error) {
-    reportError(error, 'moves.list', { user_id: userId, code: error.code });
+    reportError(error, 'moves.list', { user_id: userId });
     throw new Error(t('voltooiing.dagzet_laden'));
   }
 

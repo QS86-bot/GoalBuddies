@@ -159,12 +159,34 @@ export async function fetchVerzoekenOver(): Promise<number | null> {
   return typeof data === 'number' ? data : null;
 }
 
+/**
+ * Hoe een eerder lidmaatschap van deze aanvrager eindigde.
+ *
+ * ⚠️ `eerder_lid` is de terugval: er staat een inactieve lidmaatschapsrij, maar
+ *    geen gebeurtenis die zegt hoe het eindigde. Dan is "eerder lid geweest" het
+ *    enige dat waar is, en dat is wat de beheerder dan leest.
+ */
+export type Verledensoort = 'verwijderd' | 'vertrokken' | 'eerder_lid';
+
+export interface Verleden {
+  readonly soort: Verledensoort;
+  readonly op: string | null;
+}
+
 export interface Lidmaatschapsverzoek {
   readonly id: string;
   readonly userId: string;
   readonly naam: string;
   readonly bericht: string | null;
   readonly aangevraagdOp: string;
+  /**
+   * Was deze aanvrager eerder lid, en hoe eindigde dat — QS8-332.
+   *
+   * ⚠️ `null` betekent "nooit lid geweest", en niet "onbekend". Alleen een
+   *    beheerder krijgt hier iets anders dan `null`; `verzoekers_eerder_lid()`
+   *    geeft een ander nul rijen.
+   */
+  readonly eerder: Verleden | null;
 }
 
 /**
@@ -192,6 +214,8 @@ export async function fetchOpenstaandeVerzoeken(
     throw new Error(t('ontdek.verzoeken_mislukt'));
   }
 
+  const verleden = await verledenVanVerzoekers(groupId);
+
   return (data ?? []).map((rij) => {
     const profiel = rij.profiles as unknown as { display_name?: string } | null;
     return {
@@ -200,8 +224,34 @@ export async function fetchOpenstaandeVerzoeken(
       naam: profiel?.display_name ?? t('ontdek.onbekend_lid'),
       bericht: rij.bericht,
       aangevraagdOp: rij.created_at,
+      eerder: verleden.get(rij.user_id) ?? null,
     };
   });
+}
+
+/**
+ * Wie van de aanvragers eerder lid was — één verzoek voor de hele lijst.
+ *
+ * ⚠️ **Eén aanroep en geen lus over de aanvragers** (onwrikbare regel 12). De
+ *    lijst haalt er hooguit vijftig op; een RPC per rij zou de klassieke N+1 in
+ *    een groepsoverzicht zijn.
+ *
+ * ⚠️ **Een mislukking hier mag de lijst niet omgooien.** De beslislijst is de
+ *    hoofdzaak en dit is de context erbij: valt de RPC om, dan meldt hij dat en
+ *    krijgt de beheerder de verzoeken zónder verleden, in plaats van een leeg
+ *    scherm. Wat hij dan mist is een waarschuwing, niet zijn werk.
+ */
+async function verledenVanVerzoekers(groupId: string): Promise<ReadonlyMap<string, Verleden>> {
+  const { data, error } = await supabase().rpc('verzoekers_eerder_lid', { p_group_id: groupId });
+
+  if (error) {
+    reportError(error, 'groups.join_requests.verleden', { group_id: groupId });
+    return new Map();
+  }
+
+  return new Map(
+    (data ?? []).map((rij) => [rij.user_id, { soort: rij.soort as Verledensoort, op: rij.op }]),
+  );
 }
 
 export async function beslisVerzoek(

@@ -24,6 +24,8 @@ export { GRACE_HOURS } from './types.ts';
 
 export { freezeNow, now, ouderDan, unfreezeNow } from './clock.ts';
 
+export { eersteLuideUur, inStilteVenster, verschovenUur } from './stilte.ts';
+
 export {
   closableUserCycle,
   cyclesBetween,
@@ -42,6 +44,7 @@ export {
   toonDatumKort,
   toonDatumLang,
   toonMaand,
+  toonKlokDatum,
   toonKlokTijd,
   toonMoment,
   toonTijd,

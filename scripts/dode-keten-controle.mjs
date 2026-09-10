@@ -100,14 +100,6 @@ export const BEWUST_ONGESCHREVEN = {
     'is vandaag voor geen enkele client schrijfbaar, en **wordt interessant ' +
     'zodra er iemand of iets is dat meldingen beoordeelt.** Is dat er dan nog ' +
     'niet, dan hoort de waarde weg.',
-  'chat_messages.type=photo':
-    'Wacht op Storage-buckets, die er nog niet zijn (QS8-71, Fase 2). ⚠️ De ' +
-    'waarde is vandaag ' +
-    'wél door een client te schrijven — kolomrecht en policy staan open — dus ' +
-    'een bericht kan `photo` heten met een gewone tekst erin. Wordt een defect ' +
-    'zodra de chat op `type` gaat renderen.',
-  'chat_messages.type=doc':
-    'Idem als `photo` (QS8-72, Fase 2), en met dezelfde open schrijfkant.',
   'points_ledger.reason=milestone_done':
     // ⚠️ `goal_done` stond hier tot 31-08 naast, met dezelfde reden. Hij is in
     //    migratie 0132 geschrapt na een besluit van Quinten; deze bleef staan

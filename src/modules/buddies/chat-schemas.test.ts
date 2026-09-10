@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  soortBijlage,
   BERICHT_MAX,
   BERICHTEN_PER_PAGINA,
   berichtSchema,
@@ -32,6 +33,8 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     sender_avatar: null,
     body: 'iets',
     type: 'text',
+    attachment_url: null,
+    attachment_name: null,
     system_event: null,
     getallen: null,
     subject_name: null,
@@ -324,5 +327,40 @@ describe('de cache van de lopende periode', () => {
     );
 
     expect(beperkVoorCache(veel).every((b) => b.sender_avatar === null)).toBe(true);
+  });
+});
+
+describe('soortBijlage', () => {
+  /**
+   * ⚠️ **De belofte: een tekstbericht toont nooit een bijlageblok.** 📏 Dat ging
+   *    mis omdat `attachment_url` twee dingen betekent — "geen bijlage" en
+   *    "bijlage die niet getekend kon worden" — en het scherm die twee niet uit
+   *    elkaar kon houden. Onder élke tekstbubbel stond "Deze foto is niet meer
+   *    beschikbaar".
+   *
+   * ⚠️ Deze suite heette tot 10-09-2026 `heeftBijlage`, en die functie is met
+   *    QS8-72 weggehaald: hij was `soortBijlage(...) !== null` en had na de
+   *    tweede soort geen aanroeper meer. De gevallen blijven, want de belofte
+   *    blijft — alleen antwoordt hij nu met de emmer in plaats van met ja of nee.
+   */
+  it('zegt niets voor een tekstbericht, ook als de bijlage null is', () => {
+    expect(soortBijlage({ type: 'text' })).toBeNull();
+  });
+
+  it('zegt niets voor een systeembericht', () => {
+    expect(soortBijlage({ type: 'system' })).toBeNull();
+  });
+
+  it('wijst een fotobericht naar de foto-emmer', () => {
+    // ⚠️ Ook als het tekenen mislukte — dán moet het scherm juist iets zeggen.
+    expect(soortBijlage({ type: 'photo' })).toBe('foto');
+  });
+
+  it('wijst een documentbericht naar de document-emmer', () => {
+    // ⚠️⚠️ Het pad draagt de emmer níet: `<groep>/<afzender>/<naam>.<ext>` is
+    //    voor allebei gelijk. Deze functie is de enige plek waar de emmer wordt
+    //    afgeleid, en migratie 0242 is wat de soort aan de extensie gepaard
+    //    houdt.
+    expect(soortBijlage({ type: 'doc' })).toBe('doc');
   });
 });

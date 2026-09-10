@@ -106,7 +106,7 @@ const REGISTER: Readonly<Record<string, string>> = {
     'bovengrens per doel. 📏 Dezelfde 200 aanroepen die er vóór 0216 alle 200 in ' +
     'gingen, leveren er nu 53 op (QS8-373).',
   commitment_events:
-    '⚠️ **Nieuw sinds QS8-333/0220, en het is de enige clientroute die er is.** ' +
+    '⚠️ **Nieuw sinds QS8-333/0244, en het is de enige clientroute die er is.** ' +
     '`herstel_stuurloze_straf()` is de eerste `security definer` die naar deze ' +
     'tabel schrijft en die `authenticated` mag uitvoeren; 📏 gemeten met ' +
     '`has_function_privilege`: `meld_commitment()` en `noteer_commitment()` mogen ' +
@@ -238,7 +238,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    kunnen wegvallen zonder dat hier iets aansloeg.
     const gevonden = groeibareTabellen();
 
-    // ⚠️ Negenentwintig werd dertig met `commitment_events` (QS8-333, 0220):
+    // ⚠️ Negenentwintig werd dertig met `commitment_events` (QS8-333, 0244):
     //    `herstel_stuurloze_straf()` is de eerste definer naar die tabel die
     //    `authenticated` mag uitvoeren. De reden staat in REGISTER hierboven.
     expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(30);
