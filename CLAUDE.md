@@ -74,6 +74,24 @@ het afsluiten van een issue of Linear en de documenten hetzelfde zeggen.
   `migratie:nieuw` en `migraties:controle` toch al op. Zet het issue dus
   *ook* op In Progress, maar vertrouw daar niet op.
 
+  ⚠️⚠️ **Lees het issue én zijn reacties, en dat is sinds 10-09-2026 (QS8-411)
+  een regel en geen vanzelfsprekendheid.** 📏 Op QS8-408 stond een besluit van
+  Quinten in een **reactie**, geplaatst vóór de eerste regel code, en dat ging
+  over meer dan het getal waar het over leek te gaan — het schreef ook de vórm
+  voor (*"geen eigen constante en geen tweede knop"*). De bouwsessie las bij het
+  claimen de beschrijving, bouwde het tegenovergestelde, **verdedigde** die keuze
+  in de migratiekop en het beslisdocument, en zette er een test onder die de
+  verkeerde vorm vastlegde. Het is gemerged.
+
+  De les is niet "beter opletten" maar waar besluiten belanden: bij een issue
+  dat dagen openstaat terwijl er parallel gewerkt wordt, is de reactie precies de
+  plek waar het antwoord op een openstaande vraag landt — de beschrijving is dan
+  de oudste tekst die er staat.
+
+  ⚠️ **En een afwijking die je onderbouwt is duurder dan een die je vergeet.**
+  Een omissie valt op; een uitgeschreven argument leest de volgende persoon als
+  een reden om er niet aan te twijfelen.
+
   ⚠️ **En een claim is een afspraak en geen slot.** Niets in git houdt een
   tweede branch tegen; dit werkt alleen zolang beide kanten kijken. Vindt de
   claim een botsing, dan bouw je dat issue niet — is er iets aan hún werk dat

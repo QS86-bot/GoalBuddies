@@ -283,46 +283,48 @@ antwoord: een wees zou anders voor de hele groep leesbaar blijven.
    SELECT-policy óók toe op `delete … where`, dus zonder die tak kan de plaatser
    zijn eigen wees niet opruimen — en dan sterft de compenserende opruiming van
    `stuurBericht()` stil, want `remove()` geeft geen fout op nul rijen.
-2. **Een opruimpas**: `chatdoc_bewaartermijn()` en `verlopen_chatdocs()`, in de
-   vorm van 0235 §3. De pas wijst aan en wist niets; de rollover doet het
+2. **Een opruimpas**: `verlopen_chatdocs()`, in de vorm van 0235 §3. De pas wijst aan en wist niets; de rollover doet het
    `storage.remove()` dat als enige de blob meeneemt.
 3. **`wis_bijlagen_van_vertrekker()` laat het object staan**, voor beide emmers.
    Het weglaten van die `delete` ís de reparatie, en dat leest averechts: de rij
    láten staan is wat het bestand écht doet verdwijnen.
 
 **De termijn is 21 dagen — besluit van Quinten, 10-09-2026**, gelijk aan de
-chatfoto.
+chatfoto. Het raakt allebei de grenzen uit *Beslisbevoegdheid* tegelijk: de app
+**toont** de termijn (grens 1) en de rollover **wist er onherroepelijk bestanden
+mee** op een tier zonder backups (grens 2). Een rollback zet de pas uit en zet
+geen documenten terug. Het afgewogen alternatief — langer, omdat een gescand
+formulier vaker bewaard bedoeld is dan een kiekje — is expliciet niet gekozen.
 
-⚠️⚠️ **Dit is bewust gevráágd en niet aangenomen, en dat is de uitzondering op de
-gewoonte van dit project.** CLAUDE.md zegt: kies zelf en bouw door. Deze keuze
-raakt allebei de grenzen uit *Beslisbevoegdheid* tegelijk — de app **toont** de
-termijn (grens 1) en de rollover **wist er onherroepelijk bestanden mee** op een
-tier zonder backups (grens 2). Een rollback zet de pas uit en zet geen documenten
-terug.
+⚠️⚠️ **En dat besluit ging óók over de vórm, en dat is hier eerst misgegaan.**
+De reactie op QS8-408 van 10-09 11:37 zei met zoveel woorden: *"geen eigen
+constante en geen tweede knop… twee constanten met dezelfde stand is een halve
+familie, en dat is in dit project de duurdere vorm."* Migratie 0250 bouwde
+precies het tegenovergestelde — `chatdoc_bewaartermijn()` náást
+`chatfoto_bewaartermijn()`, twee constanten, twee i18n-sleutels — en
+**verdedigde** die keuze op deze plek, met een test eronder die de twee-vorm
+vastlegde.
 
-De securityronde wees daarop, en die had gelijk: de eerste vorm van deze
-paragraaf noemde het een aanname en bouwde door. Het verschil met een foto is
-niet gek — een gescand formulier of trainingsschema wordt eerder ná drie weken
-teruggezocht dan een kiekje — en juist daarom is het een vraag van één regel
-waard. Het antwoord: één termijn voor alle bijlagen.
+De oorzaak is klein en het gevolg niet: de bouwsessie las bij het claimen de
+beschrijving van het issue en niet de reacties. Een volgende lezer vond daarna
+een uitgeschreven argument voor iets dat tegen een besluit inging — precies de
+schijnzekerheid waar de grendels in dit project voor bestaan. **Een onderbouwing
+is duurder dan een omissie: een omissie valt op, een argument niet.**
 
-⚠️ **Twee constanten en twee databasefuncties, met een test die zegt dat ze
-vandaag gelijk zijn.** Samenvoegen zou van twee productkeuzes één maken; los
-laten staan zonder toets laat ze uit elkaar lopen zonder dat iemand het besluit.
-`tests/rls/chatdoc-bewaartermijn.test.ts` legt alle vier naast elkaar, en dat
-geval is uitdrukkelijk géén defect als het ooit rood wordt — het vraagt dan om
-een reden.
+✅ **Rechtgezet in QS8-411, migratie 0251.** Eén `bijlage_bewaartermijn()`,
+gelezen door beide passen; één `BIJLAGE_BEWAARDAGEN`; één sleutel voor de zin
+vóór het versturen. De twee afwezigheidszinnen blijven twee, want die noemen het
+ding — *"deze foto"* / *"dit document"* — en dat is verschillende tekst en geen
+duplicaat.
 
-⚠️ **Zusterfuncties in SQL, één lus in de rollover.** De twee passen delen hun
-vorm en niet hun regel: emmer en termijn zijn per soort inhoud een eigen keuze,
-en het lichaam is vier regels. Wat wél zou gaan rotten als het twee keer bestond,
-is de uitvoerende helft — het aftoppen dat zichzelf meldt, het blokgewijs wissen,
-het doortellen bij een fout, het tellen op de teruggave van `remove()`. Dat zijn
-vier grendels die stuk voor stuk uit een bevinding komen, en die staan nu één
-keer in `supabase/functions/rollover/index.ts`. De tegenproef die dit project
-kent (0233/0234, *"twee tellers voor één regel is een halve familie"*) ging over
-twee grendels die dezélfde regel handhaafden; dit zijn er twee met elk een eigen
-getal.
+⚠️ **De twee opruimpassen blijven wél twee, en dat is geen tweede afwijking.**
+Het besluit ging over de **termijn**. De passen verschillen in de enige regel die
+ertoe doet — `bucket_id` — en wat er twee keer zou gaan rotten is de uitvoerende
+helft, niet de vier regels SQL. Die uitvoerende helft is één lus in de rollover:
+het aftoppen dat zichzelf meldt, het blokgewijs wissen, het doortellen bij een
+fout, het tellen op de teruggave van `remove()`. Dat zijn vier grendels die stuk
+voor stuk uit een bevinding komen, en die staan één keer in
+`supabase/functions/rollover/index.ts`.
 
 📏 **Negen grendels apart met de hand gebroken en rood gezien**, en één ervan was
 een bevinding over de test zelf: *"houdt zich aan het limiet"* bleef groen toen
