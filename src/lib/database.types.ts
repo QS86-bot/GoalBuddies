@@ -1841,6 +1841,54 @@ export type Database = {
           },
         ]
       }
+      todo_items: {
+        Row: {
+          body: string
+          created_at: string
+          done_at: string | null
+          id: string
+          order_index: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          order_index?: number
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          order_index?: number
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_streaks: {
         Row: {
           best_streak: number

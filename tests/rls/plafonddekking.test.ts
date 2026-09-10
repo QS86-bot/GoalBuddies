@@ -236,16 +236,26 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     // ⚠️ En het is geen ondergrens maar een exact getal, om dezelfde reden als
     //    de zelftoets in `remdekking.test.ts`: bij `> 10` hadden er negentien
     //    kunnen wegvallen zonder dat hier iets aansloeg.
+    //
+    // ⚠️ Negenentwintig werd dertig met `todo_items` (0246, QS8-379). Die tabel
+    //    draagt zijn eigen plafond — `taken_dagplafond` met `taken_rem`
+    //    ernaast — dus hij komt hier binnen als bewaakt en niet als bevinding.
     const gevonden = groeibareTabellen();
 
-    // ⚠️ Negenentwintig werd dertig met `commitment_events` (QS8-333, 0244):
+    // ⚠️ En dertig werd eenendertig met `commitment_events` (QS8-333, 0244):
     //    `herstel_stuurloze_straf()` is de eerste definer naar die tabel die
     //    `authenticated` mag uitvoeren. De reden staat in REGISTER hierboven.
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(30);
+    //
+    // ⚠️⚠️ **Twee branches telden hier allebei naar dertig, en samen zijn het er
+    //    eenendertig.** Beide kanten voegden één tabel toe en beide schreven het
+    //    nieuwe totaal op; git merget dat schoon en houdt er één over. Dat het
+    //    hier een exact getal is en geen ondergrens, is precies wat dat vangt —
+    //    bij `> 29` was deze merge stil goed gegaan met een tabel te weinig.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(31);
     expect(
       gevonden.filter((t) => t.plafond).length,
       'het aantal groeibare tabellen mét plafond is veranderd',
-    ).toBe(16);
+    ).toBe(17);
   }, 60_000);
 
   it('en push_tokens zit er met een plafond bij — de aanleiding van dit bestand', () => {

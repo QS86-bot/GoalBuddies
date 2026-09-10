@@ -3,7 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 10-09-2026 (QS8-72). Er landt veel uit twee sessies
+> **Laatst bijgewerkt:** 10-09-2026 (QS8-72, QS8-379). Er landt veel uit twee sessies
 > tegelijk; `git log origin/main` is de betrouwbare lijst en niet deze zin.
 >
 > **10-09, punt A: een merge zonder conflict kan je migratie stukmaken, en git
@@ -41,6 +41,48 @@
 > Lees eerst de vijf punten van 08-09 — de eerste twee zijn de duurste van de
 > hele week — dan de vier van 07-09, dan de vijf van 06-09, dan de drie van
 > 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
+>
+> **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
+> losse to-do's, getypt of ingesproken, privé of gedeeld. Deel 1 (**QS8-379**,
+> migratie `0246`) is af: de tabel `todo_items`, eigenaar-only, met een
+> dagplafond en een `visibility` die voor geen enkele client schrijfbaar is.
+> **QS8-380** (scherm en spraak) en **QS8-381** (delen) staan open, net als twee
+> beslispunten op QS8-378 die bij Quinten liggen.
+>
+> **09-09, punt A: een `with check` bevriest de rij, een pin houdt de kolom
+> vast — en dat verschil is een val en geen smaak.** De tweede grendel op
+> `todo_items.visibility` stond eerst als conjunct in de UPDATE-policy:
+> `with check (user_id = … and visibility = 'private')`. 📏 Gemeten: staat een
+> taak eenmaal op `'group'`, dan geeft `update … set done_at = now()` van de
+> **eigenaar zelf** `42501`, terwijl `delete` gewoon slaagt. Zijn eigen gedeelde
+> taak was alleen nog weg te gooien.
+>
+> ⚠️ Waarom dat erger is dan een bug: de melding wijst naar precies die regel,
+> dus de goedkoopste reparatie onder tijdsdruk is hem schrappen — en dan is de
+> grendel weg die de kolom moest beschermen. **Een `with check` kent `old` niet.
+> Wil je een kolom vasthouden, gebruik dan de pin die dit schema al heeft**
+> (`pin_week_review`, `guard_group_update`), en laat hem luid weigeren in plaats
+> van stil terugzetten (QS8-314).
+>
+> **09-09, punt B: twee sloten in één assertie zijn niet te ijken, en bij UPDATE
+> en DELETE is dat de regel en niet de uitzondering.** Postgres past de
+> SELECT-policy óók toe op een UPDATE of DELETE die kolommen leest, en élk
+> PostgREST-verzoek draagt een filter. 📏 De tests "een groepsgenoot wijzigt /
+> verwijdert andermans taak niet" bleven daardoor groen bij **allebei** de
+> mutaties — `todo_items_update using (true)` én `todo_items_select using
+> (true)`. De `using`-helft van de UPDATE- en DELETE-policy is met een gewoon
+> API-verzoek dus niet te meten. Ze staan nu onder een psql-proef die de
+> SELECT-policy in een terugrollende transactie tijdelijk openzet — dezelfde
+> vorm als `groepspin.test.ts` voor kolomgrants.
+>
+> **09-09, punt C: `sleutelzetters()` viel voor de derde keer in acht dagen
+> bijna om, en deze keer door een hernummering.** Deze branch heette 0214 tot
+> `main` er zelf een 0214 kreeg. Het register was gekopieerd uit **0208** — de
+> laatste definitie die de branch kende — en main's 0214 had er
+> `app.rem_pushtokens` bij gezet. Twee `create or replace` in verschillende
+> bestanden botsen nergens, dus git meldde niets. ⚠️ **Kopieer dat lichaam uit
+> de nieuwste definitie op `main`, en doe dat opnieuw na élke merge en élke
+> hernummering** — niet één keer aan het begin.
 >
 > **08-09, punt A: een `revoke` verandert wélke grendel als eerste weigert — en
 > dat is drie keer op één dag misgegaan.** Bij QS8-352 werd de CHECK uit 0007
