@@ -1688,6 +1688,8 @@ export type Database = {
           notify_approval_received: boolean
           notify_cycle_summary: boolean
           notify_commitment_witness: boolean
+          quiet_from: number | null
+          quiet_to: number | null
           reminder_enabled: boolean
           reminder_time: string | null
           reminder_tone: string
@@ -1712,6 +1714,8 @@ export type Database = {
           notify_approval_received?: boolean
           notify_cycle_summary?: boolean
           notify_commitment_witness?: boolean
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -1736,6 +1740,8 @@ export type Database = {
           notify_approval_received?: boolean
           notify_cycle_summary?: boolean
           notify_commitment_witness?: boolean
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -2341,6 +2347,8 @@ export type Database = {
           notify_approval_received: boolean | null
           notify_cycle_summary: boolean | null
           notify_commitment_witness: boolean | null
+          quiet_from: number | null
+          quiet_to: number | null
           reminder_enabled: boolean | null
           reminder_time: string | null
           reminder_tone: string | null
@@ -2365,6 +2373,8 @@ export type Database = {
           notify_approval_received?: boolean | null
           notify_cycle_summary?: boolean | null
           notify_commitment_witness?: boolean | null
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
@@ -2389,6 +2399,8 @@ export type Database = {
           notify_approval_received?: boolean | null
           notify_cycle_summary?: boolean | null
           notify_commitment_witness?: boolean | null
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
