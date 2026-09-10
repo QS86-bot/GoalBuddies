@@ -22,7 +22,7 @@ import { Body, Caption } from './Text';
  *
  * ⚠️⚠️ **De soort komt uit het pad en nooit uit de naam.** `soort` is wat
  *    `soortUitPad()` van het opslagpad maakte, en dat pad ligt vast in de CHECK
- *    van migratie 0240. `naam` is gebruikerstekst: zou het label daaruit komen,
+ *    van migratie 0241. `naam` is gebruikerstekst: zou het label daaruit komen,
  *    dan stelt `factuur.pdf.exe` zich voor als PDF. Vandaar twee props waar één
  *    string had gekund.
  *

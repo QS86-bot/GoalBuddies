@@ -1,4 +1,4 @@
--- 0239_een_rem_op_documenten_per_groep_en_per_lid.sql — twee dagtellers op
+-- 0240_een_rem_op_documenten_per_groep_en_per_lid.sql — twee dagtellers op
 -- `chatdocs`, in de vorm die 0233 heeft neergezet.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
@@ -65,7 +65,7 @@ begin
   end if;
 
   -- TODO(paid-tier): vier per groep per etmaal is byte-pariteit met `chatfotos`
-  -- (4 × 5 MB = 20 MB, gelijk aan 20 × 1 MB) en geen productkeuze. Zie 0238 §4.
+  -- (4 × 5 MB = 20 MB, gelijk aan 20 × 1 MB) en geen productkeuze. Zie 0239 §4.
   perform tel_dagteller('chatdocs', 'groep', groep, 4, interval '1 day',
                         'documenten in deze groep vandaag');
 

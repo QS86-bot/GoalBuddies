@@ -1,4 +1,4 @@
--- 0238_een_document_hoort_bij_een_groep.sql — een eigen bucket voor documenten in
+-- 0239_een_document_hoort_bij_een_groep.sql — een eigen bucket voor documenten in
 -- de groepschat, met een allowlist van precies één type.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
@@ -207,7 +207,7 @@ create policy chatdocs_insert on storage.objects
     -- ⚠️ **De vorm van de bestandsnaam hoort in de policy en niet alleen in
     --    `chatdocPad()`.** 📏 Gemeten in de securityronde van 10-09-2026: een lid
     --    plaatste `<groep>/<zelf>/evil.html` in deze emmer. Onbereikbaar vandaag —
-    --    de CHECK van 0238 eist `.pdf`, dus geen bericht kan ernaar wijzen — maar
+    --    de CHECK van 0239 eist `.pdf`, dus geen bericht kan ernaar wijzen — maar
     --    "het pad eindigt op .pdf" was daarmee een eigenschap van de cliënt, en dit
     --    is de laag die dat hoort te weten. `array_length(...) = 2` hierboven pint
     --    de diepte; deze regel pint de naam.

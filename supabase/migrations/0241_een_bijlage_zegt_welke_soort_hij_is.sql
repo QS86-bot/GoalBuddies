@@ -1,4 +1,4 @@
--- 0240_een_bijlage_zegt_welke_soort_hij_is.sql — de kolomgrens wordt aan de
+-- 0241_een_bijlage_zegt_welke_soort_hij_is.sql — de kolomgrens wordt aan de
 -- soort gepaard, en een document krijgt zijn oorspronkelijke naam.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
@@ -165,7 +165,7 @@ alter table public.chat_messages
 --    meer kwijt.
 --
 --    📏 De eerste versie eiste `type <> 'doc' or attachment_name is not null` en
---    liet 0241 de soort op `text` terugzetten bij een accountverwijdering. Dat
+--    liet 0242 de soort op `text` terugzetten bij een accountverwijdering. Dat
 --    werd geweigerd:
 --
 --      delete from profiles where id = <a>
@@ -177,7 +177,7 @@ alter table public.chat_messages
 --    minst veranderlijke veld van de rij te zijn.
 --
 --    Dus: een document draagt een naam **zolang het een bijlage heeft**. Gaat de
---    bijlage weg (AVG, 0241), dan gaat de naam mee — die is zelf een
+--    bijlage weg (AVG, 0242), dan gaat de naam mee — die is zelf een
 --    persoonsgegeven — en blijft er een `doc`-rij zonder bijlage over. Het scherm
 --    toont daar "dit document is niet meer beschikbaar", en dat is waar.
 alter table public.chat_messages
