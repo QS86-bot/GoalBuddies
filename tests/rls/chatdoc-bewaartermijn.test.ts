@@ -27,7 +27,7 @@
  *    | C | de weestak weg — alleen de termijn | "wijst een wees aan die het respijtuur voorbij is" |
  *    | D | de `limit` weg | "houdt zich aan het limiet dat je meegeeft" |
  *    | E | `grant execute on verlopen_chatdocs to authenticated` | "houdt verlopen_chatdocs weg bij een ingelogde gebruiker" |
- *    | F | `chatdoc_bewaartermijn()` op 30 dagen terwijl de app 21 zegt | "noemt in de app dezelfde termijn als de database aanhoudt" |
+ *    | F | `bijlage_bewaartermijn()` op 30 dagen terwijl de app 21 zegt | "noemt in de app dezelfde termijn als de database aanhoudt" |
  *
  *    ⚠️ **B en C zijn twee mutaties en geen een.** De RPC heeft twee redenen, en
  *       een ijking die er één weghaalt terwijl de ander het geval ook vindt, ijkt
@@ -38,7 +38,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { CHATDOC_BEWAARDAGEN, CHATFOTO_BEWAARDAGEN } from '@/shared/bewaartermijn';
+import { BIJLAGE_BEWAARDAGEN } from '@/shared/bewaartermijn';
 
 import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
 
@@ -135,34 +135,37 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0250)', () => {
   // -------------------------------------------------------------------------
 
   it('staat op eenentwintig dagen', () => {
-    expect(psql('select public.chatdoc_bewaartermijn()')).toBe('21 days');
+    expect(psql('select public.bijlage_bewaartermijn()')).toBe('21 days');
   });
 
   it('noemt in de app dezelfde termijn als de database aanhoudt', () => {
-    // ⚠️⚠️ **De naad, en niet een van de twee onderdelen.** `CHATDOC_BEWAARDAGEN`
+    // ⚠️⚠️ **De naad, en niet een van de twee onderdelen.** `BIJLAGE_BEWAARDAGEN`
     //    staat in de zin die de gebruiker vóór het versturen leest en in de zin
     //    die er straks staat waar het document stónd. Lopen die twee uiteen met
     //    wat de pas aanhoudt, dan belooft het scherm een termijn die de server
     //    niet nakomt — allebei de onderdelen kloppen en het geheel liegt.
-    expect(psql("select extract(day from public.chatdoc_bewaartermijn())::int")).toBe(
-      String(CHATDOC_BEWAARDAGEN),
+    expect(psql("select extract(day from public.bijlage_bewaartermijn())::int")).toBe(
+      String(BIJLAGE_BEWAARDAGEN),
     );
   });
 
-  it('is vandaag gelijk aan die van de chatfoto, en dat is een keuze', () => {
-    // ⚠️⚠️ **Deze test legt geen regel vast maar een sámenval.** De twee termijnen
-    //    zijn twee productkeuzes over twee soorten inhoud, allebei een besluit
-    //    van Quinten — de foto op 09-09, het document op 10-09 (0250 §2). Dat ze
-    //    vandaag hetzelfde getal dragen, maakt er geen één keuze van.
+  it('leest dezelfde functie als de fotopas', () => {
+    // ⚠️⚠️ **Hier stond een test die vastlegde dat twee termijnen vandaag gelijk
+    //    zijn, en die is met QS8-411 vervallen — er valt niets meer samen te
+    //    vallen.** Het besluit van QS8-408 was één termijn, en de vorm die daar
+    //    stond (twee functies, twee constanten, een test die de samenval
+    //    bewaakte) was een afwijking daarvan die zichzelf verdedigde.
     //
-    //    Wordt dit geval ooit rood, dan is dat **geen defect**: het betekent dat
-    //    iemand er één veranderd heeft, en dan hoort dit geval mee te veranderen
-    //    — met de reden erbij. Wat het voorkomt is dat ze uit elkaar lopen zonder
-    //    dat iemand het besloten heeft.
-    expect(CHATDOC_BEWAARDAGEN).toBe(CHATFOTO_BEWAARDAGEN);
-    expect(psql('select public.chatdoc_bewaartermijn() = public.chatfoto_bewaartermijn()')).toBe(
-      't',
-    );
+    //    Wat er nu getoetst wordt is de naad die er wél is: beide passen lezen
+    //    `bijlage_bewaartermijn()`, en er is geen tweede functie meer die stil
+    //    kan afwijken.
+    expect(psql("select count(*) from pg_proc where proname like '%_bewaartermijn'")).toBe('1');
+
+    for (const pas of ['verlopen_chatfotos', 'verlopen_chatdocs']) {
+      expect(
+        psql(`select pg_get_functiondef(to_regprocedure('public.${pas}(integer)')::oid)`),
+      ).toContain('bijlage_bewaartermijn()');
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -229,7 +232,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0250)', () => {
     expect(alsMetFout(alice, 'select * from verlopen_chatdocs(10)')).toBe('42501');
   });
 
-  it('houdt chatdoc_bewaartermijn weg bij een ingelogde gebruiker', () => {
-    expect(alsMetFout(alice, 'select public.chatdoc_bewaartermijn()')).toBe('42501');
+  it('houdt bijlage_bewaartermijn weg bij een ingelogde gebruiker', () => {
+    expect(alsMetFout(alice, 'select public.bijlage_bewaartermijn()')).toBe('42501');
   });
 });

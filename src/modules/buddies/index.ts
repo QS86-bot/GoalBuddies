@@ -38,7 +38,7 @@ export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {
-  CHATFOTO_BEWAARDAGEN,
+  BIJLAGE_BEWAARDAGEN,
   CHATFOTO_BUCKET,
   CHATFOTO_MAX_BYTES,
   CHATFOTO_TYPES,
@@ -48,7 +48,6 @@ export {
 } from './chatfoto';
 
 export {
-  CHATDOC_BEWAARDAGEN,
   CHATDOC_BUCKET,
   CHATDOC_GELDIGHEID_S,
   CHATDOC_MAX_BYTES,
