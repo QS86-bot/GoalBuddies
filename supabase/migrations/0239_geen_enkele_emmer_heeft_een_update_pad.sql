@@ -1,0 +1,135 @@
+-- 0239_geen_enkele_emmer_heeft_een_update_pad.sql — een lid kan een object van
+-- de ene emmer naar de andere verhuizen en zo de grenzen van de doelemmer omzeilen (QS8-407)
+--
+-- ROLLBACK-PAD:
+--   create policy avatars_update on storage.objects
+--     for update to authenticated
+--     using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
+--     with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+--   create policy bewijsfotos_update on storage.objects
+--     for update to authenticated
+--     using (bucket_id = 'bewijsfotos' and array_length(storage.foldername(name), 1) = 2
+--            and (storage.foldername(name))[2] = (select auth.uid())::text
+--            and mag_weekdoel_van_mij(case when (storage.foldername(name))[1] ~
+--              '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+--              then ((storage.foldername(name))[1])::uuid else null::uuid end))
+--     with check (bucket_id = 'bewijsfotos' and array_length(storage.foldername(name), 1) = 2
+--            and (storage.foldername(name))[2] = (select auth.uid())::text
+--            and mag_weekdoel_van_mij(case when (storage.foldername(name))[1] ~
+--              '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+--              then ((storage.foldername(name))[1])::uuid else null::uuid end));
+--
+--   ⚠️ Terugdraaien zet het gat terug dat hieronder gemeten is, en het zet ook de
+--      halve familie terug: `chatfotos_update` is in 0235 gedropt en komt hier
+--      niet terug.
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️ **Permissieve policies worden ge-OR'd, en bij een UPDATE gaat dat over twee
+--    verschillende rijen.** `using` wordt tegen de óude rij gehouden en
+--    `with check` tegen de níeuwe. Verandert `bucket_id`, dan dekt de policy van
+--    de brónemmer de eerste helft en die van de doelemmer de tweede — en geen
+--    van beide heeft ooit beide rijen gezien. Op databaseniveau kijkt niets
+--    terug naar `allowed_mime_types` of `file_size_limit` van de doelemmer.
+--
+-- 📏 Gemeten op 10-09-2026 op de lokale stack uit alle 236 migratiebestanden,
+--    als `authenticated` met `request.jwt.claims` van een echte gebruiker:
+--
+--      insert into storage.objects (bucket_id, name, owner)
+--        values ('avatars', '<uid>/portret.jpg', '<uid>');
+--
+--      update storage.objects
+--         set bucket_id = 'bewijsfotos',
+--             name = '<weekdoel>/<uid>/portret.jpg'
+--       where bucket_id = 'avatars' and name = '<uid>/portret.jpg';
+--      → UPDATE 1
+--
+--      bucket_id   | name
+--      bewijsfotos | <weekdoel>/<uid>/portret.jpg
+--
+--    `avatars` staat op **2 MB** en `bewijsfotos` op **1 MB**.
+--
+-- ⚠️⚠️ **Wat hier gemeten is, is dat de rij verhuist — niet dat er twee megabyte
+--    in een emmer van één belandde.** Dat verschil hoort in dit project bij het
+--    📏-teken en het is bij de securityronde op deze branch terecht opgemerkt.
+--    De lokale `storage.objects` is een schil zonder blob: `file_size_limit` en
+--    `allowed_mime_types` worden door de **dienst** afgedwongen en niet door de
+--    tabel, dus de grootte is hier niet te meten. Wat de meting wél vaststelt is
+--    dat de databaselaag — de laag die dít project bezit — de verhuizing toelaat
+--    en de grenzen van de doelemmer nergens raadpleegt.
+--
+-- ⚠️ En de kale SQL hierboven is niet de route die een client heeft: PostgREST
+--    staat op `db-schemas = "public"`, dus `storage.objects` is er geen
+--    oppervlak. De bereikbare route is het move/copy-eindpunt van de
+--    Storage-API. Diezelfde drop sluit die route, want de dienst voert de
+--    verplaatsing uit namens de ingelogde gebruiker — maar dát is de route die
+--    op productie nagemeten hoort te worden, en die meting staat nog open.
+--
+-- ⚠️ **Wat er vandaag níet openstaat, en dat hoort er eerlijk bij.** De drie
+--    emmers dragen op dit moment dezelfde `allowed_mime_types`
+--    (`{image/jpeg,image/png,image/webp}`), dus er is geen typebypass — alleen
+--    een groottebypass. De typekant is er een die openklapt zodra één emmer een
+--    ander type toelaat, en dat is precies wat QS8-72 (`chatdocs`,
+--    `application/pdf`) gaat doen.
+--
+-- ---------------------------------------------------------------------------
+-- Waarom dit droppen mag, en waarom het geen nieuwe afweging is
+-- ---------------------------------------------------------------------------
+--
+-- ⚠️⚠️ **Deze afweging is op 10-09 al gemaakt en geland — voor één emmer.**
+--    `0235` dropte `chatfotos_update` met deze onderbouwing, woordelijk:
+--
+--      "Het recht had sowieso geen reden. 📏 Nagelopen in de hele app: alle drie
+--       de buckets uploaden met `upsert: false`, er is geen `.move()` en geen
+--       `.copy()`. `chatfotos_update` stond er sinds 0222 als vorm, niet als
+--       behoefte. Geen recht zonder reden."
+--
+--    Dezelfde meting geldt onverkort voor de andere twee. 📏 Zelf nagemeten op
+--    10-09: `upsert: false` in `chatfoto.ts`, `avatar.ts` en `bewijsfoto.ts`, en
+--    nul treffers op `.move(` of `.copy(` in `src/` en `app/`.
+--
+-- ⚠️ **Main is daardoor sinds vanochtend een halve familie**, en dat is de
+--    toestand waar dit project een naam voor heeft: `chatfotos` dicht,
+--    `avatars` en `bewijsfotos` open. Een halve familie is erger dan een hele —
+--    niet omdat de twee open emmers erger zijn dan gisteren, maar omdat de
+--    volgende schrijver de vorm kopieert die hij vindt, en er staan er dan twee
+--    met en één zonder.
+--
+-- ⚠️ **Het restrisico is hetzelfde restrisico**, en het is niet groter geworden
+--    door het breder te trekken: of de Storage-API bij een gewone upload zélf
+--    een rij bijwerkt namens `authenticated`, is op deze steiger niet te meten —
+--    `storage.objects` is er een schil. Gebeurt dat wél, dan faalt het uploaden
+--    **zichtbaar** en is dit twee regels terug. 0235 accepteerde die ruil voor
+--    `chatfotos`; dezelfde ruil voor dezelfde soort emmer is geen nieuw besluit.
+--    De rij staat in `docs/ENGINEER-REVIEW.md`.
+--
+-- ⚠️⚠️ **Deze migratie is vanuit een bouwsessie niet toe te passen, en dat is
+--    een grens en geen storing.** `storage.objects` is eigendom van
+--    `supabase_storage_admin`; de Supabase-MCP draait als `postgres` en die is
+--    geen lid van die rol, dus élke DDL erop — ook een `drop policy` — geeft
+--    `ERROR: 42501: must be owner of table objects`. Zie `docs/DEPLOY.md` §2.6b.
+--
+--    **Hou de volgorde heel.** Struikelt deze migratie, dan stopt de reeks daar
+--    en slaat wie de volgende wél toepast een gat in het register — en een gat is
+--    duurder dan wachten. Deze hoort van Quintens machine te komen: de
+--    SQL-editor of `psql` met de projectcredentials.
+--
+-- ⚠️ **En er ligt een geschreven vermoeden in deze repo dat de ándere kant op
+--    wijst.** `tests/rls/bewijsfotobucket.test.ts` draagt de aantekening *"een
+--    gewone update bínnen de bucket moet er wél doorheen — anders breekt het
+--    metadata-onderhoud van de storage-dienst na elke upload"*. Die test draait
+--    als `postgres` en raakt RLS dus niet, maar iemand geloofde dit ooit. Het
+--    maakt de meting hieronder niet anders; het maakt de controle na de deploy
+--    geen formaliteit. Draai alle **drie** de uploadpaden na: avatar, chatfoto,
+--    bewijsfoto.
+--
+-- ⚠️ **En de grendel is de familie en niet deze twee namen.** De test eist dat er
+--    op `storage.objects` **geen enkele** UPDATE-policy staat, niet dat deze twee
+--    weg zijn. Voegt QS8-72 straks `chatdocs` toe mét een `chatdocs_update`, dan
+--    wordt hij rood — en dat is precies de branch die dit gat het scherpst maakt,
+--    want die brengt `application/pdf` mee naast drie beeldtypes.
+
+drop policy if exists avatars_update on storage.objects;
+drop policy if exists bewijsfotos_update on storage.objects;

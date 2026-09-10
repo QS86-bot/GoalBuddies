@@ -72,7 +72,7 @@ export async function fetchGetuigenissen(): Promise<readonly Getuigenis[]> {
   const { data, error } = await supabase().rpc('getuigenissen');
 
   if (error) {
-    reportError(error, 'commitments.getuigenissen', { code: error.code });
+    reportError(error, 'commitments.getuigenissen');
     return [];
   }
 
@@ -87,7 +87,7 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
     .order('created_at', { ascending: true });
 
   if (error) {
-    reportError(error, 'commitments.list', { goal_id: goalId, code: error.code });
+    reportError(error, 'commitments.list', { goal_id: goalId });
     throw new Error(t('commitment.fout.laden'));
   }
 
@@ -142,7 +142,7 @@ export async function fetchStrafDoelen(
   });
 
   if (error) {
-    reportError(error, 'commitments.strafdoelen', { aantal: goalIds.length, code: error.code });
+    reportError(error, 'commitments.strafdoelen', { aantal: goalIds.length });
     return null;
   }
 
@@ -201,7 +201,7 @@ export async function fetchMogelijkeBegunstigden(): Promise<readonly MogelijkeBe
     .limit(MAX_GROEPEN);
 
   if (mijn.error) {
-    reportError(mijn.error, 'commitments.begunstigden.groepen', { code: mijn.error.code });
+    reportError(mijn.error, 'commitments.begunstigden.groepen');
     return [];
   }
 
@@ -220,7 +220,7 @@ export async function fetchMogelijkeBegunstigden(): Promise<readonly MogelijkeBe
     .limit(MAX_KANDIDATEN);
 
   if (leden.error) {
-    reportError(leden.error, 'commitments.begunstigden.leden', { code: leden.error.code });
+    reportError(leden.error, 'commitments.begunstigden.leden');
     return [];
   }
 
@@ -316,7 +316,7 @@ async function maak(
     .single();
 
   if (error) {
-    reportError(error, 'commitments.create', { goal_id: goalId, name: type, code: error.code });
+    reportError(error, 'commitments.create', { goal_id: goalId, name: type });
     return { ok: false, melding: t('commitment.fout.vastleggen') };
   }
 
@@ -340,7 +340,7 @@ export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
     .select('id');
 
   if (error) {
-    reportError(error, 'commitments.cancel', { code: error.code });
+    reportError(error, 'commitments.cancel');
     return { ok: false, melding: t('commitment.fout.intrekken') };
   }
 
@@ -380,9 +380,75 @@ export async function fetchCommitmentSpoor(
     .order('seq', { ascending: true });
 
   if (error) {
-    reportError(error, 'commitments.trail', { code: error.code });
+    reportError(error, 'commitments.trail');
     throw new Error(t('commitment.fout.spoor'));
   }
 
   return data ?? [];
+}
+
+/**
+ * Een verschuldigde straf weer bedienbaar maken nadat de getuige verdween —
+ * QS8-333, migratie 0244.
+ *
+ * ⚠️ **Waarom dit een RPC is en geen update.** De getuige staat in
+ *    `beneficiary_user_id`, en die kolom zit voor geen enkele client in de
+ *    UPDATE-grant: `grant update (body, image_url, status)`. Een policy
+ *    verruimen helpt daar niet — RLS kan geen kolommen beperken, dus de grant is
+ *    de grendel en niet de policy. En `resolved` valt buiten de `with_check` van
+ *    `commitments_update`, dus afwikkelen kon vanaf de client sowieso niet.
+ *
+ * ⚠️ **`bevestigd` is geen formaliteit.** Afwikkelen laat een commitment device
+ *    uitgaan, en domeinregel 5 zegt dat dat nooit stilzwijgend gebeurt. De
+ *    server weigert met `niet_bevestigd` als het scherm de bevestiging overslaat.
+ *
+ * ⚠️ **De server weigert in zes gevallen** en het scherm hoort ze niet na te
+ *    bouwen: niet ingelogd, niet van jou, geen straf, niet verschuldigd, er is
+ *    nog een begunstigde, en een getuige buiten je groepen of jezelf. De reden
+ *    komt terug in `reason`.
+ */
+export async function herstelStuurlozeStraf(
+  commitmentId: string,
+  actie: 'nieuwe_getuige' | 'afwikkelen',
+  opties: { readonly getuige?: string; readonly bevestigd?: boolean } = {},
+): Promise<Resultaat<true>> {
+  // ⚠️ `p_getuige` wordt alleen meegestuurd als hij er is. `exactOptionalPropertyTypes`
+  //    staat aan, en een expliciete `undefined` is iets anders dan een weggelaten
+  //    veld — PostgREST zou er `null` van maken en de servertak `getuige_ontbreekt`
+  //    raken in plaats van de default.
+  const argumenten = {
+    p_commitment_id: commitmentId,
+    p_actie: actie,
+    p_bevestigd: opties.bevestigd ?? false,
+    ...(opties.getuige === undefined ? {} : { p_getuige: opties.getuige }),
+  };
+
+  const { data, error } = await supabase().rpc('herstel_stuurloze_straf', argumenten);
+
+  if (error) {
+    // ⚠️ **Geen `code: error.code` erbij**, en dat is geen weglating maar de regel
+    //    van `tests/beloftes/foutcode-uit-een-bron.test.ts`: `beschrijfFout()`
+    //    zet de code al in de melding, en een tweede exemplaar in de context is
+    //    dezelfde waarde langs een tweede weg. Deze regel is er tijdens het
+    //    bijtrekken op `main` bij gekomen; hij stond hier al vóór die regel.
+    reportError(error, 'commitments.herstel');
+    return { ok: false, melding: t('commitment.fout.herstel') };
+  }
+
+  const uitkomst = (data ?? {}) as { ok?: boolean; reason?: string };
+
+  if (uitkomst.ok !== true) {
+    return { ok: false, melding: herstelMelding(uitkomst.reason) };
+  }
+
+  return { ok: true, waarde: true };
+}
+
+/** De melding per weigering van `herstel_stuurloze_straf()`. */
+function herstelMelding(reden: string | undefined): string {
+  if (reden === 'heeft_nog_een_begunstigde') return t('commitment.herstel.heeft_getuige');
+  if (reden === 'niet_verschuldigd') return t('commitment.herstel.niet_verschuldigd');
+  if (reden === 'geen_groepsgenoot') return t('commitment.herstel.geen_groepsgenoot');
+  if (reden === 'niet_jezelf') return t('commitment.herstel.niet_jezelf');
+  return t('commitment.fout.herstel');
 }

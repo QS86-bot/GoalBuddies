@@ -64,7 +64,7 @@ export async function fetchAfvinkingenPerWeekdoel(
     // ⚠️ Zacht: dit voedt een teller náást een weekdoel, geen gegeven dat het
     //    scherm nodig heeft om te laden. Een lege telling toont "0 van 5", en
     //    dat is beter dan een hoofdscherm dat niet opkomt.
-    reportError(error, 'checkins.counts', { code: error.code });
+    reportError(error, 'checkins.counts');
     return new Map();
   }
 
@@ -95,7 +95,7 @@ export async function vinkDagAf(
   // bereikt.
   if (error.code === '23505') return { ok: true, waarde: true };
 
-  reportError(error, 'checkins.create', { weekly_goal_id: weeklyGoalId, code: error.code });
+  reportError(error, 'checkins.create', { weekly_goal_id: weeklyGoalId });
   return { ok: false, melding: meldingBijAfvinkfout(error.code) };
 }
 
@@ -118,7 +118,7 @@ export async function maakAfvinkingOngedaan(
     .eq('local_date', localDate);
 
   if (error) {
-    reportError(error, 'checkins.delete', { weekly_goal_id: weeklyGoalId, code: error.code });
+    reportError(error, 'checkins.delete', { weekly_goal_id: weeklyGoalId });
     return { ok: false, melding: t('ritme.afvinken_mislukt') };
   }
 
@@ -176,7 +176,7 @@ export async function fetchAfvinkdagen(
     // ⚠️ Zacht, net als `fetchAfvinkingenPerWeekdoel()`: dit voedt één blok op een
     //    scherm met meer blokken. Een lege kalender is beter dan een overzicht
     //    dat niet opkomt.
-    reportError(error, 'checkins.range', { code: error.code });
+    reportError(error, 'checkins.range');
     return new Map();
   }
 
@@ -204,7 +204,7 @@ export async function fetchAfgevinktOp(localDate: string): Promise<ReadonlySet<s
     .limit(200);
 
   if (error) {
-    reportError(error, 'checkins.today', { code: error.code });
+    reportError(error, 'checkins.today');
     return new Set();
   }
 

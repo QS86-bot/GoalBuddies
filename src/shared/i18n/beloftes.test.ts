@@ -47,6 +47,30 @@ const ONZICHTBAARHEID = [
   /no one[^.]{0,40}sees/i,
   /not your weeks/i,
   /stays? private/i,
+  // ⚠️⚠️ **De vier vormen hieronder ontbraken, en dat is gemeten en geen
+  //    vermoeden.** De doorlichting van 09-09-2026 vond vier sleutels met een
+  //    privacybelofte die dit register nooit gezien had, waaronder
+  //    `coach.alleen_voor_jou` — en díe was aantoonbaar onwaar (QS8-392). De
+  //    meest gebruikelijke Nederlandse formulering, *"alleen jij"*, stond er
+  //    domweg niet bij. Een register dat de gangbaarste vorm niet herkent,
+  //    bewaakt de zinnen die er toevallig anders staan.
+  // ⚠️ `alleen jij ziet` en niet `alleen jij`: dat tweede matcht ook *"Alleen
+  //    jij kunt je eigen goedkeuring intrekken"*, en dat is een bevoegdheid en
+  //    geen zichtbaarheidsbelofte. Dit register gaat over wie iets zíet, niet
+  //    over wie iets mág — een zeef die dat door elkaar haalt, meldt zinnen
+  //    waar niemand iets aan hoeft te doen, en dat is precies hoe je leert hem
+  //    te negeren.
+  /alleen jij (ziet|leest)/i,
+  /alleen voor jou/i,
+  /ziet .{0,25}nooit/i,
+  // ⚠️ `only you\b` en niet `only you`: dat tweede matcht ook *"only your
+  //    group members"*, en dat is een scope-belofte en geen
+  //    onzichtbaarheidsbelofte. Die vangen we hieronder apart, zodat het
+  //    patroon zegt wat het bedoelt in plaats van per ongeluk raak te schieten.
+  /only you (see|read)/i,
+  /never sees/i,
+  /alleen je groepsgenoten/i,
+  /only your group/i,
 ];
 
 /**
@@ -73,7 +97,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
     'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
   'lijst.prive_uitleg':
-    'De tabel `todo_items` is eigenaar-only sinds 0219: vier policies op ' +
+    'De tabel `todo_items` is eigenaar-only sinds 0246: vier policies op ' +
     '`user_id = (select auth.uid())`, en `visibility` is voor geen enkele client ' +
     'schrijfbaar — kolomgrant én `pin_taak()`. De belofte is vandaag dus ' +
     'onvoorwaardelijk waar, en dat is met een kaal API-verzoek gemeten in ' +
@@ -82,6 +106,35 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'de taken die je zelf hebt aangevinkt.** Hij hoort op dat moment herschreven ' +
     'te worden naar de voorwaarde — precies de val die `koppel.uitleg` in ' +
     'EPIC 13 was, waar de policy klopte en de zin niet meebewoog.',
+  'coach.alleen_voor_jou':
+    'Waar sinds migratie 0236. Was het niet: goals_select gaf een groepsgenoot de héle rij, ' +
+    'inclusief identity_statement — gemeten, met de zin woordelijk terug op het scherm van ' +
+    'een ander (QS8-392). authenticated heeft nu een kolomgrant zonder die kolom, en de ' +
+    'eigenaar leest hem via de view mijn_doelvelden. Grendel: tests/rls/doelkolommen.test.ts.',
+  'radar.alleen_jij':
+    'goal_risk is eigenaar-only sinds migratie 0050 — dezelfde reparatie als hierboven, toen ' +
+    'op risk_status. Geen enkele policy geeft een groepsgenoot een rij uit die tabel.',
+  'overzicht.punten_prive':
+    'points_ledger is eigenaar-only (domeinregel 10). De enige uitzondering is ' +
+    'groep_klassement() in een open groep, en die geeft wat je in díe groep verdiend hebt — ' +
+    'geen totaal, geen delta, geen datum, en cycle_missed boekt zonder group_id.',
+  'melden.niet_zichtbaar':
+    'reports_select geeft de rij aan de melder en aan een beheerder die niet zelf het ' +
+    'onderwerp is. De gemelde persoon staat in geen van beide takken. ⚠️ Niet nagemeten in ' +
+    'de ronde van 09-09; staat als open vraag in docs/ENGINEER-REVIEW.md.',
+  'avatar.grens':
+    'Een scope-belofte en geen onzichtbaarheidsbelofte, en hij is waar. 📏 Gemeten: ' +
+    'avatars_select is (eigen map) OR shares_group_with_user(<uid uit het pad>), dus precies ' +
+    'je groepsgenoten en niemand anders. De bucket is privé; er gaan ondertekende URLs uit.',
+  'commitmentspoor.leeg_tekst':
+    'Waar. 📏 Gemeten: commitment_events_select eist dat het commitment aan een doel hangt ' +
+    'waarvan jij de eigenaar bent — één tak, geen groepstak. De begunstigde groep leest het ' +
+    'commitment zelf pas vanaf unlocked/due/resolved en het spoor nooit.',
+  'interview.stuck_before.toelichting':
+    'Zelfde onderwerp en zelfde reparatie als coach.alleen_voor_jou: het antwoord staat in ' +
+    'goal_interviews (eigenaar-only, één policy met alleen een eigenaarstak) en de twee ' +
+    'velden die naar goals gespiegeld worden zijn sinds migratie 0236 niet meer leesbaar ' +
+    'voor een groepsgenoot.',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +
     'commitments_select geeft de begunstigde groep pas leesrecht vanaf unlocked/due/resolved. ' +

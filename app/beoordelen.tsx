@@ -17,11 +17,13 @@ import { space } from '@/shared/theme';
 import {
   AsyncView,
   Avatar,
+  BEWIJSFOTO_TEKSTEN,
   Body,
   Button,
   Caption,
   Card,
   Field,
+  Foto,
   Screen,
   Subheading,
   useTerug,
@@ -361,6 +363,23 @@ function BeoordeelKaart({
         <Card nested>
           <Body muted>&ldquo;{item.note}&rdquo;</Body>
         </Card>
+      )}
+
+      {/*
+        Het bewijs waar deze beoordeling over gaat — QS8-391.
+
+        ⚠️ **Zonder dit was de keten af en nergens verbonden.** Er is een bucket,
+           een policy, een kolom, een grant en een uploadknop, en niemand die
+           ernaar kijkt. Onwrikbare regel 18 vraag 5: de variant zonder kapot
+           onderdeel, en dus de variant die geen enkele test vindt.
+
+        ⚠️ `attachment_url` is hier al een **ondertekende** URL —
+           `fetchBeoordelingen()` tekent één ronde voor de hele pagina. Wat niet
+           getekend kon worden is `null`, en dan toont `Foto` een zin in plaats
+           van een gebroken beeld; de rest van de wachtrij blijft staan.
+      */}
+      {item.attachment_url === null ? null : (
+        <Foto url={item.attachment_url} {...BEWIJSFOTO_TEKSTEN} />
       )}
 
       {/*

@@ -7,7 +7,7 @@ import { useProfiel, useSession, userClock } from '@/modules/auth';
 import { fetchGetuigenissen, type Getuigenis } from '@/modules/commitments';
 import {
   bewijseisVoorDoel,
-  dienOpnieuwIn,
+  opnieuwMetBewijs,
   fetchAfgevinktOp,
   fetchAfvinkingenPerWeekdoel,
   fetchBevestigingsstanden,
@@ -58,6 +58,7 @@ import {
   Body,
   Button,
   Caption,
+  useBewijsfotokeuze,
   Card,
   Choice,
   DoelStandKaart,
@@ -871,6 +872,7 @@ function WeekdoelKaart({
   const [open, setOpen] = useState(false);
   const [niveau, setNiveau] = useState<'floor' | 'ceiling'>('ceiling');
   const [notitie, setNotitie] = useState('');
+  const bewijs = useBewijsfotokeuze();
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -959,14 +961,24 @@ function WeekdoelKaart({
     // ⚠️ Opnieuw indienen loopt via een RPC: `completions` is append-only en
     //    heeft geen UPDATE-policy, dus de client kan `superseded_by` niet zelf
     //    zetten (domeinregel 6).
+    // ⚠️ Opnieuw indienen uploadt zelf en geeft het **pad** mee; `rondAf()`
+    //    krijgt de foto en uploadt hem. Dat verschil zit in de twee schrijvers:
+    //    `dien_opnieuw_in()` is een RPC en kan geen bytes aannemen.
     const uitkomst = wachtOpOordeel
-      ? await dienOpnieuwIn(weekdoel.id, niveauKeuze, notitie)
-      : await rondAf(weekdoel.id, userId, { achieved_level: niveauKeuze, note: notitie }, eis);
+      ? await opnieuwMetBewijs(weekdoel.id, userId, niveauKeuze, notitie, bewijs.foto)
+      : await rondAf(
+          weekdoel.id,
+          userId,
+          { achieved_level: niveauKeuze, note: notitie },
+          eis,
+          bewijs.foto ?? undefined,
+        );
 
     if (!uitkomst.ok) setFout(uitkomst.melding);
     else {
       setOpen(false);
       setNotitie('');
+      bewijs.wis();
       onKlaar();
     }
     setBezig(false);
@@ -1183,6 +1195,33 @@ function WeekdoelKaart({
             multiline
             numberOfLines={3}
           />
+
+          {/*
+            Bewijs meesturen — QS8-391.
+
+            ⚠️ **Een bevestigingszin en niet alleen een ander knoplabel.** Bij de
+               chatfoto bleek een veranderde knop niet als "gelukt" te lezen; wie
+               net een foto koos, wil zien dát hij eronder hangt.
+
+            ⚠️ De knop staat altijd, ook als de eis `optional` is: bewijs mag
+               altijd, het móet alleen soms. De hint zegt welk van de twee.
+          */}
+          <View style={styles.knoppen}>
+            <Button variant="stil" onPress={() => void bewijs.kies()}>
+              {t('bewijsfoto.knop')}
+            </Button>
+            {bewijs.foto === null ? null : (
+              <Button variant="stil" onPress={bewijs.haalWeg}>
+                {t('bewijsfoto.weghalen')}
+              </Button>
+            )}
+          </View>
+
+          {eis === 'note_and_attachment' && bewijs.foto === null ? (
+            <Caption>{t('bewijsfoto.vereist')}</Caption>
+          ) : null}
+          {bewijs.foto === null ? null : <Caption>{t('bewijsfoto.gekozen')}</Caption>}
+          {bewijs.fout === null ? null : <Caption danger>{bewijs.fout}</Caption>}
 
           {fout === null ? null : <Caption danger>{fout}</Caption>}
 

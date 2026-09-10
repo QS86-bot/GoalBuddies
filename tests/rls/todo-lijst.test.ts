@@ -1,5 +1,5 @@
 /**
- * De Lijst staat dicht — QS8-379, migratie 0219.
+ * De Lijst staat dicht — QS8-379, migratie 0246.
  *
  * ⚠️ **De belofte is niet "er staan vier policies".** Die is: *een taak van
  *    iemand anders is niet te lezen, niet te wijzigen en niet te verwijderen —
@@ -93,7 +93,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 240_000;
 
-/** Zoals in 0219. Staat hier als spiegel; de laatste tests toetsen het gedrag. */
+/** Zoals in 0246. Staat hier als spiegel; de laatste tests toetsen het gedrag. */
 const TAKEN_PLAFOND = 200;
 
 /** Eén boven het plafond — de opvulling die de grendel van §4 moet voeden. */
@@ -261,7 +261,7 @@ describe.skipIf(!rlsTestsConfigured)('De Lijst staat dicht', () => {
           .eq('id', aliceTaak)
           .select('id');
 
-        // ⚠️ **Nul rijen én geen fout**, en dat is de stand die 0219 belooft: RLS
+        // ⚠️ **Nul rijen én geen fout**, en dat is de stand die 0246 belooft: RLS
         //    filtert de rij weg vóór de UPDATE hem ziet.
         //
         // ⚠️⚠️ **Twee sloten in één assertie, en dat staat er bewust.** De

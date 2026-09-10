@@ -11,7 +11,11 @@ import {
   tekstsleutelVoor,
   tijdVoorInvoer,
   uurUit,
+  meldingPoortReden,
+  stilleUrenVelden,
+  VOORKEUR_PER_SOORT,
   MELDINGSOORTEN,
+  type Meldingsvoorkeuren,
   type Melding,
   type NudgeSituatie,
 } from './regels';
@@ -545,5 +549,134 @@ describe('overzichtsuur', () => {
     //    uur 12 is de rollover eerst. `>=` is genoeg; `>` zou het overzicht een
     //    uur later zetten zonder reden.
     expect(overzichtsuur(12)).toBe(12);
+  });
+});
+
+/** Alle vier de schakelaars staan aan — de standaardstand van een nieuw profiel. */
+const ALLES_AAN: Meldingsvoorkeuren = {
+  reminder_enabled: true,
+  notify_approval_request: true,
+  notify_approval_received: true,
+  notify_cycle_summary: true,
+  notify_commitment_witness: true,
+};
+
+describe('VOORKEUR_PER_SOORT — de vorm', () => {
+  /**
+   * ⚠️ **De grendel die dit issue draagt.** Elke soort heeft precies één
+   *    schakelaar. Komt er een zesde bij zonder rij, dan is dat al een typefout;
+   *    deze test vangt de variant die daar met een `as` langs komt.
+   *
+   * ⚠️ De lus gaat over `MELDINGSOORTEN` en niet over de sleutels van de map —
+   *    anders vergelijkt de test de map met zichzelf en bewaakt hij niets.
+   *
+   * 📏 Geijkt: haal de rij `cycle_summary` weg en deze test valt om.
+   */
+  it('geeft elke meldingsoort een schakelaar', () => {
+    for (const soort of MELDINGSOORTEN) {
+      expect(VOORKEUR_PER_SOORT[soort]).toBeTruthy();
+    }
+    expect(Object.keys(VOORKEUR_PER_SOORT).sort()).toEqual([...MELDINGSOORTEN].sort());
+  });
+
+  /**
+   * ⚠️ `nudge` wijst naar de kolom die er al is. Een `notify_nudge` zou hetzelfde
+   *    feit op twee plekken zetten — QS8-125.
+   */
+  it('wijst `nudge` naar `reminder_enabled` en niet naar een eigen kolom', () => {
+    expect(VOORKEUR_PER_SOORT.nudge).toBe('reminder_enabled');
+    expect(Object.values(VOORKEUR_PER_SOORT)).not.toContain('notify_nudge');
+  });
+});
+
+describe('meldingPoortReden', () => {
+  it('laat elke soort door als alles aan staat', () => {
+    for (const soort of MELDINGSOORTEN) {
+      expect(meldingPoortReden(soort, ALLES_AAN)).toBeNull();
+    }
+  });
+
+  /**
+   * ⚠️ Elke soort apart, en niet één steekproef: de map is de enige plek waar de
+   *    koppeling staat, en een omgewisseld paar valt alleen op als je ze allemaal
+   *    langsloopt.
+   */
+  it('houdt precies die ene soort tegen die uit staat', () => {
+    for (const soort of MELDINGSOORTEN) {
+      const kolom = VOORKEUR_PER_SOORT[soort];
+      const uit: Meldingsvoorkeuren = { ...ALLES_AAN, [kolom]: false };
+
+      expect(meldingPoortReden(soort, uit)).toContain(kolom);
+
+      for (const ander of MELDINGSOORTEN.filter((s) => s !== soort)) {
+        expect(meldingPoortReden(ander, uit)).toBeNull();
+      }
+    }
+  });
+
+  /**
+   * ⚠️ `reminder_enabled` is de schakelaar van de nudge en van niets anders. Zou
+   *    hij de rest óók stilzetten, dan zet iemand die zijn dagelijkse duwtje
+   *    uitzet ongemerkt ook zijn goedkeuringsverzoeken uit.
+   */
+  it('laat de andere soorten door als alleen de herinnering uit staat', () => {
+    const uit: Meldingsvoorkeuren = { ...ALLES_AAN, reminder_enabled: false };
+    expect(meldingPoortReden('nudge', uit)).not.toBeNull();
+    for (const soort of MELDINGSOORTEN.filter((s) => s !== 'nudge')) {
+      expect(meldingPoortReden(soort, uit)).toBeNull();
+    }
+  });
+
+  it('noemt de kolom in de reden, zodat een logregel bruikbaar is', () => {
+    const uit: Meldingsvoorkeuren = { ...ALLES_AAN, notify_cycle_summary: false };
+    expect(meldingPoortReden('cycle_summary', uit)).toBe('soort staat uit (notify_cycle_summary)');
+  });
+});
+
+describe('meldingPoortReden — stille uren', () => {
+  it('houdt élke soort tegen tijdens het stille venster', () => {
+    for (const soort of MELDINGSOORTEN) {
+      expect(meldingPoortReden(soort, ALLES_AAN, true)).toBe('stille uren');
+    }
+  });
+
+  it('laat alles door buiten het venster', () => {
+    for (const soort of MELDINGSOORTEN) {
+      expect(meldingPoortReden(soort, ALLES_AAN, false)).toBeNull();
+    }
+  });
+
+  /**
+   * ⚠️ De twee redenen moeten te onderscheiden zijn: uit is definitief, stil is
+   *    tijdelijk. Een job zonder scherm heeft alleen deze tekst.
+   */
+  it('noemt de uitgezette soort en niet de stilte als beide gelden', () => {
+    const uit: Meldingsvoorkeuren = { ...ALLES_AAN, notify_cycle_summary: false };
+    expect(meldingPoortReden('cycle_summary', uit, true)).toContain('notify_cycle_summary');
+  });
+
+  it('gaat er zonder derde argument van uit dat het niet stil is', () => {
+    expect(meldingPoortReden('nudge', ALLES_AAN)).toBeNull();
+  });
+});
+
+describe('stilleUrenVelden', () => {
+  it('geeft het gekozen venster door als hij aan staat', () => {
+    expect(stilleUrenVelden({ aan: true, van: 22, tot: 7 })).toEqual({
+      quiet_from: 22,
+      quiet_to: 7,
+    });
+  });
+
+  /**
+   * ⚠️ Uit is uit: er blijft geen venster bewaard voor als je hem weer aanzet.
+   *    📏 Geijkt door `quiet_to` op `keuze.tot` te laten staan — dan valt deze
+   *    test om.
+   */
+  it('wist béide kolommen als hij uit staat', () => {
+    expect(stilleUrenVelden({ aan: false, van: 22, tot: 7 })).toEqual({
+      quiet_from: null,
+      quiet_to: null,
+    });
   });
 });

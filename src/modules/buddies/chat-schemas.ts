@@ -23,13 +23,28 @@ export const BERICHT_MAX = 4000;
 /** Eén pagina geschiedenis. Gelijk aan de bovengrens van `groepschat()`. */
 export const BERICHTEN_PER_PAGINA = 30;
 
-export const berichtSchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1, { error: () => t('chat.leeg') })
-    .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
-});
+/**
+ * ⚠️ **`heeftFoto` spiegelt `chat_messages_inhoud_vereist` uit migratie 0024:**
+ *    een niet-lege tekst **of** een bijlage. Een foto zonder onderschrift is een
+ *    volwaardig bericht; een lege invoer zonder foto is dat niet.
+ */
+export const berichtSchema = z
+  .object({
+    body: z
+      .string()
+      .trim()
+      .max(BERICHT_MAX, { error: `Maximaal ${BERICHT_MAX} tekens.` }),
+    // ⚠️ Hernoemd bij QS8-72: er is nu meer dan één soort bijlage, en een veld
+    //    dat `heeftFoto` heet nodigt de volgende schrijver niet uit om aan een
+    //    document te denken. De belofte eronder is ongewijzigd — hij hoort bij
+    //    `chat_messages_inhoud_vereist` (0024): een bericht draagt tekst óf een
+    //    bijlage.
+    heeftBijlage: z.boolean().default(false),
+  })
+  .refine((v) => v.body !== '' || v.heeftBijlage, {
+    error: () => t('chat.leeg'),
+    path: ['body'],
+  });
 
 export type BerichtInvoer = z.infer<typeof berichtSchema>;
 
@@ -168,6 +183,27 @@ export interface ChatBericht {
    */
   readonly body: string;
   readonly type: string;
+  /**
+   * Het opslagpad van de bijlage, of — ná `metGetekendeChatfotos()` — een
+   * ondertekende URL. `null` als er geen foto is, én als het tekenen mislukte.
+   *
+   * ⚠️ **Een kaal pad hoort nooit in een `<Image>` te belanden.** De realtime-
+   *    payload draagt het pad ongetekend; het scherm haalt daarom bij een signaal
+   *    de nieuwste pagina op in plaats van de payload in te voegen.
+   */
+  readonly attachment_url: string | null;
+  /**
+   * De oorspronkelijke bestandsnaam van een document — QS8-72, migratie 0242.
+   *
+   * ⚠️ Alleen gevuld bij `type = 'doc'`; een foto heeft er geen. Dit is
+   *    **gebruikerstekst**: emoji mogen erin, dus nooit afkappen met `slice()`
+   *    of `[0]` — gebruik `telTekens()`/`kapAf()` uit `src/shared/tekst`.
+   *
+   * ⚠️ De getoonde **soort** ("PDF") komt niet hieruit maar uit het pad, want dat
+   *    ligt vast in de CHECK van 0242. Zo kunnen naam en soort nooit misleidend
+   *    uit elkaar lopen — de reden dat die CHECK bidi-overrides weigert.
+   */
+  readonly attachment_name: string | null;
   readonly system_event: string | null;
   /** Over wie het systeembericht gaat. `null` bij een mensbericht. */
   readonly subject_name: string | null;
@@ -268,7 +304,10 @@ export interface ChatCache {
  *    mee" tot de eerste verversing: geen storing, wel een naam die een paar
  *    seconden onwaar is.
  */
-export const CACHE_VERSIE = 2;
+// ⚠️ Omhoog bij élke vormwijziging van `ChatBericht`. 4 sinds QS8-72
+//    (`attachment_name` erbij); een oude cache mist dat veld en zou een
+//    documentbubbel zonder naam tonen.
+export const CACHE_VERSIE = 4;
 
 /** Hoeveel berichten er bewaard worden. Eén pagina is genoeg om iets te zien. */
 export const CACHE_MAX = BERICHTEN_PER_PAGINA;
@@ -289,11 +328,11 @@ export function isCacheGeldig(cache: ChatCache | null, periodStart: string): boo
  */
 export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly ChatBericht[] {
   const gesneden = berichten.length <= CACHE_MAX ? berichten : berichten.slice(-CACHE_MAX);
-  return gesneden.map(zonderAvatar);
+  return gesneden.map(zonderVerlopendeUrls);
 }
 
 /**
- * Haalt de avatar uit een bericht dat de cache in gaat — migratie 0126.
+ * Haalt élke verlopende URL uit een bericht dat de cache in gaat — 0126 en 0222.
  *
  * ⚠️ **Een ondertekende URL verloopt na een uur; de cache leeft een week.** Sinds
  *    0126 is de avatar-bucket privé, dus `sender_avatar` draagt in een geladen
@@ -305,7 +344,60 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  *    URL is erger dan geen URL, want hij ziet er goed uit en doet het niet. De
  *    cache is er voor een slechte verbinding, en dan is een initiaal precies
  *    genoeg.
+ *
+ * ⚠️⚠️ **Hij heette `zonderAvatar`, en die naam was de val.** Toen `chatfotos`
+ *    erbij kwam (QS8-71) ontstond exact dezelfde naad op een tweede veld, en een
+ *    functie die "zonder avatar" heet nodigt de volgende schrijver niet uit om
+ *    daaraan te denken. De naam noemt nu de eigenschap — *verlopend* — en niet
+ *    het veld van toen. Komt er een derde bij, dan hoort hij hier.
  */
-function zonderAvatar(bericht: ChatBericht): ChatBericht {
-  return bericht.sender_avatar === null ? bericht : { ...bericht, sender_avatar: null };
+/**
+ * Welke soort bijlage draagt dit bericht — en dus tegen welke emmer teken je?
+ *
+ * ⚠️⚠️ **`attachment_url` draagt de emmer niet.** Het pad is
+ *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
+ *    identiek. `type` is het enige dat zegt waar dit bestand staat, en migratie
+ *    0242 is wat die twee gekoppeld houdt: de extensie is aan de soort gepaard,
+ *    dus een `photo`-rij kán niet naar een `.pdf` wijzen.
+ *
+ *    Zonder die paring breekt er niets zichtbaars als ze uit elkaar lopen — je
+ *    tekent tegen de verkeerde emmer, krijgt `null`, en de bubbel zegt "niet meer
+ *    beschikbaar". Dat is de reden dat
+ *    `tests/rls/een-document-is-wat-het-zegt.test.ts` bestaat.
+ *
+ * ⚠️ Leid de emmer hier af en nergens anders. Een tweede plek waar dit staat, is
+ *    een tweede plek die kan verlopen.
+ *
+ * ⚠️⚠️ **Waarom dit een functie is en geen `!== null` in het scherm.** `null` op
+ *    `attachment_url` betekent twee verschillende dingen: *dit bericht heeft geen
+ *    bijlage* én *er was er een maar hij kon niet getekend worden*. Het scherm
+ *    hoort het eerste stil te negeren en het tweede te melden, en met alleen die
+ *    ene waarde kan het die twee niet uit elkaar houden.
+ *
+ *    📏 Dat is precies misgegaan: `ChatRegel` kreeg `fotoUrl={attachment_url}`,
+ *    en omdat `null !== undefined` rende hij zijn fotoblok voor **elk** bericht —
+ *    met de zin "Deze foto is niet meer beschikbaar" onder iedere gewone
+ *    tekstbubbel. Gevonden in de securityronde van 09-09-2026; niets werd er rood
+ *    van, want er is geen enkele test die dit component tekent.
+ *
+ *    `type` is wél eenduidig: die zegt wat het bericht ís, en die waarde komt uit
+ *    een CHECK op de tabel.
+ *
+ * ⚠️ **`heeftBijlage()` stond hierboven en is op 10-09-2026 weggehaald** (QS8-72).
+ *    Hij was `soortBijlage(...) !== null` en had na de tweede soort geen aanroeper
+ *    meer — `exports:controle` vond hem. De belofte hierboven is met hem
+ *    meeverhuisd naar deze plek, want een belofte die achterblijft in een
+ *    weggehaalde functie is geen belofte meer.
+ */
+export function soortBijlage(bericht: Pick<ChatBericht, 'type'>): 'foto' | 'doc' | null {
+  if (bericht.type === 'photo') return 'foto';
+  if (bericht.type === 'doc') return 'doc';
+  return null;
+}
+
+export function zonderVerlopendeUrls(bericht: ChatBericht): ChatBericht {
+  if (bericht.sender_avatar === null && bericht.attachment_url === null) return bericht;
+  // ⚠️ `attachment_name` blijft staan: die verloopt niet. Alleen wat een
+  //    ondertekening nodig heeft gaat eruit — dat is wat deze functie belooft.
+  return { ...bericht, sender_avatar: null, attachment_url: null };
 }

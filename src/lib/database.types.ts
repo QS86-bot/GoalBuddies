@@ -276,6 +276,7 @@ export type Database = {
       chat_messages: {
         Row: {
           actor_id: string | null
+          attachment_name: string | null
           attachment_url: string | null
           body: string | null
           created_at: string
@@ -289,6 +290,7 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          attachment_name?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
@@ -302,6 +304,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          attachment_name?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
@@ -1681,6 +1684,12 @@ export type Database = {
           locale: string | null
           minutes_per_day: number | null
           onboarded_at: string | null
+          notify_approval_request: boolean
+          notify_approval_received: boolean
+          notify_cycle_summary: boolean
+          notify_commitment_witness: boolean
+          quiet_from: number | null
+          quiet_to: number | null
           reminder_enabled: boolean
           reminder_time: string | null
           reminder_tone: string
@@ -1701,6 +1710,12 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean
+          notify_approval_received?: boolean
+          notify_cycle_summary?: boolean
+          notify_commitment_witness?: boolean
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -1721,6 +1736,12 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean
+          notify_approval_received?: boolean
+          notify_cycle_summary?: boolean
+          notify_commitment_witness?: boolean
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -2236,15 +2257,33 @@ export type Database = {
       }
     }
     Views: {
-      goal_dashboard: {
+      mijn_doelvelden: {
         Row: {
           available_hours_per_week: number | null
+          id: string | null
+          identity_statement: string | null
+          max_points: number | null
+        }
+        Insert: {
+          available_hours_per_week?: number | null
+          id?: string | null
+          identity_statement?: string | null
+          max_points?: number | null
+        }
+        Update: {
+          available_hours_per_week?: number | null
+          id?: string | null
+          identity_statement?: string | null
+          max_points?: number | null
+        }
+        Relationships: []
+      }
+      goal_dashboard: {
+        Row: {
           category: string | null
           created_at: string | null
           description: string | null
           id: string | null
-          identity_statement: string | null
-          max_points: number | null
           milestones_done: number | null
           milestones_total: number | null
           owner_id: string | null
@@ -2257,13 +2296,10 @@ export type Database = {
           weekly_total: number | null
         }
         Insert: {
-          available_hours_per_week?: number | null
           category?: string | null
           created_at?: string | null
           description?: string | null
           id?: string | null
-          identity_statement?: string | null
-          max_points?: number | null
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
@@ -2275,13 +2311,10 @@ export type Database = {
           weekly_total?: never
         }
         Update: {
-          available_hours_per_week?: number | null
           category?: string | null
           created_at?: string | null
           description?: string | null
           id?: string | null
-          identity_statement?: string | null
-          max_points?: number | null
           milestones_done?: never
           milestones_total?: never
           owner_id?: string | null
@@ -2358,6 +2391,12 @@ export type Database = {
           locale: string | null
           minutes_per_day: number | null
           onboarded_at: string | null
+          notify_approval_request: boolean | null
+          notify_approval_received: boolean | null
+          notify_cycle_summary: boolean | null
+          notify_commitment_witness: boolean | null
+          quiet_from: number | null
+          quiet_to: number | null
           reminder_enabled: boolean | null
           reminder_time: string | null
           reminder_tone: string | null
@@ -2378,6 +2417,12 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean | null
+          notify_approval_received?: boolean | null
+          notify_cycle_summary?: boolean | null
+          notify_commitment_witness?: boolean | null
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
@@ -2398,6 +2443,12 @@ export type Database = {
           locale?: string | null
           minutes_per_day?: number | null
           onboarded_at?: string | null
+          notify_approval_request?: boolean | null
+          notify_approval_received?: boolean | null
+          notify_cycle_summary?: boolean | null
+          notify_commitment_witness?: boolean | null
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
@@ -2528,6 +2579,7 @@ export type Database = {
       dien_opnieuw_in: {
         Args: {
           p_achieved_level: string
+          p_attachment_url?: string
           p_note?: string
           p_weekly_goal_id: string
         }
@@ -2563,6 +2615,8 @@ export type Database = {
         Returns: {
           actor_id: string
           actor_name: string
+          attachment_name: string
+          attachment_url: string
           body: string
           created_at: string
           id: string
@@ -2628,6 +2682,10 @@ export type Database = {
         }[]
       }
       vraag_lidmaatschap_aan: { Args: { p_bericht?: string | null; p_group_id: string }; Returns: Json }
+      verzoekers_eerder_lid: {
+        Args: { p_group_id: string }
+        Returns: { op: string | null; soort: string; user_id: string }[]
+      }
       zet_groepsontdekbaarheid: {
         Args: { p_bevestigd?: boolean; p_group_id: string; p_naar: boolean }
         Returns: Json
@@ -2665,6 +2723,15 @@ export type Database = {
         Returns: undefined
       }
       herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
+      herstel_stuurloze_straf: {
+        Args: {
+          p_actie: string
+          p_bevestigd?: boolean
+          p_commitment_id: string
+          p_getuige?: string
+        }
+        Returns: Json
+      }
       herorden_mijlpalen: {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json
@@ -2761,6 +2828,7 @@ export type Database = {
           achieved_level: string
           approvals_done: number
           approvals_required: number
+          attachment_url: string
           ceiling_text: string
           completion_id: string
           floor_text: string

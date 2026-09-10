@@ -29,7 +29,7 @@ import {
 } from '@/shared/ui';
 
 /**
- * De Lijst — losse taken, privé — QS8-380, tabel uit migratie 0219.
+ * De Lijst — losse taken, privé — QS8-380, tabel uit migratie 0246.
  *
  * ⚠️ **Een taak telt nooit mee**, en dat staat ook in de lege staat. De app heeft
  *    weekdoelen die punten opleveren en peer-goedkeuring vragen; wie hier iets
@@ -38,7 +38,7 @@ import {
  *
  * ⚠️ **Alles is privé, en dat staat er als zin én als grendel.** De zin hangt in
  *    `beloftes.test.ts` aan een reden; de grendel is `todo_items` zelf, dat sinds
- *    0219 vier eigenaar-only policies draagt. Delen is QS8-381 — en zolang dat
+ *    0246 vier eigenaar-only policies draagt. Delen is QS8-381 — en zolang dat
  *    niet bestaat, hoort er geen schakelaar te staan die niets doet.
  *
  * ⚠️ **Het invoerveld is het gedeelde `Field` en geen eigen `TextInput`.** Dat is

@@ -854,17 +854,11 @@ export const GEEN_SCHRIJFPAD = [
       '`plaats_systeembericht()`. Opruimen hoort bij een 0118-achtige ronde.',
   },
   {
-    tabel: 'chat_messages',
-    soort: 'INSERT',
-    kolom: 'attachment_url',
-    reden: 'de kolom bestaat vooruit op bijlagen in de chat; er is nog geen scherm dat er een zet.',
-  },
-  {
     tabel: 'todo_items',
     soort: 'UPDATE',
     kolom: 'body',
     reden:
-      '0215 geeft de eigenaar het recht zijn eigen taaktekst bij te werken; het ' +
+      '0246 geeft de eigenaar het recht zijn eigen taaktekst bij te werken; het ' +
       'scherm van QS8-380 doet dat niet. Dat scherm levert toevoegen, afvinken, ' +
       'verplaatsen en verwijderen — hernoemen staat niet in zijn ' +
       'acceptatiecriteria, en het er stilletjes bij bouwen is de PR verbreden. ' +

@@ -35,7 +35,7 @@ import { VOLGORDE_MAX } from './todo-schemas';
  *         klemtest, die op dezelfde berekening leunt. Dat is geen dubbeling: B
  *         hieronder raakt alléén de klem, dus de twee zijn los te bewegen.
  *   B  de klem op `VOLGORDE_MAX` weghalen
- *      -> 1 rood: 'klemt het volgnummer op de CHECK van 0219'
+ *      -> 1 rood: 'klemt het volgnummer op de CHECK van 0246'
  *   C  de `data === null`-tak uit `naSchrijf()` halen
  *      -> 1 rood: 'een PATCH die nul rijen raakte, meldt geen succes'
  *   D  de gelijkheidstoets uit `verzetTaak()` halen
@@ -131,7 +131,7 @@ describe('een nieuwe taak komt onderaan', () => {
    *    grens staat, met een `23514` waar hij niets aan kan doen. Bovenaan komen
    *    te staan is de zachtere fout van de twee.
    */
-  it('klemt het volgnummer op de CHECK van 0219', async () => {
+  it('klemt het volgnummer op de CHECK van 0246', async () => {
     laatsteSelect = { data: { order_index: VOLGORDE_MAX }, error: null };
 
     await maakTaak('gebruiker-1', { body: 'De laatste' });

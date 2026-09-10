@@ -57,7 +57,7 @@ export async function fetchRisico(goalId: string): Promise<Risico | null> {
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'goals.risk', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.risk', { goal_id: goalId });
     return null;
   }
 
@@ -115,10 +115,12 @@ export async function fetchRisicos(
     //    storing vuurt het scherm dan ⌈n/200⌉ gedoemde verzoeken achter elkaar
     //    af, elk met de timeout van `fetchMetTimeout()` eronder.
     if (error) {
-      // ⚠️ `hint` en niet alleen `code`: bij de klif uit `shared/idlijst` is
-      //    `code` een lege string en staat de hele diagnose in de hint.
+      // ⚠️ `hint` staat er wél bij: bij de klif uit `shared/idlijst` is `code`
+      //    een lege string en staat de hele diagnose in de hint. De `code` zelf
+      //    hoort hier niet meer — `beschrijfFout()` zet hem al in de melding, en
+      //    twee keer dezelfde waarde is één plek te veel om bij te werken
+      //    (QS8-338).
       reportError(error, 'goals.risks', {
-        code: error.code,
         hint: error.hint,
         opgehaald: kaart.size,
       });

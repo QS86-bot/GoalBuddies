@@ -105,6 +105,25 @@ const REGISTER: Readonly<Record<string, string>> = {
     'cyclusstarts, en omdat pauzes elkaar niet mogen overlappen is dat meteen de ' +
     'bovengrens per doel. 📏 Dezelfde 200 aanroepen die er vóór 0216 alle 200 in ' +
     'gingen, leveren er nu 53 op (QS8-373).',
+  commitment_events:
+    '⚠️ **Nieuw sinds QS8-333/0244, en het is de enige clientroute die er is.** ' +
+    '`herstel_stuurloze_straf()` is de eerste `security definer` die naar deze ' +
+    'tabel schrijft en die `authenticated` mag uitvoeren; 📏 gemeten met ' +
+    '`has_function_privilege`: `meld_commitment()` en `noteer_commitment()` mogen ' +
+    'dat geen van beide. ' +
+    '📏 **De route is niet in een lus te draaien, en dat is gemeten en niet ' +
+    'beredeneerd.** Op een verse stack, met een echt verdwenen getuige (`delete ' +
+    'from auth.users`, zoals `verwijder_mijn_account()` doet): de eerste aanroep ' +
+    'geeft `{ok: true, actie: nieuwe_getuige}` en schrijft twee auditrijen, de ' +
+    'tweede geeft `{ok: false, reason: heeft_nog_een_begunstigde}` en schrijft ' +
+    'niets. De tak `afwikkelen` sluit zichzelf op dezelfde manier af: die zet de ' +
+    'straf op `resolved`, waarna `niet_verschuldigd` weigert. ' +
+    'Hoogstens één geslaagde aanroep per stuurloos commitment dus, en het aantal ' +
+    'commitments is zelf begrensd door `commitments_dagplafond` (0203). ' +
+    '⚠️ Bewust géén trigger op deze tabel: die zou ook gelden voor ' +
+    '`service_role`, en daaronder draaien de rollover en `maak_straffen_' +
+    'verschuldigd()`. Dat is precies de reden die 0083 destijds opschreef om ' +
+    'géén trigger te kiezen.',
   deadline_requests: 'vraag_deadline_verschuiving() weigert vanaf 5 verzoeken in het laatste etmaal.',
   group_join_requests: 'vraag_lidmaatschap_aan() weigert zodra lidmaatschapsverzoeken_over() op nul staat.',
   group_members:
@@ -218,12 +237,21 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    de zelftoets in `remdekking.test.ts`: bij `> 10` hadden er negentien
     //    kunnen wegvallen zonder dat hier iets aansloeg.
     //
-    // ⚠️ Negenentwintig werd dertig met `todo_items` (0219, QS8-379). Die tabel
+    // ⚠️ Negenentwintig werd dertig met `todo_items` (0246, QS8-379). Die tabel
     //    draagt zijn eigen plafond — `taken_dagplafond` met `taken_rem`
     //    ernaast — dus hij komt hier binnen als bewaakt en niet als bevinding.
     const gevonden = groeibareTabellen();
 
-    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(30);
+    // ⚠️ En dertig werd eenendertig met `commitment_events` (QS8-333, 0244):
+    //    `herstel_stuurloze_straf()` is de eerste definer naar die tabel die
+    //    `authenticated` mag uitvoeren. De reden staat in REGISTER hierboven.
+    //
+    // ⚠️⚠️ **Twee branches telden hier allebei naar dertig, en samen zijn het er
+    //    eenendertig.** Beide kanten voegden één tabel toe en beide schreven het
+    //    nieuwe totaal op; git merget dat schoon en houdt er één over. Dat het
+    //    hier een exact getal is en geen ondergrens, is precies wat dat vangt —
+    //    bij `> 29` was deze merge stil goed gegaan met een tabel te weinig.
+    expect(gevonden.length, 'het aantal groeibare tabellen is veranderd').toBe(31);
     expect(
       gevonden.filter((t) => t.plafond).length,
       'het aantal groeibare tabellen mét plafond is veranderd',

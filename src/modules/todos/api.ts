@@ -13,7 +13,7 @@ import {
 } from './todo-schemas';
 
 /**
- * De datalaag van De Lijst — QS8-380, tabel uit migratie 0219.
+ * De datalaag van De Lijst — QS8-380, tabel uit migratie 0246.
  *
  * ⚠️ **Een taak telt nooit mee.** Geen punten, geen reeks, geen goedkeuring,
  *    geen invloed op een doel. Dat is dezelfde grens die domeinregel 9 voor De
@@ -21,7 +21,7 @@ import {
  *    telt. Er staat hier dus met opzet geen enkele aanroep naar `points_ledger`,
  *    `user_streaks` of `completion_approvals`.
  *
- * ⚠️ **Alles is eigenaar-only.** De RLS-policies van 0219 filteren op
+ * ⚠️ **Alles is eigenaar-only.** De RLS-policies van 0246 filteren op
  *    `user_id = (select auth.uid())`; deze functies leunen daarop en niet op een
  *    filter dat ze zelf meesturen. Het `eq('user_id', …)` in `fetchTaken()` is
  *    er voor de índex en niet voor de autorisatie — zie de aantekening daar.
@@ -77,7 +77,7 @@ export async function fetchTaken(
     .range(van, van + TAKEN_PER_PAGINA - 1);
 
   if (error) {
-    reportError(error, 'todos.list', { user_id: userId, code: error.code });
+    reportError(error, 'todos.list', { user_id: userId });
     throw new Error(t('lijst.laden_mislukt'));
   }
 
@@ -116,7 +116,7 @@ export async function maakTaak(userId: string, invoer: TaakInvoer): Promise<Resu
     .maybeSingle();
 
   if (leesFout) {
-    reportError(leesFout, 'todos.next', { user_id: userId, code: leesFout.code });
+    reportError(leesFout, 'todos.next', { user_id: userId });
     return { ok: false, melding: t('lijst.toevoegen_mislukt') };
   }
 
@@ -133,7 +133,7 @@ export async function maakTaak(userId: string, invoer: TaakInvoer): Promise<Resu
     .single();
 
   if (error) {
-    reportError(error, 'todos.create', { user_id: userId, code: error.code });
+    reportError(error, 'todos.create', { user_id: userId });
     return { ok: false, melding: t('lijst.toevoegen_mislukt') };
   }
 
@@ -249,7 +249,7 @@ function naSchrijf(
   bron: string,
 ): Resultaat<Taak> {
   if (error) {
-    reportError(error, bron, { code: error.code });
+    reportError(error, bron);
     return { ok: false, melding: t('lijst.opslaan_mislukt') };
   }
 
@@ -277,7 +277,7 @@ export async function verwijderTaak(id: string): Promise<Resultaat<true>> {
   const { error } = await supabase().from('todo_items').delete().eq('id', id);
 
   if (error) {
-    reportError(error, 'todos.delete', { code: error.code });
+    reportError(error, 'todos.delete');
     return { ok: false, melding: t('lijst.verwijderen_mislukt') };
   }
 

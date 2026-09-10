@@ -1,4 +1,4 @@
--- 0219_de_lijst_krijgt_een_tabel_die_dicht_staat.sql — de tabel voor De Lijst:
+-- 0246_de_lijst_krijgt_een_tabel_die_dicht_staat.sql — de tabel voor De Lijst:
 -- losse taken, eigenaar-only, met een dagplafond en een zichtbaarheidskolom die
 -- nog niemand kan schrijven (QS8-379, deel 1 van QS8-378).
 --
@@ -525,7 +525,7 @@ AS $function$
       --    migratie in de database stond: mijn kopie had hun hele reparatie
       --    stilzwijgend teruggedraaid. Dat is QS8-358 voor de vierde keer.
       ('app.rem_groepsgebeurtenissen', array['rem_groepsgebeurtenissen']),
-      -- ⚠️ Uit 0219 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn eigen
+      -- ⚠️ Uit 0246 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn eigen
       --    sleutel.
       ('app.rem_taken',                array['rem_taken'])
   ),

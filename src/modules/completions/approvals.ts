@@ -9,6 +9,12 @@ import { t } from '../../shared/i18n';
 //    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
 //    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
 import { metGetekendeAvatars } from '../auth/avatar';
+
+import {
+  metGetekendeBewijsfotos,
+  uploadBewijsfoto,
+  verwijderBewijsfoto,
+} from './bewijsfoto';
 import { invoerfout, type Resultaat, type RpcRij } from '../../shared/api';
 
 import { INTREKVENSTER_MINUTEN, oordeelSchema, type OordeelInvoer } from './approval-schemas';
@@ -51,6 +57,14 @@ export interface TeBeoordelen {
   readonly ceiling_text: string | null;
   readonly achieved_level: string;
   readonly note: string | null;
+  /**
+   * De **ondertekende** URL van het bewijs, of `null` — QS8-391.
+   *
+   * ⚠️ De RPC geeft hier een opslagpad terug; `fetchBeoordelingen()` vervangt dat
+   *    door een ondertekende URL vóór de rij het scherm bereikt. Wat niet
+   *    getekend kon worden, wordt `null`. Zie `metGetekendeBewijsfotos()`.
+   */
+  readonly attachment_url: string | null;
   readonly submitted_at: string;
   /**
    * ⚠️ **Hoeveel bevestigingen deze week al heeft en er nodig zijn, in de groep
@@ -123,6 +137,7 @@ function naarTeBeoordelen(rij: WachtrijRij): TeBeoordelen | null {
     ceiling_text: rij.ceiling_text,
     achieved_level: rij.achieved_level ?? 'ceiling',
     note: rij.note,
+    attachment_url: rij.attachment_url ?? null,
     submitted_at: rij.submitted_at ?? '',
     // ⚠️ Terugval op 0 en 1 — dat is de stand van vóór QS8-65 en de enige die
     //    niets belooft: "0 van de 1" leest als "nog niemand", en dat klopt altijd.
@@ -169,10 +184,15 @@ export async function fetchBeoordelingen(
   }
 
   const ruw = (data ?? []) as readonly WachtrijRij[];
-  const rijen = await metGetekendeAvatars(
+  // ⚠️ Twee ondertekenronden voor de héle pagina, nooit één per rij. Twintig
+  //    openstaande beoordelingen is precies de schaal waarop een N+1 pijn doet
+  //    (schaalbaarheidsregel 12). Twee buckets, dus twee ronden — dat is er één
+  //    per bucket en niet één per foto.
+  const metAvatars = await metGetekendeAvatars(
     ruw.map(naarTeBeoordelen).filter((r): r is TeBeoordelen => r !== null),
     'owner_avatar',
   );
+  const rijen = await metGetekendeBewijsfotos(metAvatars, 'attachment_url');
   const overgeslagen = ruw.length - rijen.length;
   const totaal = Math.max(0, (ruw[0]?.total_open ?? rijen.length) - overgeslagen);
 
@@ -304,6 +324,12 @@ function opnieuwMelding(reden: string | undefined): string {
     already_approved: t('opnieuw.al_goedgekeurd'),
     nothing_to_replace: t('opnieuw.niets_ingediend'),
     note_required: t('opnieuw.notitie_vereist'),
+    // ⚠️ Sinds 0231 geeft de functie deze twee apart terug. Tot dan vertaalde hij
+    //    élke check_violation naar `note_required`, en dat was waar zolang er één
+    //    eis bestond; met twee is het een verkeerde diagnose — de gebruiker gaat
+    //    dan een notitie schrijven terwijl er een foto ontbreekt.
+    attachment_required: t('opnieuw.bewijs_vereist'),
+    geweigerd: t('opnieuw.mislukt_kort'),
   };
 
   return tabel[reden ?? ''] ?? t('opnieuw.mislukt_kort');
@@ -323,13 +349,25 @@ export async function dienOpnieuwIn(
   weeklyGoalId: string,
   achievedLevel: 'floor' | 'ceiling',
   note: string | null,
+  /**
+   * Het **pad** van een al geüploade bewijsfoto, niet de foto zelf — QS8-391.
+   *
+   * ⚠️ De aanroeper uploadt eerst (`uploadBewijsfoto()`) en geeft het pad hier
+   *    mee, om dezelfde reden als in `rondAf()`: `attachment_url` is alleen bij
+   *    INSERT te zetten. Zonder deze parameter kon een gebruiker onder de eis
+   *    `note_and_attachment` na "vertel me meer" nooit meer opnieuw indienen —
+   *    de trigger weigerde elke poging en er was niets om bewijs mee te sturen.
+   */
+  attachmentPad?: string | null,
 ): Promise<Resultaat<string>> {
   const schoon = note?.trim() ?? '';
+  const pad = attachmentPad?.trim() ?? '';
 
   const { data, error } = await supabase().rpc('dien_opnieuw_in', {
     p_weekly_goal_id: weeklyGoalId,
     p_achieved_level: achievedLevel,
     ...(schoon === '' ? {} : { p_note: schoon }),
+    ...(pad === '' ? {} : { p_attachment_url: pad }),
   });
 
   if (error) {
@@ -547,4 +585,42 @@ export async function fetchBevestigingsstanden(
   return new Map(
     (data ?? []).map((rij) => [rij.weekly_goal_id, { gedaan: rij.gedaan, nodig: rij.nodig }]),
   );
+}
+
+/**
+ * Opnieuw indienen mét bewijs — QS8-391.
+ *
+ * ⚠️ **Waarom dit naast `dienOpnieuwIn()` staat en er niet in.** Die functie is
+ *    een dunne schil om een RPC, en een RPC neemt geen bytes aan. Het uploaden
+ *    hoort dus ervóór, en dat is precies het stuk dat kan mislukken nadat het
+ *    bestand al in de bucket staat.
+ *
+ * ⚠️ **De compenserende opruiming is de hele reden dat deze functie bestaat.**
+ *    Landt de rij niet, dan moet het object weg — anders groeit de bucket met
+ *    bestanden waar geen voltooiing naar wijst, en die tellen wél mee voor het
+ *    dagplafond van 0228. Zelfde vorm en zelfde reden als in `rondAf()`.
+ *
+ * ⚠️ Zonder deze route kon een gebruiker onder de eis `note_and_attachment` na
+ *    "vertel me meer" nooit meer opnieuw indienen: `dien_opnieuw_in()` gaf
+ *    `attachment_url` niet mee, dus `enforce_evidence_policy()` weigerde elke
+ *    poging en er was niets om bewijs mee te sturen. Dat gat stond er vanaf het
+ *    moment dat de eis terugkwam, en het is er nooit geweest omdat 0231 en deze
+ *    functie in dezelfde branch landen.
+ */
+export async function opnieuwMetBewijs(
+  weeklyGoalId: string,
+  userId: string,
+  achievedLevel: 'floor' | 'ceiling',
+  note: string | null,
+  foto: { readonly data: ArrayBuffer | Uint8Array; readonly mime: string } | null,
+): Promise<Resultaat<string>> {
+  if (foto === null) return dienOpnieuwIn(weeklyGoalId, achievedLevel, note);
+
+  const gezet = await uploadBewijsfoto(weeklyGoalId, userId, foto);
+  if (!gezet.ok) return gezet;
+
+  const uitkomst = await dienOpnieuwIn(weeklyGoalId, achievedLevel, note, gezet.waarde);
+  if (!uitkomst.ok) await verwijderBewijsfoto(gezet.waarde);
+
+  return uitkomst;
 }
