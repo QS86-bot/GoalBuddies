@@ -33,6 +33,7 @@ import {
   verwijderAuthGebruiker,
   type TestUser,
 } from './harness';
+import { psql } from './psql-stack';
 
 /** Een netwerkronde naar Supabase is traag; de opbouw doet er tientallen. */
 const SETUP_TIMEOUT = 120_000;
@@ -3278,6 +3279,37 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *    lager voor `subject_id`. Wat je leest en overschrijft, kun je alsnog
    *    missen; wat rood wordt niet.
    */
+  /**
+   * De kolommen die de teller terecht als "kaal" meldt — QS8-364.
+   *
+   * ⚠️ **`groups.created_by` is een benoemde uitzondering en geen gat.** 0202
+   *    maakte de toewijzing bewust onvoorwaardelijk, met een meting eronder: de
+   *    RI-actie van `on delete set null` draait als `postgres` en komt niet
+   *    voorbij de vroege uitstap in `guard_group_update()`, dus de weggehaalde
+   *    tak liet alléén een beheerder-client door die zijn eigen oprichterschap
+   *    leegtrok. Onvoorwaardelijk terugzetten is dáár strenger en niet zwakker.
+   *
+   * IJKING — met de hand, 08-09-2026, door de functie in de draaiende database te
+   * vervangen. Eén mutatie per grendel:
+   *
+   *   A  de striptak uit `onveranderlijkheid_bewaking()` halen  → 1 rood: `kaal`
+   *      wordt leeg, want `groups.created_by` is dan weer groen dankzij proza
+   *   B  de échte grendel van `stamp_chat_message` naar commentaar verplaatsen
+   *      → 1 rood: die kolom komt erbij in `kaal`. De zeef vindt een grendel in
+   *      code dus nog steeds, en merkt het als er een verdwijnt
+   *   C  de vroege uitstap uit `guard_group_update()` halen → 2 rood: de test
+   *      hieronder én de gedragstest eronder. Dat tweede is precies wat de kop
+   *      van die test al voorspelde — nu gemeten in plaats van vermoed
+   *
+   * ⚠️ **Tot 0221 stond hier niets, en dat was het probleem.** De teller gaf
+   *    voor deze rij groen op grond van een commentaarregel die uitlégt waarom
+   *    de grendel weg is — `pg_get_functiondef()` geeft de uitleg mee. Nu leest
+   *    hij de gestripte bron, meldt hij deze rij eerlijk als kaal, en staat het
+   *    oordeel hier: één regel, met de reden, en een rode test zodra er een
+   *    tweede bij komt.
+   */
+  const KAAL_MET_REDEN: readonly string[] = ['groups.created_by (guard_group_update)'];
+
   describe('onveranderlijkheid tegenover on delete set null', () => {
     it(
       'heeft op elke set-null-kolom de grendel en niet de kale toewijzing',
@@ -3298,7 +3330,33 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
           .filter((r) => !r.heeft_grendel)
           .map((r) => `${r.tabel}.${r.kolom} (${r.functie})`);
 
-        expect(kaal).toEqual([]);
+        expect(kaal).toEqual([...KAAL_MET_REDEN]);
+      },
+      TEST_TIMEOUT,
+    );
+
+    /**
+     * ⚠️ **De uitzondering hierboven leunt op één zin in `guard_group_update()`,
+     *    en dit is de test die daar bovenop staat.** Zonder de vroege uitstap
+     *    voor niet-clientrollen loopt de RI-actie van `on delete set null` wél
+     *    door de trigger heen, en dan zet de kale toewijzing hem terug — met een
+     *    foreign key die niet meer klopt.
+     *
+     * ⚠️ **Leest de gestripte bron**, om dezelfde reden als 0221 zelf: een vroege
+     *    uitstap die alleen in commentaar staat, stapt nergens uit.
+     */
+    it(
+      'houdt de vroege uitstap die die uitzondering draagt',
+      () => {
+        const bron = psql(
+          `select regexp_replace(pg_get_functiondef(oid), '--[^\n]*', '', 'g')
+             from pg_proc where proname = 'guard_group_update'`,
+        );
+
+        expect(
+          bron,
+          'zonder deze uitstap is de kale toewijzing op groups.created_by niet meer onschadelijk — zie KAAL_MET_REDEN',
+        ).toMatch(/current_user\s+not\s+in\s*\(\s*'authenticated'\s*,\s*'anon'\s*\)/);
       },
       TEST_TIMEOUT,
     );

@@ -13,7 +13,7 @@ import {
   stuurBericht,
   zichtbaarheidLabels,
   type DoelGroep,
-  type Groep,
+  type Lijstgroep,
   type Resultaat,
 } from '@/modules/buddies';
 import {
@@ -153,7 +153,8 @@ export default function DoelDetail() {
 
   const [doel, setDoel] = useState<DoelMetVoortgang | null>(null);
   const [commitments, setCommitments] = useState<readonly Commitment[]>([]);
-  const [groepen, setGroepen] = useState<readonly Groep[]>([]);
+  // ⚠️ `Lijstgroep`: wat `fetchMijnGroepen()` écht oplevert (QS8-387).
+  const [groepen, setGroepen] = useState<readonly Lijstgroep[]>([]);
   const [doelGroepen, setDoelGroepen] = useState<readonly DoelGroep[]>([]);
   const [verzoek, setVerzoek] = useState<DeadlineVerzoek | null>(null);
   const [besluit, setBesluit] = useState<DeadlineVerzoek | null>(null);
@@ -772,7 +773,7 @@ function GedeeldMet({
 }: {
   readonly goalId: string;
   readonly gekoppeld: readonly DoelGroep[];
-  readonly mijnGroepen: readonly Groep[];
+  readonly mijnGroepen: readonly Lijstgroep[];
   readonly onKlaar: () => void;
 }) {
   const [bezig, setBezig] = useState<string | null>(null);
@@ -892,7 +893,7 @@ function Straf({
   onKlaar,
 }: {
   readonly goalId: string;
-  readonly groepen: readonly Groep[];
+  readonly groepen: readonly Lijstgroep[];
   readonly bestaand: Commitment | undefined;
   readonly streefdatumVoorbij: boolean;
   readonly onKlaar: () => void;
@@ -1211,12 +1212,28 @@ function Archiveren({
   readonly onKlaar: () => void;
 }) {
   const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
   const gearchiveerd = doel.status === 'archived';
 
+  // ⚠️ **De uitkomst werd hier weggegooid — QS8-350.** Mislukte het archiveren,
+  //    dan stopte de spinner, ververste het scherm, stond het doel onveranderd en
+  //    volgde er geen woord uitleg. `zetArchief()` bóuwde de melding netjes op;
+  //    hij bereikte alleen niemand. Dezelfde vorm als `void signOut()` in QS8-245,
+  //    maar dan met een kaal `await` in plaats van een `void` — en dat is precies
+  //    de vorm die de grendel toen niet kende.
   async function schakel() {
     setBezig(true);
-    await zetArchief(doel.id, userId, !gearchiveerd);
+    setFout(null);
+
+    const uitkomst = await zetArchief(doel.id, userId, !gearchiveerd);
+
     setBezig(false);
+
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+
     onKlaar();
   }
 
@@ -1224,6 +1241,7 @@ function Archiveren({
     <Card nested>
       <Subheading>{gearchiveerd ? t('archief.terughalen_kop') : t('archief.kop')}</Subheading>
       <Body muted>{gearchiveerd ? t('archief.terughalen_uitleg') : t('archief.uitleg')}</Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
       <Button busy={bezig} onPress={() => void schakel()}>
         {gearchiveerd ? t('archief.terughalen') : t('archief.archiveren')}
       </Button>

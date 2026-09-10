@@ -473,6 +473,17 @@ export const nl = {
   'uitnodiging.deelnemen_mislukt': 'Deelnemen lukte niet. Probeer het zo nog eens.',
   'veld.wachtwoord_tonen': 'Tonen',
   'veld.wachtwoord_verbergen': 'Verbergen',
+  'spraak.starten': 'Inspreken',
+  'spraak.stoppen': 'Stoppen',
+  'spraak.luistert': 'Aan het luisteren',
+  'spraak.uitleg_titel': 'Je stem gaat naar de browser',
+  'spraak.uitleg_body': 'Om je woorden om te zetten in tekst stuurt je browser de opname naar zijn eigen spraakdienst. In Chrome en Edge is dat een server van de maker van de browser. Wat je inspreekt verlaat dus je toestel. Wil je dat niet, typ dan gewoon; dat werkt overal hetzelfde.',
+  'spraak.uitleg_akkoord': 'Begrepen, inspreken',
+  'spraak.uitleg_annuleren': 'Toch typen',
+  'spraak.fout_geweigerd': 'De microfoon staat uit voor deze site. Zet hem aan in de instellingen van je browser en probeer het opnieuw.',
+  'spraak.fout_verbinding': 'De spraakdienst was niet te bereiken. Controleer je verbinding en probeer het opnieuw.',
+  'spraak.fout_niets_verstaan': 'Er is niets verstaan. Probeer het nog eens, wat dichter bij de microfoon.',
+  'spraak.fout_algemeen': 'Inspreken lukte niet. Probeer het zo nog eens, of typ je tekst.',
   'aanmelden.titel_nieuw': 'Account maken',
   'aanmelden.titel_terug': 'Welkom terug',
   'aanmelden.eyebrow': 'GOALBUDDIES',
@@ -967,6 +978,7 @@ export const nl = {
   'opnieuw.al_goedgekeurd': 'Deze week is al goedgekeurd. Er valt niets meer te vervangen.',
   'opnieuw.niets_ingediend': 'Er staat nog niets ingediend voor deze week.',
   'opnieuw.notitie_vereist': 'Deze groep vraagt om een korte notitie bij het afronden.',
+  'opnieuw.bewijs_vereist': 'Deze groep vraagt een foto als bewijs. Stuur er een mee.',
   'opnieuw.mislukt': 'Opnieuw indienen lukte niet. Probeer het zo nog eens.',
   'opnieuw.mislukt_kort': 'Opnieuw indienen lukte niet.',
 
@@ -998,6 +1010,7 @@ export const nl = {
   'avatar.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
   'avatar.te_groot': 'Die foto is groter dan 2 MB. Kies een kleinere.',
   'avatar.uploaden_mislukt': 'De foto kon niet opgeslagen worden. Probeer het opnieuw.',
+  'avatar.rem_bereikt': 'Je hebt je foto vandaag vaak genoeg gewisseld. Morgen kan het weer.',
   'avatar.verwijderen_mislukt': 'De foto kon niet weggehaald worden. Probeer het opnieuw.',
   'avatar.geen_toegang': 'Zonder toegang tot je foto’s kan de app er geen kiezen.',
   'avatar.grens': 'JPG, PNG of WebP, tot {mb} MB. Alleen je groepsgenoten zien hem.',
@@ -1023,6 +1036,25 @@ export const nl = {
   'plan.geen_plan': 'De coach kwam er niet uit met deze zin. Probeer het iets concreter te zeggen.',
   'plan.terugval_uitleg': 'Je kunt je doel ook zelf invullen. Wat je hierboven typte, nemen we mee.',
   'plan.zelf_invullen': 'Zelf invullen',
+
+  // ⚠️ De uitnodigingsstap aan het eind van de doelroute — QS8-229. `deling.*`
+  //    en `koppel.*` worden hergebruikt waar de zin al bestaat; dezelfde belofte
+  //    hoort niet in twee bewoordingen te bestaan.
+  'samen.titel': 'Wie gaat dit met je meemaken?',
+  'samen.eyebrow': 'Je doel staat',
+  'samen.uitleg': 'Een doel dat iemand anders kent, haal je vaker. Koppel het aan een groep, of sla over. Je kunt het later altijd nog doen.',
+  'samen.leeg_titel': 'Je hebt nog geen groep',
+  'samen.leeg_tekst': 'Maak er een aan en stuur de link naar wie je erbij wilt. Of sla over: de app werkt ook prima alleen.',
+  'samen.nieuwe_groep': 'Nieuwe groep maken',
+  'samen.overslaan': 'Nu even niet',
+  'samen.klaar': 'Klaar',
+  'samen.gekoppeld': 'Gedeeld met {naam}',
+  'samen.gekoppeld_tekst': 'Stuur de uitnodigingslink naar wie je erbij wilt. Wie hem opent, komt in deze groep terecht.',
+  'samen.deel': 'Uitnodigingslink delen',
+  'samen.deel_titel': 'Doe je mee in {groep}?',
+  'samen.link_gesloten': 'De uitnodigingslink van deze groep staat dicht. In het groepsbeheer zet je hem weer open.',
+  'samen.groep_weg_titel': 'Deze groep is er niet meer',
+  'samen.groep_weg_tekst': 'Je doel blijft staan. Koppel het aan een andere groep vanaf het doel zelf.',
   'plan.haalbaarheid': 'Even eerlijk',
   'plan.stappen': 'Je stappen',
   'plan.stap_regel': '{nummer}. {titel} {datum}',
@@ -1065,6 +1097,10 @@ export const nl = {
   'coach.neem_over': 'Neem ze over en pas ze daarna aan wat je wilt: schrappen, herschrijven en herordenen kan allemaal op het doelscherm.',
   'coach.toch_niet': 'Toch niet',
   'coach.al_mijlpalen': 'Je hebt al mijlpalen bij dit doel. Overnemen zet deze erbij en vervangt ze niet. Schrap eerst wat je niet wilt houden.',
+  'coach.geen_overgenomen':
+    'Er is geen enkele mijlpaal aangemaakt. {melding} Probeer het zo nog eens, of voeg ze zelf toe op het doelscherm.',
+  'coach.deels_overgenomen':
+    'De eerste {gelukt} van de {totaal} mijlpalen staan er; de rest is niet aangemaakt. {melding} Sluit dit venster om te zien wat er staat en vul de rest zelf aan.',
   'coach.laten_voorstellen': 'Mijlpalen laten voorstellen',
   'coach.wat_hij_doet': 'De Doelcoach knipt je doel op in mijlpalen met streefdata, op basis van wat je hierboven hebt ingevuld. Je kunt daarna alles aanpassen.',
   'coach.tien_per_dag': 'Je kunt dit tien keer per dag doen. Dezelfde vraag binnen een dag kost geen nieuwe beurt.',
@@ -1129,6 +1165,7 @@ export const nl = {
   //    een duim omhoog op een bewering is een formaliteit, één zin geeft de
   //    goedkeurder iets om op te reageren.
   'bewijseis.note_required': 'Notitie verplicht',
+  'bewijseis.note_and_attachment': 'Notitie én foto',
   'bewijseis.optional': 'Alles optioneel',
 
   // ---------------------------------------------------------------------------
@@ -1222,6 +1259,45 @@ export const nl = {
   'chat.laden_mislukt': 'De berichten konden niet geladen worden.',
   'chat.controleer': 'Controleer je bericht.',
   'chat.leeg': 'Er staat nog niets in je bericht.',
+
+  // ⚠️ Foto's in de chat — QS8-71. De grenzen hieronder zijn een kopie van de
+  //    bucket uit migratie 0222; de bucket is de grendel, deze zinnen zijn het
+  //    gemak. Noem het getal, niet "te groot": iemand die niet weet hoeveel te
+  //    veel is, probeert het dezelfde foto nog een keer.
+  'chatfoto.knop': 'Foto toevoegen',
+  'chatfoto.gekozen': 'Foto klaar om te versturen',
+  'chatfoto.weghalen': 'Foto weghalen',
+  'chatfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
+  'chatfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
+  'chatfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'chatfoto.rem_bereikt': 'Er zijn vandaag genoeg foto\u2019s in deze groep geplaatst. Morgen kan het weer.',
+  'chatfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
+  // ⚠️ **De reden staat erbij sinds QS8-396, en dat is geen opsmuk.** Zonder de
+  //    termijn leest "niet meer beschikbaar" als een storing, en dan probeert
+  //    iemand het morgen weer. Mét de termijn is het een eigenschap van de app:
+  //    de server bewaart je foto's niet. `{dagen}` komt uit
+  //    `CHATFOTO_BEWAARDAGEN`, dat op zijn beurt naast `chatfoto_bewaartermijn()`
+  //    gelegd wordt — één getal en niet twee.
+  'chatfoto.niet_beschikbaar': 'Deze foto staat er niet meer. Foto\u2019s blijven {dagen} dagen bewaard.',
+  'chatfoto.bewaartermijn': 'Foto\u2019s blijven {dagen} dagen op de server staan en gaan daarna weg.',
+  'chatfoto.laden': 'Foto laden',
+  'chatfoto.beeld': 'Foto in dit gesprek',
+
+  // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
+  // anders dan bij een beoordeling.
+  'bewijsfoto.knop': 'Foto als bewijs',
+  'bewijsfoto.gekozen': 'Bewijs klaar om mee te sturen',
+  'bewijsfoto.weghalen': 'Foto weghalen',
+  'bewijsfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
+  'bewijsfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
+  'bewijsfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'bewijsfoto.rem_bereikt': 'Je hebt vandaag genoeg foto\u2019s meegestuurd. Morgen kan het weer.',
+  'bewijsfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
+  'bewijsfoto.niet_beschikbaar': 'Dit bewijs is niet meer beschikbaar.',
+  'bewijsfoto.laden': 'Bewijs laden',
+  'bewijsfoto.beeld': 'Foto als bewijs bij deze afronding',
+  'bewijsfoto.vereist': 'Deze groep vraagt een foto als bewijs bij het afronden.',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
   'chat.rem_bereikt':
     'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',
@@ -2426,6 +2502,9 @@ export const nl = {
   'ontdek.afwijzen': 'Afwijzen',
   'ontdek.aangenomen': 'Aangenomen.',
   'ontdek.afgewezen': 'Afgewezen.',
+  'ontdek.eerder_lid': 'Was eerder lid van deze groep.',
+  'ontdek.eerder_verwijderd': 'Was eerder lid van deze groep en is op {datum} uit de groep gezet.',
+  'ontdek.eerder_vertrokken': 'Was eerder lid van deze groep en is op {datum} zelf vertrokken.',
   'ontdek.zonder_bericht': 'Zonder bericht',
 
   'voertaal.nl': 'Nederlands',

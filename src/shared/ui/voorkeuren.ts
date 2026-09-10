@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
+import { useAsync } from './useAsync';
+
 /**
  * Voorkeuren die op dit apparaat horen en niet in je profiel — QS8-76.
  *
@@ -134,4 +136,58 @@ export function useHulpvraagVerborgen(goalId: string): {
   }, [goalId]);
 
   return { weg, geladen, verberg };
+}
+
+const SLEUTEL_SPRAAK_UITLEG = 'goalbuddies.spraak-uitleg-gezien';
+
+/**
+ * Heeft de gebruiker de uitleg over waar zijn stem heen gaat al gezien? —
+ * QS8-250, acceptatiecriterium 3.
+ *
+ * ⚠️ **Eén keer, en dan nooit meer.** De uitleg staat vóór de eerste opname en
+ *    niet in een privacyverklaring: wat je inspreekt is in deze app precies het
+ *    soort tekst dat domeinregel 7 beschermt — je doel, je tegenslag, je
+ *    weekafsluiting — en de browser stuurt dat naar zijn eigen dienst. Dat is
+ *    een mededeling die je vóóraf hoort te krijgen, niet achteraf.
+ *
+ * ⚠️ **De onbekende waarde valt de veilige kant op**, en dat is hier de ándere
+ *    kant dan bij de vieringen hierboven: een lege of kapotte opslag betekent
+ *    "nog niet gezien", dus de uitleg komt nog een keer. Twee keer uitleg is
+ *    hinderlijk; nul keer is een belofte die niet nagekomen is.
+ *
+ * ⚠️ Ook dit staat op het apparaat en niet in `profiles` — zie de kop. Gevolg
+ *    dat je moet weten: op een nieuwe telefoon komt de uitleg opnieuw. Dat is
+ *    juist goed, want het is een andere browser met een andere dienst erachter.
+ */
+export function useSpraakUitlegGezien(actief: boolean): {
+  readonly gezien: boolean;
+  readonly geladen: boolean;
+  readonly onthoud: () => void;
+} {
+  // ⚠️ **`useAsync` en geen eigen `levend`-vlag**, anders dan de twee voorkeuren
+  //    hierboven. Die twee zijn ouder dan die helper; deze is nieuw, en
+  //    `levend:controle` telt terecht mee hoeveel handgeschreven vlaggen er nog
+  //    staan. Wat hier ontbreekt in `useAsync` — een waarde die je zelf kunt
+  //    zetten — staat als losse vlag ernaast en niet als tweede laadbeurt.
+  // ⚠️ **`null` zolang er geen microfoon staat, en dat is geen microoptimalisatie.**
+  //    `Microfoon` hangt aan élk `Field`, en dat zijn er achtenveertig. Zonder
+  //    deze vlag doet elk scherm net zoveel opslaglezingen als het velden heeft —
+  //    óók op native en in Firefox, waar de knop nooit verschijnt. `useAsync`
+  //    laadt niet bij een `null`-functie; `loading` blijft dan `true` en dus
+  //    `geladen` onwaar, precies wat de aanroeper in dat geval al wil.
+  const opgeslagen = useAsync(actief ? () => AsyncStorage.getItem(SLEUTEL_SPRAAK_UITLEG) : null, [actief]);
+  const [zojuist, setZojuist] = useState(false);
+
+  const onthoud = useCallback(() => {
+    setZojuist(true);
+    // Zelfde afweging als bij de vieringen: niet awaiten. Mislukt het opslaan,
+    // dan krijgt de gebruiker de uitleg de volgende sessie nog een keer — en dat
+    // is de kant waar deze voorkeur op hoort te falen.
+    void AsyncStorage.setItem(SLEUTEL_SPRAAK_UITLEG, 'ja');
+  }, []);
+
+  // ⚠️ Een mislukte lezing laat `data` op `undefined` staan, en dan is `gezien`
+  //    onwaar: de uitleg komt nog een keer. Dat is de veilige kant — zie de kop
+  //    hierboven.
+  return { gezien: zojuist || opgeslagen.data === 'ja', geladen: !opgeslagen.loading, onthoud };
 }

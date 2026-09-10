@@ -51,7 +51,7 @@ export async function fetchAdempauzes(goalId: string): Promise<readonly Adempauz
     .limit(20);
 
   if (error) {
-    reportError(error, 'goals.breathers', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.breathers', { goal_id: goalId });
     throw new Error(t('adempauze.laden_mislukt'));
   }
 
@@ -85,7 +85,7 @@ export async function planAdempauze(
   });
 
   if (error) {
-    reportError(error, 'goals.breather.plan', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.breather.plan', { goal_id: goalId });
     return { ok: false, melding: t('adempauze.inplannen_mislukt') };
   }
 
@@ -142,7 +142,7 @@ export async function annuleerAdempauze(id: string): Promise<Resultaat<true>> {
   const { data, error } = await supabase().rpc('annuleer_adempauze', { p_id: id });
 
   if (error) {
-    reportError(error, 'goals.breather.cancel', { code: error.code });
+    reportError(error, 'goals.breather.cancel');
     return { ok: false, melding: t('adempauze.annuleren_mislukt') };
   }
 

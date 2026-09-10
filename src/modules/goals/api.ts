@@ -35,6 +35,35 @@ export type { Pagina, Resultaat };
 export type Doel = Tables<'goals'>;
 
 /**
+ * Wat een client van een `goals`-rij terugkríjgt sinds migratie 0236.
+ *
+ * ⚠️⚠️ **`Doel` spiegelt de kolommen van de tabel; dit type spiegelt de
+ *    kolomgrant.** Die twee liepen uiteen op de dag dat 0236 vijf kolommen
+ *    introk, en TypeScript zweeg — de gegenereerde typing wéét niets van grants.
+ *    Precies de klasse die vandaag als bevinding in `docs/ENGINEER-REVIEW.md`
+ *    belandde: *"de gegenereerde typing zegt dat kolommen schrijfbaar zijn die
+ *    dat niet zijn"*, en hier gold hetzelfde voor lezen.
+ *
+ *    Door het type te noemen valt het uiteenlopen voortaan van beide kanten op:
+ *    haalt iemand een kolom uit de `select`, dan klaagt TypeScript, en zet
+ *    iemand er een bij waar geen grant op zit, dan klaagt Postgres. Zelfde
+ *    reparatie en zelfde reden als `Lijstgroep` in `modules/buddies` (QS8-387).
+ */
+export type DoelKern = Pick<
+  Doel,
+  | 'id'
+  | 'owner_id'
+  | 'title'
+  | 'description'
+  | 'category'
+  | 'target_date'
+  | 'status'
+  | 'created_at'
+  | 'updated_at'
+  | 'ritme'
+>;
+
+/**
  * Een doel met zijn tellingen, uit de view `goal_dashboard` (migratie 0013).
  *
  * ⚠️ Postgres kent geen NOT NULL op viewkolommen, dus de gegenereerde types
@@ -83,8 +112,78 @@ export interface DoelMetVoortgang {
   readonly ritme: Ritme;
 }
 
+/**
+ * De drie kolommen die alleen de eigenaar mag lezen, per doel-id.
+ *
+ * ⚠️⚠️ **Ze staan sinds migratie 0236 niet meer op `goals` voor `authenticated`**,
+ *    en dat is geen opruiming maar een gerepareerd lek (QS8-392 en QS8-393).
+ *    `goals_select` geeft een groepsgenoot de héle rij, dus `identity_statement`
+ *    — *"Wie word je als dit lukt?"* — was voor hem leesbaar terwijl er boven dat
+ *    invoerveld staat dat zijn groep het nooit ziet. En `max_points` telt de
+ *    weken mee die `weekly_goals_select` juist verbergt, dus het verschil met de
+ *    zichtbare weekdoelen ís het aantal gemiste weken.
+ *
+ * ⚠️ **RLS kan geen kolommen beperken**, dus dit is een kolomgrant plus een
+ *    eigenaar-only view (`mijn_doelvelden`) en geen policy. Een lege uitkomst
+ *    betekent hier "niet van jou" en is dus de goede stand, geen fout.
+ */
+type Doelvelden = Pick<
+  DoelMetVoortgang,
+  'identity_statement' | 'available_hours_per_week' | 'max_points'
+>;
+
+const GEEN_VELDEN: Doelvelden = {
+  identity_statement: null,
+  available_hours_per_week: null,
+  max_points: 0,
+};
+
+async function mijnDoelvelden(ids: readonly string[]): Promise<Map<string, Doelvelden>> {
+  const kaart = new Map<string, Doelvelden>();
+  if (ids.length === 0) return kaart;
+
+  const { data, error } = await supabase()
+    .from('mijn_doelvelden')
+    .select('id, identity_statement, available_hours_per_week, max_points')
+    .in('id', ids);
+
+  // ⚠️ Een fout hier is geen reden om het doel niet te tonen: de titel, de datum
+  //    en de voortgang komen uit een ándere query en die is geslaagd. De velden
+  //    vallen terug op leeg, wat exact de stand is die een groepsgenoot ziet.
+  if (error) {
+    reportError(error, 'goals.velden');
+    return kaart;
+  }
+
+  for (const rij of data ?? []) {
+    if (rij.id === null) continue;
+    kaart.set(rij.id, {
+      identity_statement: rij.identity_statement,
+      available_hours_per_week: rij.available_hours_per_week,
+      max_points: rij.max_points ?? 0,
+    });
+  }
+  return kaart;
+}
+
+/**
+ * Zet viewrijen om en haalt de eigenaar-velden er in één extra ronde bij.
+ *
+ * ⚠️ Eén query voor de hele pagina en niet één per doel — onwrikbare regel 12.
+ */
+async function naarDoelen(
+  rijen: readonly Tables<'goal_dashboard'>[],
+): Promise<DoelMetVoortgang[]> {
+  const ids = rijen.map((r) => r.id).filter((id): id is string => id !== null);
+  const velden = await mijnDoelvelden(ids);
+
+  return rijen
+    .map((rij) => naarDoel(rij, velden.get(rij.id ?? '') ?? GEEN_VELDEN))
+    .filter((d): d is DoelMetVoortgang => d !== null);
+}
+
 /** Zet een viewrij om, of geeft `null` als de rij niet compleet is. */
-function naarDoel(rij: Tables<'goal_dashboard'>): DoelMetVoortgang | null {
+function naarDoel(rij: Tables<'goal_dashboard'>, velden: Doelvelden): DoelMetVoortgang | null {
   if (rij.id === null || rij.owner_id === null || rij.title === null || rij.target_date === null) {
     reportError(new Error('Onvolledige rij uit goal_dashboard'), 'goals.parse', {
       goal_id: rij.id ?? 'geen',
@@ -99,11 +198,11 @@ function naarDoel(rij: Tables<'goal_dashboard'>): DoelMetVoortgang | null {
     description: rij.description,
     category: rij.category ?? 'other',
     ritme: leesRitme(rij.ritme),
-    identity_statement: rij.identity_statement,
+    identity_statement: velden.identity_statement,
     target_date: rij.target_date,
     status: rij.status ?? 'active',
-    available_hours_per_week: rij.available_hours_per_week,
-    max_points: rij.max_points ?? 0,
+    available_hours_per_week: velden.available_hours_per_week,
+    max_points: velden.max_points,
     milestones_total: rij.milestones_total ?? 0,
     milestones_done: rij.milestones_done ?? 0,
     weekly_total: rij.weekly_total ?? 0,
@@ -137,11 +236,11 @@ export async function fetchDoelen(
     .range(van, van + PER_PAGINA - 1);
 
   if (error) {
-    reportError(error, 'goals.list', { user_id: userId, code: error.code });
+    reportError(error, 'goals.list', { user_id: userId });
     throw new Error(t('doel.doelen_laden'));
   }
 
-  const rijen = (data ?? []).map(naarDoel).filter((d): d is DoelMetVoortgang => d !== null);
+  const rijen = await naarDoelen(data ?? []);
   const totaal = count ?? rijen.length;
 
   return { rijen, totaal, meer: van + rijen.length < totaal };
@@ -190,11 +289,11 @@ export async function fetchKoppelbareDoelen(
     .range(van, van + PER_PAGINA - 1);
 
   if (error) {
-    reportError(error, 'goals.koppelbaar', { group_id: groupId, code: error.code });
+    reportError(error, 'goals.koppelbaar', { group_id: groupId });
     throw new Error(t('doel.doelen_laden'));
   }
 
-  const rijen = (data ?? []).map(naarDoel).filter((d): d is DoelMetVoortgang => d !== null);
+  const rijen = await naarDoelen(data ?? []);
   const totaal = count ?? rijen.length;
 
   return { rijen, totaal, meer: van + rijen.length < totaal };
@@ -239,7 +338,7 @@ export async function fetchDoelnamen(
     .in('id', uniek);
 
   if (error) {
-    reportError(error, 'goals.namen', { aantal: uniek.length, code: error.code });
+    reportError(error, 'goals.namen', { aantal: uniek.length });
     return new Map();
   }
 
@@ -260,11 +359,18 @@ export async function fetchDoel(goalId: string): Promise<DoelMetVoortgang | null
     .maybeSingle();
 
   if (error) {
-    reportError(error, 'goals.get', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.get', { goal_id: goalId });
     throw new Error(t('doel.doel_laden'));
   }
 
-  return data === null ? null : naarDoel(data);
+  if (data === null) return null;
+
+  // ⚠️ Dít is het pad waar het lek zat: `fetchDoel()` filtert niet op eigenaar,
+  //    want een groepsgenoot mág een gekoppeld doel openen. Voor hem geeft
+  //    `mijn_doelvelden` nul rijen en valt het doel terug op `GEEN_VELDEN` —
+  //    precies wat `coach.alleen_voor_jou` belooft.
+  const velden = await mijnDoelvelden([goalId]);
+  return naarDoel(data, velden.get(goalId) ?? GEEN_VELDEN);
 }
 
 /**
@@ -277,7 +383,7 @@ export async function maakDoel(
   userId: string,
   invoer: DoelInvoer,
   vandaag: IsoDate,
-): Promise<Resultaat<Doel>> {
+): Promise<Resultaat<DoelKern>> {
   const gevalideerd = doelSchema.safeParse(invoer);
   if (!gevalideerd.success) {
     return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
@@ -287,14 +393,21 @@ export async function maakDoel(
     return { ok: false, melding: t('doel.datum_verleden') };
   }
 
+  // ⚠️⚠️ **Een expliciete kolomlijst en geen `select('*')`, en dat is een
+  //    gerepareerd defect.** Sinds migratie 0236 heeft `authenticated` geen
+  //    tabelbrede SELECT meer op `goals` maar een kolomgrant, en `*` eist recht
+  //    op élke kolom — dus dit verzoek gaf een kale `42501` voor de eigenaar van
+  //    zijn eigen, net aangemaakte doel. ⚠️ TypeScript ziet dat niet: de
+  //    gegenereerde typing spiegelt de kólommen van de tabel en niet de grants.
+  //    Dezelfde klasse als QS8-387 bij `fetchMijnGroepen()`.
   const { data, error } = await supabase()
     .from('goals')
     .insert({ ...gevalideerd.data, owner_id: userId })
-    .select('*')
+    .select('id, owner_id, title, description, category, target_date, status, created_at, updated_at, ritme')
     .single();
 
   if (error) {
-    reportError(error, 'goals.create', { user_id: userId, code: error.code });
+    reportError(error, 'goals.create', { user_id: userId });
     return { ok: false, melding: t('doel.opslaan_mislukt') };
   }
 
@@ -319,7 +432,7 @@ export async function maakDoel(
 export async function wijzigDoel(
   doelId: string,
   patch: DoelPatch,
-): Promise<Resultaat<Doel>> {
+): Promise<Resultaat<DoelKern>> {
   const gevalideerd = doelPatchSchema.safeParse(patch);
   if (!gevalideerd.success) {
     return { ok: false, melding: invoerfout(gevalideerd.error, t('doel.invoer')) };
@@ -342,15 +455,17 @@ export async function wijzigDoel(
     return { ok: false, melding: t('doel.niets_gewijzigd') };
   }
 
+  // ⚠️ Zelfde reden als bij `maakDoel()`: sinds 0236 is `*` op `goals` een
+  //    permissiefout voor de eigenaar zelf.
   const { data, error } = await supabase()
     .from('goals')
     .update(update)
     .eq('id', doelId)
-    .select('*')
+    .select('id, owner_id, title, description, category, target_date, status, created_at, updated_at, ritme')
     .single();
 
   if (error) {
-    reportError(error, 'goals.update', { goal_id: doelId, code: error.code });
+    reportError(error, 'goals.update', { goal_id: doelId });
     return { ok: false, melding: t('doel.wijzigen_mislukt') };
   }
 
@@ -385,7 +500,7 @@ export async function zetStreefdatum(
   });
 
   if (error) {
-    reportError(error, 'goals.target_date', { goal_id: doelId, code: error.code });
+    reportError(error, 'goals.target_date', { goal_id: doelId });
     return { ok: false, melding: t('doel.streefdatum_mislukt') };
   }
 
@@ -451,7 +566,7 @@ export async function zetArchief(
   });
 
   if (error) {
-    reportError(error, 'goals.archive', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.archive', { goal_id: goalId });
     return { ok: false, melding: t('doel.actie_mislukt') };
   }
 
@@ -504,7 +619,7 @@ export async function rondDoelAf(goalId: string, actorId: string): Promise<Resul
   const { data, error } = await supabase().rpc('rond_doel_af', { p_goal_id: goalId });
 
   if (error) {
-    reportError(error, 'goals.complete', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.complete', { goal_id: goalId });
     return { ok: false, melding: t('doel.afronden_mislukt') };
   }
 
@@ -607,7 +722,7 @@ export async function verwijderDoel(goalId: string): Promise<Resultaat<true>> {
   const { data, error } = await supabase().rpc('verwijder_doel', { p_goal_id: goalId });
 
   if (error) {
-    reportError(error, 'goals.delete', { goal_id: goalId, code: error.code });
+    reportError(error, 'goals.delete', { goal_id: goalId });
     return { ok: false, melding: t('doel.verwijderen_mislukt') };
   }
 

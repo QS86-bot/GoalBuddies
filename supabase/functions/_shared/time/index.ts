@@ -42,6 +42,7 @@ export {
   toonDatumKort,
   toonDatumLang,
   toonMaand,
+  toonKlokDatum,
   toonKlokTijd,
   toonMoment,
   toonTijd,
