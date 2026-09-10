@@ -14,10 +14,10 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**248**.
+**249**.
 
-**Het gat is daarmee vierentwintig bestanden** — `0222` t/m `0245`, van 09-09 en
-10-09 en uit elf verschillende issues:
+**Het gat is daarmee vijfentwintig bestanden** — `0222` t/m `0246`, van 09-09
+en 10-09 en uit twaalf verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -45,6 +45,7 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0243_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
 | `0244_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
 | `0245_stille_uren.sql` | QS8-406 | nee |
+| `0246_de_lijst_krijgt_een_tabel_die_dicht_staat.sql` | QS8-379 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -284,10 +285,17 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 
 ## 2. Wat er nu draait
 
-**Database — af, en nu ook getest.** 34 tabellen.
+**Database — af, en nu ook getest.** 41 tabellen, alle 41 met RLS aan.
+
+⚠️ Hier stond **34** en dat was op 28-08 waar; het getal bewoog daarna mee met
+elke nieuwe tabel en deze regel niet. 📏 Opnieuw gemeten op 09-09 op een verse
+opbouw uit `supabase/migrations/`:
+`select count(*) filter (where rowsecurity), count(*) from pg_tables where
+schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
+regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0245` staan in de map: **248 bestanden**,
+Migraties `0001` t/m `0246` staan in de map: **249 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -1107,6 +1115,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
 | 15 | **QS8-394 — hoe privé is een gedeelde foto** | Losgetrokken uit de doorlichting van 09-09. Drie stappen, en ze staan los van elkaar: QS8-395 (metadata eraf vóór het uploaden, In Review), QS8-396 (bewaartermijn van 21 dagen + de leesgrens aan het bericht, migratie 0235), QS8-397 (end-to-end-versleuteling — **een besluit van Quinten**, sleutelbeheer, niet op eigen gezag te bouwen). ⚠️ De bewaartermijn leunt op de uurlijkse rollover uit `.github/workflows/rollover.yml`; het restrisico staat in §6 en in `ENGINEER-REVIEW.md`. QS8-396 en QS8-399 zijn op 09-09 samengevoegd op één branch — de teller is die van 399, zie QS8-402 | 1 en 2 gebouwd, 3 wacht op Quinten |
+| 16 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, privé of gedeeld. Staat naast de kernlus en niet erin — De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | deel 1 af: **QS8-379**, migratie `0219` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. **QS8-380** (scherm en spraak) en **QS8-381** (delen) staan nog open. ⚠️ Twee beslispunten op QS8-378 liggen bij Quinten: krijgt De Lijst een vijfde tab, en wat laat "openbaar" precies zien. Tot dat er is, staat alles dicht — CLAUDE.md domeinregel 7: voor élk nieuw oppervlak is beschermd het antwoord |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
