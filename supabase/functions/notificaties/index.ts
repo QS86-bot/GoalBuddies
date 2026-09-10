@@ -455,7 +455,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
               refId: null,
             });
             if (stand === 'verstuurd') verstuurd += 1;
-        if (stand === 'onderdrukt') onderdrukt += 1;
+            if (stand === 'onderdrukt') onderdrukt += 1;
           }
         }
       } catch (fout) {
