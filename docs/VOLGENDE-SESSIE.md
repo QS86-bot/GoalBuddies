@@ -3,11 +3,7 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-<<<<<<< HEAD
-> **Laatst bijgewerkt:** 09-09-2026. Er landt veel uit twee sessies tegelijk;
-> `git log origin/main` is de betrouwbare lijst en niet deze zin.
-=======
-> **Laatst bijgewerkt:** 10-09-2026 (QS8-72). Er landt veel uit twee sessies
+> **Laatst bijgewerkt:** 10-09-2026 (QS8-72, QS8-379). Er landt veel uit twee sessies
 > tegelijk; `git log origin/main` is de betrouwbare lijst en niet deze zin.
 >
 > **10-09, punt A: een merge zonder conflict kan je migratie stukmaken, en git
@@ -35,7 +31,6 @@
 > helpt niet omdat de keten verderloopt. Los bestand ernaast
 > (`verzendbijlage.ts`), en de belofte staat weer onder test. Zelfde familie als
 > de `__DEV__`-val bij QS8-71.
->>>>>>> origin/main
 > Op 08-09 landden er **dertien** PR's (#293 t/m #306), uit deze sessie
 > **QS8-352, QS8-351** en **QS8-356**; uit de parallelle sessie
 > **QS8-341, QS8-342, QS8-343, QS8-327, QS8-340, QS8-339, QS8-348, QS8-349,
@@ -49,7 +44,7 @@
 >
 > **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
 > losse to-do's, getypt of ingesproken, privé of gedeeld. Deel 1 (**QS8-379**,
-> migratie `0219`) is af: de tabel `todo_items`, eigenaar-only, met een
+> migratie `0245`) is af: de tabel `todo_items`, eigenaar-only, met een
 > dagplafond en een `visibility` die voor geen enkele client schrijfbaar is.
 > **QS8-380** (scherm en spraak) en **QS8-381** (delen) staan open, net als twee
 > beslispunten op QS8-378 die bij Quinten liggen.
