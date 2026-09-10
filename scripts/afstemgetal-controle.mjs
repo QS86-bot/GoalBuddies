@@ -122,6 +122,37 @@ export function gedefinieerdeFuncties(migratiebronnen) {
   return uit;
 }
 
+/** Elk bestand dat een tweede bron zou kunnen dragen. */
+function teLezenBestanden() {
+  const uit = [];
+  for (const map of MAPPEN) {
+    for (const pad of bestanden(join(WORTEL, map), ['.ts', '.tsx'])) {
+      if (!pad.endsWith('.test.ts') && !pad.endsWith('.test.tsx')) uit.push(pad);
+    }
+  }
+  return uit;
+}
+
+/**
+ * De meldingen voor één bestand.
+ *
+ * ⚠️ Apart van `hoofd()` om de nesting onder de drie te houden — coderegel 15,
+ *    en `max-depth` in `eslint.config.js` dwingt hem af. Vier lussen in elkaar
+ *    was de eerste vorm, en die kwam de linter niet door.
+ */
+function tweedeBronnenIn(pad) {
+  const bron = readFileSync(pad, 'utf8');
+  const kort = pad.replace(WORTEL, '').replace(/\\/gu, '/');
+
+  return REGISTER.flatMap((rij) =>
+    kopieenIn(bron, rij.patroon).map(
+      ({ regel, naam }) =>
+        `  - ${kort}:${regel} — \`${naam}\` is een tweede bron naast ` +
+        `\`${rij.functie}()\`.\n      ${rij.reden}`,
+    ),
+  );
+}
+
 function hoofd() {
   const migraties = join(WORTEL, 'supabase', 'migrations');
   const bronnen = readdirSync(migraties)
@@ -141,19 +172,8 @@ function hoofd() {
     }
   }
 
-  for (const map of MAPPEN) {
-    for (const pad of bestanden(join(WORTEL, map), ['.ts', '.tsx'])) {
-      if (pad.endsWith('.test.ts') || pad.endsWith('.test.tsx')) continue;
-      const bron = readFileSync(pad, 'utf8');
-      for (const rij of REGISTER) {
-        for (const { regel, naam } of kopieenIn(bron, rij.patroon)) {
-          fouten.push(
-            `  - ${pad.replace(WORTEL, '').replace(/\\/gu, '/')}:${regel} — \`${naam}\` is een ` +
-              `tweede bron naast \`${rij.functie}()\`.\n      ${rij.reden}`,
-          );
-        }
-      }
-    }
+  for (const pad of teLezenBestanden()) {
+    fouten.push(...tweedeBronnenIn(pad));
   }
 
   if (fouten.length > 0) {
@@ -174,4 +194,6 @@ function hoofd() {
   );
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) hoofd();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  hoofd();
+}
