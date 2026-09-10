@@ -1,5 +1,5 @@
 /**
- * De documentemmer en zijn twee remmen — migraties 0237 en 0238.
+ * De documentemmer en zijn twee remmen — migraties 0238 en 0239.
  *
  * ⚠️⚠️ **De belofte is niet "de policy staat er". Die is: een document verlaat
  *    zijn groep niet** — ook niet met één verzoek buiten de UI om. Zelfde tweede
@@ -58,7 +58,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de chatdoc-emmer (0237) en de twee remmen (0238)', () => {
+describe.runIf(beschikbaar)('de chatdoc-emmer (0238) en de twee remmen (0239)', () => {
   const alice = randomUUID();
   const bob = randomUUID();
   const carol = randomUUID();
@@ -185,7 +185,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0237) en de twee remmen (0238)', 
     //    dagplafond (de teller hangt aan INSERT), en een `update` die
     //    `bucket_id` wijzigt verhuist een object uit een ándere emmer hierheen —
     //    waarmee `allowed_mime_types` niet meer de grendel is die de kop van
-    //    0237 belooft. `chatfotos` ging hem op dezelfde dag voor (0235 §1b).
+    //    0238 belooft. `chatfotos` ging hem op dezelfde dag voor (0235 §1b).
     //
     // ⚠️ Onwrikbare regel 1 vraagt vier policies per tabel; `storage.objects` is
     //    niet onze tabel, en vier policies zijn hier een emmer-conventie.
@@ -295,7 +295,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0237) en de twee remmen (0238)', 
     // ⚠️⚠️ **De vorm van de bestandsnaam staat sinds 10-09-2026 in de policy en
     //    niet meer alleen in `chatdocPad()`.** 📏 De securityronde mat dat een
     //    lid `<groep>/<zelf>/evil.html` in deze emmer kon plaatsen. Onbereikbaar
-    //    vandaag — de CHECK van 0239 eist `.pdf`, dus geen bericht kan ernaar
+    //    vandaag — de CHECK van 0240 eist `.pdf`, dus geen bericht kan ernaar
     //    wijzen — maar "het pad eindigt op .pdf" was daarmee een eigenschap van
     //    de cliënt, en dit is de laag die dat hoort te weten.
     expect(

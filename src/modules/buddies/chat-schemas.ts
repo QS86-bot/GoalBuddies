@@ -193,14 +193,14 @@ export interface ChatBericht {
    */
   readonly attachment_url: string | null;
   /**
-   * De oorspronkelijke bestandsnaam van een document — QS8-72, migratie 0239.
+   * De oorspronkelijke bestandsnaam van een document — QS8-72, migratie 0240.
    *
    * ⚠️ Alleen gevuld bij `type = 'doc'`; een foto heeft er geen. Dit is
    *    **gebruikerstekst**: emoji mogen erin, dus nooit afkappen met `slice()`
    *    of `[0]` — gebruik `telTekens()`/`kapAf()` uit `src/shared/tekst`.
    *
    * ⚠️ De getoonde **soort** ("PDF") komt niet hieruit maar uit het pad, want dat
-   *    ligt vast in de CHECK van 0239. Zo kunnen naam en soort nooit misleidend
+   *    ligt vast in de CHECK van 0240. Zo kunnen naam en soort nooit misleidend
    *    uit elkaar lopen — de reden dat die CHECK bidi-overrides weigert.
    */
   readonly attachment_name: string | null;
@@ -357,7 +357,7 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  * ⚠️⚠️ **`attachment_url` draagt de emmer niet.** Het pad is
  *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
  *    identiek. `type` is het enige dat zegt waar dit bestand staat, en migratie
- *    0239 is wat die twee gekoppeld houdt: de extensie is aan de soort gepaard,
+ *    0240 is wat die twee gekoppeld houdt: de extensie is aan de soort gepaard,
  *    dus een `photo`-rij kán niet naar een `.pdf` wijzen.
  *
  *    Zonder die paring breekt er niets zichtbaars als ze uit elkaar lopen — je

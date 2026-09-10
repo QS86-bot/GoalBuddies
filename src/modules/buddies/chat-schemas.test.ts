@@ -359,7 +359,7 @@ describe('soortBijlage', () => {
   it('wijst een documentbericht naar de document-emmer', () => {
     // ⚠️⚠️ Het pad draagt de emmer níet: `<groep>/<afzender>/<naam>.<ext>` is
     //    voor allebei gelijk. Deze functie is de enige plek waar de emmer wordt
-    //    afgeleid, en migratie 0239 is wat de soort aan de extensie gepaard
+    //    afgeleid, en migratie 0240 is wat de soort aan de extensie gepaard
     //    houdt.
     expect(soortBijlage({ type: 'doc' })).toBe('doc');
   });

@@ -258,7 +258,7 @@ export async function stuurBericht(
       group_id: groupId,
       sender_id: senderId,
       body: gevalideerd.data.body,
-      // ⚠️ De soort en de extensie zijn aan elkaar gepaard in de CHECK van 0239.
+      // ⚠️ De soort en de extensie zijn aan elkaar gepaard in de CHECK van 0240.
       //    Hier zetten betekent: hier ligt vast tegen welke emmer er straks
       //    getekend wordt. Zie `soortBijlage()` in `chat-schemas.ts`.
       type: pad === null ? 'text' : isDocument ? 'doc' : 'photo',

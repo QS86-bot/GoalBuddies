@@ -32,7 +32,7 @@ import { Body, Caption } from './Text';
  * De bijlage van één bericht — precies één soort, of geen.
  *
  * ⚠️⚠️ **Een unie en geen twee losse props, en dat is een spiegel van de
- *    database.** De CHECK `chat_messages_attachment_eigen_pad` (migratie 0239)
+ *    database.** De CHECK `chat_messages_attachment_eigen_pad` (migratie 0240)
  *    paart de soort aan de extensie: een rij is `photo` met een beeldextensie
  *    óf `doc` met `.pdf`, nooit allebei en nooit gekruist. Twee optionele props
  *    zouden een vierde stand toelaten — foto én document in één bubbel — die de

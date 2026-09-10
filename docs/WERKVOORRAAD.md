@@ -37,9 +37,9 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0235_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql` | QS8-396 | ja |
 | `0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql` | QS8-392 | nee |
 | `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
-| `0238_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
-| `0239_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
-| `0240_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
+| `0239_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
+| `0240_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
+| `0241_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
 | `0241_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
@@ -1125,7 +1125,7 @@ kan een sessie **niet** zelf oppakken:
 
 | Issue | Waarom niet |
 |---|---|
-| ~~QS8-71, QS8-72~~ | ✅ **allebei gebouwd** — QS8-71 op 09-09 (migraties `0222` t/m `0226`), QS8-72 op 10-09 (`0235` t/m `0240`). De rij hield ze tegen op "een betaalde tier en een nieuw groepszichtbaar oppervlak"; het eerste bleek niet nodig (de gratis tier draagt het met twee dagplafonds per emmer) en het tweede is gewoon gedaan — rij 32 en rij 34 in `docs/decisions/002-domeinregel7-oppervlakken.md` |
+| ~~QS8-71, QS8-72~~ | ✅ **allebei gebouwd** — QS8-71 op 09-09 (migraties `0222` t/m `0226`), QS8-72 op 10-09 (`0235` t/m `0241`). De rij hield ze tegen op "een betaalde tier en een nieuw groepszichtbaar oppervlak"; het eerste bleek niet nodig (de gratis tier draagt het met twee dagplafonds per emmer) en het tweede is gewoon gedaan — rij 32 en rij 34 in `docs/decisions/002-domeinregel7-oppervlakken.md` |
 | QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
