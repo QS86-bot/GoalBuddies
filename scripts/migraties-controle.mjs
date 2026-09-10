@@ -84,6 +84,7 @@ import {
 //    worden en bewaakt de bewaker iets anders dan de schrijver schrijft — de
 //    twee-lijsten-fout uit 0032/0034. Zie de kop van `migratie-hernummer.mjs`.
 import { kopNummer } from './migratie-hernummer.mjs';
+import { meldingVoor } from './rollbackpad.mjs';
 import { cliTegenspraak } from './letterversies.mjs';
 
 const MAP = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
@@ -177,7 +178,16 @@ for (const naam of bestanden) {
 
   if (!ROLLBACK.test(kop.join('\n'))) {
     fouten.push(`Geen rollback-pad in de kop van ${naam} (onwrikbare regel 20).`);
+    continue;
   }
+
+  // ⚠️ En dán pas de tweede helft: staat het pad er heel, of loopt het onder het
+  //    lichaam door? De toets hierboven is met het wóórd tevreden — 0233 was
+  //    groen terwijl zijn pad halverwege door live SQL werd opengebroken
+  //    (QS8-405). De meting en de reden dat het één module apart is, staan in
+  //    `rollbackpad.mjs`.
+  const gebroken = meldingVoor(naam, regels.join('\n'));
+  if (gebroken !== null) fouten.push(gebroken);
 }
 
 // ---------------------------------------------------------------------------
