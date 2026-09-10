@@ -65,6 +65,8 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'register:controle',
   // ⚠️ Leest `pg_proc`, niet de migratiebestanden — zonder database meet hij niets.
   'definers:controle',
+  // ⚠️ Bouwt het schema van nul op en speelt elk bestand twee keer af (QS8-413).
+  'idempotent:controle',
 ]);
 
 /**
