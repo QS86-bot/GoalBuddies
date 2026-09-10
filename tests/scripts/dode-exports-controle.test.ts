@@ -12,8 +12,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BEKENDE_ONBEREIKBAAR,
+  PLAFOND,
   WORTELMAPPEN,
   barrelExports,
+  beoordeel,
   controleer,
   gebruikteNamen,
   onbereikbaar,
@@ -217,10 +219,15 @@ describe('de onderdelen los', () => {
 
 describe('het register en de werkelijkheid lopen gelijk', () => {
   /**
-   * ⚠️ **De ratel.** Rood als er een onbereikbare functie bij komt, én rood als
-   *    er een uit het register verdwijnt zonder dat de rij meezakt — een
-   *    register dat blijft staan terwijl de functie weg is, is een lijst die
-   *    liegt. Zelfde vorm als `regel15:controle` en `levend:controle`.
+   * ⚠️ Rood als er een onbereikbare functie bij komt, én rood als er een uit het
+   *    register verdwijnt terwijl de rij blijft staan — een register dat blijft
+   *    staan terwijl de functie weg is, is een lijst die liegt.
+   *
+   * ⚠️ **Dit is niet de ratel**, en dat verschil stond hier tot 10-09-2026
+   *    verkeerd. Deze test legt het register naast de werkelijkheid; hij zegt
+   *    niets over hoe gróót het register mag zijn. De ratel staat hieronder, en
+   *    het gat dat hij dicht is precies dat: rood worden gaat over door een rij
+   *    toe te voegen, en niets telde die handeling.
    */
   it('elke gevonden functie staat in het register en andersom', () => {
     const gevonden = controleer().sort();
@@ -232,5 +239,63 @@ describe('het register en de werkelijkheid lopen gelijk', () => {
       expect(typeof reden, naam).toBe('string');
       expect((reden as string).length, `${naam} heeft een te korte reden`).toBeGreaterThan(60);
     }
+  });
+});
+
+/**
+ * De ratel — QS8-194.
+ *
+ * ⚠️ **De belofte is niet "het register klopt" maar "het register kan niet stil
+ *    groeien".** Die twee zijn hierboven door elkaar gelopen: de controle werd
+ *    rood van een nieuwe onbereikbare functie, en die roodheid ging weg door een
+ *    rij toe te voegen. Precies de vorm die de dossierrij van 21-08-2026
+ *    beschrijft — elk schakeltje af, en niemand die de keten telt.
+ */
+describe('de ratel op het register', () => {
+  const register = { een: 'reden', twee: 'reden' };
+
+  it('zwijgt als het register precies het plafond is', () => {
+    const uit = beoordeel(['een', 'twee'], register, 2);
+    expect(uit).toMatchObject({ nieuw: [], verdwenen: [], teveel: false, teruim: false });
+  });
+
+  /**
+   * ⚠️ Dit is het gat dat QS8-194 dicht. Zonder plafond is dit geval groen: de
+   *    derde functie is gevonden, geregistreerd, en klaar.
+   */
+  it('wordt rood van een derde rij, ook al staat die netjes in het register', () => {
+    const uit = beoordeel(['een', 'twee', 'drie'], { ...register, drie: 'reden' }, 2);
+
+    expect(uit.nieuw).toEqual([]);
+    expect(uit.verdwenen).toEqual([]);
+    expect(uit.teveel).toBe(true);
+    expect(uit.rijen).toBe(3);
+  });
+
+  /**
+   * ⚠️ De andere kant, en die weegt even zwaar: blijft het plafond staan terwijl
+   *    er een rij af gaat, dan glijdt de volgende onbereikbare functie in de
+   *    vrijgekomen ruimte zonder dat iemand het ziet.
+   */
+  it('wordt ook rood als er een rij áf gaat zonder dat het plafond meezakt', () => {
+    const uit = beoordeel(['een'], { een: 'reden' }, 2);
+
+    expect(uit.teruim).toBe(true);
+    expect(uit.teveel).toBe(false);
+    expect(uit.rijen).toBe(1);
+  });
+
+  it('meldt een onbereikbare functie die niet in het register staat', () => {
+    const uit = beoordeel(['een', 'twee', 'drie'], register, 2);
+    expect(uit.nieuw).toEqual(['drie']);
+  });
+
+  it('meldt een rij waarvan de functie bereikbaar of weg is', () => {
+    const uit = beoordeel(['een'], register, 2);
+    expect(uit.verdwenen).toEqual(['twee']);
+  });
+
+  it('staat vandaag op het plafond dat het script noemt', () => {
+    expect(Object.keys(BEKENDE_ONBEREIKBAAR)).toHaveLength(PLAFOND);
   });
 });

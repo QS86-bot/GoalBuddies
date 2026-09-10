@@ -62,11 +62,23 @@
  *    geen getal dat meezakt. Omhoog is dus onbewaakt, en deze branch liep er
  *    zelf tegenaan: QS8-342 bracht het register van één op twee.
  *
- *    Wat er wél bewaakt is, is de andere richting: een rij die blijft staan
+ *    Wat er wél bewaakt was, is de andere richting: een rij die blijft staan
  *    terwijl de functie bereikbaar of verdwenen is, is rood. Een register dat
  *    blijft staan terwijl de functie verdwenen is, is een lijst die liegt.
  *
- *    Een echte teller erbij staat in QS8-345.
+ * ✅ **Sinds 10-09-2026 is die kant er ook — QS8-194, en dit is nu wél dezelfde
+ *    ratel als `regel15:controle` en `levend:controle`.** `PLAFOND` staat naast
+ *    het register en telt zijn rijen. Een derde rij erbij is rood tot iemand het
+ *    plafond in dezelfde wijziging verhoogt, en een rij eruit is óók rood tot
+ *    het plafond meezakt. Dat tweede is het punt van een ratel: blijft de ruimte
+ *    open staan, dan glijdt de volgende onbereikbare functie erin zonder dat
+ *    iemand het ziet.
+ *
+ *    ⚠️ Het plafond stopt niemand die vastbesloten is — hij staat in hetzelfde
+ *    bestand als het register. Wat hij wél doet is de verhoging in de diff
+ *    zetten, náást de rij en zijn reden. Een register dat stil kan groeien is
+ *    precies de vorm die deze rij van de review-agenda beschrijft: elk
+ *    schakeltje af, en niemand die de keten telt.
  *
  * Draaien: `npm run exports:controle`. Hoort mee in de poort.
  */
@@ -105,6 +117,16 @@ export const BEKENDE_ONBEREIKBAAR = {
     'geldige reden om te bestaan en geen reden om bereikbaar te zijn: hij is een ' +
     'kopie van een databaseregel die onder test staat. Weghalen breekt die toets.',
 };
+
+/**
+ * Zoveel rijen mag `BEKENDE_ONBEREIKBAAR` hebben, en niet meer — QS8-194.
+ *
+ * ⚠️ Alleen verlagen. Wie dit getal verhoogt om een build groen te krijgen, heeft
+ *    de ratel omgedraaid in plaats van gebruikt. Verhogen mag, maar dan staat de
+ *    verhoging in dezelfde wijziging als de rij en zijn reden — en dat is het
+ *    hele verschil met een register dat stil kan groeien.
+ */
+export const PLAFOND = 2;
 
 /** De mappen waar een mens de app binnenkomt: een scherm of een geplande taak. */
 export const WORTELMAPPEN = ['app', join('supabase', 'functions')];
@@ -283,16 +305,44 @@ const UITLEG =
   '  `BEKENDE_ONBEREIKBAAR` in dit script. Zie QS8-150 en onwrikbare regel 18,\n' +
   '  vraag 5.';
 
+/**
+ * De vier uitslagen naast elkaar, als gewone functie zodat hij te voeden is.
+ *
+ * ⚠️ **`teveel` en `teruim` gaan over het régister en niet over `gevonden`.**
+ *    Dat lijkt een detail en is het niet: `nieuw` maakt de controle al rood
+ *    zodra er een onbereikbare functie bij komt, en die roodheid gaat weg door
+ *    een rij toe te voegen. Wat er niet was, is iets dat díe handeling telt.
+ *    Vandaar een plafond op het aantal rijen.
+ *
+ * ⚠️ De typen staan er met zoveel woorden bij. Zonder `@param` leidt TypeScript
+ *    het type van `register` af uit de standaardwaarde — dus letterlijk uit de
+ *    twee namen die er vandaag in staan — en dan weigert hij elk gevoerd
+ *    voorbeeld in de test. Een controle die je niet kunt voeden, kun je niet
+ *    ijken.
+ *
+ * @param {string[]} gevonden de namen die vandaag onbereikbaar zijn
+ * @param {Record<string, string>} [register] `BEKENDE_ONBEREIKBAAR`, of een gevoerde variant
+ * @param {number} [plafond] `PLAFOND`, of een gevoerde variant
+ */
+export function beoordeel(gevonden, register = BEKENDE_ONBEREIKBAAR, plafond = PLAFOND) {
+  const bekend = Object.keys(register).sort();
+  return {
+    nieuw: gevonden.filter((n) => !(n in register)),
+    verdwenen: bekend.filter((n) => !gevonden.includes(n)),
+    rijen: bekend.length,
+    teveel: bekend.length > plafond,
+    teruim: bekend.length < plafond,
+  };
+}
+
 function hoofd() {
   const gevonden = controleer();
-  const bekend = Object.keys(BEKENDE_ONBEREIKBAAR).sort();
+  const { nieuw, verdwenen, rijen, teveel, teruim } = beoordeel(gevonden);
 
-  const nieuw = gevonden.filter((n) => !(n in BEKENDE_ONBEREIKBAAR));
-  const verdwenen = bekend.filter((n) => !gevonden.includes(n));
-
-  if (nieuw.length === 0 && verdwenen.length === 0) {
+  if (nieuw.length === 0 && verdwenen.length === 0 && !teveel && !teruim) {
     console.log(
-      `dode-exports-controle: ${gevonden.length} onbereikbare functie(s), allemaal bekend en met een reden.`,
+      `dode-exports-controle: ${gevonden.length} onbereikbare functie(s), allemaal bekend ` +
+        `en met een reden — precies het plafond van ${PLAFOND}.`,
     );
     return;
   }
@@ -306,6 +356,22 @@ function hoofd() {
       `  ✗ ${naam}() staat in BEKENDE_ONBEREIKBAAR maar is bereikbaar (of weg) — haal de rij eruit`,
     );
   }
+
+  if (teveel) {
+    console.log(
+      `  ✗ ${rijen} rijen in BEKENDE_ONBEREIKBAAR, en het plafond is ${PLAFOND}.\n` +
+        '      Een rij erbij is een bevinding die je wegzet, geen reparatie. Zet PLAFOND\n' +
+        `      in dezelfde wijziging op ${rijen}, zodat de verhoging naast de reden staat.`,
+    );
+  }
+  if (teruim) {
+    console.log(
+      `  ✗ Nog maar ${rijen} rijen, en het plafond staat op ${PLAFOND}.\n` +
+        '      Dat is goed nieuws en toch rood: een ratel die niet meezakt houdt ruimte\n' +
+        `      open voor de volgende. Zet PLAFOND op ${rijen} in dit script.`,
+    );
+  }
+
   console.log(`\n${UITLEG}\n`);
   process.exitCode = 1;
 }
