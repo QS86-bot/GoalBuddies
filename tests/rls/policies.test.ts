@@ -3301,7 +3301,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
    *      hieronder én de gedragstest eronder. Dat tweede is precies wat de kop
    *      van die test al voorspelde — nu gemeten in plaats van vermoed
    *
-   * ⚠️ **Tot 0246 stond hier niets, en dat was het probleem.** De teller gaf
+   * ⚠️ **Tot 0221 stond hier niets, en dat was het probleem.** De teller gaf
    *    voor deze rij groen op grond van een commentaarregel die uitlégt waarom
    *    de grendel weg is — `pg_get_functiondef()` geeft de uitleg mee. Nu leest
    *    hij de gestripte bron, meldt hij deze rij eerlijk als kaal, en staat het
@@ -3342,7 +3342,7 @@ describe.skipIf(!rlsTestsConfigured)('RLS-policies met echte JWTs', () => {
      *    door de trigger heen, en dan zet de kale toewijzing hem terug — met een
      *    foreign key die niet meer klopt.
      *
-     * ⚠️ **Leest de gestripte bron**, om dezelfde reden als 0246 zelf: een vroege
+     * ⚠️ **Leest de gestripte bron**, om dezelfde reden als 0221 zelf: een vroege
      *    uitstap die alleen in commentaar staat, stapt nergens uit.
      */
     it(
