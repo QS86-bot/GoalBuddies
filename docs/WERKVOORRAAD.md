@@ -14,9 +14,9 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**243**.
+**247**.
 
-**Het gat is daarmee negentien bestanden** — `0222` t/m `0240`, van 09-09 en
+**Het gat is daarmee drieëntwintig bestanden** — `0222` t/m `0244`, van 09-09 en
 10-09 en uit elf verschillende issues:
 
 | | | DDL op `storage.objects` |
@@ -39,7 +39,11 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
 | `0238_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
 | `0239_geen_enkele_emmer_heeft_een_update_pad.sql` | QS8-407 | ja |
-| `0240_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
+| `0240_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
+| `0241_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
+| `0242_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
+| `0243_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
+| `0244_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -282,7 +286,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0240` staan in de map: **243 bestanden**,
+Migraties `0001` t/m `0244` staan in de map: **247 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -854,8 +858,9 @@ niet kon, staat in `docs/VOLGENDE-SESSIE.md` bij punt 0.
   harnas tekent ze sinds 23-08 zelf en logt niet meer in
 - `npm run typecheck` en `lint` staan groen; het aantal tests staat in §0 en
   niet hier — twee tellers die elkaar tegenspreken zijn precies waarom die regel
-  bestaat. `tests/rls` telt 34 bestanden; 32 daarvan slaan zonder credentials
-  over (zie §3b)
+  bestaat. 📏 `tests/rls` telt **140** bestanden (gemeten 10-09-2026); zonder
+  credentials én zonder lokale stack slaan ze over — zie §3b, en let op het
+  verschil tussen *overgeslagen* en *groen*
 
 **Wat werkt in de app:** aanmelden met e-mail, de onboarding, doelen aanmaken en
 bijhouden, weekdoelen met vloer en plafond, en sinds EPIC 5 de hele
@@ -1123,7 +1128,7 @@ kan een sessie **niet** zelf oppakken:
 
 | Issue | Waarom niet |
 |---|---|
-| QS8-71, QS8-72 | Vragen een betaalde tier en een nieuw groepszichtbaar oppervlak. ⚠️ Sinds `0126` is de bucket-helft er wél (voor avatars), maar dat maakt deze twee niet vrij: bijlagen bij voltooiingen en chatberichten zijn iets anders dan een profielfoto. Overleg met Quinten |
+| ~~QS8-71, QS8-72~~ | ✅ **allebei gebouwd** — QS8-71 op 09-09 (migraties `0222` t/m `0226`), QS8-72 op 10-09 (`0235` t/m `0243`). De rij hield ze tegen op "een betaalde tier en een nieuw groepszichtbaar oppervlak"; het eerste bleek niet nodig (de gratis tier draagt het met twee dagplafonds per emmer) en het tweede is gewoon gedaan — rij 32 en rij 34 in `docs/decisions/002-domeinregel7-oppervlakken.md` |
 | QS8-86 | Betaalprovider — grens 1 uit de beslisbevoegdheid. **En bewust als laatste (28-08): Quinten wil de app eerst met echte mensen testen. Niet nodig voor de MVP** |
 | QS8-92 | Zit in `src/modules/notifications/`, en dat was het werkgebied van een parallelle sessie |
 | QS8-108 | Vraagt een nieuwe dependency |
@@ -1222,7 +1227,7 @@ Klein, maar het staat nergens anders opgeschreven:
 | Rollover automatisch laten draaien | QS8-49 | De functie werkt en is getest, maar wordt door niets aangeroepen. Zie hieronder |
 | ~~Een verschuldigd commitment verdween met het doel~~ | ENGINEER-REVIEW 19-08 | ✅ gedicht in 0058: `verwijder_doel()` weigert bij `unlocked`, `due` of `resolved` — dezelfde lijst als `commitments_select` |
 | ~~Systeembericht bij een ketting-mijlpaal~~ | QS8-70 | ✅ gebouwd 24-08 in migratie 0070. De ontbrekende definitie is ingevuld: een rond cumulatief aantal schakels van de groep. `chain_milestone` staat op de allowlist én in `SYSTEEM_GEBEURTENISSEN` |
-| Foto's en documenten in de chat | QS8-71, QS8-72 | `phase:v2`. Vraagt een Storage-bucket met policies, en die is er niet — Q-TODO A12 |
+| ~~Foto's en documenten in de chat~~ | QS8-71, QS8-72 | ✅ **allebei gebouwd** (09-09 en 10-09). Twee eigen emmers met vier policies elk: `chatfotos` (`0222`) en `chatdocs` (`0235`). ⚠️ De vorm is een kopie en het veiligheidsargument niet — zie `docs/decisions/2026-09-10-een-document-is-geen-foto.md` §1 |
 | ~~Hetzelfde doel aan meerdere groepen koppelen~~ | QS8-56 | ✅ **gebouwd 27-08**, zónder migratie. `goal_group_links` kon dit vanaf dag één en het gróépsscherm kon het ook — `KoppelDoel` filtert alleen tegen de koppelingen van díé groep, dus wie in twee groepen achter elkaar hetzelfde doel koos, hád het al. Wat ontbrak was het overzicht vanaf het doel, en dat is nu het blok **Gedeeld met** op `app/doel/[id].tsx`. ⚠️ **Onderweg bleek het deadlineverzoek stuk te staan wachten:** het scherm nam `groepen[0]` als de groep die erover besliste, en die lijst had geen `order by`. Elk slot eromheen was dicht en gemeten; de gebruiker had de groep alleen nooit aangewezen. Zie `docs/decisions/2026-08-27-een-doel-in-meer-dan-een-groep.md` §2 |
 | ~~Een groep verlaten~~ | QS8-57 | ✅ **gebouwd 27-08**, migratie 0102. Vertrekken loopt via `verlaat_groep()`; `group_members_delete` staat op `using (false)`, want de laatste-beheerder-eis gaat over de rijen die óverblijven en dat kan RLS niet zien. Onderweg bleek `shares_group_with_goal()` de eigenaar nooit te toetsen: een oud-lid bleef zijn doel, weekdoelen en voltooiingen aan de verlaten groep uitdelen. Zie de kop van 0102 |
 | ~~Rollover opnieuw deployen~~ | Q-TODO A13 | ✅ **gedaan 19-08.** De Supabase CLI blijkt ingelogd (token in de CLI-config, niet in `.env`), dus `supabase functions deploy rollover` kón gewoon. Geverifieerd met een echte aanroep: `401` zonder token, `200` met een service-role-token — de kapotte regex had hier altijd `403` gegeven. Draai `npm run edge:sync` vóór elke deploy; de kopie liep achter |
@@ -1276,10 +1281,11 @@ gebouwd; zie de EPIC-tabel hierboven en §2.
 
 **Wat dit niet is:** geen vrijbrief voor de rest van het label. Wie een ander
 `phase:v2`-issue wil oppakken, vraagt dat opnieuw. Drie ervan staan sowieso op
-slot en dat is ouder dan dit besluit: **QS8-71** en **QS8-72** vragen een
-betaalde tier en een nieuw groepszichtbaar oppervlak (de bucket-helft is sinds
-`0126` gebouwd, maar alleen voor avatars) en
-**QS8-86** vraagt een betaalprovider — dat laatste is grens 1 uit de
+slot, en dat is ouder dan dit besluit. ⚠️ **Twee ervan zijn er inmiddels af:**
+**QS8-71** (09-09) en **QS8-72** (10-09) stonden op "vraagt een betaalde tier en
+een nieuw groepszichtbaar oppervlak", en dat eerste bleek bij het bouwen niet
+nodig — de gratis tier draagt het met twee dagplafonds per emmer. Wat overblijft
+is **QS8-86**: dat vraagt een betaalprovider, en dat is grens 1 uit de
 beslisbevoegdheid in `CLAUDE.md`.
 
 ---
@@ -1345,7 +1351,7 @@ Deze dingen kan een sessie niet zelf oplossen.
 | Branch protection op `main` | Maakt de CI-check "Alles groen" blokkerend | niet gedaan — **kan nu wel**, via `gh api` in plaats van de webinterface |
 | Leaked password protection | Staat uit in Supabase Auth. Eén schakelaar in het dashboard | niet gedaan |
 | Apple/Google OAuth | Providers aanzetten in het Supabase-dashboard | niet gedaan |
-| ~~Storage-bucket~~ | Voor avatars en later bijlagen | ✅ **gedaan 28-08 in migratie `0126`** — voor avatars. Bijlagen bij voltooiingen en chatberichten (QS8-71, QS8-72) blijven open: die vragen een betaalde tier en een nieuw groepszichtbaar oppervlak |
+| ~~Storage-bucket~~ | Voor avatars en later bijlagen | ✅ **gedaan 28-08 in migratie `0126`** — voor avatars. En inmiddels drie emmers erbij: `chatfotos` (`0222`, QS8-71), `bewijsfotos` (`0227`, QS8-391) en `chatdocs` (`0235`, QS8-72). ⚠️ Alle vier privé, alle vier met vier policies; `storage:controle` wordt rood zodra er een emmer zonder policy bij komt |
 | ~~Rollover inplannen~~ | De Edge Function werd door niets aangeroepen | ✅ **gedaan 19-08.** `.github/workflows/rollover.yml` draait hem elk uur; de sleutel staat in GitHub Secrets en niet in de database. Geverifieerd op GitHub: twee runs geslaagd, log toont `HTTP 200` en `{"ok":true,...}` |
 | ~~Rollover opnieuw deployen~~ | Hij roept nu ook `slaap_stille_groepen()` aan (QS8-60), en de repo-versie had een kapotte `Bearer`-regex | ✅ **gedaan 19-08**, geverifieerd met een echte aanroep. De CLI blijkt ingelogd; het access token stond in de CLI-config en niet in `.env`, en dat is de reden dat dit maanden onterecht als geblokkeerd stond |
 | `EXPO_PUBLIC_APP_URL` invullen | Voedt de uitnodigingslink. Leeg betekent: terugval op het productieadres, dus een testomgeving deelt links naar productie | niet gedaan — Q-TODO A14 |

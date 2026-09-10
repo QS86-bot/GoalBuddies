@@ -1320,6 +1320,24 @@ export const nl = {
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
 
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Document toevoegen',
+  'chatdoc.gekozen': 'Document klaar om te versturen',
+  'chatdoc.weghalen': 'Document weghalen',
+  'chatdoc.type_niet_toegestaan': 'Kies een PDF.',
+  'chatdoc.te_groot': 'Dit document is groter dan 5 MB. Kies een kleiner bestand.',
+  'chatdoc.naam_leeg': 'Dit bestand heeft geen bruikbare naam.',
+  'chatdoc.uploaden_mislukt': 'Het document versturen lukte niet. Probeer het zo nog eens.',
+  'chatdoc.rem_bereikt': 'Er zijn vandaag genoeg documenten gedeeld in deze groep. Morgen kan het weer.',
+  'chatdoc.kiezen_mislukt': 'De bestandskiezer ging niet open.',
+  'chatdoc.niet_beschikbaar': 'Dit document is niet meer beschikbaar.',
+  'chatdoc.openen': 'Openen',
+  'chatdoc.openen_label': '{naam} openen, PDF, in een andere app',
+  'chatdoc.openen_mislukt': 'Het document openen lukte niet.',
+  'chatdoc.laden': 'Document openen',
+  'chatdoc.soort_pdf': 'PDF',
+
   // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
   // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
   // anders dan bij een beoordeling.

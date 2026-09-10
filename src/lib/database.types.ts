@@ -276,6 +276,7 @@ export type Database = {
       chat_messages: {
         Row: {
           actor_id: string | null
+          attachment_name: string | null
           attachment_url: string | null
           body: string | null
           created_at: string
@@ -289,6 +290,7 @@ export type Database = {
         }
         Insert: {
           actor_id?: string | null
+          attachment_name?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
@@ -302,6 +304,7 @@ export type Database = {
         }
         Update: {
           actor_id?: string | null
+          attachment_name?: string | null
           attachment_url?: string | null
           body?: string | null
           created_at?: string
@@ -2552,6 +2555,7 @@ export type Database = {
         Returns: {
           actor_id: string
           actor_name: string
+          attachment_name: string
           attachment_url: string
           body: string
           created_at: string
