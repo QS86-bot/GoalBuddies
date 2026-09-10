@@ -7,7 +7,7 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 10-09-2026 (na QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 10-09-2026 (na QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
@@ -36,7 +36,8 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0234_een_dagteller_is_niet_alleen_voor_opslag.sql` | QS8-401 | nee |
 | `0235_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql` | QS8-396 | ja |
 | `0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql` | QS8-392 | nee |
-| `0237_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
+| `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
+| `0238_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
