@@ -761,6 +761,23 @@ npm run build
 controle die niet meegedraaid was: de controle deed precies zijn werk, de poort
 was de inschatting van een mens over zijn eigen werk.
 
+⚠️⚠️ **En CI draait ze sinds 10-09-2026 óók allemaal, uit dezelfde lijst**
+(QS8-417). Daarvóór somde `ci.yml` ze met de hand op: 📏 **26 van de 52** stonden
+in geen enkele workflow, waaronder `schermingang:`, `registerdrift:`, `exports:`
+en `hoofdrun:controle`. Dat liep de verkeerde kant op — een nieuwe grendel stond
+automatisch in de poort (een commando dat een mens typt) en automatisch niet in
+CI (dat bij elke push draait). `scripts/ci-controles.mjs --baan repo|database`
+deelt ze nu in vanuit `package.json` en `HEEFT_DATABASE_NODIG`; wat CI niet kan
+draaien staat mét reden in `ZONDER_CI`, en `cidekking:controle` wordt rood zodra
+er weer een handmatige stap naast komt.
+
+⚠️ **De les eronder is breder dan CI:** de rij van 27-08 die dit al eens
+repareerde stond op *opgelost*, en had **acht van de zeventien** instanties
+opgeruimd zonder het mechanisme. **Een reparatie die de instanties opruimt en het
+mechanisme laat staan, groeit terug — en hij doet dat onder een rij die
+"opgelost" zegt.** Uitleg in
+`docs/decisions/2026-09-10-de-poort-ontdekt-en-ci-somt-op.md`.
+
 ⚠️ **Een controle zonder database is niet groen maar *ongemeten*.** De poort houdt
 die twee uit elkaar en faalt op allebei. `functies:controle` en
 `register:controle` printen "OVERGESLAGEN" en geven daarna exitcode 0; wie alleen
