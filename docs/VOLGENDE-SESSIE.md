@@ -3,13 +3,19 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 10-09-2026, na de merge van QS8-408 (`cfbb342`) — QS8-410.
+> **Laatst bijgewerkt:** 10-09-2026, na de merge van QS8-414 (`72741e9`) — QS8-418.
 > Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
-> lijst en niet deze zin. 📏 Toen dit issue geschreven werd, stonden er **23 merges**
-> op `main` sinds de laatste keer dat dit bestand was aangeraakt, en kwamen
-> vijftien gelande issue-nummers er niet één keer in voor. **Werk dit bij aan het
-> eind van je sessie; er is geen controle die het afdwingt, en met reden — zie de
-> kop van `scripts/docs-controle.mjs`.**
+> lijst en niet deze zin. **Er is geen controle die het bijwerken afdwingt, en met
+> reden — zie de kop van `scripts/docs-controle.mjs`: een controle die proza eist,
+> schrijft het document.**
+>
+> ⚠️ 📏 **Dat bijwerken is twee keer op één dag een eigen issue geworden, en het
+> tweede kwam zes uur na het eerste.** QS8-410 mat **23 merges** achterstand en
+> vijftien gelande issue-nummers die nergens in dit bestand voorkwamen; QS8-418
+> mat er zes uur later **tien**. Dat is de verwachte prijs van het besluit
+> hierboven en geen teken dat het besluit fout was — maar het zegt wél dat *"het
+> eind van je sessie"* bij twee parallelle sessies te laat is. **Werk dit bij aan
+> het eind van elke reeks landingen.**
 >
 > **10-09, punt A: een merge zonder conflict kan je migratie stukmaken, en git
 > zegt daar niets over.** `main` dropte `tel_opslag_upload()` en gaf hem terug
@@ -85,6 +91,44 @@
 > *"Wordt zwaarder als"* intussen is ingetreden — QS8-188 was daar op 10-09 een
 > geval van, drie dagen te laat gezien — en dit bestand bijwerken. Wat níet mag
 > is een tweede branch op een issue dat de andere sessie al heeft.
+>
+> ⚠️ **En er is een derde ding dat mag, en dat leverde later diezelfde dag vier
+> issues op: de controlepas van onwrikbare regel 19.** Niet "rondkijken of er
+> nog iets is", maar één klasse kiezen en hem méten over de hele boom. 📏 Zo is
+> QS8-412 ontstaan: 1772 backtick-geciteerde padverwijzingen geteld, zeventien
+> kapot, negen daarvan een testbestand dat in de bron als grendel wordt opgevoerd
+> en niet bestaat. Een leeg bord is dus niet hetzelfde als een gezonde codebase;
+> het verschil is of je gemeten hebt.
+>
+> **10-09, punt G: een ijking kan rood worden op de vérkeerde grendel, en dan
+> bewaakt hij niets van wat hij belooft.** 📏 De mutatie voor *"`Foto.tsx` bouwt
+> zelf geen URL"* maakte de suite rood — maar op *"heeft de drie standen"*,
+> terwijl de bedoelde toets groen bleef. Oorzaak: de knip die commentaar uit de
+> bron haalt, `\/\/[^\n]*`, eet alles op ná de `//` van een URL. Dezelfde knip
+> stond in twee testbestanden; met `const x = 'https://opslag/x';
+> Linking.openURL(x);` in `Document.tsx` bleef een suite **groen op
+> eenenzestig tests** terwijl het component precies deed wat het belooft nooit te
+> doen. ⚠️ **Kijk dus wélke test omvalt, niet dát er een omvalt** — en behandel
+> de knip die een controle scherp houdt als een grendel op zichzelf.
+>
+> **10-09, punt H: `git checkout -- <bestand>` draait ook je eigen reparatie
+> terug.** Een ijkingsmutatie ongedaan maken in een bestand dat je in dezelfde
+> ronde gerepareerd hebt, herstelt naar `HEAD` en niet naar "zoals het net was".
+> 📏 Kostte twee testrondes bij QS8-414, met een controle die rood stond op een
+> bestand dat al gerepareerd héétte te zijn. Bewaar een kopie (`cp` naar de
+> scratchmap) en herstel daaruit.
+>
+> **10-09, punt I: meet opnieuw, ook — juist — als het issue een getal noemt.**
+> Drie keer op rij op één dag. QS8-413 noemde vijf bestanden voor de
+> uitzonderingsklasse van de idempotentie; het zijn er **14**. QS8-414 noemde één
+> handgebouwde psql-aanroep in de testboom; het zijn er **vijf**, waarvan drie
+> woordelijk dezelfde. QS8-415 noemde regelnummers die na twee merges verschoven
+> waren. Een dossierrij is een momentopname van de dag dat iemand hem schreef.
+>
+> ⚠️ Bij QS8-414 zat het verschil in de zoekvorm en niet in de zorgvuldigheid:
+> `grep "execFileSync('psql'"` vond er één, want vier van de vijf schrijven de
+> aanroep over meerdere regels. **Een regel die je met de hand handhaaft,
+> handhaaf je op de vorm die je toevallig intypt.**
 >
 > Op 09-09 en 10-09 landden er samen **zevenenvijftig** PR's (#323 t/m #387) — de
 > drukste twee dagen van dit project, uit twee sessies naast elkaar. Een lijst
