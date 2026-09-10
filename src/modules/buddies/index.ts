@@ -48,6 +48,7 @@ export {
 } from './chatfoto';
 
 export {
+  CHATDOC_BEWAARDAGEN,
   CHATDOC_BUCKET,
   CHATDOC_GELDIGHEID_S,
   CHATDOC_MAX_BYTES,

@@ -63,7 +63,7 @@ import { metCors } from '../_shared/cors.ts';
  *    deze groepsgroottes kunnen produceren. Wordt hij tóch geraakt, dan meldt de
  *    functie dat; zie de tak hieronder.
  */
-const CHATFOTO_PAS_LIMIET = 500;
+const BIJLAGE_PAS_LIMIET = 500;
 
 interface Profiel {
   id: string;
@@ -690,21 +690,30 @@ async function draaiRollover(auth: string): Promise<Response> {
   }
 
   // ---------------------------------------------------------------------------
-  // De chatfoto's opruimen — QS8-396, migratie 0235
+  // De bijlagen opruimen — QS8-396 (0235) en QS8-408 (0250)
   // ---------------------------------------------------------------------------
   //
   // ⚠️⚠️ **Dit is de helft die SQL níet kan doen, en dat is de hele reden dat het
   //    hier staat.** `delete from storage.objects` haalt de **metadata-rij** weg
   //    en laat het bestand op de opslag staan — een bekende bevinding sinds
-  //    QS8-71. De foto zou dan onleesbaar zijn en tóch bewaard, en dat is precies
-  //    de belofte van dit issue, half. Alleen `storage.remove()` haalt rij én blob
-  //    weg.
+  //    QS8-71. De bijlage zou dan onleesbaar zijn en tóch bewaard, en dat is
+  //    precies de belofte van die issues, half. Alleen `storage.remove()` haalt
+  //    rij én blob weg.
   //
-  //    De database bepaalt daarom **wat** er weg mag (`verlopen_chatfotos()`), en
-  //    deze functie voert het uit. Twee redenen, allebei uit de RPC:
-  //      * `verlopen` — ouder dan `chatfoto_bewaartermijn()`, 21 dagen.
+  //    De database bepaalt daarom **wat** er weg mag (`verlopen_chatfotos()`,
+  //    `verlopen_chatdocs()`), en deze functie voert het uit. Twee redenen,
+  //    allebei uit de RPC's:
+  //      * `verlopen` — ouder dan de bewaartermijn van die emmer, 21 dagen.
   //      * `wees` — geen chatbericht meer, met een uur respijt zodat een upload
   //        die op dít moment verstuurd wordt niet onder handen weggewist wordt.
+  //
+  // ⚠️⚠️ **Eén lus over twee emmers en geen tweede blok, en dát is de plek waar
+  //    duplicatie zou gaan rotten** (QS8-408). De twee RPC's zijn elk vier regels
+  //    SQL met een eigen getal — dat mogen zusterfuncties zijn. De uitvoerende
+  //    helft is dat niet: het aftoppen dat zichzelf meldt, het blokgewijs wissen,
+  //    het doortellen bij een fout en het tellen op de teruggave van `remove()`
+  //    zijn vier grendels die stuk voor stuk uit een bevinding komen. Twee
+  //    kopieën daarvan is twee plekken waar de volgende reparatie er één vergeet.
   //
   // ⚠️ **Hier en niet in een eigen job**, om dezelfde reden als de slapende
   //    groepen en de seizoensrecap hierboven: er is één planning, en een tweede
@@ -712,66 +721,101 @@ async function draaiRollover(auth: string): Promise<Response> {
   //
   // ⚠️ Geen cyclusrekenwerk: eenentwintig dagen is een leeftijd en geen week, dus
   //    dit mag in SQL staan (correctheidsregel 7).
-  let fotosOpgeruimd = 0;
-  let fotosMislukt = 0;
+  // ⚠️⚠️ **De RPC-naam staat hier lettérlijk en komt niet uit de lus, en dat is
+  //    een gemeten reparatie.** 📏 De eerste vorm zette de naam in het
+  //    emmer-object en riep `db.rpc(emmer.rpc, …)` aan. Dat werkt, en het maakte
+  //    `keten:controle` blind: die zoekt naar een letterlijke `.rpc('naam')`, dus
+  //    hij meldde **allebei** de passen als functies zonder aanroeper — ook
+  //    `verlopen_chatfotos()`, die er vóór deze wijziging gewoon een had. Een
+  //    refactor die een grendel uitzet is erger dan de duplicatie die hij
+  //    wegneemt; zelfde klasse als `storage-controle.mjs`, dat om dezelfde reden
+  //    alleen letterlijke bucketnamen vindt.
+  //
+  // ⚠️ Wat de lus deelt, blijft de uitvoerende helft. Alleen het opvrágen is per
+  //    emmer een eigen regel, en dat is precies één ternary.
+  async function verlopenPaden(emmer: 'chatfotos' | 'chatdocs') {
+    return emmer === 'chatfotos'
+      ? await db.rpc('verlopen_chatfotos', { p_limiet: BIJLAGE_PAS_LIMIET })
+      : await db.rpc('verlopen_chatdocs', { p_limiet: BIJLAGE_PAS_LIMIET });
+  }
 
-  const { data: verlopenFotos, error: verlopenFout } = await db.rpc('verlopen_chatfotos', {
-    p_limiet: CHATFOTO_PAS_LIMIET,
-  });
+  const emmers = ['chatfotos', 'chatdocs'] as const;
 
-  if (verlopenFout) {
-    console.error(`verlopen chatfoto's ophalen mislukte: ${verlopenFout.message}`);
-    await meld(new Error("verlopen chatfoto's ophalen mislukte"), 'rollover.chatfotos', {
-      code: 'chatfotos_ophalen_mislukt',
-      sqlstate: verlopenFout.code,
-    });
-  } else {
-    const paden = ((verlopenFotos as { pad: string }[] | null) ?? []).map((rij) => rij.pad);
+  let bijlagenOpgeruimd = 0;
+  let bijlagenMislukt = 0;
+  const misluktPerEmmer: Record<(typeof emmers)[number], number> = {
+    chatfotos: 0,
+    chatdocs: 0,
+  };
+
+  for (const emmer of emmers) {
+    const { data: verlopen, error: verlopenFout } = await verlopenPaden(emmer);
+
+    if (verlopenFout) {
+      console.error(`verlopen ${emmer} ophalen mislukte: ${verlopenFout.message}`);
+      await meld(new Error(`verlopen ${emmer} ophalen mislukte`), 'rollover.bijlagen', {
+        code: 'bijlagen_ophalen_mislukt',
+        emmer,
+        sqlstate: verlopenFout.code,
+      });
+      continue;
+    }
+
+    const paden = ((verlopen as { pad: string }[] | null) ?? []).map((rij) => rij.pad);
 
     // ⚠️⚠️ **De aftopping moet zichzelf melden, anders wijst het signaal de
     //    verkeerde kant op.** Komen er 500 terug, dan waren het er waarschijnlijk
     //    méér, en groeit de achterstand elk uur: de bewaartermijn wordt dan stil
-    //    onwaar terwijl `fotosOpgeruimd` juist hóóg staat. Zonder deze tak is een
-    //    volle emmer niet van een geslaagde ronde te onderscheiden.
-    if (paden.length >= CHATFOTO_PAS_LIMIET) {
-      console.error(`chatfoto-opruimpas zat aan zijn limiet (${paden.length})`);
-      await meld(new Error("chatfoto-opruimpas zat aan zijn limiet"), 'rollover.chatfotos', {
-        code: 'chatfotos_limiet_geraakt',
+    //    onwaar terwijl het opgeruimde aantal juist hóóg staat. Zonder deze tak is
+    //    een volle emmer niet van een geslaagde ronde te onderscheiden.
+    if (paden.length >= BIJLAGE_PAS_LIMIET) {
+      console.error(`opruimpas ${emmer} zat aan zijn limiet (${paden.length})`);
+      await meld(new Error(`opruimpas ${emmer} zat aan zijn limiet`), 'rollover.bijlagen', {
+        code: 'bijlagen_limiet_geraakt',
+        emmer,
         count: paden.length,
       });
     }
 
-    if (paden.length > 0) {
-      // ⚠️ **In blokken van honderd, en dat is geen netheid.** `remove()` zet elk
-      //    pad in de body van één verzoek; vijfhonderd paden van bijna honderd
-      //    tekens is een aanvraag die de gateway mag afkappen, en dan is het
-      //    verschil tussen "deels gelukt" en "mislukt" niet te zien.
-      for (let i = 0; i < paden.length; i += 100) {
-        const blok = paden.slice(i, i + 100);
-        const { data: weg, error: wisFout } = await db.storage.from('chatfotos').remove(blok);
+    // ⚠️ **In blokken van honderd, en dat is geen netheid.** `remove()` zet elk
+    //    pad in de body van één verzoek; vijfhonderd paden van bijna honderd
+    //    tekens is een aanvraag die de gateway mag afkappen, en dan is het
+    //    verschil tussen "deels gelukt" en "mislukt" niet te zien.
+    for (let i = 0; i < paden.length; i += 100) {
+      const blok = paden.slice(i, i + 100);
+      const { data: weg, error: wisFout } = await db.storage.from(emmer).remove(blok);
 
-        if (wisFout) {
-          // ⚠️ **Doortellen en niet afbreken.** Eén onwisbaar pad mag de rest van
-          //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
-          //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
-          fotosMislukt += blok.length;
-          console.error(`chatfoto's wissen mislukte (${blok.length} paden): ${wisFout.message}`);
-          continue;
-        }
-
-        // ⚠️ De teruggave van `remove()` en niet `blok.length`: de Storage-API
-        //    geeft de objecten terug die hij daadwerkelijk weghaalde, en een pad
-        //    dat er niet meer was telt dan niet mee. Zonder dit verschil is een
-        //    pas die niets doet niet van een geslaagde te onderscheiden.
-        fotosOpgeruimd += (weg ?? []).length;
+      if (wisFout) {
+        // ⚠️ **Doortellen en niet afbreken.** Eén onwisbaar pad mag de rest van
+        //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
+        //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
+        bijlagenMislukt += blok.length;
+        misluktPerEmmer[emmer] += blok.length;
+        console.error(`${emmer} wissen mislukte (${blok.length} paden): ${wisFout.message}`);
+        continue;
       }
+
+      // ⚠️ De teruggave van `remove()` en niet `blok.length`: de Storage-API
+      //    geeft de objecten terug die hij daadwerkelijk weghaalde, en een pad
+      //    dat er niet meer was telt dan niet mee. Zonder dit verschil is een
+      //    pas die niets doet niet van een geslaagde te onderscheiden.
+      bijlagenOpgeruimd += (weg ?? []).length;
     }
   }
 
-  if (fotosMislukt > 0) {
-    await meld(new Error("chatfoto's wissen mislukte"), 'rollover.chatfotos', {
-      code: 'chatfotos_wissen_mislukt',
-      count: fotosMislukt,
+  // ⚠️⚠️ **Per emmer melden en niet één keer met een totaal.** 📏 De eerste vorm
+  //    stuurde `{ code, count }` en de toelichting bij de uitvoer beweerde dat de
+  //    melding de emmer meedroeg — dat deed hij niet: de emmer stond alleen in de
+  //    `console.error`, en die gaat niet naar Sentry. Gevolg: een pas die alléén
+  //    op `chatdocs` vastloopt was uit geen enkel gestructureerd signaal af te
+  //    leiden. Dat is de "één → meer dan één"-verschuiving van regel 18 vraag 6,
+  //    en de aggregatie is precies de plek waar hij lekt.
+  for (const emmer of emmers) {
+    if (misluktPerEmmer[emmer] === 0) continue;
+    await meld(new Error(`${emmer} wissen mislukte`), 'rollover.bijlagen', {
+      code: 'bijlagen_wissen_mislukt',
+      emmer,
+      count: misluktPerEmmer[emmer],
     });
   }
 
@@ -812,12 +856,18 @@ async function draaiRollover(auth: string): Promise<Response> {
       alsnogGoedgekeurd: (alsnogGoedgekeurd as number | null) ?? 0,
       // ⚠️ Om dezelfde reden als `recaps`: een job zonder scherm heeft alleen zijn
       //    uitvoer, en de bewaartermijn is een belofte aan de gebruiker. Blijft dit
-      //    getal op nul staan terwijl er wél foto's ouder dan 21 dagen zijn, dan
+      //    getal op nul staan terwijl er wél bijlagen ouder dan 21 dagen zijn, dan
       //    draait de pas niet — en dat is niet te zien aan de app.
-      fotosOpgeruimd,
+      //
+      // ⚠️ **Eén getal over beide emmers sinds QS8-408, en dat is een keuze met
+      //    een prijs:** een pas die alleen op `chatdocs` vastloopt, is aan dit
+      //    getal niet te zien. Wat dat wél laat zien is `bijlagenMislukt` plus de
+      //    meldingen eronder, en díé gaan sinds de securityronde **per emmer** —
+      //    de eerste vorm beweerde dat hier en deed het niet.
+      bijlagenOpgeruimd,
       // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan zijn er paden die de
       //    Storage-API niet kwijt wil en blijft er dus meer bewaard dan beloofd.
-      fotosMislukt,
+      bijlagenMislukt,
     }),
     { headers: { 'Content-Type': 'application/json' } },
   );
