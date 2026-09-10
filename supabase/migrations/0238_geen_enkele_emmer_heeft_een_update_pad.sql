@@ -1,4 +1,4 @@
--- 0237_geen_enkele_emmer_heeft_een_update_pad.sql — een lid kan een object van
+-- 0238_geen_enkele_emmer_heeft_een_update_pad.sql — een lid kan een object van
 -- de ene emmer naar de andere verhuizen en zo de grenzen van de doelemmer omzeilen (QS8-407)
 --
 -- ROLLBACK-PAD:

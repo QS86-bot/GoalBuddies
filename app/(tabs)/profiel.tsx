@@ -25,10 +25,16 @@ import {
   zetMeldingenUit,
   type Meldingenstand,
   type Toon,
+  MELDINGSOORTEN,
+  VOORKEUR_PER_SOORT,
+  type Melding,
+  meldingsoortVelden,
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
-import { opmaaktaal, t, taal, zetTaal, type Taal } from '@/shared/i18n';
+import { opmaaktaal, t, taal, zetTaal, type Taal,
+  type Sleutel,
+} from '@/shared/i18n';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
 import { apparaatTijdzone, toonTijd, type Weekday } from '@/shared/time';
 import {
@@ -157,6 +163,8 @@ export default function Profiel() {
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
+
+            <MeldingsoortenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
 
             <ThemaKeuze />
 
@@ -793,6 +801,115 @@ function HerinneringInstelling({
  *    knop hier zou hetzelfde twee keer doen. Deze knop hoort bij web push, waar
  *    de toestemming per RFC uit een echte klik moet komen.
  */
+/**
+ * De tekstsleutel per soort.
+ *
+ * ⚠️ **Exhaustief getypeerd over `Melding` mínus `nudge`, en dat is met opzet
+ *    geen losse lijst.** Komt er een zesde soort bij, dan is een ontbrekende rij
+ *    hier een typefout en geen scherm dat er stilletjes één mist. Zelfde
+ *    gedachte als `VOORKEUR_PER_SOORT`, één laag hoger.
+ */
+const MELDINGSOORT_TEKST: Readonly<Record<Exclude<Melding, 'nudge'>, Sleutel>> = {
+  approval_request: 'meldingsoort.approval_request',
+  approval_received: 'meldingsoort.approval_received',
+  cycle_summary: 'meldingsoort.cycle_summary',
+  commitment_witness: 'meldingsoort.commitment_witness',
+};
+
+/**
+ * Eén schakelaar, en hij toont nooit een stand die niet opgeslagen is.
+ *
+ * ⚠️ **Geen optimistic update.** De andere kaarten op dit scherm doen het ook
+ *    niet, en de reden staat bij `Meldingen`: een scherm dat "aan" toont terwijl
+ *    de opslag mislukte, liegt tegen de gebruiker over iets dat hij later niet
+ *    zal krijgen. De waarde komt uit het opgeslagen profiel en verandert pas als
+ *    de database het bevestigt.
+ */
+function MeldingsoortRij({
+  sleutel,
+  aan,
+  bezig,
+  onZet,
+}: {
+  readonly sleutel: Sleutel;
+  readonly aan: boolean;
+  readonly bezig: boolean;
+  readonly onZet: (nieuw: boolean) => void;
+}) {
+  return (
+    <Choice
+      label={t(sleutel)}
+      opties={[
+        { waarde: 'aan', label: t('profiel.aan') },
+        { waarde: 'uit', label: t('profiel.uit') },
+      ]}
+      waarde={aan ? 'aan' : 'uit'}
+      onKies={(v) => onZet(v === 'aan')}
+      disabled={bezig}
+    />
+  );
+}
+
+/**
+ * Per meldingsoort een schakelaar — QS8-92, criterium 1.
+ *
+ * ⚠️ **`nudge` staat hier niet bij, en de uitlegzin zegt waarom.** Die schakelaar
+ *    is `HerinneringInstelling` hierboven, met zijn eigen tijd en toon. Zonder die
+ *    zin lijkt deze lijst incompleet en gaat iemand een vijfde rij toevoegen —
+ *    en dan staat hetzelfde feit op twee plekken (QS8-125).
+ *
+ * ⚠️ **Direct opslaan en geen bewaarknop.** `HerinneringInstelling` heeft er één
+ *    omdat de tijd vrije tekst is die je halverwege kunt typen. Een schakelaar is
+ *    een gesloten keuze — zelfde vorm als `TaalInstelling` en `TijdzoneInstelling`.
+ */
+function MeldingsoortenInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function zet(soort: Exclude<Melding, 'nudge'>, aan: boolean) {
+    setBezig(soort);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, meldingsoortVelden(soort, aan));
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(null);
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('meldingsoort.titel')}</Subheading>
+      <Body muted>{t('meldingsoort.uitleg')}</Body>
+
+      {MELDINGSOORTEN.filter((s): s is Exclude<Melding, 'nudge'> => s !== 'nudge').map((soort) => {
+        const kolom = VOORKEUR_PER_SOORT[soort];
+        return (
+          <MeldingsoortRij
+            key={soort}
+            sleutel={MELDINGSOORT_TEKST[soort]}
+            aan={profiel[kolom] !== false}
+            bezig={bezig === soort}
+            onZet={(nieuw) => void zet(soort, nieuw)}
+          />
+        );
+      })}
+
+      <Caption>{t('meldingsoort.getuige_uitleg')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 function Meldingen({ userId }: { readonly userId: string }) {
   const sleutel = clientEnv().vapidPublicKey;
   const [stand, setStand] = useState<Meldingenstand>(() => huidigeMeldingenstand(sleutel));
