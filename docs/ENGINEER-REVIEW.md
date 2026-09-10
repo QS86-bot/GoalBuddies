@@ -38,6 +38,35 @@ Alleen dan kan de controle zien dat hij klaar is; "gedeeltelijk opgelost" of
 alleen wat er op de dag van schrijven werd gedacht. Dat is geen diskwalificatie,
 maar het is wel iets anders dan een gemeten bevinding.
 
+### Dit document is de bron; Linear is de spiegel — QS8-169
+
+Elke open dossierrij heeft een eigen Linear-issue met het label `review:november`,
+zodat Quinten ze op het bord kan teruglezen. **De volledige redenering, de
+meetgeschiedenis en de `Wordt zwaarder als:`-voorwaarde staan hier** en niet daar;
+`npm run review:controle` bewaakt alleen deze kant.
+
+⚠️⚠️ **De index van die issues is het lábel en nooit een lijst.** Er stond tot
+10-09-2026 een met de hand bijgehouden opsomming van 47 issuenummers in QS8-169,
+en die was 📏 **voor 37 van de 47 onwaar** — die stonden allang op Done. Een
+lijst die per gesloten issue met de hand bijgewerkt moet worden, is na één
+werkweek geen index meer maar een val: hij leest als "dit staat nog open" en dat
+klopt dan voor één op de vijf regels.
+
+Dat is dezelfde fout als QS8-125, en het antwoord is hetzelfde: **haal de tweede
+plek weg in plaats van hem bij te werken.** Wil je weten wat er openstaat, filter
+dan in Linear op `review:november` — dat kan per definitie niet verlopen.
+
+⚠️ **Wat een script hier níet kan.** Deze controle draait in de poort en in CI en
+heeft geen Linear-toegang, dus dat een dossierrij en zijn issue uiteenlopen is van
+hier uit onzichtbaar. Vandaar dat de duplicatie weg moet en niet bewaakt wordt: de
+enige vorm die dit project vertrouwt is er een die niet kán verlopen. Wat er wél
+bewaakt wordt is deze kant — de risicokolom en de `Wordt zwaarder als:`-regel.
+
+⚠️ **Sluit je een bevinding af, werk dan de rij hier bij** (✅ plus het
+migratienummer) **en sluit het issue.** Doe je alleen het tweede, dan blijft deze
+lijst zeggen dat het openstaat — en dat is precies de klasse die het kopje
+hierboven beschrijft.
+
 **Stand op 27-08-2026:** elke open rij boven niveau Laag draagt een stempel. De
 Laag-rijen dragen in plaats daarvan hun eigen `**Wordt zwaarder als:** …`, wat
 dezelfde functie heeft: het zegt wanneer je opnieuw moet kijken.
