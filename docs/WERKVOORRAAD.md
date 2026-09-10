@@ -7,16 +7,16 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 10-09-2026 (na QS8-406; daarvóór na QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 10-09-2026 (na QS8-92; daarvóór QS8-392 en QS8-393; daarvóór QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**247**.
+**248**.
 
-**Het gat is daarmee drieëntwintig bestanden** — `0222` t/m `0244`, van 09-09 en
+**Het gat is daarmee vierentwintig bestanden** — `0222` t/m `0245`, van 09-09 en
 10-09 en uit elf verschillende issues:
 
 | | | DDL op `storage.objects` |
@@ -39,11 +39,12 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
 | `0238_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
 | `0239_geen_enkele_emmer_heeft_een_update_pad.sql` | QS8-407 | ja |
-| `0241_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
-| `0242_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
-| `0243_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
-| `0244_stille_uren.sql` | QS8-406 | nee |
+| `0240_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
+| `0241_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
+| `0242_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
 | `0243_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
+| `0244_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
+| `0245_stille_uren.sql` | QS8-406 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -62,9 +63,9 @@ zag, staat in `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
 gemeten in plaats van aangenomen.** `0222` valt om op
 `ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
 `supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. Zes van de zeventien doen DDL op
-die tabel (`0222`, `0225`, `0227`, `0228`, `0233` en `0235` — zie de kolom
-hierboven); de andere elf zouden op zichzelf wél gaan, ook `0224` en `0226`, die
+die rol — `set role` geeft *permission denied*. Zeven van de negentien doen DDL op
+die tabel (`0222`, `0225`, `0227`, `0228`, `0233`, `0235` en `0239` — zie de kolom
+hierboven); de andere twaalf zouden op zichzelf wél gaan, ook `0224` en `0226`, die
 `storage.objects` alleen ín een functielichaam noemen en hem niet bezitten. Maar
 `0222` is de eerste van de reeks, **dus stopt hij daar**. Ze alsnog toepassen
 slaat een gat in het register, en dat is de duurdere kant
@@ -286,7 +287,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0244` staan in de map: **247 bestanden**,
+Migraties `0001` t/m `0245` staan in de map: **248 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->

@@ -1,4 +1,4 @@
--- 0244_stille_uren.sql — een venster waarin een gebruiker geen meldingen
+-- 0245_stille_uren.sql — een venster waarin een gebruiker geen meldingen
 -- ontvangt (QS8-406, tweede criterium van QS8-92)
 --
 -- ROLLBACK-PAD:
