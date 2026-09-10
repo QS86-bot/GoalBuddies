@@ -19,8 +19,7 @@ import {
   systeemberichtTekst,
   vouwSysteemberichten,
   type ChatRegelItem,
-  CHATDOC_BEWAARDAGEN,
-  CHATFOTO_BEWAARDAGEN,
+  BIJLAGE_BEWAARDAGEN,
   soortBijlage,
   soortUitPad,
   stuurBericht,
@@ -594,17 +593,15 @@ function Bijlageknoppen({ keuze }: { readonly keuze: Chatbijlagekeuze }) {
            is. Het is bovendien de eerlijke helft van dezelfde belofte: de zin die
            straks in de plaats van de bijlage staat, noemt hetzelfde getal.
 
-        ⚠️ **Sinds QS8-408 ook bij een document.** Hier stond dat de zin alléén
-           bij een foto hoorde, omdat de opruimpas `chatdocs` niet dekte — dat
-           was waar en is het niet meer: migratie 0250 geeft documenten een eigen
-           pas en een eigen termijn. Twee zinnen en twee constanten, want het
-           zijn twee keuzes die uiteen mogen lopen.
+        ⚠️ **Sinds QS8-408 ook bij een document, en sinds QS8-411 met dezelfde
+           zin.** Hier stond eerst dat de zin alléén bij een foto hoorde (de
+           opruimpas dekte `chatdocs` niet), en daarna dat het er twee waren met
+           elk een eigen constante. Dat tweede was een afwijking van een besluit
+           dat er al lag: **één termijn, één constante, en één sleutel waar de
+           zin voor beide klopt.** Deze zin gaat over de server en niet over wat
+           je koos, dus hij klopt voor beide.
       */}
-      <Caption>
-        {gekozen.soort === 'foto'
-          ? t('chatfoto.bewaartermijn', { dagen: CHATFOTO_BEWAARDAGEN })
-          : t('chatdoc.bewaartermijn', { dagen: CHATDOC_BEWAARDAGEN })}
-      </Caption>
+      <Caption>{t('bijlage.bewaartermijn', { dagen: BIJLAGE_BEWAARDAGEN })}</Caption>
       <Button variant="stil" block onPress={keuze.haalWeg}>
         {gekozen.soort === 'foto' ? t('chatfoto.weghalen') : t('chatdoc.weghalen')}
       </Button>

@@ -29,7 +29,7 @@
  *    | I | de `limit` weg | "houdt zich aan het limiet dat je meegeeft" |
  *    | J | `grant execute on verlopen_chatfotos to authenticated` | "houdt verlopen_chatfotos weg bij een ingelogde gebruiker" |
  *    | K | `wis_chatfotos_van_vertrekker()` terug naar 0224, dus mét de `delete from storage.objects` | "laat de foto van een verwijderd account als wees staan in plaats van als blob" |
- *    | L | `chatfoto_bewaartermijn()` op 30 dagen terwijl de app 21 zegt | "noemt in de app dezelfde termijn als de database aanhoudt" |
+ *    | L | `bijlage_bewaartermijn()` op 30 dagen terwijl de app 21 zegt | "noemt in de app dezelfde termijn als de database aanhoudt" |
  *
  *    ⚠️ **G en H zijn twee mutaties en geen een.** De RPC heeft twee redenen, en
  *       een ijking die er één weghaalt terwijl de ander het geval ook vindt, ijkt
@@ -40,7 +40,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { CHATFOTO_BEWAARDAGEN } from '@/shared/bewaartermijn';
+import { BIJLAGE_BEWAARDAGEN } from '@/shared/bewaartermijn';
 
 import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
 
@@ -155,13 +155,13 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0235)', () => {
   it('bewaart eenentwintig dagen', () => {
     // ⚠️ Het besluit van Quinten op 09-09-2026, op één plek. Een tweede getal in
     //    de meldingstekst of in de opruimpas is een tweede belofte.
-    expect(psql('select public.chatfoto_bewaartermijn()')).toBe('21 days');
+    expect(psql('select public.bijlage_bewaartermijn()')).toBe('21 days');
   });
 
   it('noemt in de app dezelfde termijn als de database aanhoudt', () => {
-    // ⚠️⚠️ **De naad, en niet een van de twee onderdelen.** `CHATFOTO_BEWAARDAGEN`
+    // ⚠️⚠️ **De naad, en niet een van de twee onderdelen.** `BIJLAGE_BEWAARDAGEN`
     //    staat in de zin die de gebruiker ziét waar zijn foto stónd;
-    //    `chatfoto_bewaartermijn()` bepaalt wat de opruimpas dóet. Allebei kunnen
+    //    `bijlage_bewaartermijn()` bepaalt wat de opruimpas dóet. Allebei kunnen
     //    op zichzelf kloppen terwijl het scherm 30 belooft en de server na 21
     //    dagen wist — en dan is er geen enkele test die rood wordt. Dit is de
     //    eerste van de zes vragen bij onwrikbare regel 18: waar knopen twee
@@ -171,9 +171,9 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0235)', () => {
     //    `21` in deze test: dan zou dit geval alleen zeggen dat ik hier hetzelfde
     //    getal heb overgetypt.
     const uitDb = psql(
-      `select extract(day from public.chatfoto_bewaartermijn())::integer`,
+      `select extract(day from public.bijlage_bewaartermijn())::integer`,
     );
-    expect(uitDb).toBe(String(CHATFOTO_BEWAARDAGEN));
+    expect(uitDb).toBe(String(BIJLAGE_BEWAARDAGEN));
   });
 
   // -------------------------------------------------------------------------
@@ -314,7 +314,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een chatfoto (0235)', () => {
 
   it.each([
     ['verlopen_chatfotos', 'select * from public.verlopen_chatfotos(1)'],
-    ['chatfoto_bewaartermijn', 'select public.chatfoto_bewaartermijn()'],
+    ['bijlage_bewaartermijn', 'select public.bijlage_bewaartermijn()'],
   ])('houdt %s weg bij een ingelogde gebruiker', (_naam, sql) => {
     // ⚠️ Onwrikbare regel 4: `revoke ... from public, anon` houdt precies de rol
     //    over waaronder iedere ingelogde gebruiker draait. Dit zijn `security
