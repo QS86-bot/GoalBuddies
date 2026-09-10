@@ -7,25 +7,34 @@
 > Bijwerken is onderdeel van het werk. Sluit je een issue af, werk dan ook dit
 > bestand bij — anders begint de volgende sessie met verouderde informatie.
 
-**Laatst bijgewerkt:** 09-09-2026 (na QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
+**Laatst bijgewerkt:** 10-09-2026 (na QS8-396 en QS8-402; daarvóór QS8-404, QS8-399, QS8-400 en QS8-401; daarvóór QS8-403, QS8-140 en QS8-320; daarvóór QS8-243 en QS8-220; daarvóór QS8-314; daarvóór QS8-147, QS8-174, QS8-191, QS8-297, QS8-298, QS8-299, QS8-303 en QS8-304; daarvóór QS8-287, QS8-288, QS8-289 en QS8-291;
 daarvóór QS8-266, QS8-202 en QS8-196, en het toepassen van `0139` t/m `0149` op
 productie in twee rondes)
 
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**229**.
+**238**.
 
-**Het gat is daarmee vijf bestanden**, alle vijf van 09-09 en alle vijf uit
-QS8-71 (PR #352):
+**Het gat is daarmee veertien bestanden** — `0222` t/m `0235`, alle veertien
+van 09-09 en uit zes verschillende issues:
 
-| | |
-| -- | -- |
-| `0222_een_foto_hoort_bij_een_groep.sql` | QS8-71 |
-| `0223_een_bijlage_wijst_naar_deze_groep.sql` | QS8-71 |
-| `0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql` | QS8-71 |
-| `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 |
-| `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 |
+| | | DDL op `storage.objects` |
+| -- | -- | -- |
+| `0222_een_foto_hoort_bij_een_groep.sql` | QS8-71 (PR #352) | ja |
+| `0223_een_bijlage_wijst_naar_deze_groep.sql` | QS8-71 | nee |
+| `0224_een_chatfoto_overleeft_zijn_eigenaar_niet.sql` | QS8-71 | nee |
+| `0225_een_pad_heeft_een_canonieke_vorm.sql` | QS8-71 | ja |
+| `0226_een_plafond_per_lid_naast_dat_van_de_groep.sql` | QS8-71 | nee |
+| `0227_een_bewijsfoto_hoort_bij_een_weekdoel.sql` | QS8-391 | ja |
+| `0228_een_rem_per_uploader_op_bewijsfotos.sql` | QS8-391 | ja |
+| `0229_een_bewijsfoto_wijst_naar_zijn_eigen_voltooiing.sql` | QS8-391 | nee |
+| `0230_een_bewijsfoto_gaat_mee_met_zijn_eigenaar.sql` | QS8-391 | nee |
+| `0231_de_bewijseis_kent_de_bijlage_weer.sql` | QS8-391 | nee |
+| `0232_de_vingerafdruk_kent_de_handtekening.sql` | QS8-398 | nee |
+| `0233_een_dagteller_die_een_delete_overleeft.sql` | QS8-399 | ja |
+| `0234_een_dagteller_is_niet_alleen_voor_opslag.sql` | QS8-401 | nee |
+| `0235_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql` | QS8-396 | ja |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -33,14 +42,23 @@ intussen op `main`. Dat is de vorm van QS8-318 nog een keer: **een regel over de
 achterstand veroudert terwijl je hem opschrijft**, en de enige stand die klopt is
 de gemeten stand.
 
+⚠️⚠️ **En hier stond tot 09-09 21:45 "vijf bestanden", en toen waren het er
+dertien** — `0227` t/m `0234` landden ná de meting van 16:10. **Dat is dezelfde
+alinea die twee waarschuwingen lager vertelt dat hij dit al eens gedaan heeft.**
+Sinds QS8-404 is het geen zin meer: `docs:controle` telt de map en het gat na en
+wordt rood zodra deze regel eroverheen loopt. Waarom de controle dit tot dan niet
+zag, staat in `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
+
 ⚠️⚠️ **Dit gat is niet vanuit een bouwsessie te dichten, en dat is op 09-09
 gemeten in plaats van aangenomen.** `0222` valt om op
 `ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
 `supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. `0222` en `0225` maken policies
-en een trigger op die tabel; `0223`, `0224` en `0226` zouden op zichzelf wél
-gaan, maar `0222` is de eerste van de vijf, **dus stopt de reeks daar**. Ze
-alsnog toepassen slaat een gat in het register, en dat is de duurdere kant
+die rol — `set role` geeft *permission denied*. Zes van de veertien doen DDL op
+die tabel (`0222`, `0225`, `0227`, `0228`, `0233` en `0235` — zie de kolom
+hierboven); de andere acht zouden op zichzelf wél gaan, ook `0224` en `0226`, die
+`storage.objects` alleen ín een functielichaam noemen en hem niet bezitten. Maar
+`0222` is de eerste van de reeks, **dus stopt hij daar**. Ze alsnog toepassen
+slaat een gat in het register, en dat is de duurdere kant
 (`docs/decisions/2026-09-08-het-gat-is-erger-dan-de-botsing.md`).
 
 ⚠️ **Dat corrigeert een regel die sinds 02-09 in QS8-243 stond:** *"een
@@ -1077,7 +1095,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 12 | **EPIC 12 — Risico-radar** (QS8-17) | Rekent op cyclusgeschiedenis, dus laat | ✅ af (20-08). `risk_status` is vóór het bouwen naar een eigen eigenaar-only tabel verhuisd |
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
-| 15 | **QS8-394 — hoe privé is een gedeelde foto** | Losgetrokken uit de doorlichting van 09-09. Drie stappen, en ze staan los van elkaar: QS8-395 (metadata eraf vóór het uploaden, In Review), QS8-396 (bewaartermijn van 21 dagen + de leesgrens aan het bericht, migratie 0232), QS8-397 (end-to-end-versleuteling — **een besluit van Quinten**, sleutelbeheer, niet op eigen gezag te bouwen). ⚠️ De bewaartermijn leunt op de uurlijkse rollover uit `.github/workflows/rollover.yml`; het restrisico staat in §6 en in `ENGINEER-REVIEW.md`. QS8-396 en QS8-399 zijn op 09-09 samengevoegd op één branch — de teller is die van 399, zie QS8-402 | 1 en 2 gebouwd, 3 wacht op Quinten |
+| 15 | **QS8-394 — hoe privé is een gedeelde foto** | Losgetrokken uit de doorlichting van 09-09. Drie stappen, en ze staan los van elkaar: QS8-395 (metadata eraf vóór het uploaden, In Review), QS8-396 (bewaartermijn van 21 dagen + de leesgrens aan het bericht, migratie 0235), QS8-397 (end-to-end-versleuteling — **een besluit van Quinten**, sleutelbeheer, niet op eigen gezag te bouwen). ⚠️ De bewaartermijn leunt op de uurlijkse rollover uit `.github/workflows/rollover.yml`; het restrisico staat in §6 en in `ENGINEER-REVIEW.md`. QS8-396 en QS8-399 zijn op 09-09 samengevoegd op één branch — de teller is die van 399, zie QS8-402 | 1 en 2 gebouwd, 3 wacht op Quinten |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
