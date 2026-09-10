@@ -787,6 +787,21 @@ uitzondering hoort in het register in `tests/scripts/psql-verbinding.test.ts`,
 mét reden. Uitleg in
 `docs/decisions/2026-09-04-geen-database-was-de-verkeerde-reden.md`.
 
+⚠️⚠️ **En dat geldt sinds 10-09-2026 ook voor de testboom** (QS8-414). Dat
+register keek alleen in `scripts/`; de tests roepen `psql` óók aan. 📏 Toen de
+controle er kwam meldde hij er **vijf**, waarvan drie een woordelijke kopie van
+`psqlMetInvoer()` — de vorm van QS8-270 nog een keer. Een handmatige `grep` had
+er één gevonden: vier van de vijf schrijven `execFileSync(` en `'psql'` op
+verschillende regels. **Een regel die je met de hand handhaaft, handhaaf je op
+de vorm die je toevallig intypt.**
+
+De regel is niet *"gebruik `psqlArgumenten()`"* maar *"bouw je eigen aanroep
+niet"*. De twee bomen mogen een eigen standaard hebben — `scripts/` zet `-h`/`-p`
+in de argumenten, `tests/` haalt ze uit `PSQL_OMGEVING` — zolang ze er elk maar
+één hebben. In `tests/` is dat `psqlBasisArgumenten()` uit
+`tests/rls/psql-stack.ts`. Uitleg in
+`docs/decisions/2026-09-10-het-register-keek-de-andere-kant-op.md`.
+
 ⚠️ **Een nieuwe migratie begint met `npm run migratie:nieuw -- "naam"`.** Die
 kijkt naar élke branch die de remote kent en niet alleen naar je eigen map, en hij
 **fetcht zelf** (sinds 01-09-2026, QS8-247). Migratienummers zijn vier keer

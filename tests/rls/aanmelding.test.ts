@@ -36,7 +36,7 @@ import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, stackBeschikbaarOfFaal } from './psql-stack';
+import { PSQL_OMGEVING, psqlBasisArgumenten, stackBeschikbaarOfFaal } from './psql-stack';
 import { proefId } from './proefid';
 
 const TEST_TIMEOUT = 30_000;
@@ -94,13 +94,15 @@ function meldAan(
 
   let uit: string;
   try {
+    // ⚠️ **De gedeelde lijst plus drie variabelen, en niet een eigen lijst.**
+    //    Een `-v` erbij is een reden om een vlag te variëren; het is geen reden
+    //    om `-U`, `-d`, `-q` en `-w` opnieuw te typen. Dat onderscheid is sinds
+    //    QS8-414 een grendel in `tests/scripts/psql-verbinding.test.ts`.
     uit = execFileSync(
       'psql',
       [
-        '-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w',
-        '-v', 'ON_ERROR_STOP=1',
+        ...psqlBasisArgumenten(),
         '-v', `id=${id}`, '-v', `email=${email}`, '-v', `meta=${metadata}`,
-        '-tA',
       ],
       // ⚠️ **Via stdin en niet via `-c`.** Gemeten: met `-c` laat psql `:'id'`
       //    letterlijk staan en krijg je `syntax error at or near ":"`. Variabelen

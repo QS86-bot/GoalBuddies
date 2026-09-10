@@ -1,8 +1,7 @@
-import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Een definer-functie die `authenticated` mag aanroepen, toetst de aanroeper —
@@ -58,11 +57,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *    sessie, de `begin` is meteen weer weg, en de proeffunctie blijft staan.
  */
 function inEenSessie(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w', '-v', 'ON_ERROR_STOP=1', '-tA'],
-    { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
-  ).trim();
+  return psqlMetInvoer(sql).trim();
 }
 
 /** Leest één `sleutel=waarde`-regel uit de uitvoer van een sessie. */

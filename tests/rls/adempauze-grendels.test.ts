@@ -34,7 +34,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { MAX_ADEMPAUZE_CYCLI } from '../../src/modules/goals/adempauze-periode';
 
-import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { PSQL_OMGEVING, psql, psqlBasisArgumenten, stackBeschikbaarOfFaal } from './psql-stack';
 import { proefId } from './proefid';
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -70,10 +70,6 @@ const OVERLAPPEND_BEGIN = "(date_trunc('week', current_date) + interval '14 days
  * uitrekent, zou bij een andere sleutel in de functie nog steeds groen zijn.
  */
 const SLEUTEL = `hashtextextended('${DOEL}'::text, 0)`;
-
-function psqlArgs(): string[] {
-  return ['-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w', '-tA'];
-}
 
 /** Voert SQL uit als de testgebruiker en geeft de kale uitvoer terug. */
 function alsGebruiker(sql: string): string {
@@ -114,7 +110,7 @@ describe.skipIf(!beschikbaar)('twee adempauzes tegelijk', () => {
       // Sessie A pakt hetzelfde slot dat `plan_adempauze()` neemt en houdt het
       // vast. `pg_advisory_lock` op sessieniveau, zodat het blijft staan tot we
       // het proces afbreken.
-      houder = spawn('psql', psqlArgs(), { env: PSQL_OMGEVING });
+      houder = spawn('psql', psqlBasisArgumenten(), { env: PSQL_OMGEVING });
       houder.stdin?.write(`select pg_advisory_lock(${SLEUTEL}); select pg_sleep(60);\n`);
 
       // Wachten tot A het slot écht heeft. Zonder deze lus meet een groene
@@ -140,7 +136,7 @@ describe.skipIf(!beschikbaar)('twee adempauzes tegelijk', () => {
       let uit = '';
       let geblokkeerd = false;
       try {
-        uit = execFileSync('psql', [...psqlArgs(), '-v', 'ON_ERROR_STOP=1'], {
+        uit = execFileSync('psql', psqlBasisArgumenten(), {
           env: PSQL_OMGEVING,
           encoding: 'utf8',
           input:

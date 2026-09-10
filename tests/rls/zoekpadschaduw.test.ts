@@ -1,8 +1,7 @@
-import { execFileSync } from 'node:child_process';
 
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, psql, stackBeschikbaarOfFaal } from './psql-stack';
+import { psql, psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 import { proefId } from './proefid';
 
 const SCHADUW_EEN = proefId(1);
@@ -82,11 +81,7 @@ const beschikbaar = stackBeschikbaarOfFaal(
  *    nog steeds op één plek staat (QS8-270).
  */
 function inEenSessie(sql: string): string {
-  return execFileSync(
-    'psql',
-    ['-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w', '-v', 'ON_ERROR_STOP=1', '-tA'],
-    { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
-  ).trim();
+  return psqlMetInvoer(sql).trim();
 }
 
 /** Zoals `inEenSessie`, maar geeft de foutmelding terug in plaats van te werpen. */

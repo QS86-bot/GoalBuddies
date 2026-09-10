@@ -55,6 +55,28 @@ export const PSQL_DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
  * uitgebreider maakt. Standaard uit, want een test die op een foutregel let,
  * krijgt er anders ongevraagd andere tekst.
  */
+/**
+ * De argumentenlijst waarmee élke psql-aanroep in de testboom draait.
+ *
+ * ⚠️ **Geëxporteerd sinds QS8-414, en niet omdat het handig is.** Wie een
+ *    lángdurende sessie nodig heeft — `spawn` met een open stdin, zoals de
+ *    slottest van de adempauze — kan `psql()` of `psqlMetInvoer()` niet
+ *    gebruiken, want die wachten op het einde. Zonder een gedeelde lijst typt
+ *    hij hem dan opnieuw, en dat is precies de kopie die QS8-270 dertig tests
+ *    kostte. `tests/scripts/psql-verbinding.test.ts` maakt van die regel een
+ *    grendel: een bestand in `tests/` dat `psql` start zónder deze lijst is
+ *    rood, tenzij het mét reden in het register staat.
+ *
+ * ⚠️ **`-h` en `-p` staan er bewust niet in**, anders dan in
+ *    `scripts/psql.mjs`. Ze komen uit `PSQL_OMGEVING`, en dát is hier de ene
+ *    plek: één omgeving voor de hele boom, met de standaarden op 5433 en
+ *    `postgres`. De twee bomen mogen verschillende standaarden hebben zolang ze
+ *    er elk maar één hebben.
+ */
+export function psqlBasisArgumenten(verbose = false): string[] {
+  return basisArgumenten(verbose);
+}
+
 function basisArgumenten(verbose: boolean): string[] {
   return [
     '-U',
@@ -88,9 +110,9 @@ export function psql(sql: string, { verbose = false } = {}): string {
  *    in `goedkeuring-wijst-naar-de-eigenaar.test.ts` gebeurde: een zevende kopie,
  *    zónder `-h`/`-p`, die alleen werkte doordat `PSQL_OMGEVING` die twee in de
  *    omgeving zet. CLAUDE.md: *een controle die psql aanroept, bouwt zijn eigen
- *    aanroep niet.* Het register dat dat bewaakt kijkt vandaag alleen in
- *    `scripts/` — dat gat staat als QS8-414 — dus hier is de enige rem dat de
- *    lijst maar op één plek staat.
+ *    aanroep niet.* Dat register keek tot QS8-414 alleen in `scripts/`; sinds
+ *    dat issue dekt het ook de testboom, en is "de lijst staat op één plek"
+ *    geen gewoonte meer maar een grendel.
  */
 export function psqlMetInvoer(sql: string, { verbose = false } = {}): string {
   return execFileSync('psql', basisArgumenten(verbose), {
