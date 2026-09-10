@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 
-import { CHATFOTO_BEWAARDAGEN } from '../bewaartermijn';
+import { BIJLAGE_BEWAARDAGEN } from '../bewaartermijn';
 import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
@@ -108,9 +108,10 @@ export const CHATFOTO_TEKSTEN = {
     return t('chatfoto.laden');
   },
   get afwezigtekst() {
-    // ⚠️ De termijn komt uit `CHATFOTO_BEWAARDAGEN` en staat niet als getal in de
-    //    zin: het scherm en de opruimpas van 0235 moeten dezelfde termijn noemen.
-    return t('chatfoto.niet_beschikbaar', { dagen: CHATFOTO_BEWAARDAGEN });
+    // ⚠️ De termijn komt uit `BIJLAGE_BEWAARDAGEN` en staat niet als getal in de
+    //    zin: het scherm en de opruimpassen moeten dezelfde termijn noemen. Eén
+    //    constante voor beide emmers sinds QS8-411.
+    return t('chatfoto.niet_beschikbaar', { dagen: BIJLAGE_BEWAARDAGEN });
   },
 };
 
