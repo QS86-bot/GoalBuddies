@@ -56,6 +56,9 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *   D  `avatars_insert` op `with check (false)` → 3 rood, en precies de drie
  *                                            must-allows
  *   E  een `for all`-policy op één emmer  → 2 rood
+ *   F  het INSERT-pad van `chatdocs` dichtzetten → 1 rood (QS8-409)
+ *   G  een vijfde emmer in `storage.buckets` zonder pad in `PADEN` → 1 rood,
+ *      met de naam van die emmer in de melding
  *
  * ⚠️⚠️ **A is de reden dat de scherpste test naar de familie kijkt en niet naar
  *    twee namen, en dat is met de meting aan te tonen.** Zet je alléén
@@ -88,6 +91,14 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    (`operator is not unique: text || "char"`). De test was daardoor rood om een
  *    reden die niets met policies te maken had — een nulmeting die je niet
  *    narekent, verbergt precies dat. `polcmd::text` is de cast.
+ *
+ * ⚠️⚠️ **F en G komen uit QS8-409, en de aanleiding is dat deze suite binnen een
+ *    uur achterliep.** De must-allow somde drie emmers op; QS8-72 landde
+ *    `chatdocs` en toen dekte hij er drie van de vier — uitgerekend die met het
+ *    afwijkendste type en plafond. F toont dat die emmer nu écht meegemeten
+ *    wordt; G toont dat de vijfde hem rood maakt in plaats van stil te verjaren.
+ *    De must-find keek al naar de familie; sinds QS8-409 doet de must-allow dat
+ *    ook.
  */
 
 const psql = (sql: string) => psqlKaal(sql, { verbose: true });
@@ -270,17 +281,57 @@ describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0237)', () 
    *    upload stukmaken. Dit is de helft die zegt dat de app nog werkt.
    */
   describe('en wat wél moet blijven werken', () => {
-    it('laat een upload in elke emmer gewoon door — alle drie', () => {
+    /**
+     * ⚠️⚠️ **Deze test somt de emmers niet op, hij vraagt ze aan de database.**
+     *    De eerste versie deed dat wél — *"alle drie"* — en stond binnen een uur
+     *    achter, want QS8-72 landde `chatdocs` (QS8-409). En dat was uitgerekend
+     *    de emmer die je het minst wilt missen: 📏 de enige met een ánder type
+     *    (`application/pdf`) en een ánder plafond (5 MB) naast drie
+     *    beeldemmers van 1–2 MB. Een must-allow die moet bewijzen dat 0239 niet
+     *    te breed was, mist dan precies de afwijkendste policy.
+     *
+     * ⚠️ **`PADEN` is een register en geen gemak.** Elke emmer heeft zijn eigen
+     *    padvorm — `avatars` op `<uid>/`, de andere drie op twee segmenten met
+     *    een eigen eerste segment — dus een lus kan het pad niet raden. Staat er
+     *    een emmer in `storage.buckets` waarvoor hier geen pad is, dan wordt deze
+     *    test **rood**; hij slaat hem niet stil over. Dát is wat hem bij de
+     *    vijfde emmer laat meegroeien in plaats van verjaren.
+     */
+    it('laat een upload door in élke emmer die de database kent', () => {
+      const PADEN: Record<string, string> = {
+        avatars: `${alice}/nieuw-portret.jpg`,
+        bewijsfotos: `${weekdoel}/${alice}/nieuw-bewijs.jpg`,
+        chatfotos: `${groep}/${alice}/nieuw-chat.jpg`,
+        // ⚠️ `.pdf` is hier geen smaak: `chatdocs_insert` eist de extensie in de
+        //    policy zelf (`name ~ '/[A-Za-z0-9._-]{1,80}\.pdf$'`).
+        chatdocs: `${groep}/${alice}/nieuw-doc.pdf`,
+      };
+
+      const emmers = psql('select id from storage.buckets order by id')
+        .split('\n')
+        .map((r) => r.trim())
+        .filter((r) => r !== '');
+
+      expect(emmers.length, 'geen enkele emmer gevonden — meet dit niet groen').toBeGreaterThan(0);
+
+      const zonderPad = emmers.filter((e) => PADEN[e] === undefined);
+      expect(
+        zonderPad,
+        `nieuwe emmer(s) zonder pad in PADEN: ${zonderPad.join(', ')} — vul ze aan, ` +
+          'anders bewijst deze must-allow niets over die emmer',
+      ).toEqual([]);
+
+      const waarden = emmers
+        .map((e) => `('${e}', '${PADEN[e]}', '${alice}')`)
+        .join(', ');
+
       const uit = als(
         alice,
-        `insert into storage.objects (bucket_id, name, owner)
-           values ('avatars', '${alice}/nieuw-portret.jpg', '${alice}'),
-                  ('bewijsfotos', '${weekdoel}/${alice}/nieuw-bewijs.jpg', '${alice}'),
-                  ('chatfotos', '${groep}/${alice}/nieuw-chat.jpg', '${alice}');
+        `insert into storage.objects (bucket_id, name, owner) values ${waarden};
          select count(*) from storage.objects where owner = '${alice}'`,
       );
 
-      expect(uit).toBe('3');
+      expect(uit, 'niet elke emmer nam de upload aan').toBe(String(emmers.length));
     });
 
     it('laat je je eigen object nog weghalen', () => {
