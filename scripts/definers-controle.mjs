@@ -347,10 +347,57 @@ export function schrijftNaarKerntabel(definitie) {
 }
 
 /**
- * Uit de ruwe psql-uitvoer: de definer-functies die in een kerntabel schrijven.
+ * Leest deze functie uit een kerntabel?
+ *
+ * ⚠️ **`from` en `join`, en niet "komt de tabelnaam erin voor"** — QS8-181. Dat
+ *    tweede vindt ook de naam in een `insert into`, in een kolomnaam en in een
+ *    `raise`-tekst, en dan meldt het register functies waar niets aan de hand is.
+ *    Een controle die alles meldt, leer je te negeren.
+ *
+ * ⚠️ Zelfde `(?![\w-])` als hierboven, en om dezelfde reden: zonder die
+ *    uitsluiting matcht `from goal_group_links` op `goals` en
+ *    `join weekly_goals_archief` op `weekly_goals`.
+ *
+ * @param {string} definitie
+ * @returns {boolean}
+ */
+export function leestKerntabel(definitie) {
+  const schoon = zonderCommentaar(definitie);
+  const tabellen = KERNTABELLEN.join('|');
+  const patroon = new RegExp(
+    `(from|join)\\s+(only\\s+)?(public\\.)?"?(${tabellen})"?(?![\\w-])`,
+    'i',
+  );
+  return patroon.test(schoon);
+}
+
+/**
+ * Welk register deze functie aangaat, of `null` als geen van beide.
+ *
+ * ⚠️ **Schrijven wint van lezen, en dat is geen willekeur.** Bijna elke schrijver
+ *    leest óók — een `update … where owner_id = …` staat in beide patronen. Het
+ *    schrijfregister is het strengere van de twee (het vraagt een gemeten
+ *    poort), dus daar hoort hij thuis; hem in allebei zetten zou dezelfde functie
+ *    twee redenen laten dragen die uit elkaar kunnen lopen.
+ *
+ * ⚠️ **De leeskant scopet op een aanroepbare niet-triggerfunctie**, en de reden
+ *    staat bij `LEESREGISTER`: een trigger heeft geen aanroeper om te toetsen, en
+ *    een functie zonder grant wordt door `functiegrants.test.ts` bewaakt.
+ *
+ * @param {{trigger: boolean, aanroepbaar: boolean, definitie: string}} functie
+ * @returns {'schrijft' | 'leest' | null}
+ */
+export function soortVan({ trigger, aanroepbaar, definitie }) {
+  if (schrijftNaarKerntabel(definitie)) return 'schrijft';
+  if (!trigger && aanroepbaar && leestKerntabel(definitie)) return 'leest';
+  return null;
+}
+
+/**
+ * Uit de ruwe psql-uitvoer: de definer-functies die een kerntabel aangaan.
  *
  * @param {string} uitvoer
- * @returns {{naam: string, trigger: boolean, aanroepbaar: boolean}[]}
+ * @returns {{naam: string, trigger: boolean, aanroepbaar: boolean, soort: string}[]}
  */
 export function ontleed(uitvoer) {
   return uitvoer
@@ -370,23 +417,141 @@ export function ontleed(uitvoer) {
         definitie: rest.join(SCHEIDING),
       };
     })
-    .filter((f) => schrijftNaarKerntabel(f.definitie))
-    .map(({ naam, trigger, aanroepbaar }) => ({ naam, trigger, aanroepbaar }));
+    .map((f) => ({ ...f, soort: soortVan(f) }))
+    .filter((f) => f.soort !== null)
+    .map(({ naam, trigger, aanroepbaar, soort }) => ({ naam, trigger, aanroepbaar, soort }));
 }
 
 /**
- * Legt de gevonden functies naast het register — tweezijdig.
+ * Legt de gevonden functies naast één register — tweezijdig.
  *
- * @param {{naam: string}[]} gevonden
+ * ⚠️ `soort` is optioneel en filtert vooraf. Zonder filter kijkt hij naar alles
+ *    wat je hem geeft; dat is wat de tests doen, en wat het schrijfregister deed
+ *    toen het het enige register was.
+ *
+ * @param {{naam: string, soort?: string}[]} gevonden
  * @param {Map<string, string>} register
+ * @param {string} [soort]
  */
-export function beoordeel(gevonden, register = REGISTER) {
-  const gezien = new Set(gevonden.map((f) => f.naam));
+export function beoordeel(gevonden, register = REGISTER, soort = undefined) {
+  const eigen = soort === undefined ? gevonden : gevonden.filter((f) => f.soort === soort);
+  const gezien = new Set(eigen.map((f) => f.naam));
   return {
-    onbekend: gevonden.filter((f) => !register.has(f.naam)).map((f) => f.naam),
+    onbekend: eigen.filter((f) => !register.has(f.naam)).map((f) => f.naam),
     verdwenen: [...register.keys()].filter((naam) => !gezien.has(naam)),
   };
 }
+
+/**
+ * Het leesregister: elke definer-**RPC** die `authenticated` mag aanroepen en
+ * die uit een kerntabel léést, met waar zijn autorisatie zit — QS8-181.
+ *
+ * ⚠️⚠️ **Waarom dit naast het schrijfregister staat en niet erin.** Het register
+ *    hierboven telt wie er schrijft; de dossierrij van 15-08-2026 gaat over iets
+ *    breders. `SECURITY DEFINER` omzeilt RLS in beide richtingen: een functie die
+ *    alleen `select`t komt net zo hard langs elke policy heen, en dan is de vraag
+ *    niet "mag hij dit veranderen" maar **"zijn deze rijen van de aanroeper om te
+ *    zien"**. Dat is precies de vraag waar domeinregel 7 aan hangt, en die stond
+ *    voor deze klasse in geen enkel rapport. 📏 Op 10-09-2026 waren het er
+ *    dertig, naast de drieënveertig schrijvers.
+ *
+ * ⚠️ **De grens van dit register is zelf een keuze, en die staat hier met
+ *    zoveel woorden** — dezelfde les als bij `KERNTABELLEN`. Buiten beeld blijven
+ *    twee klassen, elk omdat hun grendel érgens anders bewaakt wordt:
+ *
+ *    | Buiten beeld | Waar zijn grendel dan wél staat |
+ *    | -- | -- |
+ *    | een **triggerfunctie** die leest | de policy op de schrijfactie die hem aftrapt — hij heeft per constructie geen aanroeper |
+ *    | een functie die `authenticated` **niet** mag aanroepen | de `grant`, en die legt `tests/rls/functiegrants.test.ts` naast de migratieregels |
+ *
+ *    Verschuift een van die twee — een interne functie die alsnog een grant
+ *    krijgt — dan komt hij hier vanzelf bij en wordt deze controle rood tot
+ *    iemand opschrijft waarom hij open mag.
+ */
+const LEESREGISTER = new Map([
+  // --- Predicaten: geven een boolean over de aanroeper zélf -----------------
+  //
+  // ⚠️ Deze vijf zijn de RLS-hulpfuncties. Ze lezen `group_members` als eigenaar
+  //    om de recursie te vermijden die policies op die tabel anders veroorzaken,
+  //    en ze scopen allemaal hard op `auth.uid()`: de uitkomst gaat over de
+  //    aanroeper en over niemand anders. `tests/rls/hulpfuncties.test.ts` pint
+  //    hun onderlinge model vast (QS8-146).
+  ['is_group_member', 'Predicaat op `m.user_id = auth.uid()`. Geeft alleen iets over de aanroeper zelf.'],
+  ['is_group_admin', 'Predicaat op `m.user_id = auth.uid()` plus `role = admin`.'],
+  ['mag_groep_lezen', 'Predicaat op `m.user_id = auth.uid()`. ⚠️ Kijkt bewust niet naar `groups.status`: dit is de leesvariant, en een gearchiveerde groep blijft leesbaar voor wie erin zat.'],
+  ['lid_van_open_groep', 'Predicaat op `m.user_id = auth.uid()` plus `zichtbaarheid = open`. Draagt de grendel van A54.'],
+  ['shares_group_with_user', 'Predicaat op `mine.user_id = auth.uid()`; béíde kanten moeten actief lid zijn.'],
+  ['shares_group_with_goal', 'Predicaat op `m.user_id = auth.uid()`; de kijker én de eigenaar moeten actief lid zijn en de groep niet gearchiveerd.'],
+  ['deelt_groep_met_eigenaar', 'Leunt volledig op `shares_group_with_user()`, en die scopet op `auth.uid()`. Leest `goals` alleen om de eigenaar op te zoeken.'],
+  ['deelt_open_groep_met_doel', 'Predicaat op `m.user_id = auth.uid()` in een groep met `zichtbaarheid = open`.'],
+
+  // --- Eigen rijen: de scoping is `auth.uid()` in de query zelf --------------
+  ['dagafvinkingen_over', 'Ratelimiet-teller. Telt uitsluitend `g.owner_id = auth.uid()` en geeft 0 zonder sessie.'],
+  ['weekdoelen_over', 'Ratelimiet-teller. Idem: alleen eigen rijen, 0 zonder sessie.'],
+  ['weekplanstappen_over', 'Ratelimiet-teller. Idem.'],
+  ['weekpas_standen', 'Scoping in de `where`: `auth.uid() is not null and g.owner_id = auth.uid()`.'],
+  ['mijn_bevestigingsstanden', 'Scoping in de `where`: `g.owner_id = auth.uid()`. Geeft per weekdoel alleen `gedaan`/`nodig`, geen namen.'],
+  ['verwijder_mijn_account', 'Alles hangt aan `mij := auth.uid()`; leest `group_members` alleen om de laatste-beheerder-toets te doen.'],
+  ['vraag_ai_job', 'Poort op `auth.uid()`, en `p_goal_id` moet van de aanroeper zijn (`not_your_goal`). Leest `goals`/`milestones` alleen daarvoor.'],
+  ['start_weekplanstap', 'Eigenaarspoort (`not_owner`) vóór de doorgifte aan `weekplanstap_naar_weekdoel()`.'],
+  ['herstel_stuurloze_straf', 'Eigenaarspoort (`not_owner`), en daarna nog vier standtoetsen. Leest `goals` alleen om de eigenaar te bepalen.'],
+
+  // --- Groepsoppervlakken: een lidmaatschapspoort in de functie zelf ---------
+  //
+  // ⚠️ Dit is de klasse waar domeinregel 7 aan hangt. Bij élk van deze vijf geldt
+  //    de vraag uit CLAUDE.md: kan hieruit iemands gemiste week worden afgeleid,
+  //    en kan iemand dat met één API-verzoek uitlezen buiten de UI om?
+  ['groep_teller', 'Lidmaatschapspoort: `where is_group_member(p_group_id)` — geen lid, nul rijen. Telt alleen omhoog (domeinregel 7).'],
+  ['ketting_stand', 'Lidmaatschapspoort: `where is_group_member(p_group_id)`. Geeft `{schakels, in_aanmerking, voltallig}` en nooit een naam.'],
+  ['groep_klassement', 'Poort op `lid_van_open_groep(p_group_id)`: in een beschermde groep nul rijen (A54). Geen delta en geen datum, dus geen gemiste week af te leiden.'],
+  ['zichtbare_reeksen_van_groep', 'Lidmaatschapspoort in de `where` plus `shares_group_with_goal()` per doel; `best_streak` en `last_cycle_start` zijn gemaskeerd buiten een open groep (0078).'],
+  ['verzoekers_eerder_lid', 'Beheerderspoort: `and is_group_admin(p_group_id)` in de `where`.'],
+  ['getuigenissen', 'Scoping op `c.beneficiary_user_id = auth.uid()` plus `deelt_groep_met_eigenaar()` (QS8-306). ⚠️ Bestaat als RPC en niet als policy omdat RLS geen kolommen kan beperken — de kolomlijst ís hier de grendel.'],
+  ['straffen_bij_uitstelverzoek', 'Poort op `shares_group_with_goal()` én `mag_groep_lezen()`. ⚠️ Geeft één kolom terug — `goal_id`, en niet de tekst, de foto, de getuige of de stand. Zelfde vorm en zelfde reden als `getuigenissen()`; zie domeinregel 11.'],
+  ['meld', 'Lidmaatschapspoort (`not_member`) plus een ratelimiet. Leest `chat_messages` en `group_members` alleen om de gemelde persoon te bepalen en geeft geen rijen terug.'],
+  ['vraag_lidmaatschap_aan', 'Leest `groups`/`group_members` alleen om `ontdekbaar`, archivering, blokkade en bestaand lidmaatschap te toetsen; geeft `{ok}` en verder niets, en is geratelimit.'],
+
+  // --- Met opzet open voor iedere ingelogde gebruiker ------------------------
+  [
+    'ontdek_groepen',
+    'Géén lidmaatschapspoort, en dat ís de functie: dit is de ontdekpagina. Wat hem begrenst staat in de `where` — ' +
+      'alleen `g.ontdekbaar`, niet gearchiveerd, en niet langs een blokkade heen (QS8-232, route 4). ' +
+      'De groep heeft zelf besloten vindbaar te zijn; `zet_groepsontdekbaarheid()` is een beheerders-RPC.',
+  ],
+  [
+    'invite_preview',
+    'Géén lidmaatschapspoort: de uitnodigingscode ís de sleutel. Drie grendels dragen dat — één antwoord (`null`) voor ' +
+      'ingetrokken, verlopen én onbestaand zodat de functie geen orakel is (0019), een teller van 60 per groep per uur ' +
+      'in hetzelfde statement als de lezing, en `avatar_url` altijd `null` omdat dat pad sinds 0126 de `auth.uid()` ' +
+      'van elk lid draagt (0128). Een niet-ingelogde kijker krijgt alleen voornamen en geen doeltitels.',
+  ],
+
+  // --- Zonder poort aan de aanroeperskant, en dat is een bevinding -----------
+  //
+  // ⚠️⚠️ **Deze twee zijn de opbrengst van deze ronde: ze zijn hulpfuncties
+  //    geworden zonder dat iemand de vraag over ze gesteld heeft.** Ze zijn niet
+  //    dicht te zetten met een `revoke` — `openstaande_beoordelingen()` is
+  //    `SECURITY INVOKER` en roept de eerste aan, en `chain_links_select` roept de
+  //    tweede aan in een policy-expressie, die als de bevragende rol draait. Een
+  //    poort erín is óók niet gratis: allebei worden ze aangeroepen vanuit paden
+  //    waar `auth.uid()` leeg is (de rollover draait als `service_role`), en dan
+  //    zou de grendel een storing worden in plaats van een weigering.
+  //    De dossierrij in `docs/ENGINEER-REVIEW.md` draagt het vervolg.
+  [
+    'vereiste_goedkeuringen',
+    '⚠️ **Geen poort.** Elke ingelogde gebruiker met een groeps-uuid leest hoeveel bevestigingen die groep vraagt, ' +
+      'en daaruit is het aantal actieve leden af te leiden. Waarom dat vandaag draagt: datzelfde ledental staat al in ' +
+      '`ontdek_groepen()` voor elke vindbare groep en in `invite_preview()` voor wie de code heeft, het gaat over ' +
+      'niemand persoonlijk, en er zit geen tegenslag in (domeinregel 7). Wordt zwaarder zodra de uitkomst van een ' +
+      'persoon gaat afhangen in plaats van van de groep.',
+  ],
+  [
+    'groepsdatum',
+    '⚠️ **Geen poort.** Geeft de datum van vandaag in de tijdzone van een groep, voor elk uuid. Wat eruit lekt is de ' +
+      'tijdzone van de groep en niets anders. Staat in `chain_links_select`, dus `authenticated` móet hem kunnen ' +
+      'aanroepen.',
+  ],
+]);
 
 function psql(vraag) {
   return execFileSync('psql', psqlArgumenten(vraag), { encoding: 'utf8' });
@@ -407,13 +572,14 @@ function hoofd() {
     return 1;
   }
 
-  const { onbekend, verdwenen } = beoordeel(gevonden);
+  const schrijvers = beoordeel(gevonden, REGISTER, 'schrijft');
+  const lezers = beoordeel(gevonden, LEESREGISTER, 'leest');
 
-  if (onbekend.length > 0) {
+  if (schrijvers.onbekend.length > 0) {
     console.error(
-      `✗ ${onbekend.length} definer-functie(s) schrijven in een kerntabel zonder reden:\n`,
+      `✗ ${schrijvers.onbekend.length} definer-functie(s) schrijven in een kerntabel zonder reden:\n`,
     );
-    for (const f of onbekend) console.error(`    ${f}()`);
+    for (const f of schrijvers.onbekend) console.error(`    ${f}()`);
     console.error(
       '\nEen SECURITY DEFINER-functie draait als zijn eigenaar, dus geen enkele policy\n' +
         'houdt hem tegen — zijn poort is de `if` in zijn eigen body, en `rls:dekking`\n' +
@@ -427,6 +593,27 @@ function hoofd() {
     return 1;
   }
 
+  if (lezers.onbekend.length > 0) {
+    console.error(
+      `✗ ${lezers.onbekend.length} definer-RPC('s) lezen uit een kerntabel zonder reden:\n`,
+    );
+    for (const f of lezers.onbekend) console.error(`    ${f}()`);
+    console.error(
+      '\n`SECURITY DEFINER` omzeilt RLS in beide richtingen: ook een `select` komt\n' +
+        'langs elke policy heen. De vraag is hier niet of hij iets mag veranderen\n' +
+        'maar of deze rijen van de aanroeper zijn om te zien.\n\n' +
+        'Twee vragen, uit CLAUDE.md bij domeinregel 7: kan hieruit iemands gemiste\n' +
+        'week worden afgeleid, en kan iemand dat met één API-verzoek uitlezen\n' +
+        'buiten de UI om?\n\n' +
+        'Schrijf op waar de poort zit — een `where is_group_member(...)`, een\n' +
+        '`owner_id = auth.uid()`, of met zoveel woorden dat er geen poort is en\n' +
+        'waarom dat hier mag. Zet dat in LEESREGISTER in\n' +
+        'scripts/definers-controle.mjs.',
+    );
+    return 1;
+  }
+
+  const verdwenen = [...schrijvers.verdwenen, ...lezers.verdwenen];
   if (verdwenen.length > 0) {
     console.error(`✗ ${verdwenen.length} functie(s) in het register bestaan niet meer:\n`);
     for (const f of verdwenen) console.error(`    ${f}()`);
@@ -436,11 +623,13 @@ function hoofd() {
     return 1;
   }
 
-  const rpcs = gevonden.filter((f) => !f.trigger && f.aanroepbaar).length;
-  const triggers = gevonden.filter((f) => f.trigger).length;
+  const schrijft = gevonden.filter((f) => f.soort === 'schrijft');
+  const rpcs = schrijft.filter((f) => !f.trigger && f.aanroepbaar).length;
+  const triggers = schrijft.filter((f) => f.trigger).length;
   console.log(
-    `definers-controle: ${gevonden.length} definer-functies schrijven in een kerntabel ` +
-      `(${rpcs} aanroepbare RPC's, ${triggers} triggerfuncties), allemaal met een reden.`,
+    `definers-controle: ${schrijft.length} definer-functies schrijven in een kerntabel ` +
+      `(${rpcs} aanroepbare RPC's, ${triggers} triggerfuncties) en ` +
+      `${gevonden.length - schrijft.length} lezen er alleen uit, allemaal met een reden.`,
   );
   return 0;
 }

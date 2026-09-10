@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   beoordeel,
   KERNTABELLEN,
+  leestKerntabel,
   ontleed,
   schrijftNaarKerntabel,
+  soortVan,
   zonderCommentaar,
 } from '../../scripts/definers-controle.mjs';
 
@@ -149,7 +151,10 @@ describe('ontleed', () => {
       rij('schrijver', 'nee', 'ja', 'update goals set title = $$x$$') +
       rij('lezer', 'nee', 'ja', 'select * from goals');
 
-    expect(ontleed(uitvoer)).toEqual([{ naam: 'schrijver', trigger: false, aanroepbaar: true }]);
+    expect(ontleed(uitvoer)).toEqual([
+      { naam: 'schrijver', trigger: false, aanroepbaar: true, soort: 'schrijft' },
+      { naam: 'lezer', trigger: false, aanroepbaar: true, soort: 'leest' },
+    ]);
   });
 
   it('leest de vlaggen als `ja`/`nee` en niet als `t`/`f`', () => {
@@ -158,9 +163,13 @@ describe('ontleed', () => {
       rij('rpc', 'nee', 'ja', 'insert into completions (id) values (1)');
 
     expect(ontleed(uitvoer)).toEqual([
-      { naam: 'trg', trigger: true, aanroepbaar: false },
-      { naam: 'rpc', trigger: false, aanroepbaar: true },
+      { naam: 'trg', trigger: true, aanroepbaar: false, soort: 'schrijft' },
+      { naam: 'rpc', trigger: false, aanroepbaar: true, soort: 'schrijft' },
     ]);
+  });
+
+  it('laat een functie die geen kerntabel aanraakt helemaal weg', () => {
+    expect(ontleed(rij('elders', 'nee', 'ja', 'select * from chat_messages'))).toEqual([]);
   });
 
   it('overleeft een bron die zelf een scheidingsteken-achtig teken draagt', () => {
@@ -192,5 +201,107 @@ describe('beoordeel', () => {
     const uit = beoordeel([{ naam: 'bekend' }], register);
     expect(uit.onbekend).toEqual([]);
     expect(uit.verdwenen).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Zonder dit filter zou het ene register de functies van het andere als
+   *    "onbekend" melden, en allebei tegelijk** — QS8-181. Dan is de eerste
+   *    uitslag een lijst van dertig namen die er geen van allen thuishoren, en
+   *    die leer je overslaan.
+   */
+  it('kijkt alleen naar de soort die bij dit register hoort', () => {
+    const gevonden = [
+      { naam: 'bekend', soort: 'schrijft' },
+      { naam: 'een_lezer', soort: 'leest' },
+    ];
+
+    expect(beoordeel(gevonden, register, 'schrijft')).toEqual({ onbekend: [], verdwenen: [] });
+    expect(beoordeel(gevonden, register, 'leest').onbekend).toEqual(['een_lezer']);
+  });
+});
+
+/**
+ * De leeskant — QS8-181.
+ *
+ * ⚠️ **`SECURITY DEFINER` omzeilt RLS in beide richtingen.** Het schrijfregister
+ *    hierboven telt wie er verandert; dit telt wie er léést, want ook een
+ *    `select` komt langs elke policy heen. Dat is de klasse waar domeinregel 7
+ *    aan hangt en die tot 10-09-2026 in geen enkel rapport stond.
+ */
+describe('leestKerntabel', () => {
+  it.each([
+    ['select * from goals where id = 1'],
+    ['SELECT 1 FROM public.completions'],
+    ['select 1 from x join weekly_goals w on w.id = x.id'],
+    ['select 1 from only points_ledger'],
+    ['select 1 from "group_members"'],
+    ['select 1\n    from\n      groups g'],
+  ])('vindt %s', (bron) => {
+    expect(leestKerntabel(bron)).toBe(true);
+  });
+
+  it.each([
+    ['een tabel die er alleen op lijkt', 'select 1 from goal_group_links'],
+    ['een tabel met hetzelfde voorvoegsel', 'select 1 from weekly_goals_archief'],
+    ['een tabel met een langere naam in een join', 'select 1 from x join group_events e on true'],
+    ['een andere tabel', 'select 1 from chat_messages'],
+    ['een kerntabel in een commentaar', '-- select 1 from goals\nselect 2;'],
+    ['de naam als los woord', "raise exception $$goals is leeg$$"],
+    ['de naam als kolom', 'select goals from elders'],
+  ])('laat %s met rust', (_naam, bron) => {
+    expect(leestKerntabel(bron)).toBe(false);
+  });
+
+  it('kent elke tabel uit de lijst', () => {
+    for (const tabel of KERNTABELLEN) {
+      expect(leestKerntabel(`select 1 from ${tabel}`), tabel).toBe(true);
+    }
+  });
+});
+
+describe('soortVan', () => {
+  const f = (over: Partial<{ trigger: boolean; aanroepbaar: boolean; definitie: string }>) => ({
+    trigger: false,
+    aanroepbaar: true,
+    definitie: 'select 1',
+    ...over,
+  });
+
+  /**
+   * ⚠️ **Schrijven wint van lezen.** Bijna elke schrijver leest ook — een
+   *    `update … where owner_id = …` valt in beide patronen. Zonder deze
+   *    voorrang zou dezelfde functie in twee registers staan met twee redenen
+   *    die uit elkaar kunnen lopen.
+   */
+  it('zet een functie die schrijft én leest bij de schrijvers', () => {
+    expect(soortVan(f({ definitie: 'update goals set x = 1 from group_members' }))).toBe(
+      'schrijft',
+    );
+  });
+
+  it('zet een zuivere lezer bij de lezers', () => {
+    expect(soortVan(f({ definitie: 'select 1 from group_members' }))).toBe('leest');
+  });
+
+  /**
+   * ⚠️ De twee gevallen hieronder zijn de grens van het leesregister, en die
+   *    staat er met opzet: een triggerfunctie heeft geen aanroeper om te
+   *    toetsen, en een functie zonder grant wordt door
+   *    `tests/rls/functiegrants.test.ts` bewaakt. Zou een van beide hier tóch
+   *    binnenkomen, dan vraagt het register een reden voor iets waar deze
+   *    controle niets over kan zeggen.
+   */
+  it('laat een lezende triggerfunctie buiten het leesregister', () => {
+    expect(soortVan(f({ trigger: true, definitie: 'select 1 from group_members' }))).toBe(null);
+  });
+
+  it('laat een lezer die authenticated niet mag aanroepen erbuiten', () => {
+    expect(soortVan(f({ aanroepbaar: false, definitie: 'select 1 from group_members' }))).toBe(
+      null,
+    );
+  });
+
+  it('laat een functie die geen kerntabel aanraakt helemaal weg', () => {
+    expect(soortVan(f({ definitie: 'select 1 from chat_messages' }))).toBe(null);
   });
 });
