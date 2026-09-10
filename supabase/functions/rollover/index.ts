@@ -721,24 +721,37 @@ async function draaiRollover(auth: string): Promise<Response> {
   //
   // ⚠️ Geen cyclusrekenwerk: eenentwintig dagen is een leeftijd en geen week, dus
   //    dit mag in SQL staan (correctheidsregel 7).
-  const emmers = [
-    { naam: 'chatfotos', rpc: 'verlopen_chatfotos', merk: 'chatfotos' },
-    { naam: 'chatdocs', rpc: 'verlopen_chatdocs', merk: 'chatdocs' },
-  ] as const;
+  // ⚠️⚠️ **De RPC-naam staat hier lettérlijk en komt niet uit de lus, en dat is
+  //    een gemeten reparatie.** 📏 De eerste vorm zette de naam in het
+  //    emmer-object en riep `db.rpc(emmer.rpc, …)` aan. Dat werkt, en het maakte
+  //    `keten:controle` blind: die zoekt naar een letterlijke `.rpc('naam')`, dus
+  //    hij meldde **allebei** de passen als functies zonder aanroeper — ook
+  //    `verlopen_chatfotos()`, die er vóór deze wijziging gewoon een had. Een
+  //    refactor die een grendel uitzet is erger dan de duplicatie die hij
+  //    wegneemt; zelfde klasse als `storage-controle.mjs`, dat om dezelfde reden
+  //    alleen letterlijke bucketnamen vindt.
+  //
+  // ⚠️ Wat de lus deelt, blijft de uitvoerende helft. Alleen het opvrágen is per
+  //    emmer een eigen regel, en dat is precies één ternary.
+  async function verlopenPaden(emmer: 'chatfotos' | 'chatdocs') {
+    return emmer === 'chatfotos'
+      ? await db.rpc('verlopen_chatfotos', { p_limiet: BIJLAGE_PAS_LIMIET })
+      : await db.rpc('verlopen_chatdocs', { p_limiet: BIJLAGE_PAS_LIMIET });
+  }
+
+  const emmers = ['chatfotos', 'chatdocs'] as const;
 
   let bijlagenOpgeruimd = 0;
   let bijlagenMislukt = 0;
 
   for (const emmer of emmers) {
-    const { data: verlopen, error: verlopenFout } = await db.rpc(emmer.rpc, {
-      p_limiet: BIJLAGE_PAS_LIMIET,
-    });
+    const { data: verlopen, error: verlopenFout } = await verlopenPaden(emmer);
 
     if (verlopenFout) {
-      console.error(`verlopen ${emmer.naam} ophalen mislukte: ${verlopenFout.message}`);
-      await meld(new Error(`verlopen ${emmer.naam} ophalen mislukte`), 'rollover.bijlagen', {
+      console.error(`verlopen ${emmer} ophalen mislukte: ${verlopenFout.message}`);
+      await meld(new Error(`verlopen ${emmer} ophalen mislukte`), 'rollover.bijlagen', {
         code: 'bijlagen_ophalen_mislukt',
-        emmer: emmer.merk,
+        emmer,
         sqlstate: verlopenFout.code,
       });
       continue;
@@ -752,10 +765,10 @@ async function draaiRollover(auth: string): Promise<Response> {
     //    onwaar terwijl het opgeruimde aantal juist hóóg staat. Zonder deze tak is
     //    een volle emmer niet van een geslaagde ronde te onderscheiden.
     if (paden.length >= BIJLAGE_PAS_LIMIET) {
-      console.error(`opruimpas ${emmer.naam} zat aan zijn limiet (${paden.length})`);
-      await meld(new Error(`opruimpas ${emmer.naam} zat aan zijn limiet`), 'rollover.bijlagen', {
+      console.error(`opruimpas ${emmer} zat aan zijn limiet (${paden.length})`);
+      await meld(new Error(`opruimpas ${emmer} zat aan zijn limiet`), 'rollover.bijlagen', {
         code: 'bijlagen_limiet_geraakt',
-        emmer: emmer.merk,
+        emmer,
         count: paden.length,
       });
     }
@@ -766,14 +779,14 @@ async function draaiRollover(auth: string): Promise<Response> {
     //    verschil tussen "deels gelukt" en "mislukt" niet te zien.
     for (let i = 0; i < paden.length; i += 100) {
       const blok = paden.slice(i, i + 100);
-      const { data: weg, error: wisFout } = await db.storage.from(emmer.naam).remove(blok);
+      const { data: weg, error: wisFout } = await db.storage.from(emmer).remove(blok);
 
       if (wisFout) {
         // ⚠️ **Doortellen en niet afbreken.** Eén onwisbaar pad mag de rest van
         //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
         //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
         bijlagenMislukt += blok.length;
-        console.error(`${emmer.naam} wissen mislukte (${blok.length} paden): ${wisFout.message}`);
+        console.error(`${emmer} wissen mislukte (${blok.length} paden): ${wisFout.message}`);
         continue;
       }
 
