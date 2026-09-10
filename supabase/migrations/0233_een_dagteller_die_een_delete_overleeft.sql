@@ -2,26 +2,9 @@
 -- voortaan de uploads die er wáren, niet de objecten die er stáán.
 --
 -- ROLLBACK-PAD:
---   -- ⚠️⚠️ **Ook `bewijsfotos` krijgt de bredere vorm, al is die emmer er vandaag
---    niet mee te misbruiken.** Zijn sleutel is segment 2 en dat is door
---    `bewijsfotos_insert` aan `auth.uid()` gepind, dus een hernoeming kan de
---    sleutel niet verzetten. Maar één vorm voor drie emmers is het hele punt van
---    deze migratie: laat je hier de smalle staan, dan is dát de vorm die de
---    volgende schrijver kopieert. Zelfde reden als "een halve familie is erger
---    dan een hele".
-
-drop trigger if exists bewijsfotos_aantal_begrensd_verhuisd on storage.objects;
-
-create trigger bewijsfotos_aantal_begrensd_verhuisd
-  before update of bucket_id, name on storage.objects
-  for each row
-  when (new.bucket_id = 'bewijsfotos'
-        and (old.bucket_id is distinct from new.bucket_id
-             or (storage.foldername(old.name))[2] is distinct from (storage.foldername(new.name))[2]))
-  execute function public.bewaak_bewijsfoto_aantal();
-
-drop trigger if exists avatars_aantal_begrensd_verhuisd on storage.objects;
+--   drop trigger if exists avatars_aantal_begrensd_verhuisd on storage.objects;
 --   drop trigger if exists chatfotos_aantal_begrensd_verhuisd on storage.objects;
+--   drop trigger if exists bewijsfotos_aantal_begrensd_verhuisd on storage.objects;
 --   -- daarna de drie tellerfuncties terugzetten uit 0130, 0226 en 0228, en:
 --   drop function if exists public.tel_opslag_upload(text, text, text, integer, interval, text);
 --   drop table if exists public.opslag_dagtellers;
@@ -363,6 +346,24 @@ create trigger chatfotos_aantal_begrensd_verhuisd
         and (old.bucket_id is distinct from new.bucket_id
              or (storage.foldername(old.name))[1] is distinct from (storage.foldername(new.name))[1]))
   execute function public.bewaak_chatfoto_aantal();
+
+-- ⚠️⚠️ **Ook `bewijsfotos` krijgt de bredere vorm, al is die emmer er vandaag
+--    niet mee te misbruiken.** Zijn sleutel is segment 2 en dat is door
+--    `bewijsfotos_insert` aan `auth.uid()` gepind, dus een hernoeming kan de
+--    sleutel niet verzetten. Maar één vorm voor drie emmers is het hele punt van
+--    deze migratie: laat je hier de smalle staan, dan is dát de vorm die de
+--    volgende schrijver kopieert. Zelfde reden als "een halve familie is erger
+--    dan een hele".
+
+drop trigger if exists bewijsfotos_aantal_begrensd_verhuisd on storage.objects;
+
+create trigger bewijsfotos_aantal_begrensd_verhuisd
+  before update of bucket_id, name on storage.objects
+  for each row
+  when (new.bucket_id = 'bewijsfotos'
+        and (old.bucket_id is distinct from new.bucket_id
+             or (storage.foldername(old.name))[2] is distinct from (storage.foldername(new.name))[2]))
+  execute function public.bewaak_bewijsfoto_aantal();
 
 -- ---------------------------------------------------------------------------
 -- 5. De insert-triggers: `before` en niet `after`

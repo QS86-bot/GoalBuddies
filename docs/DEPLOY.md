@@ -619,6 +619,67 @@ tien per gebruiker per dag is de bovengrens dus ruwweg dertien cent per
 gebruiker per dag — maar in de praktijk gebruikt niemand zijn plafond, en de
 cache vangt herhaalde vragen af.
 
+## 2.9 De bewaartermijn van chatfoto's — en wat een rollback níet terugdraait
+
+Sinds migratie 0235 (QS8-396) is de fotobucket een doorgeefluik en geen archief.
+De rollover-functie haalt elk uur op wat weg mag en wist het:
+
+```sql
+select * from verlopen_chatfotos(500);   -- als service_role
+select chatfoto_bewaartermijn();          -- 21 days
+```
+
+Twee redenen komen eruit, en ze staan als kolom in de teruggave:
+
+| Reden | Wat het is | Vanaf |
+|---|---|---|
+| `verlopen` | ouder dan `chatfoto_bewaartermijn()` | 21 dagen |
+| `wees` | geen chatbericht meer dat naar dit pad wijst | een uur na de upload |
+
+De termijn verhogen of verlagen is één regel SQL en geen release — zelfde vorm
+als `ai_dag_limiet()` hierboven:
+
+```sql
+create or replace function public.chatfoto_bewaartermijn()
+returns interval language sql immutable set search_path = public, pg_catalog, pg_temp
+as $$ select interval '21 days' $$;
+```
+
+⚠️ **Maar dan ook in de app.** `CHATFOTO_BEWAARDAGEN` in
+`src/shared/bewaartermijn/index.ts` staat in de zin die de gebruiker ziet waar
+zijn foto stónd. `tests/rls/chatfoto-bewaartermijn.test.ts` legt de twee naast
+elkaar en wordt rood zodra ze uiteenlopen — dus dit is één regel SQL **en** één
+regel TypeScript, of anders een rode poort.
+
+### ⚠️⚠️ Wat een rollback wél en niet terugdraait
+
+Het ROLLBACK-PAD in de kop van 0235 zet de leesgrens, de teller en de
+opruimfuncties terug. **Het zet geen foto's terug.**
+
+- **De bytes zijn weg.** `storage.remove()` heeft ze verwijderd; er is geen
+  prullenbak, en op de gratis tier zijn er geen automatische backups. Alles wat
+  de pas heeft opgehaald in de tijd dat 0235 draaide, is onherroepelijk weg.
+- **`pg_dump` helpt hier niet.** Die dumpt de metadata-rijen in
+  `storage.objects`, niet de blobs. Een teruggezette dump geeft dus rijen die
+  naar bestanden wijzen die er niet meer zijn — en de app toont daar netjes
+  *"Deze foto staat er niet meer"*.
+- **Wil je de pas alleen stilzetten** zonder de rest van 0235 terug te draaien,
+  dan is dat de veiligste stap en hij is één regel: zet de bewaartermijn
+  belachelijk hoog (`interval '3650 days'`). De weestak blijft dan draaien — die
+  ruimt alleen op wat sowieso onleesbaar is — en er verdwijnt niets wat nog in
+  een chat staat.
+
+  ```sql
+  create or replace function public.chatfoto_bewaartermijn()
+  returns interval language sql immutable set search_path = public, pg_catalog, pg_temp
+  as $$ select interval '3650 days' $$;
+  ```
+
+⚠️ **Draai die stap vóór een rollback en niet erna.** De rollover draait elk uur;
+tussen "ik ga terugdraaien" en "het is teruggedraaid" past een ronde.
+
+---
+
 ---
 
 ## 3. Build en uitrollen

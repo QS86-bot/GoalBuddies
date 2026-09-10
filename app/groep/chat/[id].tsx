@@ -19,6 +19,7 @@ import {
   systeemberichtTekst,
   vouwSysteemberichten,
   type ChatRegelItem,
+  CHATFOTO_BEWAARDAGEN,
   soortBijlage,
   soortUitPad,
   stuurBericht,
@@ -584,6 +585,23 @@ function Bijlageknoppen({ keuze }: { readonly keuze: Chatbijlagekeuze }) {
           ? t('chatfoto.gekozen')
           : `${t('chatdoc.gekozen')}: ${gekozen.naam}`}
       </Caption>
+
+      {/*
+        ⚠️ **De bewaartermijn staat er vóór het versturen en niet erna** — QS8-396.
+           Een gebruiker die weet dat de server zijn foto na drie weken weggooit,
+           kiest anders dan een gebruiker die dat pas merkt als de foto weg is.
+           Het is bovendien de eerlijke helft van dezelfde belofte: de zin die
+           straks in de plaats van de foto staat, noemt hetzelfde getal.
+
+        ⚠️⚠️ **Alleen bij een foto, en dat is geen omissie maar een verschil dat
+           er echt is.** De opruimpas van QS8-396 (migratie 0235) dekt
+           `chatfotos` en niet `chatdocs`; een document blijft dus staan. Een
+           zin die het tegendeel suggereert is erger dan geen zin. Dat het
+           verschil er is, staat als open rij in `docs/ENGINEER-REVIEW.md`.
+      */}
+      {gekozen.soort === 'foto' ? (
+        <Caption>{t('chatfoto.bewaartermijn', { dagen: CHATFOTO_BEWAARDAGEN })}</Caption>
+      ) : null}
       <Button variant="stil" block onPress={keuze.haalWeg}>
         {gekozen.soort === 'foto' ? t('chatfoto.weghalen') : t('chatdoc.weghalen')}
       </Button>

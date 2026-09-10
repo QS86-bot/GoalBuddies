@@ -898,7 +898,8 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.rem_bereikt': 'Enough photos have been posted in this group today. Tomorrow you can again.',
   'chatfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
   'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
-  'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
+  'chatfoto.niet_beschikbaar': 'This photo is gone. Photos are kept for {dagen} days.',
+  'chatfoto.bewaartermijn': 'Photos stay on the server for {dagen} days and are removed after that.',
   'chatfoto.laden': 'Loading photo',
   'chatfoto.beeld': 'Photo in this conversation',
 
