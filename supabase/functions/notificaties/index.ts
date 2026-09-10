@@ -66,6 +66,22 @@ import {
  *    afgewezen bij de rolloverplanning. Voor een app met een weekritme is een
  *    uur vertraging de goedkopere kant van die ruil.
  *
+ * ⚠️ **Maar niet voor élke soort, en de grens is op 10-09-2026 aangescherpt
+ *    (QS8-188).** Wat een uur verdraagt is een melding die *informeert over iets
+ *    dat al gebeurd is*; wat het niet verdraagt is een melding waarop de
+ *    ontvanger nog kán handelen vóór de gebeurtenis onherroepelijk is.
+ *
+ *    📏 Sectie 5 (`commitment_witness`) leek die grens te passeren — de
+ *    dossierrij noemde *"een straf die verschuldigd wordt"* letterlijk als
+ *    trigger — en doet dat bij nader inzien niet: de getuige is aangewezen om
+ *    het te hóren, de straf ís al verschuldigd als de melding afgaat, en `due`
+ *    hangt aan een streefdátum en niet aan een moment.
+ *
+ *    Komt er een soort bij waarop de ontvanger nog kan ingrijpen — een
+ *    chatbericht, of een waarschuwing vóór een straf in plaats van erna — dan is
+ *    de uurjob niet meer de goedkopere kant van die ruil. De volledige afweging
+ *    staat in de rij van 21-08 in `docs/ENGINEER-REVIEW.md`.
+ *
  * ⚠️ **Domeinregel 7.** Er zijn vijf soorten en vier ervan gaan over jezelf; de
  *    CHECK op `notifications_sent.kind` dwingt af dat er niet stil een zesde
  *    bijkomt. De vijfde — `commitment_witness` — is de énige die over een ander
