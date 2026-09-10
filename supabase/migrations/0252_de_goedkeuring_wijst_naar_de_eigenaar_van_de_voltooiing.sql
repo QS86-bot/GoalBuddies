@@ -7,6 +7,9 @@
 --     drop constraint if exists completion_approvals_subject_is_eigenaar;
 --   alter table public.completions
 --     drop constraint if exists completions_id_gebruiker_uniek;
+--   drop index if exists public.completion_approvals_subject_eigenaar_idx;
+--   create index if not exists completion_approvals_completion_idx
+--     on public.completion_approvals (completion_id);
 --
 -- ---------------------------------------------------------------------------
 -- Waar dit vandaan komt
@@ -37,12 +40,72 @@
 --    database het verband zélf bewaken — hij kán niet vergeten worden en hij
 --    overleeft elke `security definer`-functie die er ooit langs komt.
 --
+-- ⚠️⚠️ **Deze keuze stond geparkeerd voor de engineer-review.** De reactie op
+--    QS8-182 van 10-09-2026 15:40 zet het issue met zoveel woorden terug naar
+--    Backlog, omdat juist de keuze tussen trigger en foreign key het oordeel is
+--    dat die rij voor de engineer bewaart. Wat de parkering opheft is Quintens
+--    opdracht van diezelfde dag dat elk issue met `review:november` uitgevoerd
+--    mag worden — en uitvoeren betekent hier de vorm kiezen. De dossierrij
+--    blijft staan met de vormvraag erin; alleen de dékkingsvraag is beslist.
+--    Volledige verantwoording in
+--    `docs/decisions/2026-09-10-de-goedkeuring-wijst-naar-de-eigenaar.md`.
+--
 -- 📏 **De prijs, en die is gemeten en niet geschat:** één extra unieke index op
 --    `completions`, een tabel die veel schrijft. Op productie staan er vandaag
 --    **nul rijen** in `completions` en **nul** in `completion_approvals`
 --    (gemeten op 10-09-2026 tegen `wehgocadxehottiiyvsc`), dus deze migratie
 --    voegt toe aan lege tabellen en heeft geen herschrijving nodig.
 --
+-- ⚠️⚠️ **Twee afhankelijke objecten in één bestand: de drops staan bovenaan en in
+--    omgekeerde volgorde.** 📏 Gemeten door dit bestand een tweede keer af te
+--    spelen toen de opruiming nog per blok stond: `2BP01` —
+--    *cannot drop constraint completions_id_gebruiker_uniek ... because other
+--    objects depend on it*. De unieke constraint droppen kán niet zolang de
+--    foreign key die 30 regels lager bijkomt er nog op leunt.
+--
+--    Dat is onwrikbare regel 20, en de reflex die hem duur maakt staat in
+--    CLAUDE.md met zoveel woorden: de standaardreactie op een half gelukte
+--    migratie is *"draai hem opnieuw"*. Die reflex gaf hier een melding over een
+--    afhankelijkheid en niet over "staat er al" — een foutmelding die naar het
+--    verkeerde probleem wijst.
+--
+--    ⚠️ Dit is **niet** de uitzonderingsklasse die CLAUDE.md beschermt (een
+--    látere migratie die de vorm van hetzelfde object verandert; die botsing
+--    hoort te blijven staan). Dit bestand botste op zichzelf, op een vers
+--    schema, zonder dat er een tweede migratie aan te pas kwam.
+--
+--    ⚠️ **En de statische grendel had dit niet gevangen** — 📏 nagelezen in
+--    `tests/migraties/idempotentie.ts`: `bezwarenIn()` toetst of er vóór elke
+--    `create` een `drop ... if exists` staat, en die stónd er voor allebei de
+--    constraints. De fout zit in de volgorde tússen twee objecten, en dat is een
+--    andere klasse dan wat die grendel kan zien. Staat als QS8-413.
+--
+-- ⚠️ **`begin;`/`commit;` eromheen**, zoals 44 van de migraties in deze map. Zonder
+--    transactie laat een fout tussen statement 1 en 2 een halve staat achter, en
+--    dat is precies het geval waarin iemand hem opnieuw draait.
+--
+-- ⚠️ **Als `completions` ooit gevuld is, is dit niet meer gratis.** `add
+--    constraint ... unique` neemt ACCESS EXCLUSIVE en bouwt de index
+--    niet-concurrent; de foreign key neemt SHARE ROW EXCLUSIVE op beide tabellen
+--    en valideert. Op een gevulde `completions` — een tabel die per definitie
+--    veel schrijft — is de weg: `create unique index concurrently` buiten een
+--    transactie, dan `add constraint ... unique using index`, en de FK als
+--    `not valid` gevolgd door `validate constraint`. Vandaag onnodig (nul rijen,
+--    hierboven gemeten) en daarom niet gebouwd, maar de volgende lezer hoeft het
+--    dan niet zelf uit te zoeken.
+--
+-- ---------------------------------------------------------------------------
+-- 0. Opruimen — in omgekeerde afhankelijkheidsvolgorde, zie de kop
+-- ---------------------------------------------------------------------------
+
+begin;
+
+alter table public.completion_approvals
+  drop constraint if exists completion_approvals_subject_is_eigenaar;
+
+alter table public.completions
+  drop constraint if exists completions_id_gebruiker_uniek;
+
 -- ---------------------------------------------------------------------------
 -- 1. De sleutel waar de foreign key naar wijst
 -- ---------------------------------------------------------------------------
@@ -50,9 +113,6 @@
 -- ⚠️ `(id, user_id)` en niet andersom. `id` is al de primaire sleutel, dus deze
 --    index is functioneel overbodig voor het opzoeken — hij bestaat alleen omdat
 --    een foreign key een unieke constraint nodig heeft om naar te wijzen.
-
-alter table public.completions
-  drop constraint if exists completions_id_gebruiker_uniek;
 
 alter table public.completions
   add constraint completions_id_gebruiker_uniek unique (id, user_id);
@@ -80,9 +140,6 @@ comment on constraint completions_id_gebruiker_uniek on public.completions is
 --    doorglipt.
 
 alter table public.completion_approvals
-  drop constraint if exists completion_approvals_subject_is_eigenaar;
-
-alter table public.completion_approvals
   add constraint completion_approvals_subject_is_eigenaar
   foreign key (completion_id, subject_id)
   references public.completions (id, user_id)
@@ -95,3 +152,36 @@ comment on constraint completion_approvals_subject_is_eigenaar on public.complet
   'goedkeuren; deze foreign key verbiedt een goedkeuring die naar iemand anders '
   'dan de eigenaar wijst. Gemeten in QS8-182: zonder deze constraint werd dat '
   'toegelaten zodra fill_approval_subject() wegviel.';
+
+-- ---------------------------------------------------------------------------
+-- 3. De index die onwrikbare regel 11 eist
+-- ---------------------------------------------------------------------------
+--
+-- 📏 **De poort vond dit en niet ik.** `indexdekking_bewaking()` meldde de
+--    nieuwe constraint meteen: *elke foreign key staat vooraan in een index*, en
+--    Postgres indexeert de kindkant van een foreign key nooit zelf. De
+--    bestaande `completion_approvals_completion_idx` dekt alleen `(completion_id)`
+--    en is dus te kort voor een FK van twee kolommen.
+--
+-- ⚠️ **Dat is hier geen formaliteit maar het cascadepad.** Deze FK draagt
+--    `on delete cascade`: zonder index is het verwijderen van een voltooiing —
+--    en dus ook van een account — een seq scan over de goedkeuringen van
+--    iedereen. Precies het geval dat de kop van `indexdekking.test.ts` als de
+--    duurste plek aanwijst.
+--
+-- ⚠️⚠️ **En daarom gaat de oude index wég in plaats van ernaast te blijven
+--    staan.** `(completion_id, subject_id)` dekt elke vraag die
+--    `(completion_id)` dekte, want de kolom staat vooraan. Drie indexen die met
+--    `completion_id` beginnen (deze, `completion_approvals_one_vote` en de
+--    oude) op een tabel die veel schrijft, is schrijfkosten betalen voor niets —
+--    en die redundantie ontstaat dóór deze migratie, dus hij hoort hier
+--    opgeruimd te worden en niet in een issue. `one_vote` blijft: dat is een
+--    unieke constraint met een ándere tweede kolom (`approver_id`) en die draagt
+--    onwrikbare regel 9.
+
+create index if not exists completion_approvals_subject_eigenaar_idx
+  on public.completion_approvals (completion_id, subject_id);
+
+drop index if exists public.completion_approvals_completion_idx;
+
+commit;

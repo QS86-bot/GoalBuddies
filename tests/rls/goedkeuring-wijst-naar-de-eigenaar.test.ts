@@ -1,8 +1,7 @@
-import { execFileSync } from 'node:child_process';
-
 import { describe, expect, it } from 'vitest';
 
-import { PSQL_DB, PSQL_OMGEVING, stackBeschikbaarOfFaal } from './psql-stack';
+import { proefId } from './proefid';
+import { psqlMetInvoer, stackBeschikbaarOfFaal } from './psql-stack';
 
 const TEST_TIMEOUT = 30_000;
 
@@ -44,6 +43,26 @@ const TEST_TIMEOUT = 30_000;
  *   A  `completion_approvals_subject_is_eigenaar` droppen binnen de transactie
  *      -> de derde-partij-insert wordt TOEGELATEN, en de test hieronder rood.
  *         Dat is de stand van vóór 0252, met de hand nagespeeld.
+ *
+ *   B  Dezelfde constraint **buiten** de transactie droppen — dus de grendel die
+ *      dit bestand bewaakt echt weghalen — en dan meten wat de suite doet. De
+ *      vraag komt uit de security-ronde op deze branch, die vermoedde dat de
+ *      test stil met de grendel meeverdwijnt (de vorm van QS8-270). 📏 Gemeten,
+ *      en dat is **niet** zo:
+ *
+ *        met RLS_DOEL=lokaal   -> 1 bestand ROOD, "de proef gaf 0 in plaats van 1"
+ *        zonder RLS_DOEL       -> 4 tests overgeslagen
+ *
+ *      Dat tweede is geen gat maar de regel van QS8-270 zelf: zwijgen mag alleen
+ *      als niemand beweerde te meten. De poort en CI zetten `RLS_DOEL`, dus daar
+ *      is het rood. `stackOordeel()` werpt op alles behalve die ene stand.
+ *
+ * ⚠️ **Deze test doet `disable trigger` én (in ijking A) `drop constraint`,
+ *    allebei ACCESS EXCLUSIVE.** Dat is vandaag alleen veilig doordat de
+ *    rls-groep op `fileParallelism: false` draait — en `vitest.config.mts` zegt
+ *    er met zoveel woorden bij dat die vlag *de indamming en niet de genezing*
+ *    is. Wordt hij ooit versoepeld, dan zijn deze twee statements een blokkeer-
+ *    en deadlockbron en hoort deze opzet eerst herzien te worden.
  */
 
 const beschikbaar = stackBeschikbaarOfFaal(
@@ -51,13 +70,30 @@ const beschikbaar = stackBeschikbaarOfFaal(
   import.meta.url,
 );
 
-const EIGENAAR = 'aaaaaaaa-0182-4000-8000-000000000001';
-const BEOORDELAAR = 'aaaaaaaa-0182-4000-8000-000000000002';
-const DERDE = 'aaaaaaaa-0182-4000-8000-000000000003';
-const GROEP = 'eeeeeeee-0182-4000-8000-000000000001';
-const DOEL = 'bbbbbbbb-0182-4000-8000-000000000001';
-const WEEKDOEL = 'cccccccc-0182-4000-8000-000000000001';
-const VOLTOOIING = 'dddddddd-0182-4000-8000-000000000001';
+/**
+ * ⚠️ **`proefId()` en geen vaste uuid.** Deze opzet interpoleert zijn id's
+ *    rechtstreeks in `psql`-regels, dus ze moeten vóór de insert al bekend zijn —
+ *    de geldige reden om ze zelf te kiezen. Maar *vast* mogen ze niet zijn: twee
+ *    suites tegen dezelfde lokale stack dragen dan allebei dezelfde uuid en
+ *    ruimt de één de rij van de ánder op (QS8-336). `gedeelde-identiteit:controle`
+ *    ving dit hier op de poort.
+ */
+const EIGENAAR = proefId(1);
+const BEOORDELAAR = proefId(2);
+const DERDE = proefId(3);
+const GROEP = proefId(4);
+const DOEL = proefId(5);
+const WEEKDOEL = proefId(6);
+const VOLTOOIING = proefId(7);
+
+/**
+ * ⚠️ **Ook de invite-code moet per run verschillen.** `groups.invite_code` staat
+ *    onder `groups_invite_code_key` (UNIQUE), dus een vaste code botst tussen
+ *    twee gelijktijdige runs op precies dezelfde manier als een vaste uuid —
+ *    alleen ziet `gedeelde-identiteit:controle` hem niet, want die zoekt uuid's.
+ *    Afgeleid van de groeps-id, zodat er één bron van toeval is.
+ */
+const INVITE = GROEP.replaceAll('-', '').slice(0, 8).toUpperCase();
 
 /** De opbouw die elk geval deelt. Draait binnen een transactie die terugrolt. */
 const OPZET = `
@@ -67,7 +103,7 @@ insert into auth.users (id, email) values
   ('${BEOORDELAAR}','qs8182-beoordelaar@proef.test'),
   ('${DERDE}','qs8182-derde@proef.test');
 insert into public.groups (id, name, created_by, invite_code)
-  values ('${GROEP}','QS8-182 proefgroep','${EIGENAAR}','Q8182ABC');
+  values ('${GROEP}','QS8-182 proefgroep','${EIGENAAR}','${INVITE}');
 insert into public.goals (id, owner_id, title, category, target_date)
   values ('${DOEL}','${EIGENAAR}','Doel','other', current_date + 60);
 insert into public.weekly_goals (id, goal_id, title, cycle_start_date)
@@ -106,14 +142,7 @@ select 'UITKOMST ' || waarde from qs8182_uitkomst;
 rollback;
 `;
 
-  const uit = execFileSync(
-    'psql',
-    [
-      '-U', PSQL_OMGEVING.PGUSER as string, '-d', PSQL_DB, '-q', '-w',
-      '-v', 'ON_ERROR_STOP=1', '-tA',
-    ],
-    { env: PSQL_OMGEVING, encoding: 'utf8', input: sql },
-  );
+  const uit = psqlMetInvoer(sql);
 
   const regel = uit.split('\n').find((r) => r.includes('UITKOMST '));
   if (regel === undefined) throw new Error(`geen uitkomst gemeten:\n${uit}`);
