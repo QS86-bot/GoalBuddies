@@ -917,6 +917,18 @@ export const nl = {
   //    het haalt alleen de onderbreking weg. Zie domeinregel 5.
   'meldingsoort.getuige_uitleg':
     'Je blijft de inzet zien bij Getuigenissen; je krijgt er alleen geen melding meer van.',
+  'stilteuren.titel': 'Stille uren',
+  'stilteuren.uitleg':
+    'In dit venster krijg je geen meldingen. Wat er tijdens de stilte binnenkomt, ' +
+    'komt erna alsnog.',
+  'stilteuren.label': 'Stille uren',
+  'stilteuren.van': 'Van',
+  'stilteuren.tot': 'Tot',
+  // ⚠️ Feitelijk en geen waarschuwing: het getal komt uit dezelfde functie die
+  //    de verschuiving doet, dus deze zin kan niet uit de pas lopen met wat er
+  //    gebeurt. Zie `verschovenUur()` en QS8-406.
+  'stilteuren.herinnering_verschoven':
+    'Je herinnering van {oud} valt in je stille uren. Hij komt daarom om {nieuw}.',
   'profiel.aan': 'Aan',
   'profiel.uit': 'Uit',
   'profiel.viering_beweging': 'Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst blijft dan gewoon staan.',

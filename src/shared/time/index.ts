@@ -18,6 +18,8 @@ export { GRACE_HOURS } from './types';
 
 export { freezeNow, now, ouderDan, unfreezeNow } from './clock';
 
+export { eersteLuideUur, inStilteVenster, verschovenUur } from './stilte';
+
 export {
   closableUserCycle,
   cyclesBetween,
