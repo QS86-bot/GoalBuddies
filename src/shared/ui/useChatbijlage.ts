@@ -13,7 +13,7 @@ import type { Gekozenbijlage } from './verzendbijlage';
  *
  * ⚠️⚠️ **Eén bijlage tegelijk, en dat is geen vereenvoudiging maar de vorm van
  *    de tabel.** `chat_messages` heeft één `attachment_url` en één `type`, en de
- *    CHECK `chat_messages_attachment_eigen_pad` (migratie 0241) paart die twee.
+ *    CHECK `chat_messages_attachment_eigen_pad` (migratie 0242) paart die twee.
  *    Twee losse velden hierboven zouden een stand toelaten die de database niet
  *    kan opslaan, en dan komt de weigering pas ná het uploaden — met een
  *    verweesd bestand in de emmer.
@@ -81,7 +81,7 @@ export function useChatbijlage(): Chatbijlagekeuze {
     // ⚠️ Zelfde keuring als de server: type, omvang én bruikbare naam. Die derde
     //    is nieuw ten opzichte van de foto — een bestand dat alleen uit
     //    stuurtekens bestaat, houdt na `schoneBestandsnaam()` niets over, en de
-    //    CHECK `chat_messages_attachment_name_vorm` (0241) weigert dat.
+    //    CHECK `chat_messages_attachment_name_vorm` (0242) weigert dat.
     const bezwaar = keurChatdoc(keuze.data.byteLength, keuze.mime, keuze.naam);
     if (bezwaar !== null) {
       setFout(bezwaar);

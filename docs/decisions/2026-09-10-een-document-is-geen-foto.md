@@ -1,6 +1,6 @@
 # Een document is geen foto
 
-**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0239, 0240, 0241, 0242
+**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0240, 0241, 0242, 0243
 
 Dit document is de tegenhanger van
 `docs/decisions/2026-09-09-een-foto-in-de-chat.md`. Wat daar staat over het pad,
@@ -44,7 +44,7 @@ vandaag `avatars`, `chatfotos`, `bewijsfotos` en `chatdocs` samen, dat is
 niets open.**
 
 Wat er wél openstond, was de aanname. De beloftetest toetste de denylist alleen
-tegen de tekst van 0239; wie er over een half jaar een vijfde emmer naast zet met
+tegen de tekst van 0240; wie er over een half jaar een vijfde emmer naast zet met
 `image/svg+xml` (heel gewoon, voor iconen) verruimt déze emmer zonder dit
 document te lezen, en de test blijft groen. Sinds 10-09 leest die test **elke**
 `insert into storage.buckets` in de hele migratiemap.
@@ -136,7 +136,7 @@ De grendel daartegen is een prop die er niet is: `Document.tsx` krijgt geen
 
 `attachment_url` draagt de emmer niet. Het pad is `<groep>/<afzender>/<naam>.<ext>`
 en dat is voor `chatfotos` en `chatdocs` identiek. **`type` is het enige dat zegt
-waar dit bestand staat**, en migratie 0241 is wat die twee gekoppeld houdt:
+waar dit bestand staat**, en migratie 0242 is wat die twee gekoppeld houdt:
 
 ```sql
 (type = 'photo' and attachment_url ~ '…\.(jpg|jpeg|png|webp)$')
@@ -193,15 +193,15 @@ nooit uit de naam: anders stelt `factuur.pdf.exe` zich voor als PDF.
 
 ## 6. De botsing tussen twee correcte grendels
 
-De eerste versie van 0241 eiste `type <> 'doc' or attachment_name is not null` —
-een document draagt een naam. Dat botste met de AVG-opruiming van 0242:
+De eerste versie van 0242 eiste `type <> 'doc' or attachment_name is not null` —
+een document draagt een naam. Dat botste met de AVG-opruiming van 0243:
 
 ```
 delete from profiles where id = <a>
 → Aan een chatbericht zijn alleen de tekst en de bijlage te wijzigen
 ```
 
-`stamp_chat_message()` maakt `type` **onveranderlijk**, dus 0242 kon de rij niet
+`stamp_chat_message()` maakt `type` **onveranderlijk**, dus 0243 kon de rij niet
 op `text` terugzetten om van de naam-eis af te komen.
 
 De keuze was: de onveranderlijkheid verruimen, of de CHECK aan de **bijlage**
@@ -221,7 +221,7 @@ opnieuw maakt en misschien de andere kant op valt.
 
 ## 7. `wis_chatfotos_van_vertrekker` heet nu `wis_bijlagen_van_vertrekker`
 
-De functie dekt sinds 0242 `('chatfotos', 'chatdocs')`. De oude naam zou liegen
+De functie dekt sinds 0243 `('chatfotos', 'chatdocs')`. De oude naam zou liegen
 over wat het lichaam doet — hetzelfde geval als `zonderAvatar` →
 `zonderVerlopendeUrls`: **de naam noemt de eigenschap, niet het veld van toen.**
 De trigger heet mee (`profielen_bijlagen_mee`).
