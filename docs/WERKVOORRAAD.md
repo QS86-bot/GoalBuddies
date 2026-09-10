@@ -14,9 +14,9 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**245**.
+**246**.
 
-**Het gat is daarmee eenentwintig bestanden** — `0222` t/m `0242`, van 09-09 en
+**Het gat is daarmee tweeëntwintig bestanden** — `0222` t/m `0243`, van 09-09 en
 10-09 en uit tien verschillende issues:
 
 | | | DDL op `storage.objects` |
@@ -38,10 +38,11 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql` | QS8-392 | nee |
 | `0237_elke_meldingsoort_heeft_een_schakelaar.sql` | QS8-92 | nee |
 | `0238_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
+| `0239_geen_enkele_emmer_heeft_een_update_pad.sql` | QS8-407 | ja |
 | `0240_een_document_hoort_bij_een_groep.sql` | QS8-72 | ja |
 | `0241_een_rem_op_documenten_per_groep_en_per_lid.sql` | QS8-72 | ja |
 | `0242_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
-| `0242_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
+| `0243_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -284,7 +285,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0242` staan in de map: **245 bestanden**,
+Migraties `0001` t/m `0243` staan in de map: **246 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
