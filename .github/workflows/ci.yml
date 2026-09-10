@@ -388,6 +388,18 @@ jobs:
       - name: RLS-policies
         run: npm run rls:lokaal
 
+      # ⚠️⚠️ **Hier en niet in een eigen job** (QS8-413): deze controle bouwt het
+      #    schema van nul op en heeft dus een Postgres nodig, en die staat hier
+      #    al. Een eigen job zou een tweede container starten voor twee seconden
+      #    extra rekenwerk.
+      #
+      # ⚠️ **Ná de RLS-suite en niet ervoor.** Hij maakt een éígen database aan
+      #    (`goalbuddies_dubbel`) en laat de stack met rust, maar de volgorde
+      #    houdt de uitslagen uit elkaar: valt dit om, dan weet je dat de suite
+      #    daarvóór wél gemeten heeft.
+      - name: Elke migratie overleeft een tweede run
+        run: npm run idempotent:controle
+
       # Zonder dit is een storing in de opstelling niet te onderscheiden van een
       # policyfout, en dan zoek je in de policies naar iets wat een verbinding was.
       - name: PostgREST-log bij een mislukking
