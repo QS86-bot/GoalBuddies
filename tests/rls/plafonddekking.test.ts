@@ -237,7 +237,7 @@ describe.skipIf(!beschikbaar)('elke groeibare tabel heeft een plafond of een red
     //    de zelftoets in `remdekking.test.ts`: bij `> 10` hadden er negentien
     //    kunnen wegvallen zonder dat hier iets aansloeg.
     //
-    // ⚠️ Negenentwintig werd dertig met `todo_items` (0245, QS8-379). Die tabel
+    // ⚠️ Negenentwintig werd dertig met `todo_items` (0246, QS8-379). Die tabel
     //    draagt zijn eigen plafond — `taken_dagplafond` met `taken_rem`
     //    ernaast — dus hij komt hier binnen als bewaakt en niet als bevinding.
     const gevonden = groeibareTabellen();

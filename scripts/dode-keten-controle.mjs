@@ -675,7 +675,7 @@ export const GEDEELDE_WAARDEN = {
   pending: ['group_join_requests', 'weekly_goals'],
   // ⚠️ In beide tabellen de standaard én de enige waarde die vandaag geschreven
   //    wordt: `daily_moves` via de kolomgrant, `todo_items` via de default en de
-  //    conjunct in `todo_items_insert` (0245).
+  //    conjunct in `todo_items_insert` (0246).
   private: ['daily_moves', 'todo_items'],
   productivity: ['goals', 'groups', 'profiles'],
   resolved: ['commitment_events', 'commitments'],

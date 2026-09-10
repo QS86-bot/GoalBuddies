@@ -4,7 +4,7 @@ import { t } from '../../shared/i18n';
 import { telTekens } from '../../shared/tekst';
 
 /**
- * De invoerregels van De Lijst — QS8-379, migratie 0245.
+ * De invoerregels van De Lijst — QS8-379, migratie 0246.
  *
  * ⚠️ **Dit bestand importeert bewust niets uit een datalaag.** Zou het dat wel
  *    doen, dan trekt elke test die deze regels wil controleren `lib/supabase`
@@ -13,7 +13,7 @@ import { telTekens } from '../../shared/tekst';
  *    `chat-schemas.ts` en `commitment-schemas.ts`.
  *
  * ⚠️ **`visibility` staat hier met opzet niet in, en dat is geen vergeetpost.**
- *    De kolom bestaat sinds 0245 en is voor geen enkele client schrijfbaar; het
+ *    De kolom bestaat sinds 0246 en is voor geen enkele client schrijfbaar; het
  *    delen krijgt in QS8-381 een eigen RPC. Een veld hier zou een schrijfpad
  *    suggereren dat er niet is, en de eerste die het invult krijgt een `42501`
  *    uit Postgres in plaats van een zin. `tests/rls/todo-lijst.test.ts` bewaakt
@@ -65,7 +65,7 @@ export const taakInvoerSchema = z.object({
 /**
  * Een wijziging aan een bestaande taak.
  *
- * ⚠️ Precies de drie kolommen die in de UPDATE-kolomgrant van 0245 staan, en
+ * ⚠️ Precies de drie kolommen die in de UPDATE-kolomgrant van 0246 staan, en
  *    geen vierde. Staat hier ooit een veld bij dat de grant niet kent, dan is de
  *    melding die de gebruiker krijgt een `42501` en niet een zin.
  */

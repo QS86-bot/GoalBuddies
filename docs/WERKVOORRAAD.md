@@ -14,7 +14,7 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**248**.
+**249**.
 
 **Het gat is daarmee vijfentwintig bestanden** — `0222` t/m `0246`, van 09-09
 en 10-09 en uit twaalf verschillende issues:
@@ -295,7 +295,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0245` staan in de map: **248 bestanden**,
+Migraties `0001` t/m `0246` staan in de map: **249 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
