@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { freezeNow, unfreezeNow } from '../../shared/time';
 
-import { maakTaak, verzetTaak, zetAfgevinkt, type Taak } from './api';
+import { fetchTaken, maakTaak, verzetTaak, zetAfgevinkt, type Taak } from './api';
 import { VOLGORDE_MAX } from './todo-schemas';
 
 /**
@@ -40,6 +40,8 @@ import { VOLGORDE_MAX } from './todo-schemas';
  *      -> 1 rood: 'een PATCH die nul rijen raakte, meldt geen succes'
  *   D  de gelijkheidstoets uit `verzetTaak()` halen
  *      -> 1 rood: 'wisselen van twee taken op dezelfde plek zegt dat het niets deed'
+ *   E  `eq('user_id', userId)` uit `fetchTaken()` halen
+ *      -> 1 rood: 'haalt precies de taken van de opgegeven gebruiker op'
  */
 
 /** Wat de stub de volgende keer teruggeeft, per soort aanroep. */
@@ -52,6 +54,8 @@ interface Antwoord {
 let laatsteSelect: Antwoord = { data: null, error: null };
 let laatsteSchrijf: Antwoord = { data: null, error: null };
 const geschreven: { soort: string; waarde: unknown }[] = [];
+/** Elke `.eq(kolom, waarde)` die langskomt, in volgorde. */
+const gefilterd: { kolom: unknown; waarde: unknown }[] = [];
 
 /**
  * Een PostgREST-schil die de keten nabootst en onthoudt wat er geschreven werd.
@@ -70,9 +74,13 @@ function keten(soort: 'select' | 'schrijf') {
     single: () => Promise.resolve(antwoord()),
   };
 
-  for (const naam of ['select', 'eq', 'order', 'limit', 'range']) {
+  for (const naam of ['select', 'order', 'limit', 'range']) {
     schil[naam] = () => schil;
   }
+  schil['eq'] = (kolom: unknown, waarde: unknown) => {
+    gefilterd.push({ kolom, waarde });
+    return schil;
+  };
   return schil;
 }
 
@@ -101,10 +109,13 @@ const TAAK: Taak = {
   done_at: null,
   order_index: 3,
   created_at: '2026-09-09T08:00:00.000Z',
+  visibility: 'private',
+  shared_group_id: null,
 };
 
 beforeEach(() => {
   geschreven.length = 0;
+  gefilterd.length = 0;
   laatsteSelect = { data: null, error: null };
   laatsteSchrijf = { data: TAAK, error: null };
 });
@@ -190,5 +201,36 @@ describe('wisselen', () => {
 
     expect(uit.ok, 'stil slagen geeft een knop die niets doet').toBe(false);
     expect(geschreven, 'er is toch geschreven').toEqual([]);
+  });
+});
+
+describe('je eigen lijst is je eigen lijst', () => {
+  /**
+   * ⚠️⚠️ **`eq('user_id', …)` in `fetchTaken()` was er voor de index en is sinds
+   *    0248 dragend, en dat verschil stond nergens onder test.** Tot dat moment
+   *    was `todo_items` eigenaar-only: de policy gaf je precies je eigen rijen,
+   *    dus de filter versnelde alleen. Sinds De Lijst deelbaar is, geeft
+   *    `todo_items_select` je óók de gedeelde taken van je groepsgenoten.
+   *
+   * 📏 Gemeten op de gedeployde stand, als Bob zonder die filter:
+   *    `ALICE deelt dit | bob eigen taak`. Haalt iemand hem weg bij een refactor,
+   *    dan staan andermans taken tússen je eigen taken, telt `count: 'exact'` ze
+   *    mee en mikt `verzetTaak()` op een buurtaak van een ander.
+   *
+   * ⚠️ **Dit is regel 18 vraag 4 aan de andere kant.** De belofte verhuisde niet
+   *    en de tekst eromheen ook niet — de wereld eronder veranderde. Het
+   *    commentaar bij `fetchTaken()` zei nog *"verandert de snelheid en niet de
+   *    grens"*, en dat is precies de zin die iemand overtuigt hem weg te halen.
+   *    Een onjuiste aantekening bij een grendel is gevaarlijker dan geen.
+   */
+  it('haalt precies de taken van de opgegeven gebruiker op', async () => {
+    laatsteSelect = { data: [], error: null, count: 0 };
+
+    await fetchTaken('gebruiker-1');
+
+    expect(
+      gefilterd,
+      'zonder deze filter komen de gedeelde taken van groepsgenoten in je eigen lijst',
+    ).toContainEqual({ kolom: 'user_id', waarde: 'gebruiker-1' });
   });
 });
