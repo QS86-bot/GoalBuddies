@@ -97,7 +97,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
     'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
   'coach.alleen_voor_jou':
-    'Waar sinds migratie 0232. Was het niet: goals_select gaf een groepsgenoot de héle rij, ' +
+    'Waar sinds migratie 0235. Was het niet: goals_select gaf een groepsgenoot de héle rij, ' +
     'inclusief identity_statement — gemeten, met de zin woordelijk terug op het scherm van ' +
     'een ander (QS8-392). authenticated heeft nu een kolomgrant zonder die kolom, en de ' +
     'eigenaar leest hem via de view mijn_doelvelden. Grendel: tests/rls/doelkolommen.test.ts.',
@@ -123,7 +123,7 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
   'interview.stuck_before.toelichting':
     'Zelfde onderwerp en zelfde reparatie als coach.alleen_voor_jou: het antwoord staat in ' +
     'goal_interviews (eigenaar-only, één policy met alleen een eigenaarstak) en de twee ' +
-    'velden die naar goals gespiegeld worden zijn sinds migratie 0232 niet meer leesbaar ' +
+    'velden die naar goals gespiegeld worden zijn sinds migratie 0235 niet meer leesbaar ' +
     'voor een groepsgenoot.',
   'straf.tot_dan':
     'Een commitment vóór de deadline. Oppervlak 20 is in EPIC 13 bewust niet opengezet: ' +

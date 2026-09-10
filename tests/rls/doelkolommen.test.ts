@@ -11,7 +11,7 @@ import {
 
 /**
  * Welke kolommen van een doel de groep níet krijgt — QS8-392 en QS8-393,
- * migratie 0232.
+ * migratie 0235.
  *
  * ⚠️⚠️ **Eén oorzaak, twee lekken, en de oorzaak is dat `goals_select` nooit als
  *    oppervlak is opgeschreven.** Het register in
@@ -216,7 +216,7 @@ describe.skipIf(!rlsTestsConfigured)('wat de groep van een doel te zien krijgt',
     /**
      * ⚠️⚠️ **De keten, en niet de policy.** `maakDoel()` en `werkDoelBij()` doen
      *    een `insert`/`update` met een `select` erachter. Stond daar `*`, dan is
-     *    dat sinds 0232 een `42501` op je eigen, net aangemaakte doel — en dat
+     *    dat sinds 0235 een `42501` op je eigen, net aangemaakte doel — en dat
      *    ziet TypeScript niet, want de gegenereerde typing kent geen grants.
      *    Dit geval loopt precies dat pad.
      */
