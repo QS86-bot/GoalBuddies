@@ -4,6 +4,11 @@
 export {
   berichtVoor,
   herinneringStandaard,
+  meldingPoortReden,
+  meldingsoortVelden,
+  stilleUrenVelden,
+  MELDINGSOORTEN,
+  VOORKEUR_PER_SOORT,
   herinneringVelden,
   nudgeBericht,
   nudgeReden,
@@ -12,6 +17,7 @@ export {
   uurUit,
   type Bericht,
   type Melding,
+  type Meldingsvoorkeuren,
   type NudgeSituatie,
   type Toon,
 } from './regels';

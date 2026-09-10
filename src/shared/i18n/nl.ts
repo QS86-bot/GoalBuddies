@@ -209,6 +209,27 @@ export const nl = {
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
+  'stuurloos.kop': 'Je getuige is er niet meer',
+  'stuurloos.uitleg':
+    'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
+  'stuurloos.wie': 'Wie let er vanaf nu op?',
+  'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
+  'stuurloos.niemand':
+    'Er is nu niemand in je groepen om aan te wijzen. Zodra er iemand bijkomt, kan het hier.',
+  'stuurloos.afwikkelen': 'Ik heb hem nagekomen',
+  'stuurloos.zeker': 'Deze inzet afwikkelen?',
+  'stuurloos.afwikkelen_uitleg':
+    'Je legt hiermee vast dat je je inzet bent nagekomen. Er is nu geen getuige die dat kan bevestigen, dus dit staat op jouw woord. Terugdraaien kan niet.',
+  'stuurloos.ja_afwikkelen': 'Ja, afwikkelen',
+  'stuurloos.terug': 'Terug',
+  'commitment.fout.herstel': 'Dat lukte niet. Probeer het opnieuw.',
+  'commitment.herstel.heeft_getuige':
+    'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
+  'commitment.herstel.niet_verschuldigd':
+    'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.geen_groepsgenoot':
+    'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
+  'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
   'commitment.fout.spoor': 'De geschiedenis kon niet geladen worden.',
 
   'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
@@ -256,8 +277,9 @@ export const nl = {
   'bevestiging.doel_afronden.titel': 'Dit doel afronden?',
   'bevestiging.doel_afronden.uitleg':
     'Elke groep waaraan dit doel hangt, krijgt een bericht dat je het afgerond hebt, en ' +
-    'een chatbericht haal je niet meer weg. Je beloning komt vrij en wordt ook gemeld; ' +
-    'een straf die je had ingesteld, vervalt. Terugzetten kan niet.',
+    'een chatbericht haal je niet meer weg. Rond je op tijd af, dan komt je beloning vrij ' +
+    'en vervalt een straf die je had ingesteld. Ben je na de streefdatum, dan verloopt je ' +
+    'beloning en blijft je straf staan: die wordt verschuldigd. Terugzetten kan niet.',
   'bevestiging.doel_afronden.knop': 'Afronden',
 
   // ---------------------------------------------------------------------------
@@ -879,6 +901,34 @@ export const nl = {
   'profiel.viering_uitleg': 'Een korte felicitatie als een buddy je week bevestigt, je een mijlpaal haalt of je doel af is. Verder blijft de app rustig.',
   'profiel.viering_aan_label': 'Feestelijke momenten aan',
   'profiel.viering_uit_label': 'Feestelijke momenten uit',
+  // ⚠️ De vier soorten die je los kunt uitzetten (QS8-92). `nudge` staat hier
+  //    niet bij: die schakelaar is de herinneringkaart hierboven, en dat zegt
+  //    `meldingsoort.uitleg` met zoveel woorden — zonder die zin lijkt de lijst
+  //    incompleet.
+  'meldingsoort.titel': 'Welke meldingen wil je?',
+  'meldingsoort.uitleg':
+    'De dagelijkse herinnering zet je hierboven aan of uit. Deze vier staan los ' +
+    'daarvan.',
+  'meldingsoort.approval_request': 'Een buddy wacht op jouw oordeel',
+  'meldingsoort.approval_received': 'Iemand heeft jouw week goedgekeurd',
+  'meldingsoort.cycle_summary': 'Je weekoverzicht',
+  'meldingsoort.commitment_witness': 'Een inzet waarvan jij getuige bent',
+  // ⚠️ Feitelijk en niet geruststellend: dempen haalt de getuigenis niet weg,
+  //    het haalt alleen de onderbreking weg. Zie domeinregel 5.
+  'meldingsoort.getuige_uitleg':
+    'Je blijft de inzet zien bij Getuigenissen; je krijgt er alleen geen melding meer van.',
+  'stilteuren.titel': 'Stille uren',
+  'stilteuren.uitleg':
+    'In dit venster krijg je geen meldingen. Wat er tijdens de stilte binnenkomt, ' +
+    'komt erna alsnog.',
+  'stilteuren.label': 'Stille uren',
+  'stilteuren.van': 'Van',
+  'stilteuren.tot': 'Tot',
+  // ⚠️ Feitelijk en geen waarschuwing: het getal komt uit dezelfde functie die
+  //    de verschuiving doet, dus deze zin kan niet uit de pas lopen met wat er
+  //    gebeurt. Zie `verschovenUur()` en QS8-406.
+  'stilteuren.herinnering_verschoven':
+    'Je herinnering van {oud} valt in je stille uren. Hij komt daarom om {nieuw}.',
   'profiel.aan': 'Aan',
   'profiel.uit': 'Uit',
   'profiel.viering_beweging': 'Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst blijft dan gewoon staan.',
@@ -977,6 +1027,7 @@ export const nl = {
   'opnieuw.al_goedgekeurd': 'Deze week is al goedgekeurd. Er valt niets meer te vervangen.',
   'opnieuw.niets_ingediend': 'Er staat nog niets ingediend voor deze week.',
   'opnieuw.notitie_vereist': 'Deze groep vraagt om een korte notitie bij het afronden.',
+  'opnieuw.bewijs_vereist': 'Deze groep vraagt een foto als bewijs. Stuur er een mee.',
   'opnieuw.mislukt': 'Opnieuw indienen lukte niet. Probeer het zo nog eens.',
   'opnieuw.mislukt_kort': 'Opnieuw indienen lukte niet.',
 
@@ -1008,6 +1059,7 @@ export const nl = {
   'avatar.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
   'avatar.te_groot': 'Die foto is groter dan 2 MB. Kies een kleinere.',
   'avatar.uploaden_mislukt': 'De foto kon niet opgeslagen worden. Probeer het opnieuw.',
+  'avatar.rem_bereikt': 'Je hebt je foto vandaag vaak genoeg gewisseld. Morgen kan het weer.',
   'avatar.verwijderen_mislukt': 'De foto kon niet weggehaald worden. Probeer het opnieuw.',
   'avatar.geen_toegang': 'Zonder toegang tot je foto’s kan de app er geen kiezen.',
   'avatar.grens': 'JPG, PNG of WebP, tot {mb} MB. Alleen je groepsgenoten zien hem.',
@@ -1162,6 +1214,7 @@ export const nl = {
   //    een duim omhoog op een bewering is een formaliteit, één zin geeft de
   //    goedkeurder iets om op te reageren.
   'bewijseis.note_required': 'Notitie verplicht',
+  'bewijseis.note_and_attachment': 'Notitie én foto',
   'bewijseis.optional': 'Alles optioneel',
 
   // ---------------------------------------------------------------------------
@@ -1266,10 +1319,52 @@ export const nl = {
   'chatfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
   'chatfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
   'chatfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'chatfoto.rem_bereikt': 'Er zijn vandaag genoeg foto\u2019s in deze groep geplaatst. Morgen kan het weer.',
   'chatfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
-  'chatfoto.niet_beschikbaar': 'Deze foto is niet meer beschikbaar.',
+  // ⚠️ **De reden staat erbij sinds QS8-396, en dat is geen opsmuk.** Zonder de
+  //    termijn leest "niet meer beschikbaar" als een storing, en dan probeert
+  //    iemand het morgen weer. Mét de termijn is het een eigenschap van de app:
+  //    de server bewaart je foto's niet. `{dagen}` komt uit
+  //    `CHATFOTO_BEWAARDAGEN`, dat op zijn beurt naast `chatfoto_bewaartermijn()`
+  //    gelegd wordt — één getal en niet twee.
+  'chatfoto.niet_beschikbaar': 'Deze foto staat er niet meer. Foto\u2019s blijven {dagen} dagen bewaard.',
+  'chatfoto.bewaartermijn': 'Foto\u2019s blijven {dagen} dagen op de server staan en gaan daarna weg.',
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
+
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Document toevoegen',
+  'chatdoc.gekozen': 'Document klaar om te versturen',
+  'chatdoc.weghalen': 'Document weghalen',
+  'chatdoc.type_niet_toegestaan': 'Kies een PDF.',
+  'chatdoc.te_groot': 'Dit document is groter dan 5 MB. Kies een kleiner bestand.',
+  'chatdoc.naam_leeg': 'Dit bestand heeft geen bruikbare naam.',
+  'chatdoc.uploaden_mislukt': 'Het document versturen lukte niet. Probeer het zo nog eens.',
+  'chatdoc.rem_bereikt': 'Er zijn vandaag genoeg documenten gedeeld in deze groep. Morgen kan het weer.',
+  'chatdoc.kiezen_mislukt': 'De bestandskiezer ging niet open.',
+  'chatdoc.niet_beschikbaar': 'Dit document is niet meer beschikbaar.',
+  'chatdoc.openen': 'Openen',
+  'chatdoc.openen_label': '{naam} openen, PDF, in een andere app',
+  'chatdoc.openen_mislukt': 'Het document openen lukte niet.',
+  'chatdoc.laden': 'Document openen',
+  'chatdoc.soort_pdf': 'PDF',
+
+  // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
+  // anders dan bij een beoordeling.
+  'bewijsfoto.knop': 'Foto als bewijs',
+  'bewijsfoto.gekozen': 'Bewijs klaar om mee te sturen',
+  'bewijsfoto.weghalen': 'Foto weghalen',
+  'bewijsfoto.type_niet_toegestaan': 'Kies een JPG, PNG of WebP.',
+  'bewijsfoto.te_groot': 'Deze foto is groter dan 1 MB. Kies een kleinere of maak hem kleiner.',
+  'bewijsfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
+  'bewijsfoto.rem_bereikt': 'Je hebt vandaag genoeg foto\u2019s meegestuurd. Morgen kan het weer.',
+  'bewijsfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
+  'bewijsfoto.niet_beschikbaar': 'Dit bewijs is niet meer beschikbaar.',
+  'bewijsfoto.laden': 'Bewijs laden',
+  'bewijsfoto.beeld': 'Foto als bewijs bij deze afronding',
+  'bewijsfoto.vereist': 'Deze groep vraagt een foto als bewijs bij het afronden.',
   'chat.versturen_mislukt': 'Je bericht is niet verstuurd. Probeer het zo nog eens.',
   'chat.rem_bereikt':
     'Je hebt vandaag het maximum aantal berichten geplaatst. Straks kun je weer verder.',
@@ -1790,8 +1885,8 @@ export const nl = {
   //    straf" zou dus iets beloven wat de app niet levert, en dat is bij een
   //    commitment device domeinregel 5. Zeg wat waar is: vertel het hem zelf.
   'straf.persoon_uitleg':
-    'Tot je streefdatum verstrijkt ziet deze persoon niets. Daarna mag hij je straf lezen. ' +
-    'Laat het hem wel zelf even weten, want de app stuurt hem nog geen bericht.',
+    'Tot je streefdatum verstrijkt ziet deze persoon niets. Daarna mag hij je straf lezen ' +
+    'en krijgt hij er een melding van, tenzij hij dat soort meldingen heeft uitgezet.',
   'straf.verder': 'Verder',
   'straf.jouw_groep': 'je groep',
 

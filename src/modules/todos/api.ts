@@ -13,7 +13,7 @@ import {
 } from './todo-schemas';
 
 /**
- * De datalaag van De Lijst — QS8-380, tabel uit migratie 0227.
+ * De datalaag van De Lijst — QS8-380, tabel uit migratie 0246.
  *
  * ⚠️ **Een taak telt nooit mee.** Geen punten, geen reeks, geen goedkeuring,
  *    geen invloed op een doel. Dat is dezelfde grens die domeinregel 9 voor De
@@ -21,7 +21,7 @@ import {
  *    telt. Er staat hier dus met opzet geen enkele aanroep naar `points_ledger`,
  *    `user_streaks` of `completion_approvals`.
  *
- * ⚠️ **Alles is eigenaar-only.** De RLS-policies van 0227 filteren op
+ * ⚠️ **Alles is eigenaar-only.** De RLS-policies van 0246 filteren op
  *    `user_id = (select auth.uid())`; deze functies leunen daarop en niet op een
  *    filter dat ze zelf meesturen. Het `eq('user_id', …)` in `fetchTaken()` is
  *    er voor de índex en niet voor de autorisatie — zie de aantekening daar.
@@ -55,7 +55,7 @@ const KOLOMMEN = 'id, body, done_at, order_index, created_at, visibility, shared
  *    hetzelfde `order_index` niet vastgelegd, en dan springt de lijst tussen
  *    twee ronden.
  *
- * ⚠️⚠️ **`eq('user_id', …)` is dragend, en tot 0228 stond hier het tegendeel.**
+ * ⚠️⚠️ **`eq('user_id', …)` is dragend, en tot 0248 stond hier het tegendeel.**
  *    De oude aantekening zei *"er voor de index en niet voor de autorisatie —
  *    wie hem ooit weghaalt, verandert de snelheid en niet de grens."* Dat klopte
  *    zolang `todo_items` eigenaar-only was; sinds De Lijst deelbaar is, geeft
@@ -279,7 +279,7 @@ function naSchrijf(
 }
 
 /**
- * Deelt één taak met één groep, of zet hem terug op prive — QS8-381, 0228.
+ * Deelt één taak met één groep, of zet hem terug op prive — QS8-381, 0248.
  *
  * ⚠️ **Een RPC en geen PATCH, en dat is de kern van dit issue.** `visibility` en
  *    `shared_group_id` staan in geen enkele kolomgrant en `pin_taak()` weigert ze

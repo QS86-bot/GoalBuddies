@@ -19,8 +19,9 @@ import {
   systeemberichtTekst,
   vouwSysteemberichten,
   type ChatRegelItem,
-  heeftBijlage,
-  keurChatfoto,
+  CHATFOTO_BEWAARDAGEN,
+  soortBijlage,
+  soortUitPad,
   stuurBericht,
   verwijderBericht,
   voegSamen,
@@ -36,18 +37,59 @@ import {
   Body,
   Button,
   Caption,
-  kiesChatfoto,
   Card,
   ChatRegel,
+  type Chatbijlage,
+  type Chatbijlagekeuze,
+  type Documentopener,
   Field,
   Meldpaneel,
+  naarVerzending,
   Screen,
+  useChatbijlage,
+  useDocumentOpenen,
 } from '@/shared/ui';
 
 /** De vijf redenen met hun labels; een functie, want de taal ligt niet vast op importtijd. */
 function MELDREDEN_OPTIES(): readonly { readonly waarde: string; readonly label: string }[] {
   const labels = meldredenLabels();
   return MELDREDENEN.map((r) => ({ waarde: r, label: labels[r] }));
+}
+
+/**
+ * De bijlage van één bericht, klaar voor `ChatRegel`.
+ *
+ * ⚠️⚠️ **De soort komt uit `type` en niet uit `attachment_url`.** Het pad is
+ *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
+ *    identiek; `soortBijlage()` is de enige plek waar de emmer wordt afgeleid,
+ *    en migratie 0242 is wat de soort aan de extensie gepaard houdt.
+ *
+ * ⚠️⚠️ **De twee takken doen tegengestelde dingen met `attachment_url`, en dat
+ *    is de naad van deze feature.** Bij een foto is het al een **ondertekende
+ *    URL** en gaat hij rechtstreeks door. Bij een document is het een **kaal
+ *    pad**: het gaat níét naar het component, alleen naar `opener.openen()`,
+ *    die eerst tekent. Wisselen die twee ooit om, dan lekt er een pad naar een
+ *    `<Image>` of een handtekening naar de vergelijking hieronder.
+ *
+ * ⚠️ `pad !== null &&` staat er met opzet vóór elke vergelijking: zonder dat
+ *    zou `null === null` een bericht zonder pad eeuwig als "bezig" tonen.
+ */
+function chatbijlage(bericht: ChatBericht, opener: Documentopener): Chatbijlage | undefined {
+  const soort = soortBijlage(bericht);
+  if (soort === null) return undefined;
+  if (soort === 'foto') return { soort: 'foto', url: bericht.attachment_url };
+
+  const pad = bericht.attachment_url;
+  return {
+    soort: 'doc',
+    naam: bericht.attachment_name ?? '',
+    documentsoort: pad === null ? null : soortUitPad(pad),
+    bezig: pad !== null && opener.bezigPad === pad,
+    fout: pad !== null && opener.foutPad === pad ? t('chatdoc.openen_mislukt') : null,
+    onOpenen: () => {
+      if (pad !== null) void opener.openen(pad);
+    },
+  };
 }
 
 /**
@@ -87,6 +129,14 @@ export default function GroepChat() {
   const [wegFout, setWegFout] = useState<string | null>(null);
 
   const lijst = useRef<FlatList<ChatRegelItem> | null>(null);
+
+  /**
+   * ⚠️ Eén opener voor het hele gesprek en niet één per rij. De stand hangt aan
+   *    het pad (`bezigPad`, `foutPad`), zodat een tik op het ene document geen
+   *    spinner onder het andere zet — en zodat een rij die uit beeld scrolt zijn
+   *    poging niet vergeet.
+   */
+  const opener = useDocumentOpenen();
 
   /**
    * Het nieuwste bericht dat we al naar beneden gescrold hebben.
@@ -368,9 +418,7 @@ export default function GroepChat() {
                 ) : (
                   <ChatRegel
                     body={regel.bericht.body}
-                    {...(heeftBijlage(regel.bericht)
-                      ? { fotoUrl: regel.bericht.attachment_url }
-                      : {})}
+                    bijlage={chatbijlage(regel.bericht, opener)}
                     senderName={regel.bericht.sender_name}
                     senderAvatar={regel.bericht.sender_avatar}
                     vanMij={regel.bericht.sender_id === userId}
@@ -433,31 +481,10 @@ function Invoer({
   const [tekst, setTekst] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
-  // ⚠️ De foto blijft hier tot de server hem heeft aangenomen — zelfde reden als
-  //    bij de tekst hierboven: bij een mislukte verzending is je keuze anders
-  //    weg én is er niets verstuurd.
-  const [foto, setFoto] = useState<{ data: Uint8Array; mime: string } | null>(null);
-
-  async function kies() {
-    setFout(null);
-    const keuze = await kiesChatfoto();
-
-    if (keuze.soort === 'afgebroken') return;
-    if (keuze.soort === 'fout') {
-      setFout(t(keuze.sleutel));
-      return;
-    }
-
-    // ⚠️ Keuren vóór het versturen, zodat de gebruiker de reden leest in plaats
-    //    van een serverfout. De bucket blijft de grendel (onwrikbare regel 3).
-    const bezwaar = keurChatfoto(keuze.data.byteLength, keuze.mime);
-    if (bezwaar !== null) {
-      setFout(bezwaar);
-      return;
-    }
-
-    setFoto({ data: keuze.data, mime: keuze.mime });
-  }
+  // ⚠️ De bijlage blijft hier tot de server hem heeft aangenomen — zelfde reden
+  //    als bij de tekst hierboven: bij een mislukte verzending is je keuze
+  //    anders weg én is er niets verstuurd.
+  const keuze = useChatbijlage();
 
   async function verstuur() {
     // ⚠️ Zonder sessie helemaal niet versturen. Een lege afzender liep de server
@@ -472,7 +499,12 @@ function Invoer({
     setBezig(true);
     setFout(null);
 
-    const uitkomst = await stuurBericht(groupId, senderId, tekst, foto ?? undefined);
+    const uitkomst = await stuurBericht(
+      groupId,
+      senderId,
+      tekst,
+      keuze.bijlage === null ? undefined : naarVerzending(keuze.bijlage),
+    );
     setBezig(false);
 
     if (!uitkomst.ok) {
@@ -481,7 +513,7 @@ function Invoer({
     }
 
     setTekst('');
-    setFoto(null);
+    keuze.wis();
     onVerstuurd();
   }
 
@@ -496,39 +528,84 @@ function Invoer({
         placeholder={t('chat.invoer_hint')}
         {...(fout === null ? {} : { error: fout })}
       />
-      {/*
-        ⚠️ De knop staat er altijd, ook zonder gekozen foto — een knop die pas
-           verschijnt als je iets gedaan hebt, is geen ingang.
-      */}
-      {/*
-        ⚠️ Een gekozen foto krijgt een zin en niet alleen een veranderde knop.
-           Zonder die bevestiging is de enige aanwijzing dát het gelukt is, dat
-           er iets ánders op de knop staat — en dat leest niemand als "gelukt".
-      */}
-      {foto === null ? null : <Caption>{t('chatfoto.gekozen')}</Caption>}
+      {keuze.fout === null ? null : <Caption danger>{keuze.fout}</Caption>}
 
-      {foto === null ? (
-        <Button variant="stil" block onPress={() => void kies()}>
-          {t('chatfoto.knop')}
-        </Button>
-      ) : (
-        <Button variant="stil" block onPress={() => setFoto(null)}>
-          {t('chatfoto.weghalen')}
-        </Button>
-      )}
+      <Bijlageknoppen keuze={keuze} />
 
       <Button
         variant="primair"
         block
         busy={bezig}
-        // ⚠️ Een foto zonder onderschrift is een volwaardig bericht — spiegel van
-        //    `chat_messages_inhoud_vereist` (0024) en van `berichtSchema`.
-        disabled={tekst.trim() === '' && foto === null}
+        // ⚠️ Een bijlage zonder onderschrift is een volwaardig bericht — spiegel
+        //    van `chat_messages_inhoud_vereist` (0024) en van `berichtSchema`.
+        disabled={tekst.trim() === '' && keuze.bijlage === null}
         onPress={() => void verstuur()}
       >
         {t('chat.versturen')}
       </Button>
     </View>
+  );
+}
+
+/**
+ * De twee bijlageknoppen, of de ene weghaalknop.
+ *
+ * ⚠️ **Allebei de knoppen staan er altijd, ook zonder gekozen bijlage** — een
+ *    knop die pas verschijnt als je iets gedaan hebt, is geen ingang. En het
+ *    zijn er twee naast elkaar en geen menu achter één knop: PRD 7.4 vraagt om
+ *    documenten *náást* foto's, en een soort die je eerst moet uitvouwen bestaat
+ *    voor de helft van de gebruikers niet.
+ *
+ * ⚠️ **Een gekozen bijlage krijgt een zin en niet alleen een veranderde knop.**
+ *    Zonder die bevestiging is de enige aanwijzing dát het gelukt is, dat er
+ *    iets ánders op de knop staat — en dat leest niemand als "gelukt". Bij een
+ *    document staat de **naam** in die zin: wie drie pdf's in zijn map heeft,
+ *    wil vóór het versturen weten welke hij pakte.
+ */
+function Bijlageknoppen({ keuze }: { readonly keuze: Chatbijlagekeuze }) {
+  const gekozen = keuze.bijlage;
+
+  if (gekozen === null) {
+    return (
+      <>
+        <Button variant="stil" block onPress={() => void keuze.kiesEenFoto()}>
+          {t('chatfoto.knop')}
+        </Button>
+        <Button variant="stil" block onPress={() => void keuze.kiesEenDocument()}>
+          {t('chatdoc.knop')}
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Caption>
+        {gekozen.soort === 'foto'
+          ? t('chatfoto.gekozen')
+          : `${t('chatdoc.gekozen')}: ${gekozen.naam}`}
+      </Caption>
+
+      {/*
+        ⚠️ **De bewaartermijn staat er vóór het versturen en niet erna** — QS8-396.
+           Een gebruiker die weet dat de server zijn foto na drie weken weggooit,
+           kiest anders dan een gebruiker die dat pas merkt als de foto weg is.
+           Het is bovendien de eerlijke helft van dezelfde belofte: de zin die
+           straks in de plaats van de foto staat, noemt hetzelfde getal.
+
+        ⚠️⚠️ **Alleen bij een foto, en dat is geen omissie maar een verschil dat
+           er echt is.** De opruimpas van QS8-396 (migratie 0235) dekt
+           `chatfotos` en niet `chatdocs`; een document blijft dus staan. Een
+           zin die het tegendeel suggereert is erger dan geen zin. Dat het
+           verschil er is, staat als open rij in `docs/ENGINEER-REVIEW.md`.
+      */}
+      {gekozen.soort === 'foto' ? (
+        <Caption>{t('chatfoto.bewaartermijn', { dagen: CHATFOTO_BEWAARDAGEN })}</Caption>
+      ) : null}
+      <Button variant="stil" block onPress={keuze.haalWeg}>
+        {gekozen.soort === 'foto' ? t('chatfoto.weghalen') : t('chatdoc.weghalen')}
+      </Button>
+    </>
   );
 }
 

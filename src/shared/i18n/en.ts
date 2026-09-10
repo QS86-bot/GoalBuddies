@@ -119,6 +119,27 @@ export const en: Record<Sleutel, string> = {
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
+  'stuurloos.kop': 'Your witness is gone',
+  'stuurloos.uitleg':
+    'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
+  'stuurloos.wie': 'Who watches from now on?',
+  'stuurloos.aanwijzen': 'Name this person',
+  'stuurloos.niemand':
+    'There is nobody in your groups to name right now. Once someone joins, you can do it here.',
+  'stuurloos.afwikkelen': 'I have kept to it',
+  'stuurloos.zeker': 'Settle this stake?',
+  'stuurloos.afwikkelen_uitleg':
+    'You are recording that you kept to your stake. There is no witness left to confirm it, so this rests on your word alone. It cannot be undone.',
+  'stuurloos.ja_afwikkelen': 'Yes, settle it',
+  'stuurloos.terug': 'Back',
+  'commitment.fout.herstel': 'That did not work. Please try again.',
+  'commitment.herstel.heeft_getuige':
+    'This stake still has a witness. You can only hand it over once your witness has closed their account.',
+  'commitment.herstel.niet_verschuldigd':
+    'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.geen_groepsgenoot':
+    'You can only pick someone you share a group with.',
+  'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',
   'commitment.fout.spoor': 'The history could not be loaded.',
 
   'validatie.commitment_kort': 'Write down what you are holding yourself to.',
@@ -158,8 +179,9 @@ export const en: Record<Sleutel, string> = {
   'bevestiging.doel_afronden.titel': 'Complete this goal?',
   'bevestiging.doel_afronden.uitleg':
     'Every group this goal is linked to gets a message that you completed it, and a chat ' +
-    'message cannot be taken back. Your reward is released and announced too; a penalty ' +
-    'you had set expires. This cannot be undone.',
+    'message cannot be taken back. Finish on time and your reward is released and a penalty ' +
+    'you had set expires. Finish after the target date and your reward lapses while your ' +
+    'penalty stands: it becomes due. This cannot be undone.',
   'bevestiging.doel_afronden.knop': 'Complete',
 
   'viering.weekdoel.titel': 'Your week is confirmed',
@@ -564,6 +586,24 @@ export const en: Record<Sleutel, string> = {
   'profiel.viering_uitleg': 'A short congratulation when a buddy confirms your week, you reach a milestone or your goal is done. Otherwise the app stays quiet.',
   'profiel.viering_aan_label': 'Celebratory moments on',
   'profiel.viering_uit_label': 'Celebratory moments off',
+  'meldingsoort.titel': 'Which notifications do you want?',
+  'meldingsoort.uitleg':
+    'The daily reminder is switched on or off above. These four are separate.',
+  'meldingsoort.approval_request': 'A buddy is waiting on your review',
+  'meldingsoort.approval_received': 'Someone approved your week',
+  'meldingsoort.cycle_summary': 'Your week in review',
+  'meldingsoort.commitment_witness': "A stake you're a witness to",
+  'meldingsoort.getuige_uitleg':
+    "You'll still see the stake under Witness statements; you just won't be notified.",
+  'stilteuren.titel': 'Quiet hours',
+  'stilteuren.uitleg':
+    "You get no notifications in this window. Anything that arrives during the quiet " +
+    'hours still comes through afterwards.',
+  'stilteuren.label': 'Quiet hours',
+  'stilteuren.van': 'From',
+  'stilteuren.tot': 'Until',
+  'stilteuren.herinnering_verschoven':
+    'Your {oud} reminder falls inside your quiet hours, so it arrives at {nieuw}.',
   'profiel.aan': 'On',
   'profiel.uit': 'Off',
   'profiel.viering_beweging': 'If your device asks for reduced motion, the app leaves out the animation anyway. The text simply stays.',
@@ -654,6 +694,7 @@ export const en: Record<Sleutel, string> = {
   'opnieuw.al_goedgekeurd': 'This week is already approved. There is nothing left to replace.',
   'opnieuw.niets_ingediend': 'Nothing has been submitted for this week yet.',
   'opnieuw.notitie_vereist': 'This group asks for a short note when you submit.',
+  'opnieuw.bewijs_vereist': 'This group asks for a photo as proof. Send one along.',
   'opnieuw.mislukt': 'Resubmitting did not work. Please try again in a moment.',
   'opnieuw.mislukt_kort': 'Resubmitting did not work.',
 
@@ -681,6 +722,7 @@ export const en: Record<Sleutel, string> = {
   'avatar.bezig': 'Uploading',
   'avatar.type_niet_toegestaan': 'Choose a JPG, PNG or WebP.',
   'avatar.te_groot': 'That photo is larger than 2 MB. Choose a smaller one.',
+  'avatar.rem_bereikt': 'You have changed your photo enough times today. Tomorrow you can again.',
   'avatar.uploaden_mislukt': 'The photo could not be saved. Please try again.',
   'avatar.verwijderen_mislukt': 'The photo could not be removed. Please try again.',
   'avatar.geen_toegang': 'Without access to your photos the app cannot pick one.',
@@ -824,6 +866,7 @@ export const en: Record<Sleutel, string> = {
   'validatie.uitnodigingscode': 'This invitation code is not right. Check the link.',
 
   'bewijseis.note_required': 'Note required',
+  'bewijseis.note_and_attachment': 'Note and photo',
   'bewijseis.optional': 'Everything optional',
   'goedkeuringsregel.any': 'One buddy',
   'goedkeuringsregel.majority': 'A majority',
@@ -892,11 +935,47 @@ export const en: Record<Sleutel, string> = {
   'chatfoto.weghalen': 'Remove photo',
   'chatfoto.type_niet_toegestaan': 'Pick a JPG, PNG or WebP.',
   'chatfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
+  'chatfoto.rem_bereikt': 'Enough photos have been posted in this group today. Tomorrow you can again.',
   'chatfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
   'chatfoto.kiezen_mislukt': 'The photo picker did not open.',
-  'chatfoto.niet_beschikbaar': 'This photo is no longer available.',
+  'chatfoto.niet_beschikbaar': 'This photo is gone. Photos are kept for {dagen} days.',
+  'chatfoto.bewaartermijn': 'Photos stay on the server for {dagen} days and are removed after that.',
   'chatfoto.laden': 'Loading photo',
   'chatfoto.beeld': 'Photo in this conversation',
+
+  // Documenten in de chat — QS8-72. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: een document opent buiten de app, en dat hoort de zin te zeggen.
+  'chatdoc.knop': 'Add a document',
+  'chatdoc.gekozen': 'Document ready to send',
+  'chatdoc.weghalen': 'Remove document',
+  'chatdoc.type_niet_toegestaan': 'Pick a PDF.',
+  'chatdoc.te_groot': 'This document is larger than 5 MB. Pick a smaller file.',
+  'chatdoc.naam_leeg': 'This file has no usable name.',
+  'chatdoc.uploaden_mislukt': 'Sending the document did not work. Try again in a moment.',
+  'chatdoc.rem_bereikt': 'Enough documents have been shared in this group today. Tomorrow you can again.',
+  'chatdoc.kiezen_mislukt': 'The file picker did not open.',
+  'chatdoc.niet_beschikbaar': 'This document is no longer available.',
+  'chatdoc.openen': 'Open',
+  'chatdoc.openen_label': 'Open {naam}, PDF, in another app',
+  'chatdoc.openen_mislukt': 'Opening the document did not work.',
+  'chatdoc.laden': 'Opening document',
+  'chatdoc.soort_pdf': 'PDF',
+
+  // Bewijs bij een voltooiing — QS8-391. Eigen sleutels en geen hergebruik van
+  // `chatfoto.*`: "deze foto is niet meer beschikbaar" leest in een gesprek
+  // anders dan bij een beoordeling.
+  'bewijsfoto.knop': 'Photo as proof',
+  'bewijsfoto.gekozen': 'Proof ready to send',
+  'bewijsfoto.weghalen': 'Remove photo',
+  'bewijsfoto.type_niet_toegestaan': 'Pick a JPG, PNG or WebP.',
+  'bewijsfoto.te_groot': 'This photo is larger than 1 MB. Pick a smaller one, or shrink it.',
+  'bewijsfoto.uploaden_mislukt': 'Sending the photo did not work. Try again in a moment.',
+  'bewijsfoto.rem_bereikt': 'You have sent enough photos today. Tomorrow you can again.',
+  'bewijsfoto.kiezen_mislukt': 'The photo picker did not open.',
+  'bewijsfoto.niet_beschikbaar': 'This proof is no longer available.',
+  'bewijsfoto.laden': 'Loading proof',
+  'bewijsfoto.beeld': 'Photo as proof for this completion',
+  'bewijsfoto.vereist': 'This group asks for a photo as proof when you finish.',
   'chat.versturen_mislukt': 'Your message was not sent. Please try again in a moment.',
   'chat.rem_bereikt':
     'You have posted the maximum number of messages for today. You can continue again later.',
@@ -1336,7 +1415,7 @@ export const en: Record<Sleutel, string> = {
   'straf.welke_persoon': 'Who benefits?',
   'straf.persoon_uitleg':
     'Until your target date passes, this person sees nothing. After that they may read your ' +
-    'penalty. Do tell them yourself, because the app does not message them yet.',
+    'penalty and get a notification about it, unless they have turned that kind off.',
   'straf.verder': 'Continue',
   'straf.jouw_groep': 'your group',
 

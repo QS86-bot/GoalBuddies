@@ -103,7 +103,14 @@ export async function uploadAvatar(
   });
   if (gezet.error) {
     reportError(gezet.error, 'avatar.upload', { user_id: userId });
-    return { ok: false, melding: t('avatar.uploaden_mislukt') };
+    // ⚠️ **Het dagplafond van 0233 komt hier ook binnen, en het is nieuw.** Tot
+    //    die migratie ging de grens van 0130 in de praktijk nooit af — deze
+    //    functie schrijft een vers pad en wist het oude, dus er stond er altijd
+    //    één. De dagteller telt wél elke wisseling, en zonder deze tak leest de
+    //    elfde wissel als "probeer het opnieuw": een uitnodiging om te blijven
+    //    proberen tegen een rem. Precies de klacht die 0226 opschreef.
+    const rem = /Te veel avatars/.test(gezet.error.message ?? '');
+    return { ok: false, melding: t(rem ? 'avatar.rem_bereikt' : 'avatar.uploaden_mislukt') };
   }
 
   // ⚠️ **`.select('id').single()` en niet een kale update.** PostgREST geeft bij

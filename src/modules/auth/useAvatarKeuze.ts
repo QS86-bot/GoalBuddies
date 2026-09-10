@@ -3,6 +3,8 @@ import { useState } from 'react';
 
 import { t } from '../../shared/i18n';
 
+import { ontdoeVanMetadata } from '../../shared/afbeelding';
+
 import { base64NaarBytes, uploadAvatar, verwijderAvatar } from './avatar';
 import { fetchProfiel, type Profiel } from './profile';
 
@@ -72,7 +74,15 @@ async function kiesAfbeelding(): Promise<Afbeeldingkeuze> {
   const bytes = base64 === null ? null : base64NaarBytes(base64);
   if (bytes === null) return { soort: 'fout', sleutel: 'avatar.uploaden_mislukt' };
 
-  return { soort: 'gekozen', data: bytes, mime: gekozen.mimeType ?? 'image/jpeg' };
+  // ⚠️ Een profielfoto is voor élke groepsgenoot leesbaar, dus hij draagt
+  //    dezelfde coördinaten naar dezelfde mensen als een chatfoto — en hij staat
+  //    al live. Zelfde helper, geen tweede kopie: twee knippers over hetzelfde
+  //    begrip lopen uiteen, en dan is de vraag welke de waarheid is (QS8-395).
+  const mime = gekozen.mimeType ?? 'image/jpeg';
+  const schoon = ontdoeVanMetadata(bytes, mime);
+  if (!schoon.ok) return { soort: 'fout', sleutel: 'avatar.uploaden_mislukt' };
+
+  return { soort: 'gekozen', data: schoon.data, mime };
 }
 
 export function useAvatarKeuze(

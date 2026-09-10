@@ -1,6 +1,6 @@
 # Delen per taak, en met één gekozen groep
 
-**Datum:** 09-09-2026 · **Issue:** QS8-381 (epic QS8-378) · **Migratie:** 0228
+**Datum:** 09-09-2026 · **Issue:** QS8-381 (epic QS8-378) · **Migratie:** 0248
 
 De Lijst wordt deelbaar. Dit document legt vast wélke vorm dat kreeg, welke
 varianten afvielen en waarom, en wat er onderweg gemeten is.
@@ -85,7 +85,7 @@ lijst"* — bouwt variant C onder een andere naam.
 
 Daarom staat `zet_taakzichtbaarheid()` in `GEEN_OPPERVLAK` van
 `scripts/zichtbaarheid-controle.mjs` (hij varieert niet op `groups.zichtbaarheid`)
-en het oppervlak zélf wél als rij 32 in
+en het oppervlak zélf wél als rij 36 in
 `docs/decisions/002-domeinregel7-oppervlakken.md`.
 
 ## 5. Hoe het afgedwongen is

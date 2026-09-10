@@ -1,5 +1,5 @@
 /**
- * De Lijst staat dicht — QS8-379, migratie 0227.
+ * De Lijst staat dicht — QS8-379, migratie 0246.
  *
  * ⚠️ **De belofte is niet "er staan vier policies".** Die is: *een taak van
  *    iemand anders is niet te lezen, niet te wijzigen en niet te verwijderen —
@@ -93,7 +93,7 @@ import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 const SETUP_TIMEOUT = 240_000;
 const TEST_TIMEOUT = 240_000;
 
-/** Zoals in 0227. Staat hier als spiegel; de laatste tests toetsen het gedrag. */
+/** Zoals in 0246. Staat hier als spiegel; de laatste tests toetsen het gedrag. */
 const TAKEN_PLAFOND = 200;
 
 /** Eén boven het plafond — de opvulling die de grendel van §4 moet voeden. */
@@ -261,7 +261,7 @@ describe.skipIf(!rlsTestsConfigured)('De Lijst staat dicht', () => {
           .eq('id', aliceTaak)
           .select('id');
 
-        // ⚠️ **Nul rijen én geen fout**, en dat is de stand die 0227 belooft: RLS
+        // ⚠️ **Nul rijen én geen fout**, en dat is de stand die 0246 belooft: RLS
         //    filtert de rij weg vóór de UPDATE hem ziet.
         //
         // ⚠️⚠️ **Twee sloten in één assertie, en dat staat er bewust.** De
@@ -745,7 +745,7 @@ describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar 
           select gen_random_uuid() eig, gen_random_uuid() tid, gen_random_uuid() grp;
         grant select on t to authenticated;
         insert into auth.users (id, email) select eig, 'lijst-gedeeld@x.nl' from t;
-        -- ⚠️ De groep hoort er sinds 0228 bij: de CHECK
+        -- ⚠️ De groep hoort er sinds 0248 bij: de CHECK
         --    todo_items_groep_hoort_bij_gedeeld is daar een biconditionaal
         --    geworden, dus 'group' zonder groep is geen stand meer. Dat maakt
         --    deze opstelling realistischer en niet losser: zo ziet een gedeelde
@@ -754,7 +754,7 @@ describe.skipIf(!stackErbij)('visibility is voor geen enkele client schrijfbaar 
           select grp, 'Bewerkbaar', eig, 'active', 'BEWERKB1' from t;
         insert into group_members (group_id, user_id, role, status)
           select grp, eig, 'admin', 'active' from t;
-        -- Alleen een bevoorrechte schrijver komt hier vandaag aan; 0228 maakt er
+        -- Alleen een bevoorrechte schrijver komt hier vandaag aan; 0248 maakt er
         -- een RPC voor. De pin staat op UPDATE, dus een INSERT mag dit.
         insert into todo_items (id, user_id, body, visibility, shared_group_id)
           select tid, eig, 'gedeelde taak', 'group', grp from t;

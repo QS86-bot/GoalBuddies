@@ -35,7 +35,7 @@ import { VOLGORDE_MAX } from './todo-schemas';
  *         klemtest, die op dezelfde berekening leunt. Dat is geen dubbeling: B
  *         hieronder raakt alléén de klem, dus de twee zijn los te bewegen.
  *   B  de klem op `VOLGORDE_MAX` weghalen
- *      -> 1 rood: 'klemt het volgnummer op de CHECK van 0227'
+ *      -> 1 rood: 'klemt het volgnummer op de CHECK van 0246'
  *   C  de `data === null`-tak uit `naSchrijf()` halen
  *      -> 1 rood: 'een PATCH die nul rijen raakte, meldt geen succes'
  *   D  de gelijkheidstoets uit `verzetTaak()` halen
@@ -142,7 +142,7 @@ describe('een nieuwe taak komt onderaan', () => {
    *    grens staat, met een `23514` waar hij niets aan kan doen. Bovenaan komen
    *    te staan is de zachtere fout van de twee.
    */
-  it('klemt het volgnummer op de CHECK van 0227', async () => {
+  it('klemt het volgnummer op de CHECK van 0246', async () => {
     laatsteSelect = { data: { order_index: VOLGORDE_MAX }, error: null };
 
     await maakTaak('gebruiker-1', { body: 'De laatste' });
@@ -207,7 +207,7 @@ describe('wisselen', () => {
 describe('je eigen lijst is je eigen lijst', () => {
   /**
    * ⚠️⚠️ **`eq('user_id', …)` in `fetchTaken()` was er voor de index en is sinds
-   *    0228 dragend, en dat verschil stond nergens onder test.** Tot dat moment
+   *    0248 dragend, en dat verschil stond nergens onder test.** Tot dat moment
    *    was `todo_items` eigenaar-only: de policy gaf je precies je eigen rijen,
    *    dus de filter versnelde alleen. Sinds De Lijst deelbaar is, geeft
    *    `todo_items_select` je óók de gedeelde taken van je groepsgenoten.

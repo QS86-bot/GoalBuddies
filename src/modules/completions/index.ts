@@ -27,6 +27,7 @@ export {
   fetchBevestigingsstanden,
   fetchBuddyBijdrage,
   fetchVragen,
+  opnieuwMetBewijs,
   INTREKVENSTER_MINUTEN,
   PER_PAGINA,
   trekGoedkeuringIn,
@@ -49,3 +50,16 @@ export {
 } from './afvinken';
 
 export { useTeBeoordelen } from './useTeBeoordelen';
+
+export {
+  bewijsfotoPad,
+  BEWIJSFOTO_BUCKET,
+  BEWIJSFOTO_GELDIGHEID_S,
+  BEWIJSFOTO_MAX_BYTES,
+  BEWIJSFOTO_TYPES,
+  keurBewijsfoto,
+  metGetekendeBewijsfotos,
+  tekenBewijsfotos,
+  uploadBewijsfoto,
+  verwijderBewijsfoto,
+} from './bewijsfoto';

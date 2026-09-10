@@ -1,4 +1,4 @@
--- 0228_een_taak_deel_je_per_stuk_en_met_een_gekozen_groep.sql — De Lijst wordt
+-- 0248_een_taak_deel_je_per_stuk_en_met_een_gekozen_groep.sql — De Lijst wordt
 -- deelbaar: per taak, met één gekozen groep, en uitsluitend via een RPC
 -- (QS8-381, deel 3 van QS8-378).
 --
@@ -566,7 +566,7 @@ AS $function$
       -- ⚠️ Uit 0227 (QS8-379). De Lijst krijgt zijn eigen rem, en dus zijn eigen
       --    sleutel.
       ('app.rem_taken',                array['rem_taken']),
-      -- ⚠️ Uit 0228 (QS8-381). `zet_taakzichtbaarheid()` zet hem op het id van
+      -- ⚠️ Uit 0248 (QS8-381). `zet_taakzichtbaarheid()` zet hem op het id van
       --    de taak die hij deelt, en `pin_taak()` leest hem om precies díe rij
       --    door te laten. Twee functies, één sleutel: de zetter en de lezer.
       ('app.taak_gedeeld',             array['zet_taakzichtbaarheid', 'pin_taak'])

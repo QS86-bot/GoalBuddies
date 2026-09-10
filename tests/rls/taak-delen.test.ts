@@ -11,7 +11,7 @@ import {
 import { psql, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Een taak deel je per stuk, en met één gekozen groep — QS8-381, migratie 0228.
+ * Een taak deel je per stuk, en met één gekozen groep — QS8-381, migratie 0248.
  *
  * ⚠️⚠️ **Dit bestand toetst de kéten en niet de policy.** 📏 Bij `daily_moves`
  *    staat de fout waar dit issue voor waarschuwt: de SELECT-policy eist

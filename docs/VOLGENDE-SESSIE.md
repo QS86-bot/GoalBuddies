@@ -3,8 +3,34 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 09-09-2026. Er landt veel uit twee sessies tegelijk;
-> `git log origin/main` is de betrouwbare lijst en niet deze zin.
+> **Laatst bijgewerkt:** 10-09-2026 (QS8-72, QS8-379). Er landt veel uit twee sessies
+> tegelijk; `git log origin/main` is de betrouwbare lijst en niet deze zin.
+>
+> **10-09, punt A: een merge zonder conflict kan je migratie stukmaken, en git
+> zegt daar niets over.** `main` dropte `tel_opslag_upload()` en gaf hem terug
+> als `tel_dagteller()` (QS8-401, 0234); mijn nieuwe migratie riep de oude naam
+> aan. Twee verschillende bestanden, dus een schone merge — en de fout zit in
+> een functielichaam, precies de klasse die CLAUDE.md bij `sleutelzetters()`
+> beschrijft. ⚠️ **Bouw na élke merge van `main` de lokale stack opnieuw op
+> (`npm run rls:stack`) en kijk naar de regel "N migraties afgespeeld", niet
+> alleen naar de tests.** Een suite die tegen een oude database draait, is groen
+> over een schema dat niet meer bestaat.
+>
+> **10-09, punt B: controleer met een grep dát je mutatie in het bestand staat,
+> vóór je de uitslag gelooft.** 📏 Eén ijking van vandaag draaide met een
+> `re.sub`-aanroep die op een `bad escape` afbrak; het script printte de
+> traceback, dráaide de test alsnog, en die was groen. Zonder de grep erna had
+> "groen" gelezen als "de grendel is niet nodig" in plaats van "er is niets
+> gemuteerd". Dit staat al in de werkafspraken en het is vandaag opnieuw
+> gebeurd.
+>
+> **10-09, punt C: een pure functie naast een react-native-import is niet te
+> toetsen.** `naarVerzending()` stond in `useChatbijlage.ts`, naast
+> `kiesDocument()`; elke suite die hem importeerde viel om op `Flow is not
+> supported` in `node_modules/react-native/index.js`, en `vi.mock` op de kiezers
+> helpt niet omdat de keten verderloopt. Los bestand ernaast
+> (`verzendbijlage.ts`), en de belofte staat weer onder test. Zelfde familie als
+> de `__DEV__`-val bij QS8-71.
 > Op 08-09 landden er **dertien** PR's (#293 t/m #306), uit deze sessie
 > **QS8-352, QS8-351** en **QS8-356**; uit de parallelle sessie
 > **QS8-341, QS8-342, QS8-343, QS8-327, QS8-340, QS8-339, QS8-348, QS8-349,
@@ -18,9 +44,9 @@
 >
 > **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
 > losse to-do's, getypt of ingesproken, privé of gedeeld. **Alle drie de delen
-> zijn af**: QS8-379 (`0227`, de tabel `todo_items`, eigenaar-only, met een
+> zijn af**: QS8-379 (`0246`, de tabel `todo_items`, eigenaar-only, met een
 > dagplafond en een `visibility` die voor geen enkele client schrijfbaar is),
-> QS8-380 (het vijfde tabblad en het scherm) en QS8-381 (`0228`, delen per taak
+> QS8-380 (het vijfde tabblad en het scherm) en QS8-381 (`0248`, delen per taak
 > met één gekozen groep). Quinten heeft op 09-09 beide beslispunten beslist: een
 > vijfde tabblad, en aanvinken **per taak** — bewust niet per lijst.
 >
@@ -39,7 +65,7 @@
 > QS8-358. **Vraag bij elk nieuw groepszichtbaar oppervlak: staat het in de
 > opruiming van een vertrek?** Het zijn er drie: een openstaand
 > `deadline_requests` gaat naar `withdrawn`, de `goal_group_links` van de
-> vertrekker gaan weg, en sinds `0228` sluiten zijn gedeelde taken.
+> vertrekker gaan weg, en sinds `0248` sluiten zijn gedeelde taken.
 >
 > **09-09, punt A: een `with check` bevriest de rij, een pin houdt de kolom
 > vast — en dat verschil is een val en geen smaak.** De tweede grendel op
@@ -906,6 +932,62 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️⚠️ `is distinct from` is niet de nulls-veilige `<>` — 10-09, QS8-406.** Een
+  CHECK `a is distinct from b` op twee nullable kolommen weigert de stand waarin
+  ze **allebei** `null` zijn: 📏 `null is distinct from null` geeft `false`.
+
+  Dat kostte hier bijna het aanmelden, niet de feature: `handle_new_user()` maakt
+  bij elke nieuwe gebruiker een profielrij met die kolommen leeg, dus de trigger
+  viel om op een CHECK die over meldingen gaat.
+
+  **Vraag bij elke CHECK op een nullable kolom: welk pad vult deze tabel nog
+  meer?** Een CHECK op een tabel die door een trigger gevuld wordt, is een CHECK
+  op dát pad — ook als je dat pad niet in gedachten had. En zet het geval apart
+  onder test: "aanmelden blijft werken" is een andere belofte dan "de lege stand
+  mag", ook al breken ze hier samen.
+
+- **⚠️⚠️ Een kolom toevoegen aan `profiles` is twee handelingen, niet één —
+  10-09, QS8-92.** `mijn_profiel` is de view waarlangs de eigenaar zijn eigen rij
+  leest, en die is een **bevroren projectie**: `select p.*` wordt bij het
+  aanmaken geëxpandeerd tot een vaste kolomlijst. Een nieuwe kolom verschijnt er
+  dus niet vanzelf in.
+
+  **Zet die view opnieuw in dezelfde migratie** (`create or replace view` mag
+  kolommen aan het eind toevoegen). Vergeet je het, dan is er niets kapot en
+  niets rood: de kolom bestaat, de grant staat er, de policy klopt, en de
+  eigenaar kan alleen zijn eigen waarde niet lezen. `tests/rls/mijn-profiel-is-volledig.test.ts`
+  vangt het sindsdien, als regel en niet als lijst namen.
+
+  ⚠️ En de tweede helft: `updateProfiel()` kopieert veld voor veld met
+  letterlijke namen. Staat je kolom daar niet, dan valt hij stil uit élke patch —
+  het scherm meldt succes en er verandert niets. 📏 Dat is niet door een test
+  gevonden maar door `npm run kolomrechten:controle`, die vier UPDATE-grants "die
+  niets gebruikt" meldde. Een controle op rechten die een kapotte keten vindt.
+
+- **⚠️⚠️ Een controle die op een gegenereerd blok landt, toetst zijn eigen
+  fixture — 09-09, QS8-404.** `docs:controle` had één meetbare tak, en die pakte
+  in `WERKVOORRAAD.md` de eerste treffer: het `STAND`-blok dat `npm run stand`
+  genereert. 📏 Die dag noemde de eerste alinea van dat bestand een maptelling en
+  een achterstand die er allebei acht migraties naast zaten, en de controle was
+  groen. **De getallen staan hier met opzet niet** — `WERKVOORRAAD.md` bezit die
+  stand, en dit document is er twee keer eerder op betrapt hem over te schrijven.
+
+  ⚠️ 📏 Dat is trouwens gemeten en niet bedacht: de eerste versie van déze
+  valkuil citeerde die twee getallen wél, en `docs:controle` werd er meteen rood
+  van — tak B, "dit feit staat ook in VOLGENDE-SESSIE.md".
+
+  **Vraag bij elke controle die tekst leest: staat naast het geschreven exemplaar
+  van dit feit ook een gegenereerd exemplaar?** Zo ja, dan kiest "de eerste
+  treffer" vrijwel altijd het gegenereerde — dat staat in een vast blok en dus op
+  een voorspelbare plek — en bewijst je controle niets over de rest.
+
+  ⚠️ En de tweede helft, die hier een tweede poging kostte: **een ijking die zijn
+  geval door een pad voert dat een éérdere grendel al afvangt, bewaakt niets van
+  wat hij belooft.** De test die een zin uit `CLAUDE.md` met rust moest laten was
+  groen omdat er geen productiestand in de invoer stond — hij bereikte de regex
+  die hij noemde nooit. Uitleg in
+  `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
 
 - **⚠️ Een issue op Backlog betekent niet dat er niemand aan werkt — 04/05-09,
   QS8-269 en QS8-270.** Twee keer op één dag lag er al een branch mét migratie
@@ -1962,9 +2044,8 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 | `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
 | `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
 | feature-epics (QS8-200, QS8-230, QS8-252) | ⚠️ **niet meer "opsplitsen" — ze zijn af.** 📏 Op 09-09 nagelopen: 15 van de 16 kinderen Done. QS8-252 is gesloten, QS8-200 en QS8-230 dragen nu `wacht-op-Quinten` |
-| De Lijst (QS8-378 t/m 381) | de parallelle sessie zit erin; QS8-380 leunt op QS8-379 |
-| feature-epics (QS8-200, QS8-230, QS8-252) | opsplitsen in deelissues vóór er iets te bouwen valt |
 | ~~De Lijst (QS8-378 t/m 381)~~ | ✅ alle drie af op 09-09; alleen QS8-386 (het ongebruikte `body`-schrijfrecht) staat nog open |
+| De foto's (QS8-394 t/m 397) | QS8-395 en QS8-396 zijn gebouwd. **QS8-397 (versleuteling) is een besluit van Quinten** — sleutelbeheer, verlies van je sleutel is verlies van je foto's, en het raakt wat er aan een mens beloofd wordt. Niet op eigen gezag bouwen |
 
 **Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
 dat is er niet. Kies bewust één van deze drie:
@@ -1990,10 +2071,15 @@ dat is er niet. Kies bewust één van deze drie:
    `docs/WERKVOORRAAD.md` §0 bezit hem.** Kijk daar, en vertrouw ook dát getal
    niet blind: vraag het aan de database.
 
-   ⚠️⚠️ **Wat wél een gat is en blijft: de edge-functies.** Die zijn van 06-09,
-   en er is sindsdien aan `supabase/functions/` gewerkt. Dat vraagt Quintens hand
-   (QS8-243, QS8-320) — en het is de stap die de doorloop van QS8-200 nodig
-   heeft, want de Doelcoach ís een edge-functie.
+   ✅ **En het edge-gat is op 09-09 om 18:19 UTC gedicht.** 📏 Nagemeten met
+   `list_edge_functions`: alle drie op `2026-09-09T18:19:06Z`, nieuwe sha256,
+   versies 20→24, 17→19 en 15→19. Daarmee is de doorloop van QS8-200 vrij — de
+   Doelcoach ís een edge-functie, en die draaide tot vandaag op code van drie
+   dagen oud.
+
+   ✅ **En het signaal is er inmiddels ook** — criterium 2 van QS8-320, gebouwd
+   in PR #356. `edge:gedeployd` draait mee in de poort en slaat zichzelf
+   zichtbaar over als het token ontbreekt: *ongemeten*, niet groen.
 
 **Waar je nu begint, in deze volgorde:**
 
@@ -2084,10 +2170,12 @@ lopen. Wat daarbij geleerd is:
 - ⚠️ **Wat er níét was, is een `pg_dump`.** Zie §2 van de werkvoorraad; het is
   een afwijking van een regel uit `CLAUDE.md` en geen detail.
 
-**De andere helft van QS8-243 staat nog open** en vraagt echt Quintens machine:
-`npx supabase functions deploy doelcoach rollover notificaties`, en
-`password_min_length` in het dashboard. Een migratie zonder de functie die hem
-aanroept is een halve feature.
+**De andere helft van QS8-243 staat nog open** en vraagt echt Quintens machine.
+✅ De edge-deploy is er op 09-09 om 18:19 UTC af gegaan — wat blijft is de
+migratieachterstand (`0222`+, en `0222` valt om op het eigendom van
+`storage.objects`), het planpad op een vers account, en `password_min_length` in
+het dashboard. Een migratie zonder de functie die hem aanroept is een halve
+feature.
 
 Daarna pas `docs/ENGINEER-REVIEW.md`, waar de bevindingen van de controleronde
 van 28-08 staan met hun meting erbij.
@@ -2242,15 +2330,19 @@ dat is waarom de migratie is toegepast in plaats van tot de deploy te wachten. Z
 er wél data staan, dan was de volgorde andersom geweest.
 
 
-⚠️ **De `rollover`-functie op productie kent `maak_seizoensrecaps()` niet.**
-Gemeten op 28-08 tegen de gedeployde bron: `verbruik_weekpas`,
-`maak_straffen_verschuldigd` en `slaap_stille_groepen` staan erin,
-`maak_seizoensrecaps` **nul keer**. De migratie (0112) staat wél op productie en
-de RPC bestaat, maar niets roept hem aan.
+✅ ~~**De `rollover`-functie op productie kent `maak_seizoensrecaps()` niet.**~~
+**Opgelost op 09-09-2026 (QS8-140).** Gemeten op 28-08 tegen de gedeployde bron
+stonden `verbruik_weekpas`, `maak_straffen_verschuldigd` en
+`slaap_stille_groepen` erin en `maak_seizoensrecaps` **nul keer**: de migratie
+(0112) stond wél op productie en de RPC bestond, maar niets riep hem aan. De
+seizoensrecap van QS8-79 draaide daardoor niet, en dat zou pas op de volgende
+kwartaalgrens gebleken zijn.
 
-**Gevolg: de seizoensrecap van QS8-79 draait vandaag niet, en dat merk je pas bij
-de volgende kwartaalgrens** — en dan weet niemand meer dat het aan de deploy lag.
-Eén `supabase functions deploy rollover` lost het op.
+📏 Dezelfde meting herhaald op 09-09 om 20:38 UTC tegen de gedeployde bundel —
+niet tegen de deploy-uitvoer, want die slaagt ook als de aanroep ontbreekt:
+`verbruik_weekpas` 3 · `maak_straffen_verschuldigd` 2 · `slaap_stille_groepen` 1
+· **`maak_seizoensrecaps` 3**. Alle vier aanwezig als echte aanroepplek
+(`await db.rpc('maak_seizoensrecaps')`), niet als commentaar.
 
 ⚠️ **Wat wél goed staat, en dat was een openstaande vraag uit de review:**
 `verify_jwt` is `true` op alle drie de functies (`rollover`, `doelcoach`,

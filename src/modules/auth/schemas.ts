@@ -135,6 +135,20 @@ export const profielSchema = z.object({
     .nullable(),
   reminder_enabled: z.boolean(),
   reminder_tone: z.enum(['gentle', 'firm']),
+
+  // ⚠️ De schakelaars per meldingsoort (QS8-92). `nudge` staat hier niet bij:
+  //    dat ís `reminder_enabled` hierboven. De vertaling van soort naar veld
+  //    staat op één plek — `VOORKEUR_PER_SOORT` in de module notifications.
+  notify_approval_request: z.boolean(),
+  notify_approval_received: z.boolean(),
+  notify_cycle_summary: z.boolean(),
+  notify_commitment_witness: z.boolean(),
+
+  // ⚠️ Het stille venster in hele uren (QS8-406). De échte grens staat in de
+  //    database — `profiles_stilte_is_heel_of_niet` en `profiles_stilte_is_geen_punt`
+  //    — en dit is de foutmelding vóór het verzoek de deur uit gaat.
+  quiet_from: z.number().int().min(0).max(23).nullable(),
+  quiet_to: z.number().int().min(0).max(23).nullable(),
   share_moves_by_default: z.boolean(),
   /**
    * De taalkeuze — QS8-115, criterium 4.

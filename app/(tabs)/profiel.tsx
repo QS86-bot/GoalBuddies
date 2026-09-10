@@ -25,12 +25,20 @@ import {
   zetMeldingenUit,
   type Meldingenstand,
   type Toon,
+  MELDINGSOORTEN,
+  VOORKEUR_PER_SOORT,
+  type Melding,
+  meldingsoortVelden,
+  stilleUrenVelden,
+  uurUit,
 } from '@/modules/notifications';
 import { clientEnv } from '@/lib/env';
 import { huidigInstallatieadvies } from '@/shared/pwa';
-import { opmaaktaal, t, taal, zetTaal, type Taal } from '@/shared/i18n';
+import { opmaaktaal, t, taal, zetTaal, type Taal,
+  type Sleutel,
+} from '@/shared/i18n';
 import { space, useThemePreference, type ThemePreference } from '@/shared/theme';
-import { apparaatTijdzone, toonTijd, type Weekday } from '@/shared/time';
+import { apparaatTijdzone, toonTijd, verschovenUur, type Weekday } from '@/shared/time';
 import {
   AsyncView,
   Avatar,
@@ -157,6 +165,10 @@ export default function Profiel() {
               userId={p.id}
               onOpgeslagen={zetProfiel}
             />
+
+            <MeldingsoortenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
+
+            <StilleUrenInstelling profiel={p} userId={p.id} onOpgeslagen={zetProfiel} />
 
             <ThemaKeuze />
 
@@ -793,6 +805,291 @@ function HerinneringInstelling({
  *    knop hier zou hetzelfde twee keer doen. Deze knop hoort bij web push, waar
  *    de toestemming per RFC uit een echte klik moet komen.
  */
+/**
+ * De tekstsleutel per soort.
+ *
+ * ⚠️ **Exhaustief getypeerd over `Melding` mínus `nudge`, en dat is met opzet
+ *    geen losse lijst.** Komt er een zesde soort bij, dan is een ontbrekende rij
+ *    hier een typefout en geen scherm dat er stilletjes één mist. Zelfde
+ *    gedachte als `VOORKEUR_PER_SOORT`, één laag hoger.
+ */
+const MELDINGSOORT_TEKST: Readonly<Record<Exclude<Melding, 'nudge'>, Sleutel>> = {
+  approval_request: 'meldingsoort.approval_request',
+  approval_received: 'meldingsoort.approval_received',
+  cycle_summary: 'meldingsoort.cycle_summary',
+  commitment_witness: 'meldingsoort.commitment_witness',
+};
+
+/**
+ * Eén schakelaar, en hij toont nooit een stand die niet opgeslagen is.
+ *
+ * ⚠️ **Geen optimistic update.** De andere kaarten op dit scherm doen het ook
+ *    niet, en de reden staat bij `Meldingen`: een scherm dat "aan" toont terwijl
+ *    de opslag mislukte, liegt tegen de gebruiker over iets dat hij later niet
+ *    zal krijgen. De waarde komt uit het opgeslagen profiel en verandert pas als
+ *    de database het bevestigt.
+ */
+function MeldingsoortRij({
+  sleutel,
+  aan,
+  bezig,
+  onZet,
+}: {
+  readonly sleutel: Sleutel;
+  readonly aan: boolean;
+  readonly bezig: boolean;
+  readonly onZet: (nieuw: boolean) => void;
+}) {
+  return (
+    <Choice
+      label={t(sleutel)}
+      opties={[
+        { waarde: 'aan', label: t('profiel.aan') },
+        { waarde: 'uit', label: t('profiel.uit') },
+      ]}
+      waarde={aan ? 'aan' : 'uit'}
+      onKies={(v) => onZet(v === 'aan')}
+      disabled={bezig}
+    />
+  );
+}
+
+/**
+ * Per meldingsoort een schakelaar — QS8-92, criterium 1.
+ *
+ * ⚠️ **`nudge` staat hier niet bij, en de uitlegzin zegt waarom.** Die schakelaar
+ *    is `HerinneringInstelling` hierboven, met zijn eigen tijd en toon. Zonder die
+ *    zin lijkt deze lijst incompleet en gaat iemand een vijfde rij toevoegen —
+ *    en dan staat hetzelfde feit op twee plekken (QS8-125).
+ *
+ * ⚠️ **Direct opslaan en geen bewaarknop.** `HerinneringInstelling` heeft er één
+ *    omdat de tijd vrije tekst is die je halverwege kunt typen. Een schakelaar is
+ *    een gesloten keuze — zelfde vorm als `TaalInstelling` en `TijdzoneInstelling`.
+ */
+function MeldingsoortenInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const [bezig, setBezig] = useState<string | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function zet(soort: Exclude<Melding, 'nudge'>, aan: boolean) {
+    setBezig(soort);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, meldingsoortVelden(soort, aan));
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(null);
+  }
+
+  return (
+    <Card>
+      <Subheading>{t('meldingsoort.titel')}</Subheading>
+      <Body muted>{t('meldingsoort.uitleg')}</Body>
+
+      {MELDINGSOORTEN.filter((s): s is Exclude<Melding, 'nudge'> => s !== 'nudge').map((soort) => {
+        const kolom = VOORKEUR_PER_SOORT[soort];
+        return (
+          <MeldingsoortRij
+            key={soort}
+            sleutel={MELDINGSOORT_TEKST[soort]}
+            aan={profiel[kolom] !== false}
+            bezig={bezig === soort}
+            onZet={(nieuw) => void zet(soort, nieuw)}
+          />
+        );
+      })}
+
+      <Caption>{t('meldingsoort.getuige_uitleg')}</Caption>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+/** De 24 uren als keuzeopties, zonder ze te hoeven uitschrijven. */
+function uurOpties(): readonly { readonly waarde: number; readonly label: string }[] {
+  return Array.from({ length: 24 }, (_, u) => ({
+    waarde: u,
+    label: `${String(u).padStart(2, '0')}:00`,
+  }));
+}
+
+/**
+ * Wat er met je herinnering gebeurt als hij in de stille uren valt.
+ *
+ * ⚠️ **Het getal komt uit `verschovenUur()` en niet uit een eigen som.** Dat is
+ *    het verschil tussen een mededeling en een belofte: deze zin kan niet uit de
+ *    pas lopen met wat de meldingenjob doet, want het is dezelfde functie.
+ */
+function HerinneringVerschoven({
+  tijd,
+  van,
+  tot,
+}: {
+  readonly tijd: string | null;
+  readonly van: number | null;
+  readonly tot: number | null;
+}) {
+  const uur = uurUit(tijd);
+  const nieuw = verschovenUur(uur, van, tot);
+  if (uur === null || nieuw === null || nieuw === uur) return null;
+
+  return (
+    <Caption>
+      {t('stilteuren.herinnering_verschoven', {
+        oud: `${String(uur).padStart(2, '0')}:00`,
+        nieuw: `${String(nieuw).padStart(2, '0')}:00`,
+      })}
+    </Caption>
+  );
+}
+
+/**
+ * Het opslaan van het stille venster, los van de opmaak.
+ *
+ * ⚠️ Staat apart sinds `StilleUrenInstelling` over de vijftig regels van
+ *    coderegel 15 ging; `app/` staat onder een ratel, dus splitsen is hier het
+ *    antwoord en niet het plafond ophogen.
+ *
+ * ⚠️ **Geen optimistic update.** De waarde die het scherm toont komt uit het
+ *    opgeslagen profiel en verandert pas als de database het bevestigt — zelfde
+ *    reden als bij `Meldingen`: een scherm dat "aan" toont terwijl de opslag
+ *    mislukte, liegt over iets dat de gebruiker later niet krijgt.
+ */
+function useVensterOpslag(userId: string, onOpgeslagen: (profiel: ProfielRij) => void) {
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  async function bewaar(keuze: { aan: boolean; van: number; tot: number }) {
+    setBezig(true);
+    setFout(null);
+
+    const uitkomst = await updateProfiel(userId, stilleUrenVelden(keuze));
+
+    if (uitkomst.ok) onOpgeslagen(uitkomst.profiel);
+    else setFout(uitkomst.melding);
+
+    setBezig(false);
+  }
+
+  return { bezig, fout, bewaar };
+}
+
+/**
+ * De twee uurkeuzes.
+ *
+ * ⚠️ Staat los sinds `StilleUrenInstelling` over de vijftig regels van
+ *    coderegel 15 ging. `app/` staat onder een ratel: het aantal lange functies
+ *    mag alleen dálen, dus splitsen is hier het antwoord en niet het plafond
+ *    ophogen.
+ *
+ * ⚠️ Elke lijst laat het uur van de ánder weg. De database weigert
+ *    `van === tot` (`profiles_stilte_is_geen_punt`), dus een scherm dat die
+ *    keuze aanbiedt, biedt een databasefout aan.
+ */
+function StilteVenster({
+  van,
+  tot,
+  bezig,
+  onKies,
+}: {
+  readonly van: number;
+  readonly tot: number;
+  readonly bezig: boolean;
+  readonly onKies: (keuze: { van: number; tot: number }) => void;
+}) {
+  return (
+    <>
+      <Choice
+        label={t('stilteuren.van')}
+        opties={uurOpties().filter((o) => o.waarde !== tot)}
+        waarde={van}
+        onKies={(v) => onKies({ van: v, tot })}
+        disabled={bezig}
+      />
+      <Choice
+        label={t('stilteuren.tot')}
+        opties={uurOpties().filter((o) => o.waarde !== van)}
+        waarde={tot}
+        onKies={(v) => onKies({ van, tot: v })}
+        disabled={bezig}
+      />
+    </>
+  );
+}
+
+/**
+ * Het stille venster — QS8-406.
+ *
+ * ⚠️ **Hele uren en geen tekstveld.** De opslag is `smallint` en de job beslist
+ *    per uur; een veld dat `22:30` accepteert liegt over wat er gebeurt.
+ *
+ * ⚠️ De database weigert `van === tot` (`profiles_stilte_is_geen_punt`), dus dat
+ *    laat dit scherm niet toe: `tot` slaat het gekozen `van` over. Zonder die
+ *    stap krijgt de gebruiker een databasefout te zien voor een keuze die het
+ *    scherm zelf aanbood.
+ */
+function StilleUrenInstelling({
+  profiel,
+  userId,
+  onOpgeslagen,
+}: {
+  readonly profiel: ProfielRij;
+  readonly userId: string;
+  readonly onOpgeslagen: (profiel: ProfielRij) => void;
+}) {
+  const aan = profiel.quiet_from !== null && profiel.quiet_to !== null;
+  const van = profiel.quiet_from ?? 22;
+  const tot = profiel.quiet_to ?? 7;
+
+  const { bezig, fout, bewaar } = useVensterOpslag(userId, onOpgeslagen);
+
+  return (
+    <Card>
+      <Subheading>{t('stilteuren.titel')}</Subheading>
+      <Body muted>{t('stilteuren.uitleg')}</Body>
+
+      <Choice
+        label={t('stilteuren.label')}
+        opties={[
+          { waarde: 'aan', label: t('profiel.aan') },
+          { waarde: 'uit', label: t('profiel.uit') },
+        ]}
+        waarde={aan ? 'aan' : 'uit'}
+        onKies={(v) => void bewaar({ aan: v === 'aan', van, tot })}
+        disabled={bezig}
+      />
+
+      {aan ? (
+        <StilteVenster
+          van={van}
+          tot={tot}
+          bezig={bezig}
+          onKies={(keuze) => void bewaar({ aan: true, ...keuze })}
+        />
+      ) : null}
+
+      {aan ? (
+        <HerinneringVerschoven
+          tijd={profiel.reminder_time}
+          van={profiel.quiet_from}
+          tot={profiel.quiet_to}
+        />
+      ) : null}
+
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
 function Meldingen({ userId }: { readonly userId: string }) {
   const sleutel = clientEnv().vapidPublicKey;
   const [stand, setStand] = useState<Meldingenstand>(() => huidigeMeldingenstand(sleutel));

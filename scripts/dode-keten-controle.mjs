@@ -100,14 +100,6 @@ export const BEWUST_ONGESCHREVEN = {
     'is vandaag voor geen enkele client schrijfbaar, en **wordt interessant ' +
     'zodra er iemand of iets is dat meldingen beoordeelt.** Is dat er dan nog ' +
     'niet, dan hoort de waarde weg.',
-  'chat_messages.type=doc':
-    // ⚠️ De fotosoort stond hier tot 09-09-2026 naast, met dezelfde reden. Die
-    //    is vervallen: QS8-71 heeft de bucket, de knop en het renderpad gebouwd,
-    //    dus er is een schrijver. Deze blijft staan tot QS8-72 er een heeft.
-    'Wacht op documenten in de chat (QS8-72, Fase 2). ⚠️ De waarde is vandaag ' +
-    'wél door een client te schrijven — kolomrecht en policy staan open — dus ' +
-    'een bericht kan zo heten met een gewone tekst erin. Wordt een defect ' +
-    'zodra de chat op `type` gaat renderen.',
   'points_ledger.reason=milestone_done':
     // ⚠️ `goal_done` stond hier tot 31-08 naast, met dezelfde reden. Hij is in
     //    migratie 0132 geschrapt na een besluit van Quinten; deze bleef staan
@@ -683,7 +675,7 @@ export const GEDEELDE_WAARDEN = {
   pending: ['group_join_requests', 'weekly_goals'],
   // ⚠️ In beide tabellen de standaard én de enige waarde die vandaag geschreven
   //    wordt: `daily_moves` via de kolomgrant, `todo_items` via de default en de
-  //    conjunct in `todo_items_insert` (0227).
+  //    conjunct in `todo_items_insert` (0246).
   private: ['daily_moves', 'todo_items'],
   productivity: ['goals', 'groups', 'profiles'],
   resolved: ['commitment_events', 'commitments'],

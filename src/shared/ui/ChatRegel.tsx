@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { t } from '../i18n';
 
 import { radius, space, useTheme } from '../theme';
 
 import { Avatar } from './Avatar';
+import { CHATDOC_TEKSTEN, Document } from './Document';
+import { CHATFOTO_TEKSTEN, Foto } from './Foto';
 import { Body, Caption } from './Text';
 
 /**
@@ -27,18 +28,40 @@ import { Body, Caption } from './Text';
  *    laat bestaan. Dit component is de weergave, niet het slot.
  */
 
+/**
+ * De bijlage van één bericht — precies één soort, of geen.
+ *
+ * ⚠️⚠️ **Een unie en geen twee losse props, en dat is een spiegel van de
+ *    database.** De CHECK `chat_messages_attachment_eigen_pad` (migratie 0242)
+ *    paart de soort aan de extensie: een rij is `photo` met een beeldextensie
+ *    óf `doc` met `.pdf`, nooit allebei en nooit gekruist. Twee optionele props
+ *    zouden een vierde stand toelaten — foto én document in één bubbel — die de
+ *    tabel niet kan opleveren, en dan bewaakt het type niets meer.
+ *
+ * ⚠️⚠️ **De twee takken dragen tegengestelde beloftes en dat is met opzet
+ *    zichtbaar in de veldnamen.** `foto.url` is een **ondertekende URL** (of
+ *    `null`), getekend per pagina door `metGetekendeChatfotos()`. `doc` draagt
+ *    geen URL en geen pad: een document wordt pas getekend als iemand tikt, en
+ *    `Document` mag daarom niets hebben dat op een adres lijkt. Zie de kop van
+ *    `Document.tsx` en `tekenChatdoc()`.
+ */
+export type Chatbijlage =
+  | { readonly soort: 'foto'; readonly url: string | null }
+  | {
+      readonly soort: 'doc';
+      /** De naam die de afzender koos — gebruikerstekst. */
+      readonly naam: string;
+      /** Wat `soortUitPad()` van het opslagpad maakte. Nooit uit `naam` afgeleid. */
+      readonly documentsoort: 'pdf' | null;
+      readonly bezig: boolean;
+      readonly fout: string | null;
+      readonly onOpenen: () => void;
+    };
+
 interface Props {
   readonly body: string;
-  /**
-   * De **ondertekende** URL van een bijlage, of `null`.
-   *
-   * ⚠️⚠️ **Nooit een kaal opslagpad.** De datalaag tekent per pagina en zet wat
-   *    niet getekend kon worden op `null`; dit component toont bij `null` een
-   *    zin en geen gebroken beeld. Een kaal pad hier zou een leeg vlak geven —
-   *    en het is de vorm waarin een vreemde URL zou meeliften als de CHECK van
-   *    migratie 0223 er ooit uit valt.
-   */
-  readonly fotoUrl?: string | null | undefined;
+  /** De bijlage, of `undefined` bij een bericht zonder. */
+  readonly bijlage?: Chatbijlage | undefined;
   /** `undefined` betekent: systeembericht. */
   readonly senderName?: string | undefined;
   readonly senderAvatar?: string | null | undefined;
@@ -84,7 +107,7 @@ interface Props {
 
 export function ChatRegel({
   body,
-  fotoUrl,
+  bijlage,
   senderName,
   senderAvatar,
   vanMij = false,
@@ -125,11 +148,11 @@ export function ChatRegel({
           ]}
           accessibilityLabel={
             vanMij
-              ? t('chat.van_jou', { tekst: body })
-              : t('chat.van_ander', { naam: senderName, tekst: body })
+              ? t('chat.van_jou', { tekst: bubbeltekst(body, bijlage) })
+              : t('chat.van_ander', { naam: senderName, tekst: bubbeltekst(body, bijlage) })
           }
         >
-          {fotoUrl === undefined ? null : <Foto url={fotoUrl} />}
+          {bijlage === undefined ? null : <Bijlage bijlage={bijlage} />}
           {body === '' ? null : <Body>{body}</Body>}
         </View>
 
@@ -159,25 +182,50 @@ export function ChatRegel({
   );
 }
 
+/**
+ * De bijlage van een bubbel: één van de twee, nooit allebei.
+ *
+ * ⚠️ Een eigen functie en geen ternary in de bubbel, zodat het `switch`-achtige
+ *    karakter zichtbaar is: komt er ooit een derde soort bij, dan is dit de plek
+ *    waar TypeScript hem opeist.
+ */
+function Bijlage({ bijlage }: { readonly bijlage: Chatbijlage }) {
+  if (bijlage.soort === 'foto') return <Foto url={bijlage.url} {...CHATFOTO_TEKSTEN} />;
+
+  return (
+    <Document
+      naam={bijlage.naam}
+      soort={bijlage.documentsoort}
+      bezig={bijlage.bezig}
+      fout={bijlage.fout}
+      onOpenen={bijlage.onOpenen}
+      {...CHATDOC_TEKSTEN}
+    />
+  );
+}
+
+/**
+ * Wat een schermlezer als "inhoud van de bubbel" te horen krijgt.
+ *
+ * ⚠️⚠️ **Een bijlage zonder onderschrift is een leeg label, en dat is geen
+ *    randgeval maar de gewone gang van zaken:** `chat_messages_inhoud_vereist`
+ *    (0024) laat een bericht met alléén een bijlage uitdrukkelijk toe, en het
+ *    scherm heeft er ook een knop voor. Zonder deze functie leest een
+ *    schermlezer dan "Van jou: " en verder niets — de bubbel is er, en wat erin
+ *    zit is onhoorbaar.
+ *
+ * ⚠️ Bij een document is de **naam** de tekst, want die koos de afzender en die
+ *    onderscheidt drie bijlagen van elkaar. Is hij leeg, dan valt hij terug op de
+ *    soort — nooit op het pad, want dat noemt twee uuid's.
+ */
+function bubbeltekst(body: string, bijlage: Chatbijlage | undefined): string {
+  if (body !== '') return body;
+  if (bijlage === undefined) return body;
+  if (bijlage.soort === 'foto') return t('chatfoto.beeld');
+  return bijlage.naam === '' ? t('chatdoc.soort_pdf') : bijlage.naam;
+}
+
 const styles = StyleSheet.create({
-  foto: {
-    // ⚠️ Een vaste hoogte, want de echte afmeting is pas ná het laden bekend en
-    //    een springende lijst leest als een storing.
-    height: 180,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    marginBottom: space.blokGap - 6,
-  },
-  fotoBeeld: { width: '100%', height: '100%' },
-  fotoOver: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   regel: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   regelRechts: { justifyContent: 'flex-end' },
   kolom: { gap: 3, flexShrink: 1, maxWidth: '86%' },
@@ -204,51 +252,3 @@ const styles = StyleSheet.create({
   },
 });
 
-/**
- * Een bijlage, met de drie staten die onwrikbare regel 16 verplicht stelt.
- *
- * ⚠️ **"Geen foto" is hier een eigen uitkomst en geen lege ruimte.** `url` is
- *    `null` zodra het tekenen niets opleverde — een verwijderd bestand, een
- *    verlopen cache, of een lid dat de groep uit is. Een gebroken `<Image>` zegt
- *    de gebruiker niets; deze zin wel.
- */
-function Foto({ url }: { readonly url: string | null }) {
-  const c = useTheme().colors;
-  const [stand, setStand] = useState<'laadt' | 'klaar' | 'mislukt'>('laadt');
-
-  if (url === null) return <Caption>{t('chatfoto.niet_beschikbaar')}</Caption>;
-
-  return (
-    <View style={styles.foto}>
-      <Image
-        source={{ uri: url }}
-        style={styles.fotoBeeld}
-        resizeMode="contain"
-        accessibilityIgnoresInvertColors
-        // ⚠️ Een vaste omschrijving en niet de laadtekst: dit label blijft staan
-        //    nadat de foto geladen is, en een schermlezer las dan eeuwig "Foto
-        //    laden". Het laden zelf zit in de `progressbar` hieronder, die
-        //    verdwijnt zodra hij klaar is.
-        accessibilityLabel={t('chatfoto.beeld')}
-        onLoad={() => setStand('klaar')}
-        onError={() => setStand('mislukt')}
-      />
-
-      {stand === 'laadt' ? (
-        <View
-          style={styles.fotoOver}
-          accessibilityRole="progressbar"
-          accessibilityLabel={t('chatfoto.laden')}
-        >
-          <ActivityIndicator color={c.accent} />
-        </View>
-      ) : null}
-
-      {stand === 'mislukt' ? (
-        <View style={styles.fotoOver}>
-          <Caption>{t('chatfoto.niet_beschikbaar')}</Caption>
-        </View>
-      ) : null}
-    </View>
-  );
-}

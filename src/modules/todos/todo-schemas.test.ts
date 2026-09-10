@@ -39,20 +39,20 @@ import {
  *      -> 2 rood: 'weigert wat na trimmen niets overhoudt' en de must-allow, die
  *         de getrimde tekst terugleest
  *   N  `TAAK_MAX` op 400
- *      -> 1 rood: 'TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0227'
+ *      -> 1 rood: 'TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0246'
  *   O  de schema's op `loose()` in plaats van strippend
  *      -> 1 rood: 'laat visibility niet door'
  *   P  de `refine` op een lege patch weg
  *      -> 2 rood: 'weigert een patch zonder één veld' en de visibility-patch,
  *         die op diezelfde weigering leunt
  *   Q  `VOLGORDE_MAX` op 999_999
- *      -> 1 rood: 'VOLGORDE_MAX komt letterlijk uit de CHECK van 0227'
+ *      -> 1 rood: 'VOLGORDE_MAX komt letterlijk uit de CHECK van 0246'
  *   R  `.max(VOLGORDE_MAX)` van `order_index` af
  *      -> 1 rood: 'weigert een volgordenummer boven de grens en laat de grens
  *         zelf door'
  */
 const MIGRATIE = readFileSync(
-  'supabase/migrations/0227_de_lijst_krijgt_een_tabel_die_dicht_staat.sql',
+  'supabase/migrations/0246_de_lijst_krijgt_een_tabel_die_dicht_staat.sql',
   'utf8',
 );
 
@@ -62,10 +62,10 @@ function emoji(n: number): string {
 }
 
 describe('de grenzen staan in de database én in het schema, en ze zijn gelijk', () => {
-  it('TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0227', () => {
+  it('TAAK_MIN en TAAK_MAX komen letterlijk uit de CHECK van 0246', () => {
     const uitMigratie =
       /char_length\(btrim\(body\)\)\s*between\s*(\d+)\s*and\s*(\d+)/i.exec(MIGRATIE);
-    expect(uitMigratie, 'geen todo_items_body_len in 0227').not.toBeNull();
+    expect(uitMigratie, 'geen todo_items_body_len in 0246').not.toBeNull();
 
     expect(Number(uitMigratie?.[1])).toBe(TAAK_MIN);
     expect(Number(uitMigratie?.[2])).toBe(TAAK_MAX);
@@ -108,9 +108,9 @@ describe('de grenzen staan in de database én in het schema, en ze zijn gelijk',
    *    `2147483647` in kon zetten, waarna "achteraan toevoegen" (`max + 1`)
    *    omvalt met `22003 integer out of range`.
    */
-  it('VOLGORDE_MAX komt letterlijk uit de CHECK van 0227', () => {
+  it('VOLGORDE_MAX komt letterlijk uit de CHECK van 0246', () => {
     const uitMigratie = /order_index\s+between\s+(\d+)\s+and\s+(\d+)/i.exec(MIGRATIE);
-    expect(uitMigratie, 'geen todo_items_order_bereik in 0227').not.toBeNull();
+    expect(uitMigratie, 'geen todo_items_order_bereik in 0246').not.toBeNull();
 
     expect(Number(uitMigratie?.[1])).toBe(0);
     expect(Number(uitMigratie?.[2])).toBe(VOLGORDE_MAX);
@@ -139,7 +139,7 @@ describe('de grenzen staan in de database én in het schema, en ze zijn gelijk',
 describe('het schema biedt geen pad dat de database niet heeft', () => {
   /**
    * ⚠️ **`visibility` is de kolom waar dit issue om draait.** Hij is voor geen
-   *    enkele client schrijfbaar (0227, kolomgrant én policy). Zou hij hier wél
+   *    enkele client schrijfbaar (0246, kolomgrant én policy). Zou hij hier wél
    *    door het schema komen, dan bouwt het scherm van QS8-380 er een veld voor
    *    en loopt de eerste gebruiker op een `42501`.
    */
@@ -156,13 +156,13 @@ describe('het schema biedt geen pad dat de database niet heeft', () => {
   });
 
   /**
-   * ⚠️ De drie velden hieronder zijn precies de UPDATE-kolomgrant van 0227. Komt
+   * ⚠️ De drie velden hieronder zijn precies de UPDATE-kolomgrant van 0246. Komt
    *    er een vierde bij in het schema zonder dat de grant meebeweegt, dan is de
    *    melding die de gebruiker krijgt een Postgres-fout.
    */
-  it('kent in een patch precies de kolommen uit de UPDATE-grant van 0227', () => {
+  it('kent in een patch precies de kolommen uit de UPDATE-grant van 0246', () => {
     const uitMigratie = /grant update \(([^)]+)\)\s+on table public\.todo_items/i.exec(MIGRATIE);
-    expect(uitMigratie, 'geen UPDATE-kolomgrant in 0227').not.toBeNull();
+    expect(uitMigratie, 'geen UPDATE-kolomgrant in 0246').not.toBeNull();
 
     const uitGrant = (uitMigratie?.[1] ?? '')
       .split(',')

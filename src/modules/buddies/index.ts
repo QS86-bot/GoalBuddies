@@ -38,6 +38,7 @@ export { beslissendeGroep, koppelbareGroepen, type DoelGroep } from './deling';
 export { beginfase, deelbareUitnodiging, type Beginfase } from './samen';
 
 export {
+  CHATFOTO_BEWAARDAGEN,
   CHATFOTO_BUCKET,
   CHATFOTO_MAX_BYTES,
   CHATFOTO_TYPES,
@@ -45,6 +46,19 @@ export {
   keurChatfoto,
   metGetekendeChatfotos,
 } from './chatfoto';
+
+export {
+  CHATDOC_BUCKET,
+  CHATDOC_GELDIGHEID_S,
+  CHATDOC_MAX_BYTES,
+  CHATDOC_NAAM_MAX,
+  CHATDOC_TYPES,
+  chatdocPad,
+  keurChatdoc,
+  schoneBestandsnaam,
+  soortUitPad,
+  tekenChatdoc,
+} from './chatdoc';
 
 export {
   bewaarOpenstaandeUitnodiging,
@@ -127,7 +141,7 @@ export {
   voegSamen,
   type BerichtInvoer,
   type SysteemGebeurtenis,
-  heeftBijlage,
+  soortBijlage,
 } from './chat-schemas';
 
 export {
