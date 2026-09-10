@@ -19,6 +19,7 @@ import {
 import {
   fetchCommitments,
   fetchCommitmentSpoor,
+  herstelStuurlozeStraf,
   fetchMogelijkeBegunstigden,
   isOpenstaand,
   magStrafVastleggen,
@@ -885,6 +886,162 @@ function GedeeldMet({
  *    dat de straf verschuldigd wordt, en geen seconde eerder. Wat verandert is
  *    hoevéél mensen dat zijn.
  */
+/**
+ * Een verschuldigde straf waarvan de getuige verdween — QS8-333, migratie 0212.
+ *
+ * ⚠️ **Dit is de enige knop naar `herstel_stuurloze_straf()`.** Zonder hem staat
+ *    er een straf die in werking is en die de eigenaar niet meer kan bedienen —
+ *    precies het gat dat het issue beschrijft. `exports:controle` wordt rood
+ *    zodra deze kaart verdwijnt en de functie blijft staan.
+ *
+ * ⚠️ **De kaart verschijnt alléén als de straf werkelijk stuurloos is.** Dezelfde
+ *    toets als de server doet: verschuldigd én zonder begunstigde. Een knop tonen
+ *    die de server met `heeft_nog_een_begunstigde` afwijst, leert alleen dat de
+ *    app onbetrouwbaar is — dezelfde redenering als bij de intrekknop hierboven.
+ *
+ * ⚠️ **Afwikkelen vraagt een bevestiging, en die zit niet alleen hier.** De
+ *    server weigert met `niet_bevestigd` als het scherm hem overslaat: een
+ *    commitment device gaat nooit stilzwijgend uit (domeinregel 5).
+ */
+/**
+ * De bevestiging vóór het afwikkelen van een stuurloze straf — QS8-333.
+ *
+ * ⚠️ **Apart component en niet een tak in `StuurlozeStraf`.** Die functie kwam
+ *    anders boven de vijftig regels uit, en `regel15:controle` telt dat in de
+ *    schermlaag als ratel: het aantal mag alleen dalen. De splitsing is hier
+ *    bovendien inhoudelijk juist — dit is een eigen stap met een eigen vraag.
+ */
+function StuurlozeStrafBevestiging({
+  bezig,
+  fout,
+  onBevestig,
+  onTerug,
+}: {
+  readonly bezig: boolean;
+  readonly fout: string | null;
+  readonly onBevestig: () => void;
+  readonly onTerug: () => void;
+}) {
+  return (
+    <Card nested>
+      <Subheading>{t('stuurloos.zeker')}</Subheading>
+      <Body>{t('stuurloos.afwikkelen_uitleg')}</Body>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+      <View style={styles.knoppen}>
+        <Button variant="primair" busy={bezig} onPress={onBevestig}>
+          {t('stuurloos.ja_afwikkelen')}
+        </Button>
+        <Button variant="stil" onPress={onTerug}>
+          {t('stuurloos.terug')}
+        </Button>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * De keuze die een stuurloze straf aanbiedt — QS8-333.
+ *
+ * ⚠️ **Zonder groepsgenoot geen dood veld maar uitleg** (regel 16): staat er
+ *    niemand om aan te wijzen, dan zegt de kaart dat, en blijft afwikkelen over.
+ */
+function StuurlozeStrafKeuze({
+  mensen,
+  gekozen,
+  bezig,
+  fout,
+  onKies,
+  onAanwijzen,
+  onAfwikkelen,
+}: {
+  readonly mensen: readonly MogelijkeBegunstigde[];
+  readonly gekozen: string;
+  readonly bezig: boolean;
+  readonly fout: string | null;
+  readonly onKies: (id: string) => void;
+  readonly onAanwijzen: () => void;
+  readonly onAfwikkelen: () => void;
+}) {
+  return (
+    <Card nested>
+      <Subheading>{t('stuurloos.kop')}</Subheading>
+      <Body muted>{t('stuurloos.uitleg')}</Body>
+      {mensen.length > 0 ? (
+        <>
+          <Choice
+            label={t('stuurloos.wie')}
+            opties={mensen.map((m) => ({ waarde: m.id, label: m.naam }))}
+            waarde={gekozen}
+            onKies={onKies}
+          />
+          <Button variant="primair" busy={bezig} onPress={onAanwijzen}>
+            {t('stuurloos.aanwijzen')}
+          </Button>
+        </>
+      ) : (
+        <Body muted>{t('stuurloos.niemand')}</Body>
+      )}
+      <Button variant="stil" onPress={onAfwikkelen}>
+        {t('stuurloos.afwikkelen')}
+      </Button>
+      {fout === null ? null : <Caption danger>{fout}</Caption>}
+    </Card>
+  );
+}
+
+function StuurlozeStraf({
+  straf,
+  onKlaar,
+}: {
+  readonly straf: Commitment;
+  readonly onKlaar: () => void;
+}) {
+  const [bevestigen, setBevestigen] = useState(false);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+  const [gekozen, setGekozen] = useState('');
+
+  const mensen = useAsyncMetTerugval(fetchMogelijkeBegunstigden, GEEN_BEGUNSTIGDEN, []);
+  const nieuweGetuige = gekozen !== '' ? gekozen : (mensen[0]?.id ?? '');
+
+  async function voer(actie: 'nieuwe_getuige' | 'afwikkelen') {
+    setBezig(true);
+    setFout(null);
+    const opties = actie === 'afwikkelen' ? { bevestigd: true } : { getuige: nieuweGetuige };
+    const uitkomst = await herstelStuurlozeStraf(straf.id, actie, opties);
+    setBezig(false);
+    if (!uitkomst.ok) {
+      setFout(uitkomst.melding);
+      return;
+    }
+    setBevestigen(false);
+    onKlaar();
+  }
+
+  if (bevestigen) {
+    return (
+      <StuurlozeStrafBevestiging
+        bezig={bezig}
+        fout={fout}
+        onBevestig={() => void voer('afwikkelen')}
+        onTerug={() => setBevestigen(false)}
+      />
+    );
+  }
+
+  return (
+    <StuurlozeStrafKeuze
+      mensen={mensen}
+      gekozen={nieuweGetuige}
+      bezig={bezig}
+      fout={fout}
+      onKies={setGekozen}
+      onAanwijzen={() => void voer('nieuwe_getuige')}
+      onAfwikkelen={() => setBevestigen(true)}
+    />
+  );
+}
+
 function Straf({
   goalId,
   groepen,
@@ -965,6 +1122,12 @@ function Straf({
           </Button>
         ) : null}
         {fout === null ? null : <Caption danger>{fout}</Caption>}
+        {/* ⚠️ QS8-333: alleen als de getuige verdwenen is. Zie StuurlozeStraf. */}
+        {straf.status === 'due' &&
+        straf.beneficiary_user_id === null &&
+        straf.beneficiary_group_id === null ? (
+          <StuurlozeStraf straf={straf} onKlaar={onKlaar} />
+        ) : null}
         <Spoor commitmentId={bestaand.id} />
       </Card>
     );

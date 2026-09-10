@@ -119,6 +119,27 @@ export const en: Record<Sleutel, string> = {
   'commitment.fout.al_afgegaan':
     'This commitment has already come into effect and can no longer be withdrawn.',
   'commitment.fout.laden': 'The reward and penalty could not be loaded.',
+  'stuurloos.kop': 'Your witness is gone',
+  'stuurloos.uitleg':
+    'The person you named as your witness has closed their account. Your stake is still open. Name someone else, or settle it if you have kept to it.',
+  'stuurloos.wie': 'Who watches from now on?',
+  'stuurloos.aanwijzen': 'Name this person',
+  'stuurloos.niemand':
+    'There is nobody in your groups to name right now. Once someone joins, you can do it here.',
+  'stuurloos.afwikkelen': 'I have kept to it',
+  'stuurloos.zeker': 'Settle this stake?',
+  'stuurloos.afwikkelen_uitleg':
+    'You are recording that you kept to your stake. There is no witness left to confirm it, so this rests on your word alone. It cannot be undone.',
+  'stuurloos.ja_afwikkelen': 'Yes, settle it',
+  'stuurloos.terug': 'Back',
+  'commitment.fout.herstel': 'That did not work. Please try again.',
+  'commitment.herstel.heeft_getuige':
+    'This stake still has a witness. You can only hand it over once your witness has closed their account.',
+  'commitment.herstel.niet_verschuldigd':
+    'This stake is not due yet. While that is the case, you can simply withdraw it.',
+  'commitment.herstel.geen_groepsgenoot':
+    'You can only pick someone you share a group with.',
+  'commitment.herstel.niet_jezelf': 'You cannot be your own witness.',
   'commitment.fout.spoor': 'The history could not be loaded.',
 
   'validatie.commitment_kort': 'Write down what you are holding yourself to.',
@@ -574,6 +595,15 @@ export const en: Record<Sleutel, string> = {
   'meldingsoort.commitment_witness': "A stake you're a witness to",
   'meldingsoort.getuige_uitleg':
     "You'll still see the stake under Witness statements; you just won't be notified.",
+  'stilteuren.titel': 'Quiet hours',
+  'stilteuren.uitleg':
+    "You get no notifications in this window. Anything that arrives during the quiet " +
+    'hours still comes through afterwards.',
+  'stilteuren.label': 'Quiet hours',
+  'stilteuren.van': 'From',
+  'stilteuren.tot': 'Until',
+  'stilteuren.herinnering_verschoven':
+    'Your {oud} reminder falls inside your quiet hours, so it arrives at {nieuw}.',
   'profiel.aan': 'On',
   'profiel.uit': 'Off',
   'profiel.viering_beweging': 'If your device asks for reduced motion, the app leaves out the animation anyway. The text simply stays.',
@@ -1086,6 +1116,10 @@ export const en: Record<Sleutel, string> = {
   'validatie.datum_vorm': 'Use an existing date like 2026-12-31.',
   'validatie.identiteit_lang': 'Keep it short: one sentence works best.',
   'validatie.uren_max': 'A week has 168 hours.',
+
+  'lijst.taak_leeg': 'Write down what you want to do.',
+  'lijst.taak_lang': 'Keep it short: at most 500 characters.',
+  'lijst.patch_leeg': 'Nothing was changed.',
 
   'deadline.argument_kort':
     'Write one sentence about what changed. Your buddies decide on this, ' +

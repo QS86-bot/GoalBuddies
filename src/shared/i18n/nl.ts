@@ -209,6 +209,27 @@ export const nl = {
   'commitment.fout.al_afgegaan':
     'Dit commitment is al in werking getreden en kan niet meer worden ingetrokken.',
   'commitment.fout.laden': 'De beloning en straf konden niet geladen worden.',
+  'stuurloos.kop': 'Je getuige is er niet meer',
+  'stuurloos.uitleg':
+    'De persoon die je als getuige had aangewezen, heeft zijn account opgezegd. Je inzet staat nog open. Wijs iemand anders aan, of wikkel hem af als je hem bent nagekomen.',
+  'stuurloos.wie': 'Wie let er vanaf nu op?',
+  'stuurloos.aanwijzen': 'Deze persoon aanwijzen',
+  'stuurloos.niemand':
+    'Er is nu niemand in je groepen om aan te wijzen. Zodra er iemand bijkomt, kan het hier.',
+  'stuurloos.afwikkelen': 'Ik heb hem nagekomen',
+  'stuurloos.zeker': 'Deze inzet afwikkelen?',
+  'stuurloos.afwikkelen_uitleg':
+    'Je legt hiermee vast dat je je inzet bent nagekomen. Er is nu geen getuige die dat kan bevestigen, dus dit staat op jouw woord. Terugdraaien kan niet.',
+  'stuurloos.ja_afwikkelen': 'Ja, afwikkelen',
+  'stuurloos.terug': 'Terug',
+  'commitment.fout.herstel': 'Dat lukte niet. Probeer het opnieuw.',
+  'commitment.herstel.heeft_getuige':
+    'Deze inzet heeft nog een getuige. Je kunt hem alleen overdragen als je getuige zijn account heeft opgezegd.',
+  'commitment.herstel.niet_verschuldigd':
+    'Deze inzet is nog niet verschuldigd. Zolang dat zo is, kun je hem gewoon intrekken.',
+  'commitment.herstel.geen_groepsgenoot':
+    'Je kunt alleen iemand aanwijzen met wie je een groep deelt.',
+  'commitment.herstel.niet_jezelf': 'Je kunt niet je eigen getuige zijn.',
   'commitment.fout.spoor': 'De geschiedenis kon niet geladen worden.',
 
   'validatie.commitment_kort': 'Schrijf op wat je jezelf oplegt.',
@@ -896,6 +917,18 @@ export const nl = {
   //    het haalt alleen de onderbreking weg. Zie domeinregel 5.
   'meldingsoort.getuige_uitleg':
     'Je blijft de inzet zien bij Getuigenissen; je krijgt er alleen geen melding meer van.',
+  'stilteuren.titel': 'Stille uren',
+  'stilteuren.uitleg':
+    'In dit venster krijg je geen meldingen. Wat er tijdens de stilte binnenkomt, ' +
+    'komt erna alsnog.',
+  'stilteuren.label': 'Stille uren',
+  'stilteuren.van': 'Van',
+  'stilteuren.tot': 'Tot',
+  // ⚠️ Feitelijk en geen waarschuwing: het getal komt uit dezelfde functie die
+  //    de verschuiving doet, dus deze zin kan niet uit de pas lopen met wat er
+  //    gebeurt. Zie `verschovenUur()` en QS8-406.
+  'stilteuren.herinnering_verschoven':
+    'Je herinnering van {oud} valt in je stille uren. Hij komt daarom om {nieuw}.',
   'profiel.aan': 'Aan',
   'profiel.uit': 'Uit',
   'profiel.viering_beweging': 'Vraagt je toestel om minder beweging, dan laat de app de animatie sowieso weg. De tekst blijft dan gewoon staan.',
@@ -1502,6 +1535,13 @@ export const nl = {
   // ---------------------------------------------------------------------------
   // Deadline verschuiven met akkoord — A7
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // De Lijst — losse taken (QS8-379)
+  // ---------------------------------------------------------------------------
+  'lijst.taak_leeg': 'Schrijf op wat je wilt doen.',
+  'lijst.taak_lang': 'Hou het kort: maximaal 500 tekens.',
+  'lijst.patch_leeg': 'Er is niets gewijzigd.',
+
   'deadline.argument_kort':
     'Schrijf één zin over wat er veranderd is. Je buddy’s beslissen hierop, ' +
     'dus "geen tijd" is te weinig om ja op te zeggen.',

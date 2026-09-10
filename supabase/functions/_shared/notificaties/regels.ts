@@ -599,14 +599,22 @@ export const VOORKEUR_PER_SOORT: Readonly<Record<Melding, keyof Meldingsvoorkeur
  *    alle vijf de soorten doorheen gaan, en vóór de rij in `notifications_sent`.
  *
  * ⚠️ Een réden en geen `false`, om dezelfde reden als bij `nudgeReden()`: in een
- *    job zonder scherm is "waarom niet" het enige dat je achteraf nog hebt.
+ *    job zonder scherm is "waarom niet" het enige dat je achteraf nog hebt. En
+ *    de twee redenen zijn met opzet te ónderscheiden: een uitgezette soort is
+ *    definitief, stille uren zijn tijdelijk, en ze vragen een andere handeling.
+ *
+ * @param inStilte Uitkomst van `inStilteVenster()` uit `shared/time`. Dit
+ *   bestand gaat via `edge:sync` naar Deno en heeft daarom geen imports —
+ *   zelfde vorm en dezelfde reden als `graceUren` bij `overzichtsuur()`.
  */
 export function meldingPoortReden(
   soort: Melding,
   voorkeuren: Meldingsvoorkeuren,
+  inStilte = false,
 ): string | null {
   const kolom = VOORKEUR_PER_SOORT[soort];
-  return voorkeuren[kolom] ? null : `soort staat uit (${kolom})`;
+  if (!voorkeuren[kolom]) return `soort staat uit (${kolom})`;
+  return inStilte ? 'stille uren' : null;
 }
 
 /**
@@ -641,4 +649,34 @@ export function meldingsoortVelden(
     case 'commitment_witness':
       return { notify_commitment_witness: aan };
   }
+}
+
+/**
+ * De profielvelden voor het stille venster — QS8-406.
+ *
+ * ⚠️ **Uit is uit, en dat is één schrijver.** Zet de gebruiker de stille uren
+ *    uit, dan gaan béide kolommen op `null` — er blijft geen venster bewaard
+ *    "voor als je hem weer aanzet". Zelfde belofte en dezelfde reden als bij
+ *    `herinneringVelden()`: een instelling die vanzelf terugkomt, is de snelste
+ *    manier om een app van iemands telefoon te krijgen.
+ *
+ * ⚠️ Eén schrijver, want de belofte breekt niet in deze functie maar ernáást: een
+ *    scherm dat de twee velden zélf samenstelt, is de tweede schrijver en dan
+ *    blijft de unit-test groen terwijl de app niet meer klopt. Dat is precies wat
+ *    `tests/beloftes/herinnering.test.ts` bewaakt, en dat register is hiermee
+ *    uitgebreid.
+ *
+ * ⚠️ De database weigert `van === tot` (`profiles_stilte_is_geen_punt`). Deze
+ *    functie kiest daar niets voor: hij geeft door wat de gebruiker koos, en het
+ *    scherm laat die stand niet toe. De grens is de CHECK.
+ */
+export function stilleUrenVelden(keuze: {
+  readonly aan: boolean;
+  readonly van: number;
+  readonly tot: number;
+}): { readonly quiet_from: number | null; readonly quiet_to: number | null } {
+  return {
+    quiet_from: keuze.aan ? keuze.van : null,
+    quiet_to: keuze.aan ? keuze.tot : null,
+  };
 }

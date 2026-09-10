@@ -1688,6 +1688,8 @@ export type Database = {
           notify_approval_received: boolean
           notify_cycle_summary: boolean
           notify_commitment_witness: boolean
+          quiet_from: number | null
+          quiet_to: number | null
           reminder_enabled: boolean
           reminder_time: string | null
           reminder_tone: string
@@ -1712,6 +1714,8 @@ export type Database = {
           notify_approval_received?: boolean
           notify_cycle_summary?: boolean
           notify_commitment_witness?: boolean
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -1736,6 +1740,8 @@ export type Database = {
           notify_approval_received?: boolean
           notify_cycle_summary?: boolean
           notify_commitment_witness?: boolean
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean
           reminder_time?: string | null
           reminder_tone?: string
@@ -1831,6 +1837,54 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      todo_items: {
+        Row: {
+          body: string
+          created_at: string
+          done_at: string | null
+          id: string
+          order_index: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          order_index?: number
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          order_index?: number
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mijn_profiel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2341,6 +2395,8 @@ export type Database = {
           notify_approval_received: boolean | null
           notify_cycle_summary: boolean | null
           notify_commitment_witness: boolean | null
+          quiet_from: number | null
+          quiet_to: number | null
           reminder_enabled: boolean | null
           reminder_time: string | null
           reminder_tone: string | null
@@ -2365,6 +2421,8 @@ export type Database = {
           notify_approval_received?: boolean | null
           notify_cycle_summary?: boolean | null
           notify_commitment_witness?: boolean | null
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
@@ -2389,6 +2447,8 @@ export type Database = {
           notify_approval_received?: boolean | null
           notify_cycle_summary?: boolean | null
           notify_commitment_witness?: boolean | null
+          quiet_from?: number | null
+          quiet_to?: number | null
           reminder_enabled?: boolean | null
           reminder_time?: string | null
           reminder_tone?: string | null
@@ -2663,6 +2723,15 @@ export type Database = {
         Returns: undefined
       }
       herbereken_risico: { Args: { p_goal_id: string }; Returns: string }
+      herstel_stuurloze_straf: {
+        Args: {
+          p_actie: string
+          p_bevestigd?: boolean
+          p_commitment_id: string
+          p_getuige?: string
+        }
+        Returns: Json
+      }
       herorden_mijlpalen: {
         Args: { p_goal_id: string; p_ids: string[] }
         Returns: Json

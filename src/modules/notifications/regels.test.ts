@@ -12,6 +12,7 @@ import {
   tijdVoorInvoer,
   uurUit,
   meldingPoortReden,
+  stilleUrenVelden,
   VOORKEUR_PER_SOORT,
   MELDINGSOORTEN,
   type Meldingsvoorkeuren,
@@ -629,5 +630,53 @@ describe('meldingPoortReden', () => {
   it('noemt de kolom in de reden, zodat een logregel bruikbaar is', () => {
     const uit: Meldingsvoorkeuren = { ...ALLES_AAN, notify_cycle_summary: false };
     expect(meldingPoortReden('cycle_summary', uit)).toBe('soort staat uit (notify_cycle_summary)');
+  });
+});
+
+describe('meldingPoortReden — stille uren', () => {
+  it('houdt élke soort tegen tijdens het stille venster', () => {
+    for (const soort of MELDINGSOORTEN) {
+      expect(meldingPoortReden(soort, ALLES_AAN, true)).toBe('stille uren');
+    }
+  });
+
+  it('laat alles door buiten het venster', () => {
+    for (const soort of MELDINGSOORTEN) {
+      expect(meldingPoortReden(soort, ALLES_AAN, false)).toBeNull();
+    }
+  });
+
+  /**
+   * ⚠️ De twee redenen moeten te onderscheiden zijn: uit is definitief, stil is
+   *    tijdelijk. Een job zonder scherm heeft alleen deze tekst.
+   */
+  it('noemt de uitgezette soort en niet de stilte als beide gelden', () => {
+    const uit: Meldingsvoorkeuren = { ...ALLES_AAN, notify_cycle_summary: false };
+    expect(meldingPoortReden('cycle_summary', uit, true)).toContain('notify_cycle_summary');
+  });
+
+  it('gaat er zonder derde argument van uit dat het niet stil is', () => {
+    expect(meldingPoortReden('nudge', ALLES_AAN)).toBeNull();
+  });
+});
+
+describe('stilleUrenVelden', () => {
+  it('geeft het gekozen venster door als hij aan staat', () => {
+    expect(stilleUrenVelden({ aan: true, van: 22, tot: 7 })).toEqual({
+      quiet_from: 22,
+      quiet_to: 7,
+    });
+  });
+
+  /**
+   * ⚠️ Uit is uit: er blijft geen venster bewaard voor als je hem weer aanzet.
+   *    📏 Geijkt door `quiet_to` op `keuze.tot` te laten staan — dan valt deze
+   *    test om.
+   */
+  it('wist béide kolommen als hij uit staat', () => {
+    expect(stilleUrenVelden({ aan: false, van: 22, tot: 7 })).toEqual({
+      quiet_from: null,
+      quiet_to: null,
+    });
   });
 });
