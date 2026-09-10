@@ -216,7 +216,7 @@ export async function verwijderChatdoc(pad: string): Promise<void> {
  *    in de app een **kaal pad** — de tegenovergestelde belofte van die bij een
  *    `photo`-bericht, waar het ná `metGetekendeChatfotos()` een ondertekende URL
  *    is. `Document.tsx` mag dat pad daarom nooit rechtstreeks openen, en
- *    `tests/ui/document.test.tsx` bewaakt dat.
+ *    `tests/beloftes/een-document-voert-niets-uit.test.ts` bewaakt dat.
  */
 export async function tekenChatdoc(pad: string): Promise<string | null> {
   const { data, error } = await supabase()

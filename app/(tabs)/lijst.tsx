@@ -48,7 +48,7 @@ import {
  * ⚠️ **Het invoerveld is het gedeelde `Field` en geen eigen `TextInput`.** Dat is
  *    de hele reden dat inspreken later werkt: QS8-250 hangt de microfoon aan
  *    `Field`, en dan verschijnt hij hier vanzelf.
- *    `tests/beloftes/lijstveld.test.ts` wordt rood zodra dit scherm zijn eigen
+ *    `tests/beloftes/tekstinvoer.test.ts` wordt rood zodra dit scherm zijn eigen
  *    invoer bouwt.
  */
 export default function Lijst() {

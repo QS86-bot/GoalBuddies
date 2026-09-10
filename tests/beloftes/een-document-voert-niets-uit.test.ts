@@ -70,8 +70,20 @@ const DOCUMENT_TSX = readFileSync('src/shared/ui/Document.tsx', 'utf8');
  *    op de uitleg van de belofte in plaats van op een schending ervan. Precies
  *    de vorm die CLAUDE.md beschrijft als *"een controle die alles meldt, leer je
  *    negeren"*.
+ *
+ * ⚠️⚠️ **De `//` van een URL is géén commentaar, en dat is met de hand gemeten**
+ *    (QS8-412). 📏 Met `const x = 'https://opslag/x'; Linking.openURL(x);` in
+ *    `Document.tsx` bleef deze suite **groen op eenenzestig tests**: de kale
+ *    knipper `\/\/[^\n]*` at alles ná de `//` van de URL op, inclusief de
+ *    verboden aanroep. Een grendel die je zó langsloopt, bewaakt niets — en hij
+ *    stond hier sinds QS8-72 zonder dat iemand hem op deze vorm had gevoed.
+ *    Vandaar dat `//` alleen telt als er géén dubbele punt vóór staat. Zelfde
+ *    knip en zelfde reden in `tests/beloftes/een-foto-is-getekend-of-niets.test.ts`.
  */
-const DOCUMENT_CODE = DOCUMENT_TSX.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+const DOCUMENT_CODE = DOCUMENT_TSX.replace(/\/\*[\s\S]*?\*\//g, '').replace(
+  /(^|[^:])\/\/[^\n]*/g,
+  '$1',
+);
 
 /**
  * De typen die een browser naar de HTML-parser kan routeren, direct of via XSLT,

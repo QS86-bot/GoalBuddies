@@ -23,7 +23,7 @@
  *    harnas.
  *
  *    ⚠️ Dat is een naad: verandert de functie van vorm, dan blijft deze test
- *    groen. `tests/beloftes/koppelscherm.test.ts` dekt de andere helft — dát het
+ *    groen. `tests/beloftes/koppelscherm-vraagt-koppelbare-doelen.test.ts` dekt de andere helft — dát het
  *    scherm deze functie aanroept en niet meer `fetchDoelen`.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

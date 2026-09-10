@@ -366,7 +366,7 @@ export function namenPerBranch() {
  *    en CI draait toch al op een verse checkout. Vandaar dat dit een losse
  *    export is die je aanroept en geen bijwerking van de scan.
  *
- *    `tests/scripts/migratiebranches-fetch.test.ts` meet beide kanten met een
+ *    `tests/scripts/migratie-fetch.test.ts` meet beide kanten met een
  *    echte remote op schijf; die test is de enige die "wel gefetcht" van "niet
  *    gefetcht" kan onderscheiden.
  */
