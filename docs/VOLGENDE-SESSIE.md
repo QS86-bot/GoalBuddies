@@ -915,6 +915,20 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️⚠️ `is distinct from` is niet de nulls-veilige `<>` — 10-09, QS8-406.** Een
+  CHECK `a is distinct from b` op twee nullable kolommen weigert de stand waarin
+  ze **allebei** `null` zijn: 📏 `null is distinct from null` geeft `false`.
+
+  Dat kostte hier bijna het aanmelden, niet de feature: `handle_new_user()` maakt
+  bij elke nieuwe gebruiker een profielrij met die kolommen leeg, dus de trigger
+  viel om op een CHECK die over meldingen gaat.
+
+  **Vraag bij elke CHECK op een nullable kolom: welk pad vult deze tabel nog
+  meer?** Een CHECK op een tabel die door een trigger gevuld wordt, is een CHECK
+  op dát pad — ook als je dat pad niet in gedachten had. En zet het geval apart
+  onder test: "aanmelden blijft werken" is een andere belofte dan "de lege stand
+  mag", ook al breken ze hier samen.
+
 - **⚠️⚠️ Een kolom toevoegen aan `profiles` is twee handelingen, niet één —
   10-09, QS8-92.** `mijn_profiel` is de view waarlangs de eigenaar zijn eigen rij
   leest, en die is een **bevroren projectie**: `select p.*` wordt bij het

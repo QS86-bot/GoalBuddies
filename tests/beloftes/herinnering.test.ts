@@ -54,8 +54,17 @@ const GEGENEREERD = ['src/lib/database.types.ts'];
 
 const MAPPEN = ['app', 'src'];
 
-/** Een toewijzing in een objectliteraal: `reminder_time: <iets>`. */
-const TOEWIJZING = /\breminder_time\s*:/;
+/**
+ * Een toewijzing in een objectliteraal: `reminder_time: <iets>`.
+ *
+ * ⚠️ **Sinds QS8-406 dekt dit register drie velden en niet één.** Het stille
+ *    venster draagt exact dezelfde belofte — uit zetten wist beide kolommen, er
+ *    blijft niets bewaard voor als je hem weer aanzet — en die belofte breekt op
+ *    exact dezelfde manier: een scherm dat de velden zélf samenstelt. Een tweede
+ *    testbestand met dezelfde belofte zou twee plekken zijn die het eens moeten
+ *    blijven; dit is er één.
+ */
+const TOEWIJZING = /\b(reminder_time|quiet_from|quiet_to)\s*:/;
 
 function bestanden(map: string): string[] {
   const pad = join(WORTEL, map);
@@ -105,6 +114,7 @@ describe('"uit is uit" heeft één schrijver', () => {
 
     expect(TOEWIJZING.test(bron)).toBe(true);
     expect(bron).toContain('export function herinneringVelden');
+    expect(bron).toContain('export function stilleUrenVelden');
   });
 
   it.each([

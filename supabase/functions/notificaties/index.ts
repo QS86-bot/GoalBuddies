@@ -7,6 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { partsIn } from '../_shared/time/zoned.ts';
 import { previousCycle, userCycle } from '../_shared/time/cycle.ts';
 import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
+import { inStilteVenster, verschovenUur } from '../_shared/time/stilte.ts';
 import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
 import { paginas } from '../_shared/bladeren/index.ts';
@@ -95,6 +96,9 @@ interface Profiel {
   notify_approval_received: boolean;
   notify_cycle_summary: boolean;
   notify_commitment_witness: boolean;
+  /** Het stille venster in hele uren (migratie 0238, QS8-406). */
+  quiet_from: number | null;
+  quiet_to: number | null;
 }
 
 /**
@@ -212,7 +216,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       //    📏 `npm run edge:types:controle` viel er meteen over (TS2352) — dat is
       //    de enige typecheck die deze map ziet, want `tsconfig.json` sluit hem uit.
       // deno-fmt-ignore
-      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness')
+      .select('id, tz, week_start_day, reminder_enabled, reminder_time, reminder_tone, locale, notify_approval_request, notify_approval_received, notify_cycle_summary, notify_commitment_witness, quiet_from, quiet_to')
       .order('id', { ascending: true })
       .range(start, start + aantal - 1);
 
@@ -259,6 +263,11 @@ async function draaiNotificaties(auth: string): Promise<Response> {
         continue;
       }
 
+      // ⚠️ Eén keer per profiel uitgerekend en niet per melding: het antwoord
+      //    hangt alleen van het lokale uur af, en de lus eronder doet vijf
+      //    soorten.
+      const inStilte = inStilteVenster(lokaalUur, profiel.quiet_from, profiel.quiet_to);
+
       const { data: tokens } = await db
         .from('push_tokens')
         .select('token, platform, p256dh, auth')
@@ -290,7 +299,16 @@ async function draaiNotificaties(auth: string): Promise<Response> {
       const besluit = await nudgeBesluit(
         {
           herinneringAan: profiel.reminder_enabled,
-          herinneringUur: uurUit(profiel.reminder_time),
+          // ⚠️ **Verschoven en niet onderdrukt — het besluit van QS8-406.** Een
+          //    herinnering die in de stille uren valt, zou anders die dag
+          //    helemaal niet gaan; bij 23:00 met stilte 22→7 nóóit meer. Nu komt
+          //    hij op het eerste luide uur. Zie `verschovenUur()` voor waarom dit
+          //    geen validatie is geworden.
+          herinneringUur: verschovenUur(
+            uurUit(profiel.reminder_time),
+            profiel.quiet_from,
+            profiel.quiet_to,
+          ),
           lokaalUur,
         },
         {
@@ -309,6 +327,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
           userId: profiel.id,
           apparaten,
           voorkeuren: profiel,
+          inStilte,
           nu,
           soort: 'nudge',
           bericht: nudgeBericht(toon, taalVan(profiel)),
@@ -338,6 +357,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
           userId: profiel.id,
           apparaten,
           voorkeuren: profiel,
+          inStilte,
           nu,
           soort: 'approval_request',
           bericht: berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
@@ -362,6 +382,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
           userId: profiel.id,
           apparaten,
           voorkeuren: profiel,
+          inStilte,
           nu,
           soort: 'approval_received',
           bericht: berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
@@ -395,7 +416,16 @@ async function draaiNotificaties(auth: string): Promise<Response> {
         //    pas ná `GRACE_HOURS` afschrijft, dus vóór dat uur is "is er een weekpas
         //    verbruikt" per definitie nee — en de ontdubbeling laat die dag geen
         //    tweede melding meer toe.
-        const overzichtsUur = overzichtsuur(uurUit(profiel.reminder_time), GRACE_HOURS);
+        // ⚠️ Zelfde verschuiving als bij de nudge: valt het overzichtsuur in de
+        //    stille uren, dan komt het overzicht op het eerste luide uur in
+        //    plaats van die week helemaal niet.
+        const basisUur = overzichtsuur(uurUit(profiel.reminder_time), GRACE_HOURS);
+        // ⚠️ De `??` is typenarrowing en geen gedrag: `verschovenUur()` geeft
+        //    alleen `null` terug op een `null`-invoer, en `overzichtsuur()` geeft
+        //    altijd een getal. De tak is dus onbereikbaar en staat er omdat de
+        //    handtekening hem toelaat.
+        const overzichtsUur =
+          verschovenUur(basisUur, profiel.quiet_from, profiel.quiet_to) ?? basisUur;
 
         // ⚠️ **Niet over een week waarin je met opzet niets deed.** De nudge en het
         //    goedkeuringsverzoek slaan een lid met een lopende adempauze al over
@@ -412,7 +442,13 @@ async function draaiNotificaties(auth: string): Promise<Response> {
         // ⚠️ De vraag staat bínnen de tijdvoorwaarde en niet ervoor. Ervoor is het
         //    een extra query per profiel per ronde voor een bericht dat hoogstens
         //    één keer per week valt (onwrikbare regel 12).
-        if (cyclus.startDate === lokaleDatum && lokaalUur === overzichtsUur) {
+        // ⚠️ **`>=` en niet `===`, en dat is een reparatie die los van de stille
+        //    uren al nodig was.** Met een gelijkheid kost één mislukte job-run om
+        //    het overzichtsuur stilzwijgend het hele weekoverzicht van die
+        //    gebruiker — dezelfde klasse als QS8-202. De ontdubbeling op
+        //    `(user_id, 'cycle_summary', local_date)` houdt het bij één, dus
+        //    later alsnog sturen kan geen tweede opleveren.
+        if (cyclus.startDate === lokaleDatum && lokaalUur >= overzichtsUur) {
           const afgelopen = previousCycle(cyclus);
           const wasAdempauze = await inAdempauze(db, profiel.id, afgelopen.startDate);
 
@@ -439,6 +475,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
               userId: profiel.id,
               apparaten,
               voorkeuren: profiel,
+              inStilte,
               nu,
               // ⚠️ De sóórt blijft `cycle_summary` en alleen de tékst verandert.
               //    `notifications_sent_kind_bekend` (0053) kent vier waarden; een
@@ -497,6 +534,7 @@ async function draaiNotificaties(auth: string): Promise<Response> {
           userId: profiel.id,
           apparaten,
           voorkeuren: profiel,
+          inStilte,
           nu,
           soort: 'commitment_witness',
           bericht: berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
@@ -951,6 +989,7 @@ async function stuur(
     refId: string | null;
     nu: Date;
     voorkeuren: Meldingsvoorkeuren;
+    inStilte: boolean;
   },
 ): Promise<Verzendstand> {
   // ⚠️⚠️ **Het keelpunt, en het staat vóór de rij in `notifications_sent`.**
@@ -964,7 +1003,7 @@ async function stuur(
   //    nooit meer. Nu blijft de rij weg en probeert de volgende ronde opnieuw —
   //    en de queries erboven leveren alleen wat nog openstaat, dus er ontstaat
   //    geen stapel oude meldingen.
-  const reden = meldingPoortReden(opdracht.soort, opdracht.voorkeuren);
+  const reden = meldingPoortReden(opdracht.soort, opdracht.voorkeuren, opdracht.inStilte);
   if (reden !== null) return 'onderdrukt';
 
   const { data: logRij, error: logFout } = await db

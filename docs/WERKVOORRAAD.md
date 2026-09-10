@@ -16,7 +16,7 @@ productie in twee rondes)
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 **248**.
 
-**Het gat is daarmee vierentwintig bestanden** — `0222` t/m `0245`, van 09-09
+**Het gat is daarmee vijfentwintig bestanden** — `0222` t/m `0246`, van 09-09
 en 10-09 en uit twaalf verschillende issues:
 
 | | | DDL op `storage.objects` |
@@ -44,7 +44,8 @@ en 10-09 en uit twaalf verschillende issues:
 | `0242_een_bijlage_zegt_welke_soort_hij_is.sql` | QS8-72 | nee |
 | `0243_een_bijlage_overleeft_zijn_eigenaar_niet.sql` | QS8-72 | nee |
 | `0244_een_stuurloze_straf_krijgt_de_eigenaar_weer_in_handen.sql` | QS8-333 | nee |
-| `0245_de_lijst_krijgt_een_tabel_die_dicht_staat.sql` | QS8-379 | nee |
+| `0245_stille_uren.sql` | QS8-406 | nee |
+| `0246_de_lijst_krijgt_een_tabel_die_dicht_staat.sql` | QS8-379 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden

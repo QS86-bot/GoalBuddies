@@ -133,6 +133,12 @@ function naarKolommen(velden: ProfielPatch): TablesUpdate<'profiles'> {
     update.notify_commitment_witness = velden.notify_commitment_witness;
   }
 
+  // Het stille venster — QS8-406. Zelfde regel: alleen wat er echt in de patch
+  // zit, want een `undefined` zou hier `null` schrijven — en `null` is hier een
+  // betekenisvolle waarde ("geen stille uren"), geen leegte.
+  if (velden.quiet_from !== undefined) update.quiet_from = velden.quiet_from;
+  if (velden.quiet_to !== undefined) update.quiet_to = velden.quiet_to;
+
   // De vier uit de vragenlijst — QS8-257. Zelfde regel als hierboven: alleen wat
   // er echt in de patch zit, want een `undefined` zou hier `null` schrijven.
   if (velden.focus_areas !== undefined) update.focus_areas = [...velden.focus_areas];
