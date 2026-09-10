@@ -109,7 +109,9 @@ export function chatdocPad(groupId: string, senderId: string): string {
  */
 export function schoneBestandsnaam(ruw: string): string {
   const zonderRegie = ruw
-    // eslint-disable-next-line no-control-regex -- precies de tekens die de CHECK van 0236 weigert
+    // ⚠️ Precies de tekens die de CHECK `chat_messages_attachment_name_vorm`
+    //    (0236) weigert — één klasse, twee plekken, en die twee horen gelijk te
+    //    blijven. `tests/beloftes/...` legt ze naast elkaar.
     .replace(/[\u0000-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
     .replace(/\//g, '-')
     .trim();

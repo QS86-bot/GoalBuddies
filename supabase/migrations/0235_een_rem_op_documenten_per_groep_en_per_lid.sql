@@ -1,6 +1,8 @@
 -- 0235_een_rem_op_documenten_per_groep_en_per_lid.sql — twee dagtellers op
 -- `chatdocs`, in de vorm die 0233 heeft neergezet.
 --
+-- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
+--
 -- ROLLBACK-PAD:
 --   drop trigger if exists chatdocs_aantal_begrensd on storage.objects;
 --   drop trigger if exists chatdocs_aantal_begrensd_verhuisd on storage.objects;

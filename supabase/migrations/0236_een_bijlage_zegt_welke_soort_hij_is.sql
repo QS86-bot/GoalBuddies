@@ -1,6 +1,8 @@
 -- 0236_een_bijlage_zegt_welke_soort_hij_is.sql — de kolomgrens wordt aan de
 -- soort gepaard, en een document krijgt zijn oorspronkelijke naam.
 --
+-- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
+--
 -- ROLLBACK-PAD:
 --   alter table public.chat_messages drop constraint if exists chat_messages_attachment_name_vorm;
 --   alter table public.chat_messages drop constraint if exists chat_messages_doc_heeft_naam;

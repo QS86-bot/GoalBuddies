@@ -1,5 +1,7 @@
 -- 0237_een_bijlage_overleeft_zijn_eigenaar_niet.sql — het AVG-verwijderpad dekt
--- voortaan beide chat-emmers, en zet de soort terug.
+-- voortaan beide chat-emmers — de naam gaat mee, de soort blijft staan.
+--
+-- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
 --
 -- ROLLBACK-PAD:
 --   drop trigger if exists profielen_bijlagen_mee on public.profiles;

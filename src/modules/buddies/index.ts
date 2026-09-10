@@ -47,6 +47,19 @@ export {
 } from './chatfoto';
 
 export {
+  CHATDOC_BUCKET,
+  CHATDOC_GELDIGHEID_S,
+  CHATDOC_MAX_BYTES,
+  CHATDOC_NAAM_MAX,
+  CHATDOC_TYPES,
+  chatdocPad,
+  keurChatdoc,
+  schoneBestandsnaam,
+  soortUitPad,
+  tekenChatdoc,
+} from './chatdoc';
+
+export {
   bewaarOpenstaandeUitnodiging,
   openstaandeUitnodiging,
   routeVoorUitnodiging,
@@ -128,6 +141,7 @@ export {
   type BerichtInvoer,
   type SysteemGebeurtenis,
   heeftBijlage,
+  soortBijlage,
 } from './chat-schemas';
 
 export {
