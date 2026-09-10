@@ -1,17 +1,23 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings; TypeScript leest de JSDoc ernaast. Zelfde
 //    vorm als `migratieregister-plan.test.ts`, met opzet.
 import {
+  TOKEN_ONTBREEKT,
   inhoudsafwijkingen,
   leesbaar,
   modulesInBundel,
   modulesVoor,
+  tokenMelding,
   vergelijk,
   waardeImports,
   werkboomWaarschuwing,
   zonderCommentaar,
 } from '../../scripts/edge-gedeployd.mjs';
+import { beoordeel, controlesUit } from '../../scripts/poort.mjs';
 
 /**
  * De controle die op 26-08-2026 ontbrak.
@@ -416,5 +422,113 @@ describe('inhoudsafwijkingen', () => {
 
     expect(uit.onleesbaar).toBe(false);
     expect(uit.afwijkend).toEqual([]);
+  });
+});
+
+/**
+ * Deze controle draait mee in de poort — QS8-320, criterium 2.
+ *
+ * ⚠️ **De belofte is niet "het script eindigt netjes".** Die is: *een werkplek
+ *    zonder token telt hier als ongemeten en niet als groen*. Tot 09-09-2026
+ *    eindigde `edge-gedeployd` zonder token met exitcode 1, en daarom stónd hij
+ *    niet in de poort — waardoor de toestand die QS8-320 beschrijft (de
+ *    edge-functies dagen achter op migraties die al toegepast zijn) alleen
+ *    gevonden werd doordat iemand ernaar keek.
+ *
+ * ⚠️⚠️ **Daarom toetsen deze gevallen de náád en niet de tekst.** De poort
+ *    herkent een overgeslagen controle aan de regelvorm die de controle zélf
+ *    schrijft. Zou hier `expect(...).toContain('OVERGESLAGEN')` staan, dan blijft
+ *    die groen terwijl iemand de bewoording verandert op een manier die de poort
+ *    niet meer herkent — en dan telt de poort deze controle als **groen**: een
+ *    gate die zegt gemeten te hebben wat niemand gemeten heeft. Dat is de fout
+ *    van QS8-270, en de reden dat `beoordeel()` hier meedoet in plaats van een
+ *    letterlijke zin.
+ *
+ * IJKING — met de hand gedraaid op 09-09-2026, één mutatie per grendel:
+ *
+ *   A  `⚠ edge-gedeployd: OVERGESLAGEN — …` → `⚠ geen token, sla over`  → 1 rood
+ *   B  `code: 0` bij 'overslaan' → `code: 1`                            → 1 rood
+ *   C  `tokenMelding('ontbreekt')` → `code: 0`                          → 2 rood
+ *   D  `tokenMelding('draaien')` → een melding in plaats van `null`     → 1 rood
+ *   E  `edge:gedeployd:controle` uit `package.json`                     → 1 rood
+ *
+ * ⚠️ A geeft er precies één, en dat is de bedoeling: alleen de grendel die de
+ *    poort náádoet valt om, terwijl de strenge tak groen blijft. C geeft er twee
+ *    omdat exitcode 1 daar door twee gevallen gedragen wordt — de rechtstreekse
+ *    en die langs `beoordeel()`.
+ */
+describe('tokenMelding — zonder token ongemeten en niet groen', () => {
+  it('laat de meting gewoon doorgaan als het token er is', () => {
+    expect(tokenMelding('draaien')).toBeNull();
+  });
+
+  it('slaat over met exitcode 0, zodat een werkplek zonder token niet rood staat', () => {
+    const melding = tokenMelding('overslaan');
+
+    expect(melding).not.toBeNull();
+    expect(melding?.code).toBe(0);
+  });
+
+  it('is streng een fout, met exitcode 1', () => {
+    const melding = tokenMelding('ontbreekt');
+
+    expect(melding).not.toBeNull();
+    expect(melding?.code).toBe(1);
+  });
+
+  it('noemt het juiste token — niet de service-role-key', () => {
+    // ⚠️ De enige tekstassertie hier, en hij toetst een verwarring die echt
+    //    gemaakt is: de Management API vraagt een personal access token.
+    expect(TOKEN_ONTBREEKT).toContain('SUPABASE_ACCESS_TOKEN');
+    expect(TOKEN_ONTBREEKT).toContain('service-role-key');
+  });
+
+  /**
+   * ⚠️ **De grendel die de belofte draagt.** `beoordeel()` is de functie waarmee
+   *    de poort zijn eigen samenvatting maakt; komt hier `groen` uit, dan telt
+   *    een werkplek zonder token deze controle mee als bewijs.
+   */
+  it('wordt door de poort als ongemeten geteld en niet als groen', () => {
+    const melding = tokenMelding('overslaan');
+
+    expect(
+      beoordeel({
+        code: melding?.code ?? 0,
+        uitvoer: melding?.tekst ?? '',
+        heeftDatabaseNodig: false,
+        soort: 'controle',
+      }),
+      'de poort herkent de overslagregel niet meer — dan telt hij deze controle als groen',
+    ).toBe('ongemeten');
+  });
+
+  it('wordt door de poort als rood geteld zodra hij streng draait', () => {
+    const melding = tokenMelding('ontbreekt');
+
+    expect(
+      beoordeel({
+        code: melding?.code ?? 0,
+        uitvoer: melding?.tekst ?? '',
+        heeftDatabaseNodig: false,
+        soort: 'controle',
+      }),
+    ).toBe('rood');
+  });
+
+  /**
+   * ⚠️ **Schakel 5 van regel 18: kan een gebruiker hier daadwerkelijk bij?** De
+   *    twee gevallen hierboven bewijzen dat de poort de regel zou herkennen —
+   *    niet dat de poort deze controle ooit draait. Die staat of valt met één
+   *    regel in `package.json`, want `controlesUit()` bouwt de lijst daaruit.
+   */
+  it('staat als controle in package.json, anders draait hij nergens', () => {
+    const pakket: { scripts: Record<string, string> } = JSON.parse(
+      readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'),
+    );
+
+    expect(
+      controlesUit(pakket.scripts),
+      'zonder deze regel draait edge:gedeployd nergens automatisch — QS8-320 criterium 2',
+    ).toContain('edge:gedeployd:controle');
   });
 });

@@ -6,10 +6,13 @@ import { describe, expect, it } from 'vitest';
 import {
   alleAsyncExportsIn,
   asyncBeloftesIn,
+  awaitTreffersIn,
   beloftefunctiesIn,
   lokaleFunctiesIn,
+  optioneleUitkomstenIn,
   uitkomsttypenIn,
   voidTreffersIn,
+  type OptioneleUitkomst,
 } from './uitkomsttypen';
 
 const WORTEL = join(__dirname, '..', '..');
@@ -76,6 +79,23 @@ const WORTEL = join(__dirname, '..', '..');
  *   K  de parameterlezer terug op `\([^)]*\)`               → 1 rood: de leesgrendel,
  *      met `zetMeldingenUit()` en vijf andere bij naam. De fractie blijft daarbij
  *      groen — en dát is waarom die grendel er los naast staat.
+ *
+ * IJKING — L t/m O op 08-09-2026, bij QS8-350. Zelfde afspraak: één mutatie per
+ * grendel, en beide richtingen.
+ *
+ *   L  `await zetArchief(...)` terugzetten in `Archiveren`  → 1 rood: de
+ *      await-grendel, met bestand en regelnummer. Alléén die.
+ *   M  `@uitkomst-optioneel` van `werkJobAf` weghalen        → 2 rood, en allebei
+ *      horen ze: de lijst (leeg tegen de tripdraad) én de await-grendel, die dan
+ *      de vier `await werkJobAf(...)` meldt. Dat is meteen de must-allow bewezen
+ *      langs de enige weg die telt — door hem weg te nemen. 📏 Mét markering
+ *      blijven die vier groen.
+ *   N  de reden achter `@uitkomst-optioneel` leegmaken      → 1 rood: de lijst zelf,
+ *      niet de await-grendel. De markering vrijwaart nog steeds; wat rood wordt is
+ *      dat er geen reden meer bij staat.
+ *   O  `const x = await zetArchief(...)` ervan maken        → groen, en dat is de
+ *      helft die telt: een opgevangen uitkomst is geen weggegooide. De vormen los
+ *      gevoerd staan in `uitkomsttypen.test.ts`.
  */
 
 function bestanden(map: string, exts: readonly string[]): string[] {
@@ -139,9 +159,35 @@ function ongelezen(): string[] {
   return uit;
 }
 
+/** Elke functie in `src/modules/` die met `@uitkomst-optioneel` is vrijgesteld. */
+function optioneleUitkomsten(): OptioneleUitkomst[] {
+  const uit: OptioneleUitkomst[] = [];
+  for (const pad of modulebestanden()) uit.push(...optioneleUitkomstenIn(readFileSync(pad, 'utf8')));
+  return uit;
+}
+
+/**
+ * De vrijstellingen zoals ze hier verwacht worden — de tripdraad, niet de bron.
+ *
+ * ⚠️ **Dit is een allowlist, en de vraag van QS8-350 was hoe je er een maakt die
+ *    niet stilletjes groeit.** Het antwoord is de rolverdeling: wat er
+ *    daadwerkelijk vrijgesteld ís, staat als `@uitkomst-optioneel` in de bron bij
+ *    de functie, mét reden — de grendels hieronder lezen dat en niets anders.
+ *    Deze regel is alleen de tripdraad eromheen. Een markering erbij of eraf is
+ *    daarmee altijd een rode test, en de reden staat op de enige plek waar hij
+ *    meeverhuist met de functie.
+ *
+ * ⚠️ **Niet andersom, en dat is het verschil dat telt.** Zou de zeef op déze lijst
+ *    draaien, dan bleef een vrijstelling gewoon werken nadat iemand de reden uit
+ *    de bron had gehaald. Nu vervalt ze op hetzelfde moment.
+ */
+const BEWUST_GENEGEERD: readonly string[] = ['werkJobAf'];
+
 describe('geen enkel scherm gooit een uitkomst weg', () => {
   const soorten = uitkomsttypen();
   const functies = uitkomstFuncties(soorten);
+  const vrijgesteld = optioneleUitkomsten().map((o) => o.naam);
+  const bewaakt = functies.filter((naam) => !vrijgesteld.includes(naam));
 
   /**
    * ⚠️ **Zonder deze regel is de rest van dit bestand groen om niets.** Vindt de
@@ -224,13 +270,61 @@ describe('geen enkel scherm gooit een uitkomst weg', () => {
     const gevonden: string[] = [];
 
     for (const pad of bestanden(join(WORTEL, 'app'), ['.tsx', '.ts'])) {
-      const treffers = voidTreffersIn(readFileSync(pad, 'utf8'), functies);
+      const treffers = voidTreffersIn(readFileSync(pad, 'utf8'), bewaakt);
       for (const t of treffers) gevonden.push(`${relative(WORTEL, pad)}:${t}`);
     }
 
     expect(
       gevonden,
       'vang de uitkomst op en toon de melding; `void` maakt een mislukking onzichtbaar',
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De tweede aanroepvorm — QS8-350.** `void f()` en een kaal `await f()`
+   *    doen hetzelfde met de uitkomst, en tot 08-09-2026 kende deze grendel
+   *    alleen de eerste. 📏 De verbreding van QS8-340 leverde daardoor nul
+   *    treffers op terwijl er twee echte weggooiers stonden: het archiveren op
+   *    het doelscherm en de mijlpalenlus van de Doelcoach.
+   */
+  it('roept er geen enkele aan als kaal await-statement — zelfde weggooi', () => {
+    const gevonden: string[] = [];
+
+    for (const pad of bestanden(join(WORTEL, 'app'), ['.tsx', '.ts'])) {
+      const treffers = awaitTreffersIn(readFileSync(pad, 'utf8'), bewaakt);
+      for (const t of treffers) gevonden.push(`${relative(WORTEL, pad)}:${t}`);
+    }
+
+    expect(
+      gevonden,
+      'vang de uitkomst op en toon de melding; een kaal `await` gooit hem net zo hard weg als `void`',
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De must-allow-helft van de twee grendels hierboven, en de duurste.**
+   *    Zonder vrijstelling meldt de await-grendel de vier `await werkJobAf(...)`,
+   *    en een controle die vier bewuste aanroepen als bevinding brengt, leer je
+   *    uitzetten. Met een vrijstelling per áánroep zou er niets rood worden als
+   *    er een vijfde bij kwam. Vandaar allebei: de reden bij de functie, de
+   *    verzameling hier.
+   */
+  it('somt de bewust genegeerde uitkomsten op, met een reden per stuk', () => {
+    const optioneel = optioneleUitkomsten();
+
+    expect(
+      [...vrijgesteld].sort(),
+      'er is een @uitkomst-optioneel bij gekomen of weggehaald — weeg hem en zet hem in BEWUST_GENEGEERD',
+    ).toEqual([...BEWUST_GENEGEERD].sort());
+
+    expect(
+      optioneel.filter((o) => o.reden.length < 20).map((o) => o.naam || '(zonder functie eronder)'),
+      'een @uitkomst-optioneel zonder reden is geen vrijstelling maar een gat',
+    ).toEqual([]);
+
+    expect(
+      optioneel.filter((o) => !functies.includes(o.naam)).map((o) => o.naam || '(geen functie eronder)'),
+      'deze markering wijst geen functie aan die een uitkomst belooft — hij vrijwaart dus niets',
     ).toEqual([]);
   });
 });

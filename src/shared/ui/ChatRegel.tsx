@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { Avatar } from './Avatar';
+import { CHATFOTO_TEKSTEN, Foto } from './Foto';
 import { Body, Caption } from './Text';
 
 /**
@@ -28,6 +29,14 @@ import { Body, Caption } from './Text';
 
 interface Props {
   readonly body: string;
+  /**
+   * De **ondertekende** URL van een bijlage, of `null`.
+   *
+   * ⚠️⚠️ **Nooit een kaal opslagpad.** Die belofte woont sinds QS8-391 bij
+   *    `shared/ui/Foto.tsx`, samen met het component dat hem waarmaakt, en
+   *    `tests/ui/foto.test.tsx` toetst hem daar.
+   */
+  readonly fotoUrl?: string | null | undefined;
   /** `undefined` betekent: systeembericht. */
   readonly senderName?: string | undefined;
   readonly senderAvatar?: string | null | undefined;
@@ -73,6 +82,7 @@ interface Props {
 
 export function ChatRegel({
   body,
+  fotoUrl,
   senderName,
   senderAvatar,
   vanMij = false,
@@ -117,7 +127,8 @@ export function ChatRegel({
               : t('chat.van_ander', { naam: senderName, tekst: body })
           }
         >
-          <Body>{body}</Body>
+          {fotoUrl === undefined ? null : <Foto url={fotoUrl} {...CHATFOTO_TEKSTEN} />}
+          {body === '' ? null : <Body>{body}</Body>}
         </View>
 
         {/* `Caption` neemt met opzet geen `style` aan — de typografie hoort van
@@ -172,3 +183,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.shell,
   },
 });
+

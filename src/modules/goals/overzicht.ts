@@ -83,7 +83,7 @@ export async function fetchWeekbalken(
     .limit(500);
 
   if (error) {
-    reportError(error, 'overzicht.weken', { user_id: userId, code: error.code });
+    reportError(error, 'overzicht.weken', { user_id: userId });
     throw new Error(t('overzicht.laden_mislukt'));
   }
 

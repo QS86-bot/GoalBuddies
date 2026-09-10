@@ -5,6 +5,7 @@ import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
 import { focusRing } from './a11y';
+import { Microfoon } from './Microfoon';
 import { Caption, Subheading } from './Text';
 import { invoerProps, knopSleutel } from './wachtwoordveld';
 
@@ -20,6 +21,12 @@ import { invoerProps, knopSleutel } from './wachtwoordveld';
  *    `wachtwoord` in plaats van `secureTextEntry`, dan krijgt élk wachtwoordveld
  *    de spiekknop — nu en bij elk formulier dat er later bij komt. Eén plek die
  *    weet hoe een wachtwoordveld eruitziet.
+ *
+ * ⚠️ **De microfoon hoort hier om precies dezelfde reden** (QS8-250). Eén plek
+ *    die weet wanneer een veld ingesproken kan worden, in plaats van een knop
+ *    die per scherm wordt nagebouwd — en dan bij het volgende formulier
+ *    ontbreekt. Welke velden hem krijgen staat in `magSpraak()`; op een browser
+ *    zonder herkenner en op native staat er niets.
  */
 
 interface Props extends Omit<TextInputProps, 'style' | 'placeholderTextColor'> {
@@ -67,6 +74,13 @@ export function Field({ label, hint, error, wachtwoord = false, ...rest }: Props
         ]}
         {...invoerProps({ wachtwoord, zichtbaar, opgegeven: rest })}
       />
+
+      {/*
+        ⚠️ **De microfoon beslist zelf of hij past** (QS8-250) — zie `magSpraak()`
+           in `spraakveld.ts`. Bij een wachtwoord-, e-mail- of getalveld, op een
+           browser zonder herkenner en op native tekent hij niets.
+      */}
+      <Microfoon veldlabel={label} veld={{ wachtwoord, ...rest }} />
 
       {/*
         ⚠️ **Niet automatisch weer verbergen na een paar seconden.** Dat is

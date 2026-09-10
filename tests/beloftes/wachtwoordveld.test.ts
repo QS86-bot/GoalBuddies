@@ -29,6 +29,8 @@ const FIELD = join(WORTEL, 'src', 'shared', 'ui', 'Field.tsx');
  *
  *   A  `secureTextEntry` terugzetten in `app/aanmelden.tsx`  → 1 rood, met bestand en regel
  *   B  de `wachtwoord`-prop uit `Field.tsx` halen            → 1 rood
+ *   C  (09-09) `ZET_HEM` altijd `true` laten geven           → 1 rood
+ *   D  (09-09) `ZET_HEM` altijd `false` laten geven          → 1 rood bij mutatie A
  */
 
 /** Commentaar eruit vóór je telt — les van `tekst:controle`, en van QS8-245. */
@@ -68,6 +70,34 @@ function bestanden(map: string): string[] {
   return uit;
 }
 
+/**
+ * Zét deze regel `secureTextEntry`, of leest hij hem alleen?
+ *
+ * ⚠️ **De belofte is "niemand anders zét hem", en dat is niet hetzelfde als
+ *    "niemand anders noemt hem"** — QS8-250. `spraakveld.ts` moet de vlag lézen
+ *    om te besluiten dat een wachtwoordveld géén microfoon krijgt; dat is deze
+ *    grendel steunen en niet omzeilen. Een kale `\bsecureTextEntry\b` kon dat
+ *    verschil niet zien en werd rood op precies de code die hem gelijk geeft.
+ *
+ * ⚠️ **Uitbreiden van de uitzonderingenlijst was hier de verkeerde reparatie.**
+ *    Dan is dít bestand vrijgesteld en zet een toekomstige versie ervan de vlag
+ *    alsnog ongemerkt. Nu is de tóets scherper in plaats van de lijst langer:
+ *    een toewijzing wordt gevonden, een lezing niet.
+ *
+ * Wat er wél gevonden wordt:  `secureTextEntry`, `secureTextEntry={…}`,
+ *                             `secureTextEntry: …`
+ * Wat niet:                   `veld.secureTextEntry`, `readonly secureTextEntry?:`
+ */
+function ZET_HEM(regel: string): boolean {
+  if (!/\bsecureTextEntry\b/.test(regel)) return false;
+
+  // Een lezing van andermans object, en een veld in een typebeschrijving.
+  if (/\.\s*secureTextEntry\b/.test(regel)) return false;
+  if (/\bsecureTextEntry\s*\?:/.test(regel)) return false;
+
+  return true;
+}
+
 describe('er is één plek die weet hoe een wachtwoordveld eruitziet', () => {
   it('vindt Field.tsx — anders bewaakt de rest hier niets', () => {
     expect(
@@ -95,7 +125,7 @@ describe('er is één plek die weet hoe een wachtwoordveld eruitziet', () => {
       zonderCommentaar(readFileSync(pad, 'utf8'))
         .split('\n')
         .forEach((regel, i) => {
-          if (/\bsecureTextEntry\b/.test(regel)) {
+          if (ZET_HEM(regel)) {
             gevonden.push(`${relative(WORTEL, pad)}:${i + 1}`);
           }
         });

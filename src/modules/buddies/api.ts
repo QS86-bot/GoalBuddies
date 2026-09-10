@@ -64,6 +64,34 @@ export type { Pagina, Resultaat };
  */
 
 export type Groep = Tables<'groups'>;
+
+/**
+ * Een groep zoals `fetchMijnGroepen()` hem oplevert — QS8-387.
+ *
+ * ⚠️ **De sleutels zijn exact de kolomlijst van die query en geen kolom meer.**
+ *    Ontbreekt `invite_code` hier, dan is dat geen vergeetachtigheid maar de hele
+ *    bedoeling: een lijstquery die overal draait, hoort geen deelbare code op te
+ *    halen. Wie de code nodig heeft, gebruikt `fetchGroep()`.
+ *
+ * ⚠️ **Voeg hier nooit een sleutel toe zonder hem ook aan de `select` toe te
+ *    voegen.** Dat is precies de fout die dit type moest wegnemen — dan liegt
+ *    het type weer, alleen in een nieuwe vorm.
+ *
+ *    Zelfde vorm als `Mijlpaal` in `src/modules/goals/weekly.ts`, dat dit al
+ *    goed deed.
+ */
+export type Lijstgroep = Pick<
+  Groep,
+  | 'id'
+  | 'name'
+  | 'icon'
+  | 'huddle_day'
+  | 'tz'
+  | 'status'
+  | 'created_at'
+  | 'created_by'
+  | 'zichtbaarheid'
+>;
 export type Lidmaatschap = Tables<'group_members'>;
 
 
@@ -182,8 +210,21 @@ function uitkomstVan(data: unknown): RpcUitkomst {
  * ⚠️ Een expliciete kolomlijst en geen `select('*')`. Het lijstscherm heeft de
  *    uitnodigingscode niet nodig, en een code die je niet ophaalt kan niet in een
  *    cache of een schermafbeelding belanden.
+ *
+ * ⚠️⚠️ **En daarom is het retourtype een `Lijstgroep` en geen `Groep`** — QS8-387.
+ *    Tot 09-09-2026 stond hier `Promise<readonly Groep[]>` met
+ *    `as unknown as Groep[]` eronder, en dan staan `invite_code` en
+ *    `invite_revoked` **wel in het type en niet in de gegevens**. TypeScript
+ *    zwijgt, `groep.invite_code` typecheckt als `string`, is `undefined`, en
+ *    `normaliseerCode(undefined)` doet `.trim()` op undefined: een wit scherm.
+ *    📏 Bij QS8-229 was dat precies de knop waar dat issue over ging — de
+ *    uitnodigingslink delen.
+ *
+ *    De cast wás de enige controle op de kolomkeuze, en een cast controleert
+ *    niets. Nu draagt het type de lijst, en supabase-js leidt de kolommen zelf
+ *    af — dus valt het uit elkaar lopen van beide kanten op.
  */
-export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
+export async function fetchMijnGroepen(): Promise<readonly Lijstgroep[]> {
   const { data, error } = await supabase()
     .from('groups')
     .select('id, name, icon, huddle_day, tz, status, created_at, created_by, zichtbaarheid')
@@ -208,7 +249,10 @@ export async function fetchMijnGroepen(): Promise<readonly Groep[]> {
     throw new Error(t('groep.groepen_laden'));
   }
 
-  return (data ?? []) as unknown as Groep[];
+  // ⚠️ Geen cast meer. Klopt de kolomlijst hierboven niet meer met `Lijstgroep`,
+  //    dan is dat hier een compileerfout in plaats van een verrassing op het
+  //    scherm.
+  return data ?? [];
 }
 
 /**

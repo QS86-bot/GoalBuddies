@@ -186,10 +186,72 @@ De kop zegt nu wat waar is; de rij staat in `docs/ENGINEER-REVIEW.md`.
 
 ## Wat hier niet in zit
 
-* **De 74 aanroepen met `code: error.code` zijn ook duplicatie.** Ze werken en ze
-  zijn nu vormgetoetst, maar ze sturen hetzelfde als wat `beschrijfFout()` al in
-  de melding zet. Dat weghalen is dezelfde reparatie als bij de 57 en raakt 74
-  plekken in dertien modules — een eigen issue (QS8-338) en niet een tweede
-  onderwerp op deze branch.
+* ~~**De 74 aanroepen met `code: error.code` zijn ook duplicatie.**~~ ✅ Weg sinds
+  08-09-2026 (QS8-338). Het waren er 76 en niet 74; zie de sectie hieronder.
 * **De `%`-interpolatie in een handgeschreven `Error`.** Onveranderd; staat als
   open rij van 07-09 in `docs/ENGINEER-REVIEW.md`.
+
+
+---
+
+## Nawerk 08-09-2026: de 76 zijn weg (QS8-338)
+
+Dit document liet één punt open: de aanroepen die `code: error.code` meegeven.
+Ze waren niet kapot — sinds de grendel hierboven zijn ze vormgetoetst — maar ze
+stuurden dezelfde waarde die `beschrijfFout()` al in de melding zet. Het issue
+vroeg een besluit tussen weghalen en houden, en noemde één argument om te
+houden: *"in Sentry is een apart veld filterbaar en een stuk melding niet."*
+
+**Dat argument gaat voor deze envelope niet op, en dat is te meten.**
+📏 `maakVerzending()` in `src/lib/observability/edge-rapport.ts` zet
+`gegevens.context` in **`extra`**, en `tags` draagt precies twee sleutels:
+`waar` en `runtime`. Sentry indexeert `tags` en niet `extra` — je kunt dus niet
+op `context.code` filteren of groeperen, ook niet zodra de DSN gezet is. Het
+veld was geen index maar een tweede kopie.
+
+⚠️ **Wil iemand ooit wél op foutcode kunnen groeperen, dan is de weg terug niet
+deze 76 aanroepen.** Dan zet je hem in `tags`, één keer, in de sink, afgeleid met
+`foutcodeVan(error)` uit dezelfde fout die al meegaat. Dat is dan géén duplicatie
+maar een afleiding: hij kan niet uit de pas lopen met de melding, en er is één
+plek om hem te veranderen.
+
+### Wat er weg is en wat er blijft
+
+📏 **76 aanroepen in 17 bestanden**, en niet de 74 in dertien modules die het
+issue noemde. Twee ontbraken in die telling omdat ze `mijn.error.code` en
+`leden.error.code` schrijven — een grep op `code: <naam>.code` ziet een gepunt
+pad niet. Bij 25 ervan was `code` de énige sleutel; die aanroepen dragen nu geen
+derde argument meer.
+
+**Wat blijft staan is de zeef.** `code` blijft in de vormgetoetste tak van
+`scrubContext()`. Een sleutel die vandaag niemand stuurt, moet morgen nog steeds
+bewaakt zijn — 📏 de 15 regels in `rollover` en `notificaties` die met de hand
+`{ code: 'profielen_ophalen_mislukt' }` schrijven zijn hier niet aangeraakt, en
+de volgende aanroeper die iets in `code` stopt, hoort tegen dezelfde vormtoets
+aan te lopen. Een grendel weghalen omdat er even niets langskomt, is precies hoe
+het gat van deze branch is ontstaan.
+
+⚠️ **Eén tekstuele treffer is géén aanroep, en dat is de val bij dit soort
+opruimen.** `src/modules/buddies/pending.ts` schrijft
+`return { code: gelezen.code, automatisch: … }` — dat is een uitnodigingscode en
+geen foutrapportage. Een `sed` over het patroon had hem meegenomen. De
+opruiming liep daarom per `reportError(`-aanroep met gebalanceerde haakjes, en
+niet per regel.
+
+### En er staat nu een grendel op
+
+`tests/beloftes/foutcode-uit-een-bron.test.ts` wordt rood zodra een meldaanroep
+de foutcode van zijn éígen eerste argument nog een keer meestuurt. Hij leest
+allebei de randen — `reportError()` in de app en `meld()` in de Edge Functions,
+want die hebben dezelfde vorm en dezelfde `scrub.ts` eronder — en hij laat een
+handgeschreven `code` met rust, want die draagt iets wat nergens anders staat.
+
+⚠️ **Zonder die grendel is er geen reden om aan te nemen dat er geen derde ronde
+komt.** Dezelfde duplicatie is twee keer gegroeid: 57 keer als `pgcode` en 76
+keer als `code`, allebei één regel per keer omdat de vorige regel het ook deed.
+
+Geijkt met de hand, per kant: een weggehaalde aanroep terugzetten in
+`src/modules/goals/api.ts` geeft één rood met bestand en regelnummer; hetzelfde
+in een echte `meld()`-aanroep in `rollover` ook; en de 15 handgeschreven codes
+blijven groen terwijl de zeef ze wél leest — dat laatste is het verschil tussen
+een must-allow en een pad waar de zeef toch niet komt.

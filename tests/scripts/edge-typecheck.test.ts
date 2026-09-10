@@ -4,7 +4,14 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { herschrijf, naarRepoPad, zoekDeno } from '../../scripts/edge-typecheck.mjs';
+import {
+  denoFeiten,
+  denoMelding,
+  denoOordeel,
+  herschrijf,
+  naarRepoPad,
+  zoekDeno,
+} from '../../scripts/edge-typecheck.mjs';
 
 /**
  * De zuivere helft van `edge:types:controle` — QS8-214.
@@ -176,5 +183,113 @@ describe('zoekDeno — welke binary er gekozen wordt', () => {
 
   it('geeft null als er geen Deno is — dan is de controle ongemeten en niet groen', () => {
     expect(zoekDeno('/bestaat/niet', { PATH: '/bestaat/niet', NODE_ENV: 'test' })).toBeNull();
+  });
+});
+
+/**
+ * Waaróm er geen Deno is, en welk advies daarbij hoort — QS8-346.
+ *
+ * ⚠️ **De belofte is niet "er staat een nette melding".** De belofte is: *de stap
+ *    die de melding noemt, werkt in de omgeving waar hij gelezen wordt.* De oude
+ *    tekst zei `npm ci`, en in de cloudsessie-container was `npm ci` net gedraaid
+ *    en stond `node_modules/deno` er niet. 📏 Gevolg, gemeten: in QS8-341 is op
+ *    grond van die melding geschreven dat CI de Edge-typecheck wel zou doen, en
+ *    CI vond drie fouten in precies het bestand dat gewijzigd was.
+ *
+ * IJKING — met de hand uitgevoerd op 08-09-2026, en dat is bij dit issue de eis:
+ * geijkt door het advies te dráaien, niet door het te lezen.
+ *
+ *   P  `node_modules/deno/deno` weggehaald, map laten staan → `binary-mist`, en
+ *      `npm rebuild deno` haalt hem terug; controle daarna groen
+ *   Q  `node_modules/deno` helemaal weggehaald              → `onvolledige-install`,
+ *      en `npm install` haalt hem terug (`added 1 package`); controle daarna groen
+ *   R  allebei aanwezig                                      → groen, in ~20 seconden
+ *   S  de oude tekst (*"`npm ci` haalt hem binnen"*) terug   → 2 rood: de regel
+ *      hieronder die `npm ci` als oplossing verbiedt, én het geval dat de
+ *      werkende handeling eist. Dat is de regressie zelf, en die is nu luid.
+ */
+describe('denoOordeel — waarom er geen Deno is', () => {
+  it('noemt het een onvolledige install als de map ontbreekt maar package.json hem vraagt', () => {
+    expect(denoOordeel({ versie: '2.9.6', pakketmap: false, binary: false })).toBe(
+      'onvolledige-install',
+    );
+  });
+
+  it('noemt het een overgeslagen postinstall als de map er staat maar de binary niet', () => {
+    expect(denoOordeel({ versie: '2.9.6', pakketmap: true, binary: false })).toBe('binary-mist');
+  });
+
+  it('noemt het niet-gevraagd als package.json geen deno noemt', () => {
+    expect(denoOordeel({ versie: null, pakketmap: false, binary: false })).toBe('niet-gevraagd');
+  });
+
+  /** Alles staat er en `zoekDeno()` vond hem tóch niet — dan is het pad het probleem. */
+  it('houdt onbereikbaar over als map én binary er staan', () => {
+    expect(denoOordeel({ versie: '2.9.6', pakketmap: true, binary: true })).toBe('onbereikbaar');
+  });
+});
+
+describe('denoMelding — het advies moet uitvoerbaar zijn', () => {
+  const GEVALLEN = [
+    { oordeel: 'onvolledige-install', bevat: 'npm install' },
+    { oordeel: 'binary-mist', bevat: 'npm rebuild deno' },
+    { oordeel: 'niet-gevraagd', bevat: 'DENO_BIN' },
+    { oordeel: 'onbereikbaar', bevat: 'DENO_BIN' },
+  ] as const;
+
+  for (const geval of GEVALLEN) {
+    it(`noemt bij ${geval.oordeel} de handeling die daar werkt`, () => {
+      expect(denoMelding(geval.oordeel, '2.9.6')).toContain(geval.bevat);
+    });
+  }
+
+  it('zet de gevraagde versie in de melding, zodat je hem niet hoeft op te zoeken', () => {
+    expect(denoMelding('onvolledige-install', '2.9.6')).toContain('deno@2.9.6');
+  });
+
+  /**
+   * ⚠️ **De grendel op de regressie zelf.** `npm ci` mag in de melding staan —
+   *    hij stáát erin, als waarschuwing dat hij het juist níét oplost — maar
+   *    nooit als de handeling die je moet draaien. Het onderscheid is de zin
+   *    eromheen, en die is hier de belofte.
+   */
+  it('draagt `npm ci` nooit als de oplossing', () => {
+    for (const { oordeel } of GEVALLEN) {
+      const melding = denoMelding(oordeel, '2.9.6');
+      expect(melding, `${oordeel} adviseert npm ci`).not.toMatch(/Draai `npm ci`/);
+      expect(melding, `${oordeel} adviseert npm ci`).not.toMatch(/`npm ci` haalt hem binnen/);
+    }
+  });
+});
+
+describe('denoFeiten — leest de drie feiten van schijf', () => {
+  function wortelMet(pakket: object | null, mappen: readonly string[]): string {
+    const wortel = mkdtempSync(join(tmpdir(), 'goalbuddies-deno-'));
+    if (pakket !== null) writeFileSync(join(wortel, 'package.json'), JSON.stringify(pakket));
+    for (const map of mappen) mkdirSync(join(wortel, map), { recursive: true });
+    return wortel;
+  }
+
+  it('leest de versie uit devDependencies', () => {
+    const wortel = wortelMet({ devDependencies: { deno: '2.9.6' } }, []);
+    expect(denoFeiten(wortel)).toEqual({ versie: '2.9.6', pakketmap: false, binary: false });
+  });
+
+  it('ziet de map zonder binary', () => {
+    const wortel = wortelMet({ devDependencies: { deno: '2.9.6' } }, ['node_modules/deno']);
+    expect(denoFeiten(wortel)).toEqual({ versie: '2.9.6', pakketmap: true, binary: false });
+  });
+
+  it('ziet de binary als hij er staat', () => {
+    const wortel = wortelMet({ devDependencies: { deno: '2.9.6' } }, ['node_modules/deno']);
+    writeFileSync(join(wortel, 'node_modules', 'deno', 'deno'), '');
+    expect(denoFeiten(wortel).binary).toBe(true);
+  });
+
+  /** ⚠️ Geen `package.json` is geen crash maar een oordeel: `niet-gevraagd`. */
+  it('geeft versie null bij een onleesbare package.json', () => {
+    const wortel = wortelMet(null, []);
+    expect(denoFeiten(wortel).versie).toBeNull();
+    expect(denoOordeel(denoFeiten(wortel))).toBe('niet-gevraagd');
   });
 });

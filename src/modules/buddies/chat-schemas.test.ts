@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  heeftBijlage,
   BERICHT_MAX,
   BERICHTEN_PER_PAGINA,
   berichtSchema,
@@ -32,6 +33,7 @@ function bericht(over: Partial<ChatBericht> & { id: string; created_at: string }
     sender_avatar: null,
     body: 'iets',
     type: 'text',
+    attachment_url: null,
     system_event: null,
     getallen: null,
     subject_name: null,
@@ -324,5 +326,27 @@ describe('de cache van de lopende periode', () => {
     );
 
     expect(beperkVoorCache(veel).every((b) => b.sender_avatar === null)).toBe(true);
+  });
+});
+
+describe('heeftBijlage', () => {
+  /**
+   * ⚠️ **De belofte: een tekstbericht toont nooit een fotoblok.** 📏 Dat ging mis
+   *    omdat `attachment_url` twee dingen betekent — "geen foto" en "foto die
+   *    niet getekend kon worden" — en het scherm die twee niet uit elkaar kon
+   *    houden. Onder élke tekstbubbel stond "Deze foto is niet meer
+   *    beschikbaar".
+   */
+  it('zegt nee voor een tekstbericht, ook als de bijlage null is', () => {
+    expect(heeftBijlage({ type: 'text' })).toBe(false);
+  });
+
+  it('zegt nee voor een systeembericht', () => {
+    expect(heeftBijlage({ type: 'system' })).toBe(false);
+  });
+
+  it('zegt ja voor een fotobericht', () => {
+    // ⚠️ Ook als het tekenen mislukte — dán moet het scherm juist iets zeggen.
+    expect(heeftBijlage({ type: 'photo' })).toBe(true);
   });
 });

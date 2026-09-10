@@ -1,5 +1,5 @@
 /**
- * Te laat afronden laat de straf staan — QS8-322, migratie 0219.
+ * Te laat afronden laat de straf staan — QS8-322, migratie 0238.
  *
  * **De belofte die dit bestand bewaakt:**
  *
@@ -275,7 +275,7 @@ describe.skipIf(!rlsTestsConfigured)('te laat afronden laat de straf staan', () 
         expect(uit(af.data).ok, JSON.stringify(af.data)).toBe(true);
         expect(await strafstand(doelId)).toBe('set');
 
-        // De achterdeur: `zet_doelstatus()` zette vóór 0219 §4 onvoorwaardelijk
+        // De achterdeur: `zet_doelstatus()` zette vóór 0238 §4 onvoorwaardelijk
         // `active`, ook vanaf `completed`.
         const open = await w.alice.db.rpc('zet_doelstatus', {
           p_goal_id: doelId,
@@ -357,7 +357,7 @@ describe.skipIf(!rlsTestsConfigured)('te laat afronden laat de straf staan', () 
 
         expect(
           straf.error,
-          'dit lukte vóór 0219 gewoon; met de completed-filter uit ' +
+          'dit lukte vóór 0238 gewoon; met de completed-filter uit ' +
             '`maak_straffen_verschuldigd()` weg zou zo`n straf verschuldigd worden ' +
             'op een doel dat al af is',
         ).not.toBeNull();

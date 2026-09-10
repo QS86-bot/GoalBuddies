@@ -40,8 +40,30 @@
  *    Maak er een op https://supabase.com/dashboard/account/tokens en zet hem in
  *    `.env` als `SUPABASE_ACCESS_TOKEN`.
  *
+ * ⚠️⚠️ **Zonder token slaat hij zichzelf over — zichtbaar — en dat is QS8-320
+ *    criterium 2.** Tot 09-09-2026 eindigde hij dan met exitcode 1, en daarmee
+ *    kón hij niet in de poort staan: op elke werkplek zonder token was hij rood
+ *    om een reden die niets met de code te maken had. Dus draaide hij nergens
+ *    automatisch, en werd de toestand die dit issue beschrijft **opgemerkt in
+ *    plaats van gesignaleerd** — de edge-functies liepen dagen achter op
+ *    migraties die er al op stonden.
+ *
+ *    De vorm is die van `register:controle` en `functies:controle`: de melding
+ *    gaat naar **stderr** met `OVERGESLAGEN` erin, want op stdout leest
+ *    "overgeslagen" als "gelukt". `npm run poort` telt hem dan als **ongemeten**
+ *    en niet als groen — precies het onderscheid dat `scripts/psql.mjs` sinds
+ *    QS8-268 maakt. Met `--streng` of `EDGE_GEDEPLOYD_STRENG=1` is een
+ *    ontbrekend token wél een fout; gebruik dat waar de sleutel er hóórt te zijn.
+ *
+ * ⚠️ **De beslissing zelf staat in `beoordeelOmgeving()` en niet hier.** Dat is
+ *    een zuivere functie met een eigen test, en dat is de reden dat hij daar
+ *    staat: een controle die je niet kunt voeden, kun je niet ijken. Er is één
+ *    plek die weet wanneer zwijgen mag, en die weet het voor alle drie de
+ *    controles hetzelfde.
+ *
  * Gebruik:
- *   npm run edge:gedeployd
+ *   npm run edge:gedeployd            los, met een token in de omgeving
+ *   npm run edge:gedeployd:controle   dezelfde meting, mee in de poort
  */
 import { Buffer } from 'node:buffer';
 import { execFileSync } from 'node:child_process';
@@ -51,12 +73,51 @@ import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import process from 'node:process';
 
+import { beoordeelOmgeving } from './migratieregister-omgeving.mjs';
+
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
 const API = 'https://api.supabase.com';
 const TIMEOUT_MS = 30_000;
 
 /** De functies die dit project deployt. */
 export const FUNCTIES = ['rollover', 'notificaties', 'doelcoach'];
+
+/** Wat er ontbreekt, in de bewoording die de lezer naar het goede token stuurt. */
+export const TOKEN_ONTBREEKT = [
+  'geen SUPABASE_ACCESS_TOKEN in de omgeving.',
+  '',
+  '⚠️ Dit is niet de service-role-key. De Management API vraagt een personal',
+  '   access token: https://supabase.com/dashboard/account/tokens',
+  '',
+  'Zet hem daarna in .env als SUPABASE_ACCESS_TOKEN.',
+].join('\n');
+
+/**
+ * De regel die deze controle over zichzelf schrijft als hij niet kan meten.
+ *
+ * ⚠️ **Geëxporteerd omdat de belofte aan de naad hangt en niet aan de tekst.**
+ *    `npm run poort` leest de uitvoer van elke controle en zoekt daarin de
+ *    regelvorm `<naam>: OVERGESLAGEN`. Verandert die bewoording, dan blijft dit
+ *    script netjes met exitcode 0 eindigen en telt de poort hem als **groen** —
+ *    een gate die zegt gemeten te hebben wat niemand gemeten heeft. Dat is
+ *    precies wat QS8-270 hier al een keer gekost heeft.
+ *
+ *    Daarom staat deze functie los en legt `tests/scripts/edge-gedeployd.test.ts`
+ *    zijn uitkomst naast `beoordeel()` uit `poort.mjs`, in plaats van naast een
+ *    letterlijke zin.
+ *
+ * @param {'draaien' | 'overslaan' | 'ontbreekt'} oordeel
+ * @returns {{tekst: string, code: number} | null} `null` betekent: gewoon meten.
+ */
+export function tokenMelding(oordeel) {
+  if (oordeel === 'ontbreekt') {
+    return { tekst: `✗ edge-gedeployd kon niet draaien — ${TOKEN_ONTBREEKT}`, code: 1 };
+  }
+  if (oordeel === 'overslaan') {
+    return { tekst: `⚠ edge-gedeployd: OVERGESLAGEN — ${TOKEN_ONTBREEKT}`, code: 0 };
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // De pure kern — dit deel staat onder test
@@ -399,18 +460,14 @@ async function main() {
   const token = env['SUPABASE_ACCESS_TOKEN'];
   const ref = env['SUPABASE_PROJECT_REF'] ?? 'wehgocadxehottiiyvsc';
 
-  if (!token) {
-    console.error(
-      [
-        'SUPABASE_ACCESS_TOKEN ontbreekt.',
-        '',
-        '⚠️ Dit is niet de service-role-key. De Management API vraagt een personal',
-        '   access token: https://supabase.com/dashboard/account/tokens',
-        '',
-        'Zet hem daarna in .env als SUPABASE_ACCESS_TOKEN.',
-      ].join('\n'),
-    );
-    process.exit(1);
+  const streng =
+    process.argv.includes('--streng') || process.env['EDGE_GEDEPLOYD_STRENG'] === '1';
+
+  const melding = tokenMelding(beoordeelOmgeving({ url: ref, sleutel: token, streng }));
+
+  if (melding !== null) {
+    console.error(melding.tekst);
+    process.exit(melding.code);
   }
 
   console.log(`  · project    ${ref}`);

@@ -20,6 +20,8 @@ export {
 
 export { fetchBadges } from './badges-api';
 
+export { naEenNieuwDoel, SAMEN } from './doelroute';
+
 export {
   fetchDoel,
   fetchDoelen,

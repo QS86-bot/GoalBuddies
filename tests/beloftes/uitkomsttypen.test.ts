@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   alleAsyncExportsIn,
   asyncBeloftesIn,
+  awaitTreffersIn,
   beloftefunctiesIn,
   lichaamVanaf,
   lokaleFunctiesIn,
+  optioneleUitkomstenIn,
   parameterEinde,
   uitkomsttypenIn,
   voidTreffersIn,
@@ -248,5 +250,114 @@ describe('zonderCommentaar', () => {
 
   it('laat een url met dubbele slash met rust', () => {
     expect(zonderCommentaar("const u = 'https://voorbeeld.nl';")).toContain('https://voorbeeld.nl');
+  });
+});
+
+describe('awaitTreffersIn', () => {
+  it('meldt een kaal await-statement, met het regelnummer', () => {
+    const bron = 'const a = 1;\nawait maakDoel();';
+    expect(awaitTreffersIn(bron, ['maakDoel'])).toEqual(['2 — await maakDoel()']);
+  });
+
+  it('meldt hem als eerste statement van een lichaam', () => {
+    expect(awaitTreffersIn('async function f() {\n  await maakDoel();\n}', ['maakDoel'])).toEqual([
+      '2 — await maakDoel()',
+    ]);
+  });
+
+  it('meldt hem ook direct na een blok', () => {
+    const bron = 'if (x) {\n  g();\n}\nawait maakDoel();';
+    expect(awaitTreffersIn(bron, ['maakDoel'])).toEqual(['4 — await maakDoel()']);
+  });
+
+  /**
+   * ⚠️ **Hier zit de duurste faalvorm van deze zeef, en niet in het vinden.** Elk
+   *    geval hieronder vángt de uitkomst op; een melding erover is vals, en een
+   *    controle met valse meldingen leer je uitzetten.
+   */
+  it('laat een opgevangen uitkomst met rust', () => {
+    expect(awaitTreffersIn('const r = await maakDoel();', ['maakDoel'])).toEqual([]);
+    expect(awaitTreffersIn('return await maakDoel();', ['maakDoel'])).toEqual([]);
+    expect(awaitTreffersIn('if ((await maakDoel()).ok) g();', ['maakDoel'])).toEqual([]);
+    expect(awaitTreffersIn('const f = async () => await maakDoel();', ['maakDoel'])).toEqual([]);
+    expect(awaitTreffersIn('g(await maakDoel(), 2);', ['maakDoel'])).toEqual([]);
+    expect(awaitTreffersIn('const [a] = [await maakDoel()];', ['maakDoel'])).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Het geval waarvoor de grens op het téken staat en niet op de regel.**
+   *    Prettier breekt een lange toewijzing af achter de `=`, en dan begint de
+   *    `await` wél een regel maar geen statement.
+   */
+  it('laat een await met rust die op een eigen regel achter een = staat', () => {
+    const bron = 'const uitkomst =\n  await maakDoel(een, twee);';
+    expect(awaitTreffersIn(bron, ['maakDoel'])).toEqual([]);
+  });
+
+  it('laat een naam in commentaar met rust', () => {
+    expect(awaitTreffersIn('// hier stond await maakDoel()', ['maakDoel'])).toEqual([]);
+    expect(awaitTreffersIn('/**\n * await maakDoel()\n */', ['maakDoel'])).toEqual([]);
+  });
+
+  it('laat een langere naam met rust die op dezelfde letters begint', () => {
+    expect(awaitTreffersIn('await maakDoelStatus();', ['maakDoel'])).toEqual([]);
+  });
+
+  it('laat een functie met rust die niet in de lijst staat', () => {
+    expect(awaitTreffersIn('await werkJobAf(id);', ['maakDoel'])).toEqual([]);
+  });
+
+  it('houdt het regelnummer kloppend nadat blokcommentaar eruit is', () => {
+    const bron = '/**\n * uitleg\n * meer uitleg\n */\nawait maakDoel();';
+    expect(awaitTreffersIn(bron, ['maakDoel'])).toEqual(['5 — await maakDoel()']);
+  });
+});
+
+describe('optioneleUitkomstenIn', () => {
+  it('vindt de functie onder de markering, met de reden erbij', () => {
+    const bron = [
+      '/**',
+      ' * Doet iets.',
+      ' *',
+      ' * @uitkomst-optioneel De aanroeper leest de stand later zelf uit de job.',
+      ' */',
+      'export async function werkJobAf(id: string): Promise<Uitkomst<true>> {}',
+    ].join('\n');
+
+    expect(optioneleUitkomstenIn(bron)).toEqual([
+      { naam: 'werkJobAf', reden: 'De aanroeper leest de stand later zelf uit de job.' },
+    ]);
+  });
+
+  it('plakt een reden van meerdere regels aan elkaar', () => {
+    const bron = [
+      '/**',
+      ' * @uitkomst-optioneel Eerste regel,',
+      ' *    en de tweede.',
+      ' */',
+      'export async function f(): Promise<Uitkomst<true>> {}',
+    ].join('\n');
+
+    expect(optioneleUitkomstenIn(bron)[0]?.reden).toBe('Eerste regel, en de tweede.');
+  });
+
+  /**
+   * ⚠️ **Een markering zonder reden komt met een lege reden terug en niet als
+   *    treffer-loos geval.** De grendel hiernaast weegt die reden; zou deze
+   *    functie hem hier al wegfilteren, dan verdween het gat in plaats van dat
+   *    het gemeld werd.
+   */
+  it('geeft een lege reden terug bij een kale markering', () => {
+    const bron = '/**\n * @uitkomst-optioneel\n */\nexport async function f() {}';
+    expect(optioneleUitkomstenIn(bron)).toEqual([{ naam: 'f', reden: '' }]);
+  });
+
+  it('wijst geen functie aan als er geen export-async onder staat', () => {
+    const bron = '/**\n * @uitkomst-optioneel Met reden.\n */\nconst x = 1;';
+    expect(optioneleUitkomstenIn(bron)[0]?.naam).toBe('');
+  });
+
+  it('laat een bron zonder markering met rust', () => {
+    expect(optioneleUitkomstenIn('export async function f() {}')).toEqual([]);
   });
 });
