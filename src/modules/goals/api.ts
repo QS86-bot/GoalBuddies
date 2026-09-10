@@ -536,7 +536,7 @@ function streefdatumMelding(reden: string | undefined): string {
 /**
  * De melding bij een geweigerde archiefwissel.
  *
- * ⚠️ `already_completed` kwam erbij met 0237 §4: een afgerond doel gaat niet meer
+ * ⚠️ `already_completed` kwam erbij met 0238 §4: een afgerond doel gaat niet meer
  *    open, want anders is de tweede afronding "op tijd" en vervalt de straf die
  *    QS8-322 juist laat staan. Het scherm toont de kaart niet meer op een
  *    afgerond doel, dus dit is de vangnetmelding en niet de gebruikelijke weg —
@@ -602,7 +602,7 @@ export async function zetArchief(
  *    chatbericht is een onveranderlijke kopie — terugzetten haalt hem niet weg.
  *    Daarnaast wikkelt het je commitments af.
  *
- * ⚠️⚠️ **Sinds 0237 hangt dát af van of je op tijd bent** — QS8-322, besluit van
+ * ⚠️⚠️ **Sinds 0238 hangt dát af van of je op tijd bent** — QS8-322, besluit van
  *    Quinten 08-09-2026. Op tijd (t/m de respijtdag): de beloning komt vrij en
  *    de straf vervalt, zoals hiervoor. Te laat: de beloning verloopt én de straf
  *    blijft staan, en wordt verschuldigd zodra de job hem oppakt. `blijft_staan`
@@ -613,7 +613,7 @@ export async function zetArchief(
  *    je eigen straf liet vervallen, dus zonder die eis is elk commitment device
  *    te ontlopen met één druk op de knop. Een mijlpaal laten vallen kan wel, maar
  *    dat is een aparte, zichtbare handeling. Besluit van Quinten, 21-08-2026 —
- *    en sinds 0237 werkt die ontsnapping alleen nog binnen de respijtdag.
+ *    en sinds 0238 werkt die ontsnapping alleen nog binnen de respijtdag.
  */
 export async function rondDoelAf(goalId: string, actorId: string): Promise<Resultaat<Afronding>> {
   const { data, error } = await supabase().rpc('rond_doel_af', { p_goal_id: goalId });
@@ -651,10 +651,10 @@ export interface Afronding {
   /** Straffen die vervielen omdat het doel op tíjd af is. */
   readonly vervallen: number;
   /**
-   * Straffen die bléven staan omdat er te laat afgerond is — QS8-322, 0237.
+   * Straffen die bléven staan omdat er te laat afgerond is — QS8-322, 0238.
    *
    * ⚠️ **Dit veld bestaat voor domeinregel 5.** Een commitment device treedt
-   *    nooit stilzwijgend in werking, en sinds 0237 is te laat afronden precies
+   *    nooit stilzwijgend in werking, en sinds 0238 is te laat afronden precies
    *    zo'n moment: de straf vervalt niet meer maar wordt verschuldigd. Zonder
    *    een teller heeft het scherm niets om dat mee te zeggen.
    */
