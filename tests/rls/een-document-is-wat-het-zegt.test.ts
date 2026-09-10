@@ -310,7 +310,7 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0242)', () => {
       ),
     ).toBe('-/-');
     // ⚠️⚠️ **Het object blíjft staan, en dat is de reparatie en niet het gat.**
-    //    Tot 0248 wiste `wis_bijlagen_van_vertrekker()` de metadata-rij van een
+    //    Tot 0250 wiste `wis_bijlagen_van_vertrekker()` de metadata-rij van een
     //    chatdoc, en dan blijft de blob op de opslag achter zonder pad om hem
     //    ooit nog op te ruimen — *"niet onleesbaar en dus weg, maar onvindbaar en
     //    dus voor altijd"* (0235 §4). Nu de leesgrens aan het bericht hangt, is
@@ -345,7 +345,7 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0242)', () => {
 
     // ⚠️ En daarna ziet hij hem wél, met reden `wees`. Zonder deze twee regels
     //    naast elkaar is "hij blijft staan" niet te onderscheiden van "hij blijft
-    //    voor altijd staan" — en dát verschil is de hele reparatie van 0248.
+    //    voor altijd staan" — en dát verschil is de hele reparatie van 0250.
     psql(
       `update storage.objects set created_at = now() - interval '2 hours'
         where bucket_id = 'chatdocs' and name = '${doelpad}'`,

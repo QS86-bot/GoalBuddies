@@ -120,7 +120,7 @@ export const CHATDOC_TEKSTEN = {
   },
   get afwezigtekst() {
     // ⚠️ De termijn komt uit `CHATDOC_BEWAARDAGEN` en staat niet als getal in de
-    //    zin: het scherm en de opruimpas van 0248 moeten dezelfde termijn
+    //    zin: het scherm en de opruimpas van 0250 moeten dezelfde termijn
     //    noemen. Zelfde vorm en dezelfde reden als bij `CHATFOTO_TEKSTEN`.
     return t('chatdoc.niet_beschikbaar', { dagen: CHATDOC_BEWAARDAGEN });
   },

@@ -1,5 +1,5 @@
 /**
- * De bewaartermijn van een gedeeld document — migratie 0248 (QS8-408).
+ * De bewaartermijn van een gedeeld document — migratie 0250 (QS8-408).
  *
  * ⚠️⚠️ **De belofte is niet "er staat een functie". Die is: een document dat de
  *    server niet meer nodig heeft, staat er niet meer — en zolang het er nog
@@ -67,7 +67,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de bewaartermijn van een document (0248)', () => {
+describe.runIf(beschikbaar)('de bewaartermijn van een document (0250)', () => {
   const alice = randomUUID();
   let groep = '';
 
@@ -152,7 +152,7 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0248)', () => {
   it('is vandaag gelijk aan die van de chatfoto, en dat is een keuze', () => {
     // ⚠️⚠️ **Deze test legt geen regel vast maar een sámenval.** De twee termijnen
     //    zijn twee productkeuzes over twee soorten inhoud, allebei een besluit
-    //    van Quinten — de foto op 09-09, het document op 10-09 (0248 §2). Dat ze
+    //    van Quinten — de foto op 09-09, het document op 10-09 (0250 §2). Dat ze
     //    vandaag hetzelfde getal dragen, maakt er geen één keuze van.
     //
     //    Wordt dit geval ooit rood, dan is dat **geen defect**: het betekent dat
