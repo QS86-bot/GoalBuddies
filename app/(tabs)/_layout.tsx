@@ -5,8 +5,33 @@ import { useTheme } from '@/shared/theme';
 import { BovenrandAlVerrekend } from '@/shared/ui';
 
 /**
- * De vier kernschermen. Vier en niet vijf: elk tabblad erbij verdunt de andere,
- * en de app heeft precies vier plekken waar iemand naartoe wil.
+ * De vijf kernschermen.
+ *
+ * ## ⚠️ Hier stond "vier en niet vijf", en dat is op 09-09-2026 omgedraaid
+ *
+ * De oude zin luidde: *"Vier en niet vijf: elk tabblad erbij verdunt de andere,
+ * en de app heeft precies vier plekken waar iemand naartoe wil."* Hij is
+ * vervangen en niet verwijderd, want het argument klopt nog steeds — het is
+ * afgewogen en verloren, en dat hoort leesbaar te blijven.
+ *
+ * **Besluit van Quinten (QS8-378, beslispunt 1):** De Lijst krijgt een eigen
+ * tabblad. Drie vormen lagen voor — een vijfde tabblad, een blok binnen
+ * *Vandaag*, of De Lijst in plaats van een bestaand tabblad — en de wens vroeg
+ * met zoveel woorden om een knop op de balk.
+ *
+ * ⚠️ **Wat de oude zin waarschuwde blijft waar, en de prijs is betaald en niet
+ *    weggeredeneerd:** vijf labels naast elkaar is krapper dan vier, en de balk
+ *    draagt tekst en geen iconen. De labels zijn daarom kort gehouden
+ *    (`Lijst`/`List`, het kortste van de vijf) en de balk scrollt liever dan af
+ *    te kappen. **Wordt er een zesde overwogen, dan is dit de plek waar iemand
+ *    eerst moet meten** — bij vijf is dit een afweging, bij zes is het een
+ *    ontwerpprobleem.
+ *
+ * ⚠️ **Waarom De Lijst niet binnen *Vandaag* past**, want dat was de goedkope
+ *    optie: *Vandaag* gaat over de lopende cyclus — weekdoelen, De Dagzet, wat
+ *    er vandaag moet. Een taak hoort juist bij géén cyclus en telt nergens voor
+ *    mee (domeinregel 9 en 10). Hem daar neerzetten zou precies de verwarring
+ *    maken die de epic wil vermijden: nog een ding dat op een weekdoel lijkt.
  *
  * ⚠️ Geen icoonbibliotheek. Die zou een dependency zijn, en tekstlabels werken
  *    op web en native identiek, schalen mee met de systeemletter en zijn voor
@@ -66,6 +91,12 @@ export default function TabsLayout() {
         <Tabs.Screen name="index" options={{ title: t('tab.vandaag') }} />
         <Tabs.Screen name="doelen" options={{ title: t('tab.doelen') }} />
         <Tabs.Screen name="groep" options={{ title: t('tab.groep') }} />
+        {/*
+          ⚠️ Vóór "Profiel" en niet erna: de eerste vier zijn de lus die de app
+             draait, en Profiel is de instellingenhoek. De Lijst hoort bij het
+             doen en niet bij het instellen.
+        */}
+        <Tabs.Screen name="lijst" options={{ title: t('tab.lijst') }} />
         <Tabs.Screen name="profiel" options={{ title: t('tab.profiel') }} />
       </Tabs>
     </BovenrandAlVerrekend>

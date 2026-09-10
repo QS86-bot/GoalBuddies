@@ -17,6 +17,16 @@ type Props = Omit<TextProps, 'style'> & {
   /** Alleen voor een invoerfout. Zie de opmerking bij `Caption`. */
   readonly danger?: boolean;
   readonly numberOfLines?: number;
+  /**
+   * Streept de tekst door — voor iets dat af is (QS8-380).
+   *
+   * ⚠️ **Hier en niet in het scherm**, om dezelfde reden als de rest van dit
+   *    bestand: anders staat er over een half jaar op drie schermen een eigen
+   *    `textDecorationLine`. En omdat een doorgestreepte regel voor een
+   *    schermlezer níets is, hoort er altijd tekst naast te staan die hetzelfde
+   *    zegt — een streep is decoratie en geen mededeling.
+   */
+  readonly doorgestreept?: boolean;
 };
 
 /** Schermtitel. Eén per scherm. */
@@ -44,10 +54,17 @@ export function Subheading({ children, muted, ...rest }: Props) {
 }
 
 /** Gewone lopende tekst. */
-export function Body({ children, muted, ...rest }: Props) {
+export function Body({ children, muted, doorgestreept = false, ...rest }: Props) {
   const c = useTheme().colors;
   return (
-    <RNText style={[styles.body, { color: muted ? c.textSecondary : c.text }]} {...rest}>
+    <RNText
+      style={[
+        styles.body,
+        { color: muted ? c.textSecondary : c.text },
+        doorgestreept ? styles.doorgestreept : null,
+      ]}
+      {...rest}
+    >
       {children}
     </RNText>
   );
@@ -88,6 +105,7 @@ export function Eyebrow({ children, ...rest }: Omit<Props, 'muted'>) {
 }
 
 const styles = StyleSheet.create({
+  doorgestreept: { textDecorationLine: 'line-through' },
   heading: { fontSize: 26, fontWeight: '700', lineHeight: 32 },
   subheading: { fontSize: 17, fontWeight: '600', lineHeight: 23 },
   body: { fontSize: 15, lineHeight: 22 },

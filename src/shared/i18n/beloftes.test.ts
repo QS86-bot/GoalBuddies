@@ -96,6 +96,16 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
   'onboarding.stap4.b':
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
     'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
+  'lijst.prive_uitleg':
+    'De tabel `todo_items` is eigenaar-only sinds 0246: vier policies op ' +
+    '`user_id = (select auth.uid())`, en `visibility` is voor geen enkele client ' +
+    'schrijfbaar — kolomgrant én `pin_taak()`. De belofte is vandaag dus ' +
+    'onvoorwaardelijk waar, en dat is met een kaal API-verzoek gemeten in ' +
+    '`tests/rls/todo-lijst.test.ts`. ' +
+    '⚠️ **QS8-381 maakt delen per taak mogelijk, en dán is deze zin onwaar voor ' +
+    'de taken die je zelf hebt aangevinkt.** Hij hoort op dat moment herschreven ' +
+    'te worden naar de voorwaarde — precies de val die `koppel.uitleg` in ' +
+    'EPIC 13 was, waar de policy klopte en de zin niet meebewoog.',
   'coach.alleen_voor_jou':
     'Waar sinds migratie 0236. Was het niet: goals_select gaf een groepsgenoot de héle rij, ' +
     'inclusief identity_statement — gemeten, met de zin woordelijk terug op het scherm van ' +
