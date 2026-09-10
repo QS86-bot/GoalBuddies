@@ -1,6 +1,6 @@
 # Een document is geen foto
 
-**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0240, 0241, 0242, 0243 · **Vervolg:** QS8-408 (0247)
+**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0240, 0241, 0242, 0243 · **Vervolg:** QS8-408 (0248)
 
 Dit document is de tegenhanger van
 `docs/decisions/2026-09-09-een-foto-in-de-chat.md`. Wat daar staat over het pad,
@@ -264,11 +264,11 @@ is te belangrijk om onmeetbaar te zijn.
   uit, en een systeembericht noemt de persoon en de gebeurtenis, nooit een titel
   of een bestand (dossier 002 §3).
 - ~~**De opruimpas voor wezen in de emmer.**~~ ✅ **Gebouwd op 10-09 in QS8-408,
-  migratie 0247** — zie §10. Wat hier stond ("zelfde grens als 0224 en 0230: SQL
+  migratie 0248** — zie §10. Wat hier stond ("zelfde grens als 0224 en 0230: SQL
   kan de blob niet weghalen") klopte, en de uitweg was de arbeidsdeling die 0235
   al had bedacht: de database wijst aan, de rollover wist.
 
-## 10. Nagekomen: het document volgt alsnog dezelfde weg — QS8-408, migratie 0247
+## 10. Nagekomen: het document volgt alsnog dezelfde weg — QS8-408, migratie 0248
 
 §5 hierboven sluit met een asymmetrie die geen besluit was: een verweesde foto
 bleef staan en een verweesd document werd gewist. Dat verschil kwam volledig uit
@@ -276,7 +276,7 @@ de leespolicy — `chatfotos_select` hing sinds 0235 §1 aan het **bericht**,
 `chatdocs_select` aan het **pad** — en zolang dat zo was, wás wissen het juiste
 antwoord: een wees zou anders voor de hele groep leesbaar blijven.
 
-0247 haalt de oorzaak weg, en dan mag de rest mee:
+0248 haalt de oorzaak weg, en dan mag de rest mee:
 
 1. **`chatdocs_select` hangt aan het bericht**, in de vorm van 0235 §1. Inclusief
    het eigenaarsbeen, en dat is hier dwingender dan bij de foto: Postgres past de

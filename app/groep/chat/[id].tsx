@@ -596,7 +596,7 @@ function Bijlageknoppen({ keuze }: { readonly keuze: Chatbijlagekeuze }) {
 
         ⚠️ **Sinds QS8-408 ook bij een document.** Hier stond dat de zin alléén
            bij een foto hoorde, omdat de opruimpas `chatdocs` niet dekte — dat
-           was waar en is het niet meer: migratie 0247 geeft documenten een eigen
+           was waar en is het niet meer: migratie 0248 geeft documenten een eigen
            pas en een eigen termijn. Twee zinnen en twee constanten, want het
            zijn twee keuzes die uiteen mogen lopen.
       */}

@@ -690,7 +690,7 @@ async function draaiRollover(auth: string): Promise<Response> {
   }
 
   // ---------------------------------------------------------------------------
-  // De bijlagen opruimen — QS8-396 (0235) en QS8-408 (0247)
+  // De bijlagen opruimen — QS8-396 (0235) en QS8-408 (0248)
   // ---------------------------------------------------------------------------
   //
   // ⚠️⚠️ **Dit is de helft die SQL níet kan doen, en dat is de hele reden dat het

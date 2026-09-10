@@ -1,4 +1,4 @@
--- 0247_een_document_volgt_dezelfde_weg_als_een_foto.sql — de leesgrens van
+-- 0248_een_document_volgt_dezelfde_weg_als_een_foto.sql — de leesgrens van
 -- `chatdocs` hangt voortaan aan het bericht, er is een opruimpas met een
 -- bewaartermijn, en een vertrekker laat geen onbereikbare blob meer achter.
 --
@@ -149,7 +149,7 @@ as $$ select interval '21 days' $$;
 
 comment on function public.chatdoc_bewaartermijn() is
   'Hoe lang een gedeeld document op de server blijft (QS8-408): 21 dagen. '
-  'Gelijk aan chatfoto_bewaartermijn(), maar een eigen keuze — zie 0247 §2. '
+  'Gelijk aan chatfoto_bewaartermijn(), maar een eigen keuze — zie 0248 §2. '
   'Een plek, zodat de melding in de app en de opruimpas niet uiteenlopen.';
 
 -- ---------------------------------------------------------------------------
@@ -209,7 +209,7 @@ $$;
 comment on function public.verlopen_chatdocs(integer) is
   'De documentpaden die weg mogen: ouder dan chatdoc_bewaartermijn(), of een '
   'wees zonder chatbericht (met een uur respijt). Wist zelf niets — een delete '
-  'op storage.objects haalt de rij weg en het bestand niet. QS8-408, 0247.';
+  'op storage.objects haalt de rij weg en het bestand niet. QS8-408, 0248.';
 
 -- ⚠️ Onwrikbare regel 4: de `revoke` noemt `authenticated` met zoveel woorden.
 --    Alleen de rollover roept deze twee aan, en die draait als `service_role`.

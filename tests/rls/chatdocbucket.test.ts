@@ -135,7 +135,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
        on conflict do nothing`,
     );
 
-    // ⚠️⚠️ **Sinds 0247 hangt de leesgrens aan het bericht en niet aan de map**,
+    // ⚠️⚠️ **Sinds 0248 hangt de leesgrens aan het bericht en niet aan de map**,
     //    dus een object zónder bericht is voor iedereen behalve de plaatser
     //    onzichtbaar. De fixture moet die berichten dus hébben — anders toetsen
     //    de leesgevallen hieronder een wees en staan ze rood om de verkeerde
@@ -246,7 +246,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
   });
 
   it('houdt een wees weg bij een groepsgenoot', () => {
-    // ⚠️⚠️ **De kern van 0247.** Een object zonder bericht heeft geen
+    // ⚠️⚠️ **De kern van 0248.** Een object zonder bericht heeft geen
     //    bestaansrecht: de bijlage hóórt bij een bericht. Zolang de leesgrens aan
     //    het pad hing, bleef een verweesd document voor de hele groep leesbaar —
     //    en dat is precies waarom `wis_bijlagen_van_vertrekker()` het object toen

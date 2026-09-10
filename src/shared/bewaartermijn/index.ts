@@ -24,7 +24,7 @@
 export const CHATFOTO_BEWAARDAGEN = 21;
 
 /**
- * Hoe lang de server een gedeeld document bewaart — QS8-408, migratie 0247.
+ * Hoe lang de server een gedeeld document bewaart — QS8-408, migratie 0248.
  *
  * **Besluit van Quinten, 10-09-2026: 21 dagen** — gelijk aan de chatfoto.
  *
@@ -32,7 +32,7 @@ export const CHATFOTO_BEWAARDAGEN = 21;
  *    is een eigen keuze.** Het gaat om twee soorten inhoud met twee eigen
  *    verwachtingen; dat ze vandaag hetzelfde getal dragen, maakt er geen één
  *    keuze van. Samenvoegen zou een verschil later onmogelijk maken zonder de
- *    andere te raken. Waarom dit gevráágd is en niet aangenomen: §2 van 0247.
+ *    andere te raken. Waarom dit gevráágd is en niet aangenomen: §2 van 0248.
  *
  * ⚠️ Een kopie van `chatdoc_bewaartermijn()` en geen bron — zelfde verhouding als
  *    hierboven. `tests/rls/chatdoc-bewaartermijn.test.ts` legt de vier waarden
