@@ -155,6 +155,23 @@ export const GEEN_OPPERVLAK = new Map([
       'het is het feit dat iemand nodig heeft om te besluiten of hij meedoet.',
   ],
   [
+    'functie:zet_taakzichtbaarheid',
+    '⚠️ **Dit is wél een nieuw groepsoppervlak, maar het varieert niet op** ' +
+      '`groups.zichtbaarheid` (0248, QS8-381). Deze teller gaat over besluit A41: ' +
+      'welke oppervlakken laten in een **open** groep meer zien dan in een ' +
+      'beschermde. Delen per taak staat daar los van — het is een opt-in van de ' +
+      'eigenaar zelf, per regel, en een beschermde groep ziet precies evenveel als ' +
+      'een open groep: alleen wat de eigenaar heeft aangewezen. ' +
+      '⚠️ De naam komt hier terecht omdat de functie `zichtbaarheid` heet en niet ' +
+      'omdat ze de kolom leest; 📏 `zet_taakzichtbaarheid()` noemt `groups` alleen ' +
+      'via `is_group_member()`. ' +
+      '**Het oppervlak zelf staat wél in** `docs/decisions/002-domeinregel7-oppervlakken.md`, ' +
+      'want dát document gaat over élk ding dat de groep te zien krijgt. ' +
+      '⚠️ **Kijk hier opnieuw zodra delen ooit van de groepsstand af gaat hangen** ' +
+      '— dan is dit een rij in OPPERVLAKKEN en horen `zichtbaarheid.open_uitleg` ' +
+      'en `bevestiging.groep_openzetten.uitleg` het te noemen.',
+  ],
+  [
     'functie:pin_taak',
     '⚠️ **De derde valse positief op een naam** (0246, QS8-379), en hij komt uit een ' +
       'andere hoek dan de twee hiervoor: het woord staat hier in de ' +

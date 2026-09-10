@@ -659,11 +659,15 @@ export const GEDEELDE_WAARDEN = {
   fitness: ['goals', 'groups', 'profiles'],
   // ⚠️ **Met de hand nagelopen per tabel, zoals de melding vraagt (QS8-379).**
   //    `daily_moves`: `deelDagzet()` schrijft `group`, de kolom staat in de
-  //    INSERT-grant. `todo_items`: niets schrijft hem — de kolom is voor geen
-  //    enkele client schrijfbaar en het deelpad is QS8-381. Dood is hij daar dus
-  //    niet, hij bestaat vooruitlopend; `private` is er de enige bereikbare
-  //    waarde. **Kijk hier opnieuw zodra QS8-381 landt:** komt er dan geen
-  //    schrijver voor `todo_items`, dan hoort de waarde uit de CHECK.
+  //    INSERT-grant. `todo_items`: hier stond *"niets schrijft hem"*, met de
+  //    voorwaarde erbij — *kijk hier opnieuw zodra QS8-381 landt; komt er dan
+  //    geen schrijver, dan hoort de waarde uit de CHECK*.
+  //    ✅ **Die voorwaarde is ingetreden en de uitkomst is de andere kant op:
+  //    `zet_taakzichtbaarheid()` (0248) schrijft hem.** De kolom blijft voor
+  //    geen enkele client schrijfbaar — het pad is de RPC, die door `pin_taak()`
+  //    heen komt met een sessiesleutel — maar `group` is niet langer een waarde
+  //    die vooruitlopend bestaat. Hij is bereikbaar, en dus is deze rij geen
+  //    uitstel meer.
   group: ['daily_moves', 'todo_items'],
   huddle_day_changed: ['chat_messages', 'group_events'],
   milestone_done: ['chat_messages', 'points_ledger'],
@@ -673,9 +677,13 @@ export const GEDEELDE_WAARDEN = {
   open: ['deadline_requests', 'groups', 'reports'],
   other: ['goals', 'groups', 'profiles', 'reports'],
   pending: ['group_join_requests', 'weekly_goals'],
-  // ⚠️ In beide tabellen de standaard én de enige waarde die vandaag geschreven
-  //    wordt: `daily_moves` via de kolomgrant, `todo_items` via de default en de
-  //    conjunct in `todo_items_insert` (0246).
+  // ⚠️ In beide tabellen de standaard: `daily_moves` via de kolomgrant,
+  //    `todo_items` via de default en de conjunct in `todo_items_insert` (0246).
+  //    ⚠️ Sinds 0248 is dit voor `todo_items` niet meer de énige geschreven
+  //    waarde: `zet_taakzichtbaarheid()` zet een gedeelde taak ook weer terug op
+  //    `private`. Dat terugpad is met opzet gebouwd — een zichtbaarheid die maar
+  //    één kant op kan is geen keuze maar een val (de les van `daily_moves`,
+  //    migratie 0197).
   private: ['daily_moves', 'todo_items'],
   productivity: ['goals', 'groups', 'profiles'],
   resolved: ['commitment_events', 'commitments'],

@@ -97,15 +97,23 @@ const TOEGESTAAN: Readonly<Record<string, string>> = {
     'Hier is nog geen groep. De zin noemt de voorwaarde zelf ("in een beschermde groep — ' +
     'de standaard") in plaats van een belofte te doen die later gebroken wordt.',
   'lijst.prive_uitleg':
-    'De tabel `todo_items` is eigenaar-only sinds 0246: vier policies op ' +
-    '`user_id = (select auth.uid())`, en `visibility` is voor geen enkele client ' +
-    'schrijfbaar — kolomgrant én `pin_taak()`. De belofte is vandaag dus ' +
-    'onvoorwaardelijk waar, en dat is met een kaal API-verzoek gemeten in ' +
-    '`tests/rls/todo-lijst.test.ts`. ' +
-    '⚠️ **QS8-381 maakt delen per taak mogelijk, en dán is deze zin onwaar voor ' +
-    'de taken die je zelf hebt aangevinkt.** Hij hoort op dat moment herschreven ' +
-    'te worden naar de voorwaarde — precies de val die `koppel.uitleg` in ' +
-    'EPIC 13 was, waar de policy klopte en de zin niet meebewoog.',
+    '⚠️ **Herschreven op 09-09-2026 toen QS8-381 delen bouwde, en deze test was ' +
+    'wat dat afdwong.** De zin luidde *"niemand in je groep ziet je taken. Delen ' +
+    'kan nog niet"* — onvoorwaardelijk waar toen `todo_items` eigenaar-only was ' +
+    '(0227), en onwaar op de dag dat er een deelknop kwam. Precies de val die ' +
+    '`koppel.uitleg` in EPIC 13 was: de policy bewoog en de zin niet. ' +
+    'Nu draagt hij de voorwaarde zelf: *een taak is prive tot je hem zelf deelt*. ' +
+    '📏 De grendel eronder is `todo_items_select`, die een groepsgenoot alleen ' +
+    'de rijen geeft met `visibility = group` én een `shared_group_id` waar hij ' +
+    'lid van is — gemeten met een kaal API-verzoek in `tests/rls/taak-delen.test.ts`.',
+  'lijst.deel_uitleg':
+    'Staat boven de deelknop en geldt per taak. De belofte is *de rest van je ' +
+    'lijst blijft prive*, en die is smaller dan hij lijkt: `todo_items_select` ' +
+    'geeft per rij toegang op `shared_group_id`, dus een taak die je niet deelt ' +
+    'valt buiten élke groepstak. ⚠️ **Hij noemt bewust "de groep die je kiest" ' +
+    'en niet "je groep".** Wie in twee groepen zit, deelt met één ervan (variant ' +
+    'B2, QS8-381); een zin die dat verzwijgt zou de andere groep impliciet ' +
+    'meenemen. **Wordt onwaar zodra delen ooit meer dan één groep tegelijk kan.**',
   'coach.alleen_voor_jou':
     'Waar sinds migratie 0236. Was het niet: goals_select gaf een groepsgenoot de héle rij, ' +
     'inclusief identity_statement — gemeten, met de zin woordelijk terug op het scherm van ' +

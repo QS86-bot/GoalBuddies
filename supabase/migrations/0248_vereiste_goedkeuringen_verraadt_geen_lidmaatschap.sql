@@ -1,0 +1,13 @@
+-- 0248_vereiste_goedkeuringen_verraadt_geen_lidmaatschap.sql — <waarom deze migratie bestaat, in één regel>
+--
+-- ROLLBACK-PAD:
+--   <de SQL die dit terugdraait, of "n.v.t. — voegt alleen toe">
+--
+-- ---------------------------------------------------------------------------
+-- Waar dit vandaan komt
+-- ---------------------------------------------------------------------------
+--
+-- <de meting die deze migratie nodig maakte, niet de redenering>
+--
+-- ---------------------------------------------------------------------------
+
