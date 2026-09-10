@@ -2,7 +2,7 @@ import { t } from '../../shared/i18n';
 
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { Cycle } from '../../shared/time';
+import type { Gebruikerscyclus } from '../../shared/time';
 
 import { MAX_ADEMPAUZE_CYCLI } from './adempauze-periode';
 
@@ -75,8 +75,8 @@ export async function fetchAdempauzes(goalId: string): Promise<readonly Adempauz
  */
 export async function planAdempauze(
   goalId: string,
-  start: Cycle,
-  eind: Cycle,
+  start: Gebruikerscyclus,
+  eind: Gebruikerscyclus,
 ): Promise<Resultaat<string>> {
   const { data, error } = await supabase().rpc('plan_adempauze', {
     p_goal_id: goalId,

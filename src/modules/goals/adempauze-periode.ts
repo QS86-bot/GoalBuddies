@@ -9,7 +9,12 @@
  */
 import { t } from '../../shared/i18n';
 
-import { cyclesBetween, userCycleOn, type Cycle, type UserClock } from '../../shared/time';
+import {
+  cyclesBetween,
+  userCycleOn,
+  type Gebruikerscyclus,
+  type UserClock,
+} from '../../shared/time';
 
 import type { Resultaat } from '../../shared/api';
 
@@ -32,8 +37,8 @@ export const MAX_ADEMPAUZE_CYCLI = 52;
 
 /** De hele weken waar twee vrij ingetypte datums op uitkomen. */
 export interface AdempauzePeriode {
-  readonly start: Cycle;
-  readonly eind: Cycle;
+  readonly start: Gebruikerscyclus;
+  readonly eind: Gebruikerscyclus;
   /** Aantal hele cycli, inclusief begin en eind. Altijd minstens 1. */
   readonly weken: number;
 }

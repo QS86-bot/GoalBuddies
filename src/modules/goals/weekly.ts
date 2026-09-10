@@ -3,7 +3,7 @@ import { t } from '../../shared/i18n';
 import type { Tables } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import { type Cycle, type UserClock } from '../../shared/time';
+import { type Gebruikerscyclus, type UserClock } from '../../shared/time';
 import { invoerfout, type Resultaat } from '../../shared/api';
 
 import { huidigeCyclus } from './cycles';
@@ -36,7 +36,7 @@ export type Weekdoel = Tables<'weekly_goals'>;
  */
 export async function fetchWeekdoelen(
   userId: string,
-  cyclus: Cycle,
+  cyclus: Gebruikerscyclus,
 ): Promise<readonly Weekdoel[]> {
   const { data, error } = await supabase()
     .from('weekly_goals')

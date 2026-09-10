@@ -15,7 +15,7 @@ import {
   groupPeriod,
   normaliseerZone,
   now,
-  type Cycle,
+  type Groepsperiode,
   type Weekday,
 } from '../../shared/time';
 import { invoerfout, type Pagina, type Resultaat, type RpcRij } from '../../shared/api';
@@ -463,7 +463,7 @@ export interface Ledenpagina extends Pagina<Groepslid> {
  */
 export async function fetchGroepsoverzicht(
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
   opties: { readonly na?: Ledencursor | null } = {},
 ): Promise<Ledenpagina> {
   const na = opties.na ?? null;

@@ -8,8 +8,11 @@
 
 export type {
   Cycle,
+  Gebruikerscyclus,
+  Groepsperiode,
   GroupClock,
   IsoDate,
+  Klok,
   TimeZone,
   UserClock,
   Weekday,
