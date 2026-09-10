@@ -1271,7 +1271,14 @@ export const nl = {
   'chatfoto.uploaden_mislukt': 'De foto versturen lukte niet. Probeer het zo nog eens.',
   'chatfoto.rem_bereikt': 'Er zijn vandaag genoeg foto\u2019s in deze groep geplaatst. Morgen kan het weer.',
   'chatfoto.kiezen_mislukt': 'De fotokiezer ging niet open.',
-  'chatfoto.niet_beschikbaar': 'Deze foto is niet meer beschikbaar.',
+  // ⚠️ **De reden staat erbij sinds QS8-396, en dat is geen opsmuk.** Zonder de
+  //    termijn leest "niet meer beschikbaar" als een storing, en dan probeert
+  //    iemand het morgen weer. Mét de termijn is het een eigenschap van de app:
+  //    de server bewaart je foto's niet. `{dagen}` komt uit
+  //    `CHATFOTO_BEWAARDAGEN`, dat op zijn beurt naast `chatfoto_bewaartermijn()`
+  //    gelegd wordt — één getal en niet twee.
+  'chatfoto.niet_beschikbaar': 'Deze foto staat er niet meer. Foto\u2019s blijven {dagen} dagen bewaard.',
+  'chatfoto.bewaartermijn': 'Foto\u2019s blijven {dagen} dagen op de server staan en gaan daarna weg.',
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
 
