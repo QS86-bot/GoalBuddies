@@ -508,6 +508,39 @@ docs/decisions/
     één, dan toetst de RLS-suite daar een ánder schema dan productie — groen
     zonder iets te bewijzen.
 
+    ⚠️⚠️ **En de regel geldt niet alleen voor migraties — beslist 10-09-2026
+    (QS8-209).** Een eenmalig hulpscript dat repobestanden herschrijft valt in
+    dezelfde categorie: de standaardreactie op een half gelukte run is *"draai
+    hem opnieuw"*, en dan is niet-idempotent een dubbele schrijfactie. 📏 Dat is
+    één keer gebeurd — bij QS8-115 liep een hulpscript twee keer door een fout
+    halverwege en kwam het catalogusblok dubbel in `nl.ts` en `en.ts`.
+
+    **Maar de eis is niet "elk wegwerpscript moet idempotent zijn".** Dat is een
+    gewoonte die niemand afdwingt, en de vorm die dit project duur betaalt. De eis
+    is scherper en hij is te toetsen:
+
+    > **Wat een hulpscript schrijft, staat onder een controle die rood wordt als
+    > het script twee keer draait.**
+
+    Is die er, dan mag het script wegwerpcode zijn — een tweede run kost je een
+    rode build en geen zoektocht. Is die er níet, dan hoort het script idempotent
+    te zijn, want dan is er niets anders dat je opvangt.
+
+    📏 **Voor het geval dat deze regel opleverde is dat vandaag waar, en het is
+    met de hand gemeten en niet aangenomen** (10-09-2026): een dubbele sleutel in
+    `src/shared/i18n/nl.ts` met de hand teruggezet geeft **allebei** de netten —
+    `tsc` met `TS1117` en ESLint met `no-dupe-keys`. Twee onafhankelijke, en
+    structureel: ze gelden voor elk object-literal in elk `.ts`-bestand.
+
+    ⚠️ **Wat er toevallig aan was, was juist de téstsuite.** Een dubbele sleutel
+    die dezelfde parameters draagt laat alle tests groen; de breuk van QS8-115
+    werd alleen rood doordat het duplicaat toevallig een `{naam}` liet vallen.
+    Reken dus niet op de tests voor deze klasse — reken op `tsc` en de linter.
+
+    ⚠️ Dit is een besluit onder *Beslisbevoegdheid* en geen wet: de
+    engineer-review in november mag hem omgooien. Wat hij vervangt is een open
+    vraag die er sinds 22-08 stond.
+
     ⚠️ **"Idempotent" betekent: idempotent tegen de toestand waarvoor de migratie
     geschreven is.** Verandert een latere migratie de vorm van hetzelfde object,
     dan is de botsing bij herhaling correct gedrag en geen defect — die weigering

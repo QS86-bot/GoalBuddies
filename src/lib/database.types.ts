@@ -1848,6 +1848,7 @@ export type Database = {
           done_at: string | null
           id: string
           order_index: number
+          shared_group_id: string | null
           updated_at: string
           user_id: string
           visibility: string
@@ -1858,6 +1859,7 @@ export type Database = {
           done_at?: string | null
           id?: string
           order_index?: number
+          shared_group_id?: string | null
           updated_at?: string
           user_id: string
           visibility?: string
@@ -1868,11 +1870,19 @@ export type Database = {
           done_at?: string | null
           id?: string
           order_index?: number
+          shared_group_id?: string | null
           updated_at?: string
           user_id?: string
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "todo_items_shared_group_id_fkey"
+            columns: ["shared_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "todo_items_user_id_fkey"
             columns: ["user_id"]
@@ -3159,6 +3169,10 @@ export type Database = {
       }
       zet_week_startdag: {
         Args: { p_dag: number; p_nieuwe_start: string; p_oude_start: string }
+        Returns: Json
+      }
+      zet_taakzichtbaarheid: {
+        Args: { p_taak: string; p_group_id: string | null }
         Returns: Json
       }
       zet_huddledag: {

@@ -1553,8 +1553,8 @@ export const nl = {
     'Zet hier de dingen neer die je niet wilt vergeten. Een taak telt niet mee ' +
     'voor je punten of je reeks; dat blijft de week.',
   'lijst.prive_uitleg':
-    'Alles op deze lijst is prive: niemand in je groep ziet je taken. Delen kan ' +
-    'nog niet.',
+    'Een taak is prive tot je hem zelf deelt. Wat je niet deelt, ziet niemand in ' +
+    'je groep.',
   'lijst.van_totaal': '{aantal} van {totaal}',
   'lijst.meer_laden': 'Meer laden',
   'lijst.afvinken': 'Afvinken',
@@ -1571,6 +1571,19 @@ export const nl = {
   'lijst.verzetten_gelijk':
     'Deze twee taken staan op dezelfde plek in de lijst. Verplaats er eerst een ' +
     'andere tussenuit.',
+  'lijst.delen_mislukt': 'Delen lukte niet.',
+  'lijst.geen_groepsgenoot': 'Je bent geen lid meer van die groep.',
+  'lijst.deel_aan': 'Gedeeld met {groep}',
+  'lijst.deel_aan_onbekend': 'Gedeeld met een groep die niet meer in je lijst staat',
+  'lijst.deel_uit': 'Niet gedeeld',
+  'lijst.deel_knop': 'Delen',
+  'lijst.deel_terug': 'Niet meer delen',
+  'lijst.deel_kies': 'Met welke groep?',
+  'lijst.deel_geen_groep':
+    'Je zit nog in geen enkele groep, dus er is niemand om iets mee te delen.',
+  'lijst.deel_uitleg':
+    'Wat je deelt, ziet alleen de groep die je kiest. De rest van je lijst blijft ' +
+    'prive, en je kunt het altijd terugdraaien.',
   'lijst.invoer': 'Controleer wat je hebt ingevuld.',
   'bevestiging.taak_verwijderen.titel': 'Deze taak weggooien?',
   'bevestiging.taak_verwijderen.uitleg':
