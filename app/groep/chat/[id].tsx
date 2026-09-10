@@ -19,6 +19,7 @@ import {
   systeemberichtTekst,
   vouwSysteemberichten,
   type ChatRegelItem,
+  CHATDOC_BEWAARDAGEN,
   CHATFOTO_BEWAARDAGEN,
   soortBijlage,
   soortUitPad,
@@ -588,20 +589,22 @@ function Bijlageknoppen({ keuze }: { readonly keuze: Chatbijlagekeuze }) {
 
       {/*
         ⚠️ **De bewaartermijn staat er vóór het versturen en niet erna** — QS8-396.
-           Een gebruiker die weet dat de server zijn foto na drie weken weggooit,
-           kiest anders dan een gebruiker die dat pas merkt als de foto weg is.
-           Het is bovendien de eerlijke helft van dezelfde belofte: de zin die
-           straks in de plaats van de foto staat, noemt hetzelfde getal.
+           Een gebruiker die weet dat de server zijn bijlage na drie weken
+           weggooit, kiest anders dan een gebruiker die dat pas merkt als hij weg
+           is. Het is bovendien de eerlijke helft van dezelfde belofte: de zin die
+           straks in de plaats van de bijlage staat, noemt hetzelfde getal.
 
-        ⚠️⚠️ **Alleen bij een foto, en dat is geen omissie maar een verschil dat
-           er echt is.** De opruimpas van QS8-396 (migratie 0235) dekt
-           `chatfotos` en niet `chatdocs`; een document blijft dus staan. Een
-           zin die het tegendeel suggereert is erger dan geen zin. Dat het
-           verschil er is, staat als open rij in `docs/ENGINEER-REVIEW.md`.
+        ⚠️ **Sinds QS8-408 ook bij een document.** Hier stond dat de zin alléén
+           bij een foto hoorde, omdat de opruimpas `chatdocs` niet dekte — dat
+           was waar en is het niet meer: migratie 0250 geeft documenten een eigen
+           pas en een eigen termijn. Twee zinnen en twee constanten, want het
+           zijn twee keuzes die uiteen mogen lopen.
       */}
-      {gekozen.soort === 'foto' ? (
-        <Caption>{t('chatfoto.bewaartermijn', { dagen: CHATFOTO_BEWAARDAGEN })}</Caption>
-      ) : null}
+      <Caption>
+        {gekozen.soort === 'foto'
+          ? t('chatfoto.bewaartermijn', { dagen: CHATFOTO_BEWAARDAGEN })
+          : t('chatdoc.bewaartermijn', { dagen: CHATDOC_BEWAARDAGEN })}
+      </Caption>
       <Button variant="stil" block onPress={keuze.haalWeg}>
         {gekozen.soort === 'foto' ? t('chatfoto.weghalen') : t('chatdoc.weghalen')}
       </Button>

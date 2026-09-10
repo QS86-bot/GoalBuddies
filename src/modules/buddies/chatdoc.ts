@@ -49,6 +49,14 @@ import type { Resultaat } from '../goals';
 export const CHATDOC_BUCKET = 'chatdocs';
 
 /**
+ * ⚠️ Doorgegeven uit `shared/bewaartermijn` en hier niet opnieuw gedefinieerd —
+ *    zelfde reden en zelfde vorm als `CHATFOTO_BEWAARDAGEN` in `chatfoto.ts`:
+ *    `shared/ui/Document.tsx` heeft het getal nodig, en `shared` mag geen module
+ *    aanspreken.
+ */
+export { CHATDOC_BEWAARDAGEN } from '../../shared/bewaartermijn';
+
+/**
  * Hoe lang een ondertekende document-URL geldig is: een kwartier.
  *
  * ⚠️ **Korter dan de chatfoto (een uur), gelijk aan de bewijsfoto.** Een
