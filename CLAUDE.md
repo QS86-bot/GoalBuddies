@@ -676,6 +676,26 @@ is: de tests verhuizen mee en blijven groen, want ze toetsen wat er in het
 bestand staat en niet wat het bestand belóófde. **Loop bij elke verhuizing na
 welke belofte eraan hing en of die nog ergens getoetst wordt.**
 
+⚠️⚠️ **En noem je een grendel bij naam, dan is dat sinds 10-09-2026 een controle**
+(QS8-412): `npm run padverwijzing:controle` wordt rood zodra een bestand een
+repo-pad tussen backticks noemt dat niet bestaat. 📏 Aanleiding: negen bestanden
+noemden een testbestand dat er niet was, en het zuiverste geval was
+`src/shared/ui/Foto.tsx` — dat legde zijn belofte uit, waarschuwde in dezelfde
+kop voor verhuizingen, en wees naar een toets die nooit geschreven is. **Een
+ontbrekende test valt op; een test waarvan in de bron staat dát hij er is, valt
+niet op.** De controle vindt dat de grendel er niet ís; of hij het júíste toetst
+blijft handwerk. Scope, register en de ijking staan in
+`docs/decisions/2026-09-10-een-grendel-die-alleen-in-een-comment-staat.md`.
+
+⚠️⚠️ **Kijk bij een ijking wélke test omvalt, niet dát er een omvalt.** 📏 Bij
+QS8-412 werd de suite rood op een ándere toets dan de grendel die de mutatie
+noemde, en de bedoelde grendel bleef groen — de knip die commentaar uit de bron
+haalt (`\/\/[^\n]*`) at alles op ná de `//` van een URL. Dezelfde knip stond in
+twee testbestanden en was in allebei blind voor die vorm; met
+`const x = 'https://opslag/x'; Linking.openURL(x);` in `Document.tsx` bleef de
+suite groen op eenenzestig tests. **De knip die een controle scherp houdt, is
+zelf een grendel.**
+
 #### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
 
 Elke rij in `docs/ENGINEER-REVIEW.md` met risico **Laag** draagt de zin

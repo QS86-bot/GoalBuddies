@@ -49,7 +49,7 @@ import {
  * ⚠️ **Het invoerveld is het gedeelde `Field` en geen eigen `TextInput`.** Dat is
  *    de hele reden dat inspreken later werkt: QS8-250 hangt de microfoon aan
  *    `Field`, en dan verschijnt hij hier vanzelf.
- *    `tests/beloftes/lijstveld.test.ts` wordt rood zodra dit scherm zijn eigen
+ *    `tests/beloftes/tekstinvoer.test.ts` wordt rood zodra dit scherm zijn eigen
  *    invoer bouwt.
  */
 export default function Lijst() {
@@ -354,7 +354,7 @@ function TaakRegel({
  * ⚠️ **Hetzelfde gedeelde `Field` als de invoer bovenaan het scherm**, en om
  *    dezelfde reden: QS8-250 hangt de microfoon aan `Field`, dus een taak wordt
  *    straks ook inspreekbaar zonder dat hier iets verandert.
- *    `tests/beloftes/lijstveld.test.ts` wordt rood zodra dit scherm zijn eigen
+ *    `tests/beloftes/tekstinvoer.test.ts` wordt rood zodra dit scherm zijn eigen
  *    `TextInput` bouwt.
  *
  * ⚠️ **De teller telt codepunten** (`telTekens`) en niet UTF-16-eenheden, want

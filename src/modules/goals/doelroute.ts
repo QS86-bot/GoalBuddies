@@ -16,7 +16,7 @@
  *
  * ⚠️ **De helper alleen is niet de grendel.** Een scherm dat hem negeert en zelf
  *    een pad typt, is even stil kapot als daarvoor. Daarom leest
- *    `tests/beloftes/de-doelroute-eindigt-bij-een-buddy.test.ts` de bestemmingen
+ *    `tests/beloftes/wie-een-doel-maakt-krijgt-de-vraag.test.ts` de bestemmingen
  *    uit de schérmen en niet uit dit bestand — hetzelfde als
  *    `onboarding-eindigt-ergens.test.ts` doet, en om dezelfde reden.
  */
