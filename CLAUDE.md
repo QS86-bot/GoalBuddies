@@ -709,6 +709,17 @@ rij van 17-08 over het ontkoppelen: QS8-110/optie C bestond toen nog niet als
 plan. Wat je wél altijd kunt opschrijven is waaróm iets nú laag is. Vervalt die
 aanname, dan is het geen Laag meer.
 
+⚠️⚠️ **Een `|` in een tabelcel schrijf je als `\|`, óók binnen backticks.**
+GFM knipt een tabelrij op élke niet-ontsnapte streep — een codespan wordt pas ná
+het knippen herkend — en de overtollige cellen vallen weg aan het **eind**, dus
+precies op de risicokolom. 📏 Op 10-09-2026 (QS8-415) renderden **18** rijen
+iets anders dan hun risico en verloren er **3** de tekst erachter, terwijl de
+brontekst overal klopte. `review:controle` knipt sinds dat issue zoals GFM
+knipt; hij deed het daarvóór van rechts naar links, mét een comment dat een cel
+nu eenmaal een streep kan dragen. **Een controle die een lastig geval omzeilt in
+plaats van het te melden, bewaakt vanaf dat moment de omweg en niet de belofte.**
+Uitleg in `docs/decisions/2026-09-10-de-kolom-die-de-lezer-niet-ziet.md`.
+
 ⚠️ **Vraag bij elke nieuwe beslissing die op een bestaande primitieve handeling
 leunt: staat daar een weggelegde bevinding over?** Een rij die terecht Laag was
 werd vier dagen later een scoregat, toen een migratie het minpunt aan precies die

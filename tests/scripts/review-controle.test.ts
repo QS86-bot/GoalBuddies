@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 // ⚠️ Een `.mjs` zonder eigen typings — zelfde patroon als `tekst-controle.test.ts`.
-import { controleer } from '../../scripts/review-controle.mjs';
+import { cellenVanRij, controleer } from '../../scripts/review-controle.mjs';
 
 /**
  * De ijking van `npm run review:controle`.
@@ -195,5 +195,94 @@ describe('de vijfde toets — dubbele bevindingen', () => {
 
   it('laat twee verschillende bevindingen op dezelfde datum met rust', () => {
     expect(controleer([rij('Eerste', 'a', 'Middel'), rij('Tweede', 'b', 'Middel')])).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️⚠️ **De GFM-celsplitsing, en waarom hij een eigen blok krijgt** — QS8-415.
+ *    Dit script las de risicokolom tot 10-09-2026 door van rechts te knippen,
+ *    met een comment erbij dat een cel nu eenmaal een `|` binnen backticks kan
+ *    dragen. Die omweg maakte de controle groen over een document waarin
+ *    **achttien rijen** hun risico niet renderden. De belofte gaat over wat een
+ *    reviewer op GitHub ziet, dus knipt de controle nu zoals GFM knipt.
+ */
+describe('cellenVanRij knipt zoals GFM knipt', () => {
+  it('een gewone rij levert vier cellen', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | iets | Laag |')).toEqual([
+      '2026-08-25',
+      'X',
+      'iets',
+      'Laag',
+    ]);
+  });
+
+  /**
+   * ⚠️ **Backticks beschermen niets** — dat is de spec en niet een gril van één
+   *    parser. Zou deze test het tegenovergestelde beweren, dan was hij de
+   *    aanname die dit issue veroorzaakte.
+   */
+  it('een streep binnen backticks scheidt óók een cel', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | `SELECT|INSERT` | Laag |')).toHaveLength(5);
+  });
+
+  it('een ontsnapte streep binnen backticks doet dat niet', () => {
+    const c = cellenVanRij('| 2026-08-25 | X | `SELECT\\|INSERT` | Laag |');
+    expect(c).toHaveLength(4);
+    expect(c[2]).toBe('`SELECT\\|INSERT`');
+    expect(c[3]).toBe('Laag');
+  });
+
+  it('een ontsnapte streep buiten backticks ook niet', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | a \\| b | Laag |')).toHaveLength(4);
+  });
+
+  it('twee ontsnapte strepen achter elkaar blijven inhoud', () => {
+    expect(cellenVanRij('| 2026-08-25 | X | `a\\|b\\|c` | Laag |')).toHaveLength(4);
+  });
+});
+
+describe('een rij waarvan de risicokolom niet rendert', () => {
+  it('wordt gemeld zodra een niet-ontsnapte streep hem verschuift', () => {
+    const klachten = controleer(['| 2026-08-25 | X | `SELECT|INSERT` telt mee | Laag |']);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('kolom-verschoven');
+  });
+
+  /**
+   * ⚠️ De tweede vorm, en die is stiller: het risico rendert wél, maar wat
+   *    erachter staat valt in zijn geheel weg. Drie rijen deden dat, en één
+   *    ervan droeg een aantekening van diezelfde dag.
+   */
+  it('wordt ook gemeld als er tekst áchter de risicokolom staat', () => {
+    const klachten = controleer(['| 2026-08-25 | X | iets | Laag | een naschrift |']);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('kolom-verschoven');
+  });
+
+  it('en de melding gaat vóór elke andere toets, want het risico is onbekend', () => {
+    const klachten = controleer(['| 2026-08-25 | X | `a|b` | Gedicht |']);
+
+    expect(klachten).toHaveLength(1);
+    expect(klachten[0]?.soort).toBe('kolom-verschoven');
+  });
+});
+
+describe('wat de kolomtoets met rust laat', () => {
+  it('een rij met een correct ontsnapte streep in een codespan', () => {
+    const klachten = controleer([
+      '| 2026-08-25 | X | `SELECT\\|INSERT` telt mee. **Wordt zwaarder als:** iets | Laag |',
+    ]);
+
+    expect(klachten).toEqual([]);
+  });
+
+  it('een rij zonder enige streep in de inhoud', () => {
+    const klachten = controleer([
+      '| 2026-08-25 | X | gewoon proza. **Wordt zwaarder als:** iets | Laag |',
+    ]);
+
+    expect(klachten).toEqual([]);
   });
 });
