@@ -854,6 +854,22 @@ export const GEEN_SCHRIJFPAD = [
       '`plaats_systeembericht()`. Opruimen hoort bij een 0118-achtige ronde.',
   },
   {
+    tabel: 'todo_items',
+    soort: 'UPDATE',
+    kolom: 'body',
+    reden:
+      '0246 geeft de eigenaar het recht zijn eigen taaktekst bij te werken; het ' +
+      'scherm van QS8-380 doet dat niet. Dat scherm levert toevoegen, afvinken, ' +
+      'verplaatsen en verwijderen — hernoemen staat niet in zijn ' +
+      'acceptatiecriteria, en het er stilletjes bij bouwen is de PR verbreden. ' +
+      '⚠️ De grant blijft staan omdat `todo_items_update` de eigenaar toch al ' +
+      'toelaat en `pin_taak()` de kolommen dekt die er wél toe doen — intrekken ' +
+      'zou een migratie kosten voor een recht dat binnen dezelfde epic gebruikt ' +
+      'gaat worden. **Wordt een bevinding zodra QS8-386 (een taak hernoemen) ' +
+      'geschrapt wordt in plaats van gebouwd**: dan is dit een recht zonder ' +
+      'bestemming en hoort het weg.',
+  },
+  {
     tabel: 'commitments',
     soort: 'UPDATE',
     kolom: 'body',
@@ -1053,32 +1069,17 @@ export const GEEN_AANROEPER = [
       '⚠️ Deze regel is pas een grendel doordat déze controle een kolom meldt die er later bij ' +
       'komt; zonder dat zou hij een gewoonte beschrijven — de vorm die QS8-352 duur maakte.',
   },
-  {
-    tabel: 'todo_items',
-    soort: 'INSERT',
-    kolommen: ['body', 'order_index', 'user_id'],
-    reden:
-      '⚠️ **Hier is géén grendel, en dat staat er met zoveel woorden — QS8-379.** De policy ' +
-      'staat de eigenaar toe (`user_id = (select auth.uid())`) en de grant is open; wat ontbreekt ' +
-      'is niet een slot maar een scherm. De Lijst landt in drie delen en dit is deel 1: de tabel, ' +
-      'de RLS en het dagplafond. Het scherm dat hiernaartoe schrijft is **QS8-380**. ' +
-      '⚠️ Deze rij is dus een uitstel en geen besluit, en hij hoort binnen één milestone weg te ' +
-      'zijn: landt QS8-380, dan meldt `verlopenRegels()` hem vanzelf. Blijft QS8-380 liggen, dan ' +
-      'is dit een grant zonder aanroeper en horen de rechten ingetrokken te worden tot het scherm ' +
-      'er is. Wat wél dicht staat, staat in de grant zelf: `visibility` en `created_at` zitten er ' +
-      'níét in — dat zijn de twee kolommen waar een client iets mee zou kunnen, en die zijn van de ' +
-      'server (`tests/rls/todo-lijst.test.ts`).',
-  },
-  {
-    tabel: 'todo_items',
-    soort: 'UPDATE',
-    kolommen: ['body', 'done_at', 'order_index'],
-    reden:
-      'Zelfde geval als de INSERT hierboven (QS8-379): geen grendel, een ontbrekend scherm. ' +
-      'Afvinken is `done_at` en dat is precies waar QS8-380 voor komt. `visibility` staat ook ' +
-      'hier niet in de grant — het deelpad krijgt in QS8-381 een eigen RPC en hoort geen kolom te ' +
-      'zijn die toevallig schrijfbaar is.',
-  },
+  /*
+   * ⚠️⚠️ **Hier stonden twee rijen voor `todo_items`, en ze zijn precies zoals
+   *    beloofd verlopen** (QS8-379 → QS8-380). Ze droegen als reden dat er géén
+   *    grendel was maar een ontbrekend scherm, met erbij: *"dit is een uitstel
+   *    en geen besluit, en het hoort binnen één milestone weg te zijn."*
+   *
+   *    Het scherm is er (`app/(tabs)/lijst.tsx`), dus `verlopenRegels()` meldde
+   *    ze allebei — de tak die QS8-349 daarvoor bouwde. Dat is de ratel die
+   *    werkt: een uitzondering met een houdbaarheidsdatum die zichzelf opruimt
+   *    in plaats van te blijven staan tot niemand meer weet waarom.
+   */
   {
     tabel: 'group_members',
     soort: 'UPDATE',

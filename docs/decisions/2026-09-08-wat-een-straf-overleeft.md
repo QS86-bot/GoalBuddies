@@ -288,3 +288,130 @@ QS8-331/0189 is het andere geval waarin een verwijdering een straf onbereikbaar
 maakt: daar wist `verwijder_doel()` een bevestigde straf én zijn spoor. Deze
 issue is de spiegel — niet *het spoor verdwijnt*, maar *de rij blijft en niemand
 kan er nog bij*. Het derde geval van dezelfde klasse is QS8-335, hieronder.
+
+
+---
+
+## 4. QS8-335 — het wisrecht wint helemaal
+
+**Besluit:** wie zijn account verwijdert, neemt zijn commitments mee **en** de
+systeemberichten die daarover in zijn groepen staan.
+
+⚠️ **Dit wijkt af van wat ik voorstelde.** Mijn voorstel was een auditstomp: de
+commitmentrij mag mee, maar één geanonimiseerde regel blijft staan zodat het
+achtergebleven groepsbericht gestaafd wordt. Quinten koos de andere kant op —
+het bericht gaat óók weg. Het bezwaar hieronder staat er niet als voorbehoud maar
+zodat de volgende lezer ziet waartegen afgewogen is.
+
+### Waar het vandaan kwam
+
+📏 Straf op `due` met de groep als begunstigde, eigenaar verwijdert zijn account:
+
+```
+vooraf:  commitment 1   auditregels 3   systeemberichten 2
+verwijder_mijn_account (eigenaar): {"ok": true}
+na:      commitment 0   auditregels 0   systeemberichten 2
+
+blijft staan:
+  "De inzet die Alice zelf heeft ingesteld, is verschuldigd geworden."
+```
+
+Vier cascades wisten het commitment en zijn spoor; de foreign keys van
+`chat_messages` naar `profiles` staan op `set null`, dus het bericht bleef — met
+de naam als **platte tekst** erin, want `meld_commitment()` bakt
+`weergavenaam()` in de zin op het moment dat hij hem plaatst.
+
+**Dat was geen wisrecht maar een halve wissing, en de verkeerde helft
+overleefde.** De groep hield de bewering; de administratie die haar kon staven
+ging. Daarom was *niets doen* hier niet de neutrale keuze maar de enige
+aantoonbaar incoherente — en dat is wat AC1 eigenlijk vroeg.
+
+### Wat het kost
+
+Het besluit schrijft een regel om die al vastlag. Domeinregel 7 zegt dat een
+systeembericht een onveranderlijke kopie is die de autorisatie overleeft waaronder
+hij gemaakt is. Die zin blijft staan, met sinds vandaag één benoemde uitzondering
+in `CLAUDE.md`. Dat is de prijs, en hij is opgeschreven op de plek waar de regel
+zelf staat — een regel die stilzwijgend een uitzondering krijgt, is geen regel meer.
+
+**De reikwijdte is met opzet smal, en dat is de conservatiefste lezing van het
+besluit:** alleen `commitment_due` en `commitment_unlocked` met de vertrekker als
+onderwerp. Zijn gewone berichten blijven staan met een lege afzender.
+`goal_completed` blijft ook staan — dat gaat over een doel en niet over een
+consequentie, en dit issue ging over straffen.
+
+**Wissen en niet anonimiseren.** Anonimiseren laat de zin staan met "iemand" erin,
+en dan hangt er een mededeling over een straf die niemand meer kan navragen —
+precies de halve wissing die dit issue is.
+
+⚠️ **De ene plek waar dit op een verbod leunt.** `chat_messages` staat in de
+realtime-publicatie en Supabase past RLS niet toe op DELETE. 📏 Nagemeten vóór het
+schrijven: `relreplident = 'd'`, dus bij een verwijdering gaat alleen de sleutel
+over de lijn. Stond die op `FULL`, dan zou dit blok de body van elk gewist bericht
+naar iedere abonnee sturen. Het verbod op `REPLICA IDENTITY FULL` stond er al;
+dit is het eerste blok dat er daadwerkelijk op leunt.
+
+### Wat er ná dit besluit alsnog aan de belofte ontbreekt
+
+⚠️⚠️ **"Het wisrecht wint helemaal" klopt nog niet voor iedereen, en dat is met
+deze migratie niet opgelost.** De security-ronde wees erop en het is daarna
+end-to-end gereproduceerd: wie ooit een goedkeuring introk, kan zijn account
+**helemaal niet** verwijderen.
+
+```
+verwijder_mijn_account (Alice)
+ERROR:  update or delete on table "profiles" violates foreign key constraint
+        "approval_withdrawals_approver_id_fkey" on table "approval_withdrawals"
+```
+
+📏 `approval_withdrawals.approver_id -> profiles` staat op `delete=a` (NO ACTION),
+terwijl de twee andere foreign keys van die tabel op `cascade` staan — maar die
+wijzen naar de voltooiing van de ánder, dus ze ruimen niets op. Dat is een andere
+klasse dan dit besluit (het gaat niet over wat een straf overleeft maar over een
+verwijdering die vastloopt) en staat als **QS8-371** met prioriteit Urgent.
+
+Het hoort hier omdat het de kop van deze sectie relativeert: het besluit is
+genomen en gebouwd, en voor een deel van de gebruikers is de deur ernaartoe
+dicht. Wie deze sectie leest en denkt dat accountverwijdering nu af is, leest te
+snel.
+
+Twee kleinere gaten in dezelfde belofte staan als dossierrij in
+`docs/ENGINEER-REVIEW.md`: de weergavenaam blijft in de body van élk ánder
+systeembericht staan (en `groepschat()` geeft die body gewoon terug), en er is
+geen poort op een lopend commitment bij accountverwijdering.
+
+### Hoe het bewaakt wordt — en de fout die de ijking vond
+
+`tests/rls/wisrecht-wint.test.ts` toetst de belofte: na de verwijdering is er over
+die straf nergens meer iets te vinden, en niets ánders gaat mee.
+
+⚠️⚠️ **De eerste versie van die test bewaakte niets, en alleen de mutatie liet dat
+zien.** Hij zocht het systeembericht ná de verwijdering op via
+`subject_id = <eigenaar>` — maar de foreign key zet juist díe kolom op `null`. De
+query vond dus nul rijen omdat de sleutel weg was, niet omdat het bericht weg was.
+📏 Gemeten: met het hele delete-blok gesloopt bleef de suite groen.
+
+Dat is regel 18 vraag 3 én vraag 4 in één geval: de test greep naar een plek in
+plaats van naar de belofte, en die plek werd door de gemeten handeling zelf
+gewist. De reparatie is het bericht-id vóóraf vastleggen en er achteraf op zoeken.
+**Dit is het beste argument voor de mutatieplicht dat deze ronde opleverde**: door
+erover na te denken zag ik het niet, door de grendel te slopen wel.
+
+Twee mutaties voor twee grendels, want er zijn twee kanten:
+
+| Mutatie | Wat er rood wordt |
+|---|---|
+| het delete-blok eruit | §1 — er gaat te wéinig weg |
+| de filter `system_event in (…)` eruit | §2 — er gaat te véél weg |
+
+### AC3 en de samenhang
+
+De test gaat over wat er ná `verwijder_mijn_account()` van het spoor over is en
+niet over de vorm van één cascade. Verlegt iemand later een foreign key, dan
+verhuist de belofte mee.
+
+Dit is het derde en laatste geval van dezelfde klasse: QS8-331/0189 (een doel
+verwijderen wiste een bevestigde straf), QS8-333/0212 (de getuige verdwijnt en
+de rij wordt onbedienbaar), en dit. Alle drie hadden dezelfde vorm — *een
+verwijdering elders laat hier iets achter dat niet klopt* — en alle drie zijn ze
+nu een besluit in plaats van een gat.

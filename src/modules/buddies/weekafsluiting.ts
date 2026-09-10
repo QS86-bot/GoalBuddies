@@ -10,7 +10,7 @@ import { metGetekendeAvatars } from '../auth/avatar';
 import type { Database } from '../../lib/database.types';
 import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
-import type { Cycle } from '../../shared/time';
+import type { Groepsperiode } from '../../shared/time';
 
 import type { Pagina, Resultaat } from './api';
 import {
@@ -27,7 +27,7 @@ import { invoerfout, type RpcRij } from '../../shared/api';
 /**
  * De weekafsluiting — QS8-73.
  *
- * ⚠️ Alle vier de aanroepen krijgen de periode van buiten mee, als `Cycle` uit
+ * ⚠️ Alle vier de aanroepen krijgen de periode van buiten mee, als `Groepsperiode` uit
  *    `huidigeGroepsperiode()`. De database kent de huddledag en de tijdzone wel,
  *    maar mag er niet mee rekenen (CLAUDE.md, correctheidsregel 7) — en het is de
  *    gróepsperiode en niet de persoonlijke cyclus, want dit is het ritueel van de
@@ -79,7 +79,7 @@ function naarAntwoord(rij: AntwoordRij): Antwoord | null {
  */
 export async function fetchWeekafsluiting(
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
 ): Promise<readonly Antwoord[]> {
   const { data, error } = await supabase().rpc('weekafsluiting', {
     p_group_id: groupId,
@@ -147,7 +147,7 @@ export interface ReactiePagina extends Pagina<Reactie> {
  */
 export async function fetchWeekafsluitingReacties(
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
   opties: { readonly na?: ReactieCursor } = {},
 ): Promise<ReactiePagina> {
   const { data, error } = await supabase().rpc('weekafsluiting_reacties', {
@@ -214,7 +214,7 @@ export async function fetchWeekafsluitingReacties(
 export async function bewaarWeekafsluiting(
   userId: string,
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
   invoer: WeekafsluitingInvoer,
 ): Promise<Resultaat<true>> {
   const gevalideerd = weekafsluitingSchema.safeParse(invoer);
@@ -263,7 +263,7 @@ export async function bewaarWeekafsluiting(
 export async function verwijderWeekafsluiting(
   userId: string,
   groupId: string,
-  periode: Cycle,
+  periode: Groepsperiode,
 ): Promise<Resultaat<true>> {
   const { error } = await supabase()
     .from('week_reviews')
