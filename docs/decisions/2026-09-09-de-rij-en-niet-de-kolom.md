@@ -1,6 +1,6 @@
 # De rij en niet de kolom
 
-**Datum:** 09-09-2026 · **Issues:** QS8-392 en QS8-393 · **Migratie:** 0235
+**Datum:** 09-09-2026 · **Issues:** QS8-392 en QS8-393 · **Migratie:** 0236
 
 ## 1. Twee lekken, één oorzaak
 

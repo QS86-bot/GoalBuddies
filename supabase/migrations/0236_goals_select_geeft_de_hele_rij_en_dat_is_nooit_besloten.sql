@@ -1,4 +1,4 @@
--- 0235_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql — `goals` krijgt
+-- 0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql — `goals` krijgt
 -- een kolomgrens voor niet-eigenaars (QS8-392 en QS8-393, één oorzaak).
 --
 -- ROLLBACK-PAD:
@@ -191,7 +191,7 @@ from goals g;
 
 comment on view public.goal_dashboard is
   'Een doel met zijn tellingen, voor eigenaar en groepsgenoot. security_invoker '
-  'blijft aan: daar hangt weekly_total van af (QS8-393, 0235). De prive kolommen '
+  'blijft aan: daar hangt weekly_total van af (QS8-393, 0236). De prive kolommen '
   'van de eigenaar staan in mijn_doelvelden.';
 
 -- ⚠️ Alleen `authenticated`. De view stond ook aan `anon` gegund; die kreeg er
@@ -229,7 +229,7 @@ where g.owner_id = (select auth.uid());
 
 comment on view public.mijn_doelvelden is
   'De kolommen van een doel die alleen de eigenaar mag lezen (QS8-392/QS8-393, '
-  '0235). Definer met een eigen where, zoals mijn_profiel; goals zelf geeft ze '
+  '0236). Definer met een eigen where, zoals mijn_profiel; goals zelf geeft ze '
   'sinds deze migratie aan niemand meer.';
 
 -- ⚠️ Onwrikbare regel 4: de `revoke` noemt `authenticated` met zoveel woorden.

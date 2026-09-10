@@ -35,10 +35,10 @@ export type { Pagina, Resultaat };
 export type Doel = Tables<'goals'>;
 
 /**
- * Wat een client van een `goals`-rij terugkríjgt sinds migratie 0235.
+ * Wat een client van een `goals`-rij terugkríjgt sinds migratie 0236.
  *
  * ⚠️⚠️ **`Doel` spiegelt de kolommen van de tabel; dit type spiegelt de
- *    kolomgrant.** Die twee liepen uiteen op de dag dat 0235 vijf kolommen
+ *    kolomgrant.** Die twee liepen uiteen op de dag dat 0236 vijf kolommen
  *    introk, en TypeScript zweeg — de gegenereerde typing wéét niets van grants.
  *    Precies de klasse die vandaag als bevinding in `docs/ENGINEER-REVIEW.md`
  *    belandde: *"de gegenereerde typing zegt dat kolommen schrijfbaar zijn die
@@ -115,7 +115,7 @@ export interface DoelMetVoortgang {
 /**
  * De drie kolommen die alleen de eigenaar mag lezen, per doel-id.
  *
- * ⚠️⚠️ **Ze staan sinds migratie 0235 niet meer op `goals` voor `authenticated`**,
+ * ⚠️⚠️ **Ze staan sinds migratie 0236 niet meer op `goals` voor `authenticated`**,
  *    en dat is geen opruiming maar een gerepareerd lek (QS8-392 en QS8-393).
  *    `goals_select` geeft een groepsgenoot de héle rij, dus `identity_statement`
  *    — *"Wie word je als dit lukt?"* — was voor hem leesbaar terwijl er boven dat
@@ -394,7 +394,7 @@ export async function maakDoel(
   }
 
   // ⚠️⚠️ **Een expliciete kolomlijst en geen `select('*')`, en dat is een
-  //    gerepareerd defect.** Sinds migratie 0235 heeft `authenticated` geen
+  //    gerepareerd defect.** Sinds migratie 0236 heeft `authenticated` geen
   //    tabelbrede SELECT meer op `goals` maar een kolomgrant, en `*` eist recht
   //    op élke kolom — dus dit verzoek gaf een kale `42501` voor de eigenaar van
   //    zijn eigen, net aangemaakte doel. ⚠️ TypeScript ziet dat niet: de
@@ -455,7 +455,7 @@ export async function wijzigDoel(
     return { ok: false, melding: t('doel.niets_gewijzigd') };
   }
 
-  // ⚠️ Zelfde reden als bij `maakDoel()`: sinds 0235 is `*` op `goals` een
+  // ⚠️ Zelfde reden als bij `maakDoel()`: sinds 0236 is `*` op `goals` een
   //    permissiefout voor de eigenaar zelf.
   const { data, error } = await supabase()
     .from('goals')
