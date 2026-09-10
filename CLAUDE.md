@@ -568,6 +568,21 @@ docs/decisions/
     met rust. Meting en beide klassen in
     `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md`.
 
+    ⚠️⚠️ **En sinds 10-09-2026 wordt die belofte ook echt uitgevoerd**
+    (QS8-413): `npm run idempotent:controle` speelt élke migratie **direct na
+    zichzelf** nog een keer af op een eigen lege database. Dat "direct" is het
+    ontwerp en geen detail — de uitzonderingsklasse hierboven kan zo niet
+    optreden, want de latere migratie heeft nog niet gedraaid. 📏 Gemeten:
+    naïef alles achteraf herhalen meldt **14** bestanden, deze vorm **0**.
+
+    Aanleiding is 0252: twee constraints die van elkaar afhingen, elk mét zijn
+    eigen `drop … if exists`, en tóch een botsing bij de tweede run omdat de
+    unieke constraint niet weg kon zolang de foreign key eraan hing. 📏 Met die
+    oude vorm teruggezet blijft de **statische** grendel groen op 23 tests. Een
+    per-object-regel kan een volgordefout **tussen** twee objecten niet zien;
+    dat is een eigenschap van het geheel. Uitleg in
+    `docs/decisions/2026-09-10-een-migratie-die-op-zichzelf-botst.md`.
+
     ⚠️ **De drop-uitzondering leest de handtekening en niet alleen de naam.** Een
     migratie die de vorm van een functie verandert móet hem eerst droppen, want
     `or replace` kan een returntype niet wijzigen. Maar een drop van
@@ -676,6 +691,26 @@ is: de tests verhuizen mee en blijven groen, want ze toetsen wat er in het
 bestand staat en niet wat het bestand belóófde. **Loop bij elke verhuizing na
 welke belofte eraan hing en of die nog ergens getoetst wordt.**
 
+⚠️⚠️ **En noem je een grendel bij naam, dan is dat sinds 10-09-2026 een controle**
+(QS8-412): `npm run padverwijzing:controle` wordt rood zodra een bestand een
+repo-pad tussen backticks noemt dat niet bestaat. 📏 Aanleiding: negen bestanden
+noemden een testbestand dat er niet was, en het zuiverste geval was
+`src/shared/ui/Foto.tsx` — dat legde zijn belofte uit, waarschuwde in dezelfde
+kop voor verhuizingen, en wees naar een toets die nooit geschreven is. **Een
+ontbrekende test valt op; een test waarvan in de bron staat dát hij er is, valt
+niet op.** De controle vindt dat de grendel er niet ís; of hij het júíste toetst
+blijft handwerk. Scope, register en de ijking staan in
+`docs/decisions/2026-09-10-een-grendel-die-alleen-in-een-comment-staat.md`.
+
+⚠️⚠️ **Kijk bij een ijking wélke test omvalt, niet dát er een omvalt.** 📏 Bij
+QS8-412 werd de suite rood op een ándere toets dan de grendel die de mutatie
+noemde, en de bedoelde grendel bleef groen — de knip die commentaar uit de bron
+haalt (`\/\/[^\n]*`) at alles op ná de `//` van een URL. Dezelfde knip stond in
+twee testbestanden en was in allebei blind voor die vorm; met
+`const x = 'https://opslag/x'; Linking.openURL(x);` in `Document.tsx` bleef de
+suite groen op eenenzestig tests. **De knip die een controle scherp houdt, is
+zelf een grendel.**
+
 #### Een bevinding die je wegzet, zegt wanneer hij terugkomt (QS8-123)
 
 Elke rij in `docs/ENGINEER-REVIEW.md` met risico **Laag** draagt de zin
@@ -688,6 +723,17 @@ EPIC 12") werkte, maar noemde een feature die al gepland was. Dat kon niet bij d
 rij van 17-08 over het ontkoppelen: QS8-110/optie C bestond toen nog niet als
 plan. Wat je wél altijd kunt opschrijven is waaróm iets nú laag is. Vervalt die
 aanname, dan is het geen Laag meer.
+
+⚠️⚠️ **Een `|` in een tabelcel schrijf je als `\|`, óók binnen backticks.**
+GFM knipt een tabelrij op élke niet-ontsnapte streep — een codespan wordt pas ná
+het knippen herkend — en de overtollige cellen vallen weg aan het **eind**, dus
+precies op de risicokolom. 📏 Op 10-09-2026 (QS8-415) renderden **18** rijen
+iets anders dan hun risico en verloren er **3** de tekst erachter, terwijl de
+brontekst overal klopte. `review:controle` knipt sinds dat issue zoals GFM
+knipt; hij deed het daarvóór van rechts naar links, mét een comment dat een cel
+nu eenmaal een streep kan dragen. **Een controle die een lastig geval omzeilt in
+plaats van het te melden, bewaakt vanaf dat moment de omweg en niet de belofte.**
+Uitleg in `docs/decisions/2026-09-10-de-kolom-die-de-lezer-niet-ziet.md`.
 
 ⚠️ **Vraag bij elke nieuwe beslissing die op een bestaande primitieve handeling
 leunt: staat daar een weggelegde bevinding over?** Een rij die terecht Laag was

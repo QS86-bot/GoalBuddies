@@ -107,7 +107,7 @@ grant update (
 --    schakelaar die altijd uit lijkt te staan. Elk onderdeel af, de keten stuk —
 --    onwrikbare regel 18, vraag 5.
 --
---    `tests/beloftes/mijn-profiel-is-volledig.test.ts` bewaakt dit voor élke
+--    `tests/rls/mijn-profiel-is-volledig.test.ts` bewaakt dit voor élke
 --    volgende kolom, en toetst de belofte ("wat de groep niet mag lezen, leest
 --    de eigenaar via de view") in plaats van een lijst namen.
 --

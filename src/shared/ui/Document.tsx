@@ -18,7 +18,7 @@ import { Body, Caption } from './Text';
  *    in `src/modules/buddies/chatdoc.ts` voor waarom er geen paginategenaar is.
  *
  *    Een prop die er niet is, kan niet per ongeluk in een `Linking.openURL()`
- *    belanden. `tests/ui/document.test.tsx` toetst die belofte hier, bij de
+ *    belanden. `tests/beloftes/een-document-voert-niets-uit.test.ts` toetst die belofte hier, bij de
  *    code die hem waarmaakt — niet bij het scherm dat hem vandaag gebruikt.
  *
  * ⚠️⚠️ **De soort komt uit het pad en nooit uit de naam.** `soort` is wat

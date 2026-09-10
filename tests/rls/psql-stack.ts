@@ -55,8 +55,8 @@ export const PSQL_DB = process.env.PGDATABASE ?? 'goalbuddies_rls';
  * uitgebreider maakt. Standaard uit, want een test die op een foutregel let,
  * krijgt er anders ongevraagd andere tekst.
  */
-export function psql(sql: string, { verbose = false } = {}): string {
-  const args = [
+function basisArgumenten(verbose: boolean): string[] {
+  return [
     '-U',
     PSQL_OMGEVING.PGUSER as string,
     '-d',
@@ -66,11 +66,38 @@ export function psql(sql: string, { verbose = false } = {}): string {
     '-v',
     'ON_ERROR_STOP=1',
     ...(verbose ? ['-v', 'VERBOSITY=verbose'] : []),
-    '-tAc',
-    sql,
+    '-tA',
   ];
+}
 
-  return execFileSync('psql', args, { env: PSQL_OMGEVING, encoding: 'utf8' }).trim();
+export function psql(sql: string, { verbose = false } = {}): string {
+  return execFileSync('psql', [...basisArgumenten(verbose), '-c', sql], {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+  }).trim();
+}
+
+/**
+ * Zelfde aanroep, maar de SQL gaat via stdin in plaats van via `-c`.
+ *
+ * ⚠️ **Waarom dit hier staat en niet in het testbestand dat het nodig had.**
+ *    `-c` voert zijn tekst uit als één impliciete transactie; een bestand dat
+ *    zelf `begin;` … `rollback;` doet en er een `do $$ … $$`-blok in heeft, hoort
+ *    via stdin te gaan. Dat is een reden om de *vlag* te variëren, geen reden om
+ *    de hele argumentenlijst opnieuw te typen — en dat laatste is precies wat er
+ *    in `goedkeuring-wijst-naar-de-eigenaar.test.ts` gebeurde: een zevende kopie,
+ *    zónder `-h`/`-p`, die alleen werkte doordat `PSQL_OMGEVING` die twee in de
+ *    omgeving zet. CLAUDE.md: *een controle die psql aanroept, bouwt zijn eigen
+ *    aanroep niet.* Het register dat dat bewaakt kijkt vandaag alleen in
+ *    `scripts/` — dat gat staat als QS8-414 — dus hier is de enige rem dat de
+ *    lijst maar op één plek staat.
+ */
+export function psqlMetInvoer(sql: string, { verbose = false } = {}): string {
+  return execFileSync('psql', basisArgumenten(verbose), {
+    env: PSQL_OMGEVING,
+    encoding: 'utf8',
+    input: sql,
+  });
 }
 
 /** Wat er met deze suite moet gebeuren. */

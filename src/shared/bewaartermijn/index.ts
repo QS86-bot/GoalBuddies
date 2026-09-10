@@ -19,8 +19,9 @@
  *    constante bestaat om het in de interface te kunnen zéggen. Lopen de twee
  *    uiteen, dan belooft het scherm een andere termijn dan de server aanhoudt —
  *    allebei de onderdelen kloppen en het geheel liegt, precies de naadfout van
- *    onwrikbare regel 18. `tests/rls/bijlage-bewaartermijn.test.ts` legt ze
- *    naast elkaar.
+ *    onwrikbare regel 18. `tests/rls/chatfoto-bewaartermijn.test.ts` en
+ *    `tests/rls/chatdoc-bewaartermijn.test.ts` leggen ze naast elkaar — één per
+ *    opruimpas, allebei tegen dezelfde functie.
  *
  * ⚠️ **Waarom in `shared` en niet in `modules/buddies`, met dezelfde reden als
  *    `shared/categorieen`.** `shared/ui/Foto.tsx` en `shared/ui/Document.tsx`

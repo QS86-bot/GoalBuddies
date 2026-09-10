@@ -21,8 +21,14 @@ import { Caption } from './Text';
  *    (QS8-391).** CLAUDE.md noemt een verhuizing de gevaarlijkste beweging die
  *    er is: de tests gaan mee en blijven groen, want ze toetsen wat er in het
  *    bestand staat en niet wat het bestand beloofde. De belofte staat daarom
- *    hier, bij de code, en `tests/ui/foto.test.tsx` toetst hem op deze plek —
- *    niet op de plek waar hij vandaan komt.
+ *    hier, bij de code, en `tests/beloftes/een-foto-is-getekend-of-niets.test.ts`
+ *    toetst hem op deze plek — niet op de plek waar hij vandaan komt.
+ *
+ * ⚠️⚠️ **En die zin was tot 10-09-2026 een bewering zonder grendel** (QS8-412):
+ *    hij noemde een testbestand dat niet bestond. Precies de vorm waar deze
+ *    kop voor waarschuwt, één alinea eerder. De toets die er nu staat voert de
+ *    twee tekenaars úít — een bronbewaking kan niet zien wat er gebeurt als het
+ *    tekenen mislukt, en dát is het geval waarin het kale pad zou blijven staan.
  *
  * ⚠️ **"Geen foto" is een eigen uitkomst en geen lege ruimte.** `url` is `null`
  *    zodra het tekenen niets opleverde — een verwijderd bestand, een verlopen
