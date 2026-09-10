@@ -328,7 +328,7 @@ describe.runIf(beschikbaar)('de bewijsfoto-bucket (0227) en de kolomgrens (0229)
      * ⚠️⚠️ **Deze toets is met 0233 van vórm veranderd, en dat is geen
      *    versoepeling.** Hier stond dat `objects_bewijsfotos_uploader_dag_idx`
      *    moest bestaan. Die index droeg de `count(*)` over `storage.objects` die
-     *    deze teller deed — en sinds 0233 telt hij in `opslag_dagtellers`, op de
+     *    deze teller deed — en sinds 0233 telt hij in `dagtellers`, op de
      *    primaire sleutel. De index bediende dus geen enkele query meer en kostte
      *    wél een schrijfactie per upload; 0233 haalt hem weg.
      *
