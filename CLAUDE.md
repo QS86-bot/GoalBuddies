@@ -672,6 +672,15 @@ standaard voor élke nieuwe controle en elke test die een regel bewaakt — en h
 is dezelfde gedachte als bij de secret-scan in de deploy: eentje die nog nooit
 rood is geweest, is een aanname.
 
+⚠️⚠️ **En een meting die op "er werd iets rood" leunt, moet weten wát er rood
+werd — en of dat er vóór de meting al was.** Een instrument dat een grendel ijkt
+door hem te breken, beantwoordt in werkelijkheid *"is de toestand na mijn mutatie
+anders dan ervoor"*, en dat is niet te beantwoorden zonder "ervoor" te meten.
+📏 Dat kostte `rls:dekking` op 10-09-2026 een uitslag die precies omkeerde toen
+er één dagteller volliep, zonder dat er iets aan de code veranderd was — en de
+gevaarlijke richting is dat een gat er dan uit komt als bewaakt. Uitleg in
+`docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`.
+
 ⚠️ **Breek de grendel die de ijking nóemt, niet zomaar iets — anders is de ijking
 zelf de aanname.** Een controle heeft meestal meer dan één grendel achter elkaar,
 en een ijking die zijn geval door een pad voert dat een éérdere grendel al

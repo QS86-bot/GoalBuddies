@@ -50,7 +50,8 @@ import {
  *
  *       ⚠️ **Hermeten op 07-09-2026 (ronde 7) en nog steeds waar** — 📏 beide
  *       helften komen los uit `rls:dekking` als onbewaakt, en de kolomgrant
- *       geeft veertien kolommen zonder `id`. Beide staan sindsdien in
+ *       geeft twintig kolommen zonder `id` (📏 hermeten 10-09-2026; hier stond
+ *       veertien, en dat getal was gedrift). Beide staan sindsdien in
  *       `NIET_PER_HELFT_TE_METEN` in `scripts/rls-dekking.mjs`, zodat het
  *       instrument ze niet elke run opnieuw als gat meldt. **Deze kop blijft de
  *       plek waar de meting staat; het register verwijst hierheen.** Er bestáát geen rij die de ene helft passeert
