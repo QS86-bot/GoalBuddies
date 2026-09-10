@@ -15,11 +15,36 @@
 # Gebruik:
 #   scripts/schema-opbouwen.sh                 # lokale server op poort 5433
 #   PGPORT=5432 scripts/schema-opbouwen.sh
+#   scripts/schema-opbouwen.sh --dubbel        # elk bestand direct twee keer
+#
+# ⚠️⚠️ **Wat `--dubbel` toetst, en waarom "direct" het belangrijkste woord is**
+#    (QS8-413). Elk migratiebestand wordt tweemaal afgespeeld vóórdat de
+#    volgende aan de beurt is. Dat vindt een bestand dat op **zichzelf** botst —
+#    0252 kon zijn eigen unieke constraint niet droppen zolang zijn eigen
+#    foreign key eraan hing — en laat de uitzonderingsklasse met rust die
+#    CLAUDE.md beschermt: een botsing met een **latere** migratie kan hier per
+#    definitie niet optreden, want die migratie heeft nog niet gedraaid.
+#
+#    Een statische regel kan deze klasse niet zien. `bezwarenIn()` toetst per
+#    object of er een `drop … if exists` vóór staat, en die stónd er voor
+#    allebei de constraints van 0252. De fout zat in de volgorde **tussen twee
+#    objecten**, en dat is een eigenschap van het geheel.
+#
+#    📏 Kost 2 seconden op 255 migraties (23,3 s → 25,3 s), want beide passes
+#    gaan in één psql-sessie: de tweede is per definitie bijna helemaal no-op.
 #
 # Voorwaarde: een draaiende Postgres 16 waarop je superuser bent. Zie
 # docs/DEPLOY.md, §"Het schema elders opbouwen".
 
 set -euo pipefail
+
+DUBBEL=0
+for arg in "$@"; do
+  case "$arg" in
+    --dubbel) DUBBEL=1 ;;
+    *) echo "onbekende optie: $arg" >&2; exit 2 ;;
+  esac
+done
 
 WORTEL="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DB="${DB:-goalbuddies_opbouw}"
@@ -70,8 +95,19 @@ for bestand in "$WORTEL"/supabase/migrations/*.sql; do
   # ⚠️ Elke migratie in zijn eigen transactie, precies zoals Supabase hem heeft
   #    toegepast. Alles in één transactie zou een fout in migratie 60 laten
   #    lijken op een fout in migratie 1.
-  if ! "${PSQL[@]}" -d "$DB" -f "$bestand" >/dev/null; then
-    echo "✗ ${naam} viel om" >&2
+  # ⚠️ Bij `--dubbel` staat het bestand er twee keer, in **één** psql-sessie.
+  #    Twee losse aanroepen zouden 255 extra processen kosten voor precies
+  #    dezelfde uitslag.
+  BESTANDEN=(-f "$bestand")
+  if [[ "$DUBBEL" == "1" ]]; then BESTANDEN+=(-f "$bestand"); fi
+
+  if ! "${PSQL[@]}" -d "$DB" "${BESTANDEN[@]}" >/dev/null; then
+    if [[ "$DUBBEL" == "1" ]]; then
+      echo "✗ ${naam} viel om — draai hem los om te zien of het de eerste of de" >&2
+      echo "  tweede ronde was:  psql -v ON_ERROR_STOP=1 -f ${bestand}" >&2
+    else
+      echo "✗ ${naam} viel om" >&2
+    fi
     exit 1
   fi
 
@@ -94,4 +130,8 @@ done
 major="$("${PSQL[@]}" -At -d "$DB" -c 'show server_version_num' 2>/dev/null | head -1)"
 major="${major:0:2}"
 
-echo "✓ ${aantal} migraties afgespeeld op een lege database (Postgres ${major:-?})"
+if [[ "$DUBBEL" == "1" ]]; then
+  echo "✓ ${aantal} migraties elk twee keer afgespeeld op een lege database (Postgres ${major:-?})"
+else
+  echo "✓ ${aantal} migraties afgespeeld op een lege database (Postgres ${major:-?})"
+fi

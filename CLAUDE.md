@@ -568,6 +568,21 @@ docs/decisions/
     met rust. Meting en beide klassen in
     `docs/decisions/2026-08-28-idempotent-betekent-niet-altijd-doorlaten.md`.
 
+    ⚠️⚠️ **En sinds 10-09-2026 wordt die belofte ook echt uitgevoerd**
+    (QS8-413): `npm run idempotent:controle` speelt élke migratie **direct na
+    zichzelf** nog een keer af op een eigen lege database. Dat "direct" is het
+    ontwerp en geen detail — de uitzonderingsklasse hierboven kan zo niet
+    optreden, want de latere migratie heeft nog niet gedraaid. 📏 Gemeten:
+    naïef alles achteraf herhalen meldt **14** bestanden, deze vorm **0**.
+
+    Aanleiding is 0252: twee constraints die van elkaar afhingen, elk mét zijn
+    eigen `drop … if exists`, en tóch een botsing bij de tweede run omdat de
+    unieke constraint niet weg kon zolang de foreign key eraan hing. 📏 Met die
+    oude vorm teruggezet blijft de **statische** grendel groen op 23 tests. Een
+    per-object-regel kan een volgordefout **tussen** twee objecten niet zien;
+    dat is een eigenschap van het geheel. Uitleg in
+    `docs/decisions/2026-09-10-een-migratie-die-op-zichzelf-botst.md`.
+
     ⚠️ **De drop-uitzondering leest de handtekening en niet alleen de naam.** Een
     migratie die de vorm van een functie verandert móet hem eerst droppen, want
     `or replace` kan een returntype niet wijzigen. Maar een drop van

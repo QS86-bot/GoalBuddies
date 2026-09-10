@@ -63,6 +63,7 @@
     "keten:controle": "node scripts/dode-keten-controle.mjs",
     "schermingang:controle": "node scripts/schermingang-controle.mjs",
     "padverwijzing:controle": "node scripts/padverwijzing-controle.mjs",
+    "idempotent:controle": "node scripts/idempotent-controle.mjs",
     "rpc:controle": "node scripts/rpc-argumenten-controle.mjs",
     "markeringen:controle": "node scripts/conflictmarkeringen-controle.mjs",
     "storage:controle": "node scripts/storage-controle.mjs",
