@@ -135,6 +135,14 @@ export const profielSchema = z.object({
     .nullable(),
   reminder_enabled: z.boolean(),
   reminder_tone: z.enum(['gentle', 'firm']),
+
+  // ⚠️ De schakelaars per meldingsoort (QS8-92). `nudge` staat hier niet bij:
+  //    dat ís `reminder_enabled` hierboven. De vertaling van soort naar veld
+  //    staat op één plek — `VOORKEUR_PER_SOORT` in de module notifications.
+  notify_approval_request: z.boolean(),
+  notify_approval_received: z.boolean(),
+  notify_cycle_summary: z.boolean(),
+  notify_commitment_witness: z.boolean(),
   share_moves_by_default: z.boolean(),
   /**
    * De taalkeuze — QS8-115, criterium 4.

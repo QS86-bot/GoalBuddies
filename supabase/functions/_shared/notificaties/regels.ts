@@ -38,6 +38,7 @@
  *    reeks gered" hoort strikt persoonlijk te zijn en nooit in een groepsmelding.
  */
 
+
 /**
  * Zoals `notifications_sent.kind` in de database.
  *
@@ -548,4 +549,96 @@ export function uurUit(tijd: string | null): number | null {
 
   const uur = Number(match[1]);
   return Number.isInteger(uur) && uur >= 0 && uur <= 23 ? uur : null;
+}
+
+/**
+ * De schakelaars van één ontvanger, zoals ze uit `profiles` komen.
+ *
+ * ⚠️ De sleutels zijn de kolomnamen en niet de soorten. Zo is er precies één
+ *    vertaling tussen de twee — `VOORKEUR_PER_SOORT` — in plaats van twee
+ *    lijsten die gelijk moeten blijven.
+ */
+export interface Meldingsvoorkeuren {
+  readonly reminder_enabled: boolean;
+  readonly notify_approval_request: boolean;
+  readonly notify_approval_received: boolean;
+  readonly notify_cycle_summary: boolean;
+  readonly notify_commitment_witness: boolean;
+}
+
+/**
+ * De kolom op `profiles` die deze soort aan- of uitzet — QS8-92.
+ *
+ * ⚠️ **`nudge` wijst naar `reminder_enabled` en krijgt géén eigen kolom.** Die
+ *    schakelaar bestaat al, en er hangen `reminder_time` en `reminder_tone` aan.
+ *    Er een `notify_nudge` naast zetten zou hetzelfde feit op twee plekken
+ *    zetten (QS8-125), en dan is het een kwestie van tijd tot er één bijgewerkt
+ *    wordt en de andere liegt. `tests/rls/meldingsvoorkeuren.test.ts` verbiedt
+ *    het bestaan van die kolom met zoveel woorden.
+ *
+ * ⚠️ **Dit is een `Record` over `Melding` en geen lijst, en dat is de grendel.**
+ *    Komt er een zesde soort bij zonder rij hier, dan is dat een typefout — en
+ *    dit bestand valt wél onder `tsc`, in tegenstelling tot de job die het
+ *    aanroept. Gratis, en hij vuurt vóórdat er een test aan te pas komt.
+ */
+export const VOORKEUR_PER_SOORT: Readonly<Record<Melding, keyof Meldingsvoorkeuren>> = {
+  nudge: 'reminder_enabled',
+  approval_request: 'notify_approval_request',
+  approval_received: 'notify_approval_received',
+  cycle_summary: 'notify_cycle_summary',
+  commitment_witness: 'notify_commitment_witness',
+} as const;
+
+/**
+ * Waarom deze soort nú niet naar deze ontvanger mag, of `null` als hij mag.
+ *
+ * ⚠️ **Dit is het enige antwoord op die vraag, en dat is het punt.** Het lag voor
+ *    de hand om per soort een `if` in de job te zetten; dan zijn er vijf plekken
+ *    die het eens moeten blijven, en de zesde soort komt er langs zonder dat
+ *    iemand het merkt. De job roept dit aan in `stuur()` — het ene punt waar
+ *    alle vijf de soorten doorheen gaan, en vóór de rij in `notifications_sent`.
+ *
+ * ⚠️ Een réden en geen `false`, om dezelfde reden als bij `nudgeReden()`: in een
+ *    job zonder scherm is "waarom niet" het enige dat je achteraf nog hebt.
+ */
+export function meldingPoortReden(
+  soort: Melding,
+  voorkeuren: Meldingsvoorkeuren,
+): string | null {
+  const kolom = VOORKEUR_PER_SOORT[soort];
+  return voorkeuren[kolom] ? null : `soort staat uit (${kolom})`;
+}
+
+/**
+ * De profielvelden die horen bij "zet deze meldingsoort aan of uit" — QS8-92.
+ *
+ * ⚠️ **Waarom dit een functie met letterlijke kolomnamen is en geen
+ *    `{ [kolom]: aan }`.** Dat laatste is korter en het werkte, maar dan staat er
+ *    nergens in `src/` of `app/` nog een leesbare kolomnaam. 📏
+ *    `npm run kolomrechten:controle` viel er meteen over: vier UPDATE-grants
+ *    "die niets gebruikt". Terecht — een grant waarvan geen mens kan zien dat
+ *    en waaróm hij gebruikt wordt, is niet te beoordelen, en dat is precies wat
+ *    die controle bewaakt.
+ *
+ * ⚠️ Eén schrijver, zelfde reden als bij `herinneringVelden()`: een scherm dat
+ *    het object zélf samenstelt, is de tweede schrijver en dan loopt de belofte
+ *    weg van de test.
+ *
+ * ⚠️ De `switch` is exhaustief over `Melding` mínus `nudge`; een zesde soort is
+ *    hier een typefout en geen scherm dat er stil één mist.
+ */
+export function meldingsoortVelden(
+  soort: Exclude<Melding, 'nudge'>,
+  aan: boolean,
+): Record<string, boolean> {
+  switch (soort) {
+    case 'approval_request':
+      return { notify_approval_request: aan };
+    case 'approval_received':
+      return { notify_approval_received: aan };
+    case 'cycle_summary':
+      return { notify_cycle_summary: aan };
+    case 'commitment_witness':
+      return { notify_commitment_witness: aan };
+  }
 }

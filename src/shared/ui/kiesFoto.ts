@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 
 import { base64NaarBytes } from '../../modules/auth';
+import { ontdoeVanMetadata } from '../afbeelding';
 
 /**
  * Een foto kiezen — QS8-71 (groepschat) en QS8-391 (bewijs bij een voltooiing).
@@ -48,6 +49,25 @@ export type Fotokeuze =
  *    scherm waar je staat en niet bij de kiezer. Alleen de sleutel verschilt;
  *    de vier uitgangen zijn identiek, en die zijn de reden dat dit een eigen
  *    bestand is.
+ *
+ * ⚠️⚠️ **`ontdoeVanMetadata()` staat hier en niet in `uploadChatfoto()`, en dat
+ *    is een keuze.** De bytes die deze functie teruggeeft, gaan naar het scherm
+ *    (voor de voorvertoning) én naar de upload. Knippen we pas bij het uploaden,
+ *    dan bestaat er een moment waarop de app een afbeelding mét coördinaten in
+ *    handen heeft en doorgeeft. Hier is de enige plek waar de bytes de app
+ *    binnenkomen, en dus de enige plek waar "ze zijn nooit ongeknipt geweest"
+ *    een ware zin is.
+ *
+ * ⚠️⚠️ **En daarom geldt de knip sinds deze samenvoeging voor béide emmers en
+ *    niet alleen voor de chat.** Een bewijsfoto gaat naar de groepsgenoten die
+ *    hem beoordelen; die draagt dezelfde coördinaten en hetzelfde tijdstip. Dat
+ *    de kiezer één functie is, is precies waarom de tweede aanroeper dit gratis
+ *    meekreeg — en het is de reden om de knip hier te houden en niet per upload
+ *    te herhalen.
+ *
+ * ⚠️ **Mislukt het knippen, dan is er geen foto.** Niet een foto zonder
+ *    voorvertoning, niet een foto die het toch probeert: de faalstand valt dicht
+ *    (QS8-395).
  */
 export async function kiesFoto(sleutel: Fotofoutsleutel): Promise<Fotokeuze> {
   const toestemming = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -66,5 +86,9 @@ export async function kiesFoto(sleutel: Fotofoutsleutel): Promise<Fotokeuze> {
   const bytes = base64 === null ? null : base64NaarBytes(base64);
   if (bytes === null) return { soort: 'fout', sleutel };
 
-  return { soort: 'gekozen', data: bytes, mime: gekozen.mimeType ?? 'image/jpeg' };
+  const mime = gekozen.mimeType ?? 'image/jpeg';
+  const schoon = ontdoeVanMetadata(bytes, mime);
+  if (!schoon.ok) return { soort: 'fout', sleutel };
+
+  return { soort: 'gekozen', data: schoon.data, mime };
 }
