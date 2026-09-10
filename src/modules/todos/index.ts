@@ -19,5 +19,6 @@ export {
   verwijderTaak,
   verzetTaak,
   zetAfgevinkt,
+  zetTekst,
   type Taak,
 } from './api';
