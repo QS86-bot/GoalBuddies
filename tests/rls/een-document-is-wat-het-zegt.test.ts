@@ -309,11 +309,52 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0242)', () => {
          from public.chat_messages where id = '${berichtId}'`,
       ),
     ).toBe('-/-');
+    // ⚠️⚠️ **Het object blíjft staan, en dat is de reparatie en niet het gat.**
+    //    Tot 0247 wiste `wis_bijlagen_van_vertrekker()` de metadata-rij van een
+    //    chatdoc, en dan blijft de blob op de opslag achter zonder pad om hem
+    //    ooit nog op te ruimen — *"niet onleesbaar en dus weg, maar onvindbaar en
+    //    dus voor altijd"* (0235 §4). Nu de leesgrens aan het bericht hangt, is
+    //    een wees meteen onleesbaar en haalt de opruimpas blob én rij weg.
     expect(
       psql(`select count(*) from storage.objects where bucket_id = 'chatdocs' and name = '${doelpad}'`),
+    ).toBe('1');
+
+    // ⚠️ En dat is alleen goed nieuws als de wees ook écht dicht zit. Zonder deze
+    //    regel zegt de test hierboven alleen dat er iets blijft staan — niet dat
+    //    het niemand meer iets zegt. Alice is lid van dezelfde groep.
+    const claims = JSON.stringify({ sub: alice, role: 'authenticated' }).replace(/'/g, "''");
+    expect(
+      psql(
+        `begin;
+         select set_config('request.jwt.claims', '${claims}', true);
+         set local role authenticated;
+         select count(*) from storage.objects where name = '${doelpad}';
+         rollback;`,
+      )
+        .split('\n')
+        .slice(1)
+        .join('\n')
+        .trim(),
     ).toBe('0');
 
+    // ⚠️⚠️ **Eerst het respijtuur, en dat is geen marge maar een grendel.** Een
+    //    upload die net geslaagd is heeft nog geen berichtrij — dat venster is de
+    //    hele reden dat wezen bestaan. Zou de pas die meteen meenemen, dan wist
+    //    hij het document dat op ditzelfde moment verstuurd wordt.
+    expect(psql(`select count(*) from verlopen_chatdocs(500) where pad = '${doelpad}'`)).toBe('0');
+
+    // ⚠️ En daarna ziet hij hem wél, met reden `wees`. Zonder deze twee regels
+    //    naast elkaar is "hij blijft staan" niet te onderscheiden van "hij blijft
+    //    voor altijd staan" — en dát verschil is de hele reparatie van 0247.
+    psql(
+      `update storage.objects set created_at = now() - interval '2 hours'
+        where bucket_id = 'chatdocs' and name = '${doelpad}'`,
+    );
+    expect(psql(`select reden from verlopen_chatdocs(500) where pad = '${doelpad}'`)).toBe('wees');
+
     psql(`delete from public.chat_messages where id = '${berichtId}'`);
+    psql(`delete from storage.objects where name = '${doelpad}'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
     psql(`delete from auth.users where id = '${vertrekker}'`);
   });
 });

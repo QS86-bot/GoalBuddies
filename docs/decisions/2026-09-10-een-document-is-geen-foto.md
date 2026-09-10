@@ -1,6 +1,6 @@
 # Een document is geen foto
 
-**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0240, 0241, 0242, 0243
+**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0240, 0241, 0242, 0243 · **Vervolg:** QS8-408 (0247)
 
 Dit document is de tegenhanger van
 `docs/decisions/2026-09-09-een-foto-in-de-chat.md`. Wat daar staat over het pad,
@@ -263,7 +263,61 @@ is te belangrijk om onmeetbaar te zijn.
 - **Een document in een systeembericht.** Nooit: de CHECK sluit `type = 'system'`
   uit, en een systeembericht noemt de persoon en de gebeurtenis, nooit een titel
   of een bestand (dossier 002 §3).
-- **De opruimpas voor wezen in de emmer.** Zelfde grens en dezelfde open
-  Laag-rij als bij 0224 en 0230: SQL kan de blob niet weghalen, alleen de
-  metadata-rij. Het bestand is daarna onbereikbaar — er is geen pad meer om te
-  ondertekenen.
+- ~~**De opruimpas voor wezen in de emmer.**~~ ✅ **Gebouwd op 10-09 in QS8-408,
+  migratie 0247** — zie §10. Wat hier stond ("zelfde grens als 0224 en 0230: SQL
+  kan de blob niet weghalen") klopte, en de uitweg was de arbeidsdeling die 0235
+  al had bedacht: de database wijst aan, de rollover wist.
+
+## 10. Nagekomen: het document volgt alsnog dezelfde weg — QS8-408, migratie 0247
+
+§5 hierboven sluit met een asymmetrie die geen besluit was: een verweesde foto
+bleef staan en een verweesd document werd gewist. Dat verschil kwam volledig uit
+de leespolicy — `chatfotos_select` hing sinds 0235 §1 aan het **bericht**,
+`chatdocs_select` aan het **pad** — en zolang dat zo was, wás wissen het juiste
+antwoord: een wees zou anders voor de hele groep leesbaar blijven.
+
+0247 haalt de oorzaak weg, en dan mag de rest mee:
+
+1. **`chatdocs_select` hangt aan het bericht**, in de vorm van 0235 §1. Inclusief
+   het eigenaarsbeen, en dat is hier dwingender dan bij de foto: Postgres past de
+   SELECT-policy óók toe op `delete … where`, dus zonder die tak kan de plaatser
+   zijn eigen wees niet opruimen — en dan sterft de compenserende opruiming van
+   `stuurBericht()` stil, want `remove()` geeft geen fout op nul rijen.
+2. **Een opruimpas**: `chatdoc_bewaartermijn()` en `verlopen_chatdocs()`, in de
+   vorm van 0235 §3. De pas wijst aan en wist niets; de rollover doet het
+   `storage.remove()` dat als enige de blob meeneemt.
+3. **`wis_bijlagen_van_vertrekker()` laat het object staan**, voor beide emmers.
+   Het weglaten van die `delete` ís de reparatie, en dat leest averechts: de rij
+   láten staan is wat het bestand écht doet verdwijnen.
+
+⚠️⚠️ **De termijn is 21 dagen en dat is een aanname, geen besluit.** Bij de foto
+staat er *"Besluit van Quinten, 09-09-2026"*; hier is het de conservatieve keuze
+van de bouwsessie langs de weg die CLAUDE.md voorschrijft. De aanname: een
+document in een groepschat is dezelfde soort deling als een foto — iets wat je
+laat zien, niet iets wat de app voor je bewaart. Waar hij kan sneuvelen: een
+gescand trainingsschema wordt eerder ná drie weken teruggezocht dan een kiekje.
+Het is één regel, want de termijn staat op één plek.
+
+⚠️ **Twee constanten en twee databasefuncties, met een test die zegt dat ze
+vandaag gelijk zijn.** Samenvoegen zou van twee productkeuzes één maken; los
+laten staan zonder toets laat ze uit elkaar lopen zonder dat iemand het besluit.
+`tests/rls/chatdoc-bewaartermijn.test.ts` legt alle vier naast elkaar, en dat
+geval is uitdrukkelijk géén defect als het ooit rood wordt — het vraagt dan om
+een reden.
+
+⚠️ **Zusterfuncties in SQL, één lus in de rollover.** De twee passen delen hun
+vorm en niet hun regel: emmer en termijn zijn per soort inhoud een eigen keuze,
+en het lichaam is vier regels. Wat wél zou gaan rotten als het twee keer bestond,
+is de uitvoerende helft — het aftoppen dat zichzelf meldt, het blokgewijs wissen,
+het doortellen bij een fout, het tellen op de teruggave van `remove()`. Dat zijn
+vier grendels die stuk voor stuk uit een bevinding komen, en die staan nu één
+keer in `supabase/functions/rollover/index.ts`. De tegenproef die dit project
+kent (0233/0234, *"twee tellers voor één regel is een halve familie"*) ging over
+twee grendels die dezélfde regel handhaafden; dit zijn er twee met elk een eigen
+getal.
+
+📏 **Negen grendels apart met de hand gebroken en rood gezien**, en één ervan was
+een bevinding over de test zelf: *"houdt zich aan het limiet"* bleef groen toen
+de `limit` op 500 gezet werd, want er stonden op dat moment niet eens twee
+kandidaten. De test zet ze er nu eerst neer. Vraag 3 van onwrikbare regel 18, op
+een test van vandaag.

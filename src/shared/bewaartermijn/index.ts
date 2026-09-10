@@ -1,5 +1,5 @@
 /**
- * Hoe lang de server een gedeelde foto bewaart — QS8-396, migratie 0235.
+ * Hoe lang de server een gedeelde bijlage bewaart — QS8-396, migratie 0235.
  *
  * **Besluit van Quinten, 09-09-2026: 21 dagen.**
  *
@@ -22,3 +22,18 @@
  *    daar niet onder — om dezelfde reden dat de opruimpas in SQL mag staan.
  */
 export const CHATFOTO_BEWAARDAGEN = 21;
+
+/**
+ * Hoe lang de server een gedeeld document bewaart — QS8-408, migratie 0247.
+ *
+ * ⚠️⚠️ **Gelijk aan `CHATFOTO_BEWAARDAGEN` en tóch een eigen constante, want het
+ *    is een eigen keuze.** Bij de foto staat er *"Besluit van Quinten"*; dit
+ *    getal is de conservatieve aanname van de bouwsessie, met de onderbouwing in
+ *    §2 van migratie 0247. Ze samenvoegen zou van twee productkeuzes één maken,
+ *    en dan is een verschil later niet meer te maken zonder de andere te raken.
+ *
+ * ⚠️ Een kopie van `chatdoc_bewaartermijn()` en geen bron — zelfde verhouding als
+ *    hierboven. `tests/rls/bijlage-bewaartermijn.test.ts` legt de vier waarden
+ *    naast elkaar: de twee databasefuncties, en deze twee constanten.
+ */
+export const CHATDOC_BEWAARDAGEN = 21;

@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { CHATDOC_BEWAARDAGEN } from '../bewaartermijn';
 import { t } from '../i18n';
 import { radius, space, useTheme } from '../theme';
 
@@ -118,6 +119,9 @@ export const CHATDOC_TEKSTEN = {
     return t('chatdoc.laden');
   },
   get afwezigtekst() {
-    return t('chatdoc.niet_beschikbaar');
+    // ⚠️ De termijn komt uit `CHATDOC_BEWAARDAGEN` en staat niet als getal in de
+    //    zin: het scherm en de opruimpas van 0247 moeten dezelfde termijn
+    //    noemen. Zelfde vorm en dezelfde reden als bij `CHATFOTO_TEKSTEN`.
+    return t('chatdoc.niet_beschikbaar', { dagen: CHATDOC_BEWAARDAGEN });
   },
 };

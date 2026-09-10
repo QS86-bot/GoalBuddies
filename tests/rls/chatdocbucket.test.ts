@@ -134,6 +134,22 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
        values ('chatdocs', '${groepArchief}/${alice}/document.pdf', '${alice}')
        on conflict do nothing`,
     );
+
+    // ⚠️⚠️ **Sinds 0247 hangt de leesgrens aan het bericht en niet aan de map**,
+    //    dus een object zónder bericht is voor iedereen behalve de plaatser
+    //    onzichtbaar. De fixture moet die berichten dus hébben — anders toetsen
+    //    de leesgevallen hieronder een wees en staan ze rood om de verkeerde
+    //    reden. Het geval "een wees is onleesbaar" heeft een eigen test.
+    for (const [groep, pad] of [
+      [groepA, padA()],
+      [groepArchief, `${groepArchief}/${alice}/document.pdf`],
+    ] as const) {
+      psql(
+        `insert into public.chat_messages (group_id, sender_id, body, type, attachment_url, attachment_name)
+         values ('${groep}', '${alice}', 'kijk', 'doc', '${pad}', 'document.pdf')
+         on conflict do nothing`,
+      );
+    }
   });
 
   afterAll(() => {
@@ -227,6 +243,45 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0240) en de twee remmen (0241)', 
        where group_id = '${groepA}' and user_id = '${bob}'`,
     );
     expect(gezien).toBe('0');
+  });
+
+  it('houdt een wees weg bij een groepsgenoot', () => {
+    // ⚠️⚠️ **De kern van 0247.** Een object zonder bericht heeft geen
+    //    bestaansrecht: de bijlage hóórt bij een bericht. Zolang de leesgrens aan
+    //    het pad hing, bleef een verweesd document voor de hele groep leesbaar —
+    //    en dat is precies waarom `wis_bijlagen_van_vertrekker()` het object toen
+    //    moest wissen, met een onopruimbare blob als prijs.
+    const wees = `${groepA}/${alice}/wees.pdf`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatdocs', '${wees}', '${alice}') on conflict do nothing`,
+    );
+    const gezien = als(bob, `select count(*) from storage.objects where name = '${wees}'`);
+    psql(`delete from storage.objects where name = '${wees}'`);
+    // ⚠️ De teller mee opruimen. 📏 Zonder deze regel aten deze twee gevallen het
+    //    dagplafond van groep A op, en viel het must-deny-geval verderop om met
+    //    23514 in plaats van 42501 — groen noch rood om de eigen reden. Sinds
+    //    0233 overleeft `dagtellers` een delete op `storage.objects` met opzet.
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    expect(gezien).toBe('0');
+  });
+
+  it('laat de plaatser zijn eigen wees nog wél zien', () => {
+    // ⚠️⚠️ **Het eigenaarsbeen is geen verzachting maar een gemeten noodzaak.**
+    //    Postgres past de SELECT-policy óók toe op `delete … where`, dus zonder
+    //    deze tak kan de plaatser zijn eigen wees niet opruimen — en dan sterft
+    //    de compenserende opruiming van `stuurBericht()` stil, want `remove()`
+    //    geeft geen fout op nul rijen. Zelfde geval en dezelfde reden als bij de
+    //    chatfoto (0235 §1).
+    const wees = `${groepA}/${alice}/eigen-wees.pdf`;
+    psql(
+      `insert into storage.objects (bucket_id, name, owner)
+       values ('chatdocs', '${wees}', '${alice}') on conflict do nothing`,
+    );
+    const gezien = als(alice, `select count(*) from storage.objects where name = '${wees}'`);
+    psql(`delete from storage.objects where name = '${wees}'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
+    expect(gezien).toBe('1');
   });
 
   it('laat een gearchiveerde groep leesbaar', () => {
