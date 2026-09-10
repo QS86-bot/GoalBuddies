@@ -1324,11 +1324,19 @@ export const nl = {
   // ⚠️ **De reden staat erbij sinds QS8-396, en dat is geen opsmuk.** Zonder de
   //    termijn leest "niet meer beschikbaar" als een storing, en dan probeert
   //    iemand het morgen weer. Mét de termijn is het een eigenschap van de app:
-  //    de server bewaart je foto's niet. `{dagen}` komt uit
-  //    `CHATFOTO_BEWAARDAGEN`, dat op zijn beurt naast `chatfoto_bewaartermijn()`
+  //    de server bewaart je bestanden niet. `{dagen}` komt uit
+  //    `BIJLAGE_BEWAARDAGEN`, dat op zijn beurt naast `bijlage_bewaartermijn()`
   //    gelegd wordt — één getal en niet twee.
-  'chatfoto.niet_beschikbaar': 'Deze foto staat er niet meer. Foto\u2019s blijven {dagen} dagen bewaard.',
-  'chatfoto.bewaartermijn': 'Foto\u2019s blijven {dagen} dagen op de server staan en gaan daarna weg.',
+  //
+  // ⚠️⚠️ **Eén sleutel voor de zin vóór het versturen, twee voor de zin erna**,
+  //    en dat is geen inconsistentie. Het besluit van QS8-408 zegt: *"als de zin
+  //    voor beide klopt, is één sleutel beter dan twee die hetzelfde zeggen"*.
+  //    De zin vóór het versturen gaat over de server en niet over wat je koos,
+  //    dus die klopt voor beide en is er één. De zin die er staat waar de bijlage
+  //    stónd, noemt het ding — *"deze foto"* / *"dit document"* — en dat is echt
+  //    verschillende tekst en geen duplicaat. Allebei lezen ze hetzelfde getal.
+  'chatfoto.niet_beschikbaar': 'Deze foto staat er niet meer. Gedeelde bestanden blijven {dagen} dagen bewaard.',
+  'bijlage.bewaartermijn': 'Gedeelde bestanden blijven {dagen} dagen op de server staan en gaan daarna weg.',
   'chatfoto.laden': 'Foto laden',
   'chatfoto.beeld': 'Foto in dit gesprek',
 
@@ -1343,8 +1351,7 @@ export const nl = {
   'chatdoc.uploaden_mislukt': 'Het document versturen lukte niet. Probeer het zo nog eens.',
   'chatdoc.rem_bereikt': 'Er zijn vandaag genoeg documenten gedeeld in deze groep. Morgen kan het weer.',
   'chatdoc.kiezen_mislukt': 'De bestandskiezer ging niet open.',
-  'chatdoc.niet_beschikbaar': 'Dit document staat er niet meer. Documenten blijven {dagen} dagen bewaard.',
-  'chatdoc.bewaartermijn': 'Documenten blijven {dagen} dagen op de server staan en gaan daarna weg.',
+  'chatdoc.niet_beschikbaar': 'Dit document staat er niet meer. Gedeelde bestanden blijven {dagen} dagen bewaard.',
   'chatdoc.openen': 'Openen',
   'chatdoc.openen_label': '{naam} openen, PDF, in een andere app',
   'chatdoc.openen_mislukt': 'Het document openen lukte niet.',
@@ -1562,6 +1569,11 @@ export const nl = {
   'lijst.omhoog': 'Naar boven',
   'lijst.omlaag': 'Naar beneden',
   'lijst.verwijderen': 'Verwijderen',
+  'lijst.hernoemen': 'Tekst wijzigen',
+  'lijst.hernoem_label': 'Taak',
+  'lijst.hernoem_hint': 'Pas aan wat er staat. De rest van de regel blijft zoals hij is.',
+  'lijst.hernoem_opslaan': 'Opslaan',
+  'lijst.hernoem_annuleer': 'Annuleren',
   'lijst.afgerond_op': 'Afgerond op {datum}',
   'lijst.laden_mislukt': 'De lijst laden lukte niet.',
   'lijst.toevoegen_mislukt': 'De taak toevoegen lukte niet.',

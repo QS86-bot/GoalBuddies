@@ -55,6 +55,7 @@
     "adviseur:controle": "node scripts/adviseur-controle.mjs",
     "wachtwoord:controle": "node scripts/wachtwoord-controle.mjs",
     "aansluiting:controle": "node scripts/aansluiting-controle.mjs",
+    "afstemgetal:controle": "node scripts/afstemgetal-controle.mjs",
     "verbindingen:controle": "node scripts/verbindingen-controle.mjs",
     "registerdrift:controle": "node scripts/registerdrift-controle.mjs",
     "register:controle": "node scripts/migratieregister-controle.mjs",

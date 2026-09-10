@@ -14,9 +14,9 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**253**.
+**254**.
 
-**Het gat is daarmee negenentwintig bestanden** — `0222` t/m `0250`, van 09-09
+**Het gat is daarmee dertig bestanden** — `0222` t/m `0251`, van 09-09
 en 10-09 en uit achttien verschillende issues:
 
 | | | DDL op `storage.objects` |
@@ -50,6 +50,7 @@ en 10-09 en uit achttien verschillende issues:
 | `0248_een_taak_deel_je_per_stuk_en_met_een_gekozen_groep.sql` | QS8-381 | nee |
 | `0249_vereiste_goedkeuringen_verraadt_geen_lidmaatschap.sql` | QS8-181 | nee |
 | `0250_een_document_volgt_dezelfde_weg_als_een_foto.sql` | QS8-408 | ja |
+| `0251_een_bewaartermijn_voor_alle_bijlagen.sql` | QS8-411 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -219,8 +220,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 49 controlescripts groen;
-`npm run poort` meldt 53 stappen.
+Typecheck, lint en alle 50 controlescripts groen;
+`npm run poort` meldt 54 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -299,7 +300,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0250` staan in de map: **253 bestanden**,
+Migraties `0001` t/m `0251` staan in de map: **254 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
@@ -1119,7 +1120,7 @@ Werk de epics in deze volgorde af. Binnen een epic: op prioriteit, hoog eerst.
 | 13 | **EPIC 9 — Commitment device** (QS8-14) | Laatste; raakt vertrouwen, dus niet haasten | ✅ **af** (21-08). QS8-83 (beloning vrijgeven), QS8-84 (straf verschuldigd) en QS8-85 (informeel) staan alle drie op Done; migraties 0057 en 0058, en de rollover is gedeployd mét `maak_straffen_verschuldigd` |
 | 14 | **EPIC 13 — Open of beschermde groepen** (QS8-132) | Besluit A41, 24-08. Varieert de gevoeligste policies die er zijn per groep, dus na alles wat erop leunt | ✅ **af** (24-08). Migraties 0076 (kolom, `group_events`, `zet_groepszichtbaarheid()`, twee systeemberichten), 0077 (`weekly_goals_select`), 0078 (`best_streak` en `last_cycle_start`) 0079 (De Ketting) en 0080 (de uitnodiging noemt de stand). Alle twintig oppervlakken beoordeeld; zeven staan bewust dicht, óók in een open groep. Beoordeling per oppervlak in beslisdocument 002 §6 |
 | 15 | **QS8-394 — hoe privé is een gedeelde foto** | Losgetrokken uit de doorlichting van 09-09. Drie stappen, en ze staan los van elkaar: QS8-395 (metadata eraf vóór het uploaden, In Review), QS8-396 (bewaartermijn van 21 dagen + de leesgrens aan het bericht, migratie 0235), QS8-397 (end-to-end-versleuteling — **een besluit van Quinten**, sleutelbeheer, niet op eigen gezag te bouwen). ⚠️ De bewaartermijn leunt op de uurlijkse rollover uit `.github/workflows/rollover.yml`; het restrisico staat in §6 en in `ENGINEER-REVIEW.md`. QS8-396 en QS8-399 zijn op 09-09 samengevoegd op één branch — de teller is die van 399, zie QS8-402 | 1 en 2 gebouwd, 3 wacht op Quinten |
-| 16 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, privé of gedeeld. Staat naast de kernlus en niet erin: De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | ✅ **Beide beslispunten zijn op 09-09 beslist.** Een **vijfde tabblad** (de kop van `_layout.tsx` zei "vier en niet vijf" en is herschreven met de reden erbij), en **per taak aanvinken** wat de groep ziet — variant B, bewust niet de C die de wens letterlijk vroeg. Daarmee is er géén verruiming van domeinregel 7 nodig. Deel 1 af: **QS8-379**, migratie `0246` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. Deel 2 af: **QS8-380** — het tabblad, het scherm en de datalaag, alles prive. Deel 3 af: **QS8-381**, migratie `0248` — delen per taak met **één gekozen groep** (B2, niet "iedereen met wie je een groep deelt"), via de RPC `zet_taakzichtbaarheid()` en beide kanten op. ⚠️ De security-ronde daar vond dat een gedeelde taak het lidmaatschap eronder overleefde; dat is gesloten met een trigger op `group_members` en niet met een regel in `verwijder_lid()` en `verlaat_groep()` — die twee eindigen een lidmaatschap verschillend. **QS8-386** is de kleine staart: `todo_items.body` heeft een schrijfrecht dat nog niemand gebruikt |
+| 16 | **EPIC — De Lijst** (QS8-378) | Wens van Quinten, 09-09-2026: losse to-do's op de taakbalk, getypt of ingesproken, privé of gedeeld. Staat naast de kernlus en niet erin: De Lijst levert nooit punten, een reeks of goedkeuring op, want de week blijft de enige eenheid die telt (domeinregel 9 en 10) | ✅ **Beide beslispunten zijn op 09-09 beslist.** Een **vijfde tabblad** (de kop van `_layout.tsx` zei "vier en niet vijf" en is herschreven met de reden erbij), en **per taak aanvinken** wat de groep ziet — variant B, bewust niet de C die de wens letterlijk vroeg. Daarmee is er géén verruiming van domeinregel 7 nodig. Deel 1 af: **QS8-379**, migratie `0246` — de tabel `todo_items`, eigenaar-only, met een dagplafond en een `visibility` die voor geen enkele client schrijfbaar is. Deel 2 af: **QS8-380** — het tabblad, het scherm en de datalaag, alles prive. Deel 3 af: **QS8-381**, migratie `0248` — delen per taak met **één gekozen groep** (B2, niet "iedereen met wie je een groep deelt"), via de RPC `zet_taakzichtbaarheid()` en beide kanten op. ⚠️ De security-ronde daar vond dat een gedeelde taak het lidmaatschap eronder overleefde; dat is gesloten met een trigger op `group_members` en niet met een regel in `verwijder_lid()` en `verlaat_groep()` — die twee eindigen een lidmaatschap verschillend. ✅ **QS8-386** is de staart en is op 10-09 af: een taak is te hernoemen via hetzelfde gedeelde `Field`, dus het schrijfrecht op `todo_items.body` heeft nu een aanroeper en de rij is uit `GEEN_SCHRIJFPAD` van `kolomrechten-controle.mjs` weg. Gebouwd en niet ingetrokken — de afweging staat in `docs/decisions/2026-09-10-een-typefout-hoort-geen-verwijderknop-te-vragen.md`. Daarmee is de epic in zijn geheel af |
 
 **Exit:** een groep van drie draait ≥4 opeenvolgende cycli.
 
