@@ -198,6 +198,51 @@ export async function zetAfgevinkt(id: string, af: boolean): Promise<Resultaat<T
 }
 
 /**
+ * Werkt de tekst van een taak bij — QS8-386.
+ *
+ * ⚠️ **Waarom dit er is en de grant niet is ingetrokken.** `0246` gaf de
+ *    eigenaar het recht zijn eigen taaktekst bij te werken, en QS8-380 gebruikte
+ *    dat niet: de rij stond in `GEEN_SCHRIJFPAD` van
+ *    `scripts/kolomrechten-controle.mjs` met dit issue als bestemming. Een lijst
+ *    waarin je een typefout niet kunt herstellen, is een lijst waar je een regel
+ *    voor weggooit en opnieuw typt — en dan is verwijderen de reparatieknop.
+ *    Gebouwd dus, en niet ingetrokken; de afweging staat in
+ *    `docs/decisions/2026-09-10-een-typefout-hoort-geen-verwijderknop-te-vragen.md`.
+ *
+ * ⚠️ **De patch is een objectliteraal**, om dezelfde reden als bij
+ *    `zetVolgorde()`: `kolomrechten:controle` leest de kolomnamen uit deze
+ *    aanroep om ze naast de kolomgrant te leggen. Wordt dit een opgebouwd
+ *    object, dan zwijgt de controle over álle kolommen van dit paar — en dan is
+ *    de grendel weg die dit issue juist heeft opgeleverd.
+ *
+ * ⚠️ **De grens komt uit `taakPatchSchema` en telt in codepunten** (`telTekens`),
+ *    want dat is wat `char_length(btrim(body))` in `0246` telt. Zod's `.max()`
+ *    telt UTF-16-eenheden en zou een taak van 300 emoji weigeren die de database
+ *    doorlaat. QS8-118.
+ */
+export async function zetTekst(id: string, tekst: string): Promise<Resultaat<Taak>> {
+  const gevalideerd = taakPatchSchema.safeParse({ body: tekst });
+  if (!gevalideerd.success) {
+    return { ok: false, melding: invoerfout(gevalideerd.error, t('lijst.invoer')) };
+  }
+
+  // ⚠️ De getrimde tekst uit het schema en niet de rauwe invoer: `taakTekst`
+  //    doet `.trim()` vóór het tellen, dus wat gemeten is en wat opgeslagen
+  //    wordt, moeten dezelfde string zijn. Anders keurt de client een taak van
+  //    501 tekens met een spatie erachter goed en weigert de CHECK hem.
+  const schoon = gevalideerd.data.body ?? tekst.trim();
+
+  const { data, error } = await supabase()
+    .from('todo_items')
+    .update({ body: schoon })
+    .eq('id', id)
+    .select(KOLOMMEN)
+    .maybeSingle();
+
+  return naSchrijf(data, error, 'todos.rename');
+}
+
+/**
  * Wisselt de plek van twee taken.
  *
  * ⚠️ **Twee losse PATCH-verzoeken, en dat mag hier.** Bij `milestones` moest dit

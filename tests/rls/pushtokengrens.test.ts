@@ -725,13 +725,15 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
     user_id: string;
     created_at: string;
     token: string;
+    p256dh: string | null;
+    auth: string | null;
   }
 
   /** De rij zoals `service_role` hem ziet — `push_tokens_select` is eigenaar-only. */
   async function rijVan(token: string): Promise<Rij | null> {
     const { data } = await adminDb()
       .from('push_tokens')
-      .select('id, user_id, created_at, token')
+      .select('id, user_id, created_at, token, p256dh, auth')
       .eq('token', token)
       .maybeSingle();
     return (data ?? null) as Rij | null;
@@ -743,6 +745,24 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
       p_platform: 'ios',
     });
     if (error) throw new Error(`registreren: ${error.message}`);
+    return uit(data);
+  }
+
+  /**
+   * Registreert een web-abonnement met eigen sleutels — QS8-189.
+   *
+   * ⚠️ Web is het enige platform dat sleutels draagt, en dat is precies waarom de
+   *    overname daar iets anders betekent dan bij native: er verhuist niet alleen
+   *    een adres maar ook het sleutelpaar waarmee de payload versleuteld wordt.
+   */
+  async function registreerWeb(wie: TestUser, endpoint: string, sleutel: string) {
+    const { data, error } = await wie.db.rpc('registreer_push_token', {
+      p_token: endpoint,
+      p_platform: 'web',
+      p_p256dh: sleutel.repeat(87).slice(0, 87),
+      p_auth: sleutel.repeat(22).slice(0, 22),
+    });
+    if (error) throw new Error(`web registreren: ${error.message}`);
     return uit(data);
   }
 
@@ -987,6 +1007,87 @@ describe.skipIf(!rlsTestsConfigured)('de overname van een pushtoken', () => {
       expect(na?.user_id, 'de overname landde niet').toBe(tweede.id);
       expect(na?.id, 'er is een tweede rij ontstaan in plaats van een overname').toBe(voor?.id);
       expect(na?.token, 'de opgeslagen waarde hoort getrimd te zijn').toBe(token);
+    },
+    TEST_TIMEOUT,
+  );
+
+  // -------------------------------------------------------------------------
+  // QS8-189 — waaróm de overname geen datalek is
+  // -------------------------------------------------------------------------
+
+  /**
+   * ⚠️⚠️ **Dit is het argument dat de dossierrij van 21-08 op Laag houdt, en tot
+   *    10-09-2026 toetste niets het.** Die rij zegt: wie een token van een ander
+   *    kent kan het naar zich toe trekken, en dat is *"een stille
+   *    denial-of-service, geen datalek — de kaper krijgt zíjn meldingen op
+   *    andermans toestel, niet andersom."*
+   *
+   *    Dat klopt alleen zolang de **sleutels met de eigenaar meeverhuizen**. Een
+   *    web-abonnement is een adres plus een sleutelpaar; blijft het paar van het
+   *    slachtoffer staan terwijl `user_id` verspringt, dan worden de meldingen
+   *    van de kaper versleuteld met de sleutels van het slachtoffer en op diens
+   *    toestel afgeleverd — en dán is het wél een datalek, precies de kant op
+   *    die de rij uitsluit.
+   *
+   *    De bestaande testen hierboven kijken naar `user_id`, `id`, `created_at` en
+   *    `token`. Geen ervan raakt `p256dh` of `auth`, dus een `on conflict` die de
+   *    sleutels laat staan blijft er groen onder. Deze test sluit dat gat.
+   *
+   * ⚠️ De belofte is **"geen gemengde rij"** en niet "de sleutels zijn deze
+   *    twee strings". Wat er niet mag bestaan is een rij waarvan de eigenaar van
+   *    de ene registratie komt en de sleutels van de andere.
+   */
+  it(
+    'laat bij een overname geen gemengde rij achter: de sleutels gaan mee met de eigenaar',
+    async () => {
+      const endpoint = `https://fcm.googleapis.com/fcm/send/kaping${RUN}${'d'.repeat(140)}`;
+
+      expect(await registreerWeb(eerste, endpoint, 'E')).toEqual({ ok: true });
+      const vanHaar = await rijVan(endpoint);
+      expect(vanHaar?.user_id, 'de opstelling klopt niet').toBe(eerste.id);
+
+      expect(await registreerWeb(tweede, endpoint, 'T')).toEqual({ ok: true });
+      const naKaping = await rijVan(endpoint);
+
+      // De kaping landde.
+      expect(naKaping?.user_id).toBe(tweede.id);
+
+      // En het sleutelpaar is dat van de kaper, niet dat van het slachtoffer.
+      expect(
+        naKaping?.p256dh,
+        'de rij draagt de eigenaar van de kaper en de sleutel van het slachtoffer — dat is wél een datalek',
+      ).not.toBe(vanHaar?.p256dh);
+      expect(naKaping?.auth).not.toBe(vanHaar?.auth);
+      expect(naKaping?.p256dh).toBe('T'.repeat(87));
+      expect(naKaping?.auth).toBe('T'.repeat(22));
+    },
+    TEST_TIMEOUT,
+  );
+
+  /**
+   * ⚠️ De tweede helft van waarom de rij Laag blijft: **de kaping heelt
+   *    zichzelf.** Het toestel van het slachtoffer registreert zijn token bij elke
+   *    start opnieuw (`Pushwacht`), en dan komt de rij gewoon terug — met zijn
+   *    eigen sleutels erbij. Het venster is dus zo lang als de tijd tot de
+   *    volgende appstart en niet permanent.
+   *
+   *    Ook dat stond alleen in de rij en nergens in een test.
+   */
+  it(
+    'heelt zichzelf: wie opnieuw registreert, krijgt zijn token terug',
+    async () => {
+      const endpoint = `https://fcm.googleapis.com/fcm/send/heling${RUN}${'e'.repeat(140)}`;
+
+      expect(await registreerWeb(eerste, endpoint, 'E')).toEqual({ ok: true });
+      expect(await registreerWeb(tweede, endpoint, 'T')).toEqual({ ok: true });
+      expect((await rijVan(endpoint))?.user_id, 'de opstelling klopt niet').toBe(tweede.id);
+
+      // Het toestel van het slachtoffer start opnieuw op.
+      expect(await registreerWeb(eerste, endpoint, 'E')).toEqual({ ok: true });
+
+      const terug = await rijVan(endpoint);
+      expect(terug?.user_id).toBe(eerste.id);
+      expect(terug?.p256dh, 'de sleutels horen weer van haar te zijn').toBe('E'.repeat(87));
     },
     TEST_TIMEOUT,
   );

@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { freezeNow, unfreezeNow } from '../../shared/time';
 
-import { fetchTaken, maakTaak, verzetTaak, zetAfgevinkt, type Taak } from './api';
-import { VOLGORDE_MAX } from './todo-schemas';
+import { fetchTaken, maakTaak, verzetTaak, zetAfgevinkt, zetTekst, type Taak } from './api';
+import { TAAK_MAX, VOLGORDE_MAX } from './todo-schemas';
 
 /**
  * De datalaag van De Lijst — QS8-380.
@@ -42,6 +42,22 @@ import { VOLGORDE_MAX } from './todo-schemas';
  *      -> 1 rood: 'wisselen van twee taken op dezelfde plek zegt dat het niets deed'
  *   E  `eq('user_id', userId)` uit `fetchTaken()` halen
  *      -> 1 rood: 'haalt precies de taken van de opgegeven gebruiker op'
+ *
+ * IJKING — QS8-386, met de hand gedraaid op 10-09-2026:
+ *
+ *   F  `gevalideerd.data.body ?? tekst.trim()` -> `tekst` in `zetTekst()`
+ *      -> 1 rood: 'slaat op wat hij gemeten heeft en niet de rauwe invoer'
+ *   G  `taakTekst` in `taakPatchSchema.body` vervangen door `z.string()`
+ *      -> **3 rood**: beide MUST-DENY's én de naadtest. ⚠️ Dat waren er meer dan
+ *         voorspeld, en de reden is het opschrijven waard: `taakTekst` doet
+ *         `.trim()` én de twee grenzen. Een kale `z.string()` haalt ze alle drie
+ *         weg, dus de naadtest valt hier mee om — de rauwe invoer *is* dan wat
+ *         het schema teruggeeft. Mutatie F beweegt die naad wél los, dus de twee
+ *         zijn nog steeds uit elkaar te houden.
+ *   H  `telTekens(tekst)` in `taakTekst` -> `tekst.length`
+ *      -> 1 rood: 'MUST-ALLOW: 500 emoji zijn 500 tekens en geen 1000'. Alleen
+ *         die ene, en dat is de bedoeling: dit is de énige test die meet in
+ *         wélke eenheid geteld wordt.
  */
 
 /** Wat de stub de volgende keer teruggeeft, per soort aanroep. */
@@ -201,6 +217,64 @@ describe('wisselen', () => {
 
     expect(uit.ok, 'stil slagen geeft een knop die niets doet').toBe(false);
     expect(geschreven, 'er is toch geschreven').toEqual([]);
+  });
+});
+
+describe('een taak hernoemen — QS8-386', () => {
+  /**
+   * ⚠️ **De naad, en niet de functie.** `taakTekst` doet `.trim()` vóór het
+   *    tellen, dus de string die gemeten is en de string die opgeslagen wordt
+   *    móeten dezelfde zijn. Schrijft `zetTekst()` de rauwe invoer weg, dan
+   *    keurt de client een taak van 500 tekens plus spaties goed en weigert
+   *    `char_length(btrim(body))` in 0246 hem — een `23514` waar de gebruiker
+   *    niets aan kan doen, op een veld dat groen stond.
+   */
+  it('slaat op wat hij gemeten heeft en niet de rauwe invoer', async () => {
+    await zetTekst('taak-1', '  Bellen met de tandarts  ');
+
+    expect(
+      geschreven[0]?.waarde,
+      'gemeten en opgeslagen moeten dezelfde string zijn',
+    ).toEqual({ body: 'Bellen met de tandarts' });
+  });
+
+  it('MUST-DENY: een lege tekst gaat de deur niet uit', async () => {
+    const uit = await zetTekst('taak-1', '   ');
+
+    expect(uit.ok).toBe(false);
+    expect(geschreven, 'er is een verzoek de deur uit gegaan').toEqual([]);
+  });
+
+  /**
+   * ⚠️ **De grens telt codepunten en geen UTF-16-eenheden** — CLAUDE.md, Emoji,
+   *    en QS8-118. Een emoji kost twee UTF-16-eenheden en één codepunt, dus
+   *    `.length` zou hier 1000 zien en weigeren wat `char_length` op 500 telt en
+   *    doorlaat. De gebruiker krijgt dan een grens te zien die de database niet
+   *    stelt.
+   */
+  it('MUST-ALLOW: 500 emoji zijn 500 tekens en geen 1000', async () => {
+    const emoji = '\u{1F600}'.repeat(TAAK_MAX);
+
+    const uit = await zetTekst('taak-1', emoji);
+
+    expect(uit.ok, 'de client weigert wat de database doorlaat').toBe(true);
+    expect(geschreven[0]?.waarde).toEqual({ body: emoji });
+  });
+
+  it('MUST-DENY: een codepunt te veel gaat er niet doorheen', async () => {
+    const uit = await zetTekst('taak-1', 'a'.repeat(TAAK_MAX + 1));
+
+    expect(uit.ok).toBe(false);
+    expect(geschreven).toEqual([]);
+  });
+
+  /** ⚠️ Dezelfde stille terugzetting als bij afvinken — zie `naSchrijf()`. */
+  it('een hernoeming die nul rijen raakte, meldt geen succes', async () => {
+    laatsteSchrijf = { data: null, error: null };
+
+    const uit = await zetTekst('taak-1', 'Iets anders');
+
+    expect(uit.ok).toBe(false);
   });
 });
 

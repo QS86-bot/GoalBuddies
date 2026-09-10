@@ -11,6 +11,7 @@ import {
   verwijderTaak,
   verzetTaak,
   zetAfgevinkt,
+  zetTekst,
   type Taak,
 } from '@/modules/todos';
 import { opmaaktaal, t } from '@/shared/i18n';
@@ -310,12 +311,21 @@ function TaakRegel({
   readonly onGewijzigd: () => void;
   readonly onFout: (melding: string | null) => void;
 }) {
-  const [vraagt, setVraagt] = useState(false);
+  const [wijzigt, setWijzigt] = useState(false);
   const [bezig, setBezig] = useState(false);
   const af = taak.done_at !== null;
 
   const voer = (handeling: () => Promise<Uitkomst>) =>
     void voerUit(handeling, { bezig, setBezig, onFout, onGewijzigd });
+
+  const opslaan = (tekst: string) => {
+    setWijzigt(false);
+    voer(() => zetTekst(taak.id, tekst));
+  };
+
+  if (wijzigt) {
+    return <Hernoemen taak={taak} bezig={bezig} onOpslaan={opslaan} onStop={() => setWijzigt(false)} />;
+  }
 
   return (
     <Card>
@@ -324,26 +334,134 @@ function TaakRegel({
       </Body>
       <Afgerond doneAt={taak.done_at} tz={tz} />
       <Deelblok taak={taak} groepen={groepen} bezig={bezig} onDeel={(g) => voer(() => deelTaak(taak.id, g))} />
-
-      {vraagt ? (
-        <Bevestiging
-          tekst={bevestigingen().taakVerwijderen}
-          bezig={bezig}
-          onBevestig={() => voer(() => verwijderTaak(taak.id))}
-          onAnnuleer={() => setVraagt(false)}
-        />
-      ) : (
-        <Regelknoppen
-          af={af}
-          bezig={bezig}
-          vorige={vorige}
-          volgende={volgende}
-          onAfvinken={() => voer(() => zetAfgevinkt(taak.id, !af))}
-          onVerzet={(buurman) => voer(() => verzetTaak(taak, buurman))}
-          onWeg={() => setVraagt(true)}
-        />
-      )}
+      <Regelvoet
+        af={af}
+        bezig={bezig}
+        vorige={vorige}
+        volgende={volgende}
+        onAfvinken={() => voer(() => zetAfgevinkt(taak.id, !af))}
+        onVerzet={(buurman) => voer(() => verzetTaak(taak, buurman))}
+        onHernoem={() => setWijzigt(true)}
+        onWeg={() => voer(() => verwijderTaak(taak.id))}
+      />
     </Card>
+  );
+}
+
+/**
+ * De bewerkstand van één regel — QS8-386.
+ *
+ * ⚠️ **Hetzelfde gedeelde `Field` als de invoer bovenaan het scherm**, en om
+ *    dezelfde reden: QS8-250 hangt de microfoon aan `Field`, dus een taak wordt
+ *    straks ook inspreekbaar zonder dat hier iets verandert.
+ *    `tests/beloftes/lijstveld.test.ts` wordt rood zodra dit scherm zijn eigen
+ *    `TextInput` bouwt.
+ *
+ * ⚠️ **De teller telt codepunten** (`telTekens`) en niet UTF-16-eenheden, want
+ *    dat is wat `char_length(btrim(body))` in 0246 telt. Een teller in de ene
+ *    eenheid bij een grens in de andere is een nieuwe fout en geen reparatie —
+ *    CLAUDE.md, Emoji, en QS8-118.
+ *
+ * ⚠️ **Onveranderd opslaan is uit en niet stil.** Zou het door mogen, dan meldt
+ *    het scherm "opgeslagen" bij een PATCH die niets veranderde, en is de knop
+ *    een gok in plaats van een handeling.
+ */
+function Hernoemen({
+  taak,
+  bezig,
+  onOpslaan,
+  onStop,
+}: {
+  readonly taak: Taak;
+  readonly bezig: boolean;
+  readonly onOpslaan: (tekst: string) => void;
+  readonly onStop: () => void;
+}) {
+  const [tekst, setTekst] = useState(taak.body);
+  const tekens = telTekens(tekst.trim());
+  const gelijk = tekst.trim() === taak.body.trim();
+
+  return (
+    <Card>
+      <Field
+        label={t('lijst.hernoem_label')}
+        hint={t('lijst.hernoem_hint')}
+        value={tekst}
+        onChangeText={setTekst}
+        multiline
+      />
+      <View style={styles.voet}>
+        <Caption>{t('lijst.teller', { n: tekens, max: TAAK_MAX })}</Caption>
+        <View style={styles.knoppen}>
+          <Button variant="stil" disabled={bezig} onPress={onStop}>
+            {t('lijst.hernoem_annuleer')}
+          </Button>
+          <Button
+            variant="primair"
+            busy={bezig}
+            disabled={tekens === 0 || tekens > TAAK_MAX || gelijk}
+            onPress={() => onOpslaan(tekst)}
+          >
+            {t('lijst.hernoem_opslaan')}
+          </Button>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * De onderrand van een regel: de knoppen, of de bevestiging die er één vervangt.
+ *
+ * ⚠️ **De bevestiging woont hier en niet in `TaakRegel`.** Verwijderen is de
+ *    enige onomkeerbare knop van de vier, dus de vraag *"weet je het zeker"*
+ *    hoort bij de knop die hem stelt — niet bij de regel eromheen. Aanleiding was
+ *    QS8-386: met de hernoemknop erbij liep `TaakRegel` over de vijftig regels en
+ *    werd `regel15:controle` rood.
+ */
+function Regelvoet({
+  af,
+  bezig,
+  vorige,
+  volgende,
+  onAfvinken,
+  onVerzet,
+  onHernoem,
+  onWeg,
+}: {
+  readonly af: boolean;
+  readonly bezig: boolean;
+  readonly vorige: Taak | null;
+  readonly volgende: Taak | null;
+  readonly onAfvinken: () => void;
+  readonly onVerzet: (buurman: Taak) => void;
+  readonly onHernoem: () => void;
+  readonly onWeg: () => void;
+}) {
+  const [vraagt, setVraagt] = useState(false);
+
+  if (vraagt) {
+    return (
+      <Bevestiging
+        tekst={bevestigingen().taakVerwijderen}
+        bezig={bezig}
+        onBevestig={onWeg}
+        onAnnuleer={() => setVraagt(false)}
+      />
+    );
+  }
+
+  return (
+    <Regelknoppen
+      af={af}
+      bezig={bezig}
+      vorige={vorige}
+      volgende={volgende}
+      onAfvinken={onAfvinken}
+      onVerzet={onVerzet}
+      onHernoem={onHernoem}
+      onWeg={() => setVraagt(true)}
+    />
   );
 }
 
@@ -482,6 +600,7 @@ function Regelknoppen({
   volgende,
   onAfvinken,
   onVerzet,
+  onHernoem,
   onWeg,
 }: {
   readonly af: boolean;
@@ -490,6 +609,7 @@ function Regelknoppen({
   readonly volgende: Taak | null;
   readonly onAfvinken: () => void;
   readonly onVerzet: (buurman: Taak) => void;
+  readonly onHernoem: () => void;
   readonly onWeg: () => void;
 }) {
   return (
@@ -515,6 +635,9 @@ function Regelknoppen({
         onPress={() => volgende !== null && onVerzet(volgende)}
       >
         {t('lijst.omlaag')}
+      </Button>
+      <Button variant="stil" disabled={bezig} onPress={onHernoem}>
+        {t('lijst.hernoemen')}
       </Button>
       <Button variant="stil" disabled={bezig} onPress={onWeg}>
         {t('lijst.verwijderen')}
