@@ -1,6 +1,6 @@
 # Verschuiven in plaats van weigeren
 
-**10-09-2026 — QS8-406, migratie 0238.** Het tweede criterium van QS8-92: een
+**10-09-2026 — QS8-406, migratie 0244.** Het tweede criterium van QS8-92: een
 venster waarin een gebruiker geen meldingen krijgt.
 
 ## De vraag die dit issue draagt

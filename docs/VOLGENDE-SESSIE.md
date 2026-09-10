@@ -3,8 +3,34 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 08-09-2026. Er landt veel uit twee sessies tegelijk;
-> `git log origin/main` is de betrouwbare lijst en niet deze zin.
+> **Laatst bijgewerkt:** 10-09-2026 (QS8-72). Er landt veel uit twee sessies
+> tegelijk; `git log origin/main` is de betrouwbare lijst en niet deze zin.
+>
+> **10-09, punt A: een merge zonder conflict kan je migratie stukmaken, en git
+> zegt daar niets over.** `main` dropte `tel_opslag_upload()` en gaf hem terug
+> als `tel_dagteller()` (QS8-401, 0234); mijn nieuwe migratie riep de oude naam
+> aan. Twee verschillende bestanden, dus een schone merge — en de fout zit in
+> een functielichaam, precies de klasse die CLAUDE.md bij `sleutelzetters()`
+> beschrijft. ⚠️ **Bouw na élke merge van `main` de lokale stack opnieuw op
+> (`npm run rls:stack`) en kijk naar de regel "N migraties afgespeeld", niet
+> alleen naar de tests.** Een suite die tegen een oude database draait, is groen
+> over een schema dat niet meer bestaat.
+>
+> **10-09, punt B: controleer met een grep dát je mutatie in het bestand staat,
+> vóór je de uitslag gelooft.** 📏 Eén ijking van vandaag draaide met een
+> `re.sub`-aanroep die op een `bad escape` afbrak; het script printte de
+> traceback, dráaide de test alsnog, en die was groen. Zonder de grep erna had
+> "groen" gelezen als "de grendel is niet nodig" in plaats van "er is niets
+> gemuteerd". Dit staat al in de werkafspraken en het is vandaag opnieuw
+> gebeurd.
+>
+> **10-09, punt C: een pure functie naast een react-native-import is niet te
+> toetsen.** `naarVerzending()` stond in `useChatbijlage.ts`, naast
+> `kiesDocument()`; elke suite die hem importeerde viel om op `Flow is not
+> supported` in `node_modules/react-native/index.js`, en `vi.mock` op de kiezers
+> helpt niet omdat de keten verderloopt. Los bestand ernaast
+> (`verzendbijlage.ts`), en de belofte staat weer onder test. Zelfde familie als
+> de `__DEV__`-val bij QS8-71.
 > Op 08-09 landden er **dertien** PR's (#293 t/m #306), uit deze sessie
 > **QS8-352, QS8-351** en **QS8-356**; uit de parallelle sessie
 > **QS8-341, QS8-342, QS8-343, QS8-327, QS8-340, QS8-339, QS8-348, QS8-349,
