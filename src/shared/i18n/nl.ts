@@ -256,8 +256,9 @@ export const nl = {
   'bevestiging.doel_afronden.titel': 'Dit doel afronden?',
   'bevestiging.doel_afronden.uitleg':
     'Elke groep waaraan dit doel hangt, krijgt een bericht dat je het afgerond hebt, en ' +
-    'een chatbericht haal je niet meer weg. Je beloning komt vrij en wordt ook gemeld; ' +
-    'een straf die je had ingesteld, vervalt. Terugzetten kan niet.',
+    'een chatbericht haal je niet meer weg. Rond je op tijd af, dan komt je beloning vrij ' +
+    'en vervalt een straf die je had ingesteld. Ben je na de streefdatum, dan verloopt je ' +
+    'beloning en blijft je straf staan: die wordt verschuldigd. Terugzetten kan niet.',
   'bevestiging.doel_afronden.knop': 'Afronden',
 
   // ---------------------------------------------------------------------------

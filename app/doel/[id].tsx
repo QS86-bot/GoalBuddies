@@ -344,7 +344,12 @@ export default function DoelDetail() {
               onKlaar={herlaad}
             />
 
-            {userId ? <Archiveren doel={d} userId={userId} onKlaar={herlaad} /> : null}
+            {/* ⚠️ Niet op een afgerond doel — 0211 §4 weigert de wissel daar, en een
+                knop tonen die altijd faalt is erger dan geen knop. Afronden is
+                onomkeerbaar, en dat staat ook zo in de bevestigingstekst. */}
+            {userId && d.status !== 'completed' ? (
+              <Archiveren doel={d} userId={userId} onKlaar={herlaad} />
+            ) : null}
 
             {/*
               Na het weggooien bestaat dit scherm niet meer — herladen zou een
