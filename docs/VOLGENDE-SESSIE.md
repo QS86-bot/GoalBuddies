@@ -3,8 +3,13 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 10-09-2026 (QS8-72, QS8-379). Er landt veel uit twee sessies
-> tegelijk; `git log origin/main` is de betrouwbare lijst en niet deze zin.
+> **Laatst bijgewerkt:** 10-09-2026, na de merge van QS8-408 (`cfbb342`) — QS8-410.
+> Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
+> lijst en niet deze zin. 📏 Toen dit issue geschreven werd, stonden er **23 merges**
+> op `main` sinds de laatste keer dat dit bestand was aangeraakt, en kwamen
+> vijftien gelande issue-nummers er niet één keer in voor. **Werk dit bij aan het
+> eind van je sessie; er is geen controle die het afdwingt, en met reden — zie de
+> kop van `scripts/docs-controle.mjs`.**
 >
 > **10-09, punt A: een merge zonder conflict kan je migratie stukmaken, en git
 > zegt daar niets over.** `main` dropte `tel_opslag_upload()` en gaf hem terug
@@ -31,15 +36,87 @@
 > helpt niet omdat de keten verderloopt. Los bestand ernaast
 > (`verzendbijlage.ts`), en de belofte staat weer onder test. Zelfde familie als
 > de `__DEV__`-val bij QS8-71.
-> Op 08-09 landden er **dertien** PR's (#293 t/m #306), uit deze sessie
+>
+> **10-09, punt D: twee migraties op hetzelfde nummer maken van `migratie:hernummer`
+> een leeshulp in plaats van een gereedschap.** `main` gaf `0248` aan QS8-381 en
+> `0249` aan QS8-181 terwijl mijn branch al `0248` droeg, dus hernummeren naar
+> `0250` — de afspraak van QS8-318, wie als tweede merget hernummert. ⚠️ Wat de
+> tool dan met opzet **niet** doet is kale nummers herschrijven: met twee
+> bestanden op `0248` in de map is niet te bewijzen welke er bedoeld wordt. 📏 Er
+> bleven **44** kale verwijzingen over, en die vielen in twee groepen: 21 gingen
+> over de ándere `0248` en 23 over de mijne. **Lees ze stuk voor stuk.** Eén
+> `sed -i 's/0248/0250/g'` had hier de dossierrij van De Lijst in
+> `docs/decisions/002-domeinregel7-oppervlakken.md` overschreven — en dat is geen
+> hypothese, dat is precies wat er bij een eerdere hernummering gebeurd is.
+>
+> ⚠️ Bijvangst die je ook krijgt: de merge met `main` botst in dit project altijd
+> op dezelfde drie bestanden — `ENGINEER-REVIEW.md`, `WERKVOORRAAD.md` en
+> beslisdocument 002. Dat zijn geen echte conflicten maar **twee branches die
+> allebei een rij toevoegen**; de resolutie is bijna altijd "allebei behouden",
+> behalve waar de één een rij bíjwerkt die de ander alleen kopieert. Kijk dus per
+> conflict welke kant de rij *veranderde* en welke hem alleen meedroeg.
+>
+> **10-09, punt E: de lokale stack overleeft de container niet, en een
+> overgeslagen suite ziet eruit als een groene.** Na een pauze stond Postgres uit
+> én was het wachtwoord van de rol `postgres` weg. 📏 `npm run rls:stack` faalde
+> met *"goalbuddies_rls kon niet weg"*, wat naar een schemafout wijst; de échte
+> oorzaak was `password authentication failed`. Het recept:
+>
+> ```bash
+> service postgresql start
+> su postgres -c "psql -c \"alter role postgres with password 'postgres'\""
+> export PGHOST=127.0.0.1 PGPORT=5432 PGPASSWORD=postgres PGUSER=postgres RLS_DOEL=lokaal
+> npm run rls:stack     # kijk naar de regel "N migraties afgespeeld"
+> ```
+>
+> ⚠️ **`PGPORT=5432` is niet optioneel**: de scripts staan standaard op **5433**
+> (`STANDAARD_POORT` in `scripts/psql.mjs`), en zonder die variabele meldt de
+> halve poort "OVERGESLAGEN" met exitcode 0. Sinds QS8-268 is een *geweigerde
+> gebruiker* rood en geen overslaan — maar een server die niet luistert is nog
+> steeds stil. Bij een groene poort horen er vandaag **zeven** ongemeten te staan
+> (productiesleutel, npm-register, Postgres 17); zijn het er meer, dan meet je
+> minder dan je denkt.
+>
+> **10-09, punt F: het buildbare werk is op, en dat is een uitkomst en geen
+> vergissing.** Elk issue in Todo draagt `wacht-op-Quinten`; wat er in Backlog
+> staat is `review:november` (geparkeerd tot de engineer er is), `phase:v2`,
+> `phase:v3` of een epic. ⚠️ **Verzin dan geen werk.** Wat wél mag en helpt:
+> een geparkeerde `review:november`-rij nalopen op de vraag of zijn
+> *"Wordt zwaarder als"* intussen is ingetreden — QS8-188 was daar op 10-09 een
+> geval van, drie dagen te laat gezien — en dit bestand bijwerken. Wat níet mag
+> is een tweede branch op een issue dat de andere sessie al heeft.
+>
+> Op 09-09 en 10-09 landden er samen **zevenenvijftig** PR's (#323 t/m #387) — de
+> drukste twee dagen van dit project, uit twee sessies naast elkaar. Een lijst
+> daarvan hoort hier niet; `git log origin/main --merges` is hem. Wat je wél moet
+> weten voor je begint:
+>
+> - **Productie loopt ver achter op de map**, en hoevéél staat hier met opzet
+>   niet: dat feit is van `docs/WERKVOORRAAD.md` §0. Lees het daar, en
+>   vertrouw geen getal dat je in dit bestand aantreft.
+> - **Vier opslagemmers**, en ze delen hun policies: `avatars`, `chatfotos`,
+>   `bewijsfotos` en `chatdocs`. Sinds QS8-407 heeft géén ervan nog een
+>   UPDATE-pad, want policies worden over emmers heen ge-OR'd en een verhuizing
+>   omzeilde daarmee `allowed_mime_types` van de doelemmer. Bouw je een vijfde,
+>   lees dan `tests/rls/emmerverhuizing.test.ts` eerst: die toetst de **familie**
+>   en niet drie namen, en dat is waarom hij hield toen `chatdocs` erbij kwam.
+> - **De Lijst is af** (QS8-378) — uitgeschreven in de alinea hieronder, mét de
+>   twee beslispunten die Quinten op 09-09 heeft beslist. Wat er ná die alinea
+>   bij is gekomen: QS8-386 (een taak hernoemen) staat nog open in de
+>   parallelle sessie.
+> - **Open en niet door een agent af te maken:** alles met `wacht-op-Quinten`. Dat
+>   is op dit moment de héle Todo-kolom. De reactieve voorraad is leeg.
+>
+> Daarvóór, op 08-09, landden er **dertien** PR's (#293 t/m #306), uit deze sessie
 > **QS8-352, QS8-351** en **QS8-356**; uit de parallelle sessie
 > **QS8-341, QS8-342, QS8-343, QS8-327, QS8-340, QS8-339, QS8-348, QS8-349,
 > QS8-353** en **QS8-354**. Daarvóór op 07-09: **QS8-304, QS8-191, QS8-315**
 > en uit de parallelle sessie **QS8-301, QS8-306, QS8-311, QS8-313, QS8-262**.
-> Open en niet door een agent af te maken: **QS8-197** (wacht op
-> Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek).
-> Lees eerst de vijf punten van 08-09 — de eerste twee zijn de duurste van de
-> hele week — dan de vier van 07-09, dan de vijf van 06-09, dan de drie van
+> Open en niet door een agent af te maken, gemeten op 08-09: **QS8-197** (wacht
+> op Quinten) en **QS8-177** (vraagt een Postgres 17 op de werkplek). De stand
+> van nu staat hierboven.
+> Lees eerst de zes punten van 10-09 en de vijf van 08-09 — die laatste twee zijn
+> de duurste van de week — dan de vier van 07-09, dan de vijf van 06-09, dan de drie van
 > 05-09, dan de twee van 04-09, dan de vier van 03-09, en daarna die van 02-09.
 >
 > **09-08 en 09-09 draaide er een nieuwe epic doorheen: De Lijst** (QS8-378) —
