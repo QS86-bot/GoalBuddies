@@ -1,4 +1,4 @@
--- 0219_te_laat_afronden_laat_de_straf_staan.sql — een straf volgt dezelfde
+-- 0237_te_laat_afronden_laat_de_straf_staan.sql — een straf volgt dezelfde
 -- tijdigheidstoets als de beloning, zodat afronden ná de deadline geen uitweg
 -- meer is (QS8-322, besluit van Quinten 08-09-2026).
 --
@@ -258,7 +258,7 @@ create policy commitments_insert on commitments
 --    klasse als QS8-322 zelf — *afronden laat je straf vervallen terwijl de
 --    afspraak niet gehaald is* — en het besluit van 08-09-2026 zegt dat een
 --    bevinding van dezelfde klasse op de branch landt waar hij gevonden is.
---    Een issue ervan maken zou betekenen dat 0219 merget met een gat waar
+--    Een issue ervan maken zou betekenen dat 0237 merget met een gat waar
 --    precies zijn eigen belofte doorheen loopt.
 --
 -- ⚠️ **De weigering geldt in béide richtingen, en dat is met opzet ruimer dan

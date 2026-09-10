@@ -77,7 +77,7 @@ beide gevallen. Zonder die twee zou het besluit kloppen en het product niet.
 
 ### Waarom het drie wijzigingen werden
 
-Migratie 0219 raakt drie objecten, en dat is geen bundeling maar één ondeelbare
+Migratie 0237 raakt drie objecten, en dat is geen bundeling maar één ondeelbare
 wijziging:
 
 1. **`wikkel_commitments_af()`** — de penalty-annulering gaat de `if v_op_tijd`-tak
@@ -152,7 +152,7 @@ andere openstaat.
 **Daarom §4, en daarom hier.** Het is dezelfde klasse als QS8-322 zelf — *afronden
 laat je straf vervallen terwijl de afspraak niet gehaald is* — en het besluit van
 08-09-2026 zegt dat een bevinding van dezelfde klasse landt op de branch waar hij
-gevonden is. Een issue ervan maken zou betekenen dat 0219 merget met een gat waar
+gevonden is. Een issue ervan maken zou betekenen dat 0237 merget met een gat waar
 precies zijn eigen belofte doorheen loopt.
 
 De weigering geldt in **beide** richtingen en dat is ruimer dan het lek: alleen

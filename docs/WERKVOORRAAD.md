@@ -14,10 +14,10 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**239**.
+**240**.
 
-**Het gat is daarmee vijftien bestanden** — `0222` t/m `0236`, van 09-09 en
-10-09 en uit zeven verschillende issues:
+**Het gat is daarmee zestien bestanden** — `0222` t/m `0237`, van 09-09 en
+10-09 en uit acht verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -36,6 +36,7 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0234_een_dagteller_is_niet_alleen_voor_opslag.sql` | QS8-401 | nee |
 | `0235_een_chatfoto_is_een_doorgeefluik_en_geen_archief.sql` | QS8-396 | ja |
 | `0236_goals_select_geeft_de_hele_rij_en_dat_is_nooit_besloten.sql` | QS8-392 | nee |
+| `0237_te_laat_afronden_laat_de_straf_staan.sql` | QS8-322 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -54,9 +55,9 @@ zag, staat in `docs/decisions/2026-09-09-een-generator-kan-niet-liegen.md`.
 gemeten in plaats van aangenomen.** `0222` valt om op
 `ERROR: 42501: must be owner of table objects`: `storage.objects` is eigendom van
 `supabase_storage_admin`, de MCP draait als `postgres`, en die is **geen lid** van
-die rol — `set role` geeft *permission denied*. Zes van de vijftien doen DDL op
+die rol — `set role` geeft *permission denied*. Zes van de zestien doen DDL op
 die tabel (`0222`, `0225`, `0227`, `0228`, `0233` en `0235` — zie de kolom
-hierboven); de andere negen zouden op zichzelf wél gaan, ook `0224` en `0226`, die
+hierboven); de andere tien zouden op zichzelf wél gaan, ook `0224` en `0226`, die
 `storage.objects` alleen ín een functielichaam noemen en hem niet bezitten. Maar
 `0222` is de eerste van de reeks, **dus stopt hij daar**. Ze alsnog toepassen
 slaat een gat in het register, en dat is de duurdere kant
@@ -278,7 +279,7 @@ zegt alleen in welke volgorde en waar de valkuilen zitten.
 **Database — af, en nu ook getest.** 34 tabellen.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0236` staan in de map: **239 bestanden**,
+Migraties `0001` t/m `0237` staan in de map: **240 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
