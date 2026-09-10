@@ -1,4 +1,4 @@
--- 0221_het_wisrecht_wint_ook_van_het_systeembericht.sql — wie zijn account
+-- 0246_het_wisrecht_wint_ook_van_het_systeembericht.sql — wie zijn account
 -- verwijdert, neemt ook de systeemberichten over zijn commitments mee (QS8-335,
 -- besluit van Quinten 08-09-2026).
 --
