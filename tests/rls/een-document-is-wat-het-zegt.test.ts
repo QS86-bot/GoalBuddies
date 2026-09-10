@@ -2,7 +2,7 @@
  * De naad van QS8-72: **soort, extensie en emmer zijn één drieklank.**
  *
  * ⚠️⚠️ **Dit is de belofte en niet het onderdeel.** Elk stuk van deze feature is
- *    los correct: de emmer heeft zijn policies (0234), de remmen tellen (0235),
+ *    los correct: de emmer heeft zijn policies (0235), de remmen tellen (0236),
  *    `soortBijlage()` leidt de emmer af uit `type`, en `chatdocPad()` zet er een
  *    `.pdf` achter. De belofte gaat over wat er tússen zit: *`type` zegt tegen
  *    welke emmer de client tekent, en het pad staat in díe emmer.*
@@ -15,7 +15,7 @@
  *
  * ⚠️⚠️ **De knoop wordt door de CHECK gelegd en niet door de app**, en dat is de
  *    reden dat deze suite tegen de database praat. `chat_messages_attachment_
- *    eigen_pad` (0236) paart `type = 'photo'` aan een beeldextensie en
+ *    eigen_pad` (0237) paart `type = 'photo'` aan een beeldextensie en
  *    `type = 'doc'` aan `.pdf`. Zonder die paring is de app de enige die de
  *    twee gelijk houdt, en de app is niet wat een verzoek buiten de UI om
  *    tegenhoudt.
@@ -49,7 +49,7 @@ function mislukt(sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0236)', () => {
+describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0237)', () => {
   const alice = randomUUID();
   let groep = '';
 
@@ -148,10 +148,10 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0236)', () => {
 
   it('laat een document zónder bijlage naamloos', () => {
     // ⚠️⚠️ **Dat is geen soepelheid maar de uitkomst van een botsing.** `type` is
-    //    onveranderlijk (`stamp_chat_message()`), dus de AVG-opruiming van 0237
+    //    onveranderlijk (`stamp_chat_message()`), dus de AVG-opruiming van 0238
     //    kan een `doc` niet terugzetten op `text`. De naam-eis hangt daarom aan
     //    de bijlage: gaat de bijlage weg, dan gaat de naam mee en blijft er een
-    //    `doc`-rij zonder bijlage over. Zie §3 van 0236.
+    //    `doc`-rij zonder bijlage over. Zie §3 van 0237.
     expect(mislukt(bericht('doc', null, null))).toBe('ok');
   });
 
@@ -219,7 +219,7 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0236)', () => {
   // -------------------------------------------------------------------------
 
   it('geeft groepschat() de naam mee terug', () => {
-    // ⚠️ Een kolom die de RPC niet doorgeeft, is een kolom die niemand ziet. 0236
+    // ⚠️ Een kolom die de RPC niet doorgeeft, is een kolom die niemand ziet. 0237
     //    moest `groepschat()` daarvoor droppen en opnieuw maken — `or replace`
     //    kan een returntype niet wijzigen — en dan is "staat hij er nog in" een
     //    vraag die je meet en niet aanneemt.
@@ -235,12 +235,12 @@ describe.runIf(beschikbaar)('een bijlage is wat zijn soort zegt (0236)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // De AVG-opruiming raakt béide emmers (0237)
+  // De AVG-opruiming raakt béide emmers (0238)
   // -------------------------------------------------------------------------
 
   it('haalt bij een vertrekker de naam mee weg, niet alleen het pad', () => {
     // ⚠️⚠️ **De naam is zelf een persoonsgegeven.** `jaarrekening-jansen.pdf`
-    //    zegt genoeg zonder dat er een byte van het bestand over is. 0237 zet
+    //    zegt genoeg zonder dat er een byte van het bestand over is. 0238 zet
     //    daarom `attachment_url` én `attachment_name` op `null`; blijft de naam
     //    staan, dan is de opruiming half af en niets wordt er rood van.
     const vertrekker = randomUUID();

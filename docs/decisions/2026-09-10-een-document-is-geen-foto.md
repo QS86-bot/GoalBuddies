@@ -1,6 +1,6 @@
 # Een document is geen foto
 
-**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0234, 0235, 0236, 0237
+**Datum:** 10-09-2026 · **Issue:** QS8-72 (PRD 7.4) · **Migraties:** 0235, 0236, 0237, 0238
 
 Dit document is de tegenhanger van
 `docs/decisions/2026-09-09-een-foto-in-de-chat.md`. Wat daar staat over het pad,
@@ -92,7 +92,7 @@ De grendel daartegen is een prop die er niet is: `Document.tsx` krijgt geen
 
 `attachment_url` draagt de emmer niet. Het pad is `<groep>/<afzender>/<naam>.<ext>`
 en dat is voor `chatfotos` en `chatdocs` identiek. **`type` is het enige dat zegt
-waar dit bestand staat**, en migratie 0236 is wat die twee gekoppeld houdt:
+waar dit bestand staat**, en migratie 0237 is wat die twee gekoppeld houdt:
 
 ```sql
 (type = 'photo' and attachment_url ~ '…\.(jpg|jpeg|png|webp)$')
@@ -140,15 +140,15 @@ nooit uit de naam: anders stelt `factuur.pdf.exe` zich voor als PDF.
 
 ## 6. De botsing tussen twee correcte grendels
 
-De eerste versie van 0236 eiste `type <> 'doc' or attachment_name is not null` —
-een document draagt een naam. Dat botste met de AVG-opruiming van 0237:
+De eerste versie van 0237 eiste `type <> 'doc' or attachment_name is not null` —
+een document draagt een naam. Dat botste met de AVG-opruiming van 0238:
 
 ```
 delete from profiles where id = <a>
 → Aan een chatbericht zijn alleen de tekst en de bijlage te wijzigen
 ```
 
-`stamp_chat_message()` maakt `type` **onveranderlijk**, dus 0237 kon de rij niet
+`stamp_chat_message()` maakt `type` **onveranderlijk**, dus 0238 kon de rij niet
 op `text` terugzetten om van de naam-eis af te komen.
 
 De keuze was: de onveranderlijkheid verruimen, of de CHECK aan de **bijlage**
@@ -168,7 +168,7 @@ opnieuw maakt en misschien de andere kant op valt.
 
 ## 7. `wis_chatfotos_van_vertrekker` heet nu `wis_bijlagen_van_vertrekker`
 
-De functie dekt sinds 0237 `('chatfotos', 'chatdocs')`. De oude naam zou liegen
+De functie dekt sinds 0238 `('chatfotos', 'chatdocs')`. De oude naam zou liegen
 over wat het lichaam doet — hetzelfde geval als `zonderAvatar` →
 `zonderVerlopendeUrls`: **de naam noemt de eigenschap, niet het veld van toen.**
 De trigger heet mee (`profielen_bijlagen_mee`).

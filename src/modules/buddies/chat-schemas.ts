@@ -193,14 +193,14 @@ export interface ChatBericht {
    */
   readonly attachment_url: string | null;
   /**
-   * De oorspronkelijke bestandsnaam van een document — QS8-72, migratie 0236.
+   * De oorspronkelijke bestandsnaam van een document — QS8-72, migratie 0237.
    *
    * ⚠️ Alleen gevuld bij `type = 'doc'`; een foto heeft er geen. Dit is
    *    **gebruikerstekst**: emoji mogen erin, dus nooit afkappen met `slice()`
    *    of `[0]` — gebruik `telTekens()`/`kapAf()` uit `src/shared/tekst`.
    *
    * ⚠️ De getoonde **soort** ("PDF") komt niet hieruit maar uit het pad, want dat
-   *    ligt vast in de CHECK van 0236. Zo kunnen naam en soort nooit misleidend
+   *    ligt vast in de CHECK van 0237. Zo kunnen naam en soort nooit misleidend
    *    uit elkaar lopen — de reden dat die CHECK bidi-overrides weigert.
    */
   readonly attachment_name: string | null;
@@ -352,11 +352,25 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  *    het veld van toen. Komt er een derde bij, dan hoort hij hier.
  */
 /**
- * Draagt dit bericht een bijlage-plek?
+ * Welke soort bijlage draagt dit bericht — en dus tegen welke emmer teken je?
+ *
+ * ⚠️⚠️ **`attachment_url` draagt de emmer niet.** Het pad is
+ *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
+ *    identiek. `type` is het enige dat zegt waar dit bestand staat, en migratie
+ *    0237 is wat die twee gekoppeld houdt: de extensie is aan de soort gepaard,
+ *    dus een `photo`-rij kán niet naar een `.pdf` wijzen.
+ *
+ *    Zonder die paring breekt er niets zichtbaars als ze uit elkaar lopen — je
+ *    tekent tegen de verkeerde emmer, krijgt `null`, en de bubbel zegt "niet meer
+ *    beschikbaar". Dat is de reden dat
+ *    `tests/rls/een-document-is-wat-het-zegt.test.ts` bestaat.
+ *
+ * ⚠️ Leid de emmer hier af en nergens anders. Een tweede plek waar dit staat, is
+ *    een tweede plek die kan verlopen.
  *
  * ⚠️⚠️ **Waarom dit een functie is en geen `!== null` in het scherm.** `null` op
  *    `attachment_url` betekent twee verschillende dingen: *dit bericht heeft geen
- *    foto* én *er was een foto maar hij kon niet getekend worden*. Het scherm
+ *    bijlage* én *er was er een maar hij kon niet getekend worden*. Het scherm
  *    hoort het eerste stil te negeren en het tweede te melden, en met alleen die
  *    ene waarde kan het die twee niet uit elkaar houden.
  *
@@ -368,27 +382,12 @@ export function beperkVoorCache(berichten: readonly ChatBericht[]): readonly Cha
  *
  *    `type` is wél eenduidig: die zegt wat het bericht ís, en die waarde komt uit
  *    een CHECK op de tabel.
- */
-export function heeftBijlage(bericht: Pick<ChatBericht, 'type'>): boolean {
-  return soortBijlage(bericht) !== null;
-}
-
-/**
- * Welke soort bijlage draagt dit bericht — en dus tegen welke emmer teken je?
  *
- * ⚠️⚠️ **`attachment_url` draagt de emmer niet.** Het pad is
- *    `<groep>/<afzender>/<naam>.<ext>` en dat is voor `chatfotos` en `chatdocs`
- *    identiek. `type` is het enige dat zegt waar dit bestand staat, en migratie
- *    0236 is wat die twee gekoppeld houdt: de extensie is aan de soort gepaard,
- *    dus een `photo`-rij kán niet naar een `.pdf` wijzen.
- *
- *    Zonder die paring breekt er niets zichtbaars als ze uit elkaar lopen — je
- *    tekent tegen de verkeerde emmer, krijgt `null`, en de bubbel zegt "niet meer
- *    beschikbaar". Dat is de reden dat
- *    `tests/rls/een-document-is-wat-het-zegt.test.ts` bestaat.
- *
- * ⚠️ Leid de emmer hier af en nergens anders. Een tweede plek waar dit staat, is
- *    een tweede plek die kan verlopen.
+ * ⚠️ **`heeftBijlage()` stond hierboven en is op 10-09-2026 weggehaald** (QS8-72).
+ *    Hij was `soortBijlage(...) !== null` en had na de tweede soort geen aanroeper
+ *    meer — `exports:controle` vond hem. De belofte hierboven is met hem
+ *    meeverhuisd naar deze plek, want een belofte die achterblijft in een
+ *    weggehaalde functie is geen belofte meer.
  */
 export function soortBijlage(bericht: Pick<ChatBericht, 'type'>): 'foto' | 'doc' | null {
   if (bericht.type === 'photo') return 'foto';

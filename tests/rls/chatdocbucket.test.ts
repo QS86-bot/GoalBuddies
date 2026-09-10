@@ -1,5 +1,5 @@
 /**
- * De documentemmer en zijn twee remmen — migraties 0234 en 0235.
+ * De documentemmer en zijn twee remmen — migraties 0235 en 0236.
  *
  * ⚠️⚠️ **De belofte is niet "de policy staat er". Die is: een document verlaat
  *    zijn groep niet** — ook niet met één verzoek buiten de UI om. Zelfde tweede
@@ -58,7 +58,7 @@ function alsMetFout(userId: string, sql: string): string {
   }
 }
 
-describe.runIf(beschikbaar)('de chatdoc-emmer (0234) en de twee remmen (0235)', () => {
+describe.runIf(beschikbaar)('de chatdoc-emmer (0235) en de twee remmen (0236)', () => {
   const alice = randomUUID();
   const bob = randomUUID();
   const carol = randomUUID();
@@ -140,7 +140,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0234) en de twee remmen (0235)', 
     for (const groep of [groepA, groepB, groepArchief]) {
       psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groep}/%'`);
     }
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatdocs'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
     psql(
       `delete from public.chat_messages where group_id in ('${groepA}', '${groepB}', '${groepArchief}')`,
     );
@@ -300,7 +300,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0234) en de twee remmen (0235)', 
     //    persoon lopen dáár tegenaan en dan staat dit geval groen op de verkeerde
     //    teller.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatdocs'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
     for (let i = 0; i < 4; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -322,7 +322,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0234) en de twee remmen (0235)', 
     // ⚠️ De must-allow naast de must-deny. Een plafond dat álles weigert, is
     //    groen op deze suite en stuk voor de gebruiker.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatdocs'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
     for (let i = 0; i < 3; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -341,11 +341,11 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0234) en de twee remmen (0235)', 
   });
 
   it('weigert het derde document van dezelfde persoon op één dag', () => {
-    // ⚠️⚠️ **De teller moet er sinds 0233 apart bij.** `opslag_dagtellers`
+    // ⚠️⚠️ **De teller moet er sinds 0233 apart bij.** `dagtellers`
     //    overleeft een `delete` op `storage.objects` met opzet — wissen zette de
     //    rem anders terug. De objecten weghalen is dus niet meer genoeg.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatdocs'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
     for (let i = 0; i < 2; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)
@@ -381,7 +381,7 @@ describe.runIf(beschikbaar)('de chatdoc-emmer (0234) en de twee remmen (0235)', 
     //    nergens mee — een gratis vijfde document.
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepB}/%'`);
     psql(`delete from storage.objects where bucket_id = 'chatdocs' and name like '${groepA}/%'`);
-    psql(`delete from opslag_dagtellers where bucket_id = 'chatdocs'`);
+    psql(`delete from dagtellers where domein = 'chatdocs'`);
     for (let i = 0; i < 4; i += 1) {
       psql(
         `insert into storage.objects (bucket_id, name, owner)

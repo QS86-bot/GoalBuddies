@@ -1,4 +1,4 @@
--- 0235_een_rem_op_documenten_per_groep_en_per_lid.sql — twee dagtellers op
+-- 0236_een_rem_op_documenten_per_groep_en_per_lid.sql — twee dagtellers op
 -- `chatdocs`, in de vorm die 0233 heeft neergezet.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
@@ -7,7 +7,7 @@
 --   drop trigger if exists chatdocs_aantal_begrensd on storage.objects;
 --   drop trigger if exists chatdocs_aantal_begrensd_verhuisd on storage.objects;
 --   drop function if exists public.bewaak_chatdoc_aantal();
---   delete from opslag_dagtellers where bucket_id = 'chatdocs';
+--   delete from dagtellers where domein = 'chatdocs';
 --
 -- ---------------------------------------------------------------------------
 -- De vorm van 0233 en niet die van 0226
@@ -17,7 +17,7 @@
 --    wordt geschreven door de vorige te kopiëren."** De rem van 0226 telde
 --    `count(*)` over `storage.objects`, en die was met een `delete` terug te
 --    zetten — tien plaatsen, één wissen, opnieuw plaatsen. 0233 heeft alle drie
---    de emmers op `tel_opslag_upload()` gezet, dat de **uploads** telt die er
+--    de emmers op `tel_dagteller()` gezet, dat de **handelingen** telt die er
 --    wáren en niet de objecten die er stáán.
 --
 --    Deze migratie sluit daarop aan. Kopieer 0226 hier niet.
@@ -25,7 +25,7 @@
 -- ⚠️ **En daarom staat er ook géén index.** 0233 heeft
 --    `objects_chatfotos_groep_dag_idx` en `objects_bewijsfotos_uploader_dag_idx`
 --    juist wéggehaald: de nieuwe tellers raken `storage.objects` niet meer, en
---    `opslag_dagtellers` wordt alleen op zijn primaire sleutel geraakt. Een
+--    `dagtellers` wordt alleen op zijn primaire sleutel geraakt. Een
 --    index van 0222 hier overnemen zou een index zijn voor een query die niet
 --    meer bestaat.
 --
@@ -39,8 +39,13 @@
 --    andere regel dan hier bedoeld is: twee per groep per lid, niet twee in
 --    totaal.
 --
--- ⚠️ `security definer` om de reden van 0233: `opslag_dagtellers` staat deny-all
---    en `tel_opslag_upload()` mag door `authenticated` niet uitgevoerd worden.
+-- ⚠️ `security definer` om de reden van 0233: `dagtellers` staat deny-all
+--    en `tel_dagteller()` mag door `authenticated` niet uitgevoerd worden.
+--
+-- ⚠️ **De teller heet sinds 0234 `tel_dagteller()` en de tabel `dagtellers`**
+--    (QS8-401): hij is niet meer alleen voor opslag. `tel_opslag_upload()` is
+--    dáár gedropt, dus een aanroep onder de oude naam is geen stijlkwestie maar
+--    een migratie die niet draait.
 
 create or replace function public.bewaak_chatdoc_aantal()
 returns trigger
@@ -60,17 +65,17 @@ begin
   end if;
 
   -- TODO(paid-tier): vier per groep per etmaal is byte-pariteit met `chatfotos`
-  -- (4 × 5 MB = 20 MB, gelijk aan 20 × 1 MB) en geen productkeuze. Zie 0234 §4.
-  perform tel_opslag_upload('chatdocs', 'groep', groep, 4, interval '1 day',
-                            'documenten in deze groep vandaag');
+  -- (4 × 5 MB = 20 MB, gelijk aan 20 × 1 MB) en geen productkeuze. Zie 0235 §4.
+  perform tel_dagteller('chatdocs', 'groep', groep, 4, interval '1 day',
+                        'documenten in deze groep vandaag');
 
   -- ⚠️ De ledentak staat ná de groepstak, net als in 0226 en 0233: een groep die
   --    vol is, is vol, ongeacht wie het volgende document plaatst.
   if uploader is not null then
     -- TODO(paid-tier): idem. Twee is lager dan vier zodat één lid de groep niet
     -- kan stilleggen.
-    perform tel_opslag_upload('chatdocs', 'uploader', groep || '/' || uploader, 2,
-                              interval '1 day', 'documenten van deze persoon vandaag');
+    perform tel_dagteller('chatdocs', 'uploader', groep || '/' || uploader, 2,
+                          interval '1 day', 'documenten van deze persoon vandaag');
   end if;
 
   return new;

@@ -54,9 +54,9 @@ vi.mock('../../src/lib/supabase', () => ({
   },
 }));
 
-const M0234 = readFileSync('supabase/migrations/0234_een_document_hoort_bij_een_groep.sql', 'utf8');
+const M0235 = readFileSync('supabase/migrations/0235_een_document_hoort_bij_een_groep.sql', 'utf8');
 const M0236 = readFileSync(
-  'supabase/migrations/0236_een_bijlage_zegt_welke_soort_hij_is.sql',
+  'supabase/migrations/0237_een_bijlage_zegt_welke_soort_hij_is.sql',
   'utf8',
 );
 const CHATDOC_TS = readFileSync('src/modules/buddies/chatdoc.ts', 'utf8');
@@ -105,18 +105,18 @@ describe('de emmer en de app noemen dezelfde typen', () => {
   //    3); de lijst in de app is het gemak dat de gebruiker een reden geeft in
   //    plaats van een serverfout. Lopen ze uiteen, dan laat het formulier iets
   //    door dat de server weigert.
-  it('de toegestane typen komen letterlijk uit migratie 0234', () => {
-    expect([...typenUit(M0234)].sort()).toEqual([...CHATDOC_TYPES].sort());
+  it('de toegestane typen komen letterlijk uit migratie 0235', () => {
+    expect([...typenUit(M0235)].sort()).toEqual([...CHATDOC_TYPES].sort());
   });
 
-  it('de bovengrens komt letterlijk uit migratie 0234', () => {
-    const getal = /'chatdocs',\s*'chatdocs',\s*false,\s*(?:--[^\n]*\n|\s)*?(\d+)/.exec(M0234);
-    expect(getal, 'geen grootte in de insert van 0234').not.toBeNull();
+  it('de bovengrens komt letterlijk uit migratie 0235', () => {
+    const getal = /'chatdocs',\s*'chatdocs',\s*false,\s*(?:--[^\n]*\n|\s)*?(\d+)/.exec(M0235);
+    expect(getal, 'geen grootte in de insert van 0235').not.toBeNull();
     expect(Number(getal?.[1])).toBe(CHATDOC_MAX_BYTES);
   });
 
   it('de emmer is privé', () => {
-    expect(M0234).toMatch(/values\s*\(\s*\n?\s*'chatdocs',\s*\n?\s*'chatdocs',\s*\n?\s*false/);
+    expect(M0235).toMatch(/values\s*\(\s*\n?\s*'chatdocs',\s*\n?\s*'chatdocs',\s*\n?\s*false/);
   });
 
   it('de bucketnaam in de app is de naam uit de migratie', () => {
@@ -128,7 +128,7 @@ describe('geen enkel type dat een browser kan uitvoeren', () => {
   // ⚠️⚠️ **Dit is de grendel die vooruit kijkt.** De gelijkheidstoets hierboven
   //    blijft groen als iemand `image/svg+xml` aan *allebei* toevoegt. Deze niet.
   it.each(NOOIT)('%s staat niet in de emmer — %s', (type) => {
-    expect(typenUit(M0234)).not.toContain(type);
+    expect(typenUit(M0235)).not.toContain(type);
   });
 
   it.each(NOOIT)('%s staat niet in de app — %s', (type) => {
@@ -157,7 +157,7 @@ describe('geen enkel type dat een browser kan uitvoeren', () => {
 describe('het pad ligt vast en de naam niet', () => {
   it('een gebouwd pad eindigt altijd op .pdf, wat de gebruiker ook koos', () => {
     // ⚠️ De extensie komt niet uit de bestandsnaam. Een `.PDF` of een `.tar.gz`
-    //    haalt de CHECK van 0236 dus nooit, en het pad is per constructie in
+    //    haalt de CHECK van 0237 dus nooit, en het pad is per constructie in
     //    kleine letters — waar 0225 voor de chatfoto nog een reparatie voor nodig
     //    had.
     const pad = chatdocPad('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
@@ -185,14 +185,14 @@ describe('schoneBestandsnaam maakt precies wat de CHECK toelaat', () => {
   /**
    * ⚠️⚠️ **Een naad tussen twee reguliere expressies in twee talen.** De klasse
    *    in `schoneBestandsnaam()` en de klasse in
-   *    `chat_messages_attachment_name_vorm` (0236) moeten dezelfde tekens
+   *    `chat_messages_attachment_name_vorm` (0237) moeten dezelfde tekens
    *    noemen. Lopen ze uiteen, dan poetst de app iets weg dat mocht, of laat ze
    *    iets staan dat de server weigert — en dat tweede is een melding waar de
    *    gebruiker niets aan kan doen.
    */
-  it('de tekenklasse in de app is die van de CHECK in 0236', () => {
+  it('de tekenklasse in de app is die van de CHECK in 0237', () => {
     const uitMigratie = /attachment_name\s*!~\s*'(\[[^']+\])'/.exec(M0236);
-    expect(uitMigratie, 'geen tekenklasse in 0236').not.toBeNull();
+    expect(uitMigratie, 'geen tekenklasse in 0237').not.toBeNull();
 
     const uitApp = /\.replace\(\/(\[[^/]+\])\/g, ''\)/.exec(
       readFileSync('src/modules/buddies/chatdoc.ts', 'utf8'),
@@ -244,7 +244,7 @@ describe('schoneBestandsnaam maakt precies wat de CHECK toelaat', () => {
 
 describe('soort, extensie en emmer zijn één drieklank', () => {
   /**
-   * ⚠️⚠️ **De naad tussen de CHECK en `soortBijlage()`.** De CHECK van 0236 paart
+   * ⚠️⚠️ **De naad tussen de CHECK en `soortBijlage()`.** De CHECK van 0237 paart
    *    élke `type`-waarde die een bijlage mag dragen aan een extensieverzameling;
    *    `soortBijlage()` vertaalt diezelfde waarde naar een emmer. Komt er ooit
    *    een derde soort bij de CHECK bij zonder dat `soortBijlage()` hem kent, dan
@@ -271,7 +271,7 @@ describe('soort, extensie en emmer zijn één drieklank', () => {
 
   it('de fotoextensies van de app staan alle drie in de fototak van de CHECK', () => {
     const tak = /type = 'photo' and attachment_url ~ \([\s\S]*?\(([a-z|]+)\)/.exec(M0236);
-    expect(tak, 'geen fototak in 0236').not.toBeNull();
+    expect(tak, 'geen fototak in 0237').not.toBeNull();
     const uitCheck = (tak?.[1] ?? '').split('|');
     // `image/jpeg` levert `jpg`, en de CHECK laat `jpeg` er ook door.
     expect(uitCheck).toEqual(expect.arrayContaining(['jpg', 'png', 'webp']));

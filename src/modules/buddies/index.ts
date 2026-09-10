@@ -140,7 +140,6 @@ export {
   voegSamen,
   type BerichtInvoer,
   type SysteemGebeurtenis,
-  heeftBijlage,
   soortBijlage,
 } from './chat-schemas';
 

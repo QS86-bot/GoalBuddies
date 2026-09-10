@@ -1,4 +1,4 @@
--- 0237_een_bijlage_overleeft_zijn_eigenaar_niet.sql — het AVG-verwijderpad dekt
+-- 0238_een_bijlage_overleeft_zijn_eigenaar_niet.sql — het AVG-verwijderpad dekt
 -- voortaan beide chat-emmers — de naam gaat mee, de soort blijft staan.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md
@@ -11,7 +11,7 @@
 --   -- terug in hun oude vorm.
 --   ⚠️ Terugdraaien mét documenten in de database breekt accountverwijdering:
 --      de oude functie kent `chatdocs` niet, en dan valt `delete from profiles`
---      om op de CHECK van 0236. Ruim eerst `chatdocs` op, of draai 0236 mee
+--      om op de CHECK van 0237. Ruim eerst `chatdocs` op, of draai 0237 mee
 --      terug.
 --
 -- ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@
 -- ---------------------------------------------------------------------------
 --
 -- De eerste versie van deze migratie zette `type` terug op `text`, zodat een
--- `doc`-rij zonder bijlage niet op de naam-CHECK van 0236 zou omvallen.
+-- `doc`-rij zonder bijlage niet op de naam-CHECK van 0237 zou omvallen.
 --
 -- 📏 Dat werd geweigerd, en de database had gelijk:
 --
@@ -56,11 +56,11 @@
 --     (stamp_chat_message)
 --
 -- `stamp_chat_message()` maakt `type` onveranderlijk. **En dat hoort zo**: `type`
--- is precies het veld dat bepaalt tegen welke emmer de client tekent (0236 §1),
+-- is precies het veld dat bepaalt tegen welke emmer de client tekent (0237 §1),
 -- dus het is het laatste veld dat je los zou moeten maken om een opruiming te
 -- laten slagen.
 --
--- De reparatie zit daarom in 0236: de naam-eis hangt aan de **bijlage** en niet
+-- De reparatie zit daarom in 0237: de naam-eis hangt aan de **bijlage** en niet
 -- aan de soort. Een `doc`-rij zonder bijlage is toegestaan, en het scherm toont
 -- daar "dit document is niet meer beschikbaar" — wat waar is.
 --
@@ -114,7 +114,7 @@ begin
   -- 3. Berichten met tekst én een bijlage: de tekst blijft, de bijlage gaat weg.
   --
   -- ⚠️ `type` blijft staan: `stamp_chat_message()` maakt hem onveranderlijk, en
-  --    dat hoort zo. De naam-CHECK van 0236 hangt daarom aan de bijlage. Zie §3.
+  --    dat hoort zo. De naam-CHECK van 0237 hangt daarom aan de bijlage. Zie §3.
   update chat_messages m
   set attachment_url = null,
       attachment_name = null
@@ -131,7 +131,7 @@ drop trigger if exists profielen_bijlagen_mee on public.profiles;
 drop function if exists public.wis_chatfotos_van_vertrekker();
 
 -- ⚠️ `before delete`, zodat dit gebeurt vóór `chat_messages_sender_id_fkey` zijn
---    `set null` uitvoert. Erna zou de CHECK van 0236 al omgevallen zijn.
+--    `set null` uitvoert. Erna zou de CHECK van 0237 al omgevallen zijn.
 create trigger profielen_bijlagen_mee
   before delete on public.profiles
   for each row

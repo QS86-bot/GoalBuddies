@@ -1,4 +1,4 @@
--- 0234_een_document_hoort_bij_een_groep.sql — een eigen bucket voor documenten in
+-- 0235_een_document_hoort_bij_een_groep.sql — een eigen bucket voor documenten in
 -- de groepschat, met een allowlist van precies één type.
 --
 -- Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md

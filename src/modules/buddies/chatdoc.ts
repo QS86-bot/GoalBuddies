@@ -21,12 +21,12 @@ import type { Resultaat } from '../goals';
  *    de systeembrowser, en daar ís een `text/html` vanaf de storage-origin
  *    uitvoerbare code.
  *
- *    De veiligheid hangt hier dus aan de allowlist van migratie 0234, en aan
+ *    De veiligheid hangt hier dus aan de allowlist van migratie 0235, en aan
  *    niets anders. Vandaar één type, en vandaar een beloftetest eronder.
  *
  * ⚠️ **Vier bewuste afwijkingen van `chatfoto.ts`:**
  *    1. één MIME-type in plaats van drie;
- *    2. 5 MB in plaats van 1 MB (byte-pariteit per groep — zie 0234 §4);
+ *    2. 5 MB in plaats van 1 MB (byte-pariteit per groep — zie 0235 §4);
  *    3. een kwartier geldig in plaats van een uur;
  *    4. **tekenen per stuk en niet per pagina** — zie `tekenChatdoc()`.
  */
@@ -58,7 +58,7 @@ export const CHATDOC_GELDIGHEID_S = 900;
 /**
  * Het enige toegestane type.
  *
- * ⚠️⚠️ **Een kopie van `allowed_mime_types` in migratie 0234 — en dáár is de
+ * ⚠️⚠️ **Een kopie van `allowed_mime_types` in migratie 0235 — en dáár is de
  *    grendel, niet hier.** De vraag bij elke uitbreiding is niet "is dit formaat
  *    gangbaar" maar **"routeert een browser dit ooit naar de HTML-parser, direct
  *    of via XSLT"**. Bij twijfel: nee. `text/html`, `application/xhtml+xml`,
@@ -68,10 +68,10 @@ export const CHATDOC_GELDIGHEID_S = 900;
  */
 export const CHATDOC_TYPES = ['application/pdf'] as const;
 
-/** De grens die 0234 op de bucket zet: 5 MB. */
+/** De grens die 0235 op de bucket zet: 5 MB. */
 export const CHATDOC_MAX_BYTES = 5_242_880;
 
-/** De grens die de CHECK van 0236 op de naam zet, in **codepunten**. */
+/** De grens die de CHECK van 0237 op de naam zet, in **codepunten**. */
 export const CHATDOC_NAAM_MAX = 120;
 
 /**
@@ -80,7 +80,7 @@ export const CHATDOC_NAAM_MAX = 120;
  * ⚠️⚠️ **De naam in het pad is niet de naam die de gebruiker ziet.** Het pad
  *    krijgt een gegenereerde naam — de oorspronkelijke gaat in
  *    `chat_messages.attachment_name`, want die mag emoji dragen en het pad niet
- *    (de CHECK van 0236 laat er alleen `[A-Za-z0-9._-]` in toe).
+ *    (de CHECK van 0237 laat er alleen `[A-Za-z0-9._-]` in toe).
  *
  * ⚠️ De extensie is hard `.pdf` en komt niet uit de bestandsnaam van de
  *    gebruiker. Een `.PDF` of een `.tar.gz` haalt de CHECK dus nooit, en het pad
@@ -99,7 +99,7 @@ export function chatdocPad(groupId: string, senderId: string): string {
  *    Met een RLO (U+202E) erin rendert `verslag<RLO>fdp.exe` in de bubbel als
  *    `verslagexe.pdf`, terwijl het pad `.pdf` zegt en de bytes iets anders zijn.
  *    Dat is een leugen die de app met het vertrouwen van de groep erachter
- *    vertelt. De CHECK van 0236 weigert zo'n naam; deze functie zorgt dat de
+ *    vertelt. De CHECK van 0237 weigert zo'n naam; deze functie zorgt dat de
  *    gebruiker die weigering niet te zien krijgt.
  *
  * ⚠️ **`kapAf()` en niet `slice()`.** JavaScript telt in UTF-16-eenheden, een
@@ -110,7 +110,7 @@ export function chatdocPad(groupId: string, senderId: string): string {
 export function schoneBestandsnaam(ruw: string): string {
   const zonderRegie = ruw
     // ⚠️ Precies de tekens die de CHECK `chat_messages_attachment_name_vorm`
-    //    (0236) weigert — één klasse, twee plekken, en die twee horen gelijk te
+    //    (0237) weigert — één klasse, twee plekken, en die twee horen gelijk te
     //    blijven. `tests/beloftes/...` legt ze naast elkaar.
     .replace(/[\u0000-\u001F\u007F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
     .replace(/\//g, '-')
@@ -123,7 +123,7 @@ export function schoneBestandsnaam(ruw: string): string {
 /**
  * De soort die het scherm toont, afgeleid uit het **pad** en niet uit de naam.
  *
- * ⚠️ Het pad ligt vast in de CHECK van 0236; de naam is gebruikerstekst. Zou de
+ * ⚠️ Het pad ligt vast in de CHECK van 0237; de naam is gebruikerstekst. Zou de
  *    UI de soort uit de naam halen, dan kan `factuur.pdf.exe` zich als PDF
  *    voordoen. Nu kan dat niet.
  */
@@ -169,7 +169,7 @@ export async function uploadChatdoc(
 
   if (gezet.error) {
     reportError(gezet.error, 'chatdoc.upload', { group_id: groupId });
-    // ⚠️ Het dagplafond van 0235 komt hier ook binnen, en dat is te onderscheiden
+    // ⚠️ Het dagplafond van 0236 komt hier ook binnen, en dat is te onderscheiden
     //    van een netwerkfout — anders leest "probeer het zo nog eens" als een
     //    storing terwijl er niets stuk is. De melding blijft verder algemeen: een
     //    storage-fout draagt soms het pad, en dat pad noemt twee uuid's.
