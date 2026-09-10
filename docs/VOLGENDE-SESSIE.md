@@ -2044,7 +2044,7 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 | `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
 | `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
 | feature-epics (QS8-200, QS8-230, QS8-252) | ⚠️ **niet meer "opsplitsen" — ze zijn af.** 📏 Op 09-09 nagelopen: 15 van de 16 kinderen Done. QS8-252 is gesloten, QS8-200 en QS8-230 dragen nu `wacht-op-Quinten` |
-| ~~De Lijst (QS8-378 t/m 381)~~ | ✅ alle drie af op 09-09; alleen QS8-386 (het ongebruikte `body`-schrijfrecht) staat nog open |
+| ~~De Lijst (QS8-378 t/m 381, QS8-386)~~ | ✅ **helemaal af.** De drie delen op 09-09, de staart QS8-386 op 10-09 — een taak is te hernoemen, dus het schrijfrecht op `todo_items.body` heeft een aanroeper |
 | De foto's (QS8-394 t/m 397) | QS8-395 en QS8-396 zijn gebouwd. **QS8-397 (versleuteling) is een besluit van Quinten** — sleutelbeheer, verlies van je sleutel is verlies van je foto's, en het raakt wat er aan een mens beloofd wordt. Niet op eigen gezag bouwen |
 
 **Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
