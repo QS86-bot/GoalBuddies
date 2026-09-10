@@ -151,9 +151,9 @@ describe.runIf(beschikbaar)('de bewaartermijn van een document (0247)', () => {
 
   it('is vandaag gelijk aan die van de chatfoto, en dat is een keuze', () => {
     // ⚠️⚠️ **Deze test legt geen regel vast maar een sámenval.** De twee termijnen
-    //    zijn twee productkeuzes over twee soorten inhoud: die van de foto is een
-    //    besluit van Quinten (09-09), die van het document een aanname van de
-    //    bouwsessie (0247 §2). Vandaag zijn ze gelijk.
+    //    zijn twee productkeuzes over twee soorten inhoud, allebei een besluit
+    //    van Quinten — de foto op 09-09, het document op 10-09 (0247 §2). Dat ze
+    //    vandaag hetzelfde getal dragen, maakt er geen één keuze van.
     //
     //    Wordt dit geval ooit rood, dan is dat **geen defect**: het betekent dat
     //    iemand er één veranderd heeft, en dan hoort dit geval mee te veranderen

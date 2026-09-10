@@ -743,6 +743,10 @@ async function draaiRollover(auth: string): Promise<Response> {
 
   let bijlagenOpgeruimd = 0;
   let bijlagenMislukt = 0;
+  const misluktPerEmmer: Record<(typeof emmers)[number], number> = {
+    chatfotos: 0,
+    chatdocs: 0,
+  };
 
   for (const emmer of emmers) {
     const { data: verlopen, error: verlopenFout } = await verlopenPaden(emmer);
@@ -786,6 +790,7 @@ async function draaiRollover(auth: string): Promise<Response> {
         //    de bewaartermijn niet ophouden; wat blijft staan komt volgende
         //    ronde gewoon weer boven. Dezelfde vorm als 0158 bij de recaps.
         bijlagenMislukt += blok.length;
+        misluktPerEmmer[emmer] += blok.length;
         console.error(`${emmer} wissen mislukte (${blok.length} paden): ${wisFout.message}`);
         continue;
       }
@@ -798,10 +803,19 @@ async function draaiRollover(auth: string): Promise<Response> {
     }
   }
 
-  if (bijlagenMislukt > 0) {
-    await meld(new Error('bijlagen wissen mislukte'), 'rollover.bijlagen', {
+  // ⚠️⚠️ **Per emmer melden en niet één keer met een totaal.** 📏 De eerste vorm
+  //    stuurde `{ code, count }` en de toelichting bij de uitvoer beweerde dat de
+  //    melding de emmer meedroeg — dat deed hij niet: de emmer stond alleen in de
+  //    `console.error`, en die gaat niet naar Sentry. Gevolg: een pas die alléén
+  //    op `chatdocs` vastloopt was uit geen enkel gestructureerd signaal af te
+  //    leiden. Dat is de "één → meer dan één"-verschuiving van regel 18 vraag 6,
+  //    en de aggregatie is precies de plek waar hij lekt.
+  for (const emmer of emmers) {
+    if (misluktPerEmmer[emmer] === 0) continue;
+    await meld(new Error(`${emmer} wissen mislukte`), 'rollover.bijlagen', {
       code: 'bijlagen_wissen_mislukt',
-      count: bijlagenMislukt,
+      emmer,
+      count: misluktPerEmmer[emmer],
     });
   }
 
@@ -848,7 +862,8 @@ async function draaiRollover(auth: string): Promise<Response> {
       // ⚠️ **Eén getal over beide emmers sinds QS8-408, en dat is een keuze met
       //    een prijs:** een pas die alleen op `chatdocs` vastloopt, is aan dit
       //    getal niet te zien. Wat dat wél laat zien is `bijlagenMislukt` plus de
-      //    melding eronder, en díé draagt de emmer met zoveel woorden mee.
+      //    meldingen eronder, en díé gaan sinds de securityronde **per emmer** —
+      //    de eerste vorm beweerde dat hier en deed het niet.
       bijlagenOpgeruimd,
       // ⚠️ **Hoort nul te zijn.** Staat hij hoger, dan zijn er paden die de
       //    Storage-API niet kwijt wil en blijft er dus meer bewaard dan beloofd.

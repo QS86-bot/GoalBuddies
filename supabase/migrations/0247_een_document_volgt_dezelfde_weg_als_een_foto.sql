@@ -5,6 +5,7 @@
 -- Issue: QS8-408 · Dossier: docs/decisions/2026-09-10-een-document-is-geen-foto.md §5
 --
 -- ROLLBACK-PAD:
+--   drop index if exists storage.objects_bijlage_ouderdom_idx;
 --   drop function if exists public.verlopen_chatdocs(integer);
 --   drop function if exists public.chatdoc_bewaartermijn();
 --   -- daarna 0240 §"policies" opnieuw uitvoeren voor de padgebonden
@@ -91,21 +92,23 @@ create policy chatdocs_select on storage.objects
 -- 2. De bewaartermijn — eenentwintig dagen, en dat is een aanname
 -- ---------------------------------------------------------------------------
 --
--- ⚠️⚠️ **Dit getal is niet door Quinten besloten en dat van de chatfoto wél.**
---    Voor de foto staat er *"Besluit van Quinten, 09-09-2026: 21 dagen"*; voor
---    het document is dit de keuze van deze sessie, langs de weg die CLAUDE.md
---    voorschrijft: de conservatiefste optie die het werk áf maakt, met de aanname
---    zichtbaar opgeschreven in plaats van een vraag die het werk stillegt.
+-- **Besluit van Quinten, 10-09-2026: 21 dagen** — gelijk aan de chatfoto.
 --
---    **De aanname:** een document in een groepschat is dezelfde soort deling als
---    een foto — iets wat je laat zien, niet iets wat de app voor je bewaart —
---    dus dezelfde termijn. Eén getal is bovendien één zin in de interface en
---    één ding om te onthouden.
+-- ⚠️⚠️ **Dit is bewust gevráágd en niet aangenomen, en dat is de uitzondering op
+--    de gewoonte.** CLAUDE.md zegt: kies zelf en bouw door. Deze keuze raakt
+--    allebei de grenzen uit *Beslisbevoegdheid* tegelijk: de app **toont** de
+--    termijn aan de gebruiker (grens 1 — wat er tegen een mens beloofd wordt) en
+--    de rollover **wist er onherroepelijk bestanden mee** op een tier zonder
+--    backups (grens 2). Een rollback zet de pas uit en zet geen documenten terug.
 --
---    **Waar hij kan sneuvelen:** een gescand trainingsschema of een formulier
---    wordt eerder ná drie weken teruggezocht dan een kiekje. Blijkt dat zo, dan
---    is dit één regel — de termijn staat op één plek, en `verlopen_chatdocs()`
---    leest hem.
+--    Het alternatief dat is afgewogen en niet gekozen: een langere termijn voor
+--    documenten, omdat een gescand formulier of een trainingsschema vaker ná drie
+--    weken teruggezocht wordt dan een kiekje. Quinten koos één termijn voor alle
+--    bijlagen — één zin in de interface, één ding om te onthouden.
+--
+--    Verandert dat ooit, dan is het één getal hier en één in
+--    `CHATDOC_BEWAARDAGEN`, en de test hieronder wijst je erop als je er maar één
+--    aanpast.
 --
 -- ⚠️ **Een eigen functie en niet `chatfoto_bewaartermijn()` hergebruiken.** De
 --    twee zijn vandaag gelijk en dat is toeval, geen regel: het zijn twee
@@ -115,6 +118,27 @@ create policy chatdocs_select on storage.objects
 --
 -- ⚠️ Geen cyclusrekenwerk: eenentwintig dagen is een leeftijd en geen week, dus
 --    dit mag in SQL staan (correctheidsregel 7). Zelfde afweging als 0235 §3.
+
+-- ⚠️⚠️ **Onwrikbare regel 11, en dit repareert óók de pas van 0235.** 📏 Gemeten
+--    in de securityronde en zelf nagedaan:
+--
+--      explain: Limit -> Sort (Sort Key: created_at) -> Seq Scan on objects
+--
+--    `storage.objects` draagt alleen `objects_pkey`, `objects_bucket_id_name_key`
+--    en een partiële op `avatars`; op `created_at` staat niets. Elke ronde van de
+--    rollover scande dus de héle objecttabel, en sinds deze migratie twee keer.
+--
+--    Dat is geen lek maar een job die op de gratis tier stil in zijn tijdslimiet
+--    loopt — en dán wordt de bewaartermijn onwaar zonder dat er iets rood wordt,
+--    want een lage `bijlagenOpgeruimd` is niet te onderscheiden van "er was niets
+--    op te ruimen". Precies de open rij die daarover al in
+--    `docs/ENGINEER-REVIEW.md` staat.
+--
+-- ⚠️ Eén partiële index voor beide emmers: de twee passen filteren op dezelfde
+--    twee kolommen, en de `where` houdt hem klein.
+create index if not exists objects_bijlage_ouderdom_idx
+  on storage.objects (bucket_id, created_at)
+  where bucket_id in ('chatfotos', 'chatdocs');
 
 create or replace function public.chatdoc_bewaartermijn()
 returns interval

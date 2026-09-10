@@ -290,13 +290,21 @@ antwoord: een wees zou anders voor de hele groep leesbaar blijven.
    Het weglaten van die `delete` ís de reparatie, en dat leest averechts: de rij
    láten staan is wat het bestand écht doet verdwijnen.
 
-⚠️⚠️ **De termijn is 21 dagen en dat is een aanname, geen besluit.** Bij de foto
-staat er *"Besluit van Quinten, 09-09-2026"*; hier is het de conservatieve keuze
-van de bouwsessie langs de weg die CLAUDE.md voorschrijft. De aanname: een
-document in een groepschat is dezelfde soort deling als een foto — iets wat je
-laat zien, niet iets wat de app voor je bewaart. Waar hij kan sneuvelen: een
-gescand trainingsschema wordt eerder ná drie weken teruggezocht dan een kiekje.
-Het is één regel, want de termijn staat op één plek.
+**De termijn is 21 dagen — besluit van Quinten, 10-09-2026**, gelijk aan de
+chatfoto.
+
+⚠️⚠️ **Dit is bewust gevráágd en niet aangenomen, en dat is de uitzondering op de
+gewoonte van dit project.** CLAUDE.md zegt: kies zelf en bouw door. Deze keuze
+raakt allebei de grenzen uit *Beslisbevoegdheid* tegelijk — de app **toont** de
+termijn (grens 1) en de rollover **wist er onherroepelijk bestanden mee** op een
+tier zonder backups (grens 2). Een rollback zet de pas uit en zet geen documenten
+terug.
+
+De securityronde wees daarop, en die had gelijk: de eerste vorm van deze
+paragraaf noemde het een aanname en bouwde door. Het verschil met een foto is
+niet gek — een gescand formulier of trainingsschema wordt eerder ná drie weken
+teruggezocht dan een kiekje — en juist daarom is het een vraag van één regel
+waard. Het antwoord: één termijn voor alle bijlagen.
 
 ⚠️ **Twee constanten en twee databasefuncties, met een test die zegt dat ze
 vandaag gelijk zijn.** Samenvoegen zou van twee productkeuzes één maken; los

@@ -209,7 +209,8 @@ van onze eigen handelingen leest hier stiekem doorheen*.
 * **`wis_bewijsfotos_van_vertrekker()`** — dezelfde fout, andere bucket. Die
   bucket heeft geen bewaartermijn, en de rij daar láten staan zou hem alleen maar
   langer bewaren. Staat als rij in `ENGINEER-REVIEW.md`.
-* **Een alarm op een opruimpas die stilvalt.** `fotosOpgeruimd` staat in de
+* **Een alarm op een opruimpas die stilvalt.** `bijlagenOpgeruimd` — tot QS8-408
+  heette dit veld `fotosOpgeruimd` — staat in de
   uitvoer van de rollover; niets ziet erop toe dat het getal ooit boven nul komt.
   Ook een rij.
 
