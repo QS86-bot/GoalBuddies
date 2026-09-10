@@ -2480,16 +2480,23 @@ maanden blijft liggen, dus het staat bovenaan.
 
 1. **QS8-24 bewijzen — er is nog nooit een gebeurtenis uít de app in Sentry
    aangekomen.** Uit een Edge Function wél (HTTP 200, gemeten op 26-08), en het is
-   dezelfde envelope-bouwer — maar dat is een afgeleide en geen meting. Zet
-   `EXPO_PUBLIC_SENTRY_DSN` in `.env`, draai `npm run deploy`, forceer een fout op
-   `goalbuddies.q-projects.tech`, en kijk of hij in Sentry staat met
-   `server_name: app` en `runtime: web`.
+   dezelfde envelope-bouwer — maar dat is een afgeleide en geen meting. Draai
+   `npm run deploy`, forceer een fout op `goalbuddies.q-projects.tech`, en kijk of
+   hij in Sentry staat met `server_name: app` en `runtime: web`.
 
-   Optioneel in dezelfde ronde: een token met scopes `project:releases` en
-   `org:read` plus `SENTRY_ORG`/`SENTRY_PROJECT` in `.env`, dan zijn de stacks
-   leesbaar in plaats van `bundle.js:1:284213`. Zonder die drie slaat de stap
-   zichzelf over en gebeurt er niets ergs. ⚠️ Dat token is **wél geheim**, anders
-   dan de DSN — die staat in elke clientbundel en hoort daar.
+   ⚠️ **De DSN hoeft níét meer in `.env`** — die staat sinds 30-08 als
+   `STANDAARD_SENTRY_DSN` in `src/lib/env.ts`, en dat was juist de reden dat er in
+   vier dagen nooit een fout aankwam. Zet je hem daar alsnog, dan overschrijf je
+   de goede waarde.
+
+   📏 **De source maps zijn wél gemeten, op 10-09-2026.** `SENTRY_AUTH_TOKEN`,
+   `SENTRY_ORG` en `SENTRY_PROJECT` staan op Quintens machine en `sentry-cli`
+   uploadde in één keer, zonder fout erna — dus stacks zijn leesbaar in plaats van
+   `bundle.js:1:284213`. Twee dingen die daarbij boven kwamen staan nu in
+   `docs/DEPLOY.md` §Source maps en in `.env.example`: ORG en PROJECT zijn de
+   **slugs** en niet de id's uit de DSN, en er is **géén `SENTRY_URL`** nodig ook
+   al wijst de DSN naar `ingest.de.sentry.io`. ⚠️ Dat token is **wél geheim**,
+   anders dan de DSN — die staat in elke clientbundel en hoort daar.
 
 2. **QS8-124 bewijzen.** Draai `npm run vapid:genereer`, zet
    `EXPO_PUBLIC_VAPID_PUBLIC_KEY` in `.env` en alle drie de waarden met
