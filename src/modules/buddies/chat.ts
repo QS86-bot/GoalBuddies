@@ -13,6 +13,8 @@ import { supabase } from '../../lib/supabase';
 //    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
 import { metGetekendeAvatars } from '../auth/avatar';
 
+import { metGetekendeChatfotos, uploadChatfoto, verwijderChatfoto } from './chatfoto';
+
 import type { Resultaat } from './api';
 import {
   BERICHTEN_PER_PAGINA,
@@ -134,6 +136,7 @@ function naarBericht(rij: ChatRij): ChatBericht | null {
     sender_avatar: rij.sender_avatar,
     body: rij.body ?? '',
     type: rij.type ?? 'text',
+    attachment_url: rij.attachment_url ?? null,
     system_event: rij.system_event,
     // ⚠️ Namen en geen id's, en ze komen uit een `left join` in `groepschat()`
     //    (migratie 0059). Daardoor levert een verwijderd account vanzelf `null`
@@ -177,7 +180,13 @@ export async function fetchChat(
   //    is privé sinds 0126, dus `sender_avatar` draagt een pad; een verzoek per
   //    regel is exact de N+1 uit schaalbaarheidsregel 12, en dertig regels is
   //    precies de schaal waarop dat pijn doet.
-  const getekend = await metGetekendeAvatars(nieuwsteEerst, 'sender_avatar');
+  // ⚠️ **Twee rondes per pagina en niet twee per bericht.** Dertig berichten is
+  //    precies de schaal waarop een N+1 pijn doet (schaalbaarheidsregel 12). Twee
+  //    buckets betekent twee `createSignedUrls`-aanroepen; komt er ooit een derde
+  //    ondertekend veld bij, dan hoort dit één functie met een veldenlijst te
+  //    worden en niet een derde regel.
+  const metAvatars = await metGetekendeAvatars(nieuwsteEerst, 'sender_avatar');
+  const getekend = await metGetekendeChatfotos(metAvatars, 'attachment_url');
 
   return {
     berichten: [...getekend].reverse(),
@@ -204,10 +213,23 @@ export async function stuurBericht(
   groupId: string,
   senderId: string,
   body: string,
+  foto?: { readonly data: ArrayBuffer | Uint8Array; readonly mime: string },
 ): Promise<Resultaat<string>> {
-  const gevalideerd = berichtSchema.safeParse({ body });
+  const gevalideerd = berichtSchema.safeParse({ body, heeftFoto: foto !== undefined });
   if (!gevalideerd.success) {
     return { ok: false, melding: invoerfout(gevalideerd.error, t('chat.controleer')) };
+  }
+
+  // ⚠️⚠️ **Eerst uploaden, dan invoegen, en die volgorde is verplicht.**
+  //    `chat_messages` heeft sinds migratie 0193 geen UPDATE-policy en geen
+  //    UPDATE-grant, dus `attachment_url` is alleen bij INSERT te zetten — het
+  //    pad ná te leveren kan niet. Mislukt de upload, dan is er geen bericht en
+  //    ook geen wees.
+  let pad: string | null = null;
+  if (foto !== undefined) {
+    const gezet = await uploadChatfoto(groupId, senderId, foto);
+    if (!gezet.ok) return gezet;
+    pad = gezet.waarde;
   }
 
   const { data, error } = await supabase()
@@ -216,12 +238,19 @@ export async function stuurBericht(
       group_id: groupId,
       sender_id: senderId,
       body: gevalideerd.data.body,
-      type: 'text',
+      type: pad === null ? 'text' : 'photo',
+      attachment_url: pad,
     })
     .select('id')
     .single();
 
   if (error) {
+    // ⚠️ De compenserende handeling, en die staat vóór alle andere afhandeling.
+    //    Het bestand staat er nu wel en er wijst geen rij naar; zonder dit groeit
+    //    de bucket met foto's die niemand ooit opvraagt — en die wél meetellen
+    //    voor het dagplafond van 0222.
+    if (pad !== null) await verwijderChatfoto(pad);
+
     reportError(error, 'chat.send', { group_id: groupId });
 
     // ⚠️ Een policyweigering is voor élke reden dezelfde 42501, dus zonder deze
@@ -249,12 +278,28 @@ export async function stuurBericht(
  *    hier zou suggereren dat hij hier zit.
  */
 export async function verwijderBericht(berichtId: string): Promise<Resultaat<true>> {
+  // ⚠️ **Het pad ophalen vóór de delete**, want daarna is de rij weg en is het
+  //    pad niet meer te achterhalen. Levert dit niets op — de rij bestaat niet,
+  //    of de policy laat hem niet lezen — dan gaat de delete gewoon door en is
+  //    de uitkomst daarvan het antwoord.
+  const vooraf = await supabase()
+    .from('chat_messages')
+    .select('attachment_url')
+    .eq('id', berichtId)
+    .maybeSingle();
+
   const { error } = await supabase().from('chat_messages').delete().eq('id', berichtId);
 
   if (error) {
     reportError(error, 'chat.delete');
     return { ok: false, melding: t('chat.weghalen_mislukt') };
   }
+
+  // ⚠️ **De rij eerst, dan het bestand.** De slechtste afloop is dan een wees in
+  //    de bucket en niet een bericht dat naar een bestand wijst dat weg is. Het
+  //    omgekeerde zou een gebroken foto in het gesprek van drie mensen zetten.
+  const pad = vooraf.data?.attachment_url ?? null;
+  if (typeof pad === 'string' && pad !== '') await verwijderChatfoto(pad);
 
   return { ok: true, waarde: true };
 }

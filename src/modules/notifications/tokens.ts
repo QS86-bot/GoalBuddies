@@ -178,7 +178,7 @@ export async function registreerPushToken(userId: string): Promise<Resultaat<tru
   });
 
   if (error) {
-    reportError(error, 'push.register', { code: error.code });
+    reportError(error, 'push.register');
     laatsteWeigering = t('push.apparaat_niet_bruikbaar');
     return { ok: false, melding: laatsteWeigering };
   }
@@ -238,5 +238,5 @@ export async function verwijderPushToken(): Promise<void> {
     .delete()
     .eq('token', getrimdAlsPostgres(gevonden.token));
 
-  if (error) reportError(error, 'push.unregister', { code: error.code });
+  if (error) reportError(error, 'push.unregister');
 }

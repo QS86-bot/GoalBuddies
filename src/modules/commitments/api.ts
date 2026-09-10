@@ -72,7 +72,7 @@ export async function fetchGetuigenissen(): Promise<readonly Getuigenis[]> {
   const { data, error } = await supabase().rpc('getuigenissen');
 
   if (error) {
-    reportError(error, 'commitments.getuigenissen', { code: error.code });
+    reportError(error, 'commitments.getuigenissen');
     return [];
   }
 
@@ -87,7 +87,7 @@ export async function fetchCommitments(goalId: string): Promise<readonly Commitm
     .order('created_at', { ascending: true });
 
   if (error) {
-    reportError(error, 'commitments.list', { goal_id: goalId, code: error.code });
+    reportError(error, 'commitments.list', { goal_id: goalId });
     throw new Error(t('commitment.fout.laden'));
   }
 
@@ -142,7 +142,7 @@ export async function fetchStrafDoelen(
   });
 
   if (error) {
-    reportError(error, 'commitments.strafdoelen', { aantal: goalIds.length, code: error.code });
+    reportError(error, 'commitments.strafdoelen', { aantal: goalIds.length });
     return null;
   }
 
@@ -201,7 +201,7 @@ export async function fetchMogelijkeBegunstigden(): Promise<readonly MogelijkeBe
     .limit(MAX_GROEPEN);
 
   if (mijn.error) {
-    reportError(mijn.error, 'commitments.begunstigden.groepen', { code: mijn.error.code });
+    reportError(mijn.error, 'commitments.begunstigden.groepen');
     return [];
   }
 
@@ -220,7 +220,7 @@ export async function fetchMogelijkeBegunstigden(): Promise<readonly MogelijkeBe
     .limit(MAX_KANDIDATEN);
 
   if (leden.error) {
-    reportError(leden.error, 'commitments.begunstigden.leden', { code: leden.error.code });
+    reportError(leden.error, 'commitments.begunstigden.leden');
     return [];
   }
 
@@ -316,7 +316,7 @@ async function maak(
     .single();
 
   if (error) {
-    reportError(error, 'commitments.create', { goal_id: goalId, name: type, code: error.code });
+    reportError(error, 'commitments.create', { goal_id: goalId, name: type });
     return { ok: false, melding: t('commitment.fout.vastleggen') };
   }
 
@@ -340,7 +340,7 @@ export async function trekIn(commitmentId: string): Promise<Resultaat<true>> {
     .select('id');
 
   if (error) {
-    reportError(error, 'commitments.cancel', { code: error.code });
+    reportError(error, 'commitments.cancel');
     return { ok: false, melding: t('commitment.fout.intrekken') };
   }
 
@@ -380,7 +380,7 @@ export async function fetchCommitmentSpoor(
     .order('seq', { ascending: true });
 
   if (error) {
-    reportError(error, 'commitments.trail', { code: error.code });
+    reportError(error, 'commitments.trail');
     throw new Error(t('commitment.fout.spoor'));
   }
 

@@ -854,12 +854,6 @@ export const GEEN_SCHRIJFPAD = [
       '`plaats_systeembericht()`. Opruimen hoort bij een 0118-achtige ronde.',
   },
   {
-    tabel: 'chat_messages',
-    soort: 'INSERT',
-    kolom: 'attachment_url',
-    reden: 'de kolom bestaat vooruit op bijlagen in de chat; er is nog geen scherm dat er een zet.',
-  },
-  {
     tabel: 'commitments',
     soort: 'UPDATE',
     kolom: 'body',

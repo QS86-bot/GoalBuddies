@@ -384,6 +384,7 @@ function Genereren({
 }) {
   const [stand, setStand] = useState<Stand>({ fase: 'rust' });
   const [overnemen, setOvernemen] = useState(false);
+  const [overnameFout, setOvernameFout] = useState<string | null>(null);
   /**
    * Hoe vaak er op "opnieuw" gedrukt is — QS8-40.
    *
@@ -494,19 +495,48 @@ function Genereren({
     void kijk(aanvraag.waarde.jobId);
   }
 
+  /**
+   * ⚠️ **De uitkomst van elke mijlpaal werd hier weggegooid — QS8-350.** Mislukte
+   *    er één, dan kreeg de gebruiker stil mínder mijlpalen dan de coach
+   *    voorstelde, en `onKlaar()` sloot het venster alsof alles gelukt was.
+   *
+   * ⚠️ **Stoppen bij de eerste die faalt, en niet doorgaan.** De volgorde is de
+   *    betekenis: `maakMijlpaal()` leidt `order_index` af uit wat er al staat, dus
+   *    doorgaan na een gat levert een rij die niet meer bij het plan hoort. En
+   *    daarom vervalt hierna ook de knop: nog een keer overnemen zou de mijlpalen
+   *    die wél landden er een tweede keer bij zetten.
+   */
   async function neemOver(voorstellen: readonly VoorstelMijlpaal[]) {
     setOvernemen(true);
+    setOvernameFout(null);
 
     // ⚠️ Eén voor één en op volgorde, want `maakMijlpaal()` bepaalt zelf de
     //    volgende `order_index` uit wat er al staat. Parallel zetten zou twee
     //    mijlpalen op hetzelfde nummer kunnen zetten, en daar staat een unieke
     //    index op.
+    let gelukt = 0;
     for (const voorstel of voorstellen) {
-      await maakMijlpaal(doel.id, {
+      const uitkomst = await maakMijlpaal(doel.id, {
         title: voorstel.title,
         description: voorstel.description,
         target_date: voorstel.target_date,
       });
+
+      if (!uitkomst.ok) {
+        setOvernemen(false);
+        setOvernameFout(
+          gelukt === 0
+            ? t('coach.geen_overgenomen', { melding: uitkomst.melding })
+            : t('coach.deels_overgenomen', {
+                gelukt,
+                totaal: voorstellen.length,
+                melding: uitkomst.melding,
+              }),
+        );
+        return;
+      }
+
+      gelukt += 1;
     }
 
     setOvernemen(false);
@@ -602,10 +632,13 @@ function Genereren({
           ))}
         </View>
 
+        {overnameFout === null ? null : <Caption danger>{overnameFout}</Caption>}
+
         <View style={styles.knoppen}>
           <Button
             variant="primair"
             busy={overnemen}
+            disabled={overnameFout !== null}
             onPress={() => void neemOver(stand.voorstellen)}
           >
             {t('coach.alle_overnemen', { aantal: stand.voorstellen.length })}

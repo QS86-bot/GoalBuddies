@@ -74,6 +74,70 @@ describe('vergelijkFuncties', () => {
     expect(isFout(uit)).toBe(true);
   });
 
+  /**
+   * ⚠️⚠️ **Twee overloads zijn twee functies, en tot 0232 waren het er één —
+   *    QS8-398.** `functie_vingerafdrukken()` gaf als sleutel `p.proname`, dus
+   *    bij een overload overschreef de tweede rij de eerste in de `Map`. Van de
+   *    twee werd er precies één vergeleken en de andere nooit: hij zat noch in
+   *    `logica`, noch in `commentaar`, noch in `alleenProductie` of
+   *    `alleenLokaal`. Onzichtbaar, niet gemeld.
+   *
+   * 📏 Gemeten op de lokale stack: `activeer_weekplanstap` bestaat in twee
+   *    vormen, met twee vérschillende `kaal`-waarden — 2 rijen uit de database,
+   *    1 sleutel na de `Map`. Na 0232: 257 rijen, 257 sleutels.
+   *
+   * ⚠️ **Dit is dezelfde les als de drop-uitzondering bij onwrikbare regel 20**,
+   *    één laag lager toegepast: *een controle die op naam vergelijkt, laat
+   *    precies die bug door*. Alleen ging het daar om de migratie en hier om de
+   *    controle die moet vaststellen of productie nog draait wat de migraties
+   *    bouwen.
+   */
+  it('vergelijkt twee overloads apart en laat er geen wegvallen', () => {
+    const tweeArg = 'activeer_weekplanstap(p_goal_id uuid, p_cycle_start_date date)';
+    const drieArg =
+      'activeer_weekplanstap(p_goal_id uuid, p_cycle_start_date date, p_cycle_index integer)';
+
+    const uit = vergelijkFuncties(
+      [
+        { naam: tweeArg, kaal: 'k-twee', ruw: 'r-twee' },
+        { naam: drieArg, kaal: 'k-drie', ruw: 'r-drie' },
+      ],
+      [
+        { naam: tweeArg, kaal: 'k-twee', ruw: 'r-twee-anders' },
+        { naam: drieArg, kaal: 'k-drie-anders', ruw: 'r-drie-anders' },
+      ],
+    );
+
+    // De ene verschilt alleen in commentaar, de andere in logica. Zou er één
+    // wegvallen, dan mist precies één van deze twee regels zijn geval.
+    expect(uit.commentaar).toEqual([tweeArg]);
+    expect(uit.logica).toEqual([drieArg]);
+    expect(uit.alleenProductie).toEqual([]);
+    expect(uit.alleenLokaal).toEqual([]);
+  });
+
+  it('houdt twee overloads uit elkaar bij "ontbreekt aan één kant"', () => {
+    // ⚠️ De andere helft, en die is scherper: met `proname` als sleutel zou de
+    //    ontbrekende overload hier volledig onzichtbaar zijn — de naam staat
+    //    immers aan béíde kanten, dus hij valt in geen enkele lijst. Precies de
+    //    vorm waarin een gedropte overload op productie ongemerkt blijft.
+    const tweeArg = 'activeer_weekplanstap(p_goal_id uuid, p_cycle_start_date date)';
+    const drieArg =
+      'activeer_weekplanstap(p_goal_id uuid, p_cycle_start_date date, p_cycle_index integer)';
+
+    const uit = vergelijkFuncties(
+      [{ naam: tweeArg, kaal: 'k', ruw: 'r' }],
+      [
+        { naam: tweeArg, kaal: 'k', ruw: 'r' },
+        { naam: drieArg, kaal: 'k', ruw: 'r' },
+      ],
+    );
+
+    expect(uit.alleenLokaal).toEqual([drieArg]);
+    expect(uit.alleenProductie).toEqual([]);
+    expect(isFout(uit)).toBe(true);
+  });
+
   it('sorteert elke lijst, zodat twee runs dezelfde melding geven', () => {
     const uit = vergelijkFuncties(
       [

@@ -90,8 +90,13 @@ const SYMBOOLCODE = /^[A-Za-z][A-Za-z0-9_]{2,40}$/;
  * Leest deze waarde als een foutcode — van welke van de twee catalogi dan ook?
  *
  * ⚠️ **Sinds QS8-330 draagt óók de `code`-sleutel deze toets.** Hij stond tot
- *    dan op `ALLOWED_KEYS` en ging dus ongetoetst de deur uit: 74 aanroepen
- *    geven `code: error.code` mee, en een allowlist-sleutel is een kanaal. Wie
+ *    dan op `ALLOWED_KEYS` en ging dus ongetoetst de deur uit: 76 aanroepen
+ *    gáven `code: error.code` mee — sinds QS8-338 geen enkele meer, want die
+ *    waarde staat al in de melding. **De toets blijft.** Een sleutel die vandaag
+ *    niemand stuurt, moet morgen nog steeds bewaakt zijn; 📏 15 regels in
+ *    `rollover` en `notificaties` schrijven met de hand een eigen `code`, en de
+ *    volgende aanroeper hoort tegen dezelfde vorm aan te lopen. Want een
+ *    allowlist-sleutel is een kanaal. Wie
  *    zijn eigen veld `code` noemde, duwde er alles doorheen wat `scrubMessage()`
  *    ongemoeid laat — precies het gat dat de kop van `FOUTCODE` hierboven
  *    beschrijft, één sleutel verderop en vier maanden onopgemerkt.
