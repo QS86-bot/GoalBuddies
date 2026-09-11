@@ -16,8 +16,8 @@ productie in twee rondes)
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 **256**.
 
-**Het gat is daarmee tweeëndertig bestanden** — `0222` t/m `0253`, van 09-09,
-10-09 en 11-09 en uit twintig verschillende issues:
+**Het gat is daarmee drieëndertig bestanden** — `0222` t/m `0254`, van 09-09
+tot en met 11-09 en uit eenentwintig verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -52,7 +52,7 @@ t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
 | `0250_een_document_volgt_dezelfde_weg_als_een_foto.sql` | QS8-408 | ja |
 | `0251_een_bewaartermijn_voor_alle_bijlagen.sql` | QS8-411 | nee |
 | `0252_de_goedkeuring_wijst_naar_de_eigenaar_van_de_voltooiing.sql` | QS8-182 | nee |
-| `0253_elke_fotoemmer_pint_de_extensie_in_zijn_insertpolicy.sql` | QS8-416 | ja |
+| `0253_functiegrants_kennen_de_handtekening_en_ook_anon.sql` | QS8-428 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
