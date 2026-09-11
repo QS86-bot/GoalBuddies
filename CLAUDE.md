@@ -678,7 +678,10 @@ door hem te breken, beantwoordt in werkelijkheid *"is de toestand na mijn mutati
 anders dan ervoor"*, en dat is niet te beantwoorden zonder "ervoor" te meten.
 📏 Dat kostte `rls:dekking` op 10-09-2026 een uitslag die precies omkeerde toen
 er één dagteller volliep, zonder dat er iets aan de code veranderd was — en de
-gevaarlijke richting is dat een gat er dan uit komt als bewaakt. Uitleg in
+gevaarlijke richting is dat een gat er dan uit komt als bewaakt. ⚠️ Meet je
+"ervoor" één keer aan het begin en één keer aan het eind, dan vind je daarmee
+niet de drift die zíchzelf herstelt; die grens hoort je instrument op te
+schrijven in plaats van hem te overschreeuwen. Uitleg in
 `docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`.
 
 ⚠️ **Breek de grendel die de ijking nóemt, niet zomaar iets — anders is de ijking

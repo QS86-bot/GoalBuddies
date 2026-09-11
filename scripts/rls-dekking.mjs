@@ -54,8 +54,18 @@
  *    hem rood".** Dat is de derde fout van deze soort op dit script, en alle
  *    drie gaan ze de geruststellende kant op: een gat komt eruit als bewaakt.
  *    Daarom meet hij de suite ook één keer vóór de eerste mutatie en één keer
- *    ná de laatste — wat toen al rood stond, en wat onderweg rood werd, telt
- *    niet als bewijs. Meting en geval staan bij `weegTegenBaseline()`.
+ *    ná de laatste: wat toen al rood stond telt niet als bewijs, en wat onderweg
+ *    rood werd **én aan het eind rood bleef** ook niet. Meting en geval staan bij
+ *    `weegTegenBaseline()`.
+ *
+ * ⚠️ **Die tweede helft is smaller dan hij klinkt, en dat hoort er expliciet bij
+ *    te staan.** Drift die zichzelf herstelt — een teller waarvan het venster
+ *    omrolt, een storing die overgaat — staat bij de slotmeting weer groen en
+ *    komt er dus niet uit. Het venster van `tel_dagteller()` (0233) is een vást
+ *    etmaal en een volledige sweep duurt uren, dus dat is geen theorie. Wat
+ *    daartegen helpt is de naam bij elke `✓`: die maakt een ongerijmde getuige
+ *    zichtbaar voor wie het rapport leest. Staat als rij in
+ *    `docs/ENGINEER-REVIEW.md`.
  *
  * Gebruik:
  *   npm run rls:dekking              alle policies
@@ -292,27 +302,23 @@ export const NIET_PER_HELFT_TE_METEN = {
       'de uitdrukkingen van `push_tokens_select` en `push_tokens_delete` uit elkaar lopen.',
     staatIn: 'tests/rls/afvinkgrens.test.ts',
   },
-  'profiles.profiles_update.using': {
+  'profiles.profiles_update.check': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `id = auth.uid()` — ' +
       'en `id` staat níet in de UPDATE-kolomgrant van `profiles` (📏 hermeten op 10-09-2026: ' +
       'twintig kolommen wél, `id` niet; de kop van `schrijfgrenzen.test.ts` zei nog veertien). ' +
-      'Er bestaat dus geen rij die de ene helft passeert en de andere niet. Het páár is wél ' +
-      'bewaakt: `schrijfgrenzen.test.ts` wordt rood zodra béíde helften verruimd worden. ' +
-      '⚠️⚠️ **Deze rij is op 10-09-2026 (ronde 9) ten onrechte weggehaald en meteen ' +
-      'teruggezet.** Eén run van `rls:dekking -- profiles` gaf `bewaakt` voor beide helften en ' +
-      'eiste verwijdering; drie runs erna — op een verse stack, en onafhankelijk door de ' +
-      'security-reviewer — gaven `onbewaakt`. Die tegenspraak staat als eigen rij in ' +
-      '`docs/ENGINEER-REVIEW.md`: een `bewaakt`-uitslag betekent *er werd een test rood*, en ' +
-      'dat is niet hetzelfde als *déze policy maakte hem rood*.',
+      'Er bestaat dus geen rij die de `using`-helft passeert en hier alsnog strandt: de ' +
+      'nieuwe rij draagt altijd hetzelfde `id` als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️⚠️ **Hier stond ook een rij voor `profiles_update.using`, en die is op 10-09-2026 ' +
+      'weggehaald omdat hij één stap te ver redeneerde.** Uit *"er bestaat geen rij die de ene ' +
+      'helft passeert en de andere niet"* volgt niet dat de helft niet te toetsen is — het ' +
+      'gedrag verandert wel degelijk waarneembaar. Diezelfde rij was daarvóór al eens ten ' +
+      'onrechte verwijderd op een `bewaakt`-uitslag die van een volgelopen dagteller kwam; ' +
+      'beide gevallen staan in `docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`.',
     wordtToetsbaarAls:
       'de twee uitdrukkingen uit elkaar lopen — bijvoorbeeld als een beheerder ooit ' +
       "andermans profiel mag lezen maar niet schrijven — of `id` in de UPDATE-kolomgrant komt.",
-    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
-  },
-  'profiles.profiles_update.check': {
-    reden: 'Zelfde paar als `profiles.profiles_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `profiles.profiles_update.using`.',
     staatIn: 'tests/rls/schrijfgrenzen.test.ts',
   },
   'todo_items.todo_items_update.check': {
@@ -323,12 +329,14 @@ export const NIET_PER_HELFT_TE_METEN = {
       'nooit veranderen, waardoor de nieuwe rij altijd dezelfde `user_id` draagt als de oude — ' +
       'en die is de `using`-helft al gepasseerd. Er bestaat geen rij die de ene helft passeert ' +
       'en de andere niet. ' +
-      '⚠️ **Dit is niet hetzelfde geval als `groups_update`, en het verschil is gemeten.** Daar ' +
-      'geeft élke helft los nul rood; hier geeft de `using`-helft los **1 rood** en de ' +
-      '`check`-helft nul. 📏 Drie metingen op 10-09-2026 (QS8-262, ronde 9): alleen `using` ' +
-      'open → 1 rood, alleen `check` open → 0 rood, béíde open → 1 rood, elke keer ' +
-      '*de UPDATE-policy filtert andermans rij weg, ook met SELECT wagenwijd open*. De ' +
-      '`using`-helft is dus gewoon bewaakt; alleen deze is niet te isoleren.',
+      '⚠️⚠️ **Deze tabel was op 10-09-2026 het bewijs dat vier ándere rijen fout stonden.** ' +
+      'Hier gaf de `using`-helft los **1 rood** en bij `goals`, `profiles`, `weekly_goals` en ' +
+      '`groups` gaf hij nul — en dat verschil zat niet in de policy maar in de téstsuite: voor ' +
+      'deze tabel bestond zo\'n test al (`todo-lijst.test.ts`), voor die vier niet. Ze staan ' +
+      'er sinds ronde 9 wel, in `tests/rls/halfslot-update.test.ts`. 📏 Drie metingen op ' +
+      '10-09-2026: alleen `using` open → 1 rood, alleen `check` open → 0 rood, béíde open → ' +
+      '1 rood, elke keer *de UPDATE-policy filtert andermans rij weg, ook met SELECT wagenwijd ' +
+      'open*. Alleen déze helft is niet te isoleren.',
     wordtToetsbaarAls:
       'de twee uitdrukkingen uit elkaar lopen, of `user_id` in de UPDATE-kolomgrant komt — ' +
       'dan kan iemand zijn taak naar een ander schrijven en is `check` in zijn eentje de ' +
@@ -336,48 +344,36 @@ export const NIET_PER_HELFT_TE_METEN = {
       'ook niet in, en `zet_taakzichtbaarheid()` is de enige weg.',
     staatIn: 'tests/rls/todo-lijst.test.ts',
   },
-  'goals.goals_update.using': {
+  'goals.goals_update.check': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `owner_id = auth.uid()` — ' +
-      'en `owner_id` staat níet in de UPDATE-kolomgrant van `goals` (📏 gemeten: `title`, ' +
-      '`description`, `category`, `identity_statement` en `available_hours_per_week` wél, ' +
-      '`owner_id` niet). Een client kan de eigenaar dus nooit verzetten. 📏 Gemeten op ' +
-      '10-09-2026 (ronde 9), met de 96 testbestanden die `goals` noemen: alleen `using` open = ' +
-      '1211 groen, alleen `check` open = 1211 groen, béíde tegelijk = 1 rood — *een ' +
-      'groepsgenoot hernoemt het doel van een ander niet*. De grendel is het paar. ' +
-      '⚠️ Ronde 4 (#174) mat dit al zo en legde het niet vast; het register bestond toen nog ' +
-      'niet.',
+      'en `owner_id` staat níet in de UPDATE-kolomgrant van `goals` (📏 gemeten op 10-09-2026: ' +
+      'vijf kolommen wél — `available_hours_per_week`, `category`, `description`, ' +
+      '`identity_statement`, `title` — `owner_id` niet). Een client kan de eigenaar dus nooit ' +
+      'verzetten, waardoor de nieuwe rij altijd dezelfde eigenaar draagt als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️ Ronde 4 (#174) mat het paar al zo en legde het niet vast; het register bestond toen ' +
+      'nog niet.',
     wordtToetsbaarAls:
       'de twee uitdrukkingen uit elkaar lopen, of `owner_id` in de UPDATE-kolomgrant komt — ' +
-      'dan kan iemand zijn doel naar een ander schrijven en is `check` in zijn eentje de ' +
+      'dan kan iemand zijn doel naar een ander schrijven en is deze helft in zijn eentje de ' +
       'grendel.',
     staatIn: 'tests/rls/eigenaarschap.test.ts',
   },
-  'goals.goals_update.check': {
-    reden: 'Zelfde paar als `goals.goals_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `goals.goals_update.using`.',
-    staatIn: 'tests/rls/eigenaarschap.test.ts',
-  },
-  'weekly_goals.weekly_goals_update.using': {
+  'weekly_goals.weekly_goals_update.check': {
     reden:
       '`using` en `with check` zijn letterlijk dezelfde uitdrukking — de eigenaarstoets via ' +
       '`goals` — en `goal_id` staat níet in de UPDATE-kolomgrant van `weekly_goals` ' +
       '(📏 gemeten: `milestone_id`, `ceiling_text`, `floor_text` en `title` wél, `goal_id` niet). ' +
       'Een client kan het doel van een weekdoel dus nooit verzetten, waardoor de nieuwe rij ' +
-      'altijd dezelfde eigenaar heeft als de oude. 📏 Gemeten op 10-09-2026 (ronde 9): elke ' +
-      'helft los = nul rood, béíde tegelijk = 1 rood — *een groepsgenoot hernoemt het weekdoel ' +
-      'van een ander niet*. De grendel is het paar. ' +
-      '⚠️ Ronde 4 (#174) mat dit al zo en legde het alleen niet vast; het register bestond toen ' +
-      'nog niet. Daardoor meldde `rls:dekking` deze twee helften drie rondes lang als gat.',
+      'altijd dezelfde eigenaar heeft als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️ Ronde 4 (#174) mat het paar al zo en legde het niet vast; het register bestond toen ' +
+      'nog niet.',
     wordtToetsbaarAls:
       'de twee uitdrukkingen uit elkaar lopen, of `goal_id` in de UPDATE-kolomgrant komt — dan ' +
-      'kan een eigenaar zijn weekdoel naar het doel van een ander schrijven en is `check` in ' +
-      'zijn eentje de grendel.',
-    staatIn: 'tests/rls/eigenaarschap.test.ts',
-  },
-  'weekly_goals.weekly_goals_update.check': {
-    reden: 'Zelfde paar als `weekly_goals.weekly_goals_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `weekly_goals.weekly_goals_update.using`.',
+      'kan een eigenaar zijn weekdoel naar het doel van een ander schrijven en is deze helft ' +
+      'in zijn eentje de grendel.',
     staatIn: 'tests/rls/eigenaarschap.test.ts',
   },
   'weekly_plan_steps.weekly_plan_steps_update.check': {
@@ -396,33 +392,31 @@ export const NIET_PER_HELFT_TE_METEN = {
       '`weekplanstap_naar_weekdoel()` — zet hem altijd samen met `activated_cycle` in dezelfde ' +
       'UPDATE. Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
       '📏 Gemeten op 10-09-2026 (ronde 9): `using` los = **bewaakt**, `check` los = nul rood, ' +
-      'béíde tegelijk = 2 rood (*een geactiveerde stap is niet meer te wijzigen* en *laat de ' +
-      'stap van Alice ongemoeid bij een ongefilterde update van Bob*).',
+      'béíde tegelijk = 2 rood (*een geactiveerde stap is niet meer te wijzigen* in ' +
+      '`tests/rls/schrijfgrenzen.test.ts` en *laat de stap van Alice ongemoeid bij een ' +
+      'ongefilterde update van Bob* in `tests/rls/planstapgrens.test.ts`).',
     wordtToetsbaarAls:
       '`weekly_goal_id`, `activated_cycle` of `goal_id` in de UPDATE-kolomgrant komt, **of ' +
       'zodra er een tweede schrijver van `weekly_goal_id` bijkomt die hem zet zonder ' +
       '`activated_cycle`** — een "ontkoppel dit weekdoel maar hou de stap verbruikt"-actie, ' +
       'bijvoorbeeld. Die tweede route was de eerste keer vergeten, en hij is de enige die ' +
       'realistisch is: de invariant leeft in een functielichaam en niet in een constraint.',
-    staatIn: 'tests/rls/schrijfgrenzen.test.ts en tests/rls/planstapgrens.test.ts',
-  },
-  'groups.groups_update.using': {
-    reden:
-      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
-      'en `id` staat níet in de UPDATE-kolomgrant van `groups` (📏 gemeten na 0202: ' +
-      'name, huddle_day, categorie en zeven andere wél — tien in totaal — `id` niet. ' +
-      '`tz` stond hier tot QS8-355 bij en is er met 0202 uit). Er bestaat dus geen rij die ' +
-      'de ene helft passeert en de andere niet. 📏 Gemeten: elke helft los = nul rood, ' +
-      'béide helften tegelijk = 3 rood. De grendel is het paar.',
-    wordtToetsbaarAls:
-      'de twee uitdrukkingen uit elkaar lopen, of `id` in de UPDATE-kolomgrant komt — ' +
-      'dan kan een beheerder zijn groep naar een ander id schrijven en is `check` in ' +
-      'zijn eentje de grendel.',
-    staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
   },
   'groups.groups_update.check': {
-    reden: 'Zelfde paar als `groups.groups_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `groups.groups_update.using`.',
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `groups`. 📏 **Hermeten op 10-09-2026, ' +
+      'en het getal dat hier stond was gedrift:** negen kolommen, niet tien, en `huddle_day` ' +
+      'hoort er níet bij — die is er met 0208 uit gehaald. Wat er wél in staat: ' +
+      '`approval_quorum`, `approval_rule`, `categorie`, `evidence_policy`, `icon`, `name`, ' +
+      '`omschrijving`, `season_cadence`, `voertaal`. (`tz` stond hier tot QS8-355 bij en is er ' +
+      'met 0202 uit.) ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan een beheerder zijn groep naar een ander id schrijven en is deze helft in ' +
+      'zijn eentje de grendel.',
     staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
   },
   'user_blocks.user_blocks_delete.using': {
@@ -733,6 +727,30 @@ export function leesUitkomst(json) {
       };
     }
 
+    // ⚠️⚠️ **En een rood uit een half ingestorte run is ook geen bewijs.** De
+    //    toets hieronder op `numFailedTestSuites` staat op het gróéne pad, en
+    //    dekt daarmee alleen de kant waar het instrument gaten verzint. De
+    //    andere kant bestond nog: 📏 gevoerd met het echte geval van 03-09
+    //    (813 tests, 600 niet gedraaid, 58 bestanden om) plus één losse gefaalde
+    //    assertie kwam er `bewaakt` uit. Een wegvallende PostgREST geeft precies
+    //    dat beeld — sommige bestanden sneuvelen in `beforeAll`, andere falen op
+    //    een assertie.
+    //
+    //    Het onderscheid staat in dezelfde JSON en kost geen enkele geldige
+    //    meting: bij een échte bewaakte policy is elk gefaald bestand een
+    //    bestand mét een gefaalde assertie, dus zijn die twee getallen gelijk.
+    //    Zijn er meer gefaalde bestanden dan bestanden in `rood`, dan is er
+    //    minstens één omgevallen zonder dat er iets in getoetst werd.
+    const bestandenMetAssertie = new Set(rood.map((naam) => naam.split(' > ')[0])).size;
+    if ((uit.numFailedTestSuites ?? 0) > bestandenMetAssertie) {
+      return {
+        uitkomst: 'onbruikbaar',
+        reden:
+          `${uit.numFailedTestSuites} testbestand(en) faalden terwijl er maar in ` +
+          `${bestandenMetAssertie} een assertie omviel — de rest viel om zonder te toetsen`,
+      };
+    }
+
     return { uitkomst: 'rood', gedraaid, rood };
   }
 
@@ -994,10 +1012,15 @@ function hoofd() {
       const label = helften.length > 1 ? `${kop} (${helft})` : kop;
 
       writeFileSync(HERSTELBESTAND, JSON.stringify(policy), 'utf8');
-      psql(open);
 
+      // ⚠️ **De `alter policy` staat sinds ronde 9 binnen de `try`.** Stond hij
+      //    erbuiten en wierp hij ná het committen — een timeout van zestig
+      //    seconden, een haperende verbinding — dan viel het proces om zonder
+      //    dat `psql(terug)` ooit draaide. Het herstelbestand ving dat op bij de
+      //    vólgende run; nu wordt er meteen teruggezet.
       let uitslag;
       try {
+        psql(open);
         uitslag = draai(bestandenVoor(policy.tabel, bestanden));
       } finally {
         psql(terug);

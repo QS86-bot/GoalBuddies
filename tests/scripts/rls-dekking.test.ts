@@ -63,6 +63,11 @@ import {
  *   T  `weegTegenBaseline` áltijd laten terugzetten         → 2 rood
  *   U  `weegDrift` de bevindingen ongemoeid laten           → 2 rood
  *   V  `weegDrift` élke bewaakt-bevinding laten vallen      → 1 rood
+ *   Y  de instortingstoets op het rode pad                  → 1 rood
+ *   Z  die toets `>=` laten zijn in plaats van `>`          → 3 rood (must-allow)
+ *
+ * En in `tests/rls/halfslot-update.test.ts` staan W en X: de vier `using`-helften
+ * die hier eerst als "niet te meten" in het register stonden.
  */
 
 const rij = JSON.stringify([
@@ -389,9 +394,15 @@ describe('leesUitkomst', () => {
   it('laat een gefaalde assertie rood ook als er bestanden omvielen', () => {
     // Het normale geval bij een bewáákte policy: de tests die hem toetsen falen,
     // en hun bestand telt daarmee als gefaald. Dat mag geen `onbruikbaar` worden.
+    //
+    // ⚠️ De drie asserties zitten in één bestand en er is één gefaald bestand.
+    //    Dat *moet* kloppen sinds grendel Y hieronder: stond er `2`, dan viel er
+    //    een bestand om waarin niets getoetst werd, en dan is dit geen bewijs
+    //    meer maar een instorting. Hier stond eerst `2`, en die opstelling kon
+    //    in werkelijkheid niet bestaan.
     expect(
       leesUitkomst(
-        rood(['a', 'b', 'c'], { numTotalTests: 813, numPendingTests: 0, numFailedTestSuites: 2 }),
+        rood(['a', 'b', 'c'], { numTotalTests: 813, numPendingTests: 0, numFailedTestSuites: 1 }),
       ).uitkomst,
     ).toBe('rood');
   });
@@ -406,6 +417,52 @@ describe('leesUitkomst', () => {
     expect(leesUitkomst(json({ numTotalTests: 10, numFailedTests: 3 })).uitkomst).toBe(
       'onbruikbaar',
     );
+  });
+
+  /**
+   * ⚠️⚠️ **Grendel Y — de rode kant van dezelfde instorting.** De toets op
+   *    `numFailedTestSuites` stond alleen op het gróéne pad, en dekte dus alleen
+   *    de kant waar het instrument gaten verzint. 📏 Gevoerd met het echte geval
+   *    van 03-09 — 813 tests, 600 niet gedraaid, 58 bestanden om — plus één
+   *    losse gefaalde assertie kwam er `bewaakt` uit. Dat is de geruststellende
+   *    kant, en die is de gevaarlijke.
+   */
+  it('noemt een half ingestorte run onbruikbaar, ook met een gefaalde assertie erin', () => {
+    expect(
+      leesUitkomst(
+        rood(['de reeks loopt door'], {
+          numTotalTests: 813,
+          numPendingTests: 600,
+          numFailedTestSuites: 58,
+        }),
+      ).uitkomst,
+    ).toBe('onbruikbaar');
+  });
+
+  /**
+   * ⚠️ **De must-allow, en zonder hem kost grendel Y élke geldige meting.** Bij
+   *    een écht bewaakte policy is elk gefaald bestand er één mét een gefaalde
+   *    assertie — dan zijn de twee getallen gelijk en blijft de uitslag rood.
+   */
+  it('houdt een rood uit twee bestanden met elk een gefaalde assertie gewoon rood', () => {
+    const uit = JSON.stringify({
+      numTotalTests: 813,
+      numPendingTests: 0,
+      numFailedTests: 2,
+      numFailedTestSuites: 2,
+      testResults: [
+        {
+          name: '/x/tests/rls/eigenaarschap.test.ts',
+          assertionResults: [{ status: 'failed', fullName: 'een ander hernoemt je doel niet' }],
+        },
+        {
+          name: '/x/tests/rls/schrijfgrenzen.test.ts',
+          assertionResults: [{ status: 'failed', fullName: 'een ander past je naam niet aan' }],
+        },
+      ],
+    });
+
+    expect(leesUitkomst(uit).uitkomst).toBe('rood');
   });
 });
 

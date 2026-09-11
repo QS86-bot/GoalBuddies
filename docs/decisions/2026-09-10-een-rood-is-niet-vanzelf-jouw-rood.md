@@ -66,9 +66,14 @@ keer ná de laatste, met alles dicht.
 
 - Wat bij de start al rood stond, telt niet als bewijs — dat is het geval
   hierboven (`weegTegenBaseline()`).
-- Wat tíjdens de run rood werd zonder dat er iets openstond, telt ook niet — een
+- Wat tíjdens de run rood werd én aan het eind rood bleef, telt ook niet — een
   teller loopt door terwijl je meet, dus de eerste basislijn alleen is te weinig
-  (`weegDrift()`). Een bevinding die daar volledig op leunt wordt `ongemeten`,
+  (`weegDrift()`). ⚠️ **En dat is smaller dan "wat onderweg rood werd".** Drift
+  die zichzelf hérstelt staat bij de slotmeting weer groen en ontsnapt: het
+  venster van `tel_dagteller()` is een vast etmaal en een volledige sweep duurt
+  uren, dus een vensterwissel halverwege is geen theorie. Die grens staat als
+  rij in `docs/ENGINEER-REVIEW.md`; wat er wél tegen helpt is de naam bij elke
+  `✓`. Een bevinding die daar volledig op leunt wordt `ongemeten`,
   en dan noemt het script liever geen getal dan een verkeerd getal. Dat is
   dezelfde houding die het al had voor een onbruikbare run.
 - Wie er nog een ánder rood onder heeft, blijft bewaakt. Dat rood stond bij de
@@ -97,6 +102,48 @@ per run een andere.
 ⚠️ **En dit is de énige letterlijke sleutel in de suite.** Nagelopen: elke
 andere teller in `dagtellers` staat op een fixture-uuid, en die is per run
 nieuw. `tmp` was de uitzondering, niet het patroon.
+
+## 4b. En de tweede fout van dezelfde vorm, één laag hoger
+
+De security-review van deze ronde vond dat vier rijen in
+`NIET_PER_HELFT_TE_METEN` — `profiles_update.using`, `goals_update.using`,
+`weekly_goals_update.using` en `groups_update.using` — een gat vastlegden dat
+wél te meten is.
+
+Het feit eronder klopt en is gemeten: `using` en `with check` dragen dezelfde
+uitdrukking, en de sleutelkolom (`id`, `owner_id`, `goal_id`) staat niet in de
+UPDATE-kolomgrant. Er bestaat dus geen rij die de ene helft passeert en de
+andere niet. **Maar daaruit volgt niet dat de helft niet te toetsen is.**
+
+📏 Zelf nagemeten, per tabel, in een terugrollende transactie — een groepsgenoot
+werkt de rij van een ander bij:
+
+| stand van de policy | uitkomst |
+|---|---|
+| zoals hij is | 0 rijen, geen fout |
+| alleen `using` open | **`42501`** |
+| alleen `check` open | 0 rijen, geen fout |
+
+Zet je de `using`-helft open, dan haalt de rij de `with check` niet meer en slaat
+de stilte om in een harde weigering. Dat is één assertie ver van bewaakt.
+
+⚠️ **Het bewijs lag al in de eigen boom.** `todo_items` stond maar hálf in dat
+register, en precies omdat er voor die tabel wél zo'n test bestond
+(`todo-lijst.test.ts`). Het verschil tussen `todo_items` en `goals` zat niet in
+de policy maar in de téstsuite — en dat had de rij van `todo_items` met zoveel
+woorden moeten zeggen.
+
+De vier rijen zijn weg. `tests/rls/halfslot-update.test.ts` toetst ze
+tabelgedreven, met de leespolicy tijdelijk wagenwijd open (anders filtert díe de
+rij weg en toetst het bestand iets anders dan het belooft) en met een must-allow
+per tabel, want "nul rijen geraakt" is gratis zodra het filter nergens op past.
+
+**Dit is dezelfde vorm als §1, één laag hoger.** Daar telde een meting iets als
+bewijs wat het niet was; hier telde een redenering iets als onmeetbaar wat het
+niet was. Beide keren viel het antwoord de geruststellende kant op, en beide
+keren stond er een uitgeschreven onderbouwing onder — precies wat `CLAUDE.md`
+bedoelt met *"een afwijking die je onderbouwt is duurder dan een die je
+vergeet"*.
 
 ## 5. De regel die overblijft
 
