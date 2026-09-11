@@ -14,10 +14,10 @@ productie in twee rondes)
 ⚠️ **Productie staat op `0221`.** 📏 Hermeten op 09-09 om 16:10 UTC met
 `migratieregister()` tegen `wehgocadxehottiiyvsc`: **224 registerrijen**, `0001`
 t/m `0221` aaneengesloten, inclusief de drie letterversies. De map telt er
-**256**.
+**257**.
 
-**Het gat is daarmee tweeëndertig bestanden** — `0222` t/m `0253`, van 09-09
-tot en met 11-09 en uit twintig verschillende issues:
+**Het gat is daarmee drieëndertig bestanden** — `0222` t/m `0254`, van 09-09
+tot en met 11-09 en uit eenentwintig verschillende issues:
 
 | | | DDL op `storage.objects` |
 | -- | -- | -- |
@@ -53,6 +53,7 @@ tot en met 11-09 en uit twintig verschillende issues:
 | `0251_een_bewaartermijn_voor_alle_bijlagen.sql` | QS8-411 | nee |
 | `0252_de_goedkeuring_wijst_naar_de_eigenaar_van_de_voltooiing.sql` | QS8-182 | nee |
 | `0253_functiegrants_kennen_de_handtekening_en_ook_anon.sql` | QS8-428 | nee |
+| `0254_geen_immutable_functie_zonder_argumenten.sql` | QS8-433 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -222,8 +223,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 53 controlescripts groen;
-`npm run poort` meldt 57 stappen.
+Typecheck, lint en alle 54 controlescripts groen;
+`npm run poort` meldt 58 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
@@ -302,7 +303,7 @@ schemaname = 'public'` gaf `41|41`. Vraag het aan de database en niet aan deze
 regel — net als bij het aantal migraties in §0.
 
 <!-- STAND:BEGIN — gegenereerd door `npm run stand` -->
-Migraties `0001` t/m `0253` staan in de map: **256 bestanden**,
+Migraties `0001` t/m `0254` staan in de map: **257 bestanden**,
 waarvan 3 met een letter-achtervoegsel (`0039a`, `0041a`, `0052a`).
 De nummering is aaneengesloten.
 <!-- STAND:EINDE -->
