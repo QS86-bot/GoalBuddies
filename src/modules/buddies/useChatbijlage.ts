@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
-import { t } from '../i18n';
+import { t } from '../../shared/i18n';
 
-import { keurChatdoc, keurChatfoto } from '../../modules/buddies';
+import { kiesDocument, kiesFoto, type Gekozenbijlage } from '../../shared/kiezers';
 
-import { kiesDocument } from './kiesDocument';
-import { kiesFoto } from './kiesFoto';
-import type { Gekozenbijlage } from './verzendbijlage';
+import { keurChatdoc } from './chatdoc';
+import { keurChatfoto } from './chatfoto';
+
 
 /**
  * De bijlagekeuze onder de invoerbalk van de groepschat — QS8-71 en QS8-72.

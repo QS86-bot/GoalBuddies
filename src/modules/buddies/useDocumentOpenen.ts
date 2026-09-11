@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import { useState } from 'react';
 
 import { reportError } from '../../lib/observability';
-import { tekenChatdoc } from '../../modules/buddies';
+import { tekenChatdoc } from './chatdoc';
 
 /**
  * Een document uit de groepschat openen — QS8-72.

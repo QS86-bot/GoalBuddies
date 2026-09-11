@@ -62,9 +62,18 @@ import { roeptAan } from './roept-aan';
  *
  * ⚠️ Twee bestanden en niet drie: `kiesFoto.ts` bedient zowel de chat als het
  *    bewijs. Dat het er één is, ís de reparatie — zie de kop.
+ *
+ * ⚠️⚠️ **En op 11-09-2026 heeft deze lijst zijn verhuizing gevangen** (QS8-423).
+ *    `kiesFoto.ts` ging van `src/shared/ui/` naar `src/shared/kiezers/`, en
+ *    drie gevallen werden rood: de twee die het pad lézen, én *"kent elke
+ *    fotokiezer die er is"* — want de zeef vond het bestand op zijn nieuwe plek
+ *    terwijl deze lijst nog naar de oude wees. Dat is precies waarvoor de
+ *    tweede helft bestaat, en het is de reden dat CLAUDE.md een verhuizing de
+ *    gevaarlijkste beweging noemt: zonder die helft was de suite groen
+ *    gebleven op een lijst die niets meer aanwees.
  */
 const INGANGEN = [
-  'src/shared/ui/kiesFoto.ts',
+  'src/shared/kiezers/kiesFoto.ts',
   'src/modules/auth/useAvatarKeuze.ts',
 ] as const;
 

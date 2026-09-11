@@ -17,7 +17,6 @@ export {
   AVATAR_MAX_BYTES,
   AVATAR_TYPES,
   avatarPad,
-  base64NaarBytes,
   keurBestand,
   metGetekendeAvatars,
   tekenAvatars,
@@ -27,7 +26,6 @@ export {
 
 export { SessionProvider, useSession } from './SessionProvider';
 export { ProfielProvider, useProfiel } from './ProfielProvider';
-export { useAvatarKeuze, type Avatarkeuze } from './useAvatarKeuze';
 
 export {
   fetchProfiel,

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
-import { t } from '../i18n';
+import { t } from '../../shared/i18n';
 
-import { kiesFoto } from './kiesFoto';
+import { kiesFoto } from '../../shared/kiezers';
 
 /**
  * De fotokeuze bij het afronden van een weekdoel — QS8-391.

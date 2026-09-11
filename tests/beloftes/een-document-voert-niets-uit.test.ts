@@ -39,7 +39,7 @@ import {
 } from '../../src/modules/buddies/chatdoc';
 import { CHATFOTO_TYPES } from '../../src/modules/buddies/chatfoto';
 import { soortBijlage } from '../../src/modules/buddies/chat-schemas';
-import { naarVerzending } from '../../src/shared/ui/verzendbijlage';
+import { naarVerzending } from '../../src/shared/kiezers/verzendbijlage';
 
 /**
  * ⚠️ `src/lib/supabase` trekt react-native binnen en dat parst deze runner niet.

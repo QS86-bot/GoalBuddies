@@ -3,11 +3,8 @@ import { reportError } from '../../lib/observability';
 import { supabase } from '../../lib/supabase';
 import { t } from '../../shared/i18n';
 
-// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via `modules/auth/index.ts`. Die
-//    laatste re-exporteert `SessionProvider` en `AvatarKeuze`, en die trekken
-//    React en React Native mee — in een test die in Node draait is dat een
-//    parsefout op `react-native/index.js`. Zelfde reden en zelfde vorm als de
-//    directe import van `periods.ts` in `tests/rls/epic7.test.ts`.
+// ⚠️ Rechtstreeks uit `auth/avatar.ts` en niet via de barrel, met één reden op
+//    één plek: `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md` §5.
 import { metGetekendeAvatars } from '../auth/avatar';
 
 import {

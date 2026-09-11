@@ -93,6 +93,53 @@ module.exports = [
     },
   },
   {
+    // ⚠️⚠️ **En de andere kant op, sinds 11-09-2026 (QS8-423).** De regel
+    //    hierboven was asymmetrisch: de datalaag mocht niets uit `shared/ui`
+    //    halen, maar `shared/ui` mocht alles uit de datalaag halen. 📏 Gemeten
+    //    in de weekaudit van 10-09: drie bestanden deden dat, alle drie in
+    //    dezelfde week gebouwd, alle drie met een **waarde**-import — en alle
+    //    drie geëxporteerd uit `shared/ui/index.ts`, dus
+    //    `import { Button } from '@/shared/ui'` trok de barrel van
+    //    `modules/buddies` mee.
+    //
+    // ⚠️ **De reden die er in de koppen stond, was geen laagargument.** Er
+    //    stond dat `expo-image-picker` react-native meesleept en dat een
+    //    module-barrel door tests wordt geïmporteerd die geen RN-omgeving
+    //    hebben. Dat klopt — 📏 opnieuw nagemeten op 11-09 door `kiesFoto`
+    //    tijdelijk in `modules/buddies/index.ts` te exporteren: `doorloop.test.ts`
+    //    viel om met `ReferenceError: __DEV__ is not defined`. Maar het is een
+    //    **testomgevingsprobleem** en geen domeingrens, en de prijs was dat een
+    //    componentenbibliotheek het chatdomein ging kennen (`keurChatfoto`,
+    //    `tekenChatdoc`).
+    //
+    // ⚠️ **De knoop is opgelost door de derde laag te benoemen die er al was:**
+    //    een kiezer is geen UI. `shared/kiezers` draagt de platformvermogens,
+    //    de hooks die ze aan een domein knopen wonen in
+    //    `modules/<naam>/react.ts`, en `shared/ui` houdt componenten, labels en
+    //    toon. Zie `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
+    //
+    // ⚠️ **Dit is de grendel van dit issue en niet de verhuizing** — dezelfde
+    //    zin als bij de regel hierboven, en om dezelfde reden: zonder deze
+    //    regel is het opruimen over drie maanden terug.
+    files: ['src/shared/**/*.ts', 'src/shared/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/modules/**'],
+              message:
+                'De gedeelde laag importeert niets uit de datalaag. Een platformvermogen (een kiezer, een opener) hoort in shared/kiezers; een hook die zo\'n vermogen aan een domein knoopt hoort in modules/<naam>/react.ts. Zie QS8-423.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // ⚠️ CLAUDE.md, correctheidsregel 7: geen tijd- of weekberekening buiten
     //    shared/time. Deze regel is een vangnet, geen bewijs — hij vangt de
     //    voor de hand liggende gevallen, niet alles.
