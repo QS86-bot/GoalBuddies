@@ -20,8 +20,10 @@ import type { Resultaat } from '../goals';
  *    want ze toetsen wat er in het bestand staat en niet wat het bestand
  *    beloofde. Dat is een eigen opruimissue en geen bijvangst hier.
  *
- * ⚠️ Wat wél gedeeld wordt is `kiesFoto()` uit `shared/ui` — dat is een
- *    platformvermogen en geen sleutelbeslissing.
+ * ⚠️ Wat wél gedeeld wordt is `kiesFoto()` uit `shared/kiezers` — dat is een
+ *    platformvermogen en geen sleutelbeslissing. (Stond tot 11-09-2026 in
+ *    `shared/ui`; QS8-423 haalde de kiezers daar weg omdat een kiezer niets
+ *    rendert en dus geen UI is.)
  */
 
 /**

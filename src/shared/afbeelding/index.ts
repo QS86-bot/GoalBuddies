@@ -329,7 +329,8 @@ const B64_ALFABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456
  *    niemand iets aan heeft.
  *
  * ⚠️⚠️ **Hij stond tot 11-09-2026 in `src/modules/auth/avatar.ts`** (QS8-423).
- *    Dat was de enige reden dat `shared/ui/kiesFoto.ts` de datalaag importeerde,
+ *    Dat was de enige reden dat de fotokiezer — toen nog `shared/ui/kiesFoto.ts`,
+ *    nu `src/shared/kiezers/kiesFoto.ts` — de datalaag importeerde,
  *    en die richting had geen lintregel. Een base64-decoder is geen
  *    auth-kennis: hij zet bytes om en weet van geen enkel domein. Hier staat hij
  *    naast `ontdoeVanMetadata()`, de andere helft van dezelfde handeling —
