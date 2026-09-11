@@ -153,6 +153,17 @@ create policy chatfotos_select on storage.objects
 --    `.copy()`. `chatfotos_update` stond er sinds 0222 als vorm, niet als
 --    behoefte. Geen recht zonder reden.
 --
+-- ⚠️⚠️ **PRECISERING OP 11-09-2026 (QS8-416): "wij roepen het niet aan" is een
+--    reden om het recht in te trekken, en géén bewijs dat de route dicht is.**
+--    Een client praat rechtstreeks met de Storage-API; onze call sites zeggen
+--    daar niets over. Voor `.move()` klopt de conclusie alsnog — dat is een
+--    UPDATE en die is met deze drop weg. Voor `.copy()` niet: dat schrijft een
+--    **nieuwe rij** en passeert alleen de INSERT-policy van de doelemmer. Sinds
+--    0255 pint die de bestandsnaam — maar dat sluit de route **niet**: bij een
+--    `copy` kiest de client de doelnaam, dus een pdf uit `chatdocs` heet in
+--    `chatfotos` gewoon `onschuldig.jpg`. De copy-route staat open en hoort bij
+--    de rij van 11-09 in `docs/ENGINEER-REVIEW.md`.
+--
 -- ⚠️ Het restrisico staat in `docs/ENGINEER-REVIEW.md`: of de Storage-API bij een
 --    gewone upload of download zélf een rij bijwerkt namens `authenticated`, is
 --    hier niet te meten. Zo ja, dan faalt het versturen zichtbaar en is dit één
