@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { GRENS, LAGEN, PLAFOND, beoordeel, laagVan, tel } from '../../scripts/regel15-controle.mjs';
+import {
+  GRENS,
+  LAGEN,
+  LANGSTE,
+  PLAFOND,
+  beoordeel,
+  laagVan,
+  tel,
+} from '../../scripts/regel15-controle.mjs';
 
 /**
  * De ratel op coderegel 15 — QS8-190.
@@ -138,18 +146,24 @@ describe('tel', () => {
 
 describe('beoordeel — de ratel slaat twee kanten op', () => {
   const plafond = { 'app/': 2, 'src/shared/ui/': 1 };
+  // ⚠️ Sinds QS8-427 weegt `beoordeel()` twee grootheden. Deze tests geven de
+  //    tweede expliciet mee, zodat ze het áántal toetsen en niet per ongeluk op
+  //    de echte `LANGSTE` van de codebase leunen.
+  const langste = { 'app/': 90, 'src/shared/ui/': 90 };
   const nMaal = (pad: string, n: number) =>
     Array.from({ length: n }, (_, i) => ({ pad: `${pad}${i}.tsx`, regels: 90 }));
 
   it('is groen op precies het plafond', () => {
-    const uit = beoordeel([...nMaal('app/a', 2), ...nMaal('src/shared/ui/B', 1)], plafond);
+    const uit = beoordeel([...nMaal('app/a', 2), ...nMaal('src/shared/ui/B', 1)], plafond, langste);
     expect(uit.ok).toBe(true);
     expect(uit.teveel).toEqual([]);
     expect(uit.teruim).toEqual([]);
+    expect(uit.teLang).toEqual([]);
+    expect(uit.teKort).toEqual([]);
   });
 
   it('is rood zodra een laag erboven komt, en noemt wélke', () => {
-    const uit = beoordeel([...nMaal('app/a', 3), ...nMaal('src/shared/ui/B', 1)], plafond);
+    const uit = beoordeel([...nMaal('app/a', 3), ...nMaal('src/shared/ui/B', 1)], plafond, langste);
     expect(uit.teveel).toEqual(['app/']);
     expect(uit.ok).toBe(false);
   });
@@ -160,15 +174,62 @@ describe('beoordeel — de ratel slaat twee kanten op', () => {
    *    en de volgende lange functie glijdt in de vrijgekomen ruimte.
    */
   it('is óók rood als een laag eronder zakt zonder dat het plafond meezakt', () => {
-    const uit = beoordeel([...nMaal('app/a', 1), ...nMaal('src/shared/ui/B', 1)], plafond);
+    const uit = beoordeel([...nMaal('app/a', 1), ...nMaal('src/shared/ui/B', 1)], plafond, langste);
     expect(uit.teruim).toEqual(['app/']);
     expect(uit.ok).toBe(false);
   });
 
   it('kan allebei tegelijk melden', () => {
-    const uit = beoordeel([...nMaal('app/a', 5)], plafond);
+    const uit = beoordeel([...nMaal('app/a', 5)], plafond, langste);
     expect(uit.teveel).toEqual(['app/']);
     expect(uit.teruim).toEqual(['src/shared/ui/']);
+  });
+});
+
+describe('de tweede grootheid — de langste, niet het aantal', () => {
+  /**
+   * ⚠️⚠️ **Dit is het gat waar QS8-427 over ging.** 📏 Over de week tot
+   *    11-09-2026 daalde het aantal functies boven de vijftig met vijf terwijl
+   *    het aantal regels erbínnen met 292 steeg; `app/` ging van een langste van
+   *    523 naar 557 en de controle stond terecht groen. Een laag kan krimpen in
+   *    koppen en groeien in regels.
+   */
+  const plafond = { 'app/': 2 };
+  const langste = { 'app/': 100 };
+  const v = (n: number, r: number) =>
+    Array.from({ length: n }, (_, i) => ({ pad: `app/a${i}.tsx`, regels: r }));
+
+  it('meldt een langere functie terwijl het aantal gelijk blijft', () => {
+    const uit = beoordeel([...v(1, 100), { pad: 'app/x.tsx', regels: 101 }], plafond, langste);
+    expect(uit.teLang).toEqual(['app/']);
+    expect(uit.teveel).toEqual([]);
+    expect(uit.teruim).toEqual([]);
+    expect(uit.ok).toBe(false);
+  });
+
+  // ⚠️ De andere helft: zonder haar is het een plafond waar je onder kunt
+  //    blijven zitten, en glijdt de volgende lange functie in de vrijgekomen
+  //    ruimte. Zelfde vorm als bij het aantal.
+  it('meldt óók dat de langste zákte zonder dat het plafond meezakte', () => {
+    const uit = beoordeel(v(2, 80), plafond, langste);
+    expect(uit.teKort).toEqual(['app/']);
+    expect(uit.teveel).toEqual([]);
+    expect(uit.ok).toBe(false);
+  });
+
+  it('laat het aantal met rust als alleen de lengte verschuift', () => {
+    const uit = beoordeel([...v(1, 100), { pad: 'app/x.tsx', regels: 101 }], plafond, langste);
+    expect(uit.perLaag['app/']).toBe(2);
+  });
+
+  it('telt een functie op of onder de grens niet mee als langste', () => {
+    const uit = beoordeel([...v(2, 100), { pad: 'app/kort.tsx', regels: 50 }], plafond, langste);
+    expect(uit.langstePerLaag['app/']).toBe(100);
+    expect(uit.ok).toBe(true);
+  });
+
+  it('een laag zonder overtredingen heeft langste 0', () => {
+    expect(tel([]).langstePerLaag).toEqual(Object.fromEntries(LAGEN.map((l) => [l, 0])));
   });
 });
 
@@ -181,5 +242,16 @@ describe('het plafond zelf', () => {
 
   it('staat op de grens uit de grondwet', () => {
     expect(GRENS).toBe(50);
+  });
+
+  // ⚠️ Zonder deze regel kan er een laag bijkomen zonder langste-plafond, en die
+  //    telt dan stil als nul — waarna `teKort` hem meteen rood maakt, of erger:
+  //    iemand zet hem op nul om er vanaf te zijn.
+  it('LANGSTE noemt elke laag die de ratel telt', () => {
+    expect(Object.keys(LANGSTE).sort()).toEqual([...LAGEN].sort());
+  });
+
+  it('elke langste ligt boven de grens, want eronder telt niet mee', () => {
+    for (const laag of LAGEN) expect(LANGSTE[laag]).toBeGreaterThan(GRENS);
   });
 });

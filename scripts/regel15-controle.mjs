@@ -92,6 +92,35 @@ export const PLAFOND = Object.freeze({
 });
 
 /** De lagen die deze ratel telt, in de volgorde waarin ze gemeld worden. */
+/**
+ * De **langste** functie per laag, in regels. De tweede grootheid van deze ratel.
+ *
+ * ⚠️⚠️ **`PLAFOND` telt kóppen en zegt niets over lengte** — en dat was een gat
+ *    (QS8-427). 📏 Gemeten over de week tot 11-09-2026: het aantal functies boven
+ *    de vijftig **daalde met vijf** terwijl het aantal regels erbinnen met **292
+ *    steeg**; `app/` ging van 7574 naar 7845 regels en zijn langste van 523 naar
+ *    557. De controle stond die hele week terecht groen.
+ *
+ *    Dat is dezelfde klasse die CLAUDE.md elders zelf benoemt: *een teller in
+ *    grafemen bij een grens in codepunten is een nieuwe fout en geen reparatie.*
+ *    Een plafond in een andere grootheid dan de regel meet, is een plafond dat
+ *    de volgende meting niet terugvindt.
+ *
+ * ⚠️ En het getal was al bekend: de koppen hierboven schrijven de langste zélf
+ *    op. Het werd gemeten, opgeschreven, en vervolgens niet afgedwongen.
+ *
+ * ⚠️ Zelfde rateleigenschap als `PLAFOND`: tweezijdig. Splits je de langste, zet
+ *    dit getal dan mee omlaag — anders glijdt de volgende lange functie in de
+ *    vrijgekomen ruimte, precies zoals bij het aantal.
+ */
+export const LANGSTE = Object.freeze({
+  'app/': 557,
+  'src/shared/ui/': 70,
+  'scripts/': 221,
+  // ⚠️ Stond op 280 (`draaiRollover`) tot QS8-424 die functie splitste.
+  'supabase/functions/': 115,
+});
+
 export const LAGEN = Object.freeze(Object.keys(PLAFOND));
 
 /** Bij welke laag hoort dit pad? `null` = telt niet mee. */
@@ -111,26 +140,51 @@ export function laagVan(pad) {
  */
 export function tel(vondsten) {
   const perLaag = Object.fromEntries(LAGEN.map((l) => [l, 0]));
+  const langstePerLaag = Object.fromEntries(LAGEN.map((l) => [l, 0]));
   const buiten = [];
 
   for (const { pad, regels } of vondsten ?? []) {
     if (regels <= GRENS) continue;
     const laag = laagVan(pad);
     if (laag === null) buiten.push(pad);
-    else perLaag[laag] += 1;
+    else {
+      perLaag[laag] += 1;
+      // ⚠️ Nul is hier de juiste ondergrens: een laag zónder overtredingen heeft
+      //    geen langste, en `teKort` hoort dan af te gaan zolang het plafond nog
+      //    hoger staat. Zelfde tweezijdigheid als bij het aantal.
+      if (regels > langstePerLaag[laag]) langstePerLaag[laag] = regels;
+    }
   }
 
-  return { perLaag, buiten };
+  return { perLaag, langstePerLaag, buiten };
 }
 
-/** Rood als een laag erboven komt, én rood als hij eronder zakt. */
-export function beoordeel(vondsten, plafond = PLAFOND) {
-  const { perLaag, buiten } = tel(vondsten);
+/**
+ * Rood als een laag erboven komt, én rood als hij eronder zakt — op **allebei**
+ * de grootheden: het aantal functies boven de grens, en de langste ervan.
+ *
+ * ⚠️ `langste` staat apart van `plafond` en niet als tweede veld erin, zodat de
+ *    bestaande aanroepen en hun tests onveranderd blijven werken. Wie er een
+ *    derde grootheid bij wil, doet hetzelfde.
+ */
+export function beoordeel(vondsten, plafond = PLAFOND, langste = LANGSTE) {
+  const { perLaag, langstePerLaag, buiten } = tel(vondsten);
 
   const teveel = LAGEN.filter((l) => perLaag[l] > (plafond[l] ?? 0));
   const teruim = LAGEN.filter((l) => perLaag[l] < (plafond[l] ?? 0));
+  const teLang = LAGEN.filter((l) => langstePerLaag[l] > (langste[l] ?? 0));
+  const teKort = LAGEN.filter((l) => langstePerLaag[l] < (langste[l] ?? 0));
 
-  return { perLaag, buiten, teveel, teruim, ok: teveel.length === 0 && teruim.length === 0 };
+  return {
+    perLaag,
+    langstePerLaag,
+    buiten,
+    teveel,
+    teruim,
+    teLang,
+    teKort,
+    ok: teveel.length === 0 && teruim.length === 0 && teLang.length === 0 && teKort.length === 0,
+  };
 }
 
 /** Elke functie boven de grens, gemeten door ESLint zelf. */
@@ -168,41 +222,76 @@ async function meet() {
   return vondsten;
 }
 
+/** De langste overtreders van een laag, als ingesprongen regels. */
+function toon(vondsten, laag, hoeveel) {
+  return vondsten
+    .filter((v) => laagVan(v.pad) === laag)
+    .sort((a, b) => b.regels - a.regels)
+    .slice(0, hoeveel)
+    .map((v) => `      ${String(v.regels).padStart(4)} regels  ${v.pad}:${v.regel}`);
+}
+
+/**
+ * Meldt één kant van de ratel en geeft `1` terug, of `0` als er niets is.
+ *
+ * ⚠️ Vier meldblokken in `hoofd()` zetten die functie over de vijftig regels —
+ *    en deze controle wees daar zelf op (QS8-427). Dat is de bedoeling: een
+ *    grendel die zijn eigen bestand niet haalt, leert je hem uit te zetten.
+ */
+function meld(kop, lagen, regelVoor, staart, vondsten = null) {
+  if (lagen.length === 0) return 0;
+  console.error(`✗ ${kop}\n`);
+  for (const laag of lagen) {
+    console.error(regelVoor(laag));
+    if (vondsten !== null) for (const r of toon(vondsten, laag, 3)) console.error(r);
+  }
+  console.error(`\n${staart}`);
+  return 1;
+}
+
 async function hoofd() {
   const vondsten = await meet();
-  const { perLaag, teveel, teruim, ok } = beoordeel(vondsten);
+  const { perLaag, langstePerLaag, teveel, teruim, teLang, teKort, ok } = beoordeel(vondsten);
 
-  if (teveel.length > 0) {
-    console.error('✗ Er zitten meer functies boven de vijftig regels dan het plafond toestaat.\n');
-    for (const laag of teveel) {
-      console.error(`    ${laag}  ${perLaag[laag]} boven de grens, plafond ${PLAFOND[laag]}`);
-      for (const v of vondsten.filter((v) => laagVan(v.pad) === laag).sort((a, b) => b.regels - a.regels).slice(0, 5)) {
-        console.error(`      ${String(v.regels).padStart(4)} regels  ${v.pad}:${v.regel}`);
-      }
-    }
-    console.error(
-      '\nSplits de functie, of — als dit er echt een is die niet kleiner kan — zet uit\n' +
+  const uitslag =
+    meld(
+      'Er zitten meer functies boven de vijftig regels dan het plafond toestaat.',
+      teveel,
+      (l) => `    ${l}  ${perLaag[l]} boven de grens, plafond ${PLAFOND[l]}`,
+      'Splits de functie, of — als dit er echt een is die niet kleiner kan — zet uit\n' +
         'waaróm in een commentaar en verhoog het plafond pas na dat gesprek.',
-    );
-    return 1;
-  }
-
-  if (teruim.length > 0) {
-    console.error('✗ Een laag zakte onder zijn plafond, en dat is goed nieuws en toch rood.\n');
-    for (const laag of teruim) {
-      console.error(`    ${laag}  nog ${perLaag[laag]} boven de grens, plafond staat op ${PLAFOND[laag]}`);
-    }
-    console.error(
-      '\nEen ratel die niet meezakt, houdt ruimte open voor een functie die niemand ziet\n' +
+      vondsten,
+    ) ||
+    meld(
+      'Een laag zakte onder zijn plafond, en dat is goed nieuws en toch rood.',
+      teruim,
+      (l) => `    ${l}  nog ${perLaag[l]} boven de grens, plafond staat op ${PLAFOND[l]}`,
+      'Een ratel die niet meezakt, houdt ruimte open voor een functie die niemand ziet\n' +
         'terugkomen. Zet PLAFOND bij in scripts/regel15-controle.mjs.',
+    ) ||
+    meld(
+      'Een functie werd langer dan de langste die dit plafond toestaat.',
+      teLang,
+      (l) => `    ${l}  langste ${langstePerLaag[l]} regels, plafond ${LANGSTE[l]}`,
+      '⚠️ Het áántal functies boven de vijftig kan hierbij gelijk gebleven zijn — dat\n' +
+        'is precies het gat waar QS8-427 over ging: een laag kan krimpen in koppen en\n' +
+        'groeien in regels. Splits de functie, of verhoog LANGSTE pas na dat gesprek.',
+      vondsten,
+    ) ||
+    meld(
+      'De langste functie van een laag werd korter, en dat is goed nieuws en toch rood.',
+      teKort,
+      (l) => `    ${l}  langste nu ${langstePerLaag[l]} regels, plafond staat op ${LANGSTE[l]}`,
+      'Zelfde reden als bij het aantal: een ratel die niet meezakt houdt ruimte open.\n' +
+        'Zet LANGSTE bij in scripts/regel15-controle.mjs.',
     );
-    return 1;
-  }
+
+  if (uitslag !== 0) return 1;
 
   console.log(
     'regel15-controle: ' +
-      LAGEN.map((l) => `${l} ${perLaag[l]}`).join(', ') +
-      ` — precies het plafond. ${ok ? 'Nieuwe lange functies gaan niet meer door.' : ''}`,
+      LAGEN.map((l) => `${l} ${perLaag[l]} (langste ${langstePerLaag[l]})`).join(', ') +
+      ` — precies het plafond. ${ok ? 'Nieuwe lange functies gaan niet meer door, en bestaande groeien niet.' : ''}`,
   );
   return 0;
 }
