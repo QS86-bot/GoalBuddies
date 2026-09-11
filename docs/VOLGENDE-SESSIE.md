@@ -2379,8 +2379,11 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 | ~~De Lijst (QS8-378 t/m 381, QS8-386)~~ | ✅ **helemaal af.** De drie delen op 09-09, de staart QS8-386 op 10-09 — een taak is te hernoemen, dus het schrijfrecht op `todo_items.body` heeft een aanroeper |
 | De foto's (QS8-394 t/m 397) | QS8-395 en QS8-396 zijn gebouwd. **QS8-397 (versleuteling) is een besluit van Quinten** — sleutelbeheer, verlies van je sleutel is verlies van je foto's, en het raakt wat er aan een mens beloofd wordt. Niet op eigen gezag bouwen |
 
-⚠️ **En er ligt sinds 11-09 één concreet, afgebakend stuk werk: QS8-262 ronde
-10.** Het instrument is gerepareerd (punt J), maar er is daardoor **geen actueel
+⚠️ ~~**En er ligt sinds 11-09 één concreet, afgebakend stuk werk: QS8-262 ronde
+10.**~~ ✅ **Gedraaid op 11-09: 93 van de 102 meetbare policy-helften bewaakt, en
+de negen die overblijven zijn exact de negen registerrijen. Zie de rij
+"RLS-testdekking" in `docs/ENGINEER-REVIEW.md` en de laatste reactie op QS8-262.**
+Wat hieronder stond blijft staan als beschrijving van wat die sweep kost: Het instrument is gerepareerd (punt J), maar er is daardoor **geen actueel
 dekkingstotaal**: de sweep van ronde 9 gaf 91 van de 102 en is met het kapotte
 instrument gemeten, dus onbruikbaar. Wat ervoor nodig is, is één volledige
 `npm run rls:dekking` op een verse stack — en dat is de reden dat hij er nog niet
