@@ -64,7 +64,12 @@ import {
  *   U  `weegDrift` de bevindingen ongemoeid laten           → 2 rood
  *   V  `weegDrift` élke bewaakt-bevinding laten vallen      → 1 rood
  *   Y  de instortingstoets op het rode pad                  → 1 rood
- *   Z  die toets `>=` laten zijn in plaats van `>`          → 3 rood (must-allow)
+ *   Z  élk gefaald bestand als instorting tellen           → 1 rood (must-allow)
+ *
+ * ⚠️ Z is geen verzonnen mutatie: dát is precies de fout die op 10-09 gemerged
+ *    is. De toets vergeleek `numFailedTestSuites` met een aantal béstanden,
+ *    terwijl dat veld `describe`-blokken telt — waardoor élke meting terugkwam
+ *    als `onbruikbaar`. Sinds 11-09 staat die kant onder test.
  *
  * En in `tests/rls/halfslot-update.test.ts` staan W en X: de vier `using`-helften
  * die hier eerst als "niet te meten" in het register stonden.
@@ -344,6 +349,36 @@ const rood = (namen: string[], extra: Record<string, number> = {}): string =>
   roodInBestand('avatarbucket.test.ts', namen, extra);
 
 /**
+ * Een run waarin `omgevallen` bestanden in `beforeAll` sneuvelden en `namen` de
+ * asserties zijn die écht faalden.
+ *
+ * ⚠️ **De vorm is nagemeten en niet verzonnen** (11-09-2026): een bestand dat in
+ *    `beforeAll` werpt komt terug als een `testResults`-entry met
+ *    `status: 'failed'` en **nul** gefaalde asserties. Dát is het signaal;
+ *    `numFailedTestSuites` is het niet, want dat veld telt `describe`-blokken —
+ *    één bestand met zeven blokken geeft er acht.
+ */
+const metInstorting = (namen: string[], omgevallen: string[]): string =>
+  JSON.stringify({
+    numTotalTests: 813,
+    numPendingTests: 600,
+    numFailedTests: namen.length,
+    numFailedTestSuites: omgevallen.length + namen.length,
+    testResults: [
+      {
+        name: '/x/tests/rls/avatarbucket.test.ts',
+        status: namen.length > 0 ? 'failed' : 'passed',
+        assertionResults: namen.map((fullName) => ({ status: 'failed', fullName })),
+      },
+      ...omgevallen.map((bestand) => ({
+        name: `/x/tests/rls/${bestand}`,
+        status: 'failed',
+        assertionResults: [{ status: 'passed', fullName: 'kwam er nooit aan toe' }],
+      })),
+    ],
+  });
+
+/**
  * ⚠️ **"Bewaakt" mag niet betekenen "er ging íets mis".** De eerste versie las elke
  *    niet-nul exitcode als bewaakt — ook een startup-error, een dichte PostgREST
  *    of geheugen op. Dat schuift een policy van onbewaakt naar bewaakt, en die
@@ -364,10 +399,7 @@ describe('leesUitkomst', () => {
     ['er geen enkele test draaide', json({ numTotalTests: 0, numFailedTests: 0 })],
     ['alles overgeslagen werd', json({ numTotalTests: 5, numPendingTests: 5, numFailedTests: 0 })],
     ['de uitvoer geen JSON is', 'FATAL: kon niet starten'],
-    [
-      'er bestanden omvielen zonder één gefaalde assertie',
-      json({ numTotalTests: 813, numPendingTests: 687, numFailedTests: 0, numFailedTestSuites: 58 }),
-    ],
+    ['er bestanden omvielen zonder één gefaalde assertie', metInstorting([], ['reeks.test.ts'])],
   ])('noemt het onbruikbaar als %s', (_naam, uit) => {
     expect(leesUitkomst(uit).uitkomst).toBe('onbruikbaar');
   });
@@ -384,11 +416,7 @@ describe('leesUitkomst', () => {
    *    reparatie elke geldige meting.
    */
   it('houdt een groene run groen als er geen bestand omviel', () => {
-    expect(
-      leesUitkomst(
-        json({ numTotalTests: 813, numPendingTests: 1, numFailedTests: 0, numFailedTestSuites: 0 }),
-      ).uitkomst,
-    ).toBe('groen');
+    expect(leesUitkomst(metInstorting([], [])).uitkomst).toBe('groen');
   });
 
   it('laat een gefaalde assertie rood ook als er bestanden omvielen', () => {
@@ -400,11 +428,7 @@ describe('leesUitkomst', () => {
     //    een bestand om waarin niets getoetst werd, en dan is dit geen bewijs
     //    meer maar een instorting. Hier stond eerst `2`, en die opstelling kon
     //    in werkelijkheid niet bestaan.
-    expect(
-      leesUitkomst(
-        rood(['a', 'b', 'c'], { numTotalTests: 813, numPendingTests: 0, numFailedTestSuites: 1 }),
-      ).uitkomst,
-    ).toBe('rood');
+    expect(leesUitkomst(metInstorting(['a', 'b', 'c'], [])).uitkomst).toBe('rood');
   });
 
   /**
@@ -429,13 +453,8 @@ describe('leesUitkomst', () => {
    */
   it('noemt een half ingestorte run onbruikbaar, ook met een gefaalde assertie erin', () => {
     expect(
-      leesUitkomst(
-        rood(['de reeks loopt door'], {
-          numTotalTests: 813,
-          numPendingTests: 600,
-          numFailedTestSuites: 58,
-        }),
-      ).uitkomst,
+      leesUitkomst(metInstorting(['de reeks loopt door'], ['epic8.test.ts', 'reeks.test.ts']))
+        .uitkomst,
     ).toBe('onbruikbaar');
   });
 
