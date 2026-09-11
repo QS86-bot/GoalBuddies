@@ -68,7 +68,7 @@
 --       `chatdocs_insert`. Dat deze emmer daar tóch dicht zat, komt van de
 --       `name ~ '…\.pdf$'`-regel die verderop in deze migratie staat — dus van
 --       de INSERT-kant en niet van de ingetrokken UPDATE. De drie fotoemmers
---       hadden die regel niet en zijn met 0253 bijgetrokken. Wie deze zin leest
+--       hadden die regel niet en zijn met 0254 bijgetrokken. Wie deze zin leest
 --       als "de emmer is dicht omdat het UPDATE-recht weg is", haalt de
 --       verkeerde grendel weg.
 --
