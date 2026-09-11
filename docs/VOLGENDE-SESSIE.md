@@ -3,7 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-422 (PR #410). Daarvóór 10-09,
+> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-421. Daarvóór QS8-422 (PR #410,
+> gemerged) en op 10-09
 > na QS8-414 (`72741e9`) — QS8-418.
 > Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
 > lijst en niet deze zin. **Er is geen controle die het bijwerken afdwingt, en met
@@ -170,6 +171,31 @@
 > lokale `const rijen` geschaduwd, en **niets ving dat** omdat `no-shadow`
 > nergens aan stond. Hij staat er nu bij, met nul treffers. **De eerste grendel
 > op een pas-gelinte map levert de tweede op.**
+>
+> ⚠️⚠️ **11-09, punt N: achterhaald gaat twee kanten op, en de tweede kant zoekt
+> niemand.** Een weggelegde bevinding kan achterlopen doordat de **code zichzelf
+> gerepareerd heeft**. 📏 Bij QS8-421 zei een rij *"er is géén grendel die dat
+> opvangt"* terwijl `verlopenRegels()` de registerrijen allang had opgeruimd;
+> dezelfde dag droeg `WERKVOORRAAD.md` de zin dat `supabase/functions/` buiten
+> typecheck en CI valt, twee weken na de reparatie. **Vraag bij elke rij niet
+> alleen "is de aanname vervallen" maar ook "heeft iets dit inmiddels
+> afgevangen".** Een rij die te zwaar staat kost geen incident, alleen aandacht
+> die ergens anders hoorde — en dáárom valt hij niet op.
+>
+> ⚠️⚠️ **11-09, punt O: meet je de map of meet je productie?** 📏 Productie staat
+> op `0221` en de migratiemap op **255** — 31 achter. Drie agenda-rijen gingen
+> over vier opslagemmers; op productie bestaat er **één**. Dat maakte ze niet
+> onjuist maar wel iets anders, en de échte voorwaarde bleek *"een deploy die
+> deels landt"* — iets wat geen van de drie noemde. Een bevinding beschrijft
+> risico, en risico is een eigenschap van wat er **draait**. `mcp__Supabase__list_migrations`
+> geeft die stand in één aanroep; gebruik hem vóór je over gedeployd gedrag
+> schrijft.
+>
+> ⚠️ **En daarbij: het slot kan een policy zijn en niet een grant.** 📏 Op
+> `storage.objects` heeft `authenticated` gewoon UPDATE, en wat dicht houdt is
+> dat er **nul** UPDATE-policies zijn. Policies worden over buckets heen ge-OR'd,
+> dus één nieuwe `*_update` heropent de klasse voor álle emmers tegelijk. Een
+> grant tellen zou hier het verkeerde antwoord geven.
 >
 > Op 09-09 en 10-09 landden er samen **zevenenvijftig** PR's (#323 t/m #387) — de
 > drukste twee dagen van dit project, uit twee sessies naast elkaar. Een lijst
