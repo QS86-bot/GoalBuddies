@@ -159,7 +159,7 @@ create policy chatfotos_select on storage.objects
 --    daar niets over. Voor `.move()` klopt de conclusie alsnog — dat is een
 --    UPDATE en die is met deze drop weg. Voor `.copy()` niet: dat schrijft een
 --    **nieuwe rij** en passeert alleen de INSERT-policy van de doelemmer. Sinds
---    0254 pint die de bestandsnaam — maar dat sluit de route **niet**: bij een
+--    0255 pint die de bestandsnaam — maar dat sluit de route **niet**: bij een
 --    `copy` kiest de client de doelnaam, dus een pdf uit `chatdocs` heet in
 --    `chatfotos` gewoon `onschuldig.jpg`. De copy-route staat open en hoort bij
 --    de rij van 11-09 in `docs/ENGINEER-REVIEW.md`.

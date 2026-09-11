@@ -1,4 +1,4 @@
-# Een `copy` is geen `move` — QS8-416, migratie 0254
+# Een `copy` is geen `move` — QS8-416, migratie 0255
 
 **11-09-2026.** Raakt `storage.objects`, de vier emmers, `tests/rls/emmerverhuizing.test.ts`
 en de kop van 0235, 0239 en 0240.
@@ -57,11 +57,11 @@ niet zeggen *"deze bytes komen uit een andere emmer"*.
 
 Wat er wél te pinnen is, is de **naam**. Die is per emmer al betekenisdragend: de
 map bepaalt de groep of het weekdoel, en `chatdocs_insert` pinde sinds 0240 al de
-extensie. 0254 trekt de andere drie bij.
+extensie. 0255 trekt de andere drie bij.
 
 ### ⚠️⚠️⚠️ En hier ging de eerste versie van dit document de fout in
 
-Deze paragraaf stond er eerst met een tabel die zei dat 0254 *"de kruisrichtingen
+Deze paragraaf stond er eerst met een tabel die zei dat 0255 *"de kruisrichtingen
 sluit"* — een `.pdf`-naam in een fotoemmer dicht, een beeldnaam in `chatdocs`
 dicht, en alleen de gelijkgetypeerde richting open. **Dat is onjuist, en de
 securityronde op deze branch heeft het eruit gehaald.**
@@ -77,7 +77,7 @@ securityronde op deze branch heeft het eruit gehaald.**
 `sourceKey` en `destinationKey` zijn twee losse parameters. Wie een pdf van 4 MB
 uit `chatdocs` in `chatfotos` wil hebben, noemt hem `onschuldig.jpg`.
 
-📏 Zelf nagemeten als `authenticated` met echte claims, ná 0254:
+📏 Zelf nagemeten als `authenticated` met echte claims, ná 0255:
 
 ```
 chatfotos    <groep>/<uid>/onschuldig.jpg           → DOORGELATEN
@@ -90,7 +90,7 @@ Alle vier. **Een naamregel sluit dus de naam en niet de richting.** Wat de pin
 dichtzet is de richting waarin de kopieerder zijn bronextensie behóudt, en dat doet
 niemand.
 
-### Wat 0254 dan wél waard is
+### Wat 0255 dan wél waard is
 
 Precies wat 0240 voor `chatdocs` deed, met dezelfde reden: *de vorm van de
 bestandsnaam hoort in de policy en niet alleen in de padbouwer.* Daar was de meting
@@ -125,10 +125,10 @@ zijn:
 
 1. **Het gaat uitsluitend om commentaar.** Geen enkele regel SQL is aangeraakt, dus
    de schemavingerafdruk verandert niet en `idempotent:controle` merkt er niets van.
-2. **Geen van de drie is toegepast.** Ze zitten in het gat `0222`–`0254` dat op
+2. **Geen van de drie is toegepast.** Ze zitten in het gat `0222`–`0255` dat op
    Quintens machine wacht (`docs/WERKVOORRAAD.md` §0).
 3. **De onjuiste zin stáát daar, en daar wordt hij gelezen.** Alleen vooruit
-   corrigeren — een regel in 0254 — laat drie bestanden achter die het tegendeel
+   corrigeren — een regel in 0255 — laat drie bestanden achter die het tegendeel
    beweren, en de volgende lezer opent de oudste.
 
 De correcties zijn gemarkeerd als *GECORRIGEERD OP 11-09-2026 (QS8-416)* en
@@ -200,7 +200,7 @@ groen op een regex die alles doorlaat.
 
 ### ⚠️ Fout 1 — terugzetten met een migratie zette de verkeerde toestand terug
 
-Na K herstelde ik door **0254 opnieuw af te spelen**. Maar 0254 raakt
+Na K herstelde ik door **0255 opnieuw af te spelen**. Maar 0255 raakt
 `chatdocs_insert` niet aan — die regel stond er al sinds 0240. Mutatie K bleef dus
 staan, en M meldde **vier** emmers waar er drie hoorden.
 
@@ -235,5 +235,5 @@ gelopen, twee keer op één ronde.
 - **De bytes.** De extensie is een naam en geen inhoud. Dat de emmer ook op
   `allowed_mime_types` toetst is de andere helft, en die staat aan de servicekant.
 - **Toepassen op productie.** Dit is DDL op `storage.objects` en die tabel is van
-  `supabase_storage_admin`: een bouwsessie krijgt `42501`. 0254 sluit aan op de
+  `supabase_storage_admin`: een bouwsessie krijgt `42501`. 0255 sluit aan op de
   reeks die al op Quintens machine wacht.

@@ -75,10 +75,10 @@
 --    migratie ongemoeid gebleven.
 --
 --    📏 Nagemeten na deze migratie: `a|4  d|4  r|4` op `storage.objects` — vier
---    INSERT-policies, alle vier open op de naam. 0254 pint daar de bestandsnaam
+--    INSERT-policies, alle vier open op de naam. 0255 pint daar de bestandsnaam
 --    in. ⚠️ Dat sluit de copy-route **niet**, en die nuance is de tweede ronde
 --    van dezelfde fout: bij een `copy` kiest de client de doelnaam, dus een
---    vreemd bestand heet in de doelemmer simpelweg `onschuldig.jpg`. Wat 0254
+--    vreemd bestand heet in de doelemmer simpelweg `onschuldig.jpg`. Wat 0255
 --    oplevert is dat de naamvorm in alle vier de emmers een databaseeigenschap
 --    is. De open route staat als rij van 11-09 in `docs/ENGINEER-REVIEW.md`.
 --

@@ -1,4 +1,4 @@
--- 0254_elke_fotoemmer_pint_de_extensie_in_zijn_insertpolicy.sql — `copy` is een INSERT, en de INSERT-policy van de doelemmer is de enige poort die hij passeert
+-- 0255_elke_fotoemmer_pint_de_extensie_in_zijn_insertpolicy.sql — `copy` is een INSERT, en de INSERT-policy van de doelemmer is de enige poort die hij passeert
 --
 -- ROLLBACK-PAD:
 --   De drie policies terugzetten zoals ze vóór deze migratie stonden — dat is de
@@ -61,7 +61,7 @@
 -- klopt niet, en dezelfde zin stond in 0235, in 0240 en in twee dossierrijen.
 --
 -- 📏 Gemeten tegen de lokale stack uit alle 255 migratiebestanden — dat is de
--- stand vóór dit bestand; met 0254 erbij zijn het er 256:
+-- stand vóór dit bestand; met 0255 erbij zijn het er 256:
 --
 --     select polcmd::text, count(*) from pg_policy pol
 --       join pg_class c on c.oid = pol.polrelid

@@ -6,7 +6,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
  * Een object verhuist niet van de ene emmer naar de andere — QS8-407, migratie 0239,
- * en QS8-416, migratie 0254.
+ * en QS8-416, migratie 0255.
  *
  * ⚠️⚠️ **Deze suite heette tot 11-09-2026 naar 0237 en dat was het verkeerde
  *    nummer — zes keer, inclusief de naam van het `describe`.** 0237 is
@@ -127,7 +127,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    niet aanroept, zegt niets — een client praat rechtstreeks met de
  *    Storage-API.
  *
- * **Wat de INSERT-kant nu toetst, en wat níet.** 0254 pint in elke INSERT-policy
+ * **Wat de INSERT-kant nu toetst, en wat níet.** 0255 pint in elke INSERT-policy
  * de bestandsnaam. Dat maakt de naamvorm een databaseeigenschap in alle vier de
  * emmers in plaats van in één — dezelfde belofte die 0240 voor `chatdocs` deed,
  * met `evil.html` als meting.
@@ -136,7 +136,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    beweerde dat wél.** Bij een `copy` kiest de client de **doelnaam**: 📏
  *    `@supabase/storage-js/dist/index.mjs:982-991` geeft `sourceKey` en
  *    `destinationKey` als twee losse parameters. Een pdf uit `chatdocs` heet in
- *    `chatfotos` dus gewoon `onschuldig.jpg`, en 📏 zo gemeten ná 0254 laten alle
+ *    `chatfotos` dus gewoon `onschuldig.jpg`, en 📏 zo gemeten ná 0255 laten alle
  *    vier de emmers een vrij gekozen doelnaam door. Deze test bewaakt dus de
  *    naamvorm en niet de richting — precies wat hij nu ook zegt.
  *
@@ -165,7 +165,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *   K  idem uit `chatdocs_insert` (stond er al sinds 0240) → 1 rood, idem
  *   L  `VREEMDE_NAAM` leeghalen voor één emmer             → 1 rood op het
  *      register, met de naam van die emmer — dezelfde vorm als G
- *   M  de extensielijst van 0254 verruimen met `pdf`       → 3 rood: de drie
+ *   M  de extensielijst van 0255 verruimen met `pdf`       → 3 rood: de drie
  *      fotoemmers, en `chatdocs` blijft groen
  *   N  `chatfotos_insert` op `with check (false)`          → 2 rood: deze test
  *      **én** de must-allow, met `chatfotos` in beide meldingen
@@ -185,8 +185,8 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *
  * ⚠️⚠️ **En de ijkopstelling zelf ging bij M de eerste keer fout, met precies de
  *    fout waar CLAUDE.md voor waarschuwt: kijk wélke test omvalt en of de
- *    mutatie er écht in staat.** Terugzetten deed ik door 0254 opnieuw af te
- *    spelen — maar **0254 raakt `chatdocs_insert` niet aan**, want die regel
+ *    mutatie er écht in staat.** Terugzetten deed ik door 0255 opnieuw af te
+ *    spelen — maar **0255 raakt `chatdocs_insert` niet aan**, want die regel
  *    stond er al sinds 0240. Mutatie K bleef dus staan, en M meldde vier emmers
  *    waar er drie hoorden. De meting was goed, de opstelling niet; wie alleen op
  *    "er wordt iets rood" had gekeken, had dat niet gezien.
@@ -269,7 +269,7 @@ function staatErEcht(userId: string, bucket: string, pad: string): void {
   expect(uit, `de opstelling klopt niet: ${bucket}/${pad} kwam er niet in`).toBe(bucket);
 }
 
-describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0239 + 0254)', () => {
+describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0239 + 0255)', () => {
   const alice = randomUUID();
   const weekdoel = randomUUID();
   const doel = randomUUID();
