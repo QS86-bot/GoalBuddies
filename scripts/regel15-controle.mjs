@@ -69,6 +69,21 @@ export const PLAFOND = Object.freeze({
   //    er zitten er vandaag vijftien boven, en een regel die vijftien keer rood
   //    staat leer je uitzetten. De nesting is er wél hard aan gegaan.
   'scripts/': 15,
+  // ⚠️ **`supabase/functions/` telt mee sinds 11-09-2026** (QS8-422). Die map
+  //    viel buiten élke coderegel — `eslint.config.js` sloot `supabase/*` uit en
+  //    `deno lint` kent geen complexiteitsregels — en het is de map die elk uur
+  //    met `service_role` tegen productie draait.
+  //
+  //    📏 Zes functies erboven, de langste op 280 regels (`draaiRollover`).
+  //    Vandaar een ratel en geen lintregel, om precies dezelfde reden als in
+  //    `app/` en `scripts/`. De nesting is er wél hard aan gegaan: van
+  //    tweeëntwintig overtredingen naar nul, zonder één functie op te splitsen.
+  //
+  // ⚠️ **Tel met `skipBlankLines` en `skipComments`, zoals de lintregel doet.**
+  //    📏 Zonder die twee telt dezelfde map er tien boven de vijftig met een
+  //    langste van 710 in plaats van zes met een langste van 280. Een plafond in
+  //    een andere eenheid dan de meting is een plafond dat niemand terugvindt.
+  'supabase/functions/': 6,
 });
 
 /** De lagen die deze ratel telt, in de volgorde waarin ze gemeld worden. */
@@ -119,14 +134,21 @@ async function meet() {
     cwd: WORTEL,
     overrideConfigFile: join(WORTEL, 'eslint.config.js'),
     overrideConfig: {
-      files: ['app/**/*.tsx', 'app/**/*.ts', 'src/**/*.ts', 'src/**/*.tsx', 'scripts/**/*.mjs'],
+      files: [
+        'app/**/*.tsx',
+        'app/**/*.ts',
+        'src/**/*.ts',
+        'src/**/*.tsx',
+        'scripts/**/*.mjs',
+        'supabase/functions/**/*.ts',
+      ],
       rules: {
         'max-lines-per-function': ['error', { max: GRENS, skipBlankLines: true, skipComments: true }],
       },
     },
   });
 
-  const uitslagen = await linter.lintFiles(['app', 'src', 'scripts']);
+  const uitslagen = await linter.lintFiles(['app', 'src', 'scripts', 'supabase/functions']);
   const vondsten = [];
 
   for (const uitslag of uitslagen) {

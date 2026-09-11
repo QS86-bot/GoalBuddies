@@ -8,7 +8,7 @@ import { closableUserCycle, userCycle } from '../_shared/time/cycle.ts';
 import type { Weekday } from '../_shared/time/types.ts';
 import { localDateIn } from '../_shared/time/zoned.ts';
 import { meld } from '../_shared/melden.ts';
-import { paginas } from '../_shared/bladeren/index.ts';
+import { rijen } from '../_shared/bladeren/index.ts';
 import { metCors } from '../_shared/cors.ts';
 
 /**
@@ -235,10 +235,15 @@ async function draaiRollover(auth: string): Promise<Response> {
     return (data ?? []) as Profiel[];
   };
 
-  for await (const pagina of paginas(haalProfielen, PROFIELEN_PER_PAGINA)) {
-    profielenGezien += pagina.length;
+  // ⚠️ **`rijen()` en niet `paginas()`** — QS8-422. Hiervoor stonden hier twee
+  //    lussen boven elkaar, allebei op dezelfde inspringing omdat het lichaam
+  //    bij het invoeren van de paginering nooit herschreven is. Die buitenste
+  //    lus duwde élke vertakking hieronder een stap dieper dan de code leest;
+  //    zeven van de tweeëntwintig nesting-overtredingen in deze map kwamen
+  //    daarvandaan en niet uit de logica.
+  for await (const profiel of rijen(haalProfielen, PROFIELEN_PER_PAGINA)) {
+    profielenGezien += 1;
 
-  for (const profiel of pagina) {
     // ⚠️ De cyclus die deze gebruiker nog mág afsluiten. Binnen de
     //    coulanceperiode is dat nog de vórige week, en dan is er dus níéts te
     //    rollen — anders kost een late log alsnog een minpunt (QS8-51).
@@ -345,17 +350,29 @@ async function draaiRollover(auth: string): Promise<Response> {
         .gte('ends_cycle', weekdoel.cycle_start_date)
         .maybeSingle();
 
+      // ⚠️ **Twee guards naast elkaar en niet een `if` in een `if`** — QS8-422.
+      //    De schrijfactie staat achter dezelfde voorwaarde als hiervoor: zonder
+      //    adempauze gebeurt er niets en blijft `vrijstelFout` null. Wat weg is,
+      //    is de laag nesting, niet de volgorde — en dat is de vorm waar
+      //    coderegel 15 om vraagt.
+      const vrijstelFout = pauze
+        ? (await db.from('weekly_goals').update({ status: 'excused' }).eq('id', weekdoel.id))
+            .error
+        : null;
+
+      // ⚠️⚠️ **`vrijstelFout` niet-null impliceert dat `pauze` waar was**, want
+      //    zonder adempauze draait de update niet. Deze poort leest als een
+      //    algemene foutpoort en is het niet — en twintig regels verderop wordt
+      //    het minpunt geboekt. Zet hier niets tussen zonder die invariant na te
+      //    lopen: wie de verkeerde tak raakt, schrijft punten af die niemand
+      //    verdiend heeft, en er is geen runtime die dat rood maakt. Aangewezen
+      //    door de security-review op QS8-422.
+      if (vrijstelFout) {
+        console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${vrijstelFout.message}`);
+        continue;
+      }
+
       if (pauze) {
-        const { error: pauzeFout } = await db
-          .from('weekly_goals')
-          .update({ status: 'excused' })
-          .eq('id', weekdoel.id);
-
-        if (pauzeFout) {
-          console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${pauzeFout.message}`);
-          continue;
-        }
-
         vrijgesteld += 1;
         continue;
       }
@@ -512,8 +529,6 @@ async function draaiRollover(auth: string): Promise<Response> {
         risicoBijgewerkt += 1;
       }
     }
-  }
-
   }
 
   // ⚠️ **Pas hier, en niet in `haalProfielen`.** Een 500 midden in de lus zou de

@@ -276,13 +276,20 @@ jobs:
   # De Edge Functions — ze draaien op Deno en vielen tot 25-08-2026 buiten alles
   # ---------------------------------------------------------------------------
   #
-  # ⚠️ `tsconfig.json` sluit `supabase/functions` uit en `eslint.config.js`
-  #    negeert `supabase/*`, want die code is Deno en geen Node. Gevolg: de
-  #    rollover en de notificatiejob werden nergens getypecheckt of gelint.
+  # ⚠️ `tsconfig.json` sluit `supabase/functions` uit, want die code is Deno en
+  #    geen Node — daarvoor is deze job er. Gevolg tot 25-08: de rollover en de
+  #    notificatiejob werden nergens getypecheckt of gelint.
   #
   #    Dat is niet theoretisch gebleven. De `excused`-bevinding van 20-08 bleef
   #    staan omdat de schrijver een Edge Function was en er in `pg_proc` gezocht
   #    werd — wie in de database zoekt, ziet die schrijver niet.
+  #
+  # ⚠️ **`eslint.config.js` negeert deze map sinds 11-09-2026 níét meer**
+  #    (QS8-422): `max-depth`, `no-shadow` en de ratel van coderegel 15 gelden er
+  #    via `npm run lint` in de job hierboven. Deze job blijft nodig en overlapt
+  #    daar niet mee — `deno check` is de énige typecontrole die deze map ziet,
+  #    en `deno lint` kent Deno-eigen regels die ESLint niet heeft. Andersom kent
+  #    `deno lint` geen complexiteitsregels, en dát was het gat.
   edge:
     name: Edge Functions (Deno)
     runs-on: ubuntu-latest

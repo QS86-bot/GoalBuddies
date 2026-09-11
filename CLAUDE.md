@@ -482,17 +482,38 @@ docs/decisions/
 
     | Waar | Wat er geldt | Wie het afdwingt |
     |---|---|---|
-    | overal in `src/`, `app/` en `scripts/` | nesting <3 | `max-depth` in `eslint.config.js` |
+    | overal in `src/`, `app/`, `scripts/` en `supabase/functions/` | nesting <3 | `max-depth` in `eslint.config.js` |
     | logica: `src/` buiten `shared/ui` | <50 regels | `max-lines-per-function` |
     | componenten: `src/shared/ui` | een plafond dat vandaag bindt | `max-lines-per-function` |
     | de schermlaag: `app/` | het **aantal** functies boven de 50 mag alleen dalen | `npm run regel15:controle` |
     | de scripts: `scripts/` | idem — het **aantal** mag alleen dalen | `npm run regel15:controle` |
+    | de Edge Functions: `supabase/functions/` | idem — het **aantal** mag alleen dalen | `npm run regel15:controle` |
 
     ⚠️ **`scripts/` viel tot 06-09-2026 helemaal buiten de linter** (QS8-291):
     `eslint.config.js` dekte alleen `**/*.ts(x)` en die map is `.mjs`, dus 57
     bestanden en 14.170 regels zagen geen enkele coderegel — precies de map waar
     de grendels van dit project wonen. De nesting is er hard aan gegaan; de
     vijftig staat er als ratel, om dezelfde reden als in `app/`.
+
+    ⚠️⚠️ **En `supabase/functions/` viel tot 11-09-2026 buiten élke coderegel**
+    (QS8-422) — `eslint.config.js` sloot `supabase/*` uit en `deno lint` kent geen
+    complexiteitsregels. 📏 Bij het aanzetten: **22** nesting-overtredingen, en
+    **achttien** ervan had niemand geschreven. Het waren twee lussen boven
+    elkaar — `for await (const pagina of paginas(…))` met `for (const rij of
+    pagina)` erin — waarvan het lichaam bij het invoeren van de paginering nooit
+    herschreven is, dus de binnenste lus stond op dezelfde inspringing als de
+    buitenste. **Zet je een lintregel voor het eerst op een map aan, dan meldt hij
+    niet alleen wat er fout aan is maar ook wat er per ongeluk in staat** — en
+    hier was dat vier vijfde van het totaal. `rijen()` in `src/shared/bladeren`
+    haalt die laag weg.
+
+    ⚠️ **Tel de vijftig met dezelfde opties als de lintregel: `skipBlankLines` en
+    `skipComments`.** 📏 Zonder die twee telt dezelfde map er tien boven de
+    vijftig met een langste van 710; mét, zoals overal elders in dit project, zijn
+    het er zes met een langste van 282. Een plafond in een andere eenheid dan de
+    lintregel is een plafond dat de volgende meting niet terugvindt — zelfde
+    klasse als een teller in grafemen bij een grens in codepunten. Uitleg in
+    `docs/decisions/2026-09-11-de-nesting-die-erbij-kwam-zonder-dat-iemand-hem-schreef.md`.
 
     ⚠️ **Een component wordt anders geteld dan een functie, en dat is geen
     uitvlucht.** Het lichaam van een React-component is grotendeels JSX: één

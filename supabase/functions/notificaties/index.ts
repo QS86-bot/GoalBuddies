@@ -10,17 +10,8 @@ import { GRACE_HOURS, type Weekday } from '../_shared/time/types.ts';
 import { inStilteVenster, verschovenUur } from '../_shared/time/stilte.ts';
 import { meld } from '../_shared/melden.ts';
 import { metCors } from '../_shared/cors.ts';
-import { paginas } from '../_shared/bladeren/index.ts';
+import { rijen } from '../_shared/bladeren/index.ts';
 import { nudgeBesluit } from '../_shared/notificaties/nudge-besluit.ts';
-
-/**
- * Hoeveel profielen er per ronde opgehaald worden.
- *
- * ⚠️ Bewust klein, om dezelfde reden als in de rollover: deze functie doet per
- *    profiel nog meerdere query's, dus de grens is de looptijd van één Edge
- *    Function en niet het geheugen. Kleiner betekent meer ronden, niet meer werk.
- */
-const PROFIELEN_PER_PAGINA = 200;
 import {
   berichtVoor,
   meldingPoortReden,
@@ -38,6 +29,15 @@ import {
   type VapidSleutels,
   type WebPushDoel,
 } from '../_shared/notificaties/webpush-verzenden.ts';
+
+/**
+ * Hoeveel profielen er per ronde opgehaald worden.
+ *
+ * ⚠️ Bewust klein, om dezelfde reden als in de rollover: deze functie doet per
+ *    profiel nog meerdere query's, dus de grens is de looptijd van één Edge
+ *    Function en niet het geheugen. Kleiner betekent meer ronden, niet meer werk.
+ */
+const PROFIELEN_PER_PAGINA = 200;
 
 /**
  * De meldingen-job — EPIC 11 (QS8-91) en de dagelijkse nudge (QS8-77).
@@ -213,6 +213,16 @@ async function draaiNotificaties(auth: string): Promise<Response> {
   let overgeslagen = 0;
   let zonderToken = 0;
 
+  // ⚠️ **Vijf keer hetzelfde tweeregelige paar stond hier uitgeschreven** —
+  //    QS8-422. Dat is niet alleen een kopie te veel: op het diepste punt in
+  //    deze functie waren het precies de twee `if`s die coderegel 15
+  //    overschreden, en een aanroep telt niet mee voor `max-depth` omdat een
+  //    functie de teller terugzet. De telling zelf is woordelijk dezelfde.
+  const tel = (stand: Verzendstand): void => {
+    if (stand === 'verstuurd') verstuurd += 1;
+    if (stand === 'onderdrukt') onderdrukt += 1;
+  };
+
   // ⚠️ **In pagina's, met een expliciete `order`** — QS8-341, en dit is
   //    woordelijk de reparatie die op 03-09 in de rollover landde en hier bleef
   //    liggen. Zonder `range()` kapt een gezette `max-rows` in PostgREST de lijst
@@ -245,321 +255,326 @@ async function draaiNotificaties(auth: string): Promise<Response> {
     return (data ?? []) as Profiel[];
   };
 
-
   // ⚠️ **Per pagina verwerken en niet eerst alles inlezen.** Alle profielen in
   //    het geheugen zetten lost de stille afkapping wél op, maar houdt de kosten
   //    lineair in het tótale aantal gebruikers — precies wat dit issue aanwijst.
   let profielenGezien = 0;
 
-  for await (const pagina of paginas(haalProfielen, PROFIELEN_PER_PAGINA)) {
+  // ⚠️ **`rijen()` en niet `paginas()`** — QS8-422, en zelfde ingreep als in
+  //    de rollover. De buitenste lus las alleen pagina's uit om ze meteen weer
+  //    open te vouwen, en duwde daarmee élke vertakking hieronder een stap
+  //    dieper dan de code leest. Het diepste punt stond op zes.
+  for await (const profiel of rijen(haalProfielen, PROFIELEN_PER_PAGINA)) {
     if (profielFout !== null) break;
-    profielenGezien += pagina.length;
+    profielenGezien += 1;
 
-    for (const profiel of pagina) {
-      // ⚠️ In een try, om dezelfde reden als in de rollover: `profiles.tz` is
-      //    vrije tekst zonder controle en `Intl` gooit op een onbekende zone.
-      //    Zonder dit legt één profiel met een typefout de meldingen voor iedereen
-      //    stil. De echte reparatie is een CHECK op die kolom (Q-TODO A38).
-      let lokaalUur: number;
-      let lokaleDatum: string;
-      try {
-        const p = partsIn(profiel.tz, nu);
-        lokaalUur = p.hour;
-        lokaleDatum = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
-      } catch (fout) {
-        console.error(
-          `tijdzone onbruikbaar (tz=${profiel.tz}): ${
-            fout instanceof Error ? fout.message : String(fout)
-          }`,
-        );
-        // ⚠️ De tijdzone gaat niet mee naar buiten: dicht genoeg bij een
-        //    woonplaats om hem niet in een foutdashboard te willen hebben.
-        await meld(fout, 'notificaties.tijdzone', { code: 'tz_onbruikbaar' });
-        overgeslagen += 1;
+    // ⚠️ In een try, om dezelfde reden als in de rollover: `profiles.tz` is
+    //    vrije tekst zonder controle en `Intl` gooit op een onbekende zone.
+    //    Zonder dit legt één profiel met een typefout de meldingen voor iedereen
+    //    stil. De echte reparatie is een CHECK op die kolom (Q-TODO A38).
+    let lokaalUur: number;
+    let lokaleDatum: string;
+    try {
+      const p = partsIn(profiel.tz, nu);
+      lokaalUur = p.hour;
+      lokaleDatum = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+    } catch (fout) {
+      console.error(
+        `tijdzone onbruikbaar (tz=${profiel.tz}): ${
+          fout instanceof Error ? fout.message : String(fout)
+        }`,
+      );
+      // ⚠️ De tijdzone gaat niet mee naar buiten: dicht genoeg bij een
+      //    woonplaats om hem niet in een foutdashboard te willen hebben.
+      await meld(fout, 'notificaties.tijdzone', { code: 'tz_onbruikbaar' });
+      overgeslagen += 1;
+      continue;
+    }
+
+    // ⚠️ Eén keer per profiel uitgerekend en niet per melding: het antwoord
+    //    hangt alleen van het lokale uur af, en de lus eronder doet vijf
+    //    soorten.
+    const inStilte = inStilteVenster(lokaalUur, profiel.quiet_from, profiel.quiet_to);
+
+    const { data: tokens } = await db
+      .from('push_tokens')
+      .select('token, platform, p256dh, auth')
+      .eq('user_id', profiel.id);
+
+    const apparaten = (tokens ?? []) as Token[];
+
+    if (apparaten.length === 0) {
+      // Geen apparaat geregistreerd. Vandaag geldt dat voor iedereen, en de
+      // reden is per platform een andere (QS8-366): native heeft geen build
+      // uitgerold, en op web wacht de registratie op een VAPID-sleutelpaar en
+      // op de knop in Profiel — QS8-124.
+      zonderToken += 1;
+      continue;
+    }
+
+    // -----------------------------------------------------------------------
+    // 1. De dagelijkse nudge — QS8-77
+    // -----------------------------------------------------------------------
+    // ⚠️ **De zes dure vragen staan achter de gratis poort** — QS8-341. Hier
+    //    stond een object-literal die ze alle zes eager evalueerde, terwijl
+    //    `nudgeReden()` op de eerste drie gratis velden al kortsluit: voor de
+    //    23 van de 24 uren waarin deze gebruiker sowieso niets krijgt, en voor
+    //    iedereen met `reminder_enabled = false`, was dat weggegooid werk.
+    //
+    // ⚠️ De poort en de beslissing zijn dezelfde code — `nudgeBesluit()` roept
+    //    `nudgeVoorpoortReden()` aan en daarna `nudgeReden()`. Er staat hier
+    //    dus géén kopie van de drie voorwaarden die uit de pas kan lopen.
+    const besluit = await nudgeBesluit(
+      {
+        herinneringAan: profiel.reminder_enabled,
+        // ⚠️ **Verschoven en niet onderdrukt — het besluit van QS8-406.** Een
+        //    herinnering die in de stille uren valt, zou anders die dag
+        //    helemaal niet gaan; bij 23:00 met stilte 22→7 nóóit meer. Nu komt
+        //    hij op het eerste luide uur. Zie `verschovenUur()` voor waarom dit
+        //    geen validatie is geworden.
+        herinneringUur: verschovenUur(
+          uurUit(profiel.reminder_time),
+          profiel.quiet_from,
+          profiel.quiet_to,
+        ),
+        lokaalUur,
+      },
+      {
+        heeftDagzet: () => heeftDagzetVandaag(db, profiel.id, lokaleDatum),
+        heeftAfronding: () => heeftAfrondingVandaag(db, profiel.id, lokaleDatum),
+        heeftOpenWeekdoel: () => heeftOpenWeekdoel(db, profiel.id),
+        inAdempauze: () => inAdempauze(db, profiel.id, lokaleDatum),
+        alleenSlapendeGroepen: () => alleenSlapendeGroepen(db, profiel.id),
+        alVerstuurd: () => alVerstuurd(db, profiel.id, 'nudge', lokaleDatum, null),
+      },
+    );
+
+    if (besluit.mag) {
+      const toon: Toon = profiel.reminder_tone === 'firm' ? 'firm' : 'gentle';
+      const stand = await stuur(db, {
+        userId: profiel.id,
+        apparaten,
+        voorkeuren: profiel,
+        inStilte,
+        nu,
+        soort: 'nudge',
+        bericht: nudgeBericht(toon, taalVan(profiel)),
+        lokaleDatum,
+        refId: null,
+      });
+      tel(stand);
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. Goedkeuringsverzoeken — een buddy wacht op jou
+    // -----------------------------------------------------------------------
+    //
+    // ⚠️ Eén melding per voltooiing (`ref_id`), niet één per dag. Twee buddy's
+    //    die op je wachten zijn twee verzoeken, en dan is samenvoegen tot "er
+    //    wacht iets" minder bruikbaar. De unieke index op (user_id, kind,
+    //    ref_id) houdt het bij één per stuk.
+    const teBeoordelen = await openBeoordelingen(db, profiel.id);
+
+    for (const rij of teBeoordelen) {
+      if (await alVerstuurd(db, profiel.id, 'approval_request', lokaleDatum, rij.completionId)) {
         continue;
       }
 
-      // ⚠️ Eén keer per profiel uitgerekend en niet per melding: het antwoord
-      //    hangt alleen van het lokale uur af, en de lus eronder doet vijf
-      //    soorten.
-      const inStilte = inStilteVenster(lokaalUur, profiel.quiet_from, profiel.quiet_to);
+      const stand = await stuur(db, {
+        userId: profiel.id,
+        apparaten,
+        voorkeuren: profiel,
+        inStilte,
+        nu,
+        soort: 'approval_request',
+        bericht: berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
+        lokaleDatum,
+        refId: rij.completionId,
+      });
+      tel(stand);
+    }
 
-      const { data: tokens } = await db
-        .from('push_tokens')
-        .select('token, platform, p256dh, auth')
-        .eq('user_id', profiel.id);
+    // -----------------------------------------------------------------------
+    // 3. Ontvangen goedkeuringen — goed nieuws over jezelf
+    // -----------------------------------------------------------------------
+    const ontvangen = await verseGoedkeuringen(db, profiel.id);
 
-      const apparaten = (tokens ?? []) as Token[];
-
-      if (apparaten.length === 0) {
-        // Geen apparaat geregistreerd. Vandaag geldt dat voor iedereen, en de
-        // reden is per platform een andere (QS8-366): native heeft geen build
-        // uitgerold, en op web wacht de registratie op een VAPID-sleutelpaar en
-        // op de knop in Profiel — QS8-124.
-        zonderToken += 1;
+    for (const rij of ontvangen) {
+      if (await alVerstuurd(db, profiel.id, 'approval_received', lokaleDatum, rij.approvalId)) {
         continue;
       }
 
-      // -----------------------------------------------------------------------
-      // 1. De dagelijkse nudge — QS8-77
-      // -----------------------------------------------------------------------
-      // ⚠️ **De zes dure vragen staan achter de gratis poort** — QS8-341. Hier
-      //    stond een object-literal die ze alle zes eager evalueerde, terwijl
-      //    `nudgeReden()` op de eerste drie gratis velden al kortsluit: voor de
-      //    23 van de 24 uren waarin deze gebruiker sowieso niets krijgt, en voor
-      //    iedereen met `reminder_enabled = false`, was dat weggegooid werk.
-      //
-      // ⚠️ De poort en de beslissing zijn dezelfde code — `nudgeBesluit()` roept
-      //    `nudgeVoorpoortReden()` aan en daarna `nudgeReden()`. Er staat hier
-      //    dus géén kopie van de drie voorwaarden die uit de pas kan lopen.
-      const besluit = await nudgeBesluit(
-        {
-          herinneringAan: profiel.reminder_enabled,
-          // ⚠️ **Verschoven en niet onderdrukt — het besluit van QS8-406.** Een
-          //    herinnering die in de stille uren valt, zou anders die dag
-          //    helemaal niet gaan; bij 23:00 met stilte 22→7 nóóit meer. Nu komt
-          //    hij op het eerste luide uur. Zie `verschovenUur()` voor waarom dit
-          //    geen validatie is geworden.
-          herinneringUur: verschovenUur(
-            uurUit(profiel.reminder_time),
-            profiel.quiet_from,
-            profiel.quiet_to,
-          ),
-          lokaalUur,
-        },
-        {
-          heeftDagzet: () => heeftDagzetVandaag(db, profiel.id, lokaleDatum),
-          heeftAfronding: () => heeftAfrondingVandaag(db, profiel.id, lokaleDatum),
-          heeftOpenWeekdoel: () => heeftOpenWeekdoel(db, profiel.id),
-          inAdempauze: () => inAdempauze(db, profiel.id, lokaleDatum),
-          alleenSlapendeGroepen: () => alleenSlapendeGroepen(db, profiel.id),
-          alVerstuurd: () => alVerstuurd(db, profiel.id, 'nudge', lokaleDatum, null),
-        },
+      const stand = await stuur(db, {
+        userId: profiel.id,
+        apparaten,
+        voorkeuren: profiel,
+        inStilte,
+        nu,
+        soort: 'approval_received',
+        bericht: berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
+        lokaleDatum,
+        refId: rij.approvalId,
+      });
+      tel(stand);
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. Het cyclusoverzicht — je week is afgelopen
+    // -----------------------------------------------------------------------
+    //
+    // ⚠️ Op de eerste dag van je nieuwe cyclus, op je eigen herinneringsuur (of
+    //    negen uur als je er geen hebt ingesteld). Dat is het moment waarop
+    //    terugkijken zin heeft: de vorige week is dicht en de nieuwe is nog leeg.
+    //
+    // ⚠️ De cyclusgrens komt uit `shared/time` en wordt hier niet uitgerekend —
+    //    correctheidsregel 7. Zonder dat zou deze job een eigen antwoord geven
+    //    op "welke week is het", en dan lopen de app en de meldingen uit elkaar
+    //    voor iedereen met een andere week-startdag.
+    try {
+      const cyclus = userCycle(
+        { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
+        nu,
       );
 
-      if (besluit.mag) {
-        const toon: Toon = profiel.reminder_tone === 'firm' ? 'firm' : 'gentle';
+      // ⚠️ **Nooit vóór de coulanceperiode** — QS8-202. Het waarom staat bij
+      //    `overzichtsuur()`; de korte versie is dat de rollover een gemiste week
+      //    pas ná `GRACE_HOURS` afschrijft, dus vóór dat uur is "is er een weekpas
+      //    verbruikt" per definitie nee — en de ontdubbeling laat die dag geen
+      //    tweede melding meer toe.
+      // ⚠️ Zelfde verschuiving als bij de nudge: valt het overzichtsuur in de
+      //    stille uren, dan komt het overzicht op het eerste luide uur in
+      //    plaats van die week helemaal niet.
+      const basisUur = overzichtsuur(uurUit(profiel.reminder_time), GRACE_HOURS);
+      // ⚠️ De `??` is typenarrowing en geen gedrag: `verschovenUur()` geeft
+      //    alleen `null` terug op een `null`-invoer, en `overzichtsuur()` geeft
+      //    altijd een getal. De tak is dus onbereikbaar en staat er omdat de
+      //    handtekening hem toelaat.
+      const overzichtsUur =
+        verschovenUur(basisUur, profiel.quiet_from, profiel.quiet_to) ?? basisUur;
+
+      // ⚠️ **Niet over een week waarin je met opzet niets deed.** De nudge en het
+      //    goedkeuringsverzoek slaan een lid met een lopende adempauze al over
+      //    (`regels.ts`, `magNudgen`); dit overzicht deed dat tot 25-08-2026 niet,
+      //    dus wie een adempauze had aangekondigd kreeg tóch "je week is
+      //    afgelopen" — precies het duwtje waar een adempauze voor bedoeld is om
+      //    het níét te krijgen. Gevonden bij het nameten van QS8-91.
+      //
+      // ⚠️ Op de **vorige** cyclus en niet op vandaag: dit bericht kijkt terug op
+      //    de week die net dicht is, en vandaag is de eerste dag van de nieuwe.
+      //    De grens komt uit `shared/time` en wordt hier niet uitgerekend
+      //    (correctheidsregel 7).
+      //
+      // ⚠️ De vraag staat bínnen de tijdvoorwaarde en niet ervoor. Ervoor is het
+      //    een extra query per profiel per ronde voor een bericht dat hoogstens
+      //    één keer per week valt (onwrikbare regel 12).
+      // ⚠️ **`>=` en niet `===`, en dat is een reparatie die los van de stille
+      //    uren al nodig was.** Met een gelijkheid kost één mislukte job-run om
+      //    het overzichtsuur stilzwijgend het hele weekoverzicht van die
+      //    gebruiker — dezelfde klasse als QS8-202. De ontdubbeling op
+      //    `(user_id, 'cycle_summary', local_date)` houdt het bij één, dus
+      //    later alsnog sturen kan geen tweede opleveren.
+      // ⚠️ **Eén poort en niet twee in elkaar** — QS8-422. De volgorde van de
+      //    vier voorwaarden is dezelfde en `&&` kortsluit, dus de twee query's
+      //    hieronder draaien nog steeds alleen op het overzichtsuur. Wat nieuw
+      //    is, is dat `previousCycle()` elke ronde meerekent in plaats van
+      //    alleen op de cyclusgrens — dat is rekenwerk op een object dat er al
+      //    is en geen verzoek aan de database, en juist die kosten waren de
+      //    reden dat de vragen hieronder achter de tijdvoorwaarde staan.
+      const afgelopen = previousCycle(cyclus);
+      const overzichtMag =
+        cyclus.startDate === lokaleDatum &&
+        lokaalUur >= overzichtsUur &&
+        !(await inAdempauze(db, profiel.id, afgelopen.startDate)) &&
+        !(await alVerstuurd(db, profiel.id, 'cycle_summary', lokaleDatum, null));
+
+      if (overzichtMag) {
+        // ⚠️ **Hier hing QS8-202.** "Een weekpas heeft je reeks gered" stond
+        //    alleen als privéblok op het dashboard, en wie de app die week niet
+        //    opende, hoorde het nooit. Dit is het enige moment waarop de app
+        //    hem uit zichzelf bereikt, en het valt precies goed: de rollover
+        //    verbruikt de pas op de cyclusgrens en dit bericht gaat over
+        //    diezelfde net afgesloten week.
+        //
+        // ⚠️ **Strikt persoonlijk, en dat is de hele reden dat het een `push`
+        //    is en geen systeembericht.** Een verbruikte weekpas is het bewijs
+        //    van een gemiste week (domeinregel 7). Deze melding gaat naar de
+        //    apparaten van de eigenaar en nergens anders heen; de soort blijft
+        //    `cycle_summary`, dus er komt geen groepsoppervlak bij.
+        //
+        // ⚠️ De vraag staat bínnen de tijdvoorwaarde, om dezelfde reden als de
+        //    adempauze hierboven: ervoor is het een extra query per profiel per
+        //    ronde voor een bericht dat hoogstens één keer per week valt.
+        const weekpasGered = await weekpasVerbruikt(db, profiel.id, afgelopen.startDate);
+
         const stand = await stuur(db, {
           userId: profiel.id,
           apparaten,
           voorkeuren: profiel,
           inStilte,
           nu,
-          soort: 'nudge',
-          bericht: nudgeBericht(toon, taalVan(profiel)),
+          // ⚠️ De sóórt blijft `cycle_summary` en alleen de tékst verandert.
+          //    `notifications_sent_kind_bekend` (0053) kent vier waarden; een
+          //    vijfde zou een migratie zijn, en de ontdubbeling op
+          //    `(user_id, kind, local_date)` zou een tweede melding over
+          //    dezelfde week toelaten.
+          //
+          // ⚠️ Dit bestand staat buiten `tsc` (Deno), dus het type houdt hier
+          //    niets tegen. De grendel is de grep in
+          //    `tests/beloftes/weekpas-bereikt-je.test.ts`.
+          soort: 'cycle_summary',
+          bericht: berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
           lokaleDatum,
           refId: null,
         });
-        if (stand === 'verstuurd') verstuurd += 1;
-        if (stand === 'onderdrukt') onderdrukt += 1;
+        tel(stand);
+      }
+    } catch (fout) {
+      console.error(
+        `cyclus bepalen mislukte voor een profiel: ${
+          fout instanceof Error ? fout.message : String(fout)
+        }`,
+      );
+      await meld(fout, 'notificaties.cyclus', { code: 'cyclus_onbepaalbaar', userId: profiel.id });
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. Je bent getuige — een straf van een ander is verschuldigd geworden
+    // -----------------------------------------------------------------------
+    //
+    // ⚠️ **De enige soort die over een ander gaat, en dat is een uitzondering
+    //    met een naam.** Domeinregel 7 noemt er precies één: een straf die de
+    //    gebruiker zelf vooraf heeft ingesteld en bevestigd. De eigenaar heeft
+    //    deze getuige zélf aangewezen, de melding gaat pas af bij `due`
+    //    (domeinregel 11), en er gaat niets naar de groep. Uitgeschreven in
+    //    migratie 0178 en in `docs/decisions/2026-09-07-de-getuige-hoort-het-...`.
+    //
+    // ⚠️ **Niet via de groepschat**, ook niet als de getuige toevallig in een
+    //    groep van de eigenaar zit. Dan zou de hele groep horen wat expliciet
+    //    naar één persoon ging — de verruiming die QS8-228 níét maakte.
+    //
+    // ⚠️ Eén melding per commitment (`ref_id`) en niet één per dag, zelfde vorm
+    //    als het goedkeuringsverzoek: twee straffen waarvan je getuige bent zijn
+    //    twee dingen om te weten. De grens staat in `getuigenissen_voor()`
+    //    (limiet 50) en niet hier.
+    const getuigenissen = await openGetuigenissen(db, profiel.id);
+
+    for (const rij of getuigenissen) {
+      if (await alVerstuurd(db, profiel.id, 'commitment_witness', lokaleDatum, rij.commitmentId)) {
+        continue;
       }
 
-      // -----------------------------------------------------------------------
-      // 2. Goedkeuringsverzoeken — een buddy wacht op jou
-      // -----------------------------------------------------------------------
-      //
-      // ⚠️ Eén melding per voltooiing (`ref_id`), niet één per dag. Twee buddy's
-      //    die op je wachten zijn twee verzoeken, en dan is samenvoegen tot "er
-      //    wacht iets" minder bruikbaar. De unieke index op (user_id, kind,
-      //    ref_id) houdt het bij één per stuk.
-      const teBeoordelen = await openBeoordelingen(db, profiel.id);
-
-      for (const rij of teBeoordelen) {
-        if (await alVerstuurd(db, profiel.id, 'approval_request', lokaleDatum, rij.completionId)) {
-          continue;
-        }
-
-        const stand = await stuur(db, {
-          userId: profiel.id,
-          apparaten,
-          voorkeuren: profiel,
-          inStilte,
-          nu,
-          soort: 'approval_request',
-          bericht: berichtVoor('approval_request', { naam: rij.naam }, taalVan(profiel)),
-          lokaleDatum,
-          refId: rij.completionId,
-        });
-        if (stand === 'verstuurd') verstuurd += 1;
-        if (stand === 'onderdrukt') onderdrukt += 1;
-      }
-
-      // -----------------------------------------------------------------------
-      // 3. Ontvangen goedkeuringen — goed nieuws over jezelf
-      // -----------------------------------------------------------------------
-      const ontvangen = await verseGoedkeuringen(db, profiel.id);
-
-      for (const rij of ontvangen) {
-        if (await alVerstuurd(db, profiel.id, 'approval_received', lokaleDatum, rij.approvalId)) {
-          continue;
-        }
-
-        const stand = await stuur(db, {
-          userId: profiel.id,
-          apparaten,
-          voorkeuren: profiel,
-          inStilte,
-          nu,
-          soort: 'approval_received',
-          bericht: berichtVoor('approval_received', { naam: rij.naam }, taalVan(profiel)),
-          lokaleDatum,
-          refId: rij.approvalId,
-        });
-        if (stand === 'verstuurd') verstuurd += 1;
-        if (stand === 'onderdrukt') onderdrukt += 1;
-      }
-
-      // -----------------------------------------------------------------------
-      // 4. Het cyclusoverzicht — je week is afgelopen
-      // -----------------------------------------------------------------------
-      //
-      // ⚠️ Op de eerste dag van je nieuwe cyclus, op je eigen herinneringsuur (of
-      //    negen uur als je er geen hebt ingesteld). Dat is het moment waarop
-      //    terugkijken zin heeft: de vorige week is dicht en de nieuwe is nog leeg.
-      //
-      // ⚠️ De cyclusgrens komt uit `shared/time` en wordt hier niet uitgerekend —
-      //    correctheidsregel 7. Zonder dat zou deze job een eigen antwoord geven
-      //    op "welke week is het", en dan lopen de app en de meldingen uit elkaar
-      //    voor iedereen met een andere week-startdag.
-      try {
-        const cyclus = userCycle(
-          { weekStartDay: profiel.week_start_day as Weekday, tz: profiel.tz },
-          nu,
-        );
-
-        // ⚠️ **Nooit vóór de coulanceperiode** — QS8-202. Het waarom staat bij
-        //    `overzichtsuur()`; de korte versie is dat de rollover een gemiste week
-        //    pas ná `GRACE_HOURS` afschrijft, dus vóór dat uur is "is er een weekpas
-        //    verbruikt" per definitie nee — en de ontdubbeling laat die dag geen
-        //    tweede melding meer toe.
-        // ⚠️ Zelfde verschuiving als bij de nudge: valt het overzichtsuur in de
-        //    stille uren, dan komt het overzicht op het eerste luide uur in
-        //    plaats van die week helemaal niet.
-        const basisUur = overzichtsuur(uurUit(profiel.reminder_time), GRACE_HOURS);
-        // ⚠️ De `??` is typenarrowing en geen gedrag: `verschovenUur()` geeft
-        //    alleen `null` terug op een `null`-invoer, en `overzichtsuur()` geeft
-        //    altijd een getal. De tak is dus onbereikbaar en staat er omdat de
-        //    handtekening hem toelaat.
-        const overzichtsUur =
-          verschovenUur(basisUur, profiel.quiet_from, profiel.quiet_to) ?? basisUur;
-
-        // ⚠️ **Niet over een week waarin je met opzet niets deed.** De nudge en het
-        //    goedkeuringsverzoek slaan een lid met een lopende adempauze al over
-        //    (`regels.ts`, `magNudgen`); dit overzicht deed dat tot 25-08-2026 niet,
-        //    dus wie een adempauze had aangekondigd kreeg tóch "je week is
-        //    afgelopen" — precies het duwtje waar een adempauze voor bedoeld is om
-        //    het níét te krijgen. Gevonden bij het nameten van QS8-91.
-        //
-        // ⚠️ Op de **vorige** cyclus en niet op vandaag: dit bericht kijkt terug op
-        //    de week die net dicht is, en vandaag is de eerste dag van de nieuwe.
-        //    De grens komt uit `shared/time` en wordt hier niet uitgerekend
-        //    (correctheidsregel 7).
-        //
-        // ⚠️ De vraag staat bínnen de tijdvoorwaarde en niet ervoor. Ervoor is het
-        //    een extra query per profiel per ronde voor een bericht dat hoogstens
-        //    één keer per week valt (onwrikbare regel 12).
-        // ⚠️ **`>=` en niet `===`, en dat is een reparatie die los van de stille
-        //    uren al nodig was.** Met een gelijkheid kost één mislukte job-run om
-        //    het overzichtsuur stilzwijgend het hele weekoverzicht van die
-        //    gebruiker — dezelfde klasse als QS8-202. De ontdubbeling op
-        //    `(user_id, 'cycle_summary', local_date)` houdt het bij één, dus
-        //    later alsnog sturen kan geen tweede opleveren.
-        if (cyclus.startDate === lokaleDatum && lokaalUur >= overzichtsUur) {
-          const afgelopen = previousCycle(cyclus);
-          const wasAdempauze = await inAdempauze(db, profiel.id, afgelopen.startDate);
-
-          if (!wasAdempauze && !(await alVerstuurd(db, profiel.id, 'cycle_summary', lokaleDatum, null))) {
-            // ⚠️ **Hier hing QS8-202.** "Een weekpas heeft je reeks gered" stond
-            //    alleen als privéblok op het dashboard, en wie de app die week niet
-            //    opende, hoorde het nooit. Dit is het enige moment waarop de app
-            //    hem uit zichzelf bereikt, en het valt precies goed: de rollover
-            //    verbruikt de pas op de cyclusgrens en dit bericht gaat over
-            //    diezelfde net afgesloten week.
-            //
-            // ⚠️ **Strikt persoonlijk, en dat is de hele reden dat het een `push`
-            //    is en geen systeembericht.** Een verbruikte weekpas is het bewijs
-            //    van een gemiste week (domeinregel 7). Deze melding gaat naar de
-            //    apparaten van de eigenaar en nergens anders heen; de soort blijft
-            //    `cycle_summary`, dus er komt geen groepsoppervlak bij.
-            //
-            // ⚠️ De vraag staat bínnen de tijdvoorwaarde, om dezelfde reden als de
-            //    adempauze hierboven: ervoor is het een extra query per profiel per
-            //    ronde voor een bericht dat hoogstens één keer per week valt.
-            const weekpasGered = await weekpasVerbruikt(db, profiel.id, afgelopen.startDate);
-
-            const stand = await stuur(db, {
-              userId: profiel.id,
-              apparaten,
-              voorkeuren: profiel,
-              inStilte,
-              nu,
-              // ⚠️ De sóórt blijft `cycle_summary` en alleen de tékst verandert.
-              //    `notifications_sent_kind_bekend` (0053) kent vier waarden; een
-              //    vijfde zou een migratie zijn, en de ontdubbeling op
-              //    `(user_id, kind, local_date)` zou een tweede melding over
-              //    dezelfde week toelaten.
-              //
-              // ⚠️ Dit bestand staat buiten `tsc` (Deno), dus het type houdt hier
-              //    niets tegen. De grendel is de grep in
-              //    `tests/beloftes/weekpas-bereikt-je.test.ts`.
-              soort: 'cycle_summary',
-              bericht: berichtVoor('cycle_summary', { weekpasGered }, taalVan(profiel)),
-              lokaleDatum,
-              refId: null,
-            });
-            if (stand === 'verstuurd') verstuurd += 1;
-            if (stand === 'onderdrukt') onderdrukt += 1;
-          }
-        }
-      } catch (fout) {
-        console.error(
-          `cyclus bepalen mislukte voor een profiel: ${
-            fout instanceof Error ? fout.message : String(fout)
-          }`,
-        );
-        await meld(fout, 'notificaties.cyclus', { code: 'cyclus_onbepaalbaar', userId: profiel.id });
-      }
-
-      // -----------------------------------------------------------------------
-      // 5. Je bent getuige — een straf van een ander is verschuldigd geworden
-      // -----------------------------------------------------------------------
-      //
-      // ⚠️ **De enige soort die over een ander gaat, en dat is een uitzondering
-      //    met een naam.** Domeinregel 7 noemt er precies één: een straf die de
-      //    gebruiker zelf vooraf heeft ingesteld en bevestigd. De eigenaar heeft
-      //    deze getuige zélf aangewezen, de melding gaat pas af bij `due`
-      //    (domeinregel 11), en er gaat niets naar de groep. Uitgeschreven in
-      //    migratie 0178 en in `docs/decisions/2026-09-07-de-getuige-hoort-het-...`.
-      //
-      // ⚠️ **Niet via de groepschat**, ook niet als de getuige toevallig in een
-      //    groep van de eigenaar zit. Dan zou de hele groep horen wat expliciet
-      //    naar één persoon ging — de verruiming die QS8-228 níét maakte.
-      //
-      // ⚠️ Eén melding per commitment (`ref_id`) en niet één per dag, zelfde vorm
-      //    als het goedkeuringsverzoek: twee straffen waarvan je getuige bent zijn
-      //    twee dingen om te weten. De grens staat in `getuigenissen_voor()`
-      //    (limiet 50) en niet hier.
-      const getuigenissen = await openGetuigenissen(db, profiel.id);
-
-      for (const rij of getuigenissen) {
-        if (await alVerstuurd(db, profiel.id, 'commitment_witness', lokaleDatum, rij.commitmentId)) {
-          continue;
-        }
-
-        const stand = await stuur(db, {
-          userId: profiel.id,
-          apparaten,
-          voorkeuren: profiel,
-          inStilte,
-          nu,
-          soort: 'commitment_witness',
-          bericht: berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
-          lokaleDatum,
-          refId: rij.commitmentId,
-        });
-        if (stand === 'verstuurd') verstuurd += 1;
-        if (stand === 'onderdrukt') onderdrukt += 1;
-      }
+      const stand = await stuur(db, {
+        userId: profiel.id,
+        apparaten,
+        voorkeuren: profiel,
+        inStilte,
+        nu,
+        soort: 'commitment_witness',
+        bericht: berichtVoor('commitment_witness', { naam: rij.naam }, taalVan(profiel)),
+        lokaleDatum,
+        refId: rij.commitmentId,
+      });
+      tel(stand);
     }
   }
 
@@ -760,12 +775,12 @@ async function openBeoordelingen(
     return [];
   }
 
-  const rijen = (data ?? []) as unknown as {
+  const gevonden = (data ?? []) as unknown as {
     completion_id: string;
     owner_name: string | null;
   }[];
 
-  return rijen.map((r) => ({ completionId: r.completion_id, naam: r.owner_name ?? '' }));
+  return gevonden.map((r) => ({ completionId: r.completion_id, naam: r.owner_name ?? '' }));
 }
 
 /** Goedkeuringen op je eigen weken van de afgelopen dag. */
@@ -811,12 +826,12 @@ async function openGetuigenissen(
     return [];
   }
 
-  const rijen = (data ?? []) as unknown as {
+  const gevonden = (data ?? []) as unknown as {
     commitment_id: string;
     eigenaar_naam: string | null;
   }[];
 
-  return rijen.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
+  return gevonden.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
 }
 
 /**

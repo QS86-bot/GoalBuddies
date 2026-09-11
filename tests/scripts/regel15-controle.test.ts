@@ -60,6 +60,27 @@ describe('laagVan', () => {
     expect(laagVan('scripts/regel15-controle.mjs')).toBe('scripts/');
   });
 
+  /**
+   * ⚠️ **De Edge Functions tellen mee sinds 11-09-2026** (QS8-422). Die map
+   *    viel buiten élke coderegel, en het is de map die elk uur met
+   *    `service_role` tegen productie draait.
+   */
+  it('rekent een Edge Function tot de laag `supabase/functions/`', () => {
+    expect(laagVan('supabase/functions/rollover/index.ts')).toBe('supabase/functions/');
+    expect(laagVan('supabase/functions/_shared/notificaties/webpush-crypto.ts')).toBe(
+      'supabase/functions/',
+    );
+  });
+
+  /**
+   * ⚠️ **En de rest van `supabase/` telt níét mee.** `migrations/` en `shim/`
+   *    dragen SQL; een laag die op `supabase/` zou beginnen, zou bij de eerste
+   *    `.ts` daarbuiten stilletjes mee gaan tellen.
+   */
+  it('laat de rest van `supabase/` buiten elke laag', () => {
+    expect(laagVan('supabase/migrations/0001_start.sql')).toBeNull();
+  });
+
   it('leest ook een pad met backslashes, want Windows draait mee in CI', () => {
     expect(laagVan('src\\shared\\ui\\Ketting.tsx')).toBe('src/shared/ui/');
   });
@@ -84,9 +105,15 @@ describe('tel', () => {
       { pad: 'src/shared/ui/B.tsx', regels: 90 },
       { pad: 'src/shared/ui/C.tsx', regels: 90 },
       { pad: 'scripts/x-controle.mjs', regels: 90 },
+      { pad: 'supabase/functions/rollover/index.ts', regels: 90 },
     ]);
 
-    expect(perLaag).toEqual({ 'app/': 1, 'src/shared/ui/': 2, 'scripts/': 1 });
+    expect(perLaag).toEqual({
+      'app/': 1,
+      'src/shared/ui/': 2,
+      'scripts/': 1,
+      'supabase/functions/': 1,
+    });
   });
 
   it('meldt apart wat boven de grens zit maar buiten elke laag valt', () => {
@@ -99,7 +126,12 @@ describe('tel', () => {
   });
 
   it('overleeft een lege lijst', () => {
-    expect(tel([]).perLaag).toEqual({ 'app/': 0, 'src/shared/ui/': 0, 'scripts/': 0 });
+    expect(tel([]).perLaag).toEqual({
+      'app/': 0,
+      'src/shared/ui/': 0,
+      'scripts/': 0,
+      'supabase/functions/': 0,
+    });
     expect(tel(undefined).buiten).toEqual([]);
   });
 });

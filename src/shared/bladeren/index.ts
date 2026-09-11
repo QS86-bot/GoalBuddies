@@ -53,3 +53,32 @@ export async function* paginas<T>(
     start += grootte;
   }
 }
+
+/**
+ * Loopt alle rijen af alsof er geen pagina's zijn.
+ *
+ * ⚠️ **Waarom dit naast `paginas()` staat en niet in plaats daarvan** —
+ *    QS8-422. Bijna elke aanroeper wil de ríjen en niet de pagina's, en schrijft
+ *    daarom `for await (const pagina of paginas(…)) { for (const rij of pagina)
+ *    { … } }`. Die buitenste lus is dan een laag nesting die niets met het
+ *    probleem te maken heeft, en in de twee jobs die elk uur draaien duwde hij
+ *    élke vertakking eronder één stap dieper dan de code leest.
+ *
+ *    📏 Gemeten: de `for await` stond in `rollover/index.ts` en
+ *    `notificaties/index.ts` allebei op dezelfde inspringing als de lus
+ *    eronder — het lichaam is bij het invoeren van de paginering nooit
+ *    herschreven. De nesting was er dus bij gekomen zonder dat iemand hem heeft
+ *    zien staan.
+ *
+ * ⚠️ **`paginas()` blijft bestaan** voor de aanroeper die de pagina zélf nodig
+ *    heeft — een blokgewijze `remove()` bijvoorbeeld, waar het hele punt is dat
+ *    je honderd paden in één verzoek stuurt.
+ */
+export async function* rijen<T>(
+  haal: Paginahaler<T>,
+  grootte: number,
+): AsyncGenerator<T, void, undefined> {
+  for await (const pagina of paginas(haal, grootte)) {
+    for (const rij of pagina) yield rij;
+  }
+}
