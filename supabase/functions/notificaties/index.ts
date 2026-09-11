@@ -775,12 +775,12 @@ async function openBeoordelingen(
     return [];
   }
 
-  const rijen = (data ?? []) as unknown as {
+  const gevonden = (data ?? []) as unknown as {
     completion_id: string;
     owner_name: string | null;
   }[];
 
-  return rijen.map((r) => ({ completionId: r.completion_id, naam: r.owner_name ?? '' }));
+  return gevonden.map((r) => ({ completionId: r.completion_id, naam: r.owner_name ?? '' }));
 }
 
 /** Goedkeuringen op je eigen weken van de afgelopen dag. */
@@ -826,12 +826,12 @@ async function openGetuigenissen(
     return [];
   }
 
-  const rijen = (data ?? []) as unknown as {
+  const gevonden = (data ?? []) as unknown as {
     commitment_id: string;
     eigenaar_naam: string | null;
   }[];
 
-  return rijen.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
+  return gevonden.map((r) => ({ commitmentId: r.commitment_id, naam: r.eigenaar_naam ?? '' }));
 }
 
 /**

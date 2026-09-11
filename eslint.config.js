@@ -11,8 +11,10 @@ module.exports = [
     //    RLS-policy heen gaat. `deno lint` draait er wel overheen maar kent
     //    geen complexiteitsregels.
     //
-    //    De rest van `supabase/` blijft uitgesloten: daar staan `migrations/`
-    //    en `shim/`, en die bevatten geen TypeScript.
+    //    `migrations/` en `shim/` blijven uitgesloten en staan er bij naam:
+    //    die dragen SQL. Bewust niet als `supabase/*` met een uitzondering
+    //    erop — dan valt een map die er ooit bij komt stilzwijgend buiten de
+    //    linter, en dat is precies de bevinding die dit blok repareert.
     ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/migrations/*', 'supabase/shim/*'],
   },
   {
@@ -261,7 +263,17 @@ module.exports = [
     //    `scripts/regel15-controle.mjs`. `max-depth` kán wél hard — de
     //    tweeëntwintig overtredingen zijn in deze ronde weg.
     files: ['supabase/functions/**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
+      // ⚠️⚠️ **Geen schaduw, en dat is een grendel uit de security-review op
+      //    QS8-422.** `rijen` werd daar als import binnengehaald terwijl er in
+      //    hetzelfde bestand al twee lokale `const rijen` stonden. Vandaag
+      //    onschadelijk — die helpers roepen de generator niet aan — maar niets
+      //    ving het: `deno lint` zwijgt hier ook over. Wie er later paginering
+      //    in zo'n helper zet, krijgt de lokale array te pakken en de uurjob
+      //    valt om met een TypeError, in de énige map zonder testruntime.
+      //    📏 Nul treffers nadat die twee hernoemd zijn, dus dit kan hard.
+      '@typescript-eslint/no-shadow': 'error',
       // ⚠️ **Deno en niet Node, en dat is de enige uitzondering die deze map
       //    krijgt.** `jsr:@supabase/supabase-js@2` is de specifier die Supabase
       //    voorschrijft en die de runtime verwacht; ESLint's resolver kent

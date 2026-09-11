@@ -18,9 +18,12 @@ import { paginas, rijen } from './index';
 
 /** Een bron van `n` genummerde rijen, die hoogstens `max` rijen per keer geeft. */
 function bron(n: number, max = Infinity) {
-  const rijen = Array.from({ length: n }, (_, i) => i);
+  // ⚠️ Niet `rijen` — dat is sinds QS8-422 de naam van een geëxporteerde
+  //    generator uit dit bestand, en een lokale variabele die hem schaduwt is
+  //    precies de val waar de security-review op wees.
+  const bereik = Array.from({ length: n }, (_, i) => i);
   return async (start: number, aantal: number) =>
-    rijen.slice(start, start + Math.min(aantal, max));
+    bereik.slice(start, start + Math.min(aantal, max));
 }
 
 async function alles(gen: AsyncGenerator<readonly number[], void, undefined>) {
@@ -129,6 +132,33 @@ describe('rijen', () => {
    *    stille afkapping wel weg maar staat het geheugen weer lineair in het
    *    aantal gebruikers — precies wat QS8-206 juist wegnam.
    */
+  /**
+   * ⚠️ **De andere kant van diezelfde luiheid, en die ontbrak** — aangewezen
+   *    door de security-review op QS8-422. Breekt de aanroeper middenin een
+   *    pagina af, dan mag er geen vólgende pagina meer opgehaald worden. Dat
+   *    hangt aan de `.return()`-propagatie door de geneste `for await` heen, en
+   *    dat is precies het soort eigenschap dat je moet meten in plaats van
+   *    aannemen — er staat vandaag geen `break` op een aanroeper, maar `rijen()`
+   *    is nu een gedeelde primitieve en de volgende aanroeper hoeft dat niet te
+   *    zijn.
+   */
+  it('haalt geen volgende pagina meer als de aanroeper middenin afbreekt', async () => {
+    const gevraagd: number[] = [];
+    const haal = async (start: number, aantal: number) => {
+      gevraagd.push(start);
+      return Array.from({ length: aantal }, (_, i) => start + i);
+    };
+
+    const gezien: number[] = [];
+    for await (const rij of rijen(haal, 10)) {
+      gezien.push(rij);
+      if (gezien.length === 3) break;
+    }
+
+    expect(gezien).toEqual([0, 1, 2]);
+    expect(gevraagd).toEqual([0]);
+  });
+
   it('haalt geen pagina op die de aanroeper nog niet nodig heeft', async () => {
     const gevraagd: number[] = [];
     const haal = async (start: number, aantal: number) => {

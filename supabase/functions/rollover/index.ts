@@ -360,6 +360,13 @@ async function draaiRollover(auth: string): Promise<Response> {
             .error
         : null;
 
+      // ⚠️⚠️ **`vrijstelFout` niet-null impliceert dat `pauze` waar was**, want
+      //    zonder adempauze draait de update niet. Deze poort leest als een
+      //    algemene foutpoort en is het niet — en twintig regels verderop wordt
+      //    het minpunt geboekt. Zet hier niets tussen zonder die invariant na te
+      //    lopen: wie de verkeerde tak raakt, schrijft punten af die niemand
+      //    verdiend heeft, en er is geen runtime die dat rood maakt. Aangewezen
+      //    door de security-review op QS8-422.
       if (vrijstelFout) {
         console.error(`vrijstellen mislukte voor ${weekdoel.id}: ${vrijstelFout.message}`);
         continue;

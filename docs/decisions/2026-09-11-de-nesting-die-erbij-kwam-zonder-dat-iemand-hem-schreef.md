@@ -158,7 +158,52 @@ staat onder vitest in `src/shared/bladeren`, en de drie andere wijzigingen zijn
 met de hand naast het origineel gelegd. Dat is minder dan een test, en het is de
 reden dat de lengterefactor terecht een eigen issue is.
 
-## 7. Wat dit niet is
+## 7. Wat de security-review erbij vond
+
+Regel 19 vraagt hem hier, want de rollover boekt het minpunt. Hij heeft de
+gedragsgelijkheid niet beredeneerd maar **gemeten**: beide versies van alle drie
+de Edge Functions door de TypeScript-parser, de bomen vergeleken (buiten de
+bedoelde regio's identiek, nul parse-errors aan beide kanten), en élke string-
+en template-literal apart naast elkaar gelegd — nul onbedoelde verschillen. Dat
+is precies het bewijs dat het dedenten van ~300 regels niets gebroken heeft.
+
+**Eén bevinding is in deze PR gerepareerd, en hij was van mij.** De nieuwe import
+`rijen` werd geschaduwd door twee lokale `const rijen` in hetzelfde bestand
+(r778 en r829, allebei ouder dan dit issue). Vandaag onschadelijk — die helpers
+roepen de generator niet aan — maar **niets ving het**: ESLint noch `deno lint`
+had `no-shadow` aan. Wie er later paginering in zo'n helper zet, krijgt de lokale
+array te pakken en de uurjob valt om met een TypeError, in de énige map zonder
+testruntime.
+
+De twee lokalen heten nu `gevonden`, en 📏 dáárna geeft
+`@typescript-eslint/no-shadow` **nul** treffers over de hele map — dus hij kan
+hard aan, en staat nu in het nieuwe blok. Geijkt door de schaduw terug te zetten:
+één rode regel, die de import bij naam en regelnummer noemt.
+
+⚠️ **Dat is het aardige aan een map voor het eerst linten: de eerste grendel
+levert de tweede op.** `no-shadow` stond niet in dit issue en is er niet in de
+slipstream ingeglipt — hij is de reparatie van een bevinding die het linten zelf
+veroorzaakte.
+
+**En één ijking die ontbrak.** De luiheidstest van `rijen()` toetste alleen "haalt
+geen pagina die nog niet nodig is", niet de andere kant: breekt de aanroeper
+middenin een pagina af, dan mag er geen vólgende pagina meer komen. Dat hangt aan
+de `.return()`-propagatie door de geneste `for await` heen. Er staat vandaag geen
+`break` op een aanroeper, maar `rijen()` is nu een gedeelde primitieve. 📏 Geijkt
+met een gretige variant die eerst alles inleest: beide luiheidstests rood.
+
+De invariant in `rollover` staat er nu met zoveel woorden bij: `vrijstelFout`
+niet-null **impliceert** dat `pauze` waar was. Die poort leest als een algemene
+foutpoort en is het niet, en twintig regels lager wordt het minpunt geboekt.
+
+Vier bevindingen zijn niet gerepareerd en staan als rij in
+`docs/ENGINEER-REVIEW.md`: de dode `break` op `notificaties:268` (kan per
+constructie nooit vuren — bestond al, is door dit issue alleen verplaatst), dat
+`'mislukt'` nergens geteld wordt, de kosten van `previousCycle()` per profiel per
+ronde, en — de zwaarste — dat de gedragsgelijkheid op de **bron** bewezen is en
+niet op de gedéployde functie.
+
+## 8. Wat dit niet is
 
 Geen uitspraak over of de Edge Functions het júíste doen — alleen dat ze nu
 onder dezelfde coderegels vallen als de rest. Geen wijziging aan `tsconfig.json`:
