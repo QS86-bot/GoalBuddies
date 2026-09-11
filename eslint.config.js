@@ -8,6 +8,9 @@ const tseslint = require('typescript-eslint');
 const GEDEELDE_LAAG_GEEN_DATALAAG =
   'De gedeelde laag importeert niets uit de datalaag. Een platformvermogen (een kiezer, een opener) hoort in shared/kiezers; een hook die zo\'n vermogen aan een domein knoopt hoort in modules/<naam>/react.ts. Zie QS8-423.';
 
+const DATALAAG_GEEN_SHARED_UI =
+  'De datalaag importeert niets uit shared/ui — ook geen type. De standen die de database teruggeeft staan in shared/standen; labels en toon blijven in shared/ui. Zie QS8-207.';
+
 module.exports = [
   ...expoConfig,
   {
@@ -92,6 +95,11 @@ module.exports = [
     //    verhuizing zonder deze regel is een opruimactie die over drie maanden
     //    terug is; met deze regel wordt de zesde rood op de regel waar hij
     //    geschreven wordt.
+    //
+    // ⚠️ **Dit patroon is de helft van de grens.** Het dekt de statische vormen;
+    //    `await import()` glipt er onderdoor en wordt gevangen door de zone in
+    //    het `import/no-restricted-paths`-blok verderop. Haal je hier iets weg,
+    //    kijk dan dáár ook.
     files: ['src/modules/**/*.ts', 'src/modules/**/*.tsx'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     plugins: { '@typescript-eslint': tseslint.plugin },
@@ -102,8 +110,7 @@ module.exports = [
           patterns: [
             {
               group: ['**/shared/ui', '**/shared/ui/*'],
-              message:
-                'De datalaag importeert niets uit shared/ui — ook geen type. De standen die de database teruggeeft staan in shared/standen; labels en toon blijven in shared/ui. Zie QS8-207.',
+              message: DATALAAG_GEEN_SHARED_UI,
             },
           ],
         },
@@ -139,6 +146,11 @@ module.exports = [
     // ⚠️ **Dit is de grendel van dit issue en niet de verhuizing** — dezelfde
     //    zin als bij de regel hierboven, en om dezelfde reden: zonder deze
     //    regel is het opruimen over drie maanden terug.
+    //
+    // ⚠️ **Dit patroon is de helft van de grens.** Het dekt de statische vormen;
+    //    `await import()` glipt er onderdoor en wordt gevangen door de zone in
+    //    het `import/no-restricted-paths`-blok verderop. Haal je hier iets weg,
+    //    kijk dan dáár ook.
     files: ['src/shared/**/*.ts', 'src/shared/**/*.tsx'],
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     plugins: { '@typescript-eslint': tseslint.plugin },
@@ -154,31 +166,35 @@ module.exports = [
           ],
         },
       ],
-      // ⚠️ **`no-restricted-imports` ziet `await import()` niet**, en dat is
-      //    gemeten en niet aangenomen: die regel hangt aan `ImportDeclaration`,
-      //    en een dynamische import is een `ImportExpression`. Dat gat is hier
-      //    niet theoretisch — `src/modules/ai/plan-toepassen.ts` gebruikt die
-      //    vorm op twee plekken in productiecode om een cykel te breken, dus
-      //    het is een idioom dat dit project kent en dat de volgende schrijver
-      //    binnen handbereik heeft. Een grendel met een uitgang die de codebase
-      //    zelf al gebruikt, bewaakt die uitgang niet.
-      //
-      //    Deze regel dekt alle vier de vormen (relatief en via `@/`, statisch
-      //    en dynamisch): hij kijkt naar het opgelóste pad in plaats van naar
-      //    de letterlijke tekst. De regel hierboven blijft staan als tweede net
-      //    op de twee statische vormen — hij noemt QS8-423 op de importregel
-      //    zelf, wat korter uit te leggen is dan een opgelost pad.
-      //
-      // ⚠️⚠️ **Niet `no-restricted-syntax` gebruiken voor zoiets in dit
-      //    bestand.** Dat was de eerste vorm hiervan, met een
-      //    `ImportExpression`-selector, en hij was stil dood: het tijdblok
-      //    verderop zet `no-restricted-syntax` óók, staat láter, en dekt
-      //    `src/**` — en flat config **vervangt** de opties van een regel in
-      //    plaats van ze samen te voegen. 📏 `eslint --print-config` gaf alleen
-      //    de drie tijdselectors terug. Twee blokken die dezelfde regelnaam
-      //    zetten en elkaar in `files` overlappen, zijn niet allebei van
-      //    kracht; de laatste wint volledig. Kies dan een andere regelnaam, of
-      //    zet de selectors bij elkaar in één blok.
+    },
+  },
+  {
+    // ⚠️⚠️ **Eén blok voor beide laaggrenzen, en dat is sinds 11-09-2026
+    //    (QS8-425) een besluit en geen indeling.** `no-restricted-paths` scoopt
+    //    zichzelf al per richting via `target`; het blok ook nog eens op `files`
+    //    scopen voegt niets toe en kost precies het risico dat QS8-423 een ronde
+    //    kostte — twee blokken die dezelfde regelnaam zetten zijn niet allebei
+    //    van kracht zodra hun `files` gaan overlappen, en de laatste wint
+    //    volledig en zwijgend. Eén regelnaam, één plek, geen volgorde die ertoe
+    //    doet.
+    //
+    // ⚠️ **Waarom deze regel naast `no-restricted-imports` staat en die niet
+    //    vervangt.** 📏 `no-restricted-imports` hangt aan `ImportDeclaration` en
+    //    ziet `await import()` niet; deze kijkt naar het opgelóste pad en dekt
+    //    de statische én de dynamische vorm, relatief én via `@/`. Dat gat is
+    //    niet theoretisch — `src/modules/ai/plan-toepassen.ts` gebruikt
+    //    `await import()` op twee plekken in productiecode om een cykel te
+    //    breken, en er staan er veertien in de repo. De patroonregels blijven
+    //    staan als tweede net op de statische vormen: hun melding valt op de
+    //    importregel zelf, wat korter uit te leggen is dan een opgelost pad.
+    //
+    // ⚠️ **Wat geen van beide vangt:** een `import()` met een variabele bron.
+    //    Allebei lezen ze de bronstring, en een variabele heeft er geen. Dat is
+    //    een grens van het gereedschap; hij staat als eigen geval in
+    //    `tests/scripts/laaggrenzen.test.ts` zodat hij opvalt als hij verschuift.
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    rules: {
       'import/no-restricted-paths': [
         'error',
         {
@@ -192,9 +208,7 @@ module.exports = [
               // ⚠️ **`lib/supabase` is de datalaag één deur verder.** De zone
               //    hierboven dekt `src/modules`, en een `shared`-bestand dat de
               //    client rechtstreeks pakt legt dezelfde knoop zonder er ooit
-              //    langs te komen. 📏 Vandaag nul treffers in `src/shared` — dit
-              //    legt een eigenschap vast die waar is, en dat is goedkoper dan
-              //    hem terugdraaien.
+              //    langs te komen. 📏 Vandaag nul treffers in `src/shared`.
               //
               //    Met opzet het bestand en niet de map: `lib/observability` en
               //    `lib/env` zijn dwarsdoorsnijdend en geen datalaag, en die
@@ -203,6 +217,16 @@ module.exports = [
               target: './src/shared',
               from: './src/lib/supabase.ts',
               message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+            {
+              // ⚠️⚠️ **De andere richting, en die had het gat nog tot QS8-425.**
+              //    De patroonregel van QS8-207 hierboven ving de statische vorm
+              //    en de type-import, maar 📏 `await import('../../shared/ui')`
+              //    in `src/modules/**` was groen. Zelfde oorzaak, zelfde fix,
+              //    en nu dus ook zelfde regel.
+              target: './src/modules',
+              from: './src/shared/ui',
+              message: DATALAAG_GEEN_SHARED_UI,
             },
           ],
         },
