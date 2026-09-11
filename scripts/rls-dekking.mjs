@@ -50,13 +50,30 @@
  *    terugstaat. Ligt het er bij de start nog, dan is een vorige run afgebroken
  *    en herstelt hij eerst — vóór hij iets meet.
  *
+ * ⚠️⚠️ **En "er werd een test rood" is niet hetzelfde als "déze policy maakte
+ *    hem rood".** Dat is de derde fout van deze soort op dit script, en alle
+ *    drie gaan ze de geruststellende kant op: een gat komt eruit als bewaakt.
+ *    Daarom meet hij de suite ook één keer vóór de eerste mutatie en één keer
+ *    ná de laatste: wat toen al rood stond telt niet als bewijs, en wat onderweg
+ *    rood werd **én aan het eind rood bleef** ook niet. Meting en geval staan bij
+ *    `weegTegenBaseline()`.
+ *
+ * ⚠️ **Die tweede helft is smaller dan hij klinkt, en dat hoort er expliciet bij
+ *    te staan.** Drift die zichzelf herstelt — een teller waarvan het venster
+ *    omrolt, een storing die overgaat — staat bij de slotmeting weer groen en
+ *    komt er dus niet uit. Het venster van `tel_dagteller()` (0233) is een vást
+ *    etmaal en een volledige sweep duurt uren, dus dat is geen theorie. Wat
+ *    daartegen helpt is de naam bij elke `✓`: die maakt een ongerijmde getuige
+ *    zichtbaar voor wie het rapport leest. Staat als rij in
+ *    `docs/ENGINEER-REVIEW.md`.
+ *
  * Gebruik:
  *   npm run rls:dekking              alle policies
  *   npm run rls:dekking -- goals     alleen tabellen waarvan de naam dit bevat
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const WORTEL = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -167,8 +184,14 @@ export function bestandenVoor(tabel, bestanden) {
   return geraakt.length > 0 ? geraakt.map((b) => b.naam) : bestanden.map((b) => b.naam);
 }
 
-/** Wat een meting betekent. */
-export function oordeel(policy, uitkomst) {
+/**
+ * Wat een meting betekent.
+ *
+ * ⚠️ **`bewijs` is er sinds ronde 9, en het is geen opsmuk.** Tot dan gaf dit
+ *    script bij een bewaakte helft één teken en verder niets — geen mens kon
+ *    nakijken of het rood ergens ánders vandaan kwam. Zie `weegTegenBaseline()`.
+ */
+export function oordeel(policy, uitkomst, bewijs = {}) {
   if (uitkomst === 'onverzwakbaar') {
     return { ...policy, status: 'geen-uitdrukking', melding: 'geen `using` en geen `with check`' };
   }
@@ -198,14 +221,23 @@ export function oordeel(policy, uitkomst) {
 
   // ⚠️ Geen oordeel is iets anders dan een gunstig oordeel — zie `leesUitkomst()`.
   if (uitkomst === 'onbruikbaar') {
-    return { ...policy, status: 'ongemeten', melding: 'de testrun leverde geen bruikbare uitslag' };
+    return {
+      ...policy,
+      status: 'ongemeten',
+      melding: bewijs.reden
+        ? `de testrun leverde geen bruikbare uitslag — ${bewijs.reden}`
+        : 'de testrun leverde geen bruikbare uitslag',
+    };
   }
-  if (uitkomst === 'rood') return { ...policy, status: 'bewaakt' };
+  if (uitkomst === 'rood') return { ...policy, status: 'bewaakt', rood: bewijs.rood ?? [] };
 
   return {
     ...policy,
     status: 'onbewaakt',
-    melding: 'wagenwijd opengezet en geen enkele test werd rood',
+    melding: bewijs.alRood?.length
+      ? 'wagenwijd opengezet; er stond wél rood, maar alleen tests die vóór de meting ' +
+        `al rood stonden (${bewijs.alRood[0]})`
+      : 'wagenwijd opengezet en geen enkele test werd rood',
   };
 }
 
@@ -247,24 +279,6 @@ export function oordeel(policy, uitkomst) {
  * De sleutel is `tabel.policynaam.helft`.
  */
 export const NIET_PER_HELFT_TE_METEN = {
-  'profiles.profiles_update.using': {
-    reden:
-      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `id = auth.uid()` — ' +
-      'en `id` staat níet in de UPDATE-kolomgrant van `profiles` (📏 gemeten: veertien ' +
-      'kolommen wél, `id` niet). Er bestaat dus geen rij die de ene helft passeert en de ' +
-      'andere niet. Het páár is wél bewaakt: `schrijfgrenzen.test.ts` wordt rood zodra ' +
-      'béide helften verruimd worden met `or shares_group_with_user(id)`, de verruiming ' +
-      'die iemand realistisch schrijft.',
-    wordtToetsbaarAls:
-      'de twee uitdrukkingen uit elkaar lopen — bijvoorbeeld als een beheerder ooit ' +
-      "andermans profiel mag lezen maar niet schrijven — of `id` in de UPDATE-kolomgrant komt.",
-    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
-  },
-  'profiles.profiles_update.check': {
-    reden: 'Zelfde paar als `profiles.profiles_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `profiles.profiles_update.using`.',
-    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
-  },
   'day_checkins.day_checkins_delete.using': {
     reden:
       'PostgREST stuurt een DELETE als `DELETE … RETURNING`, dus de rij moet óók door ' +
@@ -288,23 +302,121 @@ export const NIET_PER_HELFT_TE_METEN = {
       'de uitdrukkingen van `push_tokens_select` en `push_tokens_delete` uit elkaar lopen.',
     staatIn: 'tests/rls/afvinkgrens.test.ts',
   },
-  'groups.groups_update.using': {
+  'profiles.profiles_update.check': {
     reden:
-      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
-      'en `id` staat níet in de UPDATE-kolomgrant van `groups` (📏 gemeten na 0202: ' +
-      'name, huddle_day, categorie en zeven andere wél — tien in totaal — `id` niet. ' +
-      '`tz` stond hier tot QS8-355 bij en is er met 0202 uit). Er bestaat dus geen rij die ' +
-      'de ene helft passeert en de andere niet. 📏 Gemeten: elke helft los = nul rood, ' +
-      'béide helften tegelijk = 3 rood. De grendel is het paar.',
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `id = auth.uid()` — ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `profiles` (📏 hermeten op 10-09-2026: ' +
+      'twintig kolommen wél, `id` niet; de kop van `schrijfgrenzen.test.ts` zei nog veertien). ' +
+      'Er bestaat dus geen rij die de `using`-helft passeert en hier alsnog strandt: de ' +
+      'nieuwe rij draagt altijd hetzelfde `id` als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️⚠️ **Hier stond ook een rij voor `profiles_update.using`, en die is op 10-09-2026 ' +
+      'weggehaald omdat hij één stap te ver redeneerde.** Uit *"er bestaat geen rij die de ene ' +
+      'helft passeert en de andere niet"* volgt niet dat de helft niet te toetsen is — het ' +
+      'gedrag verandert wel degelijk waarneembaar. Diezelfde rij was daarvóór al eens ten ' +
+      'onrechte verwijderd op een `bewaakt`-uitslag die van een volgelopen dagteller kwam; ' +
+      'beide gevallen staan in `docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`.',
     wordtToetsbaarAls:
-      'de twee uitdrukkingen uit elkaar lopen, of `id` in de UPDATE-kolomgrant komt — ' +
-      'dan kan een beheerder zijn groep naar een ander id schrijven en is `check` in ' +
-      'zijn eentje de grendel.',
-    staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
+      'de twee uitdrukkingen uit elkaar lopen — bijvoorbeeld als een beheerder ooit ' +
+      "andermans profiel mag lezen maar niet schrijven — of `id` in de UPDATE-kolomgrant komt.",
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
+  },
+  'todo_items.todo_items_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `user_id = auth.uid()` — ' +
+      'en `user_id` staat níet in de UPDATE-kolomgrant van `todo_items` (📏 gemeten: ' +
+      '`order_index`, `body` en `done_at` wél, `user_id` niet). Een client kan de eigenaar dus ' +
+      'nooit veranderen, waardoor de nieuwe rij altijd dezelfde `user_id` draagt als de oude — ' +
+      'en die is de `using`-helft al gepasseerd. Er bestaat geen rij die de ene helft passeert ' +
+      'en de andere niet. ' +
+      '⚠️⚠️ **Deze tabel was op 10-09-2026 het bewijs dat vier ándere rijen fout stonden.** ' +
+      'Hier gaf de `using`-helft los **1 rood** en bij `goals`, `profiles`, `weekly_goals` en ' +
+      '`groups` gaf hij nul — en dat verschil zat niet in de policy maar in de téstsuite: voor ' +
+      'deze tabel bestond zo\'n test al (`todo-lijst.test.ts`), voor die vier niet. Ze staan ' +
+      'er sinds ronde 9 wel, in `tests/rls/halfslot-update.test.ts`. 📏 Drie metingen op ' +
+      '10-09-2026: alleen `using` open → 1 rood, alleen `check` open → 0 rood, béíde open → ' +
+      '1 rood, elke keer *de UPDATE-policy filtert andermans rij weg, ook met SELECT wagenwijd ' +
+      'open*. Alleen déze helft is niet te isoleren.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `user_id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan iemand zijn taak naar een ander schrijven en is `check` in zijn eentje de ' +
+      'grendel. ⚠️ Een gedeelde taak maakt dat scherper: `shared_group_id` staat er vandaag ' +
+      'ook niet in, en `zet_taakzichtbaarheid()` is de enige weg.',
+    staatIn: 'tests/rls/todo-lijst.test.ts',
+  },
+  'goals.goals_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `owner_id = auth.uid()` — ' +
+      'en `owner_id` staat níet in de UPDATE-kolomgrant van `goals` (📏 gemeten op 10-09-2026: ' +
+      'vijf kolommen wél — `available_hours_per_week`, `category`, `description`, ' +
+      '`identity_statement`, `title` — `owner_id` niet). Een client kan de eigenaar dus nooit ' +
+      'verzetten, waardoor de nieuwe rij altijd dezelfde eigenaar draagt als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️ Ronde 4 (#174) mat het paar al zo en legde het niet vast; het register bestond toen ' +
+      'nog niet.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `owner_id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan iemand zijn doel naar een ander schrijven en is deze helft in zijn eentje de ' +
+      'grendel.',
+    staatIn: 'tests/rls/eigenaarschap.test.ts',
+  },
+  'weekly_goals.weekly_goals_update.check': {
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — de eigenaarstoets via ' +
+      '`goals` — en `goal_id` staat níet in de UPDATE-kolomgrant van `weekly_goals` ' +
+      '(📏 gemeten: `milestone_id`, `ceiling_text`, `floor_text` en `title` wél, `goal_id` niet). ' +
+      'Een client kan het doel van een weekdoel dus nooit verzetten, waardoor de nieuwe rij ' +
+      'altijd dezelfde eigenaar heeft als de oude. ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ' +
+      '⚠️ Ronde 4 (#174) mat het paar al zo en legde het niet vast; het register bestond toen ' +
+      'nog niet.',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `goal_id` in de UPDATE-kolomgrant komt — dan ' +
+      'kan een eigenaar zijn weekdoel naar het doel van een ander schrijven en is deze helft ' +
+      'in zijn eentje de grendel.',
+    staatIn: 'tests/rls/eigenaarschap.test.ts',
+  },
+  'weekly_plan_steps.weekly_plan_steps_update.check': {
+    reden:
+      '⚠️ **Hier zijn de twee helften níet gelijk, en tóch is alleen de check niet te ' +
+      'isoleren.** De `check` draagt één conjunct extra — `weekly_goal_id is null` — bovenop de ' +
+      'eigenaarstoets en `activated_cycle is null` die ook in de `using` staan. Geen van die ' +
+      'drie kolommen staat in de UPDATE-kolomgrant (📏 gemeten: alleen `title`, `floor_text` en ' +
+      '`ceiling_text`), dus een client kan ze niet zetten. ' +
+      '⚠️⚠️ **Maar dát is niet de hele grendel, en die correctie komt uit de security-ronde.** ' +
+      'Voor `activated_cycle` volstaat de kolomgrant; voor `weekly_goal_id` niet, want de ' +
+      '`using`-helft toetst die kolom helemaal niet — "de using al gepasseerd" zegt er dus ' +
+      'niets over. De onderscheidende rij is `activated_cycle is null and weekly_goal_id is ' +
+      'not null`, en die is onbereikbaar door een **invariant** en niet door de policy: ' +
+      '`weekly_goal_id` staat ook niet in de INSERT-grant, en de énige schrijver ervan — ' +
+      '`weekplanstap_naar_weekdoel()` — zet hem altijd samen met `activated_cycle` in dezelfde ' +
+      'UPDATE. Die invariant leeft in één functielichaam en staat in geen enkele CHECK. ' +
+      '📏 Gemeten op 10-09-2026 (ronde 9): `using` los = **bewaakt**, `check` los = nul rood, ' +
+      'béíde tegelijk = 2 rood (*een geactiveerde stap is niet meer te wijzigen* in ' +
+      '`tests/rls/schrijfgrenzen.test.ts` en *laat de stap van Alice ongemoeid bij een ' +
+      'ongefilterde update van Bob* in `tests/rls/planstapgrens.test.ts`).',
+    wordtToetsbaarAls:
+      '`weekly_goal_id`, `activated_cycle` of `goal_id` in de UPDATE-kolomgrant komt, **of ' +
+      'zodra er een tweede schrijver van `weekly_goal_id` bijkomt die hem zet zonder ' +
+      '`activated_cycle`** — een "ontkoppel dit weekdoel maar hou de stap verbruikt"-actie, ' +
+      'bijvoorbeeld. Die tweede route was de eerste keer vergeten, en hij is de enige die ' +
+      'realistisch is: de invariant leeft in een functielichaam en niet in een constraint.',
+    staatIn: 'tests/rls/schrijfgrenzen.test.ts',
   },
   'groups.groups_update.check': {
-    reden: 'Zelfde paar als `groups.groups_update.using`; zie daar voor de meting.',
-    wordtToetsbaarAls: 'zie `groups.groups_update.using`.',
+    reden:
+      '`using` en `with check` zijn letterlijk dezelfde uitdrukking — `is_group_admin(id)` — ' +
+      'en `id` staat níet in de UPDATE-kolomgrant van `groups`. 📏 **Hermeten op 10-09-2026, ' +
+      'en het getal dat hier stond was gedrift:** negen kolommen, niet tien, en `huddle_day` ' +
+      'hoort er níet bij — die is er met 0208 uit gehaald. Wat er wél in staat: ' +
+      '`approval_quorum`, `approval_rule`, `categorie`, `evidence_policy`, `icon`, `name`, ' +
+      '`omschrijving`, `season_cadence`, `voertaal`. (`tz` stond hier tot QS8-355 bij en is er ' +
+      'met 0202 uit.) ' +
+      '⚠️ De `using`-helft van dit paar stáát wél onder test, in `tests/rls/halfslot-update.test.ts`: zet je hem los open, dan slaat een stille `0 rijen` om in `42501`. Alleen déze helft is niet te isoleren. ',
+    wordtToetsbaarAls:
+      'de twee uitdrukkingen uit elkaar lopen, of `id` in de UPDATE-kolomgrant komt — ' +
+      'dan kan een beheerder zijn groep naar een ander id schrijven en is deze helft in ' +
+      'zijn eentje de grendel.',
     staatIn: 'tests/rls/lidmaatschapsgrens.test.ts',
   },
   'user_blocks.user_blocks_delete.using': {
@@ -575,6 +687,18 @@ function psql(sql) {
  *    gefaald.** Draaide er niets, dan is de uitkomst `onbruikbaar` en dat is geen
  *    oordeel maar een reden om te stoppen.
  */
+export function faalnamen(uit) {
+  const namen = [];
+  for (const bestand of uit.testResults ?? []) {
+    for (const test of bestand.assertionResults ?? []) {
+      if (test.status !== 'failed') continue;
+      const waar = bestand.name ? basename(bestand.name) : '?';
+      namen.push(`${waar} > ${test.fullName ?? test.title ?? '?'}`);
+    }
+  }
+  return [...new Set(namen)].sort();
+}
+
 export function leesUitkomst(json) {
   let uit;
   try {
@@ -586,7 +710,49 @@ export function leesUitkomst(json) {
   const gedraaid = (uit.numTotalTests ?? 0) - (uit.numPendingTests ?? 0);
   if (gedraaid <= 0) return { uitkomst: 'onbruikbaar', reden: 'er is geen enkele test gedraaid' };
 
-  if ((uit.numFailedTests ?? 0) > 0) return { uitkomst: 'rood', gedraaid };
+  if ((uit.numFailedTests ?? 0) > 0) {
+    const rood = faalnamen(uit);
+
+    // ⚠️⚠️ **Een rood zonder namen is geen bruikbaar rood, en dat is sinds
+    //    ronde 9 een weigering in plaats van een aanname.** Vanaf hier telt niet
+    //    meer dát er iets rood werd maar wát; kan dit script dat niet uitlezen,
+    //    dan kan het de vraag van `weegTegenBaseline()` niet stellen en is een
+    //    oordeel over deze helft niet te geven. De json-reporter van vitest
+    //    noemt ze altijd — komt er toch een telling zonder namen uit, dan is er
+    //    iets met de reporter en niet met de policy.
+    if (rood.length === 0) {
+      return {
+        uitkomst: 'onbruikbaar',
+        reden: `vitest telde ${uit.numFailedTests} gefaalde test(s) maar noemde er geen één`,
+      };
+    }
+
+    // ⚠️⚠️ **En een rood uit een half ingestorte run is ook geen bewijs.** De
+    //    toets hieronder op `numFailedTestSuites` staat op het gróéne pad, en
+    //    dekt daarmee alleen de kant waar het instrument gaten verzint. De
+    //    andere kant bestond nog: 📏 gevoerd met het echte geval van 03-09
+    //    (813 tests, 600 niet gedraaid, 58 bestanden om) plus één losse gefaalde
+    //    assertie kwam er `bewaakt` uit. Een wegvallende PostgREST geeft precies
+    //    dat beeld — sommige bestanden sneuvelen in `beforeAll`, andere falen op
+    //    een assertie.
+    //
+    //    Het onderscheid staat in dezelfde JSON en kost geen enkele geldige
+    //    meting: bij een échte bewaakte policy is elk gefaald bestand een
+    //    bestand mét een gefaalde assertie, dus zijn die twee getallen gelijk.
+    //    Zijn er meer gefaalde bestanden dan bestanden in `rood`, dan is er
+    //    minstens één omgevallen zonder dat er iets in getoetst werd.
+    const bestandenMetAssertie = new Set(rood.map((naam) => naam.split(' > ')[0])).size;
+    if ((uit.numFailedTestSuites ?? 0) > bestandenMetAssertie) {
+      return {
+        uitkomst: 'onbruikbaar',
+        reden:
+          `${uit.numFailedTestSuites} testbestand(en) faalden terwijl er maar in ` +
+          `${bestandenMetAssertie} een assertie omviel — de rest viel om zonder te toetsen`,
+      };
+    }
+
+    return { uitkomst: 'rood', gedraaid, rood };
+  }
 
   // ⚠️ **Een groene uitslag is alleen te geloven als er geen bestand omviel.**
   //    K3 hierboven dekt de ene kant af — "er ging íets mis" mag niet als bewaakt
@@ -611,6 +777,73 @@ export function leesUitkomst(json) {
   }
 
   return { uitkomst: 'groen', gedraaid };
+}
+
+/**
+ * ⚠️⚠️ **Het hart van ronde 9: "er werd een test rood" is niet hetzelfde als
+ *    "déze policy maakte hem rood".**
+ *
+ *    📏 Gemeten op 10-09-2026, op één commit, zonder één policy aan te raken:
+ *    `rls:dekking -- profiles` gaf eerst `1 van de 3`, met beide helften van
+ *    `profiles_update` als gat. Daarna is in `dagtellers` één rij opgehoogd —
+ *    `avatars/uploader/tmp` van 6 naar 10, precies de stand die vier gewone
+ *    suiteruns opleveren — en dezelfde meting gaf **`3 van de 3` bewaakt**, mét
+ *    de eis om de twee registerrijen weg te halen die die gaten vastleggen.
+ *
+ *    De oorzaak is dat `tmp` een lettérlijke sleutel is: elke run van
+ *    `avatarbucket.test.ts` telt er één bij en een `delete` haalt hem er niet af
+ *    (dat is precies wat migratie 0233 wilde). Bij tien slaat de dagteller dicht
+ *    en valt *"valt niet om op een map die geen uuid is"* om met `23514` — in
+ *    élke beurt van deze meting, ongeacht welke policy er openstond.
+ *
+ *    Dit is dezelfde klasse als de twee fouten die dit issue al draagt (een
+ *    afgebroken run die een policy liet openstaan; elke niet-nul exitcode als
+ *    bewaakt), en hij gaat dezelfde geruststellende kant op: een echt gat komt
+ *    eruit als bewaakt. Ik ben er zelf in gelopen — in ronde 9 heb ik op grond
+ *    van zo'n uitslag twee terechte registerrijen wéggehaald.
+ *
+ *    De reparatie is dat een rood pas telt als het er vóór de meting nog niet
+ *    was. Wat er al rood stond, bewijst niets over een policy die op dat moment
+ *    nog gewoon dichtstond.
+ */
+export function weegTegenBaseline(uitslag, baseline) {
+  if (uitslag.uitkomst !== 'rood') return uitslag;
+
+  const nieuw = (uitslag.rood ?? []).filter((naam) => !baseline.includes(naam));
+  if (nieuw.length > 0) return { ...uitslag, rood: nieuw };
+
+  return { ...uitslag, uitkomst: 'groen', rood: [], alRood: uitslag.rood ?? [] };
+}
+
+/**
+ * De andere helft van dezelfde reparatie: de basislijn wordt gemeten vóór de
+ * eerste mutatie, maar een teller loopt tíjdens de run door.
+ *
+ * ⚠️ **Daarom wordt hij ook aan het eind gemeten, met alles teruggezet.** Een
+ *    test die dán rood staat en bij de start groen was, is onderweg omgevallen
+ *    zonder dat er iets openstond. Rust een `bewaakt` uitsluitend op zo'n test,
+ *    dan is dat geen bewijs maar drift — en dit script noemt dan liever geen
+ *    getal dan een verkeerd getal. Zelfde houding als bij `ongemeten`.
+ *
+ * ⚠️ Alleen wie er hélemaal op leunt wordt teruggezet. Wie er nog een ánder rood
+ *    onder heeft, houdt dat rood en blijft bewaakt: dat rood was er bij de start
+ *    niet en aan het eind ook niet.
+ */
+export function weegDrift(bevindingen, gedrift) {
+  return bevindingen.map((b) => {
+    if (b.status !== 'bewaakt') return b;
+
+    const overeind = (b.rood ?? []).filter((naam) => !gedrift.includes(naam));
+    if (overeind.length > 0) return { ...b, rood: overeind };
+
+    return {
+      ...b,
+      status: 'ongemeten',
+      melding:
+        'het enige rood stond aan het eind van de run óók rood, met alles dicht ' +
+        `(${(b.rood ?? [])[0]})`,
+    };
+  });
 }
 
 function draai(bestanden) {
@@ -720,8 +953,39 @@ function hoofd() {
     .filter((n) => n.endsWith('.test.ts'))
     .map((naam) => ({ naam, inhoud: readFileSync(join(TESTMAP, naam), 'utf8') }));
 
+  // ⚠️ **Welke bestanden er in déze run langskomen.** De basislijn moet precies
+  //    die dekken: minder en er glipt een al-rode test doorheen, meer en hij
+  //    kost tijd zonder iets toe te voegen.
+  const nodig = [
+    ...new Set(
+      policies.filter((p) => p.recht).flatMap((p) => bestandenVoor(p.tabel, bestanden)),
+    ),
+  ];
+
   console.log(`rls-dekking: ${policies.length} policies, elk apart opengezet.\n`);
-  const bevindingen = [];
+
+  // ⚠️⚠️ **Eerst meten wat er al rood staat, mét alles dicht.** Zie
+  //    `weegTegenBaseline()` voor het geval dat dit oplevert.
+  console.log('  ·  basislijn: de suite één keer met alle policies zoals ze zijn…');
+  const voor = nodig.length > 0 ? draai(nodig) : { uitkomst: 'groen', rood: [] };
+  if (voor.uitkomst === 'onbruikbaar') {
+    console.error(
+      `\n✗ de basislijn leverde geen bruikbare uitslag: ${voor.reden}.\n\n` +
+        'Zonder basislijn is niet vast te stellen of een rood van de policy komt\n' +
+        'of er al stond. Er valt dan niets te meten.',
+    );
+    return 1;
+  }
+  const baseline = voor.rood ?? [];
+  if (baseline.length > 0) {
+    console.log(
+      `  ·  ${baseline.length} test(en) staan nu al rood en tellen deze run niet als bewijs:\n` +
+        baseline.map((n) => `       ${n}`).join('\n'),
+    );
+  }
+  console.log('');
+
+  let bevindingen = [];
 
   for (const [i, policy] of policies.entries()) {
     const kop = `[${i + 1}/${policies.length}] ${policy.tabel}.${policy.naam}`;
@@ -748,20 +1012,76 @@ function hoofd() {
       const label = helften.length > 1 ? `${kop} (${helft})` : kop;
 
       writeFileSync(HERSTELBESTAND, JSON.stringify(policy), 'utf8');
-      psql(open);
 
+      // ⚠️ **De `alter policy` staat sinds ronde 9 binnen de `try`.** Stond hij
+      //    erbuiten en wierp hij ná het committen — een timeout van zestig
+      //    seconden, een haperende verbinding — dan viel het proces om zonder
+      //    dat `psql(terug)` ooit draaide. Het herstelbestand ving dat op bij de
+      //    vólgende run; nu wordt er meteen teruggezet.
       let uitslag;
       try {
+        psql(open);
         uitslag = draai(bestandenVoor(policy.tabel, bestanden));
       } finally {
         psql(terug);
         rmSync(HERSTELBESTAND, { force: true });
       }
 
-      const b = { ...oordeel(policy, uitslag.uitkomst), helft };
+      uitslag = weegTegenBaseline(uitslag, baseline);
+
+      const b = { ...oordeel(policy, uitslag.uitkomst, uitslag), helft };
       bevindingen.push(b);
       const teken = uitslag.uitkomst === 'rood' ? '✓' : uitslag.uitkomst === 'groen' ? '✗' : '·';
-      console.log(`  ${teken}  ${label}${b.melding ? ` — ${b.melding}` : ''}`);
+
+      // ⚠️ **Een bewaakt-uitslag noemt vanaf ronde 9 zijn getuige.** Zonder die
+      //    naam is een uitslag niet na te kijken, en juist dáár zat de fout:
+      //    ✓ zag er hetzelfde uit of het rood nou van deze policy kwam of van
+      //    een dagteller die vol was gelopen.
+      const getuige = uitslag.uitkomst === 'rood' ? ` — rood werd: ${uitslag.rood[0]}` : '';
+      console.log(`  ${teken}  ${label}${b.melding ? ` — ${b.melding}` : ''}${getuige}`);
+    }
+  }
+
+  // ⚠️ **De laatste vraag: is de database achtergelaten zoals hij gevonden is?**
+  //    Bij de eerste echte run was het antwoord nee, en niemand vroeg het.
+  //
+  // ⚠️ **Hij staat sinds ronde 9 vóór de slotbasislijn en niet erna**, want een
+  //    basislijn die tegen een openstaande policy gemeten is, meet niet de
+  //    basislijn.
+  const nogOpen = watOpenstaat();
+  if (nogOpen.length > 0) {
+    console.error(
+      `\n✗ deze run heeft ${nogOpen.length} policy/policies laten openstaan:\n\n` +
+        nogOpen.map((r) => `    ${r}`).join('\n') +
+        '\n\nDat hoort niet te kunnen. Bouw de stack opnieuw op met `npm run rls:stack`\n' +
+        'en vertrouw de uitslag hierboven niet.',
+    );
+    return 1;
+  }
+
+  // ⚠️⚠️ **En dezelfde basislijn nog een keer, nu aan het eind.** Zie
+  //    `weegDrift()`: een teller die tijdens de run volloopt, staat bij de start
+  //    nog groen. Alleen de tweede meting vindt die.
+  if (bevindingen.some((b) => b.status === 'bewaakt')) {
+    console.log('\n  ·  basislijn opnieuw, met alles teruggezet…');
+    const na = draai(nodig);
+    if (na.uitkomst === 'onbruikbaar') {
+      console.error(
+        `\n✗ de slotbasislijn leverde geen bruikbare uitslag: ${na.reden}.\n\n` +
+          'Zonder die tweede meting is niet vast te stellen of een bewaakt-uitslag\n' +
+          'op een test rust die onderweg is omgevallen. Draai opnieuw.',
+      );
+      return 1;
+    }
+
+    const gedrift = (na.rood ?? []).filter((naam) => !baseline.includes(naam));
+    if (gedrift.length > 0) {
+      console.log(
+        `  ·  ${gedrift.length} test(en) zijn tíjdens deze run rood geworden zonder dat er\n` +
+          '     iets openstond; wat daarop leunt telt niet als bewijs:\n' +
+          gedrift.map((n) => `       ${n}`).join('\n'),
+      );
+      bevindingen = weegDrift(bevindingen, gedrift);
     }
   }
 
@@ -774,19 +1094,6 @@ function hoofd() {
       `\n✗ ${ongemeten.length} policy/policies leverden geen bruikbare uitslag:\n\n` +
         ongemeten.map((b) => `    ${b.tabel}.${b.naam}`).join('\n') +
         '\n\nEr is dan geen getal te noemen. Draai opnieuw.',
-    );
-    return 1;
-  }
-
-  // ⚠️ **De laatste vraag: is de database achtergelaten zoals hij gevonden is?**
-  //    Bij de eerste echte run was het antwoord nee, en niemand vroeg het.
-  const nogOpen = watOpenstaat();
-  if (nogOpen.length > 0) {
-    console.error(
-      `\n✗ deze run heeft ${nogOpen.length} policy/policies laten openstaan:\n\n` +
-        nogOpen.map((r) => `    ${r}`).join('\n') +
-        '\n\nDat hoort niet te kunnen. Bouw de stack opnieuw op met `npm run rls:stack`\n' +
-        'en vertrouw de uitslag hierboven niet.',
     );
     return 1;
   }
