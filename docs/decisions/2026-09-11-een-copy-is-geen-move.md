@@ -59,21 +59,63 @@ Wat er wél te pinnen is, is de **naam**. Die is per emmer al betekenisdragend: 
 map bepaalt de groep of het weekdoel, en `chatdocs_insert` pinde sinds 0240 al de
 extensie. 0253 trekt de andere drie bij.
 
-Wat dat sluit en wat niet:
+### ⚠️⚠️⚠️ En hier ging de eerste versie van dit document de fout in
 
-| Richting | Stand na 0253 |
-|---|---|
-| een `.pdf`-naam in `chatfotos`, `bewijsfotos` of `avatars` | dicht |
-| een beeldnaam in `chatdocs` | dicht (al sinds 0240) |
-| `bewijsfotos` → `chatfotos`, beide `{jpeg,png,webp}` | **open** |
+Deze paragraaf stond er eerst met een tabel die zei dat 0253 *"de kruisrichtingen
+sluit"* — een `.pdf`-naam in een fotoemmer dicht, een beeldnaam in `chatdocs`
+dicht, en alleen de gelijkgetypeerde richting open. **Dat is onjuist, en de
+securityronde op deze branch heeft het eruit gehaald.**
 
-⚠️ **Die laatste rij is met opzet niet weggeschreven.** Hij is geen
-rechtenverhoging: wie de bron mag lezen heeft die bytes al en had ze kunnen
-downloaden en heruploaden — dezelfde klasse als een schermafdruk. Wat er wél aan
-verandert is dat het in één hop gaat en dat `keurChatfoto()` daarbij nooit gedraaid
-heeft. De enige plek waar dat te sluiten is, is het `copy`-eindpunt aan de
-servicelaag, en dat is een dashboardkeuze en geen migratie. Het staat als rij van
-11-09 in `docs/ENGINEER-REVIEW.md`, met de voorwaarde waaronder hij zwaarder wordt.
+📏 **Bij een `copy` kiest de aanvaller de doelnaam.** Gemeten in
+`node_modules/@supabase/storage-js/dist/index.mjs:982-991`:
+
+```js
+`${_this7.url}/object/copy`, { bucketId, sourceKey: fromPath,
+  destinationKey: toPath, destinationBucket: options?.destinationBucket }
+```
+
+`sourceKey` en `destinationKey` zijn twee losse parameters. Wie een pdf van 4 MB
+uit `chatdocs` in `chatfotos` wil hebben, noemt hem `onschuldig.jpg`.
+
+📏 Zelf nagemeten als `authenticated` met echte claims, ná 0253:
+
+```
+chatfotos    <groep>/<uid>/onschuldig.jpg           → DOORGELATEN
+bewijsfotos  <weekdoel>/<uid>/onschuldig.jpg        → DOORGELATEN
+avatars      <uid>/onschuldig.jpg                   → DOORGELATEN
+chatdocs     <groep>/<uid>/eigenlijk-een-foto.pdf   → DOORGELATEN
+```
+
+Alle vier. **Een naamregel sluit dus de naam en niet de richting.** Wat de pin
+dichtzet is de richting waarin de kopieerder zijn bronextensie behóudt, en dat doet
+niemand.
+
+### Wat 0253 dan wél waard is
+
+Precies wat 0240 voor `chatdocs` deed, met dezelfde reden: *de vorm van de
+bestandsnaam hoort in de policy en niet alleen in de padbouwer.* Daar was de meting
+een lid dat `<groep>/<zelf>/evil.html` in de emmer plaatste. Die klasse — een naam
+die niet bij de emmer past, hoe de rij er ook in komt — is nu in alle vier de
+emmers een databaseeigenschap.
+
+Dat is een kleinere belofte dan "de copy-route is dicht", en het is de belofte die
+waar is.
+
+### En de open route is zwaarder dan ik hem opschreef
+
+| Richting | Plafond | Types | Stand |
+|---|---|---|---|
+| `bewijsfotos` → `chatfotos` | 1 MB → 1 MB | gelijk | open, en ónschuldig |
+| **`chatdocs` → fotoemmer** | **5 MB → 1 MB** | **pdf → beeld** | **open, en dit is de zwaarste** |
+
+De eerste versie van dit document noemde alleen de bovenste rij en zette de
+dossierrij daarmee op **Laag**. Die staat nu op **Middel**, met de onderste rij
+erin. De begrenzing die het geen Kritiek maakt: de dagtellers vuren óók op een
+`copy` (BEFORE INSERT per emmer), dus het is misbruik-op-schaal op de gratis tier
+en geen rechtenverhoging.
+
+⚠️ **Op databaseniveau is dit niet te sluiten.** De grendel zit aan de
+servicelaag — het `copy`-eindpunt — en dat is een dashboardkeuze en geen migratie.
 
 ## 4. Waarom de correctie in 0235, 0239 en 0240 zelf staat
 
@@ -116,10 +158,31 @@ maakt de test **rood** in plaats van hem stil over te slaan.
 `expect(…)` dat de toestemming vastlegt wordt rood op de dag dat iemand hem alsnog
 sluit — en dan straft de suite een verbetering af. Wat open is hoort in het dossier.
 
+### ⚠️⚠️ En de eerste versie van die test kon niet zeggen waaróm er geweigerd werd
+
+Ook dit kwam uit de securityronde en niet uit mijn eigen ijking. 📏 Gemeten: met
+`chatfotos_insert` op `with check (false)` bleef de nieuwe test **groen** — alleen
+de must-allow viel om.
+
+De oorzaak is dat `verhuispoging()` élke fout slikt. Een weigering zegt dan niets
+over de grond: een typefout in de opstelling, een kapotte fixture of een
+blanket-weigering leest hetzelfde als "de naamregel greep in". De kop van dit
+bestand legt precies dát uit bij `staatErEcht()` — en de nieuwe test gebruikte die
+positieve controle niet. De koppeling zat in een ánder `it`, met ándere
+bestandsnamen (`nieuw-chat.jpg` tegenover `vreemd.pdf`), dus de twee konden uit
+elkaar lopen.
+
+**Gerepareerd door het paar binnen dezelfde test te leggen, per emmer:** hetzelfde
+pad met de goede extensie moet erín, met de vreemde eruit. 📏 Mutatie N daarna: 2
+rood in plaats van 1, met `chatfotos` in beide meldingen.
+
 ## 6. De ijking, en twee fouten die zij zelf opleverde
 
-Zes mutaties, elk apart, elke keer eerst met een query op `pg_policy` bevestigd dat
-de mutatie er écht in stond. Nulmeting 8 groen.
+Zeven mutaties, elk apart, elke keer eerst met een query op `pg_policy` bevestigd
+dat de mutatie er écht in stond. Nulmeting **8 groen** — en dat getal stond er
+eerst als 11, een schatting die de securityronde eruit haalde. In een document dat
+metingen belooft is dat geen slordigheid maar precies de klasse die dit issue
+behandelt.
 
 | | Mutatie | Uitkomst |
 |---|---|---|
@@ -129,6 +192,7 @@ de mutatie er écht in stond. Nulmeting 8 groen.
 | K | idem `chatdocs_insert` | 1 rood, idem |
 | L | `chatfotos` uit `VREEMDE_NAAM` | 1 rood op het register, met de naam erin |
 | M | de extensielijst verruimen met `pdf` | 3 rood — precies de drie fotoemmers, `chatdocs` groen |
+| N | `chatfotos_insert` op `with check (false)` | 2 rood — deze test én de must-allow (ná de reparatie uit §5; daarvóór 1) |
 
 **M is de mutatie die de andere vijf niet dekken.** H t/m K halen de regel wég; M
 laat hem staan en maakt hem te ruim. Een test die alleen op afwezigheid let, is

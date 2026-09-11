@@ -75,9 +75,12 @@
 --    migratie ongemoeid gebleven.
 --
 --    📏 Nagemeten na deze migratie: `a|4  d|4  r|4` op `storage.objects` — vier
---    INSERT-policies, alle vier open op de naam. 0253 pint daar de extensie in,
---    wat de kruisrichtingen sluit; de gelijkgetypeerde richting
---    (`bewijsfotos` → `chatfotos`) blijft open en staat als dossierrij.
+--    INSERT-policies, alle vier open op de naam. 0253 pint daar de bestandsnaam
+--    in. ⚠️ Dat sluit de copy-route **niet**, en die nuance is de tweede ronde
+--    van dezelfde fout: bij een `copy` kiest de client de doelnaam, dus een
+--    vreemd bestand heet in de doelemmer simpelweg `onschuldig.jpg`. Wat 0253
+--    oplevert is dat de naamvorm in alle vier de emmers een databaseeigenschap
+--    is. De open route staat als rij van 11-09 in `docs/ENGINEER-REVIEW.md`.
 --
 --    **De onderbouwing hieronder — "nul treffers op `.move(` of `.copy(` in
 --    `src/` en `app/`" — bewijst dat wíj het recht niet nodig hebben, niet dat

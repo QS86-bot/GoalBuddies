@@ -128,26 +128,35 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    Storage-API.
  *
  * **Wat de INSERT-kant nu toetst, en wat níet.** 0253 pint in elke INSERT-policy
- * de extensie van de bestandsnaam. Dat sluit de kruisrichtingen (een `.pdf` in
- * een fotoemmer, een beeldnaam in `chatdocs`) en niet de gelijkgetypeerde
- * richting (`bewijsfotos` → `chatfotos`, beide `{jpeg,png,webp}`). Die laatste is
- * geen rechtenverhoging — wie de bron mag lezen heeft die bytes al, dezelfde klasse
- * als een schermafdruk.
+ * de bestandsnaam. Dat maakt de naamvorm een databaseeigenschap in alle vier de
+ * emmers in plaats van in één — dezelfde belofte die 0240 voor `chatdocs` deed,
+ * met `evil.html` als meting.
  *
- * ⚠️⚠️ **En die richting staat hier bewust níet als assertie, in geen van beide
- *    kanten.** Een `expect(…)` dat een weigering eist is vandaag rood en liegt
- *    dus over de stand; een `expect(…)` dat de toestemming vastlegt wordt rood op
- *    de dag dat iemand hem alsnog sluit — en dan straft de suite een verbetering
- *    af. Wat er open is hoort in het dossier en niet in een assertie: de rij van
- *    11-09-2026 in `docs/ENGINEER-REVIEW.md`, met de voorwaarde waaronder hij
- *    zwaarder wordt.
+ * ⚠️⚠️⚠️ **Het sluit de copy-route níet, en de eerste versie van deze kop
+ *    beweerde dat wél.** Bij een `copy` kiest de client de **doelnaam**: 📏
+ *    `@supabase/storage-js/dist/index.mjs:982-991` geeft `sourceKey` en
+ *    `destinationKey` als twee losse parameters. Een pdf uit `chatdocs` heet in
+ *    `chatfotos` dus gewoon `onschuldig.jpg`, en 📏 zo gemeten ná 0253 laten alle
+ *    vier de emmers een vrij gekozen doelnaam door. Deze test bewaakt dus de
+ *    naamvorm en niet de richting — precies wat hij nu ook zegt.
+ *
+ * ⚠️⚠️ **En die open route staat hier bewust in géén enkele assertie.** Een
+ *    `expect(…)` dat een weigering eist is vandaag rood en liegt dus over de
+ *    stand; een `expect(…)` dat de toestemming vastlegt wordt rood op de dag dat
+ *    iemand hem alsnog sluit — en dan straft de suite een verbetering af. Wat er
+ *    open is hoort in het dossier: de rij van 11-09-2026 in
+ *    `docs/ENGINEER-REVIEW.md`, op **Middel**, met `chatdocs` → fotoemmer als de
+ *    zwaarste richting (5 MB tegen 1 MB, en een ander mimetype).
  *
  * ---------------------------------------------------------------------------
  * IJKING van de INSERT-kant — met de hand, 11-09-2026
  * ---------------------------------------------------------------------------
  *
  * ⚠️ **Mutatie per grendel, en elke keer nagekeken wélke test omvalt.** De
- *    nulmeting is 11 groen, opgebouwd uit alle 256 migratiebestanden.
+ *    nulmeting is **8 groen**, opgebouwd uit alle 256 migratiebestanden. ⚠️ Hier
+ *    stond eerst 11, en dat was geen meting maar een schatting — eruit gehaald
+ *    door de securityronde. Precies de klasse die dit bestand zes regels hoger
+ *    over het nummer 0237 documenteert.
  *
  *   H  de `name ~`-regel uit `chatfotos_insert` weghalen   → 1 rood: de
  *      vreemde-extensie-test, en met `chatfotos` in de melding
@@ -158,6 +167,15 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *      register, met de naam van die emmer — dezelfde vorm als G
  *   M  de extensielijst van 0253 verruimen met `pdf`       → 3 rood: de drie
  *      fotoemmers, en `chatdocs` blijft groen
+ *   N  `chatfotos_insert` op `with check (false)`          → 2 rood: deze test
+ *      **én** de must-allow, met `chatfotos` in beide meldingen
+ *
+ * ⚠️⚠️ **N is er bijgekomen omdat de securityronde hem miste in mijn ijking, en
+ *    hij legt een attributiefout bloot.** Zonder de positieve controle per emmer
+ *    bleef deze test **groen** bij `with check (false)` — `verhuispoging()` slikt
+ *    elke fout, dus een weigering zei niets over waaróm er geweigerd werd. De
+ *    koppeling zat in een ánder `it`, met ándere bestandsnamen, en kon dus uit
+ *    elkaar lopen. Nu draagt elke emmer zijn eigen paar binnen dezelfde test.
  *
  * ⚠️ **M is de mutatie die de andere vijf niet dekken.** H t/m K halen de regel
  *    wég; M laat hem staan en maakt hem te ruim. Een test die alleen op
@@ -418,18 +436,46 @@ describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0239 + 0253
       emmers.length,
     );
 
-    const doorgelaten = pogingen
-      .filter(({ emmer, pad }) => {
-        const uit = verhuispoging(
-          alice,
-          `insert into storage.objects (bucket_id, name, owner)
-             values ('${emmer}', '${pad}', '${alice}');
-           select name from storage.objects
-            where bucket_id = '${emmer}' and owner = '${alice}'`,
-        );
-        return uit.includes(pad);
-      })
-      .map(({ emmer }) => emmer);
+    // ⚠️⚠️ **De positieve controle staat binnen dezelfde test en per emmer, en dat
+    //    is een gerepareerde attributiefout.** `verhuispoging()` slikt élke fout,
+    //    dus een weigering zegt op zichzelf niet waaróm er geweigerd is. 📏 Gemeten
+    //    in de securityronde op deze branch: met `chatfotos_insert` op
+    //    `with check (false)` bleef deze test **groen** en viel alleen de
+    //    must-allow om. Die stond in een ánder `it`, met ándere bestandsnamen, dus
+    //    de koppeling kon uit elkaar lopen. Nu draagt elke emmer zijn eigen paar:
+    //    hetzelfde pad met de goede extensie moet erín, met de vreemde eruit. Een
+    //    blanket-weigering maakt deze regel dus rood in plaats van hem gratis te
+    //    laten slagen.
+    const stand = pogingen.map(({ emmer, pad }) => {
+      const goed = pad.replace(/\.[A-Za-z0-9]+$/, emmer === 'chatdocs' ? '.pdf' : '.jpg');
+
+      const vreemdErin = verhuispoging(
+        alice,
+        `insert into storage.objects (bucket_id, name, owner)
+           values ('${emmer}', '${pad}', '${alice}');
+         select name from storage.objects
+          where bucket_id = '${emmer}' and name = '${pad}'`,
+      ).includes(pad);
+
+      const goedErin = verhuispoging(
+        alice,
+        `insert into storage.objects (bucket_id, name, owner)
+           values ('${emmer}', '${goed}', '${alice}');
+         select name from storage.objects
+          where bucket_id = '${emmer}' and name = '${goed}'`,
+      ).includes(goed);
+
+      return { emmer, vreemdErin, goedErin };
+    });
+
+    const doorgelaten = stand.filter((r) => r.vreemdErin).map((r) => r.emmer);
+    const blanket = stand.filter((r) => !r.goedErin).map((r) => r.emmer);
+
+    expect(
+      blanket,
+      `deze emmer(s) weigerden óók de goede extensie: ${blanket.join(', ')} — dan weigert ` +
+        'daar iets anders dan de naamregel, en bewijst de weigering hieronder niets',
+    ).toEqual([]);
 
     expect(
       doorgelaten,

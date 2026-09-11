@@ -60,7 +60,8 @@
 -- óók het move/copy-eindpunt van de Storage-API dicht was. Die tweede helft
 -- klopt niet, en dezelfde zin stond in 0235, in 0240 en in twee dossierrijen.
 --
--- 📏 Gemeten tegen de lokale stack uit alle 255 migratiebestanden:
+-- 📏 Gemeten tegen de lokale stack uit alle 255 migratiebestanden — dat is de
+-- stand vóór dit bestand; met 0253 erbij zijn het er 256:
 --
 --     select polcmd::text, count(*) from pg_policy pol
 --       join pg_class c on c.oid = pol.polrelid
@@ -90,23 +91,45 @@
 -- Wat deze migratie wél en niet sluit
 -- ---------------------------------------------------------------------------
 --
--- ⚠️⚠️ **Hij sluit de kruisrichtingen en niet de bytes, en dat verschil hoort
---    hier te staan** — anders draagt dit bestand precies de te ruime belofte die
---    het komt repareren.
+-- ⚠️⚠️⚠️ **Hij pint de bestandsnaam. Hij sluit gééń enkele kruisrichting, en
+--    die eerste versie van deze kop beweerde dat wél.** Dat is de fout die dit
+--    issue kwam repareren, één laag hoger opnieuw gemaakt, en de securityronde op
+--    deze branch heeft hem eruit gehaald. Hij staat hier uitgeschreven omdat hij
+--    leerzamer is dan de reparatie.
 --
---    Dicht:   een `.pdf`-naam in een fotoemmer, en een beeldnaam in `chatdocs`
---             (die laatste stond al sinds 0240).
---    Open:    een `copy` van `bewijsfotos` naar `chatfotos`. Beide emmers dragen
---             `{image/jpeg, image/png, image/webp}`, dus een `.jpg` is daar aan
---             weerszijden een geldige naam.
+--    **Waarom de pin geen richting sluit: bij een `copy` kiest de aanvaller de
+--    doelnaam.** 📏 Gemeten in de SDK die in deze repo staat
+--    (`@supabase/storage-js/dist/index.mjs:982-991`): `sourceKey` en
+--    `destinationKey` zijn twee losse parameters. Wie een pdf van 4 MB uit
+--    `chatdocs` in `chatfotos` wil hebben, noemt hem `onschuldig.jpg`.
 --
---    Dat laatste is **geen rechtenverhoging**: wie de bron mag lezen, mag die
---    bytes al hebben en had ze ook kunnen downloaden en opnieuw uploaden —
---    dezelfde klasse als een schermafdruk. Wat er wel aan verandert is dat het
---    in één hop gaat en dat `keurChatfoto()` daarbij nooit gedraaid heeft. De
---    grendel daarvoor is niet een policy op de naam maar de herkomst, en die
---    hoort niet in deze migratie: zie de dossierrij van 11-09 in
---    `docs/ENGINEER-REVIEW.md`.
+--    📏 En zo gemeten, als `authenticated` met echte claims, ná deze migratie:
+--
+--      chatfotos    <groep>/<uid>/onschuldig.jpg            → DOORGELATEN
+--      bewijsfotos  <weekdoel>/<uid>/onschuldig.jpg         → DOORGELATEN
+--      avatars      <uid>/onschuldig.jpg                    → DOORGELATEN
+--      chatdocs     <groep>/<uid>/eigenlijk-een-foto.pdf    → DOORGELATEN
+--
+--    Alle vier. Wat de pin dichtzet is de richting waarin de kopieerder zijn
+--    bronextensie **behoudt**, en dat doet niemand.
+--
+-- ⚠️ **Wat deze migratie dan wél waard is, en waarom ze blijft.** Precies wat
+--    0240 voor `chatdocs` deed en met dezelfde reden: *de vorm van de
+--    bestandsnaam hoort in de policy en niet alleen in de padbouwer.* 📏 Daar was
+--    de meting een lid dat `<groep>/<zelf>/evil.html` in de emmer plaatste. Die
+--    klasse — een naam die niet bij de emmer past, hoe de rij er ook in komt —
+--    is nu in alle vier de emmers een databaseeigenschap in plaats van een
+--    clienteigenschap. Dat is een kleinere belofte dan "de copy-route is dicht",
+--    en het is de belofte die waar is.
+--
+-- ⚠️⚠️ **De copy-route blijft dus open, en de zwaarste richting is niet de
+--    richting die je zou verwachten.** `chatdocs` → een fotoemmer kruist zowel de
+--    mime-allowlist als het plafond: 5242880 tegen 1048576 (`avatars` 2097152).
+--    `bewijsfotos` → `chatfotos` is de ónschuldige — zelfde types, zelfde
+--    plafond. Op databaseniveau is dit niet te sluiten: een INSERT-policy ziet
+--    alleen de nieuwe rij en er bestaat geen kolom die de herkomst draagt. De
+--    grendel zit aan de servicelaag (het `copy`-eindpunt) en staat als rij van
+--    11-09 in `docs/ENGINEER-REVIEW.md`, op **Middel** en niet op Laag.
 --
 -- ⚠️ **De vorm is die van `chatdocs_insert` uit 0240 en niet een nieuwe.** Daar
 --    staat `name ~ '/[A-Za-z0-9._-]{1,80}\.pdf$'` — niet aan het begin

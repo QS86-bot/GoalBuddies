@@ -159,8 +159,10 @@ create policy chatfotos_select on storage.objects
 --    daar niets over. Voor `.move()` klopt de conclusie alsnog — dat is een
 --    UPDATE en die is met deze drop weg. Voor `.copy()` niet: dat schrijft een
 --    **nieuwe rij** en passeert alleen de INSERT-policy van de doelemmer. Sinds
---    0253 pint die de extensie, wat de kruisrichtingen sluit; de
---    gelijkgetypeerde richting blijft open en staat als dossierrij.
+--    0253 pint die de bestandsnaam — maar dat sluit de route **niet**: bij een
+--    `copy` kiest de client de doelnaam, dus een pdf uit `chatdocs` heet in
+--    `chatfotos` gewoon `onschuldig.jpg`. De copy-route staat open en hoort bij
+--    de rij van 11-09 in `docs/ENGINEER-REVIEW.md`.
 --
 -- ⚠️ Het restrisico staat in `docs/ENGINEER-REVIEW.md`: of de Storage-API bij een
 --    gewone upload of download zélf een rij bijwerkt namens `authenticated`, is

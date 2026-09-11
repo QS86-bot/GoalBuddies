@@ -72,6 +72,12 @@
 --       als "de emmer is dicht omdat het UPDATE-recht weg is", haalt de
 --       verkeerde grendel weg.
 --
+--       ⚠️ En ook die `.pdf`-regel sluit de copy-route niet: bij een `copy`
+--          kiest de client de doelnaam, dus een foto belandt hier als
+--          `eigenlijk-een-foto.pdf`. Wat de regel oplevert is dat de naamvorm
+--          een databaseeigenschap is en geen clienteigenschap — dat is de
+--          belofte die 0240 hier waarmaakt, en niet meer.
+--
 -- ⚠️ **Wat er wél open blijft is de aanname bij de buurman.** `avatars` en
 --    `bewijsfotos` dragen hun UPDATE-recht nog, dus daartússen kan het nog, en
 --    een vijfde emmer met `image/svg+xml` erin (heel gewoon, voor iconen) is er
