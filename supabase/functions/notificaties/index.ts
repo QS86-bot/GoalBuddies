@@ -221,7 +221,11 @@ async function draaiNotificaties(auth: string): Promise<Response> {
     //    `.message` niet meer. Deno's typecheck is daar strenger in dan die van
     //    de app, en dít bestand valt buiten `tsconfig.json`: `npx tsc --noEmit`
     //    keek er dus nooit naar.
-    const fout = profielFout as { message: string; code?: string };
+    // ⚠️ De cast is met QS8-424 vervallen, om dezelfde reden als in de rollover:
+    //    `profielFout` komt nu als teruggave van `meldAlleProfielen()` binnen en
+    //    draagt zijn type, in plaats van een `let` te zijn die TypeScript na de
+    //    declaratie op `null` tot `never` versmalt.
+    const fout = profielFout;
     // ⚠️ **Zie de rollover — en hier stond dezelfde onjuiste geruststelling
     //    (QS8-315).** De dossierrij van 04-09 noemde twee plekken in de
     //    rollover; dit is de derde, in een functie die de rij niet noemde.
@@ -361,7 +365,6 @@ async function meldEenProfiel(
   nu: Date,
   tel: (stand: Verzendstand) => void,
 ): Promise<'gedaan' | 'overgeslagen' | 'zonderToken'> {
-
   const tijd = await lokaleTijd(profiel, nu);
   if (tijd === null) {
     return 'overgeslagen';

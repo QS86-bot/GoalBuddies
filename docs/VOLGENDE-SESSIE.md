@@ -3,7 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-421. Daarvóór QS8-422 (PR #410,
+> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-424. Daarvóór QS8-421 (PR #412)
+> en QS8-422 (PR #410,
 > gemerged) en op 10-09
 > na QS8-414 (`72741e9`) — QS8-418.
 > Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
@@ -196,6 +197,52 @@
 > dat er **nul** UPDATE-policies zijn. Policies worden over buckets heen ge-OR'd,
 > dus één nieuwe `*_update` heropent de klasse voor álle emmers tegelijk. Een
 > grant tellen zou hier het verkeerde antwoord geven.
+>
+> ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
+> het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
+> vervangen door een ternair met twee guards, puur omdat dat blok toen ín twee
+> lussen zat en `max-depth` daar geen ruimte liet. De security-review wees die
+> vorm meteen aan als fragiel: de invariant *"`vrijstelFout` niet-null impliceert
+> `pauze`"* stond alleen in een comment, twintig regels boven de puntenboeking.
+> QS8-424 tilde het blok in een eigen functie, en toen kon de gewone vorm terug —
+> **de invariant verdween in plaats van beter opgeschreven te worden.** Kort is
+> bijvangst; niet hoeven buigen is het punt.
+>
+> ⚠️⚠️ **11-09, punt Q: `continue` betekent iets anders per lus, en dat is de
+> gevaarlijkste regel om te verplaatsen.** In de rollover zaten er twee soorten:
+> die binnen de weekdoellus sloegen één weekdoel over, die op de profiellus óók
+> het inschuiven en het herberekenen. De eerste werden `return`, de tweede een
+> **`null`-teruggave en geen lege telling** — een nul ziet er voor de aanroeper
+> uit als "er viel niets af te sluiten", en dan draait de rest alsnog. Loop bij
+> elke verplaatsing élke `continue` apart na en schrijf op wélke lus hij raakte.
+>
+> ⚠️ **11-09, punt R: zonder testruntime is de AST-vergelijking de bewijsvorm, en
+> draai hem ná élke verplaatsing.** Twintig regels: beide versies door de
+> TypeScript-parser, en de multiset van álle string- en template-literals naast
+> elkaar. Een verplaatsing verandert de boom per definitie, maar mag geen letter
+> berichttekst raken. 📏 Laat numerieke literals eruit — elke nieuwe teller voegt
+> een `0` toe en die ruis verbergt het signaal.
+>
+> ⚠️ **11-09, punt S: een belofte-test die een variabelenaam opzoekt, verhuist
+> niet mee.** `recap-mislukking-verlaat-de-job.test.ts` greep met een regex de
+> interne naam en legde die naast het runrapport; na de verplaatsing wees hij
+> naar niets terwijl de belofte overeind stond. Hij toetst nu de **uitvoersleutel**
+> — en de ijkingslijst in zijn eigen kop schreef dat al voor. **Als een toets
+> rood wordt bij een verplaatsing, vraag eerst of de belofte brak of de greep.**
+>
+> ⚠️⚠️ **11-09, punt T: repareer je een test die naar de verkeerde plek greep,
+> vraag dan welke mutaties de oude vorm ving die de nieuwe doorlaat.** Bij
+> QS8-424 greep een belofte-test een variabelenaam; ik verving hem door een
+> toets op de uitvoersleutel, en dat was terecht — maar de nieuwe vorm liet
+> `recapsOvergeslagen: 0` en `recapsOvergeslagen: <het verkeerde getal>`
+> allebei door, precies de twee gevallen die zijn eigen foutbericht belooft te
+> vangen. De security-review vond het door ze ná te spelen. **De verleiding bij
+> zo'n reparatie is de greep te verslappen tot hij niet meer kán breken.**
+>
+> ⚠️ **11-09, punt U: `padverwijzing:controle` leest geen commit-boodschappen.**
+> Bij QS8-424 stond het beslisdocument untracked terwijl de commit ernaar
+> verwees; niets werd daar rood van. `git status` vóór het pushen, en zeker bij
+> een commit die een document noemt dat je in dezelfde ronde schreef.
 >
 > Op 09-09 en 10-09 landden er samen **zevenenvijftig** PR's (#323 t/m #387) — de
 > drukste twee dagen van dit project, uit twee sessies naast elkaar. Een lijst

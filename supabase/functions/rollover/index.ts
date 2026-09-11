@@ -203,7 +203,13 @@ async function draaiRollover(auth: string): Promise<Response> {
   //    profielen die al afgehandeld zijn onvermeld laten; nu is het werk gedaan
   //    en meldt de job dat hij niet compleet was.
   if (profielFout !== null) {
-    const fout = profielFout as { message: string; code?: string };
+    // ⚠️ **Hier stond een cast naar `{ message: string; code?: string }`, en die
+    //    is met QS8-424 weg.** Hij was nodig zolang `profielFout` een `let` in
+    //    deze functie was: TypeScript volgt geen toekenning die in een closure
+    //    gebeurt, dus na de declaratie op `null` versmalde hij het type tot
+    //    `never` en bestond `.code` niet meer. Nu de profiellus een eigen
+    //    functie is, komt de fout als teruggave binnen mét zijn type.
+    const fout = profielFout;
 
     // ⚠️ **Hier stond dat `scrubMessage()` de melding schoonmaakt vóór verzending,
     //    en dat was maar de halve waarheid — QS8-315.** Hij haalt geciteerde
@@ -325,7 +331,7 @@ interface Profieltelling {
 async function verwerkAlleProfielen(
   db: Db,
   nu: Date,
-): Promise<{ telling: Profieltelling; profielFout: { message: string } | null }> {
+): Promise<{ telling: Profieltelling; profielFout: { message: string; code?: string } | null }> {
   let gemist = 0;
   let vrijgesteld = 0;
   let risicoBijgewerkt = 0;
@@ -369,7 +375,7 @@ async function verwerkAlleProfielen(
   //    draait vitest. Wat hier blijft is de query — en die draagt de enige
   //    eigenschap die `paginas()` níét kan bewaken: de `order`.
   let profielenGezien = 0;
-  let profielFout: { message: string } | null = null;
+  let profielFout: { message: string; code?: string } | null = null;
 
   const haalProfielen = async (start: number, aantal: number): Promise<readonly Profiel[]> => {
     const { data, error } = await db
@@ -589,7 +595,7 @@ async function handelVastgelopenGoedkeuringenAf(db: Db): Promise<number> {
       'rollover.goedkeuringstermijn',
       { code: 'goedkeuringstermijn_mislukt', sqlstate: termijnFout.code },
     );
-}
+  }
 
   return (alsnogGoedgekeurd as number | null) ?? 0;
 }
@@ -715,7 +721,7 @@ async function ruimVerlopenBijlagenOp(db: Db): Promise<{ opgeruimd: number; misl
     });
   }
 
-    return { opgeruimd, mislukt };
+  return { opgeruimd, mislukt };
 }
 
 /**
