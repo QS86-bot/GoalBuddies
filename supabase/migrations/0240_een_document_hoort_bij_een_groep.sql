@@ -62,6 +62,16 @@
 --    geen enkele `with check`, en dan is de verhuizing hierhéén onmogelijk.
 --    📏 Nagemeten na het intrekken: dezelfde `update` geeft nul rijen.
 --
+--    ⚠️⚠️ **PRECISERING OP 11-09-2026 (QS8-416): "die route" is `move` en niet
+--       `copy`.** Een `copy` schrijft een **nieuwe rij** en raakt het ontbreken
+--       van `chatdocs_update` dus nooit; hij passeert alleen
+--       `chatdocs_insert`. Dat deze emmer daar tóch dicht zat, komt van de
+--       `name ~ '…\.pdf$'`-regel die verderop in deze migratie staat — dus van
+--       de INSERT-kant en niet van de ingetrokken UPDATE. De drie fotoemmers
+--       hadden die regel niet en zijn met 0253 bijgetrokken. Wie deze zin leest
+--       als "de emmer is dicht omdat het UPDATE-recht weg is", haalt de
+--       verkeerde grendel weg.
+--
 -- ⚠️ **Wat er wél open blijft is de aanname bij de buurman.** `avatars` en
 --    `bewijsfotos` dragen hun UPDATE-recht nog, dus daartússen kan het nog, en
 --    een vijfde emmer met `image/svg+xml` erin (heel gewoon, voor iconen) is er
@@ -252,6 +262,9 @@ create policy chatdocs_insert on storage.objects
 --    `uploadChatdoc()` doet `upsert: false`, en er is geen `.move()` en geen
 --    `.copy()` in `src/` of `app/`. Geen recht zonder reden — zelfde regel als
 --    bij het bewerkrecht op `chat_messages` in 0193.
+--
+--    ⚠️ Dat is een reden om het recht in te trekken en geen bewijs dat de route
+--       dicht is (QS8-416). Zie de precisering hierboven.
 --
 -- ⚠️ **Onwrikbare regel 1 vraagt vier policies per tabel, en dit zijn er drie.**
 --    `storage.objects` is niet onze tabel maar die van de opslagdienst; vier

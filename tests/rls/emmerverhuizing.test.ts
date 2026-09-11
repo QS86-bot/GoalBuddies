@@ -5,7 +5,17 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
 
 /**
- * Een object verhuist niet van de ene emmer naar de andere — QS8-407, migratie 0237.
+ * Een object verhuist niet van de ene emmer naar de andere — QS8-407, migratie 0239,
+ * en QS8-416, migratie 0253.
+ *
+ * ⚠️⚠️ **Deze suite heette tot 11-09-2026 naar 0237 en dat was het verkeerde
+ *    nummer — zes keer, inclusief de naam van het `describe`.** 0237 is
+ *    `elke_meldingsoort_heeft_een_schakelaar` en raakt `storage.objects` met nul
+ *    regels; de drops staan in `0239_geen_enkele_emmer_heeft_een_update_pad`.
+ *    📏 Nagemeten met `grep -c storage.objects` op beide bestanden: 0 tegen 2.
+ *    Een grendel die naar het verkeerde bestand wijst, stuurt de volgende lezer
+ *    naar een migratie die niets doet — en die concludeert dan dat de grendel
+ *    niet bestaat.
  *
  * ⚠️⚠️ **Waarom dit een gat was dat geen enkele policy op zichzelf maakte.**
  *    Permissieve policies worden ge-OR'd, en bij een UPDATE gaat dat over twee
@@ -16,7 +26,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    correct; het gat zat in de naad ertussen. Onwrikbare regel 18 vraag 1:
  *    *waar knopen twee correcte onderdelen aan elkaar?*
  *
- * 📏 **Gemeten op 10-09-2026, vóór 0237**, als `authenticated` met echte claims,
+ * 📏 **Gemeten op 10-09-2026, vóór 0239**, als `authenticated` met echte claims,
  *    op de lokale stack uit alle 236 migratiebestanden:
  *
  *      update storage.objects set bucket_id = 'bewijsfotos',
@@ -52,7 +62,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  * mígratiebestanden opgebouwd en niet met de hand geschoond.
  *
  *   A  alleen `avatars_update` terug      → 2 rood
- *   C  allebei de policies terug          → 4 rood (de stand van vóór 0237)
+ *   C  allebei de policies terug          → 4 rood (de stand van vóór 0239)
  *   D  `avatars_insert` op `with check (false)` → 3 rood, en precies de drie
  *                                            must-allows
  *   E  een `for all`-policy op één emmer  → 2 rood
@@ -69,7 +79,7 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    de toestand waarin de volgende emmer hem weer exploiteerbaar maakt.
  *
  * ⚠️ **D staat er om de reparatie te onderscheiden van "alle rechten weg".** Zou
- *    0237 te breed zijn, dan is elke upload stuk — en dan hoort een test dát te
+ *    0239 te breed zijn, dan is elke upload stuk — en dan hoort een test dát te
  *    zeggen en niet groen te blijven. De drie must-allows vallen om en geen van
  *    de must-finds: het onderscheid is scherp.
  *
@@ -99,6 +109,83 @@ import { psql as psqlKaal, stackBeschikbaarOfFaal } from './psql-stack';
  *    wordt; G toont dat de vijfde hem rood maakt in plaats van stil te verjaren.
  *    De must-find keek al naar de familie; sinds QS8-409 doet de must-allow dat
  *    ook.
+ *
+ * ---------------------------------------------------------------------------
+ * QS8-416 — deze suite bewaakte de reparatie en niet zijn eigen naam
+ * ---------------------------------------------------------------------------
+ *
+ * ⚠️⚠️ **De familietest hierboven kón per constructie niet rood worden van de
+ *    helft die openstond.** Hij filtert `polcmd in ('w', '*')`, en een `copy` is
+ *    een **INSERT** (`polcmd = 'a'`). `move` is een UPDATE en is dicht sinds
+ *    0239; `copy` schrijft een nieuwe rij en raakt die drop nooit. Deze suite
+ *    heet *een object verhuist niet tussen emmers* en toetste één van de twee
+ *    routes waarlangs dat kan — regel 18 vraag 3 in zijn zuiverste vorm, op een
+ *    grendel van dezelfde dag.
+ *
+ * 📏 En de route bestaat: `@supabase/storage-js` 2.112.3 in deze repo draagt
+ *    `copy(fromPath, toPath, { destinationBucket })`. Dat onze eigen code hem
+ *    niet aanroept, zegt niets — een client praat rechtstreeks met de
+ *    Storage-API.
+ *
+ * **Wat de INSERT-kant nu toetst, en wat níet.** 0253 pint in elke INSERT-policy
+ * de extensie van de bestandsnaam. Dat sluit de kruisrichtingen (een `.pdf` in
+ * een fotoemmer, een beeldnaam in `chatdocs`) en niet de gelijkgetypeerde
+ * richting (`bewijsfotos` → `chatfotos`, beide `{jpeg,png,webp}`). Die laatste is
+ * geen rechtenverhoging — wie de bron mag lezen heeft die bytes al, dezelfde klasse
+ * als een schermafdruk.
+ *
+ * ⚠️⚠️ **En die richting staat hier bewust níet als assertie, in geen van beide
+ *    kanten.** Een `expect(…)` dat een weigering eist is vandaag rood en liegt
+ *    dus over de stand; een `expect(…)` dat de toestemming vastlegt wordt rood op
+ *    de dag dat iemand hem alsnog sluit — en dan straft de suite een verbetering
+ *    af. Wat er open is hoort in het dossier en niet in een assertie: de rij van
+ *    11-09-2026 in `docs/ENGINEER-REVIEW.md`, met de voorwaarde waaronder hij
+ *    zwaarder wordt.
+ *
+ * ---------------------------------------------------------------------------
+ * IJKING van de INSERT-kant — met de hand, 11-09-2026
+ * ---------------------------------------------------------------------------
+ *
+ * ⚠️ **Mutatie per grendel, en elke keer nagekeken wélke test omvalt.** De
+ *    nulmeting is 11 groen, opgebouwd uit alle 256 migratiebestanden.
+ *
+ *   H  de `name ~`-regel uit `chatfotos_insert` weghalen   → 1 rood: de
+ *      vreemde-extensie-test, en met `chatfotos` in de melding
+ *   I  idem uit `bewijsfotos_insert`                       → 1 rood, idem
+ *   J  idem uit `avatars_insert`                           → 1 rood, idem
+ *   K  idem uit `chatdocs_insert` (stond er al sinds 0240) → 1 rood, idem
+ *   L  `VREEMDE_NAAM` leeghalen voor één emmer             → 1 rood op het
+ *      register, met de naam van die emmer — dezelfde vorm als G
+ *   M  de extensielijst van 0253 verruimen met `pdf`       → 3 rood: de drie
+ *      fotoemmers, en `chatdocs` blijft groen
+ *
+ * ⚠️ **M is de mutatie die de andere vijf niet dekken.** H t/m K halen de regel
+ *    wég; M laat hem staan en maakt hem te ruim. Een test die alleen op
+ *    afwezigheid let, is groen op een regex die alles doorlaat. 📏 Gemeten:
+ *    precies `avatars, bewijsfotos, chatfotos` in de melding, en `chatdocs`
+ *    groen — dus de test wijst de drie verruimde emmers aan en niet "er is iets".
+ *
+ * ⚠️⚠️ **En de ijkopstelling zelf ging bij M de eerste keer fout, met precies de
+ *    fout waar CLAUDE.md voor waarschuwt: kijk wélke test omvalt en of de
+ *    mutatie er écht in staat.** Terugzetten deed ik door 0253 opnieuw af te
+ *    spelen — maar **0253 raakt `chatdocs_insert` niet aan**, want die regel
+ *    stond er al sinds 0240. Mutatie K bleef dus staan, en M meldde vier emmers
+ *    waar er drie hoorden. De meting was goed, de opstelling niet; wie alleen op
+ *    "er wordt iets rood" had gekeken, had dat niet gezien.
+ *
+ * ⚠️⚠️ **En de reparatie daarvan was óók fout, met de fout die CLAUDE.md bij
+ *    onwrikbare regel 20 met zoveel woorden noemt.** Ik zette `chatdocs_insert`
+ *    terug door **0240 opnieuw af te spelen** — maar 0250 komt daarná en raakt
+ *    hetzelfde, dus die herhaling zette een látere wijziging terug. 📏 Gevolg:
+ *    twee tests in `chatdocbucket.test.ts` en `een-document-is-wat-het-zegt.test.ts`
+ *    vielen om (`expected '1' to be '0'`), en die hebben met deze suite niets te
+ *    maken. Verse opbouw erna: 59 groen.
+ *
+ *    **De enige veilige manier om na een mutatie terug te komen is
+ *    `scripts/lokale-stack.sh` opnieuw draaien.** Een migratie is idempotent
+ *    tegen de toestand waarvoor hij geschreven is en niet tegen die van vandaag;
+ *    hem als herstelknop gebruiken is precies de klasse waar dat besluit over
+ *    gaat.
  */
 
 const psql = (sql: string) => psqlKaal(sql, { verbose: true });
@@ -164,7 +251,7 @@ function staatErEcht(userId: string, bucket: string, pad: string): void {
   expect(uit, `de opstelling klopt niet: ${bucket}/${pad} kwam er niet in`).toBe(bucket);
 }
 
-describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0237)', () => {
+describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0239 + 0253)', () => {
   const alice = randomUUID();
   const weekdoel = randomUUID();
   const doel = randomUUID();
@@ -194,7 +281,7 @@ describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0237)', () 
 
   /**
    * ⚠️ **Dit is de grendel, en hij is met opzet niet op naam.** Zet één van de
-   *    twee policies uit 0237 terug en deze regel wordt rood; voegt iemand er een
+   *    twee policies uit 0239 terug en deze regel wordt rood; voegt iemand er een
    *    dérde bij voor een nieuwe emmer, ook.
    */
   it('laat geen enkele UPDATE-policy op storage.objects staan, ook geen for-all', () => {
@@ -273,6 +360,82 @@ describe.runIf(beschikbaar)('een object verhuist niet tussen emmers (0237)', () 
     );
 
     expect(uit, `de hernoeming ging door: ${uit}`).not.toContain('nieuw.jpg');
+  });
+
+  /**
+   * ⚠️⚠️ **De andere helft van de belofte: `copy` is een INSERT** (QS8-416).
+   *    De familietest hierboven kijkt naar `polcmd in ('w', '*')` en kán hier dus
+   *    per constructie niet rood van worden. Deze regel vraagt het aan de
+   *    handeling: een naam met de extensie van een ándere emmer moet geweigerd
+   *    worden, in **élke** emmer die de database kent.
+   *
+   * ⚠️ **Elk pad hieronder is verder volledig geldig** — juiste diepte, juiste
+   *    eerste segment, eigen uid — en alléén de extensie is vreemd. Dat is met
+   *    opzet: voert de ijking zijn geval door een pad dat de mapregel al afvangt,
+   *    dan bewaakt hij die regel en niet de extensie. De tegenhanger staat
+   *    hieronder als must-allow: dezelfde paden mét de goede extensie gaan er wél
+   *    in.
+   *
+   * ⚠️ **`VREEMDE_NAAM` is een register en geen gemak**, om dezelfde reden als
+   *    `PADEN`: welke extensie "vreemd" is verschilt per emmer, en een lus kan
+   *    dat niet raden. Komt er een vijfde emmer zonder rij, dan wordt deze test
+   *    **rood** in plaats van hem stil over te slaan.
+   */
+  it('weigert in élke emmer een naam met de extensie van een andere emmer', () => {
+    const VREEMDE_NAAM: Record<string, string> = {
+      // De drie beeldemmers dragen `{image/jpeg, image/png, image/webp}`; een
+      // `.pdf`-naam hoort er niet in, ook niet via een `copy` uit `chatdocs`.
+      avatars: `${alice}/vreemd.pdf`,
+      bewijsfotos: `${weekdoel}/${alice}/vreemd.pdf`,
+      chatfotos: `${groep}/${alice}/vreemd.pdf`,
+      // En de omgekeerde richting, die sinds 0240 al dicht stond.
+      chatdocs: `${groep}/${alice}/vreemd.jpg`,
+    };
+
+    const emmers = psql('select id from storage.buckets order by id')
+      .split('\n')
+      .map((r) => r.trim())
+      .filter((r) => r !== '');
+
+    expect(emmers.length, 'geen enkele emmer gevonden — meet dit niet groen').toBeGreaterThan(0);
+
+    const zonderNaam = emmers.filter((e) => VREEMDE_NAAM[e] === undefined);
+    expect(
+      zonderNaam,
+      `nieuwe emmer(s) zonder rij in VREEMDE_NAAM: ${zonderNaam.join(', ')} — vul ze aan, ` +
+        'anders bewijst deze test niets over die emmer',
+    ).toEqual([]);
+
+    // ⚠️ De filter is geen verkorting maar wat `noUncheckedIndexedAccess` vraagt:
+    //    `VREEMDE_NAAM[emmer]` is `string | undefined`. De telling erna zorgt dat
+    //    hij niets stil laat vallen — de assertie hierboven dekt de oorzaak, deze
+    //    het gevolg.
+    const pogingen = emmers
+      .map((emmer) => ({ emmer, pad: VREEMDE_NAAM[emmer] }))
+      .filter((r): r is { emmer: string; pad: string } => r.pad !== undefined);
+
+    expect(pogingen.length, 'er viel een emmer uit de lijst — dan meet dit minder dan het zegt').toBe(
+      emmers.length,
+    );
+
+    const doorgelaten = pogingen
+      .filter(({ emmer, pad }) => {
+        const uit = verhuispoging(
+          alice,
+          `insert into storage.objects (bucket_id, name, owner)
+             values ('${emmer}', '${pad}', '${alice}');
+           select name from storage.objects
+            where bucket_id = '${emmer}' and owner = '${alice}'`,
+        );
+        return uit.includes(pad);
+      })
+      .map(({ emmer }) => emmer);
+
+    expect(
+      doorgelaten,
+      `deze emmer(s) namen een vreemde extensie aan: ${doorgelaten.join(', ')} — ` +
+        'de INSERT-policy pint de naam niet, en dan is een `copy` uit een andere emmer open',
+    ).toEqual([]);
   });
 
   /**

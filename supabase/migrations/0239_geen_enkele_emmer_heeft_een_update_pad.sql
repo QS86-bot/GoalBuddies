@@ -67,6 +67,25 @@
 --    verplaatsing uit namens de ingelogde gebruiker — maar dát is de route die
 --    op productie nagemeten hoort te worden, en die meting staat nog open.
 --
+-- ⚠️⚠️ **GECORRIGEERD OP 11-09-2026 (QS8-416): die zin dekt `move` en niet
+--    `copy`, en dat is de helft van het eindpunt dat hij noemt.** `move` is een
+--    UPDATE op `storage.objects` en valt onder deze drop; **`copy` schrijft een
+--    nieuwe rij** en raakt hem dus nooit. De enige poort die een `copy`
+--    passeert is de INSERT-policy van de **doelemmer**, en die zijn met deze
+--    migratie ongemoeid gebleven.
+--
+--    📏 Nagemeten na deze migratie: `a|4  d|4  r|4` op `storage.objects` — vier
+--    INSERT-policies, alle vier open op de naam. 0253 pint daar de extensie in,
+--    wat de kruisrichtingen sluit; de gelijkgetypeerde richting
+--    (`bewijsfotos` → `chatfotos`) blijft open en staat als dossierrij.
+--
+--    **De onderbouwing hieronder — "nul treffers op `.move(` of `.copy(` in
+--    `src/` en `app/`" — bewijst dat wíj het recht niet nodig hebben, niet dat
+--    de route dicht is.** Een client praat rechtstreeks met de Storage-API. Een
+--    onjuiste aantekening bij een grendel is gevaarlijker dan geen aantekening:
+--    twee latere migraties (0235 en 0240) en twee dossierrijen namen deze zin
+--    over.
+--
 -- ⚠️ **Wat er vandaag níet openstaat, en dat hoort er eerlijk bij.** De drie
 --    emmers dragen op dit moment dezelfde `allowed_mime_types`
 --    (`{image/jpeg,image/png,image/webp}`), dus er is geen typebypass — alleen
