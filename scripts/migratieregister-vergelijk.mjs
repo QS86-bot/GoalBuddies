@@ -9,9 +9,37 @@
  *    élk faalgeval met de hand.
  */
 
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 /**
  * @typedef {{ versie: string, naam: string, bestand?: string }} Migratie
  */
+
+/**
+ * De migraties zoals ze in de repo staan: `0057_commitments_afwikkelen.sql`.
+ *
+ * ⚠️ **Dit stond tot 11-09-2026 in `migratieregister-controle.mjs` zelf**
+ *    (QS8-426). Het staat hier omdat er sindsdien een tweede lezer is: de
+ *    RLS-suite toetst of de **testdatabase** op hetzelfde niveau staat als deze
+ *    map. Twee lezers van dezelfde map die elk hun eigen `readdirSync` doen,
+ *    zijn twee plekken waar de vorm van een bestandsnaam vastligt — en de
+ *    letterversies (`0039a`) zijn precies de vorm die je in de tweede kopie
+ *    vergeet.
+ *
+ * @param {string} wortel De repo-wortel.
+ * @returns {Migratie[]}
+ */
+export function migratiesInMap(wortel) {
+  return readdirSync(join(wortel, 'supabase', 'migrations'))
+    .filter((naam) => naam.endsWith('.sql'))
+    .map((naam) => {
+      const stam = naam.slice(0, -4);
+      const scheiding = stam.indexOf('_');
+      return { versie: stam.slice(0, scheiding), naam: stam.slice(scheiding + 1), bestand: naam };
+    })
+    .sort((a, b) => a.versie.localeCompare(b.versie));
+}
 
 /** Eén nummering: vier cijfers, eventueel met een letter erachter (`0052a`). */
 const GENUMMERD = /^\d{4}[a-z]?$/;
