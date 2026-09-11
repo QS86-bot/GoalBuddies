@@ -8,7 +8,11 @@
 --   en herstel `functies_voor_authenticated()` uit **0115** — de vorm met
 --   `returns table (naam text)` en `select p.proname::text`, inclusief zijn
 --   revoke/grant-blok en zijn comment.
---   En geef de vier constanten hun anon-recht terug:
+--   En zet de vier constanten terug op `immutable` en geef ze hun anon-recht:
+--     alter function public.intrekvenster_minuten() immutable;
+--     alter function public.tegenvaller_woorden() immutable;
+--     alter function public.tip_bevat_emoji(text) immutable;
+--     alter function public.tip_noemt_tegenvaller(text) immutable;
 --     grant execute on function public.intrekvenster_minuten() to anon;
 --     grant execute on function public.tegenvaller_woorden() to anon;
 --     grant execute on function public.tip_bevat_emoji(text) to anon;
@@ -150,3 +154,46 @@ revoke all on function public.intrekvenster_minuten() from public, anon;
 revoke all on function public.tegenvaller_woorden() from public, anon;
 revoke all on function public.tip_bevat_emoji(text) from public, anon;
 revoke all on function public.tip_noemt_tegenvaller(text) from public, anon;
+
+-- ---------------------------------------------------------------------------
+-- ⚠️⚠️ Een revoke is op deze vier niet genoeg — de grant is niet het slot
+-- ---------------------------------------------------------------------------
+--
+-- Gevonden in de security-review op deze branch en zelf nagemeten. **De
+-- catalogus zegt nee en de API zegt ja.**
+--
+-- 📏 Tegen de lokale PostgREST (`db-pool = 10`), ná de revokes hieronder:
+--
+--     anon → /rpc/intrekvenster_minuten, 8×            401 (8/8)
+--     één keer als service_role                        200, "15"
+--     anon → hetzelfde endpoint, 25×                   401 … 200 … 200 …
+--                                                      (2 van de 25)
+--     has_function_privilege('anon', …, 'execute')     false
+--
+-- De twee tweehonderdjes vallen op de poolverbinding die de bevoorrechte
+-- aanroep geplant heeft. PostgREST hergebruikt prepared statements per
+-- verbinding; een `immutable` functie **zonder argumenten** wordt in het plan
+-- weggevouwen tot een constante, en daarna doet dat hergebruikte plan de
+-- EXECUTE-toets nooit meer.
+--
+-- ⚠️ **Daarom staan ze hier op `stable`.** 📏 Zelfde proef, mét `stable` en ná
+--    vijftien primende aanroepen als `service_role`: **401 op 25 van de 25**.
+--    `stable` wordt niet weggevouwen, dus de toets blijft staan. `stable` is
+--    bovendien een zwákkere belofte dan `immutable` — semantisch dus altijd
+--    veilig — en geen van de vier zit in een per-rij-pad: ze worden gelezen
+--    door `trek_goedkeuring_in()`, `intrekvenster_bewaking()` en de trigger op
+--    `milestone_tips`.
+--
+-- ⚠️ **Dit gaat verder dan deze vier, en dat is een eigen issue.** De klasse is
+--    `provolatile = 'i' and pronargs = 0`; die telt er dertig in `public`,
+--    waarvan eenentwintig alleen aan `service_role` gegund. Wat er vandaag
+--    langs kan komen zijn constanten — plafonds en drempels, geen
+--    gebruikersdata — en niets in `src/`, `app/` of `supabase/functions/` roept
+--    ze als RPC aan, dus er is geen aanroeper die de pool primet. Hier staan
+--    alleen de vier die deze migratie zelf aanraakt; de rest hoort niet als
+--    bijvangst mee.
+
+alter function public.intrekvenster_minuten() stable;
+alter function public.tegenvaller_woorden() stable;
+alter function public.tip_bevat_emoji(text) stable;
+alter function public.tip_noemt_tegenvaller(text) stable;
