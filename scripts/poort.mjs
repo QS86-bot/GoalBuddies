@@ -67,6 +67,8 @@ export const HEEFT_DATABASE_NODIG = new Set([
   'definers:controle',
   // ⚠️ Bouwt het schema van nul op en speelt elk bestand twee keer af (QS8-413).
   'idempotent:controle',
+  // ⚠️ Leest `pg_proc`: welke functies zijn `immutable` met nul argumenten (QS8-433).
+  'volatiliteit:controle',
 ]);
 
 /**

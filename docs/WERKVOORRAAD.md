@@ -53,6 +53,7 @@ tot en met 11-09 en uit eenentwintig verschillende issues:
 | `0251_een_bewaartermijn_voor_alle_bijlagen.sql` | QS8-411 | nee |
 | `0252_de_goedkeuring_wijst_naar_de_eigenaar_van_de_voltooiing.sql` | QS8-182 | nee |
 | `0253_functiegrants_kennen_de_handtekening_en_ook_anon.sql` | QS8-428 | nee |
+| `0254_geen_immutable_functie_zonder_argumenten.sql` | QS8-433 | nee |
 
 ⚠️ **Hier stond een uur eerder `0219` met twee bestanden gat, en dat klopte
 toen.** `0220` en `0221` zijn erna toegepast en `0222` t/m `0226` landden
@@ -222,8 +223,8 @@ staat er iets bij dat uitleg nodig heeft, dan hoort die uitleg in §2, §3b of �
    **Meet ze dus, tel ze niet op:** bij het samengaan met `main` is het antwoord
    `npm run poort` of `npm run tellers`, nooit het hoogste van twee getallen.
 <!-- POORTSTAND:BEGIN — gegenereerd door `npm run poortstand` -->
-Typecheck, lint en alle 53 controlescripts groen;
-`npm run poort` meldt 57 stappen.
+Typecheck, lint en alle 54 controlescripts groen;
+`npm run poort` meldt 58 stappen.
 <!-- POORTSTAND:EINDE -->
    ⚠️ **Vier ervan meten niets zonder de credentials van het échte project**
    (`adviseur`, `functies`, `register`, `wachtwoord`), en de poort noemt dat
