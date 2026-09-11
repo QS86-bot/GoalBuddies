@@ -149,6 +149,59 @@ twee mutaties gemeten op `src/modules/buddies/api.ts`: statisch rood, `await
 import('../../shared/ui')` groen. Dat is geen bevinding van deze verhuizing en het gaat
 niet in deze branch mee — het staat als eigen issue, met deze meting erin.
 
+## 4b. De andere richting erbij, en één blok in plaats van twee (QS8-425)
+
+De regel van QS8-207 — de datalaag importeert niets uit `shared/ui` — had hetzelfde gat als
+hierboven: 📏 statisch rood, `await import('../../shared/ui')` groen. Zelfde oorzaak, want
+het is dezelfde `no-restricted-imports`.
+
+**De voor de hand liggende fix was een tweede `import/no-restricted-paths` in het
+modules-blok, en die is niet gekozen.** Dan staan er twee blokken die dezelfde regelnaam
+zetten, en dat is precies de constructie die §4a beschrijft als stil dood — vandaag onschadelijk
+omdat `src/modules/**` en `src/shared/**` elkaar niet overlappen, en onschadelijk *zolang*
+niemand een van beide `files` verbreedt. Een grendel die afhangt van een eigenschap die
+niemand bewaakt, is geen grendel.
+
+Alle drie de zones staan daarom in **één** blok over `src/**`. Dat kan omdat
+`no-restricted-paths` zichzelf al per richting scoopt via `target` — het blok óók nog eens
+op `files` scopen voegde niets toe en kostte alleen dat risico.
+
+| target | from | grens |
+|---|---|---|
+| `./src/shared` | `./src/modules` | QS8-423 |
+| `./src/shared` | `./src/lib/supabase.ts` | QS8-423, de datalaag één deur verder |
+| `./src/modules` | `./src/shared/ui` | QS8-207, sinds QS8-425 ook dynamisch |
+
+De twee patroonregels blijven staan als tweede net op de statische vormen: hun melding valt
+op de importregel zelf, en dat leest korter dan een opgelost pad.
+
+### Wat de ijking deze ronde vond, en het was mijn eigen test
+
+📏 Vijf mutaties, elk apart, en elke keer is gekeken wélke tests omvielen:
+
+| mutatie | `npm run lint` | rood in de suite |
+|---|---|---|
+| de nieuwe zone (`modules ← shared/ui`) weg | **groen** | precies de 4 die eraan hangen |
+| de zone `shared ← modules` weg | groen | 8 |
+| een láter blok zet dezelfde regelnaam | rood, om een ándere reden | 7, incl. de zonecontrole |
+| het QS8-207-patroon ontkracht | groen | **eerst 0 — zie hieronder**, nu precies 1 |
+| het QS8-423-patroon ontkracht | groen | precies 1 |
+
+⚠️⚠️ **Die vierde rij is de vondst.** Het `group`-patroon vervangen door een pad dat niet
+bestaat liet aanvankelijk **alle 36 tests groen**. Twee dingen vielen samen: de regelnáám
+blijft staan als je alleen het patroon leegmaakt, dus de controle die op de naam keek merkte
+niets — én de gevallen zélf werden nog steeds rood, want sinds dit issue dekt de padregel
+diezelfde grens. **Twee netten boven elkaar verbergen elkaars gaten.**
+
+De controle kijkt daarom niet meer of de regelnaam er is, maar of de *zones* en de
+*patronen* er zijn. Dat is dezelfde les als §4a, één laag dieper: daar was de regel weg en
+leek hij aanwezig, hier is de regel aanwezig en is zijn inhoud weg.
+
+⚠️ En opnieuw kostte het een misser om daar te komen: de mutatie voor de stille dood liet
+de eerste keer een syntactisch kapotte config achter, `LINT EXIT=2`, alles rood. Dezelfde
+val als in §4a, in dezelfde sessie, bij dezelfde soort ingreep. **Een mutatie die het
+bestand sloopt, meet niets** — controleer dat de config nog laadt vóór je de uitslag leest.
+
 ## 5. Waarom de vier diepe imports van `metGetekendeAvatars` blijven
 
 `buddies/weekafsluiting.ts`, `buddies/api.ts`, `buddies/chat.ts` en
@@ -220,6 +273,6 @@ er tussendoor een stand is waarin allebei de lintregels rood staan.
   plus ijking is en geen verhuizing.
 - **Geen oplossing voor `Resultaat<T>`** dat in drie bestanden uit `../goals` geleend wordt
   in plaats van uit `shared/api`. Aparte drift, aparte rij.
-- **Geen reparatie van het dynamische gat in de QS8-207-regel** (§4a, laatste alinea). Die
-  regel is van een ander issue en dekt de andere richting; hem hier meenemen is de branch
-  verbreden. De meting ligt er, dus het vervolgissue hoeft niet opnieuw te meten.
+- ~~Geen reparatie van het dynamische gat in de QS8-207-regel~~ — **gedaan in QS8-425**,
+  zie §4b. Het stond hier als vervolgissue omdat het de andere richting is; het is daarna
+  als eigen branch gebouwd, niet alsnog aan deze geplakt.
