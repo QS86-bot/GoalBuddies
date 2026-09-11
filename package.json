@@ -90,6 +90,7 @@
     "migratie:hernummer": "node scripts/migratie-hernummer.mjs",
     "rls:dekking": "node scripts/rls-dekking.mjs",
     "definers:controle": "node scripts/definers-controle.mjs",
+    "volatiliteit:controle": "node scripts/volatiliteit-controle.mjs",
     "poortstand": "node scripts/poortstand.mjs",
     "poortstand:controle": "node scripts/poortstand.mjs --controle",
     "edge:types:controle": "node scripts/edge-typecheck.mjs",
