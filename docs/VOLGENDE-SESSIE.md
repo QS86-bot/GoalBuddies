@@ -3,9 +3,10 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-424. Daarvóór diezelfde dag
-> QS8-262 ronde 9 (`c8fa5e6`), QS8-421 (PR #412), QS8-422 (PR #410) en QS8-423,
-> en op 10-09 QS8-414 (`72741e9`) — QS8-418.
+> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-424 (PR #417). Daarvóór
+> diezelfde dag QS8-425 (PR #414, `1830785`), QS8-262 ronde 9 (`c8fa5e6`),
+> QS8-423 (PR #411, `c9e99a6`), QS8-421 (PR #412), QS8-422 (PR #410), QS8-419 en
+> QS8-420, en op 10-09 QS8-414 (`72741e9`) — QS8-418.
 > Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
 > lijst en niet deze zin. **Er is geen controle die het bijwerken afdwingt, en met
 > reden — zie de kop van `scripts/docs-controle.mjs`: een controle die proza eist,
