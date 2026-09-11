@@ -3,13 +3,18 @@ import * as DocumentPicker from 'expo-document-picker';
 /**
  * Een document kiezen voor de groepschat — QS8-72.
  *
- * ⚠️⚠️ **Hij staat in `shared/ui` en niet in `modules/buddies`, en dat is een
- *    gemeten reparatie en geen plaatsingsvoorkeur.** `expo-document-picker`
- *    sleept react-native mee, en de barrel van een module wordt geïmporteerd
- *    door tests die geen RN-omgeving hebben. 📏 Bij QS8-71 viel
- *    `tests/rls/doorloop.test.ts` precies zo om op `ReferenceError: __DEV__ is
- *    not defined`, met `kiesChatfoto` in `modules/buddies/index.ts`. Zelfde val,
- *    zelfde plaatsing.
+ * ⚠️⚠️ **Hij staat sinds 11-09-2026 in `shared/kiezers`** (QS8-423), en
+ *    daarvóór in `shared/ui`. **De meting die hem uit `modules/buddies` hield
+ *    staat nog:** `expo-document-picker` sleept react-native mee, en de barrel
+ *    van een module wordt geïmporteerd door tests die geen RN-omgeving hebben.
+ *    📏 Bij QS8-71 viel `tests/rls/doorloop.test.ts` precies zo om op
+ *    `ReferenceError: __DEV__ is not defined`, met `kiesChatfoto` in
+ *    `modules/buddies/index.ts`.
+ *
+ *    `shared/ui` was alleen het verkeerde antwoord op die juiste meting: een
+ *    kiezer rendert niets, draagt geen label en kent geen toon. Zelfde beweging
+ *    en zelfde reden als `kiesFoto.ts`; uitleg in
+ *    `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
  *
  * ⚠️ Vier uitgangen — geen toestemming/fout, afgebroken, onbruikbare data, en
  *    gelukt — en dat is de enige vorm waarin ze los te toetsen zijn. Zelfde

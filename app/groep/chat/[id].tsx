@@ -40,15 +40,17 @@ import {
   Card,
   ChatRegel,
   type Chatbijlage,
-  type Chatbijlagekeuze,
-  type Documentopener,
   Field,
   Meldpaneel,
-  naarVerzending,
   Screen,
-  useChatbijlage,
-  useDocumentOpenen,
 } from '@/shared/ui';
+import { naarVerzending } from '@/shared/kiezers';
+import {
+  useChatbijlage,
+  type Chatbijlagekeuze,
+  useDocumentOpenen,
+  type Documentopener,
+} from '@/modules/buddies/react';
 
 /** De vijf redenen met hun labels; een functie, want de taal ligt niet vast op importtijd. */
 function MELDREDEN_OPTIES(): readonly { readonly waarde: string; readonly label: string }[] {

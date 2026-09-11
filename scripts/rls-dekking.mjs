@@ -699,6 +699,37 @@ export function faalnamen(uit) {
   return [...new Set(namen)].sort();
 }
 
+/**
+ * Welke testbestanden zijn omgevallen zónder dat er één assertie in faalde?
+ *
+ * ⚠️⚠️ **Dit stond eerst als `numFailedTestSuites > aantal bestanden met een
+ *    gefaalde assertie`, en dat was een vergelijking tussen twee verschillende
+ *    eenheden.** 📏 Gemeten op 11-09-2026: één testbestand met zeven
+ *    `describe`-blokken geeft `numTotalTestSuites: 8`. Dat veld telt **suites en
+ *    geen bestanden** — de root plus elk `describe`. Eén bestand waarin drie
+ *    blokken rood worden gaf dus "3 bestanden faalden, 1 had een assertie", en
+ *    de hele sweep kwam terug als `onbruikbaar`.
+ *
+ *    Zelfde klasse als een teller in grafemen bij een grens in codepunten: het
+ *    getal klopte, de eenheid niet. En de richting was hier de andere dan
+ *    gewoonlijk — het instrument weigerde te meten in plaats van te ruim te
+ *    oordelen, dus het viel meteen op.
+ *
+ * ⚠️ De juiste vorm staat in `testResults` zelf en is wél in één eenheid: een
+ *    bestand dat als `failed` gemeld wordt terwijl er geen enkele assertie in
+ *    faalde, is in `beforeAll` omgevallen. Dat is een instorting en geen
+ *    oordeel over de policy.
+ */
+export function omgevallenZonderAssertie(uit) {
+  return (uit.testResults ?? [])
+    .filter(
+      (bestand) =>
+        bestand.status === 'failed' &&
+        !(bestand.assertionResults ?? []).some((test) => test.status === 'failed'),
+    )
+    .map((bestand) => (bestand.name ? basename(bestand.name) : '?'));
+}
+
 export function leesUitkomst(json) {
   let uit;
   try {
@@ -737,17 +768,16 @@ export function leesUitkomst(json) {
     //    een assertie.
     //
     //    Het onderscheid staat in dezelfde JSON en kost geen enkele geldige
-    //    meting: bij een échte bewaakte policy is elk gefaald bestand een
-    //    bestand mét een gefaalde assertie, dus zijn die twee getallen gelijk.
-    //    Zijn er meer gefaalde bestanden dan bestanden in `rood`, dan is er
-    //    minstens één omgevallen zonder dat er iets in getoetst werd.
-    const bestandenMetAssertie = new Set(rood.map((naam) => naam.split(' > ')[0])).size;
-    if ((uit.numFailedTestSuites ?? 0) > bestandenMetAssertie) {
+    //    meting: bij een échte bewaakte policy is elk gefaald bestand er één
+    //    mét een gefaalde assertie. Zie `omgevallenZonderAssertie()` voor de
+    //    vorm — en voor de eenheid, want dáár ging het op 10-09 mis.
+    const ingestort = omgevallenZonderAssertie(uit);
+    if (ingestort.length > 0) {
       return {
         uitkomst: 'onbruikbaar',
         reden:
-          `${uit.numFailedTestSuites} testbestand(en) faalden terwijl er maar in ` +
-          `${bestandenMetAssertie} een assertie omviel — de rest viel om zonder te toetsen`,
+          `${ingestort.length} testbestand(en) vielen om zonder dat er één assertie in ` +
+          `faalde (${ingestort[0]})`,
       };
     }
 
@@ -767,12 +797,13 @@ export function leesUitkomst(json) {
   //    niet zijn, en wie ze gaat dichten schrijft tests voor een probleem dat niet
   //    bestaat. Bij een échte onbewaakte policy draait de suite gewoon groen —
   //    nul gefaalde bestanden — dus deze toets kost geen enkele geldige meting.
-  if ((uit.numFailedTestSuites ?? 0) > 0) {
+  const omgevallen = omgevallenZonderAssertie(uit);
+  if (omgevallen.length > 0) {
     return {
       uitkomst: 'onbruikbaar',
       reden:
-        `${uit.numFailedTestSuites} testbestand(en) vielen om zonder dat er één assertie faalde ` +
-        '— de stack is er waarschijnlijk onder weggevallen',
+        `${omgevallen.length} testbestand(en) vielen om zonder dat er één assertie faalde ` +
+        `(${omgevallen[0]}) — de stack is er waarschijnlijk onder weggevallen`,
     };
   }
 

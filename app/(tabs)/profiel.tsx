@@ -3,7 +3,6 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import {
   AVATAR_MAX_BYTES,
-  useAvatarKeuze,
   signOut,
   updateProfiel,
   userClock,
@@ -12,6 +11,7 @@ import {
   verwijderMijnAccount,
   type Profiel as ProfielRij,
 } from '@/modules/auth';
+import { useAvatarKeuze } from '@/modules/auth/react';
 import { deblokkeer, fetchBlokkades } from '@/modules/buddies';
 import { fetchBuddyBijdrage } from '@/modules/completions';
 import {

@@ -19,10 +19,10 @@ import {
   AVATAR_MAX_BYTES,
   AVATAR_TYPES,
   avatarPad,
-  base64NaarBytes,
   keurBestand,
   metGetekendeAvatars,
 } from '../../src/modules/auth/avatar';
+import { base64NaarBytes } from '../../src/shared/afbeelding';
 
 import { readFileSync } from 'node:fs';
 

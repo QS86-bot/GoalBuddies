@@ -3,10 +3,9 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-424. Daarvóór QS8-421 (PR #412)
-> en QS8-422 (PR #410,
-> gemerged) en op 10-09
-> na QS8-414 (`72741e9`) — QS8-418.
+> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-424. Daarvóór diezelfde dag
+> QS8-262 ronde 9 (`c8fa5e6`), QS8-421 (PR #412), QS8-422 (PR #410) en QS8-423,
+> en op 10-09 QS8-414 (`72741e9`) — QS8-418.
 > Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
 > lijst en niet deze zin. **Er is geen controle die het bijwerken afdwingt, en met
 > reden — zie de kop van `scripts/docs-controle.mjs`: een controle die proza eist,
@@ -88,8 +87,8 @@
 >
 > **10-09, punt F: het buildbare werk is op, en dat is een uitkomst en geen
 > vergissing.** Elk issue in Todo draagt `wacht-op-Quinten`; wat er in Backlog
-> staat is `review:november` (geparkeerd tot de engineer er is), `phase:v2`,
-> `phase:v3` of een epic. ⚠️ **Verzin dan geen werk.** Wat wél mag en helpt:
+> staat is `review:november` (⚠️ **niet meer geparkeerd — zie punt M**),
+> `phase:v2`, `phase:v3` of een epic. ⚠️ **Verzin dan geen werk.** Wat wél mag en helpt:
 > een geparkeerde `review:november`-rij nalopen op de vraag of zijn
 > *"Wordt zwaarder als"* intussen is ingetreden — QS8-188 was daar op 10-09 een
 > geval van, drie dagen te laat gezien — en dit bestand bijwerken. Wat níet mag
@@ -197,6 +196,70 @@
 > dat er **nul** UPDATE-policies zijn. Policies worden over buckets heen ge-OR'd,
 > dus één nieuwe `*_update` heropent de klasse voor álle emmers tegelijk. Een
 > grant tellen zou hier het verkeerde antwoord geven.
+> **11-09, punt P: een meting die op "er werd iets rood" leunt, moet weten wát er
+> rood werd — en of dat er vóór de meting al was.** `rls:dekking` las *"er werd
+> een test rood"* als *"déze policy is bewaakt"*. 📏 Op één commit, zonder één
+> policy aan te raken, sloeg `rls:dekking -- profiles` om van `1 van de 3` naar
+> `3 van de 3` toen ik in `dagtellers` de rij `avatars/uploader/tmp` van 6 op 10
+> zette — en het instrument eiste toen dat ik twee terechte registerrijen zou
+> weghalen. **Dat had ik eerder die ronde ook echt gedaan**, op precies zo'n
+> uitslag; de `security-reviewer` mat het tegenovergestelde en had gelijk.
+>
+> Dit is de **derde** fout van deze soort op dat ene script, en alle drie gaan ze
+> de geruststellende kant op: een gat komt eruit als bewaakt. Eerst telde elke
+> niet-nul exitcode als bewaakt, daarna een groene uitslag waarin 58 bestanden
+> omvielen, nu elke gefaalde test. **Reken er dus op dat er een vierde is, en
+> stel bij elk meetinstrument de vraag: waaraan zou dit "bewijs" nóg kunnen
+> liggen?** Uitleg in
+> `docs/decisions/2026-09-10-een-rood-is-niet-vanzelf-jouw-rood.md`; de regel
+> staat sinds vandaag in `CLAUDE.md` bij regel 18.
+>
+> **11-09, punt Q: een test die state over rúns heen opbouwt, is een landmijn
+> onder élke poortrun.** De oorzaak van punt P was één letterlijke sleutel:
+> `avatarbucket.test.ts` zette zijn niet-uuid-map altijd onder de naam `tmp`
+> neer, `bewaak_avatar_aantal()` telt per map in `dagtellers`, en een `delete`
+> haalt die telling er niet af — precies wat migratie 0233 wilde. Elke run telde
+> er één bij op dezelfde rij; bij de elfde viel de test om met `23514` op een
+> stack waar niets mis mee was. **Een fixture-uuid is per run nieuw en een
+> letterlijke naam niet** — nagelopen, `tmp` was de enige in de suite, maar de
+> volgende komt er zo weer in. ⚠️ En zo'n test leert je bovendien om rood weg te
+> wuiven, wat erger is dan de test zelf.
+>
+> **11-09, punt R: spreekt jouw meting een reviewbevinding tegen, verdenk dan
+> eerst je eigen opstelling.** 📏 Ik draaide het meetscript van de reviewer na en
+> kreeg op élke stand `0 rijen, geen fout` — het tegenovergestelde van wat hij
+> rapporteerde. Ik had een **superseded** iteratie te pakken: die bouwde geen
+> groep, dus `goals_select` filterde de rij al weg vóór de UPDATE-policy hem zag,
+> en dan geeft elke stand hetzelfde antwoord. Met de juiste opstelling klopte zijn
+> tabel precies. **Een opstelling waarin álle standen hetzelfde antwoord geven,
+> meet niets** — dat is het signaal, en het is hetzelfde signaal als een controle
+> die nog nooit rood is geweest.
+>
+> ⚠️ Het mechanisme erachter is de moeite waard: **een UPDATE die kolommen leest
+> krijgt in Postgres óók de SELECT-policy over zich heen.** Toets je de
+> `using`-helft van een UPDATE-policy, zet de leespolicy dan tijdelijk wagenwijd
+> open — anders toetst je test de leespolicy en denkt hij iets anders te doen.
+> Staat al in de kop van `todo-lijst.test.ts` en het beet vandaag opnieuw.
+>
+> **11-09, punt S: het parkeerbesluit van `review:november` is opgeheven — punt F
+> hierboven klopt op dát punt niet meer.** Quinten heeft gevraagd al het werk dat
+> voor november gepland stond nú uit te voeren, en dat is gebeurd: **alle tien
+> `review:november`-issues staan op Done** (QS8-179, 180, 181, 182, 183, 184,
+> 187, 189, 194, 204).
+>
+> ⚠️ Het waren er negen tot 11-09: **QS8-180 droeg het label niet**, terwijl het
+> een `🗣 REVIEW`-issue uit dezelfde dossierrij van 15-08 is en gewoon in deze
+> ronde gebouwd. Het label is alsnog toegevoegd. **Een issue dat het label mist
+> waar het bij hoort, telt niet mee in de lijst waarmee je controleert of je
+> klaar bent** — en dat is precies de vorm waarin dit project al vaker iets is
+> kwijtgeraakt. Wat punt F verder zegt blijft staan: verzin geen werk, en de
+> controlepas van onwrikbare regel 19 is de manier om te kijken of er iets is.
+>
+> ⚠️ **En een geparkeerde bevinding kan ondertussen onjuist zijn geworden.** Bij
+> QS8-181 bleek mijn eigen weggelegde Laag-rij een voorwaarde te dragen
+> (*"wordt zwaarder als de uitkomst van een persoon gaat afhangen"*) die op de dag
+> van schrijven al vervuld was. `review:controle` ziet dat niet — die toetst
+> alleen dát er een voorwaarde staat.
 >
 > ⚠️⚠️ **11-09, punt P: een lintregel kan code laten buigen, en dan verplaats je
 > het probleem naar de lezer.** QS8-422 moest in de rollover een `if` in een `if`
@@ -260,8 +323,7 @@
 >   en niet drie namen, en dat is waarom hij hield toen `chatdocs` erbij kwam.
 > - **De Lijst is af** (QS8-378) — uitgeschreven in de alinea hieronder, mét de
 >   twee beslispunten die Quinten op 09-09 heeft beslist. Wat er ná die alinea
->   bij is gekomen: QS8-386 (een taak hernoemen) staat nog open in de
->   parallelle sessie.
+>   bij is gekomen: QS8-386 (een taak hernoemen) is op 10-09 gemerged (#385).
 > - **Open en niet door een agent af te maken:** alles met `wacht-op-Quinten`. Dat
 >   is op dit moment de héle Todo-kolom. De reactieve voorraad is leeg.
 >
@@ -1167,6 +1229,40 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
    `docs:controle` bewaakt precies dat. Verwijzen mag, herhalen niet.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
+
+- **⚠️⚠️ Twee blokken in `eslint.config.js` die dezelfde regelnaam zetten zijn
+  niet allebei van kracht — 11-09, QS8-423.** Flat config **vervangt** de opties
+  van een regel in plaats van ze samen te voegen: overlappen de `files` van twee
+  blokken, dan wint het láátste volledig en is het eerste er niet meer.
+
+  Dat kostte een nieuwe laaggrendel zijn hele werking. Hij stond er als
+  `no-restricted-syntax`, las goed, en het tijdblok verderop zet diezelfde naam
+  over `src/**`. 📏 `npm run lint` gaf **exitcode 0**, de config laadde, en er
+  was geen grens. De ijking was het enige dat het zag.
+
+  **Twee dingen om te doen.** Draai `npx eslint --print-config <een bestand uit
+  het bereik>` en kijk of jouw opties er écht in staat — niet of de regel in het
+  bestand staat. En kies liever een regelnaam die nog niet gebruikt wordt:
+  `import/no-restricted-paths` botst niet met `no-restricted-syntax` en dekt
+  bovendien `await import()`, wat `no-restricted-imports` níet doet (die hangt
+  aan `ImportDeclaration`). 📏 Dat laatste gat is hier niet theoretisch — er
+  staan veertien dynamische imports in de repo, twee in productiecode.
+
+  `tests/scripts/laaggrenzen.test.ts` bewaakt dit nu voor beide laaggrenzen, met
+  een blok dat via `calculateConfigForFile()` toetst dát de regel de opgeloste
+  config overleeft. **Een gemiste vorm en een opgegeten regel zijn twee
+  verschillende fouten**, en de gevallen vinden de tweede alleen bij toeval.
+
+- **⚠️ Een verhuisd bestand onderbouwt zijn oude plek — 11-09, QS8-423.** Vijf
+  verplaatste bestanden droegen een uitgeschreven argument voor een map waar ze
+  niet meer stonden. Dat is duurder dan een omissie: een omissie valt op, een
+  argument leest de volgende persoon als een reden om niet te twijfelen.
+
+  📏 `padverwijzing:controle` ziet dit niet, en dat is correct gedrag — die vindt
+  een pad dat niet bestáát, niet een bestand dat ergens anders staat dan zijn kop
+  beweert. **Loop bij elke `git mv` de kop van het bestand na**, en vraag of de
+  meting die erin staat nog hetzelfde antwoord geeft. Meestal staat de meting nog
+  en is alleen de conclusie verhuisd.
 
 - **⚠️⚠️ `is distinct from` is niet de nulls-veilige `<>` — 10-09, QS8-406.** Een
   CHECK `a is distinct from b` op twee nullable kolommen weigert de stand waarin
@@ -2277,10 +2373,20 @@ in vier soorten en géén daarvan is "pak het volgende issue":
 | Soort | Wat het vraagt |
 |---|---|
 | `wacht-op-Quinten` | zijn hand: een deploy, een sleutel, een dashboardinstelling, een besluit |
-| `review:november` | een **oordeel** van de engineer, geen code. QS8-182 zegt het zelf: *"dat is een oordeel en geen meting"* |
+| ~~`review:november`~~ | ⚠️ **Vervallen op 10/11-09: Quinten vroeg dit werk nú uit te voeren, en alle tien staan op Done.** Zie punt M bovenaan. De redenering dat het *"een oordeel en geen meting"* was, hield bij geen van de tien stand — er bleek telkens wél iets te meten of te grendelen |
 | feature-epics (QS8-200, QS8-230, QS8-252) | ⚠️ **niet meer "opsplitsen" — ze zijn af.** 📏 Op 09-09 nagelopen: 15 van de 16 kinderen Done. QS8-252 is gesloten, QS8-200 en QS8-230 dragen nu `wacht-op-Quinten` |
 | ~~De Lijst (QS8-378 t/m 381, QS8-386)~~ | ✅ **helemaal af.** De drie delen op 09-09, de staart QS8-386 op 10-09 — een taak is te hernoemen, dus het schrijfrecht op `todo_items.body` heeft een aanroeper |
 | De foto's (QS8-394 t/m 397) | QS8-395 en QS8-396 zijn gebouwd. **QS8-397 (versleuteling) is een besluit van Quinten** — sleutelbeheer, verlies van je sleutel is verlies van je foto's, en het raakt wat er aan een mens beloofd wordt. Niet op eigen gezag bouwen |
+
+⚠️ **En er ligt sinds 11-09 één concreet, afgebakend stuk werk: QS8-262 ronde
+10.** Het instrument is gerepareerd (punt J), maar er is daardoor **geen actueel
+dekkingstotaal**: de sweep van ronde 9 gaf 91 van de 102 en is met het kapotte
+instrument gemeten, dus onbruikbaar. Wat ervoor nodig is, is één volledige
+`npm run rls:dekking` op een verse stack — en dat is de reden dat hij er nog niet
+is: **hij duurt uren en deze omgeving pauzeert tussen beurten**. Plan hem als het
+énige van je sessie, of draai hem per tabel en tel zelf op. 📏 Wat wél gemeten
+is: 39 tabellen met een policy, 95 policies, 8 zonder recht, 102 meetbare
+helften. Lees eerst de laatste reactie op dat issue.
 
 **Wat dat betekent voor de volgende sessie:** ga niet zoeken naar een los issue —
 dat is er niet. Kies bewust één van deze drie:

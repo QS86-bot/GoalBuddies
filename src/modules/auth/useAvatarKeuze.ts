@@ -3,9 +3,9 @@ import { useState } from 'react';
 
 import { t } from '../../shared/i18n';
 
-import { ontdoeVanMetadata } from '../../shared/afbeelding';
+import { base64NaarBytes, ontdoeVanMetadata } from '../../shared/afbeelding';
 
-import { base64NaarBytes, uploadAvatar, verwijderAvatar } from './avatar';
+import { uploadAvatar, verwijderAvatar } from './avatar';
 import { fetchProfiel, type Profiel } from './profile';
 
 /**
