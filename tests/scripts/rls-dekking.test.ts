@@ -8,8 +8,11 @@ import {
   registervormKlachten,
   verzoenRegister,
   kloptDeBestemming,
+  faalnamen,
   leesUitkomst,
   magHierDraaien,
+  weegDrift,
+  weegTegenBaseline,
   verdachtePolicies,
   herstelSql,
   ontleedPolicies,
@@ -49,6 +52,22 @@ import {
  *   J  de nameting op het adres (`kloptDeBestemming`)       → 2 rood
  *   K  `verdachtePolicies` alleen naar `using` laten kijken → 1 rood
  *   L  de nul-tests-toets uit `leesUitkomst`                → 2 rood
+ *
+ * Ronde 9 (10-09-2026) — de reparatie van "een rood is niet vanzelf jouw rood".
+ * Elke grendel apart gemuteerd, en elke keer is nagekeken dat het de test is die
+ * die grendel bij naam nóemt die rood wordt:
+ *
+ *   Q  `faalnamen` een lege lijst laten teruggeven          → 4 rood
+ *   R  de naamloos-rood-toets uit `leesUitkomst`            → 1 rood
+ *   S  `weegTegenBaseline` de uitslag ongemoeid laten       → 2 rood
+ *   T  `weegTegenBaseline` áltijd laten terugzetten         → 2 rood
+ *   U  `weegDrift` de bevindingen ongemoeid laten           → 2 rood
+ *   V  `weegDrift` élke bewaakt-bevinding laten vallen      → 1 rood
+ *   Y  de instortingstoets op het rode pad                  → 1 rood
+ *   Z  die toets `>=` laten zijn in plaats van `>`          → 3 rood (must-allow)
+ *
+ * En in `tests/rls/halfslot-update.test.ts` staan W en X: de vier `using`-helften
+ * die hier eerst als "niet te meten" in het register stonden.
  */
 
 const rij = JSON.stringify([
@@ -299,6 +318,32 @@ describe('verdachtePolicies', () => {
 });
 
 /**
+ * Een vitest-uitslag zoals de json-reporter hem opmaakt: een telling én de
+ * gefaalde tests bij naam. Sinds ronde 9 hangt het oordeel aan die namen.
+ */
+const roodInBestand = (
+  bestand: string,
+  namen: string[],
+  extra: Record<string, number> = {},
+): string =>
+  JSON.stringify({
+    numTotalTests: 100,
+    numPendingTests: 0,
+    numFailedTests: namen.length,
+    numFailedTestSuites: 1,
+    testResults: [
+      {
+        name: `/home/user/GoalBuddies/tests/rls/${bestand}`,
+        assertionResults: namen.map((fullName) => ({ status: 'failed', fullName })),
+      },
+    ],
+    ...extra,
+  });
+
+const rood = (namen: string[], extra: Record<string, number> = {}): string =>
+  roodInBestand('avatarbucket.test.ts', namen, extra);
+
+/**
  * ⚠️ **"Bewaakt" mag niet betekenen "er ging íets mis".** De eerste versie las elke
  *    niet-nul exitcode als bewaakt — ook een startup-error, een dichte PostgREST
  *    of geheugen op. Dat schuift een policy van onbewaakt naar bewaakt, en die
@@ -308,7 +353,7 @@ describe('leesUitkomst', () => {
   const json = (o: object): string => JSON.stringify(o);
 
   it('noemt een gefaalde assertie rood', () => {
-    expect(leesUitkomst(json({ numTotalTests: 10, numFailedTests: 1 })).uitkomst).toBe('rood');
+    expect(leesUitkomst(rood(['x'], { numTotalTests: 10 })).uitkomst).toBe('rood');
   });
 
   it('noemt een volledig groene run groen', () => {
@@ -349,11 +394,206 @@ describe('leesUitkomst', () => {
   it('laat een gefaalde assertie rood ook als er bestanden omvielen', () => {
     // Het normale geval bij een bewáákte policy: de tests die hem toetsen falen,
     // en hun bestand telt daarmee als gefaald. Dat mag geen `onbruikbaar` worden.
+    //
+    // ⚠️ De drie asserties zitten in één bestand en er is één gefaald bestand.
+    //    Dat *moet* kloppen sinds grendel Y hieronder: stond er `2`, dan viel er
+    //    een bestand om waarin niets getoetst werd, en dan is dit geen bewijs
+    //    meer maar een instorting. Hier stond eerst `2`, en die opstelling kon
+    //    in werkelijkheid niet bestaan.
     expect(
       leesUitkomst(
-        json({ numTotalTests: 813, numPendingTests: 0, numFailedTests: 3, numFailedTestSuites: 2 }),
+        rood(['a', 'b', 'c'], { numTotalTests: 813, numPendingTests: 0, numFailedTestSuites: 1 }),
       ).uitkomst,
     ).toBe('rood');
+  });
+
+  /**
+   * ⚠️ **Grendel R.** Vanaf ronde 9 is de náám van de gefaalde test het bewijs,
+   *    en niet de telling. Komt er een telling zonder namen uit, dan is de vraag
+   *    van `weegTegenBaseline()` niet te stellen en is er geen oordeel — dat is
+   *    iets anders dan een gunstig oordeel.
+   */
+  it('noemt een telling zonder namen onbruikbaar', () => {
+    expect(leesUitkomst(json({ numTotalTests: 10, numFailedTests: 3 })).uitkomst).toBe(
+      'onbruikbaar',
+    );
+  });
+
+  /**
+   * ⚠️⚠️ **Grendel Y — de rode kant van dezelfde instorting.** De toets op
+   *    `numFailedTestSuites` stond alleen op het gróéne pad, en dekte dus alleen
+   *    de kant waar het instrument gaten verzint. 📏 Gevoerd met het echte geval
+   *    van 03-09 — 813 tests, 600 niet gedraaid, 58 bestanden om — plus één
+   *    losse gefaalde assertie kwam er `bewaakt` uit. Dat is de geruststellende
+   *    kant, en die is de gevaarlijke.
+   */
+  it('noemt een half ingestorte run onbruikbaar, ook met een gefaalde assertie erin', () => {
+    expect(
+      leesUitkomst(
+        rood(['de reeks loopt door'], {
+          numTotalTests: 813,
+          numPendingTests: 600,
+          numFailedTestSuites: 58,
+        }),
+      ).uitkomst,
+    ).toBe('onbruikbaar');
+  });
+
+  /**
+   * ⚠️ **De must-allow, en zonder hem kost grendel Y élke geldige meting.** Bij
+   *    een écht bewaakte policy is elk gefaald bestand er één mét een gefaalde
+   *    assertie — dan zijn de twee getallen gelijk en blijft de uitslag rood.
+   */
+  it('houdt een rood uit twee bestanden met elk een gefaalde assertie gewoon rood', () => {
+    const uit = JSON.stringify({
+      numTotalTests: 813,
+      numPendingTests: 0,
+      numFailedTests: 2,
+      numFailedTestSuites: 2,
+      testResults: [
+        {
+          name: '/x/tests/rls/eigenaarschap.test.ts',
+          assertionResults: [{ status: 'failed', fullName: 'een ander hernoemt je doel niet' }],
+        },
+        {
+          name: '/x/tests/rls/schrijfgrenzen.test.ts',
+          assertionResults: [{ status: 'failed', fullName: 'een ander past je naam niet aan' }],
+        },
+      ],
+    });
+
+    expect(leesUitkomst(uit).uitkomst).toBe('rood');
+  });
+});
+
+/**
+ * ⚠️⚠️ **De reparatie van ronde 9, en de meting die eronder ligt.**
+ *
+ *    📏 10-09-2026, op één commit, zonder één policy aan te raken:
+ *    `rls:dekking -- profiles` gaf `1 van de 3` met beide helften van
+ *    `profiles_update` als gat. Daarna is in `dagtellers` de rij
+ *    `avatars/uploader/tmp` van 6 op 10 gezet — precies wat vier gewone
+ *    suiteruns opleveren, want die sleutel is een lettérlijke `tmp` en een
+ *    `delete` haalt hem er niet af — en dezelfde meting gaf **`3 van de 3`**,
+ *    mét de eis om de twee registerrijen wég te halen die die gaten vastleggen.
+ *
+ *    Dat is de fout die ik in ronde 9 zelf gemaakt heb: op grond van zo'n
+ *    uitslag twee terechte rijen verwijderd.
+ */
+describe('faalnamen', () => {
+  it('noemt elke gefaalde test met zijn bestand erbij', () => {
+    expect(faalnamen(JSON.parse(rood(['valt niet om op een map die geen uuid is'])))).toEqual([
+      'avatarbucket.test.ts > valt niet om op een map die geen uuid is',
+    ]);
+  });
+
+  // ⚠️ De must-allow-helft: een geslaagde test is geen bewijs en hoort er niet in.
+  it('laat een geslaagde test buiten de lijst', () => {
+    const uit = {
+      testResults: [
+        {
+          name: '/x/tests/rls/eigenaarschap.test.ts',
+          assertionResults: [
+            { status: 'passed', fullName: 'gaat goed' },
+            { status: 'failed', fullName: 'gaat mis' },
+          ],
+        },
+      ],
+    };
+
+    expect(faalnamen(uit)).toEqual(['eigenaarschap.test.ts > gaat mis']);
+  });
+
+  it('valt niet om op een uitslag zonder bestanden', () => {
+    expect(faalnamen({})).toEqual([]);
+  });
+});
+
+describe('weegTegenBaseline', () => {
+  const uitslag = (namen: string[]) => ({ uitkomst: 'rood', gedraaid: 100, rood: namen });
+
+  /**
+   * ⚠️ **Grendel S — het geval van 10-09 zelf.** De dagteller stond al vol, dus
+   *    dezelfde test was rood vóórdat de policy openging. Dat bewijst niets over
+   *    de policy.
+   */
+  it('gelooft een rood niet als die test vooraf al rood stond', () => {
+    const gewogen = weegTegenBaseline(uitslag(['avatarbucket.test.ts > geen uuid']), [
+      'avatarbucket.test.ts > geen uuid',
+    ]);
+
+    expect(gewogen.uitkomst).toBe('groen');
+    expect(gewogen.alRood).toEqual(['avatarbucket.test.ts > geen uuid']);
+  });
+
+  /**
+   * ⚠️ **Grendel T — de must-allow-helft, en die is hier het zwaarst.** Een
+   *    weging die álles wegstreept, meldt elke bewaakte policy als gat: dan
+   *    verzint het instrument werk in plaats van het te verzwijgen. Zeventig van
+   *    de honderdtwee helften hangen hieraan.
+   */
+  it('laat een rood staan dat er vooraf niet was', () => {
+    const gewogen = weegTegenBaseline(
+      uitslag(['eigenaarschap.test.ts > je maakt geen doel op andermans naam']),
+      ['avatarbucket.test.ts > geen uuid'],
+    );
+
+    expect(gewogen.uitkomst).toBe('rood');
+    expect(gewogen.rood).toEqual(['eigenaarschap.test.ts > je maakt geen doel op andermans naam']);
+  });
+
+  it('houdt alleen het nieuwe rood over als er van beide iets is', () => {
+    const gewogen = weegTegenBaseline(uitslag(['a > oud', 'b > nieuw']), ['a > oud']);
+
+    expect(gewogen.rood).toEqual(['b > nieuw']);
+  });
+
+  it('laat een groene uitslag met rust', () => {
+    expect(weegTegenBaseline({ uitkomst: 'groen', rood: [] }, ['a > oud']).uitkomst).toBe('groen');
+  });
+});
+
+describe('weegDrift', () => {
+  const bewaakt = (rooi: string[]) => ({
+    tabel: 'profiles',
+    naam: 'profiles_update',
+    helft: 'using',
+    status: 'bewaakt',
+    rood: rooi,
+  });
+
+  /**
+   * ⚠️ **Grendel U.** De basislijn wordt vóór de eerste mutatie gemeten, maar
+   *    een dagteller loopt tíjdens de run door: bij beurt één stond die test nog
+   *    groen en bij beurt zeventien niet meer. Alleen de slotmeting vindt dat.
+   */
+  it('laat een bevinding vallen die alleen op een omgevallen test leunt', () => {
+    const [uit] = weegDrift([bewaakt(['avatarbucket.test.ts > geen uuid'])], [
+      'avatarbucket.test.ts > geen uuid',
+    ]);
+
+    expect(uit.status).toBe('ongemeten');
+  });
+
+  /**
+   * ⚠️ **Grendel V — de must-allow-helft.** Wie er nog een ánder rood onder
+   *    heeft, blijft bewaakt: dat rood stond bij de start niet aan en aan het
+   *    eind ook niet, dus het is wél van deze policy.
+   */
+  it('houdt een bevinding overeind die nog een ander rood draagt', () => {
+    const [uit] = weegDrift(
+      [bewaakt(['avatarbucket.test.ts > geen uuid', 'schrijfgrenzen.test.ts > eigenaar'])],
+      ['avatarbucket.test.ts > geen uuid'],
+    );
+
+    expect(uit.status).toBe('bewaakt');
+    expect(uit.rood).toEqual(['schrijfgrenzen.test.ts > eigenaar']);
+  });
+
+  it('raakt een onbewaakte bevinding niet aan', () => {
+    const onbewaakt = { ...bewaakt([]), status: 'onbewaakt' };
+
+    expect(weegDrift([onbewaakt], ['a > x'])[0].status).toBe('onbewaakt');
   });
 });
 

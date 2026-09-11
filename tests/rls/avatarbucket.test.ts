@@ -313,16 +313,35 @@ describe.runIf(beschikbaar)('de avatar-bucket (0126)', () => {
    *    `<map>/.emptyFolderPlaceholder` neer.
    */
   it('valt niet om op een map die geen uuid is', () => {
+    // ⚠️⚠️ **De mapnaam is per run een andere, en dat is sinds QS8-262 ronde 9
+    //    geen smaak maar een reparatie.** Hier stond `tmp`, en dat is een
+    //    lettérlijke sleutel: `bewaak_avatar_aantal()` telt per map in
+    //    `dagtellers` en een `delete` haalt die telling er niet af — dat is
+    //    precies wat migratie 0233 wilde. Dus telde élke run van dit bestand er
+    //    één bij op dezelfde rij, en bij de elfde run viel deze test om met
+    //    `23514` op een stack waar niets mis mee was.
+    //
+    //    📏 Gemeten op 10-09-2026: de rij `avatars/uploader/tmp` stond op 6 na
+    //    een dag testen. Met de hand op 10 gezet werd deze test rood zonder dat
+    //    er één regel code veranderd was — en `rls:dekking` las dat rood als
+    //    "deze policy is bewaakt" en eiste dat er twee terechte registerrijen
+    //    uit gehaald werden. Het instrument is daar apart voor gerepareerd
+    //    (`weegTegenBaseline()`), maar de vaste sleutel hoort hier weg: een test
+    //    die na tien runs omvalt, is een landmijn onder élke poortrun.
+    //
+    //    Een uuid mag het niet zijn — dat is nu juist wat deze test uitsluit.
+    const geenUuid = `map-${randomUUID()}`;
+
     psql(
       `insert into storage.objects (bucket_id, name)
-       values ('avatars', 'tmp/.emptyFolderPlaceholder') on conflict do nothing`,
+       values ('avatars', '${geenUuid}/.emptyFolderPlaceholder') on conflict do nothing`,
     );
 
     expect(als(alice, `select count(*) from storage.objects where bucket_id = 'avatars'`)).toBe(
       '1',
     );
 
-    psql(`delete from storage.objects where name = 'tmp/.emptyFolderPlaceholder'`);
+    psql(`delete from storage.objects where name = '${geenUuid}/.emptyFolderPlaceholder'`);
   });
 
   /**
