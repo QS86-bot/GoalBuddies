@@ -1581,9 +1581,15 @@ database leunt: wie kan die stand veranderen, en wanneer?**
     zo goed als voor je eigen aannames — een uur werk aan een niet-bestaand gat
     is even duur als een uur niet werken aan een echt gat.
 
-    Hetzelfde geldt voor `supabase/functions/`: die vallen buiten typecheck, lint
-    én CI, en geen enkele workflow deployt ze. Draai `npm run edge:sync` vóór elke
-    deploy en controleer de gedéployde versie, niet de repo-versie.
+    Hetzelfde geldt voor `supabase/functions/`, al is de reden versmald. ~~Die
+    vallen buiten typecheck, lint én CI~~ — dat stond hier tot 11-09 en klopt
+    niet meer: `deno check` en `deno lint` draaien er sinds 25-08 in CI overheen
+    (QS8-118-ronde), en sinds **11-09** valt de map ook onder ESLint met
+    `max-depth`, `no-shadow` en de ratel van coderegel 15 (QS8-422). Wat er
+    **wél** blijft staan is de kant die je hier nodig hebt: **geen enkele
+    workflow deployt ze**, en er is geen Deno-testruntime in de poort. Draai
+    `npm run edge:sync` vóór elke deploy en controleer de gedéployde versie, niet
+    de repo-versie.
 
 15. **⚠️ Een aannemelijke diagnose is geen meting.** Hier stond tot 23-08 dat
     Supabase weigert na *ongeveer dertig aanmeldingen per uur*, en dat je de
