@@ -241,6 +241,12 @@ wordt geïmporteerd door tests die geen RN-omgeving hebben. 📏 Bij QS8-71 viel
 `tests/rls/doorloop.test.ts` precies zo om op `ReferenceError: __DEV__ is not
 defined`.
 
+> ⚠️ **Sinds 11-09-2026 staat hij in `src/shared/kiezers/`** (QS8-423). De meting
+> hierboven staat nog — `shared/ui` was alleen het verkeerde antwoord erop, want
+> een kiezer rendert niets en is dus geen UI. Deze alinea blijft in de
+> tegenwoordige tijd staan omdat een beslisdocument de stand van zíjn dag
+> beschrijft; dit blok zegt wat er sindsdien veranderd is (QS8-432).
+
 📏 Om diezelfde keten staat `naarVerzending()` in een **eigen** bestand
 (`verzendbijlage.ts`) naast `useChatbijlage.ts`: met de functie ín de hook krijgt
 elke suite die hem importeert `Flow is not supported` op

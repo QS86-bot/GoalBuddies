@@ -92,6 +92,81 @@ describe('verwijzingenIn laat met rust wat geen bewering is', () => {
   });
 });
 
+/**
+ * ⚠️⚠️ **De wortelloze vorm** (QS8-432). Binnen `src/` schrijft dit project een
+ *    pad routineus zonder de wortel — `shared/kiezers/kiesFoto.ts` — omdat dat
+ *    ook is wat er in de import staat. De controle van QS8-412 zag die vorm
+ *    niet, en de verwijzing die dit issue opleverde stond precies daarin.
+ *
+ * ⚠️ **De grens is het eerste segment en niet de vorm.** 📏 Elk pad zonder
+ *    wortel meenemen meldt er 139, vrijwel allemaal terecht: ze staan onder
+ *    `public/`, onder `.github/` of relatief aan `supabase/functions/`. Alleen
+ *    `shared/`, `modules/` en `lib/` bestaan nergens anders dan onder `src/`, en
+ *    dáárom is die prefix een afleiding en geen gok.
+ */
+describe('verwijzingenIn vindt een pad zonder wortel onder src/', () => {
+  it('zet er src/ voor en zegt erbij dat de wortel ontbrak', () => {
+    expect(verwijzingenIn('zie `shared/kiezers/kiesFoto.ts`')).toEqual([
+      { pad: 'src/shared/kiezers/kiesFoto.ts', regel: 1, wortelloos: 'shared/kiezers/kiesFoto.ts' },
+    ]);
+  });
+
+  it('alle drie de submappen die alleen onder src/ bestaan', () => {
+    const uit = verwijzingenIn('`shared/tekst/index.ts` `modules/goals/index.ts` `lib/supabase.ts`');
+    expect(uit.map((v: { pad: string }) => v.pad)).toEqual([
+      'src/shared/tekst/index.ts',
+      'src/modules/goals/index.ts',
+      'src/lib/supabase.ts',
+    ]);
+  });
+
+  it('dezelfde extensies als een pad mét wortel', () => {
+    const uit = verwijzingenIn('`shared/a.tsx` `modules/b.mjs` `lib/c.json` `shared/d.md`');
+    expect(uit.map((v: { pad: string }) => v.pad)).toEqual([
+      'src/shared/a.tsx',
+      'src/modules/b.mjs',
+      'src/lib/c.json',
+      'src/shared/d.md',
+    ]);
+  });
+});
+
+describe('verwijzingenIn laat de wortelloze vormen met rust die geen src/-pad zijn', () => {
+  /**
+   * ⚠️⚠️ **De duurste valse treffer die deze vorm kan maken.** Een Edge Function
+   *    importeert zijn buren relatief aan `supabase/functions/`, dus
+   *    `_shared/sentry/index.ts` is dáár een kloppend pad. Zou de controle er
+   *    `src/` voor zetten, dan meldt hij een bestand dat nooit heeft moeten
+   *    bestaan — en dat is de vorm waarmee een controle zichzelf om zeep helpt.
+   */
+  it('een pad relatief aan supabase/functions/', () => {
+    expect(verwijzingenIn('`_shared/sentry/index.ts` en `rollover/index.ts`')).toEqual([]);
+  });
+
+  it('een wortel die buiten de gescande mappen ligt', () => {
+    expect(verwijzingenIn('`public/manifest.json` en `.github/workflows/ci.yml`')).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Twee keer tellen is hier de valkuil**, want `src/shared/a.ts` bevat
+   *    `shared/a.ts`. De backtick vlak vóór het eerste segment houdt dat tegen:
+   *    in het volledige pad staat er een schuine streep. Breekt die anker, dan
+   *    komt elk pad met wortel er dubbel uit — één keer goed en één keer als
+   *    `src/src/…` — en meldt de controle bestanden die nooit bestaan hebben.
+   */
+  it('een pad mét wortel komt er één keer uit, niet twee', () => {
+    expect(verwijzingenIn('`src/shared/a.ts`')).toEqual([{ pad: 'src/shared/a.ts', regel: 1 }]);
+  });
+
+  it('een map zonder bestandsnaam, ook zonder wortel', () => {
+    expect(verwijzingenIn('alles in `shared/time` en `modules/goals`')).toEqual([]);
+  });
+
+  it('een pad zonder aanhalingstekens, ook zonder wortel', () => {
+    expect(verwijzingenIn('zie shared/kiezers/kiesFoto.ts hierboven')).toEqual([]);
+  });
+});
+
 describe('beoordeel scheidt kapot van bestaand', () => {
   it('meldt een pad dat niet bestaat, met bron en regel', () => {
     const { kapot } = beoordeel(

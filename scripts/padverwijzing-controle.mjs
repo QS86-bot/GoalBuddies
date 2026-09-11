@@ -54,7 +54,27 @@ const WORTEL = fileURLToPath(new URL('..', import.meta.url));
 /** Waar gescand wordt. */
 const MAPPEN = ['src', 'app', 'scripts', 'supabase', 'tests', 'docs'];
 
-/** Wat er binnen die mappen buiten valt — zie de kop. */
+/**
+ * Wat er binnen die mappen buiten valt — zie de kop.
+ *
+ * ⚠️ **Gemeten en niet aangenomen** (QS8-432). 📏 In `docs/decisions` staan 559
+ *    backtick-paden (de wortelloze vorm meegeteld), waarvan er **10** naar een
+ *    bestand wijzen dat er niet is. Alle tien met de hand nagelopen: vier in het
+ *    document dát over ontbrekende testbestanden gáát, twee afgewezen opties,
+ *    een gewiste sentry-module, een document dat toen bestond, en één die geen
+ *    naam is maar een afkorting (`0166_...sql` — een beletselteken is niet van
+ *    een bestandsnaam te onderscheiden).
+ *
+ * ⚠️⚠️ **Negen van de tien zijn terecht historisch, de tiende niet** — die is
+ *    QS8-434. Dat is de prijs van deze uitsluiting en hij staat hier omdat hij
+ *    gemeten is: negen keer ruis om de tiende te vinden is geen regel, en de
+ *    tiende is bovendien handwerk gebleken.
+ *
+ * ⚠️ **De uitsluiting dekt de verleden tijd, niet de tegenwoordige.** Een
+ *    beslisdocument dat in de tegenwoordige tijd zegt wáár iets staat, kan
+ *    onwaar worden — en dat is deze week één keer gebeurd. Daar helpt geen
+ *    padcontrole: zie de kop over wat deze controle structureel niet ziet.
+ */
 const BUITEN = ['docs/decisions'];
 
 /**
@@ -74,13 +94,25 @@ const IJKING = 'tests/scripts/padverwijzing-controle.test.ts';
 const SOORTEN = /\.(ts|tsx|mjs|sql|md)$/;
 
 /**
- * Een backtick-geciteerd pad dat op een repo-map begint en een extensie draagt.
+ * De extensies die een pad tot een pad maken.
  *
- * ⚠️ De extensielijst is ruimer dan `SOORTEN`: je mág naar een `.json` of een
- *    `.yml` verwijzen, ze worden alleen zelf niet gescand.
+ * ⚠️ De lijst is ruimer dan `SOORTEN`: je mág naar een `.json` of een `.yml`
+ *    verwijzen, ze worden alleen zelf niet gescand.
+ *
+ * ⚠️⚠️ **Eén lijst voor beide vormen, en dat is een besluit** (QS8-432). De
+ *    wortelloze vorm hieronder had er eerst een eigen, smallere — zonder
+ *    `.json` en `.yml`. 📏 Gemeten: die twee extensies leveren in de wortelloze
+ *    vorm vandaag **nul** treffers op, dus de smalle lijst kocht niets en kostte
+ *    een tweede plek waar een lezer een verschil moet verklaren dat er niet is.
+ *    Twee lijsten die hetzelfde horen te zeggen, gaan uit elkaar lopen.
  */
-const VERWIJZING =
-  /`((?:src|app|scripts|docs|supabase|tests)\/[A-Za-z0-9._/[\]()-]+\.(?:ts|tsx|mjs|sql|md|json|yml|yaml))`/g;
+const EXTENSIES = 'ts|tsx|mjs|sql|md|json|yml|yaml';
+
+/** Een backtick-geciteerd pad dat op een repo-map begint en een extensie draagt. */
+const VERWIJZING = new RegExp(
+  '`((?:src|app|scripts|docs|supabase|tests)/[A-Za-z0-9._/[\\]()-]+\\.(?:' + EXTENSIES + '))`',
+  'g',
+);
 
 /**
  * De verwijzingen die met opzet naar een bestand wijzen dat er niet is.
@@ -92,6 +124,18 @@ const VERWIJZING =
  *    bestand is een nieuwe bevinding en geen erfenis.
  */
 export const ZONDER_BESTAND = [
+  {
+    pad: 'src/shared/ui/kiesFoto.ts',
+    in: 'src/shared/afbeelding/index.ts',
+    reden:
+      'De zin noemt de herkomst van een verhuizing en zet de nieuwe plek er ' +
+      'direct naast ("toen nog … nu …"). Weghalen zou de meting eronder — ' +
+      'waaróm die kiezer de datalaag importeerde — onleesbaar maken. QS8-423 ' +
+      'verhuisde hem, QS8-432 vond hem: de eerste vangst van de wortelloze ' +
+      'vorm, want zonder src/ ervoor zag de controle hem niet. ' +
+      '⚠️ Geen backticks in deze reden: dit bestand scant zichzelf, en een pad ' +
+      'tussen backticks in een registerrij is een nieuwe bevinding.',
+  },
   {
     pad: 'tests/beloftes/uitsluitlijst-is-alleen-van-jezelf.test.ts',
     in: 'tests/rls/koppelbare-doelen.test.ts',
@@ -111,11 +155,42 @@ export const ZONDER_BESTAND = [
   },
 ];
 
-/** De verwijzingen in één bestandstekst, met regelnummer. */
+/**
+ * Wortelloze paden: `shared/kiezers/kiesFoto.ts` zonder de `src/` ervoor.
+ *
+ * ⚠️⚠️ **Waarom alleen déze drie eerste segmenten en niet elk pad zonder
+ *    wortel** (QS8-432). 📏 Gemeten: een algemene regel — "elke backtick met een
+ *    schuine streep en een code-extensie die nergens oplost" — meldt er **139**,
+ *    en ze zijn vrijwel allemaal terecht. `public/manifest.json` en
+ *    `.github/workflows/ci.yml` bestáán, hun wortel staat alleen niet in
+ *    `MAPPEN`; `_shared/sentry/index.ts` en `rollover/index.ts` zijn relatief
+ *    aan `supabase/functions/`; er zit zelfs een URL tussen. **Een controle die
+ *    139 dingen meldt, bewaakt niets.**
+ *
+ *    📏 Met de eerste segmenten beperkt tot de submappen van `src/`: **69 lossen
+ *    op, 1 niet** — en die ene was precies de verwijzing waar dit issue om
+ *    begon. Nul valse treffers.
+ */
+const SUBMAPPEN = ['shared', 'modules', 'lib'];
+const ZONDER_WORTEL = new RegExp(
+  '`((?:' + SUBMAPPEN.join('|') + ')/[A-Za-z0-9._/[\\]()-]+\\.(?:' + EXTENSIES + '))`',
+  'g',
+);
+
+/**
+ * De verwijzingen in één bestandstekst, met regelnummer.
+ *
+ * Een wortelloos pad krijgt `src/` ervoor: dat is de enige wortel waar
+ * `shared/`, `modules/` en `lib/` onder bestaan, en zo is er verder in de
+ * controle maar één soort pad.
+ */
 export function verwijzingenIn(tekst) {
   const gevonden = [];
   tekst.split('\n').forEach((regel, i) => {
     for (const m of regel.matchAll(VERWIJZING)) gevonden.push({ pad: m[1], regel: i + 1 });
+    for (const m of regel.matchAll(ZONDER_WORTEL)) {
+      gevonden.push({ pad: `src/${m[1]}`, regel: i + 1, wortelloos: m[1] });
+    }
   });
   return gevonden;
 }
