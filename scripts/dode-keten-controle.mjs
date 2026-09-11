@@ -145,9 +145,12 @@ export const BEWAAKT_BUITEN_DE_APP = {
   functie_vingerafdrukken:
     'Vergelijkt de gedeployde functies met de migraties. Aanroeper is ' +
     '`scripts/functies-controle.mjs`, die in `/audit` draait.',
-  functies_voor_authenticated:
-    'De grendel onder 0115: welke functies `authenticated` mag uitvoeren. Zonder ' +
-    'test is die grant een aanname.',
+  functies_met_uitvoerrecht:
+    'De grendel onder 0115 en 0253: welke functies `anon` of `authenticated` mag ' +
+    'uitvoeren, mét handtekening. Zonder test is die grant een aanname.',
+  kanonieke_handtekeningen:
+    'Zet de handtekeningen uit de grant-regels om naar de vorm die Postgres zelf ' +
+    'rendert. Hoort bij `functies_met_uitvoerrecht` — QS8-428.',
   indexdekking_bewaking:
     'Onwrikbare regel 11 — index op elke FK en elke WHERE/ORDER BY-kolom.',
   initplan_bewaking:
