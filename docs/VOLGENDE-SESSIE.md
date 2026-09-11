@@ -3,7 +3,8 @@
 > Kopieer alles onder de streep in een nieuwe chat. Werk dit bestand bij aan het
 > eind van elke sessie — het is de overdracht, niet een archief.
 >
-> **Laatst bijgewerkt:** 10-09-2026, na de merge van QS8-414 (`72741e9`) — QS8-418.
+> **Laatst bijgewerkt:** 11-09-2026, tijdens QS8-422 (PR #410). Daarvóór 10-09,
+> na QS8-414 (`72741e9`) — QS8-418.
 > Er landt veel uit twee sessies tegelijk; `git log origin/main` is de betrouwbare
 > lijst en niet deze zin. **Er is geen controle die het bijwerken afdwingt, en met
 > reden — zie de kop van `scripts/docs-controle.mjs`: een controle die proza eist,
@@ -129,6 +130,46 @@
 > `grep "execFileSync('psql'"` vond er één, want vier van de vijf schrijven de
 > aanroep over meerdere regels. **Een regel die je met de hand handhaaft,
 > handhaaf je op de vorm die je toevallig intypt.**
+>
+> ⚠️⚠️ **11-09, punt J: zet je een lintregel voor het eerst op een map aan, dan
+> meldt hij ook wat er per ongeluk in staat — en dat kan de meerderheid zijn.**
+> 📏 Bij QS8-422 gaf `max-depth` er **22** in `supabase/functions/`, en
+> **achttien** daarvan kwam niet uit de logica. Het waren twee lussen boven
+> elkaar — `for await (const pagina of paginas(…))` met `for (const rij of
+> pagina)` erin — waarvan het lichaam bij het invoeren van de paginering nooit
+> herschreven is, dus de binnenste lus stond op dezelfde inspringing als de
+> buitenste. **Kijk dus eerst of er een vórm achter de meldingen zit voordat je
+> ze één voor één gaat repareren**; hier was één helper (`rijen()`) genoeg voor
+> vier vijfde.
+>
+> ⚠️ **En tel in dezelfde eenheid als de regel die je aanzet.** Datzelfde issue
+> noemde tien functies boven de vijftig met een langste van 710; dat is geteld
+> mét lege regels en commentaar. Met `skipBlankLines` en `skipComments` — waarmee
+> dit project overal telt — zijn het er **zes** met een langste van 282. Een
+> plafond in een andere eenheid dan de lintregel is een plafond dat de volgende
+> meting niet terugvindt.
+>
+> ⚠️ **11-09, punt K: punt H is opnieuw gebeurd, in dezelfde sessie die hem
+> opschreef.** `git checkout -- scripts/regel15-controle.mjs` om een
+> ijkingsmutatie terug te draaien wiste óók de hele wijziging van dat issue —
+> want die stond nog niet in een commit. **Commit je werk vóór je gaat ijken, of
+> herstel uit een kopie in de scratchpad.** Een teruggedraaide ijking hoort je
+> niets te kosten.
+>
+> ⚠️ **11-09, punt L: `try` telt mee voor `max-depth`, en dat verandert wat er
+> haalbaar is.** In `notificaties/index.ts` zit het hele profiellichaam in een
+> `try`, dus onder `for` + `try` blijft er precies één laag over. Wie inschat
+> dat een `max-depth`-doel haalbaar is zonder functies te splitsen, moet de
+> `try`-blokken meetellen. 📏 Met een probe nagegaan en niet aangenomen.
+>
+> ⚠️ **11-09, punt M: een map linten haalt méér binnen dan de regel die je
+> wilde.** `supabase/functions/` erbij zetten activeerde de hele Expo-config:
+> `import/first` (twee echte bevindingen, gerepareerd) en `import/no-unresolved`
+> op de `jsr:`-specifier (uitgezet, met reden — `deno check` toetst hem al). En
+> de security-review vond er nog een: de nieuwe import `rijen` werd door twee
+> lokale `const rijen` geschaduwd, en **niets ving dat** omdat `no-shadow`
+> nergens aan stond. Hij staat er nu bij, met nul treffers. **De eerste grendel
+> op een pas-gelinte map levert de tweede op.**
 >
 > Op 09-09 en 10-09 landden er samen **zevenenvijftig** PR's (#323 t/m #387) — de
 > drukste twee dagen van dit project, uit twee sessies naast elkaar. Een lijst

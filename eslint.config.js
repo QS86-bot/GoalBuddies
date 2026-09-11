@@ -11,7 +11,18 @@ const GEDEELDE_LAAG_GEEN_DATALAAG =
 module.exports = [
   ...expoConfig,
   {
-    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/*'],
+    // ⚠️ **`supabase/functions` staat er sinds 11-09-2026 níét meer bij**
+    //    (QS8-422). `supabase/*` sloot de hele map uit, en dat is ~6.700 regels
+    //    TypeScript waar coderegel 15 nergens gold — precies de map die elk uur
+    //    met `service_role` tegen productie draait en dus langs elke
+    //    RLS-policy heen gaat. `deno lint` draait er wel overheen maar kent
+    //    geen complexiteitsregels.
+    //
+    //    `migrations/` en `shim/` blijven uitgesloten en staan er bij naam:
+    //    die dragen SQL. Bewust niet als `supabase/*` met een uitzondering
+    //    erop — dan valt een map die er ooit bij komt stilzwijgend buiten de
+    //    linter, en dat is precies de bevinding die dit blok repareert.
+    ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/migrations/*', 'supabase/shim/*'],
   },
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -280,7 +291,23 @@ module.exports = [
     //    het waren allemaal controlescripts die over geneste datastructuren
     //    lopen, en de reparatie was elke keer dezelfde: de binnenste lus naar een
     //    functie met een naam.
-    files: ['src/**/*.ts', 'src/**/*.tsx', 'app/**/*.ts', 'app/**/*.tsx', 'scripts/**/*.mjs'],
+    // ⚠️ **`supabase/functions/` staat er sinds 11-09-2026 bij** (QS8-422).
+    //    📏 Gemeten toen die map voor het eerst gelint werd: **22**
+    //    overtredingen, en **achttien** ervan kwamen niet uit de logica maar
+    //    uit één vorm — `for await (const pagina of paginas(…))` met
+    //    `for (const rij of pagina)` erin, in de twee jobs die elk uur draaien.
+    //    Het lichaam was bij het invoeren van de paginering nooit herschreven,
+    //    dus de extra laag stond er zonder dat iemand hem gezien had. `rijen()`
+    //    in `src/shared/bladeren` haalt hem weg; de vier die overbleven zijn
+    //    met guards vlak getrokken, zónder een functie op te splitsen.
+    files: [
+      'src/**/*.ts',
+      'src/**/*.tsx',
+      'app/**/*.ts',
+      'app/**/*.tsx',
+      'scripts/**/*.mjs',
+      'supabase/functions/**/*.ts',
+    ],
     rules: { 'max-depth': ['error', 3] },
   },
   {
@@ -323,6 +350,43 @@ module.exports = [
     ignores: ['**/*.test.ts', '**/*.test.tsx'],
     rules: {
       'max-lines-per-function': ['error', { max: 75, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // ⚠️ **`supabase/functions/` viel tot 11-09-2026 buiten élke coderegel**
+    //    (QS8-422). `deno lint` draait er sinds 25-08 overheen, maar dat kent
+    //    geen complexiteitsregels — dus ~6.700 regels TypeScript zonder
+    //    coderegel 15, in precies de map die elk uur met `service_role` tegen
+    //    productie draait en dus langs elke RLS-policy heen gaat.
+    //
+    //    Wat hier wél al goed was: 📏 `no-explicit-any` en `no-empty` apart
+    //    tegen deze map losgelaten gaven **nul** treffers. Dit ging over
+    //    vertakking en lengte, niet over typeveiligheid.
+    //
+    // ⚠️ **De vijftig staat hier bewust níét als lintregel**, om dezelfde reden
+    //    als in `app/` en `scripts/`: er zitten er zes boven en de langste telt
+    //    280 regels. Wat hier bindt is de rátel in
+    //    `scripts/regel15-controle.mjs`. `max-depth` kán wél hard — de
+    //    tweeëntwintig overtredingen zijn in deze ronde weg.
+    files: ['supabase/functions/**/*.ts'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      // ⚠️⚠️ **Geen schaduw, en dat is een grendel uit de security-review op
+      //    QS8-422.** `rijen` werd daar als import binnengehaald terwijl er in
+      //    hetzelfde bestand al twee lokale `const rijen` stonden. Vandaag
+      //    onschadelijk — die helpers roepen de generator niet aan — maar niets
+      //    ving het: `deno lint` zwijgt hier ook over. Wie er later paginering
+      //    in zo'n helper zet, krijgt de lokale array te pakken en de uurjob
+      //    valt om met een TypeError, in de énige map zonder testruntime.
+      //    📏 Nul treffers nadat die twee hernoemd zijn, dus dit kan hard.
+      '@typescript-eslint/no-shadow': 'error',
+      // ⚠️ **Deno en niet Node, en dat is de enige uitzondering die deze map
+      //    krijgt.** `jsr:@supabase/supabase-js@2` is de specifier die Supabase
+      //    voorschrijft en die de runtime verwacht; ESLint's resolver kent
+      //    alleen Node-paden en meldt hem als onvindbaar. Dat de import klópt,
+      //    toetst `deno check` in `npm run edge:types:controle` — dus hier is
+      //    niets onbewaakt, alleen elders bewaakt.
+      'import/no-unresolved': 'off',
     },
   },
   {
