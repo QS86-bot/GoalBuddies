@@ -1,12 +1,11 @@
 import { useState } from 'react';
 
-import { t } from '../i18n';
+import { t } from '../../shared/i18n';
 
-import { keurChatdoc, keurChatfoto } from '../../modules/buddies';
+import { kiesDocument, kiesFoto, type Gekozenbijlage } from '../../shared/kiezers';
 
-import { kiesDocument } from './kiesDocument';
-import { kiesFoto } from './kiesFoto';
-import type { Gekozenbijlage } from './verzendbijlage';
+import { keurChatdoc } from './chatdoc';
+import { keurChatfoto } from './chatfoto';
 
 /**
  * De bijlagekeuze onder de invoerbalk van de groepschat — QS8-71 en QS8-72.
@@ -28,10 +27,18 @@ import type { Gekozenbijlage } from './verzendbijlage';
  *    — de keuze heeft per soort drie uitgangen (afgebroken, mislukt, gekozen) en
  *    dat is de enige vorm waarin ze los te toetsen zijn.
  *
- * ⚠️ Hij staat in `shared/ui` omdat de kiezers dat ook doen: `expo-image-picker`
- *    en `expo-document-picker` slepen react-native mee, en een module-barrel
- *    wordt geïmporteerd door tests die geen RN-omgeving hebben. Zie de kop van
- *    `kiesFoto.ts` voor het gemeten geval.
+ * ⚠️ Hij staat sinds 11-09-2026 in `modules/buddies/react.ts` (QS8-423), en
+ *    daarvóór in `shared/ui` — "omdat de kiezers daar ook stonden". De meting
+ *    eronder staat nog: `expo-image-picker` en `expo-document-picker` slepen
+ *    react-native mee, en een module-barrel wordt geïmporteerd door tests die
+ *    geen RN-omgeving hebben. Zie de kop van `kiesFoto.ts` voor het gemeten
+ *    geval.
+ *
+ *    Wat veranderde is het antwoord op die meting. De kiezers staan nu in
+ *    `shared/kiezers` — een kiezer rendert niets en is geen UI — en deze hook
+ *    staat bij zijn domein, in `react.ts` en niet in `index.ts`. Die splitsing
+ *    houdt de barrel platformvrij; dát is wat de RLS-tests overeind houdt.
+ *    Uitleg in `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
  */
 export interface Chatbijlagekeuze {
   readonly bijlage: Gekozenbijlage | null;

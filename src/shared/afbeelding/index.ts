@@ -306,3 +306,54 @@ function schrijfGetalKlein(bytes: Uint8Array, van: number, waarde: number): void
   bytes[van + 2] = (waarde >> 16) & 0xff;
   bytes[van + 3] = (waarde >> 24) & 0xff;
 }
+
+// ---------------------------------------------------------------------------
+// Van wat de fotokiezer geeft naar wat de storage-API wil
+// ---------------------------------------------------------------------------
+
+const B64_ALFABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/**
+ * Zet base64 om in bytes.
+ *
+ * ⚠️ **Met de hand, en dat is een afweging en geen koppigheid.** `expo-image-picker`
+ *    geeft op native een `file://`-uri en op web een `data:`-uri; `fetch()` op een
+ *    `file://`-uri is in React Native niet betrouwbaar, dus we vragen de kiezer om
+ *    `base64` en dat werkt op beide platformen hetzelfde. `atob` bestaat op
+ *    moderne Hermes wél, maar niet op elke versie die een testtoestel draait, en
+ *    een terugval die je nooit kunt zien is geen terugval. Twintig regels is
+ *    goedkoper dan een dependency die alleen dit doet.
+ *
+ * ⚠️ Ongeldige invoer geeft `null` en geen halve buffer. Een afbeelding die er
+ *    half is, is een upload die op de server sneuvelt met een melding waar
+ *    niemand iets aan heeft.
+ *
+ * ⚠️⚠️ **Hij stond tot 11-09-2026 in `src/modules/auth/avatar.ts`** (QS8-423).
+ *    Dat was de enige reden dat `shared/ui/kiesFoto.ts` de datalaag importeerde,
+ *    en die richting had geen lintregel. Een base64-decoder is geen
+ *    auth-kennis: hij zet bytes om en weet van geen enkel domein. Hier staat hij
+ *    naast `ontdoeVanMetadata()`, de andere helft van dezelfde handeling —
+ *    wat de fotokiezer geeft, wordt hier bruikbaar gemaakt.
+ */
+export function base64NaarBytes(base64: string): Uint8Array | null {
+  const schoon = base64.replace(/[\r\n\s]/g, '').replace(/=+$/, '');
+  if (schoon.length % 4 === 1) return null;
+
+  const uit = new Uint8Array(Math.floor((schoon.length * 3) / 4));
+  let buffer = 0;
+  let bits = 0;
+  let n = 0;
+
+  for (const teken of schoon) {
+    const waarde = B64_ALFABET.indexOf(teken);
+    if (waarde === -1) return null;
+    buffer = (buffer << 6) | waarde;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      uit[n++] = (buffer >> bits) & 0xff;
+    }
+  }
+
+  return uit;
+}

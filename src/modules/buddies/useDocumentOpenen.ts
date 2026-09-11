@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import { useState } from 'react';
 
 import { reportError } from '../../lib/observability';
-import { tekenChatdoc } from '../../modules/buddies';
+import { tekenChatdoc } from './chatdoc';
 
 /**
  * Een document uit de groepschat openen — QS8-72.
@@ -15,14 +15,22 @@ import { tekenChatdoc } from '../../modules/buddies';
  *    `tekenChatdoc()`). Dat maakt de app op precies één plek verantwoordelijk
  *    voor het verschil tussen een pad en een URL, en dat is hier.
  *
- * ⚠️⚠️ **Hij staat in `shared/ui` en niet in `modules/buddies`, om twee redenen
- *    die allebei gemeten zijn.** `eslint.config.js` verbiedt de datalaag élke
- *    import uit `shared/ui` (QS8-207) — niet het probleem hier — maar
- *    `expo-linking` sleept react-native mee, en de barrel van een module wordt
- *    geïmporteerd door tests die geen RN-omgeving hebben. 📏 Bij QS8-71 viel
+ * ⚠️⚠️ **Hij staat sinds 11-09-2026 in `modules/buddies/react.ts`** (QS8-423),
+ *    en daarvóór in `shared/ui`. **De meting die hem daar hield staat nog, en
+ *    het is `react.ts` en niet `index.ts` die haar beantwoordt:** `expo-linking`
+ *    sleept react-native mee, en de barrel van een module wordt geïmporteerd
+ *    door tests die geen RN-omgeving hebben. 📏 Bij QS8-71 viel
  *    `tests/rls/doorloop.test.ts` precies zo om op `ReferenceError: __DEV__ is
- *    not defined`. Zelfde val, zelfde plaatsing als `kiesFoto.ts` en
- *    `useBewijsfotokeuze.ts`.
+ *    not defined`. `index.ts` blijft daarom platformvrij; `react.ts` is het
+ *    tweede toegangspunt waar `expo-*` wél mag, en de barrel re-exporteert hem
+ *    niet.
+ *
+ *    Wat er niet meer geldt is de tweede reden. `eslint.config.js` verbiedt de
+ *    datalaag nog steeds élke import uit `shared/ui` (QS8-207), maar dit bestand
+ *    importeert daar niets uit — en de kiezers staan er sinds QS8-423 zelf niet
+ *    meer. Zelfde beweging als `kiesFoto.ts` en `useBewijsfotokeuze.ts`, elk
+ *    naar hun eigen laag. Uitleg in
+ *    `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
  *
  * ⚠️ **De stand hangt aan het pad en niet aan de hook.** Eén gesprek toont
  *    meerdere documenten; een enkele `bezig`-vlag zou bij een tik op het ene

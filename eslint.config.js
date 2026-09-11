@@ -1,6 +1,13 @@
 const expoConfig = require('eslint-config-expo/flat');
 const tseslint = require('typescript-eslint');
 
+// Eén tekst voor twee grendels — zie het blok voor `src/shared/**` verderop.
+// Twee regels moeten dezelfde grens in twee vormen afdwingen (een statische en
+// een dynamische import); de uitleg die de lezer krijgt hoort dan niet per vorm
+// te verschillen, en al helemaal niet uit elkaar te groeien.
+const GEDEELDE_LAAG_GEEN_DATALAAG =
+  'De gedeelde laag importeert niets uit de datalaag. Een platformvermogen (een kiezer, een opener) hoort in shared/kiezers; een hook die zo\'n vermogen aan een domein knoopt hoort in modules/<naam>/react.ts. Zie QS8-423.';
+
 module.exports = [
   ...expoConfig,
   {
@@ -97,6 +104,105 @@ module.exports = [
               group: ['**/shared/ui', '**/shared/ui/*'],
               message:
                 'De datalaag importeert niets uit shared/ui — ook geen type. De standen die de database teruggeeft staan in shared/standen; labels en toon blijven in shared/ui. Zie QS8-207.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ⚠️⚠️ **En de andere kant op, sinds 11-09-2026 (QS8-423).** De regel
+    //    hierboven was asymmetrisch: de datalaag mocht niets uit `shared/ui`
+    //    halen, maar `shared/ui` mocht alles uit de datalaag halen. 📏 Gemeten
+    //    in de weekaudit van 10-09: drie bestanden deden dat, alle drie in
+    //    dezelfde week gebouwd, alle drie met een **waarde**-import — en alle
+    //    drie geëxporteerd uit `shared/ui/index.ts`, dus
+    //    `import { Button } from '@/shared/ui'` trok de barrel van
+    //    `modules/buddies` mee.
+    //
+    // ⚠️ **De reden die er in de koppen stond, was geen laagargument.** Er
+    //    stond dat `expo-image-picker` react-native meesleept en dat een
+    //    module-barrel door tests wordt geïmporteerd die geen RN-omgeving
+    //    hebben. Dat klopt — 📏 opnieuw nagemeten op 11-09 door `kiesFoto`
+    //    tijdelijk in `modules/buddies/index.ts` te exporteren: `doorloop.test.ts`
+    //    viel om met `ReferenceError: __DEV__ is not defined`. Maar het is een
+    //    **testomgevingsprobleem** en geen domeingrens, en de prijs was dat een
+    //    componentenbibliotheek het chatdomein ging kennen (`keurChatfoto`,
+    //    `tekenChatdoc`).
+    //
+    // ⚠️ **De knoop is opgelost door de derde laag te benoemen die er al was:**
+    //    een kiezer is geen UI. `shared/kiezers` draagt de platformvermogens,
+    //    de hooks die ze aan een domein knopen wonen in
+    //    `modules/<naam>/react.ts`, en `shared/ui` houdt componenten, labels en
+    //    toon. Zie `docs/decisions/2026-09-11-een-kiezer-is-geen-ui.md`.
+    //
+    // ⚠️ **Dit is de grendel van dit issue en niet de verhuizing** — dezelfde
+    //    zin als bij de regel hierboven, en om dezelfde reden: zonder deze
+    //    regel is het opruimen over drie maanden terug.
+    files: ['src/shared/**/*.ts', 'src/shared/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx'],
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/modules/**'],
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+          ],
+        },
+      ],
+      // ⚠️ **`no-restricted-imports` ziet `await import()` niet**, en dat is
+      //    gemeten en niet aangenomen: die regel hangt aan `ImportDeclaration`,
+      //    en een dynamische import is een `ImportExpression`. Dat gat is hier
+      //    niet theoretisch — `src/modules/ai/plan-toepassen.ts` gebruikt die
+      //    vorm op twee plekken in productiecode om een cykel te breken, dus
+      //    het is een idioom dat dit project kent en dat de volgende schrijver
+      //    binnen handbereik heeft. Een grendel met een uitgang die de codebase
+      //    zelf al gebruikt, bewaakt die uitgang niet.
+      //
+      //    Deze regel dekt alle vier de vormen (relatief en via `@/`, statisch
+      //    en dynamisch): hij kijkt naar het opgelóste pad in plaats van naar
+      //    de letterlijke tekst. De regel hierboven blijft staan als tweede net
+      //    op de twee statische vormen — hij noemt QS8-423 op de importregel
+      //    zelf, wat korter uit te leggen is dan een opgelost pad.
+      //
+      // ⚠️⚠️ **Niet `no-restricted-syntax` gebruiken voor zoiets in dit
+      //    bestand.** Dat was de eerste vorm hiervan, met een
+      //    `ImportExpression`-selector, en hij was stil dood: het tijdblok
+      //    verderop zet `no-restricted-syntax` óók, staat láter, en dekt
+      //    `src/**` — en flat config **vervangt** de opties van een regel in
+      //    plaats van ze samen te voegen. 📏 `eslint --print-config` gaf alleen
+      //    de drie tijdselectors terug. Twee blokken die dezelfde regelnaam
+      //    zetten en elkaar in `files` overlappen, zijn niet allebei van
+      //    kracht; de laatste wint volledig. Kies dan een andere regelnaam, of
+      //    zet de selectors bij elkaar in één blok.
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            {
+              target: './src/shared',
+              from: './src/modules',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
+            },
+            {
+              // ⚠️ **`lib/supabase` is de datalaag één deur verder.** De zone
+              //    hierboven dekt `src/modules`, en een `shared`-bestand dat de
+              //    client rechtstreeks pakt legt dezelfde knoop zonder er ooit
+              //    langs te komen. 📏 Vandaag nul treffers in `src/shared` — dit
+              //    legt een eigenschap vast die waar is, en dat is goedkoper dan
+              //    hem terugdraaien.
+              //
+              //    Met opzet het bestand en niet de map: `lib/observability` en
+              //    `lib/env` zijn dwarsdoorsnijdend en geen datalaag, en die
+              //    hier meenemen zou een grens trekken die niemand besloten
+              //    heeft.
+              target: './src/shared',
+              from: './src/lib/supabase.ts',
+              message: GEDEELDE_LAAG_GEEN_DATALAAG,
             },
           ],
         },

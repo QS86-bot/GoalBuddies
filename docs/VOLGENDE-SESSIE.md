@@ -1121,6 +1121,40 @@ met de onderbouwing van de groene notities in `docs/GROENE-NOTITIES.md`.
 
 ## VALKUILEN die deze codebase al een keer gekost hebben
 
+- **⚠️⚠️ Twee blokken in `eslint.config.js` die dezelfde regelnaam zetten zijn
+  niet allebei van kracht — 11-09, QS8-423.** Flat config **vervangt** de opties
+  van een regel in plaats van ze samen te voegen: overlappen de `files` van twee
+  blokken, dan wint het láátste volledig en is het eerste er niet meer.
+
+  Dat kostte een nieuwe laaggrendel zijn hele werking. Hij stond er als
+  `no-restricted-syntax`, las goed, en het tijdblok verderop zet diezelfde naam
+  over `src/**`. 📏 `npm run lint` gaf **exitcode 0**, de config laadde, en er
+  was geen grens. De ijking was het enige dat het zag.
+
+  **Twee dingen om te doen.** Draai `npx eslint --print-config <een bestand uit
+  het bereik>` en kijk of jouw opties er écht in staat — niet of de regel in het
+  bestand staat. En kies liever een regelnaam die nog niet gebruikt wordt:
+  `import/no-restricted-paths` botst niet met `no-restricted-syntax` en dekt
+  bovendien `await import()`, wat `no-restricted-imports` níet doet (die hangt
+  aan `ImportDeclaration`). 📏 Dat laatste gat is hier niet theoretisch — er
+  staan veertien dynamische imports in de repo, twee in productiecode.
+
+  `tests/scripts/laaggrenzen.test.ts` bewaakt dit nu voor beide laaggrenzen, met
+  een blok dat via `calculateConfigForFile()` toetst dát de regel de opgeloste
+  config overleeft. **Een gemiste vorm en een opgegeten regel zijn twee
+  verschillende fouten**, en de gevallen vinden de tweede alleen bij toeval.
+
+- **⚠️ Een verhuisd bestand onderbouwt zijn oude plek — 11-09, QS8-423.** Vijf
+  verplaatste bestanden droegen een uitgeschreven argument voor een map waar ze
+  niet meer stonden. Dat is duurder dan een omissie: een omissie valt op, een
+  argument leest de volgende persoon als een reden om niet te twijfelen.
+
+  📏 `padverwijzing:controle` ziet dit niet, en dat is correct gedrag — die vindt
+  een pad dat niet bestáát, niet een bestand dat ergens anders staat dan zijn kop
+  beweert. **Loop bij elke `git mv` de kop van het bestand na**, en vraag of de
+  meting die erin staat nog hetzelfde antwoord geeft. Meestal staat de meting nog
+  en is alleen de conclusie verhuisd.
+
 - **⚠️⚠️ `is distinct from` is niet de nulls-veilige `<>` — 10-09, QS8-406.** Een
   CHECK `a is distinct from b` op twee nullable kolommen weigert de stand waarin
   ze **allebei** `null` zijn: 📏 `null is distinct from null` geeft `false`.

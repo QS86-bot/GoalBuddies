@@ -58,7 +58,6 @@ import {
   Body,
   Button,
   Caption,
-  useBewijsfotokeuze,
   Card,
   Choice,
   DoelStandKaart,
@@ -78,6 +77,7 @@ import {
   type WeeklyGoalStatus,
   TeBeoordelenKaart,
 } from '@/shared/ui';
+import { useBewijsfotokeuze } from '@/modules/completions/react';
 
 /**
  * Vaste terugvallen voor `useAsyncMetTerugval` — QS8-219.

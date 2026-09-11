@@ -1,7 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 
-import { base64NaarBytes } from '../../modules/auth';
-import { ontdoeVanMetadata } from '../afbeelding';
+import { base64NaarBytes, ontdoeVanMetadata } from '../afbeelding';
 
 /**
  * Een foto kiezen — QS8-71 (groepschat) en QS8-391 (bewijs bij een voltooiing).
@@ -12,8 +11,13 @@ import { ontdoeVanMetadata } from '../afbeelding';
  *    toetsen zijn. Zelfde reden en zelfde vorm als `kiesAfbeelding()` in
  *    `src/modules/auth/useAvatarKeuze.ts`.
  *
- * ⚠️⚠️ **Hij staat in `shared/ui` en niet in `modules/buddies`, en dat is een
- *    gemeten reparatie.** `expo-image-picker` sleept react-native mee, en de
+ * ⚠️⚠️ **Hij staat in `shared/kiezers` sinds 11-09-2026** (QS8-423). Hij stond
+ *    in `shared/ui`, en de meting hieronder is de reden dat hij niet in
+ *    `modules/buddies` kán staan — maar `shared/ui` was het verkeerde antwoord
+ *    op een juiste meting: een kiezer rendert niets, draagt geen label en kent
+ *    geen toon. De alinea hieronder zegt dat zelf al met zoveel woorden.
+ *
+ * ⚠️ **De oorspronkelijke meting, en hij staat nog.** `expo-image-picker` sleept react-native mee, en de
  *    barrel van een module wordt door tests geïmporteerd die geen RN-omgeving
  *    hebben. 📏 Met dit bestand in `modules/buddies/index.ts` viel
  *    `tests/rls/doorloop.test.ts` om op `ReferenceError: __DEV__ is not

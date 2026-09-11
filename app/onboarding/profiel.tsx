@@ -6,13 +6,13 @@ import {
   AVATAR_MAX_BYTES,
   rondOnboardingAf,
   updateProfiel,
-  useAvatarKeuze,
   type Profiel,
   useProfiel,
   userClock,
   useSession,
   zetWeekStartdag,
 } from '@/modules/auth';
+import { useAvatarKeuze } from '@/modules/auth/react';
 import { herinneringStandaard } from '@/modules/notifications';
 import { t } from '@/shared/i18n';
 import { space } from '@/shared/theme';
