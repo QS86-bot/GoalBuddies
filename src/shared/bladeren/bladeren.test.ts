@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { paginas } from './index';
+import { paginas, rijen } from './index';
 
 /**
  * De ijking van `paginas()` — QS8-206.
@@ -74,5 +74,72 @@ describe('paginas', () => {
     //    job die niet stopt is erger dan een job die valt: hij verbruikt zijn
     //    tijdslimiet en laat niets achter waaruit blijkt waarom.
     await expect(alles(paginas(bron(10), 0))).rejects.toThrow(RangeError);
+  });
+});
+
+/**
+ * De ijking van `rijen()` — QS8-422.
+ *
+ * ⚠️ **De belofte is dezelfde als die van `paginas()`, en dat is precies wat
+ *    hier getoetst wordt:** elke rij precies één keer, in dezelfde volgorde,
+ *    inclusief de stille afkapping die de aanleiding van QS8-206 was. Een
+ *    helper die de pagina's openvouwt mag geen tweede opvatting van "klaar"
+ *    introduceren — hij leent die van `paginas()`.
+ *
+ * ⚠️ **En hij bestaat niet voor de leesbaarheid alleen.** Hij haalt in de twee
+ *    jobs die elk uur draaien een laag nesting weg die er per ongeluk in stond;
+ *    achttien van de tweeëntwintig overtredingen van coderegel 15 in
+ *    `supabase/functions/` kwamen daarvandaan.
+ */
+describe('rijen', () => {
+  async function alleRijen(gen: AsyncGenerator<number, void, undefined>) {
+    const uit: number[] = [];
+    for await (const rij of gen) uit.push(rij);
+    return uit;
+  }
+
+  it('geeft precies dezelfde rijen als `paginas()`, in dezelfde volgorde', async () => {
+    expect(await alleRijen(rijen(bron(47), 10))).toEqual(await alles(paginas(bron(47), 10)));
+  });
+
+  it('ziet elke rij precies één keer', async () => {
+    const gezien = await alleRijen(rijen(bron(47), 10));
+
+    expect(gezien).toHaveLength(47);
+    expect(new Set(gezien).size).toBe(47);
+    expect(gezien).toEqual([...gezien].sort((a, b) => a - b));
+  });
+
+  /** Het geval dat de bevinding wás: een bron die stil afkapt op een maximum. */
+  it('stopt waar `paginas()` stopt bij een bron die stil afkapt', async () => {
+    expect(await alleRijen(rijen(bron(47, 3), 10))).toEqual(await alles(paginas(bron(47, 3), 10)));
+  });
+
+  it('geeft niets terug bij een lege bron', async () => {
+    expect(await alleRijen(rijen(bron(0), 10))).toEqual([]);
+  });
+
+  it('erft de weigering van een paginagrootte onder één', async () => {
+    await expect(alleRijen(rijen(bron(5), 0))).rejects.toThrow(RangeError);
+  });
+
+  /**
+   * ⚠️ **Lui, en dat is geen detail.** De aanroeper is een job die per rij
+   *    meerdere query's doet; zou deze generator eerst alles inlezen, dan is de
+   *    stille afkapping wel weg maar staat het geheugen weer lineair in het
+   *    aantal gebruikers — precies wat QS8-206 juist wegnam.
+   */
+  it('haalt geen pagina op die de aanroeper nog niet nodig heeft', async () => {
+    const gevraagd: number[] = [];
+    const haal = async (start: number, aantal: number) => {
+      gevraagd.push(start);
+      return Array.from({ length: aantal }, (_, i) => start + i);
+    };
+
+    const gen = rijen(haal, 10);
+    await gen.next();
+    await gen.next();
+
+    expect(gevraagd).toEqual([0]);
   });
 });

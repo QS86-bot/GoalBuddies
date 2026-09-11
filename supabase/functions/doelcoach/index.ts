@@ -1,5 +1,11 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+// ⚠️ Uit de gegenereerde kopie van `shared/time` (`npm run edge:sync`), niet met
+//    de hand gerekend. Correctheidsregel 7 geldt ook hier.
+import { daysBetween, localDateIn } from '../_shared/time/zoned.ts';
+import { meld } from '../_shared/melden.ts';
+import { metCors } from '../_shared/cors.ts';
+
 /**
  * De systeemclient, met het type dat de aanroep zélf oplevert.
  *
@@ -21,12 +27,6 @@ function maakSysteemclient(url: string, sleutel: string) {
 }
 
 type Systeemclient = ReturnType<typeof maakSysteemclient>;
-
-// ⚠️ Uit de gegenereerde kopie van `shared/time` (`npm run edge:sync`), niet met
-//    de hand gerekend. Correctheidsregel 7 geldt ook hier.
-import { daysBetween, localDateIn } from '../_shared/time/zoned.ts';
-import { meld } from '../_shared/melden.ts';
-import { metCors } from '../_shared/cors.ts';
 
 /**
  * De Doelcoach — QS8-38, met de poort van QS8-42 ervoor.
