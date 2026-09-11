@@ -166,6 +166,16 @@ export function tel(vondsten) {
  * ⚠️ `langste` staat apart van `plafond` en niet als tweede veld erin, zodat de
  *    bestaande aanroepen en hun tests onveranderd blijven werken. Wie er een
  *    derde grootheid bij wil, doet hetzelfde.
+ *
+ * ⚠️ **Allebei expliciet getypeerd als een losse tabel, en dat is nodig.**
+ *    `Object.freeze` geeft `PLAFOND` en `LANGSTE` een literáál type, en dan
+ *    weigert `tsc` een tabel met minder lagen — precies wat een ijkingstest
+ *    aanbiedt. Zonder deze twee regels is de controle alleen te voeden met de
+ *    échte plafonds, en dat is geen ijking maar een herhaling.
+ *
+ * @param {readonly {pad: string, regels: number}[] | undefined} vondsten
+ * @param {Record<string, number>} [plafond]
+ * @param {Record<string, number>} [langste]
  */
 export function beoordeel(vondsten, plafond = PLAFOND, langste = LANGSTE) {
   const { perLaag, langstePerLaag, buiten } = tel(vondsten);

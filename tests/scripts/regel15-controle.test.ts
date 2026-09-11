@@ -252,6 +252,8 @@ describe('het plafond zelf', () => {
   });
 
   it('elke langste ligt boven de grens, want eronder telt niet mee', () => {
-    for (const laag of LAGEN) expect(LANGSTE[laag]).toBeGreaterThan(GRENS);
+    // Via `Object.values` en niet via een index: `Object.freeze` geeft LANGSTE
+    // een literaal type zonder indexsignatuur.
+    for (const grens of Object.values(LANGSTE)) expect(grens).toBeGreaterThan(GRENS);
   });
 });
